@@ -61,6 +61,12 @@ def get_status():
             'status': 'success' if latest_data['full_data'] else 'no_data'
         })
 
+@app.route('/api/debug')
+def debug_status():
+    # Run a quick check on connections
+    results = monitor.debug_connections()
+    return jsonify(results)
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001, debug=True, use_reloader=False)
 

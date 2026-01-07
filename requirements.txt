@@ -3,3 +3,4 @@ beautifulsoup4
 flask
 apscheduler
 gunicorn
+cloudscraper

@@ -1,9 +1,12 @@
 import requests
+import cloudscraper
 from bs4 import BeautifulSoup
 import time
 from datetime import datetime
 import sys
 
+# Create a cloudscraper instance to bypass WAFs
+scraper = cloudscraper.create_scraper()
 
 # URLs to monitor
 ORIENTAL_URL = "https://oriental-lounge.com/"
@@ -12,12 +15,37 @@ XIX_URL = "https://aiseki-okayama.conohawing.com/aiseki/parts/get_cs_info.php"
 ALFA_URL = "https://aiseki-hiroshima.com/wp/display.php"
 YATAKOI_URL = "https://asobibar-823d1.firebaseio.com/shops/chayamachi.json"
 
+def debug_connections():
+    results = {}
+    urls = {
+        "Oriental": ORIENTAL_URL,
+        "JIS": JIS_URL,
+        "XIX": XIX_URL,
+        "ALFA": ALFA_URL,
+        "YATAKOI": YATAKOI_URL
+    }
+    
+    for name, url in urls.items():
+        try:
+            start = time.time()
+            resp = scraper.get(url, timeout=10)
+            duration = time.time() - start
+            results[name] = {
+                "status": resp.status_code,
+                "time": f"{duration:.2f}s",
+                "length": len(resp.content)
+            }
+        except Exception as e:
+            results[name] = {"error": str(e)}
+            
+    return results
+
 def get_oriental_data():
     try:
-        headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36'}
-        response = requests.get(ORIENTAL_URL, headers=headers, timeout=10)
+        # Use scraper instead of requests
+        response = scraper.get(ORIENTAL_URL, timeout=10)
         response.raise_for_status()
-    except requests.RequestException as e:
+    except Exception as e:
         print(f"Error fetching Oriental data: {e}", file=sys.stderr)
         return []
 
@@ -123,8 +151,7 @@ def get_jis_data():
 
 def get_xix_data():
     try:
-        headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36'}
-        response = requests.get(XIX_URL, headers=headers, timeout=10)
+        response = scraper.get(XIX_URL, timeout=10)
         response.raise_for_status()
         data = response.json()
         
@@ -145,13 +172,12 @@ def get_xix_data():
 
 def get_alfa_data():
     try:
-        headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36'}
-        response = requests.get(ALFA_URL, headers=headers, timeout=10)
+        response = scraper.get(ALFA_URL, timeout=10)
         response.raise_for_status()
         # Handle UTF-8 BOM if present
         try:
             data = response.json()
-        except requests.exceptions.JSONDecodeError:
+        except Exception:
             import json
             data = json.loads(response.content.decode('utf-8-sig'))
         
@@ -170,8 +196,7 @@ def get_alfa_data():
 
 def get_yatakoi_data():
     try:
-        headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36'}
-        response = requests.get(YATAKOI_URL, headers=headers, timeout=10)
+        response = scraper.get(YATAKOI_URL, timeout=10)
         response.raise_for_status()
         data = response.json()
         
