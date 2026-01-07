@@ -63,9 +63,16 @@ def get_status():
 
 @app.route('/api/debug')
 def debug_status():
-    # Run a quick check on connections
-    results = monitor.debug_connections()
-    return jsonify(results)
+    # Run full data fetch to see if parsing works
+    try:
+        data = monitor.get_all_data()
+        return jsonify({
+            "count": len(data),
+            "data": data,
+            "connection_test": monitor.debug_connections()
+        })
+    except Exception as e:
+        return jsonify({"error": str(e), "trace": "In get_all_data"})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001, debug=True, use_reloader=False)
