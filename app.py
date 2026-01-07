@@ -54,7 +54,24 @@ def index():
 
 @app.route('/api/status')
 def get_status():
+    global latest_data
     with data_lock:
+        # If no data yet, try to fetch immediately (fallback)
+        if not latest_data['full_data']:
+            print("No data in cache, fetching synchronously...")
+            # Release lock briefly to allow update_job to run if needed, 
+            # but here we just call the logic directly or call update_job
+            # simpler to just call the monitor logic directly to avoid lock complexity
+            try:
+                data = monitor.get_all_data()
+                if data:
+                    sorted_data = sorted(data, key=lambda x: (x['women'], x['men']), reverse=True)
+                    latest_data['top_store'] = sorted_data[0] if sorted_data else None
+                    latest_data['full_data'] = sorted_data
+                    latest_data['last_updated'] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            except Exception as e:
+                print(f"Sync update failed: {e}")
+
         return jsonify({
             'timestamp': latest_data['last_updated'],
             'ranking': latest_data['full_data'],
