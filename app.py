@@ -56,12 +56,16 @@ def index():
 def get_status():
     global latest_data
     with data_lock:
-        # If no data yet, try to fetch immediately (fallback)
-        if not latest_data['full_data']:
-            print("No data in cache, fetching synchronously...")
-            # Release lock briefly to allow update_job to run if needed, 
-            # but here we just call the logic directly or call update_job
-            # simpler to just call the monitor logic directly to avoid lock complexity
+        # Check staleness (older than 90 seconds?)
+        is_stale = False
+        if latest_data['last_updated']:
+            last_time = datetime.datetime.strptime(latest_data['last_updated'], "%Y-%m-%d %H:%M:%S")
+            if (datetime.datetime.now() - last_time).total_seconds() > 90:
+                is_stale = True
+        
+        # If no data or stale, fetch synchronously
+        if not latest_data['full_data'] or is_stale:
+            print(f"Data missing or stale (Stale: {is_stale}), fetching synchronously...")
             try:
                 data = monitor.get_all_data()
                 if data:
