@@ -14,7 +14,8 @@ YATAKOI_URL = "https://asobibar-823d1.firebaseio.com/shops/chayamachi.json"
 
 def get_oriental_data():
     try:
-        response = requests.get(ORIENTAL_URL, timeout=10)
+        headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36'}
+        response = requests.get(ORIENTAL_URL, headers=headers, timeout=10)
         response.raise_for_status()
     except requests.RequestException as e:
         print(f"Error fetching Oriental data: {e}", file=sys.stderr)
@@ -122,7 +123,8 @@ def get_jis_data():
 
 def get_xix_data():
     try:
-        response = requests.get(XIX_URL, timeout=10)
+        headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36'}
+        response = requests.get(XIX_URL, headers=headers, timeout=10)
         response.raise_for_status()
         data = response.json()
         
@@ -143,7 +145,8 @@ def get_xix_data():
 
 def get_alfa_data():
     try:
-        response = requests.get(ALFA_URL, timeout=10)
+        headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36'}
+        response = requests.get(ALFA_URL, headers=headers, timeout=10)
         response.raise_for_status()
         # Handle UTF-8 BOM if present
         try:
@@ -167,7 +170,8 @@ def get_alfa_data():
 
 def get_yatakoi_data():
     try:
-        response = requests.get(YATAKOI_URL, timeout=10)
+        headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36'}
+        response = requests.get(YATAKOI_URL, headers=headers, timeout=10)
         response.raise_for_status()
         data = response.json()
         
