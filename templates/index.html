@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oriental Lounge Monitor</title>
+
+    <!-- PWA Settings -->
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#0a0a0f">
+    <link rel="apple-touch-icon" href="/static/icon.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+    <div class="background-glob"></div>
+    <div class="background-glob glob-2"></div>
+
+    <div class="container">
+        <header>
+            <h1>ORIENTAL LOUNGE MONITOR</h1>
+            <p class="subtitle">Live Ranking Update</p>
+        </header>
+
+        <main>
+            <div id="loading" class="loading-state">
+                <div class="spinner"></div>
+                <p>Establishing Connection...</p>
+            </div>
+
+            <div id="content" class="content hidden">
+
+
+                <div id="ranking-list" class="ranking-list">
+                    <!-- Javascript will populate this -->
+                </div>
+
+                <div class="info-bar">
+                    <p>Last Update: <span id="last-update">--:--</span></p>
+                    <div class="live-indicator">
+                        <div class="dot"></div>
+                        LIVE (1m)
+                    </div>
+                </div>
+            </div>
+
+            <div id="error-message" class="error-message hidden">
+                <p>Failed to retrieve data.</p>
+            </div>
+        </main>
+    </div>
+
+    <!-- Template for ranking item -->
+    <template id="ranking-item-template">
+        <div class="ranking-item">
+            <div class="rank-badge">1</div>
+            <div class="store-info">
+                <h3 class="store-name">Store Name</h3>
+            </div>
+            <div class="stats-group">
+                <div class="stat ladies">
+                    <span class="count">0</span>
+                    <span class="label">LADIES</span>
+                </div>
+                <div class="stat men">
+                    <span class="count">0</span>
+                    <span class="label">MEN</span>
+                </div>
+            </div>
+            <!-- Progress bar visual -->
+            <div class="occupancy-bar">
+                <div class="bar-fill"></div>
+            </div>
+        </div>
+    </template>
+
+    <script>
+        async function fetchData() {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+
+                if (data.error || data.status !== 'success') {
+                    // Only show error screen if we have NO previous data
+                    const list = document.getElementById('ranking-list');
+                    if (list.children.length === 0) {
+                        showError();
+                    }
+                    return;
+                }
+
+                updateUI(data);
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('content').classList.remove('hidden');
+                document.getElementById('error-message').classList.add('hidden');
+            } catch (e) {
+                console.error("Fetch error:", e);
+            }
+        }
+
+        function updateUI(data) {
+            const rankingList = document.getElementById('ranking-list');
+            const template = document.getElementById('ranking-item-template');
+
+            // Clear current list
+            rankingList.innerHTML = '';
+
+            const stores = data.ranking;
+            if (!stores || stores.length === 0) return;
+
+            stores.forEach((store, index) => {
+                const node = template.content.cloneNode(true);
+                const item = node.querySelector('.ranking-item');
+
+                // Add top 3 special classes
+                if (index === 0) item.classList.add('rank-1');
+                if (index === 1) item.classList.add('rank-2');
+                if (index === 2) item.classList.add('rank-3');
+
+                node.querySelector('.rank-badge').textContent = index + 1;
+                node.querySelector('.store-name').textContent = store.name;
+
+                const ladiesCount = store.women;
+                const menCount = store.men;
+
+                node.querySelector('.stat.ladies .count').textContent = ladiesCount;
+                node.querySelector('.stat.men .count').textContent = menCount;
+
+                // Calculate "fullness" relative to max (or arbitrary cap) for the bar
+                // Just use sum of people for bar width relative to max store?
+                // Let's use ladies count relative to the top store's ladies count for the bar
+                const maxLadies = stores[0].women || 1;
+                const percentage = Math.min(100, (ladiesCount / maxLadies) * 100);
+
+                node.querySelector('.bar-fill').style.width = percentage + '%';
+
+                rankingList.appendChild(node);
+            });
+
+            document.getElementById('last-update').textContent = data.timestamp ? data.timestamp.split(' ')[1].substring(0, 5) : '--:--';
+        }
+
+        function showError() {
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('content').classList.add('hidden');
+            document.getElementById('error-message').classList.remove('hidden');
+        }
+
+        // Initial fetch
+        fetchData();
+
+        // Poll every 30 seconds to strictly catch the 1-min backend update without much lag
+        setInterval(fetchData, 30000);
+    </script>
+</body>
+
+</html>

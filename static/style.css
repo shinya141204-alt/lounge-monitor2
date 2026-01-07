@@ -1,0 +1,321 @@
+:root {
+    --bg-color: #0a0a0f;
+    --card-bg: rgba(255, 255, 255, 0.03);
+    --card-hover: rgba(255, 255, 255, 0.08);
+    --card-border: rgba(255, 255, 255, 0.05);
+    --text-primary: #ffffff;
+    --text-secondary: #a0a0a0;
+    --accent-gold: #d4af37;
+    --accent-silver: #c0c0c0;
+    --accent-bronze: #cd7f32;
+    --accent-red: #ff4d4d;
+    --font-main: 'Outfit', sans-serif;
+}
+
+body {
+    margin: 0;
+    font-family: var(--font-main);
+    background-color: var(--bg-color);
+    color: var(--text-primary);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    /* Changed from center to allow scrolling */
+    overflow-y: auto;
+    /* Enable scrolling */
+    overflow-x: hidden;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #333;
+    border-radius: 3px;
+}
+
+.background-glob {
+    position: fixed;
+    /* Fixed so it stays while scrolling */
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(77, 121, 255, 0.1) 0%, rgba(0, 0, 0, 0) 70%);
+    top: -200px;
+    left: -200px;
+    z-index: -1;
+    animation: pulse 10s infinite alternate;
+}
+
+.glob-2 {
+    background: radial-gradient(circle, rgba(212, 175, 55, 0.08) 0%, rgba(0, 0, 0, 0) 70%);
+    top: auto;
+    bottom: -200px;
+    left: auto;
+    right: -200px;
+    animation: pulse 15s infinite alternate-reverse;
+}
+
+.container {
+    width: 100%;
+    max-width: 95vw;
+    /* Wider container */
+    padding: 20px;
+    text-align: center;
+    z-index: 1;
+}
+
+header {
+    margin-bottom: 20px;
+}
+
+h1 {
+    font-weight: 700;
+    letter-spacing: 2px;
+    font-size: 1.2rem;
+    /* Smaller header */
+    margin: 0;
+    text-transform: uppercase;
+    background: linear-gradient(90deg, #fff, #aaa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.subtitle {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    margin-top: 5px;
+    letter-spacing: 1px;
+}
+
+/* Header removed, styles deleted */
+
+.ranking-list {
+    display: grid;
+    /* Grid layout */
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    /* Responsive columns */
+    gap: 8px;
+    /* Tighter gap */
+}
+
+.ranking-item {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    /* Smaller radius */
+    padding: 10px;
+    /* Reduced padding */
+    display: flex;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.2s ease;
+}
+
+.ranking-item:hover {
+    background: var(--card-hover);
+    transform: translateY(-2px);
+}
+
+.rank-badge {
+    width: 24px;
+    /* Smaller badge */
+    height: 24px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    margin-right: 10px;
+    font-size: 0.8rem;
+    flex-shrink: 0;
+}
+
+.store-info {
+    flex-grow: 1;
+    text-align: left;
+    z-index: 1;
+    overflow: hidden;
+    /* Prevent text overflow */
+}
+
+.store-name {
+    margin: 0;
+    font-size: 0.9rem;
+    /* Smaller font */
+    font-weight: 600;
+    white-space: nowrap;
+    /* Single line */
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.stats-group {
+    display: flex;
+    gap: 10px;
+    /* Tighter gap */
+    margin-left: 10px;
+    z-index: 1;
+    flex-shrink: 0;
+}
+
+.stat {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    min-width: 40px;
+    /* Reduced width */
+}
+
+.stat .count {
+    font-size: 1.1rem;
+    /* Smaller count */
+    font-weight: 300;
+    line-height: 1;
+}
+
+.stat .label {
+    font-size: 0.5rem;
+    /* Smaller label */
+    color: var(--text-secondary);
+    margin-top: 2px;
+}
+
+.stat.ladies .count {
+    color: #ffb7b7;
+    text-shadow: 0 0 5px rgba(255, 77, 77, 0.2);
+}
+
+.stat.men .count {
+    color: #b7caff;
+}
+
+/* Rank specific styles */
+.ranking-item.rank-1 {
+    border-color: rgba(212, 175, 55, 0.3);
+    background: linear-gradient(90deg, rgba(212, 175, 55, 0.1), rgba(255, 255, 255, 0.03));
+}
+
+.rank-1 .rank-badge {
+    background: var(--accent-gold);
+    color: #000;
+    box-shadow: 0 0 5px rgba(212, 175, 55, 0.5);
+}
+
+.ranking-item.rank-2 {
+    border-color: rgba(192, 192, 192, 0.3);
+}
+
+.rank-2 .rank-badge {
+    background: var(--accent-silver);
+    color: #000;
+}
+
+.ranking-item.rank-3 {
+    border-color: rgba(205, 127, 50, 0.3);
+}
+
+.rank-3 .rank-badge {
+    background: var(--accent-bronze);
+    color: #000;
+}
+
+/* Progress bar background */
+.occupancy-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    width: 100%;
+    background: transparent;
+}
+
+.bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-red), transparent);
+    opacity: 0.5;
+}
+
+.info-bar {
+    margin-top: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--text-secondary);
+    font-size: 0.7rem;
+    padding: 0 5px;
+}
+
+.live-indicator {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--accent-red);
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.dot {
+    width: 5px;
+    height: 5px;
+    background-color: var(--accent-red);
+    border-radius: 50%;
+    animation: flash 2s infinite;
+}
+
+.hidden {
+    display: none;
+}
+
+.loading-state {
+    padding: 30px;
+    color: var(--text-secondary);
+}
+
+.spinner {
+    width: 25px;
+    height: 25px;
+    border: 2px solid var(--card-border);
+    border-top-color: var(--accent-gold);
+    border-radius: 50%;
+    margin: 0 auto 10px auto;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+        opacity: 0.1;
+    }
+
+    100% {
+        transform: scale(1.1);
+        opacity: 0.2;
+    }
+}
+
+@keyframes flash {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.3;
+    }
+}
