@@ -4,3 +4,5 @@ flask
 apscheduler
 gunicorn
 cloudscraper
+gspread
+oauth2client

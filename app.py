@@ -4,6 +4,7 @@ import monitor
 import atexit
 import datetime
 import threading
+import logger
 
 app = Flask(__name__)
 
@@ -34,6 +35,9 @@ def update_job():
                 jst_now = datetime.datetime.now() + datetime.timedelta(hours=9)
                 latest_data['last_updated'] = jst_now.strftime("%Y-%m-%d %H:%M:%S")
             print(f"Data updated. Top store: {top_store['name'] if top_store else 'None'}")
+            
+            # Log to Google Sheets (in background to not block)
+            threading.Thread(target=logger.log_data, args=(data,)).start()
         else:
             print("No data retrieved.")
     except Exception as e:
