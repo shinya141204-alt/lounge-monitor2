@@ -40,15 +40,15 @@ def update_job():
             # 1. Check for Zero Data (Prevention)
             total_guests = sum(d.get('men', 0) + d.get('women', 0) for d in data)
             
-            # 2. Check for Time (Business Hours: 17:00 - 06:00 JST)
-            # If it is between 06:00 and 16:59, we consider it "hours to skip"
+            # 2. Check for Time (Business Hours: 17:00 - 07:00 JST)
+            # If it is between 07:00 and 16:59, we consider it "hours to skip"
             # jst_now is already defined above
-            is_off_hours = 6 <= jst_now.hour < 17
+            is_off_hours = 7 <= jst_now.hour < 17
             
             if total_guests == 0:
                 print(f"Skipping logging: Total guest count is 0.")
             elif is_off_hours:
-                print(f"Skipping logging: Current time ({jst_now.strftime('%H:%M')}) is out of business hours (17:00-06:00).")
+                print(f"Skipping logging: Current time ({jst_now.strftime('%H:%M')}) is out of business hours (17:00-07:00).")
             else:
                 # Log to Google Sheets (in background)
                 threading.Thread(target=logger.log_data, args=(data,)).start()
