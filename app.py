@@ -126,6 +126,10 @@ def get_status():
             try:
                 data = monitor.get_all_data()
                 if data:
+                    # Add region info (FIX: ensure region is present even on sync fetch)
+                    for store in data:
+                        store['region'] = detect_region(store['name'])
+
                     sorted_data = sorted(data, key=lambda x: (x['women'], x['men']), reverse=True)
                     latest_data['top_store'] = sorted_data[0] if sorted_data else None
                     latest_data['full_data'] = sorted_data
