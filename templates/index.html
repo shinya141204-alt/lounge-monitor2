@@ -39,6 +39,19 @@
             <div id="content" class="content hidden">
 
 
+                <div class="filter-bar">
+                    <button class="filter-btn active" data-region="All">全て</button>
+                    <button class="filter-btn" data-region="Kanto">関東</button>
+                    <button class="filter-btn" data-region="Kinki">関西</button>
+                    <button class="filter-btn" data-region="Chubu">中部</button>
+                    <button class="filter-btn" data-region="Kyushu">九州</button>
+                    <button class="filter-btn" data-region="Hokkaido">北海道</button>
+                    <button class="filter-btn" data-region="Tohoku">東北</button>
+                    <button class="filter-btn" data-region="Chugoku">中国</button>
+                    <button class="filter-btn" data-region="Shikoku">四国</button>
+                    <button class="filter-btn" data-region="Korea">韓国</button>
+                </div>
+
                 <div id="ranking-list" class="ranking-list">
                     <!-- Javascript will populate this -->
                 </div>
@@ -83,6 +96,25 @@
     </template>
 
     <script>
+        let currentFilter = 'All';
+
+        // Add filter button listeners
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                // Remove active class from all
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                // Add active to clicked
+                e.target.classList.add('active');
+
+                currentFilter = e.target.dataset.region;
+
+                // Re-render with cached data if available (or wait for next fetch)
+                if (window.lastData) {
+                    updateUI(window.lastData);
+                }
+            });
+        });
+
         async function fetchData() {
             try {
                 const response = await fetch('/api/status');
@@ -97,6 +129,7 @@
                     return;
                 }
 
+                window.lastData = data; // Cache data for filtering
                 updateUI(data);
                 document.getElementById('loading').classList.add('hidden');
                 document.getElementById('content').classList.remove('hidden');
@@ -116,11 +149,25 @@
             const stores = data.ranking;
             if (!stores || stores.length === 0) return;
 
-            stores.forEach((store, index) => {
+            // Filter stores based on current region
+            const filteredStores = stores.filter(store => {
+                if (currentFilter === 'All') return true;
+                return store.region === currentFilter;
+            });
+
+            // Re-sort just to be safe, or assume backend sorted globally? 
+            // If filtering, the relative order is preserved, which is correct for ranking. (e.g. #1 in Kanto is the highest Kanto store)
+
+            if (filteredStores.length === 0) {
+                rankingList.innerHTML = '<p style="color: #666; width: 100%; text-align: center;">No stores found in this region.</p>';
+                return;
+            }
+
+            filteredStores.forEach((store, index) => {
                 const node = template.content.cloneNode(true);
                 const item = node.querySelector('.ranking-item');
 
-                // Add top 3 special classes
+                // Add top 3 special classes (relative to this filter!)
                 if (index === 0) item.classList.add('rank-1');
                 if (index === 1) item.classList.add('rank-2');
                 if (index === 2) item.classList.add('rank-3');
@@ -134,10 +181,8 @@
                 node.querySelector('.stat.ladies .count').textContent = ladiesCount;
                 node.querySelector('.stat.men .count').textContent = menCount;
 
-                // Calculate "fullness" relative to max (or arbitrary cap) for the bar
-                // Just use sum of people for bar width relative to max store?
-                // Let's use ladies count relative to the top store's ladies count for the bar
-                const maxLadies = stores[0].women || 1;
+                // Calculate percentage relative to the top filtering store
+                const maxLadies = filteredStores[0].women || 1;
                 const percentage = Math.min(100, (ladiesCount / maxLadies) * 100);
 
                 node.querySelector('.bar-fill').style.width = percentage + '%';
@@ -157,7 +202,7 @@
         // Initial fetch
         fetchData();
 
-        // Poll every 30 seconds to strictly catch the 1-min backend update without much lag
+        // Poll every 30 seconds
         setInterval(fetchData, 30000);
     </script>
 </body>

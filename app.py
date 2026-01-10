@@ -18,12 +18,37 @@ latest_data = {
 
 
 
+# Region Definitions
+REGIONS = {
+    'Hokkaido': ['Sapporo', '札幌', 'SAPPORO'],
+    'Tohoku': ['Sendai', '仙台'],
+    'Kanto': ['Shibuya', 'Ebisu', 'Shinjuku', 'Ueno', 'Kashiwa', 'Machida', 'Yokohama', 'Omiya', 'Utsunomiya', 'Takasaki', '渋谷', '恵比寿', '新宿', '上野', '柏', '町田', '横浜', '大宮', '宇都宮', '高崎', 'OMIYA', 'SHINJUKU', 'NISHISHINJUKU'],
+    'Chubu': ['Nagoya', 'Shizuoka', 'Hamamatsu', 'Kanazawa', '名古屋', '静岡', '浜松', '金沢'],
+    'Kinki': ['Osaka', 'Umeda', 'Tenma', 'Shinsaibashi', 'Namba', 'Kyoto', 'Kobe', 'Chayamachi', '大阪', '梅田', '天満', '心斎橋', '難波', '京都', '神戸', '茶屋町', 'UMEDA', 'NAMBA', 'CHAYAMACHI'],
+    'Chugoku': ['Okayama', 'Hiroshima', '岡山', '広島', 'OKAYAMA', 'HIROSHIMA'],
+    'Shikoku': ['Matsuyama', '松山', 'MATSUYAMA'],
+    'Kyushu': ['Fukuoka', 'Kokura', 'Nagasaki', 'Oita', 'Kumamoto', 'Miyazaki', 'Kagoshima', 'Okinawa', '福岡', '小倉', '長崎', '大分', '熊本', '宮崎', '鹿児島', '沖縄', 'FUKUOKA', 'KUMAMOTO'],
+    'Korea': ['Seoul', 'Gangnam', 'Hongdae', 'ソウル', 'カンナム', 'ホンデ']
+}
+
+def detect_region(store_name):
+    """Detects the region based on the store name."""
+    for region, keywords in REGIONS.items():
+        for keyword in keywords:
+            if keyword in store_name:
+                return region
+    return 'Other'
+
 def update_job():
     global latest_data
     print(f"[{datetime.datetime.now()}] Updating data...")
     try:
         data = monitor.get_all_data()
         if data:
+            # Add region info
+            for store in data:
+                store['region'] = detect_region(store['name'])
+
             # Sort data by women count descending, then men count descending
             sorted_data = sorted(data, key=lambda x: (x['women'], x['men']), reverse=True)
             top_store = sorted_data[0] if sorted_data else None
