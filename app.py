@@ -45,10 +45,16 @@ def update_job():
             # jst_now is already defined above
             is_off_hours = 7 <= jst_now.hour < 17
             
+            # 3. Check for Frequency (Every 10 minutes)
+            # To save spreadsheet space, we only log when the minute is 0, 10, 20, 30, 40, 50.
+            is_logging_time = jst_now.minute % 10 == 0
+
             if total_guests == 0:
                 print(f"Skipping logging: Total guest count is 0.")
             elif is_off_hours:
                 print(f"Skipping logging: Current time ({jst_now.strftime('%H:%M')}) is out of business hours (17:00-07:00).")
+            elif not is_logging_time:
+                print(f"Skipping logging: Interval optimization (Minute {jst_now.minute} is not divisible by 10).")
             else:
                 # Log to Google Sheets (in background)
                 threading.Thread(target=logger.log_data, args=(data,)).start()
