@@ -72,7 +72,7 @@ def get_oriental_data():
             women_count = int(women_tag.get_text(strip=True)) if women_tag else 0
             
             store_data.append({
-                'name': f"Oriental {name}",
+                'name': f"OLG {name}",
                 'men': men_count,
                 'women': women_count,
                 'source': 'oriental'
