@@ -99,10 +99,31 @@ h1 {
 .ranking-list {
     display: grid;
     /* Grid layout */
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    /* Responsive columns */
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    /* Responsive columns - Increased min-width to prevent truncation */
     gap: 8px;
     /* Tighter gap */
+}
+
+/* ... (unchanged) ... */
+
+/* Pin Button */
+.pin-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 2px;
+    /* Reduced padding */
+    margin-right: 2px;
+    /* Reduced margin */
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.3;
+    flex-shrink: 0;
+    /* Prevent button identifying as shrinkable */
 }
 
 .ranking-item {
@@ -387,13 +408,16 @@ h1 {
     border: none;
     color: var(--text-secondary);
     cursor: pointer;
-    padding: 5px;
-    margin-right: 5px;
+    padding: 2px 4px;
+    /* Slightly tighter */
+    margin-right: 2px;
     transition: all 0.2s ease;
     display: flex;
     align-items: center;
     justify-content: center;
     opacity: 0.3;
+    flex-shrink: 0;
+    /* Important */
 }
 
 .pin-btn:hover {
