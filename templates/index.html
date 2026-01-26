@@ -52,6 +52,15 @@
                     <button class="filter-btn" data-region="Korea">韓国</button>
                 </div>
 
+                <!-- Pinned Stores Section -->
+                <div id="pinned-list-container" class="hidden">
+                    <h2 class="section-title">PINNED STORES</h2>
+                    <div id="pinned-list" class="ranking-list">
+                        <!-- Pinned items will populate here -->
+                    </div>
+                    <div class="separator"></div>
+                </div>
+
                 <div id="ranking-list" class="ranking-list">
                     <!-- Javascript will populate this -->
                 </div>
@@ -78,6 +87,15 @@
             <div class="store-info">
                 <h3 class="store-name">Store Name</h3>
             </div>
+            <!-- Pin Button Code -->
+            <button class="pin-btn" aria-label="Pin Store">
+                <svg class="star-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <polygon
+                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2">
+                    </polygon>
+                </svg>
+            </button>
             <div class="stats-group">
                 <div class="stat ladies">
                     <span class="count">0</span>
@@ -97,6 +115,22 @@
 
     <script>
         let currentFilter = 'All';
+        let pinnedStores = JSON.parse(localStorage.getItem('olg_pinned_stores')) || [];
+
+        // Save Pinned Stores
+        function togglePin(storeName) {
+            if (pinnedStores.includes(storeName)) {
+                pinnedStores = pinnedStores.filter(name => name !== storeName);
+            } else {
+                pinnedStores.push(storeName);
+            }
+            localStorage.setItem('olg_pinned_stores', JSON.stringify(pinnedStores));
+
+            // Re-render immediately
+            if (window.lastData) {
+                updateUI(window.lastData);
+            }
+        }
 
         // Add filter button listeners
         document.querySelectorAll('.filter-btn').forEach(btn => {
@@ -139,12 +173,66 @@
             }
         }
 
+        function renderStore(store, index, container, isPinned = false, globalIndex = null) {
+            const template = document.getElementById('ranking-item-template');
+            const node = template.content.cloneNode(true);
+            const item = node.querySelector('.ranking-item');
+
+            // If pinned, add active class to button
+            const pinBtn = node.querySelector('.pin-btn');
+            if (pinnedStores.includes(store.name)) {
+                pinBtn.classList.add('active');
+            }
+
+            // Pin click handler
+            pinBtn.onclick = (e) => {
+                e.stopPropagation(); // prevent card click if we add one
+                togglePin(store.name);
+            };
+
+            // Rank logic
+            // If globalIndex is provided, use it (for relative rank in main list)
+            // If pinned, maybe show a star badge or just the original rank?
+            // Let's use the index passed in + 1
+            const displayRank = globalIndex !== null ? globalIndex + 1 : index + 1;
+
+            // Add top 3 special classes only if NOT pinned section (or keep consistent?)
+            // If it's the main list, show colors.
+            if (!isPinned) {
+                if (index === 0) item.classList.add('rank-1');
+                if (index === 1) item.classList.add('rank-2');
+                if (index === 2) item.classList.add('rank-3');
+            } else {
+                item.classList.add('pinned-item');
+            }
+
+            node.querySelector('.rank-badge').textContent = displayRank;
+            node.querySelector('.store-name').textContent = store.name;
+
+            const ladiesCount = store.women;
+            const menCount = store.men;
+
+            node.querySelector('.stat.ladies .count').textContent = ladiesCount;
+            node.querySelector('.stat.men .count').textContent = menCount;
+
+            // Bar calculation (relative to max in filtered list, or global max?)
+            // We'll approximate using window.maxLadies from main loop
+            if (window.currentMaxLadies) {
+                const percentage = Math.min(100, (ladiesCount / window.currentMaxLadies) * 100);
+                node.querySelector('.bar-fill').style.width = percentage + '%';
+            }
+
+            container.appendChild(node);
+        }
+
         function updateUI(data) {
             const rankingList = document.getElementById('ranking-list');
-            const template = document.getElementById('ranking-item-template');
+            const pinnedList = document.getElementById('pinned-list');
+            const pinnedContainer = document.getElementById('pinned-list-container');
 
-            // Clear current list
+            // Clear lists
             rankingList.innerHTML = '';
+            pinnedList.innerHTML = '';
 
             const stores = data.ranking;
             if (!stores || stores.length === 0) return;
@@ -155,39 +243,57 @@
                 return store.region === currentFilter;
             });
 
-            // Re-sort just to be safe, or assume backend sorted globally? 
-            // If filtering, the relative order is preserved, which is correct for ranking. (e.g. #1 in Kanto is the highest Kanto store)
-
             if (filteredStores.length === 0) {
                 rankingList.innerHTML = '<p style="color: #666; width: 100%; text-align: center;">No stores found in this region.</p>';
+                pinnedContainer.classList.add('hidden');
                 return;
             }
 
-            filteredStores.forEach((store, index) => {
-                const node = template.content.cloneNode(true);
-                const item = node.querySelector('.ranking-item');
+            // Calculate max ladies for bar width relative to this view
+            window.currentMaxLadies = filteredStores[0].women || 1;
 
-                // Add top 3 special classes (relative to this filter!)
-                if (index === 0) item.classList.add('rank-1');
-                if (index === 1) item.classList.add('rank-2');
-                if (index === 2) item.classList.add('rank-3');
+            // Separate Pinned vs Others
+            // We want Pinned stores to appear at the top, BUT we also want to separate them visually.
+            // AND we need to decide: do pinned stores disappear from the main list?
+            // User request: "Pinning makes it stay at the top". duplicate is safer contextually, but removing from list is cleaner.
+            // Let's remove from main list to avoid duplicates, as they are "moved" to top.
 
-                node.querySelector('.rank-badge').textContent = index + 1;
-                node.querySelector('.store-name').textContent = store.name;
+            const pinnedItems = [];
+            const otherItems = [];
 
-                const ladiesCount = store.women;
-                const menCount = store.men;
+            // We need to preserve the original rank index for display!
 
-                node.querySelector('.stat.ladies .count').textContent = ladiesCount;
-                node.querySelector('.stat.men .count').textContent = menCount;
+            filteredStores.forEach((store, realIndex) => {
+                if (pinnedStores.includes(store.name)) {
+                    pinnedItems.push({ store, rank: realIndex });
+                } else {
+                    otherItems.push({ store, rank: realIndex });
+                }
+            });
 
-                // Calculate percentage relative to the top filtering store
-                const maxLadies = filteredStores[0].women || 1;
-                const percentage = Math.min(100, (ladiesCount / maxLadies) * 100);
+            // Render Pinned
+            if (pinnedItems.length > 0) {
+                pinnedContainer.classList.remove('hidden');
+                pinnedItems.forEach(item => {
+                    renderStore(item.store, -1, pinnedList, true, item.rank);
+                });
+            } else {
+                pinnedContainer.classList.add('hidden');
+            }
 
-                node.querySelector('.bar-fill').style.width = percentage + '%';
+            // Render Others
+            otherItems.forEach((item, index) => {
+                // index here is position in 'otherItems', but we want style based on position?
+                // Actually the rank styles (gold/silver/bronze) are usually about being 1st/2nd/3rd.
+                // If the 1st store is pinned, does the 2nd store become Gold? No, that would be confusing.
+                // We should pass the actual index (0, 1, 2) in the visual list for coloring?
+                // OR we strictly follow the 'realIndex' (Global Rank) for coloring.
+                // Let's stick to Global Rank for coloring so it matches the number.
 
-                rankingList.appendChild(node);
+                // Correction: The `renderStore` logic uses `index` for class adding.
+                // If we want the style to match the badge, we should check `item.rank`.
+
+                renderStore(item.store, item.rank, rankingList, false, item.rank);
             });
 
             document.getElementById('last-update').textContent = data.timestamp ? data.timestamp.split(' ')[1].substring(0, 5) : '--:--';

@@ -319,6 +319,7 @@ h1 {
         opacity: 0.3;
     }
 }
+
 /* Filter Bar */
 .filter-bar {
     display: flex;
@@ -327,10 +328,13 @@ h1 {
     gap: 8px;
     margin-bottom: 20px;
     -webkit-overflow-scrolling: touch;
-    scrollbar-width: none; /* Firefox */
+    scrollbar-width: none;
+    /* Firefox */
 }
+
 .filter-bar::-webkit-scrollbar {
-    display: none; /* Chrome, Safari */
+    display: none;
+    /* Chrome, Safari */
 }
 
 .filter-btn {
@@ -351,4 +355,62 @@ h1 {
     color: #fff;
     border-color: #fff;
     font-weight: 600;
+}
+
+/* Pinned Section */
+.section-title {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin: 10px 0 5px 0;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    font-weight: 600;
+    text-align: left;
+    padding-left: 5px;
+}
+
+.separator {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.1);
+    margin: 20px 0;
+    width: 100%;
+}
+
+.pinned-item {
+    border-color: var(--accent-gold);
+    background: rgba(212, 175, 55, 0.05);
+}
+
+/* Pin Button */
+.pin-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 5px;
+    margin-right: 5px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.3;
+}
+
+.pin-btn:hover {
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+.pin-btn.active {
+    color: var(--accent-gold);
+    opacity: 1;
+}
+
+.pin-btn.active svg {
+    fill: var(--accent-gold);
+}
+
+.star-icon {
+    width: 18px;
+    height: 18px;
 }
