@@ -438,3 +438,64 @@ h1 {
     width: 18px;
     height: 18px;
 }
+
+/* Modal */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(5px);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal.hidden {
+    display: none;
+}
+
+.modal-content {
+    background: #1a1a24;
+    padding: 20px;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    position: relative;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.close-btn {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 1.5rem;
+    cursor: pointer;
+}
+
+.chart-container {
+    margin-top: 20px;
+    background: rgba(255, 255, 255, 0.02);
+    padding: 10px;
+    border-radius: 8px;
+}
+
+.chart-container h3 {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin: 0 0 10px 0;
+}
+
+/* Make charts readable on dark bg */
+canvas {
+    max-height: 250px;
+}
