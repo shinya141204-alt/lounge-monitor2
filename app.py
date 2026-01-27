@@ -8,6 +8,8 @@ import logger
 import statistics
 from collections import defaultdict
 
+app = Flask(__name__)
+
 # ... (existing imports)
 
 # Global storage for analysis cache
