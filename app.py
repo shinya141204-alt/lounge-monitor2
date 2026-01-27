@@ -5,8 +5,133 @@ import atexit
 import datetime
 import threading
 import logger
+import statistics
+from collections import defaultdict
 
-app = Flask(__name__)
+# ... (existing imports)
+
+# Global storage for analysis cache
+analysis_cache = {
+    'last_fetched': None,
+    'raw_data': None,
+    'processed_per_store': {} 
+}
+ANALYSIS_CACHE_DURATION = 3600  # Cache for 1 hour
+
+def get_sheet_data():
+    """Fetches data from Google Sheets with caching."""
+    global analysis_cache
+    
+    now = datetime.datetime.now()
+    
+    # Check cache validity
+    if analysis_cache['raw_data'] and analysis_cache['last_fetched']:
+        time_diff = (now - analysis_cache['last_fetched']).total_seconds()
+        if time_diff < ANALYSIS_CACHE_DURATION:
+            return analysis_cache['raw_data']
+            
+    # Fetch new data
+    try:
+        print("Fetching historical data from Google Sheets...")
+        client = logger.get_client()
+        if not client:
+            return None
+            
+        sheet = client.open('Lounge Monitor Data').sheet1
+        all_values = sheet.get_all_values()
+        
+        # Parse relevant fields only to save memory
+        # Row format: Timestamp, Store Name, Men, Women, Source
+        data = []
+        for row in all_values[1:]: # Skip header
+            if len(row) >= 4:
+                try:
+                    data.append({
+                        'ts': row[0],
+                        'name': row[1],
+                        'women': int(row[3]) if row[3] else 0
+                    })
+                except:
+                    continue
+        
+        analysis_cache['raw_data'] = data
+        analysis_cache['last_fetched'] = now
+        analysis_cache['processed_per_store'] = {} # Clear processed cache
+        print(f"Cached {len(data)} rows of historical data.")
+        return data
+        
+    except Exception as e:
+        print(f"Error fetching sheet data: {e}")
+        return None
+
+@app.route('/api/analysis/<path:store_name>')
+def get_store_analysis(store_name):
+    """Returns aggregated hourly and weekly data for a specific store."""
+    data = get_sheet_data()
+    if not data:
+        return jsonify({"error": "Failed to load data"}), 500
+        
+    # Check if we computed this store recently (in-memory optimization)
+    # Since we cleared processed_per_store on fetch, this corresponds to the current raw_data version
+    if store_name in analysis_cache['processed_per_store']:
+        return jsonify(analysis_cache['processed_per_store'][store_name])
+        
+    # Filter for target store
+    target_data = [d for d in data if store_name in d['name']] # Loose match or exact? Using loose for "OLG 大阪駅前" vs full name matches logic elsewhere
+    
+    if not target_data:
+        return jsonify({"error": "Store not found"}), 404
+        
+    # Aggregation containers
+    hourly_women = defaultdict(list)
+    weekday_women = defaultdict(list)
+    
+    for d in target_data:
+        try:
+            dt = datetime.datetime.strptime(d['ts'], "%Y-%m-%d %H:%M:%S")
+            
+            # Hourly (0-23)
+            hourly_women[dt.hour].append(d['women'])
+            
+            # Weekday (0=Mon, 6=Sun)
+            weekday_women[dt.weekday()].append(d['women'])
+        except:
+            continue
+            
+    # Calculate averages
+    # Hourly: Ensure 0-23 keys exist
+    hourly_avg = []
+    # Business hours order: 18..23, 0..5. Keyed by label or sorted list? Chart.js prefers arrays.
+    # We will return standard 0-23 array, frontend can stick/slice.
+    # Actually, returning specific sorted business hours is better for display.
+    # Let's return mapped object { "18": avg, ... }
+    
+    hourly_result = {}
+    for h in range(24):
+        vals = hourly_women.get(h, [])
+        hourly_result[h] = round(statistics.mean(vals), 1) if vals else 0
+        
+    # Weekday: 0-6
+    weekday_result = {}
+    weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+    for i in range(7):
+        vals = weekday_women.get(i, [])
+        weekday_result[weekdays[i]] = round(statistics.mean(vals), 1) if vals else 0
+        
+    result = {
+        "store_name": store_name,
+        "hourly": hourly_result,
+        "weekday": weekday_result,
+        "sample_count": len(target_data)
+    }
+    
+    # Cache it
+    analysis_cache['processed_per_store'][store_name] = result
+    
+    return jsonify(result)
+
+# ... (debug route and main)
+
 
 # Global storage for the latest data (thread-safe)
 data_lock = threading.Lock()
