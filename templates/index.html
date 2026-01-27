@@ -409,51 +409,89 @@
                 }
             });
 
+            // Business hours mapping for X-axis
+            // 18->18, 23->23, 0->24, 1->25 ... 5->29
             const businessHours = [18, 19, 20, 21, 22, 23, 0, 1, 2, 3, 4, 5];
-            const hourlyLabels = businessHours.map(h => h + ":00");
 
-            let hourlyValues;
-            let barColor;
-            let borderColor;
+            let scatterData = [];
+            let pointColor = 'rgba(255, 107, 107, 0.5)'; // Transparent for stacking
 
-            if (day === 'All') {
-                hourlyValues = businessHours.map(h => currentAnalysisData.hourly[h] || 0);
-                barColor = 'rgba(255, 107, 107, 0.6)';
-                borderColor = 'rgba(255, 107, 107, 1)';
-            } else {
-                // Specific day
-                const dayData = currentAnalysisData.hourly_by_weekday[day] || {};
-                hourlyValues = businessHours.map(h => dayData[h] || 0);
+            // Helper to get mapped x (for sorting)
+            const getX = (h) => h < 10 ? h + 24 : h;
 
-                // Different color for specific day view
-                barColor = 'rgba(51, 154, 240, 0.6)'; // Blueish
-                borderColor = 'rgba(51, 154, 240, 1)';
+            businessHours.forEach(h => {
+                let values;
+                if (day === 'All') {
+                    values = currentAnalysisData.hourly_raw[h] || [];
+                } else {
+                    const dayData = currentAnalysisData.hourly_raw_by_weekday[day] || {};
+                    values = dayData[h] || [];
+                }
+
+                // Add points
+                values.forEach(val => {
+                    scatterData.push({
+                        x: getX(h),
+                        y: val
+                    });
+                });
+            });
+
+            if (day !== 'All') {
+                pointColor = 'rgba(51, 154, 240, 0.6)';
             }
 
             if (hourlyChartInstance) hourlyChartInstance.destroy();
 
             const ctxH = document.getElementById('hourlyChart').getContext('2d');
             hourlyChartInstance = new Chart(ctxH, {
-                type: 'bar',
+                type: 'scatter',
                 data: {
-                    labels: hourlyLabels,
                     datasets: [{
-                        label: day === 'All' ? 'Average' : day,
-                        data: hourlyValues,
-                        backgroundColor: barColor,
-                        borderColor: borderColor,
-                        borderWidth: 1
+                        label: day === 'All' ? 'Distribution' : day,
+                        data: scatterData,
+                        backgroundColor: pointColor,
+                        borderColor: pointColor,
+                        borderWidth: 0,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
                     scales: {
-                        y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' } },
-                        x: { grid: { display: false } }
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: 'rgba(255,255,255,0.1)' },
+                            title: { display: true, text: 'Ladies Count' }
+                        },
+                        x: {
+                            grid: { display: false },
+                            type: 'linear',
+                            position: 'bottom',
+                            min: 17.5,
+                            max: 29.5,
+                            ticks: {
+                                stepSize: 1,
+                                callback: function (value, index, values) {
+                                    // Convert 24+ back to 0+
+                                    let h = value;
+                                    if (h >= 24) h -= 24;
+                                    return h + ":00";
+                                }
+                            }
+                        }
                     },
                     plugins: {
-                        legend: { display: false }
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => {
+                                    return context.raw.y + "人";
+                                }
+                            }
+                        }
                     }
                 }
             });
