@@ -104,14 +104,17 @@ def get_store_analysis(store_name):
         except:
             continue
             
-    # Calculate averages
+    # Calculate averages & Raw Data
     # Hourly: Ensure 0-23 keys exist
     hourly_avg = []
     
     hourly_result = {}
+    hourly_raw_display = {} # For Scatter Plot
+    
     for h in range(24):
         vals = hourly_women.get(h, [])
         hourly_result[h] = round(statistics.mean(vals), 1) if vals else 0
+        hourly_raw_display[h] = vals # List of all values
         
     # Weekday: 0-6
     weekday_result = {}
@@ -123,18 +126,25 @@ def get_store_analysis(store_name):
     # Hourly by Weekday
     # Result: { "Mon": { "0": 10, ... }, ... }
     hourly_by_weekday_result = {}
+    hourly_raw_by_weekday_result = {}
+    
     for i in range(7):
         day_avg = {}
+        day_raw = {}
         for h in range(24):
             vals = hourly_women_by_day[i].get(h, [])
             day_avg[h] = round(statistics.mean(vals), 1) if vals else 0
+            day_raw[h] = vals
         hourly_by_weekday_result[weekdays_str[i]] = day_avg
+        hourly_raw_by_weekday_result[weekdays_str[i]] = day_raw
         
     result = {
         "store_name": store_name,
         "hourly": hourly_result,
+        "hourly_raw": hourly_raw_display,
         "weekday": weekday_result,
         "hourly_by_weekday": hourly_by_weekday_result,
+        "hourly_raw_by_weekday": hourly_raw_by_weekday_result,
         "sample_count": len(target_data)
     }
     
