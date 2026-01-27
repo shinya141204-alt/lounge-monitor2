@@ -495,6 +495,34 @@ h1 {
     margin: 0 0 10px 0;
 }
 
+.chart-filters {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 10px;
+    overflow-x: auto;
+    padding-bottom: 5px;
+}
+
+.chart-filter-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-secondary);
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    min-width: 35px;
+    transition: all 0.2s;
+}
+
+.chart-filter-btn.active,
+.chart-filter-btn:hover {
+    background: var(--accent-gold);
+    color: #000;
+    border-color: var(--accent-gold);
+    font-weight: bold;
+}
+
 /* Make charts readable on dark bg */
 canvas {
     max-height: 250px;

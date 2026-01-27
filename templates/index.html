@@ -30,6 +30,19 @@
 
             <div class="chart-container">
                 <h3>時間帯別 (Business Hours)</h3>
+
+                <!-- Filters -->
+                <div class="chart-filters">
+                    <button class="chart-filter-btn active" onclick="updateHourlyChart('All')">All</button>
+                    <button class="chart-filter-btn" onclick="updateHourlyChart('Mon')">月</button>
+                    <button class="chart-filter-btn" onclick="updateHourlyChart('Tue')">火</button>
+                    <button class="chart-filter-btn" onclick="updateHourlyChart('Wed')">水</button>
+                    <button class="chart-filter-btn" onclick="updateHourlyChart('Thu')">木</button>
+                    <button class="chart-filter-btn" onclick="updateHourlyChart('Fri')">金</button>
+                    <button class="chart-filter-btn" onclick="updateHourlyChart('Sat')">土</button>
+                    <button class="chart-filter-btn" onclick="updateHourlyChart('Sun')">日</button>
+                </div>
+
                 <canvas id="hourlyChart"></canvas>
             </div>
 
@@ -337,12 +350,17 @@
         // --- Analysis Modal Logic ---
         let hourlyChartInstance = null;
         let weekdayChartInstance = null;
+        let currentAnalysisData = null;
 
         async function openModal(storeName) {
             const modal = document.getElementById('analysis-modal');
             const title = document.getElementById('modal-store-name');
             title.textContent = storeName + " Loading...";
             modal.classList.remove('hidden');
+
+            // Reset filters UI
+            document.querySelectorAll('.chart-filter-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector('.chart-filter-btn').classList.add('active'); // Select 'All'
 
             try {
                 const response = await fetch('/api/analysis/' + encodeURIComponent(storeName));
@@ -354,6 +372,7 @@
                 }
 
                 title.textContent = data.store_name;
+                currentAnalysisData = data;
                 renderCharts(data);
 
             } catch (e) {
@@ -364,6 +383,7 @@
 
         function closeModal() {
             document.getElementById('analysis-modal').classList.add('hidden');
+            currentAnalysisData = null;
         }
 
         // Close on clicking background
@@ -371,39 +391,63 @@
             if (e.target.id === ('analysis-modal')) closeModal();
         });
 
-        function renderCharts(data) {
-            // Prepare Data for Hourly (Business hours: 18..23, 0..5)
-            // Backend returns 0-23 dict. We need to sequence it.
+        function updateHourlyChart(day) {
+            if (!currentAnalysisData) return;
+
+            // Update UI buttons
+            document.querySelectorAll('.chart-filter-btn').forEach(b => {
+                b.classList.remove('active');
+                if ((day === 'All' && b.textContent === 'All') ||
+                    (day === 'Mon' && b.textContent === '月') ||
+                    (day === 'Tue' && b.textContent === '火') ||
+                    (day === 'Wed' && b.textContent === '水') ||
+                    (day === 'Thu' && b.textContent === '木') ||
+                    (day === 'Fri' && b.textContent === '金') ||
+                    (day === 'Sat' && b.textContent === '土') ||
+                    (day === 'Sun' && b.textContent === '日')) {
+                    b.classList.add('active');
+                }
+            });
+
             const businessHours = [18, 19, 20, 21, 22, 23, 0, 1, 2, 3, 4, 5];
             const hourlyLabels = businessHours.map(h => h + ":00");
-            const hourlyValues = businessHours.map(h => data.hourly[h] || 0);
 
-            // Prepare Data for Weekday (Mon-Sun)
-            const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-            const weekdayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-            // Shift to start with Mon? Backend returns keys "Mon", "Tue"...
-            const weekdayValues = weekdays.map(day => data.weekday[day] || 0);
+            let hourlyValues;
+            let barColor;
+            let borderColor;
 
-            // Destroy old charts
+            if (day === 'All') {
+                hourlyValues = businessHours.map(h => currentAnalysisData.hourly[h] || 0);
+                barColor = 'rgba(255, 107, 107, 0.6)';
+                borderColor = 'rgba(255, 107, 107, 1)';
+            } else {
+                // Specific day
+                const dayData = currentAnalysisData.hourly_by_weekday[day] || {};
+                hourlyValues = businessHours.map(h => dayData[h] || 0);
+
+                // Different color for specific day view
+                barColor = 'rgba(51, 154, 240, 0.6)'; // Blueish
+                borderColor = 'rgba(51, 154, 240, 1)';
+            }
+
             if (hourlyChartInstance) hourlyChartInstance.destroy();
-            if (weekdayChartInstance) weekdayChartInstance.destroy();
 
-            // Render Hourly Chart
             const ctxH = document.getElementById('hourlyChart').getContext('2d');
             hourlyChartInstance = new Chart(ctxH, {
                 type: 'bar',
                 data: {
                     labels: hourlyLabels,
                     datasets: [{
-                        label: 'Avg Ladies',
+                        label: day === 'All' ? 'Average' : day,
                         data: hourlyValues,
-                        backgroundColor: 'rgba(255, 107, 107, 0.6)',
-                        borderColor: 'rgba(255, 107, 107, 1)',
+                        backgroundColor: barColor,
+                        borderColor: borderColor,
                         borderWidth: 1
                     }]
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
                     scales: {
                         y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' } },
                         x: { grid: { display: false } }
@@ -413,13 +457,24 @@
                     }
                 }
             });
+        }
 
-            // Render Weekday Chart
+        function renderCharts(data) {
+            // Render specific day chart (Average by default)
+            updateHourlyChart('All');
+
+            // --- Render Weekday Chart (Static) ---
+            const weekdayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+            const displayLabels = ['月', '火', '水', '木', '金', '土', '日'];
+            const weekdayValues = weekdayLabels.map(day => data.weekday[day] || 0);
+
+            if (weekdayChartInstance) weekdayChartInstance.destroy();
+
             const ctxW = document.getElementById('weekdayChart').getContext('2d');
             weekdayChartInstance = new Chart(ctxW, {
                 type: 'bar',
                 data: {
-                    labels: weekdayLabels,
+                    labels: displayLabels,
                     datasets: [{
                         label: 'Avg Ladies',
                         data: weekdayValues,
@@ -430,12 +485,20 @@
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
                     scales: {
                         y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' } },
                         x: { grid: { display: false } }
                     },
                     plugins: {
                         legend: { display: false }
+                    },
+                    onClick: (e, elements) => {
+                        if (elements.length > 0) {
+                            const index = elements[0].index;
+                            const daysKey = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+                            updateHourlyChart(daysKey[index]);
+                        }
                     }
                 }
             });

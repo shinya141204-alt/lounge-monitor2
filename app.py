@@ -87,6 +87,7 @@ def get_store_analysis(store_name):
     # Aggregation containers
     hourly_women = defaultdict(list)
     weekday_women = defaultdict(list)
+    hourly_women_by_day = defaultdict(lambda: defaultdict(list))
     
     for d in target_data:
         try:
@@ -97,16 +98,15 @@ def get_store_analysis(store_name):
             
             # Weekday (0=Mon, 6=Sun)
             weekday_women[dt.weekday()].append(d['women'])
+            
+            # Hourly by specific weekday
+            hourly_women_by_day[dt.weekday()][dt.hour].append(d['women'])
         except:
             continue
             
     # Calculate averages
     # Hourly: Ensure 0-23 keys exist
     hourly_avg = []
-    # Business hours order: 18..23, 0..5. Keyed by label or sorted list? Chart.js prefers arrays.
-    # We will return standard 0-23 array, frontend can stick/slice.
-    # Actually, returning specific sorted business hours is better for display.
-    # Let's return mapped object { "18": avg, ... }
     
     hourly_result = {}
     for h in range(24):
@@ -115,15 +115,26 @@ def get_store_analysis(store_name):
         
     # Weekday: 0-6
     weekday_result = {}
-    weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+    weekdays_str = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
     for i in range(7):
         vals = weekday_women.get(i, [])
-        weekday_result[weekdays[i]] = round(statistics.mean(vals), 1) if vals else 0
+        weekday_result[weekdays_str[i]] = round(statistics.mean(vals), 1) if vals else 0
+        
+    # Hourly by Weekday
+    # Result: { "Mon": { "0": 10, ... }, ... }
+    hourly_by_weekday_result = {}
+    for i in range(7):
+        day_avg = {}
+        for h in range(24):
+            vals = hourly_women_by_day[i].get(h, [])
+            day_avg[h] = round(statistics.mean(vals), 1) if vals else 0
+        hourly_by_weekday_result[weekdays_str[i]] = day_avg
         
     result = {
         "store_name": store_name,
         "hourly": hourly_result,
         "weekday": weekday_result,
+        "hourly_by_weekday": hourly_by_weekday_result,
         "sample_count": len(target_data)
     }
     
