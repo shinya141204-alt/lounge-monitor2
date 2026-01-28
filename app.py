@@ -150,17 +150,17 @@ def get_store_analysis(store_name):
     seen_hours = set()
     
     def get_business_date(dt):
-        """Get business date: 0:00-5:59 counts as previous day (business hours 18:00-6:00)"""
-        if dt.hour < 6:
-            # Before 6AM = previous business day
+        """Get business date: 0:00-6:59 counts as previous day (business hours 18:00-7:00)"""
+        if dt.hour <= 6:
+            # Before 7AM = previous business day
             return (dt - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
         else:
             return dt.strftime("%Y-%m-%d")
     
     def is_business_hours(dt):
-        """Check if time is within business hours (18:00-5:59)"""
-        # Business hours: 18:00-23:59 or 0:00-5:59
-        return dt.hour >= 18 or dt.hour < 6
+        """Check if time is within business hours (18:00-6:59)"""
+        # Business hours: 18:00-23:59 or 0:00-6:59
+        return dt.hour >= 18 or dt.hour <= 6
     
     for d in sorted_target:
         try:
