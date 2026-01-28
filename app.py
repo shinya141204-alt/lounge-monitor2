@@ -51,6 +51,7 @@ def get_sheet_data():
                     data.append({
                         'ts': row[0],
                         'name': row[1],
+                        'men': int(row[2]) if row[2] else 0,
                         'women': int(row[3]) if row[3] else 0
                     })
                 except:
