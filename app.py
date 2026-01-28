@@ -139,9 +139,7 @@ def get_store_analysis(store_name):
         hourly_by_weekday_result[weekdays_str[i]] = day_avg
         hourly_raw_by_weekday_result[weekdays_str[i]] = day_raw
 
-    # Recent Trend (Last 7 Days)
-    now = datetime.datetime.now()
-    seven_days_ago = now - datetime.timedelta(days=7)
+    # All Available Data (no date limit)
     recent_data_women = []
     recent_data_men = []
     
@@ -150,17 +148,15 @@ def get_store_analysis(store_name):
     
     for d in sorted_target:
         try:
-            dt = datetime.datetime.strptime(d['ts'], "%Y-%m-%d %H:%M:%S")
-            if dt > seven_days_ago:
-                # Format TS for easier JS parsing or use ISO
-                recent_data_women.append({
-                    'x': d['ts'], # Chart.js can parse this string
-                    'y': d['women']
-                })
-                recent_data_men.append({
-                    'x': d['ts'],
-                    'y': d['men']
-                })
+            # Format TS for easier JS parsing or use ISO
+            recent_data_women.append({
+                'x': d['ts'], # Chart.js can parse this string
+                'y': d['women']
+            })
+            recent_data_men.append({
+                'x': d['ts'],
+                'y': d['men']
+            })
         except:
             continue
         
