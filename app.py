@@ -139,18 +139,30 @@ def get_store_analysis(store_name):
         hourly_by_weekday_result[weekdays_str[i]] = day_avg
         hourly_raw_by_weekday_result[weekdays_str[i]] = day_raw
 
-    # All Available Data (no date limit)
+    # All Available Data (sampled at hourly intervals for performance)
     recent_data_women = []
     recent_data_men = []
     
     # Sort strictly by time for line graph
     sorted_target = sorted(target_data, key=lambda x: x['ts'])
     
+    # Keep track of which hours we've already included (to sample 1 point per hour)
+    seen_hours = set()
+    
     for d in sorted_target:
         try:
-            # Format TS for easier JS parsing or use ISO
+            # Parse timestamp to check if this is a new hour
+            dt = datetime.datetime.strptime(d['ts'], "%Y-%m-%d %H:%M:%S")
+            hour_key = dt.strftime("%Y-%m-%d %H")  # e.g. "2024-01-28 18"
+            
+            # Skip if we already have data for this hour
+            if hour_key in seen_hours:
+                continue
+            seen_hours.add(hour_key)
+            
+            # Format TS for easier JS parsing
             recent_data_women.append({
-                'x': d['ts'], # Chart.js can parse this string
+                'x': d['ts'],
                 'y': d['women']
             })
             recent_data_men.append({

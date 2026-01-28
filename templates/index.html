@@ -387,8 +387,12 @@
         }
 
         let dailyChartInstance = null;
+        let allDates = [];
+        let visibleDateCount = 7;
+        let currentData = null;
 
         function generateDateButtons(data) {
+            currentData = data;
             const container = document.getElementById('date-buttons');
             container.innerHTML = '';
 
@@ -402,9 +406,21 @@
             });
 
             // Sort dates descending (newest first)
-            const sortedDates = Array.from(dates).sort().reverse();
+            allDates = Array.from(dates).sort().reverse();
+            visibleDateCount = 7; // Reset to first 7
 
-            sortedDates.forEach(dateStr => {
+            renderDateButtons();
+        }
+
+        function renderDateButtons() {
+            const container = document.getElementById('date-buttons');
+            container.innerHTML = '';
+            const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
+
+            // Show only visible dates
+            const visibleDates = allDates.slice(0, visibleDateCount);
+
+            visibleDates.forEach(dateStr => {
                 const parts = dateStr.split('-');
                 const date = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
                 const dayName = dayNames[date.getDay()];
@@ -412,9 +428,21 @@
                 const btn = document.createElement('button');
                 btn.className = 'date-btn';
                 btn.innerHTML = `${parts[1]}/${parts[2]}<span class="day-name">${dayName}</span>`;
-                btn.onclick = () => showDailyChart(dateStr, data);
+                btn.onclick = () => showDailyChart(dateStr, currentData);
                 container.appendChild(btn);
             });
+
+            // Add 'Load More' button if there are more dates
+            if (allDates.length > visibleDateCount) {
+                const loadMoreBtn = document.createElement('button');
+                loadMoreBtn.className = 'date-btn load-more-btn';
+                loadMoreBtn.innerHTML = `もっと見る<span class="day-name">+${allDates.length - visibleDateCount}</span>`;
+                loadMoreBtn.onclick = () => {
+                    visibleDateCount += 7;
+                    renderDateButtons();
+                };
+                container.appendChild(loadMoreBtn);
+            }
         }
 
         function showDailyChart(dateStr, data) {
