@@ -149,24 +149,38 @@ def get_store_analysis(store_name):
     # Keep track of which hours we've already included (to sample 1 point per hour)
     seen_hours = set()
     
+    def get_business_date(dt):
+        """Get business date: 0:00-5:59 counts as previous day (business hours 18:00-6:00)"""
+        if dt.hour < 6:
+            # Before 6AM = previous business day
+            return (dt - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+        else:
+            return dt.strftime("%Y-%m-%d")
+    
     for d in sorted_target:
         try:
             # Parse timestamp to check if this is a new hour
             dt = datetime.datetime.strptime(d['ts'], "%Y-%m-%d %H:%M:%S")
-            hour_key = dt.strftime("%Y-%m-%d %H")  # e.g. "2024-01-28 18"
+            
+            # Get business date for grouping
+            business_date = get_business_date(dt)
+            hour_key = f"{business_date} {dt.strftime('%H')}"  # e.g. "2024-01-28 02" (even if calendar is 1/29)
             
             # Skip if we already have data for this hour
             if hour_key in seen_hours:
                 continue
             seen_hours.add(hour_key)
             
+            # Store with business date for proper frontend grouping
+            business_ts = f"{business_date} {dt.strftime('%H:%M:%S')}"
+            
             # Format TS for easier JS parsing
             recent_data_women.append({
-                'x': d['ts'],
+                'x': business_ts,
                 'y': d['women']
             })
             recent_data_men.append({
-                'x': d['ts'],
+                'x': business_ts,
                 'y': d['men']
             })
         except:
