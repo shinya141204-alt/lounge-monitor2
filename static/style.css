@@ -531,16 +531,10 @@ canvas {
 /* Date Button Container */
 .date-button-container {
     display: flex;
+    flex-wrap: wrap;
     gap: 8px;
-    overflow-x: auto;
     padding: 10px 0;
     margin-bottom: 10px;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-}
-
-.date-button-container::-webkit-scrollbar {
-    display: none;
 }
 
 .date-btn {
@@ -551,10 +545,11 @@ canvas {
     border-radius: 8px;
     font-size: 0.75rem;
     cursor: pointer;
-    min-width: 60px;
+    min-width: 55px;
     transition: all 0.2s;
     text-align: center;
     white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .date-btn:hover {
@@ -573,4 +568,13 @@ canvas {
     display: block;
     font-size: 0.65rem;
     opacity: 0.7;
+}
+
+/* Load More Button */
+.load-more-btn {
+    background: rgba(212, 175, 55, 0.2);
+    border-color: var(--accent-gold);
+    color: var(--accent-gold);
+    width: 100%;
+    margin-top: 5px;
 }
