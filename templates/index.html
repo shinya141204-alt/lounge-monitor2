@@ -39,472 +39,474 @@
                     <canvas id="weekdayChart"></canvas>
                 </div>
             </div>
-        </div> <!-- End analysis-modal -->
-
-        <div class="background-glob"></div>
-        <div class="background-glob glob-2"></div>
-
-        <div class="container">
-            <header>
-                <h1>OLG MONITOR</h1>
-                <p class="subtitle">Live Ranking Update</p>
-            </header>
-
-            <main>
-                <div id="loading" class="loading-state">
-                    <div class="spinner"></div>
-                    <p>Establishing Connection...</p>
-                </div>
-
-                <div id="content" class="content hidden">
-
-
-                    <div class="filter-bar">
-                        <button class="filter-btn active" data-region="All">全て</button>
-                        <button class="filter-btn" data-region="Kanto">関東</button>
-                        <button class="filter-btn" data-region="Kinki">関西</button>
-                        <button class="filter-btn" data-region="Chubu">中部</button>
-                        <button class="filter-btn" data-region="Kyushu">九州</button>
-                        <button class="filter-btn" data-region="Hokkaido">北海道</button>
-                        <button class="filter-btn" data-region="Tohoku">東北</button>
-                        <button class="filter-btn" data-region="Chugoku">中国</button>
-                        <button class="filter-btn" data-region="Shikoku">四国</button>
-                        <button class="filter-btn" data-region="Korea">韓国</button>
-                    </div>
-
-                    <!-- Pinned Stores Section -->
-                    <div id="pinned-list-container" class="hidden">
-                        <h2 class="section-title">PINNED STORES</h2>
-                        <div id="pinned-list" class="ranking-list">
-                            <!-- Pinned items will populate here -->
-                        </div>
-                        <div class="separator"></div>
-                    </div>
-
-                    <div id="ranking-list" class="ranking-list">
-                        <!-- Javascript will populate this -->
-                    </div>
-
-                    <div class="info-bar">
-                        <p>Last Update: <span id="last-update">--:--</span></p>
-                        <div class="live-indicator">
-                            <div class="dot"></div>
-                            LIVE (1m)
-                        </div>
-                    </div>
-                </div>
-
-                <div id="error-message" class="error-message hidden">
-                    <p>Failed to retrieve data.</p>
-                </div>
-            </main>
         </div>
+    </div>
+    <!-- End Analysis Modal -->
 
-        <!-- Template for ranking item -->
-        <template id="ranking-item-template">
-            <div class="ranking-item">
-                <div class="rank-badge">1</div>
-                <div class="store-info">
-                    <h3 class="store-name">Store Name</h3>
+    <div class="background-glob"></div>
+    <div class="background-glob glob-2"></div>
+
+    <div class="container">
+        <header>
+            <h1>OLG MONITOR</h1>
+            <p class="subtitle">Live Ranking Update</p>
+        </header>
+
+        <main>
+            <div id="loading" class="loading-state">
+                <div class="spinner"></div>
+                <p>Establishing Connection...</p>
+            </div>
+
+            <div id="content" class="content hidden">
+
+
+                <div class="filter-bar">
+                    <button class="filter-btn active" data-region="All">全て</button>
+                    <button class="filter-btn" data-region="Kanto">関東</button>
+                    <button class="filter-btn" data-region="Kinki">関西</button>
+                    <button class="filter-btn" data-region="Chubu">中部</button>
+                    <button class="filter-btn" data-region="Kyushu">九州</button>
+                    <button class="filter-btn" data-region="Hokkaido">北海道</button>
+                    <button class="filter-btn" data-region="Tohoku">東北</button>
+                    <button class="filter-btn" data-region="Chugoku">中国</button>
+                    <button class="filter-btn" data-region="Shikoku">四国</button>
+                    <button class="filter-btn" data-region="Korea">韓国</button>
                 </div>
-                <!-- Pin Button Code -->
-                <button class="pin-btn" aria-label="Pin Store">
-                    <svg class="star-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round">
-                        <polygon
-                            points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2">
-                        </polygon>
-                    </svg>
-                </button>
-                <div class="stats-group">
-                    <div class="stat ladies">
-                        <span class="count">0</span>
-                        <span class="label">LADIES</span>
+
+                <!-- Pinned Stores Section -->
+                <div id="pinned-list-container" class="hidden">
+                    <h2 class="section-title">PINNED STORES</h2>
+                    <div id="pinned-list" class="ranking-list">
+                        <!-- Pinned items will populate here -->
                     </div>
-                    <div class="stat men">
-                        <span class="count">0</span>
-                        <span class="label">MEN</span>
-                    </div>
+                    <div class="separator"></div>
                 </div>
-                <!-- Progress bar visual -->
-                <div class="occupancy-bar">
-                    <div class="bar-fill"></div>
+
+                <div id="ranking-list" class="ranking-list">
+                    <!-- Javascript will populate this -->
+                </div>
+
+                <div class="info-bar">
+                    <p>Last Update: <span id="last-update">--:--</span></p>
+                    <div class="live-indicator">
+                        <div class="dot"></div>
+                        LIVE (1m)
+                    </div>
                 </div>
             </div>
-        </template>
 
-        <script>
-            let currentFilter = 'All';
-            let pinnedStores = JSON.parse(localStorage.getItem('olg_pinned_stores')) || [];
+            <div id="error-message" class="error-message hidden">
+                <p>Failed to retrieve data.</p>
+            </div>
+        </main>
+    </div>
 
-            // Save Pinned Stores
-            function togglePin(storeName) {
-                if (pinnedStores.includes(storeName)) {
-                    pinnedStores = pinnedStores.filter(name => name !== storeName);
-                } else {
-                    pinnedStores.push(storeName);
-                }
-                localStorage.setItem('olg_pinned_stores', JSON.stringify(pinnedStores));
+    <!-- Template for ranking item -->
+    <template id="ranking-item-template">
+        <div class="ranking-item">
+            <div class="rank-badge">1</div>
+            <div class="store-info">
+                <h3 class="store-name">Store Name</h3>
+            </div>
+            <!-- Pin Button Code -->
+            <button class="pin-btn" aria-label="Pin Store">
+                <svg class="star-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <polygon
+                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2">
+                    </polygon>
+                </svg>
+            </button>
+            <div class="stats-group">
+                <div class="stat ladies">
+                    <span class="count">0</span>
+                    <span class="label">LADIES</span>
+                </div>
+                <div class="stat men">
+                    <span class="count">0</span>
+                    <span class="label">MEN</span>
+                </div>
+            </div>
+            <!-- Progress bar visual -->
+            <div class="occupancy-bar">
+                <div class="bar-fill"></div>
+            </div>
+        </div>
+    </template>
 
-                // Re-render immediately
+    <script>
+        let currentFilter = 'All';
+        let pinnedStores = JSON.parse(localStorage.getItem('olg_pinned_stores')) || [];
+
+        // Save Pinned Stores
+        function togglePin(storeName) {
+            if (pinnedStores.includes(storeName)) {
+                pinnedStores = pinnedStores.filter(name => name !== storeName);
+            } else {
+                pinnedStores.push(storeName);
+            }
+            localStorage.setItem('olg_pinned_stores', JSON.stringify(pinnedStores));
+
+            // Re-render immediately
+            if (window.lastData) {
+                updateUI(window.lastData);
+            }
+        }
+
+        // Add filter button listeners
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                // Remove active class from all
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                // Add active to clicked
+                e.target.classList.add('active');
+
+                currentFilter = e.target.dataset.region;
+
+                // Re-render with cached data if available (or wait for next fetch)
                 if (window.lastData) {
                     updateUI(window.lastData);
                 }
-            }
-
-            // Add filter button listeners
-            document.querySelectorAll('.filter-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    // Remove active class from all
-                    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-                    // Add active to clicked
-                    e.target.classList.add('active');
-
-                    currentFilter = e.target.dataset.region;
-
-                    // Re-render with cached data if available (or wait for next fetch)
-                    if (window.lastData) {
-                        updateUI(window.lastData);
-                    }
-                });
             });
+        });
 
-            async function fetchData() {
-                try {
-                    const response = await fetch('/api/status');
-                    const data = await response.json();
+        async function fetchData() {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
 
-                    if (data.error || data.status !== 'success') {
-                        // Only show error screen if we have NO previous data
-                        const list = document.getElementById('ranking-list');
-                        if (list.children.length === 0) {
-                            showError();
-                        }
-                        return;
+                if (data.error || data.status !== 'success') {
+                    // Only show error screen if we have NO previous data
+                    const list = document.getElementById('ranking-list');
+                    if (list.children.length === 0) {
+                        showError();
                     }
-
-                    window.lastData = data; // Cache data for filtering
-                    updateUI(data);
-                    document.getElementById('loading').classList.add('hidden');
-                    document.getElementById('content').classList.remove('hidden');
-                    document.getElementById('error-message').classList.add('hidden');
-                } catch (e) {
-                    console.error("Fetch error:", e);
-                }
-            }
-
-            function renderStore(store, index, container, isPinned = false, globalIndex = null) {
-                const template = document.getElementById('ranking-item-template');
-                const node = template.content.cloneNode(true);
-                const item = node.querySelector('.ranking-item');
-
-                // If pinned, add active class to button
-                const pinBtn = node.querySelector('.pin-btn');
-                if (pinnedStores.includes(store.name)) {
-                    pinBtn.classList.add('active');
-                }
-
-                // Pin click handler
-                pinBtn.onclick = (e) => {
-                    e.stopPropagation(); // prevent card click
-                    togglePin(store.name);
-                };
-
-                // Card click handler (Open Analysis)
-                item.style.cursor = 'pointer';
-                item.onclick = () => openModal(store.name);
-
-                // Rank logic
-                // If globalIndex is provided, use it (for relative rank in main list)
-                // If pinned, maybe show a star badge or just the original rank?
-                // Let's use the index passed in + 1
-                const displayRank = globalIndex !== null ? globalIndex + 1 : index + 1;
-
-                // Add top 3 special classes only if NOT pinned section (or keep consistent?)
-                // If it's the main list, show colors.
-                if (!isPinned) {
-                    if (index === 0) item.classList.add('rank-1');
-                    if (index === 1) item.classList.add('rank-2');
-                    if (index === 2) item.classList.add('rank-3');
-                } else {
-                    item.classList.add('pinned-item');
-                }
-
-                node.querySelector('.rank-badge').textContent = displayRank;
-                node.querySelector('.store-name').textContent = store.name;
-
-                const ladiesCount = store.women;
-                const menCount = store.men;
-
-                node.querySelector('.stat.ladies .count').textContent = ladiesCount;
-                node.querySelector('.stat.men .count').textContent = menCount;
-
-                // Bar calculation (relative to max in filtered list, or global max?)
-                // We'll approximate using window.maxLadies from main loop
-                if (window.currentMaxLadies) {
-                    const percentage = Math.min(100, (ladiesCount / window.currentMaxLadies) * 100);
-                    node.querySelector('.bar-fill').style.width = percentage + '%';
-                }
-
-                container.appendChild(node);
-            }
-
-            function updateUI(data) {
-                const rankingList = document.getElementById('ranking-list');
-                const pinnedList = document.getElementById('pinned-list');
-                const pinnedContainer = document.getElementById('pinned-list-container');
-
-                // Clear lists
-                rankingList.innerHTML = '';
-                pinnedList.innerHTML = '';
-
-                const stores = data.ranking;
-                if (!stores || stores.length === 0) return;
-
-                // Filter stores based on current region
-                const filteredStores = stores.filter(store => {
-                    if (currentFilter === 'All') return true;
-                    return store.region === currentFilter;
-                });
-
-                if (filteredStores.length === 0) {
-                    rankingList.innerHTML = '<p style="color: #666; width: 100%; text-align: center;">No stores found in this region.</p>';
-                    pinnedContainer.classList.add('hidden');
                     return;
                 }
 
-                // Calculate max ladies for bar width relative to this view
-                window.currentMaxLadies = filteredStores[0].women || 1;
-
-                // Separate Pinned vs Others
-                // We want Pinned stores to appear at the top, BUT we also want to separate them visually.
-                // AND we need to decide: do pinned stores disappear from the main list?
-                // User request: "Pinning makes it stay at the top". duplicate is safer contextually, but removing from list is cleaner.
-                // Let's remove from main list to avoid duplicates, as they are "moved" to top.
-
-                const pinnedItems = [];
-                const otherItems = [];
-
-                // We need to preserve the original rank index for display!
-
-                filteredStores.forEach((store, realIndex) => {
-                    if (pinnedStores.includes(store.name)) {
-                        pinnedItems.push({ store, rank: realIndex });
-                    } else {
-                        otherItems.push({ store, rank: realIndex });
-                    }
-                });
-
-                // Render Pinned
-                if (pinnedItems.length > 0) {
-                    pinnedContainer.classList.remove('hidden');
-                    pinnedItems.forEach(item => {
-                        renderStore(item.store, -1, pinnedList, true, item.rank);
-                    });
-                } else {
-                    pinnedContainer.classList.add('hidden');
-                }
-
-                // Render Others
-                otherItems.forEach((item, index) => {
-                    // index here is position in 'otherItems', but we want style based on position?
-                    // Actually the rank styles (gold/silver/bronze) are usually about being 1st/2nd/3rd.
-                    // If the 1st store is pinned, does the 2nd store become Gold? No, that would be confusing.
-                    // We should pass the actual index (0, 1, 2) in the visual list for coloring?
-                    // OR we strictly follow the 'realIndex' (Global Rank) for coloring.
-                    // Let's stick to Global Rank for coloring so it matches the number.
-
-                    // Correction: The `renderStore` logic uses `index` for class adding.
-                    // If we want the style to match the badge, we should check `item.rank`.
-
-                    renderStore(item.store, item.rank, rankingList, false, item.rank);
-                });
-
-                document.getElementById('last-update').textContent = data.timestamp ? data.timestamp.split(' ')[1].substring(0, 5) : '--:--';
-            }
-
-            function showError() {
+                window.lastData = data; // Cache data for filtering
+                updateUI(data);
                 document.getElementById('loading').classList.add('hidden');
-                document.getElementById('content').classList.add('hidden');
-                document.getElementById('error-message').classList.remove('hidden');
+                document.getElementById('content').classList.remove('hidden');
+                document.getElementById('error-message').classList.add('hidden');
+            } catch (e) {
+                console.error("Fetch error:", e);
+            }
+        }
+
+        function renderStore(store, index, container, isPinned = false, globalIndex = null) {
+            const template = document.getElementById('ranking-item-template');
+            const node = template.content.cloneNode(true);
+            const item = node.querySelector('.ranking-item');
+
+            // If pinned, add active class to button
+            const pinBtn = node.querySelector('.pin-btn');
+            if (pinnedStores.includes(store.name)) {
+                pinBtn.classList.add('active');
             }
 
-            // Initial fetch
-            fetchData();
+            // Pin click handler
+            pinBtn.onclick = (e) => {
+                e.stopPropagation(); // prevent card click
+                togglePin(store.name);
+            };
 
-            // Poll every 30 seconds
-            setInterval(fetchData, 30000);
+            // Card click handler (Open Analysis)
+            item.style.cursor = 'pointer';
+            item.onclick = () => openModal(store.name);
 
-            // --- Analysis Modal Logic ---
-            let hourlyChartInstance = null;
-            let weekdayChartInstance = null;
-            let currentAnalysisData = null;
+            // Rank logic
+            // If globalIndex is provided, use it (for relative rank in main list)
+            // If pinned, maybe show a star badge or just the original rank?
+            // Let's use the index passed in + 1
+            const displayRank = globalIndex !== null ? globalIndex + 1 : index + 1;
 
-            async function openModal(storeName) {
-                const modal = document.getElementById('analysis-modal');
-                const title = document.getElementById('modal-store-name');
-                title.textContent = storeName + " Loading...";
-                modal.classList.remove('hidden');
-
-                // Reset filters UI
-                // Filters removed for Trend View
-
-                try {
-                    const response = await fetch('/api/analysis/' + encodeURIComponent(storeName));
-                    const data = await response.json();
-
-                    if (data.error) {
-                        title.textContent = "Error: " + data.error;
-                        return;
-                    }
-
-                    title.textContent = data.store_name;
-                    currentAnalysisData = data;
-                    renderCharts(data);
-
-                } catch (e) {
-                    console.error(e);
-                    title.textContent = "Network Error";
-                }
+            // Add top 3 special classes only if NOT pinned section (or keep consistent?)
+            // If it's the main list, show colors.
+            if (!isPinned) {
+                if (index === 0) item.classList.add('rank-1');
+                if (index === 1) item.classList.add('rank-2');
+                if (index === 2) item.classList.add('rank-3');
+            } else {
+                item.classList.add('pinned-item');
             }
 
-            function closeModal() {
-                document.getElementById('analysis-modal').classList.add('hidden');
-                currentAnalysisData = null;
+            node.querySelector('.rank-badge').textContent = displayRank;
+            node.querySelector('.store-name').textContent = store.name;
+
+            const ladiesCount = store.women;
+            const menCount = store.men;
+
+            node.querySelector('.stat.ladies .count').textContent = ladiesCount;
+            node.querySelector('.stat.men .count').textContent = menCount;
+
+            // Bar calculation (relative to max in filtered list, or global max?)
+            // We'll approximate using window.maxLadies from main loop
+            if (window.currentMaxLadies) {
+                const percentage = Math.min(100, (ladiesCount / window.currentMaxLadies) * 100);
+                node.querySelector('.bar-fill').style.width = percentage + '%';
             }
 
-            // Close on clicking background
-            document.getElementById('analysis-modal').addEventListener('click', (e) => {
-                if (e.target.id === ('analysis-modal')) closeModal();
+            container.appendChild(node);
+        }
+
+        function updateUI(data) {
+            const rankingList = document.getElementById('ranking-list');
+            const pinnedList = document.getElementById('pinned-list');
+            const pinnedContainer = document.getElementById('pinned-list-container');
+
+            // Clear lists
+            rankingList.innerHTML = '';
+            pinnedList.innerHTML = '';
+
+            const stores = data.ranking;
+            if (!stores || stores.length === 0) return;
+
+            // Filter stores based on current region
+            const filteredStores = stores.filter(store => {
+                if (currentFilter === 'All') return true;
+                return store.region === currentFilter;
             });
 
-            function renderCharts(data) {
-                // Trend Chart (Recent 1 Week)
-                const trendCtx = document.getElementById('trendChart').getContext('2d');
-
-                // Limit points?? 1 week * 144 pts/day ~ 1000 points.
-                // data.recent_trend is [{x, y}]
-
-                const trendData = data.recent_trend || [];
-                const labels = trendData.map(d => {
-                    // Shorten label: "2024-01-20 18:30:00" -> "01/20 18:30"
-                    const parts = d.x.split(' ');
-                    const dateParts = parts[0].split('-');
-                    const timeParts = parts[1].split(':');
-                    return `${dateParts[1]}/${dateParts[2]} ${timeParts[0]}:${timeParts[1]}`;
-                });
-                const values = trendData.map(d => d.y);
-
-                if (hourlyChartInstance) hourlyChartInstance.destroy(); // Reuse variable name or change? Let's assume ID changed in HTML first.
-                // WAIT, I need to check if I updated HTML ID. Yes, I successfully renamed it to trendChart in previous HTML replacement?
-                // Ah, I missed the HTML replacement previously because I did it in parallel and it worked?
-                // "Replace .chart-filters div" succeeded? Let's check view_file output again.
-                // Line 36-44 still shows .chart-filters. So removing that FAILED or wasn't done yet?
-                // Wait, "Replace file content 1210" succeeded? No, 1221 failed.
-                // 1210 was the scatter plot update.
-                // I attempted to remove filters in 1220? No, 1218 was git push.
-                // 1222 failed.
-                // So HTML still has 'hourlyChart' and filters.
-
-                // I need to update HTML body first to remove filters and rename canvas.
-                // But this tool call is for JS replacement. I can do JS first if I target existing functions.
-                // Let's implement renderCharts to target 'hourlyChart' canvas but treating it as a line chart for now,
-                // OR I should update HTML separately. Sequential is better.
-
-                // Let's stick to updating the JS functions first to be robust. 
-                // I will target 'hourlyChart' in this code to match CURRENT content, then rename in HTML later?
-                // No, that's messy.
-                // Correct approach: Update HTML first then JS? Or JS then HTML?
-
-                // I will use 'hourlyChart' ID for now but render "Recent Trend" in it.
-                // And ignoring filters.
-
-                const ctxH = document.getElementById('trendChart').getContext('2d');
-
-                if (hourlyChartInstance) hourlyChartInstance.destroy();
-
-                hourlyChartInstance = new Chart(ctxH, {
-                    type: 'line',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: 'Ladies',
-                            data: values,
-                            backgroundColor: 'rgba(255, 107, 107, 0.2)',
-                            borderColor: 'rgba(255, 107, 107, 1)',
-                            borderWidth: 1.5,
-                            pointRadius: 0,
-                            pointHoverRadius: 4,
-                            fill: true,
-                            tension: 0.1
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                grid: { color: 'rgba(255,255,255,0.1)' }
-                            },
-                            x: {
-                                grid: { display: false },
-                                ticks: {
-                                    maxTicksLimit: 8,
-                                    maxRotation: 0,
-                                    autoSkip: true
-                                }
-                            }
-                        },
-                        plugins: {
-                            legend: { display: false },
-                            tooltip: {
-                                mode: 'index',
-                                intersect: false,
-                            }
-                        },
-                        interaction: {
-                            mode: 'nearest',
-                            axis: 'x',
-                            intersect: false
-                        }
-                    }
-                });
-
-                // --- Render Weekday Chart (Static) ---
-                const weekdayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-                const displayLabels = ['月', '火', '水', '木', '金', '土', '日'];
-                const weekdayValues = weekdayLabels.map(day => data.weekday[day] || 0);
-
-                if (weekdayChartInstance) weekdayChartInstance.destroy();
-
-                const ctxW = document.getElementById('weekdayChart').getContext('2d');
-                weekdayChartInstance = new Chart(ctxW, {
-                    type: 'bar',
-                    data: {
-                        labels: displayLabels,
-                        datasets: [{
-                            label: 'Avg Ladies',
-                            data: weekdayValues,
-                            backgroundColor: 'rgba(77, 171, 247, 0.6)',
-                            borderColor: 'rgba(77, 171, 247, 1)',
-                            borderWidth: 1
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: {
-                            y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' } },
-                            x: { grid: { display: false } }
-                        },
-                        plugins: {
-                            legend: { display: false }
-                        }
-                    }
-                });
+            if (filteredStores.length === 0) {
+                rankingList.innerHTML = '<p style="color: #666; width: 100%; text-align: center;">No stores found in this region.</p>';
+                pinnedContainer.classList.add('hidden');
+                return;
             }
-        </script>
+
+            // Calculate max ladies for bar width relative to this view
+            window.currentMaxLadies = filteredStores[0].women || 1;
+
+            // Separate Pinned vs Others
+            // We want Pinned stores to appear at the top, BUT we also want to separate them visually.
+            // AND we need to decide: do pinned stores disappear from the main list?
+            // User request: "Pinning makes it stay at the top". duplicate is safer contextually, but removing from list is cleaner.
+            // Let's remove from main list to avoid duplicates, as they are "moved" to top.
+
+            const pinnedItems = [];
+            const otherItems = [];
+
+            // We need to preserve the original rank index for display!
+
+            filteredStores.forEach((store, realIndex) => {
+                if (pinnedStores.includes(store.name)) {
+                    pinnedItems.push({ store, rank: realIndex });
+                } else {
+                    otherItems.push({ store, rank: realIndex });
+                }
+            });
+
+            // Render Pinned
+            if (pinnedItems.length > 0) {
+                pinnedContainer.classList.remove('hidden');
+                pinnedItems.forEach(item => {
+                    renderStore(item.store, -1, pinnedList, true, item.rank);
+                });
+            } else {
+                pinnedContainer.classList.add('hidden');
+            }
+
+            // Render Others
+            otherItems.forEach((item, index) => {
+                // index here is position in 'otherItems', but we want style based on position?
+                // Actually the rank styles (gold/silver/bronze) are usually about being 1st/2nd/3rd.
+                // If the 1st store is pinned, does the 2nd store become Gold? No, that would be confusing.
+                // We should pass the actual index (0, 1, 2) in the visual list for coloring?
+                // OR we strictly follow the 'realIndex' (Global Rank) for coloring.
+                // Let's stick to Global Rank for coloring so it matches the number.
+
+                // Correction: The `renderStore` logic uses `index` for class adding.
+                // If we want the style to match the badge, we should check `item.rank`.
+
+                renderStore(item.store, item.rank, rankingList, false, item.rank);
+            });
+
+            document.getElementById('last-update').textContent = data.timestamp ? data.timestamp.split(' ')[1].substring(0, 5) : '--:--';
+        }
+
+        function showError() {
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('content').classList.add('hidden');
+            document.getElementById('error-message').classList.remove('hidden');
+        }
+
+        // Initial fetch
+        fetchData();
+
+        // Poll every 30 seconds
+        setInterval(fetchData, 30000);
+
+        // --- Analysis Modal Logic ---
+        let hourlyChartInstance = null;
+        let weekdayChartInstance = null;
+        let currentAnalysisData = null;
+
+        async function openModal(storeName) {
+            const modal = document.getElementById('analysis-modal');
+            const title = document.getElementById('modal-store-name');
+            title.textContent = storeName + " Loading...";
+            modal.classList.remove('hidden');
+
+            // Reset filters UI
+            // Filters removed for Trend View
+
+            try {
+                const response = await fetch('/api/analysis/' + encodeURIComponent(storeName));
+                const data = await response.json();
+
+                if (data.error) {
+                    title.textContent = "Error: " + data.error;
+                    return;
+                }
+
+                title.textContent = data.store_name;
+                currentAnalysisData = data;
+                renderCharts(data);
+
+            } catch (e) {
+                console.error(e);
+                title.textContent = "Network Error";
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('analysis-modal').classList.add('hidden');
+            currentAnalysisData = null;
+        }
+
+        // Close on clicking background
+        document.getElementById('analysis-modal').addEventListener('click', (e) => {
+            if (e.target.id === ('analysis-modal')) closeModal();
+        });
+
+        function renderCharts(data) {
+            // Trend Chart (Recent 1 Week)
+            const trendCtx = document.getElementById('trendChart').getContext('2d');
+
+            // Limit points?? 1 week * 144 pts/day ~ 1000 points.
+            // data.recent_trend is [{x, y}]
+
+            const trendData = data.recent_trend || [];
+            const labels = trendData.map(d => {
+                // Shorten label: "2024-01-20 18:30:00" -> "01/20 18:30"
+                const parts = d.x.split(' ');
+                const dateParts = parts[0].split('-');
+                const timeParts = parts[1].split(':');
+                return `${dateParts[1]}/${dateParts[2]} ${timeParts[0]}:${timeParts[1]}`;
+            });
+            const values = trendData.map(d => d.y);
+
+            if (hourlyChartInstance) hourlyChartInstance.destroy(); // Reuse variable name or change? Let's assume ID changed in HTML first.
+            // WAIT, I need to check if I updated HTML ID. Yes, I successfully renamed it to trendChart in previous HTML replacement?
+            // Ah, I missed the HTML replacement previously because I did it in parallel and it worked?
+            // "Replace .chart-filters div" succeeded? Let's check view_file output again.
+            // Line 36-44 still shows .chart-filters. So removing that FAILED or wasn't done yet?
+            // Wait, "Replace file content 1210" succeeded? No, 1221 failed.
+            // 1210 was the scatter plot update.
+            // I attempted to remove filters in 1220? No, 1218 was git push.
+            // 1222 failed.
+            // So HTML still has 'hourlyChart' and filters.
+
+            // I need to update HTML body first to remove filters and rename canvas.
+            // But this tool call is for JS replacement. I can do JS first if I target existing functions.
+            // Let's implement renderCharts to target 'hourlyChart' canvas but treating it as a line chart for now,
+            // OR I should update HTML separately. Sequential is better.
+
+            // Let's stick to updating the JS functions first to be robust. 
+            // I will target 'hourlyChart' in this code to match CURRENT content, then rename in HTML later?
+            // No, that's messy.
+            // Correct approach: Update HTML first then JS? Or JS then HTML?
+
+            // I will use 'hourlyChart' ID for now but render "Recent Trend" in it.
+            // And ignoring filters.
+
+            const ctxH = document.getElementById('trendChart').getContext('2d');
+
+            if (hourlyChartInstance) hourlyChartInstance.destroy();
+
+            hourlyChartInstance = new Chart(ctxH, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Ladies',
+                        data: values,
+                        backgroundColor: 'rgba(255, 107, 107, 0.2)',
+                        borderColor: 'rgba(255, 107, 107, 1)',
+                        borderWidth: 1.5,
+                        pointRadius: 0,
+                        pointHoverRadius: 4,
+                        fill: true,
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: 'rgba(255,255,255,0.1)' }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: {
+                                maxTicksLimit: 8,
+                                maxRotation: 0,
+                                autoSkip: true
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                        }
+                    },
+                    interaction: {
+                        mode: 'nearest',
+                        axis: 'x',
+                        intersect: false
+                    }
+                }
+            });
+
+            // --- Render Weekday Chart (Static) ---
+            const weekdayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+            const displayLabels = ['月', '火', '水', '木', '金', '土', '日'];
+            const weekdayValues = weekdayLabels.map(day => data.weekday[day] || 0);
+
+            if (weekdayChartInstance) weekdayChartInstance.destroy();
+
+            const ctxW = document.getElementById('weekdayChart').getContext('2d');
+            weekdayChartInstance = new Chart(ctxW, {
+                type: 'bar',
+                data: {
+                    labels: displayLabels,
+                    datasets: [{
+                        label: 'Avg Ladies',
+                        data: weekdayValues,
+                        backgroundColor: 'rgba(77, 171, 247, 0.6)',
+                        borderColor: 'rgba(77, 171, 247, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' } },
+                        x: { grid: { display: false } }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        }
+    </script>
 </body>
 
 </html>
