@@ -157,10 +157,19 @@ def get_store_analysis(store_name):
         else:
             return dt.strftime("%Y-%m-%d")
     
+    def is_business_hours(dt):
+        """Check if time is within business hours (18:00-5:59)"""
+        # Business hours: 18:00-23:59 or 0:00-5:59
+        return dt.hour >= 18 or dt.hour < 6
+    
     for d in sorted_target:
         try:
             # Parse timestamp to check if this is a new hour
             dt = datetime.datetime.strptime(d['ts'], "%Y-%m-%d %H:%M:%S")
+            
+            # Skip non-business hours (6:00-17:59)
+            if not is_business_hours(dt):
+                continue
             
             # Get business date for grouping
             business_date = get_business_date(dt)
