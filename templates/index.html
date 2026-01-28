@@ -31,7 +31,7 @@
             <div class="chart-container">
                 <div class="chart-container">
                     <h3>直近1週間の推移 (Recent 1 Week)</h3>
-                    <canvas id="hourlyChart"></canvas>
+                    <canvas id="trendChart"></canvas>
                 </div>
 
                 <div class="chart-container">
@@ -347,8 +347,7 @@
                 modal.classList.remove('hidden');
 
                 // Reset filters UI
-                document.querySelectorAll('.chart-filter-btn').forEach(b => b.classList.remove('active'));
-                document.querySelector('.chart-filter-btn').classList.add('active'); // Select 'All'
+                // Filters removed for Trend View
 
                 try {
                     const response = await fetch('/api/analysis/' + encodeURIComponent(storeName));
@@ -420,7 +419,7 @@
                 // I will use 'hourlyChart' ID for now but render "Recent Trend" in it.
                 // And ignoring filters.
 
-                const ctxH = document.getElementById('hourlyChart').getContext('2d');
+                const ctxH = document.getElementById('trendChart').getContext('2d');
 
                 if (hourlyChartInstance) hourlyChartInstance.destroy();
 
