@@ -388,12 +388,15 @@
             // data.recent_trend is [{x, y}]
 
             const trendData = data.recent_trend || [];
+            const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
             const labels = trendData.map(d => {
-                // Shorten label: "2024-01-20 18:30:00" -> "01/20 18:30"
+                // Format: "2024-01-20 18:30:00" -> "01/20(月) 18:30"
                 const parts = d.x.split(' ');
                 const dateParts = parts[0].split('-');
                 const timeParts = parts[1].split(':');
-                return `${dateParts[1]}/${dateParts[2]} ${timeParts[0]}:${timeParts[1]}`;
+                const date = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]));
+                const dayName = dayNames[date.getDay()];
+                return `${dateParts[1]}/${dateParts[2]}(${dayName}) ${timeParts[0]}:${timeParts[1]}`;
             });
             const values = trendData.map(d => d.y);
 
