@@ -35,7 +35,7 @@
                 </div>
 
                 <div class="chart-container">
-                    <h3>曜日別 (Weekly)</h3>
+                    <h3>男性の推移 (Men's Trend)</h3>
                     <canvas id="weekdayChart"></canvas>
                 </div>
             </div>
@@ -476,24 +476,35 @@
                 }
             });
 
-            // --- Render Weekday Chart (Static) ---
-            const weekdayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-            const displayLabels = ['月', '火', '水', '木', '金', '土', '日'];
-            const weekdayValues = weekdayLabels.map(day => data.weekday[day] || 0);
+            // --- Render Men's Trend Chart ---
+            const menTrendData = data.recent_trend_men || [];
+            const menLabels = menTrendData.map(d => {
+                const parts = d.x.split(' ');
+                const dateParts = parts[0].split('-');
+                const timeParts = parts[1].split(':');
+                const date = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]));
+                const dayName = dayNames[date.getDay()];
+                return `${dateParts[1]}/${dateParts[2]}(${dayName}) ${timeParts[0]}:${timeParts[1]}`;
+            });
+            const menValues = menTrendData.map(d => d.y);
 
             if (weekdayChartInstance) weekdayChartInstance.destroy();
 
             const ctxW = document.getElementById('weekdayChart').getContext('2d');
             weekdayChartInstance = new Chart(ctxW, {
-                type: 'bar',
+                type: 'line',
                 data: {
-                    labels: displayLabels,
+                    labels: menLabels,
                     datasets: [{
-                        label: 'Avg Ladies',
-                        data: weekdayValues,
-                        backgroundColor: 'rgba(77, 171, 247, 0.6)',
+                        label: 'Men',
+                        data: menValues,
+                        backgroundColor: 'rgba(77, 171, 247, 0.2)',
                         borderColor: 'rgba(77, 171, 247, 1)',
-                        borderWidth: 1
+                        borderWidth: 1.5,
+                        pointRadius: 0,
+                        pointHoverRadius: 4,
+                        fill: true,
+                        tension: 0.1
                     }]
                 },
                 options: {
@@ -501,10 +512,26 @@
                     maintainAspectRatio: false,
                     scales: {
                         y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' } },
-                        x: { grid: { display: false } }
+                        x: {
+                            grid: { display: false },
+                            ticks: {
+                                maxTicksLimit: 8,
+                                maxRotation: 0,
+                                autoSkip: true
+                            }
+                        }
                     },
                     plugins: {
-                        legend: { display: false }
+                        legend: { display: false },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                        }
+                    },
+                    interaction: {
+                        mode: 'nearest',
+                        axis: 'x',
+                        intersect: false
                     }
                 }
             });

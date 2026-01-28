@@ -141,7 +141,8 @@ def get_store_analysis(store_name):
     # Recent Trend (Last 7 Days)
     now = datetime.datetime.now()
     seven_days_ago = now - datetime.timedelta(days=7)
-    recent_data = []
+    recent_data_women = []
+    recent_data_men = []
     
     # Sort strictly by time for line graph
     sorted_target = sorted(target_data, key=lambda x: x['ts'])
@@ -151,9 +152,13 @@ def get_store_analysis(store_name):
             dt = datetime.datetime.strptime(d['ts'], "%Y-%m-%d %H:%M:%S")
             if dt > seven_days_ago:
                 # Format TS for easier JS parsing or use ISO
-                recent_data.append({
+                recent_data_women.append({
                     'x': d['ts'], # Chart.js can parse this string
                     'y': d['women']
+                })
+                recent_data_men.append({
+                    'x': d['ts'],
+                    'y': d['men']
                 })
         except:
             continue
@@ -165,7 +170,8 @@ def get_store_analysis(store_name):
         "weekday": weekday_result,
         "hourly_by_weekday": hourly_by_weekday_result,
         "hourly_raw_by_weekday": hourly_raw_by_weekday_result,
-        "recent_trend": recent_data,
+        "recent_trend": recent_data_women,
+        "recent_trend_men": recent_data_men,
         "sample_count": len(target_data)
     }
     
