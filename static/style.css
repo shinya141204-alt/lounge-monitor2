@@ -527,3 +527,50 @@ h1 {
 canvas {
     max-height: 250px;
 }
+
+/* Date Button Container */
+.date-button-container {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 10px 0;
+    margin-bottom: 10px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+}
+
+.date-button-container::-webkit-scrollbar {
+    display: none;
+}
+
+.date-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-secondary);
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    min-width: 60px;
+    transition: all 0.2s;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.date-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.date-btn.active {
+    background: var(--accent-gold);
+    color: #000;
+    border-color: var(--accent-gold);
+    font-weight: bold;
+}
+
+.date-btn .day-name {
+    display: block;
+    font-size: 0.65rem;
+    opacity: 0.7;
+}
