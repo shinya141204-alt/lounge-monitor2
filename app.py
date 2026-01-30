@@ -299,6 +299,25 @@ def update_job():
 # Create scheduler
 scheduler = BackgroundScheduler()
 scheduler.add_job(func=update_job, trigger="interval", minutes=1)
+
+# Weekly archival job - runs every Sunday at 4:00 AM JST (19:00 UTC Saturday)
+def run_archival():
+    """Run data archival to move old data to archive sheet."""
+    try:
+        import archive_data
+        print(f"[{datetime.datetime.now()}] Running scheduled data archival...")
+        archive_data.archive_old_data(dry_run=False)
+        
+        # Clear the analysis cache after archival to refresh data
+        global analysis_cache
+        analysis_cache['raw_data'] = None
+        analysis_cache['last_fetched'] = None
+        analysis_cache['processed_per_store'] = {}
+        print("Analysis cache cleared after archival.")
+    except Exception as e:
+        print(f"ERROR during archival: {e}")
+
+scheduler.add_job(func=run_archival, trigger="cron", day_of_week="sun", hour=19, minute=0)  # 19:00 UTC = 4:00 AM JST
 scheduler.start()
 
 # Determine initial data immediately in a separate thread so startup isn't blocked
