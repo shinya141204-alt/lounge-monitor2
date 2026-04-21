@@ -217,6 +217,41 @@ def get_yatakoi_data():
         print(f"Error fetching Yatakoi data: {e}", file=sys.stderr)
     return []
 
+def get_clovers_data():
+    """Scrape 相席CLOVERS (Hiroshima) from bar-clovers.com"""
+    try:
+        response = scraper.get("https://bar-clovers.com/", timeout=10)
+        response.raise_for_status()
+    except Exception as e:
+        print(f"Error fetching CLOVERS data: {e}", file=sys.stderr)
+        return []
+
+    soup = BeautifulSoup(response.content, 'html.parser')
+    
+    # Data is in: <table class="visit"><tr><th>男性</th><th>女性</th></tr><tr><td>0</td><td>0</td></tr></table>
+    visit_table = soup.select_one('table.visit')
+    if not visit_table:
+        print("Could not find visit table on CLOVERS site", file=sys.stderr)
+        return []
+    
+    try:
+        rows = visit_table.select('tr')
+        if len(rows) >= 2:
+            cells = rows[1].select('td')
+            if len(cells) >= 2:
+                men_count = int(cells[0].get_text(strip=True))
+                women_count = int(cells[1].get_text(strip=True))
+                return [{
+                    'name': 'CLOVERS HIROSHIMA',
+                    'men': men_count,
+                    'women': women_count,
+                    'source': 'clovers'
+                }]
+    except (ValueError, IndexError) as e:
+        print(f"Error parsing CLOVERS data: {e}", file=sys.stderr)
+    
+    return []
+
 def get_all_data():
     data = []
     # Add existing
@@ -227,6 +262,7 @@ def get_all_data():
     data.extend(get_xix_data())
     data.extend(get_alfa_data())
     data.extend(get_yatakoi_data())
+    data.extend(get_clovers_data())
     
     return data
 
