@@ -18,7 +18,7 @@ analysis_cache = {
     'raw_data': None,
     'processed_per_store': {} 
 }
-ANALYSIS_CACHE_DURATION = 3600  # Cache for 1 hour
+ANALYSIS_CACHE_DURATION = 900  # Cache for 15 minutes
 
 def get_sheet_data():
     """Fetches data from Google Sheets with caching."""
