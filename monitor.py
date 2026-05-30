@@ -39,24 +39,36 @@ def debug_connections():
             results[name] = {"error": str(e)}
             
     return results
+# Cache for OLG data (fallback when connection fails)
+_olg_cache = {
+    'data': [],
+    'last_success': None
+}
 
 def get_oriental_data():
+    global _olg_cache
     max_retries = 3
+    
     for attempt in range(max_retries):
         try:
-            # Use scraper with explicit headers
+            # Create a fresh scraper per attempt to avoid stale sessions
+            fresh_scraper = cloudscraper.create_scraper()
             headers = {
                 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
                 'Accept-Language': 'ja,en-US;q=0.7,en;q=0.3',
             }
-            response = scraper.get(ORIENTAL_URL, timeout=15, headers=headers)
+            response = fresh_scraper.get(ORIENTAL_URL, timeout=20, headers=headers)
             response.raise_for_status()
         except Exception as e:
             print(f"Error fetching Oriental data (attempt {attempt+1}/{max_retries}): {e}", file=sys.stderr)
             if attempt < max_retries - 1:
-                time.sleep(2)
+                time.sleep(3)
                 continue
+            # All retries failed - return cached data
+            if _olg_cache['data']:
+                print(f"Using cached OLG data from {_olg_cache['last_success']}", file=sys.stderr)
+                return _olg_cache['data']
             return []
 
         soup = BeautifulSoup(response.content, 'html.parser')
@@ -66,10 +78,13 @@ def get_oriental_data():
         
         if not stores:
             print(f"WARNING: OLG page returned {len(response.content)} bytes but no store elements found (attempt {attempt+1})", file=sys.stderr)
-            print(f"Response preview: {response.text[:200]}", file=sys.stderr)
             if attempt < max_retries - 1:
-                time.sleep(2)
+                time.sleep(3)
                 continue
+            # Return cached data as fallback
+            if _olg_cache['data']:
+                print(f"Using cached OLG data from {_olg_cache['last_success']}", file=sys.stderr)
+                return _olg_cache['data']
             return []
         
         store_data = []
@@ -99,12 +114,19 @@ def get_oriental_data():
                 continue
         
         if store_data:
+            # Update cache on success
+            _olg_cache['data'] = store_data
+            _olg_cache['last_success'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             return store_data
         
         if attempt < max_retries - 1:
-            time.sleep(2)
-                
-    return store_data
+            time.sleep(3)
+    
+    # Final fallback to cache
+    if _olg_cache['data']:
+        print(f"Using cached OLG data from {_olg_cache['last_success']}", file=sys.stderr)
+        return _olg_cache['data']
+    return []
 
 
 def get_jis_data():
