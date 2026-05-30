@@ -56,7 +56,7 @@ def get_oriental_data():
             headers = {
                 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                'Accept-Language': 'ja,en-US;q=0.7,en;q=0.3',
+                'Accept-Language': 'ja,ja-JP;q=0.9',
             }
             response = fresh_scraper.get(ORIENTAL_URL, timeout=20, headers=headers)
             response.raise_for_status()
