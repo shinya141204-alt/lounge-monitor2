@@ -41,45 +41,69 @@ def debug_connections():
     return results
 
 def get_oriental_data():
-    try:
-        # Use scraper instead of requests
-        response = scraper.get(ORIENTAL_URL, timeout=10)
-        response.raise_for_status()
-    except Exception as e:
-        print(f"Error fetching Oriental data: {e}", file=sys.stderr)
-        return []
-
-    soup = BeautifulSoup(response.content, 'html.parser')
-    
-    # Stores are in 'a' tags with class 'card' and 'wave-anime-wrap'
-    stores = soup.select('a.card.wave-anime-wrap')
-    
-    store_data = []
-    
-    for store in stores:
+    max_retries = 3
+    for attempt in range(max_retries):
         try:
-            name_tag = store.select_one('h4')
-            if not name_tag:
+            # Use scraper with explicit headers
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Accept-Language': 'ja,en-US;q=0.7,en;q=0.3',
+            }
+            response = scraper.get(ORIENTAL_URL, timeout=15, headers=headers)
+            response.raise_for_status()
+        except Exception as e:
+            print(f"Error fetching Oriental data (attempt {attempt+1}/{max_retries}): {e}", file=sys.stderr)
+            if attempt < max_retries - 1:
+                time.sleep(2)
                 continue
-            name = name_tag.get_text(strip=True)
-            
-            # Men count
-            men_tag = store.select_one('.num-male')
-            men_count = int(men_tag.get_text(strip=True)) if men_tag else 0
-            
-            # Women count
-            women_tag = store.select_one('.num-female')
-            women_count = int(women_tag.get_text(strip=True)) if women_tag else 0
-            
-            store_data.append({
-                'name': f"OLG {name}",
-                'men': men_count,
-                'women': women_count,
-                'source': 'oriental'
-            })
-        except ValueError:
-            continue
-            
+            return []
+
+        soup = BeautifulSoup(response.content, 'html.parser')
+        
+        # Stores are in 'a' tags with class 'card' and 'wave-anime-wrap'
+        stores = soup.select('a.card.wave-anime-wrap')
+        
+        if not stores:
+            print(f"WARNING: OLG page returned {len(response.content)} bytes but no store elements found (attempt {attempt+1})", file=sys.stderr)
+            print(f"Response preview: {response.text[:200]}", file=sys.stderr)
+            if attempt < max_retries - 1:
+                time.sleep(2)
+                continue
+            return []
+        
+        store_data = []
+        
+        for store in stores:
+            try:
+                name_tag = store.select_one('h4')
+                if not name_tag:
+                    continue
+                name = name_tag.get_text(strip=True)
+                
+                # Men count
+                men_tag = store.select_one('.num-male')
+                men_count = int(men_tag.get_text(strip=True)) if men_tag else 0
+                
+                # Women count
+                women_tag = store.select_one('.num-female')
+                women_count = int(women_tag.get_text(strip=True)) if women_tag else 0
+                
+                store_data.append({
+                    'name': f"OLG {name}",
+                    'men': men_count,
+                    'women': women_count,
+                    'source': 'oriental'
+                })
+            except ValueError:
+                continue
+        
+        if store_data:
+            return store_data
+        
+        if attempt < max_retries - 1:
+            time.sleep(2)
+                
     return store_data
 
 
