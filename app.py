@@ -8,10 +8,8 @@ import logger
 import statistics
 import weekly_report
 from collections import defaultdict
-from flask_cors import CORS
 
 app = Flask(__name__)
-CORS(app)
 
 # Global storage for analysis cache
 analysis_cache = {
