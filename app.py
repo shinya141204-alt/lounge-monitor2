@@ -6,11 +6,12 @@ import datetime
 import threading
 import logger
 import statistics
+import weekly_report
 from collections import defaultdict
+from flask_cors import CORS
 
 app = Flask(__name__)
-
-# ... (existing imports)
+CORS(app)
 
 # Global storage for analysis cache
 analysis_cache = {
@@ -383,6 +384,16 @@ def debug_status():
         })
     except Exception as e:
         return jsonify({"error": str(e), "trace": "In get_all_data"})
+
+@app.route('/api/weekly-report')
+def get_weekly_report():
+    try:
+        report = weekly_report.generate_weekly_report()
+        if "error" in report:
+            return jsonify({"status": "error", "error": report["error"]}), 500
+        return jsonify({"status": "success", "data": report})
+    except Exception as e:
+        return jsonify({"status": "error", "error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001, debug=True, use_reloader=False)

@@ -277,10 +277,15 @@ h1 {
     gap: 8px;
 }
 
-.refresh-btn {
+.header-controls {
     position: absolute;
     top: 0;
     right: 0;
+    display: flex;
+    gap: 10px;
+}
+
+.header-btn {
     background: none;
     border: 1px solid rgba(255, 255, 255, 0.15);
     color: var(--text-secondary);
@@ -295,28 +300,149 @@ h1 {
     height: 32px;
 }
 
-.refresh-btn:hover {
+.header-btn:hover {
     color: var(--text-primary);
     border-color: rgba(255, 255, 255, 0.3);
     background: rgba(255, 255, 255, 0.05);
 }
 
-.refresh-btn:active {
+.header-btn:active {
     transform: scale(0.9);
 }
 
-.refresh-btn:disabled {
+.header-btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
 }
 
-.refresh-btn.spinning svg {
+.header-btn.spinning svg {
     animation: spin 0.6s linear infinite;
 }
 
-@keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-2px) rotate(-2deg); }
+    75% { transform: translateX(2px) rotate(2deg); }
+}
+
+/* Report Table */
+.report-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+    font-size: 0.85rem;
+}
+
+.report-table th, .report-table td {
+    padding: 8px 10px;
+    text-align: left;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.report-table th {
+    background: rgba(0, 0, 0, 0.2);
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.report-table tr:hover {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+/* Search and Sort UI */
+.search-sort-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+#search-input {
+    width: 100%;
+    padding: 10px 15px;
+    border-radius: 20px;
+    border: 1px solid var(--card-border);
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+    font-family: var(--font-main);
+    font-size: 0.9rem;
+    box-sizing: border-box;
+}
+
+#search-input:focus {
+    outline: none;
+    border-color: var(--accent-gold);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.sort-controls {
+    display: flex;
+    gap: 5px;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 4px;
+    border-radius: 20px;
+    justify-content: space-between;
+}
+
+.sort-btn {
+    flex: 1;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    padding: 6px 0;
+    border-radius: 16px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-family: var(--font-main);
+    transition: all 0.2s ease;
+}
+
+.sort-btn.active {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+/* Compact Mode */
+body.compact-mode .ranking-item {
+    flex-direction: row;
+    align-items: center;
+    padding: 10px 15px;
+    gap: 15px;
+}
+
+body.compact-mode .store-info {
+    flex: 1;
+    margin-bottom: 0;
+}
+
+body.compact-mode .store-name {
+    font-size: 1rem;
+}
+
+body.compact-mode .stats-group {
+    width: auto;
+    gap: 10px;
+    padding-top: 0;
+    border-top: none;
+}
+
+body.compact-mode .stat {
+    flex-direction: row;
+    gap: 5px;
+    align-items: baseline;
+}
+
+body.compact-mode .stat .count {
+    font-size: 1.1rem;
+}
+
+body.compact-mode .stat .label {
+    display: none;
+}
+
+body.compact-mode .occupancy-bar {
+    display: none;
 }
 
 .live-indicator {

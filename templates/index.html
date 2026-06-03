@@ -44,6 +44,36 @@
     </div>
     <!-- End Analysis Modal -->
 
+    <!-- Comparison Modal -->
+    <div id="comparison-modal" class="modal hidden">
+        <div class="modal-content">
+            <button class="close-btn" onclick="closeComparisonModal()">&times;</button>
+            <h2>競合比較 (Brand Comparison)</h2>
+            <p style="text-align: center; color: var(--text-secondary); font-size: 0.8rem; margin-top: -10px; margin-bottom: 20px;">
+                現在の来店数（ブランド合計）
+            </p>
+            <div class="chart-container" style="height: 350px;">
+                <canvas id="comparisonChart"></canvas>
+            </div>
+        </div>
+    </div>
+    <!-- End Comparison Modal -->
+
+    <!-- Report Modal -->
+    <div id="report-modal" class="modal hidden">
+        <div class="modal-content" style="max-width: 800px;">
+            <button class="close-btn" onclick="closeReportModal()">&times;</button>
+            <h2>週間レポート (Weekly Report)</h2>
+            <p id="report-period" style="text-align: center; color: var(--text-secondary); font-size: 0.8rem; margin-top: -10px; margin-bottom: 20px;">
+                Loading...
+            </p>
+            <div id="report-content" class="chart-container" style="overflow-x: auto;">
+                <div class="spinner"></div>
+            </div>
+        </div>
+    </div>
+    <!-- End Report Modal -->
+
     <div class="background-glob"></div>
     <div class="background-glob glob-2"></div>
 
@@ -51,11 +81,28 @@
         <header>
             <h1>OLG MONITOR</h1>
             <p class="subtitle">Live Ranking Update</p>
-            <button id="refresh-btn" class="refresh-btn" onclick="manualRefresh()" title="データを更新">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
-                </svg>
-            </button>
+            <div class="header-controls">
+                <button id="report-btn" class="header-btn" onclick="openReportModal()" title="週間レポート">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="12" y1="20" x2="12" y2="10"></line><line x1="18" y1="20" x2="18" y2="4"></line><line x1="6" y1="20" x2="6" y2="16"></line>
+                    </svg>
+                </button>
+                <button id="compare-btn" class="header-btn" onclick="openComparisonModal()" title="競合比較ダッシュボード">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line>
+                    </svg>
+                </button>
+                <button id="compact-btn" class="header-btn" onclick="toggleCompact()" title="コンパクト表示切替">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line>
+                    </svg>
+                </button>
+                <button id="refresh-btn" class="header-btn refresh-btn" onclick="manualRefresh()" title="データを更新">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+                    </svg>
+                </button>
+            </div>
         </header>
 
         <main>
@@ -66,6 +113,14 @@
 
             <div id="content" class="content hidden">
 
+                <div class="search-sort-container">
+                    <input type="text" id="search-input" placeholder="店舗名を検索..." oninput="handleSearch(this.value)">
+                    <div class="sort-controls">
+                        <button class="sort-btn active" data-sort="women" onclick="setSort('women')">女性順</button>
+                        <button class="sort-btn" data-sort="men" onclick="setSort('men')">男性順</button>
+                        <button class="sort-btn" data-sort="ratio" onclick="setSort('ratio')">男女比</button>
+                    </div>
+                </div>
 
                 <div class="filter-bar">
                     <button class="filter-btn active" data-region="All">全て</button>
@@ -144,7 +199,15 @@
 
     <script>
         let currentFilter = 'All';
+        let currentSearch = '';
+        let currentSort = 'women';
+        let isCompact = localStorage.getItem('olg_compact_view') === 'true';
         let pinnedStores = JSON.parse(localStorage.getItem('olg_pinned_stores')) || [];
+
+        // Apply compact view immediately if set
+        if (isCompact) {
+            document.body.classList.add('compact-mode');
+        }
 
         // Save Pinned Stores
         function togglePin(storeName) {
@@ -158,6 +221,28 @@
             // Re-render immediately
             if (window.lastData) {
                 updateUI(window.lastData);
+            }
+        }
+
+        function handleSearch(query) {
+            currentSearch = query.toLowerCase();
+            if (window.lastData) updateUI(window.lastData);
+        }
+
+        function setSort(sortType) {
+            currentSort = sortType;
+            document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector(`.sort-btn[data-sort="${sortType}"]`).classList.add('active');
+            if (window.lastData) updateUI(window.lastData);
+        }
+
+        function toggleCompact() {
+            isCompact = !isCompact;
+            localStorage.setItem('olg_compact_view', isCompact);
+            if (isCompact) {
+                document.body.classList.add('compact-mode');
+            } else {
+                document.body.classList.remove('compact-mode');
             }
         }
 
@@ -286,11 +371,26 @@
             const stores = data.ranking;
             if (!stores || stores.length === 0) return;
 
-            // Filter stores based on current region
-            const filteredStores = stores.filter(store => {
-                if (currentFilter === 'All') return true;
-                return store.region === currentFilter;
+            // Filter stores based on current region and search
+            let filteredStores = stores.filter(store => {
+                const matchRegion = currentFilter === 'All' || store.region === currentFilter;
+                const matchSearch = currentSearch === '' || store.name.toLowerCase().includes(currentSearch);
+                return matchRegion && matchSearch;
             });
+
+            // Apply Sorting
+            if (currentSort === 'men') {
+                filteredStores.sort((a, b) => b.men - a.men);
+            } else if (currentSort === 'ratio') {
+                filteredStores.sort((a, b) => {
+                    const ratioA = a.men === 0 ? a.women : (a.women / a.men);
+                    const ratioB = b.men === 0 ? b.women : (b.women / b.men);
+                    return ratioB - ratioA; // Descending ratio (women heavy)
+                });
+            } else {
+                // Default 'women'
+                filteredStores.sort((a, b) => b.women - a.women);
+            }
 
             if (filteredStores.length === 0) {
                 rankingList.innerHTML = '<p style="color: #666; width: 100%; text-align: center;">No stores found in this region.</p>';
@@ -401,6 +501,172 @@
         // Close on clicking background
         document.getElementById('analysis-modal').addEventListener('click', (e) => {
             if (e.target.id === ('analysis-modal')) closeModal();
+        });
+        document.getElementById('comparison-modal').addEventListener('click', (e) => {
+            if (e.target.id === ('comparison-modal')) closeComparisonModal();
+        });
+
+        // --- Comparison Modal Logic ---
+        let comparisonChartInstance = null;
+
+        function openComparisonModal() {
+            if (!window.lastData || !window.lastData.ranking) return;
+            
+            const modal = document.getElementById('comparison-modal');
+            modal.classList.remove('hidden');
+
+            const brandTotals = {};
+            
+            // Only aggregate from filteredStores if we want regional comparison, or all stores?
+            // Let's use the current filter so users can compare specific regions (e.g. Kyushu OLG vs JIS)
+            let storesToCompare = window.lastData.ranking;
+            if (currentFilter !== 'All') {
+                storesToCompare = storesToCompare.filter(s => s.region === currentFilter);
+            }
+
+            storesToCompare.forEach(store => {
+                const brand = (store.source || 'Unknown').toUpperCase();
+                if (!brandTotals[brand]) {
+                    brandTotals[brand] = { women: 0, men: 0, count: 0 };
+                }
+                brandTotals[brand].women += store.women;
+                brandTotals[brand].men += store.men;
+                brandTotals[brand].count += 1;
+            });
+
+            // Sort by total ladies descending
+            const brands = Object.keys(brandTotals).sort((a, b) => brandTotals[b].women - brandTotals[a].women);
+            
+            const labels = brands.map(b => `${b} (${brandTotals[b].count}店舗)`);
+            const womenData = brands.map(b => brandTotals[b].women);
+            const menData = brands.map(b => brandTotals[b].men);
+
+            if (comparisonChartInstance) {
+                comparisonChartInstance.destroy();
+            }
+
+            const ctx = document.getElementById('comparisonChart').getContext('2d');
+            comparisonChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Ladies',
+                            data: womenData,
+                            backgroundColor: 'rgba(255, 107, 107, 0.8)',
+                            borderRadius: 4
+                        },
+                        {
+                            label: 'Men',
+                            data: menData,
+                            backgroundColor: 'rgba(77, 171, 247, 0.8)',
+                            borderRadius: 4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { stacked: false, grid: { display: false } },
+                        y: { stacked: false, grid: { color: 'rgba(255,255,255,0.1)' } }
+                    },
+                    plugins: {
+                        legend: { display: true, labels: { color: '#fff' } }
+                    }
+                }
+            });
+        }
+
+        function closeComparisonModal() {
+            document.getElementById('comparison-modal').classList.add('hidden');
+        }
+
+        // --- Weekly Report Modal Logic ---
+        async function openReportModal() {
+            const modal = document.getElementById('report-modal');
+            const content = document.getElementById('report-content');
+            const period = document.getElementById('report-period');
+            
+            modal.classList.remove('hidden');
+            content.innerHTML = '<div class="spinner"></div>';
+            period.textContent = 'Loading...';
+
+            try {
+                const response = await fetch('/api/weekly-report');
+                const data = await response.json();
+
+                if (data.status !== 'success') {
+                    content.innerHTML = `<p style="color: var(--accent-red); text-align: center;">Error: ${data.error}</p>`;
+                    return;
+                }
+
+                const report = data.data;
+                period.textContent = report.period;
+
+                // Build HTML Table for Report
+                let html = `
+                    <h3 style="margin-top: 0;">ブランド別サマリー</h3>
+                    <table class="report-table">
+                        <tr>
+                            <th>Brand</th>
+                            <th>店舗数</th>
+                            <th>平均 女性</th>
+                            <th>平均 男性</th>
+                        </tr>
+                `;
+                for (const [brand, stats] of Object.entries(report.by_brand)) {
+                    html += `
+                        <tr>
+                            <td>${brand}</td>
+                            <td>${stats.store_count}</td>
+                            <td>${stats.total_avg_women}</td>
+                            <td>${stats.total_avg_men}</td>
+                        </tr>
+                    `;
+                }
+                html += `</table>
+                    <h3 style="margin-top: 20px;">店舗別ランキング</h3>
+                    <table class="report-table">
+                        <tr>
+                            <th>店舗名</th>
+                            <th>Brand</th>
+                            <th>平均 女性</th>
+                            <th>平均 男性</th>
+                            <th>ピーク時 女性</th>
+                            <th>ピーク時間</th>
+                            <th>営業日数</th>
+                        </tr>
+                `;
+                report.stores.forEach(store => {
+                    html += `
+                        <tr>
+                            <td>${store.name}</td>
+                            <td>${store.brand}</td>
+                            <td>${store.avg_women}</td>
+                            <td>${store.avg_men}</td>
+                            <td>${store.max_women}</td>
+                            <td>${store.peak_hour}</td>
+                            <td>${store.days_with_data}</td>
+                        </tr>
+                    `;
+                });
+                html += '</table>';
+                content.innerHTML = html;
+
+            } catch (e) {
+                console.error(e);
+                content.innerHTML = '<p style="color: var(--accent-red); text-align: center;">Failed to load report.</p>';
+            }
+        }
+
+        function closeReportModal() {
+            document.getElementById('report-modal').classList.add('hidden');
+        }
+
+        document.getElementById('report-modal').addEventListener('click', (e) => {
+            if (e.target.id === ('report-modal')) closeReportModal();
         });
 
         function renderCharts(data) {
@@ -544,8 +810,41 @@
                         intersect: false
                     }
                 }
+                }
             });
         }
+
+        // Pull to refresh logic
+        let touchstartY = 0;
+        let touchendY = 0;
+        const pullThreshold = 80;
+        let isPulling = false;
+
+        document.addEventListener('touchstart', e => {
+            if (window.scrollY === 0) {
+                touchstartY = e.changedTouches[0].screenY;
+                isPulling = true;
+            }
+        }, {passive: true});
+
+        document.addEventListener('touchmove', e => {
+            if (!isPulling) return;
+            const y = e.changedTouches[0].screenY;
+            if (y > touchstartY + pullThreshold) {
+                // Show visual feedback if desired
+            }
+        }, {passive: true});
+
+        document.addEventListener('touchend', e => {
+            if (!isPulling) return;
+            touchendY = e.changedTouches[0].screenY;
+            isPulling = false;
+            
+            if (touchendY > touchstartY + pullThreshold && window.scrollY === 0) {
+                // Trigger refresh
+                manualRefresh();
+            }
+        });
     </script>
 </body>
 
