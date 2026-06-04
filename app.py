@@ -333,42 +333,26 @@ def index():
 def get_status():
     global latest_data
     with data_lock:
-        # Check staleness (older than 90 seconds?)
-        is_stale = False
-        if latest_data['last_updated']:
-            last_time = datetime.datetime.strptime(latest_data['last_updated'], "%Y-%m-%d %H:%M:%S")
-            # Convert current server time to JST for comparison if last_updated is in JST
-            # Actually, standardizing on comparing objects is safer, but for now stick to manual offset
-            # This comparison logic checks relative time so timezone offset matters less as long as consistent
-            # BUT if we change storage to JST, we must compare against JST
-            current_jst = datetime.datetime.now() + datetime.timedelta(hours=9)
-            if (current_jst - last_time).total_seconds() > 90:
-                is_stale = True
-        
-        # If no data or stale, fetch synchronously
-        if not latest_data['full_data'] or is_stale:
-            print(f"Data missing or stale (Stale: {is_stale}), fetching synchronously...")
-            try:
-                data = monitor.get_all_data()
-                if data:
-                    # Add region info (FIX: ensure region is present even on sync fetch)
-                    for store in data:
-                        store['region'] = detect_region(store['name'])
+        # Always return immediately with whatever data we have
+        # The background scheduler (update_job) handles data freshness
+        if latest_data['full_data']:
+            return jsonify({
+                'timestamp': latest_data['last_updated'],
+                'ranking': latest_data['full_data'],
+                'status': 'success'
+            })
+        else:
+            # No data yet (server just started, background job still running)
+            return jsonify({
+                'timestamp': None,
+                'ranking': [],
+                'status': 'loading'
+            })
 
-                    sorted_data = sorted(data, key=lambda x: (x['women'], x['men']), reverse=True)
-                    latest_data['top_store'] = sorted_data[0] if sorted_data else None
-                    latest_data['full_data'] = sorted_data
-                    # Store as JST
-                    jst_now = datetime.datetime.now() + datetime.timedelta(hours=9)
-                    latest_data['last_updated'] = jst_now.strftime("%Y-%m-%d %H:%M:%S")
-            except Exception as e:
-                print(f"Sync update failed: {e}")
-
-        return jsonify({
-            'timestamp': latest_data['last_updated'],
-            'ranking': latest_data['full_data'],
-            'status': 'success' if latest_data['full_data'] else 'no_data'
-        })
+@app.route('/api/health')
+def health_check():
+    """Lightweight endpoint for keep-alive pings (cron-job.org etc.)"""
+    return jsonify({'status': 'ok'})
 
 @app.route('/api/debug')
 def debug_status():

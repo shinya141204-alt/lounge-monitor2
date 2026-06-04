@@ -283,6 +283,16 @@
                 const response = await fetchWithTimeout('/api/status', 15000);
                 const data = await response.json();
 
+                if (data.status === 'loading') {
+                    // Server just started, data not ready yet - show message and retry
+                    const loadingMsg = document.getElementById('loading').querySelector('p');
+                    if (loadingMsg) {
+                        loadingMsg.textContent = 'サーバー起動中... データを取得しています';
+                    }
+                    setTimeout(fetchData, 3000);
+                    return;
+                }
+
                 if (data.error || data.status !== 'success') {
                     const list = document.getElementById('ranking-list');
                     if (list.children.length === 0) {
