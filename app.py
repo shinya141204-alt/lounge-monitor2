@@ -329,12 +329,33 @@ atexit.register(lambda: scheduler.shutdown())
 def index():
     return render_template('index.html')
 
+_is_fetching = False
+
 @app.route('/api/status')
 def get_status():
-    global latest_data
+    global latest_data, _is_fetching
     with data_lock:
-        # Always return immediately with whatever data we have
-        # The background scheduler (update_job) handles data freshness
+        # Check staleness (older than 90 seconds)
+        is_stale = False
+        if latest_data['last_updated']:
+            last_time = datetime.datetime.strptime(latest_data['last_updated'], "%Y-%m-%d %H:%M:%S")
+            current_jst = datetime.datetime.now() + datetime.timedelta(hours=9)
+            if (current_jst - last_time).total_seconds() > 90:
+                is_stale = True
+
+        # If data is missing or stale, trigger a background update (if not already fetching)
+        if not latest_data['full_data'] or is_stale:
+            if not _is_fetching:
+                _is_fetching = True
+                print("Data missing or stale. Triggering background fetch in worker...")
+                def background_fetch():
+                    global _is_fetching
+                    try:
+                        update_job()
+                    finally:
+                        _is_fetching = False
+                threading.Thread(target=background_fetch).start()
+
         if latest_data['full_data']:
             return jsonify({
                 'timestamp': latest_data['last_updated'],
@@ -342,7 +363,6 @@ def get_status():
                 'status': 'success'
             })
         else:
-            # No data yet (server just started, background job still running)
             return jsonify({
                 'timestamp': None,
                 'ranking': [],
