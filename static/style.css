@@ -163,6 +163,7 @@ h1 {
 
 .store-info {
     flex-grow: 1;
+    min-width: 0; /* Critical for flex item text truncation */
     text-align: left;
     z-index: 1;
     overflow: hidden;
@@ -278,11 +279,10 @@ h1 {
 }
 
 .header-controls {
-    position: absolute;
-    top: 0;
-    right: 0;
     display: flex;
     gap: 10px;
+    justify-content: center;
+    margin-top: 15px;
 }
 
 .header-btn {
@@ -337,6 +337,7 @@ h1 {
     padding: 8px 10px;
     text-align: left;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    white-space: nowrap;
 }
 
 .report-table th {
@@ -639,6 +640,11 @@ body.compact-mode .occupancy-bar {
     border: 1px solid rgba(255, 255, 255, 0.1);
     position: relative;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.modal-content h2 {
+    margin-top: 0;
+    padding-right: 30px;
 }
 
 .close-btn {
