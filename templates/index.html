@@ -263,13 +263,27 @@
             });
         });
 
+        let isInitialLoad = true;
+
+        async function fetchWithTimeout(url, timeoutMs = 15000) {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), timeoutMs);
+            try {
+                const response = await fetch(url, { signal: controller.signal });
+                clearTimeout(timer);
+                return response;
+            } catch (e) {
+                clearTimeout(timer);
+                throw e;
+            }
+        }
+
         async function fetchData() {
             try {
-                const response = await fetch('/api/status');
+                const response = await fetchWithTimeout('/api/status', 15000);
                 const data = await response.json();
 
                 if (data.error || data.status !== 'success') {
-                    // Only show error screen if we have NO previous data
                     const list = document.getElementById('ranking-list');
                     if (list.children.length === 0) {
                         showError();
@@ -277,14 +291,26 @@
                     return;
                 }
 
-                window.lastData = data; // Cache data for filtering
+                isInitialLoad = false;
+                window.lastData = data;
                 updateUI(data);
                 document.getElementById('loading').classList.add('hidden');
                 document.getElementById('content').classList.remove('hidden');
                 document.getElementById('error-message').classList.add('hidden');
             } catch (e) {
                 console.error("Fetch error:", e);
-                showError();
+                if (isInitialLoad) {
+                    // Show retry message and auto-retry
+                    const loadingEl = document.getElementById('loading');
+                    const loadingMsg = loadingEl.querySelector('p');
+                    if (loadingMsg) {
+                        loadingMsg.textContent = 'サーバー起動中... 再接続しています';
+                    }
+                    setTimeout(fetchData, 3000);
+                } else {
+                    // After initial load, silently ignore (keep showing old data)
+                    console.warn("Background fetch failed, keeping existing data");
+                }
             }
         }
 
@@ -297,7 +323,6 @@
             
             await fetchData();
             
-            // Keep spinning for at least 500ms for visual feedback
             setTimeout(() => {
                 btn.classList.remove('spinning');
                 btn.disabled = false;
