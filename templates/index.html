@@ -106,6 +106,10 @@
         </header>
 
         <main>
+            <div id="pull-indicator">
+                <div class="spinner"></div>
+            </div>
+            
             <div id="loading" class="loading-state">
                 <div class="spinner"></div>
                 <p>Establishing Connection...</p>
@@ -855,6 +859,8 @@
         const pullThreshold = 80;
         let isPulling = false;
 
+        const pullIndicator = document.getElementById('pull-indicator');
+
         document.addEventListener('touchstart', e => {
             if (window.scrollY === 0) {
                 touchstartY = e.changedTouches[0].screenY;
@@ -866,7 +872,9 @@
             if (!isPulling) return;
             const y = e.changedTouches[0].screenY;
             if (y > touchstartY + pullThreshold) {
-                // Show visual feedback if desired
+                pullIndicator.classList.add('show');
+            } else {
+                pullIndicator.classList.remove('show');
             }
         }, {passive: true});
 
@@ -878,6 +886,11 @@
             if (touchendY > touchstartY + pullThreshold && window.scrollY === 0) {
                 // Trigger refresh
                 manualRefresh();
+                setTimeout(() => {
+                    pullIndicator.classList.remove('show');
+                }, 1000); // Hide after a bit
+            } else {
+                pullIndicator.classList.remove('show');
             }
         });
     </script>
