@@ -246,7 +246,7 @@ def detect_region(store_name):
     return 'Other'
 
 def update_job():
-    global latest_data
+    global latest_data, _last_update_error
     print(f"[{datetime.datetime.now()}] Updating data...")
     try:
         data = monitor.get_all_data()
@@ -266,6 +266,7 @@ def update_job():
                 jst_now = datetime.datetime.now() + datetime.timedelta(hours=9)
                 latest_data['last_updated'] = jst_now.strftime("%Y-%m-%d %H:%M:%S")
             print(f"Data updated. Top store: {top_store['name'] if top_store else 'None'}")
+            _last_update_error = None
             
             # --- Logging Optimization ---
             # 1. Check for Zero Data (Prevention)
@@ -292,7 +293,10 @@ def update_job():
                 print("Logging data to Google Sheets...")
         else:
             print("No data retrieved.")
+            _last_update_error = "No data retrieved from monitor.get_all_data()"
     except Exception as e:
+        import traceback
+        _last_update_error = traceback.format_exc()
         print(f"Error during update: {e}")
 
 # Create scheduler
@@ -330,6 +334,7 @@ def index():
     return render_template('index.html')
 
 _is_fetching = False
+_last_update_error = None
 
 @app.route('/api/status')
 def get_status():
@@ -373,6 +378,16 @@ def get_status():
 def health_check():
     """Lightweight endpoint for keep-alive pings (cron-job.org etc.)"""
     return jsonify({'status': 'ok'})
+
+@app.route('/api/thread_status')
+def thread_status():
+    global _is_fetching, latest_data, _last_update_error
+    return jsonify({
+        'is_fetching': _is_fetching,
+        'has_full_data': bool(latest_data.get('full_data')),
+        'last_updated': latest_data.get('last_updated'),
+        'last_error': _last_update_error
+    })
 
 @app.route('/api/debug')
 def debug_status():
