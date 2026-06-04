@@ -278,17 +278,25 @@ def update_job():
             is_off_hours = 7 <= jst_now.hour < 17
             
             # 3. Check for Frequency (Every 10 minutes)
-            # To save spreadsheet space, we only log when the minute is 0, 10, 20, 30, 40, 50.
-            is_logging_time = jst_now.minute % 10 == 0
+            # To save spreadsheet space, we only log if it's been at least 10 minutes since the last log.
+            # We store the last logged time in latest_data.
+            last_logged_str = latest_data.get('last_logged')
+            is_logging_time = True
+            if last_logged_str:
+                last_logged = datetime.datetime.strptime(last_logged_str, "%Y-%m-%d %H:%M:%S")
+                if (jst_now - last_logged).total_seconds() < 600:
+                    is_logging_time = False
 
             if total_guests == 0:
                 print(f"Skipping logging: Total guest count is 0.")
             elif is_off_hours:
                 print(f"Skipping logging: Current time ({jst_now.strftime('%H:%M')}) is out of business hours (17:00-07:00).")
             elif not is_logging_time:
-                print(f"Skipping logging: Interval optimization (Minute {jst_now.minute} is not divisible by 10).")
+                print(f"Skipping logging: Interval optimization (Less than 10 mins since last log).")
             else:
                 # Log to Google Sheets (in background)
+                with data_lock:
+                    latest_data['last_logged'] = jst_now.strftime("%Y-%m-%d %H:%M:%S")
                 threading.Thread(target=logger.log_data, args=(data,)).start()
                 print("Logging data to Google Sheets...")
         else:
@@ -336,32 +344,36 @@ def index():
 _is_fetching = False
 _last_update_error = None
 
+def trigger_background_fetch_if_needed():
+    global latest_data, _is_fetching
+    # Check staleness (older than 90 seconds)
+    is_stale = False
+    if latest_data['last_updated']:
+        last_time = datetime.datetime.strptime(latest_data['last_updated'], "%Y-%m-%d %H:%M:%S")
+        current_jst = datetime.datetime.now() + datetime.timedelta(hours=9)
+        if (current_jst - last_time).total_seconds() > 90:
+            is_stale = True
+
+    # If data is missing or stale, trigger a background update (if not already fetching)
+    if not latest_data.get('full_data') or is_stale:
+        if not _is_fetching:
+            _is_fetching = True
+            print("Data missing or stale. Triggering background fetch in worker...")
+            def background_fetch():
+                global _is_fetching
+                try:
+                    update_job()
+                finally:
+                    _is_fetching = False
+            threading.Thread(target=background_fetch).start()
+
 @app.route('/api/status')
 def get_status():
-    global latest_data, _is_fetching
+    global latest_data
     with data_lock:
-        # Check staleness (older than 90 seconds)
-        is_stale = False
-        if latest_data['last_updated']:
-            last_time = datetime.datetime.strptime(latest_data['last_updated'], "%Y-%m-%d %H:%M:%S")
-            current_jst = datetime.datetime.now() + datetime.timedelta(hours=9)
-            if (current_jst - last_time).total_seconds() > 90:
-                is_stale = True
+        trigger_background_fetch_if_needed()
 
-        # If data is missing or stale, trigger a background update (if not already fetching)
-        if not latest_data['full_data'] or is_stale:
-            if not _is_fetching:
-                _is_fetching = True
-                print("Data missing or stale. Triggering background fetch in worker...")
-                def background_fetch():
-                    global _is_fetching
-                    try:
-                        update_job()
-                    finally:
-                        _is_fetching = False
-                threading.Thread(target=background_fetch).start()
-
-        if latest_data['full_data']:
+        if latest_data.get('full_data'):
             return jsonify({
                 'timestamp': latest_data['last_updated'],
                 'ranking': latest_data['full_data'],
@@ -377,6 +389,8 @@ def get_status():
 @app.route('/api/health')
 def health_check():
     """Lightweight endpoint for keep-alive pings (cron-job.org etc.)"""
+    with data_lock:
+        trigger_background_fetch_if_needed()
     return jsonify({'status': 'ok'})
 
 @app.route('/api/thread_status')
