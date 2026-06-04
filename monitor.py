@@ -298,26 +298,14 @@ def get_clovers_data():
     
     return []
 
-import concurrent.futures
-
 def get_all_data():
     data = []
-    funcs = [
-        get_oriental_data,
-        get_jis_data,
-        get_xix_data,
-        get_alfa_data,
-        get_yatakoi_data,
-        get_clovers_data
-    ]
-    
-    with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
-        # Submit all tasks and wait for them to complete
-        results = executor.map(lambda f: f(), funcs)
-        for r in results:
-            if r:
-                data.extend(r)
-                
+    data.extend(get_oriental_data())
+    data.extend(get_jis_data())
+    data.extend(get_xix_data())
+    data.extend(get_alfa_data())
+    data.extend(get_yatakoi_data())
+    data.extend(get_clovers_data())
     return data
 
 def find_store_with_max_women(data):
