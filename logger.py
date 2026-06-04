@@ -40,13 +40,17 @@ def get_client():
         print(f"Google Sheets Auth Error: {e}", file=sys.stderr)
         return None
 
+last_error = None
+
 def log_data(data):
     """
     Logs the provided data to Google Sheets.
     data: list of dicts [{'name': '...', 'men': 10, 'women': 10, 'source': '...'}, ...]
     """
+    global last_error
     client = get_client()
     if not client:
+        last_error = "No valid credentials or client."
         print("Skipping logging: No valid credentials or client.")
         return
 
@@ -70,7 +74,9 @@ def log_data(data):
             
         if rows_to_append:
             sheet.append_rows(rows_to_append)
+            last_error = None
             print(f"Logged {len(rows_to_append)} rows to Google Sheets.")
             
     except Exception as e:
+        last_error = str(e)
         print(f"Google Sheets Logging Error: {e}", file=sys.stderr)

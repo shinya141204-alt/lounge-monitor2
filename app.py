@@ -394,13 +394,14 @@ def health_check():
     return jsonify({'status': 'ok'})
 
 @app.route('/api/thread_status')
-def thread_status():
-    global _is_fetching, latest_data, _last_update_error
+def get_thread_status():
+    """Diagnostic endpoint to check the health of the background fetcher and logger"""
     return jsonify({
+        'last_updated': latest_data['last_updated'],
+        'has_full_data': bool(latest_data['full_data']),
         'is_fetching': _is_fetching,
-        'has_full_data': bool(latest_data.get('full_data')),
-        'last_updated': latest_data.get('last_updated'),
-        'last_error': _last_update_error
+        'last_error': _last_update_error,
+        'logger_error': logger.last_error
     })
 
 @app.route('/api/debug')
