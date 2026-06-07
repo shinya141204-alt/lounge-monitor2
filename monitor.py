@@ -299,13 +299,30 @@ def get_clovers_data():
     return []
 
 def get_all_data():
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    
+    fetchers = [
+        get_oriental_data,
+        get_jis_data,
+        get_xix_data,
+        get_alfa_data,
+        get_yatakoi_data,
+        get_clovers_data,
+    ]
+    
     data = []
-    data.extend(get_oriental_data())
-    data.extend(get_jis_data())
-    data.extend(get_xix_data())
-    data.extend(get_alfa_data())
-    data.extend(get_yatakoi_data())
-    data.extend(get_clovers_data())
+    with ThreadPoolExecutor(max_workers=6) as executor:
+        futures = {executor.submit(fn): fn.__name__ for fn in fetchers}
+        for future in as_completed(futures):
+            name = futures[future]
+            try:
+                result = future.result(timeout=30)
+                if result:
+                    data.extend(result)
+                    print(f"  ✓ {name}: {len(result)} stores")
+            except Exception as e:
+                print(f"  ✗ {name}: {e}", file=sys.stderr)
+    
     return data
 
 def find_store_with_max_women(data):

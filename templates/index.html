@@ -291,7 +291,17 @@
                     // Server just started, data not ready yet - show message and retry
                     const loadingMsg = document.getElementById('loading').querySelector('p');
                     if (loadingMsg) {
-                        loadingMsg.textContent = 'サーバー起動中... データを取得しています';
+                        if (!window._loadRetryCount) window._loadRetryCount = 0;
+                        window._loadRetryCount++;
+                        const dots = '.'.repeat((window._loadRetryCount % 3) + 1);
+                        const elapsed = window._loadRetryCount * 3;
+                        if (elapsed < 15) {
+                            loadingMsg.textContent = `サーバー起動中${dots} まもなくデータを取得します`;
+                        } else if (elapsed < 45) {
+                            loadingMsg.textContent = `データ取得中${dots} もうしばらくお待ちください`;
+                        } else {
+                            loadingMsg.textContent = `接続に時間がかかっています${dots} 自動でリトライ中`;
+                        }
                     }
                     setTimeout(fetchData, 3000);
                     return;
