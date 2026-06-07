@@ -343,36 +343,49 @@ def index():
 
 _is_fetching = False
 _last_update_error = None
+_fetch_lock = threading.Lock()
 
 def trigger_background_fetch_if_needed():
-    global latest_data, _is_fetching
+    """Check if data is stale and trigger a background fetch if needed.
+    MUST be called WITHOUT holding data_lock to avoid deadlock."""
+    global _is_fetching
+    
+    # Read latest_data under lock (quick read only)
+    with data_lock:
+        last_updated = latest_data.get('last_updated')
+        has_data = bool(latest_data.get('full_data'))
+    
     # Check staleness (older than 90 seconds)
     is_stale = False
-    if latest_data['last_updated']:
-        last_time = datetime.datetime.strptime(latest_data['last_updated'], "%Y-%m-%d %H:%M:%S")
+    if last_updated:
+        last_time = datetime.datetime.strptime(last_updated, "%Y-%m-%d %H:%M:%S")
         current_jst = datetime.datetime.now() + datetime.timedelta(hours=9)
         if (current_jst - last_time).total_seconds() > 90:
             is_stale = True
 
-    # If data is missing or stale, trigger a background update (if not already fetching)
-    if not latest_data.get('full_data') or is_stale:
-        if not _is_fetching:
+    # If data is missing or stale, trigger a background update (atomic check-and-set)
+    if not has_data or is_stale:
+        with _fetch_lock:
+            if _is_fetching:
+                return  # Already fetching
             _is_fetching = True
-            print("Data missing or stale. Triggering background fetch in worker...")
-            def background_fetch():
-                global _is_fetching
-                try:
-                    update_job()
-                finally:
+        
+        print("Data missing or stale. Triggering background fetch in worker...")
+        def background_fetch():
+            global _is_fetching
+            try:
+                update_job()
+            finally:
+                with _fetch_lock:
                     _is_fetching = False
-            threading.Thread(target=background_fetch).start()
+        threading.Thread(target=background_fetch).start()
 
 @app.route('/api/status')
 def get_status():
-    global latest_data
-    with data_lock:
-        trigger_background_fetch_if_needed()
+    # Trigger fetch OUTSIDE data_lock to avoid deadlock
+    trigger_background_fetch_if_needed()
 
+    with data_lock:
         if latest_data.get('full_data'):
             return jsonify({
                 'timestamp': latest_data['last_updated'],
@@ -389,8 +402,7 @@ def get_status():
 @app.route('/api/health')
 def health_check():
     """Lightweight endpoint for keep-alive pings (cron-job.org etc.)"""
-    with data_lock:
-        trigger_background_fetch_if_needed()
+    trigger_background_fetch_if_needed()
     return jsonify({'status': 'ok'})
 
 @app.route('/api/thread_status')

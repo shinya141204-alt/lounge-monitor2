@@ -285,6 +285,7 @@
         async function fetchData() {
             try {
                 const response = await fetchWithTimeout('/api/status', 15000);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 const data = await response.json();
 
                 if (data.status === 'loading') {
@@ -526,6 +527,7 @@
 
             try {
                 const response = await fetch('/api/analysis/' + encodeURIComponent(storeName));
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 const data = await response.json();
 
                 if (data.error) {
@@ -545,6 +547,7 @@
 
         function closeModal() {
             document.getElementById('analysis-modal').classList.add('hidden');
+            if (dailyChartInstance) { dailyChartInstance.destroy(); dailyChartInstance = null; }
             currentAnalysisData = null;
         }
 
@@ -631,6 +634,7 @@
 
         function closeComparisonModal() {
             document.getElementById('comparison-modal').classList.add('hidden');
+            if (comparisonChartInstance) { comparisonChartInstance.destroy(); comparisonChartInstance = null; }
         }
 
         // --- Weekly Report Modal Logic ---
@@ -645,6 +649,7 @@
 
             try {
                 const response = await fetch('/api/weekly-report');
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 const data = await response.json();
 
                 if (data.status !== 'success') {
@@ -766,7 +771,7 @@
                 const btn = document.createElement('button');
                 btn.className = 'date-btn';
                 btn.innerHTML = `${parts[1]}/${parts[2]}<span class="day-name">${dayName}</span>`;
-                btn.onclick = () => showDailyChart(dateStr, currentData);
+                btn.onclick = (e) => showDailyChart(dateStr, currentData, e);
                 container.appendChild(btn);
             });
 
@@ -783,10 +788,10 @@
             }
         }
 
-        function showDailyChart(dateStr, data) {
+        function showDailyChart(dateStr, data, evt) {
             // Update active button state
             document.querySelectorAll('.date-btn').forEach(b => b.classList.remove('active'));
-            event.target.closest('.date-btn').classList.add('active');
+            if (evt && evt.target) evt.target.closest('.date-btn').classList.add('active');
 
             // Show chart container
             document.getElementById('daily-chart-container').classList.remove('hidden');

@@ -197,7 +197,8 @@ def get_jis_data():
 
 def get_xix_data():
     try:
-        response = scraper.get(XIX_URL, timeout=10)
+        fresh_scraper = cloudscraper.create_scraper()
+        response = fresh_scraper.get(XIX_URL, timeout=10)
         response.raise_for_status()
         data = response.json()
         
@@ -218,7 +219,8 @@ def get_xix_data():
 
 def get_alfa_data():
     try:
-        response = scraper.get(ALFA_URL, timeout=10)
+        fresh_scraper = cloudscraper.create_scraper()
+        response = fresh_scraper.get(ALFA_URL, timeout=10)
         response.raise_for_status()
         # Handle UTF-8 BOM if present
         try:
@@ -242,7 +244,8 @@ def get_alfa_data():
 
 def get_yatakoi_data():
     try:
-        response = scraper.get(YATAKOI_URL, timeout=10)
+        fresh_scraper = cloudscraper.create_scraper()
+        response = fresh_scraper.get(YATAKOI_URL, timeout=10)
         response.raise_for_status()
         data = response.json()
         
@@ -266,7 +269,8 @@ def get_yatakoi_data():
 def get_clovers_data():
     """Scrape 相席CLOVERS (Hiroshima) from bar-clovers.com"""
     try:
-        response = scraper.get("https://bar-clovers.com/", timeout=10)
+        fresh_scraper = cloudscraper.create_scraper()
+        response = fresh_scraper.get("https://bar-clovers.com/", timeout=10)
         response.raise_for_status()
     except Exception as e:
         print(f"Error fetching CLOVERS data: {e}", file=sys.stderr)
