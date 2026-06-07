@@ -50,7 +50,7 @@ def archive_old_data(dry_run=False):
         try:
             archive_sheet = spreadsheet.worksheet(ARCHIVE_SHEET_NAME)
             print(f"Found existing archive sheet: {ARCHIVE_SHEET_NAME}")
-        except:
+        except Exception as e:
             # Create archive sheet if it doesn't exist
             if dry_run:
                 print(f"Would create archive sheet: {ARCHIVE_SHEET_NAME}")
@@ -123,17 +123,11 @@ def archive_old_data(dry_run=False):
             archive_sheet.append_rows(batch)
             print(f"  Archived rows {i+1} to {min(i+batch_size, len(rows_to_archive))}")
         
-        # Clear main sheet and rewrite with kept data
-        print(f"\nRewriting main sheet with {len(rows_to_keep)} rows...")
-        
-        # Clear all data except header
-        main_sheet.clear()
-        
-        # Write header + kept rows
-        all_new_data = [header] + rows_to_keep
-        
-        # Batch update for efficiency
-        main_sheet.update(f'A1:E{len(all_new_data)}', all_new_data)
+        # Delete old rows (atomic operation to prevent data loss)
+        # Note: Google Sheets API is 1-indexed and row 1 is the header.
+        # So deleting rows 2 to len(rows_to_archive) + 1 removes the exact archived rows.
+        # This assumes the oldest rows are at the top, which is true for our append-only log.
+        main_sheet.delete_rows(2, len(rows_to_archive) + 1)
         
         print(f"\n=== Archival Complete ===")
         print(f"Archived: {len(rows_to_archive)} rows")

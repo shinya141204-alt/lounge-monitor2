@@ -53,7 +53,8 @@ def get_sheet_data():
                         'men': int(row[2]) if row[2] else 0,
                         'women': int(row[3]) if row[3] else 0
                     })
-                except:
+                except Exception as e:
+                    print(f"Error parsing historical data: {e}", file=sys.stderr)
                     continue
         
         analysis_cache['raw_data'] = data
@@ -101,7 +102,8 @@ def get_store_analysis(store_name):
             
             # Hourly by specific weekday
             hourly_women_by_day[dt.weekday()][dt.hour].append(d['women'])
-        except:
+        except Exception as e:
+            print(f"Error analyzing historical data: {e}", file=sys.stderr)
             continue
             
     # Calculate averages & Raw Data
@@ -191,7 +193,7 @@ def get_store_analysis(store_name):
                 'x': business_ts,
                 'y': d['men']
             })
-        except:
+        except (ValueError, KeyError):
             continue
         
     result = {
@@ -408,6 +410,8 @@ def health_check():
 @app.route('/api/thread_status')
 def get_thread_status():
     """Diagnostic endpoint to check the health of the background fetcher and logger"""
+    if request.args.get('secret') != 'lounge2026':
+        return jsonify({'error': 'Unauthorized'}), 401
     return jsonify({
         'last_updated': latest_data['last_updated'],
         'has_full_data': bool(latest_data['full_data']),
@@ -417,7 +421,9 @@ def get_thread_status():
     })
 
 @app.route('/api/debug')
-def debug_status():
+def debug_info():
+    if request.args.get('secret') != 'lounge2026':
+        return jsonify({'error': 'Unauthorized'}), 401
     # Run full data fetch to see if parsing works
     try:
         data = monitor.get_all_data()

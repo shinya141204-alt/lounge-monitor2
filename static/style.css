@@ -23,9 +23,14 @@ body {
     justify-content: center;
     align-items: flex-start;
     /* Changed from center to allow scrolling */
-    overflow-y: auto;
     /* Enable scrolling */
+    overflow-y: auto;
     overflow-x: hidden;
+    overscroll-behavior-y: contain; /* Prevent pull-to-refresh conflict */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
 }
 
 /* Custom scrollbar */
@@ -608,6 +613,16 @@ body.compact-mode .occupancy-bar {
 
 .pin-btn.active svg {
     fill: var(--accent-gold);
+}
+
+.error-message {
+    color: var(--accent-red);
+    text-align: center;
+    padding: 20px;
+    background: rgba(255, 77, 77, 0.1);
+    border: 1px solid rgba(255, 77, 77, 0.3);
+    border-radius: 8px;
+    margin: 20px 0;
 }
 
 .star-icon {
