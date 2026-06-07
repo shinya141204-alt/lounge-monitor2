@@ -420,8 +420,8 @@ def get_thread_status():
         'last_updated': latest_data['last_updated'],
         'has_full_data': bool(latest_data['full_data']),
         'is_fetching': _is_fetching,
-        'last_error': _last_update_error,
-        'logger_error': logger.last_error
+        'last_error': str(_last_update_error) if _last_update_error else None,
+        'logger_error': str(logger.last_error) if logger.last_error else None
     })
 
 @app.route('/api/debug')
