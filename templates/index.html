@@ -24,7 +24,7 @@
     <!-- Analysis Modal -->
     <div id="analysis-modal" class="modal hidden">
         <div class="modal-content">
-            <button class="close-btn" onclick="closeModal()">&times;</button>
+            <button class="close-btn" onclick="closeModal()" aria-label="閉じる">&times;</button>
             <h2 id="modal-store-name">Store Name</h2>
 
             <div class="chart-container">
@@ -46,7 +46,7 @@
     <!-- Comparison Modal -->
     <div id="comparison-modal" class="modal hidden">
         <div class="modal-content">
-            <button class="close-btn" onclick="closeComparisonModal()">&times;</button>
+            <button class="close-btn" onclick="closeComparisonModal()" aria-label="閉じる">&times;</button>
             <h2>競合比較 (Brand Comparison)</h2>
             <p style="text-align: center; color: var(--text-secondary); font-size: 0.8rem; margin-top: -10px; margin-bottom: 20px;">
                 現在の来店数（ブランド合計）
@@ -61,7 +61,7 @@
     <!-- Report Modal -->
     <div id="report-modal" class="modal hidden">
         <div class="modal-content" style="max-width: 800px;">
-            <button class="close-btn" onclick="closeReportModal()">&times;</button>
+            <button class="close-btn" onclick="closeReportModal()" aria-label="閉じる">&times;</button>
             <h2>週間レポート (Weekly Report)</h2>
             <p id="report-period" style="text-align: center; color: var(--text-secondary); font-size: 0.8rem; margin-top: -10px; margin-bottom: 20px;">
                 Loading...
@@ -907,6 +907,16 @@
                 pullIndicator.classList.remove('show');
             }
         });
+    </script>
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(registration => console.log('SW registered'))
+                    .catch(error => console.log('SW registration failed:', error));
+            });
+        }
     </script>
 </body>
 

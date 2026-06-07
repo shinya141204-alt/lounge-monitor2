@@ -212,8 +212,8 @@ h1 {
 }
 
 .stat .label {
-    font-size: 0.5rem;
-    /* Smaller label */
+    font-size: 0.75rem;
+    /* Increased label size for legibility */
     color: var(--text-secondary);
     margin-top: 2px;
 }

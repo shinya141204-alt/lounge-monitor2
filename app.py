@@ -382,6 +382,10 @@ def trigger_background_fetch_if_needed():
                     _is_fetching = False
         threading.Thread(target=background_fetch).start()
 
+@app.route('/sw.js')
+def serve_sw():
+    return send_from_directory('static', 'sw.js', mimetype='application/javascript')
+
 @app.route('/api/status')
 def get_status():
     # Trigger fetch OUTSIDE data_lock to avoid deadlock
