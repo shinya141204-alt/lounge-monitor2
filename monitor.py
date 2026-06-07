@@ -315,17 +315,23 @@ def get_all_data():
     ]
     
     data = []
-    with ThreadPoolExecutor(max_workers=6) as executor:
-        futures = {executor.submit(fn): fn.__name__ for fn in fetchers}
-        for future in as_completed(futures):
+    import concurrent.futures
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=6)
+    futures = {executor.submit(fn): fn.__name__ for fn in fetchers}
+    try:
+        for future in concurrent.futures.as_completed(futures, timeout=25):
             name = futures[future]
             try:
-                result = future.result(timeout=30)
+                result = future.result()
                 if result:
                     data.extend(result)
                     print(f"  ✓ {name}: {len(result)} stores")
             except Exception as e:
                 print(f"  ✗ {name}: {e}", file=sys.stderr)
+    except concurrent.futures.TimeoutError:
+        print("  ✗ Warning: Some scrapers hung and timed out!", file=sys.stderr)
+    finally:
+        executor.shutdown(wait=False, cancel_futures=True)
     
     return data
 
