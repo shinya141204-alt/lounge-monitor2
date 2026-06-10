@@ -29,9 +29,7 @@ _olg_cache = {
 def get_oriental_data():
     global _olg_cache
     try:
-        import cloudscraper
-        scraper = cloudscraper.create_scraper()
-        response = scraper.get(ORIENTAL_URL, timeout=15, headers=_HEADERS)
+        response = requests.get(ORIENTAL_URL, timeout=15, headers=_HEADERS)
         response.raise_for_status()
     except Exception as e:
         print(f"Error fetching Oriental data: {e}", file=sys.stderr)
