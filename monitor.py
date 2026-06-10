@@ -29,7 +29,7 @@ _olg_cache = {
 def get_oriental_data():
     global _olg_cache
     try:
-        response = requests.get(ORIENTAL_URL, timeout=15, headers=_HEADERS)
+        response = requests.get(ORIENTAL_URL, timeout=(3, 7), headers=_HEADERS)
         response.raise_for_status()
     except Exception as e:
         print(f"Error fetching Oriental data: {e}", file=sys.stderr)
@@ -82,7 +82,7 @@ def get_oriental_data():
 
 def get_jis_data():
     try:
-        response = requests.get(JIS_URL, headers=_HEADERS, timeout=10)
+        response = requests.get(JIS_URL, headers=_HEADERS, timeout=(3, 7))
         response.raise_for_status()
     except requests.RequestException as e:
         print(f"Error fetching JIS data: {e}", file=sys.stderr)
@@ -143,7 +143,7 @@ def get_jis_data():
 
 def get_xix_data():
     try:
-        response = requests.get(XIX_URL, headers=_HEADERS, timeout=10)
+        response = requests.get(XIX_URL, headers=_HEADERS, timeout=(3, 7))
         response.raise_for_status()
         data = response.json()
         
@@ -163,7 +163,7 @@ def get_xix_data():
 
 def get_alfa_data():
     try:
-        response = requests.get(ALFA_URL, headers=_HEADERS, timeout=10)
+        response = requests.get(ALFA_URL, headers=_HEADERS, timeout=(3, 7))
         response.raise_for_status()
         try:
             data = response.json()
@@ -186,7 +186,7 @@ def get_alfa_data():
 
 def get_yatakoi_data():
     try:
-        response = requests.get(YATAKOI_URL, headers=_HEADERS, timeout=10)
+        response = requests.get(YATAKOI_URL, headers=_HEADERS, timeout=(3, 7))
         response.raise_for_status()
         data = response.json()
         
@@ -209,7 +209,7 @@ def get_yatakoi_data():
 def get_clovers_data():
     """Scrape 相席CLOVERS (Hiroshima) from bar-clovers.com"""
     try:
-        response = requests.get("https://bar-clovers.com/", headers=_HEADERS, timeout=10)
+        response = requests.get("https://bar-clovers.com/", headers=_HEADERS, timeout=(3, 7))
         response.raise_for_status()
     except Exception as e:
         print(f"Error fetching CLOVERS data: {e}", file=sys.stderr)
@@ -256,7 +256,7 @@ def get_all_data():
     executor = concurrent.futures.ThreadPoolExecutor(max_workers=6)
     futures = {executor.submit(fn): fn.__name__ for fn in fetchers}
     try:
-        done, not_done = concurrent.futures.wait(futures.keys(), timeout=30)
+        done, not_done = concurrent.futures.wait(futures.keys(), timeout=45)
         for future in done:
             name = futures[future]
             try:
