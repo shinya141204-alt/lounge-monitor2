@@ -253,10 +253,10 @@ def get_all_data():
     ]
     
     data = []
-    executor = concurrent.futures.ThreadPoolExecutor(max_workers=6)
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
     futures = {executor.submit(fn): fn.__name__ for fn in fetchers}
     try:
-        done, not_done = concurrent.futures.wait(futures.keys(), timeout=45)
+        done, not_done = concurrent.futures.wait(futures.keys(), timeout=60)
         for future in done:
             name = futures[future]
             try:
