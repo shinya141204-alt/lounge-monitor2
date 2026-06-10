@@ -6,7 +6,6 @@ import datetime
 import threading
 import logger
 import statistics
-import weekly_report
 from collections import defaultdict
 
 app = Flask(__name__)
@@ -41,10 +40,8 @@ def get_sheet_data():
         sheet = client.open('Lounge Monitor Data').sheet1
         all_values = sheet.get_all_values()
         
-        # Parse relevant fields only to save memory
-        # Row format: Timestamp, Store Name, Men, Women, Source
         data = []
-        for row in all_values[1:]: # Skip header
+        for row in all_values[1:]:
             if len(row) >= 4:
                 try:
                     data.append({
@@ -54,12 +51,12 @@ def get_sheet_data():
                         'women': int(row[3]) if row[3] else 0
                     })
                 except Exception as e:
-                    print(f"Error parsing historical data: {e}", file=sys.stderr)
+                    print(f"Error parsing historical data: {e}", file=__import__('sys').stderr)
                     continue
         
         analysis_cache['raw_data'] = data
         analysis_cache['last_fetched'] = now
-        analysis_cache['processed_per_store'] = {} # Clear processed cache
+        analysis_cache['processed_per_store'] = {}
         print(f"Cached {len(data)} rows of historical data.")
         return data
         
@@ -74,18 +71,14 @@ def get_store_analysis(store_name):
     if not data:
         return jsonify({"error": "Failed to load data"}), 500
         
-    # Check if we computed this store recently (in-memory optimization)
-    # Since we cleared processed_per_store on fetch, this corresponds to the current raw_data version
     if store_name in analysis_cache['processed_per_store']:
         return jsonify(analysis_cache['processed_per_store'][store_name])
         
-    # Filter for target store
-    target_data = [d for d in data if store_name in d['name']] # Loose match or exact? Using loose for "OLG 大阪駅前" vs full name matches logic elsewhere
+    target_data = [d for d in data if store_name in d['name']]
     
     if not target_data:
         return jsonify({"error": "Store not found"}), 404
         
-    # Aggregation containers
     hourly_women = defaultdict(list)
     weekday_women = defaultdict(list)
     hourly_women_by_day = defaultdict(lambda: defaultdict(list))
@@ -93,40 +86,27 @@ def get_store_analysis(store_name):
     for d in target_data:
         try:
             dt = datetime.datetime.strptime(d['ts'], "%Y-%m-%d %H:%M:%S")
-            
-            # Hourly (0-23)
             hourly_women[dt.hour].append(d['women'])
-            
-            # Weekday (0=Mon, 6=Sun)
             weekday_women[dt.weekday()].append(d['women'])
-            
-            # Hourly by specific weekday
             hourly_women_by_day[dt.weekday()][dt.hour].append(d['women'])
         except Exception as e:
-            print(f"Error analyzing historical data: {e}", file=sys.stderr)
+            print(f"Error analyzing historical data: {e}", file=__import__('sys').stderr)
             continue
             
-    # Calculate averages & Raw Data
-    # Hourly: Ensure 0-23 keys exist
-    hourly_avg = []
-    
     hourly_result = {}
-    hourly_raw_display = {} # For Scatter Plot
+    hourly_raw_display = {}
     
     for h in range(24):
         vals = hourly_women.get(h, [])
         hourly_result[h] = round(statistics.mean(vals), 1) if vals else 0
-        hourly_raw_display[h] = vals # List of all values
+        hourly_raw_display[h] = vals
         
-    # Weekday: 0-6
     weekday_result = {}
     weekdays_str = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
     for i in range(7):
         vals = weekday_women.get(i, [])
         weekday_result[weekdays_str[i]] = round(statistics.mean(vals), 1) if vals else 0
         
-    # Hourly by Weekday
-    # Result: { "Mon": { "0": 10, ... }, ... }
     hourly_by_weekday_result = {}
     hourly_raw_by_weekday_result = {}
     
@@ -140,59 +120,33 @@ def get_store_analysis(store_name):
         hourly_by_weekday_result[weekdays_str[i]] = day_avg
         hourly_raw_by_weekday_result[weekdays_str[i]] = day_raw
 
-    # All Available Data (sampled at hourly intervals for performance)
     recent_data_women = []
     recent_data_men = []
-    
-    # Sort strictly by time for line graph
     sorted_target = sorted(target_data, key=lambda x: x['ts'])
-    
-    # Keep track of which hours we've already included (to sample 1 point per hour)
     seen_hours = set()
     
     def get_business_date(dt):
-        """Get business date: 0:00-6:59 counts as previous day (business hours 18:00-7:00)"""
         if dt.hour <= 6:
-            # Before 7AM = previous business day
             return (dt - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
         else:
             return dt.strftime("%Y-%m-%d")
     
     def is_business_hours(dt):
-        """Check if time is within business hours (18:00-6:59)"""
-        # Business hours: 18:00-23:59 or 0:00-6:59
         return dt.hour >= 18 or dt.hour <= 6
     
     for d in sorted_target:
         try:
-            # Parse timestamp to check if this is a new hour
             dt = datetime.datetime.strptime(d['ts'], "%Y-%m-%d %H:%M:%S")
-            
-            # Skip non-business hours (6:00-17:59)
             if not is_business_hours(dt):
                 continue
-            
-            # Get business date for grouping
             business_date = get_business_date(dt)
-            hour_key = f"{business_date} {dt.strftime('%H')}"  # e.g. "2024-01-28 02" (even if calendar is 1/29)
-            
-            # Skip if we already have data for this hour
+            hour_key = f"{business_date} {dt.strftime('%H')}"
             if hour_key in seen_hours:
                 continue
             seen_hours.add(hour_key)
-            
-            # Store with business date for proper frontend grouping
             business_ts = f"{business_date} {dt.strftime('%H:%M:%S')}"
-            
-            # Format TS for easier JS parsing
-            recent_data_women.append({
-                'x': business_ts,
-                'y': d['women']
-            })
-            recent_data_men.append({
-                'x': business_ts,
-                'y': d['men']
-            })
+            recent_data_women.append({'x': business_ts, 'y': d['women']})
+            recent_data_men.append({'x': business_ts, 'y': d['men']})
         except (ValueError, KeyError):
             continue
         
@@ -208,12 +162,8 @@ def get_store_analysis(store_name):
         "sample_count": len(target_data)
     }
     
-    # Cache it
     analysis_cache['processed_per_store'][store_name] = result
-    
     return jsonify(result)
-
-# ... (debug route and main)
 
 
 # Global storage for the latest data (thread-safe)
@@ -223,8 +173,6 @@ latest_data = {
     'last_updated': None,
     'full_data': []
 }
-
-
 
 # Region Definitions
 REGIONS = {
@@ -240,7 +188,6 @@ REGIONS = {
 }
 
 def detect_region(store_name):
-    """Detects the region based on the store name."""
     for region, keywords in REGIONS.items():
         for keyword in keywords:
             if keyword in store_name:
@@ -253,35 +200,24 @@ def update_job():
     try:
         data = monitor.get_all_data()
         if data:
-            # Add region info
             for store in data:
                 store['region'] = detect_region(store['name'])
 
-            # Sort data by women count descending, then men count descending
             sorted_data = sorted(data, key=lambda x: (x['women'], x['men']), reverse=True)
             top_store = sorted_data[0] if sorted_data else None
             
             with data_lock:
                 latest_data['top_store'] = top_store
                 latest_data['full_data'] = sorted_data
-                # Store as JST (UTC+9)
                 jst_now = datetime.datetime.now() + datetime.timedelta(hours=9)
                 latest_data['last_updated'] = jst_now.strftime("%Y-%m-%d %H:%M:%S")
             print(f"Data updated. Top store: {top_store['name'] if top_store else 'None'}")
             _last_update_error = None
             
             # --- Logging Optimization ---
-            # 1. Check for Zero Data (Prevention)
             total_guests = sum(d.get('men', 0) + d.get('women', 0) for d in data)
-            
-            # 2. Check for Time (Business Hours: 17:00 - 07:00 JST)
-            # If it is between 07:00 and 16:59, we consider it "hours to skip"
-            # jst_now is already defined above
             is_off_hours = 7 <= jst_now.hour < 17
             
-            # 3. Check for Frequency (Every 10 minutes)
-            # To save spreadsheet space, we only log if it's been at least 10 minutes since the last log.
-            # We store the last logged time in latest_data.
             last_logged_str = latest_data.get('last_logged')
             is_logging_time = True
             if last_logged_str:
@@ -296,7 +232,6 @@ def update_job():
             elif not is_logging_time:
                 print(f"Skipping logging: Interval optimization (Less than 10 mins since last log).")
             else:
-                # Log to Google Sheets (in background)
                 with data_lock:
                     latest_data['last_logged'] = jst_now.strftime("%Y-%m-%d %H:%M:%S")
                 threading.Thread(target=logger.log_data, args=(data,)).start()
@@ -312,25 +247,6 @@ def update_job():
 # Create scheduler
 scheduler = BackgroundScheduler()
 scheduler.add_job(func=update_job, trigger="interval", minutes=1)
-
-# Weekly archival job - runs every Sunday at 4:00 AM JST (19:00 UTC Saturday)
-def run_archival():
-    """Run data archival to move old data to archive sheet."""
-    try:
-        import archive_data
-        print(f"[{datetime.datetime.now()}] Running scheduled data archival...")
-        archive_data.archive_old_data(dry_run=False)
-        
-        # Clear the analysis cache after archival to refresh data
-        global analysis_cache
-        analysis_cache['raw_data'] = None
-        analysis_cache['last_fetched'] = None
-        analysis_cache['processed_per_store'] = {}
-        print("Analysis cache cleared after archival.")
-    except Exception as e:
-        print(f"ERROR during archival: {e}")
-
-scheduler.add_job(func=run_archival, trigger="cron", day_of_week="sun", hour=19, minute=0)  # 19:00 UTC = 4:00 AM JST
 scheduler.start()
 
 # Determine initial data immediately in a separate thread so startup isn't blocked
@@ -352,12 +268,10 @@ def trigger_background_fetch_if_needed():
     MUST be called WITHOUT holding data_lock to avoid deadlock."""
     global _is_fetching
     
-    # Read latest_data under lock (quick read only)
     with data_lock:
         last_updated = latest_data.get('last_updated')
         has_data = bool(latest_data.get('full_data'))
     
-    # Check staleness (older than 90 seconds)
     is_stale = False
     if last_updated:
         last_time = datetime.datetime.strptime(last_updated, "%Y-%m-%d %H:%M:%S")
@@ -365,11 +279,10 @@ def trigger_background_fetch_if_needed():
         if (current_jst - last_time).total_seconds() > 90:
             is_stale = True
 
-    # If data is missing or stale, trigger a background update (atomic check-and-set)
     if not has_data or is_stale:
         with _fetch_lock:
             if _is_fetching:
-                return  # Already fetching
+                return
             _is_fetching = True
         
         print("Data missing or stale. Triggering background fetch in worker...")
@@ -388,7 +301,6 @@ def serve_sw():
 
 @app.route('/api/status')
 def get_status():
-    # Trigger fetch OUTSIDE data_lock to avoid deadlock
     trigger_background_fetch_if_needed()
 
     with data_lock:
@@ -424,24 +336,10 @@ def get_thread_status():
         'logger_error': str(logger.last_error) if logger.last_error else None
     })
 
-@app.route('/api/debug')
-def debug_info():
-    if request.args.get('secret') != 'lounge2026':
-        return jsonify({'error': 'Unauthorized'}), 401
-    # Run full data fetch to see if parsing works
-    try:
-        data = monitor.get_all_data()
-        return jsonify({
-            "count": len(data),
-            "data": data,
-            "connection_test": monitor.debug_connections()
-        })
-    except Exception as e:
-        return jsonify({"error": str(e), "trace": "In get_all_data"})
-
 @app.route('/api/weekly-report')
 def get_weekly_report():
     try:
+        import weekly_report
         report = weekly_report.generate_weekly_report()
         if "error" in report:
             return jsonify({"status": "error", "error": report["error"]}), 500
@@ -451,4 +349,3 @@ def get_weekly_report():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001, debug=True, use_reloader=False)
-
