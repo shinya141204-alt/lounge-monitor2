@@ -255,7 +255,8 @@ def get_all_data():
     executor = concurrent.futures.ThreadPoolExecutor(max_workers=6)
     futures = {executor.submit(fn): fn.__name__ for fn in fetchers}
     try:
-        for future in concurrent.futures.as_completed(futures, timeout=30):
+        done, not_done = concurrent.futures.wait(futures.keys(), timeout=30)
+        for future in done:
             name = futures[future]
             try:
                 result = future.result()
@@ -264,8 +265,11 @@ def get_all_data():
                     print(f"  ✓ {name}: {len(result)} stores")
             except Exception as e:
                 print(f"  ✗ {name}: {e}", file=sys.stderr)
-    except concurrent.futures.TimeoutError:
-        print("  ✗ Warning: Some scrapers timed out!", file=sys.stderr)
+        
+        if not_done:
+            for future in not_done:
+                name = futures[future]
+                print(f"  ✗ Warning: {name} timed out!", file=sys.stderr)
     finally:
         executor.shutdown(wait=False, cancel_futures=True)
     

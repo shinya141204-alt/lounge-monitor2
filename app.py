@@ -203,10 +203,18 @@ def update_job():
             for store in data:
                 store['region'] = detect_region(store['name'])
 
-            sorted_data = sorted(data, key=lambda x: (x['women'], x['men']), reverse=True)
-            top_store = sorted_data[0] if sorted_data else None
-            
             with data_lock:
+                current_data = latest_data.get('full_data', [])
+                
+                # Merge new data with current data
+                merged_map = {s['name']: s for s in current_data}
+                for s in data:
+                    merged_map[s['name']] = s
+                
+                merged_data = list(merged_map.values())
+                sorted_data = sorted(merged_data, key=lambda x: (x['women'], x['men']), reverse=True)
+                top_store = sorted_data[0] if sorted_data else None
+                
                 latest_data['top_store'] = top_store
                 latest_data['full_data'] = sorted_data
                 jst_now = datetime.datetime.now() + datetime.timedelta(hours=9)
