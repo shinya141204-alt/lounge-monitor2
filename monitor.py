@@ -4,6 +4,9 @@ import time
 from datetime import datetime
 import sys
 
+# Global error log for debugging Render timeouts
+fetch_errors = {}
+
 # URLs to monitor
 ORIENTAL_URL = "https://oriental-lounge.com/"
 JIS_URL = "https://jis.bar/"
@@ -264,11 +267,13 @@ def get_all_data():
                     data.extend(result)
                     print(f"  ✓ {name}: {len(result)} stores")
             except Exception as e:
+                fetch_errors[name] = str(e)
                 print(f"  ✗ {name}: {e}", file=sys.stderr)
         
         if not_done:
             for future in not_done:
                 name = futures[future]
+                fetch_errors[name] = "Timed out (>30s)"
                 print(f"  ✗ Warning: {name} timed out!", file=sys.stderr)
     finally:
         executor.shutdown(wait=False, cancel_futures=True)

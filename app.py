@@ -341,7 +341,8 @@ def get_thread_status():
         'has_full_data': bool(latest_data['full_data']),
         'is_fetching': _is_fetching,
         'last_error': str(_last_update_error) if _last_update_error else None,
-        'logger_error': str(logger.last_error) if logger.last_error else None
+        'logger_error': str(logger.last_error) if logger.last_error else None,
+        'fetch_errors': getattr(monitor, 'fetch_errors', {})
     })
 
 @app.route('/api/weekly-report')
