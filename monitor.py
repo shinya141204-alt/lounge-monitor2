@@ -241,8 +241,6 @@ def get_clovers_data():
     return []
 
 def get_all_data():
-    import concurrent.futures
-    
     fetchers = [
         get_oriental_data,
         get_jis_data,
@@ -253,30 +251,22 @@ def get_all_data():
     ]
     
     data = []
-    executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
-    futures = {executor.submit(fn): fn.__name__ for fn in fetchers}
-    try:
-        done, not_done = concurrent.futures.wait(futures.keys(), timeout=60)
-        for future in done:
-            name = futures[future]
-            try:
-                result = future.result()
-                if result:
-                    data.extend(result)
-                    print(f"  ✓ {name}: {len(result)} stores")
-            except Exception as e:
-                fetch_errors[name] = str(e)
-                print(f"  ✗ {name}: {e}", file=sys.stderr)
-        
-        if not_done:
-            for future in not_done:
-                name = futures[future]
-                fetch_errors[name] = "Timed out (>30s)"
-                print(f"  ✗ Warning: {name} timed out!", file=sys.stderr)
-    finally:
-        executor.shutdown(wait=False, cancel_futures=True)
+    for fn in fetchers:
+        name = fn.__name__
+        try:
+            result = fn()
+            if result:
+                data.extend(result)
+                print(f"  ✓ {name}: {len(result)} stores")
+            else:
+                fetch_errors[name] = "Returned empty"
+                print(f"  ✗ {name}: returned empty", file=sys.stderr)
+        except Exception as e:
+            fetch_errors[name] = str(e)
+            print(f"  ✗ {name}: {e}", file=sys.stderr)
     
     return data
+
 
 def find_store_with_max_women(data):
     if not data:
