@@ -290,10 +290,10 @@ def trigger_background_fetch_if_needed():
 
     if not has_data or is_stale:
         with _fetch_lock:
-            # If a fetch has been running for more than 120s, assume it's hung and reset
+            # If a fetch has been running for more than 200s, assume it's hung and reset
             if _is_fetching and _fetch_started_at:
                 elapsed = (datetime.datetime.now() - _fetch_started_at).total_seconds()
-                if elapsed > 120:
+                if elapsed > 200:
                     print(f"WARNING: Previous fetch hung for {elapsed:.0f}s. Resetting flag.")
                     _is_fetching = False
                 else:

@@ -240,7 +240,7 @@ def get_clovers_data():
     
     return []
 
-def _run_with_timeout(fn, timeout=15):
+def _run_with_timeout(fn, timeout=30):
     """Run fn in a daemon thread with a hard timeout. Returns result or raises."""
     import threading
     result_holder = [None]
@@ -279,7 +279,7 @@ def get_all_data():
     for fn in fetchers:
         name = fn.__name__
         try:
-            result = _run_with_timeout(fn, timeout=15)
+            result = _run_with_timeout(fn, timeout=30)
             if result:
                 data.extend(result)
                 print(f"  ✓ {name}: {len(result)} stores")
@@ -287,8 +287,8 @@ def get_all_data():
                 fetch_errors[name] = "Returned empty"
                 print(f"  ✗ {name}: returned empty", file=sys.stderr)
         except TimeoutError:
-            fetch_errors[name] = "Hard timeout (>15s)"
-            print(f"  ✗ {name}: hard timeout exceeded 15s!", file=sys.stderr)
+            fetch_errors[name] = "Hard timeout (>30s)"
+            print(f"  ✗ {name}: hard timeout exceeded 30s!", file=sys.stderr)
         except Exception as e:
             fetch_errors[name] = str(e)
             print(f"  ✗ {name}: {e}", file=sys.stderr)
