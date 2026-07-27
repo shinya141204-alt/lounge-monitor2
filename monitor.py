@@ -240,9 +240,32 @@ def get_clovers_data():
     
     return []
 
-def get_all_data():
-    import concurrent.futures
+def _run_with_timeout(fn, timeout=15):
+    """Run fn in a daemon thread with a hard timeout. Returns result or raises."""
+    import threading
+    result_holder = [None]
+    error_holder = [None]
     
+    def wrapper():
+        try:
+            result_holder[0] = fn()
+        except Exception as e:
+            error_holder[0] = e
+    
+    t = threading.Thread(target=wrapper, daemon=True)
+    t.start()
+    t.join(timeout=timeout)
+    
+    if t.is_alive():
+        # Thread is still running - abandon it (daemon thread will die with process)
+        raise TimeoutError(f"Exceeded {timeout}s hard timeout")
+    
+    if error_holder[0]:
+        raise error_holder[0]
+    
+    return result_holder[0]
+
+def get_all_data():
     fetchers = [
         get_oriental_data,
         get_jis_data,
@@ -256,17 +279,14 @@ def get_all_data():
     for fn in fetchers:
         name = fn.__name__
         try:
-            # Run each scraper with a hard 15s timeout using a thread
-            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-                future = executor.submit(fn)
-                result = future.result(timeout=15)
+            result = _run_with_timeout(fn, timeout=15)
             if result:
                 data.extend(result)
                 print(f"  ✓ {name}: {len(result)} stores")
             else:
                 fetch_errors[name] = "Returned empty"
                 print(f"  ✗ {name}: returned empty", file=sys.stderr)
-        except concurrent.futures.TimeoutError:
+        except TimeoutError:
             fetch_errors[name] = "Hard timeout (>15s)"
             print(f"  ✗ {name}: hard timeout exceeded 15s!", file=sys.stderr)
         except Exception as e:
