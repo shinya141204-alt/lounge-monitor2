@@ -268,13 +268,14 @@ def index():
     return render_template('index.html')
 
 _is_fetching = False
+_fetch_started_at = None
 _last_update_error = None
 _fetch_lock = threading.Lock()
 
 def trigger_background_fetch_if_needed():
     """Check if data is stale and trigger a background fetch if needed.
     MUST be called WITHOUT holding data_lock to avoid deadlock."""
-    global _is_fetching
+    global _is_fetching, _fetch_started_at
     
     with data_lock:
         last_updated = latest_data.get('last_updated')
@@ -289,18 +290,28 @@ def trigger_background_fetch_if_needed():
 
     if not has_data or is_stale:
         with _fetch_lock:
-            if _is_fetching:
+            # If a fetch has been running for more than 120s, assume it's hung and reset
+            if _is_fetching and _fetch_started_at:
+                elapsed = (datetime.datetime.now() - _fetch_started_at).total_seconds()
+                if elapsed > 120:
+                    print(f"WARNING: Previous fetch hung for {elapsed:.0f}s. Resetting flag.")
+                    _is_fetching = False
+                else:
+                    return
+            elif _is_fetching:
                 return
             _is_fetching = True
+            _fetch_started_at = datetime.datetime.now()
         
         print("Data missing or stale. Triggering background fetch in worker...")
         def background_fetch():
-            global _is_fetching
+            global _is_fetching, _fetch_started_at
             try:
                 update_job()
             finally:
                 with _fetch_lock:
                     _is_fetching = False
+                    _fetch_started_at = None
         threading.Thread(target=background_fetch).start()
 
 @app.route('/sw.js')

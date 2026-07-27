@@ -241,6 +241,8 @@ def get_clovers_data():
     return []
 
 def get_all_data():
+    import concurrent.futures
+    
     fetchers = [
         get_oriental_data,
         get_jis_data,
@@ -254,18 +256,25 @@ def get_all_data():
     for fn in fetchers:
         name = fn.__name__
         try:
-            result = fn()
+            # Run each scraper with a hard 15s timeout using a thread
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(fn)
+                result = future.result(timeout=15)
             if result:
                 data.extend(result)
                 print(f"  ✓ {name}: {len(result)} stores")
             else:
                 fetch_errors[name] = "Returned empty"
                 print(f"  ✗ {name}: returned empty", file=sys.stderr)
+        except concurrent.futures.TimeoutError:
+            fetch_errors[name] = "Hard timeout (>15s)"
+            print(f"  ✗ {name}: hard timeout exceeded 15s!", file=sys.stderr)
         except Exception as e:
             fetch_errors[name] = str(e)
             print(f"  ✗ {name}: {e}", file=sys.stderr)
     
     return data
+
 
 
 def find_store_with_max_women(data):
