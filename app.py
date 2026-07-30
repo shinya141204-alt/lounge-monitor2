@@ -353,6 +353,18 @@ def health_check():
     """Lightweight endpoint for keep-alive pings (cron-job.org etc.)"""
     return jsonify({'status': 'ok'})
 
+@app.route('/api/debug_ps')
+def debug_ps():
+    import os
+    import threading
+    return jsonify({
+        'pid': os.getpid(),
+        'module_id': module_id,
+        'has_data': bool(latest_data['full_data']),
+        'last_updated': latest_data['last_updated'],
+        'threads': [t.name for t in threading.enumerate()]
+    })
+
 @app.route('/api/logs')
 def view_logs():
     if os.path.exists('app.log'):
