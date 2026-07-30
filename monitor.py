@@ -282,6 +282,9 @@ def get_all_data():
         get_clovers_data,
     ]
     
+    global fetch_errors
+    fetch_errors.clear()
+    
     data = []
     for fn in fetchers:
         name = fn.__name__
@@ -289,7 +292,7 @@ def get_all_data():
             result = _run_with_timeout(fn, timeout=30)
             if result:
                 data.extend(result)
-                print(f"  ✓ {name}: {len(result)} stores")
+                import logging; logging.info(f"  ✓ {name}: {len(result)} stores")
             else:
                 fetch_errors[name] = "Returned empty"
                 import logging; logging.error(f"  ✗ {name}: returned empty")

@@ -334,8 +334,6 @@ def serve_sw():
 
 @app.route('/api/status')
 def get_status():
-    trigger_background_fetch_if_needed()
-
     with data_lock:
         if latest_data.get('full_data'):
             return jsonify({
@@ -353,7 +351,6 @@ def get_status():
 @app.route('/api/health')
 def health_check():
     """Lightweight endpoint for keep-alive pings (cron-job.org etc.)"""
-    trigger_background_fetch_if_needed()
     return jsonify({'status': 'ok'})
 
 @app.route('/api/logs')
