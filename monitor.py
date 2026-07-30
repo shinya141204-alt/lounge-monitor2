@@ -40,9 +40,9 @@ def get_oriental_data():
         response = requests.get(ORIENTAL_URL, timeout=(3, 7), headers=_HEADERS)
         response.raise_for_status()
     except Exception as e:
-        print(f"Error fetching Oriental data: {e}", file=sys.stderr)
+        import logging; logging.error(f"Error fetching Oriental data: {e}")
         if _olg_cache['data']:
-            print(f"Using cached OLG data from {_olg_cache['last_success']}", file=sys.stderr)
+            import logging; logging.error(f"Using cached OLG data from {_olg_cache['last_success']}")
             return _olg_cache['data']
         return []
 
@@ -50,7 +50,7 @@ def get_oriental_data():
     stores = soup.select('a.card.wave-anime-wrap')
     
     if not stores:
-        print(f"WARNING: OLG page returned {len(response.content)} bytes but no store elements found", file=sys.stderr)
+        import logging; logging.error(f"WARNING: OLG page returned {len(response.content)} bytes but no store elements found")
         if _olg_cache['data']:
             return _olg_cache['data']
         return []
@@ -93,7 +93,7 @@ def get_jis_data():
         response = requests.get(JIS_URL, headers=_HEADERS, timeout=(3, 7))
         response.raise_for_status()
     except requests.RequestException as e:
-        print(f"Error fetching JIS data: {e}", file=sys.stderr)
+        import logging; logging.error(f"Error fetching JIS data: {e}")
         return []
 
     soup = BeautifulSoup(response.content, 'html.parser')
@@ -106,7 +106,7 @@ def get_jis_data():
             break
             
     if not target_script:
-        print("Could not find JIS data script", file=sys.stderr)
+        import logging; logging.error("Could not find JIS data script")
         return []
 
     store_data = []
@@ -145,7 +145,7 @@ def get_jis_data():
                         'source': 'jis'
                     })
         except json.JSONDecodeError as e:
-            print(f"Error parsing JIS JSON: {e}", file=sys.stderr)
+            import logging; logging.error(f"Error parsing JIS JSON: {e}")
             
     return store_data
 
@@ -166,7 +166,7 @@ def get_xix_data():
                 'source': 'xix'
             }]
     except Exception as e:
-        print(f"Error fetching XIX data: {e}", file=sys.stderr)
+        import logging; logging.error(f"Error fetching XIX data: {e}")
     return []
 
 def get_alfa_data():
@@ -189,7 +189,7 @@ def get_alfa_data():
             'source': 'alfa'
         }]
     except Exception as e:
-        print(f"Error fetching ALFA data: {e}", file=sys.stderr)
+        import logging; logging.error(f"Error fetching ALFA data: {e}")
     return []
 
 def get_yatakoi_data():
@@ -211,7 +211,7 @@ def get_yatakoi_data():
                 'source': 'yatakoi'
             }]
     except Exception as e:
-        print(f"Error fetching Yatakoi data: {e}", file=sys.stderr)
+        import logging; logging.error(f"Error fetching Yatakoi data: {e}")
     return []
 
 def get_clovers_data():
@@ -220,14 +220,14 @@ def get_clovers_data():
         response = requests.get("https://bar-clovers.com/", headers=_HEADERS, timeout=(3, 7))
         response.raise_for_status()
     except Exception as e:
-        print(f"Error fetching CLOVERS data: {e}", file=sys.stderr)
+        import logging; logging.error(f"Error fetching CLOVERS data: {e}")
         return []
 
     soup = BeautifulSoup(response.content, 'html.parser')
     
     visit_table = soup.select_one('table.visit')
     if not visit_table:
-        print("Could not find visit table on CLOVERS site", file=sys.stderr)
+        import logging; logging.error("Could not find visit table on CLOVERS site")
         return []
     
     try:
@@ -244,7 +244,7 @@ def get_clovers_data():
                     'source': 'clovers'
                 }]
     except (ValueError, IndexError) as e:
-        print(f"Error parsing CLOVERS data: {e}", file=sys.stderr)
+        import logging; logging.error(f"Error parsing CLOVERS data: {e}")
     
     return []
 
@@ -292,13 +292,13 @@ def get_all_data():
                 print(f"  ✓ {name}: {len(result)} stores")
             else:
                 fetch_errors[name] = "Returned empty"
-                print(f"  ✗ {name}: returned empty", file=sys.stderr)
+                import logging; logging.error(f"  ✗ {name}: returned empty")
         except TimeoutError:
             fetch_errors[name] = "Hard timeout (>30s)"
-            print(f"  ✗ {name}: hard timeout exceeded 30s!", file=sys.stderr)
+            import logging; logging.error(f"  ✗ {name}: hard timeout exceeded 30s!")
         except Exception as e:
             fetch_errors[name] = str(e)
-            print(f"  ✗ {name}: {e}", file=sys.stderr)
+            import logging; logging.error(f"  ✗ {name}: {e}")
     
     return data
 

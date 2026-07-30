@@ -1,12 +1,26 @@
-from flask import Flask, render_template, jsonify, request, send_from_directory
+from flask import Flask, render_template, jsonify, request, send_from_directory, Response
 from apscheduler.schedulers.background import BackgroundScheduler
+import logging
 import monitor
 import atexit
 import datetime
 import threading
 import logger
 import statistics
+import os
 from collections import defaultdict
+
+# Set up logging to a file so we can view it via API
+log_file_path = 'app.log'
+logging.basicConfig(
+    filename=log_file_path,
+    level=logging.DEBUG,
+    format='%(asctime)s [%(levelname)s] %(name)s: %(message)s'
+)
+# Also log to stderr for Render
+console = logging.StreamHandler()
+console.setLevel(logging.INFO)
+logging.getLogger('').addHandler(console)
 
 app = Flask(__name__)
 
@@ -341,6 +355,14 @@ def health_check():
     """Lightweight endpoint for keep-alive pings (cron-job.org etc.)"""
     trigger_background_fetch_if_needed()
     return jsonify({'status': 'ok'})
+
+@app.route('/api/logs')
+def view_logs():
+    if os.path.exists('app.log'):
+        with open('app.log', 'r') as f:
+            content = f.read()
+        return Response(content, mimetype='text/plain')
+    return "No logs found.", 404
 
 @app.route('/api/thread_status')
 def get_thread_status():
