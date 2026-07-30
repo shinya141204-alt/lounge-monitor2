@@ -3,6 +3,14 @@ from bs4 import BeautifulSoup
 import time
 from datetime import datetime
 import sys
+import threading
+import socket
+import requests.packages.urllib3.util.connection as urllib3_cn
+
+# Force IPv4 to prevent hanging on broken IPv6 networks (common on Render free instances)
+def allowed_gai_family():
+    return socket.AF_INET
+urllib3_cn.allowed_gai_family = allowed_gai_family
 
 # Global error log for debugging Render timeouts
 fetch_errors = {}
@@ -242,7 +250,6 @@ def get_clovers_data():
 
 def _run_with_timeout(fn, timeout=30):
     """Run fn in a daemon thread with a hard timeout. Returns result or raises."""
-    import threading
     result_holder = [None]
     error_holder = [None]
     
