@@ -24,6 +24,23 @@ logging.getLogger('').addHandler(console)
 
 app = Flask(__name__)
 
+_scheduler_started = False
+_scheduler_lock = threading.Lock()
+
+@app.before_request
+def start_scheduler():
+    global _scheduler_started
+    if not _scheduler_started:
+        with _scheduler_lock:
+            if not _scheduler_started:
+                scheduler = BackgroundScheduler(timezone="UTC")
+                scheduler.add_job(func=update_job, trigger="interval", minutes=1)
+                scheduler.start()
+                threading.Thread(target=update_job, daemon=True).start()
+                _scheduler_started = True
+                import logging
+                logging.info("APScheduler started in worker process")
+
 # Global storage for analysis cache
 analysis_cache = {
     'last_fetched': None,
@@ -262,20 +279,12 @@ def update_job():
             print("No data retrieved.")
             _last_update_error = "No data retrieved from monitor.get_all_data()"
     except Exception as e:
+        print(f"[{datetime.datetime.now()}] Update failed: {e}", file=sys.stderr)
         import traceback
-        _last_update_error = traceback.format_exc()
-        print(f"Error during update: {e}")
+        traceback.print_exc()
+        _last_update_error = e
 
-# Create scheduler
-scheduler = BackgroundScheduler()
-scheduler.add_job(func=update_job, trigger="interval", minutes=1)
-scheduler.start()
 
-# Determine initial data immediately in a separate thread so startup isn't blocked
-threading.Thread(target=update_job).start()
-
-# Shutdown scheduler on exit
-atexit.register(lambda: scheduler.shutdown())
 
 @app.route('/')
 def index():
