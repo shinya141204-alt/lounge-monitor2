@@ -40,6 +40,29 @@ def get_client():
         print(f"Google Sheets Auth Error: {e}", file=sys.stderr)
         return None
 
+def get_access_token():
+    """Authenticates and returns the access token."""
+    scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+    possible_paths = [
+        os.path.join(os.path.dirname(__file__), CREDENTIALS_FILE),
+        os.path.join('/etc/secrets/', CREDENTIALS_FILE)
+    ]
+    
+    creds_path = None
+    for path in possible_paths:
+        if os.path.exists(path):
+            creds_path = path
+            break
+            
+    if not creds_path:
+        return None
+        
+    try:
+        creds = ServiceAccountCredentials.from_json_keyfile_name(creds_path, scope)
+        return creds.get_access_token().access_token
+    except Exception:
+        return None
+
 last_error = None
 
 def log_data(data):

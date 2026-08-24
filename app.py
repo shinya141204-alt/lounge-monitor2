@@ -49,64 +49,93 @@ analysis_cache = {
 }
 ANALYSIS_CACHE_DURATION = 900  # Cache for 15 minutes
 
-def get_sheet_data():
-    """Fetches data from Google Sheets with caching."""
-    global analysis_cache
-    
-    now = datetime.datetime.now()
-    
-    # Check cache validity
-    if analysis_cache['raw_data'] and analysis_cache['last_fetched']:
-        time_diff = (now - analysis_cache['last_fetched']).total_seconds()
-        if time_diff < ANALYSIS_CACHE_DURATION:
-            return analysis_cache['raw_data']
-            
-    # Fetch new data
-    try:
-        print("Fetching historical data from Google Sheets...")
-        client = logger.get_client()
-        if not client:
-            return None
-            
-        sheet = client.open('Lounge Monitor Data').sheet1
-        all_values = sheet.get_all_values()
-        
-        data = []
-        for row in all_values[1:]:
-            if len(row) >= 4:
-                try:
-                    data.append({
-                        'ts': row[0],
-                        'name': row[1],
-                        'men': int(row[2]) if row[2] else 0,
-                        'women': int(row[3]) if row[3] else 0
-                    })
-                except Exception as e:
-                    print(f"Error parsing historical data: {e}", file=__import__('sys').stderr)
-                    continue
-        
-        analysis_cache['raw_data'] = data
-        analysis_cache['last_fetched'] = now
-        analysis_cache['processed_per_store'] = {}
-        print(f"Cached {len(data)} rows of historical data.")
-        return data
-        
-    except Exception as e:
-        print(f"Error fetching sheet data: {e}")
-        return None
+
 
 @app.route('/api/analysis/<path:store_name>')
 def get_store_analysis(store_name):
     """Returns aggregated hourly and weekly data for a specific store."""
-    data = get_sheet_data()
-    if not data:
-        return jsonify({"error": "Failed to load data"}), 500
-        
-    if store_name in analysis_cache['processed_per_store']:
-        return jsonify(analysis_cache['processed_per_store'][store_name])
-        
-    target_data = [d for d in data if store_name in d['name']]
+    global analysis_cache
     
+    # Initialize cache format if needed
+    if 'raw_data_by_store' not in analysis_cache:
+        analysis_cache['raw_data_by_store'] = {}
+        
+    now = datetime.datetime.now()
+    target_data = None
+    
+    # Check cache
+    if store_name in analysis_cache['raw_data_by_store']:
+        cached = analysis_cache['raw_data_by_store'][store_name]
+        if (now - cached['last_fetched']).total_seconds() < ANALYSIS_CACHE_DURATION:
+            target_data = cached['data']
+            
+    if target_data is None:
+        try:
+            print(f"Fetching historical data for {store_name} from Google Sheets via gviz...")
+            client = logger.get_client()
+            access_token = logger.get_access_token()
+            if not client or not access_token:
+                return jsonify({"error": "Failed to authenticate"}), 500
+                
+            sheet = client.open('Lounge Monitor Data')
+            spreadsheet_id = sheet.id
+            
+            import requests
+            import json
+            import urllib.parse
+            
+            query = f"SELECT * WHERE B='{store_name}'"
+            url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/gviz/tq?tq={urllib.parse.quote(query)}"
+            headers = {"Authorization": f"Bearer {access_token}"}
+            
+            response = requests.get(url, headers=headers)
+            if response.status_code != 200:
+                print(f"Failed to fetch data via gviz: HTTP {response.status_code}")
+                return jsonify({"error": "Failed to load data"}), 500
+                
+            text = response.text
+            if "google.visualization.Query.setResponse(" in text:
+                json_str = text[text.find("{"):text.rfind("}")+1]
+                data_json = json.loads(json_str)
+                rows = data_json.get('table', {}).get('rows', [])
+                
+                target_data = []
+                for row in rows:
+                    cols = row.get('c', [])
+                    if len(cols) >= 4:
+                        # Extract string/number values correctly handling nulls
+                        ts_val = cols[0].get('v') if cols[0] else None
+                        name_val = cols[1].get('v') if cols[1] else None
+                        men_val = cols[2].get('v') if cols[2] else 0
+                        women_val = cols[3].get('v') if cols[3] else 0
+                        
+                        target_data.append({
+                            'ts': ts_val,
+                            'name': name_val,
+                            'men': int(men_val) if men_val is not None else 0,
+                            'women': int(women_val) if women_val is not None else 0
+                        })
+                
+                analysis_cache['raw_data_by_store'][store_name] = {
+                    'data': target_data,
+                    'last_fetched': now
+                }
+                
+                # Invalidate the processed cache for this store so it gets recomputed
+                if 'processed_per_store' not in analysis_cache:
+                    analysis_cache['processed_per_store'] = {}
+                if store_name in analysis_cache['processed_per_store']:
+                    del analysis_cache['processed_per_store'][store_name]
+                    
+                print(f"Fetched and cached {len(target_data)} rows for {store_name}.")
+            else:
+                print("Invalid response from gviz API")
+                return jsonify({"error": "Failed to parse data"}), 500
+                
+        except Exception as e:
+            print(f"Error fetching sheet data for {store_name}: {e}", file=__import__('sys').stderr)
+            return jsonify({"error": "Failed to load data"}), 500
+
     if not target_data:
         return jsonify({"error": "Store not found"}), 404
         
