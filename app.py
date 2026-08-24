@@ -141,6 +141,7 @@ def get_store_analysis(store_name):
         
     hourly_women = defaultdict(list)
     weekday_women = defaultdict(list)
+    weekday_men = defaultdict(list)
     hourly_women_by_day = defaultdict(lambda: defaultdict(list))
     
     for d in target_data:
@@ -148,6 +149,7 @@ def get_store_analysis(store_name):
             dt = datetime.datetime.strptime(d['ts'], "%Y-%m-%d %H:%M:%S")
             hourly_women[dt.hour].append(d['women'])
             weekday_women[dt.weekday()].append(d['women'])
+            weekday_men[dt.weekday()].append(d['men'])
             hourly_women_by_day[dt.weekday()][dt.hour].append(d['women'])
         except Exception as e:
             print(f"Error analyzing historical data: {e}", file=__import__('sys').stderr)
@@ -162,10 +164,13 @@ def get_store_analysis(store_name):
         hourly_raw_display[h] = vals
         
     weekday_result = {}
+    weekday_men_result = {}
     weekdays_str = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
     for i in range(7):
-        vals = weekday_women.get(i, [])
-        weekday_result[weekdays_str[i]] = round(statistics.mean(vals), 1) if vals else 0
+        w_vals = weekday_women.get(i, [])
+        m_vals = weekday_men.get(i, [])
+        weekday_result[weekdays_str[i]] = round(statistics.mean(w_vals), 1) if w_vals else 0
+        weekday_men_result[weekdays_str[i]] = round(statistics.mean(m_vals), 1) if m_vals else 0
         
     hourly_by_weekday_result = {}
     hourly_raw_by_weekday_result = {}
@@ -215,6 +220,7 @@ def get_store_analysis(store_name):
         "hourly": hourly_result,
         "hourly_raw": hourly_raw_display,
         "weekday": weekday_result,
+        "weekday_men": weekday_men_result,
         "hourly_by_weekday": hourly_by_weekday_result,
         "hourly_raw_by_weekday": hourly_raw_by_weekday_result,
         "recent_trend": recent_data_women,

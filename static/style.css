@@ -579,27 +579,36 @@ body.compact-mode .occupancy-bar {
     background: rgba(212, 175, 55, 0.05);
 }
 
-/* Pin Button */
-.pin-btn {
+/* Card Actions */
+.card-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 4px;
+    margin-right: 4px;
+}
+
+.pin-btn, .analysis-btn {
     background: transparent;
     border: none;
     color: var(--text-secondary);
     cursor: pointer;
-    padding: 2px 4px;
-    /* Slightly tighter */
-    margin-right: 2px;
+    padding: 2px;
     transition: all 0.2s ease;
     display: flex;
     align-items: center;
     justify-content: center;
     opacity: 0.3;
     flex-shrink: 0;
-    /* Important */
 }
 
-.pin-btn:hover {
+.pin-btn:hover, .analysis-btn:hover {
     opacity: 1;
     transform: scale(1.1);
+}
+
+.analysis-btn:hover {
+    color: #4dabf7; /* highlight color for analysis */
 }
 
 .pin-btn.active {
@@ -625,7 +634,7 @@ body.compact-mode .occupancy-bar {
     margin: 20px 0;
 }
 
-.star-icon {
+.star-icon, .chart-icon {
     width: 18px;
     height: 18px;
 }

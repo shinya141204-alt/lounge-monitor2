@@ -28,6 +28,16 @@
             <h2 id="modal-store-name">Store Name</h2>
 
             <div class="chart-container">
+                <!-- Weekday Average Section -->
+                <div class="chart-container weekday-analysis-section">
+                    <h3>曜日別平均 (Weekday Average)</h3>
+                    <div id="weekday-chart-container" style="height: 200px; margin-bottom: 20px;">
+                        <canvas id="weekdayChart"></canvas>
+                    </div>
+                </div>
+                
+                <hr style="border: 1px solid rgba(255,255,255,0.1); margin: 20px 0;">
+
                 <!-- Daily Detail Section -->
                 <div class="chart-container daily-detail-section">
                     <h3>日別詳細 (Daily Detail)</h3>
@@ -174,15 +184,24 @@
             <div class="store-info">
                 <h3 class="store-name">Store Name</h3>
             </div>
-            <!-- Pin Button Code -->
-            <button class="pin-btn" aria-label="Pin Store">
-                <svg class="star-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <polygon
-                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2">
-                    </polygon>
-                </svg>
-            </button>
+            <!-- Card Actions -->
+            <div class="card-actions">
+                <button class="pin-btn" aria-label="Pin Store" title="お気に入り">
+                    <svg class="star-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <polygon
+                            points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2">
+                        </polygon>
+                    </svg>
+                </button>
+                <button class="analysis-btn" aria-label="Analyze Store" title="詳細分析">
+                    <svg class="chart-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="20" x2="18" y2="10"></line>
+                        <line x1="12" y1="20" x2="12" y2="4"></line>
+                        <line x1="6" y1="20" x2="6" y2="14"></line>
+                    </svg>
+                </button>
+            </div>
             <div class="stats-group">
                 <div class="stat ladies">
                     <span class="count">0</span>
@@ -370,6 +389,13 @@
                 togglePin(store.name);
             };
 
+            // Analysis button handler
+            const analysisBtn = node.querySelector('.analysis-btn');
+            analysisBtn.onclick = (e) => {
+                e.stopPropagation();
+                openModal(store.name);
+            };
+
             // Card click handler (Open Analysis)
             item.style.cursor = 'pointer';
             item.onclick = () => openModal(store.name);
@@ -547,6 +573,7 @@
         function closeModal() {
             document.getElementById('analysis-modal').classList.add('hidden');
             if (dailyChartInstance) { dailyChartInstance.destroy(); dailyChartInstance = null; }
+            if (weekdayAnalysisChartInstance) { weekdayAnalysisChartInstance.destroy(); weekdayAnalysisChartInstance = null; }
             currentAnalysisData = null;
         }
 
@@ -724,14 +751,63 @@
         });
 
         function renderCharts(data) {
-            // Only generate date buttons for daily detail view
+            // Render Weekday Chart
+            renderWeekdayChart(data);
+            
+            // Generate date buttons and daily chart
             generateDateButtons(data);
         }
 
         let dailyChartInstance = null;
+        let weekdayAnalysisChartInstance = null;
         let allDates = [];
         let visibleDateCount = 7;
         let currentData = null;
+        
+        function renderWeekdayChart(data) {
+            if (weekdayAnalysisChartInstance) {
+                weekdayAnalysisChartInstance.destroy();
+            }
+            const ctx = document.getElementById('weekdayChart').getContext('2d');
+            
+            const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+            const displayDays = ['月', '火', '水', '木', '金', '土', '日'];
+            
+            const womenData = days.map(d => data.weekday[d] || 0);
+            const menData = days.map(d => data.weekday_men ? (data.weekday_men[d] || 0) : 0);
+
+            weekdayAnalysisChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: displayDays,
+                    datasets: [
+                        {
+                            label: 'Ladies',
+                            data: womenData,
+                            backgroundColor: 'rgba(255, 107, 107, 0.8)',
+                            borderRadius: 4
+                        },
+                        {
+                            label: 'Men',
+                            data: menData,
+                            backgroundColor: 'rgba(77, 171, 247, 0.8)',
+                            borderRadius: 4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { grid: { display: false } },
+                        y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' } }
+                    },
+                    plugins: {
+                        legend: { display: true, labels: { color: '#fff' } }
+                    }
+                }
+            });
+        }
 
         function generateDateButtons(data) {
             currentData = data;
