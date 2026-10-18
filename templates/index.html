@@ -195,9 +195,9 @@
                     ボタンを選ぶだけで、いまのリアルタイム人数から<strong>X（旧Twitter）・LINE・TikTok用の速報テキスト</strong>を自動生成します。
                 </p>
                 <div class="sns-preset-tabs">
-                    <button class="sns-tab-btn active" data-preset="all" onclick="selectSnsPreset('all')">🔥 全国TOP5</button>
-                    <button class="sns-tab-btn" data-preset="kanto" onclick="selectSnsPreset('kanto')">🗼 関東TOP5</button>
-                    <button class="sns-tab-btn" data-preset="kansai" onclick="selectSnsPreset('kansai')">🐙 関西TOP5</button>
+                    <button class="sns-tab-btn active" data-preset="all" onclick="selectSnsPreset('all')">🔥 全国TOP3</button>
+                    <button class="sns-tab-btn" data-preset="kanto" onclick="selectSnsPreset('kanto')">🗼 関東TOP3</button>
+                    <button class="sns-tab-btn" data-preset="kansai" onclick="selectSnsPreset('kansai')">🐙 関西TOP3</button>
                     <button class="sns-tab-btn" data-preset="anaba" onclick="selectSnsPreset('anaba')">💎 穴場(女性比率)</button>
                 </div>
                 <textarea id="sns-preview-textarea" class="sns-preview-textarea" rows="8"></textarea>
@@ -1219,22 +1219,22 @@
             const ts = (window.lastData && window.lastData.timestamp) ? window.lastData.timestamp.split(' ')[1].slice(0, 5) : '現在';
 
             if (stores.length === 0) {
-                return `🔥全国の相席ラウンジ人数ランキング「相席ナビ」\n${shareUrl}\n#相席ナビ #相席ラウンジ`;
+                return `🔥全国ラウンジ人数ランキング「相席ナビ」\n${shareUrl}\n#相席ナビ #相席ラウンジ`;
             }
 
             let list = [];
             let header = '';
-            let tags = '';
+            let tags = '#相席ナビ #相席ラウンジ';
             let isAnaba = false;
 
             if (preset === 'kanto') {
-                list = stores.filter(s => s.region === 'Kanto').sort((a, b) => (b.women - a.women) || (b.men - a.men)).slice(0, 5);
-                header = `🗼【${ts} 関東エリア速報】いま女性が多い相席ラウンジTOP5！`;
-                tags = `#相席ナビ #相席ラウンジ #新宿 #渋谷 #オリエンタルラウンジ`;
+                list = stores.filter(s => s.region === 'Kanto').sort((a, b) => (b.women - a.women) || (b.men - a.men)).slice(0, 3);
+                header = `🗼【${ts} 関東速報】女性が多いラウンジTOP3`;
+                tags = `#相席ナビ #相席ラウンジ #新宿 #渋谷`;
             } else if (preset === 'kansai') {
-                list = stores.filter(s => s.region === 'Kinki').sort((a, b) => (b.women - a.women) || (b.men - a.men)).slice(0, 5);
-                header = `🐙【${ts} 関西エリア速報】いま女性が多い相席ラウンジTOP5！`;
-                tags = `#相席ナビ #相席ラウンジ #梅田 #難波 #心斎橋 #茶屋町`;
+                list = stores.filter(s => s.region === 'Kinki').sort((a, b) => (b.women - a.women) || (b.men - a.men)).slice(0, 3);
+                header = `🐙【${ts} 関西速報】女性が多いラウンジTOP3`;
+                tags = `#相席ナビ #相席ラウンジ #梅田 #難波`;
             } else if (preset === 'anaba') {
                 isAnaba = true;
                 list = stores.filter(s => (s.women || 0) >= 10).sort((a, b) => {
@@ -1242,15 +1242,15 @@
                     const rB = b.women / Math.max(1, b.women + b.men);
                     return (rB - rA) || (b.women - a.women);
                 }).slice(0, 3);
-                header = `💎【${ts} 穴場速報】いま女性比率が高くて狙い目の相席ラウンジTOP3！`;
-                tags = `#相席ナビ #相席ラウンジ #オリエンタルラウンジ #JIS`;
+                header = `💎【${ts} 穴場速報】女性比率が高い狙い目TOP3`;
+                tags = `#相席ナビ #相席ラウンジ`;
             } else {
-                list = stores.sort((a, b) => (b.women - a.women) || (b.men - a.men)).slice(0, 5);
-                header = `🔥【${ts} 全国速報】いま盛り上がってる相席ラウンジTOP5！`;
-                tags = `#相席ナビ #相席ラウンジ #オリエンタルラウンジ #JIS #ag`;
+                list = stores.sort((a, b) => (b.women - a.women) || (b.men - a.men)).slice(0, 3);
+                header = `🔥【${ts} 全国速報】女性が多いラウンジTOP3`;
+                tags = `#相席ナビ #相席ラウンジ`;
             }
 
-            const medals = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣'];
+            const medals = ['🥇', '🥈', '🥉'];
             const lines = [header];
             list.forEach((s, i) => {
                 const b = detectBrandInfo(s);
@@ -1259,12 +1259,12 @@
                 const tot = w + m;
                 const pct = tot > 0 ? Math.round((w / tot) * 100) : 0;
                 if (isAnaba) {
-                    lines.push(`${medals[i]} ${b.fullDisplayTitle}（女性${pct}%｜👩${w}名/👨${m}名）`);
+                    lines.push(`${medals[i]}${b.fullDisplayTitle}(女${pct}%｜👩${w}/👨{m})`.replace('{m}', m));
                 } else {
-                    lines.push(`${medals[i]} ${b.fullDisplayTitle}（👩${w}名 / 👨${m}名）`);
+                    lines.push(`${medals[i]}${b.fullDisplayTitle}(👩${w}名/👨${m}名)`);
                 }
             });
-            lines.push(`👇全店舗のリアルタイム人数＆曜日別グラフ\n${shareUrl}\n${tags}`);
+            lines.push(`👇全65店舗の現在人数＆グラフ\n${shareUrl}\n${tags}`);
             return lines.join('\n');
         }
 
