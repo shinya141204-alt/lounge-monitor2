@@ -183,6 +183,35 @@
     </div>
     <!-- End Guide Modal -->
 
+    <!-- SNS Viral Post Generator Modal -->
+    <div id="sns-modal" class="modal hidden">
+        <div class="modal-content" style="max-width: 640px;">
+            <div class="modal-header">
+                <h2>📣 SNS速報ポスト作成（集客・共有用）</h2>
+                <button class="close-btn-pill" onclick="closeSnsModal()" aria-label="閉じる">✕ 閉じる</button>
+            </div>
+            <div class="sns-modal-body">
+                <p class="guide-lead" style="margin-bottom: 10px;">
+                    ボタンを選ぶだけで、いまのリアルタイム人数から<strong>X（旧Twitter）・LINE・TikTok用の速報テキスト</strong>を自動生成します。
+                </p>
+                <div class="sns-preset-tabs">
+                    <button class="sns-tab-btn active" data-preset="all" onclick="selectSnsPreset('all')">🔥 全国TOP5</button>
+                    <button class="sns-tab-btn" data-preset="kanto" onclick="selectSnsPreset('kanto')">🗼 関東TOP5</button>
+                    <button class="sns-tab-btn" data-preset="kansai" onclick="selectSnsPreset('kansai')">🐙 関西TOP5</button>
+                    <button class="sns-tab-btn" data-preset="anaba" onclick="selectSnsPreset('anaba')">💎 穴場(女性比率)</button>
+                </div>
+                <textarea id="sns-preview-textarea" class="sns-preview-textarea" rows="8"></textarea>
+                <div class="sns-modal-actions">
+                    <button class="share-pill-btn x-btn" onclick="postGeneratedSns('x')">𝕏 ワンタップでポストする</button>
+                    <button class="share-pill-btn line-btn" onclick="postGeneratedSns('line')">💬 LINEで送る</button>
+                    <button class="share-pill-btn copy-btn" onclick="postGeneratedSns('copy')">📋 全文コピー</button>
+                </div>
+            </div>
+            <button class="modal-bottom-close-btn" onclick="closeSnsModal()">✕ 閉じる</button>
+        </div>
+    </div>
+    <!-- End SNS Modal -->
+
     <!-- Comparison Modal -->
     <div id="comparison-modal" class="modal hidden">
         <div class="modal-content">
@@ -245,11 +274,11 @@
                     </svg>
                     <span>表示切替</span>
                 </button>
-                <button id="share-btn" class="header-btn labeled-btn" onclick="shareCurrentRanking('native')" title="ランキングを友達にシェア">
+                <button id="share-btn" class="header-btn labeled-btn" onclick="openSnsModal()" title="SNS速報ポスト作成・共有">
                     <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
                     </svg>
-                    <span>共有</span>
+                    <span>速報共有</span>
                 </button>
                 <button id="refresh-btn" class="header-btn labeled-btn refresh-btn" onclick="manualRefresh()" title="データを更新">
                     <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -1183,6 +1212,99 @@
             document.getElementById('legal-modal').classList.add('hidden');
         }
 
+        // --- SNS Viral Post Generator Modal Logic ---
+        function generatePresetText(preset) {
+            const shareUrl = window.location.origin + window.location.pathname;
+            const stores = (window.lastData && window.lastData.ranking) ? [...window.lastData.ranking] : [];
+            const ts = (window.lastData && window.lastData.timestamp) ? window.lastData.timestamp.split(' ')[1].slice(0, 5) : '現在';
+
+            if (stores.length === 0) {
+                return `🔥全国の相席ラウンジ人数ランキング「相席ナビ」\n${shareUrl}\n#相席ナビ #相席ラウンジ`;
+            }
+
+            let list = [];
+            let header = '';
+            let tags = '';
+            let isAnaba = false;
+
+            if (preset === 'kanto') {
+                list = stores.filter(s => s.region === 'Kanto').sort((a, b) => (b.women - a.women) || (b.men - a.men)).slice(0, 5);
+                header = `🗼【${ts} 関東エリア速報】いま女性が多い相席ラウンジTOP5！`;
+                tags = `#相席ナビ #相席ラウンジ #新宿 #渋谷 #オリエンタルラウンジ`;
+            } else if (preset === 'kansai') {
+                list = stores.filter(s => s.region === 'Kinki').sort((a, b) => (b.women - a.women) || (b.men - a.men)).slice(0, 5);
+                header = `🐙【${ts} 関西エリア速報】いま女性が多い相席ラウンジTOP5！`;
+                tags = `#相席ナビ #相席ラウンジ #梅田 #難波 #心斎橋 #茶屋町`;
+            } else if (preset === 'anaba') {
+                isAnaba = true;
+                list = stores.filter(s => (s.women || 0) >= 10).sort((a, b) => {
+                    const rA = a.women / Math.max(1, a.women + a.men);
+                    const rB = b.women / Math.max(1, b.women + b.men);
+                    return (rB - rA) || (b.women - a.women);
+                }).slice(0, 3);
+                header = `💎【${ts} 穴場速報】いま女性比率が高くて狙い目の相席ラウンジTOP3！`;
+                tags = `#相席ナビ #相席ラウンジ #オリエンタルラウンジ #JIS`;
+            } else {
+                list = stores.sort((a, b) => (b.women - a.women) || (b.men - a.men)).slice(0, 5);
+                header = `🔥【${ts} 全国速報】いま盛り上がってる相席ラウンジTOP5！`;
+                tags = `#相席ナビ #相席ラウンジ #オリエンタルラウンジ #JIS #ag`;
+            }
+
+            const medals = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣'];
+            const lines = [header];
+            list.forEach((s, i) => {
+                const b = detectBrandInfo(s);
+                const w = s.women || 0;
+                const m = s.men || 0;
+                const tot = w + m;
+                const pct = tot > 0 ? Math.round((w / tot) * 100) : 0;
+                if (isAnaba) {
+                    lines.push(`${medals[i]} ${b.fullDisplayTitle}（女性${pct}%｜👩${w}名/👨${m}名）`);
+                } else {
+                    lines.push(`${medals[i]} ${b.fullDisplayTitle}（👩${w}名 / 👨${m}名）`);
+                }
+            });
+            lines.push(`👇全店舗のリアルタイム人数＆曜日別グラフ\n${shareUrl}\n${tags}`);
+            return lines.join('\n');
+        }
+
+        function selectSnsPreset(preset) {
+            document.querySelectorAll('.sns-tab-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.preset === preset);
+            });
+            const ta = document.getElementById('sns-preview-textarea');
+            if (ta) {
+                ta.value = generatePresetText(preset);
+            }
+        }
+
+        function openSnsModal() {
+            const defaultPreset = currentFilter === 'Kanto' ? 'kanto' : (currentFilter === 'Kinki' ? 'kansai' : 'all');
+            selectSnsPreset(defaultPreset);
+            document.getElementById('sns-modal').classList.remove('hidden');
+        }
+
+        function closeSnsModal() {
+            document.getElementById('sns-modal').classList.add('hidden');
+        }
+
+        async function postGeneratedSns(platform) {
+            const ta = document.getElementById('sns-preview-textarea');
+            const text = ta ? ta.value : generatePresetText('all');
+            if (platform === 'x') {
+                const xUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
+                window.open(xUrl, '_blank', 'noopener,noreferrer');
+            } else if (platform === 'line') {
+                const lineUrl = `https://social-plugins.line.me/lineit/share?text=${encodeURIComponent(text)}`;
+                window.open(lineUrl, '_blank', 'noopener,noreferrer');
+            } else {
+                try {
+                    await navigator.clipboard.writeText(text);
+                    showRefreshToast('📋 速報テキストをコピーしました！');
+                } catch (e) {}
+            }
+        }
+
         function showError() {
             document.getElementById('loading').classList.add('hidden');
             document.getElementById('content').classList.add('hidden');
@@ -1274,6 +1396,9 @@
         });
         document.getElementById('guide-modal').addEventListener('click', (e) => {
             if (e.target.id === ('guide-modal')) closeGuideModal();
+        });
+        document.getElementById('sns-modal').addEventListener('click', (e) => {
+            if (e.target.id === ('sns-modal')) closeSnsModal();
         });
 
         // --- Comparison Modal Logic ---

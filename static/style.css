@@ -1512,3 +1512,54 @@ canvas {
     max-width: 100%;
     height: auto;
 }
+
+/* --- SNS Viral Post Generator Modal --- */
+.sns-preset-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+.sns-tab-btn {
+    flex: 1;
+    min-width: 110px;
+    padding: 7px 10px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #cbd5e1;
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.sns-tab-btn.active {
+    background: linear-gradient(90deg, rgba(236, 72, 153, 0.28), rgba(59, 130, 246, 0.28));
+    border-color: #ec4899;
+    color: #fff;
+}
+
+.sns-preview-textarea {
+    width: 100%;
+    box-sizing: border-box;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    color: #f8fafc;
+    padding: 10px 12px;
+    font-size: 0.78rem;
+    line-height: 1.55;
+    font-family: inherit;
+    resize: vertical;
+    margin-bottom: 12px;
+}
+
+.sns-modal-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}

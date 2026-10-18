@@ -509,6 +509,58 @@ def sitemap_xml():
 </urlset>"""
     return Response(xml, mimetype='application/xml')
 
+@app.route('/api/sns-post')
+def generate_sns_post_api():
+    """Returns ready-to-post viral X/SNS text from current live data."""
+    post_type = request.args.get('type', 'all').lower()
+    base_url = request.url_root.rstrip('/')
+    stores = latest_data.get('full_data') or []
+    ts = latest_data.get('last_updated') or ''
+    time_part = ts.split(' ')[1] if ' ' in ts else '現在'
+
+    if not stores:
+        return jsonify({'status': 'loading', 'text': f'全国の相席ラウンジ人数ランキング「相席ナビ」\n{base_url}/'})
+
+    if post_type == 'kanto':
+        filtered = [s for s in stores if s.get('region') == 'Kanto']
+        header = f"🗼【{time_part} 関東速報】いま女性が多い相席ラウンジTOP5！"
+        tags = "#相席ナビ #相席ラウンジ #新宿 #渋谷 #オリエンタルラウンジ"
+    elif post_type == 'kansai':
+        filtered = [s for s in stores if s.get('region') == 'Kinki']
+        header = f"🐙【{time_part} 関西速報】いま女性が多い相席ラウンジTOP5！"
+        tags = "#相席ナビ #相席ラウンジ #梅田 #難波 #心斎橋"
+    elif post_type == 'anaba':
+        # High female ratio & at least 10 women
+        candidates = [s for s in stores if s.get('women', 0) >= 10]
+        candidates.sort(key=lambda x: (x.get('women', 0) / max(1, x.get('women', 0) + x.get('men', 0)), x.get('women', 0)), reverse=True)
+        filtered = candidates
+        header = f"💎【{time_part} 穴場速報】いま女性比率が高くて狙い目の相席ラウンジTOP3！"
+        tags = "#相席ナビ #相席ラウンジ #オリエンタルラウンジ #JIS"
+    else:
+        filtered = list(stores)
+        header = f"🔥【{time_part} 全国速報】いま盛り上がってる相席ラウンジTOP5！"
+        tags = "#相席ナビ #相席ラウンジ #オリエンタルラウンジ #JIS #ag"
+
+    limit = 3 if post_type == 'anaba' else 5
+    medals = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣']
+    lines = [header]
+    for i, s in enumerate(filtered[:limit]):
+        w = s.get('women', 0)
+        m = s.get('men', 0)
+        tot = w + m
+        pct = round((w / tot) * 100) if tot > 0 else 0
+        if post_type == 'anaba':
+            lines.append(f"{medals[i]} {s.get('name')}（女性比率{pct}%｜👩{w}名/👨{m}名）")
+        else:
+            lines.append(f"{medals[i]} {s.get('name')}（👩{w}名 / 👨{m}名）")
+    lines.append(f"👇全店舗のリアルタイム人数＆曜日別グラフはこちら\n{base_url}/\n{tags}")
+    return jsonify({
+        'status': 'success',
+        'type': post_type,
+        'timestamp': ts,
+        'text': "\n".join(lines)
+    })
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001, debug=True, use_reloader=False)
 
