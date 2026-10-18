@@ -148,24 +148,33 @@ h1 {
     min-width: 0;
     text-align: left;
     z-index: 1;
-    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
 }
 
-.store-title-row {
+.store-meta-row {
     display: flex;
     align-items: center;
     gap: 6px;
-    min-width: 0;
+    flex-wrap: wrap;
+}
+
+.area-tag {
+    font-size: 0.68rem;
+    color: var(--text-secondary);
+    font-weight: 400;
+    letter-spacing: 0.3px;
 }
 
 .brand-badge {
-    font-size: 0.62rem;
+    font-size: 0.6rem;
     font-weight: 700;
-    padding: 2px 6px;
+    padding: 1px 6px;
     border-radius: 4px;
     letter-spacing: 0.5px;
     flex-shrink: 0;
-    line-height: 1.2;
+    line-height: 1.3;
     border: 1px solid rgba(255, 255, 255, 0.15);
 }
 
@@ -218,11 +227,12 @@ h1 {
 
 .store-name {
     margin: 0;
-    font-size: 0.92rem;
+    font-size: 0.96rem;
     font-weight: 600;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    line-height: 1.25;
+    white-space: normal;
+    word-break: keep-all;
+    overflow-wrap: anywhere;
 }
 
 .stats-group {
@@ -627,9 +637,9 @@ body.compact-mode .occupancy-bar {
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: 6px;
+    gap: 4px;
     margin-left: 6px;
-    margin-right: 4px;
+    margin-right: 2px;
     z-index: 2;
 }
 
@@ -638,7 +648,7 @@ body.compact-mode .occupancy-bar {
     border: none;
     color: var(--text-secondary);
     cursor: pointer;
-    padding: 5px;
+    padding: 4px;
     transition: all 0.2s ease;
     display: flex;
     align-items: center;
@@ -652,16 +662,14 @@ body.compact-mode .occupancy-bar {
     border: 1px solid rgba(77, 171, 247, 0.3);
     color: #74c0fc;
     cursor: pointer;
-    padding: 4px 8px;
-    border-radius: 14px;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border-radius: 50%;
     transition: all 0.2s ease;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 3px;
-    font-size: 0.7rem;
-    font-family: var(--font-main);
-    font-weight: 600;
     flex-shrink: 0;
 }
 
@@ -700,13 +708,13 @@ body.compact-mode .occupancy-bar {
 }
 
 .star-icon {
-    width: 18px;
-    height: 18px;
+    width: 17px;
+    height: 17px;
 }
 
 .chart-icon {
-    width: 14px;
-    height: 14px;
+    width: 15px;
+    height: 15px;
 }
 
 /* Refresh Toast Notification */

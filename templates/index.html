@@ -219,10 +219,11 @@
         <div class="ranking-item">
             <div class="rank-badge">1</div>
             <div class="store-info">
-                <div class="store-title-row">
+                <div class="store-meta-row">
                     <span class="brand-badge">OLG</span>
-                    <h3 class="store-name">Store Name</h3>
+                    <span class="area-tag">東京</span>
                 </div>
+                <h3 class="store-name">Store Name</h3>
             </div>
             <!-- Card Actions -->
             <div class="card-actions">
@@ -240,7 +241,6 @@
                         <line x1="12" y1="20" x2="12" y2="4"></line>
                         <line x1="6" y1="20" x2="6" y2="14"></line>
                     </svg>
-                    <span class="analysis-btn-label">分析</span>
                 </button>
             </div>
             <div class="stats-group">
@@ -502,32 +502,157 @@
             }, 400);
         }
 
-        function detectBrandInfo(store) {
-            const rawSource = (store.source || '').toUpperCase();
-            const name = store.name || '';
-            if (rawSource === 'ORIENTAL' || name.startsWith('OLG ') || name.startsWith('ag ')) {
-                if (name.startsWith('ag ') || name.includes('ag')) {
-                    return { code: 'AG', cls: 'brand-ag', cleanName: name.replace(/^OLG\s+|^ag\s+/i, '') };
+        // Map English location names to readable Japanese
+        const EN_TO_JA_MAP = {
+            'NISHISHINJUKU': '西新宿',
+            'SHINJUKU': '新宿',
+            'SHIBUYA': '渋谷',
+            'EBISU': '恵比寿',
+            'UENO': '上野',
+            'MACHIDA': '町田',
+            'KASHIWA': '柏',
+            'OMIYA': '大宮',
+            'YOKOHAMA': '横浜',
+            'UTSUNOMIYA': '宇都宮',
+            'TAKASAKI': '高崎',
+            'SAPPORO': '札幌',
+            'SENDAI': '仙台',
+            'NAGOYA': '名古屋',
+            'SHIZUOKA': '静岡',
+            'HAMAMATSU': '浜松',
+            'KANAZAWA': '金沢',
+            'CHAYAMACHI': '梅田茶屋町',
+            'UMEDA': '梅田',
+            'NAMBA': '難波',
+            'SHINSAIBASHI': '心斎橋',
+            'TENMA': '天満',
+            'KYOTO': '京都',
+            'KOBE': '神戸',
+            'OKAYAMA': '岡山',
+            'HIROSHIMA': '広島',
+            'MATSUYAMA': '松山',
+            'FUKUOKA': '福岡天神',
+            'KOKURA': '小倉',
+            'NAGASAKI': '長崎',
+            'OITA': '大分',
+            'KUMAMOTO': '熊本',
+            'MIYAZAKI': '宮崎',
+            'KAGOSHIMA': '鹿児島',
+            'OKINAWA': '沖縄',
+            'SEOUL': 'ソウル',
+            'GANGNAM': '江南(カンナム)',
+            'HONGDAE': '弘大(ホンデ)'
+        };
+
+        // Map store name keywords to clear Prefecture/Area labels
+        const AREA_LABEL_RULES = [
+            { keys: ['札幌', 'SAPPORO'], label: '北海道・札幌' },
+            { keys: ['仙台', 'SENDAI'], label: '宮城・仙台' },
+            { keys: ['西新宿', 'NISHISHINJUKU', '新宿', 'SHINJUKU'], label: '東京・新宿' },
+            { keys: ['渋谷', 'SHIBUYA'], label: '東京・渋谷' },
+            { keys: ['恵比寿', 'EBISU'], label: '東京・恵比寿' },
+            { keys: ['上野', 'UENO'], label: '東京・上野' },
+            { keys: ['町田', 'MACHIDA'], label: '東京・町田' },
+            { keys: ['横浜', 'YOKOHAMA'], label: '神奈川・横浜' },
+            { keys: ['大宮', 'OMIYA'], label: '埼玉・大宮' },
+            { keys: ['柏', 'KASHIWA'], label: '千葉・柏' },
+            { keys: ['宇都宮', 'UTSUNOMIYA'], label: '栃木・宇都宮' },
+            { keys: ['高崎', 'TAKASAKI'], label: '群馬・高崎' },
+            { keys: ['名古屋', '錦', '栄', 'NAGOYA'], label: '愛知・名古屋' },
+            { keys: ['静岡', 'SHIZUOKA'], label: '静岡' },
+            { keys: ['浜松', 'HAMAMATSU'], label: '静岡・浜松' },
+            { keys: ['金沢', 'KANAZAWA'], label: '石川・金沢' },
+            { keys: ['茶屋町', 'CHAYAMACHI', '梅田', 'UMEDA'], label: '大阪・梅田' },
+            { keys: ['天満', 'TENMA'], label: '大阪・天満' },
+            { keys: ['心斎橋', 'SHINSAIBASHI'], label: '大阪・心斎橋' },
+            { keys: ['難波', 'NAMBA'], label: '大阪・難波' },
+            { keys: ['京都', 'KYOTO'], label: '京都' },
+            { keys: ['神戸', '三宮', 'KOBE'], label: '兵庫・神戸' },
+            { keys: ['岡山', 'OKAYAMA'], label: '岡山' },
+            { keys: ['広島', 'HIROSHIMA'], label: '広島' },
+            { keys: ['松山', 'MATSUYAMA'], label: '愛媛・松山' },
+            { keys: ['福岡', '天神', 'FUKUOKA'], label: '福岡・天神' },
+            { keys: ['小倉', 'KOKURA'], label: '福岡・小倉' },
+            { keys: ['長崎', 'NAGASAKI'], label: '長崎' },
+            { keys: ['大分', 'OITA'], label: '大分' },
+            { keys: ['熊本', 'KUMAMOTO'], label: '熊本' },
+            { keys: ['宮崎', 'MIYAZAKI'], label: '宮崎' },
+            { keys: ['鹿児島', 'KAGOSHIMA'], label: '鹿児島' },
+            { keys: ['沖縄', '那覇', 'OKINAWA'], label: '沖縄' },
+            { keys: ['ソウル', 'カンナム', 'ホンデ', '江南', '弘大', 'SEOUL', 'GANGNAM', 'HONGDAE'], label: '韓国・ソウル' }
+        ];
+
+        function localizeStoreName(cleanName) {
+            let localized = cleanName.trim();
+            const upper = localized.toUpperCase();
+            if (EN_TO_JA_MAP[upper]) {
+                return EN_TO_JA_MAP[upper];
+            }
+            for (const [enKey, jaVal] of Object.entries(EN_TO_JA_MAP)) {
+                const regex = new RegExp(`\\b${enKey}\\b`, 'gi');
+                localized = localized.replace(regex, jaVal);
+            }
+            return localized;
+        }
+
+        function detectAreaLabel(rawName, localizedName) {
+            const combined = `${rawName} ${localizedName}`.toUpperCase();
+            for (const rule of AREA_LABEL_RULES) {
+                for (const k of rule.keys) {
+                    if (combined.includes(k.toUpperCase())) {
+                        return rule.label;
+                    }
                 }
-                return { code: 'OLG', cls: 'brand-olg', cleanName: name.replace(/^OLG\s+/i, '') };
             }
-            if (rawSource === 'JIS' || name.startsWith('JIS ')) {
-                return { code: 'JIS', cls: 'brand-jis', cleanName: name.replace(/^JIS\s+/i, '') };
+            return '';
+        }
+
+        function detectBrandInfo(storeOrName) {
+            const rawSource = (typeof storeOrName === 'object' ? (storeOrName.source || '') : '').toUpperCase();
+            const name = typeof storeOrName === 'object' ? (storeOrName.name || '') : String(storeOrName || '');
+            let code = 'OTHER';
+            let cls = 'brand-other';
+            let stripped = name;
+
+            if (rawSource === 'ORIENTAL' || name.startsWith('OLG ') || name.startsWith('ag ')) {
+                if (/^OLG\s+ag/i.test(name) || /^ag\s*/i.test(name)) {
+                    code = 'ag';
+                    cls = 'brand-ag';
+                    stripped = name.replace(/^OLG\s+ag\s*/i, '').replace(/^ag\s*/i, '');
+                } else {
+                    code = 'OLG';
+                    cls = 'brand-olg';
+                    stripped = name.replace(/^OLG\s+/i, '');
+                }
+            } else if (rawSource === 'JIS' || name.startsWith('JIS ')) {
+                code = 'JIS';
+                cls = 'brand-jis';
+                stripped = name.replace(/^JIS\s+/i, '');
+            } else if (rawSource === 'XIX' || name.startsWith('XIX ')) {
+                code = 'XIX';
+                cls = 'brand-xix';
+                stripped = name.replace(/^XIX\s+/i, '');
+            } else if (rawSource === 'ALFA' || name.includes('ALFA')) {
+                code = 'ALFA';
+                cls = 'brand-alfa';
+                stripped = name.replace(/^ALFA\s+/i, '');
+            } else if (rawSource === 'YATAKOI' || name.includes('ヤタコイ') || name.includes('YATAKOI')) {
+                code = 'ヤタコイ';
+                cls = 'brand-yatakoi';
+                stripped = name.replace(/^ヤタコイ\s+|^YATAKOI\s+/i, '');
+            } else if (rawSource === 'CLOVERS' || name.includes('CLOVERS')) {
+                code = 'CLOVERS';
+                cls = 'brand-clovers';
+                stripped = name.replace(/^CLOVERS\s+/i, '');
+            } else {
+                const prefix = name.split(' ')[0];
+                code = prefix.substring(0, 6);
             }
-            if (rawSource === 'XIX' || name.startsWith('XIX ')) {
-                return { code: 'XIX', cls: 'brand-xix', cleanName: name.replace(/^XIX\s+/i, '') };
-            }
-            if (rawSource === 'ALFA' || name.includes('ALFA')) {
-                return { code: 'ALFA', cls: 'brand-alfa', cleanName: name.replace(/^ALFA\s+/i, '') };
-            }
-            if (rawSource === 'YATAKOI' || name.includes('ヤタコイ') || name.includes('YATAKOI')) {
-                return { code: 'ヤタコイ', cls: 'brand-yatakoi', cleanName: name.replace(/^ヤタコイ\s+|^YATAKOI\s+/i, '') };
-            }
-            if (rawSource === 'CLOVERS' || name.includes('CLOVERS')) {
-                return { code: 'CLOVERS', cls: 'brand-clovers', cleanName: name.replace(/^CLOVERS\s+/i, '') };
-            }
-            const prefix = name.split(' ')[0];
-            return { code: prefix.substring(0, 6), cls: 'brand-other', cleanName: name };
+
+            const cleanName = localizeStoreName(stripped || name);
+            const areaLabel = detectAreaLabel(name, cleanName);
+            const fullDisplayTitle = `${code} ${cleanName}`;
+            return { code, cls, cleanName, areaLabel, fullDisplayTitle };
         }
 
         function escapeHtml(str) {
@@ -579,6 +704,14 @@
             const badgeEl = node.querySelector('.brand-badge');
             badgeEl.textContent = brandInfo.code;
             badgeEl.classList.add(brandInfo.cls);
+
+            const areaEl = node.querySelector('.area-tag');
+            if (brandInfo.areaLabel) {
+                areaEl.textContent = brandInfo.areaLabel;
+            } else {
+                areaEl.classList.add('hidden');
+            }
+
             node.querySelector('.store-name').textContent = brandInfo.cleanName || store.name;
 
             const ladiesCount = store.women || 0;
@@ -617,8 +750,11 @@
 
             let filteredStores = stores.filter(store => {
                 const matchRegion = currentFilter === 'All' || store.region === currentFilter;
-                const matchSearch = currentSearch === '' || store.name.toLowerCase().includes(currentSearch);
-                return matchRegion && matchSearch;
+                if (!matchRegion) return false;
+                if (currentSearch === '') return true;
+                const bInfo = detectBrandInfo(store);
+                const searchable = `${store.name} ${bInfo.code} ${bInfo.cleanName} ${bInfo.areaLabel}`.toLowerCase();
+                return searchable.includes(currentSearch);
             });
 
             if (currentSort === 'men') {
@@ -701,19 +837,20 @@
             const modalContent = modal.querySelector('.modal-content');
             const title = document.getElementById('modal-store-name');
             const banner = document.getElementById('live-comparison-banner');
+            const bInfo = detectBrandInfo(storeName);
             modal.classList.remove('hidden');
             if (modalContent) modalContent.scrollTop = 0;
 
             // Check frontend cache first for instant (0ms) display
             const cached = clientAnalysisCache[storeName];
             if (cached && (Date.now() - cached.fetchedAt < CLIENT_CACHE_TTL)) {
-                title.textContent = cached.data.store_name;
+                title.textContent = bInfo.fullDisplayTitle;
                 currentAnalysisData = cached.data;
                 renderCharts(cached.data);
                 return;
             }
 
-            title.textContent = storeName + " 読み込み中...";
+            title.textContent = bInfo.fullDisplayTitle + " 読み込み中...";
             banner.classList.add('hidden');
 
             try {
@@ -727,7 +864,7 @@
                 }
 
                 clientAnalysisCache[storeName] = { data: data, fetchedAt: Date.now() };
-                title.textContent = data.store_name;
+                title.textContent = bInfo.fullDisplayTitle;
                 currentAnalysisData = data;
                 renderCharts(data);
 
