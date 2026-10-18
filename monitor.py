@@ -285,24 +285,48 @@ def get_all_data():
     global fetch_errors
     fetch_errors.clear()
     
-    data = []
-    for fn in fetchers:
+    results_by_name = {}
+    threads = []
+    lock = threading.Lock()
+
+    def run_fetcher(fn):
         name = fn.__name__
         try:
-            result = _run_with_timeout(fn, timeout=30)
-            if result:
-                data.extend(result)
-                import logging; logging.info(f"  ✓ {name}: {len(result)} stores")
-            else:
-                fetch_errors[name] = "Returned empty"
-                import logging; logging.error(f"  ✗ {name}: returned empty")
-        except TimeoutError:
-            fetch_errors[name] = "Hard timeout (>30s)"
-            import logging; logging.error(f"  ✗ {name}: hard timeout exceeded 30s!")
+            res = fn()
+            with lock:
+                if res:
+                    results_by_name[name] = res
+                    import logging; logging.info(f"  ✓ {name}: {len(res)} stores")
+                else:
+                    fetch_errors[name] = "Returned empty"
+                    import logging; logging.error(f"  ✗ {name}: returned empty")
         except Exception as e:
-            fetch_errors[name] = str(e)
+            with lock:
+                fetch_errors[name] = str(e)
             import logging; logging.error(f"  ✗ {name}: {e}")
-    
+
+    # Launch all 6 scrapers in parallel
+    for fn in fetchers:
+        t = threading.Thread(target=run_fetcher, args=(fn,), daemon=True)
+        t.start()
+        threads.append((fn.__name__, t))
+
+    # Wait up to 12 seconds total for all parallel threads
+    deadline = time.time() + 12.0
+    for name, t in threads:
+        remaining = max(0.1, deadline - time.time())
+        t.join(timeout=remaining)
+        if t.is_alive():
+            with lock:
+                fetch_errors[name] = "Hard timeout (>12s)"
+            import logging; logging.error(f"  ✗ {name}: parallel timeout exceeded 12s!")
+
+    data = []
+    for fn in fetchers:
+        res = results_by_name.get(fn.__name__)
+        if res:
+            data.extend(res)
+
     return data
 
 

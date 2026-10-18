@@ -1,69 +1,100 @@
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import datetime
+import time
+import threading
+import requests
 import os
 import sys
 
 # Constants
-# The user needs to put their JSON key here
-CREDENTIALS_FILE = 'google_credentials.json' 
-# The name of the Google Sheet to write to
-SHEET_NAME = 'Lounge Monitor Data' 
+CREDENTIALS_FILE = 'google_credentials.json'
+SHEET_NAME = 'Lounge Monitor Data'
+
+_auth_lock = threading.Lock()
+_cached_creds = None
+_cached_client = None
+_cached_token = None
+_token_expiry = 0
+_cached_spreadsheet_id = None
+
+# Shared HTTP session for connection pooling (Keep-Alive to docs.google.com)
+http_session = requests.Session()
+
+
+def _find_creds_path():
+    possible_paths = [
+        os.path.join(os.path.dirname(__file__), CREDENTIALS_FILE),
+        os.path.join('/etc/secrets/', CREDENTIALS_FILE)
+    ]
+    for path in possible_paths:
+        if os.path.exists(path):
+            return path
+    return None
+
 
 def get_client():
-    """Authenticates and returns the gspread client."""
-    scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-    
-    # Check for credentials in possible locations
-    # 1. Local development (same folder)
-    # 2. Render Secret Files (/etc/secrets/)
-    possible_paths = [
-        os.path.join(os.path.dirname(__file__), CREDENTIALS_FILE),
-        os.path.join('/etc/secrets/', CREDENTIALS_FILE)
-    ]
-    
-    creds_path = None
-    for path in possible_paths:
-        if os.path.exists(path):
-            creds_path = path
-            break
-            
-    if not creds_path:
-        print(f"Auth Error: Credentials file '{CREDENTIALS_FILE}' not found in local or /etc/secrets/", file=sys.stderr)
-        return None
-        
-    try:
-        creds = ServiceAccountCredentials.from_json_keyfile_name(creds_path, scope)
-        client = gspread.authorize(creds)
-        return client
-    except Exception as e:
-        print(f"Google Sheets Auth Error: {e}", file=sys.stderr)
-        return None
+    """Authenticates and returns a cached gspread client."""
+    global _cached_creds, _cached_client, _cached_token, _token_expiry
+    now = time.time()
+    with _auth_lock:
+        if _cached_client and _cached_creds and now < _token_expiry:
+            return _cached_client
+
+        creds_path = _find_creds_path()
+        if not creds_path:
+            print(f"Auth Error: Credentials file '{CREDENTIALS_FILE}' not found.", file=sys.stderr)
+            return None
+
+        try:
+            scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+            _cached_creds = ServiceAccountCredentials.from_json_keyfile_name(creds_path, scope)
+            _cached_client = gspread.authorize(_cached_creds)
+            token_info = _cached_creds.get_access_token()
+            _cached_token = token_info.access_token
+            # Cache token for 50 minutes (Google tokens last 60 minutes)
+            _token_expiry = now + 3000
+            return _cached_client
+        except Exception as e:
+            print(f"Google Sheets Auth Error: {e}", file=sys.stderr)
+            return None
+
 
 def get_access_token():
-    """Authenticates and returns the access token."""
-    scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-    possible_paths = [
-        os.path.join(os.path.dirname(__file__), CREDENTIALS_FILE),
-        os.path.join('/etc/secrets/', CREDENTIALS_FILE)
-    ]
-    
-    creds_path = None
-    for path in possible_paths:
-        if os.path.exists(path):
-            creds_path = path
-            break
-            
-    if not creds_path:
+    """Returns a cached OAuth2 access token without re-authenticating every call."""
+    global _cached_creds, _cached_token, _token_expiry
+    now = time.time()
+    with _auth_lock:
+        if _cached_token and now < _token_expiry:
+            return _cached_token
+
+    # Trigger client/token refresh
+    client = get_client()
+    if not client:
         return None
-        
+    return _cached_token
+
+
+def get_spreadsheet_id():
+    """Returns cached spreadsheet ID so we don't query Google Drive on every analysis request."""
+    global _cached_spreadsheet_id
+    if _cached_spreadsheet_id:
+        return _cached_spreadsheet_id
+
+    client = get_client()
+    if not client:
+        return None
     try:
-        creds = ServiceAccountCredentials.from_json_keyfile_name(creds_path, scope)
-        return creds.get_access_token().access_token
-    except Exception:
+        sheet = client.open(SHEET_NAME)
+        _cached_spreadsheet_id = sheet.id
+        return _cached_spreadsheet_id
+    except Exception as e:
+        print(f"Error resolving spreadsheet ID: {e}", file=sys.stderr)
         return None
 
+
 last_error = None
+
 
 def log_data(data):
     """
@@ -79,11 +110,9 @@ def log_data(data):
 
     try:
         sheet = client.open(SHEET_NAME).sheet1
-        
-        # timestamp
-        now = datetime.datetime.now() + datetime.timedelta(hours=9) # JST
+        now = datetime.datetime.now() + datetime.timedelta(hours=9)  # JST
         timestamp_str = now.strftime("%Y-%m-%d %H:%M:%S")
-        
+
         rows_to_append = []
         for item in data:
             row = [
@@ -94,12 +123,15 @@ def log_data(data):
                 item.get('source', '')
             ]
             rows_to_append.append(row)
-            
+
         if rows_to_append:
             sheet.append_rows(rows_to_append)
             last_error = None
             print(f"Logged {len(rows_to_append)} rows to Google Sheets.")
-            
+
     except Exception as e:
+        # Reset cached client on error so next attempt re-authenticates cleanly
+        global _token_expiry
+        _token_expiry = 0
         last_error = str(e)
         print(f"Google Sheets Logging Error: {e}", file=sys.stderr)

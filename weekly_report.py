@@ -27,9 +27,9 @@ def generate_weekly_report():
         if (now_utc - _report_cache['last_fetched']).total_seconds() < REPORT_CACHE_DURATION:
             return _report_cache['data']
 
-    client = logger.get_client()
     access_token = logger.get_access_token()
-    if not client or not access_token:
+    spreadsheet_id = logger.get_spreadsheet_id()
+    if not access_token or not spreadsheet_id:
         return {"error": "Google Sheets Authentication Failed"}
 
     # Define the 7-day period in JST (excluding today to get full past 7 days)
@@ -39,15 +39,12 @@ def generate_weekly_report():
     start_ts_str = start_date.strftime("%Y-%m-%d %H:%M:%S")
 
     try:
-        sheet = client.open(logger.SHEET_NAME)
-        spreadsheet_id = sheet.id
-
         # Query only rows from the last 7 days via gviz API to prevent OOM
         query = f"SELECT A, B, C, D, E WHERE A >= '{start_ts_str}'"
         url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/gviz/tq?tq={urllib.parse.quote(query)}"
         headers = {"Authorization": f"Bearer {access_token}"}
 
-        response = requests.get(url, headers=headers, timeout=25)
+        response = logger.http_session.get(url, headers=headers, timeout=20)
         if response.status_code != 200:
             return {"error": f"Failed to fetch data via gviz: HTTP {response.status_code}"}
 

@@ -22,7 +22,35 @@ console = logging.StreamHandler()
 console.setLevel(logging.INFO)
 logging.getLogger('').addHandler(console)
 
+import gzip
+
 app = Flask(__name__)
+
+@app.after_request
+def compress_response(response):
+    """Automatically gzip-compress JSON and HTML responses for faster transfer."""
+    if (
+        response.status_code < 200
+        or response.status_code >= 300
+        or response.direct_passthrough
+        or 'Content-Encoding' in response.headers
+        or 'gzip' not in request.headers.get('Accept-Encoding', '').lower()
+    ):
+        return response
+    if response.content_type and (
+        'application/json' in response.content_type
+        or 'text/html' in response.content_type
+        or 'text/css' in response.content_type
+        or 'application/javascript' in response.content_type
+    ):
+        data = response.get_data()
+        if len(data) > 500:
+            compressed = gzip.compress(data, compresslevel=5)
+            response.set_data(compressed)
+            response.headers['Content-Encoding'] = 'gzip'
+            response.headers['Content-Length'] = len(compressed)
+            response.headers['Vary'] = 'Accept-Encoding'
+    return response
 
 _scheduler_started = False
 _scheduler_lock = threading.Lock()
@@ -76,24 +104,20 @@ def get_store_analysis(store_name):
     if target_data is None:
         try:
             print(f"Fetching historical data for {store_name} from Google Sheets via gviz...")
-            client = logger.get_client()
             access_token = logger.get_access_token()
-            if not client or not access_token:
+            spreadsheet_id = logger.get_spreadsheet_id()
+            if not access_token or not spreadsheet_id:
                 return jsonify({"error": "Failed to authenticate"}), 500
-                
-            sheet = client.open('Lounge Monitor Data')
-            spreadsheet_id = sheet.id
             
-            import requests
             import json
             import urllib.parse
             
             safe_store_name = store_name.replace("'", "\\'")
-            query = f"SELECT * WHERE B='{safe_store_name}'"
+            query = f"SELECT A, B, C, D WHERE B='{safe_store_name}'"
             url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/gviz/tq?tq={urllib.parse.quote(query)}"
             headers = {"Authorization": f"Bearer {access_token}"}
             
-            response = requests.get(url, headers=headers, timeout=20)
+            response = logger.http_session.get(url, headers=headers, timeout=15)
             if response.status_code != 200:
                 print(f"Failed to fetch data via gviz: HTTP {response.status_code}")
                 return jsonify({"error": "Failed to load data"}), 500
