@@ -63,11 +63,15 @@ def start_scheduler():
             if not _scheduler_started:
                 scheduler = BackgroundScheduler(timezone="UTC")
                 scheduler.add_job(func=update_job, trigger="interval", minutes=1)
+                # Daily X auto-post jobs at 21:00, 22:30, and 00:00 JST (12:00, 13:30, 15:00 UTC)
+                scheduler.add_job(func=run_scheduled_x_post, trigger="cron", hour=12, minute=0, args=["21:00"])
+                scheduler.add_job(func=run_scheduled_x_post, trigger="cron", hour=13, minute=30, args=["22:30"])
+                scheduler.add_job(func=run_scheduled_x_post, trigger="cron", hour=15, minute=0, args=["00:00"])
                 scheduler.start()
                 threading.Thread(target=update_job, daemon=True).start()
                 _scheduler_started = True
                 import logging
-                logging.info("APScheduler started in worker process")
+                logging.info("APScheduler started in worker process (with 21:00/22:30/00:00 JST X auto-post)")
 
 # Global storage for analysis cache
 analysis_cache = {
@@ -561,6 +565,56 @@ def generate_sns_post_api():
         'text': "\n".join(lines)
     })
 
+def run_scheduled_x_post(slot_label="21:00", force=False):
+    """Execute scheduled X auto-post with duplicate prevention across workers."""
+    import x_poster
+    now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
+    dedup_key = f"{now_jst.strftime('%Y-%m-%d')}_{slot_label}"
+    lock_file = "/tmp/aiseki_navi_last_x_post.txt"
+
+    if not force:
+        try:
+            if os.path.exists(lock_file):
+                with open(lock_file, "r") as f:
+                    if f.read().strip() == dedup_key:
+                        logging.info(f"X auto-post already sent for {dedup_key}, skipping.")
+                        return {"status": "skipped", "reason": "Already posted for this slot"}
+        except Exception:
+            pass
+
+    stores = latest_data.get('full_data') or []
+    if not stores:
+        try:
+            stores, _ = monitor.get_all_data()
+        except Exception as e:
+            logging.error(f"Failed to fetch stores for X post: {e}")
+            return {"status": "error", "detail": str(e)}
+
+    text = x_poster.build_scheduled_tweet_text(stores, slot_label=slot_label)
+    if not text:
+        return {"status": "error", "detail": "Empty tweet text"}
+
+    result = x_poster.post_to_x(text)
+    if result.get("status") == "success" and not force:
+        try:
+            with open(lock_file, "w") as f:
+                f.write(dedup_key)
+        except Exception:
+            pass
+    result["tweet_text"] = text
+    return result
+
+@app.route('/api/trigger-x-post')
+def trigger_x_post_endpoint():
+    """Endpoint to test or externally trigger X auto-posting."""
+    if request.args.get('secret') != 'lounge2026':
+        return jsonify({'error': 'Unauthorized'}), 401
+    slot = request.args.get('slot', '21:00')
+    force = request.args.get('force', '0') == '1'
+    res = run_scheduled_x_post(slot_label=slot, force=force)
+    return jsonify(res)
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001, debug=True, use_reloader=False)
+
 
