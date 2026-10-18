@@ -59,15 +59,19 @@ def get_store_analysis(store_name):
     # Initialize cache format if needed
     if 'raw_data_by_store' not in analysis_cache:
         analysis_cache['raw_data_by_store'] = {}
+    if 'processed_per_store' not in analysis_cache:
+        analysis_cache['processed_per_store'] = {}
         
     now = datetime.datetime.now()
     target_data = None
     
-    # Check cache
+    # Check if raw data and processed data are still valid in cache
     if store_name in analysis_cache['raw_data_by_store']:
         cached = analysis_cache['raw_data_by_store'][store_name]
         if (now - cached['last_fetched']).total_seconds() < ANALYSIS_CACHE_DURATION:
             target_data = cached['data']
+            if store_name in analysis_cache['processed_per_store']:
+                return jsonify(analysis_cache['processed_per_store'][store_name])
             
     if target_data is None:
         try:
@@ -84,11 +88,12 @@ def get_store_analysis(store_name):
             import json
             import urllib.parse
             
-            query = f"SELECT * WHERE B='{store_name}'"
+            safe_store_name = store_name.replace("'", "\\'")
+            query = f"SELECT * WHERE B='{safe_store_name}'"
             url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/gviz/tq?tq={urllib.parse.quote(query)}"
             headers = {"Authorization": f"Bearer {access_token}"}
             
-            response = requests.get(url, headers=headers)
+            response = requests.get(url, headers=headers, timeout=20)
             if response.status_code != 200:
                 print(f"Failed to fetch data via gviz: HTTP {response.status_code}")
                 return jsonify({"error": "Failed to load data"}), 500
@@ -103,8 +108,7 @@ def get_store_analysis(store_name):
                 for row in rows:
                     cols = row.get('c', [])
                     if len(cols) >= 4:
-                        # Extract string/number values correctly handling nulls
-                        ts_val = cols[0].get('v') if cols[0] else None
+                        ts_val = (cols[0].get('v') or cols[0].get('f')) if cols[0] else None
                         name_val = cols[1].get('v') if cols[1] else None
                         men_val = cols[2].get('v') if cols[2] else 0
                         women_val = cols[3].get('v') if cols[3] else 0
@@ -121,9 +125,6 @@ def get_store_analysis(store_name):
                     'last_fetched': now
                 }
                 
-                # Invalidate the processed cache for this store so it gets recomputed
-                if 'processed_per_store' not in analysis_cache:
-                    analysis_cache['processed_per_store'] = {}
                 if store_name in analysis_cache['processed_per_store']:
                     del analysis_cache['processed_per_store'][store_name]
                     
@@ -139,72 +140,91 @@ def get_store_analysis(store_name):
     if not target_data:
         return jsonify({"error": "Store not found"}), 404
         
+    def get_business_dt(dt):
+        """Treat 00:00 - 06:59 as belonging to the previous business day."""
+        if dt.hour <= 6:
+            return dt - datetime.timedelta(days=1)
+        return dt
+
+    def is_business_hours(dt):
+        return dt.hour >= 18 or dt.hour <= 6
+
+    def is_peak_hours(dt):
+        """Peak lounge hours: 20:00 - 01:59"""
+        return dt.hour >= 20 or dt.hour <= 1
+
     hourly_women = defaultdict(list)
+    hourly_men = defaultdict(list)
     weekday_women = defaultdict(list)
     weekday_men = defaultdict(list)
+    weekday_peak_women = defaultdict(list)
+    weekday_peak_men = defaultdict(list)
     hourly_women_by_day = defaultdict(lambda: defaultdict(list))
+    hourly_men_by_day = defaultdict(lambda: defaultdict(list))
     
     for d in target_data:
         try:
             dt = datetime.datetime.strptime(d['ts'], "%Y-%m-%d %H:%M:%S")
+            if not is_business_hours(dt):
+                continue
+            biz_dt = get_business_dt(dt)
+            b_weekday = biz_dt.weekday()
+            
             hourly_women[dt.hour].append(d['women'])
-            weekday_women[dt.weekday()].append(d['women'])
-            weekday_men[dt.weekday()].append(d['men'])
-            hourly_women_by_day[dt.weekday()][dt.hour].append(d['women'])
+            hourly_men[dt.hour].append(d['men'])
+            weekday_women[b_weekday].append(d['women'])
+            weekday_men[b_weekday].append(d['men'])
+            if is_peak_hours(dt):
+                weekday_peak_women[b_weekday].append(d['women'])
+                weekday_peak_men[b_weekday].append(d['men'])
+            hourly_women_by_day[b_weekday][dt.hour].append(d['women'])
+            hourly_men_by_day[b_weekday][dt.hour].append(d['men'])
         except Exception as e:
-            print(f"Error analyzing historical data: {e}", file=__import__('sys').stderr)
             continue
             
     hourly_result = {}
-    hourly_raw_display = {}
-    
+    hourly_men_result = {}
     for h in range(24):
-        vals = hourly_women.get(h, [])
-        hourly_result[h] = round(statistics.mean(vals), 1) if vals else 0
-        hourly_raw_display[h] = vals
+        w_vals = hourly_women.get(h, [])
+        m_vals = hourly_men.get(h, [])
+        hourly_result[h] = round(statistics.mean(w_vals), 1) if w_vals else 0
+        hourly_men_result[h] = round(statistics.mean(m_vals), 1) if m_vals else 0
         
     weekday_result = {}
     weekday_men_result = {}
     weekdays_str = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
     for i in range(7):
-        w_vals = weekday_women.get(i, [])
-        m_vals = weekday_men.get(i, [])
+        # Prefer peak-hour averages if available so off-peak 18:00/05:00 zeros don't dilute the weekday impression
+        w_vals = weekday_peak_women.get(i) or weekday_women.get(i, [])
+        m_vals = weekday_peak_men.get(i) or weekday_men.get(i, [])
         weekday_result[weekdays_str[i]] = round(statistics.mean(w_vals), 1) if w_vals else 0
         weekday_men_result[weekdays_str[i]] = round(statistics.mean(m_vals), 1) if m_vals else 0
         
     hourly_by_weekday_result = {}
-    hourly_raw_by_weekday_result = {}
+    hourly_men_by_weekday_result = {}
     
     for i in range(7):
-        day_avg = {}
-        day_raw = {}
+        day_avg_w = {}
+        day_avg_m = {}
         for h in range(24):
-            vals = hourly_women_by_day[i].get(h, [])
-            day_avg[h] = round(statistics.mean(vals), 1) if vals else 0
-            day_raw[h] = vals
-        hourly_by_weekday_result[weekdays_str[i]] = day_avg
-        hourly_raw_by_weekday_result[weekdays_str[i]] = day_raw
+            w_vals = hourly_women_by_day[i].get(h, [])
+            m_vals = hourly_men_by_day[i].get(h, [])
+            day_avg_w[h] = round(statistics.mean(w_vals), 1) if w_vals else 0
+            day_avg_m[h] = round(statistics.mean(m_vals), 1) if m_vals else 0
+        hourly_by_weekday_result[weekdays_str[i]] = day_avg_w
+        hourly_men_by_weekday_result[weekdays_str[i]] = day_avg_m
 
     recent_data_women = []
     recent_data_men = []
     sorted_target = sorted(target_data, key=lambda x: x['ts'])
     seen_hours = set()
     
-    def get_business_date(dt):
-        if dt.hour <= 6:
-            return (dt - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
-        else:
-            return dt.strftime("%Y-%m-%d")
-    
-    def is_business_hours(dt):
-        return dt.hour >= 18 or dt.hour <= 6
-    
     for d in sorted_target:
         try:
             dt = datetime.datetime.strptime(d['ts'], "%Y-%m-%d %H:%M:%S")
             if not is_business_hours(dt):
                 continue
-            business_date = get_business_date(dt)
+            business_date = get_business_dt(dt).strftime("%Y-%m-%d")
             hour_key = f"{business_date} {dt.strftime('%H')}"
             if hour_key in seen_hours:
                 continue
@@ -218,11 +238,11 @@ def get_store_analysis(store_name):
     result = {
         "store_name": store_name,
         "hourly": hourly_result,
-        "hourly_raw": hourly_raw_display,
+        "hourly_men": hourly_men_result,
         "weekday": weekday_result,
         "weekday_men": weekday_men_result,
         "hourly_by_weekday": hourly_by_weekday_result,
-        "hourly_raw_by_weekday": hourly_raw_by_weekday_result,
+        "hourly_men_by_weekday": hourly_men_by_weekday_result,
         "recent_trend": recent_data_women,
         "recent_trend_men": recent_data_men,
         "sample_count": len(target_data)
@@ -378,6 +398,7 @@ def serve_sw():
 
 @app.route('/api/status')
 def get_status():
+    trigger_background_fetch_if_needed()
     with data_lock:
         if latest_data.get('full_data'):
             return jsonify({
@@ -399,11 +420,10 @@ def health_check():
 
 @app.route('/api/debug_ps')
 def debug_ps():
-    import os
-    import threading
+    if request.args.get('secret') != 'lounge2026':
+        return jsonify({'error': 'Unauthorized'}), 401
     return jsonify({
         'pid': os.getpid(),
-        'module_id': module_id,
         'has_data': bool(latest_data['full_data']),
         'last_updated': latest_data['last_updated'],
         'threads': [t.name for t in threading.enumerate()]
@@ -411,6 +431,8 @@ def debug_ps():
 
 @app.route('/api/logs')
 def view_logs():
+    if request.args.get('secret') != 'lounge2026':
+        return jsonify({'error': 'Unauthorized'}), 401
     if os.path.exists('app.log'):
         with open('app.log', 'r') as f:
             content = f.read()
