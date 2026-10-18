@@ -77,10 +77,48 @@
                 </div>
             </div>
 
+            <!-- Modal Store Share & PR Slot -->
+            <div class="modal-share-bar">
+                <span class="modal-share-label">この店舗を友達に共有・公式確認：</span>
+                <div class="modal-share-actions">
+                    <button class="share-pill-btn line-btn" onclick="shareStoreStatus('line')">💬 LINEで送る</button>
+                    <button class="share-pill-btn x-btn" onclick="shareStoreStatus('x')">𝕏 ポスト</button>
+                    <a id="modal-official-link" href="https://oriental-lounge.com/" target="_blank" rel="noopener noreferrer" class="share-pill-btn official-btn">🌐 公式サイト</a>
+                </div>
+            </div>
+
+            <div id="modal-pr-slot" class="modal-pr-box hidden"></div>
+
             <button class="modal-bottom-close-btn" onclick="closeModal()">✕ 詳細画面を閉じる</button>
         </div>
     </div>
     <!-- End Analysis Modal -->
+
+    <!-- Legal & Privacy Policy Modal -->
+    <div id="legal-modal" class="modal hidden">
+        <div class="modal-content" style="max-width: 680px;">
+            <div class="modal-header">
+                <h2>免責事項・プライバシーポリシー</h2>
+                <button class="close-btn-pill" onclick="closeLegalModal()" aria-label="閉じる">✕ 閉じる</button>
+            </div>
+            <div class="legal-body">
+                <h3>1. 非公式サービスに関する免責事項</h3>
+                <p>当サイト「相席ナビ」（以下、「当サイト」）は、インターネット上に一般公開されている情報を独自に集計・可視化した<strong>非公式の統計・情報提供サービス</strong>です。掲載されている各店舗および各運営会社様とは一切関係ございません。当サイトの表示内容に関して、各店舗へ直接お問い合わせすることはご遠慮ください。</p>
+                <p>掲載データの正確性・リアルタイム性には細心の注意を払っておりますが、通信状況やシステム仕様により実際の店内状況と異なる場合があります。入店条件や最新の営業状況は各店舗の公式サイトをご確認ください。</p>
+
+                <h3>2. 著作権・商標権について</h3>
+                <p>当サイトに記載されている会社名・店舗名・サービス名等は、各社の登録商標または商標です。当サイトでは各店舗の識別および公式サイトへの案内を目的として名称を表記しており、商標権や著作権を侵害する意図はございません。万が一掲載内容に問題がある場合は、速やかに対応いたします。</p>
+
+                <h3>3. 広告の配信・アフィリエイトプログラムについて</h3>
+                <p>当サイトでは、運営維持費用の確保のため第三者配信の広告サービス（Google AdSense、A8.net、アクセストレード等のアフィリエイトプログラム）を利用する場合があります。広告配信事業者は、ユーザーの興味に応じた商品やサービスの広告を表示するため、Cookie（クッキー）を使用することがあります。</p>
+
+                <h3>4. アクセス解析およびローカルストレージの利用</h3>
+                <p>当サイトでは、お気に入り店舗の保存や表示速度向上のためにブラウザのローカルストレージ（LocalStorage）を利用しています。これらのデータはお客様の端末内にのみ保存され、個人を特定する情報は一切含まれません。</p>
+            </div>
+            <button class="modal-bottom-close-btn" onclick="closeLegalModal()">✕ 閉じる</button>
+        </div>
+    </div>
+    <!-- End Legal Modal -->
 
     <!-- Comparison Modal -->
     <div id="comparison-modal" class="modal hidden">
@@ -143,6 +181,12 @@
                         <line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line>
                     </svg>
                     <span>表示切替</span>
+                </button>
+                <button id="share-btn" class="header-btn labeled-btn" onclick="shareCurrentRanking('native')" title="ランキングを友達にシェア">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+                    </svg>
+                    <span>共有</span>
                 </button>
                 <button id="refresh-btn" class="header-btn labeled-btn refresh-btn" onclick="manualRefresh()" title="データを更新">
                     <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -208,12 +252,33 @@
                         LIVE (1m)
                     </div>
                 </div>
+
+                <!-- Ranking SNS Share Box -->
+                <div class="share-banner-box">
+                    <span class="share-banner-title">📢 いま盛り上がっている店舗TOP3を友達に教える</span>
+                    <div class="share-banner-buttons">
+                        <button class="share-pill-btn line-btn" onclick="shareCurrentRanking('line')">💬 LINEで送る</button>
+                        <button class="share-pill-btn x-btn" onclick="shareCurrentRanking('x')">𝕏 でポスト</button>
+                        <button class="share-pill-btn copy-btn" onclick="shareCurrentRanking('copy')">🔗 URLコピー</button>
+                    </div>
+                </div>
             </div>
 
             <div id="error-message" class="error-message hidden">
                 <p>Failed to retrieve data.</p>
             </div>
         </main>
+
+        <footer class="app-footer">
+            <p class="footer-disclaimer">
+                ※当サイト「相席ナビ」は公開情報を独自に集計・可視化した<strong>非公式の統計情報サイト</strong>であり、掲載されている各店舗・運営会社とは一切関係ありません。各店舗への直接のお問い合わせはご遠慮ください。
+            </p>
+            <div class="footer-links">
+                <button class="footer-link-btn" onclick="openLegalModal()">免責事項・プライバシーポリシー</button>
+                <span class="footer-divider">|</span>
+                <span class="footer-copy">© 相席ナビ (Aiseki Navi)</span>
+            </div>
+        </footer>
     </div>
 
     <!-- Template for ranking item -->
@@ -800,8 +865,13 @@
                 pinnedContainer.classList.add('hidden');
             }
 
-            otherItems.forEach((item) => {
+            otherItems.forEach((item, idx) => {
                 renderStore(item.store, item.rank, rankingList, false, item.rank);
+                // Insert native in-feed PR card naturally after the 5th ranking card
+                if (idx === 4 && AFFILIATE_CONFIG.enabled) {
+                    const prEl = createInfeedPrElement();
+                    if (prEl) rankingList.appendChild(prEl);
+                }
             });
 
             const lastUpdateEl = document.getElementById('last-update');
@@ -811,6 +881,154 @@
                 void lastUpdateEl.offsetWidth; // trigger reflow
                 lastUpdateEl.classList.add('flash-update');
             }
+        }
+
+        // --- Affiliate / Monetization Slot Configuration ---
+        // ※A8.net等のアフィリエイトリンクを取得したら、下の url や title を書き換えるだけで即座に全画面に反映されます
+        const AFFILIATE_CONFIG = {
+            enabled: true,
+            badge: 'PR・おすすめ',
+            title: '今夜すぐ近くで出会える人気マッチングアプリ特集',
+            subtitle: '相席ラウンジに行く前の待ち時間や、満席・男女比が合わない時のすれ違い対策に',
+            ctaText: '詳細を見る ›',
+            url: '#recommended' // ← ここにアフィリエイトURL（https://px.a8.net/... 等）を設定
+        };
+
+        function createInfeedPrElement() {
+            if (!AFFILIATE_CONFIG.enabled) return null;
+            const wrapper = document.createElement('a');
+            wrapper.className = 'ranking-item pr-card-item';
+            wrapper.href = AFFILIATE_CONFIG.url;
+            if (AFFILIATE_CONFIG.url.startsWith('http')) {
+                wrapper.target = '_blank';
+                wrapper.rel = 'noopener noreferrer sponsored';
+            } else {
+                wrapper.onclick = (e) => {
+                    e.preventDefault();
+                    showRefreshToast('💡 広告枠プレビュー（AFFILIATE_CONFIGでURLを設定できます）');
+                };
+            }
+            wrapper.innerHTML = `
+                <div class="pr-badge-circle">PR</div>
+                <div class="store-info">
+                    <div class="store-meta-row">
+                        <span class="pr-tag-pill">${escapeHtml(AFFILIATE_CONFIG.badge)}</span>
+                    </div>
+                    <h3 class="store-name pr-title">${escapeHtml(AFFILIATE_CONFIG.title)}</h3>
+                    <p class="pr-subtitle">${escapeHtml(AFFILIATE_CONFIG.subtitle)}</p>
+                </div>
+                <div class="pr-cta-box">
+                    <span class="pr-cta-btn">${escapeHtml(AFFILIATE_CONFIG.ctaText)}</span>
+                </div>
+            `;
+            return wrapper;
+        }
+
+        function renderModalPrSlot(storeName) {
+            const slot = document.getElementById('modal-pr-slot');
+            if (!slot) return;
+            if (!AFFILIATE_CONFIG.enabled) {
+                slot.classList.add('hidden');
+                return;
+            }
+            slot.classList.remove('hidden');
+            const isExternal = AFFILIATE_CONFIG.url.startsWith('http');
+            slot.innerHTML = `
+                <a href="${escapeHtml(AFFILIATE_CONFIG.url)}" ${isExternal ? 'target="_blank" rel="noopener noreferrer sponsored"' : ''} class="modal-pr-link" ${!isExternal ? 'onclick="event.preventDefault(); showRefreshToast(\'💡 広告枠プレビュー（アフィリエイトURL設定箇所）\')"' : ''}>
+                    <span class="pr-tag-pill">PR</span>
+                    <span class="modal-pr-text">${escapeHtml(AFFILIATE_CONFIG.title)}</span>
+                    <span class="modal-pr-arrow">›</span>
+                </a>
+            `;
+        }
+
+        function getOfficialBrandUrl(brandCode, rawName) {
+            const name = String(rawName || '');
+            if (brandCode === 'ag' || /^ag\s/i.test(name)) return 'https://ag-ree.jp/';
+            if (brandCode === 'OLG') return 'https://oriental-lounge.com/';
+            if (brandCode === 'JIS') return 'https://jis.bar/';
+            if (brandCode === 'XIX') return 'https://xix-lounge.com/';
+            if (brandCode === 'ALFA') return 'https://alfa-lounge.com/';
+            if (brandCode === 'ヤタコイ') return 'https://yatakoi.com/';
+            if (brandCode === 'CLOVERS') return 'https://clovers-lounge.jp/';
+            return 'https://oriental-lounge.com/';
+        }
+
+        // --- SNS Share Functions (Ranking & Individual Store) ---
+        function buildRankingShareText() {
+            const regionNames = {
+                'All': '全国', 'Kanto': '関東', 'Kinki': '関西', 'Chubu': '中部',
+                'Kyushu': '九州', 'Hokkaido': '北海道', 'Tohoku': '東北',
+                'Chugoku': '中国', 'Shikoku': '四国', 'Korea': '韓国'
+            };
+            const areaTitle = regionNames[currentFilter] || '全国';
+            let text = `🔥【相席ナビ】いま盛り上がってる${areaTitle}ラウンジTOP3！\n`;
+            if (window.lastData && window.lastData.ranking) {
+                const list = window.lastData.ranking.filter(s => currentFilter === 'All' || s.region === currentFilter).slice(0, 3);
+                const medals = ['🥇', '🥈', '🥉'];
+                list.forEach((s, i) => {
+                    const b = detectBrandInfo(s);
+                    text += `${medals[i]} ${b.fullDisplayTitle}（👩女性${s.women}名 / 👨男性${s.men}名）\n`;
+                });
+            }
+            text += `#相席ナビ #相席ラウンジ`;
+            return text;
+        }
+
+        async function shareCurrentRanking(platform) {
+            const shareUrl = window.location.origin + window.location.pathname;
+            const shareText = buildRankingShareText();
+
+            if (platform === 'native' && navigator.share) {
+                try {
+                    await navigator.share({ title: '相席ナビ｜全国ラウンジの今わかる人数ランキング', text: shareText, url: shareUrl });
+                    return;
+                } catch (e) {}
+            }
+            if (platform === 'line') {
+                const lineUrl = `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`;
+                window.open(lineUrl, '_blank', 'noopener,noreferrer');
+            } else if (platform === 'x' || platform === 'native') {
+                const xUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText + '\n' + shareUrl)}`;
+                window.open(xUrl, '_blank', 'noopener,noreferrer');
+            } else if (platform === 'copy') {
+                try {
+                    await navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
+                    showRefreshToast('📋 ランキングとURLをコピーしました！');
+                } catch (e) {
+                    showRefreshToast('URL: ' + shareUrl);
+                }
+            }
+        }
+
+        let currentModalStoreName = '';
+
+        function shareStoreStatus(platform) {
+            const shareUrl = window.location.origin + window.location.pathname;
+            const bInfo = detectBrandInfo(currentModalStoreName);
+            let liveInfo = '';
+            if (window.lastData && window.lastData.ranking) {
+                const found = window.lastData.ranking.find(s => s.name === currentModalStoreName);
+                if (found) {
+                    liveInfo = `現在 👩女性${found.women}名 / 👨男性${found.men}名！`;
+                }
+            }
+            const text = `🍸【${bInfo.fullDisplayTitle}】${liveInfo}\n曜日・時間帯別の混雑データも『相席ナビ』でチェック👇`;
+            if (platform === 'line') {
+                const lineUrl = `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(text)}`;
+                window.open(lineUrl, '_blank', 'noopener,noreferrer');
+            } else {
+                const xUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text + ' #相席ナビ\n' + shareUrl)}`;
+                window.open(xUrl, '_blank', 'noopener,noreferrer');
+            }
+        }
+
+        function openLegalModal() {
+            document.getElementById('legal-modal').classList.remove('hidden');
+        }
+
+        function closeLegalModal() {
+            document.getElementById('legal-modal').classList.add('hidden');
         }
 
         function showError() {
@@ -835,11 +1053,19 @@
         let currentData = null;
 
         async function openModal(storeName) {
+            currentModalStoreName = storeName;
             const modal = document.getElementById('analysis-modal');
             const modalContent = modal.querySelector('.modal-content');
             const title = document.getElementById('modal-store-name');
             const banner = document.getElementById('live-comparison-banner');
             const bInfo = detectBrandInfo(storeName);
+
+            const officialLinkEl = document.getElementById('modal-official-link');
+            if (officialLinkEl) {
+                officialLinkEl.href = getOfficialBrandUrl(bInfo.code, storeName);
+            }
+            renderModalPrSlot(storeName);
+
             modal.classList.remove('hidden');
             if (modalContent) modalContent.scrollTop = 0;
 
@@ -890,6 +1116,9 @@
         });
         document.getElementById('comparison-modal').addEventListener('click', (e) => {
             if (e.target.id === ('comparison-modal')) closeComparisonModal();
+        });
+        document.getElementById('legal-modal').addEventListener('click', (e) => {
+            if (e.target.id === ('legal-modal')) closeLegalModal();
         });
 
         // --- Comparison Modal Logic ---
