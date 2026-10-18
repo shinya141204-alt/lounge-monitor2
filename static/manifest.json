@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "相席ラウンジ モニター",
-  "short_name": "LoungeMonitor",
-  "description": "相席ラウンジのリアルタイム男女比や混雑状況を確認できるアプリ",
+  "name": "相席ナビ｜全国ラウンジの今わかる人数ランキング",
+  "short_name": "相席ナビ",
+  "description": "全国ラウンジの今わかる人数ランキング・リアルタイム男女比アプリ",
   "lang": "ja",
   "start_url": "/?v=pwa",
   "scope": "/",

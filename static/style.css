@@ -83,22 +83,21 @@ header {
 }
 
 h1 {
-    font-weight: 700;
-    letter-spacing: 2px;
-    font-size: 1.2rem;
-    /* Smaller header */
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    font-size: 1.45rem;
     margin: 0;
-    text-transform: uppercase;
-    background: linear-gradient(90deg, #fff, #aaa);
+    background: linear-gradient(90deg, #ffffff 0%, #f3e8ff 50%, #f9a8d4 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
 }
 
 .subtitle {
     color: var(--text-secondary);
-    font-size: 0.8rem;
-    margin-top: 5px;
-    letter-spacing: 1px;
+    font-size: 0.78rem;
+    margin-top: 4px;
+    letter-spacing: 0.04em;
+    font-weight: 500;
 }
 
 /* Header removed, styles deleted */
