@@ -4,7 +4,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>相席ナビ｜全国ラウンジの今わかる人数ランキング</title>
+    <title>相席ナビ｜全国ラウンジの今わかる人数ランキング（リアルタイム男女比・混雑状況）</title>
+    <meta name="description" content="全国65店舗以上の相席ラウンジ（オリエンタルラウンジ・ag・JIS・XIX・ALFA・ヤタコイ・CLOVERS）のリアルタイム男女人数・男女比・曜日別の混雑傾向がひと目でわかる無料ランキング＆攻略サイト「相席ナビ」。">
+    <meta name="keywords" content="相席ナビ,相席ラウンジ,オリエンタルラウンジ,JIS,ag,リアルタイム人数,男女比,混雑状況,相席,おすすめアプリ">
+
+    <!-- OGP / SNS Card Settings -->
+    <meta property="og:title" content="相席ナビ｜全国ラウンジの今わかる人数ランキング">
+    <meta property="og:description" content="いま盛り上がっている相席ラウンジの男女人数・比率・曜日別ピーク平均をリアルタイム可視化！">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="相席ナビ">
+    <meta property="og:locale" content="ja_JP">
+    <meta property="og:image" content="/static/icon-512.png?v=2">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="相席ナビ｜全国ラウンジの今わかる人数ランキング">
+    <meta name="twitter:description" content="全国ラウンジのリアルタイム男女人数・曜日別ピーク平均がひと目でわかる！">
+    <meta name="twitter:image" content="/static/icon-512.png?v=2">
+
+    <!-- Structured Data for Google SEO -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "相席ナビ",
+      "alternateName": "全国ラウンジの今わかる人数ランキング",
+      "applicationCategory": "LifestyleApplication",
+      "operatingSystem": "All",
+      "description": "全国の主要相席ラウンジのリアルタイム男女人数・男女比・曜日別混雑トレンドを可視化する情報サイト"
+    }
+    </script>
 
     <!-- PWA Settings -->
     <link rel="manifest" href="/static/manifest.json?v=2">
@@ -119,6 +146,34 @@
         </div>
     </div>
     <!-- End Legal Modal -->
+
+    <!-- Recommended Apps & Lounge Strategy Guide Modal -->
+    <div id="guide-modal" class="modal hidden">
+        <div class="modal-content" style="max-width: 720px;">
+            <div class="modal-header">
+                <h2>✨ おすすめアプリ比較＆相席攻略ガイド</h2>
+                <button class="close-btn-pill" onclick="closeGuideModal()" aria-label="閉じる">✕ 閉じる</button>
+            </div>
+            <div class="guide-modal-body">
+                <p class="guide-lead">
+                    相席ラウンジで「男性待ち時間が長い」「目当ての店舗の女性比率が低い」という時は、<strong>即日・今週末に近くで飲めるマッチングアプリを併用する</strong>のが最も効率的です。目的別のおすすめ3選を比較しました。
+                </p>
+                <div id="guide-app-list" class="guide-app-list">
+                    <!-- Populated dynamically from AFFILIATE_CONFIG.items -->
+                </div>
+                <div class="guide-tips-box">
+                    <h4>💡 相席ナビを使った「失敗しない立ち回り3鉄則」</h4>
+                    <ul>
+                        <li><strong>① 入店30分前に「女性比率60%以上」の店舗を狙う：</strong> 女性人数だけでなく「男女比バー」がピンク優位の店舗を選ぶと、入店後すぐ相席しやすくなります。</li>
+                        <li><strong>② 金・土の21:30〜23:30は2店舗を比較：</strong> 新宿・渋谷・梅田などの激戦区では、同じエリアの別ブランド（OLG・ag・JISなど）を見比べて偏りが少ない方へ移動するのが鉄則です。</li>
+                        <li><strong>③ 待ち時間15分以上ならアプリで同時アポ：</strong> 入店待ちやチェンジ待ちの間にアプリの「今日これから」機能を使うことで、空振りをゼロにできます。</li>
+                    </ul>
+                </div>
+            </div>
+            <button class="modal-bottom-close-btn" onclick="closeGuideModal()">✕ 閉じる</button>
+        </div>
+    </div>
+    <!-- End Guide Modal -->
 
     <!-- Comparison Modal -->
     <div id="comparison-modal" class="modal hidden">
@@ -262,6 +317,28 @@
                         <button class="share-pill-btn copy-btn" onclick="shareCurrentRanking('copy')">🔗 URLコピー</button>
                     </div>
                 </div>
+
+                <!-- SEO & ASP Review Editorial Column Section -->
+                <section class="seo-guide-section" aria-label="相席ラウンジ攻略ガイド">
+                    <div class="seo-guide-header">
+                        <h2>📖 相席ラウンジのリアルタイム攻略ガイド＆時間帯別の狙い目</h2>
+                        <button class="guide-open-btn" onclick="openGuideModal()">✨ 併用おすすめアプリ3選を見る ›</button>
+                    </div>
+                    <div class="seo-guide-grid">
+                        <article class="seo-guide-card">
+                            <h3>⏰ 曜日・時間帯別のピーク傾向を知る</h3>
+                            <p>全国の主要相席ラウンジ（オリエンタルラウンジ・ag・JIS・XIX・ALFA・ヤタコイ・CLOVERS）では、<strong>金・土曜の21:00〜翌1:00</strong>が最大のピークタイムとなります。一方、平日の20:00〜22:00はお仕事帰りの女性が多く、男性の待ち時間も少ない穴場時間帯です。各店舗カードをタップすると、過去の曜日×時間帯別の平均人数グラフを確認できます。</p>
+                        </article>
+                        <article class="seo-guide-card">
+                            <h3>⚖️ 「女性人数」だけでなく「男女比率」に注目</h3>
+                            <p>単に女性人数が多い店舗でも、男性がそれ以上に多い場合は入店待ちが発生することがあります。「女性比率順」ソートを活用し、<strong>女性比率が55%〜70%で推移している店舗</strong>を選ぶことで、スムーズな相席と高い満足度が期待できます。</p>
+                        </article>
+                        <article class="seo-guide-card">
+                            <h3>📱 ラウンジとマッチングアプリの賢い併用術</h3>
+                            <p>人気店が満席の時や、近隣店舗の男女比が合わない時は、「今日これから飲める機能」があるマッチングアプリを併用するのが定石です。入店前の待ち時間に近くにいる相手を探しておくことで、週末の夜を無駄なく楽しめます。</p>
+                        </article>
+                    </div>
+                </section>
             </div>
 
             <div id="error-message" class="error-message hidden">
@@ -274,6 +351,8 @@
                 ※当サイト「相席ナビ」は公開情報を独自に集計・可視化した<strong>非公式の統計情報サイト</strong>であり、掲載されている各店舗・運営会社とは一切関係ありません。各店舗への直接のお問い合わせはご遠慮ください。
             </p>
             <div class="footer-links">
+                <button class="footer-link-btn" onclick="openGuideModal()">おすすめアプリ＆攻略ガイド</button>
+                <span class="footer-divider">|</span>
                 <button class="footer-link-btn" onclick="openLegalModal()">免責事項・プライバシーポリシー</button>
                 <span class="footer-divider">|</span>
                 <span class="footer-copy">© 相席ナビ (Aiseki Navi)</span>
@@ -884,14 +963,40 @@
         }
 
         // --- Affiliate / Monetization Slot Configuration ---
-        // ※A8.net等のアフィリエイトリンクを取得したら、下の url や title を書き換えるだけで即座に全画面に反映されます
+        // ※A8.netやアクセストレード等でアフィリエイトURLを取得したら、下の items 内の url を書き換えるだけで即座に反映されます
         const AFFILIATE_CONFIG = {
             enabled: true,
             badge: 'PR・おすすめ',
-            title: '今夜すぐ近くで出会える人気マッチングアプリ特集',
+            title: '今夜すぐ近くで出会える人気マッチングアプリ3選',
             subtitle: '相席ラウンジに行く前の待ち時間や、満席・男女比が合わない時のすれ違い対策に',
-            ctaText: '詳細を見る ›',
-            url: '#recommended' // ← ここにアフィリエイトURL（https://px.a8.net/... 等）を設定
+            ctaText: '比較を見る ›',
+            url: '#guide', // '#guide' の場合はアプリ比較モーダルを開きます。直接飛ばしたい場合は https://... を設定
+            items: [
+                {
+                    rank: '👑 人気No.1（即日・食事デート特化）',
+                    name: 'Dine（ダイン）/ バチェラーデート系',
+                    target: 'メッセージ不要で今夜・今週すぐ飲みたい人向け',
+                    desc: '面倒なやり取りなしで、最初からお洒落な飲食店でのデートが決まる相席ラウンジ層に一番人気のアプリ。',
+                    cta: '無料で試してみる ›',
+                    url: '#affiliate-slot-1' // ← 案件①のアフィリエイトURLをここに貼る
+                },
+                {
+                    rank: '🔥 同世代率No.1（20代〜30代前半の気軽な恋活）',
+                    name: 'タップル（tapple）',
+                    target: '「おでかけ機能」で24時間以内に飲み友達を探したい人向け',
+                    desc: '「今日これから飲める人」「週末ヒマな人」を募集できる機能があり、相席ラウンジとの併用相性が抜群。',
+                    cta: '公式ページを見る ›',
+                    url: '#affiliate-slot-2' // ← 案件②のアフィリエイトURLをここに貼る
+                },
+                {
+                    rank: '💎 会員数No.1（王道・全国エリア対応）',
+                    name: 'Pairs（ペアーズ）/ with（ウィズ）',
+                    target: '地方エリアや普段の恋活も並行して進めたい人向け',
+                    desc: '圧倒的な会員数でどの都道府県でもマッチングしやすく、相席ラウンジに行く前の事前アポ確保にも最適。',
+                    cta: '無料で探してみる ›',
+                    url: '#affiliate-slot-3' // ← 案件③のアフィリエイトURLをここに貼る
+                }
+            ]
         };
 
         function createInfeedPrElement() {
@@ -905,7 +1010,7 @@
             } else {
                 wrapper.onclick = (e) => {
                     e.preventDefault();
-                    showRefreshToast('💡 広告枠プレビュー（AFFILIATE_CONFIGでURLを設定できます）');
+                    openGuideModal();
                 };
             }
             wrapper.innerHTML = `
@@ -934,12 +1039,41 @@
             slot.classList.remove('hidden');
             const isExternal = AFFILIATE_CONFIG.url.startsWith('http');
             slot.innerHTML = `
-                <a href="${escapeHtml(AFFILIATE_CONFIG.url)}" ${isExternal ? 'target="_blank" rel="noopener noreferrer sponsored"' : ''} class="modal-pr-link" ${!isExternal ? 'onclick="event.preventDefault(); showRefreshToast(\'💡 広告枠プレビュー（アフィリエイトURL設定箇所）\')"' : ''}>
+                <a href="${escapeHtml(AFFILIATE_CONFIG.url)}" ${isExternal ? 'target="_blank" rel="noopener noreferrer sponsored"' : ''} class="modal-pr-link" ${!isExternal ? 'onclick="event.preventDefault(); openGuideModal()"' : ''}>
                     <span class="pr-tag-pill">PR</span>
                     <span class="modal-pr-text">${escapeHtml(AFFILIATE_CONFIG.title)}</span>
                     <span class="modal-pr-arrow">›</span>
                 </a>
             `;
+        }
+
+        function openGuideModal() {
+            const listEl = document.getElementById('guide-app-list');
+            if (listEl && AFFILIATE_CONFIG.items) {
+                listEl.innerHTML = AFFILIATE_CONFIG.items.map(item => {
+                    const isExt = item.url && item.url.startsWith('http');
+                    return `
+                        <div class="guide-app-card">
+                            <div class="guide-app-badge">${escapeHtml(item.rank)}</div>
+                            <div class="guide-app-main">
+                                <div class="guide-app-info">
+                                    <h4 class="guide-app-name">${escapeHtml(item.name)}</h4>
+                                    <p class="guide-app-target">🎯 ${escapeHtml(item.target)}</p>
+                                    <p class="guide-app-desc">${escapeHtml(item.desc)}</p>
+                                </div>
+                                <a href="${escapeHtml(item.url)}" ${isExt ? 'target="_blank" rel="noopener noreferrer sponsored"' : 'onclick="event.preventDefault(); showRefreshToast(\'💡 ASP審査通過後、ここにアフィリエイトURLを設定します\')"'} class="guide-app-cta">
+                                    ${escapeHtml(item.cta)}
+                                </a>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+            document.getElementById('guide-modal').classList.remove('hidden');
+        }
+
+        function closeGuideModal() {
+            document.getElementById('guide-modal').classList.add('hidden');
         }
 
         function getOfficialBrandUrl(brandCode, rawName) {
@@ -1119,6 +1253,9 @@
         });
         document.getElementById('legal-modal').addEventListener('click', (e) => {
             if (e.target.id === ('legal-modal')) closeLegalModal();
+        });
+        document.getElementById('guide-modal').addEventListener('click', (e) => {
+            if (e.target.id === ('guide-modal')) closeGuideModal();
         });
 
         // --- Comparison Modal Logic ---

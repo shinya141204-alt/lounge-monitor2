@@ -1306,3 +1306,177 @@ canvas {
 .legal-body p {
     margin: 0 0 10px 0;
 }
+
+/* --- SEO & ASP Review Guide Section & Guide Modal --- */
+.seo-guide-section {
+    margin-top: 22px;
+    padding: 16px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    text-align: left;
+}
+
+.seo-guide-header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.seo-guide-header h2 {
+    margin: 0;
+    font-size: 0.92rem;
+    color: #f3e8ff;
+}
+
+.guide-open-btn {
+    background: linear-gradient(90deg, #ec4899, #8b5cf6);
+    border: none;
+    border-radius: 18px;
+    color: #fff;
+    padding: 6px 13px;
+    font-size: 0.74rem;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(236, 72, 153, 0.3);
+}
+
+.seo-guide-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 12px;
+}
+
+.seo-guide-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 10px;
+    padding: 12px;
+}
+
+.seo-guide-card h3 {
+    margin: 0 0 6px 0;
+    font-size: 0.82rem;
+    color: #f9a8d4;
+}
+
+.seo-guide-card p {
+    margin: 0;
+    font-size: 0.74rem;
+    line-height: 1.55;
+    color: #cbd5e1;
+}
+
+.guide-modal-body {
+    text-align: left;
+    padding: 4px 2px 12px 2px;
+}
+
+.guide-lead {
+    font-size: 0.8rem;
+    line-height: 1.6;
+    color: #cbd5e1;
+    margin: 0 0 14px 0;
+}
+
+.guide-app-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.guide-app-card {
+    background: linear-gradient(135deg, rgba(236, 72, 153, 0.07) 0%, rgba(59, 130, 246, 0.07) 100%);
+    border: 1px solid rgba(236, 72, 153, 0.28);
+    border-radius: 12px;
+    padding: 12px 14px;
+}
+
+.guide-app-badge {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #fde047;
+    background: rgba(212, 175, 55, 0.16);
+    border: 1px solid rgba(212, 175, 55, 0.35);
+    padding: 2px 8px;
+    border-radius: 6px;
+    margin-bottom: 8px;
+}
+
+.guide-app-main {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+
+.guide-app-info {
+    flex: 1;
+    min-width: 210px;
+}
+
+.guide-app-name {
+    margin: 0 0 4px 0;
+    font-size: 0.95rem;
+    color: #fff;
+}
+
+.guide-app-target {
+    margin: 0 0 4px 0;
+    font-size: 0.74rem;
+    font-weight: 600;
+    color: #f9a8d4;
+}
+
+.guide-app-desc {
+    margin: 0;
+    font-size: 0.73rem;
+    line-height: 1.45;
+    color: #cbd5e1;
+}
+
+.guide-app-cta {
+    display: inline-block;
+    padding: 8px 14px;
+    border-radius: 20px;
+    background: linear-gradient(90deg, #ec4899, #8b5cf6);
+    color: #fff;
+    text-decoration: none;
+    font-size: 0.76rem;
+    font-weight: 700;
+    white-space: nowrap;
+    box-shadow: 0 2px 10px rgba(236, 72, 153, 0.35);
+}
+
+.guide-tips-box {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 12px 14px;
+}
+
+.guide-tips-box h4 {
+    margin: 0 0 8px 0;
+    font-size: 0.82rem;
+    color: #93c5fd;
+}
+
+.guide-tips-box ul {
+    margin: 0;
+    padding-left: 18px;
+    font-size: 0.74rem;
+    line-height: 1.6;
+    color: #cbd5e1;
+}
+
+.guide-tips-box li {
+    margin-bottom: 6px;
+}
