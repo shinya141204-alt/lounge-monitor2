@@ -21,11 +21,16 @@
 </head>
 
 <body>
+    <!-- Refresh Toast Notification -->
+    <div id="refresh-toast" class="refresh-toast hidden">✨ 最新データに更新しました</div>
+
     <!-- Analysis Modal -->
     <div id="analysis-modal" class="modal hidden">
         <div class="modal-content">
-            <button class="close-btn" onclick="closeModal()" aria-label="閉じる">&times;</button>
-            <h2 id="modal-store-name">Store Name</h2>
+            <div class="modal-header">
+                <h2 id="modal-store-name">Store Name</h2>
+                <button class="close-btn-pill" onclick="closeModal()" aria-label="閉じる">✕ 閉じる</button>
+            </div>
             
             <!-- Live vs Historical Comparison Banner -->
             <div id="live-comparison-banner" class="comparison-banner hidden"></div>
@@ -69,6 +74,8 @@
                     <canvas id="dailyChart"></canvas>
                 </div>
             </div>
+
+            <button class="modal-bottom-close-btn" onclick="closeModal()">✕ 詳細画面を閉じる</button>
         </div>
     </div>
     <!-- End Analysis Modal -->
@@ -76,14 +83,17 @@
     <!-- Comparison Modal -->
     <div id="comparison-modal" class="modal hidden">
         <div class="modal-content">
-            <button class="close-btn" onclick="closeComparisonModal()" aria-label="閉じる">&times;</button>
-            <h2>競合比較 (Brand Comparison)</h2>
-            <p style="text-align: center; color: var(--text-secondary); font-size: 0.8rem; margin-top: -10px; margin-bottom: 20px;">
+            <div class="modal-header">
+                <h2>競合比較 (Brand Comparison)</h2>
+                <button class="close-btn-pill" onclick="closeComparisonModal()" aria-label="閉じる">✕ 閉じる</button>
+            </div>
+            <p style="text-align: center; color: var(--text-secondary); font-size: 0.8rem; margin-top: 0; margin-bottom: 15px;">
                 現在の来店数（ブランド合計）
             </p>
             <div class="chart-container" style="height: 350px;">
                 <canvas id="comparisonChart"></canvas>
             </div>
+            <button class="modal-bottom-close-btn" onclick="closeComparisonModal()">✕ 閉じる</button>
         </div>
     </div>
     <!-- End Comparison Modal -->
@@ -91,14 +101,17 @@
     <!-- Report Modal -->
     <div id="report-modal" class="modal hidden">
         <div class="modal-content" style="max-width: 800px;">
-            <button class="close-btn" onclick="closeReportModal()" aria-label="閉じる">&times;</button>
-            <h2>週間レポート (Weekly Report)</h2>
-            <p id="report-period" style="text-align: center; color: var(--text-secondary); font-size: 0.8rem; margin-top: -10px; margin-bottom: 20px;">
+            <div class="modal-header">
+                <h2>週間レポート (Weekly Report)</h2>
+                <button class="close-btn-pill" onclick="closeReportModal()" aria-label="閉じる">✕ 閉じる</button>
+            </div>
+            <p id="report-period" style="text-align: center; color: var(--text-secondary); font-size: 0.8rem; margin-top: 0; margin-bottom: 15px;">
                 Loading...
             </p>
             <div id="report-content" class="chart-container" style="overflow-x: auto;">
                 <div class="spinner"></div>
             </div>
+            <button class="modal-bottom-close-btn" onclick="closeReportModal()">✕ 閉じる</button>
         </div>
     </div>
     <!-- End Report Modal -->
@@ -386,19 +399,49 @@
             }
         }
 
+        let toastTimer = null;
+        function showRefreshToast(message, isError = false) {
+            const toast = document.getElementById('refresh-toast');
+            if (!toast) return;
+            toast.textContent = message;
+            toast.classList.toggle('error', isError);
+            toast.classList.remove('hidden');
+            // trigger transition
+            requestAnimationFrame(() => {
+                toast.classList.add('show');
+            });
+            if (toastTimer) clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.classList.add('hidden'), 300);
+            }, 2500);
+        }
+
         async function manualRefresh() {
             const btn = document.getElementById('refresh-btn');
-            if (btn.disabled) return;
+            const labelSpan = btn ? btn.querySelector('span') : null;
+            if (btn && btn.disabled) return;
             
-            btn.disabled = true;
-            btn.classList.add('spinning');
+            if (btn) {
+                btn.disabled = true;
+                btn.classList.add('spinning');
+            }
+            if (labelSpan) labelSpan.textContent = '更新中...';
+            showRefreshToast('🔄 最新データを取得中...');
             
             await fetchData();
             
             setTimeout(() => {
-                btn.classList.remove('spinning');
-                btn.disabled = false;
-            }, 500);
+                if (btn) {
+                    btn.classList.remove('spinning');
+                    btn.disabled = false;
+                }
+                if (labelSpan) labelSpan.textContent = '更新';
+                const timeStr = (window.lastData && window.lastData.timestamp)
+                    ? window.lastData.timestamp.split(' ')[1]
+                    : new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                showRefreshToast(`✨ 最新データに更新しました (${timeStr})`);
+            }, 400);
         }
 
         function detectBrandInfo(store) {
@@ -565,7 +608,13 @@
                 renderStore(item.store, item.rank, rankingList, false, item.rank);
             });
 
-            document.getElementById('last-update').textContent = data.timestamp ? data.timestamp.split(' ')[1].substring(0, 5) : '--:--';
+            const lastUpdateEl = document.getElementById('last-update');
+            if (lastUpdateEl) {
+                lastUpdateEl.textContent = data.timestamp ? data.timestamp.split(' ')[1] : '--:--';
+                lastUpdateEl.classList.remove('flash-update');
+                void lastUpdateEl.offsetWidth; // trigger reflow
+                lastUpdateEl.classList.add('flash-update');
+            }
         }
 
         function showError() {
@@ -591,11 +640,13 @@
 
         async function openModal(storeName) {
             const modal = document.getElementById('analysis-modal');
+            const modalContent = modal.querySelector('.modal-content');
             const title = document.getElementById('modal-store-name');
             const banner = document.getElementById('live-comparison-banner');
             title.textContent = storeName + " 読み込み中...";
             banner.classList.add('hidden');
             modal.classList.remove('hidden');
+            if (modalContent) modalContent.scrollTop = 0;
 
             try {
                 const response = await fetch('/api/analysis/' + encodeURIComponent(storeName));
