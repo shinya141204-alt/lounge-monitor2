@@ -312,11 +312,11 @@
                     </svg>
                     <span>系列比較</span>
                 </button>
-                <button id="compact-btn" class="header-btn labeled-btn" onclick="toggleCompact()" title="コンパクト表示切替">
+                <button id="compact-btn" class="header-btn labeled-btn" onclick="toggleCompact()" title="デザイン・表示モード切替">
                     <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line>
                     </svg>
-                    <span>表示切替</span>
+                    <span id="compact-btn-label">表示切替</span>
                 </button>
                 <button id="share-btn" class="header-btn labeled-btn" onclick="openSnsModal()" title="SNS速報ポスト作成・共有">
                     <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -330,6 +330,12 @@
                     </svg>
                     <span>更新</span>
                 </button>
+            </div>
+            <div class="theme-switcher-bar" role="group" aria-label="デザイン切替">
+                <button type="button" class="theme-pill-btn active" data-theme="default" onclick="setViewTheme('default', true)">✨ 通常</button>
+                <button type="button" class="theme-pill-btn" data-theme="list" onclick="setViewTheme('list', true)">📋 リスト</button>
+                <button type="button" class="theme-pill-btn" data-theme="flat" onclick="setViewTheme('flat', true)">🌑 フラット</button>
+                <button type="button" class="theme-pill-btn" data-theme="light" onclick="setViewTheme('light', true)">☀️ ライト</button>
             </div>
         </header>
 
@@ -537,12 +543,51 @@
         let currentFilter = 'All';
         let currentSearch = '';
         let currentSort = 'women';
-        let isCompact = localStorage.getItem('olg_compact_view') === 'true';
+        const THEME_ORDER = ['default', 'list', 'flat', 'light'];
+        const THEME_LABELS = {
+            default: '✨ 通常モード（ネオン）',
+            list: '📋 リストモード（1行スリム表）',
+            flat: '🌑 フラットモード（装飾オフ）',
+            light: '☀️ ライトモード（白背景）'
+        };
+        let currentTheme = localStorage.getItem('olg_view_theme') || (localStorage.getItem('olg_compact_view') === 'true' ? 'list' : 'default');
+        if (!THEME_ORDER.includes(currentTheme)) currentTheme = 'default';
         let pinnedStores = JSON.parse(localStorage.getItem('olg_pinned_stores')) || [];
 
-        // Apply compact view immediately if set
-        if (isCompact) {
-            document.body.classList.add('compact-mode');
+        function applyThemeClasses(themeName) {
+            document.body.classList.remove('compact-mode', 'theme-list', 'theme-flat', 'theme-light');
+            if (themeName === 'list') {
+                document.body.classList.add('compact-mode', 'theme-list');
+            } else if (themeName === 'flat') {
+                document.body.classList.add('theme-flat');
+            } else if (themeName === 'light') {
+                document.body.classList.add('theme-light');
+            }
+            document.querySelectorAll('.theme-pill-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.theme === themeName);
+            });
+        }
+
+        // Apply saved theme immediately on load
+        applyThemeClasses(currentTheme);
+
+        function setViewTheme(themeName, notify = false) {
+            if (!THEME_ORDER.includes(themeName)) themeName = 'default';
+            currentTheme = themeName;
+            try {
+                localStorage.setItem('olg_view_theme', currentTheme);
+                localStorage.setItem('olg_compact_view', currentTheme === 'list' ? 'true' : 'false');
+            } catch (e) {}
+            applyThemeClasses(currentTheme);
+            if (notify && typeof showRefreshToast === 'function') {
+                showRefreshToast(`🎨 ${THEME_LABELS[currentTheme]}`);
+            }
+        }
+
+        function toggleCompact() {
+            const idx = THEME_ORDER.indexOf(currentTheme);
+            const nextTheme = THEME_ORDER[(idx + 1) % THEME_ORDER.length];
+            setViewTheme(nextTheme, true);
         }
 
         // Save Pinned Stores
@@ -570,16 +615,6 @@
             document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
             document.querySelector(`.sort-btn[data-sort="${sortType}"]`).classList.add('active');
             if (window.lastData) updateUI(window.lastData);
-        }
-
-        function toggleCompact() {
-            isCompact = !isCompact;
-            localStorage.setItem('olg_compact_view', isCompact);
-            if (isCompact) {
-                document.body.classList.add('compact-mode');
-            } else {
-                document.body.classList.remove('compact-mode');
-            }
         }
 
         // Add filter button listeners

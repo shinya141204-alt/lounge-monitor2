@@ -1619,3 +1619,533 @@ canvas {
     line-height: 1.6;
     color: #94a3b8;
 }
+
+/* --- 4-Mode Theme Switcher Bar --- */
+.theme-switcher-bar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    margin-top: 10px;
+    padding: 4px;
+    border-radius: 22px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.theme-pill-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    padding: 5px 11px;
+    border-radius: 18px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    font-family: var(--font-main);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.theme-pill-btn:hover {
+    color: var(--text-primary);
+}
+
+.theme-pill-btn.active {
+    background: rgba(236, 72, 153, 0.25);
+    color: #fff;
+    box-shadow: 0 1px 6px rgba(236, 72, 153, 0.25);
+}
+
+/* ==========================================================================
+   【案1】一覧リスト型（body.theme-list：1行スリム表・株価ボード風モード）
+   ========================================================================== */
+body.theme-list .background-glob {
+    display: none;
+}
+
+body.theme-list header {
+    margin-bottom: 12px;
+}
+
+body.theme-list .ranking-list {
+    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+    gap: 0;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    overflow: hidden;
+    background: rgba(15, 17, 26, 0.85);
+}
+
+@media (max-width: 768px) {
+    body.theme-list .ranking-list {
+        grid-template-columns: 1fr;
+    }
+}
+
+body.theme-list .ranking-item {
+    border-radius: 0;
+    border: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    padding: 7px 10px;
+    gap: 8px;
+    background: transparent;
+}
+
+body.theme-list .ranking-item:hover {
+    transform: none;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+body.theme-list .rank-badge {
+    width: 20px;
+    height: 20px;
+    font-size: 0.72rem;
+    margin-right: 4px;
+}
+
+body.theme-list .store-info {
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    overflow: hidden;
+}
+
+body.theme-list .store-meta-row {
+    flex-wrap: nowrap;
+    flex-shrink: 0;
+    gap: 4px;
+}
+
+body.theme-list .area-tag {
+    display: none;
+}
+
+body.theme-list .store-name {
+    font-size: 0.86rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+body.theme-list .card-actions {
+    margin-left: 2px;
+    margin-right: 0;
+    gap: 2px;
+}
+
+body.theme-list .stats-group {
+    gap: 8px;
+    margin-left: 4px;
+}
+
+body.theme-list .stat {
+    flex-direction: row;
+    align-items: baseline;
+    min-width: 32px;
+    justify-content: flex-end;
+    gap: 2px;
+}
+
+body.theme-list .stat .count {
+    font-size: 0.98rem;
+    text-shadow: none;
+}
+
+body.theme-list .stat .label {
+    display: inline;
+    font-size: 0.6rem;
+    opacity: 0.7;
+}
+
+body.theme-list .occupancy-bar {
+    display: none;
+}
+
+body.theme-list .pr-card-item {
+    background: rgba(236, 72, 153, 0.06);
+}
+
+body.theme-list .pr-cta-btn {
+    padding: 3px 8px;
+    font-size: 0.66rem;
+}
+
+body.theme-list .share-banner-box,
+body.theme-list .seo-guide-grid,
+body.theme-list .seo-faq-block,
+body.theme-list .seo-directory-block {
+    display: none;
+}
+
+body.theme-list .seo-guide-section {
+    padding: 10px 14px;
+    margin-top: 12px;
+}
+
+body.theme-list .seo-guide-header {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+/* ==========================================================================
+   【案2】クリーン・フラット（body.theme-flat：装飾オフ・無印/Apple標準風）
+   ========================================================================== */
+body.theme-flat {
+    --bg-color: #111318;
+    --card-bg: #1a1d24;
+    --card-hover: #22262f;
+    --card-border: #2a2f3a;
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+}
+
+body.theme-flat .background-glob {
+    display: none;
+}
+
+body.theme-flat h1 {
+    background: none;
+    -webkit-text-fill-color: #f8fafc;
+    color: #f8fafc;
+    letter-spacing: 0.04em;
+}
+
+body.theme-flat .theme-pill-btn.active {
+    background: #334155;
+    color: #f8fafc;
+    box-shadow: none;
+}
+
+body.theme-flat .ranking-item,
+body.theme-flat .ranking-item.rank-1,
+body.theme-flat .ranking-item.rank-2,
+body.theme-flat .ranking-item.rank-3 {
+    background: #1a1d24;
+    border-color: #2a2f3a;
+    box-shadow: none;
+}
+
+body.theme-flat .rank-1 .rank-badge,
+body.theme-flat .rank-2 .rank-badge,
+body.theme-flat .rank-3 .rank-badge {
+    background: #334155;
+    color: #f8fafc;
+    box-shadow: none;
+}
+
+body.theme-flat .brand-badge {
+    background: #262b36 !important;
+    color: #cbd5e1 !important;
+    border-color: #363d4d !important;
+}
+
+body.theme-flat .stat.ladies .count {
+    color: #f472b6;
+    text-shadow: none;
+}
+
+body.theme-flat .stat.men .count {
+    color: #60a5fa;
+}
+
+body.theme-flat .occupancy-bar {
+    height: 3px;
+    background: #262b36;
+}
+
+body.theme-flat .bar-fill-ladies {
+    background: #db2777;
+}
+
+body.theme-flat .bar-fill-men {
+    background: #2563eb;
+}
+
+body.theme-flat .pr-card-item {
+    background: #1e222b;
+    border-color: #334155;
+}
+
+body.theme-flat .pr-badge-circle,
+body.theme-flat .pr-tag-pill {
+    background: #334155;
+    color: #e2e8f0;
+    border-color: #475569;
+}
+
+body.theme-flat .pr-cta-btn,
+body.theme-flat .guide-open-btn {
+    background: #334155;
+    color: #f8fafc;
+    box-shadow: none;
+}
+
+body.theme-flat .filter-btn.active {
+    background: #334155;
+    border-color: #64748b;
+}
+
+/* ==========================================================================
+   【案3】ライトモード（body.theme-light：白背景×黒文字の清潔感シンプルUI）
+   ========================================================================== */
+body.theme-light {
+    --bg-color: #f1f5f9;
+    --card-bg: #ffffff;
+    --card-hover: #f8fafc;
+    --card-border: #e2e8f0;
+    --text-primary: #0f172a;
+    --text-secondary: #64748b;
+    --primary: #0f172a;
+}
+
+body.theme-light .background-glob {
+    display: none;
+}
+
+body.theme-light h1 {
+    background: none;
+    -webkit-text-fill-color: #0f172a;
+    color: #0f172a;
+}
+
+body.theme-light .header-btn {
+    background: #ffffff;
+    border-color: #cbd5e1;
+    color: #334155;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+body.theme-light .header-btn:hover {
+    background: #f8fafc;
+    color: #0f172a;
+    border-color: #94a3b8;
+}
+
+body.theme-light .theme-switcher-bar {
+    background: #e2e8f0;
+    border-color: #cbd5e1;
+}
+
+body.theme-light .theme-pill-btn {
+    color: #475569;
+}
+
+body.theme-light .theme-pill-btn.active {
+    background: #ffffff;
+    color: #0f172a;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+}
+
+body.theme-light #search-input {
+    background: #ffffff;
+    border-color: #cbd5e1;
+    color: #0f172a;
+}
+
+body.theme-light .sort-controls {
+    background: #e2e8f0;
+}
+
+body.theme-light .sort-btn {
+    color: #475569;
+}
+
+body.theme-light .sort-btn.active {
+    background: #ffffff;
+    color: #0f172a;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+}
+
+body.theme-light .filter-btn {
+    background: #ffffff;
+    border-color: #cbd5e1;
+    color: #475569;
+}
+
+body.theme-light .filter-btn.active,
+body.theme-light .filter-btn:hover {
+    background: #0f172a;
+    color: #ffffff;
+    border-color: #0f172a;
+}
+
+body.theme-light .ranking-item {
+    background: #ffffff;
+    border-color: #e2e8f0;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+}
+
+body.theme-light .ranking-item:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+}
+
+body.theme-light .ranking-item.rank-1 {
+    background: linear-gradient(90deg, #fffbeb, #ffffff);
+    border-color: #fcd34d;
+}
+
+body.theme-light .rank-badge {
+    background: #f1f5f9;
+    color: #334155;
+}
+
+body.theme-light .store-name {
+    color: #0f172a;
+}
+
+body.theme-light .brand-olg {
+    background: #fef3c7;
+    color: #92400e;
+    border-color: #fde68a;
+}
+
+body.theme-light .brand-ag {
+    background: #d1fae5;
+    color: #065f46;
+    border-color: #a7f3d0;
+}
+
+body.theme-light .brand-jis {
+    background: #ede9fe;
+    color: #5b21b6;
+    border-color: #ddd6fe;
+}
+
+body.theme-light .brand-xix {
+    background: #dbeafe;
+    color: #1e40af;
+    border-color: #bfdbfe;
+}
+
+body.theme-light .brand-alfa {
+    background: #ffe4e6;
+    color: #9f1239;
+    border-color: #fecdd3;
+}
+
+body.theme-light .brand-yatakoi {
+    background: #ffedd5;
+    color: #9a3412;
+    border-color: #fed7aa;
+}
+
+body.theme-light .brand-clovers {
+    background: #dcfce7;
+    color: #166534;
+    border-color: #bbf7d0;
+}
+
+body.theme-light .stat.ladies .count {
+    color: #e11d48;
+    text-shadow: none;
+}
+
+body.theme-light .stat.men .count {
+    color: #2563eb;
+}
+
+body.theme-light .occupancy-bar {
+    background: #f1f5f9;
+}
+
+body.theme-light .pr-card-item {
+    background: linear-gradient(135deg, #fdf2f8 0%, #eff6ff 100%);
+    border-color: #f9a8d4;
+}
+
+body.theme-light .pr-badge-circle {
+    background: #fce7f3;
+    color: #be185d;
+    border-color: #f9a8d4;
+}
+
+body.theme-light .pr-tag-pill {
+    background: #fef3c7;
+    color: #92400e;
+    border-color: #fcd34d;
+}
+
+body.theme-light .pr-title {
+    color: #0f172a;
+}
+
+body.theme-light .share-banner-box,
+body.theme-light .seo-guide-section {
+    background: #ffffff;
+    border-color: #e2e8f0;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+
+body.theme-light .share-banner-title,
+body.theme-light .seo-guide-header h2,
+body.theme-light .seo-faq-item summary {
+    color: #0f172a;
+}
+
+body.theme-light .seo-guide-card,
+body.theme-light .seo-faq-item {
+    background: #f8fafc;
+    border-color: #e2e8f0;
+}
+
+body.theme-light .seo-guide-card h3,
+body.theme-light .seo-faq-block h3,
+body.theme-light .seo-directory-block h3 {
+    color: #be185d;
+}
+
+body.theme-light .seo-guide-card p,
+body.theme-light .seo-faq-item p,
+body.theme-light .seo-dir-text {
+    color: #334155;
+}
+
+body.theme-light .share-pill-btn.copy-btn {
+    background: #f1f5f9;
+    color: #0f172a;
+    border-color: #cbd5e1;
+}
+
+body.theme-light .modal-content {
+    background: #ffffff;
+    border-color: #cbd5e1;
+    color: #0f172a;
+}
+
+body.theme-light .modal-header {
+    background: rgba(255, 255, 255, 0.96);
+    border-bottom-color: #e2e8f0;
+}
+
+body.theme-light .modal-header h2 {
+    color: #0f172a;
+}
+
+body.theme-light .close-btn-pill {
+    background: #f1f5f9;
+    color: #334155;
+    border-color: #cbd5e1;
+}
+
+body.theme-light .guide-lead,
+body.theme-light .guide-app-desc,
+body.theme-light .guide-tips-box ul,
+body.theme-light .legal-body {
+    color: #334155;
+}
+
+body.theme-light .guide-app-name {
+    color: #0f172a;
+}
+
+body.theme-light .guide-tips-box {
+    background: #f8fafc;
+    border-color: #e2e8f0;
+}
+
+body.theme-light .guide-tips-box h4 {
+    color: #1d4ed8;
+}
