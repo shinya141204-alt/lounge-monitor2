@@ -203,6 +203,11 @@
                             <img border="0" width="300" height="250" alt="" src="https://www27.a8.net/svt/bgt?aid=261020931365&wid=001&eno=01&mid=s00000014286015006000&mc=1"></a>
                             <img border="0" width="1" height="1" src="https://www17.a8.net/0.gif?a8mat=4BEL1F+61B8KY+328C+2HCB1D" alt="">
                         </div>
+                        <div class="a8-banner-inner">
+                            <a href="https://px.a8.net/svt/ejp?a8mat=4BEL1F+67V08I+1USQ+2Z7B6P" rel="nofollow">
+                            <img border="0" width="300" height="250" alt="" src="https://www27.a8.net/svt/bgt?aid=261020931376&wid=001&eno=01&mid=s00000008657018006000&mc=1"></a>
+                            <img border="0" width="1" height="1" src="https://www11.a8.net/0.gif?a8mat=4BEL1F+67V08I+1USQ+2Z7B6P" alt="">
+                        </div>
                     </div>
                 </div>
                 <div id="guide-app-list" class="guide-app-list">
@@ -394,7 +399,7 @@
                     </div>
                 </div>
 
-                <!-- Main Page Official A8.net Banner Slot (300x250 x 2) -->
+                <!-- Main Page Official A8.net Banner Slot (300x250 x 3) -->
                 <div class="a8-banner-container main-page-a8">
                     <span class="a8-pr-label">PR・SPONSORED</span>
                     <div class="a8-banner-grid">
@@ -407,6 +412,11 @@
                             <a href="https://px.a8.net/svt/ejp?a8mat=4BEL1F+61B8KY+328C+2HCB1D" rel="nofollow">
                             <img border="0" width="300" height="250" alt="" src="https://www27.a8.net/svt/bgt?aid=261020931365&wid=001&eno=01&mid=s00000014286015006000&mc=1"></a>
                             <img border="0" width="1" height="1" src="https://www17.a8.net/0.gif?a8mat=4BEL1F+61B8KY+328C+2HCB1D" alt="">
+                        </div>
+                        <div class="a8-banner-inner">
+                            <a href="https://px.a8.net/svt/ejp?a8mat=4BEL1F+67V08I+1USQ+2Z7B6P" rel="nofollow">
+                            <img border="0" width="300" height="250" alt="" src="https://www27.a8.net/svt/bgt?aid=261020931376&wid=001&eno=01&mid=s00000008657018006000&mc=1"></a>
+                            <img border="0" width="1" height="1" src="https://www11.a8.net/0.gif?a8mat=4BEL1F+67V08I+1USQ+2Z7B6P" alt="">
                         </div>
                     </div>
                 </div>
@@ -1089,10 +1099,15 @@
                     const prEl = createInfeedPrElement('dating');
                     if (prEl) rankingList.appendChild(prEl);
                 }
-                // Insert 2nd native in-feed PR card after the 12th ranking card (Men's Hair Removal / Grooming)
+                // Insert 2nd native in-feed PR card after the 12th ranking card (Men's Hair Removal)
                 if (idx === 11 && AFFILIATE_CONFIG.enabled) {
                     const beautyEl = createInfeedPrElement('beauty');
                     if (beautyEl) rankingList.appendChild(beautyEl);
+                }
+                // Insert 3rd native in-feed PR card after the 20th ranking card (Men's Grooming / Beauty)
+                if (idx === 19 && AFFILIATE_CONFIG.enabled) {
+                    const groomingEl = createInfeedPrElement('grooming');
+                    if (groomingEl) rankingList.appendChild(groomingEl);
                 }
             });
 
@@ -1116,10 +1131,17 @@
             url: 'https://px.a8.net/svt/ejp?a8mat=4BEK9C+23M2LU+3N2M+6EER5',
             beautySlot: {
                 badge: 'PR・清潔感UP',
-                title: '相席ラウンジでモテる清潔感！メンズ医療脱毛＆美容特集',
-                subtitle: '至近距離の会話で差がつく「青ヒゲ対策・美肌・ホワイトニング」人気クリニック＆ケア比較',
+                title: '相席ラウンジでモテる清潔感！メンズ医療脱毛＆ヒゲ対策特集',
+                subtitle: '至近距離の会話で差がつく「青ヒゲ対策・口元の清潔感」人気プログラム＆キャンペーン',
                 ctaText: '公式ページへ ›',
                 url: 'https://px.a8.net/svt/ejp?a8mat=4BEL1F+61B8KY+328C+2HCB1D'
+            },
+            groomingSlot: {
+                badge: 'PR・男磨き',
+                title: '女性ウケ抜群の第一印象へ！メンズ美容＆身だしなみケア特集',
+                subtitle: 'ラウンジの照明下でも好感度を高める、20代〜30代男性に支持される人気メンズケア',
+                ctaText: '詳細を見る ›',
+                url: 'https://px.a8.net/svt/ejp?a8mat=4BEL1F+67V08I+1USQ+2Z7B6P'
             },
             items: [
                 {
@@ -1131,7 +1153,7 @@
                     url: 'https://px.a8.net/svt/ejp?a8mat=4BEK9C+23M2LU+3N2M+6EER5'
                 },
                 {
-                    rank: '✨ 第一印象UP（相席ラウンジの必需品・メンズ脱毛＆美容）',
+                    rank: '✨ 第一印象UP（相席ラウンジの必需品・メンズ脱毛＆美容①）',
                     name: '清潔感が劇的に変わる！人気メンズ脱毛・男磨きプログラム',
                     target: '夜のラウンジで目立つ「青ヒゲ・肌荒れ」を解消して好感度を上げたい男性向け',
                     desc: '至近距離で話す相席ラウンジでは口元・肌の清潔感が最優先。初回キャンペーンや手軽なプランから始められる人気サービス。',
@@ -1139,21 +1161,24 @@
                     url: 'https://px.a8.net/svt/ejp?a8mat=4BEL1F+61B8KY+328C+2HCB1D'
                 },
                 {
-                    rank: '💎 男磨き・モテ肌対策（メンズ美容・スキンケア・身だしなみ）',
-                    name: '女性ウケ抜群のメンズスキンケア＆身だしなみケア',
-                    target: '肌のテカリ・毛穴・清潔感をケアして連絡先交換率を高めたい男性向け',
-                    desc: 'ラウンジの照明下でも清潔感のあるツヤ肌をキープできる、20代〜30代男性に支持される定番メンズ美容。',
+                    rank: '💎 男磨き・モテ肌対策（メンズ美容・身だしなみ②）',
+                    name: '女性ウケ抜群のメンズ美容＆身だしなみケア',
+                    target: '清潔感をトータルケアして連絡先交換率を高めたい男性向け',
+                    desc: 'ラウンジの照明下でも清潔感のある第一印象をキープできる、20代〜30代男性に支持される定番メンズ美容サービス。',
                     cta: '公式サイトをチェック ›',
-                    url: 'https://px.a8.net/svt/ejp?a8mat=4BEL1F+61B8KY+328C+2HCB1D'
+                    url: 'https://px.a8.net/svt/ejp?a8mat=4BEL1F+67V08I+1USQ+2Z7B6P'
                 }
             ]
         };
 
         function createInfeedPrElement(slotType = 'dating') {
             if (!AFFILIATE_CONFIG.enabled) return null;
-            const cfg = (slotType === 'beauty' && AFFILIATE_CONFIG.beautySlot)
-                ? AFFILIATE_CONFIG.beautySlot
-                : AFFILIATE_CONFIG;
+            let cfg = AFFILIATE_CONFIG;
+            if (slotType === 'beauty' && AFFILIATE_CONFIG.beautySlot) {
+                cfg = AFFILIATE_CONFIG.beautySlot;
+            } else if (slotType === 'grooming' && AFFILIATE_CONFIG.groomingSlot) {
+                cfg = AFFILIATE_CONFIG.groomingSlot;
+            }
             const wrapper = document.createElement('a');
             wrapper.className = 'ranking-item pr-card-item';
             wrapper.href = cfg.url;
