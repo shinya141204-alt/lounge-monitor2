@@ -104,18 +104,19 @@ h1 {
 
 .ranking-list {
     display: grid;
-    /* Grid layout */
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    /* Responsive columns - Increased min-width to prevent truncation */
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 8px;
-    /* Tighter gap */
 }
 
 .ranking-item {
     background: var(--card-bg);
     border: 1px solid var(--card-border);
     border-radius: 10px;
-    padding: 12px 12px 14px 12px;
+    padding: 10px 12px 12px 12px;
+    height: 64px;
+    min-height: 64px;
+    max-height: 64px;
+    box-sizing: border-box;
     display: flex;
     align-items: center;
     position: relative;
@@ -149,14 +150,17 @@ h1 {
     z-index: 1;
     display: flex;
     flex-direction: column;
-    gap: 3px;
+    justify-content: center;
+    gap: 2px;
 }
 
 .store-meta-row {
     display: flex;
     align-items: center;
     gap: 6px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    height: 18px;
+    overflow: hidden;
 }
 
 .area-tag {
@@ -164,12 +168,18 @@ h1 {
     color: var(--text-secondary);
     font-weight: 400;
     letter-spacing: 0.3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .brand-badge {
     font-size: 0.6rem;
     font-weight: 700;
     padding: 1px 6px;
+    min-width: 36px;
+    text-align: center;
+    box-sizing: border-box;
     border-radius: 4px;
     letter-spacing: 0.5px;
     flex-shrink: 0;
@@ -226,18 +236,21 @@ h1 {
 
 .store-name {
     margin: 0;
-    font-size: 0.96rem;
+    font-size: 0.92rem;
     font-weight: 600;
-    line-height: 1.25;
-    white-space: normal;
-    word-break: keep-all;
-    overflow-wrap: anywhere;
+    line-height: 20px;
+    height: 20px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .stats-group {
     display: flex;
-    gap: 10px;
+    gap: 8px;
     margin-left: 8px;
+    min-width: 84px;
+    justify-content: flex-end;
     z-index: 1;
     flex-shrink: 0;
 }
@@ -246,7 +259,9 @@ h1 {
     display: flex;
     flex-direction: column;
     align-items: flex-end;
+    width: 38px;
     min-width: 38px;
+    flex-shrink: 0;
 }
 
 .stat .count {
@@ -1669,7 +1684,7 @@ body.theme-list header {
 }
 
 body.theme-list .ranking-list {
-    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
     gap: 0;
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 10px;
@@ -1687,8 +1702,12 @@ body.theme-list .ranking-item {
     border-radius: 0;
     border: none;
     border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-    padding: 7px 10px;
-    gap: 8px;
+    padding: 0 10px;
+    height: 40px;
+    min-height: 40px;
+    max-height: 40px;
+    box-sizing: border-box;
+    gap: 6px;
     background: transparent;
 }
 
@@ -1698,10 +1717,17 @@ body.theme-list .ranking-item:hover {
 }
 
 body.theme-list .rank-badge {
-    width: 20px;
+    width: 22px;
     height: 20px;
+    border-radius: 4px;
     font-size: 0.72rem;
-    margin-right: 4px;
+    margin-right: 2px;
+    flex-shrink: 0;
+}
+
+body.theme-list .brand-badge {
+    min-width: 48px;
+    text-align: center;
 }
 
 body.theme-list .store-info {
@@ -1709,12 +1735,14 @@ body.theme-list .store-info {
     align-items: center;
     gap: 6px;
     overflow: hidden;
+    height: 24px;
 }
 
 body.theme-list .store-meta-row {
     flex-wrap: nowrap;
     flex-shrink: 0;
     gap: 4px;
+    height: 20px;
 }
 
 body.theme-list .area-tag {
@@ -1723,6 +1751,8 @@ body.theme-list .area-tag {
 
 body.theme-list .store-name {
     font-size: 0.86rem;
+    line-height: 20px;
+    height: 20px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1735,14 +1765,17 @@ body.theme-list .card-actions {
 }
 
 body.theme-list .stats-group {
-    gap: 8px;
+    gap: 6px;
     margin-left: 4px;
+    min-width: 92px;
+    justify-content: flex-end;
 }
 
 body.theme-list .stat {
     flex-direction: row;
     align-items: baseline;
-    min-width: 32px;
+    width: 42px;
+    min-width: 42px;
     justify-content: flex-end;
     gap: 2px;
 }

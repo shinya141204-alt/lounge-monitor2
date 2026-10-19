@@ -971,7 +971,7 @@
                 .replace(/'/g, '&#39;');
         }
 
-        function renderStore(store, index, container, isPinned = false, globalIndex = null) {
+        function renderStore(store, index, container, isPinned = false, globalIndex = null, isDuplicateName = false) {
             const template = document.getElementById('ranking-item-template');
             const node = template.content.cloneNode(true);
             const item = node.querySelector('.ranking-item');
@@ -1019,7 +1019,10 @@
                 areaEl.classList.add('hidden');
             }
 
-            node.querySelector('.store-name').textContent = brandInfo.cleanName || store.name;
+            const baseName = brandInfo.cleanName || store.name;
+            node.querySelector('.store-name').textContent = isDuplicateName
+                ? `${brandInfo.code} ${baseName}`
+                : baseName;
 
             const ladiesCount = store.women || 0;
             const menCount = store.men || 0;
@@ -1055,6 +1058,14 @@
             const stores = data.ranking;
             if (!stores || stores.length === 0) return;
 
+            // Count occurrences of each cleanName across all stores so duplicate names get their brand prefixed
+            const cleanNameCounts = {};
+            stores.forEach(s => {
+                const bInfo = detectBrandInfo(s);
+                const key = bInfo.cleanName || s.name;
+                cleanNameCounts[key] = (cleanNameCounts[key] || 0) + 1;
+            });
+
             let filteredStores = stores.filter(store => {
                 const matchRegion = currentFilter === 'All' || store.region === currentFilter;
                 if (!matchRegion) return false;
@@ -1089,24 +1100,27 @@
             const otherItems = [];
 
             filteredStores.forEach((store, realIndex) => {
+                const bInfo = detectBrandInfo(store);
+                const key = bInfo.cleanName || store.name;
+                const isDup = (cleanNameCounts[key] || 0) > 1;
                 if (pinnedStores.includes(store.name)) {
-                    pinnedItems.push({ store, rank: realIndex });
+                    pinnedItems.push({ store, rank: realIndex, isDup });
                 } else {
-                    otherItems.push({ store, rank: realIndex });
+                    otherItems.push({ store, rank: realIndex, isDup });
                 }
             });
 
             if (pinnedItems.length > 0) {
                 pinnedContainer.classList.remove('hidden');
                 pinnedItems.forEach(item => {
-                    renderStore(item.store, -1, pinnedList, true, item.rank);
+                    renderStore(item.store, -1, pinnedList, true, item.rank, item.isDup);
                 });
             } else {
                 pinnedContainer.classList.add('hidden');
             }
 
             otherItems.forEach((item, idx) => {
-                renderStore(item.store, item.rank, rankingList, false, item.rank);
+                renderStore(item.store, item.rank, rankingList, false, item.rank, item.isDup);
                 // Insert native in-feed PR card naturally after the 5th ranking card (Dating / App)
                 if (idx === 4 && AFFILIATE_CONFIG.enabled) {
                     const prEl = createInfeedPrElement('dating');
