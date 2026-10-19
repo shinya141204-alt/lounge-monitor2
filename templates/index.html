@@ -1102,23 +1102,29 @@
         // ※A8.net等でメンズ脱毛・メンズ美容・恋活のアフィリエイトURLを取得したら、下の url を書き換えるだけで即座に反映されます
         const AFFILIATE_CONFIG = {
             enabled: true,
-            badge: 'PR・おすすめ',
+            badge: 'PR',
+            subTag: '恋活・出会い',
+            shortTitle: '人気マッチング・恋活サービス',
             title: '今夜すぐ近くで出会える人気マッチング・恋活サービス特集',
             subtitle: '相席ラウンジに行く前の待ち時間や、満席・男女比が合わない時のすれ違い対策に',
-            ctaText: '公式ページへ ›',
+            ctaText: '公式 ›',
             url: 'https://px.a8.net/svt/ejp?a8mat=4BEK9C+23M2LU+3N2M+6EER5',
             beautySlot: {
-                badge: 'PR・清潔感UP',
+                badge: 'PR',
+                subTag: '清潔感UP',
+                shortTitle: 'メンズ医療脱毛＆ヒゲ対策',
                 title: '相席ラウンジでモテる清潔感！メンズ医療脱毛＆ヒゲ対策特集',
                 subtitle: '至近距離の会話で差がつく「青ヒゲ対策・口元の清潔感」人気プログラム＆キャンペーン',
-                ctaText: '公式ページへ ›',
+                ctaText: '公式 ›',
                 url: 'https://px.a8.net/svt/ejp?a8mat=4BEL1F+61B8KY+328C+2HCB1D'
             },
             groomingSlot: {
-                badge: 'PR・男磨き',
+                badge: 'PR',
+                subTag: '男磨き・美容',
+                shortTitle: '人気メンズ美容＆身だしなみ',
                 title: '女性ウケ抜群の第一印象へ！メンズ美容＆身だしなみケア特集',
                 subtitle: 'ラウンジの照明下でも好感度を高める、20代〜30代男性に支持される人気メンズケア',
-                ctaText: '詳細を見る ›',
+                ctaText: '詳細 ›',
                 url: 'https://px.a8.net/svt/ejp?a8mat=4BEL1F+67V08I+1USQ+2Z7B6P'
             },
             items: [
@@ -1170,16 +1176,20 @@
                 };
             }
             wrapper.innerHTML = `
-                <div class="pr-badge-circle">PR</div>
+                <div class="rank-badge pr-badge-circle">PR</div>
                 <div class="store-info">
                     <div class="store-meta-row">
-                        <span class="pr-tag-pill">${escapeHtml(cfg.badge)}</span>
+                        <span class="brand-badge pr-tag-pill">${escapeHtml(cfg.badge)}</span>
+                        <span class="area-tag">${escapeHtml(cfg.subTag || 'おすすめ')}</span>
                     </div>
-                    <h3 class="store-name pr-title">${escapeHtml(cfg.title)}</h3>
-                    <p class="pr-subtitle">${escapeHtml(cfg.subtitle)}</p>
+                    <h3 class="store-name pr-title">${escapeHtml(cfg.shortTitle || cfg.title)}</h3>
                 </div>
                 <div class="pr-cta-box">
                     <span class="pr-cta-btn">${escapeHtml(cfg.ctaText)}</span>
+                </div>
+                <div class="occupancy-bar">
+                    <div class="bar-fill-ladies" style="width: 65%"></div>
+                    <div class="bar-fill-men" style="width: 35%"></div>
                 </div>
             `;
             return wrapper;

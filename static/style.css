@@ -1065,6 +1065,7 @@ canvas {
 /* --- Native In-Feed PR / Affiliate Card --- */
 .pr-card-item {
     text-decoration: none;
+    color: var(--text-primary);
     background: linear-gradient(135deg, rgba(236, 72, 153, 0.08) 0%, rgba(59, 130, 246, 0.08) 100%);
     border: 1px solid rgba(236, 72, 153, 0.28);
     transition: transform 0.2s ease, border-color 0.2s ease;
@@ -1077,7 +1078,7 @@ canvas {
 .pr-badge-circle {
     width: 24px;
     height: 24px;
-    border-radius: 6px;
+    border-radius: 50%;
     background: rgba(236, 72, 153, 0.2);
     border: 1px solid rgba(236, 72, 153, 0.45);
     color: #f9a8d4;
@@ -1088,46 +1089,47 @@ canvas {
     justify-content: center;
     margin-right: 10px;
     flex-shrink: 0;
+    box-sizing: border-box;
 }
 
 .pr-tag-pill {
     display: inline-block;
     padding: 1px 6px;
     border-radius: 4px;
-    font-size: 0.62rem;
+    font-size: 0.6rem;
     font-weight: 700;
+    line-height: 1.3;
     background: rgba(212, 175, 55, 0.2);
     color: #fcd34d;
     border: 1px solid rgba(212, 175, 55, 0.4);
 }
 
 .pr-title {
-    font-size: 0.86rem !important;
+    font-size: 0.92rem;
     color: #fff;
-    margin-bottom: 2px !important;
-}
-
-.pr-subtitle {
     margin: 0;
-    font-size: 0.68rem;
-    color: var(--text-secondary);
-    line-height: 1.3;
-    text-align: left;
+    line-height: 1.25;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .pr-cta-box {
     margin-left: 8px;
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
 }
 
 .pr-cta-btn {
     display: inline-block;
-    padding: 6px 10px;
-    border-radius: 16px;
+    padding: 5px 10px;
+    border-radius: 14px;
     background: linear-gradient(90deg, #ec4899, #8b5cf6);
     color: #fff;
     font-size: 0.72rem;
     font-weight: 700;
+    line-height: 1.1;
     white-space: nowrap;
     box-shadow: 0 2px 8px rgba(236, 72, 153, 0.3);
 }
