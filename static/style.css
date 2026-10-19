@@ -1492,7 +1492,7 @@ canvas {
     border-radius: 14px;
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(236, 72, 153, 0.22);
-    max-width: 340px;
+    max-width: 650px;
 }
 
 .a8-pr-label {
@@ -1500,7 +1500,16 @@ canvas {
     font-weight: 700;
     letter-spacing: 0.08em;
     color: var(--text-secondary);
-    margin-bottom: 6px;
+    margin-bottom: 8px;
+}
+
+.a8-banner-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
 }
 
 .a8-banner-inner {
