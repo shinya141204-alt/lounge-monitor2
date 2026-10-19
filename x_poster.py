@@ -74,7 +74,7 @@ def build_scheduled_tweet_text(stores: list, slot_label: str = "21:00", app_url:
     - '22:30': Peak time high-female-ratio 'Anaba' TOP3
     - '00:00': Midnight late-night fever TOP3
     """
-    site_url = (app_url or os.environ.get("PUBLIC_SITE_URL") or "https://lounge-monitor2.onrender.com").rstrip("/")
+    site_url = (app_url or os.environ.get("PUBLIC_SITE_URL") or "https://aiseki-navi.com").rstrip("/")
     now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
     weekdays_ja = ["月", "火", "水", "木", "金", "土", "日"]
     wd_str = weekdays_ja[now_jst.weekday()]
