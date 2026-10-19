@@ -20,17 +20,49 @@
     <meta name="twitter:description" content="全国ラウンジのリアルタイム男女人数・曜日別ピーク平均がひと目でわかる！">
     <meta name="twitter:image" content="https://lounge-monitor2.onrender.com/static/x-header.jpg?v=2">
 
-    <!-- Structured Data for Google SEO -->
+    <!-- Structured Data for Google SEO (WebApplication + FAQPage) -->
     <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "WebApplication",
-      "name": "相席ナビ",
-      "alternateName": "全国ラウンジの今わかる人数ランキング",
-      "applicationCategory": "LifestyleApplication",
-      "operatingSystem": "All",
-      "description": "全国の主要相席ラウンジのリアルタイム男女人数・男女比・曜日別混雑トレンドを可視化する情報サイト"
-    }
+    [
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "相席ナビ",
+        "alternateName": "全国ラウンジの今わかる人数ランキング",
+        "applicationCategory": "LifestyleApplication",
+        "operatingSystem": "All",
+        "description": "全国の主要相席ラウンジ（オリエンタルラウンジ・ag・JIS・XIX・ALFA・ヤタコイ・CLOVERS）のリアルタイム男女人数・男女比・曜日別混雑トレンドを可視化する情報サイト"
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "相席ラウンジの狙い目の曜日・時間帯は何時ですか？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "全国的に最も盛り上がるピーク時間帯は金・土曜の21:00〜翌1:00です。一方、男性の待ち時間が少なく女性比率が高まりやすい狙い目の穴場時間は、平日の20:00〜22:00頃、または金・土曜の20:00前後の早い時間帯です。相席ナビの各店舗グラフから曜日・時間帯別の平均人数を確認できます。"
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "オリエンタルラウンジ、ag（アグ）、JIS（ジス）の違いは何ですか？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "オリエンタルラウンジは20代〜30代向けの落ち着いた高級感ある王道相席ラウンジ、ag（アグ）は20代前半〜中盤中心のカジュアルで盛り上がりを重視した新世代ラウンジ、JIS（ジス）は札幌・大宮・新宿・梅田・松山・福岡など主要都市で高い集客力を誇る人気相席バーです。"
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "相席ラウンジで男性の待ち時間（男余り）を避けるコツは？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "入店前に『相席ナビ』でリアルタイムの男女人数と「女性比率順」ランキングを確認し、女性比率が55%〜70%以上の店舗を選ぶのが最も効果的です。新宿・渋谷・梅田など複数店舗があるエリアでは、近隣の別ブランド店舗と比較して移動することで待ち時間を大幅に短縮できます。"
+            }
+          }
+        ]
+      }
+    ]
     </script>
 
     <!-- PWA Settings -->
@@ -384,6 +416,43 @@
                             <h3>📱 ラウンジとマッチングアプリの賢い併用術</h3>
                             <p>人気店が満席の時や、近隣店舗の男女比が合わない時は、「今日これから飲める機能」があるマッチングアプリを併用するのが定石です。入店前の待ち時間に近くにいる相手を探しておくことで、週末の夜を無駄なく楽しめます。</p>
                         </article>
+                    </div>
+
+                    <!-- FAQ Section for Long-tail SEO Keywords -->
+                    <div class="seo-faq-block">
+                        <h3>❓ 相席ラウンジに関するよくある質問（Q&A）</h3>
+                        <details class="seo-faq-item">
+                            <summary>Q. オリエンタルラウンジ・ag（アグ）・JIS（ジス）の違いは？どっちがおすすめ？</summary>
+                            <p><strong>オリエンタルラウンジ（ORIENTAL LOUNGE）</strong>は20代〜30代中盤まで幅広い層が集まる高級感ある王道ラウンジ、<strong>ag（アグ）</strong>は20代前半〜中盤中心でカジュアルに盛り上がれる新世代ラウンジ、<strong>JIS（ジス）</strong>は新宿・大宮・梅田茶屋町・札幌・福岡などで圧倒的な集客数を誇る人気相席バーです。同じエリア（新宿・渋谷・梅田など）にある場合は、当サイトのリアルタイム男女比を見比べて女性比率が高い店舗へ入店するのが最もおすすめです。</p>
+                        </details>
+                        <details class="seo-faq-item">
+                            <summary>Q. 相席ラウンジで男性余り・待ち時間を避ける狙い目の曜日・時間は？</summary>
+                            <p>金曜・土曜・祝前日の22時以降は全国的に男女ともに来店数が最大化しますが、人気店では男性の入店待ちが発生しやすくなります。待ち時間を避けたい場合は<strong>金・土曜の20:00〜21:00頃の早めの入店</strong>、または<strong>水曜・木曜の20:30〜22:30頃</strong>が女性比率が高まりやすく狙い目です。</p>
+                        </details>
+                        <details class="seo-faq-item">
+                            <summary>Q. 相席ラウンジとマッチングアプリはどっちが出会える？</summary>
+                            <p>「今夜すぐに複数人と楽しく飲みたい」なら相席ラウンジ、「事前に容姿や趣味・条件が合う相手と1対1で確実にデートしたい」ならマッチングアプリが向いています。相席ラウンジに行く前にリアルタイム人数をチェックし、男性過多の時間帯はアプリで近くの人を探す<strong>二刀流（併用）</strong>が最も成功率の高い立ち回りです。</p>
+                        </details>
+                    </div>
+
+                    <!-- Area & Brand Keyword Directory for Local SEO -->
+                    <div class="seo-directory-block">
+                        <h3>📍 リアルタイム人数・混雑状況 対応ブランド＆全国エリア一覧</h3>
+                        <p class="seo-dir-text">
+                            <strong>【対応ブランド】</strong>
+                            オリエンタルラウンジ（ORIENTAL LOUNGE） / ag（アグ） / JIS（ジス） / XIX（シックス） / ALFA（アルファ） / ヤタコイ（YATAKOI） / CLOVERS（クローバーズ）
+                        </p>
+                        <p class="seo-dir-text">
+                            <strong>【対応エリア（全国65店舗以上）】</strong>
+                            <strong>北海道・東北：</strong>札幌・仙台 ｜
+                            <strong>東京：</strong>新宿・西新宿・渋谷本店・渋谷駅前・恵比寿・上野・町田 ｜
+                            <strong>関東：</strong>横浜・大宮・柏・宇都宮・高崎 ｜
+                            <strong>中部・北陸：</strong>名古屋栄・名古屋錦・静岡・浜松・金沢 ｜
+                            <strong>関西：</strong>大阪梅田・茶屋町・難波・心斎橋・天満・京都・神戸三宮 ｜
+                            <strong>中国・四国：</strong>岡山・広島・松山 ｜
+                            <strong>九州・沖縄：</strong>福岡天神・小倉・長崎・大分・熊本・宮崎・鹿児島・沖縄那覇 ｜
+                            <strong>海外：</strong>韓国ソウル（江南・弘大）
+                        </p>
                     </div>
                 </section>
             </div>

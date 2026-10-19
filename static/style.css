@@ -1563,3 +1563,48 @@ canvas {
     gap: 8px;
     margin-bottom: 8px;
 }
+
+/* --- SEO FAQ & Area Directory --- */
+.seo-faq-block,
+.seo-directory-block {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.seo-faq-block h3,
+.seo-directory-block h3 {
+    margin: 0 0 8px 0;
+    font-size: 0.84rem;
+    color: #93c5fd;
+}
+
+.seo-faq-item {
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    margin-bottom: 6px;
+    padding: 8px 11px;
+}
+
+.seo-faq-item summary {
+    cursor: pointer;
+    font-size: 0.76rem;
+    font-weight: 600;
+    color: #e2e8f0;
+    line-height: 1.45;
+}
+
+.seo-faq-item p {
+    margin: 8px 0 2px 0;
+    font-size: 0.73rem;
+    line-height: 1.55;
+    color: #cbd5e1;
+}
+
+.seo-dir-text {
+    margin: 0 0 6px 0;
+    font-size: 0.7rem;
+    line-height: 1.6;
+    color: #94a3b8;
+}
