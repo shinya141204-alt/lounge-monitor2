@@ -2267,15 +2267,101 @@ body.theme-light .close-btn-pill {
     border-color: #cbd5e1;
 }
 
-body.theme-light .guide-lead,
-body.theme-light .guide-app-desc,
-body.theme-light .guide-tips-box ul,
-body.theme-light .legal-body {
+body.theme-light .guide-lead {
     color: #334155;
+}
+
+/* Category Tabs (Light Mode) */
+body.theme-light .guide-tab-pill {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #475569;
+}
+
+body.theme-light .guide-tab-pill:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+}
+
+body.theme-light .guide-tab-pill.active {
+    background: linear-gradient(135deg, #db2777 0%, #2563eb 100%);
+    border-color: transparent;
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(219, 39, 119, 0.25);
+}
+
+body.theme-light .guide-tab-pill.tab-pill-highlight {
+    border-color: #f472b6;
+}
+
+/* App Cards (Light Mode) */
+body.theme-light .guide-app-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-left: 4px solid #3b82f6;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+}
+
+body.theme-light .guide-app-card.card-featured {
+    background: linear-gradient(135deg, #fff5f7 0%, #f0f9ff 100%);
+    border-color: #fbcfe8;
+    border-left-color: #db2777;
+    box-shadow: 0 3px 12px rgba(219, 39, 119, 0.08);
+}
+
+body.theme-light .guide-app-card.category-beauty {
+    border-left-color: #db2777;
+}
+
+body.theme-light .guide-app-card.category-night {
+    border-left-color: #0284c7;
+}
+
+body.theme-light .guide-app-card.category-dating {
+    border-left-color: #e11d48;
+}
+
+body.theme-light .guide-app-card.category-grooming {
+    border-left-color: #7c3aed;
 }
 
 body.theme-light .guide-app-name {
     color: #0f172a;
+    font-weight: 700;
+}
+
+body.theme-light .guide-app-target {
+    color: #be185d;
+    font-weight: 600;
+}
+
+body.theme-light .guide-app-desc {
+    color: #334155;
+}
+
+body.theme-light .guide-points-list li {
+    color: #1e293b;
+    font-weight: 500;
+}
+
+body.theme-light .guide-points-list .check-icon {
+    color: #0284c7;
+}
+
+body.theme-light .guide-category-tag {
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+}
+
+body.theme-light .guide-app-cta {
+    background: linear-gradient(90deg, #db2777 0%, #2563eb 100%);
+    color: #ffffff;
+    box-shadow: 0 3px 10px rgba(219, 39, 119, 0.25);
+}
+
+body.theme-light .guide-app-cta:hover {
+    box-shadow: 0 5px 14px rgba(219, 39, 119, 0.4);
 }
 
 body.theme-light .guide-tips-box {
@@ -2284,7 +2370,37 @@ body.theme-light .guide-tips-box {
 }
 
 body.theme-light .guide-tips-box h4 {
-    color: #1d4ed8;
+    color: #0f172a;
+}
+
+body.theme-light .guide-tips-box ul,
+body.theme-light .legal-body {
+    color: #334155;
+}
+
+body.theme-light .card-inline-cta {
+    background: #fdf2f8;
+    border-color: #fbcfe8;
+    color: #be185d;
+}
+
+body.theme-light .card-inline-cta:hover {
+    background: #fce7f3;
+    color: #9d174d;
+}
+
+body.theme-light .night-care-banner {
+    background: linear-gradient(135deg, #f0f9ff 0%, #f5f3ff 100%);
+    border-color: #bae6fd;
+    box-shadow: 0 2px 10px rgba(15, 23, 42, 0.05);
+}
+
+body.theme-light .night-care-text {
+    color: #0f172a;
+}
+
+body.theme-light .night-care-text strong {
+    color: #0284c7;
 }
 
 /* ==========================================================================
