@@ -15,7 +15,7 @@ const AFFILIATE_MASTER = {
         { id: 'beauty', name: 'メンズ脱毛・美肌', icon: '🪒', highlight: true },
         { id: 'night', name: 'タクシー・深夜ケア', icon: '🚕', highlight: true },
         { id: 'dating', name: '恋活・即日出会い', icon: '💘' },
-        { id: 'grooming', name: '香水・身だしなみ', icon: '👔' }
+        { id: 'grooming', name: 'ファッション・身だしなみ', icon: '👔' }
     ],
 
     // 案件マスター一覧
@@ -153,6 +153,29 @@ const AFFILIATE_MASTER = {
         // 👔 4. 香水・身だしなみ・ファッション系
         // ==========================================
         {
+            id: 'spu_styleup',
+            category: 'grooming',
+            featured: true,
+            badge: '👔 プロ監修モテ私服',
+            tag: 'メンズ服・コーデ定期便',
+            name: '相席ラウンジで外さない！スタイリスト厳選コーデが毎月届く【SPU スタイルアップ便】',
+            shortTitle: 'SPU スタイルアップ便特集',
+            infeedTag: 'モテ私服',
+            infeedSub: 'スタイリスト厳選コーデ',
+            infeedTitle: 'SPU スタイルアップ便（モテ服）',
+            infeedCta: '公式 ›',
+            target: '相席ラウンジに着ていく私服に迷う方、女性ウケする大人の清潔感コーデを一式揃えたい男性',
+            desc: '「相席ラウンジに何を着ていけばいいかわからない…」という悩みをプロが一発解決！スタイリストが女性目線で好感度の高い「きれいめモテコーデ」を毎月厳選して自宅に届ける人気サブスク。そのまま着るだけで洗練された大人の印象を作れます。',
+            points: [
+                'プロスタイリスト監修！女性ウケ抜群のキレイめ大人カジュアル',
+                'コーディネートに悩む時間をゼロにして週末の相席ラウンジへ直行',
+                '不要な月はスキップ可能・いつでも手軽にお試しOK'
+            ],
+            cta: 'スタイリスト厳選コーデを見る ›',
+            bannerImg: 'https://h.accesstrade.net/sp/rr?rk=0100oo8500p144',
+            url: 'https://h.accesstrade.net/sp/cc?rk=0100oo8500p144'
+        },
+        {
             id: 'mens_fragrance',
             category: 'grooming',
             featured: false,
@@ -198,7 +221,7 @@ const AFFILIATE_MASTER = {
         },
         {
             afterRank: 25,
-            itemId: 'mens_fragrance',
+            itemId: 'spu_styleup',
             badgeText: 'PR',
             highlight: false
         }
