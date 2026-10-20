@@ -1296,25 +1296,27 @@
             }
 
             const title = item.infeedTitle || item.shortTitle || item.name;
-            const desc = item.infeedDesc || item.desc || '';
+            const tag = item.infeedTag || slotConfig.tagText || item.tag || 'PR';
+            const sub = item.infeedSub || slotConfig.subText || item.badge || 'おすすめ';
             const cta = item.infeedCta || '詳細 ›';
-            const tag = slotConfig.tagText || slotConfig.subText || item.tag || 'おすすめ';
             const badge = slotConfig.badgeText || 'PR';
 
             wrapper.innerHTML = `
-                <div class="pr-badge-pill">${escapeHtml(badge)}</div>
-                <div class="pr-content-body">
-                    <div class="pr-meta-row">
-                        <span class="pr-tag-pill">${escapeHtml(tag)}</span>
-                        ${item.badge ? `<span class="pr-sub-tag">${escapeHtml(item.badge)}</span>` : ''}
+                <div class="rank-badge pr-badge-box">${escapeHtml(badge)}</div>
+                <div class="store-info">
+                    <div class="store-meta-row">
+                        <span class="brand-badge pr-tag-pill">${escapeHtml(tag)}</span>
+                        <span class="area-tag pr-sub-pill">${escapeHtml(sub)}</span>
                     </div>
-                    <h3 class="pr-title">${escapeHtml(title)}</h3>
-                    ${desc ? `<p class="pr-desc">${escapeHtml(desc)}</p>` : ''}
+                    <h3 class="store-name pr-title">${escapeHtml(title)}</h3>
                 </div>
                 <div class="pr-cta-box">
                     <span class="pr-cta-btn">${escapeHtml(cta)}</span>
                 </div>
-                <div class="pr-glow-bar"></div>
+                <div class="occupancy-bar pr-occupancy-bar">
+                    <div class="bar-fill-ladies" style="width: 70%"></div>
+                    <div class="bar-fill-men" style="width: 30%"></div>
+                </div>
             `;
             return wrapper;
         }
