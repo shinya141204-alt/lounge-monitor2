@@ -417,6 +417,28 @@ def guide_article():
     """Official comprehensive lounge strategy editorial manual."""
     return render_template('guide_article.html')
 
+AFFILIATE_REDIRECTS = {
+    'spu': 'https://h.accesstrade.net/sp/cc?rk=0100oo8500p144',
+    'spu_styleup': 'https://h.accesstrade.net/sp/cc?rk=0100oo8500p144',
+    'orbis': 'https://px.a8.net/svt/ejp?a8mat=4BEL1F+67V08I+1USQ+2Z90WX',
+    'mens_skincare_clinic': 'https://px.a8.net/svt/ejp?a8mat=4BEL1F+67V08I+1USQ+2Z90WX',
+    'hair_removal': 'https://px.a8.net/svt/ejp?a8mat=4BEL1F+61B8KY+328C+2HCB1D',
+    'mens_hair_removal': 'https://px.a8.net/svt/ejp?a8mat=4BEL1F+61B8KY+328C+2HCB1D',
+    'dating': 'https://px.a8.net/svt/ejp?a8mat=4BEK9C+23M2LU+3N2M+6EER5',
+    'dating_instant': 'https://px.a8.net/svt/ejp?a8mat=4BEK9C+23M2LU+3N2M+6EER5',
+    'taxi': 'https://aiseki-navi.com/#taxi-coupon',
+    'taxi_dispatch': 'https://aiseki-navi.com/#taxi-coupon',
+}
+
+@app.route('/link/<path:item_id>')
+def affiliate_redirect(item_id):
+    """Safe internal redirect shielding affiliate links from ad-blockers."""
+    clean_id = item_id.strip().lower()
+    target_url = AFFILIATE_REDIRECTS.get(clean_id)
+    if not target_url:
+        return redirect(url_for('index'))
+    return redirect(target_url, code=302)
+
 @app.route('/staff', methods=['GET', 'POST'])
 def staff_monitor():
     """Internal staff dashboard with all advertisements and promotions removed."""
