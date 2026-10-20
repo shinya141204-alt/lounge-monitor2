@@ -4,12 +4,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    {% if is_staff %}
+    <title>社内業務モニター｜相席ナビ（広告OFF）</title>
+    <meta name="robots" content="noindex, nofollow">
+    {% else %}
     <title>相席ナビ｜全国ラウンジの今わかる人数ランキング（リアルタイム男女比・混雑状況）</title>
     <meta name="description" content="全国65店舗以上の相席ラウンジ（オリエンタルラウンジ・ag・JIS・XIX・ALFA・ヤタコイ・CLOVERS）のリアルタイム男女人数・男女比・曜日別の混雑傾向がひと目でわかる無料ランキング＆攻略サイト「相席ナビ」。">
     <meta name="keywords" content="相席ナビ,相席ラウンジ,オリエンタルラウンジ,JIS,ag,リアルタイム人数,男女比,混雑状況,相席,おすすめアプリ">
-
-    <!-- Canonical & Domain Migration Redirect -->
     <link rel="canonical" href="https://aiseki-navi.com/">
+    {% endif %}
     <script>
         // Redirect legacy onrender.com host to custom domain immediately
         if (window.location.hostname.endsWith('onrender.com')) {
@@ -90,7 +93,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
-<body>
+<body class="{% if is_staff %}staff-mode{% endif %}">
     <!-- Refresh Toast Notification -->
     <div id="refresh-toast" class="refresh-toast hidden">✨ 最新データに更新しました</div>
 
@@ -155,7 +158,9 @@
                 </div>
             </div>
 
+            {% if not is_staff %}
             <div id="modal-pr-slot" class="modal-pr-box hidden"></div>
+            {% endif %}
 
             <button class="modal-bottom-close-btn" onclick="closeModal()">✕ 詳細画面を閉じる</button>
         </div>
@@ -188,6 +193,7 @@
     </div>
     <!-- End Legal Modal -->
 
+    {% if not is_staff %}
     <!-- Recommended Apps & Lounge Strategy Guide Modal -->
     <div id="guide-modal" class="modal hidden">
         <div class="modal-content" style="max-width: 720px;">
@@ -264,6 +270,7 @@
         </div>
     </div>
     <!-- End SNS Modal -->
+    {% endif %}
 
     <!-- Comparison Modal -->
     <div id="comparison-modal" class="modal hidden">
@@ -305,6 +312,7 @@
     <div class="background-glob glob-2"></div>
 
     <div class="container">
+        {% if not is_staff %}
         <!-- Domain Change Announcement Banner -->
         <aside id="domain-notice-banner" class="domain-notice-banner hidden" role="region" aria-label="ドメイン変更のお知らせ">
             <div class="domain-notice-content">
@@ -315,9 +323,15 @@
             </div>
             <button class="domain-notice-close" onclick="dismissDomainNotice()" aria-label="お知らせを閉じる" title="閉じる">✕</button>
         </aside>
+        {% endif %}
 
         <header>
-            <h1>相席ナビ</h1>
+            {% if is_staff %}
+            <div class="staff-header-top">
+                <span class="staff-header-badge">🔒 社内業務モニター（広告・PR完全OFF）</span>
+            </div>
+            {% endif %}
+            <h1>{% if is_staff %}相席ナビ 業務モニター{% else %}相席ナビ{% endif %}</h1>
             <p class="subtitle">全国ラウンジの今わかる人数ランキング</p>
             <div class="header-controls">
                 <button id="report-btn" class="header-btn labeled-btn" onclick="openReportModal()" title="週間レポート">
@@ -338,12 +352,21 @@
                     </svg>
                     <span id="compact-btn-label">表示切替</span>
                 </button>
+                {% if not is_staff %}
                 <button id="share-btn" class="header-btn labeled-btn" onclick="openSnsModal()" title="SNS速報ポスト作成・共有">
                     <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
                     </svg>
                     <span>速報共有</span>
                 </button>
+                {% else %}
+                <a href="/staff/logout" class="header-btn labeled-btn staff-logout-btn" title="社内モニターをログアウト">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line>
+                    </svg>
+                    <span>ログアウト</span>
+                </a>
+                {% endif %}
                 <button id="refresh-btn" class="header-btn labeled-btn refresh-btn" onclick="manualRefresh()" title="データを更新">
                     <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
@@ -415,6 +438,7 @@
                     </div>
                 </div>
 
+                {% if not is_staff %}
                 <!-- Ranking SNS Share Box -->
                 <div class="share-banner-box">
                     <span class="share-banner-title">📢 いま盛り上がっている店舗TOP3を友達に教える</span>
@@ -491,6 +515,7 @@
                         </p>
                     </div>
                 </section>
+                {% endif %}
             </div>
 
             <div id="error-message" class="error-message hidden">
@@ -499,6 +524,13 @@
         </main>
 
         <footer class="app-footer">
+            {% if is_staff %}
+            <div class="footer-links" style="margin-top: 15px;">
+                <span class="footer-copy">🔒 相席ナビ 社内業務モニター（広告・PR完全OFFモード稼働中）</span>
+                <span class="footer-divider">|</span>
+                <a href="/staff/logout" class="footer-link-btn" style="color: #ec4899; font-weight: 700;">社内モード解除（ログアウト）</a>
+            </div>
+            {% else %}
             <p class="footer-disclaimer">
                 ※当サイト「相席ナビ」は公開情報を独自に集計・可視化した<strong>非公式の統計情報サイト</strong>であり、掲載されている各店舗・運営会社とは一切関係ありません。各店舗への直接のお問い合わせはご遠慮ください。
             </p>
@@ -509,6 +541,7 @@
                 <span class="footer-divider">|</span>
                 <span class="footer-copy">© 相席ナビ (Aiseki Navi)</span>
             </div>
+            {% endif %}
         </footer>
     </div>
 
@@ -560,6 +593,7 @@
     </template>
 
     <script>
+        const IS_STAFF = {{ 'true' if is_staff else 'false' }};
         let currentFilter = 'All';
         let currentSearch = '';
         let currentSort = 'women';
@@ -606,6 +640,7 @@
 
         // Domain change announcement banner logic
         function initDomainNotice() {
+            if (IS_STAFF) return;
             try {
                 if (!localStorage.getItem('hide_domain_notice_aiseki_navi_v1')) {
                     const banner = document.getElementById('domain-notice-banner');
@@ -1293,6 +1328,7 @@
         }
 
         function renderModalPrSlot(storeName) {
+            if (IS_STAFF) return;
             const slot = document.getElementById('modal-pr-slot');
             if (!slot) return;
             if (!AFFILIATE_CONFIG.enabled) {

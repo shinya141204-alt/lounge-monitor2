@@ -1,4 +1,4 @@
-from flask import Flask, render_template, jsonify, request, send_from_directory, Response, redirect
+from flask import Flask, render_template, jsonify, request, send_from_directory, Response, redirect, session, url_for
 from apscheduler.schedulers.background import BackgroundScheduler
 import logging
 import monitor
@@ -25,6 +25,9 @@ logging.getLogger('').addHandler(console)
 import gzip
 
 app = Flask(__name__)
+app.secret_key = os.environ.get('SECRET_KEY', 'aiseki-navi-staff-monitor-secret-key-2026')
+app.permanent_session_lifetime = datetime.timedelta(days=90)
+STAFF_PASSCODE = os.environ.get('STAFF_PASSCODE', '5555')
 
 @app.after_request
 def compress_response(response):
@@ -381,7 +384,39 @@ def update_job():
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return render_template('index.html', is_staff=False)
+
+@app.route('/staff', methods=['GET', 'POST'])
+def staff_monitor():
+    """Internal staff dashboard with all advertisements and promotions removed."""
+    error = None
+    if request.method == 'POST':
+        entered = request.form.get('passcode', '').strip()
+        if entered == STAFF_PASSCODE:
+            session['is_staff'] = True
+            session.permanent = True
+            return redirect(url_for('staff_monitor'))
+        else:
+            error = 'パスコードが正しくありません'
+
+    # Allow one-touch login via query param ?passcode=5555
+    query_passcode = request.args.get('passcode', '').strip()
+    if query_passcode == STAFF_PASSCODE:
+        session['is_staff'] = True
+        session.permanent = True
+        return redirect(url_for('staff_monitor'))
+
+    # Check if already authenticated in session
+    if session.get('is_staff'):
+        return render_template('index.html', is_staff=True)
+
+    return render_template('staff_login.html', error=error)
+
+@app.route('/staff/logout')
+def staff_logout():
+    """Clear staff authentication and return to staff login."""
+    session.pop('is_staff', None)
+    return redirect(url_for('staff_monitor'))
 
 _is_fetching = False
 _fetch_started_at = None

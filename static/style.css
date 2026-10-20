@@ -2346,3 +2346,48 @@ body.theme-light .domain-notice-close:hover {
         font-size: 0.78rem;
     }
 }
+
+/* ==========================================================================
+   Internal Staff Monitor Mode
+   ========================================================================== */
+.staff-header-top {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 8px;
+}
+
+.staff-header-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(236, 72, 153, 0.2) 100%);
+    border: 1px solid rgba(236, 72, 153, 0.45);
+    color: #f472b6;
+    font-size: 0.74rem;
+    font-weight: 700;
+    padding: 3px 12px;
+    border-radius: 999px;
+    letter-spacing: 0.04em;
+    box-shadow: 0 2px 10px rgba(236, 72, 153, 0.25);
+}
+
+.staff-logout-btn {
+    text-decoration: none;
+    border-color: rgba(239, 68, 68, 0.35) !important;
+    color: #fca5a5 !important;
+}
+
+.staff-logout-btn:hover {
+    background: rgba(239, 68, 68, 0.2) !important;
+    border-color: #ef4444 !important;
+    color: #ffffff !important;
+}
+
+body.staff-mode .container {
+    max-width: 98vw;
+}
+
+body.staff-mode .footer-copy {
+    color: #94a3b8;
+    font-size: 0.78rem;
+}
