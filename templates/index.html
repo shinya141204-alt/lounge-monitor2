@@ -8,6 +8,15 @@
     <meta name="description" content="全国65店舗以上の相席ラウンジ（オリエンタルラウンジ・ag・JIS・XIX・ALFA・ヤタコイ・CLOVERS）のリアルタイム男女人数・男女比・曜日別の混雑傾向がひと目でわかる無料ランキング＆攻略サイト「相席ナビ」。">
     <meta name="keywords" content="相席ナビ,相席ラウンジ,オリエンタルラウンジ,JIS,ag,リアルタイム人数,男女比,混雑状況,相席,おすすめアプリ">
 
+    <!-- Canonical & Domain Migration Redirect -->
+    <link rel="canonical" href="https://aiseki-navi.com/">
+    <script>
+        // Redirect legacy onrender.com host to custom domain immediately
+        if (window.location.hostname.endsWith('onrender.com')) {
+            window.location.replace('https://aiseki-navi.com' + window.location.pathname + window.location.search + window.location.hash);
+        }
+    </script>
+
     <!-- OGP / SNS Card Settings -->
     <meta property="og:title" content="相席ナビ｜全国ラウンジの今わかる人数ランキング">
     <meta property="og:description" content="いま盛り上がっている相席ラウンジの男女人数・比率・曜日別ピーク平均をリアルタイム可視化！">
@@ -296,6 +305,17 @@
     <div class="background-glob glob-2"></div>
 
     <div class="container">
+        <!-- Domain Change Announcement Banner -->
+        <aside id="domain-notice-banner" class="domain-notice-banner hidden" role="region" aria-label="ドメイン変更のお知らせ">
+            <div class="domain-notice-content">
+                <span class="domain-notice-badge">📢 公式URL変更</span>
+                <span class="domain-notice-text">
+                    相席ナビの公式URLが<strong>「<a href="https://aiseki-navi.com">aiseki-navi.com</a>」</strong>になりました！ブックマークやホーム画面の再登録をお願いします。
+                </span>
+            </div>
+            <button class="domain-notice-close" onclick="dismissDomainNotice()" aria-label="お知らせを閉じる" title="閉じる">✕</button>
+        </aside>
+
         <header>
             <h1>相席ナビ</h1>
             <p class="subtitle">全国ラウンジの今わかる人数ランキング</p>
@@ -582,6 +602,34 @@
             if (notify && typeof showRefreshToast === 'function') {
                 showRefreshToast(`🎨 ${THEME_LABELS[currentTheme]}`);
             }
+        }
+
+        // Domain change announcement banner logic
+        function initDomainNotice() {
+            try {
+                if (!localStorage.getItem('hide_domain_notice_aiseki_navi_v1')) {
+                    const banner = document.getElementById('domain-notice-banner');
+                    if (banner) banner.classList.remove('hidden');
+                }
+            } catch (e) {}
+        }
+        function dismissDomainNotice() {
+            const banner = document.getElementById('domain-notice-banner');
+            if (banner) {
+                banner.style.opacity = '0';
+                banner.style.transform = 'translateY(-6px)';
+                setTimeout(() => {
+                    banner.classList.add('hidden');
+                }, 200);
+            }
+            try {
+                localStorage.setItem('hide_domain_notice_aiseki_navi_v1', '1');
+            } catch (e) {}
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initDomainNotice);
+        } else {
+            initDomainNotice();
         }
 
         function toggleCompact() {

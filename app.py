@@ -1,4 +1,4 @@
-from flask import Flask, render_template, jsonify, request, send_from_directory, Response
+from flask import Flask, render_template, jsonify, request, send_from_directory, Response, redirect
 from apscheduler.schedulers.background import BackgroundScheduler
 import logging
 import monitor
@@ -51,6 +51,16 @@ def compress_response(response):
             response.headers['Content-Length'] = len(compressed)
             response.headers['Vary'] = 'Accept-Encoding'
     return response
+
+@app.before_request
+def redirect_to_custom_domain():
+    """Redirect traffic from old .onrender.com domain to custom domain aiseki-navi.com (301 Permanent)."""
+    host = request.host.split(':')[0].lower()
+    if host.endswith('onrender.com'):
+        url = 'https://aiseki-navi.com' + request.path
+        if request.query_string:
+            url += '?' + request.query_string.decode('utf-8', errors='ignore')
+        return redirect(url, code=301)
 
 _scheduler_started = False
 _scheduler_lock = threading.Lock()

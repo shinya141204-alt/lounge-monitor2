@@ -2182,3 +2182,167 @@ body.theme-light .guide-tips-box {
 body.theme-light .guide-tips-box h4 {
     color: #1d4ed8;
 }
+
+/* ==========================================================================
+   Domain Migration Announcement Banner
+   ========================================================================== */
+.domain-notice-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 14px;
+    margin: 0 auto 16px auto;
+    max-width: 1100px;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.16) 0%, rgba(236, 72, 153, 0.16) 100%);
+    border: 1px solid rgba(236, 72, 153, 0.4);
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+    text-align: left;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    animation: fadeInBanner 0.3s ease-out;
+}
+
+@keyframes fadeInBanner {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.domain-notice-banner.hidden {
+    display: none !important;
+}
+
+.domain-notice-content {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    flex: 1;
+}
+
+.domain-notice-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: linear-gradient(135deg, #3b82f6 0%, #ec4899 100%);
+    color: #ffffff;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 6px;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(236, 72, 153, 0.3);
+}
+
+.domain-notice-text {
+    font-size: 0.84rem;
+    color: #e2e8f0;
+    line-height: 1.45;
+}
+
+.domain-notice-text strong {
+    color: #ffffff;
+    font-weight: 700;
+}
+
+.domain-notice-text a {
+    color: #93c5fd;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    font-weight: 700;
+    transition: color 0.15s;
+}
+
+.domain-notice-text a:hover {
+    color: #ffffff;
+}
+
+.domain-notice-close {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    color: #cbd5e1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    line-height: 1;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.15s ease;
+}
+
+.domain-notice-close:hover {
+    background: rgba(255, 255, 255, 0.22);
+    color: #ffffff;
+    transform: scale(1.08);
+}
+
+.domain-notice-close:active {
+    transform: scale(0.95);
+}
+
+/* Light theme overrides */
+body.theme-light .domain-notice-banner {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.12) 0%, rgba(236, 72, 153, 0.12) 100%);
+    border-color: rgba(236, 72, 153, 0.4);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+}
+
+body.theme-light .domain-notice-text {
+    color: #1e293b;
+}
+
+body.theme-light .domain-notice-text strong {
+    color: #0f172a;
+}
+
+body.theme-light .domain-notice-text a {
+    color: #2563eb;
+}
+
+body.theme-light .domain-notice-close {
+    background: rgba(0, 0, 0, 0.06);
+    border-color: rgba(0, 0, 0, 0.12);
+    color: #475569;
+}
+
+body.theme-light .domain-notice-close:hover {
+    background: rgba(0, 0, 0, 0.12);
+    color: #0f172a;
+}
+
+/* Mobile responsive */
+@media (max-width: 600px) {
+    .domain-notice-banner {
+        padding: 8px 10px;
+        gap: 8px;
+        margin-bottom: 12px;
+    }
+
+    .domain-notice-text {
+        font-size: 0.78rem;
+    }
+
+    .domain-notice-badge {
+        font-size: 0.68rem;
+        padding: 2px 6px;
+    }
+
+    .domain-notice-close {
+        width: 26px;
+        height: 26px;
+        font-size: 0.78rem;
+    }
+}
