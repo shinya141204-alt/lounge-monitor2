@@ -1401,6 +1401,50 @@ canvas {
     margin: 0 0 14px 0;
 }
 
+/* --- Guide Category Tabs --- */
+.guide-category-tabs {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 2px 2px 14px 2px;
+    margin-bottom: 12px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+}
+.guide-category-tabs::-webkit-scrollbar {
+    display: none;
+}
+.guide-tab-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 13px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #cbd5e1;
+    font-size: 0.78rem;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.guide-tab-pill:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    transform: translateY(-1px);
+}
+.guide-tab-pill.active {
+    background: linear-gradient(135deg, #ec4899 0%, #3b82f6 100%);
+    border-color: transparent;
+    color: #fff;
+    font-weight: 700;
+    box-shadow: 0 4px 15px rgba(236, 72, 153, 0.35);
+}
+.guide-tab-pill.tab-pill-highlight {
+    border-color: rgba(236, 72, 153, 0.45);
+}
+
 .guide-app-list {
     display: flex;
     flex-direction: column;
@@ -1409,68 +1453,128 @@ canvas {
 }
 
 .guide-app-card {
-    background: linear-gradient(135deg, rgba(236, 72, 153, 0.07) 0%, rgba(59, 130, 246, 0.07) 100%);
-    border: 1px solid rgba(236, 72, 153, 0.28);
+    background: linear-gradient(135deg, rgba(20, 22, 36, 0.95) 0%, rgba(15, 17, 28, 0.95) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-left: 4px solid #3b82f6;
     border-radius: 12px;
-    padding: 12px 14px;
+    padding: 14px 16px;
+    transition: all 0.2s ease;
+    text-align: left;
+}
+.guide-app-card.card-featured {
+    border-left-color: #ec4899;
+    background: linear-gradient(135deg, rgba(236, 72, 153, 0.08) 0%, rgba(20, 24, 40, 0.95) 100%);
+    border-color: rgba(236, 72, 153, 0.3);
+}
+.guide-app-card.category-beauty {
+    border-left-color: #ec4899;
+}
+.guide-app-card.category-night {
+    border-left-color: #38bdf8;
+}
+.guide-app-card.category-dating {
+    border-left-color: #f43f5e;
+}
+.guide-app-card.category-grooming {
+    border-left-color: #a855f7;
 }
 
+.guide-app-header-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
 .guide-app-badge {
-    display: inline-block;
     font-size: 0.7rem;
     font-weight: 700;
-    color: #fde047;
-    background: rgba(212, 175, 55, 0.16);
-    border: 1px solid rgba(212, 175, 55, 0.35);
+    color: #fff;
+    background: linear-gradient(135deg, #ec4899, #8b5cf6);
     padding: 2px 8px;
     border-radius: 6px;
-    margin-bottom: 8px;
+}
+.guide-category-tag {
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: #94a3b8;
+    background: rgba(255, 255, 255, 0.06);
+    padding: 2px 6px;
+    border-radius: 4px;
 }
 
 .guide-app-main {
     display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    align-items: center;
-    gap: 10px;
+    flex-direction: column;
+    gap: 8px;
 }
-
 .guide-app-info {
-    flex: 1;
-    min-width: 210px;
+    width: 100%;
 }
-
 .guide-app-name {
-    margin: 0 0 4px 0;
+    margin: 0 0 6px 0;
     font-size: 0.95rem;
     color: #fff;
+    font-weight: 700;
 }
-
 .guide-app-target {
-    margin: 0 0 4px 0;
+    margin: 0 0 8px 0;
     font-size: 0.74rem;
-    font-weight: 600;
     color: #f9a8d4;
+    line-height: 1.4;
 }
-
 .guide-app-desc {
-    margin: 0;
-    font-size: 0.73rem;
-    line-height: 1.45;
+    margin: 0 0 10px 0;
+    font-size: 0.76rem;
+    line-height: 1.5;
     color: #cbd5e1;
 }
 
+.guide-points-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 10px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.guide-points-list li {
+    font-size: 0.73rem;
+    color: #e2e8f0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.guide-points-list .check-icon {
+    color: #38bdf8;
+    font-weight: 900;
+    font-size: 0.8rem;
+}
+.guide-app-cta-wrap {
+    margin-top: 6px;
+    text-align: right;
+}
 .guide-app-cta {
     display: inline-block;
-    padding: 8px 14px;
-    border-radius: 20px;
-    background: linear-gradient(90deg, #ec4899, #8b5cf6);
+    padding: 8px 18px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #ec4899 0%, #3b82f6 100%);
     color: #fff;
     text-decoration: none;
-    font-size: 0.76rem;
+    font-size: 0.78rem;
     font-weight: 700;
     white-space: nowrap;
-    box-shadow: 0 2px 10px rgba(236, 72, 153, 0.35);
+    box-shadow: 0 3px 12px rgba(236, 72, 153, 0.35);
+    transition: all 0.2s ease;
+}
+.guide-app-cta:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 5px 16px rgba(236, 72, 153, 0.5);
+}
+.guide-empty-msg {
+    text-align: center;
+    color: #94a3b8;
+    font-size: 0.85rem;
+    padding: 24px 0;
 }
 
 .guide-tips-box {
@@ -2398,6 +2502,105 @@ body.staff-mode .modal-pr-box,
 body.staff-mode .modal-pr-slot,
 body.staff-mode .a8-banner-container,
 body.staff-mode .share-banner-box,
-body.staff-mode .seo-guide-section {
+body.staff-mode .seo-guide-section,
+body.staff-mode .night-care-banner {
     display: none !important;
+}
+
+/* --- Nighttime Smart Cab & After-care Banner --- */
+.night-care-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 14px;
+    margin: 0 auto 14px auto;
+    max-width: 1100px;
+    background: linear-gradient(135deg, rgba(2, 132, 199, 0.16) 0%, rgba(99, 102, 241, 0.16) 100%);
+    border: 1px solid rgba(56, 189, 248, 0.45);
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+    animation: fadeInBanner 0.3s ease-out;
+}
+.night-care-banner.hidden {
+    display: none !important;
+}
+.night-care-badge {
+    display: inline-flex;
+    align-items: center;
+    background: linear-gradient(135deg, #0284c7, #6366f1);
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 6px;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(2, 132, 199, 0.3);
+}
+.night-care-content {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    flex: 1;
+    text-align: left;
+}
+.night-care-text {
+    font-size: 0.83rem;
+    color: #e2e8f0;
+}
+.night-care-text strong {
+    color: #38bdf8;
+}
+.night-care-btn {
+    background: linear-gradient(135deg, #0284c7, #6366f1);
+    border: none;
+    color: #fff;
+    font-size: 0.78rem;
+    font-weight: 700;
+    padding: 6px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+    white-space: nowrap;
+    box-shadow: 0 2px 10px rgba(56, 189, 248, 0.3);
+    transition: all 0.2s ease;
+}
+.night-care-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(56, 189, 248, 0.5);
+}
+
+/* Article card inline CTA button */
+.card-inline-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 10px;
+    padding: 6px 12px;
+    background: rgba(236, 72, 153, 0.12);
+    border: 1px solid rgba(236, 72, 153, 0.35);
+    color: #f472b6;
+    border-radius: 999px;
+    font-size: 0.74rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.card-inline-cta:hover {
+    background: rgba(236, 72, 153, 0.25);
+    color: #fff;
+    transform: translateY(-1px);
+}
+
+.pr-card-highlight {
+    border-color: rgba(236, 72, 153, 0.4) !important;
+    background: linear-gradient(135deg, rgba(236, 72, 153, 0.08) 0%, rgba(59, 130, 246, 0.08) 100%) !important;
+}
+
+.pr-night-accent {
+    border-color: rgba(56, 189, 248, 0.4) !important;
+}
+.pr-night-accent .pr-tag-pill {
+    background: linear-gradient(135deg, #0284c7, #6366f1) !important;
 }
