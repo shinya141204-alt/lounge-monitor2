@@ -411,6 +411,12 @@ def update_job():
 def index():
     return render_template('index.html', is_staff=False)
 
+@app.route('/guide')
+@app.route('/guide/strategy')
+def guide_article():
+    """Official comprehensive lounge strategy editorial manual."""
+    return render_template('guide_article.html')
+
 @app.route('/staff', methods=['GET', 'POST'])
 def staff_monitor():
     """Internal staff dashboard with all advertisements and promotions removed."""
@@ -579,6 +585,12 @@ def sitemap_xml():
     <lastmod>{today}</lastmod>
     <changefreq>hourly</changefreq>
     <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>{base_url}/guide</loc>
+    <lastmod>{today}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
   </url>
 </urlset>"""
     return Response(xml, mimetype='application/xml')

@@ -387,6 +387,12 @@
                     <span id="compact-btn-label">表示切替</span>
                 </button>
                 {% if not is_staff %}
+                <a id="guide-link-btn" href="/guide" class="header-btn labeled-btn" style="text-decoration: none;" title="相席完全攻略マニュアル">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                    </svg>
+                    <span>攻略記事</span>
+                </a>
                 <button id="share-btn" class="header-btn labeled-btn" onclick="openSnsModal()" title="SNS速報ポスト作成・共有">
                     <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
@@ -487,7 +493,10 @@
                 <section class="seo-guide-section" aria-label="相席ラウンジ攻略ガイド">
                     <div class="seo-guide-header">
                         <h2>📖 相席ラウンジのリアルタイム攻略ガイド＆時間帯別の狙い目</h2>
-                        <button class="guide-open-btn" onclick="openGuideModal()">✨ おすすめアプリ＆メンズ美容特集を見る ›</button>
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <a href="/guide" class="guide-open-btn" style="text-decoration: none; background: linear-gradient(135deg, #ec4899, #8b5cf6);">📖 完全攻略マニュアルを読む ›</a>
+                            <button class="guide-open-btn" onclick="openGuideModal()">✨ おすすめ特集 ›</button>
+                        </div>
                     </div>
                     <div class="seo-guide-grid">
                         <article class="seo-guide-card">
@@ -572,7 +581,9 @@
                 ※当サイト「相席ナビ」は公開情報を独自に集計・可視化した<strong>非公式の統計情報サイト</strong>であり、掲載されている各店舗・運営会社とは一切関係ありません。各店舗への直接のお問い合わせはご遠慮ください。
             </p>
             <div class="footer-links">
-                <button class="footer-link-btn" onclick="openGuideModal()">おすすめアプリ＆攻略ガイド</button>
+                <a href="/guide" class="footer-link-btn" style="color: #f472b6; font-weight: 700; text-decoration: none;">📖 相席完全攻略マニュアル</a>
+                <span class="footer-divider">|</span>
+                <button class="footer-link-btn" onclick="openGuideModal()">おすすめアプリ＆特集</button>
                 <span class="footer-divider">|</span>
                 <button class="footer-link-btn" onclick="openLegalModal()">免責事項・プライバシーポリシー</button>
                 <span class="footer-divider">|</span>
