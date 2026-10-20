@@ -1204,20 +1204,23 @@
 
             otherItems.forEach((item, idx) => {
                 renderStore(item.store, item.rank, rankingList, false, item.rank, item.isDup);
-                // Insert native in-feed PR card naturally after the 5th ranking card (Dating / App)
-                if (idx === 4 && AFFILIATE_CONFIG.enabled) {
-                    const prEl = createInfeedPrElement('dating');
-                    if (prEl) rankingList.appendChild(prEl);
-                }
-                // Insert 2nd native in-feed PR card after the 12th ranking card (Men's Hair Removal)
-                if (idx === 11 && AFFILIATE_CONFIG.enabled) {
-                    const beautyEl = createInfeedPrElement('beauty');
-                    if (beautyEl) rankingList.appendChild(beautyEl);
-                }
-                // Insert 3rd native in-feed PR card after the 20th ranking card (Men's Grooming / Beauty)
-                if (idx === 19 && AFFILIATE_CONFIG.enabled) {
-                    const groomingEl = createInfeedPrElement('grooming');
-                    if (groomingEl) rankingList.appendChild(groomingEl);
+                // In staff mode, skip all native in-feed PR cards completely
+                if (!IS_STAFF) {
+                    // Insert native in-feed PR card naturally after the 5th ranking card (Dating / App)
+                    if (idx === 4 && AFFILIATE_CONFIG.enabled) {
+                        const prEl = createInfeedPrElement('dating');
+                        if (prEl) rankingList.appendChild(prEl);
+                    }
+                    // Insert 2nd native in-feed PR card after the 12th ranking card (Men's Hair Removal)
+                    if (idx === 11 && AFFILIATE_CONFIG.enabled) {
+                        const beautyEl = createInfeedPrElement('beauty');
+                        if (beautyEl) rankingList.appendChild(beautyEl);
+                    }
+                    // Insert 3rd native in-feed PR card after the 20th ranking card (Men's Grooming / Beauty)
+                    if (idx === 19 && AFFILIATE_CONFIG.enabled) {
+                        const groomingEl = createInfeedPrElement('grooming');
+                        if (groomingEl) rankingList.appendChild(groomingEl);
+                    }
                 }
             });
 
@@ -1233,7 +1236,7 @@
         // --- Affiliate / Monetization Slot Configuration ---
         // ※A8.net等でメンズ脱毛・メンズ美容・恋活のアフィリエイトURLを取得したら、下の url を書き換えるだけで即座に反映されます
         const AFFILIATE_CONFIG = {
-            enabled: true,
+            enabled: !IS_STAFF,
             badge: 'PR',
             subTag: '恋活・出会い',
             shortTitle: '人気マッチング・恋活サービス',
@@ -1288,7 +1291,7 @@
         };
 
         function createInfeedPrElement(slotType = 'dating') {
-            if (!AFFILIATE_CONFIG.enabled) return null;
+            if (IS_STAFF || !AFFILIATE_CONFIG.enabled) return null;
             let cfg = AFFILIATE_CONFIG;
             if (slotType === 'beauty' && AFFILIATE_CONFIG.beautySlot) {
                 cfg = AFFILIATE_CONFIG.beautySlot;

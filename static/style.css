@@ -2391,3 +2391,13 @@ body.staff-mode .footer-copy {
     color: #94a3b8;
     font-size: 0.78rem;
 }
+
+body.staff-mode .pr-card-item,
+body.staff-mode .pr-card-compact,
+body.staff-mode .modal-pr-box,
+body.staff-mode .modal-pr-slot,
+body.staff-mode .a8-banner-container,
+body.staff-mode .share-banner-box,
+body.staff-mode .seo-guide-section {
+    display: none !important;
+}
