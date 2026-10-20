@@ -43,7 +43,8 @@ const AFFILIATE_MASTER = {
                 '相席した20代女性からの好感度・清潔感評価が劇的向上'
             ],
             cta: '限定キャンペーン・公式を見る ›',
-            // A8.net等のアフィリエイトリンク
+            bannerImg: 'https://www27.a8.net/svt/bgt?aid=261020931365&wid=001&eno=01&mid=s00000014286015006000&mc=1',
+            trackingImg: 'https://www17.a8.net/0.gif?a8mat=4BEL1F+61B8KY+328C+2HCB1D',
             url: 'https://px.a8.net/svt/ejp?a8mat=4BEL1F+61B8KY+328C+2HCB1D'
         },
         {
@@ -52,21 +53,23 @@ const AFFILIATE_MASTER = {
             featured: false,
             badge: '💎 好感度UP',
             tag: '美肌・毛穴スキンケア',
-            name: '女性ウケ抜群の第一印象を作る！人気メンズ美容＆美肌トリートメント',
-            shortTitle: '人気メンズスキンケア特集',
+            name: '女性ウケ抜群の第一印象を作る！ORBIS Mr.（オルビス ミスター）スキンケア',
+            shortTitle: 'ORBIS Mr. スキンケア特集',
             infeedTag: '美肌ケア',
-            infeedSub: '清潔感あるモテ肌へ',
-            infeedTitle: '人気メンズ美容スキンケア特集',
-            infeedCta: '詳細 ›',
+            infeedSub: 'テカリ・毛穴を徹底対策',
+            infeedTitle: 'ORBIS Mr. メンズスキンケア',
+            infeedCta: '公式 ›',
             target: 'テカリ・乾燥・毛穴を防ぎ、清潔感ある大人のモテ肌を手に入れたい男性',
-            desc: 'ラウンジのダウンライト下でも上品に見える「清潔な素肌」を作るメンズスキンケア特集。初対面の第一声で好印象を勝ち取るための定番メンズケアです。',
+            desc: '相席ラウンジのダウンライト下でも上品に見える「清潔な素肌」を作る人気メンズスキンケア「ORBIS Mr.（オルビス ミスター）」。洗顔・化粧水の簡単ケアで、初対面の第一印象を劇的に引き上げます。',
             points: [
-                'オイリー肌・乾燥肌のテカリを抑えて爽やかな印象をキープ',
-                '20代〜30代女性に選ばれる清潔感重視のスキンケア',
-                '手軽に試せる初回スターターセット・無料相談あり'
+                'ベタつき・テカリを抑えて爽やかな清潔感を長時間キープ',
+                '20代〜30代女性に選ばれる好印象メンズスキンケア',
+                '手軽に試せる初回限定スターターセットあり'
             ],
-            cta: '詳細・キャンペーンをチェック ›',
-            url: 'https://px.a8.net/svt/ejp?a8mat=4BEL1F+67V08I+1USQ+2Z7B6P'
+            cta: '初回限定セット・公式を見る ›',
+            bannerImg: 'https://www28.a8.net/svt/bgt?aid=261020931376&wid=001&eno=01&mid=s00000008657018014000&mc=1',
+            trackingImg: 'https://www18.a8.net/0.gif?a8mat=4BEL1F+67V08I+1USQ+2Z90WX',
+            url: 'https://px.a8.net/svt/ejp?a8mat=4BEL1F+67V08I+1USQ+2Z90WX'
         },
 
         // ==========================================
@@ -141,6 +144,8 @@ const AFFILIATE_MASTER = {
                 '女性会員数が多く20代〜30代前半の利用者が急増中'
             ],
             cta: '無料登録・今夜の相手を探す ›',
+            bannerImg: 'https://www24.a8.net/svt/bgt?aid=261019920127&wid=001&eno=01&mid=s00000016987001075000&mc=1',
+            trackingImg: 'https://www18.a8.net/0.gif?a8mat=4BEK9C+23M2LU+3N2M+6EER5',
             url: 'https://px.a8.net/svt/ejp?a8mat=4BEK9C+23M2LU+3N2M+6EER5'
         },
 
