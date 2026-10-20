@@ -129,6 +129,13 @@ def log_data(data):
             last_error = None
             print(f"Logged {len(rows_to_append)} rows to Google Sheets.")
 
+        # Concurrently mirror into local SQLite database for instant analytical queries
+        try:
+            import local_db
+            local_db.insert_logs(data, timestamp_str)
+        except Exception as dbe:
+            print(f"Local SQLite mirror error: {dbe}", file=sys.stderr)
+
     except Exception as e:
         # Reset cached client on error so next attempt re-authenticates cleanly
         global _token_expiry

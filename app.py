@@ -8,6 +8,7 @@ import threading
 import logger
 import statistics
 import os
+import local_db
 from collections import defaultdict
 
 # Set up logging to a file so we can view it via API
@@ -74,8 +75,14 @@ def start_scheduler():
     if not _scheduler_started:
         with _scheduler_lock:
             if not _scheduler_started:
+                # Initialize local high-speed SQLite database
+                local_db.init_db()
+                local_db.start_background_sync(days=14)
+
                 scheduler = BackgroundScheduler(timezone="UTC")
                 scheduler.add_job(func=update_job, trigger="interval", minutes=1)
+                # Background sync SQLite with Google Sheets every 2 hours to keep completely up to date
+                scheduler.add_job(func=lambda: local_db.sync_from_google_sheets(days=3), trigger="interval", hours=2)
                 # Daily X auto-post jobs at 21:00, 22:30, and 00:00 JST (12:00, 13:30, 15:00 UTC)
                 scheduler.add_job(func=run_scheduled_x_post, trigger="cron", hour=12, minute=0, args=["21:00"])
                 scheduler.add_job(func=run_scheduled_x_post, trigger="cron", hour=13, minute=30, args=["22:30"])
@@ -84,7 +91,7 @@ def start_scheduler():
                 threading.Thread(target=update_job, daemon=True).start()
                 _scheduler_started = True
                 import logging
-                logging.info("APScheduler started in worker process (with 21:00/22:30/00:00 JST X auto-post)")
+                logging.info("APScheduler & local SQLite high-speed cache started successfully")
 
 # Global storage for analysis cache
 analysis_cache = {
@@ -110,14 +117,25 @@ def get_store_analysis(store_name):
     now = datetime.datetime.now()
     target_data = None
     
-    # Check if raw data and processed data are still valid in cache
-    if store_name in analysis_cache['raw_data_by_store']:
-        cached = analysis_cache['raw_data_by_store'][store_name]
-        if (now - cached['last_fetched']).total_seconds() < ANALYSIS_CACHE_DURATION:
-            target_data = cached['data']
-            if store_name in analysis_cache['processed_per_store']:
-                return jsonify(analysis_cache['processed_per_store'][store_name])
-            
+    # Check if processed data is still valid in in-memory cache
+    if store_name in analysis_cache.get('processed_per_store', {}):
+        cached = analysis_cache.get('raw_data_by_store', {}).get(store_name)
+        if cached and (now - cached['last_fetched']).total_seconds() < ANALYSIS_CACHE_DURATION:
+            return jsonify(analysis_cache['processed_per_store'][store_name])
+
+    # 1. Fast Path: Query local high-speed SQLite database first (sub-millisecond)
+    try:
+        sqlite_history = local_db.get_store_history(store_name, days=30)
+        if sqlite_history and len(sqlite_history) >= 3:
+            target_data = sqlite_history
+            analysis_cache['raw_data_by_store'][store_name] = {
+                'data': target_data,
+                'last_fetched': now
+            }
+    except Exception as e:
+        print(f"[Analysis] SQLite query error: {e}", file=sys.stderr)
+
+    # 2. Fallback: Query Google Sheets via gviz API if local SQLite had no data
     if target_data is None:
         try:
             print(f"Fetching historical data for {store_name} from Google Sheets via gviz...")
@@ -169,6 +187,13 @@ def get_store_analysis(store_name):
                 if store_name in analysis_cache['processed_per_store']:
                     del analysis_cache['processed_per_store'][store_name]
                     
+                # Backfill fetched records into SQLite so subsequent clicks are instantaneous
+                try:
+                    for d in target_data:
+                        local_db.insert_logs([{'name': d['name'], 'men': d['men'], 'women': d['women'], 'source': ''}], d['ts'])
+                except Exception:
+                    pass
+
                 print(f"Fetched and cached {len(target_data)} rows for {store_name}.")
             else:
                 print("Invalid response from gviz API")

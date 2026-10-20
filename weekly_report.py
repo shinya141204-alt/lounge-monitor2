@@ -5,6 +5,8 @@ import json
 import urllib.parse
 import requests
 import logger
+import local_db
+import sys
 
 _report_cache = {
     'last_fetched': None,
@@ -27,38 +29,77 @@ def generate_weekly_report():
         if (now_utc - _report_cache['last_fetched']).total_seconds() < REPORT_CACHE_DURATION:
             return _report_cache['data']
 
-    access_token = logger.get_access_token()
-    spreadsheet_id = logger.get_spreadsheet_id()
-    if not access_token or not spreadsheet_id:
-        return {"error": "Google Sheets Authentication Failed"}
-
     # Define the 7-day period in JST (excluding today to get full past 7 days)
     now_jst = now_utc + datetime.timedelta(hours=9)
     end_date = now_jst.replace(hour=6, minute=59, second=59, microsecond=0)
     start_date = (end_date - datetime.timedelta(days=7)).replace(hour=18, minute=0, second=0)
     start_ts_str = start_date.strftime("%Y-%m-%d %H:%M:%S")
 
+    items = []
+
+    # 1. Fast Path: Read from local SQLite database in milliseconds
     try:
-        # Query only rows from the last 7 days via gviz API to prevent OOM
-        query = f"SELECT A, B, C, D, E WHERE A >= '{start_ts_str}'"
-        url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/gviz/tq?tq={urllib.parse.quote(query)}"
-        headers = {"Authorization": f"Bearer {access_token}"}
+        sqlite_items = local_db.get_weekly_history(start_ts_str)
+        if sqlite_items and len(sqlite_items) >= 20:
+            items = sqlite_items
+            print(f"[Weekly Report] High-speed cache hit: loaded {len(items)} rows from local SQLite in <10ms.")
+    except Exception as dbe:
+        print(f"[Weekly Report] SQLite read error: {dbe}", file=sys.stderr)
 
-        response = logger.http_session.get(url, headers=headers, timeout=20)
-        if response.status_code != 200:
-            return {"error": f"Failed to fetch data via gviz: HTTP {response.status_code}"}
+    # 2. Fallback: Query Google Sheets via gviz API if local SQLite doesn't have enough data
+    if not items:
+        access_token = logger.get_access_token()
+        spreadsheet_id = logger.get_spreadsheet_id()
+        if not access_token or not spreadsheet_id:
+            return {"error": "Google Sheets Authentication Failed"}
 
-        text = response.text
-        if "google.visualization.Query.setResponse(" not in text:
-            return {"error": "Invalid response format from Google Sheets"}
+        try:
+            print("[Weekly Report] Local DB empty or insufficient, querying Google Sheets gviz API...")
+            query = f"SELECT A, B, C, D, E WHERE A >= '{start_ts_str}'"
+            url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/gviz/tq?tq={urllib.parse.quote(query)}"
+            headers = {"Authorization": f"Bearer {access_token}"}
 
-        json_str = text[text.find("{"):text.rfind("}") + 1]
-        data_json = json.loads(json_str)
-        rows = data_json.get('table', {}).get('rows', [])
-    except Exception as e:
-        return {"error": f"Failed to fetch data: {str(e)}"}
+            response = logger.http_session.get(url, headers=headers, timeout=20)
+            if response.status_code != 200:
+                return {"error": f"Failed to fetch data via gviz: HTTP {response.status_code}"}
 
-    if not rows:
+            text = response.text
+            if "google.visualization.Query.setResponse(" not in text:
+                return {"error": "Invalid response format from Google Sheets"}
+
+            json_str = text[text.find("{"):text.rfind("}") + 1]
+            data_json = json.loads(json_str)
+            rows = data_json.get('table', {}).get('rows', [])
+
+            for row in rows:
+                cols = row.get('c', [])
+                if len(cols) >= 4:
+                    ts_val = (cols[0].get('v') or cols[0].get('f')) if cols[0] else None
+                    name_val = cols[1].get('v') if cols[1] else None
+                    men_val = cols[2].get('v') if cols[2] else 0
+                    women_val = cols[3].get('v') if cols[3] else 0
+                    src_val = cols[4].get('v') if len(cols) > 4 and cols[4] else ''
+
+                    if ts_val and name_val:
+                        items.append({
+                            'ts': str(ts_val),
+                            'name': str(name_val),
+                            'men': int(men_val) if men_val is not None else 0,
+                            'women': int(women_val) if women_val is not None else 0,
+                            'source': str(src_val)
+                        })
+
+            # Concurrently backfill into local SQLite for instant future loads
+            try:
+                for itm in items:
+                    local_db.insert_logs([{'name': itm['name'], 'men': itm['men'], 'women': itm['women'], 'source': itm.get('source', '')}], itm['ts'])
+            except Exception:
+                pass
+
+        except Exception as e:
+            return {"error": f"Failed to fetch data: {str(e)}"}
+
+    if not items:
         return {"error": "No data found for the last 7 days"}
 
     store_data = defaultdict(lambda: {
@@ -71,17 +112,13 @@ def generate_weekly_report():
 
     brand_totals = defaultdict(lambda: {'women': 0, 'men': 0, 'stores': set()})
 
-    for row in rows:
+    for item in items:
         try:
-            cols = row.get('c', [])
-            if len(cols) < 4:
-                continue
-
-            ts_str = str(cols[0].get('v') or cols[0].get('f') or '') if cols[0] else ''
-            name = str(cols[1].get('v') or '') if cols[1] else ''
-            men = int(cols[2].get('v') or 0) if cols[2] and cols[2].get('v') is not None else 0
-            women = int(cols[3].get('v') or 0) if cols[3] and cols[3].get('v') is not None else 0
-            brand = str(cols[4].get('v') or 'Unknown').upper() if len(cols) >= 5 and cols[4] and cols[4].get('v') else 'UNKNOWN'
+            ts_str = item.get('ts', '')
+            name = item.get('name', '')
+            men = item.get('men', 0)
+            women = item.get('women', 0)
+            brand = (item.get('source') or 'UNKNOWN').upper()
 
             if not ts_str or not name or ts_str == 'Timestamp':
                 continue
