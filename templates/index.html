@@ -1295,22 +1295,26 @@
                 };
             }
 
+            const title = item.infeedTitle || item.shortTitle || item.name;
+            const desc = item.infeedDesc || item.desc || '';
+            const cta = item.infeedCta || '詳細 ›';
+            const tag = slotConfig.tagText || slotConfig.subText || item.tag || 'おすすめ';
+            const badge = slotConfig.badgeText || 'PR';
+
             wrapper.innerHTML = `
-                <div class="rank-badge pr-badge-circle">${escapeHtml(slotConfig.badgeText || 'PR')}</div>
-                <div class="store-info">
-                    <div class="store-meta-row">
-                        <span class="brand-badge pr-tag-pill">${escapeHtml(item.badge || 'おすすめ')}</span>
-                        <span class="area-tag">${escapeHtml(slotConfig.subText || item.tag || '特集')}</span>
+                <div class="pr-badge-pill">${escapeHtml(badge)}</div>
+                <div class="pr-content-body">
+                    <div class="pr-meta-row">
+                        <span class="pr-tag-pill">${escapeHtml(tag)}</span>
+                        ${item.badge ? `<span class="pr-sub-tag">${escapeHtml(item.badge)}</span>` : ''}
                     </div>
-                    <h3 class="store-name pr-title">${escapeHtml(item.shortTitle || item.name)}</h3>
+                    <h3 class="pr-title">${escapeHtml(title)}</h3>
+                    ${desc ? `<p class="pr-desc">${escapeHtml(desc)}</p>` : ''}
                 </div>
                 <div class="pr-cta-box">
-                    <span class="pr-cta-btn">${escapeHtml(item.cta || '詳細 ›')}</span>
+                    <span class="pr-cta-btn">${escapeHtml(cta)}</span>
                 </div>
-                <div class="occupancy-bar">
-                    <div class="bar-fill-ladies" style="width: 70%"></div>
-                    <div class="bar-fill-men" style="width: 30%"></div>
-                </div>
+                <div class="pr-glow-bar"></div>
             `;
             return wrapper;
         }
