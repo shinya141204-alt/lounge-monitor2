@@ -1,0 +1,1695 @@
+/**
+ * 相席ナビ (AISEKI NAVI) - Main Application Script
+ * Cached & Compressed for High-Speed Performance
+ */
+
+        const IS_STAFF = (window.APP_CONFIG && window.APP_CONFIG.isStaff) || false;
+        let currentFilter = 'All';
+        let currentSearch = '';
+        let currentSort = 'women';
+        const THEME_ORDER = ['default', 'list', 'flat', 'light'];
+        const THEME_LABELS = {
+            default: '✨ 通常モード（ネオン）',
+            list: '📋 リストモード（1行スリム表）',
+            flat: '🌑 フラットモード（装飾オフ）',
+            light: '☀️ ライトモード（白背景）'
+        };
+        let currentTheme = localStorage.getItem('olg_view_theme') || (localStorage.getItem('olg_compact_view') === 'true' ? 'list' : 'default');
+        if (!THEME_ORDER.includes(currentTheme)) currentTheme = 'default';
+        let pinnedStores = JSON.parse(localStorage.getItem('olg_pinned_stores')) || [];
+
+        function applyThemeClasses(themeName) {
+            document.body.classList.remove('compact-mode', 'theme-list', 'theme-flat', 'theme-light');
+            if (themeName === 'list') {
+                document.body.classList.add('compact-mode', 'theme-list');
+            } else if (themeName === 'flat') {
+                document.body.classList.add('theme-flat');
+            } else if (themeName === 'light') {
+                document.body.classList.add('theme-light');
+            }
+            document.querySelectorAll('.theme-pill-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.theme === themeName);
+            });
+        }
+
+        // Apply saved theme immediately on load
+        applyThemeClasses(currentTheme);
+
+        function setViewTheme(themeName, notify = false) {
+            if (!THEME_ORDER.includes(themeName)) themeName = 'default';
+            currentTheme = themeName;
+            try {
+                localStorage.setItem('olg_view_theme', currentTheme);
+                localStorage.setItem('olg_compact_view', currentTheme === 'list' ? 'true' : 'false');
+            } catch (e) {}
+            applyThemeClasses(currentTheme);
+            if (notify && typeof showRefreshToast === 'function') {
+                showRefreshToast(`🎨 ${THEME_LABELS[currentTheme]}`);
+            }
+        }
+
+        // Domain change announcement banner logic
+        function initDomainNotice() {
+            if (IS_STAFF) return;
+            try {
+                if (!localStorage.getItem('hide_domain_notice_aiseki_navi_v1')) {
+                    const banner = document.getElementById('domain-notice-banner');
+                    if (banner) banner.classList.remove('hidden');
+                }
+            } catch (e) {}
+        }
+        function dismissDomainNotice() {
+            const banner = document.getElementById('domain-notice-banner');
+            if (banner) {
+                banner.style.opacity = '0';
+                banner.style.transform = 'translateY(-6px)';
+                setTimeout(() => {
+                    banner.classList.add('hidden');
+                }, 200);
+            }
+            try {
+                localStorage.setItem('hide_domain_notice_aiseki_navi_v1', '1');
+            } catch (e) {}
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                initDomainNotice();
+                if (typeof initNightCareBanner === 'function') initNightCareBanner();
+            });
+        } else {
+            initDomainNotice();
+            if (typeof initNightCareBanner === 'function') initNightCareBanner();
+        }
+
+        function toggleCompact() {
+            const idx = THEME_ORDER.indexOf(currentTheme);
+            const nextTheme = THEME_ORDER[(idx + 1) % THEME_ORDER.length];
+            setViewTheme(nextTheme, true);
+        }
+
+        // Save Pinned Stores
+        function togglePin(storeName) {
+            if (pinnedStores.includes(storeName)) {
+                pinnedStores = pinnedStores.filter(name => name !== storeName);
+            } else {
+                pinnedStores.push(storeName);
+            }
+            localStorage.setItem('olg_pinned_stores', JSON.stringify(pinnedStores));
+
+            // Re-render immediately
+            if (window.lastData) {
+                updateUI(window.lastData);
+            }
+        }
+
+        function handleSearch(query) {
+            currentSearch = query.toLowerCase();
+            if (window.lastData) updateUI(window.lastData);
+        }
+
+        function setSort(sortType) {
+            currentSort = sortType;
+            document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector(`.sort-btn[data-sort="${sortType}"]`).classList.add('active');
+            if (window.lastData) updateUI(window.lastData);
+        }
+
+        // Add filter button listeners
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                // Remove active class from all
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                // Add active to clicked
+                e.target.classList.add('active');
+
+                currentFilter = e.target.dataset.region;
+
+                // Re-render with cached data if available (or wait for next fetch)
+                if (window.lastData) {
+                    updateUI(window.lastData);
+                }
+            });
+        });
+
+        let isInitialLoad = true;
+        const clientAnalysisCache = {}; // storeName -> { data, fetchedAt }
+        const CLIENT_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+        let prefetchTriggered = false;
+
+        // Instant Load: Render cached ranking immediately if available (< 30 mins old)
+        try {
+            const savedRaw = localStorage.getItem('olg_cached_status');
+            if (savedRaw) {
+                const saved = JSON.parse(savedRaw);
+                if (saved && saved.data && saved.savedAt && (Date.now() - saved.savedAt < 30 * 60 * 1000)) {
+                    window.lastData = saved.data;
+                    isInitialLoad = false;
+                    window.addEventListener('DOMContentLoaded', () => {
+                        updateUI(saved.data);
+                        document.getElementById('loading').classList.add('hidden');
+                        document.getElementById('content').classList.remove('hidden');
+                    });
+                }
+            }
+        } catch (e) {}
+
+        async function fetchWithTimeout(url, timeoutMs = 15000) {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), timeoutMs);
+            try {
+                const response = await fetch(url, { signal: controller.signal });
+                clearTimeout(timer);
+                return response;
+            } catch (e) {
+                clearTimeout(timer);
+                throw e;
+            }
+        }
+
+        async function prefetchKeyStores(ranking) {
+            if (prefetchTriggered || !ranking || ranking.length === 0) return;
+            prefetchTriggered = true;
+
+            // Prioritize pinned stores + top 3 stores
+            const targets = [...pinnedStores];
+            for (let i = 0; i < Math.min(3, ranking.length); i++) {
+                if (!targets.includes(ranking[i].name)) {
+                    targets.push(ranking[i].name);
+                }
+            }
+
+            // Wait 1.5s after initial render so UI stays snappy, then prefetch sequentially
+            await new Promise(r => setTimeout(r, 1500));
+            for (const storeName of targets.slice(0, 5)) {
+                if (clientAnalysisCache[storeName] && (Date.now() - clientAnalysisCache[storeName].fetchedAt < CLIENT_CACHE_TTL)) {
+                    continue;
+                }
+                try {
+                    const res = await fetch('/api/analysis/' + encodeURIComponent(storeName));
+                    if (res.ok) {
+                        const d = await res.json();
+                        if (!d.error) {
+                            clientAnalysisCache[storeName] = { data: d, fetchedAt: Date.now() };
+                        }
+                    }
+                } catch (e) {}
+                await new Promise(r => setTimeout(r, 400));
+            }
+        }
+
+        async function fetchData() {
+            try {
+                const response = await fetchWithTimeout('/api/status', 15000);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const data = await response.json();
+
+                if (data.status === 'loading') {
+                    const loadingMsg = document.getElementById('loading').querySelector('p');
+                    if (loadingMsg) {
+                        if (!window._loadRetryCount) window._loadRetryCount = 0;
+                        window._loadRetryCount++;
+                        const dots = '.'.repeat((window._loadRetryCount % 3) + 1);
+                        const elapsed = window._loadRetryCount * 3;
+                        if (elapsed < 15) {
+                            loadingMsg.textContent = `サーバー起動中${dots} まもなくデータを取得します`;
+                        } else if (elapsed < 45) {
+                            loadingMsg.textContent = `データ取得中${dots} もうしばらくお待ちください`;
+                        } else {
+                            loadingMsg.textContent = `接続に時間がかかっています${dots} 自動でリトライ中`;
+                        }
+                    }
+                    setTimeout(fetchData, 2500);
+                    return;
+                }
+
+                if (data.error || data.status !== 'success') {
+                    const list = document.getElementById('ranking-list');
+                    if (list.children.length === 0) {
+                        showError();
+                    }
+                    return;
+                }
+
+                isInitialLoad = false;
+                window.lastData = data;
+                try {
+                    localStorage.setItem('olg_cached_status', JSON.stringify({
+                        data: data,
+                        savedAt: Date.now()
+                    }));
+                } catch (e) {}
+
+                updateUI(data);
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('content').classList.remove('hidden');
+                document.getElementById('error-message').classList.add('hidden');
+
+                // Prefetch pinned and top stores in background for instant modal open
+                prefetchKeyStores(data.ranking);
+            } catch (e) {
+                console.error("Fetch error:", e);
+                if (isInitialLoad) {
+                    const loadingEl = document.getElementById('loading');
+                    const loadingMsg = loadingEl.querySelector('p');
+                    if (loadingMsg) {
+                        loadingMsg.textContent = 'サーバー起動中... 再接続しています';
+                    }
+                    setTimeout(fetchData, 2500);
+                } else {
+                    console.warn("Background fetch failed, keeping existing data");
+                }
+            }
+        }
+
+        let toastTimer = null;
+        function showRefreshToast(message, isError = false) {
+            const toast = document.getElementById('refresh-toast');
+            if (!toast) return;
+            toast.textContent = message;
+            toast.classList.toggle('error', isError);
+            toast.classList.remove('hidden');
+            // trigger transition
+            requestAnimationFrame(() => {
+                toast.classList.add('show');
+            });
+            if (toastTimer) clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.classList.add('hidden'), 300);
+            }, 2500);
+        }
+
+        async function manualRefresh() {
+            const btn = document.getElementById('refresh-btn');
+            const labelSpan = btn ? btn.querySelector('span') : null;
+            if (btn && btn.disabled) return;
+            
+            if (btn) {
+                btn.disabled = true;
+                btn.classList.add('spinning');
+            }
+            if (labelSpan) labelSpan.textContent = '更新中...';
+            showRefreshToast('🔄 最新データを取得中...');
+            
+            await fetchData();
+            
+            setTimeout(() => {
+                if (btn) {
+                    btn.classList.remove('spinning');
+                    btn.disabled = false;
+                }
+                if (labelSpan) labelSpan.textContent = '更新';
+                const timeStr = (window.lastData && window.lastData.timestamp)
+                    ? window.lastData.timestamp.split(' ')[1]
+                    : new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                showRefreshToast(`✨ 最新データに更新しました (${timeStr})`);
+            }, 400);
+        }
+
+        // Map English location names to readable Japanese
+        const EN_TO_JA_MAP = {
+            'NISHISHINJUKU': '西新宿',
+            'SHINJUKU': '新宿',
+            'SHIBUYA': '渋谷',
+            'EBISU': '恵比寿',
+            'UENO': '上野',
+            'MACHIDA': '町田',
+            'KASHIWA': '柏',
+            'OMIYA': '大宮',
+            'YOKOHAMA': '横浜',
+            'UTSUNOMIYA': '宇都宮',
+            'TAKASAKI': '高崎',
+            'SAPPORO': '札幌',
+            'SENDAI': '仙台',
+            'NAGOYA': '名古屋',
+            'SHIZUOKA': '静岡',
+            'HAMAMATSU': '浜松',
+            'KANAZAWA': '金沢',
+            'CHAYAMACHI': '梅田茶屋町',
+            'UMEDA': '梅田',
+            'NAMBA': '難波',
+            'SHINSAIBASHI': '心斎橋',
+            'TENMA': '天満',
+            'KYOTO': '京都',
+            'KOBE': '神戸',
+            'OKAYAMA': '岡山',
+            'HIROSHIMA': '広島',
+            'MATSUYAMA': '松山',
+            'FUKUOKA': '福岡天神',
+            'KOKURA': '小倉',
+            'NAGASAKI': '長崎',
+            'OITA': '大分',
+            'KUMAMOTO': '熊本',
+            'MIYAZAKI': '宮崎',
+            'KAGOSHIMA': '鹿児島',
+            'OKINAWA': '沖縄',
+            'SEOUL': 'ソウル',
+            'GANGNAM': '江南(カンナム)',
+            'HONGDAE': '弘大(ホンデ)'
+        };
+
+        // Map store name keywords to clear Prefecture/Area labels
+        const AREA_LABEL_RULES = [
+            { keys: ['札幌', 'SAPPORO'], label: '北海道・札幌' },
+            { keys: ['仙台', 'SENDAI'], label: '宮城・仙台' },
+            { keys: ['西新宿', 'NISHISHINJUKU', '新宿', 'SHINJUKU'], label: '東京・新宿' },
+            { keys: ['渋谷', 'SHIBUYA'], label: '東京・渋谷' },
+            { keys: ['恵比寿', 'EBISU'], label: '東京・恵比寿' },
+            { keys: ['上野', 'UENO'], label: '東京・上野' },
+            { keys: ['町田', 'MACHIDA'], label: '東京・町田' },
+            { keys: ['横浜', 'YOKOHAMA'], label: '神奈川・横浜' },
+            { keys: ['大宮', 'OMIYA'], label: '埼玉・大宮' },
+            { keys: ['柏', 'KASHIWA'], label: '千葉・柏' },
+            { keys: ['宇都宮', 'UTSUNOMIYA'], label: '栃木・宇都宮' },
+            { keys: ['高崎', 'TAKASAKI'], label: '群馬・高崎' },
+            { keys: ['名古屋', '錦', '栄', 'NAGOYA'], label: '愛知・名古屋' },
+            { keys: ['静岡', 'SHIZUOKA'], label: '静岡' },
+            { keys: ['浜松', 'HAMAMATSU'], label: '静岡・浜松' },
+            { keys: ['金沢', 'KANAZAWA'], label: '石川・金沢' },
+            { keys: ['茶屋町', 'CHAYAMACHI', '梅田', 'UMEDA'], label: '大阪・梅田' },
+            { keys: ['天満', 'TENMA'], label: '大阪・天満' },
+            { keys: ['心斎橋', 'SHINSAIBASHI'], label: '大阪・心斎橋' },
+            { keys: ['難波', 'NAMBA'], label: '大阪・難波' },
+            { keys: ['京都', 'KYOTO'], label: '京都' },
+            { keys: ['神戸', '三宮', 'KOBE'], label: '兵庫・神戸' },
+            { keys: ['岡山', 'OKAYAMA'], label: '岡山' },
+            { keys: ['広島', 'HIROSHIMA'], label: '広島' },
+            { keys: ['松山', 'MATSUYAMA'], label: '愛媛・松山' },
+            { keys: ['福岡', '天神', 'FUKUOKA'], label: '福岡・天神' },
+            { keys: ['小倉', 'KOKURA'], label: '福岡・小倉' },
+            { keys: ['長崎', 'NAGASAKI'], label: '長崎' },
+            { keys: ['大分', 'OITA'], label: '大分' },
+            { keys: ['熊本', 'KUMAMOTO'], label: '熊本' },
+            { keys: ['宮崎', 'MIYAZAKI'], label: '宮崎' },
+            { keys: ['鹿児島', 'KAGOSHIMA'], label: '鹿児島' },
+            { keys: ['沖縄', '那覇', 'OKINAWA'], label: '沖縄' },
+            { keys: ['ソウル', 'カンナム', 'ホンデ', '江南', '弘大', 'SEOUL', 'GANGNAM', 'HONGDAE'], label: '韓国・ソウル' }
+        ];
+
+        function localizeStoreName(cleanName) {
+            let localized = cleanName.trim();
+            const upper = localized.toUpperCase();
+            if (EN_TO_JA_MAP[upper]) {
+                return EN_TO_JA_MAP[upper];
+            }
+            for (const [enKey, jaVal] of Object.entries(EN_TO_JA_MAP)) {
+                const regex = new RegExp(`\\b${enKey}\\b`, 'gi');
+                localized = localized.replace(regex, jaVal);
+            }
+            return localized;
+        }
+
+        function detectAreaLabel(rawName, localizedName) {
+            const combined = `${rawName} ${localizedName}`.toUpperCase();
+            for (const rule of AREA_LABEL_RULES) {
+                for (const k of rule.keys) {
+                    if (combined.includes(k.toUpperCase())) {
+                        return rule.label;
+                    }
+                }
+            }
+            return '';
+        }
+
+        function detectBrandInfo(storeOrName) {
+            const rawSource = (typeof storeOrName === 'object' ? (storeOrName.source || '') : '').toUpperCase();
+            const name = typeof storeOrName === 'object' ? (storeOrName.name || '') : String(storeOrName || '');
+            let code = 'OTHER';
+            let cls = 'brand-other';
+            let stripped = name;
+
+            if (rawSource === 'ORIENTAL' || name.startsWith('OLG ') || name.startsWith('ag ')) {
+                if (/^OLG\s+ag/i.test(name) || /^ag\s*/i.test(name)) {
+                    code = 'ag';
+                    cls = 'brand-ag';
+                    stripped = name.replace(/^OLG\s+ag\s*/i, '').replace(/^ag\s*/i, '');
+                } else {
+                    code = 'OLG';
+                    cls = 'brand-olg';
+                    stripped = name.replace(/^OLG\s+/i, '');
+                }
+            } else if (rawSource === 'JIS' || name.startsWith('JIS ')) {
+                code = 'JIS';
+                cls = 'brand-jis';
+                stripped = name.replace(/^JIS\s+/i, '');
+            } else if (rawSource === 'XIX' || name.startsWith('XIX ')) {
+                code = 'XIX';
+                cls = 'brand-xix';
+                stripped = name.replace(/^XIX\s+/i, '');
+            } else if (rawSource === 'ALFA' || name.includes('ALFA')) {
+                code = 'ALFA';
+                cls = 'brand-alfa';
+                stripped = name.replace(/^ALFA\s+/i, '');
+            } else if (rawSource === 'YATAKOI' || name.includes('ヤタコイ') || name.includes('YATAKOI')) {
+                code = 'ヤタコイ';
+                cls = 'brand-yatakoi';
+                stripped = name.replace(/^ヤタコイ\s+|^YATAKOI\s+/i, '');
+            } else if (rawSource === 'CLOVERS' || name.includes('CLOVERS')) {
+                code = 'CLOVERS';
+                cls = 'brand-clovers';
+                stripped = name.replace(/^CLOVERS\s+/i, '');
+            } else {
+                const prefix = name.split(' ')[0];
+                code = prefix.substring(0, 6);
+            }
+
+            const cleanName = localizeStoreName(stripped || name);
+            const areaLabel = detectAreaLabel(name, cleanName);
+            const fullDisplayTitle = `${code} ${cleanName}`;
+            return { code, cls, cleanName, areaLabel, fullDisplayTitle };
+        }
+
+        function escapeHtml(str) {
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function renderStore(store, index, container, isPinned = false, globalIndex = null, isDuplicateName = false) {
+            const template = document.getElementById('ranking-item-template');
+            const node = template.content.cloneNode(true);
+            const item = node.querySelector('.ranking-item');
+
+            const pinBtn = node.querySelector('.pin-btn');
+            if (pinnedStores.includes(store.name)) {
+                pinBtn.classList.add('active');
+            }
+
+            pinBtn.onclick = (e) => {
+                e.stopPropagation();
+                togglePin(store.name);
+            };
+
+            const analysisBtn = node.querySelector('.analysis-btn');
+            analysisBtn.onclick = (e) => {
+                e.stopPropagation();
+                openModal(store.name);
+            };
+
+            item.style.cursor = 'pointer';
+            item.onclick = () => openModal(store.name);
+
+            const displayRank = globalIndex !== null ? globalIndex + 1 : index + 1;
+
+            if (!isPinned) {
+                if (index === 0) item.classList.add('rank-1');
+                if (index === 1) item.classList.add('rank-2');
+                if (index === 2) item.classList.add('rank-3');
+            } else {
+                item.classList.add('pinned-item');
+            }
+
+            node.querySelector('.rank-badge').textContent = displayRank;
+
+            const brandInfo = detectBrandInfo(store);
+            const badgeEl = node.querySelector('.brand-badge');
+            badgeEl.textContent = brandInfo.code;
+            badgeEl.classList.add(brandInfo.cls);
+
+            const areaEl = node.querySelector('.area-tag');
+            if (brandInfo.areaLabel) {
+                areaEl.textContent = brandInfo.areaLabel;
+            } else {
+                areaEl.classList.add('hidden');
+            }
+
+            const baseName = brandInfo.cleanName || store.name;
+            node.querySelector('.store-name').textContent = isDuplicateName
+                ? `${brandInfo.code} ${baseName}`
+                : baseName;
+
+            const ladiesCount = store.women || 0;
+            const menCount = store.men || 0;
+            const totalCount = ladiesCount + menCount;
+
+            node.querySelector('.stat.ladies .count').textContent = ladiesCount;
+            node.querySelector('.stat.men .count').textContent = menCount;
+
+            // Gender ratio bar calculation
+            const ladiesBar = node.querySelector('.bar-fill-ladies');
+            const menBar = node.querySelector('.bar-fill-men');
+            if (totalCount > 0) {
+                const ladiesPct = Math.round((ladiesCount / totalCount) * 100);
+                const menPct = 100 - ladiesPct;
+                ladiesBar.style.width = ladiesPct + '%';
+                menBar.style.width = menPct + '%';
+            } else {
+                ladiesBar.style.width = '0%';
+                menBar.style.width = '0%';
+            }
+
+            container.appendChild(node);
+        }
+
+        function updateUI(data) {
+            const rankingList = document.getElementById('ranking-list');
+            const pinnedList = document.getElementById('pinned-list');
+            const pinnedContainer = document.getElementById('pinned-list-container');
+
+            rankingList.innerHTML = '';
+            pinnedList.innerHTML = '';
+
+            const stores = data.ranking;
+            if (!stores || stores.length === 0) return;
+
+            // Count occurrences of each cleanName across all stores so duplicate names get their brand prefixed
+            const cleanNameCounts = {};
+            stores.forEach(s => {
+                const bInfo = detectBrandInfo(s);
+                const key = bInfo.cleanName || s.name;
+                cleanNameCounts[key] = (cleanNameCounts[key] || 0) + 1;
+            });
+
+            let filteredStores = stores.filter(store => {
+                const matchRegion = currentFilter === 'All' || store.region === currentFilter;
+                if (!matchRegion) return false;
+                if (currentSearch === '') return true;
+                const bInfo = detectBrandInfo(store);
+                const searchable = `${store.name} ${bInfo.code} ${bInfo.cleanName} ${bInfo.areaLabel}`.toLowerCase();
+                return searchable.includes(currentSearch);
+            });
+
+            if (currentSort === 'men') {
+                filteredStores.sort((a, b) => (b.men - a.men) || (b.women - a.women));
+            } else if (currentSort === 'ratio') {
+                filteredStores.sort((a, b) => {
+                    const totalA = a.women + a.men;
+                    const totalB = b.women + b.men;
+                    const pctA = totalA === 0 ? -1 : (a.women / totalA);
+                    const pctB = totalB === 0 ? -1 : (b.women / totalB);
+                    if (Math.abs(pctB - pctA) > 0.001) return pctB - pctA;
+                    return b.women - a.women;
+                });
+            } else {
+                filteredStores.sort((a, b) => (b.women - a.women) || (b.men - a.men));
+            }
+
+            if (filteredStores.length === 0) {
+                rankingList.innerHTML = '<p style="color: #666; width: 100%; text-align: center;">該当する店舗がありません</p>';
+                pinnedContainer.classList.add('hidden');
+                return;
+            }
+
+            const pinnedItems = [];
+            const otherItems = [];
+
+            filteredStores.forEach((store, realIndex) => {
+                const bInfo = detectBrandInfo(store);
+                const key = bInfo.cleanName || store.name;
+                const isDup = (cleanNameCounts[key] || 0) > 1;
+                if (pinnedStores.includes(store.name)) {
+                    pinnedItems.push({ store, rank: realIndex, isDup });
+                } else {
+                    otherItems.push({ store, rank: realIndex, isDup });
+                }
+            });
+
+            if (pinnedItems.length > 0) {
+                pinnedContainer.classList.remove('hidden');
+                pinnedItems.forEach(item => {
+                    renderStore(item.store, -1, pinnedList, true, item.rank, item.isDup);
+                });
+            } else {
+                pinnedContainer.classList.add('hidden');
+            }
+
+            otherItems.forEach((item, idx) => {
+                renderStore(item.store, item.rank, rankingList, false, item.rank, item.isDup);
+                // In staff mode, skip all native in-feed PR cards completely
+                if (!IS_STAFF && typeof AFFILIATE_MASTER !== 'undefined' && AFFILIATE_MASTER.enabled) {
+                    const currentRank = idx + 1;
+                    const slot = AFFILIATE_MASTER.infeedSlots.find(s => s.afterRank === currentRank);
+                    if (slot) {
+                        const prEl = createInfeedPrElement(slot);
+                        if (prEl) rankingList.appendChild(prEl);
+                    }
+                }
+            });
+
+            const lastUpdateEl = document.getElementById('last-update');
+            if (lastUpdateEl) {
+                lastUpdateEl.textContent = data.timestamp ? data.timestamp.split(' ')[1] : '--:--';
+                lastUpdateEl.classList.remove('flash-update');
+                void lastUpdateEl.offsetWidth; // trigger reflow
+                lastUpdateEl.classList.add('flash-update');
+            }
+        }
+
+        // --- High-Speed Affiliate & Promotion Master Integration ---
+        let currentGuideCategory = 'all';
+
+        function getAffiliateMaster() {
+            if (typeof AFFILIATE_MASTER !== 'undefined') {
+                return AFFILIATE_MASTER;
+            }
+            return {
+                enabled: !IS_STAFF,
+                categories: [
+                    { id: 'all', name: 'すべて', icon: '✨' },
+                    { id: 'beauty', name: 'メンズ脱毛・美肌', icon: '🪒', highlight: true },
+                    { id: 'night', name: 'タクシー・深夜ケア', icon: '🚕', highlight: true },
+                    { id: 'dating', name: '恋活・即日出会い', icon: '💘' },
+                    { id: 'grooming', name: '香水・身だしなみ', icon: '👔' }
+                ],
+                items: [],
+                infeedSlots: []
+            };
+        }
+
+        function createInfeedPrElement(slotConfig) {
+            if (IS_STAFF) return null;
+            const master = getAffiliateMaster();
+            if (!master.enabled) return null;
+
+            const item = (master.items || []).find(i => i.id === slotConfig.itemId) || (master.items || [])[0];
+            if (!item) return null;
+
+            const wrapper = document.createElement('a');
+            wrapper.className = `ranking-item pr-card-item ${slotConfig.highlight ? 'pr-card-highlight' : ''}`;
+            wrapper.href = item.url;
+            if (item.url && item.url.startsWith('http')) {
+                wrapper.target = '_blank';
+                wrapper.rel = 'noopener noreferrer sponsored';
+            } else {
+                wrapper.onclick = (e) => {
+                    e.preventDefault();
+                    openGuideModal(item.category);
+                };
+            }
+
+            const title = item.infeedTitle || item.shortTitle || item.name;
+            const tag = item.infeedTag || slotConfig.tagText || item.tag || 'PR';
+            const sub = item.infeedSub || slotConfig.subText || item.badge || 'おすすめ';
+            const cta = item.infeedCta || '詳細 ›';
+            const badge = slotConfig.badgeText || 'PR';
+
+            wrapper.innerHTML = `
+                <div class="rank-badge pr-badge-box">${escapeHtml(badge)}</div>
+                <div class="store-info">
+                    <div class="store-meta-row">
+                        <span class="brand-badge pr-tag-pill">${escapeHtml(tag)}</span>
+                        <span class="area-tag pr-sub-pill">${escapeHtml(sub)}</span>
+                    </div>
+                    <h3 class="store-name pr-title">${escapeHtml(title)}</h3>
+                </div>
+                <div class="pr-cta-box">
+                    <span class="pr-cta-btn">${escapeHtml(cta)}</span>
+                </div>
+                <div class="occupancy-bar pr-occupancy-bar">
+                    <div class="bar-fill-ladies" style="width: 70%"></div>
+                    <div class="bar-fill-men" style="width: 30%"></div>
+                </div>
+            `;
+            return wrapper;
+        }
+
+        function renderModalPrSlot(storeName) {
+            if (IS_STAFF) return;
+            const slot = document.getElementById('modal-pr-slot');
+            if (!slot) return;
+            const master = getAffiliateMaster();
+            if (!master.enabled || !master.items || master.items.length === 0) {
+                slot.classList.add('hidden');
+                return;
+            }
+            slot.classList.remove('hidden');
+
+            // Dynamic rotation based on time of day:
+            // 21:00 - 05:59 JST -> Prioritize Night Taxi & After-care!
+            // 06:00 - 20:59 JST -> Prioritize Grooming / Hair Removal!
+            const currentHour = new Date().getHours();
+            const isNightTime = (currentHour >= 21 || currentHour < 6);
+            const targetCategory = isNightTime ? 'night' : 'beauty';
+
+            const matchedItem = (master.items || []).find(i => i.category === targetCategory) || master.items[0];
+            const isExternal = matchedItem.url && matchedItem.url.startsWith('http');
+
+            slot.innerHTML = `
+                <a href="${escapeHtml(matchedItem.url)}" ${isExternal ? 'target="_blank" rel="noopener noreferrer sponsored"' : ''} class="modal-pr-link ${targetCategory === 'night' ? 'pr-night-accent' : ''}" ${!isExternal ? `onclick="event.preventDefault(); openGuideModal('${targetCategory}')"` : ''}>
+                    <span class="pr-tag-pill">${escapeHtml(matchedItem.badge || 'PR')}</span>
+                    <span class="modal-pr-text">${escapeHtml(matchedItem.shortTitle || matchedItem.name)}</span>
+                    <span class="modal-pr-arrow">›</span>
+                </a>
+            `;
+        }
+
+        function openGuideModal(initialCategory = 'all') {
+            currentGuideCategory = initialCategory;
+            renderGuideModal();
+            document.getElementById('guide-modal').classList.remove('hidden');
+        }
+
+        function filterGuideCategory(catId) {
+            currentGuideCategory = catId;
+            renderGuideModal();
+        }
+
+        function renderGuideModal() {
+            const master = getAffiliateMaster();
+            const tabsEl = document.getElementById('guide-category-tabs');
+            const listEl = document.getElementById('guide-app-list');
+
+            // Render category tabs
+            if (tabsEl && master.categories) {
+                tabsEl.innerHTML = master.categories.map(cat => {
+                    const isActive = cat.id === currentGuideCategory;
+                    const highlightClass = cat.highlight ? 'tab-pill-highlight' : '';
+                    return `
+                        <button type="button" class="guide-tab-pill ${isActive ? 'active' : ''} ${highlightClass}" onclick="filterGuideCategory('${cat.id}')">
+                            <span class="tab-icon">${cat.icon}</span>
+                            <span class="tab-label">${escapeHtml(cat.name)}</span>
+                        </button>
+                    `;
+                }).join('');
+            }
+
+            // Filter items by category
+            let filteredItems = master.items || [];
+            if (currentGuideCategory !== 'all') {
+                filteredItems = filteredItems.filter(i => i.category === currentGuideCategory);
+            }
+
+            // Render item cards
+            if (listEl) {
+                if (filteredItems.length === 0) {
+                    listEl.innerHTML = `<p class="guide-empty-msg">このジャンルの提携プログラムは順次追加予定です。</p>`;
+                    return;
+                }
+
+                listEl.innerHTML = filteredItems.map(item => {
+                    const isExt = item.url && item.url.startsWith('http');
+                    const pointsHtml = (item.points && item.points.length > 0) ? `
+                        <ul class="guide-points-list">
+                            ${item.points.map(p => `<li><span class="check-icon">✓</span> ${escapeHtml(p)}</li>`).join('')}
+                        </ul>
+                    ` : '';
+
+                    return `
+                        <div class="guide-app-card ${item.featured ? 'card-featured' : ''} category-${item.category}">
+                            <div class="guide-app-header-row">
+                                <span class="guide-app-badge">${escapeHtml(item.badge || 'おすすめ')}</span>
+                                <span class="guide-category-tag">${escapeHtml(item.tag || '')}</span>
+                            </div>
+                            <div class="guide-app-main">
+                                <div class="guide-app-info">
+                                    <h4 class="guide-app-name">${escapeHtml(item.name)}</h4>
+                                    <p class="guide-app-target">🎯 <strong>おすすめ：</strong>${escapeHtml(item.target)}</p>
+                                    <p class="guide-app-desc">${escapeHtml(item.desc)}</p>
+                                    ${pointsHtml}
+                                </div>
+                                <div class="guide-app-cta-wrap">
+                                    <a href="${escapeHtml(item.url)}" ${isExt ? 'target="_blank" rel="noopener noreferrer sponsored"' : `onclick="event.preventDefault(); showRefreshToast('💡 アフィリエイトURL設定完了後に公式ページへ遷移します')"`} class="guide-app-cta">
+                                        ${escapeHtml(item.cta || '詳細・キャンペーンを見る ›')}
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
+
+        function closeGuideModal() {
+            document.getElementById('guide-modal').classList.add('hidden');
+        }
+
+        // Editorial Articles Selector Modal
+        function openArticlesModal() {
+            const modal = document.getElementById('articles-modal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+            }
+        }
+
+        function closeArticlesModal() {
+            const modal = document.getElementById('articles-modal');
+            if (modal) {
+                modal.classList.add('hidden');
+                document.body.style.overflow = '';
+            }
+        }
+
+        // Nighttime Smart Cab & After-care Banner Init
+        function initNightCareBanner() {
+            if (IS_STAFF) return;
+            const banner = document.getElementById('night-care-banner');
+            if (!banner) return;
+
+            // Check if current JST time is late night (21:00 - 06:00)
+            const currentHour = new Date().getHours();
+            const isLateNight = (currentHour >= 21 || currentHour < 6);
+
+            if (isLateNight) {
+                banner.classList.remove('hidden');
+            } else {
+                banner.classList.add('hidden');
+            }
+        }
+
+        function getOfficialBrandUrl(brandCode, rawName) {
+            const name = String(rawName || '');
+            if (brandCode === 'ag' || /^ag\s/i.test(name)) return 'https://ag-ree.jp/';
+            if (brandCode === 'OLG') return 'https://oriental-lounge.com/';
+            if (brandCode === 'JIS') return 'https://jis.bar/';
+            if (brandCode === 'XIX') return 'https://xix-lounge.com/';
+            if (brandCode === 'ALFA') return 'https://alfa-lounge.com/';
+            if (brandCode === 'ヤタコイ') return 'https://yatakoi.com/';
+            if (brandCode === 'CLOVERS') return 'https://clovers-lounge.jp/';
+            return 'https://oriental-lounge.com/';
+        }
+
+        // --- SNS Share Functions (Ranking & Individual Store) ---
+        function buildRankingShareText() {
+            const regionNames = {
+                'All': '全国', 'Kanto': '関東', 'Kinki': '関西', 'Chubu': '中部',
+                'Kyushu': '九州', 'Hokkaido': '北海道', 'Tohoku': '東北',
+                'Chugoku': '中国', 'Shikoku': '四国', 'Korea': '韓国'
+            };
+            const areaTitle = regionNames[currentFilter] || '全国';
+            let text = `🔥【相席ナビ】いま盛り上がってる${areaTitle}ラウンジTOP3！\n`;
+            if (window.lastData && window.lastData.ranking) {
+                const list = window.lastData.ranking.filter(s => currentFilter === 'All' || s.region === currentFilter).slice(0, 3);
+                const medals = ['🥇', '🥈', '🥉'];
+                list.forEach((s, i) => {
+                    const b = detectBrandInfo(s);
+                    text += `${medals[i]} ${b.fullDisplayTitle}（👩女性${s.women}名 / 👨男性${s.men}名）\n`;
+                });
+            }
+            text += `#相席ナビ #相席ラウンジ`;
+            return text;
+        }
+
+        async function shareCurrentRanking(platform) {
+            const shareUrl = window.location.origin + window.location.pathname;
+            const shareText = buildRankingShareText();
+
+            if (platform === 'native' && navigator.share) {
+                try {
+                    await navigator.share({ title: '相席ナビ｜全国ラウンジの今わかる人数ランキング', text: shareText, url: shareUrl });
+                    return;
+                } catch (e) {}
+            }
+            if (platform === 'line') {
+                const lineUrl = `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`;
+                window.open(lineUrl, '_blank', 'noopener,noreferrer');
+            } else if (platform === 'x' || platform === 'native') {
+                const xUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText + '\n' + shareUrl)}`;
+                window.open(xUrl, '_blank', 'noopener,noreferrer');
+            } else if (platform === 'copy') {
+                try {
+                    await navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
+                    showRefreshToast('📋 ランキングとURLをコピーしました！');
+                } catch (e) {
+                    showRefreshToast('URL: ' + shareUrl);
+                }
+            }
+        }
+
+        let currentModalStoreName = '';
+
+        function shareStoreStatus(platform) {
+            const shareUrl = window.location.origin + window.location.pathname;
+            const bInfo = detectBrandInfo(currentModalStoreName);
+            let liveInfo = '';
+            if (window.lastData && window.lastData.ranking) {
+                const found = window.lastData.ranking.find(s => s.name === currentModalStoreName);
+                if (found) {
+                    liveInfo = `現在 👩女性${found.women}名 / 👨男性${found.men}名！`;
+                }
+            }
+            const text = `🍸【${bInfo.fullDisplayTitle}】${liveInfo}\n曜日・時間帯別の混雑データも『相席ナビ』でチェック👇`;
+            if (platform === 'line') {
+                const lineUrl = `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(text)}`;
+                window.open(lineUrl, '_blank', 'noopener,noreferrer');
+            } else {
+                const xUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text + ' #相席ナビ\n' + shareUrl)}`;
+                window.open(xUrl, '_blank', 'noopener,noreferrer');
+            }
+        }
+
+        function openLegalModal() {
+            document.getElementById('legal-modal').classList.remove('hidden');
+        }
+
+        function closeLegalModal() {
+            document.getElementById('legal-modal').classList.add('hidden');
+        }
+
+        // --- SNS Viral Post Generator Modal Logic ---
+        function generatePresetText(preset) {
+            const shareUrl = window.location.origin + window.location.pathname;
+            const stores = (window.lastData && window.lastData.ranking) ? [...window.lastData.ranking] : [];
+            const ts = (window.lastData && window.lastData.timestamp) ? window.lastData.timestamp.split(' ')[1].slice(0, 5) : '現在';
+
+            if (stores.length === 0) {
+                return `🔥全国ラウンジ人数ランキング「相席ナビ」\n${shareUrl}\n#相席ナビ #相席ラウンジ`;
+            }
+
+            let list = [];
+            let header = '';
+            let tags = '#相席ナビ #相席ラウンジ';
+            let isAnaba = false;
+
+            if (preset === 'kanto') {
+                list = stores.filter(s => s.region === 'Kanto').sort((a, b) => (b.women - a.women) || (b.men - a.men)).slice(0, 3);
+                header = `🗼【${ts} 関東速報】女性が多いラウンジTOP3`;
+                tags = `#相席ナビ #相席ラウンジ #新宿 #渋谷`;
+            } else if (preset === 'kansai') {
+                list = stores.filter(s => s.region === 'Kinki').sort((a, b) => (b.women - a.women) || (b.men - a.men)).slice(0, 3);
+                header = `🐙【${ts} 関西速報】女性が多いラウンジTOP3`;
+                tags = `#相席ナビ #相席ラウンジ #梅田 #難波`;
+            } else if (preset === 'anaba') {
+                isAnaba = true;
+                list = stores.filter(s => (s.women || 0) >= 10).sort((a, b) => {
+                    const rA = a.women / Math.max(1, a.women + a.men);
+                    const rB = b.women / Math.max(1, b.women + b.men);
+                    return (rB - rA) || (b.women - a.women);
+                }).slice(0, 3);
+                header = `💎【${ts} 穴場速報】女性比率が高い狙い目TOP3`;
+                tags = `#相席ナビ #相席ラウンジ`;
+            } else {
+                list = stores.sort((a, b) => (b.women - a.women) || (b.men - a.men)).slice(0, 3);
+                header = `🔥【${ts} 全国速報】女性が多いラウンジTOP3`;
+                tags = `#相席ナビ #相席ラウンジ`;
+            }
+
+            const medals = ['🥇', '🥈', '🥉'];
+            const lines = [header];
+            list.forEach((s, i) => {
+                const b = detectBrandInfo(s);
+                const w = s.women || 0;
+                const m = s.men || 0;
+                const tot = w + m;
+                const pct = tot > 0 ? Math.round((w / tot) * 100) : 0;
+                if (isAnaba) {
+                    lines.push(`${medals[i]}${b.fullDisplayTitle}(女${pct}%｜👩${w}/👨{m})`.replace('{m}', m));
+                } else {
+                    lines.push(`${medals[i]}${b.fullDisplayTitle}(👩${w}名/👨${m}名)`);
+                }
+            });
+            lines.push(`👇全65店舗の現在人数＆グラフ\n${shareUrl}\n${tags}`);
+            return lines.join('\n');
+        }
+
+        function selectSnsPreset(preset) {
+            document.querySelectorAll('.sns-tab-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.preset === preset);
+            });
+            const ta = document.getElementById('sns-preview-textarea');
+            if (ta) {
+                ta.value = generatePresetText(preset);
+            }
+        }
+
+        function openSnsModal() {
+            const defaultPreset = currentFilter === 'Kanto' ? 'kanto' : (currentFilter === 'Kinki' ? 'kansai' : 'all');
+            selectSnsPreset(defaultPreset);
+            document.getElementById('sns-modal').classList.remove('hidden');
+        }
+
+        function closeSnsModal() {
+            document.getElementById('sns-modal').classList.add('hidden');
+        }
+
+        async function postGeneratedSns(platform) {
+            const ta = document.getElementById('sns-preview-textarea');
+            const text = ta ? ta.value : generatePresetText('all');
+            if (platform === 'x') {
+                const xUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
+                window.open(xUrl, '_blank', 'noopener,noreferrer');
+            } else if (platform === 'line') {
+                const lineUrl = `https://social-plugins.line.me/lineit/share?text=${encodeURIComponent(text)}`;
+                window.open(lineUrl, '_blank', 'noopener,noreferrer');
+            } else {
+                try {
+                    await navigator.clipboard.writeText(text);
+                    showRefreshToast('📋 速報テキストをコピーしました！');
+                } catch (e) {}
+            }
+        }
+
+        function showError() {
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('content').classList.add('hidden');
+            document.getElementById('error-message').classList.remove('hidden');
+        }
+
+        // Initial fetch
+        fetchData();
+
+        // Poll every 30 seconds
+        setInterval(fetchData, 30000);
+
+        // --- Analysis Modal Logic ---
+        let dailyChartInstance = null;
+        let weekdayAnalysisChartInstance = null;
+        let hourlyWeekdayChartInstance = null;
+        let currentAnalysisData = null;
+        let allDates = [];
+        let visibleDateCount = 7;
+        let currentData = null;
+
+        async function openModal(storeName) {
+            loadChartJs(); // Pre-trigger Chart.js download in parallel with data fetch
+            currentModalStoreName = storeName;
+            const modal = document.getElementById('analysis-modal');
+            const modalContent = modal.querySelector('.modal-content');
+            const title = document.getElementById('modal-store-name');
+            const banner = document.getElementById('live-comparison-banner');
+            const bInfo = detectBrandInfo(storeName);
+
+            const officialLinkEl = document.getElementById('modal-official-link');
+            if (officialLinkEl) {
+                officialLinkEl.href = getOfficialBrandUrl(bInfo.code, storeName);
+            }
+            renderModalPrSlot(storeName);
+
+            modal.classList.remove('hidden');
+            if (modalContent) modalContent.scrollTop = 0;
+
+            // Check frontend cache first for instant (0ms) display
+            const cached = clientAnalysisCache[storeName];
+            if (cached && (Date.now() - cached.fetchedAt < CLIENT_CACHE_TTL)) {
+                title.textContent = bInfo.fullDisplayTitle;
+                currentAnalysisData = cached.data;
+                renderCharts(cached.data);
+                return;
+            }
+
+            title.textContent = bInfo.fullDisplayTitle + " 読み込み中...";
+            banner.classList.add('hidden');
+
+            try {
+                const response = await fetch('/api/analysis/' + encodeURIComponent(storeName));
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const data = await response.json();
+
+                if (data.error) {
+                    title.textContent = "Error: " + data.error;
+                    return;
+                }
+
+                clientAnalysisCache[storeName] = { data: data, fetchedAt: Date.now() };
+                title.textContent = bInfo.fullDisplayTitle;
+                currentAnalysisData = data;
+                renderCharts(data);
+
+            } catch (e) {
+                console.error(e);
+                title.textContent = "データの取得に失敗しました";
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('analysis-modal').classList.add('hidden');
+            if (dailyChartInstance) { dailyChartInstance.destroy(); dailyChartInstance = null; }
+            if (weekdayAnalysisChartInstance) { weekdayAnalysisChartInstance.destroy(); weekdayAnalysisChartInstance = null; }
+            if (hourlyWeekdayChartInstance) { hourlyWeekdayChartInstance.destroy(); hourlyWeekdayChartInstance = null; }
+            currentAnalysisData = null;
+        }
+
+        // Close on clicking background
+        document.getElementById('analysis-modal').addEventListener('click', (e) => {
+            if (e.target.id === ('analysis-modal')) closeModal();
+        });
+        document.getElementById('comparison-modal').addEventListener('click', (e) => {
+            if (e.target.id === ('comparison-modal')) closeComparisonModal();
+        });
+        document.getElementById('legal-modal').addEventListener('click', (e) => {
+            if (e.target.id === ('legal-modal')) closeLegalModal();
+        });
+        document.getElementById('guide-modal').addEventListener('click', (e) => {
+            if (e.target.id === ('guide-modal')) closeGuideModal();
+        });
+        document.getElementById('articles-modal')?.addEventListener('click', (e) => {
+            if (e.target.id === ('articles-modal')) closeArticlesModal();
+        });
+        document.getElementById('sns-modal').addEventListener('click', (e) => {
+            if (e.target.id === ('sns-modal')) closeSnsModal();
+        });
+
+        // Close any active modal with ESC key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+                closeComparisonModal();
+                closeLegalModal();
+                closeGuideModal();
+                closeArticlesModal();
+                closeSnsModal();
+            }
+        });
+
+        // --- On-Demand Dynamic Chart.js Loader (Zero blocking for initial page render) ---
+        let _chartJsLoadingPromise = null;
+        function loadChartJs() {
+            if (window.Chart) return Promise.resolve(window.Chart);
+            if (!_chartJsLoadingPromise) {
+                _chartJsLoadingPromise = new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+                    script.async = true;
+                    script.onload = () => resolve(window.Chart);
+                    script.onerror = (err) => {
+                        _chartJsLoadingPromise = null;
+                        console.error('Failed to load Chart.js:', err);
+                        reject(err);
+                    };
+                    document.head.appendChild(script);
+                });
+            }
+            return _chartJsLoadingPromise;
+        }
+
+        // Background prefetch during browser idle time (after page is interactive)
+        if ('requestIdleCallback' in window) {
+            window.requestIdleCallback(() => loadChartJs(), { timeout: 3500 });
+        } else {
+            setTimeout(loadChartJs, 2500);
+        }
+
+        // --- Comparison Modal Logic ---
+        let comparisonChartInstance = null;
+
+        async function openComparisonModal() {
+            if (!window.lastData || !window.lastData.ranking) return;
+            
+            const modal = document.getElementById('comparison-modal');
+            modal.classList.remove('hidden');
+
+            await loadChartJs();
+
+            const brandTotals = {};
+            let storesToCompare = window.lastData.ranking;
+            if (currentFilter !== 'All') {
+                storesToCompare = storesToCompare.filter(s => s.region === currentFilter);
+            }
+
+            storesToCompare.forEach(store => {
+                const brand = (store.source || 'Unknown').toUpperCase();
+                if (!brandTotals[brand]) {
+                    brandTotals[brand] = { women: 0, men: 0, count: 0 };
+                }
+                brandTotals[brand].women += store.women;
+                brandTotals[brand].men += store.men;
+                brandTotals[brand].count += 1;
+            });
+
+            const brands = Object.keys(brandTotals).sort((a, b) => brandTotals[b].women - brandTotals[a].women);
+            const labels = brands.map(b => `${b} (${brandTotals[b].count}店舗)`);
+            const womenData = brands.map(b => brandTotals[b].women);
+            const menData = brands.map(b => brandTotals[b].men);
+
+            if (comparisonChartInstance) {
+                comparisonChartInstance.destroy();
+            }
+
+            const ctx = document.getElementById('comparisonChart').getContext('2d');
+            comparisonChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Ladies',
+                            data: womenData,
+                            backgroundColor: 'rgba(255, 107, 107, 0.85)',
+                            borderRadius: 4
+                        },
+                        {
+                            label: 'Men',
+                            data: menData,
+                            backgroundColor: 'rgba(77, 171, 247, 0.85)',
+                            borderRadius: 4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { stacked: false, grid: { display: false } },
+                        y: { stacked: false, grid: { color: 'rgba(255,255,255,0.1)' } }
+                    },
+                    plugins: {
+                        legend: { display: true, labels: { color: '#fff' } }
+                    }
+                }
+            });
+        }
+
+        function closeComparisonModal() {
+            document.getElementById('comparison-modal').classList.add('hidden');
+            if (comparisonChartInstance) { comparisonChartInstance.destroy(); comparisonChartInstance = null; }
+        }
+
+        // --- Weekly Report Modal Logic ---
+        async function openReportModal() {
+            const modal = document.getElementById('report-modal');
+            const content = document.getElementById('report-content');
+            const period = document.getElementById('report-period');
+            
+            modal.classList.remove('hidden');
+            content.innerHTML = '<div class="spinner"></div>';
+            period.textContent = '集計中...';
+
+            try {
+                const response = await fetch('/api/weekly-report');
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const data = await response.json();
+
+                if (data.status !== 'success') {
+                    content.innerHTML = `<p style="color: var(--accent-red); text-align: center;">Error: ${escapeHtml(data.error)}</p>`;
+                    return;
+                }
+
+                const report = data.data;
+                period.textContent = `集計期間: ${report.period}`;
+
+                let html = `
+                    <h3 style="margin-top: 0;">ブランド別サマリー（日別ピーク平均の合計）</h3>
+                    <table class="report-table">
+                        <tr>
+                            <th>Brand</th>
+                            <th>店舗数</th>
+                            <th>平均 女性</th>
+                            <th>平均 男性</th>
+                        </tr>
+                `;
+                for (const [brand, stats] of Object.entries(report.by_brand)) {
+                    html += `
+                        <tr>
+                            <td>${escapeHtml(brand)}</td>
+                            <td>${Number(stats.store_count)}</td>
+                            <td style="color:#ffb7b7; font-weight:600;">${Number(stats.total_avg_women)}</td>
+                            <td style="color:#b7caff;">${Number(stats.total_avg_men)}</td>
+                        </tr>
+                    `;
+                }
+                html += `</table>
+                    <h3 style="margin-top: 20px;">店舗別ピークランキング</h3>
+                    <table class="report-table">
+                        <tr>
+                            <th>店舗名</th>
+                            <th>Brand</th>
+                            <th>平均 女性</th>
+                            <th>平均 男性</th>
+                            <th>最高 女性</th>
+                            <th>ピーク時間</th>
+                            <th>稼働日</th>
+                        </tr>
+                `;
+                report.stores.forEach(store => {
+                    html += `
+                        <tr>
+                            <td>${escapeHtml(store.name)}</td>
+                            <td>${escapeHtml(store.brand)}</td>
+                            <td style="color:#ffb7b7; font-weight:600;">${Number(store.avg_women)}</td>
+                            <td style="color:#b7caff;">${Number(store.avg_men)}</td>
+                            <td>${Number(store.max_women)}</td>
+                            <td>${escapeHtml(store.peak_hour)}</td>
+                            <td>${Number(store.days_with_data)}日</td>
+                        </tr>
+                    `;
+                });
+                html += '</table>';
+                content.innerHTML = html;
+
+            } catch (e) {
+                console.error(e);
+                content.innerHTML = '<p style="color: var(--accent-red); text-align: center;">レポートの読み込みに失敗しました</p>';
+            }
+        }
+
+        function closeReportModal() {
+            document.getElementById('report-modal').classList.add('hidden');
+        }
+
+        document.getElementById('report-modal').addEventListener('click', (e) => {
+            if (e.target.id === ('report-modal')) closeReportModal();
+        });
+
+        function renderLiveComparisonBanner(data) {
+            const banner = document.getElementById('live-comparison-banner');
+            const liveStore = (window.lastData && window.lastData.ranking)
+                ? window.lastData.ranking.find(s => s.name === data.store_name)
+                : null;
+            if (!liveStore) {
+                banner.classList.add('hidden');
+                return;
+            }
+
+            // Compute current JST business day and hour
+            const now = new Date();
+            const currentHour = now.getHours();
+            const bizDate = new Date(now);
+            if (currentHour <= 6) {
+                bizDate.setDate(bizDate.getDate() - 1);
+            }
+            const jsDay = bizDate.getDay(); // 0=Sun, 1=Mon...
+            const dayKeys = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            const dayLabels = ['日曜', '月曜', '火曜', '水曜', '木曜', '金曜', '土曜'];
+            const dayKey = dayKeys[jsDay];
+            const dayLabel = dayLabels[jsDay];
+
+            const avgW = (data.hourly_by_weekday && data.hourly_by_weekday[dayKey] && data.hourly_by_weekday[dayKey][currentHour] !== undefined)
+                ? data.hourly_by_weekday[dayKey][currentHour]
+                : (data.hourly ? (data.hourly[currentHour] || 0) : 0);
+
+            const diffW = +(liveStore.women - avgW).toFixed(1);
+            let diffBadge = '';
+            if (avgW > 0 || liveStore.women > 0) {
+                if (diffW >= 5) {
+                    diffBadge = `<span class="diff-badge hot">普段の${dayLabel}${currentHour}時台平均(${avgW}人)より +${diffW}人 🔥</span>`;
+                } else if (diffW > 0) {
+                    diffBadge = `<span class="diff-badge up">普段の${dayLabel}${currentHour}時台平均(${avgW}人)より +${diffW}人 ↗</span>`;
+                } else if (diffW < 0) {
+                    diffBadge = `<span class="diff-badge down">普段の${dayLabel}${currentHour}時台平均(${avgW}人)より ${diffW}人</span>`;
+                } else {
+                    diffBadge = `<span class="diff-badge neutral">普段の${dayLabel}${currentHour}時台平均(${avgW}人)並み</span>`;
+                }
+            }
+
+            banner.innerHTML = `
+                <div class="live-banner-counts">
+                    <span>現在: <strong class="ladies-text">女性 ${liveStore.women}名</strong> / <strong class="men-text">男性 ${liveStore.men}名</strong></span>
+                    ${diffBadge}
+                </div>
+            `;
+            banner.classList.remove('hidden');
+        }
+
+        async function renderCharts(data) {
+            await loadChartJs();
+            renderLiveComparisonBanner(data);
+            renderWeekdayChart(data);
+
+            // Auto-select current business weekday for hourly chart
+            const now = new Date();
+            if (now.getHours() <= 6) now.setDate(now.getDate() - 1);
+            const dayKeys = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            selectHourlyWeekday(dayKeys[now.getDay()]);
+
+            generateDateButtons(data);
+        }
+
+        function renderWeekdayChart(data) {
+            if (weekdayAnalysisChartInstance) {
+                weekdayAnalysisChartInstance.destroy();
+            }
+            const ctx = document.getElementById('weekdayChart').getContext('2d');
+            
+            const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+            const displayDays = ['月', '火', '水', '木', '金', '土', '日'];
+            
+            const womenData = days.map(d => data.weekday[d] || 0);
+            const menData = days.map(d => data.weekday_men ? (data.weekday_men[d] || 0) : 0);
+
+            weekdayAnalysisChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: displayDays,
+                    datasets: [
+                        {
+                            label: 'Ladies (ピーク平均)',
+                            data: womenData,
+                            backgroundColor: 'rgba(255, 107, 107, 0.85)',
+                            borderRadius: 4
+                        },
+                        {
+                            label: 'Men (ピーク平均)',
+                            data: menData,
+                            backgroundColor: 'rgba(77, 171, 247, 0.85)',
+                            borderRadius: 4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    onClick: (evt, elements) => {
+                        if (elements && elements.length > 0) {
+                            const idx = elements[0].index;
+                            selectHourlyWeekday(days[idx]);
+                        }
+                    },
+                    scales: {
+                        x: { grid: { display: false } },
+                        y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' } }
+                    },
+                    plugins: {
+                        legend: { display: true, labels: { color: '#fff', boxWidth: 12 } }
+                    }
+                }
+            });
+        }
+
+        function selectHourlyWeekday(dayKey) {
+            if (!currentAnalysisData) return;
+
+            document.querySelectorAll('#weekday-filter-buttons .chart-filter-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.day === dayKey);
+            });
+
+            // Business hours order: 18:00 -> 23:00, 00:00 -> 06:00
+            const businessHours = [18, 19, 20, 21, 22, 23, 0, 1, 2, 3, 4, 5, 6];
+            const labels = businessHours.map(h => `${h}時`);
+
+            let womenSeries = [];
+            let menSeries = [];
+
+            if (dayKey === 'ALL') {
+                womenSeries = businessHours.map(h => (currentAnalysisData.hourly && currentAnalysisData.hourly[h]) || 0);
+                menSeries = businessHours.map(h => (currentAnalysisData.hourly_men && currentAnalysisData.hourly_men[h]) || 0);
+            } else {
+                const dayW = (currentAnalysisData.hourly_by_weekday && currentAnalysisData.hourly_by_weekday[dayKey]) || {};
+                const dayM = (currentAnalysisData.hourly_men_by_weekday && currentAnalysisData.hourly_men_by_weekday[dayKey]) || {};
+                womenSeries = businessHours.map(h => dayW[h] || 0);
+                menSeries = businessHours.map(h => dayM[h] || 0);
+            }
+
+            if (hourlyWeekdayChartInstance) {
+                hourlyWeekdayChartInstance.destroy();
+            }
+
+            const ctx = document.getElementById('hourlyWeekdayChart').getContext('2d');
+            hourlyWeekdayChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Ladies 平均',
+                            data: womenSeries,
+                            backgroundColor: 'rgba(255, 107, 107, 0.2)',
+                            borderColor: 'rgba(255, 107, 107, 1)',
+                            borderWidth: 2,
+                            pointRadius: 2.5,
+                            fill: true,
+                            tension: 0.25
+                        },
+                        {
+                            label: 'Men 平均',
+                            data: menSeries,
+                            backgroundColor: 'rgba(77, 171, 247, 0.2)',
+                            borderColor: 'rgba(77, 171, 247, 1)',
+                            borderWidth: 2,
+                            pointRadius: 2.5,
+                            fill: true,
+                            tension: 0.25
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { grid: { display: false } },
+                        y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' } }
+                    },
+                    plugins: {
+                        legend: { display: true, labels: { color: '#fff', boxWidth: 12 } },
+                        tooltip: { mode: 'index', intersect: false }
+                    },
+                    interaction: { mode: 'nearest', axis: 'x', intersect: false }
+                }
+            });
+        }
+
+        function generateDateButtons(data) {
+            currentData = data;
+            const container = document.getElementById('date-buttons');
+            container.innerHTML = '';
+
+            const dates = new Set();
+            (data.recent_trend || []).forEach(d => {
+                const dateStr = d.x.split(' ')[0];
+                dates.add(dateStr);
+            });
+
+            allDates = Array.from(dates).sort().reverse();
+            visibleDateCount = 7;
+
+            renderDateButtons(true);
+        }
+
+        function renderDateButtons(autoSelectFirst = false) {
+            const container = document.getElementById('date-buttons');
+            container.innerHTML = '';
+            const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
+
+            const visibleDates = allDates.slice(0, visibleDateCount);
+
+            visibleDates.forEach((dateStr, idx) => {
+                const parts = dateStr.split('-');
+                const date = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                const dayName = dayNames[date.getDay()];
+
+                const btn = document.createElement('button');
+                btn.className = 'date-btn';
+                if (autoSelectFirst && idx === 0) btn.classList.add('active');
+                btn.innerHTML = `${parts[1]}/${parts[2]}<span class="day-name">${dayName}</span>`;
+                btn.onclick = (e) => showDailyChart(dateStr, currentData, e);
+                container.appendChild(btn);
+            });
+
+            if (allDates.length > visibleDateCount) {
+                const loadMoreBtn = document.createElement('button');
+                loadMoreBtn.className = 'date-btn load-more-btn';
+                loadMoreBtn.innerHTML = `もっと見る<span class="day-name">+${allDates.length - visibleDateCount}</span>`;
+                loadMoreBtn.onclick = () => {
+                    visibleDateCount += 7;
+                    renderDateButtons(false);
+                };
+                container.appendChild(loadMoreBtn);
+            }
+
+            if (autoSelectFirst && visibleDates.length > 0) {
+                showDailyChart(visibleDates[0], currentData, null);
+            }
+        }
+
+        function showDailyChart(dateStr, data, evt) {
+            if (evt && evt.target) {
+                document.querySelectorAll('.date-btn').forEach(b => b.classList.remove('active'));
+                evt.target.closest('.date-btn').classList.add('active');
+            }
+
+            document.getElementById('daily-chart-container').classList.remove('hidden');
+
+            // Filter data for selected date
+            const womenData = (data.recent_trend || []).filter(d => d.x.startsWith(dateStr));
+            const menData = (data.recent_trend_men || []).filter(d => d.x.startsWith(dateStr));
+
+            // Create labels (time only)
+            const labels = womenData.map(d => {
+                const timeParts = d.x.split(' ')[1].split(':');
+                return `${timeParts[0]}:${timeParts[1]}`;
+            });
+            const womenValues = womenData.map(d => d.y);
+            const menValues = menData.map(d => d.y);
+
+            if (dailyChartInstance) dailyChartInstance.destroy();
+
+            const ctx = document.getElementById('dailyChart').getContext('2d');
+            dailyChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Ladies',
+                            data: womenValues,
+                            backgroundColor: 'rgba(255, 107, 107, 0.2)',
+                            borderColor: 'rgba(255, 107, 107, 1)',
+                            borderWidth: 1.5,
+                            pointRadius: 2,
+                            fill: true,
+                            tension: 0.1
+                        },
+                        {
+                            label: 'Men',
+                            data: menValues,
+                            backgroundColor: 'rgba(77, 171, 247, 0.2)',
+                            borderColor: 'rgba(77, 171, 247, 1)',
+                            borderWidth: 1.5,
+                            pointRadius: 2,
+                            fill: true,
+                            tension: 0.1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' } },
+                        x: {
+                            grid: { display: false },
+                            ticks: {
+                                maxTicksLimit: 12,
+                                maxRotation: 0,
+                                autoSkip: true
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: true, labels: { color: '#fff' } },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                        }
+                    },
+                    interaction: {
+                        mode: 'nearest',
+                        axis: 'x',
+                        intersect: false
+                    }
+                }
+            });
+        }
+
+        // Pull to refresh logic
+        let touchstartY = 0;
+        let touchendY = 0;
+        const pullThreshold = 80;
+        let isPulling = false;
+
+        const pullIndicator = document.getElementById('pull-indicator');
+
+        document.addEventListener('touchstart', e => {
+            if (window.scrollY === 0) {
+                touchstartY = e.changedTouches[0].screenY;
+                isPulling = true;
+            }
+        }, {passive: true});
+
+        document.addEventListener('touchmove', e => {
+            if (!isPulling) return;
+            const y = e.changedTouches[0].screenY;
+            if (y > touchstartY + pullThreshold) {
+                pullIndicator.classList.add('show');
+            } else {
+                pullIndicator.classList.remove('show');
+            }
+        }, {passive: true});
+
+        document.addEventListener('touchend', e => {
+            if (!isPulling) return;
+            touchendY = e.changedTouches[0].screenY;
+            isPulling = false;
+            
+            if (touchendY > touchstartY + pullThreshold && window.scrollY === 0) {
+                // Trigger refresh
+                manualRefresh();
+                setTimeout(() => {
+                    pullIndicator.classList.remove('show');
+                }, 1000); // Hide after a bit
+            } else {
+                pullIndicator.classList.remove('show');
+            }
+        });

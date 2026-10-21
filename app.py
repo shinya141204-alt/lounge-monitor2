@@ -55,10 +55,10 @@ def compress_response(response):
             response.headers['Content-Length'] = len(compressed)
             response.headers['Vary'] = 'Accept-Encoding'
 
-    # Cache static images and web assets aggressively for instant mobile loading
+    # Cache static assets (JS, CSS, images, fonts) aggressively for instant mobile loading
     if request.path.startswith('/static/') and response.status_code == 200:
-        if any(request.path.lower().endswith(ext) for ext in ('.jpg', '.jpeg', '.png', '.webp', '.svg', '.gif', '.ico', '.woff2')):
-            response.headers['Cache-Control'] = 'public, max-age=2592000, immutable'
+        if any(request.path.lower().endswith(ext) for ext in ('.js', '.css', '.jpg', '.jpeg', '.png', '.webp', '.svg', '.gif', '.ico', '.woff2')):
+            response.headers['Cache-Control'] = 'public, max-age=604800, immutable'
 
     return response
 
