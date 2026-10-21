@@ -18,3 +18,4 @@ google_credentials.json
 *.db-wal
 *.db-shm
 *.log
+data/

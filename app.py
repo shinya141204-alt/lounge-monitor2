@@ -93,8 +93,18 @@ def start_scheduler():
                 scheduler.add_job(func=run_scheduled_x_post, trigger="cron", hour=12, minute=0, args=["21:00"])
                 scheduler.add_job(func=run_scheduled_x_post, trigger="cron", hour=13, minute=30, args=["22:30"])
                 scheduler.add_job(func=run_scheduled_x_post, trigger="cron", hour=15, minute=0, args=["00:00"])
+                # Daily events crawler at 10:00 and 17:00 JST (01:00 and 08:00 UTC)
+                def _crawl_events_job():
+                    try:
+                        import events
+                        events.fetch_all_events(force_refresh=True)
+                    except Exception as err:
+                        import logging
+                        logging.error(f"Scheduled events crawl failed: {err}")
+                scheduler.add_job(func=_crawl_events_job, trigger="cron", hour="1,8", minute=0)
                 scheduler.start()
                 threading.Thread(target=update_job, daemon=True).start()
+                threading.Thread(target=_crawl_events_job, daemon=True).start()
                 _scheduler_started = True
                 import logging
                 logging.info("APScheduler & local SQLite high-speed cache started successfully")
@@ -598,6 +608,25 @@ def get_weekly_report():
         return jsonify({"status": "success", "data": report})
     except Exception as e:
         return jsonify({"status": "error", "error": str(e)}), 500
+
+@app.route('/api/events')
+def get_events():
+    """Returns active events and promotions for lounge stores."""
+    try:
+        import events
+        store = request.args.get('store', '').strip()
+        force = request.args.get('refresh', '').lower() == 'true'
+        if store:
+            evs = events.get_events_for_store(store)
+        else:
+            evs = events.fetch_all_events(force_refresh=force)
+        return jsonify({
+            'status': 'success',
+            'count': len(evs),
+            'events': evs
+        })
+    except Exception as e:
+        return jsonify({'status': 'error', 'error': str(e)}), 500
 
 @app.route('/robots.txt')
 def robots_txt():

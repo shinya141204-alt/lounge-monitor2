@@ -7,6 +7,48 @@
         let currentFilter = 'All';
         let currentSearch = '';
         let currentSort = 'women';
+
+        // --- Store Events & Campaign State ---
+        window.allEvents = [];
+        let _eventsFetched = false;
+
+        async function loadEvents() {
+            if (_eventsFetched && window.allEvents.length > 0) return window.allEvents;
+            try {
+                const res = await fetch('/api/events');
+                if (res.ok) {
+                    const data = await res.json();
+                    window.allEvents = data.events || [];
+                    _eventsFetched = true;
+                    // Re-render ranking to show newly fetched event badges if rendered before
+                    if (window.lastData && window.lastData.ranking) {
+                        applyFilterAndRender();
+                    }
+                }
+            } catch (err) {
+                console.warn('Failed to load events:', err);
+            }
+            return window.allEvents;
+        }
+
+        function getEventsForStore(storeName) {
+            if (!window.allEvents || window.allEvents.length === 0) return [];
+            const clean = String(storeName).toUpperCase();
+            const isJis = clean.includes('JIS');
+            const isOlg = clean.includes('OLG') || clean.includes('ORIENTAL') || clean.includes('AG');
+
+            return window.allEvents.filter(ev => {
+                if (isJis && ev.brand === 'JIS') {
+                    if (!ev.target_stores || ev.target_stores.length === 0) return true;
+                    return ev.target_stores.some(area => storeName.includes(area));
+                }
+                if (isOlg && ev.brand === 'OLG') {
+                    if (!ev.target_stores || ev.target_stores.length === 0) return true;
+                    return ev.target_stores.some(area => storeName.includes(area));
+                }
+                return false;
+            });
+        }
         const THEME_ORDER = ['default', 'list', 'flat', 'light'];
         const THEME_LABELS = {
             default: '✨ 通常モード（ネオン）',
@@ -252,7 +294,8 @@
                 document.getElementById('content').classList.remove('hidden');
                 document.getElementById('error-message').classList.add('hidden');
 
-                // Prefetch pinned and top stores in background for instant modal open
+                // Prefetch events & key stores in background
+                loadEvents();
                 prefetchKeyStores(data.ranking);
             } catch (e) {
                 console.error("Fetch error:", e);
@@ -525,9 +568,21 @@
             }
 
             const baseName = brandInfo.cleanName || store.name;
-            node.querySelector('.store-name').textContent = isDuplicateName
+            const storeNameEl = node.querySelector('.store-name');
+            storeNameEl.textContent = isDuplicateName
                 ? `${brandInfo.code} ${baseName}`
                 : baseName;
+
+            // Display event badge if current store has active promotion
+            const matchedEvs = getEventsForStore(store.name);
+            if (matchedEvs && matchedEvs.length > 0) {
+                const eventBadge = document.createElement('span');
+                eventBadge.className = 'event-tag-badge';
+                const hasDiscount = matchedEvs.some(e => e.tag === '割引・特典');
+                eventBadge.innerHTML = hasDiscount ? '🎉 特典' : '📢 フェア';
+                eventBadge.title = matchedEvs[0].title;
+                storeNameEl.appendChild(eventBadge);
+            }
 
             const ladiesCount = store.women || 0;
             const menCount = store.men || 0;
@@ -1075,6 +1130,7 @@
                 officialLinkEl.href = getOfficialBrandUrl(bInfo.code, storeName);
             }
             renderModalPrSlot(storeName);
+            renderModalEvents(storeName);
 
             modal.classList.remove('hidden');
             if (modalContent) modalContent.scrollTop = 0;
@@ -1120,6 +1176,84 @@
             currentAnalysisData = null;
         }
 
+        // Render events relevant to the current store inside analysis modal
+        function renderModalEvents(storeName) {
+            const section = document.getElementById('modal-event-section');
+            const list = document.getElementById('modal-event-list');
+            if (!section || !list) return;
+
+            const evs = getEventsForStore(storeName);
+            if (!evs || evs.length === 0) {
+                section.classList.add('hidden');
+                list.innerHTML = '';
+                return;
+            }
+
+            let html = '';
+            evs.slice(0, 3).forEach(ev => {
+                html += `
+                    <div class="event-item-card">
+                        <div class="event-item-left">
+                            <div class="event-item-title">${escapeHtml(ev.title)}</div>
+                            <div class="event-item-meta">
+                                <span class="event-pill-tag ${escapeHtml(ev.tag_cls || 'tag-event')}">${escapeHtml(ev.tag || 'イベント')}</span>
+                                <span class="event-store-label">📍 ${escapeHtml(ev.target_label || '対象店舗')}</span>
+                            </div>
+                        </div>
+                        <a href="${escapeHtml(ev.url)}" target="_blank" rel="noopener noreferrer" class="event-cta-btn" onclick="event.stopPropagation(); window.open(this.href, '_blank'); return true;">
+                            <span>詳細</span>
+                            <span>›</span>
+                        </a>
+                    </div>
+                `;
+            });
+            list.innerHTML = html;
+            section.classList.remove('hidden');
+        }
+
+        // --- All Events Modal Logic ---
+        async function openEventsModal() {
+            const modal = document.getElementById('events-modal');
+            const container = document.getElementById('all-events-container');
+            modal.classList.remove('hidden');
+
+            if (!window.allEvents || window.allEvents.length === 0) {
+                container.innerHTML = '<div style="text-align:center; padding:20px;"><div class="spinner" style="margin:0 auto 10px auto;"></div>イベント情報を読み込み中...</div>';
+                await loadEvents();
+            }
+
+            if (!window.allEvents || window.allEvents.length === 0) {
+                container.innerHTML = '<p style="text-align:center; color:var(--text-secondary); padding:20px;">現在公開中のイベント情報はありません。</p>';
+                return;
+            }
+
+            let html = '';
+            window.allEvents.forEach(ev => {
+                html += `
+                    <div class="event-item-card">
+                        <div class="event-item-left">
+                            <div class="event-item-title">${escapeHtml(ev.title)}</div>
+                            <div class="event-item-meta">
+                                <span class="event-pill-tag ${escapeHtml(ev.tag_cls || 'tag-event')}">${escapeHtml(ev.tag || 'イベント')}</span>
+                                <span class="brand-badge ${ev.brand === 'OLG' ? 'brand-olg' : 'brand-jis'}" style="font-size:0.68rem; padding:1px 5px;">${escapeHtml(ev.brand)}</span>
+                                <span class="event-store-label">📍 ${escapeHtml(ev.target_label || '全店')}</span>
+                                <span style="color:var(--text-secondary);">${escapeHtml(ev.date_str || '')}</span>
+                            </div>
+                        </div>
+                        <a href="${escapeHtml(ev.url)}" target="_blank" rel="noopener noreferrer" class="event-cta-btn" onclick="event.stopPropagation(); window.open(this.href, '_blank'); return true;">
+                            <span>公式を見る</span>
+                            <span>↗</span>
+                        </a>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        function closeEventsModal() {
+            document.getElementById('events-modal').classList.add('hidden');
+        }
+
         // Close on clicking background
         document.getElementById('analysis-modal').addEventListener('click', (e) => {
             if (e.target.id === ('analysis-modal')) closeModal();
@@ -1139,6 +1273,9 @@
         document.getElementById('sns-modal').addEventListener('click', (e) => {
             if (e.target.id === ('sns-modal')) closeSnsModal();
         });
+        document.getElementById('events-modal')?.addEventListener('click', (e) => {
+            if (e.target.id === ('events-modal')) closeEventsModal();
+        });
 
         // Close any active modal with ESC key
         document.addEventListener('keydown', (e) => {
@@ -1149,6 +1286,7 @@
                 closeGuideModal();
                 closeArticlesModal();
                 closeSnsModal();
+                closeEventsModal();
             }
         });
 
@@ -1849,3 +1987,10 @@
                 pullIndicator.classList.remove('show');
             }
         });
+
+        // Kick off background events fetch on page startup
+        if ('requestIdleCallback' in window) {
+            window.requestIdleCallback(() => loadEvents(), { timeout: 1500 });
+        } else {
+            setTimeout(loadEvents, 800);
+        }

@@ -91,7 +91,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/style.css?v=20261021_6">
+    <link rel="stylesheet" href="/static/style.css?v=20261022_1">
     <!-- Local Chart.js: self-hosted (zero CDN blocking, works 100% offline & with adblockers) -->
     <script src="/static/chart.min.js?v=20261021" defer></script>
     <!-- Preload editorial thumbnails for instantaneous modal display -->
@@ -116,6 +116,14 @@
             
             <!-- Live vs Historical Comparison Banner -->
             <div id="live-comparison-banner" class="comparison-banner hidden"></div>
+
+            <!-- Store Events & Campaign Section -->
+            <div id="modal-event-section" class="modal-event-box hidden">
+                <div class="modal-event-header">
+                    <span class="modal-event-badge">📢 開催中イベント・キャンペーン</span>
+                </div>
+                <div id="modal-event-list" class="modal-event-list"></div>
+            </div>
 
             <!-- 1. Weekday Average Section -->
             <div class="chart-container weekday-analysis-section">
@@ -427,6 +435,24 @@
     </div>
     <!-- End Report Modal -->
 
+    <!-- Events List Modal -->
+    <div id="events-modal" class="modal hidden">
+        <div class="modal-content" style="max-width: 640px;">
+            <div class="modal-header">
+                <h2>🎉 最新イベント・キャンペーン速報</h2>
+                <button class="close-btn-pill" onclick="closeEventsModal()" aria-label="閉じる">✕ 閉じる</button>
+            </div>
+            <p style="text-align: center; color: var(--text-secondary); font-size: 0.8rem; margin-top: 0; margin-bottom: 15px;">
+                オリエンタルラウンジ・ag・JISの最新フェア・特典情報
+            </p>
+            <div id="all-events-container" class="events-modal-list">
+                <div class="spinner"></div>
+            </div>
+            <button class="modal-bottom-close-btn" onclick="closeEventsModal()">✕ 閉じる</button>
+        </div>
+    </div>
+    <!-- End Events Modal -->
+
     <div class="background-glob"></div>
     <div class="background-glob glob-2"></div>
 
@@ -475,6 +501,12 @@
                         <path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path><path d="M22 12A10 10 0 0 0 12 2v10z"></path>
                     </svg>
                     <span>系列比較</span>
+                </button>
+                <button id="events-btn" class="header-btn labeled-btn" onclick="openEventsModal()" title="最新イベント・キャンペーン速報">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                    </svg>
+                    <span>イベント</span>
                 </button>
                 <button id="compact-btn" class="header-btn labeled-btn" onclick="toggleCompact()" title="デザイン・表示モード切替">
                     <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -571,6 +603,12 @@
                                 <path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path><path d="M22 12A10 10 0 0 0 12 2v10z"></path>
                             </svg>
                             <span>📊 系列・競合比較（リアルタイム合計）</span>
+                        </button>
+                        <button type="button" class="staff-action-pill" onclick="openEventsModal()">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                            </svg>
+                            <span>🎉 イベント速報（全社キャンペーン）</span>
                         </button>
                     </div>
                 </div>
@@ -850,12 +888,12 @@
             isStaff: {{ 'true' if is_staff else 'false' }}
         };
     </script>
-    <script src="/static/app.js?v=20261021_6" defer></script>
+    <script src="/static/app.js?v=20261022_1" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js?v=7')
+                navigator.serviceWorker.register('/sw.js?v=8')
                     .then(reg => {
                         reg.update();
                     })

@@ -3814,3 +3814,190 @@ body.theme-light .comparison-chart-wrapper {
     background: #ffffff;
     border: 1px solid #e2e8f0;
 }
+
+/* ==========================================================================
+   Store Events & Campaign Styles (Phase 1)
+   ========================================================================== */
+.event-tag-badge {
+    font-size: 0.62rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: linear-gradient(135deg, #f59e0b, #ef4444);
+    color: #ffffff;
+    margin-left: 6px;
+    letter-spacing: 0.02em;
+    box-shadow: 0 1px 4px rgba(245, 158, 11, 0.4);
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    vertical-align: middle;
+}
+
+.modal-event-box {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(239, 68, 68, 0.06) 100%);
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    border-radius: 10px;
+    padding: 12px;
+    margin-top: 12px;
+}
+
+body.theme-light .modal-event-box {
+    background: #fffbeb;
+    border-color: #fcd34d;
+}
+
+.modal-event-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.modal-event-badge {
+    font-size: 0.84rem;
+    font-weight: 700;
+    color: #fbbf24;
+}
+
+body.theme-light .modal-event-badge {
+    color: #b45309;
+}
+
+.modal-event-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.event-item-card {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    transition: all 0.2s ease;
+}
+
+body.theme-light .event-item-card {
+    background: #ffffff;
+    border-color: #e2e8f0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.event-item-left {
+    flex: 1;
+    min-width: 0;
+}
+
+.event-item-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.4;
+    word-break: break-word;
+}
+
+body.theme-light .event-item-title {
+    color: #1e293b;
+}
+
+.event-item-meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 4px;
+    font-size: 0.72rem;
+}
+
+.event-pill-tag {
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-weight: 600;
+}
+
+.tag-discount {
+    background: rgba(34, 197, 94, 0.18);
+    color: #4ade80;
+    border: 1px solid rgba(34, 197, 94, 0.35);
+}
+
+body.theme-light .tag-discount {
+    background: #dcfce7;
+    color: #15803d;
+    border-color: #86efac;
+}
+
+.tag-event {
+    background: rgba(236, 72, 153, 0.18);
+    color: #f472b6;
+    border: 1px solid rgba(236, 72, 153, 0.35);
+}
+
+body.theme-light .tag-event {
+    background: #fce7f3;
+    color: #be185d;
+    border-color: #f9a8d4;
+}
+
+.tag-notice {
+    background: rgba(59, 130, 246, 0.18);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.35);
+}
+
+body.theme-light .tag-notice {
+    background: #e0f2fe;
+    color: #0369a1;
+    border-color: #93c5fd;
+}
+
+.event-store-label {
+    color: var(--text-secondary);
+}
+
+.event-cta-btn {
+    flex-shrink: 0;
+    background: rgba(245, 158, 11, 0.18);
+    border: 1px solid rgba(245, 158, 11, 0.45);
+    color: #fbbf24;
+    font-size: 0.74rem;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: 6px;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.event-cta-btn:hover {
+    background: rgba(245, 158, 11, 0.35);
+    color: #ffffff;
+    transform: translateY(-1px);
+}
+
+body.theme-light .event-cta-btn {
+    background: #fef3c7;
+    border-color: #f59e0b;
+    color: #b45309;
+}
+
+body.theme-light .event-cta-btn:hover {
+    background: #fde68a;
+    color: #92400e;
+}
+
+.events-modal-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 65vh;
+    overflow-y: auto;
+}
