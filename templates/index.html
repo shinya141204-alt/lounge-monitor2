@@ -91,7 +91,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/style.css?v=20261022_3">
+    <link rel="stylesheet" href="/static/style.css?v=20261022_4">
     <!-- Local Chart.js: self-hosted (zero CDN blocking, works 100% offline & with adblockers) -->
     <script src="/static/chart.min.js?v=20261021" defer></script>
     <!-- Preload editorial thumbnails for instantaneous modal display -->
@@ -467,11 +467,10 @@
 
             <!-- Filter Tabs for Events Modal -->
             <div class="events-category-tabs" id="events-category-tabs">
-                <button class="events-tab-btn active" data-filter="ALL" onclick="filterEventsModal('ALL', this)">🔥 全体</button>
+                <button class="events-tab-btn active" data-filter="ALL" onclick="filterEventsModal('ALL', this)">🔥 全店舗</button>
                 <button class="events-tab-btn" data-filter="OLG" onclick="filterEventsModal('OLG', this)">オリエンタル / ag</button>
                 <button class="events-tab-btn" data-filter="JIS" onclick="filterEventsModal('JIS', this)">JIS各店限定</button>
-                <button class="events-tab-btn" data-filter="MEN" onclick="filterEventsModal('MEN', this)">👨 男性向けプラン</button>
-                <button class="events-tab-btn" data-filter="WOMEN" onclick="filterEventsModal('WOMEN', this)">👩 女性向け特典</button>
+                <button class="events-tab-btn" data-filter="DISCOUNT" onclick="filterEventsModal('DISCOUNT', this)">🎉 特典・割引のみ</button>
             </div>
             <div id="all-events-container" class="events-modal-list">
                 <div class="spinner"></div>
@@ -922,12 +921,12 @@
             isStaff: {{ 'true' if is_staff else 'false' }}
         };
     </script>
-    <script src="/static/app.js?v=20261022_4" defer></script>
+    <script src="/static/app.js?v=20261022_5" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js?v=11')
+                navigator.serviceWorker.register('/sw.js?v=12')
                     .then(reg => {
                         reg.update();
                     })

@@ -4010,31 +4010,51 @@ body.theme-light .event-cta-btn:hover {
 .events-modal-list {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
     max-height: 65vh;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 4px 2px;
 }
 
-/* --- Store-Exclusive Event Cards with Banners & Gender Tags --- */
+/* --- Store-Exclusive Event Cards with Banners --- */
+.event-item-card {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+    width: 100%;
+    box-sizing: border-box;
+    min-height: 56px;
+}
+
 .event-item-card.has-banner {
     flex-direction: column;
     align-items: stretch;
     padding: 0;
     overflow: hidden;
+    flex-shrink: 0;
+    min-height: 180px;
 }
 
 .event-banner-wrap {
     width: 100%;
-    max-height: 140px;
-    background: #000;
+    height: 125px;
+    background: rgba(0, 0, 0, 0.2);
     overflow: hidden;
     position: relative;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .event-banner-img {
     width: 100%;
     height: 100%;
-    max-height: 140px;
     object-fit: cover;
     object-position: center;
     display: block;
@@ -4049,37 +4069,27 @@ body.theme-light .event-cta-btn:hover {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 10px;
-    padding: 10px 12px;
-}
-
-.tag-gender-men {
-    background: rgba(59, 130, 246, 0.2);
-    color: #60a5fa;
-    border: 1px solid rgba(59, 130, 246, 0.4);
-}
-
-.tag-gender-women {
-    background: rgba(236, 72, 153, 0.2);
-    color: #f472b6;
-    border: 1px solid rgba(236, 72, 153, 0.4);
+    gap: 12px;
+    padding: 10px 14px;
+    box-sizing: border-box;
+    width: 100%;
 }
 
 .events-category-tabs {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    margin-bottom: 12px;
+    margin-bottom: 14px;
     justify-content: center;
 }
 
 .events-tab-btn {
-    padding: 5px 12px;
-    border-radius: 16px;
+    padding: 6px 14px;
+    border-radius: 18px;
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.12);
     color: #cbd5e1;
-    font-size: 0.74rem;
+    font-size: 0.75rem;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.15s ease;
@@ -4092,16 +4102,19 @@ body.theme-light .event-cta-btn:hover {
 }
 
 /* Light mode overrides */
-body.theme-light .tag-gender-men {
-    background: #eff6ff;
-    color: #1d4ed8;
-    border-color: #bfdbfe;
+body.theme-light .event-item-card {
+    background: #ffffff;
+    border-color: #e2e8f0;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
 }
 
-body.theme-light .tag-gender-women {
-    background: #fdf2f8;
-    color: #be185d;
-    border-color: #fbcfe8;
+body.theme-light .event-banner-wrap {
+    background: #f1f5f9;
+    border-bottom-color: #e2e8f0;
+}
+
+body.theme-light .event-item-title {
+    color: #0f172a;
 }
 
 body.theme-light .events-tab-btn {

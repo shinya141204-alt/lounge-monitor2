@@ -1333,16 +1333,9 @@
                 if (ev.banner_url) {
                     bannerHtml = `
                         <div class="event-banner-wrap">
-                            <img src="${escapeHtml(ev.banner_url)}" alt="${escapeHtml(ev.title)}" class="event-banner-img" loading="lazy" onerror="this.parentElement.style.display='none';">
+                            <img src="${escapeHtml(ev.banner_url)}" alt="${escapeHtml(ev.title)}" class="event-banner-img" loading="lazy" onerror="this.closest('.event-item-card').classList.remove('has-banner'); this.parentElement.remove();">
                         </div>
                     `;
-                }
-
-                let genderBadge = '';
-                if (ev.gender === 'men') {
-                    genderBadge = '<span class="event-pill-tag tag-gender-men">👨 男性限定</span>';
-                } else if (ev.gender === 'women') {
-                    genderBadge = '<span class="event-pill-tag tag-gender-women">👩 女性限定</span>';
                 }
 
                 html += `
@@ -1353,7 +1346,6 @@
                                 <div class="event-item-title">${escapeHtml(ev.title)}</div>
                                 <div class="event-item-meta">
                                     <span class="event-pill-tag ${escapeHtml(ev.tag_cls || 'tag-event')}">${escapeHtml(ev.tag || 'イベント')}</span>
-                                    ${genderBadge}
                                     <span class="event-store-label">📍 ${escapeHtml(ev.target_label || '対象店舗')}</span>
                                 </div>
                             </div>
@@ -1383,14 +1375,12 @@
             }
 
             let filtered = window.allEvents;
-            if (filterCategory === 'MEN') {
-                filtered = window.allEvents.filter(ev => ev.gender === 'men');
-            } else if (filterCategory === 'WOMEN') {
-                filtered = window.allEvents.filter(ev => ev.gender === 'women');
-            } else if (filterCategory === 'JIS') {
+            if (filterCategory === 'JIS') {
                 filtered = window.allEvents.filter(ev => ev.brand === 'JIS');
             } else if (filterCategory === 'OLG') {
                 filtered = window.allEvents.filter(ev => ev.brand === 'OLG');
+            } else if (filterCategory === 'DISCOUNT') {
+                filtered = window.allEvents.filter(ev => ev.tag === '割引・特典');
             }
 
             if (filtered.length === 0) {
@@ -1404,16 +1394,9 @@
                 if (ev.banner_url) {
                     bannerHtml = `
                         <div class="event-banner-wrap">
-                            <img src="${escapeHtml(ev.banner_url)}" alt="${escapeHtml(ev.title)}" class="event-banner-img" loading="lazy" onerror="this.parentElement.style.display='none';">
+                            <img src="${escapeHtml(ev.banner_url)}" alt="${escapeHtml(ev.title)}" class="event-banner-img" loading="lazy" onerror="this.closest('.event-item-card').classList.remove('has-banner'); this.parentElement.remove();">
                         </div>
                     `;
-                }
-
-                let genderBadge = '';
-                if (ev.gender === 'men') {
-                    genderBadge = '<span class="event-pill-tag tag-gender-men">👨 男性限定</span>';
-                } else if (ev.gender === 'women') {
-                    genderBadge = '<span class="event-pill-tag tag-gender-women">👩 女性限定</span>';
                 }
 
                 html += `
@@ -1424,7 +1407,6 @@
                                 <div class="event-item-title">${escapeHtml(ev.title)}</div>
                                 <div class="event-item-meta">
                                     <span class="event-pill-tag ${escapeHtml(ev.tag_cls || 'tag-event')}">${escapeHtml(ev.tag || 'イベント')}</span>
-                                    ${genderBadge}
                                     <span class="brand-badge ${ev.brand === 'OLG' ? 'brand-olg' : 'brand-jis'}" style="font-size:0.68rem; padding:1px 5px;">${escapeHtml(ev.brand)}</span>
                                     <span class="event-store-label">📍 ${escapeHtml(ev.target_label || '全店')}</span>
                                     <span style="color:var(--text-secondary); font-size:0.72rem;">${escapeHtml(ev.date_str || '')}</span>
