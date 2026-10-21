@@ -1327,20 +1327,41 @@
             }
 
             let html = '';
-            evs.slice(0, 3).forEach(ev => {
-                html += `
-                    <div class="event-item-card">
-                        <div class="event-item-left">
-                            <div class="event-item-title">${escapeHtml(ev.title)}</div>
-                            <div class="event-item-meta">
-                                <span class="event-pill-tag ${escapeHtml(ev.tag_cls || 'tag-event')}">${escapeHtml(ev.tag || 'イベント')}</span>
-                                <span class="event-store-label">📍 ${escapeHtml(ev.target_label || '対象店舗')}</span>
-                            </div>
+            // Show up to 6 store events
+            evs.slice(0, 6).forEach(ev => {
+                let bannerHtml = '';
+                if (ev.banner_url) {
+                    bannerHtml = `
+                        <div class="event-banner-wrap">
+                            <img src="${escapeHtml(ev.banner_url)}" alt="${escapeHtml(ev.title)}" class="event-banner-img" loading="lazy" onerror="this.parentElement.style.display='none';">
                         </div>
-                        <a href="${escapeHtml(ev.url)}" target="_blank" rel="noopener noreferrer" class="event-cta-btn" onclick="event.stopPropagation(); window.open(this.href, '_blank'); return true;">
-                            <span>詳細</span>
-                            <span>›</span>
-                        </a>
+                    `;
+                }
+
+                let genderBadge = '';
+                if (ev.gender === 'men') {
+                    genderBadge = '<span class="event-pill-tag tag-gender-men">👨 男性限定</span>';
+                } else if (ev.gender === 'women') {
+                    genderBadge = '<span class="event-pill-tag tag-gender-women">👩 女性限定</span>';
+                }
+
+                html += `
+                    <div class="event-item-card ${ev.banner_url ? 'has-banner' : ''}">
+                        ${bannerHtml}
+                        <div class="event-item-main">
+                            <div class="event-item-left">
+                                <div class="event-item-title">${escapeHtml(ev.title)}</div>
+                                <div class="event-item-meta">
+                                    <span class="event-pill-tag ${escapeHtml(ev.tag_cls || 'tag-event')}">${escapeHtml(ev.tag || 'イベント')}</span>
+                                    ${genderBadge}
+                                    <span class="event-store-label">📍 ${escapeHtml(ev.target_label || '対象店舗')}</span>
+                                </div>
+                            </div>
+                            <a href="${escapeHtml(ev.url)}" target="_blank" rel="noopener noreferrer" class="event-cta-btn" onclick="event.stopPropagation(); window.open(this.href, '_blank'); return true;">
+                                <span>公式詳細</span>
+                                <span>↗</span>
+                            </a>
+                        </div>
                     </div>
                 `;
             });
@@ -1349,42 +1370,99 @@
         }
 
         // --- All Events Modal Logic ---
-        async function openEventsModal() {
-            const modal = document.getElementById('events-modal');
-            const container = document.getElementById('all-events-container');
-            modal.classList.remove('hidden');
+        let currentEventsFilter = 'ALL';
 
-            if (!window.allEvents || window.allEvents.length === 0) {
-                container.innerHTML = '<div style="text-align:center; padding:20px;"><div class="spinner" style="margin:0 auto 10px auto;"></div>イベント情報を読み込み中...</div>';
-                await loadEvents();
-            }
+        function renderAllEventsList(filterCategory = 'ALL') {
+            currentEventsFilter = filterCategory;
+            const container = document.getElementById('all-events-container');
+            if (!container) return;
 
             if (!window.allEvents || window.allEvents.length === 0) {
                 container.innerHTML = '<p style="text-align:center; color:var(--text-secondary); padding:20px;">現在公開中のイベント情報はありません。</p>';
                 return;
             }
 
+            let filtered = window.allEvents;
+            if (filterCategory === 'MEN') {
+                filtered = window.allEvents.filter(ev => ev.gender === 'men');
+            } else if (filterCategory === 'WOMEN') {
+                filtered = window.allEvents.filter(ev => ev.gender === 'women');
+            } else if (filterCategory === 'JIS') {
+                filtered = window.allEvents.filter(ev => ev.brand === 'JIS');
+            } else if (filterCategory === 'OLG') {
+                filtered = window.allEvents.filter(ev => ev.brand === 'OLG');
+            }
+
+            if (filtered.length === 0) {
+                container.innerHTML = '<p style="text-align:center; color:var(--text-secondary); padding:20px;">該当するイベントはありません。</p>';
+                return;
+            }
+
             let html = '';
-            window.allEvents.forEach(ev => {
-                html += `
-                    <div class="event-item-card">
-                        <div class="event-item-left">
-                            <div class="event-item-title">${escapeHtml(ev.title)}</div>
-                            <div class="event-item-meta">
-                                <span class="event-pill-tag ${escapeHtml(ev.tag_cls || 'tag-event')}">${escapeHtml(ev.tag || 'イベント')}</span>
-                                <span class="brand-badge ${ev.brand === 'OLG' ? 'brand-olg' : 'brand-jis'}" style="font-size:0.68rem; padding:1px 5px;">${escapeHtml(ev.brand)}</span>
-                                <span class="event-store-label">📍 ${escapeHtml(ev.target_label || '全店')}</span>
-                                <span style="color:var(--text-secondary);">${escapeHtml(ev.date_str || '')}</span>
-                            </div>
+            filtered.forEach(ev => {
+                let bannerHtml = '';
+                if (ev.banner_url) {
+                    bannerHtml = `
+                        <div class="event-banner-wrap">
+                            <img src="${escapeHtml(ev.banner_url)}" alt="${escapeHtml(ev.title)}" class="event-banner-img" loading="lazy" onerror="this.parentElement.style.display='none';">
                         </div>
-                        <a href="${escapeHtml(ev.url)}" target="_blank" rel="noopener noreferrer" class="event-cta-btn" onclick="event.stopPropagation(); window.open(this.href, '_blank'); return true;">
-                            <span>公式を見る</span>
-                            <span>↗</span>
-                        </a>
+                    `;
+                }
+
+                let genderBadge = '';
+                if (ev.gender === 'men') {
+                    genderBadge = '<span class="event-pill-tag tag-gender-men">👨 男性限定</span>';
+                } else if (ev.gender === 'women') {
+                    genderBadge = '<span class="event-pill-tag tag-gender-women">👩 女性限定</span>';
+                }
+
+                html += `
+                    <div class="event-item-card ${ev.banner_url ? 'has-banner' : ''}">
+                        ${bannerHtml}
+                        <div class="event-item-main">
+                            <div class="event-item-left">
+                                <div class="event-item-title">${escapeHtml(ev.title)}</div>
+                                <div class="event-item-meta">
+                                    <span class="event-pill-tag ${escapeHtml(ev.tag_cls || 'tag-event')}">${escapeHtml(ev.tag || 'イベント')}</span>
+                                    ${genderBadge}
+                                    <span class="brand-badge ${ev.brand === 'OLG' ? 'brand-olg' : 'brand-jis'}" style="font-size:0.68rem; padding:1px 5px;">${escapeHtml(ev.brand)}</span>
+                                    <span class="event-store-label">📍 ${escapeHtml(ev.target_label || '全店')}</span>
+                                    <span style="color:var(--text-secondary); font-size:0.72rem;">${escapeHtml(ev.date_str || '')}</span>
+                                </div>
+                            </div>
+                            <a href="${escapeHtml(ev.url)}" target="_blank" rel="noopener noreferrer" class="event-cta-btn" onclick="event.stopPropagation(); window.open(this.href, '_blank'); return true;">
+                                <span>公式詳細</span>
+                                <span>↗</span>
+                            </a>
+                        </div>
                     </div>
                 `;
             });
             container.innerHTML = html;
+        }
+
+        function filterEventsModal(category, btnEl) {
+            document.querySelectorAll('#events-category-tabs .events-tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            if (btnEl) btnEl.classList.add('active');
+            renderAllEventsList(category);
+        }
+
+        async function openEventsModal() {
+            const modal = document.getElementById('events-modal');
+            const container = document.getElementById('all-events-container');
+            modal.classList.remove('hidden');
+
+            if (!window.allEvents || window.allEvents.length === 0) {
+                container.innerHTML = '<div style="text-align:center; padding:20px;"><div class="spinner" style="margin:0 auto 10px auto;"></div>最新イベント＆各店限定バナーを読み込み中...</div>';
+                await loadEvents();
+            }
+
+            renderAllEventsList('ALL');
+            document.querySelectorAll('#events-category-tabs .events-tab-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.filter === 'ALL');
+            });
         }
 
         function closeEventsModal() {
