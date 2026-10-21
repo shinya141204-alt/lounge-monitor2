@@ -2784,6 +2784,261 @@ body.theme-light .night-care-text strong {
     color: #0284c7;
 }
 
+/* --- Editorial Highlight Banner (Light Mode) --- */
+body.theme-light .column-highlight-banner {
+    background: linear-gradient(135deg, #f0f9ff 0%, #ede9fe 100%);
+    border-color: #bae6fd;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+}
+body.theme-light .column-highlight-banner:hover,
+body.theme-light .column-highlight-banner:active {
+    background: linear-gradient(135deg, #e0f2fe 0%, #ddd6fe 100%);
+    border-color: #7dd3fc;
+    box-shadow: 0 4px 14px rgba(2, 132, 199, 0.15);
+}
+body.theme-light .col-banner-text {
+    color: #0f172a !important;
+    font-weight: 700;
+}
+body.theme-light .col-banner-arrow {
+    color: #0284c7;
+}
+
+/* --- Top Quick SNS Bar (Light Mode) --- */
+body.theme-light .top-sns-quickbar {
+    background: #ffffff;
+    border-color: #e2e8f0;
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.05);
+}
+body.theme-light .top-sns-label {
+    color: #475569;
+}
+body.theme-light .top-sns-btn {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+    color: #1e293b;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+body.theme-light .top-sns-btn:hover {
+    border-color: #94a3b8;
+    background: #f1f5f9;
+}
+body.theme-light .top-sns-btn.x-btn {
+    color: #0f172a;
+}
+body.theme-light .top-sns-btn.x-btn:hover {
+    background: #0f172a;
+    color: #ffffff;
+    border-color: #0f172a;
+}
+body.theme-light .top-sns-btn.threads-btn {
+    color: #0f172a;
+}
+body.theme-light .top-sns-btn.threads-btn:hover {
+    background: #000000;
+    color: #ffffff;
+    border-color: #000000;
+}
+body.theme-light .top-sns-btn.note-btn {
+    color: #059669;
+    border-color: #a7f3d0;
+    background: #ecfdf5;
+}
+body.theme-light .top-sns-btn.note-btn:hover {
+    background: #10b981;
+    color: #ffffff;
+    border-color: #10b981;
+}
+body.theme-light .top-sns-btn.ig-btn {
+    color: #db2777;
+    border-color: #fbcfe8;
+    background: #fdf2f8;
+}
+body.theme-light .top-sns-btn.ig-btn:hover {
+    background: #e1306c;
+    color: #ffffff;
+    border-color: #e1306c;
+}
+
+/* --- Pinned Section & Section Headers (Light Mode) --- */
+body.theme-light .pinned-stores-header {
+    color: #475569;
+    border-bottom-color: #e2e8f0;
+}
+body.theme-light .card-actions-row {
+    border-top-color: #f1f5f9;
+}
+body.theme-light .card-action-btn {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+    color: #334155;
+}
+body.theme-light .card-action-btn:hover {
+    background: #f1f5f9;
+    color: #0f172a;
+    border-color: #94a3b8;
+}
+body.theme-light .card-pin-btn {
+    color: #94a3b8;
+}
+body.theme-light .card-pin-btn.pinned {
+    color: #eab308;
+}
+
+/* --- Domain Notice Banner (Light Mode) --- */
+body.theme-light .domain-notice-banner {
+    background: linear-gradient(135deg, #f0fdf4 0%, #fdf2f8 100%);
+    border-color: #fbcfe8;
+    box-shadow: 0 2px 10px rgba(15, 23, 42, 0.05);
+}
+body.theme-light .domain-notice-text {
+    color: #0f172a;
+}
+body.theme-light .domain-notice-link {
+    color: #0284c7;
+}
+
+/* --- Footer & SNS Navigation (Light Mode) --- */
+body.theme-light .app-footer {
+    border-top-color: #e2e8f0;
+}
+body.theme-light .footer-pill-btn {
+    background: #ffffff;
+    border-color: #cbd5e1;
+    color: #0f172a;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+}
+body.theme-light .footer-pill-btn:hover {
+    background: #f8fafc;
+    border-color: #94a3b8;
+}
+body.theme-light .footer-pill-btn.guide-pill {
+    background: #fdf2f8;
+    border-color: #fbcfe8;
+    color: #be185d;
+}
+body.theme-light .footer-pill-btn.weekday-pill {
+    background: #f0f9ff;
+    border-color: #bae6fd;
+    color: #0284c7;
+}
+body.theme-light .footer-sns-label {
+    color: #64748b;
+}
+body.theme-light .sns-icon-btn {
+    background: #ffffff;
+    border-color: #cbd5e1;
+    color: #1e293b;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+}
+body.theme-light .sns-icon-btn:hover {
+    border-color: #94a3b8;
+}
+body.theme-light .sns-icon-btn.x-btn:hover {
+    background: #0f172a;
+    color: #ffffff;
+    border-color: #0f172a;
+}
+body.theme-light .sns-icon-btn.threads-btn:hover {
+    background: #000000;
+    color: #ffffff;
+    border-color: #000000;
+}
+body.theme-light .sns-icon-btn.note-btn {
+    color: #059669;
+}
+body.theme-light .sns-icon-btn.note-btn:hover {
+    background: #10b981;
+    color: #ffffff;
+    border-color: #10b981;
+}
+body.theme-light .sns-icon-btn.ig-btn {
+    color: #db2777;
+}
+body.theme-light .sns-icon-btn.ig-btn:hover {
+    background: #e1306c;
+    color: #ffffff;
+    border-color: #e1306c;
+}
+body.theme-light .footer-sub-link {
+    color: #64748b;
+}
+body.theme-light .footer-sub-link:hover {
+    color: #0f172a;
+}
+body.theme-light .footer-mini-copy {
+    color: #94a3b8;
+}
+
+/* --- Articles Selector Modal (Light Mode) --- */
+body.theme-light .articles-modal-content {
+    background: #ffffff;
+    border-color: #cbd5e1;
+    box-shadow: 0 20px 50px rgba(15, 23, 42, 0.15);
+}
+body.theme-light .articles-lead {
+    color: #334155;
+    border-bottom-color: #e2e8f0;
+}
+body.theme-light .articles-lead strong {
+    color: #0284c7;
+}
+body.theme-light .article-card-item {
+    background: #f8fafc;
+    border-color: #e2e8f0;
+    color: #0f172a;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+}
+body.theme-light .article-card-item:hover {
+    background: #ffffff;
+    border-color: #38bdf8;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+}
+body.theme-light .article-card-item.highlight-card {
+    background: linear-gradient(135deg, #f0f9ff 0%, #f5f3ff 100%);
+    border-color: #bae6fd;
+}
+body.theme-light .article-tag {
+    background: #e2e8f0;
+    color: #475569;
+}
+body.theme-light .article-read-time {
+    color: #64748b;
+}
+body.theme-light .article-card-title {
+    color: #0f172a;
+}
+body.theme-light .article-card-desc {
+    color: #475569;
+}
+body.theme-light .article-read-btn {
+    background: #e0f2fe;
+    border-color: #7dd3fc;
+    color: #0284c7;
+}
+body.theme-light .article-card-item:hover .article-read-btn {
+    background: #0284c7;
+    color: #ffffff;
+    border-color: #0284c7;
+}
+body.theme-light .note-thumb-box {
+    background: #ecfdf5;
+    border-color: #a7f3d0;
+}
+body.theme-light .note-visual-text {
+    color: #059669;
+}
+body.theme-light .note-btn-style {
+    background: #dcfce7;
+    border-color: #86efac;
+    color: #059669;
+}
+body.theme-light .article-card-item:hover .note-btn-style {
+    background: #10b981;
+    color: #ffffff;
+    border-color: #10b981;
+}
+
 /* ==========================================================================
    Domain Migration Announcement Banner
    ========================================================================== */
