@@ -228,10 +228,12 @@ def get_store_analysis(store_name):
     hourly_women_by_day = defaultdict(lambda: defaultdict(list))
     hourly_men_by_day = defaultdict(lambda: defaultdict(list))
     
+    now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
+
     for d in target_data:
         try:
             dt = datetime.datetime.strptime(d['ts'], "%Y-%m-%d %H:%M:%S")
-            if not is_business_hours(dt):
+            if dt > now_jst or not is_business_hours(dt):
                 continue
             biz_dt = get_business_dt(dt)
             b_weekday = biz_dt.weekday()
@@ -288,7 +290,8 @@ def get_store_analysis(store_name):
     for d in sorted_target:
         try:
             dt = datetime.datetime.strptime(d['ts'], "%Y-%m-%d %H:%M:%S")
-            if not is_business_hours(dt):
+            # Guard against future timestamp anomalies
+            if dt > now_jst or not is_business_hours(dt):
                 continue
             business_date = get_business_dt(dt).strftime("%Y-%m-%d")
             hour_key = f"{business_date} {dt.strftime('%H')}"
@@ -369,7 +372,7 @@ def update_job():
                 
                 latest_data['top_store'] = top_store
                 latest_data['full_data'] = sorted_data
-                jst_now = datetime.datetime.now() + datetime.timedelta(hours=9)
+                jst_now = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
                 latest_data['last_updated'] = jst_now.strftime("%Y-%m-%d %H:%M:%S")
             print(f"Data updated. Top store: {top_store['name'] if top_store else 'None'}")
             _last_update_error = None
@@ -488,7 +491,7 @@ def trigger_background_fetch_if_needed():
     is_stale = False
     if last_updated:
         last_time = datetime.datetime.strptime(last_updated, "%Y-%m-%d %H:%M:%S")
-        current_jst = datetime.datetime.now() + datetime.timedelta(hours=9)
+        current_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
         if (current_jst - last_time).total_seconds() > 90:
             is_stale = True
 

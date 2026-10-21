@@ -110,7 +110,8 @@ def log_data(data):
 
     try:
         sheet = client.open(SHEET_NAME).sheet1
-        now = datetime.datetime.now() + datetime.timedelta(hours=9)  # JST
+        # Always obtain accurate JST timestamp regardless of OS timezone (UTC or JST)
+        now = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
         timestamp_str = now.strftime("%Y-%m-%d %H:%M:%S")
 
         rows_to_append = []

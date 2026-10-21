@@ -84,7 +84,7 @@ def get_store_history(store_name, days=30):
     Retrieves history logs for a specific store from SQLite in milliseconds.
     Returns: list of dicts [{'ts': '...', 'name': '...', 'men': ..., 'women': ...}]
     """
-    now_jst = datetime.datetime.now() + datetime.timedelta(hours=9)
+    now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
     start_dt = now_jst - datetime.timedelta(days=days)
     start_ts = start_dt.strftime("%Y-%m-%d %H:%M:%S")
 
@@ -181,7 +181,7 @@ def sync_from_google_sheets(days=14):
             print("[local_db] Sync failed: cannot authenticate with Google Sheets.")
             return
 
-        now_jst = datetime.datetime.now() + datetime.timedelta(hours=9)
+        now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
         start_date = (now_jst - datetime.timedelta(days=days)).replace(hour=0, minute=0, second=0)
         start_ts_str = start_date.strftime("%Y-%m-%d %H:%M:%S")
 
