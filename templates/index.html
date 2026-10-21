@@ -468,9 +468,10 @@
             <!-- Filter Tabs for Events Modal -->
             <div class="events-category-tabs" id="events-category-tabs">
                 <button class="events-tab-btn active" data-filter="ALL" onclick="filterEventsModal('ALL', this)">🔥 全店舗</button>
+                <button class="events-tab-btn" data-filter="WOMEN" onclick="filterEventsModal('WOMEN', this)" style="border-color: rgba(236,72,153,0.4); color: #f472b6;">👩 女性限定</button>
+                <button class="events-tab-btn" data-filter="DISCOUNT" onclick="filterEventsModal('DISCOUNT', this)">🎉 特典・割引のみ</button>
                 <button class="events-tab-btn" data-filter="OLG" onclick="filterEventsModal('OLG', this)">オリエンタル / ag</button>
                 <button class="events-tab-btn" data-filter="JIS" onclick="filterEventsModal('JIS', this)">JIS各店限定</button>
-                <button class="events-tab-btn" data-filter="DISCOUNT" onclick="filterEventsModal('DISCOUNT', this)">🎉 特典・割引のみ</button>
             </div>
             <div id="all-events-container" class="events-modal-list">
                 <div class="spinner"></div>
@@ -921,7 +922,7 @@
             isStaff: {{ 'true' if is_staff else 'false' }}
         };
     </script>
-    <script src="/static/app.js?v=20261022_6" defer></script>
+    <script src="/static/app.js?v=20261022_7" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {

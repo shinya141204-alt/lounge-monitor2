@@ -1368,9 +1368,23 @@
                 return;
             }
 
+            // Smart Sort:
+            // 1. Women-specific events first (so ladies perks like JCB gifts / food free are at the top)
+            // 2. High-value discounts & perks next
+            // 3. Campaigns & general events
+            const sortedEvs = [...evs].sort((a, b) => {
+                const aWomen = (a.gender === 'women' || (a.title && a.title.includes('女性'))) ? 2 : 0;
+                const bWomen = (b.gender === 'women' || (b.title && b.title.includes('女性'))) ? 2 : 0;
+                if (bWomen !== aWomen) return bWomen - aWomen;
+                const aDisc = a.tag === '割引・特典' ? 1 : 0;
+                const bDisc = b.tag === '割引・特典' ? 1 : 0;
+                if (bDisc !== aDisc) return bDisc - aDisc;
+                return 0;
+            });
+
             let html = '';
-            // Show up to 6 store events
-            evs.slice(0, 6).forEach(ev => {
+            // Render ALL store events (no cut-off)
+            sortedEvs.forEach(ev => {
                 let bannerHtml = '';
                 if (ev.banner_url) {
                     bannerHtml = `
@@ -1378,6 +1392,13 @@
                             <img src="${escapeHtml(ev.banner_url)}" alt="${escapeHtml(ev.title)}" class="event-banner-img" loading="lazy" decoding="async" onerror="this.closest('.event-item-card').classList.remove('has-banner'); this.parentElement.remove();">
                         </div>
                     `;
+                }
+
+                let genderBadge = '';
+                if (ev.gender === 'women' || (ev.title && ev.title.includes('女性'))) {
+                    genderBadge = '<span class="event-pill-tag tag-women" style="background:rgba(236,72,153,0.18); color:#f472b6; border:1px solid rgba(236,72,153,0.35); font-weight:700;">👩 女性限定</span>';
+                } else if (ev.gender === 'men' || (ev.title && (ev.title.includes('男性') || ev.title.includes('🚹')))) {
+                    genderBadge = '<span class="event-pill-tag tag-men" style="background:rgba(59,130,246,0.18); color:#60a5fa; border:1px solid rgba(59,130,246,0.35); font-weight:700;">👨 男性限定</span>';
                 }
 
                 html += `
@@ -1388,7 +1409,9 @@
                                 <div class="event-item-title">${escapeHtml(ev.title)}</div>
                                 <div class="event-item-meta">
                                     <span class="event-pill-tag ${escapeHtml(ev.tag_cls || 'tag-event')}">${escapeHtml(ev.tag || 'イベント')}</span>
+                                    ${genderBadge}
                                     <span class="event-store-label">📍 ${escapeHtml(ev.target_label || '対象店舗')}</span>
+                                    <span style="color:var(--text-secondary); font-size:0.72rem;">${escapeHtml(ev.date_str || '')}</span>
                                 </div>
                             </div>
                             <a href="${escapeHtml(ev.url)}" target="_blank" rel="noopener noreferrer" class="event-cta-btn" onclick="event.stopPropagation(); window.open(this.href, '_blank'); return true;">
@@ -1423,6 +1446,8 @@
                 filtered = window.allEvents.filter(ev => ev.brand === 'OLG');
             } else if (filterCategory === 'DISCOUNT') {
                 filtered = window.allEvents.filter(ev => ev.tag === '割引・特典');
+            } else if (filterCategory === 'WOMEN') {
+                filtered = window.allEvents.filter(ev => ev.gender === 'women' || (ev.title && ev.title.includes('女性')));
             }
 
             if (filtered.length === 0) {
@@ -1441,6 +1466,13 @@
                     `;
                 }
 
+                let genderBadge = '';
+                if (ev.gender === 'women' || (ev.title && ev.title.includes('女性'))) {
+                    genderBadge = '<span class="event-pill-tag tag-women" style="background:rgba(236,72,153,0.18); color:#f472b6; border:1px solid rgba(236,72,153,0.35); font-size:0.68rem; padding:1px 5px;">👩 女性限定</span>';
+                } else if (ev.gender === 'men' || (ev.title && (ev.title.includes('男性') || ev.title.includes('🚹')))) {
+                    genderBadge = '<span class="event-pill-tag tag-men" style="background:rgba(59,130,246,0.18); color:#60a5fa; border:1px solid rgba(59,130,246,0.35); font-size:0.68rem; padding:1px 5px;">👨 男性限定</span>';
+                }
+
                 html += `
                     <div class="event-item-card ${ev.banner_url ? 'has-banner' : ''}">
                         ${bannerHtml}
@@ -1449,6 +1481,7 @@
                                 <div class="event-item-title">${escapeHtml(ev.title)}</div>
                                 <div class="event-item-meta">
                                     <span class="event-pill-tag ${escapeHtml(ev.tag_cls || 'tag-event')}">${escapeHtml(ev.tag || 'イベント')}</span>
+                                    ${genderBadge}
                                     <span class="brand-badge ${ev.brand === 'OLG' ? 'brand-olg' : 'brand-jis'}" style="font-size:0.68rem; padding:1px 5px;">${escapeHtml(ev.brand)}</span>
                                     <span class="event-store-label">📍 ${escapeHtml(ev.target_label || '全店')}</span>
                                     <span style="color:var(--text-secondary); font-size:0.72rem;">${escapeHtml(ev.date_str || '')}</span>

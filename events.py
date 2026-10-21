@@ -102,13 +102,128 @@ def _clean_text(text: str) -> str:
 def _classify_tag(title: str):
     """Classify event into a friendly category tag with badge styling."""
     t = title.lower()
-    if any(k in t for k in ['割', '無料', '0円', '半額', 'キャッシュバック', '定額', 'off', '割引', 'プラン', 'jcb', 'スタンプ', 'パス']):
+    if any(k in t for k in ['割', '無料', '0円', '半額', 'キャッシュバック', '定額', 'off', '割引', 'プラン', 'jcb', 'スタンプ', 'パス', '食べ放題', '飲み放題', 'ハッピーアワー', 'ギフト', 'チケット', 'マイル', 'プレゼント', 'アイス', 'クーポン']):
         return '割引・特典', 'tag-discount'
-    elif any(k in t for k in ['フェア', 'イベント', '限定', '企画', 'フェス', '祭', 'ガチャ', 'ナイト', 'ラリー', 'ハロウィン', 'フード', 'シーシャ', '飲み放題']):
+    elif any(k in t for k in ['フェア', 'イベント', '限定', '企画', 'フェス', '祭', 'ガチャ', 'ナイト', 'ラリー', 'ハロウィン', 'フード', 'シーシャ', 'ハシゴ', 'ビンゴ', '大会']):
         return 'フェア・企画', 'tag-event'
     elif any(k in t for k in ['オープン', 'リニューアル', '営業時間', '料金', '休業', 'お知らせ']):
         return 'お知らせ', 'tag-notice'
     return 'イベント', 'tag-event'
+
+
+OLG_STORE_HEADER_TO_AREAS = {
+    'ag仙台': ['仙台'],
+    'ag金沢': ['金沢'],
+    '宇都宮': ['宇都宮'],
+    '高崎': ['高崎'],
+    '大宮': ['大宮'],
+    '柏': ['柏'],
+    '錦糸町': ['錦糸町'],
+    'ag上野': ['上野'],
+    '上野': ['上野'],
+    '新宿': ['新宿'],
+    '渋谷本店': ['渋谷'],
+    'ag渋谷': ['渋谷'],
+    '恵比寿': ['恵比寿'],
+    '町田': ['町田'],
+    '横浜': ['横浜'],
+    '静岡': ['静岡'],
+    '浜松': ['浜松'],
+    '名古屋栄': ['栄', '名古屋'],
+    '名古屋錦': ['錦', '名古屋'],
+    'ag名古屋': ['名古屋'],
+    '京都': ['京都'],
+    '心斎橋': ['心斎橋'],
+    '難波': ['難波'],
+    'ag梅田': ['梅田'],
+    '梅田': ['梅田'],
+    '天満': ['天満'],
+    '神戸': ['神戸'],
+    '岡山': ['岡山'],
+    'ag広島': ['広島'],
+    '広島': ['広島'],
+    '福岡': ['福岡'],
+    '小倉': ['小倉'],
+    '長崎': ['長崎'],
+    '熊本': ['熊本'],
+    '大分': ['大分'],
+    '宮崎': ['宮崎'],
+    '鹿児島': ['鹿児島'],
+    'ag沖縄': ['沖縄'],
+    '沖縄': ['沖縄'],
+}
+
+
+def _parse_oriental_roundup_article(article_url: str, date_str: str):
+    """Parse store-specific events from monthly roundup announcement articles (e.g. 10月イベントを一挙ご紹介)."""
+    sub_events = []
+    try:
+        res = requests.get(article_url, headers=HEADERS, timeout=8)
+        if res.status_code != 200:
+            return sub_events
+        soup = BeautifulSoup(res.text, 'html.parser')
+        content = soup.find(class_='announcement-detail-content') or soup.find('article') or soup.find('main')
+        if not content:
+            return sub_events
+
+        text = content.get_text()
+        blocks = re.split(r'●([^\n]+)', text)
+        for i in range(1, len(blocks), 2):
+            store_header = blocks[i].strip()
+            store_body = blocks[i + 1].strip() if i + 1 < len(blocks) else ''
+
+            target_areas = OLG_STORE_HEADER_TO_AREAS.get(store_header, [])
+            if not target_areas:
+                for k, v in OLG_STORE_HEADER_TO_AREAS.items():
+                    if k in store_header:
+                        target_areas = v
+                        break
+            if not target_areas:
+                clean_h = store_header.replace('ag', '').replace('店', '').strip()
+                target_areas = [clean_h]
+
+            raw_events = [line.strip().lstrip('・') for line in store_body.split('\n') if line.strip().startswith('・')]
+            for idx, ev_name in enumerate(raw_events):
+                if not ev_name:
+                    continue
+
+                # Gender detection
+                ev_lower = ev_name.lower()
+                if '女性限定' in ev_lower or '女性' in ev_lower or 'ハーゲンダッツ' in ev_lower or 'フェイスパック' in ev_lower:
+                    gender_val = 'women'
+                    gender_label = '女性限定'
+                elif '男性限定' in ev_lower or '男性' in ev_lower or '🚹' in ev_name or 'ハッピーアワー' in ev_lower:
+                    gender_val = 'men'
+                    gender_label = '男性限定'
+                else:
+                    gender_val = 'all'
+                    gender_label = '全店共通'
+
+                full_title = f'【{store_header}】{ev_name}'
+                tag_label, tag_cls = _classify_tag(full_title)
+                clean_header = re.sub(r'\s+', '', store_header)
+                ev_id = f"olg-roundup-{clean_header}-{idx}"
+
+                sub_events.append({
+                    'id': ev_id,
+                    'brand': 'OLG',
+                    'brand_label': 'オリエンタル / ag',
+                    'title': full_title,
+                    'url': article_url,
+                    'banner_url': '',
+                    'gender': gender_val,
+                    'gender_label': gender_label,
+                    'date_str': date_str or '開催中',
+                    'tag': tag_label,
+                    'tag_cls': tag_cls,
+                    'target_stores': target_areas,
+                    'target_label': f'{store_header}限定',
+                    'created_at': datetime.now().strftime('%Y-%m-%d')
+                })
+    except Exception as e:
+        logger.warning(f"Failed to parse Oriental roundup article {article_url}: {e}")
+
+    return sub_events
 
 
 def _store_matches_area(store_name: str, area_keyword: str) -> bool:
@@ -173,6 +288,12 @@ def crawl_oriental_events():
                             target_stores.append(area)
                     if target_stores:
                         target_label = '・'.join(target_stores) + '店限定'
+                else:
+                    for area in AREA_ALIASES.keys():
+                        if (f"{area}店" in title or f"ag{area}" in title or f"ag {area}" in title or f"【{area}】" in title) and area not in target_stores:
+                            target_stores.append(area)
+                    if target_stores:
+                        target_label = '・'.join(target_stores) + '店限定'
 
                 tag_label, tag_cls = _classify_tag(title)
                 event_id = f"olg-{re.sub(r'[^0-9a-zA-Z]', '', link.split('/')[-1])}"
@@ -193,6 +314,12 @@ def crawl_oriental_events():
                     'target_label': target_label,
                     'created_at': datetime.now().strftime('%Y-%m-%d')
                 })
+
+                # Check if this announcement is a monthly roundup article with all store campaigns
+                if any(k in title for k in ['イベントを一挙ご紹介', 'イベント情報', '各店イベント', '今月のイベント']):
+                    sub_events = _parse_oriental_roundup_article(link, date_str)
+                    if sub_events:
+                        events.extend(sub_events)
 
             # 2. Homepage branch-news-inner (fallback or featured)
             for item in soup.find_all('div', class_='branch-news-inner'):
@@ -222,6 +349,12 @@ def crawl_oriental_events():
                             target_stores.append(area)
                     if target_stores:
                         target_label = '・'.join(target_stores) + '店限定'
+                else:
+                    for area in AREA_ALIASES.keys():
+                        if (f"{area}店" in title or f"ag{area}" in title or f"ag {area}" in title or f"【{area}】" in title) and area not in target_stores:
+                            target_stores.append(area)
+                    if target_stores:
+                        target_label = '・'.join(target_stores) + '店限定'
 
                 tag_label, tag_cls = _classify_tag(title)
                 event_id = f"olg-{re.sub(r'[^0-9a-zA-Z]', '', link.split('/')[-1])}"
@@ -245,7 +378,15 @@ def crawl_oriental_events():
         except Exception as e:
             logger.error(f"Error crawling Oriental Lounge events from {url}: {e}")
 
-    return events
+    # Deduplicate by event id
+    unique_events = []
+    seen_ids = set()
+    for ev in events:
+        if ev['id'] not in seen_ids:
+            seen_ids.add(ev['id'])
+            unique_events.append(ev)
+
+    return unique_events
 
 
 def _crawl_single_jis_shop(shop_tuple):
