@@ -455,6 +455,19 @@
                     <button class="filter-btn" data-region="Korea">韓国</button>
                 </div>
 
+                {% if not is_staff %}
+                <!-- Editorial Column Highlight Banner Strip -->
+                <div class="column-banner-wrapper">
+                    <a href="/guide/weekday-strategy" class="column-highlight-banner" title="平日攻略コラムを読む">
+                        <div class="col-banner-left">
+                            <span class="col-banner-badge">⚡ 平日攻略</span>
+                            <span class="col-banner-text">なぜ水曜・木曜20時は週末より勝てる？元店員が明かす穴場データ</span>
+                        </div>
+                        <span class="col-banner-arrow">読む ›</span>
+                    </a>
+                </div>
+                {% endif %}
+
                 <!-- Pinned Stores Section -->
                 <div id="pinned-list-container" class="hidden">
                     <h2 class="section-title">★ PINNED STORES</h2>
