@@ -621,11 +621,6 @@ def sitemap_xml():
 </urlset>"""
     return Response(xml, mimetype='application/xml')
 
-@app.route('/google<path:code>.html')
-def google_verification_file(code):
-    """Auto-verifies any Google Search Console HTML verification file."""
-    return Response(f"google-site-verification: google{code}.html", mimetype='text/html')
-
 @app.route('/guide/weekday-strategy')
 def guide_weekday_strategy():
     """Editorial guide for weekday lounge strategy."""
