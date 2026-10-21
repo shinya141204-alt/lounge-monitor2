@@ -592,30 +592,44 @@ def get_weekly_report():
 
 @app.route('/robots.txt')
 def robots_txt():
-    base_url = request.url_root.rstrip('/')
-    content = f"User-agent: *\nAllow: /\nDisallow: /api/debug_ps\nDisallow: /api/logs\nDisallow: /api/thread_status\nSitemap: {base_url}/sitemap.xml\n"
+    content = "User-agent: *\nAllow: /\nDisallow: /api/debug_ps\nDisallow: /api/logs\nDisallow: /api/thread_status\nDisallow: /staff\nSitemap: https://aiseki-navi.com/sitemap.xml\n"
     return Response(content, mimetype='text/plain')
 
 @app.route('/sitemap.xml')
 def sitemap_xml():
-    base_url = request.url_root.rstrip('/')
     today = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).strftime('%Y-%m-%d')
     xml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>{base_url}/</loc>
+    <loc>https://aiseki-navi.com/</loc>
     <lastmod>{today}</lastmod>
     <changefreq>hourly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>{base_url}/guide</loc>
+    <loc>https://aiseki-navi.com/guide</loc>
+    <lastmod>{today}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://aiseki-navi.com/guide/weekday-strategy</loc>
     <lastmod>{today}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
 </urlset>"""
     return Response(xml, mimetype='application/xml')
+
+@app.route('/google<path:code>.html')
+def google_verification_file(code):
+    """Auto-verifies any Google Search Console HTML verification file."""
+    return Response(f"google-site-verification: google{code}.html", mimetype='text/html')
+
+@app.route('/guide/weekday-strategy')
+def guide_weekday_strategy():
+    """Editorial guide for weekday lounge strategy."""
+    return render_template('guide_weekday.html')
 
 @app.route('/api/sns-post')
 def generate_sns_post_api():
