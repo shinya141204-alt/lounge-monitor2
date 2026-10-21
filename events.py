@@ -223,6 +223,43 @@ def fetch_all_events(force_refresh: bool = False):
     return _events_memory_cache.get('events', [])
 
 
+AREA_ALIASES = {
+    '新宿': ['新宿', 'shinjuku'],
+    '渋谷': ['渋谷', 'shibuya'],
+    '恵比寿': ['恵比寿', 'ebisu'],
+    '上野': ['上野', 'ueno'],
+    '六本木': ['六本木', 'roppongi'],
+    '銀座': ['銀座', 'ginza'],
+    '池袋': ['池袋', 'ikebukuro'],
+    '梅田': ['梅田', 'umeda'],
+    '難波': ['難波', 'なんば', 'namba'],
+    '心斎橋': ['心斎橋', 'shinsaibashi'],
+    '京都': ['京都', 'kyoto'],
+    '神戸': ['神戸', 'kobe'],
+    '福岡': ['福岡', '天神', 'fukuoka', 'tenjin'],
+    '小倉': ['小倉', 'kokura'],
+    '熊本': ['熊本', 'kumamoto'],
+    '松山': ['松山', 'matsuyama'],
+    '札幌': ['札幌', 'sapporo'],
+    '仙台': ['仙台', 'sendai'],
+    '名古屋': ['名古屋', '栄', 'nagoya', 'sakae'],
+    '広島': ['広島', 'hiroshima'],
+    '岡山': ['岡山', 'okayama']
+}
+
+
+def _store_matches_area(store_name: str, area_keyword: str) -> bool:
+    sn = store_name.lower()
+    ak = area_keyword.lower()
+    if ak in sn:
+        return True
+    for key, aliases in AREA_ALIASES.items():
+        if key == area_keyword or area_keyword in aliases:
+            if any(alias in sn for alias in aliases):
+                return True
+    return False
+
+
 def get_events_for_store(store_name: str):
     """Filter events relevant to a specific store."""
     all_events = fetch_all_events()
@@ -235,17 +272,16 @@ def get_events_for_store(store_name: str):
     for ev in all_events:
         ev_brand = ev.get('brand', '')
         if is_jis and ev_brand == 'JIS':
-            # Match specific store or all
             target_stores = ev.get('target_stores', [])
             if not target_stores:
                 matched.append(ev)
-            elif any(area in store_name for area in target_stores):
+            elif any(_store_matches_area(store_name, area) for area in target_stores):
                 matched.append(ev)
         elif is_olg and ev_brand == 'OLG':
             target_stores = ev.get('target_stores', [])
             if not target_stores:
                 matched.append(ev)
-            elif any(area in store_name for area in target_stores):
+            elif any(_store_matches_area(store_name, area) for area in target_stores):
                 matched.append(ev)
 
     return matched

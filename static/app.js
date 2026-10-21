@@ -12,6 +12,42 @@
         window.allEvents = [];
         let _eventsFetched = false;
 
+        const AREA_ALIASES = {
+            '新宿': ['新宿', 'shinjuku'],
+            '渋谷': ['渋谷', 'shibuya'],
+            '恵比寿': ['恵比寿', 'ebisu'],
+            '上野': ['上野', 'ueno'],
+            '六本木': ['六本木', 'roppongi'],
+            '銀座': ['銀座', 'ginza'],
+            '池袋': ['池袋', 'ikebukuro'],
+            '梅田': ['梅田', 'umeda'],
+            '難波': ['難波', 'なんば', 'namba'],
+            '心斎橋': ['心斎橋', 'shinsaibashi'],
+            '京都': ['京都', 'kyoto'],
+            '神戸': ['神戸', 'kobe'],
+            '福岡': ['福岡', '天神', 'fukuoka', 'tenjin'],
+            '小倉': ['小倉', 'kokura'],
+            '熊本': ['熊本', 'kumamoto'],
+            '松山': ['松山', 'matsuyama'],
+            '札幌': ['札幌', 'sapporo'],
+            '仙台': ['仙台', 'sendai'],
+            '名古屋': ['名古屋', '栄', 'nagoya', 'sakae'],
+            '広島': ['広島', 'hiroshima'],
+            '岡山': ['岡山', 'okayama']
+        };
+
+        function _storeMatchesArea(storeName, areaKeyword) {
+            const sn = String(storeName).toLowerCase();
+            const ak = String(areaKeyword).toLowerCase();
+            if (sn.includes(ak)) return true;
+            for (const [key, aliases] of Object.entries(AREA_ALIASES)) {
+                if (key === areaKeyword || aliases.includes(ak)) {
+                    if (aliases.some(alias => sn.includes(alias))) return true;
+                }
+            }
+            return false;
+        }
+
         async function loadEvents() {
             if (_eventsFetched && window.allEvents.length > 0) return window.allEvents;
             try {
@@ -20,9 +56,9 @@
                     const data = await res.json();
                     window.allEvents = data.events || [];
                     _eventsFetched = true;
-                    // Re-render ranking to show newly fetched event badges if rendered before
+                    // Re-render ranking to display event badges on cards
                     if (window.lastData && window.lastData.ranking) {
-                        applyFilterAndRender();
+                        updateUI(window.lastData);
                     }
                 }
             } catch (err) {
@@ -40,11 +76,11 @@
             return window.allEvents.filter(ev => {
                 if (isJis && ev.brand === 'JIS') {
                     if (!ev.target_stores || ev.target_stores.length === 0) return true;
-                    return ev.target_stores.some(area => storeName.includes(area));
+                    return ev.target_stores.some(area => _storeMatchesArea(storeName, area));
                 }
                 if (isOlg && ev.brand === 'OLG') {
                     if (!ev.target_stores || ev.target_stores.length === 0) return true;
-                    return ev.target_stores.some(area => storeName.includes(area));
+                    return ev.target_stores.some(area => _storeMatchesArea(storeName, area));
                 }
                 return false;
             });

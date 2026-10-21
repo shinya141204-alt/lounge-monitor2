@@ -888,12 +888,12 @@
             isStaff: {{ 'true' if is_staff else 'false' }}
         };
     </script>
-    <script src="/static/app.js?v=20261022_1" defer></script>
+    <script src="/static/app.js?v=20261022_2" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js?v=8')
+                navigator.serviceWorker.register('/sw.js?v=9')
                     .then(reg => {
                         reg.update();
                     })
