@@ -1380,6 +1380,19 @@ canvas {
     gap: 8px;
 }
 
+.modal-top-share-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.modal-top-share-actions .share-pill-btn {
+    padding: 6px 12px;
+    font-size: 0.74rem;
+}
+
 .modal-share-bar {
     margin-top: 12px;
     padding: 10px 12px;

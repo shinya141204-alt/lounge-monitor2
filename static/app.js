@@ -1020,12 +1020,36 @@
                     liveInfo = `現在 👩女性${found.women}名 / 👨男性${found.men}名！`;
                 }
             }
-            const text = `🍸【${bInfo.fullDisplayTitle}】${liveInfo}\n曜日・時間帯別の混雑データも『相席ナビ』でチェック👇`;
+
+            // Check if store has active events from Step 1 crawler
+            const evs = getEventsForStore(currentModalStoreName);
+            let eventText = '';
+            if (evs && evs.length > 0) {
+                const topEv = evs[0];
+                eventText = `\n🎉 開催中特典: ${topEv.title}`;
+            }
+
+            const cleanArea = (bInfo.cleanName || '').replace(/店$/, '').trim();
+            const areaTag = cleanArea ? ` #${cleanArea}相席` : '';
+            const brandTag = bInfo.code ? ` #${bInfo.code}` : '';
+            const tags = `#相席ナビ${brandTag}${areaTag} #相席ラウンジ`;
+            const text = `🍸【${bInfo.fullDisplayTitle}】${liveInfo}${eventText}\nリアルタイム混雑＆最新グラフはこちら👇\n${shareUrl}\n${tags}`;
+
             if (platform === 'line') {
                 const lineUrl = `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(text)}`;
                 window.open(lineUrl, '_blank', 'noopener,noreferrer');
+            } else if (platform === 'copy') {
+                try {
+                    navigator.clipboard.writeText(text).then(() => {
+                        showRefreshToast('📋 店舗速報テキストをコピーしました！');
+                    }).catch(() => {
+                        showRefreshToast('URL: ' + shareUrl);
+                    });
+                } catch (e) {
+                    showRefreshToast('URL: ' + shareUrl);
+                }
             } else {
-                const xUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text + ' #相席ナビ\n' + shareUrl)}`;
+                const xUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
                 window.open(xUrl, '_blank', 'noopener,noreferrer');
             }
         }
@@ -1048,12 +1072,59 @@
                 return `🔥全国ラウンジ人数ランキング「相席ナビ」\n${shareUrl}\n#相席ナビ #相席ラウンジ`;
             }
 
+            const medals = ['🥇', '🥈', '🥉'];
             let list = [];
             let header = '';
+            let subnote = '';
             let tags = '#相席ナビ #相席ラウンジ';
             let isAnaba = false;
+            let showEvents = true;
 
-            if (preset === 'kanto') {
+            if (preset === 'events') {
+                const eventStores = stores.filter(s => {
+                    const evs = getEventsForStore(s.name);
+                    return evs && evs.length > 0;
+                }).sort((a, b) => (b.women - a.women) || (b.men - a.men));
+
+                if (eventStores.length > 0) {
+                    list = eventStores.slice(0, 3);
+                    header = `🎉【${ts} 最新特典＆イベント】お得に楽しめるラウンジTOP3`;
+                    subnote = `今夜は限定特典や割引あり！お得に相席を楽しむならここ👇`;
+                    tags = `#相席ナビ #相席ラウンジ #割引 #イベント #お得`;
+                } else {
+                    list = stores.slice().sort((a, b) => (b.women - a.women) || (b.men - a.men)).slice(0, 3);
+                    header = `🔥【${ts} 全国速報】女性が多いラウンジTOP3`;
+                    tags = `#相席ナビ #相席ラウンジ`;
+                }
+            } else if (preset === 'timely') {
+                const now = new Date();
+                const jstHour = (now.getUTCHours() + 9) % 24;
+
+                if (jstHour >= 17 && jstHour < 20) {
+                    header = `🍸【${ts} 仕事帰り・早割相席】早めの合流が狙い目の店舗TOP3`;
+                    subnote = `混雑ピーク前の今が狙い目！1次会や仕事終わりにサクッと合流🍻`;
+                    tags = `#相席ナビ #相席ラウンジ #仕事帰り #早割`;
+                    list = stores.slice().sort((a, b) => (b.women - a.women) || (b.men - a.men)).slice(0, 3);
+                } else if (jstHour >= 20 && jstHour < 24) {
+                    header = `🔥【${ts} 超混雑ピーク速報】今夜女性が殺到しているラウンジTOP3`;
+                    subnote = `店内大盛況！待ち時間が発生する前に即チェック推奨👇`;
+                    tags = `#相席ナビ #相席ラウンジ #ピーク #激アツ`;
+                    list = stores.slice().sort((a, b) => (b.women - a.women) || (b.men - a.men)).slice(0, 3);
+                } else if (jstHour >= 0 && jstHour < 6) {
+                    header = `🌙【${ts} 深夜・終電後アフター相席】朝まで営業中の人気ラウンジ`;
+                    subnote = `朝まで営業中！2次会・3次会や終電逃した夜の合流スポット🍻`;
+                    tags = `#相席ナビ #相席ラウンジ #深夜営業 #朝まで #終電後`;
+                    list = stores.filter(s => (s.women || 0) + (s.men || 0) > 0)
+                                 .sort((a, b) => (b.women - a.women) || (b.men - a.men))
+                                 .slice(0, 3);
+                    if (list.length === 0) list = stores.slice(0, 3);
+                } else {
+                    header = `☀️【${ts} 今夜注目の相席ラウンジ】事前チェック推奨店舗TOP3`;
+                    subnote = `今夜どこ行く？過去の混雑データから今夜注目の店舗をピックアップ👇`;
+                    tags = `#相席ナビ #相席ラウンジ`;
+                    list = stores.slice().sort((a, b) => (b.women - a.women) || (b.men - a.men)).slice(0, 3);
+                }
+            } else if (preset === 'kanto') {
                 list = stores.filter(s => s.region === 'Kanto').sort((a, b) => (b.women - a.women) || (b.men - a.men)).slice(0, 3);
                 header = `🗼【${ts} 関東速報】女性が多いラウンジTOP3`;
                 tags = `#相席ナビ #相席ラウンジ #新宿 #渋谷`;
@@ -1063,34 +1134,49 @@
                 tags = `#相席ナビ #相席ラウンジ #梅田 #難波`;
             } else if (preset === 'anaba') {
                 isAnaba = true;
-                list = stores.filter(s => (s.women || 0) >= 10).sort((a, b) => {
+                list = stores.filter(s => (s.women || 0) >= 8).sort((a, b) => {
                     const rA = a.women / Math.max(1, a.women + a.men);
                     const rB = b.women / Math.max(1, b.women + b.men);
                     return (rB - rA) || (b.women - a.women);
                 }).slice(0, 3);
                 header = `💎【${ts} 穴場速報】女性比率が高い狙い目TOP3`;
-                tags = `#相席ナビ #相席ラウンジ`;
+                tags = `#相席ナビ #相席ラウンジ #穴場`;
             } else {
-                list = stores.sort((a, b) => (b.women - a.women) || (b.men - a.men)).slice(0, 3);
+                list = stores.slice().sort((a, b) => (b.women - a.women) || (b.men - a.men)).slice(0, 3);
                 header = `🔥【${ts} 全国速報】女性が多いラウンジTOP3`;
                 tags = `#相席ナビ #相席ラウンジ`;
             }
 
-            const medals = ['🥇', '🥈', '🥉'];
             const lines = [header];
+            if (subnote) {
+                lines.push(subnote);
+            }
+
             list.forEach((s, i) => {
                 const b = detectBrandInfo(s);
                 const w = s.women || 0;
                 const m = s.men || 0;
                 const tot = w + m;
                 const pct = tot > 0 ? Math.round((w / tot) * 100) : 0;
+                
+                let lineStr = '';
                 if (isAnaba) {
-                    lines.push(`${medals[i]}${b.fullDisplayTitle}(女${pct}%｜👩${w}/👨{m})`.replace('{m}', m));
+                    lineStr = `${medals[i]}${b.fullDisplayTitle} (女${pct}%｜👩${w}/👨${m})`;
                 } else {
-                    lines.push(`${medals[i]}${b.fullDisplayTitle}(👩${w}名/👨${m}名)`);
+                    lineStr = `${medals[i]}${b.fullDisplayTitle} (👩${w}名/👨${m}名)`;
                 }
+
+                if (showEvents) {
+                    const matchedEvs = getEventsForStore(s.name);
+                    if (matchedEvs && matchedEvs.length > 0) {
+                        const topEv = matchedEvs[0];
+                        lineStr += `\n   └ 📢 ${topEv.title}`;
+                    }
+                }
+                lines.push(lineStr);
             });
-            lines.push(`👇全65店舗の現在人数＆グラフ\n${shareUrl}\n${tags}`);
+
+            lines.push(`\n👇全65店舗のリアルタイム混雑＆開催イベント\n${shareUrl}\n${tags}`);
             return lines.join('\n');
         }
 
@@ -1104,8 +1190,22 @@
             }
         }
 
-        function openSnsModal() {
-            const defaultPreset = currentFilter === 'Kanto' ? 'kanto' : (currentFilter === 'Kinki' ? 'kansai' : 'all');
+        function openSnsModal(initialPreset) {
+            const evStores = (window.lastData && window.lastData.ranking) 
+                ? window.lastData.ranking.filter(s => getEventsForStore(s.name).length > 0) 
+                : [];
+            let defaultPreset = initialPreset;
+            if (!defaultPreset) {
+                if (evStores.length > 0) {
+                    defaultPreset = 'events';
+                } else if (currentFilter === 'Kanto') {
+                    defaultPreset = 'kanto';
+                } else if (currentFilter === 'Kinki') {
+                    defaultPreset = 'kansai';
+                } else {
+                    defaultPreset = 'timely';
+                }
+            }
             selectSnsPreset(defaultPreset);
             document.getElementById('sns-modal').classList.remove('hidden');
         }
@@ -1116,7 +1216,7 @@
 
         async function postGeneratedSns(platform) {
             const ta = document.getElementById('sns-preview-textarea');
-            const text = ta ? ta.value : generatePresetText('all');
+            const text = ta ? ta.value : generatePresetText('events');
             if (platform === 'x') {
                 const xUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
                 window.open(xUrl, '_blank', 'noopener,noreferrer');
@@ -1161,10 +1261,11 @@
             const banner = document.getElementById('live-comparison-banner');
             const bInfo = detectBrandInfo(storeName);
 
+            const officialUrl = getOfficialBrandUrl(bInfo.code, storeName);
             const officialLinkEl = document.getElementById('modal-official-link');
-            if (officialLinkEl) {
-                officialLinkEl.href = getOfficialBrandUrl(bInfo.code, storeName);
-            }
+            if (officialLinkEl) officialLinkEl.href = officialUrl;
+            const topOfficialLinkEl = document.getElementById('modal-top-official-link');
+            if (topOfficialLinkEl) topOfficialLinkEl.href = officialUrl;
             renderModalPrSlot(storeName);
             renderModalEvents(storeName);
 

@@ -91,7 +91,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/style.css?v=20261022_1">
+    <link rel="stylesheet" href="/static/style.css?v=20261022_2">
     <!-- Local Chart.js: self-hosted (zero CDN blocking, works 100% offline & with adblockers) -->
     <script src="/static/chart.min.js?v=20261021" defer></script>
     <!-- Preload editorial thumbnails for instantaneous modal display -->
@@ -116,6 +116,14 @@
             
             <!-- Live vs Historical Comparison Banner -->
             <div id="live-comparison-banner" class="comparison-banner hidden"></div>
+
+            <!-- Modal Top Quick Share & Official Bar -->
+            <div class="modal-top-share-actions">
+                <button class="share-pill-btn x-btn" onclick="shareStoreStatus('x')">𝕏 混雑＋特典をポスト</button>
+                <button class="share-pill-btn line-btn" onclick="shareStoreStatus('line')">💬 LINE共有</button>
+                <button class="share-pill-btn copy-btn" onclick="shareStoreStatus('copy')">📋 コピー</button>
+                <a id="modal-top-official-link" href="https://oriental-lounge.com/" target="_blank" rel="noopener noreferrer" class="share-pill-btn official-btn">🌐 公式サイト</a>
+            </div>
 
             <!-- Store Events & Campaign Section -->
             <div id="modal-event-section" class="modal-event-box hidden">
@@ -171,6 +179,7 @@
                 <div class="modal-share-actions">
                     <button class="share-pill-btn line-btn" onclick="shareStoreStatus('line')">💬 LINEで送る</button>
                     <button class="share-pill-btn x-btn" onclick="shareStoreStatus('x')">𝕏 ポスト</button>
+                    <button class="share-pill-btn copy-btn" onclick="shareStoreStatus('copy')">📋 コピー</button>
                     <a id="modal-official-link" href="https://oriental-lounge.com/" target="_blank" rel="noopener noreferrer" class="share-pill-btn official-btn">🌐 公式サイト</a>
                 </div>
             </div>
@@ -360,8 +369,9 @@
         </div>
     </div>
     <!-- End Articles Selector Modal -->
+    {% endif %}
 
-    <!-- SNS Viral Post Generator Modal -->
+    <!-- SNS Viral Post Generator Modal (Available for all users & staff) -->
     <div id="sns-modal" class="modal hidden">
         <div class="modal-content" style="max-width: 640px;">
             <div class="modal-header">
@@ -370,10 +380,12 @@
             </div>
             <div class="sns-modal-body">
                 <p class="guide-lead" style="margin-bottom: 10px;">
-                    ボタンを選ぶだけで、いまのリアルタイム人数から<strong>X（旧Twitter）・LINE・TikTok用の速報テキスト</strong>を自動生成します。
+                    ボタンを選ぶだけで、いまのリアルタイム人数と<strong>開催中イベント・割引特典を掛け合わせたX・LINE用テキスト</strong>を自動生成します。
                 </p>
                 <div class="sns-preset-tabs">
-                    <button class="sns-tab-btn active" data-preset="all" onclick="selectSnsPreset('all')">🔥 全国TOP3</button>
+                    <button class="sns-tab-btn active" data-preset="events" onclick="selectSnsPreset('events')">🎉 特典＆イベント開催店</button>
+                    <button class="sns-tab-btn" data-preset="timely" onclick="selectSnsPreset('timely')">⏰ 時間帯別おすすめ</button>
+                    <button class="sns-tab-btn" data-preset="all" onclick="selectSnsPreset('all')">🔥 全国TOP3</button>
                     <button class="sns-tab-btn" data-preset="kanto" onclick="selectSnsPreset('kanto')">🗼 関東TOP3</button>
                     <button class="sns-tab-btn" data-preset="kansai" onclick="selectSnsPreset('kansai')">🐙 関西TOP3</button>
                     <button class="sns-tab-btn" data-preset="anaba" onclick="selectSnsPreset('anaba')">💎 穴場(女性比率)</button>
@@ -389,7 +401,6 @@
         </div>
     </div>
     <!-- End SNS Modal -->
-    {% endif %}
 
     <!-- Comparison Modal -->
     <div id="comparison-modal" class="modal hidden">
@@ -442,9 +453,17 @@
                 <h2>🎉 最新イベント・キャンペーン速報</h2>
                 <button class="close-btn-pill" onclick="closeEventsModal()" aria-label="閉じる">✕ 閉じる</button>
             </div>
-            <p style="text-align: center; color: var(--text-secondary); font-size: 0.8rem; margin-top: 0; margin-bottom: 15px;">
+            <p style="text-align: center; color: var(--text-secondary); font-size: 0.8rem; margin-top: 0; margin-bottom: 12px;">
                 オリエンタルラウンジ・ag・JISの最新フェア・特典情報
             </p>
+            <div style="text-align: center; margin-bottom: 14px;">
+                <button type="button" class="staff-action-pill" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 16px; font-size: 0.82rem; background: linear-gradient(135deg, rgba(236,72,153,0.2), rgba(59,130,246,0.2)); border: 1px solid rgba(236,72,153,0.4); cursor: pointer;" onclick="closeEventsModal(); openSnsModal('events');">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+                    </svg>
+                    <span>📣 イベント×混雑のSNS速報を作成する</span>
+                </button>
+            </div>
             <div id="all-events-container" class="events-modal-list">
                 <div class="spinner"></div>
             </div>
@@ -609,6 +628,12 @@
                                 <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
                             </svg>
                             <span>🎉 イベント速報（全社キャンペーン）</span>
+                        </button>
+                        <button type="button" class="staff-action-pill" onclick="openSnsModal('events')">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+                            </svg>
+                            <span>📣 SNS集客速報（X・LINE投稿文作成）</span>
                         </button>
                     </div>
                 </div>
@@ -888,12 +913,12 @@
             isStaff: {{ 'true' if is_staff else 'false' }}
         };
     </script>
-    <script src="/static/app.js?v=20261022_2" defer></script>
+    <script src="/static/app.js?v=20261022_3" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js?v=9')
+                navigator.serviceWorker.register('/sw.js?v=10')
                     .then(reg => {
                         reg.update();
                     })
