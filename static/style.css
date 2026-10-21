@@ -2634,6 +2634,16 @@ body.theme-light .seo-dir-text {
     color: #334155;
 }
 
+body.theme-light .subtitle {
+    color: #475569;
+}
+
+body.theme-light .area-tag {
+    background: #e2e8f0;
+    color: #334155;
+    border: 1px solid #cbd5e1;
+}
+
 body.theme-light .share-pill-btn.copy-btn {
     background: #f1f5f9;
     color: #0f172a;
@@ -2647,8 +2657,8 @@ body.theme-light .modal-content {
 }
 
 body.theme-light .modal-header {
-    background: rgba(255, 255, 255, 0.96);
-    border-bottom-color: #e2e8f0;
+    background: rgba(255, 255, 255, 0.98);
+    border-bottom: 1px solid #e2e8f0;
 }
 
 body.theme-light .modal-header h2 {
@@ -2658,6 +2668,139 @@ body.theme-light .modal-header h2 {
 body.theme-light .close-btn-pill {
     background: #f1f5f9;
     color: #334155;
+    border-color: #cbd5e1;
+}
+
+body.theme-light .modal-bottom-close-btn {
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    color: #0f172a;
+    font-weight: 700;
+}
+
+body.theme-light .modal-bottom-close-btn:hover {
+    background: #e2e8f0;
+    border-color: #94a3b8;
+    color: #0f172a;
+}
+
+/* Analysis Modal Light Mode Styles */
+body.theme-light .chart-container {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+
+body.theme-light .chart-container h3 {
+    color: #0f172a;
+    font-weight: 700;
+}
+
+body.theme-light .chart-hint {
+    color: #64748b;
+}
+
+body.theme-light .chart-filter-btn,
+body.theme-light .date-btn {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    color: #334155;
+}
+
+body.theme-light .chart-filter-btn:hover,
+body.theme-light .date-btn:hover {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+    color: #0f172a;
+}
+
+body.theme-light .chart-filter-btn.active,
+body.theme-light .date-btn.active {
+    background: #0f172a;
+    border-color: #0f172a;
+    color: #ffffff;
+    font-weight: bold;
+}
+
+body.theme-light .comparison-banner {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    color: #0f172a;
+}
+
+body.theme-light .diff-badge.neutral {
+    background: #e2e8f0;
+    color: #334155;
+    border: 1px solid #cbd5e1;
+}
+
+body.theme-light .diff-badge.down {
+    background: #e0f2fe;
+    color: #0369a1;
+    border: 1px solid #bae6fd;
+}
+
+body.theme-light .diff-badge.up {
+    background: #dcfce7;
+    color: #15803d;
+    border: 1px solid #86efac;
+}
+
+body.theme-light .diff-badge.hot {
+    background: #fee2e2;
+    color: #b91c1c;
+    border: 1px solid #fca5a5;
+}
+
+body.theme-light .modal-share-bar {
+    background: #f8fafc;
+    border-top: 1px solid #e2e8f0;
+}
+
+body.theme-light .modal-share-label {
+    color: #475569;
+}
+
+/* SNS Modal Light Mode Styles */
+body.theme-light .sns-preview-textarea {
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    color: #0f172a;
+}
+
+body.theme-light .sns-tab-btn {
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    color: #475569;
+}
+
+body.theme-light .sns-tab-btn:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+}
+
+body.theme-light .sns-tab-btn.active {
+    background: linear-gradient(135deg, #db2777 0%, #2563eb 100%);
+    border-color: transparent;
+    color: #ffffff;
+}
+
+/* Weekly Report Table Light Mode Styles */
+body.theme-light .report-table th,
+body.theme-light .report-table td {
+    border-bottom: 1px solid #e2e8f0;
+    color: #0f172a;
+}
+
+body.theme-light .report-table th {
+    background: #f1f5f9;
+    color: #334155;
+    border-bottom: 2px solid #cbd5e1;
+}
+
+body.theme-light .report-table tr:hover {
+    background: #f8fafc;
+}
     border-color: #cbd5e1;
 }
 
@@ -3365,6 +3508,30 @@ body.theme-light .staff-action-pill:hover {
     background: #eff6ff;
     border-color: #3b82f6;
     color: #1d4ed8;
+}
+
+.staff-event-toggle-pill.events-hidden {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.18);
+    color: var(--text-secondary);
+}
+
+.staff-event-toggle-pill.active {
+    background: rgba(236, 72, 153, 0.18);
+    border-color: rgba(236, 72, 153, 0.45);
+    color: #f472b6;
+}
+
+body.theme-light .staff-event-toggle-pill.events-hidden {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #475569;
+}
+
+body.theme-light .staff-event-toggle-pill.active {
+    background: #fce7f3;
+    border-color: #f472b6;
+    color: #be185d;
 }
 
 /* --- Nighttime Smart Cab & After-care Banner --- */

@@ -164,20 +164,19 @@
             }
 
             if (toggleBtn && toggleLabel) {
+                toggleBtn.style.background = '';
+                toggleBtn.style.borderColor = '';
+                toggleBtn.style.color = '';
                 if (staffHideEvents) {
                     toggleBtn.classList.remove('active');
+                    toggleBtn.classList.add('events-hidden');
                     if (toggleIcon) toggleIcon.textContent = '🔒';
                     toggleLabel.textContent = 'イベント非表示: ON（業務集中モード）';
-                    toggleBtn.style.background = 'rgba(255, 255, 255, 0.06)';
-                    toggleBtn.style.borderColor = 'rgba(255, 255, 255, 0.18)';
-                    toggleBtn.style.color = 'var(--text-secondary)';
                 } else {
+                    toggleBtn.classList.remove('events-hidden');
                     toggleBtn.classList.add('active');
                     if (toggleIcon) toggleIcon.textContent = '🎁';
                     toggleLabel.textContent = 'イベント表示中（タップで非表示切替）';
-                    toggleBtn.style.background = 'rgba(236, 72, 153, 0.18)';
-                    toggleBtn.style.borderColor = 'rgba(236, 72, 153, 0.45)';
-                    toggleBtn.style.color = '#f472b6';
                 }
             }
         }
