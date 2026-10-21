@@ -137,21 +137,29 @@
         let prefetchTriggered = false;
 
         // Instant Load: Render cached ranking immediately if available (< 30 mins old)
-        try {
-            const savedRaw = localStorage.getItem('olg_cached_status');
-            if (savedRaw) {
-                const saved = JSON.parse(savedRaw);
-                if (saved && saved.data && saved.savedAt && (Date.now() - saved.savedAt < 30 * 60 * 1000)) {
-                    window.lastData = saved.data;
-                    isInitialLoad = false;
-                    window.addEventListener('DOMContentLoaded', () => {
+        function restoreCachedStatus() {
+            try {
+                const savedRaw = localStorage.getItem('olg_cached_status');
+                if (savedRaw) {
+                    const saved = JSON.parse(savedRaw);
+                    if (saved && saved.data && saved.savedAt && (Date.now() - saved.savedAt < 30 * 60 * 1000)) {
+                        window.lastData = saved.data;
+                        isInitialLoad = false;
                         updateUI(saved.data);
-                        document.getElementById('loading').classList.add('hidden');
-                        document.getElementById('content').classList.remove('hidden');
-                    });
+                        const loadingEl = document.getElementById('loading');
+                        const contentEl = document.getElementById('content');
+                        if (loadingEl) loadingEl.classList.add('hidden');
+                        if (contentEl) contentEl.classList.remove('hidden');
+                    }
                 }
-            }
-        } catch (e) {}
+            } catch (e) {}
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', restoreCachedStatus);
+        } else {
+            restoreCachedStatus();
+        }
 
         async function fetchWithTimeout(url, timeoutMs = 15000) {
             const controller = new AbortController();
@@ -178,8 +186,8 @@
                 }
             }
 
-            // Wait 1.5s after initial render so UI stays snappy, then prefetch sequentially
-            await new Promise(r => setTimeout(r, 1500));
+            // Wait 3.5s after initial render so UI stays completely snappy, then prefetch sequentially during idle
+            await new Promise(r => setTimeout(r, 3500));
             for (const storeName of targets.slice(0, 5)) {
                 if (clientAnalysisCache[storeName] && (Date.now() - clientAnalysisCache[storeName].fetchedAt < CLIENT_CACHE_TTL)) {
                     continue;
