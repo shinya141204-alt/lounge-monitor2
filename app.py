@@ -96,10 +96,11 @@ def start_scheduler():
                 scheduler.add_job(func=update_job, trigger="interval", minutes=1)
                 # Background sync SQLite with Google Sheets every 2 hours to keep completely up to date
                 scheduler.add_job(func=lambda: local_db.sync_from_google_sheets(days=3), trigger="interval", hours=2)
-                # Daily X auto-post jobs at 21:00, 22:30, and 00:00 JST (12:00, 13:30, 15:00 UTC)
-                scheduler.add_job(func=run_scheduled_x_post, trigger="cron", hour=12, minute=0, args=["21:00"])
-                scheduler.add_job(func=run_scheduled_x_post, trigger="cron", hour=13, minute=30, args=["22:30"])
+                # Daily X auto-post jobs at 20:00, 22:00, 00:00, and 02:00 JST (11:00, 13:00, 15:00, 17:00 UTC)
+                scheduler.add_job(func=run_scheduled_x_post, trigger="cron", hour=11, minute=0, args=["20:00"])
+                scheduler.add_job(func=run_scheduled_x_post, trigger="cron", hour=13, minute=0, args=["22:00"])
                 scheduler.add_job(func=run_scheduled_x_post, trigger="cron", hour=15, minute=0, args=["00:00"])
+                scheduler.add_job(func=run_scheduled_x_post, trigger="cron", hour=17, minute=0, args=["02:00"])
                 # Daily events crawler at 10:00 and 17:00 JST (01:00 and 08:00 UTC)
                 def _crawl_events_job():
                     try:
@@ -723,7 +724,7 @@ def generate_sns_post_api():
         'text': "\n".join(lines)
     })
 
-def run_scheduled_x_post(slot_label="21:00", force=False):
+def run_scheduled_x_post(slot_label="20:00", force=False):
     """Execute scheduled X auto-post with duplicate prevention across workers."""
     import x_poster
     now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
@@ -767,7 +768,7 @@ def trigger_x_post_endpoint():
     """Endpoint to test or externally trigger X auto-posting."""
     if request.args.get('secret') != 'lounge2026':
         return jsonify({'error': 'Unauthorized'}), 401
-    slot = request.args.get('slot', '21:00')
+    slot = request.args.get('slot', '20:00')
     force = request.args.get('force', '0') == '1'
     res = run_scheduled_x_post(slot_label=slot, force=force)
     return jsonify(res)

@@ -67,25 +67,38 @@ def format_ja_store_name(raw_name: str) -> str:
     return name
 
 
-def build_scheduled_tweet_text(stores: list, slot_label: str = "21:00", app_url: str = "") -> str:
+def build_scheduled_tweet_text(stores: list, slot_label: str = "20:00", app_url: str = "") -> str:
     """
     Build a high-engagement X post guaranteed to fit within X's 140-char (280 weighted) limit:
-    - '21:00': Early evening national TOP3
-    - '22:30': Peak time high-female-ratio 'Anaba' TOP3
+    - '20:00': Early evening start dash TOP3
+    - '22:00' (or '22:30'): Peak time high-female-ratio 'Anaba' TOP3
     - '00:00': Midnight late-night fever TOP3
+    - '02:00': All-night morning fever TOP3
     """
     site_url = (app_url or os.environ.get("PUBLIC_SITE_URL") or "https://aiseki-navi.com").rstrip("/")
     now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
     weekdays_ja = ["月", "火", "水", "木", "金", "土", "日"]
     wd_str = weekdays_ja[now_jst.weekday()]
     date_label = f"{now_jst.month}/{now_jst.day}({wd_str}){slot_label}"
+    # Anti-duplicate unique tag with seconds to ensure X never rejects with 403 Duplicate Content
+    time_tag = f"⏱️{now_jst.strftime('%H:%M:%S')}集計"
 
     if not stores:
         return ""
 
     medals = ["🥇", "🥈", "🥉"]
 
-    if slot_label == "22:30":
+    if slot_label == "20:00":
+        lines = [f"🔥【{date_label} 序盤速報】スタートダッシュ女性人数TOP3"]
+        for i, s in enumerate(stores[:3]):
+            w = s.get("women", 0)
+            m = s.get("men", 0)
+            ja_name = format_ja_store_name(s.get("name", ""))
+            lines.append(f"{medals[i]}{ja_name}(👩{w}名/👨{m}名)")
+        lines.append(f"👇全65店舗のリアルタイム人数\n{site_url}/\n{time_tag} #相席ナビ #相席ラウンジ")
+        return "\n".join(lines)
+
+    elif slot_label in ("22:00", "22:30"):
         candidates = [s for s in stores if s.get("women", 0) >= 10]
         candidates.sort(
             key=lambda x: (
@@ -95,7 +108,7 @@ def build_scheduled_tweet_text(stores: list, slot_label: str = "21:00", app_url:
             reverse=True,
         )
         top_anaba = candidates[:3] if len(candidates) >= 3 else stores[:3]
-        lines = [f"💎【{date_label} 穴場速報】女性比率が高い狙い目TOP3"]
+        lines = [f"💎【{date_label} ピーク速報】女性比率が高い狙い目TOP3"]
         for i, s in enumerate(top_anaba):
             w = s.get("women", 0)
             m = s.get("men", 0)
@@ -103,27 +116,37 @@ def build_scheduled_tweet_text(stores: list, slot_label: str = "21:00", app_url:
             pct = round((w / tot) * 100) if tot > 0 else 0
             ja_name = format_ja_store_name(s.get("name", ""))
             lines.append(f"{medals[i]}{ja_name}(女{pct}%｜👩{w}/👨{m})")
-        lines.append(f"👇全65店舗の現在人数\n{site_url}/\n#相席ナビ #相席ラウンジ")
+        lines.append(f"👇全65店舗の男女比・グラフ\n{site_url}/\n{time_tag} #相席ナビ #相席ラウンジ")
         return "\n".join(lines)
 
     elif slot_label == "00:00":
-        lines = [f"🌙【{date_label} 深夜速報】終電後も盛況TOP3"]
+        lines = [f"🌙【{date_label} 深夜速報】終電後も盛況な店舗TOP3"]
         for i, s in enumerate(stores[:3]):
             w = s.get("women", 0)
             m = s.get("men", 0)
             ja_name = format_ja_store_name(s.get("name", ""))
             lines.append(f"{medals[i]}{ja_name}(👩{w}名/👨{m}名)")
-        lines.append(f"👇全店舗の男女比・グラフ\n{site_url}/\n#相席ナビ #相席ラウンジ")
+        lines.append(f"👇深夜営業中ラウンジの人数\n{site_url}/\n{time_tag} #相席ナビ #相席ラウンジ")
+        return "\n".join(lines)
+
+    elif slot_label == "02:00":
+        lines = [f"🦉【{date_label} 深夜2時速報】朝まで盛り上がっている店舗TOP3"]
+        for i, s in enumerate(stores[:3]):
+            w = s.get("women", 0)
+            m = s.get("men", 0)
+            ja_name = format_ja_store_name(s.get("name", ""))
+            lines.append(f"{medals[i]}{ja_name}(👩{w}名/👨{m}名)")
+        lines.append(f"👇朝まで営業店舗のリアルタイム人数\n{site_url}/\n{time_tag} #相席ナビ #相席ラウンジ")
         return "\n".join(lines)
 
     else:
-        lines = [f"🔥【{date_label} 全国速報】女性人数ランキングTOP3"]
+        lines = [f"🔥【{date_label} 速報】女性人数ランキングTOP3"]
         for i, s in enumerate(stores[:3]):
             w = s.get("women", 0)
             m = s.get("men", 0)
             ja_name = format_ja_store_name(s.get("name", ""))
             lines.append(f"{medals[i]}{ja_name}(👩{w}名/👨{m}名)")
-        lines.append(f"👇全店舗のリアルタイム人数\n{site_url}/\n#相席ナビ #相席ラウンジ")
+        lines.append(f"👇全店舗のリアルタイム人数\n{site_url}/\n{time_tag} #相席ナビ #相席ラウンジ")
         return "\n".join(lines)
 
 
