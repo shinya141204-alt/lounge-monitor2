@@ -101,6 +101,15 @@ def start_scheduler():
                 scheduler.add_job(func=run_scheduled_x_post, trigger="cron", hour=13, minute=0, args=["22:00"])
                 scheduler.add_job(func=run_scheduled_x_post, trigger="cron", hour=15, minute=0, args=["00:00"])
                 scheduler.add_job(func=run_scheduled_x_post, trigger="cron", hour=17, minute=0, args=["02:00"])
+                # Daily X human-like tips at 12:00 and 18:00 JST (03:00 and 09:00 UTC)
+                def _tip_12():
+                    import tips_poster
+                    tips_poster.run_scheduled_tip_post(slot_label="12:00")
+                def _tip_18():
+                    import tips_poster
+                    tips_poster.run_scheduled_tip_post(slot_label="18:00")
+                scheduler.add_job(func=_tip_12, trigger="cron", hour=3, minute=0)
+                scheduler.add_job(func=_tip_18, trigger="cron", hour=9, minute=0)
                 # Daily events crawler at 10:00 and 17:00 JST (01:00 and 08:00 UTC)
                 def _crawl_events_job():
                     try:
@@ -771,6 +780,18 @@ def trigger_x_post_endpoint():
     slot = request.args.get('slot', '20:00')
     force = request.args.get('force', '0') == '1'
     res = run_scheduled_x_post(slot_label=slot, force=force)
+    return jsonify(res)
+
+@app.route('/api/trigger-x-tip')
+def trigger_x_tip_endpoint():
+    """Endpoint to test or externally trigger X human-like tips posting."""
+    if request.args.get('secret') != 'lounge2026':
+        return jsonify({'error': 'Unauthorized'}), 401
+    slot = request.args.get('slot', '12:00')
+    force = request.args.get('force', '0') == '1'
+    idx = request.args.get('idx', type=int)
+    import tips_poster
+    res = tips_poster.run_scheduled_tip_post(slot_label=slot, force=force, tip_index=idx)
     return jsonify(res)
 
 if __name__ == '__main__':
