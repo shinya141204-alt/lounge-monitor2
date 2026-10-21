@@ -91,7 +91,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/style.css?v=20261021_5">
+    <link rel="stylesheet" href="/static/style.css?v=20261021_6">
     <!-- Local Chart.js: self-hosted (zero CDN blocking, works 100% offline & with adblockers) -->
     <script src="/static/chart.min.js?v=20261021" defer></script>
     <!-- Preload editorial thumbnails for instantaneous modal display -->
@@ -385,17 +385,25 @@
 
     <!-- Comparison Modal -->
     <div id="comparison-modal" class="modal hidden">
-        <div class="modal-content">
+        <div class="modal-content" style="max-width: 680px;">
             <div class="modal-header">
-                <h2>競合比較 (Brand Comparison)</h2>
+                <h2>競合比較・系列別サマリー (Brand Comparison)</h2>
                 <button class="close-btn-pill" onclick="closeComparisonModal()" aria-label="閉じる">✕ 閉じる</button>
             </div>
-            <p style="text-align: center; color: var(--text-secondary); font-size: 0.8rem; margin-top: 0; margin-bottom: 15px;">
-                現在の来店数（ブランド合計）
+            <p style="text-align: center; color: var(--text-secondary); font-size: 0.8rem; margin-top: 0; margin-bottom: 12px;">
+                全国各ブランドの現在来店数（リアルタイム合計）
             </p>
-            <div class="chart-container" style="height: 350px;">
+
+            <!-- Brand Summary Grid (HTML Instant Render: 0ms wait) -->
+            <div id="comparison-brand-summary" class="comparison-summary-grid">
+                <!-- Dynamically populated with brand cards -->
+            </div>
+
+            <!-- Comparison Bar Chart with explicit relative container -->
+            <div class="comparison-chart-wrapper" style="position: relative; height: 260px; width: 100%; margin: 15px 0;">
                 <canvas id="comparisonChart"></canvas>
             </div>
+
             <button class="modal-bottom-close-btn" onclick="closeComparisonModal()">✕ 閉じる</button>
         </div>
     </div>
@@ -842,12 +850,12 @@
             isStaff: {{ 'true' if is_staff else 'false' }}
         };
     </script>
-    <script src="/static/app.js?v=20261021_5" defer></script>
+    <script src="/static/app.js?v=20261021_6" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js?v=6')
+                navigator.serviceWorker.register('/sw.js?v=7')
                     .then(reg => {
                         reg.update();
                     })

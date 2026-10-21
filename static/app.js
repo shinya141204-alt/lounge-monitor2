@@ -1221,48 +1221,102 @@
         let comparisonChartInstance = null;
 
         async function openComparisonModal() {
-            if (!window.lastData || !window.lastData.ranking) return;
-            
             const modal = document.getElementById('comparison-modal');
+            const summaryContainer = document.getElementById('comparison-brand-summary');
             modal.classList.remove('hidden');
 
-            try {
-                await loadChartJs();
-            } catch (err) {
-                console.error(err);
+            if (summaryContainer) {
+                summaryContainer.innerHTML = '<div style="text-align:center; padding:15px; color:var(--text-secondary);"><div class="spinner" style="margin:0 auto 8px auto;"></div>系列データを集計中...</div>';
             }
-            if (!window.Chart) {
-                console.warn('Chart.js not available for comparison chart');
-                return;
+
+            // Ensure we have ranking data
+            if (!window.lastData || !window.lastData.ranking || window.lastData.ranking.length === 0) {
+                try {
+                    const res = await fetch('/api/status');
+                    if (res.ok) {
+                        window.lastData = await res.json();
+                    }
+                } catch (e) {
+                    console.error('Failed to load status for comparison:', e);
+                }
+            }
+
+            const ranking = (window.lastData && window.lastData.ranking) ? window.lastData.ranking : [];
+            let storesToCompare = ranking;
+            if (currentFilter !== 'All') {
+                const filtered = storesToCompare.filter(s => s.region === currentFilter);
+                if (filtered.length > 0) {
+                    storesToCompare = filtered;
+                }
             }
 
             const brandTotals = {};
-            let storesToCompare = window.lastData.ranking;
-            if (currentFilter !== 'All') {
-                storesToCompare = storesToCompare.filter(s => s.region === currentFilter);
-            }
-
             storesToCompare.forEach(store => {
-                const brand = (store.source || 'Unknown').toUpperCase();
+                const brand = (store.source || 'Other').toUpperCase();
                 if (!brandTotals[brand]) {
                     brandTotals[brand] = { women: 0, men: 0, count: 0 };
                 }
-                brandTotals[brand].women += store.women;
-                brandTotals[brand].men += store.men;
+                brandTotals[brand].women += (store.women || 0);
+                brandTotals[brand].men += (store.men || 0);
                 brandTotals[brand].count += 1;
             });
 
             const brands = Object.keys(brandTotals).sort((a, b) => brandTotals[b].women - brandTotals[a].women);
+
+            // 1. Instant HTML Brand Summary Cards (Works 100% independently of Chart.js)
+            if (summaryContainer) {
+                if (brands.length === 0) {
+                    summaryContainer.innerHTML = '<p style="text-align:center; color:var(--text-secondary);">該当する店舗データがありません</p>';
+                } else {
+                    let cardsHtml = '';
+                    brands.forEach(b => {
+                        const info = brandTotals[b];
+                        const total = info.women + info.men;
+                        const ratio = total > 0 ? Math.round((info.women / total) * 100) : 0;
+                        cardsHtml += `
+                            <div class="brand-summary-card">
+                                <div class="brand-card-title">
+                                    <span>${escapeHtml(b)}</span>
+                                    <span style="font-size:0.7rem; font-weight:normal; opacity:0.7;">(${info.count}店舗)</span>
+                                </div>
+                                <div class="brand-card-counts">
+                                    <span class="w-count">♀ ${info.women}</span>
+                                    <span class="m-count">♂ ${info.men}</span>
+                                </div>
+                                <div class="brand-card-sub">女性比率 ${ratio}% ｜ 計 ${total}名</div>
+                            </div>
+                        `;
+                    });
+                    summaryContainer.innerHTML = cardsHtml;
+                }
+            }
+
+            // 2. Load Chart.js and render bar chart
+            try {
+                await loadChartJs();
+            } catch (err) {
+                console.error('Failed to load Chart.js:', err);
+            }
+
+            if (!window.Chart) {
+                console.warn('Chart.js not available yet for comparison chart');
+                return;
+            }
+
             const labels = brands.map(b => `${b} (${brandTotals[b].count}店舗)`);
             const womenData = brands.map(b => brandTotals[b].women);
             const menData = brands.map(b => brandTotals[b].men);
 
             if (comparisonChartInstance) {
                 comparisonChartInstance.destroy();
+                comparisonChartInstance = null;
             }
 
             const th = getChartThemeColors();
-            const ctx = document.getElementById('comparisonChart').getContext('2d');
+            const canvas = document.getElementById('comparisonChart');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+
             comparisonChartInstance = new Chart(ctx, {
                 type: 'bar',
                 data: {
@@ -1285,6 +1339,7 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    animation: { duration: 250 },
                     scales: {
                         x: {
                             stacked: false,
