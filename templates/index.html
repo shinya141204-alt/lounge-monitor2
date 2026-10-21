@@ -589,19 +589,56 @@
                 <a href="/staff/logout" class="footer-link-btn" style="color: #ec4899; font-weight: 700;">社内モード解除（ログアウト）</a>
             </div>
             {% else %}
-            <p class="footer-disclaimer">
-                ※当サイト「相席ナビ」は公開情報を独自に集計・可視化した<strong>非公式の統計情報サイト</strong>であり、掲載されている各店舗・運営会社とは一切関係ありません。各店舗への直接のお問い合わせはご遠慮ください。
-            </p>
-            <div class="footer-links">
-                <a href="/guide" class="footer-link-btn" style="color: #f472b6; font-weight: 700; text-decoration: none;">📖 総合攻略マニュアル</a>
-                <span class="footer-divider">|</span>
-                <a href="/guide/weekday-strategy" class="footer-link-btn" style="color: #38bdf8; font-weight: 700; text-decoration: none;">⚡ 平日攻略コラム</a>
-                <span class="footer-divider">|</span>
-                <button class="footer-link-btn" onclick="openGuideModal()">おすすめアプリ＆特集</button>
-                <span class="footer-divider">|</span>
-                <button class="footer-link-btn" onclick="openLegalModal()">免責事項・プライバシーポリシー</button>
-                <span class="footer-divider">|</span>
-                <span class="footer-copy">© 相席ナビ (Aiseki Navi)</span>
+            <!-- Top Row: Pillar Guide Buttons -->
+            <div class="footer-nav-pills">
+                <a href="/guide" class="footer-pill-btn guide-pill" title="相席総合攻略マニュアル">
+                    <span>📖 総合攻略マニュアル</span>
+                </a>
+                <a href="/guide/weekday-strategy" class="footer-pill-btn weekday-pill" title="平日攻略コラム">
+                    <span>⚡ 平日攻略コラム</span>
+                </a>
+                <button class="footer-pill-btn" onclick="openGuideModal()">
+                    <span>💡 特集アプリ</span>
+                </button>
+            </div>
+
+            <!-- Middle Row: Official SNS Links -->
+            <div class="footer-sns-row">
+                <span class="footer-sns-label">OFFICIAL SNS</span>
+                <div class="footer-sns-icons">
+                    <a href="https://x.com/aiseki_navi" target="_blank" rel="noopener noreferrer" class="sns-icon-btn x-btn" title="公式X（混雑速報）">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                        </svg>
+                        <span>X (速報)</span>
+                    </a>
+                    <a href="https://www.threads.net/@aiseki_navi" target="_blank" rel="noopener noreferrer" class="sns-icon-btn threads-btn" title="公式Threads">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12.001 2c-5.522 0-9.999 4.477-9.999 10 0 5.522 4.477 10 9.999 10 5.523 0 10-4.478 10-10 0-5.523-4.477-10-10-10zm0 18.001c-4.418 0-8-3.582-8-8 0-4.419 3.582-8.001 8-8.001 4.419 0 8.001 3.582 8.001 8.001 0 4.418-3.582 8-8.001 8zm3.567-9.757c-.126-.454-.378-.857-.73-1.166-.35-.308-.79-.473-1.272-.477h-.061c-.534.004-1.02.203-1.405.575-.386.372-.619.878-.656 1.425.321-.06.647-.09.976-.09.61 0 1.206.104 1.77.309.117-.184.21-.383.278-.576zm-1.849 5.864c-.732 0-1.424-.23-1.999-.666-.576-.436-.97-1.052-1.109-1.735-.07-.342-.089-.691-.057-1.038-.344.086-.677.209-.994.368-.696.349-1.144.978-1.198 1.681-.055.704.288 1.391.895 1.79.522.343 1.157.498 1.838.448.828-.061 1.705-.443 2.624-1.135-.297.185-.634.287-.998.287z"/>
+                        </svg>
+                        <span>Threads</span>
+                    </a>
+                    <a href="https://note.com/aiseki_navi" target="_blank" rel="noopener noreferrer" class="sns-icon-btn note-btn" title="公式note">
+                        <span style="font-weight: 900; font-family: serif; font-size: 0.85rem;">n</span>
+                        <span>note</span>
+                    </a>
+                    <a href="https://www.instagram.com/aiseki_navi" target="_blank" rel="noopener noreferrer" class="sns-icon-btn ig-btn" title="公式Instagram">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+                        </svg>
+                        <span>Instagram</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Bottom Row: Clean Legal & Copyright -->
+            <div class="footer-bottom-meta">
+                <div class="footer-legal-links">
+                    <button class="footer-sub-link" onclick="openLegalModal()">免責事項・プライバシーポリシー</button>
+                </div>
+                <p class="footer-mini-copy">
+                    © 2026 相席ナビ (AISEKI NAVI) ｜ ※公開情報の非公式統計サイトです
+                </p>
             </div>
             {% endif %}
         </footer>
