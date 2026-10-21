@@ -11,17 +11,24 @@ import os
 import local_db
 from collections import defaultdict
 
-# Set up logging to a file so we can view it via API
+from logging.handlers import RotatingFileHandler
+
+# Set up logging with automatic size rotation (max 5MB, keep 2 backups) to prevent disk overflow
 log_file_path = 'app.log'
-logging.basicConfig(
-    filename=log_file_path,
-    level=logging.DEBUG,
-    format='%(asctime)s [%(levelname)s] %(name)s: %(message)s'
-)
-# Also log to stderr for Render
+file_handler = RotatingFileHandler(log_file_path, maxBytes=5 * 1024 * 1024, backupCount=2, encoding='utf-8')
+file_handler.setLevel(logging.INFO)
+file_handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(name)s: %(message)s'))
+
 console = logging.StreamHandler()
 console.setLevel(logging.INFO)
-logging.getLogger('').addHandler(console)
+console.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(name)s: %(message)s'))
+
+root_logger = logging.getLogger('')
+root_logger.setLevel(logging.INFO)
+# Clear any default handlers to avoid duplicates
+root_logger.handlers.clear()
+root_logger.addHandler(file_handler)
+root_logger.addHandler(console)
 
 import gzip
 
