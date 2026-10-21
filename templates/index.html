@@ -92,6 +92,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
+    <!-- Preload editorial thumbnails for instantaneous modal display -->
+    <link rel="preload" as="image" type="image/webp" href="/static/thumb-weekday.webp">
+    <link rel="preload" as="image" type="image/webp" href="/static/thumb-manual.webp">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     {% if not is_staff %}
     <script src="/static/affiliate_config.js?v=2"></script>
@@ -280,7 +283,10 @@
                     <!-- Article 1: Weekday Strategy (NEW) -->
                     <a href="/guide/weekday-strategy" class="article-card-item highlight-card">
                         <div class="article-card-thumb">
-                            <img src="/static/note-eyecatch-weekday.jpg" alt="平日攻略コラム アイキャッチ" loading="lazy">
+                            <picture>
+                                <source srcset="/static/thumb-weekday.webp" type="image/webp">
+                                <img src="/static/thumb-weekday.jpg" alt="平日攻略コラム アイキャッチ" width="640" height="360" decoding="async">
+                            </picture>
                             <span class="article-card-badge badge-weekday">⚡ 平日攻略 ｜ NEW</span>
                         </div>
                         <div class="article-card-info">
@@ -299,7 +305,10 @@
                     <!-- Article 2: Comprehensive Strategy Manual -->
                     <a href="/guide" class="article-card-item">
                         <div class="article-card-thumb">
-                            <img src="/static/note-eyecatch.jpg" alt="完全攻略マニュアル アイキャッチ" loading="lazy">
+                            <picture>
+                                <source srcset="/static/thumb-manual.webp" type="image/webp">
+                                <img src="/static/thumb-manual.jpg" alt="完全攻略マニュアル アイキャッチ" width="640" height="360" decoding="async">
+                            </picture>
                             <span class="article-card-badge badge-manual">🔥 完全攻略 ｜ 必読バイブル</span>
                         </div>
                         <div class="article-card-info">

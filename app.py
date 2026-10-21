@@ -54,6 +54,12 @@ def compress_response(response):
             response.headers['Content-Encoding'] = 'gzip'
             response.headers['Content-Length'] = len(compressed)
             response.headers['Vary'] = 'Accept-Encoding'
+
+    # Cache static images and web assets aggressively for instant mobile loading
+    if request.path.startswith('/static/') and response.status_code == 200:
+        if any(request.path.lower().endswith(ext) for ext in ('.jpg', '.jpeg', '.png', '.webp', '.svg', '.gif', '.ico', '.woff2')):
+            response.headers['Cache-Control'] = 'public, max-age=2592000, immutable'
+
     return response
 
 @app.before_request
