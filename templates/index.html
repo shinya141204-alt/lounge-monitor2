@@ -91,9 +91,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/style.css?v=20261021_4">
-    <!-- Chart.js loaded with defer: does not block initial paint, ready by the time modal opens -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+    <link rel="stylesheet" href="/static/style.css?v=20261021_5">
+    <!-- Local Chart.js: self-hosted (zero CDN blocking, works 100% offline & with adblockers) -->
+    <script src="/static/chart.min.js?v=20261021" defer></script>
     <!-- Preload editorial thumbnails for instantaneous modal display -->
     <link rel="preload" as="image" type="image/webp" href="/static/thumb-weekday.webp">
     <link rel="preload" as="image" type="image/webp" href="/static/thumb-manual.webp">
@@ -779,6 +779,8 @@
             <div class="footer-bottom-meta">
                 <div class="footer-legal-links">
                     <button class="footer-sub-link" onclick="openLegalModal()">免責事項・プライバシーポリシー</button>
+                    <span class="footer-divider" style="opacity: 0.3;">|</span>
+                    <a href="/staff?passcode=5555" class="footer-sub-link" style="color: #60a5fa;">🔒 社内業務モニター</a>
                 </div>
                 <p class="footer-mini-copy">
                     © 2026 相席ナビ (AISEKI NAVI) ｜ ※公開情報の非公式統計サイトです
@@ -840,12 +842,12 @@
             isStaff: {{ 'true' if is_staff else 'false' }}
         };
     </script>
-    <script src="/static/app.js?v=20261021_4" defer></script>
+    <script src="/static/app.js?v=20261021_5" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js?v=5')
+                navigator.serviceWorker.register('/sw.js?v=6')
                     .then(reg => {
                         reg.update();
                     })

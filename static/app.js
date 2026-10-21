@@ -1152,20 +1152,31 @@
             }
         });
 
-        // --- Robust Chart.js Loader (handles defer script in head or on-demand fetch) ---
+        // Helper to adapt Chart colors dynamically based on light/dark mode
+        function getChartThemeColors() {
+            const isLight = document.body.classList.contains('theme-light');
+            return {
+                textColor: isLight ? '#0f172a' : '#ffffff',
+                subTextColor: isLight ? '#475569' : '#cbd5e1',
+                gridColor: isLight ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.1)',
+                axisLineColor: isLight ? 'rgba(0, 0, 0, 0.15)' : 'rgba(255, 255, 255, 0.15)'
+            };
+        }
+
+        // --- Robust Chart.js Loader (self-hosted /static/chart.min.js, 100% immune to adblockers) ---
         let _chartJsLoadingPromise = null;
         function loadChartJs() {
             if (window.Chart) return Promise.resolve(window.Chart);
             if (!_chartJsLoadingPromise) {
                 _chartJsLoadingPromise = new Promise((resolve, reject) => {
-                    const existing = document.querySelector('script[src*="chart.js"]');
+                    const existing = document.querySelector('script[src*="chart.min.js"]') || document.querySelector('script[src*="chart.js"]');
                     if (existing) {
                         let checks = 0;
                         const interval = setInterval(() => {
                             if (window.Chart) {
                                 clearInterval(interval);
                                 resolve(window.Chart);
-                            } else if (++checks > 60) { // 3.0s timeout
+                            } else if (++checks > 60) {
                                 clearInterval(interval);
                                 injectScript();
                             }
@@ -1184,12 +1195,12 @@
 
                     function injectScript() {
                         const script = document.createElement('script');
-                        script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+                        script.src = '/static/chart.min.js?v=20261021';
                         script.async = true;
                         script.onload = () => resolve(window.Chart);
                         script.onerror = (err) => {
                             _chartJsLoadingPromise = null;
-                            console.error('Failed to load Chart.js:', err);
+                            console.error('Failed to load local Chart.js:', err);
                             reject(err);
                         };
                         document.head.appendChild(script);
@@ -1250,6 +1261,7 @@
                 comparisonChartInstance.destroy();
             }
 
+            const th = getChartThemeColors();
             const ctx = document.getElementById('comparisonChart').getContext('2d');
             comparisonChartInstance = new Chart(ctx, {
                 type: 'bar',
@@ -1274,11 +1286,19 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     scales: {
-                        x: { stacked: false, grid: { display: false } },
-                        y: { stacked: false, grid: { color: 'rgba(255,255,255,0.1)' } }
+                        x: {
+                            stacked: false,
+                            grid: { display: false },
+                            ticks: { color: th.textColor, font: { weight: '600' } }
+                        },
+                        y: {
+                            stacked: false,
+                            grid: { color: th.gridColor },
+                            ticks: { color: th.subTextColor }
+                        }
                     },
                     plugins: {
-                        legend: { display: true, labels: { color: '#fff' } }
+                        legend: { display: true, labels: { color: th.textColor, boxWidth: 14 } }
                     }
                 }
             });
@@ -1459,6 +1479,7 @@
             const womenData = days.map(d => data.weekday[d] || 0);
             const menData = days.map(d => data.weekday_men ? (data.weekday_men[d] || 0) : 0);
 
+            const th = getChartThemeColors();
             weekdayAnalysisChartInstance = new Chart(ctx, {
                 type: 'bar',
                 data: {
@@ -1488,11 +1509,18 @@
                         }
                     },
                     scales: {
-                        x: { grid: { display: false } },
-                        y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' } }
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: th.textColor, font: { weight: '600' } }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: th.gridColor },
+                            ticks: { color: th.subTextColor }
+                        }
                     },
                     plugins: {
-                        legend: { display: true, labels: { color: '#fff', boxWidth: 12 } }
+                        legend: { display: true, labels: { color: th.textColor, boxWidth: 12 } }
                     }
                 }
             });
@@ -1528,6 +1556,7 @@
                 hourlyWeekdayChartInstance.destroy();
             }
 
+            const th = getChartThemeColors();
             const ctx = document.getElementById('hourlyWeekdayChart').getContext('2d');
             hourlyWeekdayChartInstance = new Chart(ctx, {
                 type: 'line',
@@ -1560,11 +1589,18 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     scales: {
-                        x: { grid: { display: false } },
-                        y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' } }
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: th.textColor }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: th.gridColor },
+                            ticks: { color: th.subTextColor }
+                        }
                     },
                     plugins: {
-                        legend: { display: true, labels: { color: '#fff', boxWidth: 12 } },
+                        legend: { display: true, labels: { color: th.textColor, boxWidth: 12 } },
                         tooltip: { mode: 'index', intersect: false }
                     },
                     interaction: { mode: 'nearest', axis: 'x', intersect: false }
@@ -1654,6 +1690,7 @@
 
             if (dailyChartInstance) dailyChartInstance.destroy();
 
+            const th = getChartThemeColors();
             const ctx = document.getElementById('dailyChart').getContext('2d');
             dailyChartInstance = new Chart(ctx, {
                 type: 'line',
@@ -1686,10 +1723,15 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     scales: {
-                        y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' } },
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: th.gridColor },
+                            ticks: { color: th.subTextColor }
+                        },
                         x: {
                             grid: { display: false },
                             ticks: {
+                                color: th.textColor,
                                 maxTicksLimit: 12,
                                 maxRotation: 0,
                                 autoSkip: true
@@ -1697,7 +1739,7 @@
                         }
                     },
                     plugins: {
-                        legend: { display: true, labels: { color: '#fff' } },
+                        legend: { display: true, labels: { color: th.textColor, boxWidth: 12 } },
                         tooltip: {
                             mode: 'index',
                             intersect: false,
