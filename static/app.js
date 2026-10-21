@@ -13,14 +13,22 @@
         let _eventsFetched = false;
 
         const AREA_ALIASES = {
+            '西新宿': ['西新宿', 'nishishinjuku'],
             '新宿': ['新宿', 'shinjuku'],
+            '茶屋町': ['茶屋町', 'chayamachi'],
+            '梅田': ['梅田', 'umeda'],
+            '大宮': ['大宮', 'omiya'],
             '渋谷': ['渋谷', 'shibuya'],
             '恵比寿': ['恵比寿', 'ebisu'],
             '上野': ['上野', 'ueno'],
             '六本木': ['六本木', 'roppongi'],
             '銀座': ['銀座', 'ginza'],
             '池袋': ['池袋', 'ikebukuro'],
-            '梅田': ['梅田', 'umeda'],
+            '町田': ['町田', 'machida'],
+            '横浜': ['横浜', 'yokohama'],
+            '千葉': ['千葉', 'chiba'],
+            '柏': ['柏', 'kashiwa'],
+            '錦糸町': ['錦糸町', 'kinshicho'],
             '難波': ['難波', 'なんば', 'namba'],
             '心斎橋': ['心斎橋', 'shinsaibashi'],
             '京都': ['京都', 'kyoto'],
@@ -31,14 +39,39 @@
             '松山': ['松山', 'matsuyama'],
             '札幌': ['札幌', 'sapporo'],
             '仙台': ['仙台', 'sendai'],
-            '名古屋': ['名古屋', '栄', 'nagoya', 'sakae'],
+            '名古屋': ['名古屋', '栄', '錦', 'nagoya', 'sakae', 'nishiki'],
+            '栄': ['栄', '名古屋', 'sakae', 'nagoya'],
+            '錦': ['錦', '名古屋', 'nishiki', 'nagoya'],
             '広島': ['広島', 'hiroshima'],
-            '岡山': ['岡山', 'okayama']
+            '岡山': ['岡山', 'okayama'],
+            '宇都宮': ['宇都宮', 'utsunomiya'],
+            '静岡': ['静岡', 'shizuoka'],
+            '浜松': ['浜松', 'hamamatsu']
+        };
+
+        const JIS_STORE_TO_AREAS = {
+            'JIS SHINJUKU': ['新宿', 'shinjuku'],
+            'JIS NISHISHINJUKU': ['西新宿', 'nishishinjuku'],
+            'JIS UMEDA': ['梅田', 'umeda'],
+            'JIS CHAYAMACHI': ['茶屋町', 'chayamachi'],
+            'JIS NAMBA': ['難波', 'なんば', 'namba'],
+            'JIS FUKUOKA': ['福岡', '天神', 'fukuoka', 'tenjin'],
+            'JIS SAPPORO': ['札幌', 'sapporo'],
+            'JIS OMIYA': ['大宮', 'omiya'],
+            'JIS KUMAMOTO': ['熊本', 'kumamoto'],
+            'JIS MATSUYAMA': ['松山', 'matsuyama']
         };
 
         function _storeMatchesArea(storeName, areaKeyword) {
+            const clean = String(storeName).toUpperCase().trim();
+            const ak = String(areaKeyword).toLowerCase().trim();
+
+            // Direct exact matching for JIS shops
+            if (JIS_STORE_TO_AREAS[clean]) {
+                return JIS_STORE_TO_AREAS[clean].includes(ak);
+            }
+
             const sn = String(storeName).toLowerCase();
-            const ak = String(areaKeyword).toLowerCase();
             if (sn.includes(ak)) return true;
             for (const [key, aliases] of Object.entries(AREA_ALIASES)) {
                 if (key === areaKeyword || aliases.includes(ak)) {
@@ -69,12 +102,13 @@
 
         function getEventsForStore(storeName) {
             if (!window.allEvents || window.allEvents.length === 0) return [];
-            const clean = String(storeName).toUpperCase();
+            const clean = String(storeName).toUpperCase().trim();
             const isJis = clean.includes('JIS');
             const isOlg = clean.includes('OLG') || clean.includes('ORIENTAL') || clean.includes('AG');
 
             return window.allEvents.filter(ev => {
                 if (isJis && ev.brand === 'JIS') {
+                    if (ev.store_name && ev.store_name.toUpperCase().trim() === clean) return true;
                     if (!ev.target_stores || ev.target_stores.length === 0) return true;
                     return ev.target_stores.some(area => _storeMatchesArea(storeName, area));
                 }
@@ -84,6 +118,12 @@
                 }
                 return false;
             });
+        }
+
+        // Returns only STORE-SPECIFIC events (excludes all-store / brand-wide events)
+        function getStoreSpecificEvents(storeName) {
+            const evs = getEventsForStore(storeName);
+            return evs.filter(e => e.target_stores && e.target_stores.length > 0 && e.target_label !== '全店共通' && e.target_label !== 'JIS全店');
         }
         const THEME_ORDER = ['default', 'list', 'flat', 'light'];
         const THEME_LABELS = {
@@ -609,8 +649,8 @@
                 ? `${brandInfo.code} ${baseName}`
                 : baseName;
 
-            // Display event badge if current store has active promotion
-            const matchedEvs = getEventsForStore(store.name);
+            // Display event badge ONLY if current store has store-specific promotion (not brand-wide)
+            const matchedEvs = getStoreSpecificEvents(store.name);
             if (matchedEvs && matchedEvs.length > 0) {
                 const eventBadge = document.createElement('span');
                 eventBadge.className = 'event-tag-badge';
@@ -1021,8 +1061,8 @@
                 }
             }
 
-            // Check if store has active events from Step 1 crawler
-            const evs = getEventsForStore(currentModalStoreName);
+            // Check if store has active events from Step 1 crawler (prioritize store-specific)
+            const evs = getStoreSpecificEvents(currentModalStoreName);
             let eventText = '';
             if (evs && evs.length > 0) {
                 const topEv = evs[0];
@@ -1082,14 +1122,14 @@
 
             if (preset === 'events') {
                 const eventStores = stores.filter(s => {
-                    const evs = getEventsForStore(s.name);
+                    const evs = getStoreSpecificEvents(s.name);
                     return evs && evs.length > 0;
                 }).sort((a, b) => (b.women - a.women) || (b.men - a.men));
 
                 if (eventStores.length > 0) {
                     list = eventStores.slice(0, 3);
-                    header = `🎉【${ts} 最新特典＆イベント】お得に楽しめるラウンジTOP3`;
-                    subnote = `今夜は限定特典や割引あり！お得に相席を楽しむならここ👇`;
+                    header = `🎉【${ts} 限定特典＆イベント】お得に楽しめるラウンジTOP3`;
+                    subnote = `今夜は各店限定特典や割引あり！お得に相席を楽しむならここ👇`;
                     tags = `#相席ナビ #相席ラウンジ #割引 #イベント #お得`;
                 } else {
                     list = stores.slice().sort((a, b) => (b.women - a.women) || (b.men - a.men)).slice(0, 3);
@@ -1167,7 +1207,7 @@
                 }
 
                 if (showEvents) {
-                    const matchedEvs = getEventsForStore(s.name);
+                    const matchedEvs = getStoreSpecificEvents(s.name);
                     if (matchedEvs && matchedEvs.length > 0) {
                         const topEv = matchedEvs[0];
                         lineStr += `\n   └ 📢 ${topEv.title}`;
@@ -1192,7 +1232,7 @@
 
         function openSnsModal(initialPreset) {
             const evStores = (window.lastData && window.lastData.ranking) 
-                ? window.lastData.ranking.filter(s => getEventsForStore(s.name).length > 0) 
+                ? window.lastData.ranking.filter(s => getStoreSpecificEvents(s.name).length > 0) 
                 : [];
             let defaultPreset = initialPreset;
             if (!defaultPreset) {
@@ -1319,7 +1359,9 @@
             const list = document.getElementById('modal-event-list');
             if (!section || !list) return;
 
-            const evs = getEventsForStore(storeName);
+            // Prioritize store-specific events (fallback to brand events if none)
+            const specificEvs = getStoreSpecificEvents(storeName);
+            const evs = specificEvs.length > 0 ? specificEvs : getEventsForStore(storeName);
             if (!evs || evs.length === 0) {
                 section.classList.add('hidden');
                 list.innerHTML = '';
@@ -1333,7 +1375,7 @@
                 if (ev.banner_url) {
                     bannerHtml = `
                         <div class="event-banner-wrap">
-                            <img src="${escapeHtml(ev.banner_url)}" alt="${escapeHtml(ev.title)}" class="event-banner-img" loading="lazy" onerror="this.closest('.event-item-card').classList.remove('has-banner'); this.parentElement.remove();">
+                            <img src="${escapeHtml(ev.banner_url)}" alt="${escapeHtml(ev.title)}" class="event-banner-img" loading="lazy" decoding="async" onerror="this.closest('.event-item-card').classList.remove('has-banner'); this.parentElement.remove();">
                         </div>
                     `;
                 }
@@ -1394,7 +1436,7 @@
                 if (ev.banner_url) {
                     bannerHtml = `
                         <div class="event-banner-wrap">
-                            <img src="${escapeHtml(ev.banner_url)}" alt="${escapeHtml(ev.title)}" class="event-banner-img" loading="lazy" onerror="this.closest('.event-item-card').classList.remove('has-banner'); this.parentElement.remove();">
+                            <img src="${escapeHtml(ev.banner_url)}" alt="${escapeHtml(ev.title)}" class="event-banner-img" loading="lazy" decoding="async" onerror="this.closest('.event-item-card').classList.remove('has-banner'); this.parentElement.remove();">
                         </div>
                     `;
                 }

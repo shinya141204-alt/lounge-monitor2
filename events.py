@@ -30,8 +30,11 @@ HEADERS = {
 }
 
 AREA_ALIASES = {
-    '新宿': ['新宿', 'shinjuku', '西新宿', 'nishishinjuku'],
-    '西新宿': ['西新宿', 'nishishinjuku', '新宿', 'shinjuku'],
+    '西新宿': ['西新宿', 'nishishinjuku'],
+    '新宿': ['新宿', 'shinjuku'],
+    '茶屋町': ['茶屋町', 'chayamachi'],
+    '梅田': ['梅田', 'umeda'],
+    '大宮': ['大宮', 'omiya'],
     '渋谷': ['渋谷', 'shibuya'],
     '恵比寿': ['恵比寿', 'ebisu'],
     '上野': ['上野', 'ueno'],
@@ -40,12 +43,9 @@ AREA_ALIASES = {
     '池袋': ['池袋', 'ikebukuro'],
     '町田': ['町田', 'machida'],
     '横浜': ['横浜', 'yokohama'],
-    '大宮': ['大宮', 'omiya'],
     '千葉': ['千葉', 'chiba'],
     '柏': ['柏', 'kashiwa'],
     '錦糸町': ['錦糸町', 'kinshicho'],
-    '梅田': ['梅田', 'umeda', '茶屋町', 'chayamachi'],
-    '茶屋町': ['茶屋町', 'chayamachi', '梅田', 'umeda'],
     '難波': ['難波', 'なんば', 'namba'],
     '心斎橋': ['心斎橋', 'shinsaibashi'],
     '京都': ['京都', 'kyoto'],
@@ -64,6 +64,19 @@ AREA_ALIASES = {
     '宇都宮': ['宇都宮', 'utsunomiya'],
     '静岡': ['静岡', 'shizuoka'],
     '浜松': ['浜松', 'hamamatsu']
+}
+
+JIS_STORE_TO_AREAS = {
+    'JIS SHINJUKU': {'新宿', 'shinjuku'},
+    'JIS NISHISHINJUKU': {'西新宿', 'nishishinjuku'},
+    'JIS UMEDA': {'梅田', 'umeda'},
+    'JIS CHAYAMACHI': {'茶屋町', 'chayamachi'},
+    'JIS NAMBA': {'難波', 'なんば', 'namba'},
+    'JIS FUKUOKA': {'福岡', '天神', 'fukuoka', 'tenjin'},
+    'JIS SAPPORO': {'札幌', 'sapporo'},
+    'JIS OMIYA': {'大宮', 'omiya'},
+    'JIS KUMAMOTO': {'熊本', 'kumamoto'},
+    'JIS MATSUYAMA': {'松山', 'matsuyama'}
 }
 
 JIS_SHOPS = [
@@ -99,8 +112,14 @@ def _classify_tag(title: str):
 
 
 def _store_matches_area(store_name: str, area_keyword: str) -> bool:
-    sn = store_name.lower()
+    clean_store = store_name.upper()
     ak = area_keyword.lower()
+
+    # Specialized exact matching for JIS shops
+    if clean_store in JIS_STORE_TO_AREAS:
+        return ak in JIS_STORE_TO_AREAS[clean_store]
+
+    sn = store_name.lower()
     if ak in sn:
         return True
     for key, aliases in AREA_ALIASES.items():
@@ -376,11 +395,12 @@ def crawl_jis_global_events():
 
             target_stores = []
             target_label = 'JIS全店'
-            jis_areas = ['新宿', '難波', 'なんば', '梅田', '福岡', '天神', '熊本', '松山', '札幌']
+            jis_areas = ['西新宿', '新宿', '茶屋町', '梅田', '大宮', '難波', 'なんば', '福岡', '天神', '熊本', '松山', '札幌']
             for area in jis_areas:
                 if area in title:
                     target_stores.append(area)
                     target_label = f'JIS {area}限定'
+                    break
 
             tag_label, tag_cls = _classify_tag(title)
             event_id = f"jis-global-{idx}-{re.sub(r'[^0-9a-zA-Z]', '', date_str)}"
@@ -454,7 +474,7 @@ def fetch_all_events(force_refresh: bool = False):
     return _events_memory_cache.get('events', [])
 
 
-def get_events_for_store(store_name: str):
+def get_events_for_store(store_name: str, store_only: bool = False):
     """Filter events relevant to a specific store (prioritizes store-specific banners and campaigns)."""
     all_events = fetch_all_events()
     matched = []
@@ -467,17 +487,24 @@ def get_events_for_store(store_name: str):
     for ev in all_events:
         ev_brand = ev.get('brand', '')
         if is_jis and ev_brand == 'JIS':
+            # Direct store_name match
+            if ev.get('store_name') and ev.get('store_name').upper() == clean_name:
+                matched.append(ev)
+                continue
+
             target_stores = ev.get('target_stores', [])
             if not target_stores:
-                global_matched.append(ev)
+                if not store_only:
+                    global_matched.append(ev)
             elif any(_store_matches_area(store_name, area) for area in target_stores):
                 matched.append(ev)
         elif is_olg and ev_brand == 'OLG':
             target_stores = ev.get('target_stores', [])
             if not target_stores:
-                global_matched.append(ev)
+                if not store_only:
+                    global_matched.append(ev)
             elif any(_store_matches_area(store_name, area) for area in target_stores):
                 matched.append(ev)
 
     # Return store-specific events first, then brand-wide events
-    return matched + global_matched
+    return matched if store_only else (matched + global_matched)
