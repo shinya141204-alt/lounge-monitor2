@@ -456,6 +456,7 @@
             <p style="text-align: center; color: var(--text-secondary); font-size: 0.8rem; margin-top: 0; margin-bottom: 12px;">
                 オリエンタルラウンジ・ag・JISの最新フェア・特典情報
             </p>
+            {% if not is_staff %}
             <div style="text-align: center; margin-bottom: 14px;">
                 <button type="button" class="staff-action-pill" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 16px; font-size: 0.82rem; background: linear-gradient(135deg, rgba(236,72,153,0.2), rgba(59,130,246,0.2)); border: 1px solid rgba(236,72,153,0.4); cursor: pointer;" onclick="closeEventsModal(); openSnsModal('events');">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -464,6 +465,7 @@
                     <span>📣 イベント×混雑のSNS速報を作成する</span>
                 </button>
             </div>
+            {% endif %}
 
             <!-- Filter Tabs for Events Modal -->
             <div class="events-category-tabs" id="events-category-tabs">
@@ -637,12 +639,6 @@
                                 <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
                             </svg>
                             <span>🎉 イベント速報（全社キャンペーン）</span>
-                        </button>
-                        <button type="button" class="staff-action-pill" onclick="openSnsModal('events')">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                <circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
-                            </svg>
-                            <span>📣 SNS集客速報（X・LINE投稿文作成）</span>
                         </button>
                         <button type="button" class="staff-action-pill staff-event-toggle-pill" id="staff-toggle-events-btn" onclick="toggleStaffEvents()" title="社内画面のイベントバッジ・特典表示をON/OFF切替">
                             <span id="staff-toggle-events-icon">🔒</span>
@@ -926,7 +922,7 @@
             isStaff: {{ 'true' if is_staff else 'false' }}
         };
     </script>
-    <script src="/static/app.js?v=20261022_9" defer></script>
+    <script src="/static/app.js?v=20261022_10" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
