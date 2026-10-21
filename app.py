@@ -110,6 +110,16 @@ def start_scheduler():
                     tips_poster.run_scheduled_tip_post(slot_label="18:00")
                 scheduler.add_job(func=_tip_12, trigger="cron", hour=3, minute=0)
                 scheduler.add_job(func=_tip_18, trigger="cron", hour=9, minute=0)
+                # Daily note promotion check at 13:00 and 20:30 JST (04:00 and 11:30 UTC)
+                def _note_check_job():
+                    try:
+                        import note_poster
+                        note_poster.check_and_post_new_note()
+                    except Exception as err:
+                        import logging
+                        logging.error(f"Scheduled note promotion check failed: {err}")
+                scheduler.add_job(func=_note_check_job, trigger="cron", hour=4, minute=0)
+                scheduler.add_job(func=_note_check_job, trigger="cron", hour=11, minute=30)
                 # Daily events crawler at 10:00 and 17:00 JST (01:00 and 08:00 UTC)
                 def _crawl_events_job():
                     try:
@@ -792,6 +802,17 @@ def trigger_x_tip_endpoint():
     idx = request.args.get('idx', type=int)
     import tips_poster
     res = tips_poster.run_scheduled_tip_post(slot_label=slot, force=force, tip_index=idx)
+    return jsonify(res)
+
+@app.route('/api/trigger-note-share')
+def trigger_note_share_endpoint():
+    """Endpoint to test or externally trigger note promotion posting."""
+    if request.args.get('secret') != 'lounge2026':
+        return jsonify({'error': 'Unauthorized'}), 401
+    force = request.args.get('force', '0') == '1'
+    idx = request.args.get('idx', 0, type=int)
+    import note_poster
+    res = note_poster.check_and_post_new_note(force=force, article_index=idx)
     return jsonify(res)
 
 if __name__ == '__main__':
