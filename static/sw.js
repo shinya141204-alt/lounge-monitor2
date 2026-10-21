@@ -1,8 +1,8 @@
-const CACHE_NAME = 'aiseki-navi-v4';
+const CACHE_NAME = 'aiseki-navi-v5';
 const ASSETS_TO_CACHE = [
   '/',
-  '/static/style.css?v=20261021_3',
-  '/static/app.js?v=20261021_2',
+  '/static/style.css?v=20261021_4',
+  '/static/app.js?v=20261021_4',
   '/static/manifest.json?v=2',
   '/static/icon-192.png?v=2',
   '/static/icon-512.png?v=2',
@@ -43,6 +43,11 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+  // Always bypass Service Worker for staff monitor and auth routes
+  if (event.request.url.includes('/staff')) {
+    return;
+  }
+
   // Always fetch fresh data for API calls (never cache live rankings)
   if (event.request.url.includes('/api/')) {
     event.respondWith(

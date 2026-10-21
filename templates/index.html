@@ -91,7 +91,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/style.css?v=20261021_3">
+    <link rel="stylesheet" href="/static/style.css?v=20261021_4">
+    <!-- Chart.js loaded with defer: does not block initial paint, ready by the time modal opens -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
     <!-- Preload editorial thumbnails for instantaneous modal display -->
     <link rel="preload" as="image" type="image/webp" href="/static/thumb-weekday.webp">
     <link rel="preload" as="image" type="image/webp" href="/static/thumb-manual.webp">
@@ -542,6 +544,30 @@
                     <button class="filter-btn" data-region="Korea">韓国</button>
                 </div>
 
+                {% if is_staff %}
+                <!-- Staff Dedicated Analytics Dashboard Quick Bar -->
+                <div class="staff-analytics-quickbar">
+                    <div class="staff-quickbar-header">
+                        <span class="staff-quickbar-badge">📊 社内専用 分析ダッシュボード</span>
+                        <span class="staff-quickbar-hint">※各店舗カードをタップすると曜日・時間帯別グラフと詳細ログが開きます</span>
+                    </div>
+                    <div class="staff-quickbar-actions">
+                        <button type="button" class="staff-action-pill" onclick="openReportModal()">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>
+                            </svg>
+                            <span>📅 週間レポート（全店舗の集計・ピークランキング）</span>
+                        </button>
+                        <button type="button" class="staff-action-pill" onclick="openComparisonModal()">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path><path d="M22 12A10 10 0 0 0 12 2v10z"></path>
+                            </svg>
+                            <span>📊 系列・競合比較（リアルタイム合計）</span>
+                        </button>
+                    </div>
+                </div>
+                {% endif %}
+
                 {% if not is_staff %}
                 <!-- Editorial Column Highlight Banner Strip (Opens Articles Selector Modal) -->
                 <div class="column-banner-wrapper">
@@ -814,12 +840,12 @@
             isStaff: {{ 'true' if is_staff else 'false' }}
         };
     </script>
-    <script src="/static/app.js?v=20261021_3" defer></script>
+    <script src="/static/app.js?v=20261021_4" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js?v=4')
+                navigator.serviceWorker.register('/sw.js?v=5')
                     .then(reg => {
                         reg.update();
                     })

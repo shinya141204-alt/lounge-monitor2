@@ -1084,7 +1084,7 @@
             if (cached && (Date.now() - cached.fetchedAt < CLIENT_CACHE_TTL)) {
                 title.textContent = bInfo.fullDisplayTitle;
                 currentAnalysisData = cached.data;
-                renderCharts(cached.data);
+                await renderCharts(cached.data);
                 return;
             }
 
@@ -1104,7 +1104,7 @@
                 clientAnalysisCache[storeName] = { data: data, fetchedAt: Date.now() };
                 title.textContent = bInfo.fullDisplayTitle;
                 currentAnalysisData = data;
-                renderCharts(data);
+                await renderCharts(data);
 
             } catch (e) {
                 console.error(e);
@@ -1152,22 +1152,48 @@
             }
         });
 
-        // --- On-Demand Dynamic Chart.js Loader (Zero blocking for initial page render) ---
+        // --- Robust Chart.js Loader (handles defer script in head or on-demand fetch) ---
         let _chartJsLoadingPromise = null;
         function loadChartJs() {
             if (window.Chart) return Promise.resolve(window.Chart);
             if (!_chartJsLoadingPromise) {
                 _chartJsLoadingPromise = new Promise((resolve, reject) => {
-                    const script = document.createElement('script');
-                    script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
-                    script.async = true;
-                    script.onload = () => resolve(window.Chart);
-                    script.onerror = (err) => {
-                        _chartJsLoadingPromise = null;
-                        console.error('Failed to load Chart.js:', err);
-                        reject(err);
-                    };
-                    document.head.appendChild(script);
+                    const existing = document.querySelector('script[src*="chart.js"]');
+                    if (existing) {
+                        let checks = 0;
+                        const interval = setInterval(() => {
+                            if (window.Chart) {
+                                clearInterval(interval);
+                                resolve(window.Chart);
+                            } else if (++checks > 60) { // 3.0s timeout
+                                clearInterval(interval);
+                                injectScript();
+                            }
+                        }, 50);
+                        existing.addEventListener('load', () => {
+                            clearInterval(interval);
+                            resolve(window.Chart);
+                        }, { once: true });
+                        existing.addEventListener('error', () => {
+                            clearInterval(interval);
+                            injectScript();
+                        }, { once: true });
+                    } else {
+                        injectScript();
+                    }
+
+                    function injectScript() {
+                        const script = document.createElement('script');
+                        script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+                        script.async = true;
+                        script.onload = () => resolve(window.Chart);
+                        script.onerror = (err) => {
+                            _chartJsLoadingPromise = null;
+                            console.error('Failed to load Chart.js:', err);
+                            reject(err);
+                        };
+                        document.head.appendChild(script);
+                    }
                 });
             }
             return _chartJsLoadingPromise;
@@ -1175,9 +1201,9 @@
 
         // Background prefetch during browser idle time (after page is interactive)
         if ('requestIdleCallback' in window) {
-            window.requestIdleCallback(() => loadChartJs(), { timeout: 3500 });
+            window.requestIdleCallback(() => loadChartJs(), { timeout: 2000 });
         } else {
-            setTimeout(loadChartJs, 2500);
+            setTimeout(loadChartJs, 1500);
         }
 
         // --- Comparison Modal Logic ---
@@ -1189,7 +1215,15 @@
             const modal = document.getElementById('comparison-modal');
             modal.classList.remove('hidden');
 
-            await loadChartJs();
+            try {
+                await loadChartJs();
+            } catch (err) {
+                console.error(err);
+            }
+            if (!window.Chart) {
+                console.warn('Chart.js not available for comparison chart');
+                return;
+            }
 
             const brandTotals = {};
             let storesToCompare = window.lastData.ranking;
@@ -1392,20 +1426,28 @@
         }
 
         async function renderCharts(data) {
-            await loadChartJs();
             renderLiveComparisonBanner(data);
-            renderWeekdayChart(data);
-
-            // Auto-select current business weekday for hourly chart
-            const now = new Date();
-            if (now.getHours() <= 6) now.setDate(now.getDate() - 1);
-            const dayKeys = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-            selectHourlyWeekday(dayKeys[now.getDay()]);
-
             generateDateButtons(data);
+
+            try {
+                await loadChartJs();
+            } catch (err) {
+                console.error('Failed to load Chart.js:', err);
+            }
+
+            if (window.Chart) {
+                renderWeekdayChart(data);
+
+                // Auto-select current business weekday for hourly chart
+                const now = new Date();
+                if (now.getHours() <= 6) now.setDate(now.getDate() - 1);
+                const dayKeys = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                selectHourlyWeekday(dayKeys[now.getDay()]);
+            }
         }
 
         function renderWeekdayChart(data) {
+            if (!window.Chart) return;
             if (weekdayAnalysisChartInstance) {
                 weekdayAnalysisChartInstance.destroy();
             }
@@ -1462,6 +1504,8 @@
             document.querySelectorAll('#weekday-filter-buttons .chart-filter-btn').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.day === dayKey);
             });
+
+            if (!window.Chart) return;
 
             // Business hours order: 18:00 -> 23:00, 00:00 -> 06:00
             const businessHours = [18, 19, 20, 21, 22, 23, 0, 1, 2, 3, 4, 5, 6];
@@ -1581,13 +1625,20 @@
             }
         }
 
-        function showDailyChart(dateStr, data, evt) {
+        async function showDailyChart(dateStr, data, evt) {
             if (evt && evt.target) {
                 document.querySelectorAll('.date-btn').forEach(b => b.classList.remove('active'));
                 evt.target.closest('.date-btn').classList.add('active');
             }
 
             document.getElementById('daily-chart-container').classList.remove('hidden');
+
+            try {
+                if (!window.Chart) await loadChartJs();
+            } catch (e) {
+                console.error(e);
+            }
+            if (!window.Chart) return;
 
             // Filter data for selected date
             const womenData = (data.recent_trend || []).filter(d => d.x.startsWith(dateStr));
