@@ -125,6 +125,68 @@
             const evs = getEventsForStore(storeName);
             return evs.filter(e => e.target_stores && e.target_stores.length > 0 && e.target_label !== '全店共通' && e.target_label !== 'JIS全店');
         }
+
+        // --- Staff Events Visibility Control ---
+        // In staff mode, events are hidden by default to prioritize analytics and operations
+        let staffHideEvents = IS_STAFF ? (localStorage.getItem('olg_staff_hide_events') !== 'false') : false;
+
+        function shouldShowEvents() {
+            if (IS_STAFF && staffHideEvents) return false;
+            return true;
+        }
+
+        function toggleStaffEvents() {
+            if (!IS_STAFF) return;
+            staffHideEvents = !staffHideEvents;
+            try {
+                localStorage.setItem('olg_staff_hide_events', staffHideEvents ? 'true' : 'false');
+            } catch (e) {}
+            applyStaffEventsState();
+            if (typeof showRefreshToast === 'function') {
+                showRefreshToast(staffHideEvents ? '🔒 イベント非表示に設定しました（業務集中）' : '🎁 イベント表示をONにしました');
+            }
+            if (window.lastData && window.lastData.ranking) {
+                updateUI(window.lastData);
+            }
+        }
+
+        function applyStaffEventsState() {
+            if (!IS_STAFF) return;
+            document.body.classList.toggle('staff-events-hidden', staffHideEvents);
+
+            const toggleBtn = document.getElementById('staff-toggle-events-btn');
+            const toggleIcon = document.getElementById('staff-toggle-events-icon');
+            const toggleLabel = document.getElementById('staff-toggle-events-label');
+            const headerEventsBtn = document.getElementById('events-btn');
+
+            if (headerEventsBtn) {
+                headerEventsBtn.style.display = staffHideEvents ? 'none' : '';
+            }
+
+            if (toggleBtn && toggleLabel) {
+                if (staffHideEvents) {
+                    toggleBtn.classList.remove('active');
+                    if (toggleIcon) toggleIcon.textContent = '🔒';
+                    toggleLabel.textContent = 'イベント非表示: ON（業務集中モード）';
+                    toggleBtn.style.background = 'rgba(255, 255, 255, 0.06)';
+                    toggleBtn.style.borderColor = 'rgba(255, 255, 255, 0.18)';
+                    toggleBtn.style.color = 'var(--text-secondary)';
+                } else {
+                    toggleBtn.classList.add('active');
+                    if (toggleIcon) toggleIcon.textContent = '🎁';
+                    toggleLabel.textContent = 'イベント表示中（タップで非表示切替）';
+                    toggleBtn.style.background = 'rgba(236, 72, 153, 0.18)';
+                    toggleBtn.style.borderColor = 'rgba(236, 72, 153, 0.45)';
+                    toggleBtn.style.color = '#f472b6';
+                }
+            }
+        }
+
+        // Apply staff events state immediately on load
+        if (IS_STAFF) {
+            applyStaffEventsState();
+            document.addEventListener('DOMContentLoaded', applyStaffEventsState);
+        }
         const THEME_ORDER = ['default', 'list', 'flat', 'light'];
         const THEME_LABELS = {
             default: '✨ 通常モード（ネオン）',
@@ -649,15 +711,17 @@
                 ? `${brandInfo.code} ${baseName}`
                 : baseName;
 
-            // Display event badge ONLY if current store has store-specific promotion (not brand-wide)
-            const matchedEvs = getStoreSpecificEvents(store.name);
-            if (matchedEvs && matchedEvs.length > 0) {
-                const eventBadge = document.createElement('span');
-                eventBadge.className = 'event-tag-badge';
-                const hasDiscount = matchedEvs.some(e => e.tag === '割引・特典');
-                eventBadge.innerHTML = hasDiscount ? '🎉 特典' : '📢 フェア';
-                eventBadge.title = matchedEvs[0].title;
-                storeNameEl.appendChild(eventBadge);
+            // Display event badge ONLY if events are visible and current store has store-specific promotion
+            if (shouldShowEvents()) {
+                const matchedEvs = getStoreSpecificEvents(store.name);
+                if (matchedEvs && matchedEvs.length > 0) {
+                    const eventBadge = document.createElement('span');
+                    eventBadge.className = 'event-tag-badge';
+                    const hasDiscount = matchedEvs.some(e => e.tag === '割引・特典');
+                    eventBadge.innerHTML = hasDiscount ? '🎉 特典' : '📢 フェア';
+                    eventBadge.title = matchedEvs[0].title;
+                    storeNameEl.appendChild(eventBadge);
+                }
             }
 
             const ladiesCount = store.women || 0;
@@ -1358,6 +1422,13 @@
             const section = document.getElementById('modal-event-section');
             const list = document.getElementById('modal-event-list');
             if (!section || !list) return;
+
+            // In staff mode with events disabled, hide event section completely
+            if (!shouldShowEvents()) {
+                section.classList.add('hidden');
+                list.innerHTML = '';
+                return;
+            }
 
             // Prioritize store-specific events (fallback to brand events if none)
             const specificEvs = getStoreSpecificEvents(storeName);

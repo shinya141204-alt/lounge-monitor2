@@ -3272,6 +3272,12 @@ body.staff-mode .night-care-banner {
     display: none !important;
 }
 
+body.staff-events-hidden .event-tag-badge,
+body.staff-events-hidden #modal-event-section,
+body.staff-events-hidden #events-btn {
+    display: none !important;
+}
+
 /* --- Staff Dedicated Analytics Dashboard Quick Bar --- */
 .staff-analytics-quickbar {
     background: linear-gradient(135deg, rgba(30, 41, 59, 0.85) 0%, rgba(15, 23, 42, 0.95) 100%);

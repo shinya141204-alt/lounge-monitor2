@@ -91,7 +91,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/style.css?v=20261022_4">
+    <link rel="stylesheet" href="/static/style.css?v=20261022_5">
     <!-- Local Chart.js: self-hosted (zero CDN blocking, works 100% offline & with adblockers) -->
     <script src="/static/chart.min.js?v=20261021" defer></script>
     <!-- Preload editorial thumbnails for instantaneous modal display -->
@@ -644,6 +644,10 @@
                             </svg>
                             <span>📣 SNS集客速報（X・LINE投稿文作成）</span>
                         </button>
+                        <button type="button" class="staff-action-pill staff-event-toggle-pill" id="staff-toggle-events-btn" onclick="toggleStaffEvents()" title="社内画面のイベントバッジ・特典表示をON/OFF切替">
+                            <span id="staff-toggle-events-icon">🔒</span>
+                            <span id="staff-toggle-events-label">イベント非表示: ON（業務集中モード）</span>
+                        </button>
                     </div>
                 </div>
                 {% endif %}
@@ -922,7 +926,7 @@
             isStaff: {{ 'true' if is_staff else 'false' }}
         };
     </script>
-    <script src="/static/app.js?v=20261022_7" defer></script>
+    <script src="/static/app.js?v=20261022_8" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
