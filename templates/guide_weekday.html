@@ -35,16 +35,57 @@
     <link rel="stylesheet" href="/static/style.css">
 
     <style>
-        .article-container {
-            max-width: 840px;
-            margin: 0 auto;
-            padding: 20px 16px 60px 16px;
+        body {
+            display: block !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background-color: #0a0a0f !important;
+            color: #ffffff !important;
+            overflow-x: hidden !important;
         }
 
-        .article-header {
-            margin-bottom: 28px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        .article-container {
+            max-width: 800px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 24px 16px 80px 16px;
+            box-sizing: border-box;
+        }
+
+        .top-nav-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 16px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .nav-logo {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #ffffff;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .nav-back-btn {
+            font-size: 0.82rem;
+            color: #38bdf8;
+            text-decoration: none;
+            padding: 6px 14px;
+            border-radius: 999px;
+            background: rgba(56, 189, 248, 0.12);
+            border: 1px solid rgba(56, 189, 248, 0.25);
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .nav-back-btn:hover {
+            background: rgba(56, 189, 248, 0.25);
         }
 
         .breadcrumb {
@@ -57,12 +98,14 @@
         }
 
         .breadcrumb a {
-            color: #f472b6;
+            color: #38bdf8;
             text-decoration: none;
         }
 
-        .breadcrumb a:hover {
-            text-decoration: underline;
+        .article-header {
+            margin-bottom: 28px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .article-badge-row {
@@ -89,7 +132,7 @@
         }
 
         .article-title {
-            font-size: 1.65rem;
+            font-size: 1.55rem;
             font-weight: 800;
             line-height: 1.45;
             color: #ffffff;
@@ -99,12 +142,12 @@
 
         @media (max-width: 600px) {
             .article-title {
-                font-size: 1.35rem;
+                font-size: 1.3rem;
             }
         }
 
         .article-lead {
-            font-size: 0.96rem;
+            font-size: 0.94rem;
             line-height: 1.8;
             color: #cbd5e1;
             background: rgba(255, 255, 255, 0.03);
@@ -115,7 +158,7 @@
         }
 
         .article-toc {
-            background: rgba(15, 23, 42, 0.7);
+            background: rgba(15, 23, 42, 0.75);
             border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 12px;
             padding: 18px 20px;
@@ -151,7 +194,7 @@
         }
 
         .article-body h2 {
-            font-size: 1.35rem;
+            font-size: 1.3rem;
             color: #ffffff;
             margin: 40px 0 16px 0;
             padding-bottom: 10px;
@@ -162,7 +205,7 @@
         }
 
         .article-body h3 {
-            font-size: 1.12rem;
+            font-size: 1.1rem;
             color: #7dd3fc;
             margin: 28px 0 12px 0;
         }
@@ -194,7 +237,7 @@
         }
 
         .article-affiliate-card {
-            background: rgba(15, 23, 42, 0.75);
+            background: rgba(15, 23, 42, 0.85);
             border: 1px solid rgba(255, 255, 255, 0.12);
             border-radius: 14px;
             padding: 20px;
@@ -306,25 +349,46 @@
             text-decoration: none;
             box-shadow: 0 4px 18px rgba(56, 189, 248, 0.45);
         }
+
+        .article-footer {
+            margin-top: 50px;
+            padding-top: 24px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+        }
+
+        .article-footer p {
+            font-size: 0.78rem;
+            color: #94a3b8;
+            margin-bottom: 12px;
+        }
+
+        .article-footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            font-size: 0.8rem;
+            flex-wrap: wrap;
+        }
+
+        .article-footer-links a {
+            color: #38bdf8;
+            text-decoration: none;
+        }
     </style>
 </head>
 
 <body>
-    <!-- Global Header -->
-    <header class="app-header">
-        <div class="logo-wrap">
-            <a href="/" style="text-decoration: none; color: inherit; display: flex; align-items: center; gap: 8px;">
-                <span class="logo-icon">🍸</span>
-                <span class="logo-text">相席ナビ</span>
-            </a>
-            <span class="logo-sub">公式攻略コラム</span>
-        </div>
-        <div class="header-right">
-            <a href="/" class="header-btn" style="text-decoration: none; padding: 6px 14px; background: rgba(255,255,255,0.08); border-radius: 999px; font-size: 0.82rem; color: #cbd5e1;">← 人数ランキングへ</a>
-        </div>
-    </header>
-
     <div class="article-container">
+        <!-- Top Nav Bar -->
+        <div class="top-nav-bar">
+            <a href="/" class="nav-logo">
+                <span>🍸</span>
+                <span>相席ナビ</span>
+            </a>
+            <a href="/" class="nav-back-btn">← 人数ランキングへ</a>
+        </div>
+
         <!-- Breadcrumb -->
         <nav class="breadcrumb">
             <a href="/">TOP</a>
@@ -383,7 +447,7 @@
 
             <h2 id="section-2">第2章：データが証明！「水曜・木曜20時」が最強の勝ち筋である理由</h2>
             <p>
-                一方で、週の折り返しである水曜日や木曜日の夜（20:00〜22:00）には、週末にはない**「男性にとっての圧倒的ボーナス環境」**が出現します。
+                一方で、週の折り返しである水曜日や木曜日の夜（20:00〜22:00）には、週末にはない<strong>「男性にとっての圧倒的ボーナス環境」</strong>が出現します。
             </p>
             <h3>① 男性の入店待ちが「ほぼゼロ」で即相席できる</h3>
             <p>
@@ -404,7 +468,7 @@
                 平日の20時〜22時に相席ラウンジにいる女性は、週末の「朝まで騒ぎたいパリピ女子」とは客層が明確に異なります。
             </p>
             <p>
-                主に**「丸の内・新宿・渋谷勤務のOL」「看護師・医療系」「美容師・アパレル系」**など、お仕事帰りに同僚や友人と2人で来店する真面目な社会人女性が中心です。
+                主に<strong>「丸の内・新宿・渋谷勤務のOL」「看護師・医療系」「美容師・アパレル系」</strong>など、お仕事帰りに同僚や友人と2人で来店する真面目な社会人女性が中心です。
             </p>
             <div class="article-highlight-box">
                 <h4>平日女性のリアルな心理</h4>
@@ -412,6 +476,7 @@
                     「仕事帰りに美味しいご飯とお酒を軽く楽しみたい」<br>
                     「週末は混むから、落ち着いて会話できる平日に来た」<br>
                     「明日も仕事だから、深酒せず23時前には帰りたい」
+                </p>
             </div>
             <p>
                 つまり、<strong>「落ち着いた大人の会話」ができる男性が圧倒的にモテる環境</strong>が整っています。チャラチャラしたノリではなく、お互いの仕事の愚痴や週末の過ごし方などをリラックスして話すだけで、自然と「今度休日にランチでも行きましょう」とLINE交換につながりやすいのです。
@@ -468,7 +533,7 @@
 
             <h2 id="section-5">第5章：相席ナビの「曜日×時間帯グラフ」で平日穴場店舗を見つける方法</h2>
             <p>
-                平日に相席ラウンジへ行く際は、必ず出発前に**「相席ナビ」**を開いてください。
+                平日に相席ラウンジへ行く際は、必ず出発前に<strong>『相席ナビ』</strong>を開いてください。
             </p>
             <p>
                 相席ナビのトップ画面で各店舗のカードをタップすると、<strong>「その店舗の過去の曜日別・時間帯別の混雑傾向グラフ」</strong>が表示されます。
@@ -500,17 +565,19 @@
                 <a href="/" class="live-tool-btn">🔥 今すぐランキングを見る ›</a>
             </div>
         </div>
-    </div>
 
-    <!-- Global Footer -->
-    <footer class="app-footer" style="text-align: center; padding: 30px 16px; border-top: 1px solid rgba(255,255,255,0.08); font-size: 0.78rem; color: #64748b;">
-        <p>© 2026 相席ナビ (AISEKI NAVI) All rights reserved.</p>
-        <p style="margin-top: 6px;">
-            <a href="/" style="color: #94a3b8; text-decoration: none; margin: 0 8px;">TOP人数ランキング</a> |
-            <a href="/guide" style="color: #94a3b8; text-decoration: none; margin: 0 8px;">完全攻略マニュアル</a> |
-            <a href="/guide/weekday-strategy" style="color: #94a3b8; text-decoration: none; margin: 0 8px;">平日の立ち回り</a>
-        </p>
-    </footer>
+        <!-- Article Footer -->
+        <footer class="article-footer">
+            <p>© 2026 相席ナビ (AISEKI NAVI) All rights reserved.</p>
+            <div class="article-footer-links">
+                <a href="/">TOP人数ランキング</a>
+                <span style="color: #64748b;">|</span>
+                <a href="/guide">総合攻略マニュアル</a>
+                <span style="color: #64748b;">|</span>
+                <a href="/guide/weekday-strategy">平日攻略コラム</a>
+            </div>
+        </footer>
+    </div>
 </body>
 
 </html>
