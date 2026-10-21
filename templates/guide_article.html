@@ -302,51 +302,52 @@
             font-weight: 900;
         }
 
-        .aff-banner-cta-row {
+        .aff-action-box {
             display: flex;
+            flex-direction: column;
             align-items: center;
-            justify-content: space-between;
-            gap: 16px;
-            flex-wrap: wrap;
-            margin-top: 6px;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 14px;
             padding-top: 14px;
             border-top: 1px solid rgba(255, 255, 255, 0.08);
-        }
-
-        .aff-banner-wrap {
-            line-height: 0;
-        }
-
-        .aff-banner-wrap img {
-            border-radius: 8px;
-            max-width: 100%;
-            height: auto;
+            text-align: center;
         }
 
         .aff-cta-btn {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 6px;
-            padding: 12px 24px;
+            gap: 8px;
+            padding: 13px 28px;
             border-radius: 999px;
             background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);
             color: #fff !important;
             text-decoration: none;
             font-weight: 700;
-            font-size: 0.92rem;
-            box-shadow: 0 4px 14px rgba(236, 72, 153, 0.35);
+            font-size: 0.95rem;
+            letter-spacing: 0.02em;
+            box-shadow: 0 4px 16px rgba(236, 72, 153, 0.38);
             transition: all 0.2s ease;
-            white-space: nowrap;
             width: 100%;
-            max-width: 340px;
-            margin: 6px auto 0 auto;
+            max-width: 360px;
         }
 
         .aff-cta-btn:hover {
             filter: brightness(1.1);
             transform: scale(1.02);
-            box-shadow: 0 6px 20px rgba(236, 72, 153, 0.5);
+            box-shadow: 0 6px 22px rgba(236, 72, 153, 0.55);
+        }
+
+        .aff-link-subtext {
+            font-size: 0.78rem;
+            color: #94a3b8;
+            word-break: break-all;
+        }
+
+        .aff-link-subtext a {
+            color: #38bdf8;
+            text-decoration: underline;
         }
 
         /* In-Article Big CTA Box */
@@ -511,17 +512,13 @@
                     <li><span class="check">✓</span> 月々1,000円台〜手軽に始められる初回カウンセリングプラン</li>
                     <li><span class="check">✓</span> 相席した20代女性からの好感度・清潔感評価が劇的向上</li>
                 </ul>
-                <div class="aff-banner-cta-row">
-                    <div class="aff-banner-wrap">
-                        <a href="/link/hair_removal" target="_blank" rel="noopener noreferrer sponsored">
-                        <img border="0" width="300" height="250" alt="メンズ医療脱毛" src="https://www27.a8.net/svt/bgt?aid=261020931365&wid=001&eno=01&mid=s00000014286015006000&mc=1"></a>
-                    </div>
+                <div class="aff-action-box">
                     <a href="/link/hair_removal" target="_blank" rel="noopener noreferrer sponsored" class="aff-cta-btn">
-                        限定キャンペーン・公式を見る ›
+                        ✨ 限定キャンペーン・公式を見る ›
                     </a>
-                </div>
-                <div style="font-size: 0.78rem; color: #94a3b8; word-break: break-all; margin-top: 8px;">
-                    🔗 公式サイト：<a href="/link/hair_removal" target="_blank" rel="noopener noreferrer sponsored" style="color: #38bdf8; text-decoration: underline;">https://aiseki-navi.com/link/hair_removal</a>
+                    <div class="aff-link-subtext">
+                        🔗 公式サイト：<a href="/link/hair_removal" target="_blank" rel="noopener noreferrer sponsored">https://aiseki-navi.com/link/hair_removal</a>
+                    </div>
                 </div>
             </div>
 
@@ -540,17 +537,13 @@
                     <li><span class="check">✓</span> 20代〜30代女性に選ばれる好印象メンズスキンケア</li>
                     <li><span class="check">✓</span> 手軽に試せる初回限定スターターセットあり</li>
                 </ul>
-                <div class="aff-banner-cta-row">
-                    <div class="aff-banner-wrap">
-                        <a href="/link/orbis" target="_blank" rel="noopener noreferrer sponsored">
-                        <img border="0" width="250" height="250" alt="ORBIS Mr." src="https://www28.a8.net/svt/bgt?aid=261020931376&wid=001&eno=01&mid=s00000008657018014000&mc=1"></a>
-                    </div>
+                <div class="aff-action-box">
                     <a href="/link/orbis" target="_blank" rel="noopener noreferrer sponsored" class="aff-cta-btn">
-                        初回限定セット・公式を見る ›
+                        💎 初回限定セット・公式を見る ›
                     </a>
-                </div>
-                <div style="font-size: 0.78rem; color: #94a3b8; word-break: break-all; margin-top: 8px;">
-                    🔗 公式サイト：<a href="/link/orbis" target="_blank" rel="noopener noreferrer sponsored" style="color: #38bdf8; text-decoration: underline;">https://aiseki-navi.com/link/orbis</a>
+                    <div class="aff-link-subtext">
+                        🔗 公式サイト：<a href="/link/orbis" target="_blank" rel="noopener noreferrer sponsored">https://aiseki-navi.com/link/orbis</a>
+                    </div>
                 </div>
             </div>
 
@@ -569,17 +562,13 @@
                     <li><span class="check">✓</span> コーディネートに悩む時間をゼロにして週末の相席ラウンジへ直行</li>
                     <li><span class="check">✓</span> 不要な月はスキップ可能・いつでも手軽にお試しOK</li>
                 </ul>
-                <div class="aff-banner-cta-row">
-                    <div class="aff-banner-wrap">
-                        <a href="/link/spu" target="_blank" rel="noopener noreferrer sponsored">
-                        <img src="https://h.accesstrade.net/sp/rr?rk=0100oo8500p144" alt="スタイリスト厳選コーデが毎月届く【SPU スタイルアップ便】" border="0" width="300" height="250"></a>
-                    </div>
+                <div class="aff-action-box">
                     <a href="/link/spu" target="_blank" rel="noopener noreferrer sponsored" class="aff-cta-btn">
                         👔 スタイリスト厳選コーデを見る ›
                     </a>
-                </div>
-                <div style="font-size: 0.78rem; color: #94a3b8; word-break: break-all; margin-top: 8px;">
-                    🔗 公式サイト：<a href="/link/spu" target="_blank" rel="noopener noreferrer sponsored" style="color: #38bdf8; text-decoration: underline;">https://aiseki-navi.com/link/spu</a>
+                    <div class="aff-link-subtext">
+                        🔗 公式サイト：<a href="/link/spu" target="_blank" rel="noopener noreferrer sponsored">https://aiseki-navi.com/link/spu</a>
+                    </div>
                 </div>
             </div>
 
@@ -609,17 +598,13 @@
                 <p class="aff-desc">
                     GPSで現在地周辺の「いま飲みたい相手」を即検索。相席ラウンジ前の二刀流で週末の出会い成功率が倍増します。
                 </p>
-                <div class="aff-banner-cta-row">
-                    <div class="aff-banner-wrap">
-                        <a href="/link/dating" target="_blank" rel="noopener noreferrer sponsored">
-                        <img border="0" width="300" height="250" alt="恋活マッチング" src="https://www24.a8.net/svt/bgt?aid=261019920127&wid=001&eno=01&mid=s00000016987001075000&mc=1"></a>
-                    </div>
+                <div class="aff-action-box">
                     <a href="/link/dating" target="_blank" rel="noopener noreferrer sponsored" class="aff-cta-btn">
-                        無料登録・今夜の相手を探す ›
+                        🔥 無料登録・今夜の相手を探す ›
                     </a>
-                </div>
-                <div style="font-size: 0.78rem; color: #94a3b8; word-break: break-all; margin-top: 8px;">
-                    🔗 公式サイト：<a href="/link/dating" target="_blank" rel="noopener noreferrer sponsored" style="color: #38bdf8; text-decoration: underline;">https://aiseki-navi.com/link/dating</a>
+                    <div class="aff-link-subtext">
+                        🔗 公式サイト：<a href="/link/dating" target="_blank" rel="noopener noreferrer sponsored">https://aiseki-navi.com/link/dating</a>
+                    </div>
                 </div>
             </div>
 
