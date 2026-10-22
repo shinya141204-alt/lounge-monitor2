@@ -1277,6 +1277,23 @@
             document.getElementById('guide-modal').classList.add('hidden');
         }
 
+        // Mobile Menu / Drawer Modal
+        function openMenuModal() {
+            const modal = document.getElementById('menu-modal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+            }
+        }
+
+        function closeMenuModal() {
+            const modal = document.getElementById('menu-modal');
+            if (modal) {
+                modal.classList.add('hidden');
+                document.body.style.overflow = '';
+            }
+        }
+
         // Editorial Articles Selector Modal
         function openArticlesModal() {
             const modal = document.getElementById('articles-modal');
@@ -1912,6 +1929,9 @@
         document.getElementById('how-to-modal')?.addEventListener('click', (e) => {
             if (e.target.id === ('how-to-modal')) closeHowToModal();
         });
+        document.getElementById('menu-modal')?.addEventListener('click', (e) => {
+            if (e.target.id === ('menu-modal')) closeMenuModal();
+        });
 
         // Close any active modal with ESC key
         document.addEventListener('keydown', (e) => {
@@ -1921,6 +1941,7 @@
                 closeLegalModal();
                 closeGuideModal();
                 closeArticlesModal();
+                closeMenuModal();
                 closeSnsModal();
                 closeEventsModal();
                 closeHowToModal();

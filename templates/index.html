@@ -91,7 +91,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/style.css?v=20261023_01">
+    <link rel="stylesheet" href="/static/style.css?v=20261023_02">
     <!-- Local Chart.js: self-hosted (zero CDN blocking, works 100% offline & with adblockers) -->
     <script src="/static/chart.min.js?v=20261021" defer></script>
     <!-- Preload editorial thumbnails for instantaneous modal display -->
@@ -617,6 +617,97 @@
     </div>
     <!-- End PWA Guide Modal -->
 
+    <!-- Mobile Navigation Drawer / Menu Modal -->
+    <div id="menu-modal" class="modal hidden">
+        <div class="modal-content" style="max-width: 520px;">
+            <div class="modal-header">
+                <h2>☰ メニュー & 設定</h2>
+                <button class="close-btn-pill" onclick="closeMenuModal()" aria-label="閉じる">✕ 閉じる</button>
+            </div>
+            <div class="menu-modal-body">
+                <!-- Theme Switcher within Mobile Menu -->
+                <div class="menu-section">
+                    <div class="menu-section-title">🎨 デザイン切替</div>
+                    <div class="theme-switcher-bar menu-theme-bar" role="group" aria-label="デザイン切替">
+                        <button type="button" class="theme-pill-btn active" data-theme="default" onclick="setViewTheme('default', true); closeMenuModal();">✨ 通常</button>
+                        <button type="button" class="theme-pill-btn" data-theme="list" onclick="setViewTheme('list', true); closeMenuModal();">📋 リスト</button>
+                        <button type="button" class="theme-pill-btn" data-theme="flat" onclick="setViewTheme('flat', true); closeMenuModal();">🌑 フラット</button>
+                        <button type="button" class="theme-pill-btn" data-theme="light" onclick="setViewTheme('light', true); closeMenuModal();">☀️ ライト</button>
+                    </div>
+                </div>
+
+                <!-- Analytics & Comparison Section -->
+                <div class="menu-section">
+                    <div class="menu-section-title">📊 分析・データ</div>
+                    <div class="menu-grid">
+                        <button class="menu-grid-item" onclick="closeMenuModal(); openReportModal();">
+                            <span class="menu-grid-icon">📅</span>
+                            <div class="menu-grid-text">
+                                <strong>週間レポート</strong>
+                                <span>過去7日間の曜日・時間帯別集計</span>
+                            </div>
+                        </button>
+                        <button class="menu-grid-item" onclick="closeMenuModal(); openComparisonModal();">
+                            <span class="menu-grid-icon">⚖️</span>
+                            <div class="menu-grid-text">
+                                <strong>系列別比較</strong>
+                                <span>オリラジ・ag・JISの来店シェア</span>
+                            </div>
+                        </button>
+                        <button class="menu-grid-item" onclick="closeMenuModal(); openEventsModal();">
+                            <span class="menu-grid-icon">🎉</span>
+                            <div class="menu-grid-text">
+                                <strong>イベント速報</strong>
+                                <span>各店の女性無料フェア・特典一覧</span>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Strategy & Guides Section -->
+                <div class="menu-section">
+                    <div class="menu-section-title">📖 攻略・ガイド</div>
+                    <div class="menu-grid">
+                        <button class="menu-grid-item" onclick="closeMenuModal(); openArticlesModal();">
+                            <span class="menu-grid-icon">📚</span>
+                            <div class="menu-grid-text">
+                                <strong>攻略記事を選ぶ</strong>
+                                <span>3大ブランド比較・平日攻略コラム</span>
+                            </div>
+                        </button>
+                        <button class="menu-grid-item" onclick="closeMenuModal(); openHowToModal();">
+                            <span class="menu-grid-icon">💡</span>
+                            <div class="menu-grid-text">
+                                <strong>使い方ガイド</strong>
+                                <span>30秒でわかる相席ナビの基本</span>
+                            </div>
+                        </button>
+                        <button class="menu-grid-item" onclick="closeMenuModal(); openSnsModal();">
+                            <span class="menu-grid-icon">📣</span>
+                            <div class="menu-grid-text">
+                                <strong>速報作成・共有</strong>
+                                <span>今の混雑と特典をXやLINEへ共有</span>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Quick External Links -->
+                <div class="menu-section">
+                    <div class="menu-section-title">🌐 公式リンク・規約</div>
+                    <div class="menu-sub-links">
+                        <a href="https://x.com/aiseki_navi" target="_blank" rel="noopener noreferrer" class="menu-sub-link">𝕏 公式Twitter</a>
+                        <a href="https://www.threads.net/@aiseki_navi1" target="_blank" rel="noopener noreferrer" class="menu-sub-link">🧵 公式Threads</a>
+                        <a href="https://note.com/huge_finch7078" target="_blank" rel="noopener noreferrer" class="menu-sub-link">📓 公式note</a>
+                        <button type="button" class="menu-sub-link" onclick="closeMenuModal(); openLegalModal();">免責事項・規約</button>
+                    </div>
+                </div>
+                <button type="button" class="modal-bottom-close-btn" onclick="closeMenuModal()" style="margin-top: 15px;">✕ 閉じる</button>
+            </div>
+        </div>
+    </div>
+    <!-- End Menu Modal -->
+
     <div class="background-glob"></div>
     <div class="background-glob glob-2"></div>
 
@@ -669,17 +760,12 @@
             <h1>{% if is_staff %}相席ナビ 業務モニター{% else %}相席ナビ{% endif %}</h1>
             <p class="subtitle">全国ラウンジの今わかる人数ランキング</p>
             <div class="header-controls">
-                <button id="report-btn" class="header-btn labeled-btn" onclick="openReportModal()" title="週間レポート">
+                <!-- Mobile & Desktop Common Primary Actions -->
+                <button id="refresh-btn" class="header-btn labeled-btn refresh-btn" onclick="manualRefresh()" title="最新データに更新">
                     <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>
+                        <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
                     </svg>
-                    <span>週間集計</span>
-                </button>
-                <button id="compare-btn" class="header-btn labeled-btn" onclick="openComparisonModal()" title="競合比較ダッシュボード">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path><path d="M22 12A10 10 0 0 0 12 2v10z"></path>
-                    </svg>
-                    <span>系列比較</span>
+                    <span>更新</span>
                 </button>
                 <button id="events-btn" class="header-btn labeled-btn" onclick="openEventsModal()" title="最新イベント・キャンペーン速報">
                     <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -687,14 +773,42 @@
                     </svg>
                     <span>イベント</span>
                 </button>
-                <button id="compact-btn" class="header-btn labeled-btn" onclick="toggleCompact()" title="デザイン・表示モード切替">
+                <a id="header-x-btn" href="https://x.com/aiseki_navi" target="_blank" rel="noopener noreferrer" class="header-btn labeled-btn" style="text-decoration: none;" title="公式Xで今夜の女性速報を見る" onclick="window.open(this.href, '_blank'); return true;">
+                    <span class="beacon-dot" style="margin-right: 2px;"></span>
+                    <span>X速報</span>
+                </a>
+
+                <!-- Mobile Menu Hamburger Button (Visible on mobile <= 768px) -->
+                <button id="mobile-menu-btn" class="header-btn labeled-btn mobile-only-btn" onclick="openMenuModal()" title="メニューを開く">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="3" y1="12" x2="21" y2="12"></line>
+                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                        <line x1="3" y1="18" x2="21" y2="18"></line>
+                    </svg>
+                    <span>メニュー</span>
+                </button>
+
+                <!-- Desktop-only controls (Hidden on mobile to keep header clean) -->
+                <button id="report-btn" class="header-btn labeled-btn desktop-only" onclick="openReportModal()" title="週間レポート">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>
+                    </svg>
+                    <span>週間集計</span>
+                </button>
+                <button id="compare-btn" class="header-btn labeled-btn desktop-only" onclick="openComparisonModal()" title="競合比較ダッシュボード">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path><path d="M22 12A10 10 0 0 0 12 2v10z"></path>
+                    </svg>
+                    <span>系列比較</span>
+                </button>
+                <button id="compact-btn" class="header-btn labeled-btn desktop-only" onclick="toggleCompact()" title="デザイン・表示モード切替">
                     <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line>
                     </svg>
                     <span id="compact-btn-label">表示切替</span>
                 </button>
                 {% if not is_staff %}
-                <button id="howto-btn" class="header-btn labeled-btn" onclick="openHowToModal()" title="相席ナビのカンタン使い方ガイド">
+                <button id="howto-btn" class="header-btn labeled-btn desktop-only" onclick="openHowToModal()" title="相席ナビのカンタン使い方ガイド">
                     <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="10"></circle>
                         <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
@@ -702,17 +816,13 @@
                     </svg>
                     <span>使い方</span>
                 </button>
-                <button type="button" id="guide-link-btn" class="header-btn labeled-btn" onclick="openArticlesModal()" title="攻略コラム・記事一覧から選ぶ">
+                <button type="button" id="guide-link-btn" class="header-btn labeled-btn desktop-only" onclick="openArticlesModal()" title="攻略コラム・記事一覧から選ぶ">
                     <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
                     </svg>
                     <span>攻略記事</span>
                 </button>
-                <a id="header-x-btn" href="https://x.com/aiseki_navi" target="_blank" rel="noopener noreferrer" class="header-btn labeled-btn" style="text-decoration: none;" title="公式Xで今夜の女性速報を見る" onclick="window.open(this.href, '_blank'); return true;">
-                    <span class="beacon-dot" style="margin-right: 2px;"></span>
-                    <span>X速報</span>
-                </a>
-                <button id="share-btn" class="header-btn labeled-btn" onclick="openSnsModal()" title="SNS速報ポスト作成・共有">
+                <button id="share-btn" class="header-btn labeled-btn desktop-only" onclick="openSnsModal()" title="SNS速報ポスト作成・共有">
                     <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
                     </svg>
@@ -726,14 +836,8 @@
                     <span>ログアウト</span>
                 </a>
                 {% endif %}
-                <button id="refresh-btn" class="header-btn labeled-btn refresh-btn" onclick="manualRefresh()" title="データを更新">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
-                    </svg>
-                    <span>更新</span>
-                </button>
             </div>
-            <div class="theme-switcher-bar" role="group" aria-label="デザイン切替">
+            <div class="theme-switcher-bar desktop-only" role="group" aria-label="デザイン切替">
                 <button type="button" class="theme-pill-btn active" data-theme="default" onclick="setViewTheme('default', true)">✨ 通常</button>
                 <button type="button" class="theme-pill-btn" data-theme="list" onclick="setViewTheme('list', true)">📋 リスト</button>
                 <button type="button" class="theme-pill-btn" data-theme="flat" onclick="setViewTheme('flat', true)">🌑 フラット</button>
@@ -1096,7 +1200,7 @@
             isStaff: {{ 'true' if is_staff else 'false' }}
         };
     </script>
-    <script src="/static/app.js?v=20261023_01" defer></script>
+    <script src="/static/app.js?v=20261023_02" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
