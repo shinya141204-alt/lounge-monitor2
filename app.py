@@ -36,6 +36,16 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'aiseki-navi-staff-monitor-secret-key-2026')
 app.permanent_session_lifetime = datetime.timedelta(days=90)
 STAFF_PASSCODE = os.environ.get('STAFF_PASSCODE', '5555')
+ADMIN_API_SECRET = os.environ.get('ADMIN_API_SECRET', 'lounge2026')
+
+def is_admin_authorized():
+    """Verify administrative permission either via authenticated staff session or secret token."""
+    if session.get('is_staff'):
+        return True
+    secret = request.args.get('secret', '').strip()
+    if secret and secret == ADMIN_API_SECRET:
+        return True
+    return False
 
 @app.after_request
 def compress_response(response):
@@ -592,7 +602,7 @@ def health_check():
 
 @app.route('/api/debug_ps')
 def debug_ps():
-    if request.args.get('secret') != 'lounge2026':
+    if not is_admin_authorized():
         return jsonify({'error': 'Unauthorized'}), 401
     return jsonify({
         'pid': os.getpid(),
@@ -603,7 +613,7 @@ def debug_ps():
 
 @app.route('/api/logs')
 def view_logs():
-    if request.args.get('secret') != 'lounge2026':
+    if not is_admin_authorized():
         return jsonify({'error': 'Unauthorized'}), 401
     if os.path.exists('app.log'):
         with open('app.log', 'r') as f:
@@ -614,7 +624,7 @@ def view_logs():
 @app.route('/api/thread_status')
 def get_thread_status():
     """Diagnostic endpoint to check the health of the background fetcher and logger"""
-    if request.args.get('secret') != 'lounge2026':
+    if not is_admin_authorized():
         return jsonify({'error': 'Unauthorized'}), 401
     return jsonify({
         'last_updated': latest_data['last_updated'],
@@ -810,7 +820,7 @@ def run_scheduled_x_post(slot_label="20:00", force=False):
 @app.route('/api/trigger-x-post')
 def trigger_x_post_endpoint():
     """Endpoint to test or externally trigger X auto-posting."""
-    if request.args.get('secret') != 'lounge2026':
+    if not is_admin_authorized():
         return jsonify({'error': 'Unauthorized'}), 401
     slot = request.args.get('slot', '20:00')
     force = request.args.get('force', '0') == '1'
@@ -820,7 +830,7 @@ def trigger_x_post_endpoint():
 @app.route('/api/trigger-x-tip')
 def trigger_x_tip_endpoint():
     """Endpoint to test or externally trigger X human-like tips posting."""
-    if request.args.get('secret') != 'lounge2026':
+    if not is_admin_authorized():
         return jsonify({'error': 'Unauthorized'}), 401
     slot = request.args.get('slot', '12:00')
     force = request.args.get('force', '0') == '1'
@@ -832,7 +842,7 @@ def trigger_x_tip_endpoint():
 @app.route('/api/trigger-note-share')
 def trigger_note_share_endpoint():
     """Endpoint to test or externally trigger note promotion posting."""
-    if request.args.get('secret') != 'lounge2026':
+    if not is_admin_authorized():
         return jsonify({'error': 'Unauthorized'}), 401
     force = request.args.get('force', '0') == '1'
     idx = request.args.get('idx', 0, type=int)

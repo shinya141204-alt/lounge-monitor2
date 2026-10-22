@@ -111,7 +111,12 @@
             '宮崎': { lat: 31.9111, lng: 131.4239 },
             '鹿児島': { lat: 31.5966, lng: 130.5571 },
             '沖縄': { lat: 26.2166, lng: 127.6842 },
-            '那覇': { lat: 26.2166, lng: 127.6842 }
+            '那覇': { lat: 26.2166, lng: 127.6842 },
+            'カンナム': { lat: 37.4979, lng: 127.0276 },
+            '江南': { lat: 37.4979, lng: 127.0276 },
+            'ホンデ': { lat: 37.5563, lng: 126.9236 },
+            '弘大': { lat: 37.5563, lng: 126.9236 },
+            'ソウル': { lat: 37.5665, lng: 126.9780 }
         };
 
         const REGION_DEFAULT_COORDINATES = {
@@ -122,16 +127,48 @@
             'Hokkaido': { lat: 43.0642, lng: 141.3469 },
             'Tohoku': { lat: 38.2682, lng: 140.8694 },
             'Chugoku': { lat: 34.3853, lng: 132.4553 },
-            'Shikoku': { lat: 33.8416, lng: 132.7657 }
+            'Shikoku': { lat: 33.8416, lng: 132.7657 },
+            'Korea': { lat: 37.5665, lng: 126.9780 }
+        };
+
+        // Japanese map for English store names
+        const EN_TO_JA_COORDS = {
+            'NISHISHINJUKU': '西新宿', 'SHINJUKU': '新宿', 'SHIBUYA': '渋谷',
+            'EBISU': '恵比寿', 'UENO': '上野', 'MACHIDA': '町田', 'KASHIWA': '柏',
+            'OMIYA': '大宮', 'YOKOHAMA': '横浜', 'UTSUNOMIYA': '宇都宮',
+            'TAKASAKI': '高崎', 'SAPPORO': '札幌', 'SENDAI': '仙台',
+            'NAGOYA': '名古屋', 'SHIZUOKA': '静岡', 'HAMAMATSU': '浜松',
+            'KANAZAWA': '金沢', 'CHAYAMACHI': '茶屋町', 'UMEDA': '梅田',
+            'NAMBA': '難波', 'SHINSAIBASHI': '心斎橋', 'TENMA': '天満',
+            'KYOTO': '京都', 'KOBE': '神戸', 'OKAYAMA': '岡山',
+            'HIROSHIMA': '広島', 'MATSUYAMA': '松山', 'FUKUOKA': '福岡',
+            'KOKURA': '小倉', 'NAGASAKI': '長崎', 'OITA': '大分',
+            'KUMAMOTO': '熊本', 'MIYAZAKI': '宮崎', 'KAGOSHIMA': '鹿児島',
+            'OKINAWA': '沖縄', 'SEOUL': 'ソウル', 'GANGNAM': 'カンナム',
+            'HONGDAE': 'ホンデ'
         };
 
         function getStoreCoordinates(store) {
-            const name = String(store.name || '').toUpperCase();
-            for (const [key, coords] of Object.entries(AREA_COORDINATES)) {
-                if (name.includes(key.toUpperCase())) {
-                    return coords;
+            const rawName = String(store.name || '').toUpperCase();
+            let searchTarget = rawName;
+
+            // Expand romanized tokens to Japanese (e.g. JIS UMEDA -> JIS UMEDA 梅田)
+            const words = rawName.replace(/[^A-Z0-9]/g, ' ').split(/\s+/);
+            for (const w of words) {
+                if (EN_TO_JA_COORDS[w]) {
+                    searchTarget += ' ' + EN_TO_JA_COORDS[w];
                 }
             }
+
+            // Check keys sorted by length descending so '西新宿' matches before '新宿'
+            const sortedAreaKeys = Object.keys(AREA_COORDINATES).sort((a, b) => b.length - a.length);
+            for (const key of sortedAreaKeys) {
+                if (searchTarget.includes(key.toUpperCase())) {
+                    return AREA_COORDINATES[key];
+                }
+            }
+
+            // Fallback to region center
             if (store.region && REGION_DEFAULT_COORDINATES[store.region]) {
                 return REGION_DEFAULT_COORDINATES[store.region];
             }

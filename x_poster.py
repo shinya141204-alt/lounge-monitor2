@@ -67,28 +67,81 @@ def format_ja_store_name(raw_name: str) -> str:
     return name
 
 
-def build_scheduled_tweet_text(stores: list, slot_label: str = "20:00", app_url: str = "") -> str:
+def compute_twitter_weight(text: str) -> int:
+    """Calculate Twitter-weighted character count (ASCII=1, East-Asian/Emoji=2, URL=23)."""
+    import re
+    url_pattern = r'https?://[^\s]+'
+    urls = re.findall(url_pattern, text)
+    clean_text = re.sub(url_pattern, '', text)
+    weight = len(urls) * 23
+    for ch in clean_text:
+        weight += 1 if ord(ch) <= 127 else 2
+    return weight
+
+
+def build_scheduled_tweet_text(stores: list, slot_label: str = "20:00", app_url: str = "", compact: bool = True) -> str:
     """
-    Build an authoritative, high-engagement X post taking full advantage of X Premium
-    (no character limit constraint; formatted with rich insights, TOP5, tactical advice, and guide links).
-    - '20:00': Early evening start dash TOP5 & zero-wait strategy
-    - '22:00' (or '22:30'): Peak time high-female-ratio TOP5 & queue avoidance tactics
-    - '00:00': Midnight late-night fever TOP5 & after-train tactics
-    - '02:00': All-night morning fever TOP5 & dawn strategy
+    Build high-engagement X post from live store data.
+    When compact=True (default for automated X API v2 posting), ensures Twitter weight <= 270.
+    When compact=False, generates rich long-form format suitable for manual X Premium posting.
+    - '20:00': Early evening start dash TOP3
+    - '22:00': Peak time high-female-ratio TOP3
+    - '00:00': Midnight late-night fever TOP3
+    - '02:00': All-night morning fever TOP3
     """
     site_url = (app_url or os.environ.get("PUBLIC_SITE_URL") or "https://aiseki-navi.com").rstrip("/")
     now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
     weekdays_ja = ["月", "火", "水", "木", "金", "土", "日"]
     wd_str = weekdays_ja[now_jst.weekday()]
     date_label = f"{now_jst.month}/{now_jst.day}({wd_str}) {slot_label}"
-    # Anti-duplicate unique tag with seconds to ensure X never rejects with 403 Duplicate Content
-    time_tag = f"⏱️{now_jst.strftime('%H:%M:%S')}集計"
+    time_tag = f"⏱️{now_jst.strftime('%H:%M')}"
 
     if not stores:
         return ""
 
-    medals = ["🥇 1位", "🥈 2位", "🥉 3位", "4️⃣ 4位", "5️⃣ 5位"]
+    medals = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣"]
 
+    # --- Compact Mode for Automated X API Posting (Weight <= 280) ---
+    if compact:
+        if slot_label in ("22:00", "22:30"):
+            candidates = [s for s in stores if s.get("women", 0) >= 10]
+            candidates.sort(
+                key=lambda x: (
+                    x.get("women", 0) / max(1, x.get("women", 0) + x.get("men", 0)),
+                    x.get("women", 0),
+                ),
+                reverse=True,
+            )
+            top_stores = candidates[:3] if len(candidates) >= 3 else stores[:3]
+            header = f"💎【{date_label} 穴場速報】女性比率が高い相席ラウンジTOP3！"
+        elif slot_label == "00:00":
+            top_stores = stores[:3]
+            header = f"🌙【{date_label} 深夜速報】終電後も女性が多い店舗TOP3！"
+        elif slot_label == "02:00":
+            top_stores = stores[:3]
+            header = f"🦉【{date_label} 2時速報】朝まで営業中の人気店舗TOP3！"
+        else:
+            top_stores = stores[:3]
+            header = f"🔥【{date_label} 速報】いま女性が多い相席ラウンジTOP3！"
+
+        lines = [header, ""]
+        for i, s in enumerate(top_stores):
+            w = s.get("women", 0)
+            m = s.get("men", 0)
+            tot = w + m
+            pct = round((w / tot) * 100) if tot > 0 else 0
+            ja_name = format_ja_store_name(s.get("name", ""))
+            lines.append(f"{medals[i]} {ja_name}：👩{w}名/👨{m}名 ({pct}%)")
+
+        lines.extend([
+            "",
+            "👇全国80店の男女比グラフ・混雑速報",
+            f"{site_url}/",
+            f"{time_tag} #相席ナビ #相席ラウンジ"
+        ])
+        return "\n".join(lines)
+
+    # --- Rich Long-Form Mode for Manual X Premium Posting ---
     if slot_label == "20:00":
         lines = [
             f"🔥【{date_label} 序盤速報】今夜スタートダッシュで女性が集まる相席ラウンジTOP5！",
@@ -289,6 +342,14 @@ def post_to_x(text: str) -> dict:
             "status": "skipped",
             "reason": "Missing X API credentials in environment variables (X_API_KEY, X_API_SECRET, X_ACCESS_TOKEN, X_ACCESS_TOKEN_SECRET)",
         }
+
+    # Guard against X API 280-weighted-character limit (prevents HTTP 400 Text Too Long errors)
+    weight = compute_twitter_weight(text)
+    if weight > 280:
+        logger.warning(f"Tweet text exceeds 280 weight limit ({weight}). Truncating safely for X API...")
+        while compute_twitter_weight(text + "...") > 280 and len(text) > 20:
+            text = text[:-1]
+        text += "..."
 
     url = "https://api.twitter.com/2/tweets"
     auth_header = _build_oauth1_header("POST", url, api_key, api_secret, access_token, access_secret)
