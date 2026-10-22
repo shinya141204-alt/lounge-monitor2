@@ -113,16 +113,16 @@ def build_scheduled_tweet_text(stores: list, slot_label: str = "20:00", app_url:
                 reverse=True,
             )
             top_stores = candidates[:3] if len(candidates) >= 3 else stores[:3]
-            header = f"💎【{date_label} 穴場速報】女性比率が高い相席ラウンジTOP3！"
+            header = f"{date_label} いま女性比率が高めで入りやすい3店舗✨"
         elif slot_label == "00:00":
             top_stores = stores[:3]
-            header = f"🌙【{date_label} 深夜速報】終電後も女性が多い店舗TOP3！"
+            header = f"{date_label} 終電後も女性が多く残っている3店舗🌙"
         elif slot_label == "02:00":
             top_stores = stores[:3]
-            header = f"🦉【{date_label} 2時速報】朝まで営業中の人気店舗TOP3！"
+            header = f"{date_label} 深夜2時でも賑わっている3店舗🦉"
         else:
             top_stores = stores[:3]
-            header = f"🔥【{date_label} 速報】いま女性が多い相席ラウンジTOP3！"
+            header = f"{date_label} 早い時間から女性が集まってる3店舗🍻"
 
         lines = [header, ""]
         for i, s in enumerate(top_stores):
@@ -131,11 +131,11 @@ def build_scheduled_tweet_text(stores: list, slot_label: str = "20:00", app_url:
             tot = w + m
             pct = round((w / tot) * 100) if tot > 0 else 0
             ja_name = format_ja_store_name(s.get("name", ""))
-            lines.append(f"{medals[i]} {ja_name}：👩{w}名/👨{m}名 ({pct}%)")
+            lines.append(f"{medals[i]} {ja_name}：女{w} / 男{m} ({pct}%)")
 
         lines.extend([
             "",
-            "👇全国80店の男女比グラフ・混雑速報",
+            "全店の現在人数・男女比👇",
             f"{site_url}/",
             f"{time_tag} #相席ナビ #相席ラウンジ"
         ])
@@ -144,9 +144,9 @@ def build_scheduled_tweet_text(stores: list, slot_label: str = "20:00", app_url:
     # --- Rich Long-Form Mode for Manual X Premium Posting ---
     if slot_label == "20:00":
         lines = [
-            f"🔥【{date_label} 序盤速報】今夜スタートダッシュで女性が集まる相席ラウンジTOP5！",
+            f"{date_label}時点、早い時間から女性が集まっている相席ラウンジTOP5🍻",
             "",
-            "いまリアルタイムで女性人数が多い全国上位店舗です👇"
+            "いま女性人数が多い上位店舗はこちら👇"
         ]
         for i, s in enumerate(stores[:5]):
             w = s.get("women", 0)
@@ -154,17 +154,17 @@ def build_scheduled_tweet_text(stores: list, slot_label: str = "20:00", app_url:
             tot = w + m
             pct = round((w / tot) * 100) if tot > 0 else 0
             ja_name = format_ja_store_name(s.get("name", ""))
-            lines.append(f"{medals[i]}：{ja_name}（👩女性{w}名 / 👨男性{m}名・女性比率{pct}%）")
+            lines.append(f"{medals[i]} {ja_name}（女性{w}名 / 男性{m}名・女性比{pct}%）")
 
         lines.extend([
             "",
-            "💡【今夜の立ち回りアドバイス】",
-            "平日の20時台はお仕事帰りのOL・看護師女性がサクッと来店するゴールデンタイム。男性の入店待ちゼロでスムーズに着席できる最大の穴場です。21時半の混雑ピーク前に早めに入店して落ち着いて会話するのが今夜の勝ち筋！",
+            "💡 今夜のひとこと",
+            "20時台は仕事帰りの女性が早めに入ってきていて、男性の入店待ちもほぼない時間帯です。21時半を過ぎると一気に混み始めるので、落ち着いて話したい人は早めに入るのがおすすめです。",
             "",
-            "📖【2026最新】オリラジ・ag・JIS 3大ブランドの違い徹底比較：",
+            "📖 オリエンタルラウンジ・ag・JISの違いまとめ：",
             f"{site_url}/guide/brand-comparison",
             "",
-            "👇全国80店舗の今わかるリアルタイム人数＆男女比グラフ",
+            "👇全店舗のリアルタイム人数・男女比",
             f"{site_url}/",
             "",
             f"{time_tag} #相席ナビ #相席ラウンジ #オリエンタルラウンジ #JIS #ag"
@@ -182,9 +182,9 @@ def build_scheduled_tweet_text(stores: list, slot_label: str = "20:00", app_url:
         )
         top_anaba = candidates[:5] if len(candidates) >= 5 else stores[:5]
         lines = [
-            f"💎【{date_label} ピーク速報】いま女性比率が高くて狙い目の相席ラウンジTOP5！",
+            f"{date_label}時点、いま女性比率が高めで入りやすい穴場ラウンジTOP5✨",
             "",
-            "店内の女性比率が高い穴場・狙い目店舗をピックアップ👇"
+            "女性の割合が高い狙い目店舗をピックアップしました👇"
         ]
         for i, s in enumerate(top_anaba[:5]):
             w = s.get("women", 0)
@@ -192,17 +192,17 @@ def build_scheduled_tweet_text(stores: list, slot_label: str = "20:00", app_url:
             tot = w + m
             pct = round((w / tot) * 100) if tot > 0 else 0
             ja_name = format_ja_store_name(s.get("name", ""))
-            lines.append(f"{medals[i]}：{ja_name}（女性比率{pct}% ｜ 👩女性{w}名 / 👨男性{m}名）")
+            lines.append(f"{medals[i]} {ja_name}（女性比{pct}% ｜ 女性{w}名 / 男性{m}名）")
 
         lines.extend([
             "",
-            "💡【ピークタイムの立ち回り戦術】",
-            "各店舗の盛り上がりが最高潮に達する時間帯！満席で男性待ち列ができている店舗に無理に並ばず、相席ナビで女性比率60%超え＆待ちの少ない近隣店舗へ即ハシゴ移動するのが最も賢い立ち回りです。",
+            "💡 ピーク時間の動き方",
+            "一番人が増える時間帯なので、1店舗目で男性待ちが長そうなときは無理に並ばず、近くの女性比率が高い店舗へ回る方がスムーズに座れます。",
             "",
-            "📖【平日攻略】水曜・木曜20時〜22時が最強の穴場である理由：",
+            "📖 水曜・木曜の20時〜22時が穴場な理由：",
             f"{site_url}/guide/weekday-strategy",
             "",
-            "👇全国80店舗のリアルタイム人数ランキング・混雑グラフ",
+            "👇全店舗のリアルタイム人数・男女比",
             f"{site_url}/",
             "",
             f"{time_tag} #相席ナビ #相席ラウンジ #オリエンタルラウンジ #JIS"
@@ -211,9 +211,9 @@ def build_scheduled_tweet_text(stores: list, slot_label: str = "20:00", app_url:
 
     elif slot_label == "00:00":
         lines = [
-            f"🌙【{date_label} 深夜速報】終電後も女性が多数滞在している店舗TOP5！",
+            f"{date_label}時点、終電後も女性が多く残っている店舗TOP5🌙",
             "",
-            "終電後も店内の熱気が続いている深夜営業店舗です👇"
+            "0時を過ぎても賑わっている店舗はこちら👇"
         ]
         for i, s in enumerate(stores[:5]):
             w = s.get("women", 0)
@@ -221,17 +221,17 @@ def build_scheduled_tweet_text(stores: list, slot_label: str = "20:00", app_url:
             tot = w + m
             pct = round((w / tot) * 100) if tot > 0 else 0
             ja_name = format_ja_store_name(s.get("name", ""))
-            lines.append(f"{medals[i]}：{ja_name}（👩女性{w}名 / 👨男性{m}名・女性比率{pct}%）")
+            lines.append(f"{medals[i]} {ja_name}（女性{w}名 / 男性{m}名・女性比{pct}%）")
 
         lines.extend([
             "",
-            "💡【深夜帯の立ち回り戦術】",
-            "終電を逃して残っている女性は「朝まで楽しく飲みたい」モチベーションが高い層。男性の入店待ちも解消され、1対1や少人数でじっくり親密になれるゴールデンタイムです。落ち着いた近隣バーへスマートに2軒目移動推奨！",
+            "💡 深夜帯のポイント",
+            "終電後に残っている方は「もうちょっと飲みたい」という空気感の人が多い時間帯。入店待ちも落ち着くので、2軒目を探している人にもおすすめです。",
             "",
-            "📖 相席完全攻略マニュアル（二次会・アフター移行の極意）：",
+            "📖 相席ラウンジの基本ガイド：",
             f"{site_url}/guide",
             "",
-            "👇深夜営業中ラウンジのリアルタイム人数",
+            "👇深夜営業中ラウンジの現在人数",
             f"{site_url}/",
             "",
             f"{time_tag} #相席ナビ #深夜営業 #相席ラウンジ"
@@ -240,9 +240,9 @@ def build_scheduled_tweet_text(stores: list, slot_label: str = "20:00", app_url:
 
     elif slot_label == "02:00":
         lines = [
-            f"🦉【{date_label} 深夜2時速報】朝まで盛り上がっているナイトラウンジTOP5！",
+            f"{date_label}時点、深夜2時でも盛り上がっている店舗TOP5🦉",
             "",
-            "朝5時まで営業中の活況店舗ピックアップ👇"
+            "朝まで営業している店舗の現在人数です👇"
         ]
         for i, s in enumerate(stores[:5]):
             w = s.get("women", 0)
@@ -250,12 +250,12 @@ def build_scheduled_tweet_text(stores: list, slot_label: str = "20:00", app_url:
             tot = w + m
             pct = round((w / tot) * 100) if tot > 0 else 0
             ja_name = format_ja_store_name(s.get("name", ""))
-            lines.append(f"{medals[i]}：{ja_name}（👩女性{w}名 / 👨男性{m}名・女性比率{pct}%）")
+            lines.append(f"{medals[i]} {ja_name}（女性{w}名 / 男性{m}名・女性比{pct}%）")
 
         lines.extend([
             "",
-            "💡【朝まで戦術】",
-            "深夜営業のJISやオリエンタルラウンジに人が集約中。席替えのバタバタ感もなくなり、深い会話や連絡先交換からのアフターに最も繋がりやすい時間帯です。",
+            "💡 深夜2時以降の空気感",
+            "この時間は人が集まっている店舗と静かな店舗がはっきり分かれます。行く前に人数を見てから向かうのが確実です。",
             "",
             "👇朝まで営業店舗のリアルタイム人数",
             f"{site_url}/",
@@ -266,9 +266,9 @@ def build_scheduled_tweet_text(stores: list, slot_label: str = "20:00", app_url:
 
     else:
         lines = [
-            f"🔥【{date_label} 速報】いま盛り上がっている相席ラウンジTOP5！",
+            f"{date_label}時点、いま人が集まっている相席ラウンジTOP5🍻",
             "",
-            "最新の女性人数ランキングです👇"
+            "最新の女性人数ランキングはこちら👇"
         ]
         for i, s in enumerate(stores[:5]):
             w = s.get("women", 0)
@@ -276,11 +276,11 @@ def build_scheduled_tweet_text(stores: list, slot_label: str = "20:00", app_url:
             tot = w + m
             pct = round((w / tot) * 100) if tot > 0 else 0
             ja_name = format_ja_store_name(s.get("name", ""))
-            lines.append(f"{medals[i]}：{ja_name}（👩女性{w}名 / 👨男性{m}名・女性比率{pct}%）")
+            lines.append(f"{medals[i]} {ja_name}（女性{w}名 / 男性{m}名・女性比{pct}%）")
 
         lines.extend([
             "",
-            "👇全国80店舗のリアルタイム人数ランキング・男女比グラフ",
+            "👇全店舗のリアルタイム人数・男女比グラフ",
             f"{site_url}/",
             "",
             f"{time_tag} #相席ナビ #相席ラウンジ"

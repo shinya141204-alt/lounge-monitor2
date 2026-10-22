@@ -725,26 +725,26 @@ def generate_sns_post_api():
 
     if post_type == 'kanto':
         filtered = [s for s in stores if s.get('region') == 'Kanto']
-        header = f"🗼【{time_part} 関東速報】いま女性が多い相席ラウンジTOP5！"
+        header = f"{time_part}時点、関東でいま女性が多く入っている上位5店舗🗼"
         tags = "#相席ナビ #相席ラウンジ #新宿 #渋谷 #オリエンタルラウンジ"
     elif post_type == 'kansai':
         filtered = [s for s in stores if s.get('region') == 'Kinki']
-        header = f"🐙【{time_part} 関西速報】いま女性が多い相席ラウンジTOP5！"
+        header = f"{time_part}時点、関西でいま女性が多く入っている上位5店舗🐙"
         tags = "#相席ナビ #相席ラウンジ #梅田 #難波 #心斎橋"
     elif post_type == 'anaba':
         # High female ratio & at least 10 women
         candidates = [s for s in stores if s.get('women', 0) >= 10]
         candidates.sort(key=lambda x: (x.get('women', 0) / max(1, x.get('women', 0) + x.get('men', 0)), x.get('women', 0)), reverse=True)
         filtered = candidates
-        header = f"💎【{time_part} 穴場速報】いま女性比率が高くて狙い目の相席ラウンジTOP3！"
+        header = f"{time_part}時点、いま女性比率が高めで入りやすい穴場店舗✨"
         tags = "#相席ナビ #相席ラウンジ #オリエンタルラウンジ #JIS"
     else:
         filtered = list(stores)
-        header = f"🔥【{time_part} 全国速報】いま盛り上がってる相席ラウンジTOP5！"
+        header = f"{time_part}時点、全国でいま人が集まっている相席ラウンジTOP5🍻"
         tags = "#相席ナビ #相席ラウンジ #オリエンタルラウンジ #JIS #ag"
 
     limit = 5
-    medals = ['🥇 1位', '🥈 2位', '🥉 3位', '4️⃣ 4位', '5️⃣ 5位']
+    medals = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣']
     lines = [header, ""]
     for i, s in enumerate(filtered[:limit]):
         w = s.get('women', 0)
@@ -752,19 +752,19 @@ def generate_sns_post_api():
         tot = w + m
         pct = round((w / tot) * 100) if tot > 0 else 0
         if post_type == 'anaba':
-            lines.append(f"{medals[i]}：{s.get('name')}（女性比率{pct}% ｜ 👩女性{w}名 / 👨男性{m}名）")
+            lines.append(f"{medals[i]} {s.get('name')}（女性比{pct}% ｜ 女性{w}名 / 男性{m}名）")
         else:
-            lines.append(f"{medals[i]}：{s.get('name')}（👩女性{w}名 / 👨男性{m}名・女性比率{pct}%）")
+            lines.append(f"{medals[i]} {s.get('name')}（女性{w}名 / 男性{m}名・女性比{pct}%）")
 
     lines.extend([
         "",
-        "💡【相席ナビからの立ち回りアドバイス】",
-        "満席で男性の入店待ちが発生している店舗を避け、女性比率の高い穴場店舗へハシゴ移動するのが最も勝率の高い立ち回りです！",
+        "💡 ひとことメモ",
+        "1店舗目で男性待ちが長そうなときは、近くの女性比率が高めの店舗に回る方がスムーズに座れます。",
         "",
-        "📖【2026最新】オリラジ・ag・JIS 3大ブランドの違い比較：",
+        "📖 オリエンタルラウンジ・ag・JISの違いまとめ：",
         f"{base_url}/guide/brand-comparison",
         "",
-        f"👇全国80店舗の今わかるリアルタイム人数＆男女比グラフ",
+        f"👇全店舗の現在人数・男女比グラフ",
         f"{base_url}/",
         "",
         tags

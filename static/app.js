@@ -1176,17 +1176,17 @@
             slot.classList.remove('hidden');
 
             // Dynamic rotation based on time of day:
-            // 21:00 - 05:59 JST -> Prioritize Night Taxi & After-care!
-            // 06:00 - 20:59 JST -> Prioritize Grooming / Hair Removal!
+            // 20:00 - 05:59 JST -> Prioritize Dating App (when lounges are busy/full)
+            // 06:00 - 19:59 JST -> Prioritize Grooming / Hair Removal
             const currentHour = new Date().getHours();
-            const isNightTime = (currentHour >= 21 || currentHour < 6);
-            const targetCategory = isNightTime ? 'night' : 'beauty';
+            const isNightTime = (currentHour >= 20 || currentHour < 6);
+            const targetCategory = isNightTime ? 'dating' : 'beauty';
 
             const matchedItem = (master.items || []).find(i => i.category === targetCategory) || master.items[0];
             const isExternal = matchedItem.url && matchedItem.url.startsWith('http');
 
             slot.innerHTML = `
-                <a href="${escapeHtml(matchedItem.url)}" ${isExternal ? 'target="_blank" rel="noopener noreferrer sponsored"' : ''} class="modal-pr-link ${targetCategory === 'night' ? 'pr-night-accent' : ''}" ${!isExternal ? `onclick="event.preventDefault(); openGuideModal('${targetCategory}')"` : ''}>
+                <a href="${escapeHtml(matchedItem.url)}" ${isExternal ? 'target="_blank" rel="noopener noreferrer sponsored"' : ''} class="modal-pr-link" ${!isExternal ? `onclick="event.preventDefault(); openGuideModal('${targetCategory}')"` : ''}>
                     <span class="pr-tag-pill">${escapeHtml(matchedItem.badge || 'PR')}</span>
                     <span class="modal-pr-text">${escapeHtml(matchedItem.shortTitle || matchedItem.name)}</span>
                     <span class="modal-pr-arrow">›</span>
@@ -1351,13 +1351,13 @@
                 'Chugoku': '中国', 'Shikoku': '四国', 'Korea': '韓国'
             };
             const areaTitle = regionNames[currentFilter] || '全国';
-            let text = `🔥【相席ナビ】いま盛り上がってる${areaTitle}ラウンジTOP3！\n`;
+            let text = `いま${areaTitle}で人が集まってる相席ラウンジTOP3🍻\n`;
             if (window.lastData && window.lastData.ranking) {
                 const list = window.lastData.ranking.filter(s => currentFilter === 'All' || s.region === currentFilter).slice(0, 3);
                 const medals = ['🥇', '🥈', '🥉'];
                 list.forEach((s, i) => {
                     const b = detectBrandInfo(s);
-                    text += `${medals[i]} ${b.fullDisplayTitle}（👩女性${s.women}名 / 👨男性${s.men}名）\n`;
+                    text += `${medals[i]} ${b.fullDisplayTitle}（女性${s.women}名 / 男性${s.men}名）\n`;
                 });
             }
             text += `#相席ナビ #相席ラウンジ`;
@@ -1383,7 +1383,7 @@
             } else if (platform === 'copy') {
                 try {
                     await navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
-                    showRefreshToast('📋 ランキングとURLをコピーしました！');
+                    showRefreshToast('📋 ランキングとURLをコピーしました');
                 } catch (e) {
                     showRefreshToast('URL: ' + shareUrl);
                 }
@@ -1399,7 +1399,7 @@
             if (window.lastData && window.lastData.ranking) {
                 const found = window.lastData.ranking.find(s => s.name === currentModalStoreName);
                 if (found) {
-                    liveInfo = `現在 👩女性${found.women}名 / 👨男性${found.men}名！`;
+                    liveInfo = `いま女性${found.women}名 / 男性${found.men}名が入店中🍸`;
                 }
             }
 
@@ -1408,14 +1408,14 @@
             let eventText = '';
             if (evs && evs.length > 0) {
                 const topEv = evs[0];
-                eventText = `\n🎉 開催中特典: ${topEv.title}`;
+                eventText = `\n🎉 開催中イベント: ${topEv.title}`;
             }
 
             const cleanArea = (bInfo.cleanName || '').replace(/店$/, '').trim();
             const areaTag = cleanArea ? ` #${cleanArea}相席` : '';
             const brandTag = bInfo.code ? ` #${bInfo.code}` : '';
             const tags = `#相席ナビ${brandTag}${areaTag} #相席ラウンジ`;
-            const text = `🍸【${bInfo.fullDisplayTitle}】${liveInfo}${eventText}\nリアルタイム混雑＆最新グラフはこちら👇\n${shareUrl}\n${tags}`;
+            const text = `${bInfo.fullDisplayTitle}、${liveInfo}${eventText}\n現在の人数と時間帯別の傾向グラフはこちら👇\n${shareUrl}\n${tags}`;
 
             if (platform === 'line') {
                 const lineUrl = `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(text)}`;
@@ -1423,7 +1423,7 @@
             } else if (platform === 'copy') {
                 try {
                     navigator.clipboard.writeText(text).then(() => {
-                        showRefreshToast('📋 店舗速報テキストをコピーしました！');
+                        showRefreshToast('📋 店舗の人数テキストをコピーしました');
                     }).catch(() => {
                         showRefreshToast('URL: ' + shareUrl);
                     });
@@ -1451,7 +1451,7 @@
             const ts = (window.lastData && window.lastData.timestamp) ? window.lastData.timestamp.split(' ')[1].slice(0, 5) : '現在';
 
             if (stores.length === 0) {
-                return `🔥全国ラウンジ人数ランキング「相席ナビ」\n${shareUrl}\n#相席ナビ #相席ラウンジ`;
+                return `全国の相席ラウンジ現在人数「相席ナビ」\n${shareUrl}\n#相席ナビ #相席ラウンジ`;
             }
 
             const medals = ['🥇', '🥈', '🥉'];
@@ -1470,12 +1470,12 @@
 
                 if (eventStores.length > 0) {
                     list = eventStores.slice(0, 3);
-                    header = `🎉【${ts} 限定特典＆イベント】お得に楽しめるラウンジTOP3`;
-                    subnote = `今夜は各店限定特典や割引あり！お得に相席を楽しむならここ👇`;
-                    tags = `#相席ナビ #相席ラウンジ #割引 #イベント #お得`;
+                    header = `${ts}時点、今日イベント・特典をやっていて人が集まってる3店舗🎉`;
+                    subnote = `キャンペーン中で普段より雰囲気良さそうな店舗はこちら👇`;
+                    tags = `#相席ナビ #相席ラウンジ #イベント`;
                 } else {
                     list = stores.slice().sort((a, b) => (b.women - a.women) || (b.men - a.men)).slice(0, 3);
-                    header = `🔥【${ts} 全国速報】女性が多いラウンジTOP3`;
+                    header = `${ts}時点、いま女性が多く入っている上位3店舗🍻`;
                     tags = `#相席ナビ #相席ラウンジ`;
                 }
             } else if (preset === 'timely') {
@@ -1483,36 +1483,36 @@
                 const jstHour = (now.getUTCHours() + 9) % 24;
 
                 if (jstHour >= 17 && jstHour < 20) {
-                    header = `🍸【${ts} 仕事帰り・早割相席】早めの合流が狙い目の店舗TOP3`;
-                    subnote = `混雑ピーク前の今が狙い目！1次会や仕事終わりにサクッと合流🍻`;
-                    tags = `#相席ナビ #相席ラウンジ #仕事帰り #早割`;
+                    header = `${ts}時点、仕事帰りに待ち時間なしで入りやすい3店舗🍸`;
+                    subnote = `混み始める前の早い時間から人が入っている店舗です👇`;
+                    tags = `#相席ナビ #相席ラウンジ #仕事帰り`;
                     list = stores.slice().sort((a, b) => (b.women - a.women) || (b.men - a.men)).slice(0, 3);
                 } else if (jstHour >= 20 && jstHour < 24) {
-                    header = `🔥【${ts} 超混雑ピーク速報】今夜女性が殺到しているラウンジTOP3`;
-                    subnote = `店内大盛況！待ち時間が発生する前に即チェック推奨👇`;
-                    tags = `#相席ナビ #相席ラウンジ #ピーク #激アツ`;
+                    header = `${ts}時点、いま一番盛り上がっている上位3店舗🍻`;
+                    subnote = `ピーク時間で人が増えているので、向かう前に人数チェック推奨です👇`;
+                    tags = `#相席ナビ #相席ラウンジ`;
                     list = stores.slice().sort((a, b) => (b.women - a.women) || (b.men - a.men)).slice(0, 3);
                 } else if (jstHour >= 0 && jstHour < 6) {
-                    header = `🌙【${ts} 深夜・終電後アフター相席】朝まで営業中の人気ラウンジ`;
-                    subnote = `朝まで営業中！2次会・3次会や終電逃した夜の合流スポット🍻`;
-                    tags = `#相席ナビ #相席ラウンジ #深夜営業 #朝まで #終電後`;
+                    header = `${ts}時点、終電後もまだ賑わっている3店舗🌙`;
+                    subnote = `2軒目・3軒目で朝まで飲めるお店を探している方はこちら👇`;
+                    tags = `#相席ナビ #相席ラウンジ #深夜営業`;
                     list = stores.filter(s => (s.women || 0) + (s.men || 0) > 0)
                                  .sort((a, b) => (b.women - a.women) || (b.men - a.men))
                                  .slice(0, 3);
                     if (list.length === 0) list = stores.slice(0, 3);
                 } else {
-                    header = `☀️【${ts} 今夜注目の相席ラウンジ】事前チェック推奨店舗TOP3`;
-                    subnote = `今夜どこ行く？過去の混雑データから今夜注目の店舗をピックアップ👇`;
+                    header = `${ts}時点、いま人が入っている注目3店舗☀️`;
+                    subnote = `今日どこ行くか迷っている方は、各店の現在人数を参考にどうぞ👇`;
                     tags = `#相席ナビ #相席ラウンジ`;
                     list = stores.slice().sort((a, b) => (b.women - a.women) || (b.men - a.men)).slice(0, 3);
                 }
             } else if (preset === 'kanto') {
                 list = stores.filter(s => s.region === 'Kanto').sort((a, b) => (b.women - a.women) || (b.men - a.men)).slice(0, 3);
-                header = `🗼【${ts} 関東速報】女性が多いラウンジTOP3`;
+                header = `${ts}時点、関東でいま女性が多い上位3店舗🗼`;
                 tags = `#相席ナビ #相席ラウンジ #新宿 #渋谷`;
             } else if (preset === 'kansai') {
                 list = stores.filter(s => s.region === 'Kinki').sort((a, b) => (b.women - a.women) || (b.men - a.men)).slice(0, 3);
-                header = `🐙【${ts} 関西速報】女性が多いラウンジTOP3`;
+                header = `${ts}時点、関西でいま女性が多い上位3店舗🐙`;
                 tags = `#相席ナビ #相席ラウンジ #梅田 #難波`;
             } else if (preset === 'anaba') {
                 isAnaba = true;
@@ -1521,11 +1521,11 @@
                     const rB = b.women / Math.max(1, b.women + b.men);
                     return (rB - rA) || (b.women - a.women);
                 }).slice(0, 3);
-                header = `💎【${ts} 穴場速報】女性比率が高い狙い目TOP3`;
+                header = `${ts}時点、いま女性比率が高めで入りやすい穴場3店舗✨`;
                 tags = `#相席ナビ #相席ラウンジ #穴場`;
             } else {
                 list = stores.slice().sort((a, b) => (b.women - a.women) || (b.men - a.men)).slice(0, 3);
-                header = `🔥【${ts} 全国速報】女性が多いラウンジTOP3`;
+                header = `${ts}時点、いま女性が多く入っている上位3店舗🍻`;
                 tags = `#相席ナビ #相席ラウンジ`;
             }
 
@@ -1543,9 +1543,9 @@
                 
                 let lineStr = '';
                 if (isAnaba) {
-                    lineStr = `${medals[i]}${b.fullDisplayTitle} (女${pct}%｜👩${w}/👨${m})`;
+                    lineStr = `${medals[i]} ${b.fullDisplayTitle}（女${pct}%｜女性${w} / 男性${m}）`;
                 } else {
-                    lineStr = `${medals[i]}${b.fullDisplayTitle} (👩${w}名/👨${m}名)`;
+                    lineStr = `${medals[i]} ${b.fullDisplayTitle}（女性${w}名 / 男性${m}名）`;
                 }
 
                 if (showEvents) {
@@ -1558,7 +1558,7 @@
                 lines.push(lineStr);
             });
 
-            lines.push(`\n👇全65店舗のリアルタイム混雑＆開催イベント\n${shareUrl}\n${tags}`);
+            lines.push(`\n全国の現在人数・男女比はこちら👇\n${shareUrl}\n${tags}`);
             return lines.join('\n');
         }
 

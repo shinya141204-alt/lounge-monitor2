@@ -91,14 +91,14 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/style.css?v=20261023_05">
+    <link rel="stylesheet" href="/static/style.css?v=20261023_06">
     <!-- Local Chart.js: self-hosted (zero CDN blocking, works 100% offline & with adblockers) -->
     <script src="/static/chart.min.js?v=20261021" defer></script>
     <!-- Preload editorial thumbnails for instantaneous modal display -->
     <link rel="preload" as="image" type="image/webp" href="/static/thumb-weekday.webp">
     <link rel="preload" as="image" type="image/webp" href="/static/thumb-manual.webp">
     {% if not is_staff %}
-    <script src="/static/affiliate_config.js?v=5"></script>
+    <script src="/static/affiliate_config.js?v=6"></script>
     {% endif %}
 </head>
 
@@ -232,12 +232,12 @@
     <div id="guide-modal" class="modal hidden">
         <div class="modal-content" style="max-width: 740px;">
             <div class="modal-header">
-                <h2>✨ 相席攻略＆男磨き・清潔感特集</h2>
+                <h2>✨ 身だしなみ・おすすめサービス特集</h2>
                 <button class="close-btn-pill" onclick="closeGuideModal()" aria-label="閉じる">✕ 閉じる</button>
             </div>
             <div class="guide-modal-body">
                 <p class="guide-lead">
-                    相席ラウンジで圧倒的に差がつく<strong>『🪒 メンズ脱毛・美肌』</strong>や、女性ウケ抜群の<strong>『👔 スタイリスト厳選コーデ』</strong>、待ち時間をゼロにする<strong>『💘 恋活アプリ』</strong>など、相席を120%楽しむための厳選サービスをまとめました。
+                    仕事帰りでも口元が気にならない<strong>『🪒 ヒゲ脱毛・スキンケア』</strong>や、服選びに迷わない<strong>『👔 きれいめ私服の定期便』</strong>、お店が混んでいる日に頼れる<strong>『💘 恋活アプリ』</strong>など、普段から取り入れておくと便利なサービスをまとめました。
                 </p>
 
                 <!-- Category Tabs -->
@@ -250,11 +250,11 @@
                 </div>
 
                 <div class="guide-tips-box">
-                    <h4>💡 相席ナビを使った「失敗しない立ち回り3鉄則」</h4>
+                    <h4>💡 お店選びと当日のちょっとしたコツ</h4>
                     <ul>
-                        <li><strong>① 入店30分前に「女性比率60%以上」の店舗を狙う：</strong> 女性人数だけでなく「男女比バー」がピンク優位の店舗を選ぶと、入店後すぐ相席しやすくなります。</li>
-                        <li><strong>② 近距離戦のラウンジは「肌とヒゲの清潔感」が9割：</strong> 照明が落ち着いたラウンジでは、至近距離での会話になります。青ヒゲ対策（メンズ脱毛）やスキンケア・ホワイトニングを整えておくだけで連絡先交換率が大きく変わります。</li>
-                        <li><strong>③ 会話が盛り上がったら「スマートに2軒目打診」：</strong> 23時前後に「もう1杯だけ静かなバー行かない？」とスマートにエスコートできる男性が最も次回デートへ繋げられます。</li>
+                        <li><strong>① 行く前に「男女比バー」を見ておく：</strong> 女性の人数だけでなく、ピンク（女性）の割合が高い店舗を選ぶと、入ってから待たされずに座りやすくなります。</li>
+                        <li><strong>② ソファ席は距離が近いので「清潔感」が大事：</strong> 照明は暗めですが、席の距離が近いぶん夕方のヒゲや肌のテカリは意外と目に入ります。事前に少し整えておくだけで安心感が変わります。</li>
+                        <li><strong>③ 2軒目に誘うなら22時半〜23時頃に：</strong> 終電近くになると帰り支度の空気になりやすいので、話が盛り上がったら少し早めに「近くで甘いものでも食べに行かない？」と声をかけるのが自然です。</li>
                     </ul>
                 </div>
 
@@ -290,12 +290,12 @@
     <div id="articles-modal" class="modal hidden">
         <div class="modal-content articles-modal-content">
             <div class="modal-header">
-                <h2>📖 相席ナビ 厳選攻略コラム・記事一覧</h2>
+                <h2>📖 相席ナビ コラム・記事一覧</h2>
                 <button class="close-btn-pill" onclick="closeArticlesModal()" aria-label="閉じる">✕ 閉じる</button>
             </div>
             <div class="articles-modal-body">
                 <p class="articles-lead">
-                    リアルタイム混雑データと元店員・店長の知見から導き出した、<strong>相席ラウンジで勝率を最大化する実戦マニュアル</strong>です。読みたいテーマをお選びください。
+                    日々の混雑データや実際のお店の空気感をもとに、<strong>「どこのお店・どの時間帯に行けば外さないか」</strong>をわかりやすくまとめています。気になるテーマからどうぞ。
                 </p>
 
                 <div class="article-cards-grid">
@@ -310,11 +310,11 @@
                         </div>
                         <div class="article-card-info">
                             <div class="article-card-meta">
-                                <span class="article-tag" style="background: rgba(236, 72, 153, 0.2); color: #f472b6;">客層・料金徹底比較</span>
+                                <span class="article-tag" style="background: rgba(236, 72, 153, 0.2); color: #f472b6;">客層・料金の違い</span>
                                 <span class="article-read-time">⏱️ 約5分で読める</span>
                             </div>
-                            <h3 class="article-card-title">【2026最新比較】オリエンタルラウンジ vs JIS vs ag の違いを徹底解剖！料金・客層・選び方ガイド</h3>
-                            <p class="article-card-desc">料金システム・女性の年齢層やノリ・おすすめ店舗診断まで、3大ラウンジの違いをリアルタイム混雑データから徹底比較。</p>
+                            <h3 class="article-card-title">オリエンタルラウンジ・JIS・ag は何が違う？料金・年齢層・お店の雰囲気まとめ</h3>
+                            <p class="article-card-desc">「結局どこに行けばいいの？」と迷う方へ。それぞれの女性の年齢層やノリ、料金システムの違いをわかりやすく比較しました。</p>
                             <div class="article-card-footer">
                                 <span class="article-read-btn" style="background: linear-gradient(135deg, #ec4899, #8b5cf6); color: #fff;">比較記事を読む ›</span>
                             </div>
@@ -328,15 +328,15 @@
                                 <source srcset="/static/thumb-weekday.webp" type="image/webp">
                                 <img src="/static/thumb-weekday.jpg" alt="平日攻略コラム アイキャッチ" width="640" height="360" decoding="async">
                             </picture>
-                            <span class="article-card-badge badge-weekday">⚡ 平日攻略</span>
+                            <span class="article-card-badge badge-weekday">⚡ 平日の狙い目</span>
                         </div>
                         <div class="article-card-info">
                             <div class="article-card-meta">
-                                <span class="article-tag">データ分析</span>
+                                <span class="article-tag">混雑データ</span>
                                 <span class="article-read-time">⏱️ 約3分で読める</span>
                             </div>
-                            <h3 class="article-card-title">【平日が一番勝てる】なぜ相席ラウンジは週末より水曜・木曜20時〜22時が最強の穴場なのか？</h3>
-                            <p class="article-card-desc">週末は男性過多で待ち時間多発。元店員が男女比データで明かす、ライバル不在で勝率が跳ね上がる平日ゴールデンタイムの立ち回り術。</p>
+                            <h3 class="article-card-title">なぜ週末より「水曜・木曜の20時〜22時」が一番入りやすくて話しやすいのか？</h3>
+                            <p class="article-card-desc">金土の夜は男性待ちが長くなりがちですが、週の真ん中は仕事帰りの女性が多くて待ち時間もほぼゼロ。データで見る平日の狙い目時間です。</p>
                             <div class="article-card-footer">
                                 <span class="article-read-btn">記事を読む ›</span>
                             </div>
@@ -350,37 +350,37 @@
                                 <source srcset="/static/thumb-manual.webp" type="image/webp">
                                 <img src="/static/thumb-manual.jpg" alt="完全攻略マニュアル アイキャッチ" width="640" height="360" decoding="async">
                             </picture>
-                            <span class="article-card-badge badge-manual">🔥 完全攻略 ｜ 必読バイブル</span>
+                            <span class="article-card-badge badge-manual">📖 基本ガイド</span>
                         </div>
                         <div class="article-card-info">
                             <div class="article-card-meta">
-                                <span class="article-tag">立ち回り術</span>
+                                <span class="article-tag">はじめての方へ</span>
                                 <span class="article-read-time">⏱️ 約5分で読める</span>
                             </div>
-                            <h3 class="article-card-title">【2026最新】相席ラウンジで爆死しない完全攻略マニュアル｜人数・男女比の立ち回り術</h3>
-                            <p class="article-card-desc">入店タイミングの見極め、男女比バーの活用法、清潔感マナーから連絡先交換・二次会移行テクニックまで徹底網羅した入門バイブル。</p>
+                            <h3 class="article-card-title">相席ラウンジで失敗しないための基本ガイド｜お店選び・時間帯・身だしなみのコツ</h3>
+                            <p class="article-card-desc">行く前の人数チェックのやり方から、ソファ席で気をつけたい清潔感、2軒目に誘うタイミングまで、知っておくと役立つ基本をまとめました。</p>
                             <div class="article-card-footer">
-                                <span class="article-read-btn">マニュアルを読む ›</span>
+                                <span class="article-read-btn">ガイドを読む ›</span>
                             </div>
                         </div>
                     </a>
 
-                    <!-- Article 3: Official note.com link -->
+                    <!-- Article 4: Official note.com link -->
                     <a href="https://note.com/huge_finch7078" target="_blank" rel="noopener noreferrer" class="article-card-item note-portal-card" onclick="window.open(this.href, '_blank'); return true;">
                         <div class="article-card-thumb note-thumb-box">
                             <div class="note-brand-visual">
                                 <span class="note-n-logo">n</span>
                                 <span class="note-visual-text">相席ナビ公式note</span>
                             </div>
-                            <span class="article-card-badge badge-note">📓 公式noteマガジン</span>
+                            <span class="article-card-badge badge-note">📓 公式note</span>
                         </div>
                         <div class="article-card-info">
                             <div class="article-card-meta">
                                 <span class="article-tag">公式note</span>
                                 <span class="article-read-time">随時更新</span>
                             </div>
-                            <h3 class="article-card-title">相席ナビ公式note ｜ 最新攻略記事＆深夜速報マガジン</h3>
-                            <p class="article-card-desc">note限定の深掘りコラムやリアルタイム混雑データの分析速報を随時配信中。スマホでサクッと読める最新ノウハウをお見逃しなく！</p>
+                            <h3 class="article-card-title">相席ナビ公式note ｜ 曜日ごとの傾向やちょっとしたコラム</h3>
+                            <p class="article-card-desc">noteでも曜日ごとの混雑傾向や、お店選びの小話を更新しています。移動中などに気軽に読めるコラム集です。</p>
                             <div class="article-card-footer">
                                 <span class="article-read-btn note-btn-style">noteで開く ↗</span>
                             </div>
@@ -515,7 +515,7 @@
             </div>
             <div class="how-to-modal-body">
                 <p class="how-to-lead">
-                    相席ナビは、オリエンタルラウンジ・ag・JISなど<strong>全国80店舗以上の「現在の女性・男性人数」をリアルタイムで無料集計</strong>する日本最大級の混雑速報ポータルです。
+                    相席ナビは、オリエンタルラウンジ・ag・JISなど<strong>全国の主要ラウンジに「いま何人入っているか」をリアルタイムで確認できる</strong>無料の集計サイトです。
                 </p>
 
                 <div class="how-to-steps">
@@ -523,8 +523,8 @@
                     <div class="how-to-step-card">
                         <div class="how-to-step-num">1</div>
                         <div class="how-to-step-content">
-                            <h4>今夜行きたい「エリア」を選ぶ</h4>
-                            <p>画面上のタブから「関東」「関西」「福岡」など行きたい地域をワンタップ。今いるエリアの店舗が一瞬で絞り込まれます。</p>
+                            <h4>行きたい「エリア」や「現在地順」を選ぶ</h4>
+                            <p>上のボタンから「関東」「関西」などの地域を選ぶか、「📍 現在地順」を押すと、いま近くにある店舗から順番に表示されます。</p>
                         </div>
                     </div>
 
@@ -532,8 +532,8 @@
                     <div class="how-to-step-card">
                         <div class="how-to-step-num">2</div>
                         <div class="how-to-step-content">
-                            <h4>「女性人数」と「男女比バー」をチェック</h4>
-                            <p>上位の店舗ほど今リアルタイムで女性が集まっています。ピンク（女性）の比率バーが長い店舗が今夜の狙い目です！</p>
+                            <h4>「女性の人数」と「男女比バー」を見る</h4>
+                            <p>カードの下にあるピンク（女性）と青（男性）のバーを見るだけで、どのお店が入りやすいかひと目でわかります。</p>
                         </div>
                     </div>
 
@@ -541,8 +541,8 @@
                     <div class="how-to-step-card">
                         <div class="how-to-step-num">3</div>
                         <div class="how-to-step-content">
-                            <h4>店舗カードをタップして詳細確認</h4>
-                            <p>店舗を押すと<strong>「曜日別の混雑ピーク時間グラフ」</strong>や<strong>「限定イベント」</strong>が丸わかり。待ち時間ゼロで直行できます！</p>
+                            <h4>気になる店舗をタップして普段の傾向も確認</h4>
+                            <p>店舗カードを押すと<strong>「曜日・時間帯ごとの平均人数グラフ」</strong>や<strong>「開催中のイベント」</strong>も見られます。</p>
                         </div>
                     </div>
                 </div>
@@ -550,24 +550,24 @@
                 <!-- Live SNS Callout within How to Guide -->
                 <div class="how-to-sns-box">
                     <div class="how-to-sns-title">
-                        <span>🔥 毎晩の女性速報は公式X・Threadsで配信中</span>
+                        <span>📢 毎晩の混雑まとめはX・Threadsでも更新中</span>
                     </div>
-                    <p>ピーク時間の混雑状況やお得なイベント速報を毎晩ポストしています。フォローしておくと行く前にすぐ確認できます！</p>
+                    <p>20時・22時などの節目に、その日人が集まっている店舗や穴場をまとめて投稿しています。行く前の参考にどうぞ。</p>
                     <div class="how-to-sns-btns">
                         <a href="https://x.com/aiseki_navi" target="_blank" rel="noopener noreferrer" class="how-to-sns-btn x-btn" onclick="window.open(this.href, '_blank'); return true;">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-                            <span>公式Xをフォロー</span>
+                            <span>公式Xを見る</span>
                         </a>
                         <a href="https://www.threads.net/@aiseki_navi1" target="_blank" rel="noopener noreferrer" class="how-to-sns-btn threads-btn" onclick="window.open(this.href, '_blank'); return true;">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12.001 2c-5.522 0-9.999 4.477-9.999 10 0 5.522 4.477 10 9.999 10 5.523 0 10-4.478 10-10 0-5.523-4.477-10-10-10zm0 18.001c-4.418 0-8-3.582-8-8 0-4.419 3.582-8.001 8-8.001 4.419 0 8.001 3.582 8.001 8.001 0 4.418-3.582 8-8.001 8zm3.567-9.757c-.126-.454-.378-.857-.73-1.166-.35-.308-.79-.473-1.272-.477h-.061c-.534.004-1.02.203-1.405.575-.386.372-.619.878-.656 1.425.321-.06.647-.09.976-.09.61 0 1.206.104 1.77.309.117-.184.21-.383.278-.576zm-1.849 5.864c-.732 0-1.424-.23-1.999-.666-.576-.436-.97-1.052-1.109-1.735-.07-.342-.089-.691-.057-1.038-.344.086-.677.209-.994.368-.696.349-1.144.978-1.198 1.681-.055.704.288 1.391.895 1.79.522.343 1.157.498 1.838.448.828-.061 1.705-.443 2.624-1.135-.297.185-.634.287-.998.287z"/></svg>
-                            <span>Threadsをフォロー</span>
+                            <span>Threadsを見る</span>
                         </a>
                     </div>
                 </div>
 
                 <div class="how-to-footer-action">
                     <button type="button" class="how-to-start-btn" onclick="closeHowToModal(true)">
-                        🔥 さっそく人数ランキングを見る！
+                        人数ランキングを見る
                     </button>
                     <label class="how-to-dont-show">
                         <input type="checkbox" id="how-to-dont-show-cb" checked> 次回から自動表示しない
@@ -841,7 +841,7 @@
             
             <div id="loading" class="loading-state">
                 <div class="spinner"></div>
-                <p>Establishing Connection...</p>
+                <p>最新データを読み込んでいます...</p>
             </div>
 
             <div id="content" class="content hidden">
@@ -906,12 +906,12 @@
                 {% if not is_staff %}
                 <!-- Editorial Column Highlight Banner Strip (Opens Articles Selector Modal) -->
                 <div class="column-banner-wrapper">
-                    <button type="button" class="column-highlight-banner" onclick="openArticlesModal()" title="攻略コラム・記事を選ぶ">
+                    <button type="button" class="column-highlight-banner" onclick="openArticlesModal()" title="コラム・記事を選ぶ">
                         <div class="col-banner-left">
-                            <span class="col-banner-badge">📖 攻略コラム</span>
-                            <span class="col-banner-text">【平日攻略＆完全マニュアル公開中】タップして読みたい記事を選択</span>
+                            <span class="col-banner-badge">📖 コラム</span>
+                            <span class="col-banner-text">3大ブランドの違い・平日の穴場時間をデータでまとめました</span>
                         </div>
-                        <span class="col-banner-arrow">記事を選ぶ ▾</span>
+                        <span class="col-banner-arrow">記事を読む ▾</span>
                     </button>
                 </div>
 
@@ -920,19 +920,19 @@
                     <div class="sns-hero-badge-row">
                         <span class="sns-live-beacon">
                             <span class="beacon-dot"></span>
-                            <span>LIVE 毎晩20:00・22:00</span>
+                            <span>毎晩 20:00・22:00 更新</span>
                         </span>
-                        <span class="sns-hero-tag">🔥 公式混雑速報</span>
+                        <span class="sns-hero-tag">📢 混雑まとめ</span>
                     </div>
                     <div class="sns-hero-main">
                         <div class="sns-hero-text">
-                            <h3 class="sns-hero-title">全国ラウンジの「今夜の女性人数速報」をリアルタイム配信中！</h3>
-                            <p class="sns-hero-desc">混雑ピーク・空席状況やゲリライベントを毎晩ポスト。フォローしておくと行く前に1秒で空席がわかります。</p>
+                            <h3 class="sns-hero-title">毎晩の「入りやすい穴場店舗」をX・Threadsで更新中</h3>
+                            <p class="sns-hero-desc">20時・22時などの節目に、その日女性が集まっている店舗やイベント情報をまとめて投稿しています。出かける前のチェックにどうぞ。</p>
                         </div>
                         <div class="sns-hero-actions">
                             <a href="https://x.com/aiseki_navi" target="_blank" rel="noopener noreferrer" class="sns-hero-btn x-main-btn" onclick="window.open(this.href, '_blank'); return true;">
                                 <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-                                <span>公式Xをフォロー</span>
+                                <span>公式Xを見る</span>
                             </a>
                             <a href="https://www.threads.net/@aiseki_navi1" target="_blank" rel="noopener noreferrer" class="sns-hero-btn threads-main-btn" onclick="window.open(this.href, '_blank'); return true;">
                                 <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12.001 2c-5.522 0-9.999 4.477-9.999 10 0 5.522 4.477 10 9.999 10 5.523 0 10-4.478 10-10 0-5.523-4.477-10-10-10zm0 18.001c-4.418 0-8-3.582-8-8 0-4.419 3.582-8.001 8-8.001 4.419 0 8.001 3.582 8.001 8.001 0 4.418-3.582 8-8.001 8zm3.567-9.757c-.126-.454-.378-.857-.73-1.166-.35-.308-.79-.473-1.272-.477h-.061c-.534.004-1.02.203-1.405.575-.386.372-.619.878-.656 1.425.321-.06.647-.09.976-.09.61 0 1.206.104 1.77.309.117-.184.21-.383.278-.576zm-1.849 5.864c-.732 0-1.424-.23-1.999-.666-.576-.436-.97-1.052-1.109-1.735-.07-.342-.089-.691-.057-1.038-.344.086-.677.209-.994.368-.696.349-1.144.978-1.198 1.681-.055.704.288 1.391.895 1.79.522.343 1.157.498 1.838.448.828-.061 1.705-.443 2.624-1.135-.297.185-.634.287-.998.287z"/></svg>
@@ -945,7 +945,7 @@
                     </div>
                     <div class="sns-hero-sublinks">
                         <span class="sublinks-label">その他の公式：</span>
-                        <a href="https://note.com/huge_finch7078" target="_blank" rel="noopener noreferrer" class="sublink-pill" onclick="window.open(this.href, '_blank'); return true;">📖 note公式コラム</a>
+                        <a href="https://note.com/huge_finch7078" target="_blank" rel="noopener noreferrer" class="sublink-pill" onclick="window.open(this.href, '_blank'); return true;">📖 noteコラム</a>
                         <span style="color: #334155;">•</span>
                         <a href="https://www.instagram.com/aiseki_navi1" target="_blank" rel="noopener noreferrer" class="sublink-pill" onclick="window.open(this.href, '_blank'); return true;">📸 Instagram</a>
                     </div>
@@ -954,7 +954,7 @@
 
                 <!-- Pinned Stores Section -->
                 <div id="pinned-list-container" class="hidden">
-                    <h2 class="section-title">★ PINNED STORES</h2>
+                    <h2 class="section-title">★ お気に入り店舗</h2>
                     <div id="pinned-list" class="ranking-list">
                         <!-- Pinned items will populate here -->
                     </div>
@@ -966,74 +966,74 @@
                 </div>
 
                 <div class="info-bar">
-                    <p>Last Update: <span id="last-update">--:--</span></p>
+                    <p>最終更新: <span id="last-update">--:--</span></p>
 
                     <div class="live-indicator">
                         <div class="dot"></div>
-                        LIVE (1m)
+                        1分自動更新
                     </div>
                 </div>
 
                 {% if not is_staff %}
                 <!-- Ranking SNS Share Box -->
                 <div class="share-banner-box">
-                    <span class="share-banner-title">📢 いま盛り上がっている店舗TOP3を友達に教える</span>
+                    <span class="share-banner-title">📢 いま人が集まっている店舗を友達に共有する</span>
                     <div class="share-banner-buttons">
                         <button class="share-pill-btn line-btn" onclick="shareCurrentRanking('line')">💬 LINEで送る</button>
-                        <button class="share-pill-btn x-btn" onclick="shareCurrentRanking('x')">𝕏 でポスト</button>
-                        <button class="share-pill-btn copy-btn" onclick="shareCurrentRanking('copy')">🔗 URLコピー</button>
+                        <button class="share-pill-btn x-btn" onclick="shareCurrentRanking('x')">𝕏 でシェア</button>
+                        <button class="share-pill-btn copy-btn" onclick="shareCurrentRanking('copy')">🔗 コピー</button>
                     </div>
                 </div>
 
                 <!-- SEO & ASP Review Editorial Column Section -->
                 <section class="seo-guide-section" aria-label="相席ラウンジ攻略ガイド">
                     <div class="seo-guide-header">
-                        <h2>📖 相席ラウンジのリアルタイム攻略ガイド＆時間帯別の狙い目</h2>
+                        <h2>📖 相席ラウンジのお店選び・時間帯ガイド</h2>
                         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                            <a href="/guide" class="guide-open-btn" style="text-decoration: none; background: linear-gradient(135deg, #ec4899, #8b5cf6);">📖 完全攻略マニュアルを読む ›</a>
-                            <button class="guide-open-btn" onclick="openGuideModal()">✨ おすすめ特集 ›</button>
+                            <a href="/guide" class="guide-open-btn" style="text-decoration: none; background: linear-gradient(135deg, #ec4899, #8b5cf6);">📖 基本ガイドを読む ›</a>
+                            <button class="guide-open-btn" onclick="openGuideModal()">✨ 身だしなみ・特集 ›</button>
                         </div>
                     </div>
                     <div class="seo-guide-grid">
                         <article class="seo-guide-card">
-                            <h3>⏰ 曜日・時間帯別のピーク傾向を知る</h3>
-                            <p>全国の主要相席ラウンジ（オリエンタルラウンジ・ag・JIS・XIX・ALFA・ヤタコイ・CLOVERS）では、<strong>金・土曜の21:00〜翌1:00</strong>が最大のピークタイムとなります。一方、平日の20:00〜22:00はお仕事帰りの女性が多く、男性の待ち時間も少ない穴場時間帯です。各店舗カードをタップすると、過去の曜日×時間帯別の平均人数グラフを確認できます。</p>
+                            <h3>⏰ 曜日・時間帯ごとの混み具合を知る</h3>
+                            <p>全国の主要ラウンジ（オリエンタルラウンジ・ag・JIS・XIX・ALFA・ヤタコイ・CLOVERS）では、<strong>金・土曜の21:00〜翌1:00</strong>が一番賑わいます。一方で、平日の20:00〜22:00頃は仕事帰りの女性が多く、男性の待ち時間もほとんどないため落ち着いて話しやすい時間帯です。店舗カードをタップすると、曜日・時間帯ごとの平均人数グラフも見られます。</p>
                         </article>
                         <article class="seo-guide-card">
-                            <h3>🪒 至近距離で差がつく「青ヒゲ対策・メンズ脱毛」</h3>
-                            <p>相席ラウンジのソファー席では至近距離で会話するため、<strong>口元のヒゲ（青ヒゲ）・肌の清潔感</strong>が第一印象を大きく左右します。夜の時間帯でもヒゲが目立たない「医療ヒゲ脱毛」やメンズスキンケアを取り入れることで、LINE交換率が格段にアップします。</p>
-                            <button class="card-inline-cta" onclick="openGuideModal('beauty')">🪒 メンズ医療脱毛・美肌特集を見る ›</button>
+                            <h3>🪒 距離が近いソファ席での「ヒゲ・肌ケア」</h3>
+                            <p>ラウンジの照明は暗めですが、席の距離が近いので<strong>夕方の青ヒゲや肌のテカリ</strong>は意外と目に入ります。日頃から医療ヒゲ脱毛やシンプルなスキンケアで整えておくと、仕事帰りにそのまま寄っても口元を気にせず会話に集中できます。</p>
+                            <button class="card-inline-cta" onclick="openGuideModal('beauty')">🪒 ヒゲ脱毛・スキンケアを見る ›</button>
                         </article>
                         <article class="seo-guide-card">
-                            <h3>📱 満席時の待ち時間をゼロにする「即日恋活アプリ」</h3>
-                            <p>人気店が満席の時や、近隣店舗の男女比が合わない時は、「今日これから飲める機能」があるマッチングアプリを併用するのが定石です。入店前の待ち時間に近くにいる相手を探しておくことで、週末の空振りをゼロにできます。</p>
-                            <button class="card-inline-cta" onclick="openGuideModal('dating')">💘 即日出会える恋活アプリを見る ›</button>
+                            <h3>📱 お店が混んでいる日に頼れる「恋活アプリ」</h3>
+                            <p>週末のピーク時間にお店が満席で入れないときや、近くの店舗の男女比が偏っているときは、「今日これから飲める人」を探せるマッチングアプリを入れておくと便利です。1対1で落ち着いて会いたい方にも向いています。</p>
+                            <button class="card-inline-cta" onclick="openGuideModal('dating')">💘 近くで会える恋活アプリを見る ›</button>
                         </article>
                         <article class="seo-guide-card">
-                            <h3>👔 第一印象を決定づける「プロ監修モテ私服」</h3>
-                            <p>相席ラウンジに着ていく私服に迷ったら、プロスタイリストが女性目線で厳選した「きれいめモテコーデ」を取り入れるのが一番の近道。清潔感あふれる大人の着こなしで初対面の好感度を最大化できます。</p>
-                            <button class="card-inline-cta" onclick="openGuideModal('grooming')">👔 スタイリスト厳選コーデを見る ›</button>
+                            <h3>👔 私服選びに迷わない「きれいめコーデ便」</h3>
+                            <p>「どんな服を着ていけばいいかわからない」という方は、スタイリストが選んだシンプルな大人コーデが届く定期便を使うのもひとつの手です。派手すぎず清潔感のある服が揃うので、休日の服選びがぐっと楽になります。</p>
+                            <button class="card-inline-cta" onclick="openGuideModal('grooming')">👔 スタイリスト監修コーデを見る ›</button>
                         </article>
                     </div>
 
                     <!-- FAQ Section for Long-tail SEO Keywords -->
                     <div class="seo-faq-block">
-                        <h3>❓ 相席ラウンジに関するよくある質問（Q&A）</h3>
+                        <h3>❓ よくある質問（Q&A）</h3>
                         <details class="seo-faq-item">
-                            <summary>Q. オリエンタルラウンジ・ag（アグ）・JIS（ジス）の違いは？どっちがおすすめ？</summary>
-                            <p><strong>オリエンタルラウンジ（ORIENTAL LOUNGE）</strong>は20代〜30代中盤まで幅広い層が集まる高級感ある王道ラウンジ、<strong>ag（アグ）</strong>は20代前半〜中盤中心でカジュアルに盛り上がれる新世代ラウンジ、<strong>JIS（ジス）</strong>は新宿・大宮・梅田茶屋町・札幌・福岡などで圧倒的な集客数を誇る人気相席バーです。同じエリア（新宿・渋谷・梅田など）にある場合は、当サイトのリアルタイム男女比を見比べて女性比率が高い店舗へ入店するのが最もおすすめです。</p>
+                            <summary>Q. オリエンタルラウンジ・ag（アグ）・JIS（ジス）の違いは？</summary>
+                            <p><strong>オリエンタルラウンジ</strong>は20代半ば〜30代まで幅広い層が集まる落ち着いた王道ラウンジ、<strong>ag（アグ）</strong>は20代前半〜中盤中心でカジュアルに話せる雰囲気、<strong>JIS（ジス）</strong>は新宿・大宮・梅田・札幌・福岡などで人気の本格バー調ラウンジです。同じエリアにある場合は、その日のリアルタイム人数と男女比を見比べて、女性の割合が高い店舗を選ぶのがおすすめです。</p>
                         </details>
                         <details class="seo-faq-item">
-                            <summary>Q. 相席ラウンジで男性余り・待ち時間を避ける狙い目の曜日・時間は？</summary>
-                            <p>金曜・土曜・祝前日の22時以降は全国的に男女ともに来店数が最大化しますが、人気店では男性の入店待ちが発生しやすくなります。待ち時間を避けたい場合は<strong>金・土曜の20:00〜21:00頃の早めの入店</strong>、または<strong>水曜・木曜の20:30〜22:30頃</strong>が女性比率が高まりやすく狙い目です。</p>
+                            <summary>Q. 男性の入店待ちを避けて入りやすい曜日・時間帯は？</summary>
+                            <p>金曜・土曜・祝前日の22時以降は一番人が集まりますが、人気店では男性の入店待ちが出やすくなります。待たずに入りたい場合は、<strong>金・土曜なら20:00〜21:00頃の早めの時間</strong>、または<strong>水曜・木曜の20:30〜22:30頃</strong>が女性の比率も高くなりやすくおすすめです。</p>
                         </details>
                         <details class="seo-faq-item">
-                            <summary>Q. 相席ラウンジとマッチングアプリはどっちが出会える？</summary>
-                            <p>「今夜すぐに複数人と楽しく飲みたい」なら相席ラウンジ、「事前に容姿や趣味・条件が合う相手と1対1で確実にデートしたい」ならマッチングアプリが向いています。相席ラウンジに行く前にリアルタイム人数をチェックし、男性過多の時間帯はアプリで近くの人を探す<strong>二刀流（併用）</strong>が最も成功率の高い立ち回りです。</p>
+                            <summary>Q. 相席ラウンジとマッチングアプリはどっちがいい？</summary>
+                            <p>「今日これから友達と楽しく飲みたい」なら相席ラウンジ、「事前に趣味や雰囲気が合う人と1対1で会いたい」ならマッチングアプリが向いています。週末にお店が混んでいるときの選択肢として、両方使えるようにしておくと空振りがなくなります。</p>
                         </details>
                         <details class="seo-faq-item">
-                            <summary>Q. 相席ラウンジで女性から好印象を持たれる身だしなみ・メンズ美容のポイントは？</summary>
-                            <p>ラウンジの照明下では「清潔感」が最も重視されます。特に<strong>夜の時間帯に伸びてくる青ヒゲ対策（メンズ医療脱毛・ヒゲ脱毛）</strong>、テカリや乾燥を防ぐ<strong>メンズスキンケア</strong>、そして<strong>眉毛サロン・ホワイトニング・上品な香水</strong>を整えておくことが、20代〜30代女性からの好感度と連絡先交換率を高める最大のポイントです。</p>
+                            <summary>Q. ラウンジへ行くときに気をつけたい身だしなみのポイントは？</summary>
+                            <p>特別なブランド服を着る必要はありませんが、「清潔感」だけはかなり見られています。特に<strong>夕方に伸びてくる青ヒゲのケア（ヒゲ脱毛）</strong>、顔のテカリや乾燥を防ぐ<strong>スキンケア</strong>、そして<strong>シワのないシンプルなジャケットやニット</strong>を意識しておくと、初対面でも安心感を持ってもらいやすくなります。</p>
                         </details>
                     </div>
 
@@ -1045,7 +1045,7 @@
                             オリエンタルラウンジ（ORIENTAL LOUNGE） / ag（アグ） / JIS（ジス） / XIX（シックス） / ALFA（アルファ） / ヤタコイ（YATAKOI） / CLOVERS（クローバーズ）
                         </p>
                         <p class="seo-dir-text">
-                            <strong>【対応エリア（全国65店舗以上）】</strong>
+                            <strong>【対応エリア（全国約80店舗）】</strong>
                             <strong>北海道・東北：</strong>札幌・仙台 ｜
                             <strong>東京：</strong>新宿・西新宿・渋谷本店・渋谷駅前・恵比寿・上野・町田 ｜
                             <strong>関東：</strong>横浜・大宮・柏・宇都宮・高崎 ｜
@@ -1061,7 +1061,7 @@
             </div>
 
             <div id="error-message" class="error-message hidden">
-                <p>Failed to retrieve data.</p>
+                <p>データの取得に失敗しました。少し待ってから再読み込みしてください。</p>
             </div>
         </main>
 
@@ -1189,7 +1189,7 @@
             isStaff: {{ 'true' if is_staff else 'false' }}
         };
     </script>
-    <script src="/static/app.js?v=20261023_04" defer></script>
+    <script src="/static/app.js?v=20261023_06" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {

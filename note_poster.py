@@ -69,23 +69,21 @@ def fetch_latest_note_articles() -> list:
 
 def build_note_tweet_text(title: str, link: str, force: bool = False) -> str:
     """
-    Build a high-CTR promotional post strictly within X's 280 weighted characters limit.
+    Build a natural, human-toned promotional post strictly within X's 280 weighted characters limit.
     """
     now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
     
     # URL is counted as 23 weighted characters by X
-    # Estimate base text weight
-    footer = f"』\n\n現場の混雑データから導く実践ノウハウを解説！出撃前にチェック推奨👇\n{link}\n#相席ナビ #相席ラウンジ"
+    footer = f"』\n\n実際の混雑データを見ながら、外さないお店や時間帯の選び方をまとめました。行く前にぜひ👇\n{link}\n#相席ナビ #相席ラウンジ"
     if force:
         footer += f"\n(⏱️{now_jst.strftime('%H:%M:%S')})"
     
-    header = "📝【相席攻略note公開】\n『"
+    header = "新しいnoteを書きました✍️\n『"
     
-    # Calculate non-URL weight
     def calc_weight(t: str) -> int:
         return sum(1 if ord(c) < 128 else 2 for c in t)
 
-    base_weight = calc_weight(header + "』\n\n現場の混雑データから導く実践ノウハウを解説！出撃前にチェック推奨👇\n\n#相席ナビ #相席ラウンジ") + 23
+    base_weight = calc_weight(header + "』\n\n実際の混雑データを見ながら、外さないお店や時間帯の選び方をまとめました。行く前にぜひ👇\n\n#相席ナビ #相席ラウンジ") + 23
     if force:
         base_weight += calc_weight(f"\n(⏱️{now_jst.strftime('%H:%M:%S')})")
     
@@ -103,7 +101,7 @@ def build_note_tweet_text(title: str, link: str, force: bool = False) -> str:
     else:
         trimmed_title = title
 
-    return f"📝【相席攻略note公開】\n『{trimmed_title}{footer}"
+    return f"{header}{trimmed_title}{footer}"
 
 
 def check_and_post_new_note(force: bool = False, article_index: int = 0) -> dict:
