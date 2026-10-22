@@ -946,6 +946,23 @@
                 }
             }
 
+            // 30-min Momentum Tag (Shows when female count is actively rising)
+            const momTag = node.querySelector('.momentum-tag');
+            if (momTag) {
+                const wDiff = Number(store.women_diff || 0);
+                const votes = store.votes || {};
+                if (wDiff >= 3) {
+                    momTag.classList.remove('hidden');
+                    momTag.textContent = `↗ +${wDiff}名`;
+                    momTag.title = `直近約30分で女性が${wDiff}名増えています`;
+                } else if (votes.smooth > 0 && votes.smooth >= (votes.waiting || 0)) {
+                    momTag.classList.remove('hidden');
+                    momTag.textContent = `👍 即入店報告`;
+                } else {
+                    momTag.classList.add('hidden');
+                }
+            }
+
             const baseName = brandInfo.cleanName || store.name;
             const storeNameEl = node.querySelector('.store-name');
             storeNameEl.textContent = isDuplicateName
@@ -1650,6 +1667,8 @@
             if (topOfficialLinkEl) topOfficialLinkEl.href = officialUrl;
             renderModalPrSlot(storeName);
             renderModalEvents(storeName);
+            renderModalCrowdVotes(storeName);
+            renderModalSecondVenues(storeName);
 
             modal.classList.remove('hidden');
             if (modalContent) modalContent.scrollTop = 0;
@@ -1694,6 +1713,222 @@
             if (hourlyWeekdayChartInstance) { hourlyWeekdayChartInstance.destroy(); hourlyWeekdayChartInstance = null; }
             currentAnalysisData = null;
         }
+
+        // --- Live User Crowd Votes (UGC) & Curated 2nd Venue Guide ---
+        const SECOND_VENUE_GUIDE_BY_AREA = [
+            {
+                keys: ['西新宿', 'NISHISHINJUKU'],
+                mapArea: '西新宿 新宿駅西口',
+                spots: [
+                    { badge: '🍸 隠れ家バー', title: '西新宿・野村ビル〜小滝橋通り周辺のオーセンティックバー', desc: '西口はキャッチが少なく、徒歩3分圏内に静かに話せるバーやダイニングが揃っています。' },
+                    { badge: '☕ 夜カフェ', title: '新宿南口・ルミネ〜サザンテラス方面のカフェ＆バル', desc: 'お酒が強くない女性なら、南口方面へ少し歩きながら夜カフェやワインバルへ誘うのが自然です。' }
+                ]
+            },
+            {
+                keys: ['新宿', 'SHINJUKU'],
+                mapArea: '新宿三丁目 靖国通り',
+                spots: [
+                    { badge: '🍷 2軒目の定番', title: '靖国通りを渡った「新宿三丁目（マルイ裏）」のワインバル', desc: '歌舞伎町の奥へは行かず、信号を渡って三丁目エリアの落ち着いたバルやビストロへ移動すると安心感が高まります。' },
+                    { badge: '☕ 夜カフェ・パフェ', title: '新宿東口・アルタ裏〜三丁目周辺の夜カフェ', desc: '「甘いものかコーヒーでも飲もう」と誘うと、45〜60分目でも警戒されずにOKしてもらいやすいです。' }
+                ]
+            },
+            {
+                keys: ['恵比寿', 'EBISU'],
+                mapArea: '恵比寿駅西口',
+                spots: [
+                    { badge: '🍷 裏路地ワインバー', title: '恵比寿駅西口〜恵比寿南の隠れ家ワインバー・ビストロ', desc: '大通りから1本入った通りにカウンター席のあるおしゃれなワインバーが多く、大人の2軒目に最適です。' },
+                    { badge: '☕ 夜カフェ', title: '駒沢通り〜西口五差路周辺の夜カフェ・ラウンジカフェ', desc: 'ソファ席のある夜カフェが徒歩3分圏内に点在しており、ゆっくり会話の続きを楽しめます。' }
+                ]
+            },
+            {
+                keys: ['渋谷', 'SHIBUYA'],
+                mapArea: '渋谷 道玄坂上 宮益坂',
+                spots: [
+                    { badge: '☕ 夜カフェ・ダイニング', title: '道玄坂上〜神泉寄りの落ち着いた夜カフェ＆バル', desc: 'センター街の喧騒を避けて、道玄坂の上側や宮益坂方面へ歩くと静かで雰囲気の良いお店が見つかります。' },
+                    { badge: '🍸 カウンターバー', title: '渋谷マークシティ裏〜桜丘エリアの隠れ家バー', desc: '徒歩3〜4分で大人っぽいダイニングバーが多く、横並びで話しやすいエリアです。' }
+                ]
+            },
+            {
+                keys: ['上野', 'UENO'],
+                mapArea: '上野 仲町通り 湯島',
+                spots: [
+                    { badge: '🍸 隠れ家バー', title: '上野広小路〜湯島寄りの落ち着いたショットバー', desc: '仲町通りの賑やかな通りから1本湯島側へ入ると、静かに飲めるきれいめなバーが並んでいます。' },
+                    { badge: '🍷 バル・ビストロ', title: '上野御徒町〜しのばず通り周辺のワインバル', desc: '徒歩2〜3分圏内で気取らず入れるおしゃれなバルが多く、2軒目に移動しやすい立地です。' }
+                ]
+            },
+            {
+                keys: ['横浜', 'YOKOHAMA'],
+                mapArea: '横浜駅西口 鶴屋町',
+                spots: [
+                    { badge: '🍷 おしゃれバル', title: '横浜駅西口から橋を渡った「鶴屋町エリア」のダイニングバー', desc: '西口五番街の雑踏を抜けて鶴屋町側へ歩くと、きれいで落ち着いたバルやカフェバーが多くておすすめです。' },
+                    { badge: '🍸 オーセンティックバー', title: '南幸・岡野寄りエリアの静かなカクテルバー', desc: '少し落ち着いた雰囲気で1杯飲みたいときに使いやすいお店が徒歩圏内に揃っています。' }
+                ]
+            },
+            {
+                keys: ['大宮', 'OMIYA'],
+                mapArea: '大宮駅東口 一番街',
+                spots: [
+                    { badge: '🍸 ダイニングバー', title: '大宮駅東口・すずらん通り〜一の宮通り周辺のバー＆バル', desc: '南銀のキャッチが多い通りを避け、一の宮通り方面の落ち着いたバルやカフェバーへ誘うのがスマートです。' }
+                ]
+            },
+            {
+                keys: ['梅田', '茶屋町', 'UMEDA', 'CHAYAMACHI', '天満', 'TENMA'],
+                mapArea: '梅田 茶屋町 お初天神裏参道',
+                spots: [
+                    { badge: '🍷 横並びバル', title: '「お初天神裏参道」または「茶屋町」のおしゃれバル・ビストロ', desc: '女性ウケ抜群のきれいめなバルや立ち飲み・ワインバーが密集しており、徒歩3分で自然に2軒目へ入れます。' },
+                    { badge: '🍸 夜カフェ・バー', title: '阪急茶屋町・堂山寄りの夜カフェ＆ルーフトップバー', desc: '「甘いものかフルーツカクテル飲もう」と誘いやすいお店がすぐ近くにあります。' }
+                ]
+            },
+            {
+                keys: ['難波', '心斎橋', 'NAMBA', 'SHINSAIBASHI'],
+                mapArea: '東心斎橋 裏なんば',
+                spots: [
+                    { badge: '🍸 隠れ家バー', title: '東心斎橋・宗右衛門町周辺のフルーツカクテル＆ダイニングバー', desc: '戎橋筋から1本入ったビルに、ソファ席やカウンターのある落ち着いたバーが豊富にあります。' },
+                    { badge: '🍷 バル・ビストロ', title: '裏なんば・座裏エリアのきれいめワインバル', desc: '美味しい小皿料理とワインで2軒目を気軽に楽しめる人気エリアです。' }
+                ]
+            },
+            {
+                keys: ['名古屋', '栄', '錦', 'NAGOYA'],
+                mapArea: '名古屋 栄 住吉 錦三丁目',
+                spots: [
+                    { badge: '🍷 カフェ＆バル', title: '栄・住吉エリア（三蔵通〜白川公園寄り）の夜カフェ＆ダイニング', desc: '栄店・錦店・ag名古屋から徒歩3〜4分。落ち着いて話せるソファカフェやワインバルが多いエリアです。' },
+                    { badge: '🍸 静かなバー', title: '錦三丁目・久屋大通寄りのオーセンティックバー', desc: '大人っぽい雰囲気でゆっくり1杯飲みたい夜にぴったりです。' }
+                ]
+            },
+            {
+                keys: ['福岡', '天神', 'FUKUOKA'],
+                mapArea: '福岡 天神 西通り 大名',
+                spots: [
+                    { badge: '🍸 夜カフェ・バー', title: '天神西通り〜大名エリアの隠れ家カフェバー＆ビストロ', desc: 'お店を出て徒歩2〜3分の大名エリアには、夜遅くまで開いているおしゃれな夜カフェやバルが無数にあります。' },
+                    { badge: '🍷 フルーツカクテル', title: '今泉・西中洲方面のリバーサイドバー', desc: '少し落ち着いた大人な雰囲気で話したいときは西中洲・今泉方面へ歩くのもおすすめです。' }
+                ]
+            },
+            {
+                keys: ['札幌', 'SAPPORO'],
+                mapArea: '札幌 すすきの 夜パフェ バー',
+                spots: [
+                    { badge: '🍨 札幌定番・夜パフェ', title: 'すすきの徒歩3分圏内の「夜パフェ専門店」＆夜カフェ', desc: '札幌の2軒目といえば「シメパフェ」。お酒が弱い女性でも「パフェ食べに行こう！」でほぼ確実に盛り上がります。' },
+                    { badge: '🍸 ショットバー', title: '南3条〜南4条西周辺の落ち着いたカクテルバー', desc: '外に出る時間を短くして、すぐ近くのビル内のバーへ移動できるのがすすきのの強みです。' }
+                ]
+            }
+        ];
+
+        function renderModalSecondVenues(storeName) {
+            const listEl = document.getElementById('modal-second-venue-list');
+            const cafeBtn = document.getElementById('modal-map-cafe-btn');
+            const barBtn = document.getElementById('modal-map-bar-btn');
+            if (!listEl) return;
+
+            const bInfo = detectBrandInfo(storeName);
+            const combined = `${storeName} ${bInfo.cleanName} ${bInfo.areaLabel}`.toUpperCase();
+
+            let matched = null;
+            for (const rule of SECOND_VENUE_GUIDE_BY_AREA) {
+                if (rule.keys.some(k => combined.includes(k.toUpperCase()))) {
+                    matched = rule;
+                    break;
+                }
+            }
+
+            const mapArea = matched ? matched.mapArea : (bInfo.areaLabel || bInfo.cleanName || '駅前');
+            const spots = matched ? matched.spots : [
+                {
+                    badge: '☕ 夜カフェ・スイーツ',
+                    title: `${bInfo.cleanName}周辺の夜カフェ・ダイニング`,
+                    desc: '相席して45〜60分ほど経ったら、「少し静かな場所でコーヒーか甘いものでもどう？」と徒歩3分圏内のカフェやバルへ誘うのが自然です。'
+                },
+                {
+                    badge: '🍸 横並びバー',
+                    title: `${bInfo.cleanName}から徒歩3分以内の落ち着いたバー`,
+                    desc: 'キャッチの多い通りを避け、カウンターや横並び席のあるきれいめなバーを選ぶと安心してもらいやすくなります。'
+                }
+            ];
+
+            listEl.innerHTML = spots.map(sp => `
+                <div class="second-venue-card">
+                    <span class="second-venue-badge">${escapeHtml(sp.badge)}</span>
+                    <div class="second-venue-title">${escapeHtml(sp.title)}</div>
+                    <p class="second-venue-desc">${escapeHtml(sp.desc)}</p>
+                </div>
+            `).join('');
+
+            if (cafeBtn) {
+                cafeBtn.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapArea + ' 夜カフェ カフェバー')}`;
+            }
+            if (barBtn) {
+                barBtn.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapArea + ' 隠れ家バー ワインバル')}`;
+            }
+        }
+
+        function updateVoteNumbersUI(votes) {
+            const v = votes || { smooth: 0, waiting: 0, lively: 0 };
+            const sEl = document.getElementById('vote-count-smooth');
+            const wEl = document.getElementById('vote-count-waiting');
+            const lEl = document.getElementById('vote-count-lively');
+            if (sEl) sEl.textContent = v.smooth || 0;
+            if (wEl) wEl.textContent = v.waiting || 0;
+            if (lEl) lEl.textContent = v.lively || 0;
+        }
+
+        async function renderModalCrowdVotes(storeName) {
+            const feedbackEl = document.getElementById('modal-vote-feedback');
+            if (feedbackEl) feedbackEl.classList.add('hidden');
+
+            // First show from cached ranking list if available
+            let initialVotes = { smooth: 0, waiting: 0, lively: 0 };
+            if (window.lastData && Array.isArray(window.lastData.ranking)) {
+                const found = window.lastData.ranking.find(s => s.name === storeName);
+                if (found && found.votes) initialVotes = found.votes;
+            }
+            updateVoteNumbersUI(initialVotes);
+
+            try {
+                const res = await fetch('/api/votes/' + encodeURIComponent(storeName));
+                if (res.ok) {
+                    const d = await res.json();
+                    if (d && d.votes) {
+                        updateVoteNumbersUI(d.votes);
+                    }
+                }
+            } catch (e) {}
+        }
+
+        async function submitCrowdVote(voteType) {
+            if (!currentModalStoreName) return;
+            const feedbackEl = document.getElementById('modal-vote-feedback');
+            try {
+                const res = await fetch('/api/vote', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        store_name: currentModalStoreName,
+                        vote_type: voteType
+                    })
+                });
+                const d = await res.json();
+                if (d && d.votes) {
+                    updateVoteNumbersUI(d.votes);
+                    if (window.lastData && Array.isArray(window.lastData.ranking)) {
+                        const found = window.lastData.ranking.find(s => s.name === currentModalStoreName);
+                        if (found) found.votes = d.votes;
+                    }
+                }
+                if (feedbackEl) {
+                    feedbackEl.classList.remove('hidden');
+                    if (d.status === 'duplicate') {
+                        feedbackEl.textContent = '✓ 先ほど投票済みです（ご協力ありがとうございます！）';
+                    } else {
+                        feedbackEl.textContent = '✨ 現場状況を共有しました！ありがとうございます';
+                    }
+                }
+            } catch (e) {
+                if (feedbackEl) {
+                    feedbackEl.classList.remove('hidden');
+                    feedbackEl.textContent = '通信エラーが発生しました';
+                }
+            }
+        }
+        window.submitCrowdVote = submitCrowdVote;
 
         // Render events relevant to the current store inside analysis modal
         function renderModalEvents(storeName) {

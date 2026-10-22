@@ -37,6 +37,16 @@ def init_db():
             """)
             cur.execute("CREATE INDEX IF NOT EXISTS idx_store_ts ON monitor_logs(store_name, timestamp);")
             cur.execute("CREATE INDEX IF NOT EXISTS idx_ts ON monitor_logs(timestamp);")
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS crowd_votes (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    timestamp TEXT NOT NULL,
+                    store_name TEXT NOT NULL,
+                    vote_type TEXT NOT NULL,
+                    ip_hash TEXT
+                );
+            """)
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_votes_store_ts ON crowd_votes(store_name, timestamp);")
             conn.commit()
             print("[local_db] SQLite database initialized successfully (WAL mode enabled).")
         except Exception as e:
@@ -249,3 +259,140 @@ def start_background_sync(days=14):
     thread = threading.Thread(target=sync_from_google_sheets, args=(days,), daemon=True)
     thread.start()
     return thread
+
+# In-memory fallback for votes
+_memory_votes = []
+_votes_lock = threading.Lock()
+
+def get_snapshot_around(minutes_ago_min=15, minutes_ago_max=50):
+    """
+    Returns {store_name: {'men': m, 'women': w}} from ~20-45 minutes ago
+    to calculate real-time crowd momentum.
+    """
+    now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
+    start_ts = (now_jst - datetime.timedelta(minutes=minutes_ago_max)).strftime("%Y-%m-%d %H:%M:%S")
+    end_ts = (now_jst - datetime.timedelta(minutes=minutes_ago_min)).strftime("%Y-%m-%d %H:%M:%S")
+    try:
+        conn = get_connection()
+        try:
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT store_name, men, women, timestamp
+                FROM monitor_logs
+                WHERE timestamp >= ? AND timestamp <= ?
+                ORDER BY timestamp DESC
+            """, (start_ts, end_ts))
+            rows = cur.fetchall()
+            result = {}
+            for r in rows:
+                sname = r['store_name']
+                if sname not in result:
+                    result[sname] = {'men': r['men'], 'women': r['women'], 'ts': r['timestamp']}
+            return result
+        finally:
+            conn.close()
+    except Exception:
+        return {}
+
+def add_crowd_vote(store_name, vote_type, ip_hash=""):
+    """Adds a live user crowd report vote with 30-min duplicate protection."""
+    if vote_type not in ('smooth', 'waiting', 'lively'):
+        return False, "invalid_type"
+
+    now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
+    now_str = now_jst.strftime("%Y-%m-%d %H:%M:%S")
+    cutoff_30m = (now_jst - datetime.timedelta(minutes=30)).strftime("%Y-%m-%d %H:%M:%S")
+
+    with _votes_lock:
+        # Check in-memory first
+        for v in _memory_votes:
+            if (
+                v['store_name'] == store_name
+                and v['vote_type'] == vote_type
+                and v['ip_hash'] == ip_hash
+                and v['timestamp'] >= cutoff_30m
+            ):
+                return False, "already_voted"
+        _memory_votes.append({
+            'timestamp': now_str,
+            'store_name': store_name,
+            'vote_type': vote_type,
+            'ip_hash': ip_hash
+        })
+        # Prune memory votes older than 6 hours
+        cutoff_6h = (now_jst - datetime.timedelta(hours=6)).strftime("%Y-%m-%d %H:%M:%S")
+        _memory_votes[:] = [v for v in _memory_votes if v['timestamp'] >= cutoff_6h]
+
+    try:
+        with _db_lock:
+            conn = get_connection()
+            try:
+                cur = conn.cursor()
+                cur.execute("""
+                    INSERT INTO crowd_votes (timestamp, store_name, vote_type, ip_hash)
+                    VALUES (?, ?, ?, ?)
+                """, (now_str, store_name, vote_type, ip_hash))
+                conn.commit()
+            finally:
+                conn.close()
+    except Exception:
+        pass
+
+    return True, "ok"
+
+def get_recent_votes(store_name=None, hours=4):
+    """Returns aggregated vote counts in the last `hours` hours."""
+    now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
+    cutoff_str = (now_jst - datetime.timedelta(hours=hours)).strftime("%Y-%m-%d %H:%M:%S")
+
+    counts_by_store = {}
+
+    def _ensure(sname):
+        if sname not in counts_by_store:
+            counts_by_store[sname] = {'smooth': 0, 'waiting': 0, 'lively': 0}
+
+    used_db = False
+    try:
+        conn = get_connection()
+        try:
+            cur = conn.cursor()
+            if store_name:
+                cur.execute("""
+                    SELECT store_name, vote_type, COUNT(*) as cnt
+                    FROM crowd_votes
+                    WHERE store_name = ? AND timestamp >= ?
+                    GROUP BY store_name, vote_type
+                """, (store_name, cutoff_str))
+            else:
+                cur.execute("""
+                    SELECT store_name, vote_type, COUNT(*) as cnt
+                    FROM crowd_votes
+                    WHERE timestamp >= ?
+                    GROUP BY store_name, vote_type
+                """, (cutoff_str,))
+            rows = cur.fetchall()
+            for r in rows:
+                sname = r['store_name']
+                vtype = r['vote_type']
+                _ensure(sname)
+                if vtype in counts_by_store[sname]:
+                    counts_by_store[sname][vtype] = int(r['cnt'])
+            used_db = True
+        finally:
+            conn.close()
+    except Exception:
+        pass
+
+    if not used_db:
+        with _votes_lock:
+            for v in _memory_votes:
+                if v['timestamp'] >= cutoff_str and (not store_name or v['store_name'] == store_name):
+                    sname = v['store_name']
+                    _ensure(sname)
+                    vtype = v['vote_type']
+                    if vtype in counts_by_store[sname]:
+                        counts_by_store[sname][vtype] += 1
+
+    if store_name:
+        return counts_by_store.get(store_name, {'smooth': 0, 'waiting': 0, 'lively': 0})
+    return counts_by_store

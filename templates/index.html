@@ -91,7 +91,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/style.css?v=20261023_07">
+    <link rel="stylesheet" href="/static/style.css?v=20261023_08">
     <!-- Local Chart.js: self-hosted (zero CDN blocking, works 100% offline & with adblockers) -->
     <script src="/static/chart.min.js?v=20261021" defer></script>
     <!-- Preload editorial thumbnails for instantaneous modal display -->
@@ -133,6 +133,28 @@
                 <div id="modal-event-list" class="modal-event-list"></div>
             </div>
 
+            <!-- Live User Crowd Vote Box (UGC) -->
+            <div id="modal-crowd-vote-box" class="modal-vote-box">
+                <div class="modal-vote-header">
+                    <span class="modal-vote-title">🙋‍♂️ 今お店にいる方のワンタップ現場レポート（直近4時間）</span>
+                </div>
+                <div class="modal-vote-buttons">
+                    <button type="button" class="vote-pill-btn smooth" onclick="submitCrowdVote('smooth')">
+                        <span>👍 待ちなしで入れた</span>
+                        <span id="vote-count-smooth" class="vote-num">0</span>
+                    </button>
+                    <button type="button" class="vote-pill-btn waiting" onclick="submitCrowdVote('waiting')">
+                        <span>⏳ 男性待ちあり</span>
+                        <span id="vote-count-waiting" class="vote-num">0</span>
+                    </button>
+                    <button type="button" class="vote-pill-btn lively" onclick="submitCrowdVote('lively')">
+                        <span>✨ 盛り上がってる</span>
+                        <span id="vote-count-lively" class="vote-num">0</span>
+                    </button>
+                </div>
+                <div id="modal-vote-feedback" class="modal-vote-feedback hidden"></div>
+            </div>
+
             <!-- 1. Weekday Average Section -->
             <div class="chart-container weekday-analysis-section">
                 <div class="section-header-row">
@@ -170,6 +192,19 @@
                 </div>
                 <div id="daily-chart-container" class="hidden" style="height: 210px;">
                     <canvas id="dailyChart"></canvas>
+                </div>
+            </div>
+
+            <!-- 4. Nearby 2nd Venue Guide & Google Maps Box -->
+            <div id="modal-second-venue-box" class="modal-second-venue-box">
+                <div class="second-venue-header">
+                    <h3>🥂 この店舗から徒歩3分・2軒目におすすめなスポット</h3>
+                    <span class="second-venue-sub">相席して45〜60分後の移動に</span>
+                </div>
+                <div id="modal-second-venue-list" class="second-venue-list"></div>
+                <div class="second-venue-map-actions">
+                    <a id="modal-map-cafe-btn" href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer" class="second-map-btn cafe">☕ 近くの夜カフェをマップで見る</a>
+                    <a id="modal-map-bar-btn" href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer" class="second-map-btn bar">🍸 近くの静かなバーをマップで見る</a>
                 </div>
             </div>
 
@@ -912,6 +947,7 @@
                 <a href="/" class="portal-nav-link active">🔥 リアルタイム順位</a>
                 <a href="/areas" class="portal-nav-link">📍 エリアから探す</a>
                 <a href="/columns" class="portal-nav-link">📖 コラム・記事一覧</a>
+                <a href="/stats" class="portal-nav-link">📊 統計データ白書</a>
                 <a href="/guide/brand-comparison" class="portal-nav-link">⚖️ 3大ブランド比較</a>
                 <a href="/grooming" class="portal-nav-link">✨ 身だしなみ・準備</a>
             </nav>
@@ -1304,9 +1340,10 @@
                     </ul>
                 </div>
                 <div class="sitemap-col">
-                    <h4>ℹ️ サイト情報・規約</h4>
+                    <h4>ℹ️ サイト情報・統計・規約</h4>
                     <ul>
                         <li><a href="/">リアルタイム人数ランキング</a></li>
+                        <li><a href="/stats">全国ラウンジ統計データ白書</a></li>
                         <li><button type="button" class="sitemap-text-btn" onclick="openHowToModal()">相席ナビの使い方</button></li>
                         <li><a href="/privacy">運営者情報・プライバシーポリシー</a></li>
                         <li><button type="button" class="sitemap-text-btn" onclick="openLegalModal()">免責事項（ポップアップ）</button></li>
@@ -1337,6 +1374,7 @@
                 <div class="store-meta-row">
                     <span class="brand-badge">OLG</span>
                     <span class="distance-tag hidden"></span>
+                    <span class="momentum-tag hidden"></span>
                     <span class="area-tag">東京</span>
                 </div>
                 <h3 class="store-name">Store Name</h3>
@@ -1382,7 +1420,7 @@
             isStaff: {{ 'true' if is_staff else 'false' }}
         };
     </script>
-    <script src="/static/app.js?v=20261023_06" defer></script>
+    <script src="/static/app.js?v=20261023_08" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {

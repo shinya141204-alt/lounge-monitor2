@@ -5408,3 +5408,241 @@ body.theme-light .portal-area-chip {
     color: #1e293b;
 }
 
+/* ==========================================================================
+   30-Min Momentum Badge, Live Crowd Votes (UGC) & 2nd Venue Guide
+   ========================================================================== */
+.momentum-tag {
+    display: inline-flex;
+    align-items: center;
+    height: 18px;
+    padding: 0 7px;
+    border-radius: 999px;
+    font-size: 0.65rem;
+    font-weight: 800;
+    line-height: 1;
+    color: #f472b6;
+    background: rgba(236, 72, 153, 0.16);
+    border: 1px solid rgba(236, 72, 153, 0.42);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+/* Modal Crowd Vote Box */
+.modal-vote-box {
+    background: rgba(15, 23, 42, 0.72);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 14px;
+    padding: 13px 14px;
+    margin: 12px 0;
+}
+
+.modal-vote-header {
+    margin-bottom: 9px;
+}
+
+.modal-vote-title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #cbd5e1;
+}
+
+.modal-vote-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.vote-pill-btn {
+    flex: 1;
+    min-width: 120px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 8px 11px;
+    border-radius: 10px;
+    font-size: 0.76rem;
+    font-weight: 700;
+    color: #f8fafc;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    cursor: pointer;
+    transition: all 0.18s ease;
+}
+
+.vote-pill-btn:hover {
+    transform: translateY(-1px);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.vote-pill-btn.smooth {
+    border-color: rgba(16, 185, 129, 0.4);
+}
+.vote-pill-btn.waiting {
+    border-color: rgba(245, 158, 11, 0.4);
+}
+.vote-pill-btn.lively {
+    border-color: rgba(236, 72, 153, 0.45);
+}
+
+.vote-num {
+    background: rgba(255, 255, 255, 0.12);
+    padding: 2px 7px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 800;
+}
+
+.modal-vote-feedback {
+    margin-top: 8px;
+    font-size: 0.76rem;
+    font-weight: 700;
+    color: #34d399;
+    text-align: center;
+}
+
+/* Modal 2nd Venue Guide Box */
+.modal-second-venue-box {
+    background: rgba(15, 23, 42, 0.72);
+    border: 1px solid rgba(56, 189, 248, 0.28);
+    border-radius: 14px;
+    padding: 15px;
+    margin: 14px 0;
+    text-align: left;
+}
+
+.second-venue-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+.second-venue-header h3 {
+    margin: 0;
+    font-size: 0.92rem;
+    color: #f8fafc;
+}
+
+.second-venue-sub {
+    font-size: 0.72rem;
+    color: #94a3b8;
+}
+
+.second-venue-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.second-venue-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 11px 12px;
+}
+
+.second-venue-badge {
+    display: inline-block;
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #38bdf8;
+    background: rgba(56, 189, 248, 0.15);
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    padding: 1px 7px;
+    border-radius: 5px;
+    margin-bottom: 5px;
+}
+
+.second-venue-title {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #f8fafc;
+    margin-bottom: 4px;
+    line-height: 1.4;
+}
+
+.second-venue-desc {
+    font-size: 0.75rem;
+    color: #cbd5e1;
+    margin: 0;
+    line-height: 1.5;
+}
+
+.second-venue-map-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.second-map-btn {
+    flex: 1;
+    min-width: 180px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 9px 12px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-decoration: none;
+    color: #fff;
+    background: linear-gradient(135deg, rgba(2, 132, 199, 0.85), rgba(59, 130, 246, 0.85));
+    border: 1px solid rgba(56, 189, 248, 0.45);
+    transition: all 0.2s ease;
+}
+
+.second-map-btn.bar {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.85), rgba(236, 72, 153, 0.85));
+    border-color: rgba(236, 72, 153, 0.45);
+}
+
+.second-map-btn:hover {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+}
+
+/* Light mode overrides */
+body.theme-light .momentum-tag {
+    background: #fdf2f8;
+    border-color: #f472b6;
+    color: #be185d;
+}
+
+body.theme-light .modal-vote-box,
+body.theme-light .modal-second-venue-box {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+}
+
+body.theme-light .modal-vote-title,
+body.theme-light .second-venue-header h3,
+body.theme-light .second-venue-title {
+    color: #0f172a;
+}
+
+body.theme-light .second-venue-desc {
+    color: #475569;
+}
+
+body.theme-light .vote-pill-btn {
+    background: #ffffff;
+    color: #0f172a;
+    border-color: #cbd5e1;
+}
+
+body.theme-light .vote-num {
+    background: #f1f5f9;
+    color: #0f172a;
+}
+
+body.theme-light .second-venue-card {
+    background: #ffffff;
+    border-color: #e2e8f0;
+}
+
+

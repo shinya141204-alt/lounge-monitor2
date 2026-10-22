@@ -402,8 +402,11 @@ def detect_region(store_name):
                 return region
     return 'Other'
 
+# Rolling in-memory snapshots for 30-min momentum calculation
+rolling_snapshots = []
+
 def update_job():
-    global latest_data, _last_update_error
+    global latest_data, _last_update_error, rolling_snapshots
     print(f"[{datetime.datetime.now()}] Updating data...")
     try:
         data = monitor.get_all_data()
@@ -411,13 +414,52 @@ def update_job():
             for store in data:
                 store['region'] = detect_region(store['name'])
 
+            jst_now = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
+
+            # Determine ~20-45 min ago baseline from in-memory rolling_snapshots or SQLite
+            baseline_map = {}
+            for snap in rolling_snapshots:
+                age_min = (jst_now - snap['dt']).total_seconds() / 60.0
+                if 15 <= age_min <= 50:
+                    baseline_map = snap['map']
+                    break
+            if not baseline_map:
+                try:
+                    baseline_map = local_db.get_snapshot_around(15, 50)
+                except Exception:
+                    baseline_map = {}
+
+            # Record current snapshot if at least 4 mins since last snapshot
+            if not rolling_snapshots or (jst_now - rolling_snapshots[-1]['dt']).total_seconds() >= 240:
+                rolling_snapshots.append({
+                    'dt': jst_now,
+                    'map': {s['name']: {'men': s.get('men', 0), 'women': s.get('women', 0)} for s in data}
+                })
+                if len(rolling_snapshots) > 15:
+                    rolling_snapshots[:] = rolling_snapshots[-15:]
+
+            # Fetch recent crowd votes (last 4 hours)
+            try:
+                votes_map = local_db.get_recent_votes(hours=4)
+            except Exception:
+                votes_map = {}
+
             with data_lock:
                 current_data = latest_data.get('full_data', [])
                 
                 # Merge new data with current data
                 merged_map = {s['name']: s for s in current_data}
                 for s in data:
-                    merged_map[s['name']] = s
+                    sname = s['name']
+                    prev = baseline_map.get(sname)
+                    if prev:
+                        s['women_diff'] = int(s.get('women', 0)) - int(prev.get('women', 0))
+                        s['men_diff'] = int(s.get('men', 0)) - int(prev.get('men', 0))
+                    else:
+                        s['women_diff'] = 0
+                        s['men_diff'] = 0
+                    s['votes'] = votes_map.get(sname, {'smooth': 0, 'waiting': 0, 'lively': 0})
+                    merged_map[sname] = s
                 
                 merged_data = list(merged_map.values())
                 sorted_data = sorted(merged_data, key=lambda x: (x['women'], x['men']), reverse=True)
@@ -425,7 +467,6 @@ def update_job():
                 
                 latest_data['top_store'] = top_store
                 latest_data['full_data'] = sorted_data
-                jst_now = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
                 latest_data['last_updated'] = jst_now.strftime("%Y-%m-%d %H:%M:%S")
             print(f"Data updated. Top store: {top_store['name'] if top_store else 'None'}")
             _last_update_error = None
@@ -663,6 +704,42 @@ def get_events():
     except Exception as e:
         return jsonify({'status': 'error', 'error': str(e)}), 500
 
+@app.route('/api/votes/<path:store_name>')
+def get_store_votes(store_name):
+    """Returns user crowd votes in the last 4 hours for a specific store."""
+    counts = local_db.get_recent_votes(store_name=store_name, hours=4)
+    return jsonify({'status': 'success', 'store_name': store_name, 'votes': counts})
+
+@app.route('/api/vote', methods=['POST'])
+def post_store_vote():
+    """Submits a one-tap live crowd vote from a user."""
+    import hashlib
+    payload = request.get_json(silent=True) or {}
+    store_name = str(payload.get('store_name', '')).strip()
+    vote_type = str(payload.get('vote_type', '')).strip()
+    if not store_name or vote_type not in ('smooth', 'waiting', 'lively'):
+        return jsonify({'status': 'error', 'error': 'Invalid parameters'}), 400
+
+    client_ip = request.headers.get('X-Forwarded-For', request.remote_addr or '0.0.0.0').split(',')[0].strip()
+    ip_hash = hashlib.sha256(f"{client_ip}_aiseki_salt".encode('utf-8')).hexdigest()[:16]
+
+    ok, reason = local_db.add_crowd_vote(store_name, vote_type, ip_hash)
+    counts = local_db.get_recent_votes(store_name=store_name, hours=4)
+
+    # Also update in-memory latest_data so subsequent /api/status calls reflect immediately
+    with data_lock:
+        for s in latest_data.get('full_data', []):
+            if s.get('name') == store_name:
+                s['votes'] = counts
+                break
+
+    return jsonify({
+        'status': 'success' if ok else 'duplicate',
+        'reason': reason,
+        'store_name': store_name,
+        'votes': counts
+    })
+
 @app.route('/robots.txt')
 def robots_txt():
     content = "User-agent: *\nAllow: /\nDisallow: /api/debug_ps\nDisallow: /api/logs\nDisallow: /api/thread_status\nDisallow: /staff\nSitemap: https://aiseki-navi.com/sitemap.xml\n"
@@ -812,6 +889,12 @@ def sitemap_xml():
     <priority>0.9</priority>
   </url>
   <url>
+    <loc>https://aiseki-navi.com/stats</loc>
+    <lastmod>{today}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
     <loc>https://aiseki-navi.com/grooming</loc>
     <lastmod>{today}</lastmod>
     <changefreq>weekly</changefreq>
@@ -873,6 +956,30 @@ def sitemap_xml():
 def columns_index():
     """Portal page listing all editorial guides, comparisons, and area features."""
     return render_template('columns.html', area_guides=AREA_GUIDES)
+
+@app.route('/stats')
+def stats_whitepaper():
+    """SEO-indexed primary statistical data whitepaper & weekly ranking page."""
+    trigger_background_fetch_if_needed()
+    report_data = None
+    try:
+        import weekly_report
+        res = weekly_report.generate_weekly_report()
+        if res and 'error' not in res:
+            report_data = res
+    except Exception:
+        report_data = None
+
+    with data_lock:
+        live_stores = list(latest_data.get('full_data') or [])
+        last_updated = latest_data.get('last_updated') or '--:--'
+
+    return render_template(
+        'stats_report.html',
+        report=report_data,
+        live_stores=live_stores,
+        last_updated=last_updated
+    )
 
 @app.route('/areas')
 @app.route('/area/<area_slug>')
