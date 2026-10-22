@@ -4638,3 +4638,130 @@ body.theme-light .events-tab-btn.active {
 .how-to-dont-show input {
     cursor: pointer;
 }
+
+/* ==========================================================================
+   Light Mode Overrides for SNS Hero Banner & How-To Modal
+   ========================================================================== */
+body.theme-light .official-sns-hero-card {
+    background: #ffffff;
+    border: 1px solid #fbcfe8;
+    box-shadow: 0 4px 18px rgba(236, 72, 153, 0.08), 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+body.theme-light .sns-live-beacon {
+    background: #fee2e2;
+    border-color: #fca5a5;
+    color: #dc2626;
+}
+
+body.theme-light .sns-hero-tag {
+    background: #fdf2f8;
+    border-color: #fbcfe8;
+    color: #be185d;
+}
+
+body.theme-light .sns-hero-title {
+    color: #0f172a;
+}
+
+body.theme-light .sns-hero-desc {
+    color: #475569;
+}
+
+body.theme-light .sns-hero-btn.x-main-btn {
+    background: #0f172a;
+    color: #ffffff;
+    border-color: #0f172a;
+}
+
+body.theme-light .sns-hero-btn.threads-main-btn {
+    background: #f8fafc;
+    color: #0f172a;
+    border-color: #cbd5e1;
+}
+
+body.theme-light .sns-hero-btn.how-to-quick-btn {
+    background: #fdf2f8;
+    color: #be185d;
+    border-color: #fbcfe8;
+}
+
+body.theme-light .sns-hero-sublinks {
+    border-top-color: #f1f5f9;
+}
+
+body.theme-light .sublinks-label {
+    color: #64748b;
+}
+
+body.theme-light .sublink-pill {
+    color: #334155;
+}
+
+body.theme-light .sublink-pill:hover {
+    color: #be185d;
+}
+
+/* Light mode for How-To Modal */
+body.theme-light .how-to-lead {
+    color: #334155;
+}
+
+body.theme-light .how-to-step-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+}
+
+body.theme-light .how-to-step-card:hover {
+    border-color: #f472b6;
+    background: #ffffff;
+}
+
+body.theme-light .how-to-step-content h4 {
+    color: #0f172a;
+}
+
+body.theme-light .how-to-step-content p {
+    color: #475569;
+}
+
+body.theme-light .how-to-sns-box {
+    background: linear-gradient(135deg, #fdf2f8 0%, #f5f3ff 100%);
+    border: 1px solid #fbcfe8;
+}
+
+body.theme-light .how-to-sns-title {
+    color: #be185d;
+}
+
+body.theme-light .how-to-sns-box p {
+    color: #334155;
+}
+
+body.theme-light .how-to-sns-btn.x-btn {
+    background: #0f172a;
+    color: #ffffff;
+    border-color: #0f172a;
+}
+
+body.theme-light .how-to-sns-btn.threads-btn {
+    background: #ffffff;
+    color: #0f172a;
+    border: 1px solid #cbd5e1;
+}
+
+body.theme-light .how-to-dont-show {
+    color: #475569;
+}
+
+/* Header live button in Light Mode */
+body.theme-light #header-x-btn {
+    background: #fef2f2 !important;
+    border-color: #fca5a5 !important;
+    color: #dc2626 !important;
+}
+
+body.theme-light #header-x-btn:hover {
+    background: #fee2e2 !important;
+    border-color: #f87171 !important;
+}

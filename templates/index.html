@@ -91,7 +91,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/style.css?v=20261022_6">
+    <link rel="stylesheet" href="/static/style.css?v=20261022_16">
     <!-- Local Chart.js: self-hosted (zero CDN blocking, works 100% offline & with adblockers) -->
     <script src="/static/chart.min.js?v=20261021" defer></script>
     <!-- Preload editorial thumbnails for instantaneous modal display -->
@@ -511,7 +511,7 @@
         <div class="modal-content" style="max-width: 600px;">
             <div class="modal-header">
                 <h2>💡 初めての方へ：30秒でわかる使い方</h2>
-                <button class="close-btn" onclick="closeHowToModal(false)">&times;</button>
+                <button class="close-btn-pill" onclick="closeHowToModal(false)" aria-label="閉じる">✕ 閉じる</button>
             </div>
             <div class="how-to-modal-body">
                 <p class="how-to-lead">
@@ -648,13 +648,13 @@
                     </svg>
                     <span>使い方</span>
                 </button>
-                <a id="guide-link-btn" href="/guide" class="header-btn labeled-btn" style="text-decoration: none;" title="相席完全攻略マニュアル">
+                <button type="button" id="guide-link-btn" class="header-btn labeled-btn" onclick="openArticlesModal()" title="攻略コラム・記事一覧から選ぶ">
                     <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
                     </svg>
                     <span>攻略記事</span>
-                </a>
-                <a id="header-x-btn" href="https://x.com/aiseki_navi" target="_blank" rel="noopener noreferrer" class="header-btn labeled-btn" style="text-decoration: none; border-color: rgba(239, 68, 68, 0.45); color: #f87171;" title="公式Xで今夜の女性速報を見る" onclick="window.open(this.href, '_blank'); return true;">
+                </button>
+                <a id="header-x-btn" href="https://x.com/aiseki_navi" target="_blank" rel="noopener noreferrer" class="header-btn labeled-btn" style="text-decoration: none;" title="公式Xで今夜の女性速報を見る" onclick="window.open(this.href, '_blank'); return true;">
                     <span class="beacon-dot" style="margin-right: 2px;"></span>
                     <span>X速報</span>
                 </a>
@@ -1040,7 +1040,7 @@
             isStaff: {{ 'true' if is_staff else 'false' }}
         };
     </script>
-    <script src="/static/app.js?v=20261022_15" defer></script>
+    <script src="/static/app.js?v=20261022_16" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
