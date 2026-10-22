@@ -39,9 +39,9 @@
             '松山': ['松山', 'matsuyama'],
             '札幌': ['札幌', 'sapporo'],
             '仙台': ['仙台', 'sendai'],
-            '名古屋': ['名古屋', '栄', '錦', 'nagoya', 'sakae', 'nishiki'],
-            '栄': ['栄', '名古屋', 'sakae', 'nagoya'],
-            '錦': ['錦', '名古屋', 'nishiki', 'nagoya'],
+            '名古屋': ['名古屋', 'nagoya'],
+            '栄': ['栄', '名古屋栄', 'sakae'],
+            '錦': ['錦', '名古屋錦', 'nishiki'],
             '広島': ['広島', 'hiroshima'],
             '岡山': ['岡山', 'okayama'],
             '宇都宮': ['宇都宮', 'utsunomiya'],
@@ -63,19 +63,43 @@
         };
 
         function _storeMatchesArea(storeName, areaKeyword) {
-            const clean = String(storeName).toUpperCase().trim();
-            const ak = String(areaKeyword).toLowerCase().trim();
+            const cleanStore = String(storeName).toUpperCase().replace(/\s+/g, '');
+            const cleanKw = String(areaKeyword).toUpperCase().replace(/\s+/g, '');
 
-            // Direct exact matching for JIS shops
-            if (JIS_STORE_TO_AREAS[clean]) {
-                return JIS_STORE_TO_AREAS[clean].includes(ak);
+            // 1. Direct exact matching for JIS shops
+            const cleanJis = String(storeName).toUpperCase().trim();
+            if (JIS_STORE_TO_AREAS[cleanJis]) {
+                const ak = String(areaKeyword).toLowerCase().trim();
+                return JIS_STORE_TO_AREAS[cleanJis].includes(ak);
             }
 
-            const sn = String(storeName).toLowerCase();
-            if (sn.includes(ak)) return true;
+            // 2. ag brand separation (prevent OLG vs ag collision in same cities)
+            const isAgStore = cleanStore.includes('AG');
+            const isAgKw = cleanKw.includes('AG');
+            const multiAgCities = ['名古屋', '上野', '渋谷', '梅田', '広島', '沖縄'];
+            for (const city of multiAgCities) {
+                if (cleanStore.includes(city) && cleanKw.includes(city)) {
+                    if (isAgStore !== isAgKw) return false;
+                }
+            }
+
+            // 3. Nagoya Sakae vs Nishiki separation
+            if (cleanStore.includes('栄')) {
+                if (cleanKw.includes('錦') || cleanKw.includes('NISHIKI')) return false;
+            }
+            if (cleanStore.includes('錦')) {
+                if (cleanKw.includes('栄') || cleanKw.includes('SAKAE')) return false;
+            }
+
+            // 4. Direct substring match
+            if (cleanKw.includes(cleanStore) || cleanStore.includes(cleanKw)) return true;
+
+            // 5. Alias mapping match
+            const sn = String(storeName).toLowerCase().replace(/\s+/g, '');
+            const ak = String(areaKeyword).toLowerCase().replace(/\s+/g, '');
             for (const [key, aliases] of Object.entries(AREA_ALIASES)) {
-                if (key === areaKeyword || aliases.includes(ak)) {
-                    if (aliases.some(alias => sn.includes(alias))) return true;
+                if (key.toLowerCase() === ak || aliases.some(a => a.toLowerCase() === ak)) {
+                    if (aliases.some(alias => sn.includes(alias.toLowerCase()))) return true;
                 }
             }
             return false;
@@ -1431,11 +1455,21 @@
 
             // Prioritize store-specific events (fallback to brand events if none)
             const specificEvs = getStoreSpecificEvents(storeName);
-            const evs = specificEvs.length > 0 ? specificEvs : getEventsForStore(storeName);
-            if (!evs || evs.length === 0) {
+            const rawEvs = specificEvs.length > 0 ? specificEvs : getEventsForStore(storeName);
+            if (!rawEvs || rawEvs.length === 0) {
                 section.classList.add('hidden');
                 list.innerHTML = '';
                 return;
+            }
+
+            // Deduplicate events by title (strip bracketed store tag e.g. 【名古屋栄】 to prevent identical duplicate cards)
+            const seenTitles = new Set();
+            const evs = [];
+            for (const ev of rawEvs) {
+                const baseTitle = String(ev.title || '').replace(/【[^】]+】/g, '').trim();
+                if (baseTitle && seenTitles.has(baseTitle)) continue;
+                if (baseTitle) seenTitles.add(baseTitle);
+                evs.push(ev);
             }
 
             // Smart Sort:

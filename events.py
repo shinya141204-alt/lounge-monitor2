@@ -56,9 +56,9 @@ AREA_ALIASES = {
     '松山': ['松山', 'matsuyama'],
     '札幌': ['札幌', 'sapporo'],
     '仙台': ['仙台', 'sendai'],
-    '名古屋': ['名古屋', '栄', '錦', 'nagoya', 'sakae', 'nishiki'],
-    '栄': ['栄', '名古屋', 'sakae', 'nagoya'],
-    '錦': ['錦', '名古屋', 'nishiki', 'nagoya'],
+    '名古屋': ['名古屋', 'nagoya'],
+    '栄': ['栄', '名古屋栄', 'sakae'],
+    '錦': ['錦', '名古屋錦', 'nishiki'],
     '広島': ['広島', 'hiroshima'],
     '岡山': ['岡山', 'okayama'],
     '宇都宮': ['宇都宮', 'utsunomiya'],
@@ -112,36 +112,37 @@ def _classify_tag(title: str):
 
 
 OLG_STORE_HEADER_TO_AREAS = {
-    'ag仙台': ['仙台'],
-    'ag金沢': ['金沢'],
+    'ag仙台': ['ag仙台', '仙台'],
+    'ag金沢': ['ag金沢', '金沢'],
     '宇都宮': ['宇都宮'],
     '高崎': ['高崎'],
     '大宮': ['大宮'],
     '柏': ['柏'],
     '錦糸町': ['錦糸町'],
-    'ag上野': ['上野'],
-    '上野': ['上野'],
+    'ag上野': ['ag上野', 'ag 上野'],
+    '上野': ['OLG 上野', '上野'],
     '新宿': ['新宿'],
-    '渋谷本店': ['渋谷'],
-    'ag渋谷': ['渋谷'],
+    '渋谷本店': ['渋谷本店'],
+    'ag渋谷': ['ag渋谷', 'ag 渋谷'],
     '恵比寿': ['恵比寿'],
     '町田': ['町田'],
     '横浜': ['横浜'],
     '静岡': ['静岡'],
     '浜松': ['浜松'],
-    '名古屋栄': ['栄', '名古屋'],
-    '名古屋錦': ['錦', '名古屋'],
-    'ag名古屋': ['名古屋'],
+    '名古屋栄': ['名古屋 栄', '名古屋栄', '栄'],
+    '名古屋錦': ['名古屋 錦', '名古屋錦', '錦'],
+    'ag名古屋': ['ag名古屋', 'ag 名古屋'],
     '京都': ['京都'],
     '心斎橋': ['心斎橋'],
     '難波': ['難波'],
-    'ag梅田': ['梅田'],
-    '梅田': ['梅田'],
+    'ag梅田': ['ag梅田', 'ag 梅田'],
+    '梅田': ['OLG 梅田', '梅田'],
+    '大阪駅前': ['大阪駅前'],
     '天満': ['天満'],
     '神戸': ['神戸'],
     '岡山': ['岡山'],
-    'ag広島': ['広島'],
-    '広島': ['広島'],
+    'ag広島': ['ag広島', 'ag 広島'],
+    '広島': ['OLG 広島', '広島'],
     '福岡': ['福岡'],
     '小倉': ['小倉'],
     '長崎': ['長崎'],
@@ -149,8 +150,8 @@ OLG_STORE_HEADER_TO_AREAS = {
     '大分': ['大分'],
     '宮崎': ['宮崎'],
     '鹿児島': ['鹿児島'],
-    'ag沖縄': ['沖縄'],
-    '沖縄': ['沖縄'],
+    'ag沖縄': ['ag沖縄', 'ag 沖縄'],
+    '沖縄': ['OLG 沖縄', '沖縄'],
 }
 
 
@@ -227,20 +228,59 @@ def _parse_oriental_roundup_article(article_url: str, date_str: str):
 
 
 def _store_matches_area(store_name: str, area_keyword: str) -> bool:
-    clean_store = store_name.upper()
-    ak = area_keyword.lower()
+    """Accurately match store with event area keywords without cross-contamination."""
+    clean_store = store_name.upper().replace(' ', '')
+    clean_kw = area_keyword.upper().replace(' ', '')
 
-    # Specialized exact matching for JIS shops
-    if clean_store in JIS_STORE_TO_AREAS:
-        return ak in JIS_STORE_TO_AREAS[clean_store]
+    # 1. Specialized exact matching for JIS shops
+    if store_name.upper() in JIS_STORE_TO_AREAS:
+        ak = area_keyword.lower()
+        return ak in JIS_STORE_TO_AREAS[store_name.upper()]
 
-    sn = store_name.lower()
-    if ak in sn:
+    # 2. ag brand separation (prevent OLG vs ag collision in same cities)
+    is_ag_store = 'AG' in clean_store
+    is_ag_kw = 'AG' in clean_kw
+    multi_ag_cities = ['名古屋', '上野', '渋谷', '梅田', '広島', '沖縄']
+    for city in multi_ag_cities:
+        if city in clean_store and city in clean_kw:
+            if is_ag_store != is_ag_kw:
+                return False
+
+    # 3. Nagoya Sakae vs Nishiki separation
+    if '栄' in clean_store:
+        if '錦' in clean_kw or 'NISHIKI' in clean_kw:
+            return False
+    if '錦' in clean_store:
+        if '栄' in clean_kw or 'SAKAE' in clean_kw:
+            return False
+
+    # 4. JIS / Kansai Shinjuku & Umeda separation
+    if '西新宿' in clean_store or 'NISHISHINJUKU' in clean_store:
+        if clean_kw in ['SHINJUKU', '新宿']:
+            return False
+    if 'SHINJUKU' in clean_store and 'NISHI' not in clean_store:
+        if '西新宿' in clean_kw or 'NISHISHINJUKU' in clean_kw:
+            return False
+
+    if '茶屋町' in clean_store or 'CHAYAMACHI' in clean_store:
+        if clean_kw in ['UMEDA', '梅田']:
+            return False
+    if 'UMEDA' in clean_store and 'CHAYAMACHI' not in clean_store:
+        if '茶屋町' in clean_kw or 'CHAYAMACHI' in clean_kw:
+            return False
+
+    # 5. Direct substring match
+    if clean_kw in clean_store or clean_store in clean_kw:
         return True
+
+    # 6. Alias mapping match
+    sn = store_name.lower().replace(' ', '')
+    ak = area_keyword.lower().replace(' ', '')
     for key, aliases in AREA_ALIASES.items():
-        if key == area_keyword or area_keyword in aliases:
-            if any(alias in sn for alias in aliases):
+        if key.lower() == ak or ak in [a.lower() for a in aliases]:
+            if any(alias.lower() in sn for alias in aliases):
                 return True
+
     return False
 
 
@@ -647,5 +687,15 @@ def get_events_for_store(store_name: str, store_only: bool = False):
             elif any(_store_matches_area(store_name, area) for area in target_stores):
                 matched.append(ev)
 
+    # Deduplicate store-specific events by cleaned title
+    seen_titles = set()
+    deduped_matched = []
+    for ev in matched:
+        t_key = re.sub(r'【[^】]+】', '', ev.get('title', '')).strip()
+        if t_key and t_key in seen_titles:
+            continue
+        seen_titles.add(t_key)
+        deduped_matched.append(ev)
+
     # Return store-specific events first, then brand-wide events
-    return matched if store_only else (matched + global_matched)
+    return deduped_matched if store_only else (deduped_matched + global_matched)
