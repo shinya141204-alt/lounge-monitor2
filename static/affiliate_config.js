@@ -144,9 +144,9 @@ const AFFILIATE_MASTER = {
                 '女性会員数が多く20代〜30代前半の利用者が急増中'
             ],
             cta: '無料登録・今夜の相手を探す ›',
-            bannerImg: 'https://www24.a8.net/svt/bgt?aid=261019920127&wid=001&eno=01&mid=s00000016987001075000&mc=1',
-            trackingImg: 'https://www18.a8.net/0.gif?a8mat=4BEK9C+23M2LU+3N2M+6EER5',
-            url: 'https://px.a8.net/svt/ejp?a8mat=4BEK9C+23M2LU+3N2M+6EER5'
+            bannerImg: 'https://www24.a8.net/svt/bgt?aid=261019920124&wid=001&eno=01&mid=s00000027012001016000&mc=1',
+            trackingImg: 'https://www15.a8.net/0.gif?a8mat=4BEK9C+21TRSI+5SFC+61RI9',
+            url: 'https://px.a8.net/svt/ejp?a8mat=4BEK9C+21TRSI+5SFC+61RI9'
         },
 
         // ==========================================

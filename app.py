@@ -470,8 +470,8 @@ AFFILIATE_REDIRECTS = {
     'mens_skincare_clinic': 'https://px.a8.net/svt/ejp?a8mat=4BEL1F+67V08I+1USQ+2Z90WX',
     'hair_removal': 'https://px.a8.net/svt/ejp?a8mat=4BEL1F+61B8KY+328C+2HCB1D',
     'mens_hair_removal': 'https://px.a8.net/svt/ejp?a8mat=4BEL1F+61B8KY+328C+2HCB1D',
-    'dating': 'https://px.a8.net/svt/ejp?a8mat=4BEK9C+23M2LU+3N2M+6EER5',
-    'dating_instant': 'https://px.a8.net/svt/ejp?a8mat=4BEK9C+23M2LU+3N2M+6EER5',
+    'dating': 'https://px.a8.net/svt/ejp?a8mat=4BEK9C+21TRSI+5SFC+61RI9',
+    'dating_instant': 'https://px.a8.net/svt/ejp?a8mat=4BEK9C+21TRSI+5SFC+61RI9',
     'taxi': 'https://aiseki-navi.com/#taxi-coupon',
     'taxi_dispatch': 'https://aiseki-navi.com/#taxi-coupon',
 }
