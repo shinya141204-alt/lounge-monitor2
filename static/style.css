@@ -108,6 +108,13 @@ h1 {
     gap: 8px;
 }
 
+@media (min-width: 769px) {
+    .ranking-list {
+        grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+        gap: 10px;
+    }
+}
+
 .ranking-item {
     background: var(--card-bg);
     border: 1px solid var(--card-border);
@@ -171,6 +178,7 @@ h1 {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    min-width: 0;
 }
 
 .brand-badge {
@@ -806,10 +814,11 @@ body.compact-mode .occupancy-bar {
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: 4px;
-    margin-left: 6px;
+    gap: 3px;
+    margin-left: 4px;
     margin-right: 2px;
     z-index: 2;
+    flex-shrink: 0;
 }
 
 .pin-btn {
@@ -817,7 +826,9 @@ body.compact-mode .occupancy-bar {
     border: none;
     color: var(--text-secondary);
     cursor: pointer;
-    padding: 4px;
+    width: 26px;
+    height: 26px;
+    padding: 0;
     transition: all 0.2s ease;
     display: flex;
     align-items: center;
@@ -831,8 +842,8 @@ body.compact-mode .occupancy-bar {
     border: 1px solid rgba(77, 171, 247, 0.3);
     color: #74c0fc;
     cursor: pointer;
-    width: 28px;
-    height: 28px;
+    width: 26px;
+    height: 26px;
     padding: 0;
     border-radius: 50%;
     transition: all 0.2s ease;
@@ -4694,21 +4705,31 @@ body.theme-light #header-x-btn:hover {
     display: inline-flex;
     align-items: center;
     gap: 3px;
-    padding: 2px 7px;
+    padding: 0 7px;
+    height: 18px;
+    box-sizing: border-box;
     border-radius: 999px;
-    font-size: 0.72rem;
+    font-size: 0.70rem;
     font-weight: 700;
+    line-height: 16px;
     letter-spacing: 0.02em;
     background: rgba(16, 185, 129, 0.16);
     color: #34d399;
-    border: 1px solid rgba(16, 185, 129, 0.35);
+    border: 1px solid rgba(16, 185, 129, 0.4);
     white-space: nowrap;
+    flex-shrink: 0;
 }
 
 body.theme-light .distance-tag {
     background: #ecfdf5;
     color: #047857;
     border-color: #a7f3d0;
+}
+
+body.theme-flat .distance-tag {
+    background: #0f172a;
+    color: #10b981;
+    border-color: #10b981;
 }
 
 /* ==========================================================================
