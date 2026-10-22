@@ -13,8 +13,7 @@ const AFFILIATE_MASTER = {
     categories: [
         { id: 'all', name: 'すべて', icon: '✨' },
         { id: 'beauty', name: 'メンズ脱毛・美肌', icon: '🪒', highlight: true },
-        { id: 'night', name: 'タクシー・深夜ケア', icon: '🚕', highlight: true },
-        { id: 'dating', name: '恋活・即日出会い', icon: '💘' },
+        { id: 'dating', name: '恋活・即日出会い', icon: '💘', highlight: true },
         { id: 'grooming', name: 'ファッション・身だしなみ', icon: '👔' }
     ],
 
@@ -73,56 +72,7 @@ const AFFILIATE_MASTER = {
         },
 
         // ==========================================
-        // 🚕 2. タクシー配車・ナイトケア（最注力ジャンル）
-        // ==========================================
-        {
-            id: 'taxi_dispatch',
-            category: 'night',
-            featured: true,
-            badge: '🚕 初回クーポンあり',
-            tag: '終電後・スマート配車',
-            name: '終電を逃してもスマート帰宅！タクシー配車アプリ（初回クーポン付き）',
-            shortTitle: 'タクシー配車アプリ特集',
-            infeedTag: '深夜送迎',
-            infeedSub: '初回限定クーポン付き',
-            infeedTitle: 'タクシー即時配車アプリ',
-            infeedCta: '呼ぶ ›',
-            target: '終電後の帰宅や、相席した女性をスマートにタクシーで送りたい男性',
-            desc: 'ラウンジが最も盛り上がる23時〜深夜帯。路上でタクシーを探して慌てるのはNG。アプリで事前に呼んでおけば、女性をスマートにエスコートして好感度を最大化できます。',
-            points: [
-                'アプリ決済で車内の支払い不要＆割り勘もスムーズ',
-                '現在地から一番近くのタクシーが最短数分で到着',
-                'インストール後すぐに使える初回乗車割引クーポン配布中'
-            ],
-            cta: '初回クーポンで今すぐ配車 ›',
-            // ※ASP審査完了後、GOタクシーやUber等のリンクに差し替え可能
-            url: 'https://aiseki-navi.com/#taxi-coupon'
-        },
-        {
-            id: 'alcohol_care_supplement',
-            category: 'night',
-            featured: false,
-            badge: '🌙 翌朝スッキリ',
-            tag: '二日酔い・アルコール対策',
-            name: '相席で楽しく飲んだ翌朝もスッキリ！人気アルコール対策サプリメント',
-            shortTitle: '翌朝アルコール対策サプリ',
-            infeedTag: '翌朝対策',
-            infeedSub: '二日酔いを残さない習慣',
-            infeedTitle: '飲む前の肝臓ケアサプリ特集',
-            infeedCta: '公式 ›',
-            target: '週末や平日前夜にたくさん飲んでも、翌朝のだるさを残さず仕事やデートに備えたい方',
-            desc: '相席ラウンジで乾杯が続いても安心。翌朝に響かせないための人気ウコン・肝臓エキス系サプリメントを厳選。カバンに忍ばせておくだけで、夜の相席を心置きなく楽しめます。',
-            points: [
-                '乾杯前・就寝前の1包で翌朝の目覚めが劇的に軽くなる',
-                '持ち運びに便利な個包装でポケット・バッグに常備可能',
-                'お酒好きの20代〜30代に支持される高評価リカバリー成分配合'
-            ],
-            cta: '公式お試しセットを見る ›',
-            url: 'https://aiseki-navi.com/#care-supplement'
-        },
-
-        // ==========================================
-        // 💘 3. 恋活・マッチング・即日出会い系
+        // 💘 2. 恋活・マッチング・即日出会い系
         // ==========================================
         {
             id: 'dating_instant',
@@ -215,9 +165,9 @@ const AFFILIATE_MASTER = {
         },
         {
             afterRank: 18,
-            itemId: 'taxi_dispatch',
+            itemId: 'mens_skincare_clinic',
             badgeText: 'PR',
-            highlight: true
+            highlight: false
         },
         {
             afterRank: 25,

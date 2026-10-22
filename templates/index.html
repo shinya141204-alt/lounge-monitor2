@@ -91,14 +91,14 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/style.css?v=20261023_02">
+    <link rel="stylesheet" href="/static/style.css?v=20261023_03">
     <!-- Local Chart.js: self-hosted (zero CDN blocking, works 100% offline & with adblockers) -->
     <script src="/static/chart.min.js?v=20261021" defer></script>
     <!-- Preload editorial thumbnails for instantaneous modal display -->
     <link rel="preload" as="image" type="image/webp" href="/static/thumb-weekday.webp">
     <link rel="preload" as="image" type="image/webp" href="/static/thumb-manual.webp">
     {% if not is_staff %}
-    <script src="/static/affiliate_config.js?v=3"></script>
+    <script src="/static/affiliate_config.js?v=4"></script>
     {% endif %}
 </head>
 
@@ -232,12 +232,12 @@
     <div id="guide-modal" class="modal hidden">
         <div class="modal-content" style="max-width: 740px;">
             <div class="modal-header">
-                <h2>✨ 相席攻略＆男磨き・ナイトケア特集</h2>
+                <h2>✨ 相席攻略＆男磨き・清潔感特集</h2>
                 <button class="close-btn-pill" onclick="closeGuideModal()" aria-label="閉じる">✕ 閉じる</button>
             </div>
             <div class="guide-modal-body">
                 <p class="guide-lead">
-                    相席ラウンジで圧倒的に差がつく<strong>『🪒 メンズ脱毛・美肌』</strong>や、終電後のスマート移動に役立つ<strong>『🚕 タクシー配車・深夜ケア』</strong>、待ち時間をゼロにする<strong>『💘 恋活アプリ』</strong>など、相席を120%楽しむための厳選サービスをまとめました。
+                    相席ラウンジで圧倒的に差がつく<strong>『🪒 メンズ脱毛・美肌』</strong>や、女性ウケ抜群の<strong>『👔 スタイリスト厳選コーデ』</strong>、待ち時間をゼロにする<strong>『💘 恋活アプリ』</strong>など、相席を120%楽しむための厳選サービスをまとめました。
                 </p>
 
                 <!-- Category Tabs -->
@@ -254,7 +254,7 @@
                     <ul>
                         <li><strong>① 入店30分前に「女性比率60%以上」の店舗を狙う：</strong> 女性人数だけでなく「男女比バー」がピンク優位の店舗を選ぶと、入店後すぐ相席しやすくなります。</li>
                         <li><strong>② 近距離戦のラウンジは「肌とヒゲの清潔感」が9割：</strong> 照明が落ち着いたラウンジでは、至近距離での会話になります。青ヒゲ対策（メンズ脱毛）やスキンケア・ホワイトニングを整えておくだけで連絡先交換率が大きく変わります。</li>
-                        <li><strong>③ 終電後の女性送りは「アプリ配車」でスマートに：</strong> 深夜帯に路上でタクシーを探して待たせるのはNG。アプリ決済可能なタクシーを呼んでおくことで好感度を最大化できます。</li>
+                        <li><strong>③ 会話が盛り上がったら「スマートに2軒目打診」：</strong> 23時前後に「もう1杯だけ静かなバー行かない？」とスマートにエスコートできる男性が最も次回デートへ繋げられます。</li>
                     </ul>
                 </div>
 
@@ -738,17 +738,6 @@
             </div>
             <button class="domain-notice-close" onclick="dismissDomainNotice()" aria-label="お知らせを閉じる" title="閉じる">✕</button>
         </aside>
-
-        <!-- Nighttime Smart Cab & After-Care Banner (Auto-activated 21:00 - 06:00 JST) -->
-        <aside id="night-care-banner" class="night-care-banner hidden" role="region" aria-label="深夜のタクシー配車＆ナイトケア案内">
-            <div class="night-care-content">
-                <span class="night-care-badge">🚕 終電後・送迎</span>
-                <span class="night-care-text">
-                    終電後のスマートな帰宅・女性送りに！<strong>タクシー初回クーポン</strong>＆翌朝スッキリ対策をチェック
-                </span>
-            </div>
-            <button class="night-care-btn" onclick="openGuideModal('night')">タクシー・ケアを見る ›</button>
-        </aside>
         {% endif %}
 
         <header>
@@ -1021,9 +1010,9 @@
                             <button class="card-inline-cta" onclick="openGuideModal('dating')">💘 即日出会える恋活アプリを見る ›</button>
                         </article>
                         <article class="seo-guide-card">
-                            <h3>🚕 終電後のスマート送迎＆翌朝ナイトケア</h3>
-                            <p>相席が盛り上がって終電を逃した際、路上でタクシーを探して待たせるのはNG。アプリ配車でスマートにエスコートし、お酒の席を楽しんだ後は翌朝に響かせないアルコールケアを取り入れるのが大人の余裕です。</p>
-                            <button class="card-inline-cta" onclick="openGuideModal('night')">🚕 タクシー初回クーポン＆深夜ケアを見る ›</button>
+                            <h3>👔 第一印象を決定づける「プロ監修モテ私服」</h3>
+                            <p>相席ラウンジに着ていく私服に迷ったら、プロスタイリストが女性目線で厳選した「きれいめモテコーデ」を取り入れるのが一番の近道。清潔感あふれる大人の着こなしで初対面の好感度を最大化できます。</p>
+                            <button class="card-inline-cta" onclick="openGuideModal('grooming')">👔 スタイリスト厳選コーデを見る ›</button>
                         </article>
                     </div>
 
@@ -1200,7 +1189,7 @@
             isStaff: {{ 'true' if is_staff else 'false' }}
         };
     </script>
-    <script src="/static/app.js?v=20261023_02" defer></script>
+    <script src="/static/app.js?v=20261023_03" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {

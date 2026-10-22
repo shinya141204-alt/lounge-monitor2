@@ -1111,9 +1111,8 @@
                 categories: [
                     { id: 'all', name: 'すべて', icon: '✨' },
                     { id: 'beauty', name: 'メンズ脱毛・美肌', icon: '🪒', highlight: true },
-                    { id: 'night', name: 'タクシー・深夜ケア', icon: '🚕', highlight: true },
-                    { id: 'dating', name: '恋活・即日出会い', icon: '💘' },
-                    { id: 'grooming', name: '香水・身だしなみ', icon: '👔' }
+                    { id: 'dating', name: '恋活・即日出会い', icon: '💘', highlight: true },
+                    { id: 'grooming', name: 'ファッション・身だしなみ', icon: '👔' }
                 ],
                 items: [],
                 infeedSlots: []
@@ -1334,21 +1333,10 @@
             }
         }
 
-        // Nighttime Smart Cab & After-care Banner Init
+        // Nighttime Smart Cab & After-care Banner Init (Retired)
         function initNightCareBanner() {
-            if (IS_STAFF) return;
             const banner = document.getElementById('night-care-banner');
-            if (!banner) return;
-
-            // Check if current JST time is late night (21:00 - 06:00)
-            const currentHour = new Date().getHours();
-            const isLateNight = (currentHour >= 21 || currentHour < 6);
-
-            if (isLateNight) {
-                banner.classList.remove('hidden');
-            } else {
-                banner.classList.add('hidden');
-            }
+            if (banner) banner.classList.add('hidden');
         }
 
         function getOfficialBrandUrl(brandCode, rawName) {

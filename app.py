@@ -482,8 +482,6 @@ AFFILIATE_REDIRECTS = {
     'mens_hair_removal': 'https://px.a8.net/svt/ejp?a8mat=4BEL1F+61B8KY+328C+2HCB1D',
     'dating': 'https://px.a8.net/svt/ejp?a8mat=4BEK9C+21TRSI+5SFC+61RI9',
     'dating_instant': 'https://px.a8.net/svt/ejp?a8mat=4BEK9C+21TRSI+5SFC+61RI9',
-    'taxi': 'https://aiseki-navi.com/#taxi-coupon',
-    'taxi_dispatch': 'https://aiseki-navi.com/#taxi-coupon',
 }
 
 @app.route('/link/<path:item_id>')
