@@ -480,12 +480,10 @@
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', () => {
                 initDomainNotice();
-                if (typeof initNightCareBanner === 'function') initNightCareBanner();
                 initHowToOnboarding();
             });
         } else {
             initDomainNotice();
-            if (typeof initNightCareBanner === 'function') initNightCareBanner();
             initHowToOnboarding();
         }
 
@@ -933,10 +931,10 @@
                 areaEl.classList.add('hidden');
             }
 
-            // Distance Tag (GPS Geolocation)
+            // Distance Tag (GPS Geolocation - ONLY visible when sorted by nearby)
             const distTag = node.querySelector('.distance-tag');
             if (distTag) {
-                if (typeof store._distKm === 'number' && userLocation) {
+                if (currentSort === 'nearby' && typeof store._distKm === 'number' && userLocation) {
                     distTag.classList.remove('hidden');
                     if (store._distKm < 1.0) {
                         distTag.textContent = `📍 ${Math.round(store._distKm * 1000)}m`;
@@ -1331,12 +1329,6 @@
                     localStorage.setItem('seen_how_to_guide_v1', '1');
                 } catch (e) {}
             }
-        }
-
-        // Nighttime Smart Cab & After-care Banner Init (Retired)
-        function initNightCareBanner() {
-            const banner = document.getElementById('night-care-banner');
-            if (banner) banner.classList.add('hidden');
         }
 
         function getOfficialBrandUrl(brandCode, rawName) {

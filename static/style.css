@@ -2926,20 +2926,6 @@ body.theme-light .card-inline-cta:hover {
     color: #9d174d;
 }
 
-body.theme-light .night-care-banner {
-    background: linear-gradient(135deg, #f0f9ff 0%, #f5f3ff 100%);
-    border-color: #bae6fd;
-    box-shadow: 0 2px 10px rgba(15, 23, 42, 0.05);
-}
-
-body.theme-light .night-care-text {
-    color: #0f172a;
-}
-
-body.theme-light .night-care-text strong {
-    color: #0284c7;
-}
-
 /* --- Editorial Highlight Banner (Light Mode) --- */
 body.theme-light .column-highlight-banner {
     background: linear-gradient(135deg, #f0f9ff 0%, #ede9fe 100%);
@@ -3410,8 +3396,7 @@ body.staff-mode .modal-pr-box,
 body.staff-mode .modal-pr-slot,
 body.staff-mode .a8-banner-container,
 body.staff-mode .share-banner-box,
-body.staff-mode .seo-guide-section,
-body.staff-mode .night-care-banner {
+body.staff-mode .seo-guide-section {
     display: none !important;
 }
 
@@ -3532,70 +3517,6 @@ body.theme-light .staff-event-toggle-pill.active {
     background: #fce7f3;
     border-color: #f472b6;
     color: #be185d;
-}
-
-/* --- Nighttime Smart Cab & After-care Banner --- */
-.night-care-banner {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 10px 14px;
-    margin: 0 auto 14px auto;
-    max-width: 1100px;
-    background: linear-gradient(135deg, rgba(2, 132, 199, 0.16) 0%, rgba(99, 102, 241, 0.16) 100%);
-    border: 1px solid rgba(56, 189, 248, 0.45);
-    border-radius: 12px;
-    backdrop-filter: blur(10px);
-    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
-    animation: fadeInBanner 0.3s ease-out;
-}
-.night-care-banner.hidden {
-    display: none !important;
-}
-.night-care-badge {
-    display: inline-flex;
-    align-items: center;
-    background: linear-gradient(135deg, #0284c7, #6366f1);
-    color: #fff;
-    font-size: 0.72rem;
-    font-weight: 700;
-    padding: 3px 8px;
-    border-radius: 6px;
-    white-space: nowrap;
-    box-shadow: 0 2px 8px rgba(2, 132, 199, 0.3);
-}
-.night-care-content {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 8px 12px;
-    flex: 1;
-    text-align: left;
-}
-.night-care-text {
-    font-size: 0.83rem;
-    color: #e2e8f0;
-}
-.night-care-text strong {
-    color: #38bdf8;
-}
-.night-care-btn {
-    background: linear-gradient(135deg, #0284c7, #6366f1);
-    border: none;
-    color: #fff;
-    font-size: 0.78rem;
-    font-weight: 700;
-    padding: 6px 14px;
-    border-radius: 999px;
-    cursor: pointer;
-    white-space: nowrap;
-    box-shadow: 0 2px 10px rgba(56, 189, 248, 0.3);
-    transition: all 0.2s ease;
-}
-.night-care-btn:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 14px rgba(56, 189, 248, 0.5);
 }
 
 /* Article card inline CTA button */

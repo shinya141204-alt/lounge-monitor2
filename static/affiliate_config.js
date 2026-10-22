@@ -124,28 +124,6 @@ const AFFILIATE_MASTER = {
             cta: 'スタイリスト厳選コーデを見る ›',
             bannerImg: 'https://h.accesstrade.net/sp/rr?rk=0100oo8500p144',
             url: 'https://h.accesstrade.net/sp/cc?rk=0100oo8500p144'
-        },
-        {
-            id: 'mens_fragrance',
-            category: 'grooming',
-            featured: false,
-            badge: '✨ すれ違いで魅了',
-            tag: '高級香水・身だしなみ',
-            name: '至近距離でふわりと香る！人気ブランド香水の月額定期便（カラリア等）',
-            shortTitle: 'モテる大人の香水特集',
-            infeedTag: 'モテ香水',
-            infeedSub: '女性ウケ抜群の香り厳選',
-            infeedTitle: '大人のモテ香水・月額定期便',
-            infeedCta: '詳細 ›',
-            target: 'きつい香水は苦手だが、女性が思わず近寄りたくなる自然な良い香りをまといたい男性',
-            desc: '相席ラウンジのソファー席で隣に座った瞬間、女性の印象を最も強く左右するのが「香り」です。高級ハイブランド香水を月々手軽に使い切れるサイズで試せる人気サービスです。',
-            points: [
-                '女性ウケの良い爽やか系・ウッディ系の人気香水を厳選',
-                'ポケットサイズの専用アトマイザーでラウンジ入店前にひと吹き',
-                'ボトル買いせず毎月好きな香りを少量で楽しめる'
-            ],
-            cta: '人気香水ランキングを見る ›',
-            url: 'https://aiseki-navi.com/#fragrance-subscription'
         }
     ],
 
