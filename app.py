@@ -735,19 +735,32 @@ def generate_sns_post_api():
         header = f"🔥【{time_part} 全国速報】いま盛り上がってる相席ラウンジTOP5！"
         tags = "#相席ナビ #相席ラウンジ #オリエンタルラウンジ #JIS #ag"
 
-    limit = 3 if post_type == 'anaba' else 5
-    medals = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣']
-    lines = [header]
+    limit = 5
+    medals = ['🥇 1位', '🥈 2位', '🥉 3位', '4️⃣ 4位', '5️⃣ 5位']
+    lines = [header, ""]
     for i, s in enumerate(filtered[:limit]):
         w = s.get('women', 0)
         m = s.get('men', 0)
         tot = w + m
         pct = round((w / tot) * 100) if tot > 0 else 0
         if post_type == 'anaba':
-            lines.append(f"{medals[i]} {s.get('name')}（女性比率{pct}%｜👩{w}名/👨{m}名）")
+            lines.append(f"{medals[i]}：{s.get('name')}（女性比率{pct}% ｜ 👩女性{w}名 / 👨男性{m}名）")
         else:
-            lines.append(f"{medals[i]} {s.get('name')}（👩{w}名 / 👨{m}名）")
-    lines.append(f"👇全店舗のリアルタイム人数＆曜日別グラフはこちら\n{base_url}/\n{tags}")
+            lines.append(f"{medals[i]}：{s.get('name')}（👩女性{w}名 / 👨男性{m}名・女性比率{pct}%）")
+
+    lines.extend([
+        "",
+        "💡【相席ナビからの立ち回りアドバイス】",
+        "満席で男性の入店待ちが発生している店舗を避け、女性比率の高い穴場店舗へハシゴ移動するのが最も勝率の高い立ち回りです！",
+        "",
+        "📖【2026最新】オリラジ・ag・JIS 3大ブランドの違い比較：",
+        f"{base_url}/guide/brand-comparison",
+        "",
+        f"👇全国80店舗の今わかるリアルタイム人数＆男女比グラフ",
+        f"{base_url}/",
+        "",
+        tags
+    ])
     return jsonify({
         'status': 'success',
         'type': post_type,

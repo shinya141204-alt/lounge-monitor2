@@ -380,10 +380,26 @@ def get_tip_for_slot(slot_label: str = "12:00", tip_index: int = None) -> str:
         day_of_year = now_jst.timetuple().tm_yday
         idx = (day_of_year * 2 + slot_offset) % len(TIPS_LIST)
 
-    raw_tip = TIPS_LIST[idx]
+    raw_tip = TIPS_LIST[idx].strip()
+    site_url = os.environ.get("PUBLIC_SITE_URL", "https://aiseki-navi.com").rstrip("/")
 
-    # Append anti-duplicate seconds tag in testing / off-cycle or if forced
-    return raw_tip
+    # Take advantage of X Premium (no 140-char limit): enrich with authoritative guide links & live tool URL
+    if slot_label == "12:00":
+        link_footer = (
+            f"\n\n📖【2026最新】オリラジ・ag・JIS 3大ブランドの違い徹底比較はこちら👇\n"
+            f"{site_url}/guide/brand-comparison\n\n"
+            f"👇全国80店舗の今わかるリアルタイム人数ランキング\n"
+            f"{site_url}/"
+        )
+    else:  # 18:00
+        link_footer = (
+            f"\n\n📖【平日攻略】水曜・木曜20時〜22時が最強の穴場である理由はこちら👇\n"
+            f"{site_url}/guide/weekday-strategy\n\n"
+            f"👇今夜のリアルタイム女性人数＆男女比ランキング\n"
+            f"{site_url}/"
+        )
+
+    return f"{raw_tip}{link_footer}"
 
 
 def run_scheduled_tip_post(slot_label: str = "12:00", force: bool = False, tip_index: int = None) -> dict:

@@ -69,33 +69,53 @@ def format_ja_store_name(raw_name: str) -> str:
 
 def build_scheduled_tweet_text(stores: list, slot_label: str = "20:00", app_url: str = "") -> str:
     """
-    Build a high-engagement X post guaranteed to fit within X's 140-char (280 weighted) limit:
-    - '20:00': Early evening start dash TOP3
-    - '22:00' (or '22:30'): Peak time high-female-ratio 'Anaba' TOP3
-    - '00:00': Midnight late-night fever TOP3
-    - '02:00': All-night morning fever TOP3
+    Build an authoritative, high-engagement X post taking full advantage of X Premium
+    (no character limit constraint; formatted with rich insights, TOP5, tactical advice, and guide links).
+    - '20:00': Early evening start dash TOP5 & zero-wait strategy
+    - '22:00' (or '22:30'): Peak time high-female-ratio TOP5 & queue avoidance tactics
+    - '00:00': Midnight late-night fever TOP5 & after-train tactics
+    - '02:00': All-night morning fever TOP5 & dawn strategy
     """
     site_url = (app_url or os.environ.get("PUBLIC_SITE_URL") or "https://aiseki-navi.com").rstrip("/")
     now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
     weekdays_ja = ["月", "火", "水", "木", "金", "土", "日"]
     wd_str = weekdays_ja[now_jst.weekday()]
-    date_label = f"{now_jst.month}/{now_jst.day}({wd_str}){slot_label}"
+    date_label = f"{now_jst.month}/{now_jst.day}({wd_str}) {slot_label}"
     # Anti-duplicate unique tag with seconds to ensure X never rejects with 403 Duplicate Content
     time_tag = f"⏱️{now_jst.strftime('%H:%M:%S')}集計"
 
     if not stores:
         return ""
 
-    medals = ["🥇", "🥈", "🥉"]
+    medals = ["🥇 1位", "🥈 2位", "🥉 3位", "4️⃣ 4位", "5️⃣ 5位"]
 
     if slot_label == "20:00":
-        lines = [f"🔥【{date_label} 序盤速報】スタートダッシュ女性人数TOP3"]
-        for i, s in enumerate(stores[:3]):
+        lines = [
+            f"🔥【{date_label} 序盤速報】今夜スタートダッシュで女性が集まる相席ラウンジTOP5！",
+            "",
+            "いまリアルタイムで女性人数が多い全国上位店舗です👇"
+        ]
+        for i, s in enumerate(stores[:5]):
             w = s.get("women", 0)
             m = s.get("men", 0)
+            tot = w + m
+            pct = round((w / tot) * 100) if tot > 0 else 0
             ja_name = format_ja_store_name(s.get("name", ""))
-            lines.append(f"{medals[i]}{ja_name}(👩{w}名/👨{m}名)")
-        lines.append(f"👇全65店舗のリアルタイム人数\n{site_url}/\n{time_tag} #相席ナビ #相席ラウンジ")
+            lines.append(f"{medals[i]}：{ja_name}（👩女性{w}名 / 👨男性{m}名・女性比率{pct}%）")
+
+        lines.extend([
+            "",
+            "💡【今夜の立ち回りアドバイス】",
+            "平日の20時台はお仕事帰りのOL・看護師女性がサクッと来店するゴールデンタイム。男性の入店待ちゼロでスムーズに着席できる最大の穴場です。21時半の混雑ピーク前に早めに入店して落ち着いて会話するのが今夜の勝ち筋！",
+            "",
+            "📖【2026最新】オリラジ・ag・JIS 3大ブランドの違い徹底比較：",
+            f"{site_url}/guide/brand-comparison",
+            "",
+            "👇全国80店舗の今わかるリアルタイム人数＆男女比グラフ",
+            f"{site_url}/",
+            "",
+            f"{time_tag} #相席ナビ #相席ラウンジ #オリエンタルラウンジ #JIS #ag"
+        ])
         return "\n".join(lines)
 
     elif slot_label in ("22:00", "22:30"):
@@ -107,46 +127,111 @@ def build_scheduled_tweet_text(stores: list, slot_label: str = "20:00", app_url:
             ),
             reverse=True,
         )
-        top_anaba = candidates[:3] if len(candidates) >= 3 else stores[:3]
-        lines = [f"💎【{date_label} ピーク速報】女性比率が高い狙い目TOP3"]
-        for i, s in enumerate(top_anaba):
+        top_anaba = candidates[:5] if len(candidates) >= 5 else stores[:5]
+        lines = [
+            f"💎【{date_label} ピーク速報】いま女性比率が高くて狙い目の相席ラウンジTOP5！",
+            "",
+            "店内の女性比率が高い穴場・狙い目店舗をピックアップ👇"
+        ]
+        for i, s in enumerate(top_anaba[:5]):
             w = s.get("women", 0)
             m = s.get("men", 0)
             tot = w + m
             pct = round((w / tot) * 100) if tot > 0 else 0
             ja_name = format_ja_store_name(s.get("name", ""))
-            lines.append(f"{medals[i]}{ja_name}(女{pct}%｜👩{w}/👨{m})")
-        lines.append(f"👇全65店舗の男女比・グラフ\n{site_url}/\n{time_tag} #相席ナビ #相席ラウンジ")
+            lines.append(f"{medals[i]}：{ja_name}（女性比率{pct}% ｜ 👩女性{w}名 / 👨男性{m}名）")
+
+        lines.extend([
+            "",
+            "💡【ピークタイムの立ち回り戦術】",
+            "各店舗の盛り上がりが最高潮に達する時間帯！満席で男性待ち列ができている店舗に無理に並ばず、相席ナビで女性比率60%超え＆待ちの少ない近隣店舗へ即ハシゴ移動するのが最も賢い立ち回りです。",
+            "",
+            "📖【平日攻略】水曜・木曜20時〜22時が最強の穴場である理由：",
+            f"{site_url}/guide/weekday-strategy",
+            "",
+            "👇全国80店舗のリアルタイム人数ランキング・混雑グラフ",
+            f"{site_url}/",
+            "",
+            f"{time_tag} #相席ナビ #相席ラウンジ #オリエンタルラウンジ #JIS"
+        ])
         return "\n".join(lines)
 
     elif slot_label == "00:00":
-        lines = [f"🌙【{date_label} 深夜速報】終電後も盛況な店舗TOP3"]
-        for i, s in enumerate(stores[:3]):
+        lines = [
+            f"🌙【{date_label} 深夜速報】終電後も女性が多数滞在している店舗TOP5！",
+            "",
+            "終電後も店内の熱気が続いている深夜営業店舗です👇"
+        ]
+        for i, s in enumerate(stores[:5]):
             w = s.get("women", 0)
             m = s.get("men", 0)
+            tot = w + m
+            pct = round((w / tot) * 100) if tot > 0 else 0
             ja_name = format_ja_store_name(s.get("name", ""))
-            lines.append(f"{medals[i]}{ja_name}(👩{w}名/👨{m}名)")
-        lines.append(f"👇深夜営業中ラウンジの人数\n{site_url}/\n{time_tag} #相席ナビ #相席ラウンジ")
+            lines.append(f"{medals[i]}：{ja_name}（👩女性{w}名 / 👨男性{m}名・女性比率{pct}%）")
+
+        lines.extend([
+            "",
+            "💡【深夜帯の立ち回り戦術】",
+            "終電を逃して残っている女性は「朝まで楽しく飲みたい」モチベーションが高い層。男性の入店待ちも解消され、1対1や少人数でじっくり親密になれるゴールデンタイムです。スマートにタクシー配車してハシゴ推奨！",
+            "",
+            "📖 相席完全攻略マニュアル（二次会・深夜タクシー誘導の極意）：",
+            f"{site_url}/guide",
+            "",
+            "👇深夜営業中ラウンジのリアルタイム人数",
+            f"{site_url}/",
+            "",
+            f"{time_tag} #相席ナビ #深夜営業 #相席ラウンジ"
+        ])
         return "\n".join(lines)
 
     elif slot_label == "02:00":
-        lines = [f"🦉【{date_label} 深夜2時速報】朝まで盛り上がっている店舗TOP3"]
-        for i, s in enumerate(stores[:3]):
+        lines = [
+            f"🦉【{date_label} 深夜2時速報】朝まで盛り上がっているナイトラウンジTOP5！",
+            "",
+            "朝5時まで営業中の活況店舗ピックアップ👇"
+        ]
+        for i, s in enumerate(stores[:5]):
             w = s.get("women", 0)
             m = s.get("men", 0)
+            tot = w + m
+            pct = round((w / tot) * 100) if tot > 0 else 0
             ja_name = format_ja_store_name(s.get("name", ""))
-            lines.append(f"{medals[i]}{ja_name}(👩{w}名/👨{m}名)")
-        lines.append(f"👇朝まで営業店舗のリアルタイム人数\n{site_url}/\n{time_tag} #相席ナビ #相席ラウンジ")
+            lines.append(f"{medals[i]}：{ja_name}（👩女性{w}名 / 👨男性{m}名・女性比率{pct}%）")
+
+        lines.extend([
+            "",
+            "💡【朝まで戦術】",
+            "深夜営業のJISやオリエンタルラウンジに人が集約中。席替えのバタバタ感もなくなり、深い会話や連絡先交換からのアフターに最も繋がりやすい時間帯です。",
+            "",
+            "👇朝まで営業店舗のリアルタイム人数",
+            f"{site_url}/",
+            "",
+            f"{time_tag} #相席ナビ #朝まで営業 #相席ラウンジ"
+        ])
         return "\n".join(lines)
 
     else:
-        lines = [f"🔥【{date_label} 速報】女性人数ランキングTOP3"]
-        for i, s in enumerate(stores[:3]):
+        lines = [
+            f"🔥【{date_label} 速報】いま盛り上がっている相席ラウンジTOP5！",
+            "",
+            "最新の女性人数ランキングです👇"
+        ]
+        for i, s in enumerate(stores[:5]):
             w = s.get("women", 0)
             m = s.get("men", 0)
+            tot = w + m
+            pct = round((w / tot) * 100) if tot > 0 else 0
             ja_name = format_ja_store_name(s.get("name", ""))
-            lines.append(f"{medals[i]}{ja_name}(👩{w}名/👨{m}名)")
-        lines.append(f"👇全店舗のリアルタイム人数\n{site_url}/\n{time_tag} #相席ナビ #相席ラウンジ")
+            lines.append(f"{medals[i]}：{ja_name}（👩女性{w}名 / 👨男性{m}名・女性比率{pct}%）")
+
+        lines.extend([
+            "",
+            "👇全国80店舗のリアルタイム人数ランキング・男女比グラフ",
+            f"{site_url}/",
+            "",
+            f"{time_tag} #相席ナビ #相席ラウンジ"
+        ])
         return "\n".join(lines)
 
 
