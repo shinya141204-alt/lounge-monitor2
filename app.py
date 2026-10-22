@@ -683,6 +683,12 @@ def sitemap_xml():
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
+  <url>
+    <loc>https://aiseki-navi.com/guide/brand-comparison</loc>
+    <lastmod>{today}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
 </urlset>"""
     return Response(xml, mimetype='application/xml')
 
@@ -690,6 +696,12 @@ def sitemap_xml():
 def guide_weekday_strategy():
     """Editorial guide for weekday lounge strategy."""
     return render_template('guide_weekday.html')
+
+@app.route('/guide/brand-comparison')
+@app.route('/guide/compare')
+def guide_brand_comparison():
+    """Editorial guide comparing Oriental Lounge, ag, and JIS."""
+    return render_template('guide_comparison.html')
 
 @app.route('/api/sns-post')
 def generate_sns_post_api():
