@@ -91,7 +91,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/style.css?v=20261022_16">
+    <link rel="stylesheet" href="/static/style.css?v=20261023_01">
     <!-- Local Chart.js: self-hosted (zero CDN blocking, works 100% offline & with adblockers) -->
     <script src="/static/chart.min.js?v=20261021" defer></script>
     <!-- Preload editorial thumbnails for instantaneous modal display -->
@@ -578,11 +578,65 @@
     </div>
     <!-- End How-to Modal -->
 
+    <!-- PWA Install Guide Modal for iOS Safari -->
+    <div id="pwa-guide-modal" class="modal hidden">
+        <div class="modal-content" style="max-width: 480px;">
+            <div class="modal-header">
+                <h2>📱 ホーム画面に追加する方法</h2>
+                <button class="close-btn-pill" onclick="closePwaGuideModal()" aria-label="閉じる">✕ 閉じる</button>
+            </div>
+            <div class="pwa-guide-body">
+                <p class="pwa-guide-lead">
+                    ホーム画面に追加すると、ブラウザの枠が消えて<strong>アプリのようにワンタップで混雑チェック</strong>ができるようになります！
+                </p>
+                <div class="pwa-guide-steps">
+                    <div class="pwa-step-item">
+                        <div class="pwa-step-num">1</div>
+                        <div class="pwa-step-text">
+                            画面下の<strong>「共有アイコン（⎋）」</strong>をタップ
+                        </div>
+                    </div>
+                    <div class="pwa-step-item">
+                        <div class="pwa-step-num">2</div>
+                        <div class="pwa-step-text">
+                            メニューから<strong>「ホーム画面に追加 ＋」</strong>を選択
+                        </div>
+                    </div>
+                    <div class="pwa-step-item">
+                        <div class="pwa-step-num">3</div>
+                        <div class="pwa-step-text">
+                            右上の<strong>「追加」</strong>をタップして完了！
+                        </div>
+                    </div>
+                </div>
+                <button type="button" class="modal-bottom-close-btn" onclick="closePwaGuideModal()" style="margin-top: 15px;">
+                    閉じる
+                </button>
+            </div>
+        </div>
+    </div>
+    <!-- End PWA Guide Modal -->
+
     <div class="background-glob"></div>
     <div class="background-glob glob-2"></div>
 
     <div class="container">
         {% if not is_staff %}
+        <!-- PWA Smart Install Banner -->
+        <aside id="pwa-install-banner" class="pwa-install-banner hidden" role="region" aria-label="ホーム画面に追加のご案内">
+            <div class="pwa-banner-content">
+                <span class="pwa-banner-icon">📱</span>
+                <div class="pwa-banner-info">
+                    <div class="pwa-banner-title">ホーム画面に追加でアプリ化！</div>
+                    <div class="pwa-banner-desc">ワンタップで今夜の混雑・男女比速報をチェック</div>
+                </div>
+            </div>
+            <div class="pwa-banner-actions">
+                <button id="pwa-install-btn" class="pwa-install-action-btn" onclick="triggerPwaInstall()">追加する</button>
+                <button class="pwa-banner-close-btn" onclick="dismissPwaBanner()" aria-label="閉じる" title="閉じる">✕</button>
+            </div>
+        </aside>
+
         <!-- Domain Change Announcement Banner -->
         <aside id="domain-notice-banner" class="domain-notice-banner hidden" role="region" aria-label="ドメイン変更のお知らせ">
             <div class="domain-notice-content">
@@ -705,6 +759,7 @@
                         <button class="sort-btn active" data-sort="women" onclick="setSort('women')">女性順</button>
                         <button class="sort-btn" data-sort="men" onclick="setSort('men')">男性順</button>
                         <button class="sort-btn" data-sort="ratio" onclick="setSort('ratio')">女性比率順</button>
+                        <button class="sort-btn" id="nearby-sort-btn" data-sort="nearby" onclick="setNearbySort()" title="現在地から近い順に並び替え">📍 現在地順</button>
                     </div>
                 </div>
 
@@ -996,6 +1051,7 @@
                 <div class="store-meta-row">
                     <span class="brand-badge">OLG</span>
                     <span class="area-tag">東京</span>
+                    <span class="distance-tag hidden"></span>
                 </div>
                 <h3 class="store-name">Store Name</h3>
             </div>
@@ -1040,7 +1096,7 @@
             isStaff: {{ 'true' if is_staff else 'false' }}
         };
     </script>
-    <script src="/static/app.js?v=20261022_16" defer></script>
+    <script src="/static/app.js?v=20261023_01" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {

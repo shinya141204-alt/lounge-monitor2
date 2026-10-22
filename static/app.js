@@ -58,6 +58,147 @@
             '沖縄': ['沖縄', 'okinawa']
         };
 
+        // --- Geolocation Coordinates for Each Major Area & Brand Hub ---
+        const AREA_COORDINATES = {
+            '西新宿': { lat: 35.6918, lng: 139.6974 },
+            '新宿': { lat: 35.6938, lng: 139.7034 },
+            '茶屋町': { lat: 34.7058, lng: 135.4988 },
+            '梅田': { lat: 34.7025, lng: 135.4983 },
+            '大宮': { lat: 35.9063, lng: 139.6240 },
+            '渋谷': { lat: 35.6595, lng: 139.7005 },
+            '恵比寿': { lat: 35.6467, lng: 139.7101 },
+            '上野': { lat: 35.7118, lng: 139.7744 },
+            '六本木': { lat: 35.6628, lng: 139.7314 },
+            '銀座': { lat: 35.6719, lng: 139.7649 },
+            '池袋': { lat: 35.7295, lng: 139.7109 },
+            '町田': { lat: 35.5420, lng: 139.4457 },
+            '横浜': { lat: 35.4658, lng: 139.6220 },
+            '千葉': { lat: 35.6131, lng: 140.1134 },
+            '柏': { lat: 35.8622, lng: 139.9710 },
+            '錦糸町': { lat: 35.6967, lng: 139.8144 },
+            '難波': { lat: 34.6669, lng: 135.5013 },
+            'なんば': { lat: 34.6669, lng: 135.5013 },
+            '心斎橋': { lat: 34.6750, lng: 135.5005 },
+            '京都': { lat: 35.0037, lng: 135.7701 },
+            '河原町': { lat: 35.0037, lng: 135.7701 },
+            '神戸': { lat: 34.6946, lng: 135.1934 },
+            '三宮': { lat: 34.6946, lng: 135.1934 },
+            '福岡': { lat: 33.5897, lng: 130.3986 },
+            '天神': { lat: 33.5897, lng: 130.3986 },
+            '中洲': { lat: 33.5930, lng: 130.4060 },
+            '小倉': { lat: 33.8863, lng: 130.8828 },
+            '熊本': { lat: 32.8032, lng: 130.7079 },
+            '松山': { lat: 33.8392, lng: 132.7656 },
+            '高松': { lat: 34.3428, lng: 134.0465 },
+            '札幌': { lat: 43.0554, lng: 141.3533 },
+            'すすきの': { lat: 43.0554, lng: 141.3533 },
+            '仙台': { lat: 38.2619, lng: 140.8710 },
+            '国分町': { lat: 38.2619, lng: 140.8710 },
+            '名古屋': { lat: 35.1706, lng: 136.9039 },
+            '栄': { lat: 35.1685, lng: 136.9080 },
+            '錦': { lat: 35.1712, lng: 136.9045 },
+            '広島': { lat: 34.3928, lng: 132.4636 },
+            '岡山': { lat: 34.6663, lng: 133.9185 },
+            '宇都宮': { lat: 36.5590, lng: 139.8984 },
+            '高崎': { lat: 36.3225, lng: 139.0127 },
+            '金沢': { lat: 36.5613, lng: 136.6562 },
+            '静岡': { lat: 34.9717, lng: 138.3891 },
+            '浜松': { lat: 34.7037, lng: 137.7348 },
+            '天満': { lat: 34.7050, lng: 135.5130 },
+            '大阪駅前': { lat: 34.7010, lng: 135.4980 },
+            '長崎': { lat: 32.7448, lng: 129.8737 },
+            '大分': { lat: 33.2382, lng: 131.6067 },
+            '宮崎': { lat: 31.9111, lng: 131.4239 },
+            '鹿児島': { lat: 31.5966, lng: 130.5571 },
+            '沖縄': { lat: 26.2166, lng: 127.6842 },
+            '那覇': { lat: 26.2166, lng: 127.6842 }
+        };
+
+        const REGION_DEFAULT_COORDINATES = {
+            'Kanto': { lat: 35.6895, lng: 139.6917 },
+            'Kinki': { lat: 34.6937, lng: 135.5023 },
+            'Chubu': { lat: 35.1815, lng: 136.9066 },
+            'Kyushu': { lat: 33.5904, lng: 130.4017 },
+            'Hokkaido': { lat: 43.0642, lng: 141.3469 },
+            'Tohoku': { lat: 38.2682, lng: 140.8694 },
+            'Chugoku': { lat: 34.3853, lng: 132.4553 },
+            'Shikoku': { lat: 33.8416, lng: 132.7657 }
+        };
+
+        function getStoreCoordinates(store) {
+            const name = String(store.name || '').toUpperCase();
+            for (const [key, coords] of Object.entries(AREA_COORDINATES)) {
+                if (name.includes(key.toUpperCase())) {
+                    return coords;
+                }
+            }
+            if (store.region && REGION_DEFAULT_COORDINATES[store.region]) {
+                return REGION_DEFAULT_COORDINATES[store.region];
+            }
+            return { lat: 35.6895, lng: 139.6917 };
+        }
+
+        function calculateDistanceKm(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Earth radius in km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+        }
+
+        let userLocation = null;
+        let isLocating = false;
+
+        function setNearbySort() {
+            if (userLocation) {
+                currentSort = 'nearby';
+                document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+                const btn = document.getElementById('nearby-sort-btn');
+                if (btn) btn.classList.add('active');
+                if (window.lastData) updateUI(window.lastData);
+                return;
+            }
+
+            if (!navigator.geolocation) {
+                alert('お使いのブラウザ・端末は位置情報機能に対応していません。');
+                return;
+            }
+
+            if (isLocating) return;
+            isLocating = true;
+            const btn = document.getElementById('nearby-sort-btn');
+            if (btn) btn.textContent = '📍 取得中...';
+
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    isLocating = false;
+                    userLocation = {
+                        lat: pos.coords.latitude,
+                        lng: pos.coords.longitude
+                    };
+                    if (btn) btn.textContent = '📍 現在地順';
+                    currentSort = 'nearby';
+                    document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+                    if (btn) btn.classList.add('active');
+                    if (window.lastData) updateUI(window.lastData);
+                },
+                (err) => {
+                    isLocating = false;
+                    if (btn) btn.textContent = '📍 現在地順';
+                    console.warn('Geolocation error:', err);
+                    if (err.code === 1) {
+                        alert('位置情報の利用が許可されませんでした。ブラウザや端末の設定で位置情報を許可して再度お試しください。');
+                    } else {
+                        alert('現在地を取得できませんでした。電波の良い場所で再度お試しください。');
+                    }
+                },
+                { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 }
+            );
+        }
+
         const JIS_STORE_TO_AREAS = {
             'JIS SHINJUKU': ['新宿', 'shinjuku'],
             'JIS NISHISHINJUKU': ['西新宿', 'nishishinjuku'],
@@ -755,6 +896,21 @@
                 areaEl.classList.add('hidden');
             }
 
+            // Distance Tag (GPS Geolocation)
+            const distTag = node.querySelector('.distance-tag');
+            if (distTag) {
+                if (typeof store._distKm === 'number' && userLocation) {
+                    distTag.classList.remove('hidden');
+                    if (store._distKm < 1.0) {
+                        distTag.textContent = `📍 ${Math.round(store._distKm * 1000)}m`;
+                    } else {
+                        distTag.textContent = `📍 ${store._distKm.toFixed(1)}km`;
+                    }
+                } else {
+                    distTag.classList.add('hidden');
+                }
+            }
+
             const baseName = brandInfo.cleanName || store.name;
             const storeNameEl = node.querySelector('.store-name');
             storeNameEl.textContent = isDuplicateName
@@ -825,7 +981,22 @@
                 return searchable.includes(currentSearch);
             });
 
-            if (currentSort === 'men') {
+            // Pre-calculate distance if user location is available
+            if (userLocation) {
+                stores.forEach(s => {
+                    const coords = getStoreCoordinates(s);
+                    s._distKm = calculateDistanceKm(userLocation.lat, userLocation.lng, coords.lat, coords.lng);
+                });
+            }
+
+            if (currentSort === 'nearby' && userLocation) {
+                filteredStores.sort((a, b) => {
+                    const distA = (typeof a._distKm === 'number') ? a._distKm : 99999;
+                    const distB = (typeof b._distKm === 'number') ? b._distKm : 99999;
+                    if (Math.abs(distA - distB) > 0.05) return distA - distB;
+                    return (b.women - a.women) || (b.men - a.men);
+                });
+            } else if (currentSort === 'men') {
                 filteredStores.sort((a, b) => (b.men - a.men) || (b.women - a.women));
             } else if (currentSort === 'ratio') {
                 filteredStores.sort((a, b) => {
@@ -2423,3 +2594,81 @@
         } else {
             setTimeout(loadEvents, 800);
         }
+
+        // ==========================================
+        // PWA Installation & Add to Home Banner Control
+        // ==========================================
+        let deferredPwaPrompt = null;
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // Prevent Chrome mini-infobar on mobile
+            e.preventDefault();
+            deferredPwaPrompt = e;
+            checkPwaBannerVisibility();
+        });
+
+        function isPwaStandalone() {
+            return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+                   (window.navigator.standalone === true);
+        }
+
+        function isIosDevice() {
+            const ua = window.navigator.userAgent.toLowerCase();
+            return /iphone|ipad|ipod/.test(ua);
+        }
+
+        function checkPwaBannerVisibility() {
+            if (IS_STAFF) return; // Hide for staff mode
+            if (isPwaStandalone()) return; // Already installed as PWA
+
+            const banner = document.getElementById('pwa-install-banner');
+            if (!banner) return;
+
+            // Check if dismissed within the last 7 days
+            try {
+                const dismissedAt = localStorage.getItem('pwa_dismissed_at');
+                if (dismissedAt) {
+                    const elapsed = Date.now() - parseInt(dismissedAt, 10);
+                    if (elapsed < 7 * 24 * 60 * 60 * 1000) return;
+                }
+            } catch (e) {}
+
+            banner.classList.remove('hidden');
+        }
+
+        function triggerPwaInstall() {
+            if (deferredPwaPrompt) {
+                deferredPwaPrompt.prompt();
+                deferredPwaPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        dismissPwaBanner();
+                    }
+                    deferredPwaPrompt = null;
+                });
+            } else if (isIosDevice()) {
+                openPwaGuideModal();
+            } else {
+                openPwaGuideModal();
+            }
+        }
+
+        function dismissPwaBanner() {
+            const banner = document.getElementById('pwa-install-banner');
+            if (banner) banner.classList.add('hidden');
+            try {
+                localStorage.setItem('pwa_dismissed_at', Date.now().toString());
+            } catch (e) {}
+        }
+
+        function openPwaGuideModal() {
+            const modal = document.getElementById('pwa-guide-modal');
+            if (modal) modal.classList.remove('hidden');
+        }
+
+        function closePwaGuideModal() {
+            const modal = document.getElementById('pwa-guide-modal');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        // Initialize PWA banner check shortly after page load
+        setTimeout(checkPwaBannerVisibility, 2000);
