@@ -45,8 +45,17 @@
             '広島': ['広島', 'hiroshima'],
             '岡山': ['岡山', 'okayama'],
             '宇都宮': ['宇都宮', 'utsunomiya'],
+            '高崎': ['高崎', 'takasaki'],
+            '金沢': ['金沢', 'kanazawa'],
             '静岡': ['静岡', 'shizuoka'],
-            '浜松': ['浜松', 'hamamatsu']
+            '浜松': ['浜松', 'hamamatsu'],
+            '天満': ['天満', 'tenma'],
+            '大阪駅前': ['大阪駅前', 'osaka'],
+            '長崎': ['長崎', 'nagasaki'],
+            '大分': ['大分', 'oita'],
+            '宮崎': ['宮崎', 'miyazaki'],
+            '鹿児島': ['鹿児島', 'kagoshima'],
+            '沖縄': ['沖縄', 'okinawa']
         };
 
         const JIS_STORE_TO_AREAS = {
@@ -1457,9 +1466,8 @@
                 return;
             }
 
-            // Prioritize store-specific events (fallback to brand events if none)
-            const specificEvs = getStoreSpecificEvents(storeName);
-            const rawEvs = specificEvs.length > 0 ? specificEvs : getEventsForStore(storeName);
+            // ONLY show genuine store-specific events for this store (NO fallback to global/all-store events)
+            const rawEvs = getStoreSpecificEvents(storeName);
             if (!rawEvs || rawEvs.length === 0) {
                 section.classList.add('hidden');
                 list.innerHTML = '';
