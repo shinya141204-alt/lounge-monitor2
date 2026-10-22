@@ -287,14 +287,28 @@
                 localStorage.setItem('hide_domain_notice_aiseki_navi_v1', '1');
             } catch (e) {}
         }
+        function initHowToOnboarding() {
+            if (IS_STAFF) return;
+            try {
+                const seen = localStorage.getItem('seen_how_to_guide_v1');
+                if (!seen) {
+                    setTimeout(() => {
+                        openHowToModal();
+                    }, 900);
+                }
+            } catch (e) {}
+        }
+
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', () => {
                 initDomainNotice();
                 if (typeof initNightCareBanner === 'function') initNightCareBanner();
+                initHowToOnboarding();
             });
         } else {
             initDomainNotice();
             if (typeof initNightCareBanner === 'function') initNightCareBanner();
+            initHowToOnboarding();
         }
 
         function toggleCompact() {
@@ -1072,6 +1086,29 @@
             }
         }
 
+        // Beginner / How-To Guide Modal
+        function openHowToModal() {
+            const modal = document.getElementById('how-to-modal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+            }
+        }
+
+        function closeHowToModal(fromUserAction = false) {
+            const modal = document.getElementById('how-to-modal');
+            if (modal) {
+                modal.classList.add('hidden');
+                document.body.style.overflow = '';
+            }
+            const cb = document.getElementById('how-to-dont-show-cb');
+            if (fromUserAction || (cb && cb.checked)) {
+                try {
+                    localStorage.setItem('seen_how_to_guide_v1', '1');
+                } catch (e) {}
+            }
+        }
+
         // Nighttime Smart Cab & After-care Banner Init
         function initNightCareBanner() {
             if (IS_STAFF) return;
@@ -1664,6 +1701,9 @@
         document.getElementById('events-modal')?.addEventListener('click', (e) => {
             if (e.target.id === ('events-modal')) closeEventsModal();
         });
+        document.getElementById('how-to-modal')?.addEventListener('click', (e) => {
+            if (e.target.id === ('how-to-modal')) closeHowToModal();
+        });
 
         // Close any active modal with ESC key
         document.addEventListener('keydown', (e) => {
@@ -1675,6 +1715,7 @@
                 closeArticlesModal();
                 closeSnsModal();
                 closeEventsModal();
+                closeHowToModal();
             }
         });
 

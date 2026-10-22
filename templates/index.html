@@ -506,6 +506,78 @@
     </div>
     <!-- End Events Modal -->
 
+    <!-- Beginner / How to Use Modal -->
+    <div id="how-to-modal" class="modal hidden">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2>💡 初めての方へ：30秒でわかる使い方</h2>
+                <button class="close-btn" onclick="closeHowToModal(false)">&times;</button>
+            </div>
+            <div class="how-to-modal-body">
+                <p class="how-to-lead">
+                    相席ナビは、オリエンタルラウンジ・ag・JISなど<strong>全国80店舗以上の「現在の女性・男性人数」をリアルタイムで無料集計</strong>する日本最大級の混雑速報ポータルです。
+                </p>
+
+                <div class="how-to-steps">
+                    <!-- Step 1 -->
+                    <div class="how-to-step-card">
+                        <div class="how-to-step-num">1</div>
+                        <div class="how-to-step-content">
+                            <h4>今夜行きたい「エリア」を選ぶ</h4>
+                            <p>画面上のタブから「関東」「関西」「福岡」など行きたい地域をワンタップ。今いるエリアの店舗が一瞬で絞り込まれます。</p>
+                        </div>
+                    </div>
+
+                    <!-- Step 2 -->
+                    <div class="how-to-step-card">
+                        <div class="how-to-step-num">2</div>
+                        <div class="how-to-step-content">
+                            <h4>「女性人数」と「男女比バー」をチェック</h4>
+                            <p>上位の店舗ほど今リアルタイムで女性が集まっています。ピンク（女性）の比率バーが長い店舗が今夜の狙い目です！</p>
+                        </div>
+                    </div>
+
+                    <!-- Step 3 -->
+                    <div class="how-to-step-card">
+                        <div class="how-to-step-num">3</div>
+                        <div class="how-to-step-content">
+                            <h4>店舗カードをタップして詳細確認</h4>
+                            <p>店舗を押すと<strong>「曜日別の混雑ピーク時間グラフ」</strong>や<strong>「限定イベント」</strong>が丸わかり。待ち時間ゼロで直行できます！</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live SNS Callout within How to Guide -->
+                <div class="how-to-sns-box">
+                    <div class="how-to-sns-title">
+                        <span>🔥 毎晩の女性速報は公式X・Threadsで配信中</span>
+                    </div>
+                    <p>ピーク時間の混雑状況やお得なイベント速報を毎晩ポストしています。フォローしておくと行く前にすぐ確認できます！</p>
+                    <div class="how-to-sns-btns">
+                        <a href="https://x.com/aiseki_navi" target="_blank" rel="noopener noreferrer" class="how-to-sns-btn x-btn" onclick="window.open(this.href, '_blank'); return true;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                            <span>公式Xをフォロー</span>
+                        </a>
+                        <a href="https://www.threads.net/@aiseki_navi1" target="_blank" rel="noopener noreferrer" class="how-to-sns-btn threads-btn" onclick="window.open(this.href, '_blank'); return true;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12.001 2c-5.522 0-9.999 4.477-9.999 10 0 5.522 4.477 10 9.999 10 5.523 0 10-4.478 10-10 0-5.523-4.477-10-10-10zm0 18.001c-4.418 0-8-3.582-8-8 0-4.419 3.582-8.001 8-8.001 4.419 0 8.001 3.582 8.001 8.001 0 4.418-3.582 8-8.001 8zm3.567-9.757c-.126-.454-.378-.857-.73-1.166-.35-.308-.79-.473-1.272-.477h-.061c-.534.004-1.02.203-1.405.575-.386.372-.619.878-.656 1.425.321-.06.647-.09.976-.09.61 0 1.206.104 1.77.309.117-.184.21-.383.278-.576zm-1.849 5.864c-.732 0-1.424-.23-1.999-.666-.576-.436-.97-1.052-1.109-1.735-.07-.342-.089-.691-.057-1.038-.344.086-.677.209-.994.368-.696.349-1.144.978-1.198 1.681-.055.704.288 1.391.895 1.79.522.343 1.157.498 1.838.448.828-.061 1.705-.443 2.624-1.135-.297.185-.634.287-.998.287z"/></svg>
+                            <span>Threadsをフォロー</span>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="how-to-footer-action">
+                    <button type="button" class="how-to-start-btn" onclick="closeHowToModal(true)">
+                        🔥 さっそく人数ランキングを見る！
+                    </button>
+                    <label class="how-to-dont-show">
+                        <input type="checkbox" id="how-to-dont-show-cb" checked> 次回から自動表示しない
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- End How-to Modal -->
+
     <div class="background-glob"></div>
     <div class="background-glob glob-2"></div>
 
@@ -568,11 +640,23 @@
                     <span id="compact-btn-label">表示切替</span>
                 </button>
                 {% if not is_staff %}
+                <button id="howto-btn" class="header-btn labeled-btn" onclick="openHowToModal()" title="相席ナビのカンタン使い方ガイド">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                    <span>使い方</span>
+                </button>
                 <a id="guide-link-btn" href="/guide" class="header-btn labeled-btn" style="text-decoration: none;" title="相席完全攻略マニュアル">
                     <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
                     </svg>
                     <span>攻略記事</span>
+                </a>
+                <a id="header-x-btn" href="https://x.com/aiseki_navi" target="_blank" rel="noopener noreferrer" class="header-btn labeled-btn" style="text-decoration: none; border-color: rgba(239, 68, 68, 0.45); color: #f87171;" title="公式Xで今夜の女性速報を見る" onclick="window.open(this.href, '_blank'); return true;">
+                    <span class="beacon-dot" style="margin-right: 2px;"></span>
+                    <span>X速報</span>
                 </a>
                 <button id="share-btn" class="header-btn labeled-btn" onclick="openSnsModal()" title="SNS速報ポスト作成・共有">
                     <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -683,34 +767,39 @@
                     </button>
                 </div>
 
-                <!-- Top Quick SNS Bar -->
-                <div class="top-sns-quickbar">
-                    <div class="top-sns-label">
-                        <span>📣 公式SNS:</span>
+                <!-- Official SNS Live Broadcast Hero Card -->
+                <div class="official-sns-hero-card">
+                    <div class="sns-hero-badge-row">
+                        <span class="sns-live-beacon">
+                            <span class="beacon-dot"></span>
+                            <span>LIVE 毎晩20:00・22:00</span>
+                        </span>
+                        <span class="sns-hero-tag">🔥 公式混雑速報</span>
                     </div>
-                    <div class="top-sns-links">
-                        <a href="https://x.com/aiseki_navi" target="_blank" rel="noopener noreferrer" class="top-sns-btn x-btn" title="公式X（混雑速報）" onclick="window.open(this.href, '_blank'); return true;">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                            </svg>
-                            <span>X (速報)</span>
-                        </a>
-                        <a href="https://www.threads.net/@aiseki_navi1" target="_blank" rel="noopener noreferrer" class="top-sns-btn threads-btn" title="公式Threads" onclick="window.open(this.href, '_blank'); return true;">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M12.001 2c-5.522 0-9.999 4.477-9.999 10 0 5.522 4.477 10 9.999 10 5.523 0 10-4.478 10-10 0-5.523-4.477-10-10-10zm0 18.001c-4.418 0-8-3.582-8-8 0-4.419 3.582-8.001 8-8.001 4.419 0 8.001 3.582 8.001 8.001 0 4.418-3.582 8-8.001 8zm3.567-9.757c-.126-.454-.378-.857-.73-1.166-.35-.308-.79-.473-1.272-.477h-.061c-.534.004-1.02.203-1.405.575-.386.372-.619.878-.656 1.425.321-.06.647-.09.976-.09.61 0 1.206.104 1.77.309.117-.184.21-.383.278-.576zm-1.849 5.864c-.732 0-1.424-.23-1.999-.666-.576-.436-.97-1.052-1.109-1.735-.07-.342-.089-.691-.057-1.038-.344.086-.677.209-.994.368-.696.349-1.144.978-1.198 1.681-.055.704.288 1.391.895 1.79.522.343 1.157.498 1.838.448.828-.061 1.705-.443 2.624-1.135-.297.185-.634.287-.998.287z"/>
-                            </svg>
-                            <span>Threads</span>
-                        </a>
-                        <a href="https://note.com/huge_finch7078" target="_blank" rel="noopener noreferrer" class="top-sns-btn note-btn" title="公式note" onclick="window.open(this.href, '_blank'); return true;">
-                            <span style="font-weight: 900; font-family: serif; font-size: 0.8rem;">n</span>
-                            <span>note</span>
-                        </a>
-                        <a href="https://www.instagram.com/aiseki_navi1" target="_blank" rel="noopener noreferrer" class="top-sns-btn ig-btn" title="公式Instagram" onclick="window.open(this.href, '_blank'); return true;">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
-                            </svg>
-                            <span>Instagram</span>
-                        </a>
+                    <div class="sns-hero-main">
+                        <div class="sns-hero-text">
+                            <h3 class="sns-hero-title">全国ラウンジの「今夜の女性人数速報」をリアルタイム配信中！</h3>
+                            <p class="sns-hero-desc">混雑ピーク・空席状況やゲリライベントを毎晩ポスト。フォローしておくと行く前に1秒で空席がわかります。</p>
+                        </div>
+                        <div class="sns-hero-actions">
+                            <a href="https://x.com/aiseki_navi" target="_blank" rel="noopener noreferrer" class="sns-hero-btn x-main-btn" onclick="window.open(this.href, '_blank'); return true;">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                                <span>公式Xをフォロー</span>
+                            </a>
+                            <a href="https://www.threads.net/@aiseki_navi1" target="_blank" rel="noopener noreferrer" class="sns-hero-btn threads-main-btn" onclick="window.open(this.href, '_blank'); return true;">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12.001 2c-5.522 0-9.999 4.477-9.999 10 0 5.522 4.477 10 9.999 10 5.523 0 10-4.478 10-10 0-5.523-4.477-10-10-10zm0 18.001c-4.418 0-8-3.582-8-8 0-4.419 3.582-8.001 8-8.001 4.419 0 8.001 3.582 8.001 8.001 0 4.418-3.582 8-8.001 8zm3.567-9.757c-.126-.454-.378-.857-.73-1.166-.35-.308-.79-.473-1.272-.477h-.061c-.534.004-1.02.203-1.405.575-.386.372-.619.878-.656 1.425.321-.06.647-.09.976-.09.61 0 1.206.104 1.77.309.117-.184.21-.383.278-.576zm-1.849 5.864c-.732 0-1.424-.23-1.999-.666-.576-.436-.97-1.052-1.109-1.735-.07-.342-.089-.691-.057-1.038-.344.086-.677.209-.994.368-.696.349-1.144.978-1.198 1.681-.055.704.288 1.391.895 1.79.522.343 1.157.498 1.838.448.828-.061 1.705-.443 2.624-1.135-.297.185-.634.287-.998.287z"/></svg>
+                                <span>Threads</span>
+                            </a>
+                            <button type="button" class="sns-hero-btn how-to-quick-btn" onclick="openHowToModal()">
+                                <span>💡 使い方ガイド</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="sns-hero-sublinks">
+                        <span class="sublinks-label">その他の公式：</span>
+                        <a href="https://note.com/huge_finch7078" target="_blank" rel="noopener noreferrer" class="sublink-pill" onclick="window.open(this.href, '_blank'); return true;">📖 note公式コラム</a>
+                        <span style="color: #334155;">•</span>
+                        <a href="https://www.instagram.com/aiseki_navi1" target="_blank" rel="noopener noreferrer" class="sublink-pill" onclick="window.open(this.href, '_blank'); return true;">📸 Instagram</a>
                     </div>
                 </div>
                 {% endif %}
@@ -838,6 +927,9 @@
             {% else %}
             <!-- Top Row: Pillar Guide Buttons -->
             <div class="footer-nav-pills">
+                <button type="button" class="footer-pill-btn" onclick="openHowToModal()" style="border-color: rgba(236, 72, 153, 0.4); color: #f472b6;" title="30秒でわかる使い方ガイド">
+                    <span>💡 はじめてガイド</span>
+                </button>
                 <button type="button" class="footer-pill-btn guide-pill" onclick="openArticlesModal()" title="攻略コラム・記事一覧から選ぶ">
                     <span>📖 攻略記事を選ぶ</span>
                 </button>
@@ -948,7 +1040,7 @@
             isStaff: {{ 'true' if is_staff else 'false' }}
         };
     </script>
-    <script src="/static/app.js?v=20261022_14" defer></script>
+    <script src="/static/app.js?v=20261022_15" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
