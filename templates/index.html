@@ -195,16 +195,15 @@
                 </div>
             </div>
 
-            <!-- 4. Nearby 2nd Venue Guide & Google Maps Box -->
+            <!-- 4. Nearby 2nd Venue Google Maps Box -->
             <div id="modal-second-venue-box" class="modal-second-venue-box">
                 <div class="second-venue-header">
-                    <h3>🥂 この店舗から徒歩3分・2軒目におすすめなスポット</h3>
-                    <span class="second-venue-sub">相席して45〜60分後の移動に</span>
+                    <h3 id="modal-second-venue-heading">🥂 この店舗の近くで2軒目を探す（徒歩3分圏内）</h3>
+                    <a href="/guide/second-venue" class="second-venue-sub" style="color: #38bdf8; text-decoration: none;">📖 2軒目の誘い方コラム ›</a>
                 </div>
-                <div id="modal-second-venue-list" class="second-venue-list"></div>
                 <div class="second-venue-map-actions">
-                    <a id="modal-map-cafe-btn" href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer" class="second-map-btn cafe">☕ 近くの夜カフェをマップで見る</a>
-                    <a id="modal-map-bar-btn" href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer" class="second-map-btn bar">🍸 近くの静かなバーをマップで見る</a>
+                    <a id="modal-map-cafe-btn" href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer" class="second-map-btn cafe">☕ 店舗近くの夜カフェをマップ検索</a>
+                    <a id="modal-map-bar-btn" href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer" class="second-map-btn bar">🍸 店舗近くのバー・バルをマップ検索</a>
                 </div>
             </div>
 
@@ -1425,7 +1424,7 @@
             isStaff: {{ 'true' if is_staff else 'false' }}
         };
     </script>
-    <script src="/static/app.js?v=20261023_08" defer></script>
+    <script src="/static/app.js?v=20261023_09" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {

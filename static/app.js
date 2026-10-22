@@ -1714,149 +1714,114 @@
             currentAnalysisData = null;
         }
 
-        // --- Live User Crowd Votes (UGC) & Curated 2nd Venue Guide ---
-        const SECOND_VENUE_GUIDE_BY_AREA = [
-            {
-                keys: ['西新宿', 'NISHISHINJUKU'],
-                mapArea: '西新宿 新宿駅西口',
-                spots: [
-                    { badge: '🍸 隠れ家バー', title: '西新宿・野村ビル〜小滝橋通り周辺のオーセンティックバー', desc: '西口はキャッチが少なく、徒歩3分圏内に静かに話せるバーやダイニングが揃っています。' },
-                    { badge: '☕ 夜カフェ', title: '新宿南口・ルミネ〜サザンテラス方面のカフェ＆バル', desc: 'お酒が強くない女性なら、南口方面へ少し歩きながら夜カフェやワインバルへ誘うのが自然です。' }
-                ]
-            },
-            {
-                keys: ['新宿', 'SHINJUKU'],
-                mapArea: '新宿三丁目 靖国通り',
-                spots: [
-                    { badge: '🍷 2軒目の定番', title: '靖国通りを渡った「新宿三丁目（マルイ裏）」のワインバル', desc: '歌舞伎町の奥へは行かず、信号を渡って三丁目エリアの落ち着いたバルやビストロへ移動すると安心感が高まります。' },
-                    { badge: '☕ 夜カフェ・パフェ', title: '新宿東口・アルタ裏〜三丁目周辺の夜カフェ', desc: '「甘いものかコーヒーでも飲もう」と誘うと、45〜60分目でも警戒されずにOKしてもらいやすいです。' }
-                ]
-            },
-            {
-                keys: ['恵比寿', 'EBISU'],
-                mapArea: '恵比寿駅西口',
-                spots: [
-                    { badge: '🍷 裏路地ワインバー', title: '恵比寿駅西口〜恵比寿南の隠れ家ワインバー・ビストロ', desc: '大通りから1本入った通りにカウンター席のあるおしゃれなワインバーが多く、大人の2軒目に最適です。' },
-                    { badge: '☕ 夜カフェ', title: '駒沢通り〜西口五差路周辺の夜カフェ・ラウンジカフェ', desc: 'ソファ席のある夜カフェが徒歩3分圏内に点在しており、ゆっくり会話の続きを楽しめます。' }
-                ]
-            },
-            {
-                keys: ['渋谷', 'SHIBUYA'],
-                mapArea: '渋谷 道玄坂上 宮益坂',
-                spots: [
-                    { badge: '☕ 夜カフェ・ダイニング', title: '道玄坂上〜神泉寄りの落ち着いた夜カフェ＆バル', desc: 'センター街の喧騒を避けて、道玄坂の上側や宮益坂方面へ歩くと静かで雰囲気の良いお店が見つかります。' },
-                    { badge: '🍸 カウンターバー', title: '渋谷マークシティ裏〜桜丘エリアの隠れ家バー', desc: '徒歩3〜4分で大人っぽいダイニングバーが多く、横並びで話しやすいエリアです。' }
-                ]
-            },
-            {
-                keys: ['上野', 'UENO'],
-                mapArea: '上野 仲町通り 湯島',
-                spots: [
-                    { badge: '🍸 隠れ家バー', title: '上野広小路〜湯島寄りの落ち着いたショットバー', desc: '仲町通りの賑やかな通りから1本湯島側へ入ると、静かに飲めるきれいめなバーが並んでいます。' },
-                    { badge: '🍷 バル・ビストロ', title: '上野御徒町〜しのばず通り周辺のワインバル', desc: '徒歩2〜3分圏内で気取らず入れるおしゃれなバルが多く、2軒目に移動しやすい立地です。' }
-                ]
-            },
-            {
-                keys: ['横浜', 'YOKOHAMA'],
-                mapArea: '横浜駅西口 鶴屋町',
-                spots: [
-                    { badge: '🍷 おしゃれバル', title: '横浜駅西口から橋を渡った「鶴屋町エリア」のダイニングバー', desc: '西口五番街の雑踏を抜けて鶴屋町側へ歩くと、きれいで落ち着いたバルやカフェバーが多くておすすめです。' },
-                    { badge: '🍸 オーセンティックバー', title: '南幸・岡野寄りエリアの静かなカクテルバー', desc: '少し落ち着いた雰囲気で1杯飲みたいときに使いやすいお店が徒歩圏内に揃っています。' }
-                ]
-            },
-            {
-                keys: ['大宮', 'OMIYA'],
-                mapArea: '大宮駅東口 一番街',
-                spots: [
-                    { badge: '🍸 ダイニングバー', title: '大宮駅東口・すずらん通り〜一の宮通り周辺のバー＆バル', desc: '南銀のキャッチが多い通りを避け、一の宮通り方面の落ち着いたバルやカフェバーへ誘うのがスマートです。' }
-                ]
-            },
-            {
-                keys: ['梅田', '茶屋町', 'UMEDA', 'CHAYAMACHI', '天満', 'TENMA'],
-                mapArea: '梅田 茶屋町 お初天神裏参道',
-                spots: [
-                    { badge: '🍷 横並びバル', title: '「お初天神裏参道」または「茶屋町」のおしゃれバル・ビストロ', desc: '女性ウケ抜群のきれいめなバルや立ち飲み・ワインバーが密集しており、徒歩3分で自然に2軒目へ入れます。' },
-                    { badge: '🍸 夜カフェ・バー', title: '阪急茶屋町・堂山寄りの夜カフェ＆ルーフトップバー', desc: '「甘いものかフルーツカクテル飲もう」と誘いやすいお店がすぐ近くにあります。' }
-                ]
-            },
-            {
-                keys: ['難波', '心斎橋', 'NAMBA', 'SHINSAIBASHI'],
-                mapArea: '東心斎橋 裏なんば',
-                spots: [
-                    { badge: '🍸 隠れ家バー', title: '東心斎橋・宗右衛門町周辺のフルーツカクテル＆ダイニングバー', desc: '戎橋筋から1本入ったビルに、ソファ席やカウンターのある落ち着いたバーが豊富にあります。' },
-                    { badge: '🍷 バル・ビストロ', title: '裏なんば・座裏エリアのきれいめワインバル', desc: '美味しい小皿料理とワインで2軒目を気軽に楽しめる人気エリアです。' }
-                ]
-            },
-            {
-                keys: ['名古屋', '栄', '錦', 'NAGOYA'],
-                mapArea: '名古屋 栄 住吉 錦三丁目',
-                spots: [
-                    { badge: '🍷 カフェ＆バル', title: '栄・住吉エリア（三蔵通〜白川公園寄り）の夜カフェ＆ダイニング', desc: '栄店・錦店・ag名古屋から徒歩3〜4分。落ち着いて話せるソファカフェやワインバルが多いエリアです。' },
-                    { badge: '🍸 静かなバー', title: '錦三丁目・久屋大通寄りのオーセンティックバー', desc: '大人っぽい雰囲気でゆっくり1杯飲みたい夜にぴったりです。' }
-                ]
-            },
-            {
-                keys: ['福岡', '天神', 'FUKUOKA'],
-                mapArea: '福岡 天神 西通り 大名',
-                spots: [
-                    { badge: '🍸 夜カフェ・バー', title: '天神西通り〜大名エリアの隠れ家カフェバー＆ビストロ', desc: 'お店を出て徒歩2〜3分の大名エリアには、夜遅くまで開いているおしゃれな夜カフェやバルが無数にあります。' },
-                    { badge: '🍷 フルーツカクテル', title: '今泉・西中洲方面のリバーサイドバー', desc: '少し落ち着いた大人な雰囲気で話したいときは西中洲・今泉方面へ歩くのもおすすめです。' }
-                ]
-            },
-            {
-                keys: ['札幌', 'SAPPORO'],
-                mapArea: '札幌 すすきの 夜パフェ バー',
-                spots: [
-                    { badge: '🍨 札幌定番・夜パフェ', title: 'すすきの徒歩3分圏内の「夜パフェ専門店」＆夜カフェ', desc: '札幌の2軒目といえば「シメパフェ」。お酒が弱い女性でも「パフェ食べに行こう！」でほぼ確実に盛り上がります。' },
-                    { badge: '🍸 ショットバー', title: '南3条〜南4条西周辺の落ち着いたカクテルバー', desc: '外に出る時間を短くして、すぐ近くのビル内のバーへ移動できるのがすすきのの強みです。' }
-                ]
-            }
-        ];
+        // --- Live User Crowd Votes (UGC) & Store-Pinpoint 2nd Venue Map Search ---
+        const STORE_EXACT_MAP_LOCATIONS = {
+            // 新宿・西新宿
+            'OLG 新宿': 'オリエンタルラウンジ新宿 歌舞伎町',
+            'OLG ag 新宿': 'ag新宿 歌舞伎町',
+            'ag 新宿': 'ag新宿 歌舞伎町',
+            'JIS SHINJUKU': 'JIS新宿 歌舞伎町',
+            'JIS NISHISHINJUKU': 'JIS西新宿 新宿西口',
+            // 渋谷・恵比寿・上野・町田
+            'OLG 渋谷本店': 'オリエンタルラウンジ渋谷本店 道玄坂',
+            'OLG 渋谷駅前': 'オリエンタルラウンジ渋谷駅前 渋谷センター街',
+            'OLG ag 渋谷': 'ag渋谷 宇田川町',
+            'ag 渋谷': 'ag渋谷 宇田川町',
+            'OLG 恵比寿': 'オリエンタルラウンジ恵比寿 恵比寿駅西口',
+            'OLG 上野': 'オリエンタルラウンジ上野 上野仲町通り',
+            'OLG ag 上野': 'ag上野 上野御徒町',
+            'ag 上野': 'ag上野 上野御徒町',
+            'OLG 町田': 'オリエンタルラウンジ町田 原町田',
+            // 横浜・大宮・柏・宇都宮・高崎
+            'OLG 横浜': 'オリエンタルラウンジ横浜 横浜駅西口南幸',
+            'OLG 大宮': 'オリエンタルラウンジ大宮 大宮駅東口大門町',
+            'JIS OMIYA': 'JIS大宮 大宮駅東口仲町',
+            'OLG 柏': 'オリエンタルラウンジ柏 柏駅東口',
+            'OLG 宇都宮': 'オリエンタルラウンジ宇都宮 オリオン通り',
+            'OLG 高崎': 'オリエンタルラウンジ高崎 高崎駅西口',
+            // 名古屋・静岡・浜松・金沢
+            'OLG 名古屋栄': 'オリエンタルラウンジ名古屋栄 栄三丁目',
+            'OLG 栄': 'オリエンタルラウンジ名古屋栄 栄三丁目',
+            'OLG 名古屋錦': 'オリエンタルラウンジ名古屋錦 錦三丁目',
+            'OLG 錦': 'オリエンタルラウンジ名古屋錦 錦三丁目',
+            'OLG ag 名古屋': 'ag名古屋 栄住吉',
+            'ag 名古屋': 'ag名古屋 栄住吉',
+            'OLG 静岡': 'オリエンタルラウンジ静岡 呉服町',
+            'OLG 浜松': 'オリエンタルラウンジ浜松 鍛冶町',
+            'OLG 金沢': 'オリエンタルラウンジ金沢 片町',
+            // 大阪・京都・神戸
+            'OLG 梅田': 'オリエンタルラウンジ梅田 お初天神曽根崎',
+            'OLG 茶屋町': 'オリエンタルラウンジ茶屋町 阪急茶屋町',
+            'OLG ag 梅田': 'ag梅田 阪急東通り堂山町',
+            'ag 梅田': 'ag梅田 阪急東通り堂山町',
+            'JIS UMEDA': 'JIS梅田 曽根崎お初天神',
+            'JIS CHAYAMACHI': 'JIS茶屋町 梅田茶屋町',
+            'YATAKOI UMEDA': 'ヤタコイ茶屋町 梅田茶屋町',
+            'OLG 天満': 'オリエンタルラウンジ天満 天満駅前',
+            'OLG 心斎橋': 'オリエンタルラウンジ心斎橋 心斎橋筋',
+            'OLG 難波': 'オリエンタルラウンジ難波 戎橋道頓堀',
+            'JIS NAMBA': 'JIS難波 宗右衛門町戎橋',
+            'OLG 京都': 'オリエンタルラウンジ京都 河原町三条木屋町',
+            'OLG 神戸': 'オリエンタルラウンジ神戸 三宮生田ロード',
+            // 岡山・広島・松山
+            'OLG 岡山': 'オリエンタルラウンジ岡山 本町岡山駅前',
+            'XIX OKAYAMA': '相席ラウンジXIX岡山 磨屋町',
+            'OLG 広島': 'オリエンタルラウンジ広島 流川本通',
+            'OLG ag 広島': 'ag広島 流川町',
+            'ag 広島': 'ag広島 流川町',
+            'ALFA HIROSHIMA': '相席ラウンジALFA広島 流川',
+            'CLOVERS HIROSHIMA': '相席CLOVERS広島 堀川町流川',
+            'JIS MATSUYAMA': 'JIS松山 大街道二番町',
+            // 福岡・九州・沖縄・札幌・仙台
+            'OLG 福岡': 'オリエンタルラウンジ福岡 天神西通り大名',
+            'OLG ag 福岡': 'ag福岡 天神西通り',
+            'ag 福岡': 'ag福岡 天神西通り',
+            'JIS FUKUOKA': 'JIS福岡 天神大名',
+            'OLG 小倉': 'オリエンタルラウンジ小倉 魚町銀天街',
+            'OLG 長崎': 'オリエンタルラウンジ長崎 浜町思案橋',
+            'OLG 大分': 'オリエンタルラウンジ大分 都町',
+            'OLG 熊本': 'オリエンタルラウンジ熊本 下通新市街',
+            'JIS KUMAMOTO': 'JIS熊本 下通銀座通り',
+            'OLG 宮崎': 'オリエンタルラウンジ宮崎 中央通ニシタチ',
+            'OLG 鹿児島': 'オリエンタルラウンジ鹿児島 天文館',
+            'OLG 沖縄': 'オリエンタルラウンジ沖縄 那覇国際通り牧志',
+            'OLG ag 沖縄': 'ag沖縄 那覇松山',
+            'ag 沖縄': 'ag沖縄 那覇松山',
+            'OLG 札幌': 'オリエンタルラウンジ札幌 すすきの南4条',
+            'OLG ag 札幌': 'ag札幌 すすきの駅前通り',
+            'ag 札幌': 'ag札幌 すすきの駅前通り',
+            'JIS SAPPORO': 'JIS札幌 すすきのノルベサ周辺',
+            'OLG 仙台': 'オリエンタルラウンジ仙台 国分町広瀬通',
+            'OLG ag 仙台': 'ag仙台 国分町一番町',
+            'ag 仙台': 'ag仙台 国分町一番町'
+        };
+
+        function getFullBrandStoreQuery(bInfo) {
+            const brandFull = bInfo.code === 'OLG' ? 'オリエンタルラウンジ' : bInfo.code;
+            return `${brandFull}${bInfo.cleanName} ${bInfo.areaLabel || ''}`.trim();
+        }
 
         function renderModalSecondVenues(storeName) {
-            const listEl = document.getElementById('modal-second-venue-list');
+            const headingEl = document.getElementById('modal-second-venue-heading');
             const cafeBtn = document.getElementById('modal-map-cafe-btn');
             const barBtn = document.getElementById('modal-map-bar-btn');
-            if (!listEl) return;
+            if (!cafeBtn && !barBtn) return;
 
             const bInfo = detectBrandInfo(storeName);
-            const combined = `${storeName} ${bInfo.cleanName} ${bInfo.areaLabel}`.toUpperCase();
+            const rawKey = String(storeName || '').trim();
+            const storeAnchor = STORE_EXACT_MAP_LOCATIONS[rawKey] || getFullBrandStoreQuery(bInfo);
+            const shortStoreLabel = `${bInfo.code} ${bInfo.cleanName}`;
 
-            let matched = null;
-            for (const rule of SECOND_VENUE_GUIDE_BY_AREA) {
-                if (rule.keys.some(k => combined.includes(k.toUpperCase()))) {
-                    matched = rule;
-                    break;
-                }
+            if (headingEl) {
+                headingEl.textContent = `🥂 ${shortStoreLabel} の近くで2軒目を探す`;
             }
-
-            const mapArea = matched ? matched.mapArea : (bInfo.areaLabel || bInfo.cleanName || '駅前');
-            const spots = matched ? matched.spots : [
-                {
-                    badge: '☕ 夜カフェ・スイーツ',
-                    title: `${bInfo.cleanName}周辺の夜カフェ・ダイニング`,
-                    desc: '相席して45〜60分ほど経ったら、「少し静かな場所でコーヒーか甘いものでもどう？」と徒歩3分圏内のカフェやバルへ誘うのが自然です。'
-                },
-                {
-                    badge: '🍸 横並びバー',
-                    title: `${bInfo.cleanName}から徒歩3分以内の落ち着いたバー`,
-                    desc: 'キャッチの多い通りを避け、カウンターや横並び席のあるきれいめなバーを選ぶと安心してもらいやすくなります。'
-                }
-            ];
-
-            listEl.innerHTML = spots.map(sp => `
-                <div class="second-venue-card">
-                    <span class="second-venue-badge">${escapeHtml(sp.badge)}</span>
-                    <div class="second-venue-title">${escapeHtml(sp.title)}</div>
-                    <p class="second-venue-desc">${escapeHtml(sp.desc)}</p>
-                </div>
-            `).join('');
-
             if (cafeBtn) {
-                cafeBtn.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapArea + ' 夜カフェ カフェバー')}`;
+                cafeBtn.textContent = `☕ ${bInfo.cleanName}店近くの夜カフェをマップ検索`;
+                cafeBtn.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(storeAnchor + ' 近く 夜カフェ スイーツ カフェバー')}`;
             }
             if (barBtn) {
-                barBtn.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapArea + ' 隠れ家バー ワインバル')}`;
+                barBtn.textContent = `🍸 ${bInfo.cleanName}店近くのバー・バルをマップ検索`;
+                barBtn.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(storeAnchor + ' 近く 隠れ家バー ワインバル ダイニングバー')}`;
             }
         }
 
