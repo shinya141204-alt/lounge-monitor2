@@ -188,6 +188,10 @@ def _parse_oriental_roundup_article(article_url: str, date_str: str):
                 if not ev_name:
                     continue
 
+                # Exclude ubiquitous default perks like "女性限定フード食べ放題" so real unique campaigns stand out
+                if 'フード食べ放題' in ev_name or '食べ放題' in ev_name:
+                    continue
+
                 # Gender detection
                 ev_lower = ev_name.lower()
                 if '女性限定' in ev_lower or '女性' in ev_lower or 'ハーゲンダッツ' in ev_lower or 'フェイスパック' in ev_lower:
@@ -666,6 +670,11 @@ def get_events_for_store(store_name: str, store_only: bool = False):
     is_olg = 'OLG' in clean_name or 'ORIENTAL' in clean_name or 'AG' in clean_name
 
     for ev in all_events:
+        t = ev.get('title', '')
+        # Filter out ubiquitous default perks like "女性限定フード食べ放題"
+        if 'フード食べ放題' in t or '女性限定フード' in t:
+            continue
+
         ev_brand = ev.get('brand', '')
         if is_jis and ev_brand == 'JIS':
             # Direct store_name match

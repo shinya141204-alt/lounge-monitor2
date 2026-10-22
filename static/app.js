@@ -131,6 +131,10 @@
             const isOlg = clean.includes('OLG') || clean.includes('ORIENTAL') || clean.includes('AG');
 
             return window.allEvents.filter(ev => {
+                // Filter out ubiquitous default perks like "女性限定フード食べ放題"
+                const t = ev.title || '';
+                if (t.includes('フード食べ放題') || t.includes('女性限定フード')) return false;
+
                 if (isJis && ev.brand === 'JIS') {
                     if (ev.store_name && ev.store_name.toUpperCase().trim() === clean) return true;
                     if (!ev.target_stores || ev.target_stores.length === 0) return true;
