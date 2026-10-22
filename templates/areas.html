@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {% if selected_area %}
+    <title>{{ selected_area.info.name }}の相席ラウンジ現在人数・混雑状況＆店舗比較｜相席ナビ</title>
+    <meta name="description" content="{{ selected_area.info.name }}の相席ラウンジ（オリエンタルラウンジ・JIS・ag等）のリアルタイム男女人数と混雑状況。{{ selected_area.info.lead }}">
+    <link rel="canonical" href="https://aiseki-navi.com/area/{{ selected_area.slug }}">
+    {% else %}
+    <title>全国エリア別 相席ラウンジ現在人数・店舗ガイド一覧｜相席ナビ</title>
+    <meta name="description" content="新宿・渋谷・恵比寿・横浜・大宮・大阪梅田・難波・名古屋栄・福岡天神・札幌・仙台など、全国主要エリアごとの相席ラウンジ現在人数と街別の立ち回りガイド一覧。">
+    <link rel="canonical" href="https://aiseki-navi.com/areas">
+    {% endif %}
+
+    <link rel="icon" type="image/png" href="/static/icon-192.png?v=2">
+    <link rel="apple-touch-icon" href="/static/icon.png?v=2">
+    <style>
+        :root {
+            --bg-dark: #0a0a0f;
+            --card-bg: rgba(22, 22, 34, 0.85);
+            --text-main: #f8fafc;
+            --text-sub: #94a3b8;
+            --accent-pink: #ec4899;
+            --accent-blue: #3b82f6;
+            --border-subtle: rgba(255, 255, 255, 0.1);
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-dark);
+            background-image:
+                radial-gradient(circle at 15% 10%, rgba(236, 72, 153, 0.12), transparent 35%),
+                radial-gradient(circle at 85% 80%, rgba(59, 130, 246, 0.12), transparent 35%);
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+            line-height: 1.75;
+        }
+        .portal-wrap {
+            max-width: 980px;
+            margin: 0 auto;
+            padding: 20px 18px 80px;
+        }
+        .portal-top-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            padding-bottom: 14px;
+            border-bottom: 1px solid var(--border-subtle);
+            margin-bottom: 14px;
+        }
+        .portal-brand-link {
+            text-decoration: none;
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+        }
+        .portal-brand-title {
+            font-size: 1.5rem;
+            font-weight: 800;
+            background: linear-gradient(90deg, #ec4899, #8b5cf6, #3b82f6);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin: 0;
+        }
+        .portal-brand-sub {
+            font-size: 0.78rem;
+            color: var(--text-sub);
+        }
+        .portal-global-nav {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding: 4px 0 14px;
+            margin-bottom: 18px;
+            scrollbar-width: none;
+        }
+        .portal-global-nav::-webkit-scrollbar { display: none; }
+        .portal-nav-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 15px;
+            border-radius: 999px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            text-decoration: none;
+            color: #cbd5e1;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            white-space: nowrap;
+            transition: all 0.2s ease;
+        }
+        .portal-nav-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+        .portal-nav-item.active {
+            background: linear-gradient(135deg, rgba(236, 72, 153, 0.25), rgba(59, 130, 246, 0.25));
+            border-color: rgba(236, 72, 153, 0.55);
+            color: #fff;
+        }
+
+        /* Area Selector Pills */
+        .area-pills-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 24px;
+        }
+        .area-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 14px;
+            border-radius: 10px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            text-decoration: none;
+            color: #cbd5e1;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border-subtle);
+            transition: all 0.2s ease;
+        }
+        .area-pill:hover {
+            border-color: rgba(56, 189, 248, 0.5);
+            color: #fff;
+        }
+        .area-pill.active {
+            background: rgba(56, 189, 248, 0.18);
+            border-color: #38bdf8;
+            color: #fff;
+        }
+
+        /* Area Detail Section */
+        .area-section-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-subtle);
+            border-radius: 18px;
+            padding: 24px;
+            margin-bottom: 28px;
+        }
+        .area-header-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 14px;
+            padding-bottom: 14px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .area-title-group h2, .area-title-group h1 {
+            margin: 0;
+            font-size: 1.35rem;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .area-live-totals {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(15, 23, 42, 0.8);
+            padding: 6px 14px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 0.84rem;
+            font-weight: 700;
+        }
+        .tot-w { color: #f472b6; }
+        .tot-m { color: #60a5fa; }
+
+        /* Live Store Mini Cards */
+        .live-stores-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 12px;
+            margin: 18px 0 22px;
+        }
+        .live-store-card {
+            background: rgba(15, 23, 42, 0.75);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .live-store-name {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .live-counts-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.88rem;
+            font-weight: 700;
+        }
+        .ratio-bar {
+            height: 6px;
+            border-radius: 999px;
+            background: rgba(59, 130, 246, 0.35);
+            overflow: hidden;
+        }
+        .ratio-fill-w {
+            height: 100%;
+            background: linear-gradient(90deg, #ec4899, #f472b6);
+        }
+
+        /* Editorial Guide Points inside Area */
+        .area-guide-points {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 14px;
+            margin-top: 16px;
+        }
+        .area-point-box {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            border-radius: 12px;
+            padding: 15px;
+        }
+        .area-point-box h3 {
+            margin: 0 0 6px 0;
+            font-size: 0.92rem;
+            color: #38bdf8;
+        }
+        .area-point-box p {
+            margin: 0;
+            font-size: 0.84rem;
+            color: #cbd5e1;
+            line-height: 1.65;
+        }
+
+        .portal-footer {
+            margin-top: 50px;
+            padding-top: 28px;
+            border-top: 1px solid var(--border-subtle);
+            color: var(--text-sub);
+            font-size: 0.82rem;
+        }
+        .portal-footer-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+            margin-bottom: 12px;
+        }
+        .portal-footer-links a {
+            color: #cbd5e1;
+            text-decoration: none;
+        }
+        .portal-footer-links a:hover { color: #ec4899; }
+    </style>
+</head>
+
+<body>
+    <div class="portal-wrap">
+        <div class="portal-top-header">
+            <a href="/" class="portal-brand-link">
+                <span class="portal-brand-title">相席ナビ</span>
+                <span class="portal-brand-sub">全国ラウンジの今わかる人数ランキング＆攻略メディア</span>
+            </a>
+            <span style="font-size: 0.78rem; color: #94a3b8;">最終更新: {{ last_updated }}</span>
+        </div>
+
+        <nav class="portal-global-nav" aria-label="メインナビゲーション">
+            <a href="/" class="portal-nav-item">🔥 リアルタイム順位</a>
+            <a href="/areas" class="portal-nav-item active">📍 エリアから探す</a>
+            <a href="/columns" class="portal-nav-item">📖 コラム・記事一覧</a>
+            <a href="/guide/brand-comparison" class="portal-nav-item">⚖️ 3大ブランド比較</a>
+            <a href="/grooming" class="portal-nav-item">✨ 身だしなみ・準備</a>
+        </nav>
+
+        <!-- Area Selector Bar -->
+        <div class="area-pills-bar">
+            <a href="/areas" class="area-pill {% if not selected_area %}active{% endif %}">🗺️ 全国すべてのエリア</a>
+            {% for item in area_summaries %}
+            <a href="/area/{{ item.slug }}" class="area-pill {% if selected_area and selected_area.slug == item.slug %}active{% endif %}">
+                <span>{{ item.info.icon }}</span>
+                <span>{{ item.info.short_name }}</span>
+            </a>
+            {% endfor %}
+        </div>
+
+        {% if selected_area %}
+        <!-- Single Selected Area View -->
+        <article class="area-section-card">
+            <div class="area-header-row">
+                <div class="area-title-group">
+                    <h1>{{ selected_area.info.icon }} {{ selected_area.info.name }}のリアルタイム混雑＆店舗ガイド</h1>
+                </div>
+                <div class="area-live-totals">
+                    <span>対象 {{ selected_area.store_count }}店舗</span>
+                    <span>｜</span>
+                    <span class="tot-w">女性 {{ selected_area.total_women }}名</span>
+                    <span class="tot-m">男性 {{ selected_area.total_men }}名</span>
+                </div>
+            </div>
+
+            <p style="font-size: 0.94rem; color: #e2e8f0; margin: 0 0 16px;">{{ selected_area.info.lead }}</p>
+
+            <h2 style="font-size: 1.05rem; color: #fff; margin: 20px 0 10px;">📊 現在の店舗別リアルタイム人数（女性が多い順）</h2>
+            <div class="live-stores-grid">
+                {% for s in selected_area.stores %}
+                {% set tot = s.women + s.men %}
+                {% set wpct = ((s.women / tot) * 100)|round|int if tot > 0 else 50 %}
+                <div class="live-store-card">
+                    <div class="live-store-name">
+                        <span>{{ s.name }}</span>
+                        <span style="font-size: 0.75rem; color: #94a3b8;">女性比 {{ wpct if tot > 0 else 0 }}%</span>
+                    </div>
+                    <div class="live-counts-row">
+                        <span class="tot-w">👩 女性 {{ s.women }}名</span>
+                        <span class="tot-m">👨 男性 {{ s.men }}名</span>
+                    </div>
+                    <div class="ratio-bar">
+                        <div class="ratio-fill-w" style="width: {{ wpct }}%;"></div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div style="text-align: center; margin: 18px 0 24px;">
+                <a href="/" style="display: inline-flex; align-items: center; gap: 6px; padding: 10px 22px; border-radius: 999px; background: linear-gradient(90deg, #ec4899, #3b82f6); color: #fff; text-decoration: none; font-size: 0.88rem; font-weight: 700;">
+                    📈 トップ画面で曜日・時間帯別の詳細グラフを見る ›
+                </a>
+            </div>
+
+            <div class="area-guide-points">
+                <div class="area-point-box">
+                    <h3>🍸 店舗ごとの特徴と客層</h3>
+                    <p>{{ selected_area.info.atmosphere }}</p>
+                </div>
+                <div class="area-point-box">
+                    <h3>⏰ 狙い目の曜日・時間帯</h3>
+                    <p>{{ selected_area.info.best_time }}</p>
+                </div>
+                <div class="area-point-box">
+                    <h3>🥂 2軒目に使いやすい周辺エリア</h3>
+                    <p>{{ selected_area.info.second_spot }}</p>
+                </div>
+            </div>
+        </article>
+        {% else %}
+        <!-- All Areas Directory View -->
+        <div style="margin-bottom: 24px;">
+            <h1 style="font-size: 1.45rem; margin: 0 0 8px; color: #fff;">📍 全国エリア別の現在人数＆ラウンジ立ち回りガイド</h1>
+            <p style="font-size: 0.9rem; color: #cbd5e1; margin: 0;">これから向かう街のリアルタイム合計人数と、そのエリアの店舗ごとの雰囲気・2軒目スポットをまとめて確認できます。</p>
+        </div>
+
+        {% for item in area_summaries %}
+        <section class="area-section-card">
+            <div class="area-header-row">
+                <div class="area-title-group">
+                    <h2>
+                        <a href="/area/{{ item.slug }}" style="color: #fff; text-decoration: none;">
+                            {{ item.info.icon }} {{ item.info.name }}
+                        </a>
+                    </h2>
+                </div>
+                <div class="area-live-totals">
+                    <span>{{ item.store_count }}店舗</span>
+                    <span>｜</span>
+                    <span class="tot-w">女性 {{ item.total_women }}名</span>
+                    <span class="tot-m">男性 {{ item.total_men }}名</span>
+                </div>
+            </div>
+
+            <p style="font-size: 0.88rem; color: #cbd5e1; margin: 0 0 14px;">{{ item.info.lead }}</p>
+
+            <div class="live-stores-grid">
+                {% for s in item.stores[:6] %}
+                {% set tot = s.women + s.men %}
+                {% set wpct = ((s.women / tot) * 100)|round|int if tot > 0 else 50 %}
+                <div class="live-store-card">
+                    <div class="live-store-name">
+                        <span>{{ s.name }}</span>
+                        <span style="font-size: 0.74rem; color: #94a3b8;">女性比 {{ wpct if tot > 0 else 0 }}%</span>
+                    </div>
+                    <div class="live-counts-row">
+                        <span class="tot-w">👩 女性 {{ s.women }}名</span>
+                        <span class="tot-m">👨 男性 {{ s.men }}名</span>
+                    </div>
+                    <div class="ratio-bar">
+                        <div class="ratio-fill-w" style="width: {{ wpct }}%;"></div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="area-guide-points">
+                <div class="area-point-box">
+                    <h3>🍸 街の傾向と店舗の選び方</h3>
+                    <p>{{ item.info.atmosphere }}</p>
+                </div>
+                <div class="area-point-box">
+                    <h3>⏰ 入りやすい時間帯と2軒目</h3>
+                    <p>{{ item.info.best_time }} {{ item.info.second_spot }}</p>
+                </div>
+            </div>
+
+            <div style="margin-top: 14px; text-align: right;">
+                <a href="/area/{{ item.slug }}" style="color: #f472b6; font-size: 0.84rem; font-weight: 700; text-decoration: none;">
+                    {{ item.info.short_name }}の全店舗と詳細ガイドを見る ›
+                </a>
+            </div>
+        </section>
+        {% endfor %}
+        {% endif %}
+
+        <footer class="portal-footer">
+            <div class="portal-footer-links">
+                <a href="/">🔥 リアルタイムランキング</a>
+                <a href="/areas">📍 全国エリア一覧</a>
+                <a href="/columns">📖 コラム一覧</a>
+                <a href="/guide">基本ガイド</a>
+                <a href="/guide/brand-comparison">3大ブランド比較</a>
+                <a href="/guide/weekday-strategy">水曜・木曜の穴場</a>
+                <a href="/grooming">身だしなみ特集</a>
+                <a href="/privacy">運営者情報・プライバシーポリシー</a>
+            </div>
+            <p>© 2026 相席ナビ (AISEKI NAVI) ｜ 公開データの非公式統計・情報ポータルサイト</p>
+        </footer>
+    </div>
+</body>
+
+</html>

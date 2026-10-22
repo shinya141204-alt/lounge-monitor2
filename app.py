@@ -668,9 +668,129 @@ def robots_txt():
     content = "User-agent: *\nAllow: /\nDisallow: /api/debug_ps\nDisallow: /api/logs\nDisallow: /api/thread_status\nDisallow: /staff\nSitemap: https://aiseki-navi.com/sitemap.xml\n"
     return Response(content, mimetype='text/plain')
 
+AREA_GUIDES = {
+    'shinjuku': {
+        'slug': 'shinjuku',
+        'name': '新宿・西新宿エリア',
+        'short_name': '新宿・西新宿',
+        'icon': '🗼',
+        'keywords': ['新宿', 'SHINJUKU', 'NISHISHINJUKU'],
+        'region_code': 'Kanto',
+        'lead': '日本一の激戦区。オリエンタルラウンジ・ag・JIS（東口・西口）の4店舗が徒歩圏内に集まっており、店舗ごとの男女比の差が一番出やすいエリアです。',
+        'atmosphere': '歌舞伎町・東口側の「オリエンタルラウンジ新宿」「ag新宿」「JIS新宿」は20代前半〜後半まで圧倒的な集客力があります。一方、西口側の「JIS西新宿」は東口が満席のときでも落ち着いて入れることが多く、仕事帰りのOL層や大人っぽい雰囲気を求める方に人気です。',
+        'best_time': '金・土曜の21:30以降は東口3店舗で男性の入店待ちが発生しやすいため、20:00〜21:00頃の早めに入るか、男女比を見ながら西新宿へ回るのがスムーズです。水曜・木曜の21時前後は待ち時間も少なく、かなり狙い目です。',
+        'second_spot': '東口なら靖国通り・三丁目方面の落ち着いたバルやダイニングバー、西新宿なら野村ビル周辺や西口ガード近くの静かなバーが2軒目に移動しやすくて定番です。'
+    },
+    'shibuya': {
+        'slug': 'shibuya',
+        'name': '渋谷・恵比寿エリア',
+        'short_name': '渋谷・恵比寿',
+        'icon': '✨',
+        'keywords': ['渋谷', '恵比寿', 'Shibuya', 'Ebisu'],
+        'region_code': 'Kanto',
+        'lead': 'トレンド感のある20代が集まる渋谷3店舗と、落ち着いた大人の街・恵比寿。同じ山手線沿線でもお店によって空気感がガラッと変わります。',
+        'atmosphere': '「ag渋谷」は20代前半の学生やアパレル・美容系などノリの良い層が多く、「オリエンタルラウンジ渋谷本店・渋谷駅前」は20代半ばのOL層まで幅広く入っています。1駅隣の「オリエンタルラウンジ恵比寿」は30代前後の落ち着いた男女が多く、ゆっくり会話を楽しみたい夜に向いています。',
+        'best_time': '渋谷駅前店と本店は徒歩数分の距離なので、行く直前に『相席ナビ』で女性比率が高い方を選ぶだけで待ち時間をかなり減らせます。恵比寿は木曜・金曜の20:30〜22:30頃が特にいい雰囲気です。',
+        'second_spot': '渋谷なら道玄坂上の隠れ家カフェバーや宮益坂方面、恵比寿なら駅西口の恵比寿横丁周辺や少し歩いた裏路地のワインバーへ誘うと喜ばれます。'
+    },
+    'tokyo-east': {
+        'slug': 'tokyo-east',
+        'name': '上野・町田・東京近郊エリア',
+        'short_name': '上野・町田',
+        'icon': '🏮',
+        'keywords': ['上野', '町田', 'Ueno', 'Machida'],
+        'region_code': 'Kanto',
+        'lead': '新宿や渋谷ほど気取らず、地元の常連や沿線ユーザーが集まってアットホームに盛り上がりやすい穴場エリアです。',
+        'atmosphere': '上野は「オリエンタルラウンジ上野」と「ag上野」の2店舗があり、北千住・秋葉原・埼玉方面からのアクセスが良いため、気さくで話しやすい女性が多いのが特徴です。町田も小田急・横浜線沿線の20代が集まり、週末は都心に負けない盛り上がりを見せます。',
+        'best_time': '19:30〜21:30頃の1軒目利用が多く、終電が都心部より少し早めな分、20時台に入店しておくとゆっくり話して2軒目にも誘いやすくなります。',
+        'second_spot': '上野なら仲町通り周辺のきれいめな居酒屋やバー、町田なら原町田エリアのダイニングバーやカフェが徒歩すぐで使いやすいです。'
+    },
+    'kanto': {
+        'slug': 'kanto',
+        'name': '横浜・大宮・北関東エリア',
+        'short_name': '横浜・大宮・北関東',
+        'icon': '🌉',
+        'keywords': ['横浜', '大宮', '柏', '宇都宮', '高崎', 'Yokohama', 'Omiya', 'OMIYA', 'Kashiwa', 'Utsunomiya', 'Takasaki'],
+        'region_code': 'Kanto',
+        'lead': 'わざわざ都心まで出なくても、各ターミナル駅前で非常に高い集客力を誇る関東の人気エリア群です。',
+        'atmosphere': '特に大宮（オリエンタルラウンジ大宮・JIS大宮）と横浜（オリエンタルラウンジ横浜）は全国ランキングでも常に上位に入るマンモスエリアです。柏・宇都宮・高崎も地元エリアで唯一の大型ラウンジとして週末・平日問わず安定した来店があります。',
+        'best_time': '大宮はオリエンタルラウンジとJISが近くにあるため、その日の人数バランスを見比べて選ぶのが鉄則です。20:00〜22:00頃が一番バランス良く座れます。',
+        'second_spot': '横浜なら西口五番街〜鶴屋町方面のおしゃれなバル、大宮なら東口・南銀周辺の落ち着いた個室ダイニングやバーが定番ルートです。'
+    },
+    'osaka': {
+        'slug': 'osaka',
+        'name': '大阪（梅田・難波・心斎橋）・関西エリア',
+        'short_name': '大阪・京都・神戸',
+        'icon': '🐙',
+        'keywords': ['大阪', '梅田', '茶屋町', '難波', '心斎橋', '天満', '京都', '神戸', 'Osaka', 'Umeda', 'UMEDA', 'Chayamachi', 'CHAYAMACHI', 'Namba', 'NAMBA', 'Shinsaibashi', 'Tenma', 'Kyoto', 'Kobe'],
+        'region_code': 'Kinki',
+        'lead': 'キタ（梅田・茶屋町・天満）とミナミ（難波・心斎橋）、さらに京都・神戸三宮まで、ノリの良さと店舗数の多さが魅力の関西エリア。',
+        'atmosphere': '梅田・茶屋町エリアは「オリエンタルラウンジ梅田・茶屋町」「JIS梅田」「ヤタコイ茶屋町」が揃い、仕事帰りのOLから学生まで華やかな層が集まります。心斎橋・難波はさらにフレンドリーで盛り上がりやすく、京都・神戸三宮は少し落ち着いた上品な雰囲気があります。',
+        'best_time': '関西エリアは金曜・土曜だけでなく水曜・木曜の夜もかなり人が入ります。梅田周辺は徒歩圏内に複数店舗があるため、待ち時間が出ている店舗を避けて移動するのがコツです。',
+        'second_spot': '梅田ならお初天神裏参道や茶屋町の夜景が見えるバー、難波・心斎橋なら裏なんばや東心斎橋の隠れ家バーが2軒目にぴったりです。'
+    },
+    'nagoya': {
+        'slug': 'nagoya',
+        'name': '名古屋（栄・錦）・静岡・北陸エリア',
+        'short_name': '名古屋・静岡・金沢',
+        'icon': '🏯',
+        'keywords': ['名古屋', '栄', '錦', '静岡', '浜松', '金沢', 'Nagoya', 'Shizuoka', 'Hamamatsu', 'Kanazawa'],
+        'region_code': 'Chubu',
+        'lead': '東海最大の歓楽街である名古屋（栄・錦）を中心に、静岡・浜松・金沢の人気店舗が集まる中部・北陸エリア。',
+        'atmosphere': '名古屋は「オリエンタルラウンジ名古屋栄」「錦」「ag名古屋」の3店舗が同じ栄・錦エリアに集中しています。若い世代とワイワイ飲むならag名古屋、きれいめなOL層と落ち着いて飲むなら栄店・錦店と使い分けがしやすいのが魅力です。静岡・浜松・金沢も週末は100名近く集まることがある活気ある店舗です。',
+        'best_time': '名古屋の3店舗はすべて徒歩数分圏内なので、向かう前に『相席ナビ』で3店舗の男女比を見比べるのが一番効果的です。20:30〜22:30頃がコアタイムです。',
+        'second_spot': '栄・錦エリアなら住吉方面のカジュアルなバルや、錦三丁目の落ち着いたオーセンティックバーへ流れるのがスマートです。'
+    },
+    'fukuoka': {
+        'slug': 'fukuoka',
+        'name': '福岡（天神・小倉）・九州・沖縄エリア',
+        'short_name': '福岡・九州・沖縄',
+        'icon': '🍜',
+        'keywords': ['福岡', '天神', '小倉', '長崎', '大分', '熊本', '宮崎', '鹿児島', '沖縄', 'Fukuoka', 'FUKUOKA', 'Kokura', 'Nagasaki', 'Oita', 'Kumamoto', 'KUMAMOTO', 'Miyazaki', 'Kagoshima', 'Okinawa'],
+        'region_code': 'Kyushu',
+        'lead': '全国屈指の盛り上がりを見せる福岡・天神エリアをはじめ、熊本・小倉・宮崎・鹿児島・沖縄那覇まで揃う九州エリア。',
+        'atmosphere': '福岡・天神エリアには「オリエンタルラウンジ福岡」「ag福岡」「JIS福岡」の3大ブランドがすべて揃っており、平日でも女性が多く入ることで有名です。熊本もオリエンタルラウンジとJISの2店舗体制で活気があり、沖縄那覇は地元の方だけでなく旅行・出張客も多くて独特の開放感があります。',
+        'best_time': '福岡・天神は20時台から女性の来店ペースが早く、21時〜23時頃にはかなり賑わいます。早めの時間に1軒目として入るのがおすすめです。',
+        'second_spot': '天神・大名エリアはおしゃれな立ち飲みや隠れ家バー、屋台が徒歩すぐの場所に無数にあるため、2軒目への移動のしやすさは全国トップクラスです。'
+    },
+    'hokkaido-tohoku': {
+        'slug': 'hokkaido-tohoku',
+        'name': '札幌・仙台・岡山・広島・松山エリア',
+        'short_name': '札幌・仙台・中四国',
+        'icon': '❄️',
+        'keywords': ['札幌', '仙台', '岡山', '広島', '松山', 'Sapporo', 'SAPPORO', 'Sendai', 'Okayama', 'OKAYAMA', 'Hiroshima', 'HIROSHIMA', 'CLOVERS', 'Matsuyama', 'MATSUYAMA'],
+        'region_code': 'Hokkaido',
+        'lead': 'すすきの（札幌）、国分町（仙台）、岡山、流川（広島）、大街道（松山）など、各地方の中心歓楽街で圧倒的な存在感を放つエリア。',
+        'atmosphere': '札幌は「オリエンタルラウンジ札幌」「ag札幌」「JIS札幌」の3店舗、仙台は「オリエンタルラウンジ仙台」「ag仙台」の2店舗があり、その日の客層や人数で選べます。また岡山は「オリエンタルラウンジ」「XIX」、広島は「オリエンタルラウンジ」「ALFA」「CLOVERS」と地場の人気ブランドも揃っており、比較しながらお店を選べます。',
+        'best_time': '金・土曜の21:00〜翌0:00はもちろん、木曜の20:30頃も女性比率が高くなりやすく、落ち着いて話せる穴場タイムです。',
+        'second_spot': 'すすきの・国分町・流川など、どの店舗も歓楽街のど真ん中に位置しているため、お店を出て徒歩1〜2分圏内で2軒目のバーやカフェに困ることがありません。'
+    }
+}
+
+def get_stores_for_area(area_slug, all_stores):
+    area = AREA_GUIDES.get(area_slug)
+    if not area:
+        return []
+    kws = area['keywords']
+    matched = []
+    for s in all_stores:
+        sname = s.get('name', '')
+        if any(k in sname for k in kws):
+            matched.append(s)
+    matched.sort(key=lambda x: (x.get('women', 0), x.get('men', 0)), reverse=True)
+    return matched
+
 @app.route('/sitemap.xml')
 def sitemap_xml():
     today = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).strftime('%Y-%m-%d')
+    area_urls = "\n".join([
+        f"""  <url>
+    <loc>https://aiseki-navi.com/area/{slug}</loc>
+    <lastmod>{today}</lastmod>
+    <changefreq>hourly</changefreq>
+    <priority>0.85</priority>
+  </url>""" for slug in AREA_GUIDES.keys()
+    ])
     xml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
@@ -678,6 +798,24 @@ def sitemap_xml():
     <lastmod>{today}</lastmod>
     <changefreq>hourly</changefreq>
     <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://aiseki-navi.com/areas</loc>
+    <lastmod>{today}</lastmod>
+    <changefreq>hourly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://aiseki-navi.com/columns</loc>
+    <lastmod>{today}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://aiseki-navi.com/grooming</loc>
+    <lastmod>{today}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
   </url>
   <url>
     <loc>https://aiseki-navi.com/guide</loc>
@@ -689,7 +827,7 @@ def sitemap_xml():
     <loc>https://aiseki-navi.com/guide/weekday-strategy</loc>
     <lastmod>{today}</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
+    <priority>0.85</priority>
   </url>
   <url>
     <loc>https://aiseki-navi.com/guide/brand-comparison</loc>
@@ -697,8 +835,67 @@ def sitemap_xml():
     <changefreq>weekly</changefreq>
     <priority>0.85</priority>
   </url>
+{area_urls}
+  <url>
+    <loc>https://aiseki-navi.com/privacy</loc>
+    <lastmod>{today}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
 </urlset>"""
     return Response(xml, mimetype='application/xml')
+
+@app.route('/columns')
+def columns_index():
+    """Portal page listing all editorial guides, comparisons, and area features."""
+    return render_template('columns.html', area_guides=AREA_GUIDES)
+
+@app.route('/areas')
+@app.route('/area/<area_slug>')
+def area_portal(area_slug=None):
+    """Area portal page showing live crowd stats and local lounge guides."""
+    trigger_background_fetch_if_needed()
+    with data_lock:
+        stores = list(latest_data.get('full_data') or [])
+        last_updated = latest_data.get('last_updated') or '--:--'
+
+    area_summaries = []
+    for slug, info in AREA_GUIDES.items():
+        matched = get_stores_for_area(slug, stores)
+        total_w = sum(s.get('women', 0) for s in matched)
+        total_m = sum(s.get('men', 0) for s in matched)
+        area_summaries.append({
+            'slug': slug,
+            'info': info,
+            'stores': matched,
+            'store_count': len(matched),
+            'total_women': total_w,
+            'total_men': total_m,
+        })
+
+    selected_area = None
+    if area_slug and area_slug in AREA_GUIDES:
+        for item in area_summaries:
+            if item['slug'] == area_slug:
+                selected_area = item
+                break
+
+    return render_template(
+        'areas.html',
+        area_summaries=area_summaries,
+        selected_area=selected_area,
+        last_updated=last_updated
+    )
+
+@app.route('/grooming')
+def grooming_guide():
+    """Dedicated editorial guide for men's grooming, fashion, and backup dating apps."""
+    return render_template('grooming.html')
+
+@app.route('/privacy')
+def privacy_page():
+    """Dedicated legal, privacy policy, and operator information page."""
+    return render_template('privacy.html')
 
 @app.route('/guide/weekday-strategy')
 def guide_weekday_strategy():

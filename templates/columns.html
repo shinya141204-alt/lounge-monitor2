@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>コラム・攻略記事一覧｜相席ナビ（オリエンタルラウンジ・JIS・ag比較＆時間帯データ）</title>
+    <meta name="description" content="相席ナビ公式のコラム・ガイド記事一覧。オリエンタルラウンジ・JIS・agの3大ブランド比較や、水曜・木曜20時〜22時が相席しやすい理由、お店選びと身だしなみの基本まで実際の混雑データをもとに解説しています。">
+    <link rel="canonical" href="https://aiseki-navi.com/columns">
+
+    <!-- OGP -->
+    <meta property="og:title" content="コラム・攻略記事一覧｜相席ナビ">
+    <meta property="og:description" content="3大ブランドの違い、曜日・時間帯ごとの混雑傾向、行く前の身だしなみまで、実際のデータをもとにまとめました。">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://aiseki-navi.com/columns">
+    <meta property="og:image" content="https://aiseki-navi.com/static/guide-brand-comparison.jpg">
+    <meta property="og:site_name" content="相席ナビ">
+    <meta name="twitter:card" content="summary_large_image">
+
+    <link rel="icon" type="image/png" href="/static/icon-192.png?v=2">
+    <link rel="apple-touch-icon" href="/static/icon.png?v=2">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-dark: #0a0a0f;
+            --card-bg: rgba(22, 22, 34, 0.85);
+            --text-main: #f8fafc;
+            --text-sub: #94a3b8;
+            --accent-pink: #ec4899;
+            --accent-blue: #3b82f6;
+            --accent-cyan: #06b6d4;
+            --border-subtle: rgba(255, 255, 255, 0.1);
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-dark);
+            background-image:
+                radial-gradient(circle at 15% 10%, rgba(236, 72, 153, 0.12), transparent 35%),
+                radial-gradient(circle at 85% 80%, rgba(59, 130, 246, 0.12), transparent 35%);
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+            line-height: 1.75;
+        }
+        .portal-wrap {
+            max-width: 980px;
+            margin: 0 auto;
+            padding: 20px 18px 80px;
+        }
+        /* Portal Global Nav */
+        .portal-top-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            padding-bottom: 14px;
+            border-bottom: 1px solid var(--border-subtle);
+            margin-bottom: 14px;
+        }
+        .portal-brand-link {
+            text-decoration: none;
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+        }
+        .portal-brand-title {
+            font-size: 1.5rem;
+            font-weight: 800;
+            background: linear-gradient(90deg, #ec4899, #8b5cf6, #3b82f6);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin: 0;
+        }
+        .portal-brand-sub {
+            font-size: 0.78rem;
+            color: var(--text-sub);
+        }
+        .portal-global-nav {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding: 4px 0 14px;
+            margin-bottom: 22px;
+            scrollbar-width: none;
+        }
+        .portal-global-nav::-webkit-scrollbar { display: none; }
+        .portal-nav-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 15px;
+            border-radius: 999px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            text-decoration: none;
+            color: #cbd5e1;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            white-space: nowrap;
+            transition: all 0.2s ease;
+        }
+        .portal-nav-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            transform: translateY(-1px);
+        }
+        .portal-nav-item.active {
+            background: linear-gradient(135deg, rgba(236, 72, 153, 0.25), rgba(59, 130, 246, 0.25));
+            border-color: rgba(236, 72, 153, 0.55);
+            color: #fff;
+            box-shadow: 0 2px 12px rgba(236, 72, 153, 0.22);
+        }
+
+        /* Hero Header */
+        .page-hero {
+            background: var(--card-bg);
+            border: 1px solid var(--border-subtle);
+            border-radius: 20px;
+            padding: 28px 24px;
+            margin-bottom: 30px;
+        }
+        .page-hero-badge {
+            display: inline-block;
+            background: rgba(236, 72, 153, 0.15);
+            color: #f472b6;
+            border: 1px solid rgba(236, 72, 153, 0.35);
+            font-size: 0.74rem;
+            font-weight: 700;
+            padding: 3px 10px;
+            border-radius: 999px;
+            margin-bottom: 10px;
+        }
+        .page-hero h1 {
+            font-size: 1.55rem;
+            margin: 0 0 10px 0;
+            color: #fff;
+            line-height: 1.4;
+        }
+        .page-hero p {
+            margin: 0;
+            font-size: 0.92rem;
+            color: #cbd5e1;
+        }
+
+        /* Section Heading */
+        .sec-title {
+            font-size: 1.2rem;
+            font-weight: 800;
+            margin: 34px 0 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #fff;
+        }
+
+        /* Article Grid */
+        .articles-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+            gap: 20px;
+        }
+        .article-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-subtle);
+            border-radius: 16px;
+            overflow: hidden;
+            text-decoration: none;
+            color: inherit;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        .article-card:hover {
+            transform: translateY(-3px);
+            border-color: rgba(236, 72, 153, 0.5);
+            box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+        }
+        .article-thumb-wrap {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            background: #111827;
+            overflow: hidden;
+        }
+        .article-thumb-wrap img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+        .article-card:hover .article-thumb-wrap img {
+            transform: scale(1.03);
+        }
+        .article-card-body {
+            padding: 18px;
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+        }
+        .article-tag-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        .article-tag {
+            font-size: 0.7rem;
+            font-weight: 800;
+            padding: 2px 9px;
+            border-radius: 6px;
+        }
+        .tag-pink { background: rgba(236, 72, 153, 0.18); color: #f472b6; border: 1px solid rgba(236, 72, 153, 0.35); }
+        .tag-cyan { background: rgba(6, 182, 212, 0.18); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.35); }
+        .tag-purple { background: rgba(139, 92, 246, 0.18); color: #c084fc; border: 1px solid rgba(139, 92, 246, 0.35); }
+        .tag-amber { background: rgba(245, 158, 11, 0.18); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.35); }
+        .article-card h2 {
+            font-size: 1.05rem;
+            margin: 0 0 8px 0;
+            color: #fff;
+            line-height: 1.45;
+        }
+        .article-card p {
+            font-size: 0.84rem;
+            color: var(--text-sub);
+            margin: 0 0 16px 0;
+            flex: 1;
+        }
+        .article-read-more {
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: #f472b6;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        /* Area Quick Grid */
+        .area-mini-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+            gap: 12px;
+        }
+        .area-mini-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
+            padding: 14px;
+            text-decoration: none;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: all 0.2s ease;
+        }
+        .area-mini-card:hover {
+            background: rgba(255, 255, 255, 0.07);
+            border-color: rgba(56, 189, 248, 0.45);
+            transform: translateY(-2px);
+        }
+        .area-mini-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .area-mini-icon { font-size: 1.3rem; }
+        .area-mini-name { font-size: 0.88rem; font-weight: 700; }
+
+        /* Portal Footer */
+        .portal-footer {
+            margin-top: 50px;
+            padding-top: 28px;
+            border-top: 1px solid var(--border-subtle);
+            color: var(--text-sub);
+            font-size: 0.82rem;
+        }
+        .portal-footer-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+            margin-bottom: 12px;
+        }
+        .portal-footer-links a {
+            color: #cbd5e1;
+            text-decoration: none;
+        }
+        .portal-footer-links a:hover { color: #ec4899; }
+    </style>
+</head>
+
+<body>
+    <div class="portal-wrap">
+        <div class="portal-top-header">
+            <a href="/" class="portal-brand-link">
+                <span class="portal-brand-title">相席ナビ</span>
+                <span class="portal-brand-sub">全国ラウンジの今わかる人数ランキング＆攻略メディア</span>
+            </a>
+        </div>
+
+        <nav class="portal-global-nav" aria-label="メインナビゲーション">
+            <a href="/" class="portal-nav-item">🔥 リアルタイム順位</a>
+            <a href="/areas" class="portal-nav-item">📍 エリアから探す</a>
+            <a href="/columns" class="portal-nav-item active">📖 コラム・記事一覧</a>
+            <a href="/guide/brand-comparison" class="portal-nav-item">⚖️ 3大ブランド比較</a>
+            <a href="/grooming" class="portal-nav-item">✨ 身だしなみ・準備</a>
+        </nav>
+
+        <section class="page-hero">
+            <span class="page-hero-badge">📚 EDITORIAL COLUMNS</span>
+            <h1>相席ラウンジのお店選び・時間帯・立ち回りコラム一覧</h1>
+            <p>全国約80店舗の混雑ログをもとに、「どのブランドが自分に合っているか」「何曜日の何時頃が一番入りやすいか」「行く前に気をつけたい身だしなみ」を分かりやすくまとめています。</p>
+        </section>
+
+        <h2 class="sec-title">📖 定番の特集・比較コラム</h2>
+        <div class="articles-grid">
+            <!-- Article 1: Brand Comparison -->
+            <a href="/guide/brand-comparison" class="article-card">
+                <div class="article-thumb-wrap">
+                    <img src="/static/guide-brand-comparison.jpg" alt="オリエンタルラウンジ・JIS・ag 3大ブランド比較" loading="lazy">
+                </div>
+                <div class="article-card-body">
+                    <div class="article-tag-row">
+                        <span class="article-tag tag-pink">🔥 一番読まれています</span>
+                        <span class="article-tag tag-purple">ブランド比較</span>
+                    </div>
+                    <h2>オリエンタルラウンジ・JIS・agの違いは？年齢層・料金・雰囲気の選び方</h2>
+                    <p>「同じビルや近くにあるけど、結局どこに入ればいい？」と迷う方へ。3大ブランドの年齢層や店内の雰囲気、2軒目への誘いやすさの違いを整理しました。</p>
+                    <span class="article-read-more">この記事を読む ›</span>
+                </div>
+            </a>
+
+            <!-- Article 2: Weekday Strategy -->
+            <a href="/guide/weekday-strategy" class="article-card">
+                <div class="article-thumb-wrap">
+                    <picture>
+                        <source srcset="/static/note-eyecatch-weekday.webp" type="image/webp">
+                        <img src="/static/note-eyecatch-weekday.jpg" alt="水曜・木曜20時〜22時の平日ラウンジ傾向" loading="lazy">
+                    </picture>
+                </div>
+                <div class="article-card-body">
+                    <div class="article-tag-row">
+                        <span class="article-tag tag-cyan">📊 データ分析</span>
+                        <span class="article-tag tag-amber">平日の穴場</span>
+                    </div>
+                    <h2>なぜ相席ラウンジは週末より「水曜・木曜の20時〜22時」が一番相席しやすいのか？</h2>
+                    <p>金・土曜の22時以降は盛り上がる反面、男性の入場待ちや席替えの慌ただしさも出がちです。仕事帰りの女性が多く、落ち着いて話せる平日の穴場時間を解説します。</p>
+                    <span class="article-read-more">この記事を読む ›</span>
+                </div>
+            </a>
+
+            <!-- Article 3: Comprehensive Manual -->
+            <a href="/guide" class="article-card">
+                <div class="article-thumb-wrap">
+                    <picture>
+                        <source srcset="/static/note-eyecatch.webp" type="image/webp">
+                        <img src="/static/note-eyecatch.jpg" alt="相席ラウンジ基本の立ち回りガイド" loading="lazy">
+                    </picture>
+                </div>
+                <div class="article-card-body">
+                    <div class="article-tag-row">
+                        <span class="article-tag tag-pink">📖 基本ガイド</span>
+                    </div>
+                    <h2>相席ラウンジで失敗しないための基本ガイド｜お店選び・時間帯の波・身だしなみのコツ</h2>
+                    <p>行く前のリアルタイム人数の見方から、最初の10分で打ち解ける会話のコツ、自然な2軒目への誘い方まで、初めての方にもわかりやすくまとめました。</p>
+                    <span class="article-read-more">この記事を読む ›</span>
+                </div>
+            </a>
+
+            <!-- Article 4: Grooming & Prep Guide -->
+            <a href="/grooming" class="article-card">
+                <div class="article-card-body" style="justify-content: space-between; background: linear-gradient(145deg, rgba(236,72,153,0.08), rgba(59,130,246,0.08));">
+                    <div>
+                        <div class="article-tag-row">
+                            <span class="article-tag tag-amber">✨ 身だしなみ・準備</span>
+                        </div>
+                        <h2>ソファ席の至近距離で差がつく！仕事帰りの身だしなみ＆満席時のサブ選択肢</h2>
+                        <p>隣り合う距離が近いラウンジで意外と見られている「夕方の青ヒゲ・肌のテカリ・私服の清潔感」の整え方と、週末にお店が満席だったときの対策をまとめました。</p>
+                    </div>
+                    <span class="article-read-more">特集ページを見る ›</span>
+                </div>
+            </a>
+        </div>
+
+        <h2 class="sec-title">📍 エリア別の混雑傾向＆店舗ガイド</h2>
+        <p style="font-size: 0.88rem; color: #94a3b8; margin: -8px 0 16px;">各エリアの現在のリアルタイム人数と、街ごとの店舗の使い分け・2軒目スポットを見られます。</p>
+        <div class="area-mini-grid">
+            {% for slug, info in area_guides.items() %}
+            <a href="/area/{{ slug }}" class="area-mini-card">
+                <div class="area-mini-left">
+                    <span class="area-mini-icon">{{ info.icon }}</span>
+                    <span class="area-mini-name">{{ info.short_name }}</span>
+                </div>
+                <span style="color: #38bdf8; font-weight: 700;">›</span>
+            </a>
+            {% endfor %}
+        </div>
+
+        <footer class="portal-footer">
+            <div class="portal-footer-links">
+                <a href="/">🔥 リアルタイムランキング</a>
+                <a href="/areas">📍 全国エリア一覧</a>
+                <a href="/columns">📖 コラム一覧</a>
+                <a href="/guide">基本ガイド</a>
+                <a href="/guide/brand-comparison">3大ブランド比較</a>
+                <a href="/guide/weekday-strategy">水曜・木曜の穴場</a>
+                <a href="/grooming">身だしなみ特集</a>
+                <a href="/privacy">運営者情報・プライバシーポリシー</a>
+            </div>
+            <p>© 2026 相席ナビ (AISEKI NAVI) ｜ 公開データの非公式統計・情報ポータルサイト</p>
+        </footer>
+    </div>
+</body>
+
+</html>

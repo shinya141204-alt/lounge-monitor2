@@ -91,7 +91,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/style.css?v=20261023_06">
+    <link rel="stylesheet" href="/static/style.css?v=20261023_07">
     <!-- Local Chart.js: self-hosted (zero CDN blocking, works 100% offline & with adblockers) -->
     <script src="/static/chart.min.js?v=20261021" defer></script>
     <!-- Preload editorial thumbnails for instantaneous modal display -->
@@ -666,15 +666,29 @@
 
                 <!-- Strategy & Guides Section -->
                 <div class="menu-section">
-                    <div class="menu-section-title">📖 攻略・ガイド</div>
+                    <div class="menu-section-title">📖 ポータル・ガイド</div>
                     <div class="menu-grid">
-                        <button class="menu-grid-item" onclick="closeMenuModal(); openArticlesModal();">
+                        <a href="/areas" class="menu-grid-item" style="text-decoration: none; color: inherit;">
+                            <span class="menu-grid-icon">📍</span>
+                            <div class="menu-grid-text">
+                                <strong>エリアから探す</strong>
+                                <span>新宿・渋谷・梅田・栄・天神ほか</span>
+                            </div>
+                        </a>
+                        <a href="/columns" class="menu-grid-item" style="text-decoration: none; color: inherit;">
                             <span class="menu-grid-icon">📚</span>
                             <div class="menu-grid-text">
-                                <strong>攻略記事を選ぶ</strong>
-                                <span>3大ブランド比較・平日攻略コラム</span>
+                                <strong>コラム・記事一覧</strong>
+                                <span>3大ブランド比較・平日穴場データ</span>
                             </div>
-                        </button>
+                        </a>
+                        <a href="/grooming" class="menu-grid-item" style="text-decoration: none; color: inherit;">
+                            <span class="menu-grid-icon">✨</span>
+                            <div class="menu-grid-text">
+                                <strong>身だしなみ・準備</strong>
+                                <span>清潔感ケア＆満席時の恋活アプリ</span>
+                            </div>
+                        </a>
                         <button class="menu-grid-item" onclick="closeMenuModal(); openHowToModal();">
                             <span class="menu-grid-icon">💡</span>
                             <div class="menu-grid-text">
@@ -832,6 +846,16 @@
                 <button type="button" class="theme-pill-btn" data-theme="flat" onclick="setViewTheme('flat', true)">🌑 フラット</button>
                 <button type="button" class="theme-pill-btn" data-theme="light" onclick="setViewTheme('light', true)">☀️ ライト</button>
             </div>
+            {% if not is_staff %}
+            <!-- Portal Global Navigation Bar -->
+            <nav class="portal-global-nav" aria-label="サイト内メニュー">
+                <a href="/" class="portal-nav-link active">🔥 リアルタイム順位</a>
+                <a href="/areas" class="portal-nav-link">📍 エリアから探す</a>
+                <a href="/columns" class="portal-nav-link">📖 コラム・記事一覧</a>
+                <a href="/guide/brand-comparison" class="portal-nav-link">⚖️ 3大ブランド比較</a>
+                <a href="/grooming" class="portal-nav-link">✨ 身だしなみ・準備</a>
+            </nav>
+            {% endif %}
         </header>
 
         <main>
@@ -987,11 +1011,81 @@
 
                 <!-- SEO & ASP Review Editorial Column Section -->
                 <section class="seo-guide-section" aria-label="相席ラウンジ攻略ガイド">
+                    <!-- Portal Featured Articles Showcase -->
                     <div class="seo-guide-header">
-                        <h2>📖 相席ラウンジのお店選び・時間帯ガイド</h2>
+                        <h2>📚 特集コラム・ブランド比較ガイド</h2>
                         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                            <a href="/guide" class="guide-open-btn" style="text-decoration: none; background: linear-gradient(135deg, #ec4899, #8b5cf6);">📖 基本ガイドを読む ›</a>
-                            <button class="guide-open-btn" onclick="openGuideModal()">✨ 身だしなみ・特集 ›</button>
+                            <a href="/columns" class="guide-open-btn" style="text-decoration: none; background: linear-gradient(135deg, #ec4899, #8b5cf6);">📖 コラム一覧を見る ›</a>
+                            <a href="/areas" class="guide-open-btn" style="text-decoration: none;">📍 エリア別ガイド ›</a>
+                        </div>
+                    </div>
+
+                    <div class="portal-featured-articles">
+                        <a href="/guide/brand-comparison" class="portal-article-card">
+                            <div class="portal-article-thumb">
+                                <img src="/static/guide-brand-comparison.jpg" alt="オリエンタルラウンジ・JIS・ag 3大ブランドの違い" loading="lazy">
+                                <span class="portal-article-badge">人気No.1</span>
+                            </div>
+                            <div class="portal-article-body">
+                                <h3>オリエンタルラウンジ・JIS・agの違いは？年齢層・料金・雰囲気の選び方</h3>
+                                <p>3大ブランドの客層や店内の空気感、その日の気分に合わせたお店の選び方をわかりやすく整理しました。</p>
+                                <span class="portal-article-more">記事を読む ›</span>
+                            </div>
+                        </a>
+
+                        <a href="/guide/weekday-strategy" class="portal-article-card">
+                            <div class="portal-article-thumb">
+                                <picture>
+                                    <source srcset="/static/note-eyecatch-weekday.webp" type="image/webp">
+                                    <img src="/static/note-eyecatch-weekday.jpg" alt="水曜・木曜20時〜22時の平日ラウンジ傾向" loading="lazy">
+                                </picture>
+                                <span class="portal-article-badge cyan">データ分析</span>
+                            </div>
+                            <div class="portal-article-body">
+                                <h3>なぜ週末より「水曜・木曜の20時〜22時」が一番入りやすくて話しやすいのか？</h3>
+                                <p>週末の入店待ちや混雑を避けて、仕事帰りの女性と落ち着いて話せる平日の穴場時間をデータで解説。</p>
+                                <span class="portal-article-more">記事を読む ›</span>
+                            </div>
+                        </a>
+
+                        <a href="/guide" class="portal-article-card">
+                            <div class="portal-article-thumb">
+                                <picture>
+                                    <source srcset="/static/note-eyecatch.webp" type="image/webp">
+                                    <img src="/static/note-eyecatch.jpg" alt="相席ラウンジの基本ガイド" loading="lazy">
+                                </picture>
+                                <span class="portal-article-badge">基本ガイド</span>
+                            </div>
+                            <div class="portal-article-body">
+                                <h3>相席ラウンジで失敗しないための基本ガイド｜お店選び・時間帯の波・身だしなみ</h3>
+                                <p>向かう前のリアルタイム人数の見方から、最初の10分の会話、2軒目への自然な誘い方までまとめました。</p>
+                                <span class="portal-article-more">記事を読む ›</span>
+                            </div>
+                        </a>
+                    </div>
+
+                    <!-- Portal Area Guide Quick Links -->
+                    <div class="portal-area-directory">
+                        <div class="portal-area-header">
+                            <h3>📍 エリア別の混雑傾向＆店舗ガイドから探す</h3>
+                            <a href="/areas" class="portal-area-all-link">全国エリア一覧へ ›</a>
+                        </div>
+                        <div class="portal-area-grid">
+                            <a href="/area/shinjuku" class="portal-area-chip">🗼 新宿・西新宿</a>
+                            <a href="/area/shibuya" class="portal-area-chip">✨ 渋谷・恵比寿</a>
+                            <a href="/area/tokyo-east" class="portal-area-chip">🏮 上野・町田</a>
+                            <a href="/area/kanto" class="portal-area-chip">🌉 横浜・大宮・北関東</a>
+                            <a href="/area/osaka" class="portal-area-chip">🐙 大阪・京都・神戸</a>
+                            <a href="/area/nagoya" class="portal-area-chip">🏯 名古屋・静岡・金沢</a>
+                            <a href="/area/fukuoka" class="portal-area-chip">🍜 福岡・九州・沖縄</a>
+                            <a href="/area/hokkaido-tohoku" class="portal-area-chip">❄️ 札幌・仙台・中四国</a>
+                        </div>
+                    </div>
+
+                    <div class="seo-guide-header" style="margin-top: 26px;">
+                        <h2>✨ 相席ラウンジへ行く前の身だしなみ・準備</h2>
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <a href="/grooming" class="guide-open-btn" style="text-decoration: none;">✨ 身だしなみ特集ページ ›</a>
                         </div>
                     </div>
                     <div class="seo-guide-grid">
@@ -1121,15 +1215,50 @@
                 </div>
             </div>
 
+            <!-- Portal Sitemap Grid inside Footer -->
+            <div class="portal-footer-sitemap">
+                <div class="sitemap-col">
+                    <h4>📍 エリア別ガイド</h4>
+                    <ul>
+                        <li><a href="/area/shinjuku">新宿・西新宿エリア</a></li>
+                        <li><a href="/area/shibuya">渋谷・恵比寿エリア</a></li>
+                        <li><a href="/area/kanto">横浜・大宮・北関東エリア</a></li>
+                        <li><a href="/area/osaka">大阪（梅田・難波）・関西</a></li>
+                        <li><a href="/area/nagoya">名古屋（栄・錦）・中部</a></li>
+                        <li><a href="/area/fukuoka">福岡（天神）・九州・沖縄</a></li>
+                        <li><a href="/area/hokkaido-tohoku">札幌・仙台・岡山・広島</a></li>
+                    </ul>
+                </div>
+                <div class="sitemap-col">
+                    <h4>📖 コラム・特集記事</h4>
+                    <ul>
+                        <li><a href="/columns">コラム・記事一覧</a></li>
+                        <li><a href="/guide/brand-comparison">オリエンタル・JIS・ag比較</a></li>
+                        <li><a href="/guide/weekday-strategy">水曜・木曜20時の穴場データ</a></li>
+                        <li><a href="/guide">基本の立ち回り・お店選び</a></li>
+                        <li><a href="/grooming">行く前の身だしなみ・準備</a></li>
+                    </ul>
+                </div>
+                <div class="sitemap-col">
+                    <h4>ℹ️ サイト情報・規約</h4>
+                    <ul>
+                        <li><a href="/">リアルタイム人数ランキング</a></li>
+                        <li><button type="button" class="sitemap-text-btn" onclick="openHowToModal()">相席ナビの使い方</button></li>
+                        <li><a href="/privacy">運営者情報・プライバシーポリシー</a></li>
+                        <li><button type="button" class="sitemap-text-btn" onclick="openLegalModal()">免責事項（ポップアップ）</button></li>
+                    </ul>
+                </div>
+            </div>
+
             <!-- Bottom Row: Clean Legal & Copyright -->
             <div class="footer-bottom-meta">
                 <div class="footer-legal-links">
-                    <button class="footer-sub-link" onclick="openLegalModal()">免責事項・プライバシーポリシー</button>
+                    <a href="/privacy" class="footer-sub-link" style="text-decoration: none;">運営者情報・プライバシーポリシー・免責事項</a>
                     <span class="footer-divider" style="opacity: 0.3;">|</span>
                     <a href="/staff" class="footer-sub-link" style="color: #60a5fa;">🔒 社内業務モニター</a>
                 </div>
                 <p class="footer-mini-copy">
-                    © 2026 相席ナビ (AISEKI NAVI) ｜ ※公開情報の非公式統計サイトです
+                    © 2026 相席ナビ (AISEKI NAVI) ｜ ※公開情報の非公式統計・情報ポータルサイトです
                 </p>
             </div>
             {% endif %}
