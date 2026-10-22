@@ -835,6 +835,30 @@ def sitemap_xml():
     <changefreq>weekly</changefreq>
     <priority>0.85</priority>
   </url>
+  <url>
+    <loc>https://aiseki-navi.com/guide/shinjuku</loc>
+    <lastmod>{today}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://aiseki-navi.com/guide/solo-vs-pair</loc>
+    <lastmod>{today}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://aiseki-navi.com/guide/second-venue</loc>
+    <lastmod>{today}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://aiseki-navi.com/guide/first-10-minutes</loc>
+    <lastmod>{today}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
 {area_urls}
   <url>
     <loc>https://aiseki-navi.com/privacy</loc>
@@ -907,6 +931,26 @@ def guide_weekday_strategy():
 def guide_brand_comparison():
     """Editorial guide comparing Oriental Lounge, ag, and JIS."""
     return render_template('guide_comparison.html')
+
+@app.route('/guide/shinjuku')
+def guide_shinjuku():
+    """Editorial guide comparing the 4 Shinjuku lounge stores."""
+    return render_template('guide_shinjuku.html')
+
+@app.route('/guide/solo-vs-pair')
+def guide_solo_vs_pair():
+    """Editorial guide comparing solo vs 2-person lounge visits."""
+    return render_template('guide_solo_pair.html')
+
+@app.route('/guide/second-venue')
+def guide_second_venue():
+    """Editorial guide on inviting to a second venue smoothly."""
+    return render_template('guide_second_venue.html')
+
+@app.route('/guide/first-10-minutes')
+def guide_first_10min():
+    """Editorial guide on first 10 minutes conversation and grooming."""
+    return render_template('guide_first_10min.html')
 
 @app.route('/api/sns-post')
 def generate_sns_post_api():
