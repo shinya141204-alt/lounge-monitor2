@@ -1415,12 +1415,12 @@
         window.INITIAL_STATUS_DATA = {{ initial_status | tojson }};
         {% endif %}
     </script>
-    <script src="/static/app.js?v=20261023_14" defer></script>
+    <script src="/static/app.js?v=20261023_15" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js?v=18')
+                navigator.serviceWorker.register('/sw.js?v=19')
                     .then(reg => {
                         reg.update();
                     })

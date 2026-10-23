@@ -161,7 +161,7 @@ def start_scheduler():
                         logging.error(f"Scheduled events crawl failed: {err}")
                 scheduler.add_job(func=_crawl_events_job, trigger="cron", hour="1,8", minute=0)
                 scheduler.start()
-                threading.Thread(target=update_job, daemon=True).start()
+                trigger_background_fetch_if_needed()
                 threading.Thread(target=_crawl_events_job, daemon=True).start()
                 _scheduler_started = True
                 import logging
@@ -409,7 +409,7 @@ def save_latest_status_snapshot():
     """Persist latest_data to disk so server restarts/redeploys have 0ms cold-start latency."""
     try:
         with data_lock:
-            if not latest_data.get('full_data'):
+            if not latest_data.get('full_data') or latest_data.get('is_seed'):
                 return
             payload = {
                 'last_updated': latest_data.get('last_updated'),
@@ -426,7 +426,8 @@ def save_latest_status_snapshot():
 
 
 def restore_latest_data_if_empty():
-    """Immediately populate latest_data from disk snapshot on cold start so users never see a loading screen."""
+    """Immediately populate latest_data from disk snapshot, SQLite, or store_master on cold start
+    so users NEVER see a blocking loading screen even right after a Render redeploy."""
     with data_lock:
         if latest_data.get('full_data'):
             return True
@@ -442,7 +443,74 @@ def restore_latest_data_if_empty():
                         latest_data['full_data'] = full_data
                         latest_data['top_store'] = full_data[0]
                         latest_data['last_updated'] = saved.get('last_updated')
+                        latest_data['is_seed'] = False
                 return True
+    except Exception:
+        pass
+
+    # Fallback 2: Restore from latest SQLite logs if available
+    try:
+        snap = local_db.get_snapshot_around(0, 720)
+        if snap and len(snap) >= 10:
+            import store_master
+            master = store_master.load()
+            items = []
+            latest_ts = None
+            for sname, vals in snap.items():
+                info = master.get(sname, {})
+                source = (info.get('brand') or 'oriental').lower()
+                if source == 'olg' or source == 'ag':
+                    source = 'oriental'
+                items.append({
+                    'name': sname,
+                    'men': int(vals.get('men', 0)),
+                    'women': int(vals.get('women', 0)),
+                    'source': source,
+                    'region': info.get('region') or detect_region(sname),
+                    'women_diff': 0,
+                    'men_diff': 0,
+                    'votes': {'smooth': 0, 'waiting': 0, 'lively': 0},
+                })
+                if vals.get('ts') and (not latest_ts or vals['ts'] > latest_ts):
+                    latest_ts = vals['ts']
+            items.sort(key=lambda x: (x['women'], x['men']), reverse=True)
+            with data_lock:
+                if not latest_data.get('full_data'):
+                    latest_data['full_data'] = items
+                    latest_data['top_store'] = items[0]
+                    latest_data['last_updated'] = latest_ts
+                    latest_data['is_seed'] = False
+            return True
+    except Exception:
+        pass
+
+    # Fallback 3: Ephemeral Render container just deployed -> build instant 53-store list from store_master.json
+    try:
+        import store_master
+        master = store_master.load()
+        if master:
+            jst_now = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
+            items = []
+            for sname, info in master.items():
+                brand = (info.get('brand') or 'OLG').upper()
+                source = 'oriental' if brand in ('OLG', 'AG') else brand.lower()
+                items.append({
+                    'name': sname,
+                    'men': 0,
+                    'women': 0,
+                    'source': source,
+                    'region': info.get('region') or detect_region(sname),
+                    'women_diff': 0,
+                    'men_diff': 0,
+                    'votes': {'smooth': 0, 'waiting': 0, 'lively': 0},
+                })
+            with data_lock:
+                if not latest_data.get('full_data'):
+                    latest_data['full_data'] = items
+                    latest_data['top_store'] = items[0]
+                    latest_data['last_updated'] = jst_now.strftime("%Y-%m-%d %H:%M:%S")
+                    latest_data['is_seed'] = True
+            return True
     except Exception:
         pass
     return False
@@ -456,7 +524,8 @@ def get_initial_status_payload():
             return {
                 'timestamp': latest_data['last_updated'],
                 'ranking': latest_data['full_data'],
-                'status': 'success'
+                'status': 'success',
+                'is_seed': bool(latest_data.get('is_seed'))
             }
     return None
 
@@ -502,7 +571,9 @@ rolling_snapshots = []
 
 def update_job(force=False):
     global latest_data, _last_update_error, rolling_snapshots, _last_fetch_at
-    if not force and _last_fetch_at is not None:
+    with data_lock:
+        has_live_data = bool(latest_data.get('full_data')) and not latest_data.get('is_seed')
+    if not force and has_live_data and _last_fetch_at is not None:
         elapsed = (datetime.datetime.now() - _last_fetch_at).total_seconds()
         if elapsed < fetch_interval_sec() - 5:
             return
@@ -545,7 +616,7 @@ def update_job(force=False):
                 votes_map = {}
 
             with data_lock:
-                current_data = latest_data.get('full_data', [])
+                current_data = [] if latest_data.get('is_seed') else latest_data.get('full_data', [])
                 
                 # Merge new data with current data
                 merged_map = {s['name']: s for s in current_data}
@@ -568,6 +639,7 @@ def update_job(force=False):
                 latest_data['top_store'] = top_store
                 latest_data['full_data'] = sorted_data
                 latest_data['last_updated'] = jst_now.strftime("%Y-%m-%d %H:%M:%S")
+                latest_data['is_seed'] = False
             save_latest_status_snapshot()
             print(f"Data updated. Top store: {top_store['name'] if top_store else 'None'}")
             _last_update_error = None
@@ -732,10 +804,10 @@ def trigger_background_fetch_if_needed():
     
     with data_lock:
         last_updated = latest_data.get('last_updated')
-        has_data = bool(latest_data.get('full_data'))
+        has_data = bool(latest_data.get('full_data')) and not latest_data.get('is_seed')
     
     is_stale = False
-    if last_updated:
+    if last_updated and has_data:
         last_time = datetime.datetime.strptime(last_updated, "%Y-%m-%d %H:%M:%S")
         current_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
         if (current_jst - last_time).total_seconds() > fetch_interval_sec() + 30:
@@ -760,12 +832,12 @@ def trigger_background_fetch_if_needed():
         def background_fetch():
             global _is_fetching, _fetch_started_at
             try:
-                update_job()
+                update_job(force=not has_data)
             finally:
                 with _fetch_lock:
                     _is_fetching = False
                     _fetch_started_at = None
-        threading.Thread(target=background_fetch).start()
+        threading.Thread(target=background_fetch, daemon=True).start()
 
 @app.route('/sw.js')
 def serve_sw():
@@ -780,7 +852,8 @@ def get_status():
             return jsonify({
                 'timestamp': latest_data['last_updated'],
                 'ranking': latest_data['full_data'],
-                'status': 'success'
+                'status': 'success',
+                'is_seed': bool(latest_data.get('is_seed'))
             })
         else:
             return jsonify({

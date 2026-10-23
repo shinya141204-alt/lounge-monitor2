@@ -612,7 +612,8 @@
         // Instant Load: Render server-embedded INITIAL_STATUS_DATA (0ms, zero network roundtrip) or localStorage cache
         function restoreCachedStatus() {
             try {
-                if (window.INITIAL_STATUS_DATA && Array.isArray(window.INITIAL_STATUS_DATA.ranking) && window.INITIAL_STATUS_DATA.ranking.length > 0) {
+                // If SSR data is live (not a cold-start 0-count seed), use it immediately
+                if (window.INITIAL_STATUS_DATA && Array.isArray(window.INITIAL_STATUS_DATA.ranking) && window.INITIAL_STATUS_DATA.ranking.length > 0 && !window.INITIAL_STATUS_DATA.is_seed) {
                     window.lastData = window.INITIAL_STATUS_DATA;
                     isInitialLoad = false;
                     _renderedFromSSR = true;
@@ -631,10 +632,11 @@
                     } catch (e) {}
                     return;
                 }
+                // Check localStorage cache (up to 6 hours) so user sees last known counts instead of zeros on cold redeploy
                 const savedRaw = localStorage.getItem('olg_cached_status');
                 if (savedRaw) {
                     const saved = JSON.parse(savedRaw);
-                    if (saved && saved.data && saved.savedAt && (Date.now() - saved.savedAt < 30 * 60 * 1000)) {
+                    if (saved && saved.data && saved.savedAt && (Date.now() - saved.savedAt < 6 * 60 * 60 * 1000)) {
                         window.lastData = saved.data;
                         isInitialLoad = false;
                         updateUI(saved.data);
@@ -642,7 +644,19 @@
                         const contentEl = document.getElementById('content');
                         if (loadingEl) loadingEl.classList.add('hidden');
                         if (contentEl) contentEl.classList.remove('hidden');
+                        return;
                     }
+                }
+                // Cold-start fallback: render the 53-store seed list immediately so the screen is never stuck on a spinner
+                if (window.INITIAL_STATUS_DATA && Array.isArray(window.INITIAL_STATUS_DATA.ranking) && window.INITIAL_STATUS_DATA.ranking.length > 0) {
+                    window.lastData = window.INITIAL_STATUS_DATA;
+                    isInitialLoad = false;
+                    updateUI(window.INITIAL_STATUS_DATA);
+                    const loadingEl = document.getElementById('loading');
+                    const contentEl = document.getElementById('content');
+                    if (loadingEl) loadingEl.classList.add('hidden');
+                    if (contentEl) contentEl.classList.remove('hidden');
+                    setTimeout(fetchData, 2000);
                 }
             } catch (e) {}
         }
@@ -732,12 +746,16 @@
 
                 isInitialLoad = false;
                 window.lastData = data;
-                try {
-                    localStorage.setItem('olg_cached_status', JSON.stringify({
-                        data: data,
-                        savedAt: Date.now()
-                    }));
-                } catch (e) {}
+                if (!data.is_seed) {
+                    try {
+                        localStorage.setItem('olg_cached_status', JSON.stringify({
+                            data: data,
+                            savedAt: Date.now()
+                        }));
+                    } catch (e) {}
+                } else {
+                    setTimeout(fetchData, 2500);
+                }
 
                 updateUI(data);
                 document.getElementById('loading').classList.add('hidden');
