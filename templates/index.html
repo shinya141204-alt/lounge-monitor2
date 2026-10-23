@@ -98,14 +98,14 @@
     <link rel="preload" as="image" type="image/webp" href="/static/thumb-weekday.webp">
     <link rel="preload" as="image" type="image/webp" href="/static/thumb-manual.webp">
     {% if not is_staff %}
-    <script src="/static/affiliate_config.js?v=6"></script>
+    <script src="/static/affiliate_config.js?v=7"></script>
     {% endif %}
     <link rel="stylesheet" href="/static/calm.css?v=1">
 </head>
 
 <body class="{% if is_staff %}staff-mode{% endif %}">
     <!-- Refresh Toast Notification -->
-    <div id="refresh-toast" class="refresh-toast hidden">✨ 最新データに更新しました</div>
+    <div id="refresh-toast" class="refresh-toast hidden">最新データに更新しました</div>
 
     <!-- Analysis Modal -->
     <div id="analysis-modal" class="modal hidden">
@@ -121,15 +121,15 @@
             <!-- Modal Top Quick Share & Official Bar -->
             <div class="modal-top-share-actions">
                 <button class="share-pill-btn x-btn" onclick="shareStoreStatus('x')">𝕏 混雑＋特典をポスト</button>
-                <button class="share-pill-btn line-btn" onclick="shareStoreStatus('line')">💬 LINE共有</button>
-                <button class="share-pill-btn copy-btn" onclick="shareStoreStatus('copy')">📋 コピー</button>
-                <a id="modal-top-official-link" href="https://oriental-lounge.com/" target="_blank" rel="noopener noreferrer" class="share-pill-btn official-btn">🌐 公式サイト</a>
+                <button class="share-pill-btn line-btn" onclick="shareStoreStatus('line')">LINE共有</button>
+                <button class="share-pill-btn copy-btn" onclick="shareStoreStatus('copy')">コピー</button>
+                <a id="modal-top-official-link" href="https://oriental-lounge.com/" target="_blank" rel="noopener noreferrer" class="share-pill-btn official-btn">公式サイト ↗</a>
             </div>
 
             <!-- Store Events & Campaign Section -->
             <div id="modal-event-section" class="modal-event-box hidden">
                 <div class="modal-event-header">
-                    <span class="modal-event-badge">📢 開催中イベント・キャンペーン</span>
+                    <span class="modal-event-badge">開催中イベント・キャンペーン</span>
                 </div>
                 <div id="modal-event-list" class="modal-event-list"></div>
             </div>
@@ -137,19 +137,19 @@
             <!-- Live User Crowd Vote Box (UGC) -->
             <div id="modal-crowd-vote-box" class="modal-vote-box">
                 <div class="modal-vote-header">
-                    <span class="modal-vote-title">🙋‍♂️ 今お店にいる方のワンタップ現場レポート（直近4時間）</span>
+                    <span class="modal-vote-title">今お店にいる方のワンタップ現場レポート（直近4時間）</span>
                 </div>
                 <div class="modal-vote-buttons">
                     <button type="button" class="vote-pill-btn smooth" onclick="submitCrowdVote('smooth')">
-                        <span>👍 待ちなしで入れた</span>
+                        <span>待ちなしで入れた</span>
                         <span id="vote-count-smooth" class="vote-num">0</span>
                     </button>
                     <button type="button" class="vote-pill-btn waiting" onclick="submitCrowdVote('waiting')">
-                        <span>⏳ 男性待ちあり</span>
+                        <span>男性待ちあり</span>
                         <span id="vote-count-waiting" class="vote-num">0</span>
                     </button>
                     <button type="button" class="vote-pill-btn lively" onclick="submitCrowdVote('lively')">
-                        <span>✨ 盛り上がってる</span>
+                        <span>盛り上がってる</span>
                         <span id="vote-count-lively" class="vote-num">0</span>
                     </button>
                 </div>
@@ -159,7 +159,7 @@
             <!-- 1. Weekday Average Section -->
             <div class="chart-container weekday-analysis-section">
                 <div class="section-header-row">
-                    <h3>📅 曜日別ピーク平均 (20:00〜翌2:00)</h3>
+                    <h3>曜日別ピーク平均 (20:00〜翌2:00)</h3>
                     <span class="chart-hint">※棒をタップで時間帯別へ連動</span>
                 </div>
                 <div id="weekday-chart-container" style="height: 190px;">
@@ -169,7 +169,7 @@
 
             <!-- 2. Hourly Average by Weekday Section -->
             <div class="chart-container hourly-analysis-section">
-                <h3>⏰ 曜日×時間帯別の平均推移 (18:00〜翌6:00)</h3>
+                <h3>曜日×時間帯別の平均推移 (18:00〜翌6:00)</h3>
                 <div id="weekday-filter-buttons" class="chart-filters">
                     <button class="chart-filter-btn active" data-day="ALL" onclick="selectHourlyWeekday('ALL')">全曜日</button>
                     <button class="chart-filter-btn" data-day="Mon" onclick="selectHourlyWeekday('Mon')">月</button>
@@ -187,7 +187,7 @@
 
             <!-- 3. Daily Detail Section -->
             <div class="chart-container daily-detail-section">
-                <h3>📈 日別詳細ログ (営業日ベース)</h3>
+                <h3>日別詳細ログ (営業日ベース)</h3>
                 <div id="date-buttons" class="date-button-container">
                     <!-- Date buttons will be generated by JS -->
                 </div>
@@ -199,12 +199,12 @@
             <!-- 4. Nearby 2nd Venue Google Maps Box -->
             <div id="modal-second-venue-box" class="modal-second-venue-box">
                 <div class="second-venue-header">
-                    <h3 id="modal-second-venue-heading">🥂 この店舗の近くで2軒目を探す（徒歩3分圏内）</h3>
-                    <a href="/guide/second-venue" class="second-venue-sub" style="color: #38bdf8; text-decoration: none;">📖 2軒目の誘い方コラム ›</a>
+                    <h3 id="modal-second-venue-heading">この店舗の近くで2軒目を探す</h3>
+                    <a href="/guide/second-venue" class="second-venue-sub" style="color: #93b1c9; text-decoration: none;">2軒目の誘い方コラム ›</a>
                 </div>
                 <div class="second-venue-map-actions">
-                    <a id="modal-map-cafe-btn" href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer" class="second-map-btn cafe">☕ 店舗近くの夜カフェをマップ検索</a>
-                    <a id="modal-map-bar-btn" href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer" class="second-map-btn bar">🍸 店舗近くのバー・バルをマップ検索</a>
+                    <a id="modal-map-cafe-btn" href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer" class="second-map-btn cafe">店舗近くの夜カフェをマップ検索 ↗</a>
+                    <a id="modal-map-bar-btn" href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer" class="second-map-btn bar">店舗近くのバー・バルをマップ検索 ↗</a>
                 </div>
             </div>
 
@@ -212,10 +212,10 @@
             <div class="modal-share-bar">
                 <span class="modal-share-label">この店舗を友達に共有・公式確認：</span>
                 <div class="modal-share-actions">
-                    <button class="share-pill-btn line-btn" onclick="shareStoreStatus('line')">💬 LINEで送る</button>
+                    <button class="share-pill-btn line-btn" onclick="shareStoreStatus('line')">LINEで送る</button>
                     <button class="share-pill-btn x-btn" onclick="shareStoreStatus('x')">𝕏 ポスト</button>
-                    <button class="share-pill-btn copy-btn" onclick="shareStoreStatus('copy')">📋 コピー</button>
-                    <a id="modal-official-link" href="https://oriental-lounge.com/" target="_blank" rel="noopener noreferrer" class="share-pill-btn official-btn">🌐 公式サイト</a>
+                    <button class="share-pill-btn copy-btn" onclick="shareStoreStatus('copy')">コピー</button>
+                    <a id="modal-official-link" href="https://oriental-lounge.com/" target="_blank" rel="noopener noreferrer" class="share-pill-btn official-btn">公式サイト ↗</a>
                 </div>
             </div>
 
@@ -267,12 +267,12 @@
     <div id="guide-modal" class="modal hidden">
         <div class="modal-content" style="max-width: 740px;">
             <div class="modal-header">
-                <h2>✨ 身だしなみ・おすすめサービス特集</h2>
+                <h2>身だしなみ・おすすめサービス特集</h2>
                 <button class="close-btn-pill" onclick="closeGuideModal()" aria-label="閉じる">✕ 閉じる</button>
             </div>
             <div class="guide-modal-body">
                 <p class="guide-lead">
-                    仕事帰りでも口元が気にならない<strong>『🪒 ヒゲ脱毛・スキンケア』</strong>や、服選びに迷わない<strong>『👔 きれいめ私服の定期便』</strong>、お店が混んでいる日に頼れる<strong>『💘 恋活アプリ』</strong>など、普段から取り入れておくと便利なサービスをまとめました。
+                    仕事帰りでも口元が気にならない<strong>『ヒゲ脱毛・スキンケア』</strong>や、服選びに迷わない<strong>『きれいめ私服の定期便』</strong>、お店が混んでいる日に頼れる<strong>『恋活アプリ』</strong>など、普段から取り入れておくと便利なサービスをまとめました。
                 </p>
 
                 <!-- Category Tabs -->
@@ -285,7 +285,7 @@
                 </div>
 
                 <div class="guide-tips-box">
-                    <h4>💡 お店選びと当日のちょっとしたコツ</h4>
+                    <h4>お店選びと当日のちょっとしたコツ</h4>
                     <ul>
                         <li><strong>① 行く前に「男女比バー」を見ておく：</strong> 女性の人数だけでなく、ピンク（女性）の割合が高い店舗を選ぶと、入ってから待たされずに座りやすくなります。</li>
                         <li><strong>② ソファ席は距離が近いので「清潔感」が大事：</strong> 照明は暗めですが、席の距離が近いぶん夕方のヒゲや肌のテカリは意外と目に入ります。事前に少し整えておくだけで安心感が変わります。</li>
@@ -302,7 +302,7 @@
     <div id="articles-modal" class="modal hidden">
         <div class="modal-content articles-modal-content">
             <div class="modal-header">
-                <h2>📖 相席ナビ コラム・記事一覧</h2>
+                <h2>相席ナビ コラム・記事一覧</h2>
                 <button class="close-btn-pill" onclick="closeArticlesModal()" aria-label="閉じる">✕ 閉じる</button>
             </div>
             <div class="articles-modal-body">
@@ -318,17 +318,17 @@
                                 <source srcset="/static/thumb-guide-brand-comparison.webp" type="image/webp">
                                 <img src="/static/guide-brand-comparison.jpg" alt="3大ブランド比較 アイキャッチ" width="640" height="360" decoding="async">
                             </picture>
-                            <span class="article-card-badge" style="background: linear-gradient(135deg, #ec4899, #8b5cf6);">⚖️ 3大ブランド比較 ｜ NEW</span>
+                            <span class="article-card-badge">3大ブランド比較</span>
                         </div>
                         <div class="article-card-info">
                             <div class="article-card-meta">
-                                <span class="article-tag" style="background: rgba(236, 72, 153, 0.2); color: #f472b6;">客層・料金の違い</span>
-                                <span class="article-read-time">⏱️ 約5分で読める</span>
+                                <span class="article-tag">客層・料金の違い</span>
+                                <span class="article-read-time">約5分で読める</span>
                             </div>
                             <h3 class="article-card-title">オリエンタルラウンジ・JIS・ag は何が違う？料金・年齢層・お店の雰囲気まとめ</h3>
                             <p class="article-card-desc">「結局どこに行けばいいの？」と迷う方へ。それぞれの女性の年齢層やノリ、料金システムの違いをわかりやすく比較しました。</p>
                             <div class="article-card-footer">
-                                <span class="article-read-btn" style="background: linear-gradient(135deg, #ec4899, #8b5cf6); color: #fff;">比較記事を読む ›</span>
+                                <span class="article-read-btn">比較記事を読む ›</span>
                             </div>
                         </div>
                     </a>
@@ -340,12 +340,12 @@
                                 <source srcset="/static/thumb-weekday.webp" type="image/webp">
                                 <img src="/static/thumb-weekday.jpg" alt="平日攻略コラム アイキャッチ" width="640" height="360" decoding="async">
                             </picture>
-                            <span class="article-card-badge badge-weekday">⚡ 平日の狙い目</span>
+                            <span class="article-card-badge badge-weekday">平日の狙い目</span>
                         </div>
                         <div class="article-card-info">
                             <div class="article-card-meta">
                                 <span class="article-tag">混雑データ</span>
-                                <span class="article-read-time">⏱️ 約3分で読める</span>
+                                <span class="article-read-time">約3分で読める</span>
                             </div>
                             <h3 class="article-card-title">なぜ週末より「水曜・木曜の20時〜22時」が一番入りやすくて話しやすいのか？</h3>
                             <p class="article-card-desc">金土の夜は男性待ちが長くなりがちですが、週の真ん中は仕事帰りの女性が多くて待ち時間もほぼゼロ。データで見る平日の狙い目時間です。</p>
@@ -362,12 +362,12 @@
                                 <source srcset="/static/thumb-manual.webp" type="image/webp">
                                 <img src="/static/thumb-manual.jpg" alt="完全攻略マニュアル アイキャッチ" width="640" height="360" decoding="async">
                             </picture>
-                            <span class="article-card-badge badge-manual">📖 基本ガイド</span>
+                            <span class="article-card-badge badge-manual">基本ガイド</span>
                         </div>
                         <div class="article-card-info">
                             <div class="article-card-meta">
                                 <span class="article-tag">はじめての方へ</span>
-                                <span class="article-read-time">⏱️ 約5分で読める</span>
+                                <span class="article-read-time">約5分で読める</span>
                             </div>
                             <h3 class="article-card-title">相席ラウンジで失敗しないための基本ガイド｜お店選び・時間帯・身だしなみのコツ</h3>
                             <p class="article-card-desc">行く前の人数チェックのやり方から、ソファ席で気をつけたい清潔感、2軒目に誘うタイミングまで、知っておくと役立つ基本をまとめました。</p>
@@ -384,12 +384,12 @@
                                 <source srcset="/static/eyecatch-shinjuku.webp" type="image/webp">
                                 <img src="/static/eyecatch-shinjuku.jpg" alt="新宿4店舗比較ガイド アイキャッチ" width="640" height="360" decoding="async" loading="lazy">
                             </picture>
-                            <span class="article-card-badge" style="background: linear-gradient(135deg, #ec4899, #f43f5e);">🗼 新宿エリア比較</span>
+                            <span class="article-card-badge">新宿エリア比較</span>
                         </div>
                         <div class="article-card-info">
                             <div class="article-card-meta">
-                                <span class="article-tag" style="background: rgba(236, 72, 153, 0.2); color: #f472b6;">🗼 激戦区ガイド</span>
-                                <span class="article-read-time">⏱️ 約4分で読める</span>
+                                <span class="article-tag">エリアガイド</span>
+                                <span class="article-read-time">約4分で読める</span>
                             </div>
                             <h3 class="article-card-title">新宿の相席ラウンジ4店舗はどう使い分ける？オリエンタル・ag・JIS東口・西口の違い</h3>
                             <p class="article-card-desc">東口3店舗が混んでいるときに西新宿へ回るコツや、各店舗の客層・2軒目スポットの違いをまとめました。</p>
@@ -406,12 +406,12 @@
                                 <source srcset="/static/eyecatch-solo-pair.webp" type="image/webp">
                                 <img src="/static/eyecatch-solo-pair.jpg" alt="1人（ソロ）vs 2人組 アイキャッチ" width="640" height="360" decoding="async" loading="lazy">
                             </picture>
-                            <span class="article-card-badge" style="background: linear-gradient(135deg, #06b6d4, #3b82f6);">🍸 スタイル別</span>
+                            <span class="article-card-badge">スタイル別</span>
                         </div>
                         <div class="article-card-info">
                             <div class="article-card-meta">
-                                <span class="article-tag">🍸 ソロ・ペア比較</span>
-                                <span class="article-read-time">⏱️ 約4分で読める</span>
+                                <span class="article-tag">ソロ・ペア比較</span>
+                                <span class="article-read-time">約4分で読める</span>
                             </div>
                             <h3 class="article-card-title">相席ラウンジは「1人（ソロ）」と「友達と2人」どっちがいい？立ち回りの違いとコツ</h3>
                             <p class="article-card-desc">仕事帰りに1人で行くメリットと向いている曜日、友達と2人組で行くときの役割分担を解説。</p>
@@ -428,12 +428,12 @@
                                 <source srcset="/static/eyecatch-second-venue.webp" type="image/webp">
                                 <img src="/static/eyecatch-second-venue.jpg" alt="2軒目への自然な誘い方 アイキャッチ" width="640" height="360" decoding="async" loading="lazy">
                             </picture>
-                            <span class="article-card-badge" style="background: linear-gradient(135deg, #8b5cf6, #ec4899);">🥂 2軒目の誘い方</span>
+                            <span class="article-card-badge">2軒目の誘い方</span>
                         </div>
                         <div class="article-card-info">
                             <div class="article-card-meta">
-                                <span class="article-tag" style="background: rgba(139, 92, 246, 0.2); color: #c084fc;">🥂 デート移行</span>
-                                <span class="article-read-time">⏱️ 約4分で読める</span>
+                                <span class="article-tag">デート移行</span>
+                                <span class="article-read-time">約4分で読める</span>
                             </div>
                             <h3 class="article-card-title">相席ラウンジから2軒目へ自然に誘うには？タイミングと断られにくいお店選び</h3>
                             <p class="article-card-desc">同じテーブルで2時間粘るより「45分〜60分」で声をかける方がうまくいく理由と、警戒されない誘い文句。</p>
@@ -450,12 +450,12 @@
                                 <source srcset="/static/eyecatch-first-10min.webp" type="image/webp">
                                 <img src="/static/eyecatch-first-10min.jpg" alt="最初の10分の会話と清潔感 アイキャッチ" width="640" height="360" decoding="async" loading="lazy">
                             </picture>
-                            <span class="article-card-badge" style="background: linear-gradient(135deg, #f59e0b, #ec4899);">✨ 会話・第一印象</span>
+                            <span class="article-card-badge">会話・第一印象</span>
                         </div>
                         <div class="article-card-info">
                             <div class="article-card-meta">
-                                <span class="article-tag" style="background: rgba(245, 158, 11, 0.2); color: #fbbf24;">✨ 身だしなみ・会話</span>
-                                <span class="article-read-time">⏱️ 約4分で読める</span>
+                                <span class="article-tag">身だしなみ・会話</span>
+                                <span class="article-read-time">約4分で読める</span>
                             </div>
                             <h3 class="article-card-title">相席して最初の10分で印象が決まる！女性が「もっと話したい」と感じる服装・会話の共通点</h3>
                             <p class="article-card-desc">乾杯直後の10分間で無意識に見られている「至近距離の清潔感」と、面接にならない会話の広げ方。</p>
@@ -472,7 +472,7 @@
                                 <span class="note-n-logo">n</span>
                                 <span class="note-visual-text">相席ナビ公式note</span>
                             </div>
-                            <span class="article-card-badge badge-note">📓 公式note</span>
+                            <span class="article-card-badge badge-note">公式note</span>
                         </div>
                         <div class="article-card-info">
                             <div class="article-card-meta">
@@ -498,7 +498,7 @@
     <div id="sns-modal" class="modal hidden">
         <div class="modal-content" style="max-width: 640px;">
             <div class="modal-header">
-                <h2>📣 SNS速報ポスト作成（集客・共有用）</h2>
+                <h2>SNS速報ポスト作成（集客・共有用）</h2>
                 <button class="close-btn-pill" onclick="closeSnsModal()" aria-label="閉じる">✕ 閉じる</button>
             </div>
             <div class="sns-modal-body">
@@ -506,18 +506,18 @@
                     ボタンを選ぶだけで、いまのリアルタイム人数と<strong>開催中イベント・割引特典を掛け合わせたX・LINE用テキスト</strong>を自動生成します。
                 </p>
                 <div class="sns-preset-tabs">
-                    <button class="sns-tab-btn active" data-preset="events" onclick="selectSnsPreset('events')">🎉 特典＆イベント開催店</button>
-                    <button class="sns-tab-btn" data-preset="timely" onclick="selectSnsPreset('timely')">⏰ 時間帯別おすすめ</button>
-                    <button class="sns-tab-btn" data-preset="all" onclick="selectSnsPreset('all')">🔥 全国TOP3</button>
-                    <button class="sns-tab-btn" data-preset="kanto" onclick="selectSnsPreset('kanto')">🗼 関東TOP3</button>
-                    <button class="sns-tab-btn" data-preset="kansai" onclick="selectSnsPreset('kansai')">🐙 関西TOP3</button>
-                    <button class="sns-tab-btn" data-preset="anaba" onclick="selectSnsPreset('anaba')">💎 穴場(女性比率)</button>
+                    <button class="sns-tab-btn active" data-preset="events" onclick="selectSnsPreset('events')">特典＆イベント開催店</button>
+                    <button class="sns-tab-btn" data-preset="timely" onclick="selectSnsPreset('timely')">時間帯別おすすめ</button>
+                    <button class="sns-tab-btn" data-preset="all" onclick="selectSnsPreset('all')">全国TOP3</button>
+                    <button class="sns-tab-btn" data-preset="kanto" onclick="selectSnsPreset('kanto')">関東TOP3</button>
+                    <button class="sns-tab-btn" data-preset="kansai" onclick="selectSnsPreset('kansai')">関西TOP3</button>
+                    <button class="sns-tab-btn" data-preset="anaba" onclick="selectSnsPreset('anaba')">穴場(女性比率)</button>
                 </div>
                 <textarea id="sns-preview-textarea" class="sns-preview-textarea" rows="8"></textarea>
                 <div class="sns-modal-actions">
                     <button class="share-pill-btn x-btn" onclick="postGeneratedSns('x')">𝕏 ワンタップでポストする</button>
-                    <button class="share-pill-btn line-btn" onclick="postGeneratedSns('line')">💬 LINEで送る</button>
-                    <button class="share-pill-btn copy-btn" onclick="postGeneratedSns('copy')">📋 全文コピー</button>
+                    <button class="share-pill-btn line-btn" onclick="postGeneratedSns('line')">LINEで送る</button>
+                    <button class="share-pill-btn copy-btn" onclick="postGeneratedSns('copy')">全文コピー</button>
                 </div>
             </div>
             <button class="modal-bottom-close-btn" onclick="closeSnsModal()">✕ 閉じる</button>
@@ -573,7 +573,7 @@
     <div id="events-modal" class="modal hidden">
         <div class="modal-content" style="max-width: 640px;">
             <div class="modal-header">
-                <h2>🎉 最新イベント・キャンペーン速報</h2>
+                <h2>最新イベント・キャンペーン速報</h2>
                 <button class="close-btn-pill" onclick="closeEventsModal()" aria-label="閉じる">✕ 閉じる</button>
             </div>
             <p style="text-align: center; color: var(--text-secondary); font-size: 0.8rem; margin-top: 0; margin-bottom: 12px;">
@@ -581,20 +581,20 @@
             </p>
             {% if not is_staff %}
             <div style="text-align: center; margin-bottom: 14px;">
-                <button type="button" class="staff-action-pill" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 16px; font-size: 0.82rem; background: linear-gradient(135deg, rgba(236,72,153,0.2), rgba(59,130,246,0.2)); border: 1px solid rgba(236,72,153,0.4); cursor: pointer;" onclick="closeEventsModal(); openSnsModal('events');">
+                <button type="button" class="staff-action-pill" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 16px; font-size: 0.82rem; cursor: pointer;" onclick="closeEventsModal(); openSnsModal('events');">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
                     </svg>
-                    <span>📣 イベント×混雑のSNS速報を作成する</span>
+                    <span>イベント×混雑のSNS速報を作成する</span>
                 </button>
             </div>
             {% endif %}
 
             <!-- Filter Tabs for Events Modal -->
             <div class="events-category-tabs" id="events-category-tabs">
-                <button class="events-tab-btn active" data-filter="ALL" onclick="filterEventsModal('ALL', this)">🔥 全店舗</button>
-                <button class="events-tab-btn" data-filter="WOMEN" onclick="filterEventsModal('WOMEN', this)" style="border-color: rgba(236,72,153,0.4); color: #f472b6;">👩 女性限定</button>
-                <button class="events-tab-btn" data-filter="DISCOUNT" onclick="filterEventsModal('DISCOUNT', this)">🎉 特典・割引のみ</button>
+                <button class="events-tab-btn active" data-filter="ALL" onclick="filterEventsModal('ALL', this)">全店舗</button>
+                <button class="events-tab-btn" data-filter="WOMEN" onclick="filterEventsModal('WOMEN', this)">女性限定</button>
+                <button class="events-tab-btn" data-filter="DISCOUNT" onclick="filterEventsModal('DISCOUNT', this)">特典・割引のみ</button>
                 <button class="events-tab-btn" data-filter="OLG" onclick="filterEventsModal('OLG', this)">オリエンタル / ag</button>
                 <button class="events-tab-btn" data-filter="JIS" onclick="filterEventsModal('JIS', this)">JIS各店限定</button>
             </div>
@@ -610,7 +610,7 @@
     <div id="how-to-modal" class="modal hidden">
         <div class="modal-content" style="max-width: 600px;">
             <div class="modal-header">
-                <h2>💡 初めての方へ：30秒でわかる使い方</h2>
+                <h2>初めての方へ：30秒でわかる使い方</h2>
                 <button class="close-btn-pill" onclick="closeHowToModal(false)" aria-label="閉じる">✕ 閉じる</button>
             </div>
             <div class="how-to-modal-body">
@@ -624,7 +624,7 @@
                         <div class="how-to-step-num">1</div>
                         <div class="how-to-step-content">
                             <h4>行きたい「エリア」や「現在地順」を選ぶ</h4>
-                            <p>上のボタンから「関東」「関西」などの地域を選ぶか、「📍 現在地順」を押すと、いま近くにある店舗から順番に表示されます。</p>
+                            <p>上のボタンから「関東」「関西」などの地域を選ぶか、「現在地順」を押すと、いま近くにある店舗から順番に表示されます。</p>
                         </div>
                     </div>
 
@@ -650,7 +650,7 @@
                 <!-- Live SNS Callout within How to Guide -->
                 <div class="how-to-sns-box">
                     <div class="how-to-sns-title">
-                        <span>📢 毎晩の混雑まとめはX・Threadsでも更新中</span>
+                        <span>毎晩の混雑まとめはX・Threadsでも更新中</span>
                     </div>
                     <p>20時・22時などの節目に、その日人が集まっている店舗や穴場をまとめて投稿しています。行く前の参考にどうぞ。</p>
                     <div class="how-to-sns-btns">
@@ -682,12 +682,12 @@
     <div id="pwa-guide-modal" class="modal hidden">
         <div class="modal-content" style="max-width: 480px;">
             <div class="modal-header">
-                <h2>📱 ホーム画面に追加する方法</h2>
+                <h2>ホーム画面に追加する方法</h2>
                 <button class="close-btn-pill" onclick="closePwaGuideModal()" aria-label="閉じる">✕ 閉じる</button>
             </div>
             <div class="pwa-guide-body">
                 <p class="pwa-guide-lead">
-                    ホーム画面に追加すると、ブラウザの枠が消えて<strong>アプリのようにワンタップで混雑チェック</strong>ができるようになります！
+                    ホーム画面に追加すると、ブラウザの枠が消えて<strong>アプリのようにワンタップで混雑チェック</strong>ができるようになります。
                 </p>
                 <div class="pwa-guide-steps">
                     <div class="pwa-step-item">
@@ -705,7 +705,7 @@
                     <div class="pwa-step-item">
                         <div class="pwa-step-num">3</div>
                         <div class="pwa-step-text">
-                            右上の<strong>「追加」</strong>をタップして完了！
+                            右上の<strong>「追加」</strong>をタップして完了
                         </div>
                     </div>
                 </div>
@@ -721,41 +721,37 @@
     <div id="menu-modal" class="modal hidden">
         <div class="modal-content" style="max-width: 520px;">
             <div class="modal-header">
-                <h2>☰ メニュー & 設定</h2>
+                <h2>メニュー & 設定</h2>
                 <button class="close-btn-pill" onclick="closeMenuModal()" aria-label="閉じる">✕ 閉じる</button>
             </div>
             <div class="menu-modal-body">
                 <!-- Theme Switcher within Mobile Menu -->
                 <div class="menu-section">
-                    <div class="menu-section-title">🎨 デザイン切替</div>
+                    <div class="menu-section-title">デザイン切替</div>
                     <div class="theme-switcher-bar menu-theme-bar" role="group" aria-label="デザイン切替">
                         <button type="button" class="theme-pill-btn active" data-theme="default" onclick="setViewTheme('default', true); closeMenuModal();">通常</button>
                         <button type="button" class="theme-pill-btn" data-theme="list" onclick="setViewTheme('list', true); closeMenuModal();">リスト</button>
-                        <button type="button" class="theme-pill-btn" data-theme="flat" onclick="setViewTheme('flat', true); closeMenuModal();">フラット</button>
                         <button type="button" class="theme-pill-btn" data-theme="light" onclick="setViewTheme('light', true); closeMenuModal();">ライト</button>
                     </div>
                 </div>
 
                 <!-- Analytics & Comparison Section -->
                 <div class="menu-section">
-                    <div class="menu-section-title">📊 分析・データ</div>
+                    <div class="menu-section-title">分析・データ</div>
                     <div class="menu-grid">
                         <button class="menu-grid-item" onclick="closeMenuModal(); openReportModal();">
-                            <span class="menu-grid-icon">📅</span>
                             <div class="menu-grid-text">
                                 <strong>週間レポート</strong>
                                 <span>過去7日間の曜日・時間帯別集計</span>
                             </div>
                         </button>
                         <button class="menu-grid-item" onclick="closeMenuModal(); openComparisonModal();">
-                            <span class="menu-grid-icon">⚖️</span>
                             <div class="menu-grid-text">
                                 <strong>系列別比較</strong>
                                 <span>オリラジ・ag・JISの来店シェア</span>
                             </div>
                         </button>
                         <button class="menu-grid-item" onclick="closeMenuModal(); openEventsModal();">
-                            <span class="menu-grid-icon">🎉</span>
                             <div class="menu-grid-text">
                                 <strong>イベント速報</strong>
                                 <span>各店の女性無料フェア・特典一覧</span>
@@ -766,38 +762,33 @@
 
                 <!-- Strategy & Guides Section -->
                 <div class="menu-section">
-                    <div class="menu-section-title">📖 ポータル・ガイド</div>
+                    <div class="menu-section-title">ポータル・ガイド</div>
                     <div class="menu-grid">
                         <a href="/areas" class="menu-grid-item" style="text-decoration: none; color: inherit;">
-                            <span class="menu-grid-icon">📍</span>
                             <div class="menu-grid-text">
                                 <strong>エリアから探す</strong>
                                 <span>新宿・渋谷・梅田・栄・天神ほか</span>
                             </div>
                         </a>
                         <a href="/columns" class="menu-grid-item" style="text-decoration: none; color: inherit;">
-                            <span class="menu-grid-icon">📚</span>
                             <div class="menu-grid-text">
                                 <strong>コラム・記事一覧</strong>
                                 <span>3大ブランド比較・平日穴場データ</span>
                             </div>
                         </a>
                         <a href="/grooming" class="menu-grid-item" style="text-decoration: none; color: inherit;">
-                            <span class="menu-grid-icon">✨</span>
                             <div class="menu-grid-text">
                                 <strong>身だしなみ・準備</strong>
                                 <span>清潔感ケア＆満席時の恋活アプリ</span>
                             </div>
                         </a>
                         <button class="menu-grid-item" onclick="closeMenuModal(); openHowToModal();">
-                            <span class="menu-grid-icon">💡</span>
                             <div class="menu-grid-text">
                                 <strong>使い方ガイド</strong>
                                 <span>30秒でわかる相席ナビの基本</span>
                             </div>
                         </button>
                         <button class="menu-grid-item" onclick="closeMenuModal(); openSnsModal();">
-                            <span class="menu-grid-icon">📣</span>
                             <div class="menu-grid-text">
                                 <strong>速報作成・共有</strong>
                                 <span>今の混雑と特典をXやLINEへ共有</span>
@@ -808,11 +799,11 @@
 
                 <!-- Quick External Links -->
                 <div class="menu-section">
-                    <div class="menu-section-title">🌐 公式リンク・規約</div>
+                    <div class="menu-section-title">公式リンク・規約</div>
                     <div class="menu-sub-links">
-                        <a href="https://x.com/aiseki_navi" target="_blank" rel="noopener noreferrer" class="menu-sub-link">𝕏 公式Twitter</a>
-                        <a href="https://www.threads.net/@aiseki_navi1" target="_blank" rel="noopener noreferrer" class="menu-sub-link">🧵 公式Threads</a>
-                        <a href="https://note.com/huge_finch7078" target="_blank" rel="noopener noreferrer" class="menu-sub-link">📓 公式note</a>
+                        <a href="https://x.com/aiseki_navi" target="_blank" rel="noopener noreferrer" class="menu-sub-link">公式X</a>
+                        <a href="https://www.threads.net/@aiseki_navi1" target="_blank" rel="noopener noreferrer" class="menu-sub-link">公式Threads</a>
+                        <a href="https://note.com/huge_finch7078" target="_blank" rel="noopener noreferrer" class="menu-sub-link">公式note</a>
                         <button type="button" class="menu-sub-link" onclick="closeMenuModal(); openLegalModal();">免責事項・規約</button>
                     </div>
                 </div>
@@ -830,9 +821,8 @@
         <!-- PWA Smart Install Banner -->
         <aside id="pwa-install-banner" class="pwa-install-banner hidden" role="region" aria-label="ホーム画面に追加のご案内">
             <div class="pwa-banner-content">
-                <span class="pwa-banner-icon">📱</span>
                 <div class="pwa-banner-info">
-                    <div class="pwa-banner-title">ホーム画面に追加でアプリ化！</div>
+                    <div class="pwa-banner-title">ホーム画面に追加でアプリ化</div>
                     <div class="pwa-banner-desc">ワンタップで今夜の混雑・男女比速報をチェック</div>
                 </div>
             </div>
@@ -845,9 +835,9 @@
         <!-- Domain Change Announcement Banner -->
         <aside id="domain-notice-banner" class="domain-notice-banner hidden" role="region" aria-label="ドメイン変更のお知らせ">
             <div class="domain-notice-content">
-                <span class="domain-notice-badge">📢 公式URL変更</span>
+                <span class="domain-notice-badge">公式URL変更</span>
                 <span class="domain-notice-text">
-                    相席ナビの公式URLが<strong>「<a href="https://aiseki-navi.com">aiseki-navi.com</a>」</strong>になりました！ブックマークやホーム画面の再登録をお願いします。
+                    相席ナビの公式URLが<strong>「<a href="https://aiseki-navi.com">aiseki-navi.com</a>」</strong>になりました。ブックマークやホーム画面の再登録をお願いします。
                 </span>
             </div>
             <button class="domain-notice-close" onclick="dismissDomainNotice()" aria-label="お知らせを閉じる" title="閉じる">✕</button>
@@ -857,7 +847,7 @@
         <header>
             {% if is_staff %}
             <div class="staff-header-top">
-                <span class="staff-header-badge">🔒 社内業務モニター（広告・PR完全OFF）</span>
+                <span class="staff-header-badge">社内業務モニター（広告・PR完全OFF）</span>
             </div>
             {% endif %}
             <h1>{% if is_staff %}相席ナビ 業務モニター{% else %}相席ナビ{% endif %}</h1>
@@ -943,7 +933,6 @@
             <div class="theme-switcher-bar desktop-only" role="group" aria-label="デザイン切替">
                 <button type="button" class="theme-pill-btn active" data-theme="default" onclick="setViewTheme('default', true)">通常</button>
                 <button type="button" class="theme-pill-btn" data-theme="list" onclick="setViewTheme('list', true)">リスト</button>
-                <button type="button" class="theme-pill-btn" data-theme="flat" onclick="setViewTheme('flat', true)">フラット</button>
                 <button type="button" class="theme-pill-btn" data-theme="light" onclick="setViewTheme('light', true)">ライト</button>
             </div>
             {% if not is_staff %}
@@ -977,7 +966,7 @@
                         <button class="sort-btn active" data-sort="women" onclick="setSort('women')">女性順</button>
                         <button class="sort-btn" data-sort="men" onclick="setSort('men')">男性順</button>
                         <button class="sort-btn" data-sort="ratio" onclick="setSort('ratio')">女性比率順</button>
-                        <button class="sort-btn" id="nearby-sort-btn" data-sort="nearby" onclick="setNearbySort()" title="現在地から近い順に並び替え">📍 現在地順</button>
+                        <button class="sort-btn" id="nearby-sort-btn" data-sort="nearby" onclick="setNearbySort()" title="現在地から近い順に並び替え">現在地順</button>
                     </div>
                 </div>
 
@@ -1171,52 +1160,52 @@
                     <!-- Portal Area Guide Quick Links -->
                     <div class="portal-area-directory">
                         <div class="portal-area-header">
-                            <h3>📍 エリア別の混雑傾向＆店舗ガイドから探す</h3>
+                            <h3>エリア別の混雑傾向＆店舗ガイドから探す</h3>
                             <a href="/areas" class="portal-area-all-link">全国エリア一覧へ ›</a>
                         </div>
                         <div class="portal-area-grid">
-                            <a href="/area/shinjuku" class="portal-area-chip">🗼 新宿・西新宿</a>
-                            <a href="/area/shibuya" class="portal-area-chip">✨ 渋谷・恵比寿</a>
-                            <a href="/area/tokyo-east" class="portal-area-chip">🏮 上野・町田</a>
-                            <a href="/area/kanto" class="portal-area-chip">🌉 横浜・大宮・北関東</a>
-                            <a href="/area/osaka" class="portal-area-chip">🐙 大阪・京都・神戸</a>
-                            <a href="/area/nagoya" class="portal-area-chip">🏯 名古屋・静岡・金沢</a>
-                            <a href="/area/fukuoka" class="portal-area-chip">🍜 福岡・九州・沖縄</a>
-                            <a href="/area/hokkaido-tohoku" class="portal-area-chip">❄️ 札幌・仙台・中四国</a>
+                            <a href="/area/shinjuku" class="portal-area-chip">新宿・西新宿</a>
+                            <a href="/area/shibuya" class="portal-area-chip">渋谷・恵比寿</a>
+                            <a href="/area/tokyo-east" class="portal-area-chip">上野・町田</a>
+                            <a href="/area/kanto" class="portal-area-chip">横浜・大宮・北関東</a>
+                            <a href="/area/osaka" class="portal-area-chip">大阪・京都・神戸</a>
+                            <a href="/area/nagoya" class="portal-area-chip">名古屋・静岡・金沢</a>
+                            <a href="/area/fukuoka" class="portal-area-chip">福岡・九州・沖縄</a>
+                            <a href="/area/hokkaido-tohoku" class="portal-area-chip">札幌・仙台・中四国</a>
                         </div>
                     </div>
 
                     <div class="seo-guide-header" style="margin-top: 26px;">
-                        <h2>✨ 相席ラウンジへ行く前の身だしなみ・準備</h2>
+                        <h2>相席ラウンジへ行く前の身だしなみ・準備</h2>
                         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                            <a href="/grooming" class="guide-open-btn" style="text-decoration: none;">✨ 身だしなみ特集ページ ›</a>
+                            <a href="/grooming" class="guide-open-btn" style="text-decoration: none;">身だしなみ特集ページ ›</a>
                         </div>
                     </div>
                     <div class="seo-guide-grid">
                         <article class="seo-guide-card">
-                            <h3>⏰ 曜日・時間帯ごとの混み具合を知る</h3>
+                            <h3>曜日・時間帯ごとの混み具合を知る</h3>
                             <p>全国の主要ラウンジ（オリエンタルラウンジ・ag・JIS・XIX・ALFA・ヤタコイ・CLOVERS）では、<strong>金・土曜の21:00〜翌1:00</strong>が一番賑わいます。一方で、平日の20:00〜22:00頃は仕事帰りの女性が多く、男性の待ち時間もほとんどないため落ち着いて話しやすい時間帯です。店舗カードをタップすると、曜日・時間帯ごとの平均人数グラフも見られます。</p>
                         </article>
                         <article class="seo-guide-card">
-                            <h3>🪒 距離が近いソファ席での「ヒゲ・肌ケア」</h3>
+                            <h3>距離が近いソファ席での「ヒゲ・肌ケア」</h3>
                             <p>ラウンジの照明は暗めですが、席の距離が近いので<strong>夕方の青ヒゲや肌のテカリ</strong>は意外と目に入ります。日頃から医療ヒゲ脱毛やシンプルなスキンケアで整えておくと、仕事帰りにそのまま寄っても口元を気にせず会話に集中できます。</p>
-                            <button class="card-inline-cta" onclick="openGuideModal('beauty')">🪒 ヒゲ脱毛・スキンケアを見る ›</button>
+                            <button class="card-inline-cta" onclick="openGuideModal('beauty')">ヒゲ脱毛・スキンケアを見る ›</button>
                         </article>
                         <article class="seo-guide-card">
-                            <h3>📱 お店が混んでいる日に頼れる「恋活アプリ」</h3>
+                            <h3>お店が混んでいる日に頼れる「恋活アプリ」</h3>
                             <p>週末のピーク時間にお店が満席で入れないときや、近くの店舗の男女比が偏っているときは、「今日これから飲める人」を探せるマッチングアプリを入れておくと便利です。1対1で落ち着いて会いたい方にも向いています。</p>
-                            <button class="card-inline-cta" onclick="openGuideModal('dating')">💘 近くで会える恋活アプリを見る ›</button>
+                            <button class="card-inline-cta" onclick="openGuideModal('dating')">近くで会える恋活アプリを見る ›</button>
                         </article>
                         <article class="seo-guide-card">
-                            <h3>👔 私服選びに迷わない「きれいめコーデ便」</h3>
+                            <h3>私服選びに迷わない「きれいめコーデ便」</h3>
                             <p>「どんな服を着ていけばいいかわからない」という方は、スタイリストが選んだシンプルな大人コーデが届く定期便を使うのもひとつの手です。派手すぎず清潔感のある服が揃うので、休日の服選びがぐっと楽になります。</p>
-                            <button class="card-inline-cta" onclick="openGuideModal('grooming')">👔 スタイリスト監修コーデを見る ›</button>
+                            <button class="card-inline-cta" onclick="openGuideModal('grooming')">スタイリスト監修コーデを見る ›</button>
                         </article>
                     </div>
 
                     <!-- FAQ Section for Long-tail SEO Keywords -->
                     <div class="seo-faq-block">
-                        <h3>❓ よくある質問（Q&A）</h3>
+                        <h3>よくある質問（Q&A）</h3>
                         <details class="seo-faq-item">
                             <summary>Q. オリエンタルラウンジ・ag（アグ）・JIS（ジス）の違いは？</summary>
                             <p><strong>オリエンタルラウンジ</strong>は20代半ば〜30代まで幅広い層が集まる落ち着いた王道ラウンジ、<strong>ag（アグ）</strong>は20代前半〜中盤中心でカジュアルに話せる雰囲気、<strong>JIS（ジス）</strong>は新宿・大宮・梅田・札幌・福岡などで人気の本格バー調ラウンジです。同じエリアにある場合は、その日のリアルタイム人数と男女比を見比べて、女性の割合が高い店舗を選ぶのがおすすめです。</p>
@@ -1237,7 +1226,7 @@
 
                     <!-- Area & Brand Keyword Directory for Local SEO -->
                     <div class="seo-directory-block">
-                        <h3>📍 リアルタイム人数・混雑状況 対応ブランド＆全国エリア一覧</h3>
+                        <h3>リアルタイム人数・混雑状況 対応ブランド＆全国エリア一覧</h3>
                         <p class="seo-dir-text">
                             <strong>【対応ブランド】</strong>
                             オリエンタルラウンジ（ORIENTAL LOUNGE） / ag（アグ） / JIS（ジス） / XIX（シックス） / ALFA（アルファ） / ヤタコイ（YATAKOI） / CLOVERS（クローバーズ）
@@ -1266,27 +1255,27 @@
         <footer class="app-footer">
             {% if is_staff %}
             <div class="footer-links" style="margin-top: 15px;">
-                <span class="footer-copy">🔒 相席ナビ 社内業務モニター（広告・PR完全OFFモード稼働中）</span>
+                <span class="footer-copy">相席ナビ 社内業務モニター（広告・PR完全OFFモード稼働中）</span>
                 <span class="footer-divider">|</span>
-                <a href="/staff/logout" class="footer-link-btn" style="color: #ec4899; font-weight: 700;">社内モード解除（ログアウト）</a>
+                <a href="/staff/logout" class="footer-link-btn" style="color: #d8a1aa; font-weight: 700;">社内モード解除（ログアウト）</a>
             </div>
             {% else %}
             <!-- Top Row: Pillar Guide Buttons -->
             <div class="footer-nav-pills">
-                <button type="button" class="footer-pill-btn" onclick="openHowToModal()" style="border-color: rgba(236, 72, 153, 0.4); color: #f472b6;" title="30秒でわかる使い方ガイド">
-                    <span>💡 はじめてガイド</span>
+                <button type="button" class="footer-pill-btn" onclick="openHowToModal()" title="30秒でわかる使い方ガイド">
+                    <span>はじめてガイド</span>
                 </button>
                 <button type="button" class="footer-pill-btn guide-pill" onclick="openArticlesModal()" title="攻略コラム・記事一覧から選ぶ">
-                    <span>📖 攻略記事を選ぶ</span>
+                    <span>攻略記事を選ぶ</span>
                 </button>
-                <a href="/guide/brand-comparison" class="footer-pill-btn" style="border-color: rgba(236, 72, 153, 0.4); color: #f472b6;" title="3大ブランド比較">
-                    <span>⚖️ 3大ブランド比較</span>
+                <a href="/guide/brand-comparison" class="footer-pill-btn" title="3大ブランド比較">
+                    <span>3大ブランド比較</span>
                 </a>
                 <a href="/guide/weekday-strategy" class="footer-pill-btn weekday-pill" title="平日攻略コラム">
-                    <span>⚡ 平日攻略</span>
+                    <span>平日攻略</span>
                 </a>
                 <button type="button" class="footer-pill-btn" onclick="openGuideModal()">
-                    <span>💡 特集アプリ</span>
+                    <span>特集アプリ</span>
                 </button>
             </div>
 
@@ -1322,7 +1311,7 @@
             <!-- Portal Sitemap Grid inside Footer -->
             <div class="portal-footer-sitemap">
                 <div class="sitemap-col">
-                    <h4>📍 エリア別ガイド</h4>
+                    <h4>エリア別ガイド</h4>
                     <ul>
                         <li><a href="/area/shinjuku">新宿・西新宿エリア</a></li>
                         <li><a href="/area/shibuya">渋谷・恵比寿エリア</a></li>
@@ -1334,7 +1323,7 @@
                     </ul>
                 </div>
                 <div class="sitemap-col">
-                    <h4>📖 コラム・特集記事</h4>
+                    <h4>コラム・特集記事</h4>
                     <ul>
                         <li><a href="/columns">コラム・記事一覧（全8本）</a></li>
                         <li><a href="/guide/brand-comparison">オリエンタル・JIS・ag比較</a></li>
@@ -1348,7 +1337,7 @@
                     </ul>
                 </div>
                 <div class="sitemap-col">
-                    <h4>ℹ️ サイト情報・統計・規約</h4>
+                    <h4>サイト情報・統計・規約</h4>
                     <ul>
                         <li><a href="/">リアルタイム人数ランキング</a></li>
                         <li><a href="/stats">全国ラウンジ統計データ白書</a></li>
@@ -1364,7 +1353,7 @@
                 <div class="footer-legal-links">
                     <a href="/privacy" class="footer-sub-link" style="text-decoration: none;">運営者情報・プライバシーポリシー・免責事項</a>
                     <span class="footer-divider" style="opacity: 0.3;">|</span>
-                    <a href="/staff" class="footer-sub-link" style="color: #60a5fa;">🔒 社内業務モニター</a>
+                    <a href="/staff" class="footer-sub-link" style="color: #93b1c9;">社内業務モニター</a>
                 </div>
                 <p class="footer-mini-copy">
                     © 2026 相席ナビ (AISEKI NAVI) ｜ ※公開情報の非公式統計・情報ポータルサイトです
@@ -1428,12 +1417,12 @@
             isStaff: {{ 'true' if is_staff else 'false' }}
         };
     </script>
-    <script src="/static/app.js?v=20261023_10" defer></script>
+    <script src="/static/app.js?v=20261023_11" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js?v=14')
+                navigator.serviceWorker.register('/sw.js?v=15')
                     .then(reg => {
                         reg.update();
                     })

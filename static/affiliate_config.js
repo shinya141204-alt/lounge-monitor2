@@ -11,22 +11,22 @@ const AFFILIATE_MASTER = {
 
     // カテゴリ定義
     categories: [
-        { id: 'all', name: 'すべて', icon: '✨' },
-        { id: 'beauty', name: 'ヒゲ脱毛・スキンケア', icon: '🪒', highlight: true },
-        { id: 'dating', name: '恋活・近くの出会い', icon: '💘', highlight: true },
-        { id: 'grooming', name: '服装・身だしなみ', icon: '👔' }
+        { id: 'all', name: 'すべて', icon: '' },
+        { id: 'beauty', name: 'ヒゲ脱毛・スキンケア', icon: '', highlight: true },
+        { id: 'dating', name: '恋活・近くの出会い', icon: '', highlight: true },
+        { id: 'grooming', name: '服装・身だしなみ', icon: '' }
     ],
 
     // 案件マスター一覧
     items: [
         // ==========================================
-        // 🪒 1. ヒゲ脱毛・スキンケア（清潔感ケア）
+        // 1. ヒゲ脱毛・スキンケア（清潔感ケア）
         // ==========================================
         {
             id: 'mens_hair_removal',
             category: 'beauty',
             featured: true,
-            badge: '🪒 夕方の青ヒゲ対策に',
+            badge: '夕方の青ヒゲ対策に',
             tag: '医療ヒゲ脱毛',
             name: '仕事帰りでも口元が気にならない「メンズ医療ヒゲ脱毛」',
             shortTitle: 'メンズ医療ヒゲ脱毛',
@@ -50,7 +50,7 @@ const AFFILIATE_MASTER = {
             id: 'mens_skincare_clinic',
             category: 'beauty',
             featured: false,
-            badge: '💎 テカリ・乾燥ケア',
+            badge: 'テカリ・乾燥ケア',
             tag: 'メンズスキンケア',
             name: 'ベタつきや乾燥をサッと整える「ORBIS Mr.（オルビス ミスター）」',
             shortTitle: 'ORBIS Mr. スキンケア',
@@ -72,13 +72,13 @@ const AFFILIATE_MASTER = {
         },
 
         // ==========================================
-        // 💘 2. 恋活・マッチングアプリ
+        // 2. 恋活・マッチングアプリ
         // ==========================================
         {
             id: 'dating_instant',
             category: 'dating',
             featured: true,
-            badge: '📱 お店が混んでいる日に',
+            badge: 'お店が混んでいる日に',
             tag: '恋活・マッチング',
             name: 'ラウンジが満席のときにも使える「定番マッチングアプリ」',
             shortTitle: '近くで会える恋活アプリ',
@@ -100,13 +100,13 @@ const AFFILIATE_MASTER = {
         },
 
         // ==========================================
-        // 👔 3. ファッション・身だしなみ
+        // 3. ファッション・身だしなみ
         // ==========================================
         {
             id: 'spu_styleup',
             category: 'grooming',
             featured: true,
-            badge: '👔 私服選びに迷ったら',
+            badge: '私服選びに迷ったら',
             tag: 'メンズ服・コーデ定期便',
             name: '相席に着ていく服に迷わない「SPU スタイルアップ便」',
             shortTitle: 'SPU スタイルアップ便（きれいめ私服）',

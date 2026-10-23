@@ -256,7 +256,7 @@
             if (isLocating) return;
             isLocating = true;
             const btn = document.getElementById('nearby-sort-btn');
-            if (btn) btn.textContent = '📍 取得中...';
+            if (btn) btn.textContent = '取得中...';
 
             navigator.geolocation.getCurrentPosition(
                 (pos) => {
@@ -265,7 +265,7 @@
                         lat: pos.coords.latitude,
                         lng: pos.coords.longitude
                     };
-                    if (btn) btn.textContent = '📍 現在地順';
+                    if (btn) btn.textContent = '現在地順';
                     currentSort = 'nearby';
                     document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
                     if (btn) btn.classList.add('active');
@@ -273,7 +273,7 @@
                 },
                 (err) => {
                     isLocating = false;
-                    if (btn) btn.textContent = '📍 現在地順';
+                    if (btn) btn.textContent = '現在地順';
                     console.warn('Geolocation error:', err);
                     if (err.code === 1) {
                         alert('位置情報の利用が許可されませんでした。ブラウザや端末の設定で位置情報を許可して再度お試しください。');
@@ -450,12 +450,11 @@
             applyStaffEventsState();
             document.addEventListener('DOMContentLoaded', applyStaffEventsState);
         }
-        const THEME_ORDER = ['default', 'list', 'flat', 'light'];
+        const THEME_ORDER = ['default', 'list', 'light'];
         const THEME_LABELS = {
-            default: '✨ 通常モード（ネオン）',
-            list: '📋 リストモード（1行スリム表）',
-            flat: '🌑 フラットモード（装飾オフ）',
-            light: '☀️ ライトモード（白背景）'
+            default: '通常モード（カード）',
+            list: 'リストモード（1行表示）',
+            light: 'ライトモード（白背景）'
         };
         let currentTheme = localStorage.getItem('olg_view_theme') || (localStorage.getItem('olg_compact_view') === 'true' ? 'list' : 'default');
         if (!THEME_ORDER.includes(currentTheme)) currentTheme = 'default';
@@ -465,8 +464,6 @@
             document.body.classList.remove('compact-mode', 'theme-list', 'theme-flat', 'theme-light');
             if (themeName === 'list') {
                 document.body.classList.add('compact-mode', 'theme-list');
-            } else if (themeName === 'flat') {
-                document.body.classList.add('theme-flat');
             } else if (themeName === 'light') {
                 document.body.classList.add('theme-light');
             }
@@ -487,7 +484,7 @@
             } catch (e) {}
             applyThemeClasses(currentTheme);
             if (notify && typeof showRefreshToast === 'function') {
-                showRefreshToast(`🎨 ${THEME_LABELS[currentTheme]}`);
+                showRefreshToast(`表示切替: ${THEME_LABELS[currentTheme]}`);
             }
         }
 
@@ -753,7 +750,7 @@
                 btn.classList.add('spinning');
             }
             if (labelSpan) labelSpan.textContent = '更新中...';
-            showRefreshToast('🔄 最新データを取得中...');
+            showRefreshToast('最新データを取得中...');
             
             await fetchData();
             
@@ -766,7 +763,7 @@
                 const timeStr = (window.lastData && window.lastData.timestamp)
                     ? window.lastData.timestamp.split(' ')[1]
                     : new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                showRefreshToast(`✨ 最新データに更新しました (${timeStr})`);
+                showRefreshToast(`最新データに更新しました (${timeStr})`);
             }, 400);
         }
 
@@ -988,9 +985,9 @@
                 if (currentSort === 'nearby' && typeof store._distKm === 'number' && userLocation) {
                     distTag.classList.remove('hidden');
                     if (store._distKm < 1.0) {
-                        distTag.textContent = `📍 ${Math.round(store._distKm * 1000)}m`;
+                        distTag.textContent = `${Math.round(store._distKm * 1000)}m`;
                     } else {
-                        distTag.textContent = `📍 ${store._distKm.toFixed(1)}km`;
+                        distTag.textContent = `${store._distKm.toFixed(1)}km`;
                     }
                 } else {
                     distTag.classList.add('hidden');
@@ -1008,7 +1005,7 @@
                     momTag.title = `直近約30分で女性が${wDiff}名増えています`;
                 } else if (votes.smooth > 0 && votes.smooth >= (votes.waiting || 0)) {
                     momTag.classList.remove('hidden');
-                    momTag.textContent = `👍 即入店報告`;
+                    momTag.textContent = `即入店報告`;
                 } else {
                     momTag.classList.add('hidden');
                 }
@@ -1027,7 +1024,7 @@
                     const eventBadge = document.createElement('span');
                     eventBadge.className = 'event-tag-badge';
                     const hasDiscount = matchedEvs.some(e => e.tag === '割引・特典');
-                    eventBadge.innerHTML = hasDiscount ? '🎉 特典' : '📢 フェア';
+                    eventBadge.textContent = hasDiscount ? '特典' : 'フェア';
                     eventBadge.title = matchedEvs[0].title;
                     storeNameEl.appendChild(eventBadge);
                 }
@@ -1175,10 +1172,10 @@
             return {
                 enabled: !IS_STAFF,
                 categories: [
-                    { id: 'all', name: 'すべて', icon: '✨' },
-                    { id: 'beauty', name: 'メンズ脱毛・美肌', icon: '🪒', highlight: true },
-                    { id: 'dating', name: '恋活・即日出会い', icon: '💘', highlight: true },
-                    { id: 'grooming', name: 'ファッション・身だしなみ', icon: '👔' }
+                    { id: 'all', name: 'すべて', icon: '' },
+                    { id: 'beauty', name: 'メンズ脱毛・美肌', icon: '', highlight: true },
+                    { id: 'dating', name: '恋活・即日出会い', icon: '', highlight: true },
+                    { id: 'grooming', name: 'ファッション・身だしなみ', icon: '' }
                 ],
                 items: [],
                 infeedSlots: []
@@ -1283,9 +1280,10 @@
                 tabsEl.innerHTML = master.categories.map(cat => {
                     const isActive = cat.id === currentGuideCategory;
                     const highlightClass = cat.highlight ? 'tab-pill-highlight' : '';
+                    const iconHtml = cat.icon ? `<span class="tab-icon">${cat.icon}</span>` : '';
                     return `
                         <button type="button" class="guide-tab-pill ${isActive ? 'active' : ''} ${highlightClass}" onclick="filterGuideCategory('${cat.id}')">
-                            <span class="tab-icon">${cat.icon}</span>
+                            ${iconHtml}
                             <span class="tab-label">${escapeHtml(cat.name)}</span>
                         </button>
                     `;
@@ -1322,12 +1320,12 @@
                             <div class="guide-app-main">
                                 <div class="guide-app-info">
                                     <h4 class="guide-app-name">${escapeHtml(item.name)}</h4>
-                                    <p class="guide-app-target">🎯 <strong>おすすめ：</strong>${escapeHtml(item.target)}</p>
+                                    <p class="guide-app-target"><strong>おすすめ：</strong>${escapeHtml(item.target)}</p>
                                     <p class="guide-app-desc">${escapeHtml(item.desc)}</p>
                                     ${pointsHtml}
                                 </div>
                                 <div class="guide-app-cta-wrap">
-                                    <a href="${escapeHtml(item.url)}" ${isExt ? 'target="_blank" rel="noopener noreferrer sponsored"' : `onclick="event.preventDefault(); showRefreshToast('💡 アフィリエイトURL設定完了後に公式ページへ遷移します')"`} class="guide-app-cta">
+                                    <a href="${escapeHtml(item.url)}" ${isExt ? 'target="_blank" rel="noopener noreferrer sponsored"' : `onclick="event.preventDefault(); showRefreshToast('アフィリエイトURL設定完了後に公式ページへ遷移します')"`} class="guide-app-cta">
                                         ${escapeHtml(item.cta || '詳細・キャンペーンを見る ›')}
                                     </a>
                                 </div>
@@ -1451,7 +1449,7 @@
             } else if (platform === 'copy') {
                 try {
                     await navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
-                    showRefreshToast('📋 ランキングとURLをコピーしました');
+                    showRefreshToast('✓ ランキングとURLをコピーしました');
                 } catch (e) {
                     showRefreshToast('URL: ' + shareUrl);
                 }
@@ -1492,7 +1490,7 @@
             } else if (platform === 'copy') {
                 try {
                     navigator.clipboard.writeText(text).then(() => {
-                        showRefreshToast('📋 店舗の人数テキストをコピーしました');
+                        showRefreshToast('✓ 店舗の人数テキストをコピーしました');
                     }).catch(() => {
                         showRefreshToast('URL: ' + shareUrl);
                     });
@@ -1677,7 +1675,7 @@
             } else {
                 try {
                     await navigator.clipboard.writeText(text);
-                    showRefreshToast('📋 速報テキストをコピーしました！');
+                    showRefreshToast('✓ 速報テキストをコピーしました');
                 } catch (e) {}
             }
         }
@@ -1787,14 +1785,14 @@
             const storeLabel = String(bInfo.cleanName || '').endsWith('店') ? bInfo.cleanName : `${bInfo.cleanName}店`;
 
             if (headingEl) {
-                headingEl.textContent = `🥂 ${shortStoreLabel} の近くで2軒目を探す`;
+                headingEl.textContent = `${shortStoreLabel} の近くで2軒目を探す`;
             }
             if (cafeBtn) {
-                cafeBtn.textContent = `☕ ${storeLabel}近くの夜カフェをマップ検索`;
+                cafeBtn.textContent = `${storeLabel}近くの夜カフェをマップ検索 ↗`;
                 cafeBtn.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(storeAnchor + ' 近く 夜カフェ スイーツ カフェバー')}`;
             }
             if (barBtn) {
-                barBtn.textContent = `🍸 ${storeLabel}近くのバー・バルをマップ検索`;
+                barBtn.textContent = `${storeLabel}近くのバー・バルをマップ検索 ↗`;
                 barBtn.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(storeAnchor + ' 近く 隠れ家バー ワインバル ダイニングバー')}`;
             }
         }
@@ -1871,11 +1869,11 @@
                 if (feedbackEl) {
                     feedbackEl.classList.remove('hidden');
                     if (d.status === 'duplicate' && d.reason === 'rate_limited') {
-                        feedbackEl.textContent = '⏳ 短時間に多くの投票があったため、少し時間をおいてお試しください';
+                        feedbackEl.textContent = '短時間に多くの投票があったため、少し時間をおいてお試しください';
                     } else if (d.status === 'duplicate') {
-                        feedbackEl.textContent = '✓ 先ほど投票済みです（ご協力ありがとうございます！）';
+                        feedbackEl.textContent = '✓ 先ほど投票済みです（ご協力ありがとうございます）';
                     } else {
-                        feedbackEl.textContent = '✨ 現場状況を共有しました！ありがとうございます';
+                        feedbackEl.textContent = '✓ 現場状況を共有しました。ありがとうございます';
                     }
                 }
             } catch (e) {
@@ -1946,9 +1944,9 @@
 
                 let genderBadge = '';
                 if (ev.gender === 'women' || (ev.title && ev.title.includes('女性'))) {
-                    genderBadge = '<span class="event-pill-tag tag-women" style="background:rgba(236,72,153,0.18); color:#f472b6; border:1px solid rgba(236,72,153,0.35); font-weight:700;">👩 女性限定</span>';
+                    genderBadge = '<span class="event-pill-tag tag-women" style="background:rgba(216,161,170,0.14); color:#d8a1aa; border:1px solid rgba(216,161,170,0.3); font-weight:700;">女性限定</span>';
                 } else if (ev.gender === 'men' || (ev.title && (ev.title.includes('男性') || ev.title.includes('🚹')))) {
-                    genderBadge = '<span class="event-pill-tag tag-men" style="background:rgba(59,130,246,0.18); color:#60a5fa; border:1px solid rgba(59,130,246,0.35); font-weight:700;">👨 男性限定</span>';
+                    genderBadge = '<span class="event-pill-tag tag-men" style="background:rgba(147,177,201,0.14); color:#93b1c9; border:1px solid rgba(147,177,201,0.3); font-weight:700;">男性限定</span>';
                 }
 
                 html += `
@@ -1960,7 +1958,7 @@
                                 <div class="event-item-meta">
                                     <span class="event-pill-tag ${escapeHtml(ev.tag_cls || 'tag-event')}">${escapeHtml(ev.tag || 'イベント')}</span>
                                     ${genderBadge}
-                                    <span class="event-store-label">📍 ${escapeHtml(ev.target_label || '対象店舗')}</span>
+                                    <span class="event-store-label">${escapeHtml(ev.target_label || '対象店舗')}</span>
                                     <span style="color:var(--text-secondary); font-size:0.72rem;">${escapeHtml(ev.date_str || '')}</span>
                                 </div>
                             </div>
@@ -2018,9 +2016,9 @@
 
                 let genderBadge = '';
                 if (ev.gender === 'women' || (ev.title && ev.title.includes('女性'))) {
-                    genderBadge = '<span class="event-pill-tag tag-women" style="background:rgba(236,72,153,0.18); color:#f472b6; border:1px solid rgba(236,72,153,0.35); font-size:0.68rem; padding:1px 5px;">👩 女性限定</span>';
+                    genderBadge = '<span class="event-pill-tag tag-women" style="background:rgba(216,161,170,0.14); color:#d8a1aa; border:1px solid rgba(216,161,170,0.3); font-size:0.68rem; padding:1px 5px;">女性限定</span>';
                 } else if (ev.gender === 'men' || (ev.title && (ev.title.includes('男性') || ev.title.includes('🚹')))) {
-                    genderBadge = '<span class="event-pill-tag tag-men" style="background:rgba(59,130,246,0.18); color:#60a5fa; border:1px solid rgba(59,130,246,0.35); font-size:0.68rem; padding:1px 5px;">👨 男性限定</span>';
+                    genderBadge = '<span class="event-pill-tag tag-men" style="background:rgba(147,177,201,0.14); color:#93b1c9; border:1px solid rgba(147,177,201,0.3); font-size:0.68rem; padding:1px 5px;">男性限定</span>';
                 }
 
                 html += `
@@ -2033,7 +2031,7 @@
                                     <span class="event-pill-tag ${escapeHtml(ev.tag_cls || 'tag-event')}">${escapeHtml(ev.tag || 'イベント')}</span>
                                     ${genderBadge}
                                     <span class="brand-badge ${ev.brand === 'OLG' ? 'brand-olg' : 'brand-jis'}" style="font-size:0.68rem; padding:1px 5px;">${escapeHtml(ev.brand)}</span>
-                                    <span class="event-store-label">📍 ${escapeHtml(ev.target_label || '全店')}</span>
+                                    <span class="event-store-label">${escapeHtml(ev.target_label || '全店')}</span>
                                     <span style="color:var(--text-secondary); font-size:0.72rem;">${escapeHtml(ev.date_str || '')}</span>
                                 </div>
                             </div>
@@ -2449,7 +2447,7 @@
             let diffBadge = '';
             if (avgW > 0 || liveStore.women > 0) {
                 if (diffW >= 5) {
-                    diffBadge = `<span class="diff-badge hot">普段の${dayLabel}${currentHour}時台平均(${avgW}人)より +${diffW}人 🔥</span>`;
+                    diffBadge = `<span class="diff-badge hot">普段の${dayLabel}${currentHour}時台平均(${avgW}人)より +${diffW}人 ↗</span>`;
                 } else if (diffW > 0) {
                     diffBadge = `<span class="diff-badge up">普段の${dayLabel}${currentHour}時台平均(${avgW}人)より +${diffW}人 ↗</span>`;
                 } else if (diffW < 0) {
