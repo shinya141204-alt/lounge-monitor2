@@ -41,8 +41,18 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Always bypass Service Worker for staff monitor and auth routes
-  if (event.request.url.includes('/staff')) {
+  if (event.request.method !== 'GET') {
+    return;
+  }
+
+  // Bypass cross-origin requests (e.g. Google AdSense) except Google Fonts
+  const reqUrl = new URL(event.request.url);
+  if (reqUrl.origin !== self.location.origin && !reqUrl.hostname.includes('fonts.g')) {
+    return;
+  }
+
+  // Always bypass Service Worker for staff monitor, auth routes, and ads.txt
+  if (reqUrl.pathname.startsWith('/staff') || reqUrl.pathname === '/ads.txt') {
     return;
   }
 

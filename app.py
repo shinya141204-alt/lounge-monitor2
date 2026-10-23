@@ -1110,6 +1110,11 @@ def robots_txt():
     content = "User-agent: *\nAllow: /\nDisallow: /api/debug_ps\nDisallow: /api/logs\nDisallow: /api/thread_status\nDisallow: /staff\nSitemap: https://aiseki-navi.com/sitemap.xml\n"
     return Response(content, mimetype='text/plain')
 
+@app.route('/ads.txt')
+def ads_txt():
+    content = "google.com, pub-3043764334238627, DIRECT, f08c47fec0942fa0\n"
+    return Response(content, mimetype='text/plain')
+
 AREA_GUIDES = {
     'shinjuku': {
         'slug': 'shinjuku',

@@ -116,6 +116,22 @@ class PageRouteTests(unittest.TestCase):
         r = self.client.get('/area/nagoya')
         self.assertNotIn('OLG 錦糸町'.encode('utf-8'), r.data)
 
+    def test_ads_txt_and_adsense_tag_on_public_only(self):
+        r_ads = self.client.get('/ads.txt')
+        self.assertEqual(r_ads.status_code, 200)
+        self.assertIn(b'google.com, pub-3043764334238627, DIRECT, f08c47fec0942fa0', r_ads.data)
+
+        r_pub = self.client.get('/')
+        self.assertIn(b'ca-pub-3043764334238627', r_pub.data)
+
+        with self.client.session_transaction() as s:
+            s['is_staff'] = True
+        r_staff = self.client.get('/staff')
+        self.assertEqual(r_staff.status_code, 200)
+        self.assertNotIn(b'ca-pub-3043764334238627', r_staff.data)
+        with self.client.session_transaction() as s:
+            s.pop('is_staff', None)
+
 
 class StoreMasterTests(unittest.TestCase):
     """店舗マスタの整合性"""
