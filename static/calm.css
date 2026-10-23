@@ -728,3 +728,24 @@ body.theme-light .diff-badge.neutral {
     border: 1px solid var(--calm-light-border-strong) !important;
 }
 
+body:not(.theme-light) .momentum-legend-bar {
+    background: var(--calm-surface) !important;
+    border-color: var(--calm-border) !important;
+    color: var(--calm-sub) !important;
+}
+
+body:not(.theme-light) .momentum-legend-pill {
+    color: #e4a5b0 !important;
+}
+
+body.theme-light .momentum-legend-bar {
+    background: var(--calm-light-surface) !important;
+    border-color: var(--calm-light-border) !important;
+    color: var(--calm-light-sub) !important;
+}
+
+body.theme-light .momentum-legend-pill {
+    color: var(--calm-light-accent) !important;
+}
+
+

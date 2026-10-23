@@ -1055,7 +1055,7 @@
                 }
             }
 
-            // 30-min Momentum Tag (Shows when female count is actively rising)
+            // 15-min Momentum Tag (Shows when female count is actively rising)
             const momTag = node.querySelector('.momentum-tag');
             const wDiff = Number(store.women_diff || 0);
             const mDiff = Number(store.men_diff || 0);
@@ -1064,10 +1064,11 @@
                 if (wDiff >= 1) {
                     momTag.classList.remove('hidden');
                     momTag.textContent = `↗ +${wDiff}名`;
-                    momTag.title = `直近約30分で女性が+${wDiff}名増えています`;
+                    momTag.title = `直近約15分で女性が+${wDiff}名増えています`;
                 } else if (votes.smooth > 0 && votes.smooth >= (votes.waiting || 0)) {
                     momTag.classList.remove('hidden');
-                    momTag.textContent = `即入店報告`;
+                    momTag.textContent = `即入店`;
+                    momTag.title = `直近の現場レポートで「待ちなしで入れた」が報告されています`;
                 } else {
                     momTag.classList.add('hidden');
                 }
@@ -1104,7 +1105,7 @@
                 if (wDiff > 0) {
                     ladiesDiffEl.classList.remove('hidden');
                     ladiesDiffEl.textContent = `+${wDiff}`;
-                    ladiesDiffEl.title = `直近約30分で女性+${wDiff}名`;
+                    ladiesDiffEl.title = `直近約15分で女性+${wDiff}名`;
                 } else {
                     ladiesDiffEl.classList.add('hidden');
                     ladiesDiffEl.textContent = '';
@@ -1115,7 +1116,7 @@
                 if (mDiff > 0) {
                     menDiffEl.classList.remove('hidden');
                     menDiffEl.textContent = `+${mDiff}`;
-                    menDiffEl.title = `直近約30分で男性+${mDiff}名`;
+                    menDiffEl.title = `直近約15分で男性+${mDiff}名`;
                 } else {
                     menDiffEl.classList.add('hidden');
                     menDiffEl.textContent = '';
@@ -2556,14 +2557,14 @@
                 return;
             }
 
-            const wDiff30 = Number(liveStore.women_diff || 0);
-            const mDiff30 = Number(liveStore.men_diff || 0);
+            const wDiff15 = Number(liveStore.women_diff || 0);
+            const mDiff15 = Number(liveStore.men_diff || 0);
             let momentumBadge = '';
-            if (wDiff30 > 0 || mDiff30 > 0) {
+            if (wDiff15 > 0 || mDiff15 > 0) {
                 const parts = [];
-                if (wDiff30 > 0) parts.push(`女性+${wDiff30}名`);
-                if (mDiff30 > 0) parts.push(`男性+${mDiff30}名`);
-                momentumBadge = `<span class="diff-badge hot">直近30分: ↗ ${parts.join(' / ')}</span>`;
+                if (wDiff15 > 0) parts.push(`女性+${wDiff15}名`);
+                if (mDiff15 > 0) parts.push(`男性+${mDiff15}名`);
+                momentumBadge = `<span class="diff-badge hot">直近15分: ↗ ${parts.join(' / ')}</span>`;
             }
 
             let diffBadge = '';

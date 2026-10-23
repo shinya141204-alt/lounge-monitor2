@@ -388,16 +388,16 @@ def start_background_sync(days=14, on_recent_synced=None):
 _memory_votes = []
 _votes_lock = threading.Lock()
 
-def get_snapshot_around(minutes_ago_min=15, minutes_ago_max=50):
+def get_snapshot_around(minutes_ago_min=10, minutes_ago_max=25):
     """
-    Returns {store_name: {'men': m, 'women': w}} from ~20-45 minutes ago
-    to calculate real-time crowd momentum.
-    Automatically widens window to 8-75 mins if the primary window has no snapshot.
+    Returns {store_name: {'men': m, 'women': w}} from ~15 minutes ago (10-25 min window)
+    to calculate real-time 15-min crowd momentum.
+    Automatically widens window to 5-45 mins if the primary window has no snapshot.
     """
     now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
     windows = [(minutes_ago_min, minutes_ago_max)]
-    if minutes_ago_min == 15 and minutes_ago_max == 50:
-        windows.append((8, 75))
+    if minutes_ago_min == 10 and minutes_ago_max == 25:
+        windows.append((5, 45))
     try:
         conn = get_connection()
         try:

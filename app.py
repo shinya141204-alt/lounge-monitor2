@@ -448,7 +448,7 @@ def restore_latest_data_if_empty():
     try:
         snap = local_db.get_snapshot_around(0, 10080)
         if snap and len(snap) >= 10:
-            baseline_snap = local_db.get_snapshot_around(15, 50) or {}
+            baseline_snap = local_db.get_snapshot_around(10, 25) or {}
             import store_master
             master = store_master.load()
             items = []
@@ -617,13 +617,13 @@ def fetch_interval_sec(now_jst=None):
 
 _last_fetch_at = None
 
-# Rolling in-memory snapshots for 30-min momentum calculation
+# Rolling in-memory snapshots for 15-min momentum calculation
 rolling_snapshots = []
 
 def refresh_momentum_from_db():
     """Recompute women_diff / men_diff on in-memory latest_data once background Google Sheets sync completes."""
     try:
-        baseline_map = local_db.get_snapshot_around(15, 50)
+        baseline_map = local_db.get_snapshot_around(10, 25)
         if not baseline_map:
             return
         updated_any = False
@@ -639,7 +639,7 @@ def refresh_momentum_from_db():
                     updated_any = True
         if updated_any:
             save_latest_status_snapshot()
-            print("[app] Momentum (women_diff/men_diff) refreshed from newly synced SQLite baseline.")
+            print("[app] Momentum (15-min women_diff/men_diff) refreshed from newly synced SQLite baseline.")
     except Exception as e:
         print(f"[app] refresh_momentum_from_db error: {e}", file=sys.stderr)
 
@@ -661,27 +661,30 @@ def update_job(force=False):
 
             jst_now = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
 
-            # Determine ~20-45 min ago baseline from in-memory rolling_snapshots or SQLite (non-blocking)
+            # Determine ~15 min ago (10-22 min) baseline from in-memory rolling_snapshots or SQLite (non-blocking)
             baseline_map = {}
+            best_diff_from_15 = 999.0
             for snap in rolling_snapshots:
                 age_min = (jst_now - snap['dt']).total_seconds() / 60.0
-                if 15 <= age_min <= 50:
-                    baseline_map = snap['map']
-                    break
+                if 10 <= age_min <= 22:
+                    dist = abs(age_min - 15.0)
+                    if dist < best_diff_from_15:
+                        best_diff_from_15 = dist
+                        baseline_map = snap['map']
             if not baseline_map:
                 try:
-                    baseline_map = local_db.get_snapshot_around(15, 50)
+                    baseline_map = local_db.get_snapshot_around(10, 25)
                 except Exception:
                     baseline_map = {}
 
-            # Record current snapshot if at least 4 mins since last snapshot
-            if not rolling_snapshots or (jst_now - rolling_snapshots[-1]['dt']).total_seconds() >= 240:
+            # Record current snapshot if at least 2 mins since last snapshot
+            if not rolling_snapshots or (jst_now - rolling_snapshots[-1]['dt']).total_seconds() >= 120:
                 rolling_snapshots.append({
                     'dt': jst_now,
                     'map': {s['name']: {'men': s.get('men', 0), 'women': s.get('women', 0)} for s in data}
                 })
-                if len(rolling_snapshots) > 15:
-                    rolling_snapshots[:] = rolling_snapshots[-15:]
+                if len(rolling_snapshots) > 25:
+                    rolling_snapshots[:] = rolling_snapshots[-25:]
 
             # Fetch recent crowd votes (last 4 hours)
             try:

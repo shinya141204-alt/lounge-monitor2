@@ -110,7 +110,7 @@ h1 {
 
 @media (min-width: 769px) {
     .ranking-list {
-        grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
         gap: 10px;
     }
 }
@@ -2199,7 +2199,7 @@ body.theme-list header {
 }
 
 body.theme-list .ranking-list {
-    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(410px, 1fr));
     gap: 0;
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 10px;
@@ -2282,17 +2282,19 @@ body.theme-list .card-actions {
 body.theme-list .stats-group {
     gap: 6px;
     margin-left: 4px;
-    min-width: 92px;
+    min-width: 104px;
     justify-content: flex-end;
+    flex-shrink: 0;
 }
 
 body.theme-list .stat {
     flex-direction: row;
     align-items: baseline;
-    width: 42px;
-    min-width: 42px;
+    width: auto;
+    min-width: 48px;
     justify-content: flex-end;
     gap: 2px;
+    flex-shrink: 0;
 }
 
 body.theme-list .stat .count {
@@ -5677,5 +5679,46 @@ body.theme-light .second-venue-card {
     background: #ffffff;
     border-color: #e2e8f0;
 }
+
+/* 15-min Momentum Legend Bar */
+.momentum-legend-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    margin: 4px 0 10px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    font-size: 0.74rem;
+    color: var(--text-secondary);
+}
+
+.momentum-legend-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 700;
+    color: #f0bcc4;
+}
+
+.momentum-legend-hint {
+    font-size: 0.71rem;
+    color: var(--text-secondary);
+    opacity: 0.85;
+}
+
+body.theme-light .momentum-legend-bar {
+    background: rgba(28, 27, 24, 0.03);
+    border-color: rgba(28, 27, 24, 0.1);
+    color: #57534e;
+}
+
+body.theme-light .momentum-legend-pill {
+    color: #8c6b3f;
+}
+
 
 

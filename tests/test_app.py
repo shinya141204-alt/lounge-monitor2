@@ -321,16 +321,16 @@ class ScrapeIntervalTests(unittest.TestCase):
 
 
 class MomentumTests(unittest.TestCase):
-    """30分前比の人数増減（women_diff / men_diff）計算とSSR表示の検証"""
+    """15分前比の人数増減（women_diff / men_diff）計算とSSR表示の検証"""
 
     def test_snapshot_around_and_ssr_momentum(self):
         now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
-        ts_30m_ago = (now_jst - datetime.timedelta(minutes=30)).strftime('%Y-%m-%d %H:%M:%S')
+        ts_15m_ago = (now_jst - datetime.timedelta(minutes=15)).strftime('%Y-%m-%d %H:%M:%S')
         local_db.insert_logs_with_ts([
-            {'ts': ts_30m_ago, 'name': 'OLG 恵比寿', 'men': 20, 'women': 40, 'source': 'oriental'},
-            {'ts': ts_30m_ago, 'name': 'OLG 新宿', 'men': 30, 'women': 50, 'source': 'oriental'},
+            {'ts': ts_15m_ago, 'name': 'OLG 恵比寿', 'men': 20, 'women': 40, 'source': 'oriental'},
+            {'ts': ts_15m_ago, 'name': 'OLG 新宿', 'men': 30, 'women': 50, 'source': 'oriental'},
         ])
-        snap = local_db.get_snapshot_around(15, 50)
+        snap = local_db.get_snapshot_around(10, 25)
         self.assertIn('OLG 恵比寿', snap)
         self.assertEqual(snap['OLG 恵比寿']['women'], 40)
         self.assertEqual(snap['OLG 恵比寿']['men'], 20)

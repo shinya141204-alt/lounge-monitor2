@@ -91,11 +91,11 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/style.css?v=20261023_12">
+    <link rel="stylesheet" href="/static/style.css?v=20261023_13">
     {% if not is_staff %}
     <script src="/static/affiliate_config.js?v=7"></script>
     {% endif %}
-    <link rel="stylesheet" href="/static/calm.css?v=4">
+    <link rel="stylesheet" href="/static/calm.css?v=5">
 </head>
 
 <body class="{% if is_staff %}staff-mode{% endif %}">
@@ -1064,6 +1064,12 @@
                 </div>
                 {% endif %}
 
+                <!-- Momentum & Card Legend Bar -->
+                <div class="momentum-legend-bar" aria-label="表示指標の説明">
+                    <span class="momentum-legend-pill">📈 「↗ +数字」＝ 直近15分での客数の伸び</span>
+                    <span class="momentum-legend-hint">店舗タップで曜日・時間別の推移グラフ</span>
+                </div>
+
                 <!-- Pinned Stores Section -->
                 <div id="pinned-list-container" class="hidden">
                     <h2 class="section-title">★ お気に入り店舗</h2>
@@ -1083,7 +1089,7 @@
                                 <span class="brand-badge {{ s.ssr_brand_cls }}">{{ s.ssr_brand }}</span>
                                 <span class="distance-tag hidden"></span>
                                 {% if (s.women_diff or 0) >= 1 %}
-                                <span class="momentum-tag" title="直近約30分で女性が+{{ s.women_diff }}名増えています">↗ +{{ s.women_diff }}名</span>
+                                <span class="momentum-tag" title="直近約15分で女性が+{{ s.women_diff }}名増えています">↗ +{{ s.women_diff }}名</span>
                                 {% else %}
                                 <span class="momentum-tag hidden"></span>
                                 {% endif %}
@@ -1114,7 +1120,7 @@
                                 <div class="stat-num-row">
                                     <span class="count">{{ s.women or 0 }}</span>
                                     {% if (s.women_diff or 0) > 0 %}
-                                    <span class="stat-diff" title="直近約30分で女性+{{ s.women_diff }}名">+{{ s.women_diff }}</span>
+                                    <span class="stat-diff" title="直近約15分で女性+{{ s.women_diff }}名">+{{ s.women_diff }}</span>
                                     {% else %}
                                     <span class="stat-diff hidden"></span>
                                     {% endif %}
@@ -1125,7 +1131,7 @@
                                 <div class="stat-num-row">
                                     <span class="count">{{ s.men or 0 }}</span>
                                     {% if (s.men_diff or 0) > 0 %}
-                                    <span class="stat-diff" title="直近約30分で男性+{{ s.men_diff }}名">+{{ s.men_diff }}</span>
+                                    <span class="stat-diff" title="直近約15分で男性+{{ s.men_diff }}名">+{{ s.men_diff }}</span>
                                     {% else %}
                                     <span class="stat-diff hidden"></span>
                                     {% endif %}
@@ -1143,7 +1149,7 @@
                 </div>
 
                 <div class="info-bar">
-                    <p>最終更新: <span id="last-update">{% if initial_status and initial_status.timestamp and ' ' in initial_status.timestamp %}{{ initial_status.timestamp.split(' ')[1] }}{% else %}--:--{% endif %}</span></p>
+                    <p>最終更新: <span id="last-update">{% if initial_status and initial_status.timestamp and ' ' in initial_status.timestamp %}{{ initial_status.timestamp.split(' ')[1] }}{% else %}--:--{% endif %}</span> <span style="opacity: 0.75; margin-left: 6px;">（※+数字は直近15分の伸び）</span></p>
 
                     <div class="live-indicator">
                         <div class="dot"></div>
@@ -1505,12 +1511,12 @@
         window.INITIAL_STATUS_DATA = {{ initial_status | tojson }};
         {% endif %}
     </script>
-    <script src="/static/app.js?v=20261023_18" defer></script>
+    <script src="/static/app.js?v=20261023_19" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js?v=22')
+                navigator.serviceWorker.register('/sw.js?v=23')
                     .then(reg => {
                         reg.update();
                     })
