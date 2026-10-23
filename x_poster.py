@@ -135,8 +135,7 @@ def build_scheduled_tweet_text(stores: list, slot_label: str = "20:00", app_url:
 
         lines.extend([
             "",
-            "全店の現在人数・男女比👇",
-            f"{site_url}/",
+            "全53店舗の現在人数・男女比はリプ欄へ👇",
             f"{time_tag} #相席ナビ #相席ラウンジ"
         ])
         return "\n".join(lines)
@@ -323,9 +322,20 @@ def _build_oauth1_header(method: str, url: str, api_key: str, api_secret: str, a
     return f"OAuth {header_parts}"
 
 
-def post_to_x(text: str) -> dict:
+def build_scheduled_reply_text(slot_label: str = "20:00", app_url: str = "") -> str:
+    """Build the 2nd post (self-reply) containing the site URL so the 1st post stays clean and URL-free."""
+    site_url = (app_url or os.environ.get("PUBLIC_SITE_URL") or "https://aiseki-navi.com").rstrip("/")
+    if slot_label in ("22:00", "22:30"):
+        return f"🔍 全国53店舗のリアルタイム人数・男女比ランキングはこちら\n{site_url}/\n\n📖 水曜・木曜の20時〜22時が穴場な理由\n{site_url}/guide/weekday-strategy"
+    elif slot_label == "20:00":
+        return f"🔍 全国53店舗のリアルタイム人数・男女比ランキングはこちら\n{site_url}/\n\n📖 オリエンタル・ag・JISの違い比較\n{site_url}/guide/brand-comparison"
+    return f"🔍 全国53店舗のリアルタイム人数・男女比ランキングはこちら\n{site_url}/"
+
+
+def post_to_x(text: str, reply_to_tweet_id: str = None, reply_text: str = None) -> dict:
     """
     Post a tweet via X API v2 (`POST https://api.twitter.com/2/tweets`).
+    If `reply_text` is provided, automatically posts `reply_text` as a reply (2nd tweet) to the main tweet.
     Requires environment variables:
       - X_API_KEY
       - X_API_SECRET
@@ -357,12 +367,23 @@ def post_to_x(text: str) -> dict:
         "Authorization": auth_header,
         "Content-Type": "application/json",
     }
+    payload = {"text": text}
+    if reply_to_tweet_id:
+        payload["reply"] = {"in_reply_to_tweet_id": str(reply_to_tweet_id)}
+
     try:
-        resp = requests.post(url, headers=headers, json={"text": text}, timeout=15)
+        resp = requests.post(url, headers=headers, json=payload, timeout=15)
         if resp.status_code in (200, 201):
             data = resp.json()
             logger.info(f"Successfully posted to X: {data}")
-            return {"status": "success", "data": data}
+            result = {"status": "success", "data": data}
+            tweet_id = (data.get("data") or {}).get("id")
+            if reply_text and tweet_id and not reply_to_tweet_id:
+                time.sleep(1.5)
+                reply_res = post_to_x(reply_text, reply_to_tweet_id=tweet_id)
+                result["reply"] = reply_res
+                result["reply_text"] = reply_text
+            return result
         else:
             logger.error(f"X API returned {resp.status_code}: {resp.text}")
             return {"status": "error", "code": resp.status_code, "detail": resp.text}

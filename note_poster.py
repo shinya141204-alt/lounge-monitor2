@@ -85,8 +85,7 @@ def build_note_tweet_text(title: str, link: str, force: bool = False) -> str:
     """
     now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
     
-    # URL is counted as 23 weighted characters by X
-    footer = f"』\n\n実際の混雑データを見ながら、外さないお店や時間帯の選び方をまとめました。行く前にぜひ👇\n{link}\n#相席ナビ #相席ラウンジ"
+    footer = "』\n\n実際の混雑データを見ながら、外さないお店や時間帯の選び方をまとめました。\n記事リンクはリプ欄へ👇\n#相席ナビ #相席ラウンジ"
     if force:
         footer += f"\n(⏱️{now_jst.strftime('%H:%M:%S')})"
     
@@ -95,9 +94,7 @@ def build_note_tweet_text(title: str, link: str, force: bool = False) -> str:
     def calc_weight(t: str) -> int:
         return sum(1 if ord(c) < 128 else 2 for c in t)
 
-    base_weight = calc_weight(header + "』\n\n実際の混雑データを見ながら、外さないお店や時間帯の選び方をまとめました。行く前にぜひ👇\n\n#相席ナビ #相席ラウンジ") + 23
-    if force:
-        base_weight += calc_weight(f"\n(⏱️{now_jst.strftime('%H:%M:%S')})")
+    base_weight = calc_weight(header + footer)
     
     max_title_weight = 276 - base_weight
 
@@ -114,6 +111,12 @@ def build_note_tweet_text(title: str, link: str, force: bool = False) -> str:
         trimmed_title = title
 
     return f"{header}{trimmed_title}{footer}"
+
+
+def build_note_reply_text(link: str) -> str:
+    """Build the 2nd post (self-reply) containing the note article URL."""
+    site_url = os.environ.get("PUBLIC_SITE_URL", "https://aiseki-navi.com").rstrip("/")
+    return f"📖 note記事はこちら👇\n{link}\n\n🔍 全国53店舗の現在人数ランキング\n{site_url}/"
 
 
 def check_and_post_new_note(force: bool = False, article_index: int = 0) -> dict:
@@ -151,7 +154,8 @@ def check_and_post_new_note(force: bool = False, article_index: int = 0) -> dict
         return {"status": "skipped", "reason": "Latest article already posted", "article": target}
 
     tweet_text = build_note_tweet_text(title, link, force=force)
-    result = x_poster.post_to_x(tweet_text)
+    reply_text = build_note_reply_text(link)
+    result = x_poster.post_to_x(tweet_text, reply_text=reply_text)
     
     if result.get("status") == "success":
         if not force:
@@ -160,4 +164,5 @@ def check_and_post_new_note(force: bool = False, article_index: int = 0) -> dict
 
     result["article"] = target
     result["tweet_text"] = tweet_text
+    result["reply_text"] = reply_text
     return result

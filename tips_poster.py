@@ -247,8 +247,8 @@ TIPS_LIST = [
 def get_tip_for_slot(slot_label: str = "12:00", tip_index: int = None) -> str:
     """
     Select a tip based on the day of the year and slot.
-    Ensures the final tweet text (tip + link + hashtags) stays strictly <= 275 weighted characters
-    so X API never truncates the end of the post.
+    1st post is kept completely URL-free for clean appearance and maximum X organic reach.
+    The site URL is attached automatically in the 2nd post (reply).
     """
     now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
 
@@ -260,27 +260,32 @@ def get_tip_for_slot(slot_label: str = "12:00", tip_index: int = None) -> str:
         idx = (day_of_year * 2 + slot_offset) % len(TIPS_LIST)
 
     raw_tip = TIPS_LIST[idx].strip()
-    site_url = os.environ.get("PUBLIC_SITE_URL", "https://aiseki-navi.com").rstrip("/")
-
-    footer_with_url = f"\n\n全国の現在人数・男女比👇\n{site_url}/\n#相席ナビ #相席ラウンジ"
     footer_tags_only = "\n\n#相席ナビ #相席ラウンジ"
 
-    candidate = f"{raw_tip}{footer_with_url}"
+    candidate = f"{raw_tip}{footer_tags_only}"
     if x_poster.compute_twitter_weight(candidate) <= 276:
         return candidate
 
-    short_footer = f"\n{site_url}/\n#相席ナビ"
-    candidate_short = f"{raw_tip}{short_footer}"
-    if x_poster.compute_twitter_weight(candidate_short) <= 276:
-        return candidate_short
+    short_tags = "\n#相席ナビ"
+    if x_poster.compute_twitter_weight(f"{raw_tip}{short_tags}") <= 276:
+        return f"{raw_tip}{short_tags}"
 
-    return f"{raw_tip}{footer_tags_only}"
+    return raw_tip
+
+
+def get_tip_reply_text(slot_label: str = "12:00") -> str:
+    """Build the 2nd post (self-reply) with the URL for daily tips."""
+    site_url = os.environ.get("PUBLIC_SITE_URL", "https://aiseki-navi.com").rstrip("/")
+    if slot_label == "18:00":
+        return f"🍻 今夜行くお店の現在人数・男女比チェックはこちら👇\n{site_url}/"
+    return f"🔍 全国53店舗のリアルタイム人数・男女比ランキングはこちら👇\n{site_url}/"
 
 
 def run_scheduled_tip_post(slot_label: str = "12:00", force: bool = False, tip_index: int = None) -> dict:
     """
     Execute daily tip posting to X (Twitter).
     slot_label: '12:00' or '18:00'
+    Posts a clean URL-free main post, followed by an automatic reply with the URL.
     """
     now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
     dedup_key = f"x_tip:{now_jst.strftime('%Y-%m-%d')}_{slot_label}"
@@ -298,15 +303,12 @@ def run_scheduled_tip_post(slot_label: str = "12:00", force: bool = False, tip_i
     if force:
         text = f"{text}\n(⏱️{now_jst.strftime('%H:%M')})"
 
-    result = x_poster.post_to_x(text)
+    reply_text = get_tip_reply_text(slot_label=slot_label)
+    result = x_poster.post_to_x(text, reply_text=reply_text)
     if result.get("status") == "success" and not force:
         job_state.mark_done(dedup_key)
-        try:
-            with open(lock_file, "w") as f:
-                f.write(dedup_key)
-        except Exception:
-            pass
 
     result["tweet_text"] = text
+    result["reply_text"] = reply_text
     result["slot"] = slot_label
     return result

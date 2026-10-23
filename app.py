@@ -1477,7 +1477,8 @@ def run_scheduled_x_post(slot_label="20:00", force=False):
     if not text:
         return {"status": "error", "detail": "Empty tweet text"}
 
-    result = x_poster.post_to_x(text)
+    reply_text = x_poster.build_scheduled_reply_text(slot_label=slot_label)
+    result = x_poster.post_to_x(text, reply_text=reply_text)
     if result.get("status") == "success" and not force:
         job_state.mark_done(dedup_key)
     elif result.get("status") == "error":
@@ -1487,6 +1488,7 @@ def run_scheduled_x_post(slot_label="20:00", force=False):
         except Exception:
             pass
     result["tweet_text"] = text
+    result["reply_text"] = reply_text
     return result
 
 @app.route('/api/trigger-x-post')
