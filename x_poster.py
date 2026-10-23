@@ -333,13 +333,12 @@ def _build_oauth1_header(method: str, url: str, api_key: str, api_secret: str, a
 
 
 def build_scheduled_reply_text(slot_label: str = "20:00", app_url: str = "") -> str:
-    """Build the 2nd post (self-reply) containing the site URL so the 1st post stays clean and URL-free."""
+    """Build the 2nd post (self-reply) containing the timestamped site URL so X generates a fresh dynamic live OGP card."""
     site_url = (app_url or os.environ.get("PUBLIC_SITE_URL") or "https://aiseki-navi.com").rstrip("/")
-    if slot_label in ("22:00", "22:30"):
-        return f"🔍 全国53店舗のリアルタイム人数・男女比ランキングはこちら\n{site_url}/\n\n📖 水曜・木曜の20時〜22時が穴場な理由\n{site_url}/guide/weekday-strategy"
-    elif slot_label == "20:00":
-        return f"🔍 全国53店舗のリアルタイム人数・男女比ランキングはこちら\n{site_url}/\n\n📖 オリエンタル・ag・JISの違い比較\n{site_url}/guide/brand-comparison"
-    return f"🔍 全国53店舗のリアルタイム人数・男女比ランキングはこちら\n{site_url}/"
+    now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
+    slot_code = (slot_label or "20:00").replace(":", "")
+    live_url = f"{site_url}/?s={now_jst.strftime('%Y%m%d')}_{slot_code}"
+    return f"🔍 全国53店舗のリアルタイム人数・男女比ランキングはこちら\n{live_url}"
 
 
 def build_pinned_tweet_thread(app_url: str = "") -> tuple:
@@ -445,9 +444,7 @@ def build_column_tweet_thread(col_index: int = 0, app_url: str = "") -> tuple:
     reply_text = (
         f"📖 コラム本編はこちら👇\n"
         f"『{item['title']}』\n"
-        f"{site_url}{item['path']}\n\n"
-        f"🔍 全国53店舗の現在人数ランキング\n"
-        f"{site_url}/"
+        f"{site_url}{item['path']}"
     )
     return main_text, reply_text, item
 

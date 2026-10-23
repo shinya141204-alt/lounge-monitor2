@@ -23,16 +23,18 @@
     </script>
 
     <!-- OGP / SNS Card Settings -->
-    <meta property="og:title" content="オリエンタルラウンジ・ag（アグ）・JIS リアルタイム人数・男女比ランキング｜相席ナビ">
-    <meta property="og:description" content="いま盛り上がっているオリエンタルラウンジ・ag（アグ）・JIS全店の男女人数・比率・曜日別ピーク平均をリアルタイム可視化！">
+    <meta property="og:title" content="{{ og_meta.title if og_meta else 'オリエンタルラウンジ・ag（アグ）・JIS リアルタイム人数・男女比ランキング｜相席ナビ' }}">
+    <meta property="og:description" content="{{ og_meta.description if og_meta else 'いま盛り上がっているオリエンタルラウンジ・ag（アグ）・JIS全店の男女人数・比率・曜日別ピーク平均をリアルタイム可視化！' }}">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="相席ナビ">
     <meta property="og:locale" content="ja_JP">
-    <meta property="og:image" content="https://aiseki-navi.com/static/x-header.jpg?v=2">
+    <meta property="og:image" content="{{ og_image_url or 'https://aiseki-navi.com/ogp/live.png' }}">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="オリエンタルラウンジ・ag（アグ）・JIS リアルタイム人数・男女比ランキング｜相席ナビ">
-    <meta name="twitter:description" content="オリエンタルラウンジ・ag（アグ）・JIS全店のリアルタイム男女人数・曜日別ピーク平均がひと目でわかる！">
-    <meta name="twitter:image" content="https://aiseki-navi.com/static/x-header.jpg?v=2">
+    <meta name="twitter:title" content="{{ og_meta.title if og_meta else 'オリエンタルラウンジ・ag（アグ）・JIS リアルタイム人数・男女比ランキング｜相席ナビ' }}">
+    <meta name="twitter:description" content="{{ og_meta.description if og_meta else 'オリエンタルラウンジ・ag（アグ）・JIS全店のリアルタイム男女人数・曜日別ピーク平均がひと目でわかる！' }}">
+    <meta name="twitter:image" content="{{ og_image_url or 'https://aiseki-navi.com/ogp/live.png' }}">
 
     <!-- Structured Data for Google SEO (WebApplication + FAQPage) -->
     <script type="application/ld+json">

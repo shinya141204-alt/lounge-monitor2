@@ -764,7 +764,44 @@ def update_job(force=False):
 @app.route('/')
 def index():
     trigger_background_fetch_if_needed()
-    return render_template('index.html', is_staff=False, initial_status=get_initial_status_payload())
+    now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
+    s_param = (request.args.get('s') or '').strip()
+    if not s_param:
+        bucket_min = (now_jst.minute // 15) * 15
+        s_param = f"{now_jst.strftime('%Y%m%d_%H')}{bucket_min:02d}"
+    og_meta = None
+    og_image_url = f"https://aiseki-navi.com/ogp/live.png?s={s_param}"
+    try:
+        import ogp_generator
+        og_meta = ogp_generator.get_ogp_meta_for_slot(s_param, now_jst=now_jst)
+    except Exception:
+        pass
+    return render_template(
+        'index.html',
+        is_staff=False,
+        initial_status=get_initial_status_payload(),
+        og_meta=og_meta,
+        og_image_url=og_image_url,
+    )
+
+@app.route('/ogp/live.png')
+def dynamic_live_ogp_image():
+    """Dynamically render a 1200x630 live TOP3 ranking OGP card image."""
+    restore_latest_data_if_empty()
+    trigger_background_fetch_if_needed()
+    s_param = (request.args.get('s') or '').strip()
+    with data_lock:
+        stores = list(latest_data.get('full_data') or [])
+    try:
+        import ogp_generator
+        png_bytes = ogp_generator.generate_live_ogp_png(stores, s_param=s_param)
+        from flask import Response
+        resp = Response(png_bytes, mimetype='image/png')
+        resp.headers['Cache-Control'] = 'public, max-age=300'
+        return resp
+    except Exception as e:
+        logging.error(f"Dynamic OGP generation failed, falling back to static image: {e}")
+        return send_from_directory('static', 'note-eyecatch.jpg', mimetype='image/jpeg')
 
 @app.route('/guide')
 @app.route('/guide/strategy')
