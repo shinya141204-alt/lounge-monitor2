@@ -261,10 +261,9 @@ def get_store_analysis(store_name):
                 if store_name in analysis_cache['processed_per_store']:
                     del analysis_cache['processed_per_store'][store_name]
                     
-                # Backfill fetched records into SQLite so subsequent clicks are instantaneous
+                # Backfill fetched records into SQLite in a single batch transaction so subsequent clicks are instantaneous
                 try:
-                    for d in target_data:
-                        local_db.insert_logs([{'name': d['name'], 'men': d['men'], 'women': d['women'], 'source': ''}], d['ts'])
+                    local_db.insert_logs_with_ts(target_data)
                 except Exception:
                     pass
 
@@ -452,6 +451,7 @@ def restore_latest_data_if_empty():
     try:
         snap = local_db.get_snapshot_around(0, 720)
         if snap and len(snap) >= 10:
+            baseline_snap = local_db.get_snapshot_around(15, 50) or {}
             import store_master
             master = store_master.load()
             items = []
@@ -461,14 +461,19 @@ def restore_latest_data_if_empty():
                 source = (info.get('brand') or 'oriental').lower()
                 if source == 'olg' or source == 'ag':
                     source = 'oriental'
+                cur_m = int(vals.get('men', 0))
+                cur_w = int(vals.get('women', 0))
+                prev = baseline_snap.get(sname)
+                w_diff = (cur_w - int(prev.get('women', 0))) if prev else 0
+                m_diff = (cur_m - int(prev.get('men', 0))) if prev else 0
                 items.append({
                     'name': sname,
-                    'men': int(vals.get('men', 0)),
-                    'women': int(vals.get('women', 0)),
+                    'men': cur_m,
+                    'women': cur_w,
                     'source': source,
                     'region': info.get('region') or detect_region(sname),
-                    'women_diff': 0,
-                    'men_diff': 0,
+                    'women_diff': w_diff,
+                    'men_diff': m_diff,
                     'votes': {'smooth': 0, 'waiting': 0, 'lively': 0},
                 })
                 if vals.get('ts') and (not latest_ts or vals['ts'] > latest_ts):
@@ -646,6 +651,11 @@ def update_job(force=False):
             if not baseline_map:
                 try:
                     baseline_map = local_db.get_snapshot_around(15, 50)
+                    # On cold start / Render redeploy, SQLite may not have finished syncing the last 2 hours yet.
+                    # Trigger a fast 2-hour sync (~0.4s) so the very first scrape computes women_diff/men_diff accurately.
+                    if not baseline_map and os.environ.get('DISABLE_SCHEDULER') != '1':
+                        local_db.sync_recent_from_google_sheets(hours=2)
+                        baseline_map = local_db.get_snapshot_around(15, 50)
                 except Exception:
                     baseline_map = {}
 
@@ -1274,6 +1284,8 @@ def _render_brand_page(brand_slug):
                 'area_label': info.get('area_label') or s_live.get('area') or '全国',
                 'women': int(s_live.get('women', 0)),
                 'men': int(s_live.get('men', 0)),
+                'women_diff': int(s_live.get('women_diff', 0) or 0),
+                'men_diff': int(s_live.get('men_diff', 0) or 0),
             })
 
     matched.sort(key=lambda x: (x['women'], x['men']), reverse=True)
@@ -1356,6 +1368,8 @@ def store_detail_page(store_slug):
                     'slug': store_master.slug_of(oname),
                     'women': ow,
                     'men': om,
+                    'women_diff': int(other_s.get('women_diff', 0) or 0),
+                    'men_diff': int(other_s.get('men_diff', 0) or 0),
                     'wpct': round((ow / otot) * 100) if otot > 0 else 0,
                 })
 
@@ -1368,6 +1382,8 @@ def store_detail_page(store_slug):
         'brand_slug': brand_slug,
         'women': women,
         'men': men,
+        'women_diff': int(s_live.get('women_diff', 0) or 0),
+        'men_diff': int(s_live.get('men_diff', 0) or 0),
         'total': tot,
         'wpct': wpct if tot > 0 else 0,
         'crowd_comment': crowd_comment,

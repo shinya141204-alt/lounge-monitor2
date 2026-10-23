@@ -30,7 +30,7 @@ def generate_weekly_report():
             return _report_cache['data']
 
     # Define the 7-day period in JST (excluding today to get full past 7 days)
-    now_jst = now_utc + datetime.timedelta(hours=9)
+    now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
     end_date = now_jst.replace(hour=6, minute=59, second=59, microsecond=0)
     start_date = (end_date - datetime.timedelta(days=7)).replace(hour=18, minute=0, second=0)
     start_ts_str = start_date.strftime("%Y-%m-%d %H:%M:%S")
@@ -89,10 +89,9 @@ def generate_weekly_report():
                             'source': str(src_val)
                         })
 
-            # Concurrently backfill into local SQLite for instant future loads
+            # Batch backfill into local SQLite in a single transaction for instant future loads
             try:
-                for itm in items:
-                    local_db.insert_logs([{'name': itm['name'], 'men': itm['men'], 'women': itm['women'], 'source': itm.get('source', '')}], itm['ts'])
+                local_db.insert_logs_with_ts(items)
             except Exception:
                 pass
 

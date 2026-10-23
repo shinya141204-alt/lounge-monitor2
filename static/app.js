@@ -1066,13 +1066,14 @@
 
             // 30-min Momentum Tag (Shows when female count is actively rising)
             const momTag = node.querySelector('.momentum-tag');
+            const wDiff = Number(store.women_diff || 0);
+            const mDiff = Number(store.men_diff || 0);
             if (momTag) {
-                const wDiff = Number(store.women_diff || 0);
                 const votes = store.votes || {};
-                if (wDiff >= 3) {
+                if (wDiff >= 1) {
                     momTag.classList.remove('hidden');
                     momTag.textContent = `↗ +${wDiff}名`;
-                    momTag.title = `直近約30分で女性が${wDiff}名増えています`;
+                    momTag.title = `直近約30分で女性が+${wDiff}名増えています`;
                 } else if (votes.smooth > 0 && votes.smooth >= (votes.waiting || 0)) {
                     momTag.classList.remove('hidden');
                     momTag.textContent = `即入店報告`;
@@ -1107,6 +1108,29 @@
             node.querySelector('.stat.ladies .count').textContent = ladiesCount;
             node.querySelector('.stat.men .count').textContent = menCount;
 
+            const ladiesDiffEl = node.querySelector('.stat.ladies .stat-diff');
+            if (ladiesDiffEl) {
+                if (wDiff > 0) {
+                    ladiesDiffEl.classList.remove('hidden');
+                    ladiesDiffEl.textContent = `+${wDiff}`;
+                    ladiesDiffEl.title = `直近約30分で女性+${wDiff}名`;
+                } else {
+                    ladiesDiffEl.classList.add('hidden');
+                    ladiesDiffEl.textContent = '';
+                }
+            }
+            const menDiffEl = node.querySelector('.stat.men .stat-diff');
+            if (menDiffEl) {
+                if (mDiff > 0) {
+                    menDiffEl.classList.remove('hidden');
+                    menDiffEl.textContent = `+${mDiff}`;
+                    menDiffEl.title = `直近約30分で男性+${mDiff}名`;
+                } else {
+                    menDiffEl.classList.add('hidden');
+                    menDiffEl.textContent = '';
+                }
+            }
+
             // Gender ratio bar calculation
             const ladiesBar = node.querySelector('.bar-fill-ladies');
             const menBar = node.querySelector('.bar-fill-men');
@@ -1127,7 +1151,7 @@
             const stores = (data && data.ranking) || [];
             const storeSig = stores.map(s => {
                 const v = s.votes || {};
-                return `${s.name}:${s.women}:${s.men}:${s.women_diff || 0}:${v.smooth || 0}:${v.waiting || 0}`;
+                return `${s.name}:${s.women}:${s.men}:${s.women_diff || 0}:${s.men_diff || 0}:${v.smooth || 0}:${v.waiting || 0}`;
             }).join('|');
             const locSig = userLocation ? `${userLocation.lat.toFixed(3)},${userLocation.lng.toFixed(3)}` : '';
             const masterCount = window.STORE_MASTER ? Object.keys(window.STORE_MASTER).length : 0;
@@ -1850,7 +1874,7 @@
             }
 
             title.textContent = bInfo.fullDisplayTitle + " 読み込み中...";
-            banner.classList.add('hidden');
+            renderLiveComparisonBanner({ store_name: storeName });
 
             try {
                 const response = await fetch('/api/analysis/' + encodeURIComponent(storeName));
@@ -2532,48 +2556,62 @@
 
         function renderLiveComparisonBanner(data) {
             const banner = document.getElementById('live-comparison-banner');
+            const storeName = data && data.store_name ? data.store_name : currentModalStoreName;
             const liveStore = (window.lastData && window.lastData.ranking)
-                ? window.lastData.ranking.find(s => s.name === data.store_name)
+                ? window.lastData.ranking.find(s => s.name === storeName)
                 : null;
             if (!liveStore) {
                 banner.classList.add('hidden');
                 return;
             }
 
-            // Compute current JST business day and hour
-            const now = new Date();
-            const currentHour = now.getHours();
-            const bizDate = new Date(now);
-            if (currentHour <= 6) {
-                bizDate.setDate(bizDate.getDate() - 1);
+            const wDiff30 = Number(liveStore.women_diff || 0);
+            const mDiff30 = Number(liveStore.men_diff || 0);
+            let momentumBadge = '';
+            if (wDiff30 > 0 || mDiff30 > 0) {
+                const parts = [];
+                if (wDiff30 > 0) parts.push(`女性+${wDiff30}名`);
+                if (mDiff30 > 0) parts.push(`男性+${mDiff30}名`);
+                momentumBadge = `<span class="diff-badge hot">直近30分: ↗ ${parts.join(' / ')}</span>`;
             }
-            const jsDay = bizDate.getDay(); // 0=Sun, 1=Mon...
-            const dayKeys = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-            const dayLabels = ['日曜', '月曜', '火曜', '水曜', '木曜', '金曜', '土曜'];
-            const dayKey = dayKeys[jsDay];
-            const dayLabel = dayLabels[jsDay];
 
-            const avgW = (data.hourly_by_weekday && data.hourly_by_weekday[dayKey] && data.hourly_by_weekday[dayKey][currentHour] !== undefined)
-                ? data.hourly_by_weekday[dayKey][currentHour]
-                : (data.hourly ? (data.hourly[currentHour] || 0) : 0);
-
-            const diffW = +(liveStore.women - avgW).toFixed(1);
             let diffBadge = '';
-            if (avgW > 0 || liveStore.women > 0) {
-                if (diffW >= 5) {
-                    diffBadge = `<span class="diff-badge hot">普段の${dayLabel}${currentHour}時台平均(${avgW}人)より +${diffW}人 ↗</span>`;
-                } else if (diffW > 0) {
-                    diffBadge = `<span class="diff-badge up">普段の${dayLabel}${currentHour}時台平均(${avgW}人)より +${diffW}人 ↗</span>`;
-                } else if (diffW < 0) {
-                    diffBadge = `<span class="diff-badge down">普段の${dayLabel}${currentHour}時台平均(${avgW}人)より ${diffW}人</span>`;
-                } else {
-                    diffBadge = `<span class="diff-badge neutral">普段の${dayLabel}${currentHour}時台平均(${avgW}人)並み</span>`;
+            if (data && (data.hourly_by_weekday || data.hourly)) {
+                // Compute current JST business day and hour
+                const now = new Date();
+                const currentHour = now.getHours();
+                const bizDate = new Date(now);
+                if (currentHour <= 6) {
+                    bizDate.setDate(bizDate.getDate() - 1);
+                }
+                const jsDay = bizDate.getDay(); // 0=Sun, 1=Mon...
+                const dayKeys = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                const dayLabels = ['日曜', '月曜', '火曜', '水曜', '木曜', '金曜', '土曜'];
+                const dayKey = dayKeys[jsDay];
+                const dayLabel = dayLabels[jsDay];
+
+                const avgW = (data.hourly_by_weekday && data.hourly_by_weekday[dayKey] && data.hourly_by_weekday[dayKey][currentHour] !== undefined)
+                    ? data.hourly_by_weekday[dayKey][currentHour]
+                    : (data.hourly ? (data.hourly[currentHour] || 0) : 0);
+
+                const diffW = +(liveStore.women - avgW).toFixed(1);
+                if (avgW > 0 || liveStore.women > 0) {
+                    if (diffW >= 5) {
+                        diffBadge = `<span class="diff-badge hot">普段の${dayLabel}${currentHour}時台平均(${avgW}人)より +${diffW}人 ↗</span>`;
+                    } else if (diffW > 0) {
+                        diffBadge = `<span class="diff-badge up">普段の${dayLabel}${currentHour}時台平均(${avgW}人)より +${diffW}人 ↗</span>`;
+                    } else if (diffW < 0) {
+                        diffBadge = `<span class="diff-badge down">普段の${dayLabel}${currentHour}時台平均(${avgW}人)より ${diffW}人</span>`;
+                    } else {
+                        diffBadge = `<span class="diff-badge neutral">普段の${dayLabel}${currentHour}時台平均(${avgW}人)並み</span>`;
+                    }
                 }
             }
 
             banner.innerHTML = `
                 <div class="live-banner-counts">
                     <span>現在: <strong class="ladies-text">女性 ${liveStore.women}名</strong> / <strong class="men-text">男性 ${liveStore.men}名</strong></span>
+                    ${momentumBadge}
                     ${diffBadge}
                 </div>
             `;

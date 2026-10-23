@@ -89,6 +89,48 @@ def insert_logs(items, timestamp_str):
         finally:
             conn.close()
 
+
+def insert_logs_with_ts(items):
+    """
+    Batch-inserts records where each item has its own 'ts' field.
+    Prevents N+1 SQLite transactions when backfilling from Google Sheets.
+    """
+    if not items:
+        return 0
+
+    rows = []
+    for item in items:
+        ts = item.get('ts') or item.get('timestamp')
+        name = item.get('name') or item.get('store_name')
+        if not ts or not name:
+            continue
+        rows.append((
+            str(ts),
+            str(name),
+            int(item.get('men', 0) or 0),
+            int(item.get('women', 0) or 0),
+            str(item.get('source', '') or '')
+        ))
+
+    if not rows:
+        return 0
+
+    with _db_lock:
+        conn = get_connection()
+        try:
+            cur = conn.cursor()
+            cur.executemany("""
+                INSERT OR IGNORE INTO monitor_logs (timestamp, store_name, men, women, source)
+                VALUES (?, ?, ?, ?, ?)
+            """, rows)
+            conn.commit()
+            return cur.rowcount
+        except Exception as e:
+            print(f"[local_db] Batch insert error: {e}", file=sys.stderr)
+            return 0
+        finally:
+            conn.close()
+
 def get_store_history(store_name, days=30):
     """
     Retrieves history logs for a specific store from SQLite in milliseconds.
@@ -171,6 +213,79 @@ def get_db_stats():
     finally:
         conn.close()
 
+def sync_recent_from_google_sheets(hours=2):
+    """
+    Fast synchronous/priority sync of the last N hours (~600 rows, <0.5s) from Google Sheets
+    so that 30-min momentum (women_diff / men_diff) is immediately available on cold start / redeploy.
+    """
+    try:
+        import logger
+        access_token = logger.get_access_token()
+        spreadsheet_id = logger.get_spreadsheet_id()
+        if not access_token or not spreadsheet_id:
+            return 0
+
+        now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
+        start_dt = now_jst - datetime.timedelta(hours=hours)
+        start_ts_str = start_dt.strftime("%Y-%m-%d %H:%M:%S")
+
+        query = f"SELECT A, B, C, D, E WHERE A >= '{start_ts_str}'"
+        url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/gviz/tq?tq={urllib.parse.quote(query)}"
+        headers = {"Authorization": f"Bearer {access_token}"}
+
+        response = logger.http_session.get(url, headers=headers, timeout=10)
+        if response.status_code != 200:
+            return 0
+
+        text = response.text
+        if "google.visualization.Query.setResponse(" not in text:
+            return 0
+
+        json_str = text[text.find("{"):text.rfind("}") + 1]
+        data_json = json.loads(json_str)
+        rows = data_json.get('table', {}).get('rows', [])
+        if not rows:
+            return 0
+
+        batch = []
+        for row in rows:
+            cols = row.get('c', [])
+            if len(cols) >= 4:
+                ts_val = (cols[0].get('v') or cols[0].get('f')) if cols[0] else None
+                name_val = cols[1].get('v') if cols[1] else None
+                men_val = cols[2].get('v') if cols[2] else 0
+                women_val = cols[3].get('v') if cols[3] else 0
+                src_val = cols[4].get('v') if len(cols) > 4 and cols[4] else ''
+                if ts_val and name_val:
+                    batch.append((
+                        str(ts_val),
+                        str(name_val),
+                        int(men_val) if men_val is not None else 0,
+                        int(women_val) if women_val is not None else 0,
+                        str(src_val)
+                    ))
+
+        if not batch:
+            return 0
+
+        with _db_lock:
+            conn = get_connection()
+            try:
+                cur = conn.cursor()
+                cur.executemany("""
+                    INSERT OR IGNORE INTO monitor_logs (timestamp, store_name, men, women, source)
+                    VALUES (?, ?, ?, ?, ?)
+                """, batch)
+                conn.commit()
+                print(f"[local_db] Fast recent sync complete! Imported {len(batch)} rows (last {hours}h).")
+                return len(batch)
+            finally:
+                conn.close()
+    except Exception as e:
+        print(f"[local_db] Fast recent sync error: {e}", file=sys.stderr)
+        return 0
+
+
 def sync_from_google_sheets(days=14):
     """
     Background worker that syncs the last N days of data from Google Sheets into SQLite.
@@ -183,6 +298,9 @@ def sync_from_google_sheets(days=14):
 
     _sync_in_progress = True
     try:
+        # Step 1: Prioritize the last 2 hours first so 30-min momentum works within 0.5s of boot
+        sync_recent_from_google_sheets(hours=2)
+
         print(f"[local_db] Starting background sync from Google Sheets (last {days} days)...")
         import logger
         access_token = logger.get_access_token()
@@ -268,27 +386,34 @@ def get_snapshot_around(minutes_ago_min=15, minutes_ago_max=50):
     """
     Returns {store_name: {'men': m, 'women': w}} from ~20-45 minutes ago
     to calculate real-time crowd momentum.
+    Automatically widens window to 8-75 mins if the primary window has no snapshot.
     """
     now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
-    start_ts = (now_jst - datetime.timedelta(minutes=minutes_ago_max)).strftime("%Y-%m-%d %H:%M:%S")
-    end_ts = (now_jst - datetime.timedelta(minutes=minutes_ago_min)).strftime("%Y-%m-%d %H:%M:%S")
+    windows = [(minutes_ago_min, minutes_ago_max)]
+    if minutes_ago_min == 15 and minutes_ago_max == 50:
+        windows.append((8, 75))
     try:
         conn = get_connection()
         try:
             cur = conn.cursor()
-            cur.execute("""
-                SELECT store_name, men, women, timestamp
-                FROM monitor_logs
-                WHERE timestamp >= ? AND timestamp <= ?
-                ORDER BY timestamp DESC
-            """, (start_ts, end_ts))
-            rows = cur.fetchall()
-            result = {}
-            for r in rows:
-                sname = r['store_name']
-                if sname not in result:
-                    result[sname] = {'men': r['men'], 'women': r['women'], 'ts': r['timestamp']}
-            return result
+            for w_min, w_max in windows:
+                start_ts = (now_jst - datetime.timedelta(minutes=w_max)).strftime("%Y-%m-%d %H:%M:%S")
+                end_ts = (now_jst - datetime.timedelta(minutes=w_min)).strftime("%Y-%m-%d %H:%M:%S")
+                cur.execute("""
+                    SELECT store_name, men, women, timestamp
+                    FROM monitor_logs
+                    WHERE timestamp >= ? AND timestamp <= ?
+                    ORDER BY timestamp DESC
+                """, (start_ts, end_ts))
+                rows = cur.fetchall()
+                if rows:
+                    result = {}
+                    for r in rows:
+                        sname = r['store_name']
+                        if sname not in result:
+                            result[sname] = {'men': r['men'], 'women': r['women'], 'ts': r['timestamp']}
+                    return result
+            return {}
         finally:
             conn.close()
     except Exception:

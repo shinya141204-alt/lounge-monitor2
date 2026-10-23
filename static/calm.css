@@ -144,12 +144,26 @@ body:not(.theme-light) .brand-badge {
 }
 
 /* 店舗カード上の小さなバッジ（特典・増加中など） */
-body:not(.theme-light) .event-tag-badge,
-body:not(.theme-light) .momentum-tag {
+body:not(.theme-light) .event-tag-badge {
     background: transparent !important;
     border: 1px solid var(--calm-border-strong) !important;
     color: var(--calm-accent) !important;
     box-shadow: none !important;
+}
+
+body:not(.theme-light) .momentum-tag {
+    background: rgba(216, 161, 170, 0.16) !important;
+    border: 1px solid rgba(216, 161, 170, 0.48) !important;
+    color: #f0bcc4 !important;
+    box-shadow: none !important;
+}
+
+body:not(.theme-light) .stat.ladies .stat-diff {
+    color: #e4a5b0 !important;
+}
+
+body:not(.theme-light) .stat.men .stat-diff {
+    color: #93b1c9 !important;
 }
 
 /* ---------- 4. ボタン類：グラデーション＋発光 → 落ち着いた面＋細い線 ---------- */

@@ -76,6 +76,8 @@ class PageRouteTests(unittest.TestCase):
 
     def test_public_pages_return_200(self):
         paths = ['/', '/columns', '/areas', '/area/shinjuku', '/area/nagoya', '/area/tokyo-east',
+                 '/oriental-lounge', '/ag', '/jis',
+                 '/store/oriental-lounge-shinjuku', '/store/ag-shibuya', '/store/jis-shinjuku',
                  '/grooming', '/privacy', '/guide', '/guide/brand-comparison', '/guide/weekday-strategy',
                  '/guide/shinjuku', '/guide/solo-vs-pair', '/guide/second-venue', '/guide/first-10-minutes',
                  '/robots.txt', '/sitemap.xml', '/api/status', '/api/health', '/static/store_master.json']
@@ -84,7 +86,10 @@ class PageRouteTests(unittest.TestCase):
             for p in paths:
                 with self.subTest(path=p):
                     r = self.client.get(p, headers={'User-Agent': 'Mozilla/5.0 test'})
-                    self.assertEqual(r.status_code, 200, p)
+                    try:
+                        self.assertEqual(r.status_code, 200, p)
+                    finally:
+                        r.close()
 
     def test_staff_analytics_requires_login(self):
         r = self.client.get('/staff/analytics')
@@ -315,16 +320,55 @@ class ScrapeIntervalTests(unittest.TestCase):
         self.assertEqual(app_module.fetch_interval_sec(datetime.datetime(2026, 10, 24, 2, 0, tzinfo=jst)), 60)
 
 
+class MomentumTests(unittest.TestCase):
+    """30分前比の人数増減（women_diff / men_diff）計算とSSR表示の検証"""
+
+    def test_snapshot_around_and_ssr_momentum(self):
+        now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
+        ts_30m_ago = (now_jst - datetime.timedelta(minutes=30)).strftime('%Y-%m-%d %H:%M:%S')
+        local_db.insert_logs_with_ts([
+            {'ts': ts_30m_ago, 'name': 'OLG 恵比寿', 'men': 20, 'women': 40, 'source': 'oriental'},
+            {'ts': ts_30m_ago, 'name': 'OLG 新宿', 'men': 30, 'women': 50, 'source': 'oriental'},
+        ])
+        snap = local_db.get_snapshot_around(15, 50)
+        self.assertIn('OLG 恵比寿', snap)
+        self.assertEqual(snap['OLG 恵比寿']['women'], 40)
+        self.assertEqual(snap['OLG 恵比寿']['men'], 20)
+
+        # Verify SSR renders both .momentum-tag and .stat-diff when women_diff / men_diff > 0
+        with app_module.data_lock:
+            for s in app_module.latest_data['full_data']:
+                if s['name'] == 'OLG 恵比寿':
+                    s['women'] = 55
+                    s['men'] = 28
+                    s['women_diff'] = 15
+                    s['men_diff'] = 8
+                    break
+        client = app_module.app.test_client()
+        r = client.get('/')
+        html = r.data.decode('utf-8')
+        self.assertIn('↗ +15名', html)
+        self.assertIn('+15</span>', html)
+        self.assertIn('+8</span>', html)
+
+
 class FrontendSyntaxTests(unittest.TestCase):
-    """app.js の構文チェック（node が使える環境のみ）"""
+    """app.js の構文チェック（node または macOS jsc）"""
 
     def test_app_js_syntax(self):
-        node = shutil.which('node') or os.environ.get('NODE_BIN')
-        if not node:
-            self.skipTest('node が見つからないためスキップ（NODE_BIN で指定可能）')
         import subprocess
-        r = subprocess.run([node, '--check', os.path.join(ROOT, 'static', 'app.js')], capture_output=True, text=True)
-        self.assertEqual(r.returncode, 0, r.stderr)
+        js_path = os.path.join(ROOT, 'static', 'app.js')
+        node = shutil.which('node') or os.environ.get('NODE_BIN')
+        if node:
+            r = subprocess.run([node, '--check', js_path], capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            return
+        jsc = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
+        if os.path.exists(jsc):
+            r = subprocess.run([jsc, '-e', f"new Function(readFile({json.dumps(js_path)}));"], capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            return
+        self.skipTest('node / jsc が見つからないためスキップ')
 
     def test_store_master_json_is_valid(self):
         with open(os.path.join(ROOT, 'static', 'store_master.json'), encoding='utf-8') as f:

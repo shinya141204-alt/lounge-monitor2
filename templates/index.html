@@ -91,11 +91,11 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/style.css?v=20261023_11">
+    <link rel="stylesheet" href="/static/style.css?v=20261023_12">
     {% if not is_staff %}
     <script src="/static/affiliate_config.js?v=7"></script>
     {% endif %}
-    <link rel="stylesheet" href="/static/calm.css?v=3">
+    <link rel="stylesheet" href="/static/calm.css?v=4">
 </head>
 
 <body class="{% if is_staff %}staff-mode{% endif %}">
@@ -1082,8 +1082,8 @@
                             <div class="store-meta-row">
                                 <span class="brand-badge {{ s.ssr_brand_cls }}">{{ s.ssr_brand }}</span>
                                 <span class="distance-tag hidden"></span>
-                                {% if (s.women_diff or 0) >= 3 %}
-                                <span class="momentum-tag">↗ +{{ s.women_diff }}名</span>
+                                {% if (s.women_diff or 0) >= 1 %}
+                                <span class="momentum-tag" title="直近約30分で女性が+{{ s.women_diff }}名増えています">↗ +{{ s.women_diff }}名</span>
                                 {% else %}
                                 <span class="momentum-tag hidden"></span>
                                 {% endif %}
@@ -1111,11 +1111,25 @@
                         </div>
                         <div class="stats-group">
                             <div class="stat ladies">
-                                <span class="count">{{ s.women or 0 }}</span>
+                                <div class="stat-num-row">
+                                    <span class="count">{{ s.women or 0 }}</span>
+                                    {% if (s.women_diff or 0) > 0 %}
+                                    <span class="stat-diff" title="直近約30分で女性+{{ s.women_diff }}名">+{{ s.women_diff }}</span>
+                                    {% else %}
+                                    <span class="stat-diff hidden"></span>
+                                    {% endif %}
+                                </div>
                                 <span class="label">LADIES</span>
                             </div>
                             <div class="stat men">
-                                <span class="count">{{ s.men or 0 }}</span>
+                                <div class="stat-num-row">
+                                    <span class="count">{{ s.men or 0 }}</span>
+                                    {% if (s.men_diff or 0) > 0 %}
+                                    <span class="stat-diff" title="直近約30分で男性+{{ s.men_diff }}名">+{{ s.men_diff }}</span>
+                                    {% else %}
+                                    <span class="stat-diff hidden"></span>
+                                    {% endif %}
+                                </div>
                                 <span class="label">MEN</span>
                             </div>
                         </div>
@@ -1461,11 +1475,17 @@
             </div>
             <div class="stats-group">
                 <div class="stat ladies">
-                    <span class="count">0</span>
+                    <div class="stat-num-row">
+                        <span class="count">0</span>
+                        <span class="stat-diff hidden"></span>
+                    </div>
                     <span class="label">LADIES</span>
                 </div>
                 <div class="stat men">
-                    <span class="count">0</span>
+                    <div class="stat-num-row">
+                        <span class="count">0</span>
+                        <span class="stat-diff hidden"></span>
+                    </div>
                     <span class="label">MEN</span>
                 </div>
             </div>
@@ -1485,12 +1505,12 @@
         window.INITIAL_STATUS_DATA = {{ initial_status | tojson }};
         {% endif %}
     </script>
-    <script src="/static/app.js?v=20261023_16" defer></script>
+    <script src="/static/app.js?v=20261023_17" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js?v=20')
+                navigator.serviceWorker.register('/sw.js?v=21')
                     .then(reg => {
                         reg.update();
                     })

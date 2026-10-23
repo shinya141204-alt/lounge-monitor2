@@ -278,8 +278,8 @@
                         <span style="font-size: 0.75rem; color: #94a3b8;">女性比 {{ wpct if tot > 0 else 0 }}%</span>
                     </div>
                     <div class="live-counts-row">
-                        <span class="tot-w">👩 女性 {{ s.women }}名</span>
-                        <span class="tot-m">👨 男性 {{ s.men }}名</span>
+                        <span class="tot-w">👩 女性 {{ s.women }}名{% if (s.women_diff or 0) > 0 %} <small style="font-size:0.74rem; opacity:0.9;">(↗ +{{ s.women_diff }})</small>{% endif %}</span>
+                        <span class="tot-m">👨 男性 {{ s.men }}名{% if (s.men_diff or 0) > 0 %} <small style="font-size:0.74rem; opacity:0.9;">(↗ +{{ s.men_diff }})</small>{% endif %}</span>
                     </div>
                     <div class="ratio-bar">
                         <div class="ratio-fill-w" style="width: {{ wpct }}%;"></div>
@@ -348,8 +348,8 @@
                         <span style="font-size: 0.74rem; color: #94a3b8;">女性比 {{ wpct if tot > 0 else 0 }}%</span>
                     </div>
                     <div class="live-counts-row">
-                        <span class="tot-w">👩 女性 {{ s.women }}名</span>
-                        <span class="tot-m">👨 男性 {{ s.men }}名</span>
+                        <span class="tot-w">👩 女性 {{ s.women }}名{% if (s.women_diff or 0) > 0 %} <small style="font-size:0.74rem; opacity:0.9;">(↗ +{{ s.women_diff }})</small>{% endif %}</span>
+                        <span class="tot-m">👨 男性 {{ s.men }}名{% if (s.men_diff or 0) > 0 %} <small style="font-size:0.74rem; opacity:0.9;">(↗ +{{ s.men_diff }})</small>{% endif %}</span>
                     </div>
                     <div class="ratio-bar">
                         <div class="ratio-fill-w" style="width: {{ wpct }}%;"></div>
