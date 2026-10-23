@@ -4,77 +4,735 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
-    <title>アクセス集計（スタッフ専用）｜相席ナビ</title>
+    <title>アクセス集計ダッシュボード（スタッフ専用）｜相席ナビ</title>
     <style>
-        body { margin: 0; background: #0a0a0f; color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", Meiryo, sans-serif; line-height: 1.6; }
-        .wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 60px; }
-        h1 { font-size: 1.3rem; margin: 0 0 6px; }
-        .sub { color: #94a3b8; font-size: 0.82rem; margin-bottom: 18px; }
-        .range a { color: #cbd5e1; margin-right: 10px; text-decoration: none; padding: 4px 10px; border: 1px solid rgba(255,255,255,0.15); border-radius: 999px; font-size: 0.8rem; }
-        .range a.active { background: rgba(236,72,153,0.25); border-color: #ec4899; color: #fff; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin: 18px 0 26px; }
-        .card { background: rgba(22,22,34,0.9); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 12px; }
-        .card .k { font-size: 0.74rem; color: #94a3b8; }
-        .card .v { font-size: 1.4rem; font-weight: 800; }
-        h2 { font-size: 1rem; margin: 26px 0 8px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 6px; }
-        table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
-        td, th { padding: 6px 8px; border-bottom: 1px solid rgba(255,255,255,0.06); text-align: left; }
-        td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
-        .empty { color: #64748b; font-size: 0.82rem; }
-        a.back { color: #38bdf8; font-size: 0.82rem; }
+        :root {
+            --bg: #0f1014;
+            --surface: #16171c;
+            --surface-2: #1d1f26;
+            --border: rgba(255, 255, 255, 0.08);
+            --border-strong: rgba(255, 255, 255, 0.15);
+            --text: #f1efe9;
+            --sub: #9b978f;
+            --gold: #c8a46e;
+            --gold-soft: rgba(200, 164, 110, 0.15);
+            --rose: #d8a1aa;
+            --rose-soft: rgba(216, 161, 170, 0.16);
+            --blue: #93b1c9;
+            --blue-soft: rgba(147, 177, 201, 0.16);
+            --green: #7bc49f;
+            --green-soft: rgba(123, 196, 159, 0.16);
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", Meiryo, sans-serif;
+            line-height: 1.55;
+        }
+        .wrap {
+            max-width: 1120px;
+            margin: 0 auto;
+            padding: 20px 16px 70px;
+        }
+        /* Top Bar */
+        .top-nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+        a.back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--text);
+            text-decoration: none;
+            font-size: 0.84rem;
+            font-weight: 600;
+            padding: 7px 14px;
+            border-radius: 999px;
+            background: var(--surface);
+            border: 1px solid var(--border-strong);
+        }
+        a.back-btn:hover { border-color: var(--gold); }
+        .top-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .flush-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            color: #f1e3cb;
+            text-decoration: none;
+            font-size: 0.8rem;
+            font-weight: 700;
+            padding: 7px 13px;
+            border-radius: 999px;
+            background: var(--surface-2);
+            border: 1px solid rgba(200, 164, 110, 0.45);
+        }
+        .flush-btn:hover { background: var(--gold-soft); }
+
+        .toast-notice {
+            margin-bottom: 14px;
+            padding: 10px 14px;
+            border-radius: 10px;
+            background: var(--green-soft);
+            border: 1px solid rgba(123, 196, 159, 0.4);
+            color: #d3f3e2;
+            font-size: 0.83rem;
+            font-weight: 600;
+        }
+
+        /* Header & Period Tabs */
+        .header-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 18px 20px;
+            margin-bottom: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 14px;
+        }
+        .header-title h1 {
+            font-size: 1.28rem;
+            margin: 0 0 4px;
+            letter-spacing: 0.02em;
+        }
+        .header-title .sub {
+            color: var(--sub);
+            font-size: 0.78rem;
+            margin: 0;
+        }
+        .range-tabs {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .range-tabs a {
+            color: var(--sub);
+            text-decoration: none;
+            padding: 6px 13px;
+            border: 1px solid var(--border-strong);
+            border-radius: 999px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            background: var(--bg);
+        }
+        .range-tabs a.active {
+            background: var(--gold-soft);
+            border-color: var(--gold);
+            color: #f5e6cc;
+        }
+
+        /* Funnel + Revenue Overview Row */
+        .overview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .funnel-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 16px;
+            position: relative;
+        }
+        .funnel-card.highlight-gold {
+            border-color: rgba(200, 164, 110, 0.4);
+            background: linear-gradient(180deg, rgba(200, 164, 110, 0.08) 0%, var(--surface) 100%);
+        }
+        .step-badge {
+            display: inline-block;
+            font-size: 0.68rem;
+            font-weight: 800;
+            padding: 2px 8px;
+            border-radius: 999px;
+            margin-bottom: 8px;
+            letter-spacing: 0.04em;
+        }
+        .step-1 { background: var(--blue-soft); color: var(--blue); border: 1px solid rgba(147, 177, 201, 0.35); }
+        .step-2 { background: var(--rose-soft); color: var(--rose); border: 1px solid rgba(216, 161, 170, 0.35); }
+        .step-3 { background: var(--green-soft); color: var(--green); border: 1px solid rgba(123, 196, 159, 0.35); }
+        .step-rev { background: var(--gold-soft); color: var(--gold); border: 1px solid rgba(200, 164, 110, 0.45); }
+
+        .funnel-label {
+            font-size: 0.8rem;
+            color: var(--sub);
+            font-weight: 600;
+        }
+        .funnel-num-row {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            margin: 4px 0 6px;
+        }
+        .funnel-big {
+            font-size: 1.85rem;
+            font-weight: 800;
+            font-variant-numeric: tabular-nums;
+            line-height: 1.1;
+        }
+        .funnel-unit {
+            font-size: 0.85rem;
+            color: var(--sub);
+            font-weight: 600;
+        }
+        .funnel-rate {
+            margin-left: auto;
+            font-size: 0.76rem;
+            font-weight: 800;
+            padding: 2px 8px;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.06);
+        }
+        .funnel-breakdown {
+            font-size: 0.74rem;
+            color: var(--sub);
+            border-top: 1px solid var(--border);
+            padding-top: 8px;
+            margin-top: 6px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px 12px;
+        }
+        .funnel-breakdown strong { color: var(--text); }
+
+        /* Action Mini Grid */
+        .mini-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
+            gap: 10px;
+            margin-bottom: 24px;
+        }
+        .mini-kpi {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 11px;
+            padding: 11px 13px;
+        }
+        .mini-kpi .k { font-size: 0.73rem; color: var(--sub); margin-bottom: 2px; }
+        .mini-kpi .v { font-size: 1.25rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+
+        /* Section Panels */
+        .panel-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+            gap: 16px;
+            margin-bottom: 22px;
+        }
+        .panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 16px 18px;
+        }
+        .panel h2 {
+            font-size: 0.98rem;
+            margin: 0 0 4px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .panel .panel-sub {
+            font-size: 0.75rem;
+            color: var(--sub);
+            margin: 0 0 12px;
+        }
+
+        /* Visual Bar List */
+        .bar-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .bar-item {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 9px 12px;
+        }
+        .bar-item-top {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 5px;
+        }
+        .bar-item-title {
+            font-size: 0.84rem;
+            font-weight: 700;
+            color: var(--text);
+            text-decoration: none;
+            word-break: break-word;
+        }
+        a.bar-item-title:hover { color: var(--gold); text-decoration: underline; }
+        .bar-item-sub {
+            font-size: 0.71rem;
+            color: var(--sub);
+            display: block;
+            margin-top: 1px;
+        }
+        .bar-item-nums {
+            display: flex;
+            align-items: baseline;
+            gap: 6px;
+            flex-shrink: 0;
+            font-variant-numeric: tabular-nums;
+        }
+        .bar-item-count {
+            font-size: 0.95rem;
+            font-weight: 800;
+            color: var(--text);
+        }
+        .bar-item-share {
+            font-size: 0.71rem;
+            color: var(--sub);
+        }
+        .bar-track {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 999px;
+            overflow: hidden;
+        }
+        .bar-fill {
+            height: 100%;
+            border-radius: 999px;
+            background: var(--gold);
+        }
+        .bar-fill.rose { background: var(--rose); }
+        .bar-fill.blue { background: var(--blue); }
+        .bar-fill.green { background: var(--green); }
+
+        /* Daily Visual Chart */
+        .daily-chart-bars {
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+            height: 130px;
+            padding: 16px 8px 6px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 14px;
+            overflow-x: auto;
+        }
+        .day-col {
+            flex: 1;
+            min-width: 42px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100%;
+            justify-content: flex-end;
+        }
+        .day-col-val {
+            font-size: 0.68rem;
+            color: var(--sub);
+            font-variant-numeric: tabular-nums;
+            margin-bottom: 4px;
+        }
+        .day-col-bar {
+            width: 24px;
+            background: var(--blue);
+            border-radius: 5px 5px 0 0;
+            min-height: 4px;
+        }
+        .day-col.is-today .day-col-bar {
+            background: var(--gold);
+        }
+        .day-col-date {
+            font-size: 0.7rem;
+            color: var(--sub);
+            margin-top: 6px;
+            white-space: nowrap;
+        }
+        .day-col.is-today .day-col-date {
+            color: var(--gold);
+            font-weight: 800;
+        }
+
+        /* Daily Table */
+        table.daily-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.82rem;
+        }
+        .daily-table th, .daily-table td {
+            padding: 8px 10px;
+            border-bottom: 1px solid var(--border);
+            text-align: left;
+        }
+        .daily-table th { color: var(--sub); font-weight: 600; font-size: 0.75rem; }
+        .daily-table td.n, .daily-table th.n {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+        .day-tag {
+            display: inline-block;
+            font-size: 0.65rem;
+            font-weight: 800;
+            padding: 1px 6px;
+            border-radius: 4px;
+            margin-left: 6px;
+            background: var(--gold-soft);
+            color: var(--gold);
+        }
+        .empty-box {
+            padding: 20px;
+            text-align: center;
+            color: var(--sub);
+            font-size: 0.82rem;
+            background: var(--bg);
+            border-radius: 10px;
+            border: 1px dashed var(--border-strong);
+        }
     </style>
 </head>
 <body>
 <div class="wrap">
-    <a class="back" href="/staff">← 業務モニターへ戻る</a>
-    <h1>📊 アクセス集計（直近{{ days }}日 / {{ data.since }}〜）</h1>
-    <div class="sub">個人を特定する情報は保存していません。ボット・クローラーは除外しています。数値は10分ごとに Google Sheets「Analytics Daily」へ保存されます。</div>
-    <div class="range">
-        {% for d in [1, 7, 30, 90] %}
-        <a href="?days={{ d }}" class="{% if d == days %}active{% endif %}">{{ d }}日</a>
-        {% endfor %}
-        <a href="?days={{ days }}&format=json">JSON</a>
+    <div class="top-nav">
+        <a class="back-btn" href="/staff">← 社内業務モニターへ戻る</a>
+        <div class="top-actions">
+            <a class="flush-btn" href="/staff/analytics?days={{ days }}&flush=1">🔄 いまの最新カウントを即時集計</a>
+            <a class="back-btn" href="/staff/analytics?days={{ days }}&format=json" style="font-size:0.75rem;">JSON出力</a>
+        </div>
     </div>
 
-    {% set labels = {
-        'page_view': '👀 ページ閲覧', 'affiliate_click': '💰 アフィリエイト',
-        'store_open': '🏪 店舗詳細を開いた', 'map_cafe': '☕ 夜カフェ検索', 'map_bar': '🍸 バー検索',
-        'official_click': '🌐 公式サイト', 'sns_click': '📣 SNS導線', 'share': '🔗 共有', 'vote': '🙋 現場投票'
-    } %}
-
-    <div class="grid">
-        {% for ev, cnt in data.by_event.items() %}
-        <div class="card"><div class="k">{{ labels.get(ev, ev) }}</div><div class="v">{{ cnt }}</div></div>
-        {% else %}
-        <div class="empty">まだ集計データがありません。</div>
-        {% endfor %}
+    {% if flushed %}
+    <div class="toast-notice">
+        ✅ メモリ内の最新アクセスデータを Google Sheets へ保存し、最新の数値に更新しました。
     </div>
-
-    {% for ev, rows in data.by_label.items() %}
-    <h2>{{ labels.get(ev, ev) }} の内訳（上位15件）</h2>
-    <table>
-        <tr><th>ラベル</th><th class="n">件数</th></tr>
-        {% for label, cnt in rows %}
-        <tr><td>{{ label or '-' }}</td><td class="n">{{ cnt }}</td></tr>
-        {% endfor %}
-    </table>
-    {% endfor %}
-
-    {% if data.by_day %}
-    <h2>📅 日別推移</h2>
-    <table>
-        <tr><th>日付</th><th class="n">閲覧</th><th class="n">アフィリエイト</th><th class="n">店舗詳細</th><th class="n">マップ検索</th></tr>
-        {% for d, evs in data.by_day.items() %}
-        <tr>
-            <td>{{ d }}</td>
-            <td class="n">{{ evs.get('page_view', 0) }}</td>
-            <td class="n">{{ evs.get('affiliate_click', 0) }}</td>
-            <td class="n">{{ evs.get('store_open', 0) }}</td>
-            <td class="n">{{ evs.get('map_cafe', 0) + evs.get('map_bar', 0) }}</td>
-        </tr>
-        {% endfor %}
-    </table>
     {% endif %}
+
+    <div class="header-card">
+        <div class="header-title">
+            <h1>📊 相席ナビ アクセス＆収益アクション集計</h1>
+            <p class="sub">対象期間：直近{{ days }}日間（{{ data.since }} 〜 {{ data.today }}）｜ボット・検索クローラーを除外した純粋なユーザー行動</p>
+        </div>
+        <div class="range-tabs">
+            <a href="?days=1" class="{% if days == 1 %}active{% endif %}">今日 (1日)</a>
+            <a href="?days=7" class="{% if days == 7 %}active{% endif %}">直近7日</a>
+            <a href="?days=30" class="{% if days == 30 %}active{% endif %}">直近30日</a>
+            <a href="?days=90" class="{% if days == 90 %}active{% endif %}">直近90日</a>
+        </div>
+    </div>
+
+    {% set f = data.funnel %}
+    {% set rev = data.revenue %}
+
+    <!-- 3-Step Funnel + Estimated Revenue Overview -->
+    <div class="overview-grid">
+        <div class="funnel-card">
+            <span class="step-badge step-1">STEP 1｜サイトの集客力</span>
+            <div class="funnel-label">👀 総ページ閲覧数（PV）</div>
+            <div class="funnel-num-row">
+                <span class="funnel-big">{{ f.pv_total }}</span>
+                <span class="funnel-unit">回閲覧</span>
+            </div>
+            <div class="funnel-breakdown">
+                <span>トップ画面: <strong>{{ f.pv_total - f.article_views }}</strong></span>
+                <span>コラム・個別ページ: <strong>{{ f.article_views }}</strong></span>
+            </div>
+        </div>
+
+        <div class="funnel-card">
+            <span class="step-badge step-2">STEP 2｜興味・掘り下げ</span>
+            <div class="funnel-label">🏪 店舗グラフ表示・記事回遊</div>
+            <div class="funnel-num-row">
+                <span class="funnel-big">{{ f.engagement_total }}</span>
+                <span class="funnel-unit">回</span>
+                <span class="funnel-rate" title="PVに対する反応率">反応率 {{ f.engagement_rate_pct }}%</span>
+            </div>
+            <div class="funnel-breakdown">
+                <span>店舗タップ: <strong>{{ f.store_open_total }}</strong></span>
+                <span>記事閲覧: <strong>{{ f.article_views }}</strong></span>
+                <span>現場投票: <strong>{{ f.vote_total }}</strong></span>
+            </div>
+        </div>
+
+        <div class="funnel-card">
+            <span class="step-badge step-3">STEP 3｜外部送客・収益行動</span>
+            <div class="funnel-label">🚀 広告・マップ・公式・SNSクリック</div>
+            <div class="funnel-num-row">
+                <span class="funnel-big">{{ f.action_total }}</span>
+                <span class="funnel-unit">回</span>
+                <span class="funnel-rate" title="PVに対する外部誘導率">誘導率 {{ f.action_rate_pct }}%</span>
+            </div>
+            <div class="funnel-breakdown">
+                <span>広告クリック: <strong>{{ f.aff_total }}</strong></span>
+                <span>2軒目マップ: <strong>{{ f.map_total }}</strong></span>
+                <span>公式・SNS・共有: <strong>{{ f.official_total + f.sns_total + f.share_total }}</strong></span>
+            </div>
+        </div>
+
+        <div class="funnel-card highlight-gold">
+            <span class="step-badge step-rev">💰 収益換算シミュレーター（目安）</span>
+            <div class="funnel-label">期間内の推定収益（AdSense＋アフィリエイト期待値）</div>
+            <div class="funnel-num-row">
+                <span class="funnel-big" style="color: var(--gold);">¥{{ "{:,}".format(rev.est_total_yen) }}</span>
+                <span class="funnel-rate" style="color: #f5e6cc;">月換算 約¥{{ "{:,}".format(rev.est_monthly_pace_yen) }}/月</span>
+            </div>
+            <div class="funnel-breakdown">
+                <span>AdSense目安: <strong>¥{{ "{:,}".format(rev.est_adsense_yen) }}</strong> <small>(0.35円/PV)</small></span>
+                <span>アフィリ期待値: <strong>¥{{ "{:,}".format(rev.est_aff_yen) }}</strong> <small>({{ f.aff_total }}click)</small></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detailed Action Counters -->
+    <div class="mini-kpi-grid">
+        <div class="mini-kpi"><div class="k">👀 ページ閲覧 (PV)</div><div class="v">{{ f.pv_total }}</div></div>
+        <div class="mini-kpi"><div class="k">🏪 店舗カードをタップ</div><div class="v">{{ f.store_open_total }}</div></div>
+        <div class="mini-kpi"><div class="k">💰 アフィリエイトクリック</div><div class="v" style="color: var(--gold);">{{ f.aff_total }}</div></div>
+        <div class="mini-kpi"><div class="k">☕ 2軒目：夜カフェ検索</div><div class="v">{{ data.by_event.get('map_cafe', 0) }}</div></div>
+        <div class="mini-kpi"><div class="k">🍸 2軒目：バー検索</div><div class="v">{{ data.by_event.get('map_bar', 0) }}</div></div>
+        <div class="mini-kpi"><div class="k">🌐 店舗公式サイトへ遷移</div><div class="v">{{ f.official_total }}</div></div>
+        <div class="mini-kpi"><div class="k">📣 X / note / Threads へ</div><div class="v">{{ f.sns_total }}</div></div>
+        <div class="mini-kpi"><div class="k">🔗 LINE・Xで友達に共有</div><div class="v">{{ f.share_total }}</div></div>
+        <div class="mini-kpi"><div class="k">🙋 現場レポート投票</div><div class="v">{{ f.vote_total }}</div></div>
+    </div>
+
+    <!-- Daily Trend Chart & Table -->
+    <div class="panel" style="margin-bottom: 22px;">
+        <h2>
+            <span>📅 日別アクセス・アクション推移</span>
+            <span style="font-size: 0.75rem; color: var(--sub); font-weight: 500;">棒グラフ＝1日あたりのページ閲覧数(PV)</span>
+        </h2>
+        <p class="panel-sub">週末（金・土）やSNS・note投稿日のアクセス増加がひと目でわかります。</p>
+
+        {% if data.daily_series %}
+        <div class="daily-chart-bars">
+            {% for d in data.daily_series %}
+            <div class="day-col {% if d.is_today %}is-today{% endif %}">
+                <span class="day-col-val">{{ d.pv }}</span>
+                <div class="day-col-bar" style="height: {{ d.pv_bar_pct }}%;" title="{{ d.date }}: {{ d.pv }} PV"></div>
+                <span class="day-col-date">{{ d.short_date }}{% if d.is_today %}(今日){% endif %}</span>
+            </div>
+            {% endfor %}
+        </div>
+
+        <table class="daily-table">
+            <thead>
+                <tr>
+                    <th>日付</th>
+                    <th class="n">👀 ページ閲覧(PV)</th>
+                    <th class="n">🏪 店舗グラフ表示</th>
+                    <th class="n">💰 広告クリック</th>
+                    <th class="n">🍸 2軒目マップ</th>
+                    <th class="n">📣 SNS・公式・共有</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for d in data.daily_series | reverse %}
+                <tr>
+                    <td>
+                        <strong>{{ d.date }}</strong>
+                        {% if d.is_today %}<span class="day-tag">今日</span>{% elif d.is_yesterday %}<span class="day-tag" style="opacity:0.75;">昨日</span>{% endif %}
+                    </td>
+                    <td class="n"><strong>{{ d.pv }}</strong></td>
+                    <td class="n">{{ d.store_open }}</td>
+                    <td class="n" style="color: var(--gold); font-weight: 700;">{{ d.affiliate }}</td>
+                    <td class="n">{{ d.map }}</td>
+                    <td class="n">{{ d.sns_official }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-box">まだ日別データがありません。</div>
+        {% endif %}
+    </div>
+
+    <!-- 2-Column Visual Breakdown Panels -->
+    <div class="panel-grid">
+        <!-- 1. Popular Pages & Articles -->
+        <div class="panel">
+            <h2>📄 よく読まれているページ・コラム記事</h2>
+            <p class="panel-sub">どのページに人が集まっているか（タップで実際のページを開けます）</p>
+            {% set pv_rows = data.by_label_pretty.get('page_view', []) %}
+            {% if pv_rows %}
+            <div class="bar-list">
+                {% for r in pv_rows %}
+                <div class="bar-item">
+                    <div class="bar-item-top">
+                        <div>
+                            {% if r.href %}
+                            <a class="bar-item-title" href="{{ r.href }}" target="_blank" rel="noopener">{{ r.title }} ↗</a>
+                            {% else %}
+                            <span class="bar-item-title">{{ r.title }}</span>
+                            {% endif %}
+                            {% if r.sub and r.sub != r.title %}
+                            <span class="bar-item-sub">URL: {{ r.sub }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="bar-item-nums">
+                            <span class="bar-item-count">{{ r.count }}回</span>
+                            <span class="bar-item-share">({{ r.share_pct }}%)</span>
+                        </div>
+                    </div>
+                    <div class="bar-track">
+                        <div class="bar-fill blue" style="width: {{ r.bar_pct }}%;"></div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-box">まだページ閲覧データがありません。</div>
+            {% endif %}
+        </div>
+
+        <!-- 2. Popular Stores Opened -->
+        <div class="panel">
+            <h2>🏪 注目されている人気店舗ランキング</h2>
+            <p class="panel-sub">ユーザーがカードをタップして曜日・時間帯別グラフを確認した店舗</p>
+            {% set store_rows = data.by_label_pretty.get('store_open', []) %}
+            {% if store_rows %}
+            <div class="bar-list">
+                {% for r in store_rows %}
+                <div class="bar-item">
+                    <div class="bar-item-top">
+                        <div>
+                            {% if r.href %}
+                            <a class="bar-item-title" href="{{ r.href }}" target="_blank" rel="noopener">{{ loop.index }}位：{{ r.title }} ↗</a>
+                            {% else %}
+                            <span class="bar-item-title">{{ loop.index }}位：{{ r.title }}</span>
+                            {% endif %}
+                            {% if r.sub %}
+                            <span class="bar-item-sub">{{ r.sub }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="bar-item-nums">
+                            <span class="bar-item-count">{{ r.count }}回</span>
+                            <span class="bar-item-share">({{ r.share_pct }}%)</span>
+                        </div>
+                    </div>
+                    <div class="bar-track">
+                        <div class="bar-fill rose" style="width: {{ r.bar_pct }}%;"></div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-box">まだ店舗詳細タップのデータがありません。</div>
+            {% endif %}
+        </div>
+
+        <!-- 3. Affiliate Clicks Breakdown -->
+        <div class="panel">
+            <h2>💰 アフィリエイト広告クリック内訳</h2>
+            <p class="panel-sub">どの案件が、どの記事・画面からクリックされたか</p>
+            {% set aff_rows = data.by_label_pretty.get('affiliate_click', []) %}
+            {% if aff_rows %}
+            <div class="bar-list">
+                {% for r in aff_rows %}
+                <div class="bar-item">
+                    <div class="bar-item-top">
+                        <div>
+                            <span class="bar-item-title">{{ r.title }}</span>
+                            {% if r.sub %}
+                            <span class="bar-item-sub">{{ r.sub }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="bar-item-nums">
+                            <span class="bar-item-count" style="color: var(--gold);">{{ r.count }}回</span>
+                            <span class="bar-item-share">({{ r.share_pct }}%)</span>
+                        </div>
+                    </div>
+                    <div class="bar-track">
+                        <div class="bar-fill" style="width: {{ r.bar_pct }}%;"></div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-box">まだアフィリエイトのクリック記録はありません。</div>
+            {% endif %}
+        </div>
+
+        <!-- 4. SNS / 2nd Venue Map / Official Links -->
+        <div class="panel">
+            <h2>🍸 2軒目マップ・SNS・公式サイト送客</h2>
+            <p class="panel-sub">サイトから外部（Googleマップ・SNS・公式サイト）へ誘導した内訳</p>
+            {% set sns_rows = data.by_label_pretty.get('sns_click', []) %}
+            {% set cafe_rows = data.by_label_pretty.get('map_cafe', []) %}
+            {% set bar_rows = data.by_label_pretty.get('map_bar', []) %}
+            {% set off_rows = data.by_label_pretty.get('official_click', []) %}
+            {% if sns_rows or cafe_rows or bar_rows or off_rows %}
+            <div class="bar-list">
+                {% for r in sns_rows %}
+                <div class="bar-item">
+                    <div class="bar-item-top">
+                        <div>
+                            <span class="bar-item-title">{{ r.title }}</span>
+                            <span class="bar-item-sub">公式SNSリンクのクリック</span>
+                        </div>
+                        <div class="bar-item-nums">
+                            <span class="bar-item-count">{{ r.count }}回</span>
+                        </div>
+                    </div>
+                    <div class="bar-track"><div class="bar-fill green" style="width: {{ r.bar_pct }}%;"></div></div>
+                </div>
+                {% endfor %}
+                {% for r in cafe_rows %}
+                <div class="bar-item">
+                    <div class="bar-item-top">
+                        <div>
+                            <span class="bar-item-title">☕ 夜カフェ検索：{{ r.title }}</span>
+                            <span class="bar-item-sub">店舗モーダルから2軒目マップ検索</span>
+                        </div>
+                        <div class="bar-item-nums">
+                            <span class="bar-item-count">{{ r.count }}回</span>
+                        </div>
+                    </div>
+                    <div class="bar-track"><div class="bar-fill green" style="width: {{ r.bar_pct }}%;"></div></div>
+                </div>
+                {% endfor %}
+                {% for r in bar_rows %}
+                <div class="bar-item">
+                    <div class="bar-item-top">
+                        <div>
+                            <span class="bar-item-title">🍸 バー・バル検索：{{ r.title }}</span>
+                            <span class="bar-item-sub">店舗モーダルから2軒目マップ検索</span>
+                        </div>
+                        <div class="bar-item-nums">
+                            <span class="bar-item-count">{{ r.count }}回</span>
+                        </div>
+                    </div>
+                    <div class="bar-track"><div class="bar-fill green" style="width: {{ r.bar_pct }}%;"></div></div>
+                </div>
+                {% endfor %}
+                {% for r in off_rows %}
+                <div class="bar-item">
+                    <div class="bar-item-top">
+                        <div>
+                            <span class="bar-item-title">🌐 公式サイト遷移：{{ r.title }}</span>
+                            <span class="bar-item-sub">店舗詳細から公式ページへ</span>
+                        </div>
+                        <div class="bar-item-nums">
+                            <span class="bar-item-count">{{ r.count }}回</span>
+                        </div>
+                    </div>
+                    <div class="bar-track"><div class="bar-fill green" style="width: {{ r.bar_pct }}%;"></div></div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-box">まだ外部送客アクションの記録はありません。</div>
+            {% endif %}
+        </div>
+    </div>
 </div>
 </body>
 </html>

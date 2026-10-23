@@ -846,10 +846,16 @@ def staff_analytics():
         return redirect(url_for('staff_monitor'))
     import analytics
     days = max(1, min(90, request.args.get('days', 7, type=int)))
+    flushed_rows = 0
+    if request.args.get('flush') == '1':
+        try:
+            flushed_rows = analytics.flush()
+        except Exception:
+            pass
     data = analytics.summary(days=days)
     if request.args.get('format') == 'json':
         return jsonify(data)
-    return render_template('staff_analytics.html', data=data, days=days)
+    return render_template('staff_analytics.html', data=data, days=days, flushed=request.args.get('flush') == '1', flushed_rows=flushed_rows)
 
 @app.route('/staff', methods=['GET', 'POST'])
 def staff_monitor():
