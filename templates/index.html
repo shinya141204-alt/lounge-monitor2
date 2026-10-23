@@ -948,12 +948,12 @@
                 <div class="spinner"></div>
             </div>
             
-            <div id="loading" class="loading-state">
+            <div id="loading" class="loading-state{% if initial_status and initial_status.ranking %} hidden{% endif %}">
                 <div class="spinner"></div>
                 <p>最新データを読み込んでいます...</p>
             </div>
 
-            <div id="content" class="content hidden">
+            <div id="content" class="content{% if not (initial_status and initial_status.ranking) %} hidden{% endif %}">
 
                 <div class="search-sort-container">
                     <input type="text" id="search-input" placeholder="店舗名で検索" oninput="handleSearch(this.value)">
@@ -1074,11 +1074,62 @@
                 </div>
 
                 <div id="ranking-list" class="ranking-list">
-                    <!-- Javascript will populate this -->
+                    {% if initial_status and initial_status.ranking %}
+                    {% for s in initial_status.ranking %}
+                    <div class="ranking-item{% if loop.index == 1 %} rank-1{% elif loop.index == 2 %} rank-2{% elif loop.index == 3 %} rank-3{% endif %}" style="cursor: pointer;" onclick="if(window.openModal)openModal({{ s.name | tojson | forceescape }})">
+                        <div class="rank-badge">{{ loop.index }}</div>
+                        <div class="store-info">
+                            <div class="store-meta-row">
+                                <span class="brand-badge {{ s.ssr_brand_cls }}">{{ s.ssr_brand }}</span>
+                                <span class="distance-tag hidden"></span>
+                                {% if (s.women_diff or 0) >= 3 %}
+                                <span class="momentum-tag">↗ +{{ s.women_diff }}名</span>
+                                {% else %}
+                                <span class="momentum-tag hidden"></span>
+                                {% endif %}
+                                {% if s.ssr_area %}
+                                <span class="area-tag">{{ s.ssr_area }}</span>
+                                {% else %}
+                                <span class="area-tag hidden"></span>
+                                {% endif %}
+                            </div>
+                            <h3 class="store-name">{{ s.ssr_title }}</h3>
+                        </div>
+                        <div class="card-actions">
+                            <button class="pin-btn" aria-label="お気に入り" title="お気に入り固定" onclick="event.stopPropagation();if(window.togglePin)togglePin({{ s.name | tojson | forceescape }})">
+                                <svg class="star-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                                </svg>
+                            </button>
+                            <button class="analysis-btn" aria-label="詳細分析" title="曜日・時間帯別の詳細分析" onclick="event.stopPropagation();if(window.openModal)openModal({{ s.name | tojson | forceescape }})">
+                                <svg class="chart-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="18" y1="20" x2="18" y2="10"></line>
+                                    <line x1="12" y1="20" x2="12" y2="4"></line>
+                                    <line x1="6" y1="20" x2="6" y2="14"></line>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="stats-group">
+                            <div class="stat ladies">
+                                <span class="count">{{ s.women or 0 }}</span>
+                                <span class="label">LADIES</span>
+                            </div>
+                            <div class="stat men">
+                                <span class="count">{{ s.men or 0 }}</span>
+                                <span class="label">MEN</span>
+                            </div>
+                        </div>
+                        <div class="occupancy-bar">
+                            <div class="bar-fill-ladies" style="width: {{ s.ssr_ladies_pct }}%"></div>
+                            <div class="bar-fill-men" style="width: {{ s.ssr_men_pct }}%"></div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% endif %}
                 </div>
 
                 <div class="info-bar">
-                    <p>最終更新: <span id="last-update">--:--</span></p>
+                    <p>最終更新: <span id="last-update">{% if initial_status and initial_status.timestamp and ' ' in initial_status.timestamp %}{{ initial_status.timestamp.split(' ')[1] }}{% else %}--:--{% endif %}</span></p>
 
                     <div class="live-indicator">
                         <div class="dot"></div>
@@ -1415,12 +1466,12 @@
         window.INITIAL_STATUS_DATA = {{ initial_status | tojson }};
         {% endif %}
     </script>
-    <script src="/static/app.js?v=20261023_15" defer></script>
+    <script src="/static/app.js?v=20261023_16" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js?v=19')
+                navigator.serviceWorker.register('/sw.js?v=20')
                     .then(reg => {
                         reg.update();
                     })

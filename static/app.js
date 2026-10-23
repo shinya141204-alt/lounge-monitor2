@@ -1138,8 +1138,8 @@
         function updateUI(data) {
             if (!data || !data.ranking) return;
             const rankingList = document.getElementById('ranking-list');
-            // Render synchronously on the very first paint so there is zero visual delay
-            if (rankingList && rankingList.children.length === 0) {
+            // Render synchronously on the very first paint (or when hydrating SSR cards) so there is zero visual delay
+            if (!_lastRenderedSignature || (rankingList && rankingList.children.length === 0)) {
                 _performUpdateUI(data);
                 return;
             }

@@ -94,78 +94,78 @@ def redirect_to_custom_domain():
 _scheduler_started = False
 _scheduler_lock = threading.Lock()
 
+def _ensure_scheduler_started_async():
+    global _scheduler_started
+    if os.environ.get('DISABLE_SCHEDULER') == '1' or _scheduler_started:
+        return
+    with _scheduler_lock:
+        if _scheduler_started:
+            return
+        _scheduler_started = True
+
+    def _boot():
+        try:
+            local_db.init_db()
+            restore_latest_data_if_empty()
+            local_db.start_background_sync(days=14)
+            threading.Thread(target=local_db.restore_votes_from_sheets, kwargs={'hours': 24}, daemon=True).start()
+
+            scheduler = BackgroundScheduler(timezone="UTC", job_defaults={
+                'misfire_grace_time': 600,
+                'coalesce': True,
+                'max_instances': 1,
+            })
+            scheduler.add_job(func=update_job, trigger="interval", minutes=1)
+            def _flush_analytics():
+                try:
+                    import analytics
+                    analytics.flush()
+                except Exception as err:
+                    logging.error(f"analytics flush failed: {err}")
+            scheduler.add_job(func=_flush_analytics, trigger="interval", minutes=10)
+            scheduler.add_job(func=lambda: local_db.sync_from_google_sheets(days=3), trigger="interval", hours=2)
+            scheduler.add_job(func=run_scheduled_x_post, trigger="cron", hour=11, minute=0, args=["20:00"])
+            scheduler.add_job(func=run_scheduled_x_post, trigger="cron", hour=13, minute=0, args=["22:00"])
+            scheduler.add_job(func=run_scheduled_x_post, trigger="cron", hour=15, minute=0, args=["00:00"])
+            scheduler.add_job(func=run_scheduled_x_post, trigger="cron", hour=17, minute=0, args=["02:00"])
+            def _tip_12():
+                import tips_poster
+                tips_poster.run_scheduled_tip_post(slot_label="12:00")
+            def _tip_18():
+                import tips_poster
+                tips_poster.run_scheduled_tip_post(slot_label="18:00")
+            scheduler.add_job(func=_tip_12, trigger="cron", hour=3, minute=0)
+            scheduler.add_job(func=_tip_18, trigger="cron", hour=9, minute=0)
+            def _note_check_job():
+                try:
+                    import note_poster
+                    note_poster.check_and_post_new_note()
+                except Exception as err:
+                    logging.error(f"Scheduled note promotion check failed: {err}")
+            scheduler.add_job(func=_note_check_job, trigger="cron", hour=4, minute=0)
+            scheduler.add_job(func=_note_check_job, trigger="cron", hour=11, minute=30)
+            def _crawl_events_job():
+                try:
+                    import events
+                    events.fetch_all_events(force_refresh=True)
+                except Exception as err:
+                    logging.error(f"Scheduled events crawl failed: {err}")
+            scheduler.add_job(func=_crawl_events_job, trigger="cron", hour="1,8", minute=0)
+            scheduler.start()
+            trigger_background_fetch_if_needed()
+            threading.Thread(target=_crawl_events_job, daemon=True).start()
+            logging.info("APScheduler & local SQLite high-speed cache started successfully")
+        except Exception as e:
+            logging.error(f"Scheduler boot error: {e}")
+
+    threading.Thread(target=_boot, daemon=True).start()
+
+# Start background services immediately on module import (unless disabled for unit tests)
+_ensure_scheduler_started_async()
+
 @app.before_request
 def start_scheduler():
-    global _scheduler_started
-    if os.environ.get('DISABLE_SCHEDULER') == '1':
-        return
-    if not _scheduler_started:
-        with _scheduler_lock:
-            if not _scheduler_started:
-                # Initialize local high-speed SQLite database
-                local_db.init_db()
-                restore_latest_data_if_empty()
-                local_db.start_background_sync(days=14)
-                # Restore crowd votes lost on redeploy from Google Sheets
-                threading.Thread(target=local_db.restore_votes_from_sheets, kwargs={'hours': 24}, daemon=True).start()
-
-                # misfire_grace_time: if the instance was busy/asleep at the exact minute, still run within 10 min
-                # coalesce: never run the same missed job multiple times in a row
-                scheduler = BackgroundScheduler(timezone="UTC", job_defaults={
-                    'misfire_grace_time': 600,
-                    'coalesce': True,
-                    'max_instances': 1,
-                })
-                scheduler.add_job(func=update_job, trigger="interval", minutes=1)
-                # Flush first-party analytics counters to Google Sheets every 10 minutes
-                def _flush_analytics():
-                    try:
-                        import analytics
-                        analytics.flush()
-                    except Exception as err:
-                        logging.error(f"analytics flush failed: {err}")
-                scheduler.add_job(func=_flush_analytics, trigger="interval", minutes=10)
-                # Background sync SQLite with Google Sheets every 2 hours to keep completely up to date
-                scheduler.add_job(func=lambda: local_db.sync_from_google_sheets(days=3), trigger="interval", hours=2)
-                # Daily X auto-post jobs at 20:00, 22:00, 00:00, and 02:00 JST (11:00, 13:00, 15:00, 17:00 UTC)
-                scheduler.add_job(func=run_scheduled_x_post, trigger="cron", hour=11, minute=0, args=["20:00"])
-                scheduler.add_job(func=run_scheduled_x_post, trigger="cron", hour=13, minute=0, args=["22:00"])
-                scheduler.add_job(func=run_scheduled_x_post, trigger="cron", hour=15, minute=0, args=["00:00"])
-                scheduler.add_job(func=run_scheduled_x_post, trigger="cron", hour=17, minute=0, args=["02:00"])
-                # Daily X human-like tips at 12:00 and 18:00 JST (03:00 and 09:00 UTC)
-                def _tip_12():
-                    import tips_poster
-                    tips_poster.run_scheduled_tip_post(slot_label="12:00")
-                def _tip_18():
-                    import tips_poster
-                    tips_poster.run_scheduled_tip_post(slot_label="18:00")
-                scheduler.add_job(func=_tip_12, trigger="cron", hour=3, minute=0)
-                scheduler.add_job(func=_tip_18, trigger="cron", hour=9, minute=0)
-                # Daily note promotion check at 13:00 and 20:30 JST (04:00 and 11:30 UTC)
-                def _note_check_job():
-                    try:
-                        import note_poster
-                        note_poster.check_and_post_new_note()
-                    except Exception as err:
-                        import logging
-                        logging.error(f"Scheduled note promotion check failed: {err}")
-                scheduler.add_job(func=_note_check_job, trigger="cron", hour=4, minute=0)
-                scheduler.add_job(func=_note_check_job, trigger="cron", hour=11, minute=30)
-                # Daily events crawler at 10:00 and 17:00 JST (01:00 and 08:00 UTC)
-                def _crawl_events_job():
-                    try:
-                        import events
-                        events.fetch_all_events(force_refresh=True)
-                    except Exception as err:
-                        import logging
-                        logging.error(f"Scheduled events crawl failed: {err}")
-                scheduler.add_job(func=_crawl_events_job, trigger="cron", hour="1,8", minute=0)
-                scheduler.start()
-                trigger_background_fetch_if_needed()
-                threading.Thread(target=_crawl_events_job, daemon=True).start()
-                _scheduler_started = True
-                import logging
-                logging.info("APScheduler & local SQLite high-speed cache started successfully")
+    _ensure_scheduler_started_async()
 
 # Global storage for analysis cache
 analysis_cache = {
@@ -516,6 +516,55 @@ def restore_latest_data_if_empty():
     return False
 
 
+_BRAND_CLS_MAP = {
+    'OLG': 'brand-olg',
+    'ag': 'brand-ag',
+    'JIS': 'brand-jis',
+    'XIX': 'brand-xix',
+    'ALFA': 'brand-alfa',
+    'ヤタコイ': 'brand-yatakoi',
+    'YATAKOI': 'brand-yatakoi',
+    'CLOVERS': 'brand-clovers',
+}
+
+
+def _enrich_for_ssr(stores):
+    """Attach display fields (brand_code, brand_cls, display_title, area_label, ladies_pct, men_pct)
+    for instant server-side HTML card rendering."""
+    import store_master
+    master = store_master.load()
+    # Count duplicate display_names so same-city stores (e.g. 新宿) get brand prefix
+    disp_counts = defaultdict(int)
+    temp = []
+    for s in stores:
+        sname = s.get('name', '')
+        info = master.get(sname, {})
+        brand = info.get('brand') or ('ag' if 'ag' in sname else sname.split(' ')[0])
+        if brand == 'YATAKOI':
+            brand = 'ヤタコイ'
+        disp = info.get('display_name') or sname
+        area = info.get('area_label') or ''
+        disp_counts[disp] += 1
+        temp.append((s, brand, disp, area))
+
+    enriched = []
+    for s, brand, disp, area in temp:
+        w = int(s.get('women') or 0)
+        m = int(s.get('men') or 0)
+        tot = w + m
+        l_pct = round((w / tot) * 100) if tot > 0 else 0
+        m_pct = (100 - l_pct) if tot > 0 else 0
+        item = dict(s)
+        item['ssr_brand'] = brand
+        item['ssr_brand_cls'] = _BRAND_CLS_MAP.get(brand, 'brand-other')
+        item['ssr_title'] = f"{brand} {disp}" if disp_counts[disp] > 1 else disp
+        item['ssr_area'] = area
+        item['ssr_ladies_pct'] = l_pct
+        item['ssr_men_pct'] = m_pct
+        enriched.append(item)
+    return enriched
+
+
 def get_initial_status_payload():
     """Return status dict for SSR embedding in index.html if available."""
     restore_latest_data_if_empty()
@@ -523,7 +572,7 @@ def get_initial_status_payload():
         if latest_data.get('full_data'):
             return {
                 'timestamp': latest_data['last_updated'],
-                'ranking': latest_data['full_data'],
+                'ranking': _enrich_for_ssr(latest_data['full_data']),
                 'status': 'success',
                 'is_seed': bool(latest_data.get('is_seed'))
             }
@@ -801,6 +850,8 @@ def trigger_background_fetch_if_needed():
     """Check if data is stale and trigger a background fetch if needed.
     MUST be called WITHOUT holding data_lock to avoid deadlock."""
     global _is_fetching, _fetch_started_at
+    if os.environ.get('DISABLE_SCHEDULER') == '1':
+        return
     
     with data_lock:
         last_updated = latest_data.get('last_updated')
