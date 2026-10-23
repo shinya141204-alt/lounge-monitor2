@@ -475,7 +475,7 @@ def restore_latest_data_if_empty():
                 })
                 if vals.get('ts') and (not latest_ts or vals['ts'] > latest_ts):
                     latest_ts = vals['ts']
-            items.sort(key=lambda x: (x['women'], x['men']), reverse=True)
+            items.sort(key=lambda x: (x.get('region') != 'Korea', x['women'], x['men']), reverse=True)
             with data_lock:
                 if not latest_data.get('full_data'):
                     latest_data['full_data'] = items
@@ -550,6 +550,7 @@ def _enrich_for_ssr(stores):
         temp.append((s, brand, disp, area))
 
     enriched = []
+    dom_rank = 0
     for s, brand, disp, area in temp:
         w = int(s.get('women') or 0)
         m = int(s.get('men') or 0)
@@ -557,6 +558,12 @@ def _enrich_for_ssr(stores):
         l_pct = round((w / tot) * 100) if tot > 0 else 0
         m_pct = (100 - l_pct) if tot > 0 else 0
         item = dict(s)
+        is_korea = (s.get('region') == 'Korea') or ('カンナム' in s.get('name', '')) or ('ホンデ' in s.get('name', ''))
+        if not is_korea:
+            dom_rank += 1
+            item['ssr_rank'] = dom_rank
+        else:
+            item['ssr_rank'] = None
         item['ssr_brand'] = brand
         item['ssr_brand_cls'] = _BRAND_CLS_MAP.get(brand, 'brand-other')
         item['ssr_title'] = f"{brand} {disp}" if disp_counts[disp] > 1 else disp
@@ -710,7 +717,7 @@ def update_job(force=False):
                     merged_map[sname] = s
                 
                 merged_data = list(merged_map.values())
-                sorted_data = sorted(merged_data, key=lambda x: (x['women'], x['men']), reverse=True)
+                sorted_data = sorted(merged_data, key=lambda x: (x.get('region') != 'Korea', x['women'], x['men']), reverse=True)
                 top_store = sorted_data[0] if sorted_data else None
                 
                 latest_data['top_store'] = top_store
@@ -1311,10 +1318,12 @@ def _render_brand_page(brand_slug):
         if store_master.brand_key_of(sname) == brand_slug:
             s_live = live_map.get(sname, {})
             info = master.get(sname, {})
+            reg = info.get('region') or s_live.get('region') or detect_region(sname)
             matched.append({
                 'name': sname,
                 'seo_name': store_master.seo_name(sname),
                 'slug': store_master.slug_of(sname),
+                'region': reg,
                 'area_label': info.get('area_label') or s_live.get('area') or '全国',
                 'women': int(s_live.get('women', 0)),
                 'men': int(s_live.get('men', 0)),
@@ -1322,7 +1331,14 @@ def _render_brand_page(brand_slug):
                 'men_diff': int(s_live.get('men_diff', 0) or 0),
             })
 
-    matched.sort(key=lambda x: (x['women'], x['men']), reverse=True)
+    matched.sort(key=lambda x: (x.get('region') != 'Korea', x['women'], x['men']), reverse=True)
+    dom_rank = 0
+    for item in matched:
+        if item.get('region') != 'Korea':
+            dom_rank += 1
+            item['rank_num'] = dom_rank
+        else:
+            item['rank_num'] = None
     total_w = sum(x['women'] for x in matched)
     total_m = sum(x['men'] for x in matched)
 
@@ -1660,7 +1676,7 @@ def generate_sns_post_api():
     """Returns ready-to-post viral X/SNS text from current live data."""
     post_type = request.args.get('type', 'all').lower()
     base_url = request.url_root.rstrip('/')
-    stores = latest_data.get('full_data') or []
+    stores = [s for s in (latest_data.get('full_data') or []) if s.get('region') != 'Korea']
     ts = latest_data.get('last_updated') or ''
     time_part = ts.split(' ')[1] if ' ' in ts else '現在'
 

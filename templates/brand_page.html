@@ -306,7 +306,7 @@
             <a href="/store/{{ s.slug }}" class="store-card-link">
                 <div class="store-card">
                     <div class="store-title-row">
-                        <span class="store-name">#{{ loop.index }} {{ s.seo_name }}</span>
+                        <span class="store-name">{% if s.rank_num %}#{{ s.rank_num }} {% endif %}{{ s.seo_name }}</span>
                         <span class="store-area-badge">{{ s.area_label }}</span>
                     </div>
                     <div class="counts-row">

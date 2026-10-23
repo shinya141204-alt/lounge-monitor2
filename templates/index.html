@@ -1085,8 +1085,8 @@
                 <div id="ranking-list" class="ranking-list">
                     {% if initial_status and initial_status.ranking and not initial_status.is_seed %}
                     {% for s in initial_status.ranking %}
-                    <div class="ranking-item{% if loop.index == 1 %} rank-1{% elif loop.index == 2 %} rank-2{% elif loop.index == 3 %} rank-3{% endif %}" style="cursor: pointer;" onclick="if(window.openModal)openModal({{ s.name | tojson | forceescape }})">
-                        <div class="rank-badge">{{ loop.index }}</div>
+                    <div class="ranking-item{% if s.ssr_rank == 1 %} rank-1{% elif s.ssr_rank == 2 %} rank-2{% elif s.ssr_rank == 3 %} rank-3{% endif %}" style="cursor: pointer;" onclick="if(window.openModal)openModal({{ s.name | tojson | forceescape }})">
+                        <div class="rank-badge">{{ s.ssr_rank if s.ssr_rank else '-' }}</div>
                         <div class="store-info">
                             <div class="store-meta-row">
                                 <span class="brand-badge {{ s.ssr_brand_cls }}">{{ s.ssr_brand }}</span>
@@ -1514,12 +1514,12 @@
         window.INITIAL_STATUS_DATA = {{ initial_status | tojson }};
         {% endif %}
     </script>
-    <script src="/static/app.js?v=20261023_19" defer></script>
+    <script src="/static/app.js?v=20261023_20" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js?v=23')
+                navigator.serviceWorker.register('/sw.js?v=24')
                     .then(reg => {
                         reg.update();
                     })

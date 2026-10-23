@@ -99,6 +99,16 @@ def build_scheduled_tweet_text(stores: list, slot_label: str = "20:00", app_url:
     if not stores:
         return ""
 
+    # Exclude overseas (Korea: Gangnam / Hongdae) stores from X auto-posts
+    korea_keywords = ("カンナム", "ホンデ", "ソウル", "GANGNAM", "HONGDAE", "SEOUL")
+    stores = [
+        s for s in stores
+        if s.get("region") != "Korea"
+        and not any(k in (s.get("name") or "").upper() for k in korea_keywords)
+    ]
+    if not stores:
+        return ""
+
     medals = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣"]
 
     # --- Compact Mode for Automated X API Posting (Weight <= 280) ---

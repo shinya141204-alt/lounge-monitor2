@@ -1016,12 +1016,15 @@
             item.style.cursor = 'pointer';
             item.onclick = () => openModal(store.name);
 
-            const displayRank = globalIndex !== null ? globalIndex + 1 : index + 1;
+            const isKoreaStore = store.region === 'Korea' || (store.name && (store.name.includes('カンナム') || store.name.includes('ホンデ')));
+            const displayRank = isKoreaStore ? '-' : (globalIndex !== null ? globalIndex + 1 : index + 1);
 
             if (!isPinned) {
-                if (index === 0) item.classList.add('rank-1');
-                if (index === 1) item.classList.add('rank-2');
-                if (index === 2) item.classList.add('rank-3');
+                if (!isKoreaStore) {
+                    if (index === 0) item.classList.add('rank-1');
+                    if (index === 1) item.classList.add('rank-2');
+                    if (index === 2) item.classList.add('rank-3');
+                }
             } else {
                 item.classList.add('pinned-item');
             }
@@ -1216,17 +1219,23 @@
                 });
             }
 
+            const _isKorea = (s) => (s.region === 'Korea' || (s.name && (s.name.includes('カンナム') || s.name.includes('ホンデ')))) ? 1 : 0;
+
             if (currentSort === 'nearby' && userLocation) {
                 filteredStores.sort((a, b) => {
+                    const korDiff = _isKorea(a) - _isKorea(b);
+                    if (korDiff !== 0) return korDiff;
                     const distA = (typeof a._distKm === 'number') ? a._distKm : 99999;
                     const distB = (typeof b._distKm === 'number') ? b._distKm : 99999;
                     if (Math.abs(distA - distB) > 0.05) return distA - distB;
                     return (b.women - a.women) || (b.men - a.men);
                 });
             } else if (currentSort === 'men') {
-                filteredStores.sort((a, b) => (b.men - a.men) || (b.women - a.women));
+                filteredStores.sort((a, b) => (_isKorea(a) - _isKorea(b)) || (b.men - a.men) || (b.women - a.women));
             } else if (currentSort === 'ratio') {
                 filteredStores.sort((a, b) => {
+                    const korDiff = _isKorea(a) - _isKorea(b);
+                    if (korDiff !== 0) return korDiff;
                     const totalA = a.women + a.men;
                     const totalB = b.women + b.men;
                     const pctA = totalA === 0 ? -1 : (a.women / totalA);
@@ -1235,7 +1244,7 @@
                     return b.women - a.women;
                 });
             } else {
-                filteredStores.sort((a, b) => (b.women - a.women) || (b.men - a.men));
+                filteredStores.sort((a, b) => (_isKorea(a) - _isKorea(b)) || (b.women - a.women) || (b.men - a.men));
             }
 
             if (filteredStores.length === 0) {
@@ -1547,7 +1556,10 @@
             const areaTitle = regionNames[currentFilter] || '全国';
             let text = `いま${areaTitle}で人が集まってる相席ラウンジTOP3🍻\n`;
             if (window.lastData && window.lastData.ranking) {
-                const list = window.lastData.ranking.filter(s => currentFilter === 'All' || s.region === currentFilter).slice(0, 3);
+                const list = window.lastData.ranking.filter(s => {
+                    if (currentFilter === 'All') return s.region !== 'Korea';
+                    return s.region === currentFilter;
+                }).slice(0, 3);
                 const medals = ['🥇', '🥈', '🥉'];
                 list.forEach((s, i) => {
                     const b = detectBrandInfo(s);
