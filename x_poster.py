@@ -332,6 +332,116 @@ def build_scheduled_reply_text(slot_label: str = "20:00", app_url: str = "") -> 
     return f"🔍 全国53店舗のリアルタイム人数・男女比ランキングはこちら\n{site_url}/"
 
 
+def build_pinned_tweet_thread(app_url: str = "") -> tuple:
+    """
+    Build the 2-post Pinned Tweet thread:
+      - 1st post: Clean, URL-free overview of Aiseki Navi (strictly <= 276 weight)
+      - 2nd post: Self-reply with main URL & top column links
+    """
+    site_url = (app_url or os.environ.get("PUBLIC_SITE_URL") or "https://aiseki-navi.com").rstrip("/")
+    main_text = (
+        "🍸全国53店舗の相席ラウンジ人数速報『相席ナビ』\n\n"
+        "・オリエンタル / ag / JIS 等の現在人数＆男女比をリアルタイム集計\n"
+        "・曜日×時間帯別の平均グラフで「いま狙い目の店舗」がひと目でわかる\n"
+        "・失敗しない立ち回りコラムも公開中\n\n"
+        "サイトURL・人気記事はリプ欄へ👇\n"
+        "#相席ナビ #相席ラウンジ"
+    )
+    reply_text = (
+        f"🔍 全国53店舗リアルタイム人数ランキング\n{site_url}/\n\n"
+        f"📖 人気の攻略コラム一覧\n{site_url}/columns\n\n"
+        f"⚖️ オリエンタル・ag・JIS 徹底比較\n{site_url}/guide/brand-comparison"
+    )
+    return main_text, reply_text
+
+
+COLUMN_PROMO_LIST = [
+    {
+        "slug": "brand-comparison",
+        "path": "/guide/brand-comparison",
+        "title": "オリエンタルラウンジ・ag・JISの違い徹底比較",
+        "main_text": (
+            "「オリエンタルラウンジ・ag・JIS、結局どこに行けばいい？」って迷う人向けに、3大ブランドの客層・年齢層・雰囲気の違いをまとめました🍸\n\n"
+            "・落ち着いて話したい夜\n"
+            "・20代前半とワイワイ飲みたい夜\n"
+            "・バー感覚で楽しみたい夜\n\n"
+            "記事リンクはリプ欄へ👇\n"
+            "#相席ナビ #相席ラウンジ"
+        ),
+    },
+    {
+        "slug": "weekday-strategy",
+        "path": "/guide/weekday-strategy",
+        "title": "なぜ水曜・木曜の20時〜22時が一番の穴場なのか？",
+        "main_text": (
+            "相席ラウンジって金土の夜が一番盛り上がるイメージあるけど、実は「待ち時間なしで可愛い子とゆっくり話せる」のは水曜・木曜の20時〜22時だったりする🍷\n\n"
+            "実際の男女比データから見た、平日の賢い立ち回りをまとめました。\n\n"
+            "記事リンクはリプ欄へ👇\n"
+            "#相席ナビ #相席ラウンジ"
+        ),
+    },
+    {
+        "slug": "shinjuku",
+        "path": "/guide/shinjuku",
+        "title": "新宿エリア4店舗（オリエンタル・ag・JIS東口/西口）の使い分け",
+        "main_text": (
+            "日本一の激戦区「新宿」にある相席ラウンジ4店舗（オリエンタル・ag・JIS東口・JIS西口）。\n\n"
+            "実はそれぞれ客層もピーク時間もかなり違うから、1店舗目で男性待ちだったときのハシゴルートを知っておくだけで空振りが一気に減るよ🗼\n\n"
+            "記事リンクはリプ欄へ👇\n"
+            "#相席ナビ #相席ラウンジ #新宿"
+        ),
+    },
+    {
+        "slug": "solo-vs-pair",
+        "path": "/guide/solo-vs-pair",
+        "title": "1人（ソロ）vs 2人ペア、どっちが勝てる？立ち回り比較",
+        "main_text": (
+            "「相席ラウンジって1人で行っても浮かない？」「やっぱり友達と2人で行くべき？」\n\n"
+            "実は1人（ソロ）には1人の強み、2人ペアにはペアの役割分担があって、向いている店舗や時間帯も少し違います👥\n\n"
+            "それぞれの立ち回りのコツはリプ欄へ👇\n"
+            "#相席ナビ #相席ラウンジ"
+        ),
+    },
+    {
+        "slug": "second-venue",
+        "path": "/guide/second-venue",
+        "title": "相席から2軒目へ自然に誘うタイミングと声かけのコツ",
+        "main_text": (
+            "相席でせっかく盛り上がっても、最後の誘い方で迷ってそのまま解散になっちゃうのはもったいない。\n\n"
+            "「もう1軒飲もう」よりOKをもらいやすい声かけや、声をかけるベストな時間帯（22時半〜23時前）をまとめました🍨\n\n"
+            "記事リンクはリプ欄へ👇\n"
+            "#相席ナビ #相席ラウンジ"
+        ),
+    },
+    {
+        "slug": "first-10-minutes",
+        "path": "/guide/first-10-minutes",
+        "title": "最初の10分で差がつく会話の入り方＆清潔感チェック",
+        "main_text": (
+            "相席ラウンジの印象って、実は乾杯してから「最初の10分」でほぼ決まる。\n\n"
+            "面接っぽくならない最初の会話の入り方と、暗い照明のソファ席だからこそ意外と見られている身だしなみのポイントをまとめました🪞\n\n"
+            "記事リンクはリプ欄へ👇\n"
+            "#相席ナビ #相席ラウンジ"
+        ),
+    },
+]
+
+
+def build_column_tweet_thread(col_index: int = 0, app_url: str = "") -> tuple:
+    """Build a 2-post thread (URL-free 1st post + URL reply) introducing a site column article."""
+    site_url = (app_url or os.environ.get("PUBLIC_SITE_URL") or "https://aiseki-navi.com").rstrip("/")
+    item = COLUMN_PROMO_LIST[col_index % len(COLUMN_PROMO_LIST)]
+    main_text = item["main_text"]
+    reply_text = (
+        f"📖 コラム本編はこちら👇\n"
+        f"『{item['title']}』\n"
+        f"{site_url}{item['path']}\n\n"
+        f"🔍 全国53店舗の現在人数ランキング\n"
+        f"{site_url}/"
+    )
+    return main_text, reply_text, item
+
+
 def post_to_x(text: str, reply_to_tweet_id: str = None, reply_text: str = None) -> dict:
     """
     Post a tweet via X API v2 (`POST https://api.twitter.com/2/tweets`).

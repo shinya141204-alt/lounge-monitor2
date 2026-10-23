@@ -1524,6 +1524,32 @@ def trigger_note_share_endpoint():
     res = note_poster.check_and_post_new_note(force=force, article_index=idx)
     return jsonify(res)
 
+@app.route('/api/trigger-x-pinned')
+def trigger_x_pinned_endpoint():
+    """Endpoint to post the 2-post Pinned Tweet thread (1st URL-free + 2nd URL reply) to X."""
+    if not is_admin_authorized():
+        return jsonify({'error': 'Unauthorized'}), 401
+    import x_poster
+    main_text, reply_text = x_poster.build_pinned_tweet_thread()
+    res = x_poster.post_to_x(main_text, reply_text=reply_text)
+    res["tweet_text"] = main_text
+    res["reply_text"] = reply_text
+    return jsonify(res)
+
+@app.route('/api/trigger-x-column')
+def trigger_x_column_endpoint():
+    """Endpoint to post a 2-post Column Promotion thread (1st URL-free + 2nd URL reply) to X."""
+    if not is_admin_authorized():
+        return jsonify({'error': 'Unauthorized'}), 401
+    idx = request.args.get('idx', 0, type=int)
+    import x_poster
+    main_text, reply_text, item = x_poster.build_column_tweet_thread(col_index=idx)
+    res = x_poster.post_to_x(main_text, reply_text=reply_text)
+    res["column"] = item
+    res["tweet_text"] = main_text
+    res["reply_text"] = reply_text
+    return jsonify(res)
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001, debug=True, use_reloader=False)
 

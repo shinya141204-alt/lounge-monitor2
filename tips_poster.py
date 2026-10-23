@@ -244,48 +244,80 @@ TIPS_LIST = [
 ]
 
 
+def _select_tip_index(slot_label: str = "12:00", tip_index: int = None) -> int:
+    now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
+    if tip_index is not None and 0 <= tip_index < len(TIPS_LIST):
+        return tip_index
+    slot_offset = 0 if slot_label == "12:00" else 1
+    day_of_year = now_jst.timetuple().tm_yday
+    return (day_of_year * 2 + slot_offset) % len(TIPS_LIST)
+
+
 def get_tip_for_slot(slot_label: str = "12:00", tip_index: int = None) -> str:
     """
     Select a tip based on the day of the year and slot.
     1st post is kept completely URL-free for clean appearance and maximum X organic reach.
-    The site URL is attached automatically in the 2nd post (reply).
+    The site URL and matching column URL are attached automatically in the 2nd post (reply).
     """
-    now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
-
-    if tip_index is not None and 0 <= tip_index < len(TIPS_LIST):
-        idx = tip_index
-    else:
-        slot_offset = 0 if slot_label == "12:00" else 1
-        day_of_year = now_jst.timetuple().tm_yday
-        idx = (day_of_year * 2 + slot_offset) % len(TIPS_LIST)
-
+    idx = _select_tip_index(slot_label=slot_label, tip_index=tip_index)
     raw_tip = TIPS_LIST[idx].strip()
-    footer_tags_only = "\n\n#相席ナビ #相席ラウンジ"
+    footer_tags_only = "\n\n📖 詳しいコラム・現在の男女比はリプ欄へ👇\n#相席ナビ #相席ラウンジ"
 
     candidate = f"{raw_tip}{footer_tags_only}"
     if x_poster.compute_twitter_weight(candidate) <= 276:
         return candidate
 
-    short_tags = "\n#相席ナビ"
+    short_tags = "\n\n👇詳細・現在人数はリプ欄へ\n#相席ナビ #相席ラウンジ"
     if x_poster.compute_twitter_weight(f"{raw_tip}{short_tags}") <= 276:
         return f"{raw_tip}{short_tags}"
+
+    minimal_tags = "\n#相席ナビ #相席ラウンジ"
+    if x_poster.compute_twitter_weight(f"{raw_tip}{minimal_tags}") <= 276:
+        return f"{raw_tip}{minimal_tags}"
 
     return raw_tip
 
 
-def get_tip_reply_text(slot_label: str = "12:00") -> str:
-    """Build the 2nd post (self-reply) with the URL for daily tips."""
+def get_tip_reply_text(slot_label: str = "12:00", tip_index: int = None) -> str:
+    """Build the 2nd post (self-reply) with the matching column URL + real-time ranking URL."""
     site_url = os.environ.get("PUBLIC_SITE_URL", "https://aiseki-navi.com").rstrip("/")
-    if slot_label == "18:00":
-        return f"🍻 今夜行くお店の現在人数・男女比チェックはこちら👇\n{site_url}/"
-    return f"🔍 全国53店舗のリアルタイム人数・男女比ランキングはこちら👇\n{site_url}/"
+    idx = _select_tip_index(slot_label=slot_label, tip_index=tip_index)
+
+    if idx <= 9:
+        col_title = "最初の10分で差がつく会話＆清潔感ガイド"
+        col_path = "/guide/first-10-minutes"
+    elif idx <= 19:
+        col_title = "相席ラウンジ前の身だしなみ・清潔感チェック"
+        col_path = "/grooming"
+    elif idx <= 27:
+        col_title = "1人（ソロ）vs 2人ペアの立ち回り比較"
+        col_path = "/guide/solo-vs-pair"
+    elif idx <= 35:
+        col_title = "2軒目・カフェやバーへの自然な誘い方"
+        col_path = "/guide/second-venue"
+    elif idx <= 40:
+        col_title = "オリエンタルラウンジ・ag・JISの違い徹底比較"
+        col_path = "/guide/brand-comparison"
+    elif idx <= 49:
+        col_title = "水曜・木曜の20時〜22時が一番の穴場な理由"
+        col_path = "/guide/weekday-strategy"
+    else:
+        col_title = "相席ラウンジ実践コラム・攻略記事一覧"
+        col_path = "/columns"
+
+    return (
+        f"📖 {col_title}\n"
+        f"{site_url}{col_path}\n\n"
+        f"🔍 全国53店舗のリアルタイム男女比・人数ランキング\n"
+        f"{site_url}/"
+    )
 
 
 def run_scheduled_tip_post(slot_label: str = "12:00", force: bool = False, tip_index: int = None) -> dict:
     """
     Execute daily tip posting to X (Twitter).
     slot_label: '12:00' or '18:00'
-    Posts a clean URL-free main post, followed by an automatic reply with the URL.
+    Posts a clean URL-free main post, followed by an automatic reply with the column + ranking URLs.
     """
     now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
     dedup_key = f"x_tip:{now_jst.strftime('%Y-%m-%d')}_{slot_label}"
@@ -296,14 +328,15 @@ def run_scheduled_tip_post(slot_label: str = "12:00", force: bool = False, tip_i
         logger.info(f"X tip post already sent for {dedup_key}, skipping.")
         return {"status": "skipped", "reason": "Already posted for this slot today"}
 
-    text = get_tip_for_slot(slot_label=slot_label, tip_index=tip_index)
+    idx = _select_tip_index(slot_label=slot_label, tip_index=tip_index)
+    text = get_tip_for_slot(slot_label=slot_label, tip_index=idx)
     if not text:
         return {"status": "error", "detail": "Empty tip text"}
 
     if force:
         text = f"{text}\n(⏱️{now_jst.strftime('%H:%M')})"
 
-    reply_text = get_tip_reply_text(slot_label=slot_label)
+    reply_text = get_tip_reply_text(slot_label=slot_label, tip_index=idx)
     result = x_poster.post_to_x(text, reply_text=reply_text)
     if result.get("status") == "success" and not force:
         job_state.mark_done(dedup_key)
