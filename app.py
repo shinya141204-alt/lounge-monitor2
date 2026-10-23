@@ -814,9 +814,9 @@ def get_events():
         store = request.args.get('store', '').strip()
         force = request.args.get('refresh', '').lower() == 'true'
         if store:
-            evs = events.get_events_for_store(store)
+            evs = events.get_events_for_store(store, allow_blocking=force)
         else:
-            evs = events.fetch_all_events(force_refresh=force)
+            evs = events.fetch_all_events(force_refresh=force, allow_blocking=force)
         return jsonify({
             'status': 'success',
             'count': len(evs),

@@ -92,15 +92,10 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css?v=20261023_11">
-    <!-- Local Chart.js: self-hosted (zero CDN blocking, works 100% offline & with adblockers) -->
-    <script src="/static/chart.min.js?v=20261021" defer></script>
-    <!-- Preload editorial thumbnails for instantaneous modal display -->
-    <link rel="preload" as="image" type="image/webp" href="/static/thumb-weekday.webp">
-    <link rel="preload" as="image" type="image/webp" href="/static/thumb-manual.webp">
     {% if not is_staff %}
     <script src="/static/affiliate_config.js?v=7"></script>
     {% endif %}
-    <link rel="stylesheet" href="/static/calm.css?v=2">
+    <link rel="stylesheet" href="/static/calm.css?v=3">
 </head>
 
 <body class="{% if is_staff %}staff-mode{% endif %}">
@@ -316,7 +311,7 @@
                         <div class="article-card-thumb">
                             <picture>
                                 <source srcset="/static/thumb-guide-brand-comparison.webp" type="image/webp">
-                                <img src="/static/guide-brand-comparison.jpg" alt="3大ブランド比較 アイキャッチ" width="640" height="360" decoding="async">
+                                <img src="/static/guide-brand-comparison.jpg" alt="3大ブランド比較 アイキャッチ" width="640" height="360" decoding="async" loading="lazy">
                             </picture>
                             <span class="article-card-badge">3大ブランド比較</span>
                         </div>
@@ -338,7 +333,7 @@
                         <div class="article-card-thumb">
                             <picture>
                                 <source srcset="/static/thumb-weekday.webp" type="image/webp">
-                                <img src="/static/thumb-weekday.jpg" alt="平日攻略コラム アイキャッチ" width="640" height="360" decoding="async">
+                                <img src="/static/thumb-weekday.jpg" alt="平日攻略コラム アイキャッチ" width="640" height="360" decoding="async" loading="lazy">
                             </picture>
                             <span class="article-card-badge badge-weekday">平日の狙い目</span>
                         </div>
@@ -360,7 +355,7 @@
                         <div class="article-card-thumb">
                             <picture>
                                 <source srcset="/static/thumb-manual.webp" type="image/webp">
-                                <img src="/static/thumb-manual.jpg" alt="完全攻略マニュアル アイキャッチ" width="640" height="360" decoding="async">
+                                <img src="/static/thumb-manual.jpg" alt="完全攻略マニュアル アイキャッチ" width="640" height="360" decoding="async" loading="lazy">
                             </picture>
                             <span class="article-card-badge badge-manual">基本ガイド</span>
                         </div>
@@ -1417,12 +1412,12 @@
             isStaff: {{ 'true' if is_staff else 'false' }}
         };
     </script>
-    <script src="/static/app.js?v=20261023_12" defer></script>
+    <script src="/static/app.js?v=20261023_13" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js?v=16')
+                navigator.serviceWorker.register('/sw.js?v=17')
                     .then(reg => {
                         reg.update();
                     })

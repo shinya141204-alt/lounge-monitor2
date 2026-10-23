@@ -1,15 +1,12 @@
-const CACHE_NAME = 'aiseki-navi-v25';
+const CACHE_NAME = 'aiseki-navi-v26';
 const ASSETS_TO_CACHE = [
   '/',
   '/static/style.css?v=20261023_11',
-  '/static/calm.css?v=2',
-  '/static/app.js?v=20261023_12',
-  '/static/chart.min.js?v=20261021',
+  '/static/calm.css?v=3',
+  '/static/app.js?v=20261023_13',
   '/static/manifest.json?v=2',
   '/static/icon-192.png?v=2',
   '/static/icon-512.png?v=2',
-  '/static/thumb-weekday.webp',
-  '/static/thumb-manual.webp',
   'https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap'
 ];
 

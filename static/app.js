@@ -10,6 +10,12 @@
 
         // --- Store Master (static/store_master.json): single source of truth for area label, coordinates & map anchor ---
         window.STORE_MASTER = {};
+        let _brandInfoCache = Object.create(null);
+        let _storeEventsCache = Object.create(null);
+        let _lastRenderedSignature = '';
+        let _updateUiRafId = null;
+        let _pendingUiData = null;
+
         function getStoreMasterInfo(storeName) {
             return (window.STORE_MASTER && window.STORE_MASTER[String(storeName || '').trim()]) || null;
         }
@@ -19,6 +25,7 @@
                 .then(d => {
                     if (d && d.stores) {
                         window.STORE_MASTER = d.stores;
+                        _brandInfoCache = Object.create(null);
                         if (window.lastData && typeof updateUI === 'function') updateUI(window.lastData);
                     }
                 })
@@ -348,6 +355,7 @@
                 if (res.ok) {
                     const data = await res.json();
                     window.allEvents = data.events || [];
+                    _storeEventsCache = Object.create(null);
                     _eventsFetched = true;
                     // Re-render ranking to display event badges on cards
                     if (window.lastData && window.lastData.ranking) {
@@ -362,11 +370,15 @@
 
         function getEventsForStore(storeName) {
             if (!window.allEvents || window.allEvents.length === 0) return [];
-            const clean = String(storeName).toUpperCase().trim();
+            const key = String(storeName || '').trim();
+            if (_storeEventsCache[key] && _storeEventsCache[key].all) {
+                return _storeEventsCache[key].all;
+            }
+            const clean = key.toUpperCase();
             const isJis = clean.includes('JIS');
             const isOlg = clean.includes('OLG') || clean.includes('ORIENTAL') || clean.includes('AG');
 
-            return window.allEvents.filter(ev => {
+            const all = window.allEvents.filter(ev => {
                 // Filter out ubiquitous default perks like "女性限定フード食べ放題"
                 const t = ev.title || '';
                 if (t.includes('フード食べ放題') || t.includes('女性限定フード')) return false;
@@ -382,12 +394,20 @@
                 }
                 return false;
             });
+            const specific = all.filter(e => e.target_stores && e.target_stores.length > 0 && e.target_label !== '全店共通' && e.target_label !== 'JIS全店');
+            _storeEventsCache[key] = { all, specific };
+            return all;
         }
 
         // Returns only STORE-SPECIFIC events (excludes all-store / brand-wide events)
         function getStoreSpecificEvents(storeName) {
-            const evs = getEventsForStore(storeName);
-            return evs.filter(e => e.target_stores && e.target_stores.length > 0 && e.target_label !== '全店共通' && e.target_label !== 'JIS全店');
+            if (!window.allEvents || window.allEvents.length === 0) return [];
+            const key = String(storeName || '').trim();
+            if (_storeEventsCache[key] && _storeEventsCache[key].specific) {
+                return _storeEventsCache[key].specific;
+            }
+            getEventsForStore(storeName);
+            return (_storeEventsCache[key] && _storeEventsCache[key].specific) || [];
         }
 
         // --- Staff Events Visibility Control ---
@@ -704,9 +724,8 @@
                 document.getElementById('content').classList.remove('hidden');
                 document.getElementById('error-message').classList.add('hidden');
 
-                // Prefetch events & key stores in background
+                // Fetch events metadata once in background (non-blocking cached endpoint)
                 loadEvents();
-                prefetchKeyStores(data.ranking);
             } catch (e) {
                 console.error("Fetch error:", e);
                 if (isInitialLoad) {
@@ -847,15 +866,24 @@
             { keys: ['ソウル', 'カンナム', 'ホンデ', '江南', '弘大', 'SEOUL', 'GANGNAM', 'HONGDAE'], label: '韓国・ソウル' }
         ];
 
+        // Pre-compiled regex pairs for O(1) setup during localizeStoreName
+        const EN_TO_JA_REGEXPS = Object.entries(EN_TO_JA_MAP).map(([enKey, jaVal]) => ({
+            regex: new RegExp(`\\b${enKey}\\b`, 'gi'),
+            jaVal
+        }));
+
         function localizeStoreName(cleanName) {
             let localized = cleanName.trim();
             const upper = localized.toUpperCase();
             if (EN_TO_JA_MAP[upper]) {
                 return EN_TO_JA_MAP[upper];
             }
-            for (const [enKey, jaVal] of Object.entries(EN_TO_JA_MAP)) {
-                const regex = new RegExp(`\\b${enKey}\\b`, 'gi');
-                localized = localized.replace(regex, jaVal);
+            if (!/[A-Za-z]/.test(localized)) {
+                return localized;
+            }
+            for (let i = 0; i < EN_TO_JA_REGEXPS.length; i++) {
+                const entry = EN_TO_JA_REGEXPS[i];
+                localized = localized.replace(entry.regex, entry.jaVal);
             }
             return localized;
         }
@@ -877,6 +905,10 @@
         function detectBrandInfo(storeOrName) {
             const rawSource = (typeof storeOrName === 'object' ? (storeOrName.source || '') : '').toUpperCase();
             const name = typeof storeOrName === 'object' ? (storeOrName.name || '') : String(storeOrName || '');
+            const cacheKey = `${rawSource}|${name}`;
+            if (_brandInfoCache[cacheKey]) {
+                return _brandInfoCache[cacheKey];
+            }
             let code = 'OTHER';
             let cls = 'brand-other';
             let stripped = name;
@@ -919,7 +951,9 @@
             const cleanName = localizeStoreName(stripped || name);
             const areaLabel = detectAreaLabel(name, cleanName);
             const fullDisplayTitle = `${code} ${cleanName}`;
-            return { code, cls, cleanName, areaLabel, fullDisplayTitle };
+            const result = { code, cls, cleanName, areaLabel, fullDisplayTitle };
+            _brandInfoCache[cacheKey] = result;
+            return result;
         }
 
         function escapeHtml(str) {
@@ -1053,16 +1087,57 @@
             container.appendChild(node);
         }
 
+        function _computeUiSignature(data) {
+            const stores = (data && data.ranking) || [];
+            const storeSig = stores.map(s => {
+                const v = s.votes || {};
+                return `${s.name}:${s.women}:${s.men}:${s.women_diff || 0}:${v.smooth || 0}:${v.waiting || 0}`;
+            }).join('|');
+            const locSig = userLocation ? `${userLocation.lat.toFixed(3)},${userLocation.lng.toFixed(3)}` : '';
+            const masterCount = window.STORE_MASTER ? Object.keys(window.STORE_MASTER).length : 0;
+            const evCount = shouldShowEvents() ? ((window.allEvents && window.allEvents.length) || 0) : -1;
+            return `${data.timestamp || ''}#${currentFilter}#${currentSort}#${currentSearch}#${pinnedStores.join(',')}#${locSig}#${masterCount}#${evCount}#${storeSig}`;
+        }
+
         function updateUI(data) {
+            if (!data || !data.ranking) return;
+            const rankingList = document.getElementById('ranking-list');
+            // Render synchronously on the very first paint so there is zero visual delay
+            if (rankingList && rankingList.children.length === 0) {
+                _performUpdateUI(data);
+                return;
+            }
+            // Coalesce rapid back-to-back updateUI calls (e.g. store_master + status + events arriving in the same tick)
+            _pendingUiData = data;
+            if (_updateUiRafId !== null) return;
+            _updateUiRafId = requestAnimationFrame(() => {
+                _updateUiRafId = null;
+                if (_pendingUiData) {
+                    _performUpdateUI(_pendingUiData);
+                }
+            });
+        }
+
+        function _performUpdateUI(data) {
             const rankingList = document.getElementById('ranking-list');
             const pinnedList = document.getElementById('pinned-list');
             const pinnedContainer = document.getElementById('pinned-list-container');
 
-            rankingList.innerHTML = '';
-            pinnedList.innerHTML = '';
-
             const stores = data.ranking;
             if (!stores || stores.length === 0) return;
+
+            const nextSig = _computeUiSignature(data);
+            if (nextSig === _lastRenderedSignature && rankingList.children.length > 0) {
+                const lastUpdateEl = document.getElementById('last-update');
+                if (lastUpdateEl && data.timestamp) {
+                    lastUpdateEl.textContent = data.timestamp.split(' ')[1] || '--:--';
+                }
+                return;
+            }
+            _lastRenderedSignature = nextSig;
+
+            rankingList.innerHTML = '';
+            pinnedList.innerHTML = '';
 
             // Count occurrences of each cleanName across all stores so duplicate names get their brand prefixed
             const cleanNameCounts = {};
@@ -1133,32 +1208,33 @@
 
             if (pinnedItems.length > 0) {
                 pinnedContainer.classList.remove('hidden');
+                const pinnedFrag = document.createDocumentFragment();
                 pinnedItems.forEach(item => {
-                    renderStore(item.store, -1, pinnedList, true, item.rank, item.isDup);
+                    renderStore(item.store, -1, pinnedFrag, true, item.rank, item.isDup);
                 });
+                pinnedList.appendChild(pinnedFrag);
             } else {
                 pinnedContainer.classList.add('hidden');
             }
 
+            const rankingFrag = document.createDocumentFragment();
             otherItems.forEach((item, idx) => {
-                renderStore(item.store, item.rank, rankingList, false, item.rank, item.isDup);
+                renderStore(item.store, item.rank, rankingFrag, false, item.rank, item.isDup);
                 // In staff mode, skip all native in-feed PR cards completely
                 if (!IS_STAFF && typeof AFFILIATE_MASTER !== 'undefined' && AFFILIATE_MASTER.enabled) {
                     const currentRank = idx + 1;
                     const slot = AFFILIATE_MASTER.infeedSlots.find(s => s.afterRank === currentRank);
                     if (slot) {
                         const prEl = createInfeedPrElement(slot);
-                        if (prEl) rankingList.appendChild(prEl);
+                        if (prEl) rankingFrag.appendChild(prEl);
                     }
                 }
             });
+            rankingList.appendChild(rankingFrag);
 
             const lastUpdateEl = document.getElementById('last-update');
             if (lastUpdateEl) {
                 lastUpdateEl.textContent = data.timestamp ? data.timestamp.split(' ')[1] : '--:--';
-                lastUpdateEl.classList.remove('flash-update');
-                void lastUpdateEl.offsetWidth; // trigger reflow
-                lastUpdateEl.classList.add('flash-update');
             }
         }
 
@@ -2182,12 +2258,7 @@
             return _chartJsLoadingPromise;
         }
 
-        // Background prefetch during browser idle time (after page is interactive)
-        if ('requestIdleCallback' in window) {
-            window.requestIdleCallback(() => loadChartJs(), { timeout: 2000 });
-        } else {
-            setTimeout(loadChartJs, 1500);
-        }
+        // Chart.js is loaded strictly on-demand when the user opens a store analysis or comparison modal.
 
         // --- Comparison Modal Logic ---
         let comparisonChartInstance = null;

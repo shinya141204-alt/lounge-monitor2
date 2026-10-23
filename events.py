@@ -9,6 +9,7 @@ import re
 import json
 import time
 import logging
+import threading
 import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
@@ -22,6 +23,8 @@ _events_memory_cache = {
     'updated_at': None,
     'events': []
 }
+_refresh_lock = threading.Lock()
+_is_refreshing = False
 
 HEADERS = {
     'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
@@ -621,16 +624,59 @@ def crawl_jis_global_events():
     return events
 
 
-def fetch_all_events(force_refresh: bool = False):
-    """Fetch all events from all sources and update memory cache and disk cache."""
+def _crawl_and_save_events():
+    """Perform live event crawl across brands and update memory + disk cache."""
+    global _events_memory_cache
+    now = datetime.now()
+    olg_events = crawl_oriental_events()
+    jis_store_events = crawl_jis_store_events()
+    jis_global_events = crawl_jis_global_events()
+
+    all_events = olg_events + jis_store_events + jis_global_events
+    if all_events:
+        _events_memory_cache = {
+            'updated_at': now.strftime('%Y-%m-%d %H:%M:%S'),
+            'events': all_events
+        }
+        try:
+            os.makedirs(os.path.dirname(CACHE_FILE), exist_ok=True)
+            with open(CACHE_FILE, 'w', encoding='utf-8') as f:
+                json.dump(_events_memory_cache, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            logger.warning(f"Failed to save events cache to disk: {e}")
+        return all_events
+    return _events_memory_cache.get('events', [])
+
+
+def _trigger_background_refresh():
+    """Refresh events cache asynchronously in a daemon thread so HTTP requests never block."""
+    global _is_refreshing
+    with _refresh_lock:
+        if _is_refreshing:
+            return
+        _is_refreshing = True
+
+    def _worker():
+        global _is_refreshing
+        try:
+            _crawl_and_save_events()
+        except Exception as e:
+            logger.error(f"Background events crawl failed: {e}")
+        finally:
+            with _refresh_lock:
+                _is_refreshing = False
+
+    threading.Thread(target=_worker, daemon=True).start()
+
+
+def fetch_all_events(force_refresh: bool = False, allow_blocking: bool = True):
+    """Fetch all events from all sources and update memory cache and disk cache.
+    When allow_blocking=False (e.g. from /api/events), returns cached data immediately
+    even if expired and refreshes in a background thread.
+    """
     global _events_memory_cache
 
     now = datetime.now()
-    # Cache TTL: 2 hours
-    if not force_refresh and _events_memory_cache.get('updated_at'):
-        cached_time = datetime.strptime(_events_memory_cache['updated_at'], '%Y-%m-%d %H:%M:%S')
-        if (now - cached_time).total_seconds() < 7200:
-            return _events_memory_cache['events']
 
     # Load from disk cache first if memory is empty
     if not _events_memory_cache.get('events') and os.path.exists(CACHE_FILE):
@@ -639,38 +685,33 @@ def fetch_all_events(force_refresh: bool = False):
                 disk_data = json.load(f)
                 if disk_data.get('events'):
                     _events_memory_cache = disk_data
-                    if not force_refresh:
-                        return disk_data['events']
         except Exception as e:
             logger.warning(f"Failed to read events cache from disk: {e}")
 
-    # Crawl live: OLG announcements + JIS store pages + JIS global news
-    olg_events = crawl_oriental_events()
-    jis_store_events = crawl_jis_store_events()
-    jis_global_events = crawl_jis_global_events()
-    
-    all_events = olg_events + jis_store_events + jis_global_events
-
-    if all_events:
-        _events_memory_cache = {
-            'updated_at': now.strftime('%Y-%m-%d %H:%M:%S'),
-            'events': all_events
-        }
-        # Save to disk
+    # Check if cache is fresh (TTL: 2 hours)
+    is_fresh = False
+    if not force_refresh and _events_memory_cache.get('updated_at'):
         try:
-            os.makedirs(os.path.dirname(CACHE_FILE), exist_ok=True)
-            with open(CACHE_FILE, 'w', encoding='utf-8') as f:
-                json.dump(_events_memory_cache, f, ensure_ascii=False, indent=2)
-        except Exception as e:
-            logger.warning(f"Failed to save events cache to disk: {e}")
-        return all_events
+            cached_time = datetime.strptime(_events_memory_cache['updated_at'], '%Y-%m-%d %H:%M:%S')
+            if (now - cached_time).total_seconds() < 7200:
+                is_fresh = True
+        except Exception:
+            pass
 
-    return _events_memory_cache.get('events', [])
+    if is_fresh and _events_memory_cache.get('events'):
+        return _events_memory_cache['events']
+
+    # Non-blocking mode for web requests: return existing cache immediately & refresh in background
+    if not allow_blocking and not force_refresh:
+        _trigger_background_refresh()
+        return _events_memory_cache.get('events', [])
+
+    return _crawl_and_save_events()
 
 
-def get_events_for_store(store_name: str, store_only: bool = False):
+def get_events_for_store(store_name: str, store_only: bool = False, allow_blocking: bool = True):
     """Filter events relevant to a specific store (prioritizes store-specific banners and campaigns)."""
-    all_events = fetch_all_events()
+    all_events = fetch_all_events(allow_blocking=allow_blocking)
     matched = []
     global_matched = []
 
