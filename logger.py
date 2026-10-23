@@ -1,11 +1,20 @@
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
+import httplib2
+import socket
 import datetime
 import time
 import threading
 import requests
 import os
 import sys
+
+# Force IPv4 globally so httplib2 (oauth2client) and requests never hang on broken IPv6 on Render
+_orig_getaddrinfo = socket.getaddrinfo
+def _ipv4_only_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
+    return _orig_getaddrinfo(host, port, socket.AF_INET, type, proto, flags)
+if getattr(socket.getaddrinfo, '__name__', '') != '_ipv4_only_getaddrinfo':
+    socket.getaddrinfo = _ipv4_only_getaddrinfo
 
 # Constants
 CREDENTIALS_FILE = 'google_credentials.json'
@@ -50,7 +59,9 @@ def get_client():
             scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
             _cached_creds = ServiceAccountCredentials.from_json_keyfile_name(creds_path, scope)
             _cached_client = gspread.authorize(_cached_creds)
-            token_info = _cached_creds.get_access_token()
+            if hasattr(_cached_client, 'set_timeout'):
+                _cached_client.set_timeout(10)
+            token_info = _cached_creds.get_access_token(httplib2.Http(timeout=8))
             _cached_token = token_info.access_token
             # Cache token for 50 minutes (Google tokens last 60 minutes)
             _token_expiry = now + 3000
@@ -84,13 +95,16 @@ def get_spreadsheet_id():
     client = get_client()
     if not client:
         return None
-    try:
-        sheet = client.open(SHEET_NAME)
-        _cached_spreadsheet_id = sheet.id
-        return _cached_spreadsheet_id
-    except Exception as e:
-        print(f"Error resolving spreadsheet ID: {e}", file=sys.stderr)
-        return None
+    with _auth_lock:
+        if _cached_spreadsheet_id:
+            return _cached_spreadsheet_id
+        try:
+            sheet = client.open(SHEET_NAME)
+            _cached_spreadsheet_id = sheet.id
+            return _cached_spreadsheet_id
+        except Exception as e:
+            print(f"Error resolving spreadsheet ID: {e}", file=sys.stderr)
+            return None
 
 
 last_error = None

@@ -233,7 +233,7 @@ def sync_recent_from_google_sheets(hours=2):
         url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/gviz/tq?tq={urllib.parse.quote(query)}"
         headers = {"Authorization": f"Bearer {access_token}"}
 
-        response = logger.http_session.get(url, headers=headers, timeout=10)
+        response = requests.get(url, headers=headers, timeout=10)
         if response.status_code != 200:
             return 0
 
@@ -286,7 +286,7 @@ def sync_recent_from_google_sheets(hours=2):
         return 0
 
 
-def sync_from_google_sheets(days=14):
+def sync_from_google_sheets(days=14, on_recent_synced=None):
     """
     Background worker that syncs the last N days of data from Google Sheets into SQLite.
     Runs once on startup or when SQLite needs backfilling.
@@ -299,7 +299,12 @@ def sync_from_google_sheets(days=14):
     _sync_in_progress = True
     try:
         # Step 1: Prioritize the last 2 hours first so 30-min momentum works within 0.5s of boot
-        sync_recent_from_google_sheets(hours=2)
+        imported_recent = sync_recent_from_google_sheets(hours=2)
+        if imported_recent and callable(on_recent_synced):
+            try:
+                on_recent_synced()
+            except Exception as cb_err:
+                print(f"[local_db] on_recent_synced callback error: {cb_err}", file=sys.stderr)
 
         print(f"[local_db] Starting background sync from Google Sheets (last {days} days)...")
         import logger
@@ -317,7 +322,7 @@ def sync_from_google_sheets(days=14):
         url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/gviz/tq?tq={urllib.parse.quote(query)}"
         headers = {"Authorization": f"Bearer {access_token}"}
 
-        response = logger.http_session.get(url, headers=headers, timeout=30)
+        response = requests.get(url, headers=headers, timeout=20)
         if response.status_code != 200:
             print(f"[local_db] Sync HTTP {response.status_code} error from Google Sheets.")
             return
@@ -372,9 +377,9 @@ def sync_from_google_sheets(days=14):
     finally:
         _sync_in_progress = False
 
-def start_background_sync(days=14):
+def start_background_sync(days=14, on_recent_synced=None):
     """Spawns a background thread to sync SQLite with Google Sheets without blocking startup."""
-    thread = threading.Thread(target=sync_from_google_sheets, args=(days,), daemon=True)
+    thread = threading.Thread(target=sync_from_google_sheets, args=(days, on_recent_synced), daemon=True)
     thread.start()
     return thread
 

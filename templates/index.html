@@ -948,12 +948,12 @@
                 <div class="spinner"></div>
             </div>
             
-            <div id="loading" class="loading-state{% if initial_status and initial_status.ranking %} hidden{% endif %}">
+            <div id="loading" class="loading-state{% if initial_status and initial_status.ranking and not initial_status.is_seed %} hidden{% endif %}">
                 <div class="spinner"></div>
                 <p>最新データを読み込んでいます...</p>
             </div>
 
-            <div id="content" class="content{% if not (initial_status and initial_status.ranking) %} hidden{% endif %}">
+            <div id="content" class="content{% if not (initial_status and initial_status.ranking and not initial_status.is_seed) %} hidden{% endif %}">
 
                 <div class="search-sort-container">
                     <input type="text" id="search-input" placeholder="店舗名で検索" oninput="handleSearch(this.value)">
@@ -1074,7 +1074,7 @@
                 </div>
 
                 <div id="ranking-list" class="ranking-list">
-                    {% if initial_status and initial_status.ranking %}
+                    {% if initial_status and initial_status.ranking and not initial_status.is_seed %}
                     {% for s in initial_status.ranking %}
                     <div class="ranking-item{% if loop.index == 1 %} rank-1{% elif loop.index == 2 %} rank-2{% elif loop.index == 3 %} rank-3{% endif %}" style="cursor: pointer;" onclick="if(window.openModal)openModal({{ s.name | tojson | forceescape }})">
                         <div class="rank-badge">{{ loop.index }}</div>
@@ -1505,12 +1505,12 @@
         window.INITIAL_STATUS_DATA = {{ initial_status | tojson }};
         {% endif %}
     </script>
-    <script src="/static/app.js?v=20261023_17" defer></script>
+    <script src="/static/app.js?v=20261023_18" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js?v=21')
+                navigator.serviceWorker.register('/sw.js?v=22')
                     .then(reg => {
                         reg.update();
                     })

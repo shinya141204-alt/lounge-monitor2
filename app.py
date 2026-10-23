@@ -107,7 +107,7 @@ def _ensure_scheduler_started_async():
         try:
             local_db.init_db()
             restore_latest_data_if_empty()
-            local_db.start_background_sync(days=14)
+            local_db.start_background_sync(days=14, on_recent_synced=refresh_momentum_from_db)
             threading.Thread(target=local_db.restore_votes_from_sheets, kwargs={'hours': 24}, daemon=True).start()
 
             scheduler = BackgroundScheduler(timezone="UTC", job_defaults={
@@ -159,9 +159,6 @@ def _ensure_scheduler_started_async():
             logging.error(f"Scheduler boot error: {e}")
 
     threading.Thread(target=_boot, daemon=True).start()
-
-# Start background services immediately on module import (unless disabled for unit tests)
-_ensure_scheduler_started_async()
 
 @app.before_request
 def start_scheduler():
@@ -447,9 +444,9 @@ def restore_latest_data_if_empty():
     except Exception:
         pass
 
-    # Fallback 2: Restore from latest SQLite logs if available
+    # Fallback 2: Restore from latest SQLite logs if available (up to 7 days)
     try:
-        snap = local_db.get_snapshot_around(0, 720)
+        snap = local_db.get_snapshot_around(0, 10080)
         if snap and len(snap) >= 10:
             baseline_snap = local_db.get_snapshot_around(15, 50) or {}
             import store_master
@@ -623,6 +620,29 @@ _last_fetch_at = None
 # Rolling in-memory snapshots for 30-min momentum calculation
 rolling_snapshots = []
 
+def refresh_momentum_from_db():
+    """Recompute women_diff / men_diff on in-memory latest_data once background Google Sheets sync completes."""
+    try:
+        baseline_map = local_db.get_snapshot_around(15, 50)
+        if not baseline_map:
+            return
+        updated_any = False
+        with data_lock:
+            full_data = latest_data.get('full_data') or []
+            if not full_data or latest_data.get('is_seed'):
+                return
+            for s in full_data:
+                prev = baseline_map.get(s.get('name'))
+                if prev:
+                    s['women_diff'] = int(s.get('women', 0)) - int(prev.get('women', 0))
+                    s['men_diff'] = int(s.get('men', 0)) - int(prev.get('men', 0))
+                    updated_any = True
+        if updated_any:
+            save_latest_status_snapshot()
+            print("[app] Momentum (women_diff/men_diff) refreshed from newly synced SQLite baseline.")
+    except Exception as e:
+        print(f"[app] refresh_momentum_from_db error: {e}", file=sys.stderr)
+
 def update_job(force=False):
     global latest_data, _last_update_error, rolling_snapshots, _last_fetch_at
     with data_lock:
@@ -641,7 +661,7 @@ def update_job(force=False):
 
             jst_now = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
 
-            # Determine ~20-45 min ago baseline from in-memory rolling_snapshots or SQLite
+            # Determine ~20-45 min ago baseline from in-memory rolling_snapshots or SQLite (non-blocking)
             baseline_map = {}
             for snap in rolling_snapshots:
                 age_min = (jst_now - snap['dt']).total_seconds() / 60.0
@@ -651,11 +671,6 @@ def update_job(force=False):
             if not baseline_map:
                 try:
                     baseline_map = local_db.get_snapshot_around(15, 50)
-                    # On cold start / Render redeploy, SQLite may not have finished syncing the last 2 hours yet.
-                    # Trigger a fast 2-hour sync (~0.4s) so the very first scrape computes women_diff/men_diff accurately.
-                    if not baseline_map and os.environ.get('DISABLE_SCHEDULER') != '1':
-                        local_db.sync_recent_from_google_sheets(hours=2)
-                        baseline_map = local_db.get_snapshot_around(15, 50)
                 except Exception:
                     baseline_map = {}
 
@@ -1783,6 +1798,9 @@ def trigger_x_column_endpoint():
     res["tweet_text"] = main_text
     res["reply_text"] = reply_text
     return jsonify(res)
+
+# Start background services immediately on module import (unless disabled for unit tests)
+_ensure_scheduler_started_async()
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001, debug=True, use_reloader=False)
