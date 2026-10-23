@@ -609,6 +609,19 @@
         const CLIENT_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
         let prefetchTriggered = false;
 
+        // Age (seconds) of a status payload based on its JST timestamp ("YYYY-MM-DD HH:MM:SS")
+        function getStatusAgeSec(data) {
+            try {
+                const ts = data && data.timestamp;
+                if (!ts) return Infinity;
+                const t = new Date(ts.replace(' ', 'T') + '+09:00').getTime();
+                if (isNaN(t)) return Infinity;
+                return Math.max(0, (Date.now() - t) / 1000);
+            } catch (e) {
+                return Infinity;
+            }
+        }
+
         // Instant Load: Render server-embedded INITIAL_STATUS_DATA (0ms, zero network roundtrip) or localStorage cache
         function restoreCachedStatus() {
             try {
@@ -616,7 +629,9 @@
                 if (window.INITIAL_STATUS_DATA && Array.isArray(window.INITIAL_STATUS_DATA.ranking) && window.INITIAL_STATUS_DATA.ranking.length > 0 && !window.INITIAL_STATUS_DATA.is_seed) {
                     window.lastData = window.INITIAL_STATUS_DATA;
                     isInitialLoad = false;
-                    _renderedFromSSR = true;
+                    // The HTML may come from the Service Worker app-shell cache (instant PWA launch).
+                    // Only skip the first /api/status call when the embedded data is genuinely fresh.
+                    _renderedFromSSR = getStatusAgeSec(window.INITIAL_STATUS_DATA) < 90;
                     updateUI(window.INITIAL_STATUS_DATA);
                     const loadingEl = document.getElementById('loading');
                     const contentEl = document.getElementById('content');
@@ -1835,6 +1850,14 @@
 
         // Poll every 30 seconds
         setInterval(fetchData, 30000);
+
+        // PWA / mobile: timers are frozen while the app is in the background.
+        // Refresh immediately when the user returns if the shown data is older than 30s.
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && getStatusAgeSec(window.lastData) > 30) {
+                fetchData();
+            }
+        });
 
         // --- Analysis Modal Logic ---
         let dailyChartInstance = null;

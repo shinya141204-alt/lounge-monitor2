@@ -90,7 +90,9 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <!-- Non-render-blocking web font (avoids waiting on Google Fonts at PWA cold launch) -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet"></noscript>
     <link rel="stylesheet" href="/static/style.css?v=20261023_13">
     {% if not is_staff %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
@@ -1514,12 +1516,12 @@
         window.INITIAL_STATUS_DATA = {{ initial_status | tojson }};
         {% endif %}
     </script>
-    <script src="/static/app.js?v=20261023_20" defer></script>
+    <script src="/static/app.js?v=20261024_1" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js?v=24')
+                navigator.serviceWorker.register('/sw.js?v=25')
                     .then(reg => {
                         reg.update();
                     })
