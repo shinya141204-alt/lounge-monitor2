@@ -18,6 +18,21 @@
     --calm-accent-soft: rgba(200, 164, 110, 0.14);
     --calm-women: #d8a1aa;           /* くすみローズ */
     --calm-men: #93b1c9;             /* スレートブルー */
+
+    /* ライトモード用（ウォームペーパー・アイボリー調） */
+    --calm-light-bg: #f4f2ed;
+    --calm-light-surface: #faf9f6;
+    --calm-light-surface-2: #edeae3;
+    --calm-light-border: rgba(28, 27, 24, 0.09);
+    --calm-light-border-strong: rgba(28, 27, 24, 0.17);
+    --calm-light-text: #1f1e1b;
+    --calm-light-sub: #6b665e;
+    --calm-light-accent: #8c6b3f;    /* アンティークブロンズ */
+    --calm-light-accent-soft: rgba(140, 107, 63, 0.11);
+    --calm-light-women: #b05a68;     /* ディープローズ */
+    --calm-light-men: #4a6f8f;       /* ディープスレート */
+    --calm-light-bar-w: #c98994;
+    --calm-light-bar-m: #7d9cb8;
 }
 
 /* ---------- 1. 動き：点滅・パルス・背景のゆらぎを止める ---------- */
@@ -358,3 +373,336 @@ body:not(.theme-light) .area-point-box {
     background: var(--calm-surface-2) !important;
     border-color: var(--calm-border) !important;
 }
+
+/* ==========================================================================
+   10. ライトモード（body.theme-light）：ウォームペーパー×ブロンズの上品なトーン
+   ========================================================================== */
+body.theme-light {
+    --bg-color: var(--calm-light-bg);
+    --card-bg: var(--calm-light-surface);
+    --card-hover: var(--calm-light-surface-2);
+    --card-border: var(--calm-light-border);
+    --text-primary: var(--calm-light-text);
+    --text-secondary: var(--calm-light-sub);
+    --primary: var(--calm-light-text);
+    background-color: var(--calm-light-bg) !important;
+    background-image: none !important;
+    color: var(--calm-light-text) !important;
+}
+
+body.theme-light h1,
+body.theme-light .portal-brand-title {
+    background: none !important;
+    -webkit-background-clip: initial !important;
+    background-clip: initial !important;
+    -webkit-text-fill-color: var(--calm-light-text) !important;
+    color: var(--calm-light-text) !important;
+    letter-spacing: 0.06em;
+}
+
+body.theme-light .subtitle {
+    color: var(--calm-light-sub) !important;
+}
+
+/* 女性・男性の人数＆男女比バー（原色ピンク・青 → 落ち着いたディープローズ・スレート） */
+body.theme-light .stat.ladies .count {
+    color: var(--calm-light-women) !important;
+    text-shadow: none !important;
+}
+
+body.theme-light .stat.men .count {
+    color: var(--calm-light-men) !important;
+    text-shadow: none !important;
+}
+
+body.theme-light .bar-fill-ladies,
+body.theme-light .ratio-fill-w {
+    background: var(--calm-light-bar-w) !important;
+    opacity: 0.9;
+}
+
+body.theme-light .bar-fill-men {
+    background: var(--calm-light-bar-m) !important;
+    opacity: 0.9;
+}
+
+body.theme-light .occupancy-bar {
+    background: var(--calm-light-surface-2) !important;
+}
+
+/* ランキングカード＆1位〜3位バッジ */
+body.theme-light .ranking-item {
+    background: var(--calm-light-surface) !important;
+    border-color: var(--calm-light-border) !important;
+    box-shadow: 0 1px 2px rgba(28, 27, 24, 0.04) !important;
+}
+
+body.theme-light .ranking-item:hover {
+    background: #ffffff !important;
+    border-color: var(--calm-light-border-strong) !important;
+    transform: none !important;
+}
+
+body.theme-light .ranking-item.rank-1 {
+    background: var(--calm-light-surface) !important;
+    border-color: rgba(140, 107, 63, 0.42) !important;
+}
+
+body.theme-light .rank-badge {
+    background: var(--calm-light-surface-2) !important;
+    color: var(--calm-light-text) !important;
+    box-shadow: none !important;
+}
+
+body.theme-light .rank-1 .rank-badge {
+    background: #b5915b !important;
+    color: #ffffff !important;
+}
+
+body.theme-light .rank-2 .rank-badge {
+    background: #8e9299 !important;
+    color: #ffffff !important;
+}
+
+body.theme-light .rank-3 .rank-badge {
+    background: #9c7a56 !important;
+    color: #ffffff !important;
+}
+
+/* ブランドバッジ・エリアタグ・特典バッジ（パステル塗りつぶしをやめて控えめな枠線に） */
+body.theme-light .brand-badge {
+    background: rgba(28, 27, 24, 0.04) !important;
+    border: 1px solid var(--calm-light-border-strong) !important;
+    color: var(--calm-light-text) !important;
+    filter: none !important;
+}
+
+body.theme-light .area-tag {
+    background: var(--calm-light-surface-2) !important;
+    border: 1px solid var(--calm-light-border) !important;
+    color: var(--calm-light-sub) !important;
+}
+
+body.theme-light .event-tag-badge,
+body.theme-light .momentum-tag,
+body.theme-light .distance-tag {
+    background: transparent !important;
+    border: 1px solid rgba(140, 107, 63, 0.45) !important;
+    color: var(--calm-light-accent) !important;
+    box-shadow: none !important;
+}
+
+/* 各種ボタン・ピル・タブ（ピンクや赤のグラデーションを除去） */
+body.theme-light .header-btn,
+body.theme-light #header-x-btn,
+body.theme-light .mobile-only-btn,
+body.theme-light .filter-btn,
+body.theme-light .chart-filter-btn,
+body.theme-light .date-btn,
+body.theme-light .events-tab-btn,
+body.theme-light .sns-tab-btn,
+body.theme-light .guide-tab-pill,
+body.theme-light .portal-nav-link,
+body.theme-light .portal-nav-item,
+body.theme-light .share-pill-btn,
+body.theme-light .sns-hero-btn,
+body.theme-light .staff-action-pill,
+body.theme-light .vote-pill-btn,
+body.theme-light .menu-grid-item,
+body.theme-light .portal-area-chip,
+body.theme-light .footer-pill-btn,
+body.theme-light .sns-icon-btn {
+    background: var(--calm-light-surface) !important;
+    border: 1px solid var(--calm-light-border-strong) !important;
+    color: var(--calm-light-text) !important;
+    box-shadow: none !important;
+}
+
+body.theme-light .theme-switcher-bar,
+body.theme-light .sort-controls {
+    background: var(--calm-light-surface-2) !important;
+    border-color: var(--calm-light-border) !important;
+}
+
+body.theme-light .theme-pill-btn,
+body.theme-light .sort-btn {
+    background: transparent !important;
+    color: var(--calm-light-sub) !important;
+    box-shadow: none !important;
+}
+
+body.theme-light .theme-pill-btn.active,
+body.theme-light .sort-btn.active {
+    background: var(--calm-light-surface) !important;
+    color: var(--calm-light-text) !important;
+    border: 1px solid rgba(140, 107, 63, 0.45) !important;
+    box-shadow: 0 1px 2px rgba(28, 27, 24, 0.06) !important;
+}
+
+body.theme-light .filter-btn.active,
+body.theme-light .chart-filter-btn.active,
+body.theme-light .date-btn.active,
+body.theme-light .events-tab-btn.active,
+body.theme-light .sns-tab-btn.active,
+body.theme-light .guide-tab-pill.active,
+body.theme-light .portal-nav-link.active,
+body.theme-light .portal-nav-item.active {
+    background: var(--calm-light-accent-soft) !important;
+    border-color: rgba(140, 107, 63, 0.55) !important;
+    color: var(--calm-light-text) !important;
+    box-shadow: none !important;
+}
+
+body.theme-light #header-x-btn .beacon-dot,
+body.theme-light .sns-live-beacon .beacon-dot {
+    background: var(--calm-light-accent) !important;
+}
+
+/* 主要アクションボタン（CTA） */
+body.theme-light .cta-btn,
+body.theme-light .live-tool-btn,
+body.theme-light .aff-cta-btn,
+body.theme-light .rec-btn,
+body.theme-light .guide-open-btn,
+body.theme-light .guide-app-cta,
+body.theme-light .pr-cta-btn,
+body.theme-light .how-to-start-btn,
+body.theme-light .pwa-install-action-btn,
+body.theme-light .second-map-btn,
+body.theme-light .article-read-btn,
+body.theme-light .card-inline-cta {
+    background: var(--calm-light-surface-2) !important;
+    border: 1px solid rgba(140, 107, 63, 0.48) !important;
+    color: var(--calm-light-text) !important;
+    box-shadow: none !important;
+}
+
+body.theme-light .cta-btn:hover,
+body.theme-light .guide-open-btn:hover,
+body.theme-light .guide-app-cta:hover,
+body.theme-light .second-map-btn:hover,
+body.theme-light .how-to-start-btn:hover,
+body.theme-light .card-inline-cta:hover {
+    background: var(--calm-light-accent-soft) !important;
+    transform: none !important;
+}
+
+/* バッジ・タグ類（ライトモード） */
+body.theme-light .col-banner-badge,
+body.theme-light .domain-notice-badge,
+body.theme-light .staff-header-badge,
+body.theme-light .guide-app-badge,
+body.theme-light .article-card-badge,
+body.theme-light .portal-article-badge,
+body.theme-light .sns-hero-tag,
+body.theme-light .sns-live-beacon,
+body.theme-light .article-tag,
+body.theme-light .modal-event-badge,
+body.theme-light .pr-badge-box,
+body.theme-light .pr-tag-pill {
+    background: transparent !important;
+    border: 1px solid var(--calm-light-border-strong) !important;
+    color: var(--calm-light-sub) !important;
+    box-shadow: none !important;
+}
+
+body.theme-light .how-to-step-num,
+body.theme-light .pwa-step-num {
+    background: var(--calm-light-accent-soft) !important;
+    color: var(--calm-light-accent) !important;
+    border: 1px solid rgba(140, 107, 63, 0.4) !important;
+    box-shadow: none !important;
+}
+
+/* カード・バナー・セクション（パステルピンク背景を除去） */
+body.theme-light .column-highlight-banner,
+body.theme-light .official-sns-hero-card,
+body.theme-light .share-banner-box,
+body.theme-light .domain-notice-banner,
+body.theme-light .pwa-install-banner,
+body.theme-light .how-to-sns-box,
+body.theme-light .modal-pr-link,
+body.theme-light .pr-card-item,
+body.theme-light .pr-card-highlight,
+body.theme-light .guide-app-card,
+body.theme-light .guide-app-card.card-featured,
+body.theme-light .modal-second-venue-box,
+body.theme-light .modal-vote-box,
+body.theme-light .portal-article-card,
+body.theme-light .portal-area-directory,
+body.theme-light .portal-footer-sitemap,
+body.theme-light .seo-guide-section,
+body.theme-light .article-card-item,
+body.theme-light .article-card-item.highlight-card {
+    background: var(--calm-light-surface) !important;
+    border: 1px solid var(--calm-light-border) !important;
+    box-shadow: none !important;
+}
+
+body.theme-light .seo-guide-card,
+body.theme-light .seo-faq-item,
+body.theme-light .chart-container,
+body.theme-light .comparison-banner,
+body.theme-light .how-to-step-card,
+body.theme-light .guide-tips-box {
+    background: var(--calm-light-surface-2) !important;
+    border: 1px solid var(--calm-light-border) !important;
+    box-shadow: none !important;
+}
+
+body.theme-light .article-card-item::before {
+    background: rgba(140, 107, 63, 0.45) !important;
+}
+
+body.theme-light .pr-occupancy-bar {
+    display: none !important;
+}
+
+body.theme-light .analysis-btn {
+    background: var(--calm-light-surface-2) !important;
+    border-color: var(--calm-light-border-strong) !important;
+    color: var(--calm-light-sub) !important;
+    box-shadow: none !important;
+}
+
+/* 見出し・アクセント文字色の調整 */
+body.theme-light .seo-guide-card h3,
+body.theme-light .seo-faq-block h3,
+body.theme-light .seo-directory-block h3,
+body.theme-light .guide-app-target,
+body.theme-light .how-to-sns-title,
+body.theme-light .col-banner-arrow,
+body.theme-light .portal-article-more,
+body.theme-light .portal-area-all-link,
+body.theme-light .second-venue-sub,
+body.theme-light .articles-lead strong {
+    color: var(--calm-light-accent) !important;
+}
+
+body.theme-light .modal-content,
+body.theme-light .articles-modal-content {
+    background: var(--calm-light-bg) !important;
+    border-color: var(--calm-light-border-strong) !important;
+    color: var(--calm-light-text) !important;
+}
+
+body.theme-light .modal-header {
+    background: var(--calm-light-bg) !important;
+    border-bottom-color: var(--calm-light-border) !important;
+}
+
+/* 比較バナーの差分バッジ（ライトモード） */
+body.theme-light .diff-badge.hot,
+body.theme-light .diff-badge.up {
+    background: var(--calm-light-accent-soft) !important;
+    color: var(--calm-light-accent) !important;
+    border: 1px solid rgba(140, 107, 63, 0.35) !important;
+}
+
+body.theme-light .diff-badge.down,
+body.theme-light .diff-badge.neutral {
+    background: var(--calm-light-surface) !important;
+    color: var(--calm-light-sub) !important;
+    border: 1px solid var(--calm-light-border-strong) !important;
+}
+

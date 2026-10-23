@@ -2122,10 +2122,16 @@
         function getChartThemeColors() {
             const isLight = document.body.classList.contains('theme-light');
             return {
-                textColor: isLight ? '#0f172a' : '#ffffff',
-                subTextColor: isLight ? '#475569' : '#cbd5e1',
-                gridColor: isLight ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.1)',
-                axisLineColor: isLight ? 'rgba(0, 0, 0, 0.15)' : 'rgba(255, 255, 255, 0.15)'
+                textColor: isLight ? '#1f1e1b' : '#ebe8e3',
+                subTextColor: isLight ? '#6b665e' : '#9b978f',
+                gridColor: isLight ? 'rgba(28, 27, 24, 0.08)' : 'rgba(255, 255, 255, 0.08)',
+                axisLineColor: isLight ? 'rgba(28, 27, 24, 0.15)' : 'rgba(255, 255, 255, 0.15)',
+                womenBar: isLight ? '#c98994' : 'rgba(216, 161, 170, 0.85)',
+                menBar: isLight ? '#7d9cb8' : 'rgba(147, 177, 201, 0.85)',
+                womenLine: isLight ? '#b05a68' : '#d8a1aa',
+                womenFill: isLight ? 'rgba(176, 90, 104, 0.15)' : 'rgba(216, 161, 170, 0.16)',
+                menLine: isLight ? '#4a6f8f' : '#93b1c9',
+                menFill: isLight ? 'rgba(74, 111, 143, 0.15)' : 'rgba(147, 177, 201, 0.16)'
             };
         }
 
@@ -2291,13 +2297,13 @@
                         {
                             label: 'Ladies',
                             data: womenData,
-                            backgroundColor: 'rgba(255, 107, 107, 0.85)',
+                            backgroundColor: th.womenBar,
                             borderRadius: 4
                         },
                         {
                             label: 'Men',
                             data: menData,
-                            backgroundColor: 'rgba(77, 171, 247, 0.85)',
+                            backgroundColor: th.menBar,
                             borderRadius: 4
                         }
                     ]
@@ -2509,13 +2515,13 @@
                         {
                             label: 'Ladies (ピーク平均)',
                             data: womenData,
-                            backgroundColor: 'rgba(255, 107, 107, 0.85)',
+                            backgroundColor: th.womenBar,
                             borderRadius: 4
                         },
                         {
                             label: 'Men (ピーク平均)',
                             data: menData,
-                            backgroundColor: 'rgba(77, 171, 247, 0.85)',
+                            backgroundColor: th.menBar,
                             borderRadius: 4
                         }
                     ]
@@ -2587,8 +2593,8 @@
                         {
                             label: 'Ladies 平均',
                             data: womenSeries,
-                            backgroundColor: 'rgba(255, 107, 107, 0.2)',
-                            borderColor: 'rgba(255, 107, 107, 1)',
+                            backgroundColor: th.womenFill,
+                            borderColor: th.womenLine,
                             borderWidth: 2,
                             pointRadius: 2.5,
                             fill: true,
@@ -2597,8 +2603,8 @@
                         {
                             label: 'Men 平均',
                             data: menSeries,
-                            backgroundColor: 'rgba(77, 171, 247, 0.2)',
-                            borderColor: 'rgba(77, 171, 247, 1)',
+                            backgroundColor: th.menFill,
+                            borderColor: th.menLine,
                             borderWidth: 2,
                             pointRadius: 2.5,
                             fill: true,
@@ -2721,8 +2727,8 @@
                         {
                             label: 'Ladies',
                             data: womenValues,
-                            backgroundColor: 'rgba(255, 107, 107, 0.2)',
-                            borderColor: 'rgba(255, 107, 107, 1)',
+                            backgroundColor: th.womenFill,
+                            borderColor: th.womenLine,
                             borderWidth: 1.5,
                             pointRadius: 2,
                             fill: true,
@@ -2731,8 +2737,8 @@
                         {
                             label: 'Men',
                             data: menValues,
-                            backgroundColor: 'rgba(77, 171, 247, 0.2)',
-                            borderColor: 'rgba(77, 171, 247, 1)',
+                            backgroundColor: th.menFill,
+                            borderColor: th.menLine,
                             borderWidth: 1.5,
                             pointRadius: 2,
                             fill: true,
