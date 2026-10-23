@@ -261,17 +261,17 @@ def get_tip_for_slot(slot_label: str = "12:00", tip_index: int = None) -> str:
     """
     idx = _select_tip_index(slot_label=slot_label, tip_index=tip_index)
     raw_tip = TIPS_LIST[idx].strip()
-    footer_tags_only = "\n\n📖 詳しいコラム・現在の男女比はリプ欄へ👇\n#相席ナビ #相席ラウンジ"
+    footer_tags_only = "\n\n📖 詳しいコラム・現在の男女比はリプ欄へ👇\n#相席ラウンジ"
 
     candidate = f"{raw_tip}{footer_tags_only}"
     if x_poster.compute_twitter_weight(candidate) <= 276:
         return candidate
 
-    short_tags = "\n\n👇詳細・現在人数はリプ欄へ\n#相席ナビ #相席ラウンジ"
+    short_tags = "\n\n👇詳細・現在人数はリプ欄へ\n#相席ラウンジ"
     if x_poster.compute_twitter_weight(f"{raw_tip}{short_tags}") <= 276:
         return f"{raw_tip}{short_tags}"
 
-    minimal_tags = "\n#相席ナビ #相席ラウンジ"
+    minimal_tags = "\n#相席ラウンジ"
     if x_poster.compute_twitter_weight(f"{raw_tip}{minimal_tags}") <= 276:
         return f"{raw_tip}{minimal_tags}"
 
