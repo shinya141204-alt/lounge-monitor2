@@ -604,13 +604,33 @@
         });
 
         let isInitialLoad = true;
+        let _renderedFromSSR = false;
         const clientAnalysisCache = {}; // storeName -> { data, fetchedAt }
         const CLIENT_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
         let prefetchTriggered = false;
 
-        // Instant Load: Render cached ranking immediately if available (< 30 mins old)
+        // Instant Load: Render server-embedded INITIAL_STATUS_DATA (0ms, zero network roundtrip) or localStorage cache
         function restoreCachedStatus() {
             try {
+                if (window.INITIAL_STATUS_DATA && Array.isArray(window.INITIAL_STATUS_DATA.ranking) && window.INITIAL_STATUS_DATA.ranking.length > 0) {
+                    window.lastData = window.INITIAL_STATUS_DATA;
+                    isInitialLoad = false;
+                    _renderedFromSSR = true;
+                    updateUI(window.INITIAL_STATUS_DATA);
+                    const loadingEl = document.getElementById('loading');
+                    const contentEl = document.getElementById('content');
+                    const errEl = document.getElementById('error-message');
+                    if (loadingEl) loadingEl.classList.add('hidden');
+                    if (contentEl) contentEl.classList.remove('hidden');
+                    if (errEl) errEl.classList.add('hidden');
+                    try {
+                        localStorage.setItem('olg_cached_status', JSON.stringify({
+                            data: window.INITIAL_STATUS_DATA,
+                            savedAt: Date.now()
+                        }));
+                    } catch (e) {}
+                    return;
+                }
                 const savedRaw = localStorage.getItem('olg_cached_status');
                 if (savedRaw) {
                     const saved = JSON.parse(savedRaw);
@@ -773,17 +793,15 @@
             
             await fetchData();
             
-            setTimeout(() => {
-                if (btn) {
-                    btn.classList.remove('spinning');
-                    btn.disabled = false;
-                }
-                if (labelSpan) labelSpan.textContent = '更新';
-                const timeStr = (window.lastData && window.lastData.timestamp)
-                    ? window.lastData.timestamp.split(' ')[1]
-                    : new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                showRefreshToast(`最新データに更新しました (${timeStr})`);
-            }, 400);
+            if (btn) {
+                btn.classList.remove('spinning');
+                btn.disabled = false;
+            }
+            if (labelSpan) labelSpan.textContent = '更新';
+            const timeStr = (window.lastData && window.lastData.timestamp)
+                ? window.lastData.timestamp.split(' ')[1]
+                : new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            showRefreshToast(`最新データに更新しました (${timeStr})`);
         }
 
         // Map English location names to readable Japanese
@@ -1762,8 +1780,12 @@
             document.getElementById('error-message').classList.remove('hidden');
         }
 
-        // Initial fetch
-        fetchData();
+        // Initial fetch (if already rendered from fresh server-embedded data, skip redundant initial /api/status roundtrip)
+        if (_renderedFromSSR) {
+            loadEvents();
+        } else {
+            fetchData();
+        }
 
         // Poll every 30 seconds
         setInterval(fetchData, 30000);
@@ -1883,27 +1905,17 @@
             if (lEl) lEl.textContent = v.lively || 0;
         }
 
-        async function renderModalCrowdVotes(storeName) {
+        function renderModalCrowdVotes(storeName) {
             const feedbackEl = document.getElementById('modal-vote-feedback');
             if (feedbackEl) feedbackEl.classList.add('hidden');
 
-            // First show from cached ranking list if available
+            // Votes are already embedded in each store object from /api/status (and updated every 30s)
             let initialVotes = { smooth: 0, waiting: 0, lively: 0 };
             if (window.lastData && Array.isArray(window.lastData.ranking)) {
                 const found = window.lastData.ranking.find(s => s.name === storeName);
                 if (found && found.votes) initialVotes = found.votes;
             }
             updateVoteNumbersUI(initialVotes);
-
-            try {
-                const res = await fetch('/api/votes/' + encodeURIComponent(storeName));
-                if (res.ok) {
-                    const d = await res.json();
-                    if (d && d.votes) {
-                        updateVoteNumbersUI(d.votes);
-                    }
-                }
-            } catch (e) {}
         }
 
         // Anonymous per-device ID (random, stored only in this browser) used for duplicate-vote prevention.
@@ -2258,7 +2270,14 @@
             return _chartJsLoadingPromise;
         }
 
-        // Chart.js is loaded strictly on-demand when the user opens a store analysis or comparison modal.
+        // Warm up Chart.js quietly 3.5s after initial render so the first store modal click opens with 0ms script lag
+        setTimeout(() => {
+            if ('requestIdleCallback' in window) {
+                window.requestIdleCallback(() => loadChartJs(), { timeout: 4000 });
+            } else {
+                loadChartJs();
+            }
+        }, 3500);
 
         // --- Comparison Modal Logic ---
         let comparisonChartInstance = null;

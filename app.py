@@ -104,6 +104,7 @@ def start_scheduler():
             if not _scheduler_started:
                 # Initialize local high-speed SQLite database
                 local_db.init_db()
+                restore_latest_data_if_empty()
                 local_db.start_background_sync(days=14)
                 # Restore crowd votes lost on redeploy from Google Sheets
                 threading.Thread(target=local_db.restore_votes_from_sheets, kwargs={'hours': 24}, daemon=True).start()
@@ -401,6 +402,63 @@ latest_data = {
     'last_updated': None,
     'full_data': []
 }
+LATEST_STATUS_SNAPSHOT_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'latest_status_cache.json')
+
+
+def save_latest_status_snapshot():
+    """Persist latest_data to disk so server restarts/redeploys have 0ms cold-start latency."""
+    try:
+        with data_lock:
+            if not latest_data.get('full_data'):
+                return
+            payload = {
+                'last_updated': latest_data.get('last_updated'),
+                'full_data': latest_data.get('full_data', [])
+            }
+        os.makedirs(os.path.dirname(LATEST_STATUS_SNAPSHOT_FILE), exist_ok=True)
+        tmp_path = LATEST_STATUS_SNAPSHOT_FILE + '.tmp'
+        with open(tmp_path, 'w', encoding='utf-8') as f:
+            import json
+            json.dump(payload, f, ensure_ascii=False)
+        os.replace(tmp_path, LATEST_STATUS_SNAPSHOT_FILE)
+    except Exception:
+        pass
+
+
+def restore_latest_data_if_empty():
+    """Immediately populate latest_data from disk snapshot on cold start so users never see a loading screen."""
+    with data_lock:
+        if latest_data.get('full_data'):
+            return True
+    try:
+        if os.path.exists(LATEST_STATUS_SNAPSHOT_FILE):
+            import json
+            with open(LATEST_STATUS_SNAPSHOT_FILE, 'r', encoding='utf-8') as f:
+                saved = json.load(f)
+            full_data = saved.get('full_data') or []
+            if full_data:
+                with data_lock:
+                    if not latest_data.get('full_data'):
+                        latest_data['full_data'] = full_data
+                        latest_data['top_store'] = full_data[0]
+                        latest_data['last_updated'] = saved.get('last_updated')
+                return True
+    except Exception:
+        pass
+    return False
+
+
+def get_initial_status_payload():
+    """Return status dict for SSR embedding in index.html if available."""
+    restore_latest_data_if_empty()
+    with data_lock:
+        if latest_data.get('full_data'):
+            return {
+                'timestamp': latest_data['last_updated'],
+                'ranking': latest_data['full_data'],
+                'status': 'success'
+            }
+    return None
 
 # Region Definitions
 REGIONS = {
@@ -510,6 +568,7 @@ def update_job(force=False):
                 latest_data['top_store'] = top_store
                 latest_data['full_data'] = sorted_data
                 latest_data['last_updated'] = jst_now.strftime("%Y-%m-%d %H:%M:%S")
+            save_latest_status_snapshot()
             print(f"Data updated. Top store: {top_store['name'] if top_store else 'None'}")
             _last_update_error = None
             
@@ -548,7 +607,8 @@ def update_job(force=False):
 
 @app.route('/')
 def index():
-    return render_template('index.html', is_staff=False)
+    trigger_background_fetch_if_needed()
+    return render_template('index.html', is_staff=False, initial_status=get_initial_status_payload())
 
 @app.route('/guide')
 @app.route('/guide/strategy')
@@ -649,7 +709,8 @@ def staff_monitor():
 
     # Check if already authenticated in session
     if session.get('is_staff'):
-        return render_template('index.html', is_staff=True)
+        trigger_background_fetch_if_needed()
+        return render_template('index.html', is_staff=True, initial_status=get_initial_status_payload())
 
     return render_template('staff_login.html', error=error)
 
@@ -712,6 +773,7 @@ def serve_sw():
 
 @app.route('/api/status')
 def get_status():
+    restore_latest_data_if_empty()
     trigger_background_fetch_if_needed()
     with data_lock:
         if latest_data.get('full_data'):
