@@ -768,7 +768,17 @@ def affiliate_redirect(item_id):
 import urllib.parse as urllib_parse
 
 _BOT_MARKERS = ('bot', 'spider', 'crawl', 'slurp', 'facebookexternalhit', 'preview', 'headless', 'python-requests', 'curl')
-_TRACKED_PAGE_PREFIXES = ('/guide', '/columns', '/areas', '/area/', '/grooming', '/stats')
+_TRACKED_PAGE_PREFIXES = ('/guide', '/columns', '/areas', '/area/', '/grooming', '/stats', '/oriental-lounge', '/ag', '/jis', '/store/')
+
+@app.template_filter('seo_store_name')
+def _jinja_seo_store_name(name):
+    import store_master
+    return store_master.seo_name(name)
+
+@app.template_filter('store_slug')
+def _jinja_store_slug(name):
+    import store_master
+    return store_master.slug_of(name)
 
 def _is_bot_request():
     ua = (request.headers.get('User-Agent') or '').lower()
@@ -1185,9 +1195,205 @@ def get_stores_for_area(area_slug, all_stores):
     matched.sort(key=lambda x: (x.get('women', 0), x.get('men', 0)), reverse=True)
     return matched
 
+BRAND_GUIDES = {
+    'oriental-lounge': {
+        'slug': 'oriental-lounge',
+        'name': 'オリエンタルラウンジ',
+        'seo_title': 'オリエンタルラウンジ全店のリアルタイム人数・男女比・混雑状況一覧',
+        'seo_description': 'オリエンタルラウンジ全店（新宿・渋谷・恵比寿・上野・梅田・心斎橋・難波・名古屋・福岡など）のリアルタイム男女人数・男女比・待ち時間傾向を毎分自動更新で一覧表示。今から入りやすい穴場店舗が3秒でわかります。',
+        'seo_keywords': 'オリエンタルラウンジ 人数,オリエンタルラウンジ 男女比,オリエンタルラウンジ 混雑,オリエンタルラウンジ リアルタイム,オリエンタルラウンジ 待ち時間',
+        'h1': '👑 オリエンタルラウンジ全店のリアルタイム人数・男女比一覧',
+        'lead': '全国のオリエンタルラウンジ各店舗の現在人数（女性・男性）と女性比率をリアルタイム集計しています。店舗カードをタップすると、各店舗の混雑傾向と徒歩圏内のハシゴ候補店舗を確認できます。',
+        'strategy_text_1': 'オリエンタルラウンジは20代半ば〜30代前半の社会人・OL層を中心に、落ち着いた高級感ある空間で会話を楽しめる王道ブランドです。金・土曜の21:00〜23:00は人気店舗で男性の入店待ちが発生しやすいため、入店前に本ページで「女性比率が55%以上の店舗」を選ぶのが鉄則です。',
+        'strategy_text_2': '新宿・渋谷・梅田・名古屋・福岡など複数店舗が近いエリアでは、オリエンタルラウンジが男性過多の際に徒歩数分の「ag（アグ）」や「JIS（ジス）」へ移動するだけで、待ち時間ゼロで即相席できるケースが多くあります。',
+        'faq_tip': '入店前に相席ナビでオリエンタルラウンジ各店の女性比率を確認し、女性が男性より多い店舗を選ぶか、平日の20時〜22時・週末の19時〜20時半の早い時間帯に入店するのが最も効果的です。'
+    },
+    'ag': {
+        'slug': 'ag',
+        'name': 'ag（アグ）',
+        'seo_title': 'ag（アグ）全店のリアルタイム人数・男女比・混雑状況一覧',
+        'seo_description': 'オリエンタルラウンジ系列の若手向け相席ラウンジ「ag（アグ）」全店（渋谷・上野・梅田・名古屋・広島・金沢・仙台・沖縄）のリアルタイム男女人数・男女比・混雑状況を毎分自動更新で無料公開中。',
+        'seo_keywords': 'ag 人数,アグ 相席 人数,ag 男女比,ag 渋谷 人数,ag 梅田 人数,オリエンタルラウンジ ag 違い',
+        'h1': '🥂 ag（アグ）全店のリアルタイム人数・男女比一覧',
+        'lead': '「25歳以下（または若年層中心）」のカジュアルでノリの良い新世代ラウンジ『ag（アグ）』全店の現在人数ランキングです。深夜帯や2軒目・3軒目でも盛り上がりやすいのが特徴です。',
+        'strategy_text_1': 'ag（アグ）は20代前半〜中盤の学生・アパレル・美容系などフットワークの軽い男女が多く、1軒目だけでなく22時〜24時以降の「2回転目」でも一気に人数が増える傾向があります。',
+        'strategy_text_2': '同エリアにある「オリエンタルラウンジ」と徒歩数分で行き来できる店舗が多いため、まずは両方のリアルタイム人数を見比べて、女性が多い方から入店するのが最もスマートな立ち回りです。',
+        'faq_tip': 'ag（アグ）は21時以降に急激に人が増えるため、入店直前にリアルタイム男女比をチェックし、同エリアのオリエンタルラウンジ本館と人数バランスを見比べてから向かうのがおすすめです。'
+    },
+    'jis': {
+        'slug': 'jis',
+        'name': 'JIS（ジス）',
+        'seo_title': 'JIS（ジス）全店のリアルタイム人数・男女比・混雑状況一覧',
+        'seo_description': '人気相席バー「JIS（ジス）」全店（新宿・西新宿・大宮・梅田・茶屋町・難波・福岡・熊本・松山・札幌）のリアルタイム男女人数・男女比・混雑状況を毎分自動更新で一覧表示。',
+        'seo_keywords': 'JIS 人数,ジス 相席 人数,JIS 新宿 人数,JIS 梅田 人数,JIS 大宮 人数,相席ラウンジ 男女比',
+        'h1': '🍸 JIS（ジス）全店のリアルタイム人数・男女比一覧',
+        'lead': '札幌・大宮・新宿・西新宿・梅田・茶屋町・難波・福岡・熊本・松山で圧倒的な集客力を誇る『JIS（ジス）』全店のリアルタイム男女人数一覧です。',
+        'strategy_text_1': 'JIS（ジス）は主要ターミナル駅前の大型店舗が多く、平日・週末を問わず安定した女性来店数を誇る人気ブランドです。特に新宿（歌舞伎町・西新宿）や大阪（梅田・茶屋町・難波）ではエリア内で複数店舗を展開しています。',
+        'strategy_text_2': '東口側や本館が混雑している場合でも、もう一方の店舗（例：JIS西新宿やJIS茶屋町）は女性優位でスムーズに座れることが多いため、移動前の比較にぜひ活用してください。',
+        'faq_tip': '新宿や梅田のように近隣に複数のJISやオリエンタルラウンジがあるエリアでは、入店前に各店舗の女性比率を見比べて55%以上の店舗を選ぶと待ち時間を回避できます。'
+    }
+}
+
+@app.route('/oriental-lounge')
+def brand_oriental_lounge():
+    return _render_brand_page('oriental-lounge')
+
+@app.route('/ag')
+def brand_ag():
+    return _render_brand_page('ag')
+
+@app.route('/jis')
+def brand_jis():
+    return _render_brand_page('jis')
+
+def _render_brand_page(brand_slug):
+    import store_master
+    restore_latest_data_if_empty()
+    trigger_background_fetch_if_needed()
+    brand = BRAND_GUIDES.get(brand_slug)
+    if not brand:
+        return redirect(url_for('index'))
+
+    with data_lock:
+        raw_stores = list(latest_data.get('full_data') or [])
+        last_updated = latest_data.get('last_updated') or '--:--'
+
+    master = store_master.load()
+    live_map = {s.get('name'): s for s in raw_stores}
+    all_names = list(dict.fromkeys(list(live_map.keys()) + list(master.keys())))
+
+    matched = []
+    for sname in all_names:
+        if store_master.brand_key_of(sname) == brand_slug:
+            s_live = live_map.get(sname, {})
+            info = master.get(sname, {})
+            matched.append({
+                'name': sname,
+                'seo_name': store_master.seo_name(sname),
+                'slug': store_master.slug_of(sname),
+                'area_label': info.get('area_label') or s_live.get('area') or '全国',
+                'women': int(s_live.get('women', 0)),
+                'men': int(s_live.get('men', 0)),
+            })
+
+    matched.sort(key=lambda x: (x['women'], x['men']), reverse=True)
+    total_w = sum(x['women'] for x in matched)
+    total_m = sum(x['men'] for x in matched)
+
+    return render_template(
+        'brand_page.html',
+        brand=brand,
+        stores=matched,
+        store_count=len(matched),
+        total_women=total_w,
+        total_men=total_m,
+        last_updated=last_updated
+    )
+
+@app.route('/store/<store_slug>')
+def store_detail_page(store_slug):
+    import store_master
+    import urllib.parse
+    restore_latest_data_if_empty()
+    trigger_background_fetch_if_needed()
+    with data_lock:
+        raw_stores = list(latest_data.get('full_data') or [])
+        last_updated = latest_data.get('last_updated') or '--:--'
+
+    sname = store_master.store_by_slug(store_slug, live_stores=raw_stores)
+    if not sname:
+        return redirect(url_for('index'))
+
+    info = store_master.get(sname) or {}
+    live_map = {s.get('name'): s for s in raw_stores}
+    s_live = live_map.get(sname, {})
+
+    women = int(s_live.get('women', 0))
+    men = int(s_live.get('men', 0))
+    tot = women + men
+    wpct = round((women / tot) * 100) if tot > 0 else 50
+
+    bkey = store_master.brand_key_of(sname)
+    if bkey == 'oriental-lounge':
+        brand_label = 'オリエンタルラウンジ'
+        brand_slug = 'oriental-lounge'
+    elif bkey == 'ag':
+        brand_label = 'ag（アグ）'
+        brand_slug = 'ag'
+    elif bkey == 'jis':
+        brand_label = 'JIS（ジス）'
+        brand_slug = 'jis'
+    else:
+        brand_label = info.get('brand') or '相席ラウンジ'
+        brand_slug = 'oriental-lounge'
+
+    if tot == 0:
+        crowd_comment = '営業時間外・オープン準備中'
+    elif women > men:
+        crowd_comment = f'女性優位・即相席チャンス🔥（女性+{women - men}名）'
+    elif women == men:
+        crowd_comment = '男女比1:1 バランス良好✨'
+    else:
+        crowd_comment = '男性多め・近隣店舗との比較推奨💡'
+
+    map_anchor = info.get('map_anchor') or store_master.seo_name(sname)
+    map_url = f"https://www.google.com/maps/search/?api=1&query={urllib.parse.quote(map_anchor)}"
+
+    area_slug = info.get('area_slug')
+    area_info = AREA_GUIDES.get(area_slug) if area_slug else None
+
+    nearby_stores = []
+    if area_slug:
+        for other_s in get_stores_for_area(area_slug, raw_stores):
+            oname = other_s.get('name')
+            if oname and oname != sname:
+                ow = int(other_s.get('women', 0))
+                om = int(other_s.get('men', 0))
+                otot = ow + om
+                nearby_stores.append({
+                    'name': oname,
+                    'seo_name': store_master.seo_name(oname),
+                    'slug': store_master.slug_of(oname),
+                    'women': ow,
+                    'men': om,
+                    'wpct': round((ow / otot) * 100) if otot > 0 else 0,
+                })
+
+    store_obj = {
+        'name': sname,
+        'seo_name': store_master.seo_name(sname),
+        'slug': store_master.slug_of(sname),
+        'area_label': info.get('area_label') or s_live.get('area') or '全国',
+        'brand_label': brand_label,
+        'brand_slug': brand_slug,
+        'women': women,
+        'men': men,
+        'total': tot,
+        'wpct': wpct if tot > 0 else 0,
+        'crowd_comment': crowd_comment,
+        'map_url': map_url,
+    }
+
+    return render_template(
+        'store_detail.html',
+        store=store_obj,
+        area_info=area_info,
+        nearby_stores=nearby_stores,
+        last_updated=last_updated
+    )
+
 @app.route('/sitemap.xml')
 def sitemap_xml():
+    import store_master
     today = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).strftime('%Y-%m-%d')
+    brand_urls = "\n".join([
+        f"""  <url>
+    <loc>https://aiseki-navi.com/{bslug}</loc>
+    <lastmod>{today}</lastmod>
+    <changefreq>hourly</changefreq>
+    <priority>0.95</priority>
+  </url>""" for bslug in BRAND_GUIDES.keys()
+    ])
     area_urls = "\n".join([
         f"""  <url>
     <loc>https://aiseki-navi.com/area/{slug}</loc>
@@ -1195,6 +1401,16 @@ def sitemap_xml():
     <changefreq>hourly</changefreq>
     <priority>0.85</priority>
   </url>""" for slug in AREA_GUIDES.keys()
+    ])
+    master_stores = store_master.load()
+    store_slugs = [store_master.slug_of(sname) for sname in master_stores.keys()]
+    store_urls = "\n".join([
+        f"""  <url>
+    <loc>https://aiseki-navi.com/store/{sslug}</loc>
+    <lastmod>{today}</lastmod>
+    <changefreq>hourly</changefreq>
+    <priority>0.85</priority>
+  </url>""" for sslug in store_slugs if sslug
     ])
     xml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
@@ -1204,6 +1420,7 @@ def sitemap_xml():
     <changefreq>hourly</changefreq>
     <priority>1.0</priority>
   </url>
+{brand_urls}
   <url>
     <loc>https://aiseki-navi.com/areas</loc>
     <lastmod>{today}</lastmod>
@@ -1271,6 +1488,7 @@ def sitemap_xml():
     <priority>0.8</priority>
   </url>
 {area_urls}
+{store_urls}
   <url>
     <loc>https://aiseki-navi.com/privacy</loc>
     <lastmod>{today}</lastmod>

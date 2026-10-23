@@ -271,9 +271,10 @@
                 {% for s in selected_area.stores %}
                 {% set tot = s.women + s.men %}
                 {% set wpct = ((s.women / tot) * 100)|round|int if tot > 0 else 50 %}
-                <div class="live-store-card">
+                <a href="/store/{{ s.name | store_slug }}" style="text-decoration: none; color: inherit; display: block;">
+                <div class="live-store-card" data-store-name="{{ s.name }}">
                     <div class="live-store-name">
-                        <span>{{ s.name }}</span>
+                        <span>{{ s.name | seo_store_name }}</span>
                         <span style="font-size: 0.75rem; color: #94a3b8;">女性比 {{ wpct if tot > 0 else 0 }}%</span>
                     </div>
                     <div class="live-counts-row">
@@ -284,6 +285,7 @@
                         <div class="ratio-fill-w" style="width: {{ wpct }}%;"></div>
                     </div>
                 </div>
+                </a>
                 {% endfor %}
             </div>
 
@@ -339,9 +341,10 @@
                 {% for s in item.stores[:6] %}
                 {% set tot = s.women + s.men %}
                 {% set wpct = ((s.women / tot) * 100)|round|int if tot > 0 else 50 %}
-                <div class="live-store-card">
+                <a href="/store/{{ s.name | store_slug }}" style="text-decoration: none; color: inherit; display: block;">
+                <div class="live-store-card" data-store-name="{{ s.name }}">
                     <div class="live-store-name">
-                        <span>{{ s.name }}</span>
+                        <span>{{ s.name | seo_store_name }}</span>
                         <span style="font-size: 0.74rem; color: #94a3b8;">女性比 {{ wpct if tot > 0 else 0 }}%</span>
                     </div>
                     <div class="live-counts-row">
@@ -352,6 +355,7 @@
                         <div class="ratio-fill-w" style="width: {{ wpct }}%;"></div>
                     </div>
                 </div>
+                </a>
                 {% endfor %}
             </div>
 

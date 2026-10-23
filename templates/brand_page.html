@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ brand.seo_title }}｜相席ナビ</title>
+    <meta name="description" content="{{ brand.seo_description }}">
+    <meta name="keywords" content="{{ brand.seo_keywords }}">
+    <link rel="canonical" href="https://aiseki-navi.com/{{ brand.slug }}">
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+
+    <meta property="og:title" content="{{ brand.seo_title }}｜相席ナビ">
+    <meta property="og:description" content="{{ brand.seo_description }}">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://aiseki-navi.com/{{ brand.slug }}">
+    <meta property="og:image" content="https://aiseki-navi.com/static/x-header.jpg?v=2">
+    <meta property="og:site_name" content="相席ナビ">
+    <meta name="twitter:card" content="summary_large_image">
+
+    <script type="application/ld+json">
+    [
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "相席ナビ（全国リアルタイム人数ランキング）",
+            "item": "https://aiseki-navi.com/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "{{ brand.name }}全店のリアルタイム人数一覧",
+            "item": "https://aiseki-navi.com/{{ brand.slug }}"
+          }
+        ]
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "{{ brand.name }}の現在の男女人数・混雑状況はどこで確認できますか？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "『相席ナビ』の本ページにて、全国{{ store_count }}店舗の{{ brand.name }}のリアルタイム女性人数・男性人数・女性比率（%）を毎分自動更新で無料公開しています。現在合計で女性{{ total_women }}名・男性{{ total_men }}名が来店中です。"
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "{{ brand.name }}で男性の待ち時間を避けて相席するコツは？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "{{ brand.faq_tip }}"
+            }
+          }
+        ]
+      }
+    ]
+    </script>
+
+    <link rel="icon" type="image/png" href="/static/icon-192.png?v=2">
+    <link rel="apple-touch-icon" href="/static/icon.png?v=2">
+    <link rel="stylesheet" href="/static/portal.css?v=2">
+    <style>
+        :root {
+            --bg-dark: #0a0a0f;
+            --card-bg: rgba(22, 22, 34, 0.88);
+            --text-main: #f8fafc;
+            --text-sub: #94a3b8;
+            --accent-pink: #ec4899;
+            --accent-blue: #3b82f6;
+            --accent-gold: #e5c878;
+            --border-subtle: rgba(255, 255, 255, 0.1);
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-dark);
+            background-image:
+                radial-gradient(circle at 15% 10%, rgba(236, 72, 153, 0.12), transparent 35%),
+                radial-gradient(circle at 85% 80%, rgba(59, 130, 246, 0.12), transparent 35%);
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+            line-height: 1.75;
+        }
+        .portal-wrap {
+            max-width: 980px;
+            margin: 0 auto;
+            padding: 20px 18px 80px;
+        }
+        .portal-top-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            padding-bottom: 14px;
+            border-bottom: 1px solid var(--border-subtle);
+            margin-bottom: 14px;
+        }
+        .portal-brand-link {
+            text-decoration: none;
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+        }
+        .portal-brand-title {
+            font-size: 1.5rem;
+            font-weight: 800;
+            background: linear-gradient(90deg, #ec4899, #8b5cf6, #3b82f6);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin: 0;
+        }
+        .portal-brand-sub { font-size: 0.78rem; color: var(--text-sub); }
+
+        .brand-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 22px;
+        }
+        .brand-tab {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border-radius: 999px;
+            font-size: 0.84rem;
+            font-weight: 700;
+            text-decoration: none;
+            color: #cbd5e1;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border-subtle);
+        }
+        .brand-tab.active {
+            background: rgba(229, 200, 120, 0.18);
+            border-color: #e5c878;
+            color: #fff;
+        }
+
+        .hero-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-subtle);
+            border-radius: 18px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        .hero-card h1 {
+            margin: 0 0 10px;
+            font-size: 1.4rem;
+            color: #fff;
+            line-height: 1.4;
+        }
+        .totals-bar {
+            display: inline-flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 14px;
+            background: rgba(15, 23, 42, 0.85);
+            padding: 8px 16px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            font-size: 0.88rem;
+            font-weight: 700;
+            margin-bottom: 14px;
+        }
+        .tot-w { color: #f472b6; }
+        .tot-m { color: #60a5fa; }
+
+        .stores-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 14px;
+            margin: 18px 0 28px;
+        }
+        .store-card-link {
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+        .store-card {
+            background: rgba(15, 23, 42, 0.82);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 14px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            transition: transform 0.15s ease, border-color 0.15s ease;
+        }
+        .store-card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(229, 200, 120, 0.5);
+        }
+        .store-title-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+        .store-name {
+            font-size: 1rem;
+            font-weight: 800;
+            color: #fff;
+        }
+        .store-area-badge {
+            font-size: 0.72rem;
+            padding: 2px 8px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.07);
+            color: #cbd5e1;
+        }
+        .counts-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.94rem;
+            font-weight: 800;
+        }
+        .ratio-bar {
+            height: 7px;
+            border-radius: 999px;
+            background: rgba(59, 130, 246, 0.35);
+            overflow: hidden;
+        }
+        .ratio-fill-w {
+            height: 100%;
+            background: linear-gradient(90deg, #ec4899, #f472b6);
+        }
+        .store-footer-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.76rem;
+            color: #94a3b8;
+        }
+        .guide-box {
+            background: var(--card-bg);
+            border: 1px solid var(--border-subtle);
+            border-radius: 18px;
+            padding: 22px;
+            margin-top: 24px;
+        }
+        .guide-box h2 {
+            font-size: 1.15rem;
+            margin: 0 0 10px;
+            color: #e5c878;
+        }
+        .guide-box p {
+            margin: 0 0 12px;
+            font-size: 0.9rem;
+            color: #cbd5e1;
+        }
+    </style>
+    <link rel="stylesheet" href="/static/calm.css?v=3">
+</head>
+
+<body>
+    <div class="portal-wrap">
+        <div class="portal-top-header">
+            <a href="/" class="portal-brand-link">
+                <span class="portal-brand-title">相席ナビ</span>
+                <span class="portal-brand-sub">全国ラウンジの今わかる人数ランキング＆攻略メディア</span>
+            </a>
+            <span style="font-size: 0.78rem; color: #94a3b8;">最終更新: {{ last_updated }}</span>
+        </div>
+
+        {% set nav_active = 'ranking' %}
+        {% include '_portal_nav.html' %}
+
+        <div class="brand-tabs">
+            <a href="/oriental-lounge" class="brand-tab {% if brand.slug == 'oriental-lounge' %}active{% endif %}">👑 オリエンタルラウンジ全店</a>
+            <a href="/ag" class="brand-tab {% if brand.slug == 'ag' %}active{% endif %}">🥂 ag（アグ）全店</a>
+            <a href="/jis" class="brand-tab {% if brand.slug == 'jis' %}active{% endif %}">🍸 JIS（ジス）全店</a>
+            <a href="/" class="brand-tab">🔥 全国総合ランキングへ戻る</a>
+        </div>
+
+        <section class="hero-card">
+            <h1>{{ brand.h1 }}</h1>
+            <div class="totals-bar">
+                <span>全国 {{ store_count }}店舗 集計中</span>
+                <span>｜</span>
+                <span class="tot-w">👩 女性合計 {{ total_women }}名</span>
+                <span class="tot-m">👨 男性合計 {{ total_men }}名</span>
+            </div>
+            <p style="margin: 0; font-size: 0.92rem; color: #cbd5e1;">{{ brand.lead }}</p>
+        </section>
+
+        <h2 style="font-size: 1.15rem; color: #fff; margin: 22px 0 12px;">📊 {{ brand.name }} 店舗別リアルタイム人数・男女比一覧（女性が多い順）</h2>
+
+        <div class="stores-grid">
+            {% for s in stores %}
+            {% set tot = s.women + s.men %}
+            {% set wpct = ((s.women / tot) * 100)|round|int if tot > 0 else 50 %}
+            <a href="/store/{{ s.slug }}" class="store-card-link">
+                <div class="store-card">
+                    <div class="store-title-row">
+                        <span class="store-name">#{{ loop.index }} {{ s.seo_name }}</span>
+                        <span class="store-area-badge">{{ s.area_label }}</span>
+                    </div>
+                    <div class="counts-row">
+                        <span class="tot-w">👩 女性 {{ s.women }}名</span>
+                        <span class="tot-m">👨 男性 {{ s.men }}名</span>
+                    </div>
+                    <div class="ratio-bar">
+                        <div class="ratio-fill-w" style="width: {{ wpct }}%;"></div>
+                    </div>
+                    <div class="store-footer-row">
+                        <span>合計 {{ tot }}名（女性比 {{ wpct if tot > 0 else 0 }}%）</span>
+                        <span style="color: #e5c878; font-weight: 700;">店舗詳細・混雑傾向 ›</span>
+                    </div>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+
+        <section class="guide-box">
+            <h2>💡 {{ brand.name }}の客層・年齢層と「待ち時間」を回避する立ち回り</h2>
+            <p>{{ brand.strategy_text_1 }}</p>
+            <p>{{ brand.strategy_text_2 }}</p>
+            <div style="margin-top: 16px; display: flex; flex-wrap: wrap; gap: 10px;">
+                <a href="/guide/brand-comparison" style="color: #f472b6; font-size: 0.86rem; font-weight: 700; text-decoration: none;">📖 オリエンタルラウンジ・ag（アグ）・JISの徹底比較コラムを見る ›</a>
+                <a href="/guide/weekday-strategy" style="color: #38bdf8; font-size: 0.86rem; font-weight: 700; text-decoration: none;">⏰ 曜日・時間帯別の穴場データを見る ›</a>
+            </div>
+        </section>
+
+        {% include '_portal_footer.html' %}
+    </div>
+</body>
+
+</html>
