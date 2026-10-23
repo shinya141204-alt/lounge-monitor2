@@ -812,7 +812,12 @@ def _is_bot_request():
 @app.after_request
 def track_page_views(response):
     try:
-        if (request.method == 'GET' and response.status_code == 200
+        if request.path.startswith('/static/'):
+            if request.args.get('v'):
+                response.headers['Cache-Control'] = 'public, max-age=31536000, immutable'
+            else:
+                response.headers['Cache-Control'] = 'public, max-age=86400'
+        elif (request.method == 'GET' and response.status_code == 200
                 and (request.path == '/' or request.path.startswith(_TRACKED_PAGE_PREFIXES))
                 and not _is_bot_request()):
             import analytics

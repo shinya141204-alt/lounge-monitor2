@@ -5,6 +5,7 @@ import sys
 import threading
 import urllib.parse
 import json
+import requests
 
 DB_PATH = os.environ.get('LOCAL_DB_PATH') or os.path.join(os.path.dirname(os.path.abspath(__file__)), 'lounge_data.db')
 _db_lock = threading.Lock()
