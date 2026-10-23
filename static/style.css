@@ -4732,6 +4732,12 @@ body.theme-flat .distance-tag {
     border-color: #10b981;
 }
 
+/* 非表示のタグが空の丸として残るバグの修正（.distance-tag / .momentum-tag の display 指定が .hidden を上書きしていた） */
+.distance-tag.hidden,
+.momentum-tag.hidden {
+    display: none !important;
+}
+
 /* ==========================================================================
    PWA Smart Install Banner
    ========================================================================== */

@@ -1,0 +1,360 @@
+/* ==========================================================================
+   相席ナビ「落ち着いたトーン」上書きレイヤー（calm.css）
+   - 全ページで最後に読み込み、ネオン色・グラデーション・発光・点滅を抑える
+   - ダーク配色の変更は body:not(.theme-light) に限定（ライトテーマは従来どおり）
+   - アニメーションの停止はテーマに関係なく適用
+   - 元に戻すときは各テンプレートの calm.css の <link> を外すだけでOK
+   ========================================================================== */
+
+:root {
+    --calm-bg: #0f1014;
+    --calm-surface: #16171c;
+    --calm-surface-2: #1b1c22;
+    --calm-border: rgba(255, 255, 255, 0.08);
+    --calm-border-strong: rgba(255, 255, 255, 0.14);
+    --calm-text: #ebe8e3;
+    --calm-sub: #9b978f;
+    --calm-accent: #c8a46e;          /* シャンパンゴールド */
+    --calm-accent-soft: rgba(200, 164, 110, 0.14);
+    --calm-women: #d8a1aa;           /* くすみローズ */
+    --calm-men: #93b1c9;             /* スレートブルー */
+}
+
+/* ---------- 1. 動き：点滅・パルス・背景のゆらぎを止める ---------- */
+.background-glob,
+.bg-glow-1,
+.bg-glow-2 {
+    display: none !important;
+}
+
+.beacon-dot,
+.live-indicator .dot,
+.dot {
+    animation: none !important;
+    box-shadow: none !important;
+}
+
+.flash-update {
+    animation: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* ---------- 2. 背景・文字（ダーク時のみ） ---------- */
+body:not(.theme-light) {
+    background-color: var(--calm-bg) !important;
+    background-image: none !important;
+    color: var(--calm-text);
+}
+
+/* グラデーション文字のタイトル → 落ち着いた単色 */
+body:not(.theme-light) h1,
+body:not(.theme-light) .portal-brand-title {
+    background: none !important;
+    -webkit-background-clip: initial !important;
+    background-clip: initial !important;
+    -webkit-text-fill-color: var(--calm-text) !important;
+    color: var(--calm-text) !important;
+    letter-spacing: 0.06em;
+}
+
+body:not(.theme-light) .stat.ladies .count {
+    color: var(--calm-women);
+    text-shadow: none;
+}
+
+body:not(.theme-light) .stat.men .count {
+    color: var(--calm-men);
+}
+
+/* 男女比バー：原色のグラデーション → くすみ単色 */
+body:not(.theme-light) .bar-fill-ladies,
+body:not(.theme-light) .ratio-fill-w {
+    background: var(--calm-women) !important;
+    opacity: 0.85;
+}
+
+body:not(.theme-light) .bar-fill-men {
+    background: var(--calm-men) !important;
+    opacity: 0.85;
+}
+
+/* ---------- 3. ランキングカード ---------- */
+body:not(.theme-light) .ranking-item {
+    background: var(--calm-surface);
+    border-color: var(--calm-border);
+}
+
+body:not(.theme-light) .ranking-item:hover {
+    background: var(--calm-surface-2);
+    transform: none;
+}
+
+body:not(.theme-light) .ranking-item.rank-1 {
+    background: var(--calm-surface);
+    border-color: rgba(200, 164, 110, 0.35);
+}
+
+body:not(.theme-light) .rank-1 .rank-badge {
+    background: var(--calm-accent);
+    box-shadow: none;
+}
+
+body:not(.theme-light) .rank-2 .rank-badge {
+    background: #a9a9a9;
+}
+
+body:not(.theme-light) .rank-3 .rank-badge {
+    background: #a7825c;
+}
+
+/* ブランドバッジ：色は残しつつ彩度を落とす */
+body:not(.theme-light) .brand-badge {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border-color: var(--calm-border-strong) !important;
+    filter: saturate(0.55);
+}
+
+/* 店舗カード上の小さなバッジ（特典・増加中など） */
+body:not(.theme-light) .event-tag-badge,
+body:not(.theme-light) .momentum-tag {
+    background: transparent !important;
+    border: 1px solid var(--calm-border-strong) !important;
+    color: var(--calm-accent) !important;
+    box-shadow: none !important;
+}
+
+/* ---------- 4. ボタン類：グラデーション＋発光 → 落ち着いた面＋細い線 ---------- */
+body:not(.theme-light) .header-btn,
+body:not(.theme-light) .sort-btn,
+body:not(.theme-light) .filter-btn,
+body:not(.theme-light) .theme-pill-btn,
+body:not(.theme-light) .chart-filter-btn,
+body:not(.theme-light) .events-tab-btn,
+body:not(.theme-light) .sns-tab-btn,
+body:not(.theme-light) .guide-tab-pill,
+body:not(.theme-light) .portal-nav-link,
+body:not(.theme-light) .portal-nav-item,
+body:not(.theme-light) .share-pill-btn,
+body:not(.theme-light) .sns-hero-btn,
+body:not(.theme-light) .staff-action-pill,
+body:not(.theme-light) .vote-pill-btn,
+body:not(.theme-light) .menu-grid-item,
+body:not(.theme-light) .area-pill {
+    background: var(--calm-surface) !important;
+    border-color: var(--calm-border-strong) !important;
+    color: var(--calm-text) !important;
+    box-shadow: none !important;
+}
+
+/* 選択中の状態：ゴールドの細線と文字色だけで示す */
+body:not(.theme-light) .sort-btn.active,
+body:not(.theme-light) .filter-btn.active,
+body:not(.theme-light) .theme-pill-btn.active,
+body:not(.theme-light) .chart-filter-btn.active,
+body:not(.theme-light) .events-tab-btn.active,
+body:not(.theme-light) .sns-tab-btn.active,
+body:not(.theme-light) .guide-tab-pill.active,
+body:not(.theme-light) .portal-nav-link.active,
+body:not(.theme-light) .portal-nav-item.active,
+body:not(.theme-light) .area-pill.active {
+    background: var(--calm-accent-soft) !important;
+    border-color: rgba(200, 164, 110, 0.55) !important;
+    color: #f1e3cb !important;
+    box-shadow: none !important;
+}
+
+/* 主要な行動ボタン（CTA）：単色のゴールド系、発光なし */
+body:not(.theme-light) .cta-btn,
+body:not(.theme-light) .live-tool-btn,
+body:not(.theme-light) .aff-cta-btn,
+body:not(.theme-light) .rec-btn,
+body:not(.theme-light) .guide-open-btn,
+body:not(.theme-light) .guide-app-cta,
+body:not(.theme-light) .pr-cta-btn,
+body:not(.theme-light) .how-to-start-btn,
+body:not(.theme-light) .pwa-install-action-btn,
+body:not(.theme-light) .second-map-btn,
+body:not(.theme-light) .article-read-btn {
+    background: var(--calm-surface-2) !important;
+    border: 1px solid rgba(200, 164, 110, 0.5) !important;
+    color: #f1e3cb !important;
+    box-shadow: none !important;
+}
+
+body:not(.theme-light) .cta-btn:hover,
+body:not(.theme-light) .live-tool-btn:hover,
+body:not(.theme-light) .aff-cta-btn:hover,
+body:not(.theme-light) .guide-open-btn:hover,
+body:not(.theme-light) .second-map-btn:hover,
+body:not(.theme-light) .how-to-start-btn:hover {
+    background: var(--calm-accent-soft) !important;
+    filter: none !important;
+    transform: none !important;
+}
+
+/* 数字・順番の丸アイコン */
+body:not(.theme-light) .how-to-step-num,
+body:not(.theme-light) .pwa-step-num {
+    background: var(--calm-accent-soft) !important;
+    color: var(--calm-accent) !important;
+    border: 1px solid rgba(200, 164, 110, 0.45);
+    box-shadow: none !important;
+}
+
+/* ---------- 5. バッジ・タグ：塗りつぶし → 線のみ ---------- */
+body:not(.theme-light) .col-banner-badge,
+body:not(.theme-light) .domain-notice-badge,
+body:not(.theme-light) .staff-header-badge,
+body:not(.theme-light) .guide-app-badge,
+body:not(.theme-light) .article-card-badge,
+body:not(.theme-light) .portal-article-badge,
+body:not(.theme-light) .sns-hero-tag,
+body:not(.theme-light) .sns-live-beacon,
+body:not(.theme-light) .page-hero-badge,
+body:not(.theme-light) .cat-badge,
+body:not(.theme-light) .article-cat-tag,
+body:not(.theme-light) .aff-badge,
+body:not(.theme-light) .article-tag,
+body:not(.theme-light) .second-venue-badge,
+body:not(.theme-light) .modal-event-badge {
+    background: transparent !important;
+    border: 1px solid var(--calm-border-strong) !important;
+    color: var(--calm-sub) !important;
+    box-shadow: none !important;
+}
+
+/* ---------- 6. カード・パネル：色付きグラデ背景 → 無地 ---------- */
+body:not(.theme-light) .column-highlight-banner,
+body:not(.theme-light) .official-sns-hero-card,
+body:not(.theme-light) .share-banner-box,
+body:not(.theme-light) .domain-notice-banner,
+body:not(.theme-light) .pwa-install-banner,
+body:not(.theme-light) .how-to-sns-box,
+body:not(.theme-light) .modal-pr-link,
+body:not(.theme-light) .pr-card-highlight,
+body:not(.theme-light) .guide-app-card.card-featured,
+body:not(.theme-light) .cta-box,
+body:not(.theme-light) .live-tool-cta-box,
+body:not(.theme-light) .article-highlight-box,
+body:not(.theme-light) .lead-box,
+body:not(.theme-light) .aff-card,
+body:not(.theme-light) .article-affiliate-card,
+body:not(.theme-light) .modal-second-venue-box,
+body:not(.theme-light) .modal-vote-box,
+body:not(.theme-light) .article-box,
+body:not(.theme-light) .page-hero,
+body:not(.theme-light) .area-section-card,
+body:not(.theme-light) .article-card,
+body:not(.theme-light) .portal-article-card {
+    background: var(--calm-surface) !important;
+    border-color: var(--calm-border) !important;
+    box-shadow: none !important;
+}
+
+body:not(.theme-light) .lead-box {
+    border-left: 3px solid rgba(200, 164, 110, 0.6) !important;
+}
+
+body:not(.theme-light) .article-card:hover,
+body:not(.theme-light) .portal-article-card:hover,
+body:not(.theme-light) .article-card-item:hover,
+body:not(.theme-light) .column-highlight-banner:hover {
+    transform: none !important;
+    border-color: var(--calm-border-strong) !important;
+    box-shadow: none !important;
+}
+
+/* 記事一覧モーダルのカード左端の色帯 → 控えめな1色 */
+body:not(.theme-light) .article-card-item::before {
+    background: rgba(200, 164, 110, 0.5) !important;
+}
+
+body:not(.theme-light) .articles-modal-content {
+    background: var(--calm-bg) !important;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6) !important;
+}
+
+/* ---------- 7. 見出し：アクセントの下線を細く・落ち着いた色に ---------- */
+body:not(.theme-light) .article-box h2,
+body:not(.theme-light) .article-body h2 {
+    border-bottom: 1px solid var(--calm-border-strong) !important;
+}
+
+body:not(.theme-light) .article-box h3,
+body:not(.theme-light) .article-body h3,
+body:not(.theme-light) .area-point-box h3 {
+    color: var(--calm-accent) !important;
+}
+
+/* リンク色：鮮やかな水色・ピンク → ゴールド寄り */
+body:not(.theme-light) .breadcrumb a,
+body:not(.theme-light) .article-read-more,
+body:not(.theme-light) .second-venue-sub {
+    color: var(--calm-accent) !important;
+}
+
+/* X速報ボタン（赤い点滅）→ 通常ボタンと同じ見た目 */
+body:not(.theme-light) #header-x-btn {
+    background: var(--calm-surface) !important;
+    border-color: var(--calm-border-strong) !important;
+    color: var(--calm-text) !important;
+}
+
+body:not(.theme-light) #header-x-btn .beacon-dot,
+body:not(.theme-light) .sns-live-beacon .beacon-dot {
+    background: var(--calm-accent) !important;
+}
+
+/* ---------- 8. ランキング内のPR枠：ピンクの丸・タグ・色付きバーを控えめに ---------- */
+body:not(.theme-light) .pr-badge-box {
+    background: transparent !important;
+    border: 1px solid var(--calm-border-strong) !important;
+    color: var(--calm-sub) !important;
+    box-shadow: none !important;
+    font-size: 0.6rem;
+}
+
+body:not(.theme-light) .pr-tag-pill {
+    background: transparent !important;
+    border-color: var(--calm-border-strong) !important;
+    color: var(--calm-sub) !important;
+    filter: none;
+}
+
+body:not(.theme-light) .pr-occupancy-bar {
+    display: none !important;
+}
+
+/* 詳細ボタン（グラフ）の青い丸 → 無彩色 */
+body:not(.theme-light) .analysis-btn {
+    background: var(--calm-surface-2) !important;
+    border-color: var(--calm-border-strong) !important;
+    color: var(--calm-sub) !important;
+    box-shadow: none !important;
+}
+
+body:not(.theme-light) .col-banner-arrow {
+    color: var(--calm-accent) !important;
+}
+
+/* ---------- 9. 記事内の小見出し・カード ---------- */
+body:not(.theme-light) .store-meta,
+body:not(.theme-light) .tip-card h4 {
+    color: var(--calm-accent) !important;
+}
+
+body:not(.theme-light) .store-card,
+body:not(.theme-light) .c-card,
+body:not(.theme-light) .tip-card,
+body:not(.theme-light) .toc-box,
+body:not(.theme-light) .live-store-card,
+body:not(.theme-light) .area-point-box {
+    background: var(--calm-surface-2) !important;
+    border-color: var(--calm-border) !important;
+}

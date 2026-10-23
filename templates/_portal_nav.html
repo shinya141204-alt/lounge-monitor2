@@ -4,12 +4,12 @@
     ※ '📊 統計データ白書' リンクは nav_active == 'stats' のページ（/stats）でのみ表示（従来どおり）。
     スタイルの共通部分は /static/portal.css、ページ固有の差分は各ページの <style> に記述。 -#}
 <nav class="portal-global-nav" aria-label="メインナビゲーション">
-            <a href="/" class="portal-nav-item{% if nav_active == 'ranking' %} active{% endif %}">🔥 リアルタイム順位</a>
-            <a href="/areas" class="portal-nav-item{% if nav_active == 'areas' %} active{% endif %}">📍 エリアから探す</a>
-            <a href="/columns" class="portal-nav-item{% if nav_active == 'columns' %} active{% endif %}">📖 コラム・記事一覧</a>
+            <a href="/" class="portal-nav-item{% if nav_active == 'ranking' %} active{% endif %}">リアルタイム順位</a>
+            <a href="/areas" class="portal-nav-item{% if nav_active == 'areas' %} active{% endif %}">エリアから探す</a>
+            <a href="/columns" class="portal-nav-item{% if nav_active == 'columns' %} active{% endif %}">コラム・記事一覧</a>
             {%- if nav_active == 'stats' %}
-            <a href="/stats" class="portal-nav-item active">📊 統計データ白書</a>
+            <a href="/stats" class="portal-nav-item active">統計データ白書</a>
             {%- endif %}
-            <a href="/guide/brand-comparison" class="portal-nav-item{% if nav_active == 'comparison' %} active{% endif %}">⚖️ 3大ブランド比較</a>
-            <a href="/grooming" class="portal-nav-item{% if nav_active == 'grooming' %} active{% endif %}">✨ 身だしなみ・準備</a>
+            <a href="/guide/brand-comparison" class="portal-nav-item{% if nav_active == 'comparison' %} active{% endif %}">3大ブランド比較</a>
+            <a href="/grooming" class="portal-nav-item{% if nav_active == 'grooming' %} active{% endif %}">身だしなみ・準備</a>
         </nav>
