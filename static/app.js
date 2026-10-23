@@ -8,6 +8,51 @@
         let currentSearch = '';
         let currentSort = 'women';
 
+        // --- Store Master (static/store_master.json): single source of truth for area label, coordinates & map anchor ---
+        window.STORE_MASTER = {};
+        function getStoreMasterInfo(storeName) {
+            return (window.STORE_MASTER && window.STORE_MASTER[String(storeName || '').trim()]) || null;
+        }
+        (function loadStoreMaster() {
+            fetch('/static/store_master.json?v=20261023')
+                .then(r => r.ok ? r.json() : null)
+                .then(d => {
+                    if (d && d.stores) {
+                        window.STORE_MASTER = d.stores;
+                        if (window.lastData && typeof updateUI === 'function') updateUI(window.lastData);
+                    }
+                })
+                .catch(() => {});
+        })();
+
+        // --- First-party analytics (event + short label only, no personal data) ---
+        function trackEvent(event, label) {
+            if (IS_STAFF) return;
+            try {
+                const body = JSON.stringify({ event: String(event || ''), label: String(label || '').slice(0, 80) });
+                if (navigator.sendBeacon) {
+                    navigator.sendBeacon('/api/track', new Blob([body], { type: 'application/json' }));
+                } else {
+                    fetch('/api/track', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true }).catch(() => {});
+                }
+            } catch (e) {}
+        }
+        window.trackEvent = trackEvent;
+
+        document.addEventListener('click', (e) => {
+            const a = e.target && e.target.closest ? e.target.closest('a, button') : null;
+            if (!a) return;
+            const id = a.id || '';
+            const href = a.getAttribute('href') || '';
+            const store = (typeof currentModalStoreName !== 'undefined' && currentModalStoreName) || '';
+            if (id === 'modal-map-cafe-btn') trackEvent('map_cafe', store);
+            else if (id === 'modal-map-bar-btn') trackEvent('map_bar', store);
+            else if (id === 'modal-official-link' || id === 'modal-top-official-link') trackEvent('official_click', store);
+            else if (href.includes('x.com/aiseki_navi')) trackEvent('sns_click', 'x');
+            else if (href.includes('threads.net')) trackEvent('sns_click', 'threads');
+            else if (href.includes('note.com/')) trackEvent('sns_click', 'note');
+        }, true);
+
         // --- Store Events & Campaign State ---
         window.allEvents = [];
         let _eventsFetched = false;
@@ -149,6 +194,10 @@
         };
 
         function getStoreCoordinates(store) {
+            const master = getStoreMasterInfo(store.name);
+            if (master && typeof master.lat === 'number' && typeof master.lng === 'number') {
+                return { lat: master.lat, lng: master.lng };
+            }
             const rawName = String(store.name || '').toUpperCase();
             let searchTarget = rawName;
 
@@ -815,6 +864,8 @@
         }
 
         function detectAreaLabel(rawName, localizedName) {
+            const master = getStoreMasterInfo(rawName);
+            if (master && master.area_label) return master.area_label;
             const combined = `${rawName} ${localizedName}`.toUpperCase();
             for (const rule of AREA_LABEL_RULES) {
                 for (const k of rule.keys) {
@@ -1410,6 +1461,7 @@
         let currentModalStoreName = '';
 
         function shareStoreStatus(platform) {
+            trackEvent('share', platform);
             const shareUrl = window.location.origin + window.location.pathname;
             const bInfo = detectBrandInfo(currentModalStoreName);
             let liveInfo = '';
@@ -1654,6 +1706,7 @@
         async function openModal(storeName) {
             loadChartJs(); // Pre-trigger Chart.js download in parallel with data fetch
             currentModalStoreName = storeName;
+            trackEvent('store_open', storeName);
             const modal = document.getElementById('analysis-modal');
             const modalContent = modal.querySelector('.modal-content');
             const title = document.getElementById('modal-store-name');
@@ -1714,88 +1767,7 @@
             currentAnalysisData = null;
         }
 
-        // --- Live User Crowd Votes (UGC) & Store-Pinpoint 2nd Venue Map Search ---
-        const STORE_EXACT_MAP_LOCATIONS = {
-            // 新宿・西新宿
-            'OLG 新宿': 'オリエンタルラウンジ新宿 歌舞伎町',
-            'OLG ag 新宿': 'ag新宿 歌舞伎町',
-            'ag 新宿': 'ag新宿 歌舞伎町',
-            'JIS SHINJUKU': 'JIS新宿 歌舞伎町',
-            'JIS NISHISHINJUKU': 'JIS西新宿 新宿西口',
-            // 渋谷・恵比寿・上野・町田
-            'OLG 渋谷本店': 'オリエンタルラウンジ渋谷本店 道玄坂',
-            'OLG 渋谷駅前': 'オリエンタルラウンジ渋谷駅前 渋谷センター街',
-            'OLG ag 渋谷': 'ag渋谷 宇田川町',
-            'ag 渋谷': 'ag渋谷 宇田川町',
-            'OLG 恵比寿': 'オリエンタルラウンジ恵比寿 恵比寿駅西口',
-            'OLG 上野': 'オリエンタルラウンジ上野 上野仲町通り',
-            'OLG ag 上野': 'ag上野 上野御徒町',
-            'ag 上野': 'ag上野 上野御徒町',
-            'OLG 町田': 'オリエンタルラウンジ町田 原町田',
-            // 横浜・大宮・柏・宇都宮・高崎
-            'OLG 横浜': 'オリエンタルラウンジ横浜 横浜駅西口南幸',
-            'OLG 大宮': 'オリエンタルラウンジ大宮 大宮駅東口大門町',
-            'JIS OMIYA': 'JIS大宮 大宮駅東口仲町',
-            'OLG 柏': 'オリエンタルラウンジ柏 柏駅東口',
-            'OLG 宇都宮': 'オリエンタルラウンジ宇都宮 オリオン通り',
-            'OLG 高崎': 'オリエンタルラウンジ高崎 高崎駅西口',
-            // 名古屋・静岡・浜松・金沢
-            'OLG 名古屋栄': 'オリエンタルラウンジ名古屋栄 栄三丁目',
-            'OLG 栄': 'オリエンタルラウンジ名古屋栄 栄三丁目',
-            'OLG 名古屋錦': 'オリエンタルラウンジ名古屋錦 錦三丁目',
-            'OLG 錦': 'オリエンタルラウンジ名古屋錦 錦三丁目',
-            'OLG ag 名古屋': 'ag名古屋 栄住吉',
-            'ag 名古屋': 'ag名古屋 栄住吉',
-            'OLG 静岡': 'オリエンタルラウンジ静岡 呉服町',
-            'OLG 浜松': 'オリエンタルラウンジ浜松 鍛冶町',
-            'OLG 金沢': 'オリエンタルラウンジ金沢 片町',
-            // 大阪・京都・神戸
-            'OLG 梅田': 'オリエンタルラウンジ梅田 お初天神曽根崎',
-            'OLG 茶屋町': 'オリエンタルラウンジ茶屋町 阪急茶屋町',
-            'OLG ag 梅田': 'ag梅田 阪急東通り堂山町',
-            'ag 梅田': 'ag梅田 阪急東通り堂山町',
-            'JIS UMEDA': 'JIS梅田 曽根崎お初天神',
-            'JIS CHAYAMACHI': 'JIS茶屋町 梅田茶屋町',
-            'YATAKOI UMEDA': 'ヤタコイ茶屋町 梅田茶屋町',
-            'OLG 天満': 'オリエンタルラウンジ天満 天満駅前',
-            'OLG 心斎橋': 'オリエンタルラウンジ心斎橋 心斎橋筋',
-            'OLG 難波': 'オリエンタルラウンジ難波 戎橋道頓堀',
-            'JIS NAMBA': 'JIS難波 宗右衛門町戎橋',
-            'OLG 京都': 'オリエンタルラウンジ京都 河原町三条木屋町',
-            'OLG 神戸': 'オリエンタルラウンジ神戸 三宮生田ロード',
-            // 岡山・広島・松山
-            'OLG 岡山': 'オリエンタルラウンジ岡山 本町岡山駅前',
-            'XIX OKAYAMA': '相席ラウンジXIX岡山 磨屋町',
-            'OLG 広島': 'オリエンタルラウンジ広島 流川本通',
-            'OLG ag 広島': 'ag広島 流川町',
-            'ag 広島': 'ag広島 流川町',
-            'ALFA HIROSHIMA': '相席ラウンジALFA広島 流川',
-            'CLOVERS HIROSHIMA': '相席CLOVERS広島 堀川町流川',
-            'JIS MATSUYAMA': 'JIS松山 大街道二番町',
-            // 福岡・九州・沖縄・札幌・仙台
-            'OLG 福岡': 'オリエンタルラウンジ福岡 天神西通り大名',
-            'OLG ag 福岡': 'ag福岡 天神西通り',
-            'ag 福岡': 'ag福岡 天神西通り',
-            'JIS FUKUOKA': 'JIS福岡 天神大名',
-            'OLG 小倉': 'オリエンタルラウンジ小倉 魚町銀天街',
-            'OLG 長崎': 'オリエンタルラウンジ長崎 浜町思案橋',
-            'OLG 大分': 'オリエンタルラウンジ大分 都町',
-            'OLG 熊本': 'オリエンタルラウンジ熊本 下通新市街',
-            'JIS KUMAMOTO': 'JIS熊本 下通銀座通り',
-            'OLG 宮崎': 'オリエンタルラウンジ宮崎 中央通ニシタチ',
-            'OLG 鹿児島': 'オリエンタルラウンジ鹿児島 天文館',
-            'OLG 沖縄': 'オリエンタルラウンジ沖縄 那覇国際通り牧志',
-            'OLG ag 沖縄': 'ag沖縄 那覇松山',
-            'ag 沖縄': 'ag沖縄 那覇松山',
-            'OLG 札幌': 'オリエンタルラウンジ札幌 すすきの南4条',
-            'OLG ag 札幌': 'ag札幌 すすきの駅前通り',
-            'ag 札幌': 'ag札幌 すすきの駅前通り',
-            'JIS SAPPORO': 'JIS札幌 すすきのノルベサ周辺',
-            'OLG 仙台': 'オリエンタルラウンジ仙台 国分町広瀬通',
-            'OLG ag 仙台': 'ag仙台 国分町一番町',
-            'ag 仙台': 'ag仙台 国分町一番町'
-        };
-
+        // --- Live User Crowd Votes (UGC) & Store-Pinpoint 2nd Venue Map Search (anchor from store_master.json) ---
         function getFullBrandStoreQuery(bInfo) {
             const brandFull = bInfo.code === 'OLG' ? 'オリエンタルラウンジ' : bInfo.code;
             return `${brandFull}${bInfo.cleanName} ${bInfo.areaLabel || ''}`.trim();
@@ -1809,18 +1781,20 @@
 
             const bInfo = detectBrandInfo(storeName);
             const rawKey = String(storeName || '').trim();
-            const storeAnchor = STORE_EXACT_MAP_LOCATIONS[rawKey] || getFullBrandStoreQuery(bInfo);
+            const master = getStoreMasterInfo(rawKey);
+            const storeAnchor = (master && master.map_anchor) || getFullBrandStoreQuery(bInfo);
             const shortStoreLabel = `${bInfo.code} ${bInfo.cleanName}`;
+            const storeLabel = String(bInfo.cleanName || '').endsWith('店') ? bInfo.cleanName : `${bInfo.cleanName}店`;
 
             if (headingEl) {
                 headingEl.textContent = `🥂 ${shortStoreLabel} の近くで2軒目を探す`;
             }
             if (cafeBtn) {
-                cafeBtn.textContent = `☕ ${bInfo.cleanName}店近くの夜カフェをマップ検索`;
+                cafeBtn.textContent = `☕ ${storeLabel}近くの夜カフェをマップ検索`;
                 cafeBtn.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(storeAnchor + ' 近く 夜カフェ スイーツ カフェバー')}`;
             }
             if (barBtn) {
-                barBtn.textContent = `🍸 ${bInfo.cleanName}店近くのバー・バルをマップ検索`;
+                barBtn.textContent = `🍸 ${storeLabel}近くのバー・バルをマップ検索`;
                 barBtn.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(storeAnchor + ' 近く 隠れ家バー ワインバル ダイニングバー')}`;
             }
         }
@@ -1858,6 +1832,21 @@
             } catch (e) {}
         }
 
+        // Anonymous per-device ID (random, stored only in this browser) used for duplicate-vote prevention.
+        // More reliable than IP on mobile networks where many users share one IP.
+        function getVoterId() {
+            try {
+                let id = localStorage.getItem('aiseki_voter_id');
+                if (!id) {
+                    id = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : (Date.now().toString(36) + Math.random().toString(36).slice(2));
+                    localStorage.setItem('aiseki_voter_id', id);
+                }
+                return id;
+            } catch (e) {
+                return '';
+            }
+        }
+
         async function submitCrowdVote(voteType) {
             if (!currentModalStoreName) return;
             const feedbackEl = document.getElementById('modal-vote-feedback');
@@ -1867,7 +1856,8 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         store_name: currentModalStoreName,
-                        vote_type: voteType
+                        vote_type: voteType,
+                        voter_id: getVoterId()
                     })
                 });
                 const d = await res.json();
@@ -1880,7 +1870,9 @@
                 }
                 if (feedbackEl) {
                     feedbackEl.classList.remove('hidden');
-                    if (d.status === 'duplicate') {
+                    if (d.status === 'duplicate' && d.reason === 'rate_limited') {
+                        feedbackEl.textContent = '⏳ 短時間に多くの投票があったため、少し時間をおいてお試しください';
+                    } else if (d.status === 'duplicate') {
                         feedbackEl.textContent = '✓ 先ほど投票済みです（ご協力ありがとうございます！）';
                     } else {
                         feedbackEl.textContent = '✨ 現場状況を共有しました！ありがとうございます';

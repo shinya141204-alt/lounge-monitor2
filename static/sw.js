@@ -1,8 +1,8 @@
-const CACHE_NAME = 'aiseki-navi-v21';
+const CACHE_NAME = 'aiseki-navi-v22';
 const ASSETS_TO_CACHE = [
   '/',
   '/static/style.css?v=20261023_08',
-  '/static/app.js?v=20261023_08',
+  '/static/app.js?v=20261023_10',
   '/static/chart.min.js?v=20261021',
   '/static/manifest.json?v=2',
   '/static/icon-192.png?v=2',

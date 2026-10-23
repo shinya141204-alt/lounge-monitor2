@@ -6,7 +6,7 @@ import threading
 import urllib.parse
 import json
 
-DB_PATH = os.path.join(os.path.dirname(__file__), 'lounge_data.db')
+DB_PATH = os.environ.get('LOCAL_DB_PATH') or os.path.join(os.path.dirname(os.path.abspath(__file__)), 'lounge_data.db')
 _db_lock = threading.Lock()
 _sync_in_progress = False
 
@@ -294,35 +294,71 @@ def get_snapshot_around(minutes_ago_min=15, minutes_ago_max=50):
     except Exception:
         return {}
 
-def add_crowd_vote(store_name, vote_type, ip_hash=""):
-    """Adds a live user crowd report vote with 30-min duplicate protection."""
+VOTE_SHEET_TITLE = 'Crowd Votes'
+VOTE_SHEET_HEADER = ['timestamp_jst', 'store_name', 'vote_type', 'voter_hash']
+# 荒らし対策のレート制限（10分あたり）
+VOTE_LIMIT_PER_VOTER = int(os.environ.get('VOTE_LIMIT_PER_VOTER', '8'))
+VOTE_LIMIT_PER_IP = int(os.environ.get('VOTE_LIMIT_PER_IP', '40'))  # 携帯回線のIP共有を考慮して緩め
+
+
+def add_crowd_vote(store_name, vote_type, ip_hash="", voter_id=""):
+    """
+    Adds a live user crowd report vote.
+    - 重複判定: 端末ID（voter_id）があればそれを優先、なければIPハッシュで「同じ店舗・同じ種類は30分に1回」
+    - レート制限: 端末ごと10分8票、IPごと10分40票（同一回線を複数人が使う携帯回線を考慮）
+    - 永続化: SQLite に加え Google Sheets 'Crowd Votes' に追記（再デプロイで消えないように）
+    """
     if vote_type not in ('smooth', 'waiting', 'lively'):
         return False, "invalid_type"
 
     now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
     now_str = now_jst.strftime("%Y-%m-%d %H:%M:%S")
     cutoff_30m = (now_jst - datetime.timedelta(minutes=30)).strftime("%Y-%m-%d %H:%M:%S")
+    cutoff_10m = (now_jst - datetime.timedelta(minutes=10)).strftime("%Y-%m-%d %H:%M:%S")
+    identity = voter_id or ip_hash
 
     with _votes_lock:
-        # Check in-memory first
+        recent_by_voter = 0
+        recent_by_ip = 0
         for v in _memory_votes:
+            v_identity = v.get('voter_id') or v['ip_hash']
             if (
                 v['store_name'] == store_name
                 and v['vote_type'] == vote_type
-                and v['ip_hash'] == ip_hash
+                and v_identity == identity
                 and v['timestamp'] >= cutoff_30m
             ):
                 return False, "already_voted"
+            if v['timestamp'] >= cutoff_10m:
+                if v_identity == identity:
+                    recent_by_voter += 1
+                if ip_hash and v['ip_hash'] == ip_hash:
+                    recent_by_ip += 1
+        if recent_by_voter >= VOTE_LIMIT_PER_VOTER or recent_by_ip >= VOTE_LIMIT_PER_IP:
+            return False, "rate_limited"
         _memory_votes.append({
             'timestamp': now_str,
             'store_name': store_name,
             'vote_type': vote_type,
-            'ip_hash': ip_hash
+            'ip_hash': ip_hash,
+            'voter_id': voter_id,
         })
         # Prune memory votes older than 6 hours
         cutoff_6h = (now_jst - datetime.timedelta(hours=6)).strftime("%Y-%m-%d %H:%M:%S")
         _memory_votes[:] = [v for v in _memory_votes if v['timestamp'] >= cutoff_6h]
 
+    _insert_vote_row(now_str, store_name, vote_type, identity)
+
+    try:
+        import sheets_store
+        sheets_store.append_rows_async(VOTE_SHEET_TITLE, VOTE_SHEET_HEADER, [[now_str, store_name, vote_type, identity]])
+    except Exception:
+        pass
+
+    return True, "ok"
+
+
+def _insert_vote_row(ts, store_name, vote_type, identity):
     try:
         with _db_lock:
             conn = get_connection()
@@ -331,14 +367,46 @@ def add_crowd_vote(store_name, vote_type, ip_hash=""):
                 cur.execute("""
                     INSERT INTO crowd_votes (timestamp, store_name, vote_type, ip_hash)
                     VALUES (?, ?, ?, ?)
-                """, (now_str, store_name, vote_type, ip_hash))
+                """, (ts, store_name, vote_type, identity))
                 conn.commit()
             finally:
                 conn.close()
     except Exception:
         pass
 
-    return True, "ok"
+
+def restore_votes_from_sheets(hours=24):
+    """起動時に Sheets から直近の投票を SQLite とメモリへ復元する（SQLite が空のときのみ）。"""
+    try:
+        conn = get_connection()
+        try:
+            cnt = conn.execute("SELECT COUNT(*) FROM crowd_votes").fetchone()[0]
+        finally:
+            conn.close()
+        if cnt > 0:
+            return 0
+        import sheets_store
+        rows = sheets_store.read_rows(VOTE_SHEET_TITLE, VOTE_SHEET_HEADER)
+    except Exception as e:
+        print(f"[local_db] vote restore skipped: {e}", file=sys.stderr)
+        return 0
+
+    now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
+    cutoff = (now_jst - datetime.timedelta(hours=hours)).strftime("%Y-%m-%d %H:%M:%S")
+    restored = 0
+    for r in rows:
+        if len(r) < 3 or not r[0] or r[0] < cutoff:
+            continue
+        if r[2] not in ('smooth', 'waiting', 'lively'):
+            continue
+        identity = r[3] if len(r) > 3 else ''
+        _insert_vote_row(r[0], r[1], r[2], identity)
+        with _votes_lock:
+            _memory_votes.append({'timestamp': r[0], 'store_name': r[1], 'vote_type': r[2],
+                                  'ip_hash': identity, 'voter_id': identity})
+        restored += 1
+    print(f"[local_db] Restored {restored} crowd votes from Google Sheets.")
+    return restored
 
 def get_recent_votes(store_name=None, hours=4):
     """Returns aggregated vote counts in the last `hours` hours."""

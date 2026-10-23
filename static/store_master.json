@@ -1,0 +1,536 @@
+{
+ "_comment": "店舗マスタ。新店舗はここに1行追加するだけで、地域・エリア表示・距離・マップ検索に反映されます。キーは /api/status の name と完全一致させてください。",
+ "version": "2026-10-23",
+ "stores": {
+  "OLG 渋谷本店": {
+   "brand": "OLG",
+   "display_name": "渋谷本店",
+   "area_label": "東京・渋谷",
+   "region": "Kanto",
+   "lat": 35.659,
+   "lng": 139.6982,
+   "map_anchor": "オリエンタルラウンジ渋谷本店 道玄坂",
+   "area_slug": "shibuya"
+  },
+  "OLG 恵比寿": {
+   "brand": "OLG",
+   "display_name": "恵比寿",
+   "area_label": "東京・恵比寿",
+   "region": "Kanto",
+   "lat": 35.6467,
+   "lng": 139.7101,
+   "map_anchor": "オリエンタルラウンジ恵比寿 恵比寿駅西口",
+   "area_slug": "shibuya"
+  },
+  "OLG ag渋谷": {
+   "brand": "ag",
+   "display_name": "渋谷",
+   "area_label": "東京・渋谷",
+   "region": "Kanto",
+   "lat": 35.6612,
+   "lng": 139.698,
+   "map_anchor": "ag渋谷 宇田川町",
+   "area_slug": "shibuya"
+  },
+  "OLG 新宿": {
+   "brand": "OLG",
+   "display_name": "新宿",
+   "area_label": "東京・新宿",
+   "region": "Kanto",
+   "lat": 35.6938,
+   "lng": 139.7034,
+   "map_anchor": "オリエンタルラウンジ新宿 歌舞伎町",
+   "area_slug": "shinjuku"
+  },
+  "OLG 上野": {
+   "brand": "OLG",
+   "display_name": "上野",
+   "area_label": "東京・上野",
+   "region": "Kanto",
+   "lat": 35.7086,
+   "lng": 139.774,
+   "map_anchor": "オリエンタルラウンジ上野 上野仲町通り",
+   "area_slug": "tokyo-east"
+  },
+  "OLG ag上野": {
+   "brand": "ag",
+   "display_name": "上野",
+   "area_label": "東京・上野",
+   "region": "Kanto",
+   "lat": 35.709,
+   "lng": 139.7745,
+   "map_anchor": "ag上野 上野御徒町",
+   "area_slug": "tokyo-east"
+  },
+  "OLG 錦糸町": {
+   "brand": "OLG",
+   "display_name": "錦糸町",
+   "area_label": "東京・錦糸町",
+   "region": "Kanto",
+   "lat": 35.6967,
+   "lng": 139.8144,
+   "map_anchor": "オリエンタルラウンジ錦糸町 錦糸町駅南口",
+   "area_slug": "tokyo-east"
+  },
+  "OLG 柏": {
+   "brand": "OLG",
+   "display_name": "柏",
+   "area_label": "千葉・柏",
+   "region": "Kanto",
+   "lat": 35.8622,
+   "lng": 139.971,
+   "map_anchor": "オリエンタルラウンジ柏 柏駅東口",
+   "area_slug": "kanto"
+  },
+  "OLG 町田": {
+   "brand": "OLG",
+   "display_name": "町田",
+   "area_label": "東京・町田",
+   "region": "Kanto",
+   "lat": 35.542,
+   "lng": 139.4457,
+   "map_anchor": "オリエンタルラウンジ町田 原町田",
+   "area_slug": "tokyo-east"
+  },
+  "OLG 横浜": {
+   "brand": "OLG",
+   "display_name": "横浜",
+   "area_label": "神奈川・横浜",
+   "region": "Kanto",
+   "lat": 35.4658,
+   "lng": 139.622,
+   "map_anchor": "オリエンタルラウンジ横浜 横浜駅西口 南幸",
+   "area_slug": "kanto"
+  },
+  "OLG 大宮": {
+   "brand": "OLG",
+   "display_name": "大宮",
+   "area_label": "埼玉・大宮",
+   "region": "Kanto",
+   "lat": 35.9063,
+   "lng": 139.624,
+   "map_anchor": "オリエンタルラウンジ大宮 大宮駅東口",
+   "area_slug": "kanto"
+  },
+  "OLG 宇都宮": {
+   "brand": "OLG",
+   "display_name": "宇都宮",
+   "area_label": "栃木・宇都宮",
+   "region": "Kanto",
+   "lat": 36.559,
+   "lng": 139.8984,
+   "map_anchor": "オリエンタルラウンジ宇都宮 オリオン通り",
+   "area_slug": "kanto"
+  },
+  "OLG 高崎": {
+   "brand": "OLG",
+   "display_name": "高崎",
+   "area_label": "群馬・高崎",
+   "region": "Kanto",
+   "lat": 36.3225,
+   "lng": 139.0127,
+   "map_anchor": "オリエンタルラウンジ高崎 高崎駅西口",
+   "area_slug": "kanto"
+  },
+  "OLG 大阪駅前": {
+   "brand": "OLG",
+   "display_name": "大阪駅前",
+   "area_label": "大阪・梅田",
+   "region": "Kinki",
+   "lat": 34.701,
+   "lng": 135.498,
+   "map_anchor": "オリエンタルラウンジ大阪駅前 梅田 曽根崎",
+   "area_slug": "osaka"
+  },
+  "OLG ag梅田": {
+   "brand": "ag",
+   "display_name": "梅田",
+   "area_label": "大阪・梅田",
+   "region": "Kinki",
+   "lat": 34.704,
+   "lng": 135.501,
+   "map_anchor": "ag梅田 阪急東通り",
+   "area_slug": "osaka"
+  },
+  "OLG 天満": {
+   "brand": "OLG",
+   "display_name": "天満",
+   "area_label": "大阪・天満",
+   "region": "Kinki",
+   "lat": 34.705,
+   "lng": 135.513,
+   "map_anchor": "オリエンタルラウンジ天満 天満駅前",
+   "area_slug": "osaka"
+  },
+  "OLG 心斎橋": {
+   "brand": "OLG",
+   "display_name": "心斎橋",
+   "area_label": "大阪・心斎橋",
+   "region": "Kinki",
+   "lat": 34.675,
+   "lng": 135.5005,
+   "map_anchor": "オリエンタルラウンジ心斎橋 東心斎橋",
+   "area_slug": "osaka"
+  },
+  "OLG 難波": {
+   "brand": "OLG",
+   "display_name": "難波",
+   "area_label": "大阪・難波",
+   "region": "Kinki",
+   "lat": 34.6669,
+   "lng": 135.5013,
+   "map_anchor": "オリエンタルラウンジ難波 道頓堀",
+   "area_slug": "osaka"
+  },
+  "OLG 京都": {
+   "brand": "OLG",
+   "display_name": "京都",
+   "area_label": "京都",
+   "region": "Kinki",
+   "lat": 35.0037,
+   "lng": 135.7701,
+   "map_anchor": "オリエンタルラウンジ京都 河原町 木屋町",
+   "area_slug": "osaka"
+  },
+  "OLG 神戸": {
+   "brand": "OLG",
+   "display_name": "神戸",
+   "area_label": "兵庫・神戸",
+   "region": "Kinki",
+   "lat": 34.6946,
+   "lng": 135.1934,
+   "map_anchor": "オリエンタルラウンジ神戸 三宮",
+   "area_slug": "osaka"
+  },
+  "OLG 岡山": {
+   "brand": "OLG",
+   "display_name": "岡山",
+   "area_label": "岡山",
+   "region": "Chugoku",
+   "lat": 34.6663,
+   "lng": 133.9185,
+   "map_anchor": "オリエンタルラウンジ岡山 岡山駅前",
+   "area_slug": "hokkaido-tohoku"
+  },
+  "OLG ag広島": {
+   "brand": "ag",
+   "display_name": "広島",
+   "area_label": "広島",
+   "region": "Chugoku",
+   "lat": 34.3928,
+   "lng": 132.4636,
+   "map_anchor": "ag広島 流川",
+   "area_slug": "hokkaido-tohoku"
+  },
+  "OLG ag名古屋": {
+   "brand": "ag",
+   "display_name": "名古屋",
+   "area_label": "愛知・名古屋",
+   "region": "Chubu",
+   "lat": 35.166,
+   "lng": 136.904,
+   "map_anchor": "ag名古屋 栄 住吉",
+   "area_slug": "nagoya"
+  },
+  "OLG 名古屋 錦": {
+   "brand": "OLG",
+   "display_name": "名古屋 錦",
+   "area_label": "愛知・名古屋",
+   "region": "Chubu",
+   "lat": 35.1712,
+   "lng": 136.9045,
+   "map_anchor": "オリエンタルラウンジ名古屋錦 錦三丁目",
+   "area_slug": "nagoya"
+  },
+  "OLG 名古屋 栄": {
+   "brand": "OLG",
+   "display_name": "名古屋 栄",
+   "area_label": "愛知・名古屋",
+   "region": "Chubu",
+   "lat": 35.1685,
+   "lng": 136.908,
+   "map_anchor": "オリエンタルラウンジ名古屋栄 栄三丁目",
+   "area_slug": "nagoya"
+  },
+  "OLG 静岡": {
+   "brand": "OLG",
+   "display_name": "静岡",
+   "area_label": "静岡",
+   "region": "Chubu",
+   "lat": 34.9717,
+   "lng": 138.3891,
+   "map_anchor": "オリエンタルラウンジ静岡 呉服町",
+   "area_slug": "nagoya"
+  },
+  "OLG 浜松": {
+   "brand": "OLG",
+   "display_name": "浜松",
+   "area_label": "静岡・浜松",
+   "region": "Chubu",
+   "lat": 34.7037,
+   "lng": 137.7348,
+   "map_anchor": "オリエンタルラウンジ浜松 鍛冶町",
+   "area_slug": "nagoya"
+  },
+  "OLG ag金沢": {
+   "brand": "ag",
+   "display_name": "金沢",
+   "area_label": "石川・金沢",
+   "region": "Chubu",
+   "lat": 36.5613,
+   "lng": 136.6562,
+   "map_anchor": "ag金沢 片町",
+   "area_slug": "nagoya"
+  },
+  "OLG ag仙台": {
+   "brand": "ag",
+   "display_name": "仙台",
+   "area_label": "宮城・仙台",
+   "region": "Tohoku",
+   "lat": 38.2619,
+   "lng": 140.871,
+   "map_anchor": "ag仙台 国分町",
+   "area_slug": "hokkaido-tohoku"
+  },
+  "OLG 福岡": {
+   "brand": "OLG",
+   "display_name": "福岡",
+   "area_label": "福岡・天神",
+   "region": "Kyushu",
+   "lat": 33.5897,
+   "lng": 130.3986,
+   "map_anchor": "オリエンタルラウンジ福岡 天神 大名",
+   "area_slug": "fukuoka"
+  },
+  "OLG 小倉": {
+   "brand": "OLG",
+   "display_name": "小倉",
+   "area_label": "福岡・小倉",
+   "region": "Kyushu",
+   "lat": 33.8863,
+   "lng": 130.8828,
+   "map_anchor": "オリエンタルラウンジ小倉 魚町",
+   "area_slug": "fukuoka"
+  },
+  "OLG 長崎": {
+   "brand": "OLG",
+   "display_name": "長崎",
+   "area_label": "長崎",
+   "region": "Kyushu",
+   "lat": 32.7448,
+   "lng": 129.8737,
+   "map_anchor": "オリエンタルラウンジ長崎 思案橋",
+   "area_slug": "fukuoka"
+  },
+  "OLG 大分": {
+   "brand": "OLG",
+   "display_name": "大分",
+   "area_label": "大分",
+   "region": "Kyushu",
+   "lat": 33.2382,
+   "lng": 131.6067,
+   "map_anchor": "オリエンタルラウンジ大分 都町",
+   "area_slug": "fukuoka"
+  },
+  "OLG 熊本": {
+   "brand": "OLG",
+   "display_name": "熊本",
+   "area_label": "熊本",
+   "region": "Kyushu",
+   "lat": 32.8032,
+   "lng": 130.7079,
+   "map_anchor": "オリエンタルラウンジ熊本 下通",
+   "area_slug": "fukuoka"
+  },
+  "OLG 宮崎": {
+   "brand": "OLG",
+   "display_name": "宮崎",
+   "area_label": "宮崎",
+   "region": "Kyushu",
+   "lat": 31.9111,
+   "lng": 131.4239,
+   "map_anchor": "オリエンタルラウンジ宮崎 ニシタチ",
+   "area_slug": "fukuoka"
+  },
+  "OLG 鹿児島": {
+   "brand": "OLG",
+   "display_name": "鹿児島",
+   "area_label": "鹿児島",
+   "region": "Kyushu",
+   "lat": 31.5966,
+   "lng": 130.5571,
+   "map_anchor": "オリエンタルラウンジ鹿児島 天文館",
+   "area_slug": "fukuoka"
+  },
+  "OLG ag沖縄": {
+   "brand": "ag",
+   "display_name": "沖縄",
+   "area_label": "沖縄",
+   "region": "Kyushu",
+   "lat": 26.2166,
+   "lng": 127.6842,
+   "map_anchor": "ag沖縄 那覇 松山",
+   "area_slug": "fukuoka"
+  },
+  "OLG ソウル カンナム": {
+   "brand": "OLG",
+   "display_name": "ソウル 江南(カンナム)",
+   "area_label": "韓国・ソウル",
+   "region": "Korea",
+   "lat": 37.4979,
+   "lng": 127.0276,
+   "map_anchor": "Oriental Lounge Gangnam Seoul",
+   "area_slug": null
+  },
+  "OLG ソウル ホンデ": {
+   "brand": "OLG",
+   "display_name": "ソウル 弘大(ホンデ)",
+   "area_label": "韓国・ソウル",
+   "region": "Korea",
+   "lat": 37.5563,
+   "lng": 126.9236,
+   "map_anchor": "Oriental Lounge Hongdae Seoul",
+   "area_slug": null
+  },
+  "JIS SAPPORO": {
+   "brand": "JIS",
+   "display_name": "札幌",
+   "area_label": "北海道・札幌",
+   "region": "Hokkaido",
+   "lat": 43.0554,
+   "lng": 141.3533,
+   "map_anchor": "JIS札幌 すすきの",
+   "area_slug": "hokkaido-tohoku"
+  },
+  "JIS OMIYA": {
+   "brand": "JIS",
+   "display_name": "大宮",
+   "area_label": "埼玉・大宮",
+   "region": "Kanto",
+   "lat": 35.907,
+   "lng": 139.625,
+   "map_anchor": "JIS大宮 大宮駅東口",
+   "area_slug": "kanto"
+  },
+  "JIS SHINJUKU": {
+   "brand": "JIS",
+   "display_name": "新宿",
+   "area_label": "東京・新宿",
+   "region": "Kanto",
+   "lat": 35.6945,
+   "lng": 139.702,
+   "map_anchor": "JIS新宿 歌舞伎町",
+   "area_slug": "shinjuku"
+  },
+  "JIS NISHISHINJUKU": {
+   "brand": "JIS",
+   "display_name": "西新宿",
+   "area_label": "東京・新宿",
+   "region": "Kanto",
+   "lat": 35.6918,
+   "lng": 139.6974,
+   "map_anchor": "JIS西新宿 新宿西口",
+   "area_slug": "shinjuku"
+  },
+  "JIS UMEDA": {
+   "brand": "JIS",
+   "display_name": "梅田",
+   "area_label": "大阪・梅田",
+   "region": "Kinki",
+   "lat": 34.7025,
+   "lng": 135.4983,
+   "map_anchor": "JIS梅田 お初天神",
+   "area_slug": "osaka"
+  },
+  "JIS NAMBA": {
+   "brand": "JIS",
+   "display_name": "難波",
+   "area_label": "大阪・難波",
+   "region": "Kinki",
+   "lat": 34.669,
+   "lng": 135.502,
+   "map_anchor": "JIS難波 宗右衛門町",
+   "area_slug": "osaka"
+  },
+  "JIS CHAYAMACHI": {
+   "brand": "JIS",
+   "display_name": "茶屋町",
+   "area_label": "大阪・梅田",
+   "region": "Kinki",
+   "lat": 34.7058,
+   "lng": 135.4988,
+   "map_anchor": "JIS茶屋町 梅田茶屋町",
+   "area_slug": "osaka"
+  },
+  "JIS FUKUOKA": {
+   "brand": "JIS",
+   "display_name": "福岡",
+   "area_label": "福岡・天神",
+   "region": "Kyushu",
+   "lat": 33.5905,
+   "lng": 130.3975,
+   "map_anchor": "JIS福岡 天神 大名",
+   "area_slug": "fukuoka"
+  },
+  "JIS KUMAMOTO": {
+   "brand": "JIS",
+   "display_name": "熊本",
+   "area_label": "熊本",
+   "region": "Kyushu",
+   "lat": 32.802,
+   "lng": 130.7085,
+   "map_anchor": "JIS熊本 下通",
+   "area_slug": "fukuoka"
+  },
+  "JIS MATSUYAMA": {
+   "brand": "JIS",
+   "display_name": "松山",
+   "area_label": "愛媛・松山",
+   "region": "Shikoku",
+   "lat": 33.8392,
+   "lng": 132.7656,
+   "map_anchor": "JIS松山 大街道 二番町",
+   "area_slug": "hokkaido-tohoku"
+  },
+  "XIX OKAYAMA": {
+   "brand": "XIX",
+   "display_name": "岡山",
+   "area_label": "岡山",
+   "region": "Chugoku",
+   "lat": 34.665,
+   "lng": 133.922,
+   "map_anchor": "相席ラウンジXIX 岡山",
+   "area_slug": "hokkaido-tohoku"
+  },
+  "YATAKOI UMEDA": {
+   "brand": "ヤタコイ",
+   "display_name": "梅田茶屋町",
+   "area_label": "大阪・梅田",
+   "region": "Kinki",
+   "lat": 34.706,
+   "lng": 135.4995,
+   "map_anchor": "ヤタコイ 梅田茶屋町",
+   "area_slug": "osaka"
+  },
+  "CLOVERS HIROSHIMA": {
+   "brand": "CLOVERS",
+   "display_name": "広島",
+   "area_label": "広島",
+   "region": "Chugoku",
+   "lat": 34.394,
+   "lng": 132.465,
+   "map_anchor": "相席CLOVERS 広島 流川",
+   "area_slug": "hokkaido-tohoku"
+  },
+  "ALFA HIROSHIMA": {
+   "brand": "ALFA",
+   "display_name": "広島",
+   "area_label": "広島",
+   "region": "Chugoku",
+   "lat": 34.3935,
+   "lng": 132.464,
+   "map_anchor": "相席ラウンジALFA 広島 流川",
+   "area_slug": "hokkaido-tohoku"
+  }
+ }
+}

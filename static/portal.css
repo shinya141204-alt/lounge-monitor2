@@ -1,0 +1,77 @@
+/* ==========================================================================
+   相席ナビ 記事・ポータル系ページ共通スタイル
+   - templates/_portal_nav.html / _portal_footer.html と対応
+   - ページ固有の差分（アクティブ色・余白・hover 等）は各ページの <style> で上書きする
+   - 各ページでは /static/style.css より後、ページ内 <style> より前に読み込むこと
+   ========================================================================== */
+
+/* ---- グローバルナビ ---- */
+.portal-global-nav {
+    display: flex;
+    /* style.css（トップページ用）の .portal-global-nav 指定を打ち消す */
+    justify-content: flex-start;
+    align-items: stretch;
+    margin-top: 0;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 4px 0 14px;
+    margin-bottom: 22px;
+}
+
+.portal-nav-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 15px;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-decoration: none;
+    color: #cbd5e1;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    white-space: nowrap;
+}
+
+.portal-nav-item.active {
+    background: linear-gradient(135deg, rgba(236, 72, 153, 0.25), rgba(59, 130, 246, 0.25));
+    border-color: rgba(236, 72, 153, 0.55);
+    color: #fff;
+}
+
+/* ---- フッター（_portal_footer.html） ---- */
+.portal-footer {
+    margin-top: 50px;
+    padding-top: 28px;
+    border-top: 1px solid var(--border-subtle);
+    color: var(--text-sub);
+    font-size: 0.82rem;
+}
+
+.portal-footer-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-bottom: 12px;
+}
+
+.portal-footer-links a {
+    color: #cbd5e1;
+    text-decoration: none;
+}
+
+/* ---- ガイド記事用フッター（_guide_footer.html: guide_first_10min / second_venue / shinjuku / solo_pair） ---- */
+.portal-footer--guide {
+    margin-top: 48px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border-subtle);
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--text-sub);
+}
+
+.portal-footer--guide a {
+    color: #cbd5e1;
+    text-decoration: none;
+    margin: 0 6px;
+}

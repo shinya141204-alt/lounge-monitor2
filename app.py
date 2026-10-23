@@ -8,13 +8,15 @@ import threading
 import logger
 import statistics
 import os
+import sys
 import local_db
 from collections import defaultdict
 
 from logging.handlers import RotatingFileHandler
 
 # Set up logging with automatic size rotation (max 5MB, keep 2 backups) to prevent disk overflow
-log_file_path = 'app.log'
+# (absolute path so the app also works when started from another working directory, e.g. tests)
+log_file_path = os.environ.get('APP_LOG_PATH') or os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.log')
 file_handler = RotatingFileHandler(log_file_path, maxBytes=5 * 1024 * 1024, backupCount=2, encoding='utf-8')
 file_handler.setLevel(logging.INFO)
 file_handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(name)s: %(message)s'))
@@ -95,15 +97,33 @@ _scheduler_lock = threading.Lock()
 @app.before_request
 def start_scheduler():
     global _scheduler_started
+    if os.environ.get('DISABLE_SCHEDULER') == '1':
+        return
     if not _scheduler_started:
         with _scheduler_lock:
             if not _scheduler_started:
                 # Initialize local high-speed SQLite database
                 local_db.init_db()
                 local_db.start_background_sync(days=14)
+                # Restore crowd votes lost on redeploy from Google Sheets
+                threading.Thread(target=local_db.restore_votes_from_sheets, kwargs={'hours': 24}, daemon=True).start()
 
-                scheduler = BackgroundScheduler(timezone="UTC")
+                # misfire_grace_time: if the instance was busy/asleep at the exact minute, still run within 10 min
+                # coalesce: never run the same missed job multiple times in a row
+                scheduler = BackgroundScheduler(timezone="UTC", job_defaults={
+                    'misfire_grace_time': 600,
+                    'coalesce': True,
+                    'max_instances': 1,
+                })
                 scheduler.add_job(func=update_job, trigger="interval", minutes=1)
+                # Flush first-party analytics counters to Google Sheets every 10 minutes
+                def _flush_analytics():
+                    try:
+                        import analytics
+                        analytics.flush()
+                    except Exception as err:
+                        logging.error(f"analytics flush failed: {err}")
+                scheduler.add_job(func=_flush_analytics, trigger="interval", minutes=10)
                 # Background sync SQLite with Google Sheets every 2 hours to keep completely up to date
                 scheduler.add_job(func=lambda: local_db.sync_from_google_sheets(days=3), trigger="interval", hours=2)
                 # Daily X auto-post jobs at 20:00, 22:00, 00:00, and 02:00 JST (11:00, 13:00, 15:00, 17:00 UTC)
@@ -396,17 +416,39 @@ REGIONS = {
 }
 
 def detect_region(store_name):
+    # 1. Store master (single source of truth, e.g. fixes 'OLG 錦糸町' being matched by '錦' → Chubu)
+    try:
+        import store_master
+        r = store_master.region_of(store_name)
+        if r:
+            return r
+    except Exception:
+        pass
+    # 2. Fallback keyword matching for stores not yet in the master
     for region, keywords in REGIONS.items():
         for keyword in keywords:
             if keyword in store_name:
                 return region
     return 'Other'
 
+# Fetch interval: every minute during business hours, every 10 minutes 07:00-17:00 JST
+# (reduces load on the official sites while nothing is happening)
+def fetch_interval_sec(now_jst=None):
+    now_jst = now_jst or datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
+    return 600 if 7 <= now_jst.hour < 17 else 60
+
+_last_fetch_at = None
+
 # Rolling in-memory snapshots for 30-min momentum calculation
 rolling_snapshots = []
 
-def update_job():
-    global latest_data, _last_update_error, rolling_snapshots
+def update_job(force=False):
+    global latest_data, _last_update_error, rolling_snapshots, _last_fetch_at
+    if not force and _last_fetch_at is not None:
+        elapsed = (datetime.datetime.now() - _last_fetch_at).total_seconds()
+        if elapsed < fetch_interval_sec() - 5:
+            return
+    _last_fetch_at = datetime.datetime.now()
     print(f"[{datetime.datetime.now()}] Updating data...")
     try:
         data = monitor.get_all_data()
@@ -532,7 +574,58 @@ def affiliate_redirect(item_id):
     target_url = AFFILIATE_REDIRECTS.get(clean_id)
     if not target_url:
         return redirect(url_for('index'))
+    if not _is_bot_request():
+        try:
+            import analytics
+            ref_path = urllib_parse.urlparse(request.referrer or '').path or '-'
+            analytics.track('affiliate_click', f"{clean_id} @ {ref_path}")
+        except Exception:
+            pass
     return redirect(target_url, code=302)
+
+# --- First-party analytics (no personal data) ---
+import urllib.parse as urllib_parse
+
+_BOT_MARKERS = ('bot', 'spider', 'crawl', 'slurp', 'facebookexternalhit', 'preview', 'headless', 'python-requests', 'curl')
+_TRACKED_PAGE_PREFIXES = ('/guide', '/columns', '/areas', '/area/', '/grooming', '/stats')
+
+def _is_bot_request():
+    ua = (request.headers.get('User-Agent') or '').lower()
+    return (not ua) or any(m in ua for m in _BOT_MARKERS)
+
+@app.after_request
+def track_page_views(response):
+    try:
+        if (request.method == 'GET' and response.status_code == 200
+                and (request.path == '/' or request.path.startswith(_TRACKED_PAGE_PREFIXES))
+                and not _is_bot_request()):
+            import analytics
+            analytics.track('page_view', request.path)
+    except Exception:
+        pass
+    return response
+
+@app.route('/api/track', methods=['POST'])
+def track_event():
+    """Receives navigator.sendBeacon events from the frontend (event + short label only)."""
+    if _is_bot_request():
+        return ('', 204)
+    payload = request.get_json(silent=True, force=True) or {}
+    import analytics
+    analytics.track(str(payload.get('event', ''))[:30], str(payload.get('label', ''))[:80])
+    return ('', 204)
+
+@app.route('/staff/analytics')
+def staff_analytics():
+    """Staff-only analytics summary (page views, affiliate clicks, button clicks)."""
+    if not session.get('is_staff'):
+        return redirect(url_for('staff_monitor'))
+    import analytics
+    days = max(1, min(90, request.args.get('days', 7, type=int)))
+    data = analytics.summary(days=days)
+    if request.args.get('format') == 'json':
+        return jsonify(data)
+    return render_template('staff_analytics.html', data=data, days=days)
 
 @app.route('/staff', methods=['GET', 'POST'])
 def staff_monitor():
@@ -584,7 +677,7 @@ def trigger_background_fetch_if_needed():
     if last_updated:
         last_time = datetime.datetime.strptime(last_updated, "%Y-%m-%d %H:%M:%S")
         current_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
-        if (current_jst - last_time).total_seconds() > 90:
+        if (current_jst - last_time).total_seconds() > fetch_interval_sec() + 30:
             is_stale = True
 
     if not has_data or is_stale:
@@ -638,6 +731,34 @@ def get_status():
 def health_check():
     """Lightweight endpoint for keep-alive pings (cron-job.org etc.)"""
     return jsonify({'status': 'ok'})
+
+@app.route('/api/health/deep')
+def health_check_deep():
+    """Data freshness + per-source scraper health. Returns 503 when data is stale (for external uptime monitors)."""
+    import health
+    with data_lock:
+        last_updated = latest_data.get('last_updated')
+        store_count = len(latest_data.get('full_data') or [])
+    age_sec = None
+    if last_updated:
+        last_time = datetime.datetime.strptime(last_updated, "%Y-%m-%d %H:%M:%S")
+        now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
+        age_sec = int((now_jst - last_time).total_seconds())
+    snap = health.snapshot()
+    down = [k for k, v in snap['sources'].items() if v.get('down')]
+    stale = age_sec is None or age_sec > fetch_interval_sec() * 3 + 120
+    ok = not stale and not down
+    body = {
+        'status': 'ok' if ok else 'degraded',
+        'last_updated': last_updated,
+        'data_age_sec': age_sec,
+        'store_count': store_count,
+        'down_sources': down,
+        'webhook_configured': snap['webhook_configured'],
+    }
+    if is_admin_authorized():
+        body['detail'] = snap
+    return jsonify(body), (200 if ok else 503)
 
 @app.route('/api/debug_ps')
 def debug_ps():
@@ -719,11 +840,26 @@ def post_store_vote():
     vote_type = str(payload.get('vote_type', '')).strip()
     if not store_name or vote_type not in ('smooth', 'waiting', 'lively'):
         return jsonify({'status': 'error', 'error': 'Invalid parameters'}), 400
+    if len(store_name) > 60:
+        return jsonify({'status': 'error', 'error': 'Invalid store'}), 400
+    # Only accept votes for stores that actually exist in the current ranking (prevents junk rows)
+    with data_lock:
+        known_names = {s.get('name') for s in latest_data.get('full_data', [])}
+    if known_names and store_name not in known_names:
+        return jsonify({'status': 'error', 'error': 'Unknown store'}), 400
 
     client_ip = request.headers.get('X-Forwarded-For', request.remote_addr or '0.0.0.0').split(',')[0].strip()
     ip_hash = hashlib.sha256(f"{client_ip}_aiseki_salt".encode('utf-8')).hexdigest()[:16]
+    raw_voter = str(payload.get('voter_id', '')).strip()[:64]
+    voter_hash = hashlib.sha256(f"v_{raw_voter}_aiseki_salt".encode('utf-8')).hexdigest()[:16] if raw_voter else ''
 
-    ok, reason = local_db.add_crowd_vote(store_name, vote_type, ip_hash)
+    ok, reason = local_db.add_crowd_vote(store_name, vote_type, ip_hash, voter_id=voter_hash)
+    if ok:
+        try:
+            import analytics
+            analytics.track('vote', vote_type)
+        except Exception:
+            pass
     counts = local_db.get_recent_votes(store_name=store_name, hours=4)
 
     # Also update in-memory latest_data so subsequent /api/status calls reflect immediately
@@ -772,8 +908,8 @@ AREA_GUIDES = {
     },
     'tokyo-east': {
         'slug': 'tokyo-east',
-        'name': '上野・町田・東京近郊エリア',
-        'short_name': '上野・町田',
+        'name': '上野・錦糸町・町田・東京近郊エリア',
+        'short_name': '上野・錦糸町・町田',
         'icon': '🏮',
         'keywords': ['上野', '町田', 'Ueno', 'Machida'],
         'region_code': 'Kanto',
@@ -848,11 +984,17 @@ def get_stores_for_area(area_slug, all_stores):
     area = AREA_GUIDES.get(area_slug)
     if not area:
         return []
+    import store_master
     kws = area['keywords']
     matched = []
     for s in all_stores:
         sname = s.get('name', '')
-        if any(k in sname for k in kws):
+        info = store_master.get(sname)
+        if info is not None:
+            # Store master decides the area (e.g. 'OLG 錦糸町' must not match Nagoya's '錦')
+            if info.get('area_slug') == area_slug:
+                matched.append(s)
+        elif any(k in sname for k in kws):
             matched.append(s)
     matched.sort(key=lambda x: (x.get('women', 0), x.get('men', 0)), reverse=True)
     return matched
@@ -1125,26 +1267,22 @@ def generate_sns_post_api():
     })
 
 def run_scheduled_x_post(slot_label="20:00", force=False):
-    """Execute scheduled X auto-post with duplicate prevention across workers."""
+    """Execute scheduled X auto-post with duplicate prevention that survives restarts/redeploys."""
     import x_poster
+    import job_state
     now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
-    dedup_key = f"{now_jst.strftime('%Y-%m-%d')}_{slot_label}"
-    lock_file = "/tmp/aiseki_navi_last_x_post.txt"
+    # Slots after midnight (00:00 / 02:00) belong to the previous business night
+    biz_date = (now_jst - datetime.timedelta(hours=7)).strftime('%Y-%m-%d')
+    dedup_key = f"x_post:{biz_date}_{slot_label}"
 
-    if not force:
-        try:
-            if os.path.exists(lock_file):
-                with open(lock_file, "r") as f:
-                    if f.read().strip() == dedup_key:
-                        logging.info(f"X auto-post already sent for {dedup_key}, skipping.")
-                        return {"status": "skipped", "reason": "Already posted for this slot"}
-        except Exception:
-            pass
+    if not force and job_state.is_done(dedup_key):
+        logging.info(f"X auto-post already sent for {dedup_key}, skipping.")
+        return {"status": "skipped", "reason": "Already posted for this slot"}
 
     stores = latest_data.get('full_data') or []
     if not stores:
         try:
-            stores, _ = monitor.get_all_data()
+            stores = monitor.get_all_data()
         except Exception as e:
             logging.error(f"Failed to fetch stores for X post: {e}")
             return {"status": "error", "detail": str(e)}
@@ -1155,9 +1293,11 @@ def run_scheduled_x_post(slot_label="20:00", force=False):
 
     result = x_poster.post_to_x(text)
     if result.get("status") == "success" and not force:
+        job_state.mark_done(dedup_key)
+    elif result.get("status") == "error":
         try:
-            with open(lock_file, "w") as f:
-                f.write(dedup_key)
+            import health
+            health.send_alert(f"xpost:{dedup_key}", f"⚠️ X自動投稿（{slot_label}）に失敗しました: {str(result.get('detail') or result)[:200]}")
         except Exception:
             pass
     result["tweet_text"] = text

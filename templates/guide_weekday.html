@@ -88,6 +88,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
 
+    <link rel="stylesheet" href="/static/portal.css?v=2">
     <style>
         body {
             display: block !important;
@@ -429,6 +430,13 @@
             color: #38bdf8;
             text-decoration: none;
         }
+        /* グローバルナビ: 共通部分は /static/portal.css。以下はこのページ固有の差分 */
+        .portal-global-nav { margin-bottom: 12px; }
+        .portal-nav-item { gap: 5px; padding: 7px 14px; font-size: 0.8rem; }
+        .portal-nav-item.active {
+            background: rgba(56, 189, 248, 0.22);
+            border-color: rgba(56, 189, 248, 0.5);
+        }
     </style>
 </head>
 
@@ -444,13 +452,8 @@
         </div>
 
         <!-- Portal Global Navigation -->
-        <nav style="display: flex; gap: 8px; overflow-x: auto; padding: 4px 0 14px; margin-bottom: 12px;" aria-label="メインナビゲーション">
-            <a href="/" style="display: inline-flex; align-items: center; gap: 5px; padding: 7px 14px; border-radius: 999px; font-size: 0.8rem; font-weight: 700; text-decoration: none; color: #cbd5e1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); white-space: nowrap;">🔥 リアルタイム順位</a>
-            <a href="/areas" style="display: inline-flex; align-items: center; gap: 5px; padding: 7px 14px; border-radius: 999px; font-size: 0.8rem; font-weight: 700; text-decoration: none; color: #cbd5e1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); white-space: nowrap;">📍 エリアから探す</a>
-            <a href="/columns" style="display: inline-flex; align-items: center; gap: 5px; padding: 7px 14px; border-radius: 999px; font-size: 0.8rem; font-weight: 700; text-decoration: none; color: #fff; background: rgba(56,189,248,0.22); border: 1px solid rgba(56,189,248,0.5); white-space: nowrap;">📖 コラム・記事一覧</a>
-            <a href="/guide/brand-comparison" style="display: inline-flex; align-items: center; gap: 5px; padding: 7px 14px; border-radius: 999px; font-size: 0.8rem; font-weight: 700; text-decoration: none; color: #cbd5e1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); white-space: nowrap;">⚖️ 3大ブランド比較</a>
-            <a href="/grooming" style="display: inline-flex; align-items: center; gap: 5px; padding: 7px 14px; border-radius: 999px; font-size: 0.8rem; font-weight: 700; text-decoration: none; color: #cbd5e1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); white-space: nowrap;">✨ 身だしなみ・準備</a>
-        </nav>
+        {% set nav_active = 'columns' %}
+        {% include '_portal_nav.html' %}
 
         <!-- Breadcrumb -->
         <nav class="breadcrumb">

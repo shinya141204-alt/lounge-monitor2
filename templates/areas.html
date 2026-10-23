@@ -16,6 +16,7 @@
 
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=2">
     <link rel="apple-touch-icon" href="/static/icon.png?v=2">
+    <link rel="stylesheet" href="/static/portal.css?v=2">
     <style>
         :root {
             --bg-dark: #0a0a0f;
@@ -72,37 +73,12 @@
             font-size: 0.78rem;
             color: var(--text-sub);
         }
-        .portal-global-nav {
-            display: flex;
-            gap: 8px;
-            overflow-x: auto;
-            padding: 4px 0 14px;
-            margin-bottom: 18px;
-            scrollbar-width: none;
-        }
+        /* グローバルナビ: 共通部分は /static/portal.css。以下はこのページ固有の差分 */
+        .portal-global-nav { margin-bottom: 18px; scrollbar-width: none; }
         .portal-global-nav::-webkit-scrollbar { display: none; }
-        .portal-nav-item {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 8px 15px;
-            border-radius: 999px;
-            font-size: 0.82rem;
-            font-weight: 700;
-            text-decoration: none;
-            color: #cbd5e1;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            white-space: nowrap;
-            transition: all 0.2s ease;
-        }
+        .portal-nav-item { transition: all 0.2s ease; }
         .portal-nav-item:hover {
             background: rgba(255, 255, 255, 0.1);
-            color: #fff;
-        }
-        .portal-nav-item.active {
-            background: linear-gradient(135deg, rgba(236, 72, 153, 0.25), rgba(59, 130, 246, 0.25));
-            border-color: rgba(236, 72, 153, 0.55);
             color: #fff;
         }
 
@@ -244,23 +220,6 @@
             line-height: 1.65;
         }
 
-        .portal-footer {
-            margin-top: 50px;
-            padding-top: 28px;
-            border-top: 1px solid var(--border-subtle);
-            color: var(--text-sub);
-            font-size: 0.82rem;
-        }
-        .portal-footer-links {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 14px;
-            margin-bottom: 12px;
-        }
-        .portal-footer-links a {
-            color: #cbd5e1;
-            text-decoration: none;
-        }
         .portal-footer-links a:hover { color: #ec4899; }
     </style>
 </head>
@@ -275,13 +234,8 @@
             <span style="font-size: 0.78rem; color: #94a3b8;">最終更新: {{ last_updated }}</span>
         </div>
 
-        <nav class="portal-global-nav" aria-label="メインナビゲーション">
-            <a href="/" class="portal-nav-item">🔥 リアルタイム順位</a>
-            <a href="/areas" class="portal-nav-item active">📍 エリアから探す</a>
-            <a href="/columns" class="portal-nav-item">📖 コラム・記事一覧</a>
-            <a href="/guide/brand-comparison" class="portal-nav-item">⚖️ 3大ブランド比較</a>
-            <a href="/grooming" class="portal-nav-item">✨ 身だしなみ・準備</a>
-        </nav>
+        {% set nav_active = 'areas' %}
+        {% include '_portal_nav.html' %}
 
         <!-- Area Selector Bar -->
         <div class="area-pills-bar">
@@ -420,19 +374,7 @@
         {% endfor %}
         {% endif %}
 
-        <footer class="portal-footer">
-            <div class="portal-footer-links">
-                <a href="/">🔥 リアルタイムランキング</a>
-                <a href="/areas">📍 全国エリア一覧</a>
-                <a href="/columns">📖 コラム一覧</a>
-                <a href="/guide">基本ガイド</a>
-                <a href="/guide/brand-comparison">3大ブランド比較</a>
-                <a href="/guide/weekday-strategy">水曜・木曜の穴場</a>
-                <a href="/grooming">身だしなみ特集</a>
-                <a href="/privacy">運営者情報・プライバシーポリシー</a>
-            </div>
-            <p>© 2026 相席ナビ (AISEKI NAVI) ｜ 公開データの非公式統計・情報ポータルサイト</p>
-        </footer>
+        {% include '_portal_footer.html' %}
     </div>
 </body>
 

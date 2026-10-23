@@ -21,17 +21,29 @@ STATE_FILE = os.path.join(STATE_DIR, "posted_notes.json")
 
 
 def _load_posted_urls() -> set:
+    posted = set()
     try:
         if os.path.exists(STATE_FILE):
             with open(STATE_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
-                return set(data.get("posted_urls", []))
+                posted.update(data.get("posted_urls", []))
     except Exception as e:
         logger.error(f"Failed to load posted note URLs: {e}")
-    return set()
+    # data/ はデプロイで消えるため、永続化された job_state（Google Sheets）も参照する
+    try:
+        import job_state
+        posted.update(k[len("note:"):] for k in job_state.all_keys() if k.startswith("note:"))
+    except Exception as e:
+        logger.error(f"Failed to load note state from job_state: {e}")
+    return posted
 
 
 def _save_posted_url(url: str):
+    try:
+        import job_state
+        job_state.mark_done(f"note:{url}")
+    except Exception as e:
+        logger.error(f"Failed to persist note URL to job_state: {e}")
     try:
         os.makedirs(STATE_DIR, exist_ok=True)
         posted = _load_posted_urls()
@@ -121,6 +133,19 @@ def check_and_post_new_note(force: bool = False, article_index: int = 0) -> dict
     title = target["title"]
 
     posted_urls = _load_posted_urls()
+    if not force and not posted_urls:
+        # 投稿履歴が一切ない（初回 or 永続化導入直後）場合、公開から12時間以上経った記事は
+        # 「告知済み」とみなして記録だけ行い、古い記事の再告知を防ぐ
+        from email.utils import parsedate_to_datetime
+        now_utc = datetime.datetime.now(datetime.timezone.utc)
+        for a in articles:
+            try:
+                age_h = (now_utc - parsedate_to_datetime(a.get("pub_date", ""))).total_seconds() / 3600
+            except Exception:
+                age_h = 999
+            if age_h >= 12:
+                _save_posted_url(a["link"])
+        posted_urls = _load_posted_urls()
     if not force and link in posted_urls:
         logger.info(f"Latest note article already posted ({link}), skipping.")
         return {"status": "skipped", "reason": "Latest article already posted", "article": target}

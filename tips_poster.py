@@ -283,18 +283,13 @@ def run_scheduled_tip_post(slot_label: str = "12:00", force: bool = False, tip_i
     slot_label: '12:00' or '18:00'
     """
     now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
-    dedup_key = f"{now_jst.strftime('%Y-%m-%d')}_tip_{slot_label}"
-    lock_file = "/tmp/aiseki_navi_last_x_tip.txt"
+    dedup_key = f"x_tip:{now_jst.strftime('%Y-%m-%d')}_{slot_label}"
 
-    if not force:
-        try:
-            if os.path.exists(lock_file):
-                with open(lock_file, "r") as f:
-                    if f.read().strip() == dedup_key:
-                        logger.info(f"X tip post already sent for {dedup_key}, skipping.")
-                        return {"status": "skipped", "reason": "Already posted for this slot today"}
-        except Exception:
-            pass
+    # 投稿済みフラグは job_state（Google Sheets 永続化）で管理し、再起動・再デプロイ後の二重投稿を防ぐ
+    import job_state
+    if not force and job_state.is_done(dedup_key):
+        logger.info(f"X tip post already sent for {dedup_key}, skipping.")
+        return {"status": "skipped", "reason": "Already posted for this slot today"}
 
     text = get_tip_for_slot(slot_label=slot_label, tip_index=tip_index)
     if not text:
@@ -305,6 +300,7 @@ def run_scheduled_tip_post(slot_label: str = "12:00", force: bool = False, tip_i
 
     result = x_poster.post_to_x(text)
     if result.get("status") == "success" and not force:
+        job_state.mark_done(dedup_key)
         try:
             with open(lock_file, "w") as f:
                 f.write(dedup_key)

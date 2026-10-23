@@ -36,6 +36,7 @@ _olg_cache = {
 
 def get_oriental_data():
     global _olg_cache
+    _olg_cache['served_stale'] = False
     try:
         response = requests.get(ORIENTAL_URL, timeout=(3, 7), headers=_HEADERS)
         response.raise_for_status()
@@ -43,6 +44,8 @@ def get_oriental_data():
         import logging; logging.error(f"Error fetching Oriental data: {e}")
         if _olg_cache['data']:
             import logging; logging.error(f"Using cached OLG data from {_olg_cache['last_success']}")
+            _olg_cache['served_stale'] = True
+            _olg_cache['stale_reason'] = str(e)
             return _olg_cache['data']
         return []
 
@@ -52,6 +55,8 @@ def get_oriental_data():
     if not stores:
         import logging; logging.error(f"WARNING: OLG page returned {len(response.content)} bytes but no store elements found")
         if _olg_cache['data']:
+            _olg_cache['served_stale'] = True
+            _olg_cache['stale_reason'] = 'no store elements found (HTML structure changed?)'
             return _olg_cache['data']
         return []
     
@@ -326,6 +331,18 @@ def get_all_data():
         res = results_by_name.get(fn.__name__)
         if res:
             data.extend(res)
+
+    # Health monitoring: treat stale-cache fallback as a failure so outages are detected
+    try:
+        import health
+        health_results = dict(results_by_name)
+        if _olg_cache.get('served_stale'):
+            health_results.pop('get_oriental_data', None)
+            fetch_errors['get_oriental_data'] = f"stale cache: {_olg_cache.get('stale_reason')}"
+        health.record_fetch(health_results, dict(fetch_errors), [fn.__name__ for fn in fetchers])
+        health.check_unknown_stores([s.get('name') for s in data])
+    except Exception as e:
+        import logging; logging.error(f"health check failed: {e}")
 
     return data
 
