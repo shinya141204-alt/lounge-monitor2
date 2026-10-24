@@ -1,4 +1,4 @@
-from flask import Flask, render_template, jsonify, request, send_from_directory, Response, redirect, session, url_for
+from flask import Flask, render_template, jsonify, request, send_from_directory, Response, redirect, session, url_for, abort, make_response
 from apscheduler.schedulers.background import BackgroundScheduler
 import logging
 import monitor
@@ -10,6 +10,7 @@ import statistics
 import os
 import sys
 import local_db
+import scheduled_articles
 from collections import defaultdict
 
 from logging.handlers import RotatingFileHandler
@@ -151,6 +152,12 @@ def _ensure_scheduler_started_async():
                 except Exception as err:
                     logging.error(f"Scheduled events crawl failed: {err}")
             scheduler.add_job(func=_crawl_events_job, trigger="cron", hour="1,8", minute=0)
+            def _scheduled_articles_release_job():
+                try:
+                    scheduled_articles.check_and_announce_newly_published()
+                except Exception as err:
+                    logging.error(f"Scheduled articles release check failed: {err}")
+            scheduler.add_job(func=_scheduled_articles_release_job, trigger="interval", minutes=15)
             scheduler.add_job(func=run_scheduled_weekly_x_post, trigger="cron", day_of_week="sun", hour=10, minute=0)
             scheduler.start()
             trigger_background_fetch_if_needed()
@@ -833,6 +840,7 @@ def index():
         initial_status=get_initial_status_payload(),
         og_meta=og_meta,
         og_image_url=og_image_url,
+        published_scheduled=scheduled_articles.get_published_articles(),
     )
 
 @app.route('/ogp/live.png')
@@ -933,6 +941,7 @@ def track_page_views(response):
                 response.headers['Cache-Control'] = 'public, max-age=86400'
         elif (request.method == 'GET' and response.status_code == 200
                 and (request.path == '/' or request.path.startswith(_TRACKED_PAGE_PREFIXES))
+                and not session.get('is_staff')
                 and not _is_bot_request()):
             import analytics
             analytics.track('page_view', request.path)
@@ -991,7 +1000,13 @@ def staff_monitor():
     # Check if already authenticated in session
     if session.get('is_staff'):
         trigger_background_fetch_if_needed()
-        return render_template('index.html', is_staff=True, initial_status=get_initial_status_payload())
+        return render_template(
+            'index.html',
+            is_staff=True,
+            initial_status=get_initial_status_payload(),
+            published_scheduled=scheduled_articles.get_published_articles(),
+            scheduled_queue=scheduled_articles.get_all_with_status(),
+        )
 
     return render_template('staff_login.html', error=error)
 
@@ -1589,6 +1604,14 @@ def sitemap_xml():
     <priority>0.85</priority>
   </url>""" for sslug in store_slugs if sslug
     ])
+    scheduled_urls = "".join([
+        f"""  <url>
+    <loc>https://aiseki-navi.com{item['path']}</loc>
+    <lastmod>{item['lastmod']}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>\n""" for item in scheduled_articles.get_published_articles()
+    ])
     xml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
@@ -1688,7 +1711,7 @@ def sitemap_xml():
     <changefreq>weekly</changefreq>
     <priority>0.85</priority>
   </url>
-{area_urls}
+{scheduled_urls}{area_urls}
 {store_urls}
   <url>
     <loc>https://aiseki-navi.com/privacy</loc>
@@ -1702,7 +1725,14 @@ def sitemap_xml():
 @app.route('/columns')
 def columns_index():
     """Portal page listing all editorial guides, comparisons, and area features."""
-    return render_template('columns.html', area_guides=AREA_GUIDES)
+    is_staff = bool(session.get('is_staff'))
+    return render_template(
+        'columns.html',
+        area_guides=AREA_GUIDES,
+        published_scheduled=scheduled_articles.get_published_articles(),
+        upcoming_scheduled=scheduled_articles.get_upcoming_articles() if is_staff else [],
+        is_staff=is_staff,
+    )
 
 @app.route('/stats')
 def stats_whitepaper():
@@ -1825,6 +1855,38 @@ def guide_beauty_area_stage():
 def guide_male_lead_mechanics():
     """Editorial data study on why male-leading stores attract more women and why women no longer wait."""
     return render_template('guide_male_lead.html')
+
+
+def _render_scheduled_guide(slug: str):
+    """Render a scheduled editorial guide if published, or allow noindex preview for authenticated staff."""
+    item = scheduled_articles.get_article_by_slug(slug)
+    if not item:
+        abort(404)
+    if scheduled_articles.is_published(item):
+        return render_template(item['template'], is_scheduled_preview=False, scheduled_item=item)
+    if is_admin_authorized():
+        resp = make_response(render_template(item['template'], is_scheduled_preview=True, scheduled_item=item))
+        resp.headers['X-Robots-Tag'] = 'noindex, nofollow'
+        return resp
+    abort(404)
+
+
+@app.route('/guide/local-vs-urban')
+def guide_local_vs_urban():
+    """Scheduled editorial data study comparing local 1-store cities vs urban flagship clusters."""
+    return _render_scheduled_guide('local-vs-urban')
+
+
+@app.route('/guide/cost-break-even')
+def guide_cost_break_even():
+    """Scheduled editorial data study on stay-duration cost break-even and store-hopping."""
+    return _render_scheduled_guide('cost-break-even')
+
+
+@app.route('/guide/rain-payday')
+def guide_rain_payday():
+    """Scheduled editorial data study on rainy nights, pre-payday windows, and 3-day-weekend Sundays."""
+    return _render_scheduled_guide('rain-payday')
 
 @app.route('/api/sns-post')
 def generate_sns_post_api():

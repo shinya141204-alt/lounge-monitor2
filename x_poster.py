@@ -478,10 +478,28 @@ COLUMN_PROMO_LIST = [
 ]
 
 
+def get_active_column_promo_list() -> list:
+    """Return currently public column promo items (published scheduled articles newest-first + permanent list)."""
+    dynamic_items = []
+    try:
+        import scheduled_articles
+        for s in scheduled_articles.get_published_articles():
+            dynamic_items.append({
+                "slug": s["slug"],
+                "path": s["path"],
+                "title": s["x_title"],
+                "main_text": s["x_main_text"],
+            })
+    except Exception:
+        pass
+    return dynamic_items + COLUMN_PROMO_LIST
+
+
 def build_column_tweet_thread(col_index: int = 0, app_url: str = "") -> tuple:
     """Build a 2-post thread (URL-free 1st post + URL reply) introducing a site column article."""
     site_url = (app_url or os.environ.get("PUBLIC_SITE_URL") or "https://aiseki-navi.com").rstrip("/")
-    item = COLUMN_PROMO_LIST[col_index % len(COLUMN_PROMO_LIST)]
+    promo_list = get_active_column_promo_list()
+    item = promo_list[col_index % len(promo_list)]
     main_text = item["main_text"]
     reply_text = (
         f"📖 コラム本編はこちら👇\n"

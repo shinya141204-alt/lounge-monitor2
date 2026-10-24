@@ -429,5 +429,102 @@ class FrontendSyntaxTests(unittest.TestCase):
             self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
 
 
+class ScheduledArticlesTests(unittest.TestCase):
+    """日時指定の予約公開システム（事前404秘匿・社内プレビュー・自動解禁・X自動告知・文字数制限）"""
+
+    def setUp(self):
+        shutil.rmtree(os.environ['JOB_STATE_DIR'], ignore_errors=True)
+        job_state.reset_cache_for_tests()
+        self.client = app_module.app.test_client()
+
+    def test_before_publish_hidden_from_public_and_visible_to_staff(self):
+        import scheduled_articles
+        import tips_poster
+        before_dt = datetime.datetime(2026, 10, 25, 12, 0, 0)
+        with mock.patch.object(scheduled_articles, 'now_jst_naive', return_value=before_dt):
+            for slug in ('local-vs-urban', 'cost-break-even', 'rain-payday'):
+                r = self.client.get(f'/guide/{slug}')
+                self.assertEqual(r.status_code, 404, slug)
+
+            col_html = self.client.get('/columns').data.decode('utf-8')
+            sm_xml = self.client.get('/sitemap.xml').data.decode('utf-8')
+            idx_html = self.client.get('/').data.decode('utf-8')
+            for slug in ('local-vs-urban', 'cost-break-even', 'rain-payday'):
+                self.assertNotIn(f'/guide/{slug}', col_html)
+                self.assertNotIn(f'/guide/{slug}', sm_xml)
+                self.assertNotIn(f'/guide/{slug}', idx_html)
+
+            # Tip replies fall back safely to /columns before release
+            for tip_idx in (58, 59, 60):
+                self.assertIn('/columns', tips_poster.get_tip_reply_text(tip_index=tip_idx))
+
+            # Logged-in staff can preview all 3 upcoming articles with noindex protection
+            with self.client.session_transaction() as s:
+                s['is_staff'] = True
+            for slug in ('local-vs-urban', 'cost-break-even', 'rain-payday'):
+                r_prev = self.client.get(f'/guide/{slug}')
+                self.assertEqual(r_prev.status_code, 200, slug)
+                self.assertEqual(r_prev.headers.get('X-Robots-Tag'), 'noindex, nofollow')
+                prev_html = r_prev.data.decode('utf-8')
+                self.assertIn('社内限定プレビュー', prev_html)
+                self.assertNotIn('ca-pub-3043764334238627', prev_html)
+                self.assertNotIn('/link/', prev_html)
+
+            staff_dash = self.client.get('/staff').data.decode('utf-8')
+            self.assertIn('予約待機中', staff_dash)
+            with self.client.session_transaction() as s:
+                s.pop('is_staff', None)
+
+    def test_auto_release_and_x_announcement_once(self):
+        import scheduled_articles
+        import tips_poster
+        # Step 1: 1st article release time arrives (2026-10-28 19:05 JST)
+        first_dt = datetime.datetime(2026, 10, 28, 19, 5, 0)
+        with mock.patch.object(scheduled_articles, 'now_jst_naive', return_value=first_dt):
+            r1 = self.client.get('/guide/local-vs-urban')
+            self.assertEqual(r1.status_code, 200)
+            self.assertIsNone(r1.headers.get('X-Robots-Tag'))
+            self.assertNotIn('社内限定プレビュー', r1.data.decode('utf-8'))
+
+            # 2nd and 3rd articles remain 404
+            self.assertEqual(self.client.get('/guide/cost-break-even').status_code, 404)
+            self.assertEqual(self.client.get('/guide/rain-payday').status_code, 404)
+
+            # /columns, /, and /sitemap.xml list only the released 1st article
+            self.assertIn('/guide/local-vs-urban', self.client.get('/columns').data.decode('utf-8'))
+            self.assertIn('/guide/local-vs-urban', self.client.get('/sitemap.xml').data.decode('utf-8'))
+            self.assertNotIn('/guide/cost-break-even', self.client.get('/sitemap.xml').data.decode('utf-8'))
+
+            # Auto-announcement posts once and deduplicates via job_state
+            with mock.patch('x_poster.post_to_x', return_value={'status': 'success'}) as mock_post:
+                res_first = scheduled_articles.check_and_announce_newly_published()
+                res_second = scheduled_articles.check_and_announce_newly_published()
+            self.assertEqual(len(res_first), 1)
+            self.assertEqual(res_first[0]['slug'], 'local-vs-urban')
+            self.assertEqual(res_second, [])
+            self.assertEqual(mock_post.call_count, 1)
+
+        # Step 2: All 3 articles released (2026-11-05 19:10 JST)
+        all_dt = datetime.datetime(2026, 11, 5, 19, 10, 0)
+        with mock.patch.object(scheduled_articles, 'now_jst_naive', return_value=all_dt):
+            for slug in ('local-vs-urban', 'cost-break-even', 'rain-payday'):
+                self.assertEqual(self.client.get(f'/guide/{slug}').status_code, 200)
+            self.assertIn('/guide/local-vs-urban', tips_poster.get_tip_reply_text(tip_index=58))
+            self.assertIn('/guide/cost-break-even', tips_poster.get_tip_reply_text(tip_index=59))
+            self.assertIn('/guide/rain-payday', tips_poster.get_tip_reply_text(tip_index=60))
+
+    def test_scheduled_tweets_and_all_tips_within_280_weight(self):
+        import scheduled_articles
+        import x_poster
+        import tips_poster
+        for item in scheduled_articles.SCHEDULED_ARTICLES:
+            w = x_poster.compute_twitter_weight(item['x_main_text'])
+            self.assertLessEqual(w, 280, f"{item['slug']} weight={w}")
+        for i in range(len(tips_poster.TIPS_LIST)):
+            tip_text = tips_poster.get_tip_for_slot(tip_index=i)
+            w = x_poster.compute_twitter_weight(tip_text)
+            self.assertLessEqual(w, 280, f"tip[{i}] weight={w}")
+
+
 if __name__ == '__main__':
     unittest.main()

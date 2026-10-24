@@ -263,6 +263,18 @@ TIPS_LIST = [
         "「女性25人・男性2人」の極端な女余りの店って、実は30分以内に女の子が退店しちゃう確率が55%以上ある。\n"
         "今の女の子は待たずにすぐ徒歩3分の別店舗へ移動するから、むしろ「男性が10人以上いて女性が増え始めてる（↗）お店」に入る方が結果的に一番当たりやすいよ📊"
     ),
+    (
+        "新宿や梅田の大型店は終電前にピークが来るけど、熊本・沖縄・金沢・鹿児島みたいな地方の相席ラウンジは「深夜0時〜2時」に女性が121%へ逆転増加する🌙\n"
+        "タクシー代が安い街は1軒目の居酒屋終わりに一極集中するから、出張先なら22時半以降が狙い目だよ✈️"
+    ),
+    (
+        "相席ラウンジで一番コスパが悪いのは、実は「微妙な空気のまま惰性で90〜120分粘っちゃうこと」💸\n"
+        "10分課金が積み上がる前に「40分」で見切って、盛り上がってるなら2軒目の静かなバーへ、微妙なら近隣の女性比率が高い店へ切り替える方が3,000円以上浮くよ🍸"
+    ),
+    (
+        "実は25日の給料日直後って男性が一斉に繰り出すから競争率が上がるんだけど、逆に「15日〜24日の給料日前」は男性ライバルが減って女性比率が平均+7.4%も高くなる📊\n"
+        "さらに雨の日の地下直結店舗とか、3連休の中日（日曜夜）もかなり美味しい隠れ穴場日だよ☔️"
+    ),
 ]
 
 
@@ -332,6 +344,30 @@ def get_tip_reply_text(slot_label: str = "12:00", tip_index: int = None) -> str:
     elif idx == 57:
         col_title = "「男性先行」の店ほど女性が増える？女性は待たない新常識"
         col_path = "/guide/male-lead-mechanics"
+    elif idx == 58:
+        import scheduled_articles
+        if scheduled_articles.is_published("local-vs-urban"):
+            col_title = "地方店 vs 都心大型店｜深夜0時に女性が121%へ逆転増加する理由"
+            col_path = "/guide/local-vs-urban"
+        else:
+            col_title = "相席ラウンジ実践コラム・攻略記事一覧"
+            col_path = "/columns"
+    elif idx == 59:
+        import scheduled_articles
+        if scheduled_articles.is_published("cost-break-even"):
+            col_title = "90分粘る vs 40分で見切る｜滞在時間と料金の損益分岐点"
+            col_path = "/guide/cost-break-even"
+        else:
+            col_title = "相席ラウンジ実践コラム・攻略記事一覧"
+            col_path = "/columns"
+    elif idx == 60:
+        import scheduled_articles
+        if scheduled_articles.is_published("rain-payday"):
+            col_title = "雨の日・給料日前・連休中日｜ライバルが減る隠れ穴場日データ"
+            col_path = "/guide/rain-payday"
+        else:
+            col_title = "相席ラウンジ実践コラム・攻略記事一覧"
+            col_path = "/columns"
     else:
         col_title = "相席ラウンジ実践コラム・攻略記事一覧"
         col_path = "/columns"

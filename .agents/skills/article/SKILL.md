@@ -52,7 +52,8 @@ description: >-
 
 ---
 
-## Step 4: ルート・一覧・サイトマップ・X自動投稿への登録
+## Step 4: ルート・一覧・サイトマップ・X自動投稿への登録（即時公開 or 予約公開）
+### A. 即時公開する場合（デフォルト）
 1. **[`app.py`](file:///Users/kuwanoshinya/.gemini/相席業務改善/相席モニター/app.py)**：
    * `@app.route('/guide/<slug>')` を追加してテンプレートを返す。
    * `/sitemap.xml` に `https://aiseki-navi.com/guide/<slug>` を追加する。
@@ -62,6 +63,13 @@ description: >-
    * `COLUMN_PROMO_LIST` の先頭に新コラムの告知スレッド定義を追加する（リプ欄はターゲットURL 1本のみにして専用OGPカードが確実に出るようにする）。
 4. **[`tips_poster.py`](file:///Users/kuwanoshinya/.gemini/相席業務改善/相席モニター/tips_poster.py)**：
    * `TIPS_LIST` にテーマに関連する人間味のある豆知識ポストを1〜2個追加し、`get_tip_reply_text()` で該当インデックスのリプ欄URLが `/guide/<slug>` になるよう紐付ける。
+
+### B. 日時指定で予約公開する場合（複数本まとめ作成・Scaled Content Abuse対策）
+ユーザーから公開日時の指定がある場合や、複数記事を数日おきに分散公開したい場合は、[`scheduled_articles.py`](file:///Users/kuwanoshinya/.gemini/相席業務改善/相席モニター/scheduled_articles.py) を使う：
+1. **`scheduled_articles.SCHEDULED_ARTICLES`** にメタ情報（`slug`, `path`, `template`, `publish_at` (JST), `publish_at_ja`, `lastmod`, `eyecatch_jpg`, `eyecatch_webp`, `badge`, `read_time`, `tag_primary`, `tag_secondary`, `title`, `short_title`, `desc`, `x_title`, `x_main_text`）を追加する（`x_main_text` は Twitter weight `<= 280` 厳守）。
+2. **`app.py`** で `@app.route('/guide/<slug>')` を `_render_scheduled_guide('<slug>')` に紐付ける。テンプレート側には `{% if is_scheduled_preview %}<meta name="robots" content="noindex, nofollow">{% endif %}` とプレビューバナーを入れておく。
+   * 予約日時前は一般アクセス `HTTP 404`（`/staff` ログイン中のみプレビュー可能）、予約日時到達後は自動で `/columns`, `/`, `/sitemap.xml` に掲載され、APScheduler が15分おきに検知して自動でXへ新着告知2連スレッドを投稿する。
+3. **[`analytics.py`](file:///Users/kuwanoshinya/.gemini/相席業務改善/相席モニター/analytics.py)** の `_PAGE_TITLES` に `/guide/<slug>` を追加する。
 
 ---
 

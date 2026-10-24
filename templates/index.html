@@ -314,8 +314,31 @@
                 </p>
 
                 <div class="article-cards-grid">
+                    {% for item in published_scheduled or [] %}
+                    <a href="{{ item.path }}" class="article-card-item{% if loop.first %} highlight-card{% endif %}">
+                        <div class="article-card-thumb">
+                            <picture>
+                                <source srcset="{{ item.eyecatch_webp }}" type="image/webp">
+                                <img src="{{ item.eyecatch_jpg }}" alt="{{ item.title }}" width="640" height="360" decoding="async" loading="lazy">
+                            </picture>
+                            <span class="article-card-badge">{{ item.badge }}</span>
+                        </div>
+                        <div class="article-card-info">
+                            <div class="article-card-meta">
+                                <span class="article-tag">{{ item.tag_primary[1] }}</span>
+                                <span class="article-read-time">{{ item.read_time }}</span>
+                            </div>
+                            <h3 class="article-card-title">{{ item.title }}</h3>
+                            <p class="article-card-desc">{{ item.desc }}</p>
+                            <div class="article-card-footer">
+                                <span class="article-read-btn">検証記事を読む ›</span>
+                            </div>
+                        </div>
+                    </a>
+                    {% endfor %}
+
                     <!-- Article NEW 1: Male Lead Mechanics -->
-                    <a href="/guide/male-lead-mechanics" class="article-card-item highlight-card">
+                    <a href="/guide/male-lead-mechanics" class="article-card-item{% if not published_scheduled %} highlight-card{% endif %}">
                         <div class="article-card-thumb">
                             <picture>
                                 <source srcset="/static/eyecatch-male-lead.webp" type="image/webp">
@@ -340,8 +363,8 @@
                     <a href="/guide/beauty-area-stage" class="article-card-item">
                         <div class="article-card-thumb">
                             <picture>
-                                <source srcset="/static/eyecatch-beauty-area.webp" type="image/webp">
-                                <img src="/static/eyecatch-beauty-area.jpg" alt="美容サロン激戦区の相席ラウンジ傾向" width="640" height="360" decoding="async" loading="lazy">
+                                <source srcset="/static/eyecatch-beauty-stage.webp" type="image/webp">
+                                <img src="/static/eyecatch-beauty-stage.jpg" alt="美容サロン激戦区の相席ラウンジ傾向" width="640" height="360" decoding="async" loading="lazy">
                             </picture>
                             <span class="article-card-badge">エリア傾向</span>
                         </div>
@@ -1086,6 +1109,32 @@
                             <span id="staff-toggle-events-label">イベント非表示: ON（業務集中モード）</span>
                         </button>
                     </div>
+                    {% if scheduled_queue %}
+                    <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.08);">
+                        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px; margin-bottom: 8px;">
+                            <span style="font-size: 0.78rem; font-weight: 700; color: #cbd5e1;">🗓️ コラム自動予約公開スケジュール（サイト解禁＋sitemap登録＋X自動告知）</span>
+                            <span style="font-size: 0.72rem; color: #94a3b8;">※予約日時前は一般アクセス404・社内のみプレビュー可</span>
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 8px;">
+                            {% for item in scheduled_queue %}
+                            <div style="background: rgba(15, 23, 42, 0.55); border: 1px solid rgba(255,255,255,0.09); border-radius: 10px; padding: 9px 12px; display: flex; flex-direction: column; gap: 5px;">
+                                <div style="display: flex; align-items: center; justify-content: space-between; gap: 6px;">
+                                    {% if item.published %}
+                                    <span style="font-size: 0.68rem; font-weight: 700; padding: 2px 7px; border-radius: 99px; background: rgba(34, 197, 94, 0.18); color: #86efac; border: 1px solid rgba(34, 197, 94, 0.35);">公開済み</span>
+                                    {% else %}
+                                    <span style="font-size: 0.68rem; font-weight: 700; padding: 2px 7px; border-radius: 99px; background: rgba(245, 158, 11, 0.18); color: #fde68a; border: 1px solid rgba(245, 158, 11, 0.35);">予約待機中</span>
+                                    {% endif %}
+                                    <span style="font-size: 0.72rem; color: #94a3b8;">{{ item.publish_at_ja }}</span>
+                                </div>
+                                <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                                    <span style="font-size: 0.8rem; font-weight: 600; color: #f1f5f9;">{{ item.short_title }}</span>
+                                    <a href="{{ item.path }}" target="_blank" rel="noopener noreferrer" style="font-size: 0.74rem; font-weight: 700; color: #38bdf8; text-decoration: none; white-space: nowrap;">確認 ↗</a>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
                 </div>
                 {% endif %}
 
@@ -1468,7 +1517,10 @@
                 <div class="sitemap-col">
                     <h4>コラム・特集記事</h4>
                     <ul>
-                        <li><a href="/columns">コラム・記事一覧（全11本）</a></li>
+                        <li><a href="/columns">コラム・記事一覧（全{{ 11 + (published_scheduled|length if published_scheduled else 0) }}本）</a></li>
+                        {% for item in published_scheduled or [] %}
+                        <li><a href="{{ item.path }}">{{ item.short_title }}</a></li>
+                        {% endfor %}
                         <li><a href="/guide/male-lead-mechanics">男性先行×女性は待たないデータ法則</a></li>
                         <li><a href="/guide/beauty-area-stage">美容サロン激戦区の客層と特徴</a></li>
                         <li><a href="/guide/club-area-midnight">クラブ密集エリア深夜0時の第2波</a></li>
