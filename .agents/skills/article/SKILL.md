@@ -46,13 +46,9 @@ description: >-
 3. **ナビゲーション＆フッター**：
    * 上部に `{% set nav_active = 'columns' %}` と `{% include '_portal_nav.html' %}`
    * 下部に `{% include '_portal_footer.html' %}`
-4. **店舗個別ページへの内部リンク**：
+4. **店舗個別ページ・統計白書・関連コラムへの内部リンク（サイト内回遊の最大化）**：
    * 記事内の店舗リンクは必ず [`store_master.py`](file:///Users/kuwanoshinya/.gemini/相席業務改善/相席モニター/store_master.py) の `STORE_SLUGS` に定義された正しいスラッグ（例: `/store/oriental-lounge-shinjuku`, `/store/jis-umeda`, `/store/ag-shibuya`）を使用する。
-5. **自然なアフィリエイト収益導線**（テーマに合わせて1〜3個配置）：
-   * スキンケア：`/link/orbis`（ORBIS Mr.）
-   * メンズ脱毛：`/link/hair_removal`
-   * ファッション：`/link/spu`（SPU マネキン買い）
-   * マッチング・満席対策：`/link/dating`
+   * **【重要】記事内には外部アフィリエイト広告カード（`/link/...`）を直接貼らないこと。** まずは独自のデータ考察メディアとしての信頼性・権威性とサイト内PV（`/` リアルタイムランキング、`/stats` 統計白書、`/store/...` 店舗ページへの回遊）を最優先する。身だしなみに触れる場合は、内部ページ `/grooming` または `/guide/first-10-minutes` への自然なテキストリンク1本のみにとどめる（2ステップ構造）。
 
 ---
 
