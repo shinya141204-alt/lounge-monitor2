@@ -1632,6 +1632,12 @@ def sitemap_xml():
     <changefreq>weekly</changefreq>
     <priority>0.85</priority>
   </url>
+  <url>
+    <loc>https://aiseki-navi.com/guide/male-lead-mechanics</loc>
+    <lastmod>{today}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
 {area_urls}
 {store_urls}
   <url>
@@ -1764,6 +1770,11 @@ def guide_weekend_strategy():
 def guide_beauty_area_stage():
     """Editorial data study on beauty salon districts, early-evening surges, and men's grooming."""
     return render_template('guide_beauty_stage.html')
+
+@app.route('/guide/male-lead-mechanics')
+def guide_male_lead_mechanics():
+    """Editorial data study on why male-leading stores attract more women and why women no longer wait."""
+    return render_template('guide_male_lead.html')
 
 @app.route('/api/sns-post')
 def generate_sns_post_api():

@@ -366,6 +366,16 @@ def build_pinned_tweet_thread(app_url: str = "") -> tuple:
 
 COLUMN_PROMO_LIST = [
     {
+        "slug": "male-lead-mechanics",
+        "path": "/guide/male-lead-mechanics",
+        "title": "「男性先行」の店ほど女性が増える？データが証明する「女性は待たない」新常識",
+        "main_text": (
+            "「女性25人・男性2人」の店に急いで向かったら、着いた頃には女の子が減ってた…って経験ない？\n\n"
+            "27万件のログを解析すると、今の女の子は20分相席できないとすぐ別店舗へ移動してて、逆に「男性が先行してる店」ほど30分後に女性が急増（確率66.5%）してる📊\n"
+            "#相席ナビ #相席ラウンジ"
+        ),
+    },
+    {
         "slug": "beauty-area-stage",
         "path": "/guide/beauty-area-stage",
         "title": "なぜ美容サロン激戦区の相席ラウンジは美人が多いのか？「今日ビジュいい日」の行動データ",
