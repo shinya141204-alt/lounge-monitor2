@@ -7,6 +7,8 @@
         let currentFilter = 'All';
         let currentSearch = '';
         let currentSort = 'women';
+        let _chartJsLoadingPromise = null;
+        let comparisonChartInstance = null;
 
         // --- Store Master (static/store_master.json): single source of truth for area label, coordinates & map anchor ---
         window.STORE_MASTER = {};
@@ -1414,7 +1416,7 @@
         function openGuideModal(initialCategory = 'all') {
             currentGuideCategory = initialCategory;
             renderGuideModal();
-            document.getElementById('guide-modal').classList.remove('hidden');
+            document.getElementById('guide-modal')?.classList.remove('hidden');
         }
 
         function filterGuideCategory(catId) {
@@ -1489,7 +1491,7 @@
         }
 
         function closeGuideModal() {
-            document.getElementById('guide-modal').classList.add('hidden');
+            document.getElementById('guide-modal')?.classList.add('hidden');
         }
 
         // Mobile Menu / Drawer Modal
@@ -1659,11 +1661,11 @@
         }
 
         function openLegalModal() {
-            document.getElementById('legal-modal').classList.remove('hidden');
+            document.getElementById('legal-modal')?.classList.remove('hidden');
         }
 
         function closeLegalModal() {
-            document.getElementById('legal-modal').classList.add('hidden');
+            document.getElementById('legal-modal')?.classList.add('hidden');
         }
 
         // --- SNS Viral Post Generator Modal Logic ---
@@ -1811,11 +1813,11 @@
                 }
             }
             selectSnsPreset(defaultPreset);
-            document.getElementById('sns-modal').classList.remove('hidden');
+            document.getElementById('sns-modal')?.classList.remove('hidden');
         }
 
         function closeSnsModal() {
-            document.getElementById('sns-modal').classList.add('hidden');
+            document.getElementById('sns-modal')?.classList.add('hidden');
         }
 
         async function postGeneratedSns(platform) {
@@ -2228,26 +2230,26 @@
         }
 
         function closeEventsModal() {
-            document.getElementById('events-modal').classList.add('hidden');
+            document.getElementById('events-modal')?.classList.add('hidden');
         }
 
         // Close on clicking background
-        document.getElementById('analysis-modal').addEventListener('click', (e) => {
+        document.getElementById('analysis-modal')?.addEventListener('click', (e) => {
             if (e.target.id === ('analysis-modal')) closeModal();
         });
-        document.getElementById('comparison-modal').addEventListener('click', (e) => {
+        document.getElementById('comparison-modal')?.addEventListener('click', (e) => {
             if (e.target.id === ('comparison-modal')) closeComparisonModal();
         });
-        document.getElementById('legal-modal').addEventListener('click', (e) => {
+        document.getElementById('legal-modal')?.addEventListener('click', (e) => {
             if (e.target.id === ('legal-modal')) closeLegalModal();
         });
-        document.getElementById('guide-modal').addEventListener('click', (e) => {
+        document.getElementById('guide-modal')?.addEventListener('click', (e) => {
             if (e.target.id === ('guide-modal')) closeGuideModal();
         });
         document.getElementById('articles-modal')?.addEventListener('click', (e) => {
             if (e.target.id === ('articles-modal')) closeArticlesModal();
         });
-        document.getElementById('sns-modal').addEventListener('click', (e) => {
+        document.getElementById('sns-modal')?.addEventListener('click', (e) => {
             if (e.target.id === ('sns-modal')) closeSnsModal();
         });
         document.getElementById('events-modal')?.addEventListener('click', (e) => {
@@ -2272,6 +2274,7 @@
                 closeSnsModal();
                 closeEventsModal();
                 closeHowToModal();
+                closeReportModal();
             }
         });
 
@@ -2293,7 +2296,6 @@
         }
 
         // --- Robust Chart.js Loader (self-hosted /static/chart.min.js, 100% immune to adblockers) ---
-        let _chartJsLoadingPromise = null;
         function loadChartJs() {
             if (window.Chart) return Promise.resolve(window.Chart);
             if (!_chartJsLoadingPromise) {
@@ -2349,8 +2351,6 @@
         }, 3500);
 
         // --- Comparison Modal Logic ---
-        let comparisonChartInstance = null;
-
         async function openComparisonModal() {
             const modal = document.getElementById('comparison-modal');
             const summaryContainer = document.getElementById('comparison-brand-summary');
@@ -2491,7 +2491,7 @@
         }
 
         function closeComparisonModal() {
-            document.getElementById('comparison-modal').classList.add('hidden');
+            document.getElementById('comparison-modal')?.classList.add('hidden');
             if (comparisonChartInstance) { comparisonChartInstance.destroy(); comparisonChartInstance = null; }
         }
 
@@ -2574,10 +2574,10 @@
         }
 
         function closeReportModal() {
-            document.getElementById('report-modal').classList.add('hidden');
+            document.getElementById('report-modal')?.classList.add('hidden');
         }
 
-        document.getElementById('report-modal').addEventListener('click', (e) => {
+        document.getElementById('report-modal')?.addEventListener('click', (e) => {
             if (e.target.id === ('report-modal')) closeReportModal();
         });
 
@@ -2856,9 +2856,88 @@
                 container.appendChild(loadMoreBtn);
             }
 
+            if (allDates.length === 0) {
+                container.innerHTML = '<span style="font-size:0.8rem; color:var(--text-secondary);">この店舗の日別詳細ログはまだ蓄積されていません</span>';
+                document.getElementById('daily-chart-container')?.classList.add('hidden');
+                const tableWrap = document.getElementById('daily-log-table-wrap');
+                if (tableWrap) { tableWrap.classList.add('hidden'); tableWrap.innerHTML = ''; }
+                return;
+            }
+
             if (autoSelectFirst && visibleDates.length > 0) {
                 showDailyChart(visibleDates[0], currentData, null);
             }
+        }
+
+        function renderDailyLogTable(dateStr, womenData, menData) {
+            const wrap = document.getElementById('daily-log-table-wrap');
+            if (!wrap) return;
+            if (!womenData || womenData.length === 0) {
+                wrap.classList.add('hidden');
+                wrap.innerHTML = '';
+                return;
+            }
+
+            const rows = [];
+            let peakW = 0, peakM = 0, peakTime = '-';
+            for (let i = 0; i < womenData.length; i++) {
+                const wObj = womenData[i];
+                const mObj = menData[i] || { y: 0 };
+                const timeStr = (wObj.x.split(' ')[1] || '').slice(0, 5);
+                const w = Number(wObj.y || 0);
+                const m = Number(mObj.y || 0);
+                const tot = w + m;
+                const wPct = tot > 0 ? Math.round((w / tot) * 100) : 0;
+                if (w > peakW || (w === peakW && m > peakM)) {
+                    peakW = w;
+                    peakM = m;
+                    peakTime = timeStr;
+                }
+                rows.push({ timeStr, w, m, tot, wPct });
+            }
+
+            // Show latest first for quick inspection
+            const reversed = [...rows].reverse();
+            let trs = '';
+            reversed.forEach(r => {
+                const ratioColor = r.w > r.m ? '#d8a1aa' : (r.m > r.w ? '#93b1c9' : '#cbd5e1');
+                trs += `
+                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                        <td style="padding: 5px 8px; font-variant-numeric: tabular-nums; color: var(--text-secondary);">${escapeHtml(r.timeStr)}</td>
+                        <td style="padding: 5px 8px; font-weight: 700; color: #d8a1aa; text-align: right;">${r.w}名</td>
+                        <td style="padding: 5px 8px; font-weight: 600; color: #93b1c9; text-align: right;">${r.m}名</td>
+                        <td style="padding: 5px 8px; color: var(--text-primary); text-align: right;">${r.tot}名</td>
+                        <td style="padding: 5px 8px; font-weight: 600; color: ${ratioColor}; text-align: right;">女性${r.wPct}%</td>
+                    </tr>
+                `;
+            });
+
+            wrap.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:8px; padding:6px 10px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:8px; font-size:0.78rem;">
+                    <span>📅 <strong>${escapeHtml(dateStr)}</strong> 営業日ログ（全${rows.length}件）</span>
+                    <span>最高ピーク: <strong style="color:#d8a1aa;">女性${peakW}名</strong> / <strong style="color:#93b1c9;">男性${peakM}名</strong> (${escapeHtml(peakTime)})</span>
+                </div>
+                <details ${ IS_STAFF ? 'open' : '' } style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.07); border-radius:8px; padding:6px 10px;">
+                    <summary style="cursor:pointer; font-size:0.78rem; font-weight:700; color:#93b1c9; user-select:none;">
+                        🕒 時刻別の詳細数値ログ一覧を表示（${rows.length}回計測）
+                    </summary>
+                    <div style="max-height:220px; overflow-y:auto; margin-top:8px;">
+                        <table style="width:100%; border-collapse:collapse; font-size:0.76rem;">
+                            <thead>
+                                <tr style="border-bottom:1px solid rgba(255,255,255,0.12); color:var(--text-secondary); text-align:right;">
+                                    <th style="padding:4px 8px; text-align:left;">時刻</th>
+                                    <th style="padding:4px 8px;">女性</th>
+                                    <th style="padding:4px 8px;">男性</th>
+                                    <th style="padding:4px 8px;">合計</th>
+                                    <th style="padding:4px 8px;">比率</th>
+                                </tr>
+                            </thead>
+                            <tbody>${trs}</tbody>
+                        </table>
+                    </div>
+                </details>
+            `;
+            wrap.classList.remove('hidden');
         }
 
         async function showDailyChart(dateStr, data, evt) {
@@ -2869,16 +2948,18 @@
 
             document.getElementById('daily-chart-container').classList.remove('hidden');
 
+            // Filter data for selected date
+            const womenData = (data.recent_trend || []).filter(d => d.x.startsWith(dateStr));
+            const menData = (data.recent_trend_men || []).filter(d => d.x.startsWith(dateStr));
+
+            renderDailyLogTable(dateStr, womenData, menData);
+
             try {
                 if (!window.Chart) await loadChartJs();
             } catch (e) {
                 console.error(e);
             }
             if (!window.Chart) return;
-
-            // Filter data for selected date
-            const womenData = (data.recent_trend || []).filter(d => d.x.startsWith(dateStr));
-            const menData = (data.recent_trend_men || []).filter(d => d.x.startsWith(dateStr));
 
             // Create labels (time only)
             const labels = womenData.map(d => {

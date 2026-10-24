@@ -112,21 +112,30 @@ last_error = None
 
 def log_data(data):
     """
-    Logs the provided data to Google Sheets.
+    Logs the provided data to local SQLite and Google Sheets.
     data: list of dicts [{'name': '...', 'men': 10, 'women': 10, 'source': '...'}, ...]
     """
     global last_error
+    # Always obtain accurate JST timestamp regardless of OS timezone (UTC or JST)
+    now = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
+    timestamp_str = now.strftime("%Y-%m-%d %H:%M:%S")
+
+    # 1. Always mirror into local SQLite database first so local analytics never miss data
+    try:
+        import local_db
+        local_db.insert_logs(data, timestamp_str)
+    except Exception as dbe:
+        print(f"Local SQLite mirror error: {dbe}", file=sys.stderr)
+
+    # 2. Append to Google Sheets
     client = get_client()
     if not client:
         last_error = "No valid credentials or client."
-        print("Skipping logging: No valid credentials or client.")
+        print("Skipping Google Sheets logging: No valid credentials or client.")
         return
 
     try:
         sheet = client.open(SHEET_NAME).sheet1
-        # Always obtain accurate JST timestamp regardless of OS timezone (UTC or JST)
-        now = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
-        timestamp_str = now.strftime("%Y-%m-%d %H:%M:%S")
 
         rows_to_append = []
         for item in data:
@@ -143,13 +152,6 @@ def log_data(data):
             sheet.append_rows(rows_to_append)
             last_error = None
             print(f"Logged {len(rows_to_append)} rows to Google Sheets.")
-
-        # Concurrently mirror into local SQLite database for instant analytical queries
-        try:
-            import local_db
-            local_db.insert_logs(data, timestamp_str)
-        except Exception as dbe:
-            print(f"Local SQLite mirror error: {dbe}", file=sys.stderr)
 
     except Exception as e:
         # Reset cached client on error so next attempt re-authenticates cleanly

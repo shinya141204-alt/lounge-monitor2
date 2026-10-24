@@ -356,7 +356,7 @@ def get_store_analysis(store_name):
     recent_data_women = []
     recent_data_men = []
     sorted_target = sorted(target_data, key=lambda x: x['ts'])
-    seen_hours = set()
+    seen_minutes = set()
     
     for d in sorted_target:
         try:
@@ -365,10 +365,10 @@ def get_store_analysis(store_name):
             if dt > now_jst or not is_business_hours(dt):
                 continue
             business_date = get_business_dt(dt).strftime("%Y-%m-%d")
-            hour_key = f"{business_date} {dt.strftime('%H')}"
-            if hour_key in seen_hours:
+            min_key = f"{business_date} {dt.strftime('%H:%M')}"
+            if min_key in seen_minutes:
                 continue
-            seen_hours.add(hour_key)
+            seen_minutes.add(min_key)
             business_ts = f"{business_date} {dt.strftime('%H:%M:%S')}"
             recent_data_women.append({'x': business_ts, 'y': d['women']})
             recent_data_men.append({'x': business_ts, 'y': d['men']})

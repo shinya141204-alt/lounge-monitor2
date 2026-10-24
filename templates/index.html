@@ -196,6 +196,7 @@
                 <div id="daily-chart-container" class="hidden" style="height: 210px;">
                     <canvas id="dailyChart"></canvas>
                 </div>
+                <div id="daily-log-table-wrap" class="hidden" style="margin-top: 12px;"></div>
             </div>
 
             <!-- 4. Nearby 2nd Venue Google Maps Box -->
@@ -1518,12 +1519,12 @@
         window.INITIAL_STATUS_DATA = {{ initial_status | tojson }};
         {% endif %}
     </script>
-    <script src="/static/app.js?v=20261024_1" defer></script>
+    <script src="/static/app.js?v=20261025_1" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js?v=25')
+                navigator.serviceWorker.register('/sw.js?v=26')
                     .then(reg => {
                         reg.update();
                     })
