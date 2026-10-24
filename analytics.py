@@ -80,10 +80,15 @@ _PAGE_TITLES = {
     '/guide/strategy': '📖 相席ラウンジ完全攻略ガイド（基本編）',
     '/guide/brand-comparison': '📖 3大ブランド徹底比較（オリエンタル・ag・JIS）',
     '/guide/weekday-strategy': '📖 水曜・木曜の平日穴場攻略コラム',
+    '/guide/weekend-strategy': '📖 金曜・土曜ピークの待ち時間回避＆ハシゴ攻略',
     '/guide/shinjuku': '📖 新宿エリア4店舗の使い分け・穴場ガイド',
     '/guide/solo-vs-pair': '📖 1人参戦（ソロ）vs 2人組のメリット・勝率比較',
     '/guide/second-venue': '📖 2軒目の誘い方・断られない声かけタイミング',
     '/guide/first-10-minutes': '📖 最初の10分で差がつく会話術・第一印象の作り方',
+    '/guide/club-area-midnight': '📖 ダンスクラブ密集エリアの深夜0時「第2波」実測データ検証',
+    '/guide/beauty-area-stage': '📖 美容サロン激戦区のラウンジが「自分磨きの舞台」になる理由',
+    '/guide/male-lead-mechanics': '📖 男性先行・男性比率が高いお店に女性が集まるデータ法則',
+    '/privacy': '⚖️ 運営者情報・プライバシーポリシー',
 }
 
 _AFFILIATE_NAMES = {
@@ -99,16 +104,24 @@ _AFFILIATE_NAMES = {
 
 _AREA_NAMES = {
     'shinjuku': '新宿・西新宿エリア',
+    'shibuya': '渋谷・恵比寿エリア',
     'shibuya-ebisu': '渋谷・恵比寿エリア',
+    'ginza': '銀座・有楽町エリア',
+    'ikebukuro': '池袋エリア',
+    'ueno': '上野・町田エリア',
     'tokyo-east': '上野・銀座・錦糸町・町田',
+    'kanto': '横浜・大宮・千葉・北関東エリア',
     'yokohama-kanto': '横浜・大宮・柏・北関東',
+    'osaka': '大阪（梅田・茶屋町・心斎橋・難波）エリア',
     'umeda': '大阪・梅田・茶屋町・天満',
     'namba-shinsaibashi': '難波・心斎橋エリア',
     'kyoto-kobe': '京都・神戸エリア',
     'nagoya': '名古屋（栄・錦）エリア',
-    'hokkaido-tohoku': '札幌・仙台エリア',
-    'chugoku-shikoku': '広島・岡山・松山エリア',
+    'fukuoka': '福岡（天神・中洲・小倉）エリア',
     'fukuoka-kyushu': '福岡・九州・沖縄エリア',
+    'hokkaido-tohoku': '札幌・仙台エリア',
+    'chugoku-shikoku': '広島・岡山・松山・高松エリア',
+    'kyushu-okinawa': '熊本・宮崎・鹿児島・沖縄エリア',
 }
 
 _SNS_NAMES = {
@@ -133,9 +146,9 @@ def describe_label(event, raw_label):
             slug = label.split('/store/', 1)[1].strip('/')
             try:
                 import store_master
-                s = store_master.by_slug(slug)
-                if s:
-                    return {'title': f"🏪 店舗ページ：{store_master.seo_name(s['name'])}", 'sub': label, 'href': label}
+                sname = store_master.store_by_slug(slug)
+                if sname:
+                    return {'title': f"🏪 店舗ページ：{store_master.seo_name(sname)}", 'sub': label, 'href': label}
             except Exception:
                 pass
             return {'title': f'🏪 店舗ページ：{slug}', 'sub': label, 'href': label}
@@ -158,7 +171,7 @@ def describe_label(event, raw_label):
             if info:
                 seo = store_master.seo_name(sname)
                 area = info.get('area_label', '')
-                slug = info.get('slug', '')
+                slug = store_master.slug_of(sname)
                 return {
                     'title': f'🏪 {seo}',
                     'sub': f'{area}（{sname}）' if area else sname,

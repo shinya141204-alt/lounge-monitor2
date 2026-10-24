@@ -36,67 +36,80 @@ def generate_weekly_report():
     start_ts_str = start_date.strftime("%Y-%m-%d %H:%M:%S")
 
     items = []
+    sqlite_items = []
 
     # 1. Fast Path: Read from local SQLite database in milliseconds
     try:
-        sqlite_items = local_db.get_weekly_history(start_ts_str)
-        if sqlite_items and len(sqlite_items) >= 20:
+        sqlite_items = local_db.get_weekly_history(start_ts_str) or []
+        if len(sqlite_items) >= 20 and (not local_db.is_partial_recent_only() or local_db.has_multi_day_span(sqlite_items)):
             items = sqlite_items
             print(f"[Weekly Report] High-speed cache hit: loaded {len(items)} rows from local SQLite in <10ms.")
     except Exception as dbe:
         print(f"[Weekly Report] SQLite read error: {dbe}", file=sys.stderr)
 
-    # 2. Fallback: Query Google Sheets via gviz API if local SQLite doesn't have enough data
+    # 2. Fallback: Query Google Sheets via gviz API if local SQLite doesn't have enough multi-day data
     if not items:
         access_token = logger.get_access_token()
         spreadsheet_id = logger.get_spreadsheet_id()
         if not access_token or not spreadsheet_id:
-            return {"error": "Google Sheets Authentication Failed"}
-
-        try:
-            print("[Weekly Report] Local DB empty or insufficient, querying Google Sheets gviz API...")
-            query = f"SELECT A, B, C, D, E WHERE A >= '{start_ts_str}'"
-            url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/gviz/tq?tq={urllib.parse.quote(query)}"
-            headers = {"Authorization": f"Bearer {access_token}"}
-
-            response = logger.http_session.get(url, headers=headers, timeout=20)
-            if response.status_code != 200:
-                return {"error": f"Failed to fetch data via gviz: HTTP {response.status_code}"}
-
-            text = response.text
-            if "google.visualization.Query.setResponse(" not in text:
-                return {"error": "Invalid response format from Google Sheets"}
-
-            json_str = text[text.find("{"):text.rfind("}") + 1]
-            data_json = json.loads(json_str)
-            rows = data_json.get('table', {}).get('rows', [])
-
-            for row in rows:
-                cols = row.get('c', [])
-                if len(cols) >= 4:
-                    ts_val = (cols[0].get('v') or cols[0].get('f')) if cols[0] else None
-                    name_val = cols[1].get('v') if cols[1] else None
-                    men_val = cols[2].get('v') if cols[2] else 0
-                    women_val = cols[3].get('v') if cols[3] else 0
-                    src_val = cols[4].get('v') if len(cols) > 4 and cols[4] else ''
-
-                    if ts_val and name_val:
-                        items.append({
-                            'ts': str(ts_val),
-                            'name': str(name_val),
-                            'men': int(men_val) if men_val is not None else 0,
-                            'women': int(women_val) if women_val is not None else 0,
-                            'source': str(src_val)
-                        })
-
-            # Batch backfill into local SQLite in a single transaction for instant future loads
+            if len(sqlite_items) >= 20:
+                items = sqlite_items
+            else:
+                return {"error": "Google Sheets Authentication Failed"}
+        else:
             try:
-                local_db.insert_logs_with_ts(items)
-            except Exception:
-                pass
+                print("[Weekly Report] Local DB empty or partial, querying Google Sheets gviz API...")
+                query = f"SELECT A, B, C, D, E WHERE A >= '{start_ts_str}'"
+                url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/gviz/tq?tq={urllib.parse.quote(query)}"
+                headers = {"Authorization": f"Bearer {access_token}"}
 
-        except Exception as e:
-            return {"error": f"Failed to fetch data: {str(e)}"}
+                response = logger.http_session.get(url, headers=headers, timeout=35)
+                if response.status_code != 200:
+                    if len(sqlite_items) >= 20:
+                        items = sqlite_items
+                    else:
+                        return {"error": f"Failed to fetch data via gviz: HTTP {response.status_code}"}
+                else:
+                    text = response.text
+                    if "google.visualization.Query.setResponse(" not in text:
+                        if len(sqlite_items) >= 20:
+                            items = sqlite_items
+                        else:
+                            return {"error": "Invalid response format from Google Sheets"}
+                    else:
+                        json_str = text[text.find("{"):text.rfind("}") + 1]
+                        data_json = json.loads(json_str)
+                        rows = data_json.get('table', {}).get('rows', [])
+
+                        for row in rows:
+                            cols = row.get('c', [])
+                            if len(cols) >= 4:
+                                ts_val = (cols[0].get('v') or cols[0].get('f')) if cols[0] else None
+                                name_val = cols[1].get('v') if cols[1] else None
+                                men_val = cols[2].get('v') if cols[2] else 0
+                                women_val = cols[3].get('v') if cols[3] else 0
+                                src_val = cols[4].get('v') if len(cols) > 4 and cols[4] else ''
+
+                                if ts_val and name_val:
+                                    items.append({
+                                        'ts': str(ts_val),
+                                        'name': str(name_val),
+                                        'men': int(men_val) if men_val is not None else 0,
+                                        'women': int(women_val) if women_val is not None else 0,
+                                        'source': str(src_val)
+                                    })
+
+                        # Batch backfill into local SQLite in a single transaction for instant future loads
+                        try:
+                            local_db.insert_logs_with_ts(items)
+                        except Exception:
+                            pass
+
+            except Exception as e:
+                if len(sqlite_items) >= 20:
+                    items = sqlite_items
+                else:
+                    return {"error": f"Failed to fetch data: {str(e)}"}
 
     if not items:
         return {"error": "No data found for the last 7 days"}

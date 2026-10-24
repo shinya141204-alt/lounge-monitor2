@@ -325,6 +325,36 @@ class AnalyticsTests(unittest.TestCase):
         self.assertEqual(ev.get('page_view'), 1)
         self.assertEqual(ev.get('store_open'), 1)
 
+    def test_describe_label_resolves_store_and_new_articles(self):
+        d_store_pv = analytics.describe_label('page_view', '/store/oriental-lounge-shinjuku')
+        self.assertIn('オリエンタルラウンジ 新宿', d_store_pv['title'])
+        d_store_open = analytics.describe_label('store_open', 'OLG 新宿')
+        self.assertIn('オリエンタルラウンジ 新宿', d_store_open['title'])
+        self.assertEqual(d_store_open['href'], '/store/oriental-lounge-shinjuku')
+        d_new_guide = analytics.describe_label('page_view', '/guide/male-lead-mechanics')
+        self.assertIn('男性先行', d_new_guide['title'])
+        d_area = analytics.describe_label('page_view', '/area/shibuya')
+        self.assertIn('渋谷・恵比寿エリア', d_area['title'])
+
+    def test_all_column_routes_return_200(self):
+        routes = [
+            '/guide',
+            '/guide/brand-comparison',
+            '/guide/weekday-strategy',
+            '/guide/weekend-strategy',
+            '/guide/shinjuku',
+            '/guide/solo-vs-pair',
+            '/guide/second-venue',
+            '/guide/first-10-minutes',
+            '/guide/club-area-midnight',
+            '/guide/beauty-area-stage',
+            '/guide/male-lead-mechanics',
+        ]
+        for path in routes:
+            with self.subTest(path=path):
+                r = self.client.get(path)
+                self.assertEqual(r.status_code, 200)
+
 
 class ScrapeIntervalTests(unittest.TestCase):
     """営業時間外は取得間隔を落として公式サイトへの負荷を減らす"""
@@ -389,6 +419,14 @@ class FrontendSyntaxTests(unittest.TestCase):
     def test_store_master_json_is_valid(self):
         with open(os.path.join(ROOT, 'static', 'store_master.json'), encoding='utf-8') as f:
             self.assertGreaterEqual(len(json.load(f)['stores']), 53)
+
+    def test_affiliate_config_js_syntax(self):
+        import subprocess
+        js_path = os.path.join(ROOT, 'static', 'affiliate_config.js')
+        jsc = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
+        if os.path.exists(jsc):
+            r = subprocess.run([jsc, '-e', f"new Function(readFile({json.dumps(js_path)}));"], capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
 
 
 if __name__ == '__main__':

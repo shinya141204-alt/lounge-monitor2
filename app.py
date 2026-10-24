@@ -174,6 +174,23 @@ analysis_cache = {
 ANALYSIS_CACHE_DURATION = 900  # Cache for 15 minutes
 
 
+def clear_analysis_and_report_caches():
+    """Invalidates in-memory store analysis and weekly report caches when SQLite sync completes."""
+    try:
+        analysis_cache.get('processed_per_store', {}).clear()
+        analysis_cache.get('raw_data_by_store', {}).clear()
+    except Exception:
+        pass
+    try:
+        import weekly_report
+        weekly_report._report_cache['data'] = None
+        weekly_report._report_cache['last_fetched'] = None
+    except Exception:
+        pass
+
+
+local_db.register_sync_complete_callback(clear_analysis_and_report_caches)
+
 
 @app.route('/api/analysis/<path:store_name>')
 def get_store_analysis(store_name):
@@ -188,94 +205,120 @@ def get_store_analysis(store_name):
         
     now = datetime.datetime.now()
     target_data = None
+    sqlite_history = []
     
     # Check if processed data is still valid in in-memory cache
     if store_name in analysis_cache.get('processed_per_store', {}):
         cached = analysis_cache.get('raw_data_by_store', {}).get(store_name)
-        if cached and (now - cached['last_fetched']).total_seconds() < ANALYSIS_CACHE_DURATION:
+        ttl = cached.get('ttl', ANALYSIS_CACHE_DURATION) if cached else ANALYSIS_CACHE_DURATION
+        if cached and (now - cached['last_fetched']).total_seconds() < ttl:
             return jsonify(analysis_cache['processed_per_store'][store_name])
 
     # 1. Fast Path: Query local high-speed SQLite database first (sub-millisecond)
     try:
-        sqlite_history = local_db.get_store_history(store_name, days=30)
-        if sqlite_history and len(sqlite_history) >= 3:
+        sqlite_history = local_db.get_store_history(store_name, days=30) or []
+        if len(sqlite_history) >= 3 and (not local_db.is_partial_recent_only() or local_db.has_multi_day_span(sqlite_history)):
             target_data = sqlite_history
             analysis_cache['raw_data_by_store'][store_name] = {
                 'data': target_data,
-                'last_fetched': now
+                'last_fetched': now,
+                'ttl': ANALYSIS_CACHE_DURATION
             }
     except Exception as e:
         print(f"[Analysis] SQLite query error: {e}", file=sys.stderr)
 
-    # 2. Fallback: Query Google Sheets via gviz API if local SQLite had no data
+    # 2. Fallback: Query Google Sheets via gviz API if local SQLite had no data or only partial 2h boot data
     if target_data is None:
         try:
-            print(f"Fetching historical data for {store_name} from Google Sheets via gviz...")
             access_token = logger.get_access_token()
             spreadsheet_id = logger.get_spreadsheet_id()
             if not access_token or not spreadsheet_id:
-                return jsonify({"error": "Failed to authenticate"}), 500
-            
-            import json
-            import urllib.parse
-            
-            safe_store_name = store_name.replace("'", "\\'")
-            query = f"SELECT A, B, C, D WHERE B='{safe_store_name}'"
-            url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/gviz/tq?tq={urllib.parse.quote(query)}"
-            headers = {"Authorization": f"Bearer {access_token}"}
-            
-            response = logger.http_session.get(url, headers=headers, timeout=15)
-            if response.status_code != 200:
-                print(f"Failed to fetch data via gviz: HTTP {response.status_code}")
-                return jsonify({"error": "Failed to load data"}), 500
-                
-            text = response.text
-            if "google.visualization.Query.setResponse(" in text:
-                json_str = text[text.find("{"):text.rfind("}")+1]
-                data_json = json.loads(json_str)
-                rows = data_json.get('table', {}).get('rows', [])
-                
-                target_data = []
-                for row in rows:
-                    cols = row.get('c', [])
-                    if len(cols) >= 4:
-                        ts_val = (cols[0].get('v') or cols[0].get('f')) if cols[0] else None
-                        name_val = cols[1].get('v') if cols[1] else None
-                        men_val = cols[2].get('v') if cols[2] else 0
-                        women_val = cols[3].get('v') if cols[3] else 0
-                        
-                        target_data.append({
-                            'ts': ts_val,
-                            'name': name_val,
-                            'men': int(men_val) if men_val is not None else 0,
-                            'women': int(women_val) if women_val is not None else 0
-                        })
-                
-                analysis_cache['raw_data_by_store'][store_name] = {
-                    'data': target_data,
-                    'last_fetched': now
-                }
-                
-                if store_name in analysis_cache['processed_per_store']:
-                    del analysis_cache['processed_per_store'][store_name]
-                    
-                # Backfill fetched records into SQLite in a single batch transaction so subsequent clicks are instantaneous
-                try:
-                    local_db.insert_logs_with_ts(target_data)
-                except Exception:
-                    pass
-
-                print(f"Fetched and cached {len(target_data)} rows for {store_name}.")
+                if sqlite_history:
+                    target_data = sqlite_history
+                else:
+                    return jsonify({"error": "Failed to authenticate"}), 500
             else:
-                print("Invalid response from gviz API")
-                return jsonify({"error": "Failed to parse data"}), 500
+                print(f"Fetching historical data for {store_name} from Google Sheets via gviz...")
+                import json
+                import urllib.parse
+                
+                safe_store_name = store_name.replace("'", "\\'")
+                query = f"SELECT A, B, C, D WHERE B='{safe_store_name}'"
+                url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/gviz/tq?tq={urllib.parse.quote(query)}"
+                headers = {"Authorization": f"Bearer {access_token}"}
+                
+                response = logger.http_session.get(url, headers=headers, timeout=15)
+                if response.status_code != 200:
+                    print(f"Failed to fetch data via gviz: HTTP {response.status_code}")
+                    if sqlite_history:
+                        target_data = sqlite_history
+                    else:
+                        return jsonify({"error": "Failed to load data"}), 500
+                else:
+                    text = response.text
+                    if "google.visualization.Query.setResponse(" in text:
+                        json_str = text[text.find("{"):text.rfind("}")+1]
+                        data_json = json.loads(json_str)
+                        rows = data_json.get('table', {}).get('rows', [])
+                        
+                        target_data = []
+                        for row in rows:
+                            cols = row.get('c', [])
+                            if len(cols) >= 4:
+                                ts_val = (cols[0].get('v') or cols[0].get('f')) if cols[0] else None
+                                name_val = cols[1].get('v') if cols[1] else None
+                                men_val = cols[2].get('v') if cols[2] else 0
+                                women_val = cols[3].get('v') if cols[3] else 0
+                                
+                                target_data.append({
+                                    'ts': ts_val,
+                                    'name': name_val,
+                                    'men': int(men_val) if men_val is not None else 0,
+                                    'women': int(women_val) if women_val is not None else 0
+                                })
+                        
+                        # Backfill fetched records into SQLite in a single batch transaction so subsequent clicks are instantaneous
+                        try:
+                            local_db.insert_logs_with_ts(target_data)
+                        except Exception:
+                            pass
+
+                        if sqlite_history and len(sqlite_history) > len(target_data):
+                            target_data = local_db.get_store_history(store_name, days=30) or target_data
+
+                        analysis_cache['raw_data_by_store'][store_name] = {
+                            'data': target_data,
+                            'last_fetched': now,
+                            'ttl': ANALYSIS_CACHE_DURATION
+                        }
+                        
+                        if store_name in analysis_cache['processed_per_store']:
+                            del analysis_cache['processed_per_store'][store_name]
+
+                        print(f"Fetched and cached {len(target_data)} rows for {store_name}.")
+                    elif sqlite_history:
+                        target_data = sqlite_history
+                    else:
+                        print("Invalid response from gviz API")
+                        return jsonify({"error": "Failed to parse data"}), 500
                 
         except Exception as e:
             print(f"Error fetching sheet data for {store_name}: {e}", file=__import__('sys').stderr)
-            return jsonify({"error": "Failed to load data"}), 500
+            if sqlite_history:
+                target_data = sqlite_history
+            else:
+                return jsonify({"error": "Failed to load data"}), 500
 
     if not target_data:
         return jsonify({"error": "Store not found"}), 404
+
+    if store_name not in analysis_cache.get('raw_data_by_store', {}):
+        is_complete = local_db.is_full_sync_completed() or local_db.has_multi_day_span(target_data)
+        analysis_cache['raw_data_by_store'][store_name] = {
+            'data': target_data,
+            'last_fetched': now,
+            'ttl': ANALYSIS_CACHE_DURATION if is_complete else 60
+        }
         
     def get_business_dt(dt):
         """Treat 00:00 - 06:59 as belonging to the previous business day."""
@@ -749,7 +792,14 @@ def update_job(force=False):
             else:
                 with data_lock:
                     latest_data['last_logged'] = jst_now.strftime("%Y-%m-%d %H:%M:%S")
-                threading.Thread(target=logger.log_data, args=(data,)).start()
+                def _log_and_refresh_analysis(items):
+                    logger.log_data(items)
+                    try:
+                        analysis_cache.get('processed_per_store', {}).clear()
+                        analysis_cache.get('raw_data_by_store', {}).clear()
+                    except Exception:
+                        pass
+                threading.Thread(target=_log_and_refresh_analysis, args=(data,), daemon=True).start()
                 print("Logging data to Google Sheets...")
         else:
             print("No data retrieved.")

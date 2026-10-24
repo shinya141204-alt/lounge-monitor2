@@ -10,6 +10,37 @@ import requests
 DB_PATH = os.environ.get('LOCAL_DB_PATH') or os.path.join(os.path.dirname(os.path.abspath(__file__)), 'lounge_data.db')
 _db_lock = threading.Lock()
 _sync_in_progress = False
+_full_sync_completed = False
+_partial_recent_only = False
+_sync_complete_callbacks = []
+
+
+def is_full_sync_completed() -> bool:
+    return _full_sync_completed
+
+
+def is_partial_recent_only() -> bool:
+    """True when only the 2-hour fast boot sync has populated SQLite and multi-day sync hasn't finished yet."""
+    return _partial_recent_only
+
+
+def register_sync_complete_callback(cb):
+    if callable(cb) and cb not in _sync_complete_callbacks:
+        _sync_complete_callbacks.append(cb)
+
+
+def has_multi_day_span(rows: list, min_hours: float = 20.0) -> bool:
+    """Returns True if `rows` (list of dicts with 'ts') spans at least `min_hours` hours."""
+    if not rows or len(rows) < 3:
+        return False
+    try:
+        first_ts = rows[0].get('ts') or rows[0].get('timestamp') or ''
+        last_ts = rows[-1].get('ts') or rows[-1].get('timestamp') or ''
+        dt1 = datetime.datetime.strptime(str(first_ts), "%Y-%m-%d %H:%M:%S")
+        dt2 = datetime.datetime.strptime(str(last_ts), "%Y-%m-%d %H:%M:%S")
+        return abs((dt2 - dt1).total_seconds()) >= min_hours * 3600.0
+    except Exception:
+        return len(rows) >= 120
 
 def get_connection():
     """Returns a SQLite connection configured for high-concurrency read/write."""
@@ -214,92 +245,131 @@ def get_db_stats():
     finally:
         conn.close()
 
+def _fetch_gviz_rows_and_insert(query: str, timeout: int = 35) -> int:
+    """Executes a Google Sheets gviz query and inserts returned rows into SQLite."""
+    import logger
+    access_token = logger.get_access_token()
+    spreadsheet_id = logger.get_spreadsheet_id()
+    if not access_token or not spreadsheet_id:
+        return 0
+
+    url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/gviz/tq?tq={urllib.parse.quote(query)}"
+    headers = {"Authorization": f"Bearer {access_token}"}
+    session = getattr(logger, 'http_session', requests)
+    response = session.get(url, headers=headers, timeout=timeout)
+    if response.status_code != 200:
+        return 0
+
+    text = response.text
+    if "google.visualization.Query.setResponse(" not in text:
+        return 0
+
+    json_str = text[text.find("{"):text.rfind("}") + 1]
+    data_json = json.loads(json_str)
+    rows = data_json.get('table', {}).get('rows', [])
+    if not rows:
+        return 0
+
+    batch = []
+    for row in rows:
+        cols = row.get('c', [])
+        if len(cols) >= 4:
+            ts_val = (cols[0].get('v') or cols[0].get('f')) if cols[0] else None
+            name_val = cols[1].get('v') if cols[1] else None
+            men_val = cols[2].get('v') if cols[2] else 0
+            women_val = cols[3].get('v') if cols[3] else 0
+            src_val = cols[4].get('v') if len(cols) > 4 and cols[4] else ''
+            if ts_val and name_val:
+                batch.append((
+                    str(ts_val),
+                    str(name_val),
+                    int(men_val) if men_val is not None else 0,
+                    int(women_val) if women_val is not None else 0,
+                    str(src_val)
+                ))
+
+    if not batch:
+        return 0
+
+    with _db_lock:
+        conn = get_connection()
+        try:
+            cur = conn.cursor()
+            cur.executemany("""
+                INSERT OR IGNORE INTO monitor_logs (timestamp, store_name, men, women, source)
+                VALUES (?, ?, ?, ?, ?)
+            """, batch)
+            conn.commit()
+            return len(batch)
+        finally:
+            conn.close()
+
+
 def sync_recent_from_google_sheets(hours=2):
     """
     Fast synchronous/priority sync of the last N hours (~600 rows, <0.5s) from Google Sheets
     so that 30-min momentum (women_diff / men_diff) is immediately available on cold start / redeploy.
     """
+    global _partial_recent_only
     try:
-        import logger
-        access_token = logger.get_access_token()
-        spreadsheet_id = logger.get_spreadsheet_id()
-        if not access_token or not spreadsheet_id:
-            return 0
-
         now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
         start_dt = now_jst - datetime.timedelta(hours=hours)
         start_ts_str = start_dt.strftime("%Y-%m-%d %H:%M:%S")
-
         query = f"SELECT A, B, C, D, E WHERE A >= '{start_ts_str}'"
-        url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/gviz/tq?tq={urllib.parse.quote(query)}"
-        headers = {"Authorization": f"Bearer {access_token}"}
-
-        response = requests.get(url, headers=headers, timeout=10)
-        if response.status_code != 200:
-            return 0
-
-        text = response.text
-        if "google.visualization.Query.setResponse(" not in text:
-            return 0
-
-        json_str = text[text.find("{"):text.rfind("}") + 1]
-        data_json = json.loads(json_str)
-        rows = data_json.get('table', {}).get('rows', [])
-        if not rows:
-            return 0
-
-        batch = []
-        for row in rows:
-            cols = row.get('c', [])
-            if len(cols) >= 4:
-                ts_val = (cols[0].get('v') or cols[0].get('f')) if cols[0] else None
-                name_val = cols[1].get('v') if cols[1] else None
-                men_val = cols[2].get('v') if cols[2] else 0
-                women_val = cols[3].get('v') if cols[3] else 0
-                src_val = cols[4].get('v') if len(cols) > 4 and cols[4] else ''
-                if ts_val and name_val:
-                    batch.append((
-                        str(ts_val),
-                        str(name_val),
-                        int(men_val) if men_val is not None else 0,
-                        int(women_val) if women_val is not None else 0,
-                        str(src_val)
-                    ))
-
-        if not batch:
-            return 0
-
-        with _db_lock:
-            conn = get_connection()
-            try:
-                cur = conn.cursor()
-                cur.executemany("""
-                    INSERT OR IGNORE INTO monitor_logs (timestamp, store_name, men, women, source)
-                    VALUES (?, ?, ?, ?, ?)
-                """, batch)
-                conn.commit()
-                print(f"[local_db] Fast recent sync complete! Imported {len(batch)} rows (last {hours}h).")
-                return len(batch)
-            finally:
-                conn.close()
+        count = _fetch_gviz_rows_and_insert(query, timeout=12)
+        if count:
+            if not _full_sync_completed:
+                _partial_recent_only = True
+            print(f"[local_db] Fast recent sync complete! Imported {count} rows (last {hours}h).")
+        return count
     except Exception as e:
         print(f"[local_db] Fast recent sync error: {e}", file=sys.stderr)
         return 0
 
 
+def sync_store_from_google_sheets(store_name: str, days: int = 14) -> int:
+    """
+    On-demand fast backfill for a single store (~1,000 rows, <0.6s) when a store detail page
+    or modal is opened before the 14-day background sync has completed.
+    """
+    if not store_name:
+        return 0
+    try:
+        now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
+        start_dt = (now_jst - datetime.timedelta(days=days)).replace(hour=0, minute=0, second=0)
+        start_ts_str = start_dt.strftime("%Y-%m-%d %H:%M:%S")
+        safe_store = store_name.replace("'", "\\'")
+        query = f"SELECT A, B, C, D, E WHERE B = '{safe_store}' AND A >= '{start_ts_str}'"
+        count = _fetch_gviz_rows_and_insert(query, timeout=15)
+        if count:
+            print(f"[local_db] Store backfill complete for {store_name}: {count} rows.")
+        return count
+    except Exception as e:
+        print(f"[local_db] Store backfill error for {store_name}: {e}", file=sys.stderr)
+        return 0
+
+
+def _notify_sync_complete():
+    for cb in list(_sync_complete_callbacks):
+        try:
+            cb()
+        except Exception as err:
+            print(f"[local_db] sync complete callback error: {err}", file=sys.stderr)
+
+
 def sync_from_google_sheets(days=14, on_recent_synced=None):
     """
-    Background worker that syncs the last N days of data from Google Sheets into SQLite.
-    Runs once on startup or when SQLite needs backfilling.
+    Background worker that syncs the last N days of data from Google Sheets into SQLite in chunks
+    so that large multi-week datasets (~100k rows) never hit single-request HTTP timeouts.
     """
-    global _sync_in_progress
+    global _sync_in_progress, _full_sync_completed, _partial_recent_only
     if _sync_in_progress:
         print("[local_db] Sync already in progress, skipping.")
         return
 
     _sync_in_progress = True
     try:
-        # Step 1: Prioritize the last 2 hours first so 30-min momentum works within 0.5s of boot
+        # Step 1: Prioritize the last 2 hours first so 15-min momentum works within 0.5s of boot
         imported_recent = sync_recent_from_google_sheets(hours=2)
         if imported_recent and callable(on_recent_synced):
             try:
@@ -307,71 +377,49 @@ def sync_from_google_sheets(days=14, on_recent_synced=None):
             except Exception as cb_err:
                 print(f"[local_db] on_recent_synced callback error: {cb_err}", file=sys.stderr)
 
-        print(f"[local_db] Starting background sync from Google Sheets (last {days} days)...")
+        print(f"[local_db] Starting chunked background sync from Google Sheets (last {days} days)...")
         import logger
-        access_token = logger.get_access_token()
-        spreadsheet_id = logger.get_spreadsheet_id()
-        if not access_token or not spreadsheet_id:
+        if not logger.get_access_token() or not logger.get_spreadsheet_id():
             print("[local_db] Sync failed: cannot authenticate with Google Sheets.")
             return
 
         now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
-        start_date = (now_jst - datetime.timedelta(days=days)).replace(hour=0, minute=0, second=0)
-        start_ts_str = start_date.strftime("%Y-%m-%d %H:%M:%S")
+        total_imported = 0
 
-        query = f"SELECT A, B, C, D, E WHERE A >= '{start_ts_str}'"
-        url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/gviz/tq?tq={urllib.parse.quote(query)}"
-        headers = {"Authorization": f"Bearer {access_token}"}
+        # Step 2: Sync in 3-to-4 day chunks from newest to oldest so multi-day logs are available within seconds
+        chunk_days = 4
+        cursor_end = now_jst
+        remaining_days = max(1, int(days))
+        first_chunk = True
 
-        response = requests.get(url, headers=headers, timeout=20)
-        if response.status_code != 200:
-            print(f"[local_db] Sync HTTP {response.status_code} error from Google Sheets.")
-            return
+        while remaining_days > 0:
+            step = min(3 if first_chunk else chunk_days, remaining_days)
+            cursor_start = (cursor_end - datetime.timedelta(days=step)).replace(hour=0, minute=0, second=0)
+            start_str = cursor_start.strftime("%Y-%m-%d %H:%M:%S")
+            end_str = cursor_end.strftime("%Y-%m-%d %H:%M:%S")
 
-        text = response.text
-        if "google.visualization.Query.setResponse(" not in text:
-            print("[local_db] Sync error: invalid response format from Sheets.")
-            return
+            if first_chunk:
+                query = f"SELECT A, B, C, D, E WHERE A >= '{start_str}'"
+            else:
+                query = f"SELECT A, B, C, D, E WHERE A >= '{start_str}' AND A <= '{end_str}'"
 
-        json_str = text[text.find("{"):text.rfind("}") + 1]
-        data_json = json.loads(json_str)
-        rows = data_json.get('table', {}).get('rows', [])
+            imported = _fetch_gviz_rows_and_insert(query, timeout=40)
+            total_imported += imported
+            if first_chunk and imported > 0:
+                _partial_recent_only = False
+                _notify_sync_complete()
 
-        if not rows:
+            cursor_end = cursor_start
+            remaining_days -= step
+            first_chunk = False
+
+        if total_imported > 0:
+            _partial_recent_only = False
+            _full_sync_completed = True
+            _notify_sync_complete()
+            print(f"[local_db] Sync complete! Imported {total_imported} rows into local SQLite.")
+        else:
             print("[local_db] Sync: no rows returned from Google Sheets.")
-            return
-
-        batch = []
-        for row in rows:
-            cols = row.get('c', [])
-            if len(cols) >= 4:
-                ts_val = (cols[0].get('v') or cols[0].get('f')) if cols[0] else None
-                name_val = cols[1].get('v') if cols[1] else None
-                men_val = cols[2].get('v') if cols[2] else 0
-                women_val = cols[3].get('v') if cols[3] else 0
-                src_val = cols[4].get('v') if len(cols) > 4 and cols[4] else ''
-
-                if ts_val and name_val:
-                    batch.append((
-                        str(ts_val),
-                        str(name_val),
-                        int(men_val) if men_val is not None else 0,
-                        int(women_val) if women_val is not None else 0,
-                        str(src_val)
-                    ))
-
-        with _db_lock:
-            conn = get_connection()
-            try:
-                cur = conn.cursor()
-                cur.executemany("""
-                    INSERT OR IGNORE INTO monitor_logs (timestamp, store_name, men, women, source)
-                    VALUES (?, ?, ?, ?, ?)
-                """, batch)
-                conn.commit()
-                print(f"[local_db] Sync complete! Imported {len(batch)} rows into local SQLite.")
-            finally:
-                conn.close()
 
     except Exception as e:
         print(f"[local_db] Sync exception: {e}", file=sys.stderr)
@@ -605,6 +653,9 @@ def get_store_7day_analytics(store_name: str) -> dict:
     from collections import defaultdict
     weekdays_ja = ["月", "火", "水", "木", "金", "土", "日"]
     rows = get_store_history(store_name, days=10)
+    if is_partial_recent_only() and not has_multi_day_span(rows):
+        if sync_store_from_google_sheets(store_name, days=10) > 0:
+            rows = get_store_history(store_name, days=10)
 
     daily_buckets = defaultdict(list)
     slot_ratios = defaultdict(list)

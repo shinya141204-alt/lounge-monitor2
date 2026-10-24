@@ -127,29 +127,17 @@ const AFFILIATE_MASTER = {
         }
     ],
 
-    // ランキング一覧に自然に挟み込むインフィードカード配置設定
+    // ランキング一覧に自然に挟み込むインフィードカード配置設定（上位10店舗の閲覧を邪魔しない控えめな配置）
     infeedSlots: [
         {
-            afterRank: 5,
+            afterRank: 12,
             itemId: 'dating_instant',
             badgeText: 'PR',
             highlight: false
         },
         {
-            afterRank: 10,
-            itemId: 'mens_hair_removal',
-            badgeText: 'PR',
-            highlight: true
-        },
-        {
-            afterRank: 18,
-            itemId: 'mens_skincare_clinic',
-            badgeText: 'PR',
-            highlight: false
-        },
-        {
             afterRank: 25,
-            itemId: 'spu_styleup',
+            itemId: 'mens_hair_removal',
             badgeText: 'PR',
             highlight: false
         }
