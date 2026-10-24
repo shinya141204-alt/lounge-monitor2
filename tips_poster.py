@@ -330,7 +330,6 @@ def get_tip_reply_text(slot_label: str = "12:00", tip_index: int = None) -> str:
         col_path = "/columns"
 
     return (
-        f"🔍 全国53店舗のリアルタイム男女比・人数ランキング：{site_url}/\n\n"
         f"📖 詳しい解説コラム：{col_title}👇\n"
         f"{site_url}{col_path}"
     )

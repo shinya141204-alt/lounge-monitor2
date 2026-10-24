@@ -114,9 +114,8 @@ def build_note_tweet_text(title: str, link: str, force: bool = False) -> str:
 
 
 def build_note_reply_text(link: str) -> str:
-    """Build the 2nd post (self-reply) containing the note article URL as the last URL so X renders note's eyecatch card."""
-    site_url = os.environ.get("PUBLIC_SITE_URL", "https://aiseki-navi.com").rstrip("/")
-    return f"🔍 全国53店舗の現在人数ランキング：{site_url}/\n\n📖 note記事本編はこちら👇\n{link}"
+    """Build the 2nd post (self-reply) containing ONLY the note article URL so X always renders note's eyecatch card."""
+    return f"📖 note記事本編はこちら👇\n{link}"
 
 
 def check_and_post_new_note(force: bool = False, article_index: int = 0) -> dict:
