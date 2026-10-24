@@ -366,6 +366,16 @@ def build_pinned_tweet_thread(app_url: str = "") -> tuple:
 
 COLUMN_PROMO_LIST = [
     {
+        "slug": "beauty-area-stage",
+        "path": "/guide/beauty-area-stage",
+        "title": "なぜ美容サロン激戦区の相席ラウンジは美人が多いのか？「今日ビジュいい日」の行動データ",
+        "main_text": (
+            "梅田茶屋町・渋谷・恵比寿・新宿・心斎橋・栄・大名など、人気美容サロンやクリニックが密集してる街のラウンジって、18時半〜20時頃にサロン帰りの可愛い子が本当に多い💄\n\n"
+            "「せっかく可愛くした日に直帰するのはもったいない」の行動データと、選ばれる男性の清潔感基準をまとめました👇\n"
+            "#相席ナビ #相席ラウンジ"
+        ),
+    },
+    {
         "slug": "club-area-midnight",
         "path": "/guide/club-area-midnight",
         "title": "なぜ梅田・渋谷・新宿は深夜0時過ぎても女性が減らない？「ダンスクラブ×相席」の回遊法則",

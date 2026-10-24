@@ -1626,6 +1626,12 @@ def sitemap_xml():
     <changefreq>weekly</changefreq>
     <priority>0.85</priority>
   </url>
+  <url>
+    <loc>https://aiseki-navi.com/guide/beauty-area-stage</loc>
+    <lastmod>{today}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
 {area_urls}
 {store_urls}
   <url>
@@ -1753,6 +1759,11 @@ def guide_club_area_midnight():
 def guide_weekend_strategy():
     """Editorial data strategy guide for Friday/Saturday peak hours."""
     return render_template('guide_weekend.html')
+
+@app.route('/guide/beauty-area-stage')
+def guide_beauty_area_stage():
+    """Editorial data study on beauty salon districts, early-evening surges, and men's grooming."""
+    return render_template('guide_beauty_stage.html')
 
 @app.route('/api/sns-post')
 def generate_sns_post_api():
