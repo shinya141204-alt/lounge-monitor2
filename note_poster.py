@@ -1,11 +1,12 @@
 """
 note_poster.py - Automatic note.com New Article Monitor & X (Twitter) Auto-Sharer
 
-Monitors the official note RSS feed (https://note.com/huge_finch7078/rss)
+Monitors the official note RSS feed (https://note.com/aiseki_navi/rss)
 and automatically tweets high-CTR promotional posts to X whenever a new article is published.
 """
 
 import os
+import re
 import json
 import logging
 import datetime
@@ -15,7 +16,34 @@ import x_poster
 
 logger = logging.getLogger(__name__)
 
-NOTE_RSS_URL = os.environ.get("NOTE_RSS_URL", "https://note.com/huge_finch7078/rss")
+
+def _resolve_note_rss_url() -> str:
+    """Return active note RSS URL, auto-migrating legacy creator ID if still set in env."""
+    raw = os.environ.get("NOTE_RSS_URL", "https://note.com/aiseki_navi/rss").strip()
+    if not raw:
+        return "https://note.com/aiseki_navi/rss"
+    return raw.replace("note.com/huge_finch7078", "note.com/aiseki_navi")
+
+
+def _extract_note_key(url: str) -> str:
+    """Extract immutable note article key (e.g. 'n12345abcdef' from '.../n/n12345abcdef') so creator ID changes never re-post old articles."""
+    m = re.search(r"/n/([A-Za-z0-9_-]+)", url or "")
+    return m.group(1) if m else ""
+
+
+def _is_note_already_posted(url: str, posted_urls: set) -> bool:
+    if url in posted_urls:
+        return True
+    key = _extract_note_key(url)
+    if key:
+        posted_keys = {_extract_note_key(u) for u in posted_urls}
+        posted_keys.discard("")
+        if key in posted_keys:
+            return True
+    return False
+
+
+NOTE_RSS_URL = _resolve_note_rss_url()
 STATE_DIR = os.path.join(os.path.dirname(__file__), "data")
 STATE_FILE = os.path.join(STATE_DIR, "posted_notes.json")
 
@@ -56,7 +84,8 @@ def _save_posted_url(url: str):
 
 def fetch_latest_note_articles() -> list:
     """Fetch latest articles from note RSS feed."""
-    req = urllib.request.Request(NOTE_RSS_URL, headers={"User-Agent": "AisekiNavi-Bot/1.0 (Mozilla/5.0)"})
+    rss_url = _resolve_note_rss_url()
+    req = urllib.request.Request(rss_url, headers={"User-Agent": "AisekiNavi-Bot/1.0 (Mozilla/5.0)"})
     articles = []
     try:
         with urllib.request.urlopen(req, timeout=12) as resp:
@@ -75,7 +104,7 @@ def fetch_latest_note_articles() -> list:
                         "guid": guid.strip(),
                     })
     except Exception as e:
-        logger.error(f"Failed to fetch note RSS from {NOTE_RSS_URL}: {e}")
+        logger.error(f"Failed to fetch note RSS from {rss_url}: {e}")
     return articles
 
 
@@ -148,7 +177,7 @@ def check_and_post_new_note(force: bool = False, article_index: int = 0) -> dict
             if age_h >= 12:
                 _save_posted_url(a["link"])
         posted_urls = _load_posted_urls()
-    if not force and link in posted_urls:
+    if not force and _is_note_already_posted(link, posted_urls):
         logger.info(f"Latest note article already posted ({link}), skipping.")
         return {"status": "skipped", "reason": "Latest article already posted", "article": target}
 

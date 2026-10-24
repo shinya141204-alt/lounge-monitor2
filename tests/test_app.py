@@ -669,6 +669,24 @@ class SeoAndXMediaUpgradeTests(unittest.TestCase):
             self.assertGreater(len(img_bytes), 1000)
             self.assertEqual(mime, 'image/jpeg')
 
+    def test_note_creator_id_migration_and_dedup_across_id_change(self):
+        import note_poster
+        html = self.client.get('/').data.decode('utf-8')
+        self.assertIn('https://note.com/aiseki_navi', html)
+        self.assertNotIn('huge_finch7078', html)
+
+        with mock.patch.dict(os.environ, {'NOTE_RSS_URL': 'https://note.com/huge_finch7078/rss'}):
+            self.assertEqual(note_poster._resolve_note_rss_url(), 'https://note.com/aiseki_navi/rss')
+
+        # Existing article recorded under old creator ID must NOT be re-posted under new creator ID
+        posted_set = {'https://note.com/huge_finch7078/n/n987654321ab'}
+        self.assertTrue(
+            note_poster._is_note_already_posted('https://note.com/aiseki_navi/n/n987654321ab', posted_set)
+        )
+        self.assertFalse(
+            note_poster._is_note_already_posted('https://note.com/aiseki_navi/n/n_brand_new_article', posted_set)
+        )
+
 
 if __name__ == '__main__':
     unittest.main()
