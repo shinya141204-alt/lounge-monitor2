@@ -526,5 +526,149 @@ class ScheduledArticlesTests(unittest.TestCase):
             self.assertLessEqual(w, 280, f"tip[{i}] weight={w}")
 
 
+class SeoAndXMediaUpgradeTests(unittest.TestCase):
+    """Verify off-hours 0-count SEO burn-in prevention and native X image attachment."""
+
+    def setUp(self):
+        self.client = app_module.app.test_client()
+
+    def test_store_detail_off_hours_vs_live_hours_seo_and_json_ld(self):
+        import re
+        fake_7d = {
+            'has_history': True,
+            'sample_count': 120,
+            'daily_logs': [],
+            'max_7d_women': 48,
+            'best_slot_name': '20:00〜21:30頃（早めの時間帯）',
+            'best_slot_pct': 62,
+            'best_wd_name': '水曜・木曜の夜',
+            'best_wd_pct': 60,
+            'strong_midnight': True,
+        }
+        slug = store_master.slug_of('OLG 新宿')
+        # 1) Off-hours (0 women, 0 men) -> must NOT burn in 0名/0% into title, meta, or JSON-LD
+        with app_module.data_lock:
+            old_data = list(app_module.latest_data.get('full_data') or [])
+            app_module.latest_data['full_data'] = [
+                {'name': 'OLG 新宿', 'women': 0, 'men': 0, 'total': 0, 'region': 'Kanto'}
+            ]
+        try:
+            with mock.patch('local_db.get_store_7day_analytics', return_value=fake_7d):
+                resp = self.client.get(f'/store/{slug}')
+                self.assertEqual(resp.status_code, 200)
+                html = resp.data.decode('utf-8')
+                self.assertNotIn('女性0名', html)
+                self.assertNotIn('男性0名', html)
+                self.assertNotIn('比率0%', html)
+                self.assertIn('直近最高：女性48名', html)
+                self.assertIn('62%', html)
+                ld_blocks = re.findall(r'<script type="application/ld\+json">\s*(.*?)\s*</script>', html, re.S)
+                self.assertGreaterEqual(len(ld_blocks), 1)
+                for block in ld_blocks:
+                    json.loads(block)
+
+            # 2) Live business hours (35 women, 22 men) -> shows live counts accurately
+            with app_module.data_lock:
+                app_module.latest_data['full_data'] = [
+                    {'name': 'OLG 新宿', 'women': 35, 'men': 22, 'total': 57, 'region': 'Kanto'}
+                ]
+            with mock.patch('local_db.get_store_7day_analytics', return_value=fake_7d):
+                resp_live = self.client.get(f'/store/{slug}')
+                html_live = resp_live.data.decode('utf-8')
+                self.assertIn('現在：女性35名／男性22名', html_live)
+                for block in re.findall(r'<script type="application/ld\+json">\s*(.*?)\s*</script>', html_live, re.S):
+                    json.loads(block)
+        finally:
+            with app_module.data_lock:
+                app_module.latest_data['full_data'] = old_data
+
+    def test_brand_page_off_hours_hides_zero_count_in_json_ld(self):
+        import re
+        with app_module.data_lock:
+            old_data = list(app_module.latest_data.get('full_data') or [])
+            app_module.latest_data['full_data'] = [
+                {'name': 'OLG 新宿', 'women': 0, 'men': 0, 'total': 0, 'region': 'Kanto'}
+            ]
+        try:
+            resp = self.client.get('/oriental-lounge')
+            self.assertEqual(resp.status_code, 200)
+            html = resp.data.decode('utf-8')
+            self.assertNotIn('女性0名・男性0名が来店中', html)
+            for block in re.findall(r'<script type="application/ld\+json">\s*(.*?)\s*</script>', html, re.S):
+                json.loads(block)
+        finally:
+            with app_module.data_lock:
+                app_module.latest_data['full_data'] = old_data
+
+    def test_x_media_upload_and_graceful_fallback(self):
+        import x_poster
+        env_vars = {
+            'X_API_KEY': 'k',
+            'X_API_SECRET': 's',
+            'X_ACCESS_TOKEN': 't',
+            'X_ACCESS_TOKEN_SECRET': 'ts',
+        }
+        with mock.patch.dict(os.environ, env_vars):
+            # Case A: Upload succeeds -> media_ids attached to tweet payload
+            upload_resp = mock.MagicMock(status_code=200)
+            upload_resp.json.return_value = {'media_id_string': '9988776655'}
+            tweet_resp = mock.MagicMock(status_code=201)
+            tweet_resp.json.return_value = {'data': {'id': '111222'}}
+
+            with mock.patch('x_poster.requests.post', side_effect=[upload_resp, tweet_resp]) as m_post:
+                res = x_poster.post_to_x('テスト本文', media_bytes=b'\x89PNG_FAKE')
+                self.assertEqual(res['status'], 'success')
+                self.assertEqual(res['media_id'], '9988776655')
+                self.assertEqual(m_post.call_count, 2)
+                self.assertIn('upload.twitter.com/1.1/media/upload.json', m_post.call_args_list[0][0][0])
+                tweet_payload = m_post.call_args_list[1][1]['json']
+                self.assertEqual(tweet_payload['media'], {'media_ids': ['9988776655']})
+
+            # Case B: Upload fails (HTTP 403) -> safely falls back to text-only tweet
+            fail_upload = mock.MagicMock(status_code=403, text='Forbidden')
+            with mock.patch('x_poster.requests.post', side_effect=[fail_upload, tweet_resp]) as m_post2:
+                res2 = x_poster.post_to_x('フォールバック本文', media_bytes=b'\x89PNG_FAKE')
+                self.assertEqual(res2['status'], 'success')
+                self.assertNotIn('media_id', res2)
+                tweet_payload2 = m_post2.call_args_list[1][1]['json']
+                self.assertNotIn('media', tweet_payload2)
+
+    def test_scheduled_x_post_attaches_png_and_column_eyecatches_exist(self):
+        import x_poster
+        import scheduled_articles
+        sample_stores = [
+            {'name': 'OLG 梅田茶屋町', 'women': 42, 'men': 25, 'region': 'Kinki'},
+            {'name': 'JIS UMEDA', 'women': 14, 'men': 28, 'region': 'Kinki'},
+            {'name': 'OLG 渋谷本店', 'women': 38, 'men': 24, 'region': 'Kanto'},
+            {'name': 'JIS SHINJUKU', 'women': 30, 'men': 20, 'region': 'Kanto'},
+        ]
+        import re
+        for slot in ('20:00', '22:00', '00:00', '02:00'):
+            txt = x_poster.build_scheduled_tweet_text(sample_stores, slot_label=slot)
+            self.assertLessEqual(x_poster.compute_twitter_weight(txt), 280, f"slot={slot} txt={txt}")
+            self.assertIsNone(re.search(r'女\d', txt), f"Found standalone 女 in {txt}")
+            self.assertIn('女性', txt)
+
+        with app_module.data_lock:
+            old_data = list(app_module.latest_data.get('full_data') or [])
+            app_module.latest_data['full_data'] = sample_stores
+        try:
+            with mock.patch('x_poster.post_to_x', return_value={'status': 'success'}) as m_xpost:
+                app_module.run_scheduled_x_post(slot_label='22:00', force=True)
+                self.assertEqual(m_xpost.call_count, 1)
+                passed_bytes = m_xpost.call_args[1].get('media_bytes')
+                self.assertIsNotNone(passed_bytes)
+                self.assertTrue(passed_bytes.startswith(b'\x89PNG'))
+        finally:
+            with app_module.data_lock:
+                app_module.latest_data['full_data'] = old_data
+
+        for item in x_poster.COLUMN_PROMO_LIST + scheduled_articles.SCHEDULED_ARTICLES:
+            img_bytes, mime = x_poster.load_column_eyecatch_bytes(item)
+            self.assertIsNotNone(img_bytes, f"Missing eyecatch file for {item['slug']}")
+            self.assertGreater(len(img_bytes), 1000)
+            self.assertEqual(mime, 'image/jpeg')
+
+
 if __name__ == '__main__':
     unittest.main()

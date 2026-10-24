@@ -1556,7 +1556,7 @@
                     {% for s in initial_status.ranking %}
                     <a href="/store/{{ s.name | store_slug }}" style="color: #cbd5e1; text-decoration: none; display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.04);">
                         <span>{{ s.name | seo_store_name }}</span>
-                        <span style="color: #94a3b8;">女{{ s.women }}:男{{ s.men }}</span>
+                        <span style="color: #94a3b8;">{% if (s.women or 0) + (s.men or 0) > 0 %}女性{{ s.women }}・男性{{ s.men }}{% else %}店舗詳細 ›{% endif %}</span>
                     </a>
                     {% endfor %}
                 </div>

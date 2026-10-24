@@ -1979,7 +1979,24 @@ def run_scheduled_x_post(slot_label="20:00", force=False):
         return {"status": "error", "detail": "Empty tweet text"}
 
     reply_text = x_poster.build_scheduled_reply_text(slot_label=slot_label)
-    result = x_poster.post_to_x(text, reply_text=reply_text)
+    png_bytes = None
+    try:
+        import ogp_generator
+        slot_code = (slot_label or "20:00").replace(":", "")
+        png_bytes = ogp_generator.generate_live_ogp_png(
+            stores,
+            s_param=f"{now_jst.strftime('%Y%m%d')}_{slot_code}",
+            now_jst=now_jst,
+        )
+    except Exception as e:
+        logging.warning(f"Failed to generate live OGP PNG for X post ({slot_label}): {e}")
+
+    result = x_poster.post_to_x(
+        text,
+        reply_text=reply_text,
+        media_bytes=png_bytes,
+        media_mime_type="image/png",
+    )
     if result.get("status") == "success" and not force:
         job_state.mark_done(dedup_key)
     elif result.get("status") == "error":
@@ -2039,20 +2056,26 @@ def trigger_x_pinned_endpoint():
 
 @app.route('/api/trigger-x-column')
 def trigger_x_column_endpoint():
-    """Endpoint to post a 2-post Column Promotion thread (1st URL-free + 2nd URL reply) to X."""
+    """Endpoint to post a 2-post Column Promotion thread (1st URL-free + eyecatch image + 2nd URL reply) to X."""
     if not is_admin_authorized():
         return jsonify({'error': 'Unauthorized'}), 401
     idx = request.args.get('idx', 0, type=int)
     import x_poster
     main_text, reply_text, item = x_poster.build_column_tweet_thread(col_index=idx)
-    res = x_poster.post_to_x(main_text, reply_text=reply_text)
+    media_bytes, media_mime = x_poster.load_column_eyecatch_bytes(item)
+    res = x_poster.post_to_x(
+        main_text,
+        reply_text=reply_text,
+        media_bytes=media_bytes,
+        media_mime_type=media_mime,
+    )
     res["column"] = item
     res["tweet_text"] = main_text
     res["reply_text"] = reply_text
     return jsonify(res)
 
 def run_scheduled_weekly_x_post(force=False):
-    """Execute weekly summary X auto-post (with dynamic /ogp/weekly.png card)."""
+    """Execute weekly summary X auto-post (with dynamic /ogp/weekly.png card attached to 1st post)."""
     import x_poster
     import weekly_report
     import job_state
@@ -2077,7 +2100,19 @@ def run_scheduled_weekly_x_post(force=False):
     if not main_text:
         return {"status": "error", "detail": "Empty weekly tweet text"}
 
-    result = x_poster.post_to_x(main_text, reply_text=reply_text)
+    png_bytes = None
+    try:
+        import ogp_generator
+        png_bytes = ogp_generator.generate_weekly_ogp_png(report)
+    except Exception as e:
+        logging.warning(f"Failed to generate weekly OGP PNG for X post: {e}")
+
+    result = x_poster.post_to_x(
+        main_text,
+        reply_text=reply_text,
+        media_bytes=png_bytes,
+        media_mime_type="image/png",
+    )
     if result.get("status") == "success" and not force:
         job_state.mark_done(dedup_key)
     result["tweet_text"] = main_text

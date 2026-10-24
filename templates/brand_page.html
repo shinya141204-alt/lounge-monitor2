@@ -47,7 +47,7 @@
             "name": "{{ brand.name }}の現在の男女人数・混雑状況はどこで確認できますか？",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "『相席ナビ』の本ページにて、全国{{ store_count }}店舗の{{ brand.name }}のリアルタイム女性人数・男性人数・女性比率（%）を毎分自動更新で無料公開しています。現在合計で女性{{ total_women }}名・男性{{ total_men }}名が来店中です。"
+              "text": "『相席ナビ』の本ページにて、全国{{ store_count }}店舗の{{ brand.name }}のリアルタイム女性人数・男性人数・女性比率（%）を毎分自動更新で無料公開しています。{% if (total_women + total_men) > 0 %}現在合計で女性{{ total_women }}名・男性{{ total_men }}名が来店中です。{% else %}夕方オープン後は全店舗の現在人数と男女比がリアルタイムで反映されます。{% endif %}"
             }
           },
           {

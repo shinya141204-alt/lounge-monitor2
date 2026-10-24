@@ -177,7 +177,13 @@ def check_and_announce_newly_published(app_url: str = "") -> list:
             f"『{item['x_title']}』\n"
             f"{site_url}{item['path']}"
         )
-        res = x_poster.post_to_x(item["x_main_text"], reply_text=reply_text)
+        media_bytes, media_mime = x_poster.load_column_eyecatch_bytes(item)
+        res = x_poster.post_to_x(
+            item["x_main_text"],
+            reply_text=reply_text,
+            media_bytes=media_bytes,
+            media_mime_type=media_mime,
+        )
         if res.get("status") == "success":
             job_state.mark_done(dedup_key)
             logger.info(f"[scheduled_articles] Announced newly released column on X: {item['slug']}")

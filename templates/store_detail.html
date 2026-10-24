@@ -4,17 +4,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ store.seo_name }}のリアルタイム人数・男女比・混雑状況（現在：女性{{ store.women }}名／男性{{ store.men }}名）｜相席ナビ</title>
-    <meta name="description" content="{{ store.seo_name }}（{{ store.area_label }}）の現在のリアルタイム男女人数・男女比・待ち時間傾向を毎分自動更新！ただいま女性{{ store.women }}名・男性{{ store.men }}名（女性比率{{ store.wpct }}%）。入店前の混雑チェックや近隣店舗とのハシゴ比較に。">
+    <title>{% if store.total > 0 %}{{ store.seo_name }}のリアルタイム人数・男女比・混雑状況（現在：女性{{ store.women }}名／男性{{ store.men }}名）｜相席ナビ{% elif store_analytics and store_analytics.max_7d_women > 0 %}{{ store.seo_name }}のリアルタイム人数・男女比・待ち時間（直近最高：女性{{ store_analytics.max_7d_women }}名）｜相席ナビ{% else %}{{ store.seo_name }}のリアルタイム人数・男女比・待ち時間・狙い目時間｜相席ナビ{% endif %}</title>
+    <meta name="description" content="{% if store.total > 0 %}{{ store.seo_name }}（{{ store.area_label }}）の現在のリアルタイム男女人数・男女比・待ち時間傾向を毎分自動更新！ただいま女性{{ store.women }}名・男性{{ store.men }}名（女性比率{{ store.wpct }}%）。入店前の混雑チェックや近隣店舗とのハシゴ比較に。{% elif store_analytics and store_analytics.max_7d_women > 0 %}{{ store.seo_name }}（{{ store.area_label }}）のリアルタイム男女人数・男女比・待ち時間傾向を毎分自動更新！直近7日間の最高女性数は{{ store_analytics.max_7d_women }}名、狙い目は{{ store_analytics.best_slot_name }}（平均女性比{{ store_analytics.best_slot_pct }}%）。入店前の混雑チェックや近隣店舗とのハシゴ比較に。{% else %}{{ store.seo_name }}（{{ store.area_label }}）のリアルタイム男女人数・男女比・待ち時間傾向を毎分自動更新！曜日・時間帯別の混雑傾向や近隣ラウンジとのハシゴ比較が入店前に3秒でわかります。{% endif %}">
     <meta name="keywords" content="{{ store.seo_name }},{{ store.seo_name }} 人数,{{ store.seo_name }} 男女比,{{ store.seo_name }} 混雑,{{ store.seo_name }} 待ち時間,{{ store.brand_label }},相席ラウンジ,相席ナビ">
     <link rel="canonical" href="https://aiseki-navi.com/store/{{ store.slug }}">
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
 
-    <meta property="og:title" content="{{ store.seo_name }}のリアルタイム人数・男女比・混雑状況｜相席ナビ">
-    <meta property="og:description" content="{{ store.seo_name }}の現在人数は女性{{ store.women }}名・男性{{ store.men }}名（女性比{{ store.wpct }}%）。周辺の相席ラウンジとの人数比較もひと目で確認できます。">
+    <meta property="og:title" content="{% if store.total > 0 %}{{ store.seo_name }}のリアルタイム人数・男女比（現在：女性{{ store.women }}名／男性{{ store.men }}名）｜相席ナビ{% elif store_analytics and store_analytics.max_7d_women > 0 %}{{ store.seo_name }}のリアルタイム人数・男女比（直近最高：女性{{ store_analytics.max_7d_women }}名）｜相席ナビ{% else %}{{ store.seo_name }}のリアルタイム人数・男女比・混雑状況｜相席ナビ{% endif %}">
+    <meta property="og:description" content="{% if store.total > 0 %}{{ store.seo_name }}の現在人数は女性{{ store.women }}名・男性{{ store.men }}名（女性比{{ store.wpct }}%）。周辺の相席ラウンジとの人数比較もひと目で確認できます。{% elif store_analytics and store_analytics.max_7d_women > 0 %}{{ store.seo_name }}のリアルタイム男女人数・男女比を毎分更新（直近ピーク女性{{ store_analytics.max_7d_women }}名・狙い目平均女性比{{ store_analytics.best_slot_pct }}%）。周辺の相席ラウンジとのハシゴ比較もひと目で確認できます。{% else %}{{ store.seo_name }}のリアルタイム男女人数・男女比・待ち時間傾向を毎分自動更新。周辺の相席ラウンジとの人数比較もひと目で確認できます。{% endif %}">
     <meta property="og:type" content="article">
     <meta property="og:url" content="https://aiseki-navi.com/store/{{ store.slug }}">
-    <meta property="og:image" content="https://aiseki-navi.com/static/x-header.jpg?v=2">
+    <meta property="og:image" content="https://aiseki-navi.com/ogp/live.png">
     <meta property="og:site_name" content="相席ナビ">
     <meta name="twitter:card" content="summary_large_image">
 
@@ -53,7 +53,7 @@
             "name": "{{ store.seo_name }}の現在の男女人数・混雑状況は？",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "{{ last_updated }}現在、{{ store.seo_name }}の店内人数は女性{{ store.women }}名・男性{{ store.men }}名（合計{{ store.total }}名・女性比率{{ store.wpct }}%）です。相席ナビで毎分リアルタイム更新しています。"
+              "text": "{% if store.total > 0 %}{{ last_updated }}現在、{{ store.seo_name }}の店内人数は女性{{ store.women }}名・男性{{ store.men }}名（合計{{ store.total }}名・女性比率{{ store.wpct }}%）です。相席ナビで毎分リアルタイム更新しています。{% elif store_analytics and store_analytics.max_7d_women > 0 %}現在は営業時間外（夕方オープン前）です。{{ store.seo_name }}の直近7日間のピーク時は女性最大{{ store_analytics.max_7d_women }}名、一番入りやすい狙い目は{{ store_analytics.best_slot_name }}（過去平均女性比{{ store_analytics.best_slot_pct }}%）です。営業開始後は相席ナビで毎分リアルタイム更新します。{% else %}現在は営業時間外（夕方オープン前）です。営業開始後は{{ store.seo_name }}の女性人数・男性人数・女性比率を相席ナビで毎分リアルタイム更新します。{% endif %}"
             }
           },
           {
@@ -323,30 +323,34 @@
             <div class="big-counts-grid">
                 <div class="count-box">
                     <div class="count-label">👩 現在の女性人数</div>
-                    <div class="count-num w-color">{{ store.women }}<span style="font-size:0.95rem;">名</span>{% if (store.women_diff or 0) > 0 %}<div style="font-size:0.76rem; color:#f472b6; margin-top:2px;">直近15分 ↗ +{{ store.women_diff }}名</div>{% endif %}</div>
+                    <div class="count-num w-color">{% if store.total > 0 %}{{ store.women }}<span style="font-size:0.95rem;">名</span>{% if (store.women_diff or 0) > 0 %}<div style="font-size:0.76rem; color:#f472b6; margin-top:2px;">直近15分 ↗ +{{ store.women_diff }}名</div>{% endif %}{% else %}--<span style="font-size:0.85rem; color:#94a3b8;">（準備中）</span>{% endif %}</div>
                 </div>
                 <div class="count-box">
                     <div class="count-label">👨 現在の男性人数</div>
-                    <div class="count-num m-color">{{ store.men }}<span style="font-size:0.95rem;">名</span>{% if (store.men_diff or 0) > 0 %}<div style="font-size:0.76rem; color:#60a5fa; margin-top:2px;">直近15分 ↗ +{{ store.men_diff }}名</div>{% endif %}</div>
+                    <div class="count-num m-color">{% if store.total > 0 %}{{ store.men }}<span style="font-size:0.95rem;">名</span>{% if (store.men_diff or 0) > 0 %}<div style="font-size:0.76rem; color:#60a5fa; margin-top:2px;">直近15分 ↗ +{{ store.men_diff }}名</div>{% endif %}{% else %}--<span style="font-size:0.85rem; color:#94a3b8;">（準備中）</span>{% endif %}</div>
                 </div>
                 <div class="count-box">
                     <div class="count-label">⚖️ 女性比率</div>
-                    <div class="count-num r-color">{{ store.wpct }}<span style="font-size:0.95rem;">%</span></div>
+                    <div class="count-num r-color">{% if store.total > 0 %}{{ store.wpct }}<span style="font-size:0.95rem;">%</span>{% else %}--<span style="font-size:0.95rem;">%</span>{% endif %}</div>
                 </div>
             </div>
 
             <div class="ratio-bar-lg">
-                <div class="ratio-fill-lg" style="width: {{ store.wpct }}%;"></div>
+                <div class="ratio-fill-lg" style="width: {{ store.wpct if store.total > 0 else 50 }}%;"></div>
             </div>
 
             <p style="margin: 0; font-size: 0.9rem; color: #cbd5e1;">
+                {% if store.total > 0 %}
                 {{ last_updated }}時点の<strong>{{ store.seo_name }}</strong>の店内状況は、<strong>女性{{ store.women }}名・男性{{ store.men }}名（合計{{ store.total }}名）</strong>です。
                 {% if store.women > store.men %}
                 現在、女性が男性より{{ store.women - store.men }}名多く入店しており、男性は待ち時間が少なくスムーズに相席しやすい狙い目状態です。
-                {% elif store.men > store.women and store.total > 0 %}
-                現在、男性が女性より{{ store.men - store.women }}名多い時間帯です。入店前に下記「同エリアの周辺店舗」の男女比もあわせてチェックし、女性比率が高い店舗へハシゴ・移動するのがおすすめです。
+                {% elif store.men > store.women %}
+                現在、男性が女性より{{ store.men - store.women }}名多い時間帯です。女性は待ち時間なしで即相席しやすく、男性は下記「同エリアの周辺店舗」の男女比も比較してハシゴ先を選ぶのがおすすめです。
                 {% else %}
-                これから夜本番に向けて人数が動く時間帯です。入店直前に再読み込みして最新の男女比をご確認ください。
+                現在、男女同数でバランス良く盛り上がっている状態です。入店直前に再読み込みして最新の推移をご確認ください。
+                {% endif %}
+                {% else %}
+                現在の<strong>{{ store.seo_name }}</strong>は営業時間外（夕方オープン準備中）です。{% if store_analytics and store_analytics.max_7d_women > 0 %}直近7日間の営業ピークでは<strong>女性最大{{ store_analytics.max_7d_women }}名</strong>が来店しており、一番相席しやすい狙い目は<strong>{{ store_analytics.best_slot_name }}（平均女性比{{ store_analytics.best_slot_pct }}%）</strong>です。{% endif %}夕方オープン後は毎分自動でリアルタイム男女人数を更新します。
                 {% endif %}
             </p>
 

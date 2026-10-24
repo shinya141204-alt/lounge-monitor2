@@ -79,10 +79,66 @@ def compute_twitter_weight(text: str) -> int:
     return weight
 
 
+def _build_live_insight_line(stores: list, slot_label: str = "20:00") -> str:
+    """
+    Generate a concise 1-line dynamic hook from live store counts:
+      1) Highlight real-time gender-ratio gaps within the same city hub (store-hopping alpha)
+      2) Highlight lively male-lead stores from a female / fast-match perspective
+      3) Fallback to time-slot specific practical tip
+    """
+    hubs = [
+        ("新宿", ("新宿", "SHINJUKU")),
+        ("渋谷", ("渋谷", "恵比寿", "SHIBUYA", "EBISU")),
+        ("梅田", ("梅田", "茶屋町", "UMEDA", "CHAYAMACHI")),
+        ("難波・心斎橋", ("難波", "心斎橋", "NAMBA", "SHINSAIBASHI")),
+        ("名古屋", ("名古屋", "NAGOYA", "栄", "錦")),
+        ("福岡", ("福岡", "天神", "FUKUOKA")),
+        ("札幌", ("札幌", "SAPPORO")),
+    ]
+    best_hub = None
+    best_gap = 0.0
+    for hub_label, kws in hubs:
+        hub_stores = [
+            s for s in stores
+            if any(k in (s.get("name") or "").upper() or k in (s.get("name") or "") for k in kws)
+            and (s.get("women", 0) + s.get("men", 0)) >= 10
+        ]
+        if len(hub_stores) >= 2:
+            has_male_heavy = any(s.get("men", 0) >= s.get("women", 0) + 4 for s in hub_stores)
+            has_female_lead = any(s.get("women", 0) > s.get("men", 0) and s.get("women", 0) >= 8 for s in hub_stores)
+            if has_male_heavy and has_female_lead:
+                ratios = [s.get("women", 0) / max(1, s.get("women", 0) + s.get("men", 0)) for s in hub_stores]
+                gap = max(ratios) - min(ratios)
+                if gap > best_gap:
+                    best_gap = gap
+                    best_hub = hub_label
+
+    if best_hub and best_gap >= 0.12:
+        return f"💡いま{best_hub}は店舗間で男女比差大！比較が吉"
+
+    male_lead_candidates = [
+        s for s in stores
+        if s.get("men", 0) >= 15 and s.get("men", 0) >= s.get("women", 0) + 4
+    ]
+    if male_lead_candidates:
+        male_lead_candidates.sort(key=lambda x: x.get("men", 0), reverse=True)
+        top_m = male_lead_candidates[0]
+        ja_name = format_ja_store_name(top_m.get("name", ""))
+        return f"💡女性目線なら男性{top_m.get('men', 0)}名の{ja_name}が即相席◎"
+
+    if slot_label in ("22:00", "22:30"):
+        return "💡混む時間は徒歩圏の別ブランド比較がおすすめ"
+    if slot_label == "00:00":
+        return "💡終電後は2軒目組が増えて待ち列も落ち着く時間"
+    if slot_label == "02:00":
+        return "💡深夜帯は人が集まる店に絞って向かうのが確実"
+    return "💡21時前の今なら待ち時間なしで座りやすい時間帯"
+
+
 def build_scheduled_tweet_text(stores: list, slot_label: str = "20:00", app_url: str = "", compact: bool = True) -> str:
     """
     Build high-engagement X post from live store data.
-    When compact=True (default for automated X API v2 posting), ensures Twitter weight <= 270.
+    When compact=True (default for automated X API v2 posting), ensures Twitter weight <= 274.
     When compact=False, generates rich long-form format suitable for manual X Premium posting.
     - '20:00': Early evening start dash TOP3
     - '22:00': Peak time high-female-ratio TOP3
@@ -134,21 +190,26 @@ def build_scheduled_tweet_text(stores: list, slot_label: str = "20:00", app_url:
             top_stores = stores[:3]
             header = f"{date_label} 早い時間から女性が集まってる3店舗🍻"
 
-        lines = [header, ""]
+        rank_lines = [header, ""]
         for i, s in enumerate(top_stores):
             w = s.get("women", 0)
             m = s.get("men", 0)
             tot = w + m
             pct = round((w / tot) * 100) if tot > 0 else 0
             ja_name = format_ja_store_name(s.get("name", ""))
-            lines.append(f"{medals[i]} {ja_name}：女{w} / 男{m} ({pct}%)")
+            rank_lines.append(f"{medals[i]} {ja_name}：女性{w}・男性{m} ({pct}%)")
 
-        lines.extend([
-            "",
-            "全53店舗の現在人数・男女比はリプ欄へ👇",
-            f"{time_tag} #相席ナビ #相席ラウンジ"
-        ])
-        return "\n".join(lines)
+        footer_lines = [
+            "全53店舗の現在人数はリプ欄へ👇",
+            f"{time_tag} #相席ナビ #相席ラウンジ",
+        ]
+        insight_line = _build_live_insight_line(stores, slot_label=slot_label)
+        if insight_line:
+            candidate = "\n".join(rank_lines + ["", insight_line] + footer_lines)
+            if compute_twitter_weight(candidate) <= 274:
+                return candidate
+
+        return "\n".join(rank_lines + [""] + footer_lines)
 
     # --- Rich Long-Form Mode for Manual X Premium Posting ---
     if slot_label == "20:00":
@@ -368,6 +429,7 @@ COLUMN_PROMO_LIST = [
     {
         "slug": "male-lead-mechanics",
         "path": "/guide/male-lead-mechanics",
+        "eyecatch": "/static/eyecatch-male-lead.jpg",
         "title": "「男性先行」の店ほど女性が増える？データが証明する「女性は待たない」新常識",
         "main_text": (
             "「女性25人・男性2人」の店に急いで向かったら、着いた頃には女の子が減ってた…って経験ない？\n\n"
@@ -378,6 +440,7 @@ COLUMN_PROMO_LIST = [
     {
         "slug": "beauty-area-stage",
         "path": "/guide/beauty-area-stage",
+        "eyecatch": "/static/eyecatch-beauty-stage.jpg",
         "title": "なぜ美容サロン激戦区の相席ラウンジは美人が多いのか？「今日ビジュいい日」の行動データ",
         "main_text": (
             "梅田茶屋町・渋谷・恵比寿・新宿・心斎橋・栄・大名など、人気美容サロンやクリニックが密集してる街のラウンジって、18時半〜20時頃にサロン帰りの可愛い子が本当に多い💄\n\n"
@@ -388,6 +451,7 @@ COLUMN_PROMO_LIST = [
     {
         "slug": "club-area-midnight",
         "path": "/guide/club-area-midnight",
+        "eyecatch": "/static/eyecatch-club-midnight.jpg",
         "title": "なぜ梅田・渋谷・新宿は深夜0時過ぎても女性が減らない？「ダンスクラブ×相席」の回遊法則",
         "main_text": (
             "全国53店舗の相席ラウンジの人数データを夜中まで追っていると、「終電で一気に過疎る街」と「深夜0時〜2時にむしろ第2波が来る街」がはっきり分かれる。\n\n"
@@ -399,6 +463,7 @@ COLUMN_PROMO_LIST = [
     {
         "slug": "weekend-strategy",
         "path": "/guide/weekend-strategy",
+        "eyecatch": "/static/eyecatch-weekend.jpg",
         "title": "金・土の相席ラウンジで「男性待ち1時間」を回避して勝つ方法",
         "main_text": (
             "金曜・土曜の夜に何も見ないで21時半に突撃すると「男性待ち50分」になりがちだけど、徒歩3分圏内の別ブランドと男女比を見比べるだけで待ち時間ゼロで座れることが本当に多い🔥\n\n"
@@ -410,6 +475,7 @@ COLUMN_PROMO_LIST = [
     {
         "slug": "brand-comparison",
         "path": "/guide/brand-comparison",
+        "eyecatch": "/static/guide-brand-comparison.jpg",
         "title": "オリエンタルラウンジ・ag・JISの違い徹底比較",
         "main_text": (
             "「オリエンタルラウンジ・ag・JIS、結局どこに行けばいい？」って迷う人向けに、3大ブランドの客層・年齢層・雰囲気の違いをまとめました🍸\n\n"
@@ -423,6 +489,7 @@ COLUMN_PROMO_LIST = [
     {
         "slug": "weekday-strategy",
         "path": "/guide/weekday-strategy",
+        "eyecatch": "/static/note-eyecatch-weekday.jpg",
         "title": "なぜ水曜・木曜の20時〜22時が一番の穴場なのか？",
         "main_text": (
             "相席ラウンジって金土の夜が一番盛り上がるイメージあるけど、実は「待ち時間なしで可愛い子とゆっくり話せる」のは水曜・木曜の20時〜22時だったりする🍷\n\n"
@@ -434,6 +501,7 @@ COLUMN_PROMO_LIST = [
     {
         "slug": "shinjuku",
         "path": "/guide/shinjuku",
+        "eyecatch": "/static/eyecatch-shinjuku.jpg",
         "title": "新宿エリア4店舗（オリエンタル・ag・JIS東口/西口）の使い分け",
         "main_text": (
             "日本一の激戦区「新宿」にある相席ラウンジ4店舗（オリエンタル・ag・JIS東口・JIS西口）。\n\n"
@@ -445,6 +513,7 @@ COLUMN_PROMO_LIST = [
     {
         "slug": "solo-vs-pair",
         "path": "/guide/solo-vs-pair",
+        "eyecatch": "/static/eyecatch-solo-pair.jpg",
         "title": "1人（ソロ）vs 2人ペア、どっちが勝てる？立ち回り比較",
         "main_text": (
             "「相席ラウンジって1人で行っても浮かない？」「やっぱり友達と2人で行くべき？」\n\n"
@@ -456,6 +525,7 @@ COLUMN_PROMO_LIST = [
     {
         "slug": "second-venue",
         "path": "/guide/second-venue",
+        "eyecatch": "/static/eyecatch-second-venue.jpg",
         "title": "相席から2軒目へ自然に誘うタイミングと声かけのコツ",
         "main_text": (
             "相席でせっかく盛り上がっても、最後の誘い方で迷ってそのまま解散になっちゃうのはもったいない。\n\n"
@@ -467,6 +537,7 @@ COLUMN_PROMO_LIST = [
     {
         "slug": "first-10-minutes",
         "path": "/guide/first-10-minutes",
+        "eyecatch": "/static/eyecatch-first-10min.jpg",
         "title": "最初の10分で差がつく会話の入り方＆清潔感チェック",
         "main_text": (
             "相席ラウンジの印象って、実は乾杯してから「最初の10分」でほぼ決まる。\n\n"
@@ -487,12 +558,33 @@ def get_active_column_promo_list() -> list:
             dynamic_items.append({
                 "slug": s["slug"],
                 "path": s["path"],
+                "eyecatch": s.get("eyecatch_jpg") or "",
                 "title": s["x_title"],
                 "main_text": s["x_main_text"],
             })
     except Exception:
         pass
     return dynamic_items + COLUMN_PROMO_LIST
+
+
+def load_column_eyecatch_bytes(item: dict) -> tuple:
+    """Load local eyecatch image bytes and MIME type for a column promo/scheduled item if present."""
+    if not item:
+        return None, "image/jpeg"
+    rel_path = (item.get("eyecatch") or item.get("eyecatch_jpg") or "").strip()
+    if not rel_path:
+        return None, "image/jpeg"
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    abs_path = os.path.join(base_dir, rel_path.lstrip("/"))
+    if not os.path.isfile(abs_path):
+        return None, "image/jpeg"
+    mime = "image/png" if abs_path.lower().endswith(".png") else "image/jpeg"
+    try:
+        with open(abs_path, "rb") as f:
+            return f.read(), mime
+    except Exception as e:
+        logger.warning(f"Failed to read column eyecatch {abs_path}: {e}")
+        return None, mime
 
 
 def build_column_tweet_thread(col_index: int = 0, app_url: str = "") -> tuple:
@@ -523,7 +615,7 @@ def build_weekly_report_tweet_thread(report: dict, app_url: str = "") -> tuple:
         ja_name = format_ja_store_name(s.get("name", ""))
         avg_w = int(round(float(s.get("avg_women") or 0)))
         max_w = int(s.get("max_women") or 0)
-        lines.append(f"{medals[idx]} {ja_name}：平均女{avg_w} / 最大{max_w}名")
+        lines.append(f"{medals[idx]} {ja_name}：平均女性{avg_w}名 / 最大{max_w}名")
 
     if anaba_stores:
         a1 = anaba_stores[0]
@@ -545,15 +637,56 @@ def build_weekly_report_tweet_thread(report: dict, app_url: str = "") -> tuple:
     return main_text, reply_text
 
 
-def post_to_x(text: str, reply_to_tweet_id: str = None, reply_text: str = None) -> dict:
+def upload_media_to_x(media_bytes: bytes, mime_type: str = "image/png") -> str:
+    """
+    Upload binary image bytes via X Media Upload API v1.1 (`POST https://upload.twitter.com/1.1/media/upload.json`).
+    Uses OAuth 1.0a multipart/form-data (RFC 5849 §3.4.1.3.1: body params excluded from signature base string).
+    Returns `media_id_string` on success, or `None` on failure so callers safely fall back to text-only tweets.
+    """
+    if not media_bytes:
+        return None
+
+    api_key = os.environ.get("X_API_KEY", "").strip()
+    api_secret = os.environ.get("X_API_SECRET", "").strip()
+    access_token = os.environ.get("X_ACCESS_TOKEN", "").strip()
+    access_secret = os.environ.get("X_ACCESS_TOKEN_SECRET", "").strip()
+    if not all([api_key, api_secret, access_token, access_secret]):
+        return None
+
+    upload_url = "https://upload.twitter.com/1.1/media/upload.json"
+    auth_header = _build_oauth1_header("POST", upload_url, api_key, api_secret, access_token, access_secret)
+    ext = "png" if "png" in (mime_type or "").lower() else "jpg"
+    try:
+        resp = requests.post(
+            upload_url,
+            headers={"Authorization": auth_header},
+            files={"media": (f"card.{ext}", media_bytes, mime_type or "image/png")},
+            timeout=20,
+        )
+        if resp.status_code in (200, 201, 202):
+            data = resp.json() or {}
+            media_id = data.get("media_id_string") or (str(data["media_id"]) if data.get("media_id") else None)
+            if media_id:
+                logger.info(f"Uploaded media to X successfully: media_id={media_id}")
+                return str(media_id)
+        logger.warning(f"X media upload returned {resp.status_code}: {resp.text[:200]} (falling back to text-only tweet)")
+    except Exception as e:
+        logger.warning(f"X media upload failed ({e}); falling back to text-only tweet")
+    return None
+
+
+def post_to_x(
+    text: str,
+    reply_to_tweet_id: str = None,
+    reply_text: str = None,
+    media_bytes: bytes = None,
+    media_mime_type: str = "image/png",
+) -> dict:
     """
     Post a tweet via X API v2 (`POST https://api.twitter.com/2/tweets`).
+    If `media_bytes` is provided (for main tweets), uploads native image first and attaches `media_ids`
+    (gracefully falling back to text-only if media upload fails).
     If `reply_text` is provided, automatically posts `reply_text` as a reply (2nd tweet) to the main tweet.
-    Requires environment variables:
-      - X_API_KEY
-      - X_API_SECRET
-      - X_ACCESS_TOKEN
-      - X_ACCESS_TOKEN_SECRET
     """
     api_key = os.environ.get("X_API_KEY", "").strip()
     api_secret = os.environ.get("X_API_SECRET", "").strip()
@@ -574,6 +707,10 @@ def post_to_x(text: str, reply_to_tweet_id: str = None, reply_text: str = None) 
             text = text[:-1]
         text += "..."
 
+    uploaded_media_id = None
+    if media_bytes and not reply_to_tweet_id:
+        uploaded_media_id = upload_media_to_x(media_bytes, mime_type=media_mime_type)
+
     url = "https://api.twitter.com/2/tweets"
     auth_header = _build_oauth1_header("POST", url, api_key, api_secret, access_token, access_secret)
     headers = {
@@ -581,6 +718,8 @@ def post_to_x(text: str, reply_to_tweet_id: str = None, reply_text: str = None) 
         "Content-Type": "application/json",
     }
     payload = {"text": text}
+    if uploaded_media_id:
+        payload["media"] = {"media_ids": [str(uploaded_media_id)]}
     if reply_to_tweet_id:
         payload["reply"] = {"in_reply_to_tweet_id": str(reply_to_tweet_id)}
 
@@ -590,6 +729,8 @@ def post_to_x(text: str, reply_to_tweet_id: str = None, reply_text: str = None) 
             data = resp.json()
             logger.info(f"Successfully posted to X: {data}")
             result = {"status": "success", "data": data}
+            if uploaded_media_id:
+                result["media_id"] = str(uploaded_media_id)
             tweet_id = (data.get("data") or {}).get("id")
             if reply_text and tweet_id and not reply_to_tweet_id:
                 time.sleep(1.5)
