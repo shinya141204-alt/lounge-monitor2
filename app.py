@@ -151,6 +151,7 @@ def _ensure_scheduler_started_async():
                 except Exception as err:
                     logging.error(f"Scheduled events crawl failed: {err}")
             scheduler.add_job(func=_crawl_events_job, trigger="cron", hour="1,8", minute=0)
+            scheduler.add_job(func=run_scheduled_weekly_x_post, trigger="cron", day_of_week="sun", hour=10, minute=0)
             scheduler.start()
             trigger_background_fetch_if_needed()
             threading.Thread(target=_crawl_events_job, daemon=True).start()
@@ -801,6 +802,22 @@ def dynamic_live_ogp_image():
         return resp
     except Exception as e:
         logging.error(f"Dynamic OGP generation failed, falling back to static image: {e}")
+        return send_from_directory('static', 'note-eyecatch.jpg', mimetype='image/jpeg')
+
+@app.route('/ogp/weekly.png')
+def dynamic_weekly_ogp_image():
+    """Dynamically render a 1200x630 weekly ranking & open-data infographic OGP card image."""
+    try:
+        import weekly_report
+        import ogp_generator
+        report = weekly_report.generate_weekly_report()
+        png_bytes = ogp_generator.generate_weekly_ogp_png(report if report and 'error' not in report else {})
+        from flask import Response
+        resp = Response(png_bytes, mimetype='image/png')
+        resp.headers['Cache-Control'] = 'public, max-age=1800'
+        return resp
+    except Exception as e:
+        logging.error(f"Weekly OGP generation failed, falling back to static image: {e}")
         return send_from_directory('static', 'note-eyecatch.jpg', mimetype='image/jpeg')
 
 @app.route('/guide')
@@ -1477,9 +1494,16 @@ def store_detail_page(store_slug):
         'map_url': map_url,
     }
 
+    store_analytics = None
+    try:
+        store_analytics = local_db.get_store_7day_analytics(sname)
+    except Exception:
+        pass
+
     return render_template(
         'store_detail.html',
         store=store_obj,
+        store_analytics=store_analytics,
         area_info=area_info,
         nearby_stores=nearby_stores,
         last_updated=last_updated
@@ -1589,6 +1613,18 @@ def sitemap_xml():
     <lastmod>{today}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://aiseki-navi.com/guide/club-area-midnight</loc>
+    <lastmod>{today}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://aiseki-navi.com/guide/weekend-strategy</loc>
+    <lastmod>{today}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
   </url>
 {area_urls}
 {store_urls}
@@ -1707,6 +1743,16 @@ def guide_second_venue():
 def guide_first_10min():
     """Editorial guide on first 10 minutes conversation and grooming."""
     return render_template('guide_first_10min.html')
+
+@app.route('/guide/club-area-midnight')
+def guide_club_area_midnight():
+    """Editorial data study on dance club proximity and midnight 2nd-wave female inflows."""
+    return render_template('guide_club_midnight.html')
+
+@app.route('/guide/weekend-strategy')
+def guide_weekend_strategy():
+    """Editorial data strategy guide for Friday/Saturday peak hours."""
+    return render_template('guide_weekend.html')
 
 @app.route('/api/sns-post')
 def generate_sns_post_api():
@@ -1869,6 +1915,48 @@ def trigger_x_column_endpoint():
     res["column"] = item
     res["tweet_text"] = main_text
     res["reply_text"] = reply_text
+    return jsonify(res)
+
+def run_scheduled_weekly_x_post(force=False):
+    """Execute weekly summary X auto-post (with dynamic /ogp/weekly.png card)."""
+    import x_poster
+    import weekly_report
+    import job_state
+    now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
+    iso_year, iso_week, _ = now_jst.isocalendar()
+    dedup_key = f"x_weekly:{iso_year}-W{iso_week:02d}"
+
+    if not force and job_state.is_done(dedup_key):
+        logging.info(f"Weekly X auto-post already sent for {dedup_key}, skipping.")
+        return {"status": "skipped", "reason": "Already posted for this week"}
+
+    try:
+        report = weekly_report.generate_weekly_report()
+    except Exception as e:
+        logging.error(f"Failed to generate weekly report for X post: {e}")
+        return {"status": "error", "detail": str(e)}
+
+    if not report or "error" in report:
+        return {"status": "error", "detail": str(report.get("error") if report else "Empty report")}
+
+    main_text, reply_text = x_poster.build_weekly_report_tweet_thread(report)
+    if not main_text:
+        return {"status": "error", "detail": "Empty weekly tweet text"}
+
+    result = x_poster.post_to_x(main_text, reply_text=reply_text)
+    if result.get("status") == "success" and not force:
+        job_state.mark_done(dedup_key)
+    result["tweet_text"] = main_text
+    result["reply_text"] = reply_text
+    return result
+
+@app.route('/api/trigger-x-weekly')
+def trigger_x_weekly_endpoint():
+    """Endpoint to test or externally trigger the Weekly Summary X post."""
+    if not is_admin_authorized():
+        return jsonify({'error': 'Unauthorized'}), 401
+    force = request.args.get('force', '0') == '1'
+    res = run_scheduled_weekly_x_post(force=force)
     return jsonify(res)
 
 # Start background services immediately on module import (unless disabled for unit tests)

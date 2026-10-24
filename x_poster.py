@@ -366,6 +366,28 @@ def build_pinned_tweet_thread(app_url: str = "") -> tuple:
 
 COLUMN_PROMO_LIST = [
     {
+        "slug": "club-area-midnight",
+        "path": "/guide/club-area-midnight",
+        "title": "なぜ梅田・渋谷・新宿は深夜0時過ぎても女性が減らない？「ダンスクラブ×相席」の回遊法則",
+        "main_text": (
+            "全国53店舗の相席ラウンジの人数データを夜中まで追っていると、「終電で一気に過疎る街」と「深夜0時〜2時にむしろ第2波が来る街」がはっきり分かれる。\n\n"
+            "その決定打になってるのが、徒歩3分圏内にある「大型ダンスクラブ」の存在🎧\n\n"
+            "深夜ボーナスタイムの法則はリプ欄へ👇\n"
+            "#相席ナビ #相席ラウンジ"
+        ),
+    },
+    {
+        "slug": "weekend-strategy",
+        "path": "/guide/weekend-strategy",
+        "title": "金・土の相席ラウンジで「男性待ち1時間」を回避して勝つ方法",
+        "main_text": (
+            "金曜・土曜の夜に何も見ないで21時半に突撃すると「男性待ち50分」になりがちだけど、徒歩3分圏内の別ブランドと男女比を見比べるだけで待ち時間ゼロで座れることが本当に多い🔥\n\n"
+            "週末3つの時間帯別ムーブとハシゴ術をまとめました。\n\n"
+            "記事リンクはリプ欄へ👇\n"
+            "#相席ナビ #相席ラウンジ"
+        ),
+    },
+    {
         "slug": "brand-comparison",
         "path": "/guide/brand-comparison",
         "title": "オリエンタルラウンジ・ag・JISの違い徹底比較",
@@ -447,6 +469,42 @@ def build_column_tweet_thread(col_index: int = 0, app_url: str = "") -> tuple:
         f"{site_url}{item['path']}"
     )
     return main_text, reply_text, item
+
+
+def build_weekly_report_tweet_thread(report: dict, app_url: str = "") -> tuple:
+    """Build a 2-post Sunday Weekly Ranking Report thread with dynamic weekly OGP card URL."""
+    site_url = (app_url or os.environ.get("PUBLIC_SITE_URL") or "https://aiseki-navi.com").rstrip("/")
+    now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
+    report = report or {}
+    stores = report.get("stores") or []
+    anaba_stores = report.get("anaba_stores") or []
+
+    medals = ["🥇", "🥈", "🥉"]
+    lines = ["📊 今週の全国相席ラウンジ統計レポート", ""]
+    for idx, s in enumerate(stores[:3]):
+        ja_name = format_ja_store_name(s.get("name", ""))
+        avg_w = int(round(float(s.get("avg_women") or 0)))
+        max_w = int(s.get("max_women") or 0)
+        lines.append(f"{medals[idx]} {ja_name}：平均女{avg_w} / 最大{max_w}名")
+
+    if anaba_stores:
+        a1 = anaba_stores[0]
+        a1_name = format_ja_store_name(a1.get("name", ""))
+        a1_pct = int(round(float(a1.get("avg_wpct") or 56)))
+        lines.extend(["", f"💎 週間穴場1位：{a1_name}（女性比{a1_pct}%）"])
+
+    lines.extend([
+        "",
+        "全53店舗の週間データ白書はリプ欄へ👇",
+        "#相席ナビ #相席ラウンジ",
+    ])
+    main_text = "\n".join(lines)
+    week_key = now_jst.strftime("%Y%m%d")
+    reply_text = (
+        f"📈 全国53店舗の週間ピークランキングTOP30＆曜日別データ白書はこちら👇\n"
+        f"{site_url}/stats?w={week_key}"
+    )
+    return main_text, reply_text
 
 
 def post_to_x(text: str, reply_to_tweet_id: str = None, reply_text: str = None) -> dict:

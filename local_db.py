@@ -595,3 +595,119 @@ def get_recent_votes(store_name=None, hours=4):
     if store_name:
         return counts_by_store.get(store_name, {'smooth': 0, 'waiting': 0, 'lively': 0})
     return counts_by_store
+
+
+def get_store_7day_analytics(store_name: str) -> dict:
+    """
+    Computes the past 7 business days' daily peak log and data-driven strategy insights for a store.
+    Used on individual store pages (/store/<slug>) to provide unique primary research data (E-E-A-T).
+    """
+    from collections import defaultdict
+    weekdays_ja = ["月", "火", "水", "木", "金", "土", "日"]
+    rows = get_store_history(store_name, days=10)
+
+    daily_buckets = defaultdict(list)
+    slot_ratios = defaultdict(list)
+    wd_ratios = defaultdict(list)
+    midnight_women = []
+    peak_band_women = []
+
+    for r in rows:
+        ts_str = r.get("ts") or ""
+        w = int(r.get("women") or 0)
+        m = int(r.get("men") or 0)
+        tot = w + m
+        if not ts_str or (w == 0 and m == 0):
+            continue
+        try:
+            dt = datetime.datetime.strptime(ts_str, "%Y-%m-%d %H:%M:%S")
+        except Exception:
+            continue
+
+        # Business date (00:00 - 06:59 belongs to previous night)
+        biz_dt = dt - datetime.timedelta(days=1) if dt.hour <= 6 else dt
+        biz_date_str = biz_dt.strftime("%Y-%m-%d")
+        daily_buckets[biz_date_str].append((dt, w, m))
+
+        if tot >= 6:
+            wpct = (w / tot) * 100.0
+            wd_ratios[biz_dt.weekday()].append(wpct)
+            h = dt.hour
+            if 18 <= h <= 20:
+                slot_ratios["19:00〜21:00（早割・1軒目帯）"].append(wpct)
+            elif 21 <= h <= 22:
+                slot_ratios["21:00〜23:00（ピーク帯）"].append(wpct)
+            elif h == 23 or h == 0:
+                slot_ratios["23:00〜翌1:00（終電前後・2回転目）"].append(wpct)
+            elif 1 <= h <= 4:
+                slot_ratios["翌1:00〜03:00（深夜オールナイト帯）"].append(wpct)
+
+        if 21 <= dt.hour <= 23:
+            peak_band_women.append(w)
+        elif 0 <= dt.hour <= 2:
+            midnight_women.append(w)
+
+    daily_logs = []
+    for bdate in sorted(daily_buckets.keys(), reverse=True)[:7]:
+        entries = daily_buckets[bdate]
+        if not entries:
+            continue
+        peak_entry = max(entries, key=lambda x: (x[1], x[2]))
+        peak_dt, peak_w, peak_m = peak_entry
+        core_ratios = [
+            (w / (w + m)) * 100.0
+            for (dt, w, m) in entries
+            if (w + m) >= 4 and (20 <= dt.hour <= 23 or dt.hour == 0)
+        ]
+        avg_wpct = round(sum(core_ratios) / len(core_ratios)) if core_ratios else (
+            round((peak_w / max(1, peak_w + peak_m)) * 100)
+        )
+        b_dt_obj = datetime.datetime.strptime(bdate, "%Y-%m-%d")
+        wd_label = weekdays_ja[b_dt_obj.weekday()]
+        daily_logs.append({
+            "date_raw": bdate,
+            "date_label": f"{b_dt_obj.month}/{b_dt_obj.day}({wd_label})",
+            "weekday": wd_label,
+            "peak_women": peak_w,
+            "peak_men": peak_m,
+            "peak_time": peak_dt.strftime("%H:%M"),
+            "avg_wpct": avg_wpct,
+        })
+
+    # Determine best time slot & weekday from actual data
+    best_slot_name = "20:00〜21:30（1軒目・早めの時間帯）"
+    best_slot_pct = 55
+    if slot_ratios:
+        best_s = max(slot_ratios.items(), key=lambda kv: sum(kv[1]) / len(kv[1]))
+        best_slot_name = best_s[0]
+        best_slot_pct = round(sum(best_s[1]) / len(best_s[1]))
+
+    best_wd_name = "水曜・木曜"
+    best_wd_pct = 56
+    if wd_ratios:
+        best_w = max(wd_ratios.items(), key=lambda kv: sum(kv[1]) / len(kv[1]))
+        best_wd_name = f"{weekdays_ja[best_w[0]]}曜日"
+        best_wd_pct = round(sum(best_w[1]) / len(best_w[1]))
+
+    club_keywords = ("梅田", "茶屋町", "心斎橋", "難波", "渋谷", "新宿", "栄", "錦", "福岡", "札幌", "UMEDA", "CHAYAMACHI", "NAMBA", "SHIBUYA", "SHINJUKU", "FUKUOKA", "SAPPORO")
+    is_club_area = any(k in (store_name or "").upper() for k in club_keywords)
+    avg_mid_w = (sum(midnight_women) / len(midnight_women)) if midnight_women else 0
+    avg_peak_w = (sum(peak_band_women) / len(peak_band_women)) if peak_band_women else 0
+    strong_midnight = is_club_area or (avg_peak_w > 0 and avg_mid_w >= avg_peak_w * 0.55)
+
+    max_7d_w = max((d["peak_women"] for d in daily_logs), default=0)
+    votes_24h = get_recent_votes(store_name=store_name, hours=24)
+
+    return {
+        "has_history": len(daily_logs) > 0,
+        "sample_count": len(rows),
+        "daily_logs": daily_logs,
+        "max_7d_women": max_7d_w,
+        "best_slot_name": best_slot_name,
+        "best_slot_pct": best_slot_pct,
+        "best_wd_name": best_wd_name,
+        "best_wd_pct": best_wd_pct,
+        "is_club_area": is_club_area,
+        "strong_midnight": strong_midnight,
+        "votes_24h": votes_24h,
+    }

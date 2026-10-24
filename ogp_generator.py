@@ -437,3 +437,193 @@ def generate_live_ogp_png(stores: list, s_param: str = "", now_jst: datetime.dat
     out = io.BytesIO()
     canvas.convert("RGB").save(out, format="PNG", optimize=True)
     return out.getvalue()
+
+
+def generate_weekly_ogp_png(report: dict = None) -> bytes:
+    """
+    Render a 1200x630 Weekly Summary Whitepaper OGP card image (PNG bytes) for /stats and Sunday weekly X posts.
+    """
+    W, H = 1200, 630
+    report = report or {}
+    bg_path = os.path.join(BASE_DIR, "static", "guide-brand-comparison.jpg")
+    if os.path.exists(bg_path):
+        try:
+            bg = Image.open(bg_path).convert("RGBA")
+            bg_ratio = bg.width / bg.height
+            target_ratio = W / H
+            if bg_ratio > target_ratio:
+                new_h = H
+                new_w = int(H * bg_ratio)
+            else:
+                new_w = W
+                new_h = int(W / bg_ratio)
+            bg = bg.resize((new_w, new_h), Image.Resampling.LANCZOS)
+            left = (new_w - W) // 2
+            top = (new_h - H) // 2
+            bg = bg.crop((left, top, left + W, top + H))
+            bg = bg.filter(ImageFilter.GaussianBlur(radius=3))
+        except Exception:
+            bg = Image.new("RGBA", (W, H), (10, 12, 20, 255))
+    else:
+        bg = Image.new("RGBA", (W, H), (10, 12, 20, 255))
+
+    overlay = Image.new("RGBA", (W, H), (10, 12, 22, 222))
+    canvas = Image.alpha_composite(bg, overlay)
+    _draw_radial_glow(canvas, (1040, 100), 480, (229, 200, 120, 85))
+    _draw_radial_glow(canvas, (300, 560), 440, (56, 189, 248, 65))
+
+    draw = ImageDraw.Draw(canvas, "RGBA")
+
+    f_badge = _get_font(17)
+    f_date = _get_font(20)
+    f_title = _get_font(43)
+    f_sub = _get_font(18)
+    f_total_lbl = _get_font(16)
+    f_total_val = _get_font(23)
+
+    f_panel_hdr = _get_font(18)
+    f_rank_num = _get_font(24)
+    f_store = _get_font(26)
+    f_pct_pill = _get_font(16)
+    f_count = _get_font(20)
+
+    period_str = report.get("period") or "直近7日間"
+    stores = report.get("stores") or []
+    anaba_stores = report.get("anaba_stores") or []
+
+    lx = 52
+    by = 48
+    badge_text = "● WEEKLY DATA WHITEPAPER"
+    bw = int(draw.textlength(badge_text, font=f_badge)) + 34
+    bh = 36
+    draw.rounded_rectangle(
+        (lx, by, lx + bw, by + bh),
+        radius=18,
+        fill=(55, 42, 14, 235),
+        outline=(229, 200, 120, 255),
+        width=2,
+    )
+    draw.text((lx + 17, by + 8), badge_text, font=f_badge, fill=(251, 191, 36, 255))
+
+    dy = by + bh + 22
+    draw.text((lx, dy), f"【週間統計レポート】{period_str}", font=f_date, fill=(56, 189, 248, 255))
+
+    ty1 = dy + 40
+    draw.text((lx, ty1), "今週もっとも女性が", font=f_title, fill=(255, 255, 255, 255))
+    ty2 = ty1 + 58
+    draw.text((lx, ty2), "集まったラウンジTOP3", font=f_title, fill=(251, 191, 36, 255))
+
+    sy = ty2 + 66
+    draw.rounded_rectangle(
+        (lx, sy, lx + 492, sy + 46),
+        radius=10,
+        fill=(22, 26, 38, 225),
+        outline=(255, 255, 255, 35),
+        width=1,
+    )
+    draw.rounded_rectangle((lx, sy, lx + 6, sy + 46), radius=3, fill=(251, 191, 36, 255))
+    draw.text((lx + 20, sy + 13), "全国53店舗・7日間のピーク平均＆穴場データ白書", font=f_sub, fill=(238, 240, 246, 255))
+
+    tbox_y = sy + 64
+    tbox_w = 492
+    tbox_h = 104
+    draw.rounded_rectangle(
+        (lx, tbox_y, lx + tbox_w, tbox_y + tbox_h),
+        radius=16,
+        fill=(14, 22, 34, 235),
+        outline=(56, 189, 248, 110),
+        width=1,
+    )
+    draw.text((lx + 22, tbox_y + 16), "◆ 今週の「高女子率・穴場」No.1店舗", font=f_total_lbl, fill=(148, 212, 255, 255))
+    if anaba_stores:
+        a1 = anaba_stores[0]
+        a1_name = x_poster.format_ja_store_name(a1.get("name", ""))
+        a1_pct = a1.get("avg_wpct", 58)
+        a1_w = a1.get("avg_women", 30)
+        draw.text((lx + 22, tbox_y + 48), f"{a1_name}（女性比 {a1_pct}% / 平均{a1_w}名）", font=f_total_val, fill=(74, 222, 128, 255))
+    else:
+        draw.text((lx + 22, tbox_y + 48), "水・木 20:00〜22:00（全国平均女性比 57%）", font=f_total_val, fill=(74, 222, 128, 255))
+
+    rx = 576
+    rw = 574
+    ry = 44
+    rh = 542
+    draw.rounded_rectangle(
+        (rx, ry, rx + rw, ry + rh),
+        radius=24,
+        fill=(13, 16, 25, 240),
+        outline=(229, 200, 120, 150),
+        width=2,
+    )
+    draw.text((rx + 26, ry + 20), "★ 週間ピーク平均 上位3店舗", font=f_panel_hdr, fill=(251, 191, 36, 255))
+    live_badge = "● 7-DAY STATS"
+    lb_w = int(draw.textlength(live_badge, font=f_panel_hdr))
+    draw.text((rx + rw - lb_w - 26, ry + 20), live_badge, font=f_panel_hdr, fill=(56, 189, 248, 255))
+    draw.line((rx + 24, ry + 54, rx + rw - 24, ry + 54), fill=(255, 255, 255, 35), width=1)
+
+    rank_colors = [
+        ((251, 191, 36), (68, 48, 10)),
+        ((203, 213, 225), (45, 55, 72)),
+        ((217, 119, 6), (65, 32, 10)),
+    ]
+    card_start_y = ry + 70
+    card_h = 138
+    card_gap = 14
+
+    for idx in range(3):
+        cy = card_start_y + idx * (card_h + card_gap)
+        cx = rx + 22
+        cw = rw - 44
+
+        s = stores[idx] if idx < len(stores) else {"name": "---", "avg_women": 0, "avg_men": 0, "max_women": 0}
+        avg_w = float(s.get("avg_women") or 0)
+        avg_m = float(s.get("avg_men") or 0)
+        max_w = int(s.get("max_women") or 0)
+        tot = avg_w + avg_m
+        w_pct = round((avg_w / tot) * 100) if tot > 0 else 52
+        ja_name = x_poster.format_ja_store_name(s.get("name", ""))
+
+        is_first = (idx == 0)
+        card_bg = (28, 24, 38, 245) if is_first else (22, 26, 38, 238)
+        card_border = rank_colors[idx][0] if is_first else (255, 255, 255, 42)
+        draw.rounded_rectangle(
+            (cx, cy, cx + cw, cy + card_h),
+            radius=16,
+            fill=card_bg,
+            outline=card_border,
+            width=2 if is_first else 1,
+        )
+
+        r_fg, r_bg = rank_colors[idx]
+        draw.rounded_rectangle((cx + 18, cy + 16, cx + 56, cy + 54), radius=10, fill=r_bg, outline=r_fg, width=2)
+        r_str = str(idx + 1)
+        rw_txt = int(draw.textlength(r_str, font=f_rank_num))
+        draw.text((cx + 37 - rw_txt // 2, cy + 21), r_str, font=f_rank_num, fill=r_fg)
+
+        draw.text((cx + 70, cy + 20), ja_name, font=f_store, fill=(255, 255, 255, 255))
+
+        pct_txt = f"週間最大 {max_w}名"
+        pw_txt = int(draw.textlength(pct_txt, font=f_pct_pill)) + 24
+        px = cx + cw - pw_txt - 18
+        draw.rounded_rectangle((px, cy + 18, px + pw_txt, cy + 52), radius=9, fill=(219, 39, 119, 235))
+        draw.text((px + 12, cy + 25), pct_txt, font=f_pct_pill, fill=(255, 255, 255, 255))
+
+        cnt_y = cy + 66
+        w_cnt_str = f"女性ピーク平均 {avg_w:.0f}名"
+        m_cnt_str = f"男性平均 {avg_m:.0f}名"
+        draw.text((cx + 20, cnt_y), w_cnt_str, font=f_count, fill=(255, 115, 172, 255))
+        m_str_w = int(draw.textlength(m_cnt_str, font=f_count))
+        draw.text((cx + cw - m_str_w - 20, cnt_y), m_cnt_str, font=f_count, fill=(96, 185, 255, 255))
+
+        bar_x = cx + 20
+        bar_y = cy + 104
+        bar_w = cw - 40
+        bar_h = 14
+        draw.rounded_rectangle((bar_x, bar_y, bar_x + bar_w, bar_y + bar_h), radius=7, fill=(56, 152, 236, 225))
+        w_bar_w = max(14, min(bar_w, int(bar_w * (w_pct / 100.0))))
+        if tot > 0:
+            draw.rounded_rectangle((bar_x, bar_y, bar_x + w_bar_w, bar_y + bar_h), radius=7, fill=(236, 72, 153, 255))
+
+    out = io.BytesIO()
+    canvas.convert("RGB").save(out, format="PNG", optimize=True)
+    return out.getvalue()
