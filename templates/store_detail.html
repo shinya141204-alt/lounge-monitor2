@@ -435,15 +435,15 @@
                 <a href="/price-comparison?area={{ nearby_comparison.cluster_id }}" style="font-size:0.78rem; color:#38bdf8; text-decoration:none; font-weight:700;">全国エリア比較ボードへ ›</a>
             </div>
             <p style="margin: 0 0 12px; font-size: 0.86rem; color: #cbd5e1;">
-                同じエリア内の競合店舗と<strong>「男性の通常料金（60分目安・待機課金の有無）」「現在開催中の男性特典・女性集客イベント」「いまの男女比」</strong>を横並びで比較できます。
+                同じエリア内の競合店舗と<strong>「店舗別の単独（待機）料金」「時間帯別の相席10分単価・60分目安」「1名入店の可否」「現在開催中のイベント」「いまの男女比」</strong>を横並びで比較できます。
             </p>
             <div style="overflow-x: auto; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px;">
-                <table style="width: 100%; border-collapse: collapse; min-width: 680px; font-size: 0.82rem;">
+                <table style="width: 100%; border-collapse: collapse; min-width: 720px; font-size: 0.82rem;">
                     <thead>
                         <tr style="background: rgba(15, 23, 42, 0.95); color: #cbd5e1; text-align: left;">
-                            <th style="padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.1);">店舗名 / 年齢層</th>
+                            <th style="padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.1);">店舗名 / 1名入店可否</th>
                             <th style="padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.1);">現在の人数・女性比</th>
-                            <th style="padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.1);">男性60分目安 / 待機課金</th>
+                            <th style="padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.1);">店舗別相席料金 / 単独待機料金</th>
                             <th style="padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.1);">開催中の男性特典・イベント</th>
                             <th style="padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.1);">実質コスパ検証</th>
                         </tr>
@@ -461,7 +461,8 @@
                                     <span style="font-size: 0.68rem; padding: 1px 6px; border-radius: 99px; background: rgba(245,158,11,0.25); color: #fde68a; margin-left: 4px;">👑コスパ推奨</span>
                                     {% endif %}
                                 </div>
-                                <div style="font-size: 0.73rem; color: #94a3b8; margin-top: 2px;">{{ st.age_range }} ｜ {{ st.vibe_short }}</div>
+                                <div style="font-size: 0.73rem; color: #e2e8f0; margin-top: 2px; font-weight: 700;">👤 {{ st.solo_rule }}</div>
+                                <div style="font-size: 0.72rem; color: #94a3b8; margin-top: 1px;">{{ st.age_range }} ｜ {{ st.vibe_short }}</div>
                             </td>
                             <td style="padding: 11px 12px;">
                                 {% if st.total > 0 %}
@@ -472,8 +473,9 @@
                                 {% endif %}
                             </td>
                             <td style="padding: 11px 12px;">
-                                <div style="font-weight: 800; color: #fff;">平日 {{ st.est_60m_weekday_label }} / 金土 {{ st.est_60m_weekend_label }}</div>
-                                <div style="font-size: 0.73rem; color: {% if st.has_wait_fee %}#fde68a{% else %}#4ade80{% endif %}; margin-top: 2px;">待機：{{ st.wait_fee_str }}</div>
+                                <div style="font-weight: 800; color: #fff;">平日60分 {{ st.est_60m_weekday_label }}<br>金土60分 {{ st.est_60m_weekend_label }}</div>
+                                <div style="font-size: 0.72rem; color: #94a3b8; margin-top: 2px;">〜22時：{{ st.early_10m_str }} / 22時〜：{{ st.late_10m_str }}</div>
+                                <div style="font-size: 0.73rem; color: #fde68a; font-weight: 700; margin-top: 2px;">単独（待機中）：{{ st.wait_fee_str }}</div>
                             </td>
                             <td style="padding: 11px 12px; font-size: 0.76rem; color: #cbd5e1;">
                                 {% for mp in st.men_perks[:1] %}

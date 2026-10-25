@@ -708,16 +708,31 @@ class GrowthFeaturesTests(unittest.TestCase):
             resp = self.client.get('/price-comparison?area=shinjuku')
             self.assertEqual(resp.status_code, 200)
             html = resp.data.decode('utf-8')
-            self.assertIn('通常料金＆開催中イベント', html)
+            self.assertIn('店舗別料金（待機・相席単価・1名入店可否）＆開催中イベント', html)
             self.assertIn('オリエンタルラウンジ 新宿', html)
             self.assertIn('ag（アグ）渋谷', html)
             self.assertIn('JIS（ジス）新宿', html)
-            self.assertIn('220円 / 10分', html)
+            self.assertIn('平日220円 / 金土330円（10分）', html)
+            self.assertIn('平日880円 / 金土1,200円', html)  # OLG 恵比寿 store-specific peak rate
+            self.assertIn('2名以上必須（男性1名入店不可）', html)
+            self.assertIn('全国全51店舗の「単独（待機）料金・時間帯別相席料金・1名入店可否」完全一覧表', html)
             self.assertNotIn('/link/', html)
             ld_blocks = re.findall(r'<script type="application/ld\+json">\s*(.*?)\s*</script>', html, re.S)
             self.assertGreaterEqual(len(ld_blocks), 2)
             for block in ld_blocks:
                 json.loads(block)
+
+            # Verify all domestic stores in store_master have explicit entries in STORE_PRICE_TABLE
+            import price_comparison
+            for sname, sinfo in store_master.load().items():
+                if sinfo.get('region') == 'Korea':
+                    continue
+                self.assertIn(sname, price_comparison.STORE_PRICE_TABLE, f"Missing {sname} in STORE_PRICE_TABLE")
+                prof = price_comparison.get_store_price_profile(sname)
+                self.assertGreater(prof['wait_10m_yen'], 0, f"{sname} wait_10m_yen must be > 0")
+                self.assertTrue(prof['early_10m_str'])
+                self.assertTrue(prof['late_10m_str'])
+                self.assertTrue(prof['solo_rule'])
 
             # Verify store detail page also embeds the nearby price & event comparison table
             s_resp = self.client.get('/store/oriental-lounge-shinjuku')
