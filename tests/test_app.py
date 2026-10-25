@@ -1306,6 +1306,17 @@ class GrowthFeaturesTests(unittest.TestCase):
             calm_src = cf.read()
         self.assertEqual(calm_src.count('{'), calm_src.count('}'), "static/calm.css must have balanced braces")
 
+        # 10. Step 5 Backend Modularization verification (portal_guides, store_analysis, sns_workflows)
+        import portal_guides
+        import store_analysis
+        import sns_workflows
+        self.assertEqual(portal_guides.AREA_GUIDES, app_module.AREA_GUIDES)
+        self.assertIn('oriental-lounge', portal_guides.BRAND_GUIDES)
+        sns_sample = sns_workflows.build_sns_post_payload('price', 'https://aiseki-navi.com', {'full_data': [{'name': 'OLG 新宿', 'women': 20, 'men': 10, 'region': 'Kanto'}], 'last_updated': '2026/10/26 21:00'})
+        self.assertEqual(sns_sample['status'], 'success')
+        self.assertIn('/price-comparison', sns_sample['text'])
+        self.assertTrue(callable(store_analysis.compute_store_analysis_payload))
+
 
 if __name__ == '__main__':
     unittest.main()

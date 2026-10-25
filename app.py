@@ -224,244 +224,13 @@ local_db.register_sync_complete_callback(clear_analysis_and_report_caches)
 @app.route('/api/analysis/<path:store_name>')
 def get_store_analysis(store_name):
     """Returns aggregated hourly and weekly data for a specific store."""
-    global analysis_cache
-    
-    # Initialize cache format if needed
-    if 'raw_data_by_store' not in analysis_cache:
-        analysis_cache['raw_data_by_store'] = {}
-    if 'processed_per_store' not in analysis_cache:
-        analysis_cache['processed_per_store'] = {}
-        
-    now = datetime.datetime.now()
-    target_data = None
-    sqlite_history = []
-    
-    # Check if processed data is still valid in in-memory cache
-    if store_name in analysis_cache.get('processed_per_store', {}):
-        cached = analysis_cache.get('raw_data_by_store', {}).get(store_name)
-        ttl = cached.get('ttl', ANALYSIS_CACHE_DURATION) if cached else ANALYSIS_CACHE_DURATION
-        if cached and (now - cached['last_fetched']).total_seconds() < ttl:
-            return jsonify(analysis_cache['processed_per_store'][store_name])
-
-    # 1. Fast Path: Query local high-speed SQLite database first (sub-millisecond)
-    try:
-        sqlite_history = local_db.get_store_history(store_name, days=30) or []
-        if len(sqlite_history) >= 3 and (not local_db.is_partial_recent_only() or local_db.has_multi_day_span(sqlite_history)):
-            target_data = sqlite_history
-            analysis_cache['raw_data_by_store'][store_name] = {
-                'data': target_data,
-                'last_fetched': now,
-                'ttl': ANALYSIS_CACHE_DURATION
-            }
-    except Exception as e:
-        print(f"[Analysis] SQLite query error: {e}", file=sys.stderr)
-
-    # 2. Fallback: Query Google Sheets via gviz API if local SQLite had no data or only partial 2h boot data
-    if target_data is None:
-        try:
-            access_token = logger.get_access_token()
-            spreadsheet_id = logger.get_spreadsheet_id()
-            if not access_token or not spreadsheet_id:
-                if sqlite_history:
-                    target_data = sqlite_history
-                else:
-                    return jsonify({"error": "Failed to authenticate"}), 500
-            else:
-                print(f"Fetching historical data for {store_name} from Google Sheets via gviz...")
-                import json
-                import urllib.parse
-                
-                safe_store_name = store_name.replace("'", "\\'")
-                query = f"SELECT A, B, C, D WHERE B='{safe_store_name}'"
-                url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/gviz/tq?tq={urllib.parse.quote(query)}"
-                headers = {"Authorization": f"Bearer {access_token}"}
-                
-                response = logger.http_session.get(url, headers=headers, timeout=15)
-                if response.status_code != 200:
-                    print(f"Failed to fetch data via gviz: HTTP {response.status_code}")
-                    if sqlite_history:
-                        target_data = sqlite_history
-                    else:
-                        return jsonify({"error": "Failed to load data"}), 500
-                else:
-                    text = response.text
-                    if "google.visualization.Query.setResponse(" in text:
-                        json_str = text[text.find("{"):text.rfind("}")+1]
-                        data_json = json.loads(json_str)
-                        rows = data_json.get('table', {}).get('rows', [])
-                        
-                        target_data = []
-                        for row in rows:
-                            cols = row.get('c', [])
-                            if len(cols) >= 4:
-                                ts_val = (cols[0].get('v') or cols[0].get('f')) if cols[0] else None
-                                name_val = cols[1].get('v') if cols[1] else None
-                                men_val = cols[2].get('v') if cols[2] else 0
-                                women_val = cols[3].get('v') if cols[3] else 0
-                                
-                                target_data.append({
-                                    'ts': ts_val,
-                                    'name': name_val,
-                                    'men': int(men_val) if men_val is not None else 0,
-                                    'women': int(women_val) if women_val is not None else 0
-                                })
-                        
-                        # Backfill fetched records into SQLite in a single batch transaction so subsequent clicks are instantaneous
-                        try:
-                            local_db.insert_logs_with_ts(target_data)
-                        except Exception:
-                            pass
-
-                        if sqlite_history and len(sqlite_history) > len(target_data):
-                            target_data = local_db.get_store_history(store_name, days=30) or target_data
-
-                        analysis_cache['raw_data_by_store'][store_name] = {
-                            'data': target_data,
-                            'last_fetched': now,
-                            'ttl': ANALYSIS_CACHE_DURATION
-                        }
-                        
-                        if store_name in analysis_cache['processed_per_store']:
-                            del analysis_cache['processed_per_store'][store_name]
-
-                        print(f"Fetched and cached {len(target_data)} rows for {store_name}.")
-                    elif sqlite_history:
-                        target_data = sqlite_history
-                    else:
-                        print("Invalid response from gviz API")
-                        return jsonify({"error": "Failed to parse data"}), 500
-                
-        except Exception as e:
-            print(f"Error fetching sheet data for {store_name}: {e}", file=__import__('sys').stderr)
-            if sqlite_history:
-                target_data = sqlite_history
-            else:
-                return jsonify({"error": "Failed to load data"}), 500
-
-    if not target_data:
-        return jsonify({"error": "Store not found"}), 404
-
-    if store_name not in analysis_cache.get('raw_data_by_store', {}):
-        is_complete = local_db.is_full_sync_completed() or local_db.has_multi_day_span(target_data)
-        analysis_cache['raw_data_by_store'][store_name] = {
-            'data': target_data,
-            'last_fetched': now,
-            'ttl': ANALYSIS_CACHE_DURATION if is_complete else 60
-        }
-        
-    def get_business_dt(dt):
-        """Treat 00:00 - 06:59 as belonging to the previous business day."""
-        if dt.hour <= 6:
-            return dt - datetime.timedelta(days=1)
-        return dt
-
-    def is_business_hours(dt):
-        return dt.hour >= 18 or dt.hour <= 6
-
-    def is_peak_hours(dt):
-        """Peak lounge hours: 20:00 - 01:59"""
-        return dt.hour >= 20 or dt.hour <= 1
-
-    hourly_women = defaultdict(list)
-    hourly_men = defaultdict(list)
-    weekday_women = defaultdict(list)
-    weekday_men = defaultdict(list)
-    weekday_peak_women = defaultdict(list)
-    weekday_peak_men = defaultdict(list)
-    hourly_women_by_day = defaultdict(lambda: defaultdict(list))
-    hourly_men_by_day = defaultdict(lambda: defaultdict(list))
-    
-    now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
-
-    for d in target_data:
-        try:
-            dt = datetime.datetime.strptime(d['ts'], "%Y-%m-%d %H:%M:%S")
-            if dt > now_jst or not is_business_hours(dt):
-                continue
-            biz_dt = get_business_dt(dt)
-            b_weekday = biz_dt.weekday()
-            
-            hourly_women[dt.hour].append(d['women'])
-            hourly_men[dt.hour].append(d['men'])
-            weekday_women[b_weekday].append(d['women'])
-            weekday_men[b_weekday].append(d['men'])
-            if is_peak_hours(dt):
-                weekday_peak_women[b_weekday].append(d['women'])
-                weekday_peak_men[b_weekday].append(d['men'])
-            hourly_women_by_day[b_weekday][dt.hour].append(d['women'])
-            hourly_men_by_day[b_weekday][dt.hour].append(d['men'])
-        except Exception as e:
-            continue
-            
-    hourly_result = {}
-    hourly_men_result = {}
-    for h in range(24):
-        w_vals = hourly_women.get(h, [])
-        m_vals = hourly_men.get(h, [])
-        hourly_result[h] = round(statistics.mean(w_vals), 1) if w_vals else 0
-        hourly_men_result[h] = round(statistics.mean(m_vals), 1) if m_vals else 0
-        
-    weekday_result = {}
-    weekday_men_result = {}
-    weekdays_str = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-    for i in range(7):
-        # Prefer peak-hour averages if available so off-peak 18:00/05:00 zeros don't dilute the weekday impression
-        w_vals = weekday_peak_women.get(i) or weekday_women.get(i, [])
-        m_vals = weekday_peak_men.get(i) or weekday_men.get(i, [])
-        weekday_result[weekdays_str[i]] = round(statistics.mean(w_vals), 1) if w_vals else 0
-        weekday_men_result[weekdays_str[i]] = round(statistics.mean(m_vals), 1) if m_vals else 0
-        
-    hourly_by_weekday_result = {}
-    hourly_men_by_weekday_result = {}
-    
-    for i in range(7):
-        day_avg_w = {}
-        day_avg_m = {}
-        for h in range(24):
-            w_vals = hourly_women_by_day[i].get(h, [])
-            m_vals = hourly_men_by_day[i].get(h, [])
-            day_avg_w[h] = round(statistics.mean(w_vals), 1) if w_vals else 0
-            day_avg_m[h] = round(statistics.mean(m_vals), 1) if m_vals else 0
-        hourly_by_weekday_result[weekdays_str[i]] = day_avg_w
-        hourly_men_by_weekday_result[weekdays_str[i]] = day_avg_m
-
-    recent_data_women = []
-    recent_data_men = []
-    sorted_target = sorted(target_data, key=lambda x: x['ts'])
-    seen_minutes = set()
-    
-    for d in sorted_target:
-        try:
-            dt = datetime.datetime.strptime(d['ts'], "%Y-%m-%d %H:%M:%S")
-            # Guard against future timestamp anomalies
-            if dt > now_jst or not is_business_hours(dt):
-                continue
-            business_date = get_business_dt(dt).strftime("%Y-%m-%d")
-            min_key = f"{business_date} {dt.strftime('%H:%M')}"
-            if min_key in seen_minutes:
-                continue
-            seen_minutes.add(min_key)
-            business_ts = f"{business_date} {dt.strftime('%H:%M:%S')}"
-            recent_data_women.append({'x': business_ts, 'y': d['women']})
-            recent_data_men.append({'x': business_ts, 'y': d['men']})
-        except (ValueError, KeyError):
-            continue
-        
-    result = {
-        "store_name": store_name,
-        "hourly": hourly_result,
-        "hourly_men": hourly_men_result,
-        "weekday": weekday_result,
-        "weekday_men": weekday_men_result,
-        "hourly_by_weekday": hourly_by_weekday_result,
-        "hourly_men_by_weekday": hourly_men_by_weekday_result,
-        "recent_trend": recent_data_women,
-        "recent_trend_men": recent_data_men,
-        "sample_count": len(target_data)
-    }
-    
-    analysis_cache['processed_per_store'][store_name] = result
-    return jsonify(result)
+    import store_analysis
+    payload, status_code = store_analysis.compute_store_analysis_payload(
+        store_name,
+        analysis_cache=analysis_cache,
+        cache_duration=ANALYSIS_CACHE_DURATION,
+    )
+    return jsonify(payload), status_code
 
 
 # Global storage for the latest data (thread-safe)
@@ -1357,173 +1126,7 @@ def ads_txt():
     content = "google.com, pub-3043764334238627, DIRECT, f08c47fec0942fa0\n"
     return Response(content, mimetype='text/plain')
 
-AREA_GUIDES = {
-    'shinjuku': {
-        'slug': 'shinjuku',
-        'name': '新宿・西新宿エリア',
-        'short_name': '新宿・西新宿',
-        'icon': '',
-        'keywords': ['新宿', 'SHINJUKU', 'NISHISHINJUKU'],
-        'region_code': 'Kanto',
-        'lead': '日本一の激戦区。オリエンタルラウンジ・ag・JIS（東口・西口）の4店舗が徒歩圏内に集まっており、店舗ごとの男女比の差が一番出やすいエリアです。',
-        'atmosphere': '歌舞伎町・東口側の「オリエンタルラウンジ新宿」「ag新宿」「JIS新宿」は20代前半〜後半まで圧倒的な集客力があります。一方、西口側の「JIS西新宿」は東口が満席のときでも落ち着いて入れることが多く、仕事帰りのOL層や大人っぽい雰囲気を求める方に人気です。',
-        'best_time': '金・土曜の21:30以降は東口3店舗で男性の入店待ちが発生しやすいため、20:00〜21:00頃の早めに入るか、男女比を見ながら西新宿へ回るのがスムーズです。水曜・木曜の21時前後は待ち時間も少なく、かなり狙い目です。',
-        'second_spot': '東口なら靖国通り・三丁目方面の落ち着いたバルやダイニングバー、西新宿なら野村ビル周辺や西口ガード近くの静かなバーが2軒目に移動しやすくて定番です。'
-    },
-    'shibuya': {
-        'slug': 'shibuya',
-        'name': '渋谷・恵比寿エリア',
-        'short_name': '渋谷・恵比寿',
-        'icon': '',
-        'keywords': ['渋谷', '恵比寿', 'Shibuya', 'Ebisu'],
-        'region_code': 'Kanto',
-        'lead': 'トレンド感のある20代が集まる渋谷3店舗と、落ち着いた大人の街・恵比寿。同じ山手線沿線でもお店によって空気感がガラッと変わります。',
-        'atmosphere': '「ag渋谷」は20代前半の学生やアパレル・美容系などノリの良い層が多く、「オリエンタルラウンジ渋谷本店・渋谷駅前」は20代半ばのOL層まで幅広く入っています。1駅隣の「オリエンタルラウンジ恵比寿」は30代前後の落ち着いた男女が多く、ゆっくり会話を楽しみたい夜に向いています。',
-        'best_time': '渋谷駅前店と本店は徒歩数分の距離なので、行く直前に『相席ナビ』で女性比率が高い方を選ぶだけで待ち時間をかなり減らせます。恵比寿は木曜・金曜の20:30〜22:30頃が特にいい雰囲気です。',
-        'second_spot': '渋谷なら道玄坂上の隠れ家カフェバーや宮益坂方面、恵比寿なら駅西口の恵比寿横丁周辺や少し歩いた裏路地のワインバーへ誘うと喜ばれます。'
-    },
-    'tokyo-east': {
-        'slug': 'tokyo-east',
-        'name': '上野・錦糸町・町田・東京近郊エリア',
-        'short_name': '上野・錦糸町・町田',
-        'icon': '',
-        'keywords': ['上野', '町田', 'Ueno', 'Machida'],
-        'region_code': 'Kanto',
-        'lead': '新宿や渋谷ほど気取らず、地元の常連や沿線ユーザーが集まってアットホームに盛り上がりやすい穴場エリアです。',
-        'atmosphere': '上野は「オリエンタルラウンジ上野」と「ag上野」の2店舗があり、北千住・秋葉原・埼玉方面からのアクセスが良いため、気さくで話しやすい女性が多いのが特徴です。町田も小田急・横浜線沿線の20代が集まり、週末は都心に負けない盛り上がりを見せます。',
-        'best_time': '19:30〜21:30頃の1軒目利用が多く、終電が都心部より少し早めな分、20時台に入店しておくとゆっくり話して2軒目にも誘いやすくなります。',
-        'second_spot': '上野なら仲町通り周辺のきれいめな居酒屋やバー、町田なら原町田エリアのダイニングバーやカフェが徒歩すぐで使いやすいです。'
-    },
-    'kanto': {
-        'slug': 'kanto',
-        'name': '横浜・大宮・北関東エリア',
-        'short_name': '横浜・大宮・北関東',
-        'icon': '',
-        'keywords': ['横浜', '大宮', '柏', '宇都宮', '高崎', 'Yokohama', 'Omiya', 'OMIYA', 'Kashiwa', 'Utsunomiya', 'Takasaki'],
-        'region_code': 'Kanto',
-        'lead': 'わざわざ都心まで出なくても、各ターミナル駅前で非常に高い集客力を誇る関東の人気エリア群です。',
-        'atmosphere': '特に大宮（オリエンタルラウンジ大宮・JIS大宮）と横浜（オリエンタルラウンジ横浜）は全国ランキングでも常に上位に入るマンモスエリアです。柏・宇都宮・高崎も地元エリアで唯一の大型ラウンジとして週末・平日問わず安定した来店があります。',
-        'best_time': '大宮はオリエンタルラウンジとJISが近くにあるため、その日の人数バランスを見比べて選ぶのが鉄則です。20:00〜22:00頃が一番バランス良く座れます。',
-        'second_spot': '横浜なら西口五番街〜鶴屋町方面のおしゃれなバル、大宮なら東口・南銀周辺の落ち着いた個室ダイニングやバーが定番ルートです。'
-    },
-    'osaka': {
-        'slug': 'osaka',
-        'name': '大阪（梅田・難波・心斎橋）・関西エリア',
-        'short_name': '大阪・京都・神戸',
-        'icon': '',
-        'keywords': ['大阪', '梅田', '茶屋町', '難波', '心斎橋', '天満', '京都', '神戸', 'Osaka', 'Umeda', 'UMEDA', 'Chayamachi', 'CHAYAMACHI', 'Namba', 'NAMBA', 'Shinsaibashi', 'Tenma', 'Kyoto', 'Kobe'],
-        'region_code': 'Kinki',
-        'lead': 'キタ（梅田・茶屋町・天満）とミナミ（難波・心斎橋）、さらに京都・神戸三宮まで、ノリの良さと店舗数の多さが魅力の関西エリア。',
-        'atmosphere': '梅田・茶屋町エリアは「オリエンタルラウンジ梅田・茶屋町」「JIS梅田」「ヤタコイ茶屋町」が揃い、仕事帰りのOLから学生まで華やかな層が集まります。心斎橋・難波はさらにフレンドリーで盛り上がりやすく、京都・神戸三宮は少し落ち着いた上品な雰囲気があります。',
-        'best_time': '関西エリアは金曜・土曜だけでなく水曜・木曜の夜もかなり人が入ります。梅田周辺は徒歩圏内に複数店舗があるため、待ち時間が出ている店舗を避けて移動するのがコツです。',
-        'second_spot': '梅田ならお初天神裏参道や茶屋町の夜景が見えるバー、難波・心斎橋なら裏なんばや東心斎橋の隠れ家バーが2軒目にぴったりです。'
-    },
-    'nagoya': {
-        'slug': 'nagoya',
-        'name': '名古屋（栄・錦）・静岡・北陸エリア',
-        'short_name': '名古屋・静岡・金沢',
-        'icon': '',
-        'keywords': ['名古屋', '栄', '錦', '静岡', '浜松', '金沢', 'Nagoya', 'Shizuoka', 'Hamamatsu', 'Kanazawa'],
-        'region_code': 'Chubu',
-        'lead': '東海最大の歓楽街である名古屋（栄・錦）を中心に、静岡・浜松・金沢の人気店舗が集まる中部・北陸エリア。',
-        'atmosphere': '名古屋は「オリエンタルラウンジ名古屋栄」「錦」「ag名古屋」の3店舗が同じ栄・錦エリアに集中しています。若い世代とワイワイ飲むならag名古屋、きれいめなOL層と落ち着いて飲むなら栄店・錦店と使い分けがしやすいのが魅力です。静岡・浜松・金沢も週末は100名近く集まることがある活気ある店舗です。',
-        'best_time': '名古屋の3店舗はすべて徒歩数分圏内なので、向かう前に『相席ナビ』で3店舗の男女比を見比べるのが一番効果的です。20:30〜22:30頃がコアタイムです。',
-        'second_spot': '栄・錦エリアなら住吉方面のカジュアルなバルや、錦三丁目の落ち着いたオーセンティックバーへ流れるのがスマートです。'
-    },
-    'fukuoka': {
-        'slug': 'fukuoka',
-        'name': '福岡（天神・小倉）・九州・沖縄エリア',
-        'short_name': '福岡・九州・沖縄',
-        'icon': '',
-        'keywords': ['福岡', '天神', '小倉', '長崎', '大分', '熊本', '宮崎', '鹿児島', '沖縄', 'Fukuoka', 'FUKUOKA', 'Kokura', 'Nagasaki', 'Oita', 'Kumamoto', 'KUMAMOTO', 'Miyazaki', 'Kagoshima', 'Okinawa'],
-        'region_code': 'Kyushu',
-        'lead': '全国屈指の盛り上がりを見せる福岡・天神エリアをはじめ、熊本・小倉・宮崎・鹿児島・沖縄那覇まで揃う九州エリア。',
-        'atmosphere': '福岡・天神エリアには「オリエンタルラウンジ福岡」「JIS福岡」の2大大型店が揃っており、平日でも女性が多く入ることで有名です。熊本もオリエンタルラウンジとJISの2店舗体制で活気があり、沖縄那覇の「ag沖縄」は地元の方だけでなく旅行・出張客も多くて独特の開放感があります。',
-        'best_time': '福岡・天神は20時台から女性の来店ペースが早く、21時〜23時頃にはかなり賑わいます。早めの時間に1軒目として入るのがおすすめです。',
-        'second_spot': '天神・大名エリアはおしゃれな立ち飲みや隠れ家バー、屋台が徒歩すぐの場所に無数にあるため、2軒目への移動のしやすさは全国トップクラスです。'
-    },
-    'hokkaido-tohoku': {
-        'slug': 'hokkaido-tohoku',
-        'name': '札幌・仙台・岡山・広島・松山エリア',
-        'short_name': '札幌・仙台・中四国',
-        'icon': '',
-        'keywords': ['札幌', '仙台', '岡山', '広島', '松山', 'Sapporo', 'SAPPORO', 'Sendai', 'Okayama', 'OKAYAMA', 'Hiroshima', 'HIROSHIMA', 'CLOVERS', 'Matsuyama', 'MATSUYAMA'],
-        'region_code': 'Hokkaido',
-        'lead': 'すすきの（札幌）、国分町（仙台）、岡山、流川（広島）、大街道（松山）など、各地方の中心歓楽街で圧倒的な存在感を放つエリア。',
-        'atmosphere': '札幌すすきのの「JIS札幌」、仙台国分町の「ag仙台」、松山大街道の「JIS松山」は各エリアを代表する大型拠点です。また岡山は「オリエンタルラウンジ岡山」「XIX岡山」、広島は「ag広島」「ALFA広島」「CLOVERS広島」と地場の人気ブランドも揃っており、リアルタイムの男女比や時間帯料金を比較しながらお店を選べます。',
-        'best_time': '金・土曜の21:00〜翌0:00はもちろん、木曜の20:30頃も女性比率が高くなりやすく、落ち着いて話せる穴場タイムです。',
-        'second_spot': 'すすきの・国分町・流川など、どの店舗も歓楽街のど真ん中に位置しているため、お店を出て徒歩1〜2分圏内で2軒目のバーやカフェに困ることがありません。'
-    }
-}
-
-def get_stores_for_area(area_slug, all_stores):
-    area = AREA_GUIDES.get(area_slug)
-    if not area:
-        return []
-    import store_master
-    import store_hours
-    kws = area['keywords']
-    matched = []
-    for s in all_stores:
-        sname = s.get('name', '')
-        info = store_master.get(sname)
-        hit = False
-        if info is not None:
-            # Store master decides the area (e.g. 'OLG 錦糸町' must not match Nagoya's '錦')
-            if info.get('area_slug') == area_slug:
-                hit = True
-        elif any(k in sname for k in kws):
-            hit = True
-        if hit:
-            s_copy = dict(s)
-            tot = int(s_copy.get('women') or 0) + int(s_copy.get('men') or 0)
-            h_info = store_hours.get_business_hours_status(sname, total_guests=tot)
-            s_copy['is_open_now'] = h_info['is_open_now']
-            s_copy['today_hours_label'] = h_info['today_hours_label']
-            s_copy['hours_label'] = h_info['hours_label']
-            s_copy['hours_spec'] = h_info['schedule_spec']
-            matched.append(s_copy)
-    matched.sort(key=lambda x: (x.get('women', 0), x.get('men', 0), bool(x.get('is_open_now'))), reverse=True)
-    return matched
-
-BRAND_GUIDES = {
-    'oriental-lounge': {
-        'slug': 'oriental-lounge',
-        'name': 'オリエンタルラウンジ',
-        'seo_title': 'オリエンタルラウンジ全店のリアルタイム人数・男女比・混雑状況一覧',
-        'seo_description': 'オリエンタルラウンジ全店（新宿・渋谷・恵比寿・上野・梅田・心斎橋・難波・名古屋・福岡など）のリアルタイム男女人数・男女比・待ち時間傾向を毎分自動更新で一覧表示。今から入りやすい穴場店舗が3秒でわかります。',
-        'seo_keywords': 'オリエンタルラウンジ 人数,オリエンタルラウンジ 男女比,オリエンタルラウンジ 混雑,オリエンタルラウンジ リアルタイム,オリエンタルラウンジ 待ち時間',
-        'h1': 'オリエンタルラウンジ全店のリアルタイム人数・男女比一覧',
-        'lead': '全国のオリエンタルラウンジ各店舗の現在人数（女性・男性）と女性比率をリアルタイム集計しています。店舗カードをタップすると、各店舗の混雑傾向と徒歩圏内のハシゴ候補店舗を確認できます。',
-        'strategy_text_1': 'オリエンタルラウンジは20代半ば〜30代前半の社会人・OL層を中心に、落ち着いた高級感ある空間で会話を楽しめる王道ブランドです。金・土曜の21:00〜23:00は人気店舗で男性の入店待ちが発生しやすいため、入店前に本ページで「女性比率が高く一定数以上の女性が入店している店舗」を選ぶのが鉄則です。',
-        'strategy_text_2': '新宿・渋谷・梅田・名古屋・福岡など複数店舗が近いエリアでは、オリエンタルラウンジが男性過多の際に徒歩数分の「ag（アグ）」や「JIS（ジス）」へ移動するだけで、待ち時間を抑えて相席できるケースが多くあります。',
-        'faq_tip': '入店前に相席ナビでオリエンタルラウンジ各店の女性比率と女性人数を確認し、女性が男性より多く複数組入店している店舗を選ぶか、平日の20時〜22時・週末の19時〜20時半の早い時間帯に入店するのが最も効果的です。'
-    },
-    'ag': {
-        'slug': 'ag',
-        'name': 'ag（アグ）',
-        'seo_title': 'ag（アグ）全店のリアルタイム人数・男女比・混雑状況一覧',
-        'seo_description': 'オリエンタルラウンジ系列の若手向け相席ラウンジ「ag（アグ）」全店（渋谷・上野・梅田・名古屋・広島・金沢・仙台・沖縄）のリアルタイム男女人数・男女比・混雑状況を毎分自動更新で無料公開中。',
-        'seo_keywords': 'ag 人数,アグ 相席 人数,ag 男女比,ag 渋谷 人数,ag 梅田 人数,オリエンタルラウンジ ag 違い',
-        'h1': 'ag（アグ）全店のリアルタイム人数・男女比一覧',
-        'lead': '「25歳以下（または若年層中心）」のカジュアルでノリの良い新世代ラウンジ『ag（アグ）』全店の現在人数ランキングです。深夜帯や2軒目・3軒目でも盛り上がりやすいのが特徴です。',
-        'strategy_text_1': 'ag（アグ）は20代前半〜中盤の学生・アパレル・美容系などフットワークの軽い男女が多く、1軒目だけでなく22時〜24時以降の「2回転目」でも一気に人数が増える傾向があります。',
-        'strategy_text_2': '同エリアにある「オリエンタルラウンジ」と徒歩数分で行き来できる店舗が多いため、まずは両方のリアルタイム人数を見比べて、女性数・比率ともに安定している方から入店するのが最もスマートな立ち回りです。',
-        'faq_tip': 'ag（アグ）は21時以降に急激に人が増えるため、入店直前にリアルタイム男女比をチェックし、同エリアのオリエンタルラウンジ本館と人数バランスを見比べてから向かうのがおすすめです。'
-    },
-    'jis': {
-        'slug': 'jis',
-        'name': 'JIS（ジス）',
-        'seo_title': 'JIS（ジス）全店のリアルタイム人数・男女比・混雑状況一覧',
-        'seo_description': '人気相席バー「JIS（ジス）」全店（新宿・西新宿・大宮・梅田・茶屋町・難波・福岡・熊本・松山・札幌）のリアルタイム男女人数・男女比・混雑状況を毎分自動更新で一覧表示。',
-        'seo_keywords': 'JIS 人数,ジス 相席 人数,JIS 新宿 人数,JIS 梅田 人数,JIS 大宮 人数,相席ラウンジ 男女比',
-        'h1': 'JIS（ジス）全店のリアルタイム人数・男女比一覧',
-        'lead': '札幌・大宮・新宿・西新宿・梅田・茶屋町・難波・福岡・熊本・松山で圧倒的な集客力を誇る『JIS（ジス）』全店のリアルタイム男女人数一覧です。',
-        'strategy_text_1': 'JIS（ジス）は主要ターミナル駅前の大型店舗が多く、平日・週末を問わず安定した女性来店数を誇る人気ブランドです。特に新宿（歌舞伎町・西新宿）や大阪（梅田・茶屋町・難波）ではエリア内で複数店舗を展開しています。',
-        'strategy_text_2': '東口側や本館が混雑している場合でも、もう一方の店舗（例：JIS西新宿やJIS茶屋町）は女性優位でスムーズに座れることが多いため、移動前の比較にぜひ活用してください。',
-        'faq_tip': '新宿や梅田のように近隣に複数のJISやオリエンタルラウンジがあるエリアでは、入店前に各店舗の女性比率を見比べて55%以上の店舗を選ぶと待ち時間を回避できます。'
-    }
-}
+from portal_guides import AREA_GUIDES, BRAND_GUIDES, get_stores_for_area
 
 @app.route('/oriental-lounge')
 def brand_oriental_lounge():
@@ -2100,147 +1703,17 @@ def guide_rain_payday():
 @app.route('/api/sns-post')
 def generate_sns_post_api():
     """Returns ready-to-post viral X/SNS text from current live data."""
-    post_type = request.args.get('type', 'all').lower()
+    import sns_workflows
+    post_type = request.args.get('type', 'all')
     base_url = request.url_root.rstrip('/')
-    stores = [s for s in (latest_data.get('full_data') or []) if s.get('region') != 'Korea']
-    ts = latest_data.get('last_updated') or ''
-    time_part = ts.split(' ')[1] if ' ' in ts else '現在'
+    return jsonify(sns_workflows.build_sns_post_payload(post_type, base_url, latest_data))
 
-    if not stores:
-        return jsonify({'status': 'loading', 'text': f'全国の相席ラウンジ人数ランキング「相席ナビ」\n{base_url}/'})
-
-    if post_type == 'kanto':
-        filtered = [s for s in stores if s.get('region') == 'Kanto']
-        header = f"{time_part}時点、関東でいま女性が多く入っている上位5店舗🗼"
-        tags = "#相席ナビ #相席ラウンジ #新宿 #渋谷 #オリエンタルラウンジ"
-    elif post_type == 'kansai':
-        filtered = [s for s in stores if s.get('region') == 'Kinki']
-        header = f"{time_part}時点、関西でいま女性が多く入っている上位5店舗🐙"
-        tags = "#相席ナビ #相席ラウンジ #梅田 #難波 #心斎橋"
-    elif post_type == 'anaba':
-        # High female ratio & at least 10 women
-        candidates = [s for s in stores if s.get('women', 0) >= 10]
-        candidates.sort(key=lambda x: (x.get('women', 0) / max(1, x.get('women', 0) + x.get('men', 0)), x.get('women', 0)), reverse=True)
-        filtered = candidates
-        header = f"{time_part}時点、いま女性比率が高めで入りやすい穴場店舗✨"
-        tags = "#相席ナビ #相席ラウンジ #オリエンタルラウンジ #JIS"
-    elif post_type == 'price':
-        announce_lines = [
-            "【新機能】相席ラウンジ全51店舗「料金・イベント・現在人数」横並び比較ボードを公開しました📊",
-            "",
-            "✅ 単独（待機）料金（220〜330円/10分 or 定額パス）",
-            "✅ 4つの時間帯別（〜20時/20〜22時/22〜24時/24時〜）の相席10分単価",
-            "✅ 男性1名（ソロ）入店可否＆店舗別の開催中イベント",
-            "✅ 席替え余地を考慮した「女性10名以上（約5組）」基準のエリア推奨判定",
-            "✅ 公式営業時間に基づくオープン中の「0 : 0」表記",
-            "",
-            "👇全51店舗の比較ボードはこちら",
-            f"{base_url}/price-comparison",
-            "",
-            "📖 比較ボードの詳しい見方・活用ガイド",
-            f"{base_url}/guide/price-event-comparison",
-            "",
-            "#相席ナビ #相席ラウンジ #オリエンタルラウンジ #JIS #ag"
-        ]
-        return jsonify({
-            'status': 'success',
-            'type': post_type,
-            'timestamp': ts,
-            'text': "\n".join(announce_lines)
-        })
-    else:
-        filtered = list(stores)
-        header = f"{time_part}時点、全国でいま人が集まっている相席ラウンジTOP5🍻"
-        tags = "#相席ナビ #相席ラウンジ #オリエンタルラウンジ #JIS #ag"
-
-    limit = 5
-    medals = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣']
-    lines = [header, ""]
-    for i, s in enumerate(filtered[:limit]):
-        w = s.get('women', 0)
-        m = s.get('men', 0)
-        tot = w + m
-        pct = round((w / tot) * 100) if tot > 0 else 0
-        if post_type == 'anaba':
-            lines.append(f"{medals[i]} {s.get('name')}（女性比{pct}% ｜ 女性{w}名 / 男性{m}名）")
-        else:
-            lines.append(f"{medals[i]} {s.get('name')}（女性{w}名 / 男性{m}名・女性比{pct}%）")
-
-    lines.extend([
-        "",
-        "💡 ひとことメモ",
-        "1店舗目で男性待ちが長そうなときは、近くの女性比率が高めの店舗に回る方がスムーズに座れます。",
-        "",
-        "📖 オリエンタルラウンジ・ag・JISの違いまとめ：",
-        f"{base_url}/guide/brand-comparison",
-        "",
-        f"👇全店舗の現在人数・男女比グラフ",
-        f"{base_url}/",
-        "",
-        tags
-    ])
-    return jsonify({
-        'status': 'success',
-        'type': post_type,
-        'timestamp': ts,
-        'text': "\n".join(lines)
-    })
 
 def run_scheduled_x_post(slot_label="20:00", force=False):
     """Execute scheduled X auto-post with duplicate prevention that survives restarts/redeploys."""
-    import x_poster
-    import job_state
-    now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
-    # Slots after midnight (00:00 / 02:00) belong to the previous business night
-    biz_date = (now_jst - datetime.timedelta(hours=7)).strftime('%Y-%m-%d')
-    dedup_key = f"x_post:{biz_date}_{slot_label}"
+    import sns_workflows
+    return sns_workflows.execute_scheduled_x_post(latest_data, slot_label=slot_label, force=force)
 
-    if not force and job_state.is_done(dedup_key):
-        logging.info(f"X auto-post already sent for {dedup_key}, skipping.")
-        return {"status": "skipped", "reason": "Already posted for this slot"}
-
-    stores = latest_data.get('full_data') or []
-    if not stores:
-        try:
-            stores = monitor.get_all_data()
-        except Exception as e:
-            logging.error(f"Failed to fetch stores for X post: {e}")
-            return {"status": "error", "detail": str(e)}
-
-    text = x_poster.build_scheduled_tweet_text(stores, slot_label=slot_label)
-    if not text:
-        return {"status": "error", "detail": "Empty tweet text"}
-
-    reply_text = x_poster.build_scheduled_reply_text(slot_label=slot_label)
-    png_bytes = None
-    try:
-        import ogp_generator
-        slot_code = (slot_label or "20:00").replace(":", "")
-        png_bytes = ogp_generator.generate_live_ogp_png(
-            stores,
-            s_param=f"{now_jst.strftime('%Y%m%d')}_{slot_code}",
-            now_jst=now_jst,
-        )
-    except Exception as e:
-        logging.warning(f"Failed to generate live OGP PNG for X post ({slot_label}): {e}")
-
-    result = x_poster.post_to_x(
-        text,
-        reply_text=reply_text,
-        media_bytes=png_bytes,
-        media_mime_type="image/png",
-    )
-    if result.get("status") == "success" and not force:
-        job_state.mark_done(dedup_key)
-    elif result.get("status") == "error":
-        try:
-            import health
-            health.send_alert(f"xpost:{dedup_key}", f"⚠️ X自動投稿（{slot_label}）に失敗しました: {str(result.get('detail') or result)[:200]}")
-        except Exception:
-            pass
-    result["tweet_text"] = text
-    result["reply_text"] = reply_text
-    return result
 
 @app.route('/api/trigger-x-post')
 def trigger_x_post_endpoint():
@@ -2251,6 +1724,7 @@ def trigger_x_post_endpoint():
     force = request.args.get('force', '0') == '1'
     res = run_scheduled_x_post(slot_label=slot, force=force)
     return jsonify(res)
+
 
 @app.route('/api/trigger-x-tip')
 def trigger_x_tip_endpoint():
@@ -2264,6 +1738,7 @@ def trigger_x_tip_endpoint():
     res = tips_poster.run_scheduled_tip_post(slot_label=slot, force=force, tip_index=idx)
     return jsonify(res)
 
+
 @app.route('/api/trigger-note-share')
 def trigger_note_share_endpoint():
     """Endpoint to test or externally trigger note promotion posting."""
@@ -2274,6 +1749,7 @@ def trigger_note_share_endpoint():
     import note_poster
     res = note_poster.check_and_post_new_note(force=force, article_index=idx)
     return jsonify(res)
+
 
 @app.route('/api/trigger-x-pinned')
 def trigger_x_pinned_endpoint():
@@ -2286,6 +1762,7 @@ def trigger_x_pinned_endpoint():
     res["tweet_text"] = main_text
     res["reply_text"] = reply_text
     return jsonify(res)
+
 
 @app.route('/api/trigger-x-column')
 def trigger_x_column_endpoint():
@@ -2307,50 +1784,11 @@ def trigger_x_column_endpoint():
     res["reply_text"] = reply_text
     return jsonify(res)
 
+
 def run_scheduled_weekly_x_post(force=False):
     """Execute weekly summary X auto-post (with dynamic /ogp/weekly.png card attached to 1st post)."""
-    import x_poster
-    import weekly_report
-    import job_state
-    now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
-    iso_year, iso_week, _ = now_jst.isocalendar()
-    dedup_key = f"x_weekly:{iso_year}-W{iso_week:02d}"
-
-    if not force and job_state.is_done(dedup_key):
-        logging.info(f"Weekly X auto-post already sent for {dedup_key}, skipping.")
-        return {"status": "skipped", "reason": "Already posted for this week"}
-
-    try:
-        report = weekly_report.generate_weekly_report()
-    except Exception as e:
-        logging.error(f"Failed to generate weekly report for X post: {e}")
-        return {"status": "error", "detail": str(e)}
-
-    if not report or "error" in report:
-        return {"status": "error", "detail": str(report.get("error") if report else "Empty report")}
-
-    main_text, reply_text = x_poster.build_weekly_report_tweet_thread(report)
-    if not main_text:
-        return {"status": "error", "detail": "Empty weekly tweet text"}
-
-    png_bytes = None
-    try:
-        import ogp_generator
-        png_bytes = ogp_generator.generate_weekly_ogp_png(report)
-    except Exception as e:
-        logging.warning(f"Failed to generate weekly OGP PNG for X post: {e}")
-
-    result = x_poster.post_to_x(
-        main_text,
-        reply_text=reply_text,
-        media_bytes=png_bytes,
-        media_mime_type="image/png",
-    )
-    if result.get("status") == "success" and not force:
-        job_state.mark_done(dedup_key)
-    result["tweet_text"] = main_text
-    result["reply_text"] = reply_text
-    return result
+    import sns_workflows
+    return sns_workflows.execute_scheduled_weekly_x_post(force=force)
 
 @app.route('/api/trigger-x-weekly')
 def trigger_x_weekly_endpoint():
