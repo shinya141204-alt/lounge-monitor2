@@ -102,7 +102,7 @@
          crossorigin="anonymous"></script>
     <script src="/static/affiliate_config.js?v=8"></script>
     {% endif %}
-    <link rel="stylesheet" href="/static/calm.css?v=7">
+    <link rel="stylesheet" href="/static/calm.css?v=8">
 </head>
 
 <body class="{% if is_staff %}staff-mode{% endif %}">
@@ -1620,12 +1620,21 @@
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js?v=31')
-                    .then(reg => {
+            var __swRefreshing = false;
+            navigator.serviceWorker.addEventListener('controllerchange', function() {
+                if (__swRefreshing) return;
+                __swRefreshing = true;
+                window.location.reload();
+            });
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/sw.js?v=32', { updateViaCache: 'none' })
+                    .then(function(reg) {
                         reg.update();
+                        document.addEventListener('visibilitychange', function() {
+                            if (document.visibilityState === 'visible') reg.update();
+                        });
                     })
-                    .catch(error => console.log('SW registration failed:', error));
+                    .catch(function(error) { console.log('SW registration failed:', error); });
             });
         }
     </script>

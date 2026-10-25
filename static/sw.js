@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aiseki-navi-v42';
+const CACHE_NAME = 'aiseki-navi-v43';
 const SHELL_KEY = '/';
 const FAST_NAV_PATHS = new Set([
   '/guide/brand-comparison',
@@ -9,6 +9,7 @@ const FAST_NAV_PATHS = new Set([
   '/guide'
 ]);
 const LIVE_SSR_PREFIXES = [
+  '/',
   '/price-comparison',
   '/store/',
   '/areas',
@@ -19,7 +20,7 @@ const LIVE_SSR_PREFIXES = [
 ];
 const ASSETS_TO_CACHE = [
   '/static/style.css?v=20261023_13',
-  '/static/calm.css?v=7',
+  '/static/calm.css?v=8',
   '/static/portal.css?v=6',
   '/static/app.js?v=20261026_5',
   '/static/affiliate_config.js?v=8',
@@ -110,10 +111,9 @@ self.addEventListener('fetch', (event) => {
 
   // Navigation requests (HTML page visits from bookmarks / home screen)
   if (event.request.mode === 'navigate') {
-    // Top page ("/") and primary global navigation tabs: Stale-While-Revalidate
-    // Serve cached HTML immediately (<10ms) if available, and update cache in the background.
     const cacheKey = reqUrl.pathname === '/' ? SHELL_KEY : (reqUrl.pathname + reqUrl.search);
-    if (reqUrl.pathname === '/' || FAST_NAV_PATHS.has(reqUrl.pathname)) {
+    // Static guide pages: Stale-While-Revalidate
+    if (FAST_NAV_PATHS.has(reqUrl.pathname)) {
       const networkPromise = fetchAndCache(event, cacheKey);
       event.waitUntil(networkPromise.catch(() => {}));
       event.respondWith(
@@ -126,10 +126,10 @@ self.addEventListener('fetch', (event) => {
       return;
     }
 
-    // Other pages (including live SSR pages like /price-comparison, /store/*, /areas):
-    // always fetch fresh network HTML first (with offline fallback)
-    const isLiveSsr = LIVE_SSR_PREFIXES.some((p) => reqUrl.pathname === p || reqUrl.pathname.startsWith(p));
-    const pageCacheKey = reqUrl.pathname + reqUrl.search;
+    // Top page ("/") and live SSR pages (/price-comparison, /store/*, /areas):
+    // always fetch fresh network HTML first (with offline fallback) so layout & live data updates reflect immediately
+    const isLiveSsr = reqUrl.pathname === '/' || LIVE_SSR_PREFIXES.some((p) => p !== '/' && (reqUrl.pathname === p || reqUrl.pathname.startsWith(p)));
+    const pageCacheKey = cacheKey;
     const networkPromise = fetchAndCache(event, pageCacheKey, isLiveSsr);
     event.waitUntil(networkPromise.catch(() => {}));
     event.respondWith(

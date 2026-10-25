@@ -54,7 +54,17 @@ def is_admin_authorized():
 
 @app.after_request
 def compress_response(response):
-    """Automatically gzip-compress JSON and HTML responses for faster transfer."""
+    """Set cache headers and automatically gzip-compress JSON/HTML/CSS/JS responses."""
+    # 1. Cache headers (must run regardless of gzip compression)
+    if request.path.startswith('/static/') and response.status_code == 200:
+        if any(request.path.lower().endswith(ext) for ext in ('.js', '.css', '.jpg', '.jpeg', '.png', '.webp', '.svg', '.gif', '.ico', '.woff2')):
+            response.headers['Cache-Control'] = 'public, max-age=604800, immutable'
+    elif response.content_type and 'text/html' in response.content_type and response.status_code == 200:
+        if 'Cache-Control' not in response.headers:
+            response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+            response.headers['Pragma'] = 'no-cache'
+
+    # 2. Gzip compression
     if (
         response.status_code < 200
         or response.status_code >= 300
@@ -76,11 +86,6 @@ def compress_response(response):
             response.headers['Content-Encoding'] = 'gzip'
             response.headers['Content-Length'] = len(compressed)
             response.headers['Vary'] = 'Accept-Encoding'
-
-    # Cache static assets (JS, CSS, images, fonts) aggressively for instant mobile loading
-    if request.path.startswith('/static/') and response.status_code == 200:
-        if any(request.path.lower().endswith(ext) for ext in ('.js', '.css', '.jpg', '.jpeg', '.png', '.webp', '.svg', '.gif', '.ico', '.woff2')):
-            response.headers['Cache-Control'] = 'public, max-age=604800, immutable'
 
     return response
 
