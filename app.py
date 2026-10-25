@@ -929,6 +929,7 @@ import urllib.parse as urllib_parse
 
 _BOT_MARKERS = ('bot', 'spider', 'crawl', 'slurp', 'facebookexternalhit', 'preview', 'headless', 'python-requests', 'curl')
 _TRACKED_PAGE_PREFIXES = ('/guide', '/columns', '/areas', '/area/', '/grooming', '/stats', '/price-comparison', '/oriental-lounge', '/ag', '/jis', '/store/')
+_LIVE_NO_CACHE_PREFIXES = ('/price-comparison', '/store/', '/areas', '/area/', '/oriental-lounge', '/ag', '/jis')
 
 @app.template_filter('seo_store_name')
 def _jinja_seo_store_name(name):
@@ -952,12 +953,18 @@ def track_page_views(response):
                 response.headers['Cache-Control'] = 'public, max-age=31536000, immutable'
             else:
                 response.headers['Cache-Control'] = 'public, max-age=86400'
-        elif (request.method == 'GET' and response.status_code == 200
-                and (request.path == '/' or request.path.startswith(_TRACKED_PAGE_PREFIXES))
-                and not session.get('is_staff')
-                and not _is_bot_request()):
-            import analytics
-            analytics.track('page_view', request.path)
+        else:
+            if (request.path in ('/', '/sw.js', '/api/status')
+                    or request.path.startswith(_LIVE_NO_CACHE_PREFIXES)):
+                response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+                response.headers['Pragma'] = 'no-cache'
+                response.headers['Expires'] = '0'
+            if (request.method == 'GET' and response.status_code == 200
+                    and (request.path == '/' or request.path.startswith(_TRACKED_PAGE_PREFIXES))
+                    and not session.get('is_staff')
+                    and not _is_bot_request()):
+                import analytics
+                analytics.track('page_view', request.path)
     except Exception:
         pass
     return response
@@ -1396,7 +1403,7 @@ AREA_GUIDES = {
         'keywords': ['福岡', '天神', '小倉', '長崎', '大分', '熊本', '宮崎', '鹿児島', '沖縄', 'Fukuoka', 'FUKUOKA', 'Kokura', 'Nagasaki', 'Oita', 'Kumamoto', 'KUMAMOTO', 'Miyazaki', 'Kagoshima', 'Okinawa'],
         'region_code': 'Kyushu',
         'lead': '全国屈指の盛り上がりを見せる福岡・天神エリアをはじめ、熊本・小倉・宮崎・鹿児島・沖縄那覇まで揃う九州エリア。',
-        'atmosphere': '福岡・天神エリアには「オリエンタルラウンジ福岡」「ag福岡」「JIS福岡」の3大ブランドがすべて揃っており、平日でも女性が多く入ることで有名です。熊本もオリエンタルラウンジとJISの2店舗体制で活気があり、沖縄那覇は地元の方だけでなく旅行・出張客も多くて独特の開放感があります。',
+        'atmosphere': '福岡・天神エリアには「オリエンタルラウンジ福岡」「JIS福岡」の2大大型店が揃っており、平日でも女性が多く入ることで有名です。熊本もオリエンタルラウンジとJISの2店舗体制で活気があり、沖縄那覇の「ag沖縄」は地元の方だけでなく旅行・出張客も多くて独特の開放感があります。',
         'best_time': '福岡・天神は20時台から女性の来店ペースが早く、21時〜23時頃にはかなり賑わいます。早めの時間に1軒目として入るのがおすすめです。',
         'second_spot': '天神・大名エリアはおしゃれな立ち飲みや隠れ家バー、屋台が徒歩すぐの場所に無数にあるため、2軒目への移動のしやすさは全国トップクラスです。'
     },
@@ -1408,7 +1415,7 @@ AREA_GUIDES = {
         'keywords': ['札幌', '仙台', '岡山', '広島', '松山', 'Sapporo', 'SAPPORO', 'Sendai', 'Okayama', 'OKAYAMA', 'Hiroshima', 'HIROSHIMA', 'CLOVERS', 'Matsuyama', 'MATSUYAMA'],
         'region_code': 'Hokkaido',
         'lead': 'すすきの（札幌）、国分町（仙台）、岡山、流川（広島）、大街道（松山）など、各地方の中心歓楽街で圧倒的な存在感を放つエリア。',
-        'atmosphere': '札幌は「オリエンタルラウンジ札幌」「ag札幌」「JIS札幌」の3店舗、仙台は「オリエンタルラウンジ仙台」「ag仙台」の2店舗があり、その日の客層や人数で選べます。また岡山は「オリエンタルラウンジ」「XIX」、広島は「オリエンタルラウンジ」「ALFA」「CLOVERS」と地場の人気ブランドも揃っており、比較しながらお店を選べます。',
+        'atmosphere': '札幌すすきのの「JIS札幌」、仙台国分町の「ag仙台」、松山大街道の「JIS松山」は各エリアを代表する大型拠点です。また岡山は「オリエンタルラウンジ岡山」「XIX岡山」、広島は「ag広島」「ALFA広島」「CLOVERS広島」と地場の人気ブランドも揃っており、リアルタイムの男女比や時間帯料金を比較しながらお店を選べます。',
         'best_time': '金・土曜の21:00〜翌0:00はもちろん、木曜の20:30頃も女性比率が高くなりやすく、落ち着いて話せる穴場タイムです。',
         'second_spot': 'すすきの・国分町・流川など、どの店舗も歓楽街のど真ん中に位置しているため、お店を出て徒歩1〜2分圏内で2軒目のバーやカフェに困ることがありません。'
     }

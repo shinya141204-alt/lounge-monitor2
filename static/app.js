@@ -3169,8 +3169,12 @@
             window.__portalNavFastInit = true;
             const prefetched = Object.create(null);
 
+            function isLiveHtmlHref(href) {
+                return href === '/' || href.indexOf('/price-comparison') === 0 || href.indexOf('/areas') === 0 || href.indexOf('/area/') === 0 || href.indexOf('/store/') === 0;
+            }
+
             function prefetchPage(href) {
-                if (!href || prefetched[href] || href.indexOf('/') !== 0 || href.indexOf('/api/') === 0 || href.indexOf('/staff') === 0) return;
+                if (!href || prefetched[href] || href.indexOf('/') !== 0 || href.indexOf('/api/') === 0 || href.indexOf('/staff') === 0 || isLiveHtmlHref(href)) return;
                 prefetched[href] = true;
                 try {
                     const link = document.createElement('link');
@@ -3202,9 +3206,9 @@
                 document.querySelectorAll('.nav-loading').forEach(el => el.classList.remove('nav-loading'));
             });
 
-            // Warm up top navigation tabs during idle time after initial render
+            // Warm up static editorial navigation tabs during idle time (exclude live SSR pages so crowd counts stay real-time)
             const warmTabs = () => {
-                ['/price-comparison', '/guide/brand-comparison', '/areas', '/columns', '/grooming', '/stats'].forEach(prefetchPage);
+                ['/guide/brand-comparison', '/columns', '/grooming', '/stats'].forEach(prefetchPage);
             };
             if ('requestIdleCallback' in window) {
                 window.requestIdleCallback(warmTabs, { timeout: 2200 });

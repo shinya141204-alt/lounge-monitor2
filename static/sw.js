@@ -1,19 +1,26 @@
-const CACHE_NAME = 'aiseki-navi-v37';
+const CACHE_NAME = 'aiseki-navi-v38';
 const SHELL_KEY = '/';
 const FAST_NAV_PATHS = new Set([
-  '/price-comparison',
   '/guide/brand-comparison',
-  '/areas',
   '/columns',
   '/grooming',
   '/stats',
   '/guide'
 ]);
+const LIVE_SSR_PREFIXES = [
+  '/price-comparison',
+  '/store/',
+  '/areas',
+  '/area/',
+  '/oriental-lounge',
+  '/ag',
+  '/jis'
+];
 const ASSETS_TO_CACHE = [
   '/static/style.css?v=20261023_13',
   '/static/calm.css?v=6',
   '/static/portal.css?v=5',
-  '/static/app.js?v=20261026_1',
+  '/static/app.js?v=20261026_2',
   '/static/affiliate_config.js?v=8',
   '/static/manifest.json?v=2',
   '/static/icon-192.png?v=2',
@@ -57,10 +64,10 @@ self.addEventListener('activate', (event) => {
 });
 
 // Fetch the latest HTML (navigation preload first) and store it in the cache
-function fetchAndCache(event, cacheKey) {
+function fetchAndCache(event, cacheKey, forceFresh) {
   return (async () => {
-    const preload = await event.preloadResponse;
-    const resp = preload || await fetch(event.request);
+    const preload = forceFresh ? null : await event.preloadResponse;
+    const resp = preload || await fetch(event.request, forceFresh ? { cache: 'no-store' } : undefined);
     if (resp && resp.ok) {
       const copy = resp.clone();
       const cache = await caches.open(CACHE_NAME);
@@ -118,15 +125,18 @@ self.addEventListener('fetch', (event) => {
       return;
     }
 
-    // Other pages: network-first, but fall back to cache quickly (1.5s) or offline
-    const networkPromise = fetchAndCache(event, reqUrl.pathname);
+    // Other pages (including live SSR pages like /price-comparison, /store/*, /areas):
+    // always fetch fresh network HTML first (with offline fallback)
+    const isLiveSsr = LIVE_SSR_PREFIXES.some((p) => reqUrl.pathname === p || reqUrl.pathname.startsWith(p));
+    const pageCacheKey = reqUrl.pathname + reqUrl.search;
+    const networkPromise = fetchAndCache(event, pageCacheKey, isLiveSsr);
     event.waitUntil(networkPromise.catch(() => {}));
     event.respondWith(
       (async () => {
         try {
-          return await Promise.race([networkPromise, timeout(1500)]);
+          return await Promise.race([networkPromise, timeout(isLiveSsr ? 3500 : 1500)]);
         } catch (e) {
-          const cached = await caches.match(reqUrl.pathname);
+          const cached = await caches.match(pageCacheKey) || await caches.match(reqUrl.pathname);
           if (cached) return cached;
           try {
             return await networkPromise;

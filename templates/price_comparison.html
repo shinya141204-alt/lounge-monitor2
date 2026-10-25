@@ -52,7 +52,7 @@
           "name": "オリエンタルラウンジやag（アグ）にも待機料金（単独時料金）はありますか？",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "はい、オリエンタルラウンジ・ag（アグ）・JIS（ジス）のすべてで、相席していない単独時（待機・休憩中）には10分あたり220円〜330円（税込・飲み放題込）の単独料金が発生します。また、相席時の10分料金も店舗や時間帯（22時前後）・曜日によって440円〜1,200円まで大きく異なるため、入店前に店舗ごとの単価と現在の女性比率（すぐ相席できるか）を確認するのが最もお得です。"
+            "text": "はい、オリエンタルラウンジ・ag（アグ）・JIS（ジス）および広島・岡山の地場ラウンジ（ALFA・CLOVERS・XIX）では、相席していない単独時（待機・休憩中）に10分あたり220円または330円（税込・飲み放題込）の単独料金が発生します（梅田のヤタコイのみ定額デイパス制で時間内の追加待機課金なし）。また、相席時の10分料金も店舗や4つの時間帯（Open〜20時・20〜22時・22〜24時・24時〜Close）・曜日によって275円〜1,500円まで大きく異なるため、入店前に店舗ごとの単価と現在の女性比率を確認するのが最もお得です。"
           }
         },
         {
@@ -60,7 +60,7 @@
           "name": "男性1人（ソロ）でも入店できる店舗と2名以上必須の店舗はどこですか？",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "オリエンタルラウンジの恵比寿店・渋谷本店・新宿店・名古屋錦店などの都心大型店は「男性2名以上必須（1名入店不可）」ですが、それ以外のオリエンタル各店やag（アグ）全店、JIS（ジス）全店はシングルチャージ（+1,100円）で男性1名から入店可能です。当ページの全店舗一覧表で全51店舗の1名入店可否を確認できます。"
+            "text": "オリエンタルラウンジの都心大型5店舗（恵比寿・渋谷本店・新宿・大阪駅前・名古屋錦）と、agの渋谷・上野・名古屋店、週末のag仙台店は「男性2名以上必須（1名入店不可）」、JIS新宿店も2名以上推奨です。それ以外のオリエンタル24店舗・ag各店・JIS 9店舗はシングルチャージ（+1,100円）で、地場ブランド各店も男性1名から入店可能です。当ページの全店舗一覧表で全51店舗の1名入店ルールを確認できます。"
           }
         }
       ]
@@ -349,10 +349,10 @@
         </nav>
 
         <header class="hero-box">
-            <span class="hero-kicker">💴 店舗別の単独（待機）料金 × 時間帯別の相席単価 × 開催中イベント × 今の男女比</span>
+            <span class="hero-kicker">💴 店舗別の単独（待機）料金 × 4時間帯の相席単価 × 開催中イベント × 今の男女比</span>
             <h1>相席ラウンジ全51店舗「店舗別料金（待機・相席単価・1名入店可否）＆開催中イベント」徹底比較ボード</h1>
             <p>
-                <strong>オリエンタルラウンジ・ag（アグ）・JIS（ジス）</strong>はすべて<strong>「相席していない単独（待機）時にも10分 220円〜330円」</strong>が発生し、さらに<strong>相席10分単価（440円〜1,200円）や男性1名入店の可否も「店舗ごと・22時前後の時間帯ごと」に大きく異なります</strong>。行きたい街のタブを選ぶか、ページ下部の<a href="#all-stores-price-catalog" style="color: #fde68a; font-weight: 800; text-decoration: underline;">全51店舗の料金・待機単価マスタ一覧表</a>で全て比較できます。
+                <strong>オリエンタルラウンジ・ag（アグ）・JIS（ジス）</strong>をはじめ全国50店舗では<strong>「相席していない単独（待機）時にも10分 220円または330円」</strong>が発生し（ヤタコイ梅田のみ定額デイパス制）、さらに<strong>相席10分単価（275円〜1,500円）や男性1名入店の可否も「店舗ごと・4つの時間帯ごと」に大きく異なります</strong>。行きたい街のタブを選ぶか、ページ下部の<a href="#all-stores-price-catalog" style="color: #fde68a; font-weight: 800; text-decoration: underline;">全51店舗の料金・待機単価マスタ一覧表</a>で全て比較できます。
             </p>
         </header>
 
@@ -360,7 +360,7 @@
         <section class="section-card">
             <h2 class="section-title">📍 エリア別：徒歩圏内ライバル店の4時間帯料金・イベント・現在人数 横並び比較</h2>
             <p class="section-lead">
-                ※ボタンをタップすると各街の比較表に切り替わります（リアルタイム更新：{{ last_updated }}時点 ｜ 🟢 現在の時間帯区分：<strong style="color:#fde68a;">{{ data.current_slot.slot_label }}</strong>）
+                ※ボタンをタップすると各街の比較表に切り替わります（リアルタイム更新：<span id="live-updated-at">{{ last_updated }}</span>時点 <span id="live-sync-badge" style="color:#4ade80; font-weight:700;">● 毎分自動同期</span> ｜ 現在の時間帯区分：<strong id="live-slot-label" style="color:#fde68a;">{{ data.current_slot.slot_label }}</strong>）
             </p>
 
             <div class="area-tabs" role="tablist">
@@ -375,23 +375,23 @@
             </div>
 
             {% for cl in data.clusters %}
-            <div id="cluster-{{ cl.id }}" class="cluster-panel{% if cl.id == selected_area %} active{% endif %}">
+            <div id="cluster-{{ cl.id }}" class="cluster-panel{% if cl.id == selected_area %} active{% endif %}" data-cluster-label="{{ cl.tab_label }}">
                 <div style="margin-bottom: 12px;">
                     <h3 style="margin: 0 0 4px; font-size: 1.05rem; color: #f8fafc;">{{ cl.title }}</h3>
                     <p style="margin: 0; font-size: 0.83rem; color: #cbd5e1;">{{ cl.desc }}</p>
                 </div>
 
                 {% if cl.best_store %}
-                <div class="best-pick-banner">
+                <div class="best-pick-banner" data-best-banner>
                     <div>
-                        <div class="best-pick-title">
+                        <div class="best-pick-title" data-best-title>
                             👑 いま{{ cl.tab_label }}で一番コスパが良い狙い目：{{ cl.best_store.seo_name }}
                         </div>
-                        <div class="best-pick-sub">
+                        <div class="best-pick-sub" data-best-sub>
                             {{ cl.best_store.verdict_comment }}
                         </div>
                     </div>
-                    <a href="/store/{{ cl.best_store.slug }}" style="padding: 8px 14px; border-radius: 10px; background: rgba(245, 158, 11, 0.22); border: 1px solid rgba(245, 158, 11, 0.55); color: #fde68a; font-size: 0.8rem; font-weight: 800; text-decoration: none; white-space: nowrap;">
+                    <a href="/store/{{ cl.best_store.slug }}" data-best-link style="padding: 8px 14px; border-radius: 10px; background: rgba(245, 158, 11, 0.22); border: 1px solid rgba(245, 158, 11, 0.55); color: #fde68a; font-size: 0.8rem; font-weight: 800; text-decoration: none; white-space: nowrap;">
                         店舗詳細・推移グラフ ›
                     </a>
                 </div>
@@ -411,13 +411,25 @@
                         </thead>
                         <tbody>
                             {% for st in cl.stores %}
-                            <tr class="{% if st.is_best_in_cluster %}best-row{% endif %}">
+                            <tr class="{% if st.is_best_in_cluster %}best-row{% endif %}"
+                                data-live-store="{{ st.name }}"
+                                data-seo-name="{{ st.seo_name }}"
+                                data-slug="{{ st.slug }}"
+                                data-wait-str="{{ st.wait_fee_str }}"
+                                data-wait-yen="{{ st.wait_10m_yen }}"
+                                data-est-wknd="{{ st.est_60m_weekend }}"
+                                data-has-men-perk="{{ '1' if st.has_live_men_perk else '0' }}"
+                                data-has-women-ev="{{ '1' if st.has_live_women_event else '0' }}"
+                                data-is-flat="{{ '1' if st.is_flat_rate else '0' }}"
+                                data-solo-rule="{{ st.solo_rule }}"
+                                data-slot-18-20="{{ st.slot_18_20 }}"
+                                data-slot-20-22="{{ st.slot_20_22 }}"
+                                data-slot-22-24="{{ st.slot_22_24 }}"
+                                data-slot-24-last="{{ st.slot_24_last }}">
                                 <td style="min-width: 185px;">
                                     <div>
                                         <span class="brand-pill brand-{{ st.brand_code }}">{{ st.brand_code }}</span>
-                                        {% if st.is_best_in_cluster %}
-                                        <span class="crown-tag">👑 エリア推奨</span>
-                                        {% endif %}
+                                        <span class="crown-tag" data-crown-tag style="{% if not st.is_best_in_cluster %}display:none;{% endif %}">👑 エリア推奨</span>
                                     </div>
                                     <div style="margin-top: 4px; font-weight: 800; font-size: 0.92rem;">
                                         <a href="/store/{{ st.slug }}" style="color: #f8fafc; text-decoration: none;">{{ st.seo_name }} ›</a>
@@ -430,7 +442,7 @@
                                         特徴：{{ st.vibe_short }}
                                     </div>
                                 </td>
-                                <td style="min-width: 145px;">
+                                <td style="min-width: 145px;" data-crowd-cell>
                                     {% if st.total > 0 %}
                                     <div style="font-weight: 800; font-size: 0.9rem;">
                                         <span style="color: #f472b6;">女性 {{ st.women }}名</span> / <span style="color: #60a5fa;">男性 {{ st.men }}名</span>
@@ -448,7 +460,7 @@
                                 </td>
                                 <td style="min-width: 225px;">
                                     <div style="background: rgba(245, 158, 11, 0.14); border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 7px; padding: 4px 8px; margin-bottom: 5px; font-size: 0.75rem; font-weight: 800; color: #fde68a;">
-                                        🟢 現在枠（{{ st.active_slot_label }}）：{{ st.active_slot_rate }}
+                                        🟢 現在枠（<span data-active-slot-label>{{ st.active_slot_label }}</span>）：<span data-active-slot-rate>{{ st.active_slot_rate }}</span>
                                     </div>
                                     <div style="font-size: 0.74rem; color: #e2e8f0; line-height: 1.5;">
                                         ① <strong>Open〜20時</strong>：{{ st.slot_18_20 }}<br>
@@ -463,7 +475,11 @@
                                 <td style="min-width: 140px;">
                                     <span style="color: #fde68a; font-weight: 800; font-size: 0.8rem;">{{ st.wait_fee_str }}</span>
                                     <div style="font-size: 0.71rem; color: #cbd5e1; margin-top: 3px; line-height: 1.4;">
+                                        {% if st.is_flat_rate %}
+                                        ※定額デイパス制（飲み放題込）のため、時間内の単独待機による10分ごとの追加課金はありません
+                                        {% else %}
                                         ※相席していない待機・休憩中も10分ごとに上記料金（飲み放題込）が発生します
+                                        {% endif %}
                                     </div>
                                 </td>
                                 <td style="min-width: 220px;">
@@ -481,8 +497,8 @@
                                     {% endfor %}
                                 </td>
                                 <td style="min-width: 210px;">
-                                    <div class="verdict-pill {{ st.verdict_cls }}">{{ st.verdict_badge }}</div>
-                                    <div style="font-size: 0.76rem; color: #cbd5e1; line-height: 1.5;">
+                                    <div class="verdict-pill {{ st.verdict_cls }}" data-verdict-badge>{{ st.verdict_badge }}</div>
+                                    <div style="font-size: 0.76rem; color: #cbd5e1; line-height: 1.5;" data-verdict-comment>
                                         {{ st.verdict_comment }}
                                     </div>
                                 </td>
@@ -499,12 +515,24 @@
         <section class="section-card" style="border-color: rgba(56, 189, 248, 0.3);">
             <h2 class="section-title">🔬 開催中イベントの「リアル集客＆コスパ効果」検証ボード</h2>
             <p class="section-lead">
-                各店舗が開催している<strong>「💴 男性割引・共通イベント」</strong>や<strong>「🎯 女性限定フェア」</strong>に対して、<strong>いま実際に女性が何人集まっているか（単独待機料金を払わず即相席できるか）</strong>をリアルタイム検証しています。
+                各店舗が開催している<strong>「💴 男性割引・共通イベント」</strong>や<strong>「🎯 女性限定フェア」</strong>に対して、<strong>いま実際に女性が何人集まっているか（単独待機時間を挟まず即相席できるか）</strong>をリアルタイム検証しています。
             </p>
 
             <div class="verify-grid">
                 {% for st in data.verified_event_stores %}
-                <div class="verify-card">
+                <div class="verify-card"
+                     data-verify-store="{{ st.name }}"
+                     data-wait-str="{{ st.wait_fee_str }}"
+                     data-wait-yen="{{ st.wait_10m_yen }}"
+                     data-est-wknd="{{ st.est_60m_weekend }}"
+                     data-has-men-perk="{{ '1' if st.has_live_men_perk else '0' }}"
+                     data-has-women-ev="{{ '1' if st.has_live_women_event else '0' }}"
+                     data-is-flat="{{ '1' if st.is_flat_rate else '0' }}"
+                     data-solo-rule="{{ st.solo_rule }}"
+                     data-slot-18-20="{{ st.slot_18_20 }}"
+                     data-slot-20-22="{{ st.slot_20_22 }}"
+                     data-slot-22-24="{{ st.slot_22_24 }}"
+                     data-slot-24-last="{{ st.slot_24_last }}">
                     <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
                         <div>
                             <span class="brand-pill brand-{{ st.brand_code }}">{{ st.brand_code }}</span>
@@ -513,8 +541,8 @@
                         <span style="font-size: 0.74rem; color: #94a3b8;">{{ st.area_label }}</span>
                     </div>
 
-                    <div style="background: rgba(255,255,255,0.03); border-radius: 10px; padding: 8px 10px; display: flex; justify-content: space-between; align-items: center;">
-                        <div>
+                    <div style="background: rgba(255,255,255,0.03); border-radius: 10px; padding: 8px 10px; display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap;">
+                        <div data-verify-crowd>
                             <span style="font-size: 0.74rem; color: #94a3b8;">現在の店内人数：</span>
                             {% if st.total > 0 %}
                             <strong style="color: #f472b6;">女性{{ st.women }}名</strong> / <strong style="color: #60a5fa;">男性{{ st.men }}名</strong>
@@ -540,7 +568,7 @@
                     </div>
 
                     <div style="font-size: 0.77rem; color: #cbd5e1; border-top: 1px solid rgba(255,255,255,0.07); padding-top: 7px;">
-                        <strong style="color: #fde68a;">検証結果：</strong>{{ st.verdict_comment }}
+                        <strong style="color: #fde68a;">検証結果：</strong><span data-verify-comment>{{ st.verdict_comment }}</span>
                     </div>
                 </div>
                 {% endfor %}
@@ -551,7 +579,7 @@
         <section class="section-card">
             <h2 class="section-title">📊 3大ブランド（オリエンタル・ag・JIS）料金システムの基本ルール比較</h2>
             <p class="section-lead">
-                オリエンタルラウンジ・ag・JISは、いずれも<strong>相席していない単独（待機）時に10分 220円〜330円（飲み放題込）</strong>がかかります。そのうえで「アプリ会員チャージ無料の有無」「時間帯・店舗別の相席単価」「1名入店ルール」が以下のように異なります。
+                オリエンタルラウンジ・ag・JISは、いずれも<strong>相席していない単独（待機）時に10分 220円または330円（飲み放題込）</strong>がかかります。そのうえで「アプリ会員チャージ無料の有無」「時間帯・店舗別の相席単価」「1名入店ルール」が以下のように異なります。
             </p>
 
             <div class="comp-table-wrap">
@@ -623,7 +651,7 @@
                             <td style="font-size: 0.77rem; color: #7dd3fc; font-weight: 700;">{{ st.slot_20_22 }}</td>
                             <td style="font-size: 0.77rem; color: #f9a8d4; font-weight: 700;">{{ st.slot_22_24 }}</td>
                             <td style="font-size: 0.77rem; color: #d8b4fe; font-weight: 700;">{{ st.slot_24_last }}</td>
-                            <td style="font-size: 0.74rem; color: {% if '不可' in st.solo_rule %}#fda4af{% else %}#cbd5e1{% endif %}; font-weight: 700;">
+                            <td style="font-size: 0.74rem; color: {% if '不可' in st.solo_rule or '2名以上' in st.solo_rule %}#fda4af{% else %}#cbd5e1{% endif %}; font-weight: 700;">
                                 👤 {{ st.solo_rule }}<br>
                                 <span style="font-size: 0.7rem; color: #94a3b8; font-weight: 500;">チャージ：{{ st.charge_str }}</span>
                             </td>
@@ -649,6 +677,259 @@
                 history.replaceState(null, '', '/price-comparison?area=' + encodeURIComponent(clusterId));
             }
         }
+
+        (function initLivePriceComparisonSync() {
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations()
+                    .then(regs => regs.forEach(r => r.update()))
+                    .catch(() => {});
+            }
+
+            function getJstSlotInfo() {
+                const nowJst = new Date(Date.now() + 9 * 3600 * 1000);
+                const h = nowJst.getUTCHours();
+                if (h >= 0 && h < 7) {
+                    return { key: 'slot24Last', slotLabel: '24:00〜Close（深夜帯）', shortLabel: '24時〜Close' };
+                } else if (h < 20) {
+                    return { key: 'slot1820', slotLabel: 'Open〜20:00（早割・1回転目）', shortLabel: 'Open〜20時' };
+                } else if (h < 22) {
+                    return { key: 'slot2022', slotLabel: '20:00〜22:00（1回転目コア帯）', shortLabel: '20時〜22時' };
+                }
+                return { key: 'slot2224', slotLabel: '22:00〜24:00（ピーク帯）', shortLabel: '22時〜24時' };
+            }
+
+            function computeStoreLiveVerdict(ds, women, men, slotInfo) {
+                const total = women + men;
+                const wpct = total > 0 ? Math.round((women / total) * 100) : 0;
+                const waitStr = ds.waitStr || '';
+                const waitYen = parseInt(ds.waitYen || '0', 10) || 0;
+                const estWknd = parseInt(ds.estWknd || '4620', 10) || 4620;
+                const hasMenPerk = ds.hasMenPerk === '1';
+                const hasWomenEv = ds.hasWomenEv === '1';
+                const isFlat = ds.isFlat === '1';
+                const soloRule = ds.soloRule || '';
+                const s1820 = ds.slot1820 || '';
+                const s2022 = ds.slot2022 || '';
+                const s2224 = ds.slot2224 || '';
+                const s24last = ds.slot24Last || '';
+
+                const slotRateMap = {
+                    slot1820: s1820,
+                    slot2022: s2022,
+                    slot2224: s2224,
+                    slot24Last: s24last
+                };
+                const activeRate = slotRateMap[slotInfo.key] || s2022;
+
+                const waitPenalty = (men > women && total > 0) ? (waitYen * 2) : 0;
+                const effWknd = estWknd + waitPenalty;
+                const priceAdv = Math.max(0, Math.floor((5800 - effWknd) / 30));
+                const evBonus = hasMenPerk ? 18 : (hasWomenEv ? 10 : 0);
+                let valueScore = priceAdv + evBonus;
+                if (total > 0) {
+                    let ratioScore = (wpct - 50) * 1.8 + Math.min(women, 45) * 1.1;
+                    if (women > men) ratioScore += 20;
+                    else if (men > women + 4) ratioScore -= 22;
+                    valueScore = Math.round((priceAdv + evBonus + ratioScore) * 10) / 10;
+                }
+
+                let badge = '';
+                let cls = 'verdict-neutral';
+                let comment = '';
+
+                if (total === 0) {
+                    badge = '🌙 営業時間外・4時間帯比較';
+                    cls = 'verdict-neutral';
+                    if (isFlat) {
+                        comment = `定額デイパス制（${waitStr}）。入店時間帯プランは①Open〜20時（${s1820}）→②20〜22時（${s2022}）→③④22時〜（${s2224}）。${soloRule}。`;
+                    } else {
+                        comment = `単独（待機）時は${waitStr}が発生。相席10分はOpen〜20時（${s1820}）→20〜22時（${s2022}）→22〜24時（${s2224}）→24時〜（${s24last}）。${soloRule}。`;
+                    }
+                } else if (women >= men && women >= 8 && estWknd <= 4620) {
+                    badge = '💎 低単価×女性優位で即相席';
+                    cls = 'verdict-hot';
+                    comment = `現在女性${women}名（女性比${wpct}%）と女性リード中！単独待機時間（${waitStr}）を挟まず即相席しやすく、いまの時間帯（${slotInfo.shortLabel}）の単価も「${activeRate}」と好コスパです。`;
+                } else if (women >= men && women >= 8) {
+                    badge = '🔥 女性優位・待ち時間なしで即相席';
+                    cls = 'verdict-hot';
+                    if (isFlat) {
+                        comment = `定額デイパス制（${activeRate}）で時間内の待機追加課金なし！さらに現在女性${women}名（女性比${wpct}%）と女性優位のため入店直後からスムーズに相席しやすい絶好機です。`;
+                    } else {
+                        comment = `相席前の単独時は${waitStr}がかかりますが、現在は女性${women}名（女性比${wpct}%）と女性優位のため待ち時間を抑えて即相席しやすい絶好機です！（現在枠：${slotInfo.shortLabel} ${activeRate}）`;
+                    }
+                } else if (men > women + 3) {
+                    badge = isFlat ? '⚠️ 男性先行・待機時間に注意' : '⚠️ 男性先行・単独待機料金に注意';
+                    cls = 'verdict-warn';
+                    if (isFlat) {
+                        comment = `現在男性が+${men - women}名先行中。定額パス制のため時間内の追加待機課金はありませんが、すぐ相席したい場合は下の近隣ライバル店で女性比率が高い店舗も比較してみてください。`;
+                    } else {
+                        comment = `現在男性が+${men - women}名先行中。相席までの単独待機時間も${waitStr}が加算されるため、下の近隣ライバル店で女性比率が高い店舗へ回る方が実質総額を抑えられます。`;
+                    }
+                } else if (hasWomenEv && women >= 15 && wpct >= 55) {
+                    badge = '✨ イベント集客効果◎（女性多数）';
+                    cls = 'verdict-hot';
+                    comment = `キャンペーン効果で実際に女性${women}名（女性比${wpct}%）が来店中。単独待機時間を抑えてスムーズに座りやすい狙い目です。`;
+                } else if (women > men) {
+                    badge = `⭕ 女性+${women - men}名リード・即相席圏内`;
+                    cls = 'verdict-good';
+                    comment = `現在女性${women}名／男性${men}名（女性比${wpct}%）。単独待機時間が発生しにくく、現在枠（${slotInfo.shortLabel}：${activeRate}）の料金どおりスマートに飲める好バランスです。`;
+                } else {
+                    badge = '💡 拮抗中・近隣店と単価比較推奨';
+                    cls = 'verdict-neutral';
+                    if (isFlat) {
+                        comment = `現在女性${women}名／男性${men}名。定額パス制（${waitStr}）で追加課金の心配はありませんが、即相席したい場合は同エリア内の女性リード店舗もチェックしてみてください。`;
+                    } else {
+                        comment = `現在女性${women}名／男性${men}名。単独待機時は${waitStr}がかかるため、即相席したい場合は同エリア内の女性リード店舗もチェックしてみてください。`;
+                    }
+                }
+
+                return { total, wpct, activeRate, valueScore, badge, cls, comment };
+            }
+
+            let isSyncing = false;
+            async function syncLiveCounts() {
+                if (isSyncing) return;
+                isSyncing = true;
+                try {
+                    const res = await fetch('/api/status?t=' + Date.now(), { cache: 'no-store' });
+                    if (!res.ok) return;
+                    const payload = await res.json();
+                    if (!payload || !Array.isArray(payload.ranking) || payload.ranking.length === 0) return;
+
+                    const liveMap = Object.create(null);
+                    payload.ranking.forEach(item => {
+                        if (item && item.name) liveMap[item.name] = item;
+                    });
+
+                    const slotInfo = getJstSlotInfo();
+                    const updatedEl = document.getElementById('live-updated-at');
+                    if (updatedEl && payload.timestamp) {
+                        updatedEl.textContent = payload.timestamp;
+                    }
+                    const slotLabelEl = document.getElementById('live-slot-label');
+                    if (slotLabelEl) {
+                        slotLabelEl.textContent = slotInfo.slotLabel;
+                    }
+
+                    document.querySelectorAll('.cluster-panel').forEach(panel => {
+                        const rows = Array.from(panel.querySelectorAll('tr[data-live-store]'));
+                        let bestCandidate = null;
+
+                        rows.forEach(row => {
+                            const sname = row.dataset.liveStore;
+                            const live = liveMap[sname] || {};
+                            const w = parseInt(live.women || 0, 10) || 0;
+                            const m = parseInt(live.men || 0, 10) || 0;
+                            const calc = computeStoreLiveVerdict(row.dataset, w, m, slotInfo);
+
+                            const crowdCell = row.querySelector('[data-crowd-cell]');
+                            if (crowdCell) {
+                                if (calc.total > 0) {
+                                    crowdCell.innerHTML =
+                                        '<div style="font-weight: 800; font-size: 0.9rem;">' +
+                                            '<span style="color: #f472b6;">女性 ' + w + '名</span> / <span style="color: #60a5fa;">男性 ' + m + '名</span>' +
+                                        '</div>' +
+                                        '<div style="font-size: 0.76rem; color: #fde68a; font-weight: 700; margin: 2px 0 5px;">女性比率 ' + calc.wpct + '%</div>' +
+                                        '<div class="mini-ratio-bar"><div class="mini-ratio-fill" style="width: ' + calc.wpct + '%;"></div></div>';
+                                } else {
+                                    crowdCell.innerHTML =
+                                        '<div style="font-size: 0.8rem; color: #94a3b8;">営業時間外（準備中）</div>' +
+                                        '<div style="font-size: 0.72rem; color: #64748b;">夕方オープン後に自動反映</div>';
+                                }
+                            }
+
+                            const sLabel = row.querySelector('[data-active-slot-label]');
+                            if (sLabel) sLabel.textContent = slotInfo.shortLabel;
+                            const sRate = row.querySelector('[data-active-slot-rate]');
+                            if (sRate) sRate.textContent = calc.activeRate;
+
+                            const vBadge = row.querySelector('[data-verdict-badge]');
+                            if (vBadge) {
+                                vBadge.className = 'verdict-pill ' + calc.cls;
+                                vBadge.textContent = calc.badge;
+                            }
+                            const vComment = row.querySelector('[data-verdict-comment]');
+                            if (vComment) vComment.textContent = calc.comment;
+
+                            const cand = {
+                                row,
+                                hasOpen: calc.total > 0 ? 1 : 0,
+                                score: calc.valueScore,
+                                women: w,
+                                seoName: row.dataset.seoName || sname,
+                                slug: row.dataset.slug || '',
+                                comment: calc.comment
+                            };
+                            if (
+                                !bestCandidate ||
+                                cand.hasOpen > bestCandidate.hasOpen ||
+                                (cand.hasOpen === bestCandidate.hasOpen && cand.score > bestCandidate.score) ||
+                                (cand.hasOpen === bestCandidate.hasOpen && cand.score === bestCandidate.score && cand.women > bestCandidate.women)
+                            ) {
+                                bestCandidate = cand;
+                            }
+                        });
+
+                        rows.forEach(row => {
+                            const isBest = Boolean(bestCandidate && bestCandidate.row === row);
+                            row.classList.toggle('best-row', isBest);
+                            const crown = row.querySelector('[data-crown-tag]');
+                            if (crown) crown.style.display = isBest ? 'inline-block' : 'none';
+                        });
+
+                        if (bestCandidate) {
+                            const banner = panel.querySelector('[data-best-banner]');
+                            if (banner) {
+                                const bTitle = banner.querySelector('[data-best-title]');
+                                const bSub = banner.querySelector('[data-best-sub]');
+                                const bLink = banner.querySelector('[data-best-link]');
+                                const cLabel = panel.dataset.clusterLabel || '';
+                                if (bTitle) bTitle.textContent = '👑 いま' + cLabel + 'で一番コスパが良い狙い目：' + bestCandidate.seoName;
+                                if (bSub) bSub.textContent = bestCandidate.comment;
+                                if (bLink && bestCandidate.slug) bLink.href = '/store/' + bestCandidate.slug;
+                            }
+                        }
+                    });
+
+                    document.querySelectorAll('.verify-card[data-verify-store]').forEach(card => {
+                        const sname = card.dataset.verifyStore;
+                        const live = liveMap[sname] || {};
+                        const w = parseInt(live.women || 0, 10) || 0;
+                        const m = parseInt(live.men || 0, 10) || 0;
+                        const calc = computeStoreLiveVerdict(card.dataset, w, m, slotInfo);
+
+                        const crowdBox = card.querySelector('[data-verify-crowd]');
+                        if (crowdBox) {
+                            if (calc.total > 0) {
+                                crowdBox.innerHTML =
+                                    '<span style="font-size: 0.74rem; color: #94a3b8;">現在の店内人数：</span>' +
+                                    '<strong style="color: #f472b6;">女性' + w + '名</strong> / <strong style="color: #60a5fa;">男性' + m + '名</strong> ' +
+                                    '<span style="font-size: 0.76rem; color: #fde68a; font-weight: 700;">（女性比' + calc.wpct + '%）</span>';
+                            } else {
+                                crowdBox.innerHTML =
+                                    '<span style="font-size: 0.74rem; color: #94a3b8;">現在の店内人数：</span>' +
+                                    '<span style="font-size: 0.8rem; color: #94a3b8;">営業時間外（準備中）</span>';
+                            }
+                        }
+                        const vComment = card.querySelector('[data-verify-comment]');
+                        if (vComment) vComment.textContent = calc.comment;
+                    });
+                } catch (e) {
+                    // Ignore transient network errors
+                } finally {
+                    isSyncing = false;
+                }
+            }
+
+            syncLiveCounts();
+            setInterval(syncLiveCounts, 60000);
+            window.addEventListener('pageshow', (ev) => {
+                if (ev.persisted) syncLiveCounts();
+            });
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible') syncLiveCounts();
+            });
+        })();
     </script>
 </body>
 

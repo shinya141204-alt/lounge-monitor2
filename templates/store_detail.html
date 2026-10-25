@@ -296,7 +296,7 @@
                 <span class="portal-brand-title">相席ナビ</span>
                 <span class="portal-brand-sub">全国ラウンジの今わかる人数ランキング＆攻略メディア</span>
             </a>
-            <span style="font-size: 0.78rem; color: #94a3b8;">最終更新: {{ last_updated }}</span>
+            <span style="font-size: 0.78rem; color: #94a3b8;">最終更新: <span id="store-live-updated">{{ last_updated }}</span> <span style="color:#4ade80; font-weight:700;">● 自動更新中</span></span>
         </div>
 
         {% set nav_active = 'ranking' %}
@@ -311,11 +311,11 @@
             <span>{{ store.seo_name }}</span>
         </nav>
 
-        <article class="live-hero-card">
+        <article class="live-hero-card" data-hero-store="{{ store.name }}" data-hero-seo="{{ store.seo_name }}">
             <div class="badge-row">
                 <span class="area-badge">📍 {{ store.area_label }}</span>
                 <span class="area-badge">🏢 {{ store.brand_label }}</span>
-                <span class="status-badge">{{ store.crowd_comment }}</span>
+                <span class="status-badge" id="hero-status-badge">{{ store.crowd_comment }}</span>
             </div>
 
             <h1>{{ store.seo_name }}のリアルタイム人数・男女比・混雑状況</h1>
@@ -323,23 +323,23 @@
             <div class="big-counts-grid">
                 <div class="count-box">
                     <div class="count-label">👩 現在の女性人数</div>
-                    <div class="count-num w-color">{% if store.total > 0 %}{{ store.women }}<span style="font-size:0.95rem;">名</span>{% if (store.women_diff or 0) > 0 %}<div style="font-size:0.76rem; color:#f472b6; margin-top:2px;">直近15分 ↗ +{{ store.women_diff }}名</div>{% endif %}{% else %}--<span style="font-size:0.85rem; color:#94a3b8;">（準備中）</span>{% endif %}</div>
+                    <div class="count-num w-color" id="hero-women-num">{% if store.total > 0 %}{{ store.women }}<span style="font-size:0.95rem;">名</span>{% if (store.women_diff or 0) > 0 %}<div style="font-size:0.76rem; color:#f472b6; margin-top:2px;">直近15分 ↗ +{{ store.women_diff }}名</div>{% endif %}{% else %}--<span style="font-size:0.85rem; color:#94a3b8;">（準備中）</span>{% endif %}</div>
                 </div>
                 <div class="count-box">
                     <div class="count-label">👨 現在の男性人数</div>
-                    <div class="count-num m-color">{% if store.total > 0 %}{{ store.men }}<span style="font-size:0.95rem;">名</span>{% if (store.men_diff or 0) > 0 %}<div style="font-size:0.76rem; color:#60a5fa; margin-top:2px;">直近15分 ↗ +{{ store.men_diff }}名</div>{% endif %}{% else %}--<span style="font-size:0.85rem; color:#94a3b8;">（準備中）</span>{% endif %}</div>
+                    <div class="count-num m-color" id="hero-men-num">{% if store.total > 0 %}{{ store.men }}<span style="font-size:0.95rem;">名</span>{% if (store.men_diff or 0) > 0 %}<div style="font-size:0.76rem; color:#60a5fa; margin-top:2px;">直近15分 ↗ +{{ store.men_diff }}名</div>{% endif %}{% else %}--<span style="font-size:0.85rem; color:#94a3b8;">（準備中）</span>{% endif %}</div>
                 </div>
                 <div class="count-box">
                     <div class="count-label">⚖️ 女性比率</div>
-                    <div class="count-num r-color">{% if store.total > 0 %}{{ store.wpct }}<span style="font-size:0.95rem;">%</span>{% else %}--<span style="font-size:0.95rem;">%</span>{% endif %}</div>
+                    <div class="count-num r-color" id="hero-wpct-num">{% if store.total > 0 %}{{ store.wpct }}<span style="font-size:0.95rem;">%</span>{% else %}--<span style="font-size:0.95rem;">%</span>{% endif %}</div>
                 </div>
             </div>
 
             <div class="ratio-bar-lg">
-                <div class="ratio-fill-lg" style="width: {{ store.wpct if store.total > 0 else 50 }}%;"></div>
+                <div class="ratio-fill-lg" id="hero-ratio-fill" style="width: {{ store.wpct if store.total > 0 else 50 }}%;"></div>
             </div>
 
-            <p style="margin: 0; font-size: 0.9rem; color: #cbd5e1;">
+            <p id="hero-live-summary" style="margin: 0; font-size: 0.9rem; color: #cbd5e1;">
                 {% if store.total > 0 %}
                 {{ last_updated }}時点の<strong>{{ store.seo_name }}</strong>の店内状況は、<strong>女性{{ store.women }}名・男性{{ store.men }}名（合計{{ store.total }}名）</strong>です。
                 {% if store.women > store.men %}
@@ -450,21 +450,32 @@
                     </thead>
                     <tbody>
                         {% for st in nearby_comparison.stores %}
-                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.06); {% if st.is_current_store %}background: rgba(236, 72, 153, 0.08);{% elif st.is_best_in_cluster %}background: rgba(245, 158, 11, 0.06);{% endif %}">
+                        <tr data-nearby-comp-row="{{ st.name }}"
+                            data-is-current="{{ '1' if st.is_current_store else '0' }}"
+                            data-wait-str="{{ st.wait_fee_str }}"
+                            data-wait-yen="{{ st.wait_10m_yen }}"
+                            data-est-wknd="{{ st.est_60m_weekend }}"
+                            data-has-men-perk="{{ '1' if st.has_live_men_perk else '0' }}"
+                            data-has-women-ev="{{ '1' if st.has_live_women_event else '0' }}"
+                            data-is-flat="{{ '1' if st.is_flat_rate else '0' }}"
+                            data-solo-rule="{{ st.solo_rule }}"
+                            data-slot-18-20="{{ st.slot_18_20 }}"
+                            data-slot-20-22="{{ st.slot_20_22 }}"
+                            data-slot-22-24="{{ st.slot_22_24 }}"
+                            data-slot-24-last="{{ st.slot_24_last }}"
+                            style="border-bottom: 1px solid rgba(255,255,255,0.06); {% if st.is_current_store %}background: rgba(236, 72, 153, 0.08);{% elif st.is_best_in_cluster %}background: rgba(245, 158, 11, 0.06);{% endif %}">
                             <td style="padding: 11px 12px;">
                                 <div style="font-weight: 800;">
                                     <a href="/store/{{ st.slug }}" style="color: #fff; text-decoration: none;">{{ st.seo_name }}</a>
                                     {% if st.is_current_store %}
                                     <span style="font-size: 0.68rem; padding: 1px 6px; border-radius: 99px; background: rgba(236,72,153,0.25); color: #f9a8d4; margin-left: 4px;">表示中</span>
                                     {% endif %}
-                                    {% if st.is_best_in_cluster %}
-                                    <span style="font-size: 0.68rem; padding: 1px 6px; border-radius: 99px; background: rgba(245,158,11,0.25); color: #fde68a; margin-left: 4px;">👑コスパ推奨</span>
-                                    {% endif %}
+                                    <span data-nearby-crown style="font-size: 0.68rem; padding: 1px 6px; border-radius: 99px; background: rgba(245,158,11,0.25); color: #fde68a; margin-left: 4px; {% if not st.is_best_in_cluster %}display:none;{% endif %}">👑コスパ推奨</span>
                                 </div>
                                 <div style="font-size: 0.73rem; color: #e2e8f0; margin-top: 2px; font-weight: 700;">👤 {{ st.solo_rule }}</div>
                                 <div style="font-size: 0.72rem; color: #94a3b8; margin-top: 1px;">{{ st.age_range }} ｜ {{ st.vibe_short }}</div>
                             </td>
-                            <td style="padding: 11px 12px;">
+                            <td style="padding: 11px 12px;" data-nearby-crowd-cell>
                                 {% if st.total > 0 %}
                                 <div style="font-weight: 800;"><span class="w-color">女性{{ st.women }}名</span> / <span class="m-color">男性{{ st.men }}名</span></div>
                                 <div style="font-size: 0.74rem; color: #e5c878; font-weight: 700;">女性比率 {{ st.wpct }}%</div>
@@ -474,7 +485,7 @@
                             </td>
                             <td style="padding: 11px 12px;">
                                 <div style="font-size: 0.74rem; font-weight: 800; color: #fde68a; margin-bottom: 3px;">
-                                    🟢 現在枠（{{ st.active_slot_label }}）：{{ st.active_slot_rate }}
+                                    🟢 現在枠（<span data-nearby-slot-label>{{ st.active_slot_label }}</span>）：<span data-nearby-slot-rate>{{ st.active_slot_rate }}</span>
                                 </div>
                                 <div style="font-size: 0.72rem; color: #e2e8f0; line-height: 1.45;">
                                     ①〜20時：{{ st.slot_18_20 }}<br>
@@ -493,8 +504,8 @@
                                 {% endfor %}
                             </td>
                             <td style="padding: 11px 12px; font-size: 0.76rem; color: #e2e8f0;">
-                                <div style="font-weight: 800; color: #fde68a; margin-bottom: 2px;">{{ st.verdict_badge }}</div>
-                                <div>{{ st.verdict_comment }}</div>
+                                <div style="font-weight: 800; color: #fde68a; margin-bottom: 2px;" data-nearby-verdict-badge>{{ st.verdict_badge }}</div>
+                                <div data-nearby-verdict-comment>{{ st.verdict_comment }}</div>
                             </td>
                         </tr>
                         {% endfor %}
@@ -512,14 +523,14 @@
             </p>
             <div class="nearby-grid">
                 {% for ns in nearby_stores %}
-                <a href="/store/{{ ns.slug }}" class="nearby-item">
+                <a href="/store/{{ ns.slug }}" class="nearby-item" data-nearby-card="{{ ns.name }}">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
                         <strong style="color:#fff; font-size:0.94rem;">{{ ns.seo_name }}</strong>
-                        <span style="font-size:0.75rem; color:#e5c878; font-weight:700;">女性比 {{ ns.wpct }}%</span>
+                        <span data-nearby-wpct style="font-size:0.75rem; color:#e5c878; font-weight:700;">女性比 {{ ns.wpct }}%</span>
                     </div>
                     <div style="display:flex; justify-content:space-between; font-size:0.86rem; font-weight:700;">
-                        <span class="w-color">👩 女性 {{ ns.women }}名</span>
-                        <span class="m-color">👨 男性 {{ ns.men }}名</span>
+                        <span class="w-color" data-nearby-women>👩 女性 {{ ns.women }}名</span>
+                        <span class="m-color" data-nearby-men>👨 男性 {{ ns.men }}名</span>
                     </div>
                 </a>
                 {% endfor %}
@@ -549,6 +560,248 @@
 
         {% include '_portal_footer.html' %}
     </div>
+
+    <script>
+        (function initStoreDetailLiveSync() {
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations()
+                    .then(regs => regs.forEach(r => r.update()))
+                    .catch(() => {});
+            }
+
+            function getJstSlotInfo() {
+                const nowJst = new Date(Date.now() + 9 * 3600 * 1000);
+                const h = nowJst.getUTCHours();
+                if (h >= 0 && h < 7) {
+                    return { key: 'slot24Last', shortLabel: '24時〜Close' };
+                } else if (h < 20) {
+                    return { key: 'slot1820', shortLabel: 'Open〜20時' };
+                } else if (h < 22) {
+                    return { key: 'slot2022', shortLabel: '20時〜22時' };
+                }
+                return { key: 'slot2224', shortLabel: '22時〜24時' };
+            }
+
+            function computeNearbyVerdict(ds, women, men, slotInfo) {
+                const total = women + men;
+                const wpct = total > 0 ? Math.round((women / total) * 100) : 0;
+                const waitStr = ds.waitStr || '';
+                const waitYen = parseInt(ds.waitYen || '0', 10) || 0;
+                const estWknd = parseInt(ds.estWknd || '4620', 10) || 4620;
+                const hasMenPerk = ds.hasMenPerk === '1';
+                const hasWomenEv = ds.hasWomenEv === '1';
+                const isFlat = ds.isFlat === '1';
+                const soloRule = ds.soloRule || '';
+                const s1820 = ds.slot1820 || '';
+                const s2022 = ds.slot2022 || '';
+                const s2224 = ds.slot2224 || '';
+                const s24last = ds.slot24Last || '';
+
+                const activeRate = ({
+                    slot1820: s1820,
+                    slot2022: s2022,
+                    slot2224: s2224,
+                    slot24Last: s24last
+                })[slotInfo.key] || s2022;
+
+                const waitPenalty = (men > women && total > 0) ? (waitYen * 2) : 0;
+                const effWknd = estWknd + waitPenalty;
+                const priceAdv = Math.max(0, Math.floor((5800 - effWknd) / 30));
+                const evBonus = hasMenPerk ? 18 : (hasWomenEv ? 10 : 0);
+                let valueScore = priceAdv + evBonus;
+                if (total > 0) {
+                    let ratioScore = (wpct - 50) * 1.8 + Math.min(women, 45) * 1.1;
+                    if (women > men) ratioScore += 20;
+                    else if (men > women + 4) ratioScore -= 22;
+                    valueScore = Math.round((priceAdv + evBonus + ratioScore) * 10) / 10;
+                }
+
+                let badge = '';
+                let comment = '';
+                if (total === 0) {
+                    badge = '🌙 営業時間外・4時間帯比較';
+                    comment = isFlat
+                        ? `定額デイパス制（${waitStr}）。入店時間帯プランは①Open〜20時（${s1820}）→②20〜22時（${s2022}）→③④22時〜（${s2224}）。${soloRule}。`
+                        : `単独（待機）時は${waitStr}が発生。相席10分はOpen〜20時（${s1820}）→20〜22時（${s2022}）→22〜24時（${s2224}）→24時〜（${s24last}）。${soloRule}。`;
+                } else if (women >= men && women >= 8 && estWknd <= 4620) {
+                    badge = '💎 低単価×女性優位で即相席';
+                    comment = `現在女性${women}名（女性比${wpct}%）と女性リード中！単独待機時間（${waitStr}）を挟まず即相席しやすく、いまの時間帯（${slotInfo.shortLabel}）の単価も「${activeRate}」と好コスパです。`;
+                } else if (women >= men && women >= 8) {
+                    badge = '🔥 女性優位・待ち時間なしで即相席';
+                    comment = isFlat
+                        ? `定額デイパス制（${activeRate}）で時間内の待機追加課金なし！さらに現在女性${women}名（女性比${wpct}%）と女性優位のため入店直後からスムーズに相席しやすい絶好機です。`
+                        : `相席前の単独時は${waitStr}がかかりますが、現在は女性${women}名（女性比${wpct}%）と女性優位のため待ち時間を抑えて即相席しやすい絶好機です！（現在枠：${slotInfo.shortLabel} ${activeRate}）`;
+                } else if (men > women + 3) {
+                    badge = isFlat ? '⚠️ 男性先行・待機時間に注意' : '⚠️ 男性先行・単独待機料金に注意';
+                    comment = isFlat
+                        ? `現在男性が+${men - women}名先行中。定額パス制のため時間内の追加待機課金はありませんが、すぐ相席したい場合は下の近隣ライバル店で女性比率が高い店舗も比較してみてください。`
+                        : `現在男性が+${men - women}名先行中。相席までの単独待機時間も${waitStr}が加算されるため、下の近隣ライバル店で女性比率が高い店舗へ回る方が実質総額を抑えられます。`;
+                } else if (hasWomenEv && women >= 15 && wpct >= 55) {
+                    badge = '✨ イベント集客効果◎（女性多数）';
+                    comment = `キャンペーン効果で実際に女性${women}名（女性比${wpct}%）が来店中。単独待機時間を抑えてスムーズに座りやすい狙い目です。`;
+                } else if (women > men) {
+                    badge = `⭕ 女性+${women - men}名リード・即相席圏内`;
+                    comment = `現在女性${women}名／男性${men}名（女性比${wpct}%）。単独待機時間が発生しにくく、現在枠（${slotInfo.shortLabel}：${activeRate}）の料金どおりスマートに飲める好バランスです。`;
+                } else {
+                    badge = '💡 拮抗中・近隣店と単価比較推奨';
+                    comment = isFlat
+                        ? `現在女性${women}名／男性${men}名。定額パス制（${waitStr}）で追加課金の心配はありませんが、即相席したい場合は同エリア内の女性リード店舗もチェックしてみてください。`
+                        : `現在女性${women}名／男性${men}名。単独待機時は${waitStr}がかかるため、即相席したい場合は同エリア内の女性リード店舗もチェックしてみてください。`;
+                }
+
+                return { total, wpct, activeRate, valueScore, badge, comment };
+            }
+
+            let isSyncing = false;
+            async function syncStoreDetail() {
+                if (isSyncing) return;
+                isSyncing = true;
+                try {
+                    const res = await fetch('/api/status?t=' + Date.now(), { cache: 'no-store' });
+                    if (!res.ok) return;
+                    const payload = await res.json();
+                    if (!payload || !Array.isArray(payload.ranking) || payload.ranking.length === 0) return;
+
+                    const liveMap = Object.create(null);
+                    payload.ranking.forEach(item => {
+                        if (item && item.name) liveMap[item.name] = item;
+                    });
+
+                    const updatedEl = document.getElementById('store-live-updated');
+                    if (updatedEl && payload.timestamp) updatedEl.textContent = payload.timestamp;
+
+                    const heroCard = document.querySelector('[data-hero-store]');
+                    if (heroCard) {
+                        const sname = heroCard.dataset.heroStore;
+                        const seoName = heroCard.dataset.heroSeo || sname;
+                        const live = liveMap[sname] || {};
+                        const w = parseInt(live.women || 0, 10) || 0;
+                        const m = parseInt(live.men || 0, 10) || 0;
+                        const wDiff = parseInt(live.women_diff || 0, 10) || 0;
+                        const mDiff = parseInt(live.men_diff || 0, 10) || 0;
+                        const tot = w + m;
+                        const wpct = tot > 0 ? Math.round((w / tot) * 100) : 0;
+
+                        const badgeEl = document.getElementById('hero-status-badge');
+                        if (badgeEl) {
+                            if (tot === 0) badgeEl.textContent = '営業時間外・オープン準備中';
+                            else if (w > m) badgeEl.textContent = '女性優位・即相席チャンス🔥（女性+' + (w - m) + '名）';
+                            else if (w === m) badgeEl.textContent = '男女比1:1 バランス良好✨';
+                            else badgeEl.textContent = '男性多め・近隣店舗との比較推奨💡';
+                        }
+
+                        const wEl = document.getElementById('hero-women-num');
+                        if (wEl) {
+                            wEl.innerHTML = tot > 0
+                                ? w + '<span style="font-size:0.95rem;">名</span>' + (wDiff > 0 ? '<div style="font-size:0.76rem; color:#f472b6; margin-top:2px;">直近15分 ↗ +' + wDiff + '名</div>' : '')
+                                : '--<span style="font-size:0.85rem; color:#94a3b8;">（準備中）</span>';
+                        }
+                        const mEl = document.getElementById('hero-men-num');
+                        if (mEl) {
+                            mEl.innerHTML = tot > 0
+                                ? m + '<span style="font-size:0.95rem;">名</span>' + (mDiff > 0 ? '<div style="font-size:0.76rem; color:#60a5fa; margin-top:2px;">直近15分 ↗ +' + mDiff + '名</div>' : '')
+                                : '--<span style="font-size:0.85rem; color:#94a3b8;">（準備中）</span>';
+                        }
+                        const rEl = document.getElementById('hero-wpct-num');
+                        if (rEl) {
+                            rEl.innerHTML = (tot > 0 ? wpct : '--') + '<span style="font-size:0.95rem;">%</span>';
+                        }
+                        const fillEl = document.getElementById('hero-ratio-fill');
+                        if (fillEl) fillEl.style.width = (tot > 0 ? wpct : 50) + '%';
+
+                        const sumEl = document.getElementById('hero-live-summary');
+                        if (sumEl && tot > 0) {
+                            const ts = payload.timestamp || '現在';
+                            let tail = '現在、男女同数でバランス良く盛り上がっている状態です。';
+                            if (w > m) tail = '現在、女性が男性より' + (w - m) + '名多く入店しており、男性は待ち時間が少なくスムーズに相席しやすい狙い目状態です。';
+                            else if (m > w) tail = '現在、男性が女性より' + (m - w) + '名多い時間帯です。女性は待ち時間なしで即相席しやすく、男性は下記「近隣ライバル店」の男女比も比較して選ぶのがおすすめです。';
+                            sumEl.innerHTML = ts + '時点の<strong>' + seoName + '</strong>の店内状況は、<strong>女性' + w + '名・男性' + m + '名（合計' + tot + '名）</strong>です。 ' + tail;
+                        }
+                    }
+
+                    const slotInfo = getJstSlotInfo();
+                    const compRows = Array.from(document.querySelectorAll('tr[data-nearby-comp-row]'));
+                    let bestRow = null;
+                    compRows.forEach(row => {
+                        const sname = row.dataset.nearbyCompRow;
+                        const live = liveMap[sname] || {};
+                        const w = parseInt(live.women || 0, 10) || 0;
+                        const m = parseInt(live.men || 0, 10) || 0;
+                        const calc = computeNearbyVerdict(row.dataset, w, m, slotInfo);
+
+                        const crowdCell = row.querySelector('[data-nearby-crowd-cell]');
+                        if (crowdCell) {
+                            if (calc.total > 0) {
+                                crowdCell.innerHTML =
+                                    '<div style="font-weight: 800;"><span class="w-color">女性' + w + '名</span> / <span class="m-color">男性' + m + '名</span></div>' +
+                                    '<div style="font-size: 0.74rem; color: #e5c878; font-weight: 700;">女性比率 ' + calc.wpct + '%</div>';
+                            } else {
+                                crowdCell.innerHTML = '<span style="font-size: 0.76rem; color: #94a3b8;">営業時間外（準備中）</span>';
+                            }
+                        }
+
+                        const sLbl = row.querySelector('[data-nearby-slot-label]');
+                        if (sLbl) sLbl.textContent = slotInfo.shortLabel;
+                        const sRate = row.querySelector('[data-nearby-slot-rate]');
+                        if (sRate) sRate.textContent = calc.activeRate;
+
+                        const vBadge = row.querySelector('[data-nearby-verdict-badge]');
+                        if (vBadge) vBadge.textContent = calc.badge;
+                        const vComment = row.querySelector('[data-nearby-verdict-comment]');
+                        if (vComment) vComment.textContent = calc.comment;
+
+                        const cand = { row, hasOpen: calc.total > 0 ? 1 : 0, score: calc.valueScore, women: w };
+                        if (
+                            !bestRow ||
+                            cand.hasOpen > bestRow.hasOpen ||
+                            (cand.hasOpen === bestRow.hasOpen && cand.score > bestRow.score) ||
+                            (cand.hasOpen === bestRow.hasOpen && cand.score === bestRow.score && cand.women > bestRow.women)
+                        ) {
+                            bestRow = cand;
+                        }
+                    });
+
+                    compRows.forEach(row => {
+                        const isBest = Boolean(bestRow && bestRow.row === row);
+                        const isCurrent = row.dataset.isCurrent === '1';
+                        const crown = row.querySelector('[data-nearby-crown]');
+                        if (crown) crown.style.display = isBest ? 'inline-block' : 'none';
+                        if (isCurrent) row.style.background = 'rgba(236, 72, 153, 0.08)';
+                        else if (isBest) row.style.background = 'rgba(245, 158, 11, 0.06)';
+                        else row.style.background = '';
+                    });
+
+                    document.querySelectorAll('[data-nearby-card]').forEach(card => {
+                        const sname = card.dataset.nearbyCard;
+                        const live = liveMap[sname] || {};
+                        const w = parseInt(live.women || 0, 10) || 0;
+                        const m = parseInt(live.men || 0, 10) || 0;
+                        const tot = w + m;
+                        const wpct = tot > 0 ? Math.round((w / tot) * 100) : 0;
+                        const wEl = card.querySelector('[data-nearby-women]');
+                        const mEl = card.querySelector('[data-nearby-men]');
+                        const pEl = card.querySelector('[data-nearby-wpct]');
+                        if (wEl) wEl.textContent = '👩 女性 ' + w + '名';
+                        if (mEl) mEl.textContent = '👨 男性 ' + m + '名';
+                        if (pEl) pEl.textContent = '女性比 ' + wpct + '%';
+                    });
+                } catch (e) {
+                    // Ignore transient network errors
+                } finally {
+                    isSyncing = false;
+                }
+            }
+
+            syncStoreDetail();
+            setInterval(syncStoreDetail, 60000);
+            window.addEventListener('pageshow', (ev) => {
+                if (ev.persisted) syncStoreDetail();
+            });
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible') syncStoreDetail();
+            });
+        })();
+    </script>
 </body>
 
 </html>

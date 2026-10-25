@@ -707,6 +707,7 @@ class GrowthFeaturesTests(unittest.TestCase):
         try:
             resp = self.client.get('/price-comparison?area=shinjuku')
             self.assertEqual(resp.status_code, 200)
+            self.assertIn('no-store', resp.headers.get('Cache-Control', ''))
             html = resp.data.decode('utf-8')
             self.assertIn('店舗別料金（待機・相席単価・1名入店可否）＆開催中イベント', html)
             self.assertIn('オリエンタルラウンジ 新宿', html)
@@ -716,24 +717,51 @@ class GrowthFeaturesTests(unittest.TestCase):
             self.assertIn('平日990円 / 金土1,500円', html)  # OLG 恵比寿 24:00~Close rate
             self.assertIn('2名以上必須（男性1名入店不可）', html)
             self.assertIn('全国全51店舗の「4時間帯別相席料金・単独（待機）料金・1名入店可否」完全一覧表', html)
+            self.assertIn('initLivePriceComparisonSync', html)
+            self.assertNotIn('0円〜220円', html)
+            self.assertNotIn('ロス0円', html)
             self.assertNotIn('/link/', html)
             ld_blocks = re.findall(r'<script type="application/ld\+json">\s*(.*?)\s*</script>', html, re.S)
             self.assertGreaterEqual(len(ld_blocks), 2)
             for block in ld_blocks:
                 json.loads(block)
 
-            # Verify all domestic stores in store_master have explicit entries in STORE_PRICE_TABLE with all 4 time slots
+            # Verify all 51 domestic stores in store_master match STORE_PRICE_TABLE 1-to-1 with accurate solo/wait & 4-slot rules
             import price_comparison
-            for sname, sinfo in store_master.load().items():
-                if sinfo.get('region') == 'Korea':
-                    continue
-                self.assertIn(sname, price_comparison.STORE_PRICE_TABLE, f"Missing {sname} in STORE_PRICE_TABLE")
+            domestic_master = {k for k, v in store_master.load().items() if v.get('region') != 'Korea'}
+            self.assertEqual(set(price_comparison.STORE_PRICE_TABLE.keys()), domestic_master)
+            self.assertEqual(len(domestic_master), 51)
+            for sname in domestic_master:
                 prof = price_comparison.get_store_price_profile(sname)
-                self.assertGreater(prof['wait_10m_yen'], 0, f"{sname} wait_10m_yen must be > 0")
+                self.assertNotIn('0円〜', prof['wait_fee_str'], f"{sname} has ambiguous 0円〜 wait_fee_str")
+                self.assertNotIn('ロス0円', prof['verdict_badge'])
+                if prof.get('is_flat_rate'):
+                    self.assertEqual(sname, 'YATAKOI UMEDA')
+                    self.assertFalse(prof['has_wait_fee'])
+                else:
+                    self.assertGreater(prof['wait_10m_yen'], 0, f"{sname} wait_10m_yen must be > 0")
+                    self.assertTrue(prof['has_wait_fee'])
                 for slot_key in ('slot_18_20', 'slot_20_22', 'slot_22_24', 'slot_24_last'):
                     self.assertTrue(prof.get(slot_key), f"{sname} missing {slot_key}")
                 self.assertTrue(prof['solo_rule'])
                 self.assertTrue(prof['active_slot_rate'])
+
+            # Spot-check verified official store-specific pricing & solo entry rules
+            self.assertEqual(price_comparison.get_store_price_profile('ALFA HIROSHIMA')['wait_fee_str'], '220円 / 10分（税込・飲み放題込）')
+            self.assertEqual(price_comparison.get_store_price_profile('CLOVERS HIROSHIMA')['wait_fee_str'], '220円 / 10分（税込・飲み放題込）')
+            self.assertEqual(price_comparison.get_store_price_profile('XIX OKAYAMA')['wait_fee_str'], '220円 / 10分（税込・飲み放題込）')
+            self.assertEqual(price_comparison.get_store_price_profile('OLG ag金沢')['wait_10m_yen'], 330)
+            self.assertEqual(price_comparison.get_store_price_profile('OLG ag仙台')['wait_10m_yen'], 220)
+            self.assertIn('平日のみ1名OK', price_comparison.get_store_price_profile('OLG ag仙台')['solo_rule'])
+            self.assertIn('2名以上必須', price_comparison.get_store_price_profile('OLG ag渋谷')['solo_rule'])
+            self.assertIn('2名以上必須', price_comparison.get_store_price_profile('OLG ag上野')['solo_rule'])
+            self.assertIn('2名以上必須', price_comparison.get_store_price_profile('OLG ag名古屋')['solo_rule'])
+            self.assertIn('2名以上必須', price_comparison.get_store_price_profile('OLG 大阪駅前')['solo_rule'])
+            self.assertEqual(price_comparison.get_store_price_profile('JIS SAPPORO')['slot_20_22'], '平日660円 / 金土770円')
+            self.assertEqual(price_comparison.get_store_price_profile('JIS MATSUYAMA')['slot_22_24'], '平日550円 / 金土660円')
+            self.assertEqual(price_comparison.get_store_price_profile('OLG 名古屋 栄')['slot_22_24'], '平日770円 / 金土990円')
+            self.assertEqual(price_comparison.get_store_price_profile('OLG 心斎橋')['slot_20_22'], '平日660円 / 金土770円')
+            self.assertEqual(price_comparison.get_store_price_profile('OLG 宮崎')['slot_18_20'], '平日550円 / 金土660円')
 
             # Verify time-slot detection across all 4 brackets (19h, 21h, 23h, 01h JST)
             jst = datetime.timezone(datetime.timedelta(hours=9))
@@ -748,13 +776,40 @@ class GrowthFeaturesTests(unittest.TestCase):
                 sr = self.client.get(f'/store/{sslug}')
                 self.assertEqual(sr.status_code, 200, f"/store/{sslug} failed")
 
-            # Verify store detail page also embeds the nearby price & event comparison table
+            # Verify store detail page also embeds the nearby price & event comparison table + live sync JS + no-store header
             s_resp = self.client.get('/store/oriental-lounge-shinjuku')
             self.assertEqual(s_resp.status_code, 200)
+            self.assertIn('no-store', s_resp.headers.get('Cache-Control', ''))
             s_html = s_resp.data.decode('utf-8')
             self.assertIn('近隣ライバル店の料金・開催中イベント・現在人数比較', s_html)
             self.assertIn('JIS（ジス）新宿', s_html)
             self.assertIn('JIS（ジス）西新宿', s_html)
+            self.assertIn('initStoreDetailLiveSync', s_html)
+
+            sw_resp = self.client.get('/sw.js')
+            try:
+                self.assertEqual(sw_resp.status_code, 200)
+                self.assertIn('no-store', sw_resp.headers.get('Cache-Control', ''))
+                sw_txt = sw_resp.data.decode('utf-8')
+                self.assertIn("aiseki-navi-v38", sw_txt)
+            finally:
+                sw_resp.close()
+
+            # Check inline JS syntax in /price-comparison and /store/oriental-lounge-shinjuku via node --check or macOS jsc -s
+            node_bin = shutil.which('node')
+            jsc_bin = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
+            js_checker = ([node_bin, '--check'] if node_bin else ([jsc_bin, '-s'] if os.path.exists(jsc_bin) else None))
+            if js_checker:
+                import subprocess
+                for label, page_html in (('price_comparison', html), ('store_detail', s_html)):
+                    inline_scripts = re.findall(r'<script(?![^>]*type="application/ld\+json")(?![^>]*\bsrc=)[^>]*>(.*?)</script>', page_html, re.S)
+                    self.assertGreaterEqual(len(inline_scripts), 1, label)
+                    for idx_s, js_code in enumerate(inline_scripts):
+                        tmp_js = os.path.join(_TMP, f'inline_{label}_{idx_s}.js')
+                        with open(tmp_js, 'w', encoding='utf-8') as f:
+                            f.write('function __syntax_check__() {\n' + js_code + '\n}\n')
+                        proc = subprocess.run(js_checker + [tmp_js], capture_output=True, text=True)
+                        self.assertEqual(proc.returncode, 0, f"JS syntax error in {label}#{idx_s}: {proc.stderr}{proc.stdout}")
 
             # Verify Hiroshima & Okayama independent regional brands (ALFA, CLOVERS, XIX) events & comparison
             h_resp = self.client.get('/price-comparison?area=hiroshima-okayama')

@@ -19,8 +19,11 @@
             if (window.__portalNavFastInit) return;
             window.__portalNavFastInit = true;
             var prefetched = {};
+            function isLiveHtmlHref(href) {
+                return href === '/' || href.indexOf('/price-comparison') === 0 || href.indexOf('/areas') === 0 || href.indexOf('/area/') === 0 || href.indexOf('/store/') === 0;
+            }
             function prefetchUrl(href) {
-                if (!href || prefetched[href] || href.indexOf('/') !== 0) return;
+                if (!href || prefetched[href] || href.indexOf('/') !== 0 || isLiveHtmlHref(href)) return;
                 prefetched[href] = true;
                 try {
                     var link = document.createElement('link');
@@ -48,7 +51,7 @@
             });
             if ('requestIdleCallback' in window) {
                 requestIdleCallback(function() {
-                    ['/price-comparison', '/guide/brand-comparison', '/areas', '/columns', '/grooming'].forEach(prefetchUrl);
+                    ['/guide/brand-comparison', '/columns', '/grooming'].forEach(prefetchUrl);
                 }, { timeout: 2500 });
             }
         })();
