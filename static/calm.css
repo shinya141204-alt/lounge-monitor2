@@ -748,4 +748,52 @@ body.theme-light .momentum-legend-pill {
     color: var(--calm-light-accent) !important;
 }
 
+/* ==========================================================================
+   ナビゲーションタブ・ピルボタンの即時タップ反応＆ローディング状態（全ページ共通）
+   ========================================================================== */
+.portal-nav-link,
+.portal-nav-item,
+.area-pill,
+.menu-grid-item {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.1s ease, opacity 0.1s ease, border-color 0.12s ease !important;
+}
+
+.portal-nav-link:active,
+.portal-nav-item:active,
+.area-pill:active,
+.menu-grid-item:active {
+    transform: scale(0.96) !important;
+    opacity: 0.75 !important;
+}
+
+.portal-nav-link.nav-loading,
+.portal-nav-item.nav-loading,
+.area-pill.nav-loading,
+.menu-grid-item.nav-loading {
+    opacity: 0.72 !important;
+    transform: scale(0.97) !important;
+    border-color: rgba(200, 164, 110, 0.75) !important;
+    pointer-events: none;
+}
+
+.portal-nav-link.nav-loading::after,
+.portal-nav-item.nav-loading::after,
+.area-pill.nav-loading::after {
+    content: "";
+    display: inline-block;
+    width: 11px;
+    height: 11px;
+    margin-left: 5px;
+    border: 2px solid rgba(140, 107, 63, 0.3);
+    border-top-color: currentColor;
+    border-radius: 50%;
+    animation: calm-nav-spin 0.55s linear infinite !important;
+}
+
+@keyframes calm-nav-spin {
+    to { transform: rotate(360deg); }
+}
+
 

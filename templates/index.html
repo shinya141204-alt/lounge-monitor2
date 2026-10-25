@@ -102,7 +102,7 @@
          crossorigin="anonymous"></script>
     <script src="/static/affiliate_config.js?v=8"></script>
     {% endif %}
-    <link rel="stylesheet" href="/static/calm.css?v=5">
+    <link rel="stylesheet" href="/static/calm.css?v=6">
 </head>
 
 <body class="{% if is_staff %}staff-mode{% endif %}">
@@ -1652,12 +1652,12 @@
         window.INITIAL_STATUS_DATA = {{ initial_status | tojson }};
         {% endif %}
     </script>
-    <script src="/static/app.js?v=20261025_1" defer></script>
+    <script src="/static/app.js?v=20261026_1" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js?v=27')
+                navigator.serviceWorker.register('/sw.js?v=28')
                     .then(reg => {
                         reg.update();
                     })

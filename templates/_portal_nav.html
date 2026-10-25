@@ -14,3 +14,42 @@
             <a href="/price-comparison" class="portal-nav-item{% if nav_active == 'price_comparison' %} active{% endif %}">料金・イベント比較</a>
             <a href="/grooming" class="portal-nav-item{% if nav_active == 'grooming' %} active{% endif %}">身だしなみ・準備</a>
         </nav>
+        <script>
+        (function() {
+            if (window.__portalNavFastInit) return;
+            window.__portalNavFastInit = true;
+            var prefetched = {};
+            function prefetchUrl(href) {
+                if (!href || prefetched[href] || href.indexOf('/') !== 0) return;
+                prefetched[href] = true;
+                try {
+                    var link = document.createElement('link');
+                    link.rel = 'prefetch';
+                    link.href = href;
+                    link.as = 'document';
+                    document.head.appendChild(link);
+                } catch (e) {}
+            }
+            document.addEventListener('pointerdown', function(e) {
+                var a = e.target && e.target.closest ? e.target.closest('.portal-nav-item, .portal-nav-link, .area-pill') : null;
+                if (a) prefetchUrl(a.getAttribute('href'));
+            }, { passive: true });
+            document.addEventListener('click', function(e) {
+                if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+                var a = e.target && e.target.closest ? e.target.closest('.portal-nav-item, .portal-nav-link, .menu-grid-item[href], .area-pill') : null;
+                if (!a) return;
+                var href = a.getAttribute('href');
+                if (!href || href.indexOf('#') === 0 || a.target === '_blank') return;
+                if (href === window.location.pathname + window.location.search) return;
+                a.classList.add('nav-loading');
+            });
+            window.addEventListener('pageshow', function() {
+                document.querySelectorAll('.nav-loading').forEach(function(el) { el.classList.remove('nav-loading'); });
+            });
+            if ('requestIdleCallback' in window) {
+                requestIdleCallback(function() {
+                    ['/price-comparison', '/guide/brand-comparison', '/areas', '/columns', '/grooming'].forEach(prefetchUrl);
+                }, { timeout: 2500 });
+            }
+        })();
+        </script>

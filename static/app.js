@@ -3160,3 +3160,55 @@
 
         // Initialize PWA banner check shortly after page load
         setTimeout(checkPwaBannerVisibility, 2000);
+
+        // ==========================================
+        // Instant Navigation Preload & Tap Feedback
+        // ==========================================
+        (function initFastPortalNavigation() {
+            if (window.__portalNavFastInit) return;
+            window.__portalNavFastInit = true;
+            const prefetched = Object.create(null);
+
+            function prefetchPage(href) {
+                if (!href || prefetched[href] || href.indexOf('/') !== 0 || href.indexOf('/api/') === 0 || href.indexOf('/staff') === 0) return;
+                prefetched[href] = true;
+                try {
+                    const link = document.createElement('link');
+                    link.rel = 'prefetch';
+                    link.href = href;
+                    link.as = 'document';
+                    document.head.appendChild(link);
+                } catch (e) {}
+            }
+
+            // Preload as soon as finger touches a nav pill (~80-120ms before click fires)
+            document.addEventListener('pointerdown', (e) => {
+                const a = e.target && e.target.closest ? e.target.closest('.portal-nav-link, .portal-nav-item, .menu-grid-item[href], .column-highlight-banner[href]') : null;
+                if (a) prefetchPage(a.getAttribute('href'));
+            }, { passive: true });
+
+            // Show instant loading spinner on the tapped tab so navigation feels zero-latency
+            document.addEventListener('click', (e) => {
+                if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+                const a = e.target && e.target.closest ? e.target.closest('.portal-nav-link, .portal-nav-item, .menu-grid-item[href]') : null;
+                if (!a) return;
+                const href = a.getAttribute('href');
+                if (!href || href.indexOf('#') === 0 || a.target === '_blank') return;
+                if (href === window.location.pathname + window.location.search) return;
+                a.classList.add('nav-loading');
+            });
+
+            window.addEventListener('pageshow', () => {
+                document.querySelectorAll('.nav-loading').forEach(el => el.classList.remove('nav-loading'));
+            });
+
+            // Warm up top navigation tabs during idle time after initial render
+            const warmTabs = () => {
+                ['/price-comparison', '/guide/brand-comparison', '/areas', '/columns', '/grooming', '/stats'].forEach(prefetchPage);
+            };
+            if ('requestIdleCallback' in window) {
+                window.requestIdleCallback(warmTabs, { timeout: 2200 });
+            } else {
+                setTimeout(warmTabs, 1400);
+            }
+        })();

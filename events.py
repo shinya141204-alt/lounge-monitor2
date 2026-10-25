@@ -950,9 +950,14 @@ def fetch_all_events(force_refresh: bool = False, allow_blocking: bool = True):
     return _crawl_and_save_events()
 
 
-def get_events_for_store(store_name: str, store_only: bool = False, allow_blocking: bool = True):
+def get_events_for_store(
+    store_name: str,
+    store_only: bool = False,
+    allow_blocking: bool = True,
+    preloaded_events: list = None,
+):
     """Filter events relevant to a specific store (prioritizes store-specific banners and campaigns)."""
-    all_events = fetch_all_events(allow_blocking=allow_blocking)
+    all_events = preloaded_events if preloaded_events is not None else fetch_all_events(allow_blocking=allow_blocking)
     matched = []
     global_matched = []
 

@@ -31,6 +31,39 @@
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.1);
     white-space: nowrap;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.12s ease, opacity 0.12s ease, border-color 0.15s ease;
+}
+
+.portal-nav-item:active {
+    transform: scale(0.96);
+    opacity: 0.78;
+}
+
+.portal-nav-item.nav-loading,
+.portal-nav-link.nav-loading {
+    opacity: 0.72 !important;
+    transform: scale(0.97);
+    border-color: rgba(200, 164, 110, 0.75) !important;
+    pointer-events: none;
+}
+
+.portal-nav-item.nav-loading::after,
+.portal-nav-link.nav-loading::after {
+    content: "";
+    display: inline-block;
+    width: 11px;
+    height: 11px;
+    margin-left: 5px;
+    border: 2px solid rgba(200, 164, 110, 0.35);
+    border-top-color: #c8a46e;
+    border-radius: 50%;
+    animation: portal-nav-spin 0.55s linear infinite;
+}
+
+@keyframes portal-nav-spin {
+    to { transform: rotate(360deg); }
 }
 
 .portal-nav-item.active {

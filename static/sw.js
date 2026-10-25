@@ -1,9 +1,19 @@
-const CACHE_NAME = 'aiseki-navi-v36';
+const CACHE_NAME = 'aiseki-navi-v37';
 const SHELL_KEY = '/';
+const FAST_NAV_PATHS = new Set([
+  '/price-comparison',
+  '/guide/brand-comparison',
+  '/areas',
+  '/columns',
+  '/grooming',
+  '/stats',
+  '/guide'
+]);
 const ASSETS_TO_CACHE = [
   '/static/style.css?v=20261023_13',
-  '/static/calm.css?v=5',
-  '/static/app.js?v=20261025_1',
+  '/static/calm.css?v=6',
+  '/static/portal.css?v=5',
+  '/static/app.js?v=20261026_1',
   '/static/affiliate_config.js?v=8',
   '/static/manifest.json?v=2',
   '/static/icon-192.png?v=2',
@@ -92,15 +102,15 @@ self.addEventListener('fetch', (event) => {
 
   // Navigation requests (HTML page visits from bookmarks / home screen)
   if (event.request.mode === 'navigate') {
-    // Top page (PWA start_url "/?v=pwa"): App-shell "stale-while-revalidate".
-    // Show the cached page instantly, update it in the background.
-    // app.js then fetches /api/status immediately when the embedded data is old.
-    if (reqUrl.pathname === '/') {
-      const networkPromise = fetchAndCache(event, SHELL_KEY);
+    // Top page ("/") and primary global navigation tabs: Stale-While-Revalidate
+    // Serve cached HTML immediately (<10ms) if available, and update cache in the background.
+    const cacheKey = reqUrl.pathname === '/' ? SHELL_KEY : (reqUrl.pathname + reqUrl.search);
+    if (reqUrl.pathname === '/' || FAST_NAV_PATHS.has(reqUrl.pathname)) {
+      const networkPromise = fetchAndCache(event, cacheKey);
       event.waitUntil(networkPromise.catch(() => {}));
       event.respondWith(
         (async () => {
-          const cached = await caches.match(SHELL_KEY);
+          const cached = await caches.match(cacheKey) || await caches.match(reqUrl.pathname);
           if (cached) return cached;
           return networkPromise;
         })()
@@ -108,13 +118,13 @@ self.addEventListener('fetch', (event) => {
       return;
     }
 
-    // Other pages: network-first, but fall back to cache if the network is slow (>4s) or offline
+    // Other pages: network-first, but fall back to cache quickly (1.5s) or offline
     const networkPromise = fetchAndCache(event, reqUrl.pathname);
     event.waitUntil(networkPromise.catch(() => {}));
     event.respondWith(
       (async () => {
         try {
-          return await Promise.race([networkPromise, timeout(4000)]);
+          return await Promise.race([networkPromise, timeout(1500)]);
         } catch (e) {
           const cached = await caches.match(reqUrl.pathname);
           if (cached) return cached;
