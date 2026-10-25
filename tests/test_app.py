@@ -792,7 +792,7 @@ class GrowthFeaturesTests(unittest.TestCase):
                 self.assertEqual(sw_resp.status_code, 200)
                 self.assertIn('no-store', sw_resp.headers.get('Cache-Control', ''))
                 sw_txt = sw_resp.data.decode('utf-8')
-                self.assertIn("aiseki-navi-v41", sw_txt)
+                self.assertIn("aiseki-navi-v42", sw_txt)
             finally:
                 sw_resp.close()
 
@@ -1226,6 +1226,22 @@ class GrowthFeaturesTests(unittest.TestCase):
         self.assertEqual(sns_json['status'], 'success')
         self.assertIn('/price-comparison', sns_json['text'])
         self.assertIn('/guide/price-event-comparison', sns_json['text'])
+
+        # 6. Top page & portal nav order + cleanup check
+        idx_html = self.client.get('/').data.decode('utf-8')
+        self.assertNotIn('公式URL変更', idx_html)
+        self.assertNotIn('3大ブランドの違い・平日の穴場時間をデータでまとめました', idx_html)
+        self.assertNotIn('毎晩の「入りやすい穴場店舗」をX・Threadsで更新中', idx_html)
+        self.assertIn('公式SNSも更新中', idx_html)
+
+        nav_start = idx_html.find('<nav class="portal-global-nav"')
+        nav_end = idx_html.find('</nav>', nav_start)
+        nav_block = idx_html[nav_start:nav_end]
+        p_rank = nav_block.find('リアルタイム順位')
+        p_price = nav_block.find('料金・イベント比較')
+        p_col = nav_block.find('コラム・記事一覧')
+        self.assertTrue(0 <= p_rank < p_price < p_col, "Top nav order must be リアルタイム順位 -> 料金・イベント比較 -> コラム・記事一覧")
+
 
 
 if __name__ == '__main__':

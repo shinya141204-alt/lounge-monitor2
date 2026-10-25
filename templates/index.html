@@ -863,10 +863,10 @@
                 <div class="menu-section">
                     <div class="menu-section-title">ポータル・ガイド</div>
                     <div class="menu-grid">
-                        <a href="/areas" class="menu-grid-item" style="text-decoration: none; color: inherit;">
+                        <a href="/price-comparison" class="menu-grid-item" style="text-decoration: none; color: inherit;">
                             <div class="menu-grid-text">
-                                <strong>エリアから探す</strong>
-                                <span>新宿・渋谷・梅田・栄・天神ほか</span>
+                                <strong>料金・イベント比較</strong>
+                                <span>近隣ライバル店の通常料金＆男性割引検証</span>
                             </div>
                         </a>
                         <a href="/columns" class="menu-grid-item" style="text-decoration: none; color: inherit;">
@@ -875,10 +875,10 @@
                                 <span>3大ブランド比較・平日穴場データ</span>
                             </div>
                         </a>
-                        <a href="/price-comparison" class="menu-grid-item" style="text-decoration: none; color: inherit;">
+                        <a href="/areas" class="menu-grid-item" style="text-decoration: none; color: inherit;">
                             <div class="menu-grid-text">
-                                <strong>料金・イベント比較</strong>
-                                <span>近隣ライバル店の通常料金＆男性割引検証</span>
+                                <strong>エリアから探す</strong>
+                                <span>新宿・渋谷・梅田・栄・天神ほか</span>
                             </div>
                         </a>
                         <a href="/grooming" class="menu-grid-item" style="text-decoration: none; color: inherit;">
@@ -935,17 +935,6 @@
                 <button id="pwa-install-btn" class="pwa-install-action-btn" onclick="triggerPwaInstall()">追加する</button>
                 <button class="pwa-banner-close-btn" onclick="dismissPwaBanner()" aria-label="閉じる" title="閉じる">✕</button>
             </div>
-        </aside>
-
-        <!-- Domain Change Announcement Banner -->
-        <aside id="domain-notice-banner" class="domain-notice-banner hidden" role="region" aria-label="ドメイン変更のお知らせ">
-            <div class="domain-notice-content">
-                <span class="domain-notice-badge">公式URL変更</span>
-                <span class="domain-notice-text">
-                    相席ナビの公式URLが<strong>「<a href="https://aiseki-navi.com">aiseki-navi.com</a>」</strong>になりました。ブックマークやホーム画面の再登録をお願いします。
-                </span>
-            </div>
-            <button class="domain-notice-close" onclick="dismissDomainNotice()" aria-label="お知らせを閉じる" title="閉じる">✕</button>
         </aside>
         {% endif %}
 
@@ -1044,12 +1033,12 @@
             <!-- Portal Global Navigation Bar -->
             <nav class="portal-global-nav" aria-label="サイト内メニュー">
                 <a href="/" class="portal-nav-link active">リアルタイム順位</a>
-                <a href="/areas" class="portal-nav-link">エリアから探す</a>
+                <a href="/price-comparison" class="portal-nav-link">料金・イベント比較</a>
                 <a href="/columns" class="portal-nav-link">コラム・記事一覧</a>
+                <a href="/areas" class="portal-nav-link">エリアから探す</a>
                 <a href="/stats" class="portal-nav-link">統計データ白書</a>
-                        <a href="/guide/brand-comparison" class="portal-nav-link">3大ブランド比較</a>
-                        <a href="/price-comparison" class="portal-nav-link">料金・イベント比較</a>
-                        <a href="/grooming" class="portal-nav-link">身だしなみ・準備</a>
+                <a href="/guide/brand-comparison" class="portal-nav-link">3大ブランド比較</a>
+                <a href="/grooming" class="portal-nav-link">身だしなみ・準備</a>
             </nav>
             {% endif %}
         </header>
@@ -1156,50 +1145,15 @@
                 {% endif %}
 
                 {% if not is_staff %}
-                <!-- Editorial Column Highlight Banner Strip (Opens Articles Selector Modal) -->
-                <div class="column-banner-wrapper">
-                    <button type="button" class="column-highlight-banner" onclick="openArticlesModal()" title="コラム・記事を選ぶ">
-                        <div class="col-banner-left">
-                            <span class="col-banner-badge">コラム</span>
-                            <span class="col-banner-text">3大ブランドの違い・平日の穴場時間をデータでまとめました</span>
-                        </div>
-                        <span class="col-banner-arrow">記事を読む ▾</span>
-                    </button>
-                </div>
-
-                <!-- Official SNS Live Broadcast Hero Card -->
-                <div class="official-sns-hero-card">
-                    <div class="sns-hero-badge-row">
-                        <span class="sns-live-beacon">
-                            <span class="beacon-dot"></span>
-                            <span>毎晩 20:00・22:00 更新</span>
-                        </span>
-                        <span class="sns-hero-tag">混雑まとめ</span>
-                    </div>
-                    <div class="sns-hero-main">
-                        <div class="sns-hero-text">
-                            <h3 class="sns-hero-title">毎晩の「入りやすい穴場店舗」をX・Threadsで更新中</h3>
-                            <p class="sns-hero-desc">20時・22時などの節目に、その日女性が集まっている店舗やイベント情報をまとめて投稿しています。出かける前のチェックにどうぞ。</p>
-                        </div>
-                        <div class="sns-hero-actions">
-                            <a href="https://x.com/aiseki_navi" target="_blank" rel="noopener noreferrer" class="sns-hero-btn x-main-btn" onclick="window.open(this.href, '_blank'); return true;">
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-                                <span>公式Xを見る</span>
-                            </a>
-                            <a href="https://www.threads.net/@aiseki_navi1" target="_blank" rel="noopener noreferrer" class="sns-hero-btn threads-main-btn" onclick="window.open(this.href, '_blank'); return true;">
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12.001 2c-5.522 0-9.999 4.477-9.999 10 0 5.522 4.477 10 9.999 10 5.523 0 10-4.478 10-10 0-5.523-4.477-10-10-10zm0 18.001c-4.418 0-8-3.582-8-8 0-4.419 3.582-8.001 8-8.001 4.419 0 8.001 3.582 8.001 8.001 0 4.418-3.582 8-8.001 8zm3.567-9.757c-.126-.454-.378-.857-.73-1.166-.35-.308-.79-.473-1.272-.477h-.061c-.534.004-1.02.203-1.405.575-.386.372-.619.878-.656 1.425.321-.06.647-.09.976-.09.61 0 1.206.104 1.77.309.117-.184.21-.383.278-.576zm-1.849 5.864c-.732 0-1.424-.23-1.999-.666-.576-.436-.97-1.052-1.109-1.735-.07-.342-.089-.691-.057-1.038-.344.086-.677.209-.994.368-.696.349-1.144.978-1.198 1.681-.055.704.288 1.391.895 1.79.522.343 1.157.498 1.838.448.828-.061 1.705-.443 2.624-1.135-.297.185-.634.287-.998.287z"/></svg>
-                                <span>Threads</span>
-                            </a>
-                            <button type="button" class="sns-hero-btn how-to-quick-btn" onclick="openHowToModal()">
-                                <span>使い方ガイド</span>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="sns-hero-sublinks">
-                        <span class="sublinks-label">その他の公式：</span>
-                        <a href="https://note.com/aiseki_navi" target="_blank" rel="noopener noreferrer" class="sublink-pill" onclick="window.open(this.href, '_blank'); return true;">noteコラム</a>
-                        <span style="color: #334155;">•</span>
-                        <a href="https://www.instagram.com/aiseki_navi1" target="_blank" rel="noopener noreferrer" class="sublink-pill" onclick="window.open(this.href, '_blank'); return true;">Instagram</a>
+                <!-- Official SNS Compact Bar -->
+                <div class="official-sns-hero-card official-sns-compact">
+                    <span class="sns-compact-label">公式SNSも更新中</span>
+                    <div class="sns-compact-links">
+                        <a href="https://x.com/aiseki_navi" target="_blank" rel="noopener noreferrer" class="sns-compact-pill" onclick="window.open(this.href, '_blank'); return true;">𝕏 公式X</a>
+                        <a href="https://www.threads.net/@aiseki_navi1" target="_blank" rel="noopener noreferrer" class="sns-compact-pill" onclick="window.open(this.href, '_blank'); return true;">Threads</a>
+                        <a href="https://www.instagram.com/aiseki_navi1" target="_blank" rel="noopener noreferrer" class="sns-compact-pill" onclick="window.open(this.href, '_blank'); return true;">Instagram</a>
+                        <a href="https://note.com/aiseki_navi" target="_blank" rel="noopener noreferrer" class="sns-compact-pill" onclick="window.open(this.href, '_blank'); return true;">note</a>
+                        <button type="button" class="sns-compact-pill" onclick="openHowToModal()">使い方</button>
                     </div>
                 </div>
                 {% endif %}

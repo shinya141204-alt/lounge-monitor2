@@ -1105,5 +1105,68 @@ body.theme-light .official-ext-link {
     color: var(--calm-light-accent) !important;
 }
 
+/* ---------- 12. 公式SNSコンパクトバー ---------- */
+.official-sns-compact {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    flex-wrap: wrap !important;
+    gap: 8px 12px !important;
+    padding: 9px 14px !important;
+    margin: 8px 0 12px 0 !important;
+    border-radius: 10px !important;
+}
+
+.sns-compact-label {
+    font-size: 0.76rem;
+    font-weight: 700;
+    color: var(--calm-sub);
+    white-space: nowrap;
+}
+
+body.theme-light .sns-compact-label {
+    color: var(--calm-light-sub);
+}
+
+.sns-compact-links {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.sns-compact-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.74rem;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    background: var(--calm-surface-2);
+    border: 1px solid var(--calm-border-strong);
+    color: var(--calm-text);
+    transition: border-color 0.15s ease, color 0.15s ease;
+    white-space: nowrap;
+}
+
+.sns-compact-pill:hover {
+    border-color: rgba(200, 164, 110, 0.55);
+    color: var(--calm-accent-soft);
+}
+
+body.theme-light .sns-compact-pill {
+    background: var(--calm-light-surface-2);
+    border-color: var(--calm-light-border-strong);
+    color: var(--calm-light-text);
+}
+
+body.theme-light .sns-compact-pill:hover {
+    border-color: var(--calm-light-accent);
+    color: var(--calm-light-accent);
+}
+
+
 
 

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aiseki-navi-v41';
+const CACHE_NAME = 'aiseki-navi-v42';
 const SHELL_KEY = '/';
 const FAST_NAV_PATHS = new Set([
   '/guide/brand-comparison',
