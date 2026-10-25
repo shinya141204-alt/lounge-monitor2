@@ -95,14 +95,14 @@
     <!-- Non-render-blocking web font (avoids waiting on Google Fonts at PWA cold launch) -->
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet"></noscript>
-    <link rel="stylesheet" href="/static/style.css?v=20261023_13">
+    <link rel="stylesheet" href="/static/style.css?v=20261026_1">
     {% if not is_staff %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
          crossorigin="anonymous"></script>
     <script src="/static/affiliate_config.js?v=9"></script>
     {% endif %}
-    <link rel="stylesheet" href="/static/calm.css?v=9">
+    <link rel="stylesheet" href="/static/calm.css?v=10">
 </head>
 
 <body class="{% if is_staff %}staff-mode{% endif %}">
@@ -918,9 +918,6 @@
     </div>
     <!-- End Menu Modal -->
 
-    <div class="background-glob"></div>
-    <div class="background-glob glob-2"></div>
-
     <div class="container">
         {% if not is_staff %}
         <!-- PWA Smart Install Banner -->
@@ -1658,7 +1655,7 @@
                 window.location.reload();
             });
             window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/sw.js?v=33', { updateViaCache: 'none' })
+                navigator.serviceWorker.register('/sw.js?v=34', { updateViaCache: 'none' })
                     .then(function(reg) {
                         reg.update();
                         document.addEventListener('visibilitychange', function() {

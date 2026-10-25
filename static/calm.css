@@ -178,7 +178,6 @@ body:not(.theme-light) .guide-tab-pill,
 body:not(.theme-light) .portal-nav-link,
 body:not(.theme-light) .portal-nav-item,
 body:not(.theme-light) .share-pill-btn,
-body:not(.theme-light) .sns-hero-btn,
 body:not(.theme-light) .staff-action-pill,
 body:not(.theme-light) .vote-pill-btn,
 body:not(.theme-light) .menu-grid-item,
@@ -245,14 +244,10 @@ body:not(.theme-light) .pwa-step-num {
 }
 
 /* ---------- 5. バッジ・タグ：塗りつぶし → 線のみ ---------- */
-body:not(.theme-light) .col-banner-badge,
-body:not(.theme-light) .domain-notice-badge,
 body:not(.theme-light) .staff-header-badge,
 body:not(.theme-light) .guide-app-badge,
 body:not(.theme-light) .article-card-badge,
 body:not(.theme-light) .portal-article-badge,
-body:not(.theme-light) .sns-hero-tag,
-body:not(.theme-light) .sns-live-beacon,
 body:not(.theme-light) .page-hero-badge,
 body:not(.theme-light) .cat-badge,
 body:not(.theme-light) .article-cat-tag,
@@ -267,10 +262,8 @@ body:not(.theme-light) .modal-event-badge {
 }
 
 /* ---------- 6. カード・パネル：色付きグラデ背景 → 無地 ---------- */
-body:not(.theme-light) .column-highlight-banner,
 body:not(.theme-light) .official-sns-hero-card,
 body:not(.theme-light) .share-banner-box,
-body:not(.theme-light) .domain-notice-banner,
 body:not(.theme-light) .pwa-install-banner,
 body:not(.theme-light) .how-to-sns-box,
 body:not(.theme-light) .modal-pr-link,
@@ -300,8 +293,7 @@ body:not(.theme-light) .lead-box {
 
 body:not(.theme-light) .article-card:hover,
 body:not(.theme-light) .portal-article-card:hover,
-body:not(.theme-light) .article-card-item:hover,
-body:not(.theme-light) .column-highlight-banner:hover {
+body:not(.theme-light) .article-card-item:hover {
     transform: none !important;
     border-color: var(--calm-border-strong) !important;
     box-shadow: none !important;
@@ -610,14 +602,10 @@ body.theme-light .card-inline-cta:hover {
 }
 
 /* バッジ・タグ類（ライトモード） */
-body.theme-light .col-banner-badge,
-body.theme-light .domain-notice-badge,
 body.theme-light .staff-header-badge,
 body.theme-light .guide-app-badge,
 body.theme-light .article-card-badge,
 body.theme-light .portal-article-badge,
-body.theme-light .sns-hero-tag,
-body.theme-light .sns-live-beacon,
 body.theme-light .article-tag,
 body.theme-light .modal-event-badge,
 body.theme-light .pr-badge-box,
@@ -637,10 +625,8 @@ body.theme-light .pwa-step-num {
 }
 
 /* カード・バナー・セクション（パステルピンク背景を除去） */
-body.theme-light .column-highlight-banner,
 body.theme-light .official-sns-hero-card,
 body.theme-light .share-banner-box,
-body.theme-light .domain-notice-banner,
 body.theme-light .pwa-install-banner,
 body.theme-light .how-to-sns-box,
 body.theme-light .modal-pr-link,
