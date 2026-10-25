@@ -602,6 +602,7 @@
                 </p>
                 <div class="sns-preset-tabs">
                     <button class="sns-tab-btn active" data-preset="events" onclick="selectSnsPreset('events')">特典＆イベント開催店</button>
+                    <button class="sns-tab-btn" data-preset="price" onclick="selectSnsPreset('price')">料金・イベント比較ボード告知</button>
                     <button class="sns-tab-btn" data-preset="timely" onclick="selectSnsPreset('timely')">時間帯別おすすめ</button>
                     <button class="sns-tab-btn" data-preset="all" onclick="selectSnsPreset('all')">全国TOP3</button>
                     <button class="sns-tab-btn" data-preset="kanto" onclick="selectSnsPreset('kanto')">関東TOP3</button>
@@ -1661,7 +1662,7 @@
         window.INITIAL_STATUS_DATA = {{ initial_status | tojson }};
         {% endif %}
     </script>
-    <script src="/static/app.js?v=20261026_4" defer></script>
+    <script src="/static/app.js?v=20261026_5" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {

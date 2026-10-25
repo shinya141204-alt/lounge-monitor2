@@ -279,6 +279,7 @@ TIPS_LIST = [
 
 
 _FALLBACK_COLUMNS = [
+    ("全51店舗「料金・イベント・現在人数」比較ボード活用ガイド", "/guide/price-event-comparison"),
     ("最初の10分で差がつく会話＆清潔感ガイド", "/guide/first-10-minutes"),
     ("相席ラウンジ前の身だしなみ・清潔感チェック", "/grooming"),
     ("1人（ソロ）vs 2人ペアの立ち回り比較", "/guide/solo-vs-pair"),

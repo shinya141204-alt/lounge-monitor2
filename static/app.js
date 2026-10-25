@@ -307,9 +307,21 @@
             'JIS MATSUYAMA': ['松山', 'matsuyama']
         };
 
+        const OLG_17_STORES_JS = [
+            'OLG ag仙台', 'OLG 宇都宮', 'OLG 高崎', 'OLG 大宮', 'OLG 柏', 'OLG 錦糸町',
+            'OLG ag上野', 'OLG 上野', 'OLG 新宿', 'OLG 渋谷本店', 'OLG ag渋谷',
+            'OLG 恵比寿', 'OLG 町田', 'OLG 横浜', 'OLG 難波', 'OLG 福岡', 'OLG 小倉'
+        ];
+
         function _storeMatchesArea(storeName, areaKeyword) {
-            const cleanStore = String(storeName).toUpperCase().replace(/\s+/g, '');
-            const cleanKw = String(areaKeyword).toUpperCase().replace(/\s+/g, '');
+            const cleanStore = String(storeName || '').toUpperCase().replace(/\s+/g, '');
+            const cleanKw = String(areaKeyword || '').toUpperCase().replace(/\s+/g, '');
+            if (!cleanStore || !cleanKw) return false;
+
+            // 0. Canonical full store name exact match (e.g. 'OLG 新宿', 'OLG ag渋谷', 'OLG 名古屋 栄')
+            if (cleanKw.startsWith('OLG') || cleanKw.startsWith('JIS') || cleanKw.startsWith('ALFA') || cleanKw.startsWith('CLOVERS') || cleanKw.startsWith('XIX') || cleanKw.startsWith('YATAKOI')) {
+                return cleanStore === cleanKw;
+            }
 
             // 1. Direct exact matching for JIS shops
             const cleanJis = String(storeName).toUpperCase().trim();
@@ -318,28 +330,48 @@
                 return JIS_STORE_TO_AREAS[cleanJis].includes(ak);
             }
 
-            // 2. ag brand separation (prevent OLG vs ag collision in same cities)
+            // 2. Strict ag vs OLG brand separation across ALL cities
             const isAgStore = cleanStore.includes('AG');
             const isAgKw = cleanKw.includes('AG');
-            const multiAgCities = ['名古屋', '上野', '渋谷', '梅田', '広島', '沖縄'];
-            for (const city of multiAgCities) {
-                if (cleanStore.includes(city) && cleanKw.includes(city)) {
-                    if (isAgStore !== isAgKw) return false;
-                }
+            if (isAgStore !== isAgKw) return false;
+
+            // 3. Shibuya Honten vs Shibuya Ekimae separation
+            if (cleanStore.includes('渋谷駅前')) {
+                if (cleanKw.includes('渋谷本店') || cleanKw === '渋谷' || cleanKw === 'SHIBUYA') return false;
+            }
+            if (cleanStore.includes('渋谷本店')) {
+                if (cleanKw.includes('渋谷駅前')) return false;
             }
 
-            // 3. Nagoya Sakae vs Nishiki separation
+            // 4. Nagoya Sakae vs Nishiki separation
             if (cleanStore.includes('栄')) {
-                if (cleanKw.includes('錦') || cleanKw.includes('NISHIKI')) return false;
+                if (cleanKw.includes('錦') || cleanKw.includes('NISHIKI') || cleanKw === '名古屋' || cleanKw === 'NAGOYA') return false;
             }
             if (cleanStore.includes('錦')) {
-                if (cleanKw.includes('栄') || cleanKw.includes('SAKAE')) return false;
+                if (cleanKw.includes('栄') || cleanKw.includes('SAKAE') || cleanKw === '名古屋' || cleanKw === 'NAGOYA') return false;
             }
 
-            // 4. Direct substring match
+            // 5. Shinjuku vs Nishishinjuku & Umeda vs Chayamachi vs Osaka Ekimae separation
+            if (cleanStore.includes('西新宿') || cleanStore.includes('NISHISHINJUKU')) {
+                if (cleanKw === 'SHINJUKU' || cleanKw === '新宿') return false;
+            }
+            if ((cleanStore.includes('SHINJUKU') || cleanStore.includes('新宿')) && !cleanStore.includes('NISHI') && !cleanStore.includes('西新宿')) {
+                if (cleanKw.includes('西新宿') || cleanKw.includes('NISHISHINJUKU')) return false;
+            }
+            if (cleanStore.includes('茶屋町') || cleanStore.includes('CHAYAMACHI')) {
+                if (['UMEDA', '梅田', '東梅田', '大阪駅前'].includes(cleanKw)) return false;
+            }
+            if (cleanStore.includes('大阪駅前')) {
+                if (['UMEDA', '梅田', '東梅田', '茶屋町', 'CHAYAMACHI'].includes(cleanKw)) return false;
+            }
+            if ((cleanStore.includes('UMEDA') || cleanStore.includes('梅田')) && !cleanStore.includes('CHAYAMACHI') && !cleanStore.includes('茶屋町')) {
+                if (cleanKw.includes('茶屋町') || cleanKw.includes('CHAYAMACHI') || cleanKw.includes('大阪駅前')) return false;
+            }
+
+            // 6. Direct substring match
             if (cleanKw.includes(cleanStore) || cleanStore.includes(cleanKw)) return true;
 
-            // 5. Alias mapping match
+            // 7. Alias mapping match
             const sn = String(storeName).toLowerCase().replace(/\s+/g, '');
             const ak = String(areaKeyword).toLowerCase().replace(/\s+/g, '');
             for (const [key, aliases] of Object.entries(AREA_ALIASES)) {
@@ -381,22 +413,30 @@
             const isOlg = clean.includes('OLG') || clean.includes('ORIENTAL') || clean.includes('AG');
 
             const all = window.allEvents.filter(ev => {
-                // Filter out ubiquitous default perks like "女性限定フード食べ放題"
+                // Filter out ubiquitous default perks & administrative notices
                 const t = ev.title || '';
-                if (t.includes('フード食べ放題') || t.includes('女性限定フード')) return false;
+                if (t.includes('フード食べ放題') || t.includes('女性限定フード') || t.includes('イベントを一挙ご紹介') || t.includes('募集停止') || t.includes('メンテナンス')) return false;
+                if (ev.store_name && ev.store_name.toUpperCase().trim() === clean) return true;
 
                 if (isJis && ev.brand === 'JIS') {
-                    if (ev.store_name && ev.store_name.toUpperCase().trim() === clean) return true;
-                    if (!ev.target_stores || ev.target_stores.length === 0) return true;
+                    if (!ev.target_stores || ev.target_stores.length === 0) {
+                        return ev.target_label === '全店共通' || ev.target_label === 'JIS全店';
+                    }
                     return ev.target_stores.some(area => _storeMatchesArea(storeName, area));
                 }
                 if (isOlg && ev.brand === 'OLG') {
-                    if (!ev.target_stores || ev.target_stores.length === 0) return true;
-                    return ev.target_stores.some(area => _storeMatchesArea(storeName, area));
+                    let targets = ev.target_stores || [];
+                    if (targets.length === 0 && t.includes('17店舗')) {
+                        targets = OLG_17_STORES_JS;
+                    }
+                    if (!targets || targets.length === 0) {
+                        return ev.target_label === '全店共通' && (t.includes('【全店】') || t.includes('【全店舗】'));
+                    }
+                    return targets.some(area => _storeMatchesArea(storeName, area));
                 }
                 return false;
             });
-            const specific = all.filter(e => e.target_stores && e.target_stores.length > 0 && e.target_label !== '全店共通' && e.target_label !== 'JIS全店');
+            const specific = all.filter(e => (e.store_name && e.store_name.toUpperCase().trim() === clean) || (e.target_stores && e.target_stores.length > 0 && e.target_label !== '全店共通' && e.target_label !== 'JIS全店') || (e.title && e.title.includes('17店舗')));
             _storeEventsCache[key] = { all, specific };
             return all;
         }
@@ -1690,6 +1730,24 @@
             let tags = '#相席ナビ #相席ラウンジ';
             let isAnaba = false;
             let showEvents = true;
+
+            if (preset === 'price') {
+                return [
+                    '【相席ラウンジ全51店舗「料金・イベント・現在人数」比較ボード】',
+                    '',
+                    '・相席前の単独（待機）料金（220〜330円/10分 or 定額パス）',
+                    '・4つの時間帯別（〜20時/20〜22時/22〜24時/24時〜）の相席10分単価',
+                    '・男性1名（ソロ）入店可否＆店舗別の開催中イベント',
+                    '・席替え余地を考慮した「女性10名以上（約5組）」の推奨基準',
+                    '・公式営業時間に基づくオープン中の「0 : 0」表記',
+                    '',
+                    '▼比較ボード（エリア別・全店一覧）',
+                    `${window.location.origin}/price-comparison`,
+                    '▼詳しい見方・活用ガイド',
+                    `${window.location.origin}/guide/price-event-comparison`,
+                    '#相席ナビ #相席ラウンジ #オリエンタルラウンジ #JIS #ag'
+                ].join('\n');
+            }
 
             if (preset === 'events') {
                 const eventStores = stores.filter(s => {

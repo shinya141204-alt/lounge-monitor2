@@ -124,47 +124,275 @@ def _classify_tag(title: str):
 
 
 OLG_STORE_HEADER_TO_AREAS = {
-    'ag仙台': ['ag仙台', '仙台'],
-    'ag金沢': ['ag金沢', '金沢'],
-    '宇都宮': ['宇都宮'],
-    '高崎': ['高崎'],
-    '大宮': ['大宮'],
-    '柏': ['柏'],
-    '錦糸町': ['錦糸町'],
-    'ag上野': ['ag上野', 'ag 上野'],
-    '上野': ['OLG 上野', '上野'],
-    '新宿': ['新宿'],
-    '渋谷本店': ['渋谷本店'],
-    'ag渋谷': ['ag渋谷', 'ag 渋谷'],
-    '恵比寿': ['恵比寿'],
-    '町田': ['町田'],
-    '横浜': ['横浜'],
-    '静岡': ['静岡'],
-    '浜松': ['浜松'],
-    '名古屋栄': ['名古屋 栄', '名古屋栄', '栄'],
-    '名古屋錦': ['名古屋 錦', '名古屋錦', '錦'],
-    'ag名古屋': ['ag名古屋', 'ag 名古屋'],
-    '京都': ['京都'],
-    '心斎橋': ['心斎橋'],
-    '難波': ['難波'],
-    'ag梅田': ['ag梅田', 'ag 梅田'],
-    '梅田': ['OLG 梅田', '梅田'],
-    '大阪駅前': ['大阪駅前'],
-    '天満': ['天満'],
-    '神戸': ['神戸'],
-    '岡山': ['岡山'],
-    'ag広島': ['ag広島', 'ag 広島'],
-    '広島': ['OLG 広島', '広島'],
-    '福岡': ['福岡'],
-    '小倉': ['小倉'],
-    '長崎': ['長崎'],
-    '熊本': ['熊本'],
-    '大分': ['大分'],
-    '宮崎': ['宮崎'],
-    '鹿児島': ['鹿児島'],
-    'ag沖縄': ['ag沖縄', 'ag 沖縄'],
-    '沖縄': ['OLG 沖縄', '沖縄'],
+    'ag仙台': ['OLG ag仙台'],
+    '仙台': ['OLG 仙台'],
+    'ag札幌': ['OLG ag札幌'],
+    '札幌': ['OLG 札幌'],
+    'ag金沢': ['OLG ag金沢'],
+    '金沢': ['OLG 金沢'],
+    '宇都宮': ['OLG 宇都宮'],
+    '高崎': ['OLG 高崎'],
+    '大宮': ['OLG 大宮'],
+    '柏': ['OLG 柏'],
+    '錦糸町': ['OLG 錦糸町'],
+    'ag上野': ['OLG ag上野'],
+    '上野': ['OLG 上野'],
+    'ag新宿': ['OLG ag新宿'],
+    '新宿': ['OLG 新宿'],
+    '渋谷本店': ['OLG 渋谷本店'],
+    '渋谷駅前': ['OLG 渋谷駅前'],
+    'ag渋谷': ['OLG ag渋谷'],
+    '恵比寿': ['OLG 恵比寿'],
+    '町田': ['OLG 町田'],
+    '横浜': ['OLG 横浜'],
+    '静岡': ['OLG 静岡'],
+    '浜松': ['OLG 浜松'],
+    '名古屋栄': ['OLG 名古屋 栄'],
+    '名古屋錦': ['OLG 名古屋 錦'],
+    'ag名古屋': ['OLG ag名古屋'],
+    '京都': ['OLG 京都'],
+    '心斎橋': ['OLG 心斎橋'],
+    '難波': ['OLG 難波'],
+    'ag梅田': ['OLG ag梅田'],
+    '梅田': ['OLG 梅田'],
+    '東梅田': ['OLG 梅田'],
+    '茶屋町': ['OLG 茶屋町'],
+    '大阪駅前': ['OLG 大阪駅前'],
+    '天満': ['OLG 天満'],
+    '神戸': ['OLG 神戸'],
+    '岡山': ['OLG 岡山'],
+    'ag広島': ['OLG ag広島'],
+    '広島': ['OLG 広島'],
+    'ag福岡': ['OLG ag福岡'],
+    '福岡': ['OLG 福岡'],
+    '小倉': ['OLG 小倉'],
+    '長崎': ['OLG 長崎'],
+    '熊本': ['OLG 熊本'],
+    '大分': ['OLG 大分'],
+    '宮崎': ['OLG 宮崎'],
+    '鹿児島': ['OLG 鹿児島'],
+    'ag沖縄': ['OLG ag沖縄'],
+    '沖縄': ['OLG 沖縄'],
 }
+
+# Exact 17 franchise stores for Oriental Lounge "【全国17店舗】" campaigns (e.g. 北海道フェア🌽, ハロウィンフェア)
+OLG_17_STORES = [
+    'OLG ag仙台',
+    'OLG 宇都宮',
+    'OLG 高崎',
+    'OLG 大宮',
+    'OLG 柏',
+    'OLG 錦糸町',
+    'OLG ag上野',
+    'OLG 上野',
+    'OLG 新宿',
+    'OLG 渋谷本店',
+    'OLG ag渋谷',
+    'OLG 恵比寿',
+    'OLG 町田',
+    'OLG 横浜',
+    'OLG 難波',
+    'OLG 福岡',
+    'OLG 小倉',
+]
+
+# Longest-first token mapping for Oriental Lounge / ag store extraction without substring cross-contamination
+OLG_TOKEN_RULES = [
+    ('オリエンタルラウンジ渋谷本店', ['OLG 渋谷本店']),
+    ('オリエンタルラウンジ渋谷駅前', ['OLG 渋谷駅前']),
+    ('オリエンタルラウンジ名古屋栄', ['OLG 名古屋 栄']),
+    ('オリエンタルラウンジ名古屋錦', ['OLG 名古屋 錦']),
+    ('オリエンタルラウンジ大阪駅前', ['OLG 大阪駅前']),
+    ('オリエンタルラウンジ茶屋町', ['OLG 茶屋町']),
+    ('オリエンタルラウンジ心斎橋', ['OLG 心斎橋']),
+    ('オリエンタルラウンジ東梅田', ['OLG 梅田']),
+    ('オリエンタルラウンジ梅田', ['OLG 梅田']),
+    ('オリエンタルラウンジ難波', ['OLG 難波']),
+    ('オリエンタルラウンジ新宿', ['OLG 新宿']),
+    ('オリエンタルラウンジ上野', ['OLG 上野']),
+    ('オリエンタルラウンジ恵比寿', ['OLG 恵比寿']),
+    ('オリエンタルラウンジ錦糸町', ['OLG 錦糸町']),
+    ('オリエンタルラウンジ町田', ['OLG 町田']),
+    ('オリエンタルラウンジ横浜', ['OLG 横浜']),
+    ('オリエンタルラウンジ大宮', ['OLG 大宮']),
+    ('オリエンタルラウンジ柏', ['OLG 柏']),
+    ('オリエンタルラウンジ宇都宮', ['OLG 宇都宮']),
+    ('オリエンタルラウンジ高崎', ['OLG 高崎']),
+    ('オリエンタルラウンジ京都', ['OLG 京都']),
+    ('オリエンタルラウンジ神戸', ['OLG 神戸']),
+    ('オリエンタルラウンジ天満', ['OLG 天満']),
+    ('オリエンタルラウンジ岡山', ['OLG 岡山']),
+    ('オリエンタルラウンジ広島', ['OLG 広島']),
+    ('オリエンタルラウンジ福岡', ['OLG 福岡']),
+    ('オリエンタルラウンジ小倉', ['OLG 小倉']),
+    ('オリエンタルラウンジ札幌', ['OLG 札幌']),
+    ('オリエンタルラウンジ仙台', ['OLG 仙台']),
+    ('オリエンタルラウンジ金沢', ['OLG 金沢']),
+    ('オリエンタルラウンジ静岡', ['OLG 静岡']),
+    ('オリエンタルラウンジ浜松', ['OLG 浜松']),
+    ('オリエンタルラウンジ長崎', ['OLG 長崎']),
+    ('オリエンタルラウンジ熊本', ['OLG 熊本']),
+    ('オリエンタルラウンジ大分', ['OLG 大分']),
+    ('オリエンタルラウンジ宮崎', ['OLG 宮崎']),
+    ('オリエンタルラウンジ鹿児島', ['OLG 鹿児島']),
+    ('オリエンタルラウンジ沖縄', ['OLG 沖縄']),
+    ('ag名古屋', ['OLG ag名古屋']),
+    ('ag 名古屋', ['OLG ag名古屋']),
+    ('ag渋谷', ['OLG ag渋谷']),
+    ('ag 渋谷', ['OLG ag渋谷']),
+    ('ag新宿', ['OLG ag新宿']),
+    ('ag 新宿', ['OLG ag新宿']),
+    ('ag上野', ['OLG ag上野']),
+    ('ag 上野', ['OLG ag上野']),
+    ('ag梅田', ['OLG ag梅田']),
+    ('ag 梅田', ['OLG ag梅田']),
+    ('ag広島', ['OLG ag広島']),
+    ('ag 広島', ['OLG ag広島']),
+    ('ag仙台', ['OLG ag仙台']),
+    ('ag 仙台', ['OLG ag仙台']),
+    ('ag福岡', ['OLG ag福岡']),
+    ('ag 福岡', ['OLG ag福岡']),
+    ('ag札幌', ['OLG ag札幌']),
+    ('ag 札幌', ['OLG ag札幌']),
+    ('ag金沢', ['OLG ag金沢']),
+    ('ag 金沢', ['OLG ag金沢']),
+    ('ag沖縄', ['OLG ag沖縄']),
+    ('ag 沖縄', ['OLG ag沖縄']),
+    ('名古屋栄', ['OLG 名古屋 栄']),
+    ('名古屋 栄', ['OLG 名古屋 栄']),
+    ('名古屋錦', ['OLG 名古屋 錦']),
+    ('名古屋 錦', ['OLG 名古屋 錦']),
+    ('渋谷本店', ['OLG 渋谷本店']),
+    ('渋谷駅前', ['OLG 渋谷駅前']),
+    ('大阪駅前', ['OLG 大阪駅前']),
+    ('東梅田', ['OLG 梅田']),
+    ('茶屋町', ['OLG 茶屋町']),
+    ('心斎橋', ['OLG 心斎橋']),
+    ('錦糸町', ['OLG 錦糸町']),
+    ('宇都宮', ['OLG 宇都宮']),
+    ('恵比寿', ['OLG 恵比寿']),
+    ('鹿児島', ['OLG 鹿児島']),
+    ('高崎', ['OLG 高崎']),
+    ('大宮', ['OLG 大宮']),
+    ('町田', ['OLG 町田']),
+    ('横浜', ['OLG 横浜']),
+    ('静岡', ['OLG 静岡']),
+    ('浜松', ['OLG 浜松']),
+    ('京都', ['OLG 京都']),
+    ('難波', ['OLG 難波']),
+    ('なんば', ['OLG 難波']),
+    ('天満', ['OLG 天満']),
+    ('神戸', ['OLG 神戸']),
+    ('岡山', ['OLG 岡山']),
+    ('小倉', ['OLG 小倉']),
+    ('長崎', ['OLG 長崎']),
+    ('熊本', ['OLG 熊本']),
+    ('大分', ['OLG 大分']),
+    ('宮崎', ['OLG 宮崎']),
+    ('新宿', ['OLG 新宿']),
+    ('渋谷', ['OLG 渋谷本店']),
+    ('上野', ['OLG 上野']),
+    ('梅田', ['OLG 梅田']),
+    ('広島', ['OLG 広島']),
+    ('仙台', ['OLG 仙台']),
+    ('札幌', ['OLG 札幌']),
+    ('金沢', ['OLG 金沢']),
+    ('福岡', ['OLG 福岡']),
+    ('沖縄', ['OLG 沖縄']),
+    ('栄', ['OLG 名古屋 栄']),
+    ('錦', ['OLG 名古屋 錦']),
+    ('柏', ['OLG 柏']),
+]
+
+
+def _is_non_campaign_notice(title: str) -> bool:
+    """Return True if an announcement title is an administrative notice or roundup index rather than a store campaign."""
+    t = title or ''
+    if any(k in t for k in (
+        'イベントを一挙ご紹介',
+        '各店イベント',
+        '今月のイベント',
+        '募集停止',
+        'メンテナンス',
+        'システム障害',
+        '規約改定',
+        'プライバシーポリシー',
+        '臨時休業',
+        '営業時間変更のお知らせ',
+    )):
+        return True
+    return False
+
+
+def extract_olg_target_stores(title: str, body_text: str = "") -> tuple:
+    """Strictly extract canonical Oriental Lounge / ag target store names from an announcement title and optional body.
+    Prevents multi-store announcements (like 【全国17店舗】北海道フェア🌽) from falling back to target_stores=[] (all 38 stores),
+    and prevents same-city cross-contamination (e.g. 新宿->ag新宿, 名古屋栄->名古屋錦, 渋谷本店->渋谷駅前).
+    """
+    t = _clean_text(title)
+    b = _clean_text(body_text)
+
+    # 1. Handle 【全国17店舗】 or 17店舗限定 announcements explicitly
+    if '17店舗' in t or '17店舗' in b:
+        if b:
+            body_stores = []
+            work_b = b
+            for token, canonicals in OLG_TOKEN_RULES:
+                if token in work_b:
+                    for c in canonicals:
+                        if c not in body_stores:
+                            body_stores.append(c)
+                    work_b = work_b.replace(token, ' ')
+            if 10 <= len(body_stores) <= 22:
+                return body_stores, '対象17店舗限定'
+        return list(OLG_17_STORES), '対象17店舗限定'
+
+    # 2. Extract from leading bracket 【...】 or full title using longest-token consumption
+    bracket_match = re.search(r'【([^】]+)】', t)
+    search_zone = bracket_match.group(1).strip() if bracket_match else t
+
+    # Explicit all-store declaration only if explicitly written as 全店 / 全店舗
+    if bracket_match and search_zone in ('全店', '全店舗', '全店共通', 'ALL'):
+        return [], '全店共通'
+
+    matched_stores = []
+    work = search_zone
+    for token, canonicals in OLG_TOKEN_RULES:
+        if token in work:
+            for c in canonicals:
+                if c not in matched_stores:
+                    matched_stores.append(c)
+            work = work.replace(token, ' ')
+
+    # If bracket didn't have store names (e.g. 【期間限定】渋谷本店...), scan the rest of the title
+    if not matched_stores and bracket_match:
+        rest_work = re.sub(r'【[^】]+】', ' ', t)
+        for token, canonicals in OLG_TOKEN_RULES:
+            if token in rest_work:
+                for c in canonicals:
+                    if c not in matched_stores:
+                        matched_stores.append(c)
+                rest_work = rest_work.replace(token, ' ')
+
+    # 3. If still empty and body_text is provided, extract from body_text
+    if not matched_stores and b:
+        work_b = b
+        for token, canonicals in OLG_TOKEN_RULES:
+            if token in work_b:
+                for c in canonicals:
+                    if c not in matched_stores:
+                        matched_stores.append(c)
+                work_b = work_b.replace(token, ' ')
+
+    if matched_stores:
+        short_names = [s.replace('OLG ', '').replace('名古屋 ', '名古屋') for s in matched_stores]
+        if len(short_names) > 4:
+            label = f"対象{len(short_names)}店舗限定"
+        else:
+            label = '・'.join(short_names) + '店限定'
+        return matched_stores, label
+
+    return [], '対象店舗要確認'
 
 
 def _parse_oriental_roundup_article(article_url: str, date_str: str):
@@ -248,48 +476,63 @@ def _store_matches_area(store_name: str, area_keyword: str) -> bool:
     clean_store = store_name.upper().replace(' ', '')
     clean_kw = area_keyword.upper().replace(' ', '')
 
+    if not clean_store or not clean_kw:
+        return False
+
+    # 0. Canonical full store name exact match (e.g. 'OLG 新宿', 'OLG ag渋谷', 'OLG 名古屋 栄', 'JIS SHINJUKU')
+    if clean_kw.startswith('OLG') or clean_kw.startswith('JIS') or clean_kw.startswith('ALFA') or clean_kw.startswith('CLOVERS') or clean_kw.startswith('XIX') or clean_kw.startswith('YATAKOI'):
+        return clean_store == clean_kw
+
     # 1. Specialized exact matching for JIS shops
     if store_name.upper() in JIS_STORE_TO_AREAS:
-        ak = area_keyword.lower()
+        ak = area_keyword.lower().strip()
         return ak in JIS_STORE_TO_AREAS[store_name.upper()]
 
-    # 2. ag brand separation (prevent OLG vs ag collision in same cities)
+    # 2. Strict ag vs OLG brand separation across ALL cities (including 新宿, 福岡, 仙台, 札幌, 金沢, 渋谷, 上野, 梅田, 名古屋, 広島, 沖縄)
     is_ag_store = 'AG' in clean_store
     is_ag_kw = 'AG' in clean_kw
-    multi_ag_cities = ['名古屋', '上野', '渋谷', '梅田', '広島', '沖縄']
-    for city in multi_ag_cities:
-        if city in clean_store and city in clean_kw:
-            if is_ag_store != is_ag_kw:
-                return False
+    if is_ag_store != is_ag_kw:
+        return False
 
-    # 3. Nagoya Sakae vs Nishiki separation
+    # 3. Shibuya Honten vs Shibuya Ekimae separation
+    if '渋谷駅前' in clean_store:
+        if '渋谷本店' in clean_kw or clean_kw in ('渋谷', 'SHIBUYA'):
+            return False
+    if '渋谷本店' in clean_store:
+        if '渋谷駅前' in clean_kw:
+            return False
+
+    # 4. Nagoya Sakae vs Nishiki separation
     if '栄' in clean_store:
-        if '錦' in clean_kw or 'NISHIKI' in clean_kw:
+        if '錦' in clean_kw or 'NISHIKI' in clean_kw or clean_kw in ('名古屋', 'NAGOYA'):
             return False
     if '錦' in clean_store:
-        if '栄' in clean_kw or 'SAKAE' in clean_kw:
+        if '栄' in clean_kw or 'SAKAE' in clean_kw or clean_kw in ('名古屋', 'NAGOYA'):
             return False
 
-    # 4. JIS / Kansai Shinjuku & Umeda separation
+    # 5. Shinjuku vs Nishishinjuku & Umeda vs Chayamachi vs Osaka Ekimae separation
     if '西新宿' in clean_store or 'NISHISHINJUKU' in clean_store:
-        if clean_kw in ['SHINJUKU', '新宿']:
+        if clean_kw in ('SHINJUKU', '新宿'):
             return False
-    if 'SHINJUKU' in clean_store and 'NISHI' not in clean_store:
+    if ('SHINJUKU' in clean_store or '新宿' in clean_store) and 'NISHI' not in clean_store and '西新宿' not in clean_store:
         if '西新宿' in clean_kw or 'NISHISHINJUKU' in clean_kw:
             return False
 
     if '茶屋町' in clean_store or 'CHAYAMACHI' in clean_store:
-        if clean_kw in ['UMEDA', '梅田']:
+        if clean_kw in ('UMEDA', '梅田', '東梅田', '大阪駅前'):
             return False
-    if 'UMEDA' in clean_store and 'CHAYAMACHI' not in clean_store:
-        if '茶屋町' in clean_kw or 'CHAYAMACHI' in clean_kw:
+    if '大阪駅前' in clean_store:
+        if clean_kw in ('UMEDA', '梅田', '東梅田', '茶屋町', 'CHAYAMACHI'):
+            return False
+    if ('UMEDA' in clean_store or '梅田' in clean_store) and 'CHAYAMACHI' not in clean_store and '茶屋町' not in clean_store:
+        if '茶屋町' in clean_kw or 'CHAYAMACHI' in clean_kw or '大阪駅前' in clean_kw:
             return False
 
-    # 5. Direct substring match
+    # 6. Direct substring match
     if clean_kw in clean_store or clean_store in clean_kw:
         return True
 
-    # 6. Alias mapping match
+    # 7. Alias mapping match
     sn = store_name.lower().replace(' ', '')
     ak = area_keyword.lower().replace(' ', '')
     for key, aliases in AREA_ALIASES.items():
@@ -298,6 +541,19 @@ def _store_matches_area(store_name: str, area_keyword: str) -> bool:
                 return True
 
     return False
+
+
+def _fetch_olg_announcement_body(detail_url: str) -> str:
+    """Fetch detail text of an Oriental Lounge announcement when needed to resolve multi-store target lists."""
+    try:
+        r = requests.get(detail_url, headers=HEADERS, timeout=5)
+        if r.status_code != 200:
+            return ''
+        soup = BeautifulSoup(r.text, 'html.parser')
+        content = soup.find(class_='announcement-detail-content') or soup.find('article') or soup.find('main')
+        return _clean_text(content.get_text()) if content else ''
+    except Exception:
+        return ''
 
 
 def crawl_oriental_events():
@@ -334,22 +590,21 @@ def crawl_oriental_events():
                 date_div = li.find('div', class_='info-list-date')
                 date_str = _clean_text(date_div.get_text()) if date_div else 'NEW'
 
-                target_stores = []
-                target_label = '全店共通'
-                sm = re.search(r'【([^】]+)】', title)
-                if sm:
-                    extracted = sm.group(1).strip()
-                    for area in AREA_ALIASES.keys():
-                        if area in extracted:
-                            target_stores.append(area)
-                    if target_stores:
-                        target_label = '・'.join(target_stores) + '店限定'
-                else:
-                    for area in AREA_ALIASES.keys():
-                        if (f"{area}店" in title or f"ag{area}" in title or f"ag {area}" in title or f"【{area}】" in title) and area not in target_stores:
-                            target_stores.append(area)
-                    if target_stores:
-                        target_label = '・'.join(target_stores) + '店限定'
+                # Check if this announcement is a monthly roundup article with all store campaigns
+                if any(k in title for k in ['イベントを一挙ご紹介', 'イベント情報', '各店イベント', '今月のイベント']):
+                    sub_events = _parse_oriental_roundup_article(link, date_str)
+                    if sub_events:
+                        events.extend(sub_events)
+                    continue
+
+                if _is_non_campaign_notice(title):
+                    continue
+
+                target_stores, target_label = extract_olg_target_stores(title)
+                if not target_stores and ('店舗' in title or '限定' in title):
+                    body_txt = _fetch_olg_announcement_body(link)
+                    if body_txt:
+                        target_stores, target_label = extract_olg_target_stores(title, body_txt)
 
                 tag_label, tag_cls = _classify_tag(title)
                 event_id = f"olg-{re.sub(r'[^0-9a-zA-Z]', '', link.split('/')[-1])}"
@@ -371,12 +626,6 @@ def crawl_oriental_events():
                     'created_at': datetime.now().strftime('%Y-%m-%d')
                 })
 
-                # Check if this announcement is a monthly roundup article with all store campaigns
-                if any(k in title for k in ['イベントを一挙ご紹介', 'イベント情報', '各店イベント', '今月のイベント']):
-                    sub_events = _parse_oriental_roundup_article(link, date_str)
-                    if sub_events:
-                        events.extend(sub_events)
-
             # 2. Homepage branch-news-inner (fallback or featured)
             for item in soup.find_all('div', class_='branch-news-inner'):
                 a = item.find('a')
@@ -395,22 +644,20 @@ def crawl_oriental_events():
                 mark_p = item.find('p', class_='branch-news-mark')
                 mark = _clean_text(mark_p.get_text() if mark_p else 'NEW')
 
-                target_stores = []
-                target_label = '全店共通'
-                sm = re.search(r'【([^】]+)】', title)
-                if sm:
-                    extracted = sm.group(1).strip()
-                    for area in AREA_ALIASES.keys():
-                        if area in extracted:
-                            target_stores.append(area)
-                    if target_stores:
-                        target_label = '・'.join(target_stores) + '店限定'
-                else:
-                    for area in AREA_ALIASES.keys():
-                        if (f"{area}店" in title or f"ag{area}" in title or f"ag {area}" in title or f"【{area}】" in title) and area not in target_stores:
-                            target_stores.append(area)
-                    if target_stores:
-                        target_label = '・'.join(target_stores) + '店限定'
+                if any(k in title for k in ['イベントを一挙ご紹介', 'イベント情報', '各店イベント', '今月のイベント']):
+                    sub_events = _parse_oriental_roundup_article(link, mark)
+                    if sub_events:
+                        events.extend(sub_events)
+                    continue
+
+                if _is_non_campaign_notice(title):
+                    continue
+
+                target_stores, target_label = extract_olg_target_stores(title)
+                if not target_stores and ('店舗' in title or '限定' in title):
+                    body_txt = _fetch_olg_announcement_body(link)
+                    if body_txt:
+                        target_stores, target_label = extract_olg_target_stores(title, body_txt)
 
                 tag_label, tag_cls = _classify_tag(title)
                 event_id = f"olg-{re.sub(r'[^0-9a-zA-Z]', '', link.split('/')[-1])}"
@@ -895,13 +1142,33 @@ def _trigger_background_refresh():
 
 
 def _ensure_regional_events(events_list: list) -> list:
-    """Ensure regional brand events (ALFA, CLOVERS, XIX) are included even when reading older cache files."""
+    """Ensure regional brand events (ALFA, CLOVERS, XIX) are included and normalize legacy cached events
+    so multi-store campaigns (e.g. 【全国17店舗】北海道フェア🌽) or ambiguous tokens never leak into non-participating stores."""
     if not events_list:
         return list(get_regional_curated_events())
-    if any(e.get('brand') in ('ALFA', 'CLOVERS', 'XIX') for e in events_list):
-        return events_list
-    existing_ids = {e.get('id') for e in events_list}
-    merged = list(events_list)
+
+    sanitized = []
+    for ev in events_list:
+        title = ev.get('title', '')
+        if ev.get('brand') == 'OLG':
+            if _is_non_campaign_notice(title):
+                continue
+            ts = ev.get('target_stores') or []
+            if not ts or '17店舗' in title or any(not str(x).startswith('OLG ') for x in ts):
+                new_ts, new_lbl = extract_olg_target_stores(title)
+                if new_ts:
+                    ev = dict(ev)
+                    ev['target_stores'] = new_ts
+                    ev['target_label'] = new_lbl
+                elif not ts:
+                    ev = dict(ev)
+                    ev['target_label'] = new_lbl
+        sanitized.append(ev)
+
+    if any(e.get('brand') in ('ALFA', 'CLOVERS', 'XIX') for e in sanitized):
+        return sanitized
+    existing_ids = {e.get('id') for e in sanitized}
+    merged = list(sanitized)
     for rev in get_regional_curated_events():
         if rev.get('id') not in existing_ids:
             merged.append(rev)
@@ -967,8 +1234,8 @@ def get_events_for_store(
 
     for ev in all_events:
         t = ev.get('title', '')
-        # Filter out ubiquitous default perks like "女性限定フード食べ放題"
-        if 'フード食べ放題' in t or '女性限定フード' in t:
+        # Filter out ubiquitous default perks and administrative notices
+        if 'フード食べ放題' in t or '女性限定フード' in t or _is_non_campaign_notice(t):
             continue
 
         ev_brand = ev.get('brand', '')
@@ -979,14 +1246,18 @@ def get_events_for_store(
         if is_jis and ev_brand == 'JIS':
             target_stores = ev.get('target_stores', [])
             if not target_stores:
-                if not store_only:
+                if not store_only and ev.get('target_label') in ('全店共通', 'JIS全店'):
                     global_matched.append(ev)
             elif any(_store_matches_area(store_name, area) for area in target_stores):
                 matched.append(ev)
         elif is_olg and ev_brand == 'OLG':
             target_stores = ev.get('target_stores', [])
+            if not target_stores and ('17店舗' in t or '【' in t):
+                inferred_ts, inferred_lbl = extract_olg_target_stores(t)
+                if inferred_ts:
+                    target_stores = inferred_ts
             if not target_stores:
-                if not store_only:
+                if not store_only and ev.get('target_label') == '全店共通' and ('【全店】' in t or '【全店舗】' in t):
                     global_matched.append(ev)
             elif any(_store_matches_area(store_name, area) for area in target_stores):
                 matched.append(ev)

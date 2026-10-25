@@ -1855,6 +1855,12 @@ def sitemap_xml():
     <changefreq>weekly</changefreq>
     <priority>0.85</priority>
   </url>
+  <url>
+    <loc>https://aiseki-navi.com/guide/price-event-comparison</loc>
+    <lastmod>{today}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
 {scheduled_urls}{area_urls}
 {store_urls}
   <url>
@@ -2024,6 +2030,12 @@ def guide_male_lead_mechanics():
     return render_template('guide_male_lead.html')
 
 
+@app.route('/guide/price-event-comparison')
+def guide_price_event_comparison():
+    """Editorial guide explaining the 51-store price, 4-time-slot, solo rule, event & minimum 10-women comparison board."""
+    return render_template('guide_price_comparison.html')
+
+
 def _render_scheduled_guide(slug: str):
     """Render a scheduled editorial guide if published, or allow noindex preview for authenticated staff."""
     item = scheduled_articles.get_article_by_slug(slug)
@@ -2082,6 +2094,30 @@ def generate_sns_post_api():
         filtered = candidates
         header = f"{time_part}時点、いま女性比率が高めで入りやすい穴場店舗✨"
         tags = "#相席ナビ #相席ラウンジ #オリエンタルラウンジ #JIS"
+    elif post_type == 'price':
+        announce_lines = [
+            "【新機能】相席ラウンジ全51店舗「料金・イベント・現在人数」横並び比較ボードを公開しました📊",
+            "",
+            "✅ 単独（待機）料金（220〜330円/10分 or 定額パス）",
+            "✅ 4つの時間帯別（〜20時/20〜22時/22〜24時/24時〜）の相席10分単価",
+            "✅ 男性1名（ソロ）入店可否＆店舗別の開催中イベント",
+            "✅ 席替え余地を考慮した「女性10名以上（約5組）」基準のエリア推奨判定",
+            "✅ 公式営業時間に基づくオープン中の「0 : 0」表記",
+            "",
+            "👇全51店舗の比較ボードはこちら",
+            f"{base_url}/price-comparison",
+            "",
+            "📖 比較ボードの詳しい見方・活用ガイド",
+            f"{base_url}/guide/price-event-comparison",
+            "",
+            "#相席ナビ #相席ラウンジ #オリエンタルラウンジ #JIS #ag"
+        ]
+        return jsonify({
+            'status': 'success',
+            'type': post_type,
+            'timestamp': ts,
+            'text': "\n".join(announce_lines)
+        })
     else:
         filtered = list(stores)
         header = f"{time_part}時点、全国でいま人が集まっている相席ラウンジTOP5🍻"

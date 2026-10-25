@@ -450,6 +450,17 @@
                 ・<strong>公式ホームページ確認のお願い：</strong>掲載している料金システム・営業時間・1名入店条件・イベント開催情報は公開データをもとに集計していますが、繁忙期・祝前日・年末年始等の特別営業や、店舗都合による急な内容変更・終了・表記差異がある場合がございます。ご来店の際は必ず各店舗の<strong>公式ホームページ・公式アプリ</strong>にて最新情報をご確認ください。<br>
                 ・<strong>最低人数の評価基準（女性{{ data.min_women_eval }}名以上）：</strong>店内の人数が少ない状態では、女性比率が高くても初回相席後に席替え（チェンジ）できる次の相席相手がいない場合があります。そのため当サイトでは<strong>女性{{ data.min_women_eval }}名以上（約5組以上）を比率評価・推奨選出の対象ライン</strong>、<strong>女性{{ data.min_women_top }}名以上を安定回転ライン</strong>として判定しています。また、公式ホームページ上の営業時間内に入店人数が0名の店舗は「営業時間外」ではなく<strong>「0 : 0」（営業中・空席）</strong>と表記します。
             </div>
+            <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border-subtle); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                <a href="/guide/price-event-comparison" style="color: var(--accent-text); font-size: 0.79rem; font-weight: 600; text-decoration: none;">
+                    📖 比較ボードの詳しい見方・活用ガイド（待機料金・4時間帯単価・最低人数10名の理由）を読む ›
+                </a>
+                <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                    <span style="font-size: 0.74rem; color: var(--text-sub);">現在エリアの比較結果を共有：</span>
+                    <button type="button" onclick="sharePriceComparison('x')" style="padding: 5px 11px; border-radius: 6px; border: 1px solid var(--border-strong); background: var(--card-elevated); color: var(--text-main); font-size: 0.75rem; font-weight: 600; cursor: pointer;">𝕏 ポスト</button>
+                    <button type="button" onclick="sharePriceComparison('line')" style="padding: 5px 11px; border-radius: 6px; border: 1px solid var(--border-strong); background: var(--card-elevated); color: var(--text-main); font-size: 0.75rem; font-weight: 600; cursor: pointer;">LINE共有</button>
+                    <button type="button" id="copy-comp-share-btn" onclick="sharePriceComparison('copy')" style="padding: 5px 11px; border-radius: 6px; border: 1px solid rgba(200, 164, 110, 0.45); background: var(--accent-soft); color: var(--accent-text); font-size: 0.75rem; font-weight: 600; cursor: pointer;">告知文をコピー</button>
+                </div>
+            </div>
         </aside>
 
         <!-- Section 1: Urban Area Cluster Comparison Board -->
@@ -804,6 +815,42 @@
             });
             if (history.replaceState) {
                 history.replaceState(null, '', '/price-comparison?area=' + encodeURIComponent(clusterId));
+            }
+        }
+
+        function sharePriceComparison(platform) {
+            const activeBtn = document.querySelector('.area-tab-btn.active');
+            const clusterId = activeBtn ? activeBtn.dataset.cluster : 'shinjuku';
+            const activePanel = document.getElementById('cluster-' + clusterId);
+            const areaLabel = activePanel ? (activePanel.dataset.clusterLabel || '主要エリア') : '全国51店舗';
+            const bestTitleEl = activePanel ? activePanel.querySelector('[data-best-title]') : null;
+            const bestLine = bestTitleEl ? bestTitleEl.textContent.trim() : '';
+            const shareUrl = 'https://aiseki-navi.com/price-comparison?area=' + encodeURIComponent(clusterId);
+            const text =
+                '【相席ラウンジ 店舗別料金・イベント・現在人数 比較ボード】\n' +
+                '📍 ' + areaLabel + '\n' +
+                (bestLine ? '・' + bestLine + '\n' : '') +
+                '・単独（待機）料金・4時間帯別の相席単価・1名入店可否・開催中イベント・今の男女人数を横並び検証！\n' +
+                '#相席ナビ #相席ラウンジ #オリエンタルラウンジ #JIS #ag';
+
+            if (platform === 'x') {
+                const u = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(text) + '&url=' + encodeURIComponent(shareUrl);
+                window.open(u, '_blank', 'noopener,noreferrer');
+            } else if (platform === 'line') {
+                const u = 'https://social-plugins.line.me/lineit/share?url=' + encodeURIComponent(shareUrl) + '&text=' + encodeURIComponent(text);
+                window.open(u, '_blank', 'noopener,noreferrer');
+            } else if (platform === 'copy') {
+                const fullCopy = text + '\n' + shareUrl;
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(fullCopy).then(() => {
+                        const btn = document.getElementById('copy-comp-share-btn');
+                        if (btn) {
+                            const orig = btn.textContent;
+                            btn.textContent = 'コピー完了！';
+                            setTimeout(() => { btn.textContent = orig; }, 2000);
+                        }
+                    });
+                }
             }
         }
 

@@ -89,6 +89,7 @@ _PAGE_TITLES = {
     '/guide/club-area-midnight': '📖 ダンスクラブ密集エリアの深夜0時「第2波」実測データ検証',
     '/guide/beauty-area-stage': '📖 美容サロン激戦区のラウンジが「自分磨きの舞台」になる理由',
     '/guide/male-lead-mechanics': '📖 男性先行・男性比率が高いお店に女性が集まるデータ法則',
+    '/guide/price-event-comparison': '📖 全51店舗「料金・イベント・現在人数」比較ボード活用ガイド',
     '/guide/local-vs-urban': '📖 地方店vs都心大型店｜深夜0時に女性が121%へ逆転増加する一極集中の法則',
     '/guide/cost-break-even': '📖 90分粘るvs40分で見切る｜男性の滞在時間と料金の損益分岐点検証',
     '/guide/rain-payday': '📖 雨の日・給料日前・連休中日の男女比変動と隠れ穴場日データ',

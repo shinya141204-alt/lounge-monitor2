@@ -349,6 +349,7 @@ class AnalyticsTests(unittest.TestCase):
             '/guide/club-area-midnight',
             '/guide/beauty-area-stage',
             '/guide/male-lead-mechanics',
+            '/guide/price-event-comparison',
         ]
         for path in routes:
             with self.subTest(path=path):
@@ -791,7 +792,7 @@ class GrowthFeaturesTests(unittest.TestCase):
                 self.assertEqual(sw_resp.status_code, 200)
                 self.assertIn('no-store', sw_resp.headers.get('Cache-Control', ''))
                 sw_txt = sw_resp.data.decode('utf-8')
-                self.assertIn("aiseki-navi-v40", sw_txt)
+                self.assertIn("aiseki-navi-v41", sw_txt)
             finally:
                 sw_resp.close()
 
@@ -993,6 +994,7 @@ class GrowthFeaturesTests(unittest.TestCase):
             '/guide/club-area-midnight',
             '/guide/beauty-area-stage',
             '/guide/male-lead-mechanics',
+            '/guide/price-event-comparison',
         ]
         for p in public_paths:
             r = self.client.get(p)
@@ -1117,6 +1119,113 @@ class GrowthFeaturesTests(unittest.TestCase):
         finally:
             with app_module.data_lock:
                 app_module.latest_data['full_data'] = old_full
+
+    def test_hokkaido_fair_17_stores_and_same_city_event_isolation(self):
+        import events
+        import price_comparison
+
+        # 1. 【全国17店舗】北海道フェア🌽 must resolve strictly to OLG_17_STORES (17 stores) and NEVER target_stores=[]
+        ts_hokkaido, lbl_hokkaido = events.extract_olg_target_stores('【全国17店舗】北海道フェア🌽')
+        self.assertEqual(len(ts_hokkaido), 17)
+        self.assertEqual(set(ts_hokkaido), set(events.OLG_17_STORES))
+        self.assertEqual(lbl_hokkaido, '対象17店舗限定')
+
+        # 2. Legacy/cached event with empty target_stores for 【全国17店舗】北海道フェア🌽 must only match participating 17 stores
+        mock_pool = [
+            {
+                'id': 'olg-hokkaido-fair',
+                'brand': 'OLG',
+                'title': '【全国17店舗】北海道フェア🌽',
+                'url': 'https://oriental-lounge.com/announcements/494',
+                'tag': 'フェア・企画',
+                'target_stores': [],
+                'target_label': '全店共通',
+            },
+            {
+                'id': 'olg-shinjuku-only',
+                'brand': 'OLG',
+                'title': '【新宿】定額割開催中！',
+                'url': 'https://oriental-lounge.com/announcements/470',
+                'tag': '割引・特典',
+                'target_stores': events.extract_olg_target_stores('【新宿】定額割開催中！')[0],
+                'target_label': '新宿店限定',
+            },
+            {
+                'id': 'olg-sakae-only',
+                'brand': 'OLG',
+                'title': '【名古屋栄】ハッピーアワー半額',
+                'url': 'https://oriental-lounge.com/announcements/471',
+                'tag': '割引・特典',
+                'target_stores': events.extract_olg_target_stores('【名古屋栄】ハッピーアワー半額')[0],
+                'target_label': '名古屋栄店限定',
+            },
+            {
+                'id': 'olg-shibuya-multi',
+                'brand': 'OLG',
+                'title': '【恵比寿・渋谷本店・ag渋谷】200ギフトプレゼント🎁',
+                'url': 'https://oriental-lounge.com/announcements/475',
+                'tag': '割引・特典',
+                'target_stores': events.extract_olg_target_stores('【恵比寿・渋谷本店・ag渋谷】200ギフトプレゼント🎁')[0],
+                'target_label': '恵比寿・渋谷本店・ag渋谷店限定',
+            },
+        ]
+
+        # Participating stores in 17-store Hokkaido fair (e.g. OLG 新宿, OLG 難波, OLG ag仙台, OLG 福岡) MUST receive it
+        for participating in ('OLG 新宿', 'OLG 渋谷本店', 'OLG ag渋谷', 'OLG 難波', 'OLG ag仙台', 'OLG 福岡', 'OLG 小倉'):
+            evs = events.get_events_for_store(participating, store_only=True, allow_blocking=False, preloaded_events=mock_pool)
+            titles = [e['title'] for e in evs]
+            self.assertIn('【全国17店舗】北海道フェア🌽', titles, f"{participating} should have Hokkaido Fair")
+
+        # Non-participating stores (e.g. OLG 梅田, OLG 心斎橋, OLG 名古屋 栄, OLG 名古屋 錦, OLG 広島, OLG 仙台, OLG 札幌, OLG ag新宿, OLG 渋谷駅前, OLG ag福岡) MUST NOT receive it
+        for non_participating in (
+            'OLG 梅田', 'OLG 茶屋町', 'OLG 大阪駅前', 'OLG 心斎橋', 'OLG 京都', 'OLG 神戸',
+            'OLG 名古屋 栄', 'OLG 名古屋 錦', 'OLG ag名古屋', 'OLG 広島', 'OLG ag広島',
+            'OLG 岡山', 'OLG 札幌', 'OLG ag札幌', 'OLG 仙台', 'OLG 金沢', 'OLG ag金沢',
+            'OLG 静岡', 'OLG 浜松', 'OLG 沖縄', 'OLG ag沖縄', 'OLG ag新宿', 'OLG 渋谷駅前', 'OLG ag福岡'
+        ):
+            evs = events.get_events_for_store(non_participating, store_only=True, allow_blocking=False, preloaded_events=mock_pool)
+            titles = [e['title'] for e in evs]
+            self.assertNotIn('【全国17店舗】北海道フェア🌽', titles, f"{non_participating} MUST NOT have Hokkaido Fair")
+
+        # 3. Same-city isolation checks:
+        # - 【新宿】定額割 matches OLG 新宿, NOT OLG ag新宿 or JIS SHINJUKU
+        shinjuku_evs = [e['title'] for e in events.get_events_for_store('OLG 新宿', store_only=True, allow_blocking=False, preloaded_events=mock_pool)]
+        ag_shinjuku_evs = [e['title'] for e in events.get_events_for_store('OLG ag新宿', store_only=True, allow_blocking=False, preloaded_events=mock_pool)]
+        self.assertIn('【新宿】定額割開催中！', shinjuku_evs)
+        self.assertNotIn('【新宿】定額割開催中！', ag_shinjuku_evs)
+
+        # - 【名古屋栄】 matches OLG 名古屋 栄, NOT OLG 名古屋 錦 or OLG ag名古屋
+        sakae_evs = [e['title'] for e in events.get_events_for_store('OLG 名古屋 栄', store_only=True, allow_blocking=False, preloaded_events=mock_pool)]
+        nishiki_evs = [e['title'] for e in events.get_events_for_store('OLG 名古屋 錦', store_only=True, allow_blocking=False, preloaded_events=mock_pool)]
+        ag_nagoya_evs = [e['title'] for e in events.get_events_for_store('OLG ag名古屋', store_only=True, allow_blocking=False, preloaded_events=mock_pool)]
+        self.assertIn('【名古屋栄】ハッピーアワー半額', sakae_evs)
+        self.assertNotIn('【名古屋栄】ハッピーアワー半額', nishiki_evs)
+        self.assertNotIn('【名古屋栄】ハッピーアワー半額', ag_nagoya_evs)
+
+        # - 【恵比寿・渋谷本店・ag渋谷】 matches OLG 恵比寿, OLG 渋谷本店, OLG ag渋谷, NOT OLG 渋谷駅前
+        shibuya_honten_evs = [e['title'] for e in events.get_events_for_store('OLG 渋谷本店', store_only=True, allow_blocking=False, preloaded_events=mock_pool)]
+        ag_shibuya_evs = [e['title'] for e in events.get_events_for_store('OLG ag渋谷', store_only=True, allow_blocking=False, preloaded_events=mock_pool)]
+        shibuya_ekimae_evs = [e['title'] for e in events.get_events_for_store('OLG 渋谷駅前', store_only=True, allow_blocking=False, preloaded_events=mock_pool)]
+        self.assertIn('【恵比寿・渋谷本店・ag渋谷】200ギフトプレゼント🎁', shibuya_honten_evs)
+        self.assertIn('【恵比寿・渋谷本店・ag渋谷】200ギフトプレゼント🎁', ag_shibuya_evs)
+        self.assertNotIn('【恵比寿・渋谷本店・ag渋谷】200ギフトプレゼント🎁', shibuya_ekimae_evs)
+
+        # 4. Price comparison profile check: non-participating store (OLG 梅田) must not display Hokkaido Fair
+        prof_umeda = price_comparison.get_store_price_profile('OLG 梅田', all_events_Pool=mock_pool)
+        all_umeda_ev_titles = [x['full_title'] for x in prof_umeda['men_perks'] + prof_umeda['women_events']]
+        self.assertNotIn('【全国17店舗】北海道フェア🌽', all_umeda_ev_titles)
+
+        # 5. Guide page & SNS announcement API check
+        guide_resp = self.client.get('/guide/price-event-comparison')
+        self.assertEqual(guide_resp.status_code, 200)
+        self.assertIn('比較ボードの活用ガイド', guide_resp.data.decode('utf-8'))
+
+        sns_resp = self.client.get('/api/sns-post?type=price')
+        self.assertEqual(sns_resp.status_code, 200)
+        sns_json = sns_resp.get_json()
+        self.assertEqual(sns_json['status'], 'success')
+        self.assertIn('/price-comparison', sns_json['text'])
+        self.assertIn('/guide/price-event-comparison', sns_json['text'])
 
 
 if __name__ == '__main__':

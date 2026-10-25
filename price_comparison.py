@@ -1436,13 +1436,13 @@ def get_store_price_profile(
     w_diff = int(live_store.get("women_diff") or 0)
     m_diff = int(live_store.get("men_diff") or 0)
 
-    # Collect store-matched events non-blockingly using preloaded pool
+    # Collect strictly store-matched events non-blockingly using preloaded pool (store_only=True prevents unverified global notices from leaking)
     store_evs = []
     try:
         import events
         store_evs = events.get_events_for_store(
             store_name,
-            store_only=False,
+            store_only=True,
             allow_blocking=False,
             preloaded_events=all_events_Pool,
         )
