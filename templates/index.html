@@ -100,7 +100,7 @@
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
          crossorigin="anonymous"></script>
-    <script src="/static/affiliate_config.js?v=8"></script>
+    <script src="/static/affiliate_config.js?v=9"></script>
     {% endif %}
     <link rel="stylesheet" href="/static/calm.css?v=9">
 </head>
@@ -1620,7 +1620,7 @@
         window.INITIAL_STATUS_DATA = {{ initial_status | tojson }};
         {% endif %}
     </script>
-    <script src="/static/app.js?v=20261026_5" defer></script>
+    <script src="/static/app.js?v=20261026_6" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
@@ -1631,7 +1631,7 @@
                 window.location.reload();
             });
             window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/sw.js?v=32', { updateViaCache: 'none' })
+                navigator.serviceWorker.register('/sw.js?v=33', { updateViaCache: 'none' })
                     .then(function(reg) {
                         reg.update();
                         document.addEventListener('visibilitychange', function() {

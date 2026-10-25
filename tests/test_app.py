@@ -792,7 +792,7 @@ class GrowthFeaturesTests(unittest.TestCase):
                 self.assertEqual(sw_resp.status_code, 200)
                 self.assertIn('no-store', sw_resp.headers.get('Cache-Control', ''))
                 sw_txt = sw_resp.data.decode('utf-8')
-                self.assertIn("aiseki-navi-v44", sw_txt)
+                self.assertIn("aiseki-navi-v45", sw_txt)
             finally:
                 sw_resp.close()
 
@@ -1247,6 +1247,18 @@ class GrowthFeaturesTests(unittest.TestCase):
         pos_legend = idx_html.find('class="momentum-legend-bar"')
         pos_sns = idx_html.find('official-sns-compact')
         self.assertTrue(0 < pos_ranking < pos_legend < pos_sns, "ranking-list must appear before legend and SNS bar")
+
+        # 7. Step 2 Affiliate /link/ internal redirect & column 1-to-1 matching verification
+        repo_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        with open(os.path.join(repo_dir, 'static/affiliate_config.js'), 'r', encoding='utf-8') as af:
+            aff_src = af.read()
+        self.assertIn("url: '/link/mens_hair_removal'", aff_src)
+        self.assertIn("url: '/link/mens_skincare_clinic'", aff_src)
+        self.assertIn("url: '/link/dating_instant'", aff_src)
+        self.assertIn("url: '/link/spu_styleup'", aff_src)
+        for item_key in ('mens_hair_removal', 'mens_skincare_clinic', 'dating_instant', 'spu_styleup'):
+            redir_resp = self.client.get(f'/link/{item_key}', follow_redirects=False)
+            self.assertEqual(redir_resp.status_code, 302)
 
 
 

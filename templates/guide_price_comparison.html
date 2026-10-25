@@ -360,6 +360,16 @@
                 ※ご注意：掲載している料金システム・営業時間・1名入店条件・イベント開催有無は公開データをもとに集計していますが、繁忙期・祝前日・特別営業期間や店舗都合により予告なく変更・終了となる場合があります。ご来店の際は、比較ボード内の「公式サイトで最新条件を確認 ↗」リンクから必ず各店舗の公式ホームページ・公式アプリをご確認ください。
             </p>
 
+            {% if not is_staff %}
+            <div style="margin: 22px 0; padding: 16px 18px; border-radius: 12px; background: #16171c; border: 1px solid rgba(200, 164, 110, 0.3);">
+                <div style="font-size: 0.72rem; font-weight: 700; color: #f1e3cb; margin-bottom: 5px;">PR｜全店舗が「少人数」や「男性待ちピーク」だった日の予備選択肢</div>
+                <p style="font-size: 0.84rem; color: #dedad2; margin: 0 0 10px; line-height: 1.65;">
+                    比較ボードで近隣店舗がすべて「女性10名未満（少人数）」または「週末ピークで男性待機が多い」時間帯は、単独待機料金を重ねる前に、近くで今日これから飲める相手を探せる恋活アプリも選択肢になります。
+                </p>
+                <a href="/link/dating" target="_blank" rel="noopener noreferrer sponsored" style="display: inline-block; padding: 8px 15px; border-radius: 8px; background: rgba(200, 164, 110, 0.16); border: 1px solid rgba(200, 164, 110, 0.55); color: #f1e3cb; font-size: 0.81rem; font-weight: 700; text-decoration: none;">近くで今日飲める相手も探せる恋活アプリを見る ›</a>
+            </div>
+            {% endif %}
+
             <div class="cta-box">
                 <div style="font-size:1.08rem;font-weight:800;color:#ebe8e3;">全51店舗の料金・開催中イベント・現在人数を今すぐ横並び比較</div>
                 <p style="font-size:0.85rem;color:#9b978f;margin:8px 0 0 0;">

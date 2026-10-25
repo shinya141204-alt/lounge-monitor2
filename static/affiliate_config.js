@@ -44,7 +44,7 @@ const AFFILIATE_MASTER = {
             cta: 'キャンペーン・公式サイトを見る ›',
             bannerImg: 'https://www27.a8.net/svt/bgt?aid=261020931365&wid=001&eno=01&mid=s00000014286015006000&mc=1',
             trackingImg: 'https://www17.a8.net/0.gif?a8mat=4BEL1F+61B8KY+328C+2HCB1D',
-            url: 'https://px.a8.net/svt/ejp?a8mat=4BEL1F+61B8KY+328C+2HCB1D'
+            url: '/link/mens_hair_removal'
         },
         {
             id: 'mens_skincare_clinic',
@@ -68,7 +68,7 @@ const AFFILIATE_MASTER = {
             cta: '初回限定セット・公式を見る ›',
             bannerImg: 'https://www28.a8.net/svt/bgt?aid=261020931376&wid=001&eno=01&mid=s00000008657018014000&mc=1',
             trackingImg: 'https://www18.a8.net/0.gif?a8mat=4BEL1F+67V08I+1USQ+2Z90WX',
-            url: 'https://px.a8.net/svt/ejp?a8mat=4BEL1F+67V08I+1USQ+2Z90WX'
+            url: '/link/mens_skincare_clinic'
         },
 
         // ==========================================
@@ -83,9 +83,9 @@ const AFFILIATE_MASTER = {
             name: 'ラウンジが満席のときにも使える「定番マッチングアプリ」',
             shortTitle: '近くで会える恋活アプリ',
             infeedTag: '恋活アプリ',
-            infeedSub: 'お店が混んでいる日の選択肢に',
-            infeedTitle: '今から飲める相手も探せる恋活アプリ',
-            infeedCta: '見る ›',
+            infeedSub: 'お店が混んでいる日・少人数の日の選択肢に',
+            infeedTitle: '今から近くで飲める相手も探せる恋活アプリ',
+            infeedCta: '詳細 ›',
             target: '週末にお店が満席で入れなかったときや、1対1で落ち着いて飲める相手を探したい方',
             desc: '金曜や土曜の夜は、どこの店舗も男性の入店待ちが長くなることがあります。「今日これから飲みに行ける人」を探せる機能があるマッチングアプリをスマホに入れておくと、お店が混んでいる日でも予定を無駄にせず動けます。',
             points: [
@@ -96,7 +96,7 @@ const AFFILIATE_MASTER = {
             cta: '無料で登録して相手を探してみる ›',
             bannerImg: 'https://www24.a8.net/svt/bgt?aid=261019920124&wid=001&eno=01&mid=s00000027012001016000&mc=1',
             trackingImg: 'https://www15.a8.net/0.gif?a8mat=4BEK9C+21TRSI+5SFC+61RI9',
-            url: 'https://px.a8.net/svt/ejp?a8mat=4BEK9C+21TRSI+5SFC+61RI9'
+            url: '/link/dating_instant'
         },
 
         // ==========================================
@@ -123,21 +123,15 @@ const AFFILIATE_MASTER = {
             ],
             cta: '今月のコーデ内容を見てみる ›',
             bannerImg: 'https://h.accesstrade.net/sp/rr?rk=0100oo8500p144',
-            url: 'https://h.accesstrade.net/sp/cc?rk=0100oo8500p144'
+            url: '/link/spu_styleup'
         }
     ],
 
-    // ランキング一覧に自然に挟み込むインフィードカード配置設定（上位10店舗の閲覧を邪魔しない控えめな配置）
+    // ランキング一覧に自然に挟み込むインフィードカード配置設定（リアルタイム画面の体験を邪魔しないよう12位直後の1枠のみ）
     infeedSlots: [
         {
             afterRank: 12,
             itemId: 'dating_instant',
-            badgeText: 'PR',
-            highlight: false
-        },
-        {
-            afterRank: 25,
-            itemId: 'mens_hair_removal',
             badgeText: 'PR',
             highlight: false
         }

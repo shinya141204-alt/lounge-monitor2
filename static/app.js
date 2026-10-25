@@ -1392,7 +1392,8 @@
             const wrapper = document.createElement('a');
             wrapper.className = `ranking-item pr-card-item ${slotConfig.highlight ? 'pr-card-highlight' : ''}`;
             wrapper.href = item.url;
-            if (item.url && item.url.startsWith('http')) {
+            const isExtLink = item.url && (item.url.startsWith('http') || item.url.startsWith('/link/'));
+            if (isExtLink) {
                 wrapper.target = '_blank';
                 wrapper.rel = 'noopener noreferrer sponsored';
             } else {
@@ -1439,20 +1440,50 @@
             }
             slot.classList.remove('hidden');
 
-            // Dynamic rotation based on time of day:
-            // 20:00 - 05:59 JST -> Prioritize Dating App (when lounges are busy/full)
-            // 06:00 - 19:59 JST -> Prioritize Grooming / Hair Removal
+            // Store crowd-context aware recommendation:
+            // 1. Male surplus (men > women) -> Suggest instant dating app as waiting-time backup
+            // 2. Low female count (women < 10) -> Suggest instant dating app as quiet-hour backup
+            // 3. Favorable lounge crowd (women >= 10 && women >= men) -> Day: Grooming, Night: 2nd-stop backup
+            const liveStore = (lastData && Array.isArray(lastData.ranking))
+                ? lastData.ranking.find(s => s && s.name === storeName)
+                : null;
+            const wCount = liveStore ? (parseInt(liveStore.women || 0, 10) || 0) : 0;
+            const mCount = liveStore ? (parseInt(liveStore.men || 0, 10) || 0) : 0;
+
             const currentHour = new Date().getHours();
-            const isNightTime = (currentHour >= 20 || currentHour < 6);
-            const targetCategory = isNightTime ? 'dating' : 'beauty';
+            const isNightTime = (currentHour >= 19 || currentHour < 6);
+
+            let targetCategory = 'dating';
+            let customBadge = '';
+            let customTitle = '';
+
+            if (liveStore && mCount > wCount) {
+                targetCategory = 'dating';
+                customBadge = '男性多め・待ち対策';
+                customTitle = 'お店が混んでいる日の予備に｜近くで今日飲める恋活アプリ';
+            } else if (liveStore && wCount < 10) {
+                targetCategory = 'dating';
+                customBadge = '少人数・空振り対策';
+                customTitle = 'ラウンジが渋い時間帯に｜今から近くで会える恋活アプリ';
+            } else if (isNightTime) {
+                targetCategory = 'dating';
+                customBadge = '合流・2軒目の予備に';
+                customTitle = '近くで今日これから飲める相手も探せる恋活アプリ';
+            } else {
+                targetCategory = 'beauty';
+                customBadge = '入店前の清潔感ケア';
+                customTitle = 'ソファ席の至近距離対策に｜メンズ医療ヒゲ脱毛（初回プラン）';
+            }
 
             const matchedItem = (master.items || []).find(i => i.category === targetCategory) || master.items[0];
-            const isExternal = matchedItem.url && matchedItem.url.startsWith('http');
+            const isExternal = matchedItem.url && (matchedItem.url.startsWith('http') || matchedItem.url.startsWith('/link/'));
+            const displayBadge = customBadge || matchedItem.badge || 'PR';
+            const displayTitle = customTitle || matchedItem.shortTitle || matchedItem.name;
 
             slot.innerHTML = `
                 <a href="${escapeHtml(matchedItem.url)}" ${isExternal ? 'target="_blank" rel="noopener noreferrer sponsored"' : ''} class="modal-pr-link" ${!isExternal ? `onclick="event.preventDefault(); openGuideModal('${targetCategory}')"` : ''}>
-                    <span class="pr-tag-pill">${escapeHtml(matchedItem.badge || 'PR')}</span>
-                    <span class="modal-pr-text">${escapeHtml(matchedItem.shortTitle || matchedItem.name)}</span>
+                    <span class="pr-tag-pill">${escapeHtml(displayBadge)}</span>
+                    <span class="modal-pr-text">${escapeHtml(displayTitle)}</span>
                     <span class="modal-pr-arrow">›</span>
                 </a>
             `;
@@ -1503,7 +1534,7 @@
                 }
 
                 listEl.innerHTML = filteredItems.map(item => {
-                    const isExt = item.url && item.url.startsWith('http');
+                    const isExt = item.url && (item.url.startsWith('http') || item.url.startsWith('/link/'));
                     const pointsHtml = (item.points && item.points.length > 0) ? `
                         <ul class="guide-points-list">
                             ${item.points.map(p => `<li><span class="check-icon">✓</span> ${escapeHtml(p)}</li>`).join('')}

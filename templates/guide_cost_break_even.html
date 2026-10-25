@@ -389,6 +389,16 @@
                 </p>
             </div>
 
+            {% if not is_staff and not is_scheduled_preview %}
+            <div style="margin: 22px 0; padding: 16px 18px; border-radius: 12px; background: #16171c; border: 1px solid rgba(200, 164, 110, 0.3);">
+                <div style="font-size: 0.72rem; font-weight: 700; color: #f1e3cb; margin-bottom: 5px;">PR｜待機料金や惰性延長コストを抑えたい日の選択肢</div>
+                <p style="font-size: 0.84rem; color: #dedad2; margin: 0 0 10px; line-height: 1.65;">
+                    週末に近隣店舗がすべて男性過多で待ち時間が発生している日や、1対1で最初から相性の合う相手と落ち着いて飲みたい日は、近くで今日会える恋活アプリを併用すると無駄な待機コストを防げます。
+                </p>
+                <a href="/link/dating" target="_blank" rel="noopener noreferrer sponsored" style="display: inline-block; padding: 8px 15px; border-radius: 8px; background: rgba(200, 164, 110, 0.16); border: 1px solid rgba(200, 164, 110, 0.55); color: #f1e3cb; font-size: 0.81rem; font-weight: 700; text-decoration: none;">近くで今日会える恋活アプリを見る ›</a>
+            </div>
+            {% endif %}
+
             <div class="cta-box">
                 <div style="font-size:1.05rem;font-weight:800;color:#fff;">📊 徒歩5分圏内の「いま一番入りやすい店舗」を3秒で比較！</div>
                 <p style="font-size:0.85rem;color:#cbd5e1;margin:8px 0 0 0;">
