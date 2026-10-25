@@ -1260,6 +1260,40 @@ class GrowthFeaturesTests(unittest.TestCase):
             redir_resp = self.client.get(f'/link/{item_key}', follow_redirects=False)
             self.assertEqual(redir_resp.status_code, 302)
 
+        # 8. Step 3 Automated Price & Business Hours Drift Audit verification
+        import data_audit
+        jst = datetime.timezone(datetime.timedelta(hours=9))
+        # Baseline clean audit
+        clean_rep = data_audit.run_data_audit(live_stores=[], all_events=[], now_jst=datetime.datetime(2026, 10, 28, 21, 0, tzinfo=jst))
+        self.assertEqual(clean_rep['status'], 'ok')
+        self.assertEqual(clean_rep['summary']['issue_count'], 0)
+        self.assertEqual(clean_rep['summary']['hours_registered'], 53)
+        self.assertEqual(clean_rep['summary']['price_registered'], 51)
+
+        # Simulate off-hours guest drift (14:00 Wednesday when OLG 新宿 is closed, but 6 guests detected)
+        drift_rep = data_audit.run_data_audit(
+            live_stores=[{'name': 'OLG 新宿', 'women': 4, 'men': 2}],
+            all_events=[{'brand': 'OLG', 'title': '【重要】新宿店 営業時間変更のお知らせ', 'url': 'https://oriental-lounge.com/'}],
+            now_jst=datetime.datetime(2026, 10, 28, 14, 0, tzinfo=jst),
+        )
+        self.assertEqual(drift_rep['status'], 'warning')
+        self.assertEqual(drift_rep['summary']['hours_drift_count'], 1)
+        self.assertEqual(drift_rep['summary']['revision_notice_count'], 1)
+
+        # Staff dashboard displays the audit panel & /api/data-audit is protected
+        self.assertEqual(self.client.get('/api/data-audit').status_code, 401)
+        with self.client.session_transaction() as s:
+            s['is_staff'] = True
+        try:
+            api_rep = self.client.get('/api/data-audit')
+            self.assertEqual(api_rep.status_code, 200)
+            self.assertIn('summary', api_rep.get_json())
+            staff_html = self.client.get('/staff').data.decode('utf-8')
+            self.assertIn('料金・営業時間データ自動監査', staff_html)
+        finally:
+            with self.client.session_transaction() as s:
+                s.pop('is_staff', None)
+
 
 
 if __name__ == '__main__':

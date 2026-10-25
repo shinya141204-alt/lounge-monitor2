@@ -155,10 +155,14 @@ def _ensure_scheduler_started_async():
             def _crawl_events_job():
                 try:
                     import events
-                    events.fetch_all_events(force_refresh=True)
+                    import data_audit
+                    evs = events.fetch_all_events(force_refresh=True)
+                    with data_lock:
+                        cur_stores = list(latest_data.get('full_data') or [])
+                    data_audit.run_data_audit(live_stores=cur_stores, all_events=evs, send_alerts=True)
                 except Exception as err:
                     logging.error(f"Scheduled events crawl failed: {err}")
-            scheduler.add_job(func=_crawl_events_job, trigger="cron", hour="1,8", minute=0)
+            scheduler.add_job(func=_crawl_events_job, trigger="cron", hour="1,8,20", minute=0)
             def _scheduled_articles_release_job():
                 try:
                     scheduled_articles.check_and_announce_newly_published()
@@ -801,6 +805,11 @@ def update_job(force=False):
             save_latest_status_snapshot()
             print(f"Data updated. Top store: {top_store['name'] if top_store else 'None'}")
             _last_update_error = None
+            try:
+                import data_audit
+                data_audit.run_data_audit(live_stores=sorted_data, send_alerts=True)
+            except Exception:
+                pass
             
             # --- Logging Optimization ---
             total_guests = sum(d.get('men', 0) + d.get('women', 0) for d in data)
@@ -1030,15 +1039,31 @@ def staff_monitor():
     # Check if already authenticated in session
     if session.get('is_staff'):
         trigger_background_fetch_if_needed()
+        import data_audit
+        with data_lock:
+            cur_live = list(latest_data.get('full_data') or [])
+        audit_report = data_audit.run_data_audit(live_stores=cur_live, send_alerts=False)
         return render_template(
             'index.html',
             is_staff=True,
             initial_status=get_initial_status_payload(),
             published_scheduled=scheduled_articles.get_published_articles(),
             scheduled_queue=scheduled_articles.get_all_with_status(),
+            data_audit_report=audit_report,
         )
 
     return render_template('staff_login.html', error=error)
+
+@app.route('/api/data-audit')
+def api_data_audit():
+    """Staff/Admin endpoint returning automated price & business hours drift audit report."""
+    if not is_admin_authorized():
+        return jsonify({'error': 'Unauthorized'}), 401
+    import data_audit
+    with data_lock:
+        cur_live = list(latest_data.get('full_data') or [])
+    report = data_audit.run_data_audit(live_stores=cur_live, send_alerts=False)
+    return jsonify(report)
 
 @app.route('/staff/logout')
 def staff_logout():

@@ -1119,6 +1119,33 @@
                             <span id="staff-toggle-events-label">イベント非表示: ON（業務集中モード）</span>
                         </button>
                     </div>
+                    {% if data_audit_report %}
+                    <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.08);">
+                        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px; margin-bottom: 8px;">
+                            <span style="font-size: 0.78rem; font-weight: 700; color: #cbd5e1;">🛡️ 料金・営業時間データ自動監査（ズレ検知モニター）</span>
+                            {% if data_audit_report.status == 'ok' %}
+                            <span style="font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 99px; background: rgba(34, 197, 94, 0.18); color: #86efac; border: 1px solid rgba(34, 197, 94, 0.35);">✓ 全{{ data_audit_report.summary.total_master_stores }}店舗 整合性OK（ズレなし）</span>
+                            {% else %}
+                            <span style="font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 99px; background: rgba(245, 158, 11, 0.2); color: #fde68a; border: 1px solid rgba(245, 158, 11, 0.45);">⚠️ 要確認 {{ data_audit_report.summary.issue_count + data_audit_report.summary.warning_count }}件</span>
+                            {% endif %}
+                        </div>
+                        <div style="font-size: 0.74rem; color: #94a3b8; line-height: 1.55;">
+                            営業時間登録：{{ data_audit_report.summary.hours_registered }}/{{ data_audit_report.summary.total_master_stores }}店舗 ｜ 国内料金表：{{ data_audit_report.summary.price_registered }}/{{ data_audit_report.summary.domestic_stores }}店舗 ｜ 営業時間外来店ズレ：{{ data_audit_report.summary.hours_drift_count }}件 ｜ 公式改定キーワード：{{ data_audit_report.summary.revision_notice_count }}件（最終点検 {{ data_audit_report.checked_at }}）
+                        </div>
+                        {% if data_audit_report.issues or data_audit_report.warnings %}
+                        <div style="margin-top: 8px; display: flex; flex-direction: column; gap: 6px;">
+                            {% for item in (data_audit_report.issues + data_audit_report.warnings) %}
+                            <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.35); border-radius: 8px; padding: 7px 10px; font-size: 0.75rem; color: #fde68a;">
+                                {{ item.message }}
+                                {% if item.url %}
+                                <a href="{{ item.url }}" target="_blank" rel="noopener noreferrer" style="color: #38bdf8; margin-left: 6px; font-weight: 700;">公式ページ確認 ↗</a>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
                     {% if scheduled_queue %}
                     <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.08);">
                         <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px; margin-bottom: 8px;">
