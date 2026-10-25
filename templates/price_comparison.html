@@ -358,8 +358,10 @@
 
         <!-- Section 1: Urban Area Cluster Comparison Board -->
         <section class="section-card">
-            <h2 class="section-title">📍 エリア別：徒歩圏内ライバル店の料金・イベント・現在人数 横並び比較</h2>
-            <p class="section-lead">※ボタンをタップすると各街の比較表に切り替わります（リアルタイム更新：{{ last_updated }}時点）</p>
+            <h2 class="section-title">📍 エリア別：徒歩圏内ライバル店の4時間帯料金・イベント・現在人数 横並び比較</h2>
+            <p class="section-lead">
+                ※ボタンをタップすると各街の比較表に切り替わります（リアルタイム更新：{{ last_updated }}時点 ｜ 🟢 現在の時間帯区分：<strong style="color:#fde68a;">{{ data.current_slot.slot_label }}</strong>）
+            </p>
 
             <div class="area-tabs" role="tablist">
                 {% for cl in data.clusters %}
@@ -401,7 +403,7 @@
                             <tr>
                                 <th>店舗名 / 1名入店可否</th>
                                 <th>現在の男女人数・比率</th>
-                                <th>店舗別の相席料金（60分目安・時間帯単価）</th>
+                                <th>時間帯別の相席10分料金（平日 / 金土祝前日）</th>
                                 <th>単独時（待機中）料金</th>
                                 <th>開催中の男性特典 ＆ 女性集客イベント</th>
                                 <th>実質コスパ検証ジャッジ</th>
@@ -444,14 +446,17 @@
                                     <div style="font-size: 0.72rem; color: #64748b;">夕方オープン後に自動反映</div>
                                     {% endif %}
                                 </td>
-                                <td style="min-width: 185px;">
-                                    <div style="font-weight: 800; color: #f8fafc; font-size: 0.82rem;">
-                                        平日60分：{{ st.est_60m_weekday_label }}<br>
-                                        金土60分：{{ st.est_60m_weekend_label }}
+                                <td style="min-width: 225px;">
+                                    <div style="background: rgba(245, 158, 11, 0.14); border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 7px; padding: 4px 8px; margin-bottom: 5px; font-size: 0.75rem; font-weight: 800; color: #fde68a;">
+                                        🟢 現在枠（{{ st.active_slot_label }}）：{{ st.active_slot_rate }}
                                     </div>
-                                    <div style="font-size: 0.72rem; color: #94a3b8; margin-top: 4px; line-height: 1.45;">
-                                        〜22時(10分)：{{ st.early_10m_str }}<br>
-                                        22時〜(10分)：{{ st.late_10m_str }}<br>
+                                    <div style="font-size: 0.74rem; color: #e2e8f0; line-height: 1.5;">
+                                        ① <strong>Open〜20時</strong>：{{ st.slot_18_20 }}<br>
+                                        ② <strong>20時〜22時</strong>：{{ st.slot_20_22 }}<br>
+                                        ③ <strong>22時〜24時</strong>：{{ st.slot_22_24 }}<br>
+                                        ④ <strong>24時〜Close</strong>：{{ st.slot_24_last }}
+                                    </div>
+                                    <div style="font-size: 0.71rem; color: #94a3b8; margin-top: 3px;">
                                         チャージ：{{ st.charge_str }}
                                     </div>
                                 </td>
@@ -585,44 +590,42 @@
 
         <!-- Section 4: Complete 51-Store Pricing Master Catalog -->
         <section id="all-stores-price-catalog" class="section-card" style="border-color: rgba(245, 158, 11, 0.35);">
-            <h2 class="section-title">📋 全国全{{ data.all_domestic_stores|length }}店舗の「単独（待機）料金・時間帯別相席料金・1名入店可否」完全一覧表</h2>
+            <h2 class="section-title">📋 全国全{{ data.all_domestic_stores|length }}店舗の「4時間帯別相席料金・単独（待機）料金・1名入店可否」完全一覧表</h2>
             <p class="section-lead">
-                同じオリエンタルラウンジやag・JISでも、<strong>都心旗艦店（恵比寿・渋谷・新宿・梅田）と地方店では相席10分単価が最大2倍以上異なります</strong>。国内全{{ data.all_domestic_stores|length }}店舗の公式料金体系をすべて網羅しました。
+                国内全{{ data.all_domestic_stores|length }}店舗について、公式の<strong>4つの時間帯区分（①Open〜20時 / ②20時〜22時 / ③22時〜24時 / ④24時〜Close）ごとの相席10分料金（平日 / 金土祝前日）</strong>、<strong>単独（待機）料金</strong>、<strong>1名入店ルール</strong>をすべて網羅しました。
             </p>
 
             <div class="comp-table-wrap">
-                <table class="comp-table" style="min-width: 820px;">
+                <table class="comp-table" style="min-width: 960px;">
                     <thead>
                         <tr>
                             <th>エリア / 店舗名</th>
-                            <th>男性チャージ</th>
-                            <th>単独時（待機中）10分</th>
-                            <th>Open〜22時の相席10分</th>
-                            <th>22時〜ピークの相席10分</th>
-                            <th>60分相席目安（平日 / 金土）</th>
-                            <th>1名（ソロ）入店可否</th>
+                            <th>単独時（待機中）</th>
+                            <th>① Open〜20時</th>
+                            <th>② 20時〜22時</th>
+                            <th>③ 22時〜24時</th>
+                            <th>④ 24時〜Close</th>
+                            <th>1名（ソロ）入店可否 / チャージ</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for st in data.all_domestic_stores %}
                         <tr>
-                            <td style="min-width: 165px;">
+                            <td style="min-width: 160px;">
                                 <div style="font-size: 0.7rem; color: #94a3b8;">{{ st.area_label }}</div>
                                 <div style="font-weight: 800;">
                                     <span class="brand-pill brand-{{ st.brand_code }}">{{ st.brand_code }}</span>
                                     <a href="/store/{{ st.slug }}" style="color: #f8fafc; text-decoration: none;">{{ st.seo_name }} ›</a>
                                 </div>
                             </td>
-                            <td style="font-size: 0.77rem; color: #cbd5e1;">{{ st.charge_str }}</td>
-                            <td style="font-weight: 800; color: #fde68a; font-size: 0.79rem;">{{ st.wait_fee_str }}</td>
-                            <td style="font-size: 0.78rem; color: #6ee7b7; font-weight: 700;">{{ st.early_10m_str }}</td>
-                            <td style="font-size: 0.78rem; color: #f9a8d4; font-weight: 700;">{{ st.late_10m_str }}</td>
-                            <td style="font-size: 0.77rem; font-weight: 700; color: #f8fafc;">
-                                平日：{{ st.est_60m_weekday_label }}<br>
-                                金土：{{ st.est_60m_weekend_label }}
-                            </td>
-                            <td style="font-size: 0.75rem; color: {% if '不可' in st.solo_rule %}#fda4af{% else %}#cbd5e1{% endif %}; font-weight: 700;">
-                                {{ st.solo_rule }}
+                            <td style="font-weight: 800; color: #fde68a; font-size: 0.78rem;">{{ st.wait_fee_str }}</td>
+                            <td style="font-size: 0.77rem; color: #6ee7b7; font-weight: 700;">{{ st.slot_18_20 }}</td>
+                            <td style="font-size: 0.77rem; color: #7dd3fc; font-weight: 700;">{{ st.slot_20_22 }}</td>
+                            <td style="font-size: 0.77rem; color: #f9a8d4; font-weight: 700;">{{ st.slot_22_24 }}</td>
+                            <td style="font-size: 0.77rem; color: #d8b4fe; font-weight: 700;">{{ st.slot_24_last }}</td>
+                            <td style="font-size: 0.74rem; color: {% if '不可' in st.solo_rule %}#fda4af{% else %}#cbd5e1{% endif %}; font-weight: 700;">
+                                👤 {{ st.solo_rule }}<br>
+                                <span style="font-size: 0.7rem; color: #94a3b8; font-weight: 500;">チャージ：{{ st.charge_str }}</span>
                             </td>
                         </tr>
                         {% endfor %}

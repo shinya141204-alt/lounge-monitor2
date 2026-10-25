@@ -473,9 +473,16 @@
                                 {% endif %}
                             </td>
                             <td style="padding: 11px 12px;">
-                                <div style="font-weight: 800; color: #fff;">平日60分 {{ st.est_60m_weekday_label }}<br>金土60分 {{ st.est_60m_weekend_label }}</div>
-                                <div style="font-size: 0.72rem; color: #94a3b8; margin-top: 2px;">〜22時：{{ st.early_10m_str }} / 22時〜：{{ st.late_10m_str }}</div>
-                                <div style="font-size: 0.73rem; color: #fde68a; font-weight: 700; margin-top: 2px;">単独（待機中）：{{ st.wait_fee_str }}</div>
+                                <div style="font-size: 0.74rem; font-weight: 800; color: #fde68a; margin-bottom: 3px;">
+                                    🟢 現在枠（{{ st.active_slot_label }}）：{{ st.active_slot_rate }}
+                                </div>
+                                <div style="font-size: 0.72rem; color: #e2e8f0; line-height: 1.45;">
+                                    ①〜20時：{{ st.slot_18_20 }}<br>
+                                    ②20〜22時：{{ st.slot_20_22 }}<br>
+                                    ③22〜24時：{{ st.slot_22_24 }}<br>
+                                    ④24時〜：{{ st.slot_24_last }}
+                                </div>
+                                <div style="font-size: 0.72rem; color: #fde68a; font-weight: 700; margin-top: 3px;">単独（待機中）：{{ st.wait_fee_str }}</div>
                             </td>
                             <td style="padding: 11px 12px; font-size: 0.76rem; color: #cbd5e1;">
                                 {% for mp in st.men_perks[:1] %}

@@ -712,17 +712,17 @@ class GrowthFeaturesTests(unittest.TestCase):
             self.assertIn('オリエンタルラウンジ 新宿', html)
             self.assertIn('ag（アグ）渋谷', html)
             self.assertIn('JIS（ジス）新宿', html)
-            self.assertIn('平日220円 / 金土330円（10分）', html)
-            self.assertIn('平日880円 / 金土1,200円', html)  # OLG 恵比寿 store-specific peak rate
+            self.assertIn('330円 / 10分', html)
+            self.assertIn('平日990円 / 金土1,500円', html)  # OLG 恵比寿 24:00~Close rate
             self.assertIn('2名以上必須（男性1名入店不可）', html)
-            self.assertIn('全国全51店舗の「単独（待機）料金・時間帯別相席料金・1名入店可否」完全一覧表', html)
+            self.assertIn('全国全51店舗の「4時間帯別相席料金・単独（待機）料金・1名入店可否」完全一覧表', html)
             self.assertNotIn('/link/', html)
             ld_blocks = re.findall(r'<script type="application/ld\+json">\s*(.*?)\s*</script>', html, re.S)
             self.assertGreaterEqual(len(ld_blocks), 2)
             for block in ld_blocks:
                 json.loads(block)
 
-            # Verify all domestic stores in store_master have explicit entries in STORE_PRICE_TABLE
+            # Verify all domestic stores in store_master have explicit entries in STORE_PRICE_TABLE with all 4 time slots
             import price_comparison
             for sname, sinfo in store_master.load().items():
                 if sinfo.get('region') == 'Korea':
@@ -730,9 +730,23 @@ class GrowthFeaturesTests(unittest.TestCase):
                 self.assertIn(sname, price_comparison.STORE_PRICE_TABLE, f"Missing {sname} in STORE_PRICE_TABLE")
                 prof = price_comparison.get_store_price_profile(sname)
                 self.assertGreater(prof['wait_10m_yen'], 0, f"{sname} wait_10m_yen must be > 0")
-                self.assertTrue(prof['early_10m_str'])
-                self.assertTrue(prof['late_10m_str'])
+                for slot_key in ('slot_18_20', 'slot_20_22', 'slot_22_24', 'slot_24_last'):
+                    self.assertTrue(prof.get(slot_key), f"{sname} missing {slot_key}")
                 self.assertTrue(prof['solo_rule'])
+                self.assertTrue(prof['active_slot_rate'])
+
+            # Verify time-slot detection across all 4 brackets (19h, 21h, 23h, 01h JST)
+            jst = datetime.timezone(datetime.timedelta(hours=9))
+            self.assertEqual(price_comparison.get_current_time_slot_info(datetime.datetime(2026, 10, 30, 19, 0, tzinfo=jst))['slot_key'], 'slot_18_20')
+            self.assertEqual(price_comparison.get_current_time_slot_info(datetime.datetime(2026, 10, 30, 21, 0, tzinfo=jst))['slot_key'], 'slot_20_22')
+            self.assertEqual(price_comparison.get_current_time_slot_info(datetime.datetime(2026, 10, 30, 23, 0, tzinfo=jst))['slot_key'], 'slot_22_24')
+            self.assertEqual(price_comparison.get_current_time_slot_info(datetime.datetime(2026, 10, 31, 1, 30, tzinfo=jst))['slot_key'], 'slot_24_last')
+
+            # Verify all 53 store detail pages render HTTP 200 without template or JSON-LD errors
+            for sname in store_master.load().keys():
+                sslug = store_master.slug_of(sname)
+                sr = self.client.get(f'/store/{sslug}')
+                self.assertEqual(sr.status_code, 200, f"/store/{sslug} failed")
 
             # Verify store detail page also embeds the nearby price & event comparison table
             s_resp = self.client.get('/store/oriental-lounge-shinjuku')
