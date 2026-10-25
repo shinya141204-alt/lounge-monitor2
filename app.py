@@ -928,7 +928,7 @@ def affiliate_redirect(item_id):
 import urllib.parse as urllib_parse
 
 _BOT_MARKERS = ('bot', 'spider', 'crawl', 'slurp', 'facebookexternalhit', 'preview', 'headless', 'python-requests', 'curl')
-_TRACKED_PAGE_PREFIXES = ('/guide', '/columns', '/areas', '/area/', '/grooming', '/stats', '/simulator', '/oriental-lounge', '/ag', '/jis', '/store/')
+_TRACKED_PAGE_PREFIXES = ('/guide', '/columns', '/areas', '/area/', '/grooming', '/stats', '/oriental-lounge', '/ag', '/jis', '/store/')
 
 @app.template_filter('seo_store_name')
 def _jinja_seo_store_name(name):
@@ -1708,12 +1708,6 @@ def sitemap_xml():
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://aiseki-navi.com/simulator</loc>
-    <lastmod>{today}</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
     <loc>https://aiseki-navi.com/grooming</loc>
     <lastmod>{today}</lastmod>
     <changefreq>weekly</changefreq>
@@ -1867,52 +1861,6 @@ def area_portal(area_slug=None):
         area_summaries=area_summaries,
         selected_area=selected_area,
         last_updated=last_updated
-    )
-
-@app.route('/simulator')
-def simulator_page():
-    """Interactive lounge fee & split-bill calculator with live store counts and LINE group sharing."""
-    import store_master
-    restore_latest_data_if_empty()
-    trigger_background_fetch_if_needed()
-    with data_lock:
-        raw_stores = list(latest_data.get('full_data') or [])
-
-    live_map = {s.get('name'): s for s in raw_stores}
-    master = store_master.load()
-    stores_list = []
-    stores_map = {}
-
-    for sname, info in master.items():
-        if (info.get('region') or '') == 'Korea':
-            continue
-        bkey = store_master.brand_key_of(sname)
-        if bkey not in ('oriental-lounge', 'ag', 'jis'):
-            bkey = 'oriental-lounge'
-        slug = store_master.slug_of(sname)
-        if not slug:
-            continue
-        s_live = live_map.get(sname, {})
-        w = int(s_live.get('women', 0))
-        m = int(s_live.get('men', 0))
-        tot = w + m
-        item = {
-            'slug': slug,
-            'seo_name': store_master.seo_name(sname),
-            'area_label': info.get('area_label') or '全国',
-            'brand_slug': bkey,
-            'women': w,
-            'men': m,
-            'wpct': round((w / tot) * 100) if tot > 0 else 0,
-        }
-        stores_list.append(item)
-        stores_map[slug] = item
-
-    return render_template(
-        'simulator.html',
-        stores_list=stores_list,
-        stores_map_json=json.dumps(stores_map, ensure_ascii=False),
-        is_staff=bool(session.get('is_staff')),
     )
 
 @app.route('/grooming')

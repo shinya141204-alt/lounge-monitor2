@@ -689,27 +689,10 @@ class SeoAndXMediaUpgradeTests(unittest.TestCase):
 
 
 class GrowthFeaturesTests(unittest.TestCase):
-    """Tests for /simulator, X bonus-time guerrilla alerts, and /staff/sns-kit IG/Threads generator."""
+    """Tests for X bonus-time guerrilla alerts and /staff/sns-kit IG/Threads generator."""
 
     def setUp(self):
         self.client = app_module.app.test_client()
-
-    def test_simulator_page_seo_json_ld_and_sitemap(self):
-        import re
-        resp = self.client.get('/simulator')
-        self.assertEqual(resp.status_code, 200)
-        html = resp.data.decode('utf-8')
-        self.assertIn('相席ラウンジ料金・割り勘シミュレーター', html)
-        self.assertIn('shareToLine()', html)
-        self.assertNotIn('/link/', html)
-        ld_blocks = re.findall(r'<script type="application/ld\+json">\s*(.*?)\s*</script>', html, re.S)
-        self.assertGreaterEqual(len(ld_blocks), 1)
-        for block in ld_blocks:
-            json.loads(block)
-
-        smap = self.client.get('/sitemap.xml').data.decode('utf-8')
-        self.assertIn('https://aiseki-navi.com/simulator', smap)
-        self.assertIn('シミュレーター', analytics.describe_label('page_view', '/simulator').get('title', ''))
 
     def test_bonus_alert_detection_window_dedup_and_png(self):
         import io
