@@ -49,6 +49,9 @@ def generate_weekly_report():
 
     # 2. Fallback: Query Google Sheets via gviz API if local SQLite doesn't have enough multi-day data
     if not items:
+        import os
+        if os.environ.get("DISABLE_SHEETS") == "1":
+            return {"error": "Google Sheets Disabled"}
         access_token = logger.get_access_token()
         spreadsheet_id = logger.get_spreadsheet_id()
         if not access_token or not spreadsheet_id:

@@ -9,6 +9,8 @@ import logger
 import statistics
 import os
 import sys
+import json
+import time
 import local_db
 import scheduled_articles
 from collections import defaultdict
@@ -158,6 +160,17 @@ def _ensure_scheduler_started_async():
                 except Exception as err:
                     logging.error(f"Scheduled articles release check failed: {err}")
             scheduler.add_job(func=_scheduled_articles_release_job, trigger="interval", minutes=15)
+            def _bonus_alert_check_job():
+                try:
+                    import bonus_alert
+                    with data_lock:
+                        cur_stores = list(latest_data.get('full_data') or [])
+                        is_seed = bool(latest_data.get('is_seed'))
+                    if cur_stores and not is_seed:
+                        bonus_alert.check_and_post_bonus_alert(cur_stores)
+                except Exception as err:
+                    logging.error(f"Bonus alert check failed: {err}")
+            scheduler.add_job(func=_bonus_alert_check_job, trigger="interval", minutes=10)
             scheduler.add_job(func=run_scheduled_weekly_x_post, trigger="cron", day_of_week="sun", hour=10, minute=0)
             scheduler.start()
             trigger_background_fetch_if_needed()
@@ -915,7 +928,7 @@ def affiliate_redirect(item_id):
 import urllib.parse as urllib_parse
 
 _BOT_MARKERS = ('bot', 'spider', 'crawl', 'slurp', 'facebookexternalhit', 'preview', 'headless', 'python-requests', 'curl')
-_TRACKED_PAGE_PREFIXES = ('/guide', '/columns', '/areas', '/area/', '/grooming', '/stats', '/oriental-lounge', '/ag', '/jis', '/store/')
+_TRACKED_PAGE_PREFIXES = ('/guide', '/columns', '/areas', '/area/', '/grooming', '/stats', '/simulator', '/oriental-lounge', '/ag', '/jis', '/store/')
 
 @app.template_filter('seo_store_name')
 def _jinja_seo_store_name(name):
@@ -1015,6 +1028,61 @@ def staff_logout():
     """Clear staff authentication and return to staff login."""
     session.pop('is_staff', None)
     return redirect(url_for('staff_monitor'))
+
+
+def _get_sns_kit_context():
+    import ig_carousel_generator
+    import weekly_report
+    rep = None
+    try:
+        rep = weekly_report.generate_weekly_report()
+    except Exception:
+        rep = None
+    with data_lock:
+        live_s = list(latest_data.get('full_data') or [])
+    return ig_carousel_generator.build_forecast_context(report=rep, live_stores=live_s)
+
+
+@app.route('/staff/sns-kit')
+def staff_sns_kit():
+    """Staff-only one-click Instagram / Threads weekend forecast carousel & caption generator."""
+    if not session.get('is_staff'):
+        return redirect(url_for('staff_monitor'))
+    import ig_carousel_generator
+    ctx = _get_sns_kit_context()
+    captions = ig_carousel_generator.build_captions(ctx)
+    cache_bust = int(time.time()) // 300
+    return render_template('staff_sns_kit.html', ctx=ctx, captions=captions, cache_bust=cache_bust)
+
+
+@app.route('/staff/sns-kit/slide/<int:slide_num>.png')
+def staff_sns_kit_slide(slide_num):
+    """Render individual 1080x1350 PNG slide for staff mobile save or preview."""
+    if not session.get('is_staff'):
+        return redirect(url_for('staff_monitor'))
+    import ig_carousel_generator
+    ctx = _get_sns_kit_context()
+    png_bytes = ig_carousel_generator.render_slide_png(slide_num, ctx=ctx)
+    headers = {'Cache-Control': 'private, max-age=300'}
+    if request.args.get('download') == '1':
+        headers['Content-Disposition'] = f'attachment; filename="aiseki_navi_slide_0{max(1, min(5, slide_num))}.png"'
+    return Response(png_bytes, mimetype='image/png', headers=headers)
+
+
+@app.route('/staff/sns-kit/download.zip')
+def staff_sns_kit_zip():
+    """Download all 5 portrait PNG slides + Instagram/Threads captions in one ZIP."""
+    if not session.get('is_staff'):
+        return redirect(url_for('staff_monitor'))
+    import ig_carousel_generator
+    ctx = _get_sns_kit_context()
+    zip_bytes = ig_carousel_generator.render_all_slides_zip(ctx=ctx)
+    today_s = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).strftime('%Y%m%d')
+    return Response(
+        zip_bytes,
+        mimetype='application/zip',
+        headers={'Content-Disposition': f'attachment; filename="aiseki_navi_weekend_kit_{today_s}.zip"'},
+    )
 
 _is_fetching = False
 _fetch_started_at = None
@@ -1640,6 +1708,12 @@ def sitemap_xml():
     <priority>0.9</priority>
   </url>
   <url>
+    <loc>https://aiseki-navi.com/simulator</loc>
+    <lastmod>{today}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
     <loc>https://aiseki-navi.com/grooming</loc>
     <lastmod>{today}</lastmod>
     <changefreq>weekly</changefreq>
@@ -1793,6 +1867,52 @@ def area_portal(area_slug=None):
         area_summaries=area_summaries,
         selected_area=selected_area,
         last_updated=last_updated
+    )
+
+@app.route('/simulator')
+def simulator_page():
+    """Interactive lounge fee & split-bill calculator with live store counts and LINE group sharing."""
+    import store_master
+    restore_latest_data_if_empty()
+    trigger_background_fetch_if_needed()
+    with data_lock:
+        raw_stores = list(latest_data.get('full_data') or [])
+
+    live_map = {s.get('name'): s for s in raw_stores}
+    master = store_master.load()
+    stores_list = []
+    stores_map = {}
+
+    for sname, info in master.items():
+        if (info.get('region') or '') == 'Korea':
+            continue
+        bkey = store_master.brand_key_of(sname)
+        if bkey not in ('oriental-lounge', 'ag', 'jis'):
+            bkey = 'oriental-lounge'
+        slug = store_master.slug_of(sname)
+        if not slug:
+            continue
+        s_live = live_map.get(sname, {})
+        w = int(s_live.get('women', 0))
+        m = int(s_live.get('men', 0))
+        tot = w + m
+        item = {
+            'slug': slug,
+            'seo_name': store_master.seo_name(sname),
+            'area_label': info.get('area_label') or '全国',
+            'brand_slug': bkey,
+            'women': w,
+            'men': m,
+            'wpct': round((w / tot) * 100) if tot > 0 else 0,
+        }
+        stores_list.append(item)
+        stores_map[slug] = item
+
+    return render_template(
+        'simulator.html',
+        stores_list=stores_list,
+        stores_map_json=json.dumps(stores_map, ensure_ascii=False),
+        is_staff=bool(session.get('is_staff')),
     )
 
 @app.route('/grooming')
@@ -2126,6 +2246,18 @@ def trigger_x_weekly_endpoint():
         return jsonify({'error': 'Unauthorized'}), 401
     force = request.args.get('force', '0') == '1'
     res = run_scheduled_weekly_x_post(force=force)
+    return jsonify(res)
+
+@app.route('/api/trigger-x-bonus')
+def trigger_x_bonus_endpoint():
+    """Endpoint to test or externally trigger the Bonus-Time Guerrilla Alert X post."""
+    if not is_admin_authorized():
+        return jsonify({'error': 'Unauthorized'}), 401
+    import bonus_alert
+    force = request.args.get('force', '0') == '1'
+    with data_lock:
+        stores = list(latest_data.get('full_data') or [])
+    res = bonus_alert.check_and_post_bonus_alert(stores, force=force)
     return jsonify(res)
 
 # Start background services immediately on module import (unless disabled for unit tests)

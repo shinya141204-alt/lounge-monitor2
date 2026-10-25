@@ -356,6 +356,7 @@
 
             <div class="action-btns">
                 <a href="/" class="btn-primary">📈 トップ画面で時間帯別・曜日別グラフを見る ›</a>
+                <a href="/simulator?brand={{ store.brand_slug }}&store={{ store.slug }}" class="btn-secondary">💰 この店舗の料金・割り勘を計算</a>
                 {% if store.map_url %}
                 <a href="{{ store.map_url }}" target="_blank" rel="noopener" class="btn-secondary">🗺️ Googleマップで場所を確認</a>
                 {% endif %}

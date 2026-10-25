@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Instagram・Threads用「週末予報画像」自動生成キット（スタッフ専用）｜相席ナビ</title>
+    <style>
+        :root {
+            --bg: #0c0d14;
+            --surface: #151824;
+            --surface-2: #1e2233;
+            --border: rgba(255, 255, 255, 0.1);
+            --text: #f8fafc;
+            --sub: #94a3b8;
+            --pink: #ec4899;
+            --gold: #fbbf24;
+            --cyan: #38bdf8;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif;
+            line-height: 1.6;
+        }
+        .wrap {
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 20px 16px 80px;
+        }
+        .top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 18px;
+        }
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--text);
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 700;
+            padding: 8px 16px;
+            border-radius: 999px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+        }
+        .hero-box {
+            background: linear-gradient(135deg, rgba(236, 72, 153, 0.14), rgba(56, 189, 248, 0.12));
+            border: 1px solid rgba(244, 114, 182, 0.35);
+            border-radius: 18px;
+            padding: 20px 22px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+        .hero-box h1 {
+            margin: 0 0 6px;
+            font-size: 1.3rem;
+            font-weight: 800;
+        }
+        .hero-box p {
+            margin: 0;
+            font-size: 0.86rem;
+            color: #cbd5e1;
+        }
+        .zip-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 22px;
+            border-radius: 999px;
+            background: linear-gradient(135deg, #ec4899, #8b5cf6);
+            color: #fff;
+            text-decoration: none;
+            font-weight: 800;
+            font-size: 0.9rem;
+            box-shadow: 0 6px 20px rgba(236, 72, 153, 0.35);
+        }
+        .slides-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            gap: 16px;
+            margin-bottom: 28px;
+        }
+        .slide-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .slide-card img {
+            width: 100%;
+            height: auto;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            display: block;
+        }
+        .slide-meta {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            font-size: 0.8rem;
+            font-weight: 700;
+        }
+        .dl-btn {
+            display: inline-block;
+            text-align: center;
+            padding: 8px 12px;
+            border-radius: 10px;
+            background: var(--surface-2);
+            border: 1px solid rgba(56, 189, 248, 0.4);
+            color: var(--cyan);
+            text-decoration: none;
+            font-size: 0.8rem;
+            font-weight: 700;
+        }
+        .caption-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 18px;
+        }
+        .caption-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 18px;
+        }
+        .caption-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .caption-head h2 {
+            margin: 0;
+            font-size: 1rem;
+            font-weight: 800;
+        }
+        .copy-btn {
+            cursor: pointer;
+            padding: 7px 14px;
+            border-radius: 999px;
+            border: 1px solid rgba(251, 191, 36, 0.5);
+            background: rgba(251, 191, 36, 0.14);
+            color: var(--gold);
+            font-weight: 800;
+            font-size: 0.8rem;
+        }
+        textarea.cap-area {
+            width: 100%;
+            min-height: 220px;
+            background: #0a0c14;
+            color: #e2e8f0;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px;
+            font-size: 0.84rem;
+            line-height: 1.65;
+            font-family: inherit;
+            resize: vertical;
+        }
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #10b981;
+            color: #fff;
+            padding: 10px 22px;
+            border-radius: 999px;
+            font-weight: 800;
+            font-size: 0.88rem;
+            display: none;
+            z-index: 9999;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <div class="top-bar">
+            <a href="/staff" class="back-btn">← 社内業務モニターへ戻る</a>
+            <span style="font-size:0.8rem; color:var(--sub);">対象週末：{{ ctx.weekend_label }} ｜ 集計時刻：{{ ctx.generated_at }}</span>
+        </div>
+
+        <div class="hero-box">
+            <div>
+                <h1>📸 Instagram / Threads「週末狙い目予報」ワンクリック生成</h1>
+                <p>蓄積データベースから最新の<strong>4:5縦長カルーセル画像（1080×1350px・全5枚）</strong>と投稿文を自動生成しました。<br>スマホの場合は画像を長押しで「写真に保存」、PCの場合はZIP一括ダウンロードが便利です。</p>
+            </div>
+            <a href="/staff/sns-kit/download.zip" class="zip-btn">📦 全5枚＋キャプションをZIP保存</a>
+        </div>
+
+        <div class="slides-grid">
+            {% set labels = ['① 表紙カバー', '② 盛り上がりTOP5', '③ 高女性比率・穴場TOP5', '④ 時間帯別の立ち回り', '⑤ プロフィール誘導CTA'] %}
+            {% for i in range(1, 6) %}
+            <div class="slide-card">
+                <div class="slide-meta">
+                    <span>{{ labels[i - 1] }}</span>
+                    <span style="color:var(--sub); font-size:0.74rem;">1080×1350</span>
+                </div>
+                <img src="/staff/sns-kit/slide/{{ i }}.png?t={{ cache_bust }}" alt="{{ labels[i - 1] }}" loading="lazy">
+                <a href="/staff/sns-kit/slide/{{ i }}.png?download=1" download="aiseki_navi_slide_0{{ i }}.png" class="dl-btn">⬇ スライド{{ i }}を単体保存</a>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="caption-grid">
+            <div class="caption-card">
+                <div class="caption-head">
+                    <h2>📱 Instagram用キャプション（タグ付き）</h2>
+                    <button type="button" class="copy-btn" onclick="copyText('cap-ig')">📋 コピーする</button>
+                </div>
+                <textarea id="cap-ig" class="cap-area" readonly>{{ captions.instagram_caption }}</textarea>
+            </div>
+
+            <div class="caption-card">
+                <div class="caption-head">
+                    <h2>🧵 Threads用テキスト案①（データ速報調）</h2>
+                    <button type="button" class="copy-btn" onclick="copyText('cap-th1')">📋 コピーする</button>
+                </div>
+                <textarea id="cap-th1" class="cap-area" style="min-height:140px; margin-bottom:14px;" readonly>{{ captions.threads_post_1 }}</textarea>
+
+                <div class="caption-head">
+                    <h2>🧵 Threads用テキスト案②（共感フック調）</h2>
+                    <button type="button" class="copy-btn" onclick="copyText('cap-th2')">📋 コピーする</button>
+                </div>
+                <textarea id="cap-th2" class="cap-area" style="min-height:120px;" readonly>{{ captions.threads_post_2 }}</textarea>
+            </div>
+        </div>
+    </div>
+
+    <div id="copy-toast" class="toast">コピーしました！そのままSNSに貼り付けできます✨</div>
+
+    <script>
+        function copyText(elId) {
+            var el = document.getElementById(elId);
+            if (!el) return;
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(el.value);
+            } else {
+                el.select();
+                document.execCommand('copy');
+            }
+            var t = document.getElementById('copy-toast');
+            t.style.display = 'block';
+            setTimeout(function() { t.style.display = 'none'; }, 2200);
+        }
+    </script>
+</body>
+</html>

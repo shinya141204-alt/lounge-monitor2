@@ -688,5 +688,105 @@ class SeoAndXMediaUpgradeTests(unittest.TestCase):
         )
 
 
+class GrowthFeaturesTests(unittest.TestCase):
+    """Tests for /simulator, X bonus-time guerrilla alerts, and /staff/sns-kit IG/Threads generator."""
+
+    def setUp(self):
+        self.client = app_module.app.test_client()
+
+    def test_simulator_page_seo_json_ld_and_sitemap(self):
+        import re
+        resp = self.client.get('/simulator')
+        self.assertEqual(resp.status_code, 200)
+        html = resp.data.decode('utf-8')
+        self.assertIn('相席ラウンジ料金・割り勘シミュレーター', html)
+        self.assertIn('shareToLine()', html)
+        self.assertNotIn('/link/', html)
+        ld_blocks = re.findall(r'<script type="application/ld\+json">\s*(.*?)\s*</script>', html, re.S)
+        self.assertGreaterEqual(len(ld_blocks), 1)
+        for block in ld_blocks:
+            json.loads(block)
+
+        smap = self.client.get('/sitemap.xml').data.decode('utf-8')
+        self.assertIn('https://aiseki-navi.com/simulator', smap)
+        self.assertIn('シミュレーター', analytics.describe_label('page_view', '/simulator').get('title', ''))
+
+    def test_bonus_alert_detection_window_dedup_and_png(self):
+        import io
+        import re
+        from PIL import Image
+        import bonus_alert
+
+        jst = datetime.timezone(datetime.timedelta(hours=9))
+        # Daytime blocked
+        ok_day, _ = bonus_alert.is_within_alert_window(datetime.datetime(2026, 10, 30, 14, 0, tzinfo=jst))
+        self.assertFalse(ok_day)
+        # Near 22:00 scheduled slot blocked
+        ok_near, _ = bonus_alert.is_within_alert_window(datetime.datetime(2026, 10, 30, 21, 50, tzinfo=jst))
+        self.assertFalse(ok_near)
+        # 21:15 valid guerrilla window
+        valid_dt = datetime.datetime(2026, 10, 30, 21, 15, tzinfo=jst)
+        ok_valid, _ = bonus_alert.is_within_alert_window(valid_dt)
+        self.assertTrue(ok_valid)
+
+        stores = [
+            {'name': 'OLG 渋谷本店', 'women': 38, 'men': 15, 'women_diff': 4, 'region': 'Kanto'},
+            {'name': 'JIS SHINJUKU', 'women': 20, 'men': 25, 'region': 'Kanto'},
+        ]
+        with mock.patch('x_poster.post_to_x', return_value={'status': 'success'}) as m_post:
+            r1 = bonus_alert.check_and_post_bonus_alert(stores, now_jst=valid_dt)
+            r2 = bonus_alert.check_and_post_bonus_alert(stores, now_jst=valid_dt)
+
+        self.assertEqual(r1['status'], 'success')
+        self.assertEqual(r1['mode'], 'female_lead')
+        self.assertEqual(r1['store_name'], 'OLG 渋谷本店')
+        self.assertEqual(r2['status'], 'skipped')
+        self.assertEqual(m_post.call_count, 1)
+
+        import x_poster
+        self.assertLessEqual(x_poster.compute_twitter_weight(r1['tweet_text']), 280)
+        self.assertIsNone(re.search(r'女\d', r1['tweet_text']))
+        png_bytes = m_post.call_args[1].get('media_bytes')
+        self.assertIsNotNone(png_bytes)
+        with Image.open(io.BytesIO(png_bytes)) as im:
+            self.assertEqual(im.size, (1200, 630))
+
+    def test_staff_sns_kit_requires_login_and_renders_5_portrait_slides_and_zip(self):
+        import io
+        import zipfile
+        from PIL import Image
+
+        # Unauthenticated redirects to /staff login
+        self.assertEqual(self.client.get('/staff/sns-kit').status_code, 302)
+        self.assertEqual(self.client.get('/staff/sns-kit/slide/1.png').status_code, 302)
+        self.assertEqual(self.client.get('/staff/sns-kit/download.zip').status_code, 302)
+
+        with self.client.session_transaction() as s:
+            s['is_staff'] = True
+        try:
+            kit_resp = self.client.get('/staff/sns-kit')
+            self.assertEqual(kit_resp.status_code, 200)
+            self.assertIn('週末狙い目予報', kit_resp.data.decode('utf-8'))
+
+            for idx in range(1, 6):
+                s_resp = self.client.get(f'/staff/sns-kit/slide/{idx}.png')
+                self.assertEqual(s_resp.status_code, 200)
+                self.assertEqual(s_resp.mimetype, 'image/png')
+                with Image.open(io.BytesIO(s_resp.data)) as im:
+                    self.assertEqual(im.size, (1080, 1350))
+
+            z_resp = self.client.get('/staff/sns-kit/download.zip')
+            self.assertEqual(z_resp.status_code, 200)
+            with zipfile.ZipFile(io.BytesIO(z_resp.data), 'r') as zf:
+                names = set(zf.namelist())
+                self.assertEqual(len(names), 6)  # 5 PNGs + captions.txt
+                self.assertIn('captions.txt', names)
+                cap_txt = zf.read('captions.txt').decode('utf-8')
+                self.assertIn('#相席ナビ', cap_txt)
+        finally:
+            with self.client.session_transaction() as s:
+                s.pop('is_staff', None)
+
+
 if __name__ == '__main__':
     unittest.main()

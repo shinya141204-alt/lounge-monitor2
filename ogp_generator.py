@@ -627,3 +627,147 @@ def generate_weekly_ogp_png(report: dict = None) -> bytes:
     out = io.BytesIO()
     canvas.convert("RGB").save(out, format="PNG", optimize=True)
     return out.getvalue()
+
+
+def generate_bonus_alert_png(store: dict, mode: str = "female_lead", now_jst: datetime.datetime = None) -> bytes:
+    """
+    Generate a 1200x630 emergency Bonus-Time Guerrilla Alert card PNG for X timeline.
+    Uses pure CJK/ASCII typography (no emoji glyphs) so Linux/Render renders with zero tofu boxes.
+    """
+    W, H = 1200, 630
+    now_jst = now_jst or datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
+    store = store or {}
+
+    bg_path = os.path.join(BASE_DIR, "static", "eyecatch-weekend.jpg")
+    if os.path.exists(bg_path):
+        try:
+            bg = Image.open(bg_path).convert("RGBA")
+            src_w, src_h = bg.size
+            scale = max(W / src_w, H / src_h)
+            nw, nh = int(src_w * scale), int(src_h * scale)
+            bg = bg.resize((nw, nh), Image.Resampling.LANCZOS)
+            left = (nw - W) // 2
+            top = (nh - H) // 2
+            bg = bg.crop((left, top, left + W, top + H))
+            bg = bg.filter(ImageFilter.GaussianBlur(radius=9))
+        except Exception:
+            bg = Image.new("RGBA", (W, H), (16, 10, 20, 255))
+    else:
+        bg = Image.new("RGBA", (W, H), (16, 10, 20, 255))
+
+    canvas = Image.new("RGBA", (W, H), (12, 10, 18, 255))
+    canvas.alpha_composite(bg)
+
+    tint = Image.new("RGBA", (W, H), (14, 8, 18, 224))
+    canvas.alpha_composite(tint)
+
+    if mode == "male_lead":
+        accent = (56, 189, 248)
+        glow_a = (56, 189, 248, 95)
+        glow_b = (236, 72, 153, 75)
+        badge_txt = "LIVE FEVER ALERT  |  女性は待ち時間0分で即相席チャンス"
+        sub_txt = "男性先行で店内大盛況！過去データでは直後に女性も急増しやすい注目タイミング"
+    else:
+        accent = (251, 191, 36)
+        glow_a = (236, 72, 153, 105)
+        glow_b = (251, 191, 36, 85)
+        badge_txt = "BONUS TIME ALERT  |  大型店の女性大幅リード速報"
+        sub_txt = "人気店で女性比率が急上昇中！男性待ちが発生する前のゴールデンタイム"
+
+    _draw_radial_glow(canvas, (220, 110), 480, glow_a)
+    _draw_radial_glow(canvas, (980, 520), 460, glow_b)
+
+    canvas = canvas.convert("RGB")
+    draw = ImageDraw.Draw(canvas, "RGBA")
+
+    f_badge = _get_font(22)
+    f_time = _get_font(24)
+    f_store = _get_font(54)
+    f_label = _get_font(24)
+    f_big_num = _get_font(86)
+    f_unit = _get_font(32)
+    f_sub = _get_font(22)
+    f_footer = _get_font(20)
+
+    # Outer frame
+    draw.rounded_rectangle(
+        (36, 32, W - 36, H - 32),
+        radius=28,
+        fill=(18, 18, 30, 215),
+        outline=(accent[0], accent[1], accent[2], 190),
+        width=3,
+    )
+
+    # Top alert pill + timestamp
+    bw = int(draw.textlength(badge_txt, font=f_badge)) + 44
+    draw.rounded_rectangle((72, 62, 72 + bw, 108), radius=23, fill=(68, 18, 42, 240), outline=accent, width=2)
+    draw.text((94, 72), badge_txt, font=f_badge, fill=accent)
+
+    weekdays_ja = ["月", "火", "水", "木", "金", "土", "日"]
+    ts_str = f"{now_jst.month}/{now_jst.day}({weekdays_ja[now_jst.weekday()]}) {now_jst.strftime('%H:%M')} 実測"
+    tw = int(draw.textlength(ts_str, font=f_time))
+    draw.text((W - 76 - tw, 72), ts_str, font=f_time, fill=(226, 232, 240, 240))
+
+    # Store name headline
+    ja_name = x_poster.format_ja_store_name(store.get("name", ""))
+    try:
+        import store_master
+        seo_label = store_master.seo_name(store.get("name", "")) or ja_name
+    except Exception:
+        seo_label = ja_name
+    draw.text((76, 134), seo_label, font=f_store, fill=(255, 255, 255, 255))
+    draw.text((78, 206), sub_txt, font=f_sub, fill=(203, 213, 225, 235))
+
+    women = int(store.get("women") or 0)
+    men = int(store.get("men") or 0)
+    tot = women + men
+    wpct = round((women / tot) * 100) if tot > 0 else 50
+
+    # Three metric cards: Women / Men / Female Ratio
+    cards_y = 262
+    card_h = 205
+    gap = 24
+    total_cw = W - 152
+    box_w = (total_cw - gap * 2) // 3
+
+    metrics = [
+        ("現在の女性人数", str(women), "名", (244, 114, 182), (56, 18, 42, 235)),
+        ("現在の男性人数", str(men), "名", (96, 165, 250), (16, 32, 62, 235)),
+        ("リアルタイム女性比率", str(wpct), "%", accent, (46, 36, 14, 235)),
+    ]
+    for idx, (lbl, num_s, unit_s, fg_col, bg_col) in enumerate(metrics):
+        bx = 76 + idx * (box_w + gap)
+        draw.rounded_rectangle(
+            (bx, cards_y, bx + box_w, cards_y + card_h),
+            radius=20,
+            fill=bg_col,
+            outline=(fg_col[0], fg_col[1], fg_col[2], 180),
+            width=2,
+        )
+        lw = int(draw.textlength(lbl, font=f_label))
+        draw.text((bx + (box_w - lw) // 2, cards_y + 24), lbl, font=f_label, fill=(226, 232, 240, 240))
+
+        nw_px = int(draw.textlength(num_s, font=f_big_num))
+        uw_px = int(draw.textlength(unit_s, font=f_unit))
+        start_x = bx + (box_w - (nw_px + uw_px + 6)) // 2
+        draw.text((start_x, cards_y + 72), num_s, font=f_big_num, fill=fg_col)
+        draw.text((start_x + nw_px + 6, cards_y + 118), unit_s, font=f_unit, fill=(248, 250, 252, 240))
+
+    # Ratio progress bar
+    bar_x = 76
+    bar_y = 492
+    bar_w = W - 152
+    bar_h = 22
+    draw.rounded_rectangle((bar_x, bar_y, bar_x + bar_w, bar_y + bar_h), radius=11, fill=(59, 130, 246, 225))
+    fill_w = max(22, min(bar_w, int(bar_w * (wpct / 100.0))))
+    draw.rounded_rectangle((bar_x, bar_y, bar_x + fill_w, bar_y + bar_h), radius=11, fill=(236, 72, 153, 255))
+
+    # Footer brand line
+    footer_l = "相席ナビ (aiseki-navi.com)  |  全国53店舗リアルタイム人数・男女比モニター"
+    draw.text((76, 540), footer_l, font=f_footer, fill=(148, 163, 184, 235))
+
+    out = io.BytesIO()
+    canvas.save(out, format="PNG", optimize=True)
+    canvas.close()
+    return out.getvalue()
+
