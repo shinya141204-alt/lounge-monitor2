@@ -727,6 +727,22 @@ class GrowthFeaturesTests(unittest.TestCase):
             self.assertIn('JIS（ジス）新宿', s_html)
             self.assertIn('JIS（ジス）西新宿', s_html)
 
+            # Verify Hiroshima & Okayama independent regional brands (ALFA, CLOVERS, XIX) events & comparison
+            h_resp = self.client.get('/price-comparison?area=hiroshima-okayama')
+            self.assertEqual(h_resp.status_code, 200)
+            h_html = h_resp.data.decode('utf-8')
+            self.assertIn('相席ラウンジALFA 広島', h_html)
+            self.assertIn('相席CLOVERS 広島', h_html)
+            self.assertIn('相席ラウンジXIX 岡山', h_html)
+            self.assertIn('日〜木22時までの入店で男性相席料金が半額', h_html)
+
+            clovers_resp = self.client.get('/store/clovers-hiroshima')
+            self.assertEqual(clovers_resp.status_code, 200)
+            clovers_html = clovers_resp.data.decode('utf-8')
+            self.assertIn('相席ラウンジALFA 広島', clovers_html)
+            self.assertIn('ag（アグ）広島', clovers_html)
+            self.assertIn('QUOカード1,000円分', clovers_html)
+
             smap = self.client.get('/sitemap.xml').data.decode('utf-8')
             self.assertIn('https://aiseki-navi.com/price-comparison', smap)
             self.assertIn('料金・開催中イベント比較', analytics.describe_label('page_view', '/price-comparison').get('title', ''))
