@@ -1167,6 +1167,100 @@ body.theme-light .sns-compact-pill:hover {
     color: var(--calm-light-accent);
 }
 
+/* ---------- 13. スマホ ファーストビュー圧縮（Step 1） ---------- */
+@media (max-width: 768px) {
+    .container {
+        padding: 10px 12px 24px 12px !important;
+    }
+
+    header {
+        margin-bottom: 8px !important;
+    }
+
+    .header-top-row {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 8px !important;
+        margin-bottom: 6px !important;
+    }
+
+    .header-brand-block {
+        text-align: left !important;
+        min-width: 0;
+    }
+
+    .header-brand-block h1 {
+        font-size: 1.24rem !important;
+        line-height: 1.2 !important;
+        margin: 0 !important;
+    }
+
+    .header-brand-block .subtitle {
+        font-size: 0.68rem !important;
+        margin: 2px 0 0 0 !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .header-top-row .header-controls {
+        margin: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        flex-shrink: 0;
+    }
+
+    .header-top-row .header-btn.labeled-btn {
+        padding: 6px 11px !important;
+        font-size: 0.76rem !important;
+    }
+
+    .portal-global-nav {
+        margin: 4px 0 8px 0 !important;
+        padding: 2px 0 !important;
+        gap: 6px !important;
+    }
+
+    .portal-nav-link,
+    .portal-nav-item {
+        padding: 6px 12px !important;
+        font-size: 0.78rem !important;
+    }
+
+    .search-sort-container {
+        gap: 6px !important;
+        margin-bottom: 6px !important;
+    }
+
+    #search-input {
+        padding: 7px 13px !important;
+        font-size: 0.84rem !important;
+    }
+
+    .sort-controls {
+        padding: 3px !important;
+    }
+
+    .sort-btn {
+        padding: 5px 0 !important;
+        font-size: 0.78rem !important;
+    }
+
+    .filter-bar {
+        padding: 4px 0 !important;
+        margin-bottom: 8px !important;
+        gap: 6px !important;
+    }
+
+    .filter-btn {
+        padding: 5px 13px !important;
+        font-size: 0.8rem !important;
+    }
+}
+
+
 
 
 

@@ -792,7 +792,7 @@ class GrowthFeaturesTests(unittest.TestCase):
                 self.assertEqual(sw_resp.status_code, 200)
                 self.assertIn('no-store', sw_resp.headers.get('Cache-Control', ''))
                 sw_txt = sw_resp.data.decode('utf-8')
-                self.assertIn("aiseki-navi-v43", sw_txt)
+                self.assertIn("aiseki-navi-v44", sw_txt)
             finally:
                 sw_resp.close()
 
@@ -1000,7 +1000,7 @@ class GrowthFeaturesTests(unittest.TestCase):
             r = self.client.get(p)
             self.assertEqual(r.status_code, 200, f"Public path {p} returned {r.status_code}")
             body = r.data.decode('utf-8')
-            self.assertIn('/static/calm.css?v=8', body, f"{p} missing /static/calm.css?v=8")
+            self.assertIn('/static/calm.css?v=9', body, f"{p} missing /static/calm.css?v=9")
             self.assertIn('公式ホームページ', body, f"{p} missing official website verification notice")
 
         # Also check scheduled preview templates via staff session
@@ -1011,7 +1011,7 @@ class GrowthFeaturesTests(unittest.TestCase):
                 sr = self.client.get(sp)
                 self.assertEqual(sr.status_code, 200, f"Scheduled path {sp} returned {sr.status_code}")
                 sbody = sr.data.decode('utf-8')
-                self.assertIn('/static/calm.css?v=8', sbody, f"{sp} missing /static/calm.css?v=8")
+                self.assertIn('/static/calm.css?v=9', sbody, f"{sp} missing /static/calm.css?v=9")
                 self.assertIn('公式ホームページ', sbody, f"{sp} missing official website verification notice")
         finally:
             with self.client.session_transaction() as s:
@@ -1241,6 +1241,12 @@ class GrowthFeaturesTests(unittest.TestCase):
         p_price = nav_block.find('料金・イベント比較')
         p_col = nav_block.find('コラム・記事一覧')
         self.assertTrue(0 <= p_rank < p_price < p_col, "Top nav order must be リアルタイム順位 -> 料金・イベント比較 -> コラム・記事一覧")
+
+        # Verify ranking-list appears BEFORE momentum-legend-bar and official-sns-compact (First-view optimization)
+        pos_ranking = idx_html.find('id="ranking-list"')
+        pos_legend = idx_html.find('class="momentum-legend-bar"')
+        pos_sns = idx_html.find('official-sns-compact')
+        self.assertTrue(0 < pos_ranking < pos_legend < pos_sns, "ranking-list must appear before legend and SNS bar")
 
 
 
