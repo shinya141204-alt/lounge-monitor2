@@ -928,7 +928,7 @@ def affiliate_redirect(item_id):
 import urllib.parse as urllib_parse
 
 _BOT_MARKERS = ('bot', 'spider', 'crawl', 'slurp', 'facebookexternalhit', 'preview', 'headless', 'python-requests', 'curl')
-_TRACKED_PAGE_PREFIXES = ('/guide', '/columns', '/areas', '/area/', '/grooming', '/stats', '/oriental-lounge', '/ag', '/jis', '/store/')
+_TRACKED_PAGE_PREFIXES = ('/guide', '/columns', '/areas', '/area/', '/grooming', '/stats', '/price-comparison', '/oriental-lounge', '/ag', '/jis', '/store/')
 
 @app.template_filter('seo_store_name')
 def _jinja_seo_store_name(name):
@@ -1633,12 +1633,20 @@ def store_detail_page(store_slug):
     except Exception:
         pass
 
+    nearby_comparison = None
+    try:
+        import price_comparison
+        nearby_comparison = price_comparison.get_nearby_comparison_for_store(sname, live_stores=raw_stores)
+    except Exception:
+        pass
+
     return render_template(
         'store_detail.html',
         store=store_obj,
         store_analytics=store_analytics,
         area_info=area_info,
         nearby_stores=nearby_stores,
+        nearby_comparison=nearby_comparison,
         last_updated=last_updated
     )
 
@@ -1703,6 +1711,12 @@ def sitemap_xml():
   </url>
   <url>
     <loc>https://aiseki-navi.com/stats</loc>
+    <lastmod>{today}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://aiseki-navi.com/price-comparison</loc>
     <lastmod>{today}</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
@@ -1861,6 +1875,29 @@ def area_portal(area_slug=None):
         area_summaries=area_summaries,
         selected_area=selected_area,
         last_updated=last_updated
+    )
+
+@app.route('/price-comparison')
+def price_comparison_page():
+    """Urban cluster cross-brand price, men's event & live cost-performance comparison board."""
+    import price_comparison
+    restore_latest_data_if_empty()
+    trigger_background_fetch_if_needed()
+    with data_lock:
+        live_stores = list(latest_data.get('full_data') or [])
+        last_updated = latest_data.get('last_updated') or '--:--'
+
+    data = price_comparison.build_area_comparison_clusters(live_stores=live_stores)
+    valid_ids = {c['id'] for c in data['clusters']}
+    req_area = (request.args.get('area') or 'shinjuku').strip().lower()
+    selected_area = req_area if req_area in valid_ids else 'shinjuku'
+
+    return render_template(
+        'price_comparison.html',
+        data=data,
+        selected_area=selected_area,
+        last_updated=last_updated,
+        is_staff=bool(session.get('is_staff')),
     )
 
 @app.route('/grooming')

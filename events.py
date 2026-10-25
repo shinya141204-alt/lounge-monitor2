@@ -650,6 +650,8 @@ def _crawl_and_save_events():
 
 def _trigger_background_refresh():
     """Refresh events cache asynchronously in a daemon thread so HTTP requests never block."""
+    if os.environ.get("DISABLE_SHEETS") == "1":
+        return
     global _is_refreshing
     with _refresh_lock:
         if _is_refreshing:

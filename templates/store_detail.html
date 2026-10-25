@@ -356,6 +356,9 @@
 
             <div class="action-btns">
                 <a href="/" class="btn-primary">📈 トップ画面で時間帯別・曜日別グラフを見る ›</a>
+                {% if nearby_comparison %}
+                <a href="/price-comparison?area={{ nearby_comparison.cluster_id }}" class="btn-secondary">💴 近隣ライバル店と料金・イベント比較</a>
+                {% endif %}
                 {% if store.map_url %}
                 <a href="{{ store.map_url }}" target="_blank" rel="noopener" class="btn-secondary">🗺️ Googleマップで場所を確認</a>
                 {% endif %}
@@ -422,6 +425,73 @@
                 </table>
             </div>
             {% endif %}
+        </section>
+        {% endif %}
+
+        {% if nearby_comparison and nearby_comparison.stores %}
+        <section class="section-card" style="border-color: rgba(56, 189, 248, 0.35);">
+            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
+                <h2 style="margin:0;">💴 {{ store.seo_name }}と近隣ライバル店の料金・開催中イベント・現在人数比較</h2>
+                <a href="/price-comparison?area={{ nearby_comparison.cluster_id }}" style="font-size:0.78rem; color:#38bdf8; text-decoration:none; font-weight:700;">全国エリア比較ボードへ ›</a>
+            </div>
+            <p style="margin: 0 0 12px; font-size: 0.86rem; color: #cbd5e1;">
+                同じエリア内の競合店舗と<strong>「男性の通常料金（60分目安・待機課金の有無）」「現在開催中の男性特典・女性集客イベント」「いまの男女比」</strong>を横並びで比較できます。
+            </p>
+            <div style="overflow-x: auto; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px;">
+                <table style="width: 100%; border-collapse: collapse; min-width: 680px; font-size: 0.82rem;">
+                    <thead>
+                        <tr style="background: rgba(15, 23, 42, 0.95); color: #cbd5e1; text-align: left;">
+                            <th style="padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.1);">店舗名 / 年齢層</th>
+                            <th style="padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.1);">現在の人数・女性比</th>
+                            <th style="padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.1);">男性60分目安 / 待機課金</th>
+                            <th style="padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.1);">開催中の男性特典・イベント</th>
+                            <th style="padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.1);">実質コスパ検証</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for st in nearby_comparison.stores %}
+                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.06); {% if st.is_current_store %}background: rgba(236, 72, 153, 0.08);{% elif st.is_best_in_cluster %}background: rgba(245, 158, 11, 0.06);{% endif %}">
+                            <td style="padding: 11px 12px;">
+                                <div style="font-weight: 800;">
+                                    <a href="/store/{{ st.slug }}" style="color: #fff; text-decoration: none;">{{ st.seo_name }}</a>
+                                    {% if st.is_current_store %}
+                                    <span style="font-size: 0.68rem; padding: 1px 6px; border-radius: 99px; background: rgba(236,72,153,0.25); color: #f9a8d4; margin-left: 4px;">表示中</span>
+                                    {% endif %}
+                                    {% if st.is_best_in_cluster %}
+                                    <span style="font-size: 0.68rem; padding: 1px 6px; border-radius: 99px; background: rgba(245,158,11,0.25); color: #fde68a; margin-left: 4px;">👑コスパ推奨</span>
+                                    {% endif %}
+                                </div>
+                                <div style="font-size: 0.73rem; color: #94a3b8; margin-top: 2px;">{{ st.age_range }} ｜ {{ st.vibe_short }}</div>
+                            </td>
+                            <td style="padding: 11px 12px;">
+                                {% if st.total > 0 %}
+                                <div style="font-weight: 800;"><span class="w-color">女性{{ st.women }}名</span> / <span class="m-color">男性{{ st.men }}名</span></div>
+                                <div style="font-size: 0.74rem; color: #e5c878; font-weight: 700;">女性比率 {{ st.wpct }}%</div>
+                                {% else %}
+                                <span style="font-size: 0.76rem; color: #94a3b8;">営業時間外（準備中）</span>
+                                {% endif %}
+                            </td>
+                            <td style="padding: 11px 12px;">
+                                <div style="font-weight: 800; color: #fff;">平日 {{ st.est_60m_weekday_label }} / 金土 {{ st.est_60m_weekend_label }}</div>
+                                <div style="font-size: 0.73rem; color: {% if st.has_wait_fee %}#fde68a{% else %}#4ade80{% endif %}; margin-top: 2px;">待機：{{ st.wait_fee_str }}</div>
+                            </td>
+                            <td style="padding: 11px 12px; font-size: 0.76rem; color: #cbd5e1;">
+                                {% for mp in st.men_perks[:1] %}
+                                <div style="margin-bottom: 3px;"><strong style="color: #38bdf8;">[男性特典]</strong> {{ mp.title }}</div>
+                                {% endfor %}
+                                {% for we in st.women_events[:1] %}
+                                <div><strong style="color: #f472b6;">[女性集客]</strong> {{ we.title }}</div>
+                                {% endfor %}
+                            </td>
+                            <td style="padding: 11px 12px; font-size: 0.76rem; color: #e2e8f0;">
+                                <div style="font-weight: 800; color: #fde68a; margin-bottom: 2px;">{{ st.verdict_badge }}</div>
+                                <div>{{ st.verdict_comment }}</div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </section>
         {% endif %}
 

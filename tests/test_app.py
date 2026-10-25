@@ -694,6 +694,46 @@ class GrowthFeaturesTests(unittest.TestCase):
     def setUp(self):
         self.client = app_module.app.test_client()
 
+    def test_price_comparison_board_and_store_detail_embed(self):
+        import re
+        with app_module.data_lock:
+            old_data = list(app_module.latest_data.get('full_data') or [])
+            app_module.latest_data['full_data'] = [
+                {'name': 'OLG 新宿', 'women': 28, 'men': 22, 'total': 50, 'region': 'Kanto'},
+                {'name': 'OLG ag新宿', 'women': 24, 'men': 16, 'total': 40, 'region': 'Kanto'},
+                {'name': 'JIS SHINJUKU', 'women': 12, 'men': 24, 'total': 36, 'region': 'Kanto'},
+                {'name': 'JIS NISHISHINJUKU', 'women': 20, 'men': 14, 'total': 34, 'region': 'Kanto'},
+            ]
+        try:
+            resp = self.client.get('/price-comparison?area=shinjuku')
+            self.assertEqual(resp.status_code, 200)
+            html = resp.data.decode('utf-8')
+            self.assertIn('通常料金＆開催中イベント', html)
+            self.assertIn('オリエンタルラウンジ 新宿', html)
+            self.assertIn('ag（アグ）渋谷', html)
+            self.assertIn('JIS（ジス）新宿', html)
+            self.assertIn('220円 / 10分', html)
+            self.assertNotIn('/link/', html)
+            ld_blocks = re.findall(r'<script type="application/ld\+json">\s*(.*?)\s*</script>', html, re.S)
+            self.assertGreaterEqual(len(ld_blocks), 2)
+            for block in ld_blocks:
+                json.loads(block)
+
+            # Verify store detail page also embeds the nearby price & event comparison table
+            s_resp = self.client.get('/store/oriental-lounge-shinjuku')
+            self.assertEqual(s_resp.status_code, 200)
+            s_html = s_resp.data.decode('utf-8')
+            self.assertIn('近隣ライバル店の料金・開催中イベント・現在人数比較', s_html)
+            self.assertIn('JIS（ジス）新宿', s_html)
+            self.assertIn('JIS（ジス）西新宿', s_html)
+
+            smap = self.client.get('/sitemap.xml').data.decode('utf-8')
+            self.assertIn('https://aiseki-navi.com/price-comparison', smap)
+            self.assertIn('料金・開催中イベント比較', analytics.describe_label('page_view', '/price-comparison').get('title', ''))
+        finally:
+            with app_module.data_lock:
+                app_module.latest_data['full_data'] = old_data
+
     def test_no_duplicate_column_within_same_day_across_all_days(self):
         import tips_poster
         import job_state
