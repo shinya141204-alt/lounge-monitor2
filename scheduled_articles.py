@@ -186,6 +186,7 @@ def check_and_announce_newly_published(app_url: str = "") -> list:
         )
         if res.get("status") == "success":
             job_state.mark_done(dedup_key)
+            job_state.mark_done(f"x_col_used:{now_jst.strftime('%Y-%m-%d')}:{item['path']}")
             logger.info(f"[scheduled_articles] Announced newly released column on X: {item['slug']}")
         results.append({"slug": item["slug"], "result": res})
 

@@ -278,22 +278,143 @@ TIPS_LIST = [
 ]
 
 
-def _select_tip_index(slot_label: str = "12:00", tip_index: int = None) -> int:
-    now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
-    if tip_index is not None and 0 <= tip_index < len(TIPS_LIST):
+_FALLBACK_COLUMNS = [
+    ("最初の10分で差がつく会話＆清潔感ガイド", "/guide/first-10-minutes"),
+    ("相席ラウンジ前の身だしなみ・清潔感チェック", "/grooming"),
+    ("1人（ソロ）vs 2人ペアの立ち回り比較", "/guide/solo-vs-pair"),
+    ("2軒目・カフェやバーへの自然な誘い方", "/guide/second-venue"),
+    ("オリエンタルラウンジ・ag・JISの違い徹底比較", "/guide/brand-comparison"),
+    ("水曜・木曜の20時〜22時が一番の穴場な理由", "/guide/weekday-strategy"),
+    ("金曜・土曜ピークの待ち時間回避＆ハシゴ攻略", "/guide/weekend-strategy"),
+    ("新宿エリア4店舗の使い分け・穴場ガイド", "/guide/shinjuku"),
+    ("なぜ美容サロン激戦区の相席ラウンジは美人が多いのか？", "/guide/beauty-area-stage"),
+    ("ダンスクラブ街×深夜2回転目の回遊法則", "/guide/club-area-midnight"),
+    ("「男性先行」の店ほど女性が増える？女性は待たない新常識", "/guide/male-lead-mechanics"),
+    ("相席ラウンジ完全攻略ガイド（基本の立ち回り・お店選び）", "/guide/strategy"),
+    ("全国53店舗の曜日・時間帯別 統計データ白書", "/stats"),
+    ("相席ラウンジ実践コラム・攻略記事一覧", "/columns"),
+]
+
+
+def _column_for_tip_index(idx: int) -> tuple:
+    """Return the primary (col_title, col_path) best matching TIPS_LIST[idx]."""
+    if idx <= 9:
+        return ("最初の10分で差がつく会話＆清潔感ガイド", "/guide/first-10-minutes")
+    if idx <= 19:
+        return ("相席ラウンジ前の身だしなみ・清潔感チェック", "/grooming")
+    if idx <= 27:
+        return ("1人（ソロ）vs 2人ペアの立ち回り比較", "/guide/solo-vs-pair")
+    if idx <= 35:
+        return ("2軒目・カフェやバーへの自然な誘い方", "/guide/second-venue")
+    if idx <= 39:
+        return ("オリエンタルラウンジ・ag・JISの違い徹底比較", "/guide/brand-comparison")
+    if idx == 40:
+        return ("新宿エリア4店舗の使い分け・穴場ガイド", "/guide/shinjuku")
+    if idx == 41:
+        return ("水曜・木曜の20時〜22時が一番の穴場な理由", "/guide/weekday-strategy")
+    if idx == 42:
+        return ("金曜・土曜ピークの待ち時間回避＆ハシゴ攻略", "/guide/weekend-strategy")
+    if idx == 43:
+        return ("水曜・木曜の20時〜22時が一番の穴場な理由", "/guide/weekday-strategy")
+    if idx == 44:
+        import scheduled_articles
+        if scheduled_articles.is_published("rain-payday"):
+            return ("雨の日・給料日前・連休中日｜ライバルが減る隠れ穴場日データ", "/guide/rain-payday")
+        return ("金曜・土曜ピークの待ち時間回避＆ハシゴ攻略", "/guide/weekend-strategy")
+    if idx == 45:
+        return ("ダンスクラブ街×深夜2回転目の回遊法則", "/guide/club-area-midnight")
+    if idx == 46:
+        return ("相席ラウンジ完全攻略ガイド（基本の立ち回り・お店選び）", "/guide/strategy")
+    if idx == 47:
+        return ("全国53店舗の曜日・時間帯別 統計データ白書", "/stats")
+    if idx == 48:
+        import scheduled_articles
+        if scheduled_articles.is_published("local-vs-urban"):
+            return ("地方店 vs 都心大型店｜深夜0時に女性が121%へ逆転増加する理由", "/guide/local-vs-urban")
+        return ("全国エリア別 リアルタイム混雑＆店舗ガイド", "/areas")
+    if idx == 49:
+        return ("新宿エリア4店舗の使い分け・穴場ガイド", "/guide/shinjuku")
+    if idx in (50, 51, 52):
+        return ("相席ラウンジ完全攻略ガイド（基本の立ち回り・お店選び）", "/guide/strategy")
+    if idx in (53, 54, 55):
+        return ("なぜ美容サロン激戦区の相席ラウンジは美人が多いのか？", "/guide/beauty-area-stage")
+    if idx == 56:
+        return ("ダンスクラブ街×深夜2回転目の回遊法則", "/guide/club-area-midnight")
+    if idx == 57:
+        return ("「男性先行」の店ほど女性が増える？女性は待たない新常識", "/guide/male-lead-mechanics")
+    if idx == 58:
+        import scheduled_articles
+        if scheduled_articles.is_published("local-vs-urban"):
+            return ("地方店 vs 都心大型店｜深夜0時に女性が121%へ逆転増加する理由", "/guide/local-vs-urban")
+        return ("相席ラウンジ実践コラム・攻略記事一覧", "/columns")
+    if idx == 59:
+        import scheduled_articles
+        if scheduled_articles.is_published("cost-break-even"):
+            return ("90分粘る vs 40分で見切る｜滞在時間と料金の損益分岐点", "/guide/cost-break-even")
+        return ("相席ラウンジ実践コラム・攻略記事一覧", "/columns")
+    if idx == 60:
+        import scheduled_articles
+        if scheduled_articles.is_published("rain-payday"):
+            return ("雨の日・給料日前・連休中日｜ライバルが減る隠れ穴場日データ", "/guide/rain-payday")
+        return ("相席ラウンジ実践コラム・攻略記事一覧", "/columns")
+    return ("相席ラウンジ実践コラム・攻略記事一覧", "/columns")
+
+
+def _is_column_used_today(col_path: str, date_str: str) -> bool:
+    try:
+        import job_state
+        return job_state.is_done(f"x_col_used:{date_str}:{col_path}")
+    except Exception:
+        return False
+
+
+def _select_tip_index(slot_label: str = "12:00", tip_index: int = None, now_jst: datetime.datetime = None) -> int:
+    now_jst = now_jst or datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
+    n = len(TIPS_LIST)
+    if tip_index is not None and 0 <= tip_index < n:
         return tip_index
-    slot_offset = 0 if slot_label == "12:00" else 1
+
+    date_str = now_jst.strftime("%Y-%m-%d")
     day_of_year = now_jst.timetuple().tm_yday
-    return (day_of_year * 2 + slot_offset) % len(TIPS_LIST)
+
+    # Select 12:00 index (avoiding any column already posted earlier today, e.g. scheduled release)
+    base_12 = (day_of_year * 2) % n
+    idx_12 = base_12
+    for step in range(n):
+        cand = (base_12 + step) % n
+        _, cpath = _column_for_tip_index(cand)
+        if not _is_column_used_today(cpath, date_str):
+            idx_12 = cand
+            break
+
+    if slot_label == "12:00":
+        return idx_12
+
+    # For 18:00 (or any non-12:00 slot): start from a well-separated offset (+23)
+    # and guarantee we NEVER pick the same tip or same column path as 12:00 or any column used today.
+    _, col_12_path = _column_for_tip_index(idx_12)
+    base_18 = (day_of_year * 2 + 23) % n
+    for step in range(n):
+        cand = (base_18 + step) % n
+        if cand == idx_12:
+            continue
+        _, cpath = _column_for_tip_index(cand)
+        if cpath == col_12_path:
+            continue
+        if _is_column_used_today(cpath, date_str):
+            continue
+        return cand
+
+    return (idx_12 + 23) % n
 
 
-def get_tip_for_slot(slot_label: str = "12:00", tip_index: int = None) -> str:
+def get_tip_for_slot(slot_label: str = "12:00", tip_index: int = None, now_jst: datetime.datetime = None) -> str:
     """
     Select a tip based on the day of the year and slot.
     1st post is kept completely URL-free for clean appearance and maximum X organic reach.
     The site URL and matching column URL are attached automatically in the 2nd post (reply).
     """
-    idx = _select_tip_index(slot_label=slot_label, tip_index=tip_index)
+    idx = _select_tip_index(slot_label=slot_label, tip_index=tip_index, now_jst=now_jst)
     raw_tip = TIPS_LIST[idx].strip()
     footer_tags_only = "\n\n📖 詳しいコラム・現在の男女比はリプ欄へ👇\n#相席ラウンジ"
 
@@ -312,65 +433,31 @@ def get_tip_for_slot(slot_label: str = "12:00", tip_index: int = None) -> str:
     return raw_tip
 
 
-def get_tip_reply_text(slot_label: str = "12:00", tip_index: int = None) -> str:
+def resolve_tip_column(slot_label: str = "12:00", tip_index: int = None, now_jst: datetime.datetime = None) -> tuple:
+    """Return (col_title, col_path) guaranteed not to duplicate another column posted on the same day."""
+    now_jst = now_jst or datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
+    date_str = now_jst.strftime("%Y-%m-%d")
+    idx = _select_tip_index(slot_label=slot_label, tip_index=tip_index, now_jst=now_jst)
+    col_title, col_path = _column_for_tip_index(idx)
+
+    forbidden = set()
+    if slot_label != "12:00" and tip_index is None:
+        idx_12 = _select_tip_index(slot_label="12:00", now_jst=now_jst)
+        forbidden.add(_column_for_tip_index(idx_12)[1])
+
+    if col_path in forbidden or _is_column_used_today(col_path, date_str):
+        for fb_title, fb_path in _FALLBACK_COLUMNS:
+            if fb_path not in forbidden and not _is_column_used_today(fb_path, date_str):
+                col_title, col_path = fb_title, fb_path
+                break
+
+    return col_title, col_path
+
+
+def get_tip_reply_text(slot_label: str = "12:00", tip_index: int = None, now_jst: datetime.datetime = None) -> str:
     """Build the 2nd post (self-reply) with the matching column URL + real-time ranking URL."""
     site_url = os.environ.get("PUBLIC_SITE_URL", "https://aiseki-navi.com").rstrip("/")
-    idx = _select_tip_index(slot_label=slot_label, tip_index=tip_index)
-
-    if idx <= 9:
-        col_title = "最初の10分で差がつく会話＆清潔感ガイド"
-        col_path = "/guide/first-10-minutes"
-    elif idx <= 19:
-        col_title = "相席ラウンジ前の身だしなみ・清潔感チェック"
-        col_path = "/grooming"
-    elif idx <= 27:
-        col_title = "1人（ソロ）vs 2人ペアの立ち回り比較"
-        col_path = "/guide/solo-vs-pair"
-    elif idx <= 35:
-        col_title = "2軒目・カフェやバーへの自然な誘い方"
-        col_path = "/guide/second-venue"
-    elif idx <= 40:
-        col_title = "オリエンタルラウンジ・ag・JISの違い徹底比較"
-        col_path = "/guide/brand-comparison"
-    elif idx <= 49:
-        col_title = "水曜・木曜の20時〜22時が一番の穴場な理由"
-        col_path = "/guide/weekday-strategy"
-    elif idx in (53, 54, 55):
-        col_title = "なぜ美容サロン激戦区の相席ラウンジは美人が多いのか？"
-        col_path = "/guide/beauty-area-stage"
-    elif idx == 56:
-        col_title = "ダンスクラブ街×深夜2回転目の回遊法則"
-        col_path = "/guide/club-area-midnight"
-    elif idx == 57:
-        col_title = "「男性先行」の店ほど女性が増える？女性は待たない新常識"
-        col_path = "/guide/male-lead-mechanics"
-    elif idx == 58:
-        import scheduled_articles
-        if scheduled_articles.is_published("local-vs-urban"):
-            col_title = "地方店 vs 都心大型店｜深夜0時に女性が121%へ逆転増加する理由"
-            col_path = "/guide/local-vs-urban"
-        else:
-            col_title = "相席ラウンジ実践コラム・攻略記事一覧"
-            col_path = "/columns"
-    elif idx == 59:
-        import scheduled_articles
-        if scheduled_articles.is_published("cost-break-even"):
-            col_title = "90分粘る vs 40分で見切る｜滞在時間と料金の損益分岐点"
-            col_path = "/guide/cost-break-even"
-        else:
-            col_title = "相席ラウンジ実践コラム・攻略記事一覧"
-            col_path = "/columns"
-    elif idx == 60:
-        import scheduled_articles
-        if scheduled_articles.is_published("rain-payday"):
-            col_title = "雨の日・給料日前・連休中日｜ライバルが減る隠れ穴場日データ"
-            col_path = "/guide/rain-payday"
-        else:
-            col_title = "相席ラウンジ実践コラム・攻略記事一覧"
-            col_path = "/columns"
-    else:
-        col_title = "相席ラウンジ実践コラム・攻略記事一覧"
-        col_path = "/columns"
+    col_title, col_path = resolve_tip_column(slot_label=slot_label, tip_index=tip_index, now_jst=now_jst)
 
     return (
         f"📖 詳しい解説コラム：{col_title}👇\n"
@@ -385,7 +472,8 @@ def run_scheduled_tip_post(slot_label: str = "12:00", force: bool = False, tip_i
     Posts a clean URL-free main post, followed by an automatic reply with the column + ranking URLs.
     """
     now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
-    dedup_key = f"x_tip:{now_jst.strftime('%Y-%m-%d')}_{slot_label}"
+    date_str = now_jst.strftime("%Y-%m-%d")
+    dedup_key = f"x_tip:{date_str}_{slot_label}"
 
     # 投稿済みフラグは job_state（Google Sheets 永続化）で管理し、再起動・再デプロイ後の二重投稿を防ぐ
     import job_state
@@ -393,20 +481,25 @@ def run_scheduled_tip_post(slot_label: str = "12:00", force: bool = False, tip_i
         logger.info(f"X tip post already sent for {dedup_key}, skipping.")
         return {"status": "skipped", "reason": "Already posted for this slot today"}
 
-    idx = _select_tip_index(slot_label=slot_label, tip_index=tip_index)
-    text = get_tip_for_slot(slot_label=slot_label, tip_index=idx)
+    idx = _select_tip_index(slot_label=slot_label, tip_index=tip_index, now_jst=now_jst)
+    text = get_tip_for_slot(slot_label=slot_label, tip_index=idx, now_jst=now_jst)
     if not text:
         return {"status": "error", "detail": "Empty tip text"}
 
     if force:
         text = f"{text}\n(⏱️{now_jst.strftime('%H:%M')})"
 
-    reply_text = get_tip_reply_text(slot_label=slot_label, tip_index=idx)
+    col_title, col_path = resolve_tip_column(slot_label=slot_label, tip_index=idx, now_jst=now_jst)
+    site_url = os.environ.get("PUBLIC_SITE_URL", "https://aiseki-navi.com").rstrip("/")
+    reply_text = f"📖 詳しい解説コラム：{col_title}👇\n{site_url}{col_path}"
+
     result = x_poster.post_to_x(text, reply_text=reply_text)
     if result.get("status") == "success" and not force:
         job_state.mark_done(dedup_key)
+        job_state.mark_done(f"x_col_used:{date_str}:{col_path}")
 
     result["tweet_text"] = text
     result["reply_text"] = reply_text
+    result["column_path"] = col_path
     result["slot"] = slot_label
     return result

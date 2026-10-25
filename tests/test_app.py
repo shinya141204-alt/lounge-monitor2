@@ -694,6 +694,29 @@ class GrowthFeaturesTests(unittest.TestCase):
     def setUp(self):
         self.client = app_module.app.test_client()
 
+    def test_no_duplicate_column_within_same_day_across_all_days(self):
+        import tips_poster
+        import job_state
+
+        jst = datetime.timezone(datetime.timedelta(hours=9))
+        base_dt = datetime.datetime(2026, 1, 1, 12, 0, tzinfo=jst)
+        for day_offset in range(366):
+            dt = base_dt + datetime.timedelta(days=day_offset)
+            idx_12 = tips_poster._select_tip_index(slot_label="12:00", now_jst=dt)
+            idx_18 = tips_poster._select_tip_index(slot_label="18:00", now_jst=dt)
+            self.assertNotEqual(idx_12, idx_18, f"Same tip index on {dt.date()}")
+
+            _, col_12 = tips_poster.resolve_tip_column(slot_label="12:00", now_jst=dt)
+            _, col_18 = tips_poster.resolve_tip_column(slot_label="18:00", now_jst=dt)
+            self.assertNotEqual(col_12, col_18, f"Duplicate column {col_12} on {dt.date()}")
+
+        # Also verify job_state lock (`x_col_used:YYYY-MM-DD:<path>`) forces a different column
+        test_dt = datetime.datetime(2099, 12, 31, 12, 0, tzinfo=jst)
+        _, default_col = tips_poster.resolve_tip_column(slot_label="12:00", now_jst=test_dt)
+        job_state.mark_done(f"x_col_used:2099-12-31:{default_col}")
+        _, next_col = tips_poster.resolve_tip_column(slot_label="12:00", now_jst=test_dt)
+        self.assertNotEqual(default_col, next_col)
+
     def test_bonus_alert_detection_window_dedup_and_png(self):
         import io
         import re
