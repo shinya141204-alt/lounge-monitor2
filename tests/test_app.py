@@ -791,7 +791,7 @@ class GrowthFeaturesTests(unittest.TestCase):
                 self.assertEqual(sw_resp.status_code, 200)
                 self.assertIn('no-store', sw_resp.headers.get('Cache-Control', ''))
                 sw_txt = sw_resp.data.decode('utf-8')
-                self.assertIn("aiseki-navi-v38", sw_txt)
+                self.assertIn("aiseki-navi-v39", sw_txt)
             finally:
                 sw_resp.close()
 
@@ -932,6 +932,103 @@ class GrowthFeaturesTests(unittest.TestCase):
         finally:
             with self.client.session_transaction() as s:
                 s.pop('is_staff', None)
+
+    def test_min_headcount_threshold_official_notice_and_calm_theme_unification(self):
+        import subprocess
+        import price_comparison
+
+        self.assertEqual(price_comparison.MIN_WOMEN_FOR_RATIO_EVAL, 6)
+        self.assertEqual(price_comparison.MIN_WOMEN_FOR_TOP_PICK, 8)
+
+        # Case 1: Tiny store with 100% female ratio (2W / 0M) vs solid-headcount store (16W / 12M = 57%)
+        live_mix = [
+            {'name': 'OLG 新宿', 'women': 2, 'men': 0, 'total': 2},
+            {'name': 'OLG ag新宿', 'women': 3, 'men': 1, 'total': 4},
+            {'name': 'JIS SHINJUKU', 'women': 16, 'men': 12, 'total': 28},
+            {'name': 'JIS NISHISHINJUKU', 'women': 0, 'men': 0, 'total': 0},
+        ]
+        res = price_comparison.build_area_comparison_clusters(live_mix)
+        shinjuku = next(c for c in res['clusters'] if c['id'] == 'shinjuku')
+        self.assertIsNotNone(shinjuku['best_store'])
+        self.assertEqual(shinjuku['best_store']['name'], 'JIS SHINJUKU')
+
+        olg_prof = next(s for s in shinjuku['stores'] if s['name'] == 'OLG 新宿')
+        self.assertFalse(olg_prof['meets_min_headcount'])
+        self.assertFalse(olg_prof['is_best_in_cluster'])
+        self.assertIn('少人数', olg_prof['verdict_badge'])
+        self.assertEqual(olg_prof['official_url'], 'https://oriental-lounge.com/')
+
+        # Case 2: All stores below minimum headcount (<6 women) -> best_store must be held back (None)
+        low_only = [
+            {'name': 'OLG 新宿', 'women': 4, 'men': 0, 'total': 4},
+            {'name': 'OLG ag新宿', 'women': 2, 'men': 1, 'total': 3},
+        ]
+        res_low = price_comparison.build_area_comparison_clusters(low_only)
+        shinjuku_low = next(c for c in res_low['clusters'] if c['id'] == 'shinjuku')
+        self.assertIsNone(shinjuku_low['best_store'])
+        self.assertTrue(all(not s['is_best_in_cluster'] for s in shinjuku_low['stores']))
+
+        # Official website verification disclaimer & calm.css?v=7 across all public pages and columns
+        public_paths = [
+            '/',
+            '/price-comparison',
+            '/store/oriental-lounge-shinjuku',
+            '/areas',
+            '/area/shinjuku',
+            '/oriental-lounge',
+            '/ag',
+            '/jis',
+            '/columns',
+            '/grooming',
+            '/stats',
+            '/privacy',
+            '/guide',
+            '/guide/brand-comparison',
+            '/guide/shinjuku',
+            '/guide/weekday-strategy',
+            '/guide/weekend-strategy',
+            '/guide/solo-pair' if False else '/guide/solo-vs-pair',
+            '/guide/second-venue',
+            '/guide/first-10-minutes',
+            '/guide/club-area-midnight',
+            '/guide/beauty-area-stage',
+            '/guide/male-lead-mechanics',
+        ]
+        for p in public_paths:
+            r = self.client.get(p)
+            self.assertEqual(r.status_code, 200, f"Public path {p} returned {r.status_code}")
+            body = r.data.decode('utf-8')
+            self.assertIn('/static/calm.css?v=7', body, f"{p} missing /static/calm.css?v=7")
+            self.assertIn('公式ホームページ', body, f"{p} missing official website verification notice")
+
+        # Also check scheduled preview templates via staff session
+        with self.client.session_transaction() as s:
+            s['is_staff'] = True
+        try:
+            for sp in ('/guide/local-vs-urban', '/guide/cost-break-even', '/guide/rain-payday'):
+                sr = self.client.get(sp)
+                self.assertEqual(sr.status_code, 200, f"Scheduled path {sp} returned {sr.status_code}")
+                sbody = sr.data.decode('utf-8')
+                self.assertIn('/static/calm.css?v=7', sbody, f"{sp} missing /static/calm.css?v=7")
+                self.assertIn('公式ホームページ', sbody, f"{sp} missing official website verification notice")
+        finally:
+            with self.client.session_transaction() as s:
+                s.pop('is_staff', None)
+
+        # Syntax check static/app.js and static/sw.js (wrapped in function for macOS jsc -s syntax-only evaluation)
+        node_bin = shutil.which('node')
+        jsc_bin = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
+        js_checker = ([node_bin, '--check'] if node_bin else ([jsc_bin, '-s'] if os.path.exists(jsc_bin) else None))
+        if js_checker:
+            repo_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            for idx_js, rel_js in enumerate(('static/app.js', 'static/sw.js')):
+                with open(os.path.join(repo_dir, rel_js), 'r', encoding='utf-8') as rf:
+                    src_js = rf.read()
+                tmp_target = os.path.join(_TMP, f'static_check_{idx_js}.js')
+                with open(tmp_target, 'w', encoding='utf-8') as wf:
+                    wf.write('function __syntax_check__() {\n' + src_js + '\n}\n')
+                proc = subprocess.run(js_checker + [tmp_target], capture_output=True, text=True)
+                self.assertEqual(proc.returncode, 0, f"JS syntax error in {rel_js}: {proc.stderr}{proc.stdout}")
 
 
 if __name__ == '__main__':

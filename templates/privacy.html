@@ -8,14 +8,16 @@
     <meta name="description" content="相席ナビ（AISEKI NAVI）の運営者情報、プライバシーポリシー、広告配信に関する表記、および非公式統計サービスに関する免責事項。">
     <link rel="canonical" href="https://aiseki-navi.com/privacy">
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=2">
-    <link rel="stylesheet" href="/static/portal.css?v=2">
+    <link rel="stylesheet" href="/static/portal.css?v=6">
     <style>
         :root {
-            --bg-dark: #0a0a0f;
-            --card-bg: rgba(22, 22, 34, 0.85);
-            --text-main: #f8fafc;
-            --text-sub: #94a3b8;
-            --border-subtle: rgba(255, 255, 255, 0.1);
+            --bg-dark: #0f1014;
+            --card-bg: #16171c;
+            --text-main: #ebe8e3;
+            --text-sub: #9a968e;
+            --accent-gold: #c8a46e;
+            --accent-text: #dfc496;
+            --border-subtle: rgba(255, 255, 255, 0.08);
         }
         * { box-sizing: border-box; }
         body {
@@ -46,32 +48,22 @@
             gap: 10px;
         }
         .portal-brand-title {
-            font-size: 1.5rem;
+            font-size: 1.45rem;
             font-weight: 800;
-            background: linear-gradient(90deg, #ec4899, #8b5cf6, #3b82f6);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
+            color: var(--text-main);
             margin: 0;
         }
         .content-box {
             background: var(--card-bg);
             border: 1px solid var(--border-subtle);
-            border-radius: 18px;
+            border-radius: 14px;
             padding: 28px 24px;
         }
-        h1 { font-size: 1.45rem; margin: 0 0 18px; color: #fff; }
-        h2 { font-size: 1.1rem; margin: 28px 0 10px; color: #38bdf8; }
-        p { font-size: 0.9rem; color: #cbd5e1; margin: 0 0 14px; }
-        .portal-footer {
-            margin-top: 40px;
-            padding-top: 24px;
-            border-top: 1px solid var(--border-subtle);
-            color: var(--text-sub);
-            font-size: 0.82rem;
-        }
+        h1 { font-size: 1.4rem; margin: 0 0 18px; color: var(--text-main); }
+        h2 { font-size: 1.08rem; margin: 28px 0 10px; color: var(--accent-text); }
+        p { font-size: 0.9rem; color: var(--text-sub); margin: 0 0 14px; }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=1">
+    <link rel="stylesheet" href="/static/calm.css?v=7">
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
          crossorigin="anonymous"></script>
@@ -92,40 +84,29 @@
             <h1>運営者情報・プライバシーポリシー・免責事項</h1>
 
             <h2>1. 非公式サービスに関する免責事項</h2>
-            <p>当サイト「相席ナビ」（以下、「当サイト」）は、インターネット上に一般公開されている情報を独自に集計・可視化した<strong>非公式の統計・情報メディア</strong>です。掲載されている各店舗および各運営会社様とは一切関係ございません。当サイトの表示内容に関して、各店舗へ直接お問い合わせすることはご遠慮ください。</p>
-            <p>掲載データの正確性・リアルタイム性には細心の注意を払っておりますが、通信状況やシステム仕様により実際の店内状況と異なる場合があります。最新の営業状況や入店条件は各店舗の公式サイトをご確認ください。</p>
+            <p>当サイト「相席ナビ」（以下、「当サイト」）は、インターネット上に一般公開されている情報を独自に集計・可視化した<strong style="color: var(--text-main);">非公式の統計・情報メディア</strong>です。掲載されている各店舗および各運営会社様とは一切関係ございません。当サイトの表示内容に関して、各店舗へ直接お問い合わせすることはご遠慮ください。</p>
+            <p>掲載データ（現在人数・料金システム・入店条件・イベント情報等）の正確性には細心の注意を払っておりますが、通信状況や特別営業期間の設定、急な内容変更・終了により実際の状況と異なる場合があります。ご来店の際は必ず各店舗の公式ホームページ・公式アプリにて最新情報をご確認ください。</p>
 
             <h2>2. 著作権・商標権について</h2>
             <p>当サイトに記載されている会社名・店舗名・サービス名等は、各社の登録商標または商標です。当サイトでは各店舗の識別および公式サイトへの案内を目的として名称を表記しており、商標権や著作権を侵害する意図はございません。万が一掲載内容に問題がある場合は、速やかに対応いたします。</p>
 
             <h2>3. 広告の配信・アフィリエイトプログラムについて</h2>
             <p>当サイトでは、サイト運営およびサーバー維持費用の確保のため、第三者配信の広告サービス（Google AdSense、A8.net、アクセストレード、afb、バリューコマース等）を利用しています。Googleを含む第三者配信事業者は、ユーザーの過去のアクセス情報に基づいて適切な広告を配信するため、Cookie（クッキー）を使用することがあります。</p>
-            <p>ユーザーは、Googleの<a href="https://adssettings.google.com/authenticated" target="_blank" rel="noopener noreferrer" style="color: #38bdf8;">広告設定ページ</a>にてパーソナライズ広告を無効にすることができます。</p>
+            <p>ユーザーは、Googleの<a href="https://adssettings.google.com/authenticated" target="_blank" rel="noopener noreferrer" style="color: var(--accent-text);">広告設定ページ</a>にてパーソナライズ広告を無効にすることができます。</p>
 
             <h2>4. アクセス解析およびローカルストレージの利用</h2>
             <p>当サイトでは、お気に入り店舗の保存や表示設定の保持のためにブラウザのローカルストレージ（LocalStorage）を利用しています。これらのデータはお客様の端末内にのみ保存され、個人を特定する情報は一切含まれません。</p>
 
             <h2>5. 運営者情報・お問い合わせ窓口</h2>
             <p>
-                <strong>サイト名：</strong>相席ナビ (AISEKI NAVI)<br>
-                <strong>公式URL：</strong><a href="https://aiseki-navi.com" style="color: #ec4899;">https://aiseki-navi.com</a><br>
-                <strong>運営元：</strong>相席ナビ編集部<br>
-                <strong>お問い合わせ：</strong>掲載内容に関するご相談や広告掲載・提携のご連絡は、公式SNS（<a href="https://x.com/aiseki_navi" target="_blank" rel="noopener noreferrer" style="color: #38bdf8;">@aiseki_navi</a>）のダイレクトメッセージよりお願いいたします。
+                <strong style="color: var(--text-main);">サイト名：</strong>相席ナビ (AISEKI NAVI)<br>
+                <strong style="color: var(--text-main);">公式URL：</strong><a href="https://aiseki-navi.com" style="color: var(--accent-text);">https://aiseki-navi.com</a><br>
+                <strong style="color: var(--text-main);">運営元：</strong>相席ナビ編集部<br>
+                <strong style="color: var(--text-main);">お問い合わせ：</strong>掲載内容に関するご相談や広告掲載・提携のご連絡は、公式SNS（<a href="https://x.com/aiseki_navi" target="_blank" rel="noopener noreferrer" style="color: var(--accent-text);">@aiseki_navi</a>）のダイレクトメッセージよりお願いいたします。
             </p>
         </article>
 
-        <footer class="portal-footer">
-            <div class="portal-footer-links">
-                <a href="/">🔥 リアルタイムランキング</a>
-                <a href="/areas">📍 全国エリア一覧</a>
-                <a href="/columns">📖 コラム一覧</a>
-                <a href="/guide">基本ガイド</a>
-                <a href="/guide/brand-comparison">3大ブランド比較</a>
-                <a href="/guide/weekday-strategy">水曜・木曜の穴場</a>
-                <a href="/grooming">身だしなみ特集</a>
-            </div>
-            <p>© 2026 相席ナビ (AISEKI NAVI)</p>
-        </footer>
+        {% include '_portal_footer.html' %}
     </div>
 </body>
 

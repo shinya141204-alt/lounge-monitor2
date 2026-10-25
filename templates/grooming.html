@@ -23,25 +23,23 @@
 
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=2">
     <link rel="apple-touch-icon" href="/static/icon.png?v=2">
-    <link rel="stylesheet" href="/static/portal.css?v=2">
+    <link rel="stylesheet" href="/static/portal.css?v=6">
     <style>
         :root {
-            --bg-dark: #0a0a0f;
-            --card-bg: rgba(22, 22, 34, 0.85);
-            --text-main: #f8fafc;
-            --text-sub: #94a3b8;
-            --accent-pink: #ec4899;
-            --accent-blue: #3b82f6;
-            --border-subtle: rgba(255, 255, 255, 0.1);
+            --bg-dark: #0f1014;
+            --card-bg: #16171c;
+            --text-main: #ebe8e3;
+            --text-sub: #9a968e;
+            --accent-gold: #c8a46e;
+            --accent-text: #dfc496;
+            --border-subtle: rgba(255, 255, 255, 0.08);
         }
         * { box-sizing: border-box; }
         body {
             margin: 0;
             padding: 0;
             background-color: var(--bg-dark);
-            background-image:
-                radial-gradient(circle at 15% 10%, rgba(236, 72, 153, 0.12), transparent 35%),
-                radial-gradient(circle at 85% 80%, rgba(59, 130, 246, 0.12), transparent 35%);
+            background-image: none;
             color: var(--text-main);
             font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
             line-height: 1.8;
@@ -68,91 +66,92 @@
             gap: 10px;
         }
         .portal-brand-title {
-            font-size: 1.5rem;
+            font-size: 1.45rem;
             font-weight: 800;
-            background: linear-gradient(90deg, #ec4899, #8b5cf6, #3b82f6);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
+            color: var(--text-main);
             margin: 0;
         }
         .portal-brand-sub {
             font-size: 0.78rem;
             color: var(--text-sub);
         }
-        /* グローバルナビ: 共通部分は /static/portal.css。以下はこのページ固有の差分 */
         .portal-global-nav { scrollbar-width: none; }
         .portal-global-nav::-webkit-scrollbar { display: none; }
 
         .content-box {
             background: var(--card-bg);
             border: 1px solid var(--border-subtle);
-            border-radius: 20px;
-            padding: 30px 24px;
+            border-radius: 14px;
+            padding: 28px 24px;
         }
         h1 {
-            font-size: 1.5rem;
-            color: #fff;
+            font-size: 1.45rem;
+            color: var(--text-main);
             margin: 0 0 14px;
             line-height: 1.4;
         }
         h2 {
-            font-size: 1.2rem;
-            color: #fff;
-            margin: 36px 0 14px;
-            padding-bottom: 8px;
-            border-bottom: 2px solid rgba(236, 72, 153, 0.4);
+            font-size: 1.14rem;
+            color: var(--text-main);
+            margin: 34px 0 12px;
+            padding-left: 10px;
+            border-left: 3px solid var(--accent-gold);
         }
         p {
-            font-size: 0.94rem;
-            color: #cbd5e1;
+            font-size: 0.92rem;
+            color: var(--text-sub);
             margin: 0 0 16px;
         }
         .rec-card {
-            background: rgba(15, 23, 42, 0.78);
-            border: 1px solid rgba(236, 72, 153, 0.35);
-            border-radius: 16px;
+            background: #1b1c22;
+            border: 1px solid rgba(200, 164, 110, 0.28);
+            border-radius: 12px;
             padding: 22px;
-            margin: 22px 0;
+            margin: 20px 0;
         }
         .rec-badge {
             display: inline-block;
-            background: rgba(236, 72, 153, 0.18);
-            color: #f472b6;
-            border: 1px solid rgba(236, 72, 153, 0.4);
-            font-size: 0.72rem;
+            background: rgba(200, 164, 110, 0.12);
+            color: var(--accent-text);
+            border: 1px solid rgba(200, 164, 110, 0.32);
+            font-size: 0.71rem;
             font-weight: 700;
             padding: 2px 10px;
-            border-radius: 6px;
+            border-radius: 4px;
             margin-bottom: 8px;
         }
         .rec-title {
-            font-size: 1.12rem;
-            font-weight: 800;
-            color: #fff;
+            font-size: 1.08rem;
+            font-weight: 700;
+            color: var(--text-main);
             margin: 0 0 10px;
         }
         .rec-points {
             margin: 12px 0 18px;
             padding-left: 20px;
-            color: #94a3b8;
-            font-size: 0.86rem;
+            color: var(--text-sub);
+            font-size: 0.85rem;
         }
         .rec-points li { margin-bottom: 6px; }
         .rec-btn {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            padding: 12px 26px;
-            border-radius: 999px;
-            background: linear-gradient(135deg, #ec4899, #8b5cf6);
-            color: #fff;
+            padding: 10px 22px;
+            border-radius: 8px;
+            background: rgba(200, 164, 110, 0.14);
+            border: 1px solid rgba(200, 164, 110, 0.42);
+            color: var(--accent-text);
             text-decoration: none;
             font-weight: 700;
-            font-size: 0.92rem;
+            font-size: 0.86rem;
+            transition: background 0.18s ease;
+        }
+        .rec-btn:hover {
+            background: rgba(200, 164, 110, 0.22);
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=1">
+    <link rel="stylesheet" href="/static/calm.css?v=7">
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
          crossorigin="anonymous"></script>
@@ -163,7 +162,7 @@
         <div class="portal-top-header">
             <a href="/" class="portal-brand-link">
                 <span class="portal-brand-title">相席ナビ</span>
-                <span class="portal-brand-sub">全国ラウンジの今わかる人数ランキング＆攻略メディア</span>
+                <span class="portal-brand-sub">全国ラウンジのリアルタイム人数＆攻略メディア</span>
             </a>
         </div>
 
@@ -171,10 +170,10 @@
         {% include '_portal_nav.html' %}
 
         <article class="content-box">
-            <span class="rec-badge">✨ MEN'S GROOMING & PREP GUIDE</span>
+            <span class="rec-badge">MEN'S GROOMING & PREP GUIDE</span>
             <h1>相席ラウンジへ行く前に整えておきたい身だしなみと事前準備</h1>
             <p>
-                相席ラウンジのL字ソファやボックス席は、お相手との距離が<strong>約40〜50センチほど</strong>と普段の居酒屋よりもかなり近いのが特徴です。
+                相席ラウンジのL字ソファやボックス席は、お相手との距離が<strong style="color: var(--text-main);">約40〜50センチほど</strong>と普段の居酒屋よりもかなり近いのが特徴です。
                 特別なブランド品や派手なトークは必要ありませんが、「近くで話したときに清潔感があるかどうか」だけで、最初の10分の打ち解けやすさや連絡先交換のスムーズさが大きく変わります。
             </p>
 
@@ -183,14 +182,14 @@
                 仕事帰りにそのままお店へ向かうときに一番気になりやすいのが、夕方になると伸びてくるヒゲです。店内の間接照明は上から当たるため、鼻下やアゴ周りの影が強調されやすく、医療脱毛で少しずつでも減らしておくと夕方の疲れ顔がかなり解消されます。
             </p>
             <div class="rec-card">
-                <span class="rec-badge">🪒 口元の清潔感ケア</span>
+                <span class="rec-badge">口元の清潔感ケア</span>
                 <h3 class="rec-title">メンズ医療ヒゲ脱毛プログラム</h3>
                 <p>夕方の青ヒゲやカミソリ負けを減らして、仕事終わりでもすっきりした口元を保てる医療レーザー脱毛です。</p>
                 <ul class="rec-points">
                     <li>毎日のヒゲ剃り時間が減り、肌荒れやニキビも起きにくくなる</li>
                     <li>近くで話すソファ席でも口元を気にせず自然に笑える</li>
                 </ul>
-                <a href="/link/hair_removal" target="_blank" rel="noopener noreferrer sponsored" class="rec-btn">✨ 公式サイトで詳細を見る ›</a>
+                <a href="/link/hair_removal" target="_blank" rel="noopener noreferrer sponsored" class="rec-btn">公式サイトで詳細を見る ›</a>
             </div>
 
             <h2>2. 顔の「皮脂テカリ・乾燥」をシンプルにケアする</h2>
@@ -198,14 +197,14 @@
                 1軒目でお酒を飲んだり、空調の効いた店内にいたりすると、おでこや鼻周りの皮脂テカリが出やすくなります。ベタつかないメンズ用の洗顔・化粧水で普段から水分と油分のバランスを整えておくと、夜遅い時間でも清潔感のある肌印象をキープしやすくなります。
             </p>
             <div class="rec-card">
-                <span class="rec-badge">💎 定番メンズスキンケア</span>
+                <span class="rec-badge">定番メンズスキンケア</span>
                 <h3 class="rec-title">ORBIS Mr.（オルビス ミスター）</h3>
                 <p>男性特有の皮脂テカリと乾燥の両方をケアできる、ベタつかない使い心地の定番スキンケアシリーズです。</p>
                 <ul class="rec-points">
                     <li>洗顔・化粧水・保湿のシンプルステップで続けやすい</li>
                     <li>清潔感のある落ち着いた肌印象づくりにぴったり</li>
                 </ul>
-                <a href="/link/orbis" target="_blank" rel="noopener noreferrer sponsored" class="rec-btn">💎 初回限定セットを公式で見る ›</a>
+                <a href="/link/orbis" target="_blank" rel="noopener noreferrer sponsored" class="rec-btn">初回限定セットを公式で見る ›</a>
             </div>
 
             <h2>3. 「何を着ていくか迷う」をなくす大人カジュアル服</h2>
@@ -213,14 +212,14 @@
                 相席ラウンジでは、スーツ姿と同じくらい「清潔感のあるシンプルな私服（ジャケットやきれいめニットなど）」が好まれます。自分で服を選ぶといつも同じ格好になりがちという方は、スタイリストが組み合わせた一式が届くサービスを使うと、お店でも2軒目のデートでも浮かない服装が手軽に揃います。
             </p>
             <div class="rec-card">
-                <span class="rec-badge">👔 スタイリスト監修コーデ</span>
+                <span class="rec-badge">スタイリスト監修コーデ</span>
                 <h3 class="rec-title">SPU スタイルアップ便（メンズきれいめ服の定期便）</h3>
                 <p>女性スタイリストが選んだ、シンプルで好印象な大人カジュアル服が毎月届くサービスです。</p>
                 <ul class="rec-points">
                     <li>買いに行く手間なく、そのまま着ていける全身コーデが揃う</li>
                     <li>相席ラウンジにも休日のカフェ・食事デートにもそのまま使える</li>
                 </ul>
-                <a href="/link/spu" target="_blank" rel="noopener noreferrer sponsored" class="rec-btn">👔 スタイルアップ便の公式を見る ›</a>
+                <a href="/link/spu" target="_blank" rel="noopener noreferrer sponsored" class="rec-btn">スタイルアップ便の公式を見る ›</a>
             </div>
 
             <h2>4. 週末に「どのお店も満席・男性待ち」だったときの保険</h2>
@@ -228,14 +227,14 @@
                 金曜や土曜の22時過ぎは、近くのお店がどこも男性の入店待ちになっていることもあります。そんなときや、「今日は騒がしい場所より1対1で落ち着いて飲みたいな」という日に備えて、すぐ会える人を探せる恋活アプリをひとつスマホに入れておくと予定が崩れません。
             </p>
             <div class="rec-card">
-                <span class="rec-badge">📱 満席時のサブ選択肢</span>
+                <span class="rec-badge">満席時のサブ選択肢</span>
                 <h3 class="rec-title">今から飲める人が見つかる恋活・マッチングアプリ</h3>
                 <p>予定が空いた夜や、お店が混んでいる週末の強い味方。登録無料で近くにいる相手を探せます。</p>
                 <ul class="rec-points">
                     <li>事前に相手の雰囲気や趣味を見てから1対1で会える</li>
                     <li>相席ラウンジと併用しておくことで、週末の空振りを減らせる</li>
                 </ul>
-                <a href="/link/dating" target="_blank" rel="noopener noreferrer sponsored" class="rec-btn">📱 無料登録・公式サイトを見る ›</a>
+                <a href="/link/dating" target="_blank" rel="noopener noreferrer sponsored" class="rec-btn">無料登録・公式サイトを見る ›</a>
             </div>
         </article>
 

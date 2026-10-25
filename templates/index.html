@@ -102,7 +102,7 @@
          crossorigin="anonymous"></script>
     <script src="/static/affiliate_config.js?v=8"></script>
     {% endif %}
-    <link rel="stylesheet" href="/static/calm.css?v=6">
+    <link rel="stylesheet" href="/static/calm.css?v=7">
 </head>
 
 <body class="{% if is_staff %}staff-mode{% endif %}">
@@ -134,6 +134,9 @@
                     <span class="modal-event-badge">開催中イベント・キャンペーン</span>
                 </div>
                 <div id="modal-event-list" class="modal-event-list"></div>
+                <p style="font-size: 0.72rem; color: var(--text-secondary); margin: 8px 0 0; line-height: 1.55;">
+                    ※イベントの開催有無・適用条件・料金システムは変更される場合があります。ご来店の際は必ず各店舗の公式ホームページ・公式アプリをご確認ください。
+                </p>
             </div>
 
             <!-- Live User Crowd Vote Box (UGC) -->
@@ -668,9 +671,12 @@
                 <h2>最新イベント・キャンペーン速報</h2>
                 <button class="close-btn-pill" onclick="closeEventsModal()" aria-label="閉じる">✕ 閉じる</button>
             </div>
-            <p style="text-align: center; color: var(--text-secondary); font-size: 0.8rem; margin-top: 0; margin-bottom: 12px;">
-                オリエンタルラウンジ・ag・JISの最新フェア・特典情報
+            <p style="text-align: center; color: var(--text-secondary); font-size: 0.8rem; margin-top: 0; margin-bottom: 10px;">
+                オリエンタルラウンジ・ag・JIS・地域主要店のフェア・特典情報
             </p>
+            <div class="official-notice-box" style="margin: 0 0 14px; font-size: 0.74rem; padding: 9px 12px; text-align: left;">
+                ※イベントの開催有無・適用条件や料金システムは予告なく変更・終了する場合があります。ご来店の際は必ず各店舗の<strong>公式ホームページ・公式アプリ</strong>をご確認ください。
+            </div>
             {% if not is_staff %}
             <div style="text-align: center; margin-bottom: 14px;">
                 <button type="button" class="staff-action-pill" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 16px; font-size: 0.82rem; cursor: pointer;" onclick="closeEventsModal(); openSnsModal('events');">
@@ -1199,8 +1205,8 @@
 
                 <!-- Momentum & Card Legend Bar -->
                 <div class="momentum-legend-bar" aria-label="表示指標の説明">
-                    <span class="momentum-legend-pill">📈 「↗ +数字」＝ 直近15分での客数の伸び</span>
-                    <span class="momentum-legend-hint">店舗タップで曜日・時間別の推移グラフ</span>
+                    <span class="momentum-legend-pill">「↗ +数字」＝ 直近15分での客数の伸び</span>
+                    <span class="momentum-legend-hint">比率順は女性6名以上を優先 ｜ 店舗タップで推移グラフ</span>
                 </div>
 
                 <!-- Pinned Stores Section -->
@@ -1512,9 +1518,9 @@
                 <div class="sitemap-col">
                     <h4>ブランド別・エリア別人数</h4>
                     <ul>
-                        <li><a href="/oriental-lounge">👑 オリエンタルラウンジ全店人数</a></li>
-                        <li><a href="/ag">🥂 ag（アグ）全店人数</a></li>
-                        <li><a href="/jis">🍸 JIS（ジス）全店人数</a></li>
+                        <li><a href="/oriental-lounge">オリエンタルラウンジ全店人数</a></li>
+                        <li><a href="/ag">ag（アグ）全店人数</a></li>
+                        <li><a href="/jis">JIS（ジス）全店人数</a></li>
                         <li><a href="/area/shinjuku">新宿・西新宿エリア</a></li>
                         <li><a href="/area/shibuya">渋谷・恵比寿エリア</a></li>
                         <li><a href="/area/kanto">横浜・大宮・北関東エリア</a></li>
@@ -1549,7 +1555,7 @@
                     <h4>サイト情報・統計・規約</h4>
                     <ul>
                         <li><a href="/">リアルタイム人数ランキング</a></li>
-                        <li><a href="/price-comparison">💴 店舗別料金・開催中イベント比較</a></li>
+                        <li><a href="/price-comparison">店舗別料金・開催中イベント比較</a></li>
                         <li><a href="/stats">全国ラウンジ統計データ白書</a></li>
                         <li><button type="button" class="sitemap-text-btn" onclick="openHowToModal()">相席ナビの使い方</button></li>
                         <li><a href="/privacy">運営者情報・プライバシーポリシー</a></li>
@@ -1560,8 +1566,8 @@
 
             {% if initial_status and initial_status.ranking %}
             <details style="margin: 14px 0 8px; background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.07); border-radius: 12px; padding: 10px 14px; text-align: left;">
-                <summary style="cursor: pointer; font-size: 0.78rem; font-weight: 700; color: #94a3b8; list-style: none;">
-                    🏢 全国{{ initial_status.ranking|length }}店舗の現在人数テキスト一覧・店舗別ページ（オリエンタルラウンジ / ag（アグ） / JIS）▼
+                <summary style="cursor: pointer; font-size: 0.78rem; font-weight: 700; color: #9a968e; list-style: none;">
+                    全国{{ initial_status.ranking|length }}店舗の現在人数テキスト一覧・店舗別ページ（オリエンタルラウンジ / ag（アグ） / JIS）▼
                 </summary>
                 <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px 12px; margin-top: 10px; font-size: 0.75rem;">
                     {% for s in initial_status.ranking %}
@@ -1581,6 +1587,9 @@
                     <span class="footer-divider" style="opacity: 0.3;">|</span>
                     <a href="/staff" class="footer-sub-link" style="color: #93b1c9;">社内業務モニター</a>
                 </div>
+                <p style="font-size: 0.72rem; color: #9a968e; line-height: 1.6; max-width: 720px; margin: 0 auto 8px;">
+                    ※掲載しているイベントの開催有無・適用条件、料金システム、入店ルール等は変更される場合や表記に差異がある場合がございます。ご来店の際は必ず各店舗の公式ホームページ・公式アプリにて最新情報をご確認ください。
+                </p>
                 <p class="footer-mini-copy">
                     © 2026 相席ナビ (AISEKI NAVI) ｜ ※公開情報の非公式統計・情報ポータルサイトです
                 </p>
@@ -1652,12 +1661,12 @@
         window.INITIAL_STATUS_DATA = {{ initial_status | tojson }};
         {% endif %}
     </script>
-    <script src="/static/app.js?v=20261026_2" defer></script>
+    <script src="/static/app.js?v=20261026_3" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js?v=29')
+                navigator.serviceWorker.register('/sw.js?v=30')
                     .then(reg => {
                         reg.update();
                     })

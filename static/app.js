@@ -1250,9 +1250,14 @@
             } else if (currentSort === 'men') {
                 filteredStores.sort((a, b) => (_isKorea(a) - _isKorea(b)) || (b.men - a.men) || (b.women - a.women));
             } else if (currentSort === 'ratio') {
+                // Minimum headcount tier (women >= 6 = ~3 pairs) prevents tiny 1-2 pair stores
+                // (e.g. 2 women / 0 men = 100%) from ranking above active stores with rotation depth.
+                const _ratioTier = (s) => ((s.women || 0) >= 6 ? 2 : ((s.women || 0) + (s.men || 0) > 0 ? 1 : 0));
                 filteredStores.sort((a, b) => {
                     const korDiff = _isKorea(a) - _isKorea(b);
                     if (korDiff !== 0) return korDiff;
+                    const tierDiff = _ratioTier(b) - _ratioTier(a);
+                    if (tierDiff !== 0) return tierDiff;
                     const totalA = a.women + a.men;
                     const totalB = b.women + b.men;
                     const pctA = totalA === 0 ? -1 : (a.women / totalA);

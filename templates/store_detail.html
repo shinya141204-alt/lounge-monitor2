@@ -71,32 +71,33 @@
 
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=2">
     <link rel="apple-touch-icon" href="/static/icon.png?v=2">
-    <link rel="stylesheet" href="/static/portal.css?v=2">
+    <link rel="stylesheet" href="/static/portal.css?v=6">
     <style>
         :root {
-            --bg-dark: #0a0a0f;
-            --card-bg: rgba(22, 22, 34, 0.88);
-            --text-main: #f8fafc;
-            --text-sub: #94a3b8;
-            --accent-pink: #ec4899;
-            --accent-blue: #3b82f6;
-            --accent-gold: #e5c878;
-            --border-subtle: rgba(255, 255, 255, 0.1);
+            --bg-dark: #0f1014;
+            --card-bg: #16171c;
+            --card-elevated: #1b1c22;
+            --text-main: #ebe8e3;
+            --text-sub: #9a968e;
+            --women: #d8a1aa;
+            --men: #93b1c9;
+            --accent-gold: #c8a46e;
+            --accent-text: #dfc496;
+            --border-subtle: rgba(255, 255, 255, 0.08);
+            --border-gold: rgba(200, 164, 110, 0.34);
         }
         * { box-sizing: border-box; }
         body {
             margin: 0;
             padding: 0;
             background-color: var(--bg-dark);
-            background-image:
-                radial-gradient(circle at 15% 10%, rgba(236, 72, 153, 0.12), transparent 35%),
-                radial-gradient(circle at 85% 80%, rgba(59, 130, 246, 0.12), transparent 35%);
+            background-image: none;
             color: var(--text-main);
             font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
             line-height: 1.75;
         }
         .portal-wrap {
-            max-width: 920px;
+            max-width: 960px;
             margin: 0 auto;
             padding: 20px 18px 80px;
         }
@@ -117,18 +118,16 @@
             gap: 10px;
         }
         .portal-brand-title {
-            font-size: 1.5rem;
+            font-size: 1.45rem;
             font-weight: 800;
-            background: linear-gradient(90deg, #ec4899, #8b5cf6, #3b82f6);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
+            color: var(--text-main);
+            letter-spacing: 0.02em;
             margin: 0;
         }
         .portal-brand-sub { font-size: 0.78rem; color: var(--text-sub); }
 
         .breadcrumb {
-            font-size: 0.8rem;
+            font-size: 0.79rem;
             color: var(--text-sub);
             margin-bottom: 16px;
             display: flex;
@@ -136,17 +135,17 @@
             gap: 6px;
         }
         .breadcrumb a {
-            color: #cbd5e1;
+            color: var(--text-sub);
             text-decoration: none;
         }
-        .breadcrumb a:hover { color: #e5c878; }
+        .breadcrumb a:hover { color: var(--accent-text); }
 
         .live-hero-card {
             background: var(--card-bg);
-            border: 1px solid rgba(229, 200, 120, 0.3);
-            border-radius: 20px;
-            padding: 26px 24px;
-            margin-bottom: 24px;
+            border: 1px solid var(--border-gold);
+            border-radius: 14px;
+            padding: 24px 22px;
+            margin-bottom: 16px;
         }
         .badge-row {
             display: flex;
@@ -156,27 +155,29 @@
             margin-bottom: 10px;
         }
         .area-badge {
-            font-size: 0.76rem;
-            font-weight: 700;
-            padding: 4px 12px;
+            font-size: 0.74rem;
+            font-weight: 600;
+            padding: 3px 11px;
             border-radius: 999px;
-            background: rgba(255, 255, 255, 0.08);
-            color: #e2e8f0;
+            background: rgba(255, 255, 255, 0.045);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-sub);
         }
         .status-badge {
-            font-size: 0.76rem;
-            font-weight: 800;
-            padding: 4px 12px;
+            font-size: 0.74rem;
+            font-weight: 700;
+            padding: 3px 12px;
             border-radius: 999px;
-            background: rgba(236, 72, 153, 0.18);
-            color: #f472b6;
-            border: 1px solid rgba(236, 72, 153, 0.4);
+            background: rgba(200, 164, 110, 0.12);
+            color: var(--accent-text);
+            border: 1px solid rgba(200, 164, 110, 0.32);
         }
         .live-hero-card h1 {
             margin: 0 0 16px;
-            font-size: 1.45rem;
-            color: #fff;
-            line-height: 1.38;
+            font-size: 1.38rem;
+            color: var(--text-main);
+            line-height: 1.4;
+            letter-spacing: -0.01em;
         }
 
         .big-counts-grid {
@@ -186,104 +187,171 @@
             margin: 18px 0;
         }
         .count-box {
-            background: rgba(15, 23, 42, 0.85);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 14px;
-            padding: 16px 12px;
+            background: var(--card-elevated);
+            border: 1px solid var(--border-subtle);
+            border-radius: 10px;
+            padding: 15px 12px;
             text-align: center;
         }
         .count-label {
-            font-size: 0.8rem;
-            color: #94a3b8;
-            font-weight: 700;
+            font-size: 0.77rem;
+            color: var(--text-sub);
+            font-weight: 600;
         }
         .count-num {
-            font-size: 1.8rem;
-            font-weight: 900;
+            font-size: 1.75rem;
+            font-weight: 800;
             margin-top: 4px;
+            font-variant-numeric: tabular-nums;
         }
-        .w-color { color: #f472b6; }
-        .m-color { color: #60a5fa; }
-        .r-color { color: #e5c878; }
+        .w-color { color: var(--women); }
+        .m-color { color: var(--men); }
+        .r-color { color: var(--accent-text); }
 
         .ratio-bar-lg {
-            height: 12px;
+            height: 8px;
             border-radius: 999px;
-            background: rgba(59, 130, 246, 0.4);
+            background: rgba(147, 177, 201, 0.28);
             overflow: hidden;
-            margin: 12px 0 18px;
+            margin: 12px 0 16px;
         }
         .ratio-fill-lg {
             height: 100%;
-            background: linear-gradient(90deg, #ec4899, #f472b6);
+            background: var(--women);
         }
 
         .action-btns {
             display: flex;
             flex-wrap: wrap;
-            gap: 10px;
+            gap: 9px;
             margin-top: 18px;
         }
         .btn-primary {
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            padding: 10px 20px;
-            border-radius: 999px;
-            background: linear-gradient(90deg, #ec4899, #3b82f6);
-            color: #fff;
+            padding: 9px 18px;
+            border-radius: 8px;
+            background: rgba(200, 164, 110, 0.14);
+            border: 1px solid rgba(200, 164, 110, 0.42);
+            color: var(--accent-text);
             font-weight: 700;
-            font-size: 0.86rem;
+            font-size: 0.84rem;
             text-decoration: none;
+            transition: background 0.18s ease, border-color 0.18s ease;
+        }
+        .btn-primary:hover {
+            background: rgba(200, 164, 110, 0.22);
+            border-color: rgba(200, 164, 110, 0.6);
         }
         .btn-secondary {
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            padding: 10px 18px;
-            border-radius: 999px;
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.16);
-            color: #f8fafc;
-            font-weight: 700;
-            font-size: 0.84rem;
+            padding: 9px 15px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.035);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-main);
+            font-weight: 600;
+            font-size: 0.82rem;
             text-decoration: none;
+            transition: border-color 0.18s ease, color 0.18s ease;
+        }
+        .btn-secondary:hover {
+            border-color: rgba(200, 164, 110, 0.4);
+            color: var(--accent-text);
         }
 
         .section-card {
             background: var(--card-bg);
             border: 1px solid var(--border-subtle);
-            border-radius: 18px;
+            border-radius: 14px;
             padding: 22px;
-            margin-bottom: 22px;
+            margin-bottom: 20px;
         }
         .section-card h2 {
-            margin: 0 0 12px;
-            font-size: 1.15rem;
-            color: #fff;
+            margin: 0 0 10px;
+            font-size: 1.08rem;
+            color: var(--text-main);
+            padding-left: 10px;
+            border-left: 3px solid var(--accent-gold);
+            line-height: 1.4;
+        }
+        .stat-subcard {
+            background: var(--card-elevated);
+            border: 1px solid var(--border-subtle);
+            border-radius: 10px;
+            padding: 14px;
         }
         .nearby-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-            gap: 12px;
+            gap: 10px;
             margin-top: 14px;
         }
         .nearby-item {
-            background: rgba(15, 23, 42, 0.82);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-            padding: 14px;
+            background: var(--card-elevated);
+            border: 1px solid var(--border-subtle);
+            border-radius: 10px;
+            padding: 13px 14px;
             text-decoration: none;
             color: inherit;
             display: flex;
             flex-direction: column;
             gap: 6px;
+            transition: border-color 0.18s ease;
         }
         .nearby-item:hover {
-            border-color: #e5c878;
+            border-color: rgba(200, 164, 110, 0.45);
+        }
+        .store-comp-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 720px;
+            font-size: 0.81rem;
+        }
+        .store-comp-table th {
+            padding: 10px 12px;
+            background: var(--card-elevated);
+            color: var(--text-sub);
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.75rem;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+        .store-comp-table td {
+            padding: 11px 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            vertical-align: top;
+        }
+        .store-comp-table tr.is-current-row td {
+            background: rgba(255, 255, 255, 0.028);
+        }
+        .store-comp-table tr.is-best-row td {
+            background: rgba(200, 164, 110, 0.055);
+        }
+        .row-tag {
+            display: inline-block;
+            font-size: 0.67rem;
+            font-weight: 700;
+            padding: 1px 7px;
+            border-radius: 4px;
+            margin-left: 5px;
+            vertical-align: middle;
+        }
+        .row-tag-current {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-sub);
+        }
+        .row-tag-best {
+            background: rgba(200, 164, 110, 0.15);
+            border: 1px solid rgba(200, 164, 110, 0.42);
+            color: var(--accent-text);
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=3">
+    <link rel="stylesheet" href="/static/calm.css?v=7">
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
          crossorigin="anonymous"></script>
@@ -294,9 +362,9 @@
         <div class="portal-top-header">
             <a href="/" class="portal-brand-link">
                 <span class="portal-brand-title">相席ナビ</span>
-                <span class="portal-brand-sub">全国ラウンジの今わかる人数ランキング＆攻略メディア</span>
+                <span class="portal-brand-sub">全国ラウンジのリアルタイム人数＆攻略メディア</span>
             </a>
-            <span style="font-size: 0.78rem; color: #94a3b8;">最終更新: <span id="store-live-updated">{{ last_updated }}</span> <span style="color:#4ade80; font-weight:700;">● 自動更新中</span></span>
+            <span style="font-size: 0.77rem; color: var(--text-sub);">最終更新: <span id="store-live-updated" style="color: var(--text-main); font-weight: 600;">{{ last_updated }}</span> <span style="color: #8fb89d; font-weight: 600;">● 自動更新中</span></span>
         </div>
 
         {% set nav_active = 'ranking' %}
@@ -313,8 +381,8 @@
 
         <article class="live-hero-card" data-hero-store="{{ store.name }}" data-hero-seo="{{ store.seo_name }}">
             <div class="badge-row">
-                <span class="area-badge">📍 {{ store.area_label }}</span>
-                <span class="area-badge">🏢 {{ store.brand_label }}</span>
+                <span class="area-badge">{{ store.area_label }}</span>
+                <span class="area-badge">{{ store.brand_label }}</span>
                 <span class="status-badge" id="hero-status-badge">{{ store.crowd_comment }}</span>
             </div>
 
@@ -322,15 +390,15 @@
 
             <div class="big-counts-grid">
                 <div class="count-box">
-                    <div class="count-label">👩 現在の女性人数</div>
-                    <div class="count-num w-color" id="hero-women-num">{% if store.total > 0 %}{{ store.women }}<span style="font-size:0.95rem;">名</span>{% if (store.women_diff or 0) > 0 %}<div style="font-size:0.76rem; color:#f472b6; margin-top:2px;">直近15分 ↗ +{{ store.women_diff }}名</div>{% endif %}{% else %}--<span style="font-size:0.85rem; color:#94a3b8;">（準備中）</span>{% endif %}</div>
+                    <div class="count-label">現在の女性人数</div>
+                    <div class="count-num w-color" id="hero-women-num">{% if store.total > 0 %}{{ store.women }}<span style="font-size:0.95rem;">名</span>{% if (store.women_diff or 0) > 0 %}<div style="font-size:0.75rem; color: var(--women); margin-top:2px; font-weight:600;">直近15分 ↗ +{{ store.women_diff }}名</div>{% endif %}{% else %}--<span style="font-size:0.82rem; color: var(--text-sub); font-weight:500;">（準備中）</span>{% endif %}</div>
                 </div>
                 <div class="count-box">
-                    <div class="count-label">👨 現在の男性人数</div>
-                    <div class="count-num m-color" id="hero-men-num">{% if store.total > 0 %}{{ store.men }}<span style="font-size:0.95rem;">名</span>{% if (store.men_diff or 0) > 0 %}<div style="font-size:0.76rem; color:#60a5fa; margin-top:2px;">直近15分 ↗ +{{ store.men_diff }}名</div>{% endif %}{% else %}--<span style="font-size:0.85rem; color:#94a3b8;">（準備中）</span>{% endif %}</div>
+                    <div class="count-label">現在の男性人数</div>
+                    <div class="count-num m-color" id="hero-men-num">{% if store.total > 0 %}{{ store.men }}<span style="font-size:0.95rem;">名</span>{% if (store.men_diff or 0) > 0 %}<div style="font-size:0.75rem; color: var(--men); margin-top:2px; font-weight:600;">直近15分 ↗ +{{ store.men_diff }}名</div>{% endif %}{% else %}--<span style="font-size:0.82rem; color: var(--text-sub); font-weight:500;">（準備中）</span>{% endif %}</div>
                 </div>
                 <div class="count-box">
-                    <div class="count-label">⚖️ 女性比率</div>
+                    <div class="count-label">女性比率</div>
                     <div class="count-num r-color" id="hero-wpct-num">{% if store.total > 0 %}{{ store.wpct }}<span style="font-size:0.95rem;">%</span>{% else %}--<span style="font-size:0.95rem;">%</span>{% endif %}</div>
                 </div>
             </div>
@@ -339,86 +407,99 @@
                 <div class="ratio-fill-lg" id="hero-ratio-fill" style="width: {{ store.wpct if store.total > 0 else 50 }}%;"></div>
             </div>
 
-            <p id="hero-live-summary" style="margin: 0; font-size: 0.9rem; color: #cbd5e1;">
+            <p id="hero-live-summary" style="margin: 0; font-size: 0.88rem; color: var(--text-sub);">
                 {% if store.total > 0 %}
-                {{ last_updated }}時点の<strong>{{ store.seo_name }}</strong>の店内状況は、<strong>女性{{ store.women }}名・男性{{ store.men }}名（合計{{ store.total }}名）</strong>です。
-                {% if store.women > store.men %}
-                現在、女性が男性より{{ store.women - store.men }}名多く入店しており、男性は待ち時間が少なくスムーズに相席しやすい狙い目状態です。
+                {{ last_updated }}時点の<strong style="color: var(--text-main);">{{ store.seo_name }}</strong>の店内状況は、<strong style="color: var(--text-main);">女性{{ store.women }}名・男性{{ store.men }}名（合計{{ store.total }}名）</strong>です。
+                {% if store.women < 6 %}
+                現在は立ち上がり・少人数の時間帯のため、女性比率が高くても初回相席後に席替え（チェンジ）できる次の相手が限られる場合があります。女性6〜8名以上への増加を待つか、近隣店舗の人数もあわせてご確認ください。
+                {% elif store.women > store.men %}
+                現在、女性が男性より{{ store.women - store.men }}名多く入店しており、男性は待ち時間を抑えてスムーズに相席しやすい状態です。
                 {% elif store.men > store.women %}
-                現在、男性が女性より{{ store.men - store.women }}名多い時間帯です。女性は待ち時間なしで即相席しやすく、男性は下記「同エリアの周辺店舗」の男女比も比較してハシゴ先を選ぶのがおすすめです。
+                現在、男性が女性より{{ store.men - store.women }}名多い時間帯です。女性は待ち時間なしで相席しやすく、男性は下記「近隣ライバル店」の人数・比率も比較して選ぶのがおすすめです。
                 {% else %}
-                現在、男女同数でバランス良く盛り上がっている状態です。入店直前に再読み込みして最新の推移をご確認ください。
+                現在、男女同数でバランス良く推移している状態です。入店直前に最新の推移をご確認ください。
                 {% endif %}
                 {% else %}
-                現在の<strong>{{ store.seo_name }}</strong>は営業時間外（夕方オープン準備中）です。{% if store_analytics and store_analytics.max_7d_women > 0 %}直近7日間の営業ピークでは<strong>女性最大{{ store_analytics.max_7d_women }}名</strong>が来店しており、一番相席しやすい狙い目は<strong>{{ store_analytics.best_slot_name }}（平均女性比{{ store_analytics.best_slot_pct }}%）</strong>です。{% endif %}夕方オープン後は毎分自動でリアルタイム男女人数を更新します。
+                現在の<strong style="color: var(--text-main);">{{ store.seo_name }}</strong>は営業時間外（夕方オープン準備中）です。{% if store_analytics and store_analytics.max_7d_women > 0 %}直近7日間の営業ピークでは<strong style="color: var(--text-main);">女性最大{{ store_analytics.max_7d_women }}名</strong>が来店しており、入りやすい狙い目は<strong style="color: var(--text-main);">{{ store_analytics.best_slot_name }}（平均女性比{{ store_analytics.best_slot_pct }}%）</strong>です。{% endif %}夕方オープン後は毎分自動でリアルタイム男女人数を更新します。
                 {% endif %}
             </p>
 
             <div class="action-btns">
-                <a href="/" class="btn-primary">📈 トップ画面で時間帯別・曜日別グラフを見る ›</a>
+                <a href="/" class="btn-primary">トップ画面で時間帯・曜日別グラフを見る ›</a>
                 {% if nearby_comparison %}
-                <a href="/price-comparison?area={{ nearby_comparison.cluster_id }}" class="btn-secondary">💴 近隣ライバル店と料金・イベント比較</a>
+                <a href="/price-comparison?area={{ nearby_comparison.cluster_id }}" class="btn-secondary">近隣ライバル店と料金・イベント比較</a>
+                {% endif %}
+                {% if store.official_url %}
+                <a href="{{ store.official_url }}" target="_blank" rel="noopener noreferrer" class="btn-secondary">公式サイトで最新情報を確認 ↗</a>
                 {% endif %}
                 {% if store.map_url %}
-                <a href="{{ store.map_url }}" target="_blank" rel="noopener" class="btn-secondary">🗺️ Googleマップで場所を確認</a>
+                <a href="{{ store.map_url }}" target="_blank" rel="noopener" class="btn-secondary">Googleマップで場所を確認</a>
                 {% endif %}
-                <a href="/{{ store.brand_slug }}" class="btn-secondary">🏢 {{ store.brand_label }}全店の人数一覧</a>
+                <a href="/{{ store.brand_slug }}" class="btn-secondary">{{ store.brand_label }}全店の人数一覧</a>
             </div>
         </article>
 
-        {% if store_analytics %}
-        <section class="section-card" style="border-color: rgba(229, 200, 120, 0.35);">
-            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
-                <h2 style="margin:0;">📊 {{ store.seo_name }}の独自データ分析・狙い目判定</h2>
-                <span style="font-size:0.75rem; color:#e5c878; background:rgba(229,200,120,0.14); border:1px solid rgba(229,200,120,0.35); padding:3px 10px; border-radius:999px; font-weight:700;">相席ナビ一次データ集計</span>
+        <aside class="official-notice-box" aria-label="ご利用上の注意事項" style="margin-bottom: 20px;">
+            <span class="official-notice-title">料金・イベント情報および人数評価に関するご注意</span>
+            <div>
+                ・掲載している料金・入店条件・イベント開催有無は公開情報をもとに集計していますが、特別営業期間の設定や急な内容変更・終了がある場合がございます。ご来店の際は必ず<a href="{{ store.official_url }}" target="_blank" rel="noopener noreferrer" style="color: var(--accent-text);">各店舗の公式ホームページ・公式アプリ</a>にて最新情報をご確認ください。<br>
+                ・少人数時（女性6名未満）は女性比率が高くても次の席替え相手が限られる場合があるため、当サイトでは<strong>女性6名以上（約3組以上）</strong>を推奨評価の対象基準としています。
             </div>
-            <p style="margin: 0 0 14px; font-size: 0.88rem; color: #cbd5e1;">
-                相席ナビが蓄積している<strong>{{ store.seo_name }}</strong>の時系列人数ログから算出した、待ち時間を減らして相席しやすい狙い目傾向です。
+        </aside>
+
+        {% if store_analytics %}
+        <section class="section-card">
+            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
+                <h2 style="margin:0;">{{ store.seo_name }}の独自データ分析・狙い目判定</h2>
+                <span style="font-size:0.72rem; color: var(--accent-text); background:rgba(200,164,110,0.1); border:1px solid rgba(200,164,110,0.3); padding:2px 10px; border-radius:4px; font-weight:600;">一次データ集計</span>
+            </div>
+            <p style="margin: 0 0 14px; font-size: 0.85rem; color: var(--text-sub);">
+                相席ナビが蓄積している<strong style="color: var(--text-main);">{{ store.seo_name }}</strong>の時系列人数ログから算出した、待ち時間を減らして相席しやすい狙い目傾向です。
             </p>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px;">
-                <div style="background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(236, 72, 153, 0.3); border-radius: 12px; padding: 14px;">
-                    <div style="font-size: 0.76rem; color: #f472b6; font-weight: 800;">⏰ 一番入りやすい狙い目時間</div>
-                    <div style="font-size: 0.98rem; font-weight: 800; color: #fff; margin: 4px 0;">{{ store_analytics.best_slot_name }}</div>
-                    <div style="font-size: 0.8rem; color: #cbd5e1;">過去ログ平均女性比：<strong style="color:#f472b6;">{{ store_analytics.best_slot_pct }}%</strong></div>
+                <div class="stat-subcard">
+                    <div style="font-size: 0.74rem; color: var(--accent-text); font-weight: 700;">一番入りやすい狙い目時間</div>
+                    <div style="font-size: 0.96rem; font-weight: 700; color: var(--text-main); margin: 4px 0;">{{ store_analytics.best_slot_name }}</div>
+                    <div style="font-size: 0.79rem; color: var(--text-sub);">過去ログ平均女性比：<strong style="color: var(--women);">{{ store_analytics.best_slot_pct }}%</strong></div>
                 </div>
-                <div style="background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 12px; padding: 14px;">
-                    <div style="font-size: 0.76rem; color: #38bdf8; font-weight: 800;">📅 女性比率が高まりやすい曜日</div>
-                    <div style="font-size: 0.98rem; font-weight: 800; color: #fff; margin: 4px 0;">{{ store_analytics.best_wd_name }}の夜</div>
-                    <div style="font-size: 0.8rem; color: #cbd5e1;">コアタイム平均女性比：<strong style="color:#38bdf8;">{{ store_analytics.best_wd_pct }}%</strong></div>
+                <div class="stat-subcard">
+                    <div style="font-size: 0.74rem; color: var(--accent-text); font-weight: 700;">女性比率が高まりやすい曜日</div>
+                    <div style="font-size: 0.96rem; font-weight: 700; color: var(--text-main); margin: 4px 0;">{{ store_analytics.best_wd_name }}の夜</div>
+                    <div style="font-size: 0.79rem; color: var(--text-sub);">コアタイム平均女性比：<strong style="color: var(--accent-text);">{{ store_analytics.best_wd_pct }}%</strong></div>
                 </div>
-                <div style="background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(229, 200, 120, 0.3); border-radius: 12px; padding: 14px;">
-                    <div style="font-size: 0.76rem; color: #e5c878; font-weight: 800;">🌙 終電後・深夜帯（24時以降）の傾向</div>
+                <div class="stat-subcard">
+                    <div style="font-size: 0.74rem; color: var(--accent-text); font-weight: 700;">終電後・深夜帯（24時以降）の傾向</div>
                     {% if store_analytics.strong_midnight %}
-                    <div style="font-size: 0.95rem; font-weight: 800; color: #fff; margin: 4px 0;">深夜「第2波」が発生しやすい◎</div>
-                    <div style="font-size: 0.79rem; color: #cbd5e1;">周辺のバー・クラブからの回遊が多く、0時過ぎから再び女性が増えやすい店舗です（<a href="/guide/club-area-midnight" style="color:#e5c878;">詳細解説›</a>）</div>
+                    <div style="font-size: 0.94rem; font-weight: 700; color: var(--text-main); margin: 4px 0;">深夜「第2波」が発生しやすい傾向</div>
+                    <div style="font-size: 0.78rem; color: var(--text-sub);">周辺のバー・クラブからの回遊が多く、0時過ぎから再び女性が増えやすい店舗です（<a href="/guide/club-area-midnight" style="color: var(--accent-text);">詳細解説 ›</a>）</div>
                     {% else %}
-                    <div style="font-size: 0.95rem; font-weight: 800; color: #fff; margin: 4px 0;">20:00〜22:30の1回転目が中心</div>
-                    <div style="font-size: 0.79rem; color: #cbd5e1;">終電前にピークを迎えるため、20時〜21時台の早めの入店が最もスムーズです。</div>
+                    <div style="font-size: 0.94rem; font-weight: 700; color: var(--text-main); margin: 4px 0;">20:00〜22:30の1回転目が中心</div>
+                    <div style="font-size: 0.78rem; color: var(--text-sub);">終電前にピークを迎えるため、20時〜21時台の早めの入店が最もスムーズです。</div>
                     {% endif %}
                 </div>
             </div>
 
             {% if store_analytics.daily_logs %}
-            <h3 style="margin: 20px 0 10px; font-size: 0.98rem; color: #fff;">🗓️ 直近の日別ピーク実績ログ（最高女性人数・ピーク時刻）</h3>
-            <div style="overflow-x: auto; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px;">
-                <table style="width: 100%; border-collapse: collapse; min-width: 480px; font-size: 0.84rem;">
+            <h3 style="margin: 20px 0 10px; font-size: 0.94rem; color: var(--text-main);">直近の日別ピーク実績ログ（最高女性人数・ピーク時刻）</h3>
+            <div style="overflow-x: auto; border: 1px solid var(--border-subtle); border-radius: 10px;">
+                <table class="store-comp-table" style="min-width: 480px;">
                     <thead>
-                        <tr style="background: rgba(15, 23, 42, 0.95); color: #94a3b8; text-align: left;">
-                            <th style="padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.08);">営業日</th>
-                            <th style="padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.08);">最高女性人数</th>
-                            <th style="padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.08);">ピーク時男性数</th>
-                            <th style="padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.08);">ピーク到達時刻</th>
-                            <th style="padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.08);">20〜24時 平均女性比</th>
+                        <tr>
+                            <th>営業日</th>
+                            <th>最高女性人数</th>
+                            <th>ピーク時男性数</th>
+                            <th>ピーク到達時刻</th>
+                            <th>20〜24時 平均女性比</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for d in store_analytics.daily_logs %}
-                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-                            <td style="padding: 10px 12px; font-weight: 700; color: #fff;">{{ d.date_label }}</td>
-                            <td style="padding: 10px 12px; font-weight: 800; color: #f472b6;">最大 {{ d.peak_women }}名</td>
-                            <td style="padding: 10px 12px; font-weight: 700; color: #60a5fa;">{{ d.peak_men }}名</td>
-                            <td style="padding: 10px 12px; color: #e5c878; font-weight: 700;">{{ d.peak_time }}頃</td>
-                            <td style="padding: 10px 12px; font-weight: 700; color: {% if d.avg_wpct >= 55 %}#4ade80{% else %}#e2e8f0{% endif %};">{{ d.avg_wpct }}%</td>
+                        <tr>
+                            <td style="font-weight: 600; color: var(--text-main);">{{ d.date_label }}</td>
+                            <td style="font-weight: 700; color: var(--women);">最大 {{ d.peak_women }}名</td>
+                            <td style="font-weight: 600; color: var(--men);">{{ d.peak_men }}名</td>
+                            <td style="color: var(--accent-text); font-weight: 600;">{{ d.peak_time }}頃</td>
+                            <td style="font-weight: 700; color: {% if d.avg_wpct >= 55 %}var(--accent-text){% else %}var(--text-main){% endif %};">{{ d.avg_wpct }}%</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -429,28 +510,29 @@
         {% endif %}
 
         {% if nearby_comparison and nearby_comparison.stores %}
-        <section class="section-card" style="border-color: rgba(56, 189, 248, 0.35);">
+        <section class="section-card">
             <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
-                <h2 style="margin:0;">💴 {{ store.seo_name }}と近隣ライバル店の料金・開催中イベント・現在人数比較</h2>
-                <a href="/price-comparison?area={{ nearby_comparison.cluster_id }}" style="font-size:0.78rem; color:#38bdf8; text-decoration:none; font-weight:700;">全国エリア比較ボードへ ›</a>
+                <h2 style="margin:0;">{{ store.seo_name }}と近隣ライバル店の料金・開催中イベント・現在人数比較</h2>
+                <a href="/price-comparison?area={{ nearby_comparison.cluster_id }}" style="font-size:0.78rem; color: var(--accent-text); text-decoration:none; font-weight:600;">全国エリア比較ボードへ ›</a>
             </div>
-            <p style="margin: 0 0 12px; font-size: 0.86rem; color: #cbd5e1;">
-                同じエリア内の競合店舗と<strong>「店舗別の単独（待機）料金」「時間帯別の相席10分単価・60分目安」「1名入店の可否」「現在開催中のイベント」「いまの男女比」</strong>を横並びで比較できます。
+            <p style="margin: 0 0 12px; font-size: 0.84rem; color: var(--text-sub);">
+                同じエリア内の競合店舗と<strong style="color: var(--text-main);">「店舗別の単独（待機）料金」「時間帯別の相席10分単価」「1名入店の可否」「開催中のイベント」「いまの男女人数・比率」</strong>を横並びで比較できます。※最新条件は各公式サイトでご確認ください。
             </p>
-            <div style="overflow-x: auto; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px;">
-                <table style="width: 100%; border-collapse: collapse; min-width: 720px; font-size: 0.82rem;">
+            <div style="overflow-x: auto; border: 1px solid var(--border-subtle); border-radius: 10px;">
+                <table class="store-comp-table">
                     <thead>
-                        <tr style="background: rgba(15, 23, 42, 0.95); color: #cbd5e1; text-align: left;">
-                            <th style="padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.1);">店舗名 / 1名入店可否</th>
-                            <th style="padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.1);">現在の人数・女性比</th>
-                            <th style="padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.1);">店舗別相席料金 / 単独待機料金</th>
-                            <th style="padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.1);">開催中の男性特典・イベント</th>
-                            <th style="padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.1);">実質コスパ検証</th>
+                        <tr>
+                            <th>店舗名 / 1名入店可否</th>
+                            <th>現在の人数・女性比</th>
+                            <th>店舗別相席料金 / 単独待機料金</th>
+                            <th>開催中の男性特典・イベント</th>
+                            <th>実質コスパ検証</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for st in nearby_comparison.stores %}
-                        <tr data-nearby-comp-row="{{ st.name }}"
+                        <tr class="{% if st.is_current_store %}is-current-row{% elif st.is_best_in_cluster %}is-best-row{% endif %}"
+                            data-nearby-comp-row="{{ st.name }}"
                             data-is-current="{{ '1' if st.is_current_store else '0' }}"
                             data-wait-str="{{ st.wait_fee_str }}"
                             data-wait-yen="{{ st.wait_10m_yen }}"
@@ -462,49 +544,51 @@
                             data-slot-18-20="{{ st.slot_18_20 }}"
                             data-slot-20-22="{{ st.slot_20_22 }}"
                             data-slot-22-24="{{ st.slot_22_24 }}"
-                            data-slot-24-last="{{ st.slot_24_last }}"
-                            style="border-bottom: 1px solid rgba(255,255,255,0.06); {% if st.is_current_store %}background: rgba(236, 72, 153, 0.08);{% elif st.is_best_in_cluster %}background: rgba(245, 158, 11, 0.06);{% endif %}">
-                            <td style="padding: 11px 12px;">
-                                <div style="font-weight: 800;">
-                                    <a href="/store/{{ st.slug }}" style="color: #fff; text-decoration: none;">{{ st.seo_name }}</a>
+                            data-slot-24-last="{{ st.slot_24_last }}">
+                            <td>
+                                <div style="font-weight: 700;">
+                                    <a href="/store/{{ st.slug }}" style="color: var(--text-main); text-decoration: none;">{{ st.seo_name }}</a>
                                     {% if st.is_current_store %}
-                                    <span style="font-size: 0.68rem; padding: 1px 6px; border-radius: 99px; background: rgba(236,72,153,0.25); color: #f9a8d4; margin-left: 4px;">表示中</span>
+                                    <span class="row-tag row-tag-current">表示中</span>
                                     {% endif %}
-                                    <span data-nearby-crown style="font-size: 0.68rem; padding: 1px 6px; border-radius: 99px; background: rgba(245,158,11,0.25); color: #fde68a; margin-left: 4px; {% if not st.is_best_in_cluster %}display:none;{% endif %}">👑コスパ推奨</span>
+                                    <span data-nearby-crown class="row-tag row-tag-best" style="{% if not st.is_best_in_cluster %}display:none;{% endif %}">エリア推奨</span>
                                 </div>
-                                <div style="font-size: 0.73rem; color: #e2e8f0; margin-top: 2px; font-weight: 700;">👤 {{ st.solo_rule }}</div>
-                                <div style="font-size: 0.72rem; color: #94a3b8; margin-top: 1px;">{{ st.age_range }} ｜ {{ st.vibe_short }}</div>
+                                <div style="font-size: 0.72rem; color: var(--text-main); margin-top: 3px; font-weight: 600;">入店条件：{{ st.solo_rule }}</div>
+                                <div style="font-size: 0.71rem; color: var(--text-sub); margin-top: 2px;">{{ st.age_range }} ｜ {{ st.vibe_short }}</div>
+                                <div style="margin-top: 5px;">
+                                    <a href="{{ st.official_url }}" target="_blank" rel="noopener noreferrer" class="official-ext-link">公式サイト ↗</a>
+                                </div>
                             </td>
-                            <td style="padding: 11px 12px;" data-nearby-crowd-cell>
+                            <td data-nearby-crowd-cell>
                                 {% if st.total > 0 %}
-                                <div style="font-weight: 800;"><span class="w-color">女性{{ st.women }}名</span> / <span class="m-color">男性{{ st.men }}名</span></div>
-                                <div style="font-size: 0.74rem; color: #e5c878; font-weight: 700;">女性比率 {{ st.wpct }}%</div>
+                                <div style="font-weight: 700;"><span class="w-color">女性{{ st.women }}名</span> / <span class="m-color">男性{{ st.men }}名</span></div>
+                                <div style="font-size: 0.73rem; color: var(--accent-text); font-weight: 600;">女性比率 {{ st.wpct }}%{% if st.women < 6 %} <span style="color: var(--text-sub); font-weight: 400;">（少人数）</span>{% endif %}</div>
                                 {% else %}
-                                <span style="font-size: 0.76rem; color: #94a3b8;">営業時間外（準備中）</span>
+                                <span style="font-size: 0.75rem; color: var(--text-sub);">営業時間外（準備中）</span>
                                 {% endif %}
                             </td>
-                            <td style="padding: 11px 12px;">
-                                <div style="font-size: 0.74rem; font-weight: 800; color: #fde68a; margin-bottom: 3px;">
-                                    🟢 現在枠（<span data-nearby-slot-label>{{ st.active_slot_label }}</span>）：<span data-nearby-slot-rate>{{ st.active_slot_rate }}</span>
+                            <td>
+                                <div style="font-size: 0.73rem; font-weight: 700; color: var(--accent-text); margin-bottom: 3px;">
+                                    現在枠（<span data-nearby-slot-label>{{ st.active_slot_label }}</span>）：<span data-nearby-slot-rate>{{ st.active_slot_rate }}</span>
                                 </div>
-                                <div style="font-size: 0.72rem; color: #e2e8f0; line-height: 1.45;">
+                                <div style="font-size: 0.72rem; color: var(--text-main); line-height: 1.48;">
                                     ①〜20時：{{ st.slot_18_20 }}<br>
                                     ②20〜22時：{{ st.slot_20_22 }}<br>
                                     ③22〜24時：{{ st.slot_22_24 }}<br>
                                     ④24時〜：{{ st.slot_24_last }}
                                 </div>
-                                <div style="font-size: 0.72rem; color: #fde68a; font-weight: 700; margin-top: 3px;">単独（待機中）：{{ st.wait_fee_str }}</div>
+                                <div style="font-size: 0.72rem; color: var(--accent-text); font-weight: 600; margin-top: 3px;">単独（待機中）：{{ st.wait_fee_str }}</div>
                             </td>
-                            <td style="padding: 11px 12px; font-size: 0.76rem; color: #cbd5e1;">
+                            <td style="font-size: 0.75rem; color: var(--text-sub);">
                                 {% for mp in st.men_perks[:1] %}
-                                <div style="margin-bottom: 3px;"><strong style="color: #38bdf8;">[男性特典]</strong> {{ mp.title }}</div>
+                                <div style="margin-bottom: 4px;"><strong style="color: var(--men);">[男性特典]</strong> {{ mp.title }}</div>
                                 {% endfor %}
                                 {% for we in st.women_events[:1] %}
-                                <div><strong style="color: #f472b6;">[女性集客]</strong> {{ we.title }}</div>
+                                <div><strong style="color: var(--women);">[女性企画]</strong> {{ we.title }}</div>
                                 {% endfor %}
                             </td>
-                            <td style="padding: 11px 12px; font-size: 0.76rem; color: #e2e8f0;">
-                                <div style="font-weight: 800; color: #fde68a; margin-bottom: 2px;" data-nearby-verdict-badge>{{ st.verdict_badge }}</div>
+                            <td style="font-size: 0.75rem; color: var(--text-sub);">
+                                <div style="font-weight: 700; color: var(--accent-text); margin-bottom: 3px;" data-nearby-verdict-badge>{{ st.verdict_badge }}</div>
                                 <div data-nearby-verdict-comment>{{ st.verdict_comment }}</div>
                             </td>
                         </tr>
@@ -517,20 +601,20 @@
 
         {% if nearby_stores %}
         <section class="section-card">
-            <h2>🚶 徒歩圏内・同エリア店舗のリアルタイム人数比較（ハシゴ候補）</h2>
-            <p style="margin: 0; font-size: 0.88rem; color: #cbd5e1;">
-                {{ store.seo_name }}と同じエリアにある相席ラウンジの現在人数です。1店舗目で男性待ちが発生している場合は、女性比率が高い近隣店舗へ移動するだけで待ち時間を大幅に短縮できます。
+            <h2>徒歩圏内・同エリア店舗のリアルタイム人数比較（ハシゴ候補）</h2>
+            <p style="margin: 0; font-size: 0.85rem; color: var(--text-sub);">
+                {{ store.seo_name }}と同じエリアにある相席ラウンジの現在人数です。1店舗目で男性待ちが発生している場合は、女性数・女性比率が安定している近隣店舗へ移動するだけで待ち時間を短縮できます。
             </p>
             <div class="nearby-grid">
                 {% for ns in nearby_stores %}
                 <a href="/store/{{ ns.slug }}" class="nearby-item" data-nearby-card="{{ ns.name }}">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <strong style="color:#fff; font-size:0.94rem;">{{ ns.seo_name }}</strong>
-                        <span data-nearby-wpct style="font-size:0.75rem; color:#e5c878; font-weight:700;">女性比 {{ ns.wpct }}%</span>
+                        <strong style="color: var(--text-main); font-size:0.91rem;">{{ ns.seo_name }}</strong>
+                        <span data-nearby-wpct style="font-size:0.74rem; color: var(--accent-text); font-weight:600;">女性比 {{ ns.wpct }}%</span>
                     </div>
-                    <div style="display:flex; justify-content:space-between; font-size:0.86rem; font-weight:700;">
-                        <span class="w-color" data-nearby-women>👩 女性 {{ ns.women }}名</span>
-                        <span class="m-color" data-nearby-men>👨 男性 {{ ns.men }}名</span>
+                    <div style="display:flex; justify-content:space-between; font-size:0.84rem; font-weight:700;">
+                        <span class="w-color" data-nearby-women>女性 {{ ns.women }}名</span>
+                        <span class="m-color" data-nearby-men>男性 {{ ns.men }}名</span>
                     </div>
                 </a>
                 {% endfor %}
@@ -540,19 +624,19 @@
 
         {% if area_info %}
         <section class="section-card">
-            <h2>💡 {{ store.seo_name }}（{{ area_info.short_name }}エリア）の立ち回り＆2軒目ガイド</h2>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px; margin-top: 12px;">
-                <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 14px;">
-                    <h3 style="margin: 0 0 6px; font-size: 0.92rem; color: #e5c878;">🍸 客層とエリアの特徴</h3>
-                    <p style="margin: 0; font-size: 0.84rem; color: #cbd5e1;">{{ area_info.atmosphere }}</p>
+            <h2>{{ store.seo_name }}（{{ area_info.short_name }}エリア）の立ち回り＆2軒目ガイド</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; margin-top: 12px;">
+                <div class="stat-subcard">
+                    <h3 style="margin: 0 0 6px; font-size: 0.89rem; color: var(--accent-text);">客層とエリアの特徴</h3>
+                    <p style="margin: 0; font-size: 0.83rem; color: var(--text-sub);">{{ area_info.atmosphere }}</p>
                 </div>
-                <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 14px;">
-                    <h3 style="margin: 0 0 6px; font-size: 0.92rem; color: #38bdf8;">⏰ 狙い目の曜日・時間帯</h3>
-                    <p style="margin: 0; font-size: 0.84rem; color: #cbd5e1;">{{ area_info.best_time }}</p>
+                <div class="stat-subcard">
+                    <h3 style="margin: 0 0 6px; font-size: 0.89rem; color: var(--accent-text);">狙い目の曜日・時間帯</h3>
+                    <p style="margin: 0; font-size: 0.83rem; color: var(--text-sub);">{{ area_info.best_time }}</p>
                 </div>
-                <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 14px;">
-                    <h3 style="margin: 0 0 6px; font-size: 0.92rem; color: #f472b6;">🥂 2軒目に誘いやすい周辺スポット</h3>
-                    <p style="margin: 0; font-size: 0.84rem; color: #cbd5e1;">{{ area_info.second_spot }}</p>
+                <div class="stat-subcard">
+                    <h3 style="margin: 0 0 6px; font-size: 0.89rem; color: var(--accent-text);">2軒目に誘いやすい周辺スポット</h3>
+                    <p style="margin: 0; font-size: 0.83rem; color: var(--text-sub);">{{ area_info.second_spot }}</p>
                 </div>
             </div>
         </section>
@@ -563,6 +647,9 @@
 
     <script>
         (function initStoreDetailLiveSync() {
+            const MIN_WOMEN_EVAL = 6;
+            const MIN_WOMEN_TOP = 8;
+
             if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.getRegistrations()
                     .then(regs => regs.forEach(r => r.update()))
@@ -585,6 +672,7 @@
             function computeNearbyVerdict(ds, women, men, slotInfo) {
                 const total = women + men;
                 const wpct = total > 0 ? Math.round((women / total) * 100) : 0;
+                const meetsMin = women >= MIN_WOMEN_EVAL;
                 const waitStr = ds.waitStr || '';
                 const waitYen = parseInt(ds.waitYen || '0', 10) || 0;
                 const estWknd = parseInt(ds.estWknd || '4620', 10) || 4620;
@@ -610,46 +698,62 @@
                 const evBonus = hasMenPerk ? 18 : (hasWomenEv ? 10 : 0);
                 let valueScore = priceAdv + evBonus;
                 if (total > 0) {
-                    let ratioScore = (wpct - 50) * 1.8 + Math.min(women, 45) * 1.1;
-                    if (women > men) ratioScore += 20;
-                    else if (men > women + 4) ratioScore -= 22;
-                    valueScore = Math.round((priceAdv + evBonus + ratioScore) * 10) / 10;
+                    if (!meetsMin) {
+                        const lowAdj = women * 1.5 - (men > women ? 10 : 0) - 25;
+                        valueScore = Math.round((priceAdv + evBonus + lowAdj) * 10) / 10;
+                    } else {
+                        let ratioScore = (wpct - 50) * 1.8 + Math.min(women, 45) * 1.1;
+                        if (women >= MIN_WOMEN_TOP) ratioScore += 8;
+                        if (women > men) ratioScore += 20;
+                        else if (men > women + 4) ratioScore -= 22;
+                        valueScore = Math.round((priceAdv + evBonus + ratioScore) * 10) / 10;
+                    }
                 }
 
                 let badge = '';
                 let comment = '';
                 if (total === 0) {
-                    badge = '🌙 営業時間外・4時間帯比較';
+                    badge = '営業時間外・4時間帯比較';
                     comment = isFlat
                         ? `定額デイパス制（${waitStr}）。入店時間帯プランは①Open〜20時（${s1820}）→②20〜22時（${s2022}）→③④22時〜（${s2224}）。${soloRule}。`
                         : `単独（待機）時は${waitStr}が発生。相席10分はOpen〜20時（${s1820}）→20〜22時（${s2022}）→22〜24時（${s2224}）→24時〜（${s24last}）。${soloRule}。`;
-                } else if (women >= men && women >= 8 && estWknd <= 4620) {
-                    badge = '💎 低単価×女性優位で即相席';
-                    comment = `現在女性${women}名（女性比${wpct}%）と女性リード中！単独待機時間（${waitStr}）を挟まず即相席しやすく、いまの時間帯（${slotInfo.shortLabel}）の単価も「${activeRate}」と好コスパです。`;
-                } else if (women >= men && women >= 8) {
-                    badge = '🔥 女性優位・待ち時間なしで即相席';
+                } else if (!meetsMin) {
+                    if (women >= men) {
+                        badge = `少人数・様子見推奨（女性${women}名）`;
+                        comment = `現在女性${women}名／男性${men}名（女性比${wpct}%）。比率は高めですが店内の女性組数がまだ少ない（約1〜2組規模）ため、初回相席後に席替えできる次の相手が限られる可能性があります。女性${MIN_WOMEN_EVAL}〜${MIN_WOMEN_TOP}名以上への増加を待つか近隣店との比較が安全です。`;
+                    } else {
+                        badge = `少人数・男性先行（女性${women}名）`;
+                        comment = isFlat
+                            ? `現在女性${women}名／男性${men}名と立ち上がり前かつ男性先行の状態です。定額パス制ですが待ち時間が発生する可能性があるため、女性${MIN_WOMEN_EVAL}名以上の近隣店もあわせてご確認ください。`
+                            : `現在女性${women}名／男性${men}名と母数が少なく男性先行のため、単独待機（${waitStr}）になりやすい状態です。女性${MIN_WOMEN_EVAL}名以上集まっている近隣店を優先するのがおすすめです。`;
+                    }
+                } else if (women >= men && women >= MIN_WOMEN_TOP && estWknd <= 4620) {
+                    badge = '好条件｜低単価・女性優位';
+                    comment = `現在女性${women}名（女性比${wpct}%）と母数・比率ともに十分。単独待機時間（${waitStr}）を抑えて相席しやすく、席替え候補も確保しやすいうえ、現在枠（${slotInfo.shortLabel}）の単価も「${activeRate}」と好条件です。`;
+                } else if (women >= men && women >= MIN_WOMEN_TOP) {
+                    badge = '好条件｜女性優位・安定回転';
                     comment = isFlat
-                        ? `定額デイパス制（${activeRate}）で時間内の待機追加課金なし！さらに現在女性${women}名（女性比${wpct}%）と女性優位のため入店直後からスムーズに相席しやすい絶好機です。`
-                        : `相席前の単独時は${waitStr}がかかりますが、現在は女性${women}名（女性比${wpct}%）と女性優位のため待ち時間を抑えて即相席しやすい絶好機です！（現在枠：${slotInfo.shortLabel} ${activeRate}）`;
+                        ? `定額デイパス制（${activeRate}）で時間内の待機追加課金なし。さらに現在女性${women}名（女性比${wpct}%）と母数も十分なため、入店直後からの相席と席替えともに期待しやすい状態です。`
+                        : `相席前の単独時は${waitStr}がかかりますが、現在は女性${women}名（女性比${wpct}%）と組数・比率ともに十分なため、待ち時間を抑えた相席と席替えがしやすい好条件です（現在枠：${slotInfo.shortLabel} ${activeRate}）。`;
                 } else if (men > women + 3) {
-                    badge = isFlat ? '⚠️ 男性先行・待機時間に注意' : '⚠️ 男性先行・単独待機料金に注意';
+                    badge = isFlat ? '男性先行・待機時間に注意' : '男性先行・単独待機料金に注意';
                     comment = isFlat
-                        ? `現在男性が+${men - women}名先行中。定額パス制のため時間内の追加待機課金はありませんが、すぐ相席したい場合は下の近隣ライバル店で女性比率が高い店舗も比較してみてください。`
-                        : `現在男性が+${men - women}名先行中。相席までの単独待機時間も${waitStr}が加算されるため、下の近隣ライバル店で女性比率が高い店舗へ回る方が実質総額を抑えられます。`;
+                        ? `現在男性が+${men - women}名先行中。定額パス制のため時間内の追加待機課金はありませんが、すぐ相席したい場合は近隣ライバル店で女性比率・女性数が多い店舗も比較してみてください。`
+                        : `現在男性が+${men - women}名先行中。相席までの単独待機時間も${waitStr}が加算されるため、近隣ライバル店で女性${MIN_WOMEN_EVAL}名以上かつ女性優位の店舗へ回る方が実質総額を抑えられます。`;
                 } else if (hasWomenEv && women >= 15 && wpct >= 55) {
-                    badge = '✨ イベント集客効果◎（女性多数）';
-                    comment = `キャンペーン効果で実際に女性${women}名（女性比${wpct}%）が来店中。単独待機時間を抑えてスムーズに座りやすい狙い目です。`;
+                    badge = 'イベント集客好調・女性多数';
+                    comment = `キャンペーン効果で実際に女性${women}名（女性比${wpct}%）が来店中。母数が多く席替え候補も豊富なため、単独待機時間を抑えて座りやすい狙い目です。`;
                 } else if (women > men) {
-                    badge = `⭕ 女性+${women - men}名リード・即相席圏内`;
-                    comment = `現在女性${women}名／男性${men}名（女性比${wpct}%）。単独待機時間が発生しにくく、現在枠（${slotInfo.shortLabel}：${activeRate}）の料金どおりスマートに飲める好バランスです。`;
+                    badge = `女性+${women - men}名リード・相席圏内`;
+                    comment = `現在女性${women}名／男性${men}名（女性比${wpct}%・約3組規模）。単独待機を抑えて初回相席に入りやすいバランスです。複数回の席替えも重視する場合は女性${MIN_WOMEN_TOP}名以上の店舗もあわせて比較してみてください。`;
                 } else {
-                    badge = '💡 拮抗中・近隣店と単価比較推奨';
+                    badge = '男女拮抗・単価比較推奨';
                     comment = isFlat
                         ? `現在女性${women}名／男性${men}名。定額パス制（${waitStr}）で追加課金の心配はありませんが、即相席したい場合は同エリア内の女性リード店舗もチェックしてみてください。`
                         : `現在女性${women}名／男性${men}名。単独待機時は${waitStr}がかかるため、即相席したい場合は同エリア内の女性リード店舗もチェックしてみてください。`;
                 }
 
-                return { total, wpct, activeRate, valueScore, badge, comment };
+                return { total, wpct, meetsMin, activeRate, valueScore, badge, comment };
             }
 
             let isSyncing = false;
@@ -685,22 +789,24 @@
                         const badgeEl = document.getElementById('hero-status-badge');
                         if (badgeEl) {
                             if (tot === 0) badgeEl.textContent = '営業時間外・オープン準備中';
-                            else if (w > m) badgeEl.textContent = '女性優位・即相席チャンス🔥（女性+' + (w - m) + '名）';
-                            else if (w === m) badgeEl.textContent = '男女比1:1 バランス良好✨';
-                            else badgeEl.textContent = '男性多め・近隣店舗との比較推奨💡';
+                            else if (w < MIN_WOMEN_EVAL && w >= m) badgeEl.textContent = '少人数・立ち上がり中（女性' + w + '名｜席替え候補少なめ）';
+                            else if (w < MIN_WOMEN_EVAL) badgeEl.textContent = '少人数・男性先行（女性' + w + '名 / 男性' + m + '名）';
+                            else if (w > m) badgeEl.textContent = '女性優位・好バランス（女性+' + (w - m) + '名）';
+                            else if (w === m) badgeEl.textContent = '男女比1:1 バランス良好';
+                            else badgeEl.textContent = '男性先行・近隣店舗との比較推奨';
                         }
 
                         const wEl = document.getElementById('hero-women-num');
                         if (wEl) {
                             wEl.innerHTML = tot > 0
-                                ? w + '<span style="font-size:0.95rem;">名</span>' + (wDiff > 0 ? '<div style="font-size:0.76rem; color:#f472b6; margin-top:2px;">直近15分 ↗ +' + wDiff + '名</div>' : '')
-                                : '--<span style="font-size:0.85rem; color:#94a3b8;">（準備中）</span>';
+                                ? w + '<span style="font-size:0.95rem;">名</span>' + (wDiff > 0 ? '<div style="font-size:0.75rem; color: var(--women); margin-top:2px; font-weight:600;">直近15分 ↗ +' + wDiff + '名</div>' : '')
+                                : '--<span style="font-size:0.82rem; color: var(--text-sub); font-weight:500;">（準備中）</span>';
                         }
                         const mEl = document.getElementById('hero-men-num');
                         if (mEl) {
                             mEl.innerHTML = tot > 0
-                                ? m + '<span style="font-size:0.95rem;">名</span>' + (mDiff > 0 ? '<div style="font-size:0.76rem; color:#60a5fa; margin-top:2px;">直近15分 ↗ +' + mDiff + '名</div>' : '')
-                                : '--<span style="font-size:0.85rem; color:#94a3b8;">（準備中）</span>';
+                                ? m + '<span style="font-size:0.95rem;">名</span>' + (mDiff > 0 ? '<div style="font-size:0.75rem; color: var(--men); margin-top:2px; font-weight:600;">直近15分 ↗ +' + mDiff + '名</div>' : '')
+                                : '--<span style="font-size:0.82rem; color: var(--text-sub); font-weight:500;">（準備中）</span>';
                         }
                         const rEl = document.getElementById('hero-wpct-num');
                         if (rEl) {
@@ -712,10 +818,15 @@
                         const sumEl = document.getElementById('hero-live-summary');
                         if (sumEl && tot > 0) {
                             const ts = payload.timestamp || '現在';
-                            let tail = '現在、男女同数でバランス良く盛り上がっている状態です。';
-                            if (w > m) tail = '現在、女性が男性より' + (w - m) + '名多く入店しており、男性は待ち時間が少なくスムーズに相席しやすい狙い目状態です。';
-                            else if (m > w) tail = '現在、男性が女性より' + (m - w) + '名多い時間帯です。女性は待ち時間なしで即相席しやすく、男性は下記「近隣ライバル店」の男女比も比較して選ぶのがおすすめです。';
-                            sumEl.innerHTML = ts + '時点の<strong>' + seoName + '</strong>の店内状況は、<strong>女性' + w + '名・男性' + m + '名（合計' + tot + '名）</strong>です。 ' + tail;
+                            let tail = '現在、男女同数でバランス良く推移している状態です。';
+                            if (w < MIN_WOMEN_EVAL) {
+                                tail = '現在は立ち上がり・少人数の時間帯のため、女性比率が高くても初回相席後に席替え（チェンジ）できる次の相手が限られる場合があります。女性6〜8名以上への増加を待つか、近隣店舗の人数もあわせてご確認ください。';
+                            } else if (w > m) {
+                                tail = '現在、女性が男性より' + (w - m) + '名多く入店しており、男性は待ち時間を抑えてスムーズに相席しやすい状態です。';
+                            } else if (m > w) {
+                                tail = '現在、男性が女性より' + (m - w) + '名多い時間帯です。女性は待ち時間なしで相席しやすく、男性は下記「近隣ライバル店」の人数・比率も比較して選ぶのがおすすめです。';
+                            }
+                            sumEl.innerHTML = ts + '時点の<strong style="color: var(--text-main);">' + seoName + '</strong>の店内状況は、<strong style="color: var(--text-main);">女性' + w + '名・男性' + m + '名（合計' + tot + '名）</strong>です。 ' + tail;
                         }
                     }
 
@@ -732,11 +843,12 @@
                         const crowdCell = row.querySelector('[data-nearby-crowd-cell]');
                         if (crowdCell) {
                             if (calc.total > 0) {
+                                const lowNote = w < MIN_WOMEN_EVAL ? ' <span style="color: var(--text-sub); font-weight: 400;">（少人数）</span>' : '';
                                 crowdCell.innerHTML =
-                                    '<div style="font-weight: 800;"><span class="w-color">女性' + w + '名</span> / <span class="m-color">男性' + m + '名</span></div>' +
-                                    '<div style="font-size: 0.74rem; color: #e5c878; font-weight: 700;">女性比率 ' + calc.wpct + '%</div>';
+                                    '<div style="font-weight: 700;"><span class="w-color">女性' + w + '名</span> / <span class="m-color">男性' + m + '名</span></div>' +
+                                    '<div style="font-size: 0.73rem; color: var(--accent-text); font-weight: 600;">女性比率 ' + calc.wpct + '%' + lowNote + '</div>';
                             } else {
-                                crowdCell.innerHTML = '<span style="font-size: 0.76rem; color: #94a3b8;">営業時間外（準備中）</span>';
+                                crowdCell.innerHTML = '<span style="font-size: 0.75rem; color: var(--text-sub);">営業時間外（準備中）</span>';
                             }
                         }
 
@@ -750,14 +862,21 @@
                         const vComment = row.querySelector('[data-nearby-verdict-comment]');
                         if (vComment) vComment.textContent = calc.comment;
 
-                        const cand = { row, hasOpen: calc.total > 0 ? 1 : 0, score: calc.valueScore, women: w };
-                        if (
-                            !bestRow ||
-                            cand.hasOpen > bestRow.hasOpen ||
-                            (cand.hasOpen === bestRow.hasOpen && cand.score > bestRow.score) ||
-                            (cand.hasOpen === bestRow.hasOpen && cand.score === bestRow.score && cand.women > bestRow.women)
-                        ) {
-                            bestRow = cand;
+                        if (calc.meetsMin) {
+                            const cand = {
+                                row,
+                                topTier: w >= MIN_WOMEN_TOP ? 1 : 0,
+                                score: calc.valueScore,
+                                women: w
+                            };
+                            if (
+                                !bestRow ||
+                                cand.topTier > bestRow.topTier ||
+                                (cand.topTier === bestRow.topTier && cand.score > bestRow.score) ||
+                                (cand.topTier === bestRow.topTier && cand.score === bestRow.score && cand.women > bestRow.women)
+                            ) {
+                                bestRow = cand;
+                            }
                         }
                     });
 
@@ -766,9 +885,8 @@
                         const isCurrent = row.dataset.isCurrent === '1';
                         const crown = row.querySelector('[data-nearby-crown]');
                         if (crown) crown.style.display = isBest ? 'inline-block' : 'none';
-                        if (isCurrent) row.style.background = 'rgba(236, 72, 153, 0.08)';
-                        else if (isBest) row.style.background = 'rgba(245, 158, 11, 0.06)';
-                        else row.style.background = '';
+                        row.classList.toggle('is-current-row', isCurrent);
+                        row.classList.toggle('is-best-row', !isCurrent && isBest);
                     });
 
                     document.querySelectorAll('[data-nearby-card]').forEach(card => {
@@ -781,8 +899,8 @@
                         const wEl = card.querySelector('[data-nearby-women]');
                         const mEl = card.querySelector('[data-nearby-men]');
                         const pEl = card.querySelector('[data-nearby-wpct]');
-                        if (wEl) wEl.textContent = '👩 女性 ' + w + '名';
-                        if (mEl) mEl.textContent = '👨 男性 ' + m + '名';
+                        if (wEl) wEl.textContent = '女性 ' + w + '名';
+                        if (mEl) mEl.textContent = '男性 ' + m + '名';
                         if (pEl) pEl.textContent = '女性比 ' + wpct + '%';
                     });
                 } catch (e) {

@@ -60,23 +60,25 @@
 
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=2">
     <link rel="apple-touch-icon" href="/static/icon.png?v=2">
-    <link rel="stylesheet" href="/static/portal.css?v=2">
+    <link rel="stylesheet" href="/static/portal.css?v=6">
     <style>
         :root {
-            --bg-dark: #0a0a0f;
-            --card-bg: rgba(22, 22, 34, 0.85);
-            --text-main: #f8fafc;
-            --text-sub: #94a3b8;
-            --border-subtle: rgba(255, 255, 255, 0.1);
+            --bg-dark: #0f1014;
+            --card-bg: #16171c;
+            --text-main: #ebe8e3;
+            --text-sub: #9a968e;
+            --women: #d8a1aa;
+            --men: #93b1c9;
+            --accent-gold: #c8a46e;
+            --accent-text: #dfc496;
+            --border-subtle: rgba(255, 255, 255, 0.08);
         }
         * { box-sizing: border-box; }
         body {
             margin: 0;
             padding: 0;
             background-color: var(--bg-dark);
-            background-image:
-                radial-gradient(circle at 15% 10%, rgba(56, 189, 248, 0.12), transparent 35%),
-                radial-gradient(circle at 85% 80%, rgba(236, 72, 153, 0.12), transparent 35%);
+            background-image: none;
             color: var(--text-main);
             font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
             line-height: 1.75;
@@ -103,48 +105,46 @@
             gap: 10px;
         }
         .portal-brand-title {
-            font-size: 1.5rem;
+            font-size: 1.45rem;
             font-weight: 800;
-            background: linear-gradient(90deg, #ec4899, #8b5cf6, #3b82f6);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
+            color: var(--text-main);
             margin: 0;
         }
         .portal-brand-sub { font-size: 0.78rem; color: var(--text-sub); }
-        /* グローバルナビ: 共通部分は /static/portal.css。以下はこのページ固有の差分 */
         .portal-global-nav { scrollbar-width: none; }
         .portal-global-nav::-webkit-scrollbar { display: none; }
-        .portal-nav-item.active {
-            background: linear-gradient(135deg, rgba(56, 189, 248, 0.25), rgba(236, 72, 153, 0.25));
-            border-color: rgba(56, 189, 248, 0.55);
-        }
         .hero-box {
             background: var(--card-bg);
-            border: 1px solid var(--border-subtle);
-            border-radius: 20px;
-            padding: 26px 24px;
-            margin-bottom: 28px;
+            border: 1px solid rgba(200, 164, 110, 0.3);
+            border-radius: 14px;
+            padding: 24px;
+            margin-bottom: 26px;
         }
         .badge {
             display: inline-block;
-            background: rgba(56, 189, 248, 0.18);
-            color: #38bdf8;
-            border: 1px solid rgba(56, 189, 248, 0.4);
-            font-size: 0.72rem;
-            font-weight: 800;
+            background: rgba(200, 164, 110, 0.12);
+            color: var(--accent-text);
+            border: 1px solid rgba(200, 164, 110, 0.32);
+            font-size: 0.71rem;
+            font-weight: 700;
             padding: 3px 10px;
             border-radius: 999px;
             margin-bottom: 10px;
         }
-        h1 { font-size: 1.5rem; margin: 0 0 10px; color: #fff; }
-        h2 { font-size: 1.2rem; margin: 32px 0 14px; color: #fff; }
+        h1 { font-size: 1.42rem; margin: 0 0 10px; color: var(--text-main); }
+        h2 {
+            font-size: 1.12rem;
+            margin: 30px 0 12px;
+            color: var(--text-main);
+            padding-left: 10px;
+            border-left: 3px solid var(--accent-gold);
+        }
         .stats-table-wrap {
             background: var(--card-bg);
             border: 1px solid var(--border-subtle);
-            border-radius: 16px;
+            border-radius: 12px;
             overflow-x: auto;
-            margin-bottom: 28px;
+            margin-bottom: 26px;
         }
         table {
             width: 100%;
@@ -152,47 +152,38 @@
             min-width: 580px;
         }
         th, td {
-            padding: 12px 14px;
+            padding: 11px 14px;
             text-align: left;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-            font-size: 0.86rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            font-size: 0.84rem;
         }
         th {
-            background: rgba(15, 23, 42, 0.9);
-            color: #94a3b8;
-            font-weight: 700;
-            font-size: 0.78rem;
+            background: #1b1c22;
+            color: var(--text-sub);
+            font-weight: 600;
+            font-size: 0.76rem;
         }
-        .w-num { color: #f472b6; font-weight: 800; }
-        .m-num { color: #60a5fa; font-weight: 700; }
+        .w-num { color: var(--women); font-weight: 700; }
+        .m-num { color: var(--men); font-weight: 600; }
         .brand-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-            gap: 14px;
-            margin-bottom: 28px;
+            gap: 12px;
+            margin-bottom: 26px;
         }
         .brand-stat-card {
             background: var(--card-bg);
             border: 1px solid var(--border-subtle);
-            border-radius: 14px;
+            border-radius: 12px;
             padding: 16px;
         }
         .brand-stat-card h3 {
             margin: 0 0 8px;
-            font-size: 1rem;
-            color: #fff;
+            font-size: 0.96rem;
+            color: var(--text-main);
         }
-        .portal-footer {
-            margin-top: 50px;
-            padding-top: 24px;
-            border-top: 1px solid var(--border-subtle);
-            color: var(--text-sub);
-            font-size: 0.8rem;
-            text-align: center;
-        }
-        .portal-footer a { color: #cbd5e1; text-decoration: none; margin: 0 6px; }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=1">
+    <link rel="stylesheet" href="/static/calm.css?v=7">
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
          crossorigin="anonymous"></script>
@@ -203,7 +194,7 @@
         <div class="portal-top-header">
             <a href="/" class="portal-brand-link">
                 <span class="portal-brand-title">相席ナビ</span>
-                <span class="portal-brand-sub">全国ラウンジの今わかる人数ランキング＆統計メディア</span>
+                <span class="portal-brand-sub">全国ラウンジのリアルタイム人数＆統計メディア</span>
             </a>
         </div>
 
@@ -212,19 +203,19 @@
 
         <section class="hero-box">
             <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
-                <span class="badge" style="margin-bottom:0;">📊 ORIGINAL DATA WHITEPAPER</span>
-                <span class="badge" style="margin-bottom:0; background:rgba(229,200,120,0.16); color:#e5c878; border-color:rgba(229,200,120,0.4);">累計 {{ "{:,}".format(report.total_records_analyzed) if report and report.total_records_analyzed else "240,000" }}件以上の実測ログ集計</span>
+                <span class="badge" style="margin-bottom:0;">ORIGINAL DATA WHITEPAPER</span>
+                <span class="badge" style="margin-bottom:0; background:rgba(255,255,255,0.045); color:var(--text-sub); border-color:var(--border-subtle);">累計 {{ "{:,}".format(report.total_records_analyzed) if report and report.total_records_analyzed else "240,000" }}件以上の実測ログ集計</span>
             </div>
             <h1>全国相席ラウンジ 統計データ白書＆週間ピークランキング</h1>
-            <p style="margin: 0; font-size: 0.92rem; color: #cbd5e1;">
-                『相席ナビ』が毎分〜10分おきに独自計測・蓄積している全国53店舗の時系列ログから、<strong>曜日別・時間帯別の平均男女比、直近7日間の店舗別ピーク人数、高女子率の穴場店舗</strong>を算出した一次統計レポートです。
+            <p style="margin: 0; font-size: 0.9rem; color: var(--text-sub);">
+                『相席ナビ』が独自計測・蓄積している全国53店舗の時系列ログから、<strong style="color: var(--text-main);">曜日別・時間帯別の平均男女比、直近7日間の店舗別ピーク人数、高女子率の穴場店舗</strong>を算出した一次統計レポートです。
                 {% if report and report.period %}（直近集計期間：{{ report.period }}）{% endif %}
             </p>
         </section>
 
         {% if report and report.weekday_summary %}
-        <h2>📅 曜日別・全国相席ラウンジ平均男女比＆狙い目データ</h2>
-        <p style="font-size: 0.86rem; color: #94a3b8; margin: -8px 0 14px;">全国主要店舗のコアタイム（20:00〜24:00）における曜日別の平均女性比率と混雑傾向です。</p>
+        <h2>曜日別・全国相席ラウンジ平均男女比＆狙い目データ</h2>
+        <p style="font-size: 0.85rem; color: var(--text-sub); margin: -6px 0 14px;">全国主要店舗のコアタイム（20:00〜24:00）における曜日別の平均女性比率と混雑傾向です。</p>
         <div class="stats-table-wrap">
             <table>
                 <thead>
@@ -239,11 +230,11 @@
                 <tbody>
                     {% for w in report.weekday_summary %}
                     <tr>
-                        <td style="font-weight: 800; color: #fff;">{{ w.weekday }}</td>
-                        <td style="font-weight: 800; color: {% if w.avg_wpct >= 56 %}#4ade80{% elif w.avg_wpct >= 53 %}#f472b6{% else %}#e2e8f0{% endif %};">{{ w.avg_wpct }}%</td>
+                        <td style="font-weight: 700; color: var(--text-main);">{{ w.weekday }}</td>
+                        <td style="font-weight: 700; color: {% if w.avg_wpct >= 55 %}var(--accent-text){% else %}var(--text-main){% endif %};">{{ w.avg_wpct }}%</td>
                         <td class="w-num">{{ w.avg_women }}名</td>
                         <td class="m-num">{{ w.avg_men }}名</td>
-                        <td style="color: #cbd5e1; font-size: 0.82rem;">{{ w.note }}</td>
+                        <td style="color: var(--text-sub); font-size: 0.82rem;">{{ w.note }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -252,8 +243,8 @@
         {% endif %}
 
         {% if report and report.timeslot_summary %}
-        <h2>⏰ 時間帯別・全国平均女性比＆回遊フェーズ分析</h2>
-        <p style="font-size: 0.86rem; color: #94a3b8; margin: -8px 0 14px;">19時のオープン帯から深夜3時のオールナイト帯まで、時間帯ごとの男女比推移と客層の変化です。</p>
+        <h2>時間帯別・全国平均女性比＆回遊フェーズ分析</h2>
+        <p style="font-size: 0.85rem; color: var(--text-sub); margin: -6px 0 14px;">19時のオープン帯から深夜3時のオールナイト帯まで、時間帯ごとの男女比推移と客層の変化です。</p>
         <div class="stats-table-wrap">
             <table>
                 <thead>
@@ -267,10 +258,10 @@
                 <tbody>
                     {% for ts in report.timeslot_summary %}
                     <tr>
-                        <td style="font-weight: 800; color: #38bdf8; white-space: nowrap;">{{ ts.slot }}</td>
-                        <td style="font-weight: 700; color: #fff; white-space: nowrap;">{{ ts.title }}</td>
-                        <td style="font-weight: 800; color: #f472b6;">{{ ts.avg_wpct }}%</td>
-                        <td style="color: #cbd5e1; font-size: 0.82rem;">{{ ts.description }}</td>
+                        <td style="font-weight: 700; color: var(--accent-text); white-space: nowrap;">{{ ts.slot }}</td>
+                        <td style="font-weight: 600; color: var(--text-main); white-space: nowrap;">{{ ts.title }}</td>
+                        <td style="font-weight: 700; color: var(--women);">{{ ts.avg_wpct }}%</td>
+                        <td style="color: var(--text-sub); font-size: 0.82rem;">{{ ts.description }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -279,8 +270,8 @@
         {% endif %}
 
         {% if report and report.anaba_stores %}
-        <h2>💎 週間「高女子率・穴場ラウンジ」ランキング TOP10</h2>
-        <p style="font-size: 0.86rem; color: #94a3b8; margin: -8px 0 14px;">しっかり女性が集まっている店舗（ピーク平均15名以上）の中で、女性比率が高く男性が待ち時間なしで相席しやすい上位10店舗です。</p>
+        <h2>週間「高女子率・穴場ラウンジ」ランキング TOP10</h2>
+        <p style="font-size: 0.85rem; color: var(--text-sub); margin: -6px 0 14px;">十分な母数が集まっている店舗（女性ピーク平均15名以上）の中で、女性比率が高く男性が待ち時間を抑えて相席しやすい上位10店舗です。</p>
         <div class="stats-table-wrap">
             <table>
                 <thead>
@@ -296,12 +287,12 @@
                 <tbody>
                     {% for s in report.anaba_stores %}
                     <tr>
-                        <td style="font-weight: 800; color: #4ade80;">#{{ loop.index }}</td>
-                        <td style="font-weight: 700; color: #fff;"><a href="/store/{{ s.name | store_slug }}" style="color: #fff; text-decoration: none;">{{ s.name | seo_store_name }}</a></td>
-                        <td style="color: #4ade80; font-weight: 800;">{{ s.avg_wpct }}%</td>
+                        <td style="font-weight: 700; color: var(--accent-text);">#{{ loop.index }}</td>
+                        <td style="font-weight: 600; color: var(--text-main);"><a href="/store/{{ s.name | store_slug }}" style="color: var(--text-main); text-decoration: none;">{{ s.name | seo_store_name }}</a></td>
+                        <td style="color: var(--accent-text); font-weight: 700;">{{ s.avg_wpct }}%</td>
                         <td class="w-num">{{ s.avg_women }}名</td>
                         <td class="m-num">{{ s.avg_men }}名</td>
-                        <td style="color: #38bdf8; font-weight: 700;">{{ s.peak_hour }}頃</td>
+                        <td style="color: var(--text-sub); font-weight: 600;">{{ s.peak_hour }}頃</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -310,14 +301,14 @@
         {% endif %}
 
         {% if report and report.by_brand %}
-        <h2>🏢 系列・ブランド別の1日ピーク平均合計</h2>
+        <h2>系列・ブランド別の1日ピーク平均合計</h2>
         <div class="brand-grid">
             {% for bname, bdata in report.by_brand.items() %}
             <div class="brand-stat-card">
                 <h3>{{ bname }}（{{ bdata.store_count }}店舗）</h3>
-                <div style="font-size: 0.86rem; color: #cbd5e1;">
-                    <div>👩 女性ピーク合計平均: <span class="w-num">{{ bdata.total_avg_women }}名</span></div>
-                    <div>👨 男性ピーク合計平均: <span class="m-num">{{ bdata.total_avg_men }}名</span></div>
+                <div style="font-size: 0.85rem; color: var(--text-sub);">
+                    <div>女性ピーク合計平均: <span class="w-num">{{ bdata.total_avg_women }}名</span></div>
+                    <div>男性ピーク合計平均: <span class="m-num">{{ bdata.total_avg_men }}名</span></div>
                 </div>
             </div>
             {% endfor %}
@@ -325,8 +316,8 @@
         {% endif %}
 
         {% if report and report.stores %}
-        <h2>🏆 週間ピーク女性人数ランキング TOP30（過去7日間）</h2>
-        <p style="font-size: 0.86rem; color: #94a3b8; margin: -8px 0 14px;">各店舗の1日あたり最高来店数の7日間平均と、週間最大女性人数・最も盛り上がる時間帯の一覧です。</p>
+        <h2>週間ピーク女性人数ランキング TOP30（過去7日間）</h2>
+        <p style="font-size: 0.85rem; color: var(--text-sub); margin: -6px 0 14px;">各店舗の1日あたり最高来店数の7日間平均と、週間最大女性人数・最も盛り上がる時間帯の一覧です。</p>
         <div class="stats-table-wrap">
             <table>
                 <thead>
@@ -342,12 +333,12 @@
                 <tbody>
                     {% for s in report.stores[:30] %}
                     <tr>
-                        <td style="font-weight: 800; color: #94a3b8;">#{{ loop.index }}</td>
-                        <td style="font-weight: 700; color: #fff;"><a href="/store/{{ s.name | store_slug }}" style="color: #fff; text-decoration: none;">{{ s.name | seo_store_name }}</a></td>
+                        <td style="font-weight: 700; color: var(--text-sub);">#{{ loop.index }}</td>
+                        <td style="font-weight: 600; color: var(--text-main);"><a href="/store/{{ s.name | store_slug }}" style="color: var(--text-main); text-decoration: none;">{{ s.name | seo_store_name }}</a></td>
                         <td class="w-num">{{ s.avg_women }}名</td>
                         <td class="m-num">{{ s.avg_men }}名</td>
-                        <td style="color: #fbbf24; font-weight: 700;">最大 {{ s.max_women }}名</td>
-                        <td style="color: #38bdf8; font-weight: 700;">{{ s.peak_hour }}頃</td>
+                        <td style="color: var(--accent-text); font-weight: 700;">最大 {{ s.max_women }}名</td>
+                        <td style="color: var(--text-sub); font-weight: 600;">{{ s.peak_hour }}頃</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -356,7 +347,7 @@
         {% endif %}
 
         {% if live_stores %}
-        <h2>🔥 現在のリアルタイム上位20店舗（{{ last_updated }} 時点）</h2>
+        <h2>現在のリアルタイム上位20店舗（{{ last_updated }} 時点）</h2>
         <div class="stats-table-wrap">
             <table>
                 <thead>
@@ -373,11 +364,11 @@
                     {% set tot = s.women + s.men %}
                     {% set pct = ((s.women / tot) * 100)|round|int if tot > 0 else 0 %}
                     <tr>
-                        <td style="font-weight: 800; color: #94a3b8;">#{{ loop.index }}</td>
-                        <td style="font-weight: 700; color: #fff;"><a href="/store/{{ s.name | store_slug }}" style="color: #fff; text-decoration: none;">{{ s.name | seo_store_name }}</a></td>
+                        <td style="font-weight: 700; color: var(--text-sub);">#{{ loop.index }}</td>
+                        <td style="font-weight: 600; color: var(--text-main);"><a href="/store/{{ s.name | store_slug }}" style="color: var(--text-main); text-decoration: none;">{{ s.name | seo_store_name }}</a></td>
                         <td class="w-num">{{ s.women }}名</td>
                         <td class="m-num">{{ s.men }}名</td>
-                        <td style="color: #e2e8f0; font-weight: 700;">{{ pct }}%</td>
+                        <td style="color: var(--accent-text); font-weight: 600;">{{ pct }}%</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -385,33 +376,23 @@
         </div>
         {% endif %}
 
-        <section class="hero-box" style="margin-top: 32px; border-color: rgba(56, 189, 248, 0.35);">
-            <h2 style="margin: 0 0 10px; font-size: 1.1rem; color: #38bdf8;">📌 本統計データの引用・メディア掲載について（引用フリー）</h2>
-            <p style="margin: 0 0 12px; font-size: 0.86rem; color: #cbd5e1;">
-                本ページの統計データ・ランキングは、個人ブログ・SNS・Webメディア・動画・AI検索等で<strong>事前の許諾なくご自由に引用・転載いただけます</strong>。引用の際は、下記の通り出典元リンクの明記をお願いいたします。
+        <section class="hero-box" style="margin-top: 32px; border-color: var(--border-subtle);">
+            <h2 style="margin: 0 0 10px; font-size: 1.04rem; border: none; padding-left: 0; color: var(--accent-text);">本統計データの引用・メディア掲載について（引用フリー）</h2>
+            <p style="margin: 0 0 12px; font-size: 0.85rem; color: var(--text-sub);">
+                本ページの統計データ・ランキングは、個人ブログ・SNS・Webメディア・動画・AI検索等で<strong style="color: var(--text-main);">事前の許諾なくご自由に引用・転載いただけます</strong>。引用の際は、下記の通り出典元リンクの明記をお願いいたします。
             </p>
-            <div style="background: rgba(10, 12, 20, 0.9); border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; padding: 12px 14px; font-family: monospace; font-size: 0.8rem; color: #e2e8f0; overflow-x: auto;">
-                出典：<a href="https://aiseki-navi.com/stats" style="color:#38bdf8;">相席ナビ「全国相席ラウンジ統計データ白書」 (https://aiseki-navi.com/stats)</a>
+            <div style="background: #1b1c22; border: 1px solid var(--border-subtle); border-radius: 8px; padding: 12px 14px; font-family: monospace; font-size: 0.79rem; color: var(--text-main); overflow-x: auto;">
+                出典：<a href="https://aiseki-navi.com/stats" style="color: var(--accent-text);">相席ナビ「全国相席ラウンジ統計データ白書」 (https://aiseki-navi.com/stats)</a>
             </div>
         </section>
 
-        <div style="text-align: center; margin-top: 28px;">
-            <a href="/" style="display: inline-flex; align-items: center; gap: 6px; padding: 12px 28px; border-radius: 999px; background: linear-gradient(90deg, #ec4899, #3b82f6); color: #fff; text-decoration: none; font-weight: 700; font-size: 0.92rem;">
-                🔥 全80店舗のリアルタイム順位・曜日別グラフを見る ›
+        <div style="text-align: center; margin-top: 26px;">
+            <a href="/" style="display: inline-flex; align-items: center; gap: 6px; padding: 11px 24px; border-radius: 8px; background: rgba(200, 164, 110, 0.14); border: 1px solid rgba(200, 164, 110, 0.42); color: var(--accent-text); text-decoration: none; font-weight: 700; font-size: 0.88rem;">
+                全店舗のリアルタイム順位・曜日別グラフを見る ›
             </a>
         </div>
 
-        <footer class="portal-footer">
-            <div>
-                <a href="/">🔥 リアルタイム順位</a>|
-                <a href="/areas">📍 全国エリア一覧</a>|
-                <a href="/columns">📖 コラム一覧</a>|
-                <a href="/stats">📊 統計データ白書</a>|
-                <a href="/grooming">✨ 身だしなみ特集</a>|
-                <a href="/privacy">運営者情報・規約</a>
-            </div>
-            <p style="margin-top: 10px;">© 2026 相席ナビ (AISEKI NAVI) ｜ 独自蓄積データによる統計白書</p>
-        </footer>
+        {% include '_portal_footer.html' %}
     </div>
 </body>
 

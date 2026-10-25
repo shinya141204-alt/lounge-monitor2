@@ -65,26 +65,25 @@
 
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=2">
     <link rel="apple-touch-icon" href="/static/icon.png?v=2">
-    <link rel="stylesheet" href="/static/portal.css?v=2">
+    <link rel="stylesheet" href="/static/portal.css?v=6">
     <style>
         :root {
-            --bg-dark: #0a0a0f;
-            --card-bg: rgba(22, 22, 34, 0.88);
-            --text-main: #f8fafc;
-            --text-sub: #94a3b8;
-            --accent-pink: #ec4899;
-            --accent-blue: #3b82f6;
-            --accent-gold: #e5c878;
-            --border-subtle: rgba(255, 255, 255, 0.1);
+            --bg-dark: #0f1014;
+            --card-bg: #16171c;
+            --text-main: #ebe8e3;
+            --text-sub: #9a968e;
+            --women: #d8a1aa;
+            --men: #93b1c9;
+            --accent-gold: #c8a46e;
+            --accent-text: #dfc496;
+            --border-subtle: rgba(255, 255, 255, 0.08);
         }
         * { box-sizing: border-box; }
         body {
             margin: 0;
             padding: 0;
             background-color: var(--bg-dark);
-            background-image:
-                radial-gradient(circle at 15% 10%, rgba(236, 72, 153, 0.12), transparent 35%),
-                radial-gradient(circle at 85% 80%, rgba(59, 130, 246, 0.12), transparent 35%);
+            background-image: none;
             color: var(--text-main);
             font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
             line-height: 1.75;
@@ -111,12 +110,9 @@
             gap: 10px;
         }
         .portal-brand-title {
-            font-size: 1.5rem;
+            font-size: 1.45rem;
             font-weight: 800;
-            background: linear-gradient(90deg, #ec4899, #8b5cf6, #3b82f6);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
+            color: var(--text-main);
             margin: 0;
         }
         .portal-brand-sub { font-size: 0.78rem; color: var(--text-sub); }
@@ -125,38 +121,44 @@
             display: flex;
             flex-wrap: wrap;
             gap: 8px;
-            margin-bottom: 22px;
+            margin-bottom: 20px;
         }
         .brand-tab {
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            padding: 8px 16px;
-            border-radius: 999px;
-            font-size: 0.84rem;
-            font-weight: 700;
+            padding: 7px 15px;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            font-weight: 600;
             text-decoration: none;
-            color: #cbd5e1;
-            background: rgba(255, 255, 255, 0.04);
+            color: var(--text-sub);
+            background: rgba(255, 255, 255, 0.03);
             border: 1px solid var(--border-subtle);
+            transition: all 0.18s ease;
+        }
+        .brand-tab:hover {
+            border-color: rgba(200, 164, 110, 0.4);
+            color: var(--text-main);
         }
         .brand-tab.active {
-            background: rgba(229, 200, 120, 0.18);
-            border-color: #e5c878;
-            color: #fff;
+            background: rgba(200, 164, 110, 0.14);
+            border-color: rgba(200, 164, 110, 0.45);
+            color: var(--accent-text);
+            font-weight: 700;
         }
 
         .hero-card {
             background: var(--card-bg);
-            border: 1px solid var(--border-subtle);
-            border-radius: 18px;
+            border: 1px solid rgba(200, 164, 110, 0.3);
+            border-radius: 14px;
             padding: 24px;
-            margin-bottom: 24px;
+            margin-bottom: 22px;
         }
         .hero-card h1 {
             margin: 0 0 10px;
-            font-size: 1.4rem;
-            color: #fff;
+            font-size: 1.38rem;
+            color: var(--text-main);
             line-height: 1.4;
         }
         .totals-bar {
@@ -164,22 +166,23 @@
             align-items: center;
             flex-wrap: wrap;
             gap: 14px;
-            background: rgba(15, 23, 42, 0.85);
-            padding: 8px 16px;
+            background: #1b1c22;
+            padding: 7px 15px;
             border-radius: 999px;
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            font-size: 0.88rem;
-            font-weight: 700;
+            border: 1px solid var(--border-subtle);
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-sub);
             margin-bottom: 14px;
         }
-        .tot-w { color: #f472b6; }
-        .tot-m { color: #60a5fa; }
+        .tot-w { color: var(--women); font-weight: 700; }
+        .tot-m { color: var(--men); font-weight: 700; }
 
         .stores-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 14px;
-            margin: 18px 0 28px;
+            gap: 12px;
+            margin: 16px 0 26px;
         }
         .store-card-link {
             text-decoration: none;
@@ -187,18 +190,17 @@
             display: block;
         }
         .store-card {
-            background: rgba(15, 23, 42, 0.82);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 14px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
             padding: 16px;
             display: flex;
             flex-direction: column;
             gap: 10px;
-            transition: transform 0.15s ease, border-color 0.15s ease;
+            transition: border-color 0.18s ease;
         }
         .store-card:hover {
-            transform: translateY(-2px);
-            border-color: rgba(229, 200, 120, 0.5);
+            border-color: rgba(200, 164, 110, 0.45);
         }
         .store-title-row {
             display: flex;
@@ -207,60 +209,63 @@
             gap: 8px;
         }
         .store-name {
-            font-size: 1rem;
-            font-weight: 800;
-            color: #fff;
+            font-size: 0.96rem;
+            font-weight: 700;
+            color: var(--text-main);
         }
         .store-area-badge {
-            font-size: 0.72rem;
+            font-size: 0.71rem;
             padding: 2px 8px;
-            border-radius: 999px;
-            background: rgba(255, 255, 255, 0.07);
-            color: #cbd5e1;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.045);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-sub);
         }
         .counts-row {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            font-size: 0.94rem;
-            font-weight: 800;
+            font-size: 0.92rem;
+            font-weight: 700;
         }
         .ratio-bar {
-            height: 7px;
+            height: 6px;
             border-radius: 999px;
-            background: rgba(59, 130, 246, 0.35);
+            background: rgba(147, 177, 201, 0.28);
             overflow: hidden;
         }
         .ratio-fill-w {
             height: 100%;
-            background: linear-gradient(90deg, #ec4899, #f472b6);
+            background: var(--women);
         }
         .store-footer-row {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            font-size: 0.76rem;
-            color: #94a3b8;
+            font-size: 0.75rem;
+            color: var(--text-sub);
         }
         .guide-box {
             background: var(--card-bg);
             border: 1px solid var(--border-subtle);
-            border-radius: 18px;
+            border-radius: 14px;
             padding: 22px;
-            margin-top: 24px;
+            margin-top: 22px;
         }
         .guide-box h2 {
-            font-size: 1.15rem;
+            font-size: 1.08rem;
             margin: 0 0 10px;
-            color: #e5c878;
+            color: var(--text-main);
+            padding-left: 10px;
+            border-left: 3px solid var(--accent-gold);
         }
         .guide-box p {
             margin: 0 0 12px;
-            font-size: 0.9rem;
-            color: #cbd5e1;
+            font-size: 0.88rem;
+            color: var(--text-sub);
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=3">
+    <link rel="stylesheet" href="/static/calm.css?v=7">
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
          crossorigin="anonymous"></script>
@@ -271,19 +276,19 @@
         <div class="portal-top-header">
             <a href="/" class="portal-brand-link">
                 <span class="portal-brand-title">相席ナビ</span>
-                <span class="portal-brand-sub">全国ラウンジの今わかる人数ランキング＆攻略メディア</span>
+                <span class="portal-brand-sub">全国ラウンジのリアルタイム人数＆攻略メディア</span>
             </a>
-            <span style="font-size: 0.78rem; color: #94a3b8;">最終更新: {{ last_updated }}</span>
+            <span style="font-size: 0.77rem; color: var(--text-sub);">最終更新: {{ last_updated }}</span>
         </div>
 
         {% set nav_active = 'ranking' %}
         {% include '_portal_nav.html' %}
 
         <div class="brand-tabs">
-            <a href="/oriental-lounge" class="brand-tab {% if brand.slug == 'oriental-lounge' %}active{% endif %}">👑 オリエンタルラウンジ全店</a>
-            <a href="/ag" class="brand-tab {% if brand.slug == 'ag' %}active{% endif %}">🥂 ag（アグ）全店</a>
-            <a href="/jis" class="brand-tab {% if brand.slug == 'jis' %}active{% endif %}">🍸 JIS（ジス）全店</a>
-            <a href="/" class="brand-tab">🔥 全国総合ランキングへ戻る</a>
+            <a href="/oriental-lounge" class="brand-tab {% if brand.slug == 'oriental-lounge' %}active{% endif %}">オリエンタルラウンジ全店</a>
+            <a href="/ag" class="brand-tab {% if brand.slug == 'ag' %}active{% endif %}">ag（アグ）全店</a>
+            <a href="/jis" class="brand-tab {% if brand.slug == 'jis' %}active{% endif %}">JIS（ジス）全店</a>
+            <a href="/" class="brand-tab">全国総合ランキングへ戻る</a>
         </div>
 
         <section class="hero-card">
@@ -291,13 +296,13 @@
             <div class="totals-bar">
                 <span>全国 {{ store_count }}店舗 集計中</span>
                 <span>｜</span>
-                <span class="tot-w">👩 女性合計 {{ total_women }}名</span>
-                <span class="tot-m">👨 男性合計 {{ total_men }}名</span>
+                <span class="tot-w">女性合計 {{ total_women }}名</span>
+                <span class="tot-m">男性合計 {{ total_men }}名</span>
             </div>
-            <p style="margin: 0; font-size: 0.92rem; color: #cbd5e1;">{{ brand.lead }}</p>
+            <p style="margin: 0; font-size: 0.89rem; color: var(--text-sub);">{{ brand.lead }}</p>
         </section>
 
-        <h2 style="font-size: 1.15rem; color: #fff; margin: 22px 0 12px;">📊 {{ brand.name }} 店舗別リアルタイム人数・男女比一覧（女性が多い順）</h2>
+        <h2 style="font-size: 1.08rem; color: var(--text-main); margin: 22px 0 12px; padding-left: 10px; border-left: 3px solid var(--accent-gold);">{{ brand.name }} 店舗別リアルタイム人数・男女比一覧（女性が多い順）</h2>
 
         <div class="stores-grid">
             {% for s in stores %}
@@ -310,15 +315,15 @@
                         <span class="store-area-badge">{{ s.area_label }}</span>
                     </div>
                     <div class="counts-row">
-                        <span class="tot-w">👩 女性 {{ s.women }}名{% if (s.women_diff or 0) > 0 %} <small style="font-size:0.78rem; opacity:0.9;">(↗ +{{ s.women_diff }})</small>{% endif %}</span>
-                        <span class="tot-m">👨 男性 {{ s.men }}名{% if (s.men_diff or 0) > 0 %} <small style="font-size:0.78rem; opacity:0.9;">(↗ +{{ s.men_diff }})</small>{% endif %}</span>
+                        <span class="tot-w">女性 {{ s.women }}名{% if (s.women_diff or 0) > 0 %} <small style="font-size:0.76rem; opacity:0.9;">(↗ +{{ s.women_diff }})</small>{% endif %}</span>
+                        <span class="tot-m">男性 {{ s.men }}名{% if (s.men_diff or 0) > 0 %} <small style="font-size:0.76rem; opacity:0.9;">(↗ +{{ s.men_diff }})</small>{% endif %}</span>
                     </div>
                     <div class="ratio-bar">
                         <div class="ratio-fill-w" style="width: {{ wpct }}%;"></div>
                     </div>
                     <div class="store-footer-row">
-                        <span>合計 {{ tot }}名（女性比 {{ wpct if tot > 0 else 0 }}%）</span>
-                        <span style="color: #e5c878; font-weight: 700;">店舗詳細・混雑傾向 ›</span>
+                        <span>合計 {{ tot }}名（女性比 {{ wpct if tot > 0 else 0 }}%{% if tot > 0 and s.women < 6 %}・少人数{% endif %}）</span>
+                        <span style="color: var(--accent-text); font-weight: 600;">店舗詳細・料金比較 ›</span>
                     </div>
                 </div>
             </a>
@@ -326,12 +331,13 @@
         </div>
 
         <section class="guide-box">
-            <h2>💡 {{ brand.name }}の客層・年齢層と「待ち時間」を回避する立ち回り</h2>
+            <h2>{{ brand.name }}の客層・年齢層と「待ち時間」を回避する立ち回り</h2>
             <p>{{ brand.strategy_text_1 }}</p>
             <p>{{ brand.strategy_text_2 }}</p>
-            <div style="margin-top: 16px; display: flex; flex-wrap: wrap; gap: 10px;">
-                <a href="/guide/brand-comparison" style="color: #f472b6; font-size: 0.86rem; font-weight: 700; text-decoration: none;">📖 オリエンタルラウンジ・ag（アグ）・JISの徹底比較コラムを見る ›</a>
-                <a href="/guide/weekday-strategy" style="color: #38bdf8; font-size: 0.86rem; font-weight: 700; text-decoration: none;">⏰ 曜日・時間帯別の穴場データを見る ›</a>
+            <div style="margin-top: 14px; display: flex; flex-wrap: wrap; gap: 14px;">
+                <a href="/price-comparison" style="color: var(--accent-text); font-size: 0.84rem; font-weight: 600; text-decoration: none;">店舗別の4時間帯料金・単独料金・イベント比較を見る ›</a>
+                <a href="/guide/brand-comparison" style="color: var(--accent-text); font-size: 0.84rem; font-weight: 600; text-decoration: none;">3大ブランドの徹底比較コラムを見る ›</a>
+                <a href="/guide/weekday-strategy" style="color: var(--accent-text); font-size: 0.84rem; font-weight: 600; text-decoration: none;">曜日・時間帯別の穴場データを見る ›</a>
             </div>
         </section>
 

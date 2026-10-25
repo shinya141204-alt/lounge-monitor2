@@ -1327,7 +1327,7 @@ AREA_GUIDES = {
         'slug': 'shinjuku',
         'name': '新宿・西新宿エリア',
         'short_name': '新宿・西新宿',
-        'icon': '🗼',
+        'icon': '',
         'keywords': ['新宿', 'SHINJUKU', 'NISHISHINJUKU'],
         'region_code': 'Kanto',
         'lead': '日本一の激戦区。オリエンタルラウンジ・ag・JIS（東口・西口）の4店舗が徒歩圏内に集まっており、店舗ごとの男女比の差が一番出やすいエリアです。',
@@ -1339,7 +1339,7 @@ AREA_GUIDES = {
         'slug': 'shibuya',
         'name': '渋谷・恵比寿エリア',
         'short_name': '渋谷・恵比寿',
-        'icon': '✨',
+        'icon': '',
         'keywords': ['渋谷', '恵比寿', 'Shibuya', 'Ebisu'],
         'region_code': 'Kanto',
         'lead': 'トレンド感のある20代が集まる渋谷3店舗と、落ち着いた大人の街・恵比寿。同じ山手線沿線でもお店によって空気感がガラッと変わります。',
@@ -1351,7 +1351,7 @@ AREA_GUIDES = {
         'slug': 'tokyo-east',
         'name': '上野・錦糸町・町田・東京近郊エリア',
         'short_name': '上野・錦糸町・町田',
-        'icon': '🏮',
+        'icon': '',
         'keywords': ['上野', '町田', 'Ueno', 'Machida'],
         'region_code': 'Kanto',
         'lead': '新宿や渋谷ほど気取らず、地元の常連や沿線ユーザーが集まってアットホームに盛り上がりやすい穴場エリアです。',
@@ -1363,7 +1363,7 @@ AREA_GUIDES = {
         'slug': 'kanto',
         'name': '横浜・大宮・北関東エリア',
         'short_name': '横浜・大宮・北関東',
-        'icon': '🌉',
+        'icon': '',
         'keywords': ['横浜', '大宮', '柏', '宇都宮', '高崎', 'Yokohama', 'Omiya', 'OMIYA', 'Kashiwa', 'Utsunomiya', 'Takasaki'],
         'region_code': 'Kanto',
         'lead': 'わざわざ都心まで出なくても、各ターミナル駅前で非常に高い集客力を誇る関東の人気エリア群です。',
@@ -1375,7 +1375,7 @@ AREA_GUIDES = {
         'slug': 'osaka',
         'name': '大阪（梅田・難波・心斎橋）・関西エリア',
         'short_name': '大阪・京都・神戸',
-        'icon': '🐙',
+        'icon': '',
         'keywords': ['大阪', '梅田', '茶屋町', '難波', '心斎橋', '天満', '京都', '神戸', 'Osaka', 'Umeda', 'UMEDA', 'Chayamachi', 'CHAYAMACHI', 'Namba', 'NAMBA', 'Shinsaibashi', 'Tenma', 'Kyoto', 'Kobe'],
         'region_code': 'Kinki',
         'lead': 'キタ（梅田・茶屋町・天満）とミナミ（難波・心斎橋）、さらに京都・神戸三宮まで、ノリの良さと店舗数の多さが魅力の関西エリア。',
@@ -1387,7 +1387,7 @@ AREA_GUIDES = {
         'slug': 'nagoya',
         'name': '名古屋（栄・錦）・静岡・北陸エリア',
         'short_name': '名古屋・静岡・金沢',
-        'icon': '🏯',
+        'icon': '',
         'keywords': ['名古屋', '栄', '錦', '静岡', '浜松', '金沢', 'Nagoya', 'Shizuoka', 'Hamamatsu', 'Kanazawa'],
         'region_code': 'Chubu',
         'lead': '東海最大の歓楽街である名古屋（栄・錦）を中心に、静岡・浜松・金沢の人気店舗が集まる中部・北陸エリア。',
@@ -1399,7 +1399,7 @@ AREA_GUIDES = {
         'slug': 'fukuoka',
         'name': '福岡（天神・小倉）・九州・沖縄エリア',
         'short_name': '福岡・九州・沖縄',
-        'icon': '🍜',
+        'icon': '',
         'keywords': ['福岡', '天神', '小倉', '長崎', '大分', '熊本', '宮崎', '鹿児島', '沖縄', 'Fukuoka', 'FUKUOKA', 'Kokura', 'Nagasaki', 'Oita', 'Kumamoto', 'KUMAMOTO', 'Miyazaki', 'Kagoshima', 'Okinawa'],
         'region_code': 'Kyushu',
         'lead': '全国屈指の盛り上がりを見せる福岡・天神エリアをはじめ、熊本・小倉・宮崎・鹿児島・沖縄那覇まで揃う九州エリア。',
@@ -1411,7 +1411,7 @@ AREA_GUIDES = {
         'slug': 'hokkaido-tohoku',
         'name': '札幌・仙台・岡山・広島・松山エリア',
         'short_name': '札幌・仙台・中四国',
-        'icon': '❄️',
+        'icon': '',
         'keywords': ['札幌', '仙台', '岡山', '広島', '松山', 'Sapporo', 'SAPPORO', 'Sendai', 'Okayama', 'OKAYAMA', 'Hiroshima', 'HIROSHIMA', 'CLOVERS', 'Matsuyama', 'MATSUYAMA'],
         'region_code': 'Hokkaido',
         'lead': 'すすきの（札幌）、国分町（仙台）、岡山、流川（広島）、大街道（松山）など、各地方の中心歓楽街で圧倒的な存在感を放つエリア。',
@@ -1447,11 +1447,11 @@ BRAND_GUIDES = {
         'seo_title': 'オリエンタルラウンジ全店のリアルタイム人数・男女比・混雑状況一覧',
         'seo_description': 'オリエンタルラウンジ全店（新宿・渋谷・恵比寿・上野・梅田・心斎橋・難波・名古屋・福岡など）のリアルタイム男女人数・男女比・待ち時間傾向を毎分自動更新で一覧表示。今から入りやすい穴場店舗が3秒でわかります。',
         'seo_keywords': 'オリエンタルラウンジ 人数,オリエンタルラウンジ 男女比,オリエンタルラウンジ 混雑,オリエンタルラウンジ リアルタイム,オリエンタルラウンジ 待ち時間',
-        'h1': '👑 オリエンタルラウンジ全店のリアルタイム人数・男女比一覧',
+        'h1': 'オリエンタルラウンジ全店のリアルタイム人数・男女比一覧',
         'lead': '全国のオリエンタルラウンジ各店舗の現在人数（女性・男性）と女性比率をリアルタイム集計しています。店舗カードをタップすると、各店舗の混雑傾向と徒歩圏内のハシゴ候補店舗を確認できます。',
-        'strategy_text_1': 'オリエンタルラウンジは20代半ば〜30代前半の社会人・OL層を中心に、落ち着いた高級感ある空間で会話を楽しめる王道ブランドです。金・土曜の21:00〜23:00は人気店舗で男性の入店待ちが発生しやすいため、入店前に本ページで「女性比率が55%以上の店舗」を選ぶのが鉄則です。',
-        'strategy_text_2': '新宿・渋谷・梅田・名古屋・福岡など複数店舗が近いエリアでは、オリエンタルラウンジが男性過多の際に徒歩数分の「ag（アグ）」や「JIS（ジス）」へ移動するだけで、待ち時間ゼロで即相席できるケースが多くあります。',
-        'faq_tip': '入店前に相席ナビでオリエンタルラウンジ各店の女性比率を確認し、女性が男性より多い店舗を選ぶか、平日の20時〜22時・週末の19時〜20時半の早い時間帯に入店するのが最も効果的です。'
+        'strategy_text_1': 'オリエンタルラウンジは20代半ば〜30代前半の社会人・OL層を中心に、落ち着いた高級感ある空間で会話を楽しめる王道ブランドです。金・土曜の21:00〜23:00は人気店舗で男性の入店待ちが発生しやすいため、入店前に本ページで「女性比率が高く一定数以上の女性が入店している店舗」を選ぶのが鉄則です。',
+        'strategy_text_2': '新宿・渋谷・梅田・名古屋・福岡など複数店舗が近いエリアでは、オリエンタルラウンジが男性過多の際に徒歩数分の「ag（アグ）」や「JIS（ジス）」へ移動するだけで、待ち時間を抑えて相席できるケースが多くあります。',
+        'faq_tip': '入店前に相席ナビでオリエンタルラウンジ各店の女性比率と女性人数を確認し、女性が男性より多く複数組入店している店舗を選ぶか、平日の20時〜22時・週末の19時〜20時半の早い時間帯に入店するのが最も効果的です。'
     },
     'ag': {
         'slug': 'ag',
@@ -1459,10 +1459,10 @@ BRAND_GUIDES = {
         'seo_title': 'ag（アグ）全店のリアルタイム人数・男女比・混雑状況一覧',
         'seo_description': 'オリエンタルラウンジ系列の若手向け相席ラウンジ「ag（アグ）」全店（渋谷・上野・梅田・名古屋・広島・金沢・仙台・沖縄）のリアルタイム男女人数・男女比・混雑状況を毎分自動更新で無料公開中。',
         'seo_keywords': 'ag 人数,アグ 相席 人数,ag 男女比,ag 渋谷 人数,ag 梅田 人数,オリエンタルラウンジ ag 違い',
-        'h1': '🥂 ag（アグ）全店のリアルタイム人数・男女比一覧',
+        'h1': 'ag（アグ）全店のリアルタイム人数・男女比一覧',
         'lead': '「25歳以下（または若年層中心）」のカジュアルでノリの良い新世代ラウンジ『ag（アグ）』全店の現在人数ランキングです。深夜帯や2軒目・3軒目でも盛り上がりやすいのが特徴です。',
         'strategy_text_1': 'ag（アグ）は20代前半〜中盤の学生・アパレル・美容系などフットワークの軽い男女が多く、1軒目だけでなく22時〜24時以降の「2回転目」でも一気に人数が増える傾向があります。',
-        'strategy_text_2': '同エリアにある「オリエンタルラウンジ」と徒歩数分で行き来できる店舗が多いため、まずは両方のリアルタイム人数を見比べて、女性が多い方から入店するのが最もスマートな立ち回りです。',
+        'strategy_text_2': '同エリアにある「オリエンタルラウンジ」と徒歩数分で行き来できる店舗が多いため、まずは両方のリアルタイム人数を見比べて、女性数・比率ともに安定している方から入店するのが最もスマートな立ち回りです。',
         'faq_tip': 'ag（アグ）は21時以降に急激に人が増えるため、入店直前にリアルタイム男女比をチェックし、同エリアのオリエンタルラウンジ本館と人数バランスを見比べてから向かうのがおすすめです。'
     },
     'jis': {
@@ -1471,7 +1471,7 @@ BRAND_GUIDES = {
         'seo_title': 'JIS（ジス）全店のリアルタイム人数・男女比・混雑状況一覧',
         'seo_description': '人気相席バー「JIS（ジス）」全店（新宿・西新宿・大宮・梅田・茶屋町・難波・福岡・熊本・松山・札幌）のリアルタイム男女人数・男女比・混雑状況を毎分自動更新で一覧表示。',
         'seo_keywords': 'JIS 人数,ジス 相席 人数,JIS 新宿 人数,JIS 梅田 人数,JIS 大宮 人数,相席ラウンジ 男女比',
-        'h1': '🍸 JIS（ジス）全店のリアルタイム人数・男女比一覧',
+        'h1': 'JIS（ジス）全店のリアルタイム人数・男女比一覧',
         'lead': '札幌・大宮・新宿・西新宿・梅田・茶屋町・難波・福岡・熊本・松山で圧倒的な集客力を誇る『JIS（ジス）』全店のリアルタイム男女人数一覧です。',
         'strategy_text_1': 'JIS（ジス）は主要ターミナル駅前の大型店舗が多く、平日・週末を問わず安定した女性来店数を誇る人気ブランドです。特に新宿（歌舞伎町・西新宿）や大阪（梅田・茶屋町・難波）ではエリア内で複数店舗を展開しています。',
         'strategy_text_2': '東口側や本館が混雑している場合でも、もう一方の店舗（例：JIS西新宿やJIS茶屋町）は女性優位でスムーズに座れることが多いため、移動前の比較にぜひ活用してください。',
@@ -1570,27 +1570,43 @@ def store_detail_page(store_slug):
     wpct = round((women / tot) * 100) if tot > 0 else 50
 
     bkey = store_master.brand_key_of(sname)
+    raw_brand = info.get('brand') or ''
     if bkey == 'oriental-lounge':
         brand_label = 'オリエンタルラウンジ'
         brand_slug = 'oriental-lounge'
+        official_url = 'https://oriental-lounge.com/'
     elif bkey == 'ag':
         brand_label = 'ag（アグ）'
         brand_slug = 'ag'
+        official_url = 'https://ag-ree.jp/'
     elif bkey == 'jis':
         brand_label = 'JIS（ジス）'
         brand_slug = 'jis'
+        official_url = 'https://jis.bar/'
     else:
-        brand_label = info.get('brand') or '相席ラウンジ'
+        brand_label = raw_brand or '相席ラウンジ'
         brand_slug = 'oriental-lounge'
+        official_url = {
+            'ALFA': 'https://alfa-lounge.com/',
+            'CLOVERS': 'https://clovers-lounge.jp/',
+            'XIX': 'https://xix-lounge.com/',
+            'YATAKOI': 'https://yatakoi.com/',
+            'ヤタコイ': 'https://yatakoi.com/',
+        }.get(raw_brand, 'https://oriental-lounge.com/')
 
     if tot == 0:
         crowd_comment = '営業時間外・オープン準備中'
+    elif women < 6:
+        if women >= men:
+            crowd_comment = f'少人数・立ち上がり中（女性{women}名｜席替え候補少なめ）'
+        else:
+            crowd_comment = f'少人数・男性先行（女性{women}名 / 男性{men}名）'
     elif women > men:
-        crowd_comment = f'女性優位・即相席チャンス🔥（女性+{women - men}名）'
+        crowd_comment = f'女性優位・好バランス（女性+{women - men}名）'
     elif women == men:
-        crowd_comment = '男女比1:1 バランス良好✨'
+        crowd_comment = '男女比1:1 バランス良好'
     else:
-        crowd_comment = '男性多め・近隣店舗との比較推奨💡'
+        crowd_comment = '男性先行・近隣店舗との比較推奨'
 
     map_anchor = info.get('map_anchor') or store_master.seo_name(sname)
     map_url = f"https://www.google.com/maps/search/?api=1&query={urllib.parse.quote(map_anchor)}"
@@ -1624,6 +1640,7 @@ def store_detail_page(store_slug):
         'area_label': info.get('area_label') or s_live.get('area') or '全国',
         'brand_label': brand_label,
         'brand_slug': brand_slug,
+        'official_url': official_url,
         'women': women,
         'men': men,
         'women_diff': int(s_live.get('women_diff', 0) or 0),

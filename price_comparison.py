@@ -14,6 +14,21 @@ import re
 import datetime
 import store_master
 
+# Minimum female headcount thresholds to avoid over-valuing tiny sample sizes (e.g. 2 women / 0 men = 100%)
+# where a guest may match once but have zero rotation/change options afterward.
+MIN_WOMEN_FOR_RATIO_EVAL = 6   # ~3 pairs minimum to qualify for ratio bonus & cluster recommendation
+MIN_WOMEN_FOR_TOP_PICK = 8     # ~4 pairs minimum for comfortable table-rotation depth
+
+OFFICIAL_BRAND_URLS = {
+    "OLG": "https://oriental-lounge.com/",
+    "ag": "https://ag-ree.jp/",
+    "JIS": "https://jis.bar/",
+    "XIX": "https://xix-lounge.com/",
+    "ALFA": "https://alfa-lounge.com/",
+    "ヤタコイ": "https://yatakoi.com/",
+    "CLOVERS": "https://clovers-lounge.jp/",
+}
+
 # Brand-level baseline price & vibe specifications (domestic stores)
 BRAND_PRICE_SPECS = {
     "OLG": {
@@ -1203,21 +1218,21 @@ STORE_PRICE_TABLE = {
 COMPARISON_CLUSTERS = [
     {
         "id": "shinjuku",
-        "tab_label": "🗼 新宿・西新宿（3店）",
+        "tab_label": "新宿・西新宿（3店）",
         "title": "新宿・西新宿エリア（徒歩5分圏内・3店舗の4時間帯料金＆イベント比較）",
         "desc": "東口（歌舞伎町）のオリエンタルラウンジ新宿・JIS新宿と、西口側のJIS西新宿が徒歩圏内で競合する激戦区。全店とも単独（待機）時は330円/10分ですが、相席10分単価は「オリエンタル新宿（〜20時 550/660円、20〜22時 660/770円、22〜24時 770/880円）」に対し「JIS新宿・西新宿（〜22時 770/880円、22時〜 880/990円 ※JIS西新宿は20代終日550/660円）」。男性1名（ソロ）入店はJIS西新宿のみOKです。",
         "stores": ["OLG 新宿", "JIS SHINJUKU", "JIS NISHISHINJUKU"],
     },
     {
         "id": "shibuya",
-        "tab_label": "✨ 渋谷・恵比寿（3店）",
+        "tab_label": "渋谷・恵比寿（3店）",
         "title": "渋谷・恵比寿エリア（3店舗の4時間帯料金＆イベント比較）",
         "desc": "同じオリエンタル系列でも4時間帯の単価が劇的に異なる代表エリア！週末24時以降の10分単価は「ag渋谷（990円）＜ 渋谷本店（1,200円）＜ 恵比寿（1,500円）」、Open〜20時も「ag渋谷（440/660円）＜ 渋谷本店（550/770円）＜ 恵比寿（550/880円）」と階段状に変わります。3店舗とも単独時は330円/10分・男性2名以上必須（1名入店不可）です。",
         "stores": ["OLG 渋谷本店", "OLG ag渋谷", "OLG 恵比寿"],
     },
     {
         "id": "osaka-kita",
-        "tab_label": "🐙 梅田・茶屋町（6店）",
+        "tab_label": "梅田・茶屋町（6店）",
         "title": "大阪キタ（梅田・茶屋町・天満 6店舗の4時間帯料金＆イベント比較）",
         "desc": "西日本最大の激戦区。オリエンタル大阪駅前（〜22時 700/800円・男性2名以上必須）に対し、1名入店OKのag梅田（〜22時 660/770円）・天満店（〜22時 600/700円）・JIS 2店舗（梅田・茶屋町：〜22時 660/770円）、さらに時間内は待機追加課金なしの定額デイパス制「ヤタコイ梅田（18〜19時入店 2,980円〜）」まで横並び比較できます。",
         "stores": [
@@ -1231,21 +1246,21 @@ COMPARISON_CLUSTERS = [
     },
     {
         "id": "osaka-minami",
-        "tab_label": "🥂 難波・心斎橋・京神（5店）",
+        "tab_label": "難波・心斎橋・京神（5店）",
         "title": "大阪ミナミ（心斎橋・難波）・京都・神戸エリア（5店舗比較）",
         "desc": "心斎橋店は「〜20時 600/660円 → 20〜24時 660/770円 → 24時〜 770/880円」と24時まで単価据え置き！難波店は週末も単独（待機）料金が220円/10分と割安です。京都店もOpen〜20時は平日500円/金土600円と早く入るほどお得になります。",
         "stores": ["OLG 心斎橋", "OLG 難波", "JIS NAMBA", "OLG 京都", "OLG 神戸"],
     },
     {
         "id": "nagoya",
-        "tab_label": "🏯 名古屋 栄・錦（6店）",
+        "tab_label": "名古屋 栄・錦（6店）",
         "title": "名古屋（栄・錦）・静岡・浜松・金沢エリア（6店舗の4時間帯料金＆イベント比較）",
         "desc": "名古屋の3店舗は「錦店（〜20時 550/770円、22時以降 770〜880/1,100〜1,200円・1名不可）」「栄店（名古屋で唯一男性1名入店OK！〜20時 600/770円）」「ag名古屋（19時Open・週末22時以降 880〜990円と最安・1名不可）」と役割が明確。静岡・浜松・金沢はOpen〜20時が平日440円（浜松は週末も440円）です。",
         "stores": ["OLG 名古屋 栄", "OLG 名古屋 錦", "OLG ag名古屋", "OLG 静岡", "OLG 浜松", "OLG ag金沢"],
     },
     {
         "id": "fukuoka",
-        "tab_label": "🍜 福岡天神・九州（10店）",
+        "tab_label": "福岡天神・九州（10店）",
         "title": "福岡（天神・小倉）・熊本・九州・沖縄エリア（10店舗の4時間帯料金＆イベント比較）",
         "desc": "福岡・天神ではオリエンタル福岡（単独220円｜相席〜22時 700/800円、22時〜 770/880円）とJIS福岡（単独330円｜相席終日 770/880円均一）が競合。九州他県はOpen〜20時の早割が強く、長崎・鹿児島は「平日20時まで440円」、熊本・小倉は「平日20時まで500円」、大分・宮崎は「22時まで550/660円」で飲めます。",
         "stores": [
@@ -1263,21 +1278,21 @@ COMPARISON_CLUSTERS = [
     },
     {
         "id": "ueno-east",
-        "tab_label": "🏮 上野・錦糸町・町田（5店）",
+        "tab_label": "上野・錦糸町・町田（5店）",
         "title": "上野・錦糸町・町田・柏エリア（東京東＆近郊5店舗の4時間帯料金比較）",
         "desc": "上野エリアはオリエンタル上野のみ男性1名入店OK（隣接のag上野は2名以上必須）。錦糸町店は都内オリエンタルで唯一「単独220円｜Open〜20時 平日440円/金土550円、20〜22時 平日550円/金土660円」の地方店並み単価！町田・柏も単独220円＆平日は24時まで660円据え置きです。",
         "stores": ["OLG 上野", "OLG ag上野", "OLG 錦糸町", "OLG 町田", "OLG 柏"],
     },
     {
         "id": "omiya-yokohama",
-        "tab_label": "🌉 大宮・横浜・北関東（5店）",
+        "tab_label": "大宮・横浜・北関東（5店）",
         "title": "大宮・横浜・宇都宮・高崎エリア（5店舗の4時間帯料金＆イベント比較）",
         "desc": "大宮駅東口では「オリエンタル大宮（単独220円｜〜20時 550/660円）」と「JIS大宮（U30チャージ0円・単独220円※1名入店時は330円｜〜21時 660/880円）」が競合。宇都宮・高崎はOpen〜20時が平日440円/金土550円の北関東価格です。",
         "stores": ["OLG 大宮", "JIS OMIYA", "OLG 横浜", "OLG 宇都宮", "OLG 高崎"],
     },
     {
         "id": "hiroshima-okayama",
-        "tab_label": "🍁 広島・岡山（5店）",
+        "tab_label": "広島・岡山（5店）",
         "title": "広島（新天地・流川 3店舗）・岡山（2店舗）の4時間帯料金＆開催中イベント比較",
         "desc": "全5店舗すべて単独（待機）時は220円/10分！広島・新天地（流川）は「ag広島（〜20時 500/600円）」「ALFA広島（〜20時 500/550円）」「CLOVERS広島（日〜木22時迄 半額275円/10分・金土祝前660円）」が徒歩2分圏内。岡山もオリエンタル岡山とXIX岡山（入店時刻の単価が退店まで固定・〜20時 500/600円）を比較できます。",
         "stores": [
@@ -1290,7 +1305,7 @@ COMPARISON_CLUSTERS = [
     },
     {
         "id": "sapporo-regional",
-        "tab_label": "❄️ 札幌・仙台・松山（3店）",
+        "tab_label": "札幌・仙台・松山（3店）",
         "title": "札幌（すすきの）・仙台（国分町）・松山エリア（3店舗の4時間帯料金＆イベント比較）",
         "desc": "3店舗とも単独（待機）時は220円/10分！札幌すすきの「JIS札幌（終日 平日660円/金土770円均一・1名OK）」、仙台国分町「ag仙台（〜20時 550/700円、20〜24時 600〜700/750円・平日のみ1名OK）」、四国・大街道「JIS松山（終日 平日550円/金土660円均一・1名OK）」を比較できます。",
         "stores": [
@@ -1481,21 +1496,30 @@ def get_store_price_profile(
     effective_weekend_60m = est_60m_weekend + wait_penalty
 
     # Score for ranking "Best Value Right Now" within an area cluster (higher is better)
+    # Apply minimum headcount threshold (MIN_WOMEN_FOR_RATIO_EVAL = 6) so stores with 1-2 pairs of women
+    # (e.g. 2 women / 0 men = 100%) are never over-scored when next-table rotation options are absent.
+    meets_min_headcount = women >= MIN_WOMEN_FOR_RATIO_EVAL
+    official_url = OFFICIAL_BRAND_URLS.get(base_spec["brand_code"], "https://oriental-lounge.com/")
     price_advantage = max(0, (5800 - effective_weekend_60m) // 30)
     event_bonus = 18 if has_live_men_perk else (10 if has_live_women_event else 0)
-    if total > 0:
+    if total == 0:
+        value_score = round(price_advantage + event_bonus, 1)
+    elif not meets_min_headcount:
+        low_crowd_adj = women * 1.5 - (10 if men > women else 0) - 25
+        value_score = round(price_advantage + event_bonus + low_crowd_adj, 1)
+    else:
         ratio_score = (wpct - 50) * 1.8 + min(women, 45) * 1.1
+        if women >= MIN_WOMEN_FOR_TOP_PICK:
+            ratio_score += 8
         if women > men:
             ratio_score += 20
         elif men > women + 4:
             ratio_score -= 22
         value_score = round(price_advantage + event_bonus + ratio_score, 1)
-    else:
-        value_score = round(price_advantage + event_bonus, 1)
 
-    # Human-readable real-time verification verdict reflecting per-store 4-slot rates
+    # Human-readable real-time verification verdict reflecting per-store 4-slot rates & minimum headcount
     if total == 0:
-        verdict_badge = "🌙 営業時間外・4時間帯比較"
+        verdict_badge = "営業時間外・4時間帯比較"
         verdict_cls = "verdict-neutral"
         if is_flat_rate:
             verdict_comment = (
@@ -1507,55 +1531,76 @@ def get_store_price_profile(
                 f"単独（待機）時は{wait_fee_str}が発生。相席10分はOpen〜20時（{slot_18_20}）→20〜22時（{slot_20_22}）"
                 f"→22〜24時（{slot_22_24}）→24時〜（{slot_24_last}）。{solo_rule}。"
             )
-    elif women >= men and women >= 8 and est_60m_weekend <= 4620:
-        verdict_badge = "💎 低単価×女性優位で即相席"
+    elif not meets_min_headcount:
+        if women >= men:
+            verdict_badge = f"少人数・様子見推奨（女性{women}名）"
+            verdict_cls = "verdict-low"
+            verdict_comment = (
+                f"現在女性{women}名／男性{men}名（女性比{wpct}%）。比率は高めですが店内の女性組数がまだ少ない（約1〜2組規模）ため、"
+                f"初回相席後に席替えできる次の相手が限られる可能性があります。女性{MIN_WOMEN_FOR_RATIO_EVAL}〜{MIN_WOMEN_FOR_TOP_PICK}名以上への増加を待つか近隣店との比較が安全です。"
+            )
+        else:
+            verdict_badge = f"少人数・男性先行（女性{women}名）"
+            verdict_cls = "verdict-warn"
+            if is_flat_rate:
+                verdict_comment = (
+                    f"現在女性{women}名／男性{men}名と立ち上がり前かつ男性先行の状態です。"
+                    f"定額パス制ですが待ち時間が発生する可能性があるため、女性{MIN_WOMEN_FOR_RATIO_EVAL}名以上の近隣店もあわせてご確認ください。"
+                )
+            else:
+                verdict_comment = (
+                    f"現在女性{women}名／男性{men}名と母数が少なく男性先行のため、単独待機（{wait_fee_str}）になりやすい状態です。"
+                    f"女性{MIN_WOMEN_FOR_RATIO_EVAL}名以上集まっている近隣店を優先するのがおすすめです。"
+                )
+    elif women >= men and women >= MIN_WOMEN_FOR_TOP_PICK and est_60m_weekend <= 4620:
+        verdict_badge = "好条件｜低単価・女性優位"
         verdict_cls = "verdict-hot"
         verdict_comment = (
-            f"現在女性{women}名（女性比{wpct}%）と女性リード中！単独待機時間（{wait_fee_str}）を挟まず即相席しやすく、"
-            f"いまの時間帯（{active_slot_label}）の単価も「{active_slot_rate}」と好コスパです。"
+            f"現在女性{women}名（女性比{wpct}%）と母数・比率ともに十分。単独待機時間（{wait_fee_str}）を抑えて相席しやすく、"
+            f"席替え候補も確保しやすいうえ、現在枠（{active_slot_label}）の単価も「{active_slot_rate}」と好条件です。"
         )
-    elif women >= men and women >= 8:
-        verdict_badge = "🔥 女性優位・待ち時間なしで即相席"
+    elif women >= men and women >= MIN_WOMEN_FOR_TOP_PICK:
+        verdict_badge = "好条件｜女性優位・安定回転"
         verdict_cls = "verdict-hot"
         if is_flat_rate:
             verdict_comment = (
-                f"定額デイパス制（{active_slot_rate}）で時間内の待機追加課金なし！さらに現在女性{women}名（女性比{wpct}%）と女性優位のため"
-                f"入店直後からスムーズに相席しやすい絶好機です。"
+                f"定額デイパス制（{active_slot_rate}）で時間内の待機追加課金なし。さらに現在女性{women}名（女性比{wpct}%）と母数も十分なため、"
+                f"入店直後からの相席と席替え（ローテーション）ともに期待しやすい状態です。"
             )
         else:
             verdict_comment = (
-                f"相席前の単独時は{wait_fee_str}がかかりますが、現在は女性{women}名（女性比{wpct}%）と女性優位のため"
-                f"待ち時間を抑えて即相席しやすい絶好機です！（現在枠：{active_slot_label} {active_slot_rate}）"
+                f"相席前の単独時は{wait_fee_str}がかかりますが、現在は女性{women}名（女性比{wpct}%）と組数・比率ともに十分なため、"
+                f"待ち時間を抑えた相席と席替えがしやすい好条件です（現在枠：{active_slot_label} {active_slot_rate}）。"
             )
     elif men > women + 3:
-        verdict_badge = "⚠️ 男性先行・待機時間に注意" if is_flat_rate else "⚠️ 男性先行・単独待機料金に注意"
+        verdict_badge = "男性先行・待機時間に注意" if is_flat_rate else "男性先行・単独待機料金に注意"
         verdict_cls = "verdict-warn"
         if is_flat_rate:
             verdict_comment = (
                 f"現在男性が+{men - women}名先行中。定額パス制のため時間内の追加待機課金はありませんが、"
-                f"すぐ相席したい場合は下の近隣ライバル店で女性比率が高い店舗も比較してみてください。"
+                f"すぐ相席したい場合は近隣ライバル店で女性比率・女性数が多い店舗も比較してみてください。"
             )
         else:
             verdict_comment = (
                 f"現在男性が+{men - women}名先行中。相席までの単独待機時間も{wait_fee_str}が加算されるため、"
-                f"下の近隣ライバル店で女性比率が高い店舗へ回る方が実質総額を抑えられます。"
+                f"近隣ライバル店で女性{MIN_WOMEN_FOR_RATIO_EVAL}名以上かつ女性優位の店舗へ回る方が実質総額を抑えられます。"
             )
     elif has_live_women_event and women >= 15 and wpct >= 55:
-        verdict_badge = "✨ イベント集客効果◎（女性多数）"
+        verdict_badge = "イベント集客好調・女性多数"
         verdict_cls = "verdict-hot"
         verdict_comment = (
             f"キャンペーン効果で実際に女性{women}名（女性比{wpct}%）が来店中。"
-            f"単独待機時間を抑えてスムーズに座りやすい狙い目です。"
+            f"母数が多く席替え候補も豊富なため、単独待機時間を抑えて座りやすい狙い目です。"
         )
     elif women > men:
-        verdict_badge = f"⭕ 女性+{women - men}名リード・即相席圏内"
+        verdict_badge = f"女性+{women - men}名リード・相席圏内"
         verdict_cls = "verdict-good"
         verdict_comment = (
-            f"現在女性{women}名／男性{men}名（女性比{wpct}%）。単独待機時間が発生しにくく、"
-            f"現在枠（{active_slot_label}：{active_slot_rate}）の料金どおりスマートに飲める好バランスです。"
+            f"現在女性{women}名／男性{men}名（女性比{wpct}%・約3組規模）。単独待機を抑えて初回相席に入りやすいバランスです。"
+            f"複数回の席替えも重視する場合は女性{MIN_WOMEN_FOR_TOP_PICK}名以上の店舗もあわせて比較してみてください。"
         )
     else:
-        verdict_badge = "💡 拮抗中・近隣店と単価比較推奨"
+        verdict_badge = "男女拮抗・単価比較推奨"
         verdict_cls = "verdict-neutral"
         if is_flat_rate:
             verdict_comment = (
@@ -1578,10 +1623,12 @@ def get_store_price_profile(
         "brand_code": base_spec["brand_code"],
         "brand_label": base_spec["brand_label"],
         "brand_slug": base_spec["brand_slug"],
+        "official_url": official_url,
         "women": women,
         "men": men,
         "total": total,
         "wpct": wpct,
+        "meets_min_headcount": meets_min_headcount,
         "women_diff": w_diff,
         "men_diff": m_diff,
         "charge_str": charge_str,
@@ -1647,8 +1694,13 @@ def build_area_comparison_clusters(live_stores: list = None, now_jst: datetime.d
             profiles.append(prof)
             all_profiles_map[sname] = prof
 
-        if profiles:
-            best_prof = max(profiles, key=lambda x: (x["total"] > 0, x["value_score"], x["women"]))
+        best_prof = None
+        qualified = [p for p in profiles if p["meets_min_headcount"]]
+        if qualified:
+            best_prof = max(
+                qualified,
+                key=lambda x: (x["women"] >= MIN_WOMEN_FOR_TOP_PICK, x["value_score"], x["women"]),
+            )
             best_prof["is_best_in_cluster"] = True
 
         clusters_out.append({
@@ -1657,7 +1709,8 @@ def build_area_comparison_clusters(live_stores: list = None, now_jst: datetime.d
             "title": cl["title"],
             "desc": cl["desc"],
             "stores": profiles,
-            "best_store": best_prof if profiles else None,
+            "best_store": best_prof,
+            "has_any_open": any(p["total"] > 0 for p in profiles),
         })
 
     # Ensure every domestic store in store_master is included in the full national price list
@@ -1682,12 +1735,16 @@ def build_area_comparison_clusters(live_stores: list = None, now_jst: datetime.d
         if p["has_live_men_perk"] or p["has_live_women_event"]
     ]
     verified_event_stores.sort(
-        key=lambda x: (x["has_live_men_perk"], x["women"], x["wpct"]),
+        key=lambda x: (x["meets_min_headcount"], x["has_live_men_perk"], x["women"], x["wpct"]),
         reverse=True,
     )
     if len(verified_event_stores) < 6:
         fallback_extra = [
-            p for p in sorted(all_profiles_map.values(), key=lambda x: (x["women"], x["value_score"]), reverse=True)
+            p for p in sorted(
+                all_profiles_map.values(),
+                key=lambda x: (x["meets_min_headcount"], x["women"], x["value_score"]),
+                reverse=True,
+            )
             if p not in verified_event_stores
         ]
         verified_event_stores.extend(fallback_extra[: (6 - len(verified_event_stores))])
@@ -1698,6 +1755,8 @@ def build_area_comparison_clusters(live_stores: list = None, now_jst: datetime.d
         "brand_specs": [BRAND_PRICE_SPECS["OLG"], BRAND_PRICE_SPECS["ag"], BRAND_PRICE_SPECS["JIS"]],
         "all_domestic_stores": all_domestic_profiles,
         "current_slot": current_slot_info,
+        "min_women_eval": MIN_WOMEN_FOR_RATIO_EVAL,
+        "min_women_top": MIN_WOMEN_FOR_TOP_PICK,
     }
 
 
@@ -1748,8 +1807,12 @@ def get_nearby_comparison_for_store(store_name: str, live_stores: list = None, n
             self_prof = p
         profiles.append(p)
 
-    if profiles:
-        best_p = max(profiles, key=lambda x: (x["total"] > 0, x["value_score"], x["women"]))
+    qualified = [p for p in profiles if p["meets_min_headcount"]]
+    if qualified:
+        best_p = max(
+            qualified,
+            key=lambda x: (x["women"] >= MIN_WOMEN_FOR_TOP_PICK, x["value_score"], x["women"]),
+        )
         best_p["is_best_in_cluster"] = True
 
     return {

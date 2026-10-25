@@ -23,26 +23,23 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
 
-    <link rel="stylesheet" href="/static/portal.css?v=2">
+    <link rel="stylesheet" href="/static/portal.css?v=6">
     <style>
         :root {
-            --bg-dark: #0a0a0f;
-            --card-bg: rgba(22, 22, 34, 0.85);
-            --text-main: #f8fafc;
-            --text-sub: #94a3b8;
-            --accent-pink: #ec4899;
-            --accent-blue: #3b82f6;
-            --accent-cyan: #06b6d4;
-            --border-subtle: rgba(255, 255, 255, 0.1);
+            --bg-dark: #0f1014;
+            --card-bg: #16171c;
+            --text-main: #ebe8e3;
+            --text-sub: #9a968e;
+            --accent-gold: #c8a46e;
+            --accent-text: #dfc496;
+            --border-subtle: rgba(255, 255, 255, 0.08);
         }
         * { box-sizing: border-box; }
         body {
             margin: 0;
             padding: 0;
             background-color: var(--bg-dark);
-            background-image:
-                radial-gradient(circle at 15% 10%, rgba(236, 72, 153, 0.12), transparent 35%),
-                radial-gradient(circle at 85% 80%, rgba(59, 130, 246, 0.12), transparent 35%);
+            background-image: none;
             color: var(--text-main);
             font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
             line-height: 1.75;
@@ -70,98 +67,86 @@
             gap: 10px;
         }
         .portal-brand-title {
-            font-size: 1.5rem;
+            font-size: 1.45rem;
             font-weight: 800;
-            background: linear-gradient(90deg, #ec4899, #8b5cf6, #3b82f6);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
+            color: var(--text-main);
             margin: 0;
         }
         .portal-brand-sub {
             font-size: 0.78rem;
             color: var(--text-sub);
         }
-        /* グローバルナビ: 共通部分は /static/portal.css。以下はこのページ固有の差分 */
         .portal-global-nav { scrollbar-width: none; }
         .portal-global-nav::-webkit-scrollbar { display: none; }
-        .portal-nav-item { transition: all 0.2s ease; }
-        .portal-nav-item:hover {
-            background: rgba(255, 255, 255, 0.1);
-            color: #fff;
-            transform: translateY(-1px);
-        }
-        .portal-nav-item.active { box-shadow: 0 2px 12px rgba(236, 72, 153, 0.22); }
 
         /* Hero Header */
         .page-hero {
             background: var(--card-bg);
-            border: 1px solid var(--border-subtle);
-            border-radius: 20px;
-            padding: 28px 24px;
-            margin-bottom: 30px;
+            border: 1px solid rgba(200, 164, 110, 0.3);
+            border-radius: 14px;
+            padding: 26px 24px;
+            margin-bottom: 26px;
         }
         .page-hero-badge {
             display: inline-block;
-            background: rgba(236, 72, 153, 0.15);
-            color: #f472b6;
-            border: 1px solid rgba(236, 72, 153, 0.35);
-            font-size: 0.74rem;
+            background: rgba(200, 164, 110, 0.12);
+            color: var(--accent-text);
+            border: 1px solid rgba(200, 164, 110, 0.32);
+            font-size: 0.72rem;
             font-weight: 700;
+            letter-spacing: 0.05em;
             padding: 3px 10px;
             border-radius: 999px;
             margin-bottom: 10px;
         }
         .page-hero h1 {
-            font-size: 1.55rem;
+            font-size: 1.45rem;
             margin: 0 0 10px 0;
-            color: #fff;
+            color: var(--text-main);
             line-height: 1.4;
         }
         .page-hero p {
             margin: 0;
-            font-size: 0.92rem;
-            color: #cbd5e1;
+            font-size: 0.9rem;
+            color: var(--text-sub);
         }
 
         /* Section Heading */
         .sec-title {
-            font-size: 1.2rem;
-            font-weight: 800;
-            margin: 34px 0 16px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            color: #fff;
+            font-size: 1.12rem;
+            font-weight: 700;
+            margin: 32px 0 16px;
+            padding-left: 10px;
+            border-left: 3px solid var(--accent-gold);
+            color: var(--text-main);
         }
 
         /* Article Grid */
         .articles-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
-            gap: 20px;
+            gap: 18px;
         }
         .article-card {
             background: var(--card-bg);
             border: 1px solid var(--border-subtle);
-            border-radius: 16px;
+            border-radius: 12px;
             overflow: hidden;
             text-decoration: none;
             color: inherit;
             display: flex;
             flex-direction: column;
-            transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+            transition: border-color 0.2s ease, transform 0.2s ease;
         }
         .article-card:hover {
-            transform: translateY(-3px);
-            border-color: rgba(236, 72, 153, 0.5);
-            box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+            transform: translateY(-2px);
+            border-color: rgba(200, 164, 110, 0.45);
         }
         .article-thumb-wrap {
             position: relative;
             width: 100%;
             aspect-ratio: 16 / 9;
-            background: #111827;
+            background: #121318;
             overflow: hidden;
         }
         .article-thumb-wrap img {
@@ -171,7 +156,7 @@
             transition: transform 0.3s ease;
         }
         .article-card:hover .article-thumb-wrap img {
-            transform: scale(1.03);
+            transform: scale(1.02);
         }
         .article-card-body {
             padding: 18px;
@@ -182,35 +167,45 @@
         .article-tag-row {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
+            flex-wrap: wrap;
             margin-bottom: 8px;
         }
         .article-tag {
-            font-size: 0.7rem;
-            font-weight: 800;
-            padding: 2px 9px;
-            border-radius: 6px;
+            font-size: 0.69rem;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.045);
+            color: var(--text-sub);
+            border: 1px solid var(--border-subtle);
         }
-        .tag-pink { background: rgba(236, 72, 153, 0.18); color: #f472b6; border: 1px solid rgba(236, 72, 153, 0.35); }
-        .tag-cyan { background: rgba(6, 182, 212, 0.18); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.35); }
-        .tag-purple { background: rgba(139, 92, 246, 0.18); color: #c084fc; border: 1px solid rgba(139, 92, 246, 0.35); }
-        .tag-amber { background: rgba(245, 158, 11, 0.18); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.35); }
+        .tag-pink, .tag-amber {
+            background: rgba(200, 164, 110, 0.11);
+            color: var(--accent-text);
+            border-color: rgba(200, 164, 110, 0.3);
+        }
+        .tag-cyan, .tag-purple {
+            background: rgba(255, 255, 255, 0.045);
+            color: var(--text-sub);
+            border-color: var(--border-subtle);
+        }
         .article-card h2 {
-            font-size: 1.05rem;
+            font-size: 1rem;
             margin: 0 0 8px 0;
-            color: #fff;
-            line-height: 1.45;
+            color: var(--text-main);
+            line-height: 1.48;
         }
         .article-card p {
-            font-size: 0.84rem;
+            font-size: 0.83rem;
             color: var(--text-sub);
             margin: 0 0 16px 0;
             flex: 1;
         }
         .article-read-more {
-            font-size: 0.82rem;
-            font-weight: 700;
-            color: #f472b6;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--accent-text);
             display: inline-flex;
             align-items: center;
             gap: 4px;
@@ -220,37 +215,31 @@
         .area-mini-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-            gap: 12px;
+            gap: 10px;
         }
         .area-mini-card {
-            background: rgba(255, 255, 255, 0.03);
+            background: var(--card-bg);
             border: 1px solid var(--border-subtle);
-            border-radius: 12px;
-            padding: 14px;
+            border-radius: 10px;
+            padding: 13px 15px;
             text-decoration: none;
-            color: #fff;
+            color: var(--text-main);
             display: flex;
             align-items: center;
             justify-content: space-between;
-            transition: all 0.2s ease;
+            transition: border-color 0.18s ease;
         }
         .area-mini-card:hover {
-            background: rgba(255, 255, 255, 0.07);
-            border-color: rgba(56, 189, 248, 0.45);
-            transform: translateY(-2px);
+            border-color: rgba(200, 164, 110, 0.45);
         }
         .area-mini-left {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
         }
-        .area-mini-icon { font-size: 1.3rem; }
-        .area-mini-name { font-size: 0.88rem; font-weight: 700; }
-
-        /* Portal Footer */
-        .portal-footer-links a:hover { color: #ec4899; }
+        .area-mini-name { font-size: 0.86rem; font-weight: 600; }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=1">
+    <link rel="stylesheet" href="/static/calm.css?v=7">
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
          crossorigin="anonymous"></script>
@@ -261,7 +250,7 @@
         <div class="portal-top-header">
             <a href="/" class="portal-brand-link">
                 <span class="portal-brand-title">相席ナビ</span>
-                <span class="portal-brand-sub">全国ラウンジの今わかる人数ランキング＆攻略メディア</span>
+                <span class="portal-brand-sub">全国ラウンジのリアルタイム人数＆攻略メディア</span>
             </a>
         </div>
 
@@ -269,29 +258,29 @@
         {% include '_portal_nav.html' %}
 
         <section class="page-hero">
-            <span class="page-hero-badge">📚 EDITORIAL COLUMNS</span>
+            <span class="page-hero-badge">EDITORIAL COLUMNS</span>
             <h1>相席ラウンジのお店選び・時間帯・立ち回りコラム一覧</h1>
-            <p>全国約80店舗の混雑ログをもとに、「どのブランドが自分に合っているか」「何曜日の何時頃が一番入りやすいか」「行く前に気をつけたい身だしなみ」を分かりやすくまとめています。</p>
+            <p>全国の混雑ログをもとに、「どのブランドが自分に合っているか」「何曜日の何時頃が入りやすいか」「行く前に整えておきたい身だしなみ」を分かりやすくまとめています。</p>
         </section>
 
         {% if is_staff and upcoming_scheduled %}
-        <div style="background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 14px; padding: 16px 18px; margin-bottom: 24px;">
-            <div style="font-size: 0.88rem; font-weight: 800; color: #fde68a; margin-bottom: 10px;">🗓️ 【社内限定表示】公開予約待機中のコラム（一般ユーザー・Googleには予約日時まで非表示）</div>
+        <div style="background: rgba(200, 164, 110, 0.08); border: 1px solid rgba(200, 164, 110, 0.35); border-radius: 12px; padding: 16px 18px; margin-bottom: 24px;">
+            <div style="font-size: 0.86rem; font-weight: 700; color: var(--accent-text); margin-bottom: 10px;">【社内限定表示】公開予約待機中のコラム（一般ユーザー・検索エンジンには予約日時まで非表示）</div>
             <div style="display: flex; flex-direction: column; gap: 8px;">
                 {% for item in upcoming_scheduled %}
-                <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; background: rgba(15, 23, 42, 0.65); padding: 9px 12px; border-radius: 10px; font-size: 0.82rem;">
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; background: #1b1c22; padding: 9px 12px; border-radius: 8px; font-size: 0.82rem;">
                     <div>
-                        <span style="color: #fbbf24; font-weight: 700; margin-right: 8px;">{{ item.publish_at_ja }} 公開予定</span>
-                        <span style="color: #f8fafc;">{{ item.short_title }}</span>
+                        <span style="color: var(--accent-text); font-weight: 700; margin-right: 8px;">{{ item.publish_at_ja }} 公開予定</span>
+                        <span style="color: var(--text-main);">{{ item.short_title }}</span>
                     </div>
-                    <a href="{{ item.path }}" style="color: #38bdf8; font-weight: 700; text-decoration: none;">社内プレビュー ↗</a>
+                    <a href="{{ item.path }}" style="color: var(--accent-text); font-weight: 600; text-decoration: none;">社内プレビュー ↗</a>
                 </div>
                 {% endfor %}
             </div>
         </div>
         {% endif %}
 
-        <h2 class="sec-title">📖 定番の特集・比較コラム</h2>
+        <h2 class="sec-title">定番の特集・比較コラム</h2>
         <div class="articles-grid">
             {% for item in published_scheduled or [] %}
             <a href="{{ item.path }}" class="article-card">
@@ -323,7 +312,7 @@
                 </div>
                 <div class="article-card-body">
                     <div class="article-tag-row">
-                        <span class="article-tag tag-cyan">📊 27万件ログ検証</span>
+                        <span class="article-tag tag-cyan">27万件ログ検証</span>
                         <span class="article-tag tag-pink">女性は待たない新常識</span>
                     </div>
                     <h2>「男性先行・男性比率が高いお店」の方が女性が増えやすいって本当？データが証明する「女性は待たない」新常識</h2>
@@ -342,7 +331,7 @@
                 </div>
                 <div class="article-card-body">
                     <div class="article-tag-row">
-                        <span class="article-tag tag-pink">💄 最新トレンド考察</span>
+                        <span class="article-tag tag-pink">トレンド考察</span>
                         <span class="article-tag tag-cyan">19時サロン帰り第1波</span>
                     </div>
                     <h2>なぜ美容サロン激戦区の相席ラウンジは美人が多いのか？「今日ビジュいい日」の行動データと選ばれる男の清潔感</h2>
@@ -361,11 +350,11 @@
                 </div>
                 <div class="article-card-body">
                     <div class="article-tag-row">
-                        <span class="article-tag tag-pink">🎧 最新データ考察</span>
+                        <span class="article-tag tag-pink">データ考察</span>
                         <span class="article-tag tag-purple">深夜2回転目の法則</span>
                     </div>
                     <h2>なぜ梅田・渋谷・新宿の相席ラウンジは深夜0時過ぎても女性が減らない？「ダンスクラブ×相席」の回遊法則</h2>
-                    <p>終電とともに女性が帰る街と、深夜1時過ぎから再び女性がV字急増する「クラブ密集エリア」の決定的な違いを全国53店舗データから解明しました。</p>
+                    <p>終電とともに女性が帰る街と、深夜1時過ぎから再び女性が急増する「クラブ密集エリア」の違いを全国53店舗データから解明しました。</p>
                     <span class="article-read-more">この記事を読む ›</span>
                 </div>
             </a>
@@ -380,11 +369,11 @@
                 </div>
                 <div class="article-card-body">
                     <div class="article-tag-row">
-                        <span class="article-tag tag-amber">🔥 金・土の夜攻略</span>
+                        <span class="article-tag tag-amber">金・土の夜攻略</span>
                         <span class="article-tag tag-cyan">ハシゴ術</span>
                     </div>
                     <h2>金・土の相席ラウンジで「男性待ち1時間」を回避して勝つ方法｜週末3つの時間帯別ムーブ＆徒歩3分ハシゴ術</h2>
-                    <p>金曜・土曜の夜でも待ち時間ゼロで相席するための「19時半先行ムーブ」「徒歩3分ハシゴ比較」「23時以降の2回転目狙い」を徹底解説。</p>
+                    <p>金曜・土曜の夜でも待ち時間を抑えて相席するための「19時半先行ムーブ」「徒歩3分ハシゴ比較」「23時以降の2回転目狙い」を解説。</p>
                     <span class="article-read-more">この記事を読む ›</span>
                 </div>
             </a>
@@ -396,7 +385,7 @@
                 </div>
                 <div class="article-card-body">
                     <div class="article-tag-row">
-                        <span class="article-tag tag-pink">🔥 一番読まれています</span>
+                        <span class="article-tag tag-pink">定番記事</span>
                         <span class="article-tag tag-purple">ブランド比較</span>
                     </div>
                     <h2>オリエンタルラウンジ・JIS・agの違いは？年齢層・料金・雰囲気の選び方</h2>
@@ -415,7 +404,7 @@
                 </div>
                 <div class="article-card-body">
                     <div class="article-tag-row">
-                        <span class="article-tag tag-cyan">📊 データ分析</span>
+                        <span class="article-tag tag-cyan">データ分析</span>
                         <span class="article-tag tag-amber">平日の穴場</span>
                     </div>
                     <h2>なぜ相席ラウンジは週末より「水曜・木曜の20時〜22時」が一番相席しやすいのか？</h2>
@@ -434,7 +423,7 @@
                 </div>
                 <div class="article-card-body">
                     <div class="article-tag-row">
-                        <span class="article-tag tag-pink">📖 基本ガイド</span>
+                        <span class="article-tag tag-pink">基本ガイド</span>
                     </div>
                     <h2>相席ラウンジで失敗しないための基本ガイド｜お店選び・時間帯の波・身だしなみのコツ</h2>
                     <p>行く前のリアルタイム人数の見方から、最初の10分で打ち解ける会話のコツ、自然な2軒目への誘い方まで、初めての方にもわかりやすくまとめました。</p>
@@ -452,7 +441,7 @@
                 </div>
                 <div class="article-card-body">
                     <div class="article-tag-row">
-                        <span class="article-tag tag-pink">🗼 激戦区エリア攻略</span>
+                        <span class="article-tag tag-pink">激戦区エリア攻略</span>
                     </div>
                     <h2>新宿の相席ラウンジ4店舗はどう使い分ける？オリエンタル・ag・JIS東口・西口の違い</h2>
                     <p>徒歩圏内に4店舗が集まる新宿で、「東口3店舗が男性待ちのときに西新宿へ回るコツ」や客層・2軒目スポットの違いをまとめました。</p>
@@ -470,7 +459,7 @@
                 </div>
                 <div class="article-card-body">
                     <div class="article-tag-row">
-                        <span class="article-tag tag-cyan">🍸 スタイル別</span>
+                        <span class="article-tag tag-cyan">スタイル別</span>
                     </div>
                     <h2>相席ラウンジは「1人（ソロ）」と「友達と2人」どっちがいい？立ち回りの違いとコツ</h2>
                     <p>仕事帰りに1人でふらっと行くときのメリット・向いている曜日と、友達と2人組でワイワイ盛り上がるときの役割分担のコツを解説。</p>
@@ -488,7 +477,7 @@
                 </div>
                 <div class="article-card-body">
                     <div class="article-tag-row">
-                        <span class="article-tag tag-purple">🥂 2軒目・二次会</span>
+                        <span class="article-tag tag-purple">2軒目・二次会</span>
                     </div>
                     <h2>相席ラウンジから2軒目へ自然に誘うには？声をかけるタイミングと断られにくいお店選び</h2>
                     <p>同じ席で2時間粘るより「45分〜60分」で声をかけた方がうまくいく理由と、女性が安心してOKしやすい誘い方をまとめました。</p>
@@ -506,7 +495,7 @@
                 </div>
                 <div class="article-card-body">
                     <div class="article-tag-row">
-                        <span class="article-tag tag-amber">✨ 会話・第一印象</span>
+                        <span class="article-tag tag-amber">会話・第一印象</span>
                     </div>
                     <h2>相席して最初の10分で印象が決まる！女性が「もっと話したい」と感じる服装・会話の共通点</h2>
                     <p>乾杯直後の10分間で無意識に見られている「至近距離の清潔感」と、面接のような質問攻めにならない会話の広げ方。</p>
@@ -516,10 +505,10 @@
 
             <!-- Article 8: Grooming & Prep Guide -->
             <a href="/grooming" class="article-card">
-                <div class="article-card-body" style="justify-content: space-between; background: linear-gradient(145deg, rgba(236,72,153,0.08), rgba(59,130,246,0.08));">
+                <div class="article-card-body" style="justify-content: space-between; background: #1b1c22;">
                     <div>
                         <div class="article-tag-row">
-                            <span class="article-tag tag-amber">✨ 身だしなみ・準備特集</span>
+                            <span class="article-tag tag-amber">身だしなみ・準備特集</span>
                         </div>
                         <h2>ソファ席の至近距離で差がつく！仕事帰りの身だしなみ＆満席時のサブ選択肢</h2>
                         <p>隣り合う距離が近いラウンジで意外と見られている「夕方の青ヒゲ・肌のテカリ・私服の清潔感」の整え方と、週末にお店が満席だったときの対策をまとめました。</p>
@@ -529,16 +518,15 @@
             </a>
         </div>
 
-        <h2 class="sec-title">📍 エリア別の混雑傾向＆店舗ガイド</h2>
-        <p style="font-size: 0.88rem; color: #94a3b8; margin: -8px 0 16px;">各エリアの現在のリアルタイム人数と、街ごとの店舗の使い分け・2軒目スポットを見られます。</p>
+        <h2 class="sec-title">エリア別の混雑傾向＆店舗ガイド</h2>
+        <p style="font-size: 0.86rem; color: var(--text-sub); margin: -8px 0 16px;">各エリアの現在のリアルタイム人数と、街ごとの店舗の使い分け・2軒目スポットを見られます。</p>
         <div class="area-mini-grid">
             {% for slug, info in area_guides.items() %}
             <a href="/area/{{ slug }}" class="area-mini-card">
                 <div class="area-mini-left">
-                    <span class="area-mini-icon">{{ info.icon }}</span>
                     <span class="area-mini-name">{{ info.short_name }}</span>
                 </div>
-                <span style="color: #38bdf8; font-weight: 700;">›</span>
+                <span style="color: var(--accent-text); font-weight: 700;">›</span>
             </a>
             {% endfor %}
         </div>

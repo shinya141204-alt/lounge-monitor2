@@ -796,4 +796,314 @@ body.theme-light .momentum-legend-pill {
     to { transform: rotate(360deg); }
 }
 
+/* ==========================================================================
+   11. 料金比較・店舗詳細・エリア・ブランド・記事ページ 全域シック統一レイヤー
+   - 多色使い（ネオンピンク・水色・紫・エメラルド・オレンジ）を廃し、
+     「チャコール×アイボリー＋シャンパンゴールド（男女数値のみくすみローズ＆スレート）」に完全統一
+   ========================================================================== */
+body:not(.theme-light) .hero-box,
+body:not(.theme-light) .hero-card,
+body:not(.theme-light) .live-hero-card,
+body:not(.theme-light) .section-card,
+body:not(.theme-light) .content-box,
+body:not(.theme-light) .guide-box,
+body:not(.theme-light) .stats-table-wrap,
+body:not(.theme-light) .brand-stat-card,
+body:not(.theme-light) .rec-card {
+    background: var(--calm-surface) !important;
+    border: 1px solid var(--calm-border) !important;
+    box-shadow: none !important;
+}
+
+body:not(.theme-light) .verify-card,
+body:not(.theme-light) .count-box,
+body:not(.theme-light) .nearby-item,
+body:not(.theme-light) .totals-bar,
+body:not(.theme-light) .area-live-totals {
+    background: var(--calm-surface-2) !important;
+    border: 1px solid var(--calm-border) !important;
+    box-shadow: none !important;
+}
+
+body:not(.theme-light) .nearby-item:hover,
+body:not(.theme-light) .store-card:hover {
+    border-color: rgba(200, 164, 110, 0.45) !important;
+    transform: none !important;
+}
+
+/* タブ・ピル統一（エリア切替・ブランド切替） */
+body:not(.theme-light) .area-tab-btn,
+body:not(.theme-light) .brand-tab {
+    background: var(--calm-surface) !important;
+    border: 1px solid var(--calm-border-strong) !important;
+    color: var(--calm-text) !important;
+    box-shadow: none !important;
+}
+
+body:not(.theme-light) .area-tab-btn:hover,
+body:not(.theme-light) .brand-tab:hover {
+    background: var(--calm-surface-2) !important;
+    border-color: rgba(200, 164, 110, 0.42) !important;
+    color: #f1e3cb !important;
+}
+
+body:not(.theme-light) .area-tab-btn.active,
+body:not(.theme-light) .brand-tab.active {
+    background: var(--calm-accent-soft) !important;
+    border-color: rgba(200, 164, 110, 0.58) !important;
+    color: #f1e3cb !important;
+    box-shadow: none !important;
+}
+
+/* ボタン統一（グラデーション廃止 → シャンパンゴールド細枠） */
+body:not(.theme-light) .btn-primary {
+    background: var(--calm-surface-2) !important;
+    border: 1px solid rgba(200, 164, 110, 0.55) !important;
+    color: #f1e3cb !important;
+    box-shadow: none !important;
+}
+
+body:not(.theme-light) .btn-primary:hover {
+    background: var(--calm-accent-soft) !important;
+}
+
+body:not(.theme-light) .btn-secondary {
+    background: var(--calm-surface) !important;
+    border: 1px solid var(--calm-border-strong) !important;
+    color: var(--calm-text) !important;
+    box-shadow: none !important;
+}
+
+body:not(.theme-light) .btn-secondary:hover {
+    background: var(--calm-surface-2) !important;
+    border-color: rgba(200, 164, 110, 0.4) !important;
+}
+
+/* 男女カラー＆比率バー統一 */
+body:not(.theme-light) .w-color,
+body:not(.theme-light) .tot-w,
+body:not(.theme-light) .w-num {
+    color: var(--calm-women) !important;
+}
+
+body:not(.theme-light) .m-color,
+body:not(.theme-light) .tot-m,
+body:not(.theme-light) .m-num {
+    color: var(--calm-men) !important;
+}
+
+body:not(.theme-light) .r-color {
+    color: var(--calm-accent) !important;
+}
+
+body:not(.theme-light) .ratio-bar,
+body:not(.theme-light) .ratio-bar-lg,
+body:not(.theme-light) .mini-ratio-bar {
+    background: rgba(147, 177, 201, 0.32) !important;
+}
+
+body:not(.theme-light) .ratio-fill-lg,
+body:not(.theme-light) .mini-ratio-fill {
+    background: var(--calm-women) !important;
+}
+
+/* バッジ・ピル・ステータス（7色レインボーを撤廃しモノトーン＋シャンパンゴールドに統一） */
+body:not(.theme-light) .hero-kicker,
+body:not(.theme-light) .rec-badge,
+body:not(.theme-light) .badge,
+body:not(.theme-light) .status-badge,
+body:not(.theme-light) .area-badge {
+    background: transparent !important;
+    border: 1px solid var(--calm-border-strong) !important;
+    color: var(--calm-sub) !important;
+    box-shadow: none !important;
+}
+
+body:not(.theme-light) .brand-pill {
+    background: rgba(255, 255, 255, 0.04) !important;
+    border: 1px solid var(--calm-border-strong) !important;
+    color: var(--calm-text) !important;
+}
+
+body:not(.theme-light) .crown-tag {
+    background: var(--calm-accent-soft) !important;
+    border: 1px solid rgba(200, 164, 110, 0.55) !important;
+    color: #f1e3cb !important;
+}
+
+body:not(.theme-light) .best-pick-banner {
+    background: var(--calm-surface-2) !important;
+    border: 1px solid rgba(200, 164, 110, 0.35) !important;
+    border-left: 3px solid var(--calm-accent) !important;
+}
+
+body:not(.theme-light) .best-pick-title {
+    color: #f1e3cb !important;
+}
+
+body:not(.theme-light) .best-pick-sub {
+    color: var(--calm-sub) !important;
+}
+
+body:not(.theme-light) .comp-table-wrap {
+    border-color: var(--calm-border) !important;
+}
+
+body:not(.theme-light) .comp-table th,
+body:not(.theme-light) .stats-table-wrap th {
+    background: var(--calm-surface-2) !important;
+    color: var(--calm-sub) !important;
+    border-bottom-color: var(--calm-border-strong) !important;
+}
+
+body:not(.theme-light) .comp-table tr.best-row {
+    background: rgba(200, 164, 110, 0.05) !important;
+}
+
+body:not(.theme-light) .verdict-pill {
+    background: transparent !important;
+    border: 1px solid var(--calm-border-strong) !important;
+    color: var(--calm-text) !important;
+}
+
+body:not(.theme-light) .verdict-pill.verdict-hot {
+    background: var(--calm-accent-soft) !important;
+    border-color: rgba(200, 164, 110, 0.55) !important;
+    color: #f1e3cb !important;
+}
+
+body:not(.theme-light) .verdict-pill.verdict-good {
+    background: rgba(216, 161, 170, 0.12) !important;
+    border-color: rgba(216, 161, 170, 0.42) !important;
+    color: #ebd0d5 !important;
+}
+
+body:not(.theme-light) .verdict-pill.verdict-warn,
+body:not(.theme-light) .verdict-pill.verdict-low {
+    background: rgba(255, 255, 255, 0.03) !important;
+    border-color: var(--calm-border-strong) !important;
+    color: var(--calm-sub) !important;
+}
+
+body:not(.theme-light) .ev-item {
+    background: rgba(255, 255, 255, 0.025) !important;
+    border-color: var(--calm-border) !important;
+}
+
+body:not(.theme-light) .ev-badge-men,
+body:not(.theme-light) .ev-badge-women {
+    background: transparent !important;
+    border: 1px solid var(--calm-border-strong) !important;
+    color: var(--calm-accent) !important;
+}
+
+/* コラム・記事ページの青・ピンク帯見出し・タグ・ボックスを落ち着いた細線デザインに統一 */
+body:not(.theme-light) .article-body h2,
+body:not(.theme-light) .content-box h2,
+body:not(.theme-light) .guide-box h2 {
+    background: transparent !important;
+    border-left: 2px solid var(--calm-accent) !important;
+    border-bottom: 1px solid var(--calm-border) !important;
+    border-radius: 0 !important;
+    padding: 4px 0 8px 12px !important;
+    color: var(--calm-text) !important;
+}
+
+body:not(.theme-light) .article-body h3 {
+    color: #dfc496 !important;
+}
+
+body:not(.theme-light) .breadcrumb a,
+body:not(.theme-light) .article-body a:not(.cta-btn):not(.aff-btn):not(.live-tool-btn) {
+    color: #dfc496 !important;
+}
+
+body:not(.theme-light) .article-cat-tag,
+body:not(.theme-light) .cat-badge,
+body:not(.theme-light) .aff-card-badge {
+    background: transparent !important;
+    border: 1px solid var(--calm-border-strong) !important;
+    color: var(--calm-sub) !important;
+    box-shadow: none !important;
+}
+
+body:not(.theme-light) .article-lead,
+body:not(.theme-light) .lead-box,
+body:not(.theme-light) .highlight-box,
+body:not(.theme-light) .cta-box,
+body:not(.theme-light) .live-tool-cta-box,
+body:not(.theme-light) .aff-card,
+body:not(.theme-light) .stat-box,
+body:not(.theme-light) .related-article-card {
+    background: var(--calm-surface) !important;
+    border: 1px solid var(--calm-border) !important;
+    box-shadow: none !important;
+}
+
+body:not(.theme-light) .article-lead,
+body:not(.theme-light) .lead-box {
+    border-left: 3px solid var(--calm-accent) !important;
+}
+
+body:not(.theme-light) .aff-btn,
+body:not(.theme-light) .related-article-card a {
+    background: var(--calm-surface-2) !important;
+    border: 1px solid rgba(200, 164, 110, 0.52) !important;
+    color: #f1e3cb !important;
+    box-shadow: none !important;
+}
+
+body:not(.theme-light) .stat-num {
+    color: #dfc496 !important;
+}
+
+body:not(.theme-light) .stat-num.pink {
+    color: var(--calm-women) !important;
+}
+
+body:not(.theme-light) .club-table-wrap,
+body:not(.theme-light) .data-table-wrap {
+    border-color: var(--calm-border) !important;
+}
+
+body:not(.theme-light) .club-table th,
+body:not(.theme-light) .data-table th {
+    background: var(--calm-surface-2) !important;
+    color: var(--calm-sub) !important;
+}
+
+.official-notice-box {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-left: 3px solid rgba(200, 164, 110, 0.65);
+    border-radius: 10px;
+    padding: 12px 15px;
+    margin: 14px 0;
+    font-size: 0.78rem;
+    line-height: 1.65;
+}
+
+body:not(.theme-light) .official-notice-box {
+    background: var(--calm-surface) !important;
+    border-color: var(--calm-border) !important;
+    border-left-color: rgba(200, 164, 110, 0.65) !important;
+    color: var(--calm-sub) !important;
+}
+
+body.theme-light .official-notice-box {
+    background: var(--calm-light-surface) !important;
+    border-color: var(--calm-light-border) !important;
+    border-left-color: var(--calm-light-accent) !important;
+    color: var(--calm-light-sub) !important;
+}
+
+body.theme-light .official-notice-box strong {
+    color: var(--calm-light-text) !important;
+}
+
+body.theme-light .official-notice-title,
+body.theme-light .official-ext-link {
+    color: var(--calm-light-accent) !important;
+}
+
+
 

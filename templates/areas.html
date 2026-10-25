@@ -16,25 +16,25 @@
 
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=2">
     <link rel="apple-touch-icon" href="/static/icon.png?v=2">
-    <link rel="stylesheet" href="/static/portal.css?v=2">
+    <link rel="stylesheet" href="/static/portal.css?v=6">
     <style>
         :root {
-            --bg-dark: #0a0a0f;
-            --card-bg: rgba(22, 22, 34, 0.85);
-            --text-main: #f8fafc;
-            --text-sub: #94a3b8;
-            --accent-pink: #ec4899;
-            --accent-blue: #3b82f6;
-            --border-subtle: rgba(255, 255, 255, 0.1);
+            --bg-dark: #0f1014;
+            --card-bg: #16171c;
+            --text-main: #ebe8e3;
+            --text-sub: #9a968e;
+            --accent-gold: #c8a46e;
+            --accent-text: #dfc496;
+            --women: #d8a1aa;
+            --men: #93b1c9;
+            --border-subtle: rgba(255, 255, 255, 0.08);
         }
         * { box-sizing: border-box; }
         body {
             margin: 0;
             padding: 0;
             background-color: var(--bg-dark);
-            background-image:
-                radial-gradient(circle at 15% 10%, rgba(236, 72, 153, 0.12), transparent 35%),
-                radial-gradient(circle at 85% 80%, rgba(59, 130, 246, 0.12), transparent 35%);
+            background-image: none;
             color: var(--text-main);
             font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
             line-height: 1.75;
@@ -61,65 +61,57 @@
             gap: 10px;
         }
         .portal-brand-title {
-            font-size: 1.5rem;
+            font-size: 1.45rem;
             font-weight: 800;
-            background: linear-gradient(90deg, #ec4899, #8b5cf6, #3b82f6);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
+            color: var(--text-main);
             margin: 0;
         }
         .portal-brand-sub {
             font-size: 0.78rem;
             color: var(--text-sub);
         }
-        /* グローバルナビ: 共通部分は /static/portal.css。以下はこのページ固有の差分 */
         .portal-global-nav { margin-bottom: 18px; scrollbar-width: none; }
         .portal-global-nav::-webkit-scrollbar { display: none; }
-        .portal-nav-item { transition: all 0.2s ease; }
-        .portal-nav-item:hover {
-            background: rgba(255, 255, 255, 0.1);
-            color: #fff;
-        }
 
         /* Area Selector Pills */
         .area-pills-bar {
             display: flex;
             flex-wrap: wrap;
             gap: 8px;
-            margin-bottom: 24px;
+            margin-bottom: 22px;
         }
         .area-pill {
             display: inline-flex;
             align-items: center;
             gap: 6px;
             padding: 7px 14px;
-            border-radius: 10px;
-            font-size: 0.82rem;
-            font-weight: 700;
+            border-radius: 8px;
+            font-size: 0.81rem;
+            font-weight: 600;
             text-decoration: none;
-            color: #cbd5e1;
-            background: rgba(255, 255, 255, 0.04);
+            color: var(--text-sub);
+            background: rgba(255, 255, 255, 0.03);
             border: 1px solid var(--border-subtle);
-            transition: all 0.2s ease;
+            transition: all 0.18s ease;
         }
         .area-pill:hover {
-            border-color: rgba(56, 189, 248, 0.5);
-            color: #fff;
+            border-color: rgba(200, 164, 110, 0.4);
+            color: var(--text-main);
         }
         .area-pill.active {
-            background: rgba(56, 189, 248, 0.18);
-            border-color: #38bdf8;
-            color: #fff;
+            background: rgba(200, 164, 110, 0.13);
+            border-color: rgba(200, 164, 110, 0.45);
+            color: var(--accent-text);
+            font-weight: 700;
         }
 
         /* Area Detail Section */
         .area-section-card {
             background: var(--card-bg);
             border: 1px solid var(--border-subtle);
-            border-radius: 18px;
+            border-radius: 14px;
             padding: 24px;
-            margin-bottom: 28px;
+            margin-bottom: 24px;
         }
         .area-header-row {
             display: flex;
@@ -129,12 +121,12 @@
             gap: 12px;
             margin-bottom: 14px;
             padding-bottom: 14px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            border-bottom: 1px solid var(--border-subtle);
         }
         .area-title-group h2, .area-title-group h1 {
             margin: 0;
-            font-size: 1.35rem;
-            color: #fff;
+            font-size: 1.3rem;
+            color: var(--text-main);
             display: flex;
             align-items: center;
             gap: 8px;
@@ -143,15 +135,16 @@
             display: flex;
             align-items: center;
             gap: 12px;
-            background: rgba(15, 23, 42, 0.8);
+            background: #1b1c22;
             padding: 6px 14px;
             border-radius: 999px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            font-size: 0.84rem;
-            font-weight: 700;
+            border: 1px solid var(--border-subtle);
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--text-sub);
         }
-        .tot-w { color: #f472b6; }
-        .tot-m { color: #60a5fa; }
+        .tot-w { color: var(--women); }
+        .tot-m { color: var(--men); }
 
         /* Live Store Mini Cards */
         .live-stores-grid {
@@ -161,18 +154,22 @@
             margin: 18px 0 22px;
         }
         .live-store-card {
-            background: rgba(15, 23, 42, 0.75);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
+            background: #1b1c22;
+            border: 1px solid var(--border-subtle);
+            border-radius: 10px;
             padding: 14px;
             display: flex;
             flex-direction: column;
             gap: 8px;
+            transition: border-color 0.18s ease;
+        }
+        .live-store-card:hover {
+            border-color: rgba(200, 164, 110, 0.42);
         }
         .live-store-name {
-            font-size: 0.95rem;
+            font-size: 0.92rem;
             font-weight: 700;
-            color: #fff;
+            color: var(--text-main);
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -181,48 +178,63 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            font-size: 0.88rem;
+            font-size: 0.86rem;
             font-weight: 700;
         }
         .ratio-bar {
             height: 6px;
             border-radius: 999px;
-            background: rgba(59, 130, 246, 0.35);
+            background: rgba(147, 177, 201, 0.28);
             overflow: hidden;
         }
         .ratio-fill-w {
             height: 100%;
-            background: linear-gradient(90deg, #ec4899, #f472b6);
+            background: var(--women);
         }
 
         /* Editorial Guide Points inside Area */
         .area-guide-points {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-            gap: 14px;
+            gap: 12px;
             margin-top: 16px;
         }
         .area-point-box {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.07);
-            border-radius: 12px;
+            background: #1b1c22;
+            border: 1px solid var(--border-subtle);
+            border-radius: 10px;
             padding: 15px;
         }
         .area-point-box h3 {
             margin: 0 0 6px 0;
-            font-size: 0.92rem;
-            color: #38bdf8;
+            font-size: 0.9rem;
+            color: var(--accent-text);
         }
         .area-point-box p {
             margin: 0;
-            font-size: 0.84rem;
-            color: #cbd5e1;
+            font-size: 0.83rem;
+            color: var(--text-sub);
             line-height: 1.65;
         }
-
-        .portal-footer-links a:hover { color: #ec4899; }
+        .area-cta-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 22px;
+            border-radius: 8px;
+            background: rgba(200, 164, 110, 0.14);
+            border: 1px solid rgba(200, 164, 110, 0.42);
+            color: var(--accent-text);
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 700;
+            transition: background 0.18s ease;
+        }
+        .area-cta-btn:hover {
+            background: rgba(200, 164, 110, 0.22);
+        }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=1">
+    <link rel="stylesheet" href="/static/calm.css?v=7">
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
          crossorigin="anonymous"></script>
@@ -233,9 +245,9 @@
         <div class="portal-top-header">
             <a href="/" class="portal-brand-link">
                 <span class="portal-brand-title">相席ナビ</span>
-                <span class="portal-brand-sub">全国ラウンジの今わかる人数ランキング＆攻略メディア</span>
+                <span class="portal-brand-sub">全国ラウンジのリアルタイム人数＆攻略メディア</span>
             </a>
-            <span style="font-size: 0.78rem; color: #94a3b8;">最終更新: {{ last_updated }}</span>
+            <span style="font-size: 0.77rem; color: var(--text-sub);">最終更新: {{ last_updated }}</span>
         </div>
 
         {% set nav_active = 'areas' %}
@@ -243,10 +255,9 @@
 
         <!-- Area Selector Bar -->
         <div class="area-pills-bar">
-            <a href="/areas" class="area-pill {% if not selected_area %}active{% endif %}">🗺️ 全国すべてのエリア</a>
+            <a href="/areas" class="area-pill {% if not selected_area %}active{% endif %}">全国すべてのエリア</a>
             {% for item in area_summaries %}
             <a href="/area/{{ item.slug }}" class="area-pill {% if selected_area and selected_area.slug == item.slug %}active{% endif %}">
-                <span>{{ item.info.icon }}</span>
                 <span>{{ item.info.short_name }}</span>
             </a>
             {% endfor %}
@@ -257,7 +268,7 @@
         <article class="area-section-card">
             <div class="area-header-row">
                 <div class="area-title-group">
-                    <h1>{{ selected_area.info.icon }} {{ selected_area.info.name }}のリアルタイム混雑＆店舗ガイド</h1>
+                    <h1>{{ selected_area.info.name }}のリアルタイム混雑＆店舗ガイド</h1>
                 </div>
                 <div class="area-live-totals">
                     <span>対象 {{ selected_area.store_count }}店舗</span>
@@ -267,9 +278,9 @@
                 </div>
             </div>
 
-            <p style="font-size: 0.94rem; color: #e2e8f0; margin: 0 0 16px;">{{ selected_area.info.lead }}</p>
+            <p style="font-size: 0.91rem; color: var(--text-sub); margin: 0 0 16px;">{{ selected_area.info.lead }}</p>
 
-            <h2 style="font-size: 1.05rem; color: #fff; margin: 20px 0 10px;">📊 現在の店舗別リアルタイム人数（女性が多い順）</h2>
+            <h2 style="font-size: 1.02rem; color: var(--text-main); margin: 20px 0 10px; padding-left: 10px; border-left: 3px solid var(--accent-gold);">現在の店舗別リアルタイム人数（女性が多い順）</h2>
             <div class="live-stores-grid">
                 {% for s in selected_area.stores %}
                 {% set tot = s.women + s.men %}
@@ -278,11 +289,11 @@
                 <div class="live-store-card" data-store-name="{{ s.name }}">
                     <div class="live-store-name">
                         <span>{{ s.name | seo_store_name }}</span>
-                        <span style="font-size: 0.75rem; color: #94a3b8;">女性比 {{ wpct if tot > 0 else 0 }}%</span>
+                        <span style="font-size: 0.74rem; color: var(--accent-text); font-weight: 600;">女性比 {{ wpct if tot > 0 else 0 }}%</span>
                     </div>
                     <div class="live-counts-row">
-                        <span class="tot-w">👩 女性 {{ s.women }}名{% if (s.women_diff or 0) > 0 %} <small style="font-size:0.74rem; opacity:0.9;">(↗ +{{ s.women_diff }})</small>{% endif %}</span>
-                        <span class="tot-m">👨 男性 {{ s.men }}名{% if (s.men_diff or 0) > 0 %} <small style="font-size:0.74rem; opacity:0.9;">(↗ +{{ s.men_diff }})</small>{% endif %}</span>
+                        <span class="tot-w">女性 {{ s.women }}名{% if (s.women_diff or 0) > 0 %} <small style="font-size:0.74rem; opacity:0.9;">(↗ +{{ s.women_diff }})</small>{% endif %}</span>
+                        <span class="tot-m">男性 {{ s.men }}名{% if (s.men_diff or 0) > 0 %} <small style="font-size:0.74rem; opacity:0.9;">(↗ +{{ s.men_diff }})</small>{% endif %}</span>
                     </div>
                     <div class="ratio-bar">
                         <div class="ratio-fill-w" style="width: {{ wpct }}%;"></div>
@@ -292,32 +303,35 @@
                 {% endfor %}
             </div>
 
-            <div style="text-align: center; margin: 18px 0 24px;">
-                <a href="/" style="display: inline-flex; align-items: center; gap: 6px; padding: 10px 22px; border-radius: 999px; background: linear-gradient(90deg, #ec4899, #3b82f6); color: #fff; text-decoration: none; font-size: 0.88rem; font-weight: 700;">
-                    📈 トップ画面で曜日・時間帯別の詳細グラフを見る ›
+            <div style="text-align: center; margin: 18px 0 24px; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
+                <a href="/" class="area-cta-btn">
+                    トップ画面で曜日・時間帯別の詳細グラフを見る ›
+                </a>
+                <a href="/price-comparison" class="area-pill" style="padding: 10px 18px;">
+                    エリア別の料金・開催中イベント比較を見る ›
                 </a>
             </div>
 
             <div class="area-guide-points">
                 <div class="area-point-box">
-                    <h3>🍸 店舗ごとの特徴と客層</h3>
+                    <h3>店舗ごとの特徴と客層</h3>
                     <p>{{ selected_area.info.atmosphere }}</p>
                 </div>
                 <div class="area-point-box">
-                    <h3>⏰ 狙い目の曜日・時間帯</h3>
+                    <h3>狙い目の曜日・時間帯</h3>
                     <p>{{ selected_area.info.best_time }}</p>
                 </div>
                 <div class="area-point-box">
-                    <h3>🥂 2軒目に使いやすい周辺エリア</h3>
+                    <h3>2軒目に使いやすい周辺エリア</h3>
                     <p>{{ selected_area.info.second_spot }}</p>
                 </div>
             </div>
         </article>
         {% else %}
         <!-- All Areas Directory View -->
-        <div style="margin-bottom: 24px;">
-            <h1 style="font-size: 1.45rem; margin: 0 0 8px; color: #fff;">📍 全国エリア別の現在人数＆ラウンジ立ち回りガイド</h1>
-            <p style="font-size: 0.9rem; color: #cbd5e1; margin: 0;">これから向かう街のリアルタイム合計人数と、そのエリアの店舗ごとの雰囲気・2軒目スポットをまとめて確認できます。</p>
+        <div style="margin-bottom: 22px;">
+            <h1 style="font-size: 1.4rem; margin: 0 0 8px; color: var(--text-main);">全国エリア別の現在人数＆ラウンジ立ち回りガイド</h1>
+            <p style="font-size: 0.88rem; color: var(--text-sub); margin: 0;">これから向かう街のリアルタイム合計人数と、そのエリアの店舗ごとの雰囲気・2軒目スポットをまとめて確認できます。※少人数時（女性6名未満）は比率が高くても席替え余地が限られるため、女性数もあわせてご確認ください。</p>
         </div>
 
         {% for item in area_summaries %}
@@ -325,8 +339,8 @@
             <div class="area-header-row">
                 <div class="area-title-group">
                     <h2>
-                        <a href="/area/{{ item.slug }}" style="color: #fff; text-decoration: none;">
-                            {{ item.info.icon }} {{ item.info.name }}
+                        <a href="/area/{{ item.slug }}" style="color: var(--text-main); text-decoration: none;">
+                            {{ item.info.name }}
                         </a>
                     </h2>
                 </div>
@@ -338,7 +352,7 @@
                 </div>
             </div>
 
-            <p style="font-size: 0.88rem; color: #cbd5e1; margin: 0 0 14px;">{{ item.info.lead }}</p>
+            <p style="font-size: 0.87rem; color: var(--text-sub); margin: 0 0 14px;">{{ item.info.lead }}</p>
 
             <div class="live-stores-grid">
                 {% for s in item.stores[:6] %}
@@ -348,11 +362,11 @@
                 <div class="live-store-card" data-store-name="{{ s.name }}">
                     <div class="live-store-name">
                         <span>{{ s.name | seo_store_name }}</span>
-                        <span style="font-size: 0.74rem; color: #94a3b8;">女性比 {{ wpct if tot > 0 else 0 }}%</span>
+                        <span style="font-size: 0.74rem; color: var(--accent-text); font-weight: 600;">女性比 {{ wpct if tot > 0 else 0 }}%</span>
                     </div>
                     <div class="live-counts-row">
-                        <span class="tot-w">👩 女性 {{ s.women }}名{% if (s.women_diff or 0) > 0 %} <small style="font-size:0.74rem; opacity:0.9;">(↗ +{{ s.women_diff }})</small>{% endif %}</span>
-                        <span class="tot-m">👨 男性 {{ s.men }}名{% if (s.men_diff or 0) > 0 %} <small style="font-size:0.74rem; opacity:0.9;">(↗ +{{ s.men_diff }})</small>{% endif %}</span>
+                        <span class="tot-w">女性 {{ s.women }}名{% if (s.women_diff or 0) > 0 %} <small style="font-size:0.74rem; opacity:0.9;">(↗ +{{ s.women_diff }})</small>{% endif %}</span>
+                        <span class="tot-m">男性 {{ s.men }}名{% if (s.men_diff or 0) > 0 %} <small style="font-size:0.74rem; opacity:0.9;">(↗ +{{ s.men_diff }})</small>{% endif %}</span>
                     </div>
                     <div class="ratio-bar">
                         <div class="ratio-fill-w" style="width: {{ wpct }}%;"></div>
@@ -364,17 +378,17 @@
 
             <div class="area-guide-points">
                 <div class="area-point-box">
-                    <h3>🍸 街の傾向と店舗の選び方</h3>
+                    <h3>街の傾向と店舗の選び方</h3>
                     <p>{{ item.info.atmosphere }}</p>
                 </div>
                 <div class="area-point-box">
-                    <h3>⏰ 入りやすい時間帯と2軒目</h3>
+                    <h3>入りやすい時間帯と2軒目</h3>
                     <p>{{ item.info.best_time }} {{ item.info.second_spot }}</p>
                 </div>
             </div>
 
             <div style="margin-top: 14px; text-align: right;">
-                <a href="/area/{{ item.slug }}" style="color: #f472b6; font-size: 0.84rem; font-weight: 700; text-decoration: none;">
+                <a href="/area/{{ item.slug }}" style="color: var(--accent-text); font-size: 0.83rem; font-weight: 600; text-decoration: none;">
                     {{ item.info.short_name }}の全店舗と詳細ガイドを見る ›
                 </a>
             </div>
