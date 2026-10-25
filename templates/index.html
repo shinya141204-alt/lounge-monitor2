@@ -1206,7 +1206,7 @@
                 <!-- Momentum & Card Legend Bar -->
                 <div class="momentum-legend-bar" aria-label="表示指標の説明">
                     <span class="momentum-legend-pill">「↗ +数字」＝ 直近15分での客数の伸び</span>
-                    <span class="momentum-legend-hint">比率順は女性6名以上を優先 ｜ 店舗タップで推移グラフ</span>
+                    <span class="momentum-legend-hint">比率順は女性10名以上を優先 ｜ 店舗タップで推移グラフ</span>
                 </div>
 
                 <!-- Pinned Stores Section -->
@@ -1573,7 +1573,7 @@
                     {% for s in initial_status.ranking %}
                     <a href="/store/{{ s.name | store_slug }}" style="color: #cbd5e1; text-decoration: none; display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.04);">
                         <span>{{ s.name | seo_store_name }}</span>
-                        <span style="color: #94a3b8;">{% if (s.women or 0) + (s.men or 0) > 0 %}女性{{ s.women }}・男性{{ s.men }}{% else %}店舗詳細 ›{% endif %}</span>
+                        <span style="color: #94a3b8;">{% if (s.women or 0) + (s.men or 0) > 0 %}女性{{ s.women }}・男性{{ s.men }}{% elif s.is_open_now %}0 : 0（営業中）{% else %}店舗詳細 ›{% endif %}</span>
                     </a>
                     {% endfor %}
                 </div>
@@ -1661,12 +1661,12 @@
         window.INITIAL_STATUS_DATA = {{ initial_status | tojson }};
         {% endif %}
     </script>
-    <script src="/static/app.js?v=20261026_3" defer></script>
+    <script src="/static/app.js?v=20261026_4" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js?v=30')
+                navigator.serviceWorker.register('/sw.js?v=31')
                     .then(reg => {
                         reg.update();
                     })

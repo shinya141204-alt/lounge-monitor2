@@ -447,8 +447,8 @@
         <aside class="official-notice-box" role="note" aria-label="料金・イベント情報および評価基準に関するご注意">
             <div class="official-notice-title">料金・イベント情報の確認および推奨評価基準について</div>
             <div>
-                ・<strong>公式ホームページ確認のお願い：</strong>掲載している料金システム・1名入店条件・イベント開催情報は公開データをもとに集計していますが、繁忙期・祝前日・年末年始等の特別料金や、店舗都合による急な内容変更・終了・表記差異がある場合がございます。ご来店の際は必ず各店舗の<strong>公式ホームページ・公式アプリ</strong>にて最新情報をご確認ください。<br>
-                ・<strong>最低人数の評価基準（女性{{ data.min_women_eval }}名以上）：</strong>店内の人数が少ない状態では、女性比率が高くても初回相席後に席替え（チェンジ）できる次の相席相手がいない場合があります。そのため当サイトでは<strong>女性{{ data.min_women_eval }}名以上（約3組以上）を比率評価・推奨選出の対象ライン</strong>、<strong>女性{{ data.min_women_top }}名以上を安定回転ライン</strong>として判定しています。
+                ・<strong>公式ホームページ確認のお願い：</strong>掲載している料金システム・営業時間・1名入店条件・イベント開催情報は公開データをもとに集計していますが、繁忙期・祝前日・年末年始等の特別営業や、店舗都合による急な内容変更・終了・表記差異がある場合がございます。ご来店の際は必ず各店舗の<strong>公式ホームページ・公式アプリ</strong>にて最新情報をご確認ください。<br>
+                ・<strong>最低人数の評価基準（女性{{ data.min_women_eval }}名以上）：</strong>店内の人数が少ない状態では、女性比率が高くても初回相席後に席替え（チェンジ）できる次の相席相手がいない場合があります。そのため当サイトでは<strong>女性{{ data.min_women_eval }}名以上（約5組以上）を比率評価・推奨選出の対象ライン</strong>、<strong>女性{{ data.min_women_top }}名以上を安定回転ライン</strong>として判定しています。また、公式ホームページ上の営業時間内に入店人数が0名の店舗は「営業時間外」ではなく<strong>「0 : 0」（営業中・空席）</strong>と表記します。
             </div>
         </aside>
 
@@ -483,18 +483,18 @@
                             {% if cl.best_store %}
                             現在のエリア推奨（母数・比率・単価バランス）：{{ cl.best_store.seo_name }}
                             {% elif cl.has_any_open %}
-                            現在{{ cl.tab_label }}は立ち上がり時間帯です（全店 女性{{ data.min_women_eval }}名未満）
+                            現在{{ cl.tab_label }}は営業中です（全店 女性{{ data.min_women_eval }}名未満）
                             {% else %}
-                            現在{{ cl.tab_label }}は営業時間外（オープン準備中）です
+                            現在{{ cl.tab_label }}は営業時間外です
                             {% endif %}
                         </div>
                         <div class="best-pick-sub" data-best-sub>
                             {% if cl.best_store %}
                             {{ cl.best_store.verdict_comment }}
                             {% elif cl.has_any_open %}
-                            少人数時は女性比率が高くても席替え（次の相席候補）が限られるため、推奨店舗の選出を保留しています。人数が増える時間帯まで待つか、下の表で単価・入店条件を比較してください。
+                            公式営業時間内ですが、全店舗とも女性{{ data.min_women_eval }}名未満（少人数または 0 : 0 空席）のため、席替え（次の相席候補）の余地を考慮して推奨店舗の選出を保留しています。下の表で各店の現在人数・単価・入店条件を比較してください。
                             {% else %}
-                            夕方オープン後にリアルタイム男女人数と推奨判定が自動反映されます。事前の時間帯別料金・単独料金・入店条件の比較にご活用ください。
+                            各店舗の公式オープン時刻後にリアルタイム男女人数と推奨判定が自動反映されます。事前の時間帯別料金・単独料金・入店条件の比較にご活用ください。
                             {% endif %}
                         </div>
                     </div>
@@ -534,7 +534,8 @@
                                 data-slot-18-20="{{ st.slot_18_20 }}"
                                 data-slot-20-22="{{ st.slot_20_22 }}"
                                 data-slot-22-24="{{ st.slot_22_24 }}"
-                                data-slot-24-last="{{ st.slot_24_last }}">
+                                data-slot-24-last="{{ st.slot_24_last }}"
+                                data-hours-spec='{{ st.hours_spec | tojson }}'>
                                 <td style="min-width: 190px;">
                                     <div>
                                         <span class="brand-pill">{{ st.brand_code }}</span>
@@ -547,6 +548,7 @@
                                         入店条件：{{ st.solo_rule }}
                                     </div>
                                     <div style="font-size: 0.72rem; color: var(--text-sub); margin-top: 3px;">
+                                        営業時間：{{ st.hours_label }}<br>
                                         年齢層：{{ st.age_range }}<br>
                                         特徴：{{ st.vibe_short }}
                                     </div>
@@ -565,9 +567,13 @@
                                     <div class="mini-ratio-bar">
                                         <div class="mini-ratio-fill" style="width: {{ st.wpct }}%;"></div>
                                     </div>
+                                    {% elif st.is_open_now %}
+                                    <div style="font-weight: 700; font-size: 0.92rem; color: var(--text-main);">0 : 0</div>
+                                    <div style="font-size: 0.73rem; color: var(--text-sub); margin-top: 2px;">女性 0名 / 男性 0名</div>
+                                    <div style="font-size: 0.71rem; color: var(--accent-text); margin-top: 3px;">営業中（本日 {{ st.today_hours_label }}）</div>
                                     {% else %}
-                                    <div style="font-size: 0.79rem; color: var(--text-sub);">営業時間外（準備中）</div>
-                                    <div style="font-size: 0.71rem; color: var(--text-sub); opacity: 0.75;">夕方オープン後に自動反映</div>
+                                    <div style="font-size: 0.79rem; color: var(--text-sub);">営業時間外</div>
+                                    <div style="font-size: 0.71rem; color: var(--text-sub); opacity: 0.75;">本日 {{ st.today_hours_label }}</div>
                                     {% endif %}
                                 </td>
                                 <td style="min-width: 225px;">
@@ -644,7 +650,8 @@
                      data-slot-18-20="{{ st.slot_18_20 }}"
                      data-slot-20-22="{{ st.slot_20_22 }}"
                      data-slot-22-24="{{ st.slot_22_24 }}"
-                     data-slot-24-last="{{ st.slot_24_last }}">
+                     data-slot-24-last="{{ st.slot_24_last }}"
+                     data-hours-spec='{{ st.hours_spec | tojson }}'>
                     <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
                         <div>
                             <span class="brand-pill">{{ st.brand_code }}</span>
@@ -657,10 +664,13 @@
                         <div data-verify-crowd>
                             <span style="font-size: 0.74rem; color: var(--text-sub);">現在の店内人数：</span>
                             {% if st.total > 0 %}
-                            <strong style="color: var(--women);">女性{{ st.women }}名</strong> / <strong style="color: var(--men);">男性{{ st.men }}名</strong>
+                            <strong style="color: var(--women);">女性 {{ st.women }}名</strong> / <strong style="color: var(--men);">男性 {{ st.men }}名</strong>
                             <span style="font-size: 0.75rem; color: var(--accent-text); font-weight: 600;">（女性比{{ st.wpct }}%）</span>
+                            {% elif st.is_open_now %}
+                            <strong style="color: var(--text-main);">0 : 0</strong>
+                            <span style="font-size: 0.74rem; color: var(--accent-text);">（営業中｜{{ st.today_hours_label }}）</span>
                             {% else %}
-                            <span style="font-size: 0.79rem; color: var(--text-sub);">営業時間外（準備中）</span>
+                            <span style="font-size: 0.79rem; color: var(--text-sub);">営業時間外（本日 {{ st.today_hours_label }}）</span>
                             {% endif %}
                         </div>
                         <span style="font-size: 0.73rem; font-weight: 600; color: var(--text-sub);">単独 {{ st.wait_fee_str }}</span>
@@ -760,6 +770,7 @@
                                     <span class="brand-pill">{{ st.brand_code }}</span>
                                     <a href="/store/{{ st.slug }}" style="color: var(--text-main); text-decoration: none;">{{ st.seo_name }} ›</a>
                                 </div>
+                                <div style="font-size: 0.69rem; color: var(--text-sub); margin-top: 2px;">営業時間：{{ st.hours_label }}</div>
                                 <div style="margin-top: 4px;">
                                     <a href="{{ st.official_url }}" target="_blank" rel="noopener noreferrer" class="official-ext-link">公式サイト ↗</a>
                                 </div>
@@ -797,13 +808,86 @@
         }
 
         (function initLivePriceComparisonSync() {
-            const MIN_WOMEN_EVAL = 6;
-            const MIN_WOMEN_TOP = 8;
+            const MIN_WOMEN_EVAL = {{ data.min_women_eval }};
+            const MIN_WOMEN_TOP = {{ data.min_women_top }};
+            const JP_HOLIDAYS = new Set({{ data.jp_holidays | tojson }});
 
             if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.getRegistrations()
                     .then(regs => regs.forEach(r => r.update()))
                     .catch(() => {});
+            }
+
+            function fmtIsoDateUTC(dt) {
+                const y = dt.getUTCFullYear();
+                const m = String(dt.getUTCMonth() + 1).padStart(2, '0');
+                const d = String(dt.getUTCDate()).padStart(2, '0');
+                return y + '-' + m + '-' + d;
+            }
+
+            function fmtHourSpan(openH, closeH) {
+                const cDisp = closeH >= 24 ? (closeH - 24) : closeH;
+                const prefix = closeH >= 24 ? '翌' : '';
+                return String(openH).padStart(2, '0') + ':00〜' + prefix + cDisp + ':00';
+            }
+
+            function evalHoursSpec(specJson, storeName, total) {
+                let spec = null;
+                try {
+                    spec = specJson ? JSON.parse(specJson) : null;
+                } catch (e) {
+                    spec = null;
+                }
+                if (!spec || !spec.mt) {
+                    spec = { mt: [18, 29], fs: [18, 29], sh: [18, 29], cw: [], label: '18:00〜翌5:00' };
+                }
+
+                const nowJstMs = Date.now() + 9 * 3600 * 1000;
+                const nowJst = new Date(nowJstMs);
+                const jstHour = nowJst.getUTCHours();
+                const jstMin = nowJst.getUTCMinutes();
+
+                let bizDateMs = nowJstMs;
+                let curMinutes = jstHour * 60 + jstMin;
+                if (jstHour < 12) {
+                    bizDateMs = nowJstMs - 86400 * 1000;
+                    curMinutes = (24 + jstHour) * 60 + jstMin;
+                }
+                const bizDate = new Date(bizDateMs);
+                const nextDate = new Date(bizDateMs + 86400 * 1000);
+                const pyWd = (bizDate.getUTCDay() + 6) % 7; // 0=Mon .. 6=Sun
+
+                const sStr = String(storeName || '');
+                const isKorea = sStr.includes('ソウル') || sStr.includes('カンナム') || sStr.includes('ホンデ');
+                const bizIso = fmtIsoDateUTC(bizDate);
+                const nextIso = fmtIsoDateUTC(nextDate);
+
+                const isPreHoliday = !isKorea && JP_HOLIDAYS.has(nextIso);
+                const isHoliday = !isKorea && JP_HOLIDAYS.has(bizIso);
+                const cw = Array.isArray(spec.cw) ? spec.cw : [];
+                const isClosedDay = cw.includes(pyWd) && !isPreHoliday;
+
+                let pair = spec.mt;
+                if (isPreHoliday || pyWd === 4 || pyWd === 5) {
+                    pair = spec.fs || spec.mt;
+                } else if (pyWd === 6 || isHoliday) {
+                    pair = spec.sh || spec.mt;
+                }
+
+                let todayHoursLabel = '定休日';
+                let scheduledOpen = false;
+                if (!isClosedDay && Array.isArray(pair) && pair.length >= 2) {
+                    todayHoursLabel = fmtHourSpan(pair[0], pair[1]);
+                    scheduledOpen = (pair[0] * 60) <= curMinutes && curMinutes < (pair[1] * 60);
+                }
+
+                const isOpenNow = total > 0 ? true : scheduledOpen;
+                return {
+                    isOpenNow,
+                    scheduledOpen,
+                    todayHoursLabel,
+                    hoursLabel: spec.label || todayHoursLabel
+                };
             }
 
             function getJstSlotInfo() {
@@ -819,10 +903,11 @@
                 return { key: 'slot2224', slotLabel: '22:00〜24:00（ピーク帯）', shortLabel: '22時〜24時' };
             }
 
-            function computeStoreLiveVerdict(ds, women, men, slotInfo) {
+            function computeStoreLiveVerdict(ds, storeName, women, men, slotInfo) {
                 const total = women + men;
                 const wpct = total > 0 ? Math.round((women / total) * 100) : 0;
                 const meetsMin = women >= MIN_WOMEN_EVAL;
+                const hoursInfo = evalHoursSpec(ds.hoursSpec, storeName, total);
                 const waitStr = ds.waitStr || '';
                 const waitYen = parseInt(ds.waitYen || '0', 10) || 0;
                 const estWknd = parseInt(ds.estWknd || '4620', 10) || 4620;
@@ -866,23 +951,33 @@
                 let comment = '';
 
                 if (total === 0) {
-                    badge = '営業時間外・4時間帯比較';
-                    cls = 'verdict-neutral';
-                    if (isFlat) {
-                        comment = `定額デイパス制（${waitStr}）。入店時間帯プランは①Open〜20時（${s1820}）→②20〜22時（${s2022}）→③④22時〜（${s2224}）。${soloRule}。`;
+                    if (hoursInfo.isOpenNow) {
+                        badge = '営業中（0 : 0）・空席';
+                        cls = 'verdict-low';
+                        if (isFlat) {
+                            comment = `公式営業時間内（本日 ${hoursInfo.todayHoursLabel}）で現在 0 : 0（空席）です。定額デイパス制（${waitStr}）のため時間内の待機追加課金はありませんが、来客状況を見てご判断ください。`;
+                        } else {
+                            comment = `公式営業時間内（本日 ${hoursInfo.todayHoursLabel}）で現在 0 : 0（空席）です。相席前の単独時は${waitStr}が発生するため、女性${MIN_WOMEN_EVAL}名以上の近隣店と比較するか人数増加を待つのが安全です。`;
+                        }
                     } else {
-                        comment = `単独（待機）時は${waitStr}が発生。相席10分はOpen〜20時（${s1820}）→20〜22時（${s2022}）→22〜24時（${s2224}）→24時〜（${s24last}）。${soloRule}。`;
+                        badge = '営業時間外';
+                        cls = 'verdict-neutral';
+                        if (isFlat) {
+                            comment = `現在は営業時間外（本日 ${hoursInfo.todayHoursLabel}）。定額デイパス制（${waitStr}）。プランは①Open〜20時（${s1820}）→②20〜22時（${s2022}）→③④22時〜（${s2224}）。${soloRule}。`;
+                        } else {
+                            comment = `現在は営業時間外（本日 ${hoursInfo.todayHoursLabel}）。単独（待機）時は${waitStr}が発生。相席10分はOpen〜20時（${s1820}）→20〜22時（${s2022}）→22〜24時（${s2224}）→24時〜（${s24last}）。${soloRule}。`;
+                        }
                     }
                 } else if (!meetsMin) {
                     if (women >= men) {
                         badge = `少人数・様子見推奨（女性${women}名）`;
                         cls = 'verdict-low';
-                        comment = `現在女性${women}名／男性${men}名（女性比${wpct}%）。比率は高めですが店内の女性組数がまだ少ない（約1〜2組規模）ため、初回相席後に席替えできる次の相手が限られる可能性があります。女性${MIN_WOMEN_EVAL}〜${MIN_WOMEN_TOP}名以上への増加を待つか近隣店との比較が安全です。`;
+                        comment = `現在女性${women}名／男性${men}名（女性比${wpct}%）。比率は高めですが店内の女性組数がまだ少ない（基準${MIN_WOMEN_EVAL}名未満）ため、初回相席後に席替えできる次の相手が限られる可能性があります。女性${MIN_WOMEN_EVAL}〜${MIN_WOMEN_TOP}名以上への増加を待つか近隣店との比較が安全です。`;
                     } else {
                         badge = `少人数・男性先行（女性${women}名）`;
                         cls = 'verdict-warn';
                         comment = isFlat
-                            ? `現在女性${women}名／男性${men}名と立ち上がり前かつ男性先行の状態です。定額パス制ですが待ち時間が発生する可能性があるため、女性${MIN_WOMEN_EVAL}名以上の近隣店もあわせてご確認ください。`
+                            ? `現在女性${women}名／男性${men}名と基準${MIN_WOMEN_EVAL}名未満かつ男性先行の状態です。定額パス制ですが待ち時間が発生する可能性があるため、女性${MIN_WOMEN_EVAL}名以上の近隣店もあわせてご確認ください。`
                             : `現在女性${women}名／男性${men}名と母数が少なく男性先行のため、単独待機（${waitStr}）になりやすい状態です。女性${MIN_WOMEN_EVAL}名以上集まっている近隣店を優先するのがおすすめです。`;
                     }
                 } else if (women >= men && women >= MIN_WOMEN_TOP && estWknd <= 4620) {
@@ -912,7 +1007,7 @@
                 } else if (women > men) {
                     badge = `女性+${women - men}名リード・相席圏内`;
                     cls = 'verdict-good';
-                    comment = `現在女性${women}名／男性${men}名（女性比${wpct}%・約3組規模）。単独待機を抑えて初回相席に入りやすいバランスです。複数回の席替えも重視する場合は女性${MIN_WOMEN_TOP}名以上の店舗もあわせて比較してみてください。`;
+                    comment = `現在女性${women}名／男性${men}名（女性比${wpct}%・約5組以上）。単独待機を抑えて初回相席に入りやすいバランスです。複数回の席替えも重視する場合は女性${MIN_WOMEN_TOP}名以上の店舗もあわせて比較してみてください。`;
                 } else {
                     badge = '男女拮抗・単価比較推奨';
                     cls = 'verdict-neutral';
@@ -923,7 +1018,7 @@
                     }
                 }
 
-                return { total, wpct, meetsMin, activeRate, valueScore, badge, cls, comment };
+                return { total, wpct, meetsMin, isOpenNow: hoursInfo.isOpenNow, todayHoursLabel: hoursInfo.todayHoursLabel, activeRate, valueScore, badge, cls, comment };
             }
 
             let isSyncing = false;
@@ -961,8 +1056,8 @@
                             const live = liveMap[sname] || {};
                             const w = parseInt(live.women || 0, 10) || 0;
                             const m = parseInt(live.men || 0, 10) || 0;
-                            const calc = computeStoreLiveVerdict(row.dataset, w, m, slotInfo);
-                            if (calc.total > 0) anyOpen = true;
+                            const calc = computeStoreLiveVerdict(row.dataset, sname, w, m, slotInfo);
+                            if (calc.isOpenNow) anyOpen = true;
 
                             const crowdCell = row.querySelector('[data-crowd-cell]');
                             if (crowdCell) {
@@ -974,10 +1069,15 @@
                                         '</div>' +
                                         '<div style="font-size: 0.75rem; color: var(--accent-text); font-weight: 600; margin: 3px 0 6px;">女性比率 ' + calc.wpct + '%' + lowNote + '</div>' +
                                         '<div class="mini-ratio-bar"><div class="mini-ratio-fill" style="width: ' + calc.wpct + '%;"></div></div>';
+                                } else if (calc.isOpenNow) {
+                                    crowdCell.innerHTML =
+                                        '<div style="font-weight: 700; font-size: 0.92rem; color: var(--text-main);">0 : 0</div>' +
+                                        '<div style="font-size: 0.73rem; color: var(--text-sub); margin-top: 2px;">女性 0名 / 男性 0名</div>' +
+                                        '<div style="font-size: 0.71rem; color: var(--accent-text); margin-top: 3px;">営業中（本日 ' + calc.todayHoursLabel + '）</div>';
                                 } else {
                                     crowdCell.innerHTML =
-                                        '<div style="font-size: 0.79rem; color: var(--text-sub);">営業時間外（準備中）</div>' +
-                                        '<div style="font-size: 0.71rem; color: var(--text-sub); opacity: 0.75;">夕方オープン後に自動反映</div>';
+                                        '<div style="font-size: 0.79rem; color: var(--text-sub);">営業時間外</div>' +
+                                        '<div style="font-size: 0.71rem; color: var(--text-sub); opacity: 0.75;">本日 ' + calc.todayHoursLabel + '</div>';
                                 }
                             }
 
@@ -1040,11 +1140,11 @@
                                 banner.classList.add('is-standby');
                                 if (bLink) bLink.style.display = 'none';
                                 if (anyOpen) {
-                                    if (bTitle) bTitle.textContent = '現在' + cLabel + 'は立ち上がり時間帯です（全店 女性' + MIN_WOMEN_EVAL + '名未満）';
-                                    if (bSub) bSub.textContent = '少人数時は女性比率が高くても席替え（次の相席候補）が限られるため、推奨店舗の選出を保留しています。人数が増える時間帯まで待つか、下の表で単価・入店条件を比較してください。';
+                                    if (bTitle) bTitle.textContent = '現在' + cLabel + 'は営業中です（全店 女性' + MIN_WOMEN_EVAL + '名未満）';
+                                    if (bSub) bSub.textContent = '公式営業時間内ですが、全店舗とも女性' + MIN_WOMEN_EVAL + '名未満（少人数または 0 : 0 空席）のため、席替え（次の相席候補）の余地を考慮して推奨店舗の選出を保留しています。下の表で各店の現在人数・単価・入店条件を比較してください。';
                                 } else {
-                                    if (bTitle) bTitle.textContent = '現在' + cLabel + 'は営業時間外（オープン準備中）です';
-                                    if (bSub) bSub.textContent = '夕方オープン後にリアルタイム男女人数と推奨判定が自動反映されます。事前の時間帯別料金・単独料金・入店条件の比較にご活用ください。';
+                                    if (bTitle) bTitle.textContent = '現在' + cLabel + 'は営業時間外です';
+                                    if (bSub) bSub.textContent = '各店舗の公式オープン時刻後にリアルタイム男女人数と推奨判定が自動反映されます。事前の時間帯別料金・単独料金・入店条件の比較にご活用ください。';
                                 }
                             }
                         }
@@ -1055,19 +1155,24 @@
                         const live = liveMap[sname] || {};
                         const w = parseInt(live.women || 0, 10) || 0;
                         const m = parseInt(live.men || 0, 10) || 0;
-                        const calc = computeStoreLiveVerdict(card.dataset, w, m, slotInfo);
+                        const calc = computeStoreLiveVerdict(card.dataset, sname, w, m, slotInfo);
 
                         const crowdBox = card.querySelector('[data-verify-crowd]');
                         if (crowdBox) {
                             if (calc.total > 0) {
                                 crowdBox.innerHTML =
                                     '<span style="font-size: 0.74rem; color: var(--text-sub);">現在の店内人数：</span>' +
-                                    '<strong style="color: var(--women);">女性' + w + '名</strong> / <strong style="color: var(--men);">男性' + m + '名</strong> ' +
+                                    '<strong style="color: var(--women);">女性 ' + w + '名</strong> / <strong style="color: var(--men);">男性 ' + m + '名</strong> ' +
                                     '<span style="font-size: 0.75rem; color: var(--accent-text); font-weight: 600;">（女性比' + calc.wpct + '%）</span>';
+                            } else if (calc.isOpenNow) {
+                                crowdBox.innerHTML =
+                                    '<span style="font-size: 0.74rem; color: var(--text-sub);">現在の店内人数：</span>' +
+                                    '<strong style="color: var(--text-main);">0 : 0</strong> ' +
+                                    '<span style="font-size: 0.74rem; color: var(--accent-text);">（営業中｜' + calc.todayHoursLabel + '）</span>';
                             } else {
                                 crowdBox.innerHTML =
                                     '<span style="font-size: 0.74rem; color: var(--text-sub);">現在の店内人数：</span>' +
-                                    '<span style="font-size: 0.79rem; color: var(--text-sub);">営業時間外（準備中）</span>';
+                                    '<span style="font-size: 0.79rem; color: var(--text-sub);">営業時間外（本日 ' + calc.todayHoursLabel + '）</span>';
                             }
                         }
                         const vComment = card.querySelector('[data-verify-comment]');

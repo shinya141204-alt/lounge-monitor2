@@ -289,11 +289,16 @@
                 <div class="live-store-card" data-store-name="{{ s.name }}">
                     <div class="live-store-name">
                         <span>{{ s.name | seo_store_name }}</span>
-                        <span style="font-size: 0.74rem; color: var(--accent-text); font-weight: 600;">女性比 {{ wpct if tot > 0 else 0 }}%</span>
+                        <span style="font-size: 0.74rem; color: var(--accent-text); font-weight: 600;">{% if tot > 0 %}女性比 {{ wpct }}%{% elif s.is_open_now %}営業中（0 : 0）{% else %}営業時間外{% endif %}</span>
                     </div>
                     <div class="live-counts-row">
+                        {% if tot > 0 or s.is_open_now %}
                         <span class="tot-w">女性 {{ s.women }}名{% if (s.women_diff or 0) > 0 %} <small style="font-size:0.74rem; opacity:0.9;">(↗ +{{ s.women_diff }})</small>{% endif %}</span>
                         <span class="tot-m">男性 {{ s.men }}名{% if (s.men_diff or 0) > 0 %} <small style="font-size:0.74rem; opacity:0.9;">(↗ +{{ s.men_diff }})</small>{% endif %}</span>
+                        {% else %}
+                        <span style="color: var(--text-sub); font-size: 0.78rem; font-weight: 500;">本日 {{ s.today_hours_label }}</span>
+                        <span></span>
+                        {% endif %}
                     </div>
                     <div class="ratio-bar">
                         <div class="ratio-fill-w" style="width: {{ wpct }}%;"></div>
@@ -331,7 +336,7 @@
         <!-- All Areas Directory View -->
         <div style="margin-bottom: 22px;">
             <h1 style="font-size: 1.4rem; margin: 0 0 8px; color: var(--text-main);">全国エリア別の現在人数＆ラウンジ立ち回りガイド</h1>
-            <p style="font-size: 0.88rem; color: var(--text-sub); margin: 0;">これから向かう街のリアルタイム合計人数と、そのエリアの店舗ごとの雰囲気・2軒目スポットをまとめて確認できます。※少人数時（女性6名未満）は比率が高くても席替え余地が限られるため、女性数もあわせてご確認ください。</p>
+            <p style="font-size: 0.88rem; color: var(--text-sub); margin: 0;">これから向かう街のリアルタイム合計人数と、そのエリアの店舗ごとの雰囲気・2軒目スポットをまとめて確認できます。※少人数時（女性10名未満）は比率が高くても席替え余地が限られるため、女性数もあわせてご確認ください。</p>
         </div>
 
         {% for item in area_summaries %}
@@ -362,11 +367,16 @@
                 <div class="live-store-card" data-store-name="{{ s.name }}">
                     <div class="live-store-name">
                         <span>{{ s.name | seo_store_name }}</span>
-                        <span style="font-size: 0.74rem; color: var(--accent-text); font-weight: 600;">女性比 {{ wpct if tot > 0 else 0 }}%</span>
+                        <span style="font-size: 0.74rem; color: var(--accent-text); font-weight: 600;">{% if tot > 0 %}女性比 {{ wpct }}%{% elif s.is_open_now %}営業中（0 : 0）{% else %}営業時間外{% endif %}</span>
                     </div>
                     <div class="live-counts-row">
+                        {% if tot > 0 or s.is_open_now %}
                         <span class="tot-w">女性 {{ s.women }}名{% if (s.women_diff or 0) > 0 %} <small style="font-size:0.74rem; opacity:0.9;">(↗ +{{ s.women_diff }})</small>{% endif %}</span>
                         <span class="tot-m">男性 {{ s.men }}名{% if (s.men_diff or 0) > 0 %} <small style="font-size:0.74rem; opacity:0.9;">(↗ +{{ s.men_diff }})</small>{% endif %}</span>
+                        {% else %}
+                        <span style="color: var(--text-sub); font-size: 0.78rem; font-weight: 500;">本日 {{ s.today_hours_label }}</span>
+                        <span></span>
+                        {% endif %}
                     </div>
                     <div class="ratio-bar">
                         <div class="ratio-fill-w" style="width: {{ wpct }}%;"></div>

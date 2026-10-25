@@ -1250,9 +1250,9 @@
             } else if (currentSort === 'men') {
                 filteredStores.sort((a, b) => (_isKorea(a) - _isKorea(b)) || (b.men - a.men) || (b.women - a.women));
             } else if (currentSort === 'ratio') {
-                // Minimum headcount tier (women >= 6 = ~3 pairs) prevents tiny 1-2 pair stores
-                // (e.g. 2 women / 0 men = 100%) from ranking above active stores with rotation depth.
-                const _ratioTier = (s) => ((s.women || 0) >= 6 ? 2 : ((s.women || 0) + (s.men || 0) > 0 ? 1 : 0));
+                // Minimum headcount tier (women >= 10 = ~5 pairs) prevents tiny 1-4 pair stores
+                // (e.g. 4 women / 0 men = 100%) from ranking above active stores with rotation depth.
+                const _ratioTier = (s) => ((s.women || 0) >= 10 ? 2 : ((s.women || 0) + (s.men || 0) > 0 ? 1 : 0));
                 filteredStores.sort((a, b) => {
                     const korDiff = _isKorea(a) - _isKorea(b);
                     if (korDiff !== 0) return korDiff;
@@ -1561,10 +1561,10 @@
             if (brandCode === 'ag' || /^ag\s/i.test(name)) return 'https://ag-ree.jp/';
             if (brandCode === 'OLG') return 'https://oriental-lounge.com/';
             if (brandCode === 'JIS') return 'https://jis.bar/';
-            if (brandCode === 'XIX') return 'https://xix-lounge.com/';
-            if (brandCode === 'ALFA') return 'https://alfa-lounge.com/';
+            if (brandCode === 'XIX') return 'https://xix-thelounge.com/';
+            if (brandCode === 'ALFA') return 'https://aiseki-hiroshima.com/';
             if (brandCode === 'ヤタコイ') return 'https://yatakoi.com/';
-            if (brandCode === 'CLOVERS') return 'https://clovers-lounge.jp/';
+            if (brandCode === 'CLOVERS') return 'https://bar-clovers.com/';
             return 'https://oriental-lounge.com/';
         }
 
@@ -1745,7 +1745,7 @@
                 tags = `#相席ナビ #相席ラウンジ #梅田 #難波`;
             } else if (preset === 'anaba') {
                 isAnaba = true;
-                list = stores.filter(s => (s.women || 0) >= 8).sort((a, b) => {
+                list = stores.filter(s => (s.women || 0) >= 10).sort((a, b) => {
                     const rA = a.women / Math.max(1, a.women + a.men);
                     const rB = b.women / Math.max(1, b.women + b.men);
                     return (rB - rA) || (b.women - a.women);

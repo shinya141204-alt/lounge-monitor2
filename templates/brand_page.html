@@ -315,14 +315,25 @@
                         <span class="store-area-badge">{{ s.area_label }}</span>
                     </div>
                     <div class="counts-row">
+                        {% if tot > 0 or s.is_open_now %}
                         <span class="tot-w">女性 {{ s.women }}名{% if (s.women_diff or 0) > 0 %} <small style="font-size:0.76rem; opacity:0.9;">(↗ +{{ s.women_diff }})</small>{% endif %}</span>
                         <span class="tot-m">男性 {{ s.men }}名{% if (s.men_diff or 0) > 0 %} <small style="font-size:0.76rem; opacity:0.9;">(↗ +{{ s.men_diff }})</small>{% endif %}</span>
+                        {% else %}
+                        <span style="color: var(--text-sub); font-size: 0.86rem; font-weight: 600;">営業時間外</span>
+                        <span style="color: var(--text-sub); font-size: 0.78rem;">本日 {{ s.today_hours_label }}</span>
+                        {% endif %}
                     </div>
                     <div class="ratio-bar">
                         <div class="ratio-fill-w" style="width: {{ wpct }}%;"></div>
                     </div>
                     <div class="store-footer-row">
-                        <span>合計 {{ tot }}名（女性比 {{ wpct if tot > 0 else 0 }}%{% if tot > 0 and s.women < 6 %}・少人数{% endif %}）</span>
+                        {% if tot > 0 %}
+                        <span>合計 {{ tot }}名（女性比 {{ wpct }}%{% if s.women < 10 %}・少人数{% endif %}）</span>
+                        {% elif s.is_open_now %}
+                        <span>現在 <strong style="color: var(--text-main);">0 : 0</strong>（営業中 ｜ 本日 {{ s.today_hours_label }}）</span>
+                        {% else %}
+                        <span>営業時間：{{ s.hours_label }}</span>
+                        {% endif %}
                         <span style="color: var(--accent-text); font-weight: 600;">店舗詳細・料金比較 ›</span>
                     </div>
                 </div>

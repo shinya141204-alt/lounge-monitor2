@@ -791,7 +791,7 @@ class GrowthFeaturesTests(unittest.TestCase):
                 self.assertEqual(sw_resp.status_code, 200)
                 self.assertIn('no-store', sw_resp.headers.get('Cache-Control', ''))
                 sw_txt = sw_resp.data.decode('utf-8')
-                self.assertIn("aiseki-navi-v39", sw_txt)
+                self.assertIn("aiseki-navi-v40", sw_txt)
             finally:
                 sw_resp.close()
 
@@ -937,13 +937,13 @@ class GrowthFeaturesTests(unittest.TestCase):
         import subprocess
         import price_comparison
 
-        self.assertEqual(price_comparison.MIN_WOMEN_FOR_RATIO_EVAL, 6)
-        self.assertEqual(price_comparison.MIN_WOMEN_FOR_TOP_PICK, 8)
+        self.assertEqual(price_comparison.MIN_WOMEN_FOR_RATIO_EVAL, 10)
+        self.assertEqual(price_comparison.MIN_WOMEN_FOR_TOP_PICK, 14)
 
-        # Case 1: Tiny store with 100% female ratio (2W / 0M) vs solid-headcount store (16W / 12M = 57%)
+        # Case 1: Sub-10 store with 100% female ratio (8W / 0M) vs solid-headcount store (16W / 12M = 57%)
         live_mix = [
-            {'name': 'OLG 新宿', 'women': 2, 'men': 0, 'total': 2},
-            {'name': 'OLG ag新宿', 'women': 3, 'men': 1, 'total': 4},
+            {'name': 'OLG 新宿', 'women': 8, 'men': 0, 'total': 8},
+            {'name': 'OLG ag新宿', 'women': 9, 'men': 2, 'total': 11},
             {'name': 'JIS SHINJUKU', 'women': 16, 'men': 12, 'total': 28},
             {'name': 'JIS NISHISHINJUKU', 'women': 0, 'men': 0, 'total': 0},
         ]
@@ -958,10 +958,10 @@ class GrowthFeaturesTests(unittest.TestCase):
         self.assertIn('少人数', olg_prof['verdict_badge'])
         self.assertEqual(olg_prof['official_url'], 'https://oriental-lounge.com/')
 
-        # Case 2: All stores below minimum headcount (<6 women) -> best_store must be held back (None)
+        # Case 2: All stores below minimum headcount (<10 women, e.g. 9W & 7W) -> best_store must be held back (None)
         low_only = [
-            {'name': 'OLG 新宿', 'women': 4, 'men': 0, 'total': 4},
-            {'name': 'OLG ag新宿', 'women': 2, 'men': 1, 'total': 3},
+            {'name': 'OLG 新宿', 'women': 9, 'men': 0, 'total': 9},
+            {'name': 'OLG ag新宿', 'women': 7, 'men': 3, 'total': 10},
         ]
         res_low = price_comparison.build_area_comparison_clusters(low_only)
         shinjuku_low = next(c for c in res_low['clusters'] if c['id'] == 'shinjuku')
@@ -987,7 +987,7 @@ class GrowthFeaturesTests(unittest.TestCase):
             '/guide/shinjuku',
             '/guide/weekday-strategy',
             '/guide/weekend-strategy',
-            '/guide/solo-pair' if False else '/guide/solo-vs-pair',
+            '/guide/solo-vs-pair',
             '/guide/second-venue',
             '/guide/first-10-minutes',
             '/guide/club-area-midnight',
@@ -1029,6 +1029,94 @@ class GrowthFeaturesTests(unittest.TestCase):
                     wf.write('function __syntax_check__() {\n' + src_js + '\n}\n')
                 proc = subprocess.run(js_checker + [tmp_target], capture_output=True, text=True)
                 self.assertEqual(proc.returncode, 0, f"JS syntax error in {rel_js}: {proc.stderr}{proc.stdout}")
+
+    def test_official_business_hours_and_open_zero_zero_display(self):
+        from unittest.mock import patch
+        import store_master
+        import store_hours
+        import price_comparison
+
+        # 1. Every store in store_master must have an explicit official business hours spec
+        master = store_master.load()
+        for sname in master.keys():
+            self.assertIn(sname, store_hours.STORE_BUSINESS_HOURS, f"{sname} missing from STORE_BUSINESS_HOURS")
+
+        jst = datetime.timezone(datetime.timedelta(hours=9))
+
+        # 2. Early opening stores at 17:30 JST Wednesday (2026-10-28)
+        dt_wed_1730 = datetime.datetime(2026, 10, 28, 17, 30, tzinfo=jst)
+        self.assertTrue(store_hours.get_business_hours_status('OLG ag梅田', now_jst=dt_wed_1730, total_guests=0)['is_open_now'])
+        self.assertTrue(store_hours.get_business_hours_status('OLG 名古屋 栄', now_jst=dt_wed_1730, total_guests=0)['is_open_now'])
+        self.assertFalse(store_hours.get_business_hours_status('OLG 梅田', now_jst=dt_wed_1730, total_guests=0)['is_open_now'])
+        self.assertFalse(store_hours.get_business_hours_status('OLG 新宿', now_jst=dt_wed_1730, total_guests=0)['is_open_now'])
+
+        # 3. Regular closed day vs pre-holiday override for OLG 宇都宮 (Wednesday closed)
+        dt_wed_2100 = datetime.datetime(2026, 10, 28, 21, 0, tzinfo=jst)
+        u_closed = store_hours.get_business_hours_status('OLG 宇都宮', now_jst=dt_wed_2100, total_guests=0)
+        self.assertFalse(u_closed['is_open_now'])
+        self.assertEqual(u_closed['today_hours_label'], '定休日')
+        # 2025-03-19 (Wed) is the day before 2025-03-20 (Thu, Vernal Equinox Day = JP holiday) -> open!
+        dt_prehol_wed = datetime.datetime(2025, 3, 19, 21, 0, tzinfo=jst)
+        u_prehol = store_hours.get_business_hours_status('OLG 宇都宮', now_jst=dt_prehol_wed, total_guests=0)
+        self.assertTrue(u_prehol['is_open_now'])
+
+        # 4. Late-night Monday 03:30 AM JST (belongs to Sunday night's shift: 27:30)
+        dt_mon_0330 = datetime.datetime(2026, 10, 26, 3, 30, tzinfo=jst)
+        # OLG 新宿 is open until 05:00 -> open `0 : 0`
+        p_shinjuku_open = price_comparison.get_store_price_profile(
+            'OLG 新宿', live_store={'name': 'OLG 新宿', 'women': 0, 'men': 0}, now_jst=dt_mon_0330
+        )
+        self.assertTrue(p_shinjuku_open['is_open_now'])
+        self.assertIn('0 : 0', p_shinjuku_open['verdict_badge'])
+        self.assertNotIn('営業時間外', p_shinjuku_open['verdict_badge'])
+
+        # OLG 錦糸町 closes at 02:00 on Sun-Thu, JIS NISHISHINJUKU closes at 01:00 on Sun -> off-hours!
+        p_kinshicho_closed = price_comparison.get_store_price_profile(
+            'OLG 錦糸町', live_store={'name': 'OLG 錦糸町', 'women': 0, 'men': 0}, now_jst=dt_mon_0330
+        )
+        self.assertFalse(p_kinshicho_closed['is_open_now'])
+        self.assertEqual(p_kinshicho_closed['verdict_badge'], '営業時間外')
+
+        p_nishishinjuku_closed = price_comparison.get_store_price_profile(
+            'JIS NISHISHINJUKU', live_store={'name': 'JIS NISHISHINJUKU', 'women': 0, 'men': 0}, now_jst=dt_mon_0330
+        )
+        self.assertFalse(p_nishishinjuku_closed['is_open_now'])
+        self.assertEqual(p_nishishinjuku_closed['verdict_badge'], '営業時間外')
+
+        # 5. SSR HTML rendering check for `0 : 0` during open hours vs `営業時間外` during daytime
+        orig_fn = store_hours.get_business_hours_status
+        with app_module.data_lock:
+            old_full = list(app_module.latest_data.get('full_data') or [])
+            app_module.latest_data['full_data'] = [
+                {'name': 'OLG 新宿', 'women': 0, 'men': 0, 'region': 'Kanto'},
+                {'name': 'JIS SHINJUKU', 'women': 0, 'men': 0, 'region': 'Kanto'},
+                {'name': 'JIS NISHISHINJUKU', 'women': 0, 'men': 0, 'region': 'Kanto'},
+                {'name': 'OLG ag新宿', 'women': 0, 'men': 0, 'region': 'Kanto'},
+            ]
+        try:
+            # Open hours (Wednesday 21:30 JST) -> all Shinjuku stores are open `0 : 0`
+            dt_open = datetime.datetime(2026, 10, 28, 21, 30, tzinfo=jst)
+            with patch('store_hours.get_business_hours_status', side_effect=lambda s, now_jst=None, total_guests=0: orig_fn(s, now_jst=dt_open, total_guests=total_guests)):
+                pc_open = self.client.get('/price-comparison?area=shinjuku').data.decode('utf-8')
+                self.assertIn('0 : 0', pc_open)
+                self.assertIn('は営業中です（全店 女性10名未満）', pc_open)
+
+                sd_open = self.client.get('/store/oriental-lounge-shinjuku').data.decode('utf-8')
+                self.assertIn('営業中（0 : 0）', sd_open)
+                self.assertNotIn('女性0名', sd_open)
+                self.assertNotIn('男性0名', sd_open)
+
+            # Daytime closed hours (Wednesday 14:00 JST) -> all Shinjuku stores are off-hours
+            dt_closed = datetime.datetime(2026, 10, 28, 14, 0, tzinfo=jst)
+            with patch('store_hours.get_business_hours_status', side_effect=lambda s, now_jst=None, total_guests=0: orig_fn(s, now_jst=dt_closed, total_guests=total_guests)):
+                pc_closed = self.client.get('/price-comparison?area=shinjuku').data.decode('utf-8')
+                self.assertIn('は営業時間外です', pc_closed)
+
+                sd_closed = self.client.get('/store/oriental-lounge-shinjuku').data.decode('utf-8')
+                self.assertIn('営業時間外（本日 19:00〜翌5:00）', sd_closed)
+        finally:
+            with app_module.data_lock:
+                app_module.latest_data['full_data'] = old_full
 
 
 if __name__ == '__main__':

@@ -598,6 +598,7 @@ def _enrich_for_ssr(stores):
     """Attach display fields (brand_code, brand_cls, display_title, area_label, ladies_pct, men_pct)
     for instant server-side HTML card rendering."""
     import store_master
+    import store_hours
     master = store_master.load()
     # Count duplicate display_names so same-city stores (e.g. 新宿) get brand prefix
     disp_counts = defaultdict(int)
@@ -622,7 +623,9 @@ def _enrich_for_ssr(stores):
         l_pct = round((w / tot) * 100) if tot > 0 else 0
         m_pct = (100 - l_pct) if tot > 0 else 0
         item = dict(s)
-        is_korea = (s.get('region') == 'Korea') or ('カンナム' in s.get('name', '')) or ('ホンデ' in s.get('name', ''))
+        sname = s.get('name', '')
+        h_info = store_hours.get_business_hours_status(sname, total_guests=tot)
+        is_korea = (s.get('region') == 'Korea') or ('カンナム' in sname) or ('ホンデ' in sname)
         if not is_korea:
             dom_rank += 1
             item['ssr_rank'] = dom_rank
@@ -634,6 +637,8 @@ def _enrich_for_ssr(stores):
         item['ssr_area'] = area
         item['ssr_ladies_pct'] = l_pct
         item['ssr_men_pct'] = m_pct
+        item['is_open_now'] = h_info['is_open_now']
+        item['today_hours_label'] = h_info['today_hours_label']
         enriched.append(item)
     return enriched
 
@@ -1426,18 +1431,29 @@ def get_stores_for_area(area_slug, all_stores):
     if not area:
         return []
     import store_master
+    import store_hours
     kws = area['keywords']
     matched = []
     for s in all_stores:
         sname = s.get('name', '')
         info = store_master.get(sname)
+        hit = False
         if info is not None:
             # Store master decides the area (e.g. 'OLG 錦糸町' must not match Nagoya's '錦')
             if info.get('area_slug') == area_slug:
-                matched.append(s)
+                hit = True
         elif any(k in sname for k in kws):
-            matched.append(s)
-    matched.sort(key=lambda x: (x.get('women', 0), x.get('men', 0)), reverse=True)
+            hit = True
+        if hit:
+            s_copy = dict(s)
+            tot = int(s_copy.get('women') or 0) + int(s_copy.get('men') or 0)
+            h_info = store_hours.get_business_hours_status(sname, total_guests=tot)
+            s_copy['is_open_now'] = h_info['is_open_now']
+            s_copy['today_hours_label'] = h_info['today_hours_label']
+            s_copy['hours_label'] = h_info['hours_label']
+            s_copy['hours_spec'] = h_info['schedule_spec']
+            matched.append(s_copy)
+    matched.sort(key=lambda x: (x.get('women', 0), x.get('men', 0), bool(x.get('is_open_now'))), reverse=True)
     return matched
 
 BRAND_GUIDES = {
@@ -1493,6 +1509,7 @@ def brand_jis():
 
 def _render_brand_page(brand_slug):
     import store_master
+    import store_hours
     restore_latest_data_if_empty()
     trigger_background_fetch_if_needed()
     brand = BRAND_GUIDES.get(brand_slug)
@@ -1513,19 +1530,25 @@ def _render_brand_page(brand_slug):
             s_live = live_map.get(sname, {})
             info = master.get(sname, {})
             reg = info.get('region') or s_live.get('region') or detect_region(sname)
+            w_cnt = int(s_live.get('women', 0))
+            m_cnt = int(s_live.get('men', 0))
+            h_info = store_hours.get_business_hours_status(sname, total_guests=(w_cnt + m_cnt))
             matched.append({
                 'name': sname,
                 'seo_name': store_master.seo_name(sname),
                 'slug': store_master.slug_of(sname),
                 'region': reg,
                 'area_label': info.get('area_label') or s_live.get('area') or '全国',
-                'women': int(s_live.get('women', 0)),
-                'men': int(s_live.get('men', 0)),
+                'women': w_cnt,
+                'men': m_cnt,
                 'women_diff': int(s_live.get('women_diff', 0) or 0),
                 'men_diff': int(s_live.get('men_diff', 0) or 0),
+                'is_open_now': h_info['is_open_now'],
+                'today_hours_label': h_info['today_hours_label'],
+                'hours_label': h_info['hours_label'],
             })
 
-    matched.sort(key=lambda x: (x.get('region') != 'Korea', x['women'], x['men']), reverse=True)
+    matched.sort(key=lambda x: (x.get('region') != 'Korea', x['women'], x['men'], bool(x.get('is_open_now'))), reverse=True)
     dom_rank = 0
     for item in matched:
         if item.get('region') != 'Korea':
@@ -1549,6 +1572,7 @@ def _render_brand_page(brand_slug):
 @app.route('/store/<store_slug>')
 def store_detail_page(store_slug):
     import store_master
+    import store_hours
     import urllib.parse
     restore_latest_data_if_empty()
     trigger_background_fetch_if_needed()
@@ -1568,6 +1592,7 @@ def store_detail_page(store_slug):
     men = int(s_live.get('men', 0))
     tot = women + men
     wpct = round((women / tot) * 100) if tot > 0 else 50
+    hours_info = store_hours.get_business_hours_status(sname, total_guests=tot)
 
     bkey = store_master.brand_key_of(sname)
     raw_brand = info.get('brand') or ''
@@ -1587,18 +1612,21 @@ def store_detail_page(store_slug):
         brand_label = raw_brand or '相席ラウンジ'
         brand_slug = 'oriental-lounge'
         official_url = {
-            'ALFA': 'https://alfa-lounge.com/',
-            'CLOVERS': 'https://clovers-lounge.jp/',
-            'XIX': 'https://xix-lounge.com/',
+            'ALFA': 'https://aiseki-hiroshima.com/',
+            'CLOVERS': 'https://bar-clovers.com/',
+            'XIX': 'https://xix-thelounge.com/',
             'YATAKOI': 'https://yatakoi.com/',
             'ヤタコイ': 'https://yatakoi.com/',
         }.get(raw_brand, 'https://oriental-lounge.com/')
 
     if tot == 0:
-        crowd_comment = '営業時間外・オープン準備中'
-    elif women < 6:
+        if hours_info['is_open_now']:
+            crowd_comment = f"営業中｜現在 0 : 0（本日 {hours_info['today_hours_label']}）"
+        else:
+            crowd_comment = f"営業時間外（本日 {hours_info['today_hours_label']}）"
+    elif women < 10:
         if women >= men:
-            crowd_comment = f'少人数・立ち上がり中（女性{women}名｜席替え候補少なめ）'
+            crowd_comment = f'少人数・立ち上がり中（女性{women}名｜基準10名未満）'
         else:
             crowd_comment = f'少人数・男性先行（女性{women}名 / 男性{men}名）'
     elif women > men:
@@ -1622,6 +1650,7 @@ def store_detail_page(store_slug):
                 ow = int(other_s.get('women', 0))
                 om = int(other_s.get('men', 0))
                 otot = ow + om
+                oh_info = store_hours.get_business_hours_status(oname, total_guests=otot)
                 nearby_stores.append({
                     'name': oname,
                     'seo_name': store_master.seo_name(oname),
@@ -1631,6 +1660,10 @@ def store_detail_page(store_slug):
                     'women_diff': int(other_s.get('women_diff', 0) or 0),
                     'men_diff': int(other_s.get('men_diff', 0) or 0),
                     'wpct': round((ow / otot) * 100) if otot > 0 else 0,
+                    'is_open_now': oh_info['is_open_now'],
+                    'today_hours_label': oh_info['today_hours_label'],
+                    'hours_label': oh_info['hours_label'],
+                    'hours_spec': oh_info['schedule_spec'],
                 })
 
     store_obj = {
@@ -1649,6 +1682,10 @@ def store_detail_page(store_slug):
         'wpct': wpct if tot > 0 else 0,
         'crowd_comment': crowd_comment,
         'map_url': map_url,
+        'is_open_now': hours_info['is_open_now'],
+        'today_hours_label': hours_info['today_hours_label'],
+        'hours_label': hours_info['hours_label'],
+        'hours_spec': hours_info['schedule_spec'],
     }
 
     store_analytics = None
@@ -1671,6 +1708,7 @@ def store_detail_page(store_slug):
         area_info=area_info,
         nearby_stores=nearby_stores,
         nearby_comparison=nearby_comparison,
+        jp_holidays=sorted(store_hours.JP_HOLIDAYS),
         last_updated=last_updated
     )
 

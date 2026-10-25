@@ -13,20 +13,21 @@ women's magnet events (from events.py), and real-time gender balance across all 
 import re
 import datetime
 import store_master
+import store_hours
 
 # Minimum female headcount thresholds to avoid over-valuing tiny sample sizes (e.g. 2 women / 0 men = 100%)
 # where a guest may match once but have zero rotation/change options afterward.
-MIN_WOMEN_FOR_RATIO_EVAL = 6   # ~3 pairs minimum to qualify for ratio bonus & cluster recommendation
-MIN_WOMEN_FOR_TOP_PICK = 8     # ~4 pairs minimum for comfortable table-rotation depth
+MIN_WOMEN_FOR_RATIO_EVAL = 10  # ~5 pairs minimum to qualify for ratio bonus & cluster recommendation
+MIN_WOMEN_FOR_TOP_PICK = 14    # ~7 pairs minimum for comfortable multi-table rotation depth
 
 OFFICIAL_BRAND_URLS = {
     "OLG": "https://oriental-lounge.com/",
     "ag": "https://ag-ree.jp/",
     "JIS": "https://jis.bar/",
-    "XIX": "https://xix-lounge.com/",
-    "ALFA": "https://alfa-lounge.com/",
+    "XIX": "https://xix-thelounge.com/",
+    "ALFA": "https://aiseki-hiroshima.com/",
     "ヤタコイ": "https://yatakoi.com/",
-    "CLOVERS": "https://clovers-lounge.jp/",
+    "CLOVERS": "https://bar-clovers.com/",
 }
 
 # Brand-level baseline price & vibe specifications (domestic stores)
@@ -1496,16 +1497,22 @@ def get_store_price_profile(
     effective_weekend_60m = est_60m_weekend + wait_penalty
 
     # Score for ranking "Best Value Right Now" within an area cluster (higher is better)
-    # Apply minimum headcount threshold (MIN_WOMEN_FOR_RATIO_EVAL = 6) so stores with 1-2 pairs of women
-    # (e.g. 2 women / 0 men = 100%) are never over-scored when next-table rotation options are absent.
+    # Apply minimum headcount threshold (MIN_WOMEN_FOR_RATIO_EVAL = 10) so stores below ~5 pairs of women
+    # are never over-scored when next-table rotation options are limited.
     meets_min_headcount = women >= MIN_WOMEN_FOR_RATIO_EVAL
     official_url = OFFICIAL_BRAND_URLS.get(base_spec["brand_code"], "https://oriental-lounge.com/")
+    hours_info = store_hours.get_business_hours_status(store_name, now_jst=now_jst, total_guests=total)
+    is_open_now = hours_info["is_open_now"]
+    hours_label = hours_info["hours_label"]
+    today_hours_label = hours_info["today_hours_label"]
+    hours_spec = hours_info["schedule_spec"]
+
     price_advantage = max(0, (5800 - effective_weekend_60m) // 30)
     event_bonus = 18 if has_live_men_perk else (10 if has_live_women_event else 0)
     if total == 0:
-        value_score = round(price_advantage + event_bonus, 1)
+        value_score = round(price_advantage + event_bonus - (25 if is_open_now else 40), 1)
     elif not meets_min_headcount:
-        low_crowd_adj = women * 1.5 - (10 if men > women else 0) - 25
+        low_crowd_adj = women * 1.2 - (10 if men > women else 0) - 25
         value_score = round(price_advantage + event_bonus + low_crowd_adj, 1)
     else:
         ratio_score = (wpct - 50) * 1.8 + min(women, 45) * 1.1
@@ -1517,34 +1524,42 @@ def get_store_price_profile(
             ratio_score -= 22
         value_score = round(price_advantage + event_bonus + ratio_score, 1)
 
-    # Human-readable real-time verification verdict reflecting per-store 4-slot rates & minimum headcount
+    # Human-readable real-time verification verdict reflecting per-store 4-slot rates, business hours & minimum headcount
     if total == 0:
-        verdict_badge = "営業時間外・4時間帯比較"
-        verdict_cls = "verdict-neutral"
-        if is_flat_rate:
+        if is_open_now:
+            verdict_badge = "営業中（0 : 0）・空席"
+            verdict_cls = "verdict-low"
             verdict_comment = (
-                f"定額デイパス制（{wait_fee_str}）。入店時間帯プランは①Open〜20時（{slot_18_20}）"
-                f"→②20〜22時（{slot_20_22}）→③④22時〜（{slot_22_24}）。{solo_rule}。"
+                f"公式ホームページの営業時間内（本日 {today_hours_label}）でオープン中ですが、現在の店内人数は 0 : 0 です。"
+                f"女性{MIN_WOMEN_FOR_RATIO_EVAL}名以上への増加を待つか、近隣ライバル店と比較してください。"
             )
         else:
-            verdict_comment = (
-                f"単独（待機）時は{wait_fee_str}が発生。相席10分はOpen〜20時（{slot_18_20}）→20〜22時（{slot_20_22}）"
-                f"→22〜24時（{slot_22_24}）→24時〜（{slot_24_last}）。{solo_rule}。"
-            )
+            verdict_badge = "営業時間外"
+            verdict_cls = "verdict-neutral"
+            if is_flat_rate:
+                verdict_comment = (
+                    f"現在は営業時間外（公式営業時間：{hours_label}）。定額デイパス制（{wait_fee_str}）で、"
+                    f"①Open〜20時（{slot_18_20}）→②20〜22時（{slot_20_22}）→③④22時〜（{slot_22_24}）。{solo_rule}。"
+                )
+            else:
+                verdict_comment = (
+                    f"現在は営業時間外（公式営業時間：{hours_label}）。単独（待機）時は{wait_fee_str}、"
+                    f"相席10分はOpen〜20時（{slot_18_20}）→20〜22時（{slot_20_22}）→22〜24時（{slot_22_24}）→24時〜（{slot_24_last}）。{solo_rule}。"
+                )
     elif not meets_min_headcount:
         if women >= men:
             verdict_badge = f"少人数・様子見推奨（女性{women}名）"
             verdict_cls = "verdict-low"
             verdict_comment = (
-                f"現在女性{women}名／男性{men}名（女性比{wpct}%）。比率は高めですが店内の女性組数がまだ少ない（約1〜2組規模）ため、"
-                f"初回相席後に席替えできる次の相手が限られる可能性があります。女性{MIN_WOMEN_FOR_RATIO_EVAL}〜{MIN_WOMEN_FOR_TOP_PICK}名以上への増加を待つか近隣店との比較が安全です。"
+                f"現在女性{women}名／男性{men}名（女性比{wpct}%）。比率は高めですが店内の女性数が基準（{MIN_WOMEN_FOR_RATIO_EVAL}名）未満のため、"
+                f"初回相席後に席替えできる次の相手が限られる可能性があります。女性{MIN_WOMEN_FOR_RATIO_EVAL}名以上への増加を待つか近隣店との比較が安全です。"
             )
         else:
             verdict_badge = f"少人数・男性先行（女性{women}名）"
             verdict_cls = "verdict-warn"
             if is_flat_rate:
                 verdict_comment = (
-                    f"現在女性{women}名／男性{men}名と立ち上がり前かつ男性先行の状態です。"
+                    f"現在女性{women}名／男性{men}名と少人数かつ男性先行の状態です。"
                     f"定額パス制ですが待ち時間が発生する可能性があるため、女性{MIN_WOMEN_FOR_RATIO_EVAL}名以上の近隣店もあわせてご確認ください。"
                 )
             else:
@@ -1596,7 +1611,7 @@ def get_store_price_profile(
         verdict_badge = f"女性+{women - men}名リード・相席圏内"
         verdict_cls = "verdict-good"
         verdict_comment = (
-            f"現在女性{women}名／男性{men}名（女性比{wpct}%・約3組規模）。単独待機を抑えて初回相席に入りやすいバランスです。"
+            f"現在女性{women}名／男性{men}名（女性比{wpct}%・約5〜6組規模）。単独待機を抑えて初回相席に入りやすいバランスです。"
             f"複数回の席替えも重視する場合は女性{MIN_WOMEN_FOR_TOP_PICK}名以上の店舗もあわせて比較してみてください。"
         )
     else:
@@ -1624,6 +1639,10 @@ def get_store_price_profile(
         "brand_label": base_spec["brand_label"],
         "brand_slug": base_spec["brand_slug"],
         "official_url": official_url,
+        "is_open_now": is_open_now,
+        "hours_label": hours_label,
+        "today_hours_label": today_hours_label,
+        "hours_spec": hours_spec,
         "women": women,
         "men": men,
         "total": total,
@@ -1710,7 +1729,8 @@ def build_area_comparison_clusters(live_stores: list = None, now_jst: datetime.d
             "desc": cl["desc"],
             "stores": profiles,
             "best_store": best_prof,
-            "has_any_open": any(p["total"] > 0 for p in profiles),
+            "has_any_open": any(p["is_open_now"] for p in profiles),
+            "has_any_guests": any(p["total"] > 0 for p in profiles),
         })
 
     # Ensure every domestic store in store_master is included in the full national price list
@@ -1757,6 +1777,7 @@ def build_area_comparison_clusters(live_stores: list = None, now_jst: datetime.d
         "current_slot": current_slot_info,
         "min_women_eval": MIN_WOMEN_FOR_RATIO_EVAL,
         "min_women_top": MIN_WOMEN_FOR_TOP_PICK,
+        "jp_holidays": sorted(store_hours.JP_HOLIDAYS),
     }
 
 
@@ -1789,6 +1810,7 @@ def get_nearby_comparison_for_store(store_name: str, live_stores: list = None, n
             "cluster_id": "shinjuku",
             "cluster_title": f"{self_prof['area_label']}エリアの料金・イベント比較",
             "stores": [self_prof],
+            "jp_holidays": sorted(store_hours.JP_HOLIDAYS),
         }
 
     profiles = []
@@ -1820,4 +1842,5 @@ def get_nearby_comparison_for_store(store_name: str, live_stores: list = None, n
         "cluster_id": target_cluster["id"],
         "cluster_title": target_cluster["title"],
         "stores": profiles,
+        "jp_holidays": sorted(store_hours.JP_HOLIDAYS),
     }
