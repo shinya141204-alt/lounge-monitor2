@@ -201,9 +201,13 @@
         <div class="hero-box">
             <div>
                 <h1>📸 Instagram / Threads「週末狙い目予報」ワンクリック生成</h1>
-                <p>蓄積データベースから最新の<strong>4:5縦長カルーセル画像（1080×1350px・全5枚）</strong>と投稿文を自動生成しました。<br>スマホの場合は画像を長押しで「写真に保存」、PCの場合はZIP一括ダウンロードが便利です。</p>
+                <p>蓄積データベースから最新の<strong>4:5縦長カルーセル画像（1080×1350px・全5枚）</strong>と投稿文を自動生成しました。<br>スマホの場合は画像を長押しで「写真に保存」、PCの場合はZIP一括ダウンロード、またはAPI設定済みなら「今すぐ自動投稿」が可能です。</p>
             </div>
-            <a href="/staff/sns-kit/download.zip" class="zip-btn">📦 全5枚＋キャプションをZIP保存</a>
+            <div style="display:flex; flex-wrap:wrap; gap:10px;">
+                <button type="button" class="zip-btn" style="border:none; cursor:pointer;" onclick="triggerDirectSnsPost('ig')">📸 Instagramへ5枚組を今すぐ投稿</button>
+                <button type="button" class="zip-btn" style="border:none; cursor:pointer; background:linear-gradient(135deg, #0ea5e9, #6366f1);" onclick="triggerDirectSnsPost('threads')">🧵 Threadsへ今すぐ投稿</button>
+                <a href="/staff/sns-kit/download.zip" class="zip-btn" style="background:var(--surface-2); border:1px solid var(--border); box-shadow:none;">📦 全5枚＋キャプションをZIP保存</a>
+            </div>
         </div>
 
         <div class="slides-grid">
@@ -258,8 +262,28 @@
                 document.execCommand('copy');
             }
             var t = document.getElementById('copy-toast');
+            t.textContent = 'コピーしました！そのままSNSに貼り付けできます✨';
             t.style.display = 'block';
             setTimeout(function() { t.style.display = 'none'; }, 2200);
+        }
+
+        async function triggerDirectSnsPost(target) {
+            var t = document.getElementById('copy-toast');
+            t.textContent = target === 'ig' ? 'Instagramへ5枚組カルーセルを送信中...（約10〜15秒）' : 'Threadsへ自動投稿を送信中...';
+            t.style.display = 'block';
+            try {
+                var url = target === 'ig' ? '/api/trigger-ig-post?mode=carousel&force=1' : '/api/trigger-threads-post?slot=22:00&force=1';
+                var res = await fetch(url);
+                var data = await res.json();
+                if (data && data.status === 'success') {
+                    t.textContent = (target === 'ig' ? '✅ Instagramへの自動投稿が完了しました！' : '✅ Threadsへの自動投稿が完了しました！');
+                } else {
+                    t.textContent = '⚠️ ' + (data.reason || data.detail || '設定を確認してください');
+                }
+            } catch (e) {
+                t.textContent = '⚠️ 通信エラーが発生しました';
+            }
+            setTimeout(function() { t.style.display = 'none'; }, 4000);
         }
     </script>
 </body>

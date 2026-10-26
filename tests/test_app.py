@@ -1351,6 +1351,17 @@ class GrowthFeaturesTests(unittest.TestCase):
         self.assertIn('全国リアルタイムTOP3', th_payload['text'])
         self.assertEqual(self.client.get('/api/trigger-threads-post').status_code, 401)
 
+        # Instagram Graph API poster & public slide endpoint verification
+        import instagram_poster
+        self.assertEqual(self.client.get('/api/trigger-ig-post').status_code, 401)
+        ig_slide_resp = self.client.get('/ogp/ig-slide/1.png')
+        try:
+            self.assertEqual(ig_slide_resp.status_code, 200)
+            self.assertEqual(ig_slide_resp.mimetype, 'image/png')
+        finally:
+            ig_slide_resp.close()
+        self.assertEqual(instagram_poster.post_single_image_to_instagram('https://aiseki-navi.com/ogp/ig-slide/1.png', 'test')['status'], 'skipped')
+
 
 if __name__ == '__main__':
     unittest.main()

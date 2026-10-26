@@ -899,6 +899,23 @@ def staff_sns_kit_zip():
         headers={'Content-Disposition': f'attachment; filename="aiseki_navi_weekend_kit_{today_s}.zip"'},
     )
 
+
+@app.route('/ogp/ig-slide/<int:slide_num>.png')
+def public_ig_slide_png(slide_num):
+    """Publicly accessible 1080x1350 PNG slide endpoint so Meta Instagram Graph API servers can fetch carousel images."""
+    restore_latest_data_if_empty()
+    trigger_background_fetch_if_needed()
+    try:
+        import ig_carousel_generator
+        ctx = _get_sns_kit_context()
+        png_bytes = ig_carousel_generator.render_slide_png(max(1, min(5, slide_num)), ctx=ctx)
+        resp = Response(png_bytes, mimetype='image/png')
+        resp.headers['Cache-Control'] = 'public, max-age=300'
+        return resp
+    except Exception as e:
+        logging.error(f"Public IG slide generation failed: {e}")
+        return send_from_directory('static', 'note-eyecatch.jpg', mimetype='image/jpeg')
+
 _is_fetching = False
 _fetch_started_at = None
 _last_update_error = None
@@ -1827,6 +1844,21 @@ def trigger_threads_post_endpoint():
     with data_lock:
         stores = list(latest_data.get('full_data') or [])
     res = threads_poster.execute_scheduled_threads_post(stores, slot_label=slot, force=force)
+    return jsonify(res)
+
+
+@app.route('/api/trigger-ig-post')
+def trigger_ig_post_endpoint():
+    """Endpoint to test or externally trigger Meta Instagram Graph API auto-post (carousel or single live)."""
+    if not is_admin_authorized():
+        return jsonify({'error': 'Unauthorized'}), 401
+    import instagram_poster
+    mode = request.args.get('mode', 'carousel')
+    slot = request.args.get('slot', '22:00')
+    force = request.args.get('force', '0') == '1'
+    with data_lock:
+        stores = list(latest_data.get('full_data') or [])
+    res = instagram_poster.execute_scheduled_instagram_post(stores, mode=mode, slot_label=slot, force=force)
     return jsonify(res)
 
 

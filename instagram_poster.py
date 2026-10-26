@@ -1,0 +1,238 @@
+"""
+instagram_poster.py - Meta Instagram Graph API Automated Carousel & Feed Poster for Aiseki Navi.
+
+Features:
+1. Publicly serves signed/time-busted 1080x1350 PNG slides (`/ogp/ig-slide/<1..5>.png`) so Meta's Graph API servers can fetch them directly without requiring external S3/Cloudinary storage.
+2. Publishes 5-slide Weekend Forecast Carousels (`media_type=CAROUSEL`) or Daily Live Ranking Single Feed posts (`image_url` + caption) to Instagram.
+3. Auto-resolves `INSTAGRAM_USER_ID` from `INSTAGRAM_ACCESS_TOKEN` via `/me?fields=id,username` (or Facebook Page linked `instagram_business_account`).
+4. Graceful skip when `INSTAGRAM_ACCESS_TOKEN` is not configured.
+"""
+
+import datetime
+import logging
+import os
+import time
+
+import requests
+
+import ig_carousel_generator
+import job_state
+import threads_poster
+
+IG_GRAPH_BASE = "https://graph.instagram.com/v21.0"
+FB_GRAPH_BASE = "https://graph.facebook.com/v21.0"
+SITE_URL = "https://aiseki-navi.com"
+_cached_ig_user_id = None
+
+
+def _resolve_ig_user_id(access_token: str) -> str:
+    """Resolve Instagram professional account user_id from env var or Graph API."""
+    global _cached_ig_user_id
+    env_uid = (os.environ.get("INSTAGRAM_USER_ID") or "").strip()
+    if env_uid:
+        return env_uid
+    if _cached_ig_user_id:
+        return _cached_ig_user_id
+
+    # 1. Try Instagram Graph API (/me) for Instagram Login tokens (IGAA... / IGQ...)
+    for base in (IG_GRAPH_BASE, FB_GRAPH_BASE):
+        try:
+            r = requests.get(
+                f"{base}/me",
+                params={"fields": "id,username", "access_token": access_token},
+                timeout=10,
+            )
+            if r.status_code == 200:
+                data = r.json() or {}
+                uid = str(data.get("id") or "").strip()
+                if uid and data.get("username"):
+                    _cached_ig_user_id = uid
+                    return uid
+        except Exception:
+            pass
+
+    # 2. Try Facebook Page linked instagram_business_account for EAA... tokens
+    try:
+        r = requests.get(
+            f"{FB_GRAPH_BASE}/me/accounts",
+            params={"fields": "instagram_business_account{id,username}", "access_token": access_token},
+            timeout=10,
+        )
+        if r.status_code == 200:
+            pages = (r.json() or {}).get("data") or []
+            for p in pages:
+                ig_acct = p.get("instagram_business_account") or {}
+                uid = str(ig_acct.get("id") or "").strip()
+                if uid:
+                    _cached_ig_user_id = uid
+                    return uid
+    except Exception:
+        pass
+
+    return ""
+
+
+def _graph_base_for_token(access_token: str) -> str:
+    """Choose graph.instagram.com for IG tokens, graph.facebook.com for EAA tokens."""
+    if access_token.startswith("EAA"):
+        return FB_GRAPH_BASE
+    return IG_GRAPH_BASE
+
+
+def post_single_image_to_instagram(image_url: str, caption: str) -> dict:
+    """
+    Publish a single image feed post to Instagram:
+      1. POST /{ig_user_id}/media (image_url, caption)
+      2. POST /{ig_user_id}/media_publish (creation_id)
+    """
+    access_token = (os.environ.get("INSTAGRAM_ACCESS_TOKEN") or "").strip()
+    if not access_token:
+        return {"status": "skipped", "reason": "INSTAGRAM_ACCESS_TOKEN not configured"}
+
+    ig_user_id = _resolve_ig_user_id(access_token)
+    if not ig_user_id:
+        return {"status": "error", "detail": "Could not resolve INSTAGRAM_USER_ID from token"}
+
+    base = _graph_base_for_token(access_token)
+    try:
+        r1 = requests.post(
+            f"{base}/{ig_user_id}/media",
+            data={
+                "image_url": image_url,
+                "caption": caption[:2100],
+                "access_token": access_token,
+            },
+            timeout=25,
+        )
+        if r1.status_code >= 400:
+            return {"status": "error", "detail": f"IG media create HTTP {r1.status_code}: {r1.text[:200]}"}
+        creation_id = (r1.json() or {}).get("id")
+        if not creation_id:
+            return {"status": "error", "detail": f"Missing creation_id: {r1.text[:200]}"}
+
+        time.sleep(3)
+        r2 = requests.post(
+            f"{base}/{ig_user_id}/media_publish",
+            data={
+                "creation_id": creation_id,
+                "access_token": access_token,
+            },
+            timeout=25,
+        )
+        if r2.status_code >= 400:
+            return {"status": "error", "detail": f"IG media publish HTTP {r2.status_code}: {r2.text[:200]}"}
+
+        post_id = (r2.json() or {}).get("id")
+        logging.info(f"Successfully published single image to Instagram: id={post_id}")
+        return {"status": "success", "id": post_id, "image_url": image_url}
+    except Exception as e:
+        logging.error(f"Instagram single post exception: {e}")
+        return {"status": "error", "detail": str(e)}
+
+
+def post_carousel_to_instagram(image_urls: list, caption: str) -> dict:
+    """
+    Publish a multi-slide 4:5 portrait carousel (up to 10 images) to Instagram:
+      1. For each image_url: POST /{ig_user_id}/media (is_carousel_item=true, image_url=...)
+      2. POST /{ig_user_id}/media (media_type=CAROUSEL, children=id1,id2,..., caption=...)
+      3. POST /{ig_user_id}/media_publish (creation_id=carousel_container_id)
+    """
+    access_token = (os.environ.get("INSTAGRAM_ACCESS_TOKEN") or "").strip()
+    if not access_token:
+        return {"status": "skipped", "reason": "INSTAGRAM_ACCESS_TOKEN not configured"}
+
+    ig_user_id = _resolve_ig_user_id(access_token)
+    if not ig_user_id:
+        return {"status": "error", "detail": "Could not resolve INSTAGRAM_USER_ID from token"}
+
+    base = _graph_base_for_token(access_token)
+    child_ids = []
+    try:
+        for idx, url in enumerate(image_urls[:10]):
+            r_item = requests.post(
+                f"{base}/{ig_user_id}/media",
+                data={
+                    "image_url": url,
+                    "is_carousel_item": "true",
+                    "access_token": access_token,
+                },
+                timeout=25,
+            )
+            if r_item.status_code >= 400:
+                return {"status": "error", "detail": f"Slide {idx+1} HTTP {r_item.status_code}: {r_item.text[:200]}"}
+            cid = (r_item.json() or {}).get("id")
+            if not cid:
+                return {"status": "error", "detail": f"Missing child id on slide {idx+1}"}
+            child_ids.append(cid)
+
+        time.sleep(3)
+        r_car = requests.post(
+            f"{base}/{ig_user_id}/media",
+            data={
+                "media_type": "CAROUSEL",
+                "children": ",".join(child_ids),
+                "caption": caption[:2100],
+                "access_token": access_token,
+            },
+            timeout=25,
+        )
+        if r_car.status_code >= 400:
+            return {"status": "error", "detail": f"Carousel container HTTP {r_car.status_code}: {r_car.text[:200]}"}
+        carousel_id = (r_car.json() or {}).get("id")
+        if not carousel_id:
+            return {"status": "error", "detail": f"Missing carousel_id: {r_car.text[:200]}"}
+
+        time.sleep(4)
+        r_pub = requests.post(
+            f"{base}/{ig_user_id}/media_publish",
+            data={
+                "creation_id": carousel_id,
+                "access_token": access_token,
+            },
+            timeout=25,
+        )
+        if r_pub.status_code >= 400:
+            return {"status": "error", "detail": f"Carousel publish HTTP {r_pub.status_code}: {r_pub.text[:200]}"}
+
+        post_id = (r_pub.json() or {}).get("id")
+        logging.info(f"Successfully published 5-slide carousel to Instagram: id={post_id}")
+        return {"status": "success", "id": post_id, "children": child_ids}
+    except Exception as e:
+        logging.error(f"Instagram carousel exception: {e}")
+        return {"status": "error", "detail": str(e)}
+
+
+def execute_scheduled_instagram_post(stores: list, mode: str = "carousel", slot_label: str = "22:00", force: bool = False) -> dict:
+    """
+    Execute scheduled Instagram post with persistent job_state deduplication.
+    - mode="carousel": 5-slide 1080x1350 portrait weekend forecast & ranking carousel
+    - mode="live": single live ranking card + detailed caption
+    """
+    now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
+    biz_date = (now_jst - datetime.timedelta(hours=7)).strftime("%Y-%m-%d")
+    dedup_key = f"ig_post:{biz_date}_{mode}_{slot_label}"
+
+    if not force and job_state.is_done(dedup_key):
+        return {"status": "skipped", "reason": "Already posted to Instagram for this slot"}
+
+    ts_code = now_jst.strftime("%Y%m%d_%H%M")
+    if mode == "carousel":
+        ctx = ig_carousel_generator.build_forecast_context(live_stores=stores, now_jst=now_jst)
+        captions = ig_carousel_generator.build_captions(ctx)
+        caption = captions.get("instagram_caption") or ""
+        slide_urls = [
+            f"{SITE_URL}/ogp/ig-slide/{i}.png?s={ts_code}"
+            for i in range(1, 6)
+        ]
+        res = post_carousel_to_instagram(slide_urls, caption)
+        res["caption"] = caption
+        res["slide_urls"] = slide_urls
+    else:
+        caption = threads_poster.build_threads_live_post(stores, slot_label=slot_label, now_jst=now_jst)
+        image_url = f"{SITE_URL}/ogp/ig-slide/2.png?s={ts_code}"
+        res = post_single_image_to_instagram(image_url, caption)
+        res["caption"] = caption
+
+    if res.get("status") == "success" and not force:
+        job_state.mark_done(dedup_key)
+    return res
