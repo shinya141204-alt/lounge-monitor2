@@ -82,7 +82,7 @@ _PAGE_TITLES = {
     '/guide/brand-comparison': '📖 3大ブランド徹底比較（オリエンタル・ag・JIS）',
     '/guide/weekday-strategy': '📖 水曜・木曜の平日穴場攻略コラム',
     '/guide/weekend-strategy': '📖 金曜・土曜ピークの待ち時間回避＆ハシゴ攻略',
-    '/guide/shinjuku': '📖 新宿エリア4店舗の使い分け・穴場ガイド',
+    '/guide/shinjuku': '📖 新宿エリア3店舗の使い分け・穴場ガイド',
     '/guide/solo-vs-pair': '📖 1人参戦（ソロ）vs 2人組のメリット・勝率比較',
     '/guide/second-venue': '📖 2軒目の誘い方・断られない声かけタイミング',
     '/guide/first-10-minutes': '📖 最初の10分で差がつく会話術・第一印象の作り方',

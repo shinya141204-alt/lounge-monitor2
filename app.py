@@ -36,39 +36,87 @@ root_logger.addHandler(file_handler)
 root_logger.addHandler(console)
 
 import gzip
+import hmac
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 app = Flask(__name__)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 app.secret_key = os.environ.get('SECRET_KEY', 'aiseki-navi-staff-monitor-secret-key-2026')
 app.permanent_session_lifetime = datetime.timedelta(days=90)
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 STAFF_PASSCODE = os.environ.get('STAFF_PASSCODE', '5555')
 MASTER_PASSCODE = os.environ.get('MASTER_PASSCODE', '2918')
 ADMIN_API_SECRET = os.environ.get('ADMIN_API_SECRET', 'lounge2026')
+
+_login_failures_lock = threading.Lock()
+_login_failures = defaultdict(list)  # ip -> [epoch_ts, ...]
+LOGIN_MAX_ATTEMPTS = 8
+LOGIN_WINDOW_SEC = 300
+
+
+def _is_login_rate_limited(ip_addr: str) -> bool:
+    now_t = time.time()
+    with _login_failures_lock:
+        recent = [t for t in _login_failures.get(ip_addr, []) if now_t - t < LOGIN_WINDOW_SEC]
+        if recent:
+            _login_failures[ip_addr] = recent
+        else:
+            _login_failures.pop(ip_addr, None)
+        return len(recent) >= LOGIN_MAX_ATTEMPTS
+
+
+def _record_login_failure(ip_addr: str) -> None:
+    now_t = time.time()
+    with _login_failures_lock:
+        recent = [t for t in _login_failures.get(ip_addr, []) if now_t - t < LOGIN_WINDOW_SEC]
+        recent.append(now_t)
+        _login_failures[ip_addr] = recent
+
+
+def _clear_login_failures(ip_addr: str) -> None:
+    with _login_failures_lock:
+        _login_failures.pop(ip_addr, None)
+
+
+@app.context_processor
+def inject_auth_flags():
+    """Automatically inject staff/master session flags into every template (hides AdSense on all pages for staff/master)."""
+    return {
+        'is_staff': bool(session.get('is_staff')),
+        'is_master': bool(session.get('is_master')),
+    }
+
 
 def is_admin_authorized():
     """Verify administrative permission either via authenticated staff/master session or secret token."""
     if session.get('is_staff') or session.get('is_master'):
         return True
     secret = request.args.get('secret', '').strip()
-    if secret and secret == ADMIN_API_SECRET:
+    if secret and hmac.compare_digest(secret, ADMIN_API_SECRET):
         return True
     return False
+
 
 def is_master_authorized():
     """Verify master/owner permission via master session or secret token."""
     if session.get('is_master'):
         return True
     secret = request.args.get('secret', '').strip()
-    if secret and secret == ADMIN_API_SECRET:
+    if secret and hmac.compare_digest(secret, ADMIN_API_SECRET):
         return True
     return False
+
 
 @app.after_request
 def compress_response(response):
     """Set cache headers and automatically gzip-compress JSON/HTML/CSS/JS responses."""
     # 1. Cache headers (must run regardless of gzip compression)
     if request.path.startswith('/static/') and response.status_code == 200:
-        if any(request.path.lower().endswith(ext) for ext in ('.js', '.css', '.jpg', '.jpeg', '.png', '.webp', '.svg', '.gif', '.ico', '.woff2')):
-            response.headers['Cache-Control'] = 'public, max-age=604800, immutable'
+        if request.args.get('v'):
+            response.headers['Cache-Control'] = 'public, max-age=31536000, immutable'
+        else:
+            response.headers['Cache-Control'] = 'public, max-age=86400'
     elif response.content_type and 'text/html' in response.content_type and response.status_code == 200:
         if 'Cache-Control' not in response.headers:
             response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
@@ -125,7 +173,7 @@ def _ensure_scheduler_started_async():
         try:
             local_db.init_db()
             restore_latest_data_if_empty()
-            local_db.start_background_sync(days=14, on_recent_synced=refresh_momentum_from_db)
+            local_db.start_background_sync(days=30, on_recent_synced=refresh_momentum_from_db)
             threading.Thread(target=local_db.restore_votes_from_sheets, kwargs={'hours': 24}, daemon=True).start()
 
             scheduler = BackgroundScheduler(timezone="UTC", job_defaults={
@@ -140,6 +188,7 @@ def _ensure_scheduler_started_async():
                     analytics.flush()
                 except Exception as err:
                     logging.error(f"analytics flush failed: {err}")
+            atexit.register(_flush_analytics)
             scheduler.add_job(func=_flush_analytics, trigger="interval", minutes=10)
             scheduler.add_job(func=lambda: local_db.sync_from_google_sheets(days=3), trigger="interval", hours=2)
             # Human-paced anti-spam schedule with randomized jitter (90s-540s) so posts never fire at :00:00 sharp:
@@ -158,7 +207,32 @@ def _ensure_scheduler_started_async():
                     note_poster.check_and_post_new_note()
                 except Exception as err:
                     logging.error(f"Scheduled note promotion check failed: {err}")
-            scheduler.add_job(func=_note_check_job, trigger="cron", hour=11, minute=35, jitter=300)
+            # Check note RSS during calm midday (12:15 JST) and pre-evening (17:15 JST) windows to avoid 20:00-22:00 X rush
+            scheduler.add_job(func=_note_check_job, trigger="cron", hour="3,8", minute=15, jitter=300)
+            def _threads_daily_job():
+                try:
+                    import threads_poster
+                    with data_lock:
+                        cur_stores = list(latest_data.get('full_data') or [])
+                        is_seed = bool(latest_data.get('is_seed'))
+                    if cur_stores and not is_seed:
+                        threads_poster.execute_scheduled_threads_post(cur_stores, slot_label="22:00")
+                except Exception as err:
+                    logging.error(f"Scheduled Threads post failed: {err}")
+            scheduler.add_job(func=_threads_daily_job, trigger="cron", hour=13, minute=8, jitter=300)
+            def _ig_carousel_job(slot_lbl="21:45"):
+                try:
+                    import instagram_poster
+                    with data_lock:
+                        cur_stores = list(latest_data.get('full_data') or [])
+                        is_seed = bool(latest_data.get('is_seed'))
+                    if not is_seed:
+                        instagram_poster.execute_scheduled_instagram_post(cur_stores, mode="carousel", slot_label=slot_lbl)
+                except Exception as err:
+                    logging.error(f"Scheduled Instagram carousel post failed: {err}")
+            # Friday pre-outing forecast (18:45 JST = 09:45 UTC) + Tue/Sun evening report (21:45 JST = 12:45 UTC)
+            scheduler.add_job(func=_ig_carousel_job, trigger="cron", day_of_week="fri", hour=9, minute=45, jitter=300, args=["18:45"])
+            scheduler.add_job(func=_ig_carousel_job, trigger="cron", day_of_week="tue,sun", hour=12, minute=45, jitter=300, args=["21:45"])
             def _crawl_events_job():
                 try:
                     import events
@@ -187,7 +261,7 @@ def _ensure_scheduler_started_async():
                 except Exception as err:
                     logging.error(f"Bonus alert check failed: {err}")
             scheduler.add_job(func=_bonus_alert_check_job, trigger="interval", minutes=10)
-            scheduler.add_job(func=run_scheduled_weekly_x_post, trigger="cron", day_of_week="sun", hour=10, minute=0)
+            scheduler.add_job(func=run_scheduled_weekly_x_post, trigger="cron", day_of_week="sun", hour=10, minute=0, jitter=300)
             scheduler.start()
             trigger_background_fetch_if_needed()
             threading.Thread(target=_crawl_events_job, daemon=True).start()
@@ -279,9 +353,14 @@ def restore_latest_data_if_empty():
     try:
         if os.path.exists(LATEST_STATUS_SNAPSHOT_FILE):
             import json
+            import store_master
+            master = store_master.load()
             with open(LATEST_STATUS_SNAPSHOT_FILE, 'r', encoding='utf-8') as f:
                 saved = json.load(f)
-            full_data = saved.get('full_data') or []
+            full_data = [
+                s for s in (saved.get('full_data') or [])
+                if not master or s.get('name') in master
+            ]
             if full_data:
                 with data_lock:
                     if not latest_data.get('full_data'):
@@ -303,6 +382,8 @@ def restore_latest_data_if_empty():
             items = []
             latest_ts = None
             for sname, vals in snap.items():
+                if master and sname not in master:
+                    continue
                 info = master.get(sname, {})
                 source = (info.get('brand') or 'oriental').lower()
                 if source == 'olg' or source == 'ag':
@@ -553,13 +634,32 @@ def update_job(force=False):
             except Exception:
                 votes_map = {}
 
+            import store_master
+            valid_master = store_master.load()
+            now_epoch = time.time()
+
             with data_lock:
                 current_data = [] if latest_data.get('is_seed') else latest_data.get('full_data', [])
-                
-                # Merge new data with current data
-                merged_map = {s['name']: s for s in current_data}
+
+                # Merge new data with current data, dropping retired stores and expiring stale (>30m) zombie counts
+                merged_map = {}
+                for old_s in current_data:
+                    oname = old_s.get('name')
+                    if not oname or (valid_master and oname not in valid_master):
+                        continue
+                    old_copy = dict(old_s)
+                    fetched_ts = float(old_copy.get('fetched_at') or now_epoch)
+                    if now_epoch - fetched_ts > 1800:
+                        old_copy['women'] = 0
+                        old_copy['men'] = 0
+                        old_copy['women_diff'] = 0
+                        old_copy['men_diff'] = 0
+                    merged_map[oname] = old_copy
+
                 for s in data:
                     sname = s['name']
+                    if valid_master and sname not in valid_master:
+                        continue
                     prev = baseline_map.get(sname)
                     if prev:
                         s['women_diff'] = int(s.get('women', 0)) - int(prev.get('women', 0))
@@ -568,6 +668,7 @@ def update_job(force=False):
                         s['women_diff'] = 0
                         s['men_diff'] = 0
                     s['votes'] = votes_map.get(sname, {'smooth': 0, 'waiting': 0, 'lively': 0})
+                    s['fetched_at'] = now_epoch
                     merged_map[sname] = s
                 
                 merged_data = list(merged_map.values())
@@ -687,10 +788,16 @@ def dynamic_weekly_ogp_image():
         return send_from_directory('static', 'note-eyecatch.jpg', mimetype='image/jpeg')
 
 @app.route('/guide')
-@app.route('/guide/strategy')
 def guide_article():
     """Official comprehensive lounge strategy editorial manual."""
     return render_template('guide_article.html')
+
+
+@app.route('/guide/strategy')
+def guide_strategy_legacy_redirect():
+    """301 Permanent redirect from legacy /guide/strategy to canonical /guide."""
+    return redirect('/guide', code=301)
+
 
 AFFILIATE_REDIRECTS = {
     'spu': os.environ.get('AFFILIATE_URL_SPU') or 'https://h.accesstrade.net/sp/cc?rk=0100oo8500p144',
@@ -703,7 +810,6 @@ AFFILIATE_REDIRECTS = {
     'dating': os.environ.get('AFFILIATE_URL_DATING') or 'https://px.a8.net/svt/ejp?a8mat=4BEK9C+21TRSI+5SFC+61RI9',
     'dating_instant': os.environ.get('AFFILIATE_URL_DATING_INSTANT') or os.environ.get('AFFILIATE_URL_DATING') or 'https://px.a8.net/svt/ejp?a8mat=4BEK9C+21TRSI+5SFC+61RI9',
     'dating_bachelor': os.environ.get('AFFILIATE_URL_DATING_BACHELOR') or os.environ.get('AFFILIATE_URL_DATING') or 'https://px.a8.net/svt/ejp?a8mat=4BEK9C+21TRSI+5SFC+61RI9',
-    'dating_Casual': os.environ.get('AFFILIATE_URL_DATING_CASUAL') or os.environ.get('AFFILIATE_URL_DATING') or 'https://px.a8.net/svt/ejp?a8mat=4BEK9C+21TRSI+5SFC+61RI9',
     'dating_casual': os.environ.get('AFFILIATE_URL_DATING_CASUAL') or os.environ.get('AFFILIATE_URL_DATING') or 'https://px.a8.net/svt/ejp?a8mat=4BEK9C+21TRSI+5SFC+61RI9',
 }
 
@@ -800,33 +906,48 @@ def staff_analytics():
 def staff_monitor():
     """Internal staff dashboard (5555 = field data only, 2918 = master full management)."""
     error = None
+    client_ip = (request.remote_addr or '0.0.0.0').strip()
+
     if request.method == 'POST':
+        if _is_login_rate_limited(client_ip):
+            return render_template('staff_login.html', error='試行回数が上限に達しました。5分ほど待ってから再度お試しください'), 429
         entered = request.form.get('passcode', '').strip()
-        if entered == MASTER_PASSCODE:
+        if entered and hmac.compare_digest(entered, MASTER_PASSCODE):
+            _clear_login_failures(client_ip)
             session['is_staff'] = True
             session['is_master'] = True
             session.permanent = True
             return redirect(url_for('staff_monitor'))
-        elif entered == STAFF_PASSCODE:
+        elif entered and hmac.compare_digest(entered, STAFF_PASSCODE):
+            _clear_login_failures(client_ip)
             session['is_staff'] = True
             session['is_master'] = False
             session.permanent = True
             return redirect(url_for('staff_monitor'))
         else:
+            _record_login_failure(client_ip)
             error = 'パスコードが正しくありません'
 
-    # Allow one-touch login via query param ?passcode=5555 or ?passcode=2918
+    # Allow one-touch login via query param ?passcode=5555 or ?passcode=2918 (rate-limited as well)
     query_passcode = request.args.get('passcode', '').strip()
-    if query_passcode == MASTER_PASSCODE:
-        session['is_staff'] = True
-        session['is_master'] = True
-        session.permanent = True
-        return redirect(url_for('staff_monitor'))
-    elif query_passcode == STAFF_PASSCODE:
-        session['is_staff'] = True
-        session['is_master'] = False
-        session.permanent = True
-        return redirect(url_for('staff_monitor'))
+    if query_passcode:
+        if _is_login_rate_limited(client_ip):
+            return render_template('staff_login.html', error='試行回数が上限に達しました。5分ほど待ってから再度お試しください'), 429
+        if hmac.compare_digest(query_passcode, MASTER_PASSCODE):
+            _clear_login_failures(client_ip)
+            session['is_staff'] = True
+            session['is_master'] = True
+            session.permanent = True
+            return redirect(url_for('staff_monitor'))
+        elif hmac.compare_digest(query_passcode, STAFF_PASSCODE):
+            _clear_login_failures(client_ip)
+            session['is_staff'] = True
+            session['is_master'] = False
+            session.permanent = True
+            return redirect(url_for('staff_monitor'))
+        else:
+            _record_login_failure(client_ip)
+            error = 'パスコードが正しくありません'
 
     # Allow explicit role switch (?switch=1) to re-enter passcode
     if request.args.get('switch') == '1':
@@ -858,8 +979,8 @@ def staff_monitor():
 
 @app.route('/api/data-audit')
 def api_data_audit():
-    """Staff/Admin endpoint returning automated price & business hours drift audit report."""
-    if not is_admin_authorized():
+    """Master-only endpoint returning automated price & business hours drift audit report."""
+    if not is_master_authorized():
         return jsonify({'error': 'Unauthorized'}), 401
     import data_audit
     with data_lock:
@@ -876,6 +997,8 @@ def staff_logout():
 
 
 _sns_kit_ctx_cache = {'ctx': None, 'ts': 0.0}
+_sns_slide_bytes_cache = {}  # (slide_num, is_jpg) -> (ts, bytes)
+
 
 def _get_sns_kit_context(fast=False):
     import ig_carousel_generator
@@ -886,14 +1009,17 @@ def _get_sns_kit_context(fast=False):
     rep = None
     if not fast:
         try:
-            rep = weekly_report.generate_weekly_report()
+            res = weekly_report.generate_weekly_report()
+            if isinstance(res, dict) and 'error' not in res:
+                rep = res
         except Exception:
             rep = None
     with data_lock:
         live_s = list(latest_data.get('full_data') or [])
     ctx = ig_carousel_generator.build_forecast_context(report=rep, live_stores=live_s)
-    _sns_kit_ctx_cache['ctx'] = ctx
-    _sns_kit_ctx_cache['ts'] = now_t
+    if not fast:
+        _sns_kit_ctx_cache['ctx'] = ctx
+        _sns_kit_ctx_cache['ts'] = now_t
     return ctx
 
 
@@ -945,24 +1071,36 @@ def public_ig_slide_png(slide_num):
     """Publicly accessible 1080x1350 JPEG/PNG slide endpoint so Meta Instagram Graph API servers can fetch carousel images."""
     restore_latest_data_if_empty()
     trigger_background_fetch_if_needed()
+    clamped = max(1, min(5, slide_num))
+    is_jpg = request.path.endswith('.jpg')
+    cache_key = (clamped, is_jpg)
+    now_t = time.time()
+    cached = _sns_slide_bytes_cache.get(cache_key)
+    if cached and (now_t - cached[0] < 300):
+        resp = Response(cached[1], mimetype='image/jpeg' if is_jpg else 'image/png')
+        resp.headers['Cache-Control'] = 'public, max-age=300'
+        return resp
     try:
         import io
         from PIL import Image
         import ig_carousel_generator
-        ctx = _get_sns_kit_context(fast=True)
-        png_bytes = ig_carousel_generator.render_slide_png(max(1, min(5, slide_num)), ctx=ctx)
-        if request.path.endswith('.jpg'):
+        ctx = _get_sns_kit_context(fast=False)
+        png_bytes = ig_carousel_generator.render_slide_png(clamped, ctx=ctx)
+        if is_jpg:
             img = Image.open(io.BytesIO(png_bytes)).convert('RGB')
             out = io.BytesIO()
             img.save(out, format='JPEG', quality=92, optimize=True)
-            resp = Response(out.getvalue(), mimetype='image/jpeg')
+            img_bytes = out.getvalue()
+            resp = Response(img_bytes, mimetype='image/jpeg')
         else:
-            resp = Response(png_bytes, mimetype='image/png')
+            img_bytes = png_bytes
+            resp = Response(img_bytes, mimetype='image/png')
+        _sns_slide_bytes_cache[cache_key] = (now_t, img_bytes)
         resp.headers['Cache-Control'] = 'public, max-age=300'
         return resp
     except Exception as e:
         logging.error(f"Public IG slide generation failed: {e}")
-        return send_from_directory('static', 'note-eyecatch.jpg', mimetype='image/jpeg')
+        abort(503)
 
 _is_fetching = False
 _fetch_started_at = None
@@ -1071,7 +1209,7 @@ def health_check_deep():
 
 @app.route('/api/debug_ps')
 def debug_ps():
-    if not is_admin_authorized():
+    if not is_master_authorized():
         return jsonify({'error': 'Unauthorized'}), 401
     return jsonify({
         'pid': os.getpid(),
@@ -1082,18 +1220,21 @@ def debug_ps():
 
 @app.route('/api/logs')
 def view_logs():
-    if not is_admin_authorized():
+    if not is_master_authorized():
         return jsonify({'error': 'Unauthorized'}), 401
-    if os.path.exists('app.log'):
-        with open('app.log', 'r') as f:
-            content = f.read()
-        return Response(content, mimetype='text/plain')
+    if os.path.exists(log_file_path):
+        with open(log_file_path, 'rb') as f:
+            f.seek(0, os.SEEK_END)
+            size = f.tell()
+            f.seek(max(0, size - 200 * 1024), os.SEEK_SET)
+            content = f.read().decode('utf-8', errors='replace')
+        return Response(content, mimetype='text/plain; charset=utf-8')
     return "No logs found.", 404
 
 @app.route('/api/thread_status')
 def get_thread_status():
     """Diagnostic endpoint to check the health of the background fetcher and logger"""
-    if not is_admin_authorized():
+    if not is_master_authorized():
         return jsonify({'error': 'Unauthorized'}), 401
     return jsonify({
         'last_updated': latest_data['last_updated'],
@@ -1121,7 +1262,7 @@ def get_events():
     try:
         import events
         store = request.args.get('store', '').strip()
-        force = request.args.get('refresh', '').lower() == 'true'
+        force = (request.args.get('refresh', '').lower() == 'true') and is_master_authorized()
         if store:
             evs = events.get_events_for_store(store, allow_blocking=force)
         else:
@@ -1157,7 +1298,7 @@ def post_store_vote():
     if known_names and store_name not in known_names:
         return jsonify({'status': 'error', 'error': 'Unknown store'}), 400
 
-    client_ip = request.headers.get('X-Forwarded-For', request.remote_addr or '0.0.0.0').split(',')[0].strip()
+    client_ip = (request.remote_addr or '0.0.0.0').strip()
     ip_hash = hashlib.sha256(f"{client_ip}_aiseki_salt".encode('utf-8')).hexdigest()[:16]
     raw_voter = str(payload.get('voter_id', '')).strip()[:64]
     voter_hash = hashlib.sha256(f"v_{raw_voter}_aiseki_salt".encode('utf-8')).hexdigest()[:16] if raw_voter else ''
@@ -1187,7 +1328,17 @@ def post_store_vote():
 
 @app.route('/robots.txt')
 def robots_txt():
-    content = "User-agent: *\nAllow: /\nDisallow: /api/debug_ps\nDisallow: /api/logs\nDisallow: /api/thread_status\nDisallow: /staff\nSitemap: https://aiseki-navi.com/sitemap.xml\n"
+    content = (
+        "User-agent: *\n"
+        "Allow: /\n"
+        "Disallow: /api/debug_ps\n"
+        "Disallow: /api/logs\n"
+        "Disallow: /api/thread_status\n"
+        "Disallow: /api/data-audit\n"
+        "Disallow: /api/trigger-\n"
+        "Disallow: /staff\n"
+        "Sitemap: https://aiseki-navi.com/sitemap.xml\n"
+    )
     return Response(content, mimetype='text/plain')
 
 @app.route('/ads.txt')
@@ -1276,6 +1427,10 @@ def store_detail_page(store_slug):
     import store_master
     import store_hours
     import urllib.parse
+    legacy_target = store_master.legacy_redirect_for_slug(store_slug)
+    if legacy_target:
+        return redirect(legacy_target, code=301)
+
     restore_latest_data_if_empty()
     trigger_background_fetch_if_needed()
     with data_lock:
@@ -1284,7 +1439,7 @@ def store_detail_page(store_slug):
 
     sname = store_master.store_by_slug(store_slug, live_stores=raw_stores)
     if not sname:
-        return redirect(url_for('index'))
+        abort(404)
 
     info = store_master.get(sname) or {}
     live_map = {s.get('name'): s for s in raw_stores}
@@ -1312,7 +1467,7 @@ def store_detail_page(store_slug):
         official_url = 'https://jis.bar/'
     else:
         brand_label = raw_brand or '相席ラウンジ'
-        brand_slug = 'oriental-lounge'
+        brand_slug = ''
         official_url = {
             'ALFA': 'https://aiseki-hiroshima.com/',
             'CLOVERS': 'https://bar-clovers.com/',
@@ -1614,6 +1769,8 @@ def stats_whitepaper():
 @app.route('/area/<area_slug>')
 def area_portal(area_slug=None):
     """Area portal page showing live crowd stats and local lounge guides."""
+    if area_slug is not None and area_slug not in AREA_GUIDES:
+        abort(404)
     trigger_background_fetch_if_needed()
     with data_lock:
         stores = list(latest_data.get('full_data') or [])
@@ -1686,14 +1843,20 @@ def guide_weekday_strategy():
     return render_template('guide_weekday.html')
 
 @app.route('/guide/brand-comparison')
-@app.route('/guide/compare')
 def guide_brand_comparison():
     """Editorial guide comparing Oriental Lounge, ag, and JIS."""
     return render_template('guide_comparison.html')
 
+
+@app.route('/guide/compare')
+def guide_compare_legacy_redirect():
+    """301 Permanent redirect from legacy /guide/compare to canonical /guide/brand-comparison."""
+    return redirect('/guide/brand-comparison', code=301)
+
+
 @app.route('/guide/shinjuku')
 def guide_shinjuku():
-    """Editorial guide comparing the 4 Shinjuku lounge stores."""
+    """Editorial guide comparing the 3 Shinjuku lounge stores."""
     return render_template('guide_shinjuku.html')
 
 @app.route('/guide/solo-vs-pair')
@@ -1786,8 +1949,8 @@ def run_scheduled_x_post(slot_label="20:00", force=False):
 
 @app.route('/api/trigger-x-post')
 def trigger_x_post_endpoint():
-    """Endpoint to test or externally trigger X auto-posting."""
-    if not is_admin_authorized():
+    """Endpoint to test or externally trigger X auto-posting (master only)."""
+    if not is_master_authorized():
         return jsonify({'error': 'Unauthorized'}), 401
     slot = request.args.get('slot', '20:00')
     force = request.args.get('force', '0') == '1'
@@ -1797,8 +1960,8 @@ def trigger_x_post_endpoint():
 
 @app.route('/api/trigger-x-tip')
 def trigger_x_tip_endpoint():
-    """Endpoint to test or externally trigger X human-like tips posting."""
-    if not is_admin_authorized():
+    """Endpoint to test or externally trigger X human-like tips posting (master only)."""
+    if not is_master_authorized():
         return jsonify({'error': 'Unauthorized'}), 401
     slot = request.args.get('slot', '12:00')
     force = request.args.get('force', '0') == '1'
@@ -1810,8 +1973,8 @@ def trigger_x_tip_endpoint():
 
 @app.route('/api/trigger-note-share')
 def trigger_note_share_endpoint():
-    """Endpoint to test or externally trigger note promotion posting."""
-    if not is_admin_authorized():
+    """Endpoint to test or externally trigger note promotion posting (master only)."""
+    if not is_master_authorized():
         return jsonify({'error': 'Unauthorized'}), 401
     force = request.args.get('force', '0') == '1'
     idx = request.args.get('idx', 0, type=int)
@@ -1822,8 +1985,8 @@ def trigger_note_share_endpoint():
 
 @app.route('/api/trigger-x-pinned')
 def trigger_x_pinned_endpoint():
-    """Endpoint to post the 2-post Pinned Tweet thread (1st URL-free + 2nd URL reply) to X."""
-    if not is_admin_authorized():
+    """Endpoint to post the 2-post Pinned Tweet thread (master only)."""
+    if not is_master_authorized():
         return jsonify({'error': 'Unauthorized'}), 401
     import x_poster
     main_text, reply_text = x_poster.build_pinned_tweet_thread()
@@ -1835,8 +1998,8 @@ def trigger_x_pinned_endpoint():
 
 @app.route('/api/trigger-x-column')
 def trigger_x_column_endpoint():
-    """Endpoint to post a 2-post Column Promotion thread (1st URL-free + eyecatch image + 2nd URL reply) to X."""
-    if not is_admin_authorized():
+    """Endpoint to post a 2-post Column Promotion thread (master only)."""
+    if not is_master_authorized():
         return jsonify({'error': 'Unauthorized'}), 401
     idx = request.args.get('idx', 0, type=int)
     import x_poster
@@ -1859,19 +2022,21 @@ def run_scheduled_weekly_x_post(force=False):
     import sns_workflows
     return sns_workflows.execute_scheduled_weekly_x_post(force=force)
 
+
 @app.route('/api/trigger-x-weekly')
 def trigger_x_weekly_endpoint():
-    """Endpoint to test or externally trigger the Weekly Summary X post."""
-    if not is_admin_authorized():
+    """Endpoint to test or externally trigger the Weekly Summary X post (master only)."""
+    if not is_master_authorized():
         return jsonify({'error': 'Unauthorized'}), 401
     force = request.args.get('force', '0') == '1'
     res = run_scheduled_weekly_x_post(force=force)
     return jsonify(res)
 
+
 @app.route('/api/trigger-x-bonus')
 def trigger_x_bonus_endpoint():
-    """Endpoint to test or externally trigger the Bonus-Time Guerrilla Alert X post."""
-    if not is_admin_authorized():
+    """Endpoint to test or externally trigger the Bonus-Time Guerrilla Alert X post (master only)."""
+    if not is_master_authorized():
         return jsonify({'error': 'Unauthorized'}), 401
     import bonus_alert
     force = request.args.get('force', '0') == '1'
@@ -1883,8 +2048,8 @@ def trigger_x_bonus_endpoint():
 
 @app.route('/api/trigger-threads-post')
 def trigger_threads_post_endpoint():
-    """Endpoint to test or externally trigger Meta Threads auto-post."""
-    if not is_admin_authorized():
+    """Endpoint to test or externally trigger Meta Threads auto-post (master only)."""
+    if not is_master_authorized():
         return jsonify({'error': 'Unauthorized'}), 401
     import threads_poster
     slot = request.args.get('slot', '20:00')
@@ -1897,8 +2062,8 @@ def trigger_threads_post_endpoint():
 
 @app.route('/api/trigger-ig-post')
 def trigger_ig_post_endpoint():
-    """Endpoint to test or externally trigger Meta Instagram Graph API auto-post (carousel or single live)."""
-    if not is_admin_authorized():
+    """Endpoint to test or externally trigger Meta Instagram Graph API auto-post (master only)."""
+    if not is_master_authorized():
         return jsonify({'error': 'Unauthorized'}), 401
     import instagram_poster
     mode = request.args.get('mode', 'carousel')

@@ -29,8 +29,8 @@ MAJOR_HUB_KEYWORDS = (
 
 def is_within_alert_window(now_jst: datetime.datetime = None) -> tuple:
     """
-    Check if `now_jst` falls inside 19:20 - 01:40 JST and is at least 18 minutes away
-    from regular scheduled posts (20:00, 22:00, 00:00, 02:00 JST).
+    Check if `now_jst` falls inside 19:20 - 01:40 JST and is at least 22 minutes away
+    from regular scheduled posts (18:00 Tips, Sunday 19:00 Weekly Report, 20:00, 22:00, 00:00, 02:00 JST).
     """
     now_jst = now_jst or datetime.datetime.now(JST)
     h, m = now_jst.hour, now_jst.minute
@@ -43,11 +43,13 @@ def is_within_alert_window(now_jst: datetime.datetime = None) -> tuple:
     if not in_hours:
         return False, "Outside evening bonus alert window (19:20-01:40 JST)"
 
-    # Avoid ±18 min around 20:00, 22:00, 00:00, 02:00
+    # Avoid ±22 min around 18:00, (Sunday 19:00), 20:00, 22:00, 00:00, 02:00
     minutes_of_day = h * 60 + m
-    scheduled_slots = [20 * 60, 22 * 60, 0, 24 * 60, 2 * 60]
+    scheduled_slots = [18 * 60, 20 * 60, 22 * 60, 0, 24 * 60, 2 * 60]
+    if now_jst.weekday() == 6:
+        scheduled_slots.append(19 * 60)
     for slot_min in scheduled_slots:
-        if abs(minutes_of_day - slot_min) <= 18:
+        if abs(minutes_of_day - slot_min) <= 22:
             return False, "Too close to scheduled X post slot"
 
     return True, "ok"

@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="google-site-verification" content="9kZaSJbaCuvn8QpGErUwI59w7Lf4N8ILhb_nWqDHI2s">
     <title>金・土の相席ラウンジで「男性待ち1時間」を回避して勝つ方法｜週末3つの時間帯別ムーブ＆徒歩3分ハシゴ術｜相席ナビ</title>
     <meta name="description" content="金曜・土曜の夜に相席ラウンジで「男性1時間待ち」の失敗を防ぐ実践攻略ガイド。19:00〜20:30の先行逃げ切り、21:00〜22:30の徒歩3分ハシゴ比較、23:00以降の2回転目狙いまで、全国53店舗のデータから解説。">
@@ -152,9 +152,11 @@
         }
     </style>
     <link rel="stylesheet" href="/static/calm.css?v=10">
+    {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
          crossorigin="anonymous"></script>
+    {% endif %}
 </head>
 
 <body>
@@ -216,11 +218,11 @@
                 以下のエリアでは、すべて徒歩2〜5分圏内に複数の相席ラウンジが密集しています。1店舗目の受付で「男性待ち」と言われたら、その場で待たずにすぐ近隣店舗の現在人数をチェックしましょう。
             </p>
             <ul style="color:#cbd5e1; font-size:0.93rem; line-height:1.9;">
-                <li><strong><a href="/area/shinjuku" style="color:#38bdf8;">新宿エリア（4店舗）</a></strong>：東口のオリエンタル・ag・JIS新宿が混んでいても、<a href="/store/jis-nishishinjuku" style="color:#f472b6;">JIS 西新宿</a>が女性優位の穴場になっているケースが多発します。</li>
-                <li><strong><a href="/area/shibuya" style="color:#38bdf8;">渋谷エリア（3店舗）</a></strong>：渋谷駅前店・渋谷本店・ag渋谷の3店舗はすべて徒歩3分圏内。若いノリならag、きれいめOLなら本店と即座に切り替え可能です。</li>
-                <li><strong><a href="/area/osaka" style="color:#38bdf8;">大阪・梅田エリア（5店舗）</a></strong>：JIS梅田・オリエンタル梅田・大阪駅前・JIS茶屋町・ヤタコイ茶屋町が密集しており、必ずどこかの店舗で女性優位のタイミングが生まれます。</li>
-                <li><strong><a href="/area/nagoya" style="color:#38bdf8;">名古屋・栄/錦エリア（3店舗）</a></strong>：オリエンタル名古屋栄・錦・ag名古屋が徒歩数分に集中。</li>
-                <li><strong><a href="/area/fukuoka" style="color:#38bdf8;">福岡・天神エリア（3店舗）</a></strong>：オリエンタル福岡・ag福岡・JIS福岡の3大ブランドが国体道路〜西通り周辺に揃っています。</li>
+                <li><strong><a href="/area/shinjuku" style="color:#38bdf8;">新宿エリア（3店舗）</a></strong>：東口の<a href="/store/oriental-lounge-shinjuku" style="color:#f472b6;">オリエンタル新宿</a>・<a href="/store/jis-shinjuku" style="color:#f472b6;">JIS新宿</a>が混んでいても、<a href="/store/jis-nishishinjuku" style="color:#f472b6;">JIS 西新宿</a>が女性優位の穴場になっているケースが多発します。</li>
+                <li><strong><a href="/area/shibuya" style="color:#38bdf8;">渋谷・恵比寿エリア（3店舗）</a></strong>：道玄坂の<a href="/store/oriental-lounge-shibuya-honten" style="color:#f472b6;">オリエンタル渋谷本店</a>・<a href="/store/ag-shibuya" style="color:#f472b6;">ag渋谷</a>に加え、1駅の<a href="/store/oriental-lounge-ebisu" style="color:#f472b6;">オリエンタル恵比寿</a>まで含めて比較可能。若いノリならag、きれいめOLなら渋谷本店・恵比寿と即座に切り替えられます。</li>
+                <li><strong><a href="/area/osaka" style="color:#38bdf8;">大阪・梅田エリア（5店舗）</a></strong>：<a href="/store/jis-umeda" style="color:#f472b6;">JIS梅田</a>・<a href="/store/oriental-lounge-osaka-ekimae" style="color:#f472b6;">オリエンタル大阪駅前</a>・<a href="/store/ag-umeda" style="color:#f472b6;">ag梅田</a>・<a href="/store/jis-chayamachi" style="color:#f472b6;">JIS茶屋町</a>・<a href="/store/yatakoi-umeda" style="color:#f472b6;">ヤタコイ茶屋町</a>が密集しており、必ずどこかの店舗で女性優位のタイミングが生まれます。</li>
+                <li><strong><a href="/area/nagoya" style="color:#38bdf8;">名古屋・栄/錦エリア（3店舗）</a></strong>：<a href="/store/oriental-lounge-nagoya-sakae" style="color:#f472b6;">オリエンタル名古屋栄</a>・<a href="/store/oriental-lounge-nagoya-nishiki" style="color:#f472b6;">錦</a>・<a href="/store/ag-nagoya" style="color:#f472b6;">ag名古屋</a>が徒歩数分に集中。</li>
+                <li><strong><a href="/area/fukuoka" style="color:#38bdf8;">福岡・天神エリア（2店舗）</a></strong>：<a href="/store/oriental-lounge-fukuoka" style="color:#f472b6;">オリエンタル福岡</a>・<a href="/store/jis-fukuoka" style="color:#f472b6;">JIS福岡</a>の2大大型店が天神西通り・大名周辺に揃っています。</li>
             </ul>
 
             <div style="text-align: center; margin: 36px 0;">

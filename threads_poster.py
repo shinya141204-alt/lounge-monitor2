@@ -10,6 +10,7 @@ Features:
 import datetime
 import logging
 import os
+import time
 
 import requests
 
@@ -58,7 +59,7 @@ def build_threads_live_post(stores: list, slot_label: str = "20:00", now_jst: da
             f"【{now_jst.month}/{now_jst.day}({wd}) {slot_label}】相席ラウンジ リアルタイム速報🥂\n\n"
             "現在、全国51店舗（オリエンタルラウンジ・ag・JIS等）の男女人数と時間帯別料金を比較できます。\n\n"
             f"▼ 全店舗の現在人数＆料金比較はこちら\n{SITE_URL}/price-comparison\n"
-            "#相席ラウンジ #相席ナビ #オリエンタルラウンジ #JIS"
+            "#相席ナビ #相席ラウンジ"
         )
 
     total_w = sum(int(s.get("women") or 0) for s in dom)
@@ -116,7 +117,7 @@ def build_threads_live_post(stores: list, slot_label: str = "20:00", now_jst: da
             ja = x_poster.format_ja_store_name(leader.get("name", ""))
             w = int(leader.get("women") or 0)
             m = int(leader.get("men") or 0)
-            city_lines.append(f"・{label}：{ja}（女{w}:男{m}）")
+            city_lines.append(f"・{label}：{ja}（女性{w}・男性{m}）")
 
     if city_lines:
         lines.append("")
@@ -133,10 +134,10 @@ def build_threads_live_post(stores: list, slot_label: str = "20:00", now_jst: da
     # Alternate URL vs Bio-link guidance so Meta's algorithm doesn't flag every post as external link spam
     if now_jst.day % 2 == 0:
         cta_line = "🔍 全51店舗の現在人数＆料金・イベント比較はプロフィールのリンク（相席ナビ）から見れます"
-        tag_line = "#相席ラウンジ #相席ナビ"
+        tag_line = "#相席ナビ #相席ラウンジ"
     else:
         cta_line = f"▼ 全51店舗の現在人数＆料金・イベント比較\n{SITE_URL}/price-comparison"
-        tag_line = "#相席ラウンジ #オリエンタルラウンジ #JIS"
+        tag_line = "#相席ナビ"
 
     lines.extend([
         "",
@@ -224,11 +225,47 @@ def _resolve_threads_user_id(access_token: str) -> str:
     return DEFAULT_THREADS_USER_ID
 
 
-def post_to_threads(text: str) -> dict:
+def _wait_for_threads_container_ready(creation_id: str, access_token: str, max_checks: int = 5, interval_sec: float = 2.0) -> tuple:
     """
-    Publish a text post to Meta Threads using the official 2-step Graph API:
-      1. POST /{threads_user_id}/threads (media_type=TEXT, text=...)
-      2. POST /{threads_user_id}/threads_publish (creation_id=...)
+    Poll `GET /{creation_id}?fields=status,error_message` until `FINISHED` (especially needed for IMAGE containers).
+    Exits immediately on mocks or responses without `status` field so unit tests never stall.
+    """
+    if not creation_id:
+        return False, "Missing creation_id"
+    wait_s = 0.05 if os.environ.get("DISABLE_SCHEDULER") == "1" else interval_sec
+
+    for attempt in range(max_checks):
+        try:
+            r = requests.get(
+                f"{THREADS_API_BASE}/{creation_id}",
+                params={"fields": "status,error_message", "access_token": access_token},
+                timeout=10,
+            )
+            sc = getattr(r, "status_code", None)
+            if not isinstance(sc, int) or sc >= 400:
+                return True, "status_check_unsupported"
+            data = r.json() if hasattr(r, "json") else {}
+            if not isinstance(data, dict) or "status" not in data:
+                return True, "no_status_field"
+            st = str(data.get("status") or "").upper()
+            if st in ("FINISHED", "PUBLISHED"):
+                return True, st
+            if st in ("ERROR", "EXPIRED"):
+                return False, f"Threads container status={st}: {data.get('error_message') or data}"
+        except Exception:
+            return True, "status_check_exception"
+
+        if attempt < max_checks - 1:
+            time.sleep(wait_s)
+
+    return True, "timeout_proceed"
+
+
+def post_to_threads(text: str, image_url: str = None) -> dict:
+    """
+    Publish a text or image post to Meta Threads using the official 2-step Graph API:
+      1. POST /{threads_user_id}/threads (media_type=TEXT or IMAGE, text=...)
+      2. Poll container status when needed, then POST /{threads_user_id}/threads_publish (creation_id=...)
     """
     access_token = _get_active_threads_token()
 
@@ -241,15 +278,25 @@ def post_to_threads(text: str) -> dict:
     user_id = _resolve_threads_user_id(access_token)
 
     try:
+        if image_url:
+            try:
+                requests.get(image_url, timeout=15)
+            except Exception:
+                pass
+
         create_url = f"{THREADS_API_BASE}/{user_id}/threads"
+        create_data = {
+            "media_type": "IMAGE" if image_url else "TEXT",
+            "text": text[:500],
+            "access_token": access_token,
+        }
+        if image_url:
+            create_data["image_url"] = image_url
+
         r1 = requests.post(
             create_url,
-            data={
-                "media_type": "TEXT",
-                "text": text[:500],
-                "access_token": access_token,
-            },
-            timeout=15,
+            data=create_data,
+            timeout=20,
         )
         if r1.status_code >= 400:
             logging.error(f"Threads container creation failed ({r1.status_code}): {r1.text}")
@@ -259,6 +306,12 @@ def post_to_threads(text: str) -> dict:
         if not creation_id:
             return {"status": "error", "detail": f"Missing creation_id in response: {r1.text[:200]}"}
 
+        if image_url:
+            ok_ready, ready_detail = _wait_for_threads_container_ready(creation_id, access_token)
+            if not ok_ready:
+                logging.error(f"Threads image container failed processing: {ready_detail}")
+                return {"status": "error", "detail": ready_detail}
+
         publish_url = f"{THREADS_API_BASE}/{user_id}/threads_publish"
         r2 = requests.post(
             publish_url,
@@ -266,7 +319,7 @@ def post_to_threads(text: str) -> dict:
                 "creation_id": creation_id,
                 "access_token": access_token,
             },
-            timeout=15,
+            timeout=20,
         )
         if r2.status_code >= 400:
             logging.error(f"Threads publish failed ({r2.status_code}): {r2.text}")
@@ -280,8 +333,8 @@ def post_to_threads(text: str) -> dict:
         return {"status": "error", "detail": str(e)}
 
 
-def execute_scheduled_threads_post(stores: list, slot_label: str = "20:00", force: bool = False) -> dict:
-    """Execute scheduled Threads post with persistent job_state deduplication and weekly token auto-refresh."""
+def execute_scheduled_threads_post(stores: list, slot_label: str = "20:00", force: bool = False, image_url: str = None) -> dict:
+    """Execute scheduled Threads post with persistent job_state deduplication, headcount guard, and weekly token auto-refresh."""
     now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
     biz_date = (now_jst - datetime.timedelta(hours=7)).strftime("%Y-%m-%d")
     dedup_key = f"threads_post:{biz_date}_{slot_label}"
@@ -289,9 +342,16 @@ def execute_scheduled_threads_post(stores: list, slot_label: str = "20:00", forc
     if not force and job_state.is_done(dedup_key):
         return {"status": "skipped", "reason": "Already posted to Threads for this slot"}
 
+    dom = _filter_domestic_stores(stores)
+    if not force:
+        total_dom_women = sum(int(s.get("women") or 0) for s in dom)
+        if total_dom_women < 15:
+            logging.info(f"Skipping Threads auto-post ({slot_label}): insufficient live headcount (women={total_dom_women}).")
+            return {"status": "skipped", "reason": "Insufficient live headcount"}
+
     refresh_threads_token_if_needed(force=False)
     text = build_threads_live_post(stores, slot_label=slot_label, now_jst=now_jst)
-    res = post_to_threads(text)
+    res = post_to_threads(text, image_url=image_url)
     if res.get("status") == "success" and not force:
         job_state.mark_done(dedup_key)
     res["threads_text"] = text

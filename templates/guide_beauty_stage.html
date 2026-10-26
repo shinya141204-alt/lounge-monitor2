@@ -3,10 +3,10 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="google-site-verification" content="9kZaSJbaCuvn8QpGErUwI59w7Lf4N8ILhb_nWqDHI2s">
     <title>なぜ美容サロン激戦区の相席ラウンジは美人が多いのか？「今日ビジュいい日」の行動データと選ばれる男の清潔感｜相席ナビ</title>
-    <meta name="description" content="全国66店舗の相席ラウンジ実測データから判明した「美容院・ネイル・美容クリニック密集エリアは18:30〜20:00にサロン帰りの女性が急増する」法則を徹底解説。自己投資の見せ場（ステージ）で選ばれる男性の清潔感・美容基準も公開。">
+    <meta name="description" content="全国53店舗（国内51店舗＋韓国2店舗）の相席ラウンジ実測データから判明した「美容院・ネイル・美容クリニック密集エリアは18:30〜20:00にサロン帰りの女性が急増する」法則を徹底解説。自己投資の見せ場（ステージ）で選ばれる男性の清潔感・美容基準も公開。">
     <meta name="keywords" content="相席ラウンジ 美人,オリエンタルラウンジ 客層,ag 相席 客層,JIS 梅田 茶屋町,渋谷 相席ラウンジ,相席ラウンジ 清潔感,メンズ美容 相席,相席ナビ">
     <link rel="canonical" href="https://aiseki-navi.com/guide/beauty-area-stage">
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
@@ -242,6 +242,11 @@
         }
     </style>
     <link rel="stylesheet" href="/static/calm.css?v=10">
+    {% if not is_staff and not session.get('is_staff') %}
+    <meta name="google-adsense-account" content="ca-pub-3043764334238627">
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
+         crossorigin="anonymous"></script>
+    {% endif %}
 </head>
 
 <body>
@@ -274,7 +279,7 @@
                 そして実は、<strong>「美容業界が盛り上がると、その成果を披露する『見せ場（ステージ）』として相席ラウンジが賑わう」</strong>という非常に強い相関関係があることをご存知でしょうか？
             </p>
             <p>
-                『相席ナビ』で全国66店舗（累計24万件以上）のリアルタイム入店ログを追跡していると、<strong>美容サロンやクリニックが密集している街ほど、18:30〜20:00という早い時間帯から美容感度の高い女性が急増する</strong>という明確なデータ傾向が出ています。
+                『相席ナビ』で全国53店舗（国内51店舗＋韓国2店舗・累計24万件以上）のリアルタイム入店ログを追跡していると、<strong>美容サロンやクリニックが密集している街ほど、18:30〜20:00という早い時間帯から美容感度の高い女性が急増する</strong>という明確なデータ傾向が出ています。
             </p>
 
             <div class="highlight-box">
@@ -320,7 +325,7 @@
                         <tr>
                             <td><strong><a href="/area/osaka" style="color:#fff;">大阪・梅田 / 茶屋町</a></strong></td>
                             <td>関西No.1の大型美容室・美容皮膚科密集地（茶屋町・阪急周辺）</td>
-                            <td><a href="/store/oriental-lounge-chayamachi" style="color:#f472b6;">オリエンタル茶屋町</a> / <a href="/store/jis-chayamachi" style="color:#f472b6;">JIS 茶屋町</a> / <a href="/store/jis-umeda" style="color:#f472b6;">JIS 梅田</a> / <a href="/store/ag-umeda" style="color:#f472b6;">ag 梅田</a></td>
+                            <td><a href="/store/oriental-lounge-osaka-ekimae" style="color:#f472b6;">オリエンタル大阪駅前</a> / <a href="/store/jis-chayamachi" style="color:#f472b6;">JIS 茶屋町</a> / <a href="/store/jis-umeda" style="color:#f472b6;">JIS 梅田</a> / <a href="/store/ag-umeda" style="color:#f472b6;">ag 梅田</a></td>
                         </tr>
                         <tr>
                             <td><strong><a href="/area/shibuya" style="color:#fff;">東京・渋谷 / 恵比寿</a></strong></td>
@@ -345,7 +350,7 @@
                         <tr>
                             <td><strong><a href="/area/fukuoka" style="color:#fff;">福岡・天神 / 大名</a></strong></td>
                             <td>大名・今泉エリアは九州屈指のトレンド美容室＆カフェ密集街</td>
-                            <td><a href="/store/jis-fukuoka" style="color:#f472b6;">JIS 福岡</a> / <a href="/store/oriental-lounge-fukuoka" style="color:#f472b6;">オリエンタル福岡</a> / <a href="/store/ag-fukuoka" style="color:#f472b6;">ag 福岡</a></td>
+                            <td><a href="/store/jis-fukuoka" style="color:#f472b6;">JIS 福岡</a> / <a href="/store/oriental-lounge-fukuoka" style="color:#f472b6;">オリエンタル福岡</a></td>
                         </tr>
                         <tr>
                             <td><strong><a href="/area/kanto" style="color:#fff;">横浜・大宮・神戸・京都</a></strong></td>
@@ -391,7 +396,7 @@
                 </p>
             </div>
 
-            {% if not is_staff %}
+            {% if not is_staff and not session.get('is_staff') %}
             <div style="margin: 24px 0; padding: 18px 20px; border-radius: 12px; background: #16171c; border: 1px solid rgba(200, 164, 110, 0.32);">
                 <div style="font-size: 0.72rem; font-weight: 700; color: #f1e3cb; margin-bottom: 6px;">PR｜美容感度の高い女性と並ぶ日の「至近距離70cm」対策</div>
                 <p style="font-size: 0.84rem; color: #dedad2; margin: 0 0 12px; line-height: 1.65;">
@@ -407,7 +412,7 @@
             <div class="cta-box">
                 <div style="font-size:1.05rem;font-weight:800;color:#fff;">📊 いま美容街のラウンジに何人入っているかチェック！</div>
                 <p style="font-size:0.85rem;color:#cbd5e1;margin:8px 0 0 0;">
-                    茶屋町・梅田・渋谷・恵比寿・新宿・心斎橋・栄・天神など全国66店舗の現在の男女人数と「直近15分の増減（↗）」をリアルタイム更新中！
+                    茶屋町・梅田・渋谷・恵比寿・新宿・心斎橋・栄・天神など全国53店舗の現在の男女人数と「直近15分の増減（↗）」をリアルタイム更新中！
                 </p>
                 <a href="/" class="cta-btn">リアルタイム人数ランキングを見る →</a>
                 <div style="margin-top:14px;font-size:0.8rem;">

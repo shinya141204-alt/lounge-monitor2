@@ -4,16 +4,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {% set req_area_param = (request.args.get('area', '') | trim | lower) if request is defined else '' %}
+    {% set active_cluster_ns = namespace(item=none) %}
+    {% if req_area_param and data and data.clusters %}
+        {% for cl in data.clusters %}
+            {% if cl.id == req_area_param %}
+                {% set active_cluster_ns.item = cl %}
+            {% endif %}
+        {% endfor %}
+    {% endif %}
+    {% if active_cluster_ns.item %}
+    <title>{{ active_cluster_ns.item.tab_label }}の相席ラウンジ料金・男性割引イベント徹底比較｜近隣店コスパ検証 | 相席ナビ</title>
+    <meta name="description" content="{{ active_cluster_ns.item.title }}（{{ active_cluster_ns.item.desc }}）単独待機料金・4時間帯別の相席10分単価・1名入店可否・開催中イベント・現在のリアルタイム男女人数を横並び徹底比較。">
+    {% else %}
     <title>相席ラウンジ料金・男性割引イベント徹底比較｜新宿・渋谷・梅田・栄・天神の近隣店コスパ検証 | 相席ナビ</title>
     <meta name="description" content="オリエンタルラウンジ・ag（アグ）・JIS（ジス）全国51店舗の男性料金（単独待機料金・時間帯別の相席10分単価・60分総額目安・1名入店可否）と、現在開催中の男性割引・女性集客イベント、今のリアルタイム男女人数をエリア別に徹底比較。">
+    {% endif %}
     <meta name="keywords" content="相席ラウンジ 料金 比較,オリエンタルラウンジ 料金,オリエンタルラウンジ 待機料金,JIS 料金,ag 料金,相席ラウンジ 男性 割引,相席ラウンジ イベント,新宿 相席 料金,梅田 相席 料金">
     <meta name="robots" content="index, follow">
     <link rel="canonical" href="https://aiseki-navi.com/price-comparison">
 
-    <meta property="og:title" content="相席ラウンジ全51店舗の料金（待機・相席単価・1名可否）＆開催中イベント徹底比較">
-    <meta property="og:description" content="オリエンタル・ag・JIS各店の単独待機料金（220円〜330円/10分）、店舗ごと・時間帯ごとに異なる相席10分単価、開催中イベント、今の女性人数・比率を横並び検証。">
+    <meta property="og:title" content="{% if active_cluster_ns.item %}{{ active_cluster_ns.item.tab_label }}の相席ラウンジ料金・開催中イベント・現在人数比較｜相席ナビ{% else %}相席ラウンジ全51店舗の料金（待機・相席単価・1名可否）＆開催中イベント徹底比較{% endif %}">
+    <meta property="og:description" content="{% if active_cluster_ns.item %}{{ active_cluster_ns.item.desc }} 単独待機料金・4時間帯別の相席単価・1名入店可否・今の男女人数を横並び検証。{% else %}オリエンタル・ag・JIS各店の単独待機料金（220円〜330円/10分）、店舗ごと・時間帯ごとに異なる相席10分単価、開催中イベント、今の女性人数・比率を横並び検証。{% endif %}">
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://aiseki-navi.com/price-comparison">
+    <meta property="og:url" content="https://aiseki-navi.com/price-comparison{% if active_cluster_ns.item %}?area={{ active_cluster_ns.item.id }}{% endif %}">
     <meta property="og:image" content="https://aiseki-navi.com/static/eyecatch-price-comparison.jpg">
     <meta property="og:site_name" content="相席ナビ">
     <meta name="twitter:card" content="summary_large_image">
@@ -68,7 +82,7 @@
     }
     </script>
 
-    {% if not is_staff %}
+    {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
          crossorigin="anonymous"></script>
@@ -735,7 +749,11 @@
                         {% for b in data.brand_specs %}
                         <tr>
                             <td style="font-weight: 700;">
+                                {% if b.brand_slug %}
                                 <a href="/{{ b.brand_slug }}" style="color: var(--accent-text); text-decoration: none;">{{ b.brand_label }} ›</a>
+                                {% else %}
+                                <a href="/areas" style="color: var(--accent-text); text-decoration: none;">{{ b.brand_label }}（全国エリア一覧） ›</a>
+                                {% endif %}
                             </td>
                             <td>{{ b.charge_str }}</td>
                             <td>
@@ -802,6 +820,19 @@
                 </table>
             </div>
         </section>
+
+        {% if not is_staff and not session.get('is_staff') %}
+        <aside class="section-card" aria-label="入店前の身だしなみ・満席対策ガイド" style="padding: 18px 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; border-color: rgba(200, 164, 110, 0.32);">
+            <div style="flex: 1 1 320px;">
+                <div style="font-size: 0.72rem; font-weight: 700; color: var(--accent); margin-bottom: 3px;">PRE-OUTING PREP & BACKUP GUIDE</div>
+                <div style="font-size: 0.94rem; font-weight: 700; color: var(--text-main);">距離が近いソファ席での清潔感ケア＆週末満席時の予備手段まとめ</div>
+                <div style="font-size: 0.8rem; color: var(--text-sub); margin-top: 2px;">仕事帰りの青ヒゲ・肌テカリ対策、浮かない私服選び、どのお店も男性待ちの夜に使える恋活アプリの活用法を解説しています。</div>
+            </div>
+            <a href="/grooming" style="display: inline-flex; align-items: center; gap: 6px; padding: 10px 18px; border-radius: 8px; background: var(--accent-soft); border: 1px solid rgba(200, 164, 110, 0.45); color: var(--accent-text); text-decoration: none; font-size: 0.83rem; font-weight: 700; white-space: nowrap;">
+                相席ラウンジへ行く前の清潔感ケア＆満席時の予備アプリ特集を見る ›
+            </a>
+        </aside>
+        {% endif %}
 
         {% include '_portal_footer.html' %}
     </div>

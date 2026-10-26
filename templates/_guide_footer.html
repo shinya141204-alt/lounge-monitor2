@@ -1,13 +1,30 @@
 <footer class="portal-footer portal-footer--guide">
-            <div>
-                <a href="/">リアルタイム順位</a>|
-                <a href="/price-comparison">料金・イベント比較</a>|
-                <a href="/areas">全国エリア一覧</a>|
-                <a href="/columns">コラム一覧</a>|
-                <a href="/guide/brand-comparison">3大ブランド比較</a>|
-                <a href="/grooming">身だしなみ特集</a>|
-                <a href="/privacy">運営者情報・規約</a>
+            <div class="portal-footer-links">
+                <a href="/">リアルタイム順位</a>
+                <a href="/price-comparison">料金・イベント比較</a>
+                <a href="/guide/price-event-comparison">比較ボードの見方</a>
+                <a href="/oriental-lounge">オリエンタルラウンジ現在人数</a>
+                <a href="/ag">ag（アグ）現在人数</a>
+                <a href="/jis">JIS（ジス）現在人数</a>
+                <a href="/areas">全国エリア一覧</a>
+                <a href="/columns">コラム一覧</a>
+                <a href="/stats">統計データ白書</a>
+                <a href="/guide">基本ガイド</a>
+                <a href="/guide/brand-comparison">3大ブランド比較</a>
+                <a href="/guide/weekday-strategy">水曜・木曜の穴場</a>
+                <a href="/guide/weekend-strategy">金曜・土曜ピーク対策</a>
+                <a href="/grooming">身だしなみ特集</a>
+                <a href="/privacy">運営者情報・プライバシーポリシー</a>
             </div>
-            <p class="portal-footer-disclaimer">※掲載している料金・入店条件・イベント情報は変更される場合がございます。ご来店の際は必ず各店舗の公式ホームページにて最新情報をご確認ください。</p>
-            <p style="margin-top: 8px;">© 2026 相席ナビ (AISEKI NAVI)</p>
+            {% if not is_staff and not session.get('is_staff') %}
+            <div class="portal-footer-sns" style="margin: 12px 0 10px; font-size: 0.78rem; color: #9a968e; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px;">
+                <span style="opacity: 0.8;">公式SNS：</span>
+                <a href="https://x.com/aiseki_navi" target="_blank" rel="noopener noreferrer" style="color: #dfc496; text-decoration: none;">𝕏 公式X</a>
+                <a href="https://www.threads.net/@aiseki_navi1" target="_blank" rel="noopener noreferrer" style="color: #dfc496; text-decoration: none;">Threads</a>
+                <a href="https://www.instagram.com/aiseki_navi1" target="_blank" rel="noopener noreferrer" style="color: #dfc496; text-decoration: none;">Instagram</a>
+                <a href="https://note.com/aiseki_navi" target="_blank" rel="noopener noreferrer" style="color: #dfc496; text-decoration: none;">公式note</a>
+            </div>
+            {% endif %}
+            <p class="portal-footer-disclaimer">※掲載している料金・入店条件・イベント情報は変更される場合がございます。ご来店の際は必ず各店舗の公式ホームページ・公式アプリにて最新情報をご確認ください。</p>
+            <p style="margin-top: 8px;">© 2026 相席ナビ (AISEKI NAVI) ｜ 公開データの非公式統計・情報ポータルサイト</p>
         </footer>

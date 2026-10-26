@@ -82,10 +82,11 @@ def build_sns_post_payload(post_type, base_url, latest_data):
         m = s.get('men', 0)
         tot = w + m
         pct = round((w / tot) * 100) if tot > 0 else 0
+        ja_name = x_poster.format_ja_store_name(s.get('name') or '')
         if post_type == 'anaba':
-            lines.append(f"{medals[i]} {s.get('name')}（女性比{pct}% ｜ 女性{w}名 / 男性{m}名）")
+            lines.append(f"{medals[i]} {ja_name}（女性比{pct}% ｜ 女性{w}名 / 男性{m}名）")
         else:
-            lines.append(f"{medals[i]} {s.get('name')}（女性{w}名 / 男性{m}名・女性比{pct}%）")
+            lines.append(f"{medals[i]} {ja_name}（女性{w}名 / 男性{m}名・女性比{pct}%）")
 
     lines.extend([
         "",
@@ -108,8 +109,8 @@ def build_sns_post_payload(post_type, base_url, latest_data):
     }
 
 
-def execute_scheduled_x_post(latest_data, slot_label="20:00", force=False):
-    """Execute scheduled X auto-post with duplicate prevention that survives restarts/redeploys."""
+def execute_scheduled_x_post(latest_data, slot_label="20:00", force=False, include_meta=False):
+    """Execute scheduled X auto-post with duplicate prevention and live headcount safety guards."""
     now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
     biz_date = (now_jst - datetime.timedelta(hours=7)).strftime('%Y-%m-%d')
     dedup_key = f"x_post:{biz_date}_{slot_label}"
@@ -118,13 +119,31 @@ def execute_scheduled_x_post(latest_data, slot_label="20:00", force=False):
         logging.info(f"X auto-post already sent for {dedup_key}, skipping.")
         return {"status": "skipped", "reason": "Already posted for this slot"}
 
-    stores = latest_data.get('full_data') or []
+    latest_data = latest_data or {}
+    is_seed = bool(latest_data.get('is_seed'))
+    stores = [] if is_seed else (latest_data.get('full_data') or [])
     if not stores:
         try:
-            stores = monitor.get_all_data()
+            stores = monitor.get_all_data() or []
         except Exception as e:
             logging.error(f"Failed to fetch stores for X post: {e}")
             return {"status": "error", "detail": str(e)}
+
+    korea_keywords = ("カンナム", "ホンデ", "ソウル", "GANGNAM", "HONGDAE", "SEOUL")
+    dom_stores = [
+        s for s in (stores or [])
+        if s.get("region") != "Korea"
+        and not any(k in (s.get("name") or "").upper() for k in korea_keywords)
+    ]
+    if not force:
+        total_dom_women = sum(int(s.get("women") or 0) for s in dom_stores)
+        top1_dom_women = max((int(s.get("women") or 0) for s in dom_stores), default=0)
+        if total_dom_women < 15 or top1_dom_women < 5:
+            logging.info(
+                f"Skipping X auto-post ({slot_label}): insufficient live headcount "
+                f"(total_women={total_dom_women}, top1_women={top1_dom_women})."
+            )
+            return {"status": "skipped", "reason": "Insufficient live headcount"}
 
     text = x_poster.build_scheduled_tweet_text(stores, slot_label=slot_label)
     if not text:
@@ -160,23 +179,22 @@ def execute_scheduled_x_post(latest_data, slot_label="20:00", force=False):
     result["tweet_text"] = text
     result["reply_text"] = reply_text
 
-    # Trigger Threads auto-post ONLY once per night at the 22:00 peak slot (or manual force) to avoid spam/bot flags on Meta
-    if slot_label == "22:00" or force:
+    # Optional fallback Meta hooks (never fire on `force=True` X manual tests; normally scheduled independently in app.py)
+    if include_meta and slot_label == "22:00" and not force:
         try:
             import threads_poster
-            threads_res = threads_poster.execute_scheduled_threads_post(stores, slot_label=slot_label, force=force)
+            threads_res = threads_poster.execute_scheduled_threads_post(stores, slot_label=slot_label, force=False)
             result["threads_status"] = threads_res.get("status")
         except Exception as e:
             logging.warning(f"Threads auto-post skipped/failed during {slot_label}: {e}")
 
-    # Trigger Instagram 5-slide carousel ONLY on Tue (weekday guide), Fri (weekend forecast), and Sun (weekly report) at 22:00 (or manual force)
-    if (slot_label == "22:00" and now_jst.weekday() in (1, 4, 6)) or force:
-        try:
-            import instagram_poster
-            ig_res = instagram_poster.execute_scheduled_instagram_post(stores, mode="carousel", slot_label=slot_label, force=force)
-            result["instagram_status"] = ig_res.get("status")
-        except Exception as e:
-            logging.warning(f"Instagram auto-post skipped/failed during {slot_label}: {e}")
+        if now_jst.weekday() in (1, 4, 6):
+            try:
+                import instagram_poster
+                ig_res = instagram_poster.execute_scheduled_instagram_post(stores, mode="carousel", slot_label=slot_label, force=False)
+                result["instagram_status"] = ig_res.get("status")
+            except Exception as e:
+                logging.warning(f"Instagram auto-post skipped/failed during {slot_label}: {e}")
 
     return result
 

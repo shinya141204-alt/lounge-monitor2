@@ -12,16 +12,18 @@ import logging
 import threading
 import requests
 from bs4 import BeautifulSoup
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from urllib.parse import urljoin
 from concurrent.futures import ThreadPoolExecutor
 
 logger = logging.getLogger(__name__)
+_JST = timezone(timedelta(hours=9))
 
 CACHE_FILE = os.path.join(os.path.dirname(__file__), 'data', 'events_cache.json')
 _events_memory_cache = {
     'updated_at': None,
-    'events': []
+    'events': [],
+    'operational_notices': [],
 }
 _refresh_lock = threading.Lock()
 _is_refreshing = False
@@ -125,11 +127,11 @@ def _classify_tag(title: str):
 
 OLG_STORE_HEADER_TO_AREAS = {
     'ag仙台': ['OLG ag仙台'],
-    '仙台': ['OLG 仙台'],
+    '仙台': ['OLG ag仙台'],
     'ag札幌': ['OLG ag札幌'],
     '札幌': ['OLG 札幌'],
     'ag金沢': ['OLG ag金沢'],
-    '金沢': ['OLG 金沢'],
+    '金沢': ['OLG ag金沢'],
     '宇都宮': ['OLG 宇都宮'],
     '高崎': ['OLG 高崎'],
     '大宮': ['OLG 大宮'],
@@ -154,15 +156,15 @@ OLG_STORE_HEADER_TO_AREAS = {
     '心斎橋': ['OLG 心斎橋'],
     '難波': ['OLG 難波'],
     'ag梅田': ['OLG ag梅田'],
-    '梅田': ['OLG 梅田'],
-    '東梅田': ['OLG 梅田'],
-    '茶屋町': ['OLG 茶屋町'],
+    '梅田': ['OLG 大阪駅前', 'OLG ag梅田'],
+    '東梅田': ['OLG 大阪駅前'],
+    '茶屋町': ['OLG 大阪駅前', 'OLG ag梅田'],
     '大阪駅前': ['OLG 大阪駅前'],
     '天満': ['OLG 天満'],
     '神戸': ['OLG 神戸'],
     '岡山': ['OLG 岡山'],
     'ag広島': ['OLG ag広島'],
-    '広島': ['OLG 広島'],
+    '広島': ['OLG ag広島'],
     'ag福岡': ['OLG ag福岡'],
     '福岡': ['OLG 福岡'],
     '小倉': ['OLG 小倉'],
@@ -172,7 +174,7 @@ OLG_STORE_HEADER_TO_AREAS = {
     '宮崎': ['OLG 宮崎'],
     '鹿児島': ['OLG 鹿児島'],
     'ag沖縄': ['OLG ag沖縄'],
-    '沖縄': ['OLG 沖縄'],
+    '沖縄': ['OLG ag沖縄'],
 }
 
 # Exact 17 franchise stores for Oriental Lounge "【全国17店舗】" campaigns (e.g. 北海道フェア🌽, ハロウィンフェア)
@@ -203,10 +205,10 @@ OLG_TOKEN_RULES = [
     ('オリエンタルラウンジ名古屋栄', ['OLG 名古屋 栄']),
     ('オリエンタルラウンジ名古屋錦', ['OLG 名古屋 錦']),
     ('オリエンタルラウンジ大阪駅前', ['OLG 大阪駅前']),
-    ('オリエンタルラウンジ茶屋町', ['OLG 茶屋町']),
+    ('オリエンタルラウンジ茶屋町', ['OLG 大阪駅前', 'OLG ag梅田']),
     ('オリエンタルラウンジ心斎橋', ['OLG 心斎橋']),
-    ('オリエンタルラウンジ東梅田', ['OLG 梅田']),
-    ('オリエンタルラウンジ梅田', ['OLG 梅田']),
+    ('オリエンタルラウンジ東梅田', ['OLG 大阪駅前']),
+    ('オリエンタルラウンジ梅田', ['OLG 大阪駅前', 'OLG ag梅田']),
     ('オリエンタルラウンジ難波', ['OLG 難波']),
     ('オリエンタルラウンジ新宿', ['OLG 新宿']),
     ('オリエンタルラウンジ上野', ['OLG 上野']),
@@ -222,12 +224,12 @@ OLG_TOKEN_RULES = [
     ('オリエンタルラウンジ神戸', ['OLG 神戸']),
     ('オリエンタルラウンジ天満', ['OLG 天満']),
     ('オリエンタルラウンジ岡山', ['OLG 岡山']),
-    ('オリエンタルラウンジ広島', ['OLG 広島']),
+    ('オリエンタルラウンジ広島', ['OLG ag広島']),
     ('オリエンタルラウンジ福岡', ['OLG 福岡']),
     ('オリエンタルラウンジ小倉', ['OLG 小倉']),
     ('オリエンタルラウンジ札幌', ['OLG 札幌']),
-    ('オリエンタルラウンジ仙台', ['OLG 仙台']),
-    ('オリエンタルラウンジ金沢', ['OLG 金沢']),
+    ('オリエンタルラウンジ仙台', ['OLG ag仙台']),
+    ('オリエンタルラウンジ金沢', ['OLG ag金沢']),
     ('オリエンタルラウンジ静岡', ['OLG 静岡']),
     ('オリエンタルラウンジ浜松', ['OLG 浜松']),
     ('オリエンタルラウンジ長崎', ['OLG 長崎']),
@@ -235,7 +237,7 @@ OLG_TOKEN_RULES = [
     ('オリエンタルラウンジ大分', ['OLG 大分']),
     ('オリエンタルラウンジ宮崎', ['OLG 宮崎']),
     ('オリエンタルラウンジ鹿児島', ['OLG 鹿児島']),
-    ('オリエンタルラウンジ沖縄', ['OLG 沖縄']),
+    ('オリエンタルラウンジ沖縄', ['OLG ag沖縄']),
     ('ag名古屋', ['OLG ag名古屋']),
     ('ag 名古屋', ['OLG ag名古屋']),
     ('ag渋谷', ['OLG ag渋谷']),
@@ -265,8 +267,8 @@ OLG_TOKEN_RULES = [
     ('渋谷本店', ['OLG 渋谷本店']),
     ('渋谷駅前', ['OLG 渋谷駅前']),
     ('大阪駅前', ['OLG 大阪駅前']),
-    ('東梅田', ['OLG 梅田']),
-    ('茶屋町', ['OLG 茶屋町']),
+    ('東梅田', ['OLG 大阪駅前']),
+    ('茶屋町', ['OLG 大阪駅前', 'OLG ag梅田']),
     ('心斎橋', ['OLG 心斎橋']),
     ('錦糸町', ['OLG 錦糸町']),
     ('宇都宮', ['OLG 宇都宮']),
@@ -292,17 +294,51 @@ OLG_TOKEN_RULES = [
     ('新宿', ['OLG 新宿']),
     ('渋谷', ['OLG 渋谷本店']),
     ('上野', ['OLG 上野']),
-    ('梅田', ['OLG 梅田']),
-    ('広島', ['OLG 広島']),
-    ('仙台', ['OLG 仙台']),
+    ('梅田', ['OLG 大阪駅前', 'OLG ag梅田']),
+    ('広島', ['OLG ag広島']),
+    ('仙台', ['OLG ag仙台']),
     ('札幌', ['OLG 札幌']),
-    ('金沢', ['OLG 金沢']),
+    ('金沢', ['OLG ag金沢']),
     ('福岡', ['OLG 福岡']),
-    ('沖縄', ['OLG 沖縄']),
+    ('沖縄', ['OLG ag沖縄']),
     ('栄', ['OLG 名古屋 栄']),
     ('錦', ['OLG 名古屋 錦']),
     ('柏', ['OLG 柏']),
 ]
+
+
+_OPERATIONAL_AUDIT_KEYWORDS = (
+    '料金改定', '価格改定', 'システム変更', '料金システム',
+    '営業時間変更', '営業時間の変更', '定休日', '臨時休業', '閉店', '移転',
+)
+_recent_operational_notices = []
+
+
+def _record_operational_notice(brand: str, title: str, url: str):
+    """Preserve operational/hours/price notices for data_audit.py even when hidden from public campaign cards."""
+    t = title or ''
+    if any(k in t for k in _OPERATIONAL_AUDIT_KEYWORDS):
+        if not any(x.get('title') == t and x.get('url') == url for x in _recent_operational_notices):
+            _recent_operational_notices.append({
+                'brand': brand,
+                'title': t,
+                'url': url,
+            })
+            if len(_recent_operational_notices) > 100:
+                del _recent_operational_notices[:-100]
+
+
+def get_operational_notices() -> list:
+    """Return operational announcements (hours/price revisions, closures) captured during crawling."""
+    cached = _events_memory_cache.get('operational_notices') or []
+    combined = list(_recent_operational_notices)
+    seen = {(x.get('title'), x.get('url')) for x in combined}
+    for item in cached:
+        key = (item.get('title'), item.get('url'))
+        if key not in seen:
+            seen.add(key)
+            combined.append(item)
+    return combined
 
 
 def _is_non_campaign_notice(title: str) -> bool:
@@ -598,6 +634,7 @@ def crawl_oriental_events():
                     continue
 
                 if _is_non_campaign_notice(title):
+                    _record_operational_notice('OLG', title, link)
                     continue
 
                 target_stores, target_label = extract_olg_target_stores(title)
@@ -651,6 +688,7 @@ def crawl_oriental_events():
                     continue
 
                 if _is_non_campaign_notice(title):
+                    _record_operational_notice('OLG', title, link)
                     continue
 
                 target_stores, target_label = extract_olg_target_stores(title)
@@ -1094,19 +1132,37 @@ def crawl_regional_brand_events() -> list:
 
 
 def _crawl_and_save_events():
-    """Perform live event crawl across brands and update memory + disk cache."""
+    """Perform live event crawl across brands and update memory + disk cache, preserving previous brand cache on partial network errors."""
     global _events_memory_cache
-    now = datetime.now()
+    now_jst = datetime.now(_JST)
+
+    # Load existing disk cache if memory cache is still empty so fallback protection works on first crawl
+    existing_events = list(_events_memory_cache.get('events') or [])
+    if not existing_events and os.path.exists(CACHE_FILE):
+        try:
+            with open(CACHE_FILE, 'r', encoding='utf-8') as f:
+                existing_events = json.load(f).get('events') or []
+        except Exception:
+            existing_events = []
+
     olg_events = crawl_oriental_events()
     jis_store_events = crawl_jis_store_events()
     jis_global_events = crawl_jis_global_events()
     regional_events = crawl_regional_brand_events()
 
-    all_events = olg_events + jis_store_events + jis_global_events + regional_events
+    # Protect against transient DNS/timeout wiping out 150+ cached OLG/JIS events with only static regional items
+    if not olg_events:
+        olg_events = [e for e in existing_events if e.get('brand') == 'OLG']
+    jis_combined = jis_store_events + jis_global_events
+    if not jis_combined:
+        jis_combined = [e for e in existing_events if e.get('brand') == 'JIS']
+
+    all_events = _ensure_regional_events(olg_events + jis_combined + regional_events)
     if all_events:
         _events_memory_cache = {
-            'updated_at': now.strftime('%Y-%m-%d %H:%M:%S'),
-            'events': all_events
+            'updated_at': now_jst.strftime('%Y-%m-%d %H:%M:%S'),
+            'events': all_events,
+            'operational_notices': get_operational_notices(),
         }
         try:
             os.makedirs(os.path.dirname(CACHE_FILE), exist_ok=True)
@@ -1115,7 +1171,7 @@ def _crawl_and_save_events():
         except Exception as e:
             logger.warning(f"Failed to save events cache to disk: {e}")
         return all_events
-    return _events_memory_cache.get('events', [])
+    return existing_events
 
 
 def _trigger_background_refresh():
@@ -1182,7 +1238,7 @@ def fetch_all_events(force_refresh: bool = False, allow_blocking: bool = True):
     """
     global _events_memory_cache
 
-    now = datetime.now()
+    now_jst = datetime.now(_JST).replace(tzinfo=None)
 
     # Load from disk cache first if memory is empty
     if not _events_memory_cache.get('events') and os.path.exists(CACHE_FILE):
@@ -1200,7 +1256,7 @@ def fetch_all_events(force_refresh: bool = False, allow_blocking: bool = True):
     if not force_refresh and _events_memory_cache.get('updated_at'):
         try:
             cached_time = datetime.strptime(_events_memory_cache['updated_at'], '%Y-%m-%d %H:%M:%S')
-            if (now - cached_time).total_seconds() < 7200:
+            if 0 <= (now_jst - cached_time).total_seconds() < 7200:
                 is_fresh = True
         except Exception:
             pass

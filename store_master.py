@@ -83,6 +83,28 @@ STORE_SLUGS = {
 
 _SLUG_TO_STORE = {v: k for k, v in STORE_SLUGS.items()}
 
+# Closed / consolidated legacy store slugs -> 301 redirect destination (active nearby store or area portal)
+LEGACY_SLUG_REDIRECTS = {
+    "oriental-lounge-shibuya-ekimae": "/store/oriental-lounge-shibuya-honten",
+    "ag-shinjuku": "/area/shinjuku",
+    "oriental-lounge-umeda": "/store/oriental-lounge-osaka-ekimae",
+    "oriental-lounge-chayamachi": "/store/oriental-lounge-osaka-ekimae",
+    "oriental-lounge-hiroshima": "/store/ag-hiroshima",
+    "oriental-lounge-kanazawa": "/store/ag-kanazawa",
+    "oriental-lounge-sendai": "/store/ag-sendai",
+    "oriental-lounge-sapporo": "/store/jis-sapporo",
+    "ag-sapporo": "/store/jis-sapporo",
+    "ag-fukuoka": "/store/oriental-lounge-fukuoka",
+    "oriental-lounge-okinawa": "/store/ag-okinawa",
+}
+
+
+def legacy_redirect_for_slug(slug: str):
+    """Return 301 redirect target path if slug belongs to a closed/consolidated legacy store."""
+    if not slug:
+        return None
+    return LEGACY_SLUG_REDIRECTS.get(slug.strip())
+
 
 def load():
     global _cache
@@ -159,21 +181,23 @@ def slug_of(store_name: str) -> str:
 
 
 def store_by_slug(slug: str, live_stores=None) -> str:
-    """URLスラッグから内部店舗名（例: 'OLG 新宿'）を逆引きする。"""
+    """URLスラッグから現役稼働中の内部店舗名（例: 'OLG 新宿'）を逆引きする。閉店済み旧店舗は返さない。"""
     if not slug:
         return None
     slug_clean = slug.strip()
-    if slug_clean in _SLUG_TO_STORE:
-        return _SLUG_TO_STORE[slug_clean]
     master = load()
+    live_names = {s.get("name", "") for s in (live_stores or []) if s.get("name")}
+    if slug_clean in _SLUG_TO_STORE:
+        candidate = _SLUG_TO_STORE[slug_clean]
+        if candidate in master or candidate in live_names:
+            return candidate
+        return None
     for sname in master.keys():
         if slug_of(sname) == slug_clean:
             return sname
-    if live_stores:
-        for s in live_stores:
-            sname = s.get("name", "")
-            if slug_of(sname) == slug_clean or sname == slug_clean:
-                return sname
+    for sname in live_names:
+        if slug_of(sname) == slug_clean or sname == slug_clean:
+            return sname
     return None
 
 

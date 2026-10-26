@@ -65,20 +65,41 @@ def append_rows(title, header, rows):
 
 
 def append_rows_async(title, header, rows):
-    """リクエスト処理をブロックしないようにバックグラウンドで追記。"""
+    """リクエスト処理をブロックしないようにバックグラウンドで追記（一時失敗時は1秒・3秒待機で最大3回リトライ）。"""
     if not rows or is_disabled():
         return
-    threading.Thread(target=append_rows, args=(title, header, rows), daemon=True).start()
+
+    def _worker():
+        import time
+        retry_delays = (1.0, 3.0)
+        for attempt in range(3):
+            if is_disabled():
+                return
+            if append_rows(title, header, rows):
+                return
+            if attempt < len(retry_delays):
+                time.sleep(retry_delays[attempt])
+        logging.error(f"[sheets_store] append_rows_async failed after 3 attempts for '{title}'")
+
+    threading.Thread(target=_worker, daemon=True).start()
 
 
-def read_rows(title, header):
-    """ヘッダー行を除く全行を list[list[str]] で返す。失敗時は []。"""
+def read_rows_or_none(title, header):
+    """ヘッダー行を除く全行を list[list[str]] で返す。未接続・エラー時は None を返す。"""
     ws = get_worksheet(title, header)
     if ws is None:
-        return []
+        return None
     try:
         values = ws.get_all_values()
         return values[1:] if values else []
     except Exception as e:
         print(f"[sheets_store] read '{title}' failed: {e}", file=sys.stderr)
-        return []
+        with _ws_lock:
+            _ws_cache.pop(title, None)
+        return None
+
+
+def read_rows(title, header):
+    """ヘッダー行を除く全行を list[list[str]] で返す。失敗時は []。"""
+    rows = read_rows_or_none(title, header)
+    return [] if rows is None else rows

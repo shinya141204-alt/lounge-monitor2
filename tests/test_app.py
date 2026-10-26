@@ -1436,5 +1436,191 @@ class GrowthFeaturesTests(unittest.TestCase):
         self.assertIn('https://aiseki-navi.com/price-comparison', th_odd)
 
 
+class FullAuditRegressionTests(unittest.TestCase):
+    """Comprehensive regression tests for the full site & SNS audit fixes."""
+
+    def setUp(self):
+        self.client = app_module.app.test_client()
+        with app_module._login_failures_lock:
+            app_module._login_failures.clear()
+
+    def test_legacy_store_301_redirects_strict_404s_and_chugoku_shikoku_area(self):
+        # 1. Retired/merged legacy store slugs must 301 redirect to active successors (never ghost 200 or soft-404)
+        for legacy_slug in (
+            'ag-shinjuku',
+            'oriental-lounge-umeda',
+            'oriental-lounge-chayamachi',
+            'oriental-lounge-shibuya-ekimae',
+            'ag-fukuoka',
+            'oriental-lounge-sapporo',
+            'ag-sapporo',
+            'oriental-lounge-sendai',
+            'oriental-lounge-kanazawa',
+            'oriental-lounge-hiroshima',
+            'oriental-lounge-okinawa',
+        ):
+            r = self.client.get(f'/store/{legacy_slug}', follow_redirects=False)
+            self.assertEqual(r.status_code, 301, f"/store/{legacy_slug} should return 301")
+
+        # 2. Canonical duplicate guide routes must 301 redirect
+        r_strat = self.client.get('/guide/strategy', follow_redirects=False)
+        self.assertEqual(r_strat.status_code, 301)
+        self.assertTrue(r_strat.headers['Location'].endswith('/guide'))
+
+        r_comp = self.client.get('/guide/compare', follow_redirects=False)
+        self.assertEqual(r_comp.status_code, 301)
+        self.assertTrue(r_comp.headers['Location'].endswith('/guide/brand-comparison'))
+
+        # 3. Unknown store / area slugs must return true HTTP 404
+        self.assertEqual(self.client.get('/store/non-existent-store-xyz').status_code, 404)
+        self.assertEqual(self.client.get('/area/non-existent-area-xyz').status_code, 404)
+
+        # 4. Dedicated Chugoku/Shikoku area separation from Hokkaido/Tohoku
+        r_cs = self.client.get('/area/chugoku-shikoku')
+        self.assertEqual(r_cs.status_code, 200)
+        cs_html = r_cs.data.decode('utf-8')
+        self.assertIn('OLG 岡山', cs_html)
+        self.assertIn('OLG ag広島', cs_html)
+        self.assertIn('JIS MATSUYAMA', cs_html)
+
+        r_ht = self.client.get('/area/hokkaido-tohoku')
+        self.assertEqual(r_ht.status_code, 200)
+        ht_html = r_ht.data.decode('utf-8')
+        self.assertNotIn('OLG 岡山', ht_html)
+        self.assertNotIn('JIS MATSUYAMA', ht_html)
+
+        # 5. Independent brands must not have brand_slug='oriental-lounge' in price_comparison
+        import price_comparison
+        for indep in ('XIX OKAYAMA', 'YATAKOI UMEDA', 'CLOVERS HIROSHIMA', 'ALFA HIROSHIMA'):
+            self.assertEqual(price_comparison.get_store_price_profile(indep)['brand_slug'], '')
+
+    def test_master_vs_staff_authorization_and_login_rate_limit(self):
+        protected_master_endpoints = [
+            '/api/trigger-x-post',
+            '/api/trigger-x-tip',
+            '/api/trigger-note-share',
+            '/api/trigger-x-pinned',
+            '/api/trigger-x-column',
+            '/api/trigger-x-weekly',
+            '/api/trigger-x-bonus',
+            '/api/trigger-threads-post',
+            '/api/trigger-ig-post',
+            '/api/data-audit',
+            '/api/debug_ps',
+            '/api/logs',
+            '/api/thread_status',
+        ]
+        # Regular staff (5555) is blocked from all master-only API endpoints
+        with self.client.session_transaction() as s:
+            s['is_staff'] = True
+            s['is_master'] = False
+        for ep in protected_master_endpoints:
+            r = self.client.get(ep)
+            self.assertEqual(r.status_code, 401, f"Regular staff must get 401 on {ep}")
+
+        # Master (2918) can access diagnostic and data-audit endpoints
+        with self.client.session_transaction() as s:
+            s['is_staff'] = True
+            s['is_master'] = True
+        self.assertEqual(self.client.get('/api/data-audit').status_code, 200)
+        self.assertEqual(self.client.get('/api/debug_ps').status_code, 200)
+        self.assertEqual(self.client.get('/api/thread_status').status_code, 200)
+        with self.client.session_transaction() as s:
+            s.pop('is_staff', None)
+            s.pop('is_master', None)
+
+        # Brute-force rate limiter blocks after LOGIN_MAX_ATTEMPTS wrong attempts
+        for _ in range(app_module.LOGIN_MAX_ATTEMPTS):
+            r_bad = self.client.post('/staff', data={'passcode': '0000'})
+            self.assertEqual(r_bad.status_code, 200)
+        r_locked = self.client.post('/staff', data={'passcode': '2918'})
+        self.assertEqual(r_locked.status_code, 429)
+        with app_module._login_failures_lock:
+            app_module._login_failures.clear()
+
+    def test_restored_city_events_and_operational_notice_audit(self):
+        import events
+        import data_audit
+
+        self.assertEqual(events.extract_olg_target_stores('【梅田】週末イベント')[0], ['OLG 大阪駅前', 'OLG ag梅田'])
+        self.assertEqual(events.extract_olg_target_stores('【仙台】週末イベント')[0], ['OLG ag仙台'])
+        self.assertEqual(events.extract_olg_target_stores('【金沢】週末イベント')[0], ['OLG ag金沢'])
+        self.assertEqual(events.extract_olg_target_stores('【広島】週末イベント')[0], ['OLG ag広島'])
+        self.assertEqual(events.extract_olg_target_stores('【沖縄】週末イベント')[0], ['OLG ag沖縄'])
+
+        events._recent_operational_notices.clear()
+        events._events_memory_cache['operational_notices'] = []
+        try:
+            events._record_operational_notice('OLG', '【重要】恵比寿店 料金改定のお知らせ', 'https://oriental-lounge.com/announcements/999')
+            jst = datetime.timezone(datetime.timedelta(hours=9))
+            rep = data_audit.run_data_audit(
+                live_stores=[],
+                all_events=[],
+                now_jst=datetime.datetime(2026, 10, 28, 21, 0, tzinfo=jst),
+            )
+            self.assertEqual(rep['summary']['revision_notice_count'], 1)
+            self.assertTrue(any('料金改定' in str(w) for w in rep['warnings']))
+        finally:
+            events._recent_operational_notices.clear()
+
+    def test_adsense_coverage_privacy_exclusion_and_staff_suppression(self):
+        # 1. Public visitor gets AdSense on newly completed guide pages, NOT on /privacy
+        for pub_path in ('/guide/price-event-comparison', '/guide/male-lead-mechanics', '/guide/beauty-area-stage', '/store/oriental-lounge-shinjuku'):
+            r = self.client.get(pub_path)
+            self.assertEqual(r.status_code, 200, pub_path)
+            self.assertIn(b'ca-pub-3043764334238627', r.data, f"{pub_path} missing AdSense for public user")
+
+        r_priv = self.client.get('/privacy')
+        self.assertEqual(r_priv.status_code, 200)
+        self.assertNotIn(b'ca-pub-3043764334238627', r_priv.data)
+
+        # 2. Staff session hides AdSense and /link/ PR across all pages including /
+        with self.client.session_transaction() as s:
+            s['is_staff'] = True
+            s['is_master'] = False
+        try:
+            for check_path in ('/', '/grooming', '/store/oriental-lounge-shinjuku', '/guide/price-event-comparison', '/columns', '/areas'):
+                rs = self.client.get(check_path)
+                self.assertEqual(rs.status_code, 200, check_path)
+                body = rs.data.decode('utf-8')
+                self.assertNotIn('ca-pub-3043764334238627', body, f"Staff leaked AdSense on {check_path}")
+                self.assertNotIn('/link/', body, f"Staff leaked /link/ affiliate on {check_path}")
+        finally:
+            with self.client.session_transaction() as s:
+                s.pop('is_staff', None)
+                s.pop('is_master', None)
+
+    def test_sns_zero_guest_guards_job_state_retention_and_sw_v48(self):
+        import sns_workflows
+        import threads_poster
+
+        zero_stores = [{'name': 'OLG 新宿', 'women': 0, 'men': 0, 'region': 'Kanto'}]
+        with mock.patch('monitor.get_all_data', return_value=zero_stores), \
+             mock.patch('x_poster.post_to_x', return_value={'status': 'success'}) as m_xpost:
+            res_x = sns_workflows.execute_scheduled_x_post({'full_data': zero_stores, 'is_seed': True}, slot_label='20:00', force=False)
+            self.assertEqual(res_x['status'], 'skipped')
+            self.assertEqual(m_xpost.call_count, 0)
+
+        res_th = threads_poster.execute_scheduled_threads_post(zero_stores, slot_label='22:00', force=False)
+        self.assertEqual(res_th['status'], 'skipped')
+
+        # Verify job_state preserves token:* and note:* across >2500 x_post:* insertions
+        shutil.rmtree(os.environ['JOB_STATE_DIR'], ignore_errors=True)
+        job_state.reset_cache_for_tests()
+        job_state.set_value('token:ig_access_token', 'secret_tok_999')
+        job_state.mark_done('note:https://note.com/aiseki_navi/n/n12345')
+        for i in range(2500):
+            job_state.mark_done(f'x_post:2026-01-01_{i:04d}')
+        job_state.reset_cache_for_tests()
+        self.assertEqual(job_state.get_value('token:ig_access_token'), 'secret_tok_999')
+        self.assertTrue(job_state.is_done('note:https://note.com/aiseki_navi/n/n12345'))
+
+        sw_resp = self.client.get('/sw.js')
+        try:
+            self.assertIn("CACHE_NAME = 'aiseki-navi-v48'", sw_resp.data.decode('utf-8'))
+        finally:
+            sw_resp.close()
+
+
 if __name__ == '__main__':
     unittest.main()

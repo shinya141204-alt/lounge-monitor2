@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="google-site-verification" content="9kZaSJbaCuvn8QpGErUwI59w7Lf4N8ILhb_nWqDHI2s">
     {% if is_staff %}
     <title>社内業務モニター｜相席ナビ（広告OFF）</title>
@@ -96,7 +96,13 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet"></noscript>
     <link rel="stylesheet" href="/static/style.css?v=20261026_1">
-    {% if not is_staff %}
+    <script>
+        window.APP_CONFIG = {
+            isStaff: {{ 'true' if (is_staff or session.get('is_staff')) else 'false' }},
+            isMaster: {{ 'true' if (is_master or session.get('is_master')) else 'false' }}
+        };
+    </script>
+    {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
          crossorigin="anonymous"></script>
@@ -252,8 +258,8 @@
                 <h3>3. 広告の配信・アフィリエイトプログラムについて</h3>
                 <p>当サイトでは、運営維持費用の確保のため第三者配信の広告サービス（Google AdSense、A8.net、アクセストレード、Circuit X等のアフィリエイトプログラム・アドネットワーク）を利用する場合があります。広告配信事業者は、ユーザーの興味に応じた商品やサービスの広告を表示するため、Cookie（クッキー）を使用することがあります。</p>
 
-                <h3>4. アクセス解析およびローカルストレージの利用</h3>
-                <p>当サイトでは、お気に入り店舗の保存や表示速度向上のためにブラウザのローカルストレージ（LocalStorage）を利用しています。これらのデータはお客様の端末内にのみ保存され、個人を特定する情報は一切含まれません。</p>
+                <h3>4. アクセス計測・混雑状況投票およびローカルストレージの利用</h3>
+                <p>当サイトでは、サイト改善のためページ閲覧数やクリック数を個人を特定しない統計カウントとして自社集計しています（氏名・生IPアドレス等の個人情報は保存しません）。また、混雑状況ワンタップ投票の重複防止のため一方向ハッシュ化識別子および端末内生成ID（<code>aiseki_voter_id</code>）を、お気に入り固定や表示設定保持のためブラウザのローカルストレージ（LocalStorage）を利用しています。</p>
 
                 <h3>5. 運営者情報・お問い合わせ窓口</h3>
                 <p>
@@ -340,8 +346,30 @@
                     </a>
                     {% endfor %}
 
+                    <!-- Article NEW 0: Price & Event Comparison Board Guide -->
+                    <a href="/guide/price-event-comparison" class="article-card-item{% if not published_scheduled %} highlight-card{% endif %}">
+                        <div class="article-card-thumb">
+                            <picture>
+                                <source srcset="/static/eyecatch-price-comparison.webp" type="image/webp">
+                                <img src="/static/eyecatch-price-comparison.jpg" alt="店舗別料金・イベント・現在人数比較ボードの活用ガイド" width="640" height="360" decoding="async" loading="lazy">
+                            </picture>
+                            <span class="article-card-badge">新機能ガイド</span>
+                        </div>
+                        <div class="article-card-info">
+                            <div class="article-card-meta">
+                                <span class="article-tag">全51店舗・4時間帯料金</span>
+                                <span class="article-read-time">約6分で読める</span>
+                            </div>
+                            <h3 class="article-card-title">「店舗別料金・イベント・現在人数」比較ボードの活用ガイド｜待機料金・4時間帯単価・最低人数10名の見方</h3>
+                            <p class="article-card-desc">10分220〜330円の待機料金、4時間帯別の相席単価、1名入店可否、開催中イベント、女性10名以上基準の見方を徹底解説。</p>
+                            <div class="article-card-footer">
+                                <span class="article-read-btn">記事を読む ›</span>
+                            </div>
+                        </div>
+                    </a>
+
                     <!-- Article NEW 1: Male Lead Mechanics -->
-                    <a href="/guide/male-lead-mechanics" class="article-card-item{% if not published_scheduled %} highlight-card{% endif %}">
+                    <a href="/guide/male-lead-mechanics" class="article-card-item">
                         <div class="article-card-thumb">
                             <picture>
                                 <source srcset="/static/eyecatch-male-lead.webp" type="image/webp">
@@ -400,6 +428,28 @@
                             </div>
                             <h3 class="article-card-title">ダンスクラブ密集エリアのラウンジは深夜0時から「第2波」が来る</h3>
                             <p class="article-card-desc">終電後に帰宅せず、クラブ前後の休憩・飲み直しで女性客が再流入する6大エリアの実測データを公開。</p>
+                            <div class="article-card-footer">
+                                <span class="article-read-btn">記事を読む ›</span>
+                            </div>
+                        </div>
+                    </a>
+
+                    <!-- Article NEW 4: Weekend Strategy -->
+                    <a href="/guide/weekend-strategy" class="article-card-item">
+                        <div class="article-card-thumb">
+                            <picture>
+                                <source srcset="/static/eyecatch-weekend.webp" type="image/webp">
+                                <img src="/static/eyecatch-weekend.jpg" alt="金・土の相席ラウンジで男性待ち1時間を回避して勝つ方法" width="640" height="360" decoding="async" loading="lazy">
+                            </picture>
+                            <span class="article-card-badge">金・土の夜攻略</span>
+                        </div>
+                        <div class="article-card-info">
+                            <div class="article-card-meta">
+                                <span class="article-tag">週末ハシゴ術</span>
+                                <span class="article-read-time">約5分で読める</span>
+                            </div>
+                            <h3 class="article-card-title">金・土の相席ラウンジで「男性待ち1時間」を回避して勝つ方法｜週末3つの時間帯別ムーブ</h3>
+                            <p class="article-card-desc">金曜・土曜の夜でも待ち時間を抑えて相席するための「19時半先行ムーブ」「徒歩3分ハシゴ比較」「23時以降の2回転目狙い」を解説。</p>
                             <div class="article-card-footer">
                                 <span class="article-read-btn">記事を読む ›</span>
                             </div>
@@ -561,7 +611,7 @@
                     </a>
 
                     <!-- Article 8: Official note.com link -->
-                    <a href="https://note.com/aiseki_navi" target="_blank" rel="noopener noreferrer" class="article-card-item note-portal-card" onclick="window.open(this.href, '_blank'); return true;">
+                    <a href="https://note.com/aiseki_navi" target="_blank" rel="noopener noreferrer" class="article-card-item note-portal-card">
                         <div class="article-card-thumb note-thumb-box">
                             <div class="note-brand-visual">
                                 <span class="note-n-logo">n</span>
@@ -754,11 +804,11 @@
                     </div>
                     <p>20時・22時などの節目に、その日人が集まっている店舗や穴場をまとめて投稿しています。行く前の参考にどうぞ。</p>
                     <div class="how-to-sns-btns">
-                        <a href="https://x.com/aiseki_navi" target="_blank" rel="noopener noreferrer" class="how-to-sns-btn x-btn" onclick="window.open(this.href, '_blank'); return true;">
+                        <a href="https://x.com/aiseki_navi" target="_blank" rel="noopener noreferrer" class="how-to-sns-btn x-btn">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
                             <span>公式Xを見る</span>
                         </a>
-                        <a href="https://www.threads.net/@aiseki_navi1" target="_blank" rel="noopener noreferrer" class="how-to-sns-btn threads-btn" onclick="window.open(this.href, '_blank'); return true;">
+                        <a href="https://www.threads.net/@aiseki_navi1" target="_blank" rel="noopener noreferrer" class="how-to-sns-btn threads-btn">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12.001 2c-5.522 0-9.999 4.477-9.999 10 0 5.522 4.477 10 9.999 10 5.523 0 10-4.478 10-10 0-5.523-4.477-10-10-10zm0 18.001c-4.418 0-8-3.582-8-8 0-4.419 3.582-8.001 8-8.001 4.419 0 8.001 3.582 8.001 8.001 0 4.418-3.582 8-8.001 8zm3.567-9.757c-.126-.454-.378-.857-.73-1.166-.35-.308-.79-.473-1.272-.477h-.061c-.534.004-1.02.203-1.405.575-.386.372-.619.878-.656 1.425.321-.06.647-.09.976-.09.61 0 1.206.104 1.77.309.117-.184.21-.383.278-.576zm-1.849 5.864c-.732 0-1.424-.23-1.999-.666-.576-.436-.97-1.052-1.109-1.735-.07-.342-.089-.691-.057-1.038-.344.086-.677.209-.994.368-.696.349-1.144.978-1.198 1.681-.055.704.288 1.391.895 1.79.522.343 1.157.498 1.838.448.828-.061 1.705-.443 2.624-1.135-.297.185-.634.287-.998.287z"/></svg>
                             <span>Threadsを見る</span>
                         </a>
@@ -909,6 +959,7 @@
                     <div class="menu-sub-links">
                         <a href="https://x.com/aiseki_navi" target="_blank" rel="noopener noreferrer" class="menu-sub-link">公式X</a>
                         <a href="https://www.threads.net/@aiseki_navi1" target="_blank" rel="noopener noreferrer" class="menu-sub-link">公式Threads</a>
+                        <a href="https://www.instagram.com/aiseki_navi1" target="_blank" rel="noopener noreferrer" class="menu-sub-link">Instagram</a>
                         <a href="https://note.com/aiseki_navi" target="_blank" rel="noopener noreferrer" class="menu-sub-link">公式note</a>
                         <button type="button" class="menu-sub-link" onclick="closeMenuModal(); openLegalModal();">免責事項・規約</button>
                     </div>
@@ -965,7 +1016,7 @@
                         </svg>
                         <span>イベント</span>
                     </button>
-                    <a id="header-x-btn" href="https://x.com/aiseki_navi" target="_blank" rel="noopener noreferrer" class="header-btn labeled-btn desktop-only" style="text-decoration: none;" title="公式Xで今夜の女性速報を見る" onclick="window.open(this.href, '_blank'); return true;">
+                    <a id="header-x-btn" href="https://x.com/aiseki_navi" target="_blank" rel="noopener noreferrer" class="header-btn labeled-btn desktop-only" style="text-decoration: none;" title="公式Xで今夜の女性速報を見る">
                         <span class="beacon-dot" style="margin-right: 2px;"></span>
                         <span>X速報</span>
                     </a>
@@ -1295,10 +1346,10 @@
                 <div class="official-sns-hero-card official-sns-compact">
                     <span class="sns-compact-label">公式SNSも更新中</span>
                     <div class="sns-compact-links">
-                        <a href="https://x.com/aiseki_navi" target="_blank" rel="noopener noreferrer" class="sns-compact-pill" onclick="window.open(this.href, '_blank'); return true;">𝕏 公式X</a>
-                        <a href="https://www.threads.net/@aiseki_navi1" target="_blank" rel="noopener noreferrer" class="sns-compact-pill" onclick="window.open(this.href, '_blank'); return true;">Threads</a>
-                        <a href="https://www.instagram.com/aiseki_navi1" target="_blank" rel="noopener noreferrer" class="sns-compact-pill" onclick="window.open(this.href, '_blank'); return true;">Instagram</a>
-                        <a href="https://note.com/aiseki_navi" target="_blank" rel="noopener noreferrer" class="sns-compact-pill" onclick="window.open(this.href, '_blank'); return true;">note</a>
+                        <a href="https://x.com/aiseki_navi" target="_blank" rel="noopener noreferrer" class="sns-compact-pill">𝕏 公式X</a>
+                        <a href="https://www.threads.net/@aiseki_navi1" target="_blank" rel="noopener noreferrer" class="sns-compact-pill">Threads</a>
+                        <a href="https://www.instagram.com/aiseki_navi1" target="_blank" rel="noopener noreferrer" class="sns-compact-pill">Instagram</a>
+                        <a href="https://note.com/aiseki_navi" target="_blank" rel="noopener noreferrer" class="sns-compact-pill">note</a>
                         <button type="button" class="sns-compact-pill" onclick="openHowToModal()">使い方</button>
                     </div>
                 </div>
@@ -1379,12 +1430,13 @@
                         <div class="portal-area-grid">
                             <a href="/area/shinjuku" class="portal-area-chip">新宿・西新宿</a>
                             <a href="/area/shibuya" class="portal-area-chip">渋谷・恵比寿</a>
-                            <a href="/area/tokyo-east" class="portal-area-chip">上野・町田</a>
+                            <a href="/area/tokyo-east" class="portal-area-chip">上野・錦糸町・町田</a>
                             <a href="/area/kanto" class="portal-area-chip">横浜・大宮・北関東</a>
                             <a href="/area/osaka" class="portal-area-chip">大阪・京都・神戸</a>
                             <a href="/area/nagoya" class="portal-area-chip">名古屋・静岡・金沢</a>
                             <a href="/area/fukuoka" class="portal-area-chip">福岡・九州・沖縄</a>
-                            <a href="/area/hokkaido-tohoku" class="portal-area-chip">札幌・仙台・中四国</a>
+                            <a href="/area/hokkaido-tohoku" class="portal-area-chip">札幌・仙台</a>
+                            <a href="/area/chugoku-shikoku" class="portal-area-chip">岡山・広島・松山</a>
                         </div>
                     </div>
 
@@ -1445,9 +1497,9 @@
                             オリエンタルラウンジ（ORIENTAL LOUNGE） / ag（アグ） / JIS（ジス） / XIX（シックス） / ALFA（アルファ） / ヤタコイ（YATAKOI） / CLOVERS（クローバーズ）
                         </p>
                         <p class="seo-dir-text">
-                            <strong>【対応エリア（全国約80店舗）】</strong>
+                            <strong>【対応エリア（全国53店舗：国内51店舗＋韓国2店舗）】</strong>
                             <strong>北海道・東北：</strong>札幌・仙台 ｜
-                            <strong>東京：</strong>新宿・西新宿・渋谷本店・渋谷駅前・恵比寿・上野・町田 ｜
+                            <strong>東京：</strong>新宿・西新宿・渋谷本店・恵比寿・上野・錦糸町・町田 ｜
                             <strong>関東：</strong>横浜・大宮・柏・宇都宮・高崎 ｜
                             <strong>中部・北陸：</strong>名古屋栄・名古屋錦・静岡・浜松・金沢 ｜
                             <strong>関西：</strong>大阪梅田・茶屋町・難波・心斎橋・天満・京都・神戸三宮 ｜
@@ -1496,23 +1548,23 @@
             <div class="footer-sns-row">
                 <span class="footer-sns-label">OFFICIAL SNS</span>
                 <div class="footer-sns-icons">
-                    <a href="https://x.com/aiseki_navi" target="_blank" rel="noopener noreferrer" class="sns-icon-btn x-btn" title="公式X（混雑速報）" onclick="window.open(this.href, '_blank'); return true;">
+                    <a href="https://x.com/aiseki_navi" target="_blank" rel="noopener noreferrer" class="sns-icon-btn x-btn" title="公式X（混雑速報）">
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
                         </svg>
                         <span>X (速報)</span>
                     </a>
-                    <a href="https://www.threads.net/@aiseki_navi1" target="_blank" rel="noopener noreferrer" class="sns-icon-btn threads-btn" title="公式Threads" onclick="window.open(this.href, '_blank'); return true;">
+                    <a href="https://www.threads.net/@aiseki_navi1" target="_blank" rel="noopener noreferrer" class="sns-icon-btn threads-btn" title="公式Threads">
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M12.001 2c-5.522 0-9.999 4.477-9.999 10 0 5.522 4.477 10 9.999 10 5.523 0 10-4.478 10-10 0-5.523-4.477-10-10-10zm0 18.001c-4.418 0-8-3.582-8-8 0-4.419 3.582-8.001 8-8.001 4.419 0 8.001 3.582 8.001 8.001 0 4.418-3.582 8-8.001 8zm3.567-9.757c-.126-.454-.378-.857-.73-1.166-.35-.308-.79-.473-1.272-.477h-.061c-.534.004-1.02.203-1.405.575-.386.372-.619.878-.656 1.425.321-.06.647-.09.976-.09.61 0 1.206.104 1.77.309.117-.184.21-.383.278-.576zm-1.849 5.864c-.732 0-1.424-.23-1.999-.666-.576-.436-.97-1.052-1.109-1.735-.07-.342-.089-.691-.057-1.038-.344.086-.677.209-.994.368-.696.349-1.144.978-1.198 1.681-.055.704.288 1.391.895 1.79.522.343 1.157.498 1.838.448.828-.061 1.705-.443 2.624-1.135-.297.185-.634.287-.998.287z"/>
                         </svg>
                         <span>Threads</span>
                     </a>
-                    <a href="https://note.com/aiseki_navi" target="_blank" rel="noopener noreferrer" class="sns-icon-btn note-btn" title="公式note" onclick="window.open(this.href, '_blank'); return true;">
+                    <a href="https://note.com/aiseki_navi" target="_blank" rel="noopener noreferrer" class="sns-icon-btn note-btn" title="公式note">
                         <span style="font-weight: 900; font-family: serif; font-size: 0.85rem;">n</span>
                         <span>note</span>
                     </a>
-                    <a href="https://www.instagram.com/aiseki_navi1" target="_blank" rel="noopener noreferrer" class="sns-icon-btn ig-btn" title="公式Instagram" onclick="window.open(this.href, '_blank'); return true;">
+                    <a href="https://www.instagram.com/aiseki_navi1" target="_blank" rel="noopener noreferrer" class="sns-icon-btn ig-btn" title="公式Instagram">
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
                         </svg>
@@ -1531,20 +1583,23 @@
                         <li><a href="/jis">JIS（ジス）全店人数</a></li>
                         <li><a href="/area/shinjuku">新宿・西新宿エリア</a></li>
                         <li><a href="/area/shibuya">渋谷・恵比寿エリア</a></li>
+                        <li><a href="/area/tokyo-east">上野・錦糸町・町田エリア</a></li>
                         <li><a href="/area/kanto">横浜・大宮・北関東エリア</a></li>
                         <li><a href="/area/osaka">大阪（梅田・難波）・関西</a></li>
                         <li><a href="/area/nagoya">名古屋（栄・錦）・中部</a></li>
                         <li><a href="/area/fukuoka">福岡（天神）・九州・沖縄</a></li>
-                        <li><a href="/area/hokkaido-tohoku">札幌・仙台・岡山・広島</a></li>
+                        <li><a href="/area/hokkaido-tohoku">札幌・仙台（北海道・東北）</a></li>
+                        <li><a href="/area/chugoku-shikoku">岡山・広島・松山（中国・四国）</a></li>
                     </ul>
                 </div>
                 <div class="sitemap-col">
                     <h4>コラム・特集記事</h4>
                     <ul>
-                        <li><a href="/columns">コラム・記事一覧（全{{ 11 + (published_scheduled|length if published_scheduled else 0) }}本）</a></li>
+                        <li><a href="/columns">コラム・記事一覧（全{{ 13 + (published_scheduled|length if published_scheduled else 0) }}本）</a></li>
                         {% for item in published_scheduled or [] %}
                         <li><a href="{{ item.path }}">{{ item.short_title }}</a></li>
                         {% endfor %}
+                        <li><a href="/guide/price-event-comparison">料金・イベント比較ボード活用法</a></li>
                         <li><a href="/guide/male-lead-mechanics">男性先行×女性は待たないデータ法則</a></li>
                         <li><a href="/guide/beauty-area-stage">美容サロン激戦区の客層と特徴</a></li>
                         <li><a href="/guide/club-area-midnight">クラブ密集エリア深夜0時の第2波</a></li>
@@ -1681,7 +1736,7 @@
                 window.location.reload();
             });
             window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/sw.js?v=34', { updateViaCache: 'none' })
+                navigator.serviceWorker.register('/sw.js?v=48', { updateViaCache: 'none' })
                     .then(function(reg) {
                         reg.update();
                         document.addEventListener('visibilitychange', function() {

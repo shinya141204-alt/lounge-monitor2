@@ -152,9 +152,11 @@
         }
     </style>
     <link rel="stylesheet" href="/static/calm.css?v=10">
+    {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
          crossorigin="anonymous"></script>
+    {% endif %}
 </head>
 
 <body>
@@ -181,6 +183,7 @@
             <p>
                 仕事帰りにそのままお店へ向かうときに一番気になりやすいのが、夕方になると伸びてくるヒゲです。店内の間接照明は上から当たるため、鼻下やアゴ周りの影が強調されやすく、医療脱毛で少しずつでも減らしておくと夕方の疲れ顔がかなり解消されます。
             </p>
+            {% if not is_staff and not session.get('is_staff') %}
             <div class="rec-card">
                 <span class="rec-badge">口元の清潔感ケア</span>
                 <h3 class="rec-title">メンズ医療ヒゲ脱毛プログラム</h3>
@@ -191,11 +194,13 @@
                 </ul>
                 <a href="/link/hair_removal" target="_blank" rel="noopener noreferrer sponsored" class="rec-btn">公式サイトで詳細を見る ›</a>
             </div>
+            {% endif %}
 
             <h2>2. 顔の「皮脂テカリ・乾燥」をシンプルにケアする</h2>
             <p>
                 1軒目でお酒を飲んだり、空調の効いた店内にいたりすると、おでこや鼻周りの皮脂テカリが出やすくなります。ベタつかないメンズ用の洗顔・化粧水で普段から水分と油分のバランスを整えておくと、夜遅い時間でも清潔感のある肌印象をキープしやすくなります。
             </p>
+            {% if not is_staff and not session.get('is_staff') %}
             <div class="rec-card">
                 <span class="rec-badge">定番メンズスキンケア</span>
                 <h3 class="rec-title">ORBIS Mr.（オルビス ミスター）</h3>
@@ -206,11 +211,13 @@
                 </ul>
                 <a href="/link/orbis" target="_blank" rel="noopener noreferrer sponsored" class="rec-btn">初回限定セットを公式で見る ›</a>
             </div>
+            {% endif %}
 
             <h2>3. 「何を着ていくか迷う」をなくす大人カジュアル服</h2>
             <p>
                 相席ラウンジでは、スーツ姿と同じくらい「清潔感のあるシンプルな私服（ジャケットやきれいめニットなど）」が好まれます。自分で服を選ぶといつも同じ格好になりがちという方は、スタイリストが組み合わせた一式が届くサービスを使うと、お店でも2軒目のデートでも浮かない服装が手軽に揃います。
             </p>
+            {% if not is_staff and not session.get('is_staff') %}
             <div class="rec-card">
                 <span class="rec-badge">スタイリスト監修コーデ</span>
                 <h3 class="rec-title">SPU スタイルアップ便（メンズきれいめ服の定期便）</h3>
@@ -221,11 +228,13 @@
                 </ul>
                 <a href="/link/spu" target="_blank" rel="noopener noreferrer sponsored" class="rec-btn">スタイルアップ便の公式を見る ›</a>
             </div>
+            {% endif %}
 
             <h2>4. 週末に「どのお店も満席・男性待ち」だったときの2つの選択肢</h2>
             <p>
                 金曜や土曜の22時過ぎは、近くのお店がどこも男性の入店待ちになっていることもあります。そんなときや、「今日は騒がしい場所より1対1で落ち着いて飲みたいな」という日に備えて、<strong>「今日これから近くで飲めるアプリ」</strong>と<strong>「メッセージ不要で1対1デートが決まる審査制アプリ」</strong>を自分のスタイルに合わせて使い分けると予定が崩れません。
             </p>
+            {% if not is_staff and not session.get('is_staff') %}
             <div class="rec-card">
                 <span class="rec-badge">① 今日これから・満席時のサブ選択肢</span>
                 <h3 class="rec-title">今から近くで飲める相手が見つかる定番恋活アプリ</h3>
@@ -246,6 +255,7 @@
                 </ul>
                 <a href="/link/dating_bachelor" target="_blank" rel="noopener noreferrer sponsored" class="rec-btn">審査制デートアプリの公式を見る ›</a>
             </div>
+            {% endif %}
         </article>
 
         {% include '_portal_footer.html' %}

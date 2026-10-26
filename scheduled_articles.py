@@ -30,14 +30,14 @@ SCHEDULED_ARTICLES = [
         "eyecatch_webp": "/static/eyecatch-local-vs-urban.webp",
         "badge": "地方vs都心データ",
         "read_time": "約6分で読める",
-        "tag_primary": ("tag-cyan", "📊 全国49店舗ログ比較"),
+        "tag_primary": ("tag-cyan", "📊 全国51店舗ログ比較"),
         "tag_secondary": ("tag-pink", "深夜0時の逆転現象"),
         "title": "地方店と都心大型店で客層・ピークはどう違う？深夜0時に女性が121%へ逆転増加する「一極集中」の法則",
         "short_title": "地方店vs都心大型店の客層・深夜ピーク比較",
         "desc": "都心31店舗は終電前にピークを迎え、地方18店舗は深夜0時以降に女性が121%へ増える理由を9.6万件の実測ログから解明。出張・旅行先での狙い目店舗も公開。",
         "x_title": "地方店 vs 都心大型店｜深夜0時に女性が121%へ逆転増加する理由",
         "x_main_text": (
-            "全国49店舗・9.6万件のログを「都心店」と「地方店」で比較したら真逆の結果が出た📊\n\n"
+            "全国51店舗・9.6万件のログを「都心店」と「地方店」で比較したら真逆の結果が出た📊\n\n"
             "・都心31店：終電後に女性が84.5%へ減少\n"
             "・地方18店：深夜0〜2時に女性が【121.1%】へ逆転増！\n\n"
             "熊本・沖縄・金沢・仙台など地方店の狙い目時間はリプ欄へ👇\n"
@@ -48,8 +48,8 @@ SCHEDULED_ARTICLES = [
         "slug": "cost-break-even",
         "path": "/guide/cost-break-even",
         "template": "guide_cost_break_even.html",
-        "publish_at": "2026-11-01 19:00:00",
-        "publish_at_ja": "2026年11月1日(日) 19:00",
+        "publish_at": "2026-11-01 12:30:00",
+        "publish_at_ja": "2026年11月1日(日) 12:30",
         "lastmod": "2026-11-01",
         "eyecatch_jpg": "/static/eyecatch-cost-break-even.jpg",
         "eyecatch_webp": "/static/eyecatch-cost-break-even.webp",

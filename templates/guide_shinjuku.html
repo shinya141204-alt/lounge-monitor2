@@ -196,9 +196,11 @@
         .aff-card h4 { margin: 4px 0 8px; color: #fff; font-size: 1rem; }
     </style>
     <link rel="stylesheet" href="/static/calm.css?v=10">
+    {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
          crossorigin="anonymous"></script>
+    {% endif %}
 </head>
 
 <body>
@@ -245,17 +247,17 @@
             <div class="store-compare-grid">
                 <div class="store-card">
                     <div class="store-meta">👑 王道・20代半ば〜30代</div>
-                    <h4>オリエンタルラウンジ 新宿</h4>
+                    <h4><a href="/store/oriental-lounge-shinjuku" style="color:#fff;text-decoration:none;">オリエンタルラウンジ 新宿 ›</a></h4>
                     <p>靖国通り沿いにある旗艦店。週末は100名を超えることも珍しくない大型店舗で、OL層から看護師・美容系まで幅広い女性が集まります。</p>
                 </div>
                 <div class="store-card">
                     <div class="store-meta">🍸 本格BAR調・華やか</div>
-                    <h4>JIS（ジス）新宿</h4>
+                    <h4><a href="/store/jis-shinjuku" style="color:#fff;text-decoration:none;">JIS（ジス）新宿 ›</a></h4>
                     <p>歌舞伎町入口近くにあるスタイリッシュな大型店舗。内装がラグジュアリーで、20代前半〜後半まで華やかな雰囲気の女性が多く集まります。</p>
                 </div>
                 <div class="store-card">
                     <div class="store-meta">💎 落ち着いた大人・穴場</div>
-                    <h4>JIS（ジス）西新宿</h4>
+                    <h4><a href="/store/jis-nishishinjuku" style="color:#fff;text-decoration:none;">JIS（ジス）西新宿 ›</a></h4>
                     <p>新宿駅西口・南口側から歩いてすぐ。東口ほど騒がしくなく、仕事帰りのOLや落ち着いた20代後半〜30代とゆっくり話しやすい穴場店です。</p>
                 </div>
             </div>
@@ -265,8 +267,8 @@
                 東口側の2店舗は、どちらも靖国通り・歌舞伎町入口周辺に集まっているため、<strong>歩いて2〜3分ほどで行き来できる</strong>のが最大のメリットです。
             </p>
             <ul>
-                <li><strong>王道の落ち着いたラウンジ空間で会話や食事を楽しみたいとき</strong> → まずは <strong>オリエンタルラウンジ新宿</strong> をチェック</li>
-                <li><strong>華やかなバー空間で盛り上がりたいとき・2軒目利用のとき</strong> → <strong>JIS新宿</strong> をチェック</li>
+                <li><strong>王道の落ち着いたラウンジ空間で会話や食事を楽しみたいとき</strong> → まずは <strong><a href="/store/oriental-lounge-shinjuku" style="color:#f472b6;">オリエンタルラウンジ新宿</a></strong> をチェック</li>
+                <li><strong>華やかなバー空間で盛り上がりたいとき・2軒目利用のとき</strong> → <strong><a href="/store/jis-shinjuku" style="color:#f472b6;">JIS新宿</a></strong> をチェック</li>
             </ul>
             <p>
                 この2店舗は金曜・土曜の21時を過ぎると一気に人が増えますが、「オリエンタルが男性過多のときにすぐ近くのJIS新宿を見たら女性の方が多かった」というケースがよくあります。看板の好みだけで決めず、直前の男女比を見てからエレベーターに乗るのがおすすめです。
@@ -304,7 +306,7 @@
                 相席して意気投合したあと、新宿で2軒目に誘うなら<strong>「歌舞伎町の奥へは行かず、駅寄り・三丁目寄り・西口側へ移動する」</strong>のが鉄則です。女性はキャッチが多い通りを歩くのを嫌がるため、以下のような方向へ誘うと安心してもらいやすくなります。
             </p>
             <ul>
-                <li><strong>東口3店舗からの2軒目</strong>：靖国通りを渡って新宿三丁目方面（マルイ裏エリア）の落ち着いたワインバルや夜カフェへ</li>
+                <li><strong>東口2店舗からの2軒目</strong>：靖国通りを渡って新宿三丁目方面（マルイ裏エリア）の落ち着いたワインバルや夜カフェへ</li>
                 <li><strong>JIS西新宿からの2軒目</strong>：西口のヨドバシ裏エリアにある静かなダイニングバーや、南口側のカフェバーへ</li>
             </ul>
             <p>

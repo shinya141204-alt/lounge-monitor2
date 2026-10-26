@@ -357,7 +357,7 @@ def _notify_sync_complete():
             print(f"[local_db] sync complete callback error: {err}", file=sys.stderr)
 
 
-def sync_from_google_sheets(days=14, on_recent_synced=None):
+def sync_from_google_sheets(days=30, on_recent_synced=None):
     """
     Background worker that syncs the last N days of data from Google Sheets into SQLite in chunks
     so that large multi-week datasets (~100k rows) never hit single-request HTTP timeouts.
@@ -426,7 +426,7 @@ def sync_from_google_sheets(days=14, on_recent_synced=None):
     finally:
         _sync_in_progress = False
 
-def start_background_sync(days=14, on_recent_synced=None):
+def start_background_sync(days=30, on_recent_synced=None):
     """Spawns a background thread to sync SQLite with Google Sheets without blocking startup."""
     thread = threading.Thread(target=sync_from_google_sheets, args=(days, on_recent_synced), daemon=True)
     thread.start()
@@ -554,24 +554,36 @@ def _insert_vote_row(ts, store_name, vote_type, identity):
         pass
 
 
+_votes_restored = False
+
+
 def restore_votes_from_sheets(hours=24):
-    """起動時に Sheets から直近の投票を SQLite とメモリへ復元する（SQLite が空のときのみ）。"""
+    """起動時に Sheets から直近の投票を SQLite とメモリへ重複除外マージで復元する。
+    起動直後に1票入った場合でも過去の投票履歴を取りこぼさない。"""
+    global _votes_restored
+    if _votes_restored:
+        return 0
+    now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
+    cutoff = (now_jst - datetime.timedelta(hours=hours)).strftime("%Y-%m-%d %H:%M:%S")
+    existing_keys = set()
     try:
         conn = get_connection()
         try:
-            cnt = conn.execute("SELECT COUNT(*) FROM crowd_votes").fetchone()[0]
+            cur = conn.execute(
+                "SELECT timestamp, store_name, vote_type, COALESCE(ip_hash, '') FROM crowd_votes WHERE timestamp >= ?",
+                (cutoff,),
+            )
+            for row in cur.fetchall():
+                existing_keys.add((str(row[0]), str(row[1]), str(row[2]), str(row[3])))
         finally:
             conn.close()
-        if cnt > 0:
-            return 0
         import sheets_store
         rows = sheets_store.read_rows(VOTE_SHEET_TITLE, VOTE_SHEET_HEADER)
     except Exception as e:
         print(f"[local_db] vote restore skipped: {e}", file=sys.stderr)
         return 0
 
-    now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
-    cutoff = (now_jst - datetime.timedelta(hours=hours)).strftime("%Y-%m-%d %H:%M:%S")
+    _votes_restored = True
     restored = 0
     for r in rows:
         if len(r) < 3 or not r[0] or r[0] < cutoff:
@@ -579,6 +591,10 @@ def restore_votes_from_sheets(hours=24):
         if r[2] not in ('smooth', 'waiting', 'lively'):
             continue
         identity = r[3] if len(r) > 3 else ''
+        dedup_key = (str(r[0]), str(r[1]), str(r[2]), str(identity))
+        if dedup_key in existing_keys:
+            continue
+        existing_keys.add(dedup_key)
         _insert_vote_row(r[0], r[1], r[2], identity)
         with _votes_lock:
             _memory_votes.append({'timestamp': r[0], 'store_name': r[1], 'vote_type': r[2],

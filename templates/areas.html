@@ -8,10 +8,70 @@
     <title>{{ selected_area.info.name }}の相席ラウンジ現在人数・混雑状況＆店舗比較｜相席ナビ</title>
     <meta name="description" content="{{ selected_area.info.name }}の相席ラウンジ（オリエンタルラウンジ・JIS・ag等）のリアルタイム男女人数と混雑状況。{{ selected_area.info.lead }}">
     <link rel="canonical" href="https://aiseki-navi.com/area/{{ selected_area.slug }}">
+    <meta property="og:title" content="{{ selected_area.info.name }}の相席ラウンジ現在人数・混雑状況＆店舗比較｜相席ナビ">
+    <meta property="og:description" content="{{ selected_area.info.name }}の相席ラウンジのリアルタイム男女人数と混雑状況。{{ selected_area.info.lead }}">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://aiseki-navi.com/area/{{ selected_area.slug }}">
+    <meta property="og:image" content="https://aiseki-navi.com/ogp/live.png">
+    <meta property="og:site_name" content="相席ナビ">
+    <meta name="twitter:card" content="summary_large_image">
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "相席ナビ（全国リアルタイム人数ランキング）",
+          "item": "https://aiseki-navi.com/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "全国エリア一覧",
+          "item": "https://aiseki-navi.com/areas"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "{{ selected_area.info.name }}",
+          "item": "https://aiseki-navi.com/area/{{ selected_area.slug }}"
+        }
+      ]
+    }
+    </script>
     {% else %}
     <title>全国エリア別 相席ラウンジ現在人数・店舗ガイド一覧｜相席ナビ</title>
-    <meta name="description" content="新宿・渋谷・恵比寿・横浜・大宮・大阪梅田・難波・名古屋栄・福岡天神・札幌・仙台など、全国主要エリアごとの相席ラウンジ現在人数と街別の立ち回りガイド一覧。">
+    <meta name="description" content="新宿・渋谷・恵比寿・上野・錦糸町・横浜・大宮・大阪梅田・難波・名古屋栄・岡山・広島・松山・福岡天神・札幌・仙台など、全国主要エリアごとの相席ラウンジ現在人数と街別の立ち回りガイド一覧。">
     <link rel="canonical" href="https://aiseki-navi.com/areas">
+    <meta property="og:title" content="全国エリア別 相席ラウンジ現在人数・店舗ガイド一覧｜相席ナビ">
+    <meta property="og:description" content="全国9エリア・53店舗の相席ラウンジ現在人数と街別の立ち回り・2軒目スポットガイド一覧。">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://aiseki-navi.com/areas">
+    <meta property="og:image" content="https://aiseki-navi.com/ogp/live.png">
+    <meta property="og:site_name" content="相席ナビ">
+    <meta name="twitter:card" content="summary_large_image">
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "相席ナビ（全国リアルタイム人数ランキング）",
+          "item": "https://aiseki-navi.com/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "全国エリア別ガイド一覧",
+          "item": "https://aiseki-navi.com/areas"
+        }
+      ]
+    }
+    </script>
     {% endif %}
 
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=2">
@@ -235,9 +295,11 @@
         }
     </style>
     <link rel="stylesheet" href="/static/calm.css?v=10">
+    {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
          crossorigin="anonymous"></script>
+    {% endif %}
 </head>
 
 <body>

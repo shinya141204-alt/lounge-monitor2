@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="google-site-verification" content="9kZaSJbaCuvn8QpGErUwI59w7Lf4N8ILhb_nWqDHI2s">
     <title>なぜ梅田・渋谷・新宿の相席ラウンジは深夜0時を過ぎても女性が減らないのか？データで見えた「ダンスクラブ×相席」深夜2回転目の法則｜相席ナビ</title>
     <meta name="description" content="全国53店舗の相席ラウンジのリアルタイム人数データを追跡して判明した「大型ダンスクラブがある街は深夜0時過ぎから第2波が来る」回遊法則を徹底解説。大阪梅田・心斎橋・渋谷・新宿・名古屋栄・福岡天神・札幌すすきのの深夜攻略ガイド。">
@@ -183,9 +183,11 @@
         }
     </style>
     <link rel="stylesheet" href="/static/calm.css?v=10">
+    {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
          crossorigin="anonymous"></script>
+    {% endif %}
 </head>
 
 <body>
@@ -251,7 +253,7 @@
                         <tr>
                             <td><strong><a href="/area/osaka" style="color:#fff;">大阪・梅田 / 茶屋町</a></strong></td>
                             <td>OWL OSAKA / CLUB PICCADILLY</td>
-                            <td><a href="/store/jis-umeda" style="color:#f472b6;">JIS 梅田</a> / <a href="/store/oriental-lounge-umeda" style="color:#f472b6;">オリエンタル梅田</a> / <a href="/store/oriental-lounge-osaka-ekimae" style="color:#f472b6;">大阪駅前</a> / <a href="/store/jis-chayamachi" style="color:#f472b6;">JIS 茶屋町</a></td>
+                            <td><a href="/store/jis-umeda" style="color:#f472b6;">JIS 梅田</a> / <a href="/store/oriental-lounge-osaka-ekimae" style="color:#f472b6;">オリエンタル大阪駅前</a> / <a href="/store/ag-umeda" style="color:#f472b6;">ag 梅田</a> / <a href="/store/jis-chayamachi" style="color:#f472b6;">JIS 茶屋町</a> / <a href="/store/yatakoi-umeda" style="color:#f472b6;">ヤタコイ茶屋町</a></td>
                         </tr>
                         <tr>
                             <td><strong><a href="/area/osaka" style="color:#fff;">大阪・心斎橋 / 難波</a></strong></td>
@@ -261,12 +263,12 @@
                         <tr>
                             <td><strong><a href="/area/shibuya" style="color:#fff;">東京・渋谷道玄坂</a></strong></td>
                             <td>ATOM TOKYO / TK SHIBUYA / CÉ LA VI</td>
-                            <td><a href="/store/oriental-lounge-shibuya-honten" style="color:#f472b6;">オリエンタル渋谷本店</a> / <a href="/store/oriental-lounge-shibuya-ekimae" style="color:#f472b6;">渋谷駅前</a> / <a href="/store/ag-shibuya" style="color:#f472b6;">ag 渋谷</a></td>
+                            <td><a href="/store/oriental-lounge-shibuya-honten" style="color:#f472b6;">オリエンタル渋谷本店</a> / <a href="/store/ag-shibuya" style="color:#f472b6;">ag 渋谷</a> / <a href="/store/oriental-lounge-ebisu" style="color:#f472b6;">恵比寿</a></td>
                         </tr>
                         <tr>
                             <td><strong><a href="/area/shinjuku" style="color:#fff;">東京・新宿歌舞伎町</a></strong></td>
                             <td>WARP SHINJUKU / ZEROTOKYO</td>
-                            <td><a href="/store/jis-shinjuku" style="color:#f472b6;">JIS 新宿</a> / <a href="/store/oriental-lounge-shinjuku" style="color:#f472b6;">オリエンタル新宿</a> / <a href="/store/ag-shinjuku" style="color:#f472b6;">ag 新宿</a></td>
+                            <td><a href="/store/jis-shinjuku" style="color:#f472b6;">JIS 新宿</a> / <a href="/store/oriental-lounge-shinjuku" style="color:#f472b6;">オリエンタル新宿</a> / <a href="/store/jis-nishishinjuku" style="color:#f472b6;">JIS 西新宿</a></td>
                         </tr>
                         <tr>
                             <td><strong><a href="/area/nagoya" style="color:#fff;">名古屋・栄 / 錦</a></strong></td>
@@ -276,12 +278,12 @@
                         <tr>
                             <td><strong><a href="/area/fukuoka" style="color:#fff;">福岡・天神 / 大名</a></strong></td>
                             <td>CATS FUKUOKA / HAPPY COCK</td>
-                            <td><a href="/store/jis-fukuoka" style="color:#f472b6;">JIS 福岡</a> / <a href="/store/oriental-lounge-fukuoka" style="color:#f472b6;">オリエンタル福岡</a> / <a href="/store/ag-fukuoka" style="color:#f472b6;">ag 福岡</a></td>
+                            <td><a href="/store/jis-fukuoka" style="color:#f472b6;">JIS 福岡</a> / <a href="/store/oriental-lounge-fukuoka" style="color:#f472b6;">オリエンタル福岡</a></td>
                         </tr>
                         <tr>
                             <td><strong><a href="/area/hokkaido-tohoku" style="color:#fff;">札幌・すすきの</a></strong></td>
                             <td>KING XMHU / Riviera Sapporo</td>
-                            <td><a href="/store/jis-sapporo" style="color:#f472b6;">JIS 札幌</a> / <a href="/store/oriental-lounge-sapporo" style="color:#f472b6;">オリエンタル札幌</a> / <a href="/store/ag-sapporo" style="color:#f472b6;">ag 札幌</a></td>
+                            <td><a href="/store/jis-sapporo" style="color:#f472b6;">JIS 札幌</a></td>
                         </tr>
                     </tbody>
                 </table>

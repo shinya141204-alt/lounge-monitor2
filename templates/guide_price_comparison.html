@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="google-site-verification" content="9kZaSJbaCuvn8QpGErUwI59w7Lf4N8ILhb_nWqDHI2s">
     <title>相席ラウンジ「店舗別料金・イベント・現在人数」比較ボードの活用ガイド｜待機料金・4時間帯単価・最低人数10名の見方｜相席ナビ</title>
     <meta name="description" content="相席ナビの新機能「全51店舗・料金＆開催中イベント横並び比較ボード」の見方と活用法を徹底解説。10分220〜330円の単独待機料金、4時間帯別の相席単価と1名入店可否、なぜ比率だけでなく「女性10名以上（約5組）」の線引きが必要なのか、営業時間内の0:0表記まで網羅。">
@@ -235,6 +235,11 @@
             color: #f1e3cb;
         }
     </style>
+    {% if not is_staff and not session.get('is_staff') %}
+    <meta name="google-adsense-account" content="ca-pub-3043764334238627">
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
+         crossorigin="anonymous"></script>
+    {% endif %}
 </head>
 
 <body>
@@ -360,7 +365,7 @@
                 ※ご注意：掲載している料金システム・営業時間・1名入店条件・イベント開催有無は公開データをもとに集計していますが、繁忙期・祝前日・特別営業期間や店舗都合により予告なく変更・終了となる場合があります。ご来店の際は、比較ボード内の「公式サイトで最新条件を確認 ↗」リンクから必ず各店舗の公式ホームページ・公式アプリをご確認ください。
             </p>
 
-            {% if not is_staff %}
+            {% if not is_staff and not session.get('is_staff') %}
             <div style="margin: 22px 0; padding: 16px 18px; border-radius: 12px; background: #16171c; border: 1px solid rgba(200, 164, 110, 0.3);">
                 <div style="font-size: 0.72rem; font-weight: 700; color: #f1e3cb; margin-bottom: 5px;">PR｜全店舗が「少人数」や「男性待ちピーク」だった日の予備選択肢</div>
                 <p style="font-size: 0.84rem; color: #dedad2; margin: 0 0 10px; line-height: 1.65;">

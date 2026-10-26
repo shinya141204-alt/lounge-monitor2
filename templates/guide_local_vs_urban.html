@@ -3,10 +3,10 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="google-site-verification" content="9kZaSJbaCuvn8QpGErUwI59w7Lf4N8ILhb_nWqDHI2s">
     <title>地方店と都心大型店で客層・ピークはどう違う？深夜0時に女性が121%へ逆転増加する「一極集中」の法則｜相席ナビ</title>
-    <meta name="description" content="全国49店舗・累計9.6万件の相席ラウンジ入店ログから判明した「都心大型店（31店）」と「地方独占店（18店）」の決定的な違い。都心は終電後に女性が84.5%へ減る一方、熊本・沖縄・金沢・仙台などの地方店は深夜0時〜2時に女性が121.1%へ逆転増加するメカニズムをデータ解説。">
+    <meta name="description" content="国内51店舗・累計9.6万件の相席ラウンジ入店ログから判明した「都心大型店（33店）」と「地方独占店（18店）」の決定的な違い。都心は終電後に女性が84.5%へ減る一方、熊本・沖縄・金沢・仙台などの地方店は深夜0時〜2時に女性が121.1%へ逆転増加するメカニズムをデータ解説。">
     <meta name="keywords" content="相席ラウンジ 地方,オリエンタルラウンジ 熊本,ag 沖縄,ag 金沢,ag 仙台,相席ラウンジ 客層 違い,相席ラウンジ 出張,相席ナビ">
     <link rel="canonical" href="https://aiseki-navi.com/guide/local-vs-urban">
     {% if is_scheduled_preview %}
@@ -17,7 +17,7 @@
 
     <!-- OGP / SNS Card Settings -->
     <meta property="og:title" content="地方店 vs 都心大型店｜深夜0時に女性が121%へ逆転増加する「客層と波」の違い｜相席ナビ">
-    <meta property="og:description" content="都心31店舗は終電前にピークを迎え、地方18店舗は深夜0時以降に女性が121%へ増える理由を9.6万件の実測ログから解明！">
+    <meta property="og:description" content="都心33店舗は終電前にピークを迎え、地方18店舗は深夜0時以降に女性が121%へ増える理由を9.6万件の実測ログから解明！">
     <meta property="og:type" content="article">
     <meta property="og:url" content="https://aiseki-navi.com/guide/local-vs-urban">
     <meta property="og:site_name" content="相席ナビ">
@@ -25,7 +25,7 @@
     <meta property="og:image" content="https://aiseki-navi.com/static/eyecatch-local-vs-urban.jpg">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="地方店 vs 都心大型店｜深夜0時に女性が121%へ逆転増加する法則">
-    <meta name="twitter:description" content="全国49店舗・9.6万件のログが証明！終電の壁が薄い地方ラウンジ特有の客層と、出張・旅行先での狙い目時間。">
+    <meta name="twitter:description" content="国内51店舗・9.6万件のログが証明！終電の壁が薄い地方ラウンジ特有の客層と、出張・旅行先での狙い目時間。">
     <meta name="twitter:image" content="https://aiseki-navi.com/static/eyecatch-local-vs-urban.jpg">
 
     <!-- Structured Data (Article + BreadcrumbList + FAQPage) -->
@@ -51,7 +51,7 @@
             "url": "https://aiseki-navi.com/static/icon.png"
           }
         },
-        "description": "全国49店舗・9.6万件の時系列ログから算出した、都心大型店（31店舗）と地方都市1店舗独占エリア（18店舗）の時間帯別集客カーブと客層比較レポート。"
+        "description": "国内51店舗・9.6万件の時系列ログから算出した、都心大型店（33店舗）と地方都市1店舗独占エリア（18店舗）の時間帯別集客カーブと客層比較レポート。"
       },
       {
         "@context": "https://schema.org",
@@ -232,7 +232,7 @@
         }
     </style>
     <link rel="stylesheet" href="/static/calm.css?v=10">
-    {% if not is_scheduled_preview %}
+    {% if not is_staff and not session.get('is_staff') and not is_scheduled_preview %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
          crossorigin="anonymous"></script>
@@ -257,7 +257,7 @@
         </nav>
 
         <header class="article-header">
-            <span class="article-cat-tag">📊 全国49店舗・9.6万件ログ比較</span>
+            <span class="article-cat-tag">📊 国内51店舗・9.6万件ログ比較</span>
             <h1 class="article-title">地方店と都心大型店で客層・ピークはどう違う？深夜0時に女性が121%へ逆転増加する「一極集中」の法則</h1>
             <p style="font-size:0.8rem;color:#94a3b8;margin:0;">公開日：2026年10月28日 ｜ 執筆：相席ナビ データ分析チーム</p>
         </header>
@@ -275,21 +275,21 @@
                 そんな経験をしたことはないでしょうか？
             </p>
             <p>
-                『相席ナビ』に蓄積された国内主要49店舗・累計96,600件超の時系列ログを<strong>「都心・複数店舗エリア（31店）」</strong>と<strong>「地方・1店舗独占エリア（18店）」</strong>に分けて集計したところ、両者の間には<strong>ピーク時間帯・男女比の安定度・客層の温度感において「真逆」と言える構造差</strong>があることが判明しました。
+                『相席ナビ』に蓄積された国内51店舗・累計96,600件超の時系列ログを<strong>「都心・複数店舗エリア（33店）」</strong>と<strong>「地方・1店舗独占エリア（18店）」</strong>に分けて集計したところ、両者の間には<strong>ピーク時間帯・男女比の安定度・客層の温度感において「真逆」と言える構造差</strong>があることが判明しました。
             </p>
 
             <div class="highlight-box">
                 <strong style="color:#38bdf8;font-size:0.98rem;">💡 実測ログから判明した3つの結論</strong>
                 <ul style="margin:10px 0 0 0;padding-left:20px;">
-                    <li><strong>深夜0時の逆転現象</strong>：都心31店舗は終電後に女性が平均<strong>84.5%</strong>へ減る一方、地方18店舗は20〜22時よりも深夜0〜2時の方が女性が<strong>平均121.1%へ逆転増加</strong>する。</li>
+                    <li><strong>深夜0時の逆転現象</strong>：都心33店舗は終電後に女性が平均<strong>84.5%</strong>へ減る一方、地方18店舗は20〜22時よりも深夜0〜2時の方が女性が<strong>平均121.1%へ逆転増加</strong>する。</li>
                     <li><strong>「街に1店舗」の一極集中パワー</strong>：競合店へ分散しないため、<a href="/store/oriental-lounge-kumamoto" style="color:#f472b6;">オリエンタルラウンジ熊本（最大102名）</a>など、週末深夜は都心旗艦店に匹敵する熱量が生まれる。</li>
                     <li><strong>スレていない会話のしやすさ</strong>：アプリ疲れや「タダ飯慣れ」した層が少なく、<a href="/store/ag-sendai" style="color:#f472b6;">ag仙台（女性比66.2%）</a>や<a href="/store/ag-hiroshima" style="color:#f472b6;">ag広島（女性比60.9%）</a>など男性にとって極めて戦いやすい環境が揃っている。</li>
                 </ul>
             </div>
 
-            <h2>1. 【実測比較】都心31店舗 vs 地方18店舗の時間帯カーブ</h2>
+            <h2>1. 【実測比較】都心33店舗 vs 地方18店舗の時間帯カーブ</h2>
             <p>
-                まずは国内店舗（韓国店舗を除く）を「都心ターミナル・激戦区（新宿・渋谷・恵比寿・上野・梅田・難波・栄・天神・大宮・横浜・札幌など31店舗）」と、「県庁所在地・地方中核都市の1店舗独占エリア（仙台・高崎・宇都宮・静岡・金沢・岡山・広島・松山・熊本・大分・鹿児島・沖縄など18店舗）」に分類し、<strong>宵の口（20〜22時）から深夜帯（0〜2時）にかけての女性人数維持率</strong>を比較しました。
+                まずは国内店舗（韓国店舗を除く）を「都心ターミナル・激戦区（新宿・渋谷・恵比寿・上野・錦糸町・町田・梅田・難波・栄・天神・大宮・横浜・札幌など33店舗）」と、「県庁所在地・地方中核都市の1店舗独占エリア（仙台・高崎・宇都宮・静岡・金沢・岡山・広島・松山・熊本・大分・鹿児島・沖縄など18店舗）」に分類し、<strong>宵の口（20〜22時）から深夜帯（0〜2時）にかけての女性人数維持率</strong>を比較しました。
             </p>
 
             <div class="data-table-wrap">
@@ -305,7 +305,7 @@
                     </thead>
                     <tbody>
                         <tr>
-                            <td><strong>🏙️ 都心・複数店舗エリア（31店）</strong></td>
+                            <td><strong>🏙️ 都心・複数店舗エリア（33店）</strong></td>
                             <td>38.3名</td>
                             <td>33.7名</td>
                             <td>84.5%（終電で減少）</td>
@@ -404,7 +404,7 @@
 
             <h3>理由②：街に1店舗しかない「一極集中（独占ドーム）」効果</h3>
             <p>
-                たとえば新宿には徒歩圏内に4店舗、梅田・茶屋町には5店舗以上の相席ラウンジがひしめき合っているため、客足が分散します。<br>
+                たとえば新宿には徒歩圏内に3店舗（オリエンタル新宿・JIS新宿・JIS西新宿）、梅田・茶屋町には5店舗の相席ラウンジがひしめき合っているため、客足が分散します。<br>
                 しかし地方中核都市では、<strong>その街で一番豪華で安心感のある大型ラウンジが「その1店舗だけ」</strong>です。金曜・土曜の夜に「今日誰かと楽しく飲みたい」と思った20代〜30代の女性たちが文字通り1か所に集結するため、地方にもかかわらず1店舗で女性70〜100名超えという熱狂が生まれます。
             </p>
 

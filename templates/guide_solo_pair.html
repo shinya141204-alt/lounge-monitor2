@@ -174,9 +174,11 @@
         }
     </style>
     <link rel="stylesheet" href="/static/calm.css?v=10">
+    {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
          crossorigin="anonymous"></script>
+    {% endif %}
 </head>
 
 <body>
@@ -217,7 +219,7 @@
 
             <h2 id="s1">1. 実は増えている「1人（ソロ）来店」と「2人組来店」の比較</h2>
             <p>
-                昔の相席居酒屋は「2人組以上でないと入店できない」というお店が多かったですが、現在のオリエンタルラウンジ・ag・JISなどは<strong>1人での入店も歓迎している店舗がほとんど</strong>です（混雑状況によって案内優先度が変わることはあります）。
+                現在の相席ラウンジは店舗ごとに1名入店ルールが明確に分かれています。JISの多くの店舗（西新宿・大宮・梅田・茶屋町・難波・福岡・札幌・熊本・松山）や、オリエンタルラウンジの地方・準都心24店舗、ag（梅田・金沢・広島・沖縄・平日仙台など）では<strong>男性1名（ソロ）での入店が可能</strong>です（シングルチャージ+1,100円等がかかる店舗あり）。一方で、<strong>都心の大型人気店（オリエンタルラウンジ新宿・渋谷本店・恵比寿・大阪駅前・名古屋錦、ag渋谷・上野・名古屋など）は「男性2名以上必須（1名入店不可）」</strong>となっているため、出発前に<a href="/price-comparison" style="color:#38bdf8;font-weight:700;">全51店舗の料金・1名入店可否比較ボード</a>で対象店舗をチェックしておくのが鉄則です。
             </p>
 
             <div class="compare-cards">
@@ -250,7 +252,8 @@
             </p>
             <h3>ソロで行くときのコツ</h3>
             <ul>
-                <li><strong>週末の22時過ぎ（大混雑タイム）は避ける：</strong>金・土のピーク時は4人掛けテーブルを埋めるために2人組が優先されることがあるため、<strong>水曜・木曜の20時〜22時頃</strong>や、<strong>JIS・オリエンタルラウンジの落ち着いた店舗</strong>を選ぶのがベストです。</li>
+                <li><strong>「1名入店OK」の店舗を事前に選ぶ：</strong>たとえば新宿ならオリエンタル新宿は2名以上必須のため、<a href="/store/jis-nishishinjuku" style="color:#f472b6;">JIS西新宿</a>を選ぶなど、<a href="/price-comparison" style="color:#38bdf8;">比較ボード</a>でソロ入店可否を確認してから向かうと受付で断られる心配がありません。</li>
+                <li><strong>週末の22時過ぎ（大混雑タイム）は避ける：</strong>金・土のピーク時は4人掛けテーブルを埋めるために2人組が優先されることがあるため、<strong>水曜・木曜の20時〜22時頃</strong>の落ち着いた時間帯を狙うのがベストです。</li>
                 <li><strong>仕事帰りの清潔感を整えておく：</strong>1対1で向き合う時間が長いため、夕方のヒゲや服装の清潔感に気をつけておくと安心感を持ってもらえます。</li>
             </ul>
 
@@ -270,7 +273,21 @@
                 <a href="/" class="cta-btn">🔥 リアルタイム人数ランキングを見る ›</a>
             </div>
 
-            <h2 id="s5">4. まとめ：平日はソロ、週末は2人組で使い分けるのがおすすめ</h2>
+            <h2 id="s4">4. 1人でじっくり飲みたい夜に「恋活アプリ」も相性がいい理由</h2>
+            <p>
+                「今夜は1人で誰かと落ち着いて飲みたいけれど、近くのラウンジが2名以上必須の店舗ばかり」「金曜夜で2人組優先の待ち時間が出ている」という日は、最初から1対1前提で今日これから飲める相手を探せる恋活アプリを併用するのも非常にスマートな選択肢です。シングルチャージや単独待機料金をかけずに、趣味や雰囲気が合う相手と最初からカフェやバルで乾杯できます。
+            </p>
+            {% if not is_staff and not session.get('is_staff') %}
+            <div style="margin: 18px 0 26px; padding: 16px 18px; border-radius: 12px; background: #16171c; border: 1px solid rgba(200, 164, 110, 0.3);">
+                <div style="font-size: 0.72rem; font-weight: 700; color: #f1e3cb; margin-bottom: 5px;">PR｜ソロ派と相性抜群！1対1で今日会える定番アプリ</div>
+                <p style="font-size: 0.84rem; color: #dedad2; margin: 0 0 10px; line-height: 1.65;">
+                    相方を誘う手間なく、仕事帰りや休日に「今から軽く1杯」でマッチングできる恋活アプリを予備ルートとして持っておくと行動の幅が広がります。
+                </p>
+                <a href="/link/dating_instant" target="_blank" rel="noopener noreferrer sponsored" style="display: inline-block; padding: 8px 15px; border-radius: 8px; background: rgba(200, 164, 110, 0.16); border: 1px solid rgba(200, 164, 110, 0.55); color: #f1e3cb; font-size: 0.81rem; font-weight: 700; text-decoration: none;">1対1で今日飲める恋活アプリを見る ›</a>
+            </div>
+            {% endif %}
+
+            <h2 id="s5">5. まとめ：平日はソロ、週末は2人組で使い分けるのがおすすめ</h2>
             <p>
                 1人（ソロ）にも2人組にもそれぞれの良さがあります。
             </p>

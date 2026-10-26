@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="google-site-verification" content="9kZaSJbaCuvn8QpGErUwI59w7Lf4N8ILhb_nWqDHI2s">
     <title>雨の日・給料日前後・連休中日で男女比はどう崩れる？9.6万件ログで見つけた「ライバルが減る隠れ穴場日」｜相席ナビ</title>
     <meta name="description" content="全国9.6万件の相席ラウンジ入店ログをカレンダー・天候条件で徹底分析！実は25日の給料日直後（女性比54.7%）より「15〜24日の給料日前（女性比62.1%）」の方が+7.4ptも入りやすい事実や、雨の日の地下直結店舗・3連休中日の狙い目法則を公開。">
@@ -232,7 +232,7 @@
         }
     </style>
     <link rel="stylesheet" href="/static/calm.css?v=10">
-    {% if not is_scheduled_preview %}
+    {% if not is_staff and not session.get('is_staff') and not is_scheduled_preview %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
          crossorigin="anonymous"></script>

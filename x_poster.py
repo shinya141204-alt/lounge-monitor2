@@ -1,5 +1,6 @@
 import os
 import time
+import random
 import hmac
 import hashlib
 import base64
@@ -51,18 +52,39 @@ EN_TO_JA_MAP = {
 }
 
 
+DIRECT_STORE_JA_MAP = {
+    'YATAKOI UMEDA': 'ヤタコイ梅田',
+    'CLOVERS HIROSHIMA': 'CLOVERS広島',
+    'ALFA HIROSHIMA': 'ALFA広島',
+    'XIX OKAYAMA': 'XIX岡山',
+}
+
+
 def format_ja_store_name(raw_name: str) -> str:
-    """Convert raw store name like 'JIS OMIYA' to 'JIS 大宮'."""
+    """Convert raw store name like 'JIS OMIYA' -> 'JIS 大宮', 'OLG ag渋谷' -> 'ag渋谷', 'YATAKOI UMEDA' -> 'ヤタコイ梅田'."""
     name = (raw_name or '').strip()
+    if not name:
+        return ''
+    upper_full = name.upper()
+    if upper_full in DIRECT_STORE_JA_MAP:
+        return DIRECT_STORE_JA_MAP[upper_full]
+    if upper_full.startswith('OLG AG'):
+        ag_rest = name[6:].strip()
+        ag_ja = EN_TO_JA_MAP.get(ag_rest.upper(), ag_rest)
+        return f"ag{ag_ja}"
+
     parts = name.split(' ', 1)
     if len(parts) == 2:
         prefix, rest = parts[0], parts[1].strip()
+        upper_prefix = prefix.upper()
         upper_rest = rest.upper()
+        ja_rest = EN_TO_JA_MAP.get(upper_rest, rest)
+        if upper_prefix == 'YATAKOI':
+            return f"ヤタコイ{ja_rest}"
+        if upper_prefix in ('CLOVERS', 'ALFA', 'XIX') and upper_rest in EN_TO_JA_MAP:
+            return f"{upper_prefix}{ja_rest}"
         if upper_rest in EN_TO_JA_MAP:
-            return f"{prefix} {EN_TO_JA_MAP[upper_rest]}"
-        for en_key, ja_val in EN_TO_JA_MAP.items():
-            if upper_rest == en_key:
-                rest = ja_val
+            return f"{prefix} {ja_rest}"
         return f"{prefix} {rest}"
     return name
 
@@ -101,9 +123,13 @@ def _build_east_west_summary_line(stores: list) -> str:
     if kanto_stores and kansai_stores:
         k_top = kanto_stores[0]
         w_top = kansai_stores[0]
+        k_w = int(k_top.get("women") or 0)
+        w_w = int(w_top.get("women") or 0)
+        if k_w <= 0 and w_w <= 0:
+            return ""
         k_name = format_ja_store_name(k_top.get("name", ""))
         w_name = format_ja_store_name(w_top.get("name", ""))
-        return f"🗼関東1位 {k_name}(女{k_top.get('women', 0)})｜🐙関西1位 {w_name}(女{w_top.get('women', 0)})"
+        return f"🗼関東1位 {k_name}(女性{k_w}名)｜🐙関西1位 {w_name}(女性{w_w}名)"
     return ""
 
 
@@ -492,7 +518,8 @@ COLUMN_PROMO_LIST = [
         "title": "「男性先行」の店ほど女性が増える？データが証明する「女性は待たない」新常識",
         "main_text": (
             "「女性25人・男性2人」の店に急いで向かったら、着いた頃には女の子が減ってた…って経験ない？\n\n"
-            "27万件のログを解析すると、今の女の子は20分相席できないとすぐ別店舗へ移動してて、逆に「男性が先行してる店」ほど30分後に女性が急増（確率66.5%）してる📊\n"
+            "実測ログを解析すると、今の女の子は20分相席できないと別店舗へ移動し、逆に「男性先行の店」ほど30分後に女性が急増（66.5%）してる📊\n\n"
+            "詳しいデータはリプ欄へ👇\n"
             "#相席ナビ #相席ラウンジ"
         ),
     },
@@ -502,8 +529,8 @@ COLUMN_PROMO_LIST = [
         "eyecatch": "/static/eyecatch-beauty-stage.jpg",
         "title": "なぜ美容サロン激戦区の相席ラウンジは美人が多いのか？「今日ビジュいい日」の行動データ",
         "main_text": (
-            "梅田茶屋町・渋谷・恵比寿・新宿・心斎橋・栄・大名など、人気美容サロンやクリニックが密集してる街のラウンジって、18時半〜20時頃にサロン帰りの可愛い子が本当に多い💄\n\n"
-            "「せっかく可愛くした日に直帰するのはもったいない」の行動データと、選ばれる男性の清潔感基準をまとめました👇\n"
+            "梅田茶屋町・渋谷・恵比寿・新宿・心斎橋など、人気美容サロンが密集してる街のラウンジは、18時半〜20時頃にサロン帰りの可愛い子が本当に多い💄\n\n"
+            "「可愛くした日に直帰しない」行動データと清潔感基準はリプ欄へ👇\n"
             "#相席ナビ #相席ラウンジ"
         ),
     },
@@ -513,7 +540,7 @@ COLUMN_PROMO_LIST = [
         "eyecatch": "/static/eyecatch-club-midnight.jpg",
         "title": "なぜ梅田・渋谷・新宿は深夜0時過ぎても女性が減らない？「ダンスクラブ×相席」の回遊法則",
         "main_text": (
-            "全国53店舗の相席ラウンジの人数データを夜中まで追っていると、「終電で一気に過疎る街」と「深夜0時〜2時にむしろ第2波が来る街」がはっきり分かれる。\n\n"
+            "全国53店舗の人数データを夜中まで追っていると、「終電で一気に過疎る街」と「深夜0時〜2時にむしろ第2波が来る街」がはっきり分かれる。\n\n"
             "その決定打になってるのが、徒歩3分圏内にある「大型ダンスクラブ」の存在🎧\n\n"
             "深夜ボーナスタイムの法則はリプ欄へ👇\n"
             "#相席ナビ #相席ラウンジ"
@@ -603,6 +630,17 @@ COLUMN_PROMO_LIST = [
             "面接っぽくならない最初の会話の入り方と、暗い照明のソファ席だからこそ意外と見られている身だしなみのポイントをまとめました🪞\n\n"
             "記事リンクはリプ欄へ👇\n"
             "#相席ラウンジ"
+        ),
+    },
+    {
+        "slug": "grooming",
+        "path": "/grooming",
+        "eyecatch": "/static/note-eyecatch.jpg",
+        "title": "相席ラウンジ前の身だしなみ・清潔感チェックリスト",
+        "main_text": (
+            "相席ラウンジの暗いソファ席って油断しがちだけど、距離70cmで隣に座るから「夕方の肌テカリ・眉毛・青ヒゲ・口元」は想像以上に見られてる🪞\n\n"
+            "入店前のトイレ3分でできる身だしなみチェックと清潔感ケアはリプ欄へ👇\n"
+            "#相席ナビ #相席ラウンジ"
         ),
     },
 ]
@@ -792,10 +830,15 @@ def post_to_x(
                 result["media_id"] = str(uploaded_media_id)
             tweet_id = (data.get("data") or {}).get("id")
             if reply_text and tweet_id and not reply_to_tweet_id:
-                time.sleep(1.5)
+                delay_sec = 0.05 if os.environ.get("DISABLE_SCHEDULER") == "1" else random.uniform(3.0, 6.0)
+                time.sleep(delay_sec)
                 reply_res = post_to_x(reply_text, reply_to_tweet_id=tweet_id)
                 result["reply"] = reply_res
                 result["reply_text"] = reply_text
+                if reply_res.get("status") != "success":
+                    err_detail = reply_res.get("detail") or reply_res.get("reason") or str(reply_res)
+                    logging.warning(f"X self-reply failed for tweet_id={tweet_id}: {err_detail}")
+                    result["reply_error"] = err_detail
             return result
         else:
             logger.error(f"X API returned {resp.status_code}: {resp.text}")

@@ -91,6 +91,8 @@ def refresh_ig_token_if_needed(force: bool = False) -> dict:
     token = _get_active_ig_token()
     if not token:
         return {"status": "skipped", "reason": "No INSTAGRAM_ACCESS_TOKEN to refresh"}
+    if token.startswith("EAA"):
+        return {"status": "skipped", "reason": "EAA page token managed via Meta Business"}
 
     now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
     iso_year, iso_week, _ = now_jst.isocalendar()
@@ -129,11 +131,54 @@ def _graph_base_for_token(access_token: str) -> str:
     return IG_GRAPH_BASE
 
 
+def _wait_for_ig_container_ready(
+    base: str,
+    creation_id: str,
+    access_token: str,
+    max_checks: int = 5,
+    interval_sec: float = 2.5,
+) -> tuple:
+    """
+    Poll `GET /{creation_id}?fields=status_code` up to `max_checks` times until `FINISHED`.
+    Exits immediately on mocks or responses lacking `status_code` so unit tests never stall.
+    """
+    if not creation_id:
+        return False, "Missing creation_id"
+    wait_s = 0.05 if os.environ.get("DISABLE_SCHEDULER") == "1" else interval_sec
+
+    for attempt in range(max_checks):
+        try:
+            r = requests.get(
+                f"{base}/{creation_id}",
+                params={"fields": "status_code", "access_token": access_token},
+                timeout=10,
+            )
+            sc = getattr(r, "status_code", None)
+            if not isinstance(sc, int) or sc >= 400:
+                return True, "status_check_unsupported"
+            data = r.json() if hasattr(r, "json") else {}
+            if not isinstance(data, dict) or "status_code" not in data:
+                return True, "no_status_code_field"
+            code = str(data.get("status_code") or "").upper()
+            if code in ("FINISHED", "PUBLISHED"):
+                return True, code
+            if code in ("ERROR", "EXPIRED"):
+                return False, f"IG container status={code}: {data}"
+        except Exception:
+            return True, "status_check_exception"
+
+        if attempt < max_checks - 1:
+            time.sleep(wait_s)
+
+    return True, "timeout_proceed"
+
+
 def post_single_image_to_instagram(image_url: str, caption: str) -> dict:
     """
     Publish a single image feed post to Instagram:
       1. POST /{ig_user_id}/media (image_url, caption)
-      2. POST /{ig_user_id}/media_publish (creation_id)
+      2. Poll `status_code` until FINISHED
+      3. POST /{ig_user_id}/media_publish (creation_id)
     """
     access_token = _get_active_ig_token()
     if not access_token:
@@ -165,7 +210,10 @@ def post_single_image_to_instagram(image_url: str, caption: str) -> dict:
         if not creation_id:
             return {"status": "error", "detail": f"Missing creation_id: {r1.text[:200]}"}
 
-        time.sleep(3)
+        ok_ready, ready_detail = _wait_for_ig_container_ready(base, creation_id, access_token)
+        if not ok_ready:
+            return {"status": "error", "detail": ready_detail}
+
         r2 = requests.post(
             f"{base}/{ig_user_id}/media_publish",
             data={
@@ -190,7 +238,7 @@ def post_carousel_to_instagram(image_urls: list, caption: str) -> dict:
     Publish a multi-slide 4:5 portrait carousel (up to 10 images) to Instagram:
       1. For each image_url: POST /{ig_user_id}/media (is_carousel_item=true, image_url=...)
       2. POST /{ig_user_id}/media (media_type=CAROUSEL, children=id1,id2,..., caption=...)
-      3. POST /{ig_user_id}/media_publish (creation_id=carousel_container_id)
+      3. Poll `status_code` until FINISHED, then POST /{ig_user_id}/media_publish (creation_id=carousel_container_id)
     """
     access_token = _get_active_ig_token()
     if not access_token:
@@ -202,6 +250,7 @@ def post_carousel_to_instagram(image_urls: list, caption: str) -> dict:
 
     base = _graph_base_for_token(access_token)
     child_ids = []
+    retry_wait = 0.05 if os.environ.get("DISABLE_SCHEDULER") == "1" else 2.0
     try:
         # Warm up all slide URLs first so Render caches them in memory before Meta's crawler fetches them
         for url in image_urls[:10]:
@@ -228,12 +277,14 @@ def post_carousel_to_instagram(image_urls: list, caption: str) -> dict:
                     if cid:
                         break
                 last_err = f"Slide {idx+1} HTTP {r_item.status_code}: {r_item.text[:200]}"
-                time.sleep(2)
+                time.sleep(retry_wait)
             if not cid:
                 return {"status": "error", "detail": last_err or f"Missing child id on slide {idx+1}"}
+            ok_child, child_detail = _wait_for_ig_container_ready(base, cid, access_token)
+            if not ok_child:
+                return {"status": "error", "detail": f"Slide {idx+1} container failed: {child_detail}"}
             child_ids.append(cid)
 
-        time.sleep(3)
         r_car = requests.post(
             f"{base}/{ig_user_id}/media",
             data={
@@ -250,7 +301,10 @@ def post_carousel_to_instagram(image_urls: list, caption: str) -> dict:
         if not carousel_id:
             return {"status": "error", "detail": f"Missing carousel_id: {r_car.text[:200]}"}
 
-        time.sleep(4)
+        ok_car, car_detail = _wait_for_ig_container_ready(base, carousel_id, access_token)
+        if not ok_car:
+            return {"status": "error", "detail": car_detail}
+
         r_pub = requests.post(
             f"{base}/{ig_user_id}/media_publish",
             data={
@@ -273,8 +327,8 @@ def post_carousel_to_instagram(image_urls: list, caption: str) -> dict:
 def execute_scheduled_instagram_post(stores: list, mode: str = "carousel", slot_label: str = "22:00", force: bool = False) -> dict:
     """
     Execute scheduled Instagram post with persistent job_state deduplication and weekly token auto-refresh.
-    - mode="carousel": 5-slide 1080x1350 portrait forecast & ranking carousel (with weekday-aware cover theme)
-    - mode="live": single live ranking card + detailed caption
+    - mode="carousel": 5-slide 1080x1350 portrait forecast & ranking carousel (connected to real weekly_report stats)
+    - mode="single_live" / "live": single live ranking card + detailed caption (guarded by domestic live headcount)
     """
     now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
     biz_date = (now_jst - datetime.timedelta(hours=7)).strftime("%Y-%m-%d")
@@ -283,10 +337,27 @@ def execute_scheduled_instagram_post(stores: list, mode: str = "carousel", slot_
     if not force and job_state.is_done(dedup_key):
         return {"status": "skipped", "reason": "Already posted to Instagram for this slot"}
 
+    if mode != "carousel" and not force:
+        dom = threads_poster._filter_domestic_stores(stores)
+        total_dom_women = sum(int(s.get("women") or 0) for s in dom)
+        if total_dom_women < 15:
+            logging.info(f"Skipping Instagram live post ({slot_label}): insufficient live headcount (women={total_dom_women}).")
+            return {"status": "skipped", "reason": "Insufficient live headcount"}
+
     refresh_ig_token_if_needed(force=False)
     ts_code = now_jst.strftime("%Y%m%d_%H%M")
     if mode == "carousel":
-        ctx = ig_carousel_generator.build_forecast_context(live_stores=stores, now_jst=now_jst)
+        rep = None
+        try:
+            import weekly_report
+            rep_cand = weekly_report.generate_weekly_report()
+            if isinstance(rep_cand, dict) and "error" not in rep_cand:
+                rep = rep_cand
+        except Exception as e:
+            logging.warning(f"Failed to load weekly report for Instagram carousel: {e}")
+            rep = None
+
+        ctx = ig_carousel_generator.build_forecast_context(report=rep, live_stores=stores, now_jst=now_jst)
         captions = ig_carousel_generator.build_captions(ctx)
         caption = captions.get("instagram_caption") or ""
         slide_urls = [

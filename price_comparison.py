@@ -116,7 +116,7 @@ BRAND_PRICE_SPECS = {
     "XIX": {
         "brand_code": "XIX",
         "brand_label": "相席ラウンジ XIX",
-        "brand_slug": "oriental-lounge",
+        "brand_slug": "",
         "charge_yen": 550,
         "charge_str": "550円（LINE会員登録で0円）",
         "wait_10m_yen": 220,
@@ -143,7 +143,7 @@ BRAND_PRICE_SPECS = {
     "ヤタコイ": {
         "brand_code": "ヤタコイ",
         "brand_label": "ヤタコイ（YATAKOI）",
-        "brand_slug": "oriental-lounge",
+        "brand_slug": "",
         "charge_yen": 0,
         "charge_str": "平日0円 / 金土祝前日500円",
         "wait_10m_yen": 0,
@@ -171,7 +171,7 @@ BRAND_PRICE_SPECS = {
     "CLOVERS": {
         "brand_code": "CLOVERS",
         "brand_label": "相席CLOVERS広島",
-        "brand_slug": "oriental-lounge",
+        "brand_slug": "",
         "charge_yen": 660,
         "charge_str": "660円（公式Instagram登録で0円）",
         "wait_10m_yen": 220,
@@ -198,7 +198,7 @@ BRAND_PRICE_SPECS = {
     "ALFA": {
         "brand_code": "ALFA",
         "brand_label": "相席ラウンジ ALFA広島",
-        "brand_slug": "oriental-lounge",
+        "brand_slug": "",
         "charge_yen": 550,
         "charge_str": "550円（公式LINE登録で0円）",
         "wait_10m_yen": 220,

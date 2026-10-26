@@ -119,32 +119,45 @@ def build_forecast_context(
 
     stores = []
     anaba = []
+    is_live_fallback = False
     if report and isinstance(report, dict) and not report.get("error"):
         stores = [s for s in (report.get("stores") or []) if _is_domestic(s.get("name", ""))]
         anaba = [s for s in (report.get("anaba_stores") or []) if _is_domestic(s.get("name", ""))]
 
-    if len(stores) < 5 and live_stores:
+    if not stores and live_stores:
         dom_live = [
             s for s in live_stores
             if s.get("region") != "Korea" and _is_domestic(s.get("name", ""))
         ]
         dom_live.sort(key=lambda x: (int(x.get("women") or 0), int(x.get("men") or 0)), reverse=True)
-        stores = []
-        for s in dom_live:
-            w = int(s.get("women") or 0)
-            m = int(s.get("men") or 0)
-            tot = w + m
-            wpct = round((w / tot) * 100, 1) if tot > 0 else 55.0
-            stores.append({
-                "name": s.get("name", ""),
-                "avg_women": max(w, 28),
-                "avg_men": max(m, 22),
-                "max_women": max(int(w * 1.25), 36),
-                "avg_wpct": wpct,
-            })
-        anaba = sorted(stores, key=lambda x: (x["avg_wpct"], x["avg_women"]), reverse=True)
+        if dom_live:
+            is_live_fallback = True
+            stores = []
+            for s in dom_live:
+                w = int(s.get("women") or 0)
+                m = int(s.get("men") or 0)
+                tot = w + m
+                wpct = round((w / tot) * 100, 1) if tot > 0 else 0.0
+                stores.append({
+                    "name": s.get("name", ""),
+                    "avg_women": w,
+                    "avg_men": m,
+                    "max_women": w,
+                    "avg_wpct": wpct,
+                })
+            solid_anaba = sorted(
+                [s for s in stores if s["avg_women"] >= 10],
+                key=lambda x: (x["avg_wpct"], x["avg_women"]),
+                reverse=True,
+            )
+            rest_anaba = sorted(
+                [s for s in stores if s["avg_women"] < 10],
+                key=lambda x: (x["avg_women"], x["avg_wpct"]),
+                reverse=True,
+            )
+            anaba = solid_anaba + rest_anaba
 
-    if len(stores) < 5:
+    if not stores:
         fallback_seed = [
             ("OLG 大阪駅前", 68, 48, 92, 58.6),
             ("OLG 渋谷本店", 62, 46, 85, 57.4),
@@ -166,6 +179,7 @@ def build_forecast_context(
         info = store_master.get(raw) or {}
         ja = x_poster.format_ja_store_name(raw)
         seo = store_master.seo_name(raw) or ja
+        raw_wpct = item.get("avg_wpct")
         return {
             "raw_name": raw,
             "ja_name": ja,
@@ -174,7 +188,7 @@ def build_forecast_context(
             "avg_women": int(round(float(item.get("avg_women") or 0))),
             "avg_men": int(round(float(item.get("avg_men") or 0))),
             "max_women": int(round(float(item.get("max_women") or 0))),
-            "avg_wpct": int(round(float(item.get("avg_wpct") or 55))),
+            "avg_wpct": int(round(float(raw_wpct))) if raw_wpct is not None else 0,
         }
 
     top_volume = [_enrich(s) for s in stores[:5]]
@@ -186,6 +200,7 @@ def build_forecast_context(
         "top_volume": top_volume,
         "top_anaba": top_anaba,
         "theme": theme,
+        "is_live_fallback": is_live_fallback,
     }
 
 
@@ -215,7 +230,7 @@ def _make_portrait_base(bg_filename: str, glow1: tuple, glow2: tuple) -> tuple:
     ogp_generator._draw_radial_glow(canvas, (180, 180), 540, glow1)
     ogp_generator._draw_radial_glow(canvas, (900, 1160), 540, glow2)
     canvas = canvas.convert("RGB")
-    draw = ImageDraw.Draw(canvas, "RGBA")
+    draw = ogp_generator.make_safe_draw(canvas, "RGBA")
     return canvas, draw
 
 
@@ -349,20 +364,30 @@ def render_slide_png(slide_num: int, ctx: dict = None) -> bytes:
             rw_px = int(draw.textlength(r_str, font=f_rank))
             draw.text((121 - rw_px // 2, cy + 36), r_str, font=f_rank, fill=rc)
 
-            # Store name + area
-            draw.text((174, cy + 24), st["seo_name"], font=f_sname, fill=(255, 255, 255, 255))
-            draw.text((176, cy + 68), f"エリア：{st['area_label']}", font=f_area, fill=(148, 163, 184, 235))
-
             # Highlight pill top-right
-            pill_txt = f"最高女性 {st['max_women']}名" if is_vol else f"平均女性比 {st['avg_wpct']}%"
+            is_live_fb = bool(ctx.get("is_live_fallback"))
+            if is_vol:
+                pill_txt = f"現在女性 {st['max_women']}名" if is_live_fb else f"最高女性 {st['max_women']}名"
+            else:
+                pill_txt = f"女性比率 {st['avg_wpct']}%" if is_live_fb else f"平均女性比 {st['avg_wpct']}%"
             pw_px = int(draw.textlength(pill_txt, font=f_pill)) + 34
             px = W - 92 - pw_px
             pill_bg = (190, 24, 93, 235) if is_vol else (14, 116, 144, 235)
             draw.rounded_rectangle((px, cy + 24, px + pw_px, cy + 72), radius=12, fill=pill_bg)
             draw.text((px + 17, cy + 34), pill_txt, font=f_pill, fill=(255, 255, 255, 255))
 
+            # Store name + area (auto-fit so long store names never collide with top-right pill)
+            sname_txt, sname_font, sname_sz = ogp_generator.fit_text_and_font(
+                draw, st["seo_name"], max(200, px - 190), 32, 22
+            )
+            draw.text((174, cy + 24 + max(0, (32 - sname_sz) // 2)), sname_txt, font=sname_font, fill=(255, 255, 255, 255))
+            draw.text((176, cy + 68), f"エリア：{st['area_label']}", font=f_area, fill=(148, 163, 184, 235))
+
             # Stats + ratio bar
-            stat_l = f"女性ピーク平均 {st['avg_women']}名  /  男性平均 {st['avg_men']}名（女性比 {st['avg_wpct']}%）"
+            if is_live_fb:
+                stat_l = f"現在人数：女性 {st['avg_women']}名  /  男性 {st['avg_men']}名（女性比 {st['avg_wpct']}%）"
+            else:
+                stat_l = f"女性ピーク平均 {st['avg_women']}名  /  男性平均 {st['avg_men']}名（女性比 {st['avg_wpct']}%）"
             draw.text((92, cy + 104), stat_l, font=f_stat, fill=(244, 114, 182, 255))
 
             bx, by_bar, bw_bar, bh_bar = 92, cy + 146, W - 184, 14
@@ -387,35 +412,67 @@ def render_slide_png(slide_num: int, ctx: dict = None) -> bytes:
         f_head = ogp_generator._get_font(30)
         f_body = ogp_generator._get_font(23)
 
-        draw.text((64, 134), "金・土の時間帯別 勝ちパターン", font=f_title, fill=(255, 255, 255, 255))
-        draw.text((64, 196), "入店時間で待ち時間とコスパが劇的に変わります", font=f_sub, fill=(203, 213, 225, 235))
+        if theme.get("theme_key") == "weekday":
+            s4_title = "水・木の時間帯別 勝ちパターン"
+            s4_sub = "平日20〜22時中心の立ち回りで待ち時間ゼロで飲めます"
+            cards = [
+                (
+                    "19:00 - 20:00",
+                    "仕事帰り1軒目のスマート入店枠",
+                    "早めの仕事帰りの女性が1軒目として来店する時間帯。男性ライバルが少なく、落ち着いて会話を楽しめます。",
+                    (56, 189, 248),
+                ),
+                (
+                    "20:00 - 22:00",
+                    "水・木最大の穴場ゴールデンタイム",
+                    "平日の女性来店数がピークを迎えつつ、男性待ち0分で座りやすい最もコスパが高いコアタイムです。",
+                    (251, 191, 36),
+                ),
+                (
+                    "22:00 - 23:30",
+                    "終電前の2軒目・徒歩圏ハシゴ比較",
+                    "食事会帰りの2軒目組が増える時間。新宿・渋谷・梅田などは徒歩4分の別ブランドと比率を見比べるのが鉄則です。",
+                    (244, 114, 182),
+                ),
+                (
+                    "WOMEN'S TIP",
+                    "女性グループが「待ち0分で即相席」するコツ",
+                    "女性比率が高すぎる店より、男性が先行して盛り上がっている店舗を選ぶと入店直後からスマートに相席しやすくなります。",
+                    (167, 139, 250),
+                ),
+            ]
+        else:
+            s4_title = "金・土の時間帯別 勝ちパターン"
+            s4_sub = "入店時間で待ち時間とコスパが劇的に変わります"
+            cards = [
+                (
+                    "19:30 - 20:45",
+                    "美容サロン帰り×待ち時間ゼロの黄金枠",
+                    "1軒目利用の女性が先行して入店する時間帯。男性の入店待ちがほぼ発生せず、落ち着いて乾杯できる一番の狙い目です。",
+                    (244, 114, 182),
+                ),
+                (
+                    "21:15 - 23:00",
+                    "最大ピーク帯は「徒歩4分ハシゴ比較」が鉄則",
+                    "新宿・渋谷・梅田などは同じ時刻でも店舗間で女性比率が平均15%以上開きます。並ぶ前に近隣の別ブランドを比較しましょう。",
+                    (251, 191, 36),
+                ),
+                (
+                    "00:00 - 02:00",
+                    "クラブ街＆地方店の「深夜第2波」ボーナス",
+                    "大型クラブ周辺店舗や地方都市（熊本・沖縄・金沢・仙台など）は終電後に女性が再増加。2軒目・3軒目利用に最適です。",
+                    (56, 189, 248),
+                ),
+                (
+                    "WOMEN'S TIP",
+                    "女性グループが「待ち0分で即相席」するコツ",
+                    "女性比率が高すぎる店より、男性が先行して盛り上がっている店舗を選ぶと入店直後からスマートに相席しやすくなります。",
+                    (167, 139, 250),
+                ),
+            ]
 
-        cards = [
-            (
-                "19:30 - 20:45",
-                "美容サロン帰り×待ち時間ゼロの黄金枠",
-                "1軒目利用の女性が先行して入店する時間帯。男性の入店待ちがほぼ発生せず、落ち着いて乾杯できる一番の狙い目です。",
-                (244, 114, 182),
-            ),
-            (
-                "21:15 - 23:00",
-                "最大ピーク帯は「徒歩4分ハシゴ比較」が鉄則",
-                "新宿・渋谷・梅田などは同じ時刻でも店舗間で女性比率が平均15%以上開きます。並ぶ前に近隣の別ブランドを比較しましょう。",
-                (251, 191, 36),
-            ),
-            (
-                "00:00 - 02:00",
-                "クラブ街＆地方店の「深夜第2波」ボーナス",
-                "大型クラブ周辺店舗や地方都市（熊本・沖縄・金沢・仙台など）は終電後に女性が再増加。2軒目・3軒目利用に最適です。",
-                (56, 189, 248),
-            ),
-            (
-                "WOMEN'S TIP",
-                "女性グループが「待ち0分で即相席」するコツ",
-                "女性比率が高すぎる店より、男性が先行して盛り上がっている店舗を選ぶと入店直後からスマートに相席しやすくなります。",
-                (167, 139, 250),
-            ),
-        ]
+        draw.text((64, 134), s4_title, font=f_title, fill=(255, 255, 255, 255))
+        draw.text((64, 196), s4_sub, font=f_sub, fill=(203, 213, 225, 235))
 
         cy = 262
         for badge_s, head_s, body_s, col in cards:
@@ -456,7 +513,7 @@ def render_slide_png(slide_num: int, ctx: dict = None) -> bytes:
         draw.text((64, 425), "『相席ナビ』", font=f_h1, fill=(251, 191, 36, 255))
 
         features = [
-            "オリエンタル・ag・JISなど全国53店舗を毎分自動更新",
+            "オリエンタル・ag・JISなど国内51店舗（全53店）を毎分更新",
             "「女性比率順」「現在地から近い順」で穴場が3秒で判明",
             "曜日・時間帯別の平均推移グラフ＆直近の増減トレンドも表示",
             "会員登録・アプリDL不要！スマホのブラウザで完全無料",
@@ -495,12 +552,16 @@ def build_captions(ctx: dict = None) -> dict:
     theme = ctx.get("theme") or _resolve_day_theme(datetime.datetime.now(JST), wk)
     t_key = theme.get("theme_key", "weekend")
 
+    is_live_fb = bool(ctx.get("is_live_fallback"))
+    v_metric_lbl = "現在女性" if is_live_fb else "最高女性"
+    a_metric_lbl = "女性比率" if is_live_fb else "平均女性比"
+
     v_lines = "\n".join(
-        f"・{i+1}位：{s['seo_name']}（最高女性{s['max_women']}名）"
+        f"・{i+1}位：{s['seo_name']}（{v_metric_lbl}{s['max_women']}名）"
         for i, s in enumerate(v_top)
     )
     a_lines = "\n".join(
-        f"・{i+1}位：{s['seo_name']}（平均女性比{s['avg_wpct']}%）"
+        f"・{i+1}位：{s['seo_name']}（{a_metric_lbl}{s['avg_wpct']}%）"
         for i, s in enumerate(a_top)
     )
 
@@ -511,7 +572,7 @@ def build_captions(ctx: dict = None) -> dict:
         headline = f"【{theme['date_badge']}｜全国51店舗 週間データ白書📊】"
         intro = "今週もっとも女性来店数が多かった人気店舗と、男性待ちを回避しやすかった高女性比率の穴場店舗を総括しました！"
     else:
-        headline = f"【{wk} 相席ラウンジ狙い目予報📊】"
+        headline = f"【{wk} 相席ラウンジ週末狙い目予報📊】"
         intro = "全国51店舗・9.6万件超のリアルタイム人数ログから、今週末に盛り上がりやすい店舗と「男性待ちを回避しやすい穴場店舗」を予測しました！"
 
     ig_caption = (
@@ -526,7 +587,7 @@ def build_captions(ctx: dict = None) -> dict:
         f"・男性は「女性10名以上（約5組）×女性比率55%以上」の店舗を選ぶと席替えもスムーズ！\n"
         f"・女性は逆に「男性が先行して盛り上がっているお店」を選ぶと、待ち時間ゼロで即乾杯しやすいです🥂\n\n"
         f"お店に向かう直前の「いま現在の男女人数・比率」と「全51店舗の料金・イベント横並び比較」は、プロフィールのリンク（aiseki-navi.com）から3秒で無料チェックできます🔍\n\n"
-        f"#相席ラウンジ #相席ナビ #オリエンタルラウンジ #ag #JIS #相席 #夜遊び #新宿グルメ #渋谷グルメ #梅田グルメ #難波グルメ #栄グルメ #天神グルメ"
+        f"#相席ナビ #相席ラウンジ #オリエンタルラウンジ #ag #JIS #相席"
     )
 
     threads_1 = (

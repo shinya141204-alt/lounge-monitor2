@@ -17,14 +17,17 @@ import sys
 import logger
 
 # Configuration
-RETENTION_DAYS = 14  # Keep last 14 days in main sheet
+RETENTION_DAYS = 35  # Keep last 35 days in main sheet (supports 30-day store analysis & weekly reports)
 SPREADSHEET_NAME = 'Lounge Monitor Data'
 MAIN_SHEET_NAME = 'Sheet1'
 ARCHIVE_SHEET_NAME = 'Archive'
 
+JST = datetime.timezone(datetime.timedelta(hours=9))
+
+
 def get_cutoff_date():
-    """Get the cutoff date - data older than this will be archived."""
-    return datetime.datetime.now() - datetime.timedelta(days=RETENTION_DAYS)
+    """Get the JST cutoff date (naive, matching Sheet1 timestamps) - data older than this will be archived."""
+    return datetime.datetime.now(JST).replace(tzinfo=None) - datetime.timedelta(days=RETENTION_DAYS)
 
 def archive_old_data(dry_run=False):
     """Move old data from main sheet to archive sheet."""

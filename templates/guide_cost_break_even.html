@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="google-site-verification" content="9kZaSJbaCuvn8QpGErUwI59w7Lf4N8ILhb_nWqDHI2s">
     <title>微妙な席で90分粘る vs 40分で見切る｜男性の滞在時間とトータル料金・コスパの「損益分岐点」シミュレーション｜相席ナビ</title>
     <meta name="description" content="10分単位で課金される相席ラウンジで男性が一番損をする「惰性の90分滞在」と、最もコスパが高くなる「40分見切りルール」を徹底シミュレーション。新宿・梅田・渋谷の同一時刻ログから判明した徒歩5分圏内の男女比ギャップ（最大17.5pt差）も公開。">
@@ -79,7 +79,7 @@
             "name": "1店舗目で男性過多（待ち時間あり）だった場合、同じエリアの別店舗へ移動する意味はありますか？",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "大いにあります。相席ナビの実測ログでは、同じ21時〜23時台でも新宿エリア4店舗間で平均17.5ポイント、梅田・茶屋町エリア5店舗間で平均15.2ポイントの女性比率差が発生しています。1店舗が男性過多でも、徒歩5分圏内の別店舗では女性比率55%以上の即相席状態になっているケースが梅田で87.5%、渋谷で56.2%、新宿で48.9%確認されています。"
+              "text": "大いにあります。相席ナビの実測ログでは、同じ21時〜23時台でも新宿エリア3店舗間で平均17.5ポイント、梅田・茶屋町エリア5店舗間で平均15.2ポイントの女性比率差が発生しています。1店舗が男性過多でも、徒歩5分圏内の別店舗では女性比率55%以上の即相席状態になっているケースが梅田で87.5%、渋谷で56.2%、新宿で48.9%確認されています。"
             }
           }
         ]
@@ -232,7 +232,7 @@
         }
     </style>
     <link rel="stylesheet" href="/static/calm.css?v=10">
-    {% if not is_scheduled_preview %}
+    {% if not is_staff and not session.get('is_staff') and not is_scheduled_preview %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
          crossorigin="anonymous"></script>
@@ -283,7 +283,7 @@
                 <ul style="margin:10px 0 0 0;padding-left:20px;">
                     <li><strong>損益分岐点は「40分〜50分」にある</strong>：盛り上がっている席でも間延びする前に「45分で2軒目バー」へ出た方が、1人あたりの総額が<strong>約3,000円安くなり成功率も上がる</strong>。</li>
                     <li><strong>微妙な席での「惰性延長30分」＝2軒目1回分の損失</strong>：10分約700〜900円の相席料金を30分ダラダラ伸ばすだけで約2,500円が消える（サンクコストの罠）。</li>
-                    <li><strong>徒歩5分で世界が変わる</strong>：同じ21〜23時でも、新宿4店舗で<strong>平均17.5pt</strong>、梅田5店舗で<strong>平均15.2pt</strong>の女性比率差が同時に発生している。</li>
+                    <li><strong>徒歩5分で世界が変わる</strong>：同じ21〜23時でも、新宿3店舗で<strong>平均17.5pt</strong>、梅田5店舗で<strong>平均15.2pt</strong>の女性比率差が同時に発生している。</li>
                 </ul>
             </div>
 
@@ -352,12 +352,12 @@
                             <td><strong style="color:#4ade80;">87.5%</strong></td>
                         </tr>
                         <tr>
-                            <td><strong><a href="/area/shibuya" style="color:#fff;">東京・渋谷エリア（3店舗）</a></strong></td>
+                            <td><strong><a href="/area/shibuya" style="color:#fff;">東京・渋谷・恵比寿エリア（3店舗）</a></strong></td>
                             <td>平均 <strong>9.3ポイント差</strong></td>
                             <td><strong style="color:#4ade80;">56.2%</strong></td>
                         </tr>
                         <tr>
-                            <td><strong><a href="/area/shinjuku" style="color:#fff;">東京・新宿エリア（4店舗）</a></strong></td>
+                            <td><strong><a href="/area/shinjuku" style="color:#fff;">東京・新宿エリア（3店舗）</a></strong></td>
                             <td>平均 <strong>17.5ポイント差</strong></td>
                             <td><strong style="color:#4ade80;">48.9%</strong></td>
                         </tr>
@@ -372,7 +372,7 @@
 
             <p>
                 たとえば梅田・茶屋町エリア（<a href="/store/oriental-lounge-osaka-ekimae" style="color:#f472b6;">オリエンタル大阪駅前</a>・<a href="/store/ag-umeda" style="color:#f472b6;">ag梅田</a>・<a href="/store/jis-umeda" style="color:#f472b6;">JIS梅田</a>・<a href="/store/jis-chayamachi" style="color:#f472b6;">JIS茶屋町</a>・<a href="/store/yatakoi-umeda" style="color:#f472b6;">ヤタコイ茶屋町</a>）では、ある1店舗で男性が溢れていても、<strong>実に87.5%の確率で徒歩数分以内の別店舗が「女性比率55%以上の即相席モード」になっている</strong>ことがデータで裏付けられています。<br>
-                <a href="/area/shinjuku" style="color:#f472b6;">新宿エリア</a>（<a href="/store/oriental-lounge-shinjuku" style="color:#f472b6;">オリエンタル新宿</a>・<a href="/store/jis-shinjuku" style="color:#f472b6;">JIS新宿</a>・<a href="/store/jis-nishishinjuku" style="color:#f472b6;">JIS西新宿</a>ほか）でも、同じ瞬間に女性比率が平均17.5ポイント（例：A店は女性比42%、B店は女性比60%）も開いています。
+                <a href="/area/shinjuku" style="color:#f472b6;">新宿エリア</a>（<a href="/store/oriental-lounge-shinjuku" style="color:#f472b6;">オリエンタル新宿</a>・<a href="/store/jis-shinjuku" style="color:#f472b6;">JIS新宿</a>・<a href="/store/jis-nishishinjuku" style="color:#f472b6;">JIS西新宿</a>の3店舗）でも、同じ瞬間に女性比率が平均17.5ポイント（例：A店は女性比42%、B店は女性比60%）も開いています。
             </p>
 
             <h2>3. 失敗しない「入店前3秒＆着席後40分」のマイルール</h2>
@@ -389,7 +389,7 @@
                 </p>
             </div>
 
-            {% if not is_staff and not is_scheduled_preview %}
+            {% if not is_staff and not session.get('is_staff') and not is_scheduled_preview %}
             <div style="margin: 22px 0; padding: 16px 18px; border-radius: 12px; background: #16171c; border: 1px solid rgba(200, 164, 110, 0.3);">
                 <div style="font-size: 0.72rem; font-weight: 700; color: #f1e3cb; margin-bottom: 5px;">PR｜待機料金や惰性延長コストを抑えたい日の選択肢</div>
                 <p style="font-size: 0.84rem; color: #dedad2; margin: 0 0 10px; line-height: 1.65;">

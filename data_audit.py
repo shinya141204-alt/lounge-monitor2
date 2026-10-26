@@ -155,20 +155,33 @@ def run_data_audit(live_stores=None, all_events=None, now_jst=None, send_alerts=
     # ---------------------------------------------------------
     # 3. 公式ニュース・お知らせ内の「料金・営業時間改定」キーワード検知
     # ---------------------------------------------------------
+    op_notices = []
     if all_events is None:
         try:
             import events
             all_events = events.fetch_all_events(allow_blocking=False) or []
+            op_notices = events.get_operational_notices() or []
         except Exception:
             all_events = []
+    else:
+        try:
+            import events
+            op_notices = events.get_operational_notices() or []
+        except Exception:
+            op_notices = []
 
+    seen_notice_titles = set()
+    combined_candidates = list(all_events or []) + list(op_notices)
     revision_notices = []
-    for ev in (all_events or []):
+    for ev in combined_candidates:
         title = str(ev.get("title") or "")
+        if not title or title in seen_notice_titles:
+            continue
         if any(ign in title for ign in REVISION_IGNORE_PHRASES):
             continue
         matched_kw = [kw for kw in REVISION_KEYWORDS if kw in title]
         if matched_kw:
+            seen_notice_titles.add(title)
             notice = {
                 "type": "official_revision_notice",
                 "severity": "medium",

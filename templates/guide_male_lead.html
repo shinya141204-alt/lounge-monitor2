@@ -3,10 +3,10 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="google-site-verification" content="9kZaSJbaCuvn8QpGErUwI59w7Lf4N8ILhb_nWqDHI2s">
     <title>「男性先行・男性比率が高いお店」の方が女性が増えやすいって本当？データから読み解く「女性は待たなくなった」新常識｜相席ナビ</title>
-    <meta name="description" content="全国66店舗・27万件超の相席ラウンジ実測ログを時系列解析！「男性が先行しているお店ほど30分後に女性が急増する確率66.5%」「男性が来ない店は30分で平均4.9名の女性が退店する」という衝撃の事実と、今の女性が相席待ちをしなくなった理由・賢い店選びを徹底解説します。">
+    <meta name="description" content="全国53店舗（国内51店舗＋韓国2店舗）・27万件超の相席ラウンジ実測ログを時系列解析！「男性が先行しているお店ほど30分後に女性が急増する確率66.5%」「男性が来ない店は30分で平均4.9名の女性が退店する」という衝撃の事実と、今の女性が相席待ちをしなくなった理由・賢い店選びを徹底解説します。">
     <meta name="keywords" content="相席ラウンジ 男女比,オリエンタルラウンジ 男女比,JIS 相席 男女比,ag 相席 男女比,相席ラウンジ 女性待ち,相席ラウンジ 攻略,相席ナビ">
     <link rel="canonical" href="https://aiseki-navi.com/guide/male-lead-mechanics">
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
@@ -47,7 +47,7 @@
             "url": "https://aiseki-navi.com/static/icon.png"
           }
         },
-        "description": "全国66店舗・27万件以上の相席ラウンジ時系列データを分析し、男性先行店舗で女性が増えやすい理由と、現代の女性客が「相席待ち」をせず即座に他店舗へ移動する行動変化を解明したレポート。"
+        "description": "全国53店舗（国内51店舗＋韓国2店舗）・27万件以上の相席ラウンジ時系列データを分析し、男性先行店舗で女性が増えやすい理由と、現代の女性客が「相席待ち」をせず即座に他店舗へ移動する行動変化を解明したレポート。"
       },
       {
         "@context": "https://schema.org",
@@ -270,6 +270,11 @@
         }
     </style>
     <link rel="stylesheet" href="/static/calm.css?v=10">
+    {% if not is_staff and not session.get('is_staff') %}
+    <meta name="google-adsense-account" content="ca-pub-3043764334238627">
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
+         crossorigin="anonymous"></script>
+    {% endif %}
 </head>
 
 <body>
@@ -303,7 +308,7 @@
             </p>
             <p>
                 逆に、常連の間で最近ささやかれているのが、<strong>「最初に男性がしっかり入っている（男性先行・男性比率が高めの）お店の方が、そのあと女性が一気に増えて盛り上がる」</strong>という法則です。<br>
-                今回は『相席ナビ』が蓄積した<strong>全国66店舗・累計276,607件の時系列ログ</strong>から、「30分後に女性数がどう変化するか（遷移確率）」を検証し、現代の相席ラウンジで起きている<strong>『女性はもう待たない』という決定的な行動変化</strong>を解き明かします。
+                今回は『相席ナビ』が蓄積した<strong>全国53店舗（国内51店舗＋韓国2店舗）・累計276,607件の時系列ログ</strong>から、「30分後に女性数がどう変化するか（遷移確率）」を検証し、現代の相席ラウンジで起きている<strong>『女性はもう待たない』という決定的な行動変化</strong>を解き明かします。
             </p>
 
             <div class="stat-grid">
@@ -384,7 +389,7 @@
                         <tr>
                             <td><strong><a href="/store/jis-shinjuku" style="color:#f472b6;">JIS（ジス）新宿</a></strong></td>
                             <td>最大 <strong>118〜120名</strong></td>
-                            <td>歌舞伎町3店舗の中で回転スピードが最速。男性がいる時間帯ほど女性の伸びが鋭い</td>
+                            <td>新宿エリア3店舗の中で回転スピードが最速。男性がいる時間帯ほど女性の伸びが鋭い</td>
                         </tr>
                         <tr>
                             <td><strong><a href="/store/oriental-lounge-ebisu" style="color:#f472b6;">オリエンタルラウンジ 恵比寿</a></strong></td>
@@ -418,7 +423,7 @@
                 入店前にトイレで軽く皮脂を抑え、清潔感のあるスマートカジュアルで臨むだけで女性の滞在時間と2軒目OK率は劇的に変わります（詳しいチェックポイントは<a href="/guide/first-10-minutes" style="color:#38bdf8;">最初の10分で差がつく会話＆清潔感ガイド</a>や<a href="/grooming" style="color:#38bdf8;">入店前の身だしなみ準備まとめ</a>も参考にしてみてください）。
             </p>
 
-            {% if not is_staff %}
+            {% if not is_staff and not session.get('is_staff') %}
             <div style="margin: 22px 0; padding: 16px 18px; border-radius: 12px; background: #16171c; border: 1px solid rgba(200, 164, 110, 0.3);">
                 <div style="font-size: 0.72rem; font-weight: 700; color: #f1e3cb; margin-bottom: 5px;">PR｜最初の10分の清潔感ケア＆混雑時の予備選択肢</div>
                 <p style="font-size: 0.84rem; color: #dedad2; margin: 0 0 10px; line-height: 1.65;">
@@ -436,7 +441,7 @@
                 <p style="font-size:0.85rem;color:#cbd5e1;margin:8px 0 0 0;">
                     『相席ナビ』なら、単純な人数だけでなく<strong>「直近15分で女性が何人増えたか（↗ +数字）」</strong>がひと目でわかります。お店に入る直前にチェックしてみてください！
                 </p>
-                <a href="/" class="cta-btn">全国66店舗リアルタイムランキングを見る →</a>
+                <a href="/" class="cta-btn">全国53店舗リアルタイムランキングを見る →</a>
                 <div style="margin-top:14px;font-size:0.8rem;">
                     <a href="/guide/weekend-strategy" style="color:#38bdf8;text-decoration:none;margin-right:12px;">🔥 金・土の黄金3枠とハシゴ術</a>
                     <a href="/guide/beauty-area-stage" style="color:#38bdf8;text-decoration:none;margin-right:12px;">💄 美容街×19時サロン帰りの法則</a>

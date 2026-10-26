@@ -12,7 +12,8 @@ htmlcov/
 dist/
 build/
 *.egg-info/
-.git
+.env
+.env.*
 google_credentials.json
 *.db
 *.db-wal

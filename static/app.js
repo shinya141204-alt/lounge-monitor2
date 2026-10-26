@@ -12,14 +12,90 @@
 
         // --- Store Master (static/store_master.json): single source of truth for area label, coordinates & map anchor ---
         window.STORE_MASTER = {};
+        let storeMasterMap = window.STORE_MASTER;
         let _brandInfoCache = Object.create(null);
         let _storeEventsCache = Object.create(null);
         let _lastRenderedSignature = '';
         let _updateUiRafId = null;
         let _pendingUiData = null;
 
+        const STORE_SLUG_FALLBACK = {
+            'OLG 渋谷本店': 'oriental-lounge-shibuya-honten',
+            'OLG 恵比寿': 'oriental-lounge-ebisu',
+            'OLG ag渋谷': 'ag-shibuya',
+            'OLG 新宿': 'oriental-lounge-shinjuku',
+            'OLG 上野': 'oriental-lounge-ueno',
+            'OLG ag上野': 'ag-ueno',
+            'OLG 錦糸町': 'oriental-lounge-kinshicho',
+            'OLG 柏': 'oriental-lounge-kashiwa',
+            'OLG 町田': 'oriental-lounge-machida',
+            'OLG 横浜': 'oriental-lounge-yokohama',
+            'OLG 大宮': 'oriental-lounge-omiya',
+            'OLG 宇都宮': 'oriental-lounge-utsunomiya',
+            'OLG 高崎': 'oriental-lounge-takasaki',
+            'OLG 大阪駅前': 'oriental-lounge-osaka-ekimae',
+            'OLG ag梅田': 'ag-umeda',
+            'OLG 天満': 'oriental-lounge-tenma',
+            'OLG 心斎橋': 'oriental-lounge-shinsaibashi',
+            'OLG 難波': 'oriental-lounge-namba',
+            'OLG 京都': 'oriental-lounge-kyoto',
+            'OLG 神戸': 'oriental-lounge-kobe',
+            'OLG 岡山': 'oriental-lounge-okayama',
+            'OLG ag広島': 'ag-hiroshima',
+            'OLG ag名古屋': 'ag-nagoya',
+            'OLG 名古屋 錦': 'oriental-lounge-nagoya-nishiki',
+            'OLG 名古屋 栄': 'oriental-lounge-nagoya-sakae',
+            'OLG 静岡': 'oriental-lounge-shizuoka',
+            'OLG 浜松': 'oriental-lounge-hamamatsu',
+            'OLG ag金沢': 'ag-kanazawa',
+            'OLG ag仙台': 'ag-sendai',
+            'OLG 福岡': 'oriental-lounge-fukuoka',
+            'OLG 小倉': 'oriental-lounge-kokura',
+            'OLG 長崎': 'oriental-lounge-nagasaki',
+            'OLG 大分': 'oriental-lounge-oita',
+            'OLG 熊本': 'oriental-lounge-kumamoto',
+            'OLG 宮崎': 'oriental-lounge-miyazaki',
+            'OLG 鹿児島': 'oriental-lounge-kagoshima',
+            'OLG ag沖縄': 'ag-okinawa',
+            'OLG ソウル カンナム': 'oriental-lounge-seoul-gangnam',
+            'OLG ソウル ホンデ': 'oriental-lounge-seoul-hongdae',
+            'JIS SAPPORO': 'jis-sapporo',
+            'JIS OMIYA': 'jis-omiya',
+            'JIS SHINJUKU': 'jis-shinjuku',
+            'JIS NISHISHINJUKU': 'jis-nishishinjuku',
+            'JIS UMEDA': 'jis-umeda',
+            'JIS NAMBA': 'jis-namba',
+            'JIS CHAYAMACHI': 'jis-chayamachi',
+            'JIS FUKUOKA': 'jis-fukuoka',
+            'JIS KUMAMOTO': 'jis-kumamoto',
+            'JIS MATSUYAMA': 'jis-matsuyama',
+            'XIX OKAYAMA': 'xix-okayama',
+            'YATAKOI UMEDA': 'yatakoi-umeda',
+            'CLOVERS HIROSHIMA': 'clovers-hiroshima',
+            'ALFA HIROSHIMA': 'alfa-hiroshima'
+        };
+
+        function getJstDate() {
+            return new Date(Date.now() + 9 * 3600 * 1000);
+        }
+        function getJstHour() {
+            return getJstDate().getUTCHours();
+        }
+        function getJstBusinessDayIndex() {
+            const jst = getJstDate();
+            if (jst.getUTCHours() <= 6) {
+                jst.setUTCDate(jst.getUTCDate() - 1);
+            }
+            return jst.getUTCDay();
+        }
+
         function getStoreMasterInfo(storeName) {
             return (window.STORE_MASTER && window.STORE_MASTER[String(storeName || '').trim()]) || null;
+        }
+        function getStoreSlug(storeName) {
+            const key = String(storeName || '').trim();
+            if (!key) return '';
+            return (storeMasterMap && storeMasterMap[key]?.slug) || STORE_SLUG_FALLBACK[key] || '';
         }
         (function loadStoreMaster() {
             fetch('/static/store_master.json?v=20261023')
@@ -27,6 +103,7 @@
                 .then(d => {
                     if (d && d.stores) {
                         window.STORE_MASTER = d.stores;
+                        storeMasterMap = d.stores;
                         _brandInfoCache = Object.create(null);
                         if (window.lastData && typeof updateUI === 'function') updateUI(window.lastData);
                     }
@@ -59,6 +136,7 @@
             else if (id === 'modal-official-link' || id === 'modal-top-official-link') trackEvent('official_click', store);
             else if (href.includes('x.com/aiseki_navi')) trackEvent('sns_click', 'x');
             else if (href.includes('threads.net')) trackEvent('sns_click', 'threads');
+            else if (href.includes('instagram.com')) trackEvent('sns_click', 'instagram');
             else if (href.includes('note.com/')) trackEvent('sns_click', 'note');
         }, true);
 
@@ -574,25 +652,16 @@
             } catch (e) {}
         }
         function initHowToOnboarding() {
-            if (IS_STAFF) return;
-            try {
-                const seen = localStorage.getItem('seen_how_to_guide_v1');
-                if (!seen) {
-                    setTimeout(() => {
-                        openHowToModal();
-                    }, 900);
-                }
-            } catch (e) {}
+            // Auto-popup disabled to avoid interrupting first-time visitors and Core Web Vitals.
+            // Users can open #how-to-modal anytime via the "使い方" button.
         }
 
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', () => {
                 initDomainNotice();
-                initHowToOnboarding();
             });
         } else {
             initDomainNotice();
-            initHowToOnboarding();
         }
 
         function toggleCompact() {
@@ -624,7 +693,7 @@
         function setSort(sortType) {
             currentSort = sortType;
             document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
-            document.querySelector(`.sort-btn[data-sort="${sortType}"]`).classList.add('active');
+            document.querySelector(`.sort-btn[data-sort="${sortType}"]`)?.classList.add('active');
             if (window.lastData) updateUI(window.lastData);
         }
 
@@ -920,6 +989,7 @@
             { keys: ['渋谷', 'SHIBUYA'], label: '東京・渋谷' },
             { keys: ['恵比寿', 'EBISU'], label: '東京・恵比寿' },
             { keys: ['上野', 'UENO'], label: '東京・上野' },
+            { keys: ['錦糸町', 'KINSHICHO'], label: '東京・錦糸町' },
             { keys: ['町田', 'MACHIDA'], label: '東京・町田' },
             { keys: ['横浜', 'YOKOHAMA'], label: '神奈川・横浜' },
             { keys: ['大宮', 'OMIYA'], label: '埼玉・大宮' },
@@ -1450,7 +1520,7 @@
             const wCount = liveStore ? (parseInt(liveStore.women || 0, 10) || 0) : 0;
             const mCount = liveStore ? (parseInt(liveStore.men || 0, 10) || 0) : 0;
 
-            const currentHour = new Date().getHours();
+            const currentHour = getJstHour();
             const isNightTime = (currentHour >= 19 || currentHour < 6);
 
             let targetCategory = 'dating';
@@ -1713,20 +1783,24 @@
 
         let currentModalStoreName = '';
 
-        function shareStoreStatus(platform) {
+        function shareStoreStatus(storeNameOrPlatform, maybePlatform) {
+            const hasTwoArgs = typeof maybePlatform === 'string' && maybePlatform.length > 0;
+            const targetStoreName = hasTwoArgs ? storeNameOrPlatform : currentModalStoreName;
+            const platform = hasTwoArgs ? maybePlatform : storeNameOrPlatform;
             trackEvent('share', platform);
-            const shareUrl = window.location.origin + window.location.pathname;
-            const bInfo = detectBrandInfo(currentModalStoreName);
+            const slug = getStoreSlug(targetStoreName);
+            const shareUrl = slug ? `https://aiseki-navi.com/store/${slug}` : (window.location.origin + window.location.pathname);
+            const bInfo = detectBrandInfo(targetStoreName);
             let liveInfo = '';
             if (window.lastData && window.lastData.ranking) {
-                const found = window.lastData.ranking.find(s => s.name === currentModalStoreName);
+                const found = window.lastData.ranking.find(s => s.name === targetStoreName);
                 if (found) {
                     liveInfo = `いま女性${found.women}名 / 男性${found.men}名が入店中🍸`;
                 }
             }
 
             // Check if store has active events from Step 1 crawler (prioritize store-specific)
-            const evs = getStoreSpecificEvents(currentModalStoreName);
+            const evs = getStoreSpecificEvents(targetStoreName);
             let eventText = '';
             if (evs && evs.length > 0) {
                 const topEv = evs[0];
@@ -1867,8 +1941,7 @@
                     tags = `#相席ナビ #相席ラウンジ`;
                 }
             } else if (preset === 'timely') {
-                const now = new Date();
-                const jstHour = (now.getUTCHours() + 9) % 24;
+                const jstHour = getJstHour();
 
                 if (jstHour >= 17 && jstHour < 20) {
                     header = `${ts}時点、仕事帰りに待ち時間なしで入りやすい3店舗🍸`;
@@ -2285,7 +2358,7 @@
                                     <span style="color:var(--text-secondary); font-size:0.72rem;">${escapeHtml(ev.date_str || '')}</span>
                                 </div>
                             </div>
-                            <a href="${escapeHtml(ev.url)}" target="_blank" rel="noopener noreferrer" class="event-cta-btn" onclick="event.stopPropagation(); window.open(this.href, '_blank'); return true;">
+                            <a href="${escapeHtml(ev.url)}" target="_blank" rel="noopener noreferrer" class="event-cta-btn" onclick="event.stopPropagation();">
                                 <span>公式詳細</span>
                                 <span>↗</span>
                             </a>
@@ -2358,7 +2431,7 @@
                                     <span style="color:var(--text-secondary); font-size:0.72rem;">${escapeHtml(ev.date_str || '')}</span>
                                 </div>
                             </div>
-                            <a href="${escapeHtml(ev.url)}" target="_blank" rel="noopener noreferrer" class="event-cta-btn" onclick="event.stopPropagation(); window.open(this.href, '_blank'); return true;">
+                            <a href="${escapeHtml(ev.url)}" target="_blank" rel="noopener noreferrer" class="event-cta-btn" onclick="event.stopPropagation();">
                                 <span>公式詳細</span>
                                 <span>↗</span>
                             </a>
@@ -2769,13 +2842,8 @@
             let diffBadge = '';
             if (data && (data.hourly_by_weekday || data.hourly)) {
                 // Compute current JST business day and hour
-                const now = new Date();
-                const currentHour = now.getHours();
-                const bizDate = new Date(now);
-                if (currentHour <= 6) {
-                    bizDate.setDate(bizDate.getDate() - 1);
-                }
-                const jsDay = bizDate.getDay(); // 0=Sun, 1=Mon...
+                const currentHour = getJstHour();
+                const jsDay = getJstBusinessDayIndex(); // 0=Sun, 1=Mon...
                 const dayKeys = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
                 const dayLabels = ['日曜', '月曜', '火曜', '水曜', '木曜', '金曜', '土曜'];
                 const dayKey = dayKeys[jsDay];
@@ -2822,11 +2890,9 @@
             if (window.Chart) {
                 renderWeekdayChart(data);
 
-                // Auto-select current business weekday for hourly chart
-                const now = new Date();
-                if (now.getHours() <= 6) now.setDate(now.getDate() - 1);
+                // Auto-select current JST business weekday for hourly chart
                 const dayKeys = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-                selectHourlyWeekday(dayKeys[now.getDay()]);
+                selectHourlyWeekday(dayKeys[getJstBusinessDayIndex()]);
             }
         }
 
@@ -3207,7 +3273,17 @@
 
         const pullIndicator = document.getElementById('pull-indicator');
 
+        function isModalActiveForPull(e) {
+            if (document.querySelector('.modal:not(.hidden)')) return true;
+            if (e && e.target && e.target.closest && e.target.closest('.modal')) return true;
+            return false;
+        }
+
         document.addEventListener('touchstart', e => {
+            if (isModalActiveForPull(e)) {
+                isPulling = false;
+                return;
+            }
             if (window.scrollY === 0) {
                 touchstartY = e.changedTouches[0].screenY;
                 isPulling = true;
@@ -3215,17 +3291,25 @@
         }, {passive: true});
 
         document.addEventListener('touchmove', e => {
-            if (!isPulling) return;
+            if (!isPulling || isModalActiveForPull(e)) {
+                isPulling = false;
+                pullIndicator?.classList.remove('show');
+                return;
+            }
             const y = e.changedTouches[0].screenY;
             if (y > touchstartY + pullThreshold) {
-                pullIndicator.classList.add('show');
+                pullIndicator?.classList.add('show');
             } else {
-                pullIndicator.classList.remove('show');
+                pullIndicator?.classList.remove('show');
             }
         }, {passive: true});
 
         document.addEventListener('touchend', e => {
-            if (!isPulling) return;
+            if (!isPulling || isModalActiveForPull(e)) {
+                isPulling = false;
+                pullIndicator?.classList.remove('show');
+                return;
+            }
             touchendY = e.changedTouches[0].screenY;
             isPulling = false;
             
@@ -3233,10 +3317,10 @@
                 // Trigger refresh
                 manualRefresh();
                 setTimeout(() => {
-                    pullIndicator.classList.remove('show');
+                    pullIndicator?.classList.remove('show');
                 }, 1000); // Hide after a bit
             } else {
-                pullIndicator.classList.remove('show');
+                pullIndicator?.classList.remove('show');
             }
         });
 

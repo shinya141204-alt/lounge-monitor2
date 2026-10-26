@@ -10,6 +10,87 @@ MAC_FONT_BOLD = "/System/Library/Fonts/ヒラギノ角ゴシック W8.ttc"
 
 _FONT_CACHE = {}
 
+_GLYPH_REPLACEMENTS = {
+    "…": "...",
+    "‥": "..",
+    "↗": "▲",
+    "↘": "▼",
+    "🗼": "【東】",
+    "🐙": "【西】",
+    "—": "-",
+    "–": "-",
+}
+for _i in range(1, 21):
+    _GLYPH_REPLACEMENTS[chr(0x245F + _i)] = f"({_i})"
+for _i in range(1, 11):
+    _GLYPH_REPLACEMENTS[chr(0x2775 + _i)] = f"({_i})"
+
+
+def sanitize_font_text(text: str) -> str:
+    """Replace glyphs missing in bundled `ogp-jp-bold.otf` (e.g. …, ①②③, emojis) to prevent tofu boxes."""
+    if not text:
+        return ""
+    s = str(text)
+    for src, dst in _GLYPH_REPLACEMENTS.items():
+        if src in s:
+            s = s.replace(src, dst)
+    # Strip supplementary-plane emoji characters not supported by CJK OTF fonts
+    cleaned = []
+    for ch in s:
+        cp = ord(ch)
+        if cp >= 0x1F000 or cp in (0xFE0E, 0xFE0F, 0x200D):
+            continue
+        cleaned.append(ch)
+    return "".join(cleaned)
+
+
+class _SafeImageDraw:
+    """Thin wrapper around PIL ImageDraw that auto-sanitizes text before measuring or drawing."""
+
+    def __init__(self, raw_draw: ImageDraw.ImageDraw):
+        self._draw = raw_draw
+
+    def text(self, xy, text, *args, **kwargs):
+        return self._draw.text(xy, sanitize_font_text(text), *args, **kwargs)
+
+    def textlength(self, text, *args, **kwargs):
+        return self._draw.textlength(sanitize_font_text(text), *args, **kwargs)
+
+    def textbbox(self, xy, text, *args, **kwargs):
+        return self._draw.textbbox(xy, sanitize_font_text(text), *args, **kwargs)
+
+    def __getattr__(self, name):
+        return getattr(self._draw, name)
+
+
+def make_safe_draw(canvas: Image.Image, mode: str = "RGBA") -> _SafeImageDraw:
+    return _SafeImageDraw(ImageDraw.Draw(canvas, mode))
+
+
+def _measure_text_width(draw, text: str, font) -> float:
+    clean = sanitize_font_text(text)
+    w_len = float(draw.textlength(clean, font=font))
+    try:
+        bbox = draw.textbbox((0, 0), clean, font=font)
+        return max(w_len, float(bbox[2] - bbox[0]))
+    except Exception:
+        return w_len
+
+
+def fit_text_and_font(draw, text: str, max_width: int, max_size: int, min_size: int = 15):
+    """Shrink font from `max_size` down to `min_size` so `text` fits within `max_width` (truncating if still wider)."""
+    clean = sanitize_font_text(text)
+    for sz in range(max_size, min_size - 1, -1):
+        f_cand = _get_font(sz)
+        if _measure_text_width(draw, clean, f_cand) <= max_width:
+            return clean, f_cand, sz
+
+    f_min = _get_font(min_size)
+    trimmed = clean
+    while trimmed and _measure_text_width(draw, trimmed + "...", f_min) > max_width:
+        trimmed = trimmed[:-1]
+    return (trimmed + "..." if trimmed else clean), f_min, min_size
+
 
 def _get_font(size: int) -> ImageFont.FreeTypeFont:
     if size in _FONT_CACHE:
@@ -205,7 +286,7 @@ def generate_live_ogp_png(stores: list, s_param: str = "", now_jst: datetime.dat
     _draw_radial_glow(canvas, (1050, 90), 460, theme["glow_top"])
     _draw_radial_glow(canvas, (320, 560), 420, theme["glow_bottom"])
 
-    draw = ImageDraw.Draw(canvas, "RGBA")
+    draw = make_safe_draw(canvas, "RGBA")
 
     # Fonts
     f_badge = _get_font(17)
@@ -282,6 +363,8 @@ def generate_live_ogp_png(stores: list, s_param: str = "", now_jst: datetime.dat
     )
     draw.text((lx + 20, sy + 13), theme["sub_caption"], font=f_sub, fill=(238, 240, 246, 255))
 
+    is_off_hours = (total_w + total_m) <= 0
+
     # 5) Nationwide Total Box
     tbox_y = sy + 64
     tbox_w = 492
@@ -293,34 +376,50 @@ def generate_live_ogp_png(stores: list, s_param: str = "", now_jst: datetime.dat
         outline=(theme["accent"][0], theme["accent"][1], theme["accent"][2], 95),
         width=1,
     )
-    draw.text(
-        (lx + 22, tbox_y + 16),
-        f"◆ 全国{len(dom_stores) or 53}店舗 リアルタイム来店合計",
-        font=f_total_lbl,
-        fill=(205, 212, 226, 255),
-    )
-    tot_w_str = f"女性 {total_w:,}名"
-    tot_m_str = f"男性 {total_m:,}名"
-    draw.text((lx + 22, tbox_y + 48), tot_w_str, font=f_total_val, fill=(255, 110, 168, 255))
-    w_len = int(draw.textlength(tot_w_str, font=f_total_val))
-    draw.text((lx + 22 + w_len + 16, tbox_y + 48), "／", font=f_total_val, fill=(130, 140, 160, 255))
-    draw.text((lx + 22 + w_len + 50, tbox_y + 48), tot_m_str, font=f_total_val, fill=(96, 185, 255, 255))
-
-    # 6) East / West Area Leaders Strip (関東1位 vs 関西1位)
-    ew_line = x_poster._build_east_west_summary_line(dom_stores)
-    if ew_line:
-        ew_y = tbox_y + tbox_h + 14
-        ew_h = 54
-        draw.rounded_rectangle(
-            (lx, ew_y, lx + tbox_w, ew_y + ew_h),
-            radius=12,
-            fill=(18, 22, 34, 225),
-            outline=(255, 255, 255, 40),
-            width=1,
+    if is_off_hours:
+        draw.text(
+            (lx + 22, tbox_y + 16),
+            f"◆ 国内{len(dom_stores) or 51}店舗 リアルタイム稼働モニター",
+            font=f_total_lbl,
+            fill=(205, 212, 226, 255),
         )
-        ew_clean = ew_line.replace("🗼", "【東】").replace("🐙", "【西】")
-        f_ew = _get_font(15)
-        draw.text((lx + 18, ew_y + 18), ew_clean, font=f_ew, fill=(229, 200, 120, 255))
+        off_msg = "現在は営業時間外です（18:00〜翌5:00 毎分更新）"
+        off_txt, off_font, off_sz = fit_text_and_font(draw, off_msg, tbox_w - 40, 20, 14)
+        draw.text(
+            (lx + 22, tbox_y + 50 + max(0, (20 - off_sz) // 2)),
+            off_txt,
+            font=off_font,
+            fill=(251, 191, 36, 255),
+        )
+    else:
+        draw.text(
+            (lx + 22, tbox_y + 16),
+            f"◆ 全国{len(dom_stores) or 51}店舗 リアルタイム来店合計",
+            font=f_total_lbl,
+            fill=(205, 212, 226, 255),
+        )
+        tot_w_str = f"女性 {total_w:,}名"
+        tot_m_str = f"男性 {total_m:,}名"
+        draw.text((lx + 22, tbox_y + 48), tot_w_str, font=f_total_val, fill=(255, 110, 168, 255))
+        w_len = int(draw.textlength(tot_w_str, font=f_total_val))
+        draw.text((lx + 22 + w_len + 16, tbox_y + 48), "／", font=f_total_val, fill=(130, 140, 160, 255))
+        draw.text((lx + 22 + w_len + 50, tbox_y + 48), tot_m_str, font=f_total_val, fill=(96, 185, 255, 255))
+
+        # 6) East / West Area Leaders Strip (関東1位 vs 関西1位)
+        ew_line = x_poster._build_east_west_summary_line(dom_stores)
+        if ew_line:
+            ew_y = tbox_y + tbox_h + 14
+            ew_h = 54
+            draw.rounded_rectangle(
+                (lx, ew_y, lx + tbox_w, ew_y + ew_h),
+                radius=12,
+                fill=(18, 22, 34, 225),
+                outline=(255, 255, 255, 40),
+                width=1,
+            )
+            ew_clean = sanitize_font_text(ew_line)
+            ew_txt, f_ew, ew_sz = fit_text_and_font(draw, ew_clean, tbox_w - 36, 15, 12)
+            draw.text((lx + 18, ew_y + 18 + max(0, (15 - ew_sz) // 2)), ew_txt, font=f_ew, fill=(229, 200, 120, 255))
 
     # =========================================================================
     # RIGHT COLUMN: LIVE TOP 3 RANKING BOARD (x=576 to 1152)
@@ -337,6 +436,51 @@ def generate_live_ogp_png(stores: list, s_param: str = "", now_jst: datetime.dat
         outline=(theme["accent"][0], theme["accent"][1], theme["accent"][2], 140),
         width=2,
     )
+
+    if is_off_hours:
+        draw.text((rx + 26, ry + 20), "★ リアルタイム更新スケジュール", font=f_panel_hdr, fill=(229, 200, 120, 255))
+        standby_badge = "● OFF-HOURS"
+        sb_w = int(draw.textlength(standby_badge, font=f_panel_hdr))
+        draw.text((rx + rw - sb_w - 26, ry + 20), standby_badge, font=f_panel_hdr, fill=(56, 189, 248, 255))
+        draw.line((rx + 24, ry + 54, rx + rw - 24, ry + 54), fill=(255, 255, 255, 35), width=1)
+
+        # Clean off-hours hero notice card
+        cx = rx + 22
+        cw = rw - 44
+        draw.rounded_rectangle(
+            (cx, ry + 72, cx + cw, ry + 204),
+            radius=16,
+            fill=(20, 26, 40, 242),
+            outline=(251, 191, 36, 150),
+            width=2,
+        )
+        f_off_h = _get_font(26)
+        f_off_p = _get_font(17)
+        draw.text((cx + 24, ry + 94), "現在は営業時間外です", font=f_off_h, fill=(255, 255, 255, 255))
+        draw.text((cx + 24, ry + 138), "18:00〜翌5:00 の営業時間中に毎分自動更新します", font=f_off_p, fill=(251, 191, 36, 255))
+        draw.text((cx + 24, ry + 168), "昼間は曜日・時間帯別の統計データと料金比較を公開中", font=f_off_p, fill=(148, 163, 184, 240))
+
+        schedule_rows = [
+            ("(1) 18:00 - 20:30", "仕事帰り・待ち時間ゼロの狙い目スタート枠", (244, 114, 182)),
+            ("(2) 21:00 - 23:30", "国内51店舗 ゴールデンタイム男女比ランキング", (251, 191, 36)),
+            ("(3) 00:00 - 05:00", "終電後の第2波・深夜オールナイト稼働速報", (56, 189, 248)),
+        ]
+        sy_card = ry + 224
+        for slot_s, desc_s, col in schedule_rows:
+            draw.rounded_rectangle(
+                (cx, sy_card, cx + cw, sy_card + 90),
+                radius=14,
+                fill=(18, 22, 34, 235),
+                outline=(col[0], col[1], col[2], 95),
+                width=1,
+            )
+            draw.text((cx + 22, sy_card + 16), slot_s, font=_get_font(19), fill=col)
+            draw.text((cx + 22, sy_card + 50), desc_s, font=_get_font(17), fill=(226, 232, 240, 245))
+            sy_card += 102
+
+        out = io.BytesIO()
+        canvas.convert("RGB").save(out, format="PNG", optimize=True)
+        return out.getvalue()
 
     # Panel Header
     draw.text((rx + 26, ry + 20), "★ リアルタイム上位3店舗", font=f_panel_hdr, fill=(229, 200, 120, 255))
@@ -488,7 +632,7 @@ def generate_weekly_ogp_png(report: dict = None) -> bytes:
     _draw_radial_glow(canvas, (1040, 100), 480, (229, 200, 120, 85))
     _draw_radial_glow(canvas, (300, 560), 440, (56, 189, 248, 65))
 
-    draw = ImageDraw.Draw(canvas, "RGBA")
+    draw = make_safe_draw(canvas, "RGBA")
 
     f_badge = _get_font(17)
     f_date = _get_font(20)
@@ -551,14 +695,34 @@ def generate_weekly_ogp_png(report: dict = None) -> bytes:
         width=1,
     )
     draw.text((lx + 22, tbox_y + 16), "◆ 今週の「高女子率・穴場」No.1店舗", font=f_total_lbl, fill=(148, 212, 255, 255))
+    max_anaba_w = tbox_w - 36  # 456px: starts at lx+22=74 -> ends <= 530 < lx+tbox_w=544 < rx=576
     if anaba_stores:
         a1 = anaba_stores[0]
-        a1_name = x_poster.format_ja_store_name(a1.get("name", ""))
-        a1_pct = a1.get("avg_wpct", 58)
-        a1_w = a1.get("avg_women", 30)
-        draw.text((lx + 22, tbox_y + 48), f"{a1_name}（女性比 {a1_pct}% / 平均{a1_w}名）", font=f_total_val, fill=(74, 222, 128, 255))
+        a1_name = sanitize_font_text(x_poster.format_ja_store_name(a1.get("name", "")))
+        a1_pct = int(round(float(a1.get("avg_wpct") if a1.get("avg_wpct") is not None else 58)))
+        a1_w = int(round(float(a1.get("avg_women") if a1.get("avg_women") is not None else 30)))
+        suffix = f"（女性比 {a1_pct}% / 平均{a1_w}名）"
+        full_anaba = f"{a1_name}{suffix}"
+        chosen_font = None
+        chosen_sz = 23
+        for sz in range(23, 14, -1):
+            f_cand = _get_font(sz)
+            if _measure_text_width(draw, full_anaba, f_cand) <= max_anaba_w:
+                chosen_font = f_cand
+                chosen_sz = sz
+                break
+        if chosen_font is None:
+            chosen_sz = 15
+            chosen_font = _get_font(15)
+            short_name = a1_name
+            while short_name and _measure_text_width(draw, f"{short_name}...{suffix}", chosen_font) > max_anaba_w:
+                short_name = short_name[:-1]
+            full_anaba = f"{short_name}...{suffix}" if short_name else suffix
+        y_anaba = tbox_y + 48 + max(0, (23 - chosen_sz) // 2)
+        draw.text((lx + 22, y_anaba), full_anaba, font=chosen_font, fill=(74, 222, 128, 255))
     else:
-        draw.text((lx + 22, tbox_y + 48), "水・木 20:00〜22:00（全国平均女性比 57%）", font=f_total_val, fill=(74, 222, 128, 255))
+        fb_txt, fb_font, fb_sz = fit_text_and_font(draw, "水・木 20:00〜22:00（全国平均女性比 57%）", max_anaba_w, 23, 15)
+        draw.text((lx + 22, tbox_y + 48 + max(0, (23 - fb_sz) // 2)), fb_txt, font=fb_font, fill=(74, 222, 128, 255))
 
     rx = 576
     rw = 574
@@ -694,7 +858,7 @@ def generate_bonus_alert_png(store: dict, mode: str = "female_lead", now_jst: da
     _draw_radial_glow(canvas, (980, 520), 460, glow_b)
 
     canvas = canvas.convert("RGB")
-    draw = ImageDraw.Draw(canvas, "RGBA")
+    draw = make_safe_draw(canvas, "RGBA")
 
     f_badge = _get_font(22)
     f_time = _get_font(24)

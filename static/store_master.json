@@ -210,7 +210,7 @@
    "lat": 34.6663,
    "lng": 133.9185,
    "map_anchor": "オリエンタルラウンジ岡山 岡山駅前",
-   "area_slug": "hokkaido-tohoku"
+   "area_slug": "chugoku-shikoku"
   },
   "OLG ag広島": {
    "brand": "ag",
@@ -220,7 +220,7 @@
    "lat": 34.3928,
    "lng": 132.4636,
    "map_anchor": "ag広島 流川",
-   "area_slug": "hokkaido-tohoku"
+   "area_slug": "chugoku-shikoku"
   },
   "OLG ag名古屋": {
    "brand": "ag",
@@ -490,7 +490,7 @@
    "lat": 33.8392,
    "lng": 132.7656,
    "map_anchor": "JIS松山 大街道 二番町",
-   "area_slug": "hokkaido-tohoku"
+   "area_slug": "chugoku-shikoku"
   },
   "XIX OKAYAMA": {
    "brand": "XIX",
@@ -500,7 +500,7 @@
    "lat": 34.665,
    "lng": 133.922,
    "map_anchor": "相席ラウンジXIX 岡山",
-   "area_slug": "hokkaido-tohoku"
+   "area_slug": "chugoku-shikoku"
   },
   "YATAKOI UMEDA": {
    "brand": "ヤタコイ",
@@ -520,7 +520,7 @@
    "lat": 34.394,
    "lng": 132.465,
    "map_anchor": "相席CLOVERS 広島 流川",
-   "area_slug": "hokkaido-tohoku"
+   "area_slug": "chugoku-shikoku"
   },
   "ALFA HIROSHIMA": {
    "brand": "ALFA",
@@ -530,7 +530,7 @@
    "lat": 34.3935,
    "lng": 132.464,
    "map_anchor": "相席ラウンジALFA 広島 流川",
-   "area_slug": "hokkaido-tohoku"
+   "area_slug": "chugoku-shikoku"
   }
  }
 }

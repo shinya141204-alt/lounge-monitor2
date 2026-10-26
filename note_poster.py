@@ -48,21 +48,34 @@ STATE_DIR = os.path.join(os.path.dirname(__file__), "data")
 STATE_FILE = os.path.join(STATE_DIR, "posted_notes.json")
 
 
-def _load_posted_urls() -> set:
+def _load_posted_urls_with_health() -> tuple:
+    """Return (posted_urls: set, state_healthy: bool)."""
     posted = set()
+    has_local_state = False
     try:
         if os.path.exists(STATE_FILE):
             with open(STATE_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 posted.update(data.get("posted_urls", []))
+            has_local_state = True
     except Exception as e:
         logger.error(f"Failed to load posted note URLs: {e}")
+
     # data/ はデプロイで消えるため、永続化された job_state（Google Sheets）も参照する
+    job_state_ok = False
     try:
         import job_state
         posted.update(k[len("note:"):] for k in job_state.all_keys() if k.startswith("note:"))
+        job_state_ok = job_state.is_storage_healthy()
     except Exception as e:
         logger.error(f"Failed to load note state from job_state: {e}")
+        job_state_ok = False
+
+    return posted, (has_local_state or job_state_ok)
+
+
+def _load_posted_urls() -> set:
+    posted, _ = _load_posted_urls_with_health()
     return posted
 
 
@@ -150,41 +163,80 @@ def build_note_reply_text(link: str) -> str:
 def check_and_post_new_note(force: bool = False, article_index: int = 0) -> dict:
     """
     Check for newly published note articles and post to X if not yet shared.
-    force=True ignores previously posted record for testing.
+    - When `not force`, skips safely if state storage (local STATE_FILE + Sheets) is unavailable after redeploy.
+    - When multiple unposted articles exist, posts the oldest unposted article first (1 per run).
+    - `force=True` ignores previously posted record for manual testing.
     """
     articles = fetch_latest_note_articles()
     if not articles:
         return {"status": "error", "reason": "No articles retrieved from note RSS"}
 
-    if article_index >= len(articles):
+    if article_index is None or article_index < 0 or article_index >= len(articles):
         article_index = 0
 
-    target = articles[article_index]
+    if force:
+        target = articles[article_index]
+    else:
+        posted_urls, is_healthy = _load_posted_urls_with_health()
+        if not is_healthy:
+            logger.warning("Skipping note auto-post: local STATE_FILE absent and Sheets state read failed.")
+            return {
+                "status": "skipped",
+                "reason": "State storage unavailable after redeploy",
+                "article": articles[article_index],
+            }
+
+        if not posted_urls:
+            # 投稿履歴が一切ない（初回 or 永続化導入直後）場合、公開から12時間以上経った記事は
+            # 「告知済み」とみなして記録だけ行い、古い記事の再告知を防ぐ
+            from email.utils import parsedate_to_datetime
+            now_utc = datetime.datetime.now(datetime.timezone.utc)
+            for a in articles:
+                try:
+                    age_h = (now_utc - parsedate_to_datetime(a.get("pub_date", ""))).total_seconds() / 3600
+                except Exception:
+                    age_h = 999
+                if age_h >= 12:
+                    _save_posted_url(a["link"])
+            posted_urls = _load_posted_urls()
+
+        if article_index > 0:
+            target = articles[article_index]
+            if _is_note_already_posted(target["link"], posted_urls):
+                logger.info(f"Note article already posted ({target['link']}), skipping.")
+                return {"status": "skipped", "reason": "Latest article already posted", "article": target}
+        else:
+            unposted = [
+                (idx, a) for idx, a in enumerate(articles)
+                if not _is_note_already_posted(a["link"], posted_urls)
+            ]
+            if not unposted:
+                logger.info(f"Latest note article already posted ({articles[0]['link']}), skipping.")
+                return {"status": "skipped", "reason": "Latest article already posted", "article": articles[0]}
+
+            from email.utils import parsedate_to_datetime
+
+            def _oldest_first_key(pair):
+                idx, art = pair
+                try:
+                    dt = parsedate_to_datetime(art.get("pub_date", ""))
+                    if dt.tzinfo is None:
+                        dt = dt.replace(tzinfo=datetime.timezone.utc)
+                    return (0, dt.timestamp(), -idx)
+                except Exception:
+                    # RSS is ordered newest-first, so larger index = older article
+                    return (1, -idx, 0)
+
+            unposted.sort(key=_oldest_first_key)
+            target = unposted[0][1]
+
     link = target["link"]
     title = target["title"]
-
-    posted_urls = _load_posted_urls()
-    if not force and not posted_urls:
-        # 投稿履歴が一切ない（初回 or 永続化導入直後）場合、公開から12時間以上経った記事は
-        # 「告知済み」とみなして記録だけ行い、古い記事の再告知を防ぐ
-        from email.utils import parsedate_to_datetime
-        now_utc = datetime.datetime.now(datetime.timezone.utc)
-        for a in articles:
-            try:
-                age_h = (now_utc - parsedate_to_datetime(a.get("pub_date", ""))).total_seconds() / 3600
-            except Exception:
-                age_h = 999
-            if age_h >= 12:
-                _save_posted_url(a["link"])
-        posted_urls = _load_posted_urls()
-    if not force and _is_note_already_posted(link, posted_urls):
-        logger.info(f"Latest note article already posted ({link}), skipping.")
-        return {"status": "skipped", "reason": "Latest article already posted", "article": target}
 
     tweet_text = build_note_tweet_text(title, link, force=force)
     reply_text = build_note_reply_text(link)
     result = x_poster.post_to_x(tweet_text, reply_text=reply_text)
-    
+
     if result.get("status") == "success":
         if not force:
             _save_posted_url(link)

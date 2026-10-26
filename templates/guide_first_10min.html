@@ -159,9 +159,11 @@
         }
     </style>
     <link rel="stylesheet" href="/static/calm.css?v=10">
+    {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
          crossorigin="anonymous"></script>
+    {% endif %}
 </head>
 
 <body>
@@ -237,7 +239,7 @@
                 こうしたちょっとした気配りと清潔感があるだけで、45分後の連絡先交換や2軒目への誘いが驚くほどスムーズになります。これからお店へ向かう方は、ぜひ『相席ナビ』でいま女性が多く集まっている店舗をチェックしてから出かけてみてください！
             </p>
 
-            {% if not is_staff %}
+            {% if not is_staff and not session.get('is_staff') %}
             <div style="margin: 26px 0 18px; padding: 18px 20px; border-radius: 12px; background: #16171c; border: 1px solid rgba(200, 164, 110, 0.32);">
                 <div style="font-size: 0.72rem; font-weight: 700; color: #f1e3cb; margin-bottom: 6px;">PR｜ソファ席・至近距離の清潔感ケア（この記事のテーマに関連する定番サービス）</div>
                 <p style="font-size: 0.84rem; color: #dedad2; margin: 0 0 12px; line-height: 1.65;">

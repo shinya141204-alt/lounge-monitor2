@@ -1,9 +1,9 @@
-const CACHE_NAME = 'aiseki-navi-v47';
+// Supersedes aiseki-navi-v47 (purged automatically on activate)
+const CACHE_NAME = 'aiseki-navi-v48';
 const SHELL_KEY = '/';
 const FAST_NAV_PATHS = new Set([
   '/guide/brand-comparison',
   '/guide/price-event-comparison',
-  '/columns',
   '/grooming',
   '/stats',
   '/guide'
@@ -142,8 +142,10 @@ self.addEventListener('fetch', (event) => {
           try {
             return await networkPromise;
           } catch (e2) {
-            const fallback = await caches.match(SHELL_KEY);
-            if (fallback) return fallback;
+            if (reqUrl.pathname === '/') {
+              const fallback = await caches.match(SHELL_KEY);
+              if (fallback) return fallback;
+            }
             throw e2;
           }
         }
