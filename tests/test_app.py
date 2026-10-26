@@ -1001,6 +1001,8 @@ class GrowthFeaturesTests(unittest.TestCase):
             self.assertEqual(r.status_code, 200, f"Public path {p} returned {r.status_code}")
             body = r.data.decode('utf-8')
             self.assertIn('/static/calm.css?v=10', body, f"{p} missing /static/calm.css?v=10")
+            if '/static/style.css' in body:
+                self.assertIn('/static/style.css?v=20261026_1', body, f"{p} missing /static/style.css?v=20261026_1")
             self.assertIn('公式ホームページ', body, f"{p} missing official website verification notice")
 
         # Also check scheduled preview templates via staff session
@@ -1012,6 +1014,8 @@ class GrowthFeaturesTests(unittest.TestCase):
                 self.assertEqual(sr.status_code, 200, f"Scheduled path {sp} returned {sr.status_code}")
                 sbody = sr.data.decode('utf-8')
                 self.assertIn('/static/calm.css?v=10', sbody, f"{sp} missing /static/calm.css?v=10")
+                if '/static/style.css' in sbody:
+                    self.assertIn('/static/style.css?v=20261026_1', sbody, f"{sp} missing /static/style.css?v=20261026_1")
                 self.assertIn('公式ホームページ', sbody, f"{sp} missing official website verification notice")
         finally:
             with self.client.session_transaction() as s:
