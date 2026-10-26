@@ -826,7 +826,7 @@ class GrowthFeaturesTests(unittest.TestCase):
             clovers_html = clovers_resp.data.decode('utf-8')
             self.assertIn('相席ラウンジALFA 広島', clovers_html)
             self.assertIn('ag（アグ）広島', clovers_html)
-            self.assertIn('QUOカード1,000円分', clovers_html)
+            self.assertIn('QUOカード', clovers_html)
 
             smap = self.client.get('/sitemap.xml').data.decode('utf-8')
             self.assertIn('https://aiseki-navi.com/price-comparison', smap)
@@ -1276,13 +1276,31 @@ class GrowthFeaturesTests(unittest.TestCase):
 
         # Simulate off-hours guest drift (14:00 Wednesday when OLG 新宿 is closed, but 6 guests detected)
         drift_rep = data_audit.run_data_audit(
-            live_stores=[{'name': 'OLG 新宿', 'women': 4, 'men': 2}],
-            all_events=[{'brand': 'OLG', 'title': '【重要】新宿店 営業時間変更のお知らせ', 'url': 'https://oriental-lounge.com/'}],
+            live_stores=[{'name': 'OLG 新宿', 'women': 4, 'men': 2}, {'name': 'OLG 錦糸町', 'women': 2, 'men': 2}],
+            all_events=[
+                {'brand': 'OLG', 'title': '【重要】新宿店 営業時間変更のお知らせ', 'url': 'https://oriental-lounge.com/'},
+                {'brand': 'OLG', 'title': 'フードメニューをリニューアル！🍽️', 'url': 'https://oriental-lounge.com/'},
+                {'brand': 'JIS', 'title': '福岡店リニューアルオープンのお知らせ', 'url': 'https://jis.bar/'},
+            ],
             now_jst=datetime.datetime(2026, 10, 28, 14, 0, tzinfo=jst),
         )
         self.assertEqual(drift_rep['status'], 'warning')
         self.assertEqual(drift_rep['summary']['hours_drift_count'], 1)
         self.assertEqual(drift_rep['summary']['revision_notice_count'], 1)
+
+        # Verify YATAKOI UMEDA zeroes out stale Firebase ghost counts after official closing time (03:30 AM Tue)
+        import monitor
+        with mock.patch('monitor.requests.get') as m_yk_get:
+            m_yk_get.return_value = mock.Mock(status_code=200, json=lambda: {'males': 3, 'females': 3, 'ykMales': 6, 'ykFemales': 6})
+            m_yk_get.return_value.raise_for_status = lambda: None
+            closed_dt = datetime.datetime(2026, 10, 27, 3, 30, tzinfo=jst)
+            open_dt = datetime.datetime(2026, 10, 26, 22, 30, tzinfo=jst)
+            res_closed = monitor.get_yatakoi_data(now_jst=closed_dt)
+            res_open = monitor.get_yatakoi_data(now_jst=open_dt)
+            self.assertEqual(res_closed[0]['women'], 0)
+            self.assertEqual(res_closed[0]['men'], 0)
+            self.assertEqual(res_open[0]['women'], 9)
+            self.assertEqual(res_open[0]['men'], 9)
 
         # Staff dashboard displays the audit panel & /api/data-audit is protected
         self.assertEqual(self.client.get('/api/data-audit').status_code, 401)

@@ -22,7 +22,8 @@ import price_comparison
 JST = datetime.timezone(datetime.timedelta(hours=9))
 
 # 営業時間外なのにこの人数以上が入っていたら「営業時間変更（前倒しオープン・深夜延長・定休日変更）」を疑う閾値
-DRIFT_GUEST_THRESHOLD = 4
+# ※閉店直後の1組（2対2＝4名）のお会計待ち・POS精算遅延による誤検知を防ぐため、6名（3組相当）以上を対象とする
+DRIFT_GUEST_THRESHOLD = 6
 
 # 公式お知らせタイトルに含まれる場合、料金表や営業時間の更新が必要になり得るキーワード
 REVISION_KEYWORDS = (
@@ -35,7 +36,15 @@ REVISION_KEYWORDS = (
     "定休日",
     "閉店",
     "移転",
-    "リニューアル",
+)
+
+# 単なるメニュー刷新や店舗内装リニューアルなど、料金・営業時間テーブルに影響しないお知らせ除外ワード
+REVISION_IGNORE_PHRASES = (
+    "フードメニュー",
+    "ドリンクメニュー",
+    "グランドメニュー",
+    "季節メニュー",
+    "リニューアルオープン",
 )
 
 _audit_lock = threading.Lock()
@@ -156,6 +165,8 @@ def run_data_audit(live_stores=None, all_events=None, now_jst=None, send_alerts=
     revision_notices = []
     for ev in (all_events or []):
         title = str(ev.get("title") or "")
+        if any(ign in title for ign in REVISION_IGNORE_PHRASES):
+            continue
         matched_kw = [kw for kw in REVISION_KEYWORDS if kw in title]
         if matched_kw:
             notice = {

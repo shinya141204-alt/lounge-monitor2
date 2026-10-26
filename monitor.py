@@ -197,13 +197,29 @@ def get_alfa_data():
         import logging; logging.error(f"Error fetching ALFA data: {e}")
     return []
 
-def get_yatakoi_data():
+def get_yatakoi_data(now_jst=None):
     try:
         response = requests.get(YATAKOI_URL, headers=_HEADERS, timeout=(3, 7))
         response.raise_for_status()
         data = response.json()
         
         if data:
+            # Yatakoi's Firebase node (asobibar-823d1/shops/chayamachi) is manually updated and frequently
+            # leaves stale counts frozen after official closing time (02:00 Sun-Thu / 03:00 Fri-Sat).
+            # Zero out counts when outside official business hours so ghost counts never pollute late-night rankings.
+            try:
+                import store_hours
+                h_status = store_hours.get_business_hours_status("YATAKOI UMEDA", now_jst=now_jst, total_guests=0)
+                if not h_status.get("scheduled_open"):
+                    return [{
+                        'name': "YATAKOI UMEDA",
+                        'men': 0,
+                        'women': 0,
+                        'source': 'yatakoi'
+                    }]
+            except Exception:
+                pass
+
             men = int(data.get('males', 0))
             women = int(data.get('females', 0))
             yk_men = int(data.get('ykMales', 0))
