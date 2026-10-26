@@ -73,6 +73,55 @@ def _resolve_ig_user_id(access_token: str) -> str:
     return DEFAULT_IG_USER_ID
 
 
+def _get_active_ig_token() -> str:
+    """Return the latest refreshed Instagram token from job_state, falling back to INSTAGRAM_ACCESS_TOKEN env var."""
+    stored = (job_state.get_value("token:instagram") or "").strip()
+    if stored:
+        return stored
+    return (os.environ.get("INSTAGRAM_ACCESS_TOKEN") or "").strip()
+
+
+def refresh_ig_token_if_needed(force: bool = False) -> dict:
+    """
+    Meta Instagram long-lived tokens (IGAA.../IGQ...) expire after 60 days.
+    Automatically refresh once per ISO week via:
+      GET https://graph.instagram.com/refresh_access_token?grant_type=ig_refresh_token&access_token=<current_token>
+    and persist the renewed token in job_state ('token:instagram') so manual env var updates are never needed.
+    """
+    token = _get_active_ig_token()
+    if not token:
+        return {"status": "skipped", "reason": "No INSTAGRAM_ACCESS_TOKEN to refresh"}
+
+    now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
+    iso_year, iso_week, _ = now_jst.isocalendar()
+    week_key = f"token_refresh:instagram:{iso_year}-W{iso_week:02d}"
+    if not force and job_state.is_done(week_key):
+        return {"status": "skipped", "reason": f"Already refreshed in {iso_year}-W{iso_week:02d}"}
+
+    try:
+        r = requests.get(
+            "https://graph.instagram.com/refresh_access_token",
+            params={
+                "grant_type": "ig_refresh_token",
+                "access_token": token,
+            },
+            timeout=15,
+        )
+        if r.status_code == 200:
+            data = r.json() or {}
+            new_tok = (data.get("access_token") or "").strip()
+            if new_tok:
+                job_state.set_value("token:instagram", new_tok)
+                job_state.mark_done(week_key)
+                os.environ["INSTAGRAM_ACCESS_TOKEN"] = new_tok
+                logging.info("Successfully refreshed Instagram long-lived access token.")
+                return {"status": "refreshed", "expires_in": data.get("expires_in")}
+        return {"status": "error", "detail": f"HTTP {r.status_code}: {r.text[:200]}"}
+    except Exception as e:
+        logging.warning(f"Instagram token refresh exception: {e}")
+        return {"status": "error", "detail": str(e)}
+
+
 def _graph_base_for_token(access_token: str) -> str:
     """Choose graph.instagram.com for IG tokens, graph.facebook.com for EAA tokens."""
     if access_token.startswith("EAA"):
@@ -86,7 +135,7 @@ def post_single_image_to_instagram(image_url: str, caption: str) -> dict:
       1. POST /{ig_user_id}/media (image_url, caption)
       2. POST /{ig_user_id}/media_publish (creation_id)
     """
-    access_token = (os.environ.get("INSTAGRAM_ACCESS_TOKEN") or "").strip()
+    access_token = _get_active_ig_token()
     if not access_token:
         return {"status": "skipped", "reason": "INSTAGRAM_ACCESS_TOKEN not configured"}
 
@@ -96,6 +145,11 @@ def post_single_image_to_instagram(image_url: str, caption: str) -> dict:
 
     base = _graph_base_for_token(access_token)
     try:
+        try:
+            requests.get(image_url, timeout=15)
+        except Exception:
+            pass
+
         r1 = requests.post(
             f"{base}/{ig_user_id}/media",
             data={
@@ -138,7 +192,7 @@ def post_carousel_to_instagram(image_urls: list, caption: str) -> dict:
       2. POST /{ig_user_id}/media (media_type=CAROUSEL, children=id1,id2,..., caption=...)
       3. POST /{ig_user_id}/media_publish (creation_id=carousel_container_id)
     """
-    access_token = (os.environ.get("INSTAGRAM_ACCESS_TOKEN") or "").strip()
+    access_token = _get_active_ig_token()
     if not access_token:
         return {"status": "skipped", "reason": "INSTAGRAM_ACCESS_TOKEN not configured"}
 
@@ -218,8 +272,8 @@ def post_carousel_to_instagram(image_urls: list, caption: str) -> dict:
 
 def execute_scheduled_instagram_post(stores: list, mode: str = "carousel", slot_label: str = "22:00", force: bool = False) -> dict:
     """
-    Execute scheduled Instagram post with persistent job_state deduplication.
-    - mode="carousel": 5-slide 1080x1350 portrait weekend forecast & ranking carousel
+    Execute scheduled Instagram post with persistent job_state deduplication and weekly token auto-refresh.
+    - mode="carousel": 5-slide 1080x1350 portrait forecast & ranking carousel (with weekday-aware cover theme)
     - mode="live": single live ranking card + detailed caption
     """
     now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
@@ -229,6 +283,7 @@ def execute_scheduled_instagram_post(stores: list, mode: str = "carousel", slot_
     if not force and job_state.is_done(dedup_key):
         return {"status": "skipped", "reason": "Already posted to Instagram for this slot"}
 
+    refresh_ig_token_if_needed(force=False)
     ts_code = now_jst.strftime("%Y%m%d_%H%M")
     if mode == "carousel":
         ctx = ig_carousel_generator.build_forecast_context(live_stores=stores, now_jst=now_jst)

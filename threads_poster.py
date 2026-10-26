@@ -123,6 +123,55 @@ def build_threads_live_post(stores: list, slot_label: str = "20:00", now_jst: da
     return text
 
 
+def _get_active_threads_token() -> str:
+    """Return the latest refreshed Threads token from job_state, falling back to THREADS_ACCESS_TOKEN env var."""
+    stored = (job_state.get_value("token:threads") or "").strip()
+    if stored:
+        return stored
+    return (os.environ.get("THREADS_ACCESS_TOKEN") or "").strip()
+
+
+def refresh_threads_token_if_needed(force: bool = False) -> dict:
+    """
+    Meta Threads long-lived tokens expire after 60 days.
+    Automatically refresh once per ISO week via:
+      GET https://graph.threads.net/refresh_access_token?grant_type=th_refresh_token&access_token=<current_token>
+    and persist the renewed token in job_state ('token:threads') so manual env var updates are never needed.
+    """
+    token = _get_active_threads_token()
+    if not token:
+        return {"status": "skipped", "reason": "No THREADS_ACCESS_TOKEN to refresh"}
+
+    now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
+    iso_year, iso_week, _ = now_jst.isocalendar()
+    week_key = f"token_refresh:threads:{iso_year}-W{iso_week:02d}"
+    if not force and job_state.is_done(week_key):
+        return {"status": "skipped", "reason": f"Already refreshed in {iso_year}-W{iso_week:02d}"}
+
+    try:
+        r = requests.get(
+            "https://graph.threads.net/refresh_access_token",
+            params={
+                "grant_type": "th_refresh_token",
+                "access_token": token,
+            },
+            timeout=15,
+        )
+        if r.status_code == 200:
+            data = r.json() or {}
+            new_tok = (data.get("access_token") or "").strip()
+            if new_tok:
+                job_state.set_value("token:threads", new_tok)
+                job_state.mark_done(week_key)
+                os.environ["THREADS_ACCESS_TOKEN"] = new_tok
+                logging.info("Successfully refreshed Threads long-lived access token.")
+                return {"status": "refreshed", "expires_in": data.get("expires_in")}
+        return {"status": "error", "detail": f"HTTP {r.status_code}: {r.text[:200]}"}
+    except Exception as e:
+        logging.warning(f"Threads token refresh exception: {e}")
+        return {"status": "error", "detail": str(e)}
+
+
 def _resolve_threads_user_id(access_token: str) -> str:
     """Resolve Threads user_id from environment variable, cached lookup, or @aiseki_navi1 default."""
     global _cached_user_id
@@ -153,7 +202,7 @@ def post_to_threads(text: str) -> dict:
       1. POST /{threads_user_id}/threads (media_type=TEXT, text=...)
       2. POST /{threads_user_id}/threads_publish (creation_id=...)
     """
-    access_token = (os.environ.get("THREADS_ACCESS_TOKEN") or "").strip()
+    access_token = _get_active_threads_token()
 
     if not access_token:
         return {
@@ -204,7 +253,7 @@ def post_to_threads(text: str) -> dict:
 
 
 def execute_scheduled_threads_post(stores: list, slot_label: str = "20:00", force: bool = False) -> dict:
-    """Execute scheduled Threads post with persistent job_state deduplication."""
+    """Execute scheduled Threads post with persistent job_state deduplication and weekly token auto-refresh."""
     now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
     biz_date = (now_jst - datetime.timedelta(hours=7)).strftime("%Y-%m-%d")
     dedup_key = f"threads_post:{biz_date}_{slot_label}"
@@ -212,6 +261,7 @@ def execute_scheduled_threads_post(stores: list, slot_label: str = "20:00", forc
     if not force and job_state.is_done(dedup_key):
         return {"status": "skipped", "reason": "Already posted to Threads for this slot"}
 
+    refresh_threads_token_if_needed(force=False)
     text = build_threads_live_post(stores, slot_label=slot_label, now_jst=now_jst)
     res = post_to_threads(text)
     if res.get("status") == "success" and not force:

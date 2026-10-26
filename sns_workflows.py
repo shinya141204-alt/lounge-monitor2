@@ -168,12 +168,11 @@ def execute_scheduled_x_post(latest_data, slot_label="20:00", force=False):
     except Exception as e:
         logging.warning(f"Threads auto-post skipped/failed during {slot_label}: {e}")
 
-    # At 22:00 peak slot, also trigger Instagram auto-post if configured (Fri/Sat -> 5-slide carousel, Mon-Thu/Sun -> live feed card)
+    # At 22:00 peak slot, also trigger Instagram auto-post if configured (5-slide carousel with day-of-week theme)
     if slot_label == "22:00":
         try:
             import instagram_poster
-            ig_mode = "carousel" if now_jst.weekday() in (3, 4, 5) else "live"
-            ig_res = instagram_poster.execute_scheduled_instagram_post(stores, mode=ig_mode, slot_label=slot_label, force=force)
+            ig_res = instagram_poster.execute_scheduled_instagram_post(stores, mode="carousel", slot_label=slot_label, force=force)
             result["instagram_status"] = ig_res.get("status")
         except Exception as e:
             logging.warning(f"Instagram auto-post skipped/failed during {slot_label}: {e}")

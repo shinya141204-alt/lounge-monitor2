@@ -85,6 +85,29 @@ def mark_done(key):
     sheets_store.append_rows_async(SHEET_TITLE, HEADER, [[key, _now_str()]])
 
 
+def get_value(prefix):
+    """Retrieve the latest stored value for a prefix like 'token:threads:' from Job State."""
+    full_prefix = f"{prefix}="
+    with _lock:
+        keys = _load()
+        matched = [k for k in keys if k.startswith(full_prefix)]
+    if not matched:
+        return None
+    # Sort by timestamp suffix if present, otherwise return last
+    matched.sort()
+    raw = matched[-1][len(full_prefix):]
+    if "|" in raw:
+        return raw.split("|", 1)[1]
+    return raw
+
+
+def set_value(prefix, val):
+    """Persist a key-value entry in Job State across restarts and redeploys."""
+    ts = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).strftime('%Y%m%d%H%M%S')
+    entry = f"{prefix}={ts}|{val}"
+    mark_done(entry)
+
+
 def reset_cache_for_tests():
     global _keys, _sheets_loaded, _last_sheet_try
     with _lock:

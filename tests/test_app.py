@@ -1353,6 +1353,7 @@ class GrowthFeaturesTests(unittest.TestCase):
 
         # Instagram Graph API poster & public slide endpoint verification
         import instagram_poster
+        import ig_carousel_generator
         self.assertEqual(self.client.get('/api/trigger-ig-post').status_code, 401)
         ig_slide_resp = self.client.get('/ogp/ig-slide/1.jpg')
         try:
@@ -1361,6 +1362,23 @@ class GrowthFeaturesTests(unittest.TestCase):
         finally:
             ig_slide_resp.close()
         self.assertEqual(instagram_poster.post_single_image_to_instagram('https://aiseki-navi.com/ogp/ig-slide/1.jpg', 'test')['status'], 'skipped')
+
+        # Token persistence in job_state + auto-refresh & weekday/weekend/sunday IG themes
+        job_state.set_value('token:test_dummy', 'tok_abc_123')
+        self.assertEqual(job_state.get_value('token:test_dummy'), 'tok_abc_123')
+        mon_dt = datetime.datetime(2026, 10, 26, 21, 0, tzinfo=datetime.timezone(datetime.timedelta(hours=9)))  # Monday
+        fri_dt = datetime.datetime(2026, 10, 30, 21, 0, tzinfo=datetime.timezone(datetime.timedelta(hours=9)))  # Friday
+        sun_dt = datetime.datetime(2026, 11, 1, 21, 0, tzinfo=datetime.timezone(datetime.timedelta(hours=9)))   # Sunday
+        ctx_mon = ig_carousel_generator.build_forecast_context(live_stores=sample_stores, now_jst=mon_dt)
+        ctx_fri = ig_carousel_generator.build_forecast_context(live_stores=sample_stores, now_jst=fri_dt)
+        ctx_sun = ig_carousel_generator.build_forecast_context(live_stores=sample_stores, now_jst=sun_dt)
+        self.assertEqual(ctx_mon['theme']['theme_key'], 'weekday')
+        self.assertEqual(ctx_fri['theme']['theme_key'], 'weekend')
+        self.assertEqual(ctx_sun['theme']['theme_key'], 'sunday')
+        self.assertIn('平日夜', ig_carousel_generator.build_captions(ctx_mon)['instagram_caption'])
+        self.assertIn('週間データ', ig_carousel_generator.build_captions(ctx_sun)['instagram_caption'])
+        self.assertGreater(len(ig_carousel_generator.render_slide_png(1, ctx=ctx_mon)), 10000)
+        self.assertGreater(len(ig_carousel_generator.render_slide_png(1, ctx=ctx_sun)), 10000)
 
 
 if __name__ == '__main__':

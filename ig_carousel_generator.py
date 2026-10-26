@@ -34,14 +34,82 @@ def _upcoming_weekend_dates(now_jst: datetime.datetime) -> tuple:
     return fri, sat, label
 
 
+def _resolve_day_theme(now_jst: datetime.datetime, weekend_label: str) -> dict:
+    """
+    Automatically switch cover & slide titles/colors based on the day of week so the
+    Instagram grid never looks identical day after day:
+      - Mon/Tue/Wed (0,1,2): Weekday Night Anaba & Zero-Wait Ranking (Cyan & Gold)
+      - Thu/Fri/Sat (3,4,5): Weekend Peak Forecast & Hopping Guide (Pink & Gold)
+      - Sun (6): Weekly Nationwide Data Summary & Best Ratio Report (Purple & Gold)
+    """
+    wd = now_jst.weekday()
+    weekdays_ja = ["月", "火", "水", "木", "金", "土", "日"]
+    today_str = f"{now_jst.month}/{now_jst.day}({weekdays_ja[wd]})"
+
+    if wd in (0, 1, 2):
+        return {
+            "theme_key": "weekday",
+            "date_badge": f"平日夜データ特集：{today_str} 最新版",
+            "kicker": "全国51店舗・リアルタイム統計から算出",
+            "h1_line1": "平日の相席",
+            "h1_line2": "待ち時間ゼロで",
+            "h1_line3": "飲める穴場TOP5",
+            "sub_line1": "平日は「男性待ち0分×女性比率58%超」の店舗が続出！",
+            "sub_line2": "仕事帰りに1軒目からスマートに乾杯できる攻略ガイド",
+            "slide2_title": "平日夜でも盛り上がる大型店 TOP5",
+            "slide2_sub": "平日20〜22時台でも女性来店数が安定して多い主力店舗",
+            "glow1": (56, 189, 248, 115),
+            "glow2": (251, 191, 36, 95),
+            "badge_bg": (14, 58, 82, 240),
+            "badge_outline": (56, 189, 248),
+            "h1_accent": (56, 189, 248, 255),
+        }
+    if wd == 6:
+        return {
+            "theme_key": "sunday",
+            "date_badge": f"週間データ総括：{today_str} 集計号",
+            "kicker": "全国51店舗・直近1週間の稼働ログ白書",
+            "h1_line1": "週間ランキング",
+            "h1_line2": "女性来店数＆",
+            "h1_line3": "穴場データ白書",
+            "sub_line1": "今週もっとも女性が集まった店舗と入りやすかった穴場を総まとめ",
+            "sub_line2": "日曜夜の早めスタート＆来週の作戦会議に使える保存版データ",
+            "slide2_title": "今週の女性来店ピーク実績 TOP5",
+            "slide2_sub": "直近1週間で女性ピーク人数がもっとも高かった全国トップ店舗",
+            "glow1": (168, 85, 247, 115),
+            "glow2": (251, 191, 36, 95),
+            "badge_bg": (52, 22, 78, 240),
+            "badge_outline": (192, 132, 252),
+            "h1_accent": (192, 132, 252, 255),
+        }
+    return {
+        "theme_key": "weekend",
+        "date_badge": f"対象週末：{weekend_label} 夜",
+        "kicker": "全国51店舗・9.6万件のログから算出",
+        "h1_line1": "今週末の相席",
+        "h1_line2": "狙い目店舗＆",
+        "h1_line3": "穴場時間予報",
+        "sub_line1": "「男性待ち1時間」を回避してスムーズに相席するための",
+        "sub_line2": "週末データ攻略ガイド（オリエンタル / ag / JIS 対応）",
+        "slide2_title": "今週末の盛り上がり予測 TOP5",
+        "slide2_sub": "直近のピーク時に女性が多く集まっている大型人気店舗",
+        "glow1": (236, 72, 153, 110),
+        "glow2": (251, 191, 36, 90),
+        "badge_bg": (68, 22, 48, 240),
+        "badge_outline": (244, 114, 182),
+        "h1_accent": (244, 114, 182, 255),
+    }
+
+
 def build_forecast_context(
     report: dict = None,
     live_stores: list = None,
     now_jst: datetime.datetime = None,
 ) -> dict:
-    """Assemble clean top-5 peak stores, top-5 high-ratio anaba stores, and weekend dates."""
+    """Assemble clean top-5 peak stores, top-5 high-ratio anaba stores, and day-of-week theme."""
     now_jst = now_jst or datetime.datetime.now(JST)
     _, _, weekend_label = _upcoming_weekend_dates(now_jst)
+    theme = _resolve_day_theme(now_jst, weekend_label)
 
     korea_keywords = ("カンナム", "ホンデ", "ソウル", "GANGNAM", "HONGDAE", "SEOUL")
 
@@ -117,6 +185,7 @@ def build_forecast_context(
         "generated_at": now_jst.strftime("%Y/%m/%d %H:%M"),
         "top_volume": top_volume,
         "top_anaba": top_anaba,
+        "theme": theme,
     }
 
 
@@ -169,21 +238,22 @@ def _draw_header_and_footer(draw: ImageDraw.ImageDraw, slide_num: int, total_sli
 
     # Bottom footer bar
     draw.line((64, H - 86, W - 64, H - 86), fill=(255, 255, 255, 35), width=1)
-    foot_l = "全国53店舗の現在人数は「相席ナビ」(aiseki-navi.com) で無料公開中"
+    foot_l = "全国51店舗の現在人数は「相席ナビ」(aiseki-navi.com) で無料公開中"
     draw.text((64, H - 64), foot_l, font=f_foot, fill=(148, 163, 184, 235))
 
 
 def render_slide_png(slide_num: int, ctx: dict = None) -> bytes:
     """Render slide 1..5 as 1080x1350 PNG bytes."""
     ctx = ctx or build_forecast_context()
+    theme = ctx.get("theme") or _resolve_day_theme(datetime.datetime.now(JST), ctx.get("weekend_label", ""))
     W, H = 1080, 1350
     slide_num = max(1, min(5, int(slide_num)))
 
     if slide_num == 1:
         canvas, draw = _make_portrait_base(
             "eyecatch-weekend.jpg",
-            (236, 72, 153, 110),
-            (251, 191, 36, 90),
+            theme["glow1"],
+            theme["glow2"],
         )
         accent = (251, 191, 36)
         _draw_header_and_footer(draw, 1, 5, accent=accent)
@@ -195,23 +265,23 @@ def render_slide_png(slide_num: int, ctx: dict = None) -> bytes:
         f_box_t = ogp_generator._get_font(28)
         f_box_b = ogp_generator._get_font(24)
 
-        date_badge = f"対象週末：{ctx['weekend_label']} 夜"
+        date_badge = theme["date_badge"]
         dw = int(draw.textlength(date_badge, font=f_date)) + 56
-        draw.rounded_rectangle((64, 170, 64 + dw, 238), radius=18, fill=(68, 22, 48, 240), outline=(244, 114, 182), width=2)
+        draw.rounded_rectangle((64, 170, 64 + dw, 238), radius=18, fill=theme["badge_bg"], outline=theme["badge_outline"], width=2)
         draw.text((92, 185), date_badge, font=f_date, fill=(255, 255, 255, 255))
 
-        draw.text((64, 286), "全国53店舗・9.6万件のログから算出", font=f_kicker, fill=accent)
-        draw.text((64, 356), "今週末の相席", font=f_h1, fill=(255, 255, 255, 255))
-        draw.text((64, 456), "狙い目店舗＆", font=f_h1, fill=(244, 114, 182, 255))
-        draw.text((64, 556), "穴場時間予報", font=f_h1, fill=(255, 255, 255, 255))
+        draw.text((64, 286), theme["kicker"], font=f_kicker, fill=accent)
+        draw.text((64, 356), theme["h1_line1"], font=f_h1, fill=(255, 255, 255, 255))
+        draw.text((64, 456), theme["h1_line2"], font=f_h1, fill=theme["h1_accent"])
+        draw.text((64, 556), theme["h1_line3"], font=f_h1, fill=(255, 255, 255, 255))
 
-        draw.text((64, 678), "「男性待ち1時間」を回避してスムーズに相席するための", font=f_sub, fill=(203, 213, 225, 245))
-        draw.text((64, 722), "週末データ攻略ガイド（オリエンタル / ag / JIS 対応）", font=f_sub, fill=(203, 213, 225, 245))
+        draw.text((64, 678), theme["sub_line1"], font=f_sub, fill=(203, 213, 225, 245))
+        draw.text((64, 722), theme["sub_line2"], font=f_sub, fill=(203, 213, 225, 245))
 
         bullets = [
             ("SLIDE 02", "圧倒的盛り上がり！女性来店数TOP5店舗", (244, 114, 182)),
             ("SLIDE 03", "男性待ちを回避しやすい「高女性比率」穴場TOP5", (56, 189, 248)),
-            ("SLIDE 04", "金曜・土曜の時間帯別ベストな立ち回り＆女性目線メモ", (251, 191, 36)),
+            ("SLIDE 04", "時間帯別ベストな立ち回り＆女性目線メモ", (251, 191, 36)),
         ]
         by = 810
         for tag_s, desc_s, col in bullets:
@@ -221,7 +291,7 @@ def render_slide_png(slide_num: int, ctx: dict = None) -> bytes:
             draw.text((268, by + 38), desc_s, font=f_box_t, fill=(248, 250, 252, 255))
             by += 130
 
-        save_txt = "右へスワイプしてチェック  >>>   週末前に「保存」がおすすめ"
+        save_txt = "右へスワイプしてチェック  >>>   行く前に「保存」がおすすめ"
         sw_px = int(draw.textlength(save_txt, font=f_box_b))
         draw.text(((W - sw_px) // 2, 1218), save_txt, font=f_box_b, fill=accent)
 
@@ -244,8 +314,8 @@ def render_slide_png(slide_num: int, ctx: dict = None) -> bytes:
         f_pill = ogp_generator._get_font(24)
 
         if is_vol:
-            t1 = "今週末の盛り上がり予測 TOP5"
-            sub = "直近のピーク時に女性が多く集まっている大型人気店舗"
+            t1 = theme["slide2_title"]
+            sub = theme["slide2_sub"]
             items = ctx["top_volume"]
         else:
             t1 = "入りやすい高女性比率・穴場 TOP5"
@@ -422,6 +492,8 @@ def build_captions(ctx: dict = None) -> dict:
     v_top = ctx["top_volume"][:3]
     a_top = ctx["top_anaba"][:3]
     wk = ctx["weekend_label"]
+    theme = ctx.get("theme") or _resolve_day_theme(datetime.datetime.now(JST), wk)
+    t_key = theme.get("theme_key", "weekend")
 
     v_lines = "\n".join(
         f"・{i+1}位：{s['seo_name']}（最高女性{s['max_women']}名）"
@@ -432,19 +504,29 @@ def build_captions(ctx: dict = None) -> dict:
         for i, s in enumerate(a_top)
     )
 
+    if t_key == "weekday":
+        headline = f"【{theme['date_badge']}｜平日夜の穴場＆高女性比率ガイド📊】"
+        intro = "平日の仕事帰りに「男性待ち0分」でスムーズに相席できる狙い目店舗と、高女性比率の穴場TOP5をまとめました！"
+    elif t_key == "sunday":
+        headline = f"【{theme['date_badge']}｜全国51店舗 週間データ白書📊】"
+        intro = "今週もっとも女性来店数が多かった人気店舗と、男性待ちを回避しやすかった高女性比率の穴場店舗を総括しました！"
+    else:
+        headline = f"【{wk} 相席ラウンジ狙い目予報📊】"
+        intro = "全国51店舗・9.6万件超のリアルタイム人数ログから、今週末に盛り上がりやすい店舗と「男性待ちを回避しやすい穴場店舗」を予測しました！"
+
     ig_caption = (
-        f"【{wk} 相席ラウンジ狙い目予報📊】\n"
-        f"週末に行くお店で迷わないように、右上の「保存」をしておくと入店前にすぐ見返せます📌\n\n"
-        f"全国53店舗・9.6万件超のリアルタイム人数ログから、今週末に盛り上がりやすい店舗と「男性待ちを回避しやすい穴場店舗」を予測しました！\n\n"
-        f"🔥 盛り上がり予測 TOP3\n"
+        f"{headline}\n"
+        f"お店選びで迷わないように、右上の「保存」をしておくと入店前にすぐ見返せます📌\n\n"
+        f"{intro}\n\n"
+        f"🔥 盛り上がり・女性来店数 TOP3\n"
         f"{v_lines}\n\n"
         f"💎 高女性比率の穴場 TOP3\n"
         f"{a_lines}\n\n"
-        f"💡 週末の立ち回りポイント\n"
-        f"・男性は「20:30までの早め入店」か、混んでいたら徒歩4分圏内の別ブランドと男女比を見比べて移動するのが一番スマート！\n"
+        f"💡 失敗しない立ち回りポイント\n"
+        f"・男性は「女性10名以上（約5組）×女性比率55%以上」の店舗を選ぶと席替えもスムーズ！\n"
         f"・女性は逆に「男性が先行して盛り上がっているお店」を選ぶと、待ち時間ゼロで即乾杯しやすいです🥂\n\n"
-        f"お店に向かう直前の「いま現在の男女人数・比率」と「割り勘料金シミュレーター」は、プロフィールのリンク（aiseki-navi.com）から3秒で無料チェックできます🔍\n\n"
-        f"#相席ラウンジ #相席ナビ #オリエンタルラウンジ #ag #JIS #相席 #週末お出かけ #夜遊び #新宿グルメ #渋谷グルメ #梅田グルメ #難波グルメ #栄グルメ #天神グルメ"
+        f"お店に向かう直前の「いま現在の男女人数・比率」と「全51店舗の料金・イベント横並び比較」は、プロフィールのリンク（aiseki-navi.com）から3秒で無料チェックできます🔍\n\n"
+        f"#相席ラウンジ #相席ナビ #オリエンタルラウンジ #ag #JIS #相席 #夜遊び #新宿グルメ #渋谷グルメ #梅田グルメ #難波グルメ #栄グルメ #天神グルメ"
     )
 
     threads_1 = (
