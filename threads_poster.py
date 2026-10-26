@@ -17,7 +17,9 @@ import job_state
 import x_poster
 
 THREADS_API_BASE = "https://graph.threads.net/v1.0"
+DEFAULT_THREADS_USER_ID = "28848531981469633"  # @aiseki_navi1
 SITE_URL = "https://aiseki-navi.com"
+_cached_user_id = None
 
 
 def _filter_domestic_stores(stores: list) -> list:
@@ -121,20 +123,45 @@ def build_threads_live_post(stores: list, slot_label: str = "20:00", now_jst: da
     return text
 
 
+def _resolve_threads_user_id(access_token: str) -> str:
+    """Resolve Threads user_id from environment variable, cached lookup, or @aiseki_navi1 default."""
+    global _cached_user_id
+    env_uid = (os.environ.get("THREADS_USER_ID") or "").strip()
+    if env_uid:
+        return env_uid
+    if _cached_user_id:
+        return _cached_user_id
+    try:
+        resp = requests.get(
+            f"{THREADS_API_BASE}/me",
+            params={"fields": "id,username", "access_token": access_token},
+            timeout=10,
+        )
+        if resp.status_code == 200:
+            uid = str((resp.json() or {}).get("id") or "").strip()
+            if uid:
+                _cached_user_id = uid
+                return uid
+    except Exception:
+        pass
+    return DEFAULT_THREADS_USER_ID
+
+
 def post_to_threads(text: str) -> dict:
     """
     Publish a text post to Meta Threads using the official 2-step Graph API:
       1. POST /{threads_user_id}/threads (media_type=TEXT, text=...)
       2. POST /{threads_user_id}/threads_publish (creation_id=...)
     """
-    user_id = (os.environ.get("THREADS_USER_ID") or "").strip()
     access_token = (os.environ.get("THREADS_ACCESS_TOKEN") or "").strip()
 
-    if not user_id or not access_token:
+    if not access_token:
         return {
             "status": "skipped",
-            "reason": "THREADS_USER_ID or THREADS_ACCESS_TOKEN not configured",
+            "reason": "THREADS_ACCESS_TOKEN not configured",
         }
+
+    user_id = _resolve_threads_user_id(access_token)
 
     try:
         create_url = f"{THREADS_API_BASE}/{user_id}/threads"
