@@ -96,13 +96,23 @@ class PageRouteTests(unittest.TestCase):
         self.assertEqual(r.status_code, 302)
 
     def test_staff_analytics_after_login(self):
+        # Regular staff (is_staff=True, is_master=False) cannot access owner analytics
         with self.client.session_transaction() as s:
             s['is_staff'] = True
+            s['is_master'] = False
+        r_staff_only = self.client.get('/staff/analytics')
+        self.assertEqual(r_staff_only.status_code, 302)
+
+        # Master (is_master=True) can access owner analytics
+        with self.client.session_transaction() as s:
+            s['is_staff'] = True
+            s['is_master'] = True
         r = self.client.get('/staff/analytics')
         self.assertEqual(r.status_code, 200)
         self.assertIn('アクセス集計'.encode('utf-8'), r.data)
         with self.client.session_transaction() as s:
             s.pop('is_staff', None)
+            s.pop('is_master', None)
 
     def test_deep_health_ok_with_fresh_data(self):
         health.reset_for_tests()
@@ -459,9 +469,10 @@ class ScheduledArticlesTests(unittest.TestCase):
             for tip_idx in (58, 59, 60):
                 self.assertIn('/columns', tips_poster.get_tip_reply_text(tip_index=tip_idx))
 
-            # Logged-in staff can preview all 3 upcoming articles with noindex protection
+            # Logged-in staff/master can preview all 3 upcoming articles with noindex protection
             with self.client.session_transaction() as s:
                 s['is_staff'] = True
+                s['is_master'] = True
             for slug in ('local-vs-urban', 'cost-break-even', 'rain-payday'):
                 r_prev = self.client.get(f'/guide/{slug}')
                 self.assertEqual(r_prev.status_code, 200, slug)
@@ -475,6 +486,7 @@ class ScheduledArticlesTests(unittest.TestCase):
             self.assertIn('予約待機中', staff_dash)
             with self.client.session_transaction() as s:
                 s.pop('is_staff', None)
+                s.pop('is_master', None)
 
     def test_auto_release_and_x_announcement_once(self):
         import scheduled_articles
@@ -910,6 +922,7 @@ class GrowthFeaturesTests(unittest.TestCase):
 
         with self.client.session_transaction() as s:
             s['is_staff'] = True
+            s['is_master'] = True
         try:
             kit_resp = self.client.get('/staff/sns-kit')
             self.assertEqual(kit_resp.status_code, 200)
@@ -933,6 +946,7 @@ class GrowthFeaturesTests(unittest.TestCase):
         finally:
             with self.client.session_transaction() as s:
                 s.pop('is_staff', None)
+                s.pop('is_master', None)
 
     def test_min_headcount_threshold_official_notice_and_calm_theme_unification(self):
         import subprocess
@@ -1302,19 +1316,35 @@ class GrowthFeaturesTests(unittest.TestCase):
             self.assertEqual(res_open[0]['women'], 9)
             self.assertEqual(res_open[0]['men'], 9)
 
-        # Staff dashboard displays the audit panel & /api/data-audit is protected
+        # Staff (5555) sees field data only; Master (2918) sees full management & audit panel
         self.assertEqual(self.client.get('/api/data-audit').status_code, 401)
-        with self.client.session_transaction() as s:
-            s['is_staff'] = True
+
+        # 1) Regular Staff login with passcode 5555
+        r_staff_login = self.client.post('/staff', data={'passcode': '5555'}, follow_redirects=True)
+        self.assertEqual(r_staff_login.status_code, 200)
+        staff_only_html = r_staff_login.data.decode('utf-8')
+        self.assertIn('現場データ専用 モニタリングパネル', staff_only_html)
+        self.assertIn('週間レポート（全店舗の集計・ピークランキング）', staff_only_html)
+        self.assertNotIn('料金・営業時間データ自動監査', staff_only_html)
+        self.assertNotIn('/staff/analytics', staff_only_html)
+        self.assertNotIn('/staff/sns-kit', staff_only_html)
+        self.assertEqual(self.client.get('/staff/analytics').status_code, 302)
+        self.assertEqual(self.client.get('/staff/sns-kit').status_code, 302)
+
+        # 2) Master login with passcode 2918
+        r_master_login = self.client.post('/staff', data={'passcode': '2918'}, follow_redirects=True)
+        self.assertEqual(r_master_login.status_code, 200)
+        master_html = r_master_login.data.decode('utf-8')
         try:
+            self.assertIn('MASTER MONITOR', master_html)
+            self.assertIn('料金・営業時間データ自動監査', master_html)
+            self.assertIn('/staff/analytics', master_html)
+            self.assertIn('/staff/sns-kit', master_html)
             api_rep = self.client.get('/api/data-audit')
             self.assertEqual(api_rep.status_code, 200)
             self.assertIn('summary', api_rep.get_json())
-            staff_html = self.client.get('/staff').data.decode('utf-8')
-            self.assertIn('料金・営業時間データ自動監査', staff_html)
         finally:
-            with self.client.session_transaction() as s:
-                s.pop('is_staff', None)
+            self.client.get('/staff/logout')
 
         # 9. Step 4 CSS Consolidation & Syntax Balance verification
         with open(os.path.join(repo_dir, 'static/style.css'), 'r', encoding='utf-8') as sf:

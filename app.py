@@ -41,11 +41,21 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'aiseki-navi-staff-monitor-secret-key-2026')
 app.permanent_session_lifetime = datetime.timedelta(days=90)
 STAFF_PASSCODE = os.environ.get('STAFF_PASSCODE', '5555')
+MASTER_PASSCODE = os.environ.get('MASTER_PASSCODE', '2918')
 ADMIN_API_SECRET = os.environ.get('ADMIN_API_SECRET', 'lounge2026')
 
 def is_admin_authorized():
-    """Verify administrative permission either via authenticated staff session or secret token."""
-    if session.get('is_staff'):
+    """Verify administrative permission either via authenticated staff/master session or secret token."""
+    if session.get('is_staff') or session.get('is_master'):
+        return True
+    secret = request.args.get('secret', '').strip()
+    if secret and secret == ADMIN_API_SECRET:
+        return True
+    return False
+
+def is_master_authorized():
+    """Verify master/owner permission via master session or secret token."""
+    if session.get('is_master'):
         return True
     secret = request.args.get('secret', '').strip()
     if secret and secret == ADMIN_API_SECRET:
@@ -770,9 +780,9 @@ def track_event():
 
 @app.route('/staff/analytics')
 def staff_analytics():
-    """Staff-only analytics summary (page views, affiliate clicks, button clicks)."""
-    if not session.get('is_staff'):
-        return redirect(url_for('staff_monitor'))
+    """Master-only analytics summary (page views, affiliate clicks, button clicks)."""
+    if not session.get('is_master'):
+        return redirect(url_for('staff_monitor', switch='1'))
     import analytics
     days = max(1, min(90, request.args.get('days', 7, type=int)))
     flushed_rows = 0
@@ -788,37 +798,59 @@ def staff_analytics():
 
 @app.route('/staff', methods=['GET', 'POST'])
 def staff_monitor():
-    """Internal staff dashboard with all advertisements and promotions removed."""
+    """Internal staff dashboard (5555 = field data only, 2918 = master full management)."""
     error = None
     if request.method == 'POST':
         entered = request.form.get('passcode', '').strip()
-        if entered == STAFF_PASSCODE:
+        if entered == MASTER_PASSCODE:
             session['is_staff'] = True
+            session['is_master'] = True
+            session.permanent = True
+            return redirect(url_for('staff_monitor'))
+        elif entered == STAFF_PASSCODE:
+            session['is_staff'] = True
+            session['is_master'] = False
             session.permanent = True
             return redirect(url_for('staff_monitor'))
         else:
             error = 'パスコードが正しくありません'
 
-    # Allow one-touch login via query param ?passcode=5555
+    # Allow one-touch login via query param ?passcode=5555 or ?passcode=2918
     query_passcode = request.args.get('passcode', '').strip()
-    if query_passcode == STAFF_PASSCODE:
+    if query_passcode == MASTER_PASSCODE:
         session['is_staff'] = True
+        session['is_master'] = True
+        session.permanent = True
+        return redirect(url_for('staff_monitor'))
+    elif query_passcode == STAFF_PASSCODE:
+        session['is_staff'] = True
+        session['is_master'] = False
         session.permanent = True
         return redirect(url_for('staff_monitor'))
 
+    # Allow explicit role switch (?switch=1) to re-enter passcode
+    if request.args.get('switch') == '1':
+        return render_template('staff_login.html', error=error)
+
     # Check if already authenticated in session
     if session.get('is_staff'):
+        is_master = bool(session.get('is_master'))
         trigger_background_fetch_if_needed()
-        import data_audit
-        with data_lock:
-            cur_live = list(latest_data.get('full_data') or [])
-        audit_report = data_audit.run_data_audit(live_stores=cur_live, send_alerts=False)
+        audit_report = None
+        sched_queue = []
+        if is_master:
+            import data_audit
+            with data_lock:
+                cur_live = list(latest_data.get('full_data') or [])
+            audit_report = data_audit.run_data_audit(live_stores=cur_live, send_alerts=False)
+            sched_queue = scheduled_articles.get_all_with_status()
         return render_template(
             'index.html',
             is_staff=True,
+            is_master=is_master,
             initial_status=get_initial_status_payload(),
             published_scheduled=scheduled_articles.get_published_articles(),
-            scheduled_queue=scheduled_articles.get_all_with_status(),
+            scheduled_queue=sched_queue,
             data_audit_report=audit_report,
         )
 
@@ -837,8 +869,9 @@ def api_data_audit():
 
 @app.route('/staff/logout')
 def staff_logout():
-    """Clear staff authentication and return to staff login."""
+    """Clear staff and master authentication and return to staff login."""
     session.pop('is_staff', None)
+    session.pop('is_master', None)
     return redirect(url_for('staff_monitor'))
 
 
@@ -866,9 +899,9 @@ def _get_sns_kit_context(fast=False):
 
 @app.route('/staff/sns-kit')
 def staff_sns_kit():
-    """Staff-only one-click Instagram / Threads weekend forecast carousel & caption generator."""
-    if not session.get('is_staff'):
-        return redirect(url_for('staff_monitor'))
+    """Master-only one-click Instagram / Threads weekend forecast carousel & caption generator."""
+    if not session.get('is_master'):
+        return redirect(url_for('staff_monitor', switch='1'))
     import ig_carousel_generator
     ctx = _get_sns_kit_context()
     captions = ig_carousel_generator.build_captions(ctx)
@@ -878,9 +911,9 @@ def staff_sns_kit():
 
 @app.route('/staff/sns-kit/slide/<int:slide_num>.png')
 def staff_sns_kit_slide(slide_num):
-    """Render individual 1080x1350 PNG slide for staff mobile save or preview."""
-    if not session.get('is_staff'):
-        return redirect(url_for('staff_monitor'))
+    """Render individual 1080x1350 PNG slide for master mobile save or preview."""
+    if not session.get('is_master'):
+        return redirect(url_for('staff_monitor', switch='1'))
     import ig_carousel_generator
     ctx = _get_sns_kit_context()
     png_bytes = ig_carousel_generator.render_slide_png(slide_num, ctx=ctx)
@@ -893,8 +926,8 @@ def staff_sns_kit_slide(slide_num):
 @app.route('/staff/sns-kit/download.zip')
 def staff_sns_kit_zip():
     """Download all 5 portrait PNG slides + Instagram/Threads captions in one ZIP."""
-    if not session.get('is_staff'):
-        return redirect(url_for('staff_monitor'))
+    if not session.get('is_master'):
+        return redirect(url_for('staff_monitor', switch='1'))
     import ig_carousel_generator
     ctx = _get_sns_kit_context()
     zip_bytes = ig_carousel_generator.render_all_slides_zip(ctx=ctx)

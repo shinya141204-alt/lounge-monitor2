@@ -938,13 +938,17 @@
 
         <header>
             {% if is_staff %}
-            <div class="staff-header-top">
-                <span class="staff-header-badge">社内業務モニター（広告・PR完全OFF）</span>
+            <div class="staff-header-top" style="display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap;">
+                {% if is_master %}
+                <span class="staff-header-badge" style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(217, 119, 6, 0.35)); border: 1px solid rgba(251, 191, 36, 0.55); color: #fde68a;">👑 MASTER MONITOR（マスター全権限モード・広告OFF）</span>
+                {% else %}
+                <span class="staff-header-badge">社内業務モニター（現場データ専用・広告OFF）</span>
+                {% endif %}
             </div>
             {% endif %}
             <div class="header-top-row">
                 <div class="header-brand-block">
-                    <h1>{% if is_staff %}相席ナビ 業務モニター{% else %}相席ナビ{% endif %}</h1>
+                    <h1>{% if is_master %}相席ナビ マスター管理{% elif is_staff %}相席ナビ 業務モニター{% else %}相席ナビ{% endif %}</h1>
                     <p class="subtitle">全国ラウンジの今わかる人数ランキング</p>
                 </div>
                 <div class="header-controls">
@@ -1017,6 +1021,11 @@
                         <span>速報共有</span>
                     </button>
                     {% else %}
+                    {% if not is_master %}
+                    <a href="/staff?switch=1" class="header-btn labeled-btn" style="text-decoration: none; border-color: rgba(251, 191, 36, 0.45); color: #fde68a;" title="マスター権限パスコードでログイン">
+                        <span>👑 マスター切替</span>
+                    </a>
+                    {% endif %}
                     <a href="/staff/logout" class="header-btn labeled-btn staff-logout-btn" title="社内モニターをログアウト">
                         <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line>
@@ -1087,13 +1096,18 @@
                 </div>
 
                 {% if is_staff %}
-                <!-- Staff Dedicated Analytics Dashboard Quick Bar -->
+                <!-- Staff / Master Analytics Dashboard Quick Bar -->
                 <div class="staff-analytics-quickbar">
                     <div class="staff-quickbar-header">
-                        <span class="staff-quickbar-badge">📊 社内専用 分析ダッシュボード</span>
+                        {% if is_master %}
+                        <span class="staff-quickbar-badge" style="background: rgba(245, 158, 11, 0.2); color: #fde68a; border: 1px solid rgba(251, 191, 36, 0.45);">👑 マスター専用 運営・分析ダッシュボード</span>
+                        {% else %}
+                        <span class="staff-quickbar-badge">📊 現場データ専用 モニタリングパネル</span>
+                        {% endif %}
                         <span class="staff-quickbar-hint">※各店舗カードをタップすると曜日・時間帯別グラフと詳細ログが開きます</span>
                     </div>
                     <div class="staff-quickbar-actions">
+                        {% if is_master %}
                         <a href="/staff/analytics" class="staff-action-pill" style="text-decoration: none;">
                             <span>📈 アクセス集計（閲覧・アフィリエイト・ボタンクリック）</span>
                         </a>
@@ -1103,6 +1117,7 @@
                         <button type="button" class="staff-action-pill" onclick="openSnsModal('threads')">
                             <span>🧵 Threads・IG用「東西＆主要街速報」長文コピー</span>
                         </button>
+                        {% endif %}
                         <button type="button" class="staff-action-pill" onclick="openReportModal()">
                             <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                                 <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>
@@ -1126,7 +1141,7 @@
                             <span id="staff-toggle-events-label">イベント非表示: ON（業務集中モード）</span>
                         </button>
                     </div>
-                    {% if data_audit_report %}
+                    {% if is_master and data_audit_report %}
                     <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.08);">
                         <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px; margin-bottom: 8px;">
                             <span style="font-size: 0.78rem; font-weight: 700; color: #cbd5e1;">🛡️ 料金・営業時間データ自動監査（ズレ検知モニター）</span>
@@ -1153,7 +1168,7 @@
                         {% endif %}
                     </div>
                     {% endif %}
-                    {% if scheduled_queue %}
+                    {% if is_master and scheduled_queue %}
                     <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.08);">
                         <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px; margin-bottom: 8px;">
                             <span style="font-size: 0.78rem; font-weight: 700; color: #cbd5e1;">🗓️ コラム自動予約公開スケジュール（サイト解禁＋sitemap登録＋X自動告知）</span>
@@ -1648,7 +1663,8 @@
 
     <script>
         window.APP_CONFIG = {
-            isStaff: {{ 'true' if is_staff else 'false' }}
+            isStaff: {{ 'true' if is_staff else 'false' }},
+            isMaster: {{ 'true' if is_master else 'false' }}
         };
         {% if initial_status %}
         window.INITIAL_STATUS_DATA = {{ initial_status | tojson }};
