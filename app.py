@@ -845,17 +845,26 @@ def staff_logout():
     return redirect(url_for('staff_monitor'))
 
 
-def _get_sns_kit_context():
+_sns_kit_ctx_cache = {'ctx': None, 'ts': 0.0}
+
+def _get_sns_kit_context(fast=False):
     import ig_carousel_generator
     import weekly_report
+    now_t = time.time()
+    if _sns_kit_ctx_cache['ctx'] and (now_t - _sns_kit_ctx_cache['ts'] < 300):
+        return _sns_kit_ctx_cache['ctx']
     rep = None
-    try:
-        rep = weekly_report.generate_weekly_report()
-    except Exception:
-        rep = None
+    if not fast:
+        try:
+            rep = weekly_report.generate_weekly_report()
+        except Exception:
+            rep = None
     with data_lock:
         live_s = list(latest_data.get('full_data') or [])
-    return ig_carousel_generator.build_forecast_context(report=rep, live_stores=live_s)
+    ctx = ig_carousel_generator.build_forecast_context(report=rep, live_stores=live_s)
+    _sns_kit_ctx_cache['ctx'] = ctx
+    _sns_kit_ctx_cache['ts'] = now_t
+    return ctx
 
 
 @app.route('/staff/sns-kit')
@@ -910,7 +919,7 @@ def public_ig_slide_png(slide_num):
         import io
         from PIL import Image
         import ig_carousel_generator
-        ctx = _get_sns_kit_context()
+        ctx = _get_sns_kit_context(fast=True)
         png_bytes = ig_carousel_generator.render_slide_png(max(1, min(5, slide_num)), ctx=ctx)
         if request.path.endswith('.jpg'):
             img = Image.open(io.BytesIO(png_bytes)).convert('RGB')
