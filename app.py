@@ -686,14 +686,18 @@ def guide_article():
     return render_template('guide_article.html')
 
 AFFILIATE_REDIRECTS = {
-    'spu': 'https://h.accesstrade.net/sp/cc?rk=0100oo8500p144',
-    'spu_styleup': 'https://h.accesstrade.net/sp/cc?rk=0100oo8500p144',
-    'orbis': 'https://px.a8.net/svt/ejp?a8mat=4BEL1F+67V08I+1USQ+2Z90WX',
-    'mens_skincare_clinic': 'https://px.a8.net/svt/ejp?a8mat=4BEL1F+67V08I+1USQ+2Z90WX',
-    'hair_removal': 'https://px.a8.net/svt/ejp?a8mat=4BEL1F+61B8KY+328C+2HCB1D',
-    'mens_hair_removal': 'https://px.a8.net/svt/ejp?a8mat=4BEL1F+61B8KY+328C+2HCB1D',
-    'dating': 'https://px.a8.net/svt/ejp?a8mat=4BEK9C+21TRSI+5SFC+61RI9',
-    'dating_instant': 'https://px.a8.net/svt/ejp?a8mat=4BEK9C+21TRSI+5SFC+61RI9',
+    'spu': os.environ.get('AFFILIATE_URL_SPU') or 'https://h.accesstrade.net/sp/cc?rk=0100oo8500p144',
+    'spu_styleup': os.environ.get('AFFILIATE_URL_SPU') or 'https://h.accesstrade.net/sp/cc?rk=0100oo8500p144',
+    'orbis': os.environ.get('AFFILIATE_URL_ORBIS') or 'https://px.a8.net/svt/ejp?a8mat=4BEL1F+67V08I+1USQ+2Z90WX',
+    'mens_skincare_clinic': os.environ.get('AFFILIATE_URL_ORBIS') or 'https://px.a8.net/svt/ejp?a8mat=4BEL1F+67V08I+1USQ+2Z90WX',
+    'hair_removal': os.environ.get('AFFILIATE_URL_HAIR_REMOVAL') or 'https://px.a8.net/svt/ejp?a8mat=4BEL1F+61B8KY+328C+2HCB1D',
+    'mens_hair_removal': os.environ.get('AFFILIATE_URL_HAIR_REMOVAL') or 'https://px.a8.net/svt/ejp?a8mat=4BEL1F+61B8KY+328C+2HCB1D',
+    'hair_removal_trial': os.environ.get('AFFILIATE_URL_HAIR_REMOVAL_TRIAL') or os.environ.get('AFFILIATE_URL_HAIR_REMOVAL') or 'https://px.a8.net/svt/ejp?a8mat=4BEL1F+61B8KY+328C+2HCB1D',
+    'dating': os.environ.get('AFFILIATE_URL_DATING') or 'https://px.a8.net/svt/ejp?a8mat=4BEK9C+21TRSI+5SFC+61RI9',
+    'dating_instant': os.environ.get('AFFILIATE_URL_DATING_INSTANT') or os.environ.get('AFFILIATE_URL_DATING') or 'https://px.a8.net/svt/ejp?a8mat=4BEK9C+21TRSI+5SFC+61RI9',
+    'dating_bachelor': os.environ.get('AFFILIATE_URL_DATING_BACHELOR') or os.environ.get('AFFILIATE_URL_DATING') or 'https://px.a8.net/svt/ejp?a8mat=4BEK9C+21TRSI+5SFC+61RI9',
+    'dating_Casual': os.environ.get('AFFILIATE_URL_DATING_CASUAL') or os.environ.get('AFFILIATE_URL_DATING') or 'https://px.a8.net/svt/ejp?a8mat=4BEK9C+21TRSI+5SFC+61RI9',
+    'dating_casual': os.environ.get('AFFILIATE_URL_DATING_CASUAL') or os.environ.get('AFFILIATE_URL_DATING') or 'https://px.a8.net/svt/ejp?a8mat=4BEK9C+21TRSI+5SFC+61RI9',
 }
 
 @app.route('/link/<path:item_id>')
@@ -1810,6 +1814,21 @@ def trigger_x_bonus_endpoint():
         stores = list(latest_data.get('full_data') or [])
     res = bonus_alert.check_and_post_bonus_alert(stores, force=force)
     return jsonify(res)
+
+
+@app.route('/api/trigger-threads-post')
+def trigger_threads_post_endpoint():
+    """Endpoint to test or externally trigger Meta Threads auto-post."""
+    if not is_admin_authorized():
+        return jsonify({'error': 'Unauthorized'}), 401
+    import threads_poster
+    slot = request.args.get('slot', '20:00')
+    force = request.args.get('force', '0') == '1'
+    with data_lock:
+        stores = list(latest_data.get('full_data') or [])
+    res = threads_poster.execute_scheduled_threads_post(stores, slot_label=slot, force=force)
+    return jsonify(res)
+
 
 # Start background services immediately on module import (unless disabled for unit tests)
 _ensure_scheduler_started_async()

@@ -79,12 +79,41 @@ def compute_twitter_weight(text: str) -> int:
     return weight
 
 
+def _build_east_west_summary_line(stores: list) -> str:
+    """
+    Build a concise East (Kanto: Shinjuku/Shibuya/Omiya/etc.) vs West (Kansai: Umeda/Namba/Shinsaibashi/etc.)
+    top-store comparison line so followers in both regions immediately see a familiar local store.
+    """
+    kanto_kws = ("新宿", "渋谷", "恵比寿", "銀座", "上野", "大宮", "横浜", "町田", "柏", "錦糸町", "宇都宮", "高崎", "SHINJUKU", "SHIBUYA", "EBISU", "UENO", "OMIYA", "YOKOHAMA")
+    kansai_kws = ("梅田", "茶屋町", "難波", "心斎橋", "天満", "大阪", "京都", "神戸", "UMEDA", "CHAYAMACHI", "NAMBA", "SHINSAIBASHI", "KYOTO", "KOBE")
+
+    kanto_stores = [
+        s for s in stores
+        if s.get("region") == "Kanto" or any(k in (s.get("name") or "").upper() or k in (s.get("name") or "") for k in kanto_kws)
+    ]
+    kansai_stores = [
+        s for s in stores
+        if s.get("region") == "Kinki" or any(k in (s.get("name") or "").upper() or k in (s.get("name") or "") for k in kansai_kws)
+    ]
+    kanto_stores.sort(key=lambda x: (int(x.get("women") or 0), int(x.get("men") or 0)), reverse=True)
+    kansai_stores.sort(key=lambda x: (int(x.get("women") or 0), int(x.get("men") or 0)), reverse=True)
+
+    if kanto_stores and kansai_stores:
+        k_top = kanto_stores[0]
+        w_top = kansai_stores[0]
+        k_name = format_ja_store_name(k_top.get("name", ""))
+        w_name = format_ja_store_name(w_top.get("name", ""))
+        return f"🗼関東1位 {k_name}(女{k_top.get('women', 0)})｜🐙関西1位 {w_name}(女{w_top.get('women', 0)})"
+    return ""
+
+
 def _build_live_insight_line(stores: list, slot_label: str = "20:00") -> str:
     """
     Generate a concise 1-line dynamic hook from live store counts:
       1) Highlight real-time gender-ratio gaps within the same city hub (store-hopping alpha)
-      2) Highlight lively male-lead stores from a female / fast-match perspective
-      3) Fallback to time-slot specific practical tip
+      2) Highlight East vs West (Kanto #1 vs Kansai #1) live store comparison
+      3) Highlight lively male-lead stores from a female / fast-match perspective
+      4) Fallback to time-slot specific practical tip
     """
     hubs = [
         ("新宿", ("新宿", "SHINJUKU")),
@@ -113,6 +142,11 @@ def _build_live_insight_line(stores: list, slot_label: str = "20:00") -> str:
                     best_gap = gap
                     best_hub = hub_label
 
+    ew_line = _build_east_west_summary_line(stores)
+    if best_hub and best_gap >= 0.12 and slot_label in ("22:00", "22:30"):
+        return f"💡いま{best_hub}は店舗間で男女比差大！比較が吉"
+    if ew_line:
+        return ew_line
     if best_hub and best_gap >= 0.12:
         return f"💡いま{best_hub}は店舗間で男女比差大！比較が吉"
 
@@ -394,12 +428,15 @@ def _build_oauth1_header(method: str, url: str, api_key: str, api_secret: str, a
 
 
 def build_scheduled_reply_text(slot_label: str = "20:00", app_url: str = "") -> str:
-    """Build the 2nd post (self-reply) containing the timestamped site URL so X generates a fresh dynamic live OGP card."""
+    """Build the 2nd post (self-reply) containing the timestamped site URL + price/event comparison board link."""
     site_url = (app_url or os.environ.get("PUBLIC_SITE_URL") or "https://aiseki-navi.com").rstrip("/")
     now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
     slot_code = (slot_label or "20:00").replace(":", "")
     live_url = f"{site_url}/?s={now_jst.strftime('%Y%m%d')}_{slot_code}"
-    return f"🔍 全国53店舗のリアルタイム人数・男女比ランキングはこちら\n{live_url}"
+    return (
+        f"🔍 全国53店舗のリアルタイム人数・男女比ランキング\n{live_url}\n\n"
+        f"💴 店舗別の時間帯料金・開催中イベント比較ボード\n{site_url}/price-comparison"
+    )
 
 
 def build_pinned_tweet_thread(app_url: str = "") -> tuple:
@@ -412,20 +449,31 @@ def build_pinned_tweet_thread(app_url: str = "") -> tuple:
     main_text = (
         "🍸全国53店舗の相席ラウンジ人数速報『相席ナビ』\n\n"
         "・オリエンタル / ag / JIS 等の現在人数＆男女比をリアルタイム集計\n"
-        "・曜日×時間帯別の平均グラフで「いま狙い目の店舗」がひと目でわかる\n"
-        "・失敗しない立ち回りコラムも公開中\n\n"
-        "サイトURL・人気記事はリプ欄へ👇\n"
+        "・全51店舗の時間帯料金・ソロ入店可否・イベント比較\n"
+        "・曜日×時間帯別の平均グラフで「いま狙い目の店舗」がわかる\n\n"
+        "サイトURL・比較ボードはリプ欄へ👇\n"
         "#相席ナビ #相席ラウンジ"
     )
     reply_text = (
         f"🔍 全国53店舗リアルタイム人数ランキング\n{site_url}/\n\n"
-        f"📖 人気の攻略コラム一覧\n{site_url}/columns\n\n"
-        f"⚖️ オリエンタル・ag・JIS 徹底比較\n{site_url}/guide/brand-comparison"
+        f"💴 全51店舗の料金・開催中イベント比較ボード\n{site_url}/price-comparison\n\n"
+        f"📖 人気の攻略コラム一覧\n{site_url}/columns"
     )
     return main_text, reply_text
 
 
 COLUMN_PROMO_LIST = [
+    {
+        "slug": "price-event-comparison",
+        "path": "/guide/price-event-comparison",
+        "eyecatch": "/static/eyecatch-price-comparison.jpg",
+        "title": "【全51店舗】相席ラウンジ料金・イベント・現在人数の横並び比較ガイド",
+        "main_text": (
+            "同じ街の相席ラウンジでも「10分あたりの相席料金」「男性1名（ソロ）入店の可否」「開催中の割引・北海道フェア等の対象店舗」って実はかなり違う📊\n\n"
+            "全51店舗の4時間帯別料金とリアルタイム男女人数を1画面で見比べる方法をまとめました👇\n"
+            "#相席ナビ #相席ラウンジ"
+        ),
+    },
     {
         "slug": "male-lead-mechanics",
         "path": "/guide/male-lead-mechanics",

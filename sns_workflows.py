@@ -36,6 +36,15 @@ def build_sns_post_payload(post_type, base_url, latest_data):
         filtered = candidates
         header = f"{time_part}時点、いま女性比率が高めで入りやすい穴場店舗✨"
         tags = "#相席ナビ #相席ラウンジ #オリエンタルラウンジ #JIS"
+    elif post_type == 'threads':
+        import threads_poster
+        threads_text = threads_poster.build_threads_live_post(stores, slot_label=time_part)
+        return {
+            'status': 'success',
+            'type': post_type,
+            'timestamp': ts,
+            'text': threads_text,
+        }
     elif post_type == 'price':
         announce_lines = [
             "【新機能】相席ラウンジ全51店舗「料金・イベント・現在人数」横並び比較ボードを公開しました📊",
@@ -150,6 +159,15 @@ def execute_scheduled_x_post(latest_data, slot_label="20:00", force=False):
             pass
     result["tweet_text"] = text
     result["reply_text"] = reply_text
+
+    # Also trigger Threads auto-post in parallel if configured (never blocks or fails X post)
+    try:
+        import threads_poster
+        threads_res = threads_poster.execute_scheduled_threads_post(stores, slot_label=slot_label, force=force)
+        result["threads_status"] = threads_res.get("status")
+    except Exception as e:
+        logging.warning(f"Threads auto-post skipped/failed during {slot_label}: {e}")
+
     return result
 
 

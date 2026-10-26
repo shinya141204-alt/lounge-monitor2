@@ -792,7 +792,7 @@ class GrowthFeaturesTests(unittest.TestCase):
                 self.assertEqual(sw_resp.status_code, 200)
                 self.assertIn('no-store', sw_resp.headers.get('Cache-Control', ''))
                 sw_txt = sw_resp.data.decode('utf-8')
-                self.assertIn("aiseki-navi-v46", sw_txt)
+                self.assertIn("aiseki-navi-v47", sw_txt)
             finally:
                 sw_resp.close()
 
@@ -1314,12 +1314,42 @@ class GrowthFeaturesTests(unittest.TestCase):
         import portal_guides
         import store_analysis
         import sns_workflows
+        import threads_poster
+        import x_poster
         self.assertEqual(portal_guides.AREA_GUIDES, app_module.AREA_GUIDES)
         self.assertIn('oriental-lounge', portal_guides.BRAND_GUIDES)
         sns_sample = sns_workflows.build_sns_post_payload('price', 'https://aiseki-navi.com', {'full_data': [{'name': 'OLG 新宿', 'women': 20, 'men': 10, 'region': 'Kanto'}], 'last_updated': '2026/10/26 21:00'})
         self.assertEqual(sns_sample['status'], 'success')
         self.assertIn('/price-comparison', sns_sample['text'])
         self.assertTrue(callable(store_analysis.compute_store_analysis_payload))
+
+        # 11. Step A/B/C verification: East-West X summary, City quick filters, Multi-ASP dating links, and Threads long-form poster
+        sample_stores = [
+            {'name': 'OLG 新宿', 'women': 42, 'men': 28, 'region': 'Kanto', 'source': 'ORIENTAL'},
+            {'name': 'JIS UMEDA', 'women': 38, 'men': 25, 'region': 'Kinki', 'source': 'JIS'},
+            {'name': 'OLG 名古屋 栄', 'women': 24, 'men': 16, 'region': 'Chubu', 'source': 'ORIENTAL'},
+            {'name': 'JIS FUKUOKA', 'women': 30, 'men': 20, 'region': 'Kyushu', 'source': 'JIS'},
+        ]
+        ew_line = x_poster._build_east_west_summary_line(sample_stores)
+        self.assertIn('関東1位', ew_line)
+        self.assertIn('関西1位', ew_line)
+        self.assertIn('price-event-comparison', [c.get('slug') for c in x_poster.COLUMN_PROMO_LIST])
+
+        # City quick filter buttons & dating_bachelor redirect
+        self.assertIn('data-region="City:shinjuku"', idx_html)
+        self.assertIn('data-region="City:umeda"', idx_html)
+        self.assertIn("url: '/link/dating_bachelor'", aff_src)
+        self.assertEqual(self.client.get('/link/dating_bachelor', follow_redirects=False).status_code, 302)
+
+        # Threads live post builder & API endpoint
+        th_text = threads_poster.build_threads_live_post(sample_stores, slot_label='22:00')
+        self.assertIn('全国リアルタイムTOP3', th_text)
+        self.assertIn('主要街の現在トップ', th_text)
+        self.assertLessEqual(len(th_text), 500)
+        th_payload = sns_workflows.build_sns_post_payload('threads', 'https://aiseki-navi.com', {'full_data': sample_stores, 'last_updated': '2026/10/26 22:00'})
+        self.assertEqual(th_payload['status'], 'success')
+        self.assertIn('全国リアルタイムTOP3', th_payload['text'])
+        self.assertEqual(self.client.get('/api/trigger-threads-post').status_code, 401)
 
 
 if __name__ == '__main__':

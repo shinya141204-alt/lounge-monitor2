@@ -103,8 +103,11 @@ _AFFILIATE_NAMES = {
     'mens_skincare_clinic': '🧴 ORBIS Mr.（オルビス ミスター スキンケア）',
     'hair_removal': '🪒 メンズ医療脱毛・ヒゲ脱毛クリニック',
     'mens_hair_removal': '🪒 メンズ医療脱毛・ヒゲ脱毛クリニック',
+    'hair_removal_trial': '🪒 メンズヒゲ脱毛 初回体験トライアル枠',
     'dating': '💝 バチェラーデート（審査制マッチングアプリ）',
-    'dating_instant': '💝 バチェラーデート（審査制マッチングアプリ）',
+    'dating_instant': '💝 近くで今日会える恋活・マッチングアプリ',
+    'dating_bachelor': '🥂 審査制・ハイクラスデートアプリ（バチェラーデート等）',
+    'dating_casual': '🍻 今日すぐ近くで飲める恋活アプリ（即時合流枠）',
 }
 
 _AREA_NAMES = {

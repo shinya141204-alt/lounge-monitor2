@@ -100,7 +100,7 @@
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
          crossorigin="anonymous"></script>
-    <script src="/static/affiliate_config.js?v=9"></script>
+    <script src="/static/affiliate_config.js?v=10"></script>
     {% endif %}
     <link rel="stylesheet" href="/static/calm.css?v=10">
 </head>
@@ -602,6 +602,7 @@
                 </p>
                 <div class="sns-preset-tabs">
                     <button class="sns-tab-btn active" data-preset="events" onclick="selectSnsPreset('events')">特典＆イベント開催店</button>
+                    <button class="sns-tab-btn" data-preset="threads" onclick="selectSnsPreset('threads')">Threads・IG長文速報</button>
                     <button class="sns-tab-btn" data-preset="price" onclick="selectSnsPreset('price')">料金・イベント比較ボード告知</button>
                     <button class="sns-tab-btn" data-preset="timely" onclick="selectSnsPreset('timely')">時間帯別おすすめ</button>
                     <button class="sns-tab-btn" data-preset="all" onclick="selectSnsPreset('all')">全国TOP3</button>
@@ -1068,10 +1069,16 @@
 
                 <div class="filter-bar">
                     <button class="filter-btn active" data-region="All">全て</button>
-                    <button class="filter-btn" data-region="Kanto">関東</button>
-                    <button class="filter-btn" data-region="Kinki">関西</button>
+                    <button class="filter-btn filter-btn-city" data-region="City:shinjuku">新宿(4店)</button>
+                    <button class="filter-btn filter-btn-city" data-region="City:shibuya">渋谷・恵比寿</button>
+                    <button class="filter-btn filter-btn-city" data-region="City:umeda">梅田・茶屋町</button>
+                    <button class="filter-btn filter-btn-city" data-region="City:namba">難波・心斎橋</button>
+                    <button class="filter-btn filter-btn-city" data-region="City:nagoya">名古屋</button>
+                    <button class="filter-btn filter-btn-city" data-region="City:fukuoka">福岡</button>
+                    <button class="filter-btn" data-region="Kanto">関東全域</button>
+                    <button class="filter-btn" data-region="Kinki">関西全域</button>
                     <button class="filter-btn" data-region="Chubu">中部</button>
-                    <button class="filter-btn" data-region="Kyushu">九州</button>
+                    <button class="filter-btn" data-region="Kyushu">九州・沖縄</button>
                     <button class="filter-btn" data-region="Hokkaido">北海道</button>
                     <button class="filter-btn" data-region="Tohoku">東北</button>
                     <button class="filter-btn" data-region="Chugoku">中国</button>
@@ -1093,6 +1100,9 @@
                         <a href="/staff/sns-kit" class="staff-action-pill" style="text-decoration: none; border-color: rgba(236, 72, 153, 0.45); background: rgba(236, 72, 153, 0.14);">
                             <span>📸 インスタ・Threads用「週末予報画像」ワンクリック生成</span>
                         </a>
+                        <button type="button" class="staff-action-pill" onclick="openSnsModal('threads')">
+                            <span>🧵 Threads・IG用「東西＆主要街速報」長文コピー</span>
+                        </button>
                         <button type="button" class="staff-action-pill" onclick="openReportModal()">
                             <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                                 <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>
@@ -1644,7 +1654,7 @@
         window.INITIAL_STATUS_DATA = {{ initial_status | tojson }};
         {% endif %}
     </script>
-    <script src="/static/app.js?v=20261026_6" defer></script>
+    <script src="/static/app.js?v=20261026_7" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {

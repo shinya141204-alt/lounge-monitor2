@@ -1260,7 +1260,7 @@
             });
 
             let filteredStores = stores.filter(store => {
-                const matchRegion = currentFilter === 'All' || store.region === currentFilter;
+                const matchRegion = matchesRegionOrCityFilter(store, currentFilter);
                 if (!matchRegion) return false;
                 if (currentSearch === '') return true;
                 const bInfo = detectBrandInfo(store);
@@ -1639,19 +1639,41 @@
             return 'https://oriental-lounge.com/';
         }
 
+        const CITY_CLUSTER_KEYWORDS = {
+            'City:shinjuku': ['新宿', '西新宿', 'SHINJUKU'],
+            'City:shibuya': ['渋谷', '恵比寿', 'SHIBUYA', 'EBISU'],
+            'City:umeda': ['梅田', '茶屋町', '天満', '大阪駅前', 'UMEDA', 'CHAYAMACHI', 'TENMA'],
+            'City:namba': ['難波', 'なんば', '心斎橋', 'NAMBA', 'SHINSAIBASHI'],
+            'City:nagoya': ['名古屋', '栄', '錦', 'NAGOYA', 'SAKAE', 'NISHIKI'],
+            'City:fukuoka': ['福岡', '天神', '中洲', '小倉', 'FUKUOKA', 'TENJIN', 'KOKURA']
+        };
+
+        function matchesRegionOrCityFilter(store, filterVal) {
+            if (!filterVal || filterVal === 'All') return true;
+            if (CITY_CLUSTER_KEYWORDS[filterVal]) {
+                const bInfo = detectBrandInfo(store);
+                const haystack = `${store.name || ''} ${bInfo.cleanName || ''} ${bInfo.areaLabel || ''}`.toUpperCase();
+                return CITY_CLUSTER_KEYWORDS[filterVal].some(k => haystack.includes(k.toUpperCase()));
+            }
+            return store.region === filterVal;
+        }
+
         // --- SNS Share Functions (Ranking & Individual Store) ---
         function buildRankingShareText() {
             const regionNames = {
                 'All': '全国', 'Kanto': '関東', 'Kinki': '関西', 'Chubu': '中部',
                 'Kyushu': '九州', 'Hokkaido': '北海道', 'Tohoku': '東北',
-                'Chugoku': '中国', 'Shikoku': '四国', 'Korea': '韓国'
+                'Chugoku': '中国', 'Shikoku': '四国', 'Korea': '韓国',
+                'City:shinjuku': '新宿エリア', 'City:shibuya': '渋谷・恵比寿エリア',
+                'City:umeda': '梅田・茶屋町エリア', 'City:namba': '難波・心斎橋エリア',
+                'City:nagoya': '名古屋エリア', 'City:fukuoka': '福岡エリア'
             };
             const areaTitle = regionNames[currentFilter] || '全国';
             let text = `いま${areaTitle}で人が集まってる相席ラウンジTOP3🍻\n`;
             if (window.lastData && window.lastData.ranking) {
                 const list = window.lastData.ranking.filter(s => {
                     if (currentFilter === 'All') return s.region !== 'Korea';
-                    return s.region === currentFilter;
+                    return matchesRegionOrCityFilter(s, currentFilter);
                 }).slice(0, 3);
                 const medals = ['🥇', '🥈', '🥉'];
                 list.forEach((s, i) => {
@@ -1761,6 +1783,54 @@
             let tags = '#相席ナビ #相席ラウンジ';
             let isAnaba = false;
             let showEvents = true;
+
+            if (preset === 'threads') {
+                const domStores = stores.filter(s => s.region !== 'Korea');
+                const totW = domStores.reduce((acc, s) => acc + (s.women || 0), 0);
+                const totM = domStores.reduce((acc, s) => acc + (s.men || 0), 0);
+                const top3 = domStores.slice().sort((a, b) => (b.women - a.women) || (b.men - a.men)).slice(0, 3);
+                const tLines = [
+                    `【${ts}時点】全国相席ラウンジ リアルタイム速報🥂`,
+                    `現在 全国${domStores.length}店舗合計：女性${totW.toLocaleString()}名 ／ 男性${totM.toLocaleString()}名`,
+                    '',
+                    '🏆 全国リアルタイムTOP3'
+                ];
+                top3.forEach((s, idx) => {
+                    const b = detectBrandInfo(s);
+                    const w = s.women || 0;
+                    const m = s.men || 0;
+                    const pct = (w + m) > 0 ? Math.round((w / (w + m)) * 100) : 0;
+                    tLines.push(`${medals[idx]} ${b.fullDisplayTitle}（女性${w}名 / 男性${m}名・女性比${pct}%）`);
+                });
+                const cityDefs = [
+                    { label: '新宿', filter: 'City:shinjuku' },
+                    { label: '渋谷・恵比寿', filter: 'City:shibuya' },
+                    { label: '梅田・茶屋町', filter: 'City:umeda' },
+                    { label: '難波・心斎橋', filter: 'City:namba' },
+                    { label: '名古屋', filter: 'City:nagoya' },
+                    { label: '福岡', filter: 'City:fukuoka' }
+                ];
+                const citySummary = [];
+                cityDefs.forEach(c => {
+                    const cand = domStores.filter(s => matchesRegionOrCityFilter(s, c.filter))
+                                          .sort((a, b) => (b.women - a.women) || (b.men - a.men))[0];
+                    if (cand && (cand.women || 0) > 0) {
+                        const b = detectBrandInfo(cand);
+                        citySummary.push(`・${c.label}：${b.fullDisplayTitle}（女${cand.women}:男${cand.men}）`);
+                    }
+                });
+                if (citySummary.length > 0) {
+                    tLines.push('', '📍 主要街の現在トップ', ...citySummary.slice(0, 4));
+                }
+                tLines.push(
+                    '',
+                    '💡 席替えが回る「女性10名以上（約5組）」かつ女性比率55%以上の店舗を狙うのが鉄則です。',
+                    `▼ 全51店舗の現在人数＆料金・イベント比較`,
+                    `${window.location.origin}/price-comparison`,
+                    '#相席ラウンジ #相席ナビ #オリエンタルラウンジ #JIS'
+                );
+                return tLines.join('\n');
+            }
 
             if (preset === 'price') {
                 return [
@@ -2469,7 +2539,7 @@
             const ranking = (window.lastData && window.lastData.ranking) ? window.lastData.ranking : [];
             let storesToCompare = ranking;
             if (currentFilter !== 'All') {
-                const filtered = storesToCompare.filter(s => s.region === currentFilter);
+                const filtered = storesToCompare.filter(s => matchesRegionOrCityFilter(s, currentFilter));
                 if (filtered.length > 0) {
                     storesToCompare = filtered;
                 }

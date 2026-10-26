@@ -306,6 +306,22 @@ def generate_live_ogp_png(stores: list, s_param: str = "", now_jst: datetime.dat
     draw.text((lx + 22 + w_len + 16, tbox_y + 48), "／", font=f_total_val, fill=(130, 140, 160, 255))
     draw.text((lx + 22 + w_len + 50, tbox_y + 48), tot_m_str, font=f_total_val, fill=(96, 185, 255, 255))
 
+    # 6) East / West Area Leaders Strip (関東1位 vs 関西1位)
+    ew_line = x_poster._build_east_west_summary_line(dom_stores)
+    if ew_line:
+        ew_y = tbox_y + tbox_h + 14
+        ew_h = 54
+        draw.rounded_rectangle(
+            (lx, ew_y, lx + tbox_w, ew_y + ew_h),
+            radius=12,
+            fill=(18, 22, 34, 225),
+            outline=(255, 255, 255, 40),
+            width=1,
+        )
+        ew_clean = ew_line.replace("🗼", "【東】").replace("🐙", "【西】")
+        f_ew = _get_font(15)
+        draw.text((lx + 18, ew_y + 18), ew_clean, font=f_ew, fill=(229, 200, 120, 255))
+
     # =========================================================================
     # RIGHT COLUMN: LIVE TOP 3 RANKING BOARD (x=576 to 1152)
     # =========================================================================

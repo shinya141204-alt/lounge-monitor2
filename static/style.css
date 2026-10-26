@@ -639,6 +639,16 @@ body.compact-mode .occupancy-bar {
     font-weight: 600;
 }
 
+.filter-btn-city {
+    border-color: rgba(200, 164, 110, 0.35);
+    color: #e6d3b3;
+}
+
+body.theme-light .filter-btn-city {
+    border-color: rgba(140, 107, 63, 0.35);
+    color: #6b512d;
+}
+
 /* Pinned Section */
 .section-title {
     font-size: 0.8rem;
