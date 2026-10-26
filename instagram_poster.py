@@ -149,21 +149,34 @@ def post_carousel_to_instagram(image_urls: list, caption: str) -> dict:
     base = _graph_base_for_token(access_token)
     child_ids = []
     try:
+        # Warm up all slide URLs first so Render caches them in memory before Meta's crawler fetches them
+        for url in image_urls[:10]:
+            try:
+                requests.get(url, timeout=15)
+            except Exception:
+                pass
+
         for idx, url in enumerate(image_urls[:10]):
-            r_item = requests.post(
-                f"{base}/{ig_user_id}/media",
-                data={
-                    "image_url": url,
-                    "is_carousel_item": "true",
-                    "access_token": access_token,
-                },
-                timeout=25,
-            )
-            if r_item.status_code >= 400:
-                return {"status": "error", "detail": f"Slide {idx+1} HTTP {r_item.status_code}: {r_item.text[:200]}"}
-            cid = (r_item.json() or {}).get("id")
+            cid = None
+            last_err = ""
+            for attempt in range(3):
+                r_item = requests.post(
+                    f"{base}/{ig_user_id}/media",
+                    data={
+                        "image_url": url,
+                        "is_carousel_item": "true",
+                        "access_token": access_token,
+                    },
+                    timeout=25,
+                )
+                if r_item.status_code < 400:
+                    cid = (r_item.json() or {}).get("id")
+                    if cid:
+                        break
+                last_err = f"Slide {idx+1} HTTP {r_item.status_code}: {r_item.text[:200]}"
+                time.sleep(2)
             if not cid:
-                return {"status": "error", "detail": f"Missing child id on slide {idx+1}"}
+                return {"status": "error", "detail": last_err or f"Missing child id on slide {idx+1}"}
             child_ids.append(cid)
 
         time.sleep(3)
