@@ -21,6 +21,7 @@ import threads_poster
 
 IG_GRAPH_BASE = "https://graph.instagram.com/v21.0"
 FB_GRAPH_BASE = "https://graph.facebook.com/v21.0"
+DEFAULT_IG_USER_ID = "17841410169754469"  # @aiseki_navi1 professional user_id
 SITE_URL = "https://aiseki-navi.com"
 _cached_ig_user_id = None
 
@@ -39,12 +40,12 @@ def _resolve_ig_user_id(access_token: str) -> str:
         try:
             r = requests.get(
                 f"{base}/me",
-                params={"fields": "id,username", "access_token": access_token},
+                params={"fields": "id,username,user_id", "access_token": access_token},
                 timeout=10,
             )
             if r.status_code == 200:
                 data = r.json() or {}
-                uid = str(data.get("id") or "").strip()
+                uid = str(data.get("user_id") or data.get("id") or "").strip()
                 if uid and data.get("username"):
                     _cached_ig_user_id = uid
                     return uid
@@ -69,7 +70,7 @@ def _resolve_ig_user_id(access_token: str) -> str:
     except Exception:
         pass
 
-    return ""
+    return DEFAULT_IG_USER_ID
 
 
 def _graph_base_for_token(access_token: str) -> str:
