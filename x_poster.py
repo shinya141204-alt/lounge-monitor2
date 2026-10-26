@@ -233,9 +233,20 @@ def build_scheduled_tweet_text(stores: list, slot_label: str = "20:00", app_url:
             ja_name = format_ja_store_name(s.get("name", ""))
             rank_lines.append(f"{medals[i]} {ja_name}：女性{w}・男性{m} ({pct}%)")
 
-        footer_lines = [
-            "全53店舗の現在人数はリプ欄へ👇",
+        footer_variants = [
+            "全51店舗の現在人数はリプ欄へ👇",
+            "詳しい店舗別データ・料金比較はリプ欄へ👇",
+            "各エリアの現在の男女比・穴場はリプ欄へ👇",
+        ]
+        tag_variants = [
             f"{time_tag} #相席ナビ #相席ラウンジ",
+            f"{time_tag} #相席ラウンジ #オリエンタルラウンジ",
+            f"{time_tag} #相席ラウンジ #相席ナビ",
+        ]
+        v_idx = (now_jst.day + len(slot_label)) % 3
+        footer_lines = [
+            footer_variants[v_idx],
+            tag_variants[v_idx],
         ]
         insight_line = _build_live_insight_line(stores, slot_label=slot_label)
         if insight_line:

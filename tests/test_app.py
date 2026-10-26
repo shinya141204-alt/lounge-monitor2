@@ -1380,6 +1380,13 @@ class GrowthFeaturesTests(unittest.TestCase):
         self.assertGreater(len(ig_carousel_generator.render_slide_png(1, ctx=ctx_mon)), 10000)
         self.assertGreater(len(ig_carousel_generator.render_slide_png(1, ctx=ctx_sun)), 10000)
 
+        # Verify Threads URL-free vs URL rotation across odd/even days (anti-spam)
+        th_even = threads_poster.build_threads_live_post(sample_stores, slot_label='22:00', now_jst=mon_dt)  # day=26 (even)
+        th_odd = threads_poster.build_threads_live_post(sample_stores, slot_label='22:00', now_jst=sun_dt)   # day=1 (odd)
+        self.assertNotIn('https://', th_even)
+        self.assertIn('プロフィールのリンク', th_even)
+        self.assertIn('https://aiseki-navi.com/price-comparison', th_odd)
+
 
 if __name__ == '__main__':
     unittest.main()

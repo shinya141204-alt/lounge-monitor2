@@ -160,16 +160,17 @@ def execute_scheduled_x_post(latest_data, slot_label="20:00", force=False):
     result["tweet_text"] = text
     result["reply_text"] = reply_text
 
-    # Also trigger Threads auto-post in parallel if configured (never blocks or fails X post)
-    try:
-        import threads_poster
-        threads_res = threads_poster.execute_scheduled_threads_post(stores, slot_label=slot_label, force=force)
-        result["threads_status"] = threads_res.get("status")
-    except Exception as e:
-        logging.warning(f"Threads auto-post skipped/failed during {slot_label}: {e}")
+    # Trigger Threads auto-post ONLY once per night at the 22:00 peak slot (or manual force) to avoid spam/bot flags on Meta
+    if slot_label == "22:00" or force:
+        try:
+            import threads_poster
+            threads_res = threads_poster.execute_scheduled_threads_post(stores, slot_label=slot_label, force=force)
+            result["threads_status"] = threads_res.get("status")
+        except Exception as e:
+            logging.warning(f"Threads auto-post skipped/failed during {slot_label}: {e}")
 
-    # At 22:00 peak slot, also trigger Instagram auto-post if configured (5-slide carousel with day-of-week theme)
-    if slot_label == "22:00":
+    # Trigger Instagram 5-slide carousel ONLY on Tue (weekday guide), Fri (weekend forecast), and Sun (weekly report) at 22:00 (or manual force)
+    if (slot_label == "22:00" and now_jst.weekday() in (1, 4, 6)) or force:
         try:
             import instagram_poster
             ig_res = instagram_poster.execute_scheduled_instagram_post(stores, mode="carousel", slot_label=slot_label, force=force)

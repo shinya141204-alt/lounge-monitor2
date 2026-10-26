@@ -66,12 +66,25 @@ def build_threads_live_post(stores: list, slot_label: str = "20:00", now_jst: da
     ranked = sorted(dom, key=lambda s: (int(s.get("women") or 0), int(s.get("men") or 0)), reverse=True)
     top3 = ranked[:3]
 
-    slot_intro = {
-        "20:00": f"【{now_jst.month}/{now_jst.day}({wd}) 20:00】1軒目ピーク前の立ち上がり速報🥂",
-        "22:00": f"【{now_jst.month}/{now_jst.day}({wd}) 22:00】ゴールデンタイム突入！全国＆主要エリア速報🔥",
-        "00:00": f"【{now_jst.month}/{now_jst.day}({wd}) 24:00】終電後の第2波・深夜穴場チェック🌙",
-        "02:00": f"【{now_jst.month}/{now_jst.day}({wd}) 26:00】深夜2時のコアタイム稼働トップ速報🍸",
-    }.get(slot_label, f"【{now_jst.month}/{now_jst.day}({wd}) {slot_label}】全国ラウンジ現在人数速報🥂")
+    slot_intros = {
+        "20:00": [
+            f"【{now_jst.month}/{now_jst.day}({wd}) 20時すぎ】1軒目ピーク前の立ち上がりチェック🥂",
+            f"{now_jst.month}/{now_jst.day}({wd}) 20時台、早めの時間から人が集まってる店舗メモ📝",
+        ],
+        "22:00": [
+            f"【{now_jst.month}/{now_jst.day}({wd}) 22時台】ゴールデンタイムの全国＆主要エリア状況🔥",
+            f"{now_jst.month}/{now_jst.day}({wd}) 22時すぎ、いま盛り上がってるラウンジまとめ🥂",
+            f"今夜（{now_jst.month}/{now_jst.day} {wd}曜）22時台の相席ラウンジ稼働トップ速報📊",
+        ],
+        "00:00": [
+            f"【{now_jst.month}/{now_jst.day}({wd}) 24時すぎ】終電後の第2波・深夜穴場チェック🌙",
+        ],
+        "02:00": [
+            f"【{now_jst.month}/{now_jst.day}({wd}) 深夜2時台】コアタイム稼働トップ速報🍸",
+        ],
+    }
+    intro_candidates = slot_intros.get(slot_label) or [f"【{now_jst.month}/{now_jst.day}({wd}) {slot_label}】全国ラウンジ現在人数メモ🥂"]
+    slot_intro = intro_candidates[now_jst.day % len(intro_candidates)]
 
     lines = [
         slot_intro,
@@ -110,11 +123,26 @@ def build_threads_live_post(stores: list, slot_label: str = "20:00", now_jst: da
         lines.append("📍 主要街の現在トップ")
         lines.extend(city_lines[:4])
 
+    tips_rot = [
+        "💡 席替えが回る「女性10名以上（約5組）」かつ女性比率55%以上の店舗を狙うのが鉄則です。",
+        "💡 1店舗目で男性待ちが出ていたら、徒歩3〜4分の別ブランドへ回るとスムーズに座れます。",
+        "💡 女性グループは逆に「男性が先行して盛り上がっている大型店」を選ぶと待ち0分で即乾杯しやすいです🥂",
+    ]
+    chosen_tip = tips_rot[now_jst.day % len(tips_rot)]
+
+    # Alternate URL vs Bio-link guidance so Meta's algorithm doesn't flag every post as external link spam
+    if now_jst.day % 2 == 0:
+        cta_line = "🔍 全51店舗の現在人数＆料金・イベント比較はプロフィールのリンク（相席ナビ）から見れます"
+        tag_line = "#相席ラウンジ #相席ナビ"
+    else:
+        cta_line = f"▼ 全51店舗の現在人数＆料金・イベント比較\n{SITE_URL}/price-comparison"
+        tag_line = "#相席ラウンジ #オリエンタルラウンジ #JIS"
+
     lines.extend([
         "",
-        "💡 席替えが回る「女性10名以上（約5組）」かつ女性比率55%以上の店舗を狙うのが鉄則です。",
-        f"▼ 全51店舗の現在人数＆料金・イベント比較\n{SITE_URL}/price-comparison",
-        "#相席ラウンジ #相席ナビ #オリエンタルラウンジ #JIS",
+        chosen_tip,
+        cta_line,
+        tag_line,
     ])
 
     text = "\n".join(lines)

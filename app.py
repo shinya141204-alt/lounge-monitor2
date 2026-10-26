@@ -132,26 +132,23 @@ def _ensure_scheduler_started_async():
                     logging.error(f"analytics flush failed: {err}")
             scheduler.add_job(func=_flush_analytics, trigger="interval", minutes=10)
             scheduler.add_job(func=lambda: local_db.sync_from_google_sheets(days=3), trigger="interval", hours=2)
-            scheduler.add_job(func=run_scheduled_x_post, trigger="cron", hour=11, minute=0, args=["20:00"])
-            scheduler.add_job(func=run_scheduled_x_post, trigger="cron", hour=13, minute=0, args=["22:00"])
-            scheduler.add_job(func=run_scheduled_x_post, trigger="cron", hour=15, minute=0, args=["00:00"])
-            scheduler.add_job(func=run_scheduled_x_post, trigger="cron", hour=17, minute=0, args=["02:00"])
-            def _tip_12():
-                import tips_poster
-                tips_poster.run_scheduled_tip_post(slot_label="12:00")
+            # Human-paced anti-spam schedule with randomized jitter (90s-540s) so posts never fire at :00:00 sharp:
+            # - X Live: 20:00 & 22:00 daily (00:00 late-night removed on Mon-Thu/Sun, kept only Fri/Sat nights; 02:00 removed completely)
+            # - X Tips: 18:00 pre-outing prime slot only (12:00 midday removed to cut daily post volume by half)
+            scheduler.add_job(func=run_scheduled_x_post, trigger="cron", hour=11, minute=2, jitter=420, args=["20:00"])
+            scheduler.add_job(func=run_scheduled_x_post, trigger="cron", hour=13, minute=3, jitter=420, args=["22:00"])
+            scheduler.add_job(func=run_scheduled_x_post, trigger="cron", day_of_week="fri,sat", hour=15, minute=4, jitter=420, args=["00:00"])
             def _tip_18():
                 import tips_poster
                 tips_poster.run_scheduled_tip_post(slot_label="18:00")
-            scheduler.add_job(func=_tip_12, trigger="cron", hour=3, minute=0)
-            scheduler.add_job(func=_tip_18, trigger="cron", hour=9, minute=0)
+            scheduler.add_job(func=_tip_18, trigger="cron", hour=9, minute=3, jitter=480)
             def _note_check_job():
                 try:
                     import note_poster
                     note_poster.check_and_post_new_note()
                 except Exception as err:
                     logging.error(f"Scheduled note promotion check failed: {err}")
-            scheduler.add_job(func=_note_check_job, trigger="cron", hour=4, minute=0)
-            scheduler.add_job(func=_note_check_job, trigger="cron", hour=11, minute=30)
+            scheduler.add_job(func=_note_check_job, trigger="cron", hour=11, minute=35, jitter=300)
             def _crawl_events_job():
                 try:
                     import events
