@@ -222,7 +222,7 @@ def execute_scheduled_instagram_post(stores: list, mode: str = "carousel", slot_
         captions = ig_carousel_generator.build_captions(ctx)
         caption = captions.get("instagram_caption") or ""
         slide_urls = [
-            f"{SITE_URL}/ogp/ig-slide/{i}.png?s={ts_code}"
+            f"{SITE_URL}/ogp/ig-slide/{i}.jpg?s={ts_code}"
             for i in range(1, 6)
         ]
         res = post_carousel_to_instagram(slide_urls, caption)
@@ -230,7 +230,7 @@ def execute_scheduled_instagram_post(stores: list, mode: str = "carousel", slot_
         res["slide_urls"] = slide_urls
     else:
         caption = threads_poster.build_threads_live_post(stores, slot_label=slot_label, now_jst=now_jst)
-        image_url = f"{SITE_URL}/ogp/ig-slide/2.png?s={ts_code}"
+        image_url = f"{SITE_URL}/ogp/ig-slide/2.jpg?s={ts_code}"
         res = post_single_image_to_instagram(image_url, caption)
         res["caption"] = caption
 

@@ -901,15 +901,24 @@ def staff_sns_kit_zip():
 
 
 @app.route('/ogp/ig-slide/<int:slide_num>.png')
+@app.route('/ogp/ig-slide/<int:slide_num>.jpg')
 def public_ig_slide_png(slide_num):
-    """Publicly accessible 1080x1350 PNG slide endpoint so Meta Instagram Graph API servers can fetch carousel images."""
+    """Publicly accessible 1080x1350 JPEG/PNG slide endpoint so Meta Instagram Graph API servers can fetch carousel images."""
     restore_latest_data_if_empty()
     trigger_background_fetch_if_needed()
     try:
+        import io
+        from PIL import Image
         import ig_carousel_generator
         ctx = _get_sns_kit_context()
         png_bytes = ig_carousel_generator.render_slide_png(max(1, min(5, slide_num)), ctx=ctx)
-        resp = Response(png_bytes, mimetype='image/png')
+        if request.path.endswith('.jpg'):
+            img = Image.open(io.BytesIO(png_bytes)).convert('RGB')
+            out = io.BytesIO()
+            img.save(out, format='JPEG', quality=92, optimize=True)
+            resp = Response(out.getvalue(), mimetype='image/jpeg')
+        else:
+            resp = Response(png_bytes, mimetype='image/png')
         resp.headers['Cache-Control'] = 'public, max-age=300'
         return resp
     except Exception as e:
