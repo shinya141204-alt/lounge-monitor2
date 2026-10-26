@@ -1616,12 +1616,13 @@ canvas {
     border: 1px solid rgba(255, 255, 255, 0.06);
     border-radius: 10px;
     padding: 12px;
+    text-align: left;
 }
 
 .seo-guide-card h3 {
     margin: 0 0 6px 0;
-    font-size: 0.82rem;
-    color: #f9a8d4;
+    font-size: 0.84rem;
+    color: #dfc496;
 }
 
 .seo-guide-card p {
@@ -3182,20 +3183,20 @@ body.theme-light .staff-event-toggle-pill.active {
     align-items: center;
     gap: 4px;
     margin-top: 10px;
-    padding: 6px 12px;
-    background: rgba(236, 72, 153, 0.12);
-    border: 1px solid rgba(236, 72, 153, 0.35);
-    color: #f472b6;
+    padding: 5px 11px;
+    background: rgba(200, 164, 110, 0.1);
+    border: 1px solid rgba(200, 164, 110, 0.35);
+    color: #dfc496;
     border-radius: 999px;
-    font-size: 0.74rem;
-    font-weight: 700;
+    font-size: 0.73rem;
+    font-weight: 600;
     cursor: pointer;
-    transition: all 0.15s ease;
+    text-decoration: none;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 .card-inline-cta:hover {
-    background: rgba(236, 72, 153, 0.25);
-    color: #fff;
-    transform: translateY(-1px);
+    background: rgba(200, 164, 110, 0.18);
+    color: #f1e3cb;
 }
 
 .pr-night-accent {

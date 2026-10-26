@@ -149,13 +149,6 @@ const AFFILIATE_MASTER = {
         }
     ],
 
-    // ランキング一覧に自然に挟み込むインフィードカード配置設定（リアルタイム画面の体験を邪魔しないよう12位直後の1枠のみ）
-    infeedSlots: [
-        {
-            afterRank: 12,
-            itemId: 'dating_instant',
-            badgeText: 'PR',
-            highlight: false
-        }
-    ]
+    // ランキング一覧は純粋なリアルタイム店舗データのみを表示（インフィード広告割り込みなし）
+    infeedSlots: []
 };

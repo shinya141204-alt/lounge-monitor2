@@ -351,7 +351,7 @@
             color: var(--accent-text);
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=11">
+    <link rel="stylesheet" href="/static/calm.css?v=12">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -666,38 +666,35 @@
         {% endif %}
 
         {% if not is_staff and not session.get('is_staff') %}
-        <section class="section-card" aria-label="入店前の準備と満席時のサブ選択肢">
-            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
-                <h2 style="margin:0;">{{ store.seo_name }}へ行く前の身だしなみ＆満席時の予備手段</h2>
-                <span style="font-size:0.69rem; color: var(--text-sub); border:1px solid var(--border-subtle); padding:1px 8px; border-radius:4px;">PR・編集部おすすめ</span>
-            </div>
+        <section class="section-card" aria-label="来店前の関連データと立ち回りガイド">
+            <h2 style="margin:0 0 10px;">{{ store.seo_name }}へ行く前に役立つ関連データ・コラム</h2>
             <p style="margin: 0 0 14px; font-size: 0.84rem; color: var(--text-sub);">
-                週末のピーク帯に男性の入店待ちが発生したときの予備手段や、距離の近いソファ席で好印象を残すための事前準備をまとめています。
+                近隣店舗との料金・イベント比較や、入店後の会話・2軒目へのスマートな繋げ方をデータと実例でまとめています。
             </p>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px;">
                 <div class="stat-subcard" style="display:flex; flex-direction:column; justify-content:space-between; gap:10px;">
                     <div>
-                        <div style="font-size: 0.72rem; color: var(--accent-text); font-weight: 700;">① 満席・男性待ちの夜の予備手段</div>
-                        <div style="font-size: 0.91rem; font-weight: 700; color: var(--text-main); margin: 4px 0;">今日これから近くで飲める相手も探せる恋活アプリ</div>
-                        <p style="margin: 0; font-size: 0.79rem; color: var(--text-sub); line-height: 1.55;">お店が混んでいる日や少人数の時間帯でも、近くで今から合流できる相手を探せる定番アプリを入れておくと空振りを防げます。</p>
+                        <div style="font-size: 0.72rem; color: var(--accent-text); font-weight: 700;">料金・開催中フェア比較</div>
+                        <div style="font-size: 0.9rem; font-weight: 700; color: var(--text-main); margin: 4px 0;">近隣ライバル店の料金＆現在人数ボード</div>
+                        <p style="margin: 0; font-size: 0.79rem; color: var(--text-sub); line-height: 1.55;">単独待機料金・時間帯別の60分目安・1名入店ルールと現在の男女比を一覧で見比べられます。</p>
                     </div>
-                    <a href="/link/dating_instant" target="_blank" rel="noopener noreferrer sponsored" class="btn-primary" style="justify-content:center; font-size:0.8rem; padding:8px 14px;">無料で相手を探してみる ›</a>
+                    <a href="/price-comparison" class="btn-secondary" style="justify-content:center; font-size:0.8rem; padding:7px 14px;">料金・イベント比較を見る ›</a>
                 </div>
                 <div class="stat-subcard" style="display:flex; flex-direction:column; justify-content:space-between; gap:10px;">
                     <div>
-                        <div style="font-size: 0.72rem; color: var(--accent-text); font-weight: 700;">② ソファ席の至近距離・清潔感対策</div>
-                        <div style="font-size: 0.91rem; font-weight: 700; color: var(--text-main); margin: 4px 0;">仕事帰りの青ヒゲ対策「メンズ医療ヒゲ脱毛」</div>
-                        <p style="margin: 0; font-size: 0.79rem; color: var(--text-sub); line-height: 1.55;">照明が暗めでも40〜50cmの距離では口元の青ヒゲや肌荒れが目に入りやすいため、医療脱毛で整えておくと会話に集中できます。</p>
+                        <div style="font-size: 0.72rem; color: var(--accent-text); font-weight: 700;">45分〜60分目の立ち回り</div>
+                        <div style="font-size: 0.9rem; font-weight: 700; color: var(--text-main); margin: 4px 0;">2軒目へ自然に誘うタイミングと店選び</div>
+                        <p style="margin: 0; font-size: 0.79rem; color: var(--text-sub); line-height: 1.55;">同じ席で長居するより会話が弾んだタイミングで声をかけるコツと、断られにくい提案方法を解説。</p>
                     </div>
-                    <a href="/link/mens_hair_removal" target="_blank" rel="noopener noreferrer sponsored" class="btn-secondary" style="justify-content:center; font-size:0.8rem; padding:8px 14px;">初回プラン・公式を見る ›</a>
+                    <a href="/guide/second-venue" class="btn-secondary" style="justify-content:center; font-size:0.8rem; padding:7px 14px;">2軒目の誘い方コラム ›</a>
                 </div>
                 <div class="stat-subcard" style="display:flex; flex-direction:column; justify-content:space-between; gap:10px;">
                     <div>
-                        <div style="font-size: 0.72rem; color: var(--accent-text); font-weight: 700;">③ 服装・肌ケア・準備まとめ</div>
-                        <div style="font-size: 0.91rem; font-weight: 700; color: var(--text-main); margin: 4px 0;">浮かないきれいめ私服＆スキンケア特集</div>
-                        <p style="margin: 0; font-size: 0.79rem; color: var(--text-sub); line-height: 1.55;">相席ラウンジで好印象な服装選び、顔のテカリ対策、審査制デートアプリとの使い分けを特集ページで解説しています。</p>
+                        <div style="font-size: 0.72rem; color: var(--accent-text); font-weight: 700;">ドレスコード・持ち物</div>
+                        <div style="font-size: 0.9rem; font-weight: 700; color: var(--text-main); margin: 4px 0;">必須の身分証・浮かない服装と事前準備</div>
+                        <p style="margin: 0; font-size: 0.79rem; color: var(--text-sub); line-height: 1.55;">入店時に必要な公的身分証の注意点や、仕事帰り・休日に好印象なスマートカジュアルの基本まとめ。</p>
                     </div>
-                    <a href="/grooming" class="btn-secondary" style="justify-content:center; font-size:0.8rem; padding:8px 14px;">身だしなみ・服選び特集へ ›</a>
+                    <a href="/grooming" class="btn-secondary" style="justify-content:center; font-size:0.8rem; padding:7px 14px;">服装・事前準備ガイド ›</a>
                 </div>
             </div>
         </section>

@@ -216,9 +216,10 @@ body:not(.theme-light) .pr-cta-btn,
 body:not(.theme-light) .how-to-start-btn,
 body:not(.theme-light) .pwa-install-action-btn,
 body:not(.theme-light) .second-map-btn,
-body:not(.theme-light) .article-read-btn {
+body:not(.theme-light) .article-read-btn,
+body:not(.theme-light) .card-inline-cta {
     background: var(--calm-surface-2) !important;
-    border: 1px solid rgba(200, 164, 110, 0.5) !important;
+    border: 1px solid rgba(200, 164, 110, 0.42) !important;
     color: #f1e3cb !important;
     box-shadow: none !important;
 }
@@ -281,10 +282,104 @@ body:not(.theme-light) .article-box,
 body:not(.theme-light) .page-hero,
 body:not(.theme-light) .area-section-card,
 body:not(.theme-light) .article-card,
-body:not(.theme-light) .portal-article-card {
+body:not(.theme-light) .portal-article-card,
+body:not(.theme-light) .seo-guide-section,
+body:not(.theme-light) .portal-area-directory {
     background: var(--calm-surface) !important;
     border-color: var(--calm-border) !important;
     box-shadow: none !important;
+}
+
+body:not(.theme-light) .seo-guide-card,
+body:not(.theme-light) .seo-faq-item {
+    background: var(--calm-surface-2) !important;
+    border: 1px solid var(--calm-border) !important;
+    box-shadow: none !important;
+}
+
+body:not(.theme-light) .seo-guide-card h3,
+body:not(.theme-light) .seo-faq-block h3,
+body:not(.theme-light) .seo-directory-block h3 {
+    color: #dfc496 !important;
+}
+
+body:not(.theme-light) .seo-guide-card p,
+body:not(.theme-light) .seo-faq-item p,
+body:not(.theme-light) .seo-dir-text {
+    color: var(--calm-sub) !important;
+}
+
+body:not(.theme-light) .seo-faq-item summary {
+    color: var(--calm-text) !important;
+}
+
+.editorial-inline-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    margin-top: 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--calm-accent);
+    text-decoration: none;
+    border-bottom: 1px solid rgba(200, 164, 110, 0.35);
+    padding-bottom: 1px;
+}
+
+.editorial-inline-link:hover {
+    border-bottom-color: var(--calm-accent);
+}
+
+body.theme-light .editorial-inline-link {
+    color: var(--calm-light-accent);
+    border-bottom-color: rgba(140, 107, 63, 0.35);
+}
+
+/* 控えめな記事末尾リファレンス枠（露骨な広告感を排除したエディトリアル注記） */
+.editorial-ref-note {
+    margin: 22px 0 18px;
+    padding: 12px 15px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--calm-border);
+    font-size: 0.78rem;
+    line-height: 1.65;
+    color: var(--calm-sub);
+    text-align: left;
+}
+
+.editorial-ref-note .ref-kicker {
+    display: inline-block;
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--calm-sub);
+    border: 1px solid var(--calm-border-strong);
+    border-radius: 4px;
+    padding: 0 6px;
+    margin-right: 6px;
+    vertical-align: baseline;
+}
+
+.editorial-ref-note a {
+    color: #dfc496 !important;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    font-weight: 600;
+}
+
+body.theme-light .editorial-ref-note {
+    background: var(--calm-light-surface-2);
+    border-color: var(--calm-light-border);
+    color: var(--calm-light-sub);
+}
+
+body.theme-light .editorial-ref-note .ref-kicker {
+    border-color: var(--calm-light-border-strong);
+    color: var(--calm-light-sub);
+}
+
+body.theme-light .editorial-ref-note a {
+    color: var(--calm-light-accent) !important;
 }
 
 body:not(.theme-light) .lead-box {
@@ -1218,6 +1313,35 @@ body.theme-light .master-inline-link {
     color: var(--calm-light-men) !important;
 }
 
+/* Staff / Master header: always center badge, title, subtitle, and controls across all viewport widths */
+body.staff-mode .header-top-row {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    gap: 8px !important;
+}
+
+body.staff-mode .header-brand-block {
+    width: 100%;
+    text-align: center !important;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+body.staff-mode .header-brand-block h1,
+body.staff-mode .header-brand-block .subtitle {
+    text-align: center !important;
+}
+
+body.staff-mode .header-top-row .header-controls {
+    width: 100%;
+    justify-content: center !important;
+    flex-wrap: wrap !important;
+}
+
 @media (max-width: 768px) {
     .container {
         padding: 10px 12px 24px 12px !important;
@@ -1258,22 +1382,34 @@ body.theme-light .master-inline-link {
         text-overflow: ellipsis;
     }
 
-    /* Staff/Master mode has 3-4 action buttons: stack cleanly into 2 rows so title NEVER wraps vertically */
+    /* Staff/Master mode on mobile: keep title, subtitle, and action buttons strictly centered */
     body.staff-mode .header-top-row {
         flex-direction: column !important;
-        align-items: stretch !important;
+        align-items: center !important;
+        justify-content: center !important;
+        text-align: center !important;
         gap: 8px !important;
     }
 
     body.staff-mode .header-brand-block {
         width: 100%;
+        text-align: center !important;
+        align-items: center !important;
     }
 
     body.staff-mode .header-top-row .header-controls {
         width: 100%;
-        justify-content: flex-start !important;
+        justify-content: center !important;
         flex-wrap: wrap !important;
         gap: 6px !important;
+    }
+
+    .staff-quickbar-header {
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        text-align: center !important;
+        gap: 4px !important;
     }
 
     .header-top-row .header-controls {

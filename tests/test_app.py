@@ -1014,9 +1014,9 @@ class GrowthFeaturesTests(unittest.TestCase):
             r = self.client.get(p)
             self.assertEqual(r.status_code, 200, f"Public path {p} returned {r.status_code}")
             body = r.data.decode('utf-8')
-            self.assertIn('/static/calm.css?v=11', body, f"{p} missing /static/calm.css?v=11")
+            self.assertIn('/static/calm.css?v=12', body, f"{p} missing /static/calm.css?v=12")
             if '/static/style.css' in body:
-                self.assertIn('/static/style.css?v=20261027_1', body, f"{p} missing /static/style.css?v=20261027_1")
+                self.assertIn('/static/style.css?v=20261027_2', body, f"{p} missing /static/style.css?v=20261027_2")
             self.assertIn('公式ホームページ', body, f"{p} missing official website verification notice")
 
         # Also check scheduled preview templates via staff session
@@ -1027,9 +1027,9 @@ class GrowthFeaturesTests(unittest.TestCase):
                 sr = self.client.get(sp)
                 self.assertEqual(sr.status_code, 200, f"Scheduled path {sp} returned {sr.status_code}")
                 sbody = sr.data.decode('utf-8')
-                self.assertIn('/static/calm.css?v=11', sbody, f"{sp} missing /static/calm.css?v=11")
+                self.assertIn('/static/calm.css?v=12', sbody, f"{sp} missing /static/calm.css?v=12")
                 if '/static/style.css' in sbody:
-                    self.assertIn('/static/style.css?v=20261027_1', sbody, f"{sp} missing /static/style.css?v=20261027_1")
+                    self.assertIn('/static/style.css?v=20261027_2', sbody, f"{sp} missing /static/style.css?v=20261027_2")
                 self.assertIn('公式ホームページ', sbody, f"{sp} missing official website verification notice")
         finally:
             with self.client.session_transaction() as s:
@@ -1618,13 +1618,13 @@ class FullAuditRegressionTests(unittest.TestCase):
         sw_resp = self.client.get('/sw.js')
         try:
             sw_txt = sw_resp.data.decode('utf-8')
-            self.assertIn("CACHE_NAME = 'aiseki-navi-v49'", sw_txt)
+            self.assertIn("CACHE_NAME = 'aiseki-navi-v50'", sw_txt)
             self.assertIn("event.waitUntil", sw_txt)
         finally:
             sw_resp.close()
 
     def test_layout_regression_and_fast_cache_invalidation(self):
-        """Ensure mobile staff header/card fixes, duplicate icon removal, and instant live-cache invalidation work."""
+        """Ensure mobile staff header centering, low-key editorial tone, and instant live-cache invalidation work."""
         # 1. Staff page (5555) should not have duplicate emoji inside SVG-equipped pills and should use light-safe classes
         with self.client.session_transaction() as s:
             s['is_staff'] = True
@@ -1639,6 +1639,13 @@ class FullAuditRegressionTests(unittest.TestCase):
         self.assertNotIn('<span>📊 系列・競合比較', raw_staff)
         self.assertNotIn('<span>🎉 イベント速報', raw_staff)
 
+        # Verify calm.css strictly centers body.staff-mode header title & action buttons
+        with open(os.path.join(ROOT, 'static', 'calm.css'), 'r', encoding='utf-8') as cf:
+            calm_txt = cf.read()
+        self.assertIn('body.staff-mode .header-brand-block', calm_txt)
+        self.assertIn('text-align: center !important;', calm_txt)
+        self.assertIn('justify-content: center !important;', calm_txt)
+
         # 2. Master page (2918) should render theme-aware master-subpanel classes instead of dark-only inline colors
         with self.client.session_transaction() as s:
             s['is_staff'] = True
@@ -1648,9 +1655,19 @@ class FullAuditRegressionTests(unittest.TestCase):
         raw_master = r_master.data.decode('utf-8')
         self.assertIn('master-subpanel', raw_master)
 
-        # 3. Clear staff session and verify dynamic SSR/JSON cache invalidates immediately when latest_data changes
+        # 3. Clear staff session: verify overt affiliate push cards are removed from '/' & store_detail, and live cache invalidates instantly
         with self.client.session_transaction() as s:
             s.clear()
+        pub_home = self.client.get('/').data.decode('utf-8')
+        self.assertNotIn('ヒゲ脱毛・スキンケアを見る', pub_home)
+        self.assertNotIn('近くで会える恋活アプリを見る', pub_home)
+        self.assertNotIn('スタイリスト監修コーデを見る', pub_home)
+        self.assertNotIn('特集アプリ', pub_home)
+        self.assertIn('データで見るお店選び・当日のチェックポイント', pub_home)
+
+        with open(os.path.join(ROOT, 'static', 'affiliate_config.js'), 'r', encoding='utf-8') as af:
+            aff_txt = af.read()
+        self.assertIn('infeedSlots: []', aff_txt)
         with app_module.data_lock:
             saved_full = list(app_module.latest_data.get('full_data') or [])
             saved_upd = app_module.latest_data.get('last_updated')

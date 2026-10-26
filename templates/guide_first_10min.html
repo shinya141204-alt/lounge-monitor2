@@ -158,7 +158,7 @@
             margin-top: 8px;
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=11">
+    <link rel="stylesheet" href="/static/calm.css?v=12">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -240,15 +240,8 @@
             </p>
 
             {% if not is_staff and not session.get('is_staff') %}
-            <div style="margin: 26px 0 18px; padding: 18px 20px; border-radius: 12px; background: #16171c; border: 1px solid rgba(200, 164, 110, 0.32);">
-                <div style="font-size: 0.72rem; font-weight: 700; color: #f1e3cb; margin-bottom: 6px;">PR｜ソファ席・至近距離の清潔感ケア（この記事のテーマに関連する定番サービス）</div>
-                <p style="font-size: 0.84rem; color: #dedad2; margin: 0 0 12px; line-height: 1.65;">
-                    仕事帰りの時間帯でも口元の青ヒゲや夕方の皮脂テカリを気にせず会話に集中したい方には、<strong>メンズ医療ヒゲ脱毛</strong>や<strong>ORBIS Mr.（オルビス ミスター）の洗顔・保湿ケア</strong>が定番です。
-                </p>
-                <div style="display: flex; flex-wrap: wrap; gap: 10px;">
-                    <a href="/link/hair_removal" target="_blank" rel="noopener noreferrer sponsored" style="display: inline-block; padding: 8px 15px; border-radius: 8px; background: rgba(200, 164, 110, 0.16); border: 1px solid rgba(200, 164, 110, 0.55); color: #f1e3cb; font-size: 0.81rem; font-weight: 700; text-decoration: none;">メンズ医療ヒゲ脱毛（初回プラン）を見る ›</a>
-                    <a href="/link/orbis" target="_blank" rel="noopener noreferrer sponsored" style="display: inline-block; padding: 8px 15px; border-radius: 8px; background: #1b1c22; border: 1px solid rgba(255, 255, 255, 0.16); color: #ebe8e3; font-size: 0.81rem; font-weight: 600; text-decoration: none;">ORBIS Mr. スキンケアを見る ›</a>
-                </div>
+            <div class="editorial-ref-note">
+                <span class="ref-kicker">PR</span>参考リンク：仕事帰りの口元・肌ケアには<a href="/link/hair_removal" target="_blank" rel="noopener noreferrer sponsored">メンズ医療ヒゲ脱毛</a>や<a href="/link/orbis" target="_blank" rel="noopener noreferrer sponsored">ORBIS Mr. スキンケア</a>などの定番ケアも選ばれています。
             </div>
             {% endif %}
 

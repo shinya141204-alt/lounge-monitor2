@@ -95,7 +95,7 @@
     <!-- Non-render-blocking web font (avoids waiting on Google Fonts at PWA cold launch) -->
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet"></noscript>
-    <link rel="stylesheet" href="/static/style.css?v=20261027_1">
+    <link rel="stylesheet" href="/static/style.css?v=20261027_2">
     <script>
         window.APP_CONFIG = {
             isStaff: {{ 'true' if (is_staff or session.get('is_staff')) else 'false' }},
@@ -106,9 +106,9 @@
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
          crossorigin="anonymous"></script>
-    <script src="/static/affiliate_config.js?v=10"></script>
+    <script src="/static/affiliate_config.js?v=11"></script>
     {% endif %}
-    <link rel="stylesheet" href="/static/calm.css?v=11">
+    <link rel="stylesheet" href="/static/calm.css?v=12">
 </head>
 
 <body class="{% if is_staff %}staff-mode{% endif %}">
@@ -934,8 +934,8 @@
                         </a>
                         <a href="/grooming" class="menu-grid-item" style="text-decoration: none; color: inherit;">
                             <div class="menu-grid-text">
-                                <strong>身だしなみ・準備</strong>
-                                <span>清潔感ケア＆満席時の恋活アプリ</span>
+                                <strong>服装・事前準備ガイド</strong>
+                                <span>ドレスコード・持ち物・当日のマナー</span>
                             </div>
                         </a>
                         <button class="menu-grid-item" onclick="closeMenuModal(); openHowToModal();">
@@ -1100,7 +1100,7 @@
                 <a href="/areas" class="portal-nav-link">エリアから探す</a>
                 <a href="/stats" class="portal-nav-link">統計データ白書</a>
                 <a href="/guide/brand-comparison" class="portal-nav-link">3大ブランド比較</a>
-                <a href="/grooming" class="portal-nav-link">身だしなみ・準備</a>
+                <a href="/grooming" class="portal-nav-link">服装・事前準備</a>
             </nav>
             {% endif %}
         </header>
@@ -1155,7 +1155,7 @@
                         {% else %}
                         <span class="staff-quickbar-badge">📊 現場データ専用 モニタリングパネル</span>
                         {% endif %}
-                        <span class="staff-quickbar-hint">※各店舗カードをタップすると曜日・時間帯別グラフと詳細ログが開きます</span>
+                        <span class="staff-quickbar-hint">※各店舗カードタップで曜日・時間帯グラフと詳細ログを表示</span>
                     </div>
                     <div class="staff-quickbar-actions">
                         {% if is_master %}
@@ -1443,30 +1443,30 @@
                     </div>
 
                     <div class="seo-guide-header" style="margin-top: 26px;">
-                        <h2>相席ラウンジへ行く前の身だしなみ・準備</h2>
+                        <h2>データで見るお店選び・当日のチェックポイント</h2>
                         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                            <a href="/grooming" class="guide-open-btn" style="text-decoration: none;">身だしなみ特集ページ ›</a>
+                            <a href="/stats" class="guide-open-btn" style="text-decoration: none;">統計データ白書 ›</a>
                         </div>
                     </div>
                     <div class="seo-guide-grid">
                         <article class="seo-guide-card">
-                            <h3>曜日・時間帯ごとの混み具合を知る</h3>
-                            <p>全国の主要ラウンジ（オリエンタルラウンジ・ag・JIS・XIX・ALFA・ヤタコイ・CLOVERS）では、<strong>金・土曜の21:00〜翌1:00</strong>が一番賑わいます。一方で、平日の20:00〜22:00頃は仕事帰りの女性が多く、男性の待ち時間もほとんどないため落ち着いて話しやすい時間帯です。店舗カードをタップすると、曜日・時間帯ごとの平均人数グラフも見られます。</p>
+                            <h3>曜日・時間帯ごとのピーク傾向を知る</h3>
+                            <p>全国の主要ラウンジ（オリエンタルラウンジ・ag・JIS・XIX・ALFA・ヤタコイ・CLOVERS）では、<strong>金・土曜の21:00〜翌1:00</strong>が一番賑わいます。一方、平日の20:00〜22:00頃は仕事帰りの女性が多く、男性の待ち時間も少ないため落ち着いて話しやすい時間帯です。店舗カードをタップすると曜日・時間帯別の平均推移グラフを確認できます。</p>
                         </article>
                         <article class="seo-guide-card">
-                            <h3>距離が近いソファ席での「ヒゲ・肌ケア」</h3>
-                            <p>ラウンジの照明は暗めですが、席の距離が近いので<strong>夕方の青ヒゲや肌のテカリ</strong>は意外と目に入ります。日頃から医療ヒゲ脱毛やシンプルなスキンケアで整えておくと、仕事帰りにそのまま寄っても口元を気にせず会話に集中できます。</p>
-                            <button class="card-inline-cta" onclick="openGuideModal('beauty')">ヒゲ脱毛・スキンケアを見る ›</button>
+                            <h3>近隣ライバル店を「料金×人数」で比べる</h3>
+                            <p>新宿・渋谷・梅田・難波・名古屋・福岡など複数ブランドが集まるエリアでは、徒歩数分の距離でも<strong>単独待機料金や開催中イベント、男女比</strong>が大きく異なります。入店前に近隣店舗を横並びで見比べると、待機コストや空振りを抑えられます。</p>
+                            <a href="/price-comparison" class="editorial-inline-link">店舗別料金・イベント比較ボードを見る ›</a>
                         </article>
                         <article class="seo-guide-card">
-                            <h3>お店が混んでいる日に頼れる「恋活アプリ」</h3>
-                            <p>週末のピーク時間にお店が満席で入れないときや、近くの店舗の男女比が偏っているときは、「今日これから飲める人」を探せるマッチングアプリを入れておくと便利です。1対1で落ち着いて会いたい方にも向いています。</p>
-                            <button class="card-inline-cta" onclick="openGuideModal('dating')">近くで会える恋活アプリを見る ›</button>
+                            <h3>「↗ +数字」の15分トレンドを活用する</h3>
+                            <p>店舗カードに表示される<strong>「↗ +数字」は直近約15分間で増えた人数</strong>を示しています。現在の合計人数だけでなく、女性が増え始めているタイミング（上昇気流）の店舗を選ぶと、入店後の相席テンポが良くなりやすくなります。</p>
+                            <a href="/guide/male-lead-mechanics" class="editorial-inline-link">来店データで見る店舗選びの法則 ›</a>
                         </article>
                         <article class="seo-guide-card">
-                            <h3>私服選びに迷わない「きれいめコーデ便」</h3>
-                            <p>「どんな服を着ていけばいいかわからない」という方は、スタイリストが選んだシンプルな大人コーデが届く定期便を使うのもひとつの手です。派手すぎず清潔感のある服が揃うので、休日の服選びがぐっと楽になります。</p>
-                            <button class="card-inline-cta" onclick="openGuideModal('grooming')">スタイリスト監修コーデを見る ›</button>
+                            <h3>入店時の持ち物・ドレスコードの基本</h3>
+                            <p>相席ラウンジでは男女ともに<strong>顔写真付きの公的身分証明書（運転免許証・マイナンバーカード・パスポート等）</strong>の提示が必須です。また、サンダル・ジャージ・作業着等の軽装は入店を断られる場合があるため、清潔感のある服装で向かうのが安心です。</p>
+                            <a href="/grooming" class="editorial-inline-link">服装マナー・事前準備ガイド ›</a>
                         </article>
                     </div>
 
@@ -1482,12 +1482,12 @@
                             <p>金曜・土曜・祝前日の22時以降は一番人が集まりますが、人気店では男性の入店待ちが出やすくなります。待たずに入りたい場合は、<strong>金・土曜なら20:00〜21:00頃の早めの時間</strong>、または<strong>水曜・木曜の20:30〜22:30頃</strong>が女性の比率も高くなりやすくおすすめです。</p>
                         </details>
                         <details class="seo-faq-item">
-                            <summary>Q. 相席ラウンジとマッチングアプリはどっちがいい？</summary>
-                            <p>「今日これから友達と楽しく飲みたい」なら相席ラウンジ、「事前に趣味や雰囲気が合う人と1対1で会いたい」ならマッチングアプリが向いています。週末にお店が混んでいるときの選択肢として、両方使えるようにしておくと空振りがなくなります。</p>
+                            <summary>Q. 営業中なのに「0 : 0」と表示されているのはなぜですか？</summary>
+                            <p>開店直後（18:00〜19:30頃）など、公式の営業時間内であっても店内にまだお客様が入っていない時間帯は「0 : 0（営業中）」と表示されます。各店舗の曜日別営業時間・定休日に基づき「営業時間外」とは区別して表示しています。</p>
                         </details>
                         <details class="seo-faq-item">
-                            <summary>Q. ラウンジへ行くときに気をつけたい身だしなみのポイントは？</summary>
-                            <p>特別なブランド服を着る必要はありませんが、「清潔感」だけはかなり見られています。特に<strong>夕方に伸びてくる青ヒゲのケア（ヒゲ脱毛）</strong>、顔のテカリや乾燥を防ぐ<strong>スキンケア</strong>、そして<strong>シワのないシンプルなジャケットやニット</strong>を意識しておくと、初対面でも安心感を持ってもらいやすくなります。</p>
+                            <summary>Q. 入店時に必要な身分証や服装（ドレスコード）の決まりはありますか？</summary>
+                            <p>全ブランド共通で年齢確認のため<strong>顔写真付きの公的身分証明書</strong>が必要です。服装に厳格なフォーマル指定はありませんが、タンクトップ・ビーチサンダル・スウェット等の過度な軽装はNGとなる店舗が多いため、仕事帰りのジャケットやシンプルなシャツ・ニットなど清潔感のあるスマートカジュアルが無難です。</p>
                         </details>
                     </div>
 
@@ -1541,9 +1541,9 @@
                 <a href="/guide/weekday-strategy" class="footer-pill-btn weekday-pill" title="平日攻略コラム">
                     <span>平日攻略</span>
                 </a>
-                <button type="button" class="footer-pill-btn" onclick="openGuideModal()">
-                    <span>特集アプリ</span>
-                </button>
+                <a href="/price-comparison" class="footer-pill-btn" title="料金・開催中イベント比較">
+                    <span>料金・イベント比較</span>
+                </a>
             </div>
 
             <!-- Middle Row: Official SNS Links -->
@@ -1727,7 +1727,7 @@
         window.INITIAL_STATUS_DATA = {{ initial_status | tojson }};
         {% endif %}
     </script>
-    <script src="/static/app.js?v=20261027_1" defer></script>
+    <script src="/static/app.js?v=20261027_2" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
@@ -1738,7 +1738,7 @@
                 window.location.reload();
             });
             window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/sw.js?v=49', { updateViaCache: 'none' })
+                navigator.serviceWorker.register('/sw.js?v=50', { updateViaCache: 'none' })
                     .then(function(reg) {
                         reg.update();
                         document.addEventListener('visibilitychange', function() {

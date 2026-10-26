@@ -1566,63 +1566,11 @@
         }
 
         function renderModalPrSlot(storeName) {
-            if (IS_STAFF) return;
             const slot = document.getElementById('modal-pr-slot');
-            if (!slot) return;
-            const master = getAffiliateMaster();
-            if (!master.enabled || !master.items || master.items.length === 0) {
+            if (slot) {
                 slot.classList.add('hidden');
-                return;
+                slot.innerHTML = '';
             }
-            slot.classList.remove('hidden');
-
-            // Store crowd-context aware recommendation:
-            // 1. Male surplus (men > women) -> Suggest instant dating app as waiting-time backup
-            // 2. Low female count (women < 10) -> Suggest instant dating app as quiet-hour backup
-            // 3. Favorable lounge crowd (women >= 10 && women >= men) -> Day: Grooming, Night: 2nd-stop backup
-            const liveStore = (lastData && Array.isArray(lastData.ranking))
-                ? lastData.ranking.find(s => s && s.name === storeName)
-                : null;
-            const wCount = liveStore ? (parseInt(liveStore.women || 0, 10) || 0) : 0;
-            const mCount = liveStore ? (parseInt(liveStore.men || 0, 10) || 0) : 0;
-
-            const currentHour = getJstHour();
-            const isNightTime = (currentHour >= 19 || currentHour < 6);
-
-            let targetCategory = 'dating';
-            let customBadge = '';
-            let customTitle = '';
-
-            if (liveStore && mCount > wCount) {
-                targetCategory = 'dating';
-                customBadge = '男性多め・待ち対策';
-                customTitle = 'お店が混んでいる日の予備に｜近くで今日飲める恋活アプリ';
-            } else if (liveStore && wCount < 10) {
-                targetCategory = 'dating';
-                customBadge = '少人数・空振り対策';
-                customTitle = 'ラウンジが渋い時間帯に｜今から近くで会える恋活アプリ';
-            } else if (isNightTime) {
-                targetCategory = 'dating';
-                customBadge = '合流・2軒目の予備に';
-                customTitle = '近くで今日これから飲める相手も探せる恋活アプリ';
-            } else {
-                targetCategory = 'beauty';
-                customBadge = '入店前の清潔感ケア';
-                customTitle = 'ソファ席の至近距離対策に｜メンズ医療ヒゲ脱毛（初回プラン）';
-            }
-
-            const matchedItem = (master.items || []).find(i => i.category === targetCategory) || master.items[0];
-            const isExternal = matchedItem.url && (matchedItem.url.startsWith('http') || matchedItem.url.startsWith('/link/'));
-            const displayBadge = customBadge || matchedItem.badge || 'PR';
-            const displayTitle = customTitle || matchedItem.shortTitle || matchedItem.name;
-
-            slot.innerHTML = `
-                <a href="${escapeHtml(matchedItem.url)}" ${isExternal ? 'target="_blank" rel="noopener noreferrer sponsored"' : ''} class="modal-pr-link" ${!isExternal ? `onclick="event.preventDefault(); openGuideModal('${targetCategory}')"` : ''}>
-                    <span class="pr-tag-pill">${escapeHtml(displayBadge)}</span>
-                    <span class="modal-pr-text">${escapeHtml(displayTitle)}</span>
-                    <span class="modal-pr-arrow">›</span>
-                </a>
-            `;
         }
 
         function openGuideModal(initialCategory = 'all') {
