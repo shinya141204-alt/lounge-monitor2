@@ -3,8 +3,6 @@ from collections import defaultdict
 import statistics
 import json
 import urllib.parse
-import requests
-import logger
 import local_db
 import sys
 
@@ -52,6 +50,7 @@ def generate_weekly_report():
         import os
         if os.environ.get("DISABLE_SHEETS") == "1":
             return {"error": "Google Sheets Disabled"}
+        import logger
         access_token = logger.get_access_token()
         spreadsheet_id = logger.get_spreadsheet_id()
         if not access_token or not spreadsheet_id:
@@ -130,64 +129,81 @@ def generate_weekly_report():
     weekday_buckets = defaultdict(lambda: {'w': [], 'm': [], 'pct': []})
     slot_buckets = defaultdict(lambda: {'w': [], 'm': [], 'pct': []})
     korea_keywords = ("カンナム", "ホンデ", "ソウル", "GANGNAM", "HONGDAE", "SEOUL")
+    end_ts_str = end_date.strftime("%Y-%m-%d %H:%M:%S")
+    _biz_date_memo = {}
+    _store_is_korea = {}
+
+    def _fast_biz_date_wd(date_part: str, is_early_am: bool):
+        key = (date_part, is_early_am)
+        cached = _biz_date_memo.get(key)
+        if cached is not None:
+            return cached
+        d_obj = datetime.date.fromisoformat(date_part)
+        if is_early_am:
+            d_obj = d_obj - datetime.timedelta(days=1)
+        res = (d_obj.isoformat(), d_obj.weekday())
+        _biz_date_memo[key] = res
+        return res
 
     for item in items:
         try:
             ts_str = item.get('ts', '')
             name = item.get('name', '')
+            if not ts_str or not name or len(ts_str) < 16 or ts_str == 'Timestamp':
+                continue
+            if not (start_ts_str <= ts_str <= end_ts_str):
+                continue
+
+            is_kor = _store_is_korea.get(name)
+            if is_kor is None:
+                uname = name.upper()
+                is_kor = any(k in uname for k in korea_keywords)
+                _store_is_korea[name] = is_kor
+            if is_kor:
+                continue
+
             men = int(item.get('men', 0) or 0)
             women = int(item.get('women', 0) or 0)
             brand = (item.get('source') or 'UNKNOWN').upper()
 
-            if not ts_str or not name or ts_str == 'Timestamp':
-                continue
-            if any(k in name.upper() for k in korea_keywords):
-                continue
+            hour_str = ts_str[11:13]
+            h_int = int(hour_str)
+            date_str, wd_idx = _fast_biz_date_wd(ts_str[:10], h_int <= 6)
 
-            dt = datetime.datetime.strptime(ts_str, "%Y-%m-%d %H:%M:%S")
+            sd = store_data[name]
+            if brand != 'UNKNOWN':
+                sd['brand'] = brand
+            elif not sd['brand']:
+                sd['brand'] = name.split(' ')[0].upper()
 
-            if start_date <= dt <= end_date:
-                # Use business date (until 6 AM belongs to previous day)
-                date_str = get_business_date_str(dt)
-                biz_dt = datetime.datetime.strptime(date_str, "%Y-%m-%d")
-                wd_idx = biz_dt.weekday()
-                hour_str = dt.strftime("%H")
-                h_int = dt.hour
+            sd['days_active'].add(date_str)
+            sd['hours'][hour_str].append(women)
+            tot = women + men
+            if tot >= 8 and (19 <= h_int <= 23 or 0 <= h_int <= 2):
+                wpct = (women / tot) * 100.0
+                sd['ratios'].append(wpct)
+                weekday_buckets[wd_idx]['w'].append(women)
+                weekday_buckets[wd_idx]['m'].append(men)
+                weekday_buckets[wd_idx]['pct'].append(wpct)
 
-                sd = store_data[name]
-                if brand != 'UNKNOWN':
-                    sd['brand'] = brand
-                elif not sd['brand']:
-                    sd['brand'] = name.split(' ')[0].upper()
+                if 19 <= h_int <= 20:
+                    s_key = "19:00〜21:00"
+                elif 21 <= h_int <= 22:
+                    s_key = "21:00〜23:00"
+                elif h_int == 23 or h_int == 0:
+                    s_key = "23:00〜翌1:00"
+                else:
+                    s_key = "翌1:00〜03:00"
+                slot_buckets[s_key]['w'].append(women)
+                slot_buckets[s_key]['m'].append(men)
+                slot_buckets[s_key]['pct'].append(wpct)
 
-                sd['days_active'].add(date_str)
-                sd['hours'][hour_str].append(women)
-                tot = women + men
-                if tot >= 8 and (19 <= h_int <= 23 or 0 <= h_int <= 2):
-                    wpct = (women / tot) * 100.0
-                    sd['ratios'].append(wpct)
-                    weekday_buckets[wd_idx]['w'].append(women)
-                    weekday_buckets[wd_idx]['m'].append(men)
-                    weekday_buckets[wd_idx]['pct'].append(wpct)
+            if women > sd['daily_peaks_w'][date_str]:
+                sd['daily_peaks_w'][date_str] = women
+            if men > sd['daily_peaks_m'][date_str]:
+                sd['daily_peaks_m'][date_str] = men
 
-                    if 19 <= h_int <= 20:
-                        s_key = "19:00〜21:00"
-                    elif 21 <= h_int <= 22:
-                        s_key = "21:00〜23:00"
-                    elif h_int == 23 or h_int == 0:
-                        s_key = "23:00〜翌1:00"
-                    else:
-                        s_key = "翌1:00〜03:00"
-                    slot_buckets[s_key]['w'].append(women)
-                    slot_buckets[s_key]['m'].append(men)
-                    slot_buckets[s_key]['pct'].append(wpct)
-
-                if women > sd['daily_peaks_w'][date_str]:
-                    sd['daily_peaks_w'][date_str] = women
-                if men > sd['daily_peaks_m'][date_str]:
-                    sd['daily_peaks_m'][date_str] = men
-
-                brand_totals[sd['brand']]['stores'].add(name)
+            brand_totals[sd['brand']]['stores'].add(name)
         except Exception:
             continue
 
@@ -210,21 +226,26 @@ def generate_weekly_report():
         'timeslot_summary': [],
     }
 
+    def _fmean(seq):
+        return (sum(seq) / len(seq)) if seq else 0.0
+
     for name, data in store_data.items():
         if not data['daily_peaks_w']:
             continue
 
-        avg_w = statistics.mean(data['daily_peaks_w'].values())
-        avg_m = statistics.mean(data['daily_peaks_m'].values())
-        max_w = max(data['daily_peaks_w'].values())
-        avg_wpct = round(statistics.mean(data['ratios']), 1) if data['ratios'] else (
+        peaks_w = list(data['daily_peaks_w'].values())
+        peaks_m = list(data['daily_peaks_m'].values())
+        avg_w = _fmean(peaks_w)
+        avg_m = _fmean(peaks_m)
+        max_w = max(peaks_w)
+        avg_wpct = round(_fmean(data['ratios']), 1) if data['ratios'] else (
             round((avg_w / max(1.0, avg_w + avg_m)) * 100.0, 1)
         )
 
         peak_hour = "22:00"
         max_avg_h = -1
         for h, counts in data['hours'].items():
-            avg_h = statistics.mean(counts)
+            avg_h = _fmean(counts)
             if avg_h > max_avg_h:
                 max_avg_h = avg_h
                 peak_hour = f"{h}:00"
@@ -275,9 +296,9 @@ def generate_weekly_report():
     for idx, wd_label in enumerate(wd_names):
         wb = weekday_buckets.get(idx)
         if wb and wb['pct']:
-            w_avg = round(statistics.mean(wb['w']), 1)
-            m_avg = round(statistics.mean(wb['m']), 1)
-            pct_avg = round(statistics.mean(wb['pct']), 1)
+            w_avg = round(_fmean(wb['w']), 1)
+            m_avg = round(_fmean(wb['m']), 1)
+            pct_avg = round(_fmean(wb['pct']), 1)
         else:
             # Fallback baseline if a specific weekday isn't in a partial DB window
             default_pcts = [53.2, 54.5, 57.8, 56.9, 51.4, 50.8, 55.1]
@@ -303,7 +324,7 @@ def generate_weekly_report():
     ]
     for s_key, s_title, s_desc, fallback_pct in slot_defs:
         sb = slot_buckets.get(s_key)
-        pct_val = round(statistics.mean(sb['pct']), 1) if (sb and sb['pct']) else fallback_pct
+        pct_val = round(_fmean(sb['pct']), 1) if (sb and sb['pct']) else fallback_pct
         report['timeslot_summary'].append({
             'slot': s_key,
             'title': s_title,

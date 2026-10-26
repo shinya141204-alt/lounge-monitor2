@@ -1014,9 +1014,9 @@ class GrowthFeaturesTests(unittest.TestCase):
             r = self.client.get(p)
             self.assertEqual(r.status_code, 200, f"Public path {p} returned {r.status_code}")
             body = r.data.decode('utf-8')
-            self.assertIn('/static/calm.css?v=10', body, f"{p} missing /static/calm.css?v=10")
+            self.assertIn('/static/calm.css?v=11', body, f"{p} missing /static/calm.css?v=11")
             if '/static/style.css' in body:
-                self.assertIn('/static/style.css?v=20261026_1', body, f"{p} missing /static/style.css?v=20261026_1")
+                self.assertIn('/static/style.css?v=20261027_1', body, f"{p} missing /static/style.css?v=20261027_1")
             self.assertIn('公式ホームページ', body, f"{p} missing official website verification notice")
 
         # Also check scheduled preview templates via staff session
@@ -1027,9 +1027,9 @@ class GrowthFeaturesTests(unittest.TestCase):
                 sr = self.client.get(sp)
                 self.assertEqual(sr.status_code, 200, f"Scheduled path {sp} returned {sr.status_code}")
                 sbody = sr.data.decode('utf-8')
-                self.assertIn('/static/calm.css?v=10', sbody, f"{sp} missing /static/calm.css?v=10")
+                self.assertIn('/static/calm.css?v=11', sbody, f"{sp} missing /static/calm.css?v=11")
                 if '/static/style.css' in sbody:
-                    self.assertIn('/static/style.css?v=20261026_1', sbody, f"{sp} missing /static/style.css?v=20261026_1")
+                    self.assertIn('/static/style.css?v=20261027_1', sbody, f"{sp} missing /static/style.css?v=20261027_1")
                 self.assertIn('公式ホームページ', sbody, f"{sp} missing official website verification notice")
         finally:
             with self.client.session_transaction() as s:
@@ -1617,9 +1617,72 @@ class FullAuditRegressionTests(unittest.TestCase):
 
         sw_resp = self.client.get('/sw.js')
         try:
-            self.assertIn("CACHE_NAME = 'aiseki-navi-v48'", sw_resp.data.decode('utf-8'))
+            sw_txt = sw_resp.data.decode('utf-8')
+            self.assertIn("CACHE_NAME = 'aiseki-navi-v49'", sw_txt)
+            self.assertIn("event.waitUntil", sw_txt)
         finally:
             sw_resp.close()
+
+    def test_layout_regression_and_fast_cache_invalidation(self):
+        """Ensure mobile staff header/card fixes, duplicate icon removal, and instant live-cache invalidation work."""
+        # 1. Staff page (5555) should not have duplicate emoji inside SVG-equipped pills and should use light-safe classes
+        with self.client.session_transaction() as s:
+            s['is_staff'] = True
+            s['is_master'] = False
+        r_staff = self.client.get('/staff', headers={'Accept-Encoding': 'gzip'})
+        self.assertEqual(r_staff.status_code, 200)
+        import gzip as _gz
+        raw_staff = _gz.decompress(r_staff.data).decode('utf-8') if r_staff.headers.get('Content-Encoding') == 'gzip' else r_staff.data.decode('utf-8')
+        self.assertIn('staff-master-switch-btn', raw_staff)
+        self.assertIn('<span>週間レポート（全店舗の集計・ピークランキング）</span>', raw_staff)
+        self.assertNotIn('<span>📅 週間レポート', raw_staff)
+        self.assertNotIn('<span>📊 系列・競合比較', raw_staff)
+        self.assertNotIn('<span>🎉 イベント速報', raw_staff)
+
+        # 2. Master page (2918) should render theme-aware master-subpanel classes instead of dark-only inline colors
+        with self.client.session_transaction() as s:
+            s['is_staff'] = True
+            s['is_master'] = True
+        r_master = self.client.get('/staff')
+        self.assertEqual(r_master.status_code, 200)
+        raw_master = r_master.data.decode('utf-8')
+        self.assertIn('master-subpanel', raw_master)
+
+        # 3. Clear staff session and verify dynamic SSR/JSON cache invalidates immediately when latest_data changes
+        with self.client.session_transaction() as s:
+            s.clear()
+        with app_module.data_lock:
+            saved_full = list(app_module.latest_data.get('full_data') or [])
+            saved_upd = app_module.latest_data.get('last_updated')
+            saved_seed = app_module.latest_data.get('is_seed')
+        try:
+            with app_module.data_lock:
+                app_module.latest_data['full_data'] = [{
+                    'name': 'OLG 新宿', 'women': 41, 'men': 19, 'source': 'oriental',
+                    'region': 'Kanto', 'women_diff': 3, 'men_diff': 1,
+                    'votes': {'smooth': 1, 'waiting': 0, 'lively': 0},
+                }]
+                app_module.latest_data['last_updated'] = '2026-10-27 21:00:00'
+                app_module.latest_data['is_seed'] = False
+            r1 = self.client.get('/')
+            self.assertIn('>41<', r1.data.decode('utf-8'))
+            s1 = self.client.get('/api/status').get_json()
+            self.assertEqual(s1['ranking'][0]['women'], 41)
+
+            # Mutate women count -> both '/' SSR HTML and '/api/status' JSON must reflect 58 immediately
+            with app_module.data_lock:
+                app_module.latest_data['full_data'][0]['women'] = 58
+                app_module.latest_data['last_updated'] = '2026-10-27 21:01:00'
+            r2 = self.client.get('/')
+            self.assertIn('>58<', r2.data.decode('utf-8'))
+            s2 = self.client.get('/api/status').get_json()
+            self.assertEqual(s2['ranking'][0]['women'], 58)
+        finally:
+            with app_module.data_lock:
+                app_module.latest_data['full_data'] = saved_full
+                app_module.latest_data['last_updated'] = saved_upd
+                app_module.latest_data['is_seed'] = saved_seed
+            app_module.clear_fast_http_caches()
 
 
 if __name__ == '__main__':

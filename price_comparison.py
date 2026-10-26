@@ -1685,15 +1685,41 @@ def get_store_price_profile(
     }
 
 
+_clusters_cache = {"key": None, "data": None}
+_nearby_comp_cache = {}
+
+
+def _build_live_cache_sig(live_stores, all_evs, now_jst):
+    live_sig = tuple(
+        (s.get("name"), int(s.get("women") or 0), int(s.get("men") or 0), int(s.get("women_diff") or 0), int(s.get("men_diff") or 0))
+        for s in (live_stores or [])
+    )
+    ev_sig = (len(all_evs or []), all_evs[0].get("title") if all_evs else "")
+    jst_tz = datetime.timezone(datetime.timedelta(hours=9))
+    eff_dt = now_jst if now_jst is not None else datetime.datetime.now(jst_tz)
+    time_sig = eff_dt.strftime("%Y-%m-%d %H:%M")
+    try:
+        hp = store_hours.get_business_hours_status("OLG 新宿", now_jst=now_jst, total_guests=0)
+        sh_sig = (id(store_hours.get_business_hours_status), hp.get("is_open_now"), hp.get("today_hours_label"))
+    except Exception:
+        sh_sig = None
+    return (live_sig, ev_sig, time_sig, sh_sig)
+
+
 def build_area_comparison_clusters(live_stores: list = None, now_jst: datetime.datetime = None) -> dict:
     """Build all 10 area comparison clusters + live event verification summary + full 51-store catalog."""
-    live_map = {s.get("name"): s for s in (live_stores or [])}
     all_evs = []
     try:
         import events
         all_evs = events.fetch_all_events(allow_blocking=False)
     except Exception:
         all_evs = []
+
+    cache_key = _build_live_cache_sig(live_stores, all_evs, now_jst)
+    if _clusters_cache["key"] == cache_key and _clusters_cache["data"] is not None:
+        return _clusters_cache["data"]
+
+    live_map = {s.get("name"): s for s in (live_stores or [])}
 
     current_slot_info = get_current_time_slot_info(now_jst)
     clusters_out = []
@@ -1769,7 +1795,7 @@ def build_area_comparison_clusters(live_stores: list = None, now_jst: datetime.d
         ]
         verified_event_stores.extend(fallback_extra[: (6 - len(verified_event_stores))])
 
-    return {
+    result_payload = {
         "clusters": clusters_out,
         "verified_event_stores": verified_event_stores[:8],
         "brand_specs": [BRAND_PRICE_SPECS["OLG"], BRAND_PRICE_SPECS["ag"], BRAND_PRICE_SPECS["JIS"]],
@@ -1779,18 +1805,27 @@ def build_area_comparison_clusters(live_stores: list = None, now_jst: datetime.d
         "min_women_top": MIN_WOMEN_FOR_TOP_PICK,
         "jp_holidays": sorted(store_hours.JP_HOLIDAYS),
     }
+    _clusters_cache["key"] = cache_key
+    _clusters_cache["data"] = result_payload
+    return result_payload
 
 
 def get_nearby_comparison_for_store(store_name: str, live_stores: list = None, now_jst: datetime.datetime = None) -> dict:
     """Return the store's own price profile + all sibling stores in the same urban cluster
     for embedding directly on `/store/<slug>`."""
-    live_map = {s.get("name"): s for s in (live_stores or [])}
     all_evs = []
     try:
         import events
         all_evs = events.fetch_all_events(allow_blocking=False)
     except Exception:
         all_evs = []
+
+    nb_key = (store_name, _build_live_cache_sig(live_stores, all_evs, now_jst))
+    cached_nb = _nearby_comp_cache.get(nb_key)
+    if cached_nb is not None:
+        return cached_nb
+
+    live_map = {s.get("name"): s for s in (live_stores or [])}
 
     target_cluster = None
     for cl in COMPARISON_CLUSTERS:
@@ -1805,13 +1840,17 @@ def get_nearby_comparison_for_store(store_name: str, live_stores: list = None, n
             all_events_Pool=all_evs,
             now_jst=now_jst,
         )
-        return {
+        res = {
             "self_profile": self_prof,
             "cluster_id": "shinjuku",
             "cluster_title": f"{self_prof['area_label']}エリアの料金・イベント比較",
             "stores": [self_prof],
             "jp_holidays": sorted(store_hours.JP_HOLIDAYS),
         }
+        if len(_nearby_comp_cache) > 120:
+            _nearby_comp_cache.clear()
+        _nearby_comp_cache[nb_key] = res
+        return res
 
     profiles = []
     self_prof = None
@@ -1837,10 +1876,14 @@ def get_nearby_comparison_for_store(store_name: str, live_stores: list = None, n
         )
         best_p["is_best_in_cluster"] = True
 
-    return {
+    res = {
         "self_profile": self_prof or (profiles[0] if profiles else None),
         "cluster_id": target_cluster["id"],
         "cluster_title": target_cluster["title"],
         "stores": profiles,
         "jp_holidays": sorted(store_hours.JP_HOLIDAYS),
     }
+    if len(_nearby_comp_cache) > 120:
+        _nearby_comp_cache.clear()
+    _nearby_comp_cache[nb_key] = res
+    return res

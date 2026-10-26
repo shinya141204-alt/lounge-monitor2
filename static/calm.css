@@ -1153,7 +1153,71 @@ body.theme-light .sns-compact-pill:hover {
     color: var(--calm-light-accent);
 }
 
-/* ---------- 13. スマホ ファーストビュー圧縮（Step 1） ---------- */
+/* ---------- 13. スマホ ファーストビュー圧縮 ＆ 表示崩れ完全防止 ＆ レンダリング高速化 ---------- */
+/* Offscreen layout skipping for 53-store grid & below-the-fold editorial blocks */
+body:not(.theme-list) #ranking-list > .ranking-item:nth-child(n+16) {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 68px;
+}
+
+.seo-guide-section,
+.portal-footer-sitemap,
+.app-footer {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 420px;
+}
+
+/* Light-mode warm paper harmony for staff & master panels and header actions */
+body.theme-light .staff-analytics-quickbar {
+    background: var(--calm-light-surface) !important;
+    border: 1px solid var(--calm-light-border-strong) !important;
+    box-shadow: none !important;
+}
+
+body.theme-light .staff-quickbar-badge {
+    color: var(--calm-light-accent) !important;
+}
+
+body.theme-light .master-quickbar-badge {
+    background: var(--calm-light-accent-soft) !important;
+    border-color: rgba(140, 107, 63, 0.45) !important;
+    color: var(--calm-light-accent) !important;
+}
+
+body.theme-light .staff-action-pill {
+    background: var(--calm-light-surface-2) !important;
+    border-color: var(--calm-light-border-strong) !important;
+    color: var(--calm-light-text) !important;
+    box-shadow: none !important;
+}
+
+body.theme-light .staff-action-pill:hover {
+    background: var(--calm-light-accent-soft) !important;
+    border-color: rgba(140, 107, 63, 0.45) !important;
+    color: var(--calm-light-text) !important;
+}
+
+body.theme-light .staff-logout-btn {
+    background: rgba(176, 90, 104, 0.09) !important;
+    border-color: rgba(176, 90, 104, 0.48) !important;
+    color: #96293c !important;
+}
+
+body.theme-light .staff-master-switch-btn {
+    background: var(--calm-light-accent-soft) !important;
+    border-color: rgba(140, 107, 63, 0.52) !important;
+    color: #704f24 !important;
+}
+
+body.theme-light .master-sched-card {
+    background: var(--calm-light-surface-2) !important;
+    border-color: var(--calm-light-border) !important;
+}
+
+body.theme-light .master-inline-link {
+    color: var(--calm-light-men) !important;
+}
+
 @media (max-width: 768px) {
     .container {
         padding: 10px 12px 24px 12px !important;
@@ -1167,19 +1231,23 @@ body.theme-light .sns-compact-pill:hover {
         display: flex !important;
         align-items: center !important;
         justify-content: space-between !important;
+        flex-wrap: wrap !important;
         gap: 8px !important;
         margin-bottom: 6px !important;
     }
 
     .header-brand-block {
         text-align: left !important;
-        min-width: 0;
+        min-width: 150px;
+        flex: 1 1 auto;
     }
 
     .header-brand-block h1 {
-        font-size: 1.24rem !important;
-        line-height: 1.2 !important;
+        font-size: 1.2rem !important;
+        line-height: 1.25 !important;
         margin: 0 !important;
+        white-space: nowrap;
+        word-break: keep-all;
     }
 
     .header-brand-block .subtitle {
@@ -1188,6 +1256,24 @@ body.theme-light .sns-compact-pill:hover {
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+    }
+
+    /* Staff/Master mode has 3-4 action buttons: stack cleanly into 2 rows so title NEVER wraps vertically */
+    body.staff-mode .header-top-row {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 8px !important;
+    }
+
+    body.staff-mode .header-brand-block {
+        width: 100%;
+    }
+
+    body.staff-mode .header-top-row .header-controls {
+        width: 100%;
+        justify-content: flex-start !important;
+        flex-wrap: wrap !important;
+        gap: 6px !important;
     }
 
     .header-top-row .header-controls {
@@ -1199,8 +1285,24 @@ body.theme-light .sns-compact-pill:hover {
     }
 
     .header-top-row .header-btn.labeled-btn {
-        padding: 6px 11px !important;
-        font-size: 0.76rem !important;
+        padding: 6px 10px !important;
+        font-size: 0.75rem !important;
+        white-space: nowrap;
+    }
+
+    .staff-analytics-quickbar {
+        padding: 10px 12px !important;
+    }
+
+    .staff-quickbar-actions {
+        gap: 7px !important;
+    }
+
+    .staff-action-pill {
+        width: 100%;
+        justify-content: flex-start;
+        padding: 8px 12px !important;
+        font-size: 0.8rem !important;
     }
 
     .portal-global-nav {

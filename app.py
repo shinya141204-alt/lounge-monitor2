@@ -119,8 +119,12 @@ def compress_response(response):
             response.headers['Cache-Control'] = 'public, max-age=86400'
     elif response.content_type and 'text/html' in response.content_type and response.status_code == 200:
         if 'Cache-Control' not in response.headers:
-            response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
-            response.headers['Pragma'] = 'no-cache'
+            if request.path.startswith('/staff'):
+                response.headers['Cache-Control'] = 'private, no-store, no-cache, must-revalidate, max-age=0'
+                response.headers['Pragma'] = 'no-cache'
+            else:
+                # Allow browser back/forward cache (bfcache) for instant 0ms back-navigation while revalidating normal loads
+                response.headers['Cache-Control'] = 'private, no-cache, must-revalidate, max-age=0'
 
     # 2. Gzip compression
     if (
@@ -173,7 +177,7 @@ def _ensure_scheduler_started_async():
         try:
             local_db.init_db()
             restore_latest_data_if_empty()
-            local_db.start_background_sync(days=30, on_recent_synced=refresh_momentum_from_db)
+            local_db.start_background_sync(days=21, on_recent_synced=refresh_momentum_from_db)
             threading.Thread(target=local_db.restore_votes_from_sheets, kwargs={'hours': 24}, daemon=True).start()
 
             scheduler = BackgroundScheduler(timezone="UTC", job_defaults={
@@ -264,7 +268,16 @@ def _ensure_scheduler_started_async():
             scheduler.add_job(func=run_scheduled_weekly_x_post, trigger="cron", day_of_week="sun", hour=10, minute=0, jitter=300)
             scheduler.start()
             trigger_background_fetch_if_needed()
-            threading.Thread(target=_crawl_events_job, daemon=True).start()
+            def _initial_events_warmup():
+                try:
+                    import events as _ev_boot
+                    if os.path.exists(_ev_boot.CACHE_FILE):
+                        _ev_boot.fetch_all_events(force_refresh=False, allow_blocking=False)
+                        time.sleep(45)
+                    _crawl_events_job()
+                except Exception as err:
+                    logging.error(f"Initial events warmup failed: {err}")
+            threading.Thread(target=_initial_events_warmup, daemon=True).start()
             logging.info("APScheduler & local SQLite high-speed cache started successfully")
         except Exception as e:
             logging.error(f"Scheduler boot error: {e}")
@@ -297,6 +310,10 @@ def clear_analysis_and_report_caches():
         weekly_report._report_cache['last_fetched'] = None
     except Exception:
         pass
+    try:
+        clear_fast_http_caches()
+    except Exception:
+        pass
 
 
 local_db.register_sync_complete_callback(clear_analysis_and_report_caches)
@@ -306,11 +323,34 @@ local_db.register_sync_complete_callback(clear_analysis_and_report_caches)
 def get_store_analysis(store_name):
     """Returns aggregated hourly and weekly data for a specific store."""
     import store_analysis
+    raw_entry = (analysis_cache.get('raw_data_by_store') or {}).get(store_name)
+    proc_entry = (analysis_cache.get('processed_per_store') or {}).get(store_name)
+    raw_ts = raw_entry.get('last_fetched') if isinstance(raw_entry, dict) else None
+    if proc_entry is not None and raw_ts is not None:
+        return _cached_json_response(
+            ('analysis', local_db.DB_PATH, store_name, id(proc_entry), raw_ts),
+            lambda: store_analysis.compute_store_analysis_payload(
+                store_name,
+                analysis_cache=analysis_cache,
+                cache_duration=ANALYSIS_CACHE_DURATION,
+            ),
+            ttl_sec=60.0,
+        )
     payload, status_code = store_analysis.compute_store_analysis_payload(
         store_name,
         analysis_cache=analysis_cache,
         cache_duration=ANALYSIS_CACHE_DURATION,
     )
+    if status_code == 200:
+        new_proc = (analysis_cache.get('processed_per_store') or {}).get(store_name)
+        new_raw = (analysis_cache.get('raw_data_by_store') or {}).get(store_name)
+        new_ts = new_raw.get('last_fetched') if isinstance(new_raw, dict) else None
+        if new_proc is not None:
+            return _cached_json_response(
+                ('analysis', local_db.DB_PATH, store_name, id(new_proc), new_ts),
+                lambda: (payload, 200),
+                ttl_sec=60.0,
+            )
     return jsonify(payload), status_code
 
 
@@ -459,13 +499,172 @@ _BRAND_CLS_MAP = {
     'CLOVERS': 'brand-clovers',
 }
 
+_ssr_payload_cache_lock = threading.Lock()
+_ssr_payload_cache = {'key': None, 'payload': None}
+_status_json_cache_lock = threading.Lock()
+_status_json_cache = {'key': None, 'raw': None, 'gzip': None}
+_api_json_cache_lock = threading.Lock()
+_api_json_cache = {}
+_page_html_cache_lock = threading.Lock()
+_page_html_cache = {}
+_PAGE_HTML_CACHE_MAX = 96
+
+
+def clear_fast_http_caches():
+    """Clear short-lived SSR/HTML/status caches when underlying data mutates."""
+    with _ssr_payload_cache_lock:
+        _ssr_payload_cache['key'] = None
+        _ssr_payload_cache['payload'] = None
+    with _status_json_cache_lock:
+        _status_json_cache['key'] = None
+        _status_json_cache['raw'] = None
+        _status_json_cache['gzip'] = None
+    with _api_json_cache_lock:
+        _api_json_cache.clear()
+    with _page_html_cache_lock:
+        _page_html_cache.clear()
+
+
+def _build_precompressed_response(raw_bytes: bytes, gz_bytes: bytes, content_type: str, status_code: int = 200):
+    wants_gzip = (gz_bytes is not None) and ('gzip' in request.headers.get('Accept-Encoding', '').lower())
+    if wants_gzip:
+        resp = Response(gz_bytes, status=status_code, content_type=content_type)
+        resp.headers['Content-Encoding'] = 'gzip'
+        resp.headers['Content-Length'] = len(gz_bytes)
+        resp.headers['Vary'] = 'Accept-Encoding'
+        return resp
+    return Response(raw_bytes, status=status_code, content_type=content_type)
+
+
+def _cached_json_response(cache_key, build_dict_fn, ttl_sec=30.0):
+    now_mono = time.monotonic()
+    with _api_json_cache_lock:
+        hit = _api_json_cache.get(cache_key)
+        if hit is not None and (now_mono - hit[0] < ttl_sec):
+            return _build_precompressed_response(hit[1], hit[2], 'application/json', hit[3])
+    payload, status_code = build_dict_fn()
+    raw_bytes = json.dumps(payload, ensure_ascii=False).encode('utf-8')
+    gz_bytes = gzip.compress(raw_bytes, compresslevel=6) if (status_code == 200 and len(raw_bytes) > 500) else None
+    if status_code == 200:
+        with _api_json_cache_lock:
+            if len(_api_json_cache) >= 96:
+                _api_json_cache.clear()
+            _api_json_cache[cache_key] = (now_mono, raw_bytes, gz_bytes, status_code)
+    return _build_precompressed_response(raw_bytes, gz_bytes, 'application/json', status_code)
+
+
+def _live_data_signature(stores, last_updated=None, is_seed=False):
+    return (
+        last_updated,
+        bool(is_seed),
+        tuple(
+            (
+                s.get('name'),
+                int(s.get('women') or 0),
+                int(s.get('men') or 0),
+                int(s.get('women_diff') or 0),
+                int(s.get('men_diff') or 0),
+                int((s.get('votes') or {}).get('smooth') or 0),
+                int((s.get('votes') or {}).get('waiting') or 0),
+            )
+            for s in (stores or [])
+        ),
+    )
+
+
+def _get_cached_events_nonblocking():
+    """Return events from memory or disk cache without spawning network threads."""
+    try:
+        import events as _ev
+        mem_evs = _ev._events_memory_cache.get('events')
+        if mem_evs:
+            return mem_evs, _ev._events_memory_cache.get('updated_at')
+        if os.path.exists(_ev.CACHE_FILE):
+            with open(_ev.CACHE_FILE, 'r', encoding='utf-8') as f:
+                disk_data = json.load(f)
+            if disk_data.get('events'):
+                disk_data['events'] = _ev._ensure_regional_events(disk_data['events'])
+                _ev._events_memory_cache = disk_data
+                return disk_data['events'], disk_data.get('updated_at')
+    except Exception:
+        pass
+    return [], None
+
+
+def _runtime_env_probe():
+    """Lightweight microsecond probe so business-hour transitions or test mocks immediately invalidate HTML/SSR caches."""
+    sh_sig = None
+    ev_sig = None
+    try:
+        import store_hours as _sh
+        hp = _sh.get_business_hours_status('OLG 新宿', total_guests=0)
+        sh_sig = (id(_sh.get_business_hours_status), hp.get('is_open_now'), hp.get('today_hours_label'))
+    except Exception:
+        pass
+    try:
+        import events as _ev
+        ev_sig = (id(_ev.fetch_all_events), id(_ev.get_events_for_store))
+    except Exception:
+        pass
+    return (sh_sig, ev_sig)
+
+
+def _get_cached_html_or_render(cache_extra_key, render_fn, ttl_sec=55.0):
+    """Fast thread-safe memoizer for rendered HTML strings keyed on session auth + live data signature."""
+    now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
+    minute_key = now_jst.strftime('%Y%m%d%H%M')
+    with data_lock:
+        cur_stores = latest_data.get('full_data') or []
+        last_upd = latest_data.get('last_updated')
+        is_seed = bool(latest_data.get('is_seed'))
+        live_sig = _live_data_signature(cur_stores, last_upd, is_seed)
+    _, ev_upd = _get_cached_events_nonblocking()
+    pub_cnt = len(scheduled_articles.get_published_articles())
+    full_key = (
+        request.path,
+        request.query_string,
+        bool(session.get('is_staff')),
+        bool(session.get('is_master')),
+        local_db.DB_PATH,
+        minute_key,
+        pub_cnt,
+        ev_upd,
+        _runtime_env_probe(),
+        live_sig,
+        cache_extra_key,
+    )
+    now_mono = time.monotonic()
+    with _page_html_cache_lock:
+        hit = _page_html_cache.get(full_key)
+        if hit is not None and (now_mono - hit[0] < ttl_sec):
+            return _build_precompressed_response(hit[1], hit[2], 'text/html; charset=utf-8')
+    rendered = render_fn()
+    if isinstance(rendered, str):
+        raw_bytes = rendered.encode('utf-8')
+        gz_bytes = gzip.compress(raw_bytes, compresslevel=6) if len(raw_bytes) > 500 else None
+        with _page_html_cache_lock:
+            if len(_page_html_cache) >= _PAGE_HTML_CACHE_MAX:
+                _page_html_cache.clear()
+            _page_html_cache[full_key] = (now_mono, raw_bytes, gz_bytes)
+        return _build_precompressed_response(raw_bytes, gz_bytes, 'text/html; charset=utf-8')
+    return rendered
+
 
 def _enrich_for_ssr(stores):
-    """Attach display fields (brand_code, brand_cls, display_title, area_label, ladies_pct, men_pct)
+    """Attach display fields (brand_code, brand_cls, display_title, area_label, ladies_pct, men_pct, event badge)
     for instant server-side HTML card rendering."""
     import store_master
     import store_hours
     master = store_master.load()
+    preloaded_evs, _ = _get_cached_events_nonblocking()
+    ev_mod = None
+    if preloaded_evs:
+        try:
+            import events as _ev_m
+            ev_mod = _ev_m
+        except Exception:
+            ev_mod = None
+
     # Count duplicate display_names so same-city stores (e.g. 新宿) get brand prefix
     disp_counts = defaultdict(int)
     temp = []
@@ -505,22 +704,57 @@ def _enrich_for_ssr(stores):
         item['ssr_men_pct'] = m_pct
         item['is_open_now'] = h_info['is_open_now']
         item['today_hours_label'] = h_info['today_hours_label']
+        ev_badge = ''
+        ev_title = ''
+        if ev_mod is not None and sname:
+            try:
+                matched_evs = ev_mod.get_events_for_store(
+                    sname,
+                    store_only=True,
+                    allow_blocking=False,
+                    preloaded_events=preloaded_evs,
+                )
+                if matched_evs:
+                    has_disc = any(e.get('tag') == '割引・特典' for e in matched_evs)
+                    ev_badge = '特典' if has_disc else 'フェア'
+                    ev_title = matched_evs[0].get('title') or ''
+            except Exception:
+                pass
+        item['ssr_event_badge'] = ev_badge
+        item['ssr_event_title'] = ev_title
         enriched.append(item)
     return enriched
 
 
 def get_initial_status_payload():
-    """Return status dict for SSR embedding in index.html if available."""
+    """Return status dict for SSR embedding in index.html if available (memoized per live snapshot & minute)."""
     restore_latest_data_if_empty()
+    now_min = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).strftime('%Y%m%d%H%M')
+    _, ev_upd = _get_cached_events_nonblocking()
+    env_probe = _runtime_env_probe()
     with data_lock:
-        if latest_data.get('full_data'):
-            return {
-                'timestamp': latest_data['last_updated'],
-                'ranking': _enrich_for_ssr(latest_data['full_data']),
-                'status': 'success',
-                'is_seed': bool(latest_data.get('is_seed'))
-            }
-    return None
+        full_d = latest_data.get('full_data')
+        if not full_d:
+            return None
+        last_u = latest_data.get('last_updated')
+        is_s = bool(latest_data.get('is_seed'))
+        raw_copy = list(full_d)
+        c_key = (_live_data_signature(raw_copy, last_u, is_s), now_min, ev_upd, env_probe)
+
+    with _ssr_payload_cache_lock:
+        if _ssr_payload_cache['key'] == c_key and _ssr_payload_cache['payload'] is not None:
+            return _ssr_payload_cache['payload']
+
+    payload = {
+        'timestamp': last_u,
+        'ranking': _enrich_for_ssr(raw_copy),
+        'status': 'success',
+        'is_seed': is_s,
+    }
+    with _ssr_payload_cache_lock:
+        _ssr_payload_cache['key'] = c_key
+        _ssr_payload_cache['payload'] = payload
+    return payload
 
 # Region Definitions
 REGIONS = {
@@ -731,26 +965,28 @@ def update_job(force=False):
 @app.route('/')
 def index():
     trigger_background_fetch_if_needed()
-    now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
-    s_param = (request.args.get('s') or '').strip()
-    if not s_param:
-        bucket_min = (now_jst.minute // 15) * 15
-        s_param = f"{now_jst.strftime('%Y%m%d_%H')}{bucket_min:02d}"
-    og_meta = None
-    og_image_url = f"https://aiseki-navi.com/ogp/live.png?s={s_param}"
-    try:
-        import ogp_generator
-        og_meta = ogp_generator.get_ogp_meta_for_slot(s_param, now_jst=now_jst)
-    except Exception:
-        pass
-    return render_template(
-        'index.html',
-        is_staff=False,
-        initial_status=get_initial_status_payload(),
-        og_meta=og_meta,
-        og_image_url=og_image_url,
-        published_scheduled=scheduled_articles.get_published_articles(),
-    )
+    def _render():
+        now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
+        s_param = (request.args.get('s') or '').strip()
+        if not s_param:
+            bucket_min = (now_jst.minute // 15) * 15
+            s_param = f"{now_jst.strftime('%Y%m%d_%H')}{bucket_min:02d}"
+        og_meta = None
+        og_image_url = f"https://aiseki-navi.com/ogp/live.png?s={s_param}"
+        try:
+            import ogp_generator
+            og_meta = ogp_generator.get_ogp_meta_for_slot(s_param, now_jst=now_jst)
+        except Exception:
+            pass
+        return render_template(
+            'index.html',
+            is_staff=False,
+            initial_status=get_initial_status_payload(),
+            og_meta=og_meta,
+            og_image_url=og_image_url,
+            published_scheduled=scheduled_articles.get_published_articles(),
+        )
+    return _get_cached_html_or_render('index_pub', _render)
 
 @app.route('/ogp/live.png')
 def dynamic_live_ogp_image():
@@ -790,7 +1026,7 @@ def dynamic_weekly_ogp_image():
 @app.route('/guide')
 def guide_article():
     """Official comprehensive lounge strategy editorial manual."""
-    return render_template('guide_article.html')
+    return _get_cached_html_or_render('guide_article', lambda: render_template('guide_article.html'))
 
 
 @app.route('/guide/strategy')
@@ -957,23 +1193,25 @@ def staff_monitor():
     if session.get('is_staff'):
         is_master = bool(session.get('is_master'))
         trigger_background_fetch_if_needed()
-        audit_report = None
-        sched_queue = []
-        if is_master:
-            import data_audit
-            with data_lock:
-                cur_live = list(latest_data.get('full_data') or [])
-            audit_report = data_audit.run_data_audit(live_stores=cur_live, send_alerts=False)
-            sched_queue = scheduled_articles.get_all_with_status()
-        return render_template(
-            'index.html',
-            is_staff=True,
-            is_master=is_master,
-            initial_status=get_initial_status_payload(),
-            published_scheduled=scheduled_articles.get_published_articles(),
-            scheduled_queue=sched_queue,
-            data_audit_report=audit_report,
-        )
+        def _render_staff():
+            audit_report = None
+            sched_queue = []
+            if is_master:
+                import data_audit
+                with data_lock:
+                    cur_live = list(latest_data.get('full_data') or [])
+                audit_report = data_audit.run_data_audit(live_stores=cur_live, send_alerts=False)
+                sched_queue = scheduled_articles.get_all_with_status()
+            return render_template(
+                'index.html',
+                is_staff=True,
+                is_master=is_master,
+                initial_status=get_initial_status_payload(),
+                published_scheduled=scheduled_articles.get_published_articles(),
+                scheduled_queue=sched_queue,
+                data_audit_report=audit_report,
+            )
+        return _get_cached_html_or_render(('staff_dash', is_master), _render_staff)
 
     return render_template('staff_login.html', error=error)
 
@@ -1160,19 +1398,34 @@ def get_status():
     restore_latest_data_if_empty()
     trigger_background_fetch_if_needed()
     with data_lock:
-        if latest_data.get('full_data'):
-            return jsonify({
-                'timestamp': latest_data['last_updated'],
-                'ranking': latest_data['full_data'],
-                'status': 'success',
-                'is_seed': bool(latest_data.get('is_seed'))
-            })
-        else:
+        full_d = latest_data.get('full_data')
+        if not full_d:
             return jsonify({
                 'timestamp': None,
                 'ranking': [],
                 'status': 'loading'
             })
+        last_u = latest_data.get('last_updated')
+        is_s = bool(latest_data.get('is_seed'))
+        raw_copy = list(full_d)
+        c_key = _live_data_signature(raw_copy, last_u, is_s)
+
+    with _status_json_cache_lock:
+        if _status_json_cache['key'] == c_key and _status_json_cache['raw'] is not None:
+            return _build_precompressed_response(_status_json_cache['raw'], _status_json_cache['gzip'], 'application/json')
+
+    raw_bytes = json.dumps({
+        'timestamp': last_u,
+        'ranking': raw_copy,
+        'status': 'success',
+        'is_seed': is_s,
+    }, ensure_ascii=False).encode('utf-8')
+    gz_bytes = gzip.compress(raw_bytes, compresslevel=6) if len(raw_bytes) > 500 else None
+    with _status_json_cache_lock:
+        _status_json_cache['key'] = c_key
+        _status_json_cache['raw'] = raw_bytes
+        _status_json_cache['gzip'] = gz_bytes
+    return _build_precompressed_response(raw_bytes, gz_bytes, 'application/json')
 
 @app.route('/api/health')
 def health_check():
@@ -1252,7 +1505,12 @@ def get_weekly_report():
         report = weekly_report.generate_weekly_report()
         if "error" in report:
             return jsonify({"status": "error", "error": report["error"]}), 500
-        return jsonify({"status": "success", "data": report})
+        lf = weekly_report._report_cache.get('last_fetched')
+        return _cached_json_response(
+            ('weekly_report', local_db.DB_PATH, lf, id(report)),
+            lambda: ({"status": "success", "data": report}, 200),
+            ttl_sec=60.0,
+        )
     except Exception as e:
         return jsonify({"status": "error", "error": str(e)}), 500
 
@@ -1263,6 +1521,20 @@ def get_events():
         import events
         store = request.args.get('store', '').strip()
         force = (request.args.get('refresh', '').lower() == 'true') and is_master_authorized()
+        if not force:
+            ev_upd = events._events_memory_cache.get('updated_at')
+            ev_cnt = len(events._events_memory_cache.get('events') or [])
+            if ev_cnt > 0:
+                return _cached_json_response(
+                    ('events', store, ev_upd, ev_cnt),
+                    lambda: (
+                        (lambda evs: {'status': 'success', 'count': len(evs), 'events': evs})(
+                            events.get_events_for_store(store, allow_blocking=False) if store else events.fetch_all_events(force_refresh=False, allow_blocking=False)
+                        ),
+                        200,
+                    ),
+                    ttl_sec=60.0,
+                )
         if store:
             evs = events.get_events_for_store(store, allow_blocking=force)
         else:
@@ -1369,58 +1641,60 @@ def _render_brand_page(brand_slug):
     if not brand:
         return redirect(url_for('index'))
 
-    with data_lock:
-        raw_stores = list(latest_data.get('full_data') or [])
-        last_updated = latest_data.get('last_updated') or '--:--'
+    def _render():
+        with data_lock:
+            raw_stores = list(latest_data.get('full_data') or [])
+            last_updated = latest_data.get('last_updated') or '--:--'
 
-    master = store_master.load()
-    live_map = {s.get('name'): s for s in raw_stores}
-    all_names = list(dict.fromkeys(list(live_map.keys()) + list(master.keys())))
+        master = store_master.load()
+        live_map = {s.get('name'): s for s in raw_stores}
+        all_names = list(dict.fromkeys(list(live_map.keys()) + list(master.keys())))
 
-    matched = []
-    for sname in all_names:
-        if store_master.brand_key_of(sname) == brand_slug:
-            s_live = live_map.get(sname, {})
-            info = master.get(sname, {})
-            reg = info.get('region') or s_live.get('region') or detect_region(sname)
-            w_cnt = int(s_live.get('women', 0))
-            m_cnt = int(s_live.get('men', 0))
-            h_info = store_hours.get_business_hours_status(sname, total_guests=(w_cnt + m_cnt))
-            matched.append({
-                'name': sname,
-                'seo_name': store_master.seo_name(sname),
-                'slug': store_master.slug_of(sname),
-                'region': reg,
-                'area_label': info.get('area_label') or s_live.get('area') or '全国',
-                'women': w_cnt,
-                'men': m_cnt,
-                'women_diff': int(s_live.get('women_diff', 0) or 0),
-                'men_diff': int(s_live.get('men_diff', 0) or 0),
-                'is_open_now': h_info['is_open_now'],
-                'today_hours_label': h_info['today_hours_label'],
-                'hours_label': h_info['hours_label'],
-            })
+        matched = []
+        for sname in all_names:
+            if store_master.brand_key_of(sname) == brand_slug:
+                s_live = live_map.get(sname, {})
+                info = master.get(sname, {})
+                reg = info.get('region') or s_live.get('region') or detect_region(sname)
+                w_cnt = int(s_live.get('women', 0))
+                m_cnt = int(s_live.get('men', 0))
+                h_info = store_hours.get_business_hours_status(sname, total_guests=(w_cnt + m_cnt))
+                matched.append({
+                    'name': sname,
+                    'seo_name': store_master.seo_name(sname),
+                    'slug': store_master.slug_of(sname),
+                    'region': reg,
+                    'area_label': info.get('area_label') or s_live.get('area') or '全国',
+                    'women': w_cnt,
+                    'men': m_cnt,
+                    'women_diff': int(s_live.get('women_diff', 0) or 0),
+                    'men_diff': int(s_live.get('men_diff', 0) or 0),
+                    'is_open_now': h_info['is_open_now'],
+                    'today_hours_label': h_info['today_hours_label'],
+                    'hours_label': h_info['hours_label'],
+                })
 
-    matched.sort(key=lambda x: (x.get('region') != 'Korea', x['women'], x['men'], bool(x.get('is_open_now'))), reverse=True)
-    dom_rank = 0
-    for item in matched:
-        if item.get('region') != 'Korea':
-            dom_rank += 1
-            item['rank_num'] = dom_rank
-        else:
-            item['rank_num'] = None
-    total_w = sum(x['women'] for x in matched)
-    total_m = sum(x['men'] for x in matched)
+        matched.sort(key=lambda x: (x.get('region') != 'Korea', x['women'], x['men'], bool(x.get('is_open_now'))), reverse=True)
+        dom_rank = 0
+        for item in matched:
+            if item.get('region') != 'Korea':
+                dom_rank += 1
+                item['rank_num'] = dom_rank
+            else:
+                item['rank_num'] = None
+        total_w = sum(x['women'] for x in matched)
+        total_m = sum(x['men'] for x in matched)
 
-    return render_template(
-        'brand_page.html',
-        brand=brand,
-        stores=matched,
-        store_count=len(matched),
-        total_women=total_w,
-        total_men=total_m,
-        last_updated=last_updated
-    )
+        return render_template(
+            'brand_page.html',
+            brand=brand,
+            stores=matched,
+            store_count=len(matched),
+            total_women=total_w,
+            total_men=total_m,
+            last_updated=last_updated
+        )
+    return _get_cached_html_or_render(('brand', brand_slug), _render)
 
 @app.route('/store/<store_slug>')
 def store_detail_page(store_slug):
@@ -1441,133 +1715,139 @@ def store_detail_page(store_slug):
     if not sname:
         abort(404)
 
-    info = store_master.get(sname) or {}
-    live_map = {s.get('name'): s for s in raw_stores}
-    s_live = live_map.get(sname, {})
-
-    women = int(s_live.get('women', 0))
-    men = int(s_live.get('men', 0))
-    tot = women + men
-    wpct = round((women / tot) * 100) if tot > 0 else 50
-    hours_info = store_hours.get_business_hours_status(sname, total_guests=tot)
-
-    bkey = store_master.brand_key_of(sname)
-    raw_brand = info.get('brand') or ''
-    if bkey == 'oriental-lounge':
-        brand_label = 'オリエンタルラウンジ'
-        brand_slug = 'oriental-lounge'
-        official_url = 'https://oriental-lounge.com/'
-    elif bkey == 'ag':
-        brand_label = 'ag（アグ）'
-        brand_slug = 'ag'
-        official_url = 'https://ag-ree.jp/'
-    elif bkey == 'jis':
-        brand_label = 'JIS（ジス）'
-        brand_slug = 'jis'
-        official_url = 'https://jis.bar/'
-    else:
-        brand_label = raw_brand or '相席ラウンジ'
-        brand_slug = ''
-        official_url = {
-            'ALFA': 'https://aiseki-hiroshima.com/',
-            'CLOVERS': 'https://bar-clovers.com/',
-            'XIX': 'https://xix-thelounge.com/',
-            'YATAKOI': 'https://yatakoi.com/',
-            'ヤタコイ': 'https://yatakoi.com/',
-        }.get(raw_brand, 'https://oriental-lounge.com/')
-
-    if tot == 0:
-        if hours_info['is_open_now']:
-            crowd_comment = f"営業中｜現在 0 : 0（本日 {hours_info['today_hours_label']}）"
-        else:
-            crowd_comment = f"営業時間外（本日 {hours_info['today_hours_label']}）"
-    elif women < 10:
-        if women >= men:
-            crowd_comment = f'少人数・立ち上がり中（女性{women}名｜基準10名未満）'
-        else:
-            crowd_comment = f'少人数・男性先行（女性{women}名 / 男性{men}名）'
-    elif women > men:
-        crowd_comment = f'女性優位・好バランス（女性+{women - men}名）'
-    elif women == men:
-        crowd_comment = '男女比1:1 バランス良好'
-    else:
-        crowd_comment = '男性先行・近隣店舗との比較推奨'
-
-    map_anchor = info.get('map_anchor') or store_master.seo_name(sname)
-    map_url = f"https://www.google.com/maps/search/?api=1&query={urllib.parse.quote(map_anchor)}"
-
-    area_slug = info.get('area_slug')
-    area_info = AREA_GUIDES.get(area_slug) if area_slug else None
-
-    nearby_stores = []
-    if area_slug:
-        for other_s in get_stores_for_area(area_slug, raw_stores):
-            oname = other_s.get('name')
-            if oname and oname != sname:
-                ow = int(other_s.get('women', 0))
-                om = int(other_s.get('men', 0))
-                otot = ow + om
-                oh_info = store_hours.get_business_hours_status(oname, total_guests=otot)
-                nearby_stores.append({
-                    'name': oname,
-                    'seo_name': store_master.seo_name(oname),
-                    'slug': store_master.slug_of(oname),
-                    'women': ow,
-                    'men': om,
-                    'women_diff': int(other_s.get('women_diff', 0) or 0),
-                    'men_diff': int(other_s.get('men_diff', 0) or 0),
-                    'wpct': round((ow / otot) * 100) if otot > 0 else 0,
-                    'is_open_now': oh_info['is_open_now'],
-                    'today_hours_label': oh_info['today_hours_label'],
-                    'hours_label': oh_info['hours_label'],
-                    'hours_spec': oh_info['schedule_spec'],
-                })
-
-    store_obj = {
-        'name': sname,
-        'seo_name': store_master.seo_name(sname),
-        'slug': store_master.slug_of(sname),
-        'area_label': info.get('area_label') or s_live.get('area') or '全国',
-        'brand_label': brand_label,
-        'brand_slug': brand_slug,
-        'official_url': official_url,
-        'women': women,
-        'men': men,
-        'women_diff': int(s_live.get('women_diff', 0) or 0),
-        'men_diff': int(s_live.get('men_diff', 0) or 0),
-        'total': tot,
-        'wpct': wpct if tot > 0 else 0,
-        'crowd_comment': crowd_comment,
-        'map_url': map_url,
-        'is_open_now': hours_info['is_open_now'],
-        'today_hours_label': hours_info['today_hours_label'],
-        'hours_label': hours_info['hours_label'],
-        'hours_spec': hours_info['schedule_spec'],
-    }
-
     store_analytics = None
     try:
         store_analytics = local_db.get_store_7day_analytics(sname)
     except Exception:
         pass
-
-    nearby_comparison = None
-    try:
-        import price_comparison
-        nearby_comparison = price_comparison.get_nearby_comparison_for_store(sname, live_stores=raw_stores)
-    except Exception:
-        pass
-
-    return render_template(
-        'store_detail.html',
-        store=store_obj,
-        store_analytics=store_analytics,
-        area_info=area_info,
-        nearby_stores=nearby_stores,
-        nearby_comparison=nearby_comparison,
-        jp_holidays=sorted(store_hours.JP_HOLIDAYS),
-        last_updated=last_updated
+    analytics_sig = (
+        (store_analytics or {}).get('sample_count', 0),
+        tuple(((store_analytics or {}).get('votes_24h') or {}).items()),
     )
+
+    def _render():
+        info = store_master.get(sname) or {}
+        live_map = {s.get('name'): s for s in raw_stores}
+        s_live = live_map.get(sname, {})
+
+        women = int(s_live.get('women', 0))
+        men = int(s_live.get('men', 0))
+        tot = women + men
+        wpct = round((women / tot) * 100) if tot > 0 else 50
+        hours_info = store_hours.get_business_hours_status(sname, total_guests=tot)
+
+        bkey = store_master.brand_key_of(sname)
+        raw_brand = info.get('brand') or ''
+        if bkey == 'oriental-lounge':
+            brand_label = 'オリエンタルラウンジ'
+            brand_slug = 'oriental-lounge'
+            official_url = 'https://oriental-lounge.com/'
+        elif bkey == 'ag':
+            brand_label = 'ag（アグ）'
+            brand_slug = 'ag'
+            official_url = 'https://ag-ree.jp/'
+        elif bkey == 'jis':
+            brand_label = 'JIS（ジス）'
+            brand_slug = 'jis'
+            official_url = 'https://jis.bar/'
+        else:
+            brand_label = raw_brand or '相席ラウンジ'
+            brand_slug = ''
+            official_url = {
+                'ALFA': 'https://aiseki-hiroshima.com/',
+                'CLOVERS': 'https://bar-clovers.com/',
+                'XIX': 'https://xix-thelounge.com/',
+                'YATAKOI': 'https://yatakoi.com/',
+                'ヤタコイ': 'https://yatakoi.com/',
+            }.get(raw_brand, 'https://oriental-lounge.com/')
+
+        if tot == 0:
+            if hours_info['is_open_now']:
+                crowd_comment = f"営業中｜現在 0 : 0（本日 {hours_info['today_hours_label']}）"
+            else:
+                crowd_comment = f"営業時間外（本日 {hours_info['today_hours_label']}）"
+        elif women < 10:
+            if women >= men:
+                crowd_comment = f'少人数・立ち上がり中（女性{women}名｜基準10名未満）'
+            else:
+                crowd_comment = f'少人数・男性先行（女性{women}名 / 男性{men}名）'
+        elif women > men:
+            crowd_comment = f'女性優位・好バランス（女性+{women - men}名）'
+        elif women == men:
+            crowd_comment = '男女比1:1 バランス良好'
+        else:
+            crowd_comment = '男性先行・近隣店舗との比較推奨'
+
+        map_anchor = info.get('map_anchor') or store_master.seo_name(sname)
+        map_url = f"https://www.google.com/maps/search/?api=1&query={urllib.parse.quote(map_anchor)}"
+
+        area_slug = info.get('area_slug')
+        area_info = AREA_GUIDES.get(area_slug) if area_slug else None
+
+        nearby_stores = []
+        if area_slug:
+            for other_s in get_stores_for_area(area_slug, raw_stores):
+                oname = other_s.get('name')
+                if oname and oname != sname:
+                    ow = int(other_s.get('women', 0))
+                    om = int(other_s.get('men', 0))
+                    otot = ow + om
+                    oh_info = store_hours.get_business_hours_status(oname, total_guests=otot)
+                    nearby_stores.append({
+                        'name': oname,
+                        'seo_name': store_master.seo_name(oname),
+                        'slug': store_master.slug_of(oname),
+                        'women': ow,
+                        'men': om,
+                        'women_diff': int(other_s.get('women_diff', 0) or 0),
+                        'men_diff': int(other_s.get('men_diff', 0) or 0),
+                        'wpct': round((ow / otot) * 100) if otot > 0 else 0,
+                        'is_open_now': oh_info['is_open_now'],
+                        'today_hours_label': oh_info['today_hours_label'],
+                        'hours_label': oh_info['hours_label'],
+                        'hours_spec': oh_info['schedule_spec'],
+                    })
+
+        store_obj = {
+            'name': sname,
+            'seo_name': store_master.seo_name(sname),
+            'slug': store_master.slug_of(sname),
+            'area_label': info.get('area_label') or s_live.get('area') or '全国',
+            'brand_label': brand_label,
+            'brand_slug': brand_slug,
+            'official_url': official_url,
+            'women': women,
+            'men': men,
+            'women_diff': int(s_live.get('women_diff', 0) or 0),
+            'men_diff': int(s_live.get('men_diff', 0) or 0),
+            'total': tot,
+            'wpct': wpct if tot > 0 else 0,
+            'crowd_comment': crowd_comment,
+            'map_url': map_url,
+            'is_open_now': hours_info['is_open_now'],
+            'today_hours_label': hours_info['today_hours_label'],
+            'hours_label': hours_info['hours_label'],
+            'hours_spec': hours_info['schedule_spec'],
+        }
+
+        nearby_comparison = None
+        try:
+            import price_comparison
+            nearby_comparison = price_comparison.get_nearby_comparison_for_store(sname, live_stores=raw_stores)
+        except Exception:
+            pass
+
+        return render_template(
+            'store_detail.html',
+            store=store_obj,
+            store_analytics=store_analytics,
+            area_info=area_info,
+            nearby_stores=nearby_stores,
+            nearby_comparison=nearby_comparison,
+            jp_holidays=sorted(store_hours.JP_HOLIDAYS),
+            last_updated=last_updated
+        )
+    return _get_cached_html_or_render(('store', store_slug, analytics_sig), _render)
 
 @app.route('/sitemap.xml')
 def sitemap_xml():
@@ -1733,12 +2013,15 @@ def sitemap_xml():
 def columns_index():
     """Portal page listing all editorial guides, comparisons, and area features."""
     is_staff = bool(session.get('is_staff'))
-    return render_template(
-        'columns.html',
-        area_guides=AREA_GUIDES,
-        published_scheduled=scheduled_articles.get_published_articles(),
-        upcoming_scheduled=scheduled_articles.get_upcoming_articles() if is_staff else [],
-        is_staff=is_staff,
+    return _get_cached_html_or_render(
+        ('columns', is_staff),
+        lambda: render_template(
+            'columns.html',
+            area_guides=AREA_GUIDES,
+            published_scheduled=scheduled_articles.get_published_articles(),
+            upcoming_scheduled=scheduled_articles.get_upcoming_articles() if is_staff else [],
+            is_staff=is_staff,
+        ),
     )
 
 @app.route('/stats')
@@ -1754,16 +2037,18 @@ def stats_whitepaper():
     except Exception:
         report_data = None
 
-    with data_lock:
-        live_stores = list(latest_data.get('full_data') or [])
-        last_updated = latest_data.get('last_updated') or '--:--'
-
-    return render_template(
-        'stats_report.html',
-        report=report_data,
-        live_stores=live_stores,
-        last_updated=last_updated
-    )
+    rep_sig = (report_data or {}).get('generated_at')
+    def _render():
+        with data_lock:
+            live_stores = list(latest_data.get('full_data') or [])
+            last_updated = latest_data.get('last_updated') or '--:--'
+        return render_template(
+            'stats_report.html',
+            report=report_data,
+            live_stores=live_stores,
+            last_updated=last_updated
+        )
+    return _get_cached_html_or_render(('stats', rep_sig), _render)
 
 @app.route('/areas')
 @app.route('/area/<area_slug>')
@@ -1772,37 +2057,39 @@ def area_portal(area_slug=None):
     if area_slug is not None and area_slug not in AREA_GUIDES:
         abort(404)
     trigger_background_fetch_if_needed()
-    with data_lock:
-        stores = list(latest_data.get('full_data') or [])
-        last_updated = latest_data.get('last_updated') or '--:--'
+    def _render():
+        with data_lock:
+            stores = list(latest_data.get('full_data') or [])
+            last_updated = latest_data.get('last_updated') or '--:--'
 
-    area_summaries = []
-    for slug, info in AREA_GUIDES.items():
-        matched = get_stores_for_area(slug, stores)
-        total_w = sum(s.get('women', 0) for s in matched)
-        total_m = sum(s.get('men', 0) for s in matched)
-        area_summaries.append({
-            'slug': slug,
-            'info': info,
-            'stores': matched,
-            'store_count': len(matched),
-            'total_women': total_w,
-            'total_men': total_m,
-        })
+        area_summaries = []
+        for slug, info in AREA_GUIDES.items():
+            matched = get_stores_for_area(slug, stores)
+            total_w = sum(s.get('women', 0) for s in matched)
+            total_m = sum(s.get('men', 0) for s in matched)
+            area_summaries.append({
+                'slug': slug,
+                'info': info,
+                'stores': matched,
+                'store_count': len(matched),
+                'total_women': total_w,
+                'total_men': total_m,
+            })
 
-    selected_area = None
-    if area_slug and area_slug in AREA_GUIDES:
-        for item in area_summaries:
-            if item['slug'] == area_slug:
-                selected_area = item
-                break
+        selected_area = None
+        if area_slug and area_slug in AREA_GUIDES:
+            for item in area_summaries:
+                if item['slug'] == area_slug:
+                    selected_area = item
+                    break
 
-    return render_template(
-        'areas.html',
-        area_summaries=area_summaries,
-        selected_area=selected_area,
-        last_updated=last_updated
-    )
+        return render_template(
+            'areas.html',
+            area_summaries=area_summaries,
+            selected_area=selected_area,
+            last_updated=last_updated
+        )
+    return _get_cached_html_or_render(('areas', area_slug), _render)
 
 @app.route('/price-comparison')
 def price_comparison_page():
@@ -1810,42 +2097,44 @@ def price_comparison_page():
     import price_comparison
     restore_latest_data_if_empty()
     trigger_background_fetch_if_needed()
-    with data_lock:
-        live_stores = list(latest_data.get('full_data') or [])
-        last_updated = latest_data.get('last_updated') or '--:--'
+    def _render():
+        with data_lock:
+            live_stores = list(latest_data.get('full_data') or [])
+            last_updated = latest_data.get('last_updated') or '--:--'
 
-    data = price_comparison.build_area_comparison_clusters(live_stores=live_stores)
-    valid_ids = {c['id'] for c in data['clusters']}
-    req_area = (request.args.get('area') or 'shinjuku').strip().lower()
-    selected_area = req_area if req_area in valid_ids else 'shinjuku'
+        data = price_comparison.build_area_comparison_clusters(live_stores=live_stores)
+        valid_ids = {c['id'] for c in data['clusters']}
+        req_area = (request.args.get('area') or 'shinjuku').strip().lower()
+        selected_area = req_area if req_area in valid_ids else 'shinjuku'
 
-    return render_template(
-        'price_comparison.html',
-        data=data,
-        selected_area=selected_area,
-        last_updated=last_updated,
-        is_staff=bool(session.get('is_staff')),
-    )
+        return render_template(
+            'price_comparison.html',
+            data=data,
+            selected_area=selected_area,
+            last_updated=last_updated,
+            is_staff=bool(session.get('is_staff')),
+        )
+    return _get_cached_html_or_render('price_comp', _render)
 
 @app.route('/grooming')
 def grooming_guide():
     """Dedicated editorial guide for men's grooming, fashion, and backup dating apps."""
-    return render_template('grooming.html')
+    return _get_cached_html_or_render('grooming', lambda: render_template('grooming.html'))
 
 @app.route('/privacy')
 def privacy_page():
     """Dedicated legal, privacy policy, and operator information page."""
-    return render_template('privacy.html')
+    return _get_cached_html_or_render('privacy', lambda: render_template('privacy.html'))
 
 @app.route('/guide/weekday-strategy')
 def guide_weekday_strategy():
     """Editorial guide for weekday lounge strategy."""
-    return render_template('guide_weekday.html')
+    return _get_cached_html_or_render('guide_weekday', lambda: render_template('guide_weekday.html'))
 
 @app.route('/guide/brand-comparison')
 def guide_brand_comparison():
     """Editorial guide comparing Oriental Lounge, ag, and JIS."""
-    return render_template('guide_comparison.html')
+    return _get_cached_html_or_render('guide_comparison', lambda: render_template('guide_comparison.html'))
 
 
 @app.route('/guide/compare')
@@ -1857,48 +2146,48 @@ def guide_compare_legacy_redirect():
 @app.route('/guide/shinjuku')
 def guide_shinjuku():
     """Editorial guide comparing the 3 Shinjuku lounge stores."""
-    return render_template('guide_shinjuku.html')
+    return _get_cached_html_or_render('guide_shinjuku', lambda: render_template('guide_shinjuku.html'))
 
 @app.route('/guide/solo-vs-pair')
 def guide_solo_vs_pair():
     """Editorial guide comparing solo vs 2-person lounge visits."""
-    return render_template('guide_solo_pair.html')
+    return _get_cached_html_or_render('guide_solo_pair', lambda: render_template('guide_solo_pair.html'))
 
 @app.route('/guide/second-venue')
 def guide_second_venue():
     """Editorial guide on inviting to a second venue smoothly."""
-    return render_template('guide_second_venue.html')
+    return _get_cached_html_or_render('guide_second_venue', lambda: render_template('guide_second_venue.html'))
 
 @app.route('/guide/first-10-minutes')
 def guide_first_10min():
     """Editorial guide on first 10 minutes conversation and grooming."""
-    return render_template('guide_first_10min.html')
+    return _get_cached_html_or_render('guide_first_10min', lambda: render_template('guide_first_10min.html'))
 
 @app.route('/guide/club-area-midnight')
 def guide_club_area_midnight():
     """Editorial data study on dance club proximity and midnight 2nd-wave female inflows."""
-    return render_template('guide_club_midnight.html')
+    return _get_cached_html_or_render('guide_club_midnight', lambda: render_template('guide_club_midnight.html'))
 
 @app.route('/guide/weekend-strategy')
 def guide_weekend_strategy():
-    """Editorial data strategy guide for Friday/Saturday peak hours."""
-    return render_template('guide_weekend.html')
+    """Editorial data study guide for Friday/Saturday peak hours."""
+    return _get_cached_html_or_render('guide_weekend', lambda: render_template('guide_weekend.html'))
 
 @app.route('/guide/beauty-area-stage')
 def guide_beauty_area_stage():
     """Editorial data study on beauty salon districts, early-evening surges, and men's grooming."""
-    return render_template('guide_beauty_stage.html')
+    return _get_cached_html_or_render('guide_beauty_stage', lambda: render_template('guide_beauty_stage.html'))
 
 @app.route('/guide/male-lead-mechanics')
 def guide_male_lead_mechanics():
     """Editorial data study on why male-leading stores attract more women and why women no longer wait."""
-    return render_template('guide_male_lead.html')
+    return _get_cached_html_or_render('guide_male_lead', lambda: render_template('guide_male_lead.html'))
 
 
 @app.route('/guide/price-event-comparison')
 def guide_price_event_comparison():
     """Editorial guide explaining the 51-store price, 4-time-slot, solo rule, event & minimum 10-women comparison board."""
-    return render_template('guide_price_comparison.html')
+    return _get_cached_html_or_render('guide_price_comparison', lambda: render_template('guide_price_comparison.html'))
 
 
 def _render_scheduled_guide(slug: str):

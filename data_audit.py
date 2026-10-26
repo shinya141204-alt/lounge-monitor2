@@ -49,14 +49,31 @@ REVISION_IGNORE_PHRASES = (
 
 _audit_lock = threading.Lock()
 _latest_audit_report = None
+_audit_fast_cache = {"key": None, "ts": 0.0, "report": None}
 
 
 def run_data_audit(live_stores=None, all_events=None, now_jst=None, send_alerts=False):
     """全店舗のマスタ整合性・営業時間ズレ・公式改定アナウンスを一括点検し、レポート辞書を返す。"""
     global _latest_audit_report
+    import time as _time
+    use_fast_cache = (not send_alerts) and (all_events is None) and (now_jst is None)
     now_jst = now_jst or datetime.datetime.now(JST)
     if now_jst.tzinfo is None:
         now_jst = now_jst.replace(tzinfo=JST)
+
+    if use_fast_cache:
+        try:
+            import events as _ev_mod
+            ev_upd = _ev_mod._events_memory_cache.get("updated_at")
+            op_cnt = len(_ev_mod.get_operational_notices() or [])
+        except Exception:
+            ev_upd, op_cnt = None, 0
+        live_sig = tuple((s.get("name"), int(s.get("women") or 0), int(s.get("men") or 0)) for s in (live_stores or []))
+        c_key = (live_sig, ev_upd, op_cnt, now_jst.strftime("%Y-%m-%d %H:%M"))
+        now_mono = _time.monotonic()
+        with _audit_lock:
+            if _audit_fast_cache["key"] == c_key and _audit_fast_cache["report"] is not None and (now_mono - _audit_fast_cache["ts"] < 60.0):
+                return _audit_fast_cache["report"]
 
     master = store_master.load()
     master_names = set(master.keys())
@@ -240,6 +257,10 @@ def run_data_audit(live_stores=None, all_events=None, now_jst=None, send_alerts=
 
     with _audit_lock:
         _latest_audit_report = report
+        if use_fast_cache:
+            _audit_fast_cache["key"] = c_key
+            _audit_fast_cache["ts"] = now_mono
+            _audit_fast_cache["report"] = report
     return report
 
 

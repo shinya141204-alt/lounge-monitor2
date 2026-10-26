@@ -98,17 +98,26 @@
             return (storeMasterMap && storeMasterMap[key]?.slug) || STORE_SLUG_FALLBACK[key] || '';
         }
         (function loadStoreMaster() {
-            fetch('/static/store_master.json?v=20261023')
-                .then(r => r.ok ? r.json() : null)
-                .then(d => {
-                    if (d && d.stores) {
-                        window.STORE_MASTER = d.stores;
-                        storeMasterMap = d.stores;
-                        _brandInfoCache = Object.create(null);
-                        if (window.lastData && typeof updateUI === 'function') updateUI(window.lastData);
-                    }
-                })
-                .catch(() => {});
+            const doFetchMaster = () => {
+                fetch('/static/store_master.json?v=20261023')
+                    .then(r => r.ok ? r.json() : null)
+                    .then(d => {
+                        if (d && d.stores) {
+                            window.STORE_MASTER = d.stores;
+                            storeMasterMap = d.stores;
+                            _brandInfoCache = Object.create(null);
+                            if (currentSort === 'nearby' && userLocation && window.lastData && typeof updateUI === 'function') {
+                                updateUI(window.lastData);
+                            }
+                        }
+                    })
+                    .catch(() => {});
+            };
+            if ('requestIdleCallback' in window) {
+                window.requestIdleCallback(doFetchMaster, { timeout: 1200 });
+            } else {
+                setTimeout(doFetchMaster, 250);
+            }
         })();
 
         // --- First-party analytics (event + short label only, no personal data) ---
@@ -460,24 +469,45 @@
             return false;
         }
 
+        let _eventsLoadingPromise = null;
+
+        function _getBadgeTypeForStoreEvents(matchedEvs) {
+            if (!matchedEvs || matchedEvs.length === 0) return '';
+            return matchedEvs.some(e => e.tag === '割引・特典') ? '特典' : 'フェア';
+        }
+
         async function loadEvents() {
             if (_eventsFetched && window.allEvents.length > 0) return window.allEvents;
-            try {
-                const res = await fetch('/api/events');
-                if (res.ok) {
-                    const data = await res.json();
-                    window.allEvents = data.events || [];
-                    _storeEventsCache = Object.create(null);
-                    _eventsFetched = true;
-                    // Re-render ranking to display event badges on cards
-                    if (window.lastData && window.lastData.ranking) {
-                        updateUI(window.lastData);
+            if (_eventsLoadingPromise) return _eventsLoadingPromise;
+            _eventsLoadingPromise = (async () => {
+                try {
+                    const res = await fetch('/api/events');
+                    if (res.ok) {
+                        const data = await res.json();
+                        window.allEvents = data.events || [];
+                        _storeEventsCache = Object.create(null);
+                        _eventsFetched = true;
+                        // Re-render ranking ONLY if visible event badges actually differ from SSR badges
+                        if (shouldShowEvents() && window.lastData && Array.isArray(window.lastData.ranking)) {
+                            const hasDiff = window.lastData.ranking.some(s => {
+                                const computed = _getBadgeTypeForStoreEvents(getStoreSpecificEvents(s.name));
+                                return computed !== (s.ssr_event_badge || '');
+                            });
+                            if (hasDiff) {
+                                updateUI(window.lastData);
+                            } else {
+                                _lastRenderedSignature = _computeUiSignature(window.lastData);
+                            }
+                        }
                     }
+                } catch (err) {
+                    console.warn('Failed to load events:', err);
+                } finally {
+                    _eventsLoadingPromise = null;
                 }
-            } catch (err) {
-                console.warn('Failed to load events:', err);
-            }
-            return window.allEvents;
+                return window.allEvents;
+            })();
+            return _eventsLoadingPromise;
         }
 
         function getEventsForStore(storeName) {
@@ -548,6 +578,9 @@
             applyStaffEventsState();
             if (typeof showRefreshToast === 'function') {
                 showRefreshToast(staffHideEvents ? '🔒 イベント非表示に設定しました（業務集中）' : '🎁 イベント表示をONにしました');
+            }
+            if (!staffHideEvents && !_eventsFetched) {
+                loadEvents();
             }
             if (window.lastData && window.lastData.ranking) {
                 updateUI(window.lastData);
@@ -743,7 +776,27 @@
                     // The HTML may come from the Service Worker app-shell cache (instant PWA launch).
                     // Only skip the first /api/status call when the embedded data is genuinely fresh.
                     _renderedFromSSR = getStatusAgeSec(window.INITIAL_STATUS_DATA) < 90;
-                    updateUI(window.INITIAL_STATUS_DATA);
+                    const rankingListEl = document.getElementById('ranking-list');
+                    const canHydrateSsrZeroDom = (
+                        _renderedFromSSR &&
+                        IS_STAFF &&
+                        !shouldShowEvents() &&
+                        pinnedStores.length === 0 &&
+                        currentFilter === 'All' &&
+                        currentSort === 'women' &&
+                        currentSearch === '' &&
+                        rankingListEl &&
+                        rankingListEl.children.length > 0
+                    );
+                    if (canHydrateSsrZeroDom) {
+                        _lastRenderedSignature = _computeUiSignature(window.INITIAL_STATUS_DATA);
+                        const lastUpdateEl = document.getElementById('last-update');
+                        if (lastUpdateEl && window.INITIAL_STATUS_DATA.timestamp) {
+                            lastUpdateEl.textContent = window.INITIAL_STATUS_DATA.timestamp.split(' ')[1] || '--:--';
+                        }
+                    } else {
+                        updateUI(window.INITIAL_STATUS_DATA);
+                    }
                     const loadingEl = document.getElementById('loading');
                     const contentEl = document.getElementById('content');
                     const errEl = document.getElementById('error-message');
@@ -879,8 +932,10 @@
                 document.getElementById('content').classList.remove('hidden');
                 document.getElementById('error-message').classList.add('hidden');
 
-                // Fetch events metadata once in background (non-blocking cached endpoint)
-                loadEvents();
+                // Fetch events metadata once in background if events are enabled
+                if (shouldShowEvents() && !_eventsFetched) {
+                    loadEvents();
+                }
             } catch (e) {
                 console.error("Fetch error:", e);
                 if (isInitialLoad) {
@@ -1103,7 +1158,8 @@
             }
 
             const cleanName = localizeStoreName(stripped || name);
-            const areaLabel = detectAreaLabel(name, cleanName);
+            const ssrArea = (typeof storeOrName === 'object' && storeOrName && storeOrName.ssr_area) ? storeOrName.ssr_area : '';
+            const areaLabel = ssrArea || detectAreaLabel(name, cleanName);
             const fullDisplayTitle = `${code} ${cleanName}`;
             const result = { code, cls, cleanName, areaLabel, fullDisplayTitle };
             _brandInfoCache[cacheKey] = result;
@@ -1212,13 +1268,23 @@
 
             // Display event badge ONLY if events are visible and current store has store-specific promotion
             if (shouldShowEvents()) {
-                const matchedEvs = getStoreSpecificEvents(store.name);
-                if (matchedEvs && matchedEvs.length > 0) {
+                let badgeLabel = '';
+                let badgeTitle = '';
+                if (_eventsFetched && window.allEvents && window.allEvents.length > 0) {
+                    const matchedEvs = getStoreSpecificEvents(store.name);
+                    if (matchedEvs && matchedEvs.length > 0) {
+                        badgeLabel = matchedEvs.some(e => e.tag === '割引・特典') ? '特典' : 'フェア';
+                        badgeTitle = matchedEvs[0].title || '';
+                    }
+                } else if (store.ssr_event_badge) {
+                    badgeLabel = store.ssr_event_badge;
+                    badgeTitle = store.ssr_event_title || '';
+                }
+                if (badgeLabel) {
                     const eventBadge = document.createElement('span');
                     eventBadge.className = 'event-tag-badge';
-                    const hasDiscount = matchedEvs.some(e => e.tag === '割引・特典');
-                    eventBadge.textContent = hasDiscount ? '特典' : 'フェア';
-                    eventBadge.title = matchedEvs[0].title;
+                    eventBadge.textContent = badgeLabel;
+                    eventBadge.title = badgeTitle;
                     storeNameEl.appendChild(eventBadge);
                 }
             }
@@ -1276,9 +1342,9 @@
                 return `${s.name}:${s.women}:${s.men}:${s.women_diff || 0}:${s.men_diff || 0}:${v.smooth || 0}:${v.waiting || 0}`;
             }).join('|');
             const locSig = userLocation ? `${userLocation.lat.toFixed(3)},${userLocation.lng.toFixed(3)}` : '';
-            const masterCount = window.STORE_MASTER ? Object.keys(window.STORE_MASTER).length : 0;
-            const evCount = shouldShowEvents() ? ((window.allEvents && window.allEvents.length) || 0) : -1;
-            return `${data.timestamp || ''}#${currentFilter}#${currentSort}#${currentSearch}#${pinnedStores.join(',')}#${locSig}#${masterCount}#${evCount}#${storeSig}`;
+            const nearbyMasterSig = (currentSort === 'nearby' && window.STORE_MASTER) ? Object.keys(window.STORE_MASTER).length : 0;
+            const evCount = shouldShowEvents() ? (_eventsFetched ? ((window.allEvents && window.allEvents.length) || 0) : 'ssr') : -1;
+            return `${data.timestamp || ''}#${currentFilter}#${currentSort}#${currentSearch}#${pinnedStores.join(',')}#${locSig}#${nearbyMasterSig}#${evCount}#${storeSig}`;
         }
 
         function updateUI(data) {
@@ -2081,9 +2147,7 @@
         }
 
         // Initial fetch (if already rendered from fresh server-embedded data, skip redundant initial /api/status roundtrip)
-        if (_renderedFromSSR) {
-            loadEvents();
-        } else {
+        if (!_renderedFromSSR) {
             fetchData();
         }
 
@@ -2123,6 +2187,11 @@
             const topOfficialLinkEl = document.getElementById('modal-top-official-link');
             if (topOfficialLinkEl) topOfficialLinkEl.href = officialUrl;
             renderModalPrSlot(storeName);
+            if (shouldShowEvents() && !_eventsFetched) {
+                loadEvents().then(() => {
+                    if (currentModalStoreName === storeName) renderModalEvents(storeName);
+                });
+            }
             renderModalEvents(storeName);
             renderModalCrowdVotes(storeName);
             renderModalSecondVenues(storeName);
@@ -3324,11 +3393,13 @@
             }
         });
 
-        // Kick off background events fetch on page startup
-        if ('requestIdleCallback' in window) {
-            window.requestIdleCallback(() => loadEvents(), { timeout: 1500 });
-        } else {
-            setTimeout(loadEvents, 800);
+        // Kick off background events fetch during browser idle time ONLY when events are visible
+        if (shouldShowEvents()) {
+            if ('requestIdleCallback' in window) {
+                window.requestIdleCallback(() => loadEvents(), { timeout: 1800 });
+            } else {
+                setTimeout(loadEvents, 900);
+            }
         }
 
         // ==========================================

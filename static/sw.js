@@ -1,12 +1,14 @@
-// Supersedes aiseki-navi-v47 (purged automatically on activate)
-const CACHE_NAME = 'aiseki-navi-v48';
+// Supersedes aiseki-navi-v47, aiseki-navi-v48 (purged automatically on activate)
+const CACHE_NAME = 'aiseki-navi-v49';
 const SHELL_KEY = '/';
 const FAST_NAV_PATHS = new Set([
   '/guide/brand-comparison',
   '/guide/price-event-comparison',
   '/grooming',
   '/stats',
-  '/guide'
+  '/guide',
+  '/columns',
+  '/privacy'
 ]);
 const LIVE_SSR_PREFIXES = [
   '/',
@@ -19,10 +21,10 @@ const LIVE_SSR_PREFIXES = [
   '/jis'
 ];
 const ASSETS_TO_CACHE = [
-  '/static/style.css?v=20261026_1',
-  '/static/calm.css?v=10',
+  '/static/style.css?v=20261027_1',
+  '/static/calm.css?v=11',
   '/static/portal.css?v=6',
-  '/static/app.js?v=20261026_7',
+  '/static/app.js?v=20261027_1',
   '/static/affiliate_config.js?v=10',
   '/static/manifest.json?v=2',
   '/static/icon-192.png?v=2',
@@ -65,15 +67,16 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch the latest HTML (navigation preload first) and store it in the cache
+// Fetch the latest HTML (navigation preload first) and write to CacheStorage asynchronously without blocking UI response
 function fetchAndCache(event, cacheKey, forceFresh) {
   return (async () => {
     const preload = forceFresh ? null : await event.preloadResponse;
     const resp = preload || await fetch(event.request, forceFresh ? { cache: 'no-store' } : undefined);
     if (resp && resp.ok) {
       const copy = resp.clone();
-      const cache = await caches.open(CACHE_NAME);
-      await cache.put(cacheKey, copy);
+      event.waitUntil(
+        caches.open(CACHE_NAME).then((cache) => cache.put(cacheKey, copy)).catch(() => {})
+      );
     }
     return resp;
   })();

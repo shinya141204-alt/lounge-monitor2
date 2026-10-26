@@ -95,7 +95,7 @@
     <!-- Non-render-blocking web font (avoids waiting on Google Fonts at PWA cold launch) -->
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet"></noscript>
-    <link rel="stylesheet" href="/static/style.css?v=20261026_1">
+    <link rel="stylesheet" href="/static/style.css?v=20261027_1">
     <script>
         window.APP_CONFIG = {
             isStaff: {{ 'true' if (is_staff or session.get('is_staff')) else 'false' }},
@@ -108,7 +108,7 @@
          crossorigin="anonymous"></script>
     <script src="/static/affiliate_config.js?v=10"></script>
     {% endif %}
-    <link rel="stylesheet" href="/static/calm.css?v=10">
+    <link rel="stylesheet" href="/static/calm.css?v=11">
 </head>
 
 <body class="{% if is_staff %}staff-mode{% endif %}">
@@ -1073,7 +1073,7 @@
                     </button>
                     {% else %}
                     {% if not is_master %}
-                    <a href="/staff?switch=1" class="header-btn labeled-btn" style="text-decoration: none; border-color: rgba(251, 191, 36, 0.45); color: #fde68a;" title="マスター権限パスコードでログイン">
+                    <a href="/staff?switch=1" class="header-btn labeled-btn staff-master-switch-btn" title="マスター権限パスコードでログイン">
                         <span>👑 マスター切替</span>
                     </a>
                     {% endif %}
@@ -1151,7 +1151,7 @@
                 <div class="staff-analytics-quickbar">
                     <div class="staff-quickbar-header">
                         {% if is_master %}
-                        <span class="staff-quickbar-badge" style="background: rgba(245, 158, 11, 0.2); color: #fde68a; border: 1px solid rgba(251, 191, 36, 0.45);">👑 マスター専用 運営・分析ダッシュボード</span>
+                        <span class="staff-quickbar-badge master-quickbar-badge">👑 マスター専用 運営・分析ダッシュボード</span>
                         {% else %}
                         <span class="staff-quickbar-badge">📊 現場データ専用 モニタリングパネル</span>
                         {% endif %}
@@ -1162,7 +1162,7 @@
                         <a href="/staff/analytics" class="staff-action-pill" style="text-decoration: none;">
                             <span>📈 アクセス集計（閲覧・アフィリエイト・ボタンクリック）</span>
                         </a>
-                        <a href="/staff/sns-kit" class="staff-action-pill" style="text-decoration: none; border-color: rgba(236, 72, 153, 0.45); background: rgba(236, 72, 153, 0.14);">
+                        <a href="/staff/sns-kit" class="staff-action-pill master-sns-kit-pill" style="text-decoration: none;">
                             <span>📸 インスタ・Threads用「週末予報画像」ワンクリック生成</span>
                         </a>
                         <button type="button" class="staff-action-pill" onclick="openSnsModal('threads')">
@@ -1173,19 +1173,19 @@
                             <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                                 <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>
                             </svg>
-                            <span>📅 週間レポート（全店舗の集計・ピークランキング）</span>
+                            <span>週間レポート（全店舗の集計・ピークランキング）</span>
                         </button>
                         <button type="button" class="staff-action-pill" onclick="openComparisonModal()">
                             <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path><path d="M22 12A10 10 0 0 0 12 2v10z"></path>
                             </svg>
-                            <span>📊 系列・競合比較（リアルタイム合計）</span>
+                            <span>系列・競合比較（リアルタイム合計）</span>
                         </button>
                         <button type="button" class="staff-action-pill" onclick="openEventsModal()">
                             <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                                 <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
                             </svg>
-                            <span>🎉 イベント速報（全社キャンペーン）</span>
+                            <span>イベント速報（全社キャンペーン）</span>
                         </button>
                         <button type="button" class="staff-action-pill staff-event-toggle-pill" id="staff-toggle-events-btn" onclick="toggleStaffEvents()" title="社内画面のイベントバッジ・特典表示をON/OFF切替">
                             <span id="staff-toggle-events-icon">🔒</span>
@@ -1193,25 +1193,25 @@
                         </button>
                     </div>
                     {% if is_master and data_audit_report %}
-                    <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.08);">
-                        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px; margin-bottom: 8px;">
-                            <span style="font-size: 0.78rem; font-weight: 700; color: #cbd5e1;">🛡️ 料金・営業時間データ自動監査（ズレ検知モニター）</span>
+                    <div class="master-subpanel">
+                        <div class="master-subpanel-head">
+                            <span class="master-subpanel-title">🛡️ 料金・営業時間データ自動監査（ズレ検知モニター）</span>
                             {% if data_audit_report.status == 'ok' %}
-                            <span style="font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 99px; background: rgba(34, 197, 94, 0.18); color: #86efac; border: 1px solid rgba(34, 197, 94, 0.35);">✓ 全{{ data_audit_report.summary.total_master_stores }}店舗 整合性OK（ズレなし）</span>
+                            <span class="master-status-pill ok">✓ 全{{ data_audit_report.summary.total_master_stores }}店舗 整合性OK（ズレなし）</span>
                             {% else %}
-                            <span style="font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 99px; background: rgba(245, 158, 11, 0.2); color: #fde68a; border: 1px solid rgba(245, 158, 11, 0.45);">⚠️ 要確認 {{ data_audit_report.summary.issue_count + data_audit_report.summary.warning_count }}件</span>
+                            <span class="master-status-pill warn">⚠️ 要確認 {{ data_audit_report.summary.issue_count + data_audit_report.summary.warning_count }}件</span>
                             {% endif %}
                         </div>
-                        <div style="font-size: 0.74rem; color: #94a3b8; line-height: 1.55;">
+                        <div class="master-subpanel-meta">
                             営業時間登録：{{ data_audit_report.summary.hours_registered }}/{{ data_audit_report.summary.total_master_stores }}店舗 ｜ 国内料金表：{{ data_audit_report.summary.price_registered }}/{{ data_audit_report.summary.domestic_stores }}店舗 ｜ 営業時間外来店ズレ：{{ data_audit_report.summary.hours_drift_count }}件 ｜ 公式改定キーワード：{{ data_audit_report.summary.revision_notice_count }}件（最終点検 {{ data_audit_report.checked_at }}）
                         </div>
                         {% if data_audit_report.issues or data_audit_report.warnings %}
-                        <div style="margin-top: 8px; display: flex; flex-direction: column; gap: 6px;">
+                        <div class="master-audit-list">
                             {% for item in (data_audit_report.issues + data_audit_report.warnings) %}
-                            <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.35); border-radius: 8px; padding: 7px 10px; font-size: 0.75rem; color: #fde68a;">
+                            <div class="master-audit-alert">
                                 {{ item.message }}
                                 {% if item.url %}
-                                <a href="{{ item.url }}" target="_blank" rel="noopener noreferrer" style="color: #38bdf8; margin-left: 6px; font-weight: 700;">公式ページ確認 ↗</a>
+                                <a href="{{ item.url }}" target="_blank" rel="noopener noreferrer" class="master-inline-link">公式ページ確認 ↗</a>
                                 {% endif %}
                             </div>
                             {% endfor %}
@@ -1220,25 +1220,25 @@
                     </div>
                     {% endif %}
                     {% if is_master and scheduled_queue %}
-                    <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.08);">
-                        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px; margin-bottom: 8px;">
-                            <span style="font-size: 0.78rem; font-weight: 700; color: #cbd5e1;">🗓️ コラム自動予約公開スケジュール（サイト解禁＋sitemap登録＋X自動告知）</span>
-                            <span style="font-size: 0.72rem; color: #94a3b8;">※予約日時前は一般アクセス404・社内のみプレビュー可</span>
+                    <div class="master-subpanel">
+                        <div class="master-subpanel-head">
+                            <span class="master-subpanel-title">🗓️ コラム自動予約公開スケジュール（サイト解禁＋sitemap登録＋X自動告知）</span>
+                            <span class="master-subpanel-meta">※予約日時前は一般アクセス404・社内のみプレビュー可</span>
                         </div>
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 8px;">
+                        <div class="master-sched-grid">
                             {% for item in scheduled_queue %}
-                            <div style="background: rgba(15, 23, 42, 0.55); border: 1px solid rgba(255,255,255,0.09); border-radius: 10px; padding: 9px 12px; display: flex; flex-direction: column; gap: 5px;">
-                                <div style="display: flex; align-items: center; justify-content: space-between; gap: 6px;">
+                            <div class="master-sched-card">
+                                <div class="master-sched-card-top">
                                     {% if item.published %}
-                                    <span style="font-size: 0.68rem; font-weight: 700; padding: 2px 7px; border-radius: 99px; background: rgba(34, 197, 94, 0.18); color: #86efac; border: 1px solid rgba(34, 197, 94, 0.35);">公開済み</span>
+                                    <span class="master-status-pill ok">公開済み</span>
                                     {% else %}
-                                    <span style="font-size: 0.68rem; font-weight: 700; padding: 2px 7px; border-radius: 99px; background: rgba(245, 158, 11, 0.18); color: #fde68a; border: 1px solid rgba(245, 158, 11, 0.35);">予約待機中</span>
+                                    <span class="master-status-pill warn">予約待機中</span>
                                     {% endif %}
-                                    <span style="font-size: 0.72rem; color: #94a3b8;">{{ item.publish_at_ja }}</span>
+                                    <span class="master-subpanel-meta">{{ item.publish_at_ja }}</span>
                                 </div>
-                                <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-                                    <span style="font-size: 0.8rem; font-weight: 600; color: #f1f5f9;">{{ item.short_title }}</span>
-                                    <a href="{{ item.path }}" target="_blank" rel="noopener noreferrer" style="font-size: 0.74rem; font-weight: 700; color: #38bdf8; text-decoration: none; white-space: nowrap;">確認 ↗</a>
+                                <div class="master-sched-card-bottom">
+                                    <span class="master-sched-title">{{ item.short_title }}</span>
+                                    <a href="{{ item.path }}" target="_blank" rel="noopener noreferrer" class="master-inline-link">確認 ↗</a>
                                 </div>
                             </div>
                             {% endfor %}
@@ -1268,6 +1268,8 @@
                                 <span class="distance-tag hidden"></span>
                                 {% if (s.women_diff or 0) >= 1 %}
                                 <span class="momentum-tag" title="直近約15分で女性が+{{ s.women_diff }}名増えています">↗ +{{ s.women_diff }}名</span>
+                                {% elif s.votes and (s.votes.smooth or 0) > 0 and (s.votes.smooth or 0) >= (s.votes.waiting or 0) %}
+                                <span class="momentum-tag" title="直近の現場レポートで「待ちなしで入れた」が報告されています">即入店</span>
                                 {% else %}
                                 <span class="momentum-tag hidden"></span>
                                 {% endif %}
@@ -1277,7 +1279,7 @@
                                 <span class="area-tag hidden"></span>
                                 {% endif %}
                             </div>
-                            <h3 class="store-name">{{ s.ssr_title }}</h3>
+                            <h3 class="store-name">{{ s.ssr_title }}{% if not is_staff and s.ssr_event_badge %}<span class="event-tag-badge" title="{{ s.ssr_event_title }}">{{ s.ssr_event_badge }}</span>{% endif %}</h3>
                         </div>
                         <div class="card-actions">
                             <button class="pin-btn" aria-label="お気に入り" title="お気に入り固定" onclick="event.stopPropagation();if(window.togglePin)togglePin({{ s.name | tojson | forceescape }})">
@@ -1725,7 +1727,7 @@
         window.INITIAL_STATUS_DATA = {{ initial_status | tojson }};
         {% endif %}
     </script>
-    <script src="/static/app.js?v=20261026_7" defer></script>
+    <script src="/static/app.js?v=20261027_1" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
@@ -1736,7 +1738,7 @@
                 window.location.reload();
             });
             window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/sw.js?v=48', { updateViaCache: 'none' })
+                navigator.serviceWorker.register('/sw.js?v=49', { updateViaCache: 'none' })
                     .then(function(reg) {
                         reg.update();
                         document.addEventListener('visibilitychange', function() {

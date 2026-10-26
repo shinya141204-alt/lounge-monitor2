@@ -157,34 +157,76 @@ def compute_store_analysis_payload(store_name, analysis_cache, cache_duration=36
     hourly_men_by_day = defaultdict(lambda: defaultdict(list))
 
     now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
+    now_jst_str = now_jst.strftime("%Y-%m-%d %H:%M:%S")
+    detail_cutoff_date = (now_jst - datetime.timedelta(days=10)).strftime("%Y-%m-%d")
 
-    for d in target_data:
+    # Fast memoized date parser (~10x faster than calling datetime.strptime on every row)
+    _date_memo = {}
+
+    def _resolve_biz_date_and_wd(date_part: str, hour_int: int):
+        key = (date_part, hour_int <= 6)
+        cached_val = _date_memo.get(key)
+        if cached_val is not None:
+            return cached_val
+        d_obj = datetime.date.fromisoformat(date_part)
+        if hour_int <= 6:
+            d_obj = d_obj - datetime.timedelta(days=1)
+        res = (d_obj.isoformat(), d_obj.weekday())
+        _date_memo[key] = res
+        return res
+
+    # Single-pass sort + aggregation + smart trend sampling
+    # Keep 1-min resolution for the most recent 10 business days, and 5-min bucket resolution for older days
+    # so payload size drops sharply while preserving exact peaks and daily table fidelity.
+    sorted_target = sorted(target_data, key=lambda x: x.get('ts') or '')
+    recent_data_women = []
+    recent_data_men = []
+    seen_buckets = set()
+
+    for d in sorted_target:
+        ts_str = d.get('ts')
+        if not ts_str or len(ts_str) < 16 or ts_str > now_jst_str:
+            continue
         try:
-            dt = datetime.datetime.strptime(d['ts'], "%Y-%m-%d %H:%M:%S")
-            if dt > now_jst or not is_business_hours(dt):
+            h_int = int(ts_str[11:13])
+            if not (h_int >= 18 or h_int <= 6):
                 continue
-            biz_dt = get_business_dt(dt)
-            b_weekday = biz_dt.weekday()
-
-            hourly_women[dt.hour].append(d['women'])
-            hourly_men[dt.hour].append(d['men'])
-            weekday_women[b_weekday].append(d['women'])
-            weekday_men[b_weekday].append(d['men'])
-            if is_peak_hours(dt):
-                weekday_peak_women[b_weekday].append(d['women'])
-                weekday_peak_men[b_weekday].append(d['men'])
-            hourly_women_by_day[b_weekday][dt.hour].append(d['women'])
-            hourly_men_by_day[b_weekday][dt.hour].append(d['men'])
+            b_date_str, b_weekday = _resolve_biz_date_and_wd(ts_str[:10], h_int)
+            w_val = int(d.get('women') or 0)
+            m_val = int(d.get('men') or 0)
         except Exception:
             continue
+
+        hourly_women[h_int].append(w_val)
+        hourly_men[h_int].append(m_val)
+        weekday_women[b_weekday].append(w_val)
+        weekday_men[b_weekday].append(m_val)
+        if h_int >= 20 or h_int <= 1:
+            weekday_peak_women[b_weekday].append(w_val)
+            weekday_peak_men[b_weekday].append(m_val)
+        hourly_women_by_day[b_weekday][h_int].append(w_val)
+        hourly_men_by_day[b_weekday][h_int].append(m_val)
+
+        if b_date_str >= detail_cutoff_date:
+            bucket_key = f"{b_date_str} {ts_str[11:16]}"
+        else:
+            m5 = (int(ts_str[14:16]) // 5) * 5
+            bucket_key = f"{b_date_str} {ts_str[11:13]}:{m5:02d}"
+
+        if bucket_key in seen_buckets:
+            continue
+        seen_buckets.add(bucket_key)
+        business_ts = f"{b_date_str} {ts_str[11:19]}"
+        recent_data_women.append({'x': business_ts, 'y': w_val})
+        recent_data_men.append({'x': business_ts, 'y': m_val})
 
     hourly_result = {}
     hourly_men_result = {}
     for h in range(24):
         w_vals = hourly_women.get(h, [])
         m_vals = hourly_men.get(h, [])
-        hourly_result[h] = round(statistics.mean(w_vals), 1) if w_vals else 0
-        hourly_men_result[h] = round(statistics.mean(m_vals), 1) if m_vals else 0
+        hourly_result[h] = round(sum(w_vals) / len(w_vals), 1) if w_vals else 0
+        hourly_men_result[h] = round(sum(m_vals) / len(m_vals), 1) if m_vals else 0
 
     weekday_result = {}
     weekday_men_result = {}
@@ -192,8 +234,8 @@ def compute_store_analysis_payload(store_name, analysis_cache, cache_duration=36
     for i in range(7):
         w_vals = weekday_peak_women.get(i) or weekday_women.get(i, [])
         m_vals = weekday_peak_men.get(i) or weekday_men.get(i, [])
-        weekday_result[weekdays_str[i]] = round(statistics.mean(w_vals), 1) if w_vals else 0
-        weekday_men_result[weekdays_str[i]] = round(statistics.mean(m_vals), 1) if m_vals else 0
+        weekday_result[weekdays_str[i]] = round(sum(w_vals) / len(w_vals), 1) if w_vals else 0
+        weekday_men_result[weekdays_str[i]] = round(sum(m_vals) / len(m_vals), 1) if m_vals else 0
 
     hourly_by_weekday_result = {}
     hourly_men_by_weekday_result = {}
@@ -204,31 +246,10 @@ def compute_store_analysis_payload(store_name, analysis_cache, cache_duration=36
         for h in range(24):
             w_vals = hourly_women_by_day[i].get(h, [])
             m_vals = hourly_men_by_day[i].get(h, [])
-            day_avg_w[h] = round(statistics.mean(w_vals), 1) if w_vals else 0
-            day_avg_m[h] = round(statistics.mean(m_vals), 1) if m_vals else 0
+            day_avg_w[h] = round(sum(w_vals) / len(w_vals), 1) if w_vals else 0
+            day_avg_m[h] = round(sum(m_vals) / len(m_vals), 1) if m_vals else 0
         hourly_by_weekday_result[weekdays_str[i]] = day_avg_w
         hourly_men_by_weekday_result[weekdays_str[i]] = day_avg_m
-
-    recent_data_women = []
-    recent_data_men = []
-    sorted_target = sorted(target_data, key=lambda x: x['ts'])
-    seen_minutes = set()
-
-    for d in sorted_target:
-        try:
-            dt = datetime.datetime.strptime(d['ts'], "%Y-%m-%d %H:%M:%S")
-            if dt > now_jst or not is_business_hours(dt):
-                continue
-            business_date = get_business_dt(dt).strftime("%Y-%m-%d")
-            min_key = f"{business_date} {dt.strftime('%H:%M')}"
-            if min_key in seen_minutes:
-                continue
-            seen_minutes.add(min_key)
-            business_ts = f"{business_date} {dt.strftime('%H:%M:%S')}"
-            recent_data_women.append({'x': business_ts, 'y': d['women']})
-            recent_data_men.append({'x': business_ts, 'y': d['men']})
-        except (ValueError, KeyError):
-            continue
 
     result = {
         "store_name": store_name,

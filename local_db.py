@@ -2,6 +2,7 @@ import sqlite3
 import datetime
 import os
 import sys
+import time
 import threading
 import urllib.parse
 import json
@@ -13,6 +14,15 @@ _sync_in_progress = False
 _full_sync_completed = False
 _partial_recent_only = False
 _sync_complete_callbacks = []
+_store_7d_cache = {}
+_STORE_7D_TTL = 180.0
+
+
+def clear_store_7d_cache(store_name: str = None):
+    if store_name:
+        _store_7d_cache.pop((DB_PATH, store_name), None)
+    else:
+        _store_7d_cache.clear()
 
 
 def is_full_sync_completed() -> bool:
@@ -46,6 +56,12 @@ def get_connection():
     """Returns a SQLite connection configured for high-concurrency read/write."""
     conn = sqlite3.connect(DB_PATH, timeout=30.0, check_same_thread=False)
     conn.row_factory = sqlite3.Row
+    try:
+        conn.execute("PRAGMA temp_store=MEMORY;")
+        conn.execute("PRAGMA cache_size=-16000;")
+        conn.execute("PRAGMA mmap_size=67108864;")
+    except Exception:
+        pass
     return conn
 
 def init_db():
@@ -114,6 +130,7 @@ def insert_logs(items, timestamp_str):
             """, rows)
             conn.commit()
             inserted = cur.rowcount
+            clear_store_7d_cache()
             return inserted
         except Exception as e:
             print(f"[local_db] Insert error: {e}", file=sys.stderr)
@@ -125,7 +142,7 @@ def insert_logs(items, timestamp_str):
 def insert_logs_with_ts(items):
     """
     Batch-inserts records where each item has its own 'ts' field.
-    Prevents N+1 SQLite transactions when backfilling from Google Sheets.
+    Splits large backfills into 1,500-row micro-batches to avoid holding _db_lock / GIL for long.
     """
     if not items:
         return 0
@@ -147,21 +164,31 @@ def insert_logs_with_ts(items):
     if not rows:
         return 0
 
-    with _db_lock:
-        conn = get_connection()
-        try:
-            cur = conn.cursor()
-            cur.executemany("""
-                INSERT OR IGNORE INTO monitor_logs (timestamp, store_name, men, women, source)
-                VALUES (?, ?, ?, ?, ?)
-            """, rows)
-            conn.commit()
-            return cur.rowcount
-        except Exception as e:
-            print(f"[local_db] Batch insert error: {e}", file=sys.stderr)
-            return 0
-        finally:
-            conn.close()
+    total_inserted = 0
+    chunk_size = 1500
+    for offset in range(0, len(rows), chunk_size):
+        sub_rows = rows[offset:offset + chunk_size]
+        with _db_lock:
+            conn = get_connection()
+            try:
+                cur = conn.cursor()
+                cur.executemany("""
+                    INSERT OR IGNORE INTO monitor_logs (timestamp, store_name, men, women, source)
+                    VALUES (?, ?, ?, ?, ?)
+                """, sub_rows)
+                conn.commit()
+                if cur.rowcount and cur.rowcount > 0:
+                    total_inserted += cur.rowcount
+            except Exception as e:
+                print(f"[local_db] Batch insert error: {e}", file=sys.stderr)
+                return total_inserted
+            finally:
+                conn.close()
+        if offset + chunk_size < len(rows):
+            time.sleep(0.015)
+
+    clear_store_7d_cache()
+    return total_inserted
 
 def get_store_history(store_name, days=30):
     """
@@ -174,6 +201,7 @@ def get_store_history(store_name, days=30):
 
     conn = get_connection()
     try:
+        conn.row_factory = None
         cur = conn.cursor()
         cur.execute("""
             SELECT timestamp, store_name, men, women
@@ -184,10 +212,10 @@ def get_store_history(store_name, days=30):
         rows = cur.fetchall()
         return [
             {
-                'ts': r['timestamp'],
-                'name': r['store_name'],
-                'men': r['men'],
-                'women': r['women']
+                'ts': r[0],
+                'name': r[1],
+                'men': r[2],
+                'women': r[3]
             }
             for r in rows
         ]
@@ -204,6 +232,7 @@ def get_weekly_history(start_ts_str):
     """
     conn = get_connection()
     try:
+        conn.row_factory = None
         cur = conn.cursor()
         cur.execute("""
             SELECT timestamp, store_name, men, women, source
@@ -214,11 +243,11 @@ def get_weekly_history(start_ts_str):
         rows = cur.fetchall()
         return [
             {
-                'ts': r['timestamp'],
-                'name': r['store_name'],
-                'men': r['men'],
-                'women': r['women'],
-                'source': r['source'] or ''
+                'ts': r[0],
+                'name': r[1],
+                'men': r[2],
+                'women': r[3],
+                'source': r[4] or ''
             }
             for r in rows
         ]
@@ -291,18 +320,25 @@ def _fetch_gviz_rows_and_insert(query: str, timeout: int = 35) -> int:
     if not batch:
         return 0
 
-    with _db_lock:
-        conn = get_connection()
-        try:
-            cur = conn.cursor()
-            cur.executemany("""
-                INSERT OR IGNORE INTO monitor_logs (timestamp, store_name, men, women, source)
-                VALUES (?, ?, ?, ?, ?)
-            """, batch)
-            conn.commit()
-            return len(batch)
-        finally:
-            conn.close()
+    chunk_size = 1500
+    for idx in range(0, len(batch), chunk_size):
+        sub_batch = batch[idx:idx + chunk_size]
+        with _db_lock:
+            conn = get_connection()
+            try:
+                cur = conn.cursor()
+                cur.executemany("""
+                    INSERT OR IGNORE INTO monitor_logs (timestamp, store_name, men, women, source)
+                    VALUES (?, ?, ?, ?, ?)
+                """, sub_batch)
+                conn.commit()
+            finally:
+                conn.close()
+        if idx + chunk_size < len(batch):
+            time.sleep(0.015)
+
+    clear_store_7d_cache()
+    return len(batch)
 
 
 def sync_recent_from_google_sheets(hours=2):
@@ -386,6 +422,27 @@ def sync_from_google_sheets(days=30, on_recent_synced=None):
         now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
         total_imported = 0
 
+        # Shortcut: if local SQLite already covers the requested history window, only sync delta since max_ts
+        try:
+            target_min_str = (now_jst - datetime.timedelta(days=max(1, int(days)) - 1)).strftime("%Y-%m-%d 00:00:00")
+            conn = get_connection()
+            try:
+                cur = conn.execute("SELECT COUNT(*), MIN(timestamp), MAX(timestamp) FROM monitor_logs")
+                cnt_row = cur.fetchone()
+            finally:
+                conn.close()
+            if cnt_row and int(cnt_row[0] or 0) >= 8000 and cnt_row[1] and cnt_row[2] and str(cnt_row[1]) <= target_min_str:
+                delta_query = f"SELECT A, B, C, D, E WHERE A >= '{cnt_row[2]}'"
+                delta_imported = _fetch_gviz_rows_and_insert(delta_query, timeout=25)
+                _partial_recent_only = False
+                _full_sync_completed = True
+                if delta_imported > 0:
+                    _notify_sync_complete()
+                print(f"[local_db] Fast delta sync complete! Local DB already had {cnt_row[0]} rows; imported {delta_imported} delta rows.")
+                return
+        except Exception:
+            pass
+
         # Step 2: Sync in 3-to-4 day chunks from newest to oldest so multi-day logs are available within seconds
         chunk_days = 4
         cursor_end = now_jst
@@ -412,6 +469,8 @@ def sync_from_google_sheets(days=30, on_recent_synced=None):
             cursor_end = cursor_start
             remaining_days -= step
             first_chunk = False
+            if remaining_days > 0:
+                time.sleep(0.35)
 
         if total_imported > 0:
             _partial_recent_only = False
@@ -527,6 +586,7 @@ def add_crowd_vote(store_name, vote_type, ip_hash="", voter_id=""):
         _memory_votes[:] = [v for v in _memory_votes if v['timestamp'] >= cutoff_6h]
 
     _insert_vote_row(now_str, store_name, vote_type, identity)
+    clear_store_7d_cache(store_name)
 
     try:
         import sheets_store
@@ -600,6 +660,8 @@ def restore_votes_from_sheets(hours=24):
             _memory_votes.append({'timestamp': r[0], 'store_name': r[1], 'vote_type': r[2],
                                   'ip_hash': identity, 'voter_id': identity})
         restored += 1
+    if restored > 0:
+        clear_store_7d_cache()
     print(f"[local_db] Restored {restored} crowd votes from Google Sheets.")
     return restored
 
@@ -666,6 +728,13 @@ def get_store_7day_analytics(store_name: str) -> dict:
     Computes the past 7 business days' daily peak log and data-driven strategy insights for a store.
     Used on individual store pages (/store/<slug>) to provide unique primary research data (E-E-A-T).
     """
+    cache_key = (DB_PATH, store_name)
+    now_mono = time.monotonic()
+    cached = _store_7d_cache.get(cache_key)
+    if cached is not None and (now_mono - cached[0] < _STORE_7D_TTL):
+        if cached[1].get("has_history") or not is_partial_recent_only():
+            return cached[1]
+
     from collections import defaultdict
     weekdays_ja = ["月", "火", "水", "木", "金", "土", "日"]
     rows = get_store_history(store_name, days=10)
@@ -678,28 +747,40 @@ def get_store_7day_analytics(store_name: str) -> dict:
     wd_ratios = defaultdict(list)
     midnight_women = []
     peak_band_women = []
+    _date_memo = {}
 
     for r in rows:
         ts_str = r.get("ts") or ""
         w = int(r.get("women") or 0)
         m = int(r.get("men") or 0)
         tot = w + m
-        if not ts_str or (w == 0 and m == 0):
+        if len(ts_str) < 16 or (w == 0 and m == 0):
             continue
         try:
-            dt = datetime.datetime.strptime(ts_str, "%Y-%m-%d %H:%M:%S")
+            d_str = ts_str[:10]
+            h = int(ts_str[11:13])
+            hm_str = ts_str[11:16]
+            d_info = _date_memo.get(d_str)
+            if d_info is None:
+                d_obj = datetime.date(int(d_str[0:4]), int(d_str[5:7]), int(d_str[8:10]))
+                p_obj = d_obj - datetime.timedelta(days=1)
+                d_info = (d_str, d_obj.weekday(), p_obj.isoformat(), p_obj.weekday())
+                _date_memo[d_str] = d_info
         except Exception:
             continue
 
         # Business date (00:00 - 06:59 belongs to previous night)
-        biz_dt = dt - datetime.timedelta(days=1) if dt.hour <= 6 else dt
-        biz_date_str = biz_dt.strftime("%Y-%m-%d")
-        daily_buckets[biz_date_str].append((dt, w, m))
+        if h <= 6:
+            biz_date_str = d_info[2]
+            biz_wd = d_info[3]
+        else:
+            biz_date_str = d_info[0]
+            biz_wd = d_info[1]
+        daily_buckets[biz_date_str].append((h, hm_str, w, m))
 
         if tot >= 6:
             wpct = (w / tot) * 100.0
-            wd_ratios[biz_dt.weekday()].append(wpct)
-            h = dt.hour
+            wd_ratios[biz_wd].append(wpct)
             if 18 <= h <= 20:
                 slot_ratios["19:00〜21:00（早割・1軒目帯）"].append(wpct)
             elif 21 <= h <= 22:
@@ -709,9 +790,9 @@ def get_store_7day_analytics(store_name: str) -> dict:
             elif 1 <= h <= 4:
                 slot_ratios["翌1:00〜03:00（深夜オールナイト帯）"].append(wpct)
 
-        if 21 <= dt.hour <= 23:
+        if 21 <= h <= 23:
             peak_band_women.append(w)
-        elif 0 <= dt.hour <= 2:
+        elif 0 <= h <= 2:
             midnight_women.append(w)
 
     daily_logs = []
@@ -719,17 +800,17 @@ def get_store_7day_analytics(store_name: str) -> dict:
         entries = daily_buckets[bdate]
         if not entries:
             continue
-        peak_entry = max(entries, key=lambda x: (x[1], x[2]))
-        peak_dt, peak_w, peak_m = peak_entry
+        peak_entry = max(entries, key=lambda x: (x[2], x[3]))
+        _, peak_hm, peak_w, peak_m = peak_entry
         core_ratios = [
             (w / (w + m)) * 100.0
-            for (dt, w, m) in entries
-            if (w + m) >= 4 and (20 <= dt.hour <= 23 or dt.hour == 0)
+            for (eh, _, w, m) in entries
+            if (w + m) >= 4 and (20 <= eh <= 23 or eh == 0)
         ]
         avg_wpct = round(sum(core_ratios) / len(core_ratios)) if core_ratios else (
             round((peak_w / max(1, peak_w + peak_m)) * 100)
         )
-        b_dt_obj = datetime.datetime.strptime(bdate, "%Y-%m-%d")
+        b_dt_obj = datetime.date(int(bdate[0:4]), int(bdate[5:7]), int(bdate[8:10]))
         wd_label = weekdays_ja[b_dt_obj.weekday()]
         daily_logs.append({
             "date_raw": bdate,
@@ -737,7 +818,7 @@ def get_store_7day_analytics(store_name: str) -> dict:
             "weekday": wd_label,
             "peak_women": peak_w,
             "peak_men": peak_m,
-            "peak_time": peak_dt.strftime("%H:%M"),
+            "peak_time": peak_hm,
             "avg_wpct": avg_wpct,
         })
 
@@ -765,7 +846,7 @@ def get_store_7day_analytics(store_name: str) -> dict:
     max_7d_w = max((d["peak_women"] for d in daily_logs), default=0)
     votes_24h = get_recent_votes(store_name=store_name, hours=24)
 
-    return {
+    result = {
         "has_history": len(daily_logs) > 0,
         "sample_count": len(rows),
         "daily_logs": daily_logs,
@@ -778,3 +859,5 @@ def get_store_7day_analytics(store_name: str) -> dict:
         "strong_midnight": strong_midnight,
         "votes_24h": votes_24h,
     }
+    _store_7d_cache[cache_key] = (time.monotonic(), result)
+    return result
