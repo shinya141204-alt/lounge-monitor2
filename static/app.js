@@ -774,15 +774,16 @@
                     window.lastData = window.INITIAL_STATUS_DATA;
                     isInitialLoad = false;
                     // The HTML may come from the Service Worker app-shell cache (instant PWA launch).
-                    // Only skip the first /api/status call when the embedded data is genuinely fresh.
-                    _renderedFromSSR = getStatusAgeSec(window.INITIAL_STATUS_DATA) < 90;
+                    // Only skip the first /api/status call when the embedded data is very fresh (< 20s).
+                    _renderedFromSSR = getStatusAgeSec(window.INITIAL_STATUS_DATA) < 20;
                     const rankingListEl = document.getElementById('ranking-list');
                     const hasInfeedAds = !IS_STAFF && typeof AFFILIATE_MASTER !== 'undefined' && AFFILIATE_MASTER && AFFILIATE_MASTER.enabled && Array.isArray(AFFILIATE_MASTER.infeedSlots) && AFFILIATE_MASTER.infeedSlots.length > 0;
                     const staffEventsMismatch = IS_STAFF && shouldShowEvents();
+                    const pinnedAlreadyHydrated = (pinnedStores.length === 0) || Boolean(window.__SSR_PINNED_HYDRATED);
                     const canHydrateSsrZeroDom = (
                         !hasInfeedAds &&
                         !staffEventsMismatch &&
-                        pinnedStores.length === 0 &&
+                        pinnedAlreadyHydrated &&
                         currentFilter === 'All' &&
                         currentSort === 'women' &&
                         currentSearch === '' &&
@@ -1190,6 +1191,9 @@
             const template = document.getElementById('ranking-item-template');
             const node = template.content.cloneNode(true);
             const item = node.querySelector('.ranking-item');
+            if (store && store.name) {
+                item.setAttribute('data-store', store.name);
+            }
 
             const pinBtn = node.querySelector('.pin-btn');
             if (pinnedStores.includes(store.name)) {

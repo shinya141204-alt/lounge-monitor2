@@ -96,6 +96,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet"></noscript>
     <link rel="stylesheet" href="/static/style.css?v=20261027_3">
+    <link rel="preload" href="/static/app.js?v=20261027_5" as="script">
     <script>
         window.APP_CONFIG = {
             isStaff: {{ 'true' if is_staff else 'false' }},
@@ -106,14 +107,777 @@
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
          crossorigin="anonymous"></script>
-    <script src="/static/affiliate_config.js?v=11"></script>
+    <script src="/static/affiliate_config.js?v=11" defer></script>
     {% endif %}
     <link rel="stylesheet" href="/static/calm.css?v=13">
 </head>
 
 <body class="{% if is_staff %}staff-mode{% endif %}">
+    <script>
+        try {
+            var _t = localStorage.getItem('olg_view_theme') || (localStorage.getItem('olg_compact_view') === 'true' ? 'list' : 'default');
+            if (_t === 'list') document.body.classList.add('compact-mode', 'theme-list');
+            else if (_t === 'light') document.body.classList.add('theme-light');
+        } catch (e) {}
+    </script>
     <!-- Refresh Toast Notification -->
     <div id="refresh-toast" class="refresh-toast hidden">最新データに更新しました</div>
+
+    <div class="container">
+        {% if not is_staff %}
+        <!-- PWA Smart Install Banner -->
+        <aside id="pwa-install-banner" class="pwa-install-banner hidden" role="region" aria-label="ホーム画面に追加のご案内">
+            <div class="pwa-banner-content">
+                <div class="pwa-banner-info">
+                    <div class="pwa-banner-title">ホーム画面に追加でアプリ化</div>
+                    <div class="pwa-banner-desc">ワンタップで今夜の混雑・男女比速報をチェック</div>
+                </div>
+            </div>
+            <div class="pwa-banner-actions">
+                <button id="pwa-install-btn" class="pwa-install-action-btn" onclick="triggerPwaInstall()">追加する</button>
+                <button class="pwa-banner-close-btn" onclick="dismissPwaBanner()" aria-label="閉じる" title="閉じる">✕</button>
+            </div>
+        </aside>
+        {% endif %}
+
+        <header>
+            {% if is_staff %}
+            <div class="staff-header-top" style="display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap;">
+                {% if is_master %}
+                <span class="staff-header-badge" style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(217, 119, 6, 0.35)); border: 1px solid rgba(251, 191, 36, 0.55); color: #fde68a;">👑 MASTER MONITOR（マスター全権限モード・広告OFF）</span>
+                {% else %}
+                <span class="staff-header-badge">社内業務モニター（現場データ専用・広告OFF）</span>
+                {% endif %}
+            </div>
+            {% endif %}
+            <div class="header-top-row">
+                <div class="header-brand-block">
+                    <h1>{% if is_staff and is_master %}相席ナビ マスター管理{% elif is_staff %}相席ナビ 業務モニター{% else %}相席ナビ{% endif %}</h1>
+                    <p class="subtitle">全国ラウンジの今わかる人数ランキング</p>
+                </div>
+                <div class="header-controls">
+                    <!-- Mobile & Desktop Common Primary Actions -->
+                    <button id="refresh-btn" class="header-btn labeled-btn refresh-btn" onclick="manualRefresh()" title="最新データに更新">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+                        </svg>
+                        <span>更新</span>
+                    </button>
+                    <button id="events-btn" class="header-btn labeled-btn desktop-only" onclick="openEventsModal()" title="最新イベント・キャンペーン速報">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                        </svg>
+                        <span>イベント</span>
+                    </button>
+                    <a id="header-x-btn" href="https://x.com/aiseki_navi" target="_blank" rel="noopener noreferrer" class="header-btn labeled-btn desktop-only" style="text-decoration: none;" title="公式Xで今夜の女性速報を見る">
+                        <span class="beacon-dot" style="margin-right: 2px;"></span>
+                        <span>X速報</span>
+                    </a>
+
+                    <!-- Mobile Menu Hamburger Button (Visible on mobile <= 768px) -->
+                    <button id="mobile-menu-btn" class="header-btn labeled-btn mobile-only-btn" onclick="openMenuModal()" title="メニューを開く">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="3" y1="12" x2="21" y2="12"></line>
+                            <line x1="3" y1="6" x2="21" y2="6"></line>
+                            <line x1="3" y1="18" x2="21" y2="18"></line>
+                        </svg>
+                        <span>メニュー</span>
+                    </button>
+
+                    <!-- Desktop-only controls (Hidden on mobile to keep header clean) -->
+                    <button id="report-btn" class="header-btn labeled-btn desktop-only" onclick="openReportModal()" title="週間レポート">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>
+                        </svg>
+                        <span>週間集計</span>
+                    </button>
+                    <button id="compare-btn" class="header-btn labeled-btn desktop-only" onclick="openComparisonModal()" title="競合比較ダッシュボード">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path><path d="M22 12A10 10 0 0 0 12 2v10z"></path>
+                        </svg>
+                        <span>系列比較</span>
+                    </button>
+                    <button id="compact-btn" class="header-btn labeled-btn desktop-only" onclick="toggleCompact()" title="デザイン・表示モード切替">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line>
+                        </svg>
+                        <span id="compact-btn-label">表示切替</span>
+                    </button>
+                    {% if not is_staff %}
+                    <button id="howto-btn" class="header-btn labeled-btn desktop-only" onclick="openHowToModal()" title="相席ナビのカンタン使い方ガイド">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                        </svg>
+                        <span>使い方</span>
+                    </button>
+                    <button type="button" id="guide-link-btn" class="header-btn labeled-btn desktop-only" onclick="openArticlesModal()" title="攻略コラム・記事一覧から選ぶ">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                        </svg>
+                        <span>攻略記事</span>
+                    </button>
+                    <button id="share-btn" class="header-btn labeled-btn desktop-only" onclick="openSnsModal()" title="SNS速報ポスト作成・共有">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+                        </svg>
+                        <span>速報共有</span>
+                    </button>
+                    {% else %}
+                    {% if not is_master %}
+                    <a href="/staff?switch=1" class="header-btn labeled-btn staff-master-switch-btn" title="マスター権限パスコードでログイン">
+                        <span>👑 マスター切替</span>
+                    </a>
+                    {% endif %}
+                    <a href="/staff/logout" class="header-btn labeled-btn staff-logout-btn" title="社内モニターをログアウト">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line>
+                        </svg>
+                        <span>ログアウト</span>
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="theme-switcher-bar desktop-only" role="group" aria-label="デザイン切替">
+                <button type="button" class="theme-pill-btn active" data-theme="default" onclick="setViewTheme('default', true)">通常</button>
+                <button type="button" class="theme-pill-btn" data-theme="list" onclick="setViewTheme('list', true)">リスト</button>
+                <button type="button" class="theme-pill-btn" data-theme="light" onclick="setViewTheme('light', true)">ライト</button>
+            </div>
+            {% if not is_staff %}
+            <!-- Portal Global Navigation Bar -->
+            <nav class="portal-global-nav" aria-label="サイト内メニュー">
+                <a href="/" class="portal-nav-link active">リアルタイム順位</a>
+                <a href="/price-comparison" class="portal-nav-link">料金・イベント比較</a>
+                <a href="/columns" class="portal-nav-link">コラム・記事一覧</a>
+                <a href="/areas" class="portal-nav-link">エリアから探す</a>
+                <a href="/stats" class="portal-nav-link">統計データ白書</a>
+                <a href="/guide/brand-comparison" class="portal-nav-link">3大ブランド比較</a>
+                <a href="/grooming" class="portal-nav-link">服装・事前準備</a>
+            </nav>
+            {% endif %}
+        </header>
+
+        <main>
+            <div id="pull-indicator">
+                <div class="spinner"></div>
+            </div>
+            
+            <div id="loading" class="loading-state{% if initial_status and initial_status.ranking %} hidden{% endif %}">
+                <div class="spinner"></div>
+                <p>最新データを読み込んでいます...</p>
+            </div>
+
+            <div id="content" class="content{% if not (initial_status and initial_status.ranking) %} hidden{% endif %}">
+
+                <div class="search-sort-container">
+                    <input type="text" id="search-input" placeholder="店舗名で検索" oninput="handleSearch(this.value)">
+                    <div class="sort-controls">
+                        <button class="sort-btn active" data-sort="women" onclick="setSort('women')">女性順</button>
+                        <button class="sort-btn" data-sort="men" onclick="setSort('men')">男性順</button>
+                        <button class="sort-btn" data-sort="ratio" onclick="setSort('ratio')">女性比率順</button>
+                        <button class="sort-btn" id="nearby-sort-btn" data-sort="nearby" onclick="setNearbySort()" title="現在地から近い順に並び替え">現在地順</button>
+                    </div>
+                </div>
+
+                <div class="filter-bar">
+                    <button class="filter-btn active" data-region="All">全て</button>
+                    <button class="filter-btn filter-btn-city" data-region="City:shinjuku">新宿</button>
+                    <button class="filter-btn filter-btn-city" data-region="City:shibuya">渋谷・恵比寿</button>
+                    <button class="filter-btn filter-btn-city" data-region="City:umeda">梅田・茶屋町</button>
+                    <button class="filter-btn filter-btn-city" data-region="City:namba">難波・心斎橋</button>
+                    <button class="filter-btn filter-btn-city" data-region="City:nagoya">名古屋</button>
+                    <button class="filter-btn filter-btn-city" data-region="City:fukuoka">福岡</button>
+                    <button class="filter-btn" data-region="Kanto">関東全域</button>
+                    <button class="filter-btn" data-region="Kinki">関西全域</button>
+                    <button class="filter-btn" data-region="Chubu">中部</button>
+                    <button class="filter-btn" data-region="Kyushu">九州・沖縄</button>
+                    <button class="filter-btn" data-region="Hokkaido">北海道</button>
+                    <button class="filter-btn" data-region="Tohoku">東北</button>
+                    <button class="filter-btn" data-region="Chugoku">中国</button>
+                    <button class="filter-btn" data-region="Shikoku">四国</button>
+                    <button class="filter-btn" data-region="Korea">韓国</button>
+                </div>
+
+                {% if is_staff %}
+                <!-- Staff / Master Analytics Dashboard Quick Bar -->
+                <div class="staff-analytics-quickbar">
+                    <div class="staff-quickbar-header">
+                        {% if is_master %}
+                        <span class="staff-quickbar-badge master-quickbar-badge">👑 マスター専用 運営・分析ダッシュボード</span>
+                        {% else %}
+                        <span class="staff-quickbar-badge">📊 現場データ専用 モニタリングパネル</span>
+                        {% endif %}
+                        <span class="staff-quickbar-hint">※各店舗カードタップで曜日・時間帯グラフと詳細ログを表示</span>
+                    </div>
+                    <div class="staff-quickbar-actions">
+                        {% if is_master %}
+                        <a href="/staff/analytics" class="staff-action-pill" style="text-decoration: none;">
+                            <span>📈 アクセス集計（閲覧・アフィリエイト・ボタンクリック）</span>
+                        </a>
+                        <a href="/staff/sns-kit" class="staff-action-pill master-sns-kit-pill" style="text-decoration: none;">
+                            <span>📸 インスタ・Threads用「週末予報画像」ワンクリック生成</span>
+                        </a>
+                        <button type="button" class="staff-action-pill" onclick="openSnsModal('threads')">
+                            <span>🧵 Threads・IG用「東西＆主要街速報」長文コピー</span>
+                        </button>
+                        {% endif %}
+                        <button type="button" class="staff-action-pill" onclick="openReportModal()">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>
+                            </svg>
+                            <span>週間レポート（全店舗の集計・ピークランキング）</span>
+                        </button>
+                        <button type="button" class="staff-action-pill" onclick="openComparisonModal()">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path><path d="M22 12A10 10 0 0 0 12 2v10z"></path>
+                            </svg>
+                            <span>系列・競合比較（リアルタイム合計）</span>
+                        </button>
+                        <button type="button" class="staff-action-pill" onclick="openEventsModal()">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                            </svg>
+                            <span>イベント速報（全社キャンペーン）</span>
+                        </button>
+                        <button type="button" class="staff-action-pill staff-event-toggle-pill" id="staff-toggle-events-btn" onclick="toggleStaffEvents()" title="社内画面のイベントバッジ・特典表示をON/OFF切替">
+                            <span id="staff-toggle-events-icon">🔒</span>
+                            <span id="staff-toggle-events-label">イベント非表示: ON（業務集中モード）</span>
+                        </button>
+                    </div>
+                    {% if is_master and data_audit_report %}
+                    <div class="master-subpanel">
+                        <div class="master-subpanel-head">
+                            <span class="master-subpanel-title">🛡️ 料金・営業時間データ自動監査（ズレ検知モニター）</span>
+                            {% if data_audit_report.status == 'ok' %}
+                            <span class="master-status-pill ok">✓ 全{{ data_audit_report.summary.total_master_stores }}店舗 整合性OK（ズレなし）</span>
+                            {% else %}
+                            <span class="master-status-pill warn">⚠️ 要確認 {{ data_audit_report.summary.issue_count + data_audit_report.summary.warning_count }}件</span>
+                            {% endif %}
+                        </div>
+                        <div class="master-subpanel-meta">
+                            営業時間登録：{{ data_audit_report.summary.hours_registered }}/{{ data_audit_report.summary.total_master_stores }}店舗 ｜ 国内料金表：{{ data_audit_report.summary.price_registered }}/{{ data_audit_report.summary.domestic_stores }}店舗 ｜ 営業時間外来店ズレ：{{ data_audit_report.summary.hours_drift_count }}件 ｜ 公式改定キーワード：{{ data_audit_report.summary.revision_notice_count }}件（最終点検 {{ data_audit_report.checked_at }}）
+                        </div>
+                        {% if data_audit_report.issues or data_audit_report.warnings %}
+                        <div class="master-audit-list">
+                            {% for item in (data_audit_report.issues + data_audit_report.warnings) %}
+                            <div class="master-audit-alert">
+                                {{ item.message }}
+                                {% if item.url %}
+                                <a href="{{ item.url }}" target="_blank" rel="noopener noreferrer" class="master-inline-link">公式ページ確認 ↗</a>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                    {% if is_master and scheduled_queue %}
+                    <div class="master-subpanel">
+                        <div class="master-subpanel-head">
+                            <span class="master-subpanel-title">🗓️ コラム自動予約公開スケジュール（サイト解禁＋sitemap登録＋X自動告知）</span>
+                            <span class="master-subpanel-meta">※予約日時前は一般アクセス404・社内のみプレビュー可</span>
+                        </div>
+                        <div class="master-sched-grid">
+                            {% for item in scheduled_queue %}
+                            <div class="master-sched-card">
+                                <div class="master-sched-card-top">
+                                    {% if item.published %}
+                                    <span class="master-status-pill ok">公開済み</span>
+                                    {% else %}
+                                    <span class="master-status-pill warn">予約待機中</span>
+                                    {% endif %}
+                                    <span class="master-subpanel-meta">{{ item.publish_at_ja }}</span>
+                                </div>
+                                <div class="master-sched-card-bottom">
+                                    <span class="master-sched-title">{{ item.short_title }}</span>
+                                    <a href="{{ item.path }}" target="_blank" rel="noopener noreferrer" class="master-inline-link">確認 ↗</a>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                <!-- Pinned Stores Section -->
+                <div id="pinned-list-container" class="hidden">
+                    <h2 class="section-title">★ お気に入り店舗</h2>
+                    <div id="pinned-list" class="ranking-list">
+                        <!-- Pinned items will populate here -->
+                    </div>
+                    <div class="separator"></div>
+                </div>
+
+                <div id="ranking-list" class="ranking-list">
+                    {% if initial_status and initial_status.ranking %}
+                    {% for s in initial_status.ranking %}
+                    <div class="ranking-item{% if s.ssr_rank == 1 %} rank-1{% elif s.ssr_rank == 2 %} rank-2{% elif s.ssr_rank == 3 %} rank-3{% endif %}" data-store="{{ s.name }}" style="cursor: pointer;" onclick="if(window.openModal)openModal({{ s.name | tojson | forceescape }})">
+                        <div class="rank-badge">{{ s.ssr_rank if s.ssr_rank else '-' }}</div>
+                        <div class="store-info">
+                            <div class="store-meta-row">
+                                <span class="brand-badge {{ s.ssr_brand_cls }}">{{ s.ssr_brand }}</span>
+                                <span class="distance-tag hidden"></span>
+                                {% if (s.women_diff or 0) >= 1 %}
+                                <span class="momentum-tag" title="直近約15分で女性が+{{ s.women_diff }}名増えています">↗ +{{ s.women_diff }}名</span>
+                                {% elif s.votes and (s.votes.smooth or 0) > 0 and (s.votes.smooth or 0) >= (s.votes.waiting or 0) %}
+                                <span class="momentum-tag" title="直近の現場レポートで「待ちなしで入れた」が報告されています">即入店</span>
+                                {% else %}
+                                <span class="momentum-tag hidden"></span>
+                                {% endif %}
+                                {% if s.ssr_area %}
+                                <span class="area-tag">{{ s.ssr_area }}</span>
+                                {% else %}
+                                <span class="area-tag hidden"></span>
+                                {% endif %}
+                            </div>
+                            <h3 class="store-name">{{ s.ssr_title }}{% if not is_staff and s.ssr_event_badge %}<span class="event-tag-badge" title="{{ s.ssr_event_title }}">{{ s.ssr_event_badge }}</span>{% endif %}</h3>
+                            <div class="store-micro-metrics{% if not (s.core_time_short and s.midnight_retention_pct) %} hidden{% endif %}">{% if s.core_time_short and s.midnight_retention_pct %}狙い目 {{ s.core_time_short }} <span class="micro-sep">｜</span> 終電後 {{ s.midnight_retention_pct }}%（{{ s.midnight_label_short }}）{% endif %}</div>
+                        </div>
+                        <div class="card-actions">
+                            <button class="pin-btn" aria-label="お気に入り" title="お気に入り固定" onclick="event.stopPropagation();if(window.togglePin)togglePin({{ s.name | tojson | forceescape }})">
+                                <svg class="star-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                                </svg>
+                            </button>
+                            <button class="analysis-btn" aria-label="詳細分析" title="曜日・時間帯別の詳細分析" onclick="event.stopPropagation();if(window.openModal)openModal({{ s.name | tojson | forceescape }})">
+                                <svg class="chart-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="18" y1="20" x2="18" y2="10"></line>
+                                    <line x1="12" y1="20" x2="12" y2="4"></line>
+                                    <line x1="6" y1="20" x2="6" y2="14"></line>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="stats-group">
+                            <div class="stat ladies">
+                                <div class="stat-num-row">
+                                    <span class="count">{{ s.women or 0 }}</span>
+                                    {% if (s.women_diff or 0) > 0 %}
+                                    <span class="stat-diff" title="直近約15分で女性+{{ s.women_diff }}名">+{{ s.women_diff }}</span>
+                                    {% else %}
+                                    <span class="stat-diff hidden"></span>
+                                    {% endif %}
+                                </div>
+                                <span class="label">LADIES</span>
+                                {% if s.usual_w_diff is not none %}
+                                <span class="stat-usual{% if s.usual_w_diff > 0 %} is-up{% elif s.usual_w_diff < 0 %} is-down{% endif %}" title="普段の{{ s.usual_slot_label }}平均({{ s.usual_women }}名)との差">平比{% if s.usual_w_diff > 0 %}+{{ s.usual_w_diff }}{% elif s.usual_w_diff < 0 %}{{ s.usual_w_diff }}{% else %}±0{% endif %}</span>
+                                {% else %}
+                                <span class="stat-usual hidden"></span>
+                                {% endif %}
+                            </div>
+                            <div class="stat men">
+                                <div class="stat-num-row">
+                                    <span class="count">{{ s.men or 0 }}</span>
+                                    {% if (s.men_diff or 0) > 0 %}
+                                    <span class="stat-diff" title="直近約15分で男性+{{ s.men_diff }}名">+{{ s.men_diff }}</span>
+                                    {% else %}
+                                    <span class="stat-diff hidden"></span>
+                                    {% endif %}
+                                </div>
+                                <span class="label">MEN</span>
+                                {% if s.usual_m_diff is not none %}
+                                <span class="stat-usual{% if s.usual_m_diff > 0 %} is-up{% elif s.usual_m_diff < 0 %} is-down{% endif %}" title="普段の{{ s.usual_slot_label }}平均({{ s.usual_men }}名)との差">平比{% if s.usual_m_diff > 0 %}+{{ s.usual_m_diff }}{% elif s.usual_m_diff < 0 %}{{ s.usual_m_diff }}{% else %}±0{% endif %}</span>
+                                {% else %}
+                                <span class="stat-usual hidden"></span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="occupancy-bar">
+                            <div class="bar-fill-ladies" style="width: {{ s.ssr_ladies_pct }}%"></div>
+                            <div class="bar-fill-men" style="width: {{ s.ssr_men_pct }}%"></div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% endif %}
+                </div>
+                <script>
+                    (function () {
+                        try {
+                            var pinnedRaw = localStorage.getItem('olg_pinned_stores');
+                            if (pinnedRaw) {
+                                var pinned = JSON.parse(pinnedRaw);
+                                if (Array.isArray(pinned) && pinned.length > 0) {
+                                    var pinSet = Object.create(null);
+                                    for (var i = 0; i < pinned.length; i++) pinSet[pinned[i]] = true;
+                                    var rList = document.getElementById('ranking-list');
+                                    var pList = document.getElementById('pinned-list');
+                                    var pCont = document.getElementById('pinned-list-container');
+                                    if (rList && pList && pCont) {
+                                        var cards = rList.querySelectorAll('.ranking-item[data-store]');
+                                        var moved = 0;
+                                        for (var j = 0; j < cards.length; j++) {
+                                            var c = cards[j];
+                                            var sName = c.getAttribute('data-store');
+                                            if (sName && pinSet[sName]) {
+                                                c.classList.remove('rank-1', 'rank-2', 'rank-3');
+                                                c.classList.add('pinned-item');
+                                                var pb = c.querySelector('.pin-btn');
+                                                if (pb) pb.classList.add('active');
+                                                pList.appendChild(c);
+                                                moved++;
+                                            }
+                                        }
+                                        if (moved > 0) {
+                                            pCont.classList.remove('hidden');
+                                            window.__SSR_PINNED_HYDRATED = true;
+                                        }
+                                    }
+                                }
+                            }
+                        } catch (e) {}
+                    })();
+                </script>
+
+                <!-- Momentum & Card Legend Bar (Placed below ranking list to keep first-view clean) -->
+                <div class="momentum-legend-bar" aria-label="表示指標の説明" style="margin-top: 12px;">
+                    <span class="momentum-legend-pill">「↗ +数字」＝15分比 ｜ 「平比±」＝普段の同曜日・同時間比</span>
+                    <span class="momentum-legend-hint">終電後%＝21-22時比の深夜0-1時女性維持率 ｜ タップで詳細グラフ</span>
+                </div>
+
+                <div class="info-bar">
+                    <p>最終更新: <span id="last-update">{% if initial_status and initial_status.timestamp and ' ' in initial_status.timestamp %}{{ initial_status.timestamp.split(' ')[1] }}{% else %}--:--{% endif %}</span> <span style="opacity: 0.75; margin-left: 6px;">（※+数字は直近15分の伸び）</span></p>
+
+                    <div class="live-indicator">
+                        <div class="dot"></div>
+                        1分自動更新
+                    </div>
+                </div>
+
+                {% if not is_staff %}
+                <!-- Official SNS Compact Bar (Placed below ranking list so stores appear immediately) -->
+                <div class="official-sns-hero-card official-sns-compact">
+                    <span class="sns-compact-label">公式SNSも更新中</span>
+                    <div class="sns-compact-links">
+                        <a href="https://x.com/aiseki_navi" target="_blank" rel="noopener noreferrer" class="sns-compact-pill">𝕏 公式X</a>
+                        <a href="https://www.threads.net/@aiseki_navi1" target="_blank" rel="noopener noreferrer" class="sns-compact-pill">Threads</a>
+                        <a href="https://www.instagram.com/aiseki_navi1" target="_blank" rel="noopener noreferrer" class="sns-compact-pill">Instagram</a>
+                        <a href="https://note.com/aiseki_navi" target="_blank" rel="noopener noreferrer" class="sns-compact-pill">note</a>
+                        <button type="button" class="sns-compact-pill" onclick="openHowToModal()">使い方</button>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if not is_staff %}
+                <!-- Ranking SNS Share Box -->
+                <div class="share-banner-box">
+                    <span class="share-banner-title">いま人が集まっている店舗を友達に共有する</span>
+                    <div class="share-banner-buttons">
+                        <button class="share-pill-btn line-btn" onclick="shareCurrentRanking('line')">LINEで送る</button>
+                        <button class="share-pill-btn x-btn" onclick="shareCurrentRanking('x')">Xでシェア</button>
+                        <button class="share-pill-btn copy-btn" onclick="shareCurrentRanking('copy')">リンクをコピー</button>
+                    </div>
+                </div>
+
+                <!-- SEO & ASP Review Editorial Column Section -->
+                <section class="seo-guide-section" aria-label="相席ラウンジ攻略ガイド">
+                    <!-- Portal Featured Articles Showcase -->
+                    <div class="seo-guide-header">
+                        <h2>特集コラム・ブランド比較ガイド</h2>
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <a href="/columns" class="guide-open-btn" style="text-decoration: none;">コラム一覧を見る ›</a>
+                            <a href="/areas" class="guide-open-btn" style="text-decoration: none;">エリア別ガイド ›</a>
+                        </div>
+                    </div>
+
+                    <div class="portal-featured-articles">
+                        <a href="/guide/last-train-cliff" class="portal-article-card">
+                            <div class="portal-article-thumb">
+                                <picture>
+                                    <source srcset="/static/eyecatch-last-train-cliff.webp" type="image/webp">
+                                    <img src="/static/eyecatch-last-train-cliff.jpg" alt="23時20分、店内の空気が変わる——9.6万件のログが暴いた魔の40分間と街別ハシゴ法則" loading="lazy">
+                                </picture>
+                                <span class="portal-article-badge">新着データ検証</span>
+                            </div>
+                            <div class="portal-article-body">
+                                <h3>「23時20分、店内の空気が変わる」——9.6万件のログが暴いた『魔の40分間』と23時を境に逆転する街別ハシゴ法則</h3>
+                                <p>わずか20分で女性が16%消える「終電崖」と、0時30分の「第2波」。渋谷・新宿・名古屋・梅田の深夜維持率から見る黄金ルート。</p>
+                                <span class="portal-article-more">記事を読む ›</span>
+                            </div>
+                        </a>
+
+                        <a href="/guide/male-lead-mechanics" class="portal-article-card">
+                            <div class="portal-article-thumb">
+                                <picture>
+                                    <source srcset="/static/eyecatch-male-lead.webp" type="image/webp">
+                                    <img src="/static/eyecatch-male-lead.jpg" alt="男性先行・男性比率が高いお店に女性が集まるデータ法則" loading="lazy">
+                                </picture>
+                                <span class="portal-article-badge">最新データ検証</span>
+                            </div>
+                            <div class="portal-article-body">
+                                <h3>男性先行・男性比率が高いお店ほど女性が急増するって本当？「女性は待たない」新常識</h3>
+                                <p>全国53店舗・6.4万件のログが証明！20時台に男性先行の店舗は22時台の女性ピークが約4.5倍に伸びるメカニズム。</p>
+                                <span class="portal-article-more">記事を読む ›</span>
+                            </div>
+                        </a>
+
+                        <a href="/guide/brand-comparison" class="portal-article-card">
+                            <div class="portal-article-thumb">
+                                <img src="/static/guide-brand-comparison.jpg" alt="オリエンタルラウンジ・JIS・ag 3大ブランドの違い" loading="lazy">
+                                <span class="portal-article-badge">人気No.1</span>
+                            </div>
+                            <div class="portal-article-body">
+                                <h3>オリエンタルラウンジ・JIS・agの違いは？年齢層・料金・雰囲気の選び方</h3>
+                                <p>3大ブランドの客層や店内の空気感、その日の気分に合わせたお店の選び方をわかりやすく整理しました。</p>
+                                <span class="portal-article-more">記事を読む ›</span>
+                            </div>
+                        </a>
+
+                        <a href="/guide/weekday-strategy" class="portal-article-card">
+                            <div class="portal-article-thumb">
+                                <picture>
+                                    <source srcset="/static/note-eyecatch-weekday.webp" type="image/webp">
+                                    <img src="/static/note-eyecatch-weekday.jpg" alt="水曜・木曜20時〜22時の平日ラウンジ傾向" loading="lazy">
+                                </picture>
+                                <span class="portal-article-badge cyan">データ分析</span>
+                            </div>
+                            <div class="portal-article-body">
+                                <h3>なぜ週末より「水曜・木曜の20時〜22時」が一番入りやすくて話しやすいのか？</h3>
+                                <p>週末の入店待ちや混雑を避けて、仕事帰りの女性と落ち着いて話せる平日の穴場時間をデータで解説。</p>
+                                <span class="portal-article-more">記事を読む ›</span>
+                            </div>
+                        </a>
+                    </div>
+
+                    <!-- Portal Area Guide Quick Links -->
+                    <div class="portal-area-directory">
+                        <div class="portal-area-header">
+                            <h3>エリア別の混雑傾向＆店舗ガイドから探す</h3>
+                            <a href="/areas" class="portal-area-all-link">全国エリア一覧へ ›</a>
+                        </div>
+                        <div class="portal-area-grid">
+                            <a href="/area/shinjuku" class="portal-area-chip">新宿・西新宿</a>
+                            <a href="/area/shibuya" class="portal-area-chip">渋谷・恵比寿</a>
+                            <a href="/area/tokyo-east" class="portal-area-chip">上野・錦糸町・町田</a>
+                            <a href="/area/kanto" class="portal-area-chip">横浜・大宮・北関東</a>
+                            <a href="/area/osaka" class="portal-area-chip">大阪・京都・神戸</a>
+                            <a href="/area/nagoya" class="portal-area-chip">名古屋・静岡・金沢</a>
+                            <a href="/area/fukuoka" class="portal-area-chip">福岡・九州・沖縄</a>
+                            <a href="/area/hokkaido-tohoku" class="portal-area-chip">札幌・仙台</a>
+                            <a href="/area/chugoku-shikoku" class="portal-area-chip">岡山・広島・松山</a>
+                        </div>
+                    </div>
+
+                    <div class="seo-guide-header" style="margin-top: 26px;">
+                        <h2>データで見るお店選び・当日のチェックポイント</h2>
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <a href="/stats" class="guide-open-btn" style="text-decoration: none;">統計データ白書 ›</a>
+                        </div>
+                    </div>
+                    <div class="seo-guide-grid">
+                        <article class="seo-guide-card">
+                            <h3>曜日・時間帯ごとのピーク傾向を知る</h3>
+                            <p>全国の主要ラウンジ（オリエンタルラウンジ・ag・JIS・XIX・ALFA・ヤタコイ・CLOVERS）では、<strong>金・土曜の21:00〜翌1:00</strong>が一番賑わいます。一方、平日の20:00〜22:00頃は仕事帰りの女性が多く、男性の待ち時間も少ないため落ち着いて話しやすい時間帯です。店舗カードをタップすると曜日・時間帯別の平均推移グラフを確認できます。</p>
+                        </article>
+                        <article class="seo-guide-card">
+                            <h3>近隣ライバル店を「料金×人数」で比べる</h3>
+                            <p>新宿・渋谷・梅田・難波・名古屋・福岡など複数ブランドが集まるエリアでは、徒歩数分の距離でも<strong>単独待機料金や開催中イベント、男女比</strong>が大きく異なります。入店前に近隣店舗を横並びで見比べると、待機コストや空振りを抑えられます。</p>
+                            <a href="/price-comparison" class="editorial-inline-link">店舗別料金・イベント比較ボードを見る ›</a>
+                        </article>
+                        <article class="seo-guide-card">
+                            <h3>「↗ +数字」の15分トレンドを活用する</h3>
+                            <p>店舗カードに表示される<strong>「↗ +数字」は直近約15分間で増えた人数</strong>を示しています。現在の合計人数だけでなく、女性が増え始めているタイミング（上昇気流）の店舗を選ぶと、入店後の相席テンポが良くなりやすくなります。</p>
+                            <a href="/guide/male-lead-mechanics" class="editorial-inline-link">来店データで見る店舗選びの法則 ›</a>
+                        </article>
+                        <article class="seo-guide-card">
+                            <h3>入店時の持ち物・ドレスコードの基本</h3>
+                            <p>相席ラウンジでは男女ともに<strong>顔写真付きの公的身分証明書（運転免許証・マイナンバーカード・パスポート等）</strong>の提示が必須です。また、サンダル・ジャージ・作業着等の軽装は入店を断られる場合があるため、清潔感のある服装で向かうのが安心です。</p>
+                            <a href="/grooming" class="editorial-inline-link">服装マナー・事前準備ガイド ›</a>
+                        </article>
+                    </div>
+
+                    <!-- FAQ Section for Long-tail SEO Keywords -->
+                    <div class="seo-faq-block">
+                        <h3>よくある質問（Q&A）</h3>
+                        <details class="seo-faq-item">
+                            <summary>Q. オリエンタルラウンジ・ag（アグ）・JIS（ジス）の違いは？</summary>
+                            <p><strong>オリエンタルラウンジ</strong>は20代半ば〜30代まで幅広い層が集まる落ち着いた王道ラウンジ、<strong>ag（アグ）</strong>は20代前半〜中盤中心でカジュアルに話せる雰囲気、<strong>JIS（ジス）</strong>は新宿・大宮・梅田・札幌・福岡などで人気の本格バー調ラウンジです。同じエリアにある場合は、その日のリアルタイム人数と男女比を見比べて、女性の割合が高い店舗を選ぶのがおすすめです。</p>
+                        </details>
+                        <details class="seo-faq-item">
+                            <summary>Q. 男性の入店待ちを避けて入りやすい曜日・時間帯は？</summary>
+                            <p>金曜・土曜・祝前日の22時以降は一番人が集まりますが、人気店では男性の入店待ちが出やすくなります。待たずに入りたい場合は、<strong>金・土曜なら20:00〜21:00頃の早めの時間</strong>、または<strong>水曜・木曜の20:30〜22:30頃</strong>が女性の比率も高くなりやすくおすすめです。</p>
+                        </details>
+                        <details class="seo-faq-item">
+                            <summary>Q. 営業中なのに「0 : 0」と表示されているのはなぜですか？</summary>
+                            <p>開店直後（18:00〜19:30頃）など、公式の営業時間内であっても店内にまだお客様が入っていない時間帯は「0 : 0（営業中）」と表示されます。各店舗の曜日別営業時間・定休日に基づき「営業時間外」とは区別して表示しています。</p>
+                        </details>
+                        <details class="seo-faq-item">
+                            <summary>Q. 入店時に必要な身分証や服装（ドレスコード）の決まりはありますか？</summary>
+                            <p>全ブランド共通で年齢確認のため<strong>顔写真付きの公的身分証明書</strong>が必要です。服装に厳格なフォーマル指定はありませんが、タンクトップ・ビーチサンダル・スウェット等の過度な軽装はNGとなる店舗が多いため、仕事帰りのジャケットやシンプルなシャツ・ニットなど清潔感のあるスマートカジュアルが無難です。</p>
+                        </details>
+                    </div>
+
+                    <!-- Area & Brand Keyword Directory for Local SEO -->
+                    <div class="seo-directory-block">
+                        <h3>リアルタイム人数・混雑状況 対応ブランド＆全国エリア一覧</h3>
+                        <p class="seo-dir-text">
+                            <strong>【対応ブランド】</strong>
+                            オリエンタルラウンジ（ORIENTAL LOUNGE） / ag（アグ） / JIS（ジス） / XIX（シックス） / ALFA（アルファ） / ヤタコイ（YATAKOI） / CLOVERS（クローバーズ）
+                        </p>
+                        <p class="seo-dir-text">
+                            <strong>【対応エリア（全国53店舗：国内51店舗＋韓国2店舗）】</strong>
+                            <strong>北海道・東北：</strong>札幌・仙台 ｜
+                            <strong>東京：</strong>新宿・西新宿・渋谷本店・恵比寿・上野・錦糸町・町田 ｜
+                            <strong>関東：</strong>横浜・大宮・柏・宇都宮・高崎 ｜
+                            <strong>中部・北陸：</strong>名古屋栄・名古屋錦・静岡・浜松・金沢 ｜
+                            <strong>関西：</strong>大阪梅田・茶屋町・難波・心斎橋・天満・京都・神戸三宮 ｜
+                            <strong>中国・四国：</strong>岡山・広島・松山 ｜
+                            <strong>九州・沖縄：</strong>福岡天神・小倉・長崎・大分・熊本・宮崎・鹿児島・沖縄那覇 ｜
+                            <strong>海外：</strong>韓国ソウル（江南・弘大）
+                        </p>
+                    </div>
+                </section>
+                {% endif %}
+            </div>
+
+            <div id="error-message" class="error-message hidden">
+                <p>データの取得に失敗しました。少し待ってから再読み込みしてください。</p>
+            </div>
+        </main>
+
+        <footer class="app-footer">
+            {% if is_staff %}
+            <div class="footer-links" style="margin-top: 15px;">
+                <span class="footer-copy">相席ナビ 社内業務モニター（広告・PR完全OFFモード稼働中）</span>
+                <span class="footer-divider">|</span>
+                <a href="/staff/logout" class="footer-link-btn" style="color: #d8a1aa; font-weight: 700;">社内モード解除（ログアウト）</a>
+            </div>
+            {% else %}
+            <!-- Top Row: Pillar Guide Buttons -->
+            <div class="footer-nav-pills">
+                <button type="button" class="footer-pill-btn" onclick="openHowToModal()" title="30秒でわかる使い方ガイド">
+                    <span>はじめてガイド</span>
+                </button>
+                <button type="button" class="footer-pill-btn guide-pill" onclick="openArticlesModal()" title="攻略コラム・記事一覧から選ぶ">
+                    <span>攻略記事を選ぶ</span>
+                </button>
+                <a href="/guide/brand-comparison" class="footer-pill-btn" title="3大ブランド比較">
+                    <span>3大ブランド比較</span>
+                </a>
+                <a href="/guide/weekday-strategy" class="footer-pill-btn weekday-pill" title="平日攻略コラム">
+                    <span>平日攻略</span>
+                </a>
+                <a href="/price-comparison" class="footer-pill-btn" title="料金・開催中イベント比較">
+                    <span>料金・イベント比較</span>
+                </a>
+            </div>
+
+            <!-- Middle Row: Official SNS Links -->
+            <div class="footer-sns-row">
+                <span class="footer-sns-label">OFFICIAL SNS</span>
+                <div class="footer-sns-icons">
+                    <a href="https://x.com/aiseki_navi" target="_blank" rel="noopener noreferrer" class="sns-icon-btn x-btn" title="公式X（混雑速報）">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                        </svg>
+                        <span>X (速報)</span>
+                    </a>
+                    <a href="https://www.threads.net/@aiseki_navi1" target="_blank" rel="noopener noreferrer" class="sns-icon-btn threads-btn" title="公式Threads">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12.001 2c-5.522 0-9.999 4.477-9.999 10 0 5.522 4.477 10 9.999 10 5.523 0 10-4.478 10-10 0-5.523-4.477-10-10-10zm0 18.001c-4.418 0-8-3.582-8-8 0-4.419 3.582-8.001 8-8.001 4.419 0 8.001 3.582 8.001 8.001 0 4.418-3.582 8-8.001 8zm3.567-9.757c-.126-.454-.378-.857-.73-1.166-.35-.308-.79-.473-1.272-.477h-.061c-.534.004-1.02.203-1.405.575-.386.372-.619.878-.656 1.425.321-.06.647-.09.976-.09.61 0 1.206.104 1.77.309.117-.184.21-.383.278-.576zm-1.849 5.864c-.732 0-1.424-.23-1.999-.666-.576-.436-.97-1.052-1.109-1.735-.07-.342-.089-.691-.057-1.038-.344.086-.677.209-.994.368-.696.349-1.144.978-1.198 1.681-.055.704.288 1.391.895 1.79.522.343 1.157.498 1.838.448.828-.061 1.705-.443 2.624-1.135-.297.185-.634.287-.998.287z"/>
+                        </svg>
+                        <span>Threads</span>
+                    </a>
+                    <a href="https://note.com/aiseki_navi" target="_blank" rel="noopener noreferrer" class="sns-icon-btn note-btn" title="公式note">
+                        <span style="font-weight: 900; font-family: serif; font-size: 0.85rem;">n</span>
+                        <span>note</span>
+                    </a>
+                    <a href="https://www.instagram.com/aiseki_navi1" target="_blank" rel="noopener noreferrer" class="sns-icon-btn ig-btn" title="公式Instagram">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+                        </svg>
+                        <span>Instagram</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Portal Sitemap Grid inside Footer -->
+            <div class="portal-footer-sitemap">
+                <div class="sitemap-col">
+                    <h4>ブランド別・エリア別人数</h4>
+                    <ul>
+                        <li><a href="/oriental-lounge">オリエンタルラウンジ全店人数</a></li>
+                        <li><a href="/ag">ag（アグ）全店人数</a></li>
+                        <li><a href="/jis">JIS（ジス）全店人数</a></li>
+                        <li><a href="/area/shinjuku">新宿・西新宿エリア</a></li>
+                        <li><a href="/area/shibuya">渋谷・恵比寿エリア</a></li>
+                        <li><a href="/area/tokyo-east">上野・錦糸町・町田エリア</a></li>
+                        <li><a href="/area/kanto">横浜・大宮・北関東エリア</a></li>
+                        <li><a href="/area/osaka">大阪（梅田・難波）・関西</a></li>
+                        <li><a href="/area/nagoya">名古屋（栄・錦）・中部</a></li>
+                        <li><a href="/area/fukuoka">福岡（天神）・九州・沖縄</a></li>
+                        <li><a href="/area/hokkaido-tohoku">札幌・仙台（北海道・東北）</a></li>
+                        <li><a href="/area/chugoku-shikoku">岡山・広島・松山（中国・四国）</a></li>
+                    </ul>
+                </div>
+                <div class="sitemap-col">
+                    <h4>コラム・特集記事</h4>
+                    <ul>
+                        <li><a href="/columns">コラム・記事一覧（全{{ 13 + (published_scheduled|length if published_scheduled else 0) }}本）</a></li>
+                        {% for item in published_scheduled or [] %}
+                        <li><a href="{{ item.path }}">{{ item.short_title }}</a></li>
+                        {% endfor %}
+                        <li><a href="/guide/price-event-comparison">料金・イベント比較ボード活用法</a></li>
+                        <li><a href="/guide/male-lead-mechanics">男性先行×女性は待たないデータ法則</a></li>
+                        <li><a href="/guide/beauty-area-stage">美容サロン激戦区の客層と特徴</a></li>
+                        <li><a href="/guide/club-area-midnight">クラブ密集エリア深夜0時の第2波</a></li>
+                        <li><a href="/guide/brand-comparison">オリエンタル・JIS・ag比較</a></li>
+                        <li><a href="/guide/shinjuku">新宿3店舗の使い分けガイド</a></li>
+                        <li><a href="/guide/weekday-strategy">水曜・木曜20時の穴場データ</a></li>
+                        <li><a href="/guide/weekend-strategy">金曜・土曜ピークの待ち時間回避</a></li>
+                        <li><a href="/guide/solo-vs-pair">1人（ソロ）vs 2人組の立ち回り</a></li>
+                        <li><a href="/guide/second-venue">2軒目への自然な誘い方</a></li>
+                        <li><a href="/guide/first-10-minutes">最初の10分の会話と清潔感</a></li>
+                        <li><a href="/guide">基本の立ち回り・お店選び</a></li>
+                        <li><a href="/grooming">行く前の身だしなみ・準備</a></li>
+                    </ul>
+                </div>
+                <div class="sitemap-col">
+                    <h4>サイト情報・統計・規約</h4>
+                    <ul>
+                        <li><a href="/">リアルタイム人数ランキング</a></li>
+                        <li><a href="/price-comparison">店舗別料金・開催中イベント比較</a></li>
+                        <li><a href="/stats">全国ラウンジ統計データ白書</a></li>
+                        <li><button type="button" class="sitemap-text-btn" onclick="openHowToModal()">相席ナビの使い方</button></li>
+                        <li><a href="/privacy">運営者情報・プライバシーポリシー</a></li>
+                        <li><button type="button" class="sitemap-text-btn" onclick="openLegalModal()">免責事項（ポップアップ）</button></li>
+                    </ul>
+                </div>
+            </div>
+
+            {% if initial_status and initial_status.ranking %}
+            <details style="margin: 14px 0 8px; background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.07); border-radius: 12px; padding: 10px 14px; text-align: left;">
+                <summary style="cursor: pointer; font-size: 0.78rem; font-weight: 700; color: #9a968e; list-style: none;">
+                    全国{{ initial_status.ranking|length }}店舗の現在人数テキスト一覧・店舗別ページ（オリエンタルラウンジ / ag（アグ） / JIS）▼
+                </summary>
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px 12px; margin-top: 10px; font-size: 0.75rem;">
+                    {% for s in initial_status.ranking %}
+                    <a href="/store/{{ s.name | store_slug }}" style="color: #cbd5e1; text-decoration: none; display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.04);">
+                        <span>{{ s.name | seo_store_name }}</span>
+                        <span style="color: #94a3b8;">{% if (s.women or 0) + (s.men or 0) > 0 %}女性{{ s.women }}・男性{{ s.men }}{% elif s.is_open_now %}0 : 0（営業中）{% else %}店舗詳細 ›{% endif %}</span>
+                    </a>
+                    {% endfor %}
+                </div>
+            </details>
+            {% endif %}
+
+            <!-- Bottom Row: Clean Legal & Copyright -->
+            <div class="footer-bottom-meta">
+                <div class="footer-legal-links">
+                    <a href="/privacy" class="footer-sub-link" style="text-decoration: none;">運営者情報・プライバシーポリシー・免責事項</a>
+                    <span class="footer-divider" style="opacity: 0.3;">|</span>
+                    <a href="/staff" class="footer-sub-link" style="color: #93b1c9;">社内業務モニター</a>
+                </div>
+                <p style="font-size: 0.72rem; color: #9a968e; line-height: 1.6; max-width: 720px; margin: 0 auto 8px;">
+                    ※掲載しているイベントの開催有無・適用条件、料金システム、入店ルール等は変更される場合や表記に差異がある場合がございます。ご来店の際は必ず各店舗の公式ホームページ・公式アプリにて最新情報をご確認ください。
+                </p>
+                <p class="footer-mini-copy">
+                    © 2026 相席ナビ (AISEKI NAVI) ｜ ※公開情報の非公式統計・情報ポータルサイトです
+                </p>
+            </div>
+            {% endif %}
+        </footer>
+    </div>
 
     <!-- Analysis Modal -->
     <div id="analysis-modal" class="modal hidden">
@@ -970,725 +1734,6 @@
     </div>
     <!-- End Menu Modal -->
 
-    <div class="container">
-        {% if not is_staff %}
-        <!-- PWA Smart Install Banner -->
-        <aside id="pwa-install-banner" class="pwa-install-banner hidden" role="region" aria-label="ホーム画面に追加のご案内">
-            <div class="pwa-banner-content">
-                <div class="pwa-banner-info">
-                    <div class="pwa-banner-title">ホーム画面に追加でアプリ化</div>
-                    <div class="pwa-banner-desc">ワンタップで今夜の混雑・男女比速報をチェック</div>
-                </div>
-            </div>
-            <div class="pwa-banner-actions">
-                <button id="pwa-install-btn" class="pwa-install-action-btn" onclick="triggerPwaInstall()">追加する</button>
-                <button class="pwa-banner-close-btn" onclick="dismissPwaBanner()" aria-label="閉じる" title="閉じる">✕</button>
-            </div>
-        </aside>
-        {% endif %}
-
-        <header>
-            {% if is_staff %}
-            <div class="staff-header-top" style="display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap;">
-                {% if is_master %}
-                <span class="staff-header-badge" style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(217, 119, 6, 0.35)); border: 1px solid rgba(251, 191, 36, 0.55); color: #fde68a;">👑 MASTER MONITOR（マスター全権限モード・広告OFF）</span>
-                {% else %}
-                <span class="staff-header-badge">社内業務モニター（現場データ専用・広告OFF）</span>
-                {% endif %}
-            </div>
-            {% endif %}
-            <div class="header-top-row">
-                <div class="header-brand-block">
-                    <h1>{% if is_staff and is_master %}相席ナビ マスター管理{% elif is_staff %}相席ナビ 業務モニター{% else %}相席ナビ{% endif %}</h1>
-                    <p class="subtitle">全国ラウンジの今わかる人数ランキング</p>
-                </div>
-                <div class="header-controls">
-                    <!-- Mobile & Desktop Common Primary Actions -->
-                    <button id="refresh-btn" class="header-btn labeled-btn refresh-btn" onclick="manualRefresh()" title="最新データに更新">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
-                        </svg>
-                        <span>更新</span>
-                    </button>
-                    <button id="events-btn" class="header-btn labeled-btn desktop-only" onclick="openEventsModal()" title="最新イベント・キャンペーン速報">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-                        </svg>
-                        <span>イベント</span>
-                    </button>
-                    <a id="header-x-btn" href="https://x.com/aiseki_navi" target="_blank" rel="noopener noreferrer" class="header-btn labeled-btn desktop-only" style="text-decoration: none;" title="公式Xで今夜の女性速報を見る">
-                        <span class="beacon-dot" style="margin-right: 2px;"></span>
-                        <span>X速報</span>
-                    </a>
-
-                    <!-- Mobile Menu Hamburger Button (Visible on mobile <= 768px) -->
-                    <button id="mobile-menu-btn" class="header-btn labeled-btn mobile-only-btn" onclick="openMenuModal()" title="メニューを開く">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <line x1="3" y1="12" x2="21" y2="12"></line>
-                            <line x1="3" y1="6" x2="21" y2="6"></line>
-                            <line x1="3" y1="18" x2="21" y2="18"></line>
-                        </svg>
-                        <span>メニュー</span>
-                    </button>
-
-                    <!-- Desktop-only controls (Hidden on mobile to keep header clean) -->
-                    <button id="report-btn" class="header-btn labeled-btn desktop-only" onclick="openReportModal()" title="週間レポート">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>
-                        </svg>
-                        <span>週間集計</span>
-                    </button>
-                    <button id="compare-btn" class="header-btn labeled-btn desktop-only" onclick="openComparisonModal()" title="競合比較ダッシュボード">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path><path d="M22 12A10 10 0 0 0 12 2v10z"></path>
-                        </svg>
-                        <span>系列比較</span>
-                    </button>
-                    <button id="compact-btn" class="header-btn labeled-btn desktop-only" onclick="toggleCompact()" title="デザイン・表示モード切替">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line>
-                        </svg>
-                        <span id="compact-btn-label">表示切替</span>
-                    </button>
-                    {% if not is_staff %}
-                    <button id="howto-btn" class="header-btn labeled-btn desktop-only" onclick="openHowToModal()" title="相席ナビのカンタン使い方ガイド">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                        </svg>
-                        <span>使い方</span>
-                    </button>
-                    <button type="button" id="guide-link-btn" class="header-btn labeled-btn desktop-only" onclick="openArticlesModal()" title="攻略コラム・記事一覧から選ぶ">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
-                        </svg>
-                        <span>攻略記事</span>
-                    </button>
-                    <button id="share-btn" class="header-btn labeled-btn desktop-only" onclick="openSnsModal()" title="SNS速報ポスト作成・共有">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
-                        </svg>
-                        <span>速報共有</span>
-                    </button>
-                    {% else %}
-                    {% if not is_master %}
-                    <a href="/staff?switch=1" class="header-btn labeled-btn staff-master-switch-btn" title="マスター権限パスコードでログイン">
-                        <span>👑 マスター切替</span>
-                    </a>
-                    {% endif %}
-                    <a href="/staff/logout" class="header-btn labeled-btn staff-logout-btn" title="社内モニターをログアウト">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line>
-                        </svg>
-                        <span>ログアウト</span>
-                    </a>
-                    {% endif %}
-                </div>
-            </div>
-            <div class="theme-switcher-bar desktop-only" role="group" aria-label="デザイン切替">
-                <button type="button" class="theme-pill-btn active" data-theme="default" onclick="setViewTheme('default', true)">通常</button>
-                <button type="button" class="theme-pill-btn" data-theme="list" onclick="setViewTheme('list', true)">リスト</button>
-                <button type="button" class="theme-pill-btn" data-theme="light" onclick="setViewTheme('light', true)">ライト</button>
-            </div>
-            {% if not is_staff %}
-            <!-- Portal Global Navigation Bar -->
-            <nav class="portal-global-nav" aria-label="サイト内メニュー">
-                <a href="/" class="portal-nav-link active">リアルタイム順位</a>
-                <a href="/price-comparison" class="portal-nav-link">料金・イベント比較</a>
-                <a href="/columns" class="portal-nav-link">コラム・記事一覧</a>
-                <a href="/areas" class="portal-nav-link">エリアから探す</a>
-                <a href="/stats" class="portal-nav-link">統計データ白書</a>
-                <a href="/guide/brand-comparison" class="portal-nav-link">3大ブランド比較</a>
-                <a href="/grooming" class="portal-nav-link">服装・事前準備</a>
-            </nav>
-            {% endif %}
-        </header>
-
-        <main>
-            <div id="pull-indicator">
-                <div class="spinner"></div>
-            </div>
-            
-            <div id="loading" class="loading-state{% if initial_status and initial_status.ranking %} hidden{% endif %}">
-                <div class="spinner"></div>
-                <p>最新データを読み込んでいます...</p>
-            </div>
-
-            <div id="content" class="content{% if not (initial_status and initial_status.ranking) %} hidden{% endif %}">
-
-                <div class="search-sort-container">
-                    <input type="text" id="search-input" placeholder="店舗名で検索" oninput="handleSearch(this.value)">
-                    <div class="sort-controls">
-                        <button class="sort-btn active" data-sort="women" onclick="setSort('women')">女性順</button>
-                        <button class="sort-btn" data-sort="men" onclick="setSort('men')">男性順</button>
-                        <button class="sort-btn" data-sort="ratio" onclick="setSort('ratio')">女性比率順</button>
-                        <button class="sort-btn" id="nearby-sort-btn" data-sort="nearby" onclick="setNearbySort()" title="現在地から近い順に並び替え">現在地順</button>
-                    </div>
-                </div>
-
-                <div class="filter-bar">
-                    <button class="filter-btn active" data-region="All">全て</button>
-                    <button class="filter-btn filter-btn-city" data-region="City:shinjuku">新宿</button>
-                    <button class="filter-btn filter-btn-city" data-region="City:shibuya">渋谷・恵比寿</button>
-                    <button class="filter-btn filter-btn-city" data-region="City:umeda">梅田・茶屋町</button>
-                    <button class="filter-btn filter-btn-city" data-region="City:namba">難波・心斎橋</button>
-                    <button class="filter-btn filter-btn-city" data-region="City:nagoya">名古屋</button>
-                    <button class="filter-btn filter-btn-city" data-region="City:fukuoka">福岡</button>
-                    <button class="filter-btn" data-region="Kanto">関東全域</button>
-                    <button class="filter-btn" data-region="Kinki">関西全域</button>
-                    <button class="filter-btn" data-region="Chubu">中部</button>
-                    <button class="filter-btn" data-region="Kyushu">九州・沖縄</button>
-                    <button class="filter-btn" data-region="Hokkaido">北海道</button>
-                    <button class="filter-btn" data-region="Tohoku">東北</button>
-                    <button class="filter-btn" data-region="Chugoku">中国</button>
-                    <button class="filter-btn" data-region="Shikoku">四国</button>
-                    <button class="filter-btn" data-region="Korea">韓国</button>
-                </div>
-
-                {% if is_staff %}
-                <!-- Staff / Master Analytics Dashboard Quick Bar -->
-                <div class="staff-analytics-quickbar">
-                    <div class="staff-quickbar-header">
-                        {% if is_master %}
-                        <span class="staff-quickbar-badge master-quickbar-badge">👑 マスター専用 運営・分析ダッシュボード</span>
-                        {% else %}
-                        <span class="staff-quickbar-badge">📊 現場データ専用 モニタリングパネル</span>
-                        {% endif %}
-                        <span class="staff-quickbar-hint">※各店舗カードタップで曜日・時間帯グラフと詳細ログを表示</span>
-                    </div>
-                    <div class="staff-quickbar-actions">
-                        {% if is_master %}
-                        <a href="/staff/analytics" class="staff-action-pill" style="text-decoration: none;">
-                            <span>📈 アクセス集計（閲覧・アフィリエイト・ボタンクリック）</span>
-                        </a>
-                        <a href="/staff/sns-kit" class="staff-action-pill master-sns-kit-pill" style="text-decoration: none;">
-                            <span>📸 インスタ・Threads用「週末予報画像」ワンクリック生成</span>
-                        </a>
-                        <button type="button" class="staff-action-pill" onclick="openSnsModal('threads')">
-                            <span>🧵 Threads・IG用「東西＆主要街速報」長文コピー</span>
-                        </button>
-                        {% endif %}
-                        <button type="button" class="staff-action-pill" onclick="openReportModal()">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>
-                            </svg>
-                            <span>週間レポート（全店舗の集計・ピークランキング）</span>
-                        </button>
-                        <button type="button" class="staff-action-pill" onclick="openComparisonModal()">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path><path d="M22 12A10 10 0 0 0 12 2v10z"></path>
-                            </svg>
-                            <span>系列・競合比較（リアルタイム合計）</span>
-                        </button>
-                        <button type="button" class="staff-action-pill" onclick="openEventsModal()">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-                            </svg>
-                            <span>イベント速報（全社キャンペーン）</span>
-                        </button>
-                        <button type="button" class="staff-action-pill staff-event-toggle-pill" id="staff-toggle-events-btn" onclick="toggleStaffEvents()" title="社内画面のイベントバッジ・特典表示をON/OFF切替">
-                            <span id="staff-toggle-events-icon">🔒</span>
-                            <span id="staff-toggle-events-label">イベント非表示: ON（業務集中モード）</span>
-                        </button>
-                    </div>
-                    {% if is_master and data_audit_report %}
-                    <div class="master-subpanel">
-                        <div class="master-subpanel-head">
-                            <span class="master-subpanel-title">🛡️ 料金・営業時間データ自動監査（ズレ検知モニター）</span>
-                            {% if data_audit_report.status == 'ok' %}
-                            <span class="master-status-pill ok">✓ 全{{ data_audit_report.summary.total_master_stores }}店舗 整合性OK（ズレなし）</span>
-                            {% else %}
-                            <span class="master-status-pill warn">⚠️ 要確認 {{ data_audit_report.summary.issue_count + data_audit_report.summary.warning_count }}件</span>
-                            {% endif %}
-                        </div>
-                        <div class="master-subpanel-meta">
-                            営業時間登録：{{ data_audit_report.summary.hours_registered }}/{{ data_audit_report.summary.total_master_stores }}店舗 ｜ 国内料金表：{{ data_audit_report.summary.price_registered }}/{{ data_audit_report.summary.domestic_stores }}店舗 ｜ 営業時間外来店ズレ：{{ data_audit_report.summary.hours_drift_count }}件 ｜ 公式改定キーワード：{{ data_audit_report.summary.revision_notice_count }}件（最終点検 {{ data_audit_report.checked_at }}）
-                        </div>
-                        {% if data_audit_report.issues or data_audit_report.warnings %}
-                        <div class="master-audit-list">
-                            {% for item in (data_audit_report.issues + data_audit_report.warnings) %}
-                            <div class="master-audit-alert">
-                                {{ item.message }}
-                                {% if item.url %}
-                                <a href="{{ item.url }}" target="_blank" rel="noopener noreferrer" class="master-inline-link">公式ページ確認 ↗</a>
-                                {% endif %}
-                            </div>
-                            {% endfor %}
-                        </div>
-                        {% endif %}
-                    </div>
-                    {% endif %}
-                    {% if is_master and scheduled_queue %}
-                    <div class="master-subpanel">
-                        <div class="master-subpanel-head">
-                            <span class="master-subpanel-title">🗓️ コラム自動予約公開スケジュール（サイト解禁＋sitemap登録＋X自動告知）</span>
-                            <span class="master-subpanel-meta">※予約日時前は一般アクセス404・社内のみプレビュー可</span>
-                        </div>
-                        <div class="master-sched-grid">
-                            {% for item in scheduled_queue %}
-                            <div class="master-sched-card">
-                                <div class="master-sched-card-top">
-                                    {% if item.published %}
-                                    <span class="master-status-pill ok">公開済み</span>
-                                    {% else %}
-                                    <span class="master-status-pill warn">予約待機中</span>
-                                    {% endif %}
-                                    <span class="master-subpanel-meta">{{ item.publish_at_ja }}</span>
-                                </div>
-                                <div class="master-sched-card-bottom">
-                                    <span class="master-sched-title">{{ item.short_title }}</span>
-                                    <a href="{{ item.path }}" target="_blank" rel="noopener noreferrer" class="master-inline-link">確認 ↗</a>
-                                </div>
-                            </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-                    {% endif %}
-                </div>
-                {% endif %}
-
-                <!-- Pinned Stores Section -->
-                <div id="pinned-list-container" class="hidden">
-                    <h2 class="section-title">★ お気に入り店舗</h2>
-                    <div id="pinned-list" class="ranking-list">
-                        <!-- Pinned items will populate here -->
-                    </div>
-                    <div class="separator"></div>
-                </div>
-
-                <div id="ranking-list" class="ranking-list">
-                    {% if initial_status and initial_status.ranking %}
-                    {% for s in initial_status.ranking %}
-                    <div class="ranking-item{% if s.ssr_rank == 1 %} rank-1{% elif s.ssr_rank == 2 %} rank-2{% elif s.ssr_rank == 3 %} rank-3{% endif %}" style="cursor: pointer;" onclick="if(window.openModal)openModal({{ s.name | tojson | forceescape }})">
-                        <div class="rank-badge">{{ s.ssr_rank if s.ssr_rank else '-' }}</div>
-                        <div class="store-info">
-                            <div class="store-meta-row">
-                                <span class="brand-badge {{ s.ssr_brand_cls }}">{{ s.ssr_brand }}</span>
-                                <span class="distance-tag hidden"></span>
-                                {% if (s.women_diff or 0) >= 1 %}
-                                <span class="momentum-tag" title="直近約15分で女性が+{{ s.women_diff }}名増えています">↗ +{{ s.women_diff }}名</span>
-                                {% elif s.votes and (s.votes.smooth or 0) > 0 and (s.votes.smooth or 0) >= (s.votes.waiting or 0) %}
-                                <span class="momentum-tag" title="直近の現場レポートで「待ちなしで入れた」が報告されています">即入店</span>
-                                {% else %}
-                                <span class="momentum-tag hidden"></span>
-                                {% endif %}
-                                {% if s.ssr_area %}
-                                <span class="area-tag">{{ s.ssr_area }}</span>
-                                {% else %}
-                                <span class="area-tag hidden"></span>
-                                {% endif %}
-                            </div>
-                            <h3 class="store-name">{{ s.ssr_title }}{% if not is_staff and s.ssr_event_badge %}<span class="event-tag-badge" title="{{ s.ssr_event_title }}">{{ s.ssr_event_badge }}</span>{% endif %}</h3>
-                            <div class="store-micro-metrics{% if not (s.core_time_short and s.midnight_retention_pct) %} hidden{% endif %}">{% if s.core_time_short and s.midnight_retention_pct %}狙い目 {{ s.core_time_short }} <span class="micro-sep">｜</span> 終電後 {{ s.midnight_retention_pct }}%（{{ s.midnight_label_short }}）{% endif %}</div>
-                        </div>
-                        <div class="card-actions">
-                            <button class="pin-btn" aria-label="お気に入り" title="お気に入り固定" onclick="event.stopPropagation();if(window.togglePin)togglePin({{ s.name | tojson | forceescape }})">
-                                <svg class="star-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-                                </svg>
-                            </button>
-                            <button class="analysis-btn" aria-label="詳細分析" title="曜日・時間帯別の詳細分析" onclick="event.stopPropagation();if(window.openModal)openModal({{ s.name | tojson | forceescape }})">
-                                <svg class="chart-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                    <line x1="18" y1="20" x2="18" y2="10"></line>
-                                    <line x1="12" y1="20" x2="12" y2="4"></line>
-                                    <line x1="6" y1="20" x2="6" y2="14"></line>
-                                </svg>
-                            </button>
-                        </div>
-                        <div class="stats-group">
-                            <div class="stat ladies">
-                                <div class="stat-num-row">
-                                    <span class="count">{{ s.women or 0 }}</span>
-                                    {% if (s.women_diff or 0) > 0 %}
-                                    <span class="stat-diff" title="直近約15分で女性+{{ s.women_diff }}名">+{{ s.women_diff }}</span>
-                                    {% else %}
-                                    <span class="stat-diff hidden"></span>
-                                    {% endif %}
-                                </div>
-                                <span class="label">LADIES</span>
-                                {% if s.usual_w_diff is not none %}
-                                <span class="stat-usual{% if s.usual_w_diff > 0 %} is-up{% elif s.usual_w_diff < 0 %} is-down{% endif %}" title="普段の{{ s.usual_slot_label }}平均({{ s.usual_women }}名)との差">平比{% if s.usual_w_diff > 0 %}+{{ s.usual_w_diff }}{% elif s.usual_w_diff < 0 %}{{ s.usual_w_diff }}{% else %}±0{% endif %}</span>
-                                {% else %}
-                                <span class="stat-usual hidden"></span>
-                                {% endif %}
-                            </div>
-                            <div class="stat men">
-                                <div class="stat-num-row">
-                                    <span class="count">{{ s.men or 0 }}</span>
-                                    {% if (s.men_diff or 0) > 0 %}
-                                    <span class="stat-diff" title="直近約15分で男性+{{ s.men_diff }}名">+{{ s.men_diff }}</span>
-                                    {% else %}
-                                    <span class="stat-diff hidden"></span>
-                                    {% endif %}
-                                </div>
-                                <span class="label">MEN</span>
-                                {% if s.usual_m_diff is not none %}
-                                <span class="stat-usual{% if s.usual_m_diff > 0 %} is-up{% elif s.usual_m_diff < 0 %} is-down{% endif %}" title="普段の{{ s.usual_slot_label }}平均({{ s.usual_men }}名)との差">平比{% if s.usual_m_diff > 0 %}+{{ s.usual_m_diff }}{% elif s.usual_m_diff < 0 %}{{ s.usual_m_diff }}{% else %}±0{% endif %}</span>
-                                {% else %}
-                                <span class="stat-usual hidden"></span>
-                                {% endif %}
-                            </div>
-                        </div>
-                        <div class="occupancy-bar">
-                            <div class="bar-fill-ladies" style="width: {{ s.ssr_ladies_pct }}%"></div>
-                            <div class="bar-fill-men" style="width: {{ s.ssr_men_pct }}%"></div>
-                        </div>
-                    </div>
-                    {% endfor %}
-                    {% endif %}
-                </div>
-
-                <!-- Momentum & Card Legend Bar (Placed below ranking list to keep first-view clean) -->
-                <div class="momentum-legend-bar" aria-label="表示指標の説明" style="margin-top: 12px;">
-                    <span class="momentum-legend-pill">「↗ +数字」＝15分比 ｜ 「平比±」＝普段の同曜日・同時間比</span>
-                    <span class="momentum-legend-hint">終電後%＝21-22時比の深夜0-1時女性維持率 ｜ タップで詳細グラフ</span>
-                </div>
-
-                <div class="info-bar">
-                    <p>最終更新: <span id="last-update">{% if initial_status and initial_status.timestamp and ' ' in initial_status.timestamp %}{{ initial_status.timestamp.split(' ')[1] }}{% else %}--:--{% endif %}</span> <span style="opacity: 0.75; margin-left: 6px;">（※+数字は直近15分の伸び）</span></p>
-
-                    <div class="live-indicator">
-                        <div class="dot"></div>
-                        1分自動更新
-                    </div>
-                </div>
-
-                {% if not is_staff %}
-                <!-- Official SNS Compact Bar (Placed below ranking list so stores appear immediately) -->
-                <div class="official-sns-hero-card official-sns-compact">
-                    <span class="sns-compact-label">公式SNSも更新中</span>
-                    <div class="sns-compact-links">
-                        <a href="https://x.com/aiseki_navi" target="_blank" rel="noopener noreferrer" class="sns-compact-pill">𝕏 公式X</a>
-                        <a href="https://www.threads.net/@aiseki_navi1" target="_blank" rel="noopener noreferrer" class="sns-compact-pill">Threads</a>
-                        <a href="https://www.instagram.com/aiseki_navi1" target="_blank" rel="noopener noreferrer" class="sns-compact-pill">Instagram</a>
-                        <a href="https://note.com/aiseki_navi" target="_blank" rel="noopener noreferrer" class="sns-compact-pill">note</a>
-                        <button type="button" class="sns-compact-pill" onclick="openHowToModal()">使い方</button>
-                    </div>
-                </div>
-                {% endif %}
-
-                {% if not is_staff %}
-                <!-- Ranking SNS Share Box -->
-                <div class="share-banner-box">
-                    <span class="share-banner-title">いま人が集まっている店舗を友達に共有する</span>
-                    <div class="share-banner-buttons">
-                        <button class="share-pill-btn line-btn" onclick="shareCurrentRanking('line')">LINEで送る</button>
-                        <button class="share-pill-btn x-btn" onclick="shareCurrentRanking('x')">Xでシェア</button>
-                        <button class="share-pill-btn copy-btn" onclick="shareCurrentRanking('copy')">リンクをコピー</button>
-                    </div>
-                </div>
-
-                <!-- SEO & ASP Review Editorial Column Section -->
-                <section class="seo-guide-section" aria-label="相席ラウンジ攻略ガイド">
-                    <!-- Portal Featured Articles Showcase -->
-                    <div class="seo-guide-header">
-                        <h2>特集コラム・ブランド比較ガイド</h2>
-                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                            <a href="/columns" class="guide-open-btn" style="text-decoration: none;">コラム一覧を見る ›</a>
-                            <a href="/areas" class="guide-open-btn" style="text-decoration: none;">エリア別ガイド ›</a>
-                        </div>
-                    </div>
-
-                    <div class="portal-featured-articles">
-                        <a href="/guide/last-train-cliff" class="portal-article-card">
-                            <div class="portal-article-thumb">
-                                <picture>
-                                    <source srcset="/static/eyecatch-last-train-cliff.webp" type="image/webp">
-                                    <img src="/static/eyecatch-last-train-cliff.jpg" alt="23時20分、店内の空気が変わる——9.6万件のログが暴いた魔の40分間と街別ハシゴ法則" loading="lazy">
-                                </picture>
-                                <span class="portal-article-badge">新着データ検証</span>
-                            </div>
-                            <div class="portal-article-body">
-                                <h3>「23時20分、店内の空気が変わる」——9.6万件のログが暴いた『魔の40分間』と23時を境に逆転する街別ハシゴ法則</h3>
-                                <p>わずか20分で女性が16%消える「終電崖」と、0時30分の「第2波」。渋谷・新宿・名古屋・梅田の深夜維持率から見る黄金ルート。</p>
-                                <span class="portal-article-more">記事を読む ›</span>
-                            </div>
-                        </a>
-
-                        <a href="/guide/male-lead-mechanics" class="portal-article-card">
-                            <div class="portal-article-thumb">
-                                <picture>
-                                    <source srcset="/static/eyecatch-male-lead.webp" type="image/webp">
-                                    <img src="/static/eyecatch-male-lead.jpg" alt="男性先行・男性比率が高いお店に女性が集まるデータ法則" loading="lazy">
-                                </picture>
-                                <span class="portal-article-badge">最新データ検証</span>
-                            </div>
-                            <div class="portal-article-body">
-                                <h3>男性先行・男性比率が高いお店ほど女性が急増するって本当？「女性は待たない」新常識</h3>
-                                <p>全国53店舗・6.4万件のログが証明！20時台に男性先行の店舗は22時台の女性ピークが約4.5倍に伸びるメカニズム。</p>
-                                <span class="portal-article-more">記事を読む ›</span>
-                            </div>
-                        </a>
-
-                        <a href="/guide/brand-comparison" class="portal-article-card">
-                            <div class="portal-article-thumb">
-                                <img src="/static/guide-brand-comparison.jpg" alt="オリエンタルラウンジ・JIS・ag 3大ブランドの違い" loading="lazy">
-                                <span class="portal-article-badge">人気No.1</span>
-                            </div>
-                            <div class="portal-article-body">
-                                <h3>オリエンタルラウンジ・JIS・agの違いは？年齢層・料金・雰囲気の選び方</h3>
-                                <p>3大ブランドの客層や店内の空気感、その日の気分に合わせたお店の選び方をわかりやすく整理しました。</p>
-                                <span class="portal-article-more">記事を読む ›</span>
-                            </div>
-                        </a>
-
-                        <a href="/guide/weekday-strategy" class="portal-article-card">
-                            <div class="portal-article-thumb">
-                                <picture>
-                                    <source srcset="/static/note-eyecatch-weekday.webp" type="image/webp">
-                                    <img src="/static/note-eyecatch-weekday.jpg" alt="水曜・木曜20時〜22時の平日ラウンジ傾向" loading="lazy">
-                                </picture>
-                                <span class="portal-article-badge cyan">データ分析</span>
-                            </div>
-                            <div class="portal-article-body">
-                                <h3>なぜ週末より「水曜・木曜の20時〜22時」が一番入りやすくて話しやすいのか？</h3>
-                                <p>週末の入店待ちや混雑を避けて、仕事帰りの女性と落ち着いて話せる平日の穴場時間をデータで解説。</p>
-                                <span class="portal-article-more">記事を読む ›</span>
-                            </div>
-                        </a>
-                    </div>
-
-                    <!-- Portal Area Guide Quick Links -->
-                    <div class="portal-area-directory">
-                        <div class="portal-area-header">
-                            <h3>エリア別の混雑傾向＆店舗ガイドから探す</h3>
-                            <a href="/areas" class="portal-area-all-link">全国エリア一覧へ ›</a>
-                        </div>
-                        <div class="portal-area-grid">
-                            <a href="/area/shinjuku" class="portal-area-chip">新宿・西新宿</a>
-                            <a href="/area/shibuya" class="portal-area-chip">渋谷・恵比寿</a>
-                            <a href="/area/tokyo-east" class="portal-area-chip">上野・錦糸町・町田</a>
-                            <a href="/area/kanto" class="portal-area-chip">横浜・大宮・北関東</a>
-                            <a href="/area/osaka" class="portal-area-chip">大阪・京都・神戸</a>
-                            <a href="/area/nagoya" class="portal-area-chip">名古屋・静岡・金沢</a>
-                            <a href="/area/fukuoka" class="portal-area-chip">福岡・九州・沖縄</a>
-                            <a href="/area/hokkaido-tohoku" class="portal-area-chip">札幌・仙台</a>
-                            <a href="/area/chugoku-shikoku" class="portal-area-chip">岡山・広島・松山</a>
-                        </div>
-                    </div>
-
-                    <div class="seo-guide-header" style="margin-top: 26px;">
-                        <h2>データで見るお店選び・当日のチェックポイント</h2>
-                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                            <a href="/stats" class="guide-open-btn" style="text-decoration: none;">統計データ白書 ›</a>
-                        </div>
-                    </div>
-                    <div class="seo-guide-grid">
-                        <article class="seo-guide-card">
-                            <h3>曜日・時間帯ごとのピーク傾向を知る</h3>
-                            <p>全国の主要ラウンジ（オリエンタルラウンジ・ag・JIS・XIX・ALFA・ヤタコイ・CLOVERS）では、<strong>金・土曜の21:00〜翌1:00</strong>が一番賑わいます。一方、平日の20:00〜22:00頃は仕事帰りの女性が多く、男性の待ち時間も少ないため落ち着いて話しやすい時間帯です。店舗カードをタップすると曜日・時間帯別の平均推移グラフを確認できます。</p>
-                        </article>
-                        <article class="seo-guide-card">
-                            <h3>近隣ライバル店を「料金×人数」で比べる</h3>
-                            <p>新宿・渋谷・梅田・難波・名古屋・福岡など複数ブランドが集まるエリアでは、徒歩数分の距離でも<strong>単独待機料金や開催中イベント、男女比</strong>が大きく異なります。入店前に近隣店舗を横並びで見比べると、待機コストや空振りを抑えられます。</p>
-                            <a href="/price-comparison" class="editorial-inline-link">店舗別料金・イベント比較ボードを見る ›</a>
-                        </article>
-                        <article class="seo-guide-card">
-                            <h3>「↗ +数字」の15分トレンドを活用する</h3>
-                            <p>店舗カードに表示される<strong>「↗ +数字」は直近約15分間で増えた人数</strong>を示しています。現在の合計人数だけでなく、女性が増え始めているタイミング（上昇気流）の店舗を選ぶと、入店後の相席テンポが良くなりやすくなります。</p>
-                            <a href="/guide/male-lead-mechanics" class="editorial-inline-link">来店データで見る店舗選びの法則 ›</a>
-                        </article>
-                        <article class="seo-guide-card">
-                            <h3>入店時の持ち物・ドレスコードの基本</h3>
-                            <p>相席ラウンジでは男女ともに<strong>顔写真付きの公的身分証明書（運転免許証・マイナンバーカード・パスポート等）</strong>の提示が必須です。また、サンダル・ジャージ・作業着等の軽装は入店を断られる場合があるため、清潔感のある服装で向かうのが安心です。</p>
-                            <a href="/grooming" class="editorial-inline-link">服装マナー・事前準備ガイド ›</a>
-                        </article>
-                    </div>
-
-                    <!-- FAQ Section for Long-tail SEO Keywords -->
-                    <div class="seo-faq-block">
-                        <h3>よくある質問（Q&A）</h3>
-                        <details class="seo-faq-item">
-                            <summary>Q. オリエンタルラウンジ・ag（アグ）・JIS（ジス）の違いは？</summary>
-                            <p><strong>オリエンタルラウンジ</strong>は20代半ば〜30代まで幅広い層が集まる落ち着いた王道ラウンジ、<strong>ag（アグ）</strong>は20代前半〜中盤中心でカジュアルに話せる雰囲気、<strong>JIS（ジス）</strong>は新宿・大宮・梅田・札幌・福岡などで人気の本格バー調ラウンジです。同じエリアにある場合は、その日のリアルタイム人数と男女比を見比べて、女性の割合が高い店舗を選ぶのがおすすめです。</p>
-                        </details>
-                        <details class="seo-faq-item">
-                            <summary>Q. 男性の入店待ちを避けて入りやすい曜日・時間帯は？</summary>
-                            <p>金曜・土曜・祝前日の22時以降は一番人が集まりますが、人気店では男性の入店待ちが出やすくなります。待たずに入りたい場合は、<strong>金・土曜なら20:00〜21:00頃の早めの時間</strong>、または<strong>水曜・木曜の20:30〜22:30頃</strong>が女性の比率も高くなりやすくおすすめです。</p>
-                        </details>
-                        <details class="seo-faq-item">
-                            <summary>Q. 営業中なのに「0 : 0」と表示されているのはなぜですか？</summary>
-                            <p>開店直後（18:00〜19:30頃）など、公式の営業時間内であっても店内にまだお客様が入っていない時間帯は「0 : 0（営業中）」と表示されます。各店舗の曜日別営業時間・定休日に基づき「営業時間外」とは区別して表示しています。</p>
-                        </details>
-                        <details class="seo-faq-item">
-                            <summary>Q. 入店時に必要な身分証や服装（ドレスコード）の決まりはありますか？</summary>
-                            <p>全ブランド共通で年齢確認のため<strong>顔写真付きの公的身分証明書</strong>が必要です。服装に厳格なフォーマル指定はありませんが、タンクトップ・ビーチサンダル・スウェット等の過度な軽装はNGとなる店舗が多いため、仕事帰りのジャケットやシンプルなシャツ・ニットなど清潔感のあるスマートカジュアルが無難です。</p>
-                        </details>
-                    </div>
-
-                    <!-- Area & Brand Keyword Directory for Local SEO -->
-                    <div class="seo-directory-block">
-                        <h3>リアルタイム人数・混雑状況 対応ブランド＆全国エリア一覧</h3>
-                        <p class="seo-dir-text">
-                            <strong>【対応ブランド】</strong>
-                            オリエンタルラウンジ（ORIENTAL LOUNGE） / ag（アグ） / JIS（ジス） / XIX（シックス） / ALFA（アルファ） / ヤタコイ（YATAKOI） / CLOVERS（クローバーズ）
-                        </p>
-                        <p class="seo-dir-text">
-                            <strong>【対応エリア（全国53店舗：国内51店舗＋韓国2店舗）】</strong>
-                            <strong>北海道・東北：</strong>札幌・仙台 ｜
-                            <strong>東京：</strong>新宿・西新宿・渋谷本店・恵比寿・上野・錦糸町・町田 ｜
-                            <strong>関東：</strong>横浜・大宮・柏・宇都宮・高崎 ｜
-                            <strong>中部・北陸：</strong>名古屋栄・名古屋錦・静岡・浜松・金沢 ｜
-                            <strong>関西：</strong>大阪梅田・茶屋町・難波・心斎橋・天満・京都・神戸三宮 ｜
-                            <strong>中国・四国：</strong>岡山・広島・松山 ｜
-                            <strong>九州・沖縄：</strong>福岡天神・小倉・長崎・大分・熊本・宮崎・鹿児島・沖縄那覇 ｜
-                            <strong>海外：</strong>韓国ソウル（江南・弘大）
-                        </p>
-                    </div>
-                </section>
-                {% endif %}
-            </div>
-
-            <div id="error-message" class="error-message hidden">
-                <p>データの取得に失敗しました。少し待ってから再読み込みしてください。</p>
-            </div>
-        </main>
-
-        <footer class="app-footer">
-            {% if is_staff %}
-            <div class="footer-links" style="margin-top: 15px;">
-                <span class="footer-copy">相席ナビ 社内業務モニター（広告・PR完全OFFモード稼働中）</span>
-                <span class="footer-divider">|</span>
-                <a href="/staff/logout" class="footer-link-btn" style="color: #d8a1aa; font-weight: 700;">社内モード解除（ログアウト）</a>
-            </div>
-            {% else %}
-            <!-- Top Row: Pillar Guide Buttons -->
-            <div class="footer-nav-pills">
-                <button type="button" class="footer-pill-btn" onclick="openHowToModal()" title="30秒でわかる使い方ガイド">
-                    <span>はじめてガイド</span>
-                </button>
-                <button type="button" class="footer-pill-btn guide-pill" onclick="openArticlesModal()" title="攻略コラム・記事一覧から選ぶ">
-                    <span>攻略記事を選ぶ</span>
-                </button>
-                <a href="/guide/brand-comparison" class="footer-pill-btn" title="3大ブランド比較">
-                    <span>3大ブランド比較</span>
-                </a>
-                <a href="/guide/weekday-strategy" class="footer-pill-btn weekday-pill" title="平日攻略コラム">
-                    <span>平日攻略</span>
-                </a>
-                <a href="/price-comparison" class="footer-pill-btn" title="料金・開催中イベント比較">
-                    <span>料金・イベント比較</span>
-                </a>
-            </div>
-
-            <!-- Middle Row: Official SNS Links -->
-            <div class="footer-sns-row">
-                <span class="footer-sns-label">OFFICIAL SNS</span>
-                <div class="footer-sns-icons">
-                    <a href="https://x.com/aiseki_navi" target="_blank" rel="noopener noreferrer" class="sns-icon-btn x-btn" title="公式X（混雑速報）">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                        </svg>
-                        <span>X (速報)</span>
-                    </a>
-                    <a href="https://www.threads.net/@aiseki_navi1" target="_blank" rel="noopener noreferrer" class="sns-icon-btn threads-btn" title="公式Threads">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12.001 2c-5.522 0-9.999 4.477-9.999 10 0 5.522 4.477 10 9.999 10 5.523 0 10-4.478 10-10 0-5.523-4.477-10-10-10zm0 18.001c-4.418 0-8-3.582-8-8 0-4.419 3.582-8.001 8-8.001 4.419 0 8.001 3.582 8.001 8.001 0 4.418-3.582 8-8.001 8zm3.567-9.757c-.126-.454-.378-.857-.73-1.166-.35-.308-.79-.473-1.272-.477h-.061c-.534.004-1.02.203-1.405.575-.386.372-.619.878-.656 1.425.321-.06.647-.09.976-.09.61 0 1.206.104 1.77.309.117-.184.21-.383.278-.576zm-1.849 5.864c-.732 0-1.424-.23-1.999-.666-.576-.436-.97-1.052-1.109-1.735-.07-.342-.089-.691-.057-1.038-.344.086-.677.209-.994.368-.696.349-1.144.978-1.198 1.681-.055.704.288 1.391.895 1.79.522.343 1.157.498 1.838.448.828-.061 1.705-.443 2.624-1.135-.297.185-.634.287-.998.287z"/>
-                        </svg>
-                        <span>Threads</span>
-                    </a>
-                    <a href="https://note.com/aiseki_navi" target="_blank" rel="noopener noreferrer" class="sns-icon-btn note-btn" title="公式note">
-                        <span style="font-weight: 900; font-family: serif; font-size: 0.85rem;">n</span>
-                        <span>note</span>
-                    </a>
-                    <a href="https://www.instagram.com/aiseki_navi1" target="_blank" rel="noopener noreferrer" class="sns-icon-btn ig-btn" title="公式Instagram">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
-                        </svg>
-                        <span>Instagram</span>
-                    </a>
-                </div>
-            </div>
-
-            <!-- Portal Sitemap Grid inside Footer -->
-            <div class="portal-footer-sitemap">
-                <div class="sitemap-col">
-                    <h4>ブランド別・エリア別人数</h4>
-                    <ul>
-                        <li><a href="/oriental-lounge">オリエンタルラウンジ全店人数</a></li>
-                        <li><a href="/ag">ag（アグ）全店人数</a></li>
-                        <li><a href="/jis">JIS（ジス）全店人数</a></li>
-                        <li><a href="/area/shinjuku">新宿・西新宿エリア</a></li>
-                        <li><a href="/area/shibuya">渋谷・恵比寿エリア</a></li>
-                        <li><a href="/area/tokyo-east">上野・錦糸町・町田エリア</a></li>
-                        <li><a href="/area/kanto">横浜・大宮・北関東エリア</a></li>
-                        <li><a href="/area/osaka">大阪（梅田・難波）・関西</a></li>
-                        <li><a href="/area/nagoya">名古屋（栄・錦）・中部</a></li>
-                        <li><a href="/area/fukuoka">福岡（天神）・九州・沖縄</a></li>
-                        <li><a href="/area/hokkaido-tohoku">札幌・仙台（北海道・東北）</a></li>
-                        <li><a href="/area/chugoku-shikoku">岡山・広島・松山（中国・四国）</a></li>
-                    </ul>
-                </div>
-                <div class="sitemap-col">
-                    <h4>コラム・特集記事</h4>
-                    <ul>
-                        <li><a href="/columns">コラム・記事一覧（全{{ 13 + (published_scheduled|length if published_scheduled else 0) }}本）</a></li>
-                        {% for item in published_scheduled or [] %}
-                        <li><a href="{{ item.path }}">{{ item.short_title }}</a></li>
-                        {% endfor %}
-                        <li><a href="/guide/price-event-comparison">料金・イベント比較ボード活用法</a></li>
-                        <li><a href="/guide/male-lead-mechanics">男性先行×女性は待たないデータ法則</a></li>
-                        <li><a href="/guide/beauty-area-stage">美容サロン激戦区の客層と特徴</a></li>
-                        <li><a href="/guide/club-area-midnight">クラブ密集エリア深夜0時の第2波</a></li>
-                        <li><a href="/guide/brand-comparison">オリエンタル・JIS・ag比較</a></li>
-                        <li><a href="/guide/shinjuku">新宿3店舗の使い分けガイド</a></li>
-                        <li><a href="/guide/weekday-strategy">水曜・木曜20時の穴場データ</a></li>
-                        <li><a href="/guide/weekend-strategy">金曜・土曜ピークの待ち時間回避</a></li>
-                        <li><a href="/guide/solo-vs-pair">1人（ソロ）vs 2人組の立ち回り</a></li>
-                        <li><a href="/guide/second-venue">2軒目への自然な誘い方</a></li>
-                        <li><a href="/guide/first-10-minutes">最初の10分の会話と清潔感</a></li>
-                        <li><a href="/guide">基本の立ち回り・お店選び</a></li>
-                        <li><a href="/grooming">行く前の身だしなみ・準備</a></li>
-                    </ul>
-                </div>
-                <div class="sitemap-col">
-                    <h4>サイト情報・統計・規約</h4>
-                    <ul>
-                        <li><a href="/">リアルタイム人数ランキング</a></li>
-                        <li><a href="/price-comparison">店舗別料金・開催中イベント比較</a></li>
-                        <li><a href="/stats">全国ラウンジ統計データ白書</a></li>
-                        <li><button type="button" class="sitemap-text-btn" onclick="openHowToModal()">相席ナビの使い方</button></li>
-                        <li><a href="/privacy">運営者情報・プライバシーポリシー</a></li>
-                        <li><button type="button" class="sitemap-text-btn" onclick="openLegalModal()">免責事項（ポップアップ）</button></li>
-                    </ul>
-                </div>
-            </div>
-
-            {% if initial_status and initial_status.ranking %}
-            <details style="margin: 14px 0 8px; background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.07); border-radius: 12px; padding: 10px 14px; text-align: left;">
-                <summary style="cursor: pointer; font-size: 0.78rem; font-weight: 700; color: #9a968e; list-style: none;">
-                    全国{{ initial_status.ranking|length }}店舗の現在人数テキスト一覧・店舗別ページ（オリエンタルラウンジ / ag（アグ） / JIS）▼
-                </summary>
-                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px 12px; margin-top: 10px; font-size: 0.75rem;">
-                    {% for s in initial_status.ranking %}
-                    <a href="/store/{{ s.name | store_slug }}" style="color: #cbd5e1; text-decoration: none; display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.04);">
-                        <span>{{ s.name | seo_store_name }}</span>
-                        <span style="color: #94a3b8;">{% if (s.women or 0) + (s.men or 0) > 0 %}女性{{ s.women }}・男性{{ s.men }}{% elif s.is_open_now %}0 : 0（営業中）{% else %}店舗詳細 ›{% endif %}</span>
-                    </a>
-                    {% endfor %}
-                </div>
-            </details>
-            {% endif %}
-
-            <!-- Bottom Row: Clean Legal & Copyright -->
-            <div class="footer-bottom-meta">
-                <div class="footer-legal-links">
-                    <a href="/privacy" class="footer-sub-link" style="text-decoration: none;">運営者情報・プライバシーポリシー・免責事項</a>
-                    <span class="footer-divider" style="opacity: 0.3;">|</span>
-                    <a href="/staff" class="footer-sub-link" style="color: #93b1c9;">社内業務モニター</a>
-                </div>
-                <p style="font-size: 0.72rem; color: #9a968e; line-height: 1.6; max-width: 720px; margin: 0 auto 8px;">
-                    ※掲載しているイベントの開催有無・適用条件、料金システム、入店ルール等は変更される場合や表記に差異がある場合がございます。ご来店の際は必ず各店舗の公式ホームページ・公式アプリにて最新情報をご確認ください。
-                </p>
-                <p class="footer-mini-copy">
-                    © 2026 相席ナビ (AISEKI NAVI) ｜ ※公開情報の非公式統計・情報ポータルサイトです
-                </p>
-            </div>
-            {% endif %}
-        </footer>
-    </div>
-
     <!-- Template for ranking item -->
     <template id="ranking-item-template">
         <div class="ranking-item">
@@ -1756,12 +1801,12 @@
         window.INITIAL_STATUS_DATA = {{ initial_status | tojson }};
         {% endif %}
     </script>
-    <script src="/static/app.js?v=20261027_4" defer></script>
+    <script src="/static/app.js?v=20261027_5" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/sw.js?v=52', { updateViaCache: 'none' })
+                navigator.serviceWorker.register('/sw.js?v=53', { updateViaCache: 'none' })
                     .then(function(reg) {
                         reg.update();
                         document.addEventListener('visibilitychange', function() {

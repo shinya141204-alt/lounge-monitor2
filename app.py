@@ -615,7 +615,7 @@ def _runtime_env_probe():
 def _get_cached_html_or_render(cache_extra_key, render_fn, ttl_sec=55.0):
     """Fast thread-safe memoizer for rendered HTML strings keyed on session auth + live data signature."""
     now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
-    minute_key = now_jst.strftime('%Y%m%d%H%M')
+    bucket_15m = f"{now_jst.strftime('%Y%m%d%H')}_{(now_jst.minute // 15) * 15:02d}"
     with data_lock:
         cur_stores = latest_data.get('full_data') or []
         last_upd = latest_data.get('last_updated')
@@ -629,7 +629,7 @@ def _get_cached_html_or_render(cache_extra_key, render_fn, ttl_sec=55.0):
         bool(session.get('is_staff')),
         bool(session.get('is_master')),
         local_db.DB_PATH,
-        minute_key,
+        bucket_15m,
         pub_cnt,
         ev_upd,
         _runtime_env_probe(),
@@ -779,9 +779,10 @@ def _enrich_for_ssr(stores):
 
 
 def get_initial_status_payload():
-    """Return status dict for SSR embedding in index.html if available (memoized per live snapshot & minute)."""
+    """Return status dict for SSR embedding in index.html if available (memoized per live snapshot & 15m bucket)."""
     restore_latest_data_if_empty()
-    now_min = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).strftime('%Y%m%d%H%M')
+    now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
+    bucket_15m = f"{now_jst.strftime('%Y%m%d%H')}_{(now_jst.minute // 15) * 15:02d}"
     _, ev_upd = _get_cached_events_nonblocking()
     env_probe = _runtime_env_probe()
     with data_lock:
@@ -791,7 +792,7 @@ def get_initial_status_payload():
         last_u = latest_data.get('last_updated')
         is_s = bool(latest_data.get('is_seed'))
         raw_copy = list(full_d)
-        c_key = (_live_data_signature(raw_copy, last_u, is_s), now_min, ev_upd, env_probe)
+        c_key = (_live_data_signature(raw_copy, last_u, is_s), bucket_15m, ev_upd, env_probe)
 
     with _ssr_payload_cache_lock:
         if _ssr_payload_cache['key'] == c_key and _ssr_payload_cache['payload'] is not None:
@@ -807,6 +808,14 @@ def get_initial_status_payload():
         _ssr_payload_cache['key'] = c_key
         _ssr_payload_cache['payload'] = payload
     return payload
+
+
+def prewarm_ssr_and_status_caches():
+    """Pre-populate SSR payload and index HTML cache on background update thread so user GET / never misses."""
+    try:
+        get_initial_status_payload()
+    except Exception:
+        pass
 
 # Region Definitions
 REGIONS = {
@@ -894,6 +903,7 @@ def refresh_momentum_from_db():
                         latest_data['is_seed'] = False
                 save_latest_status_snapshot()
                 clear_fast_http_caches()
+                prewarm_ssr_and_status_caches()
                 print("[app] Cold-start seed promoted to live counts from fast Google Sheets sync.")
                 return
 
@@ -913,6 +923,7 @@ def refresh_momentum_from_db():
         if updated_any:
             save_latest_status_snapshot()
             clear_fast_http_caches()
+            prewarm_ssr_and_status_caches()
             print("[app] Momentum (15-min women_diff/men_diff) refreshed from newly synced SQLite baseline.")
     except Exception as e:
         print(f"[app] refresh_momentum_from_db error: {e}", file=sys.stderr)
@@ -1013,6 +1024,7 @@ def update_job(force=False):
                 latest_data['is_seed'] = False
             save_latest_status_snapshot()
             clear_fast_http_caches()
+            prewarm_ssr_and_status_caches()
             print(f"Data updated. Top store: {top_store['name'] if top_store else 'None'}")
             _last_update_error = None
             try:

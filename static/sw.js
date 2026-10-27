@@ -1,5 +1,5 @@
-// Supersedes aiseki-navi-v47..v51 (purged automatically on activate)
-const CACHE_NAME = 'aiseki-navi-v52';
+// Supersedes aiseki-navi-v47..v52 (purged automatically on activate)
+const CACHE_NAME = 'aiseki-navi-v53';
 const SHELL_KEY = '/';
 const FAST_NAV_PATHS = new Set([
   '/guide/brand-comparison',
@@ -25,7 +25,7 @@ const ASSETS_TO_CACHE = [
   '/static/style.css?v=20261027_3',
   '/static/calm.css?v=13',
   '/static/portal.css?v=6',
-  '/static/app.js?v=20261027_4',
+  '/static/app.js?v=20261027_5',
   '/static/affiliate_config.js?v=11',
   '/static/manifest.json?v=2',
   '/static/icon-192.png?v=2',
@@ -71,7 +71,10 @@ self.addEventListener('activate', (event) => {
 // Fetch the latest HTML (navigation preload first) and write to CacheStorage asynchronously without blocking UI response
 function fetchAndCache(event, cacheKey, forceFresh) {
   return (async () => {
-    const preload = forceFresh ? null : await event.preloadResponse;
+    let preload = null;
+    try {
+      preload = await event.preloadResponse;
+    } catch (e) {}
     const resp = preload || await fetch(event.request, forceFresh ? { cache: 'no-store' } : undefined);
     if (resp && resp.ok) {
       const copy = resp.clone();

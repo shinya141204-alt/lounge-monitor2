@@ -1639,7 +1639,7 @@ class FullAuditRegressionTests(unittest.TestCase):
         sw_resp = self.client.get('/sw.js')
         try:
             sw_txt = sw_resp.data.decode('utf-8')
-            self.assertIn("CACHE_NAME = 'aiseki-navi-v52'", sw_txt)
+            self.assertIn("CACHE_NAME = 'aiseki-navi-v53'", sw_txt)
             self.assertIn("event.waitUntil", sw_txt)
         finally:
             sw_resp.close()
@@ -1739,7 +1739,7 @@ class FullAuditRegressionTests(unittest.TestCase):
                 self.assertFalse(app_module.latest_data['is_seed'])
                 self.assertTrue(any(s.get('women') == 29 for s in app_module.latest_data['full_data']))
 
-            # 6. Public '/' must show '<h1>相席ナビ</h1>' even when master session is active
+            # 6. Public '/' must show '<h1>相席ナビ</h1>' even when master session is active, and place #ranking-list BEFORE hidden modals
             with self.client.session_transaction() as s:
                 s['is_staff'] = True
                 s['is_master'] = True
@@ -1747,6 +1747,9 @@ class FullAuditRegressionTests(unittest.TestCase):
             pub_master_html = r_pub_with_master.data.decode('utf-8')
             self.assertIn('<h1>相席ナビ</h1>', pub_master_html)
             self.assertNotIn('<h1>相席ナビ マスター管理</h1>', pub_master_html)
+            self.assertIn('data-store="OLG 新宿"', pub_master_html)
+            self.assertIn('window.__SSR_PINNED_HYDRATED', pub_master_html)
+            self.assertLess(pub_master_html.index('id="ranking-list"'), pub_master_html.index('id="analysis-modal"'))
             with self.client.session_transaction() as s:
                 s.clear()
         finally:
