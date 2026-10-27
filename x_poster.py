@@ -501,6 +501,18 @@ def build_pinned_tweet_thread(app_url: str = "") -> tuple:
 
 COLUMN_PROMO_LIST = [
     {
+        "slug": "last-train-cliff",
+        "path": "/guide/last-train-cliff",
+        "eyecatch": "/static/eyecatch-last-train-cliff.jpg",
+        "title": "「23時20分、店内の空気が変わる」——9.6万件のログが暴いた『魔の40分間』と街別ハシゴ法則",
+        "main_text": (
+            "1軒目が23時すぎに終わって「今から相席ラウンジ行こうぜ！」と23時半に突撃すると、乾杯して10分で女の子が一斉に帰り始める現象。\n\n"
+            "9.6万件のログを10分刻みで調べたら、23:20〜23:55の「魔の40分間」と0:30の「第2波」がくっきり見えました📊\n\n"
+            "街別の正解ルートはリプ欄へ👇\n"
+            "#相席ナビ #相席ラウンジ"
+        ),
+    },
+    {
         "slug": "price-event-comparison",
         "path": "/guide/price-event-comparison",
         "eyecatch": "/static/eyecatch-price-comparison.jpg",

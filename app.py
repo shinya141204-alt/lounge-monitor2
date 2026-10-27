@@ -2066,6 +2066,12 @@ def sitemap_xml():
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
+  <url>
+    <loc>https://aiseki-navi.com/guide/last-train-cliff</loc>
+    <lastmod>{today}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
 {scheduled_urls}{area_urls}
 {store_urls}
   <url>
@@ -2256,6 +2262,12 @@ def guide_male_lead_mechanics():
 def guide_price_event_comparison():
     """Editorial guide explaining the 51-store price, 4-time-slot, solo rule, event & minimum 10-women comparison board."""
     return _get_cached_html_or_render('guide_price_comparison', lambda: render_template('guide_price_comparison.html'))
+
+
+@app.route('/guide/last-train-cliff')
+def guide_last_train_cliff():
+    """Editorial story & 9.6-million-point data study on the 23:20 last-train cliff, 00:30 second wave, and post-23:00 brand reversal."""
+    return _get_cached_html_or_render('guide_last_train_cliff', lambda: render_template('guide_last_train_cliff.html'))
 
 
 def _render_scheduled_guide(slug: str):

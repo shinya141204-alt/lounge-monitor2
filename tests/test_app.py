@@ -360,6 +360,7 @@ class AnalyticsTests(unittest.TestCase):
             '/guide/beauty-area-stage',
             '/guide/male-lead-mechanics',
             '/guide/price-event-comparison',
+            '/guide/last-train-cliff',
         ]
         for path in routes:
             with self.subTest(path=path):
@@ -1028,6 +1029,7 @@ class GrowthFeaturesTests(unittest.TestCase):
             '/guide/beauty-area-stage',
             '/guide/male-lead-mechanics',
             '/guide/price-event-comparison',
+            '/guide/last-train-cliff',
         ]
         for p in public_paths:
             r = self.client.get(p)

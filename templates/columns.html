@@ -284,6 +284,25 @@
 
         <h2 class="sec-title">定番の特集・比較コラム</h2>
         <div class="articles-grid">
+            <!-- NEW Article: Last Train Cliff & 23:00 Brand Reversal -->
+            <a href="/guide/last-train-cliff" class="article-card">
+                <div class="article-thumb-wrap">
+                    <picture>
+                        <source srcset="/static/eyecatch-last-train-cliff.webp" type="image/webp">
+                        <img src="/static/eyecatch-last-train-cliff.jpg" alt="「23時20分、店内の空気が変わる」——9.6万件のログが暴いた魔の40分間と23時を境に逆転する街別ハシゴ法則" loading="lazy">
+                    </picture>
+                </div>
+                <div class="article-card-body">
+                    <div class="article-tag-row">
+                        <span class="article-tag tag-pink">最新データ検証</span>
+                        <span class="article-tag tag-cyan">9.6万件ログ・街別ハシゴ</span>
+                    </div>
+                    <h2>「23時20分、店内の空気が変わる」——全国9.6万件のログが暴いた相席ラウンジ『魔の40分間』と、23時を境に逆転する街別ハシゴ法則</h2>
+                    <p>わずか20分で女性が16%消える「23時20分の終電崖」と、0時30分に立ち上がる「第2波」。渋谷・新宿・名古屋・梅田の終電後維持率データから見る黄金ルート。</p>
+                    <span class="article-read-more">この記事を読む ›</span>
+                </div>
+            </a>
+
             {% for item in published_scheduled or [] %}
             <a href="{{ item.path }}" class="article-card">
                 <div class="article-thumb-wrap">

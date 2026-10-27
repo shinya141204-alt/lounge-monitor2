@@ -4,6 +4,7 @@ const SHELL_KEY = '/';
 const FAST_NAV_PATHS = new Set([
   '/guide/brand-comparison',
   '/guide/price-event-comparison',
+  '/guide/last-train-cliff',
   '/grooming',
   '/stats',
   '/guide',
