@@ -10,7 +10,11 @@ Features:
 import datetime
 import logging
 import os
+import re
+import sys
+import threading
 import time
+from urllib.parse import urlparse, parse_qs
 
 import requests
 
@@ -21,6 +25,52 @@ THREADS_API_BASE = "https://graph.threads.net/v1.0"
 DEFAULT_THREADS_USER_ID = "28848531981469633"  # @aiseki_navi1
 SITE_URL = "https://aiseki-navi.com"
 _cached_user_id = None
+_threads_post_lock = threading.Lock()
+
+
+def _warm_threads_image_inprocess(image_url: str, stores: list = None) -> None:
+    """
+    Pre-warm dynamic OGP/slide images in-process without making a loopback HTTP `requests.get`
+    to our own single-worker server (preventing thread-pool self-deadlock).
+    """
+    if not image_url:
+        return
+    try:
+        app_mod = sys.modules.get("app")
+        if "/ogp/ig-slide/" in image_url:
+            import ig_carousel_generator
+            m = re.search(r"/ogp/ig-slide/(\d+)\.(jpg|jpeg|png)", image_url, re.IGNORECASE)
+            if m:
+                slide_num = max(1, min(5, int(m.group(1))))
+                is_jpg = m.group(2).lower() in ("jpg", "jpeg")
+                render_cached_fn = getattr(app_mod, "_render_cached_ig_slide_bytes", None) if app_mod else None
+                warm_fn = getattr(app_mod, "warm_ig_slide_cache", None) if app_mod else None
+                ctx = None
+                if app_mod and hasattr(app_mod, "_get_sns_kit_context"):
+                    try:
+                        ctx = app_mod._get_sns_kit_context(fast=False)
+                    except Exception:
+                        ctx = None
+                if ctx is None:
+                    ctx = ig_carousel_generator.build_forecast_context(live_stores=stores)
+                if callable(warm_fn):
+                    warm_fn(slide_num, is_jpg=is_jpg, ctx=ctx)
+                elif callable(render_cached_fn):
+                    render_cached_fn(slide_num, is_jpg, ctx)
+                elif is_jpg:
+                    ig_carousel_generator.render_slide_jpeg(slide_num, ctx=ctx, quality=90)
+                else:
+                    ig_carousel_generator.render_slide_png(slide_num, ctx=ctx)
+        elif "/ogp/live.png" in image_url:
+            import ogp_generator
+            parsed = urlparse(image_url)
+            s_param = ((parse_qs(parsed.query).get("s") or [""])[0] or "").strip()[:40]
+            live_stores = stores
+            if live_stores is None and app_mod and hasattr(app_mod, "latest_data"):
+                live_stores = list((app_mod.latest_data or {}).get("full_data") or [])
+            ogp_generator.generate_live_ogp_png(live_stores or [], s_param=s_param)
+    except Exception as e:
+        logging.debug(f"In-process Threads image warm skipped: {e}")
 
 
 def _filter_domestic_stores(stores: list) -> list:
@@ -279,10 +329,7 @@ def post_to_threads(text: str, image_url: str = None) -> dict:
 
     try:
         if image_url:
-            try:
-                requests.get(image_url, timeout=15)
-            except Exception:
-                pass
+            _warm_threads_image_inprocess(image_url)
 
         create_url = f"{THREADS_API_BASE}/{user_id}/threads"
         create_data = {
@@ -335,47 +382,56 @@ def post_to_threads(text: str, image_url: str = None) -> dict:
 
 def execute_scheduled_threads_post(stores: list, slot_label: str = "20:00", force: bool = False, image_url: str = None) -> dict:
     """Execute scheduled Threads post with persistent job_state deduplication, headcount guard, and weekly token auto-refresh."""
-    now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
-    biz_date = (now_jst - datetime.timedelta(hours=7)).strftime("%Y-%m-%d")
-    dedup_key = f"threads_post:{biz_date}_{slot_label}"
+    if not _threads_post_lock.acquire(blocking=False):
+        return {"status": "skipped", "ok": False, "skipped": True, "reason": "already_running"}
 
-    if not force and job_state.is_done(dedup_key):
-        return {"status": "skipped", "reason": "Already posted to Threads for this slot"}
-
-    dom = _filter_domestic_stores(stores)
-    if not force:
-        total_dom_women = sum(int(s.get("women") or 0) for s in dom)
-        if total_dom_women < 15:
-            logging.info(f"Skipping Threads auto-post ({slot_label}): insufficient live headcount (women={total_dom_women}).")
-            return {"status": "skipped", "reason": "Insufficient live headcount"}
-
-    refresh_threads_token_if_needed(force=False)
-    editorial_winner = None
     try:
-        import sns_editorial
-        ed_res = sns_editorial.run_editorial_pipeline(
-            stores,
-            slot_label=slot_label,
-            channel="threads",
-            now_jst=now_jst,
-            record_history=not force,
-            use_ai=True,
-            force_ai_refresh=True,
-        )
-        editorial_winner = ed_res.get("winner")
-    except Exception as e:
-        logging.warning(f"Threads editorial pipeline fallback ({slot_label}): {e}")
+        now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
+        biz_date = (now_jst - datetime.timedelta(hours=7)).strftime("%Y-%m-%d")
+        dedup_key = f"threads_post:{biz_date}_{slot_label}"
 
-    if editorial_winner and editorial_winner.get("main_text"):
-        text = editorial_winner["main_text"]
-    else:
-        text = build_threads_live_post(stores, slot_label=slot_label, now_jst=now_jst)
+        if not force and job_state.is_done(dedup_key):
+            return {"status": "skipped", "reason": "Already posted to Threads for this slot"}
 
-    res = post_to_threads(text, image_url=image_url)
-    if res.get("status") == "success" and not force:
-        job_state.mark_done(dedup_key)
-    res["threads_text"] = text
-    if editorial_winner:
-        res["editorial_style"] = editorial_winner.get("style")
-        res["editorial_score"] = editorial_winner.get("total_score")
-    return res
+        dom = _filter_domestic_stores(stores)
+        if not force:
+            total_dom_women = sum(int(s.get("women") or 0) for s in dom)
+            if total_dom_women < 15:
+                logging.info(f"Skipping Threads auto-post ({slot_label}): insufficient live headcount (women={total_dom_women}).")
+                return {"status": "skipped", "reason": "Insufficient live headcount"}
+
+        refresh_threads_token_if_needed(force=False)
+        editorial_winner = None
+        try:
+            import sns_editorial
+            ed_res = sns_editorial.run_editorial_pipeline(
+                stores,
+                slot_label=slot_label,
+                channel="threads",
+                now_jst=now_jst,
+                record_history=not force,
+                use_ai=True,
+                force_ai_refresh=True,
+            )
+            editorial_winner = ed_res.get("winner")
+        except Exception as e:
+            logging.warning(f"Threads editorial pipeline fallback ({slot_label}): {e}")
+
+        if editorial_winner and editorial_winner.get("main_text"):
+            text = editorial_winner["main_text"]
+        else:
+            text = build_threads_live_post(stores, slot_label=slot_label, now_jst=now_jst)
+
+        if image_url:
+            _warm_threads_image_inprocess(image_url, stores=stores)
+
+        res = post_to_threads(text, image_url=image_url)
+        if res.get("status") == "success" and not force:
+            job_state.mark_done(dedup_key)
+        res["threads_text"] = text
+        if editorial_winner:
+            res["editorial_style"] = editorial_winner.get("style")
+            res["editorial_score"] = editorial_winner.get("total_score")
+        return res
+    finally:
+        _threads_post_lock.release()

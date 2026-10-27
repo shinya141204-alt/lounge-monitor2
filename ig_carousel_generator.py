@@ -9,6 +9,8 @@ import io
 import os
 import zipfile
 import datetime
+import threading
+import collections
 from PIL import Image, ImageDraw, ImageFilter
 
 import ogp_generator
@@ -17,6 +19,10 @@ import x_poster
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 JST = datetime.timezone(datetime.timedelta(hours=9))
+_PORTRAIT_BASE_CACHE = collections.OrderedDict()
+_PORTRAIT_BASE_LOCK = threading.Lock()
+_PORTRAIT_BASE_MAX = 16
+_KINSOKU_LEADING = frozenset("。、．，・：；！？）」』】〉》〕％%")
 
 
 def _upcoming_weekend_dates(now_jst: datetime.datetime) -> tuple:
@@ -207,9 +213,23 @@ def build_forecast_context(
 def _make_portrait_base(bg_filename: str, glow1: tuple, glow2: tuple) -> tuple:
     W, H = 1080, 1350
     bg_path = os.path.join(BASE_DIR, "static", bg_filename)
+    try:
+        bg_mtime = int(os.path.getmtime(bg_path)) if os.path.exists(bg_path) else 0
+    except Exception:
+        bg_mtime = 0
+    cache_key = (bg_filename, bg_mtime, tuple(glow1), tuple(glow2))
+
+    with _PORTRAIT_BASE_LOCK:
+        cached = _PORTRAIT_BASE_CACHE.get(cache_key)
+        if cached is not None:
+            _PORTRAIT_BASE_CACHE.move_to_end(cache_key)
+            canvas_copy = cached.copy()
+            return canvas_copy, ogp_generator.make_safe_draw(canvas_copy, "RGBA")
+
     if os.path.exists(bg_path):
         try:
-            bg = Image.open(bg_path).convert("RGBA")
+            with Image.open(bg_path) as raw_img:
+                bg = raw_img.convert("RGBA")
             sw, sh = bg.size
             scale = max(W / sw, H / sh)
             nw, nh = int(sw * scale), int(sh * scale)
@@ -229,9 +249,74 @@ def _make_portrait_base(bg_filename: str, glow1: tuple, glow2: tuple) -> tuple:
     canvas.alpha_composite(tint)
     ogp_generator._draw_radial_glow(canvas, (180, 180), 540, glow1)
     ogp_generator._draw_radial_glow(canvas, (900, 1160), 540, glow2)
-    canvas = canvas.convert("RGB")
-    draw = ogp_generator.make_safe_draw(canvas, "RGBA")
-    return canvas, draw
+    rgb_base = canvas.convert("RGB")
+
+    with _PORTRAIT_BASE_LOCK:
+        _PORTRAIT_BASE_CACHE.pop(cache_key, None)
+        _PORTRAIT_BASE_CACHE[cache_key] = rgb_base
+        while len(_PORTRAIT_BASE_CACHE) > _PORTRAIT_BASE_MAX:
+            _, evicted = _PORTRAIT_BASE_CACHE.popitem(last=False)
+            try:
+                evicted.close()
+            except Exception:
+                pass
+        canvas_copy = rgb_base.copy()
+    draw = ogp_generator.make_safe_draw(canvas_copy, "RGBA")
+    return canvas_copy, draw
+
+
+def _wrap_text_by_pixel_width(draw, text: str, font, max_width: int, max_lines: int = 3) -> tuple:
+    """
+    Wrap Japanese/ASCII text cleanly within `max_width` pixels with basic kinsoku (no leading punctuation).
+    Returns `(lines: list[str], truncated: bool)`. When `truncated` is True, the final line ends with `...`.
+    """
+    clean = ogp_generator.sanitize_font_text(text or "").strip()
+    if not clean:
+        return ([], False)
+
+    lines = []
+    cur = ""
+    idx = 0
+    n = len(clean)
+    while idx < n:
+        ch = clean[idx]
+        if ch == "\n":
+            lines.append(cur)
+            cur = ""
+            idx += 1
+            continue
+        cand = cur + ch
+        if cur and ogp_generator._measure_text_width(draw, cand, font) > max_width:
+            if ch in _KINSOKU_LEADING and len(cur) > 1:
+                # Allow 1 trailing punctuation char or push previous char to next line
+                if ogp_generator._measure_text_width(draw, cand, font) <= max_width + 24:
+                    lines.append(cand)
+                    cur = ""
+                    idx += 1
+                    continue
+                carry = cur[-1]
+                lines.append(cur[:-1])
+                cur = carry + ch
+                idx += 1
+                continue
+            lines.append(cur)
+            cur = ch
+        else:
+            cur = cand
+        idx += 1
+    if cur:
+        lines.append(cur)
+
+    if len(lines) <= max_lines:
+        return (lines, False)
+
+    kept = lines[:max_lines - 1]
+    overflow = "".join(lines[max_lines - 1:])
+    trimmed = overflow
+    while trimmed and ogp_generator._measure_text_width(draw, trimmed + "...", font) > max_width:
+        trimmed = trimmed[:-1]
+    kept.append((trimmed.rstrip("、。・ ") + "...") if trimmed else "...")
+    return (kept, True)
 
 
 def _draw_header_and_footer(draw: ImageDraw.ImageDraw, slide_num: int, total_slides: int = 5, accent=(244, 114, 182)):
@@ -257,8 +342,8 @@ def _draw_header_and_footer(draw: ImageDraw.ImageDraw, slide_num: int, total_sli
     draw.text((64, H - 64), foot_l, font=f_foot, fill=(148, 163, 184, 235))
 
 
-def render_slide_png(slide_num: int, ctx: dict = None) -> bytes:
-    """Render slide 1..5 as 1080x1350 PNG bytes."""
+def _render_slide_canvas(slide_num: int, ctx: dict = None) -> Image.Image:
+    """Render slide 1..5 onto a 1080x1350 RGB PIL.Image canvas."""
     ctx = ctx or build_forecast_context()
     theme = ctx.get("theme") or _resolve_day_theme(datetime.datetime.now(JST), ctx.get("weekend_label", ""))
     W, H = 1080, 1350
@@ -481,14 +566,20 @@ def render_slide_png(slide_num: int, ctx: dict = None) -> bytes:
             bw_px = int(draw.textlength(badge_s, font=f_slot)) + 34
             draw.rounded_rectangle((92, cy + 22, 92 + bw_px, cy + 68), radius=12, fill=(col[0], col[1], col[2], 42), outline=col, width=2)
             draw.text((109, cy + 29), badge_s, font=f_slot, fill=col)
-            draw.text((92, cy + 84), head_s, font=f_head, fill=(255, 255, 255, 255))
+            head_fit, f_head_fit, head_sz = ogp_generator.fit_text_and_font(draw, head_s, W - 184, 30, 22)
+            draw.text((92, cy + 84 + max(0, (30 - head_sz) // 2)), head_fit, font=f_head_fit, fill=(255, 255, 255, 255))
 
-            # Wrap body_s into 2 clean lines (~34 chars per line)
-            line1 = body_s[:34]
-            line2 = body_s[34:68]
-            draw.text((92, cy + 134), line1, font=f_body, fill=(203, 213, 225, 240))
-            if line2:
-                draw.text((92, cy + 168), line2, font=f_body, fill=(203, 213, 225, 240))
+            # Pixel-aware natural wrapping (2 lines at 23px, or up to 3 lines at 21px with clean '...' fallback)
+            max_body_w = W - 184
+            body_lines, was_trunc = _wrap_text_by_pixel_width(draw, body_s, f_body, max_body_w, max_lines=2)
+            if not was_trunc and len(body_lines) <= 2:
+                for l_idx, line_txt in enumerate(body_lines):
+                    draw.text((92, cy + 134 + l_idx * 34), line_txt, font=f_body, fill=(203, 213, 225, 240))
+            else:
+                f_body_sm = ogp_generator._get_font(21)
+                body_lines_3, _ = _wrap_text_by_pixel_width(draw, body_s, f_body_sm, max_body_w, max_lines=3)
+                for l_idx, line_txt in enumerate(body_lines_3):
+                    draw.text((92, cy + 128 + l_idx * 28), line_txt, font=f_body_sm, fill=(203, 213, 225, 240))
             cy += ch + 18
 
     else:
@@ -537,8 +628,26 @@ def render_slide_png(slide_num: int, ctx: dict = None) -> bytes:
         draw.rounded_rectangle((ux, 1086, ux + uw, 1164), radius=18, fill=(15, 23, 42, 245), outline=(251, 191, 36, 240), width=2)
         draw.text((ux + 32, 1102), url_box_txt, font=f_url, fill=(251, 191, 36, 255))
 
+    return canvas
+
+
+def render_slide_png(slide_num: int, ctx: dict = None) -> bytes:
+    """Render slide 1..5 as 1080x1350 PNG bytes (fast compress_level=3)."""
+    canvas = _render_slide_canvas(slide_num, ctx=ctx)
     out = io.BytesIO()
-    canvas.save(out, format="PNG", optimize=True)
+    canvas.save(out, format="PNG", compress_level=3)
+    canvas.close()
+    return out.getvalue()
+
+
+def render_slide_jpeg(slide_num: int, ctx: dict = None, quality: int = 90) -> bytes:
+    """Render slide 1..5 directly as 1080x1350 RGB JPEG bytes without intermediate PNG encode/decode."""
+    canvas = _render_slide_canvas(slide_num, ctx=ctx)
+    rgb = canvas if canvas.mode == "RGB" else canvas.convert("RGB")
+    out = io.BytesIO()
+    rgb.save(out, format="JPEG", quality=max(50, min(98, int(quality))))
+    if rgb is not canvas:
+        rgb.close()
     canvas.close()
     return out.getvalue()
 

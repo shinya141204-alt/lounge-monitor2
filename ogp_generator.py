@@ -1,6 +1,8 @@
 import io
 import os
 import datetime
+import threading
+import collections
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 import x_poster
 
@@ -9,6 +11,9 @@ FONT_PATH = os.path.join(BASE_DIR, "static", "fonts", "ogp-jp-bold.otf")
 MAC_FONT_BOLD = "/System/Library/Fonts/ヒラギノ角ゴシック W8.ttc"
 
 _FONT_CACHE = {}
+_BASE_CANVAS_CACHE = collections.OrderedDict()
+_BASE_CANVAS_LOCK = threading.Lock()
+_BASE_CANVAS_MAX = 16
 
 _GLYPH_REPLACEMENTS = {
     "…": "...",
@@ -245,6 +250,86 @@ def _draw_radial_glow(base_img: Image.Image, center: tuple, radius: int, rgba_co
     base_img.alpha_composite(glow)
 
 
+def _get_cached_base_canvas(
+    width: int,
+    height: int,
+    bg_filename: str,
+    blur_radius: int,
+    tint_rgba: tuple,
+    glows: tuple,
+    base_rgba: tuple = None,
+    fallback_rgba: tuple = (10, 12, 20, 255),
+) -> Image.Image:
+    """
+    Build or retrieve a pre-composited RGB base canvas (background decode + LANCZOS cover resize +
+    GaussianBlur + dark overlay + radial glows) from `_BASE_CANVAS_CACHE` (max 16 entries) and return `.copy()`.
+    """
+    bg_path = os.path.join(BASE_DIR, "static", bg_filename)
+    try:
+        bg_mtime = int(os.path.getmtime(bg_path)) if os.path.exists(bg_path) else 0
+    except Exception:
+        bg_mtime = 0
+
+    cache_key = (
+        width,
+        height,
+        bg_filename,
+        bg_mtime,
+        blur_radius,
+        tuple(tint_rgba),
+        tuple((tuple(c), int(rad), tuple(col)) for c, rad, col in glows),
+        tuple(base_rgba) if base_rgba else None,
+        tuple(fallback_rgba),
+    )
+
+    with _BASE_CANVAS_LOCK:
+        cached = _BASE_CANVAS_CACHE.get(cache_key)
+        if cached is not None:
+            _BASE_CANVAS_CACHE.move_to_end(cache_key)
+            return cached.copy()
+
+    if os.path.exists(bg_path):
+        try:
+            with Image.open(bg_path) as raw_img:
+                bg = raw_img.convert("RGBA")
+            src_w, src_h = bg.size
+            scale = max(width / src_w, height / src_h)
+            nw, nh = int(src_w * scale), int(src_h * scale)
+            bg = bg.resize((nw, nh), Image.Resampling.LANCZOS)
+            left = (nw - width) // 2
+            top = (nh - height) // 2
+            bg = bg.crop((left, top, left + width, top + height))
+            if blur_radius > 0:
+                bg = bg.filter(ImageFilter.GaussianBlur(radius=blur_radius))
+        except Exception:
+            bg = Image.new("RGBA", (width, height), fallback_rgba)
+    else:
+        bg = Image.new("RGBA", (width, height), fallback_rgba)
+
+    if base_rgba is not None:
+        canvas = Image.new("RGBA", (width, height), base_rgba)
+        canvas.alpha_composite(bg)
+    else:
+        canvas = bg
+
+    overlay = Image.new("RGBA", (width, height), tint_rgba)
+    canvas = Image.alpha_composite(canvas, overlay)
+    for center, rad, col in glows:
+        _draw_radial_glow(canvas, center, rad, col)
+
+    rgb_base = canvas.convert("RGB")
+    with _BASE_CANVAS_LOCK:
+        _BASE_CANVAS_CACHE.pop(cache_key, None)
+        _BASE_CANVAS_CACHE[cache_key] = rgb_base
+        while len(_BASE_CANVAS_CACHE) > _BASE_CANVAS_MAX:
+            _, evicted = _BASE_CANVAS_CACHE.popitem(last=False)
+            try:
+                evicted.close()
+            except Exception:
+                pass
+        return rgb_base.copy()
+
+
 def generate_live_ogp_png(stores: list, s_param: str = "", now_jst: datetime.datetime = None) -> bytes:
     """
     Render a 1200x630 dynamic OGP card image (PNG bytes) with:
@@ -257,34 +342,17 @@ def generate_live_ogp_png(stores: list, s_param: str = "", now_jst: datetime.dat
     slot_label = resolve_slot_from_param(s_param, now_jst=now_jst)
     theme = SLOT_THEMES.get(slot_label, SLOT_THEMES["20:00"])
 
-    # 1. Load & prepare background image
-    bg_path = os.path.join(BASE_DIR, "static", theme["bg_file"])
-    if os.path.exists(bg_path):
-        try:
-            bg = Image.open(bg_path).convert("RGBA")
-            bg_ratio = bg.width / bg.height
-            target_ratio = W / H
-            if bg_ratio > target_ratio:
-                new_h = H
-                new_w = int(H * bg_ratio)
-            else:
-                new_w = W
-                new_h = int(W / bg_ratio)
-            bg = bg.resize((new_w, new_h), Image.Resampling.LANCZOS)
-            left = (new_w - W) // 2
-            top = (new_h - H) // 2
-            bg = bg.crop((left, top, left + W, top + H))
-            bg = bg.filter(ImageFilter.GaussianBlur(radius=3))
-        except Exception:
-            bg = Image.new("RGBA", (W, H), (10, 12, 20, 255))
-    else:
-        bg = Image.new("RGBA", (W, H), (10, 12, 20, 255))
-
-    # 2. Apply dark luxury overlay + ambient radial glows
-    overlay = Image.new("RGBA", (W, H), theme["tint_rgba"])
-    canvas = Image.alpha_composite(bg, overlay)
-    _draw_radial_glow(canvas, (1050, 90), 460, theme["glow_top"])
-    _draw_radial_glow(canvas, (320, 560), 420, theme["glow_bottom"])
+    canvas = _get_cached_base_canvas(
+        W,
+        H,
+        theme["bg_file"],
+        blur_radius=3,
+        tint_rgba=theme["tint_rgba"],
+        glows=(
+            ((1050, 90), 460, theme["glow_top"]),
+            ((320, 560), 420, theme["glow_bottom"]),
+        ),
+    )
 
     draw = make_safe_draw(canvas, "RGBA")
 
@@ -479,7 +547,8 @@ def generate_live_ogp_png(stores: list, s_param: str = "", now_jst: datetime.dat
             sy_card += 102
 
         out = io.BytesIO()
-        canvas.convert("RGB").save(out, format="PNG", optimize=True)
+        canvas.save(out, format="PNG", compress_level=3)
+        canvas.close()
         return out.getvalue()
 
     # Panel Header
@@ -537,26 +606,7 @@ def generate_live_ogp_png(stores: list, s_param: str = "", now_jst: datetime.dat
         rw_txt = int(draw.textlength(r_str, font=f_rank_num))
         draw.text((cx + 37 - rw_txt // 2, cy + 21), r_str, font=f_rank_num, fill=r_fg)
 
-        # Store Name
-        draw.text((cx + 70, cy + 20), ja_name, font=f_store, fill=(255, 255, 255, 255))
-        name_w = int(draw.textlength(ja_name, font=f_store))
-
-        # Momentum Pill (▲ +diff) if positive
-        if w_diff > 0:
-            diff_txt = f"▲ +{w_diff}"
-            dw_txt = int(draw.textlength(diff_txt, font=f_diff)) + 18
-            dx = cx + 70 + name_w + 12
-            if dx + dw_txt < cx + cw - 135:
-                draw.rounded_rectangle(
-                    (dx, cy + 22, dx + dw_txt, cy + 50),
-                    radius=8,
-                    fill=(20, 65, 42, 235),
-                    outline=(74, 222, 128, 190),
-                    width=1,
-                )
-                draw.text((dx + 9, cy + 27), diff_txt, font=f_diff, fill=(134, 239, 172, 255))
-
-        # Female Ratio Pill (Top Right of Card)
+        # Female Ratio Pill (Top Right of Card) — computed first so long store names auto-fit without overlap
         pct_txt = f"女性比 {w_pct}%"
         pw_txt = int(draw.textlength(pct_txt, font=f_pct_pill)) + 24
         px = cx + cw - pw_txt - 18
@@ -567,6 +617,27 @@ def generate_live_ogp_png(stores: list, s_param: str = "", now_jst: datetime.dat
             fill=pill_fill,
         )
         draw.text((px + 12, cy + 25), pct_txt, font=f_pct_pill, fill=(255, 255, 255, 255))
+
+        # Store Name (auto-shrink to fit cleanly before the right-hand ratio pill)
+        max_name_w = max(140, px - (cx + 70) - 12)
+        fit_name, f_store_fit, store_sz = fit_text_and_font(draw, ja_name, max_name_w, 26, 16)
+        draw.text((cx + 70, cy + 20 + max(0, (26 - store_sz) // 2)), fit_name, font=f_store_fit, fill=(255, 255, 255, 255))
+        name_w = int(_measure_text_width(draw, fit_name, f_store_fit))
+
+        # Momentum Pill (▲ +diff) if positive and fits cleanly before the ratio pill
+        if w_diff > 0:
+            diff_txt = f"▲ +{w_diff}"
+            dw_txt = int(draw.textlength(diff_txt, font=f_diff)) + 18
+            dx = cx + 70 + name_w + 10
+            if dx + dw_txt <= px - 10:
+                draw.rounded_rectangle(
+                    (dx, cy + 22, dx + dw_txt, cy + 50),
+                    radius=8,
+                    fill=(20, 65, 42, 235),
+                    outline=(74, 222, 128, 190),
+                    width=1,
+                )
+                draw.text((dx + 9, cy + 27), diff_txt, font=f_diff, fill=(134, 239, 172, 255))
 
         # Counts Row (女性 XX名 / 男性 XX名)
         cnt_y = cy + 66
@@ -595,7 +666,8 @@ def generate_live_ogp_png(stores: list, s_param: str = "", now_jst: datetime.dat
             )
 
     out = io.BytesIO()
-    canvas.convert("RGB").save(out, format="PNG", optimize=True)
+    canvas.save(out, format="PNG", compress_level=3)
+    canvas.close()
     return out.getvalue()
 
 
@@ -605,32 +677,17 @@ def generate_weekly_ogp_png(report: dict = None) -> bytes:
     """
     W, H = 1200, 630
     report = report or {}
-    bg_path = os.path.join(BASE_DIR, "static", "guide-brand-comparison.jpg")
-    if os.path.exists(bg_path):
-        try:
-            bg = Image.open(bg_path).convert("RGBA")
-            bg_ratio = bg.width / bg.height
-            target_ratio = W / H
-            if bg_ratio > target_ratio:
-                new_h = H
-                new_w = int(H * bg_ratio)
-            else:
-                new_w = W
-                new_h = int(W / bg_ratio)
-            bg = bg.resize((new_w, new_h), Image.Resampling.LANCZOS)
-            left = (new_w - W) // 2
-            top = (new_h - H) // 2
-            bg = bg.crop((left, top, left + W, top + H))
-            bg = bg.filter(ImageFilter.GaussianBlur(radius=3))
-        except Exception:
-            bg = Image.new("RGBA", (W, H), (10, 12, 20, 255))
-    else:
-        bg = Image.new("RGBA", (W, H), (10, 12, 20, 255))
-
-    overlay = Image.new("RGBA", (W, H), (10, 12, 22, 222))
-    canvas = Image.alpha_composite(bg, overlay)
-    _draw_radial_glow(canvas, (1040, 100), 480, (229, 200, 120, 85))
-    _draw_radial_glow(canvas, (300, 560), 440, (56, 189, 248, 65))
+    canvas = _get_cached_base_canvas(
+        W,
+        H,
+        "guide-brand-comparison.jpg",
+        blur_radius=3,
+        tint_rgba=(10, 12, 22, 222),
+        glows=(
+            ((1040, 100), 480, (229, 200, 120, 85)),
+            ((300, 560), 440, (56, 189, 248, 65)),
+        ),
+    )
 
     draw = make_safe_draw(canvas, "RGBA")
 
@@ -780,13 +837,15 @@ def generate_weekly_ogp_png(report: dict = None) -> bytes:
         rw_txt = int(draw.textlength(r_str, font=f_rank_num))
         draw.text((cx + 37 - rw_txt // 2, cy + 21), r_str, font=f_rank_num, fill=r_fg)
 
-        draw.text((cx + 70, cy + 20), ja_name, font=f_store, fill=(255, 255, 255, 255))
-
         pct_txt = f"週間最大 {max_w}名"
         pw_txt = int(draw.textlength(pct_txt, font=f_pct_pill)) + 24
         px = cx + cw - pw_txt - 18
         draw.rounded_rectangle((px, cy + 18, px + pw_txt, cy + 52), radius=9, fill=(219, 39, 119, 235))
         draw.text((px + 12, cy + 25), pct_txt, font=f_pct_pill, fill=(255, 255, 255, 255))
+
+        max_name_w = max(140, px - (cx + 70) - 12)
+        fit_name, f_store_fit, store_sz = fit_text_and_font(draw, ja_name, max_name_w, 26, 16)
+        draw.text((cx + 70, cy + 20 + max(0, (26 - store_sz) // 2)), fit_name, font=f_store_fit, fill=(255, 255, 255, 255))
 
         cnt_y = cy + 66
         w_cnt_str = f"女性ピーク平均 {avg_w:.0f}名"
@@ -805,7 +864,8 @@ def generate_weekly_ogp_png(report: dict = None) -> bytes:
             draw.rounded_rectangle((bar_x, bar_y, bar_x + w_bar_w, bar_y + bar_h), radius=7, fill=(236, 72, 153, 255))
 
     out = io.BytesIO()
-    canvas.convert("RGB").save(out, format="PNG", optimize=True)
+    canvas.save(out, format="PNG", compress_level=3)
+    canvas.close()
     return out.getvalue()
 
 
@@ -817,29 +877,6 @@ def generate_bonus_alert_png(store: dict, mode: str = "female_lead", now_jst: da
     W, H = 1200, 630
     now_jst = now_jst or datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
     store = store or {}
-
-    bg_path = os.path.join(BASE_DIR, "static", "eyecatch-weekend.jpg")
-    if os.path.exists(bg_path):
-        try:
-            bg = Image.open(bg_path).convert("RGBA")
-            src_w, src_h = bg.size
-            scale = max(W / src_w, H / src_h)
-            nw, nh = int(src_w * scale), int(src_h * scale)
-            bg = bg.resize((nw, nh), Image.Resampling.LANCZOS)
-            left = (nw - W) // 2
-            top = (nh - H) // 2
-            bg = bg.crop((left, top, left + W, top + H))
-            bg = bg.filter(ImageFilter.GaussianBlur(radius=9))
-        except Exception:
-            bg = Image.new("RGBA", (W, H), (16, 10, 20, 255))
-    else:
-        bg = Image.new("RGBA", (W, H), (16, 10, 20, 255))
-
-    canvas = Image.new("RGBA", (W, H), (12, 10, 18, 255))
-    canvas.alpha_composite(bg)
-
-    tint = Image.new("RGBA", (W, H), (14, 8, 18, 224))
-    canvas.alpha_composite(tint)
 
     if mode == "male_lead":
         accent = (56, 189, 248)
@@ -854,10 +891,19 @@ def generate_bonus_alert_png(store: dict, mode: str = "female_lead", now_jst: da
         badge_txt = "BONUS TIME ALERT  |  大型店の女性大幅リード速報"
         sub_txt = "人気店で女性比率が急上昇中！男性待ちが発生する前のゴールデンタイム"
 
-    _draw_radial_glow(canvas, (220, 110), 480, glow_a)
-    _draw_radial_glow(canvas, (980, 520), 460, glow_b)
-
-    canvas = canvas.convert("RGB")
+    canvas = _get_cached_base_canvas(
+        W,
+        H,
+        "eyecatch-weekend.jpg",
+        blur_radius=9,
+        tint_rgba=(14, 8, 18, 224),
+        glows=(
+            ((220, 110), 480, glow_a),
+            ((980, 520), 460, glow_b),
+        ),
+        base_rgba=(12, 10, 18, 255),
+        fallback_rgba=(16, 10, 20, 255),
+    )
     draw = make_safe_draw(canvas, "RGBA")
 
     f_badge = _get_font(22)
@@ -888,15 +934,17 @@ def generate_bonus_alert_png(store: dict, mode: str = "female_lead", now_jst: da
     tw = int(draw.textlength(ts_str, font=f_time))
     draw.text((W - 76 - tw, 72), ts_str, font=f_time, fill=(226, 232, 240, 240))
 
-    # Store name headline
+    # Store name headline (auto-fit inside outer frame width)
     ja_name = x_poster.format_ja_store_name(store.get("name", ""))
     try:
         import store_master
         seo_label = store_master.seo_name(store.get("name", "")) or ja_name
     except Exception:
         seo_label = ja_name
-    draw.text((76, 134), seo_label, font=f_store, fill=(255, 255, 255, 255))
-    draw.text((78, 206), sub_txt, font=f_sub, fill=(203, 213, 225, 235))
+    fit_seo, f_store_fit, store_sz = fit_text_and_font(draw, seo_label, W - 152, 54, 28)
+    draw.text((76, 134 + max(0, (54 - store_sz) // 2)), fit_seo, font=f_store_fit, fill=(255, 255, 255, 255))
+    fit_sub, f_sub_fit, sub_sz = fit_text_and_font(draw, sub_txt, W - 156, 22, 16)
+    draw.text((78, 206 + max(0, (22 - sub_sz) // 2)), fit_sub, font=f_sub_fit, fill=(203, 213, 225, 235))
 
     women = int(store.get("women") or 0)
     men = int(store.get("men") or 0)
@@ -947,7 +995,7 @@ def generate_bonus_alert_png(store: dict, mode: str = "female_lead", now_jst: da
     draw.text((76, 540), footer_l, font=f_footer, fill=(148, 163, 184, 235))
 
     out = io.BytesIO()
-    canvas.save(out, format="PNG", optimize=True)
+    canvas.save(out, format="PNG", compress_level=3)
     canvas.close()
     return out.getvalue()
 

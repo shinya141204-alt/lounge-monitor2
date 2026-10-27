@@ -50,6 +50,8 @@ REVISION_IGNORE_PHRASES = (
 _audit_lock = threading.Lock()
 _latest_audit_report = None
 _audit_fast_cache = {"key": None, "ts": 0.0, "report": None}
+_STATIC_AUDIT_TTL = 300.0
+_static_audit_cache = {"key": None, "ts": 0.0, "data": None}
 
 
 def run_data_audit(live_stores=None, all_events=None, now_jst=None, send_alerts=False):
@@ -60,6 +62,7 @@ def run_data_audit(live_stores=None, all_events=None, now_jst=None, send_alerts=
     now_jst = now_jst or datetime.datetime.now(JST)
     if now_jst.tzinfo is None:
         now_jst = now_jst.replace(tzinfo=JST)
+    now_mono = _time.monotonic()
 
     if use_fast_cache:
         try:
@@ -70,7 +73,6 @@ def run_data_audit(live_stores=None, all_events=None, now_jst=None, send_alerts=
             ev_upd, op_cnt = None, 0
         live_sig = tuple((s.get("name"), int(s.get("women") or 0), int(s.get("men") or 0)) for s in (live_stores or []))
         c_key = (live_sig, ev_upd, op_cnt, now_jst.strftime("%Y-%m-%d %H:%M"))
-        now_mono = _time.monotonic()
         with _audit_lock:
             if _audit_fast_cache["key"] == c_key and _audit_fast_cache["report"] is not None and (now_mono - _audit_fast_cache["ts"] < 60.0):
                 return _audit_fast_cache["report"]
@@ -86,43 +88,78 @@ def run_data_audit(live_stores=None, all_events=None, now_jst=None, send_alerts=
     warnings = []
 
     # ---------------------------------------------------------
-    # 1. 静的マスタ整合性チェック（店舗マスタ × 営業時間 × 料金表）
+    # 1. 静的マスタ整合性チェック（店舗マスタ × 営業時間 × 料金表）— 300秒メモリキャッシュ
     # ---------------------------------------------------------
-    missing_hours = sorted(master_names - set(store_hours.STORE_BUSINESS_HOURS.keys()))
-    for sname in missing_hours:
-        issues.append({
-            "type": "missing_hours",
-            "severity": "high",
-            "store": sname,
-            "seo_name": store_master.seo_name(sname),
-            "message": f"{store_master.seo_name(sname)}（{sname}）が store_hours.py に未登録です。",
-        })
+    static_key = (
+        len(master_names),
+        len(domestic_master_names),
+        len(store_hours.STORE_BUSINESS_HOURS),
+        len(price_comparison.STORE_PRICE_TABLE),
+        now_jst.strftime("%Y-%m-%d"),
+        now_jst.hour <= 6,
+    )
+    cached_static = None
+    with _audit_lock:
+        if (
+            _static_audit_cache["key"] == static_key
+            and _static_audit_cache["data"] is not None
+            and (now_mono - _static_audit_cache["ts"] < _STATIC_AUDIT_TTL)
+        ):
+            cached_static = _static_audit_cache["data"]
 
-    price_table_keys = set(price_comparison.STORE_PRICE_TABLE.keys())
-    missing_price = sorted(domestic_master_names - price_table_keys)
-    for sname in missing_price:
-        issues.append({
-            "type": "missing_price",
-            "severity": "high",
-            "store": sname,
-            "seo_name": store_master.seo_name(sname),
-            "message": f"{store_master.seo_name(sname)}（{sname}）が price_comparison.py の料金テーブルに未登録です。",
-        })
-
-    incomplete_price = []
-    for sname in sorted(domestic_master_names & price_table_keys):
-        prof = price_comparison.get_store_price_profile(sname, now_jst=now_jst)
-        required_fields = ("wait_fee_str", "slot_18_20", "slot_20_22", "slot_22_24", "slot_24_last", "solo_rule", "charge_str")
-        missing_f = [f for f in required_fields if not prof.get(f)]
-        if missing_f:
-            incomplete_price.append(sname)
-            issues.append({
-                "type": "incomplete_price_fields",
+    if cached_static is not None:
+        missing_hours = cached_static["missing_hours"]
+        missing_price = cached_static["missing_price"]
+        incomplete_price = cached_static["incomplete_price"]
+        issues.extend(cached_static["issues"])
+    else:
+        static_issues = []
+        missing_hours = sorted(master_names - set(store_hours.STORE_BUSINESS_HOURS.keys()))
+        for sname in missing_hours:
+            static_issues.append({
+                "type": "missing_hours",
                 "severity": "high",
                 "store": sname,
                 "seo_name": store_master.seo_name(sname),
-                "message": f"{store_master.seo_name(sname)} の料金データに未入力項目があります: {', '.join(missing_f)}",
+                "message": f"{store_master.seo_name(sname)}（{sname}）が store_hours.py に未登録です。",
             })
+
+        price_table_keys = set(price_comparison.STORE_PRICE_TABLE.keys())
+        missing_price = sorted(domestic_master_names - price_table_keys)
+        for sname in missing_price:
+            static_issues.append({
+                "type": "missing_price",
+                "severity": "high",
+                "store": sname,
+                "seo_name": store_master.seo_name(sname),
+                "message": f"{store_master.seo_name(sname)}（{sname}）が price_comparison.py の料金テーブルに未登録です。",
+            })
+
+        incomplete_price = []
+        for sname in sorted(domestic_master_names & price_table_keys):
+            prof = price_comparison.get_store_price_profile(sname, now_jst=now_jst)
+            required_fields = ("wait_fee_str", "slot_18_20", "slot_20_22", "slot_22_24", "slot_24_last", "solo_rule", "charge_str")
+            missing_f = [f for f in required_fields if not prof.get(f)]
+            if missing_f:
+                incomplete_price.append(sname)
+                static_issues.append({
+                    "type": "incomplete_price_fields",
+                    "severity": "high",
+                    "store": sname,
+                    "seo_name": store_master.seo_name(sname),
+                    "message": f"{store_master.seo_name(sname)} の料金データに未入力項目があります: {', '.join(missing_f)}",
+                })
+
+        with _audit_lock:
+            _static_audit_cache["key"] = static_key
+            _static_audit_cache["ts"] = now_mono
+            _static_audit_cache["data"] = {
+                "missing_hours": missing_hours,
+                "missing_price": missing_price,
+                "incomplete_price": incomplete_price,
+                "issues": list(static_issues),
+            }
+        issues.extend(static_issues)
 
     # ---------------------------------------------------------
     # 2. ライブデータ × 公式営業時間の「ズレ（ドリフト）」検知

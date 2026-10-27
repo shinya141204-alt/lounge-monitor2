@@ -267,7 +267,12 @@
             setTimeout(function() { t.style.display = 'none'; }, 2200);
         }
 
+        var _snsPostInFlight = false;
         async function triggerDirectSnsPost(target) {
+            if (_snsPostInFlight) return;
+            _snsPostInFlight = true;
+            var btns = document.querySelectorAll('button[onclick*="triggerDirectSnsPost"]');
+            btns.forEach(function(b) { b.disabled = true; b.style.opacity = '0.6'; });
             var t = document.getElementById('copy-toast');
             t.textContent = target === 'ig' ? 'Instagramへ5枚組カルーセルを送信中...（約10〜15秒）' : 'Threadsへ自動投稿を送信中...';
             t.style.display = 'block';
@@ -282,6 +287,9 @@
                 }
             } catch (e) {
                 t.textContent = '⚠️ 通信エラーが発生しました';
+            } finally {
+                _snsPostInFlight = false;
+                btns.forEach(function(b) { b.disabled = false; b.style.opacity = ''; });
             }
             setTimeout(function() { t.style.display = 'none'; }, 4000);
         }

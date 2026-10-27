@@ -121,17 +121,41 @@ def _ensure_local_loaded_locked():
         _local_loaded = False
         try:
             if os.path.exists(_LOCAL_FILE):
+                jst_tz = datetime.timezone(datetime.timedelta(hours=9))
+                try:
+                    mtime_ts = datetime.datetime.fromtimestamp(
+                        os.path.getmtime(_LOCAL_FILE), tz=jst_tz
+                    ).strftime('%Y%m%d%H%M%S')
+                except Exception:
+                    mtime_ts = ''
                 with open(_LOCAL_FILE, 'r', encoding='utf-8') as f:
                     data = json.load(f) or {}
                 for k in data.get('keys', []):
                     _ingest_entry(k)
+                kv_ts_data = data.get('kv_ts')
+                if isinstance(kv_ts_data, dict):
+                    for k, ts_val in kv_ts_data.items():
+                        if k is not None and ts_val is not None:
+                            ks = str(k)
+                            ts_s = str(ts_val)
+                            if ts_s > _kv_ts.get(ks, ''):
+                                _kv_ts[ks] = ts_s
                 kv_data = data.get('kv')
                 if isinstance(kv_data, dict):
                     for k, v in kv_data.items():
                         if k is not None and v is not None:
                             ks = str(k)
                             vs = str(v)
-                            _kv[ks] = _deobfuscate_secret(vs) if ks.startswith('token:') else vs
+                            explicit_ts = (
+                                str(kv_ts_data.get(ks) or '')
+                                if isinstance(kv_ts_data, dict)
+                                else ''
+                            )
+                            eff_ts = explicit_ts or mtime_ts
+                            if not eff_ts or eff_ts >= _kv_ts.get(ks, ''):
+                                _kv[ks] = _deobfuscate_secret(vs) if ks.startswith('token:') else vs
+                                if eff_ts:
+                                    _kv_ts[ks] = eff_ts
                 _local_loaded = True
         except Exception:
             pass
@@ -160,6 +184,7 @@ def _sync_sheets_worker():
                         _ingest_entry(row[0])
                 _keys = {k: None for k in _trimmed_history_list(_keys.keys())}
                 _sheets_loaded = True
+                _save_local()
 
 
 def _ensure_loaded(allow_blocking: bool = True):
@@ -190,8 +215,9 @@ def is_storage_healthy() -> bool:
 
 def _save_local():
     global _keys
+    tmp_path = f"{_LOCAL_FILE}.{threading.get_ident()}.tmp"
     try:
-        os.makedirs(_LOCAL_DIR, exist_ok=True)
+        os.makedirs(os.path.dirname(_LOCAL_FILE) or _LOCAL_DIR, exist_ok=True)
         trimmed = _trimmed_history_list(_keys.keys())
         _keys = {k: None for k in trimmed}
         local_kv = {}
@@ -202,11 +228,17 @@ def _save_local():
         payload = {
             'keys': trimmed,
             'kv': local_kv,
+            'kv_ts': dict(_kv_ts or {}),
         }
-        with open(_LOCAL_FILE, 'w', encoding='utf-8') as f:
+        with open(tmp_path, 'w', encoding='utf-8') as f:
             json.dump(payload, f, ensure_ascii=False)
+        os.replace(tmp_path, _LOCAL_FILE)
     except Exception:
-        pass
+        try:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+        except Exception:
+            pass
 
 
 def is_done(key):

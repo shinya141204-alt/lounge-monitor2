@@ -18,6 +18,7 @@ import json
 import datetime
 import logging
 import threading
+import collections
 import requests
 
 import job_state
@@ -52,7 +53,10 @@ AI_CLICHE_WORDS = (
 )
 
 _weather_cache = {"ts": 0.0, "data": None, "fetching": False}
-_ai_candidate_cache = {}  # cache_key -> {"ts": float, "candidate": dict, "model": str}
+_AI_CACHE_TTL_SEC = 900
+_AI_CACHE_MAX_SIZE = 64
+_ai_candidate_cache = collections.OrderedDict()  # cache_key -> {"ts": float, "candidate": dict, "model": str}
+_ai_cache_lock = threading.Lock()
 _last_gemini_meta = {"last_model": "", "last_error": "", "last_ok_at": "", "working_route": None}
 
 CHANNEL_LABELS = {
@@ -154,7 +158,7 @@ def _enrich_with_benchmarks(stores: list) -> list:
         item["casual_name"] = casual_store_name(sname)
         bm = benchmarks.get(sname) or {}
         if "usual_w_diff" not in item:
-            avg_w = bm.get("usual_avg_w")
+            avg_w = bm.get("usual_women") if bm.get("usual_women") is not None else bm.get("usual_avg_w")
             item["usual_w_diff"] = int(round(w - avg_w)) if avg_w is not None and tot > 0 else None
         if "midnight_retention_pct" not in item:
             item["midnight_retention_pct"] = bm.get("midnight_retention_pct")
@@ -190,7 +194,21 @@ def get_recent_editorial_history(channel: str = "x", limit: int = 8, allow_block
 # =====================================================================
 def clear_editorial_ai_cache():
     """Clear in-memory AI draft cache (called when API key updates or manual refresh requested)."""
-    _ai_candidate_cache.clear()
+    with _ai_cache_lock:
+        _ai_candidate_cache.clear()
+
+
+def _prune_ai_candidate_cache_unlocked(now_t: float = None):
+    """Remove expired (>900s) entries and cap OrderedDict at 64 items via FIFO/LRU eviction."""
+    now_t = now_t if now_t is not None else time.time()
+    expired_keys = [
+        k for k, v in _ai_candidate_cache.items()
+        if now_t - float(v.get("ts") or 0.0) >= _AI_CACHE_TTL_SEC
+    ]
+    for k in expired_keys:
+        _ai_candidate_cache.pop(k, None)
+    while len(_ai_candidate_cache) > _AI_CACHE_MAX_SIZE:
+        _ai_candidate_cache.popitem(last=False)
 
 
 def get_gemini_api_key(allow_blocking: bool = True) -> str:
@@ -297,10 +315,16 @@ def is_jp_holiday(d: datetime.date) -> bool:
     return False
 
 
+def _business_datetime(now_jst: datetime.datetime = None) -> datetime.datetime:
+    """Shift AM 00:00-06:59 JST into the previous business night (07:00 JST rollover)."""
+    now_jst = now_jst or datetime.datetime.now(JST)
+    return now_jst - datetime.timedelta(hours=7)
+
+
 def build_calendar_context(now_jst: datetime.datetime = None) -> dict:
     """Build street-level calendar context (pre-holiday, payday window, weekend peak, weekday chill)."""
     now_jst = now_jst or datetime.datetime.now(JST)
-    biz_dt = (now_jst - datetime.timedelta(hours=5)).date()
+    biz_dt = _business_datetime(now_jst).date()
     tomorrow = biz_dt + datetime.timedelta(days=1)
     wd = biz_dt.weekday()  # 0=Mon..6=Sun
     weekdays_ja = ["月", "火", "水", "木", "金", "土", "日"]
@@ -581,11 +605,21 @@ def run_researcher(
     usual_candidates.sort(key=lambda x: (int(x.get("usual_w_diff") or 0), x["women"]), reverse=True)
     anomaly_store = usual_candidates[0] if usual_candidates else None
 
-    # 4. East vs West top stores
-    kanto_s = [s for s in dom if s.get("region") == "Kanto"]
-    kansai_s = [s for s in dom if s.get("region") == "Kinki"]
+    # 4. East vs West top stores (never duplicate east_top onto west_top when Kansai has 0 active stores)
+    kanto_s = [s for s in dom if s.get("region") == "Kanto" and s["total"] > 0] or [
+        s for s in dom if s.get("region") == "Kanto"
+    ]
+    kansai_s = [s for s in dom if s.get("region") == "Kinki" and s["total"] > 0]
+    if not kansai_s and not any(s["total"] > 0 for s in dom):
+        kansai_s = [s for s in dom if s.get("region") == "Kinki"]
     east_top = kanto_s[0] if kanto_s else (dom[0] if dom else None)
-    west_top = kansai_s[0] if kansai_s else (dom[1] if len(dom) > 1 else east_top)
+    if kansai_s:
+        west_top = next(
+            (s for s in kansai_s if not east_top or s.get("name") != east_top.get("name")),
+            None,
+        )
+    else:
+        west_top = None
 
     cal_ctx = build_calendar_context(now_jst=now_jst)
     weather_ctx = fetch_live_weather_context(allow_blocking=allow_weather_blocking)
@@ -667,7 +701,7 @@ def run_planner(
     last_style = recent_styles[0] if recent_styles else None
 
     weekdays_ja = ["月", "火", "水", "木", "金", "土", "日"]
-    wd_str = weekdays_ja[now_jst.weekday()]
+    wd_str = weekdays_ja[_business_datetime(now_jst).weekday()]
 
     recent_post_cooldown = False
     cooldown_reason = "間隔OK（同チャンネルの直近投稿から十分な時間が経過）"
@@ -729,12 +763,15 @@ def _pick_distinct_store(stores: list, exclude_names: set):
     for s in stores:
         if s.get("name") not in exclude_names and int(s.get("women") or 0) > 0:
             return s
-    return stores[0] if stores else None
+    for s in stores:
+        if s.get("name") not in exclude_names and (int(s.get("women") or 0) + int(s.get("men") or 0)) > 0:
+            return s
+    return None
 
 
 def _write_x_candidates(research: dict, slot_label: str, now_jst: datetime.datetime, site_url: str) -> list:
     weekdays_ja = ["月", "火", "水", "木", "金", "土", "日"]
-    wd_str = weekdays_ja[now_jst.weekday()]
+    wd_str = weekdays_ja[_business_datetime(now_jst).weekday()]
     t_str = now_jst.strftime("%H:%M")
     slot_code = (slot_label or "20:00").replace(":", "")
     live_url = f"{site_url}/?s={now_jst.strftime('%Y%m%d')}_{slot_code}"
@@ -747,8 +784,8 @@ def _write_x_candidates(research: dict, slot_label: str, now_jst: datetime.datet
     cluster = research.get("best_cluster")
     focus = research.get("focus_store") or s1
     anomaly = research.get("anomaly_store")
-    east = research.get("east_top") or s1
-    west = research.get("west_top") or _pick_distinct_store(top_stores, {east["name"]})
+    east = research.get("east_top")
+    west = research.get("west_top")
 
     candidates = []
 
@@ -881,15 +918,48 @@ def _write_x_candidates(research: dict, slot_label: str, now_jst: datetime.datet
         c_style = "usual_anomaly"
         w_note_c = f"普段の{wd_str}曜同時間帯より女性が+{u_diff}名多い実測ギャップをフックに作成。"
     else:
-        body_c = (
-            f"{wd_str}曜{t_str}時点、関東と関西でいま一番人が集まってる2店舗🍻\n\n"
-            f"🗼関東：{east['ja_name']}（女性{east['women']}・男性{east['men']} / {east['wpct']}%）\n"
-            f"🐙関西：{west['ja_name']}（女性{west['women']}・男性{west['men']} / {west['wpct']}%）\n\n"
-            f"どちらも好ペースで推移中。各街の穴場・待ち状況はリプ欄へ👇\n"
-            f"#相席ナビ #相席ラウンジ"
+        has_distinct_ew = (
+            bool(east)
+            and bool(west)
+            and east.get("name") != west.get("name")
+            and east.get("region") != "Kinki"
+            and (int(east.get("women") or 0) + int(east.get("men") or 0)) > 0
+            and (int(west.get("women") or 0) + int(west.get("men") or 0)) > 0
         )
-        c_style = "east_west_talk"
-        w_note_c = f"関東トップ（{east['ja_name']}）と関西トップ（{west['ja_name']}）を対比し、東西どちらのフォロワーにも刺さる構成で作成。"
+        if has_distinct_ew:
+            body_c = (
+                f"{wd_str}曜{t_str}時点、関東と関西でいま一番人が集まってる2店舗🍻\n\n"
+                f"🗼関東：{east['ja_name']}（女性{east['women']}・男性{east['men']} / {east['wpct']}%）\n"
+                f"🐙関西：{west['ja_name']}（女性{west['women']}・男性{west['men']} / {west['wpct']}%）\n\n"
+                f"どちらも好ペースで推移中。各街の穴場・待ち状況はリプ欄へ👇\n"
+                f"#相席ナビ #相席ラウンジ"
+            )
+            c_style = "east_west_talk"
+            w_note_c = f"関東トップ（{east['ja_name']}）と関西トップ（{west['ja_name']}）を対比し、東西どちらのフォロワーにも刺さる構成で作成。"
+        else:
+            lead = (
+                east if (east and (int(east.get("women") or 0) + int(east.get("men") or 0)) > 0)
+                else (west if (west and (int(west.get("women") or 0) + int(west.get("men") or 0)) > 0) else s1)
+            )
+            second = _pick_distinct_store(top_stores, {lead["name"]})
+            if second:
+                body_c = (
+                    f"{wd_str}曜{t_str}時点、いま全国で先行して人が集まってる上位店舗🍻\n\n"
+                    f"・{lead['ja_name']}（女性{lead['women']}・男性{lead['men']} / {lead['wpct']}%）\n"
+                    f"・{second['ja_name']}（女性{second['women']}・男性{second['men']} / {second['wpct']}%）\n\n"
+                    f"どちらも好ペースで推移中。各街の穴場・待ち状況はリプ欄へ👇\n"
+                    f"#相席ナビ #相席ラウンジ"
+                )
+                w_note_c = f"現在先行して稼働中の「{lead['ja_name']}」と「{second['ja_name']}」を重複なく対比して作成。"
+            else:
+                body_c = (
+                    f"{wd_str}曜{t_str}時点、いま全国でいち早く人が集まり始めてるのが「{lead['ja_name']}」🍻\n\n"
+                    f"・{lead['ja_name']}：女性{lead['women']}・男性{lead['men']}（女性比{lead['wpct']}%）\n\n"
+                    f"早い時間から好ペースで推移中。各街の現在人数はリプ欄へ👇\n"
+                    f"#相席ナビ #相席ラウンジ"
+                )
+                w_note_c = f"片側エリア未稼働のため同一店舗の重複を避け、「{lead['ja_name']}」単独速報として安全に作成。"
+            c_style = "east_west_talk"
     if x_poster.compute_twitter_weight(body_c) > 272:
         body_c = body_c.replace("オリエンタルラウンジ", "オリラジ")
 
@@ -926,7 +996,7 @@ def _write_threads_candidates(research: dict, slot_label: str, now_jst: datetime
     """
     import threads_poster
     weekdays_ja = ["月", "火", "水", "木", "金", "土", "日"]
-    wd_str = weekdays_ja[now_jst.weekday()]
+    wd_str = weekdays_ja[_business_datetime(now_jst).weekday()]
     t_str = now_jst.strftime("%H:%M")
 
     top_stores = research.get("top_stores") or []
@@ -1183,6 +1253,29 @@ def _write_instagram_candidates(research: dict, now_jst: datetime.datetime) -> l
     return candidates
 
 
+_NON_HEADCOUNT_SUFFIX_RE = re.compile(
+    r"^(?:組|目|以上|以下|未満|限定|待ち|分|時間|円|歳|代|%|％|割|ペア|ソロ|入店|でも)"
+)
+
+
+def _extract_headcount_values(src: str, gender: str) -> list:
+    """
+    Extract genuine store/national headcount numbers for `gender` ('women' or 'men'),
+    ignoring general expressions like '女性2人組', '男性30分待ち', '男性1名入店', '男性1名でも入りやすい',
+    '女性20代', '男性1000円', '女性6割', '女性60%', etc.
+    """
+    pat = r"(?:最高|現在)?女性\s*([0-9,]+)\s*(?:名|人)?" if gender == "women" else r"男性\s*([0-9,]+)\s*(?:名|人)?"
+    values = []
+    for m in re.finditer(pat, src or ""):
+        after = src[m.end():].lstrip()
+        if _NON_HEADCOUNT_SUFFIX_RE.match(after):
+            continue
+        raw_num = m.group(1).replace(",", "")
+        if raw_num.isdigit():
+            values.append(int(raw_num))
+    return values
+
+
 def verify_ai_factual_numbers(text: str, research: dict, channel: str = "x") -> tuple:
     """
     Strict Desk Fact-Checker for AI-generated drafts:
@@ -1249,20 +1342,11 @@ def verify_ai_factual_numbers(text: str, research: dict, channel: str = "x") -> 
 
     bad = []
 
-    for m_w in re.finditer(r"(?:最高|現在)?女性\s*([0-9,]+)\s*(?:名|人)?", text):
-        # Skip generic rule phrase "女性10名以上" or "女性比"
-        after = text[m_w.end():m_w.end() + 3]
-        if after.startswith("%") or "以上" in after:
-            continue
-        val = int(m_w.group(1).replace(",", ""))
+    for val in _extract_headcount_values(text, "women"):
         if val not in allowed_women:
             bad.append(f"女性{val}")
 
-    for m_m in re.finditer(r"男性\s*([0-9,]+)\s*(?:名|人)?", text):
-        after = text[m_m.end():m_m.end() + 3]
-        if after.startswith("%") or "以上" in after:
-            continue
-        val = int(m_m.group(1).replace(",", ""))
+    for val in _extract_headcount_values(text, "men"):
         if val not in allowed_men:
             bad.append(f"男性{val}")
 
@@ -1288,15 +1372,10 @@ def verify_ai_factual_numbers(text: str, research: dict, channel: str = "x") -> 
         if len(matched_aliases) == 1:
             al = matched_aliases[0]
             facts = store_facts[al]
-            for mw in re.finditer(r"(?:最高|現在)?女性\s*(\d+)", line):
-                after = line[mw.end():mw.end() + 3]
-                if "以上" in after or after.startswith("%"):
-                    continue
-                vw = int(mw.group(1))
+            for vw in _extract_headcount_values(line, "women"):
                 if facts["women"] and vw not in facts["women"]:
                     bad.append(f"{al}:女性{vw}(実測不一致)")
-            for mm in re.finditer(r"男性\s*(\d+)", line):
-                vm = int(mm.group(1))
+            for vm in _extract_headcount_values(line, "men"):
                 if facts["men"] and vm not in facts["men"]:
                     bad.append(f"{al}:男性{vm}(実測不一致)")
 
@@ -1495,13 +1574,13 @@ def _build_gemini_prompt(
     return prompt, reply_text
 
 
-def _discover_ai_studio_flash_model(api_key: str) -> str:
+def _discover_ai_studio_flash_model(api_key: str, timeout: float = 5.0) -> str:
     """Dynamically query `/v1beta/models` to find an active Flash model if hardcoded names 404."""
     try:
         r = requests.get(
             "https://generativelanguage.googleapis.com/v1beta/models",
             headers={"x-goog-api-key": api_key},
-            timeout=5,
+            timeout=max(0.5, min(5.0, float(timeout))),
         )
         if r.status_code != 200:
             return ""
@@ -1582,15 +1661,56 @@ def _postprocess_ai_main_text(main_text: str, channel: str = "x") -> str:
     return text
 
 
-def has_cached_ai_candidate(research: dict, slot_label: str, channel: str) -> bool:
-    ch = (channel or "x").lower()
-    top_s = research.get("top_stores") or []
+def _make_ai_cache_key(ch: str, slot_label: str, research: dict, now_jst: datetime.datetime = None):
+    """
+    Build a precise cache key incorporating channel, business date, slot, top-3 stores `(name, women, men)`,
+    and `focus_store` `(name, women, men)` so rank-2/3 or sweet-spot shifts never serve stale AI text.
+    """
+    ch_norm = (ch or "x").lower()
+    top_s = (research or {}).get("top_stores") or []
     if not top_s:
+        return None
+    if now_jst is None and research and research.get("timestamp"):
+        try:
+            now_jst = datetime.datetime.strptime(research["timestamp"], "%Y-%m-%d %H:%M:%S").replace(tzinfo=JST)
+        except Exception:
+            now_jst = None
+    biz_date_str = _business_datetime(now_jst).strftime("%Y-%m-%d")
+    top3_sig = tuple(
+        (s.get("name", ""), int(s.get("women") or 0), int(s.get("men") or 0))
+        for s in top_s[:3]
+    )
+    focus = (research or {}).get("focus_store")
+    focus_sig = (
+        (focus.get("name", ""), int(focus.get("women") or 0), int(focus.get("men") or 0))
+        if focus else None
+    )
+    return (ch_norm, slot_label or "", biz_date_str, top3_sig, focus_sig)
+
+
+def _store_ai_candidate_cache(cache_key, candidate: dict, model_name: str, now_t: float = None):
+    if cache_key is None:
+        return
+    now_t = now_t if now_t is not None else time.time()
+    with _ai_cache_lock:
+        _ai_candidate_cache.pop(cache_key, None)
+        _ai_candidate_cache[cache_key] = {
+            "ts": now_t,
+            "candidate": candidate,
+            "model": model_name,
+        }
+        _prune_ai_candidate_cache_unlocked(now_t)
+
+
+def has_cached_ai_candidate(research: dict, slot_label: str, channel: str, now_jst: datetime.datetime = None) -> bool:
+    cache_key = _make_ai_cache_key(channel, slot_label, research, now_jst)
+    if cache_key is None:
         return False
-    sig_top = f"{top_s[0]['name']}:{top_s[0]['women']}:{top_s[0]['men']}"
-    cache_key = (ch, slot_label, sig_top)
-    cached = _ai_candidate_cache.get(cache_key)
-    return bool(cached and (time.time() - cached["ts"] < 900))
+    now_t = time.time()
+    with _ai_cache_lock:
+        _prune_ai_candidate_cache_unlocked(now_t)
+        cached = _ai_candidate_cache.get(cache_key)
+        return bool(cached and (now_t - cached["ts"] < _AI_CACHE_TTL_SEC))
 
 
 def _generate_gemini_adlib_candidate(
@@ -1605,7 +1725,7 @@ def _generate_gemini_adlib_candidate(
 ) -> dict:
     """
     Call Gemini Flash REST API (`generativelanguage.googleapis.com` for both `AIza...` and `AQ....` AI Studio keys,
-    with `thinkingBudget: 0` for ~1.2s sub-2s response latency).
+    with bounded thinking and strict 18s overall deadline so Gunicorn's 30s timeout is never exceeded).
     When `cache_only=True`, returns cached draft in 0ms without blocking page render.
     """
     api_key = get_gemini_api_key(allow_blocking=(not cache_only))
@@ -1613,17 +1733,18 @@ def _generate_gemini_adlib_candidate(
         return None
 
     ch = (channel or "x").lower()
-    top_s = research.get("top_stores") or []
-    if not top_s:
+    cache_key = _make_ai_cache_key(ch, slot_label, research, now_jst)
+    if cache_key is None:
         return None
 
-    sig_top = f"{top_s[0]['name']}:{top_s[0]['women']}:{top_s[0]['men']}"
-    cache_key = (ch, slot_label, sig_top)
     now_t = time.time()
-    if not force_refresh and cache_key in _ai_candidate_cache:
-        cached = _ai_candidate_cache[cache_key]
-        if now_t - cached["ts"] < 900:
-            return dict(cached["candidate"])
+    with _ai_cache_lock:
+        _prune_ai_candidate_cache_unlocked(now_t)
+        if not force_refresh and cache_key in _ai_candidate_cache:
+            cached = _ai_candidate_cache[cache_key]
+            if now_t - cached["ts"] < _AI_CACHE_TTL_SEC:
+                _ai_candidate_cache.move_to_end(cache_key)
+                return dict(cached["candidate"])
 
     if cache_only:
         return None
@@ -1648,17 +1769,26 @@ def _generate_gemini_adlib_candidate(
     for mn in models_to_try:
         if ("ai_studio", mn) not in routes:
             routes.append(("ai_studio", mn))
-    # Cap at 2 attempts max per request so total wall-time stays well under Gunicorn's 30s worker timeout
+    # Cap at 2 attempts max per request + enforce overall 18s deadline (max 10s per call) under Gunicorn's 30s timeout
     routes = routes[:2]
+    deadline = time.monotonic() + 18.0
 
     last_err = ""
     saw_404_on_ai_studio = False
 
     def _try_single_route(ek: str, mn: str):
+        remaining = deadline - time.monotonic()
+        if remaining <= 0.4:
+            raise requests.exceptions.Timeout("Gemini overall deadline (18.0s) reached")
+        req_timeout = min(10.0, remaining)
         url, headers, params, payload = _build_endpoint_request(ek, mn, api_key, prompt)
-        return requests.post(url, headers=headers, params=params, json=payload, timeout=14)
+        return requests.post(url, headers=headers, params=params, json=payload, timeout=req_timeout)
 
     for ek, model_name in routes:
+        if time.monotonic() >= deadline - 0.4:
+            if not last_err:
+                last_err = "Gemini全体タイムアウト上限(18s)に達しました"
+            break
         try:
             resp = _try_single_route(ek, model_name)
             if resp.status_code == 404:
@@ -1709,11 +1839,7 @@ def _generate_gemini_adlib_candidate(
                 "is_ai_generated": True,
                 "ai_model": model_name,
             }
-            _ai_candidate_cache[cache_key] = {
-                "ts": now_t,
-                "candidate": candidate,
-                "model": model_name,
-            }
+            _store_ai_candidate_cache(cache_key, candidate, model_name, now_t=time.time())
             _last_gemini_meta["working_route"] = (ek, model_name)
             _last_gemini_meta["last_model"] = model_name
             _last_gemini_meta["last_error"] = ""
@@ -1732,10 +1858,11 @@ def _generate_gemini_adlib_candidate(
                 _last_gemini_meta["working_route"] = None
             continue
 
-    # Dynamic model auto-discovery fallback if preset model names returned 404
-    if saw_404_on_ai_studio:
-        discovered = _discover_ai_studio_flash_model(api_key)
-        if discovered and discovered not in models_to_try:
+    # Dynamic model auto-discovery fallback if preset model names returned 404 (within remaining deadline)
+    remaining_for_disc = deadline - time.monotonic()
+    if saw_404_on_ai_studio and remaining_for_disc > 1.5:
+        discovered = _discover_ai_studio_flash_model(api_key, timeout=min(4.0, remaining_for_disc - 1.0))
+        if discovered and discovered not in models_to_try and (deadline - time.monotonic()) > 0.6:
             try:
                 resp = _try_single_route("ai_studio", discovered)
                 if resp.status_code == 200:
@@ -1760,7 +1887,7 @@ def _generate_gemini_adlib_candidate(
                             "is_ai_generated": True,
                             "ai_model": discovered,
                         }
-                        _ai_candidate_cache[cache_key] = {"ts": now_t, "candidate": candidate, "model": discovered}
+                        _store_ai_candidate_cache(cache_key, candidate, discovered, now_t=time.time())
                         _last_gemini_meta["working_route"] = ("ai_studio", discovered)
                         _last_gemini_meta["last_model"] = discovered
                         _last_gemini_meta["last_error"] = ""

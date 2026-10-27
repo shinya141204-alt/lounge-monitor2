@@ -517,6 +517,14 @@ class FrontendSyntaxTests(unittest.TestCase):
             r = subprocess.run([jsc, '-e', f"new Function(readFile({json.dumps(js_path)}));"], capture_output=True, text=True)
             self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
 
+    def test_sw_js_syntax(self):
+        import subprocess
+        js_path = os.path.join(ROOT, 'static', 'sw.js')
+        jsc = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
+        if os.path.exists(jsc):
+            r = subprocess.run([jsc, '-e', f"new Function(readFile({json.dumps(js_path)}));"], capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
 
 class ScheduledArticlesTests(unittest.TestCase):
     """日時指定の予約公開システム（事前404秘匿・社内プレビュー・自動解禁・X自動告知・文字数制限）"""
@@ -1701,7 +1709,7 @@ class FullAuditRegressionTests(unittest.TestCase):
         sw_resp = self.client.get('/sw.js')
         try:
             sw_txt = sw_resp.data.decode('utf-8')
-            self.assertIn("CACHE_NAME = 'aiseki-navi-v53'", sw_txt)
+            self.assertIn("CACHE_NAME = 'aiseki-navi-v54'", sw_txt)
             self.assertIn("event.waitUntil", sw_txt)
         finally:
             sw_resp.close()
@@ -2056,6 +2064,89 @@ class FullAuditRegressionTests(unittest.TestCase):
             with self.client.session_transaction() as s:
                 s.clear()
             app_module.clear_fast_http_caches()
+
+    def test_performance_caching_and_audit_bugfixes(self):
+        import sns_editorial
+        import sheets_store
+        from unittest.mock import patch
+
+        # 1. job_state kv_ts persistence: older Google Sheets row must NEVER overwrite a newer local token after restart
+        shutil.rmtree(os.environ['JOB_STATE_DIR'], ignore_errors=True)
+        job_state.reset_cache_for_tests()
+        job_state.set_value('token:gemini_api_key', 'NEW_FRESH_KEY_2026')
+        job_state.reset_cache_for_tests()
+        stale_sheet_entry = f"__kvt__:20200101000000:token:gemini_api_key={job_state._obfuscate_secret('OLD_STALE_KEY_2020')}"
+        with patch.object(sheets_store, 'is_disabled', return_value=False), \
+             patch.object(sheets_store, 'read_rows_or_none', return_value=[[stale_sheet_entry]]):
+            self.assertEqual(job_state.get_value('token:gemini_api_key'), 'NEW_FRESH_KEY_2026')
+        job_state.set_value('token:gemini_api_key', '')
+
+        # 2. sns_editorial: usual_women benchmark triggers usual_anomaly, 00:05 Saturday is Friday night, and non-headcount numbers pass Desk
+        jst = datetime.timezone(datetime.timedelta(hours=9))
+        sat_midnight = datetime.datetime(2026, 10, 31, 0, 5, tzinfo=jst)  # Saturday 00:05 AM = Friday business night
+        mock_bm = {'OLG 新宿': {'usual_women': 20.0, 'usual_men': 15.0}}
+        live_sample = [
+            {'name': 'OLG 新宿', 'women': 34, 'men': 18, 'region': 'Kanto'},
+            {'name': 'OLG 渋谷本店', 'women': 22, 'men': 16, 'region': 'Kanto'},
+        ]
+        with patch('local_db.get_all_stores_live_benchmarks', return_value=mock_bm):
+            research = sns_editorial.run_researcher(live_sample, slot_label='00:00', now_jst=sat_midnight)
+        self.assertIsNotNone(research.get('anomaly_store'))
+        self.assertEqual(research['anomaly_store']['usual_w_diff'], 14)
+        self.assertEqual(research['calendar']['weekday_ja'], '金')
+        self.assertIsNone(research.get('west_top'))  # No Kansai store open -> must NOT duplicate east_top
+        x_cands = sns_editorial._write_x_candidates(research, '00:00', sat_midnight, 'https://aiseki-navi.com')
+        self.assertTrue(any(c.get('style') == 'usual_anomaly' for c in x_cands))
+
+        ok_natural, _ = sns_editorial.verify_ai_factual_numbers(
+            '男性1名でも入りやすい夜！オリエンタルラウンジ新宿は女性34・男性18（女性2人組中心・男性30分待ちなし）',
+            research,
+        )
+        self.assertTrue(ok_natural)
+        ok_hallucinated, _ = sns_editorial.verify_ai_factual_numbers(
+            'オリエンタルラウンジ新宿は女性99・男性18です',
+            research,
+        )
+        self.assertFalse(ok_hallucinated)
+
+        # 3. Unknown store on /api/analysis/<store> returns fast 404 without hitting compute_store_analysis_payload
+        with patch('store_analysis.compute_store_analysis_payload', side_effect=AssertionError('Must not run for unknown store!')):
+            r_404 = self.client.get('/api/analysis/NON_EXISTENT_SCAN_STORE_999')
+        self.assertEqual(r_404.status_code, 404)
+
+        # 4. /api/status ETag -> 304 Not Modified, plus instant invalidation on data change
+        r_st1 = self.client.get('/api/status', headers={'Accept-Encoding': 'gzip'})
+        self.assertEqual(r_st1.status_code, 200)
+        etag = r_st1.headers.get('ETag')
+        self.assertTrue(etag)
+        r_304 = self.client.get('/api/status', headers={'If-None-Match': etag})
+        self.assertEqual(r_304.status_code, 304)
+        self.assertEqual(len(r_304.data), 0)
+
+        # 5. Gzipped /sitemap.xml and cached /ogp/live.png + /ogp/ig-slide/1.jpg
+        r_smap = self.client.get('/sitemap.xml', headers={'Accept-Encoding': 'gzip'})
+        self.assertEqual(r_smap.status_code, 200)
+        self.assertEqual(r_smap.headers.get('Content-Encoding'), 'gzip')
+        r_ogp = self.client.get('/ogp/live.png')
+        self.assertEqual(r_ogp.status_code, 200)
+        self.assertTrue(r_ogp.data.startswith(b'\x89PNG'))
+        r_ig_jpg = self.client.get('/ogp/ig-slide/1.jpg')
+        self.assertEqual(r_ig_jpg.status_code, 200)
+        self.assertEqual(r_ig_jpg.mimetype, 'image/jpeg')
+        self.assertTrue(r_ig_jpg.data.startswith(b'\xff\xd8'))
+
+        # 6. Staff session sets X-Staff-View: 1 & private, no-store; vote tracking includes store_name
+        with self.client.session_transaction() as s:
+            s['is_staff'] = True
+        r_staff_col = self.client.get('/columns')
+        self.assertEqual(r_staff_col.headers.get('X-Staff-View'), '1')
+        self.assertIn('no-store', r_staff_col.headers.get('Cache-Control', ''))
+        with self.client.session_transaction() as s:
+            s.clear()
+
+        desc_vote = analytics.describe_label('vote', 'OLG 新宿:smooth')
+        self.assertIn('オリエンタルラウンジ 新宿', desc_vote['title'])
+        self.assertIn('すぐ入れた', desc_vote['title'])
 
 
 if __name__ == '__main__':

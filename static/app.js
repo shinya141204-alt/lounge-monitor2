@@ -847,11 +847,15 @@
         // Execute immediately (app.js is loaded with defer at end of body, so DOM is ready)
         restoreCachedStatus();
 
-        async function fetchWithTimeout(url, timeoutMs = 15000) {
+        let _lastStatusEtag = '';
+
+        async function fetchWithTimeout(url, timeoutMs = 15000, extraHeaders = null) {
             const controller = new AbortController();
             const timer = setTimeout(() => controller.abort(), timeoutMs);
             try {
-                const response = await fetch(url, { signal: controller.signal });
+                const opts = { signal: controller.signal };
+                if (extraHeaders) opts.headers = extraHeaders;
+                const response = await fetch(url, opts);
                 clearTimeout(timer);
                 return response;
             } catch (e) {
@@ -864,17 +868,18 @@
             if (prefetchTriggered || !ranking || ranking.length === 0) return;
             prefetchTriggered = true;
 
-            // Prioritize pinned stores + top 3 stores
+            // Prioritize pinned stores + top 2 stores (max 3 total) to minimize background SQLite load
             const targets = [...pinnedStores];
-            for (let i = 0; i < Math.min(3, ranking.length); i++) {
+            for (let i = 0; i < Math.min(2, ranking.length); i++) {
                 if (!targets.includes(ranking[i].name)) {
                     targets.push(ranking[i].name);
                 }
             }
 
-            // Wait 3.5s after initial render so UI stays completely snappy, then prefetch sequentially during idle
-            await new Promise(r => setTimeout(r, 3500));
-            for (const storeName of targets.slice(0, 5)) {
+            // Wait 4s after initial render so UI stays completely snappy, then prefetch sequentially while visible
+            await new Promise(r => setTimeout(r, 4000));
+            for (const storeName of targets.slice(0, 3)) {
+                if (document.visibilityState === 'hidden') break;
                 if (clientAnalysisCache[storeName] && (Date.now() - clientAnalysisCache[storeName].fetchedAt < CLIENT_CACHE_TTL)) {
                     continue;
                 }
@@ -887,14 +892,20 @@
                         }
                     }
                 } catch (e) {}
-                await new Promise(r => setTimeout(r, 400));
+                await new Promise(r => setTimeout(r, 500));
             }
         }
 
         async function fetchData() {
             try {
-                const response = await fetchWithTimeout('/api/status', 15000);
+                const reqHeaders = (!isInitialLoad && _lastStatusEtag) ? { 'If-None-Match': _lastStatusEtag } : null;
+                const response = await fetchWithTimeout('/api/status', 15000, reqHeaders);
+                if (response.status === 304) {
+                    return;
+                }
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const respEtag = response.headers ? response.headers.get('ETag') : '';
+                if (respEtag) _lastStatusEtag = respEtag;
                 const data = await response.json();
 
                 if (data.status === 'loading') {
@@ -2155,8 +2166,12 @@
             fetchData();
         }
 
-        // Poll every 30 seconds
-        setInterval(fetchData, 30000);
+        // Poll every 30 seconds while tab is visible (pause background polling to save battery & server CPU)
+        setInterval(() => {
+            if (document.visibilityState !== 'hidden') {
+                fetchData();
+            }
+        }, 30000);
 
         // PWA / mobile: timers are frozen while the app is in the background.
         // Refresh immediately when the user returns if the shown data is older than 30s.
@@ -3270,7 +3285,8 @@
         async function showDailyChart(dateStr, data, evt) {
             if (evt && evt.target) {
                 document.querySelectorAll('.date-btn').forEach(b => b.classList.remove('active'));
-                evt.target.closest('.date-btn').classList.add('active');
+                const btnEl = evt.target.closest ? evt.target.closest('.date-btn') : null;
+                if (btnEl) btnEl.classList.add('active');
             }
 
             document.getElementById('daily-chart-container').classList.remove('hidden');
@@ -3553,9 +3569,10 @@
                 document.querySelectorAll('.nav-loading').forEach(el => el.classList.remove('nav-loading'));
             });
 
-            // Warm up static editorial navigation tabs during idle time (exclude live SSR pages so crowd counts stay real-time)
+            // Warm up lightweight static editorial navigation tabs during idle time (skip /stats & live SSR pages)
             const warmTabs = () => {
-                ['/guide/brand-comparison', '/columns', '/grooming', '/stats'].forEach(prefetchPage);
+                if (document.visibilityState === 'hidden') return;
+                ['/guide/brand-comparison', '/columns', '/grooming'].forEach(prefetchPage);
             };
             if ('requestIdleCallback' in window) {
                 window.requestIdleCallback(warmTabs, { timeout: 2200 });

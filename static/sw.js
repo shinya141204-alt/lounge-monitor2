@@ -1,27 +1,26 @@
-// Supersedes aiseki-navi-v47..v52 (purged automatically on activate)
-const CACHE_NAME = 'aiseki-navi-v53';
+// Supersedes aiseki-navi-v47..v53 (purged automatically on activate)
+const CACHE_NAME = 'aiseki-navi-v54';
 const SHELL_KEY = '/';
 const FAST_NAV_PATHS = new Set([
-  '/guide/brand-comparison',
-  '/guide/price-event-comparison',
-  '/guide/last-train-cliff',
   '/grooming',
   '/stats',
   '/guide',
   '/columns',
   '/privacy'
 ]);
-const LIVE_SSR_PREFIXES = [
+const LIVE_SSR_EXACT = new Set([
   '/',
-  '/price-comparison',
-  '/store/',
   '/areas',
-  '/area/',
   '/oriental-lounge',
   '/ag',
   '/jis'
+]);
+const LIVE_SSR_PREFIXES = [
+  '/price-comparison',
+  '/store/',
+  '/area/'
 ];
-const ASSETS_TO_CACHE = [
+const CORE_ASSETS = [
   '/static/style.css?v=20261027_3',
   '/static/calm.css?v=13',
   '/static/portal.css?v=6',
@@ -29,19 +28,44 @@ const ASSETS_TO_CACHE = [
   '/static/affiliate_config.js?v=11',
   '/static/manifest.json?v=2',
   '/static/icon-192.png?v=2',
-  '/static/icon-512.png?v=2',
+  '/static/icon-512.png?v=2'
+];
+const OPTIONAL_EXTERNAL_ASSETS = [
   'https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap'
 ];
+
+function isStaffOrPrivateNoStore(resp) {
+  if (!resp || !resp.headers) return false;
+  if (resp.headers.get('X-Staff-View') === '1') return true;
+  if (resp.headers.get('X-Robots-Tag') === 'noindex, nofollow') return true;
+  const cc = (resp.headers.get('Cache-Control') || '').toLowerCase();
+  return cc.includes('private') && cc.includes('no-store');
+}
+
+function isFastEditorialPath(pathname) {
+  return FAST_NAV_PATHS.has(pathname) || pathname.startsWith('/guide/');
+}
+
+function isLiveSsrPath(pathname) {
+  return LIVE_SSR_EXACT.has(pathname) || LIVE_SSR_PREFIXES.some((p) => pathname === p || pathname.startsWith(p));
+}
 
 // Install: Cache critical shell assets (+ the top page HTML as the app shell)
 self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then(async (cache) => {
-      await cache.addAll(ASSETS_TO_CACHE);
+      await cache.addAll(CORE_ASSETS);
+      for (const extUrl of OPTIONAL_EXTERNAL_ASSETS) {
+        try {
+          await cache.add(extUrl);
+        } catch (e) {}
+      }
       try {
         const shell = await fetch(SHELL_KEY, { cache: 'no-store' });
-        if (shell && shell.ok) await cache.put(SHELL_KEY, shell);
+        if (shell && shell.ok && !isStaffOrPrivateNoStore(shell)) {
+          await cache.put(SHELL_KEY, shell);
+        }
       } catch (e) {}
     })
   );
@@ -76,7 +100,7 @@ function fetchAndCache(event, cacheKey, forceFresh) {
       preload = await event.preloadResponse;
     } catch (e) {}
     const resp = preload || await fetch(event.request, forceFresh ? { cache: 'no-store' } : undefined);
-    if (resp && resp.ok) {
+    if (resp && resp.ok && !isStaffOrPrivateNoStore(resp)) {
       const copy = resp.clone();
       event.waitUntil(
         caches.open(CACHE_NAME).then((cache) => cache.put(cacheKey, copy)).catch(() => {})
@@ -101,13 +125,13 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Always bypass Service Worker for staff monitor, auth routes, and ads.txt
-  if (reqUrl.pathname.startsWith('/staff') || reqUrl.pathname === '/ads.txt') {
+  // Always bypass Service Worker for staff monitor, dynamic OGP/carousel images, and ads.txt
+  if (reqUrl.pathname.startsWith('/staff') || reqUrl.pathname.startsWith('/ogp/') || reqUrl.pathname === '/ads.txt') {
     return;
   }
 
   // Always fetch fresh data for API calls (never cache live rankings)
-  if (event.request.url.includes('/api/')) {
+  if (reqUrl.pathname.startsWith('/api/')) {
     event.respondWith(
       fetch(event.request).catch(() => new Response(JSON.stringify({ error: "Offline" }), {
         headers: { 'Content-Type': 'application/json' }
@@ -119,9 +143,9 @@ self.addEventListener('fetch', (event) => {
   // Navigation requests (HTML page visits from bookmarks / home screen)
   if (event.request.mode === 'navigate') {
     const cacheKey = reqUrl.pathname === '/' ? SHELL_KEY : (reqUrl.pathname + reqUrl.search);
-    // Static guide pages: Stale-While-Revalidate
-    if (FAST_NAV_PATHS.has(reqUrl.pathname)) {
-      const networkPromise = fetchAndCache(event, cacheKey);
+    // Static guide & editorial pages: Stale-While-Revalidate
+    if (isFastEditorialPath(reqUrl.pathname)) {
+      const networkPromise = fetchAndCache(event, cacheKey, false);
       event.waitUntil(networkPromise.catch(() => {}));
       event.respondWith(
         (async () => {
@@ -135,7 +159,7 @@ self.addEventListener('fetch', (event) => {
 
     // Top page ("/") and live SSR pages (/price-comparison, /store/*, /areas):
     // always fetch fresh network HTML first (with offline fallback) so layout & live data updates reflect immediately
-    const isLiveSsr = reqUrl.pathname === '/' || LIVE_SSR_PREFIXES.some((p) => p !== '/' && (reqUrl.pathname === p || reqUrl.pathname.startsWith(p)));
+    const isLiveSsr = isLiveSsrPath(reqUrl.pathname);
     const pageCacheKey = cacheKey;
     const networkPromise = fetchAndCache(event, pageCacheKey, isLiveSsr);
     event.waitUntil(networkPromise.catch(() => {}));
@@ -161,18 +185,22 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Stale-while-revalidate for static assets
+  // Stale-while-revalidate for static assets (guarantee valid Response even when offline and uncached)
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       const fetchPromise = fetch(event.request).then((networkResponse) => {
-        if (networkResponse && networkResponse.status === 200) {
+        if (networkResponse && networkResponse.status === 200 && !isStaffOrPrivateNoStore(networkResponse)) {
           const copy = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy)).catch(() => {});
         }
         return networkResponse;
-      }).catch(() => null);
+      });
 
-      return cachedResponse || fetchPromise;
+      if (cachedResponse) {
+        fetchPromise.catch(() => {});
+        return cachedResponse;
+      }
+      return fetchPromise.catch(() => Response.error());
     })
   );
 });

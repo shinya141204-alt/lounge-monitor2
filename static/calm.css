@@ -1460,7 +1460,7 @@ body.staff-mode .header-top-row .header-controls {
 
     #search-input {
         padding: 7px 13px !important;
-        font-size: 0.84rem !important;
+        font-size: 16px !important;
     }
 
     .sort-controls {
@@ -1527,7 +1527,7 @@ body.theme-light .store-micro-metrics {
 }
 
 .stat.ladies .stat-usual.is-up {
-    color: var(--calm-ladies);
+    color: var(--calm-women);
 }
 
 .stat.men .stat-usual.is-up {
@@ -1539,7 +1539,7 @@ body.theme-light .stat-usual {
 }
 
 body.theme-light .stat.ladies .stat-usual.is-up {
-    color: var(--calm-light-ladies);
+    color: var(--calm-light-women);
 }
 
 body.theme-light .stat.men .stat-usual.is-up {

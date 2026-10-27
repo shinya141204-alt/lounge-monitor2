@@ -13,7 +13,8 @@ import json
 import time
 import local_db
 import scheduled_articles
-from collections import defaultdict
+import zlib
+from collections import defaultdict, OrderedDict
 
 from logging.handlers import RotatingFileHandler
 
@@ -69,6 +70,13 @@ def _is_login_rate_limited(ip_addr: str) -> bool:
 def _record_login_failure(ip_addr: str) -> None:
     now_t = time.time()
     with _login_failures_lock:
+        if len(_login_failures) > 512:
+            stale_ips = [
+                k for k, ts_list in _login_failures.items()
+                if not ts_list or (now_t - ts_list[-1] >= LOGIN_WINDOW_SEC)
+            ]
+            for k in stale_ips:
+                _login_failures.pop(k, None)
         recent = [t for t in _login_failures.get(ip_addr, []) if now_t - t < LOGIN_WINDOW_SEC]
         recent.append(now_t)
         _login_failures[ip_addr] = recent
@@ -110,21 +118,27 @@ def is_master_authorized():
 
 @app.after_request
 def compress_response(response):
-    """Set cache headers and automatically gzip-compress JSON/HTML/CSS/JS responses."""
+    """Set cache headers and automatically gzip-compress JSON/HTML/CSS/JS/XML/SVG responses."""
+    is_staff_sess = bool(session.get('is_staff') or session.get('is_master'))
     # 1. Cache headers (must run regardless of gzip compression)
     if request.path.startswith('/static/') and response.status_code == 200:
         if request.args.get('v'):
             response.headers['Cache-Control'] = 'public, max-age=31536000, immutable'
         else:
             response.headers['Cache-Control'] = 'public, max-age=86400'
-    elif response.content_type and 'text/html' in response.content_type and response.status_code == 200:
-        if 'Cache-Control' not in response.headers:
-            if request.path.startswith('/staff'):
-                response.headers['Cache-Control'] = 'private, no-store, no-cache, must-revalidate, max-age=0'
-                response.headers['Pragma'] = 'no-cache'
-            else:
-                # Allow browser back/forward cache (bfcache) for instant 0ms back-navigation while revalidating normal loads
-                response.headers['Cache-Control'] = 'private, no-cache, must-revalidate, max-age=0'
+    else:
+        if is_staff_sess:
+            response.headers['X-Staff-View'] = '1'
+            response.headers['Cache-Control'] = 'private, no-store, no-cache, must-revalidate, max-age=0'
+            response.headers['Pragma'] = 'no-cache'
+        elif response.content_type and 'text/html' in response.content_type and response.status_code == 200:
+            if 'Cache-Control' not in response.headers:
+                if request.path.startswith('/staff'):
+                    response.headers['Cache-Control'] = 'private, no-store, no-cache, must-revalidate, max-age=0'
+                    response.headers['Pragma'] = 'no-cache'
+                else:
+                    # Allow browser back/forward cache (bfcache) for instant 0ms back-navigation while revalidating normal loads
+                    response.headers['Cache-Control'] = 'private, no-cache, must-revalidate, max-age=0'
 
     # 2. Gzip compression
     if (
@@ -135,11 +149,15 @@ def compress_response(response):
         or 'gzip' not in request.headers.get('Accept-Encoding', '').lower()
     ):
         return response
-    if response.content_type and (
-        'application/json' in response.content_type
-        or 'text/html' in response.content_type
-        or 'text/css' in response.content_type
-        or 'application/javascript' in response.content_type
+    ctype = response.content_type or ''
+    if (
+        'application/json' in ctype
+        or 'text/html' in ctype
+        or 'text/css' in ctype
+        or 'application/javascript' in ctype
+        or 'application/xml' in ctype
+        or 'text/xml' in ctype
+        or 'image/svg+xml' in ctype
     ):
         data = response.get_data()
         if len(data) > 500:
@@ -147,7 +165,11 @@ def compress_response(response):
             response.set_data(compressed)
             response.headers['Content-Encoding'] = 'gzip'
             response.headers['Content-Length'] = len(compressed)
-            response.headers['Vary'] = 'Accept-Encoding'
+            prev_vary = response.headers.get('Vary', '')
+            if not prev_vary:
+                response.headers['Vary'] = 'Accept-Encoding'
+            elif 'accept-encoding' not in prev_vary.lower():
+                response.headers['Vary'] = f"{prev_vary}, Accept-Encoding"
 
     return response
 
@@ -334,32 +356,45 @@ local_db.register_sync_complete_callback(clear_analysis_and_report_caches)
 @app.route('/api/analysis/<path:store_name>')
 def get_store_analysis(store_name):
     """Returns aggregated hourly and weekly data for a specific store."""
+    clean_name = (store_name or '').strip()
+    if not clean_name or len(clean_name) > 80 or any(ord(ch) < 32 for ch in clean_name):
+        return jsonify({'error': 'Store not found'}), 404
+
+    import store_master
+    master_map = store_master.load()
+    if clean_name not in master_map:
+        with data_lock:
+            live_names = {s.get('name') for s in (latest_data.get('full_data') or [])}
+        cached_proc = (analysis_cache.get('processed_per_store') or {}).get(clean_name)
+        if clean_name not in live_names and cached_proc is None:
+            return jsonify({'error': 'Store not found'}), 404
+
     import store_analysis
-    raw_entry = (analysis_cache.get('raw_data_by_store') or {}).get(store_name)
-    proc_entry = (analysis_cache.get('processed_per_store') or {}).get(store_name)
+    raw_entry = (analysis_cache.get('raw_data_by_store') or {}).get(clean_name)
+    proc_entry = (analysis_cache.get('processed_per_store') or {}).get(clean_name)
     raw_ts = raw_entry.get('last_fetched') if isinstance(raw_entry, dict) else None
     if proc_entry is not None and raw_ts is not None:
         return _cached_json_response(
-            ('analysis', local_db.DB_PATH, store_name, id(proc_entry), raw_ts),
+            ('analysis', local_db.DB_PATH, clean_name, id(proc_entry), raw_ts),
             lambda: store_analysis.compute_store_analysis_payload(
-                store_name,
+                clean_name,
                 analysis_cache=analysis_cache,
                 cache_duration=ANALYSIS_CACHE_DURATION,
             ),
             ttl_sec=60.0,
         )
     payload, status_code = store_analysis.compute_store_analysis_payload(
-        store_name,
+        clean_name,
         analysis_cache=analysis_cache,
         cache_duration=ANALYSIS_CACHE_DURATION,
     )
     if status_code == 200:
-        new_proc = (analysis_cache.get('processed_per_store') or {}).get(store_name)
-        new_raw = (analysis_cache.get('raw_data_by_store') or {}).get(store_name)
+        new_proc = (analysis_cache.get('processed_per_store') or {}).get(clean_name)
+        new_raw = (analysis_cache.get('raw_data_by_store') or {}).get(clean_name)
         new_ts = new_raw.get('last_fetched') if isinstance(new_raw, dict) else None
         if new_proc is not None:
             return _cached_json_response(
-                ('analysis', local_db.DB_PATH, store_name, id(new_proc), new_ts),
+                ('analysis', local_db.DB_PATH, clean_name, id(new_proc), new_ts),
                 lambda: (payload, 200),
                 ttl_sec=60.0,
             )
@@ -414,6 +449,10 @@ def restore_latest_data_if_empty():
                 if not master or s.get('name') in master
             ]
             if full_data:
+                full_data.sort(
+                    key=lambda x: (x.get('region') != 'Korea', int(x.get('women') or 0), int(x.get('men') or 0)),
+                    reverse=True,
+                )
                 with data_lock:
                     if not latest_data.get('full_data'):
                         latest_data['full_data'] = full_data
@@ -429,6 +468,10 @@ def restore_latest_data_if_empty():
         snap = local_db.get_snapshot_around(0, 10080)
         if snap and len(snap) >= 10:
             baseline_snap = local_db.get_snapshot_around(10, 25) or {}
+            try:
+                votes_map = local_db.get_recent_votes(hours=4) or {}
+            except Exception:
+                votes_map = {}
             import store_master
             master = store_master.load()
             items = []
@@ -453,7 +496,7 @@ def restore_latest_data_if_empty():
                     'region': info.get('region') or detect_region(sname),
                     'women_diff': w_diff,
                     'men_diff': m_diff,
-                    'votes': {'smooth': 0, 'waiting': 0, 'lively': 0},
+                    'votes': votes_map.get(sname, {'smooth': 0, 'waiting': 0, 'lively': 0}),
                 })
                 if vals.get('ts') and (not latest_ts or vals['ts'] > latest_ts):
                     latest_ts = vals['ts']
@@ -488,6 +531,7 @@ def restore_latest_data_if_empty():
                     'men_diff': 0,
                     'votes': {'smooth': 0, 'waiting': 0, 'lively': 0},
                 })
+            items.sort(key=lambda x: (x.get('region') != 'Korea'), reverse=True)
             with data_lock:
                 if not latest_data.get('full_data'):
                     latest_data['full_data'] = items
@@ -514,15 +558,33 @@ _BRAND_CLS_MAP = {
 _ssr_payload_cache_lock = threading.Lock()
 _ssr_payload_cache = {'key': None, 'payload': None}
 _status_json_cache_lock = threading.Lock()
-_status_json_cache = {'key': None, 'raw': None, 'gzip': None}
+_status_json_cache = {'key': None, 'raw': None, 'gzip': None, 'etag': None}
 _api_json_cache_lock = threading.Lock()
-_api_json_cache = {}
+_api_json_cache = OrderedDict()
 _page_html_cache_lock = threading.Lock()
-_page_html_cache = {}
-_PAGE_HTML_CACHE_MAX = 96
+_page_html_cache = OrderedDict()
+_editorial_html_cache = OrderedDict()
+_PAGE_HTML_CACHE_MAX = 128
+_EDITORIAL_HTML_CACHE_MAX = 64
+_ogp_bytes_cache_lock = threading.Lock()
+_ogp_bytes_cache = OrderedDict()
+_OGP_BYTES_CACHE_MAX = 24
+_sns_cache_lock = threading.Lock()
+_sitemap_xml_cache = {'key': None, 'xml': None}
+_CACHE_QUERY_ALLOWLIST = ('s', 'area', 'slot', 'channel', 'switch', 'days', 'format')
 
 
-def clear_fast_http_caches():
+def _normalize_cache_query_args() -> tuple:
+    if not request.args:
+        return ()
+    return tuple(
+        (k, (request.args.get(k) or '')[:64])
+        for k in _CACHE_QUERY_ALLOWLIST
+        if k in request.args
+    )
+
+
+def clear_fast_http_caches(clear_editorial: bool = True):
     """Clear short-lived SSR/HTML/status caches when underlying data mutates."""
     with _ssr_payload_cache_lock:
         _ssr_payload_cache['key'] = None
@@ -531,10 +593,24 @@ def clear_fast_http_caches():
         _status_json_cache['key'] = None
         _status_json_cache['raw'] = None
         _status_json_cache['gzip'] = None
+        _status_json_cache['etag'] = None
     with _api_json_cache_lock:
         _api_json_cache.clear()
     with _page_html_cache_lock:
         _page_html_cache.clear()
+        if clear_editorial:
+            _editorial_html_cache.clear()
+    with _ogp_bytes_cache_lock:
+        _ogp_bytes_cache.clear()
+    if clear_editorial:
+        with _sns_cache_lock:
+            _sns_kit_ctx_cache['ctx'] = None
+            _sns_kit_ctx_cache['key'] = None
+            _sns_kit_ctx_cache['ts'] = 0.0
+            _sns_slide_bytes_cache.clear()
+            _sns_zip_bytes_cache['key'] = None
+            _sns_zip_bytes_cache['ts'] = 0.0
+            _sns_zip_bytes_cache['bytes'] = None
 
 
 def _build_precompressed_response(raw_bytes: bytes, gz_bytes: bytes, content_type: str, status_code: int = 200):
@@ -553,15 +629,17 @@ def _cached_json_response(cache_key, build_dict_fn, ttl_sec=30.0):
     with _api_json_cache_lock:
         hit = _api_json_cache.get(cache_key)
         if hit is not None and (now_mono - hit[0] < ttl_sec):
+            _api_json_cache.move_to_end(cache_key)
             return _build_precompressed_response(hit[1], hit[2], 'application/json', hit[3])
     payload, status_code = build_dict_fn()
     raw_bytes = json.dumps(payload, ensure_ascii=False).encode('utf-8')
     gz_bytes = gzip.compress(raw_bytes, compresslevel=6) if (status_code == 200 and len(raw_bytes) > 500) else None
     if status_code == 200:
         with _api_json_cache_lock:
-            if len(_api_json_cache) >= 96:
-                _api_json_cache.clear()
             _api_json_cache[cache_key] = (now_mono, raw_bytes, gz_bytes, status_code)
+            _api_json_cache.move_to_end(cache_key)
+            while len(_api_json_cache) > 96:
+                _api_json_cache.popitem(last=False)
     return _build_precompressed_response(raw_bytes, gz_bytes, 'application/json', status_code)
 
 
@@ -607,6 +685,9 @@ def _runtime_env_probe():
     """Lightweight microsecond probe so business-hour transitions or test mocks immediately invalidate HTML/SSR caches."""
     sh_sig = None
     ev_sig = None
+    db_sig = id(getattr(local_db, 'get_store_7day_analytics', None))
+    wr_mod = sys.modules.get('weekly_report')
+    wr_sig = id(getattr(wr_mod, 'generate_weekly_report', None)) if wr_mod else None
     try:
         import store_hours as _sh
         hp = _sh.get_business_hours_status('OLG 新宿', total_guests=0)
@@ -618,46 +699,75 @@ def _runtime_env_probe():
         ev_sig = (id(_ev.fetch_all_events), id(_ev.get_events_for_store))
     except Exception:
         pass
-    return (sh_sig, ev_sig)
+    return (sh_sig, ev_sig, db_sig, wr_sig)
+
+
+def _is_static_editorial_route(path: str) -> bool:
+    return path == '/guide' or path.startswith('/guide/') or path in ('/grooming', '/privacy', '/columns')
 
 
 def _get_cached_html_or_render(cache_extra_key, render_fn, ttl_sec=55.0):
     """Fast thread-safe memoizer for rendered HTML strings keyed on session auth + live data signature."""
-    now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
-    bucket_15m = f"{now_jst.strftime('%Y%m%d%H')}_{(now_jst.minute // 15) * 15:02d}"
-    with data_lock:
-        cur_stores = latest_data.get('full_data') or []
-        last_upd = latest_data.get('last_updated')
-        is_seed = bool(latest_data.get('is_seed'))
-        live_sig = _live_data_signature(cur_stores, last_upd, is_seed)
-    _, ev_upd = _get_cached_events_nonblocking()
-    pub_cnt = len(scheduled_articles.get_published_articles())
-    full_key = (
-        request.path,
-        request.query_string,
-        bool(session.get('is_staff')),
-        bool(session.get('is_master')),
-        local_db.DB_PATH,
-        bucket_15m,
-        pub_cnt,
-        ev_upd,
-        _runtime_env_probe(),
-        live_sig,
-        cache_extra_key,
-    )
+    is_editorial = _is_static_editorial_route(request.path)
+    pub_slugs = tuple(a.get('slug') for a in scheduled_articles.get_published_articles())
+    norm_q = _normalize_cache_query_args()
+    is_staff = bool(session.get('is_staff'))
+    is_master = bool(session.get('is_master'))
+
+    if is_editorial:
+        eff_ttl = max(ttl_sec, 300.0)
+        full_key = (
+            request.path,
+            norm_q,
+            is_staff,
+            is_master,
+            pub_slugs,
+            _runtime_env_probe(),
+            cache_extra_key,
+        )
+        target_cache = _editorial_html_cache
+        max_entries = _EDITORIAL_HTML_CACHE_MAX
+    else:
+        eff_ttl = ttl_sec
+        now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
+        bucket_15m = f"{now_jst.strftime('%Y%m%d%H')}_{(now_jst.minute // 15) * 15:02d}"
+        with data_lock:
+            cur_stores = latest_data.get('full_data') or []
+            last_upd = latest_data.get('last_updated')
+            is_seed = bool(latest_data.get('is_seed'))
+            live_sig = _live_data_signature(cur_stores, last_upd, is_seed)
+        _, ev_upd = _get_cached_events_nonblocking()
+        full_key = (
+            request.path,
+            norm_q,
+            is_staff,
+            is_master,
+            local_db.DB_PATH,
+            bucket_15m,
+            pub_slugs,
+            ev_upd,
+            _runtime_env_probe(),
+            live_sig,
+            cache_extra_key,
+        )
+        target_cache = _page_html_cache
+        max_entries = _PAGE_HTML_CACHE_MAX
+
     now_mono = time.monotonic()
     with _page_html_cache_lock:
-        hit = _page_html_cache.get(full_key)
-        if hit is not None and (now_mono - hit[0] < ttl_sec):
+        hit = target_cache.get(full_key)
+        if hit is not None and (now_mono - hit[0] < eff_ttl):
+            target_cache.move_to_end(full_key)
             return _build_precompressed_response(hit[1], hit[2], 'text/html; charset=utf-8')
     rendered = render_fn()
     if isinstance(rendered, str):
         raw_bytes = rendered.encode('utf-8')
         gz_bytes = gzip.compress(raw_bytes, compresslevel=6) if len(raw_bytes) > 500 else None
         with _page_html_cache_lock:
-            if len(_page_html_cache) >= _PAGE_HTML_CACHE_MAX:
-                _page_html_cache.clear()
-            _page_html_cache[full_key] = (now_mono, raw_bytes, gz_bytes)
+            target_cache[full_key] = (now_mono, raw_bytes, gz_bytes)
+            target_cache.move_to_end(full_key)
+            while len(target_cache) > max_entries:
+                target_cache.popitem(last=False)
         return _build_precompressed_response(raw_bytes, gz_bytes, 'text/html; charset=utf-8')
     return rendered
 
@@ -877,6 +987,10 @@ def refresh_momentum_from_db():
         if is_seed_now:
             snap = local_db.get_snapshot_around(0, 10080)
             if snap and len(snap) >= 10:
+                try:
+                    votes_map = local_db.get_recent_votes(hours=4) or {}
+                except Exception:
+                    votes_map = {}
                 import store_master
                 master = store_master.load()
                 items = []
@@ -898,7 +1012,7 @@ def refresh_momentum_from_db():
                         'region': info.get('region') or detect_region(sname),
                         'women_diff': w_diff,
                         'men_diff': m_diff,
-                        'votes': {'smooth': 0, 'waiting': 0, 'lively': 0},
+                        'votes': votes_map.get(sname, {'smooth': 0, 'waiting': 0, 'lively': 0}),
                     })
                     if vals.get('ts') and (not latest_ts or vals['ts'] > latest_ts):
                         latest_ts = vals['ts']
@@ -911,7 +1025,7 @@ def refresh_momentum_from_db():
                             latest_data['last_updated'] = latest_ts
                         latest_data['is_seed'] = False
                 save_latest_status_snapshot()
-                clear_fast_http_caches()
+                clear_fast_http_caches(clear_editorial=False)
                 prewarm_ssr_and_status_caches()
                 print("[app] Cold-start seed promoted to live counts from fast Google Sheets sync.")
                 return
@@ -931,7 +1045,7 @@ def refresh_momentum_from_db():
                     updated_any = True
         if updated_any:
             save_latest_status_snapshot()
-            clear_fast_http_caches()
+            clear_fast_http_caches(clear_editorial=False)
             prewarm_ssr_and_status_caches()
             print("[app] Momentum (15-min women_diff/men_diff) refreshed from newly synced SQLite baseline.")
     except Exception as e:
@@ -1032,7 +1146,7 @@ def update_job(force=False):
                 latest_data['last_updated'] = jst_now.strftime("%Y-%m-%d %H:%M:%S")
                 latest_data['is_seed'] = False
             save_latest_status_snapshot()
-            clear_fast_http_caches()
+            clear_fast_http_caches(clear_editorial=False)
             prewarm_ssr_and_status_caches()
             print(f"Data updated. Top store: {top_store['name'] if top_store else 'None'}")
             _last_update_error = None
@@ -1110,16 +1224,33 @@ def index():
 
 @app.route('/ogp/live.png')
 def dynamic_live_ogp_image():
-    """Dynamically render a 1200x630 live TOP3 ranking OGP card image."""
+    """Dynamically render a 1200x630 live TOP3 ranking OGP card image (memoized in RAM)."""
     restore_latest_data_if_empty()
     trigger_background_fetch_if_needed()
-    s_param = (request.args.get('s') or '').strip()
+    s_param = (request.args.get('s') or '').strip()[:40]
+    now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
+    bucket_10m = f"{now_jst.strftime('%Y%m%d%H')}_{(now_jst.minute // 10) * 10:02d}"
     with data_lock:
         stores = list(latest_data.get('full_data') or [])
+        last_u = latest_data.get('last_updated')
+        is_s = bool(latest_data.get('is_seed'))
+    ogp_key = ('live', s_param, bucket_10m, _live_data_signature(stores, last_u, is_s))
+    now_mono = time.monotonic()
+    with _ogp_bytes_cache_lock:
+        hit = _ogp_bytes_cache.get(ogp_key)
+        if hit is not None and (now_mono - hit[0] < 120.0):
+            _ogp_bytes_cache.move_to_end(ogp_key)
+            resp = Response(hit[1], mimetype='image/png')
+            resp.headers['Cache-Control'] = 'public, max-age=300'
+            return resp
     try:
         import ogp_generator
         png_bytes = ogp_generator.generate_live_ogp_png(stores, s_param=s_param)
-        from flask import Response
+        with _ogp_bytes_cache_lock:
+            _ogp_bytes_cache[ogp_key] = (now_mono, png_bytes)
+            _ogp_bytes_cache.move_to_end(ogp_key)
+            while len(_ogp_bytes_cache) > _OGP_BYTES_CACHE_MAX:
+                _ogp_bytes_cache.popitem(last=False)
         resp = Response(png_bytes, mimetype='image/png')
         resp.headers['Cache-Control'] = 'public, max-age=300'
         return resp
@@ -1129,13 +1260,32 @@ def dynamic_live_ogp_image():
 
 @app.route('/ogp/weekly.png')
 def dynamic_weekly_ogp_image():
-    """Dynamically render a 1200x630 weekly ranking & open-data infographic OGP card image."""
+    """Dynamically render a 1200x630 weekly ranking & open-data infographic OGP card image (memoized in RAM)."""
     try:
         import weekly_report
         import ogp_generator
         report = weekly_report.generate_weekly_report()
-        png_bytes = ogp_generator.generate_weekly_ogp_png(report if report and 'error' not in report else {})
-        from flask import Response
+        valid_rep = report if isinstance(report, dict) and 'error' not in report else {}
+        ogp_key = (
+            'weekly',
+            valid_rep.get('generated_at'),
+            len(valid_rep.get('overall_ranking') or []),
+            local_db.DB_PATH,
+        )
+        now_mono = time.monotonic()
+        with _ogp_bytes_cache_lock:
+            hit = _ogp_bytes_cache.get(ogp_key)
+            if hit is not None and (now_mono - hit[0] < 600.0):
+                _ogp_bytes_cache.move_to_end(ogp_key)
+                resp = Response(hit[1], mimetype='image/png')
+                resp.headers['Cache-Control'] = 'public, max-age=1800'
+                return resp
+        png_bytes = ogp_generator.generate_weekly_ogp_png(valid_rep)
+        with _ogp_bytes_cache_lock:
+            _ogp_bytes_cache[ogp_key] = (now_mono, png_bytes)
+            _ogp_bytes_cache.move_to_end(ogp_key)
+            while len(_ogp_bytes_cache) > _OGP_BYTES_CACHE_MAX:
+                _ogp_bytes_cache.popitem(last=False)
         resp = Response(png_bytes, mimetype='image/png')
         resp.headers['Cache-Control'] = 'public, max-age=1800'
         return resp
@@ -1366,31 +1516,84 @@ def staff_logout():
     return redirect(url_for('staff_monitor'))
 
 
-_sns_kit_ctx_cache = {'ctx': None, 'ts': 0.0}
-_sns_slide_bytes_cache = {}  # (slide_num, is_jpg) -> (ts, bytes)
+_sns_kit_ctx_cache = {'ctx': None, 'key': None, 'ts': 0.0}
+_sns_slide_bytes_cache = OrderedDict()  # (slide_num, is_jpg, ctx_sig) -> (ts, bytes)
+_sns_zip_bytes_cache = {'key': None, 'ts': 0.0, 'bytes': None}
+
+
+def _sns_context_sig(ctx: dict) -> tuple:
+    if not isinstance(ctx, dict):
+        return ()
+    top_sig = tuple(
+        (p.get('raw_name') or p.get('short_name'), p.get('peak_women'), p.get('avg_wpct'))
+        for p in (ctx.get('top_picks') or [])[:5]
+    )
+    return (ctx.get('weekend_label'), ctx.get('generated_at'), top_sig)
 
 
 def _get_sns_kit_context(fast=False):
     import ig_carousel_generator
     import weekly_report
     now_t = time.time()
-    if _sns_kit_ctx_cache['ctx'] and (now_t - _sns_kit_ctx_cache['ts'] < 300):
-        return _sns_kit_ctx_cache['ctx']
+    with data_lock:
+        live_s = list(latest_data.get('full_data') or [])
+    live_top_sig = tuple((s.get('name'), int(s.get('women') or 0), int(s.get('men') or 0)) for s in live_s[:8])
+    cache_key = (local_db.DB_PATH, live_top_sig, datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).strftime('%Y%m%d%H'))
+    with _sns_cache_lock:
+        if _sns_kit_ctx_cache['ctx'] is not None and _sns_kit_ctx_cache['key'] == cache_key and (now_t - _sns_kit_ctx_cache['ts'] < 300):
+            return _sns_kit_ctx_cache['ctx']
+
     rep = None
-    if not fast:
-        try:
+    try:
+        # Unify context across IG editorial captions and carousel slides so rankings/numbers always match
+        cached_rep = (getattr(weekly_report, '_report_cache', None) or {}).get('data')
+        if fast and isinstance(cached_rep, dict) and 'error' not in cached_rep:
+            rep = cached_rep
+        else:
             res = weekly_report.generate_weekly_report()
             if isinstance(res, dict) and 'error' not in res:
                 rep = res
-        except Exception:
-            rep = None
-    with data_lock:
-        live_s = list(latest_data.get('full_data') or [])
+    except Exception:
+        rep = None
+
     ctx = ig_carousel_generator.build_forecast_context(report=rep, live_stores=live_s)
-    if not fast:
+    with _sns_cache_lock:
         _sns_kit_ctx_cache['ctx'] = ctx
+        _sns_kit_ctx_cache['key'] = cache_key
         _sns_kit_ctx_cache['ts'] = now_t
     return ctx
+
+
+def _render_cached_ig_slide_bytes(slide_num: int, is_jpg: bool, ctx: dict) -> bytes:
+    import ig_carousel_generator
+    clamped = max(1, min(5, int(slide_num)))
+    cache_key = (clamped, bool(is_jpg), _sns_context_sig(ctx))
+    now_t = time.time()
+    with _sns_cache_lock:
+        cached = _sns_slide_bytes_cache.get(cache_key)
+        if cached is not None and (now_t - cached[0] < 300):
+            _sns_slide_bytes_cache.move_to_end(cache_key)
+            return cached[1]
+
+    if is_jpg and hasattr(ig_carousel_generator, 'render_slide_jpeg'):
+        img_bytes = ig_carousel_generator.render_slide_jpeg(clamped, ctx=ctx)
+    elif is_jpg:
+        import io
+        from PIL import Image
+        png_bytes = ig_carousel_generator.render_slide_png(clamped, ctx=ctx)
+        img = Image.open(io.BytesIO(png_bytes)).convert('RGB')
+        out = io.BytesIO()
+        img.save(out, format='JPEG', quality=92, optimize=True)
+        img_bytes = out.getvalue()
+    else:
+        img_bytes = ig_carousel_generator.render_slide_png(clamped, ctx=ctx)
+
+    with _sns_cache_lock:
+        _sns_slide_bytes_cache[cache_key] = (now_t, img_bytes)
+        _sns_slide_bytes_cache.move_to_end(cache_key)
+        while len(_sns_slide_bytes_cache) > 20:
+            _sns_slide_bytes_cache.popitem(last=False)
+    return img_bytes
 
 
 @app.route('/staff/sns-editorial')
@@ -1502,12 +1705,11 @@ def staff_sns_kit():
 
 @app.route('/staff/sns-kit/slide/<int:slide_num>.png')
 def staff_sns_kit_slide(slide_num):
-    """Render individual 1080x1350 PNG slide for master mobile save or preview."""
+    """Render individual 1080x1350 PNG slide for master mobile save or preview (memoized in RAM)."""
     if not session.get('is_master'):
         return redirect(url_for('staff_monitor', switch='1'))
-    import ig_carousel_generator
     ctx = _get_sns_kit_context()
-    png_bytes = ig_carousel_generator.render_slide_png(slide_num, ctx=ctx)
+    png_bytes = _render_cached_ig_slide_bytes(slide_num, is_jpg=False, ctx=ctx)
     headers = {'Cache-Control': 'private, max-age=300'}
     if request.args.get('download') == '1':
         headers['Content-Disposition'] = f'attachment; filename="aiseki_navi_slide_0{max(1, min(5, slide_num))}.png"'
@@ -1516,12 +1718,24 @@ def staff_sns_kit_slide(slide_num):
 
 @app.route('/staff/sns-kit/download.zip')
 def staff_sns_kit_zip():
-    """Download all 5 portrait PNG slides + Instagram/Threads captions in one ZIP."""
+    """Download all 5 portrait PNG slides + Instagram/Threads captions in one ZIP (memoized in RAM)."""
     if not session.get('is_master'):
         return redirect(url_for('staff_monitor', switch='1'))
     import ig_carousel_generator
     ctx = _get_sns_kit_context()
-    zip_bytes = ig_carousel_generator.render_all_slides_zip(ctx=ctx)
+    ctx_sig = _sns_context_sig(ctx)
+    now_t = time.time()
+    with _sns_cache_lock:
+        if _sns_zip_bytes_cache.get('bytes') is not None and _sns_zip_bytes_cache.get('key') == ctx_sig and (now_t - _sns_zip_bytes_cache.get('ts', 0.0) < 300):
+            zip_bytes = _sns_zip_bytes_cache['bytes']
+        else:
+            zip_bytes = None
+    if zip_bytes is None:
+        zip_bytes = ig_carousel_generator.render_all_slides_zip(ctx=ctx)
+        with _sns_cache_lock:
+            _sns_zip_bytes_cache['key'] = ctx_sig
+            _sns_zip_bytes_cache['ts'] = now_t
+            _sns_zip_bytes_cache['bytes'] = zip_bytes
     today_s = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).strftime('%Y%m%d')
     return Response(
         zip_bytes,
@@ -1538,29 +1752,10 @@ def public_ig_slide_png(slide_num):
     trigger_background_fetch_if_needed()
     clamped = max(1, min(5, slide_num))
     is_jpg = request.path.endswith('.jpg')
-    cache_key = (clamped, is_jpg)
-    now_t = time.time()
-    cached = _sns_slide_bytes_cache.get(cache_key)
-    if cached and (now_t - cached[0] < 300):
-        resp = Response(cached[1], mimetype='image/jpeg' if is_jpg else 'image/png')
-        resp.headers['Cache-Control'] = 'public, max-age=300'
-        return resp
     try:
-        import io
-        from PIL import Image
-        import ig_carousel_generator
         ctx = _get_sns_kit_context(fast=False)
-        png_bytes = ig_carousel_generator.render_slide_png(clamped, ctx=ctx)
-        if is_jpg:
-            img = Image.open(io.BytesIO(png_bytes)).convert('RGB')
-            out = io.BytesIO()
-            img.save(out, format='JPEG', quality=92, optimize=True)
-            img_bytes = out.getvalue()
-            resp = Response(img_bytes, mimetype='image/jpeg')
-        else:
-            img_bytes = png_bytes
-            resp = Response(img_bytes, mimetype='image/png')
-        _sns_slide_bytes_cache[cache_key] = (now_t, img_bytes)
+        img_bytes = _render_cached_ig_slide_bytes(clamped, is_jpg=is_jpg, ctx=ctx)
+        resp = Response(img_bytes, mimetype='image/jpeg' if is_jpg else 'image/png')
         resp.headers['Cache-Control'] = 'public, max-age=300'
         return resp
     except Exception as e:
@@ -1638,9 +1833,18 @@ def get_status():
         raw_copy = list(full_d)
         c_key = (_live_data_signature(raw_copy, last_u, is_s), now_hr)
 
+    inm = (request.headers.get('If-None-Match') or '').strip()
     with _status_json_cache_lock:
         if _status_json_cache['key'] == c_key and _status_json_cache['raw'] is not None:
-            return _build_precompressed_response(_status_json_cache['raw'], _status_json_cache['gzip'], 'application/json')
+            etag_cached = _status_json_cache.get('etag') or ''
+            if inm and etag_cached and inm == etag_cached:
+                resp_304 = Response(status=304)
+                resp_304.headers['ETag'] = etag_cached
+                return resp_304
+            resp_hit = _build_precompressed_response(_status_json_cache['raw'], _status_json_cache['gzip'], 'application/json')
+            if etag_cached:
+                resp_hit.headers['ETag'] = etag_cached
+            return resp_hit
 
     try:
         benchmarks = local_db.get_all_stores_live_benchmarks(allow_blocking=False)
@@ -1663,11 +1867,19 @@ def get_status():
         'is_seed': is_s,
     }, ensure_ascii=False).encode('utf-8')
     gz_bytes = gzip.compress(raw_bytes, compresslevel=6) if len(raw_bytes) > 500 else None
+    etag_val = f'W/"{zlib.crc32(raw_bytes):08x}-{len(raw_bytes):x}"'
     with _status_json_cache_lock:
         _status_json_cache['key'] = c_key
         _status_json_cache['raw'] = raw_bytes
         _status_json_cache['gzip'] = gz_bytes
-    return _build_precompressed_response(raw_bytes, gz_bytes, 'application/json')
+        _status_json_cache['etag'] = etag_val
+    if inm and inm == etag_val:
+        resp_304 = Response(status=304)
+        resp_304.headers['ETag'] = etag_val
+        return resp_304
+    resp_fresh = _build_precompressed_response(raw_bytes, gz_bytes, 'application/json')
+    resp_fresh.headers['ETag'] = etag_val
+    return resp_fresh
 
 @app.route('/api/health')
 def health_check():
@@ -1821,7 +2033,7 @@ def post_store_vote():
     if ok:
         try:
             import analytics
-            analytics.track('vote', vote_type)
+            analytics.track('vote', f"{store_name}:{vote_type}")
         except Exception:
             pass
     counts = local_db.get_recent_votes(store_name=store_name, hours=4)
@@ -1957,17 +2169,12 @@ def store_detail_page(store_slug):
     if not sname:
         abort(404)
 
-    store_analytics = None
-    try:
-        store_analytics = local_db.get_store_7day_analytics(sname)
-    except Exception:
-        pass
-    analytics_sig = (
-        (store_analytics or {}).get('sample_count', 0),
-        tuple(((store_analytics or {}).get('votes_24h') or {}).items()),
-    )
-
     def _render():
+        store_analytics = None
+        try:
+            store_analytics = local_db.get_store_7day_analytics(sname)
+        except Exception:
+            pass
         info = store_master.get(sname) or {}
         live_map = {s.get('name'): s for s in raw_stores}
         s_live = live_map.get(sname, {})
@@ -2093,12 +2300,16 @@ def store_detail_page(store_slug):
             jp_holidays=sorted(store_hours.JP_HOLIDAYS),
             last_updated=last_updated
         )
-    return _get_cached_html_or_render(('store', store_slug, analytics_sig), _render)
+    return _get_cached_html_or_render(('store', store_slug), _render)
 
 @app.route('/sitemap.xml')
 def sitemap_xml():
     import store_master
     today = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).strftime('%Y-%m-%d')
+    pub_items = scheduled_articles.get_published_articles()
+    smap_key = (today, tuple(it.get('slug') for it in pub_items))
+    if _sitemap_xml_cache['key'] == smap_key and _sitemap_xml_cache['xml'] is not None:
+        return Response(_sitemap_xml_cache['xml'], mimetype='application/xml')
     brand_urls = "\n".join([
         f"""  <url>
     <loc>https://aiseki-navi.com/{bslug}</loc>
@@ -2259,6 +2470,8 @@ def sitemap_xml():
     <priority>0.5</priority>
   </url>
 </urlset>"""
+    _sitemap_xml_cache['key'] = smap_key
+    _sitemap_xml_cache['xml'] = xml
     return Response(xml, mimetype='application/xml')
 
 @app.route('/columns')
@@ -2279,18 +2492,19 @@ def columns_index():
 @app.route('/stats')
 def stats_whitepaper():
     """SEO-indexed primary statistical data whitepaper & weekly ranking page."""
+    import weekly_report
     trigger_background_fetch_if_needed()
-    report_data = None
-    try:
-        import weekly_report
-        res = weekly_report.generate_weekly_report()
-        if res and 'error' not in res:
-            report_data = res
-    except Exception:
-        report_data = None
+    cached_rep = (getattr(weekly_report, '_report_cache', None) or {}).get('data')
+    rep_sig = cached_rep.get('generated_at') if isinstance(cached_rep, dict) else None
 
-    rep_sig = (report_data or {}).get('generated_at')
     def _render():
+        report_data = None
+        try:
+            res = weekly_report.generate_weekly_report()
+            if res and 'error' not in res:
+                report_data = res
+        except Exception:
+            report_data = None
         with data_lock:
             live_stores = list(latest_data.get('full_data') or [])
             last_updated = latest_data.get('last_updated') or '--:--'
@@ -2454,7 +2668,10 @@ def _render_scheduled_guide(slug: str):
     if not item:
         abort(404)
     if scheduled_articles.is_published(item):
-        return render_template(item['template'], is_scheduled_preview=False, scheduled_item=item)
+        return _get_cached_html_or_render(
+            ('sched_guide', slug),
+            lambda: render_template(item['template'], is_scheduled_preview=False, scheduled_item=item),
+        )
     if is_admin_authorized():
         resp = make_response(render_template(item['template'], is_scheduled_preview=True, scheduled_item=item))
         resp.headers['X-Robots-Tag'] = 'noindex, nofollow'

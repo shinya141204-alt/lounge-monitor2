@@ -11,6 +11,9 @@ Features:
 import datetime
 import logging
 import os
+import re
+import sys
+import threading
 import time
 
 import requests
@@ -24,6 +27,53 @@ FB_GRAPH_BASE = "https://graph.facebook.com/v21.0"
 DEFAULT_IG_USER_ID = "17841410169754469"  # @aiseki_navi1 professional user_id
 SITE_URL = "https://aiseki-navi.com"
 _cached_ig_user_id = None
+_ig_post_lock = threading.Lock()
+
+
+def _warm_slide_urls(urls: list, ctx: dict = None) -> None:
+    """
+    Pre-render Instagram slide images in-process (never via self-HTTP `requests.get`,
+    which risks thread-pool self-deadlock on single-worker Gunicorn) and populate
+    `app._sns_slide_bytes_cache` via `app._render_cached_ig_slide_bytes` when available.
+    """
+    if not urls:
+        return
+    app_mod = sys.modules.get("app")
+    render_cached_fn = getattr(app_mod, "_render_cached_ig_slide_bytes", None) if app_mod else None
+    warm_fn = getattr(app_mod, "warm_ig_slide_cache", None) if app_mod else None
+
+    resolved_ctx = ctx
+    if app_mod and hasattr(app_mod, "_get_sns_kit_context"):
+        try:
+            # Align context signature with `/ogp/ig-slide/<n>.jpg` route so Meta's fetch hits RAM cache
+            resolved_ctx = app_mod._get_sns_kit_context(fast=False) or ctx
+        except Exception:
+            resolved_ctx = ctx
+
+    for url in urls[:10]:
+        if not url or "/ogp/ig-slide/" not in url:
+            continue
+        m = re.search(r"/ogp/ig-slide/(\d+)\.(jpg|jpeg|png)", url, re.IGNORECASE)
+        if not m:
+            continue
+        slide_num = max(1, min(5, int(m.group(1))))
+        is_jpg = m.group(2).lower() in ("jpg", "jpeg")
+        try:
+            if callable(warm_fn):
+                warm_fn(slide_num, is_jpg=is_jpg, ctx=resolved_ctx)
+            elif callable(render_cached_fn):
+                if resolved_ctx is None:
+                    resolved_ctx = ig_carousel_generator.build_forecast_context()
+                render_cached_fn(slide_num, is_jpg, resolved_ctx)
+            else:
+                if resolved_ctx is None:
+                    resolved_ctx = ig_carousel_generator.build_forecast_context()
+                if is_jpg:
+                    ig_carousel_generator.render_slide_jpeg(slide_num, ctx=resolved_ctx, quality=90)
+                else:
+                    ig_carousel_generator.render_slide_png(slide_num, ctx=resolved_ctx)
+        except Exception as e:
+            logging.debug(f"In-process IG slide warm skipped (slide={slide_num}): {e}")
 
 
 def _resolve_ig_user_id(access_token: str) -> str:
@@ -190,10 +240,7 @@ def post_single_image_to_instagram(image_url: str, caption: str) -> dict:
 
     base = _graph_base_for_token(access_token)
     try:
-        try:
-            requests.get(image_url, timeout=15)
-        except Exception:
-            pass
+        _warm_slide_urls([image_url])
 
         r1 = requests.post(
             f"{base}/{ig_user_id}/media",
@@ -252,12 +299,8 @@ def post_carousel_to_instagram(image_urls: list, caption: str) -> dict:
     child_ids = []
     retry_wait = 0.05 if os.environ.get("DISABLE_SCHEDULER") == "1" else 2.0
     try:
-        # Warm up all slide URLs first so Render caches them in memory before Meta's crawler fetches them
-        for url in image_urls[:10]:
-            try:
-                requests.get(url, timeout=15)
-            except Exception:
-                pass
+        # Warm up all slide images in-process (never via self-HTTP loopback) before Meta's crawler fetches them
+        _warm_slide_urls(image_urls[:10])
 
         for idx, url in enumerate(image_urls[:10]):
             cid = None
@@ -330,92 +373,103 @@ def execute_scheduled_instagram_post(stores: list, mode: str = "carousel", slot_
     - mode="carousel": 5-slide 1080x1350 portrait forecast & ranking carousel (connected to real weekly_report stats)
     - mode="single_live" / "live": single live ranking card + detailed caption (guarded by domestic live headcount)
     """
-    now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
-    biz_date = (now_jst - datetime.timedelta(hours=7)).strftime("%Y-%m-%d")
-    dedup_key = f"ig_post:{biz_date}_{mode}_{slot_label}"
+    if not _ig_post_lock.acquire(blocking=False):
+        return {"status": "skipped", "ok": False, "skipped": True, "reason": "already_running"}
 
-    if not force and job_state.is_done(dedup_key):
-        return {"status": "skipped", "reason": "Already posted to Instagram for this slot"}
+    try:
+        now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
+        biz_date = (now_jst - datetime.timedelta(hours=7)).strftime("%Y-%m-%d")
+        dedup_key = f"ig_post:{biz_date}_{mode}_{slot_label}"
 
-    if mode != "carousel" and not force:
-        dom = threads_poster._filter_domestic_stores(stores)
-        total_dom_women = sum(int(s.get("women") or 0) for s in dom)
-        if total_dom_women < 15:
-            logging.info(f"Skipping Instagram live post ({slot_label}): insufficient live headcount (women={total_dom_women}).")
-            return {"status": "skipped", "reason": "Insufficient live headcount"}
+        if not force and job_state.is_done(dedup_key):
+            return {"status": "skipped", "reason": "Already posted to Instagram for this slot"}
 
-    refresh_ig_token_if_needed(force=False)
-    ts_code = now_jst.strftime("%Y%m%d_%H%M")
-    if mode == "carousel":
-        rep = None
-        try:
-            import weekly_report
-            rep_cand = weekly_report.generate_weekly_report()
-            if isinstance(rep_cand, dict) and "error" not in rep_cand:
-                rep = rep_cand
-        except Exception as e:
-            logging.warning(f"Failed to load weekly report for Instagram carousel: {e}")
+        if mode != "carousel" and not force:
+            dom = threads_poster._filter_domestic_stores(stores)
+            total_dom_women = sum(int(s.get("women") or 0) for s in dom)
+            if total_dom_women < 15:
+                logging.info(f"Skipping Instagram live post ({slot_label}): insufficient live headcount (women={total_dom_women}).")
+                return {"status": "skipped", "reason": "Insufficient live headcount"}
+
+        refresh_ig_token_if_needed(force=False)
+        ts_code = now_jst.strftime("%Y%m%d_%H%M")
+        if mode == "carousel":
             rep = None
+            try:
+                import weekly_report
+                rep_cand = weekly_report.generate_weekly_report()
+                if isinstance(rep_cand, dict) and "error" not in rep_cand:
+                    rep = rep_cand
+            except Exception as e:
+                logging.warning(f"Failed to load weekly report for Instagram carousel: {e}")
+                rep = None
 
-        ctx = ig_carousel_generator.build_forecast_context(report=rep, live_stores=stores, now_jst=now_jst)
-        editorial_winner = None
-        try:
-            import sns_editorial
-            ed_res = sns_editorial.run_editorial_pipeline(
-                stores,
-                slot_label=slot_label,
-                channel="instagram",
-                ig_ctx=ctx,
-                now_jst=now_jst,
-                record_history=not force,
-                use_ai=True,
-                force_ai_refresh=True,
-            )
-            editorial_winner = ed_res.get("winner")
-        except Exception as e:
-            logging.warning(f"Instagram editorial pipeline fallback ({slot_label}): {e}")
-
-        if editorial_winner and editorial_winner.get("main_text"):
-            caption = editorial_winner["main_text"]
-        else:
-            captions = ig_carousel_generator.build_captions(ctx)
-            caption = captions.get("instagram_caption") or ""
-        slide_urls = [
-            f"{SITE_URL}/ogp/ig-slide/{i}.jpg?s={ts_code}"
-            for i in range(1, 6)
-        ]
-        res = post_carousel_to_instagram(slide_urls, caption)
-        res["caption"] = caption
-        res["slide_urls"] = slide_urls
-        if editorial_winner:
-            res["editorial_style"] = editorial_winner.get("style")
-            res["editorial_score"] = editorial_winner.get("total_score")
-    else:
-        editorial_winner = None
-        try:
-            import sns_editorial
-            ed_res = sns_editorial.run_editorial_pipeline(
-                stores,
-                slot_label=slot_label,
-                channel="threads",
-                now_jst=now_jst,
-                record_history=False,
-            )
-            editorial_winner = ed_res.get("winner")
-        except Exception:
+            ctx = ig_carousel_generator.build_forecast_context(report=rep, live_stores=stores, now_jst=now_jst)
             editorial_winner = None
-        caption = (
-            editorial_winner["main_text"]
-            if (editorial_winner and editorial_winner.get("main_text"))
-            else threads_poster.build_threads_live_post(stores, slot_label=slot_label, now_jst=now_jst)
-        )
-        image_url = f"{SITE_URL}/ogp/ig-slide/2.jpg?s={ts_code}"
-        res = post_single_image_to_instagram(image_url, caption)
-        res["caption"] = caption
-        if editorial_winner:
-            res["editorial_style"] = editorial_winner.get("style")
-            res["editorial_score"] = editorial_winner.get("total_score")
+            try:
+                import sns_editorial
+                ed_res = sns_editorial.run_editorial_pipeline(
+                    stores,
+                    slot_label=slot_label,
+                    channel="instagram",
+                    ig_ctx=ctx,
+                    now_jst=now_jst,
+                    record_history=not force,
+                    use_ai=True,
+                    force_ai_refresh=True,
+                )
+                editorial_winner = ed_res.get("winner")
+            except Exception as e:
+                logging.warning(f"Instagram editorial pipeline fallback ({slot_label}): {e}")
 
-    if res.get("status") == "success" and not force:
-        job_state.mark_done(dedup_key)
-    return res
+            if editorial_winner and editorial_winner.get("main_text"):
+                caption = editorial_winner["main_text"]
+            else:
+                captions = ig_carousel_generator.build_captions(ctx)
+                caption = captions.get("instagram_caption") or ""
+            slide_urls = [
+                f"{SITE_URL}/ogp/ig-slide/{i}.jpg?s={ts_code}"
+                for i in range(1, 6)
+            ]
+            _warm_slide_urls(slide_urls, ctx=ctx)
+            res = post_carousel_to_instagram(slide_urls, caption)
+            res["caption"] = caption
+            res["slide_urls"] = slide_urls
+            if editorial_winner:
+                res["editorial_style"] = editorial_winner.get("style")
+                res["editorial_score"] = editorial_winner.get("total_score")
+        else:
+            live_ctx = ig_carousel_generator.build_forecast_context(live_stores=stores, now_jst=now_jst)
+            editorial_winner = None
+            try:
+                import sns_editorial
+                ed_res = sns_editorial.run_editorial_pipeline(
+                    stores,
+                    slot_label=slot_label,
+                    channel="instagram",
+                    ig_ctx=live_ctx,
+                    now_jst=now_jst,
+                    record_history=False,
+                )
+                editorial_winner = ed_res.get("winner")
+            except Exception:
+                editorial_winner = None
+            caption = (
+                editorial_winner["main_text"]
+                if (editorial_winner and editorial_winner.get("main_text"))
+                else ig_carousel_generator.build_captions(live_ctx).get("instagram_caption")
+                or threads_poster.build_threads_live_post(stores, slot_label=slot_label, now_jst=now_jst)
+            )
+            image_url = f"{SITE_URL}/ogp/ig-slide/2.jpg?s={ts_code}"
+            _warm_slide_urls([image_url], ctx=live_ctx)
+            res = post_single_image_to_instagram(image_url, caption)
+            res["caption"] = caption
+            if editorial_winner:
+                res["editorial_style"] = editorial_winner.get("style")
+                res["editorial_score"] = editorial_winner.get("total_score")
+
+        if res.get("status") == "success" and not force:
+            job_state.mark_done(dedup_key)
+        return res
+    finally:
+        _ig_post_lock.release()

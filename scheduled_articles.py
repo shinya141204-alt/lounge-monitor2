@@ -98,6 +98,14 @@ def now_jst_naive() -> datetime.datetime:
     return datetime.datetime.now(JST).replace(tzinfo=None)
 
 
+def _coerce_naive_jst(now_jst: datetime.datetime = None) -> datetime.datetime:
+    if now_jst is None:
+        now_jst = now_jst_naive()
+    if now_jst is not None and now_jst.tzinfo is not None:
+        now_jst = now_jst.astimezone(JST).replace(tzinfo=None)
+    return now_jst
+
+
 def parse_publish_at(publish_at_str: str) -> datetime.datetime:
     return datetime.datetime.strptime(publish_at_str, "%Y-%m-%d %H:%M:%S")
 
@@ -111,7 +119,7 @@ def get_article_by_slug(slug: str) -> dict:
 
 
 def is_published(slug_or_item, now_jst: datetime.datetime = None) -> bool:
-    now_jst = now_jst or now_jst_naive()
+    now_jst = _coerce_naive_jst(now_jst)
     item = slug_or_item if isinstance(slug_or_item, dict) else get_article_by_slug(str(slug_or_item))
     if not item:
         return True  # Non-scheduled legacy articles are already public
@@ -120,7 +128,7 @@ def is_published(slug_or_item, now_jst: datetime.datetime = None) -> bool:
 
 def get_published_articles(now_jst: datetime.datetime = None) -> list:
     """Return scheduled articles whose publish_at has arrived, sorted newest first."""
-    now_jst = now_jst or now_jst_naive()
+    now_jst = _coerce_naive_jst(now_jst)
     published = [item for item in SCHEDULED_ARTICLES if is_published(item, now_jst=now_jst)]
     published.sort(key=lambda x: x["publish_at"], reverse=True)
     return published
@@ -128,7 +136,7 @@ def get_published_articles(now_jst: datetime.datetime = None) -> list:
 
 def get_upcoming_articles(now_jst: datetime.datetime = None) -> list:
     """Return scheduled articles waiting for release, sorted soonest first."""
-    now_jst = now_jst or now_jst_naive()
+    now_jst = _coerce_naive_jst(now_jst)
     upcoming = [item for item in SCHEDULED_ARTICLES if not is_published(item, now_jst=now_jst)]
     upcoming.sort(key=lambda x: x["publish_at"])
     return upcoming
@@ -136,7 +144,7 @@ def get_upcoming_articles(now_jst: datetime.datetime = None) -> list:
 
 def get_all_with_status(now_jst: datetime.datetime = None) -> list:
     """Return all scheduled articles with live `published` boolean flag for `/staff` dashboard."""
-    now_jst = now_jst or now_jst_naive()
+    now_jst = _coerce_naive_jst(now_jst)
     out = []
     for item in sorted(SCHEDULED_ARTICLES, key=lambda x: x["publish_at"]):
         copy_item = dict(item)
@@ -145,7 +153,7 @@ def get_all_with_status(now_jst: datetime.datetime = None) -> list:
     return out
 
 
-def check_and_announce_newly_published(app_url: str = "") -> list:
+def check_and_announce_newly_published(app_url: str = "", now_jst: datetime.datetime = None) -> list:
     """
     Called periodically by APScheduler.
     If an article's `publish_at` has arrived (within the last 72h) and hasn't been announced on X yet,
@@ -155,7 +163,7 @@ def check_and_announce_newly_published(app_url: str = "") -> list:
     import job_state
     import x_poster
 
-    now_jst = now_jst_naive()
+    now_jst = _coerce_naive_jst(now_jst)
     site_url = (app_url or os.environ.get("PUBLIC_SITE_URL") or "https://aiseki-navi.com").rstrip("/")
     results = []
 

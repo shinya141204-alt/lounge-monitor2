@@ -747,7 +747,7 @@
 
                 let bizDateMs = nowJstMs;
                 let curMinutes = jstHour * 60 + jstMin;
-                if (jstHour < 12) {
+                if (jstHour < 7) {
                     bizDateMs = nowJstMs - 86400 * 1000;
                     curMinutes = (24 + jstHour) * 60 + jstMin;
                 }
@@ -1092,13 +1092,29 @@
                 }
             }
 
-            syncStoreDetail();
-            setInterval(syncStoreDetail, 60000);
+            // SSR already rendered fresh live counts; only sync immediately on bfcache back-navigation
+            const navEntry = (window.performance && performance.getEntriesByType) ? performance.getEntriesByType('navigation')[0] : null;
+            if (navEntry && navEntry.type === 'back_forward') {
+                syncStoreDetail();
+            }
+            let lastSyncedAt = Date.now();
+            setInterval(() => {
+                if (document.visibilityState !== 'hidden') {
+                    lastSyncedAt = Date.now();
+                    syncStoreDetail();
+                }
+            }, 60000);
             window.addEventListener('pageshow', (ev) => {
-                if (ev.persisted) syncStoreDetail();
+                if (ev.persisted) {
+                    lastSyncedAt = Date.now();
+                    syncStoreDetail();
+                }
             });
             document.addEventListener('visibilitychange', () => {
-                if (document.visibilityState === 'visible') syncStoreDetail();
+                if (document.visibilityState === 'visible' && (Date.now() - lastSyncedAt > 45000)) {
+                    lastSyncedAt = Date.now();
+                    syncStoreDetail();
+                }
             });
         })();
     </script>

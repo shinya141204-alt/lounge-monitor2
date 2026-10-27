@@ -8,6 +8,7 @@ analytics.py - 自前の軽量アクセス集計（個人情報なし）
 ・集計画面（/staff/analytics）は Sheets の値＋未送信分を合算して表示
 """
 import datetime
+import time
 import threading
 import logging
 from collections import defaultdict
@@ -32,6 +33,8 @@ ALLOWED_EVENTS = {
 _lock = threading.Lock()
 _pending = defaultdict(int)   # (date, event, label) -> count（Sheets未送信）
 _flushed = defaultdict(int)   # 起動後に送信済みの分（Sheets読込失敗時の表示用）
+_SHEET_ROWS_CACHE_TTL = 60.0
+_sheet_rows_cache = {'ts': 0.0, 'rows': None}
 
 
 def _today():
@@ -49,7 +52,13 @@ def track(event, label=''):
 
 def flush():
     """未送信分を Sheets に追記。失敗したら戻して次回再送。"""
+    cutoff_3d = (
+        datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
+        - datetime.timedelta(days=3)
+    ).strftime('%Y-%m-%d')
     with _lock:
+        for k in [k for k in _flushed.keys() if k[0] <= cutoff_3d]:
+            del _flushed[k]
         if not _pending:
             return 0
         items = list(_pending.items())
@@ -59,9 +68,12 @@ def flush():
     with _lock:
         for key, c in items:
             if ok:
-                _flushed[key] += c
+                if key[0] > cutoff_3d:
+                    _flushed[key] += c
             else:
                 _pending[key] += c
+        if ok:
+            _sheet_rows_cache['ts'] = 0.0
     if not ok:
         logging.warning('[analytics] flush failed; will retry')
     return len(rows) if ok else 0
@@ -79,7 +91,7 @@ _PAGE_TITLES = {
     '/jis': '💎 JIS（ジス）全店リアルタイム一覧',
     '/guide': '📖 相席ラウンジ完全攻略ガイド（基本編）',
     '/guide/strategy': '📖 相席ラウンジ完全攻略ガイド（基本編）',
-    '/guide/brand-comparison': '📖 3大ブランド徹底比較（オリエンタル・ag・JIS）',
+    '/guide/brand-comparison': '📖 3大ブランド徹底比較（オリエンタルラウンジ・ag・JIS）',
     '/guide/weekday-strategy': '📖 水曜・木曜の平日穴場攻略コラム',
     '/guide/weekend-strategy': '📖 金曜・土曜ピークの待ち時間回避＆ハシゴ攻略',
     '/guide/shinjuku': '📖 新宿エリア3店舗の使い分け・穴場ガイド',
@@ -174,6 +186,8 @@ def describe_label(event, raw_label):
 
     if event in ('store_open', 'map_cafe', 'map_bar', 'official_click', 'vote'):
         sname = label.split(':', 1)[0].strip() if ':' in label else label
+        vtype = label.split(':', 1)[1].strip() if (event == 'vote' and ':' in label) else ''
+        vtype_ja = {'smooth': 'すぐ入れた', 'waiting': '少し待ち', 'lively': '大盛況'}.get(vtype, vtype)
         try:
             import store_master
             info = store_master.get(sname)
@@ -181,8 +195,9 @@ def describe_label(event, raw_label):
                 seo = store_master.seo_name(sname)
                 area = info.get('area_label', '')
                 slug = store_master.slug_of(sname)
+                title_suffix = f'（{vtype_ja}）' if vtype_ja else ''
                 return {
-                    'title': f'🏪 {seo}',
+                    'title': f'🏪 {seo}{title_suffix}',
                     'sub': f'{area}（{sname}）' if area else sname,
                     'href': f'/store/{slug}' if slug else ''
                 }
@@ -207,7 +222,22 @@ def summary(days=7):
     yesterday_str = (now_jst - datetime.timedelta(days=1)).strftime('%Y-%m-%d')
 
     totals = defaultdict(int)
-    sheet_rows = sheets_store.read_rows(SHEET_TITLE, HEADER)
+    if getattr(sheets_store.read_rows, '__module__', '') != 'sheets_store':
+        sheet_rows = sheets_store.read_rows(SHEET_TITLE, HEADER)
+    elif sheets_store.is_disabled():
+        sheet_rows = []
+    else:
+        now_mono = time.monotonic()
+        with _lock:
+            cached_ts = _sheet_rows_cache['ts']
+            cached_rows = _sheet_rows_cache['rows']
+        if cached_rows is not None and cached_ts > 0.0 and (now_mono - cached_ts < _SHEET_ROWS_CACHE_TTL):
+            sheet_rows = cached_rows
+        else:
+            sheet_rows = sheets_store.read_rows(SHEET_TITLE, HEADER)
+            with _lock:
+                _sheet_rows_cache['ts'] = time.monotonic()
+                _sheet_rows_cache['rows'] = sheet_rows
     if sheet_rows:
         for r in sheet_rows:
             if len(r) >= 4 and r[0] >= start:
@@ -340,3 +370,5 @@ def reset_for_tests():
     with _lock:
         _pending.clear()
         _flushed.clear()
+        _sheet_rows_cache['ts'] = 0.0
+        _sheet_rows_cache['rows'] = None

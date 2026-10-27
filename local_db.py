@@ -10,19 +10,27 @@ import requests
 
 DB_PATH = os.environ.get('LOCAL_DB_PATH') or os.path.join(os.path.dirname(os.path.abspath(__file__)), 'lounge_data.db')
 _db_lock = threading.Lock()
+_read_tls = threading.local()
 _sync_in_progress = False
 _full_sync_completed = False
 _partial_recent_only = False
 _sync_complete_callbacks = []
 _store_7d_cache = {}
 _STORE_7D_TTL = 180.0
+_STORE_7D_CACHE_MAX = 128
 _live_benchmarks_cache = {}
 _LIVE_BENCHMARKS_TTL = 600.0
+_LIVE_BENCHMARKS_CACHE_MAX = 8
 _live_benchmarks_computing = False
 _live_benchmarks_lock = threading.Lock()
+_db_stats_cache = {}
+_DB_STATS_TTL = 30.0
+_store_backfill_in_flight = set()
+_store_backfill_lock = threading.Lock()
 
 
 def clear_store_7d_cache(store_name: str = None, clear_benchmarks: bool = False):
+    _db_stats_cache.clear()
     if store_name:
         _store_7d_cache.pop((DB_PATH, store_name), None)
     else:
@@ -91,6 +99,41 @@ def get_connection():
         pass
     return conn
 
+
+def _get_read_connection():
+    """Returns a persistent per-thread SQLite read connection, reopening if DB_PATH changed or was recreated."""
+    conn = getattr(_read_tls, 'conn', None)
+    tls_db_path = getattr(_read_tls, 'db_path', None)
+    tls_inode = getattr(_read_tls, 'db_inode', None)
+    exists_now = os.path.exists(DB_PATH)
+    cur_inode = None
+    if exists_now:
+        try:
+            cur_inode = os.stat(DB_PATH).st_ino
+        except OSError:
+            exists_now = False
+    if conn is not None and tls_db_path == DB_PATH and exists_now and tls_inode == cur_inode:
+        conn.row_factory = sqlite3.Row
+        return conn
+    if conn is not None:
+        try:
+            conn.close()
+        except Exception:
+            pass
+        _read_tls.conn = None
+        _read_tls.db_path = None
+        _read_tls.db_inode = None
+    conn = get_connection()
+    try:
+        cur_inode = os.stat(DB_PATH).st_ino if os.path.exists(DB_PATH) else None
+    except OSError:
+        cur_inode = None
+    _read_tls.conn = conn
+    _read_tls.db_path = DB_PATH
+    _read_tls.db_inode = cur_inode
+    return conn
+
+
 def init_db():
     """Initializes tables, indexes, and WAL mode for high performance."""
     with _db_lock:
@@ -112,6 +155,7 @@ def init_db():
             """)
             cur.execute("CREATE INDEX IF NOT EXISTS idx_store_ts ON monitor_logs(store_name, timestamp);")
             cur.execute("CREATE INDEX IF NOT EXISTS idx_ts ON monitor_logs(timestamp);")
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_ts_store_wm ON monitor_logs(timestamp, store_name, women, men);")
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS crowd_votes (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -122,7 +166,9 @@ def init_db():
                 );
             """)
             cur.execute("CREATE INDEX IF NOT EXISTS idx_votes_store_ts ON crowd_votes(store_name, timestamp);")
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_votes_ts ON crowd_votes(timestamp, store_name, vote_type);")
             conn.commit()
+            _db_stats_cache.clear()
             print("[local_db] SQLite database initialized successfully (WAL mode enabled).")
         except Exception as e:
             print(f"[local_db] Error initializing SQLite: {e}", file=sys.stderr)
@@ -226,7 +272,8 @@ def get_store_history(store_name, days=30):
     start_dt = now_jst - datetime.timedelta(days=days)
     start_ts = start_dt.strftime("%Y-%m-%d %H:%M:%S")
 
-    conn = get_connection()
+    conn = _get_read_connection()
+    cur = None
     try:
         conn.row_factory = None
         cur = conn.cursor()
@@ -250,14 +297,20 @@ def get_store_history(store_name, days=30):
         print(f"[local_db] Query store history error: {e}", file=sys.stderr)
         return []
     finally:
-        conn.close()
+        if cur is not None:
+            try:
+                cur.close()
+            except Exception:
+                pass
+        conn.row_factory = sqlite3.Row
 
 def get_weekly_history(start_ts_str):
     """
     Retrieves all store records from start_ts_str to current from SQLite.
     Returns: list of dicts [{'ts': ..., 'name': ..., 'men': ..., 'women': ..., 'source': ...}]
     """
-    conn = get_connection()
+    conn = _get_read_connection()
+    cur = None
     try:
         conn.row_factory = None
         cur = conn.cursor()
@@ -282,24 +335,48 @@ def get_weekly_history(start_ts_str):
         print(f"[local_db] Query weekly history error: {e}", file=sys.stderr)
         return []
     finally:
-        conn.close()
+        if cur is not None:
+            try:
+                cur.close()
+            except Exception:
+                pass
+        conn.row_factory = sqlite3.Row
 
 def get_db_stats():
-    """Returns row count and time range from SQLite."""
-    conn = get_connection()
+    """Returns row count and time range from SQLite with O(1) index min/max lookup and 30s memory cache."""
+    now_mono = time.monotonic()
+    cached = _db_stats_cache.get(DB_PATH)
+    if cached is not None and os.path.exists(DB_PATH) and (now_mono - cached[0] < _DB_STATS_TTL):
+        return dict(cached[1])
+
+    conn = _get_read_connection()
+    cur = None
     try:
         cur = conn.cursor()
-        cur.execute("SELECT COUNT(*), MIN(timestamp), MAX(timestamp) FROM monitor_logs")
-        count, min_ts, max_ts = cur.fetchone()
-        return {
+        cur.execute(
+            "SELECT (SELECT COUNT(*) FROM monitor_logs), "
+            "(SELECT MIN(timestamp) FROM monitor_logs), "
+            "(SELECT MAX(timestamp) FROM monitor_logs)"
+        )
+        row = cur.fetchone()
+        count, min_ts, max_ts = (row[0], row[1], row[2]) if row else (0, None, None)
+        res = {
             'count': count or 0,
             'min_timestamp': min_ts,
             'max_timestamp': max_ts
         }
+        if len(_db_stats_cache) >= 8:
+            _db_stats_cache.clear()
+        _db_stats_cache[DB_PATH] = (now_mono, res)
+        return dict(res)
     except Exception as e:
         return {'count': 0, 'error': str(e)}
     finally:
-        conn.close()
+        if cur is not None:
+            try:
+                cur.close()
+            except Exception:
+                pass
 
 def _fetch_gviz_rows_and_insert(query: str, timeout: int = 35) -> int:
     """Executes a Google Sheets gviz query and inserts returned rows into SQLite."""
@@ -401,7 +478,7 @@ def sync_store_from_google_sheets(store_name: str, days: int = 14) -> int:
         now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
         start_dt = (now_jst - datetime.timedelta(days=days)).replace(hour=0, minute=0, second=0)
         start_ts_str = start_dt.strftime("%Y-%m-%d %H:%M:%S")
-        safe_store = store_name.replace("'", "\\'")
+        safe_store = store_name.replace("\\", "\\\\").replace("'", "\\'")
         query = f"SELECT A, B, C, D, E WHERE B = '{safe_store}' AND A >= '{start_ts_str}'"
         count = _fetch_gviz_rows_and_insert(query, timeout=15)
         if count:
@@ -410,6 +487,29 @@ def sync_store_from_google_sheets(store_name: str, days: int = 14) -> int:
     except Exception as e:
         print(f"[local_db] Store backfill error for {store_name}: {e}", file=sys.stderr)
         return 0
+
+
+def _trigger_store_backfill_async(store_name: str, days: int = 10):
+    """Runs `sync_store_from_google_sheets` in a deduplicated background thread so HTTP requests never block."""
+    if not store_name:
+        return
+    inflight_key = (DB_PATH, store_name)
+    with _store_backfill_lock:
+        if inflight_key in _store_backfill_in_flight:
+            return
+        _store_backfill_in_flight.add(inflight_key)
+
+    def _worker():
+        try:
+            sync_store_from_google_sheets(store_name, days=days)
+            clear_store_7d_cache(store_name)
+        except Exception as err:
+            print(f"[local_db] async store backfill error for {store_name}: {err}", file=sys.stderr)
+        finally:
+            with _store_backfill_lock:
+                _store_backfill_in_flight.discard(inflight_key)
+
+    threading.Thread(target=_worker, daemon=True).start()
 
 
 def _notify_sync_complete():
@@ -456,12 +556,21 @@ def sync_from_google_sheets(days=30, on_recent_synced=None):
         # Shortcut: if local SQLite already covers the requested history window, only sync delta since max_ts
         try:
             target_min_str = (now_jst - datetime.timedelta(days=max(1, int(days)) - 1)).strftime("%Y-%m-%d 00:00:00")
-            conn = get_connection()
+            conn = _get_read_connection()
+            cur = None
             try:
-                cur = conn.execute("SELECT COUNT(*), MIN(timestamp), MAX(timestamp) FROM monitor_logs")
+                cur = conn.execute(
+                    "SELECT (SELECT COUNT(*) FROM monitor_logs), "
+                    "(SELECT MIN(timestamp) FROM monitor_logs), "
+                    "(SELECT MAX(timestamp) FROM monitor_logs)"
+                )
                 cnt_row = cur.fetchone()
             finally:
-                conn.close()
+                if cur is not None:
+                    try:
+                        cur.close()
+                    except Exception:
+                        pass
             if cnt_row and int(cnt_row[0] or 0) >= 8000 and cnt_row[1] and cnt_row[2] and str(cnt_row[1]) <= target_min_str:
                 delta_query = f"SELECT A, B, C, D, E WHERE A >= '{cnt_row[2]}'"
                 delta_imported = _fetch_gviz_rows_and_insert(delta_query, timeout=25)
@@ -537,7 +646,8 @@ def get_snapshot_around(minutes_ago_min=10, minutes_ago_max=25):
     if minutes_ago_min == 10 and minutes_ago_max == 25:
         windows.append((5, 45))
     try:
-        conn = get_connection()
+        conn = _get_read_connection()
+        cur = None
         try:
             cur = conn.cursor()
             for w_min, w_max in windows:
@@ -559,7 +669,11 @@ def get_snapshot_around(minutes_ago_min=10, minutes_ago_max=25):
                     return result
             return {}
         finally:
-            conn.close()
+            if cur is not None:
+                try:
+                    cur.close()
+                except Exception:
+                    pass
     except Exception:
         return {}
 
@@ -658,7 +772,8 @@ def restore_votes_from_sheets(hours=24):
     cutoff = (now_jst - datetime.timedelta(hours=hours)).strftime("%Y-%m-%d %H:%M:%S")
     existing_keys = set()
     try:
-        conn = get_connection()
+        conn = _get_read_connection()
+        cur = None
         try:
             cur = conn.execute(
                 "SELECT timestamp, store_name, vote_type, COALESCE(ip_hash, '') FROM crowd_votes WHERE timestamp >= ?",
@@ -667,7 +782,11 @@ def restore_votes_from_sheets(hours=24):
             for row in cur.fetchall():
                 existing_keys.add((str(row[0]), str(row[1]), str(row[2]), str(row[3])))
         finally:
-            conn.close()
+            if cur is not None:
+                try:
+                    cur.close()
+                except Exception:
+                    pass
         import sheets_store
         rows = sheets_store.read_rows(VOTE_SHEET_TITLE, VOTE_SHEET_HEADER)
     except Exception as e:
@@ -709,7 +828,8 @@ def get_recent_votes(store_name=None, hours=4):
 
     used_db = False
     try:
-        conn = get_connection()
+        conn = _get_read_connection()
+        cur = None
         try:
             cur = conn.cursor()
             if store_name:
@@ -735,7 +855,11 @@ def get_recent_votes(store_name=None, hours=4):
                     counts_by_store[sname][vtype] = int(r['cnt'])
             used_db = True
         finally:
-            conn.close()
+            if cur is not None:
+                try:
+                    cur.close()
+                except Exception:
+                    pass
     except Exception:
         pass
 
@@ -770,8 +894,7 @@ def get_store_7day_analytics(store_name: str) -> dict:
     weekdays_ja = ["月", "火", "水", "木", "金", "土", "日"]
     rows = get_store_history(store_name, days=10)
     if is_partial_recent_only() and not has_multi_day_span(rows):
-        if sync_store_from_google_sheets(store_name, days=10) > 0:
-            rows = get_store_history(store_name, days=10)
+        _trigger_store_backfill_async(store_name, days=10)
 
     daily_buckets = defaultdict(list)
     slot_ratios = defaultdict(list)
@@ -875,7 +998,7 @@ def get_store_7day_analytics(store_name: str) -> dict:
     strong_midnight = is_club_area or (avg_peak_w > 0 and avg_mid_w >= avg_peak_w * 0.55)
 
     # Pull 30-day benchmark metrics (core time, midnight retention %, usual women/men)
-    benchmarks = get_all_stores_live_benchmarks().get(store_name, {})
+    benchmarks = get_all_stores_live_benchmarks(allow_blocking=False).get(store_name, {})
     midnight_retention_pct = benchmarks.get("midnight_retention_pct")
     if midnight_retention_pct is None:
         if avg_peak_w >= 2.0 and avg_mid_w > 0:
@@ -912,6 +1035,11 @@ def get_store_7day_analytics(store_name: str) -> dict:
         "votes_24h": votes_24h,
     }
     _store_7d_cache[cache_key] = (time.monotonic(), result)
+    if len(_store_7d_cache) > _STORE_7D_CACHE_MAX:
+        items_snap = list(_store_7d_cache.items())
+        items_snap.sort(key=lambda kv: kv[1][0])
+        for k, _ in items_snap[:max(1, len(items_snap) - _STORE_7D_CACHE_MAX)]:
+            _store_7d_cache.pop(k, None)
     return result
 
 
@@ -966,7 +1094,8 @@ def get_all_stores_live_benchmarks(now_jst: datetime.datetime = None, allow_bloc
     _date_memo = {}
 
     if os.path.exists(DB_PATH):
-        conn = get_connection()
+        conn = _get_read_connection()
+        cur = None
         try:
             cur = conn.cursor()
             cur.execute(
@@ -989,7 +1118,11 @@ def get_all_stores_live_benchmarks(now_jst: datetime.datetime = None, allow_bloc
             print(f"[local_db] get_all_stores_live_benchmarks error: {e}", file=sys.stderr)
             grouped_rows = []
         finally:
-            conn.close()
+            if cur is not None:
+                try:
+                    cur.close()
+                except Exception:
+                    pass
     else:
         grouped_rows = []
 
@@ -1150,4 +1283,9 @@ def get_all_stores_live_benchmarks(now_jst: datetime.datetime = None, allow_bloc
         }
 
     _live_benchmarks_cache[cache_key] = (time.monotonic(), out)
+    if len(_live_benchmarks_cache) > _LIVE_BENCHMARKS_CACHE_MAX:
+        items_snap = list(_live_benchmarks_cache.items())
+        items_snap.sort(key=lambda kv: kv[1][0])
+        for k, _ in items_snap[:max(1, len(items_snap) - _LIVE_BENCHMARKS_CACHE_MAX)]:
+            _live_benchmarks_cache.pop(k, None)
     return out

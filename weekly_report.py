@@ -2,14 +2,17 @@ import datetime
 from collections import defaultdict
 import statistics
 import json
+import threading
 import urllib.parse
 import local_db
 import sys
 
+_report_lock = threading.Lock()
 _report_cache = {
     'last_fetched': None,
     'data': None
 }
+_report_cache_db_path = None
 REPORT_CACHE_DURATION = 1800  # Cache for 30 minutes
 
 
@@ -21,11 +24,25 @@ def get_business_date_str(dt):
 
 
 def generate_weekly_report():
-    global _report_cache
     now_utc = datetime.datetime.now()
-    if _report_cache['data'] and _report_cache['last_fetched']:
-        if (now_utc - _report_cache['last_fetched']).total_seconds() < REPORT_CACHE_DURATION:
-            return _report_cache['data']
+    cached_data = _report_cache.get('data')
+    cached_lf = _report_cache.get('last_fetched')
+    if cached_data and cached_lf and _report_cache_db_path in (None, local_db.DB_PATH):
+        if (now_utc - cached_lf).total_seconds() < REPORT_CACHE_DURATION:
+            return cached_data
+
+    with _report_lock:
+        now_utc = datetime.datetime.now()
+        cached_data = _report_cache.get('data')
+        cached_lf = _report_cache.get('last_fetched')
+        if cached_data and cached_lf and _report_cache_db_path in (None, local_db.DB_PATH):
+            if (now_utc - cached_lf).total_seconds() < REPORT_CACHE_DURATION:
+                return cached_data
+        return _compute_weekly_report_locked(now_utc)
+
+
+def _compute_weekly_report_locked(now_utc: datetime.datetime):
+    global _report_cache, _report_cache_db_path
 
     # Define the 7-day period in JST (excluding today to get full past 7 days)
     now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
@@ -333,5 +350,6 @@ def generate_weekly_report():
         })
 
     _report_cache['data'] = report
-    _report_cache['last_fetched'] = now_utc
+    _report_cache['last_fetched'] = datetime.datetime.now()
+    _report_cache_db_path = local_db.DB_PATH
     return report

@@ -34,11 +34,25 @@ _olg_cache = {
     'last_success': None
 }
 
+_http_tls = threading.local()
+
+
+def _get_http_session():
+    """Returns a thread-local requests.Session for HTTP Keep-Alive, falling back to `requests` when patched in tests."""
+    if getattr(requests.get, '__module__', '') != 'requests.api':
+        return requests
+    session = getattr(_http_tls, 'session', None)
+    if session is None:
+        session = requests.Session()
+        _http_tls.session = session
+    return session
+
+
 def get_oriental_data():
     global _olg_cache
     _olg_cache['served_stale'] = False
     try:
-        response = requests.get(ORIENTAL_URL, timeout=(3, 7), headers=_HEADERS)
+        response = _get_http_session().get(ORIENTAL_URL, timeout=(3, 7), headers=_HEADERS)
         response.raise_for_status()
     except Exception as e:
         import logging; logging.error(f"Error fetching Oriental data: {e}")
@@ -95,7 +109,7 @@ def get_oriental_data():
 
 def get_jis_data():
     try:
-        response = requests.get(JIS_URL, headers=_HEADERS, timeout=(3, 7))
+        response = _get_http_session().get(JIS_URL, headers=_HEADERS, timeout=(3, 7))
         response.raise_for_status()
     except requests.RequestException as e:
         import logging; logging.error(f"Error fetching JIS data: {e}")
@@ -156,7 +170,7 @@ def get_jis_data():
 
 def get_xix_data():
     try:
-        response = requests.get(XIX_URL, headers=_HEADERS, timeout=(3, 7))
+        response = _get_http_session().get(XIX_URL, headers=_HEADERS, timeout=(3, 7))
         response.raise_for_status()
         data = response.json()
         
@@ -176,7 +190,7 @@ def get_xix_data():
 
 def get_alfa_data():
     try:
-        response = requests.get(ALFA_URL, headers=_HEADERS, timeout=(3, 7))
+        response = _get_http_session().get(ALFA_URL, headers=_HEADERS, timeout=(3, 7))
         response.raise_for_status()
         try:
             data = response.json()
@@ -199,7 +213,7 @@ def get_alfa_data():
 
 def get_yatakoi_data(now_jst=None):
     try:
-        response = requests.get(YATAKOI_URL, headers=_HEADERS, timeout=(3, 7))
+        response = _get_http_session().get(YATAKOI_URL, headers=_HEADERS, timeout=(3, 7))
         response.raise_for_status()
         data = response.json()
         
@@ -238,7 +252,7 @@ def get_yatakoi_data(now_jst=None):
 def get_clovers_data():
     """Scrape 相席CLOVERS (Hiroshima) from bar-clovers.com"""
     try:
-        response = requests.get("https://bar-clovers.com/", headers=_HEADERS, timeout=(3, 7))
+        response = _get_http_session().get("https://bar-clovers.com/", headers=_HEADERS, timeout=(3, 7))
         response.raise_for_status()
     except Exception as e:
         import logging; logging.error(f"Error fetching CLOVERS data: {e}")
