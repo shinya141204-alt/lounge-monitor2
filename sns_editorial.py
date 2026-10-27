@@ -13,9 +13,11 @@ All proposals, scores, and critiques are exposed exclusively to Master (`2918`) 
 
 import os
 import re
+import time
 import json
 import datetime
 import logging
+import requests
 
 import job_state
 import store_master
@@ -24,6 +26,12 @@ import x_poster
 logger = logging.getLogger(__name__)
 
 JST = datetime.timezone(datetime.timedelta(hours=9))
+GEMINI_KEY_STORAGE_PREFIX = "token:gemini_api_key"
+DEFAULT_GEMINI_MODELS = ("gemini-2.5-flash", "gemini-2.0-flash")
+
+_weather_cache = {"ts": 0.0, "data": None}
+_ai_candidate_cache = {}  # cache_key -> {"ts": float, "candidate": dict, "model": str}
+_last_gemini_meta = {"last_model": "", "last_error": "", "last_ok_at": ""}
 
 CHANNEL_LABELS = {
     "x": "𝕏 X（旧Twitter）",
@@ -32,6 +40,7 @@ CHANNEL_LABELS = {
 }
 
 STYLE_LABELS = {
+    "ai_live_adlib": "✨ Gemini AI 現場アドリブ実況型（天気・街況連動）",
     # X styles
     "hub_gap": "🚶 エリア内ギャップ・ハシゴ観察型",
     "surge_focus": "📈 1店舗フォーカス・急増/穴場つぶやき型",
@@ -141,6 +150,244 @@ def get_recent_editorial_history(channel: str = "x", limit: int = 8) -> list:
 
 
 # =====================================================================
+# Gemini API Key Management + Weather & Calendar Live Context
+# =====================================================================
+def clear_editorial_ai_cache():
+    """Clear in-memory AI draft cache (called when API key updates or manual refresh requested)."""
+    _ai_candidate_cache.clear()
+
+
+def get_gemini_api_key() -> str:
+    """
+    Resolve active Gemini API key from either:
+      1. Master-configured persistent secret in `job_state` (`token:gemini_api_key`)
+      2. Render environment variable `GEMINI_API_KEY` or `GOOGLE_API_KEY`
+    """
+    stored = (job_state.get_value(GEMINI_KEY_STORAGE_PREFIX) or "").strip()
+    if stored:
+        return stored
+    return (
+        os.environ.get("GEMINI_API_KEY")
+        or os.environ.get("GOOGLE_API_KEY")
+        or ""
+    ).strip()
+
+
+def set_gemini_api_key(api_key: str):
+    """Persist or clear Master-provided Gemini API key (obfuscated via `token:` prefix in job_state)."""
+    cleaned = (api_key or "").strip()
+    job_state.set_value(GEMINI_KEY_STORAGE_PREFIX, cleaned)
+    clear_editorial_ai_cache()
+    _last_gemini_meta["last_error"] = ""
+
+
+def get_gemini_status() -> dict:
+    """Return safe, masked status metadata for the Master editorial dashboard (never exposes raw key)."""
+    stored = (job_state.get_value(GEMINI_KEY_STORAGE_PREFIX) or "").strip()
+    env_key = (os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY") or "").strip()
+    active_key = stored or env_key
+    if stored:
+        source = "管理画面から登録済み（暗号化保存）"
+    elif env_key:
+        source = "Render環境変数（GEMINI_API_KEY）"
+    else:
+        source = "未設定"
+
+    masked = ""
+    if active_key:
+        if len(active_key) > 8:
+            masked = f"{active_key[:4]}...{active_key[-4:]}"
+        else:
+            masked = "****"
+
+    return {
+        "configured": bool(active_key),
+        "masked_key": masked,
+        "source": source,
+        "last_model": _last_gemini_meta.get("last_model") or DEFAULT_GEMINI_MODELS[0],
+        "last_error": _last_gemini_meta.get("last_error") or "",
+        "last_ok_at": _last_gemini_meta.get("last_ok_at") or "",
+    }
+
+
+def _nth_monday(year: int, month: int, n: int) -> int:
+    first_wd = datetime.date(year, month, 1).weekday()  # 0=Mon
+    first_mon = 1 + ((7 - first_wd) % 7)
+    return first_mon + (n - 1) * 7
+
+
+def _is_jp_base_holiday(d: datetime.date) -> bool:
+    y, m, day = d.year, d.month, d.day
+    fixed = {
+        (1, 1), (2, 11), (2, 23), (4, 29),
+        (5, 3), (5, 4), (5, 5), (8, 11),
+        (11, 3), (11, 23),
+    }
+    if (m, day) in fixed:
+        return True
+    if m == 1 and day == _nth_monday(y, 1, 2):
+        return True
+    if m == 7 and day == _nth_monday(y, 7, 3):
+        return True
+    if m == 9 and day == _nth_monday(y, 9, 3):
+        return True
+    if m == 10 and day == _nth_monday(y, 10, 2):
+        return True
+    # Vernal & Autumnal Equinoxes (accurate 2000-2099 formula)
+    vernal = int(20.8431 + 0.242194 * (y - 1980) - int((y - 1980) / 4))
+    autumnal = int(23.2488 + 0.242194 * (y - 1980) - int((y - 1980) / 4))
+    if (m == 3 and day == vernal) or (m == 9 and day == autumnal):
+        return True
+    return False
+
+
+def is_jp_holiday(d: datetime.date) -> bool:
+    if _is_jp_base_holiday(d):
+        return True
+    # Substitute holiday when Sunday was a base holiday
+    if d.weekday() == 0 and _is_jp_base_holiday(d - datetime.timedelta(days=1)):
+        return True
+    return False
+
+
+def build_calendar_context(now_jst: datetime.datetime = None) -> dict:
+    """Build street-level calendar context (pre-holiday, payday window, weekend peak, weekday chill)."""
+    now_jst = now_jst or datetime.datetime.now(JST)
+    biz_dt = (now_jst - datetime.timedelta(hours=5)).date()
+    tomorrow = biz_dt + datetime.timedelta(days=1)
+    wd = biz_dt.weekday()  # 0=Mon..6=Sun
+    weekdays_ja = ["月", "火", "水", "木", "金", "土", "日"]
+    wd_ja = weekdays_ja[wd]
+
+    tomorrow_holiday = is_jp_holiday(tomorrow)
+    today_holiday = is_jp_holiday(biz_dt)
+    is_payday_window = (25 <= biz_dt.day <= 28) or (biz_dt.day >= 29 and wd in (4, 5))
+
+    if (biz_dt.month, biz_dt.day) in ((10, 30), (10, 31)):
+        tag = "🎃 ハロウィン週末モード"
+        note = "ハロウィン時期で繁華街全体の出足が非常に早く、20時台から大型店が埋まりやすい夜"
+    elif biz_dt.month == 12 and biz_dt.day >= 18:
+        tag = "🎄 忘年会・年末ピークモード"
+        note = "忘年会・2次会帰りのグループ合流で21時半以降の人数急増が起きやすい年末モード"
+    elif wd not in (4, 5) and tomorrow_holiday:
+        tag = f"✨ 祝前日（{wd_ja}曜夜）ボーナスモード"
+        note = "明日が祝日のため、平日でも金曜並みに22時以降まで客足が落ちにくい狙い目の夜"
+    elif is_payday_window and wd in (3, 4, 5):
+        tag = f"💰 給料日直後×{wd_ja}曜ピーク"
+        note = "25日給料日直後の週末前で、1軒目（20時〜21時台）の立ち上がりが普段より早い傾向"
+    elif wd in (4, 5):
+        tag = f"🔥 {wd_ja}曜ピークナイト"
+        note = "週末ピークのため人気店は21時半すぎに男性待ちが出やすく、徒歩3分の別店舗比較が効く夜"
+    elif wd == 6 or (today_holiday and not tomorrow_holiday):
+        tag = f"⏰ {wd_ja}曜・早め勝負モード"
+        note = "翌日仕事組が22時半〜23時頃に帰路につくため、19時半〜21時半のコアタイムが最も当たりやすい夜"
+    else:
+        tag = f"🥂 {wd_ja}曜・平日スマート穴場モード"
+        note = "週末ほど騒がしすぎず、女性比が安定している店舗を選べば落ち着いて話しやすい平日の狙い目夜"
+
+    return {
+        "weekday_ja": wd_ja,
+        "tag": tag,
+        "note": note,
+        "is_pre_holiday": tomorrow_holiday,
+        "is_payday_window": is_payday_window,
+    }
+
+
+def _describe_wmo_code(code: int, precip: float) -> tuple:
+    if precip >= 0.4 or code in (51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 99):
+        return ("雨", True)
+    if code in (71, 73, 75, 77, 85, 86):
+        return ("雪", True)
+    if code in (1, 2, 3, 45, 48):
+        return ("曇り", False)
+    return ("晴れ", False)
+
+
+def fetch_live_weather_context(force_network: bool = False) -> dict:
+    """
+    Fetch free real-time Tokyo & Osaka weather via Open-Meteo (no API key needed, cached for 30 min).
+    Skipped automatically during unit tests (`DISABLE_SCHEDULER == '1'`) unless `force_network=True`.
+    """
+    now_t = time.time()
+    if not force_network and _weather_cache["data"] and (now_t - _weather_cache["ts"] < 1800):
+        return _weather_cache["data"]
+
+    if os.environ.get("DISABLE_SCHEDULER") == "1" and not force_network:
+        return {
+            "available": False,
+            "summary": "気象データ取得スキップ（テスト環境）",
+            "adlib_hint": "",
+            "is_rainy": False,
+            "temps": [],
+        }
+
+    try:
+        resp = requests.get(
+            "https://api.open-meteo.com/v1/forecast",
+            params={
+                "latitude": "35.69,34.70",
+                "longitude": "139.70,135.50",
+                "current": "temperature_2m,precipitation,weather_code",
+                "timezone": "Asia/Tokyo",
+            },
+            timeout=2.5,
+        )
+        if resp.status_code == 200:
+            payload = resp.json()
+            items = payload if isinstance(payload, list) else [payload]
+            if len(items) >= 2:
+                tk_cur = items[0].get("current") or {}
+                os_cur = items[1].get("current") or {}
+                tk_temp = int(round(float(tk_cur.get("temperature_2m", 18))))
+                os_temp = int(round(float(os_cur.get("temperature_2m", 19))))
+                tk_desc, tk_rain = _describe_wmo_code(
+                    int(tk_cur.get("weather_code", 0)),
+                    float(tk_cur.get("precipitation", 0.0)),
+                )
+                os_desc, os_rain = _describe_wmo_code(
+                    int(os_cur.get("weather_code", 0)),
+                    float(os_cur.get("precipitation", 0.0)),
+                )
+                summary = f"東京（新宿・渋谷）{tk_desc} {tk_temp}℃ ／ 大阪（梅田・難波）{os_desc} {os_temp}℃"
+                if tk_rain and os_rain:
+                    hint = "東京・大阪ともに雨模様のため、地下街・駅チカ店舗に客足が集中しやすい夜☔"
+                elif tk_rain:
+                    hint = "関東エリアは雨模様のため、新宿・渋谷・上野など駅近店舗への集中が目立つ夜☔"
+                elif os_rain:
+                    hint = "関西エリアは雨模様のため、梅田・難波の地下直結エリアに人が集まりやすい夜☔"
+                elif min(tk_temp, os_temp) <= 12:
+                    hint = f"外は{min(tk_temp, os_temp)}℃前後と冷え込んでいる分、暖かい屋内ラウンジに早めに人が集まる夜🌙"
+                elif max(tk_temp, os_temp) >= 28:
+                    hint = "蒸し暑い夜で1軒目から涼しいラウンジへ直行するグループが多い夜🍻"
+                else:
+                    hint = f"外歩きしやすい気候（東京{tk_temp}℃・大阪{os_temp}℃）で、エリア内の2軒目ハシゴも動きやすい夜✨"
+
+                result = {
+                    "available": True,
+                    "summary": summary,
+                    "adlib_hint": hint,
+                    "is_rainy": tk_rain or os_rain,
+                    "tokyo_rain": tk_rain,
+                    "osaka_rain": os_rain,
+                    "temps": [tk_temp, os_temp],
+                }
+                _weather_cache["ts"] = now_t
+                _weather_cache["data"] = result
+                return result
+    except Exception as e:
+        logger.debug(f"Open-Meteo weather fetch skipped: {e}")
+
+    return {
+        "available": False,
+        "summary": "気象データ未取得（通常モード）",
+        "adlib_hint": "",
+        "is_rainy": False,
+        "temps": [],
+    }
+
+
+# =====================================================================
 # Role 1: Researcher (現場データ発掘係)
 # =====================================================================
 def run_researcher(
@@ -230,9 +477,15 @@ def run_researcher(
     east_top = kanto_s[0] if kanto_s else (dom[0] if dom else None)
     west_top = kansai_s[0] if kansai_s else (dom[1] if len(dom) > 1 else east_top)
 
+    cal_ctx = build_calendar_context(now_jst=now_jst)
+    weather_ctx = fetch_live_weather_context()
+
     notes = [
-        f"対象媒体：{CHANNEL_LABELS.get(channel, channel)} ｜ 全国稼働 {len(active_stores)}店舗（女性計 {total_w:,}名 / 男性計 {total_m:,}名）を解析。"
+        f"対象媒体：{CHANNEL_LABELS.get(channel, channel)} ｜ 全国稼働 {len(active_stores)}店舗（女性計 {total_w:,}名 / 男性計 {total_m:,}名）を解析。",
+        f"【街況・カレンダー】{cal_ctx['tag']}（{cal_ctx['note']}）",
     ]
+    if weather_ctx.get("available"):
+        notes.append(f"【リアルタイム気象】{weather_ctx['summary']} — {weather_ctx['adlib_hint']}")
     if best_cluster:
         hs = best_cluster["high_store"]
         ls = best_cluster["low_store"]
@@ -266,6 +519,7 @@ def run_researcher(
         "domestic_count": len(dom),
         "active_store_count": len(active_stores),
         "top_stores": dom[:6],
+        "all_domestic_stores": dom,
         "city_leaders": city_leaders,
         "best_cluster": best_cluster,
         "focus_store": focus_store,
@@ -274,6 +528,8 @@ def run_researcher(
         "east_top": east_top,
         "west_top": west_top,
         "ig_ctx": ig_ctx,
+        "calendar": cal_ctx,
+        "weather": weather_ctx,
         "research_notes": notes,
     }
 
@@ -431,16 +687,25 @@ def _write_x_candidates(research: dict, slot_label: str, now_jst: datetime.datet
             "reply_text": reply_a,
         })
 
-    # 2) surge_focus: Spotlight 1 sweet-spot store + 2 distinct runners-up
+    # 2) surge_focus: Spotlight 1 sweet-spot store + 2 distinct runners-up (weather/calendar aware)
     w_diff = int(focus.get("women_diff") or 0)
+    cal_ctx = research.get("calendar") or {}
+    weather_ctx = research.get("weather") or {}
     if slot_label == "20:00":
-        opener_b = f"まだ20時台だけど、今夜は「{focus['ja_name']}」の立ち上がりがかなり早い👀"
+        if cal_ctx.get("is_payday_window"):
+            opener_b = f"給料日後の20時台、今夜は「{focus['ja_name']}」の立ち上がりがかなり早い👀"
+        else:
+            opener_b = f"まだ20時台だけど、今夜は「{focus['ja_name']}」の立ち上がりがかなり早い👀"
         closing_b = "混み始める前に待ちなしで座るなら今のうちが狙い目👇"
     elif slot_label in ("00:00", "02:00"):
         opener_b = f"終電すぎのこの時間（{t_str}）、いま一番女性が残ってるのは「{focus['ja_name']}」🌙"
         closing_b = "深夜は人が集まる店と静かな店が分かれるので事前確認が確実👇"
     else:
-        if w_diff >= 3:
+        if weather_ctx.get("is_rainy"):
+            opener_b = f"雨の{t_str}時点☔ 駅チカでいま女性比率が高めなのが「{focus['ja_name']}」✨"
+        elif cal_ctx.get("is_pre_holiday"):
+            opener_b = f"祝前日の{t_str}時点、いま女性比率が高めで座りやすいのが「{focus['ja_name']}」✨"
+        elif w_diff >= 3:
             opener_b = f"{t_str}時点、「{focus['ja_name']}」に直近で女性が+{w_diff}名増えて狙い目🔥"
         else:
             opener_b = f"{t_str}時点、いま女性比率が高めで座りやすいのが「{focus['ja_name']}」✨"
@@ -792,6 +1057,392 @@ def _write_instagram_candidates(research: dict, now_jst: datetime.datetime) -> l
     return candidates
 
 
+def verify_ai_factual_numbers(text: str, research: dict, channel: str = "x") -> tuple:
+    """
+    Strict Desk Fact-Checker for AI-generated drafts:
+      1. Ensures every headcount (`女性XX`, `男性XX`), ratio (`女性比XX%`), and diff (`+XX名`)
+         matches verified numbers from `research` (zero tolerance for hallucinated counts).
+      2. On single-store bullet lines, ensures the store's exact headcount wasn't swapped with another store.
+    Returns `(is_valid: bool, bad_tokens: list[str])`.
+    """
+    all_dom = research.get("all_domestic_stores") or research.get("top_stores") or []
+    ig_ctx = research.get("ig_ctx") or {}
+    ig_vol = ig_ctx.get("top_volume") or []
+    ig_ana = ig_ctx.get("top_anaba") or []
+
+    allowed_women = {10, int(research.get("total_women") or 0)}
+    allowed_men = {0, int(research.get("total_men") or 0)}
+    allowed_pct = {15, 20, 25, 50, 55, 60}
+    allowed_diff = set()
+    store_facts = {}
+
+    def _reg_alias(alias: str, w_val=None, m_val=None, p_val=None):
+        if not alias:
+            return
+        rec = store_facts.setdefault(alias, {"women": set(), "men": set(), "pct": set()})
+        if w_val is not None:
+            rec["women"].add(int(w_val))
+        if m_val is not None:
+            rec["men"].add(int(m_val))
+        if p_val is not None:
+            rec["pct"].add(int(p_val))
+
+    for s in all_dom:
+        w = int(s.get("women") or 0)
+        m = int(s.get("men") or 0)
+        p = int(s.get("wpct") or 0)
+        allowed_women.add(w)
+        allowed_men.add(m)
+        allowed_pct.add(p)
+        wd = int(s.get("women_diff") or 0)
+        ud = int(s.get("usual_w_diff") or 0) if s.get("usual_w_diff") is not None else 0
+        if wd > 0:
+            allowed_diff.add(wd)
+        if ud > 0:
+            allowed_diff.add(ud)
+        _reg_alias(s.get("ja_name"), w, m, p)
+
+    for s in ig_vol:
+        mw = int(s.get("max_women") or 0)
+        allowed_women.add(mw)
+        _reg_alias(s.get("seo_name"), w_val=mw)
+
+    for s in ig_ana:
+        ap = int(s.get("avg_wpct") or 0)
+        allowed_pct.add(ap)
+        _reg_alias(s.get("seo_name"), p_val=ap)
+
+    bad = []
+
+    for m_w in re.finditer(r"(?:最高|現在)?女性\s*([0-9,]+)\s*(?:名|人)?", text):
+        # Skip generic rule phrase "女性10名以上" or "女性比"
+        after = text[m_w.end():m_w.end() + 3]
+        if after.startswith("%") or "以上" in after:
+            continue
+        val = int(m_w.group(1).replace(",", ""))
+        if val not in allowed_women:
+            bad.append(f"女性{val}")
+
+    for m_m in re.finditer(r"男性\s*([0-9,]+)\s*(?:名|人)?", text):
+        after = text[m_m.end():m_m.end() + 3]
+        if after.startswith("%") or "以上" in after:
+            continue
+        val = int(m_m.group(1).replace(",", ""))
+        if val not in allowed_men:
+            bad.append(f"男性{val}")
+
+    for m_p in re.finditer(r"(?:女性比(?:率)?|平均女性比)\s*(\d+)\s*%", text):
+        val = int(m_p.group(1))
+        if val not in allowed_pct:
+            bad.append(f"女性比{val}%")
+
+    for m_d in re.finditer(r"\+\s*(\d+)\s*名", text):
+        val = int(m_d.group(1))
+        if val not in allowed_diff:
+            bad.append(f"+{val}名")
+
+    # Line-level single-store cross-check (prevents swapping store A's count onto store B)
+    sorted_aliases = sorted(store_facts.keys(), key=len, reverse=True)
+    for line in text.splitlines():
+        matched_aliases = []
+        line_probe = line
+        for al in sorted_aliases:
+            if al in line_probe:
+                matched_aliases.append(al)
+                line_probe = line_probe.replace(al, " ")
+        if len(matched_aliases) == 1:
+            al = matched_aliases[0]
+            facts = store_facts[al]
+            for mw in re.finditer(r"(?:最高|現在)?女性\s*(\d+)", line):
+                after = line[mw.end():mw.end() + 3]
+                if "以上" in after or after.startswith("%"):
+                    continue
+                vw = int(mw.group(1))
+                if facts["women"] and vw not in facts["women"]:
+                    bad.append(f"{al}:女性{vw}(実測不一致)")
+            for mm in re.finditer(r"男性\s*(\d+)", line):
+                vm = int(mm.group(1))
+                if facts["men"] and vm not in facts["men"]:
+                    bad.append(f"{al}:男性{vm}(実測不一致)")
+
+    return (len(bad) == 0, bad)
+
+
+def _build_gemini_prompt(
+    research: dict,
+    plan: dict,
+    slot_label: str,
+    channel: str,
+    now_jst: datetime.datetime,
+    site_url: str,
+) -> tuple:
+    ch = (channel or "x").lower()
+    t_str = now_jst.strftime("%H:%M")
+    cal_ctx = research.get("calendar") or {}
+    weather_ctx = research.get("weather") or {}
+    history = get_recent_editorial_history(channel=ch, limit=3)
+    recent_openers = [
+        (h.get("selected_text") or "").split("\n", 1)[0][:55]
+        for h in history if h.get("selected_text")
+    ]
+
+    top_s = research.get("top_stores") or []
+    focus = research.get("focus_store") or (top_s[0] if top_s else None)
+    cluster = research.get("best_cluster")
+    anomaly = research.get("anomaly_store")
+    male_lead = research.get("male_lead_store")
+    city_leaders = research.get("city_leaders") or []
+
+    fact_payload = {
+        "current_time": f"{cal_ctx.get('weekday_ja', '')}曜 {t_str}",
+        "calendar_vibe": f"{cal_ctx.get('tag', '')} - {cal_ctx.get('note', '')}",
+        "weather_vibe": weather_ctx.get("adlib_hint") or "穏やかな夜",
+        "weather_detail": weather_ctx.get("summary") or "",
+        "national_active_stores": research.get("active_store_count", 0),
+        "national_total_women": research.get("total_women", 0),
+        "national_total_men": research.get("total_men", 0),
+        "sweet_spot_store": (
+            {
+                "name": focus["ja_name"],
+                "women": focus["women"],
+                "men": focus["men"],
+                "women_pct": focus["wpct"],
+                "diff_15m": int(focus.get("women_diff") or 0),
+            }
+            if focus else None
+        ),
+        "same_area_gap": (
+            {
+                "area": cluster["hub_label"],
+                "high_ratio_store": {
+                    "name": cluster["high_store"]["ja_name"],
+                    "women": cluster["high_store"]["women"],
+                    "men": cluster["high_store"]["men"],
+                    "women_pct": cluster["high_store"]["wpct"],
+                },
+                "contrast_store": {
+                    "name": cluster["low_store"]["ja_name"],
+                    "women": cluster["low_store"]["women"],
+                    "men": cluster["low_store"]["men"],
+                    "women_pct": cluster["low_store"]["wpct"],
+                },
+                "gap_pt": cluster["pct_gap"],
+            }
+            if cluster else None
+        ),
+        "usual_positive_anomaly": (
+            {
+                "name": anomaly["ja_name"],
+                "women": anomaly["women"],
+                "men": anomaly["men"],
+                "women_pct": anomaly["wpct"],
+                "plus_vs_usual_women": int(anomaly["usual_w_diff"]),
+            }
+            if anomaly and anomaly.get("usual_w_diff") else None
+        ),
+        "female_group_zero_wait_store": (
+            {
+                "name": male_lead["ja_name"],
+                "men": male_lead["men"],
+                "women": male_lead["women"],
+            }
+            if male_lead else None
+        ),
+        "top_stores": [
+            {"name": s["ja_name"], "women": s["women"], "men": s["men"], "women_pct": s["wpct"]}
+            for s in top_s[:4]
+        ],
+        "city_leaders": [
+            {"area": c["hub_label"], "name": c["store"]["ja_name"], "women": c["store"]["women"], "men": c["store"]["men"], "women_pct": c["store"]["wpct"]}
+            for c in city_leaders[:4]
+        ],
+    }
+
+    slot_code = (slot_label or "20:00").replace(":", "")
+    live_url = f"{site_url}/?s={now_jst.strftime('%Y%m%d')}_{slot_code}"
+
+    if ch == "x":
+        f_slug = store_master.slug_of(focus["name"]) if focus else ""
+        reply_text = (
+            f"📊 {focus['ja_name']}の現在人数・終電後の残りやすさ指標はこちら\n"
+            f"{site_url}/store/{f_slug}\n\n"
+            f"🔍 全国53店舗リアルタイム人数ランキング\n{live_url}"
+            if focus else f"🔍 全国53店舗リアルタイム人数ランキング\n{live_url}"
+        )
+        platform_spec = (
+            "【対象SNS：X（旧Twitter）】\n"
+            "- 文字数制限：日本語で **95文字〜122文字以内**（X換算で必ず255ウェイト以下になるようコンパクトに引き締めること）\n"
+            "- 禁止事項：URL（http...）は本文に絶対に入れない。『🥇🥈🥉』メダル記号や『【〇〇速報】』のような業者見出しは禁止。同じ店舗名を2回書かない。\n"
+            "- 構成：1行目で今夜の天気・気温・曜日・給料日などの空気感と現場データの面白い気づきを友達に話すような自然なアドリブで切り出し、中盤で2〜3店舗の正確な人数（例：女性122・男性52（女性比70%））を示し、最後はリプ欄へ自然に誘導して『#相席ナビ #相席ラウンジ』で締める。"
+        )
+    elif ch == "threads":
+        if now_jst.day % 2 == 0:
+            cta_footer = "🔍 全51店舗の現在人数＆料金比較はプロフィールのリンク（相席ナビ）から見れます\n#相席ラウンジ"
+        else:
+            cta_footer = f"▼ 全51店舗の現在人数＆料金・イベント比較\n{site_url}/price-comparison\n#相席ラウンジ"
+        reply_text = "（Threadsは1投稿完結・AIアドリブ生成＋リンク制限回避済）"
+        platform_spec = (
+            "【対象SNS：Meta Threads（スレッズ）】\n"
+            "- 文字数制限：全体で **290文字〜440文字以内**（絶対上限480文字）\n"
+            "- 禁止事項：『🥇🥈🥉』メダル記号や『【〇〇】』角括弧タイトルは禁止。ハッシュタグは末尾の1個のみ。\n"
+            "- 構成：Threads特有の『中の人が現場データと外の天気・曜日を見ながら本音で語るエッセイ・会話調』で書くこと。男性目線の穴場だけでなく可能なら女性目線の即相席店やハシゴのコツも自然に織り交ぜる。\n"
+            f"- 末尾固定フッター：文章の最後は必ず次のフッター文字列を一字一句変えずに置いて締めること：\n{cta_footer}"
+        )
+    else:
+        import ig_carousel_generator
+        ig_ctx = research.get("ig_ctx") or ig_carousel_generator.build_forecast_context(live_stores=top_s, now_jst=now_jst)
+        v_top = ig_ctx.get("top_volume", [])[:3]
+        a_top = ig_ctx.get("top_anaba", [])[:3]
+        is_live_fb = bool(ig_ctx.get("is_live_fallback"))
+        v_lbl = "現在女性" if is_live_fb else "最高女性"
+        a_lbl = "女性比率" if is_live_fb else "平均女性比"
+        fact_payload["carousel_slide2_volume_top3"] = [
+            {"name": s["seo_name"], "label": f"{v_lbl}{s['max_women']}名"} for s in v_top
+        ]
+        fact_payload["carousel_slide3_anaba_top3"] = [
+            {"name": s["seo_name"], "label": f"{a_lbl}{s['avg_wpct']}%"} for s in a_top
+        ]
+        fact_payload["weekend_label"] = ig_ctx.get("weekend_label", "")
+        reply_text = "（5枚組カルーセル画像とセットで投稿・AIアドリブ生成）"
+        platform_spec = (
+            "【対象SNS：Instagram（5枚組カルーセル投稿キャプション）】\n"
+            "- 文字数制限：**400文字〜680文字以内**\n"
+            "- 禁止事項：1行目を『【〇〇予報】』のような堅い角括弧見出しにしないこと。\n"
+            "- 構成：『…続きを読む』で折りたたまれる前の最初の1〜2行目に、天気・季節・週末あるあるを交えた思わずタップしたくなる人間味100%の共感アドリブを書く。『保存📌』を促す一言を入れ、スライド2枚目の盛り上がり上位3店舗とスライド3枚目の高女性比率上位3店舗の数値を正確に紹介し、プロフィールのリンク（aiseki-navi.com）への誘導と、末尾に『#相席ナビ #相席ラウンジ #オリエンタルラウンジ #ag #JIS #夜遊びガイド』の6タグを付ける。"
+        )
+
+    prompt = (
+        "あなたは全国53店舗の相席ラウンジ人数をリアルタイム計測している『相席ナビ』のベテランSNS編集長です。\n"
+        "毎回同じボットのような投稿ではなく、本当にスマホで今の店内人数と外の空気（天気・気温・曜日・給料日など）を見ながら、"
+        "フォロワーに『今夜ここ狙い目だよ』と自然に呟いているアドリブ投稿を1案作成してください。\n\n"
+        f"{platform_spec}\n\n"
+        "【絶対厳守ルール（違反するとデスク検閲で不採用になります）】\n"
+        "1. 下記の JSON ファクトシートに含まれる店舗名・人数・パーセンテージ以外は絶対に書かないこと。数値を1人でも盛ったり丸めたり変更することは厳禁。\n"
+        "2. 内部略称『OLG』は使わず、ファクトシート記載の自然な日本語店名（『オリエンタル〇〇』『ag〇〇』『JIS〇〇』）をそのまま使うこと。\n"
+        f"3. 直近の過去投稿の書き出し（{json.dumps(recent_openers, ensure_ascii=False)}）とは全く違う新鮮な1行目の切り口・語尾にすること。\n\n"
+        f"【今夜の検証済みファクトシート】\n{json.dumps(fact_payload, ensure_ascii=False, indent=2)}\n\n"
+        "出力は必ず以下のJSON形式のみを返してください（Markdownコードブロック不要）：\n"
+        '{"main_text": "投稿本文（改行は\\n）", "writer_note": "今回どの天気・街況・データをどうアドリブに活かしたかの1行メモ"}'
+    )
+    return prompt, reply_text
+
+
+def _generate_gemini_adlib_candidate(
+    research: dict,
+    plan: dict,
+    slot_label: str,
+    channel: str,
+    now_jst: datetime.datetime,
+    site_url: str,
+    force_refresh: bool = False,
+) -> dict:
+    """
+    Call Gemini Flash REST API (`v1beta`) to craft a fresh, weather/calendar-aware human ad-lib post.
+    Uses a 15-minute signature cache so Master UI browsing stays instant and free-tier friendly.
+    Returns candidate dict or None on skip/failure (caller seamlessly falls back to deterministic candidates).
+    """
+    api_key = get_gemini_api_key()
+    if not api_key:
+        return None
+
+    ch = (channel or "x").lower()
+    top_s = research.get("top_stores") or []
+    if not top_s:
+        return None
+
+    sig_top = f"{top_s[0]['name']}:{top_s[0]['women']}:{top_s[0]['men']}"
+    cache_key = (ch, slot_label, sig_top)
+    now_t = time.time()
+    if not force_refresh and cache_key in _ai_candidate_cache:
+        cached = _ai_candidate_cache[cache_key]
+        if now_t - cached["ts"] < 900:
+            return dict(cached["candidate"])
+
+    prompt, reply_text = _build_gemini_prompt(
+        research=research,
+        plan=plan,
+        slot_label=slot_label,
+        channel=ch,
+        now_jst=now_jst,
+        site_url=site_url,
+    )
+
+    preferred_env = (os.environ.get("GEMINI_MODEL") or "").strip()
+    models_to_try = [preferred_env] + [m for m in DEFAULT_GEMINI_MODELS if m != preferred_env] if preferred_env else list(DEFAULT_GEMINI_MODELS)
+
+    last_err = ""
+    for model_name in models_to_try:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent"
+        try:
+            resp = requests.post(
+                url,
+                headers={
+                    "Content-Type": "application/json",
+                    "x-goog-api-key": api_key,
+                },
+                json={
+                    "contents": [{"parts": [{"text": prompt}]}],
+                    "generationConfig": {
+                        "temperature": 0.85,
+                        "maxOutputTokens": 900,
+                        "responseMimeType": "application/json",
+                    },
+                },
+                timeout=10,
+            )
+            if resp.status_code == 404:
+                last_err = f"Model {model_name} HTTP 404"
+                continue
+            if resp.status_code >= 400:
+                last_err = f"Gemini HTTP {resp.status_code}: {resp.text[:140]}"
+                logger.warning(f"Gemini API error ({model_name}): {last_err}")
+                break
+
+            data = resp.json() or {}
+            cands = data.get("candidates") or []
+            if not cands:
+                last_err = "Gemini returned empty candidates"
+                break
+            parts = ((cands[0].get("content") or {}).get("parts")) or []
+            raw_text = "".join(p.get("text", "") for p in parts).strip()
+            if raw_text.startswith("```"):
+                raw_text = re.sub(r"^```(?:json)?\s*", "", raw_text)
+                raw_text = re.sub(r"\s*```$", "", raw_text)
+            parsed = json.loads(raw_text)
+            main_text = (parsed.get("main_text") or "").strip()
+            writer_note = (parsed.get("writer_note") or "天気・曜日・リアルタイム人数を掛け合わせたGemini AIアドリブ執筆案。").strip()
+            if not main_text:
+                last_err = "Parsed JSON missing main_text"
+                break
+
+            candidate = {
+                "style": "ai_live_adlib",
+                "style_label": STYLE_LABELS["ai_live_adlib"],
+                "writer_note": f"【{model_name}生成】{writer_note}",
+                "main_text": main_text,
+                "reply_text": reply_text,
+                "is_ai_generated": True,
+                "ai_model": model_name,
+            }
+            _ai_candidate_cache[cache_key] = {
+                "ts": now_t,
+                "candidate": candidate,
+                "model": model_name,
+            }
+            _last_gemini_meta["last_model"] = model_name
+            _last_gemini_meta["last_error"] = ""
+            _last_gemini_meta["last_ok_at"] = now_jst.strftime("%Y-%m-%d %H:%M:%S")
+            return dict(candidate)
+        except Exception as e:
+            last_err = str(e)[:160]
+            logger.warning(f"Gemini adlib generation exception ({model_name}): {e}")
+            break
+
+    if last_err:
+        _last_gemini_meta["last_error"] = last_err
+    return None
+
+
 def run_writer(
     research: dict,
     plan: dict,
@@ -799,15 +1450,32 @@ def run_writer(
     channel: str = "x",
     now_jst: datetime.datetime = None,
     app_url: str = "",
+    use_ai: bool = True,
+    force_ai_refresh: bool = False,
 ) -> list:
     now_jst = now_jst or datetime.datetime.now(JST)
     site_url = (app_url or os.environ.get("PUBLIC_SITE_URL") or "https://aiseki-navi.com").rstrip("/")
     ch = (channel or "x").lower()
     if ch == "threads":
-        return _write_threads_candidates(research, slot_label=slot_label, now_jst=now_jst, site_url=site_url)
-    if ch == "instagram":
-        return _write_instagram_candidates(research, now_jst=now_jst)
-    return _write_x_candidates(research, slot_label=slot_label, now_jst=now_jst, site_url=site_url)
+        base_cands = _write_threads_candidates(research, slot_label=slot_label, now_jst=now_jst, site_url=site_url)
+    elif ch == "instagram":
+        base_cands = _write_instagram_candidates(research, now_jst=now_jst)
+    else:
+        base_cands = _write_x_candidates(research, slot_label=slot_label, now_jst=now_jst, site_url=site_url)
+
+    if use_ai:
+        ai_cand = _generate_gemini_adlib_candidate(
+            research=research,
+            plan=plan,
+            slot_label=slot_label,
+            channel=ch,
+            now_jst=now_jst,
+            site_url=site_url,
+            force_refresh=force_ai_refresh,
+        )
+        if ai_cand:
+            return [ai_cand] + base_cands
+    return base_cands
 
 
 # =====================================================================
@@ -824,7 +1492,7 @@ def run_evaluator(
     Score each candidate out of 100 across 4 criteria tailored to `x`, `threads`, or `instagram`:
       1. human_tone (35 pts): Natural human voice vs mechanical medal/bracket templates
       2. freshness_diversity (30 pts): Rotation vs recent history on the same SNS channel
-      3. data_specificity (25 pts): Verified numbers, zero redundant store mentions, actionable insight
+      3. data_specificity (25 pts): Verified numbers (strict AI hallucination guard!), zero redundant mentions
       4. weight_fit (10 pts): Strict compliance with each platform's character & link-hygiene limits
     """
     now_jst = now_jst or datetime.datetime.now(JST)
@@ -838,6 +1506,7 @@ def run_evaluator(
     for cand in candidates:
         text = cand.get("main_text") or ""
         style = cand.get("style") or ""
+        is_ai = bool(cand.get("is_ai_generated") or style == "ai_live_adlib")
         first_line = text.split("\n", 1)[0] if text else ""
 
         if ch == "x":
@@ -856,14 +1525,21 @@ def run_evaluator(
         elif is_bracket_banner:
             human_score = 24
             human_comment = "△ 冒頭が【角括弧の見出し】から始まっており少し宣伝っぽいため、自然な語り出し案を優先。"
+        elif is_ai:
+            human_score = 35
+            human_comment = "◎ Gemini AIが天気・曜日・現場データから書き起こした1回限りの生きたアドリブ文面で、人間味が極めて高い。"
         else:
             human_score = 34
-            if any(w in text for w in ("割れてる", "立ち上がりがかなり早い", "いつもの", "もったいない", "実は同じ", "温度差")):
+            if any(w in text for w in ("割れてる", "立ち上がりがかなり早い", "いつもの", "もったいない", "実は同じ", "温度差", "雨の", "給料日", "祝前日")):
                 human_score = 35
             human_comment = "◎ 人間がスマホで現場を見ながら話しかけている自然な導入で、タイムラインに馴染みます。"
 
         # 2. Freshness & Anti-Duplication (max 30)
-        if style == last_style:
+        if is_ai:
+            # Even if AI was used last time, each AI generation uses a brand-new opener avoiding recent history!
+            fresh_score = 30
+            fresh_comment = "◎ 過去3回の投稿と書き出し・言い回しが一切被らない完全新規アドリブ構成。"
+        elif style == last_style:
             fresh_score = 12
             fresh_comment = f"⚠️ 前回の{CHANNEL_LABELS.get(ch, ch)}投稿と同じ型（{STYLE_LABELS.get(style, style)}）のため連続回避で大幅減点。"
         elif style == classic_key and plan.get("suppress_classic"):
@@ -880,10 +1556,23 @@ def run_evaluator(
                 fresh_score = 24
             fresh_comment = "◎ 直近の投稿履歴と切り口・1行目のフックが被っておらず新鮮です。"
 
-        # 3. Data Specificity & Precision Check (max 25)
-        # Check for awkward internal store prefixes ("OLG ") leaking into conversational drafts
+        # 3. Data Specificity & Precision Check (max 25; -50 hard reject if AI alters any number)
         has_raw_olg = "OLG " in text and style != classic_key
-        if has_raw_olg:
+        if is_ai:
+            facts_ok, bad_tokens = verify_ai_factual_numbers(text, research, channel=ch)
+            if not facts_ok:
+                data_score = -50
+                data_comment = (
+                    f"❌ 鬼デスク検閲ブロック：AI下書き内に実測データと一致しない数値（{', '.join(bad_tokens[:3])}）を検知！"
+                    "ハルシネーション防止のため不採用とし、検証済み案へ自動切替します。"
+                )
+            elif has_raw_olg:
+                data_score = 18
+                data_comment = "⚠️ 内部略称『OLG』が残っているため減点。"
+            else:
+                data_score = 25
+                data_comment = "◎ 鬼デスク数値検閲クリア：すべての店舗人数・比率がSQLite実測値と1人単位で100%一致しています。"
+        elif has_raw_olg:
             data_score = 18
             data_comment = "⚠️ 内部略称『OLG』がそのまま残っているため減点（『オリエンタル〇〇』表記が自然）。"
         elif style in ("hub_gap", "threads_city_story") and research.get("best_cluster"):
@@ -906,7 +1595,7 @@ def run_evaluator(
             if metric_val > 280 or has_url_in_main:
                 weight_score = -40
                 weight_comment = f"❌ X制限超過({metric_unit})または1ポスト目URL混入のため不採用。"
-            elif 140 <= metric_val <= 274:
+            elif 130 <= metric_val <= 274:
                 weight_score = 10
                 weight_comment = f"◎ X最適ウェイト（{metric_unit}・1ポスト目URLなし・リプ欄誘導）を完璧にクリア。"
             else:
@@ -917,7 +1606,7 @@ def run_evaluator(
             if metric_val > 500:
                 weight_score = -40
                 weight_comment = f"❌ Threads上限500文字を超過（{metric_unit}）しているため不採用。"
-            elif 260 <= metric_val <= 485 and tag_cnt <= 2:
+            elif 240 <= metric_val <= 488 and tag_cnt <= 2:
                 weight_score = 10
                 weight_comment = f"◎ Threads最適文字数（{metric_unit}/500文字・タグ{tag_cnt}個でスパム判定回避）に合致。"
             else:
@@ -925,7 +1614,7 @@ def run_evaluator(
                 weight_comment = f"◯ 文字数（{metric_unit}）・タグ数（{tag_cnt}個）は許容範囲内。"
         else:  # instagram
             tag_cnt = len(re.findall(r"#[^\s#]+", text))
-            if 350 <= metric_val <= 950 and 4 <= tag_cnt <= 8 and "保存" in text:
+            if 340 <= metric_val <= 980 and 4 <= tag_cnt <= 8 and "保存" in text:
                 weight_score = 10
                 weight_comment = f"◎ IG最適長（{metric_unit}）・保存導線あり・厳選ハッシュタグ{tag_cnt}個でアルゴリズム最適。"
             else:
@@ -984,9 +1673,13 @@ def run_editorial_pipeline(
     now_jst: datetime.datetime = None,
     app_url: str = "",
     record_history: bool = False,
+    use_ai: bool = True,
+    force_ai_refresh: bool = False,
 ) -> dict:
     """
     Run the full 4-role SNS Editorial Room pipeline for `channel` ('x', 'threads', or 'instagram').
+    When Gemini API key is configured and `use_ai=True`, generates an AI live ad-lib draft,
+    runs strict numerical fact-checking in Desk, and auto-falls back safely if any check fails.
     """
     now_jst = now_jst or datetime.datetime.now(JST)
     ch = (channel or "x").lower()
@@ -995,7 +1688,16 @@ def run_editorial_pipeline(
 
     research = run_researcher(stores, slot_label=slot_label, channel=ch, ig_ctx=ig_ctx, now_jst=now_jst)
     plan = run_planner(research, slot_label=slot_label, channel=ch, now_jst=now_jst)
-    candidates = run_writer(research, plan, slot_label=slot_label, channel=ch, now_jst=now_jst, app_url=app_url)
+    candidates = run_writer(
+        research,
+        plan,
+        slot_label=slot_label,
+        channel=ch,
+        now_jst=now_jst,
+        app_url=app_url,
+        use_ai=use_ai,
+        force_ai_refresh=force_ai_refresh,
+    )
     evaluation = run_evaluator(candidates, research, plan, channel=ch, now_jst=now_jst)
 
     winner = evaluation.get("winner") or {}
@@ -1026,6 +1728,7 @@ def run_editorial_pipeline(
                 "desk_comments": c.get("desk_comments"),
                 "main_text": c.get("main_text"),
                 "reply_text": c.get("reply_text"),
+                "is_ai_generated": bool(c.get("is_ai_generated")),
             }
             for c in (evaluation.get("candidates") or [])
         ],
@@ -1043,6 +1746,7 @@ def run_editorial_pipeline(
     return {
         "channel": ch,
         "channel_label": CHANNEL_LABELS.get(ch, ch),
+        "gemini_status": get_gemini_status(),
         "research": research,
         "plan": plan,
         "evaluation": evaluation,

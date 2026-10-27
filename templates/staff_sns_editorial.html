@@ -274,6 +274,91 @@
             color: var(--sub);
         }
         .history-head strong { color: var(--text); }
+        .ai-panel {
+            background: linear-gradient(135deg, rgba(168, 85, 247, 0.11) 0%, rgba(22, 24, 29, 0.96) 65%);
+            border: 1px solid rgba(168, 85, 247, 0.38);
+            border-radius: 16px;
+            padding: 15px 18px;
+            margin-bottom: 18px;
+        }
+        .ai-panel-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .ai-status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 12px;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            font-weight: 800;
+        }
+        .ai-status-on {
+            background: rgba(123, 196, 159, 0.16);
+            border: 1px solid var(--green);
+            color: #d3f3e2;
+        }
+        .ai-status-off {
+            background: rgba(217, 179, 108, 0.15);
+            border: 1px solid var(--amber);
+            color: #f6e2b8;
+        }
+        .context-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+            font-size: 0.76rem;
+            color: #dcd5e8;
+        }
+        .context-chip {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-strong);
+            padding: 4px 10px;
+            border-radius: 8px;
+        }
+        .ai-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .ai-btn {
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 0.78rem;
+            font-weight: 700;
+            padding: 7px 13px;
+            border-radius: 8px;
+            border: 1px solid rgba(192, 132, 252, 0.55);
+            background: rgba(168, 85, 247, 0.2);
+            color: #f3e8ff;
+        }
+        .ai-btn:hover { opacity: 0.9; }
+        .key-drawer {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px dashed var(--border-strong);
+        }
+        .key-form-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+        .key-input {
+            flex: 1;
+            min-width: 240px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border-strong);
+            background: #0b0c0f;
+            color: var(--text);
+            font-size: 0.82rem;
+        }
     </style>
 </head>
 <body>
@@ -302,7 +387,52 @@
 
         <div class="header-card">
             <h1>👑 相席ナビ「SNS編集部」{{ editorial.channel_label }} 4役合議・採点ボード（マスター専用）</h1>
-            <p>X・Threads・Instagramの全3媒体で、毎回同じ『🥇🥈🥉 TOP3』や定型見出しになるボット感を排除。①現場データ発掘係 → ②編成・頻度調整係 → ③執筆係（4案作成） → ④鬼デスク（100点満点評価）が合議して一番自然な1案を自動採用します。</p>
+            <p>X・Threads・Instagramの全3媒体で、毎回同じ『🥇🥈🥉 TOP3』や定型見出しになるボット感を排除。①現場データ発掘（天気・曜日連動） → ②編成係 → ③執筆係（Gemini AIアドリブ＋検証済み候補） → ④鬼デスク（数値改ざん検閲＆100点採点）が合議して最良の1案を自動採用します。</p>
+        </div>
+
+        <!-- Gemini AI Ad-lib & Live Weather Control Panel -->
+        <div class="ai-panel">
+            <div class="ai-panel-top">
+                <div>
+                    {% if editorial.gemini_status and editorial.gemini_status.configured %}
+                    <span class="ai-status-pill ai-status-on">🟢 Gemini AI アドリブ執筆：稼働中（{{ editorial.gemini_status.masked_key }} ｜ {{ editorial.gemini_status.source }}）</span>
+                    {% else %}
+                    <span class="ai-status-pill ai-status-off">🟡 Gemini APIキー未設定（現在は無料の天気・カレンダー連動モードで稼働中）</span>
+                    {% endif %}
+                </div>
+                <div class="ai-actions">
+                    {% if editorial.gemini_status and editorial.gemini_status.configured %}
+                    <a href="/staff/sns-editorial?channel={{ channel }}&slot={{ slot_label }}&refresh_ai=1" class="ai-btn">🔄 別のAIアドリブ案を再生成テスト</a>
+                    {% endif %}
+                    <button type="button" class="ai-btn" onclick="toggleKeyDrawer()">🔑 Gemini APIキー設定（無料枠OK）</button>
+                </div>
+            </div>
+
+            <div class="context-chips">
+                {% if editorial.research.calendar %}
+                <span class="context-chip">📅 {{ editorial.research.calendar.tag }}：{{ editorial.research.calendar.note }}</span>
+                {% endif %}
+                {% if editorial.research.weather and editorial.research.weather.available %}
+                <span class="context-chip">🌤️ {{ editorial.research.weather.summary }}（{{ editorial.research.weather.adlib_hint }}）</span>
+                {% endif %}
+                {% if editorial.gemini_status and editorial.gemini_status.last_error %}
+                <span class="context-chip" style="border-color:var(--rose); color:#ffd6d6;">⚠️ AI通信メモ：{{ editorial.gemini_status.last_error }}（自動で安全案へフォールバック済）</span>
+                {% endif %}
+            </div>
+
+            <div id="gemini-key-drawer" class="key-drawer" style="display: {{ 'none' if (editorial.gemini_status and editorial.gemini_status.configured) else 'block' }};">
+                <div style="font-size:0.78rem; color:var(--sub);">
+                    💡 <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="color:var(--gold); font-weight:700;">Google AI Studio（公式・無料APIキー発行ページ ↗）</a> で取得した <code>AIza...</code> から始まるキーを下に貼り付けて保存するだけで、Renderの再起動なしで全SNS（X・Threads・Instagram）のAIアドリブ執筆＆鬼デスク数値検閲が即座に有効になります。
+                </div>
+                <div class="key-form-row">
+                    <input type="password" id="gemini-api-key-input" class="key-input" placeholder="AIzaSy...（ここにGemini APIキーを貼り付け）" autocomplete="off">
+                    <button type="button" class="copy-btn" onclick="saveGeminiKey()">💾 暗号化保存してAIアドリブを有効化</button>
+                    {% if editorial.gemini_status and editorial.gemini_status.configured %}
+                    <button type="button" class="back-btn" onclick="clearGeminiKey()">登録キーを削除</button>
+                    {% endif %}
+                </div>
+                <div id="gemini-key-msg" style="font-size:0.78rem; margin-top:6px; color:#d3f3e2;"></div>
+            </div>
         </div>
 
         <!-- 4 Roles Live Output -->
@@ -323,13 +453,13 @@
                 <p style="margin-top:6px; color:#d8cdb8;">⏱️ {{ editorial.plan.cooldown_reason }}</p>
             </div>
             <div class="role-card">
-                <span class="role-badge role-3">③ ライター（執筆・下書き係）</span>
-                <h3>{{ editorial.channel_label }}向け4案作成</h3>
-                <p>内部略称（OLG等）を自然な日本語店名（オリエンタル〇〇等）へ整え、同一店舗の重複言及ゼロ・媒体別の最適文字数で{{ editorial.evaluation.candidates | length }}案を執筆しました。</p>
+                <span class="role-badge role-3">③ ライター（執筆・AIアドリブ係）</span>
+                <h3>{{ editorial.channel_label }}向け{{ editorial.evaluation.candidates | length }}案作成</h3>
+                <p>天気・カレンダー空気感と実測データを掛け合わせ、内部略称（OLG等）を自然な日本語店名へ整えて{{ editorial.evaluation.candidates | length }}案を執筆しました。</p>
             </div>
             <div class="role-card">
-                <span class="role-badge role-4">④ デスク（評価・ボット感検閲係）</span>
-                <h3>赤入れ採点・最終決定</h3>
+                <span class="role-badge role-4">④ デスク（数値改ざん検閲・採点係）</span>
+                <h3>ファクト検閲・最終決定</h3>
                 <p>{{ editorial.evaluation.desk_summary }}</p>
             </div>
         </div>
@@ -402,6 +532,51 @@
                 var orig = btn.innerText;
                 btn.innerText = "✓ コピーしました！";
                 setTimeout(function() { btn.innerText = orig; }, 1800);
+            });
+        }
+        function toggleKeyDrawer() {
+            var d = document.getElementById("gemini-key-drawer");
+            if (!d) return;
+            d.style.display = (d.style.display === "none") ? "block" : "none";
+        }
+        function saveGeminiKey() {
+            var inp = document.getElementById("gemini-api-key-input");
+            var msg = document.getElementById("gemini-key-msg");
+            var val = inp ? inp.value.trim() : "";
+            if (!val) {
+                msg.style.color = "#ffd6d6";
+                msg.innerText = "⚠️ APIキーを入力してください。";
+                return;
+            }
+            msg.style.color = "#d3f3e2";
+            msg.innerText = "保存してAIアドリブ案を生成しています...";
+            fetch("/api/sns-editorial/gemini-key", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({action: "save", api_key: val})
+            }).then(function(r) { return r.json(); }).then(function(data) {
+                if (data.ok) {
+                    msg.innerText = "✅ " + data.message + " 画面を更新します...";
+                    setTimeout(function() {
+                        window.location.href = "/staff/sns-editorial?channel={{ channel }}&slot={{ slot_label }}&refresh_ai=1";
+                    }, 600);
+                } else {
+                    msg.style.color = "#ffd6d6";
+                    msg.innerText = "⚠️ " + (data.error || "保存に失敗しました");
+                }
+            }).catch(function() {
+                msg.style.color = "#ffd6d6";
+                msg.innerText = "⚠️ 通信エラーが発生しました";
+            });
+        }
+        function clearGeminiKey() {
+            if (!confirm("管理画面に登録したGemini APIキーを削除しますか？")) return;
+            fetch("/api/sns-editorial/gemini-key", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({action: "clear"})
+            }).then(function() {
+                window.location.href = "/staff/sns-editorial?channel={{ channel }}&slot={{ slot_label }}";
             });
         }
     </script>

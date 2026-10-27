@@ -600,9 +600,9 @@ class ScheduledArticlesTests(unittest.TestCase):
         with mock.patch.object(scheduled_articles, 'now_jst_naive', return_value=all_dt):
             for slug in ('local-vs-urban', 'cost-break-even', 'rain-payday'):
                 self.assertEqual(self.client.get(f'/guide/{slug}').status_code, 200)
-            self.assertIn('/guide/local-vs-urban', tips_poster.get_tip_reply_text(tip_index=58))
-            self.assertIn('/guide/cost-break-even', tips_poster.get_tip_reply_text(tip_index=59))
-            self.assertIn('/guide/rain-payday', tips_poster.get_tip_reply_text(tip_index=60))
+            self.assertIn('/guide/local-vs-urban', tips_poster.get_tip_reply_text(tip_index=58, now_jst=all_dt))
+            self.assertIn('/guide/cost-break-even', tips_poster.get_tip_reply_text(tip_index=59, now_jst=all_dt))
+            self.assertIn('/guide/rain-payday', tips_poster.get_tip_reply_text(tip_index=60, now_jst=all_dt))
 
     def test_scheduled_tweets_and_all_tips_within_280_weight(self):
         import scheduled_articles
@@ -1877,11 +1877,89 @@ class FullAuditRegressionTests(unittest.TestCase):
                 ed_page = self.client.get(f'/staff/sns-editorial?channel={ch_name}&slot=22:00').data.decode('utf-8')
                 self.assertIn('① リサーチャー（現場データ発掘係）', ed_page)
                 self.assertIn('② プランナー（編成・頻度調整係）', ed_page)
-                self.assertIn('③ ライター（執筆・下書き係）', ed_page)
-                self.assertIn('④ デスク（評価・ボット感検閲係）', ed_page)
+                self.assertIn('③ ライター（執筆・AIアドリブ係）', ed_page)
+                self.assertIn('④ デスク（数値改ざん検閲・採点係）', ed_page)
         finally:
             with app_module.data_lock:
                 app_module.latest_data['full_data'] = old_full
+            with self.client.session_transaction() as s:
+                s.clear()
+            app_module.clear_fast_http_caches()
+
+    def test_sns_editorial_gemini_adlib_weather_and_fact_guard(self):
+        import sns_editorial
+        from unittest.mock import patch, MagicMock
+
+        sample_stores = [
+            {'name': 'OLG 梅田茶屋町', 'women': 44, 'men': 22, 'women_diff': 6, 'usual_w_diff': 9, 'region': 'Kinki'},
+            {'name': 'JIS UMEDA', 'women': 12, 'men': 28, 'women_diff': -2, 'usual_w_diff': -4, 'region': 'Kinki'},
+            {'name': 'OLG 新宿', 'women': 38, 'men': 24, 'women_diff': 4, 'usual_w_diff': 5, 'region': 'Kanto'},
+            {'name': 'JIS SHINJUKU', 'women': 18, 'men': 25, 'women_diff': 0, 'usual_w_diff': 0, 'region': 'Kanto'},
+        ]
+
+        # 1. Unauthorized & regular staff (5555) cannot set Gemini API key
+        self.assertEqual(self.client.post('/api/sns-editorial/gemini-key', json={'api_key': 'AIzaSyDummyKey1234567890'}).status_code, 401)
+        with self.client.session_transaction() as s:
+            s['is_staff'] = True
+            s['is_master'] = False
+        self.assertEqual(self.client.post('/api/sns-editorial/gemini-key', json={'api_key': 'AIzaSyDummyKey1234567890'}).status_code, 401)
+
+        # 2. Master (2918) can save obfuscated Gemini API key; raw key is never exposed in status
+        with self.client.session_transaction() as s:
+            s['is_staff'] = True
+            s['is_master'] = True
+        r_save = self.client.post('/api/sns-editorial/gemini-key', json={'action': 'save', 'api_key': 'AIzaSyDummyKey1234567890'})
+        self.assertEqual(r_save.status_code, 200)
+        st = r_save.get_json()['gemini_status']
+        self.assertTrue(st['configured'])
+        self.assertEqual(st['masked_key'], 'AIza...7890')
+        self.assertNotIn('DummyKey', json.dumps(st))
+
+        try:
+            # 3. Valid Gemini ad-lib draft (accurate numbers + weather vibe) wins #1 with 100/100
+            valid_ai_json = json.dumps({
+                'main_text': (
+                    '小雨の金曜夜☔ 駅チカの梅田まわりで今かなり座りやすいのがオリエンタル梅田茶屋町✨\n\n'
+                    '・オリエンタル梅田茶屋町：女性44・男性22（女性比67%）\n'
+                    '・オリエンタル新宿：女性38・男性24\n\n'
+                    '向かう前の比較はリプ欄から👇\n#相席ナビ #相席ラウンジ'
+                ),
+                'writer_note': '雨天の駅チカ集中と梅田の実測値を掛け合わせたアドリブ案',
+            }, ensure_ascii=False)
+            mock_resp_ok = MagicMock()
+            mock_resp_ok.status_code = 200
+            mock_resp_ok.json.return_value = {'candidates': [{'content': {'parts': [{'text': valid_ai_json}]}}]}
+
+            with patch('sns_editorial.requests.post', return_value=mock_resp_ok):
+                res_ok = sns_editorial.run_editorial_pipeline(
+                    sample_stores, slot_label='22:00', channel='x', use_ai=True, force_ai_refresh=True
+                )
+            self.assertEqual(res_ok['winner']['style'], 'ai_live_adlib')
+            self.assertEqual(res_ok['winner']['total_score'], 100)
+            self.assertIn('小雨の金曜夜', res_ok['winner']['main_text'])
+
+            # 4. Hallucinated AI draft (invents 女性99名 instead of 44名) is strictly blocked by Desk (-50 data score)
+            bad_ai_json = json.dumps({
+                'main_text': (
+                    '今夜のオリエンタル梅田茶屋町、なんと女性99名・男性22名で大爆発中🔥\n'
+                    'いますぐリプ欄からチェック👇\n#相席ナビ #相席ラウンジ'
+                ),
+                'writer_note': '誇張テスト',
+            }, ensure_ascii=False)
+            mock_resp_bad = MagicMock()
+            mock_resp_bad.status_code = 200
+            mock_resp_bad.json.return_value = {'candidates': [{'content': {'parts': [{'text': bad_ai_json}]}}]}
+
+            with patch('sns_editorial.requests.post', return_value=mock_resp_bad):
+                res_bad = sns_editorial.run_editorial_pipeline(
+                    sample_stores, slot_label='22:00', channel='x', use_ai=True, force_ai_refresh=True
+                )
+            # Winner MUST fall back safely to verified deterministic draft, NOT the hallucinated AI draft!
+            self.assertNotEqual(res_bad['winner']['style'], 'ai_live_adlib')
+            ai_cand_eval = next(c for c in res_bad['evaluation']['candidates'] if c['style'] == 'ai_live_adlib')
+            self.assertEqual(ai_cand_eval['scores']['data_specificity'], -50)
+        finally:
+            sns_editorial.set_gemini_api_key('')
             with self.client.session_transaction() as s:
                 s.clear()
             app_module.clear_fast_http_caches()

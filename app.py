@@ -1316,7 +1316,12 @@ def staff_monitor():
                 audit_report = data_audit.run_data_audit(live_stores=cur_live, send_alerts=False)
                 sched_queue = scheduled_articles.get_all_with_status()
                 try:
-                    editorial_preview = sns_editorial.run_editorial_pipeline(cur_live, slot_label="22:00", record_history=False)
+                    editorial_preview = sns_editorial.run_editorial_pipeline(
+                        cur_live,
+                        slot_label="22:00",
+                        record_history=False,
+                        use_ai=False,
+                    )
                 except Exception:
                     editorial_preview = None
             return render_template(
@@ -1396,12 +1401,15 @@ def staff_sns_editorial():
     with data_lock:
         live_s = list(latest_data.get('full_data') or [])
     ig_ctx = _get_sns_kit_context(fast=True) if channel == 'instagram' else None
+    force_ai = request.args.get('refresh_ai') == '1'
     editorial = sns_editorial.run_editorial_pipeline(
         live_s,
         slot_label=slot_label,
         channel=channel,
         ig_ctx=ig_ctx,
         record_history=False,
+        use_ai=True,
+        force_ai_refresh=force_ai,
     )
     if request.args.get('format') == 'json':
         return jsonify(editorial)
@@ -1424,6 +1432,7 @@ def api_sns_editorial():
     if channel not in ('x', 'threads', 'instagram'):
         channel = 'x'
     slot_label = (request.args.get('slot') or '22:00').strip()
+    force_ai = request.args.get('refresh_ai') == '1'
     with data_lock:
         live_s = list(latest_data.get('full_data') or [])
     ig_ctx = _get_sns_kit_context(fast=True) if channel == 'instagram' else None
@@ -1433,7 +1442,39 @@ def api_sns_editorial():
         channel=channel,
         ig_ctx=ig_ctx,
         record_history=False,
+        use_ai=True,
+        force_ai_refresh=force_ai,
     ))
+
+
+@app.route('/api/sns-editorial/gemini-key', methods=['POST'])
+def api_sns_editorial_gemini_key():
+    """Master-only endpoint to securely store or clear the Gemini API key in obfuscated job_state."""
+    if not is_master_authorized():
+        return jsonify({'error': 'Unauthorized'}), 401
+    import sns_editorial
+    payload = request.get_json(silent=True) or {}
+    action = (payload.get('action') or 'save').strip().lower()
+    if action == 'clear':
+        sns_editorial.set_gemini_api_key('')
+        clear_fast_http_caches()
+        return jsonify({
+            'ok': True,
+            'message': '登録済みのGemini APIキーを削除しました（Render環境変数がある場合はそちらが使用されます）。',
+            'gemini_status': sns_editorial.get_gemini_status(),
+        })
+
+    api_key = (payload.get('api_key') or '').strip()
+    if not api_key or len(api_key) < 16:
+        return jsonify({'ok': False, 'error': '有効なGemini APIキーを入力してください（AIza... で始まる文字列）'}), 400
+
+    sns_editorial.set_gemini_api_key(api_key)
+    clear_fast_http_caches()
+    return jsonify({
+        'ok': True,
+        'message': 'Gemini APIキーを暗号化保存しました！自動でAIアドリブ執筆＆鬼デスク数値検閲が有効になります。',
+        'gemini_status': sns_editorial.get_gemini_status(),
+    })
 
 
 @app.route('/staff/sns-kit')

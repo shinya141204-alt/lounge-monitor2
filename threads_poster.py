@@ -359,6 +359,8 @@ def execute_scheduled_threads_post(stores: list, slot_label: str = "20:00", forc
             channel="threads",
             now_jst=now_jst,
             record_history=not force,
+            use_ai=True,
+            force_ai_refresh=True,
         )
         editorial_winner = ed_res.get("winner")
     except Exception as e:

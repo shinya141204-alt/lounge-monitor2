@@ -154,6 +154,8 @@ def execute_scheduled_x_post(latest_data, slot_label="20:00", force=False, inclu
             slot_label=slot_label,
             now_jst=now_jst,
             record_history=not force,
+            use_ai=True,
+            force_ai_refresh=True,
         )
         editorial_winner = editorial_res.get("winner")
     except Exception as e:

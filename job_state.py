@@ -129,7 +129,9 @@ def _load():
                 if isinstance(kv_data, dict):
                     for k, v in kv_data.items():
                         if k is not None and v is not None:
-                            _kv[str(k)] = str(v)
+                            ks = str(k)
+                            vs = str(v)
+                            _kv[ks] = _deobfuscate_secret(vs) if ks.startswith('token:') else vs
                 _local_loaded = True
         except Exception:
             pass
@@ -163,9 +165,14 @@ def _save_local():
         os.makedirs(_LOCAL_DIR, exist_ok=True)
         trimmed = _trimmed_history_list(_keys.keys())
         _keys = {k: None for k in trimmed}
+        local_kv = {}
+        for k, v in (_kv or {}).items():
+            ks = str(k)
+            vs = "" if v is None else str(v)
+            local_kv[ks] = _obfuscate_secret(vs) if ks.startswith('token:') else vs
         payload = {
             'keys': trimmed,
-            'kv': dict(_kv or {}),
+            'kv': local_kv,
         }
         with open(_LOCAL_FILE, 'w', encoding='utf-8') as f:
             json.dump(payload, f, ensure_ascii=False)
