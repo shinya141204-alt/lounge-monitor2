@@ -1671,6 +1671,11 @@ def api_sns_editorial_gemini_key():
     action = (payload.get('action') or 'save').strip().lower()
     if action == 'clear':
         sns_editorial.set_gemini_api_key('')
+        try:
+            import column_editorial
+            column_editorial.clear_column_ai_cache()
+        except Exception:
+            pass
         clear_fast_http_caches()
         return jsonify({
             'ok': True,
@@ -1683,12 +1688,112 @@ def api_sns_editorial_gemini_key():
         return jsonify({'ok': False, 'error': '有効なGemini APIキーを入力してください（AIza... で始まる文字列）'}), 400
 
     sns_editorial.set_gemini_api_key(api_key)
+    try:
+        import column_editorial
+        column_editorial.clear_column_ai_cache()
+    except Exception:
+        pass
     clear_fast_http_caches()
     return jsonify({
         'ok': True,
         'message': 'Gemini APIキーを暗号化保存しました！自動でAIアドリブ執筆＆鬼デスク数値検閲が有効になります。',
         'gemini_status': sns_editorial.get_gemini_status(),
     })
+
+
+@app.route('/staff/column-editorial')
+def staff_column_editorial():
+    """Master-only 4-role Column & note.com Editorial Room board."""
+    if not session.get('is_master'):
+        return redirect(url_for('staff_monitor', switch='1'))
+    import column_editorial
+    restore_latest_data_if_empty()
+    trigger_background_fetch_if_needed()
+    theme_key = (request.args.get('theme') or 'area_hopping').strip().lower()
+    custom_topic = (request.args.get('topic') or '').strip()
+    force_ai = request.args.get('refresh_ai') == '1'
+    is_json_req = request.args.get('format') == 'json'
+    with data_lock:
+        live_s = list(latest_data.get('full_data') or [])
+    editorial = column_editorial.run_column_editorial_pipeline(
+        live_s,
+        theme_key=theme_key,
+        custom_topic=custom_topic,
+        use_ai=True,
+        force_ai_refresh=force_ai,
+        ai_cache_only=(not is_json_req),
+    )
+    if is_json_req:
+        return jsonify(editorial)
+    return render_template(
+        'staff_column_editorial.html',
+        editorial=editorial,
+        custom_topic=custom_topic,
+    )
+
+
+@app.route('/api/column-editorial')
+def api_column_editorial():
+    """Master-only JSON API returning 4-role column & note proposals, scores, and audit table."""
+    if not is_master_authorized():
+        return jsonify({'error': 'Unauthorized'}), 401
+    import column_editorial
+    restore_latest_data_if_empty()
+    theme_key = (request.args.get('theme') or 'area_hopping').strip().lower()
+    custom_topic = (request.args.get('topic') or '').strip()
+    force_ai = request.args.get('refresh_ai') == '1'
+    with data_lock:
+        live_s = list(latest_data.get('full_data') or [])
+    return jsonify(column_editorial.run_column_editorial_pipeline(
+        live_s,
+        theme_key=theme_key,
+        custom_topic=custom_topic,
+        use_ai=True,
+        force_ai_refresh=force_ai,
+        ai_cache_only=False,
+    ))
+
+
+@app.route('/api/column-editorial/publish', methods=['POST'])
+def api_column_editorial_publish():
+    """Master-only endpoint to schedule or immediately publish an editorial column to the live site."""
+    if not is_master_authorized():
+        return jsonify({'error': 'Unauthorized'}), 401
+    import column_editorial
+    payload = request.get_json(silent=True) or {}
+    candidate = payload.get('candidate') or {}
+    if not isinstance(candidate, dict):
+        return jsonify({'ok': False, 'error': '有効な記事データがありません。'}), 400
+    publish_mode = (payload.get('publish_mode') or 'schedule').strip().lower()
+    publish_at_str = (payload.get('publish_at') or '').strip()
+    custom_slug = (payload.get('slug') or '').strip()
+    eyecatch_key = (payload.get('eyecatch_key') or '').strip()
+    res = column_editorial.save_editorial_column(
+        candidate=candidate,
+        publish_mode=publish_mode,
+        publish_at_str=publish_at_str,
+        custom_slug=custom_slug,
+        eyecatch_key=eyecatch_key,
+    )
+    if not res.get('ok'):
+        return jsonify(res), 400
+    clear_fast_http_caches()
+    return jsonify(res)
+
+
+@app.route('/api/column-editorial/delete', methods=['POST'])
+def api_column_editorial_delete():
+    """Master-only endpoint to delete a dynamically registered editorial column."""
+    if not is_master_authorized():
+        return jsonify({'error': 'Unauthorized'}), 401
+    import column_editorial
+    payload = request.get_json(silent=True) or {}
+    slug = (payload.get('slug') or '').strip()
+    res = column_editorial.delete_editorial_column(slug)
+    if not res.get('ok'):
+        return jsonify(res), 400
+    clear_fast_http_caches()
+    return jsonify(res)
 
 
 @app.route('/staff/sns-kit')
@@ -2478,13 +2583,21 @@ def sitemap_xml():
 def columns_index():
     """Portal page listing all editorial guides, comparisons, and area features."""
     is_staff = bool(session.get('is_staff'))
+    pub_items = scheduled_articles.get_published_articles()
+    up_items = scheduled_articles.get_upcoming_articles() if is_staff else []
+    cache_sig = (
+        'columns',
+        is_staff,
+        tuple(it.get('slug') for it in pub_items),
+        tuple(it.get('slug') for it in up_items),
+    )
     return _get_cached_html_or_render(
-        ('columns', is_staff),
+        cache_sig,
         lambda: render_template(
             'columns.html',
             area_guides=AREA_GUIDES,
-            published_scheduled=scheduled_articles.get_published_articles(),
-            upcoming_scheduled=scheduled_articles.get_upcoming_articles() if is_staff else [],
+            published_scheduled=pub_items,
+            upcoming_scheduled=up_items,
             is_staff=is_staff,
         ),
     )
@@ -2669,7 +2782,7 @@ def _render_scheduled_guide(slug: str):
         abort(404)
     if scheduled_articles.is_published(item):
         return _get_cached_html_or_render(
-            ('sched_guide', slug),
+            ('sched_guide', slug, item.get('created_at') or item.get('publish_at')),
             lambda: render_template(item['template'], is_scheduled_preview=False, scheduled_item=item),
         )
     if is_admin_authorized():
@@ -2695,6 +2808,15 @@ def guide_cost_break_even():
 def guide_rain_payday():
     """Scheduled editorial data study on rainy nights, pre-payday windows, and 3-day-weekend Sundays."""
     return _render_scheduled_guide('rain-payday')
+
+
+@app.route('/guide/<slug>')
+def guide_dynamic_scheduled(slug):
+    """Dynamic route serving scheduled or live columns published from the Column Editorial Room."""
+    item = scheduled_articles.get_article_by_slug(slug)
+    if not item:
+        abort(404)
+    return _render_scheduled_guide(slug)
 
 @app.route('/api/sns-post')
 def generate_sns_post_api():

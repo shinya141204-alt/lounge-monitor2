@@ -159,6 +159,15 @@ def describe_label(event, raw_label):
     if event == 'page_view':
         if label in _PAGE_TITLES:
             return {'title': _PAGE_TITLES[label], 'sub': label, 'href': label}
+        if label.startswith('/guide/'):
+            gslug = label.split('/guide/', 1)[1].strip('/')
+            try:
+                import scheduled_articles
+                sitem = scheduled_articles.get_article_by_slug(gslug)
+                if sitem:
+                    return {'title': f"📖 {sitem.get('short_title') or sitem.get('title')}", 'sub': label, 'href': label}
+            except Exception:
+                pass
         if label.startswith('/area/'):
             slug = label.split('/area/', 1)[1].strip('/')
             aname = _AREA_NAMES.get(slug, slug)

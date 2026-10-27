@@ -1744,7 +1744,7 @@ class FullAuditRegressionTests(unittest.TestCase):
         sw_resp = self.client.get('/sw.js')
         try:
             sw_txt = sw_resp.data.decode('utf-8')
-            self.assertIn("CACHE_NAME = 'aiseki-navi-v55'", sw_txt)
+            self.assertIn("CACHE_NAME = 'aiseki-navi-v56'", sw_txt)
             self.assertIn("event.waitUntil", sw_txt)
         finally:
             sw_resp.close()
@@ -2182,6 +2182,209 @@ class FullAuditRegressionTests(unittest.TestCase):
         desc_vote = analytics.describe_label('vote', 'OLG 新宿:smooth')
         self.assertIn('オリエンタルラウンジ 新宿', desc_vote['title'])
         self.assertIn('すぐ入れた', desc_vote['title'])
+
+
+class ColumnEditorialRoomTests(unittest.TestCase):
+    """End-to-end tests for the Master-only 4-Role Column & note.com Editorial Room."""
+
+    def setUp(self):
+        shutil.rmtree(os.environ['JOB_STATE_DIR'], ignore_errors=True)
+        import column_editorial
+        job_state.reset_cache_for_tests()
+        column_editorial.clear_column_ai_cache()
+        with app_module.data_lock:
+            app_module.latest_data['full_data'] = _fake_stores()
+            app_module.latest_data['is_seed_fallback'] = False
+            app_module.latest_data['last_updated'] = datetime.datetime.now(
+                datetime.timezone(datetime.timedelta(hours=9))
+            ).strftime('%Y-%m-%d %H:%M:%S')
+        app_module._last_fetch_epoch = 9999999999.0
+        app_module.clear_fast_http_caches()
+        self.client = app_module.app.test_client()
+
+    def tearDown(self):
+        import column_editorial
+        column_editorial.clear_column_ai_cache()
+        shutil.rmtree(os.environ['JOB_STATE_DIR'], ignore_errors=True)
+        job_state.reset_cache_for_tests()
+        app_module.clear_fast_http_caches()
+
+    def test_column_editorial_permissions_ai_sanitization_and_scheduled_publish_flow(self):
+        import re
+        import json
+        import column_editorial
+        import scheduled_articles
+        import x_poster
+        import analytics
+
+        # 1. Access control: anonymous & regular staff blocked; master allowed
+        self.assertEqual(self.client.get('/staff/column-editorial').status_code, 302)
+        self.assertEqual(self.client.get('/api/column-editorial').status_code, 401)
+        self.assertEqual(self.client.post('/api/column-editorial/publish', json={}).status_code, 401)
+
+        with self.client.session_transaction() as sess:
+            sess['is_staff'] = True
+            sess['is_master'] = False
+        self.assertEqual(self.client.get('/staff/column-editorial').status_code, 302)
+        self.assertEqual(self.client.get('/api/column-editorial').status_code, 401)
+
+        with self.client.session_transaction() as sess:
+            sess['is_staff'] = True
+            sess['is_master'] = True
+
+        r_board = self.client.get('/staff/column-editorial?theme=midnight_wave')
+        self.assertEqual(r_board.status_code, 200)
+        board_html = r_board.data.decode('utf-8')
+        self.assertIn('コラム・note編集部', board_html)
+        self.assertIn('全コラム「鬼デスク品質・人間味＆ブランド呼称」監査一覧', board_html)
+
+        # 2. Pipeline with mocked Gemini thinking output containing bare 'オリエンタル大阪駅前' -> auto-normalized!
+        mock_ai_json = {
+            "thinking_memo": "受付待ちの失敗談・相方LINE・雨夜の3案を脳内で比較し、23時半のエレベーター前の温度差から入る導入を採用。",
+            "writer_note": "オリエンタル大阪駅前とag梅田の深夜維持差を会話3箇所で描写",
+            "slug": "umeda-midnight-test",
+            "title": "23時半のオリエンタル大阪駅前とag梅田で見た「第2波」のリアルな温度差",
+            "short_title": "梅田23時半の第2波とハシゴ術",
+            "desc": "終電前に一度落ち着いたフロアが0時過ぎに再び華やぐ瞬間を、オリエンタル大阪駅前の実測データと現場の会話で紐解きます。",
+            "sections": [
+                {
+                    "heading": "1. 23時20分のエレベーター前で迷った夜",
+                    "paragraphs": ["オリエンタル大阪駅前のビル下で相方と画面を見比べました。"],
+                    "dialogue": ["「もう終電近いし今日は帰る？」", "「いや、0時過ぎから第2波来るらしいから1杯だけ寄ろう」"],
+                    "after_paragraphs": ["結果的にこの判断が大当たりでした。"],
+                    "highlight_title": "終電際の盲点",
+                    "highlight_body": "23時台の減少だけで判断しないこと。"
+                },
+                {
+                    "heading": "2. 数字が裏付ける深夜0時半の再流入",
+                    "paragraphs": ["2軒目帰りの女性グループが合流します。"],
+                    "dialogue": ["「さっきまで近くで飲んでて2軒目で来ました〜」", "「ちょうど落ち着いた席でよかったね！」"],
+                    "after_paragraphs": ["会話のテンポも終電前よりゆったりしています。"],
+                    "highlight_title": "",
+                    "highlight_body": ""
+                },
+                {
+                    "heading": "3. 深夜ラウンドは45分スマート勝負",
+                    "paragraphs": ["ダラダラ居座らずスッキリ切り上げるのが鉄則です。"],
+                    "dialogue": ["「近くでシメのパフェかバー1杯だけ行かない？」", "「いいですね、行きましょう！」"],
+                    "after_paragraphs": ["無理のない声かけが一番自然に通ります。"],
+                    "highlight_title": "深夜の3原則",
+                    "highlight_body": "①比率確認 ②雑談スタート ③45分判断"
+                }
+            ],
+            "summary_points": ["23時半の谷を越えると第2波が来る", "徒歩圏の比率差を見る", "45分でスマートに動く"],
+            "faqs": [
+                {"q": "0時過ぎからでも女性はいますか？", "a": "金土や祝前日は2軒目利用の女性が多く来店します。"},
+                {"q": "1人でも入れますか？", "a": "店舗状況により案内可能です。"}
+            ],
+            "x_title": "梅田23時半の第2波とリアルなハシゴ温度差",
+            "x_main_text": "23時半のオリエンタル大阪駅前で「もう遅いかな…」と迷った夜、0時過ぎから2軒目帰りの女の子が続々入ってきた話🌙\n\n終電後の第2波と会話のコツを書きました👇\n#相席ラウンジ #相席ナビ",
+            "note_title": "23時半に帰りかけた夜、梅田のラウンジで見た「第2波」の話",
+            "note_hashtags": "#相席ラウンジ #オリエンタルラウンジ #相席ナビ"
+        }
+
+        class _DummyResp:
+            status_code = 200
+            text = ""
+            def json(self_inner):
+                return {"candidates": [{"content": {"parts": [{"text": json.dumps(mock_ai_json, ensure_ascii=False)}]}}]}
+
+        sample_stores = [
+            {"name": "OLG 大阪駅前", "women": 50, "men": 28, "region": "Kansai"},
+            {"name": "OLG ag梅田", "women": 42, "men": 24, "region": "Kansai"},
+            {"name": "JIS UMEDA", "women": 31, "men": 33, "region": "Kansai"},
+        ]
+        with mock.patch('sns_editorial.get_gemini_api_key', return_value='AIzaDummyKeyForColumnEditorialTest12345'), \
+             mock.patch('requests.post', return_value=_DummyResp()):
+            ed = column_editorial.run_column_editorial_pipeline(
+                sample_stores,
+                theme_key='midnight_wave',
+                custom_topic='日曜23時半の梅田第2波テスト',
+                use_ai=True,
+                force_ai_refresh=True,
+                ai_cache_only=False,
+            )
+
+        winner = ed['winner']
+        self.assertTrue(winner['is_ai_generated'])
+        self.assertIn('脳内で比較', winner['thinking_memo'])
+        # Bare 'オリエンタル(?!ラウンジ)' must be 100% eliminated across title, preview, note, and X text!
+        for field in ('title', 'desc', 'preview_text', 'note_markdown', 'x_main_text'):
+            self.assertIsNone(
+                re.search(r'オリエンタル(?!ラウンジ)', winner[field]),
+                f"Bare オリエンタル leaked in {field}: {winner[field]}",
+            )
+        self.assertLessEqual(x_poster.compute_twitter_weight(winner['x_main_text']), 280)
+
+        # 3. Schedule publication via POST /api/column-editorial/publish
+        r_pub = self.client.post('/api/column-editorial/publish', json={
+            'candidate': winner,
+            'publish_mode': 'schedule',
+            'publish_at': '2026-12-10T19:00',
+            'slug': 'umeda-midnight-test',
+            'eyecatch_key': 'last-train',
+        })
+        self.assertEqual(r_pub.status_code, 200)
+        pub_json = r_pub.get_json()
+        self.assertTrue(pub_json['ok'])
+        self.assertEqual(pub_json['path'], '/guide/umeda-midnight-test')
+
+        # Before scheduled time: staff gets 200 noindex preview; public visitor gets 404; unknown slug always 404
+        t_before = datetime.datetime(2026, 12, 10, 18, 0, 0)
+        with mock.patch('scheduled_articles.now_jst_naive', return_value=t_before):
+            app_module.clear_fast_http_caches()
+            r_staff_prev = self.client.get('/guide/umeda-midnight-test')
+            self.assertEqual(r_staff_prev.status_code, 200)
+            prev_html = r_staff_prev.data.decode('utf-8')
+            self.assertIn('社内限定プレビュー', prev_html)
+            self.assertIn('dialogue-box', prev_html)
+            self.assertIn('data-table', prev_html)
+            self.assertEqual(r_staff_prev.headers.get('X-Robots-Tag'), 'noindex, nofollow')
+
+            with self.client.session_transaction() as sess:
+                sess.clear()
+            self.assertEqual(self.client.get('/guide/umeda-midnight-test').status_code, 404)
+            self.assertEqual(self.client.get('/guide/non-existent-random-column-999').status_code, 404)
+            col_before = self.client.get('/columns').data.decode('utf-8')
+            self.assertNotIn('/guide/umeda-midnight-test', col_before)
+
+        # After scheduled time: public gets 200, listed on /columns & /sitemap.xml, analytics resolves title, X thread fires once
+        t_after = datetime.datetime(2026, 12, 10, 19, 10, 0)
+        with mock.patch('scheduled_articles.now_jst_naive', return_value=t_after):
+            app_module.clear_fast_http_caches()
+            r_live = self.client.get('/guide/umeda-midnight-test')
+            self.assertEqual(r_live.status_code, 200)
+            live_html = r_live.data.decode('utf-8')
+            self.assertNotIn('社内限定プレビュー', live_html)
+            self.assertIn('オリエンタルラウンジ大阪駅前', live_html)
+
+            col_after = self.client.get('/columns').data.decode('utf-8')
+            self.assertIn('/guide/umeda-midnight-test', col_after)
+
+            smap_xml = self.client.get('/sitemap.xml').data.decode('utf-8')
+            self.assertIn('https://aiseki-navi.com/guide/umeda-midnight-test', smap_xml)
+
+            lbl = analytics.describe_label('page_view', '/guide/umeda-midnight-test')
+            self.assertIn('梅田23時半の第2波とハシゴ術', lbl['title'])
+
+            with mock.patch('x_poster.post_to_x', return_value={'status': 'success', 'tweet_id': '999111'}) as mock_post:
+                ann1 = scheduled_articles.check_and_announce_newly_published(now_jst=t_after)
+                slugs_announced = [a['slug'] for a in ann1]
+                self.assertIn('umeda-midnight-test', slugs_announced)
+                ann2 = scheduled_articles.check_and_announce_newly_published(now_jst=t_after)
+                self.assertNotIn('umeda-midnight-test', [a['slug'] for a in ann2])
+                self.assertGreaterEqual(mock_post.call_count, 1)
+
+        # 4. Delete dynamic column as Master -> returns to 404
+        with self.client.session_transaction() as sess:
+            sess['is_staff'] = True
+            sess['is_master'] = True
+        r_del = self.client.post('/api/column-editorial/delete', json={'slug': 'umeda-midnight-test'})
+        self.assertEqual(r_del.status_code, 200)
+        self.assertTrue(r_del.get_json()['ok'])
+        with self.client.session_transaction() as sess:
+            sess.clear()
+        self.assertEqual(self.client.get('/guide/umeda-midnight-test').status_code, 404)
 
 
 if __name__ == '__main__':

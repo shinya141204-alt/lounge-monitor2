@@ -1,5 +1,5 @@
-// Supersedes aiseki-navi-v47..v54 (purged automatically on activate)
-const CACHE_NAME = 'aiseki-navi-v55';
+// Supersedes aiseki-navi-v47..v55 (purged automatically on activate)
+const CACHE_NAME = 'aiseki-navi-v56';
 const SHELL_KEY = '/';
 const FAST_NAV_PATHS = new Set([
   '/grooming',

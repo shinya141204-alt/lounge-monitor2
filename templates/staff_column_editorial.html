@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>コラム・note編集部（4役合議・予約公開ボード）｜相席ナビ</title>
+    <style>
+        :root {
+            --bg: #0f1014;
+            --surface: #16171c;
+            --surface-2: #1d1f26;
+            --border: rgba(255, 255, 255, 0.08);
+            --border-strong: rgba(255, 255, 255, 0.16);
+            --text: #f1efe9;
+            --sub: #9b978f;
+            --gold: #c8a46e;
+            --gold-soft: rgba(200, 164, 110, 0.16);
+            --green: #7bc49f;
+            --green-soft: rgba(123, 196, 159, 0.16);
+            --blue: #93b1c9;
+            --blue-soft: rgba(147, 177, 201, 0.16);
+            --rose: #d8a1aa;
+            --rose-soft: rgba(216, 161, 170, 0.16);
+            --amber: #d9b36c;
+        }
+        * { box-sizing: border-box; }
+        html, body {
+            overflow-x: hidden;
+            max-width: 100%;
+        }
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", Meiryo, sans-serif;
+            line-height: 1.62;
+        }
+        .wrap {
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: max(18px, env(safe-area-inset-top)) 16px 80px;
+        }
+        .top-nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+        a.back-btn, button.back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--text);
+            text-decoration: none;
+            font-size: 0.82rem;
+            font-weight: 600;
+            padding: 7px 14px;
+            border-radius: 999px;
+            background: var(--surface);
+            border: 1px solid var(--border-strong);
+            cursor: pointer;
+        }
+        a.back-btn:hover, button.back-btn:hover { border-color: var(--gold); }
+        .channel-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 14px;
+            padding: 10px 14px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+        }
+        .tab-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .tab-group a {
+            color: var(--sub);
+            text-decoration: none;
+            padding: 6px 13px;
+            border: 1px solid var(--border-strong);
+            border-radius: 999px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            background: var(--bg);
+        }
+        .tab-group a.active {
+            background: var(--gold-soft);
+            border-color: var(--gold);
+            color: #f5e6cc;
+        }
+        .header-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 18px 20px;
+            margin-bottom: 16px;
+        }
+        .header-card h1 {
+            font-size: 1.24rem;
+            margin: 0 0 6px;
+        }
+        .header-card p {
+            color: var(--sub);
+            font-size: 0.82rem;
+            margin: 0;
+        }
+        .theme-panel {
+            background: var(--surface);
+            border: 1px solid rgba(200, 164, 110, 0.35);
+            border-radius: 14px;
+            padding: 15px 18px;
+            margin-bottom: 16px;
+        }
+        .theme-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 7px;
+            margin-bottom: 12px;
+        }
+        .theme-chip {
+            text-decoration: none;
+            color: var(--sub);
+            background: var(--bg);
+            border: 1px solid var(--border-strong);
+            padding: 6px 12px;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            font-weight: 700;
+        }
+        .theme-chip.active {
+            background: var(--gold-soft);
+            border-color: var(--gold);
+            color: #f5e6cc;
+        }
+        .custom-topic-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .topic-input {
+            flex: 1;
+            min-width: 240px;
+            padding: 9px 13px;
+            border-radius: 9px;
+            border: 1px solid var(--border-strong);
+            background: #0b0c0f;
+            color: var(--text);
+            font-size: 0.84rem;
+        }
+        .ai-panel {
+            background: linear-gradient(135deg, rgba(168, 85, 247, 0.11) 0%, rgba(22, 24, 29, 0.96) 65%);
+            border: 1px solid rgba(168, 85, 247, 0.38);
+            border-radius: 16px;
+            padding: 15px 18px;
+            margin-bottom: 18px;
+        }
+        .ai-panel-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .ai-status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 12px;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            font-weight: 800;
+        }
+        .ai-status-on { background: var(--green-soft); border: 1px solid var(--green); color: #d3f3e2; }
+        .ai-status-off { background: rgba(217, 179, 108, 0.15); border: 1px solid var(--amber); color: #f6e2b8; }
+        .ai-status-loading { background: rgba(168, 85, 247, 0.22); border: 1px solid rgba(192, 132, 252, 0.7); color: #f3e8ff; }
+        .ai-btn {
+            cursor: pointer;
+            font-size: 0.78rem;
+            font-weight: 700;
+            padding: 7px 13px;
+            border-radius: 8px;
+            border: 1px solid rgba(192, 132, 252, 0.55);
+            background: rgba(168, 85, 247, 0.2);
+            color: #f3e8ff;
+        }
+        .ai-btn:disabled { opacity: 0.55; cursor: wait; }
+        .context-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+            font-size: 0.75rem;
+            color: #dcd5e8;
+        }
+        .context-chip {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-strong);
+            padding: 4px 10px;
+            border-radius: 8px;
+        }
+        .key-drawer {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px dashed var(--border-strong);
+        }
+        .roles-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 12px;
+            margin-bottom: 22px;
+        }
+        .role-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 13px;
+            padding: 14px 16px;
+        }
+        .role-badge {
+            display: inline-block;
+            font-size: 0.73rem;
+            font-weight: 700;
+            padding: 3px 9px;
+            border-radius: 999px;
+            margin-bottom: 8px;
+        }
+        .role-1 { background: var(--blue-soft); color: #cde2f5; border: 1px solid rgba(147, 177, 201, 0.35); }
+        .role-2 { background: var(--gold-soft); color: #f5e6cc; border: 1px solid rgba(200, 164, 110, 0.35); }
+        .role-3 { background: var(--green-soft); color: #d3f3e2; border: 1px solid rgba(123, 196, 159, 0.35); }
+        .role-4 { background: var(--rose-soft); color: #f6d5dc; border: 1px solid rgba(216, 161, 170, 0.35); }
+        .role-card h3 { font-size: 0.92rem; margin: 0 0 6px; }
+        .role-card ul, .role-card p {
+            font-size: 0.79rem;
+            color: var(--sub);
+            margin: 0;
+            padding-left: 16px;
+        }
+        .role-card p { padding-left: 0; }
+        .role-card li { margin-bottom: 4px; }
+        .section-h2 {
+            font-size: 1.05rem;
+            margin: 26px 0 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .candidates-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            margin-bottom: 28px;
+        }
+        .cand-card {
+            background: var(--surface);
+            border: 1px solid var(--border-strong);
+            border-radius: 15px;
+            padding: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 11px;
+        }
+        .cand-card.winner {
+            border: 2px solid var(--green);
+            background: linear-gradient(180deg, rgba(123, 196, 159, 0.06) 0%, var(--surface) 100%);
+        }
+        .cand-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .score-pill {
+            font-size: 0.88rem;
+            font-weight: 800;
+            padding: 4px 12px;
+            border-radius: 999px;
+            background: var(--surface-2);
+            border: 1px solid var(--border-strong);
+        }
+        .cand-card.winner .score-pill {
+            background: var(--green-soft);
+            border-color: var(--green);
+            color: #d3f3e2;
+        }
+        .article-headline-box {
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 11px 14px;
+        }
+        .article-headline-box h3 {
+            margin: 0 0 5px 0;
+            font-size: 1.02rem;
+            color: #f8fafc;
+        }
+        .article-headline-box p {
+            margin: 0;
+            font-size: 0.81rem;
+            color: var(--sub);
+        }
+        .score-bars {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 6px;
+            background: var(--surface-2);
+            padding: 9px 12px;
+            border-radius: 10px;
+            font-size: 0.76rem;
+            color: var(--sub);
+        }
+        .score-bars span strong { color: var(--text); }
+        .writer-memo {
+            font-size: 0.79rem;
+            color: #d8cdb8;
+            background: rgba(200, 164, 110, 0.08);
+            border-left: 3px solid var(--gold);
+            padding: 7px 11px;
+            border-radius: 4px;
+        }
+        .thinking-memo {
+            font-size: 0.78rem;
+            color: #ebd9ff;
+            background: rgba(168, 85, 247, 0.11);
+            border-left: 3px solid #c084fc;
+            padding: 7px 11px;
+            border-radius: 4px;
+        }
+        .desk-box {
+            font-size: 0.77rem;
+            color: var(--sub);
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+            padding: 9px 12px;
+        }
+        .preview-tabs {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .ptab-btn {
+            cursor: pointer;
+            padding: 6px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border-strong);
+            background: var(--bg);
+            color: var(--sub);
+            font-size: 0.77rem;
+            font-weight: 700;
+        }
+        .ptab-btn.active {
+            background: var(--gold-soft);
+            border-color: var(--gold);
+            color: #f5e6cc;
+        }
+        .doc-preview {
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            max-height: 340px;
+            overflow-y: auto;
+            font-size: 0.81rem;
+            background: #0b0c0f;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 13px 14px;
+            color: var(--text);
+        }
+        .publish-bar {
+            background: rgba(255, 255, 255, 0.025);
+            border: 1px solid var(--border-strong);
+            border-radius: 12px;
+            padding: 12px 14px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .pub-field {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            font-size: 0.72rem;
+            color: var(--sub);
+        }
+        .pub-input, .pub-select {
+            padding: 7px 10px;
+            border-radius: 7px;
+            border: 1px solid var(--border-strong);
+            background: #0b0c0f;
+            color: var(--text);
+            font-size: 0.8rem;
+        }
+        .copy-btn {
+            cursor: pointer;
+            padding: 8px 13px;
+            border-radius: 8px;
+            border: 1px solid var(--gold);
+            background: var(--gold-soft);
+            color: #f5e6cc;
+            font-size: 0.79rem;
+            font-weight: 700;
+        }
+        .pub-now-btn {
+            cursor: pointer;
+            padding: 8px 14px;
+            border-radius: 8px;
+            border: 1px solid var(--green);
+            background: var(--green-soft);
+            color: #d3f3e2;
+            font-size: 0.79rem;
+            font-weight: 800;
+        }
+        .audit-table-wrap {
+            overflow-x: auto;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 13px;
+        }
+        .audit-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.79rem;
+            min-width: 720px;
+        }
+        .audit-table th, .audit-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border);
+            text-align: left;
+        }
+        .audit-table th {
+            background: var(--surface-2);
+            color: var(--sub);
+            font-weight: 700;
+        }
+        .pill-ok {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 999px;
+            background: var(--green-soft);
+            color: #d3f3e2;
+            font-size: 0.72rem;
+            font-weight: 700;
+        }
+        .pill-warn {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 999px;
+            background: var(--gold-soft);
+            color: #f5e6cc;
+            font-size: 0.72rem;
+            font-weight: 700;
+        }
+        .del-btn {
+            cursor: pointer;
+            padding: 4px 9px;
+            border-radius: 6px;
+            border: 1px solid rgba(216, 161, 170, 0.45);
+            background: var(--rose-soft);
+            color: #ffd6dc;
+            font-size: 0.72rem;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <div class="top-nav">
+            <a href="/staff" class="back-btn">← マスター管理画面へ戻る</a>
+            <a href="/columns" target="_blank" rel="noopener" class="back-btn">📚 公開コラム一覧（社内プレビュー付）を開く ↗</a>
+        </div>
+
+        <div class="channel-bar">
+            <div class="tab-group" aria-label="編集部切替">
+                <a href="/staff/sns-editorial?channel=x">𝕏 X（旧Twitter）編集部</a>
+                <a href="/staff/sns-editorial?channel=threads">🧵 Threads（スレッズ）編集部</a>
+                <a href="/staff/sns-editorial?channel=instagram">📸 Instagram（インスタ）編集部</a>
+                <a href="/staff/column-editorial" class="active">📖 コラム・note編集部</a>
+            </div>
+        </div>
+
+        <div class="header-card">
+            <h1>📖 相席ナビ「コラム・note編集部」4役合議・長考執筆＆予約公開ボード（マスター専用）</h1>
+            <p>SNS編集部と共通の4役体制で、AI特有の教科書感を排除した人間味コラム（現場リアル会話 <code>.dialogue-box</code> 3箇所＋実測データ比較表＋FAQ）・note原稿・X新着2連スレッドを一括作成。採用案はワンクリックでサイトへ予約公開または即時公開できます。</p>
+        </div>
+
+        <!-- Theme & Custom Topic Selector -->
+        <div class="theme-panel">
+            <div style="font-size:0.8rem; font-weight:700; color:var(--gold); margin-bottom:8px;">🎯 Step 1：企画テーマ選択 または 自由お題オーダー</div>
+            <div class="theme-chips">
+                {% for th in editorial.themes %}
+                <a href="/staff/column-editorial?theme={{ th.key }}" class="theme-chip {{ 'active' if editorial.theme_key == th.key and not custom_topic else '' }}">
+                    {{ th.label }}
+                </a>
+                {% endfor %}
+            </div>
+            <form method="get" action="/staff/column-editorial" class="custom-topic-row" onsubmit="onCustomTopicSubmit(event)">
+                <input type="hidden" name="theme" id="theme-hidden-input" value="{{ editorial.theme_key }}">
+                <input type="text" name="topic" id="custom-topic-input" class="topic-input" value="{{ custom_topic }}" placeholder="自由テーマ入力（例：日曜20時の穴場勝負、梅田エリアの1軒目→2軒目比較、雨の日の駅直結ラウンジなど）">
+                <button type="submit" class="copy-btn">🧠 このお題で4役合議・執筆コンペを実行</button>
+            </form>
+        </div>
+
+        <!-- Gemini AI Status & Shared Key Drawer -->
+        <div class="ai-panel">
+            <div class="ai-panel-top">
+                <div>
+                    {% if editorial.ai_pending_async and editorial.gemini_status and editorial.gemini_status.configured %}
+                    <span id="ai-status-pill" class="ai-status-pill ai-status-loading">🧠 Gemini編集長が長考モードで導入3案を脳内コンペ・執筆中...（約6〜10秒）</span>
+                    {% elif editorial.gemini_status and editorial.gemini_status.state == 'active' %}
+                    <span id="ai-status-pill" class="ai-status-pill ai-status-on">🟢 Gemini AI 長考コラム執筆：正常稼働中（{{ editorial.gemini_status.last_model }} ｜ {{ editorial.gemini_status.masked_key }}）</span>
+                    {% elif editorial.gemini_status and editorial.gemini_status.state == 'degraded' %}
+                    <span id="ai-status-pill" class="ai-status-pill ai-status-off">🟠 AI通信エラーのため現在は実測ストーリー安全案へ自動切替中（{{ editorial.gemini_status.masked_key }}）</span>
+                    {% else %}
+                    <span id="ai-status-pill" class="ai-status-pill ai-status-off">🟡 Gemini APIキー未設定（SNS編集部と共通キー・現在は実測データ連動ストーリー案で稼働中）</span>
+                    {% endif %}
+                </div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <button type="button" id="ai-regen-btn" class="ai-btn" onclick="triggerColumnAiRefresh(true, false)" style="display: {{ 'inline-block' if (editorial.gemini_status and editorial.gemini_status.configured) else 'none' }};">🔄 別の長考ストーリー案を再生成</button>
+                    <button type="button" class="ai-btn" onclick="toggleKeyDrawer()">🔑 Gemini APIキー設定（SNS編集部と共通）</button>
+                </div>
+            </div>
+
+            <div class="context-chips" id="context-chips">
+                <span class="context-chip">📅 {{ editorial.research.calendar.tag }}：{{ editorial.research.calendar.note }}</span>
+                <span class="context-chip">📊 全国稼働：女性 {{ editorial.research.national_women }}名 / 男性 {{ editorial.research.national_men }}名（女性比 {{ editorial.research.national_wpct }}%）</span>
+                {% if editorial.gemini_status and editorial.gemini_status.last_error and not editorial.ai_pending_async %}
+                <span class="context-chip" style="border-color:var(--rose); color:#ffd6d6;">⚠️ AI通信メモ：{{ editorial.gemini_status.last_error }}（安全案フォールバック済）</span>
+                {% endif %}
+            </div>
+
+            <div id="gemini-key-drawer" class="key-drawer" style="display: none;">
+                <div style="font-size:0.78rem; color:var(--sub); margin-bottom:8px;">
+                    💡 SNS編集部と共通の Gemini API キーを使用します。ここで保存・更新すると X / Threads / Instagram / コラムの全編集部に即時反映されます。
+                </div>
+                <div class="custom-topic-row">
+                    <input type="password" id="gemini-api-key-input" class="topic-input" placeholder="AIzaSy... または AQ....（APIキーを貼り付け）" autocomplete="off">
+                    <button type="button" class="copy-btn" onclick="saveGeminiKey()">💾 暗号化保存して長考執筆を有効化</button>
+                </div>
+                <div id="gemini-key-msg" style="font-size:0.78rem; margin-top:6px; color:#d3f3e2;"></div>
+            </div>
+        </div>
+
+        <!-- 4 Roles Summary Grid -->
+        <div class="roles-grid">
+            <div class="role-card">
+                <span class="role-badge role-1">① リサーチャー（実測ログ・現場ネタ発掘係）</span>
+                <h3>検証済みデータの抽出</h3>
+                <ul id="research-findings-list">
+                    {% for f in editorial.research.findings %}
+                    <li>{{ f }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            <div class="role-card">
+                <span class="role-badge role-2">② プランナー（構成・カニバリ防止係）</span>
+                <h3>切り口設計・重複チェック</h3>
+                <p id="plan-angle-text">{{ editorial.plan.angle_summary }}</p>
+                <p style="margin-top:6px; color:#d8cdb8; font-size:0.76rem;">🎯 読者像：{{ editorial.plan.target_reader }}</p>
+            </div>
+            <div class="role-card">
+                <span class="role-badge role-3">③ ライター（人間味ストーリー＆note執筆係）</span>
+                <h3 id="writer-count-title">Webコラム＋note＋X告知 {{ editorial.evaluation.candidates | length }}案作成</h3>
+                <p>全章に現場の自然な会話（<code>.dialogue-box</code>）と実測データ比較表、FAQ、noteコピペ用Markdownを一括執筆しました。</p>
+            </div>
+            <div class="role-card">
+                <span class="role-badge role-4">④ 鬼デスク（呼称検閲・AI臭排除・100点採点係）</span>
+                <h3>品質監査・採用判定</h3>
+                <p id="desk-summary-text">{{ editorial.evaluation.desk_summary }}</p>
+            </div>
+        </div>
+
+        <h2 class="section-h2">
+            <span id="cands-heading">📝 コラム・note 提案候補（{{ editorial.evaluation.candidates | length }}案）＆ ワンクリック公開予約</span>
+            <span style="font-size:0.78rem; color:var(--sub);">集計時刻: {{ editorial.research.timestamp }}</span>
+        </h2>
+
+        <div class="candidates-stack" id="candidates-container">
+            {% for c in editorial.evaluation.candidates %}
+            {% set idx = loop.index0 %}
+            <div class="cand-card {{ 'winner' if c.is_selected else '' }}">
+                <div class="cand-top">
+                    <span style="font-size:0.92rem; font-weight:800;">
+                        {% if c.is_selected %}🏆 鬼デスク推薦 1位{% else %}候補 {{ c.rank }}位{% endif %}：{{ c.style_label }}
+                    </span>
+                    <span class="score-pill">{{ c.total_score }}点 / 100</span>
+                </div>
+
+                <div class="article-headline-box">
+                    <h3>📖 {{ c.title }}</h3>
+                    <p>{{ c.desc }}</p>
+                </div>
+
+                <div class="score-bars">
+                    <span>🗣️ 人間味・会話リアリティ: <strong>{{ c.scores.human_story }}/35</strong>（会話{{ c.dialogue_count }}箇所）</span>
+                    <span>🛡️ ファクト＆ブランド呼称: <strong>{{ c.scores.fact_brand_hygiene }}/25</strong></span>
+                    <span>🔍 SEO構造・内部回遊: <strong>{{ c.scores.seo_structure }}/25</strong></span>
+                    <span>📣 X告知＆note完成度: <strong>{{ c.scores.sns_note_ready }}/15</strong>（X {{ c.x_weight }}/280）</span>
+                </div>
+
+                <div class="writer-memo">
+                    <strong>✍️ ライター構成意図：</strong>{{ c.writer_note }}
+                </div>
+                {% if c.thinking_memo %}
+                <div class="thinking-memo">
+                    <strong>🧠 AI編集長の脳内メモ（導入3案コンペ＆推敲プロセス）：</strong>{{ c.thinking_memo }}
+                </div>
+                {% endif %}
+
+                <div class="desk-box">
+                    <strong>🧐 鬼デスク検閲コメント：</strong>
+                    {% for pr in c.pros %}
+                    <div style="color:#b9f0d3;">✓ {{ pr }}</div>
+                    {% endfor %}
+                    {% for wn in c.warnings %}
+                    <div style="color:#ffd6d6;">⚠️ {{ wn }}</div>
+                    {% endfor %}
+                </div>
+
+                <div class="preview-tabs">
+                    <button type="button" class="ptab-btn active" onclick="switchPreviewTab({{ idx }}, 'web', this)">📖 Webコラム本文プレビュー</button>
+                    <button type="button" class="ptab-btn" onclick="switchPreviewTab({{ idx }}, 'note', this)">📝 note.com コピペ原稿（{{ c.note_char_count }}字）</button>
+                    <button type="button" class="ptab-btn" onclick="switchPreviewTab({{ idx }}, 'x', this)">𝕏 X新着告知スレッド（{{ c.x_weight }}/280）</button>
+                    <button type="button" class="copy-btn" style="margin-left:auto;" onclick="copyActivePreview({{ idx }}, this)">📋 表示中の原稿をコピー</button>
+                </div>
+
+                <div id="preview-web-{{ idx }}" class="doc-preview">{{ c.preview_text }}</div>
+                <div id="preview-note-{{ idx }}" class="doc-preview" style="display:none;">{{ c.note_markdown }}</div>
+                <div id="preview-x-{{ idx }}" class="doc-preview" style="display:none;">【1投目（メイン告知）】
+{{ c.x_main_text }}
+
+【2投目（自動リプライURL）】
+{{ c.x_reply_text }}</div>
+
+                <div class="publish-bar">
+                    <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end;">
+                        <label class="pub-field">
+                            <span>URLスラッグ（/guide/...）</span>
+                            <input type="text" id="slug-input-{{ idx }}" class="pub-input" value="{{ c.slug }}" style="width:210px;">
+                        </label>
+                        <label class="pub-field">
+                            <span>アイキャッチ画像</span>
+                            <select id="eyecatch-select-{{ idx }}" class="pub-select">
+                                {% for ep in editorial.eyecatch_presets %}
+                                <option value="{{ ep.key }}" {{ 'selected' if ep.key == c.eyecatch_key else '' }}>{{ ep.label }}</option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                        <label class="pub-field">
+                            <span>予約公開日時（JST）</span>
+                            <input type="datetime-local" id="pubdt-input-{{ idx }}" class="pub-input" value="{{ editorial.default_schedule_input }}">
+                        </label>
+                    </div>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <button type="button" class="copy-btn" onclick="publishCandidate({{ idx }}, 'schedule', this)">🗓️ この日時で予約公開に登録</button>
+                        <button type="button" class="pub-now-btn" onclick="publishCandidate({{ idx }}, 'now', this)">🚀 今すぐサイトに即時公開</button>
+                    </div>
+                </div>
+                <div id="pub-result-{{ idx }}" style="font-size:0.82rem;"></div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Audit Table of ALL Existing + Scheduled Columns -->
+        <h2 class="section-h2">
+            <span>🛡️ 全コラム「鬼デスク品質・人間味＆ブランド呼称」監査一覧（全 {{ editorial.existing_audit.total_columns }} 本）</span>
+            <span style="font-size:0.8rem; color:var(--sub);">
+                会話ボックス導入済: <strong>{{ editorial.existing_audit.with_dialogue_count }}/{{ editorial.existing_audit.total_columns }}本</strong> ｜
+                単体『オリエンタル』違反: <strong>{{ editorial.existing_audit.total_bare_oriental }}件</strong> ｜
+                平均品質スコア: <strong>{{ editorial.existing_audit.avg_desk_score }}点</strong>
+            </span>
+        </h2>
+        <div class="audit-table-wrap">
+            <table class="audit-table">
+                <thead>
+                    <tr>
+                        <th>公開状態 / 予定日時</th>
+                        <th>コラムタイトル</th>
+                        <th>現場会話数</th>
+                        <th>店舗内部リンク</th>
+                        <th>呼称検閲</th>
+                        <th>デスク点</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in editorial.existing_audit.columns %}
+                    <tr>
+                        <td>
+                            <div><strong>{{ row.status_label }}</strong></div>
+                            <div style="font-size:0.72rem; color:var(--sub);">{{ row.publish_at_ja }}</div>
+                        </td>
+                        <td>
+                            <a href="{{ row.path }}" target="_blank" rel="noopener" style="color:#7dd3fc; text-decoration:none; font-weight:700;">{{ row.title }} ↗</a>
+                            <div style="font-size:0.71rem; color:var(--sub);"><code>{{ row.path }}</code></div>
+                        </td>
+                        <td>
+                            {% if row.dialogue_count >= 2 %}
+                            <span class="pill-ok">💬 {{ row.dialogue_count }}箇所</span>
+                            {% elif row.dialogue_count == 1 %}
+                            <span class="pill-warn">💬 1箇所</span>
+                            {% else %}
+                            <span style="color:var(--sub);">0箇所</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ row.store_link_count }}本</td>
+                        <td>
+                            {% if row.bare_oriental_count == 0 %}
+                            <span class="pill-ok">✓ 適合</span>
+                            {% else %}
+                            <span style="color:#ffd6d6;">⚠️ 要修正({{ row.bare_oriental_count }})</span>
+                            {% endif %}
+                        </td>
+                        <td><strong>{{ row.desk_score }}点</strong></td>
+                        <td>
+                            {% if row.is_dynamic %}
+                            <button type="button" class="del-btn" onclick="deleteDynamicColumn('{{ row.slug }}')">削除</button>
+                            {% else %}
+                            <span style="font-size:0.72rem; color:var(--sub);">定番/予約枠</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        var CANDIDATES_DATA = {{ editorial.evaluation.candidates | tojson }};
+        var EYECATCH_PRESETS = {{ editorial.eyecatch_presets | tojson }};
+        var DEFAULT_SCHED_INPUT = {{ editorial.default_schedule_input | tojson }};
+        var CURRENT_THEME = {{ editorial.theme_key | tojson }};
+        var CURRENT_TOPIC = {{ custom_topic | tojson }};
+        var AI_PENDING_ASYNC = {{ editorial.ai_pending_async | tojson }};
+        var INITIAL_CONFIGURED = {{ (editorial.gemini_status and editorial.gemini_status.configured) | tojson }};
+        var ACTIVE_TAB_BY_IDX = {};
+
+        function escHtml(s) {
+            return String(s == null ? "" : s)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#39;");
+        }
+
+        function toggleKeyDrawer() {
+            var d = document.getElementById("gemini-key-drawer");
+            if (d) d.style.display = (d.style.display === "none") ? "block" : "none";
+        }
+
+        function switchPreviewTab(idx, mode, btn) {
+            ACTIVE_TAB_BY_IDX[idx] = mode;
+            ["web", "note", "x"].forEach(function(m) {
+                var el = document.getElementById("preview-" + m + "-" + idx);
+                if (el) el.style.display = (m === mode) ? "block" : "none";
+            });
+            if (btn && btn.parentElement) {
+                Array.prototype.forEach.call(btn.parentElement.querySelectorAll(".ptab-btn"), function(b) {
+                    b.classList.remove("active");
+                });
+                btn.classList.add("active");
+            }
+        }
+
+        function copyActivePreview(idx, btn) {
+            var mode = ACTIVE_TAB_BY_IDX[idx] || "web";
+            var el = document.getElementById("preview-" + mode + "-" + idx);
+            if (!el) return;
+            navigator.clipboard.writeText(el.innerText).then(function() {
+                var orig = btn.innerText;
+                btn.innerText = "✓ コピーしました！";
+                setTimeout(function() { btn.innerText = orig; }, 1800);
+            });
+        }
+
+        function onCustomTopicSubmit(ev) {
+            ev.preventDefault();
+            var tVal = (document.getElementById("custom-topic-input").value || "").trim();
+            CURRENT_TOPIC = tVal;
+            triggerColumnAiRefresh(true, false);
+        }
+
+        function renderCandidatesList(cands) {
+            CANDIDATES_DATA = cands || [];
+            var container = document.getElementById("candidates-container");
+            if (!container) return;
+            container.innerHTML = CANDIDATES_DATA.map(function(c, idx) {
+                ACTIVE_TAB_BY_IDX[idx] = "web";
+                var rankTitle = (c.is_selected ? "🏆 鬼デスク推薦 1位：" : ("候補 " + c.rank + "位：")) + (c.style_label || "");
+                var sc = c.scores || {};
+                var prosHtml = (c.pros || []).map(function(p) { return '<div style="color:#b9f0d3;">✓ ' + escHtml(p) + '</div>'; }).join("");
+                var warnHtml = (c.warnings || []).map(function(w) { return '<div style="color:#ffd6d6;">⚠️ ' + escHtml(w) + '</div>'; }).join("");
+                var thinkHtml = c.thinking_memo
+                    ? '<div class="thinking-memo"><strong>🧠 AI編集長の脳内メモ（導入3案コンペ＆推敲プロセス）：</strong>' + escHtml(c.thinking_memo) + '</div>'
+                    : '';
+                var eyeOpts = EYECATCH_PRESETS.map(function(ep) {
+                    var sel = (ep.key === c.eyecatch_key) ? " selected" : "";
+                    return '<option value="' + escHtml(ep.key) + '"' + sel + '>' + escHtml(ep.label) + '</option>';
+                }).join("");
+                var xCombined = "【1投目（メイン告知）】\n" + (c.x_main_text || "") + "\n\n【2投目（自動リプライURL）】\n" + (c.x_reply_text || "");
+                return (
+                    '<div class="cand-card ' + (c.is_selected ? 'winner' : '') + '">' +
+                        '<div class="cand-top">' +
+                            '<span style="font-size:0.92rem; font-weight:800;">' + escHtml(rankTitle) + '</span>' +
+                            '<span class="score-pill">' + escHtml(c.total_score) + '点 / 100</span>' +
+                        '</div>' +
+                        '<div class="article-headline-box">' +
+                            '<h3>📖 ' + escHtml(c.title) + '</h3>' +
+                            '<p>' + escHtml(c.desc) + '</p>' +
+                        '</div>' +
+                        '<div class="score-bars">' +
+                            '<span>🗣️ 人間味・会話リアリティ: <strong>' + escHtml(sc.human_story) + '/35</strong>（会話' + escHtml(c.dialogue_count) + '箇所）</span>' +
+                            '<span>🛡️ ファクト＆ブランド呼称: <strong>' + escHtml(sc.fact_brand_hygiene) + '/25</strong></span>' +
+                            '<span>🔍 SEO構造・内部回遊: <strong>' + escHtml(sc.seo_structure) + '/25</strong></span>' +
+                            '<span>📣 X告知＆note完成度: <strong>' + escHtml(sc.sns_note_ready) + '/15</strong>（X ' + escHtml(c.x_weight) + '/280）</span>' +
+                        '</div>' +
+                        '<div class="writer-memo"><strong>✍️ ライター構成意図：</strong>' + escHtml(c.writer_note || "") + '</div>' +
+                        thinkHtml +
+                        '<div class="desk-box"><strong>🧐 鬼デスク検閲コメント：</strong>' + prosHtml + warnHtml + '</div>' +
+                        '<div class="preview-tabs">' +
+                            '<button type="button" class="ptab-btn active" onclick="switchPreviewTab(' + idx + ', \'web\', this)">📖 Webコラム本文プレビュー</button>' +
+                            '<button type="button" class="ptab-btn" onclick="switchPreviewTab(' + idx + ', \'note\', this)">📝 note.com コピペ原稿（' + escHtml(c.note_char_count) + '字）</button>' +
+                            '<button type="button" class="ptab-btn" onclick="switchPreviewTab(' + idx + ', \'x\', this)">𝕏 X新着告知スレッド（' + escHtml(c.x_weight) + '/280）</button>' +
+                            '<button type="button" class="copy-btn" style="margin-left:auto;" onclick="copyActivePreview(' + idx + ', this)">📋 表示中の原稿をコピー</button>' +
+                        '</div>' +
+                        '<div id="preview-web-' + idx + '" class="doc-preview">' + escHtml(c.preview_text || "") + '</div>' +
+                        '<div id="preview-note-' + idx + '" class="doc-preview" style="display:none;">' + escHtml(c.note_markdown || "") + '</div>' +
+                        '<div id="preview-x-' + idx + '" class="doc-preview" style="display:none;">' + escHtml(xCombined) + '</div>' +
+                        '<div class="publish-bar">' +
+                            '<div style="display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end;">' +
+                                '<label class="pub-field"><span>URLスラッグ（/guide/...）</span><input type="text" id="slug-input-' + idx + '" class="pub-input" value="' + escHtml(c.slug) + '" style="width:210px;"></label>' +
+                                '<label class="pub-field"><span>アイキャッチ画像</span><select id="eyecatch-select-' + idx + '" class="pub-select">' + eyeOpts + '</select></label>' +
+                                '<label class="pub-field"><span>予約公開日時（JST）</span><input type="datetime-local" id="pubdt-input-' + idx + '" class="pub-input" value="' + escHtml(DEFAULT_SCHED_INPUT) + '"></label>' +
+                            '</div>' +
+                            '<div style="display:flex; gap:8px; flex-wrap:wrap;">' +
+                                '<button type="button" class="copy-btn" onclick="publishCandidate(' + idx + ', \'schedule\', this)">🗓️ この日時で予約公開に登録</button>' +
+                                '<button type="button" class="pub-now-btn" onclick="publishCandidate(' + idx + ', \'now\', this)">🚀 今すぐサイトに即時公開</button>' +
+                            '</div>' +
+                        '</div>' +
+                        '<div id="pub-result-' + idx + '" style="font-size:0.82rem;"></div>' +
+                    '</div>'
+                );
+            }).join("");
+        }
+
+        function triggerColumnAiRefresh(forceRefresh, silentIfUnconfigured) {
+            var pill = document.getElementById("ai-status-pill");
+            var regenBtn = document.getElementById("ai-regen-btn");
+            if (!silentIfUnconfigured && pill) {
+                pill.className = "ai-status-pill ai-status-loading";
+                pill.textContent = "🧠 Gemini編集長が長考モードで導入3案を脳内コンペ・執筆中...（約6〜10秒）";
+            }
+            if (regenBtn) {
+                regenBtn.disabled = true;
+                regenBtn.textContent = "🧠 長考執筆中...";
+            }
+            var url = "/api/column-editorial?theme=" + encodeURIComponent(CURRENT_THEME) + "&topic=" + encodeURIComponent(CURRENT_TOPIC || "");
+            if (forceRefresh) url += "&refresh_ai=1";
+            fetch(url, {headers: {"Accept": "application/json"}})
+                .then(function(r) { return r.json(); })
+                .then(function(ed) {
+                    if (!ed || !ed.evaluation) return;
+                    var st = ed.gemini_status || {};
+                    if (pill) {
+                        if (st.state === "active") {
+                            pill.className = "ai-status-pill ai-status-on";
+                            pill.textContent = "🟢 Gemini AI 長考コラム執筆：正常稼働中（" + (st.last_model || "") + " ｜ " + (st.masked_key || "") + "）";
+                        } else if (st.state === "degraded") {
+                            pill.className = "ai-status-pill ai-status-off";
+                            pill.textContent = "🟠 AI通信エラーのため現在は実測ストーリー安全案へ自動切替中（" + (st.masked_key || "") + "）";
+                        } else {
+                            pill.className = "ai-status-pill ai-status-off";
+                            pill.textContent = "🟡 Gemini APIキー未設定（現在は実測データ連動ストーリー案で稼働中）";
+                        }
+                    }
+                    if (regenBtn) {
+                        regenBtn.style.display = st.configured ? "inline-block" : "none";
+                        regenBtn.disabled = false;
+                        regenBtn.textContent = "🔄 別の長考ストーリー案を再生成";
+                    }
+                    if (ed.plan && document.getElementById("plan-angle-text")) {
+                        document.getElementById("plan-angle-text").textContent = ed.plan.angle_summary || "";
+                    }
+                    if (ed.evaluation.desk_summary && document.getElementById("desk-summary-text")) {
+                        document.getElementById("desk-summary-text").textContent = ed.evaluation.desk_summary;
+                    }
+                    var cands = ed.evaluation.candidates || [];
+                    if (document.getElementById("writer-count-title")) {
+                        document.getElementById("writer-count-title").textContent = "Webコラム＋note＋X告知 " + cands.length + "案作成";
+                    }
+                    if (document.getElementById("cands-heading")) {
+                        document.getElementById("cands-heading").textContent = "📝 コラム・note 提案候補（" + cands.length + "案）＆ ワンクリック公開予約";
+                    }
+                    renderCandidatesList(cands);
+                })
+                .catch(function() {
+                    if (regenBtn) {
+                        regenBtn.disabled = false;
+                        regenBtn.textContent = "🔄 別の長考ストーリー案を再生成";
+                    }
+                });
+        }
+
+        function publishCandidate(idx, mode, btn) {
+            var cand = CANDIDATES_DATA[idx];
+            if (!cand) return;
+            var slugVal = (document.getElementById("slug-input-" + idx).value || "").trim();
+            var eyeVal = (document.getElementById("eyecatch-select-" + idx).value || "").trim();
+            var dtVal = (document.getElementById("pubdt-input-" + idx).value || "").trim();
+            var msgEl = document.getElementById("pub-result-" + idx);
+
+            if (mode === "now") {
+                if (!confirm("この記事を今すぐサイトに一般公開（/columns・トップ・sitemap登録＆次回巡回でX告知）しますか？")) return;
+            }
+            var origLabel = btn.innerText;
+            btn.disabled = true;
+            btn.innerText = "保存中...";
+
+            fetch("/api/column-editorial/publish", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({
+                    candidate: cand,
+                    publish_mode: mode,
+                    publish_at: dtVal,
+                    slug: slugVal,
+                    eyecatch_key: eyeVal
+                })
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(res) {
+                btn.disabled = false;
+                btn.innerText = origLabel;
+                if (res.ok) {
+                    var statusWord = res.published_now ? "🚀 即時公開しました！" : ("🗓️ " + escHtml(res.publish_at_ja) + " で予約公開に登録しました！");
+                    msgEl.innerHTML = '<div style="padding:10px 12px; border-radius:8px; background:rgba(123,196,159,0.16); border:1px solid var(--green); color:#d3f3e2;">' +
+                        '<strong>' + statusWord + '</strong> ' +
+                        '<a href="' + escHtml(res.path) + '" target="_blank" rel="noopener" style="color:#fff; font-weight:800; margin-left:8px;">👉 記事ページを確認する（' + escHtml(res.path) + '）↗</a>' +
+                    '</div>';
+                } else {
+                    msgEl.innerHTML = '<span style="color:#ffd6d6;">⚠️ ' + escHtml(res.error || "保存に失敗しました") + '</span>';
+                }
+            })
+            .catch(function() {
+                btn.disabled = false;
+                btn.innerText = origLabel;
+                msgEl.innerHTML = '<span style="color:#ffd6d6;">⚠️ 通信エラーが発生しました</span>';
+            });
+        }
+
+        function deleteDynamicColumn(slug) {
+            if (!confirm("編集部作成コラム（/guide/" + slug + "）を公開・予約リストから削除しますか？")) return;
+            fetch("/api/column-editorial/delete", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({slug: slug})
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(res) {
+                if (res.ok) {
+                    window.location.reload();
+                } else {
+                    alert(res.error || "削除に失敗しました");
+                }
+            });
+        }
+
+        function saveGeminiKey() {
+            var inp = document.getElementById("gemini-api-key-input");
+            var msg = document.getElementById("gemini-key-msg");
+            var val = inp ? inp.value.trim() : "";
+            if (!val) {
+                msg.style.color = "#ffd6d6";
+                msg.innerText = "⚠️ APIキーを入力してください。";
+                return;
+            }
+            msg.style.color = "#d3f3e2";
+            msg.innerText = "暗号化保存しています...";
+            fetch("/api/sns-editorial/gemini-key", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({action: "save", api_key: val})
+            }).then(function(r) { return r.json(); }).then(function(data) {
+                if (data.ok) {
+                    msg.style.color = "#d3f3e2";
+                    msg.innerText = "✅ " + data.message;
+                    if (inp) inp.value = "";
+                    triggerColumnAiRefresh(true, false);
+                } else {
+                    msg.style.color = "#ffd6d6";
+                    msg.innerText = "⚠️ " + (data.error || "保存に失敗しました");
+                }
+            });
+        }
+
+        document.addEventListener("DOMContentLoaded", function() {
+            if (AI_PENDING_ASYNC) {
+                triggerColumnAiRefresh(false, !INITIAL_CONFIGURED);
+            }
+        });
+    </script>
+</body>
+</html>

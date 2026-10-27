@@ -315,6 +315,9 @@
                         <a href="/staff/sns-editorial" class="staff-action-pill master-sns-kit-pill" style="text-decoration: none;">
                             <span>🧠 SNS編集部「4役合議・提案＆評価スコア」ボード</span>
                         </a>
+                        <a href="/staff/column-editorial" class="staff-action-pill master-sns-kit-pill" style="text-decoration: none;">
+                            <span>📖 コラム・note編集部「4役合議・長考執筆＆予約公開」ボード</span>
+                        </a>
                         <a href="/staff/analytics" class="staff-action-pill" style="text-decoration: none;">
                             <span>📈 アクセス集計（閲覧・アフィリエイト・ボタンクリック）</span>
                         </a>
@@ -412,7 +415,10 @@
                     <div class="master-subpanel">
                         <div class="master-subpanel-head">
                             <span class="master-subpanel-title">🗓️ コラム自動予約公開スケジュール（サイト解禁＋sitemap登録＋X自動告知）</span>
-                            <span class="master-subpanel-meta">※予約日時前は一般アクセス404・社内のみプレビュー可</span>
+                            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                                <span class="master-subpanel-meta">※予約日時前は一般アクセス404・社内のみプレビュー可</span>
+                                <a href="/staff/column-editorial" class="master-inline-link">📖 コラム・note編集部を開く ↗</a>
+                            </div>
                         </div>
                         <div class="master-sched-grid">
                             {% for item in scheduled_queue %}
