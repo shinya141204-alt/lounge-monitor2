@@ -485,7 +485,7 @@ def build_pinned_tweet_thread(app_url: str = "") -> tuple:
     site_url = (app_url or os.environ.get("PUBLIC_SITE_URL") or "https://aiseki-navi.com").rstrip("/")
     main_text = (
         "🍸全国53店舗の相席ラウンジ人数速報『相席ナビ』\n\n"
-        "・オリエンタル / ag / JIS 等の現在人数＆男女比をリアルタイム集計\n"
+        "・オリエンタルラウンジ / ag / JIS 等の現在人数＆男女比をリアルタイム集計\n"
         "・全51店舗の時間帯料金・ソロ入店可否・イベント比較\n"
         "・曜日×時間帯別の平均グラフで「いま狙い目の店舗」がわかる\n\n"
         "サイトURL・比較ボードはリプ欄へ👇\n"
@@ -600,9 +600,9 @@ COLUMN_PROMO_LIST = [
         "slug": "shinjuku",
         "path": "/guide/shinjuku",
         "eyecatch": "/static/eyecatch-shinjuku.jpg",
-        "title": "新宿エリア3店舗（オリエンタル・JIS東口/西口）の使い分け",
+        "title": "新宿エリア3店舗（オリエンタルラウンジ・JIS東口/西口）の使い分け",
         "main_text": (
-            "日本一の激戦区「新宿」にある相席ラウンジ3店舗（オリエンタル・JIS東口・JIS西口）。\n\n"
+            "日本一の激戦区「新宿」にある相席ラウンジ3店舗（オリエンタルラウンジ・JIS東口・JIS西口）。\n\n"
             "実はそれぞれ客層もピーク時間もかなり違うから、1店舗目で男性待ちだったときのハシゴルートを知っておくだけで空振りが一気に減るよ🗼\n\n"
             "記事リンクはリプ欄へ👇\n"
             "#相席ラウンジ"

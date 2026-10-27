@@ -1916,12 +1916,12 @@ class FullAuditRegressionTests(unittest.TestCase):
         self.assertNotIn('DummyKey', json.dumps(st))
 
         try:
-            # 3. Valid Gemini deep-thinking ad-lib draft (accurate numbers + weather vibe + thinking_memo) wins #1 with 100/100
+            # 3. Valid Gemini deep-thinking ad-lib draft ('オリエンタルラウンジ' + colloquial 'オリラジ' + weather vibe + thinking_memo) wins #1 with 100/100
             valid_ai_json = json.dumps({
                 'main_text': (
-                    '小雨の金曜夜☔ 駅チカの梅田まわりで今かなり座りやすいのがオリエンタル梅田茶屋町✨\n\n'
-                    '・オリエンタル梅田茶屋町：女性44・男性22（女性比67%）\n'
-                    '・オリエンタル新宿：女性38・男性24\n\n'
+                    '小雨の金曜夜☔ 駅チカの梅田まわりで今かなり座りやすいのがオリエンタルラウンジ梅田茶屋町✨\n\n'
+                    '・オリラジ梅田茶屋町：女性44・男性22（女性比67%）\n'
+                    '・オリラジ新宿：女性38・男性24\n\n'
                     '向かう前の比較はリプ欄から👇\n#相席ナビ #相席ラウンジ'
                 ),
                 'writer_note': '雨天の駅チカ集中と梅田の実測値を掛け合わせたアドリブ案',
@@ -1938,13 +1938,40 @@ class FullAuditRegressionTests(unittest.TestCase):
             self.assertEqual(res_ok['winner']['style'], 'ai_live_adlib')
             self.assertEqual(res_ok['winner']['total_score'], 100)
             self.assertIn('小雨の金曜夜', res_ok['winner']['main_text'])
+            self.assertIn('オリエンタルラウンジ梅田茶屋町', res_ok['winner']['main_text'])
+            self.assertIn('オリラジ新宿', res_ok['winner']['main_text'])
             self.assertIn('3案を比較', res_ok['winner']['thinking_memo'])
             self.assertIn('22:00', res_ok['research']['slot_persona']['label'])
+
+            # 3a. Bare 'オリエンタル〇〇' ('ラウンジ' omitted) in AI output is automatically normalized to 'オリエンタルラウンジ〇〇' / 'オリラジ〇〇'
+            bare_oriental_json = json.dumps({
+                'main_text': (
+                    '雨上がりで動きが早い夜🌙 いま狙い目なのはオリエンタル梅田茶屋町！\n\n'
+                    '・オリエンタル梅田茶屋町：女性44・男性22（女性比67%）\n'
+                    '・オリエンタル新宿：女性38・男性24\n\n'
+                    '比較はリプ欄へ👇\n#相席ナビ #相席ラウンジ'
+                ),
+                'writer_note': '裸のオリエンタル自動補正テスト',
+            }, ensure_ascii=False)
+            mock_resp_bare = MagicMock()
+            mock_resp_bare.status_code = 200
+            mock_resp_bare.json.return_value = {'candidates': [{'content': {'parts': [{'text': bare_oriental_json}]}}]}
+            with patch('sns_editorial.requests.post', return_value=mock_resp_bare):
+                res_bare = sns_editorial.run_editorial_pipeline(
+                    sample_stores, slot_label='22:00', channel='x', use_ai=True, force_ai_refresh=True
+                )
+            self.assertEqual(res_bare['winner']['style'], 'ai_live_adlib')
+            self.assertEqual(res_bare['winner']['total_score'], 100)
+            self.assertNotIn('オリエンタル梅田茶屋町', res_bare['winner']['main_text'])
+            self.assertTrue(
+                'オリエンタルラウンジ梅田茶屋町' in res_bare['winner']['main_text']
+                or 'オリラジ梅田茶屋町' in res_bare['winner']['main_text']
+            )
 
             # 3b. AI draft containing robotic copywriting cliches ('必見', 'まさに') is penalized on human_tone by Desk
             cliche_ai_json = json.dumps({
                 'main_text': (
-                    '今夜はまさに必見の盛り上がり！オリエンタル梅田茶屋町が女性44・男性22（女性比67%）✨\n'
+                    '今夜はまさに必見の盛り上がり！オリエンタルラウンジ梅田茶屋町が女性44・男性22（女性比67%）✨\n'
                     '向かう前の比較はリプ欄から👇\n#相席ナビ #相席ラウンジ'
                 ),
                 'writer_note': 'AI臭ワードテスト',
@@ -1963,7 +1990,7 @@ class FullAuditRegressionTests(unittest.TestCase):
             # 4. Hallucinated AI draft (invents 女性99名 instead of 44名) is strictly blocked by Desk (-50 data score)
             bad_ai_json = json.dumps({
                 'main_text': (
-                    '今夜のオリエンタル梅田茶屋町、なんと女性99名・男性22名で大爆発中🔥\n'
+                    '今夜のオリラジ梅田茶屋町、なんと女性99名・男性22名で大爆発中🔥\n'
                     'いますぐリプ欄からチェック👇\n#相席ナビ #相席ラウンジ'
                 ),
                 'writer_note': '誇張テスト',

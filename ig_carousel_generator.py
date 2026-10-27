@@ -90,7 +90,7 @@ def _resolve_day_theme(now_jst: datetime.datetime, weekend_label: str) -> dict:
         "h1_line2": "狙い目店舗＆",
         "h1_line3": "穴場時間予報",
         "sub_line1": "「男性待ち1時間」を回避してスムーズに相席するための",
-        "sub_line2": "週末データ攻略ガイド（オリエンタル / ag / JIS 対応）",
+        "sub_line2": "週末データ攻略ガイド（オリラジ / ag / JIS 対応）",
         "slide2_title": "今週末の盛り上がり予測 TOP5",
         "slide2_sub": "直近のピーク時に女性が多く集まっている大型人気店舗",
         "glow1": (236, 72, 153, 110),
@@ -513,7 +513,7 @@ def render_slide_png(slide_num: int, ctx: dict = None) -> bytes:
         draw.text((64, 425), "『相席ナビ』", font=f_h1, fill=(251, 191, 36, 255))
 
         features = [
-            "オリエンタル・ag・JISなど国内51店舗（全53店）を毎分更新",
+            "オリエンタルラウンジ・ag・JIS等 全53店を毎分更新",
             "「女性比率順」「現在地から近い順」で穴場が3秒で判明",
             "曜日・時間帯別の平均推移グラフ＆直近の増減トレンドも表示",
             "会員登録・アプリDL不要！スマホのブラウザで完全無料",

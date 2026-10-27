@@ -95,18 +95,31 @@ URBAN_CLUSTERS = [
 def natural_store_name(raw_name: str) -> str:
     """
     Convert internal codes like 'OLG 新宿' or 'JIS SHINJUKU' into natural, human-searchable Japanese names:
-      - 'OLG 新宿' -> 'オリエンタル新宿'
-      - 'OLG 大阪駅前' -> 'オリエンタル大阪駅前'
+      - 'OLG 新宿' -> 'オリエンタルラウンジ新宿'
+      - 'OLG 大阪駅前' -> 'オリエンタルラウンジ大阪駅前'
       - 'OLG ag渋谷' -> 'ag渋谷'
       - 'JIS SHINJUKU' -> 'JIS新宿'
       - 'YATAKOI UMEDA' -> 'ヤタコイ梅田'
     """
     formatted = x_poster.format_ja_store_name(raw_name)
     if formatted.startswith("OLG "):
-        return "オリエンタル" + formatted[4:].replace(" ", "")
+        return "オリエンタルラウンジ" + formatted[4:].replace(" ", "")
     if formatted.startswith("JIS "):
         return "JIS" + formatted[4:].replace(" ", "")
     return formatted
+
+
+def casual_store_name(raw_name: str) -> str:
+    """
+    Convert OLG stores into natural colloquial shorthand 'オリラジ〇〇' used by lounge regulars:
+      - 'OLG 新宿' -> 'オリラジ新宿'
+      - 'OLG 大阪駅前' -> 'オリラジ大阪駅前'
+      - 'OLG ag渋谷' -> 'ag渋谷'
+    """
+    formatted = x_poster.format_ja_store_name(raw_name)
+    if formatted.startswith("OLG "):
+        return "オリラジ" + formatted[4:].replace(" ", "")
+    return natural_store_name(raw_name)
 
 
 def _domestic_stores(stores: list) -> list:
@@ -138,6 +151,7 @@ def _enrich_with_benchmarks(stores: list) -> list:
         item["total"] = tot
         item["wpct"] = round((w / tot) * 100) if tot > 0 else 0
         item["ja_name"] = natural_store_name(sname)
+        item["casual_name"] = casual_store_name(sname)
         bm = benchmarks.get(sname) or {}
         if "usual_w_diff" not in item:
             avg_w = bm.get("usual_avg_w")
@@ -774,6 +788,8 @@ def _write_x_candidates(research: dict, slot_label: str, now_jst: datetime.datet
                 f"待ちが出そうな時は近くの別店舗も覗くのが確実👇\n"
                 f"#相席ナビ #相席ラウンジ"
             )
+        if x_poster.compute_twitter_weight(body_a) > 272:
+            body_a = body_a.replace("オリエンタルラウンジ", "オリラジ")
         reply_a = (
             f"📍 {hub_name}エリアの料金・現在人数横並び比較はこちら\n"
             f"{site_url}/price-comparison?area={area_id}\n\n"
@@ -831,6 +847,8 @@ def _write_x_candidates(research: dict, slot_label: str, now_jst: datetime.datet
             f"{closing_b}\n"
             f"#相席ラウンジ #相席ナビ"
         )
+    if x_poster.compute_twitter_weight(body_b) > 272:
+        body_b = body_b.replace("オリエンタルラウンジ", "オリラジ")
     f_slug = store_master.slug_of(focus["name"])
     reply_b = (
         f"📊 {focus['ja_name']}の現在人数・終電後の残りやすさ指標はこちら\n"
@@ -872,6 +890,8 @@ def _write_x_candidates(research: dict, slot_label: str, now_jst: datetime.datet
         )
         c_style = "east_west_talk"
         w_note_c = f"関東トップ（{east['ja_name']}）と関西トップ（{west['ja_name']}）を対比し、東西どちらのフォロワーにも刺さる構成で作成。"
+    if x_poster.compute_twitter_weight(body_c) > 272:
+        body_c = body_c.replace("オリエンタルラウンジ", "オリラジ")
 
     reply_c = (
         f"🔍 全国53店舗の現在人数＆普段の同曜日比（平比）はこちら\n{live_url}\n\n"
@@ -968,6 +988,8 @@ def _write_threads_candidates(research: dict, slot_label: str, now_jst: datetime
             f"{cta_footer}"
         )
 
+    if len(body_1) > 485:
+        body_1 = body_1.replace("オリエンタルラウンジ", "オリラジ")
     candidates.append({
         "style": "threads_city_story",
         "style_label": STYLE_LABELS["threads_city_story"],
@@ -1004,6 +1026,8 @@ def _write_threads_candidates(research: dict, slot_label: str, now_jst: datetime
         f"同じ街でも店によって男女比が15〜25%違うので、入る前にチラッと比較してみてください👇\n\n"
         f"{cta_footer}"
     )
+    if len(body_2) > 485:
+        body_2 = body_2.replace("オリエンタルラウンジ", "オリラジ")
     candidates.append({
         "style": "threads_anomaly_insight",
         "style_label": STYLE_LABELS["threads_anomaly_insight"],
@@ -1023,6 +1047,8 @@ def _write_threads_candidates(research: dict, slot_label: str, now_jst: datetime
         f"席替えがしっかり回るのは「女性10名以上（約5組）×女性比55%以上」のお店。微妙な席で惰性で90分粘るより、40分で見切って近くの好バランス店に回る方が満足度もコスパも段違いです🍸\n\n"
         f"{cta_footer}"
     )
+    if len(body_3) > 485:
+        body_3 = body_3.replace("オリエンタルラウンジ", "オリラジ")
     candidates.append({
         "style": "threads_hopping_guide",
         "style_label": STYLE_LABELS["threads_hopping_guide"],
@@ -1201,16 +1227,25 @@ def verify_ai_factual_numbers(text: str, research: dict, channel: str = "x") -> 
         if ud > 0:
             allowed_diff.add(ud)
         _reg_alias(s.get("ja_name"), w, m, p)
+        c_alias = s.get("casual_name") or casual_store_name(s.get("name", ""))
+        if c_alias and c_alias != s.get("ja_name"):
+            _reg_alias(c_alias, w, m, p)
 
     for s in ig_vol:
         mw = int(s.get("max_women") or 0)
         allowed_women.add(mw)
-        _reg_alias(s.get("seo_name"), w_val=mw)
+        seo_n = s.get("seo_name") or ""
+        _reg_alias(seo_n, w_val=mw)
+        if "オリエンタルラウンジ" in seo_n:
+            _reg_alias(seo_n.replace("オリエンタルラウンジ", "オリラジ"), w_val=mw)
 
     for s in ig_ana:
         ap = int(s.get("avg_wpct") or 0)
         allowed_pct.add(ap)
-        _reg_alias(s.get("seo_name"), p_val=ap)
+        seo_n = s.get("seo_name") or ""
+        _reg_alias(seo_n, p_val=ap)
+        if "オリエンタルラウンジ" in seo_n:
+            _reg_alias(seo_n.replace("オリエンタルラウンジ", "オリラジ"), p_val=ap)
 
     bad = []
 
@@ -1304,6 +1339,7 @@ def _build_gemini_prompt(
         "sweet_spot_store": (
             {
                 "name": focus["ja_name"],
+                **({"casual_alias": focus["casual_name"]} if focus.get("casual_name") and focus["casual_name"] != focus["ja_name"] else {}),
                 "women": focus["women"],
                 "men": focus["men"],
                 "women_pct": focus["wpct"],
@@ -1316,12 +1352,14 @@ def _build_gemini_prompt(
                 "area": cluster["hub_label"],
                 "high_ratio_store": {
                     "name": cluster["high_store"]["ja_name"],
+                    **({"casual_alias": cluster["high_store"]["casual_name"]} if cluster["high_store"].get("casual_name") and cluster["high_store"]["casual_name"] != cluster["high_store"]["ja_name"] else {}),
                     "women": cluster["high_store"]["women"],
                     "men": cluster["high_store"]["men"],
                     "women_pct": cluster["high_store"]["wpct"],
                 },
                 "contrast_store": {
                     "name": cluster["low_store"]["ja_name"],
+                    **({"casual_alias": cluster["low_store"]["casual_name"]} if cluster["low_store"].get("casual_name") and cluster["low_store"]["casual_name"] != cluster["low_store"]["ja_name"] else {}),
                     "women": cluster["low_store"]["women"],
                     "men": cluster["low_store"]["men"],
                     "women_pct": cluster["low_store"]["wpct"],
@@ -1333,6 +1371,7 @@ def _build_gemini_prompt(
         "usual_positive_anomaly": (
             {
                 "name": anomaly["ja_name"],
+                **({"casual_alias": anomaly["casual_name"]} if anomaly.get("casual_name") and anomaly["casual_name"] != anomaly["ja_name"] else {}),
                 "women": anomaly["women"],
                 "men": anomaly["men"],
                 "women_pct": anomaly["wpct"],
@@ -1343,17 +1382,31 @@ def _build_gemini_prompt(
         "female_group_zero_wait_store": (
             {
                 "name": male_lead["ja_name"],
+                **({"casual_alias": male_lead["casual_name"]} if male_lead.get("casual_name") and male_lead["casual_name"] != male_lead["ja_name"] else {}),
                 "men": male_lead["men"],
                 "women": male_lead["women"],
             }
             if male_lead else None
         ),
         "top_stores": [
-            {"name": s["ja_name"], "women": s["women"], "men": s["men"], "women_pct": s["wpct"]}
+            {
+                "name": s["ja_name"],
+                **({"casual_alias": s["casual_name"]} if s.get("casual_name") and s["casual_name"] != s["ja_name"] else {}),
+                "women": s["women"],
+                "men": s["men"],
+                "women_pct": s["wpct"],
+            }
             for s in top_s[:4]
         ],
         "city_leaders": [
-            {"area": c["hub_label"], "name": c["store"]["ja_name"], "women": c["store"]["women"], "men": c["store"]["men"], "women_pct": c["store"]["wpct"]}
+            {
+                "area": c["hub_label"],
+                "name": c["store"]["ja_name"],
+                **({"casual_alias": c["store"]["casual_name"]} if c["store"].get("casual_name") and c["store"]["casual_name"] != c["store"]["ja_name"] else {}),
+                "women": c["store"]["women"],
+                "men": c["store"]["men"],
+                "women_pct": c["store"]["wpct"],
+            }
             for c in city_leaders[:4]
         ],
     }
@@ -1432,7 +1485,7 @@ def _build_gemini_prompt(
         "【絶対厳守ルール（違反するとデスク検閲で減点・不採用になります）】\n"
         "1. 下記の JSON ファクトシートに含まれる店舗名・人数・パーセンテージ以外は絶対に書かないこと。数値を1人でも盛ったり丸めたり変更することは厳禁。\n"
         "2. あなたは『相席ナビ運営（リアルタイム計測モニターを見ている中の人）』です。自分が客として入店した架空の体験談（『行ってきた』『相席相手が〜』等）は絶対に書かないこと。\n"
-        "3. 内部略称『OLG』は使わず、ファクトシート記載の自然な日本語店名（『オリエンタル〇〇』『ag〇〇』『JIS〇〇』）をそのまま使うこと。\n"
+        "3. 店名の呼び方ルール：内部略称『OLG』や、中途半端な『オリエンタル〇〇』（「ラウンジ」抜け）・『オリエンタル』単体呼びは絶対に使わないこと。必ず正式名称『オリエンタルラウンジ〇〇』、または現場の自然な口語略称『オリラジ〇〇』（casual_alias がある店舗のみ。例：『オリエンタルラウンジ大阪駅前』または『オリラジ大阪駅前』）を使うこと（くだけた会話調や文字数を引き締めたいXでは『オリラジ〇〇』も自然でおすすめ。『ag〇〇』『JIS〇〇』はそのまま表記）。\n"
         f"4. AI臭・宣伝臭ワードの完全禁止：{cliche_list_str} は本文に絶対に使わないこと。\n"
         f"5. 直近の過去投稿の書き出し（{json.dumps(recent_openers, ensure_ascii=False)}）とは全く違う新鮮な1行目の切り口・語尾にすること。\n\n"
         f"【今夜の検証済みファクトシート】\n{json.dumps(fact_payload, ensure_ascii=False, indent=2)}\n\n"
@@ -1500,6 +1553,33 @@ def _build_endpoint_request(endpoint_kind: str, model_name: str, api_key: str, p
         None,
         payload,
     )
+
+
+def _postprocess_ai_main_text(main_text: str, channel: str = "x") -> str:
+    """
+    Guarantee zero bare 'オリエンタル〇〇' ('ラウンジ' omitted) in AI output:
+      - Converts any 'オリエンタル(?!ラウンジ)' to 'オリエンタルラウンジ' (or colloquial 'オリラジ' if X/Threads length is tight).
+      - Also trims 'オリエンタルラウンジ' -> 'オリラジ' on X if Twitter weight exceeds 272 so posts stay inside optimal range.
+    """
+    text = (main_text or "").strip()
+    if not text:
+        return ""
+    ch = (channel or "x").lower()
+
+    if re.search(r"オリエンタル(?!ラウンジ)", text):
+        expanded = re.sub(r"オリエンタル(?!ラウンジ)", "オリエンタルラウンジ", text)
+        if ch == "x" and x_poster.compute_twitter_weight(expanded) > 270:
+            text = re.sub(r"オリエンタル(?!ラウンジ)", "オリラジ", text)
+        elif ch == "threads" and len(expanded) > 485:
+            text = re.sub(r"オリエンタル(?!ラウンジ)", "オリラジ", text)
+        else:
+            text = expanded
+
+    if ch == "x" and x_poster.compute_twitter_weight(text) > 272 and "オリエンタルラウンジ" in text:
+        text = text.replace("オリエンタルラウンジ", "オリラジ")
+    elif ch == "threads" and len(text) > 485 and "オリエンタルラウンジ" in text:
+        text = text.replace("オリエンタルラウンジ", "オリラジ")
+    return text
 
 
 def has_cached_ai_candidate(research: dict, slot_label: str, channel: str) -> bool:
@@ -1612,7 +1692,7 @@ def _generate_gemini_adlib_candidate(
             if not isinstance(parsed, dict):
                 last_err = "Parsed JSON is not an object"
                 continue
-            main_text = (parsed.get("main_text") or "").strip()
+            main_text = _postprocess_ai_main_text(parsed.get("main_text") or "", channel=ch)
             writer_note = (parsed.get("writer_note") or "天気・曜日・リアルタイム人数を掛け合わせたGemini AIアドリブ執筆案。").strip()
             thinking_memo = (parsed.get("thinking_memo") or "").strip()
             if not main_text:
@@ -1666,7 +1746,7 @@ def _generate_gemini_adlib_candidate(
                         raw_text = re.sub(r"^```(?:json)?\s*", "", raw_text)
                         raw_text = re.sub(r"\s*```$", "", raw_text)
                     parsed = json.loads(raw_text, strict=False)
-                    main_text = (parsed.get("main_text") or "").strip()
+                    main_text = _postprocess_ai_main_text(parsed.get("main_text") or "", channel=ch)
                     writer_note = (parsed.get("writer_note") or "Gemini AIアドリブ執筆案。").strip()
                     thinking_memo = (parsed.get("thinking_memo") or "").strip()
                     if main_text:
@@ -1815,6 +1895,7 @@ def run_evaluator(
 
         # 3. Data Specificity & Precision Check (max 25; -50 hard reject if AI alters any number)
         has_raw_olg = "OLG " in text and style != classic_key
+        has_bare_oriental = bool(re.search(r"オリエンタル(?!ラウンジ)", text)) and style != classic_key
         if is_ai:
             facts_ok, bad_tokens = verify_ai_factual_numbers(text, research, channel=ch)
             if not facts_ok:
@@ -1823,15 +1904,15 @@ def run_evaluator(
                     f"❌ 鬼デスク検閲ブロック：AI下書き内に実測データと一致しない数値（{', '.join(bad_tokens[:3])}）を検知！"
                     "ハルシネーション防止のため不採用とし、検証済み案へ自動切替します。"
                 )
-            elif has_raw_olg:
+            elif has_raw_olg or has_bare_oriental:
                 data_score = 18
-                data_comment = "⚠️ 内部略称『OLG』が残っているため減点。"
+                data_comment = "⚠️ 店名表記に内部略称『OLG』または『オリエンタル（ラウンジ抜け）』が残っているため減点。"
             else:
                 data_score = 25
                 data_comment = "◎ 鬼デスク数値検閲クリア：すべての店舗人数・比率がSQLite実測値と1人単位で100%一致しています。"
-        elif has_raw_olg:
+        elif has_raw_olg or has_bare_oriental:
             data_score = 18
-            data_comment = "⚠️ 内部略称『OLG』がそのまま残っているため減点（『オリエンタル〇〇』表記が自然）。"
+            data_comment = "⚠️ 店名表記に『OLG』または『オリエンタル（ラウンジ抜け）』が残っているため減点（『オリエンタルラウンジ〇〇』または『オリラジ〇〇』が自然）。"
         elif style in ("hub_gap", "threads_city_story") and research.get("best_cluster"):
             gap = research["best_cluster"].get("pct_gap", 0)
             data_score = 25 if gap >= 12 else 22
