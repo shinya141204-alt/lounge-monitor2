@@ -1744,7 +1744,7 @@ class FullAuditRegressionTests(unittest.TestCase):
         sw_resp = self.client.get('/sw.js')
         try:
             sw_txt = sw_resp.data.decode('utf-8')
-            self.assertIn("CACHE_NAME = 'aiseki-navi-v56'", sw_txt)
+            self.assertIn("CACHE_NAME = 'aiseki-navi-v57'", sw_txt)
             self.assertIn("event.waitUntil", sw_txt)
         finally:
             sw_resp.close()
@@ -2385,6 +2385,167 @@ class ColumnEditorialRoomTests(unittest.TestCase):
         with self.client.session_transaction() as sess:
             sess.clear()
         self.assertEqual(self.client.get('/guide/umeda-midnight-test').status_code, 404)
+
+
+class AutonomousPdcaEngineTests(unittest.TestCase):
+    """End-to-end closed-loop tests for the Autonomous PDCA Strategist (`/staff/pdca` & `pdca_engine.py`)."""
+
+    def setUp(self):
+        shutil.rmtree(os.environ['JOB_STATE_DIR'], ignore_errors=True)
+        import analytics
+        import column_editorial
+        import pdca_engine
+        job_state.reset_cache_for_tests()
+        column_editorial.clear_column_ai_cache()
+        pdca_engine.reset_pdca_cache_for_tests()
+        with analytics._lock:
+            analytics._pending.clear()
+            analytics._flushed.clear()
+            analytics._sheet_rows_cache['ts'] = 0.0
+            analytics._sheet_rows_cache['rows'] = []
+        with app_module.data_lock:
+            app_module.latest_data['full_data'] = [
+                {'name': 'OLG 大阪駅前', 'women': 54, 'men': 26, 'region': 'Kinki'},
+                {'name': 'JIS UMEDA', 'women': 22, 'men': 38, 'region': 'Kinki'},
+                {'name': 'OLG 新宿', 'women': 36, 'men': 28, 'region': 'Kanto'},
+            ]
+            app_module.latest_data['is_seed_fallback'] = False
+            app_module.latest_data['last_updated'] = datetime.datetime.now(
+                datetime.timezone(datetime.timedelta(hours=9))
+            ).strftime('%Y-%m-%d %H:%M:%S')
+        app_module._last_fetch_epoch = 9999999999.0
+        app_module.clear_fast_http_caches()
+        self.client = app_module.app.test_client()
+
+    def tearDown(self):
+        import analytics
+        import column_editorial
+        import pdca_engine
+        with analytics._lock:
+            analytics._pending.clear()
+            analytics._flushed.clear()
+            analytics._sheet_rows_cache['ts'] = 0.0
+            analytics._sheet_rows_cache['rows'] = None
+        column_editorial.clear_column_ai_cache()
+        pdca_engine.reset_pdca_cache_for_tests()
+        shutil.rmtree(os.environ['JOB_STATE_DIR'], ignore_errors=True)
+        job_state.reset_cache_for_tests()
+        app_module.clear_fast_http_caches()
+
+    def test_closed_loop_pdca_inflow_attribution_sns_boost_and_auto_replenish(self):
+        import pdca_engine
+        import sns_editorial
+        import tips_poster
+        import scheduled_articles
+
+        # 1. Access control: anonymous & regular staff blocked; master allowed
+        self.assertEqual(self.client.get('/staff/pdca').status_code, 302)
+        self.assertEqual(self.client.get('/api/pdca').status_code, 401)
+        self.assertEqual(self.client.post('/api/pdca/settings', json={}).status_code, 401)
+        self.assertEqual(self.client.post('/api/pdca/run', json={}).status_code, 401)
+
+        with self.client.session_transaction() as sess:
+            sess['is_staff'] = True
+            sess['is_master'] = False
+        self.assertEqual(self.client.get('/staff/pdca').status_code, 302)
+        self.assertEqual(self.client.get('/api/pdca').status_code, 401)
+        with self.client.session_transaction() as sess:
+            sess.clear()
+
+        # 2. Simulate real visitor arriving from X 22:00 `hub_gap` post (`/?s=x22_hub_gap_20261028`),
+        #    browsing `/guide/first-10-minutes`, and clicking `/link/orbis` (24h cookie attribution!)
+        human_headers = {'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15'}
+        with mock.patch('sheets_store.read_rows', return_value=[]):
+            r_land = self.client.get('/?s=x22_hub_gap_20261028', headers=human_headers)
+            self.assertEqual(r_land.status_code, 200)
+            for _ in range(10):
+                self.client.get('/guide/first-10-minutes', headers=human_headers)
+            r_aff = self.client.get(
+                '/link/orbis',
+                headers={**human_headers, 'Referer': 'https://aiseki-navi.com/guide/first-10-minutes'},
+            )
+            self.assertEqual(r_aff.status_code, 302)
+            # Also simulate a high-PV zero-click bottleneck article (`/guide/second-venue`)
+            for _ in range(16):
+                self.client.get('/guide/second-venue', headers=human_headers)
+
+            # 3. Login as Master, open `/staff/pdca`, and trigger `POST /api/pdca/run`
+            with self.client.session_transaction() as sess:
+                sess['is_staff'] = True
+                sess['is_master'] = True
+
+            r_board = self.client.get('/staff/pdca?days=14')
+            self.assertEqual(r_board.status_code, 200)
+            board_html = r_board.data.decode('utf-8')
+            self.assertIn('自律PDCA作戦参謀・グロース統括ボード', board_html)
+
+            with mock.patch('sns_editorial.get_gemini_api_key', return_value=''):
+                r_run = self.client.post('/api/pdca/run', json={'days': 14})
+            self.assertEqual(r_run.status_code, 200)
+            run_json = r_run.get_json()
+            self.assertTrue(run_json['ok'])
+            diag = run_json['pdca']['diagnostics']
+
+            # Verify `?s=` cohort normalization (`x22_hub_gap_20261028` -> `x22_hub_gap`) + attributed CV
+            cohorts = {c['tag']: c for c in diag['inflow_cohorts']}
+            self.assertIn('x22_hub_gap', cohorts)
+            self.assertEqual(cohorts['x22_hub_gap']['visits'], 1)
+            self.assertEqual(cohorts['x22_hub_gap']['conversions'], 1)
+
+            # Verify article winner vs bottleneck detection
+            art_map = {a['path']: a for a in diag['article_perf']}
+            self.assertIn('高CV牽引', art_map['/guide/first-10-minutes']['status_badge'])
+            self.assertTrue(any('導線ボトルネック記事' in iss['title'] for iss in diag['issues']))
+
+            # Verify active directives persisted & wired into SNS Desk + Tips Poster + Column Editorial UI
+            directives = pdca_engine.get_active_directives(allow_blocking=True)
+            self.assertEqual(directives['sns_style_boosts'].get('hub_gap'), 4)
+            self.assertEqual(directives['priority_column_paths'][0], '/guide/first-10-minutes')
+
+            ed_x = sns_editorial.run_editorial_pipeline(
+                app_module.latest_data['full_data'],
+                slot_label='22:00',
+                channel='x',
+                record_history=False,
+                use_ai=False,
+            )
+            hub_cand = next(c for c in ed_x['evaluation']['candidates'] if c['style'] == 'hub_gap')
+            self.assertEqual(hub_cand['pdca_boost'], 4)
+            self.assertTrue(any('PDCA参謀補正' in cm for cm in hub_cand['desk_comments']))
+            self.assertIn('?s=x22_hub_gap', hub_cand['reply_text'])
+
+            # Evening 18:00 tip slot automatically picks a PDCA priority column and appends `?s=x18_tip`
+            _, chosen_tip_col = tips_poster.resolve_tip_column(slot_label='18:00')
+            self.assertIn(chosen_tip_col, directives['priority_column_paths'])
+            self.assertIn('?s=x18_tip', tips_poster.get_tip_reply_text(slot_label='18:00'))
+
+            # Column Editorial Room displays the PDCA Special Order banner
+            r_col_ed = self.client.get('/staff/column-editorial')
+            self.assertEqual(r_col_ed.status_code, 200)
+            self.assertIn('PDCA参謀の次回特命お題', r_col_ed.data.decode('utf-8'))
+
+            # 4. Toggle `auto_replenish_columns=True` and simulate empty upcoming queue -> auto-schedules a new column!
+            r_set = self.client.post('/api/pdca/settings', json={
+                'auto_optimize_sns': True,
+                'auto_replenish_columns': True,
+            })
+            self.assertEqual(r_set.status_code, 200)
+            self.assertTrue(r_set.get_json()['settings']['auto_replenish_columns'])
+
+            future_naive = datetime.datetime(2026, 11, 20, 12, 0, 0)
+            with mock.patch.object(scheduled_articles, 'now_jst_naive', return_value=future_naive), \
+                 mock.patch('sns_editorial.get_gemini_api_key', return_value=''):
+                auto_cycle = pdca_engine.run_pdca_cycle(
+                    live_stores=app_module.latest_data['full_data'],
+                    days=14,
+                    apply_actions=True,
+                    use_ai=False,
+                    record_log=True,
+                )
+            self.assertIsNotNone(auto_cycle['auto_published_result'])
+            self.assertTrue(auto_cycle['auto_published_result']['ok'])
+            auto_slug = auto_cycle['auto_published_result']['slug']
+            self.assertIsNotNone(scheduled_articles.get_article_by_slug(auto_slug))
 
 
 if __name__ == '__main__':

@@ -773,8 +773,8 @@ def _write_x_candidates(research: dict, slot_label: str, now_jst: datetime.datet
     weekdays_ja = ["月", "火", "水", "木", "金", "土", "日"]
     wd_str = weekdays_ja[_business_datetime(now_jst).weekday()]
     t_str = now_jst.strftime("%H:%M")
-    slot_code = (slot_label or "20:00").replace(":", "")
-    live_url = f"{site_url}/?s={now_jst.strftime('%Y%m%d')}_{slot_code}"
+    slot_hh = (slot_label or "20:00")[:2]
+    ymd = now_jst.strftime("%Y%m%d")
 
     top_stores = research.get("top_stores") or []
     if not top_stores:
@@ -829,8 +829,8 @@ def _write_x_candidates(research: dict, slot_label: str, now_jst: datetime.datet
             body_a = body_a.replace("オリエンタルラウンジ", "オリラジ")
         reply_a = (
             f"📍 {hub_name}エリアの料金・現在人数横並び比較はこちら\n"
-            f"{site_url}/price-comparison?area={area_id}\n\n"
-            f"🔍 全国53店舗リアルタイム人数ランキング\n{live_url}"
+            f"{site_url}/price-comparison?area={area_id}&s=x{slot_hh}_hub_gap\n\n"
+            f"🔍 全国53店舗リアルタイム人数ランキング\n{site_url}/?s=x{slot_hh}_hub_gap_{ymd}"
         )
         candidates.append({
             "style": "hub_gap",
@@ -889,8 +889,8 @@ def _write_x_candidates(research: dict, slot_label: str, now_jst: datetime.datet
     f_slug = store_master.slug_of(focus["name"])
     reply_b = (
         f"📊 {focus['ja_name']}の現在人数・終電後の残りやすさ指標はこちら\n"
-        f"{site_url}/store/{f_slug}\n\n"
-        f"🔍 全国53店舗リアルタイム人数ランキング\n{live_url}"
+        f"{site_url}/store/{f_slug}?s=x{slot_hh}_surge_focus\n\n"
+        f"🔍 全国53店舗リアルタイム人数ランキング\n{site_url}/?s=x{slot_hh}_surge_focus_{ymd}"
     )
     candidates.append({
         "style": "surge_focus",
@@ -964,8 +964,8 @@ def _write_x_candidates(research: dict, slot_label: str, now_jst: datetime.datet
         body_c = body_c.replace("オリエンタルラウンジ", "オリラジ")
 
     reply_c = (
-        f"🔍 全国53店舗の現在人数＆普段の同曜日比（平比）はこちら\n{live_url}\n\n"
-        f"💴 全51店舗の時間帯料金・開催中イベント比較ボード\n{site_url}/price-comparison"
+        f"🔍 全国53店舗の現在人数＆普段の同曜日比（平比）はこちら\n{site_url}/?s=x{slot_hh}_{c_style}_{ymd}\n\n"
+        f"💴 全51店舗の時間帯料金・開催中イベント比較ボード\n{site_url}/price-comparison?s=x{slot_hh}_{c_style}"
     )
     candidates.append({
         "style": c_style,
@@ -1009,15 +1009,18 @@ def _write_threads_candidates(research: dict, slot_label: str, now_jst: datetime
     anomaly = research.get("anomaly_store")
     city_leaders = research.get("city_leaders") or []
 
-    # Meta anti-spam link rotation (even day = bio link, odd day = direct link)
-    if now_jst.day % 2 == 0:
-        cta_footer = "🔍 全51店舗の現在人数＆料金比較はプロフィールのリンク（相席ナビ）から見れます\n#相席ラウンジ"
-    else:
-        cta_footer = f"▼ 全51店舗の現在人数＆料金・イベント比較\n{site_url}/price-comparison\n#相席ラウンジ"
+    slot_hh = (slot_label or "22:00")[:2]
+
+    # Meta anti-spam link rotation (even day = bio link, odd day = direct link with PDCA cohort tag)
+    def _th_footer(st_key: str) -> str:
+        if now_jst.day % 2 == 0:
+            return "🔍 全51店舗の現在人数＆料金比較はプロフィールのリンク（相席ナビ）から見れます\n#相席ラウンジ"
+        return f"▼ 全51店舗の現在人数＆料金・イベント比較\n{site_url}/price-comparison?s=th{slot_hh}_{st_key}\n#相席ラウンジ"
 
     candidates = []
 
     # 1) threads_city_story: Conversational street-level temperature check
+    cta_footer_1 = _th_footer("threads_city_story")
     if cluster and cluster["high_store"]["name"] != cluster["low_store"]["name"]:
         hs = cluster["high_store"]
         ls = cluster["low_store"]
@@ -1043,7 +1046,7 @@ def _write_threads_candidates(research: dict, slot_label: str, now_jst: datetime
             f"ほかの主要エリアの現在トップはこんな感じ👇\n"
             f"{city_sub}\n\n"
             f"1軒目で「男性待ち長そうだな」と思ったら、無理に粘らず徒歩3〜4分の別ブランドを覗くのが一番コスパいいです🥂\n\n"
-            f"{cta_footer}"
+            f"{cta_footer_1}"
         )
     else:
         c_lines = "\n".join(
@@ -1055,10 +1058,10 @@ def _write_threads_candidates(research: dict, slot_label: str, now_jst: datetime
             f"今夜特にバランスがいいのは「{focus['ja_name']}（女性{focus['women']}名 / 男性{focus['men']}名・女性比{focus['wpct']}%）」。\n\n"
             f"主要エリアの現在トップメモ📝\n{c_lines}\n\n"
             f"向かう前の30秒で人数バランスを見ておくだけで「行ったのに1時間待ち」を回避できます。\n\n"
-            f"{cta_footer}"
+            f"{cta_footer_1}"
         )
 
-    if len(body_1) > 485:
+    if len(body_1) > 465:
         body_1 = body_1.replace("オリエンタルラウンジ", "オリラジ")
     candidates.append({
         "style": "threads_city_story",
@@ -1069,6 +1072,7 @@ def _write_threads_candidates(research: dict, slot_label: str, now_jst: datetime
     })
 
     # 2) threads_anomaly_insight: Both Male & Female perspective + usual diff
+    cta_footer_2 = _th_footer("threads_anomaly_insight")
     if anomaly and anomaly.get("usual_w_diff"):
         hook_2 = (
             f"いつもの{wd_str}曜夜と比べても、今夜は「{anomaly['ja_name']}」に普段より女性が+{anomaly['usual_w_diff']}名多く集まってます📊"
@@ -1094,9 +1098,9 @@ def _write_threads_candidates(research: dict, slot_label: str, now_jst: datetime
         f"男性目線でいま待ち時間を避けて座りやすいのは「{focus['ja_name']}（女性{focus['women']}名 / 男性{focus['men']}名・女性比{focus['wpct']}%）」{runner_txt}。\n\n"
         f"{female_tip}\n\n"
         f"同じ街でも店によって男女比が15〜25%違うので、入る前にチラッと比較してみてください👇\n\n"
-        f"{cta_footer}"
+        f"{cta_footer_2}"
     )
-    if len(body_2) > 485:
+    if len(body_2) > 465:
         body_2 = body_2.replace("オリエンタルラウンジ", "オリラジ")
     candidates.append({
         "style": "threads_anomaly_insight",
@@ -1107,6 +1111,7 @@ def _write_threads_candidates(research: dict, slot_label: str, now_jst: datetime
     })
 
     # 3) threads_hopping_guide: 4-hub quick hopping guide
+    cta_footer_3 = _th_footer("threads_hopping_guide")
     hub_bullets = "\n".join(
         f"📍{c['hub_label']}：{c['store']['ja_name']}（女性{c['store']['women']}・男性{c['store']['men']} / 女性比{c['store']['wpct']}%）"
         for c in city_leaders[:4]
@@ -1115,9 +1120,9 @@ def _write_threads_candidates(research: dict, slot_label: str, now_jst: datetime
         f"いま（{t_str}時点）から1軒目・2軒目で相席ラウンジ動く人向けに、主要エリアで一番人が集まってる店舗だけ抜粋しました📝\n\n"
         f"{hub_bullets}\n\n"
         f"席替えがしっかり回るのは「女性10名以上（約5組）×女性比55%以上」のお店。微妙な席で惰性で90分粘るより、40分で見切って近くの好バランス店に回る方が満足度もコスパも段違いです🍸\n\n"
-        f"{cta_footer}"
+        f"{cta_footer_3}"
     )
-    if len(body_3) > 485:
+    if len(body_3) > 465:
         body_3 = body_3.replace("オリエンタルラウンジ", "オリラジ")
     candidates.append({
         "style": "threads_hopping_guide",
@@ -1490,14 +1495,15 @@ def _build_gemini_prompt(
         ],
     }
 
-    slot_code = (slot_label or "20:00").replace(":", "")
-    live_url = f"{site_url}/?s={now_jst.strftime('%Y%m%d')}_{slot_code}"
+    slot_hh = (slot_label or "20:00")[:2]
+    ymd = now_jst.strftime("%Y%m%d")
+    live_url = f"{site_url}/?s=x{slot_hh}_ai_live_adlib_{ymd}"
 
     if ch == "x":
         f_slug = store_master.slug_of(focus["name"]) if focus else ""
         reply_text = (
             f"📊 {focus['ja_name']}の現在人数・終電後の残りやすさ指標はこちら\n"
-            f"{site_url}/store/{f_slug}\n\n"
+            f"{site_url}/store/{f_slug}?s=x{slot_hh}_ai_live_adlib\n\n"
             f"🔍 全国53店舗リアルタイム人数ランキング\n{live_url}"
             if focus else f"🔍 全国53店舗リアルタイム人数ランキング\n{live_url}"
         )
@@ -1511,7 +1517,7 @@ def _build_gemini_prompt(
         if now_jst.day % 2 == 0:
             cta_footer = "🔍 全51店舗の現在人数＆料金比較はプロフィールのリンク（相席ナビ）から見れます\n#相席ラウンジ"
         else:
-            cta_footer = f"▼ 全51店舗の現在人数＆料金・イベント比較\n{site_url}/price-comparison\n#相席ラウンジ"
+            cta_footer = f"▼ 全51店舗の現在人数＆料金・イベント比較\n{site_url}/price-comparison?s=th{slot_hh}_ai_live_adlib\n#相席ラウンジ"
         reply_text = "（Threadsは1投稿完結・AIアドリブ生成＋リンク制限回避済）"
         platform_spec = (
             "【対象SNS：Meta Threads（スレッズ）】\n"
@@ -1962,6 +1968,13 @@ def run_evaluator(
     style_priority = plan.get("style_priority") or []
     classic_key = plan.get("classic_key")
 
+    pdca_boosts = {}
+    try:
+        import pdca_engine
+        pdca_boosts = (pdca_engine.get_active_directives(allow_blocking=False) or {}).get("sns_style_boosts") or {}
+    except Exception:
+        pdca_boosts = {}
+
     evaluated = []
     for cand in candidates:
         text = cand.get("main_text") or ""
@@ -2086,11 +2099,25 @@ def run_evaluator(
                 weight_score = 7
                 weight_comment = f"◯ 文字数（{metric_unit}）・タグ{tag_cnt}個は標準範囲内。"
 
-        total_score = human_score + fresh_score + data_score + weight_score
+        pdca_boost = int(pdca_boosts.get(style, 0)) if (data_score > 0 and weight_score > 0) else 0
+        raw_total = human_score + fresh_score + data_score + weight_score + pdca_boost
+        total_score = min(100, raw_total)
+        desk_comments = [
+            human_comment,
+            fresh_comment,
+            data_comment,
+            weight_comment,
+        ]
+        if pdca_boost != 0:
+            desk_comments.append(
+                f"🧭 PDCA参謀補正：直近のサイト流入・回遊実績に基づきスコアを {pdca_boost:+d}点 自動調整しました。"
+            )
         item_copy = dict(cand)
         item_copy.update({
             "channel": ch,
             "total_score": total_score,
+            "raw_total_score": raw_total,
+            "pdca_boost": pdca_boost,
             "weight": metric_val,
             "metric_unit": metric_unit,
             "scores": {
@@ -2098,17 +2125,13 @@ def run_evaluator(
                 "freshness_diversity": fresh_score,
                 "data_specificity": data_score,
                 "weight_fit": weight_score,
+                "pdca_boost": pdca_boost,
             },
-            "desk_comments": [
-                human_comment,
-                fresh_comment,
-                data_comment,
-                weight_comment,
-            ],
+            "desk_comments": desk_comments,
         })
         evaluated.append(item_copy)
 
-    evaluated.sort(key=lambda x: x["total_score"], reverse=True)
+    evaluated.sort(key=lambda x: (x["total_score"], x.get("raw_total_score", 0)), reverse=True)
     for idx, item in enumerate(evaluated):
         item["rank"] = idx + 1
         item["is_selected"] = (idx == 0)

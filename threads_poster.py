@@ -182,11 +182,12 @@ def build_threads_live_post(stores: list, slot_label: str = "20:00", now_jst: da
     chosen_tip = tips_rot[now_jst.day % len(tips_rot)]
 
     # Alternate URL vs Bio-link guidance so Meta's algorithm doesn't flag every post as external link spam
+    slot_hh = (slot_label or "22:00")[:2]
     if now_jst.day % 2 == 0:
         cta_line = "🔍 全51店舗の現在人数＆料金・イベント比較はプロフィールのリンク（相席ナビ）から見れます"
         tag_line = "#相席ナビ #相席ラウンジ"
     else:
-        cta_line = f"▼ 全51店舗の現在人数＆料金・イベント比較\n{SITE_URL}/price-comparison"
+        cta_line = f"▼ 全51店舗の現在人数＆料金・イベント比較\n{SITE_URL}/price-comparison?s=th{slot_hh}_live"
         tag_line = "#相席ナビ"
 
     lines.extend([

@@ -405,6 +405,7 @@
     <div class="top-nav">
         <a class="back-btn" href="/staff">← 社内業務モニターへ戻る</a>
         <div class="top-actions">
+            <a class="flush-btn" href="/staff/pdca">🧭 自律PDCA作戦参謀ボードへ →</a>
             <a class="flush-btn" href="/staff/analytics?days={{ days }}&flush=1">🔄 いまの最新カウントを即時集計</a>
             <a class="back-btn" href="/staff/analytics?days={{ days }}&format=json" style="font-size:0.75rem;">JSON出力</a>
         </div>
@@ -730,6 +731,34 @@
             </div>
             {% else %}
             <div class="empty-box">まだ外部送客アクションの記録はありません。</div>
+            {% endif %}
+        </div>
+
+        <!-- 5. SNS ?s= Cohort Inflows & Attributed Affiliate CVs -->
+        <div class="panel">
+            <h2>📡 SNS投稿枠（?s=）からのサイト流入＆CV内訳</h2>
+            <p class="panel-sub">どのSNS投稿枠・切り口から実際にユーザーが訪問・アフィリエイト遷移したか</p>
+            {% set inflow_rows = data.by_label_pretty.get('sns_inflow', []) %}
+            {% if inflow_rows %}
+            <div class="bar-list">
+                {% for r in inflow_rows %}
+                <div class="bar-item">
+                    <div class="bar-item-top">
+                        <div>
+                            <span class="bar-item-title">{{ r.title }}</span>
+                            <span class="bar-item-sub">{{ r.sub }}</span>
+                        </div>
+                        <div class="bar-item-nums">
+                            <span class="bar-item-count">{{ r.count }}回</span>
+                            <span class="bar-item-share">({{ r.share_pct }}%)</span>
+                        </div>
+                    </div>
+                    <div class="bar-track"><div class="bar-fill green" style="width: {{ r.bar_pct }}%;"></div></div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-box">まだ <code>?s=</code> 付きのSNS流入記録はありません（今後の自動投稿から自動計測されます）。</div>
             {% endif %}
         </div>
     </div>

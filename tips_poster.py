@@ -377,6 +377,50 @@ def _is_column_used_today(col_path: str, date_str: str) -> bool:
         return False
 
 
+def _get_pdca_priority_paths() -> list:
+    try:
+        import pdca_engine
+        return list((pdca_engine.get_active_directives(allow_blocking=False) or {}).get("priority_column_paths") or [])
+    except Exception:
+        return []
+
+
+def _is_column_public_now(col_path: str, now_jst: datetime.datetime = None) -> bool:
+    if not col_path or not col_path.startswith("/"):
+        return False
+    if col_path.startswith("/guide/"):
+        slug = col_path.split("/guide/", 1)[1].strip("/")
+        try:
+            import scheduled_articles
+            sitem = scheduled_articles.get_article_by_slug(slug)
+            if sitem is not None:
+                return scheduled_articles.is_published(sitem, now_jst=now_jst)
+        except Exception:
+            pass
+    return True
+
+
+def _title_for_column_path(col_path: str) -> str:
+    for t, p in _FALLBACK_COLUMNS:
+        if p == col_path:
+            return t
+    try:
+        import scheduled_articles
+        for item in scheduled_articles.get_published_articles():
+            if item.get("path") == col_path:
+                return item.get("short_title") or item.get("title") or "相席ラウンジ実践コラム"
+    except Exception:
+        pass
+    try:
+        import column_editorial
+        for c in column_editorial.EXISTING_STATIC_COLUMNS:
+            if c.get("path") == col_path:
+                return c.get("title") or "相席ラウンジ実践コラム"
+    except Exception:
+        pass
+    return "相席ラウンジ実践コラム・攻略記事"
+
+
 def _select_tip_index(slot_label: str = "12:00", tip_index: int = None, now_jst: datetime.datetime = None) -> int:
     now_jst = now_jst or datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
     n = len(TIPS_LIST)
@@ -403,6 +447,18 @@ def _select_tip_index(slot_label: str = "12:00", tip_index: int = None, now_jst:
     # and guarantee we NEVER pick the same tip or same column path as 12:00 or any column used today.
     _, col_12_path = _column_for_tip_index(idx_12)
     base_18 = (day_of_year * 2 + 23) % n
+
+    # PDCA closed-loop boost: prioritize high-CTR or newly released columns in the evening slot
+    prio_paths = [p for p in _get_pdca_priority_paths() if _is_column_public_now(p, now_jst=now_jst)]
+    if prio_paths:
+        for step in range(n):
+            cand = (base_18 + step) % n
+            if cand == idx_12:
+                continue
+            _, cpath = _column_for_tip_index(cand)
+            if cpath in prio_paths and cpath != col_12_path and not _is_column_used_today(cpath, date_str):
+                return cand
+
     for step in range(n):
         cand = (base_18 + step) % n
         if cand == idx_12:
@@ -442,17 +498,34 @@ def get_tip_for_slot(slot_label: str = "12:00", tip_index: int = None, now_jst: 
     return raw_tip
 
 
-def resolve_tip_column(slot_label: str = "12:00", tip_index: int = None, now_jst: datetime.datetime = None) -> tuple:
+def resolve_tip_column(
+    slot_label: str = "12:00",
+    tip_index: int = None,
+    now_jst: datetime.datetime = None,
+    prefer_pdca: bool = None,
+) -> tuple:
     """Return (col_title, col_path) guaranteed not to duplicate another column posted on the same day."""
     now_jst = now_jst or datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
     date_str = now_jst.strftime("%Y-%m-%d")
+    if prefer_pdca is None:
+        prefer_pdca = (tip_index is None and slot_label != "12:00")
+
     idx = _select_tip_index(slot_label=slot_label, tip_index=tip_index, now_jst=now_jst)
     col_title, col_path = _column_for_tip_index(idx)
 
     forbidden = set()
-    if slot_label != "12:00" and tip_index is None:
+    if slot_label != "12:00" and (tip_index is None or prefer_pdca):
         idx_12 = _select_tip_index(slot_label="12:00", now_jst=now_jst)
         forbidden.add(_column_for_tip_index(idx_12)[1])
+
+    # If PDCA has a newly published dynamic editorial column or top-CTR column not yet promoted today, prioritize it
+    if prefer_pdca:
+        prio_paths = _get_pdca_priority_paths()
+        if prio_paths and col_path not in prio_paths:
+            for p in prio_paths:
+                if p not in forbidden and _is_column_public_now(p, now_jst=now_jst) and not _is_column_used_today(p, date_str):
+                    col_title, col_path = _title_for_column_path(p), p
+                    break
 
     if col_path in forbidden or _is_column_used_today(col_path, date_str):
         for fb_title, fb_path in _FALLBACK_COLUMNS:
@@ -464,13 +537,14 @@ def resolve_tip_column(slot_label: str = "12:00", tip_index: int = None, now_jst
 
 
 def get_tip_reply_text(slot_label: str = "12:00", tip_index: int = None, now_jst: datetime.datetime = None) -> str:
-    """Build the 2nd post (self-reply) with the matching column URL + real-time ranking URL."""
+    """Build the 2nd post (self-reply) with the matching column URL + PDCA tracking tag."""
     site_url = os.environ.get("PUBLIC_SITE_URL", "https://aiseki-navi.com").rstrip("/")
+    slot_hh = (slot_label or "12:00")[:2]
     col_title, col_path = resolve_tip_column(slot_label=slot_label, tip_index=tip_index, now_jst=now_jst)
 
     return (
         f"📖 詳しい解説コラム：{col_title}👇\n"
-        f"{site_url}{col_path}"
+        f"{site_url}{col_path}?s=x{slot_hh}_tip"
     )
 
 
@@ -483,6 +557,7 @@ def run_scheduled_tip_post(slot_label: str = "12:00", force: bool = False, tip_i
     now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
     date_str = now_jst.strftime("%Y-%m-%d")
     dedup_key = f"x_tip:{date_str}_{slot_label}"
+    orig_tip_index = tip_index
 
     # 投稿済みフラグは job_state（Google Sheets 永続化）で管理し、再起動・再デプロイ後の二重投稿を防ぐ
     import job_state
@@ -498,9 +573,15 @@ def run_scheduled_tip_post(slot_label: str = "12:00", force: bool = False, tip_i
     if force:
         text = f"{text}\n(⏱️{now_jst.strftime('%H:%M')})"
 
-    col_title, col_path = resolve_tip_column(slot_label=slot_label, tip_index=idx, now_jst=now_jst)
+    col_title, col_path = resolve_tip_column(
+        slot_label=slot_label,
+        tip_index=idx,
+        now_jst=now_jst,
+        prefer_pdca=(orig_tip_index is None and slot_label != "12:00"),
+    )
     site_url = os.environ.get("PUBLIC_SITE_URL", "https://aiseki-navi.com").rstrip("/")
-    reply_text = f"📖 詳しい解説コラム：{col_title}👇\n{site_url}{col_path}"
+    slot_hh = (slot_label or "12:00")[:2]
+    reply_text = f"📖 詳しい解説コラム：{col_title}👇\n{site_url}{col_path}?s=x{slot_hh}_tip"
 
     result = x_poster.post_to_x(text, reply_text=reply_text)
     if result.get("status") == "success" and not force:

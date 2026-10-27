@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>自律PDCA作戦参謀ボード（マスター専用）｜相席ナビ</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+    <style>
+        :root {
+            --bg: #0f1014;
+            --surface: #16181d;
+            --surface-2: #1d2027;
+            --border: rgba(255, 255, 255, 0.08);
+            --border-strong: rgba(255, 255, 255, 0.16);
+            --text: #eceef2;
+            --sub: #9ca3af;
+            --gold: #c8a46e;
+            --gold-soft: rgba(200, 164, 110, 0.14);
+            --green: #7bc49f;
+            --green-soft: rgba(123, 196, 159, 0.14);
+            --rose: #d8a1aa;
+            --rose-soft: rgba(216, 161, 170, 0.14);
+            --blue: #93b1c9;
+            --blue-soft: rgba(147, 177, 201, 0.14);
+            --purple: #c084fc;
+            --purple-soft: rgba(192, 132, 252, 0.14);
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif;
+            line-height: 1.62;
+        }
+        .wrap {
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 20px 16px 68px;
+        }
+        .top-nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+        .back-btn {
+            color: var(--text);
+            text-decoration: none;
+            font-size: 0.84rem;
+            padding: 7px 14px;
+            border-radius: 999px;
+            background: var(--surface);
+            border: 1px solid var(--border-strong);
+        }
+        .channel-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 16px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 12px 16px;
+        }
+        .tab-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .tab-group a {
+            color: var(--sub);
+            text-decoration: none;
+            padding: 6px 13px;
+            border: 1px solid var(--border-strong);
+            border-radius: 999px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            background: var(--bg);
+        }
+        .tab-group a.active {
+            background: var(--gold-soft);
+            border-color: var(--gold);
+            color: #f5e6cc;
+        }
+        .hero-grid {
+            display: grid;
+            grid-template-columns: 1.15fr 1fr;
+            gap: 14px;
+            margin-bottom: 16px;
+        }
+        @media (max-width: 860px) {
+            .hero-grid { grid-template-columns: 1fr; }
+        }
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 18px 20px;
+        }
+        .card h1 {
+            font-size: 1.22rem;
+            margin: 0 0 6px;
+        }
+        .card p.lead {
+            color: var(--sub);
+            font-size: 0.82rem;
+            margin: 0 0 14px;
+        }
+        .score-box {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 12px 14px;
+            border-radius: 12px;
+            background: var(--bg);
+            border: 1px solid rgba(200, 164, 110, 0.35);
+            margin-bottom: 12px;
+        }
+        .score-big {
+            font-size: 2.2rem;
+            font-weight: 900;
+            color: #f5e6cc;
+            line-height: 1;
+            font-variant-numeric: tabular-nums;
+        }
+        .score-big small {
+            font-size: 0.85rem;
+            color: var(--sub);
+            font-weight: 600;
+        }
+        .axis-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+        .axis-item {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 9px;
+            padding: 8px 10px;
+            font-size: 0.76rem;
+        }
+        .axis-top {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+            font-weight: 700;
+        }
+        .bar-track {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 999px;
+            overflow: hidden;
+        }
+        .bar-fill {
+            height: 100%;
+            border-radius: 999px;
+            background: linear-gradient(90deg, #b89158, #dfbe89);
+        }
+        .control-card {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: 12px;
+        }
+        .toggle-row {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 11px 13px;
+            border-radius: 11px;
+            background: var(--bg);
+            border: 1px solid var(--border-strong);
+        }
+        .toggle-title {
+            font-size: 0.84rem;
+            font-weight: 700;
+            margin-bottom: 2px;
+        }
+        .toggle-desc {
+            font-size: 0.74rem;
+            color: var(--sub);
+        }
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 46px;
+            height: 26px;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            inset: 0;
+            background: #2c313c;
+            border-radius: 999px;
+            transition: 0.2s;
+            border: 1px solid var(--border-strong);
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background: #fff;
+            border-radius: 50%;
+            transition: 0.2s;
+        }
+        input:checked + .slider {
+            background: rgba(123, 196, 159, 0.48);
+            border-color: var(--green);
+        }
+        input:checked + .slider:before {
+            transform: translateX(20px);
+            background: #d3f3e2;
+        }
+        .run-btn {
+            cursor: pointer;
+            width: 100%;
+            padding: 11px 16px;
+            border-radius: 10px;
+            border: 1px solid var(--gold);
+            background: linear-gradient(135deg, rgba(200, 164, 110, 0.26), rgba(200, 164, 110, 0.12));
+            color: #f5e6cc;
+            font-size: 0.86rem;
+            font-weight: 800;
+        }
+        .run-btn:hover { opacity: 0.92; }
+        .run-btn:disabled { opacity: 0.55; cursor: wait; }
+
+        .briefing-card {
+            background: linear-gradient(135deg, rgba(168, 85, 247, 0.11) 0%, rgba(22, 24, 29, 0.97) 68%);
+            border: 1px solid rgba(168, 85, 247, 0.36);
+            border-radius: 15px;
+            padding: 16px 20px;
+            margin-bottom: 18px;
+        }
+        .briefing-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        .ai-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 11px;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            background: var(--purple-soft);
+            color: #f3e8ff;
+            border: 1px solid rgba(192, 132, 252, 0.4);
+        }
+        .briefing-body {
+            font-size: 0.88rem;
+            color: var(--text);
+            white-space: pre-wrap;
+        }
+        .mini-btn {
+            cursor: pointer;
+            padding: 5px 11px;
+            border-radius: 8px;
+            border: 1px solid rgba(192, 132, 252, 0.45);
+            background: rgba(168, 85, 247, 0.18);
+            color: #f3e8ff;
+            font-size: 0.76rem;
+            font-weight: 700;
+            text-decoration: none;
+        }
+
+        .two-col {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 14px;
+            margin-bottom: 18px;
+        }
+        @media (max-width: 860px) {
+            .two-col { grid-template-columns: 1fr; }
+        }
+        .diag-card h2 {
+            font-size: 0.98rem;
+            margin: 0 0 10px;
+        }
+        .diag-item {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 11px 13px;
+            margin-bottom: 9px;
+        }
+        .diag-item.win { border-left: 3px solid var(--green); }
+        .diag-item.issue { border-left: 3px solid var(--rose); }
+        .diag-title {
+            font-size: 0.84rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+        .diag-detail {
+            font-size: 0.77rem;
+            color: var(--sub);
+        }
+        .action-tag {
+            margin-top: 6px;
+            padding: 5px 9px;
+            border-radius: 7px;
+            background: var(--gold-soft);
+            border: 1px solid rgba(200, 164, 110, 0.35);
+            color: #f5e6cc;
+            font-size: 0.74rem;
+            font-weight: 600;
+        }
+
+        .directives-panel {
+            background: var(--surface);
+            border: 1px solid rgba(123, 196, 159, 0.35);
+            border-radius: 14px;
+            padding: 18px 20px;
+            margin-bottom: 18px;
+        }
+        .directives-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 12px;
+            margin-top: 10px;
+        }
+        .dir-box {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 11px;
+            padding: 12px 14px;
+        }
+        .dir-box h3 {
+            font-size: 0.85rem;
+            margin: 0 0 8px;
+            color: #d3f3e2;
+        }
+        .chip-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .chip {
+            display: inline-block;
+            padding: 3px 9px;
+            border-radius: 999px;
+            font-size: 0.74rem;
+            font-weight: 700;
+            background: var(--surface-2);
+            border: 1px solid var(--border-strong);
+            color: var(--text);
+            text-decoration: none;
+        }
+        .chip.plus { background: var(--green-soft); border-color: rgba(123, 196, 159, 0.45); color: #d3f3e2; }
+        .chip.minus { background: var(--rose-soft); border-color: rgba(216, 161, 170, 0.45); color: #f6d5dc; }
+        .cta-editorial-btn {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 8px 14px;
+            border-radius: 9px;
+            background: var(--green-soft);
+            border: 1px solid var(--green);
+            color: #d3f3e2;
+            font-size: 0.8rem;
+            font-weight: 800;
+            text-decoration: none;
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 13px;
+            margin-bottom: 18px;
+        }
+        .pdca-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.79rem;
+            min-width: 640px;
+        }
+        .pdca-table th, .pdca-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border);
+            text-align: left;
+        }
+        .pdca-table th {
+            background: var(--surface-2);
+            color: var(--sub);
+            font-weight: 700;
+        }
+        .toast-msg {
+            display: none;
+            margin-bottom: 14px;
+            padding: 10px 14px;
+            border-radius: 10px;
+            background: var(--green-soft);
+            border: 1px solid rgba(123, 196, 159, 0.45);
+            color: #d3f3e2;
+            font-size: 0.82rem;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+    {% set d = pdca.diagnostics %}
+    {% set sb = d.score_breakdown %}
+    {% set act = pdca.active_directives or d.proposed_directives %}
+    <div class="wrap">
+        <div class="top-nav">
+            <a href="/staff" class="back-btn">← マスター管理画面へ戻る</a>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <a href="/staff/analytics?days={{ days }}" class="back-btn">📊 アクセス・収益詳細集計へ →</a>
+                <a href="/staff/pdca?days={{ days }}&format=json" class="back-btn" style="font-size:0.76rem;">JSON診断出力</a>
+            </div>
+        </div>
+
+        <div class="channel-bar">
+            <div class="tab-group" aria-label="編集部ナビ">
+                <a href="/staff/sns-editorial?channel=x">𝕏 X編集部</a>
+                <a href="/staff/sns-editorial?channel=threads">🧵 Threads編集部</a>
+                <a href="/staff/sns-editorial?channel=instagram">📸 Instagram編集部</a>
+                <a href="/staff/column-editorial">📖 コラム・note編集部</a>
+                <a href="/staff/pdca" class="active">🧭 PDCA参謀本部</a>
+            </div>
+            <div class="tab-group" aria-label="診断期間切替">
+                <a href="/staff/pdca?days=7" class="{{ 'active' if days == 7 else '' }}">直近7日</a>
+                <a href="/staff/pdca?days=14" class="{{ 'active' if days == 14 else '' }}">直近14日</a>
+                <a href="/staff/pdca?days=30" class="{{ 'active' if days == 30 else '' }}">直近30日</a>
+            </div>
+        </div>
+
+        <div id="pdca-toast" class="toast-msg"></div>
+
+        <!-- Hero: Overall Health + Autonomous Switches -->
+        <div class="hero-grid">
+            <div class="card">
+                <h1>🧭 自律PDCA作戦参謀・グロース統括ボード</h1>
+                <p class="lead">サイトPV・記事別アフィリエイトCTR・SNS <code>?s=</code> 流入コホート・現場店舗の需要ギャップを横断分析し、SNS編集部とコラム編集部へ自動で次の一手をフィードバックします。</p>
+                <div class="score-box">
+                    <div class="score-big">{{ d.overall_score }}<small> / 100点</small></div>
+                    <div style="font-size:0.79rem; color:var(--sub);">
+                        <div><strong style="color:var(--text);">現在の最注目エリア：</strong>{{ d.demand_gap.top_hub.cluster_label }}（稼働女性 {{ d.demand_gap.top_hub.live_women }}名 / 男女比差 {{ d.demand_gap.top_hub.gap_pt }}pt）</div>
+                        <div><strong style="color:var(--text);">予約待機コラム在庫：</strong>{{ d.upcoming_count }}本 ｜ <strong style="color:var(--text);">対象期間：</strong>直近{{ days }}日間</div>
+                    </div>
+                </div>
+                <div class="axis-grid">
+                    <div class="axis-item">
+                        <div class="axis-top"><span>👀 集客・サイト回遊</span><span>{{ sb.traffic_engagement }}/25</span></div>
+                        <div class="bar-track"><div class="bar-fill" style="width: {{ (sb.traffic_engagement / 25 * 100)|round|int }}%;"></div></div>
+                    </div>
+                    <div class="axis-item">
+                        <div class="axis-top"><span>💰 収益・広告CTR効率</span><span>{{ sb.monetization_efficiency }}/25</span></div>
+                        <div class="bar-track"><div class="bar-fill" style="width: {{ (sb.monetization_efficiency / 25 * 100)|round|int }}%;"></div></div>
+                    </div>
+                    <div class="axis-item">
+                        <div class="axis-top"><span>📡 SNS流入・切り口多様性</span><span>{{ sb.sns_diversity_inflow }}/25</span></div>
+                        <div class="bar-track"><div class="bar-fill" style="width: {{ (sb.sns_diversity_inflow / 25 * 100)|round|int }}%;"></div></div>
+                    </div>
+                    <div class="axis-item">
+                        <div class="axis-top"><span>📖 コラム品質・予約在庫</span><span>{{ sb.content_pipeline_health }}/25</span></div>
+                        <div class="bar-track"><div class="bar-fill" style="width: {{ (sb.content_pipeline_health / 25 * 100)|round|int }}%;"></div></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card control-card">
+                <div>
+                    <div style="font-size:0.86rem; font-weight:800; color:var(--gold); margin-bottom:10px;">⚙️ 自律PDCAオートパイロット設定（毎日 17:35 / 03:35 自動実行）</div>
+                    <div class="toggle-row" style="margin-bottom:9px;">
+                        <div>
+                            <div class="toggle-title">① SNS切り口配分＆優先紹介コラムの自動最適化</div>
+                            <div class="toggle-desc">流入実績の高い切り口をSNS鬼デスクで自動加点し、高CTR記事・未露出記事をX 18:00枠へ優先セットします。</div>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="toggle-auto-sns" {{ 'checked' if pdca.settings.auto_optimize_sns else '' }} onchange="savePdcaSettings()">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="toggle-row">
+                        <div>
+                            <div class="toggle-title">② 予約コラム在庫切れ時のフルオート執筆・予約補充</div>
+                            <div class="toggle-desc">OFF時は特命お題提案＋ワンクリック承認（推奨）。ONにすると予約待機が残り1本以下の際、鬼デスク85点以上の新規コラムを自動で予約補充します。</div>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="toggle-auto-col" {{ 'checked' if pdca.settings.auto_replenish_columns else '' }} onchange="savePdcaSettings()">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+                <button type="button" id="run-pdca-btn" class="run-btn" onclick="runPdcaNow()">⚡ いま最新データでPDCAサイクルを実行して編成指令を更新</button>
+            </div>
+        </div>
+
+        <!-- Chief Strategist Briefing -->
+        <div class="briefing-card">
+            <div class="briefing-head">
+                <span id="briefing-pill" class="ai-pill">
+                    {% if pdca.briefing.pending_async %}
+                    🧠 Gemini 作戦参謀長が実測データを長考分析中...
+                    {% elif pdca.briefing.is_ai %}
+                    🧠 作戦参謀長ブリーフィング（{{ pdca.briefing.model }}）
+                    {% else %}
+                    🧭 作戦参謀ブリーフィング（実測データ総括）
+                    {% endif %}
+                </span>
+                <button type="button" class="mini-btn" onclick="refreshBriefing(true)">🔄 参謀コメントを再分析</button>
+            </div>
+            <div id="briefing-text" class="briefing-body">{{ pdca.briefing.text }}</div>
+        </div>
+
+        <!-- Wins vs Issues -->
+        <div class="two-col">
+            <div class="card diag-card">
+                <h2>🟢 いま上手くいっていること（勝ち筋・伸ばす領域）</h2>
+                {% for w in d.wins %}
+                <div class="diag-item win">
+                    <div class="diag-title">{{ w.title }}</div>
+                    <div class="diag-detail">{{ w.detail }}</div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="card diag-card">
+                <h2>🔴 いま上手くいっていないこと（課題＆システムの自動対処）</h2>
+                {% for iss in d.issues %}
+                <div class="diag-item issue">
+                    <div class="diag-title">{{ iss.title }}</div>
+                    <div class="diag-detail">{{ iss.detail }}</div>
+                    {% if iss.action_taken %}
+                    <div class="action-tag">⚡ 自動対処：{{ iss.action_taken }}</div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Active Closed-Loop Directives -->
+        <div class="directives-panel">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                <h2 style="font-size:1rem; margin:0;">🔄 現在アクティブな自動編成指令（Check → Act/Plan 自動配線）</h2>
+                <span style="font-size:0.76rem; color:var(--sub);">最終更新：{{ act.updated_at or '未実行（初回自動セット済）' }}</span>
+            </div>
+            <div class="directives-grid">
+                <div class="dir-box">
+                    <h3>① SNS鬼デスク スコア自動補正</h3>
+                    <div class="chip-list">
+                        {% set boosts = act.sns_style_boosts or {} %}
+                        {% if boosts %}
+                            {% for st_k, pts in boosts.items() if pts != 0 %}
+                            <span class="chip {{ 'plus' if pts > 0 else 'minus' }}">{{ st_k }}：{{ '%+d'|format(pts) }}点</span>
+                            {% endfor %}
+                        {% else %}
+                            <span style="font-size:0.77rem; color:var(--sub);">自動補正OFFまたはフラット配分中</span>
+                        {% endif %}
+                    </div>
+                    <div style="font-size:0.74rem; color:var(--sub); margin-top:8px;">※ <code>/staff/sns-editorial</code> および毎日の自動投稿の鬼デスク採点へリアルタイム反映されます。</div>
+                </div>
+
+                <div class="dir-box">
+                    <h3>② Xコラム枠 優先送客リスト</h3>
+                    <div class="chip-list">
+                        {% for p in (act.priority_column_paths or []) %}
+                        <a href="{{ p }}" target="_blank" class="chip">{{ p }} ↗</a>
+                        {% else %}
+                        <span style="font-size:0.77rem; color:var(--sub);">通常ローテーション稼働中</span>
+                        {% endfor %}
+                    </div>
+                    <div style="font-size:0.74rem; color:var(--sub); margin-top:8px;">※ X 18:00枠（当日未投稿分）のリプ欄で優先紹介されます。</div>
+                </div>
+
+                <div class="dir-box">
+                    <h3>③ コラム編集部への次回特命お題</h3>
+                    <div style="font-size:0.82rem; font-weight:700; color:#f5e6cc;">『{{ act.recommended_custom_topic or d.proposed_directives.recommended_custom_topic }}』</div>
+                    <a class="cta-editorial-btn" href="/staff/column-editorial?theme={{ act.recommended_column_theme or 'area_hopping' }}&topic={{ (act.recommended_custom_topic or d.proposed_directives.recommended_custom_topic) | urlencode }}">
+                        📝 この特命お題をコラム編集部で開いてワンクリック予約する →
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- SNS ?s= Cohort Tracking Table -->
+        <div class="card" style="margin-bottom:18px;">
+            <h2 style="font-size:0.98rem; margin:0 0 6px;">📡 SNS投稿枠・切り口別（<code>?s=</code>）サイト流入＆アフィリエイトCV成績</h2>
+            <p class="lead" style="margin-bottom:10px;">X（20時/22時/0時・18時Tips・新着告知）およびThreads奇数日リンクに付与した識別子ごとの実測流入と24時間以内アフィリエイト遷移数です。</p>
+            {% if d.inflow_cohorts %}
+            <div class="table-wrap" style="margin-bottom:0;">
+                <table class="pdca-table">
+                    <thead>
+                        <tr>
+                            <th>SNS投稿枠・切り口コホート</th>
+                            <th>識別タグ</th>
+                            <th>サイト流入数</th>
+                            <th>アフィリエイトCV</th>
+                            <th>CV率</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in d.inflow_cohorts %}
+                        <tr>
+                            <td><strong>{{ c.label }}</strong></td>
+                            <td><code>?s={{ c.tag }}</code></td>
+                            <td>{{ c.visits }}回</td>
+                            <td><strong>{{ c.conversions }}件</strong></td>
+                            <td>{{ c.cvr_pct }}%</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div style="padding:14px; border-radius:10px; background:var(--bg); border:1px dashed var(--border-strong); color:var(--sub); font-size:0.8rem;">
+                まだ <code>?s=</code> 識別子付きのSNS流入ログが蓄積されていません。本日のX・Threads自動投稿から切り口別の流入とCVが自動集計されます。
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Article PV x Affiliate CTR Matrix -->
+        <div class="card" style="margin-bottom:18px;">
+            <h2 style="font-size:0.98rem; margin:0 0 6px;">📖 コラム記事別 PV × アフィリエイトクリック × CTR 成績表</h2>
+            <p class="lead" style="margin-bottom:10px;">どの記事が収益を生んでいるか（🏆高CV牽引）、どの記事が読まれているのに広告クリックされていないか（⚠️導線ロス）を自動判定します。</p>
+            <div class="table-wrap" style="margin-bottom:0;">
+                <table class="pdca-table">
+                    <thead>
+                        <tr>
+                            <th>コラム記事タイトル</th>
+                            <th>診断ステータス</th>
+                            <th>閲覧数（PV）</th>
+                            <th>広告クリック</th>
+                            <th>記事CTR</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for a in d.article_perf %}
+                        <tr>
+                            <td><a href="{{ a.path }}" target="_blank" style="color:#f5e6cc; text-decoration:none; font-weight:700;">{{ a.title }} ↗</a><br><span style="font-size:0.72rem; color:var(--sub);">{{ a.path }}</span></td>
+                            <td>{{ a.status_badge }}</td>
+                            <td>{{ a.pv }}回</td>
+                            <td><strong>{{ a.aff_clicks }}件</strong></td>
+                            <td>{{ a.ctr_pct }}%</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Recent Autonomous PDCA History -->
+        <div class="card">
+            <h2 style="font-size:0.96rem; margin:0 0 10px;">🕒 直近の自律PDCAサイクル実行ログ</h2>
+            {% if pdca.history %}
+            <div class="table-wrap" style="margin-bottom:0;">
+                <table class="pdca-table">
+                    <thead>
+                        <tr>
+                            <th>実行日時</th>
+                            <th>総合点</th>
+                            <th>重点エリア</th>
+                            <th>SNSスコア補正</th>
+                            <th>セットされた特命お題 / 自動補充</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for h in pdca.history %}
+                        <tr>
+                            <td>{{ h.timestamp }}</td>
+                            <td><strong>{{ h.overall_score }}点</strong></td>
+                            <td>{{ h.focus_hub }}</td>
+                            <td>{{ (h.boosted_styles or [])|join(', ') or '-' }}</td>
+                            <td>
+                                {{ h.recommended_topic }}
+                                {% if h.auto_scheduled_slug %}
+                                <span class="chip plus">🤖 自動予約補充済: /guide/{{ h.auto_scheduled_slug }}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div style="font-size:0.8rem; color:var(--sub);">上の「⚡ いま最新データでPDCAサイクルを実行」ボタンを押すか、毎日17:35 / 03:35の自動実行で履歴が記録されます。</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <script>
+        const CURRENT_DAYS = {{ days }};
+        const PENDING_ASYNC_AI = {{ 'true' if pdca.briefing.pending_async else 'false' }};
+
+        function showToast(msg) {
+            const el = document.getElementById('pdca-toast');
+            el.textContent = msg;
+            el.style.display = 'block';
+        }
+
+        async function savePdcaSettings() {
+            const autoSns = document.getElementById('toggle-auto-sns').checked;
+            const autoCol = document.getElementById('toggle-auto-col').checked;
+            try {
+                const r = await fetch('/api/pdca/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        auto_optimize_sns: autoSns,
+                        auto_replenish_columns: autoCol
+                    })
+                });
+                const j = await r.json();
+                if (j.ok) {
+                    showToast(`✅ 自律PDCA設定を保存しました（SNS最適化: ${autoSns ? 'ON' : 'OFF'} ／ 在庫切れ自動コラム補充: ${autoCol ? 'ON' : 'OFF'}）`);
+                }
+            } catch (e) {
+                alert('設定保存中に通信エラーが発生しました。');
+            }
+        }
+
+        async function runPdcaNow() {
+            const btn = document.getElementById('run-pdca-btn');
+            btn.disabled = true;
+            btn.textContent = '🧭 実測データを集計し、SNS＆コラム編集部への指令を更新中...';
+            try {
+                const r = await fetch('/api/pdca/run', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ days: CURRENT_DAYS, refresh_ai: true })
+                });
+                const j = await r.json();
+                if (j.ok) {
+                    window.location.href = `/staff/pdca?days=${CURRENT_DAYS}`;
+                    return;
+                }
+            } catch (e) {}
+            btn.disabled = false;
+            btn.textContent = '⚡ いま最新データでPDCAサイクルを実行して編成指令を更新';
+        }
+
+        async function refreshBriefing(forceRefresh) {
+            const pill = document.getElementById('briefing-pill');
+            pill.textContent = '🧠 Gemini 作戦参謀長が実測データを長考分析中...';
+            try {
+                const url = `/api/pdca?days=${CURRENT_DAYS}` + (forceRefresh ? '&refresh_ai=1' : '');
+                const r = await fetch(url);
+                if (!r.ok) return;
+                const j = await r.json();
+                if (j.briefing && j.briefing.text) {
+                    document.getElementById('briefing-text').textContent = j.briefing.text;
+                    pill.textContent = j.briefing.is_ai
+                        ? `🧠 作戦参謀長ブリーフィング（${j.briefing.model}）`
+                        : '🧭 作戦参謀ブリーフィング（実測データ総括）';
+                }
+            } catch (e) {}
+        }
+
+        if (PENDING_ASYNC_AI) {
+            window.addEventListener('DOMContentLoaded', () => {
+                setTimeout(() => refreshBriefing(false), 180);
+            });
+        }
+    </script>
+</body>
+</html>

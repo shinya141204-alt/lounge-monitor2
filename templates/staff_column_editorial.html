@@ -488,6 +488,7 @@
                 <a href="/staff/sns-editorial?channel=threads">🧵 Threads（スレッズ）編集部</a>
                 <a href="/staff/sns-editorial?channel=instagram">📸 Instagram（インスタ）編集部</a>
                 <a href="/staff/column-editorial" class="active">📖 コラム・note編集部</a>
+                <a href="/staff/pdca">🧭 PDCA参謀本部</a>
             </div>
         </div>
 
@@ -499,6 +500,15 @@
         <!-- Theme & Custom Topic Selector -->
         <div class="theme-panel">
             <div style="font-size:0.8rem; font-weight:700; color:var(--gold); margin-bottom:8px;">🎯 Step 1：企画テーマ選択 または 自由お題オーダー</div>
+            {% if editorial.pdca_directives and editorial.pdca_directives.recommended_custom_topic %}
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; background:rgba(123, 196, 159, 0.11); border:1px solid rgba(123, 196, 159, 0.38); border-radius:10px; padding:9px 13px; margin-bottom:11px; font-size:0.8rem;">
+                <div>
+                    <strong style="color:#d3f3e2;">🧭 PDCA参謀の次回特命お題：</strong>
+                    <span>『{{ editorial.pdca_directives.recommended_custom_topic }}』</span>
+                </div>
+                <a href="/staff/column-editorial?theme={{ editorial.pdca_directives.recommended_column_theme or 'area_hopping' }}&topic={{ editorial.pdca_directives.recommended_custom_topic | urlencode }}" class="pub-now-btn" style="text-decoration:none; padding:5px 11px; font-size:0.76rem;">⚡ この特命お題で執筆する</a>
+            </div>
+            {% endif %}
             <div class="theme-chips">
                 {% for th in editorial.themes %}
                 <a href="/staff/column-editorial?theme={{ th.key }}" class="theme-chip {{ 'active' if editorial.theme_key == th.key and not custom_topic else '' }}">

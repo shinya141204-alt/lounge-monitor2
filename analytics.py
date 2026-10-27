@@ -28,6 +28,7 @@ ALLOWED_EVENTS = {
     'sns_click',        # X/Threads/note への導線
     'share',            # LINE/X 共有・コピー
     'vote',             # 現場投票
+    'sns_inflow',       # ?s= 識別子付きのSNS投稿からのサイト流入・CV追跡
 }
 
 _lock = threading.Lock()
@@ -152,6 +153,69 @@ _SNS_NAMES = {
     'instagram': '📸 公式Instagram',
 }
 
+_INFLOW_STYLE_JA = {
+    'ai_live_adlib': 'AI長考アドリブ実況型',
+    'hub_gap': '街別ギャップ・ハシゴ型',
+    'surge_focus': '1店舗急増・穴場フォーカス型',
+    'usual_anomaly': '普段比（平比）ギャップ型',
+    'east_west_talk': '東西トップ対比トーク型',
+    'compact_top3': '定型TOP3ランキング型',
+    'threads_city_story': '街の温度差エッセイ型',
+    'threads_anomaly_insight': '普段比異変＆立ち回り型',
+    'threads_hopping_guide': '1軒目→2軒目比較型',
+    'threads_classic_top3': '定型TOP3掲示板型',
+    'live': 'リアルタイム速報枠',
+    'tip': '解説コラム紹介枠',
+    'rel': '新着コラム解禁告知',
+    'wk': '日曜・週間統計白書',
+}
+
+
+def normalize_inflow_source(raw_s: str) -> str:
+    """
+    Normalize `?s=` query parameter into a clean, date-independent cohort tag so PDCA can aggregate
+    clicks across days by channel + slot + editorial style:
+      - 'x22_hub_gap_20261028' -> 'x22_hub_gap'
+      - '20261028_2200'        -> 'x22_live'
+      - 'th22_threads_city_story' -> 'th22_threads_city_story'
+      - 'x18_tip'              -> 'x18_tip'
+    """
+    import re
+    s = re.sub(r'[^a-zA-Z0-9_\-]', '', (raw_s or '').strip())[:48]
+    if not s:
+        return ''
+    # Legacy OGP cache-buster format: YYYYMMDD_HHMM
+    m_leg = re.match(r'^\d{8}_(\d{2})\d{2}$', s)
+    if m_leg:
+        return f"x{m_leg.group(1)}_live"
+    # Strip trailing _YYYYMMDD or _MMDD cache-buster suffix
+    s = re.sub(r'_(\d{8}|\d{4})$', '', s)
+    return s[:40]
+
+
+def describe_inflow_tag(tag: str) -> str:
+    """Human-readable label for a normalized inflow tag like 'x22_hub_gap' or 'th22_threads_city_story'."""
+    import re
+    t = (tag or '').strip()
+    if t.startswith('cv:'):
+        inner = describe_inflow_tag(t[3:])
+        return f"🎯 アフィリエイトCV（流入元: {inner}）"
+    m_x = re.match(r'^x(\d{2})_(.+)$', t)
+    if m_x:
+        hr, st = m_x.group(1), m_x.group(2)
+        return f"𝕏 X {hr}:00枠（{_INFLOW_STYLE_JA.get(st, st)}）"
+    m_th = re.match(r'^th(\d{2})_(.+)$', t)
+    if m_th:
+        hr, st = m_th.group(1), m_th.group(2)
+        return f"🧵 Threads {hr}:00枠（{_INFLOW_STYLE_JA.get(st, st)}）"
+    if t == 'x_rel':
+        return "𝕏 X 新着コラム解禁スレッド"
+    if t == 'x_wk':
+        return "𝕏 X 日曜・週間データ白書スレッド"
+    if t.startswith('ig'):
+        return f"📸 Instagram（{t}）"
+    return f"📥 外部SNS流入（{t}）"
+
 
 def describe_label(event, raw_label):
     """プログラム用のパスやIDを直感的な日本語名称に変換する。"""
@@ -213,6 +277,17 @@ def describe_label(event, raw_label):
         except Exception:
             pass
         return {'title': label or '-', 'sub': '', 'href': ''}
+
+    if event == 'sns_inflow':
+        if '@' in label:
+            src_tag, dest_path = [p.strip() for p in label.split('@', 1)]
+        else:
+            src_tag, dest_path = label.strip(), ''
+        return {
+            'title': describe_inflow_tag(src_tag),
+            'sub': f'着地ページ: {dest_path}' if dest_path else 'SNS流入コンバージョン',
+            'href': dest_path if dest_path.startswith('/') else '',
+        }
 
     if event == 'sns_click':
         return {'title': _SNS_NAMES.get(label.lower(), f'📣 {label}'), 'sub': 'SNS外部リンク', 'href': ''}
@@ -367,6 +442,7 @@ def summary(days=7):
         'today': today_str,
         'by_event': dict(sorted(by_event.items(), key=lambda x: -x[1])),
         'by_label': by_label_sorted,
+        'all_by_label': {e: dict(v) for e, v in by_label.items()},
         'by_label_pretty': by_label_pretty,
         'by_day': {d: dict(v) for d, v in sorted(by_day.items(), reverse=True)},
         'daily_series': daily_series,

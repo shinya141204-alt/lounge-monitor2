@@ -200,7 +200,7 @@ def check_and_announce_newly_published(app_url: str = "", now_jst: datetime.date
         reply_text = (
             f"📖 新しいコラムを書きました👇\n"
             f"『{item['x_title']}』\n"
-            f"{site_url}{item['path']}"
+            f"{site_url}{item['path']}?s=x_rel"
         )
         media_bytes, media_mime = x_poster.load_column_eyecatch_bytes(item)
         res = x_poster.post_to_x(

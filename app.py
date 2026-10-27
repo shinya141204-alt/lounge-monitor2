@@ -297,6 +297,22 @@ def _ensure_scheduler_started_async():
                     logging.error(f"Bonus alert check failed: {err}")
             scheduler.add_job(func=_bonus_alert_check_job, trigger="interval", minutes=10)
             scheduler.add_job(func=run_scheduled_weekly_x_post, trigger="cron", day_of_week="sun", hour=10, minute=0, jitter=300)
+            def _pdca_autonomous_job():
+                try:
+                    import pdca_engine
+                    with data_lock:
+                        cur_stores = list(latest_data.get('full_data') or [])
+                    pdca_engine.run_pdca_cycle(
+                        live_stores=cur_stores,
+                        days=14,
+                        apply_actions=True,
+                        use_ai=True,
+                        record_log=True,
+                    )
+                except Exception as err:
+                    logging.error(f"Autonomous PDCA cycle failed: {err}")
+            # Run daily before evening SNS rush (17:35 JST = 08:35 UTC) and after late-night close (03:35 JST = 18:35 UTC)
+            scheduler.add_job(func=_pdca_autonomous_job, trigger="cron", hour="8,18", minute=35, jitter=120)
             scheduler.start()
             trigger_background_fetch_if_needed()
             def _initial_events_warmup():
@@ -309,6 +325,11 @@ def _ensure_scheduler_started_async():
                         # Delay initial 20+ page event crawl so cold-start live store count scraping finishes first without contention
                         time.sleep(25)
                     _crawl_events_job()
+                    import pdca_engine as _pdca_boot
+                    if not _pdca_boot.get_active_directives(allow_blocking=True):
+                        with data_lock:
+                            boot_stores = list(latest_data.get('full_data') or [])
+                        _pdca_boot.run_pdca_cycle(live_stores=boot_stores, days=14, apply_actions=True, use_ai=False, record_log=True)
                 except Exception as err:
                     logging.error(f"Initial events warmup failed: {err}")
             threading.Thread(target=_initial_events_warmup, daemon=True).start()
@@ -1329,8 +1350,15 @@ def affiliate_redirect(item_id):
     if not _is_bot_request():
         try:
             import analytics
-            ref_path = urllib_parse.urlparse(request.referrer or '').path or '-'
+            parsed_ref = urllib_parse.urlparse(request.referrer or '')
+            ref_path = parsed_ref.path or '-'
             analytics.track('affiliate_click', f"{clean_id} @ {ref_path}")
+            ref_s = (urllib_parse.parse_qs(parsed_ref.query).get('s') or [''])[0].strip()
+            raw_inflow = ref_s or (request.cookies.get('an_src') or '').strip()
+            if raw_inflow:
+                inflow_tag = analytics.normalize_inflow_source(raw_inflow)
+                if inflow_tag:
+                    analytics.track('sns_inflow', f"cv:{inflow_tag}")
         except Exception:
             pass
     return redirect(target_url, code=302)
@@ -1376,6 +1404,12 @@ def track_page_views(response):
                     and not _is_bot_request()):
                 import analytics
                 analytics.track('page_view', request.path)
+                raw_s = (request.args.get('s') or '').strip()
+                if raw_s:
+                    inflow_tag = analytics.normalize_inflow_source(raw_s)
+                    if inflow_tag:
+                        analytics.track('sns_inflow', f"{inflow_tag} @ {request.path}")
+                        response.set_cookie('an_src', inflow_tag, max_age=86400, path='/', samesite='Lax')
     except Exception:
         pass
     return response
@@ -1794,6 +1828,98 @@ def api_column_editorial_delete():
         return jsonify(res), 400
     clear_fast_http_caches()
     return jsonify(res)
+
+
+@app.route('/staff/pdca')
+def staff_pdca():
+    """Master-only Autonomous Closed-Loop PDCA Strategist board."""
+    if not session.get('is_master'):
+        return redirect(url_for('staff_monitor', switch='1'))
+    import pdca_engine
+    restore_latest_data_if_empty()
+    trigger_background_fetch_if_needed()
+    days = max(1, min(90, request.args.get('days', 14, type=int)))
+    is_json_req = request.args.get('format') == 'json'
+    with data_lock:
+        live_s = list(latest_data.get('full_data') or [])
+    has_existing = bool(pdca_engine.get_active_directives(allow_blocking=False))
+    pdca_data = pdca_engine.run_pdca_cycle(
+        live_stores=live_s,
+        days=days,
+        apply_actions=(not has_existing),
+        use_ai=True,
+        ai_cache_only=(not is_json_req),
+        record_log=(not has_existing),
+    )
+    if is_json_req:
+        return jsonify(pdca_data)
+    return render_template('staff_pdca.html', pdca=pdca_data, days=days)
+
+
+@app.route('/api/pdca')
+def api_pdca():
+    """Master-only JSON API returning PDCA diagnostics, active directives, and AI Chief Strategist briefing."""
+    if not is_master_authorized():
+        return jsonify({'error': 'Unauthorized'}), 401
+    import pdca_engine
+    restore_latest_data_if_empty()
+    days = max(1, min(90, request.args.get('days', 14, type=int)))
+    force_ai = request.args.get('refresh_ai') == '1'
+    with data_lock:
+        live_s = list(latest_data.get('full_data') or [])
+    return jsonify(pdca_engine.run_pdca_cycle(
+        live_stores=live_s,
+        days=days,
+        apply_actions=False,
+        use_ai=True,
+        ai_cache_only=False,
+        force_ai_refresh=force_ai,
+        record_log=False,
+    ))
+
+
+@app.route('/api/pdca/settings', methods=['POST'])
+def api_pdca_settings():
+    """Master-only endpoint to toggle autonomous SNS optimization and low-stock column auto-replenishment."""
+    if not is_master_authorized():
+        return jsonify({'error': 'Unauthorized'}), 401
+    import pdca_engine
+    payload = request.get_json(silent=True) or {}
+    auto_sns = payload.get('auto_optimize_sns') if 'auto_optimize_sns' in payload else None
+    auto_col = payload.get('auto_replenish_columns') if 'auto_replenish_columns' in payload else None
+    updated = pdca_engine.update_pdca_settings(
+        auto_optimize_sns=auto_sns,
+        auto_replenish_columns=auto_col,
+    )
+    return jsonify({
+        'ok': True,
+        'settings': updated,
+        'active_directives': pdca_engine.get_active_directives(allow_blocking=False),
+    })
+
+
+@app.route('/api/pdca/run', methods=['POST'])
+def api_pdca_run():
+    """Master-only manual trigger to execute the full PDCA cycle immediately and update editorial directives."""
+    if not is_master_authorized():
+        return jsonify({'error': 'Unauthorized'}), 401
+    import pdca_engine
+    restore_latest_data_if_empty()
+    payload = request.get_json(silent=True) or {}
+    days = max(1, min(90, int(payload.get('days') or 14)))
+    with data_lock:
+        live_s = list(latest_data.get('full_data') or [])
+    res = pdca_engine.run_pdca_cycle(
+        live_stores=live_s,
+        days=days,
+        apply_actions=True,
+        use_ai=True,
+        ai_cache_only=False,
+        force_ai_refresh=bool(payload.get('refresh_ai')),
+        record_log=True,
+    )
+    clear_fast_http_caches()
+    return jsonify({'ok': True, 'pdca': res})
 
 
 @app.route('/staff/sns-kit')

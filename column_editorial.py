@@ -1680,6 +1680,13 @@ def run_column_editorial_pipeline(
         hour=19, minute=0, second=0, microsecond=0
     )
 
+    pdca_directives = {}
+    try:
+        import pdca_engine
+        pdca_directives = pdca_engine.get_active_directives(allow_blocking=False) or {}
+    except Exception:
+        pdca_directives = {}
+
     return {
         "theme_key": t_key,
         "themes": list(COLUMN_THEMES.values()),
@@ -1696,4 +1703,5 @@ def run_column_editorial_pipeline(
         "ai_pending_async": ai_pending_async,
         "history": get_recent_column_history(limit=6, allow_blocking=False),
         "existing_audit": audit_existing_columns(),
+        "pdca_directives": pdca_directives,
     }
