@@ -987,10 +987,19 @@ def detect_region(store_name):
     return 'Other'
 
 # Fetch interval: every minute during business hours, every 10 minutes 07:00-17:00 JST
-# (reduces load on the official sites while nothing is happening)
+# UNLESS a major scraper (Oriental Lounge / JIS) had an error or store list is incomplete -> retry in 60s!
 def fetch_interval_sec(now_jst=None):
     now_jst = now_jst or datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
-    return 600 if 7 <= now_jst.hour < 17 else 60
+    if not (7 <= now_jst.hour < 17):
+        return 60
+    errs = getattr(monitor, 'fetch_errors', None) or {}
+    if 'get_oriental_data' in errs or 'get_jis_data' in errs:
+        return 60
+    with data_lock:
+        cur_len = len(latest_data.get('full_data') or [])
+    if cur_len < 50:
+        return 60
+    return 600
 
 _last_fetch_at = None
 
@@ -1051,7 +1060,13 @@ def refresh_momentum_from_db():
                 print("[app] Cold-start seed promoted to live counts from fast Google Sheets sync.")
                 return
 
-        if not baseline_map:
+        recent_snap = {}
+        try:
+            recent_snap = local_db.get_snapshot_around(0, 30) or {}
+        except Exception:
+            recent_snap = {}
+
+        if not baseline_map and not recent_snap:
             return
         updated_any = False
         with data_lock:
@@ -1059,11 +1074,19 @@ def refresh_momentum_from_db():
             if not full_data or latest_data.get('is_seed'):
                 return
             for s in full_data:
-                prev = baseline_map.get(s.get('name'))
+                sname = s.get('name')
+                if float(s.get('fetched_at') or 0.0) <= 0.0 and sname in recent_snap:
+                    s['women'] = int(recent_snap[sname].get('women', 0))
+                    s['men'] = int(recent_snap[sname].get('men', 0))
+                    updated_any = True
+                prev = baseline_map.get(sname)
                 if prev:
                     s['women_diff'] = int(s.get('women', 0)) - int(prev.get('women', 0))
                     s['men_diff'] = int(s.get('men', 0)) - int(prev.get('men', 0))
                     updated_any = True
+            if updated_any:
+                full_data.sort(key=lambda x: (x.get('region') != 'Korea', int(x.get('women') or 0), int(x.get('men') or 0)), reverse=True)
+                latest_data['top_store'] = full_data[0] if full_data else None
         if updated_any:
             save_latest_status_snapshot()
             clear_fast_http_caches(clear_editorial=False)
@@ -1126,19 +1149,44 @@ def update_job(force=False):
             now_epoch = time.time()
 
             with data_lock:
-                current_data = [] if latest_data.get('is_seed') else latest_data.get('full_data', [])
+                current_data = latest_data.get('full_data', [])
 
-                # Merge new data with current data, dropping retired stores and expiring stale (>30m) zombie counts
+                # Guarantee all 53 canonical stores in store_master.json remain present even if one scraper
+                # transiently times out on a cold-start deploy (prevents Oriental Lounge / JIS vanishing for 10m!)
                 merged_map = {}
+                if valid_master:
+                    recent_db_snap = {}
+                    try:
+                        recent_db_snap = local_db.get_snapshot_around(0, 30) or {}
+                    except Exception:
+                        recent_db_snap = {}
+                    for m_name, m_info in valid_master.items():
+                        brand_u = (m_info.get('brand') or 'OLG').upper()
+                        m_source = 'oriental' if brand_u in ('OLG', 'AG') else brand_u.lower()
+                        db_vals = recent_db_snap.get(m_name) or {}
+                        merged_map[m_name] = {
+                            'name': m_name,
+                            'men': int(db_vals.get('men', 0)),
+                            'women': int(db_vals.get('women', 0)),
+                            'source': m_source,
+                            'region': m_info.get('region') or detect_region(m_name),
+                            'women_diff': 0,
+                            'men_diff': 0,
+                            'votes': votes_map.get(m_name, {'smooth': 0, 'waiting': 0, 'lively': 0}),
+                            'fetched_at': 0.0,
+                        }
+
                 for old_s in current_data:
                     oname = old_s.get('name')
                     if not oname or (valid_master and oname not in valid_master):
                         continue
                     old_copy = dict(old_s)
-                    fetched_ts = float(old_copy.get('fetched_at') or now_epoch)
-                    if now_epoch - fetched_ts > 1800:
-                        old_copy['women'] = 0
-                        old_copy['men'] = 0
+                    fetched_ts = float(old_copy.get('fetched_at') or 0.0)
+                    if fetched_ts <= 0.0 or (now_epoch - fetched_ts > 1800):
+                        # If stale >30m (or never live-fetched yet), fall back to recent <=30m DB snapshot or 0:0
+                        base_entry = merged_map.get(oname)
+                        old_copy['women'] = int(base_entry['women']) if base_entry else 0
+                        old_copy['men'] = int(base_entry['men']) if base_entry else 0
                         old_copy['women_diff'] = 0
                         old_copy['men_diff'] = 0
                     merged_map[oname] = old_copy

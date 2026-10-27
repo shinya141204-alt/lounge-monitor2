@@ -48,46 +48,36 @@ def _get_http_session():
     return session
 
 
-def get_oriental_data():
-    global _olg_cache
-    _olg_cache['served_stale'] = False
-    try:
-        response = _get_http_session().get(ORIENTAL_URL, timeout=(3, 7), headers=_HEADERS)
-        response.raise_for_status()
-    except Exception as e:
-        import logging; logging.error(f"Error fetching Oriental data: {e}")
-        if _olg_cache['data']:
-            import logging; logging.error(f"Using cached OLG data from {_olg_cache['last_success']}")
-            _olg_cache['served_stale'] = True
-            _olg_cache['stale_reason'] = str(e)
-            return _olg_cache['data']
+def _parse_int_count(tag) -> int:
+    if not tag:
+        return 0
+    import re
+    digits = re.sub(r'[^\d]', '', tag.get_text(strip=True) or '')
+    return int(digits) if digits else 0
+
+
+def _extract_oriental_stores_from_html(raw_html: bytes) -> list:
+    soup = BeautifulSoup(raw_html, 'html.parser')
+    # Primary selector + resilient fallbacks in case Oriental Lounge removes animation classes
+    stores = (
+        soup.select('a.card.wave-anime-wrap')
+        or soup.select('a.card[href*="/stores/"]')
+        or [c for c in soup.select('.card') if c.select_one('.num-male, .num-female')]
+    )
+    if not stores:
         return []
 
-    soup = BeautifulSoup(response.content, 'html.parser')
-    stores = soup.select('a.card.wave-anime-wrap')
-    
-    if not stores:
-        import logging; logging.error(f"WARNING: OLG page returned {len(response.content)} bytes but no store elements found")
-        if _olg_cache['data']:
-            _olg_cache['served_stale'] = True
-            _olg_cache['stale_reason'] = 'no store elements found (HTML structure changed?)'
-            return _olg_cache['data']
-        return []
-    
     store_data = []
     for store in stores:
         try:
-            name_tag = store.select_one('h4')
+            name_tag = store.select_one('h4, .card-title h3, .card-title h4')
             if not name_tag:
                 continue
             name = name_tag.get_text(strip=True)
-            
-            men_tag = store.select_one('.num-male')
-            men_count = int(men_tag.get_text(strip=True)) if men_tag else 0
-            
-            women_tag = store.select_one('.num-female')
-            women_count = int(women_tag.get_text(strip=True)) if women_tag else 0
-            
+            if not name:
+                continue
+            men_count = _parse_int_count(store.select_one('.num-male, [class*="num-male"]'))
+            women_count = _parse_int_count(store.select_one('.num-female, [class*="num-female"]'))
             store_data.append({
                 'name': f"OLG {name}",
                 'men': men_count,
@@ -96,13 +86,39 @@ def get_oriental_data():
             })
         except ValueError:
             continue
-    
-    if store_data:
-        _olg_cache['data'] = store_data
-        _olg_cache['last_success'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        return store_data
-    
+    return store_data
+
+
+def get_oriental_data():
+    global _olg_cache
+    _olg_cache['served_stale'] = False
+    is_mocked = getattr(requests.get, '__module__', '') != 'requests.api'
+    last_err = None
+
+    for attempt in range(2):
+        try:
+            if attempt > 0:
+                if not is_mocked:
+                    # Reset thread-local session on retry so stale keep-alive sockets are discarded
+                    _http_tls.session = requests.Session()
+                    time.sleep(0.5)
+            response = _get_http_session().get(ORIENTAL_URL, timeout=(4, 10), headers=_HEADERS)
+            response.raise_for_status()
+            store_data = _extract_oriental_stores_from_html(response.content)
+            if store_data:
+                _olg_cache['data'] = store_data
+                _olg_cache['last_success'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                return store_data
+            last_err = f"no store elements found ({len(response.content)} bytes)"
+        except Exception as e:
+            last_err = str(e)
+
+    import logging
+    logging.error(f"Error fetching Oriental data: {last_err}")
     if _olg_cache['data']:
+        logging.error(f"Using cached OLG data from {_olg_cache['last_success']}")
+        _olg_cache['served_stale'] = True
+        _olg_cache['stale_reason'] = str(last_err)
         return _olg_cache['data']
     return []
 
@@ -346,15 +362,15 @@ def get_all_data():
         t.start()
         threads.append((fn.__name__, t))
 
-    # Wait up to 12 seconds total for all parallel threads
-    deadline = time.time() + 12.0
+    # Wait up to 18 seconds total for all parallel threads (allows 1 fast retry on large OLG HTML)
+    deadline = time.time() + 18.0
     for name, t in threads:
         remaining = max(0.1, deadline - time.time())
         t.join(timeout=remaining)
         if t.is_alive():
             with lock:
-                fetch_errors[name] = "Hard timeout (>12s)"
-            import logging; logging.error(f"  ✗ {name}: parallel timeout exceeded 12s!")
+                fetch_errors[name] = "Hard timeout (>18s)"
+            import logging; logging.error(f"  ✗ {name}: parallel timeout exceeded 18s!")
 
     data = []
     for fn in fetchers:

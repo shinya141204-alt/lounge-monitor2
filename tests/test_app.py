@@ -2548,5 +2548,65 @@ class AutonomousPdcaEngineTests(unittest.TestCase):
             self.assertIsNotNone(scheduled_articles.get_article_by_slug(auto_slug))
 
 
+class OrientalColdStartResilienceTests(unittest.TestCase):
+    """Ensure Oriental Lounge / ag stores NEVER vanish from ranking when cold-start scrape times out."""
+
+    def test_cold_start_partial_scrape_preserves_all_53_stores_and_fast_retries(self):
+        import monitor
+
+        # 1. Resilient HTML parser handles both classic `wave-anime-wrap` and stripped `<a class="card" href="/stores/4">`
+        alt_html = '''
+        <html><body>
+          <a class="card" href="/stores/4">
+            <div class="card-title"><h4>渋谷本店</h4><span>営業中</span></div>
+            <div class="counts">
+              <span class="counts-num num-male">18名</span>
+              <span class="counts-num num-female">32名</span>
+            </div>
+          </a>
+        </body></html>
+        '''.encode('utf-8')
+        parsed = monitor._extract_oriental_stores_from_html(alt_html)
+        self.assertEqual(len(parsed), 1)
+        self.assertEqual(parsed[0]['name'], 'OLG 渋谷本店')
+        self.assertEqual(parsed[0]['women'], 32)
+        self.assertEqual(parsed[0]['men'], 18)
+
+        # 2. Simulate cold-start (`is_seed=True`) where Oriental Lounge times out and ONLY JIS succeeds:
+        #    All 53 canonical stores MUST remain in `latest_data['full_data']`, and daytime interval must drop to 60s!
+        with app_module.data_lock:
+            app_module.latest_data['full_data'] = [
+                {'name': n, 'men': 0, 'women': 0, 'source': 'oriental', 'region': 'Kanto'}
+                for n in store_master.load().keys()
+            ]
+            app_module.latest_data['is_seed'] = True
+
+        jis_only = [{'name': 'JIS SHINJUKU', 'men': 8, 'women': 14, 'source': 'jis'}]
+        def _fake_get_all():
+            monitor.fetch_errors.clear()
+            monitor.fetch_errors['get_oriental_data'] = 'ReadTimeout'
+            return list(jis_only)
+
+        jst = datetime.timezone(datetime.timedelta(hours=9))
+        morning_9am = datetime.datetime(2026, 10, 28, 9, 0, tzinfo=jst)
+        with mock.patch('monitor.get_all_data', side_effect=_fake_get_all):
+            app_module.update_job(force=True)
+            with app_module.data_lock:
+                names_after = {s['name'] for s in app_module.latest_data['full_data']}
+            self.assertIn('OLG 新宿', names_after)
+            self.assertIn('OLG 渋谷本店', names_after)
+            self.assertIn('OLG 大阪駅前', names_after)
+            self.assertEqual(len(names_after), len(store_master.load()))
+            # Daytime interval drops from 600s -> 60s while `get_oriental_data` is in `fetch_errors`
+            self.assertEqual(app_module.fetch_interval_sec(now_jst=morning_9am), 60)
+
+        monitor.fetch_errors.clear()
+        self.assertEqual(app_module.fetch_interval_sec(now_jst=morning_9am), 600)
+        with app_module.data_lock:
+            app_module.latest_data['full_data'] = _fake_stores()
+            app_module.latest_data['is_seed'] = False
+        app_module.clear_fast_http_caches()
+
+
 if __name__ == '__main__':
     unittest.main()
