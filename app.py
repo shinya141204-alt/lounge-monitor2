@@ -1307,12 +1307,18 @@ def staff_monitor():
         def _render_staff():
             audit_report = None
             sched_queue = []
+            editorial_preview = None
             if is_master:
                 import data_audit
+                import sns_editorial
                 with data_lock:
                     cur_live = list(latest_data.get('full_data') or [])
                 audit_report = data_audit.run_data_audit(live_stores=cur_live, send_alerts=False)
                 sched_queue = scheduled_articles.get_all_with_status()
+                try:
+                    editorial_preview = sns_editorial.run_editorial_pipeline(cur_live, slot_label="22:00", record_history=False)
+                except Exception:
+                    editorial_preview = None
             return render_template(
                 'index.html',
                 is_staff=True,
@@ -1321,6 +1327,7 @@ def staff_monitor():
                 published_scheduled=scheduled_articles.get_published_articles(),
                 scheduled_queue=sched_queue,
                 data_audit_report=audit_report,
+                editorial_preview=editorial_preview,
             )
         return _get_cached_html_or_render(('staff_dash', is_master), _render_staff)
 
@@ -1370,6 +1377,38 @@ def _get_sns_kit_context(fast=False):
         _sns_kit_ctx_cache['ctx'] = ctx
         _sns_kit_ctx_cache['ts'] = now_t
     return ctx
+
+
+@app.route('/staff/sns-editorial')
+def staff_sns_editorial():
+    """Master-only 4-role SNS Editorial Room board showing Researcher, Planner, Writer proposals & Evaluator scores."""
+    if not session.get('is_master'):
+        return redirect(url_for('staff_monitor', switch='1'))
+    import sns_editorial
+    restore_latest_data_if_empty()
+    trigger_background_fetch_if_needed()
+    slot_label = (request.args.get('slot') or '22:00').strip()
+    if slot_label not in ('20:00', '22:00', '00:00', '02:00'):
+        slot_label = '22:00'
+    with data_lock:
+        live_s = list(latest_data.get('full_data') or [])
+    editorial = sns_editorial.run_editorial_pipeline(live_s, slot_label=slot_label, record_history=False)
+    if request.args.get('format') == 'json':
+        return jsonify(editorial)
+    return render_template('staff_sns_editorial.html', editorial=editorial, slot_label=slot_label)
+
+
+@app.route('/api/sns-editorial')
+def api_sns_editorial():
+    """Master-only JSON API returning the 4-role SNS editorial proposals and scores."""
+    if not is_master_authorized():
+        return jsonify({'error': 'Unauthorized'}), 401
+    import sns_editorial
+    restore_latest_data_if_empty()
+    slot_label = (request.args.get('slot') or '22:00').strip()
+    with data_lock:
+        live_s = list(latest_data.get('full_data') or [])
+    return jsonify(sns_editorial.run_editorial_pipeline(live_s, slot_label=slot_label, record_history=False))
 
 
 @app.route('/staff/sns-kit')

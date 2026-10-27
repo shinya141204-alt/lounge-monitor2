@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>SNS編集部 AI合議・評価ボード（マスター専用）｜相席ナビ</title>
+    <style>
+        :root {
+            --bg: #0f1014;
+            --surface: #16171c;
+            --surface-2: #1d1f26;
+            --border: rgba(255, 255, 255, 0.08);
+            --border-strong: rgba(255, 255, 255, 0.16);
+            --text: #f1efe9;
+            --sub: #9b978f;
+            --gold: #c8a46e;
+            --gold-soft: rgba(200, 164, 110, 0.16);
+            --green: #7bc49f;
+            --green-soft: rgba(123, 196, 159, 0.16);
+            --blue: #93b1c9;
+            --blue-soft: rgba(147, 177, 201, 0.16);
+            --rose: #d8a1aa;
+            --rose-soft: rgba(216, 161, 170, 0.16);
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", Meiryo, sans-serif;
+            line-height: 1.6;
+        }
+        .wrap {
+            max-width: 1120px;
+            margin: 0 auto;
+            padding: 20px 16px 70px;
+        }
+        .top-nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+        a.back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--text);
+            text-decoration: none;
+            font-size: 0.84rem;
+            font-weight: 600;
+            padding: 7px 14px;
+            border-radius: 999px;
+            background: var(--surface);
+            border: 1px solid var(--border-strong);
+        }
+        a.back-btn:hover { border-color: var(--gold); }
+        .slot-tabs {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .slot-tabs a {
+            color: var(--sub);
+            text-decoration: none;
+            padding: 6px 13px;
+            border: 1px solid var(--border-strong);
+            border-radius: 999px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            background: var(--bg);
+        }
+        .slot-tabs a.active {
+            background: var(--gold-soft);
+            border-color: var(--gold);
+            color: #f5e6cc;
+        }
+        .header-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 18px 20px;
+            margin-bottom: 18px;
+        }
+        .header-card h1 {
+            font-size: 1.24rem;
+            margin: 0 0 6px;
+        }
+        .header-card p {
+            color: var(--sub);
+            font-size: 0.82rem;
+            margin: 0;
+        }
+        .roles-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(245px, 1fr));
+            gap: 12px;
+            margin-bottom: 22px;
+        }
+        .role-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 13px;
+            padding: 14px 16px;
+        }
+        .role-badge {
+            display: inline-block;
+            font-size: 0.74rem;
+            font-weight: 700;
+            padding: 3px 9px;
+            border-radius: 999px;
+            margin-bottom: 8px;
+        }
+        .role-1 { background: var(--blue-soft); color: #cde2f5; border: 1px solid rgba(147, 177, 201, 0.35); }
+        .role-2 { background: var(--gold-soft); color: #f5e6cc; border: 1px solid rgba(200, 164, 110, 0.35); }
+        .role-3 { background: var(--green-soft); color: #d3f3e2; border: 1px solid rgba(123, 196, 159, 0.35); }
+        .role-4 { background: var(--rose-soft); color: #f6d5dc; border: 1px solid rgba(216, 161, 170, 0.35); }
+        .role-card h3 {
+            font-size: 0.94rem;
+            margin: 0 0 6px;
+        }
+        .role-card ul, .role-card p {
+            font-size: 0.8rem;
+            color: var(--sub);
+            margin: 0;
+            padding-left: 16px;
+        }
+        .role-card p { padding-left: 0; }
+        .role-card li { margin-bottom: 4px; }
+        .section-h2 {
+            font-size: 1.05rem;
+            margin: 24px 0 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .candidates-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+            gap: 14px;
+            margin-bottom: 28px;
+        }
+        .cand-card {
+            background: var(--surface);
+            border: 1px solid var(--border-strong);
+            border-radius: 14px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .cand-card.winner {
+            border: 2px solid var(--green);
+            background: linear-gradient(180deg, rgba(123, 196, 159, 0.07) 0%, var(--surface) 100%);
+        }
+        .cand-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .score-pill {
+            font-size: 0.86rem;
+            font-weight: 800;
+            padding: 4px 11px;
+            border-radius: 999px;
+            background: var(--surface-2);
+            border: 1px solid var(--border-strong);
+        }
+        .cand-card.winner .score-pill {
+            background: var(--green-soft);
+            border-color: var(--green);
+            color: #d3f3e2;
+        }
+        .style-title {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--text);
+        }
+        .score-bars {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 6px;
+            background: var(--surface-2);
+            padding: 9px 11px;
+            border-radius: 10px;
+            font-size: 0.75rem;
+            color: var(--sub);
+        }
+        .score-bars span strong { color: var(--text); }
+        .writer-memo {
+            font-size: 0.78rem;
+            color: #d8cdb8;
+            background: rgba(200, 164, 110, 0.08);
+            border-left: 3px solid var(--gold);
+            padding: 6px 10px;
+            border-radius: 4px;
+        }
+        .desk-box {
+            font-size: 0.76rem;
+            color: var(--sub);
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+            padding: 8px 10px;
+        }
+        .desk-box div { margin-bottom: 3px; }
+        .tweet-preview {
+            white-space: pre-wrap;
+            font-size: 0.82rem;
+            background: #0b0c0f;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 11px 12px;
+            color: var(--text);
+            font-family: inherit;
+        }
+        .reply-preview {
+            white-space: pre-wrap;
+            font-size: 0.75rem;
+            background: rgba(255, 255, 255, 0.025);
+            border: 1px dashed var(--border-strong);
+            border-radius: 8px;
+            padding: 8px 10px;
+            color: var(--sub);
+        }
+        .copy-btn {
+            cursor: pointer;
+            padding: 7px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--gold);
+            background: var(--gold-soft);
+            color: #f5e6cc;
+            font-size: 0.78rem;
+            font-weight: 700;
+        }
+        .copy-btn:hover { opacity: 0.9; }
+        .history-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .history-item {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 12px 15px;
+            font-size: 0.8rem;
+        }
+        .history-head {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 6px;
+            color: var(--sub);
+        }
+        .history-head strong { color: var(--text); }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <div class="top-nav">
+            <a href="/staff" class="back-btn">← マスター管理画面へ戻る</a>
+            <div class="slot-tabs">
+                <a href="/staff/sns-editorial?slot=20:00" class="{{ 'active' if slot_label == '20:00' else '' }}">20:00枠で合議</a>
+                <a href="/staff/sns-editorial?slot=22:00" class="{{ 'active' if slot_label == '22:00' else '' }}">22:00枠で合議</a>
+                <a href="/staff/sns-editorial?slot=00:00" class="{{ 'active' if slot_label == '00:00' else '' }}">00:00枠で合議</a>
+            </div>
+        </div>
+
+        <div class="header-card">
+            <h1>👑 相席ナビ「SNS編集部」4役合議・赤入れ採点ボード（マスター専用）</h1>
+            <p>毎回同じ『🥇🥈🥉 TOP3』になる機械っぽさをなくすため、①現場データ発掘係 → ②編成・頻度調整係 → ③執筆係（4案作成） → ④鬼デスク（100点満点評価）の4ポジションが合議して一番自然な1案を選出します。</p>
+        </div>
+
+        <!-- 4 Roles Live Output -->
+        <div class="roles-grid">
+            <div class="role-card">
+                <span class="role-badge role-1">① リサーチャー（現場データ発掘係）</span>
+                <h3>今夜の現場データ抽出</h3>
+                <ul>
+                    {% for note in editorial.research.research_notes %}
+                    <li>{{ note }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            <div class="role-card">
+                <span class="role-badge role-2">② プランナー（編成・頻度調整係）</span>
+                <h3>マンネリ防止・編成方針</h3>
+                <p>{{ editorial.plan.planner_memo }}</p>
+                <p style="margin-top:6px; color:#d8cdb8;">⏱️ {{ editorial.plan.cooldown_reason }}</p>
+            </div>
+            <div class="role-card">
+                <span class="role-badge role-3">③ ライター（執筆・下書き係）</span>
+                <h3>4つの語り口で下書き作成</h3>
+                <p>定型のTOP3羅列だけでなく、「街別ギャップ」「1店舗急増フォーカス」「普段の同曜日比（平比）」「東西トップ比較」から{{ editorial.evaluation.candidates | length }}案を生成しました。</p>
+            </div>
+            <div class="role-card">
+                <span class="role-badge role-4">④ デスク（評価・ボット感検閲係）</span>
+                <h3>赤入れ採点・最終決定</h3>
+                <p>{{ editorial.evaluation.desk_summary }}</p>
+            </div>
+        </div>
+
+        <h2 class="section-h2">
+            <span>📝 執筆係が提案した全{{ editorial.evaluation.candidates | length }}案とデスクの評価スコア（{{ slot_label }}枠シミュレーション）</span>
+            <span style="font-size:0.78rem; color:var(--sub);">集計時刻: {{ editorial.research.timestamp }}</span>
+        </h2>
+
+        <div class="candidates-grid">
+            {% for c in editorial.evaluation.candidates %}
+            <div class="cand-card {{ 'winner' if c.is_selected else '' }}">
+                <div class="cand-top">
+                    <span class="style-title">
+                        {% if c.is_selected %}🏆 採用案（1位）{% else %}候補 {{ c.rank }}位{% endif %}：{{ c.style_label }}
+                    </span>
+                    <span class="score-pill">{{ c.total_score }}点 / 100</span>
+                </div>
+
+                <div class="score-bars">
+                    <span>🗣️ 人間味・非ボット感: <strong>{{ c.scores.human_tone }}/35</strong></span>
+                    <span>🔄 新鮮さ・被り回避: <strong>{{ c.scores.freshness_diversity }}/30</strong></span>
+                    <span>📊 データの具体性: <strong>{{ c.scores.data_specificity }}/25</strong></span>
+                    <span>📏 文字数バランス: <strong>{{ c.scores.weight_fit }}/10</strong> ({{ c.weight }}w)</span>
+                </div>
+
+                <div class="writer-memo">
+                    <strong>✍️ 執筆係の狙い：</strong>{{ c.writer_note }}
+                </div>
+
+                <div class="desk-box">
+                    <strong>🧐 評価係（デスク）の講評：</strong>
+                    {% for comment in c.desk_comments %}
+                    <div>{{ comment }}</div>
+                    {% endfor %}
+                </div>
+
+                <div class="tweet-preview" id="cand-main-{{ loop.index }}">{{ c.main_text }}</div>
+                <div class="reply-preview"><strong>💬 2ポスト目（リプ欄自動連結）：</strong><br>{{ c.reply_text }}</div>
+
+                <button type="button" class="copy-btn" onclick="copyText('cand-main-{{ loop.index }}', this)">この本文をコピーする</button>
+            </div>
+            {% endfor %}
+        </div>
+
+        <h2 class="section-h2">📚 直近のSNS編集部 採用ログ（本番投稿履歴）</h2>
+        <div class="history-list">
+            {% if editorial.history %}
+                {% for h in editorial.history %}
+                <div class="history-item">
+                    <div class="history-head">
+                        <span><strong>{{ h.timestamp }}（{{ h.slot_label }}枠）</strong> — 採用：{{ h.selected_style_label }}</span>
+                        <span>評価スコア：<strong>{{ h.selected_score }}点</strong></span>
+                    </div>
+                    <div style="color:var(--sub); margin-bottom:6px;">{{ h.desk_summary }}</div>
+                    <div class="tweet-preview">{{ h.selected_text }}</div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="history-item" style="color:var(--sub);">まだ自動投稿の会議ログがありません。次回の定時X投稿（20:00 / 22:00）から自動でここに各係の提案と採点履歴が記録されます。</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <script>
+        function copyText(id, btn) {
+            var el = document.getElementById(id);
+            if (!el) return;
+            navigator.clipboard.writeText(el.innerText).then(function() {
+                var orig = btn.innerText;
+                btn.innerText = "✓ コピーしました！";
+                setTimeout(function() { btn.innerText = orig; }, 1800);
+            });
+        }
+    </script>
+</body>
+</html>

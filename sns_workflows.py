@@ -145,11 +145,29 @@ def execute_scheduled_x_post(latest_data, slot_label="20:00", force=False, inclu
             )
             return {"status": "skipped", "reason": "Insufficient live headcount"}
 
-    text = x_poster.build_scheduled_tweet_text(stores, slot_label=slot_label)
-    if not text:
-        return {"status": "error", "detail": "Empty tweet text"}
+    # Run 4-role SNS Editorial Room pipeline (Researcher -> Planner -> Writer -> Evaluator)
+    editorial_winner = None
+    try:
+        import sns_editorial
+        editorial_res = sns_editorial.run_editorial_pipeline(
+            stores,
+            slot_label=slot_label,
+            now_jst=now_jst,
+            record_history=not force,
+        )
+        editorial_winner = editorial_res.get("winner")
+    except Exception as e:
+        logging.warning(f"SNS editorial pipeline fallback to legacy builder ({slot_label}): {e}")
 
-    reply_text = x_poster.build_scheduled_reply_text(slot_label=slot_label)
+    if editorial_winner and editorial_winner.get("main_text"):
+        text = editorial_winner["main_text"]
+        reply_text = editorial_winner.get("reply_text") or x_poster.build_scheduled_reply_text(slot_label=slot_label)
+    else:
+        text = x_poster.build_scheduled_tweet_text(stores, slot_label=slot_label)
+        if not text:
+            return {"status": "error", "detail": "Empty tweet text"}
+        reply_text = x_poster.build_scheduled_reply_text(slot_label=slot_label)
+
     png_bytes = None
     try:
         import ogp_generator
@@ -178,6 +196,9 @@ def execute_scheduled_x_post(latest_data, slot_label="20:00", force=False, inclu
             pass
     result["tweet_text"] = text
     result["reply_text"] = reply_text
+    if editorial_winner:
+        result["editorial_style"] = editorial_winner.get("style")
+        result["editorial_score"] = editorial_winner.get("total_score")
 
     # Optional fallback Meta hooks (never fire on `force=True` X manual tests; normally scheduled independently in app.py)
     if include_meta and slot_label == "22:00" and not force:

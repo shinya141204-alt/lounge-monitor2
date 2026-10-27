@@ -1584,6 +1584,7 @@ class FullAuditRegressionTests(unittest.TestCase):
             '/api/trigger-threads-post',
             '/api/trigger-ig-post',
             '/api/data-audit',
+            '/api/sns-editorial',
             '/api/debug_ps',
             '/api/logs',
             '/api/thread_status',
@@ -1595,12 +1596,15 @@ class FullAuditRegressionTests(unittest.TestCase):
         for ep in protected_master_endpoints:
             r = self.client.get(ep)
             self.assertEqual(r.status_code, 401, f"Regular staff must get 401 on {ep}")
+        self.assertEqual(self.client.get('/staff/sns-editorial', follow_redirects=False).status_code, 302)
 
         # Master (2918) can access diagnostic and data-audit endpoints
         with self.client.session_transaction() as s:
             s['is_staff'] = True
             s['is_master'] = True
         self.assertEqual(self.client.get('/api/data-audit').status_code, 200)
+        self.assertEqual(self.client.get('/api/sns-editorial').status_code, 200)
+        self.assertEqual(self.client.get('/staff/sns-editorial').status_code, 200)
         self.assertEqual(self.client.get('/api/debug_ps').status_code, 200)
         self.assertEqual(self.client.get('/api/thread_status').status_code, 200)
         with self.client.session_transaction() as s:
@@ -1814,6 +1818,57 @@ class FullAuditRegressionTests(unittest.TestCase):
                 app_module.latest_data['full_data'] = saved_full
                 app_module.latest_data['last_updated'] = saved_upd
                 app_module.latest_data['is_seed'] = saved_seed
+            app_module.clear_fast_http_caches()
+
+    def test_sns_editorial_4_role_pipeline_and_master_only_visibility(self):
+        import sns_editorial
+        sample_stores = [
+            {'name': 'OLG 梅田茶屋町', 'women': 44, 'men': 22, 'women_diff': 6, 'usual_w_diff': 9, 'region': 'Kinki'},
+            {'name': 'JIS UMEDA', 'women': 12, 'men': 28, 'women_diff': -2, 'usual_w_diff': -4, 'region': 'Kinki'},
+            {'name': 'OLG 新宿', 'women': 38, 'men': 24, 'women_diff': 4, 'usual_w_diff': 5, 'region': 'Kanto'},
+            {'name': 'JIS SHINJUKU', 'women': 18, 'men': 25, 'women_diff': 0, 'usual_w_diff': 0, 'region': 'Kanto'},
+        ]
+        res = sns_editorial.run_editorial_pipeline(sample_stores, slot_label='22:00', record_history=True)
+        winner = res['winner']
+        self.assertIsNotNone(winner)
+        # Winner must NOT be the mechanical 'compact_top3' medal format
+        self.assertNotEqual(winner['style'], 'compact_top3')
+        self.assertNotIn('🥇', winner['main_text'])
+        self.assertGreaterEqual(winner['total_score'], 80)
+        self.assertLessEqual(winner['weight'], 280)
+        self.assertGreaterEqual(len(res['evaluation']['candidates']), 4)
+
+        # Verify Regular Staff (5555) NEVER sees the SNS Editorial subpanel on /staff
+        with self.client.session_transaction() as s:
+            s['is_staff'] = True
+            s['is_master'] = False
+        app_module.clear_fast_http_caches()
+        staff_html = self.client.get('/staff').data.decode('utf-8')
+        self.assertNotIn('SNS編集部（4役合議）', staff_html)
+        self.assertNotIn('/staff/sns-editorial', staff_html)
+
+        # Verify Master (2918) sees both the subpanel on /staff and full details on /staff/sns-editorial
+        with self.client.session_transaction() as s:
+            s['is_staff'] = True
+            s['is_master'] = True
+        app_module.clear_fast_http_caches()
+        with app_module.data_lock:
+            old_full = list(app_module.latest_data.get('full_data') or [])
+            app_module.latest_data['full_data'] = sample_stores
+        try:
+            master_html = self.client.get('/staff').data.decode('utf-8')
+            self.assertIn('SNS編集部（4役合議）', master_html)
+            self.assertIn('/staff/sns-editorial', master_html)
+            ed_page = self.client.get('/staff/sns-editorial?slot=22:00').data.decode('utf-8')
+            self.assertIn('① リサーチャー（現場データ発掘係）', ed_page)
+            self.assertIn('② プランナー（編成・頻度調整係）', ed_page)
+            self.assertIn('③ ライター（執筆・下書き係）', ed_page)
+            self.assertIn('④ デスク（評価・ボット感検閲係）', ed_page)
+        finally:
+            with app_module.data_lock:
+                app_module.latest_data['full_data'] = old_full
+            with self.client.session_transaction() as s:
+                s.clear()
             app_module.clear_fast_http_caches()
 
 

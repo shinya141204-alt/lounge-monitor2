@@ -312,6 +312,9 @@
                     </div>
                     <div class="staff-quickbar-actions">
                         {% if is_master %}
+                        <a href="/staff/sns-editorial" class="staff-action-pill master-sns-kit-pill" style="text-decoration: none;">
+                            <span>🧠 SNS編集部「4役合議・提案＆評価スコア」ボード</span>
+                        </a>
                         <a href="/staff/analytics" class="staff-action-pill" style="text-decoration: none;">
                             <span>📈 アクセス集計（閲覧・アフィリエイト・ボタンクリック）</span>
                         </a>
@@ -345,6 +348,35 @@
                             <span id="staff-toggle-events-label">イベント非表示: ON（業務集中モード）</span>
                         </button>
                     </div>
+                    {% if is_master and editorial_preview and editorial_preview.winner %}
+                    <div class="master-subpanel">
+                        <div class="master-subpanel-head">
+                            <span class="master-subpanel-title">🧠 SNS編集部（4役合議）今夜のX提案＆評価スコア（マスター専用）</span>
+                            <a href="/staff/sns-editorial" class="master-inline-link">全{{ editorial_preview.evaluation.candidates | length }}案の赤入れ・採点内訳を見る ↗</a>
+                        </div>
+                        <div class="master-subpanel-meta">
+                            {{ editorial_preview.evaluation.desk_summary }}
+                        </div>
+                        <div class="master-sched-grid" style="margin-top: 8px;">
+                            {% for c in editorial_preview.evaluation.candidates %}
+                            <div class="master-sched-card">
+                                <div class="master-sched-card-top">
+                                    {% if c.is_selected %}
+                                    <span class="master-status-pill ok">🏆 採用 1位（{{ c.total_score }}点）</span>
+                                    {% else %}
+                                    <span class="master-status-pill warn">候補 {{ c.rank }}位（{{ c.total_score }}点）</span>
+                                    {% endif %}
+                                    <span class="master-subpanel-meta">人間味 {{ c.scores.human_tone }}/35 ｜ 新鮮さ {{ c.scores.freshness_diversity }}/30</span>
+                                </div>
+                                <div class="master-sched-card-bottom">
+                                    <span class="master-sched-title">{{ c.style_label }}</span>
+                                    <a href="/staff/sns-editorial" class="master-inline-link">全文 ↗</a>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
                     {% if is_master and data_audit_report %}
                     <div class="master-subpanel">
                         <div class="master-subpanel-head">
