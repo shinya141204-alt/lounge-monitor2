@@ -61,12 +61,16 @@ def _load_posted_urls_with_health() -> tuple:
     except Exception as e:
         logger.error(f"Failed to load posted note URLs: {e}")
 
-    # data/ はデプロイで消えるため、永続化された job_state（Google Sheets）も参照する
+    # data/ はデプロイで消えるため、永続化された job_state（Google Sheets）を正とする
     job_state_ok = False
     try:
         import job_state
+        import sheets_store
         posted.update(k[len("note:"):] for k in job_state.all_keys() if k.startswith("note:"))
         job_state_ok = job_state.is_storage_healthy()
+        if not sheets_store.is_disabled():
+            # When Sheets is enabled, never trust local STATE_FILE alone before Sheets sync completes
+            return posted, job_state_ok
     except Exception as e:
         logger.error(f"Failed to load note state from job_state: {e}")
         job_state_ok = False
@@ -160,11 +164,20 @@ def build_note_reply_text(link: str) -> str:
     return f"📖 note記事本編はこちら👇\n{link}"
 
 
+def _normalize_title_signature(title: str) -> str:
+    """Extract core title signature (ignoring bracketed prefix/suffix tags) to prevent duplicate X posts for revised versions of the same note topic."""
+    t = re.sub(r"【[^】]*】", "", title or "")
+    t = re.sub(r"[\s　・｜|〜~\-—―！？!?「」『』（）()]+", "", t)
+    return t[:24].lower()
+
+
 def check_and_post_new_note(force: bool = False, article_index: int = 0) -> dict:
     """
     Check for newly published note articles and post to X if not yet shared.
     - When `not force`, skips safely if state storage (local STATE_FILE + Sheets) is unavailable after redeploy.
-    - When multiple unposted articles exist, posts the oldest unposted article first (1 per run).
+    - Regardless of `posted_urls`, any article published >= 12 hours ago (or with an invalid/missing `pub_date`)
+      is automatically marked as seen and never tweeted as "新しいnoteを書きました✍️".
+    - Caps automatic note promotions at 1 per calendar day (JST) and skips revised duplicates with the same core title.
     - `force=True` ignores previously posted record for manual testing.
     """
     articles = fetch_latest_note_articles()
@@ -179,26 +192,59 @@ def check_and_post_new_note(force: bool = False, article_index: int = 0) -> dict
     else:
         posted_urls, is_healthy = _load_posted_urls_with_health()
         if not is_healthy:
-            logger.warning("Skipping note auto-post: local STATE_FILE absent and Sheets state read failed.")
+            logger.warning("Skipping note auto-post: local STATE_FILE absent or Sheets state sync incomplete.")
             return {
                 "status": "skipped",
                 "reason": "State storage unavailable after redeploy",
                 "article": articles[article_index],
             }
 
-        if not posted_urls:
-            # 投稿履歴が一切ない（初回 or 永続化導入直後）場合、公開から12時間以上経った記事は
-            # 「告知済み」とみなして記録だけ行い、古い記事の再告知を防ぐ
-            from email.utils import parsedate_to_datetime
-            now_utc = datetime.datetime.now(datetime.timezone.utc)
-            for a in articles:
-                try:
-                    age_h = (now_utc - parsedate_to_datetime(a.get("pub_date", ""))).total_seconds() / 3600
-                except Exception:
-                    age_h = 999
-                if age_h >= 12:
-                    _save_posted_url(a["link"])
+        import job_state
+        from email.utils import parsedate_to_datetime
+        now_utc = datetime.datetime.now(datetime.timezone.utc)
+        now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
+        today_jst_str = now_jst.strftime("%Y-%m-%d")
+        daily_cap_key = f"note_daily:{today_jst_str}"
+
+        # Always mark articles older than 12 hours (or with unparseable pub_date) as already seen
+        # so old/legacy note articles are NEVER unearthed and tweeted as "新しいnoteを書きました✍️".
+        newly_marked = False
+        for a in articles:
+            if _is_note_already_posted(a["link"], posted_urls):
+                continue
+            try:
+                dt = parsedate_to_datetime(a.get("pub_date", ""))
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=datetime.timezone.utc)
+                age_h = (now_utc - dt).total_seconds() / 3600.0
+            except Exception:
+                age_h = 999.0
+            if age_h >= 12.0:
+                logger.info(f"Marking older note article as already seen (age={age_h:.1f}h): {a['link']}")
+                _save_posted_url(a["link"])
+                sig = _normalize_title_signature(a.get("title", ""))
+                if sig:
+                    job_state.mark_done(f"note_title:{sig}")
+                newly_marked = True
+
+        if newly_marked:
             posted_urls = _load_posted_urls()
+
+        # Also prevent re-posting a revised/re-uploaded note with the same core title
+        for a in articles:
+            if _is_note_already_posted(a["link"], posted_urls):
+                sig = _normalize_title_signature(a.get("title", ""))
+                if sig:
+                    job_state.mark_done(f"note_title:{sig}")
+
+        for a in articles:
+            if _is_note_already_posted(a["link"], posted_urls):
+                continue
+            sig = _normalize_title_signature(a.get("title", ""))
+            if sig and job_state.is_done(f"note_title:{sig}"):
+                logger.info(f"Skipping note article with duplicate title signature ({a['title']}): {a['link']}")
+                _save_posted_url(a["link"])
+                posted_urls.add(a["link"])
 
         if article_index > 0:
             target = articles[article_index]
@@ -214,8 +260,6 @@ def check_and_post_new_note(force: bool = False, article_index: int = 0) -> dict
                 logger.info(f"Latest note article already posted ({articles[0]['link']}), skipping.")
                 return {"status": "skipped", "reason": "Latest article already posted", "article": articles[0]}
 
-            from email.utils import parsedate_to_datetime
-
             def _oldest_first_key(pair):
                 idx, art = pair
                 try:
@@ -224,11 +268,19 @@ def check_and_post_new_note(force: bool = False, article_index: int = 0) -> dict
                         dt = dt.replace(tzinfo=datetime.timezone.utc)
                     return (0, dt.timestamp(), -idx)
                 except Exception:
-                    # RSS is ordered newest-first, so larger index = older article
                     return (1, -idx, 0)
 
             unposted.sort(key=_oldest_first_key)
             target = unposted[0][1]
+
+        # Enforce max 1 automatic note promotion per day on X
+        if job_state.is_done(daily_cap_key):
+            logger.info(f"Daily note auto-post cap reached ({daily_cap_key}); deferring {target['link']}.")
+            return {
+                "status": "skipped",
+                "reason": "Already posted a note promotion today",
+                "article": target,
+            }
 
     link = target["link"]
     title = target["title"]
@@ -240,6 +292,15 @@ def check_and_post_new_note(force: bool = False, article_index: int = 0) -> dict
     if result.get("status") == "success":
         if not force:
             _save_posted_url(link)
+            try:
+                import job_state
+                now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
+                job_state.mark_done(f"note_daily:{now_jst.strftime('%Y-%m-%d')}")
+                sig = _normalize_title_signature(title)
+                if sig:
+                    job_state.mark_done(f"note_title:{sig}")
+            except Exception:
+                pass
         logger.info(f"Successfully posted note promotion to X: {link}")
 
     result["article"] = target

@@ -104,8 +104,8 @@ def _trimmed_history_list(keys_iter) -> list:
     all_hist = list(keys_iter)
     if len(all_hist) <= MAX_HISTORY_KEYS:
         return all_hist
-    pinned = [k for k in all_hist if k.startswith(('note:', 'col_release:'))]
-    rest = [k for k in all_hist if not k.startswith(('note:', 'col_release:'))]
+    pinned = [k for k in all_hist if k.startswith(('note:', 'note_title:', 'col_release:'))]
+    rest = [k for k in all_hist if not k.startswith(('note:', 'note_title:', 'col_release:'))]
     keep_rest = max(0, MAX_HISTORY_KEYS - len(pinned))
     return pinned + (rest[-keep_rest:] if keep_rest > 0 else [])
 
@@ -147,14 +147,14 @@ def _load():
 
 def is_storage_healthy() -> bool:
     """
-    Return False only when running with Sheets enabled after a fresh redeploy (no local cache)
-    AND the initial Sheets read failed, so callers like note_poster can safely skip instead of double-posting.
+    Return False when running with Sheets enabled and the initial Sheets read has not succeeded yet,
+    so callers like note_poster never rely solely on stale local state before Sheets sync completes.
     """
     with _lock:
         _load()
         if sheets_store.is_disabled():
             return True
-        return bool(_local_loaded or _sheets_loaded)
+        return bool(_sheets_loaded)
 
 
 def _save_local():

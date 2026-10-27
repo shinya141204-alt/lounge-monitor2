@@ -304,6 +304,63 @@ class JobStateTests(unittest.TestCase):
         self.assertEqual(r['status'], 'skipped')
         self.assertEqual(post.call_count, 0)
 
+    def test_note_subsequent_run_skips_old_articles_and_enforces_daily_and_title_dedup(self):
+        import note_poster
+        from email.utils import format_datetime
+        now_utc = datetime.datetime.now(datetime.timezone.utc)
+        fresh_pub = format_datetime(now_utc - datetime.timedelta(minutes=30))
+        old_pub = format_datetime(now_utc - datetime.timedelta(days=5))
+
+        # Even when posted_urls already has 1 entry, a 5-day-old unrecorded article must NOT be posted
+        job_state.mark_done('note:https://note.com/aiseki_navi/n/n_already_known')
+        old_unrecorded = {
+            'title': '【平日が一番勝てる】なぜ相席ラウンジは週末より「水曜・木曜20時〜22時」が最強の穴場なのか？',
+            'link': 'https://note.com/aiseki_navi/n/n_old_unrecorded',
+            'pub_date': old_pub,
+            'guid': 'n_old_unrecorded',
+        }
+        revised_same_topic = {
+            'title': '【実は一番勝てる】なぜ相席ラウンジは週末より「木曜20時〜22時」が最強の穴場なのか？',
+            'link': 'https://note.com/aiseki_navi/n/n_revised_same_topic',
+            'pub_date': fresh_pub,
+            'guid': 'n_revised_same_topic',
+        }
+        brand_new_topic_1 = {
+            'title': '【新検証】23時20分の終電崖と深夜0時半の第2波データ',
+            'link': 'https://note.com/aiseki_navi/n/n_brand_new_1',
+            'pub_date': fresh_pub,
+            'guid': 'n_brand_new_1',
+        }
+        brand_new_topic_2 = {
+            'title': '【別テーマ】雨の日と給料日前の男女比データ検証',
+            'link': 'https://note.com/aiseki_navi/n/n_brand_new_2',
+            'pub_date': fresh_pub,
+            'guid': 'n_brand_new_2',
+        }
+
+        state_file = os.path.join(_TMP, 'notes_dedup.json')
+        # 1) Old unrecorded article is silently marked seen without posting; revised article with similar core title is also skipped
+        job_state.mark_done(f"note_title:{note_poster._normalize_title_signature('なぜ相席ラウンジは週末より「木曜20時〜22時」が最強の穴場なのか？')}")
+        with mock.patch.object(note_poster, 'STATE_FILE', state_file), \
+             mock.patch('note_poster.fetch_latest_note_articles', return_value=[revised_same_topic, old_unrecorded]), \
+             mock.patch('x_poster.post_to_x', return_value={'status': 'success'}) as post_mock:
+            r_skip = note_poster.check_and_post_new_note()
+        self.assertEqual(r_skip['status'], 'skipped')
+        self.assertEqual(post_mock.call_count, 0)
+        self.assertTrue(job_state.is_done('note:https://note.com/aiseki_navi/n/n_old_unrecorded'))
+        self.assertTrue(job_state.is_done('note:https://note.com/aiseki_navi/n/n_revised_same_topic'))
+
+        # 2) Two brand-new topics published on the same day -> 1st posts, 2nd is deferred by daily cap (max 1/day)
+        with mock.patch.object(note_poster, 'STATE_FILE', state_file), \
+             mock.patch('note_poster.fetch_latest_note_articles', return_value=[brand_new_topic_2, brand_new_topic_1]), \
+             mock.patch('x_poster.post_to_x', return_value={'status': 'success'}) as post_mock2:
+            r_first = note_poster.check_and_post_new_note()
+            r_second = note_poster.check_and_post_new_note()
+        self.assertEqual(r_first['status'], 'success')
+        self.assertEqual(r_second['status'], 'skipped')
+        self.assertIn('today', r_second.get('reason', ''))
+        self.assertEqual(post_mock2.call_count, 1)
+
 
 class AnalyticsTests(unittest.TestCase):
     """自前アクセス集計"""
