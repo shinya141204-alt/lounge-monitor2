@@ -429,7 +429,7 @@
             <div class="ai-panel-top">
                 <div>
                     {% if editorial.ai_pending_async and editorial.gemini_status and editorial.gemini_status.configured %}
-                    <span id="ai-status-pill" class="ai-status-pill ai-status-loading">🧠 Gemini 2.5 Flash が長考モードで3案を脳内コンペ・推敲中...（約4〜7秒）</span>
+                    <span id="ai-status-pill" class="ai-status-pill ai-status-loading">🧠 Gemini AI が長考モードで3案を脳内コンペ・推敲中...（約4〜6秒）</span>
                     {% elif editorial.gemini_status and editorial.gemini_status.state == 'active' %}
                     <span id="ai-status-pill" class="ai-status-pill ai-status-on">🟢 Gemini AI 長考アドリブ執筆：正常稼働中（{{ editorial.gemini_status.last_model }} ｜ {{ editorial.gemini_status.masked_key }}）</span>
                     {% elif editorial.gemini_status and editorial.gemini_status.state == 'degraded' %}
@@ -722,7 +722,7 @@
             var regenBtn = document.getElementById("ai-regen-btn");
             if (!silentIfUnconfigured && pill) {
                 pill.className = "ai-status-pill ai-status-loading";
-                pill.textContent = "🧠 Gemini 2.5 Flash が長考モードで3案を脳内コンペ・推敲中...（約4〜7秒）";
+                pill.textContent = "🧠 Gemini AI が長考モードで3案を脳内コンペ・推敲中...（約4〜6秒）";
             }
             if (regenBtn) {
                 regenBtn.disabled = true;

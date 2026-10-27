@@ -1981,7 +1981,7 @@ class FullAuditRegressionTests(unittest.TestCase):
             ai_cand_eval = next(c for c in res_bad['evaluation']['candidates'] if c['style'] == 'ai_live_adlib')
             self.assertEqual(ai_cand_eval['scores']['data_specificity'], -50)
 
-            # 5. Modern AI Studio `AQ....` auth key targets `gemini-2.5-flash` first with bounded deep thinking (`thinkingBudget: 1536`)
+            # 5. Modern AI Studio `AQ....` auth key targets `gemini-3.5-flash-lite` first with bounded deep thinking (`thinkingBudget: 512`)
             sns_editorial.set_gemini_api_key('AQ.Ab8RN6SampleExpressKey1234dgKQ')
             with patch('sns_editorial.requests.post', return_value=mock_resp_ok) as mock_aq_post:
                 res_aq = sns_editorial.run_editorial_pipeline(
@@ -1990,9 +1990,9 @@ class FullAuditRegressionTests(unittest.TestCase):
             self.assertEqual(res_aq['winner']['style'], 'ai_live_adlib')
             called_url = mock_aq_post.call_args[0][0]
             called_json = mock_aq_post.call_args[1]['json']
-            self.assertIn('generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent', called_url)
-            self.assertEqual(called_json['generationConfig'].get('thinkingConfig'), {'thinkingBudget': 1536})
-            self.assertEqual(called_json['generationConfig'].get('maxOutputTokens'), 3072)
+            self.assertIn('generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent', called_url)
+            self.assertEqual(called_json['generationConfig'].get('thinkingConfig'), {'thinkingBudget': 512})
+            self.assertEqual(called_json['generationConfig'].get('maxOutputTokens'), 2500)
             self.assertEqual(res_aq['gemini_status']['state'], 'active')
 
             # 6. HTML page `GET /staff/sns-editorial` NEVER blocks on Gemini HTTP calls (0 network posts, instant render)
@@ -2005,7 +2005,7 @@ class FullAuditRegressionTests(unittest.TestCase):
                     html_resp = self.client.get('/staff/sns-editorial?channel=x&slot=22:00')
                 self.assertEqual(html_resp.status_code, 200)
                 html_body = html_resp.get_data(as_text=True)
-                self.assertIn('🧠 Gemini 2.5 Flash が長考モードで3案を脳内コンペ・推敲中', html_body)
+                self.assertIn('🧠 Gemini AI が長考モードで3案を脳内コンペ・推敲中', html_body)
 
                 # And async JSON endpoint `/api/sns-editorial` resolves the Gemini ad-lib draft + thinking_memo cleanly
                 with patch('sns_editorial.requests.post', return_value=mock_resp_ok) as mock_async_post:

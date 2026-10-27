@@ -29,8 +29,9 @@ logger = logging.getLogger(__name__)
 JST = datetime.timezone(datetime.timedelta(hours=9))
 GEMINI_KEY_STORAGE_PREFIX = "token:gemini_api_key"
 DEFAULT_GEMINI_MODELS = (
-    "gemini-2.5-flash",
-    "gemini-2.5-flash-lite",
+    "gemini-3.5-flash-lite",
+    "gemini-flash-lite-latest",
+    "gemini-3.1-flash-lite",
 )
 
 # Words/phrases that betray AI-generated or promotional copywriting — strictly penalized by Desk
@@ -1430,9 +1431,10 @@ def _build_gemini_prompt(
         f"{platform_spec}\n\n"
         "【絶対厳守ルール（違反するとデスク検閲で減点・不採用になります）】\n"
         "1. 下記の JSON ファクトシートに含まれる店舗名・人数・パーセンテージ以外は絶対に書かないこと。数値を1人でも盛ったり丸めたり変更することは厳禁。\n"
-        "2. 内部略称『OLG』は使わず、ファクトシート記載の自然な日本語店名（『オリエンタル〇〇』『ag〇〇』『JIS〇〇』）をそのまま使うこと。\n"
-        f"3. AI臭・宣伝臭ワードの完全禁止：{cliche_list_str} は本文に絶対に使わないこと。\n"
-        f"4. 直近の過去投稿の書き出し（{json.dumps(recent_openers, ensure_ascii=False)}）とは全く違う新鮮な1行目の切り口・語尾にすること。\n\n"
+        "2. あなたは『相席ナビ運営（リアルタイム計測モニターを見ている中の人）』です。自分が客として入店した架空の体験談（『行ってきた』『相席相手が〜』等）は絶対に書かないこと。\n"
+        "3. 内部略称『OLG』は使わず、ファクトシート記載の自然な日本語店名（『オリエンタル〇〇』『ag〇〇』『JIS〇〇』）をそのまま使うこと。\n"
+        f"4. AI臭・宣伝臭ワードの完全禁止：{cliche_list_str} は本文に絶対に使わないこと。\n"
+        f"5. 直近の過去投稿の書き出し（{json.dumps(recent_openers, ensure_ascii=False)}）とは全く違う新鮮な1行目の切り口・語尾にすること。\n\n"
         f"【今夜の検証済みファクトシート】\n{json.dumps(fact_payload, ensure_ascii=False, indent=2)}\n\n"
         "出力は必ず以下のJSON形式のみを返してください（Markdownコードブロック不要）：\n"
         '{"main_text": "投稿本文（改行は\\n）", "writer_note": "今回どの天気・街況・データをどうアドリブに活かしたかの1行メモ", "thinking_memo": "脳内3案（①独り言風・②常連風・③違和感発見風）をどう比較し、なぜこの言い回し・温度感に削ぎ落としたかの編集長思考メモ（80〜140文字）"}'
@@ -1477,25 +1479,21 @@ def _discover_ai_studio_flash_model(api_key: str) -> str:
 def _build_endpoint_request(endpoint_kind: str, model_name: str, api_key: str, prompt: str) -> tuple:
     gen_cfg = {
         "temperature": 0.88,
-        "maxOutputTokens": 3072,
+        "maxOutputTokens": 2500,
         "responseMimeType": "application/json",
     }
-    # Bounded deep-thinking budget on Gemini 2.5 Flash (~4-6s for 3-persona internal competition without >10s timeout)
-    if model_name.startswith("gemini-2.5"):
-        budget = 512 if "lite" in model_name else 1536
-        gen_cfg["thinkingConfig"] = {"thinkingBudget": budget}
+    # Configure optimal bounded thinking per Gemini model generation (~5-8s response, safely under Gunicorn 30s timeout):
+    # - Gemini 3.5 / 2.5 / flash-lite-latest use numeric `thinkingBudget: 512`
+    # - Gemini 3.1 / 3.6 / 3.7 / 3.8 use `thinkingLevel: "LOW"`
+    if model_name.startswith(("gemini-3.5", "gemini-2.5")) or model_name in ("gemini-flash-lite-latest", "gemini-flash-latest"):
+        gen_cfg["thinkingConfig"] = {"thinkingBudget": 512}
+    elif model_name.startswith("gemini-3"):
+        gen_cfg["thinkingConfig"] = {"thinkingLevel": "LOW"}
 
     payload = {
         "contents": [{"role": "user", "parts": [{"text": prompt}]}],
         "generationConfig": gen_cfg,
     }
-    if endpoint_kind == "vertex_v1":
-        return (
-            f"https://aiplatform.googleapis.com/v1/publishers/google/models/{model_name}:generateContent",
-            {"Content-Type": "application/json"},
-            {"key": api_key},
-            payload,
-        )
     return (
         f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent",
         {"Content-Type": "application/json", "x-goog-api-key": api_key},
@@ -1562,23 +1560,23 @@ def _generate_gemini_adlib_candidate(
     preferred_env = (os.environ.get("GEMINI_MODEL") or "").strip()
     models_to_try = [preferred_env] + [m for m in DEFAULT_GEMINI_MODELS if m != preferred_env] if preferred_env else list(DEFAULT_GEMINI_MODELS)
 
-    # Both modern AI Studio `AQ.` auth keys and classic `AIza` keys target `ai_studio` directly first!
+    # Both modern AI Studio `AQ.` auth keys and classic `AIza` keys target `ai_studio` (`generativelanguage.googleapis.com`)!
     routes = []
     saved_route = _last_gemini_meta.get("working_route")
-    if saved_route:
+    if saved_route and saved_route[0] == "ai_studio":
         routes.append(saved_route)
     for mn in models_to_try:
         if ("ai_studio", mn) not in routes:
             routes.append(("ai_studio", mn))
-    if api_key.startswith("AQ.") and ("vertex_v1", "gemini-2.5-flash") not in routes:
-        routes.append(("vertex_v1", "gemini-2.5-flash"))
+    # Cap at 2 attempts max per request so total wall-time stays well under Gunicorn's 30s worker timeout
+    routes = routes[:2]
 
     last_err = ""
     saw_404_on_ai_studio = False
 
     def _try_single_route(ek: str, mn: str):
         url, headers, params, payload = _build_endpoint_request(ek, mn, api_key, prompt)
-        return requests.post(url, headers=headers, params=params, json=payload, timeout=25)
+        return requests.post(url, headers=headers, params=params, json=payload, timeout=14)
 
     for ek, model_name in routes:
         try:
@@ -1586,12 +1584,14 @@ def _generate_gemini_adlib_candidate(
             if resp.status_code == 404:
                 if ek == "ai_studio":
                     saw_404_on_ai_studio = True
-                last_err = f"Model {model_name} ({ek}) HTTP 404"
+                last_err = f"Model {model_name} HTTP 404"
                 continue
             if resp.status_code >= 400:
                 err_snippet = (resp.text or "")[:140]
-                last_err = f"Gemini HTTP {resp.status_code} ({ek}): {err_snippet}"
+                last_err = f"Gemini HTTP {resp.status_code} ({model_name}): {err_snippet}"
                 logger.warning(f"Gemini API error ({ek}/{model_name}): {last_err}")
+                if _last_gemini_meta.get("working_route") == (ek, model_name):
+                    _last_gemini_meta["working_route"] = None
                 continue
 
             data = resp.json() or {}
@@ -1607,6 +1607,11 @@ def _generate_gemini_adlib_candidate(
                 raw_text = re.sub(r"^```(?:json)?\s*", "", raw_text)
                 raw_text = re.sub(r"\s*```$", "", raw_text)
             parsed = json.loads(raw_text, strict=False)
+            if isinstance(parsed, list) and parsed:
+                parsed = parsed[0]
+            if not isinstance(parsed, dict):
+                last_err = "Parsed JSON is not an object"
+                continue
             main_text = (parsed.get("main_text") or "").strip()
             writer_note = (parsed.get("writer_note") or "天気・曜日・リアルタイム人数を掛け合わせたGemini AIアドリブ執筆案。").strip()
             thinking_memo = (parsed.get("thinking_memo") or "").strip()
@@ -1639,7 +1644,7 @@ def _generate_gemini_adlib_candidate(
             logger.warning(f"Gemini adlib network timeout ({ek}/{model_name}): {e}")
             if _last_gemini_meta.get("working_route") == (ek, model_name):
                 _last_gemini_meta["working_route"] = None
-            break
+            continue
         except Exception as e:
             last_err = str(e)[:160]
             logger.warning(f"Gemini adlib generation exception ({ek}/{model_name}): {e}")
