@@ -1959,16 +1959,41 @@ class FullAuditRegressionTests(unittest.TestCase):
             ai_cand_eval = next(c for c in res_bad['evaluation']['candidates'] if c['style'] == 'ai_live_adlib')
             self.assertEqual(ai_cand_eval['scores']['data_specificity'], -50)
 
-            # 5. Vertex AI Express Mode key (`AQ....`) routes directly to aiplatform.googleapis.com with role='user'
+            # 5. Modern AI Studio `AQ....` auth key targets `generativelanguage.googleapis.com` directly with `thinkingBudget: 0`
             sns_editorial.set_gemini_api_key('AQ.Ab8RN6SampleExpressKey1234dgKQ')
-            with patch('sns_editorial.requests.post', return_value=mock_resp_ok) as mock_vertex_post:
-                res_vx = sns_editorial.run_editorial_pipeline(
+            with patch('sns_editorial.requests.post', return_value=mock_resp_ok) as mock_aq_post:
+                res_aq = sns_editorial.run_editorial_pipeline(
                     sample_stores, slot_label='22:00', channel='x', use_ai=True, force_ai_refresh=True
                 )
-            self.assertEqual(res_vx['winner']['style'], 'ai_live_adlib')
-            called_url = mock_vertex_post.call_args[0][0]
-            self.assertIn('aiplatform.googleapis.com/v1/publishers/google/models/', called_url)
-            self.assertEqual(res_vx['gemini_status']['state'], 'active')
+            self.assertEqual(res_aq['winner']['style'], 'ai_live_adlib')
+            called_url = mock_aq_post.call_args[0][0]
+            called_json = mock_aq_post.call_args[1]['json']
+            self.assertIn('generativelanguage.googleapis.com/v1beta/models/', called_url)
+            self.assertEqual(called_json['generationConfig'].get('thinkingConfig'), {'thinkingBudget': 0})
+            self.assertEqual(res_aq['gemini_status']['state'], 'active')
+
+            # 6. HTML page `GET /staff/sns-editorial` NEVER blocks on Gemini HTTP calls (0 network posts, instant render)
+            sns_editorial.clear_editorial_ai_cache()
+            with app_module.data_lock:
+                old_full = app_module.latest_data.get('full_data')
+                app_module.latest_data['full_data'] = sample_stores
+            try:
+                with patch('sns_editorial.requests.post', side_effect=AssertionError('HTML render must not block on Gemini API!')):
+                    html_resp = self.client.get('/staff/sns-editorial?channel=x&slot=22:00')
+                self.assertEqual(html_resp.status_code, 200)
+                html_body = html_resp.get_data(as_text=True)
+                self.assertIn('⏳ Gemini AI が今夜の現場アドリブ案を執筆中', html_body)
+
+                # And async JSON endpoint `/api/sns-editorial` resolves the Gemini ad-lib draft cleanly
+                with patch('sns_editorial.requests.post', return_value=mock_resp_ok) as mock_async_post:
+                    api_resp = self.client.get('/api/sns-editorial?channel=x&slot=22:00')
+                self.assertEqual(api_resp.status_code, 200)
+                api_json = api_resp.get_json()
+                self.assertEqual(api_json['winner']['style'], 'ai_live_adlib')
+                self.assertEqual(mock_async_post.call_count, 1)
+            finally:
+                with app_module.data_lock:
+                    app_module.latest_data['full_data'] = old_full
         finally:
             sns_editorial.set_gemini_api_key('')
             with self.client.session_transaction() as s:

@@ -179,6 +179,15 @@ def _ensure_scheduler_started_async():
             restore_latest_data_if_empty()
             local_db.start_background_sync(days=21, on_recent_synced=refresh_momentum_from_db)
             threading.Thread(target=local_db.restore_votes_from_sheets, kwargs={'hours': 24}, daemon=True).start()
+            def _warm_editorial_deps():
+                try:
+                    import job_state as _js
+                    import sns_editorial as _se
+                    _js.all_keys()
+                    _se.fetch_live_weather_context(allow_blocking=True)
+                except Exception:
+                    pass
+            threading.Thread(target=_warm_editorial_deps, daemon=True).start()
 
             scheduler = BackgroundScheduler(timezone="UTC", job_defaults={
                 'misfire_grace_time': 600,
@@ -1402,6 +1411,7 @@ def staff_sns_editorial():
         live_s = list(latest_data.get('full_data') or [])
     ig_ctx = _get_sns_kit_context(fast=True) if channel == 'instagram' else None
     force_ai = request.args.get('refresh_ai') == '1'
+    is_json_req = request.args.get('format') == 'json'
     editorial = sns_editorial.run_editorial_pipeline(
         live_s,
         slot_label=slot_label,
@@ -1410,8 +1420,9 @@ def staff_sns_editorial():
         record_history=False,
         use_ai=True,
         force_ai_refresh=force_ai,
+        ai_cache_only=(not is_json_req),
     )
-    if request.args.get('format') == 'json':
+    if is_json_req:
         return jsonify(editorial)
     return render_template(
         'staff_sns_editorial.html',

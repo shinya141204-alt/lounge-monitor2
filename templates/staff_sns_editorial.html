@@ -22,8 +22,13 @@
             --blue-soft: rgba(147, 177, 201, 0.16);
             --rose: #d8a1aa;
             --rose-soft: rgba(216, 161, 170, 0.16);
+            --amber: #d9b36c;
         }
         * { box-sizing: border-box; }
+        html, body {
+            overflow-x: hidden;
+            max-width: 100%;
+        }
         body {
             margin: 0;
             background: var(--bg);
@@ -34,7 +39,7 @@
         .wrap {
             max-width: 1140px;
             margin: 0 auto;
-            padding: 20px 16px 70px;
+            padding: max(18px, env(safe-area-inset-top)) 16px 70px;
         }
         .top-nav {
             display: flex;
@@ -154,7 +159,7 @@
         }
         .candidates-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 310px), 1fr));
             gap: 14px;
             margin-bottom: 28px;
         }
@@ -225,6 +230,8 @@
         .desk-box div { margin-bottom: 3px; }
         .tweet-preview {
             white-space: pre-wrap;
+            overflow-wrap: anywhere;
+            word-break: break-word;
             font-size: 0.82rem;
             background: #0b0c0f;
             border: 1px solid var(--border);
@@ -235,6 +242,8 @@
         }
         .reply-preview {
             white-space: pre-wrap;
+            overflow-wrap: anywhere;
+            word-break: break-word;
             font-size: 0.75rem;
             background: rgba(255, 255, 255, 0.025);
             border: 1px dashed var(--border-strong);
@@ -296,6 +305,9 @@
             border-radius: 999px;
             font-size: 0.78rem;
             font-weight: 800;
+            max-width: 100%;
+            overflow-wrap: anywhere;
+            word-break: break-word;
         }
         .ai-status-on {
             background: rgba(123, 196, 159, 0.16);
@@ -307,6 +319,11 @@
             border: 1px solid var(--amber);
             color: #f6e2b8;
         }
+        .ai-status-loading {
+            background: rgba(168, 85, 247, 0.22);
+            border: 1px solid rgba(192, 132, 252, 0.7);
+            color: #f3e8ff;
+        }
         .context-chips {
             display: flex;
             flex-wrap: wrap;
@@ -314,12 +331,16 @@
             margin-top: 10px;
             font-size: 0.76rem;
             color: #dcd5e8;
+            max-width: 100%;
         }
         .context-chip {
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid var(--border-strong);
             padding: 4px 10px;
             border-radius: 8px;
+            max-width: 100%;
+            overflow-wrap: anywhere;
+            word-break: break-word;
         }
         .ai-actions {
             display: flex;
@@ -338,6 +359,7 @@
             color: #f3e8ff;
         }
         .ai-btn:hover { opacity: 0.9; }
+        .ai-btn:disabled { opacity: 0.55; cursor: wait; }
         .key-drawer {
             margin-top: 12px;
             padding-top: 12px;
@@ -394,44 +416,42 @@
         <div class="ai-panel">
             <div class="ai-panel-top">
                 <div>
-                    {% if editorial.gemini_status and editorial.gemini_status.state == 'active' %}
-                    <span class="ai-status-pill ai-status-on">🟢 Gemini AI アドリブ執筆：正常稼働中（{{ editorial.gemini_status.last_model }} ｜ {{ editorial.gemini_status.masked_key }}）</span>
+                    {% if editorial.ai_pending_async and editorial.gemini_status and editorial.gemini_status.configured %}
+                    <span id="ai-status-pill" class="ai-status-pill ai-status-loading">⏳ Gemini AI が今夜の現場アドリブ案を執筆中...（約1〜2秒）</span>
+                    {% elif editorial.gemini_status and editorial.gemini_status.state == 'active' %}
+                    <span id="ai-status-pill" class="ai-status-pill ai-status-on">🟢 Gemini AI アドリブ執筆：正常稼働中（{{ editorial.gemini_status.last_model }} ｜ {{ editorial.gemini_status.masked_key }}）</span>
                     {% elif editorial.gemini_status and editorial.gemini_status.state == 'degraded' %}
-                    <span class="ai-status-pill ai-status-off">🟠 AI通信エラーのため現在は安全案へ自動切替中（{{ editorial.gemini_status.masked_key }}）</span>
+                    <span id="ai-status-pill" class="ai-status-pill ai-status-off">🟠 AI通信エラーのため現在は安全案へ自動切替中（{{ editorial.gemini_status.masked_key }}）</span>
                     {% else %}
-                    <span class="ai-status-pill ai-status-off">🟡 Gemini APIキー未設定（現在は無料の天気・カレンダー連動モードで稼働中）</span>
+                    <span id="ai-status-pill" class="ai-status-pill ai-status-off">🟡 Gemini APIキー未設定（現在は無料の天気・カレンダー連動モードで稼働中）</span>
                     {% endif %}
                 </div>
                 <div class="ai-actions">
-                    {% if editorial.gemini_status and editorial.gemini_status.configured %}
-                    <a href="/staff/sns-editorial?channel={{ channel }}&slot={{ slot_label }}&refresh_ai=1" class="ai-btn">🔄 別のAIアドリブ案を再生成テスト</a>
-                    {% endif %}
+                    <button type="button" id="ai-regen-btn" class="ai-btn" onclick="triggerAsyncAiRefresh(true, false)" style="display: {{ 'inline-block' if (editorial.gemini_status and editorial.gemini_status.configured) else 'none' }};">🔄 別のAIアドリブ案を再生成テスト</button>
                     <button type="button" class="ai-btn" onclick="toggleKeyDrawer()">🔑 Gemini APIキー設定（無料枠OK）</button>
                 </div>
             </div>
 
-            <div class="context-chips">
+            <div class="context-chips" id="context-chips">
                 {% if editorial.research.calendar %}
                 <span class="context-chip">📅 {{ editorial.research.calendar.tag }}：{{ editorial.research.calendar.note }}</span>
                 {% endif %}
                 {% if editorial.research.weather and editorial.research.weather.available %}
                 <span class="context-chip">🌤️ {{ editorial.research.weather.summary }}（{{ editorial.research.weather.adlib_hint }}）</span>
                 {% endif %}
-                {% if editorial.gemini_status and editorial.gemini_status.last_error %}
+                {% if editorial.gemini_status and editorial.gemini_status.last_error and not editorial.ai_pending_async %}
                 <span class="context-chip" style="border-color:var(--rose); color:#ffd6d6;">⚠️ AI通信メモ：{{ editorial.gemini_status.last_error }}（自動で安全案へフォールバック済）</span>
                 {% endif %}
             </div>
 
-            <div id="gemini-key-drawer" class="key-drawer" style="display: {{ 'none' if (editorial.gemini_status and editorial.gemini_status.state == 'active') else 'block' }};">
+            <div id="gemini-key-drawer" class="key-drawer" style="display: {{ 'none' if (editorial.gemini_status and editorial.gemini_status.configured and (editorial.gemini_status.state == 'active' or editorial.ai_pending_async)) else 'block' }};">
                 <div style="font-size:0.78rem; color:var(--sub);">
-                    💡 <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="color:var(--gold); font-weight:700;">Google AI Studio（公式・無料APIキー発行ページ ↗）</a> で取得した <code>AIza...</code> キー、および Vertex AI Express の <code>AQ....</code> キーの両方に対応しています。下に貼り付けて保存するだけでRenderの再起動なしで即座に有効になります。
+                    💡 <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="color:var(--gold); font-weight:700;">Google AI Studio（公式・無料APIキー発行ページ ↗）</a> で取得した <code>AIza...</code> キー、および <code>AQ....</code> キーの両方に対応しています。下に貼り付けて保存するだけでRenderの再起動なしで即座に有効になります。
                 </div>
                 <div class="key-form-row">
                     <input type="password" id="gemini-api-key-input" class="key-input" placeholder="AIzaSy... または AQ....（ここにAPIキーを貼り付け）" autocomplete="off">
                     <button type="button" class="copy-btn" onclick="saveGeminiKey()">💾 暗号化保存してAIアドリブを有効化</button>
-                    {% if editorial.gemini_status and editorial.gemini_status.configured %}
-                    <button type="button" class="back-btn" onclick="clearGeminiKey()">登録キーを削除</button>
-                    {% endif %}
+                    <button type="button" id="clear-gemini-key-btn" class="back-btn" onclick="clearGeminiKey()" style="display: {{ 'inline-flex' if (editorial.gemini_status and editorial.gemini_status.configured) else 'none' }}; cursor:pointer;">登録キーを削除</button>
                 </div>
                 <div id="gemini-key-msg" style="font-size:0.78rem; margin-top:6px; color:#d3f3e2;"></div>
             </div>
@@ -442,7 +462,7 @@
             <div class="role-card">
                 <span class="role-badge role-1">① リサーチャー（現場データ発掘係）</span>
                 <h3>今夜の現場データ抽出</h3>
-                <ul>
+                <ul id="research-notes-list">
                     {% for note in editorial.research.research_notes %}
                     <li>{{ note }}</li>
                     {% endfor %}
@@ -451,27 +471,27 @@
             <div class="role-card">
                 <span class="role-badge role-2">② プランナー（編成・頻度調整係）</span>
                 <h3>マンネリ防止・編成方針</h3>
-                <p>{{ editorial.plan.planner_memo }}</p>
-                <p style="margin-top:6px; color:#d8cdb8;">⏱️ {{ editorial.plan.cooldown_reason }}</p>
+                <p id="planner-memo-text">{{ editorial.plan.planner_memo }}</p>
+                <p id="planner-cooldown-text" style="margin-top:6px; color:#d8cdb8;">⏱️ {{ editorial.plan.cooldown_reason }}</p>
             </div>
             <div class="role-card">
                 <span class="role-badge role-3">③ ライター（執筆・AIアドリブ係）</span>
-                <h3>{{ editorial.channel_label }}向け{{ editorial.evaluation.candidates | length }}案作成</h3>
-                <p>天気・カレンダー空気感と実測データを掛け合わせ、内部略称（OLG等）を自然な日本語店名へ整えて{{ editorial.evaluation.candidates | length }}案を執筆しました。</p>
+                <h3 id="writer-role-title">{{ editorial.channel_label }}向け{{ editorial.evaluation.candidates | length }}案作成</h3>
+                <p id="writer-role-desc">天気・カレンダー空気感と実測データを掛け合わせ、内部略称（OLG等）を自然な日本語店名へ整えて{{ editorial.evaluation.candidates | length }}案を執筆しました。</p>
             </div>
             <div class="role-card">
                 <span class="role-badge role-4">④ デスク（数値改ざん検閲・採点係）</span>
                 <h3>ファクト検閲・最終決定</h3>
-                <p>{{ editorial.evaluation.desk_summary }}</p>
+                <p id="desk-summary-text">{{ editorial.evaluation.desk_summary }}</p>
             </div>
         </div>
 
         <h2 class="section-h2">
-            <span>📝 {{ editorial.channel_label }} 提案{{ editorial.evaluation.candidates | length }}案とデスクの評価スコア{% if channel != 'instagram' %}（{{ slot_label }}枠）{% endif %}</span>
-            <span style="font-size:0.78rem; color:var(--sub);">集計時刻: {{ editorial.research.timestamp }}</span>
+            <span id="candidates-heading-title">📝 {{ editorial.channel_label }} 提案{{ editorial.evaluation.candidates | length }}案とデスクの評価スコア{% if channel != 'instagram' %}（{{ slot_label }}枠）{% endif %}</span>
+            <span id="candidates-heading-ts" style="font-size:0.78rem; color:var(--sub);">集計時刻: {{ editorial.research.timestamp }}</span>
         </h2>
 
-        <div class="candidates-grid">
+        <div class="candidates-grid" id="candidates-grid">
             {% for c in editorial.evaluation.candidates %}
             <div class="cand-card {{ 'winner' if c.is_selected else '' }}">
                 <div class="cand-top">
@@ -527,6 +547,22 @@
     </div>
 
     <script>
+        var CURRENT_CHANNEL = {{ channel | tojson }};
+        var CURRENT_SLOT = {{ slot_label | tojson }};
+        var CHANNEL_LABEL = {{ editorial.channel_label | tojson }};
+        var AI_PENDING_ASYNC = {{ editorial.ai_pending_async | tojson }};
+        var INITIAL_CONFIGURED = {{ (editorial.gemini_status and editorial.gemini_status.configured) | tojson }};
+        var INITIAL_FORCE_REFRESH = {{ (request.args.get('refresh_ai') == '1') | tojson }};
+
+        function escHtml(str) {
+            return String(str == null ? "" : str)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#39;");
+        }
+
         function copyText(id, btn) {
             var el = document.getElementById(id);
             if (!el) return;
@@ -536,11 +572,152 @@
                 setTimeout(function() { btn.innerText = orig; }, 1800);
             });
         }
+
         function toggleKeyDrawer() {
             var d = document.getElementById("gemini-key-drawer");
             if (!d) return;
             d.style.display = (d.style.display === "none") ? "block" : "none";
         }
+
+        function applyEditorialUpdate(ed) {
+            if (!ed || !ed.evaluation) return;
+            var st = ed.gemini_status || {};
+            var pill = document.getElementById("ai-status-pill");
+            if (pill) {
+                if (st.state === "active") {
+                    pill.className = "ai-status-pill ai-status-on";
+                    pill.textContent = "🟢 Gemini AI アドリブ執筆：正常稼働中（" + (st.last_model || "") + " ｜ " + (st.masked_key || "") + "）";
+                } else if (st.state === "degraded") {
+                    pill.className = "ai-status-pill ai-status-off";
+                    pill.textContent = "🟠 AI通信エラーのため現在は安全案へ自動切替中（" + (st.masked_key || "") + "）";
+                } else {
+                    pill.className = "ai-status-pill ai-status-off";
+                    pill.textContent = "🟡 Gemini APIキー未設定（現在は無料の天気・カレンダー連動モードで稼働中）";
+                }
+            }
+
+            var regenBtn = document.getElementById("ai-regen-btn");
+            if (regenBtn) {
+                regenBtn.style.display = st.configured ? "inline-block" : "none";
+                regenBtn.disabled = false;
+                regenBtn.textContent = "🔄 別のAIアドリブ案を再生成テスト";
+            }
+            var clearBtn = document.getElementById("clear-gemini-key-btn");
+            if (clearBtn) {
+                clearBtn.style.display = st.configured ? "inline-flex" : "none";
+            }
+            var drawer = document.getElementById("gemini-key-drawer");
+            if (drawer && st.state === "active") {
+                drawer.style.display = "none";
+            } else if (drawer && st.state === "degraded") {
+                drawer.style.display = "block";
+            }
+
+            var chipsEl = document.getElementById("context-chips");
+            if (chipsEl && ed.research) {
+                var chipsHtml = "";
+                if (ed.research.calendar) {
+                    chipsHtml += '<span class="context-chip">📅 ' + escHtml(ed.research.calendar.tag) + '：' + escHtml(ed.research.calendar.note) + '</span>';
+                }
+                if (ed.research.weather && ed.research.weather.available) {
+                    chipsHtml += '<span class="context-chip">🌤️ ' + escHtml(ed.research.weather.summary) + '（' + escHtml(ed.research.weather.adlib_hint) + '）</span>';
+                }
+                if (st.last_error) {
+                    chipsHtml += '<span class="context-chip" style="border-color:var(--rose); color:#ffd6d6;">⚠️ AI通信メモ：' + escHtml(st.last_error) + '（自動で安全案へフォールバック済）</span>';
+                }
+                chipsEl.innerHTML = chipsHtml;
+            }
+
+            if (ed.research && Array.isArray(ed.research.research_notes)) {
+                var rList = document.getElementById("research-notes-list");
+                if (rList) {
+                    rList.innerHTML = ed.research.research_notes.map(function(n) {
+                        return "<li>" + escHtml(n) + "</li>";
+                    }).join("");
+                }
+            }
+
+            var cands = ed.evaluation.candidates || [];
+            var wTitle = document.getElementById("writer-role-title");
+            if (wTitle) wTitle.textContent = (ed.channel_label || CHANNEL_LABEL) + "向け" + cands.length + "案作成";
+            var wDesc = document.getElementById("writer-role-desc");
+            if (wDesc) wDesc.textContent = "天気・カレンダー空気感と実測データを掛け合わせ、内部略称（OLG等）を自然な日本語店名へ整えて" + cands.length + "案を執筆しました。";
+            var dSum = document.getElementById("desk-summary-text");
+            if (dSum) dSum.textContent = ed.evaluation.desk_summary || "";
+
+            var hTitle = document.getElementById("candidates-heading-title");
+            if (hTitle) {
+                var slotSuffix = (CURRENT_CHANNEL !== "instagram") ? ("（" + CURRENT_SLOT + "枠）") : "";
+                hTitle.textContent = "📝 " + (ed.channel_label || CHANNEL_LABEL) + " 提案" + cands.length + "案とデスクの評価スコア" + slotSuffix;
+            }
+            var hTs = document.getElementById("candidates-heading-ts");
+            if (hTs && ed.research && ed.research.timestamp) {
+                hTs.textContent = "集計時刻: " + ed.research.timestamp;
+            }
+
+            var grid = document.getElementById("candidates-grid");
+            if (grid) {
+                grid.innerHTML = cands.map(function(c, idx) {
+                    var n = idx + 1;
+                    var rankLabel = c.is_selected ? "🏆 採用案（1位）" : ("候補 " + c.rank + "位");
+                    var sc = c.scores || {};
+                    var commentsHtml = (c.desk_comments || []).map(function(cm) {
+                        return "<div>" + escHtml(cm) + "</div>";
+                    }).join("");
+                    return (
+                        '<div class="cand-card ' + (c.is_selected ? 'winner' : '') + '">' +
+                            '<div class="cand-top">' +
+                                '<span class="style-title">' + escHtml(rankLabel + "：" + (c.style_label || "")) + '</span>' +
+                                '<span class="score-pill">' + escHtml(c.total_score) + '点 / 100</span>' +
+                            '</div>' +
+                            '<div class="score-bars">' +
+                                '<span>🗣️ 人間味・非ボット感: <strong>' + escHtml(sc.human_tone) + '/35</strong></span>' +
+                                '<span>🔄 新鮮さ・被り回避: <strong>' + escHtml(sc.freshness_diversity) + '/30</strong></span>' +
+                                '<span>📊 データの具体性・精度: <strong>' + escHtml(sc.data_specificity) + '/25</strong></span>' +
+                                '<span>📏 媒体ルール適合: <strong>' + escHtml(sc.weight_fit) + '/10</strong> (' + escHtml(c.metric_unit || "") + ')</span>' +
+                            '</div>' +
+                            '<div class="writer-memo"><strong>✍️ 執筆係の狙い：</strong>' + escHtml(c.writer_note || "") + '</div>' +
+                            '<div class="desk-box"><strong>🧐 評価係（デスク）の講評：</strong>' + commentsHtml + '</div>' +
+                            '<div class="tweet-preview" id="cand-main-' + n + '">' + escHtml(c.main_text || "") + '</div>' +
+                            '<div class="reply-preview"><strong>💬 補足・連結仕様：</strong><br>' + escHtml(c.reply_text || "") + '</div>' +
+                            '<button type="button" class="copy-btn" onclick="copyText(\'cand-main-' + n + '\', this)">この本文をコピーする</button>' +
+                        '</div>'
+                    );
+                }).join("");
+            }
+        }
+
+        function triggerAsyncAiRefresh(forceRefresh, silentIfUnconfigured) {
+            var pill = document.getElementById("ai-status-pill");
+            var regenBtn = document.getElementById("ai-regen-btn");
+            if (!silentIfUnconfigured && pill) {
+                pill.className = "ai-status-pill ai-status-loading";
+                pill.textContent = "⏳ Gemini AI が今夜の現場アドリブ案を執筆中...（約1〜2秒）";
+            }
+            if (regenBtn) {
+                regenBtn.disabled = true;
+                regenBtn.textContent = "⏳ AI執筆中...";
+            }
+            var url = "/api/sns-editorial?channel=" + encodeURIComponent(CURRENT_CHANNEL) + "&slot=" + encodeURIComponent(CURRENT_SLOT);
+            if (forceRefresh) {
+                url += "&refresh_ai=1";
+            }
+            fetch(url, {headers: {"Accept": "application/json"}})
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (silentIfUnconfigured && (!data.gemini_status || !data.gemini_status.configured)) {
+                        return;
+                    }
+                    applyEditorialUpdate(data);
+                })
+                .catch(function() {
+                    if (regenBtn) {
+                        regenBtn.disabled = false;
+                        regenBtn.textContent = "🔄 別のAIアドリブ案を再生成テスト";
+                    }
+                });
+        }
+
         function saveGeminiKey() {
             var inp = document.getElementById("gemini-api-key-input");
             var msg = document.getElementById("gemini-key-msg");
@@ -551,17 +728,17 @@
                 return;
             }
             msg.style.color = "#d3f3e2";
-            msg.innerText = "保存してAIアドリブ案を生成しています...";
+            msg.innerText = "暗号化保存しています...";
             fetch("/api/sns-editorial/gemini-key", {
                 method: "POST",
                 headers: {"Content-Type": "application/json"},
                 body: JSON.stringify({action: "save", api_key: val})
             }).then(function(r) { return r.json(); }).then(function(data) {
                 if (data.ok) {
-                    msg.innerText = "✅ " + data.message + " 画面を更新します...";
-                    setTimeout(function() {
-                        window.location.href = "/staff/sns-editorial?channel={{ channel }}&slot={{ slot_label }}&refresh_ai=1";
-                    }, 600);
+                    msg.style.color = "#d3f3e2";
+                    msg.innerText = "✅ " + data.message;
+                    if (inp) inp.value = "";
+                    triggerAsyncAiRefresh(true, false);
                 } else {
                     msg.style.color = "#ffd6d6";
                     msg.innerText = "⚠️ " + (data.error || "保存に失敗しました");
@@ -571,6 +748,7 @@
                 msg.innerText = "⚠️ 通信エラーが発生しました";
             });
         }
+
         function clearGeminiKey() {
             if (!confirm("管理画面に登録したGemini APIキーを削除しますか？")) return;
             fetch("/api/sns-editorial/gemini-key", {
@@ -578,9 +756,19 @@
                 headers: {"Content-Type": "application/json"},
                 body: JSON.stringify({action: "clear"})
             }).then(function() {
-                window.location.href = "/staff/sns-editorial?channel={{ channel }}&slot={{ slot_label }}";
+                window.location.href = "/staff/sns-editorial?channel=" + encodeURIComponent(CURRENT_CHANNEL) + "&slot=" + encodeURIComponent(CURRENT_SLOT);
             });
         }
+
+        document.addEventListener("DOMContentLoaded", function() {
+            if (INITIAL_FORCE_REFRESH && window.history && window.history.replaceState) {
+                var cleanUrl = "/staff/sns-editorial?channel=" + encodeURIComponent(CURRENT_CHANNEL) + "&slot=" + encodeURIComponent(CURRENT_SLOT);
+                window.history.replaceState(null, "", cleanUrl);
+            }
+            if (AI_PENDING_ASYNC) {
+                triggerAsyncAiRefresh(INITIAL_FORCE_REFRESH, !INITIAL_CONFIGURED);
+            }
+        });
     </script>
 </body>
 </html>

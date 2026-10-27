@@ -17,6 +17,7 @@ import time
 import json
 import datetime
 import logging
+import threading
 import requests
 
 import job_state
@@ -28,14 +29,11 @@ logger = logging.getLogger(__name__)
 JST = datetime.timezone(datetime.timedelta(hours=9))
 GEMINI_KEY_STORAGE_PREFIX = "token:gemini_api_key"
 DEFAULT_GEMINI_MODELS = (
-    "gemini-2.5-flash",
     "gemini-2.5-flash-lite",
-    "gemini-2.0-flash-001",
-    "gemini-2.0-flash",
-    "gemini-3-flash-preview",
+    "gemini-2.5-flash",
 )
 
-_weather_cache = {"ts": 0.0, "data": None}
+_weather_cache = {"ts": 0.0, "data": None, "fetching": False}
 _ai_candidate_cache = {}  # cache_key -> {"ts": float, "candidate": dict, "model": str}
 _last_gemini_meta = {"last_model": "", "last_error": "", "last_ok_at": "", "working_route": None}
 
@@ -141,9 +139,9 @@ def _history_key_for_channel(channel: str) -> str:
     return f"sns_editorial_log_{ch}"
 
 
-def get_recent_editorial_history(channel: str = "x", limit: int = 8) -> list:
+def get_recent_editorial_history(channel: str = "x", limit: int = 8, allow_blocking: bool = True) -> list:
     """Load recent editorial meeting logs for the specified SNS channel."""
-    raw = job_state.get_value(_history_key_for_channel(channel))
+    raw = job_state.get_value(_history_key_for_channel(channel), allow_blocking=allow_blocking)
     if not raw:
         return []
     try:
@@ -163,13 +161,13 @@ def clear_editorial_ai_cache():
     _ai_candidate_cache.clear()
 
 
-def get_gemini_api_key() -> str:
+def get_gemini_api_key(allow_blocking: bool = True) -> str:
     """
     Resolve active Gemini API key from either:
       1. Master-configured persistent secret in `job_state` (`token:gemini_api_key`)
       2. Render environment variable `GEMINI_API_KEY` or `GOOGLE_API_KEY`
     """
-    stored = (job_state.get_value(GEMINI_KEY_STORAGE_PREFIX) or "").strip()
+    stored = (job_state.get_value(GEMINI_KEY_STORAGE_PREFIX, allow_blocking=allow_blocking) or "").strip()
     if stored:
         return stored
     return (
@@ -188,9 +186,9 @@ def set_gemini_api_key(api_key: str):
     _last_gemini_meta["working_route"] = None
 
 
-def get_gemini_status() -> dict:
+def get_gemini_status(allow_blocking: bool = True) -> dict:
     """Return safe, masked status metadata for the Master editorial dashboard (never exposes raw key)."""
-    stored = (job_state.get_value(GEMINI_KEY_STORAGE_PREFIX) or "").strip()
+    stored = (job_state.get_value(GEMINI_KEY_STORAGE_PREFIX, allow_blocking=allow_blocking) or "").strip()
     env_key = (os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY") or "").strip()
     active_key = stored or env_key
     if stored:
@@ -321,24 +319,7 @@ def _describe_wmo_code(code: int, precip: float) -> tuple:
     return ("晴れ", False)
 
 
-def fetch_live_weather_context(force_network: bool = False) -> dict:
-    """
-    Fetch free real-time Tokyo & Osaka weather via Open-Meteo (no API key needed, cached for 30 min).
-    Skipped automatically during unit tests (`DISABLE_SCHEDULER == '1'`) unless `force_network=True`.
-    """
-    now_t = time.time()
-    if not force_network and _weather_cache["data"] and (now_t - _weather_cache["ts"] < 1800):
-        return _weather_cache["data"]
-
-    if os.environ.get("DISABLE_SCHEDULER") == "1" and not force_network:
-        return {
-            "available": False,
-            "summary": "気象データ取得スキップ（テスト環境）",
-            "adlib_hint": "",
-            "is_rainy": False,
-            "temps": [],
-        }
-
+def _refresh_weather_sync():
     try:
         resp = requests.get(
             "https://api.open-meteo.com/v1/forecast",
@@ -348,7 +329,7 @@ def fetch_live_weather_context(force_network: bool = False) -> dict:
                 "current": "temperature_2m,precipitation,weather_code",
                 "timezone": "Asia/Tokyo",
             },
-            timeout=2.5,
+            timeout=2.2,
         )
         if resp.status_code == 200:
             payload = resp.json()
@@ -389,15 +370,51 @@ def fetch_live_weather_context(force_network: bool = False) -> dict:
                     "osaka_rain": os_rain,
                     "temps": [tk_temp, os_temp],
                 }
-                _weather_cache["ts"] = now_t
+                _weather_cache["ts"] = time.time()
                 _weather_cache["data"] = result
                 return result
     except Exception as e:
         logger.debug(f"Open-Meteo weather fetch skipped: {e}")
+    finally:
+        _weather_cache["fetching"] = False
+    return None
+
+
+def fetch_live_weather_context(force_network: bool = False, allow_blocking: bool = False) -> dict:
+    """
+    Fetch free real-time Tokyo & Osaka weather via Open-Meteo (cached for 30 min).
+    When `allow_blocking=False` (default for web page loads), returns cached data in 0ms
+    and refreshes asynchronously in a background thread so page navigation never blocks.
+    """
+    now_t = time.time()
+    cached_data = _weather_cache.get("data")
+    if not force_network and cached_data and (now_t - _weather_cache["ts"] < 1800):
+        return cached_data
+
+    if os.environ.get("DISABLE_SCHEDULER") == "1" and not force_network:
+        return {
+            "available": False,
+            "summary": "気象データ取得スキップ（テスト環境）",
+            "adlib_hint": "",
+            "is_rainy": False,
+            "temps": [],
+        }
+
+    if allow_blocking or force_network:
+        _weather_cache["fetching"] = True
+        fresh = _refresh_weather_sync()
+        if fresh:
+            return fresh
+    else:
+        if not _weather_cache.get("fetching"):
+            _weather_cache["fetching"] = True
+            threading.Thread(target=_refresh_weather_sync, daemon=True).start()
+        if cached_data:
+            return cached_data
 
     return {
         "available": False,
-        "summary": "気象データ未取得（通常モード）",
+        "summary": "気象データ取得中...",
         "adlib_hint": "",
         "is_rainy": False,
         "temps": [],
@@ -413,6 +430,7 @@ def run_researcher(
     channel: str = "x",
     ig_ctx: dict = None,
     now_jst: datetime.datetime = None,
+    allow_weather_blocking: bool = False,
 ) -> dict:
     """
     Analyze live domestic store counts (and weekly carousel stats for IG) to extract verified field findings:
@@ -495,7 +513,7 @@ def run_researcher(
     west_top = kansai_s[0] if kansai_s else (dom[1] if len(dom) > 1 else east_top)
 
     cal_ctx = build_calendar_context(now_jst=now_jst)
-    weather_ctx = fetch_live_weather_context()
+    weather_ctx = fetch_live_weather_context(allow_blocking=allow_weather_blocking)
 
     notes = [
         f"対象媒体：{CHANNEL_LABELS.get(channel, channel)} ｜ 全国稼働 {len(active_stores)}店舗（女性計 {total_w:,}名 / 男性計 {total_m:,}名）を解析。",
@@ -559,13 +577,14 @@ def run_planner(
     slot_label: str = "22:00",
     channel: str = "x",
     now_jst: datetime.datetime = None,
+    allow_blocking: bool = True,
 ) -> dict:
     """
     Determine style rotation and anti-repetition rules per SNS channel (`x`, `threads`, `instagram`).
     """
     now_jst = now_jst or datetime.datetime.now(JST)
     ch = (channel or "x").lower()
-    history = get_recent_editorial_history(channel=ch, limit=6)
+    history = get_recent_editorial_history(channel=ch, limit=6, allow_blocking=allow_blocking)
     recent_styles = [h.get("selected_style") for h in history if h.get("selected_style")]
     last_style = recent_styles[0] if recent_styles else None
 
@@ -1379,24 +1398,22 @@ def _discover_ai_studio_flash_model(api_key: str) -> str:
 
 
 def _build_endpoint_request(endpoint_kind: str, model_name: str, api_key: str, prompt: str) -> tuple:
+    gen_cfg = {
+        "temperature": 0.85,
+        "maxOutputTokens": 900,
+        "responseMimeType": "application/json",
+    }
+    # Disable extended reasoning on Gemini 2.5 Flash family so responses arrive in ~1.2s instead of timing out at >10s
+    if model_name.startswith("gemini-2.5"):
+        gen_cfg["thinkingConfig"] = {"thinkingBudget": 0}
+
     payload = {
         "contents": [{"role": "user", "parts": [{"text": prompt}]}],
-        "generationConfig": {
-            "temperature": 0.85,
-            "maxOutputTokens": 900,
-            "responseMimeType": "application/json",
-        },
+        "generationConfig": gen_cfg,
     }
     if endpoint_kind == "vertex_v1":
         return (
             f"https://aiplatform.googleapis.com/v1/publishers/google/models/{model_name}:generateContent",
-            {"Content-Type": "application/json"},
-            {"key": api_key},
-            payload,
-        )
-    if endpoint_kind == "vertex_v1beta1":
-        return (
-            f"https://aiplatform.googleapis.com/v1beta1/publishers/google/models/{model_name}:generateContent",
             {"Content-Type": "application/json"},
             {"key": api_key},
             payload,
@@ -1409,6 +1426,17 @@ def _build_endpoint_request(endpoint_kind: str, model_name: str, api_key: str, p
     )
 
 
+def has_cached_ai_candidate(research: dict, slot_label: str, channel: str) -> bool:
+    ch = (channel or "x").lower()
+    top_s = research.get("top_stores") or []
+    if not top_s:
+        return False
+    sig_top = f"{top_s[0]['name']}:{top_s[0]['women']}:{top_s[0]['men']}"
+    cache_key = (ch, slot_label, sig_top)
+    cached = _ai_candidate_cache.get(cache_key)
+    return bool(cached and (time.time() - cached["ts"] < 900))
+
+
 def _generate_gemini_adlib_candidate(
     research: dict,
     plan: dict,
@@ -1417,13 +1445,14 @@ def _generate_gemini_adlib_candidate(
     now_jst: datetime.datetime,
     site_url: str,
     force_refresh: bool = False,
+    cache_only: bool = False,
 ) -> dict:
     """
-    Call Gemini Flash REST API across BOTH Google AI Studio (`AIza...`) and Vertex AI Express Mode (`AQ....`) keys.
-    Uses a 15-minute signature cache so Master UI browsing stays instant and free-tier friendly.
-    Returns candidate dict or None on skip/failure (caller seamlessly falls back to deterministic candidates).
+    Call Gemini Flash REST API (`generativelanguage.googleapis.com` for both `AIza...` and `AQ....` AI Studio keys,
+    with `thinkingBudget: 0` for ~1.2s sub-2s response latency).
+    When `cache_only=True`, returns cached draft in 0ms without blocking page render.
     """
-    api_key = get_gemini_api_key()
+    api_key = get_gemini_api_key(allow_blocking=(not cache_only))
     if not api_key:
         return None
 
@@ -1440,6 +1469,9 @@ def _generate_gemini_adlib_candidate(
         if now_t - cached["ts"] < 900:
             return dict(cached["candidate"])
 
+    if cache_only:
+        return None
+
     prompt, reply_text = _build_gemini_prompt(
         research=research,
         plan=plan,
@@ -1452,27 +1484,23 @@ def _generate_gemini_adlib_candidate(
     preferred_env = (os.environ.get("GEMINI_MODEL") or "").strip()
     models_to_try = [preferred_env] + [m for m in DEFAULT_GEMINI_MODELS if m != preferred_env] if preferred_env else list(DEFAULT_GEMINI_MODELS)
 
-    is_vertex_express = api_key.startswith("AQ.")
-    if is_vertex_express:
-        endpoint_kinds = ["vertex_v1", "vertex_v1beta1", "ai_studio"]
-    else:
-        endpoint_kinds = ["ai_studio"]
-
+    # Both modern AI Studio `AQ.` auth keys and classic `AIza` keys target `ai_studio` directly first!
     routes = []
     saved_route = _last_gemini_meta.get("working_route")
-    if saved_route and saved_route[0] in endpoint_kinds:
+    if saved_route:
         routes.append(saved_route)
-    for ek in endpoint_kinds:
-        for mn in models_to_try:
-            if (ek, mn) not in routes:
-                routes.append((ek, mn))
+    for mn in models_to_try:
+        if ("ai_studio", mn) not in routes:
+            routes.append(("ai_studio", mn))
+    if api_key.startswith("AQ.") and ("vertex_v1", "gemini-2.5-flash") not in routes:
+        routes.append(("vertex_v1", "gemini-2.5-flash"))
 
     last_err = ""
     saw_404_on_ai_studio = False
 
     def _try_single_route(ek: str, mn: str):
         url, headers, params, payload = _build_endpoint_request(ek, mn, api_key, prompt)
-        return requests.post(url, headers=headers, params=params, json=payload, timeout=10)
+        return requests.post(url, headers=headers, params=params, json=payload, timeout=18)
 
     for ek, model_name in routes:
         try:
@@ -1486,17 +1514,17 @@ def _generate_gemini_adlib_candidate(
                 err_snippet = (resp.text or "")[:140]
                 last_err = f"Gemini HTTP {resp.status_code} ({ek}): {err_snippet}"
                 logger.warning(f"Gemini API error ({ek}/{model_name}): {last_err}")
-                if is_vertex_express and ek != endpoint_kinds[-1]:
-                    continue
-                break
+                continue
 
             data = resp.json() or {}
             cands = data.get("candidates") or []
             if not cands:
                 last_err = "Gemini returned empty candidates"
-                break
+                continue
             parts = ((cands[0].get("content") or {}).get("parts")) or []
-            raw_text = "".join(p.get("text", "") for p in parts).strip()
+            raw_text = "".join(p.get("text", "") for p in parts if not p.get("thought")).strip()
+            if not raw_text:
+                raw_text = "".join(p.get("text", "") for p in parts).strip()
             if raw_text.startswith("```"):
                 raw_text = re.sub(r"^```(?:json)?\s*", "", raw_text)
                 raw_text = re.sub(r"\s*```$", "", raw_text)
@@ -1505,7 +1533,7 @@ def _generate_gemini_adlib_candidate(
             writer_note = (parsed.get("writer_note") or "天気・曜日・リアルタイム人数を掛け合わせたGemini AIアドリブ執筆案。").strip()
             if not main_text:
                 last_err = "Parsed JSON missing main_text"
-                break
+                continue
 
             candidate = {
                 "style": "ai_live_adlib",
@@ -1526,13 +1554,21 @@ def _generate_gemini_adlib_candidate(
             _last_gemini_meta["last_error"] = ""
             _last_gemini_meta["last_ok_at"] = now_jst.strftime("%Y-%m-%d %H:%M:%S")
             return dict(candidate)
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
+            last_err = f"通信タイムアウト ({model_name}): {str(e)[:110]}"
+            logger.warning(f"Gemini adlib network timeout ({ek}/{model_name}): {e}")
+            if _last_gemini_meta.get("working_route") == (ek, model_name):
+                _last_gemini_meta["working_route"] = None
+            break
         except Exception as e:
             last_err = str(e)[:160]
             logger.warning(f"Gemini adlib generation exception ({ek}/{model_name}): {e}")
-            break
+            if _last_gemini_meta.get("working_route") == (ek, model_name):
+                _last_gemini_meta["working_route"] = None
+            continue
 
-    # Dynamic model auto-discovery fallback for AI Studio keys if all preset names returned 404
-    if saw_404_on_ai_studio and not is_vertex_express:
+    # Dynamic model auto-discovery fallback if preset model names returned 404
+    if saw_404_on_ai_studio:
         discovered = _discover_ai_studio_flash_model(api_key)
         if discovered and discovered not in models_to_try:
             try:
@@ -1540,7 +1576,7 @@ def _generate_gemini_adlib_candidate(
                 if resp.status_code == 200:
                     data = resp.json() or {}
                     parts = (((data.get("candidates") or [{}])[0].get("content") or {}).get("parts")) or []
-                    raw_text = "".join(p.get("text", "") for p in parts).strip()
+                    raw_text = "".join(p.get("text", "") for p in parts if not p.get("thought")).strip()
                     if raw_text.startswith("```"):
                         raw_text = re.sub(r"^```(?:json)?\s*", "", raw_text)
                         raw_text = re.sub(r"\s*```$", "", raw_text)
@@ -1567,8 +1603,6 @@ def _generate_gemini_adlib_candidate(
                 pass
 
     if last_err:
-        if is_vertex_express and "404" in last_err:
-            last_err += "（※AQ.キーはGoogle Cloud側の権限に依存します。Google AI Studioの『AIza...』から始まるキーに変えると100%確実につながります）"
         _last_gemini_meta["last_error"] = last_err
     return None
 
@@ -1582,6 +1616,7 @@ def run_writer(
     app_url: str = "",
     use_ai: bool = True,
     force_ai_refresh: bool = False,
+    ai_cache_only: bool = False,
 ) -> list:
     now_jst = now_jst or datetime.datetime.now(JST)
     site_url = (app_url or os.environ.get("PUBLIC_SITE_URL") or "https://aiseki-navi.com").rstrip("/")
@@ -1602,6 +1637,7 @@ def run_writer(
             now_jst=now_jst,
             site_url=site_url,
             force_refresh=force_ai_refresh,
+            cache_only=ai_cache_only,
         )
         if ai_cand:
             return [ai_cand] + base_cands
@@ -1805,19 +1841,34 @@ def run_editorial_pipeline(
     record_history: bool = False,
     use_ai: bool = True,
     force_ai_refresh: bool = False,
+    ai_cache_only: bool = False,
 ) -> dict:
     """
     Run the full 4-role SNS Editorial Room pipeline for `channel` ('x', 'threads', or 'instagram').
-    When Gemini API key is configured and `use_ai=True`, generates an AI live ad-lib draft,
-    runs strict numerical fact-checking in Desk, and auto-falls back safely if any check fails.
+    When `ai_cache_only=True` (used on HTML page render), returns in <30ms using cached AI draft if available,
+    and flags `ai_pending_async=True` so client JS can fetch the fresh AI draft asynchronously without blocking UI.
     """
     now_jst = now_jst or datetime.datetime.now(JST)
     ch = (channel or "x").lower()
     if ch not in ("x", "threads", "instagram"):
         ch = "x"
 
-    research = run_researcher(stores, slot_label=slot_label, channel=ch, ig_ctx=ig_ctx, now_jst=now_jst)
-    plan = run_planner(research, slot_label=slot_label, channel=ch, now_jst=now_jst)
+    allow_state_blocking = bool(record_history or (use_ai and not ai_cache_only))
+    research = run_researcher(
+        stores,
+        slot_label=slot_label,
+        channel=ch,
+        ig_ctx=ig_ctx,
+        now_jst=now_jst,
+        allow_weather_blocking=record_history,
+    )
+    plan = run_planner(
+        research,
+        slot_label=slot_label,
+        channel=ch,
+        now_jst=now_jst,
+        allow_blocking=allow_state_blocking,
+    )
     candidates = run_writer(
         research,
         plan,
@@ -1827,8 +1878,19 @@ def run_editorial_pipeline(
         app_url=app_url,
         use_ai=use_ai,
         force_ai_refresh=force_ai_refresh,
+        ai_cache_only=ai_cache_only,
     )
     evaluation = run_evaluator(candidates, research, plan, channel=ch, now_jst=now_jst)
+
+    has_ai_cand = any(c.get("is_ai_generated") for c in (evaluation.get("candidates") or []))
+    sheets_warming = (not getattr(job_state, "_sheets_loaded", True)) and (not job_state.sheets_store.is_disabled())
+    ai_pending_async = bool(
+        ai_cache_only
+        and use_ai
+        and (bool(get_gemini_api_key(allow_blocking=False)) or sheets_warming)
+        and (force_ai_refresh or not has_ai_cand)
+        and bool(research.get("top_stores"))
+    )
 
     winner = evaluation.get("winner") or {}
     session_record = {
@@ -1876,11 +1938,12 @@ def run_editorial_pipeline(
     return {
         "channel": ch,
         "channel_label": CHANNEL_LABELS.get(ch, ch),
-        "gemini_status": get_gemini_status(),
+        "gemini_status": get_gemini_status(allow_blocking=allow_state_blocking),
+        "ai_pending_async": ai_pending_async,
         "research": research,
         "plan": plan,
         "evaluation": evaluation,
         "winner": winner,
         "session_record": session_record,
-        "history": get_recent_editorial_history(channel=ch, limit=8),
+        "history": get_recent_editorial_history(channel=ch, limit=8, allow_blocking=allow_state_blocking),
     }
