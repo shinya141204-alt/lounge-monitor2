@@ -95,7 +95,7 @@
     <!-- Non-render-blocking web font (avoids waiting on Google Fonts at PWA cold launch) -->
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet"></noscript>
-    <link rel="stylesheet" href="/static/style.css?v=20261027_2">
+    <link rel="stylesheet" href="/static/style.css?v=20261027_3">
     <script>
         window.APP_CONFIG = {
             isStaff: {{ 'true' if (is_staff or session.get('is_staff')) else 'false' }},
@@ -108,7 +108,7 @@
          crossorigin="anonymous"></script>
     <script src="/static/affiliate_config.js?v=11"></script>
     {% endif %}
-    <link rel="stylesheet" href="/static/calm.css?v=12">
+    <link rel="stylesheet" href="/static/calm.css?v=13">
 </head>
 
 <body class="{% if is_staff %}staff-mode{% endif %}">
@@ -1280,6 +1280,7 @@
                                 {% endif %}
                             </div>
                             <h3 class="store-name">{{ s.ssr_title }}{% if not is_staff and s.ssr_event_badge %}<span class="event-tag-badge" title="{{ s.ssr_event_title }}">{{ s.ssr_event_badge }}</span>{% endif %}</h3>
+                            <div class="store-micro-metrics{% if not (s.core_time_short and s.midnight_retention_pct) %} hidden{% endif %}">{% if s.core_time_short and s.midnight_retention_pct %}狙い目 {{ s.core_time_short }} <span class="micro-sep">｜</span> 終電後 {{ s.midnight_retention_pct }}%（{{ s.midnight_label_short }}）{% endif %}</div>
                         </div>
                         <div class="card-actions">
                             <button class="pin-btn" aria-label="お気に入り" title="お気に入り固定" onclick="event.stopPropagation();if(window.togglePin)togglePin({{ s.name | tojson | forceescape }})">
@@ -1306,6 +1307,11 @@
                                     {% endif %}
                                 </div>
                                 <span class="label">LADIES</span>
+                                {% if s.usual_w_diff is not none %}
+                                <span class="stat-usual{% if s.usual_w_diff > 0 %} is-up{% elif s.usual_w_diff < 0 %} is-down{% endif %}" title="普段の{{ s.usual_slot_label }}平均({{ s.usual_women }}名)との差">平比{% if s.usual_w_diff > 0 %}+{{ s.usual_w_diff }}{% elif s.usual_w_diff < 0 %}{{ s.usual_w_diff }}{% else %}±0{% endif %}</span>
+                                {% else %}
+                                <span class="stat-usual hidden"></span>
+                                {% endif %}
                             </div>
                             <div class="stat men">
                                 <div class="stat-num-row">
@@ -1317,6 +1323,11 @@
                                     {% endif %}
                                 </div>
                                 <span class="label">MEN</span>
+                                {% if s.usual_m_diff is not none %}
+                                <span class="stat-usual{% if s.usual_m_diff > 0 %} is-up{% elif s.usual_m_diff < 0 %} is-down{% endif %}" title="普段の{{ s.usual_slot_label }}平均({{ s.usual_men }}名)との差">平比{% if s.usual_m_diff > 0 %}+{{ s.usual_m_diff }}{% elif s.usual_m_diff < 0 %}{{ s.usual_m_diff }}{% else %}±0{% endif %}</span>
+                                {% else %}
+                                <span class="stat-usual hidden"></span>
+                                {% endif %}
                             </div>
                         </div>
                         <div class="occupancy-bar">
@@ -1330,8 +1341,8 @@
 
                 <!-- Momentum & Card Legend Bar (Placed below ranking list to keep first-view clean) -->
                 <div class="momentum-legend-bar" aria-label="表示指標の説明" style="margin-top: 12px;">
-                    <span class="momentum-legend-pill">「↗ +数字」＝ 直近15分での客数の伸び</span>
-                    <span class="momentum-legend-hint">比率順は女性10名以上を優先 ｜ 店舗タップで推移グラフ</span>
+                    <span class="momentum-legend-pill">「↗ +数字」＝15分比 ｜ 「平比±」＝普段の同曜日・同時間比</span>
+                    <span class="momentum-legend-hint">終電後%＝21-22時比の深夜0-1時女性維持率 ｜ タップで詳細グラフ</span>
                 </div>
 
                 <div class="info-bar">
@@ -1675,6 +1686,7 @@
                     <span class="area-tag">東京</span>
                 </div>
                 <h3 class="store-name">Store Name</h3>
+                <div class="store-micro-metrics hidden"></div>
             </div>
             <!-- Card Actions -->
             <div class="card-actions">
@@ -1701,6 +1713,7 @@
                         <span class="stat-diff hidden"></span>
                     </div>
                     <span class="label">LADIES</span>
+                    <span class="stat-usual hidden"></span>
                 </div>
                 <div class="stat men">
                     <div class="stat-num-row">
@@ -1708,6 +1721,7 @@
                         <span class="stat-diff hidden"></span>
                     </div>
                     <span class="label">MEN</span>
+                    <span class="stat-usual hidden"></span>
                 </div>
             </div>
             <!-- Gender ratio visual bar -->
@@ -1727,7 +1741,7 @@
         window.INITIAL_STATUS_DATA = {{ initial_status | tojson }};
         {% endif %}
     </script>
-    <script src="/static/app.js?v=20261027_2" defer></script>
+    <script src="/static/app.js?v=20261027_3" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
@@ -1738,7 +1752,7 @@
                 window.location.reload();
             });
             window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/sw.js?v=50', { updateViaCache: 'none' })
+                navigator.serviceWorker.register('/sw.js?v=51', { updateViaCache: 'none' })
                     .then(function(reg) {
                         reg.update();
                         document.addEventListener('visibilitychange', function() {

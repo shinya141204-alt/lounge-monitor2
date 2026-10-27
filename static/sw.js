@@ -1,5 +1,5 @@
-// Supersedes aiseki-navi-v47, aiseki-navi-v48, aiseki-navi-v49 (purged automatically on activate)
-const CACHE_NAME = 'aiseki-navi-v50';
+// Supersedes aiseki-navi-v47, aiseki-navi-v48, aiseki-navi-v49, aiseki-navi-v50 (purged automatically on activate)
+const CACHE_NAME = 'aiseki-navi-v51';
 const SHELL_KEY = '/';
 const FAST_NAV_PATHS = new Set([
   '/guide/brand-comparison',
@@ -21,10 +21,10 @@ const LIVE_SSR_PREFIXES = [
   '/jis'
 ];
 const ASSETS_TO_CACHE = [
-  '/static/style.css?v=20261027_2',
-  '/static/calm.css?v=12',
+  '/static/style.css?v=20261027_3',
+  '/static/calm.css?v=13',
   '/static/portal.css?v=6',
-  '/static/app.js?v=20261027_2',
+  '/static/app.js?v=20261027_3',
   '/static/affiliate_config.js?v=11',
   '/static/manifest.json?v=2',
   '/static/icon-192.png?v=2',

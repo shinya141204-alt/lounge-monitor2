@@ -251,6 +251,48 @@ def compute_store_analysis_payload(store_name, analysis_cache, cache_duration=36
         hourly_by_weekday_result[weekdays_str[i]] = day_avg_w
         hourly_men_by_weekday_result[weekdays_str[i]] = day_avg_m
 
+    # Compute core_time_short & midnight_retention_pct from store's hourly aggregates
+    band_defs = (
+        ("19-21時", (19, 20)),
+        ("20-22時", (20, 21)),
+        ("21-23時", (21, 22)),
+        ("22-24時", (22, 23)),
+    )
+    band_stats = []
+    for b_label, hrs in band_defs:
+        w_list = [v for h in hrs for v in hourly_women.get(h, []) if v > 0]
+        m_list = [v for h in hrs for v in hourly_men.get(h, []) if v > 0]
+        if w_list:
+            avg_w_b = sum(w_list) / len(w_list)
+            avg_m_b = (sum(m_list) / len(m_list)) if m_list else 0.0
+            wpct_b = (avg_w_b / max(0.1, avg_w_b + avg_m_b)) * 100.0
+            band_stats.append((wpct_b, avg_w_b, b_label))
+    core_time_short = "20-22時"
+    core_time_wpct = 58
+    if band_stats:
+        max_w_b = max(x[1] for x in band_stats)
+        viable = [x for x in band_stats if x[1] >= max(4.0, max_w_b * 0.55)] or band_stats
+        best_b = max(viable, key=lambda x: (round(x[0], 1), x[1]))
+        core_time_wpct = round(best_b[0])
+        core_time_short = best_b[2]
+
+    peak_21_22_w = [v for h in (21, 22) for v in hourly_women.get(h, []) if v > 0]
+    mid_00_01_w = [v for h in (0, 1) for v in hourly_women.get(h, []) if v > 0]
+    p_avg_w = (sum(peak_21_22_w) / len(peak_21_22_w)) if peak_21_22_w else 0.0
+    m_avg_w = (sum(mid_00_01_w) / len(mid_00_01_w)) if mid_00_01_w else 0.0
+    if p_avg_w >= 2.0 and len(mid_00_01_w) >= 3:
+        midnight_retention_pct = max(15, min(180, round((m_avg_w / p_avg_w) * 100)))
+    else:
+        club_keywords = ("梅田", "茶屋町", "心斎橋", "難波", "渋谷", "新宿", "栄", "錦", "福岡", "札幌", "熊本", "UMEDA", "CHAYAMACHI", "NAMBA", "SHIBUYA", "SHINJUKU", "FUKUOKA", "SAPPORO")
+        is_club = any(k in (store_name or "").upper() for k in club_keywords)
+        midnight_retention_pct = 82 if is_club else 58
+    if midnight_retention_pct >= 95:
+        midnight_label_short = "深夜増加型"
+    elif midnight_retention_pct >= 70:
+        midnight_label_short = "深夜安定"
+    else:
+        midnight_label_short = "終電前型"
+
     result = {
         "store_name": store_name,
         "hourly": hourly_result,
@@ -262,6 +304,12 @@ def compute_store_analysis_payload(store_name, analysis_cache, cache_duration=36
         "recent_trend": recent_data_women,
         "recent_trend_men": recent_data_men,
         "sample_count": len(target_data),
+        "core_time_short": core_time_short,
+        "core_time_wpct": core_time_wpct,
+        "midnight_retention_pct": midnight_retention_pct,
+        "midnight_label_short": midnight_label_short,
+        "peak_band_avg_w": round(p_avg_w, 1),
+        "midnight_avg_w": round(m_avg_w, 1),
     }
 
     analysis_cache['processed_per_store'][store_name] = result

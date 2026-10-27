@@ -650,12 +650,60 @@ def _get_cached_html_or_render(cache_extra_key, render_fn, ttl_sec=55.0):
     return rendered
 
 
+def _attach_store_benchmarks(item: dict, sname: str, w: int, m: int, benchmarks: dict) -> None:
+    """Attach usual same-weekday/hour comparison and core-time / post-last-train retention fields."""
+    bm = benchmarks.get(sname) if benchmarks else None
+    is_korea = (item.get('region') == 'Korea') or ('カンナム' in sname) or ('ホンデ' in sname)
+    if bm:
+        usual_w = bm.get('usual_women')
+        usual_m = bm.get('usual_men')
+        slot_label = bm.get('usual_slot_label') or '普段同時間帯'
+        core_short = bm.get('core_time_short') or '20-22時'
+        core_wpct = bm.get('core_time_wpct') or 58
+        mid_pct = bm.get('midnight_retention_pct')
+        mid_label = bm.get('midnight_label_short')
+    else:
+        usual_w = None
+        usual_m = None
+        slot_label = '普段同時間帯'
+        core_short = '20-22時'
+        core_wpct = 58
+        club_kw = ("梅田", "茶屋町", "心斎橋", "難波", "渋谷", "新宿", "栄", "錦", "福岡", "札幌", "熊本", "UMEDA", "CHAYAMACHI", "NAMBA", "SHIBUYA", "SHINJUKU", "FUKUOKA", "SAPPORO")
+        is_club = any(k in (sname or '').upper() for k in club_kw)
+        mid_pct = 82 if is_club else 60
+        mid_label = '深夜安定' if is_club else '終電前型'
+
+    tot = w + m
+    if tot > 0 and usual_w is not None:
+        w_diff_usual = int(round(w - usual_w))
+    else:
+        w_diff_usual = None
+    if tot > 0 and usual_m is not None:
+        m_diff_usual = int(round(m - usual_m))
+    else:
+        m_diff_usual = None
+
+    item['usual_women'] = usual_w
+    item['usual_men'] = usual_m
+    item['usual_w_diff'] = w_diff_usual
+    item['usual_m_diff'] = m_diff_usual
+    item['usual_slot_label'] = slot_label
+    item['core_time_short'] = None if is_korea else core_short
+    item['core_time_wpct'] = None if is_korea else core_wpct
+    item['midnight_retention_pct'] = None if is_korea else mid_pct
+    item['midnight_label_short'] = None if is_korea else mid_label
+
+
 def _enrich_for_ssr(stores):
     """Attach display fields (brand_code, brand_cls, display_title, area_label, ladies_pct, men_pct, event badge)
     for instant server-side HTML card rendering."""
     import store_master
     import store_hours
     master = store_master.load()
+    try:
+        benchmarks = local_db.get_all_stores_live_benchmarks()
+    except Exception:
+        benchmarks = {}
     preloaded_evs, _ = _get_cached_events_nonblocking()
     ev_mod = None
     if preloaded_evs:
@@ -704,6 +752,7 @@ def _enrich_for_ssr(stores):
         item['ssr_men_pct'] = m_pct
         item['is_open_now'] = h_info['is_open_now']
         item['today_hours_label'] = h_info['today_hours_label']
+        _attach_store_benchmarks(item, sname, w, m, benchmarks)
         ev_badge = ''
         ev_title = ''
         if ev_mod is not None and sname:
@@ -1397,6 +1446,7 @@ def serve_sw():
 def get_status():
     restore_latest_data_if_empty()
     trigger_background_fetch_if_needed()
+    now_hr = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).strftime('%Y%m%d%H')
     with data_lock:
         full_d = latest_data.get('full_data')
         if not full_d:
@@ -1408,15 +1458,29 @@ def get_status():
         last_u = latest_data.get('last_updated')
         is_s = bool(latest_data.get('is_seed'))
         raw_copy = list(full_d)
-        c_key = _live_data_signature(raw_copy, last_u, is_s)
+        c_key = (_live_data_signature(raw_copy, last_u, is_s), now_hr)
 
     with _status_json_cache_lock:
         if _status_json_cache['key'] == c_key and _status_json_cache['raw'] is not None:
             return _build_precompressed_response(_status_json_cache['raw'], _status_json_cache['gzip'], 'application/json')
 
+    try:
+        benchmarks = local_db.get_all_stores_live_benchmarks()
+    except Exception:
+        benchmarks = {}
+
+    enriched_ranking = []
+    for s in raw_copy:
+        item = dict(s)
+        sname = item.get('name', '')
+        w = int(item.get('women') or 0)
+        m = int(item.get('men') or 0)
+        _attach_store_benchmarks(item, sname, w, m, benchmarks)
+        enriched_ranking.append(item)
+
     raw_bytes = json.dumps({
         'timestamp': last_u,
-        'ranking': raw_copy,
+        'ranking': enriched_ranking,
         'status': 'success',
         'is_seed': is_s,
     }, ensure_ascii=False).encode('utf-8')
@@ -1829,6 +1893,10 @@ def store_detail_page(store_slug):
             'hours_label': hours_info['hours_label'],
             'hours_spec': hours_info['schedule_spec'],
         }
+        try:
+            _attach_store_benchmarks(store_obj, sname, women, men, local_db.get_all_stores_live_benchmarks())
+        except Exception:
+            _attach_store_benchmarks(store_obj, sname, women, men, {})
 
         nearby_comparison = None
         try:

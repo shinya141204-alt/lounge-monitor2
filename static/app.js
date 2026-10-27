@@ -1289,6 +1289,17 @@
                 }
             }
 
+            const microEl = node.querySelector('.store-micro-metrics');
+            if (microEl) {
+                if (store.core_time_short && store.midnight_retention_pct) {
+                    microEl.classList.remove('hidden');
+                    microEl.innerHTML = `狙い目 ${store.core_time_short} <span class="micro-sep">｜</span> 終電後 ${store.midnight_retention_pct}%（${store.midnight_label_short || '深夜安定'}）`;
+                } else {
+                    microEl.classList.add('hidden');
+                    microEl.textContent = '';
+                }
+            }
+
             const ladiesCount = store.women || 0;
             const menCount = store.men || 0;
             const totalCount = ladiesCount + menCount;
@@ -1319,6 +1330,36 @@
                 }
             }
 
+            const slotLabel = store.usual_slot_label || '普段同時間帯';
+            const ladiesUsualEl = node.querySelector('.stat.ladies .stat-usual');
+            if (ladiesUsualEl) {
+                const uWDiff = store.usual_w_diff;
+                if (uWDiff !== null && uWDiff !== undefined && totalCount > 0) {
+                    ladiesUsualEl.classList.remove('hidden', 'is-up', 'is-down');
+                    if (uWDiff > 0) ladiesUsualEl.classList.add('is-up');
+                    else if (uWDiff < 0) ladiesUsualEl.classList.add('is-down');
+                    ladiesUsualEl.textContent = uWDiff > 0 ? `平比+${uWDiff}` : (uWDiff < 0 ? `平比${uWDiff}` : '平比±0');
+                    ladiesUsualEl.title = `普段の${slotLabel}平均(${store.usual_women}名)との差`;
+                } else {
+                    ladiesUsualEl.classList.add('hidden');
+                    ladiesUsualEl.textContent = '';
+                }
+            }
+            const menUsualEl = node.querySelector('.stat.men .stat-usual');
+            if (menUsualEl) {
+                const uMDiff = store.usual_m_diff;
+                if (uMDiff !== null && uMDiff !== undefined && totalCount > 0) {
+                    menUsualEl.classList.remove('hidden', 'is-up', 'is-down');
+                    if (uMDiff > 0) menUsualEl.classList.add('is-up');
+                    else if (uMDiff < 0) menUsualEl.classList.add('is-down');
+                    menUsualEl.textContent = uMDiff > 0 ? `平比+${uMDiff}` : (uMDiff < 0 ? `平比${uMDiff}` : '平比±0');
+                    menUsualEl.title = `普段の${slotLabel}平均(${store.usual_men}名)との差`;
+                } else {
+                    menUsualEl.classList.add('hidden');
+                    menUsualEl.textContent = '';
+                }
+            }
+
             // Gender ratio bar calculation
             const ladiesBar = node.querySelector('.bar-fill-ladies');
             const menBar = node.querySelector('.bar-fill-men');
@@ -1339,7 +1380,7 @@
             const stores = (data && data.ranking) || [];
             const storeSig = stores.map(s => {
                 const v = s.votes || {};
-                return `${s.name}:${s.women}:${s.men}:${s.women_diff || 0}:${s.men_diff || 0}:${v.smooth || 0}:${v.waiting || 0}`;
+                return `${s.name}:${s.women}:${s.men}:${s.women_diff || 0}:${s.men_diff || 0}:${s.usual_w_diff ?? ''}:${s.usual_m_diff ?? ''}:${v.smooth || 0}:${v.waiting || 0}`;
             }).join('|');
             const locSig = userLocation ? `${userLocation.lat.toFixed(3)},${userLocation.lng.toFixed(3)}` : '';
             const nearbyMasterSig = (currentSort === 'nearby' && window.STORE_MASTER) ? Object.keys(window.STORE_MASTER).length : 0;
@@ -2856,7 +2897,8 @@
                 momentumBadge = `<span class="diff-badge hot">直近15分: ↗ ${parts.join(' / ')}</span>`;
             }
 
-            let diffBadge = '';
+            let diffBadgeW = '';
+            let diffBadgeM = '';
             if (data && (data.hourly_by_weekday || data.hourly)) {
                 // Compute current JST business day and hour
                 const currentHour = getJstHour();
@@ -2866,30 +2908,53 @@
                 const dayKey = dayKeys[jsDay];
                 const dayLabel = dayLabels[jsDay];
 
-                const avgW = (data.hourly_by_weekday && data.hourly_by_weekday[dayKey] && data.hourly_by_weekday[dayKey][currentHour] !== undefined)
+                let avgW = (data.hourly_by_weekday && data.hourly_by_weekday[dayKey] && data.hourly_by_weekday[dayKey][currentHour] !== undefined)
                     ? data.hourly_by_weekday[dayKey][currentHour]
                     : (data.hourly ? (data.hourly[currentHour] || 0) : 0);
+                let avgM = (data.hourly_men_by_weekday && data.hourly_men_by_weekday[dayKey] && data.hourly_men_by_weekday[dayKey][currentHour] !== undefined)
+                    ? data.hourly_men_by_weekday[dayKey][currentHour]
+                    : (data.hourly_men ? (data.hourly_men[currentHour] || 0) : 0);
+                let slotLabel = `${dayLabel}${currentHour}時台`;
+
+                if (avgW === 0 && avgM === 0 && (liveStore.usual_women || liveStore.usual_men)) {
+                    avgW = Number(liveStore.usual_women || 0);
+                    avgM = Number(liveStore.usual_men || 0);
+                    slotLabel = liveStore.usual_slot_label || `${dayLabel}平均`;
+                }
 
                 const diffW = +(liveStore.women - avgW).toFixed(1);
                 if (avgW > 0 || liveStore.women > 0) {
-                    if (diffW >= 5) {
-                        diffBadge = `<span class="diff-badge hot">普段の${dayLabel}${currentHour}時台平均(${avgW}人)より +${diffW}人 ↗</span>`;
-                    } else if (diffW > 0) {
-                        diffBadge = `<span class="diff-badge up">普段の${dayLabel}${currentHour}時台平均(${avgW}人)より +${diffW}人 ↗</span>`;
-                    } else if (diffW < 0) {
-                        diffBadge = `<span class="diff-badge down">普段の${dayLabel}${currentHour}時台平均(${avgW}人)より ${diffW}人</span>`;
-                    } else {
-                        diffBadge = `<span class="diff-badge neutral">普段の${dayLabel}${currentHour}時台平均(${avgW}人)並み</span>`;
-                    }
+                    const clsW = diffW >= 5 ? 'hot' : (diffW > 0 ? 'up' : (diffW < 0 ? 'down' : 'neutral'));
+                    const signW = diffW > 0 ? `+${diffW}名 ↗` : (diffW < 0 ? `${diffW}名` : '並み');
+                    diffBadgeW = `<span class="diff-badge ${clsW}">女性: 普段の${slotLabel}(${avgW}名)比 ${signW}</span>`;
                 }
+
+                const diffM = +(liveStore.men - avgM).toFixed(1);
+                if (avgM > 0 || liveStore.men > 0) {
+                    const clsM = diffM > 0 ? 'neutral' : (diffM < 0 ? 'down' : 'neutral');
+                    const signM = diffM > 0 ? `+${diffM}名` : (diffM < 0 ? `${diffM}名` : '並み');
+                    diffBadgeM = `<span class="diff-badge ${clsM}">男性: 普段の${slotLabel}(${avgM}名)比 ${signM}</span>`;
+                }
+            }
+
+            const coreShort = (data && data.core_time_short) || liveStore.core_time_short;
+            const coreWpct = (data && data.core_time_wpct) || liveStore.core_time_wpct;
+            const midPct = (data && data.midnight_retention_pct) || liveStore.midnight_retention_pct;
+            const midLabel = (data && data.midnight_label_short) || liveStore.midnight_label_short || '深夜安定';
+            let metricsRow = '';
+            if (coreShort && midPct) {
+                const wpctPart = coreWpct ? `（平均女性比${coreWpct}%）` : '';
+                metricsRow = `<div class="live-banner-metrics"><span>狙い目コアタイム: <strong>${coreShort}</strong>${wpctPart}</span><span class="micro-sep">｜</span><span>終電後残りやすさ: <strong>${midPct}%（${midLabel}）</strong></span></div>`;
             }
 
             banner.innerHTML = `
                 <div class="live-banner-counts">
                     <span>現在: <strong class="ladies-text">女性 ${liveStore.women}名</strong> / <strong class="men-text">男性 ${liveStore.men}名</strong></span>
                     ${momentumBadge}
-                    ${diffBadge}
+                    ${diffBadgeW}
+                    ${diffBadgeM}
                 </div>
+                ${metricsRow}
             `;
             banner.classList.remove('hidden');
         }

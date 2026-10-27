@@ -351,7 +351,7 @@
             color: var(--accent-text);
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=12">
+    <link rel="stylesheet" href="/static/calm.css?v=13">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -398,15 +398,15 @@
             <div class="big-counts-grid">
                 <div class="count-box">
                     <div class="count-label">現在の女性人数</div>
-                    <div class="count-num w-color" id="hero-women-num">{% if store.total > 0 %}{{ store.women }}<span style="font-size:0.95rem;">名</span>{% if (store.women_diff or 0) > 0 %}<div style="font-size:0.75rem; color: var(--women); margin-top:2px; font-weight:600;">直近15分 ↗ +{{ store.women_diff }}名</div>{% endif %}{% elif store.is_open_now %}0<span style="font-size:0.95rem;">名</span><div style="font-size:0.73rem; color: var(--accent-text); margin-top:2px; font-weight:600;">営業中（0 : 0）</div>{% else %}--<span style="font-size:0.82rem; color: var(--text-sub); font-weight:500;">（時間外）</span>{% endif %}</div>
+                    <div class="count-num w-color" id="hero-women-num">{% if store.total > 0 %}{{ store.women }}<span style="font-size:0.95rem;">名</span>{% if (store.women_diff or 0) > 0 %}<div style="font-size:0.75rem; color: var(--women); margin-top:2px; font-weight:600;">直近15分 ↗ +{{ store.women_diff }}名</div>{% endif %}{% if store.usual_w_diff is not none %}<div style="font-size:0.71rem; color: var(--text-sub); margin-top:2px; font-weight:600;">普段の{{ store.usual_slot_label }}比 {% if store.usual_w_diff > 0 %}+{{ store.usual_w_diff }}名{% elif store.usual_w_diff < 0 %}{{ store.usual_w_diff }}名{% else %}±0名{% endif %}（平均{{ store.usual_women }}名）</div>{% endif %}{% elif store.is_open_now %}0<span style="font-size:0.95rem;">名</span><div style="font-size:0.73rem; color: var(--accent-text); margin-top:2px; font-weight:600;">営業中（0 : 0）</div>{% else %}--<span style="font-size:0.82rem; color: var(--text-sub); font-weight:500;">（時間外）</span>{% endif %}</div>
                 </div>
                 <div class="count-box">
                     <div class="count-label">現在の男性人数</div>
-                    <div class="count-num m-color" id="hero-men-num">{% if store.total > 0 %}{{ store.men }}<span style="font-size:0.95rem;">名</span>{% if (store.men_diff or 0) > 0 %}<div style="font-size:0.75rem; color: var(--men); margin-top:2px; font-weight:600;">直近15分 ↗ +{{ store.men_diff }}名</div>{% endif %}{% elif store.is_open_now %}0<span style="font-size:0.95rem;">名</span><div style="font-size:0.73rem; color: var(--text-sub); margin-top:2px; font-weight:500;">本日 {{ store.today_hours_label }}</div>{% else %}--<span style="font-size:0.82rem; color: var(--text-sub); font-weight:500;">（時間外）</span>{% endif %}</div>
+                    <div class="count-num m-color" id="hero-men-num">{% if store.total > 0 %}{{ store.men }}<span style="font-size:0.95rem;">名</span>{% if (store.men_diff or 0) > 0 %}<div style="font-size:0.75rem; color: var(--men); margin-top:2px; font-weight:600;">直近15分 ↗ +{{ store.men_diff }}名</div>{% endif %}{% if store.usual_m_diff is not none %}<div style="font-size:0.71rem; color: var(--text-sub); margin-top:2px; font-weight:600;">普段の{{ store.usual_slot_label }}比 {% if store.usual_m_diff > 0 %}+{{ store.usual_m_diff }}名{% elif store.usual_m_diff < 0 %}{{ store.usual_m_diff }}名{% else %}±0名{% endif %}（平均{{ store.usual_men }}名）</div>{% endif %}{% elif store.is_open_now %}0<span style="font-size:0.95rem;">名</span><div style="font-size:0.73rem; color: var(--text-sub); margin-top:2px; font-weight:500;">本日 {{ store.today_hours_label }}</div>{% else %}--<span style="font-size:0.82rem; color: var(--text-sub); font-weight:500;">（時間外）</span>{% endif %}</div>
                 </div>
                 <div class="count-box">
                     <div class="count-label">女性比率</div>
-                    <div class="count-num r-color" id="hero-wpct-num">{% if store.total > 0 %}{{ store.wpct }}<span style="font-size:0.95rem;">%</span>{% else %}--<span style="font-size:0.95rem;">%</span>{% endif %}</div>
+                    <div class="count-num r-color" id="hero-wpct-num">{% if store.total > 0 %}{{ store.wpct }}<span style="font-size:0.95rem;">%</span>{% else %}--<span style="font-size:0.95rem;">%</span>{% endif %}{% if store.core_time_short and store.midnight_retention_pct %}<div style="font-size:0.71rem; color: var(--text-sub); margin-top:2px; font-weight:600;">狙い目 {{ store.core_time_short }} ｜ 終電後 {{ store.midnight_retention_pct }}%</div>{% endif %}</div>
                 </div>
             </div>
 
@@ -481,13 +481,14 @@
                     <div style="font-size: 0.79rem; color: var(--text-sub);">コアタイム平均女性比：<strong style="color: var(--accent-text);">{{ store_analytics.best_wd_pct }}%</strong></div>
                 </div>
                 <div class="stat-subcard">
-                    <div style="font-size: 0.74rem; color: var(--accent-text); font-weight: 700;">終電後・深夜帯（24時以降）の傾向</div>
-                    {% if store_analytics.strong_midnight %}
-                    <div style="font-size: 0.94rem; font-weight: 700; color: var(--text-main); margin: 4px 0;">深夜「第2波」が発生しやすい傾向</div>
+                    <div style="font-size: 0.74rem; color: var(--accent-text); font-weight: 700;">終電後の残りやすさ指標（深夜維持率）</div>
+                    <div style="font-size: 0.96rem; font-weight: 700; color: var(--text-main); margin: 4px 0;">終電後維持率 <strong style="color: var(--accent-text);">{{ store_analytics.midnight_retention_pct or 75 }}%</strong>（{{ store_analytics.midnight_label_short or '深夜安定' }}）</div>
+                    {% if store_analytics.peak_band_avg_w and store_analytics.midnight_avg_w %}
+                    <div style="font-size: 0.78rem; color: var(--text-sub);">21〜22時平均 <strong style="color: var(--women);">{{ store_analytics.peak_band_avg_w }}名</strong> → 深夜0〜1時平均 <strong style="color: var(--women);">{{ store_analytics.midnight_avg_w }}名</strong>（{% if (store_analytics.midnight_retention_pct or 0) >= 95 %}深夜第2波あり{% elif (store_analytics.midnight_retention_pct or 0) >= 70 %}終電後も安定{% else %}1回転目中心{% endif %}）</div>
+                    {% elif store_analytics.strong_midnight %}
                     <div style="font-size: 0.78rem; color: var(--text-sub);">周辺のバー・クラブからの回遊が多く、0時過ぎから再び女性が増えやすい店舗です（<a href="/guide/club-area-midnight" style="color: var(--accent-text);">詳細解説 ›</a>）</div>
                     {% else %}
-                    <div style="font-size: 0.94rem; font-weight: 700; color: var(--text-main); margin: 4px 0;">20:00〜22:30の1回転目が中心</div>
-                    <div style="font-size: 0.78rem; color: var(--text-sub);">終電前にピークを迎えるため、20時〜21時台の早めの入店が最もスムーズです。</div>
+                    <div style="font-size: 0.78rem; color: var(--text-sub);">終電前にピークを迎えるため、{{ store_analytics.core_time_short or '20-22時' }}の入店が最もスムーズです。</div>
                     {% endif %}
                 </div>
             </div>
@@ -940,10 +941,16 @@
                             else badgeEl.textContent = '男性先行・近隣店舗との比較推奨';
                         }
 
+                        const slotLabel = live.usual_slot_label || '普段同時間帯';
+                        const uWDiff = live.usual_w_diff;
+                        const uMDiff = live.usual_m_diff;
                         const wEl = document.getElementById('hero-women-num');
                         if (wEl) {
                             if (tot > 0) {
-                                wEl.innerHTML = w + '<span style="font-size:0.95rem;">名</span>' + (wDiff > 0 ? '<div style="font-size:0.75rem; color: var(--women); margin-top:2px; font-weight:600;">直近15分 ↗ +' + wDiff + '名</div>' : '');
+                                const diff15Html = wDiff > 0 ? '<div style="font-size:0.75rem; color: var(--women); margin-top:2px; font-weight:600;">直近15分 ↗ +' + wDiff + '名</div>' : '';
+                                const uSignW = uWDiff > 0 ? ('+' + uWDiff + '名') : (uWDiff < 0 ? (uWDiff + '名') : '±0名');
+                                const usualWHtml = (uWDiff !== null && uWDiff !== undefined) ? ('<div style="font-size:0.71rem; color: var(--text-sub); margin-top:2px; font-weight:600;">普段の' + slotLabel + '比 ' + uSignW + '（平均' + live.usual_women + '名）</div>') : '';
+                                wEl.innerHTML = w + '<span style="font-size:0.95rem;">名</span>' + diff15Html + usualWHtml;
                             } else if (heroHours.isOpenNow) {
                                 wEl.innerHTML = '0<span style="font-size:0.95rem;">名</span><div style="font-size:0.73rem; color: var(--accent-text); margin-top:2px; font-weight:600;">営業中（0 : 0）</div>';
                             } else {
@@ -953,7 +960,10 @@
                         const mEl = document.getElementById('hero-men-num');
                         if (mEl) {
                             if (tot > 0) {
-                                mEl.innerHTML = m + '<span style="font-size:0.95rem;">名</span>' + (mDiff > 0 ? '<div style="font-size:0.75rem; color: var(--men); margin-top:2px; font-weight:600;">直近15分 ↗ +' + mDiff + '名</div>' : '');
+                                const diff15MHtml = mDiff > 0 ? '<div style="font-size:0.75rem; color: var(--men); margin-top:2px; font-weight:600;">直近15分 ↗ +' + mDiff + '名</div>' : '';
+                                const uSignM = uMDiff > 0 ? ('+' + uMDiff + '名') : (uMDiff < 0 ? (uMDiff + '名') : '±0名');
+                                const usualMHtml = (uMDiff !== null && uMDiff !== undefined) ? ('<div style="font-size:0.71rem; color: var(--text-sub); margin-top:2px; font-weight:600;">普段の' + slotLabel + '比 ' + uSignM + '（平均' + live.usual_men + '名）</div>') : '';
+                                mEl.innerHTML = m + '<span style="font-size:0.95rem;">名</span>' + diff15MHtml + usualMHtml;
                             } else if (heroHours.isOpenNow) {
                                 mEl.innerHTML = '0<span style="font-size:0.95rem;">名</span><div style="font-size:0.73rem; color: var(--text-sub); margin-top:2px; font-weight:500;">本日 ' + heroHours.todayHoursLabel + '</div>';
                             } else {
@@ -962,7 +972,8 @@
                         }
                         const rEl = document.getElementById('hero-wpct-num');
                         if (rEl) {
-                            rEl.innerHTML = (tot > 0 ? wpct : '--') + '<span style="font-size:0.95rem;">%</span>';
+                            const coreSub = (live.core_time_short && live.midnight_retention_pct) ? ('<div style="font-size:0.71rem; color: var(--text-sub); margin-top:2px; font-weight:600;">狙い目 ' + live.core_time_short + ' ｜ 終電後 ' + live.midnight_retention_pct + '%</div>') : '';
+                            rEl.innerHTML = (tot > 0 ? wpct : '--') + '<span style="font-size:0.95rem;">%</span>' + coreSub;
                         }
                         const fillEl = document.getElementById('hero-ratio-fill');
                         if (fillEl) fillEl.style.width = (tot > 0 ? wpct : 50) + '%';

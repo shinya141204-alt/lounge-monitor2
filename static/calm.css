@@ -1484,6 +1484,102 @@ body.staff-mode .header-top-row .header-controls {
     }
 }
 
+/* ---------- 14. 普段比バッジ（男女とも）＆ 狙い目コアタイム・終電後残りやすさ指標 ---------- */
+.store-micro-metrics {
+    font-size: 0.62rem;
+    font-weight: 500;
+    line-height: 1.25;
+    color: var(--calm-sub);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    letter-spacing: 0.01em;
+}
+
+.store-micro-metrics.hidden,
+.store-micro-metrics:empty {
+    display: none !important;
+}
+
+.store-micro-metrics .micro-sep {
+    opacity: 0.45;
+    margin: 0 2px;
+}
+
+body.theme-light .store-micro-metrics {
+    color: var(--calm-light-sub);
+}
+
+.stat-usual {
+    font-size: 0.56rem;
+    font-weight: 600;
+    line-height: 1.15;
+    margin-top: 1px;
+    white-space: nowrap;
+    letter-spacing: -0.2px;
+    color: var(--calm-sub);
+}
+
+.stat-usual.hidden,
+.stat-usual:empty {
+    display: none !important;
+}
+
+.stat.ladies .stat-usual.is-up {
+    color: var(--calm-ladies);
+}
+
+.stat.men .stat-usual.is-up {
+    color: var(--calm-men);
+}
+
+body.theme-light .stat-usual {
+    color: var(--calm-light-sub);
+}
+
+body.theme-light .stat.ladies .stat-usual.is-up {
+    color: var(--calm-light-ladies);
+}
+
+body.theme-light .stat.men .stat-usual.is-up {
+    color: var(--calm-light-men);
+}
+
+/* 1行スリム一覧モード（theme-list）では高さを40pxに保つためマイクロ指標を非表示 */
+body.theme-list .store-micro-metrics,
+body.theme-list .stat-usual {
+    display: none !important;
+}
+
+/* 詳細モーダル内の狙い目コアタイム＆終電後維持率バー */
+.live-banner-metrics {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-top: 7px;
+    padding-top: 6px;
+    border-top: 1px solid var(--calm-border);
+    font-size: 0.75rem;
+    color: var(--calm-sub);
+}
+
+.live-banner-metrics strong {
+    color: var(--calm-accent);
+    font-weight: 700;
+}
+
+body.theme-light .live-banner-metrics {
+    border-top-color: var(--calm-light-border);
+    color: var(--calm-light-sub);
+}
+
+body.theme-light .live-banner-metrics strong {
+    color: var(--calm-light-accent);
+}
+
+
 
 
 

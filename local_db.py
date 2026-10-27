@@ -16,6 +16,8 @@ _partial_recent_only = False
 _sync_complete_callbacks = []
 _store_7d_cache = {}
 _STORE_7D_TTL = 180.0
+_live_benchmarks_cache = {}
+_LIVE_BENCHMARKS_TTL = 600.0
 
 
 def clear_store_7d_cache(store_name: str = None):
@@ -23,6 +25,7 @@ def clear_store_7d_cache(store_name: str = None):
         _store_7d_cache.pop((DB_PATH, store_name), None)
     else:
         _store_7d_cache.clear()
+    _live_benchmarks_cache.clear()
 
 
 def is_full_sync_completed() -> bool:
@@ -843,6 +846,19 @@ def get_store_7day_analytics(store_name: str) -> dict:
     avg_peak_w = (sum(peak_band_women) / len(peak_band_women)) if peak_band_women else 0
     strong_midnight = is_club_area or (avg_peak_w > 0 and avg_mid_w >= avg_peak_w * 0.55)
 
+    # Pull 30-day benchmark metrics (core time, midnight retention %, usual women/men)
+    benchmarks = get_all_stores_live_benchmarks().get(store_name, {})
+    midnight_retention_pct = benchmarks.get("midnight_retention_pct")
+    if midnight_retention_pct is None:
+        if avg_peak_w >= 2.0 and avg_mid_w > 0:
+            midnight_retention_pct = max(15, min(180, round((avg_mid_w / avg_peak_w) * 100)))
+        else:
+            midnight_retention_pct = 82 if is_club_area else 58
+    midnight_label_short = benchmarks.get("midnight_label_short") or (
+        "深夜増加型" if midnight_retention_pct >= 95 else ("深夜安定" if midnight_retention_pct >= 70 else "終電前型")
+    )
+    core_time_short = benchmarks.get("core_time_short") or "20-22時"
+
     max_7d_w = max((d["peak_women"] for d in daily_logs), default=0)
     votes_24h = get_recent_votes(store_name=store_name, hours=24)
 
@@ -857,7 +873,242 @@ def get_store_7day_analytics(store_name: str) -> dict:
         "best_wd_pct": best_wd_pct,
         "is_club_area": is_club_area,
         "strong_midnight": strong_midnight,
+        "midnight_retention_pct": midnight_retention_pct,
+        "midnight_label_short": midnight_label_short,
+        "peak_band_avg_w": benchmarks.get("peak_band_avg_w") or round(avg_peak_w, 1),
+        "midnight_avg_w": benchmarks.get("midnight_avg_w") or round(avg_mid_w, 1),
+        "core_time_short": core_time_short,
+        "usual_women": benchmarks.get("usual_women"),
+        "usual_men": benchmarks.get("usual_men"),
+        "usual_slot_label": benchmarks.get("usual_slot_label"),
         "votes_24h": votes_24h,
     }
     _store_7d_cache[cache_key] = (time.monotonic(), result)
     return result
+
+
+def get_all_stores_live_benchmarks(now_jst: datetime.datetime = None) -> dict:
+    """
+    Computes per-store live benchmarks from the last 30 days of SQLite monitor_logs in a single grouped query:
+      - usual_women / usual_men: average women & men for the current business weekday & hour
+      - usual_slot_label: e.g. '火曜21時台' (or '火曜ピーク帯' during daytime fallback)
+      - core_time_short: e.g. '20-22時' (best 2-hour window balancing female ratio & volume)
+      - core_time_wpct: average female ratio (%) during core_time_short
+      - midnight_retention_pct: ratio (%) of 00:00-01:59 avg women vs 21:00-22:59 avg women
+      - midnight_label_short: '深夜増加型' (>=95%), '深夜安定' (70-94%), or '終電前型' (<70%)
+    Memoized in memory for 10 minutes per (DB_PATH, biz_wd, cur_hour).
+    """
+    if now_jst is None:
+        now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
+    cur_h = now_jst.hour
+    biz_date = (now_jst.date() - datetime.timedelta(days=1)) if cur_h <= 6 else now_jst.date()
+    cur_wd = biz_date.weekday()
+
+    cache_key = (DB_PATH, cur_wd, cur_h)
+    now_mono = time.monotonic()
+    cached = _live_benchmarks_cache.get(cache_key)
+    if cached is not None and (now_mono - cached[0] < _LIVE_BENCHMARKS_TTL):
+        return cached[1]
+
+    from collections import defaultdict
+    weekdays_ja = ["月", "火", "水", "木", "金", "土", "日"]
+    wd_ja = weekdays_ja[cur_wd]
+    cutoff_str = (now_jst - datetime.timedelta(days=30)).strftime("%Y-%m-%d %H:%M:%S")
+
+    # Store-level accumulators
+    # by_wd_hour[store][(wd, h)] = [sum_w, sum_m, cnt]
+    by_wd_hour = defaultdict(lambda: defaultdict(lambda: [0.0, 0.0, 0]))
+    by_hour = defaultdict(lambda: defaultdict(lambda: [0.0, 0.0, 0]))
+    by_wd_peak = defaultdict(lambda: defaultdict(lambda: [0.0, 0.0, 0]))
+    peak_21_22 = defaultdict(lambda: [0.0, 0])
+    mid_00_01 = defaultdict(lambda: [0.0, 0])
+    band_stats = defaultdict(lambda: defaultdict(lambda: [0.0, 0.0, 0]))
+    stores_seen = set()
+    _date_memo = {}
+
+    if os.path.exists(DB_PATH):
+        conn = get_connection()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                """
+                SELECT
+                    store_name,
+                    substr(timestamp, 1, 10) AS d_str,
+                    CAST(substr(timestamp, 12, 2) AS INTEGER) AS h,
+                    SUM(women) AS sum_w,
+                    SUM(men) AS sum_m,
+                    COUNT(*) AS cnt
+                FROM monitor_logs
+                WHERE timestamp >= ? AND (women > 0 OR men > 0)
+                GROUP BY store_name, d_str, h
+                """,
+                (cutoff_str,),
+            )
+            grouped_rows = cur.fetchall()
+        except Exception as e:
+            print(f"[local_db] get_all_stores_live_benchmarks error: {e}", file=sys.stderr)
+            grouped_rows = []
+        finally:
+            conn.close()
+    else:
+        grouped_rows = []
+
+    for r in grouped_rows:
+        sname = r["store_name"]
+        d_str = r["d_str"]
+        h = r["h"]
+        sum_w = float(r["sum_w"] or 0.0)
+        sum_m = float(r["sum_m"] or 0.0)
+        cnt = int(r["cnt"] or 0)
+        if not sname or not d_str or len(d_str) < 10 or cnt <= 0:
+            continue
+
+        d_info = _date_memo.get(d_str)
+        if d_info is None:
+            try:
+                d_obj = datetime.date(int(d_str[0:4]), int(d_str[5:7]), int(d_str[8:10]))
+                p_obj = d_obj - datetime.timedelta(days=1)
+                d_info = (d_obj.weekday(), p_obj.weekday())
+                _date_memo[d_str] = d_info
+            except Exception:
+                continue
+
+        biz_wd = d_info[1] if h <= 6 else d_info[0]
+        stores_seen.add(sname)
+
+        b_wh = by_wd_hour[sname][(biz_wd, h)]
+        b_wh[0] += sum_w
+        b_wh[1] += sum_m
+        b_wh[2] += cnt
+
+        b_h = by_hour[sname][h]
+        b_h[0] += sum_w
+        b_h[1] += sum_m
+        b_h[2] += cnt
+
+        if 20 <= h <= 23:
+            b_wp = by_wd_peak[sname][biz_wd]
+            b_wp[0] += sum_w
+            b_wp[1] += sum_m
+            b_wp[2] += cnt
+
+        if h in (21, 22):
+            p21 = peak_21_22[sname]
+            p21[0] += sum_w
+            p21[1] += cnt
+        elif h in (0, 1):
+            m01 = mid_00_01[sname]
+            m01[0] += sum_w
+            m01[1] += cnt
+
+        # 2-hour core bands during evening/night
+        if h in (19, 20):
+            bs = band_stats[sname]["19-21時"]
+            bs[0] += sum_w
+            bs[1] += sum_m
+            bs[2] += cnt
+        if h in (20, 21):
+            bs = band_stats[sname]["20-22時"]
+            bs[0] += sum_w
+            bs[1] += sum_m
+            bs[2] += cnt
+        if h in (21, 22):
+            bs = band_stats[sname]["21-23時"]
+            bs[0] += sum_w
+            bs[1] += sum_m
+            bs[2] += cnt
+        if h in (22, 23):
+            bs = band_stats[sname]["22-24時"]
+            bs[0] += sum_w
+            bs[1] += sum_m
+            bs[2] += cnt
+
+    club_keywords = ("梅田", "茶屋町", "心斎橋", "難波", "渋谷", "新宿", "栄", "錦", "福岡", "札幌", "熊本", "UMEDA", "CHAYAMACHI", "NAMBA", "SHIBUYA", "SHINJUKU", "FUKUOKA", "SAPPORO")
+    is_active_hour = (18 <= cur_h <= 23) or (0 <= cur_h <= 5)
+
+    out = {}
+    for sname in stores_seen:
+        # 1. Usual women & men for (cur_wd, cur_h)
+        wh_stat = by_wd_hour[sname].get((cur_wd, cur_h))
+        slot_label = f"{wd_ja}曜{cur_h}時台"
+        is_fallback_peak = False
+        if not wh_stat or wh_stat[2] < 2:
+            h_stat = by_hour[sname].get(cur_h)
+            if h_stat and h_stat[2] >= 2:
+                wh_stat = h_stat
+                slot_label = f"普段の{cur_h}時台"
+            elif not is_active_hour:
+                # Daytime fallback: use this weekday's 20-23h peak average so non-zero test/preview snapshots still work
+                wp_stat = by_wd_peak[sname].get(cur_wd)
+                if wp_stat and wp_stat[2] >= 2:
+                    wh_stat = wp_stat
+                    slot_label = f"{wd_ja}曜夜平均"
+                    is_fallback_peak = True
+
+        if wh_stat and wh_stat[2] > 0:
+            usual_w = round(wh_stat[0] / wh_stat[2], 1)
+            usual_m = round(wh_stat[1] / wh_stat[2], 1)
+        else:
+            usual_w = None
+            usual_m = None
+
+        # 2. Core time band (best female ratio among bands with solid attendance)
+        b_map = band_stats[sname]
+        core_short = "20-22時"
+        core_wpct = 58
+        if b_map:
+            max_band_w = max((v[0] / v[2] for v in b_map.values() if v[2] > 0), default=0.0)
+            candidates = []
+            for b_label, (sw, sm, sc) in b_map.items():
+                if sc <= 0 or (sw + sm) <= 0:
+                    continue
+                avg_w_band = sw / sc
+                wpct_band = (sw / (sw + sm)) * 100.0
+                # Prefer bands that have at least 55% of the store's peak female volume (or >= 8 women)
+                if avg_w_band >= max(4.0, max_band_w * 0.55):
+                    candidates.append((wpct_band, avg_w_band, b_label))
+            if not candidates:
+                for b_label, (sw, sm, sc) in b_map.items():
+                    if sc > 0 and (sw + sm) > 0:
+                        candidates.append(((sw / (sw + sm)) * 100.0, sw / sc, b_label))
+            if candidates:
+                best_cand = max(candidates, key=lambda x: (round(x[0], 1), x[1]))
+                core_wpct = round(best_cand[0])
+                core_short = best_cand[2]
+
+        # 3. Midnight retention % (00:00-01:59 avg women vs 21:00-22:59 avg women)
+        p_sum_w, p_cnt = peak_21_22[sname]
+        m_sum_w, m_cnt = mid_00_01[sname]
+        p_avg_w = (p_sum_w / p_cnt) if p_cnt >= 3 else 0.0
+        m_avg_w = (m_sum_w / m_cnt) if m_cnt >= 3 else 0.0
+        is_club = any(k in sname.upper() for k in club_keywords)
+
+        if p_avg_w >= 2.0 and m_cnt >= 3:
+            ret_pct = max(15, min(180, round((m_avg_w / p_avg_w) * 100)))
+        else:
+            ret_pct = 82 if is_club else 58
+
+        if ret_pct >= 95:
+            mid_label = "深夜増加型"
+        elif ret_pct >= 70:
+            mid_label = "深夜安定"
+        else:
+            mid_label = "終電前型"
+
+        out[sname] = {
+            "usual_women": usual_w,
+            "usual_men": usual_m,
+            "usual_slot_label": slot_label,
+            "is_active_hour": is_active_hour,
+            "is_fallback_peak": is_fallback_peak,
+            "core_time_short": core_short,
+            "core_time_wpct": core_wpct,
+            "midnight_retention_pct": ret_pct,
+            "midnight_label_short": mid_label,
+            "peak_band_avg_w": round(p_avg_w, 1),
+            "midnight_avg_w": round(m_avg_w, 1),
+        }
+
+    _live_benchmarks_cache[cache_key] = (time.monotonic(), out)
+    return out

@@ -407,6 +407,25 @@ class MomentumTests(unittest.TestCase):
         self.assertIn('↗ +15名', html)
         self.assertIn('+15</span>', html)
         self.assertIn('+8</span>', html)
+        self.assertIn('狙い目 ', html)
+        self.assertIn('終電後 ', html)
+        self.assertIn('平比', html)
+
+        r_status = client.get('/api/status')
+        self.assertEqual(r_status.status_code, 200)
+        st_json = r_status.get_json()
+        ebisu_item = next((x for x in st_json['ranking'] if x['name'] == 'OLG 恵比寿'), None)
+        self.assertIsNotNone(ebisu_item)
+        self.assertIn('core_time_short', ebisu_item)
+        self.assertIn('midnight_retention_pct', ebisu_item)
+        self.assertIn('usual_w_diff', ebisu_item)
+        self.assertIn('usual_m_diff', ebisu_item)
+
+        r_detail = client.get('/store/oriental-lounge-ebisu')
+        self.assertEqual(r_detail.status_code, 200)
+        detail_html = r_detail.data.decode('utf-8')
+        self.assertIn('終電後の残りやすさ指標', detail_html)
+        self.assertIn('終電後維持率', detail_html)
 
 
 class FrontendSyntaxTests(unittest.TestCase):
@@ -1014,9 +1033,9 @@ class GrowthFeaturesTests(unittest.TestCase):
             r = self.client.get(p)
             self.assertEqual(r.status_code, 200, f"Public path {p} returned {r.status_code}")
             body = r.data.decode('utf-8')
-            self.assertIn('/static/calm.css?v=12', body, f"{p} missing /static/calm.css?v=12")
+            self.assertIn('/static/calm.css?v=13', body, f"{p} missing /static/calm.css?v=13")
             if '/static/style.css' in body:
-                self.assertIn('/static/style.css?v=20261027_2', body, f"{p} missing /static/style.css?v=20261027_2")
+                self.assertIn('/static/style.css?v=20261027_3', body, f"{p} missing /static/style.css?v=20261027_3")
             self.assertIn('公式ホームページ', body, f"{p} missing official website verification notice")
 
         # Also check scheduled preview templates via staff session
@@ -1027,9 +1046,9 @@ class GrowthFeaturesTests(unittest.TestCase):
                 sr = self.client.get(sp)
                 self.assertEqual(sr.status_code, 200, f"Scheduled path {sp} returned {sr.status_code}")
                 sbody = sr.data.decode('utf-8')
-                self.assertIn('/static/calm.css?v=12', sbody, f"{sp} missing /static/calm.css?v=12")
+                self.assertIn('/static/calm.css?v=13', sbody, f"{sp} missing /static/calm.css?v=13")
                 if '/static/style.css' in sbody:
-                    self.assertIn('/static/style.css?v=20261027_2', sbody, f"{sp} missing /static/style.css?v=20261027_2")
+                    self.assertIn('/static/style.css?v=20261027_3', sbody, f"{sp} missing /static/style.css?v=20261027_3")
                 self.assertIn('公式ホームページ', sbody, f"{sp} missing official website verification notice")
         finally:
             with self.client.session_transaction() as s:
@@ -1618,7 +1637,7 @@ class FullAuditRegressionTests(unittest.TestCase):
         sw_resp = self.client.get('/sw.js')
         try:
             sw_txt = sw_resp.data.decode('utf-8')
-            self.assertIn("CACHE_NAME = 'aiseki-navi-v50'", sw_txt)
+            self.assertIn("CACHE_NAME = 'aiseki-navi-v51'", sw_txt)
             self.assertIn("event.waitUntil", sw_txt)
         finally:
             sw_resp.close()
