@@ -394,8 +394,10 @@
         <div class="ai-panel">
             <div class="ai-panel-top">
                 <div>
-                    {% if editorial.gemini_status and editorial.gemini_status.configured %}
-                    <span class="ai-status-pill ai-status-on">🟢 Gemini AI アドリブ執筆：稼働中（{{ editorial.gemini_status.masked_key }} ｜ {{ editorial.gemini_status.source }}）</span>
+                    {% if editorial.gemini_status and editorial.gemini_status.state == 'active' %}
+                    <span class="ai-status-pill ai-status-on">🟢 Gemini AI アドリブ執筆：正常稼働中（{{ editorial.gemini_status.last_model }} ｜ {{ editorial.gemini_status.masked_key }}）</span>
+                    {% elif editorial.gemini_status and editorial.gemini_status.state == 'degraded' %}
+                    <span class="ai-status-pill ai-status-off">🟠 AI通信エラーのため現在は安全案へ自動切替中（{{ editorial.gemini_status.masked_key }}）</span>
                     {% else %}
                     <span class="ai-status-pill ai-status-off">🟡 Gemini APIキー未設定（現在は無料の天気・カレンダー連動モードで稼働中）</span>
                     {% endif %}
@@ -420,12 +422,12 @@
                 {% endif %}
             </div>
 
-            <div id="gemini-key-drawer" class="key-drawer" style="display: {{ 'none' if (editorial.gemini_status and editorial.gemini_status.configured) else 'block' }};">
+            <div id="gemini-key-drawer" class="key-drawer" style="display: {{ 'none' if (editorial.gemini_status and editorial.gemini_status.state == 'active') else 'block' }};">
                 <div style="font-size:0.78rem; color:var(--sub);">
-                    💡 <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="color:var(--gold); font-weight:700;">Google AI Studio（公式・無料APIキー発行ページ ↗）</a> で取得した <code>AIza...</code> から始まるキーを下に貼り付けて保存するだけで、Renderの再起動なしで全SNS（X・Threads・Instagram）のAIアドリブ執筆＆鬼デスク数値検閲が即座に有効になります。
+                    💡 <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="color:var(--gold); font-weight:700;">Google AI Studio（公式・無料APIキー発行ページ ↗）</a> で取得した <code>AIza...</code> キー、および Vertex AI Express の <code>AQ....</code> キーの両方に対応しています。下に貼り付けて保存するだけでRenderの再起動なしで即座に有効になります。
                 </div>
                 <div class="key-form-row">
-                    <input type="password" id="gemini-api-key-input" class="key-input" placeholder="AIzaSy...（ここにGemini APIキーを貼り付け）" autocomplete="off">
+                    <input type="password" id="gemini-api-key-input" class="key-input" placeholder="AIzaSy... または AQ....（ここにAPIキーを貼り付け）" autocomplete="off">
                     <button type="button" class="copy-btn" onclick="saveGeminiKey()">💾 暗号化保存してAIアドリブを有効化</button>
                     {% if editorial.gemini_status and editorial.gemini_status.configured %}
                     <button type="button" class="back-btn" onclick="clearGeminiKey()">登録キーを削除</button>

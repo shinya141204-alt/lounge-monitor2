@@ -1958,6 +1958,17 @@ class FullAuditRegressionTests(unittest.TestCase):
             self.assertNotEqual(res_bad['winner']['style'], 'ai_live_adlib')
             ai_cand_eval = next(c for c in res_bad['evaluation']['candidates'] if c['style'] == 'ai_live_adlib')
             self.assertEqual(ai_cand_eval['scores']['data_specificity'], -50)
+
+            # 5. Vertex AI Express Mode key (`AQ....`) routes directly to aiplatform.googleapis.com with role='user'
+            sns_editorial.set_gemini_api_key('AQ.Ab8RN6SampleExpressKey1234dgKQ')
+            with patch('sns_editorial.requests.post', return_value=mock_resp_ok) as mock_vertex_post:
+                res_vx = sns_editorial.run_editorial_pipeline(
+                    sample_stores, slot_label='22:00', channel='x', use_ai=True, force_ai_refresh=True
+                )
+            self.assertEqual(res_vx['winner']['style'], 'ai_live_adlib')
+            called_url = mock_vertex_post.call_args[0][0]
+            self.assertIn('aiplatform.googleapis.com/v1/publishers/google/models/', called_url)
+            self.assertEqual(res_vx['gemini_status']['state'], 'active')
         finally:
             sns_editorial.set_gemini_api_key('')
             with self.client.session_transaction() as s:

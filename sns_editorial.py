@@ -27,11 +27,17 @@ logger = logging.getLogger(__name__)
 
 JST = datetime.timezone(datetime.timedelta(hours=9))
 GEMINI_KEY_STORAGE_PREFIX = "token:gemini_api_key"
-DEFAULT_GEMINI_MODELS = ("gemini-2.5-flash", "gemini-2.0-flash")
+DEFAULT_GEMINI_MODELS = (
+    "gemini-2.5-flash",
+    "gemini-2.5-flash-lite",
+    "gemini-2.0-flash-001",
+    "gemini-2.0-flash",
+    "gemini-3-flash-preview",
+)
 
 _weather_cache = {"ts": 0.0, "data": None}
 _ai_candidate_cache = {}  # cache_key -> {"ts": float, "candidate": dict, "model": str}
-_last_gemini_meta = {"last_model": "", "last_error": "", "last_ok_at": ""}
+_last_gemini_meta = {"last_model": "", "last_error": "", "last_ok_at": "", "working_route": None}
 
 CHANNEL_LABELS = {
     "x": "𝕏 X（旧Twitter）",
@@ -179,6 +185,7 @@ def set_gemini_api_key(api_key: str):
     job_state.set_value(GEMINI_KEY_STORAGE_PREFIX, cleaned)
     clear_editorial_ai_cache()
     _last_gemini_meta["last_error"] = ""
+    _last_gemini_meta["working_route"] = None
 
 
 def get_gemini_status() -> dict:
@@ -200,12 +207,22 @@ def get_gemini_status() -> dict:
         else:
             masked = "****"
 
+    last_err = _last_gemini_meta.get("last_error") or ""
+    if not active_key:
+        state = "unconfigured"
+    elif last_err:
+        state = "degraded"
+    else:
+        state = "active"
+
     return {
         "configured": bool(active_key),
+        "state": state,
+        "key_kind": "vertex_express" if active_key.startswith("AQ.") else ("ai_studio" if active_key else "none"),
         "masked_key": masked,
         "source": source,
         "last_model": _last_gemini_meta.get("last_model") or DEFAULT_GEMINI_MODELS[0],
-        "last_error": _last_gemini_meta.get("last_error") or "",
+        "last_error": last_err,
         "last_ok_at": _last_gemini_meta.get("last_ok_at") or "",
     }
 
@@ -1327,6 +1344,71 @@ def _build_gemini_prompt(
     return prompt, reply_text
 
 
+def _discover_ai_studio_flash_model(api_key: str) -> str:
+    """Dynamically query `/v1beta/models` to find an active Flash model if hardcoded names 404."""
+    try:
+        r = requests.get(
+            "https://generativelanguage.googleapis.com/v1beta/models",
+            headers={"x-goog-api-key": api_key},
+            timeout=5,
+        )
+        if r.status_code != 200:
+            return ""
+        models = (r.json() or {}).get("models") or []
+        flash_cands = []
+        fallback_cands = []
+        for m in models:
+            methods = m.get("supportedGenerationMethods") or []
+            if "generateContent" not in methods:
+                continue
+            name = (m.get("name") or "").replace("models/", "")
+            if not name or "embedding" in name or "imagen" in name or "tts" in name or "audio" in name:
+                continue
+            if "gemini" in name and "flash" in name and "vision" not in name:
+                flash_cands.append(name)
+            elif "gemini" in name:
+                fallback_cands.append(name)
+        if flash_cands:
+            flash_cands.sort(reverse=True)
+            return flash_cands[0]
+        if fallback_cands:
+            return fallback_cands[0]
+    except Exception:
+        pass
+    return ""
+
+
+def _build_endpoint_request(endpoint_kind: str, model_name: str, api_key: str, prompt: str) -> tuple:
+    payload = {
+        "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+        "generationConfig": {
+            "temperature": 0.85,
+            "maxOutputTokens": 900,
+            "responseMimeType": "application/json",
+        },
+    }
+    if endpoint_kind == "vertex_v1":
+        return (
+            f"https://aiplatform.googleapis.com/v1/publishers/google/models/{model_name}:generateContent",
+            {"Content-Type": "application/json"},
+            {"key": api_key},
+            payload,
+        )
+    if endpoint_kind == "vertex_v1beta1":
+        return (
+            f"https://aiplatform.googleapis.com/v1beta1/publishers/google/models/{model_name}:generateContent",
+            {"Content-Type": "application/json"},
+            {"key": api_key},
+            payload,
+        )
+    return (
+        f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent",
+        {"Content-Type": "application/json", "x-goog-api-key": api_key},
+        None,
+        payload,
+    )
+
+
 def _generate_gemini_adlib_candidate(
     research: dict,
     plan: dict,
@@ -1337,7 +1419,7 @@ def _generate_gemini_adlib_candidate(
     force_refresh: bool = False,
 ) -> dict:
     """
-    Call Gemini Flash REST API (`v1beta`) to craft a fresh, weather/calendar-aware human ad-lib post.
+    Call Gemini Flash REST API across BOTH Google AI Studio (`AIza...`) and Vertex AI Express Mode (`AQ....`) keys.
     Uses a 15-minute signature cache so Master UI browsing stays instant and free-tier friendly.
     Returns candidate dict or None on skip/failure (caller seamlessly falls back to deterministic candidates).
     """
@@ -1370,32 +1452,42 @@ def _generate_gemini_adlib_candidate(
     preferred_env = (os.environ.get("GEMINI_MODEL") or "").strip()
     models_to_try = [preferred_env] + [m for m in DEFAULT_GEMINI_MODELS if m != preferred_env] if preferred_env else list(DEFAULT_GEMINI_MODELS)
 
+    is_vertex_express = api_key.startswith("AQ.")
+    if is_vertex_express:
+        endpoint_kinds = ["vertex_v1", "vertex_v1beta1", "ai_studio"]
+    else:
+        endpoint_kinds = ["ai_studio"]
+
+    routes = []
+    saved_route = _last_gemini_meta.get("working_route")
+    if saved_route and saved_route[0] in endpoint_kinds:
+        routes.append(saved_route)
+    for ek in endpoint_kinds:
+        for mn in models_to_try:
+            if (ek, mn) not in routes:
+                routes.append((ek, mn))
+
     last_err = ""
-    for model_name in models_to_try:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent"
+    saw_404_on_ai_studio = False
+
+    def _try_single_route(ek: str, mn: str):
+        url, headers, params, payload = _build_endpoint_request(ek, mn, api_key, prompt)
+        return requests.post(url, headers=headers, params=params, json=payload, timeout=10)
+
+    for ek, model_name in routes:
         try:
-            resp = requests.post(
-                url,
-                headers={
-                    "Content-Type": "application/json",
-                    "x-goog-api-key": api_key,
-                },
-                json={
-                    "contents": [{"parts": [{"text": prompt}]}],
-                    "generationConfig": {
-                        "temperature": 0.85,
-                        "maxOutputTokens": 900,
-                        "responseMimeType": "application/json",
-                    },
-                },
-                timeout=10,
-            )
+            resp = _try_single_route(ek, model_name)
             if resp.status_code == 404:
-                last_err = f"Model {model_name} HTTP 404"
+                if ek == "ai_studio":
+                    saw_404_on_ai_studio = True
+                last_err = f"Model {model_name} ({ek}) HTTP 404"
                 continue
             if resp.status_code >= 400:
-                last_err = f"Gemini HTTP {resp.status_code}: {resp.text[:140]}"
-                logger.warning(f"Gemini API error ({model_name}): {last_err}")
+                err_snippet = (resp.text or "")[:140]
+                last_err = f"Gemini HTTP {resp.status_code} ({ek}): {err_snippet}"
+                logger.warning(f"Gemini API error ({ek}/{model_name}): {last_err}")
+                if is_vertex_express and ek != endpoint_kinds[-1]:
+                    continue
                 break
 
             data = resp.json() or {}
@@ -1408,7 +1500,7 @@ def _generate_gemini_adlib_candidate(
             if raw_text.startswith("```"):
                 raw_text = re.sub(r"^```(?:json)?\s*", "", raw_text)
                 raw_text = re.sub(r"\s*```$", "", raw_text)
-            parsed = json.loads(raw_text)
+            parsed = json.loads(raw_text, strict=False)
             main_text = (parsed.get("main_text") or "").strip()
             writer_note = (parsed.get("writer_note") or "天気・曜日・リアルタイム人数を掛け合わせたGemini AIアドリブ執筆案。").strip()
             if not main_text:
@@ -1429,16 +1521,54 @@ def _generate_gemini_adlib_candidate(
                 "candidate": candidate,
                 "model": model_name,
             }
+            _last_gemini_meta["working_route"] = (ek, model_name)
             _last_gemini_meta["last_model"] = model_name
             _last_gemini_meta["last_error"] = ""
             _last_gemini_meta["last_ok_at"] = now_jst.strftime("%Y-%m-%d %H:%M:%S")
             return dict(candidate)
         except Exception as e:
             last_err = str(e)[:160]
-            logger.warning(f"Gemini adlib generation exception ({model_name}): {e}")
+            logger.warning(f"Gemini adlib generation exception ({ek}/{model_name}): {e}")
             break
 
+    # Dynamic model auto-discovery fallback for AI Studio keys if all preset names returned 404
+    if saw_404_on_ai_studio and not is_vertex_express:
+        discovered = _discover_ai_studio_flash_model(api_key)
+        if discovered and discovered not in models_to_try:
+            try:
+                resp = _try_single_route("ai_studio", discovered)
+                if resp.status_code == 200:
+                    data = resp.json() or {}
+                    parts = (((data.get("candidates") or [{}])[0].get("content") or {}).get("parts")) or []
+                    raw_text = "".join(p.get("text", "") for p in parts).strip()
+                    if raw_text.startswith("```"):
+                        raw_text = re.sub(r"^```(?:json)?\s*", "", raw_text)
+                        raw_text = re.sub(r"\s*```$", "", raw_text)
+                    parsed = json.loads(raw_text, strict=False)
+                    main_text = (parsed.get("main_text") or "").strip()
+                    writer_note = (parsed.get("writer_note") or "Gemini AIアドリブ執筆案。").strip()
+                    if main_text:
+                        candidate = {
+                            "style": "ai_live_adlib",
+                            "style_label": STYLE_LABELS["ai_live_adlib"],
+                            "writer_note": f"【{discovered}生成】{writer_note}",
+                            "main_text": main_text,
+                            "reply_text": reply_text,
+                            "is_ai_generated": True,
+                            "ai_model": discovered,
+                        }
+                        _ai_candidate_cache[cache_key] = {"ts": now_t, "candidate": candidate, "model": discovered}
+                        _last_gemini_meta["working_route"] = ("ai_studio", discovered)
+                        _last_gemini_meta["last_model"] = discovered
+                        _last_gemini_meta["last_error"] = ""
+                        _last_gemini_meta["last_ok_at"] = now_jst.strftime("%Y-%m-%d %H:%M:%S")
+                        return dict(candidate)
+            except Exception:
+                pass
+
     if last_err:
+        if is_vertex_express and "404" in last_err:
+            last_err += "（※AQ.キーはGoogle Cloud側の権限に依存します。Google AI Studioの『AIza...』から始まるキーに変えると100%確実につながります）"
         _last_gemini_meta["last_error"] = last_err
     return None
 
