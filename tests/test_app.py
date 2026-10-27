@@ -619,10 +619,45 @@ class ScheduledArticlesTests(unittest.TestCase):
         for item in scheduled_articles.SCHEDULED_ARTICLES:
             w = x_poster.compute_twitter_weight(item['x_main_text'])
             self.assertLessEqual(w, 280, f"{item['slug']} weight={w}")
+        for item in x_poster.COLUMN_PROMO_LIST:
+            w = x_poster.compute_twitter_weight(item['main_text'])
+            self.assertLessEqual(w, 280, f"promo[{item['slug']}] weight={w}")
         for i in range(len(tips_poster.TIPS_LIST)):
             tip_text = tips_poster.get_tip_for_slot(tip_index=i)
             w = x_poster.compute_twitter_weight(tip_text)
             self.assertLessEqual(w, 280, f"tip[{i}] weight={w}")
+
+    def test_all_columns_have_human_dialogue_and_proper_brand_naming(self):
+        import re
+        import scheduled_articles
+        all_dt = datetime.datetime(2026, 11, 10, 12, 0, 0)
+        column_paths = [
+            '/guide',
+            '/guide/brand-comparison',
+            '/guide/weekday-strategy',
+            '/guide/weekend-strategy',
+            '/guide/shinjuku',
+            '/guide/solo-vs-pair',
+            '/guide/second-venue',
+            '/guide/first-10-minutes',
+            '/guide/club-area-midnight',
+            '/guide/beauty-area-stage',
+            '/guide/male-lead-mechanics',
+            '/guide/price-event-comparison',
+            '/guide/last-train-cliff',
+            '/guide/local-vs-urban',
+            '/guide/cost-break-even',
+            '/guide/rain-payday',
+            '/grooming',
+        ]
+        with mock.patch.object(scheduled_articles, 'now_jst_naive', return_value=all_dt):
+            for p in column_paths:
+                r = self.client.get(p)
+                self.assertEqual(r.status_code, 200, p)
+                html = r.data.decode('utf-8')
+                self.assertIn('dialogue-box', html, f"{p} missing human dialogue-box")
+                bare_oriental = re.findall(r'オリエンタル(?!ラウンジ)', html)
+                self.assertEqual(bare_oriental, [], f"{p} still contains bare オリエンタル: {bare_oriental}")
 
 
 class SeoAndXMediaUpgradeTests(unittest.TestCase):
@@ -1709,7 +1744,7 @@ class FullAuditRegressionTests(unittest.TestCase):
         sw_resp = self.client.get('/sw.js')
         try:
             sw_txt = sw_resp.data.decode('utf-8')
-            self.assertIn("CACHE_NAME = 'aiseki-navi-v54'", sw_txt)
+            self.assertIn("CACHE_NAME = 'aiseki-navi-v55'", sw_txt)
             self.assertIn("event.waitUntil", sw_txt)
         finally:
             sw_resp.close()

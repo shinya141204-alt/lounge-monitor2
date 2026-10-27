@@ -1579,6 +1579,33 @@ body.theme-light .live-banner-metrics strong {
     color: var(--calm-light-accent);
 }
 
+/* コラム共通：現場のリアルな会話・心の声ボックス（dialogue-box） */
+.dialogue-box {
+    background: rgba(255, 255, 255, 0.03);
+    border-left: 3px solid rgba(200, 164, 110, 0.6);
+    border-radius: 0 10px 10px 0;
+    padding: 14px 18px;
+    margin: 18px 0;
+    font-size: 0.92rem;
+    line-height: 1.82;
+    color: #e6e2dc;
+}
+
+.dialogue-box strong {
+    color: var(--calm-accent-text);
+}
+
+body.theme-light .dialogue-box {
+    background: var(--calm-light-surface-2);
+    border-left-color: var(--calm-light-accent);
+    color: var(--calm-light-text);
+}
+
+body.theme-light .dialogue-box strong {
+    color: var(--calm-light-accent);
+}
+
+
 
 
 

@@ -150,6 +150,21 @@
             padding: 18px 20px;
             margin: 18px 0;
         }
+        .dialogue-box {
+            background: rgba(255, 255, 255, 0.03);
+            border-left: 3px solid rgba(200, 164, 110, 0.55);
+            border-radius: 0 10px 10px 0;
+            padding: 14px 18px;
+            margin: 18px 0;
+            font-size: 0.92rem;
+            line-height: 1.8;
+            color: #e2e8f0;
+        }
+        body.theme-light .dialogue-box {
+            background: rgba(140, 107, 63, 0.06);
+            border-left-color: #8c6b3f;
+            color: #1f1e1b;
+        }
     </style>
     <link rel="stylesheet" href="/static/calm.css?v=13">
     {% if not is_staff and not session.get('is_staff') %}
@@ -180,50 +195,80 @@
                 </picture>
             </div>
             <p class="article-lead">
-                金曜・土曜の夜は1週間で最も女性が集まるボーナスタイムですが、何も考えずに21時半にいつものお店へ直行すると<strong>「男性入場待ち50分」</strong>の洗礼を受けやすい曜日でもあります。<br>
-                しかし、全国53店舗のリアルタイムデータを分析すると、<strong>「同じエリアの徒歩3分圏内でも、A店は男性待ちなのにB店は女性余りで即相席できる」</strong>という逆転現象が毎晩のように起きています。
+                金曜日の21時45分。1軒目の居酒屋でいい気分になり、「よし、いつものラウンジ行こうぜ！」と何も見ずにエレベーターを上がった結果、待機スペースのソファでスマホを眺めながら50分待ちぼうけ——。<br>
+                週末は1週間で最も女性が集まるボーナスタイムですが、同時に「ノープラン突撃組」が渋滞を起こす曜日でもあります。ところが全国53店舗のリアルタイムデータを追いかけると、<strong>「同じ街の徒歩3分圏内でも、A店は男性50分待ちなのにB店は女性余りで即乾杯できる」</strong>という逆転現象が毎晩のように起きています。
             </p>
         </header>
 
         <article class="article-body">
-            <h2>1. 金・土の夜を制する「3つの時間帯別ムーブ」</h2>
+            <h2>1. 金曜21時45分の苦い記憶と、「3つの時間帯別ムーブ」</h2>
             <p>
-                週末の相席ラウンジは、入店する時間帯によって客層も男女比の波もまったく異なります。自分たちが集合できる時間に合わせて、以下の3つのムーブを使い分けるのが鉄則です。
+                誰でも一度はやったことがあるはずです。受付で「ただいま男性のお客様、順番にご案内しております」と言われ、待合席や単独テーブルに通されてからのあの長い時間。
+            </p>
+
+            <div class="dialogue-box">
+                「なあ……俺たちもう40分待ってない？ 単独飲みでハイボール2杯空いちゃったんだけど」<br>
+                「やっと相席始まるころには、こっちのテンション切れて眠くなってそうだよな……」
+            </div>
+
+            <p>
+                せっかくの華金なのに、待ち時間と単独待機料金だけで体力を使うのは本当にもったいないもの。<br>
+                週末の相席ラウンジは、時計の針に合わせて<strong>「3つの時間帯別ムーブ」</strong>を使い分けるだけで、こうした空振りをきれいにゼロにできます。
             </p>
 
             <div class="slot-box">
-                <h3 style="margin-top:0;">① 19:00〜20:30：1軒目スタート勢を狙う「先行逃げ切りムーブ」</h3>
+                <h3 style="margin-top:0;">① 19:00〜20:30：1軒目スタート勢を狙う「19時50分・先行逃げ切りムーブ」</h3>
                 <p style="margin-bottom:0;">
-                    金曜の仕事帰りや土曜の買い物帰りに、「ディナー代わりに1軒目から相席ラウンジで食べよう」という女性ペアが最初に入店する時間帯です。<br>
-                    男性側は居酒屋で0次会をしてから21時以降に来る人が大半なため、<strong>20時前後にチェックインしておけば待ち時間ゼロで良質な1〜2組と落ち着いて相席</strong>できます。
+                    実は週末で一番イージーに勝てるのが、<strong>あえて0次会の居酒屋を挟まず「19時50分」に直接チェックインしてしまう</strong>動き方です。<br>
+                    この時間は「ディナー代わりに1軒目からラウンジの美味しい料理を食べよう」という女性ペアが続々と入ってくる一方、男性客の大半はまだ外の居酒屋で飲んでいます。待ち時間ゼロで通され、まだ店内も静かなうちに1〜2組とじっくり話せる黄金タイムです。
                 </p>
+            </div>
+
+            <div class="dialogue-box">
+                「金曜のこの時間って、まだ店内も落ち着いててすごく話しやすいですね！」<br>
+                「だよね！ 21時半すぎると周りガヤガヤして声が聞こえにくくなるから、俺たちも1軒目からゆっくりご飯食べながら飲もうと思って来たんだ」
             </div>
 
             <div class="slot-box">
                 <h3 style="margin-top:0;">② 21:00〜22:30：徒歩3分圏内の複数ブランドを比べる「ハシゴムーブ」</h3>
                 <p style="margin-bottom:0;">
-                    1軒目の居酒屋を終えた男女が一斉に流入するコアタイムです。この時間は「オリエンタルラウンジだけ」「JISだけ」と1店舗に決め打ちせず、<strong>向かう直前に『相席ナビ』で同エリアの全店舗の男女比を見比べる</strong>だけで勝率が劇的に変わります。
+                    1軒目の居酒屋を終えた男女が一斉になだれ込むコアタイムです。この時間に「いつもオリラジだから」「いつもJISだから」と1店舗に決め打ちするのは危険。<strong>居酒屋のお会計を済ませた瞬間に『相席ナビ』を開き、徒歩3分圏内の全店舗の男女比を見比べる</strong>だけで勝敗が決まります。
                 </p>
             </div>
 
             <div class="slot-box">
                 <h3 style="margin-top:0;">③ 23:00〜25:00：終電前後の入れ替わり＆クラブ街の「2回転目ムーブ」</h3>
                 <p style="margin-bottom:0;">
-                    終電が近づく23時過ぎになると、日帰り組の男女が一斉に退店し、<strong>「今夜は朝まで飲みたい」「もう1軒盛り上がりたい」という女性だけが残る2回転目</strong>に突入します。特に<a href="/ag" style="color:#f472b6;">ag（アグ）</a>や<a href="/guide/club-area-midnight" style="color:#f472b6;">ダンスクラブがある街の店舗</a>では24時以降に再び女性比率が跳ね上がります。
+                    終電が近づく23時20分〜23時55分は帰宅ラッシュで一時的に女性が抜けますが、0時30分を回ると<strong>「今夜は朝まで飲みたい」「もう1軒盛り上がりたい」という第2波の女性</strong>が戻ってきます。特に<a href="/ag" style="color:#f472b6;">ag（アグ）</a>の早い時間からの切り替えや、<a href="/guide/club-area-midnight" style="color:#f472b6;">ダンスクラブがある街の店舗</a>・<a href="/guide/last-train-cliff" style="color:#f472b6;">深夜維持率が高い大型店</a>を狙うと深夜から一気に巻き返せます。
                 </p>
             </div>
 
             <h2>2. 徒歩3分移動するだけで「待ち50分 → 即相席」に変わる主要エリア</h2>
             <p>
-                以下のエリアでは、すべて徒歩2〜5分圏内に複数の相席ラウンジが密集しています。1店舗目の受付で「男性待ち」と言われたら、その場で待たずにすぐ近隣店舗の現在人数をチェックしましょう。
+                週末のコアタイムに強い人たちは、駅の改札を出た瞬間や1軒目を出た路上で、必ずこんな会話を交わしています。
+            </p>
+
+            <div class="dialogue-box">
+                「おい見ろよ、通り沿いの店舗は『男46人・女38人』で詰まってるけど、歩いて3分の向こうの店は『女45人・男24人』でほぼダブルスコアだぞ！」<br>
+                「うわ、見ずに突っ込んでたら危なかったな。迷わずそっち直行しよう！」
+            </div>
+
+            <p>
+                以下の5大エリアでは、すべて徒歩2〜5分圏内に複数の相席ラウンジが密集しています。1店舗目の受付で「男性待ち」と言われたら、絶対にその場で粘らず、すぐ近隣店舗へ切り替えましょう。
             </p>
             <ul style="color:#cbd5e1; font-size:0.93rem; line-height:1.9;">
-                <li><strong><a href="/area/shinjuku" style="color:#38bdf8;">新宿エリア（3店舗）</a></strong>：東口の<a href="/store/oriental-lounge-shinjuku" style="color:#f472b6;">オリエンタル新宿</a>・<a href="/store/jis-shinjuku" style="color:#f472b6;">JIS新宿</a>が混んでいても、<a href="/store/jis-nishishinjuku" style="color:#f472b6;">JIS 西新宿</a>が女性優位の穴場になっているケースが多発します。</li>
-                <li><strong><a href="/area/shibuya" style="color:#38bdf8;">渋谷・恵比寿エリア（3店舗）</a></strong>：道玄坂の<a href="/store/oriental-lounge-shibuya-honten" style="color:#f472b6;">オリエンタル渋谷本店</a>・<a href="/store/ag-shibuya" style="color:#f472b6;">ag渋谷</a>に加え、1駅の<a href="/store/oriental-lounge-ebisu" style="color:#f472b6;">オリエンタル恵比寿</a>まで含めて比較可能。若いノリならag、きれいめOLなら渋谷本店・恵比寿と即座に切り替えられます。</li>
-                <li><strong><a href="/area/osaka" style="color:#38bdf8;">大阪・梅田エリア（5店舗）</a></strong>：<a href="/store/jis-umeda" style="color:#f472b6;">JIS梅田</a>・<a href="/store/oriental-lounge-osaka-ekimae" style="color:#f472b6;">オリエンタル大阪駅前</a>・<a href="/store/ag-umeda" style="color:#f472b6;">ag梅田</a>・<a href="/store/jis-chayamachi" style="color:#f472b6;">JIS茶屋町</a>・<a href="/store/yatakoi-umeda" style="color:#f472b6;">ヤタコイ茶屋町</a>が密集しており、必ずどこかの店舗で女性優位のタイミングが生まれます。</li>
-                <li><strong><a href="/area/nagoya" style="color:#38bdf8;">名古屋・栄/錦エリア（3店舗）</a></strong>：<a href="/store/oriental-lounge-nagoya-sakae" style="color:#f472b6;">オリエンタル名古屋栄</a>・<a href="/store/oriental-lounge-nagoya-nishiki" style="color:#f472b6;">錦</a>・<a href="/store/ag-nagoya" style="color:#f472b6;">ag名古屋</a>が徒歩数分に集中。</li>
-                <li><strong><a href="/area/fukuoka" style="color:#38bdf8;">福岡・天神エリア（2店舗）</a></strong>：<a href="/store/oriental-lounge-fukuoka" style="color:#f472b6;">オリエンタル福岡</a>・<a href="/store/jis-fukuoka" style="color:#f472b6;">JIS福岡</a>の2大大型店が天神西通り・大名周辺に揃っています。</li>
+                <li><strong><a href="/area/shinjuku" style="color:#38bdf8;">新宿エリア（4店舗）</a></strong>：東口の<a href="/store/oriental-lounge-shinjuku" style="color:#f472b6;">オリエンタルラウンジ新宿</a>・<a href="/store/jis-shinjuku" style="color:#f472b6;">JIS新宿</a>が混んでいても、<a href="/store/jis-nishishinjuku" style="color:#f472b6;">JIS 西新宿</a>が女性優位の穴場になっているケースが多発します。</li>
+                <li><strong><a href="/area/shibuya" style="color:#38bdf8;">渋谷・恵比寿エリア（3店舗）</a></strong>：道玄坂の<a href="/store/oriental-lounge-shibuya-honten" style="color:#f472b6;">オリエンタルラウンジ渋谷本店</a>・<a href="/store/ag-shibuya" style="color:#f472b6;">ag渋谷</a>に加え、1駅の<a href="/store/oriental-lounge-ebisu" style="color:#f472b6;">オリエンタルラウンジ恵比寿</a>まで含めて比較可能。若いノリならag、きれいめOLなら渋谷本店・恵比寿と即座に切り替えられます。</li>
+                <li><strong><a href="/area/osaka" style="color:#38bdf8;">大阪・梅田エリア（5店舗）</a></strong>：<a href="/store/jis-umeda" style="color:#f472b6;">JIS梅田</a>・<a href="/store/oriental-lounge-osaka-ekimae" style="color:#f472b6;">オリエンタルラウンジ大阪駅前</a>・<a href="/store/ag-umeda" style="color:#f472b6;">ag梅田</a>・<a href="/store/jis-chayamachi" style="color:#f472b6;">JIS茶屋町</a>・<a href="/store/yatakoi-umeda" style="color:#f472b6;">ヤタコイ茶屋町</a>が密集しており、必ずどこかの店舗で女性優位のタイミングが生まれます。</li>
+                <li><strong><a href="/area/nagoya" style="color:#38bdf8;">名古屋・栄/錦エリア（3店舗）</a></strong>：<a href="/store/oriental-lounge-nagoya-sakae" style="color:#f472b6;">オリエンタルラウンジ名古屋栄</a>・<a href="/store/oriental-lounge-nagoya-nishiki" style="color:#f472b6;">オリエンタルラウンジ名古屋錦</a>・<a href="/store/ag-nagoya" style="color:#f472b6;">ag名古屋</a>が徒歩数分に集中。</li>
+                <li><strong><a href="/area/fukuoka" style="color:#38bdf8;">福岡・天神エリア（2店舗）</a></strong>：<a href="/store/oriental-lounge-fukuoka" style="color:#f472b6;">オリエンタルラウンジ福岡</a>・<a href="/store/jis-fukuoka" style="color:#f472b6;">JIS福岡</a>の2大大型店が天神西通り・大名周辺に揃っています。</li>
             </ul>
+
+            <h2>3. まとめ：週末の夜は「エレベーターに乗る前の15秒」で決まる</h2>
+            <p>
+                金曜日と土曜日の夜は、知っているか知らないかだけで「待合席でスマホを見つめて終わる夜」にも「着席5分で乾杯して2軒目まで盛り上がる夜」にもなります。<br>
+                早めの20時前に入れる日は先行逃げ切りで、21時以降に動く日は徒歩3分圏内の数字を見比べて一番風向きのいい店舗へ——。今夜これから繰り出すなら、まずは下のリアルタイムランキングで目の前の街の数字を覗いてみてください！
+            </p>
 
             <div style="text-align: center; margin: 36px 0;">
                 <a href="/" style="display: inline-flex; align-items: center; gap: 8px; padding: 14px 30px; border-radius: 999px; background: linear-gradient(90deg, #f59e0b, #ec4899); color: #fff; text-decoration: none; font-weight: 800; font-size: 0.96rem; box-shadow: 0 8px 24px rgba(236, 72, 153, 0.35);">

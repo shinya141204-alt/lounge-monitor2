@@ -36,17 +36,23 @@ description: >-
 
 ---
 
-## Step 3: サイト内コラムHTMLの作成（SEO構造化データ＋内部リンク＋収益導線）
-[`templates/guide_beauty_stage.html`](file:///Users/kuwanoshinya/.gemini/相席業務改善/相席モニター/templates/guide_beauty_stage.html) または [`templates/guide_club_midnight.html`](file:///Users/kuwanoshinya/.gemini/相席業務改善/相席モニター/templates/guide_club_midnight.html) をベースにして、`templates/guide_<slug_underscored>.html` を作成する。必ず以下を含めること：
-1. **メタタグ＆OGP**：
+## Step 3: サイト内コラムHTMLの作成（人間味のある現場ストーリー＋SEO構造化データ＋内部リンク）
+[`templates/guide_last_train_cliff.html`](file:///Users/kuwanoshinya/.gemini/相席業務改善/相席モニター/templates/guide_last_train_cliff.html) をお手本ベースにして、`templates/guide_<slug_underscored>.html` を作成する。必ず以下を含めること：
+1. **【最重要】人間味・現場リアリティのある執筆トーン（AI解説調の徹底排除）**：
+   * 冒頭は「本記事では〜を解説します」「構造はとてもシンプルです」などの教科書調で始めず、**居酒屋を出た夜風の中・エレベーター前・乾杯直後のソファ席・お会計伝票を見た瞬間など、誰もが共感するリアルな情景・ちょっと苦い実体験シーン**から入ること。
+   * 記事内に **`<div class="dialogue-box">...</div>` を使った自然な会話・心の声（男友達同士のリアルなやり取りや、女性客の本音トーク）を2〜4箇所** 織り込み、ストーリーと9.6万件超のSQLite実測データが自然に噛み合う構成にすること（noteコピペ用原稿も同様に引用ブロック `>` で会話シーンを入れること）。
+   * **ブランド呼称ルール厳守**：本文・見出し・会話文ともに、単体の『オリエンタル』（例: `オリエンタル新宿`）は絶対に使わず、必ず正式名称 **『オリエンタルラウンジ』** または会話・略称の **『オリラジ』** を使用すること。
+2. **メタタグ＆OGP**：
    * `<link rel="canonical" href="https://aiseki-navi.com/guide/<slug>">`
    * `<meta property="og:image" content="https://aiseki-navi.com/static/eyecatch-<slug>.jpg">`
    * `<meta name="twitter:card" content="summary_large_image">`
-2. **JSON-LD 構造化データ**：`Article` + `BreadcrumbList` + `FAQPage`
-3. **ナビゲーション＆フッター**：
+3. **JSON-LD 構造化データ**：`Article` + `BreadcrumbList` + `FAQPage`
+4. **ナビゲーション・共通CSS・フッター**：
+   * `<link rel="stylesheet" href="/static/calm.css?v=13">` を必ず読み込むこと
    * 上部に `{% set nav_active = 'columns' %}` と `{% include '_portal_nav.html' %}`
    * 下部に `{% include '_portal_footer.html' %}`
-4. **店舗個別ページ・統計白書・関連コラムへの内部リンク（サイト内回遊の最大化）**：
+   * スタッフ非表示ガード `{% if not is_staff and not session.get('is_staff') %}`（予約記事なら `and not is_scheduled_preview` も追加）で AdSense タグを囲むこと
+5. **店舗個別ページ・統計白書・関連コラムへの内部リンク（サイト内回遊の最大化）**：
    * 記事内の店舗リンクは必ず [`store_master.py`](file:///Users/kuwanoshinya/.gemini/相席業務改善/相席モニター/store_master.py) の `STORE_SLUGS` に定義された正しいスラッグ（例: `/store/oriental-lounge-shinjuku`, `/store/jis-umeda`, `/store/ag-shibuya`）を使用する。
    * **【重要】記事内には外部アフィリエイト広告カード（`/link/...`）を直接貼らないこと。** まずは独自のデータ考察メディアとしての信頼性・権威性とサイト内PV（`/` リアルタイムランキング、`/stats` 統計白書、`/store/...` 店舗ページへの回遊）を最優先する。身だしなみに触れる場合は、内部ページ `/grooming` または `/guide/first-10-minutes` への自然なテキストリンク1本のみにとどめる（2ステップ構造）。
 
