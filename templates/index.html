@@ -351,8 +351,12 @@
                     {% if is_master and editorial_preview and editorial_preview.winner %}
                     <div class="master-subpanel">
                         <div class="master-subpanel-head">
-                            <span class="master-subpanel-title">🧠 SNS編集部（4役合議）今夜のX提案＆評価スコア（マスター専用）</span>
-                            <a href="/staff/sns-editorial" class="master-inline-link">全{{ editorial_preview.evaluation.candidates | length }}案の赤入れ・採点内訳を見る ↗</a>
+                            <span class="master-subpanel-title">🧠 SNS編集部（4役合議）X・Threads・Instagram 提案＆評価スコア（マスター専用）</span>
+                            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                                <a href="/staff/sns-editorial?channel=x" class="master-inline-link">𝕏 X合議 ↗</a>
+                                <a href="/staff/sns-editorial?channel=threads" class="master-inline-link">🧵 Threads合議 ↗</a>
+                                <a href="/staff/sns-editorial?channel=instagram" class="master-inline-link">📸 IG合議 ↗</a>
+                            </div>
                         </div>
                         <div class="master-subpanel-meta">
                             {{ editorial_preview.evaluation.desk_summary }}

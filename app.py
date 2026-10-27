@@ -364,7 +364,7 @@ latest_data = {
     'last_updated': None,
     'full_data': []
 }
-LATEST_STATUS_SNAPSHOT_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'latest_status_cache.json')
+LATEST_STATUS_SNAPSHOT_FILE = os.environ.get('LATEST_STATUS_SNAPSHOT_FILE') or os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'latest_status_cache.json')
 
 
 def save_latest_status_snapshot():
@@ -1381,34 +1381,59 @@ def _get_sns_kit_context(fast=False):
 
 @app.route('/staff/sns-editorial')
 def staff_sns_editorial():
-    """Master-only 4-role SNS Editorial Room board showing Researcher, Planner, Writer proposals & Evaluator scores."""
+    """Master-only 4-role SNS Editorial Room board across X, Threads, and Instagram."""
     if not session.get('is_master'):
         return redirect(url_for('staff_monitor', switch='1'))
     import sns_editorial
     restore_latest_data_if_empty()
     trigger_background_fetch_if_needed()
+    channel = (request.args.get('channel') or 'x').strip().lower()
+    if channel not in ('x', 'threads', 'instagram'):
+        channel = 'x'
     slot_label = (request.args.get('slot') or '22:00').strip()
     if slot_label not in ('20:00', '22:00', '00:00', '02:00'):
         slot_label = '22:00'
     with data_lock:
         live_s = list(latest_data.get('full_data') or [])
-    editorial = sns_editorial.run_editorial_pipeline(live_s, slot_label=slot_label, record_history=False)
+    ig_ctx = _get_sns_kit_context(fast=True) if channel == 'instagram' else None
+    editorial = sns_editorial.run_editorial_pipeline(
+        live_s,
+        slot_label=slot_label,
+        channel=channel,
+        ig_ctx=ig_ctx,
+        record_history=False,
+    )
     if request.args.get('format') == 'json':
         return jsonify(editorial)
-    return render_template('staff_sns_editorial.html', editorial=editorial, slot_label=slot_label)
+    return render_template(
+        'staff_sns_editorial.html',
+        editorial=editorial,
+        slot_label=slot_label,
+        channel=channel,
+    )
 
 
 @app.route('/api/sns-editorial')
 def api_sns_editorial():
-    """Master-only JSON API returning the 4-role SNS editorial proposals and scores."""
+    """Master-only JSON API returning the 4-role SNS editorial proposals and scores for X, Threads, or Instagram."""
     if not is_master_authorized():
         return jsonify({'error': 'Unauthorized'}), 401
     import sns_editorial
     restore_latest_data_if_empty()
+    channel = (request.args.get('channel') or 'x').strip().lower()
+    if channel not in ('x', 'threads', 'instagram'):
+        channel = 'x'
     slot_label = (request.args.get('slot') or '22:00').strip()
     with data_lock:
         live_s = list(latest_data.get('full_data') or [])
-    return jsonify(sns_editorial.run_editorial_pipeline(live_s, slot_label=slot_label, record_history=False))
+    ig_ctx = _get_sns_kit_context(fast=True) if channel == 'instagram' else None
+    return jsonify(sns_editorial.run_editorial_pipeline(
+        live_s,
+        slot_label=slot_label,
+        channel=channel,
+        ig_ctx=ig_ctx,
+        record_history=False,
+    ))
 
 
 @app.route('/staff/sns-kit')

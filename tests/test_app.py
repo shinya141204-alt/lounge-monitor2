@@ -24,6 +24,7 @@ os.environ['DISABLE_SHEETS'] = '1'
 os.environ['LOCAL_DB_PATH'] = os.path.join(_TMP, 'test.db')
 os.environ['JOB_STATE_DIR'] = os.path.join(_TMP, 'state')
 os.environ['APP_LOG_PATH'] = os.path.join(_TMP, 'app.log')
+os.environ['LATEST_STATUS_SNAPSHOT_FILE'] = os.path.join(_TMP, 'latest_status_cache.json')
 os.environ.pop('ALERT_WEBHOOK_URL', None)
 
 import app as app_module  # noqa: E402
@@ -1847,7 +1848,19 @@ class FullAuditRegressionTests(unittest.TestCase):
         self.assertNotIn('SNS編集部（4役合議）', staff_html)
         self.assertNotIn('/staff/sns-editorial', staff_html)
 
-        # Verify Master (2918) sees both the subpanel on /staff and full details on /staff/sns-editorial
+        # Verify X, Threads, and Instagram 4-role pipelines all avoid mechanical medal lists and enforce platform limits
+        res_th = sns_editorial.run_editorial_pipeline(sample_stores, slot_label='22:00', channel='threads', record_history=True)
+        self.assertNotEqual(res_th['winner']['style'], 'threads_classic_top3')
+        self.assertNotIn('🥇', res_th['winner']['main_text'])
+        self.assertNotIn('OLG ', res_th['winner']['main_text'])
+        self.assertLessEqual(len(res_th['winner']['main_text']), 495)
+
+        res_ig = sns_editorial.run_editorial_pipeline(sample_stores, slot_label='21:45', channel='instagram', record_history=True)
+        self.assertNotEqual(res_ig['winner']['style'], 'ig_classic_template')
+        self.assertIn('保存', res_ig['winner']['main_text'])
+        self.assertGreaterEqual(res_ig['winner']['total_score'], 80)
+
+        # Verify Master (2918) sees both the subpanel on /staff and full details across all 3 channels on /staff/sns-editorial
         with self.client.session_transaction() as s:
             s['is_staff'] = True
             s['is_master'] = True
@@ -1858,12 +1871,14 @@ class FullAuditRegressionTests(unittest.TestCase):
         try:
             master_html = self.client.get('/staff').data.decode('utf-8')
             self.assertIn('SNS編集部（4役合議）', master_html)
-            self.assertIn('/staff/sns-editorial', master_html)
-            ed_page = self.client.get('/staff/sns-editorial?slot=22:00').data.decode('utf-8')
-            self.assertIn('① リサーチャー（現場データ発掘係）', ed_page)
-            self.assertIn('② プランナー（編成・頻度調整係）', ed_page)
-            self.assertIn('③ ライター（執筆・下書き係）', ed_page)
-            self.assertIn('④ デスク（評価・ボット感検閲係）', ed_page)
+            self.assertIn('/staff/sns-editorial?channel=threads', master_html)
+            self.assertIn('/staff/sns-editorial?channel=instagram', master_html)
+            for ch_name in ('x', 'threads', 'instagram'):
+                ed_page = self.client.get(f'/staff/sns-editorial?channel={ch_name}&slot=22:00').data.decode('utf-8')
+                self.assertIn('① リサーチャー（現場データ発掘係）', ed_page)
+                self.assertIn('② プランナー（編成・頻度調整係）', ed_page)
+                self.assertIn('③ ライター（執筆・下書き係）', ed_page)
+                self.assertIn('④ デスク（評価・ボット感検閲係）', ed_page)
         finally:
             with app_module.data_lock:
                 app_module.latest_data['full_data'] = old_full

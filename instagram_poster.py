@@ -358,8 +358,26 @@ def execute_scheduled_instagram_post(stores: list, mode: str = "carousel", slot_
             rep = None
 
         ctx = ig_carousel_generator.build_forecast_context(report=rep, live_stores=stores, now_jst=now_jst)
-        captions = ig_carousel_generator.build_captions(ctx)
-        caption = captions.get("instagram_caption") or ""
+        editorial_winner = None
+        try:
+            import sns_editorial
+            ed_res = sns_editorial.run_editorial_pipeline(
+                stores,
+                slot_label=slot_label,
+                channel="instagram",
+                ig_ctx=ctx,
+                now_jst=now_jst,
+                record_history=not force,
+            )
+            editorial_winner = ed_res.get("winner")
+        except Exception as e:
+            logging.warning(f"Instagram editorial pipeline fallback ({slot_label}): {e}")
+
+        if editorial_winner and editorial_winner.get("main_text"):
+            caption = editorial_winner["main_text"]
+        else:
+            captions = ig_carousel_generator.build_captions(ctx)
+            caption = captions.get("instagram_caption") or ""
         slide_urls = [
             f"{SITE_URL}/ogp/ig-slide/{i}.jpg?s={ts_code}"
             for i in range(1, 6)
@@ -367,11 +385,34 @@ def execute_scheduled_instagram_post(stores: list, mode: str = "carousel", slot_
         res = post_carousel_to_instagram(slide_urls, caption)
         res["caption"] = caption
         res["slide_urls"] = slide_urls
+        if editorial_winner:
+            res["editorial_style"] = editorial_winner.get("style")
+            res["editorial_score"] = editorial_winner.get("total_score")
     else:
-        caption = threads_poster.build_threads_live_post(stores, slot_label=slot_label, now_jst=now_jst)
+        editorial_winner = None
+        try:
+            import sns_editorial
+            ed_res = sns_editorial.run_editorial_pipeline(
+                stores,
+                slot_label=slot_label,
+                channel="threads",
+                now_jst=now_jst,
+                record_history=False,
+            )
+            editorial_winner = ed_res.get("winner")
+        except Exception:
+            editorial_winner = None
+        caption = (
+            editorial_winner["main_text"]
+            if (editorial_winner and editorial_winner.get("main_text"))
+            else threads_poster.build_threads_live_post(stores, slot_label=slot_label, now_jst=now_jst)
+        )
         image_url = f"{SITE_URL}/ogp/ig-slide/2.jpg?s={ts_code}"
         res = post_single_image_to_instagram(image_url, caption)
         res["caption"] = caption
+        if editorial_winner:
+            res["editorial_style"] = editorial_winner.get("style")
+            res["editorial_score"] = editorial_winner.get("total_score")
 
     if res.get("status") == "success" and not force:
         job_state.mark_done(dedup_key)

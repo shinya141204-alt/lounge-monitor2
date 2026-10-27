@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
-    <title>SNS編集部 AI合議・評価ボード（マスター専用）｜相席ナビ</title>
+    <title>SNS編集部（X・Threads・IG）4役合議ボード（マスター専用）｜相席ナビ</title>
     <style>
         :root {
             --bg: #0f1014;
@@ -32,7 +32,7 @@
             line-height: 1.6;
         }
         .wrap {
-            max-width: 1120px;
+            max-width: 1140px;
             margin: 0 auto;
             padding: 20px 16px 70px;
         }
@@ -58,13 +58,25 @@
             border: 1px solid var(--border-strong);
         }
         a.back-btn:hover { border-color: var(--gold); }
-        .slot-tabs {
+        .channel-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 14px;
+            padding: 10px 14px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+        }
+        .tab-group {
             display: flex;
             align-items: center;
             gap: 6px;
             flex-wrap: wrap;
         }
-        .slot-tabs a {
+        .tab-group a {
             color: var(--sub);
             text-decoration: none;
             padding: 6px 13px;
@@ -74,7 +86,7 @@
             font-weight: 700;
             background: var(--bg);
         }
-        .slot-tabs a.active {
+        .tab-group a.active {
             background: var(--gold-soft);
             border-color: var(--gold);
             color: #f5e6cc;
@@ -268,16 +280,29 @@
     <div class="wrap">
         <div class="top-nav">
             <a href="/staff" class="back-btn">← マスター管理画面へ戻る</a>
-            <div class="slot-tabs">
-                <a href="/staff/sns-editorial?slot=20:00" class="{{ 'active' if slot_label == '20:00' else '' }}">20:00枠で合議</a>
-                <a href="/staff/sns-editorial?slot=22:00" class="{{ 'active' if slot_label == '22:00' else '' }}">22:00枠で合議</a>
-                <a href="/staff/sns-editorial?slot=00:00" class="{{ 'active' if slot_label == '00:00' else '' }}">00:00枠で合議</a>
+            {% if channel == 'instagram' %}
+            <a href="/staff/sns-kit" class="back-btn">📸 カルーセル画像（5枚組）プレビューへ →</a>
+            {% endif %}
+        </div>
+
+        <div class="channel-bar">
+            <div class="tab-group" aria-label="SNS媒体切替">
+                <a href="/staff/sns-editorial?channel=x&slot={{ slot_label }}" class="{{ 'active' if channel == 'x' else '' }}">𝕏 X（旧Twitter）編集部</a>
+                <a href="/staff/sns-editorial?channel=threads&slot={{ slot_label }}" class="{{ 'active' if channel == 'threads' else '' }}">🧵 Threads（スレッズ）編集部</a>
+                <a href="/staff/sns-editorial?channel=instagram" class="{{ 'active' if channel == 'instagram' else '' }}">📸 Instagram（インスタ）編集部</a>
             </div>
+            {% if channel != 'instagram' %}
+            <div class="tab-group" aria-label="時間帯枠切替">
+                <a href="/staff/sns-editorial?channel={{ channel }}&slot=20:00" class="{{ 'active' if slot_label == '20:00' else '' }}">20:00枠</a>
+                <a href="/staff/sns-editorial?channel={{ channel }}&slot=22:00" class="{{ 'active' if slot_label == '22:00' else '' }}">22:00枠</a>
+                <a href="/staff/sns-editorial?channel={{ channel }}&slot=00:00" class="{{ 'active' if slot_label == '00:00' else '' }}">00:00枠</a>
+            </div>
+            {% endif %}
         </div>
 
         <div class="header-card">
-            <h1>👑 相席ナビ「SNS編集部」4役合議・赤入れ採点ボード（マスター専用）</h1>
-            <p>毎回同じ『🥇🥈🥉 TOP3』になる機械っぽさをなくすため、①現場データ発掘係 → ②編成・頻度調整係 → ③執筆係（4案作成） → ④鬼デスク（100点満点評価）の4ポジションが合議して一番自然な1案を選出します。</p>
+            <h1>👑 相席ナビ「SNS編集部」{{ editorial.channel_label }} 4役合議・採点ボード（マスター専用）</h1>
+            <p>X・Threads・Instagramの全3媒体で、毎回同じ『🥇🥈🥉 TOP3』や定型見出しになるボット感を排除。①現場データ発掘係 → ②編成・頻度調整係 → ③執筆係（4案作成） → ④鬼デスク（100点満点評価）が合議して一番自然な1案を自動採用します。</p>
         </div>
 
         <!-- 4 Roles Live Output -->
@@ -299,8 +324,8 @@
             </div>
             <div class="role-card">
                 <span class="role-badge role-3">③ ライター（執筆・下書き係）</span>
-                <h3>4つの語り口で下書き作成</h3>
-                <p>定型のTOP3羅列だけでなく、「街別ギャップ」「1店舗急増フォーカス」「普段の同曜日比（平比）」「東西トップ比較」から{{ editorial.evaluation.candidates | length }}案を生成しました。</p>
+                <h3>{{ editorial.channel_label }}向け4案作成</h3>
+                <p>内部略称（OLG等）を自然な日本語店名（オリエンタル〇〇等）へ整え、同一店舗の重複言及ゼロ・媒体別の最適文字数で{{ editorial.evaluation.candidates | length }}案を執筆しました。</p>
             </div>
             <div class="role-card">
                 <span class="role-badge role-4">④ デスク（評価・ボット感検閲係）</span>
@@ -310,7 +335,7 @@
         </div>
 
         <h2 class="section-h2">
-            <span>📝 執筆係が提案した全{{ editorial.evaluation.candidates | length }}案とデスクの評価スコア（{{ slot_label }}枠シミュレーション）</span>
+            <span>📝 {{ editorial.channel_label }} 提案{{ editorial.evaluation.candidates | length }}案とデスクの評価スコア{% if channel != 'instagram' %}（{{ slot_label }}枠）{% endif %}</span>
             <span style="font-size:0.78rem; color:var(--sub);">集計時刻: {{ editorial.research.timestamp }}</span>
         </h2>
 
@@ -327,8 +352,8 @@
                 <div class="score-bars">
                     <span>🗣️ 人間味・非ボット感: <strong>{{ c.scores.human_tone }}/35</strong></span>
                     <span>🔄 新鮮さ・被り回避: <strong>{{ c.scores.freshness_diversity }}/30</strong></span>
-                    <span>📊 データの具体性: <strong>{{ c.scores.data_specificity }}/25</strong></span>
-                    <span>📏 文字数バランス: <strong>{{ c.scores.weight_fit }}/10</strong> ({{ c.weight }}w)</span>
+                    <span>📊 データの具体性・精度: <strong>{{ c.scores.data_specificity }}/25</strong></span>
+                    <span>📏 媒体ルール適合: <strong>{{ c.scores.weight_fit }}/10</strong> ({{ c.metric_unit }})</span>
                 </div>
 
                 <div class="writer-memo">
@@ -343,14 +368,14 @@
                 </div>
 
                 <div class="tweet-preview" id="cand-main-{{ loop.index }}">{{ c.main_text }}</div>
-                <div class="reply-preview"><strong>💬 2ポスト目（リプ欄自動連結）：</strong><br>{{ c.reply_text }}</div>
+                <div class="reply-preview"><strong>💬 補足・連結仕様：</strong><br>{{ c.reply_text }}</div>
 
                 <button type="button" class="copy-btn" onclick="copyText('cand-main-{{ loop.index }}', this)">この本文をコピーする</button>
             </div>
             {% endfor %}
         </div>
 
-        <h2 class="section-h2">📚 直近のSNS編集部 採用ログ（本番投稿履歴）</h2>
+        <h2 class="section-h2">📚 直近の{{ editorial.channel_label }} 採用ログ（本番投稿履歴）</h2>
         <div class="history-list">
             {% if editorial.history %}
                 {% for h in editorial.history %}
@@ -364,7 +389,7 @@
                 </div>
                 {% endfor %}
             {% else %}
-                <div class="history-item" style="color:var(--sub);">まだ自動投稿の会議ログがありません。次回の定時X投稿（20:00 / 22:00）から自動でここに各係の提案と採点履歴が記録されます。</div>
+                <div class="history-item" style="color:var(--sub);">まだ{{ editorial.channel_label }}の自動投稿合議ログがありません。次回の自動投稿からここに各係の提案と採点履歴が記録されます。</div>
             {% endif %}
         </div>
     </div>

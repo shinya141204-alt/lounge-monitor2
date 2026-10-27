@@ -350,9 +350,30 @@ def execute_scheduled_threads_post(stores: list, slot_label: str = "20:00", forc
             return {"status": "skipped", "reason": "Insufficient live headcount"}
 
     refresh_threads_token_if_needed(force=False)
-    text = build_threads_live_post(stores, slot_label=slot_label, now_jst=now_jst)
+    editorial_winner = None
+    try:
+        import sns_editorial
+        ed_res = sns_editorial.run_editorial_pipeline(
+            stores,
+            slot_label=slot_label,
+            channel="threads",
+            now_jst=now_jst,
+            record_history=not force,
+        )
+        editorial_winner = ed_res.get("winner")
+    except Exception as e:
+        logging.warning(f"Threads editorial pipeline fallback ({slot_label}): {e}")
+
+    if editorial_winner and editorial_winner.get("main_text"):
+        text = editorial_winner["main_text"]
+    else:
+        text = build_threads_live_post(stores, slot_label=slot_label, now_jst=now_jst)
+
     res = post_to_threads(text, image_url=image_url)
     if res.get("status") == "success" and not force:
         job_state.mark_done(dedup_key)
     res["threads_text"] = text
+    if editorial_winner:
+        res["editorial_style"] = editorial_winner.get("style")
+        res["editorial_score"] = editorial_winner.get("total_score")
     return res
