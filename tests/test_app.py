@@ -1916,7 +1916,7 @@ class FullAuditRegressionTests(unittest.TestCase):
         self.assertNotIn('DummyKey', json.dumps(st))
 
         try:
-            # 3. Valid Gemini ad-lib draft (accurate numbers + weather vibe) wins #1 with 100/100
+            # 3. Valid Gemini deep-thinking ad-lib draft (accurate numbers + weather vibe + thinking_memo) wins #1 with 100/100
             valid_ai_json = json.dumps({
                 'main_text': (
                     '小雨の金曜夜☔ 駅チカの梅田まわりで今かなり座りやすいのがオリエンタル梅田茶屋町✨\n\n'
@@ -1925,6 +1925,7 @@ class FullAuditRegressionTests(unittest.TestCase):
                     '向かう前の比較はリプ欄から👇\n#相席ナビ #相席ラウンジ'
                 ),
                 'writer_note': '雨天の駅チカ集中と梅田の実測値を掛け合わせたアドリブ案',
+                'thinking_memo': '①独り言風・②常連LINE風・③温度差発見風の3案を比較し、雨の22時ピークなので②をベースに宣伝臭を削って採用。',
             }, ensure_ascii=False)
             mock_resp_ok = MagicMock()
             mock_resp_ok.status_code = 200
@@ -1937,6 +1938,27 @@ class FullAuditRegressionTests(unittest.TestCase):
             self.assertEqual(res_ok['winner']['style'], 'ai_live_adlib')
             self.assertEqual(res_ok['winner']['total_score'], 100)
             self.assertIn('小雨の金曜夜', res_ok['winner']['main_text'])
+            self.assertIn('3案を比較', res_ok['winner']['thinking_memo'])
+            self.assertIn('22:00', res_ok['research']['slot_persona']['label'])
+
+            # 3b. AI draft containing robotic copywriting cliches ('必見', 'まさに') is penalized on human_tone by Desk
+            cliche_ai_json = json.dumps({
+                'main_text': (
+                    '今夜はまさに必見の盛り上がり！オリエンタル梅田茶屋町が女性44・男性22（女性比67%）✨\n'
+                    '向かう前の比較はリプ欄から👇\n#相席ナビ #相席ラウンジ'
+                ),
+                'writer_note': 'AI臭ワードテスト',
+            }, ensure_ascii=False)
+            mock_resp_cliche = MagicMock()
+            mock_resp_cliche.status_code = 200
+            mock_resp_cliche.json.return_value = {'candidates': [{'content': {'parts': [{'text': cliche_ai_json}]}}]}
+            with patch('sns_editorial.requests.post', return_value=mock_resp_cliche):
+                res_cliche = sns_editorial.run_editorial_pipeline(
+                    sample_stores, slot_label='00:00', channel='x', use_ai=True, force_ai_refresh=True
+                )
+            cliche_eval = next(c for c in res_cliche['evaluation']['candidates'] if c['style'] == 'ai_live_adlib')
+            self.assertEqual(cliche_eval['scores']['human_tone'], 22)
+            self.assertIn('00:00', res_cliche['research']['slot_persona']['label'])
 
             # 4. Hallucinated AI draft (invents 女性99名 instead of 44名) is strictly blocked by Desk (-50 data score)
             bad_ai_json = json.dumps({
@@ -1959,7 +1981,7 @@ class FullAuditRegressionTests(unittest.TestCase):
             ai_cand_eval = next(c for c in res_bad['evaluation']['candidates'] if c['style'] == 'ai_live_adlib')
             self.assertEqual(ai_cand_eval['scores']['data_specificity'], -50)
 
-            # 5. Modern AI Studio `AQ....` auth key targets `generativelanguage.googleapis.com` directly with `thinkingBudget: 0`
+            # 5. Modern AI Studio `AQ....` auth key targets `gemini-2.5-flash` first with bounded deep thinking (`thinkingBudget: 1536`)
             sns_editorial.set_gemini_api_key('AQ.Ab8RN6SampleExpressKey1234dgKQ')
             with patch('sns_editorial.requests.post', return_value=mock_resp_ok) as mock_aq_post:
                 res_aq = sns_editorial.run_editorial_pipeline(
@@ -1968,8 +1990,9 @@ class FullAuditRegressionTests(unittest.TestCase):
             self.assertEqual(res_aq['winner']['style'], 'ai_live_adlib')
             called_url = mock_aq_post.call_args[0][0]
             called_json = mock_aq_post.call_args[1]['json']
-            self.assertIn('generativelanguage.googleapis.com/v1beta/models/', called_url)
-            self.assertEqual(called_json['generationConfig'].get('thinkingConfig'), {'thinkingBudget': 0})
+            self.assertIn('generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent', called_url)
+            self.assertEqual(called_json['generationConfig'].get('thinkingConfig'), {'thinkingBudget': 1536})
+            self.assertEqual(called_json['generationConfig'].get('maxOutputTokens'), 3072)
             self.assertEqual(res_aq['gemini_status']['state'], 'active')
 
             # 6. HTML page `GET /staff/sns-editorial` NEVER blocks on Gemini HTTP calls (0 network posts, instant render)
@@ -1982,15 +2005,22 @@ class FullAuditRegressionTests(unittest.TestCase):
                     html_resp = self.client.get('/staff/sns-editorial?channel=x&slot=22:00')
                 self.assertEqual(html_resp.status_code, 200)
                 html_body = html_resp.get_data(as_text=True)
-                self.assertIn('⏳ Gemini AI が今夜の現場アドリブ案を執筆中', html_body)
+                self.assertIn('🧠 Gemini 2.5 Flash が長考モードで3案を脳内コンペ・推敲中', html_body)
 
-                # And async JSON endpoint `/api/sns-editorial` resolves the Gemini ad-lib draft cleanly
+                # And async JSON endpoint `/api/sns-editorial` resolves the Gemini ad-lib draft + thinking_memo cleanly
                 with patch('sns_editorial.requests.post', return_value=mock_resp_ok) as mock_async_post:
                     api_resp = self.client.get('/api/sns-editorial?channel=x&slot=22:00')
                 self.assertEqual(api_resp.status_code, 200)
                 api_json = api_resp.get_json()
                 self.assertEqual(api_json['winner']['style'], 'ai_live_adlib')
+                self.assertIn('3案を比較', api_json['winner']['thinking_memo'])
                 self.assertEqual(mock_async_post.call_count, 1)
+
+                # Subsequent HTML load renders the cached deep-thinking draft + brain memo immediately in 0ms
+                with patch('sns_editorial.requests.post', side_effect=AssertionError('Cached HTML must not hit network!')):
+                    cached_html = self.client.get('/staff/sns-editorial?channel=x&slot=22:00').get_data(as_text=True)
+                self.assertIn('🧠 AI編集長の脳内メモ（3案コンペ・推敲プロセス）', cached_html)
+                self.assertIn('3案を比較', cached_html)
             finally:
                 with app_module.data_lock:
                     app_module.latest_data['full_data'] = old_full

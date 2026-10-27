@@ -29,8 +29,25 @@ logger = logging.getLogger(__name__)
 JST = datetime.timezone(datetime.timedelta(hours=9))
 GEMINI_KEY_STORAGE_PREFIX = "token:gemini_api_key"
 DEFAULT_GEMINI_MODELS = (
-    "gemini-2.5-flash-lite",
     "gemini-2.5-flash",
+    "gemini-2.5-flash-lite",
+)
+
+# Words/phrases that betray AI-generated or promotional copywriting — strictly penalized by Desk
+AI_CLICHE_WORDS = (
+    "必見",
+    "徹底解説",
+    "いかがでしたか",
+    "いかがですか",
+    "まさに",
+    "間違いなし",
+    "大注目",
+    "魅力的",
+    "最適解",
+    "盛り上がりを見せて",
+    "ぜひ足を運んで",
+    "お見逃しなく",
+    "ご紹介",
 )
 
 _weather_cache = {"ts": 0.0, "data": None, "fetching": False}
@@ -309,6 +326,49 @@ def build_calendar_context(now_jst: datetime.datetime = None) -> dict:
     }
 
 
+def build_slot_persona_context(slot_label: str = "22:00", channel: str = "x") -> dict:
+    """
+    Return time-of-night human emotional tone & speaking energy so the account never sounds
+    like a flat, uniform bot across 20:00, 22:00, and 00:00+ midnight slots.
+    """
+    ch = (channel or "x").lower()
+    if ch == "instagram":
+        return {
+            "label": "📖 編集部の保存版裏話トーン",
+            "guidance": (
+                "週末や仕事帰りの店選びで失敗してほしくない編集者が、友達にこっそりデータの法則を教える温かいトーン。"
+                "宣伝文句ではなく『これ知ってるだけで待ち時間なくなるよ』という等身大の語り口にする。"
+            ),
+        }
+    if slot_label == "20:00":
+        return {
+            "label": "🍻 20:00 仕事終わり・1軒目ウォームアップ",
+            "guidance": (
+                "仕事終わりの落ち着いた温度感。まだガツガツ煽らず、"
+                "『お疲れさまです、これから1軒目どこ入るか迷ってる人向けに置いときます』『今夜ここ立ち上がり早めかも』"
+                "といった余裕のあるスマートな語り口にする。"
+            ),
+        }
+    if slot_label in ("00:00", "02:00"):
+        return {
+            "label": "🌙 00:00 終電後の深夜ラジオ・本音トーン",
+            "guidance": (
+                "終電が終わった後の、少し肩の力が抜けた深夜のリアルな本音トーン。"
+                "ハイテンションな感嘆符（！）やキラキラ絵文字を抑え、"
+                "『終電なくなった後のリアルな残り方なんだけど…』『この時間からまだちゃんと残ってるの強いな』"
+                "のように静かに呟く空気感にする。"
+            ),
+        }
+    return {
+        "label": "🔥 22:00 ピーク・2軒目移動のライブ実況",
+        "guidance": (
+            "街が一番動いている22時台のリアルタイム実況トーン。"
+            "『いま1軒目終わりの組が一気に流れてきてて』『徒歩3分なのにここまで男女比割れるか…』"
+            "のように、今まさにスマホで現場モニターを見ている臨場感を出す。"
+        ),
+    }
+
+
 def _describe_wmo_code(code: int, precip: float) -> tuple:
     if precip >= 0.4 or code in (51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 99):
         return ("雨", True)
@@ -514,10 +574,12 @@ def run_researcher(
 
     cal_ctx = build_calendar_context(now_jst=now_jst)
     weather_ctx = fetch_live_weather_context(allow_blocking=allow_weather_blocking)
+    slot_persona = build_slot_persona_context(slot_label=slot_label, channel=channel)
 
     notes = [
         f"対象媒体：{CHANNEL_LABELS.get(channel, channel)} ｜ 全国稼働 {len(active_stores)}店舗（女性計 {total_w:,}名 / 男性計 {total_m:,}名）を解析。",
         f"【街況・カレンダー】{cal_ctx['tag']}（{cal_ctx['note']}）",
+        f"【時間帯テンション設計】{slot_persona['label']}",
     ]
     if weather_ctx.get("available"):
         notes.append(f"【リアルタイム気象】{weather_ctx['summary']} — {weather_ctx['adlib_hint']}")
@@ -565,6 +627,7 @@ def run_researcher(
         "ig_ctx": ig_ctx,
         "calendar": cal_ctx,
         "weather": weather_ctx,
+        "slot_persona": slot_persona,
         "research_notes": notes,
     }
 
@@ -1347,18 +1410,32 @@ def _build_gemini_prompt(
             "- 構成：『…続きを読む』で折りたたまれる前の最初の1〜2行目に、天気・季節・週末あるあるを交えた思わずタップしたくなる人間味100%の共感アドリブを書く。『保存📌』を促す一言を入れ、スライド2枚目の盛り上がり上位3店舗とスライド3枚目の高女性比率上位3店舗の数値を正確に紹介し、プロフィールのリンク（aiseki-navi.com）への誘導と、末尾に『#相席ナビ #相席ラウンジ #オリエンタルラウンジ #ag #JIS #夜遊びガイド』の6タグを付ける。"
         )
 
+    slot_persona = research.get("slot_persona") or build_slot_persona_context(slot_label=slot_label, channel=ch)
+    cliche_list_str = "・".join(f"『{w}』" for w in AI_CLICHE_WORDS)
+
     prompt = (
         "あなたは全国53店舗の相席ラウンジ人数をリアルタイム計測している『相席ナビ』のベテランSNS編集長です。\n"
         "毎回同じボットのような投稿ではなく、本当にスマホで今の店内人数と外の空気（天気・気温・曜日・給料日など）を見ながら、"
         "フォロワーに『今夜ここ狙い目だよ』と自然に呟いているアドリブ投稿を1案作成してください。\n\n"
+        f"【今夜の時間帯テンション設定：{slot_persona['label']}】\n"
+        f"- {slot_persona['guidance']}\n\n"
+        "【長考（Thinking）プロセス：脳内3案コンペ＆脱AI推敲手順】\n"
+        "いきなり書き始めず、内部思考の中で必ず次の3ステップを行ってから最終1本を出力してください：\n"
+        "  Step 1. 性格の違う3つの切り口を頭の中でラフに書き比べる\n"
+        "    - 案①（現場ウォッチャーの独り言風）：モニターを見ながら『え、今日〇〇なのに梅田すごいな…』とポロッと漏らすトーン\n"
+        "    - 案②（常連の友達・先輩にLINEする風）：『今から〇〇行くなら正直こっちにしとき』と親身にそっと教えるトーン\n"
+        "    - 案③（現場の違和感・温度差発見風）：『普段のこの時間よりだいぶ早い』『徒歩3分なのにここまで割れるか…』という気づきトーン\n"
+        "  Step 2. 3案を見比べ、一番『業者の宣伝』『AIの優等生構文』に見えず、人間がスマホでフリック入力したような自然な呼吸感・改行の1案に推敲する（良いフレーズの掛け合わせOK）。キラキラ絵文字の連打は削り、絵文字は自然な位置に1〜3個までに抑える。\n"
+        "  Step 3. ファクトシートの数字と1人・1%の狂いもないか指差し確認する。\n\n"
         f"{platform_spec}\n\n"
-        "【絶対厳守ルール（違反するとデスク検閲で不採用になります）】\n"
+        "【絶対厳守ルール（違反するとデスク検閲で減点・不採用になります）】\n"
         "1. 下記の JSON ファクトシートに含まれる店舗名・人数・パーセンテージ以外は絶対に書かないこと。数値を1人でも盛ったり丸めたり変更することは厳禁。\n"
         "2. 内部略称『OLG』は使わず、ファクトシート記載の自然な日本語店名（『オリエンタル〇〇』『ag〇〇』『JIS〇〇』）をそのまま使うこと。\n"
-        f"3. 直近の過去投稿の書き出し（{json.dumps(recent_openers, ensure_ascii=False)}）とは全く違う新鮮な1行目の切り口・語尾にすること。\n\n"
+        f"3. AI臭・宣伝臭ワードの完全禁止：{cliche_list_str} は本文に絶対に使わないこと。\n"
+        f"4. 直近の過去投稿の書き出し（{json.dumps(recent_openers, ensure_ascii=False)}）とは全く違う新鮮な1行目の切り口・語尾にすること。\n\n"
         f"【今夜の検証済みファクトシート】\n{json.dumps(fact_payload, ensure_ascii=False, indent=2)}\n\n"
         "出力は必ず以下のJSON形式のみを返してください（Markdownコードブロック不要）：\n"
-        '{"main_text": "投稿本文（改行は\\n）", "writer_note": "今回どの天気・街況・データをどうアドリブに活かしたかの1行メモ"}'
+        '{"main_text": "投稿本文（改行は\\n）", "writer_note": "今回どの天気・街況・データをどうアドリブに活かしたかの1行メモ", "thinking_memo": "脳内3案（①独り言風・②常連風・③違和感発見風）をどう比較し、なぜこの言い回し・温度感に削ぎ落としたかの編集長思考メモ（80〜140文字）"}'
     )
     return prompt, reply_text
 
@@ -1399,13 +1476,14 @@ def _discover_ai_studio_flash_model(api_key: str) -> str:
 
 def _build_endpoint_request(endpoint_kind: str, model_name: str, api_key: str, prompt: str) -> tuple:
     gen_cfg = {
-        "temperature": 0.85,
-        "maxOutputTokens": 900,
+        "temperature": 0.88,
+        "maxOutputTokens": 3072,
         "responseMimeType": "application/json",
     }
-    # Disable extended reasoning on Gemini 2.5 Flash family so responses arrive in ~1.2s instead of timing out at >10s
+    # Bounded deep-thinking budget on Gemini 2.5 Flash (~4-6s for 3-persona internal competition without >10s timeout)
     if model_name.startswith("gemini-2.5"):
-        gen_cfg["thinkingConfig"] = {"thinkingBudget": 0}
+        budget = 512 if "lite" in model_name else 1536
+        gen_cfg["thinkingConfig"] = {"thinkingBudget": budget}
 
     payload = {
         "contents": [{"role": "user", "parts": [{"text": prompt}]}],
@@ -1500,7 +1578,7 @@ def _generate_gemini_adlib_candidate(
 
     def _try_single_route(ek: str, mn: str):
         url, headers, params, payload = _build_endpoint_request(ek, mn, api_key, prompt)
-        return requests.post(url, headers=headers, params=params, json=payload, timeout=18)
+        return requests.post(url, headers=headers, params=params, json=payload, timeout=25)
 
     for ek, model_name in routes:
         try:
@@ -1531,6 +1609,7 @@ def _generate_gemini_adlib_candidate(
             parsed = json.loads(raw_text, strict=False)
             main_text = (parsed.get("main_text") or "").strip()
             writer_note = (parsed.get("writer_note") or "天気・曜日・リアルタイム人数を掛け合わせたGemini AIアドリブ執筆案。").strip()
+            thinking_memo = (parsed.get("thinking_memo") or "").strip()
             if not main_text:
                 last_err = "Parsed JSON missing main_text"
                 continue
@@ -1538,7 +1617,8 @@ def _generate_gemini_adlib_candidate(
             candidate = {
                 "style": "ai_live_adlib",
                 "style_label": STYLE_LABELS["ai_live_adlib"],
-                "writer_note": f"【{model_name}生成】{writer_note}",
+                "writer_note": f"【{model_name}・長考推敲】{writer_note}",
+                "thinking_memo": thinking_memo,
                 "main_text": main_text,
                 "reply_text": reply_text,
                 "is_ai_generated": True,
@@ -1583,11 +1663,13 @@ def _generate_gemini_adlib_candidate(
                     parsed = json.loads(raw_text, strict=False)
                     main_text = (parsed.get("main_text") or "").strip()
                     writer_note = (parsed.get("writer_note") or "Gemini AIアドリブ執筆案。").strip()
+                    thinking_memo = (parsed.get("thinking_memo") or "").strip()
                     if main_text:
                         candidate = {
                             "style": "ai_live_adlib",
                             "style_label": STYLE_LABELS["ai_live_adlib"],
-                            "writer_note": f"【{discovered}生成】{writer_note}",
+                            "writer_note": f"【{discovered}・長考推敲】{writer_note}",
+                            "thinking_memo": thinking_memo,
                             "main_text": main_text,
                             "reply_text": reply_text,
                             "is_ai_generated": True,
@@ -1682,18 +1764,22 @@ def run_evaluator(
             metric_val = len(text)
             metric_unit = f"{metric_val}文字"
 
-        # 1. Human Tone (max 35)
+        # 1. Human Tone (max 35) — strictly penalizes bot medals, bracket headers, AND AI copywriting cliches
         is_medal_bot = ("🥇" in text and "🥈" in text and "🥉" in text)
         is_bracket_banner = first_line.startswith("【") and "】" in first_line
+        detected_cliches = [w for w in AI_CLICHE_WORDS if w in text]
         if style == classic_key or is_medal_bot:
             human_score = 18
             human_comment = "⚠️ 毎回同じ『🥇🥈🥉 TOP3』や【角括弧見出し】の定型フォーマットで業者・ボット感が出やすいため減点。"
+        elif detected_cliches:
+            human_score = 22
+            human_comment = f"⚠️ AI・宣伝っぽく見えやすい定型ワード（『{'』『'.join(detected_cliches[:2])}』）が含まれているため減点。"
         elif is_bracket_banner:
             human_score = 24
             human_comment = "△ 冒頭が【角括弧の見出し】から始まっており少し宣伝っぽいため、自然な語り出し案を優先。"
         elif is_ai:
             human_score = 35
-            human_comment = "◎ Gemini AIが天気・曜日・現場データから書き起こした1回限りの生きたアドリブ文面で、人間味が極めて高い。"
+            human_comment = "◎ 長考3案コンペ＆脱AI推敲クリア：AI臭ワード0個・時間帯の空気に馴染む生きた人間の語り口です。"
         else:
             human_score = 34
             if any(w in text for w in ("割れてる", "立ち上がりがかなり早い", "いつもの", "もったいない", "実は同じ", "温度差", "雨の", "給料日", "祝前日")):
@@ -1903,6 +1989,7 @@ def run_editorial_pipeline(
         "selected_score": winner.get("total_score", 0),
         "selected_text": winner.get("main_text", ""),
         "selected_reply": winner.get("reply_text", ""),
+        "selected_thinking_memo": winner.get("thinking_memo", ""),
         "desk_summary": evaluation.get("desk_summary", ""),
         "planner_memo": plan.get("planner_memo", ""),
         "research_notes": research.get("research_notes", []),
@@ -1917,6 +2004,7 @@ def run_editorial_pipeline(
                 "metric_unit": c.get("metric_unit"),
                 "scores": c.get("scores"),
                 "writer_note": c.get("writer_note"),
+                "thinking_memo": c.get("thinking_memo") or "",
                 "desk_comments": c.get("desk_comments"),
                 "main_text": c.get("main_text"),
                 "reply_text": c.get("reply_text"),

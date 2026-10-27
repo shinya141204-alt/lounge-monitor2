@@ -219,6 +219,18 @@
             border-left: 3px solid var(--gold);
             padding: 6px 10px;
             border-radius: 4px;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+        .thinking-memo {
+            font-size: 0.77rem;
+            color: #ebd9ff;
+            background: rgba(168, 85, 247, 0.11);
+            border-left: 3px solid #c084fc;
+            padding: 7px 10px;
+            border-radius: 4px;
+            overflow-wrap: anywhere;
+            word-break: break-word;
         }
         .desk-box {
             font-size: 0.76rem;
@@ -417,9 +429,9 @@
             <div class="ai-panel-top">
                 <div>
                     {% if editorial.ai_pending_async and editorial.gemini_status and editorial.gemini_status.configured %}
-                    <span id="ai-status-pill" class="ai-status-pill ai-status-loading">⏳ Gemini AI が今夜の現場アドリブ案を執筆中...（約1〜2秒）</span>
+                    <span id="ai-status-pill" class="ai-status-pill ai-status-loading">🧠 Gemini 2.5 Flash が長考モードで3案を脳内コンペ・推敲中...（約4〜7秒）</span>
                     {% elif editorial.gemini_status and editorial.gemini_status.state == 'active' %}
-                    <span id="ai-status-pill" class="ai-status-pill ai-status-on">🟢 Gemini AI アドリブ執筆：正常稼働中（{{ editorial.gemini_status.last_model }} ｜ {{ editorial.gemini_status.masked_key }}）</span>
+                    <span id="ai-status-pill" class="ai-status-pill ai-status-on">🟢 Gemini AI 長考アドリブ執筆：正常稼働中（{{ editorial.gemini_status.last_model }} ｜ {{ editorial.gemini_status.masked_key }}）</span>
                     {% elif editorial.gemini_status and editorial.gemini_status.state == 'degraded' %}
                     <span id="ai-status-pill" class="ai-status-pill ai-status-off">🟠 AI通信エラーのため現在は安全案へ自動切替中（{{ editorial.gemini_status.masked_key }}）</span>
                     {% else %}
@@ -427,7 +439,7 @@
                     {% endif %}
                 </div>
                 <div class="ai-actions">
-                    <button type="button" id="ai-regen-btn" class="ai-btn" onclick="triggerAsyncAiRefresh(true, false)" style="display: {{ 'inline-block' if (editorial.gemini_status and editorial.gemini_status.configured) else 'none' }};">🔄 別のAIアドリブ案を再生成テスト</button>
+                    <button type="button" id="ai-regen-btn" class="ai-btn" onclick="triggerAsyncAiRefresh(true, false)" style="display: {{ 'inline-block' if (editorial.gemini_status and editorial.gemini_status.configured) else 'none' }};">🔄 別の長考アドリブ案を再生成テスト</button>
                     <button type="button" class="ai-btn" onclick="toggleKeyDrawer()">🔑 Gemini APIキー設定（無料枠OK）</button>
                 </div>
             </div>
@@ -435,6 +447,9 @@
             <div class="context-chips" id="context-chips">
                 {% if editorial.research.calendar %}
                 <span class="context-chip">📅 {{ editorial.research.calendar.tag }}：{{ editorial.research.calendar.note }}</span>
+                {% endif %}
+                {% if editorial.research.slot_persona %}
+                <span class="context-chip">🎙️ 時間帯トーン：{{ editorial.research.slot_persona.label }}</span>
                 {% endif %}
                 {% if editorial.research.weather and editorial.research.weather.available %}
                 <span class="context-chip">🌤️ {{ editorial.research.weather.summary }}（{{ editorial.research.weather.adlib_hint }}）</span>
@@ -511,6 +526,11 @@
                 <div class="writer-memo">
                     <strong>✍️ 執筆係の狙い：</strong>{{ c.writer_note }}
                 </div>
+                {% if c.thinking_memo %}
+                <div class="thinking-memo">
+                    <strong>🧠 AI編集長の脳内メモ（3案コンペ・推敲プロセス）：</strong>{{ c.thinking_memo }}
+                </div>
+                {% endif %}
 
                 <div class="desk-box">
                     <strong>🧐 評価係（デスク）の講評：</strong>
@@ -537,6 +557,9 @@
                         <span>評価スコア：<strong>{{ h.selected_score }}点</strong></span>
                     </div>
                     <div style="color:var(--sub); margin-bottom:6px;">{{ h.desk_summary }}</div>
+                    {% if h.selected_thinking_memo %}
+                    <div class="thinking-memo" style="margin-bottom:6px;"><strong>🧠 当時のAI長考メモ：</strong>{{ h.selected_thinking_memo }}</div>
+                    {% endif %}
                     <div class="tweet-preview">{{ h.selected_text }}</div>
                 </div>
                 {% endfor %}
@@ -586,7 +609,7 @@
             if (pill) {
                 if (st.state === "active") {
                     pill.className = "ai-status-pill ai-status-on";
-                    pill.textContent = "🟢 Gemini AI アドリブ執筆：正常稼働中（" + (st.last_model || "") + " ｜ " + (st.masked_key || "") + "）";
+                    pill.textContent = "🟢 Gemini AI 長考アドリブ執筆：正常稼働中（" + (st.last_model || "") + " ｜ " + (st.masked_key || "") + "）";
                 } else if (st.state === "degraded") {
                     pill.className = "ai-status-pill ai-status-off";
                     pill.textContent = "🟠 AI通信エラーのため現在は安全案へ自動切替中（" + (st.masked_key || "") + "）";
@@ -600,7 +623,7 @@
             if (regenBtn) {
                 regenBtn.style.display = st.configured ? "inline-block" : "none";
                 regenBtn.disabled = false;
-                regenBtn.textContent = "🔄 別のAIアドリブ案を再生成テスト";
+                regenBtn.textContent = "🔄 別の長考アドリブ案を再生成テスト";
             }
             var clearBtn = document.getElementById("clear-gemini-key-btn");
             if (clearBtn) {
@@ -618,6 +641,9 @@
                 var chipsHtml = "";
                 if (ed.research.calendar) {
                     chipsHtml += '<span class="context-chip">📅 ' + escHtml(ed.research.calendar.tag) + '：' + escHtml(ed.research.calendar.note) + '</span>';
+                }
+                if (ed.research.slot_persona && ed.research.slot_persona.label) {
+                    chipsHtml += '<span class="context-chip">🎙️ 時間帯トーン：' + escHtml(ed.research.slot_persona.label) + '</span>';
                 }
                 if (ed.research.weather && ed.research.weather.available) {
                     chipsHtml += '<span class="context-chip">🌤️ ' + escHtml(ed.research.weather.summary) + '（' + escHtml(ed.research.weather.adlib_hint) + '）</span>';
@@ -664,6 +690,9 @@
                     var commentsHtml = (c.desk_comments || []).map(function(cm) {
                         return "<div>" + escHtml(cm) + "</div>";
                     }).join("");
+                    var thinkingHtml = c.thinking_memo
+                        ? ('<div class="thinking-memo"><strong>🧠 AI編集長の脳内メモ（3案コンペ・推敲プロセス）：</strong>' + escHtml(c.thinking_memo) + '</div>')
+                        : "";
                     return (
                         '<div class="cand-card ' + (c.is_selected ? 'winner' : '') + '">' +
                             '<div class="cand-top">' +
@@ -677,6 +706,7 @@
                                 '<span>📏 媒体ルール適合: <strong>' + escHtml(sc.weight_fit) + '/10</strong> (' + escHtml(c.metric_unit || "") + ')</span>' +
                             '</div>' +
                             '<div class="writer-memo"><strong>✍️ 執筆係の狙い：</strong>' + escHtml(c.writer_note || "") + '</div>' +
+                            thinkingHtml +
                             '<div class="desk-box"><strong>🧐 評価係（デスク）の講評：</strong>' + commentsHtml + '</div>' +
                             '<div class="tweet-preview" id="cand-main-' + n + '">' + escHtml(c.main_text || "") + '</div>' +
                             '<div class="reply-preview"><strong>💬 補足・連結仕様：</strong><br>' + escHtml(c.reply_text || "") + '</div>' +
@@ -692,11 +722,11 @@
             var regenBtn = document.getElementById("ai-regen-btn");
             if (!silentIfUnconfigured && pill) {
                 pill.className = "ai-status-pill ai-status-loading";
-                pill.textContent = "⏳ Gemini AI が今夜の現場アドリブ案を執筆中...（約1〜2秒）";
+                pill.textContent = "🧠 Gemini 2.5 Flash が長考モードで3案を脳内コンペ・推敲中...（約4〜7秒）";
             }
             if (regenBtn) {
                 regenBtn.disabled = true;
-                regenBtn.textContent = "⏳ AI執筆中...";
+                regenBtn.textContent = "🧠 長考推敲中...";
             }
             var url = "/api/sns-editorial?channel=" + encodeURIComponent(CURRENT_CHANNEL) + "&slot=" + encodeURIComponent(CURRENT_SLOT);
             if (forceRefresh) {
@@ -713,7 +743,7 @@
                 .catch(function() {
                     if (regenBtn) {
                         regenBtn.disabled = false;
-                        regenBtn.textContent = "🔄 別のAIアドリブ案を再生成テスト";
+                        regenBtn.textContent = "🔄 別の長考アドリブ案を再生成テスト";
                     }
                 });
         }
