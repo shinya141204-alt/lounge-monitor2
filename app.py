@@ -274,6 +274,9 @@ def _ensure_scheduler_started_async():
                     if os.path.exists(_ev_boot.CACHE_FILE):
                         _ev_boot.fetch_all_events(force_refresh=False, allow_blocking=False)
                         time.sleep(45)
+                    else:
+                        # Delay initial 20+ page event crawl so cold-start live store count scraping finishes first without contention
+                        time.sleep(25)
                     _crawl_events_job()
                 except Exception as err:
                     logging.error(f"Initial events warmup failed: {err}")
@@ -701,7 +704,7 @@ def _enrich_for_ssr(stores):
     import store_hours
     master = store_master.load()
     try:
-        benchmarks = local_db.get_all_stores_live_benchmarks()
+        benchmarks = local_db.get_all_stores_live_benchmarks(allow_blocking=False)
     except Exception:
         benchmarks = {}
     preloaded_evs, _ = _get_cached_events_nonblocking()
@@ -846,9 +849,54 @@ _last_fetch_at = None
 rolling_snapshots = []
 
 def refresh_momentum_from_db():
-    """Recompute women_diff / men_diff on in-memory latest_data once background Google Sheets sync completes."""
+    """Recompute women_diff / men_diff (and promote cold-start seed data to real counts) once fast Google Sheets sync completes."""
     try:
-        baseline_map = local_db.get_snapshot_around(10, 25)
+        baseline_map = local_db.get_snapshot_around(10, 25) or {}
+        with data_lock:
+            is_seed_now = bool(latest_data.get('is_seed')) or not latest_data.get('full_data')
+
+        # If server booted on an ephemeral container with 0:0 seed data, immediately promote to the latest Google Sheets snapshot
+        if is_seed_now:
+            snap = local_db.get_snapshot_around(0, 10080)
+            if snap and len(snap) >= 10:
+                import store_master
+                master = store_master.load()
+                items = []
+                latest_ts = None
+                for sname, info in (master.items() if master else [(k, {}) for k in snap.keys()]):
+                    vals = snap.get(sname, {})
+                    brand = (info.get('brand') or 'OLG').upper()
+                    source = 'oriental' if brand in ('OLG', 'AG') else brand.lower()
+                    cur_m = int(vals.get('men', 0))
+                    cur_w = int(vals.get('women', 0))
+                    prev = baseline_map.get(sname)
+                    w_diff = (cur_w - int(prev.get('women', 0))) if prev else 0
+                    m_diff = (cur_m - int(prev.get('men', 0))) if prev else 0
+                    items.append({
+                        'name': sname,
+                        'men': cur_m,
+                        'women': cur_w,
+                        'source': source,
+                        'region': info.get('region') or detect_region(sname),
+                        'women_diff': w_diff,
+                        'men_diff': m_diff,
+                        'votes': {'smooth': 0, 'waiting': 0, 'lively': 0},
+                    })
+                    if vals.get('ts') and (not latest_ts or vals['ts'] > latest_ts):
+                        latest_ts = vals['ts']
+                items.sort(key=lambda x: (x.get('region') != 'Korea', x['women'], x['men']), reverse=True)
+                with data_lock:
+                    if latest_data.get('is_seed') or not latest_data.get('full_data'):
+                        latest_data['full_data'] = items
+                        latest_data['top_store'] = items[0] if items else None
+                        if latest_ts:
+                            latest_data['last_updated'] = latest_ts
+                        latest_data['is_seed'] = False
+                save_latest_status_snapshot()
+                clear_fast_http_caches()
+                print("[app] Cold-start seed promoted to live counts from fast Google Sheets sync.")
+                return
+
         if not baseline_map:
             return
         updated_any = False
@@ -864,6 +912,7 @@ def refresh_momentum_from_db():
                     updated_any = True
         if updated_any:
             save_latest_status_snapshot()
+            clear_fast_http_caches()
             print("[app] Momentum (15-min women_diff/men_diff) refreshed from newly synced SQLite baseline.")
     except Exception as e:
         print(f"[app] refresh_momentum_from_db error: {e}", file=sys.stderr)
@@ -963,6 +1012,7 @@ def update_job(force=False):
                 latest_data['last_updated'] = jst_now.strftime("%Y-%m-%d %H:%M:%S")
                 latest_data['is_seed'] = False
             save_latest_status_snapshot()
+            clear_fast_http_caches()
             print(f"Data updated. Top store: {top_store['name'] if top_store else 'None'}")
             _last_update_error = None
             try:
@@ -1465,7 +1515,7 @@ def get_status():
             return _build_precompressed_response(_status_json_cache['raw'], _status_json_cache['gzip'], 'application/json')
 
     try:
-        benchmarks = local_db.get_all_stores_live_benchmarks()
+        benchmarks = local_db.get_all_stores_live_benchmarks(allow_blocking=False)
     except Exception:
         benchmarks = {}
 
@@ -1894,7 +1944,7 @@ def store_detail_page(store_slug):
             'hours_spec': hours_info['schedule_spec'],
         }
         try:
-            _attach_store_benchmarks(store_obj, sname, women, men, local_db.get_all_stores_live_benchmarks())
+            _attach_store_benchmarks(store_obj, sname, women, men, local_db.get_all_stores_live_benchmarks(allow_blocking=False))
         except Exception:
             _attach_store_benchmarks(store_obj, sname, women, men, {})
 

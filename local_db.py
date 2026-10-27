@@ -18,14 +18,38 @@ _store_7d_cache = {}
 _STORE_7D_TTL = 180.0
 _live_benchmarks_cache = {}
 _LIVE_BENCHMARKS_TTL = 600.0
+_live_benchmarks_computing = False
+_live_benchmarks_lock = threading.Lock()
 
 
-def clear_store_7d_cache(store_name: str = None):
+def clear_store_7d_cache(store_name: str = None, clear_benchmarks: bool = False):
     if store_name:
         _store_7d_cache.pop((DB_PATH, store_name), None)
     else:
         _store_7d_cache.clear()
-    _live_benchmarks_cache.clear()
+    if clear_benchmarks:
+        _live_benchmarks_cache.clear()
+
+
+def refresh_live_benchmarks_async():
+    """Recompute 30-day live benchmarks in a background daemon thread so HTTP requests never block."""
+    global _live_benchmarks_computing
+    with _live_benchmarks_lock:
+        if _live_benchmarks_computing:
+            return
+        _live_benchmarks_computing = True
+
+    def _worker():
+        global _live_benchmarks_computing
+        try:
+            get_all_stores_live_benchmarks(allow_blocking=True, force_refresh=True)
+        except Exception as err:
+            print(f"[local_db] refresh_live_benchmarks_async error: {err}", file=sys.stderr)
+        finally:
+            with _live_benchmarks_lock:
+                _live_benchmarks_computing = False
+
+    threading.Thread(target=_worker, daemon=True).start()
 
 
 def is_full_sync_completed() -> bool:
@@ -389,6 +413,10 @@ def sync_store_from_google_sheets(store_name: str, days: int = 14) -> int:
 
 
 def _notify_sync_complete():
+    try:
+        get_all_stores_live_benchmarks(allow_blocking=True, force_refresh=True)
+    except Exception:
+        pass
     for cb in list(_sync_complete_callbacks):
         try:
             cb()
@@ -887,7 +915,7 @@ def get_store_7day_analytics(store_name: str) -> dict:
     return result
 
 
-def get_all_stores_live_benchmarks(now_jst: datetime.datetime = None) -> dict:
+def get_all_stores_live_benchmarks(now_jst: datetime.datetime = None, allow_blocking: bool = True, force_refresh: bool = False) -> dict:
     """
     Computes per-store live benchmarks from the last 30 days of SQLite monitor_logs in a single grouped query:
       - usual_women / usual_men: average women & men for the current business weekday & hour
@@ -897,6 +925,7 @@ def get_all_stores_live_benchmarks(now_jst: datetime.datetime = None) -> dict:
       - midnight_retention_pct: ratio (%) of 00:00-01:59 avg women vs 21:00-22:59 avg women
       - midnight_label_short: '深夜増加型' (>=95%), '深夜安定' (70-94%), or '終電前型' (<70%)
     Memoized in memory for 10 minutes per (DB_PATH, biz_wd, cur_hour).
+    When allow_blocking=False, returns the cached dict immediately and refreshes asynchronously if expired.
     """
     if now_jst is None:
         now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
@@ -907,8 +936,18 @@ def get_all_stores_live_benchmarks(now_jst: datetime.datetime = None) -> dict:
     cache_key = (DB_PATH, cur_wd, cur_h)
     now_mono = time.monotonic()
     cached = _live_benchmarks_cache.get(cache_key)
-    if cached is not None and (now_mono - cached[0] < _LIVE_BENCHMARKS_TTL):
-        return cached[1]
+    if not force_refresh and cached is not None:
+        if now_mono - cached[0] < _LIVE_BENCHMARKS_TTL:
+            return cached[1]
+        if not allow_blocking:
+            refresh_live_benchmarks_async()
+            return cached[1]
+    if not force_refresh and not allow_blocking and _sync_in_progress:
+        refresh_live_benchmarks_async()
+        for k, v in list(_live_benchmarks_cache.items()):
+            if k[0] == DB_PATH and v and v[1]:
+                return v[1]
+        return {}
 
     from collections import defaultdict
     weekdays_ja = ["月", "火", "水", "木", "金", "土", "日"]

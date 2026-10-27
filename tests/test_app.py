@@ -1639,7 +1639,7 @@ class FullAuditRegressionTests(unittest.TestCase):
         sw_resp = self.client.get('/sw.js')
         try:
             sw_txt = sw_resp.data.decode('utf-8')
-            self.assertIn("CACHE_NAME = 'aiseki-navi-v51'", sw_txt)
+            self.assertIn("CACHE_NAME = 'aiseki-navi-v52'", sw_txt)
             self.assertIn("event.waitUntil", sw_txt)
         finally:
             sw_resp.close()
@@ -1715,6 +1715,40 @@ class FullAuditRegressionTests(unittest.TestCase):
             self.assertIn('>58<', r2.data.decode('utf-8'))
             s2 = self.client.get('/api/status').get_json()
             self.assertEqual(s2['ranking'][0]['women'], 58)
+
+            # 4. Even when is_seed=True (cold container boot), '/' must render store cards immediately (never an empty #ranking-list)
+            with app_module.data_lock:
+                app_module.latest_data['is_seed'] = True
+                app_module.latest_data['full_data'][0]['women'] = 0
+                app_module.latest_data['full_data'][0]['men'] = 0
+            app_module.clear_fast_http_caches()
+            r_seed = self.client.get('/')
+            seed_html = r_seed.data.decode('utf-8')
+            self.assertIn('class="ranking-item', seed_html)
+            self.assertNotIn('id="content" class="content hidden"', seed_html)
+
+            # 5. refresh_momentum_from_db() promotes is_seed=True to live counts when SQLite snapshot has >=10 stores
+            now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
+            recent_ts = (now_jst - datetime.timedelta(minutes=2)).strftime('%Y-%m-%d %H:%M:%S')
+            local_db.insert_logs_with_ts([
+                {'ts': recent_ts, 'name': sname, 'men': 14, 'women': 29, 'source': 'oriental'}
+                for sname in LIVE_STORE_NAMES[:15]
+            ])
+            app_module.refresh_momentum_from_db()
+            with app_module.data_lock:
+                self.assertFalse(app_module.latest_data['is_seed'])
+                self.assertTrue(any(s.get('women') == 29 for s in app_module.latest_data['full_data']))
+
+            # 6. Public '/' must show '<h1>相席ナビ</h1>' even when master session is active
+            with self.client.session_transaction() as s:
+                s['is_staff'] = True
+                s['is_master'] = True
+            r_pub_with_master = self.client.get('/')
+            pub_master_html = r_pub_with_master.data.decode('utf-8')
+            self.assertIn('<h1>相席ナビ</h1>', pub_master_html)
+            self.assertNotIn('<h1>相席ナビ マスター管理</h1>', pub_master_html)
+            with self.client.session_transaction() as s:
+                s.clear()
         finally:
             with app_module.data_lock:
                 app_module.latest_data['full_data'] = saved_full

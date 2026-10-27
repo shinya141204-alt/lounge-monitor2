@@ -769,7 +769,7 @@
         // Instant Load: Render server-embedded INITIAL_STATUS_DATA (0ms, zero network roundtrip) or localStorage cache
         function restoreCachedStatus() {
             try {
-                // If SSR data is live (not a cold-start 0-count seed), use it immediately
+                // 1. If SSR data is live (not a cold-start 0-count seed), hydrate or render it immediately in 0ms
                 if (window.INITIAL_STATUS_DATA && Array.isArray(window.INITIAL_STATUS_DATA.ranking) && window.INITIAL_STATUS_DATA.ranking.length > 0 && !window.INITIAL_STATUS_DATA.is_seed) {
                     window.lastData = window.INITIAL_STATUS_DATA;
                     isInitialLoad = false;
@@ -777,10 +777,11 @@
                     // Only skip the first /api/status call when the embedded data is genuinely fresh.
                     _renderedFromSSR = getStatusAgeSec(window.INITIAL_STATUS_DATA) < 90;
                     const rankingListEl = document.getElementById('ranking-list');
+                    const hasInfeedAds = !IS_STAFF && typeof AFFILIATE_MASTER !== 'undefined' && AFFILIATE_MASTER && AFFILIATE_MASTER.enabled && Array.isArray(AFFILIATE_MASTER.infeedSlots) && AFFILIATE_MASTER.infeedSlots.length > 0;
+                    const staffEventsMismatch = IS_STAFF && shouldShowEvents();
                     const canHydrateSsrZeroDom = (
-                        _renderedFromSSR &&
-                        IS_STAFF &&
-                        !shouldShowEvents() &&
+                        !hasInfeedAds &&
+                        !staffEventsMismatch &&
                         pinnedStores.length === 0 &&
                         currentFilter === 'All' &&
                         currentSort === 'women' &&
@@ -811,7 +812,7 @@
                     } catch (e) {}
                     return;
                 }
-                // Check localStorage cache (up to 6 hours) so user sees last known counts instead of zeros on cold redeploy
+                // 2. Check localStorage cache (up to 6 hours) so user sees last known counts instead of zeros on cold redeploy
                 const savedRaw = localStorage.getItem('olg_cached_status');
                 if (savedRaw) {
                     const saved = JSON.parse(savedRaw);
@@ -826,14 +827,24 @@
                         return;
                     }
                 }
+                // 3. Fallback: even if SSR is a cold-start seed and localStorage is empty, keep SSR store cards visible immediately while polling /api/status
+                if (window.INITIAL_STATUS_DATA && Array.isArray(window.INITIAL_STATUS_DATA.ranking) && window.INITIAL_STATUS_DATA.ranking.length > 0) {
+                    window.lastData = window.INITIAL_STATUS_DATA;
+                    isInitialLoad = false;
+                    const rankingListEl = document.getElementById('ranking-list');
+                    if (!rankingListEl || rankingListEl.children.length === 0) {
+                        updateUI(window.INITIAL_STATUS_DATA);
+                    }
+                    const loadingEl = document.getElementById('loading');
+                    const contentEl = document.getElementById('content');
+                    if (loadingEl) loadingEl.classList.add('hidden');
+                    if (contentEl) contentEl.classList.remove('hidden');
+                }
             } catch (e) {}
         }
 
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', restoreCachedStatus);
-        } else {
-            restoreCachedStatus();
-        }
+        // Execute immediately (app.js is loaded with defer at end of body, so DOM is ready)
+        restoreCachedStatus();
 
         async function fetchWithTimeout(url, timeoutMs = 15000) {
             const controller = new AbortController();
