@@ -2860,5 +2860,254 @@ class PerformanceNonBlockingRegressionTests(unittest.TestCase):
                 os.environ['DISABLE_SHEETS'] = old_disabled
 
 
+class AffiliateAndSheetsRetentionTests(unittest.TestCase):
+    """Verify (1) 5-slot affiliate URL separation & live runtime override, and (2) Google Sheets 10M-cell rotation."""
+
+    def setUp(self):
+        app_module.app.config['TESTING'] = True
+        self.client = app_module.app.test_client()
+        import affiliate_manager
+        import job_state
+        shutil.rmtree(os.environ['JOB_STATE_DIR'], ignore_errors=True)
+        os.makedirs(os.environ['JOB_STATE_DIR'], exist_ok=True)
+        job_state.reset_cache_for_tests()
+        affiliate_manager.reset_cache_for_tests()
+
+    def tearDown(self):
+        import affiliate_manager
+        affiliate_manager.reset_cache_for_tests()
+
+    def test_affiliate_slot_separation_and_live_override_api(self):
+        import affiliate_manager
+
+        # 1. Default state detects URL overlap between dating_instant and dating_bachelor
+        init_status = affiliate_manager.get_affiliate_slots_status(allow_blocking=True)
+        self.assertTrue(init_status['has_duplicates'])
+        self.assertEqual(init_status['duplicate_slot_count'], 2)
+
+        # 2. Public column pages (and scheduled template post-publish) use normalized /link/dating_instant
+        for route_path in ('/guide/price-event-comparison', '/guide/male-lead-mechanics'):
+            html = self.client.get(route_path).data.decode('utf-8')
+            self.assertIn('/link/dating_instant', html)
+        with mock.patch('scheduled_articles.is_published', return_value=True):
+            html_sched = self.client.get('/guide/cost-break-even').data.decode('utf-8')
+            self.assertIn('/link/dating_instant', html_sched)
+
+        # 3. API rejects unauthenticated or non-master staff requests
+        r_unauth = self.client.post('/api/affiliate/config', json={'slot_id': 'dating_instant', 'url': 'https://example.com/a'})
+        self.assertEqual(r_unauth.status_code, 401)
+        with self.client.session_transaction() as sess:
+            sess['is_staff'] = True
+            sess['is_master'] = False
+        r_staff = self.client.post('/api/affiliate/config', json={'slot_id': 'dating_instant', 'url': 'https://example.com/a'})
+        self.assertEqual(r_staff.status_code, 401)
+
+        # 4. Master session: blocks unsafe scheme, accepts valid HTTPS ASP URL, separates slots immediately
+        with self.client.session_transaction() as sess:
+            sess['is_staff'] = True
+            sess['is_master'] = True
+
+        r_bad = self.client.post('/api/affiliate/config', json={
+            'slot_id': 'dating_instant',
+            'url': 'javascript:alert(1)',
+        })
+        self.assertEqual(r_bad.status_code, 400)
+
+        r_ok = self.client.post('/api/affiliate/config', json={
+            'slot_id': 'dating_instant',
+            'url': 'https://example.com/tapple-instant',
+            'memo': 'タップル A8',
+        })
+        self.assertEqual(r_ok.status_code, 200)
+        body = r_ok.get_json()
+        self.assertTrue(body['ok'])
+        self.assertFalse(body['aff_status']['has_duplicates'])
+        self.assertEqual(body['aff_status']['duplicate_slot_count'], 0)
+
+        # Clear staff session to test public /link/* redirects & tracking compatibility
+        with self.client.session_transaction() as sess:
+            sess.clear()
+
+        r_inst = self.client.get('/link/dating_instant', headers={'User-Agent': 'Mozilla/5.0 TestUser'})
+        self.assertEqual(r_inst.status_code, 302)
+        self.assertEqual(r_inst.headers['Location'], 'https://example.com/tapple-instant')
+
+        # Legacy alias /link/dating also routes to the new instant slot URL
+        r_alias = self.client.get('/link/dating', headers={'User-Agent': 'Mozilla/5.0 TestUser'})
+        self.assertEqual(r_alias.status_code, 302)
+        self.assertEqual(r_alias.headers['Location'], 'https://example.com/tapple-instant')
+
+        # /link/dating_bachelor remains completely independent
+        r_bach = self.client.get('/link/dating_bachelor', headers={'User-Agent': 'Mozilla/5.0 TestUser'})
+        self.assertEqual(r_bach.status_code, 302)
+        self.assertNotEqual(r_bach.headers['Location'], 'https://example.com/tapple-instant')
+
+        # Persists across memory cache resets via job_state
+        affiliate_manager.reset_cache_for_tests()
+        self.assertEqual(
+            affiliate_manager.resolve_affiliate_url('dating_instant', allow_blocking=True),
+            'https://example.com/tapple-instant',
+        )
+
+        # Master /staff/analytics renders both management panels cleanly
+        with self.client.session_transaction() as sess:
+            sess['is_staff'] = True
+            sess['is_master'] = True
+        r_ana = self.client.get('/staff/analytics')
+        self.assertEqual(r_ana.status_code, 200)
+        ana_html = r_ana.data.decode('utf-8')
+        self.assertIn('id="affiliate-slot-manager"', ana_html)
+        self.assertIn('id="sheets-retention-manager"', ana_html)
+        self.assertIn('タップル A8', ana_html)
+
+    def test_sheets_retention_compresses_daily_summary_and_rotates_multi_sheets(self):
+        from unittest.mock import patch
+        import archive_data
+        import analytics
+        import local_db
+        import job_state
+
+        class _FakeWorksheet:
+            def __init__(self, title, rows, cols=5):
+                self.title = title
+                self._rows = [list(r) for r in rows]
+                self.cols = cols
+
+            @property
+            def row_count(self):
+                return max(len(self._rows), 1)
+
+            @property
+            def col_count(self):
+                return self.cols
+
+            def get_all_values(self):
+                return [list(r) for r in self._rows]
+
+            def append_row(self, row, value_input_option='RAW'):
+                self._rows.append(list(row))
+
+            def append_rows(self, rows, value_input_option='RAW'):
+                for r in rows:
+                    self._rows.append(list(r))
+
+            def delete_rows(self, start_idx, end_idx):
+                # 1-indexed inclusive deletion matching gspread Worksheet.delete_rows
+                del self._rows[start_idx - 1:end_idx]
+
+            def clear(self):
+                self._rows = []
+
+        class _FakeSpreadsheet:
+            def __init__(self, ws_list):
+                self._map = {w.title: w for w in ws_list}
+
+            @property
+            def sheet1(self):
+                return self._map['Sheet1']
+
+            def worksheets(self):
+                return list(self._map.values())
+
+            def worksheet(self, title):
+                if title not in self._map:
+                    raise KeyError(title)
+                return self._map[title]
+
+            def add_worksheet(self, title, rows=1000, cols=7):
+                w = _FakeWorksheet(title, [], cols=cols)
+                self._map[title] = w
+                return w
+
+        now_jst = datetime.datetime.now(archive_data.JST).replace(tzinfo=None)
+        old_dt_1 = (now_jst - datetime.timedelta(days=45)).replace(hour=21, minute=10, second=0)
+        old_dt_2 = (now_jst - datetime.timedelta(days=45)).replace(hour=22, minute=20, second=0)
+        old_dt_late = (now_jst - datetime.timedelta(days=44)).replace(hour=1, minute=30, second=0)  # same business day!
+        recent_dt = (now_jst - datetime.timedelta(days=3)).replace(hour=21, minute=0, second=0)
+
+        ws_main = _FakeWorksheet('Sheet1', [
+            ['timestamp', 'store', 'men', 'women', 'source'],
+            [old_dt_1.strftime('%Y-%m-%d %H:%M:%S'), 'OLG 新宿', '18', '30', 'oriental'],
+            [old_dt_2.strftime('%Y-%m-%d %H:%M:%S'), 'OLG 新宿', '22', '44', 'oriental'],
+            [old_dt_late.strftime('%Y-%m-%d %H:%M:%S'), 'OLG 新宿', '20', '34', 'oriental'],
+            [recent_dt.strftime('%Y-%m-%d %H:%M:%S'), 'OLG 新宿', '15', '28', 'oriental'],
+        ], cols=5)
+
+        expired_day = (now_jst - datetime.timedelta(days=140)).strftime('%Y-%m-%d')
+        past_day = (now_jst - datetime.timedelta(days=5)).strftime('%Y-%m-%d')
+        today_day = now_jst.strftime('%Y-%m-%d')
+        ws_ana = _FakeWorksheet(analytics.SHEET_TITLE, [
+            analytics.HEADER,
+            [expired_day, 'page_view', '/', '12'],
+            [past_day, 'page_view', '/', '10'],
+            [past_day, 'page_view', '/', '25'],
+            [today_day, 'page_view', '/', '7'],
+        ], cols=4)
+
+        old_vote_ts = (now_jst - datetime.timedelta(days=20)).strftime('%Y-%m-%d %H:%M:%S')
+        new_vote_ts = (now_jst - datetime.timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S')
+        ws_votes = _FakeWorksheet(local_db.VOTE_SHEET_TITLE, [
+            ['ts', 'store_name', 'vote_type', 'voter_hash'],
+            [old_vote_ts, 'OLG 新宿', 'smooth', 'h1'],
+            [new_vote_ts, 'OLG 新宿', 'lively', 'h2'],
+        ], cols=4)
+
+        ws_js = _FakeWorksheet(job_state.SHEET_TITLE, [job_state.HEADER, ['k1', '2026-10-01']], cols=2)
+        fake_ss = _FakeSpreadsheet([ws_main, ws_ana, ws_votes, ws_js])
+
+        old_disabled = os.environ.get('DISABLE_SHEETS')
+        try:
+            os.environ.pop('DISABLE_SHEETS', None)
+            with patch('archive_data.logger.get_client', return_value=object()), \
+                 patch('archive_data.logger.open_spreadsheet', return_value=fake_ss, create=True):
+                # Dry-run first: must NOT mutate sheets
+                dry_rep = archive_data.run_full_sheets_retention(dry_run=True)
+                self.assertTrue(dry_rep['ok'])
+                self.assertTrue(dry_rep['dry_run'])
+                self.assertEqual(len(ws_main.get_all_values()), 5)
+
+                # Real execution: compresses 3 old rows -> 1 Daily Store Summary row & deletes old rows from Sheet1
+                exec_rep = archive_data.run_full_sheets_retention(dry_run=False)
+                self.assertTrue(exec_rep['ok'])
+                self.assertEqual(exec_rep['details']['main_logs']['deleted_rows'], 3)
+                self.assertEqual(exec_rep['details']['main_logs']['summary_rows_added'], 1)
+                # Remaining Sheet1 rows = header + 1 recent row
+                self.assertEqual(len(ws_main.get_all_values()), 2)
+                self.assertEqual(ws_main.get_all_values()[1][3], '28')
+
+                # Verify Daily Store Summary compressed stats: peak_women=44, peak_men=22, avg_women=36.0, samples=3
+                sum_ws = fake_ss.worksheet(archive_data.SUMMARY_SHEET_NAME)
+                sum_vals = sum_ws.get_all_values()
+                self.assertEqual(len(sum_vals), 2)
+                self.assertEqual(sum_vals[1][1], 'OLG 新宿')
+                self.assertEqual(sum_vals[1][2], 44)
+                self.assertEqual(sum_vals[1][3], 22)
+                self.assertEqual(sum_vals[1][4], 36.0)
+                self.assertEqual(sum_vals[1][6], 3)
+
+                # Verify Analytics Daily merged past_day (10 + 25 = 35), dropped expired_day, kept today_day
+                ana_vals = ws_ana.get_all_values()
+                self.assertEqual(len(ana_vals), 3)  # header + past_day merged + today_day
+                self.assertEqual(ana_vals[1], [past_day, 'page_view', '/', '35'])
+                self.assertEqual(ana_vals[2], [today_day, 'page_view', '/', '7'])
+
+                # Verify Crowd Votes trimmed 20d-old row and kept 1d-old row
+                vote_vals = ws_votes.get_all_values()
+                self.assertEqual(len(vote_vals), 2)
+                self.assertEqual(vote_vals[1][2], 'lively')
+
+                # Verify API endpoint auth & response
+                self.assertEqual(self.client.post('/api/sheets/retention', json={'dry_run': True}).status_code, 401)
+                with self.client.session_transaction() as sess:
+                    sess['is_staff'] = True
+                    sess['is_master'] = True
+                api_resp = self.client.post('/api/sheets/retention', json={'dry_run': True})
+                self.assertEqual(api_resp.status_code, 200)
+                self.assertTrue(api_resp.get_json()['ok'])
+        finally:
+            if old_disabled is not None:
+                os.environ['DISABLE_SHEETS'] = old_disabled
+
+
 if __name__ == '__main__':
     unittest.main()

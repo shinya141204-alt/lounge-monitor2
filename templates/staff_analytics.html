@@ -398,6 +398,216 @@
             border-radius: 10px;
             border: 1px dashed var(--border-strong);
         }
+
+        /* Affiliate Slot Manager & Sheets Retention Ops Panels */
+        .ops-section {
+            background: var(--surface);
+            border: 1px solid var(--border-strong);
+            border-radius: 14px;
+            padding: 18px 20px;
+            margin-bottom: 22px;
+        }
+        .ops-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .ops-header h2 {
+            font-size: 1.04rem;
+            margin: 0 0 4px;
+        }
+        .ops-header p {
+            margin: 0;
+            font-size: 0.77rem;
+            color: var(--sub);
+        }
+        .dup-banner {
+            padding: 11px 14px;
+            border-radius: 10px;
+            margin-bottom: 14px;
+            font-size: 0.8rem;
+            line-height: 1.5;
+        }
+        .dup-banner.warn {
+            background: rgba(245, 158, 11, 0.12);
+            border: 1px solid rgba(245, 158, 11, 0.42);
+            color: #fde68a;
+        }
+        .dup-banner.ok {
+            background: var(--green-soft);
+            border: 1px solid rgba(123, 196, 159, 0.38);
+            color: #d3f3e2;
+        }
+        .aff-slots-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .aff-slot-card {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 13px 15px;
+        }
+        .aff-slot-card.is-dup {
+            border-color: rgba(245, 158, 11, 0.45);
+        }
+        .aff-slot-top {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        .aff-slot-name {
+            font-size: 0.9rem;
+            font-weight: 800;
+            color: var(--text);
+        }
+        .aff-slot-meta {
+            font-size: 0.73rem;
+            color: var(--sub);
+            margin-top: 2px;
+        }
+        .aff-badges {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .ops-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 3px 9px;
+            border-radius: 999px;
+            background: var(--surface-2);
+            border: 1px solid var(--border-strong);
+            color: var(--text);
+        }
+        .ops-pill.warn {
+            background: rgba(245, 158, 11, 0.16);
+            border-color: rgba(245, 158, 11, 0.5);
+            color: #fcd34d;
+        }
+        .ops-pill.gold {
+            background: var(--gold-soft);
+            border-color: rgba(200, 164, 110, 0.45);
+            color: #f5e6cc;
+        }
+        .aff-form-row {
+            display: grid;
+            grid-template-columns: minmax(220px, 2.2fr) minmax(140px, 1fr) auto;
+            gap: 8px;
+            align-items: center;
+            margin-top: 8px;
+        }
+        @media (max-width: 760px) {
+            .aff-form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+        .ops-input {
+            width: 100%;
+            background: var(--surface);
+            color: var(--text);
+            border: 1px solid var(--border-strong);
+            border-radius: 8px;
+            padding: 8px 10px;
+            font-size: 0.8rem;
+            font-family: inherit;
+        }
+        .ops-input:focus {
+            outline: none;
+            border-color: var(--gold);
+        }
+        .ops-btn-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .ops-btn {
+            cursor: pointer;
+            border: 1px solid rgba(200, 164, 110, 0.5);
+            background: var(--gold-soft);
+            color: #f5e6cc;
+            font-size: 0.76rem;
+            font-weight: 700;
+            padding: 7px 12px;
+            border-radius: 8px;
+            font-family: inherit;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .ops-btn:hover { background: rgba(200, 164, 110, 0.28); }
+        .ops-btn.secondary {
+            background: var(--surface-2);
+            border-color: var(--border-strong);
+            color: var(--sub);
+        }
+        .ops-btn.secondary:hover { color: var(--text); border-color: var(--gold); }
+        .ops-msg {
+            margin-top: 7px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: none;
+        }
+        .cap-meter-box {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 13px 15px;
+            margin-bottom: 12px;
+        }
+        .cap-meter-top {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 7px;
+        }
+        .cap-bar-track {
+            width: 100%;
+            height: 9px;
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 999px;
+            overflow: hidden;
+            margin-bottom: 9px;
+        }
+        .cap-bar-fill {
+            height: 100%;
+            border-radius: 999px;
+            background: var(--green);
+            transition: width 0.3s ease;
+        }
+        .cap-bar-fill.warn { background: #f59e0b; }
+        .cap-bar-fill.critical { background: #ef4444; }
+        .ws-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 8px;
+        }
+        .ws-chip {
+            font-size: 0.72rem;
+            padding: 3px 9px;
+            border-radius: 7px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--sub);
+            font-variant-numeric: tabular-nums;
+        }
+        .ws-chip strong { color: var(--text); }
     </style>
 </head>
 <body>
@@ -762,6 +972,240 @@
             {% endif %}
         </div>
     </div>
+
+    {% if aff_status %}
+    <!-- Affiliate 5-Slot URL Separation & Live Override Manager -->
+    <div class="ops-section" id="affiliate-slot-manager">
+        <div class="ops-header">
+            <div>
+                <h2>💰 アフィリエイト5枠・遷移先URL分離＆ノーコード差し替え</h2>
+                <p>再デプロイ・コード編集不要。ここでASPリンクを保存するとサイト内の全PR枠・コラム記事リンクへ 0秒で即時反映され、Google Sheets にも永続保存されます。</p>
+            </div>
+        </div>
+
+        <div id="aff-dup-banner" class="dup-banner {% if aff_status.has_duplicates %}warn{% else %}ok{% endif %}">
+            {% if aff_status.has_duplicates %}
+            ⚠️ <strong>遷移先URLの重複（カニバリ）を検知中：</strong>現在 <strong>{{ aff_status.duplicate_slot_count }}枠</strong> で同一のASPリンクが共有されています。『🍻 即時合流・定番恋活アプリ枠』にタップル・ペアーズ・Dine等の別ASPリンクを入力して保存すると、読者ニーズ別にCVを取りこぼさなくなります。
+            {% else %}
+            ✅ <strong>全5枠の遷移先URLが正常に分離されています：</strong>各ユーザー導線（即時合流 / 審査制1対1 / ヒゲ脱毛 / スキンケア / メンズ服）ごとに独立した案件へ送客中です。
+            {% endif %}
+        </div>
+
+        <div class="aff-slots-list">
+            {% for slot in aff_status.slots %}
+            <div class="aff-slot-card {% if slot.is_duplicate_url %}is-dup{% endif %}" id="aff-card-{{ slot.slot_id }}" data-slot-id="{{ slot.slot_id }}">
+                <div class="aff-slot-top">
+                    <div>
+                        <div class="aff-slot-name">{{ slot.category_label }} <span style="font-weight:500;font-size:0.75rem;color:var(--sub);">（/link/{{ slot.slot_id }}{% if slot.aliases %}・互換: {{ slot.aliases | join(', ') }}{% endif %}）</span></div>
+                        <div class="aff-slot-meta">掲載箇所：{{ slot.placement }}</div>
+                        <div class="aff-slot-meta">推奨案件例：{{ slot.recommended_asp_examples }}</div>
+                    </div>
+                    <div class="aff-badges">
+                        <span class="ops-pill gold">期間内 {{ slot.clicks }} click</span>
+                        <span class="ops-pill" id="aff-src-{{ slot.slot_id }}">{{ slot.source_label }}</span>
+                        <span class="ops-pill warn" id="aff-dup-{{ slot.slot_id }}" {% if not slot.is_duplicate_url %}style="display:none;"{% endif %}>
+                            ⚠️ 同一URL重複中
+                        </span>
+                    </div>
+                </div>
+                <div class="aff-form-row">
+                    <input type="url" class="ops-input" id="aff-url-{{ slot.slot_id }}"
+                           value="{{ slot.active_url }}"
+                           placeholder="https://px.a8.net/... （ASP発行のアフィリエイトURL）">
+                    <input type="text" class="ops-input" id="aff-memo-{{ slot.slot_id }}"
+                           value="{{ slot.memo }}"
+                           placeholder="案件メモ（例: Dine A8 / タップル）">
+                    <div class="ops-btn-group">
+                        <button type="button" class="ops-btn" onclick="saveAffiliateSlot('{{ slot.slot_id }}', false)">💾 保存・即時反映</button>
+                        <button type="button" class="ops-btn secondary" onclick="saveAffiliateSlot('{{ slot.slot_id }}', true)" title="カスタム設定を解除して環境変数・初期URLへ戻す">初期値に戻す</button>
+                        <button type="button" class="ops-btn secondary" data-test-slot="{{ slot.slot_id }}" onclick="window.open('/link/' + this.dataset.testSlot, '_blank', 'noopener')" title="現在の遷移先を新しいタブで確認">遷移確認 ↗</button>
+                    </div>
+                </div>
+                <div class="ops-msg" id="aff-msg-{{ slot.slot_id }}"></div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    {% if retention_status %}
+    <!-- Google Sheets 10M-Cell Ceiling Guard & Daily Auto-Rotation Monitor -->
+    {% set cap = retention_status.capacity or {} %}
+    <div class="ops-section" id="sheets-retention-manager">
+        <div class="ops-header">
+            <div>
+                <h2>🗄️ Google Sheets 1,000万セル上限ガード＆自動ローテーション</h2>
+                <p>毎日 06:20 JST に自動実行：生ログ（{{ retention_status.retention_days }}日超）を日次店舗サマリーへ約1/140に圧縮して削除・アクセス集計（{{ retention_status.analytics_days }}日保持）を日次合算・投票ログ（{{ retention_status.votes_days }}日超）＆Job Stateを自動スリム化します。</p>
+            </div>
+            <div class="ops-btn-group">
+                <button type="button" class="ops-btn secondary" id="btn-retention-dry" onclick="runSheetsRetention(true)">🔍 ドライラン試算（削除せず確認）</button>
+                <button type="button" class="ops-btn" id="btn-retention-exec" onclick="runSheetsRetention(false)">🧹 今すぐ圧縮・ローテーション実行</button>
+            </div>
+        </div>
+
+        <div class="cap-meter-box">
+            <div class="cap-meter-top">
+                <div>
+                    <strong id="cap-health-label">{{ cap.get('health_label', '🟢 自動ローテーション待機中') }}</strong>
+                    <span style="font-size:0.75rem;color:var(--sub);margin-left:8px;" id="cap-last-run">最終確認: {{ retention_status.executed_at }}</span>
+                </div>
+                <div style="font-size:0.84rem;font-variant-numeric:tabular-nums;">
+                    グリッド使用量: <strong id="cap-cells-num">{{ "{:,}".format(cap.get('total_grid_cells', 0)) }}</strong> / {{ "{:,}".format(cap.get('cell_limit', 10000000)) }} セル
+                    （<strong id="cap-usage-pct" style="color:var(--gold);">{{ cap.get('usage_pct', 0.0) }}%</strong>）
+                </div>
+            </div>
+            <div class="cap-bar-track">
+                <div class="cap-bar-fill {{ cap.get('health_level', 'ok') }}" id="cap-bar-fill" style="width: {{ [cap.get('usage_pct', 0.0), 100.0] | min }}%;"></div>
+            </div>
+            <div class="ws-chips" id="cap-ws-chips">
+                {% for ws in cap.get('worksheets', []) %}
+                <span class="ws-chip"><strong>{{ ws.title }}</strong>: {{ "{:,}".format(ws.rows) }}行 × {{ ws.cols }}列（{{ "{:,}".format(ws.grid_cells) }}セル）</span>
+                {% else %}
+                <span class="ws-chip">「🔍 ドライラン試算」を押すと現在の全シート行数・セル使用率を即時計測できます</span>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="ops-msg" id="retention-msg"></div>
+    </div>
+    {% endif %}
 </div>
+
+<script>
+const CURRENT_DAYS = {{ days }};
+
+async function saveAffiliateSlot(slotId, resetToDefault) {
+    const urlInput = document.getElementById('aff-url-' + slotId);
+    const memoInput = document.getElementById('aff-memo-' + slotId);
+    const msgEl = document.getElementById('aff-msg-' + slotId);
+    if (!urlInput || !msgEl) return;
+
+    const payload = {
+        slot_id: slotId,
+        url: resetToDefault ? '' : (urlInput.value || '').trim(),
+        memo: resetToDefault ? '' : (memoInput ? (memoInput.value || '').trim() : ''),
+        days: CURRENT_DAYS,
+    };
+    msgEl.style.display = 'block';
+    msgEl.style.color = '#cbd5e1';
+    msgEl.textContent = '保存中...';
+
+    try {
+        const resp = await fetch('/api/affiliate/config', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload),
+        });
+        const res = await resp.json();
+        if (!resp.ok || !res.ok) {
+            msgEl.style.color = '#fca5a5';
+            msgEl.textContent = '⚠️ ' + (res.error || '保存に失敗しました');
+            return;
+        }
+        msgEl.style.color = '#86efac';
+        msgEl.textContent = '✅ ' + (res.message || '保存しました');
+
+        if (res.aff_status && Array.isArray(res.aff_status.slots)) {
+            const banner = document.getElementById('aff-dup-banner');
+            if (banner) {
+                if (res.aff_status.has_duplicates) {
+                    banner.className = 'dup-banner warn';
+                    banner.innerHTML = '⚠️ <strong>遷移先URLの重複（カニバリ）を検知中：</strong>現在 <strong>' + res.aff_status.duplicate_slot_count + '枠</strong> で同一のASPリンクが共有されています。『🍻 即時合流・定番恋活アプリ枠』に別ASPリンクを設定すると成約率が向上します。';
+                } else {
+                    banner.className = 'dup-banner ok';
+                    banner.innerHTML = '✅ <strong>全5枠の遷移先URLが正常に分離されています：</strong>各ユーザー導線ごとに独立した案件へ送客中です。';
+                }
+            }
+            for (const s of res.aff_status.slots) {
+                const uEl = document.getElementById('aff-url-' + s.slot_id);
+                const mEl = document.getElementById('aff-memo-' + s.slot_id);
+                const srcEl = document.getElementById('aff-src-' + s.slot_id);
+                const dupEl = document.getElementById('aff-dup-' + s.slot_id);
+                const cardEl = document.getElementById('aff-card-' + s.slot_id);
+                if (uEl && s.slot_id === slotId) uEl.value = s.active_url || '';
+                if (mEl && s.slot_id === slotId) mEl.value = s.memo || '';
+                if (srcEl) srcEl.textContent = s.source_label || '';
+                if (dupEl) dupEl.style.display = s.is_duplicate_url ? 'inline-flex' : 'none';
+                if (cardEl) cardEl.classList.toggle('is-dup', !!s.is_duplicate_url);
+            }
+        }
+    } catch (e) {
+        msgEl.style.color = '#fca5a5';
+        msgEl.textContent = '⚠️ 通信エラーが発生しました: ' + e;
+    }
+}
+
+async function runSheetsRetention(dryRun) {
+    const msgEl = document.getElementById('retention-msg');
+    const btnDry = document.getElementById('btn-retention-dry');
+    const btnExec = document.getElementById('btn-retention-exec');
+    if (!msgEl) return;
+
+    if (!dryRun && !window.confirm('古い生ログを日次店舗サマリーへ圧縮アーカイブした上で削除し、各シートをスリム化します。よろしいですか？')) {
+        return;
+    }
+    msgEl.style.display = 'block';
+    msgEl.style.color = '#cbd5e1';
+    msgEl.textContent = dryRun ? '🔍 Google Sheets の全シート容量と削減対象行数を計測中...' : '🧹 日次サマリー圧縮＆シート整理を実行中...';
+    if (btnDry) btnDry.disabled = true;
+    if (btnExec) btnExec.disabled = true;
+
+    try {
+        const resp = await fetch('/api/sheets/retention', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({dry_run: !!dryRun}),
+        });
+        const res = await resp.json();
+        if (!resp.ok || !res.ok) {
+            msgEl.style.color = '#fca5a5';
+            msgEl.textContent = '⚠️ ' + (res.error || 'シート整理に失敗しました');
+            return;
+        }
+        const cap = res.capacity || {};
+        const det = res.details || {};
+        const mainD = det.main_logs || {};
+        const anaD = det.analytics_daily || {};
+        const voteD = det.crowd_votes || {};
+        const jsD = det.job_state || {};
+
+        const hEl = document.getElementById('cap-health-label');
+        const lrEl = document.getElementById('cap-last-run');
+        const numEl = document.getElementById('cap-cells-num');
+        const pctEl = document.getElementById('cap-usage-pct');
+        const barEl = document.getElementById('cap-bar-fill');
+        const chipsEl = document.getElementById('cap-ws-chips');
+
+        if (hEl && cap.health_label) hEl.textContent = cap.health_label;
+        if (lrEl && res.executed_at) lrEl.textContent = (dryRun ? '試算時刻: ' : '最終実行: ') + res.executed_at;
+        if (numEl && typeof cap.total_grid_cells === 'number') numEl.textContent = cap.total_grid_cells.toLocaleString();
+        if (pctEl && typeof cap.usage_pct === 'number') pctEl.textContent = cap.usage_pct + '%';
+        if (barEl && typeof cap.usage_pct === 'number') {
+            barEl.className = 'cap-bar-fill ' + (cap.health_level || 'ok');
+            barEl.style.width = Math.min(cap.usage_pct, 100) + '%';
+        }
+        if (chipsEl && Array.isArray(cap.worksheets)) {
+            chipsEl.innerHTML = cap.worksheets.map(w =>
+                '<span class="ws-chip"><strong>' + w.title + '</strong>: ' +
+                Number(w.rows || 0).toLocaleString() + '行 × ' + w.cols + '列（' +
+                Number(w.grid_cells || 0).toLocaleString() + 'セル）</span>'
+            ).join('');
+        }
+
+        msgEl.style.color = '#86efac';
+        msgEl.textContent = (dryRun ? '✅ 【ドライラン試算結果】' : '✅ 【圧縮・ローテーション完了】') +
+            ' 合計削減対象: ' + Number(res.total_deleted_rows || 0).toLocaleString() + '行' +
+            '（生ログ圧縮: ' + Number(mainD.deleted_rows || 0).toLocaleString() + '行 → 日次サマリー +' + Number(mainD.summary_rows_added || 0).toLocaleString() + '行 / ' +
+            'Analytics合算削減: ' + Number(anaD.deleted_rows || 0).toLocaleString() + '行 / ' +
+            '投票整理: ' + Number(voteD.deleted_rows || 0).toLocaleString() + '行 / ' +
+            'JobState圧縮: ' + Number(jsD.deleted_rows || 0).toLocaleString() + '行）';
+    } catch (e) {
+        msgEl.style.color = '#fca5a5';
+        msgEl.textContent = '⚠️ 通信エラーが発生しました: ' + e;
+    } finally {
+        if (btnDry) btnDry.disabled = false;
+        if (btnExec) btnExec.disabled = false;
+    }
+}
+</script>
 </body>
 </html>

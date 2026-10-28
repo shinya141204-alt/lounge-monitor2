@@ -282,6 +282,15 @@ def describe_label(event, raw_label):
         else:
             item_id, ref_path = label, '-'
         item_title = _AFFILIATE_NAMES.get(item_id.lower(), f'💰 広告案件 ({item_id})')
+        try:
+            import affiliate_manager
+            cid = affiliate_manager.canonical_slot_id(item_id)
+            if cid:
+                ov = affiliate_manager._load_overrides(allow_blocking=False).get(cid)
+                if isinstance(ov, dict) and (ov.get('memo') or '').strip():
+                    item_title = f"{item_title} ［{ov.get('memo').strip()}］"
+        except Exception:
+            pass
         ref_title = _PAGE_TITLES.get(ref_path, ref_path)
         return {'title': item_title, 'sub': f'クリック元: {ref_title}', 'href': ''}
 

@@ -302,6 +302,14 @@ def _ensure_scheduler_started_async():
                     logging.error(f"Autonomous PDCA cycle failed: {err}")
             # Run daily before evening SNS rush (17:35 JST = 08:35 UTC) and after late-night close (03:35 JST = 18:35 UTC)
             scheduler.add_job(func=_pdca_autonomous_job, trigger="cron", hour="8,18", minute=35, jitter=120)
+            def _sheets_retention_job():
+                try:
+                    import archive_data
+                    archive_data.run_scheduled_retention_job()
+                except Exception as err:
+                    logging.error(f"Scheduled Google Sheets retention job failed: {err}")
+            # Run daily during quiet early-morning off-hours (06:20 JST = 21:20 UTC) to prevent 10M-cell ceiling
+            scheduler.add_job(func=_sheets_retention_job, trigger="cron", hour=21, minute=20, jitter=120)
             scheduler.start()
             # Priority #1 at t=0s: scrape live headcounts first without competing with SQLite backfill or Sheets reads
             trigger_background_fetch_if_needed()
@@ -324,7 +332,11 @@ def _ensure_scheduler_started_async():
                         import job_state as _js
                         import analytics as _an
                         import sns_editorial as _se
+                        import affiliate_manager as _afm
+                        import archive_data as _ard
                         _js.all_keys()
+                        _afm._load_overrides(allow_blocking=True)
+                        _ard.get_retention_status(allow_blocking=True)
                         _an._refresh_sheet_rows_async()
                         _se.fetch_live_weather_context(allow_blocking=True)
                     except Exception:
@@ -1396,9 +1408,10 @@ AFFILIATE_REDIRECTS = {
 
 @app.route('/link/<path:item_id>')
 def affiliate_redirect(item_id):
-    """Safe internal redirect shielding affiliate links from ad-blockers."""
+    """Safe internal redirect shielding affiliate links from ad-blockers, with live runtime override resolution."""
+    import affiliate_manager
     clean_id = item_id.strip().lower()
-    target_url = AFFILIATE_REDIRECTS.get(clean_id)
+    target_url = affiliate_manager.resolve_affiliate_url(clean_id, allow_blocking=False) or AFFILIATE_REDIRECTS.get(clean_id)
     if not target_url:
         return redirect(url_for('index'))
     if not _is_bot_request():
@@ -1480,10 +1493,12 @@ def track_event():
 
 @app.route('/staff/analytics')
 def staff_analytics():
-    """Master-only analytics summary (page views, affiliate clicks, button clicks)."""
+    """Master-only analytics summary (page views, affiliate clicks, button clicks, affiliate slot manager & Sheets retention)."""
     if not session.get('is_master'):
         return redirect(url_for('staff_monitor', switch='1'))
     import analytics
+    import affiliate_manager
+    import archive_data
     days = max(1, min(90, request.args.get('days', 7, type=int)))
     is_json_req = request.args.get('format') == 'json'
     force_flush = request.args.get('flush') == '1'
@@ -1496,7 +1511,68 @@ def staff_analytics():
     data = analytics.summary(days=days, allow_blocking=(is_json_req or force_flush))
     if is_json_req:
         return jsonify(data)
-    return render_template('staff_analytics.html', data=data, days=days, flushed=force_flush, flushed_rows=flushed_rows)
+    aff_status = affiliate_manager.get_affiliate_slots_status(analytics_data=data, allow_blocking=False)
+    retention_status = archive_data.get_retention_status(allow_blocking=False)
+    return render_template(
+        'staff_analytics.html',
+        data=data,
+        days=days,
+        flushed=force_flush,
+        flushed_rows=flushed_rows,
+        aff_status=aff_status,
+        retention_status=retention_status,
+    )
+
+
+@app.route('/api/affiliate/config', methods=['GET', 'POST'])
+def api_affiliate_config():
+    """Master-only API to inspect or live-update affiliate destination URLs without redeploying."""
+    if not is_master_authorized():
+        return jsonify({'ok': False, 'error': 'マスター権限が必要です'}), 401
+    import analytics
+    import affiliate_manager
+
+    if request.method == 'GET':
+        days = max(1, min(90, request.args.get('days', 7, type=int)))
+        ana_data = analytics.summary(days=days, allow_blocking=False)
+        return jsonify({
+            'ok': True,
+            **affiliate_manager.get_affiliate_slots_status(analytics_data=ana_data, allow_blocking=True),
+        })
+
+    payload = request.get_json(silent=True, force=True) or {}
+    slot_id = str(payload.get('slot_id') or '').strip()
+    target_url = str(payload.get('url') or '').strip()
+    memo = str(payload.get('memo') or '').strip()
+    days = max(1, min(90, int(payload.get('days') or 7)))
+
+    res = affiliate_manager.set_affiliate_slot_override(slot_id=slot_id, target_url=target_url, memo=memo)
+    if not res.get('ok'):
+        return jsonify(res), 400
+
+    ana_data = analytics.summary(days=days, allow_blocking=False)
+    status_now = affiliate_manager.get_affiliate_slots_status(analytics_data=ana_data, allow_blocking=False)
+    return jsonify({
+        **res,
+        'aff_status': status_now,
+    })
+
+
+@app.route('/api/sheets/retention', methods=['GET', 'POST'])
+def api_sheets_retention():
+    """Master-only API to inspect Google Sheets 10M-cell capacity or run compression/rotation immediately."""
+    if not is_master_authorized():
+        return jsonify({'ok': False, 'error': 'マスター権限が必要です'}), 401
+    import archive_data
+
+    if request.method == 'GET':
+        return jsonify(archive_data.get_retention_status(allow_blocking=True))
+
+    payload = request.get_json(silent=True, force=True) or {}
+    dry_run = bool(payload.get('dry_run', False))
+    res = archive_data.run_full_sheets_retention(dry_run=dry_run)
+    status_code = 200 if res.get('ok') else (409 if res.get('busy') else 500)
+    return jsonify(res), status_code
 
 @app.route('/staff', methods=['GET', 'POST'])
 def staff_monitor():
