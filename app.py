@@ -637,6 +637,7 @@ _OGP_BYTES_CACHE_MAX = 24
 _sns_cache_lock = threading.Lock()
 _staff_editorial_preview_cache = {'ts': 0.0, 'sig': None, 'data': None}
 _sitemap_xml_cache = {'key': None, 'xml': None}
+_llms_txt_cache = {'key': None, 'short': None, 'full': None}
 _CACHE_QUERY_ALLOWLIST = ('s', 'area', 'slot', 'channel', 'switch', 'days', 'format')
 
 
@@ -668,6 +669,9 @@ def clear_fast_http_caches(clear_editorial: bool = True):
             _editorial_html_cache.clear()
     with _ogp_bytes_cache_lock:
         _ogp_bytes_cache.clear()
+    _llms_txt_cache['key'] = None
+    _llms_txt_cache['short'] = None
+    _llms_txt_cache['full'] = None
     if clear_editorial:
         with _sns_cache_lock:
             _staff_editorial_preview_cache['ts'] = 0.0
@@ -2683,9 +2687,250 @@ def robots_txt():
         "Disallow: /api/data-audit\n"
         "Disallow: /api/trigger-\n"
         "Disallow: /staff\n"
+        "\n"
+        "# AI Search & LLM Grounding Crawlers (Explicitly Welcomed)\n"
+        "User-agent: OAI-SearchBot\n"
+        "Allow: /\n"
+        "Disallow: /staff\n"
+        "\n"
+        "User-agent: ChatGPT-User\n"
+        "Allow: /\n"
+        "Disallow: /staff\n"
+        "\n"
+        "User-agent: GPTBot\n"
+        "Allow: /\n"
+        "Disallow: /staff\n"
+        "\n"
+        "User-agent: PerplexityBot\n"
+        "Allow: /\n"
+        "Disallow: /staff\n"
+        "\n"
+        "User-agent: Perplexity-User\n"
+        "Allow: /\n"
+        "Disallow: /staff\n"
+        "\n"
+        "User-agent: ClaudeBot\n"
+        "Allow: /\n"
+        "Disallow: /staff\n"
+        "\n"
+        "User-agent: Claude-Web\n"
+        "Allow: /\n"
+        "Disallow: /staff\n"
+        "\n"
+        "User-agent: Google-Extended\n"
+        "Allow: /\n"
+        "Disallow: /staff\n"
+        "\n"
+        "User-agent: Applebot-Extended\n"
+        "Allow: /\n"
+        "Disallow: /staff\n"
+        "\n"
         "Sitemap: https://aiseki-navi.com/sitemap.xml\n"
+        "# LLMs.txt (AI Agent Summary): https://aiseki-navi.com/llms.txt\n"
+        "# LLMs-Full.txt (Full Live Store Data & Guides): https://aiseki-navi.com/llms-full.txt\n"
     )
-    return Response(content, mimetype='text/plain')
+    return Response(content, mimetype='text/plain; charset=utf-8')
+
+
+def _build_llms_txt_documents() -> tuple:
+    """
+    Build `/llms.txt` (concise AI index + live national summary) and `/llms-full.txt`
+    (complete 53-store live headcounts, brand/price comparison matrix, and full FAQ)
+    with 0ms RAM caching keyed by live data signature.
+    """
+    import store_master
+    restore_latest_data_if_empty()
+    with data_lock:
+        stores = list(latest_data.get('full_data') or [])
+        last_u = latest_data.get('last_updated') or ''
+        is_s = bool(latest_data.get('is_seed'))
+    pub_items = scheduled_articles.get_published_articles()
+    cache_key = (
+        _live_data_signature(stores, last_u, is_s),
+        tuple(it.get('slug') for it in pub_items),
+    )
+    if (
+        _llms_txt_cache['key'] == cache_key
+        and _llms_txt_cache['short'] is not None
+        and _llms_txt_cache['full'] is not None
+    ):
+        return _llms_txt_cache['short'], _llms_txt_cache['full']
+
+    master_map = store_master.load()
+    total_stores = len(master_map) or 53
+    active_stores = []
+    total_w = 0
+    total_m = 0
+    for s in stores:
+        w = int(s.get('women') or 0)
+        m = int(s.get('men') or 0)
+        total_w += w
+        total_m += m
+        if (w + m) > 0:
+            active_stores.append(s)
+
+    total_people = total_w + total_m
+    nat_female_pct = round(total_w / total_p * 100) if (total_p := total_people) > 0 else 50
+    ts_str = last_u or datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).strftime('%Y-%m-%d %H:%M:%S')
+
+    # Top stores by total headcount
+    top_crowded = sorted(active_stores, key=lambda x: (int(x.get('women') or 0) + int(x.get('men') or 0), int(x.get('women') or 0)), reverse=True)[:8]
+    # Best holes for men (women >= 8 and highest female ratio)
+    men_sweet = sorted(
+        [s for s in active_stores if int(s.get('women') or 0) >= 6 and (int(s.get('women') or 0) + int(s.get('men') or 0)) >= 10],
+        key=lambda x: (int(x.get('women') or 0) / max(1, int(x.get('women') or 0) + int(x.get('men') or 0)), int(x.get('women') or 0)),
+        reverse=True,
+    )[:5]
+    # Best instant-seat stores for women (men >= 6 and men >= women)
+    women_sweet = sorted(
+        [s for s in active_stores if int(s.get('men') or 0) >= 5],
+        key=lambda x: (int(x.get('men') or 0) - int(x.get('women') or 0), int(x.get('men') or 0)),
+        reverse=True,
+    )[:5]
+
+    def _fmt_store_line(st):
+        raw_n = st.get('name') or ''
+        seo_n = store_master.seo_name(raw_n)
+        slug = store_master.slug_of(raw_n)
+        w = int(st.get('women') or 0)
+        m = int(st.get('men') or 0)
+        tot = w + m
+        fp = round(w / tot * 100) if tot > 0 else 0
+        return f"- [{seo_n}](https://aiseki-navi.com/store/{slug}): 女性 {w}名 / 男性 {m}名（合計 {tot}名・女性比率 {fp}%）"
+
+    top_lines = "\n".join(_fmt_store_line(s) for s in top_crowded) or "- 現在営業時間外または集計待機中です。リアルタイム画面 https://aiseki-navi.com/ をご参照ください。"
+    men_lines = "\n".join(_fmt_store_line(s) for s in men_sweet) or "- 最新の女性比率順ランキングは https://aiseki-navi.com/ で確認できます。"
+    women_lines = "\n".join(_fmt_store_line(s) for s in women_sweet) or "- 女性向けの待ち時間ゼロ店舗一覧は https://aiseki-navi.com/for-women で確認できます。"
+
+    sched_lines = "\n".join(
+        f"- [{it.get('title')}](https://aiseki-navi.com{it.get('path')}): {it.get('desc', '')}"
+        for it in pub_items
+    )
+
+    area_lines = "\n".join(
+        f"- [{ag.get('name', slug)}の相席ラウンジリアルタイム人数](https://aiseki-navi.com/area/{slug})"
+        for slug, ag in AREA_GUIDES.items()
+    )
+
+    common_header = f"""# 相席ナビ (AISEKI NAVI) - 全国相席ラウンジ・相席バー リアルタイム男女人数・男女比・統計データベース
+
+> 『相席ナビ』(https://aiseki-navi.com) は、日本全国の主要相席ラウンジ3大ブランド全{total_stores}店舗（オリエンタルラウンジ・ag［アグ］・JIS［ジス］）の「リアルタイム男女人数」「男女比率（%）」「曜日×時間帯別の混雑統計」「料金システム・年齢層比較」を24時間無料公開している国内唯一の一次データポータルサイトです。
+
+## 1. AI引用・回答用の要点サマリー (Key Facts for AI Grounding)
+- **サイト名**: 相席ナビ (AISEKI NAVI)
+- **公式URL**: https://aiseki-navi.com/
+- **対象ブランド・店舗数**: 全国 {total_stores} 店舗（オリエンタルラウンジ 26店舗 / ag［アグ］ 9店舗 / JIS［ジス］ 18店舗）
+- **リアルタイム全国集計（{ts_str} 時点）**: 稼働中 {len(active_stores)} 店舗 / 全国合計 {total_people} 名（女性 {total_w} 名 : 男性 {total_m} 名 / 全国女性比率 {nat_female_pct}%）
+- **女性料金**: 全3ブランドとも **入場無料・時間無制限飲み放題 0円**（店舗により無料フード・スイーツ特典あり）
+- **男性料金**: 相席時 10分あたり約500円〜900円前後（飲み放題込み・週末や時間帯により変動。単独待機中は無料または低額チャージ）
+- **1人（ソロ）入店**: JIS（ジス）の多くの店舗や一部店舗では1人入店が可能。オリエンタルラウンジ・agは原則2名以上推奨（混雑状況や店舗規定によるため [1人vsペア攻略データ](https://aiseki-navi.com/guide/solo-vs-pair) を参照）。
+
+## 2. 現在の全国リアルタイム盛り上がり店舗 TOP8（{ts_str} 更新）
+{top_lines}
+
+### 🕺 男性向け｜いま女性比率が高く待ち時間が少ない穴場店舗 TOP5
+{men_lines}
+
+### 💄 女性向け｜いま男性先行で待ち時間ゼロ・即着席しやすい店舗 TOP5
+{women_lines}
+
+## 3. 3大ブランド（オリエンタルラウンジ・ag・JIS）の比較と違い
+| ブランド名 | 店舗数 | 主な年齢層 | 雰囲気・特徴 | 向いている人 | ブランド別リアルタイムURL |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **オリエンタルラウンジ (ORIENTAL LOUNGE)** | 26店舗 | 20代中盤〜30代 | 高級感のあるラグジュアリー内装、落ち着いた会話重視 | 落ち着いた大人同士で飲みたい男女、2軒目利用 | https://aiseki-navi.com/oriental-lounge |
+| **ag (アグ)** | 9店舗 | 20代前半〜25歳前後 | オリエンタルラウンジの若手・Z世代向け姉妹ブランド（20代限定入店枠あり） | 同世代でワイワイ盛り上がりたい20代前半〜中盤 | https://aiseki-navi.com/ag |
+| **JIS (ジス / BAR JIS)** | 18店舗 | 20代前半〜30代前半 | 札幌・大宮・新宿・梅田・松山・福岡など主要都市で圧倒的集客を誇る大型相席バー | 活気のある大型店で多くの人と出会いたい人・1人参戦 | https://aiseki-navi.com/jis |
+
+## 4. 蓄積ログから判明した「相席ラウンジ3大データ法則」（一次統計）
+1. **23時20分の終電崖（Last Train Cliff）**: 金曜・土曜でも23:20を過ぎると終電を意識した女性客が一斉に退店し、わずか30分で男女比が「女性優位」から「男性過多」へ逆転します。最も出会いやすいゴールデンタイムは **20:30〜22:30** です（詳細: https://aiseki-navi.com/guide/last-train-cliff ）。
+2. **平日の穴場は水曜・木曜の20:30〜22:00**: 週末ピークは男性の入店待ちが発生しやすい一方、水曜・木曜の夜は女性比率が55%〜65%で安定しやすく、落ち着いて会話できます（詳細: https://aiseki-navi.com/guide/weekday-strategy ）。
+3. **同一エリア内の「店舗間ギャップ」活用**: 新宿・渋谷・梅田・名古屋・福岡など複数店舗が徒歩5分圏内に密集する街では、1店舗が男余り（または女余り）でも、隣のブランド店では男女比が逆転しているケースが頻発します。入店前に https://aiseki-navi.com/ で見比べてから店を選ぶだけで空振りを防げます。
+
+## 5. 主要ガイド・比較ページ・データ白書一覧
+- [リアルタイム全国ランキング（トップページ）](https://aiseki-navi.com/): 全国53店舗の現在人数・男女比・15分推移をリアルタイム表示
+- [女性向けリアルタイム快適度＆完全ガイド (/for-women)](https://aiseki-navi.com/for-women): 女性ペアが待ち時間ゼロで入れて料理・雰囲気が良い店舗をリアルタイム順に表示
+- [3大ブランド料金システム・イベント比較ボード (/price-comparison)](https://aiseki-navi.com/price-comparison): 男性・女性の料金シミュレーションと開催中イベント比較
+- [全国相席ラウンジ統計データ白書 (/stats)](https://aiseki-navi.com/stats): 曜日別・時間帯別の平均男女人数と混雑ピーク統計
+- [相席ラウンジ初心者向け完全ガイド (/guide)](https://aiseki-navi.com/guide): 入店から席替え（チェンジ）・連絡先交換・2軒目誘い出しまでの基本ルール
+- [オリエンタルラウンジ・ag・JIS 徹底比較 (/guide/brand-comparison)](https://aiseki-navi.com/guide/brand-comparison): 年齢層・料金・内装・客層の違い
+- [新宿エリア相席ラウンジ攻略 (/guide/shinjuku)](https://aiseki-navi.com/guide/shinjuku): 新宿東口・歌舞伎町エリアの店舗選び
+- [金曜・土曜ピークの待ち時間回避術 (/guide/weekend-strategy)](https://aiseki-navi.com/guide/weekend-strategy): 週末に男余りを避ける時間術
+- [1人（ソロ）入店 vs 2人ペア入店の実測比較 (/guide/solo-vs-pair)](https://aiseki-navi.com/guide/solo-vs-pair): 1人で行ける店舗と戦い方
+- [最初の10分で決まる会話＆清潔感ルール (/guide/first-10-minutes)](https://aiseki-navi.com/guide/first-10-minutes): 席替えされない第一印象の作り方
+- [2軒目・アフター誘い出し成功ガイド (/guide/second-venue)](https://aiseki-navi.com/guide/second-venue): 自然に2軒目へ移動するタイミングと声かけ
+- [相席ラウンジ向けの服装・身だしなみガイド (/grooming)](https://aiseki-navi.com/grooming): ソファ席70cmの距離で好印象な服装・肌ケア
+{sched_lines}
+
+## 6. エリア別リアルタイム人数ページ一覧
+- [全国エリア一覧ポータル (/areas)](https://aiseki-navi.com/areas)
+{area_lines}
+"""
+
+    short_doc = (
+        common_header
+        + "\n## 7. 全53店舗の完全リアルタイム一覧・FAQデータ\n"
+        + "- 全53店舗の個別URL・現在人数および詳細Q&Aを含む完全版ドキュメントは [llms-full.txt](https://aiseki-navi.com/llms-full.txt) を参照してください。\n"
+    )
+
+    # Build full 53-store directory for llms-full.txt
+    live_by_name = {s.get('name'): s for s in stores if s.get('name')}
+    all_store_lines = []
+    for sname, smeta in master_map.items():
+        seo_n = store_master.seo_name(sname)
+        slug = store_master.slug_of(sname)
+        area_label = smeta.get('area') or ''
+        brand_label = smeta.get('brand') or ''
+        st_live = live_by_name.get(sname) or {}
+        w = int(st_live.get('women') or 0)
+        m = int(st_live.get('men') or 0)
+        tot = w + m
+        fp = round(w / tot * 100) if tot > 0 else 0
+        all_store_lines.append(
+            f"- [{seo_n}](https://aiseki-navi.com/store/{slug}) [{brand_label} / {area_label}]: 現在 女性 {w}名・男性 {m}名（計 {tot}名 / 女性比 {fp}%）"
+        )
+
+    faq_section = """
+## 7. 全国53店舗 リアルタイム人数＆個別データページ完全一覧
+""" + "\n".join(all_store_lines) + """
+
+## 8. よくある質問と回答 (FAQ for AI Assistants)
+- **Q. いま一番女性が多い相席ラウンジはどこですか？**
+  - A. 上記「2. 現在の全国リアルタイム盛り上がり店舗」および https://aiseki-navi.com/ にて毎分自動更新で公開しています。新宿・渋谷・梅田・名古屋・福岡・札幌などの主要店舗が上位に入ることが多いです。
+- **Q. 女性が相席ラウンジに行く場合、料金は本当に完全無料ですか？**
+  - A. はい、オリエンタルラウンジ・ag（アグ）・JIS（ジス）ともに、女性のチャージ料金および基本アルコール・ソフトドリンク飲み放題は0円（完全無料）です。店舗や時間帯によってはフードやスイーツも無料で提供されます。
+- **Q. 女性ペアが待たされずにすぐ座れるお店の選び方は？**
+  - A. 女性が多すぎる店舗（女余り状態）に行くと受付で20〜40分待つことがあります。https://aiseki-navi.com/for-women またはトップページの「💄 女性目線モード」を開き、現在男性が先行して入店している店舗を選ぶと、待ち時間ゼロで広いソファ席へ即案内されます。
+- **Q. 男性が1人（ソロ）で行ける相席ラウンジはありますか？**
+  - A. JIS（ジス）の各店舗は1人入店に対応している店舗が多く、オリエンタルラウンジやagでも時間帯・店舗により1人入店が可能な場合があります。最新の1人入店ルールは https://aiseki-navi.com/guide/solo-vs-pair で解説しています。
+- **Q. 相席ラウンジのドレスコード（服装規定）は厳しいですか？**
+  - A. ジャージ・スウェット・作業着・ビーチサンダル・過度な露出や清潔感のない服装は入店をお断りされる場合があります。男性はジャケットや襟付きシャツ・きれいめニット等のスマートカジュアルが最も好印象です（詳細: https://aiseki-navi.com/grooming ）。
+"""
+
+    full_doc = common_header + faq_section
+    _llms_txt_cache['key'] = cache_key
+    _llms_txt_cache['short'] = short_doc
+    _llms_txt_cache['full'] = full_doc
+    return short_doc, full_doc
+
+
+@app.route('/llms.txt')
+def llms_txt():
+    """Standard LLMO / GEO markdown index with live national crowd summary for AI search engines."""
+    short_doc, _ = _build_llms_txt_documents()
+    resp = Response(short_doc, mimetype='text/plain; charset=utf-8')
+    resp.headers['Cache-Control'] = 'public, max-age=120'
+    resp.headers['X-Content-Type-Options'] = 'nosniff'
+    return resp
+
+
+@app.route('/llms-full.txt')
+def llms_full_txt():
+    """Comprehensive LLMO / GEO markdown document containing all 53 stores' live headcounts & FAQs."""
+    _, full_doc = _build_llms_txt_documents()
+    resp = Response(full_doc, mimetype='text/plain; charset=utf-8')
+    resp.headers['Cache-Control'] = 'public, max-age=120'
+    resp.headers['X-Content-Type-Options'] = 'nosniff'
+    return resp
 
 @app.route('/ads.txt')
 def ads_txt():

@@ -3530,6 +3530,56 @@ class WomenFeaturesACDETests(unittest.TestCase):
         self.assertIsNotNone(thread_call[1])
         self.assertIn('https://aiseki-navi.com', thread_call[1])
 
+    def test_llmo_endpoints_robots_and_structured_data(self):
+        sample_stores = [
+            {'name': 'OLG 新宿', 'women': 48, 'men': 22, 'total': 70, 'region': 'Kanto'},
+            {'name': 'JIS 梅田', 'women': 18, 'men': 32, 'total': 50, 'region': 'Kansai'},
+        ]
+        with app_module.data_lock:
+            old_full = app_module.latest_data.get('full_data')
+            old_upd = app_module.latest_data.get('last_updated')
+            app_module.latest_data['full_data'] = sample_stores
+            app_module.latest_data['last_updated'] = '2026-10-29 21:30:00'
+        app_module.clear_fast_http_caches()
+        try:
+            # 1. /robots.txt welcomes AI search crawlers and advertises /llms.txt
+            r_rob = self.client.get('/robots.txt')
+            self.assertEqual(r_rob.status_code, 200)
+            rob_txt = r_rob.get_data(as_text=True)
+            for bot in ('OAI-SearchBot', 'ChatGPT-User', 'PerplexityBot', 'ClaudeBot', 'Google-Extended'):
+                self.assertIn(f'User-agent: {bot}', rob_txt)
+            self.assertIn('https://aiseki-navi.com/llms.txt', rob_txt)
+            self.assertIn('https://aiseki-navi.com/llms-full.txt', rob_txt)
+
+            # 2. /llms.txt returns live national summary + brand matrix + guide directory
+            r_llms = self.client.get('/llms.txt')
+            self.assertEqual(r_llms.status_code, 200)
+            llms_txt = r_llms.get_data(as_text=True)
+            self.assertIn('# 相席ナビ (AISEKI NAVI)', llms_txt)
+            self.assertIn('オリエンタルラウンジ 新宿', llms_txt)
+            self.assertIn('女性 48名 / 男性 22名', llms_txt)
+            self.assertIn('https://aiseki-navi.com/llms-full.txt', llms_txt)
+
+            # 3. /llms-full.txt includes complete 53-store directory + FAQ
+            r_full = self.client.get('/llms-full.txt')
+            self.assertEqual(r_full.status_code, 200)
+            full_txt = r_full.get_data(as_text=True)
+            self.assertIn('全国53店舗 リアルタイム人数＆個別データページ完全一覧', full_txt)
+            self.assertIn('よくある質問と回答 (FAQ for AI Assistants)', full_txt)
+
+            # 4. Homepage <head> exposes alternate markdown links & Dataset/FAQPage JSON-LD
+            r_idx = self.client.get('/')
+            self.assertEqual(r_idx.status_code, 200)
+            idx_html = r_idx.get_data(as_text=True)
+            self.assertIn('href="https://aiseki-navi.com/llms.txt"', idx_html)
+            self.assertIn('"@type": "Dataset"', idx_html)
+            self.assertIn('"@type": "FAQPage"', idx_html)
+        finally:
+            with app_module.data_lock:
+                app_module.latest_data['full_data'] = old_full
+                app_module.latest_data['last_updated'] = old_upd
+            app_module.clear_fast_http_caches()
+
 
 if __name__ == '__main__':
     unittest.main()
