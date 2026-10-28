@@ -1518,6 +1518,13 @@ def _is_bot_request():
     ua = (request.headers.get('User-Agent') or '').lower()
     return (not ua) or any(m in ua for m in _BOT_MARKERS)
 
+
+def _is_prefetch_request():
+    if request.headers.get('X-Sw-Prefetch') == '1':
+        return True
+    purp = f"{request.headers.get('Sec-Purpose', '')} {request.headers.get('Purpose', '')} {request.headers.get('X-Moz', '')}".lower()
+    return 'prefetch' in purp or 'preview' in purp
+
 @app.after_request
 def track_page_views(response):
     try:
@@ -1537,7 +1544,8 @@ def track_page_views(response):
             if (request.method == 'GET' and response.status_code == 200
                     and (request.path == '/' or request.path.startswith(_TRACKED_PAGE_PREFIXES))
                     and not session.get('is_staff')
-                    and not _is_bot_request()):
+                    and not _is_bot_request()
+                    and not _is_prefetch_request()):
                 import analytics
                 analytics.track('page_view', request.path)
                 raw_s = (request.args.get('s') or '').strip()

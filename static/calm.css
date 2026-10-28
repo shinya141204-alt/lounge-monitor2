@@ -2214,5 +2214,112 @@ body.theme-light .daily-col-tot {
     contain-intrinsic-size: auto 480px;
 }
 
+/* ==========================================================================
+   19. スマホ・PC全ページ共通 ページ遷移ローディングバー＆フローティング読み込みピル
+   ========================================================================== */
+.aiseki-nav-progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    z-index: 2147483000;
+    pointer-events: none;
+    opacity: 0;
+    transform-origin: left center;
+    transform: scaleX(0);
+    background: linear-gradient(90deg, #c8a46e 0%, #f3dfc1 55%, #dfa3b0 100%);
+    box-shadow: 0 0 10px rgba(200, 164, 110, 0.65);
+    will-change: transform, opacity;
+}
+
+.aiseki-nav-progress.is-active {
+    opacity: 1;
+}
+
+body.theme-light .aiseki-nav-progress {
+    background: linear-gradient(90deg, #a84960 0%, #d88d9e 55%, #8c6b3f 100%);
+    box-shadow: 0 0 8px rgba(168, 73, 96, 0.4);
+}
+
+.aiseki-nav-pill {
+    position: fixed;
+    top: calc(env(safe-area-inset-top, 0px) + 12px);
+    left: 50%;
+    transform: translate(-50%, -8px);
+    z-index: 2147483001;
+    pointer-events: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    padding: 8px 16px;
+    border-radius: 999px;
+    background: rgba(18, 19, 24, 0.95);
+    border: 1px solid rgba(200, 164, 110, 0.62);
+    color: #f4efe6;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    line-height: 1.3;
+    white-space: nowrap;
+    max-width: calc(100vw - 28px);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.52);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.12s ease, transform 0.12s ease;
+    will-change: transform, opacity;
+}
+
+.aiseki-nav-pill.is-active {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-50%, 0);
+}
+
+body.theme-light .aiseki-nav-pill {
+    background: rgba(253, 251, 250, 0.97);
+    border-color: rgba(158, 82, 102, 0.45);
+    color: #282124;
+    box-shadow: 0 10px 26px rgba(40, 33, 36, 0.16);
+}
+
+.aiseki-nav-spinner {
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    border: 2.3px solid rgba(200, 164, 110, 0.26);
+    border-top-color: #ecd09e;
+    flex-shrink: 0;
+    animation: calm-nav-spin 0.55s linear infinite;
+    will-change: transform;
+}
+
+body.theme-light .aiseki-nav-spinner {
+    border-color: rgba(168, 73, 96, 0.22);
+    border-top-color: #a84960;
+}
+
+.aiseki-nav-pill-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* タップされたボタン自体のローディング強調（暗い画面・明るい画面ともハッキリ判別可能に） */
+.portal-nav-link.nav-loading,
+.portal-nav-item.nav-loading,
+a.nav-loading {
+    opacity: 0.92 !important;
+    border-color: rgba(200, 164, 110, 0.88) !important;
+    box-shadow: 0 0 0 2px rgba(200, 164, 110, 0.22) !important;
+}
+
+body.theme-light .portal-nav-link.nav-loading,
+body.theme-light .portal-nav-item.nav-loading,
+body.theme-light a.nav-loading {
+    border-color: rgba(168, 73, 96, 0.72) !important;
+    box-shadow: 0 0 0 2px rgba(168, 73, 96, 0.16) !important;
+}
+
+
 
 

@@ -96,7 +96,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet"></noscript>
     <link rel="stylesheet" href="/static/style.css?v=20261029_1">
-    <link rel="preload" href="/static/app.js?v=20261029_1" as="script">
+    <link rel="preload" href="/static/app.js?v=20261029_2" as="script">
     <script>
         window.APP_CONFIG = {
             isStaff: {{ 'true' if is_staff else 'false' }},
@@ -109,7 +109,7 @@
          crossorigin="anonymous"></script>
     <script src="/static/affiliate_config.js?v=12" defer></script>
     {% endif %}
-    <link rel="stylesheet" href="/static/calm.css?v=17">
+    <link rel="stylesheet" href="/static/calm.css?v=18">
 </head>
 
 <body class="{% if is_staff %}staff-mode{% endif %}">
@@ -289,6 +289,7 @@
                 <a href="/guide/brand-comparison" class="portal-nav-link">3大ブランド比較</a>
                 <a href="/grooming" class="portal-nav-link">服装・事前準備</a>
             </nav>
+            {% include '_nav_loader.html' %}
             {% endif %}
         </header>
 
@@ -1931,12 +1932,12 @@
         window.INITIAL_STATUS_DATA = {{ initial_status | tojson }};
         {% endif %}
     </script>
-    <script src="/static/app.js?v=20261029_1" defer></script>
+    <script src="/static/app.js?v=20261029_2" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/sw.js?v=62', { updateViaCache: 'none' })
+                navigator.serviceWorker.register('/sw.js?v=63', { updateViaCache: 'none' })
                     .then(function(reg) {
                         reg.update();
                         document.addEventListener('visibilitychange', function() {

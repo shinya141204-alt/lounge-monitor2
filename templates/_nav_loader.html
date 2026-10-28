@@ -1,0 +1,207 @@
+<div id="aiseki-nav-progress" class="aiseki-nav-progress" aria-hidden="true"></div>
+<div id="aiseki-nav-pill" class="aiseki-nav-pill" role="status" aria-live="polite">
+    <span id="aiseki-nav-spinner" class="aiseki-nav-spinner" aria-hidden="true"></span>
+    <span id="aiseki-nav-pill-text" class="aiseki-nav-pill-text">読み込み中...</span>
+</div>
+<script>
+(function() {
+    if (window.__portalNavFastInit) return;
+    window.__portalNavFastInit = true;
+
+    var prefetchedAt = Object.create(null);
+    var progAnim = null;
+    var spinAnim = null;
+    var safetyTimer = null;
+    var navInFlight = false;
+
+    function isIgnoredPath(pathname) {
+        return !pathname || pathname.indexOf('/link/') === 0 || pathname.indexOf('/staff') === 0 || pathname.indexOf('/api/') === 0 || pathname.indexOf('/ogp/') === 0;
+    }
+
+    function prefetchUrl(rawHref) {
+        if (!rawHref || rawHref.charAt(0) !== '/' || rawHref.indexOf('//') === 0) return;
+        var qIdx = rawHref.indexOf('#');
+        var cleanHref = qIdx >= 0 ? rawHref.slice(0, qIdx) : rawHref;
+        if (!cleanHref || isIgnoredPath(cleanHref)) return;
+        var now = Date.now();
+        if (prefetchedAt[cleanHref] && (now - prefetchedAt[cleanHref] < 25000)) return;
+        prefetchedAt[cleanHref] = now;
+        try {
+            if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+                fetch(cleanHref, {
+                    method: 'GET',
+                    credentials: 'same-origin',
+                    headers: { 'X-Sw-Prefetch': '1' }
+                }).catch(function() {});
+                return;
+            }
+            var link = document.createElement('link');
+            link.rel = 'prefetch';
+            link.href = cleanHref;
+            link.as = 'document';
+            document.head.appendChild(link);
+        } catch (e) {}
+    }
+
+    function resolveLoadingLabel(url) {
+        var p = url.pathname || '/';
+        var s = url.search || '';
+        if (p === '/') {
+            return s.indexOf('mode=women') !== -1
+                ? '女性目線ランキング を読み込み中...'
+                : 'リアルタイム順位 を読み込み中...';
+        }
+        if (p === '/for-women') return '女子向け裏ガイド を読み込み中...';
+        if (p === '/price-comparison') return '料金・イベント比較 を読み込み中...';
+        if (p === '/columns') return 'コラム・記事一覧 を読み込み中...';
+        if (p === '/areas') return 'エリア一覧 を読み込み中...';
+        if (p.indexOf('/area/') === 0) return 'エリア別データ を読み込み中...';
+        if (p.indexOf('/store/') === 0) return '店舗詳細データ を読み込み中...';
+        if (p === '/stats') return '統計データ白書 を読み込み中...';
+        if (p === '/grooming') return '服装・事前準備 を読み込み中...';
+        if (p === '/guide/brand-comparison') return '3大ブランド比較 を読み込み中...';
+        if (p.indexOf('/guide') === 0) return '特集コラム を読み込み中...';
+        if (p === '/oriental-lounge' || p === '/ag' || p === '/jis') return 'ブランド別人数 を読み込み中...';
+        return 'ページを読み込み中...';
+    }
+
+    function resetNavLoading() {
+        navInFlight = false;
+        if (safetyTimer) { clearTimeout(safetyTimer); safetyTimer = null; }
+        if (progAnim) { try { progAnim.cancel(); } catch (e) {} progAnim = null; }
+        if (spinAnim) { try { spinAnim.cancel(); } catch (e) {} spinAnim = null; }
+        var progEl = document.getElementById('aiseki-nav-progress');
+        var pillEl = document.getElementById('aiseki-nav-pill');
+        if (progEl) {
+            progEl.classList.remove('is-active');
+            progEl.style.transform = 'scaleX(0)';
+        }
+        if (pillEl) {
+            pillEl.classList.remove('is-active');
+        }
+        var loadingLinks = document.querySelectorAll('.nav-loading');
+        for (var i = 0; i < loadingLinks.length; i++) {
+            loadingLinks[i].classList.remove('nav-loading');
+        }
+    }
+
+    function showNavLoading(anchorEl, labelText) {
+        if (anchorEl) anchorEl.classList.add('nav-loading');
+        var progEl = document.getElementById('aiseki-nav-progress');
+        var pillEl = document.getElementById('aiseki-nav-pill');
+        var spinEl = document.getElementById('aiseki-nav-spinner');
+        var textEl = document.getElementById('aiseki-nav-pill-text');
+        if (textEl) textEl.textContent = labelText || '読み込み中...';
+        if (progEl) progEl.classList.add('is-active');
+        if (pillEl) pillEl.classList.add('is-active');
+
+        // Run animations on the GPU compositor thread so they keep spinning smoothly during iOS Safari / mobile navigation wait
+        if (spinEl && spinEl.animate) {
+            try {
+                if (spinAnim) spinAnim.cancel();
+                spinAnim = spinEl.animate(
+                    [{ transform: 'rotate(0deg)' }, { transform: 'rotate(360deg)' }],
+                    { duration: 550, iterations: Infinity }
+                );
+            } catch (e) {}
+        }
+        if (progEl && progEl.animate) {
+            try {
+                if (progAnim) progAnim.cancel();
+                progAnim = progEl.animate(
+                    [
+                        { transform: 'scaleX(0.12)' },
+                        { transform: 'scaleX(0.74)', offset: 0.45 },
+                        { transform: 'scaleX(0.92)' }
+                    ],
+                    { duration: 2200, fill: 'forwards', easing: 'cubic-bezier(0.16, 1, 0.3, 1)' }
+                );
+            } catch (e) {}
+        }
+        // Force synchronous style flush so iOS Safari commits the layer immediately
+        if (pillEl) void pillEl.offsetWidth;
+        if (safetyTimer) clearTimeout(safetyTimer);
+        safetyTimer = setTimeout(resetNavLoading, 8000);
+    }
+
+    function onWarmInteraction(e) {
+        var a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+        if (!a) return;
+        var raw = a.getAttribute('href');
+        if (raw && raw.charAt(0) === '/') prefetchUrl(raw);
+    }
+
+    document.addEventListener('pointerdown', onWarmInteraction, { passive: true });
+    document.addEventListener('touchstart', onWarmInteraction, { passive: true });
+    document.addEventListener('mouseover', onWarmInteraction, { passive: true });
+
+    document.addEventListener('click', function(e) {
+        if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+        var a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+        if (!a) return;
+        if (a.hasAttribute('download')) return;
+        var tgt = a.getAttribute('target');
+        if (tgt && tgt.toLowerCase() !== '_self') return;
+        var rawHref = a.getAttribute('href');
+        if (!rawHref || rawHref.charAt(0) === '#' || rawHref.indexOf('javascript:') === 0 || rawHref.indexOf('mailto:') === 0 || rawHref.indexOf('tel:') === 0) return;
+
+        var destUrl;
+        try {
+            destUrl = new URL(a.href, window.location.origin);
+        } catch (err) {
+            return;
+        }
+        if (destUrl.origin !== window.location.origin) return;
+        if (destUrl.pathname.indexOf('/link/') === 0) return;
+        // Same-page hash scroll (#section): let browser jump immediately without loading pill
+        if (destUrl.pathname === window.location.pathname && destUrl.search === window.location.search && destUrl.hash) return;
+
+        if (navInFlight) {
+            e.preventDefault();
+            return;
+        }
+        navInFlight = true;
+
+        var targetHref = destUrl.pathname + destUrl.search + destUrl.hash;
+        prefetchUrl(destUrl.pathname + destUrl.search);
+        showNavLoading(a, resolveLoadingLabel(destUrl));
+
+        // Guarantee 1 painted frame on iOS Safari before navigation unload freezes the page
+        e.preventDefault();
+        var navigated = false;
+        function go() {
+            if (navigated) return;
+            navigated = true;
+            window.location.assign(targetHref);
+        }
+        if (window.requestAnimationFrame) {
+            window.requestAnimationFrame(function() {
+                setTimeout(go, 0);
+            });
+            setTimeout(go, 34);
+        } else {
+            go();
+        }
+    });
+
+    window.addEventListener('pageshow', resetNavLoading);
+    window.addEventListener('pagehide', resetNavLoading);
+
+    // Ensure Service Worker v63 is registered on subpages too + warm primary tabs after page settles
+    window.addEventListener('load', function() {
+        if ('serviceWorker' in navigator && window.location.pathname.indexOf('/staff') !== 0) {
+            navigator.serviceWorker.register('/sw.js?v=63', { updateViaCache: 'none' }).catch(function() {});
+        }
+        if (window.location.pathname.indexOf('/staff') !== 0) {
+            setTimeout(function() {
+                var warmTargets = ['/', '/for-women', '/price-comparison', '/columns'];
+                for (var i = 0; i < warmTargets.length; i++) {
+                    if (warmTargets[i] !== window.location.pathname) {
+                        prefetchUrl(warmTargets[i]);
+                    }
+                }
+            }, 900);
+        }
+    });
+})();
+</script>

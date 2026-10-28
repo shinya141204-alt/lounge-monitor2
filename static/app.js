@@ -2470,49 +2470,12 @@
             }
         });
 
-        // Instant bfcache back-navigation support + touch/hover link prefetching on top page
-        (function _initTopNavAcceleration() {
-            const prefetched = Object.create(null);
-            function prefetchHref(href) {
-                if (!href || prefetched[href] || href.indexOf('/') !== 0 || href.indexOf('/staff') === 0) return;
-                prefetched[href] = true;
-                try {
-                    const link = document.createElement('link');
-                    link.rel = 'prefetch';
-                    link.href = href;
-                    link.as = 'document';
-                    document.head.appendChild(link);
-                } catch (e) {}
+        // Instant bfcache back-navigation silent data refresh
+        window.addEventListener('pageshow', (e) => {
+            if (e.persisted && getStatusAgeSec(window.lastData) > 15) {
+                fetchData();
             }
-            document.addEventListener('pointerdown', (e) => {
-                const a = e.target && e.target.closest ? e.target.closest('.portal-nav-link, .ladies-quick-link[href], .portal-area-chip') : null;
-                if (a) prefetchHref(a.getAttribute('href'));
-            }, { passive: true });
-            document.addEventListener('mouseover', (e) => {
-                const a = e.target && e.target.closest ? e.target.closest('.portal-nav-link') : null;
-                if (a) prefetchHref(a.getAttribute('href'));
-            }, { passive: true });
-            document.addEventListener('click', (e) => {
-                if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-                const a = e.target && e.target.closest ? e.target.closest('.portal-nav-link, .menu-grid-item[href]') : null;
-                if (!a) return;
-                const href = a.getAttribute('href');
-                if (!href || href.indexOf('#') === 0 || a.target === '_blank') return;
-                if (href === window.location.pathname + window.location.search) return;
-                a.classList.add('nav-loading');
-            });
-            window.addEventListener('pageshow', (e) => {
-                document.querySelectorAll('.nav-loading').forEach(el => el.classList.remove('nav-loading'));
-                if (e.persisted && getStatusAgeSec(window.lastData) > 15) {
-                    fetchData();
-                }
-            });
-            if ('requestIdleCallback' in window && !IS_STAFF) {
-                requestIdleCallback(() => {
-                    ['/for-women', '/price-comparison', '/columns'].forEach(prefetchHref);
-                }, { timeout: 3000 });
-            }
-        })();
+        });
 
         // --- Analysis Modal Logic ---
         let dailyChartInstance = null;

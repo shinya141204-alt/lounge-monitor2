@@ -1,6 +1,8 @@
-// Supersedes aiseki-navi-v47..v61 (purged automatically on activate)
-const CACHE_NAME = 'aiseki-navi-v62';
+// Supersedes aiseki-navi-v47..v62 (purged automatically on activate)
+const CACHE_NAME = 'aiseki-navi-v63';
 const SHELL_KEY = '/';
+const LIVE_FRESH_TTL_MS = 45000;
+const PREFETCH_DEDUP_MS = 25000;
 const FAST_NAV_PATHS = new Set([
   '/grooming',
   '/stats',
@@ -23,9 +25,9 @@ const LIVE_SSR_PREFIXES = [
 ];
 const CORE_ASSETS = [
   '/static/style.css?v=20261029_1',
-  '/static/calm.css?v=17',
+  '/static/calm.css?v=18',
   '/static/portal.css?v=7',
-  '/static/app.js?v=20261029_1',
+  '/static/app.js?v=20261029_2',
   '/static/affiliate_config.js?v=12',
   '/static/manifest.json?v=2'
 ];
@@ -85,19 +87,40 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+function getCachedAgeMs(resp) {
+  if (!resp || !resp.headers) return Infinity;
+  const ts = Number(resp.headers.get('X-Sw-Stored-At') || 0);
+  if (!ts || Number.isNaN(ts)) return Infinity;
+  return Math.max(0, Date.now() - ts);
+}
+
+async function putHtmlWithTimestamp(cacheKey, resp) {
+  if (!resp || !resp.ok || resp.redirected || isStaffOrPrivateNoStore(resp)) return;
+  try {
+    const body = await resp.clone().arrayBuffer();
+    const headers = new Headers(resp.headers);
+    headers.set('X-Sw-Stored-At', String(Date.now()));
+    const stamped = new Response(body, {
+      status: resp.status,
+      statusText: resp.statusText,
+      headers
+    });
+    const cache = await caches.open(CACHE_NAME);
+    await cache.put(cacheKey, stamped);
+  } catch (e) {}
+}
+
 // Fetch the latest HTML (navigation preload first) and write to CacheStorage asynchronously without blocking UI response
 function fetchAndCache(event, cacheKey, forceFresh) {
   return (async () => {
     let preload = null;
     try {
-      preload = await event.preloadResponse;
+      preload = event.preloadResponse ? await event.preloadResponse : null;
     } catch (e) {}
     const resp = preload || await fetch(event.request, forceFresh ? { cache: 'no-cache' } : undefined);
-    if (resp && resp.ok && !isStaffOrPrivateNoStore(resp)) {
+    if (resp && resp.ok && !resp.redirected && !isStaffOrPrivateNoStore(resp)) {
       const copy = resp.clone();
-      event.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => cache.put(cacheKey, copy)).catch(() => {})
-      );
+      event.waitUntil(putHtmlWithTimestamp(cacheKey, copy));
     }
     return resp;
   })();
@@ -133,7 +156,30 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Navigation requests (HTML page visits from bookmarks / home screen)
+  // Background warm-prefetch from touchstart/pointerdown/idle (works on iOS Safari & Android Chrome)
+  if (event.request.headers.get('X-Sw-Prefetch') === '1') {
+    const pfKey = reqUrl.pathname === '/' ? SHELL_KEY : (reqUrl.pathname + reqUrl.search);
+    event.respondWith(
+      (async () => {
+        try {
+          const existing = await caches.match(pfKey);
+          if (existing && (isFastEditorialPath(reqUrl.pathname) || getCachedAgeMs(existing) < PREFETCH_DEDUP_MS)) {
+            return new Response('', { status: 204 });
+          }
+          const resp = await fetch(reqUrl.pathname + reqUrl.search, {
+            cache: 'no-cache',
+            credentials: 'same-origin',
+            headers: { 'X-Sw-Prefetch': '1' }
+          });
+          await putHtmlWithTimestamp(pfKey, resp);
+        } catch (e) {}
+        return new Response('', { status: 204 });
+      })()
+    );
+    return;
+  }
+
+  // Navigation requests (HTML page visits from bookmarks / home screen / in-site tabs)
   if (event.request.mode === 'navigate') {
     const cacheKey = reqUrl.pathname === '/' ? SHELL_KEY : (reqUrl.pathname + reqUrl.search);
     // Static guide & editorial pages: Stale-While-Revalidate
@@ -150,19 +196,24 @@ self.addEventListener('fetch', (event) => {
       return;
     }
 
-    // Top page ("/") and live SSR pages (/price-comparison, /store/*, /areas):
-    // always fetch fresh network HTML first (with offline fallback) so layout & live data updates reflect immediately
+    // Top page ("/") and live SSR pages (/for-women, /price-comparison, /store/*, /areas):
+    // If warmed within the last 45s (via touchstart/idle prefetch or recent visit), serve in ~5ms and revalidate in background!
     const isLiveSsr = isLiveSsrPath(reqUrl.pathname);
     const pageCacheKey = cacheKey;
-    const networkPromise = fetchAndCache(event, pageCacheKey, isLiveSsr);
-    event.waitUntil(networkPromise.catch(() => {}));
     event.respondWith(
       (async () => {
+        const cachedFresh = await caches.match(pageCacheKey) || (reqUrl.pathname === '/' ? null : await caches.match(reqUrl.pathname));
+        if (cachedFresh && getCachedAgeMs(cachedFresh) < LIVE_FRESH_TTL_MS) {
+          const bgPromise = fetchAndCache(event, pageCacheKey, isLiveSsr);
+          event.waitUntil(bgPromise.catch(() => {}));
+          return cachedFresh;
+        }
+        const networkPromise = fetchAndCache(event, pageCacheKey, isLiveSsr);
+        event.waitUntil(networkPromise.catch(() => {}));
         try {
           return await Promise.race([networkPromise, timeout(isLiveSsr ? 1800 : 1200)]);
         } catch (e) {
-          const cached = await caches.match(pageCacheKey) || await caches.match(reqUrl.pathname);
-          if (cached) return cached;
+          if (cachedFresh) return cachedFresh;
           try {
             return await networkPromise;
           } catch (e2) {
