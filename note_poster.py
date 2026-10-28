@@ -282,6 +282,15 @@ def check_and_post_new_note(force: bool = False, article_index: int = 0) -> dict
                 "article": target,
             }
 
+        in_cd, cd_reason = x_poster.check_x_auto_post_cooldown(min_interval_minutes=48, now_jst=now_jst)
+        if in_cd:
+            logger.info(f"Deferring note X share due to cooldown ({cd_reason}): {target['link']}")
+            return {
+                "status": "skipped",
+                "reason": cd_reason,
+                "article": target,
+            }
+
     link = target["link"]
     title = target["title"]
 
@@ -296,6 +305,7 @@ def check_and_post_new_note(force: bool = False, article_index: int = 0) -> dict
                 import job_state
                 now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
                 job_state.mark_done(f"note_daily:{now_jst.strftime('%Y-%m-%d')}")
+                x_poster.record_x_auto_post_timestamp(now_jst)
                 sig = _normalize_title_signature(title)
                 if sig:
                     job_state.mark_done(f"note_title:{sig}")

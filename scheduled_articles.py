@@ -204,6 +204,12 @@ def check_and_announce_newly_published(app_url: str = "", now_jst: datetime.date
         if job_state.is_done(dedup_key):
             continue
 
+        in_cd, cd_reason = x_poster.check_x_auto_post_cooldown(min_interval_minutes=48, now_jst=now_jst)
+        if in_cd:
+            logger.info(f"[scheduled_articles] Deferring X announcement for {item['slug']} ({cd_reason})")
+            results.append({"slug": item["slug"], "result": {"status": "skipped", "reason": cd_reason}})
+            break
+
         reply_text = (
             f"📖 新しいコラムを書きました👇\n"
             f"『{item['x_title']}』\n"
@@ -219,7 +225,11 @@ def check_and_announce_newly_published(app_url: str = "", now_jst: datetime.date
         if res.get("status") == "success":
             job_state.mark_done(dedup_key)
             job_state.mark_done(f"x_col_used:{now_jst.strftime('%Y-%m-%d')}:{item['path']}")
+            x_poster.record_x_auto_post_timestamp(now_jst)
             logger.info(f"[scheduled_articles] Announced newly released column on X: {item['slug']}")
         results.append({"slug": item["slug"], "result": res})
+        if res.get("status") == "success":
+            # At most 1 newly published column X announcement per 15-min check cycle to prevent burst firing
+            break
 
     return results

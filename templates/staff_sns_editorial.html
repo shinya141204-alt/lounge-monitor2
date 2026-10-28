@@ -455,6 +455,65 @@
             </div>
         </div>
 
+        <!-- Automated SNS Delivery Health & Token Diagnostic Panel -->
+        {% set dh = editorial.delivery_health or {} %}
+        <div class="header-card" style="padding:14px 18px; border-color:rgba(123, 196, 159, 0.35);">
+            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+                <div style="font-size:0.86rem; font-weight:800;">
+                    📡 自動投稿ステータス＆トークン疎通モニター（人間ゆらぎ 4〜8分・X最低48分クールダウン稼働中）
+                </div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <button type="button" class="back-btn" style="cursor:pointer; font-size:0.76rem; padding:5px 11px;" onclick="verifyPlatformToken('threads')">🔍 Threads疎通テスト</button>
+                    <button type="button" class="back-btn" style="cursor:pointer; font-size:0.76rem; padding:5px 11px;" onclick="verifyPlatformToken('instagram')">🔍 IG疎通テスト</button>
+                    <button type="button" class="copy-btn" style="font-size:0.76rem; padding:5px 11px;" onclick="togglePlatformTokenDrawer()">🔑 Threads / IG トークン更新</button>
+                </div>
+            </div>
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap:10px; margin-top:12px;">
+                {% for ch_key in ['x', 'threads', 'instagram'] %}
+                {% set info = dh.get(ch_key, {}) %}
+                <div style="background:var(--surface-2); border:1px solid {{ 'rgba(216,161,170,0.6)' if info.state == 'error' else ('rgba(123,196,159,0.4)' if info.state == 'active' else 'var(--border-strong)') }}; border-radius:10px; padding:10px 12px; font-size:0.77rem;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; gap:6px; font-weight:800;">
+                        <span>{{ info.label or ch_key }}</span>
+                        {% if info.state == 'active' %}
+                        <span style="color:var(--green);">🟢 正常稼働</span>
+                        {% elif info.state == 'error' %}
+                        <span style="color:#ffb4be;">🔴 要確認（API/トークン）</span>
+                        {% else %}
+                        <span style="color:var(--amber);">🟡 未設定</span>
+                        {% endif %}
+                    </div>
+                    <div style="color:var(--sub); margin-top:4px; overflow-wrap:anywhere;">
+                        直近完了枠：<code style="color:var(--text);">{{ info.latest_slot_key or '記録なし' }}</code>
+                    </div>
+                    {% if info.refresh_key %}
+                    <div style="color:var(--sub); margin-top:2px;">週次自動更新：<code>{{ info.refresh_key }}</code></div>
+                    {% endif %}
+                    {% if info.last_error %}
+                    <div style="color:#ffd0d6; margin-top:5px; line-height:1.45; overflow-wrap:anywhere;">
+                        ⚠️ {{ info.last_error }}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            <div id="platform-token-msg" style="font-size:0.78rem; margin-top:8px; color:#d3f3e2;"></div>
+
+            <div id="platform-token-drawer" class="key-drawer" style="display: {{ 'block' if (dh.get('threads', {}).get('state') == 'error' or dh.get('instagram', {}).get('state') == 'error') else 'none' }};">
+                <div style="font-size:0.78rem; color:var(--sub); line-height:1.55;">
+                    💡 Meta Developers で発行したアクセストークンを貼り付けて保存すると、Render再デプロイ不要で即座に暗号化保存＆週次60日自動延長の対象になります（短期トークンの場合はアプリの <code>App Secret</code> も一緒に入力すると自動で60日長期トークンへ変換します）。
+                </div>
+                <div class="key-form-row" style="margin-top:8px;">
+                    <select id="platform-token-channel" class="key-input" style="flex:0 0 180px; min-width:160px;">
+                        <option value="threads" {{ 'selected' if channel == 'threads' or dh.get('threads', {}).get('state') == 'error' else '' }}>🧵 Threads トークン</option>
+                        <option value="instagram" {{ 'selected' if channel == 'instagram' and dh.get('threads', {}).get('state') != 'error' else '' }}>📸 Instagram トークン</option>
+                    </select>
+                    <input type="password" id="platform-access-token-input" class="key-input" placeholder="THAA... / IGAA...（アクセストークンを貼り付け）" autocomplete="off">
+                    <input type="password" id="platform-app-secret-input" class="key-input" style="flex:0 1 220px; min-width:180px;" placeholder="任意：App Secret（短期→60日変換用）" autocomplete="off">
+                    <button type="button" class="copy-btn" onclick="savePlatformToken()">💾 疎通確認＆60日化して保存</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Gemini AI Ad-lib & Live Weather Control Panel -->
         <div class="ai-panel">
             <div class="ai-panel-top">
@@ -661,6 +720,92 @@
             var d = document.getElementById("gemini-key-drawer");
             if (!d) return;
             d.style.display = (d.style.display === "none") ? "block" : "none";
+        }
+
+        function togglePlatformTokenDrawer() {
+            var d = document.getElementById("platform-token-drawer");
+            if (!d) return;
+            d.style.display = (d.style.display === "none") ? "block" : "none";
+        }
+
+        function verifyPlatformToken(ch) {
+            var msg = document.getElementById("platform-token-msg");
+            if (msg) {
+                msg.style.color = "#d3f3e2";
+                msg.textContent = "🔍 " + ch.toUpperCase() + " のトークン疎通を確認中（投稿は行いません）...";
+            }
+            fetch("/api/sns-editorial/platform-token", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({channel: ch, action: "verify"})
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(res) {
+                if (msg) {
+                    if (res && res.ok) {
+                        msg.style.color = "#d3f3e2";
+                        msg.textContent = "✅ " + res.message;
+                    } else {
+                        msg.style.color = "#ffd6d6";
+                        msg.textContent = "⚠️ " + ((res && res.error) || "疎通確認に失敗しました");
+                        var dr = document.getElementById("platform-token-drawer");
+                        if (dr) dr.style.display = "block";
+                    }
+                }
+            })
+            .catch(function() {
+                if (msg) {
+                    msg.style.color = "#ffd6d6";
+                    msg.textContent = "⚠️ 通信エラーが発生しました";
+                }
+            });
+        }
+
+        function savePlatformToken() {
+            var chEl = document.getElementById("platform-token-channel");
+            var tokEl = document.getElementById("platform-access-token-input");
+            var secEl = document.getElementById("platform-app-secret-input");
+            var msg = document.getElementById("platform-token-msg");
+            var ch = chEl ? chEl.value : "threads";
+            var tok = tokEl ? tokEl.value.trim() : "";
+            var sec = secEl ? secEl.value.trim() : "";
+            if (!tok) {
+                if (msg) {
+                    msg.style.color = "#ffd6d6";
+                    msg.textContent = "⚠️ アクセストークンを貼り付けてください。";
+                }
+                return;
+            }
+            if (msg) {
+                msg.style.color = "#d3f3e2";
+                msg.textContent = "🔄 トークンの疎通確認・60日長期トークン変換＆暗号化保存を実行中...";
+            }
+            fetch("/api/sns-editorial/platform-token", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({channel: ch, action: "save", access_token: tok, app_secret: sec})
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(res) {
+                if (res && res.ok) {
+                    if (msg) {
+                        msg.style.color = "#d3f3e2";
+                        msg.textContent = "✅ " + res.message + "（ページを更新中...）";
+                    }
+                    if (tokEl) tokEl.value = "";
+                    if (secEl) secEl.value = "";
+                    setTimeout(function() { window.location.reload(); }, 900);
+                } else if (msg) {
+                    msg.style.color = "#ffd6d6";
+                    msg.textContent = "⚠️ " + ((res && res.error) || "保存に失敗しました");
+                }
+            })
+            .catch(function() {
+                if (msg) {
+                    msg.style.color = "#ffd6d6";
+                    msg.textContent = "⚠️ 通信エラーが発生しました";
+                }
+            });
         }
 
         function applyEditorialUpdate(ed) {

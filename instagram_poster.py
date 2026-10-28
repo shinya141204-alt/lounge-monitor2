@@ -131,6 +131,113 @@ def _get_active_ig_token() -> str:
     return (os.environ.get("INSTAGRAM_ACCESS_TOKEN") or "").strip()
 
 
+def verify_ig_token(access_token: str = None) -> dict:
+    """Verify an Instagram Graph API token without creating any post."""
+    tok = (access_token if access_token is not None else _get_active_ig_token()).strip()
+    if not tok:
+        return {"ok": False, "status": "unconfigured", "error": "INSTAGRAM_ACCESS_TOKEN が未設定です"}
+    base = _graph_base_for_token(tok)
+    try:
+        if tok.startswith("EAA"):
+            uid = _resolve_ig_user_id(tok)
+            r = requests.get(
+                f"{base}/{uid}",
+                params={"fields": "id,username", "access_token": tok},
+                timeout=12,
+            )
+        else:
+            r = requests.get(
+                f"{base}/me",
+                params={"fields": "id,username", "access_token": tok},
+                timeout=12,
+            )
+        if r.status_code == 200:
+            data = r.json() or {}
+            return {
+                "ok": True,
+                "status": "active",
+                "id": str(data.get("id") or "").strip(),
+                "username": str(data.get("username") or "").strip(),
+            }
+        return {"ok": False, "status": "error", "error": f"HTTP {r.status_code}: {r.text[:220]}"}
+    except Exception as e:
+        return {"ok": False, "status": "error", "error": str(e)}
+
+
+def save_and_prepare_ig_token(raw_token: str, app_secret: str = "") -> dict:
+    """Validate, optionally exchange/refresh to 60-day long-lived IG token, and persist in obfuscated `job_state`."""
+    global _cached_ig_user_id
+    cleaned = (raw_token or "").strip()
+    if not cleaned:
+        job_state.set_value("token:instagram", "")
+        _cached_ig_user_id = None
+        return {"ok": True, "cleared": True, "message": "管理画面のInstagramトークンを削除しました。"}
+
+    eff_secret = (app_secret or os.environ.get("INSTAGRAM_APP_SECRET") or "").strip()
+    best_token = cleaned
+    exchanged = False
+
+    if eff_secret and not best_token.startswith("EAA"):
+        try:
+            rx = requests.get(
+                "https://graph.instagram.com/access_token",
+                params={
+                    "grant_type": "ig_exchange_token",
+                    "client_secret": eff_secret,
+                    "access_token": best_token,
+                },
+                timeout=15,
+            )
+            if rx.status_code == 200:
+                xdata = rx.json() or {}
+                cand_tok = (xdata.get("access_token") or "").strip()
+                if cand_tok:
+                    best_token = cand_tok
+                    exchanged = True
+        except Exception:
+            pass
+
+    if not exchanged and not best_token.startswith("EAA"):
+        try:
+            rr = requests.get(
+                "https://graph.instagram.com/refresh_access_token",
+                params={"grant_type": "ig_refresh_token", "access_token": best_token},
+                timeout=15,
+            )
+            if rr.status_code == 200:
+                rdata = rr.json() or {}
+                cand_tok = (rdata.get("access_token") or "").strip()
+                if cand_tok:
+                    best_token = cand_tok
+                    exchanged = True
+        except Exception:
+            pass
+
+    ver = verify_ig_token(best_token)
+    if not ver.get("ok"):
+        return {"ok": False, "error": f"Instagramトークンの疎通確認に失敗しました：{ver.get('error')}"}
+
+    job_state.set_value("token:instagram", best_token)
+    os.environ["INSTAGRAM_ACCESS_TOKEN"] = best_token
+    if exchanged:
+        now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
+        iso_year, iso_week, _ = now_jst.isocalendar()
+        job_state.mark_done(f"token_refresh:instagram:{iso_year}-W{iso_week:02d}")
+    try:
+        import sns_editorial
+        sns_editorial.record_sns_delivery_status("instagram", "token_refreshed", detail="verified")
+    except Exception:
+        pass
+    uname = ver.get("username") or ver.get("id") or "Instagram"
+    return {
+        "ok": True,
+        "username": uname,
+        "id": ver.get("id"),
+        "exchanged_long_lived": exchanged,
+        "message": f"@{uname} のInstagramトークンを暗号化保存しました！",
+    }
+
+
 def refresh_ig_token_if_needed(force: bool = False) -> dict:
     """
     Meta Instagram long-lived tokens (IGAA.../IGQ...) expire after 60 days.
@@ -406,6 +513,7 @@ def execute_scheduled_instagram_post(stores: list, mode: str = "carousel", slot_
 
             ctx = ig_carousel_generator.build_forecast_context(report=rep, live_stores=stores, now_jst=now_jst)
             editorial_winner = None
+            ed_session_record = None
             try:
                 import sns_editorial
                 ed_res = sns_editorial.run_editorial_pipeline(
@@ -414,11 +522,12 @@ def execute_scheduled_instagram_post(stores: list, mode: str = "carousel", slot_
                     channel="instagram",
                     ig_ctx=ctx,
                     now_jst=now_jst,
-                    record_history=not force,
+                    record_history=False,
                     use_ai=True,
                     force_ai_refresh=True,
                 )
                 editorial_winner = ed_res.get("winner")
+                ed_session_record = ed_res.get("session_record")
             except Exception as e:
                 logging.warning(f"Instagram editorial pipeline fallback ({slot_label}): {e}")
 
@@ -439,6 +548,7 @@ def execute_scheduled_instagram_post(stores: list, mode: str = "carousel", slot_
                 res["editorial_style"] = editorial_winner.get("style")
                 res["editorial_score"] = editorial_winner.get("total_score")
         else:
+            ed_session_record = None
             live_ctx = ig_carousel_generator.build_forecast_context(live_stores=stores, now_jst=now_jst)
             editorial_winner = None
             try:
@@ -468,8 +578,31 @@ def execute_scheduled_instagram_post(stores: list, mode: str = "carousel", slot_
                 res["editorial_style"] = editorial_winner.get("style")
                 res["editorial_score"] = editorial_winner.get("total_score")
 
-        if res.get("status") == "success" and not force:
-            job_state.mark_done(dedup_key)
+        try:
+            import sns_editorial
+            if res.get("status") == "success":
+                sns_editorial.record_sns_delivery_status(
+                    "instagram",
+                    "success",
+                    slot_label=slot_label,
+                    post_id=res.get("id") or "",
+                    now_jst=now_jst,
+                )
+                if not force:
+                    job_state.mark_done(dedup_key)
+                    if ed_session_record:
+                        sns_editorial.persist_editorial_session_record("instagram", ed_session_record)
+            else:
+                sns_editorial.record_sns_delivery_status(
+                    "instagram",
+                    res.get("status") or "error",
+                    slot_label=slot_label,
+                    detail=res.get("detail") or res.get("reason") or "",
+                    now_jst=now_jst,
+                )
+        except Exception:
+            if res.get("status") == "success" and not force:
+                job_state.mark_done(dedup_key)
         return res
     finally:
         _ig_post_lock.release()
@@ -514,6 +647,26 @@ def execute_scheduled_ladies_instagram_post(
         res = post_single_image_to_instagram(image_url, caption)
         res["caption"] = caption
         res["editorial_style"] = "ig_ladies_night_guide"
+        try:
+            import sns_editorial
+            if res.get("status") == "success":
+                sns_editorial.record_sns_delivery_status(
+                    "instagram",
+                    "success",
+                    slot_label=slot_label,
+                    post_id=res.get("id") or "",
+                    now_jst=now_jst,
+                )
+            else:
+                sns_editorial.record_sns_delivery_status(
+                    "instagram",
+                    res.get("status") or "error",
+                    slot_label=slot_label,
+                    detail=res.get("detail") or res.get("reason") or "",
+                    now_jst=now_jst,
+                )
+        except Exception:
+            pass
         if res.get("status") == "success" and not force:
             job_state.mark_done(dedup_key)
         return res

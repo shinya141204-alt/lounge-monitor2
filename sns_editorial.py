@@ -282,6 +282,219 @@ def get_recent_editorial_history(channel: str = "x", limit: int = 8, allow_block
     return []
 
 
+def persist_editorial_session_record(channel: str, session_record: dict):
+    """Persist an adopted editorial session record to `job_state` (called ONLY after actual post success or explicit record_history=True)."""
+    if not session_record:
+        return
+    ch = (channel or "x").lower()
+    try:
+        h_key = _history_key_for_channel(ch)
+        history = get_recent_editorial_history(channel=ch, limit=11)
+        history.insert(0, session_record)
+        job_state.set_value(h_key, json.dumps(history[:12], ensure_ascii=False))
+    except Exception as e:
+        logger.warning(f"Failed to persist {ch} editorial log: {e}")
+
+
+def _mask_secret_token(raw_tok: str) -> str:
+    t = (raw_tok or "").strip()
+    if not t:
+        return ""
+    if len(t) > 10:
+        return f"{t[:4]}...{t[-4:]}"
+    return "****"
+
+
+def record_sns_delivery_status(
+    channel: str,
+    status: str,
+    slot_label: str = "",
+    detail: str = "",
+    post_id: str = "",
+    now_jst: datetime.datetime = None,
+):
+    """
+    Persist actual SNS API delivery outcome (`success`, `error`, `skipped`, `token_refreshed`, `token_error`)
+    into `job_state` (`sns_delivery:<channel>`) so Master can inspect silent API/token failures across redeploys.
+    """
+    ch = (channel or "x").strip().lower()
+    if ch not in ("x", "threads", "instagram"):
+        return
+    now_jst = now_jst or datetime.datetime.now(JST)
+    ts_str = now_jst.strftime("%Y-%m-%d %H:%M:%S")
+    key = f"sns_delivery:{ch}"
+    prev = {}
+    try:
+        raw_prev = job_state.get_value(key, allow_blocking=False)
+        if raw_prev:
+            parsed = json.loads(raw_prev)
+            if isinstance(parsed, dict):
+                prev = parsed
+    except Exception:
+        prev = {}
+
+    rec = dict(prev)
+    rec["channel"] = ch
+    rec["last_attempt_at"] = ts_str
+    rec["last_status"] = status
+    if slot_label:
+        rec["last_slot"] = slot_label
+    if status in ("success", "token_refreshed"):
+        if status == "success":
+            rec["last_ok_at"] = ts_str
+            if slot_label:
+                rec["last_ok_slot"] = slot_label
+            if post_id:
+                rec["last_post_id"] = str(post_id)
+        rec["last_error"] = ""
+        rec["last_error_at"] = ""
+    elif status in ("error", "token_error"):
+        rec["last_error"] = str(detail or "API error")[:260]
+        rec["last_error_at"] = ts_str
+    elif status == "skipped" and "not configured" in str(detail or ""):
+        rec["last_error"] = str(detail)[:200]
+        rec["last_error_at"] = ts_str
+
+    try:
+        job_state.set_value(key, json.dumps(rec, ensure_ascii=False))
+    except Exception as e:
+        logger.warning(f"Failed to persist sns_delivery status for {ch}: {e}")
+
+
+def get_sns_delivery_health(allow_blocking: bool = False) -> dict:
+    """
+    Return unified, masked delivery & credential health across X, Threads, and Instagram
+    for `/staff/sns-editorial` without exposing raw secrets.
+    """
+    try:
+        if allow_blocking:
+            known_keys = job_state.all_keys()
+        else:
+            job_state._ensure_loaded(allow_blocking=False)
+            with job_state._lock:
+                known_keys = set(job_state._ensure_local_loaded_locked().keys())
+    except Exception:
+        known_keys = set()
+
+    def _latest_matching_key(prefixes: tuple) -> str:
+        matched = [k for k in known_keys if k.startswith(prefixes)]
+        if not matched:
+            return ""
+        matched.sort()
+        return matched[-1]
+
+    # 1. X credentials & status
+    x_configured = all(
+        bool((os.environ.get(k) or "").strip())
+        for k in ("X_API_KEY", "X_API_SECRET", "X_ACCESS_TOKEN", "X_ACCESS_TOKEN_SECRET")
+    )
+    x_source = "Render環境変数（OAuth 1.0a 4キー設定済）" if x_configured else "未設定（環境変数 X_API_KEY 等が必要）"
+    x_masked = _mask_secret_token(os.environ.get("X_ACCESS_TOKEN") or "")
+
+    # 2. Threads credentials & status
+    th_stored = (job_state.get_value("token:threads", allow_blocking=allow_blocking) or "").strip()
+    th_env = (os.environ.get("THREADS_ACCESS_TOKEN") or "").strip()
+    th_active = th_stored or th_env
+    th_configured = bool(th_active)
+    th_source = (
+        "管理画面・自動更新（暗号化保存）"
+        if th_stored
+        else ("Render環境変数（THREADS_ACCESS_TOKEN）" if th_env else "未設定")
+    )
+    th_masked = _mask_secret_token(th_active)
+
+    # 3. Instagram credentials & status
+    ig_stored = (job_state.get_value("token:instagram", allow_blocking=allow_blocking) or "").strip()
+    ig_env = (os.environ.get("INSTAGRAM_ACCESS_TOKEN") or "").strip()
+    ig_active = ig_stored or ig_env
+    ig_configured = bool(ig_active)
+    ig_source = (
+        "管理画面・自動更新（暗号化保存）"
+        if ig_stored
+        else ("Render環境変数（INSTAGRAM_ACCESS_TOKEN）" if ig_env else "未設定")
+    )
+    ig_masked = _mask_secret_token(ig_active)
+
+    meta_map = {
+        "x": {
+            "label": "𝕏 X（旧Twitter）",
+            "configured": x_configured,
+            "source": x_source,
+            "masked_token": x_masked,
+            "latest_slot_key": _latest_matching_key(("x_post:", "x_tip:", "bonus_alert:", "col_release:")),
+            "refresh_key": "",
+        },
+        "threads": {
+            "label": "🧵 Threads（スレッズ）",
+            "configured": th_configured,
+            "source": th_source,
+            "masked_token": th_masked,
+            "latest_slot_key": _latest_matching_key(("threads_post:", "threads_ladies:")),
+            "refresh_key": _latest_matching_key(("token_refresh:threads:",)),
+        },
+        "instagram": {
+            "label": "📸 Instagram（インスタ）",
+            "configured": ig_configured,
+            "source": ig_source,
+            "masked_token": ig_masked,
+            "latest_slot_key": _latest_matching_key(("ig_post:", "ig_ladies:")),
+            "refresh_key": _latest_matching_key(("token_refresh:instagram:",)),
+        },
+    }
+
+    out = {}
+    for ch, base in meta_map.items():
+        saved = {}
+        try:
+            raw_s = job_state.get_value(f"sns_delivery:{ch}", allow_blocking=allow_blocking)
+            if raw_s:
+                parsed = json.loads(raw_s)
+                if isinstance(parsed, dict):
+                    saved = parsed
+        except Exception:
+            saved = {}
+
+        last_err = str(saved.get("last_error") or "")
+        last_ok_at = str(saved.get("last_ok_at") or "")
+        latest_key = base["latest_slot_key"]
+
+        # Detect silent historical mismatch on Threads (e.g., editorial log ran on a newer date than threads_post:<date>)
+        if ch == "threads" and not last_err:
+            th_hist = get_recent_editorial_history(channel="threads", limit=1, allow_blocking=False)
+            if th_hist:
+                hist_date = str(th_hist[0].get("timestamp") or "")[:10]
+                post_date = latest_key.split(":", 1)[1][:10] if ":" in latest_key else ""
+                if hist_date and (not post_date or hist_date > post_date) and not saved.get("last_ok_at"):
+                    last_err = (
+                        f"直近（{th_hist[0].get('timestamp')}）の自動投稿で文面生成後にThreads API送信が不発です。"
+                        "トークン期限切れ（短期トークン失効）または未設定の可能性があります。"
+                    )
+
+        if last_err:
+            state = "error"
+        elif base["configured"] or latest_key:
+            state = "active"
+        else:
+            state = "unconfigured"
+
+        out[ch] = {
+            "channel": ch,
+            "label": base["label"],
+            "state": state,
+            "configured": base["configured"],
+            "source": base["source"],
+            "masked_token": base["masked_token"],
+            "latest_slot_key": latest_key,
+            "refresh_key": base["refresh_key"],
+            "last_ok_at": last_ok_at,
+            "last_attempt_at": str(saved.get("last_attempt_at") or ""),
+            "last_status": str(saved.get("last_status") or ""),
+            "last_error": last_err,
+            "last_error_at": str(saved.get("last_error_at") or ""),
+        }
+    return out
+
+
 # =====================================================================
 # Gemini API Key Management + Weather & Calendar Live Context
 # =====================================================================
@@ -2509,13 +2722,7 @@ def run_editorial_pipeline(
     }
 
     if record_history and winner:
-        try:
-            h_key = _history_key_for_channel(ch)
-            history = get_recent_editorial_history(channel=ch, limit=11)
-            history.insert(0, session_record)
-            job_state.set_value(h_key, json.dumps(history[:12], ensure_ascii=False))
-        except Exception as e:
-            logger.warning(f"Failed to persist {ch} editorial log: {e}")
+        persist_editorial_session_record(ch, session_record)
 
     return {
         "channel": ch,
@@ -2525,6 +2732,7 @@ def run_editorial_pipeline(
         "default_tone_mode": default_tm,
         "tone_modes": get_tone_modes_catalog(),
         "gemini_status": get_gemini_status(allow_blocking=allow_state_blocking),
+        "delivery_health": get_sns_delivery_health(allow_blocking=allow_state_blocking),
         "ai_pending_async": ai_pending_async,
         "research": research,
         "plan": plan,

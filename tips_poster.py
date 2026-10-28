@@ -473,14 +473,45 @@ def _select_tip_index(slot_label: str = "12:00", tip_index: int = None, now_jst:
     return (idx_12 + 23) % n
 
 
-def get_tip_for_slot(slot_label: str = "12:00", tip_index: int = None, now_jst: datetime.datetime = None) -> str:
+def is_standalone_url_free_tip(
+    slot_label: str = "18:00",
+    now_jst: datetime.datetime = None,
+    tip_index: int = None,
+) -> bool:
+    """
+    On alternating days (`toordinal() % 2 == 1`) for the automated 18:00 evening slot,
+    send a pure 1-post conversational observation WITHOUT any self-reply URL so X's organic
+    algorithm sees natural non-promotional engagement alongside thread days.
+    """
+    if tip_index is not None or slot_label != "18:00":
+        return False
+    now_jst = now_jst or datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
+    return (now_jst.toordinal() % 2) == 1
+
+
+def get_tip_for_slot(
+    slot_label: str = "12:00",
+    tip_index: int = None,
+    now_jst: datetime.datetime = None,
+    standalone_no_reply: bool = False,
+) -> str:
     """
     Select a tip based on the day of the year and slot.
     1st post is kept completely URL-free for clean appearance and maximum X organic reach.
-    The site URL and matching column URL are attached automatically in the 2nd post (reply).
+    When `standalone_no_reply=True`, omits the 'リプ欄へ👇' pointer for a pure 1-tweet reading experience.
     """
     idx = _select_tip_index(slot_label=slot_label, tip_index=tip_index, now_jst=now_jst)
     raw_tip = TIPS_LIST[idx].strip()
+
+    if standalone_no_reply:
+        clean_tags = "\n\n#相席ラウンジ"
+        if x_poster.compute_twitter_weight(f"{raw_tip}{clean_tags}") <= 276:
+            return f"{raw_tip}{clean_tags}"
+        minimal_tags = "\n#相席ラウンジ"
+        if x_poster.compute_twitter_weight(f"{raw_tip}{minimal_tags}") <= 276:
+            return f"{raw_tip}{minimal_tags}"
+        return raw_tip
+
     footer_tags_only = "\n\n📖 詳しいコラム・現在の男女比はリプ欄へ👇\n#相席ラウンジ"
 
     candidate = f"{raw_tip}{footer_tags_only}"
@@ -548,13 +579,14 @@ def get_tip_reply_text(slot_label: str = "12:00", tip_index: int = None, now_jst
     )
 
 
-def run_scheduled_tip_post(slot_label: str = "12:00", force: bool = False, tip_index: int = None) -> dict:
+def run_scheduled_tip_post(slot_label: str = "12:00", force: bool = False, tip_index: int = None, now_jst: datetime.datetime = None) -> dict:
     """
     Execute daily tip posting to X (Twitter).
     slot_label: '12:00' or '18:00'
-    Posts a clean URL-free main post, followed by an automatic reply with the column + ranking URLs.
+    Posts a clean URL-free main post; on thread days attaches a reply with the column URL,
+    and on alternating 18:00 days posts a pure 1-tweet observation with zero external links.
     """
-    now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
+    now_jst = now_jst or datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
     date_str = now_jst.strftime("%Y-%m-%d")
     dedup_key = f"x_tip:{date_str}_{slot_label}"
     orig_tip_index = tip_index
@@ -565,31 +597,38 @@ def run_scheduled_tip_post(slot_label: str = "12:00", force: bool = False, tip_i
         logger.info(f"X tip post already sent for {dedup_key}, skipping.")
         return {"status": "skipped", "reason": "Already posted for this slot today"}
 
+    standalone = is_standalone_url_free_tip(slot_label=slot_label, now_jst=now_jst, tip_index=orig_tip_index) and not force
     idx = _select_tip_index(slot_label=slot_label, tip_index=tip_index, now_jst=now_jst)
-    text = get_tip_for_slot(slot_label=slot_label, tip_index=idx, now_jst=now_jst)
+    text = get_tip_for_slot(slot_label=slot_label, tip_index=idx, now_jst=now_jst, standalone_no_reply=standalone)
     if not text:
         return {"status": "error", "detail": "Empty tip text"}
 
     if force:
         text = f"{text}\n(⏱️{now_jst.strftime('%H:%M')})"
 
-    col_title, col_path = resolve_tip_column(
-        slot_label=slot_label,
-        tip_index=idx,
-        now_jst=now_jst,
-        prefer_pdca=(orig_tip_index is None and slot_label != "12:00"),
-    )
-    site_url = os.environ.get("PUBLIC_SITE_URL", "https://aiseki-navi.com").rstrip("/")
-    slot_hh = (slot_label or "12:00")[:2]
-    reply_text = f"📖 詳しい解説コラム：{col_title}👇\n{site_url}{col_path}?s=x{slot_hh}_tip"
+    col_path = ""
+    reply_text = None
+    if not standalone:
+        col_title, col_path = resolve_tip_column(
+            slot_label=slot_label,
+            tip_index=idx,
+            now_jst=now_jst,
+            prefer_pdca=(orig_tip_index is None and slot_label != "12:00"),
+        )
+        site_url = os.environ.get("PUBLIC_SITE_URL", "https://aiseki-navi.com").rstrip("/")
+        slot_hh = (slot_label or "12:00")[:2]
+        reply_text = f"📖 詳しい解説コラム：{col_title}👇\n{site_url}{col_path}?s=x{slot_hh}_tip"
 
     result = x_poster.post_to_x(text, reply_text=reply_text)
     if result.get("status") == "success" and not force:
         job_state.mark_done(dedup_key)
-        job_state.mark_done(f"x_col_used:{date_str}:{col_path}")
+        x_poster.record_x_auto_post_timestamp(now_jst)
+        if col_path:
+            job_state.mark_done(f"x_col_used:{date_str}:{col_path}")
 
     result["tweet_text"] = text
-    result["reply_text"] = reply_text
+    result["reply_text"] = reply_text or ""
     result["column_path"] = col_path
+    result["standalone_no_reply"] = standalone
     result["slot"] = slot_label
     return result

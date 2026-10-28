@@ -858,3 +858,45 @@ def post_to_x(
     except Exception as e:
         logger.error(f"Failed to post to X: {e}")
         return {"status": "error", "detail": str(e)}
+
+
+LAST_X_AUTO_POST_KEY = "x_last_auto_post_ts"
+_JST = datetime.timezone(datetime.timedelta(hours=9))
+
+
+def _coerce_jst_naive(dt: datetime.datetime = None) -> datetime.datetime:
+    if dt is None:
+        return datetime.datetime.now(_JST).replace(tzinfo=None)
+    if dt.tzinfo is not None:
+        return dt.astimezone(_JST).replace(tzinfo=None)
+    return dt
+
+
+def record_x_auto_post_timestamp(now_jst: datetime.datetime = None):
+    """Persist the timestamp of the most recent automated X post to prevent short-burst clustering."""
+    try:
+        import job_state
+        ts_naive = _coerce_jst_naive(now_jst)
+        job_state.set_value(LAST_X_AUTO_POST_KEY, ts_naive.strftime("%Y-%m-%d %H:%M:%S"))
+    except Exception as e:
+        logger.warning(f"Failed to record last X auto-post timestamp: {e}")
+
+
+def check_x_auto_post_cooldown(min_interval_minutes: int = 48, now_jst: datetime.datetime = None) -> tuple:
+    """
+    Return `(in_cooldown: bool, reason: str)` if an automated X post already fired within `min_interval_minutes`.
+    Prevents secondary auto-posts (column releases, note shares, bonus alerts) from clustering back-to-back.
+    """
+    try:
+        import job_state
+        raw = (job_state.get_value(LAST_X_AUTO_POST_KEY, allow_blocking=False) or "").strip()
+        if not raw:
+            return False, "ok"
+        last_naive = datetime.datetime.strptime(raw, "%Y-%m-%d %H:%M:%S")
+        cur_naive = _coerce_jst_naive(now_jst)
+        diff_min = (cur_naive - last_naive).total_seconds() / 60.0
+        if 0 <= diff_min < float(min_interval_minutes):
+            return True, f"X auto-post cooldown active ({int(diff_min)}m < {min_interval_minutes}m since last X post)"
+    except Exception:
+        pass
+    return False, "ok"

@@ -1944,6 +1944,76 @@ def api_sns_editorial_gemini_key():
     })
 
 
+@app.route('/api/sns-editorial/platform-token', methods=['POST'])
+def api_sns_editorial_platform_token():
+    """Master-only endpoint to verify, exchange (short->60d long-lived), save, or clear Threads / Instagram tokens without redeploying."""
+    if not is_master_authorized():
+        return jsonify({'error': 'Unauthorized'}), 401
+    import sns_editorial
+    import threads_poster
+    import instagram_poster
+
+    payload = request.get_json(silent=True) or {}
+    ch = (payload.get('channel') or 'threads').strip().lower()
+    if ch not in ('threads', 'instagram'):
+        return jsonify({'ok': False, 'error': 'channel は threads または instagram を指定してください。'}), 400
+
+    action = (payload.get('action') or 'save').strip().lower()
+    if action == 'clear':
+        res = (
+            threads_poster.save_and_prepare_threads_token('')
+            if ch == 'threads'
+            else instagram_poster.save_and_prepare_ig_token('')
+        )
+        clear_fast_http_caches()
+        return jsonify({
+            **res,
+            'delivery_health': sns_editorial.get_sns_delivery_health(allow_blocking=True),
+        })
+
+    if action == 'verify':
+        ver = (
+            threads_poster.verify_threads_token()
+            if ch == 'threads'
+            else instagram_poster.verify_ig_token()
+        )
+        if ver.get('ok'):
+            sns_editorial.record_sns_delivery_status(ch, 'token_refreshed', detail='verified')
+            uname = ver.get('username') or ver.get('id') or ch
+            return jsonify({
+                'ok': True,
+                'verify': ver,
+                'message': f"疎通確認OK！ @{uname} と正常に接続されています（投稿は行っていません）。",
+                'delivery_health': sns_editorial.get_sns_delivery_health(allow_blocking=True),
+            })
+        err_msg = ver.get('error') or 'トークンが無効または未設定です'
+        if ver.get('status') == 'error':
+            sns_editorial.record_sns_delivery_status(ch, 'token_error', detail=err_msg)
+        return jsonify({
+            'ok': False,
+            'verify': ver,
+            'error': f"疎通エラー：{err_msg}",
+            'delivery_health': sns_editorial.get_sns_delivery_health(allow_blocking=True),
+        }), 400
+
+    raw_token = (payload.get('access_token') or '').strip()
+    app_secret = (payload.get('app_secret') or '').strip()
+    if not raw_token or len(raw_token) < 20:
+        return jsonify({'ok': False, 'error': '有効なアクセストークンを貼り付けてください。'}), 400
+
+    res = (
+        threads_poster.save_and_prepare_threads_token(raw_token, app_secret=app_secret)
+        if ch == 'threads'
+        else instagram_poster.save_and_prepare_ig_token(raw_token, app_secret=app_secret)
+    )
+    clear_fast_http_caches()
+    status_code = 200 if res.get('ok') else 400
+    return jsonify({
+        **res,
+        'delivery_health': sns_editorial.get_sns_delivery_health(allow_blocking=True),
+    }), status_code
+
+
 @app.route('/staff/column-editorial')
 def staff_column_editorial():
     """Master-only 4-role Column & note.com Editorial Room board."""

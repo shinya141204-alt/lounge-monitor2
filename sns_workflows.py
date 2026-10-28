@@ -147,17 +147,19 @@ def execute_scheduled_x_post(latest_data, slot_label="20:00", force=False, inclu
 
     # Run 4-role SNS Editorial Room pipeline (Researcher -> Planner -> Writer -> Evaluator)
     editorial_winner = None
+    ed_session_record = None
     try:
         import sns_editorial
         editorial_res = sns_editorial.run_editorial_pipeline(
             stores,
             slot_label=slot_label,
             now_jst=now_jst,
-            record_history=not force,
+            record_history=False,
             use_ai=True,
             force_ai_refresh=True,
         )
         editorial_winner = editorial_res.get("winner")
+        ed_session_record = editorial_res.get("session_record")
     except Exception as e:
         logging.warning(f"SNS editorial pipeline fallback to legacy builder ({slot_label}): {e}")
 
@@ -188,12 +190,51 @@ def execute_scheduled_x_post(latest_data, slot_label="20:00", force=False, inclu
         media_bytes=png_bytes,
         media_mime_type="image/png",
     )
-    if result.get("status") == "success" and not force:
-        job_state.mark_done(dedup_key)
+    if result.get("status") == "success":
+        tweet_id = ((result.get("data") or {}).get("data") or {}).get("id") or ""
+        try:
+            import sns_editorial
+            sns_editorial.record_sns_delivery_status(
+                "x",
+                "success",
+                slot_label=slot_label,
+                post_id=tweet_id,
+                now_jst=now_jst,
+            )
+            if not force and ed_session_record:
+                sns_editorial.persist_editorial_session_record("x", ed_session_record)
+        except Exception:
+            pass
+        if not force:
+            job_state.mark_done(dedup_key)
+            x_poster.record_x_auto_post_timestamp(now_jst)
     elif result.get("status") == "error":
+        try:
+            import sns_editorial
+            sns_editorial.record_sns_delivery_status(
+                "x",
+                "error",
+                slot_label=slot_label,
+                detail=str(result.get("detail") or result)[:220],
+                now_jst=now_jst,
+            )
+        except Exception:
+            pass
         try:
             import health
             health.send_alert(f"xpost:{dedup_key}", f"⚠️ X自動投稿（{slot_label}）に失敗しました: {str(result.get('detail') or result)[:200]}")
+        except Exception:
+            pass
+    elif result.get("status") == "skipped":
+        try:
+            import sns_editorial
+            sns_editorial.record_sns_delivery_status(
+                "x",
+                "skipped",
+                slot_label=slot_label,
+                detail=str(result.get("reason") or ""),
+                now_jst=now_jst,
+            )
         except Exception:
             pass
     result["tweet_text"] = text
@@ -261,6 +302,7 @@ def execute_scheduled_weekly_x_post(force=False):
     )
     if result.get("status") == "success" and not force:
         job_state.mark_done(dedup_key)
+        x_poster.record_x_auto_post_timestamp(now_jst)
     result["tweet_text"] = main_text
     result["reply_text"] = reply_text
     return result

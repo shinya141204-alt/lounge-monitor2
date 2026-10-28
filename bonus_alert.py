@@ -29,41 +29,44 @@ MAJOR_HUB_KEYWORDS = (
 
 def is_within_alert_window(now_jst: datetime.datetime = None) -> tuple:
     """
-    Check if `now_jst` falls inside 19:20 - 01:40 JST and is at least 22 minutes away
-    from regular scheduled posts (18:00 Tips, Sunday 19:00 Weekly Report, 20:00, 22:00, 00:00, 02:00 JST).
+    Check if `now_jst` falls inside the off-rush prime window (20:35 - 23:35 JST daily, plus up to 01:25 on Fri/Sat nights)
+    and is at least 28 minutes away from regular scheduled posts so X never fires bursts between 18:00 and 20:15 JST.
     """
     now_jst = now_jst or datetime.datetime.now(JST)
     h, m = now_jst.hour, now_jst.minute
+    biz_dt = (now_jst - datetime.timedelta(hours=7)).date()
+    is_weekend_biz = biz_dt.weekday() in (4, 5)  # Friday or Saturday business night
 
     in_hours = (
-        (h == 19 and m >= 20)
-        or (h in (20, 21, 22, 23, 0))
-        or (h == 1 and m <= 40)
+        (h == 20 and m >= 35)
+        or (h in (21, 22))
+        or (h == 23 and m <= 35)
+        or (is_weekend_biz and (h == 0 or (h == 1 and m <= 25)))
     )
     if not in_hours:
-        return False, "Outside evening bonus alert window (19:20-01:40 JST)"
+        return False, "Outside prime bonus alert window (20:35-23:35 JST; 18:00-20:34 rush excluded)"
 
-    # Avoid ±22 min around 18:00, (Sunday 19:00), 20:00, 22:00, 00:00, 02:00
+    # Avoid ±28 min around scheduled slots (20:00, 22:00, 00:00)
     minutes_of_day = h * 60 + m
-    scheduled_slots = [18 * 60, 20 * 60, 22 * 60, 0, 24 * 60, 2 * 60]
+    scheduled_slots = [18 * 60, 20 * 60, 22 * 60, 0, 24 * 60]
     if now_jst.weekday() == 6:
         scheduled_slots.append(19 * 60)
     for slot_min in scheduled_slots:
-        if abs(minutes_of_day - slot_min) <= 22:
+        if abs(minutes_of_day - slot_min) <= 28:
             return False, "Too close to scheduled X post slot"
 
     return True, "ok"
 
 
 def _recent_alerted_store_names(now_jst: datetime.datetime) -> set:
-    """Return store names alerted in the previous 2 business nights to diversify featured stores."""
+    """Return store names alerted in the previous 3 business nights to diversify featured stores."""
     names = set()
     try:
         all_k = job_state.all_keys()
         biz_dt = (now_jst - datetime.timedelta(hours=7)).date()
         recent_prefixes = [
             f"bonus_store:{(biz_dt - datetime.timedelta(days=d)).strftime('%Y-%m-%d')}:"
-            for d in (1, 2)
+            for d in (1, 2, 3)
         ]
         for k in all_k:
             for pfx in recent_prefixes:
@@ -80,9 +83,9 @@ def find_bonus_time_candidate(
     recently_alerted_names: set = None,
 ) -> dict:
     """
-    Evaluate live domestic stores and return the strongest rare bonus-time candidate, or None.
-      - Pattern A ('female_lead'): >=26 women, >=64% female ratio, and women - men >= 10
-      - Pattern B ('male_lead', 21:00-00:59): >=32 men, >=12 women, and men - women >= 12
+    Evaluate live domestic stores and return ONLY truly rare outlier bonus-time candidates (prevents daily bot firing):
+      - Pattern A ('female_lead'): >=35 women, >=68% female ratio, and women - men >= 16
+      - Pattern B ('male_lead', 21:00-23:35): >=42 men, >=14 women, and men - women >= 18
     """
     now_jst = now_jst or datetime.datetime.now(JST)
     recently_alerted_names = recently_alerted_names or set()
@@ -105,7 +108,7 @@ def find_bonus_time_candidate(
         if tot <= 0:
             continue
         ratio = w / tot
-        if w >= 26 and (w - m) >= 10 and ratio >= 0.64:
+        if w >= 35 and (w - m) >= 16 and ratio >= 0.68:
             is_hub = any(k in sname.upper() or k in sname for k in MAJOR_HUB_KEYWORDS)
             w_diff = int(s.get("women_diff") or 0)
             score = (
@@ -113,7 +116,7 @@ def find_bonus_time_candidate(
                 + (ratio * 80.0)
                 + (15.0 if is_hub else 0.0)
                 + (6.0 if w_diff > 0 else 0.0)
-                - (25.0 if sname in recently_alerted_names else 0.0)
+                - (60.0 if sname in recently_alerted_names else 0.0)
             )
             female_candidates.append((score, s, round(ratio * 100)))
 
@@ -122,20 +125,20 @@ def find_bonus_time_candidate(
         _, best_s, wpct = female_candidates[0]
         return {"store": best_s, "mode": "female_lead", "wpct": wpct}
 
-    if now_jst.hour in (21, 22, 23, 0):
+    if now_jst.hour in (21, 22, 23):
         male_candidates = []
         for s in dom_stores:
             sname = s.get("name") or ""
             w = int(s.get("women") or 0)
             m = int(s.get("men") or 0)
             tot = w + m
-            if m >= 32 and w >= 12 and (m - w) >= 12:
+            if m >= 42 and w >= 14 and (m - w) >= 18:
                 is_hub = any(k in sname.upper() or k in sname for k in MAJOR_HUB_KEYWORDS)
                 score = (
                     (m - w) * 1.5
                     + (m * 0.5)
                     + (15.0 if is_hub else 0.0)
-                    - (25.0 if sname in recently_alerted_names else 0.0)
+                    - (60.0 if sname in recently_alerted_names else 0.0)
                 )
                 wpct = round((w / tot) * 100) if tot > 0 else 0
                 male_candidates.append((score, s, wpct))
@@ -216,6 +219,9 @@ def check_and_post_bonus_alert(
             return {"status": "skipped", "reason": reason}
         if job_state.is_done(dedup_key):
             return {"status": "skipped", "reason": "Already posted bonus alert tonight"}
+        in_cd, cd_reason = x_poster.check_x_auto_post_cooldown(min_interval_minutes=45, now_jst=now_jst)
+        if in_cd:
+            return {"status": "skipped", "reason": cd_reason}
 
     recent_names = _recent_alerted_store_names(now_jst)
     candidate = find_bonus_time_candidate(stores, now_jst=now_jst, recently_alerted_names=recent_names)
@@ -255,6 +261,7 @@ def check_and_post_bonus_alert(
     )
     if res.get("status") == "success" and not force:
         job_state.mark_done(dedup_key)
+        x_poster.record_x_auto_post_timestamp(now_jst)
         sname = (candidate["store"].get("name") or "").strip()
         if sname:
             job_state.mark_done(f"bonus_store:{biz_date}:{sname}")

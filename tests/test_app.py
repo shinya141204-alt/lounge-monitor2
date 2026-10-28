@@ -3408,6 +3408,126 @@ class WomenFeaturesACDETests(unittest.TestCase):
         self.assertIn('id="note-export-panel"', board_html)
         self.assertIn('"for-women"', board_html)
 
+    def test_sns_delivery_health_token_exchange_and_x_antispam_guards(self):
+        import sns_editorial
+        import threads_poster
+        import bonus_alert
+        import tips_poster
+        import scheduled_articles
+        import x_poster
+
+        jst = datetime.timezone(datetime.timedelta(hours=9))
+        sample_stores = [
+            {'name': 'OLG 渋谷本店', 'women': 40, 'men': 14, 'women_diff': 5, 'region': 'Kanto'},
+            {'name': 'JIS UMEDA', 'women': 28, 'men': 22, 'region': 'Kinki'},
+        ]
+
+        # 1. Failed Threads post must NOT pollute editorial history and MUST record persistent error health
+        job_state.reset_cache_for_tests()
+        with mock.patch('threads_poster.refresh_threads_token_if_needed'), \
+             mock.patch('threads_poster.post_to_threads', return_value={'status': 'error', 'detail': 'Step1 HTTP 400: Session has expired'}):
+            fail_res = threads_poster.execute_scheduled_threads_post(sample_stores, slot_label='22:00', force=False)
+        self.assertEqual(fail_res['status'], 'error')
+        self.assertEqual(len(sns_editorial.get_recent_editorial_history(channel='threads')), 0)
+        health_after_err = sns_editorial.get_sns_delivery_health(allow_blocking=True)
+        self.assertEqual(health_after_err['threads']['state'], 'error')
+        self.assertIn('Session has expired', health_after_err['threads']['last_error'])
+
+        # 2. Master-only platform token endpoint exchanges short-lived -> 60-day token, verifies /me, and clears error state
+        with self.client.session_transaction() as sess:
+            sess.clear()
+        self.assertEqual(self.client.post('/api/sns-editorial/platform-token', json={'channel': 'threads', 'action': 'verify'}).status_code, 401)
+
+        with self.client.session_transaction() as sess:
+            sess['is_staff'] = True
+            sess['is_master'] = True
+
+        def _fake_requests_get(url, params=None, timeout=15):
+            resp = mock.MagicMock()
+            resp.status_code = 200
+            if 'access_token' in url and params and params.get('grant_type') == 'th_exchange_token':
+                resp.json.return_value = {'access_token': 'TH_LONG_LIVED_60D_TOKEN_1234567890', 'expires_in': 5184000}
+            elif url.endswith('/me'):
+                resp.json.return_value = {'id': '28848531981469633', 'username': 'aiseki_navi1'}
+            else:
+                resp.status_code = 400
+                resp.text = 'not needed'
+            return resp
+
+        with mock.patch('threads_poster.requests.get', side_effect=_fake_requests_get):
+            tok_resp = self.client.post(
+                '/api/sns-editorial/platform-token',
+                json={
+                    'channel': 'threads',
+                    'action': 'save',
+                    'access_token': 'TH_SHORT_LIVED_TOKEN_ABCDEFGHIJ12345',
+                    'app_secret': 'test_threads_app_secret',
+                },
+            )
+        self.assertEqual(tok_resp.status_code, 200)
+        tok_json = tok_resp.get_json()
+        self.assertTrue(tok_json['ok'])
+        self.assertTrue(tok_json['exchanged_long_lived'])
+        self.assertEqual(job_state.get_value('token:threads'), 'TH_LONG_LIVED_60D_TOKEN_1234567890')
+        self.assertEqual(tok_json['delivery_health']['threads']['state'], 'active')
+
+        # Successful Threads post now records editorial history properly
+        with mock.patch('threads_poster.refresh_threads_token_if_needed'), \
+             mock.patch('threads_poster.post_to_threads', return_value={'status': 'success', 'id': 'th_ok_999'}):
+            ok_res = threads_poster.execute_scheduled_threads_post(sample_stores, slot_label='22:00', force=False)
+        self.assertEqual(ok_res['status'], 'success')
+        self.assertEqual(len(sns_editorial.get_recent_editorial_history(channel='threads')), 1)
+
+        # 3. Bonus alert anti-spam: 19:25 evening rush is blocked, moderate stores are ignored, rare outliers pass
+        ok_1925, _ = bonus_alert.is_within_alert_window(datetime.datetime(2026, 10, 28, 19, 25, tzinfo=jst))
+        self.assertFalse(ok_1925)
+        moderate_stores = [{'name': 'OLG 新宿', 'women': 27, 'men': 15, 'region': 'Kanto'}]
+        self.assertIsNone(bonus_alert.find_bonus_time_candidate(moderate_stores))
+        self.assertIsNotNone(bonus_alert.find_bonus_time_candidate(sample_stores))
+
+        # 4. X 48-min minimum cooldown defers column release bursts without losing the announcement
+        job_state.reset_cache_for_tests()
+        dt_1810 = datetime.datetime(2026, 10, 28, 18, 10, tzinfo=jst)
+        x_poster.record_x_auto_post_timestamp(dt_1810)
+        with mock.patch('x_poster.post_to_x', return_value={'status': 'success'}) as m_x:
+            # At 19:01 (51m? Wait: test 18:45 = 35m -> deferred; then 19:05 = 55m -> posted!)
+            deferred = scheduled_articles.check_and_announce_newly_published(
+                now_jst=datetime.datetime(2026, 10, 28, 19, 1, 0) - datetime.timedelta(minutes=16)  # 18:45 (<48m)
+            )
+            # Re-test at 19:01 right after an 18:30 post (31m elapsed -> deferred)
+            x_poster.record_x_auto_post_timestamp(datetime.datetime(2026, 10, 28, 18, 30, tzinfo=jst))
+            deferred_1901 = scheduled_articles.check_and_announce_newly_published(
+                now_jst=datetime.datetime(2026, 10, 28, 19, 1, 0)
+            )
+            self.assertEqual(m_x.call_count, 0)
+            self.assertFalse(job_state.is_done('col_release:local-vs-urban'))
+
+            # At 19:20 (50m elapsed >= 48m), announcement fires cleanly
+            released_1920 = scheduled_articles.check_and_announce_newly_published(
+                now_jst=datetime.datetime(2026, 10, 28, 19, 20, 0)
+            )
+            self.assertEqual(m_x.call_count, 1)
+            self.assertTrue(job_state.is_done('col_release:local-vs-urban'))
+            self.assertEqual(released_1920[0]['result']['status'], 'success')
+
+        # 5. Alternating 18:00 Tips: 1 day pure standalone (no reply URL), next day 2-post thread with column reply
+        job_state.reset_cache_for_tests()
+        day_a = datetime.datetime(2026, 10, 28, 18, 5, tzinfo=jst)
+        day_b = datetime.datetime(2026, 10, 29, 18, 5, tzinfo=jst)
+        calls = []
+        with mock.patch('x_poster.post_to_x', side_effect=lambda txt, reply_text=None, **kw: (calls.append((txt, reply_text)) or {'status': 'success'})):
+            ra = tips_poster.run_scheduled_tip_post('18:00', now_jst=day_a)
+            rb = tips_poster.run_scheduled_tip_post('18:00', now_jst=day_b)
+        self.assertEqual(ra['status'], 'success')
+        self.assertEqual(rb['status'], 'success')
+        self.assertNotEqual(ra['standalone_no_reply'], rb['standalone_no_reply'])
+        standalone_call = calls[0] if ra['standalone_no_reply'] else calls[1]
+        thread_call = calls[1] if ra['standalone_no_reply'] else calls[0]
+        self.assertIsNone(standalone_call[1])
+        self.assertNotIn('リプ欄へ', standalone_call[0])
+        self.assertIsNotNone(thread_call[1])
+        self.assertIn('https://aiseki-navi.com', thread_call[1])
+
 
 if __name__ == '__main__':
     unittest.main()

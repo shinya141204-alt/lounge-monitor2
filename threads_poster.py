@@ -211,6 +211,120 @@ def _get_active_threads_token() -> str:
     return (os.environ.get("THREADS_ACCESS_TOKEN") or "").strip()
 
 
+def verify_threads_token(access_token: str = None) -> dict:
+    """Verify a Threads access token via `GET /v1.0/me` without creating any post."""
+    tok = (access_token if access_token is not None else _get_active_threads_token()).strip()
+    if not tok:
+        return {"ok": False, "status": "unconfigured", "error": "THREADS_ACCESS_TOKEN が未設定です"}
+    try:
+        r = requests.get(
+            f"{THREADS_API_BASE}/me",
+            params={"fields": "id,username", "access_token": tok},
+            timeout=12,
+        )
+        if r.status_code == 200:
+            data = r.json() or {}
+            uid = str(data.get("id") or "").strip()
+            uname = str(data.get("username") or "").strip()
+            if uid:
+                global _cached_user_id
+                _cached_user_id = uid
+            return {"ok": True, "status": "active", "id": uid, "username": uname}
+        detail = f"HTTP {r.status_code}: {r.text[:220]}"
+        return {"ok": False, "status": "error", "error": detail}
+    except Exception as e:
+        return {"ok": False, "status": "error", "error": str(e)}
+
+
+def save_and_prepare_threads_token(raw_token: str, app_secret: str = "") -> dict:
+    """
+    Validate, optionally exchange short-lived -> 60-day long-lived token (when `app_secret` or `THREADS_APP_SECRET` is provided),
+    and persist the Threads token in obfuscated `job_state` ('token:threads') with zero Render redeploy needed.
+    """
+    global _cached_user_id
+    cleaned = (raw_token or "").strip()
+    if not cleaned:
+        job_state.set_value("token:threads", "")
+        _cached_user_id = None
+        return {"ok": True, "cleared": True, "message": "管理画面のThreadsトークンを削除しました。"}
+
+    eff_secret = (app_secret or os.environ.get("THREADS_APP_SECRET") or "").strip()
+    best_token = cleaned
+    exchanged = False
+    expires_in = None
+
+    # 1. If Threads App Secret is provided, attempt short-lived -> 60-day long-lived exchange first
+    if eff_secret:
+        try:
+            rx = requests.get(
+                "https://graph.threads.net/access_token",
+                params={
+                    "grant_type": "th_exchange_token",
+                    "client_secret": eff_secret,
+                    "access_token": best_token,
+                },
+                timeout=15,
+            )
+            if rx.status_code == 200:
+                xdata = rx.json() or {}
+                cand_tok = (xdata.get("access_token") or "").strip()
+                if cand_tok:
+                    best_token = cand_tok
+                    exchanged = True
+                    expires_in = xdata.get("expires_in")
+        except Exception as e:
+            logging.warning(f"Threads short->long token exchange skipped: {e}")
+
+    # 2. If not just exchanged, try refreshing an existing >=24h long-lived token
+    if not exchanged:
+        try:
+            rr = requests.get(
+                "https://graph.threads.net/refresh_access_token",
+                params={"grant_type": "th_refresh_token", "access_token": best_token},
+                timeout=15,
+            )
+            if rr.status_code == 200:
+                rdata = rr.json() or {}
+                cand_tok = (rdata.get("access_token") or "").strip()
+                if cand_tok:
+                    best_token = cand_tok
+                    exchanged = True
+                    expires_in = rdata.get("expires_in")
+        except Exception:
+            pass
+
+    # 3. Verify live connectivity via GET /me before saving
+    ver = verify_threads_token(best_token)
+    if not ver.get("ok"):
+        return {
+            "ok": False,
+            "error": f"トークンの疎通確認に失敗しました（期限切れ・権限不足の可能性があります）：{ver.get('error')}",
+        }
+
+    job_state.set_value("token:threads", best_token)
+    os.environ["THREADS_ACCESS_TOKEN"] = best_token
+    if exchanged:
+        now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
+        iso_year, iso_week, _ = now_jst.isocalendar()
+        job_state.mark_done(f"token_refresh:threads:{iso_year}-W{iso_week:02d}")
+    try:
+        import sns_editorial
+        sns_editorial.record_sns_delivery_status("threads", "token_refreshed", detail="verified")
+    except Exception:
+        pass
+
+    uname = ver.get("username") or ver.get("id") or "Threads"
+    suffix = "（60日長期トークンへ変換・更新済）" if exchanged else "（疎通確認OK ※短期トークンの場合はApp Secretも入力すると60日化できます）"
+    return {
+        "ok": True,
+        "username": uname,
+        "id": ver.get("id"),
+        "exchanged_long_lived": exchanged,
+        "expires_in": expires_in,
+        "message": f"@{uname} のThreadsトークンを暗号化保存しました！{suffix}",
+    }
+
+
 def refresh_threads_token_if_needed(force: bool = False) -> dict:
     """
     Meta Threads long-lived tokens expire after 60 days.
@@ -245,8 +359,22 @@ def refresh_threads_token_if_needed(force: bool = False) -> dict:
                 job_state.mark_done(week_key)
                 os.environ["THREADS_ACCESS_TOKEN"] = new_tok
                 logging.info("Successfully refreshed Threads long-lived access token.")
+                try:
+                    import sns_editorial
+                    sns_editorial.record_sns_delivery_status("threads", "token_refreshed", now_jst=now_jst)
+                except Exception:
+                    pass
                 return {"status": "refreshed", "expires_in": data.get("expires_in")}
-        return {"status": "error", "detail": f"HTTP {r.status_code}: {r.text[:200]}"}
+        err_detail = f"HTTP {r.status_code}: {r.text[:200]}"
+        # Note: Long-lived tokens <24h old cannot be refreshed yet; only mark token_error if /me also fails
+        ver = verify_threads_token(token)
+        if not ver.get("ok"):
+            try:
+                import sns_editorial
+                sns_editorial.record_sns_delivery_status("threads", "token_error", detail=ver.get("error") or err_detail, now_jst=now_jst)
+            except Exception:
+                pass
+        return {"status": "error", "detail": err_detail}
     except Exception as e:
         logging.warning(f"Threads token refresh exception: {e}")
         return {"status": "error", "detail": str(e)}
@@ -403,6 +531,7 @@ def execute_scheduled_threads_post(stores: list, slot_label: str = "20:00", forc
 
         refresh_threads_token_if_needed(force=False)
         editorial_winner = None
+        ed_session_record = None
         try:
             import sns_editorial
             ed_res = sns_editorial.run_editorial_pipeline(
@@ -410,11 +539,12 @@ def execute_scheduled_threads_post(stores: list, slot_label: str = "20:00", forc
                 slot_label=slot_label,
                 channel="threads",
                 now_jst=now_jst,
-                record_history=not force,
+                record_history=False,
                 use_ai=True,
                 force_ai_refresh=True,
             )
             editorial_winner = ed_res.get("winner")
+            ed_session_record = ed_res.get("session_record")
         except Exception as e:
             logging.warning(f"Threads editorial pipeline fallback ({slot_label}): {e}")
 
@@ -427,8 +557,33 @@ def execute_scheduled_threads_post(stores: list, slot_label: str = "20:00", forc
             _warm_threads_image_inprocess(image_url, stores=stores)
 
         res = post_to_threads(text, image_url=image_url)
-        if res.get("status") == "success" and not force:
-            job_state.mark_done(dedup_key)
+        try:
+            import sns_editorial
+            if res.get("status") == "success":
+                sns_editorial.record_sns_delivery_status(
+                    "threads",
+                    "success",
+                    slot_label=slot_label,
+                    post_id=res.get("id") or "",
+                    now_jst=now_jst,
+                )
+                if not force:
+                    job_state.mark_done(dedup_key)
+                    if ed_session_record:
+                        sns_editorial.persist_editorial_session_record("threads", ed_session_record)
+            else:
+                sns_editorial.record_sns_delivery_status(
+                    "threads",
+                    res.get("status") or "error",
+                    slot_label=slot_label,
+                    detail=res.get("detail") or res.get("reason") or "",
+                    now_jst=now_jst,
+                )
+        except Exception as e:
+            logging.warning(f"Threads post state persistence warning: {e}")
+            if res.get("status") == "success" and not force:
+                job_state.mark_done(dedup_key)
+
         res["threads_text"] = text
         if editorial_winner:
             res["editorial_style"] = editorial_winner.get("style")
@@ -471,6 +626,26 @@ def execute_scheduled_ladies_threads_post(
         refresh_threads_token_if_needed(force=False)
         text = ladies_guide.build_threads_ladies_post(stores, slot_label=slot_label, now_jst=now_jst)
         res = post_to_threads(text)
+        try:
+            import sns_editorial
+            if res.get("status") == "success":
+                sns_editorial.record_sns_delivery_status(
+                    "threads",
+                    "success",
+                    slot_label=slot_label,
+                    post_id=res.get("id") or "",
+                    now_jst=now_jst,
+                )
+            else:
+                sns_editorial.record_sns_delivery_status(
+                    "threads",
+                    res.get("status") or "error",
+                    slot_label=slot_label,
+                    detail=res.get("detail") or res.get("reason") or "",
+                    now_jst=now_jst,
+                )
+        except Exception:
+            pass
         if res.get("status") == "success" and not force:
             job_state.mark_done(dedup_key)
         res["threads_text"] = text
