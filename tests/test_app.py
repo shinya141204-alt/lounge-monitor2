@@ -2073,6 +2073,17 @@ class FullAuditRegressionTests(unittest.TestCase):
             self.assertTrue(rv_aq_ok['ok'])
             self.assertEqual(rv_aq_ok['key_kind'], 'vertex_express')
 
+            # 5a. Google Cloud `AIzaSy...` key verified on `aiplatform.googleapis.com` also routes directly to Vertex Free Credit!
+            sns_editorial.set_gemini_api_key('AIzaSyGcpFreeCreditKey9999')
+            with patch('sns_editorial.requests.post', return_value=mock_resp_ok) as mock_gcp_aiza_post:
+                rv_gcp_ok = self.client.post('/api/sns-editorial/ai-config', json={'action': 'verify_vertex'}).get_json()
+                self.assertTrue(rv_gcp_ok['ok'])
+                self.assertEqual(rv_gcp_ok['key_kind'], 'vertex_express')
+                parsed_v, model_v, _ = sns_editorial.call_editorial_ai_json('テストプロンプト')
+                self.assertIsNotNone(parsed_v)
+                self.assertIn('Vertex無料枠', model_v)
+                self.assertIn('aiplatform.googleapis.com', mock_gcp_aiza_post.call_args[0][0])
+
             # 5b. Standard `AIza...` key + shared `google_credentials.json` Service Account:
             #     Vertex SA takes #1 priority at 0 yen, and cleanly fails over to AI Studio `AIza...` if Vertex SA returns 403 SERVICE_DISABLED!
             sns_editorial.set_gemini_api_key('AIzaSyDummyKey1234567890')

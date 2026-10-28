@@ -15,6 +15,7 @@ import os
 import re
 import time
 import json
+import hashlib
 import datetime
 import logging
 import threading
@@ -562,6 +563,8 @@ def _prune_ai_candidate_cache_unlocked(now_t: float = None):
         _ai_candidate_cache.popitem(last=False)
 
 
+VERTEX_EXPRESS_OK_FP_KEY = "sns_editorial:vertex_express_fp"
+
 _vertex_auth_lock = threading.Lock()
 _vertex_sa_file_cache = {"sig": None, "info": None}
 _vertex_auth_state = {
@@ -569,9 +572,52 @@ _vertex_auth_state = {
     "expiry": 0.0,
     "backoff_until": 0.0,
     "aq_backoff_until": 0.0,
+    "express_ok_fp": "",
     "last_vertex_error": "",
     "last_vertex_reason": "",
 }
+
+
+def _key_fingerprint(raw: str) -> str:
+    cleaned = (raw or "").strip()
+    if not cleaned:
+        return ""
+    return hashlib.sha256(cleaned.encode("utf-8")).hexdigest()[:16]
+
+
+def _get_verified_express_fp() -> str:
+    mem_fp = _vertex_auth_state.get("express_ok_fp") or ""
+    if mem_fp:
+        return mem_fp
+    try:
+        stored_fp = (job_state.get_value(VERTEX_EXPRESS_OK_FP_KEY, allow_blocking=False) or "").strip()
+        if stored_fp:
+            _vertex_auth_state["express_ok_fp"] = stored_fp
+            return stored_fp
+    except Exception:
+        pass
+    return ""
+
+
+def _mark_vertex_express_verified(g_key: str):
+    fp = _key_fingerprint(g_key)
+    with _vertex_auth_lock:
+        _vertex_auth_state["express_ok_fp"] = fp
+        _vertex_auth_state["aq_backoff_until"] = 0.0
+    if fp:
+        try:
+            job_state.set_value(VERTEX_EXPRESS_OK_FP_KEY, fp)
+        except Exception:
+            pass
+
+
+def _is_vertex_express_candidate(g_key: str, pref: str) -> bool:
+    if not g_key:
+        return False
+    if g_key.startswith("AQ.") or pref == "vertex":
+        return True
+    fp = _key_fingerprint(g_key)
+    return bool(fp and fp == _get_verified_express_fp())
 
 
 def _mask_secret(raw: str) -> str:
@@ -800,9 +846,20 @@ def set_gemini_api_key(api_key: str):
     """Persist or clear Master-provided Gemini API key (obfuscated via `token:` prefix in job_state)."""
     cleaned = (api_key or "").strip()
     job_state.set_value(GEMINI_KEY_STORAGE_PREFIX, cleaned)
+    try:
+        job_state.set_value(VERTEX_EXPRESS_OK_FP_KEY, "")
+    except Exception:
+        pass
+    with _vertex_auth_lock:
+        _vertex_auth_state["aq_backoff_until"] = 0.0
+        _vertex_auth_state["backoff_until"] = 0.0
+        _vertex_auth_state["express_ok_fp"] = ""
+        _vertex_auth_state["last_vertex_error"] = ""
     clear_editorial_ai_cache()
     _model_discovery_cache.clear()
     _last_gemini_meta["last_error"] = ""
+    _last_gemini_meta["last_provider"] = ""
+    _last_gemini_meta["last_model"] = ""
     _last_gemini_meta["working_route"] = None
 
 
@@ -851,6 +908,7 @@ def set_ai_engine_pref(pref: str) -> str:
     job_state.set_value(AI_ENGINE_PREF_KEY, norm)
     with _vertex_auth_lock:
         _vertex_auth_state["backoff_until"] = 0.0
+        _vertex_auth_state["aq_backoff_until"] = 0.0
     clear_editorial_ai_cache()
     _last_gemini_meta["last_error"] = ""
     _last_gemini_meta["working_route"] = None
@@ -895,8 +953,8 @@ def get_gemini_status(allow_blocking: bool = True) -> dict:
     v_err = _vertex_auth_state.get("last_vertex_error") or ""
     v_in_backoff = bool(v_info and time.time() < _vertex_auth_state.get("backoff_until", 0.0))
 
-    is_aq_vertex_key = g_key.startswith("AQ.")
     pref = get_ai_engine_pref(allow_blocking=allow_blocking)
+    is_aq_vertex_key = _is_vertex_express_candidate(g_key, pref) and time.time() >= _vertex_auth_state.get("aq_backoff_until", 0.0)
     any_configured = bool(g_key or c_key or (v_info and not v_in_backoff))
 
     # Determine primary active provider based on preference & configured credentials
@@ -2707,8 +2765,12 @@ def verify_vertex_connection(timeout: float = 14.0) -> dict:
       2. Next checks the shared Google Sheets service account (`google_credentials.json`).
     """
     g_key = get_gemini_api_key(allow_blocking=True)
+    with _vertex_auth_lock:
+        _vertex_auth_state["aq_backoff_until"] = 0.0
+        _vertex_auth_state["backoff_until"] = 0.0
     aq_err_msg = ""
-    if g_key and g_key.startswith("AQ."):
+    aq_proj_id = ""
+    if g_key:
         masked_aq = _mask_secret(g_key)
         for model_try in ("gemini-2.5-pro", "gemini-2.5-flash"):
             url, headers, params, payload = _build_endpoint_request(
@@ -2725,6 +2787,7 @@ def verify_vertex_connection(timeout: float = 14.0) -> dict:
                 if resp.status_code == 200:
                     now_str = datetime.datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
                     set_vertex_enabled(True)
+                    _mark_vertex_express_verified(g_key)
                     with _vertex_auth_lock:
                         _vertex_auth_state["backoff_until"] = 0.0
                         _vertex_auth_state["last_vertex_error"] = ""
@@ -2740,15 +2803,26 @@ def verify_vertex_connection(timeout: float = 14.0) -> dict:
                         "reason_code": "ok",
                         "model": model_try,
                         "key_kind": "vertex_express",
-                        "message": f"開通成功！登録済みの Vertex AI キー（{masked_aq} ／ {model_try}）で Google Cloud 無料クレジット枠（Agent Platform API）に正常接続しました！追加の設定は一切不要です。",
+                        "message": f"開通成功！登録済みの Google Cloud キー（{masked_aq} ／ {model_try}）で無料クレジット枠（Agent Platform API）に正常接続しました！追加の設定は一切不要です。",
                     }
                 if resp.status_code == 404:
                     continue
-                aq_err_msg = f"登録済み AQ. キー HTTP {resp.status_code}: {(resp.text or '')[:110]}"
+                if g_key.startswith("AQ."):
+                    body_txt = resp.text or ""
+                    m_proj = re.search(r"project\s+([A-Za-z0-9_-]{6,})", body_txt)
+                    if m_proj:
+                        aq_proj_id = m_proj.group(1)
+                        aq_err_msg = (
+                            f"現在登録中のキー（{masked_aq}）は別プロジェクト『{aq_proj_id}』（API未有効）のキーです。"
+                            "すでに「APIが有効です」になっている無料クレジット側プロジェクトで新しいAPIキーを1つ作成して貼り替えてください"
+                        )
+                    else:
+                        aq_err_msg = f"登録済み AQ. キー HTTP {resp.status_code}: {body_txt[:110]}"
                 if resp.status_code in (401, 403):
                     break
             except Exception as e:
-                aq_err_msg = f"登録済み AQ. キー通信エラー: {str(e)[:100]}"
+                if g_key.startswith("AQ."):
+                    aq_err_msg = f"登録済み AQ. キー通信エラー: {str(e)[:100]}"
 
     v_info = _resolve_vertex_service_account_info(ignore_enabled_flag=True)
     if not v_info:
@@ -2869,8 +2943,9 @@ def call_editorial_ai_json(
     now_jst = now_jst or datetime.datetime.now(JST)
     g_key = get_gemini_api_key(allow_blocking=allow_blocking)
     c_key = get_claude_api_key(allow_blocking=allow_blocking)
-    is_aq = bool(g_key and g_key.startswith("AQ."))
-    aq_ready = bool(is_aq and time.time() >= _vertex_auth_state.get("aq_backoff_until", 0.0))
+    pref = get_ai_engine_pref(allow_blocking=False)
+    is_vkey = _is_vertex_express_candidate(g_key, pref)
+    vkey_ready = bool(is_vkey and time.time() >= _vertex_auth_state.get("aq_backoff_until", 0.0))
     has_ai_studio = bool(g_key)
     v_info = _resolve_vertex_service_account_info()
     v_ready = bool(v_info and time.time() >= _vertex_auth_state.get("backoff_until", 0.0))
@@ -2878,10 +2953,9 @@ def call_editorial_ai_json(
     if not g_key and not c_key and not v_ready:
         return None, "", _vertex_auth_state.get("last_vertex_error") or "APIキー未設定"
 
-    pref = get_ai_engine_pref(allow_blocking=False)
     providers = []
     if pref == "vertex":
-        for p, ok in (("vertex", v_ready), ("vertex_express", aq_ready), ("gemini", has_ai_studio), ("claude", bool(c_key))):
+        for p, ok in (("vertex_express", vkey_ready), ("vertex", v_ready), ("gemini", has_ai_studio), ("claude", bool(c_key))):
             if ok:
                 providers.append(p)
     elif pref == "gemini":
@@ -2889,11 +2963,11 @@ def call_editorial_ai_json(
             if ok:
                 providers.append(p)
     elif pref == "claude":
-        for p, ok in (("claude", bool(c_key)), ("vertex", v_ready), ("vertex_express", aq_ready), ("gemini", has_ai_studio)):
+        for p, ok in (("claude", bool(c_key)), ("vertex", v_ready), ("vertex_express", vkey_ready), ("gemini", has_ai_studio)):
             if ok:
                 providers.append(p)
     else:
-        for p, ok in (("claude", bool(c_key)), ("vertex", v_ready), ("vertex_express", aq_ready), ("gemini", has_ai_studio)):
+        for p, ok in (("claude", bool(c_key)), ("vertex", v_ready), ("vertex_express", vkey_ready), ("gemini", has_ai_studio)):
             if ok:
                 providers.append(p)
 
@@ -2910,7 +2984,7 @@ def call_editorial_ai_json(
         if time.monotonic() >= deadline - 0.8:
             break
 
-        if prov == "vertex_express" and is_aq:
+        if prov == "vertex_express" and is_vkey:
             preferred_vx = (os.environ.get("VERTEX_MODEL") or os.environ.get("GEMINI_MODEL") or "").strip()
             vx_models = []
             if preferred_vx and "latest" not in preferred_vx:
@@ -2964,6 +3038,7 @@ def call_editorial_ai_json(
                         raw_txt = "".join(p.get("text", "") for p in parts).strip()
                     parsed = _parse_ai_json_object(raw_txt)
                     if parsed:
+                        _mark_vertex_express_verified(g_key)
                         label_m = f"{vxm} (Vertex無料枠)"
                         _last_gemini_meta["working_route"] = ("vertex_express", vxm)
                         _last_gemini_meta["last_provider"] = "vertex_express"

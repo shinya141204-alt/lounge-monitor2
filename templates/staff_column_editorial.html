@@ -731,7 +731,8 @@
                         ① <a href="{{ editorial.gemini_status.vertex_api_console_url }}" target="_blank" rel="noopener" style="color:var(--gold); font-weight:700;">Vertex AI API を有効化 ↗</a>
                         　② 必要時のみ <a href="{{ editorial.gemini_status.vertex_iam_console_url }}" target="_blank" rel="noopener" style="color:var(--gold); font-weight:700;">IAM画面 ↗</a> でロール <code>Vertex AI ユーザー</code> を追加
                     </div>
-                    <div style="margin-top:8px;">
+                    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+                        <a href="https://console.cloud.google.com/vertex-ai/studio/settings/api-keys" target="_blank" rel="noopener" class="copy-btn" style="text-decoration:none; display:inline-flex; align-items:center;">🔑 無料クレジット側のAPIキーを発行 ↗</a>
                         <button type="button" class="copy-btn" onclick="verifyColVertexAi(this)">🔍 無料クレジット（Vertex AI）開通テストを実行</button>
                     </div>
                 </div>
