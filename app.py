@@ -1955,6 +1955,7 @@ def staff_column_editorial():
     theme_key = (request.args.get('theme') or 'area_hopping').strip().lower()
     custom_topic = (request.args.get('topic') or '').strip()
     tone_mode = (request.args.get('tone') or '').strip().lower() or None
+    export_slug = (request.args.get('export') or '').strip()
     force_ai = request.args.get('refresh_ai') == '1'
     is_json_req = request.args.get('format') == 'json'
     with data_lock:
@@ -1975,6 +1976,7 @@ def staff_column_editorial():
         editorial=editorial,
         custom_topic=custom_topic,
         tone_mode=editorial.get('tone_mode'),
+        export_slug=export_slug,
     )
 
 
@@ -2041,6 +2043,19 @@ def api_column_editorial_delete():
     if not res.get('ok'):
         return jsonify(res), 400
     clear_fast_http_caches()
+    return jsonify(res)
+
+
+@app.route('/api/column-editorial/export-note')
+def api_column_editorial_export_note():
+    """Master-only endpoint converting any existing/scheduled/dynamic column into ready-to-paste note.com format."""
+    if not is_master_authorized():
+        return jsonify({'error': 'Unauthorized'}), 401
+    import column_editorial
+    slug = (request.args.get('slug') or '').strip()
+    res = column_editorial.export_column_for_note(slug, site_url='https://aiseki-navi.com')
+    if not res.get('ok'):
+        return jsonify(res), 404
     return jsonify(res)
 
 
@@ -2943,11 +2958,13 @@ def sitemap_xml():
 def columns_index():
     """Portal page listing all editorial guides, comparisons, and area features."""
     is_staff = bool(session.get('is_staff'))
+    is_master = bool(session.get('is_master'))
     pub_items = scheduled_articles.get_published_articles()
     up_items = scheduled_articles.get_upcoming_articles() if is_staff else []
     cache_sig = (
         'columns',
         is_staff,
+        is_master,
         tuple(it.get('slug') for it in pub_items),
         tuple(it.get('slug') for it in up_items),
     )
@@ -2959,6 +2976,7 @@ def columns_index():
             published_scheduled=pub_items,
             upcoming_scheduled=up_items,
             is_staff=is_staff,
+            is_master=is_master,
         ),
     )
 

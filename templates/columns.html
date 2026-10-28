@@ -240,7 +240,7 @@
         }
         .area-mini-name { font-size: 0.86rem; font-weight: 600; }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=15">
+    <link rel="stylesheet" href="/static/calm.css?v=16">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -266,6 +266,17 @@
             <p>「23時半に入ったら急に帰られた」「金土の夜に40分待たされた」——現場で誰もが一度はぶつかるリアルな失敗や空気感を、全国9.6万件超の混雑ログと常連目線で紐解いた実践コラム集です。</p>
         </section>
 
+        {% if is_master %}
+        <div style="background: linear-gradient(135deg, rgba(65, 201, 180, 0.12) 0%, rgba(22, 24, 30, 0.96) 100%); border: 1px solid rgba(65, 201, 180, 0.45); border-radius: 12px; padding: 14px 18px; margin-bottom: 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+            <div style="font-size: 0.84rem; color: var(--text-main);">
+                <strong style="color: #a7f3d0;">👑 マスター専用機能：</strong>公開済み・予約済みの全コラムを <strong>note.com エディタ貼り付け形式</strong>（アイキャッチ・タイトル・本文・タグ）でワンタップ出力できます。
+            </div>
+            <a href="/staff/column-editorial?export=last-train-cliff#note-export-panel" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 999px; background: rgba(65, 201, 180, 0.2); border: 1px solid rgba(65, 201, 180, 0.65); color: #d1fae5; font-size: 0.8rem; font-weight: 800; text-decoration: none;">
+                📤 note貼り付け出力キットを開く ›
+            </a>
+        </div>
+        {% endif %}
+
         {% if is_staff and upcoming_scheduled %}
         <div style="background: rgba(200, 164, 110, 0.08); border: 1px solid rgba(200, 164, 110, 0.35); border-radius: 12px; padding: 16px 18px; margin-bottom: 24px;">
             <div style="font-size: 0.86rem; font-weight: 700; color: var(--accent-text); margin-bottom: 10px;">【社内限定表示】公開予約待機中のコラム（一般ユーザー・検索エンジンには予約日時まで非表示）</div>
@@ -276,7 +287,12 @@
                         <span style="color: var(--accent-text); font-weight: 700; margin-right: 8px;">{{ item.publish_at_ja }} 公開予定</span>
                         <span style="color: var(--text-main);">{{ item.short_title }}</span>
                     </div>
-                    <a href="{{ item.path }}" style="color: var(--accent-text); font-weight: 600; text-decoration: none;">社内プレビュー ↗</a>
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        {% if is_master %}
+                        <a href="/staff/column-editorial?export={{ item.slug }}#note-export-panel" style="color: #6ee7b7; font-weight: 700; text-decoration: none;">📝 note出力 ›</a>
+                        {% endif %}
+                        <a href="{{ item.path }}" style="color: var(--accent-text); font-weight: 600; text-decoration: none;">社内プレビュー ↗</a>
+                    </div>
                 </div>
                 {% endfor %}
             </div>

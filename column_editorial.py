@@ -50,6 +50,10 @@ _audit_lock = threading.Lock()
 
 # Reserved static /guide/<slug> slugs that must never be overwritten by dynamic articles
 RESERVED_STATIC_SLUGS = {
+    "guide",
+    "for-women",
+    "ladies",
+    "grooming",
     "strategy",
     "compare",
     "brand-comparison",
@@ -222,19 +226,20 @@ COLUMN_THEMES = {
 }
 
 EXISTING_STATIC_COLUMNS = [
-    {"slug": "guide", "path": "/guide", "template": "guide.html", "title": "相席ラウンジ完全攻略ガイド｜時間帯・男女比・店選びの基本"},
+    {"slug": "for-women", "path": "/for-women", "template": "for_women.html", "title": "「受付で30分放置…」をゼロにする女子のための相席ラウンジ完全ガイド｜待ち0店舗の見分け方＆席替え・退店術"},
+    {"slug": "last-train-cliff", "path": "/guide/last-train-cliff", "template": "guide_last_train_cliff.html", "title": "23時20分の終電崖（魔の40分間）と23時を境に逆転する街別ハシゴ法則"},
+    {"slug": "price-event-comparison", "path": "/guide/price-event-comparison", "template": "guide_price_comparison.html", "title": "全51店舗「料金・イベント・現在人数」比較ボード活用ガイド"},
+    {"slug": "male-lead-mechanics", "path": "/guide/male-lead-mechanics", "template": "guide_male_lead.html", "title": "男性先行のお店に後から女性が集まるメカニズム"},
+    {"slug": "beauty-area-stage", "path": "/guide/beauty-area-stage", "template": "guide_beauty_stage.html", "title": "美容サロン激戦区のラウンジに早い時間から女性が集まる理由"},
+    {"slug": "club-area-midnight", "path": "/guide/club-area-midnight", "template": "guide_club_midnight.html", "title": "ダンスクラブ密集エリアの深夜0時「第2波」実測データ検証"},
+    {"slug": "weekend-strategy", "path": "/guide/weekend-strategy", "template": "guide_weekend.html", "title": "金曜・土曜ピークの男性待ち回避＆時間帯別攻略"},
     {"slug": "brand-comparison", "path": "/guide/brand-comparison", "template": "guide_comparison.html", "title": "オリエンタルラウンジ・ag・JISの3大ブランド徹底比較"},
     {"slug": "weekday-strategy", "path": "/guide/weekday-strategy", "template": "guide_weekday.html", "title": "水曜・木曜の平日夜が実は一番話しやすいデータ的理由"},
-    {"slug": "weekend-strategy", "path": "/guide/weekend-strategy", "template": "guide_weekend.html", "title": "金曜・土曜ピークの男性待ち回避＆時間帯別攻略"},
+    {"slug": "guide", "path": "/guide", "template": "guide_article.html", "title": "相席ラウンジ完全攻略ガイド｜時間帯・男女比・店選びの基本"},
     {"slug": "shinjuku", "path": "/guide/shinjuku", "template": "guide_shinjuku.html", "title": "新宿エリア3店舗の客層・男女比・使い分けガイド"},
     {"slug": "solo-vs-pair", "path": "/guide/solo-vs-pair", "template": "guide_solo_pair.html", "title": "1人参戦（ソロ）vs 2人組ペアのメリット・立ち回り比較"},
     {"slug": "second-venue", "path": "/guide/second-venue", "template": "guide_second_venue.html", "title": "2軒目の誘い方と断られない声かけタイミング"},
     {"slug": "first-10-minutes", "path": "/guide/first-10-minutes", "template": "guide_first_10min.html", "title": "最初の10分で差がつく会話テンポと距離70cmの清潔感"},
-    {"slug": "club-area-midnight", "path": "/guide/club-area-midnight", "template": "guide_club_midnight.html", "title": "ダンスクラブ密集エリアの深夜0時「第2波」実測データ検証"},
-    {"slug": "beauty-area-stage", "path": "/guide/beauty-area-stage", "template": "guide_beauty_stage.html", "title": "美容サロン激戦区のラウンジに早い時間から女性が集まる理由"},
-    {"slug": "male-lead-mechanics", "path": "/guide/male-lead-mechanics", "template": "guide_male_lead.html", "title": "男性先行のお店に後から女性が集まるメカニズム"},
-    {"slug": "price-event-comparison", "path": "/guide/price-event-comparison", "template": "guide_price_comparison.html", "title": "全51店舗「料金・イベント・現在人数」比較ボード活用ガイド"},
-    {"slug": "last-train-cliff", "path": "/guide/last-train-cliff", "template": "guide_last_train_cliff.html", "title": "23時20分の終電崖（魔の40分間）と23時を境に逆転する街別ハシゴ法則"},
     {"slug": "grooming", "path": "/grooming", "template": "grooming.html", "title": "入店前の身だしなみ・清潔感チェックリスト"},
 ]
 
@@ -1901,6 +1906,511 @@ def audit_existing_columns(force: bool = False) -> dict:
         _audit_cache["ts"] = now_t
         _audit_cache["data"] = report
     return report
+
+
+# =====================================================================
+# Published & Scheduled Column -> note.com Ready-to-Paste Exporter
+# =====================================================================
+_VOID_HTML_TAGS = frozenset({
+    "area", "base", "br", "col", "embed", "hr", "img", "input",
+    "link", "meta", "param", "source", "track", "wbr",
+})
+
+_SKIP_HTML_TAGS = frozenset({
+    "head", "script", "style", "noscript", "nav", "footer", "aside",
+    "figure", "picture", "svg", "button", "form", "input", "select",
+})
+
+_SKIP_EXACT_CLASSES = frozenset({
+    "breadcrumb", "toc-box", "toc-list", "toc-title", "article-toc",
+    "portal-global-nav", "portal-top-header", "top-header", "top-nav-bar",
+    "portal-footer", "official-notice-box", "article-affiliate-card",
+    "aff-card", "ladies-pr-section", "cta-box", "live-tool-cta-box",
+    "preview-banner", "live-board", "article-cat-tag", "article-badge-row",
+    "article-date", "article-meta", "article-meta-line", "cat-badge",
+    "rec-badge", "hero-kicker", "hero-cta-row", "share-btn-row",
+    "related-article-card", "editorial-ref-note", "store-chip-row",
+    "ref-kicker", "cta-btn", "live-tool-btn", "rec-btn", "ladies-pr-link",
+})
+
+_NOTE_HASHTAG_PRESETS = {
+    "for-women": "#相席ラウンジ #女子会 #オリエンタルラウンジ #JIS #ag #夜カフェ #相席ナビ",
+    "last-train-cliff": "#相席ラウンジ #オリエンタルラウンジ #JIS #ag #相席ナビ #終電後 #夜遊び",
+    "price-event-comparison": "#相席ラウンジ #オリエンタルラウンジ #JIS #ag #コスパ #相席ナビ #出会い",
+    "male-lead-mechanics": "#相席ラウンジ #オリエンタルラウンジ #データ分析 #相席ナビ #出会い #夜遊び",
+    "beauty-area-stage": "#相席ラウンジ #オリエンタルラウンジ #美容 #清潔感 #相席ナビ #出会い",
+    "club-area-midnight": "#相席ラウンジ #オリエンタルラウンジ #JIS #渋谷 #梅田 #新宿 #相席ナビ",
+    "weekend-strategy": "#相席ラウンジ #オリエンタルラウンジ #週末 #金曜日 #相席ナビ #出会い",
+    "brand-comparison": "#オリエンタルラウンジ #JIS #ag #相席ラウンジ #徹底比較 #相席ナビ",
+    "weekday-strategy": "#相席ラウンジ #オリエンタルラウンジ #水曜日 #木曜日 #相席ナビ #出会い",
+    "shinjuku": "#新宿 #相席ラウンジ #オリエンタルラウンジ #JIS新宿 #歌舞伎町 #相席ナビ",
+    "solo-vs-pair": "#相席ラウンジ #一人飲み #オリエンタルラウンジ #相席ナビ #出会い #夜遊び",
+    "second-venue": "#相席ラウンジ #2軒目 #デート #会話術 #オリエンタルラウンジ #相席ナビ",
+    "first-10-minutes": "#相席ラウンジ #会話術 #清潔感 #第一印象 #オリエンタルラウンジ #相席ナビ",
+    "grooming": "#メンズ美容 #清潔感 #相席ラウンジ #身だしなみ #オリエンタルラウンジ #相席ナビ",
+    "local-vs-urban": "#相席ラウンジ #オリエンタルラウンジ #出張 #地方 #データ分析 #相席ナビ",
+    "cost-break-even": "#相席ラウンジ #オリエンタルラウンジ #コスパ #恋愛 #相席ナビ #夜遊び",
+    "rain-payday": "#相席ラウンジ #オリエンタルラウンジ #雨の日 #穴場 #データ分析 #相席ナビ",
+}
+
+
+class _HtmlNode:
+    __slots__ = ("tag", "attrs", "children")
+
+    def __init__(self, tag: str, attrs: dict = None):
+        self.tag = tag
+        self.attrs = attrs or {}
+        self.children = []
+
+    def classes(self) -> set:
+        raw = self.attrs.get("class") or ""
+        return {c.strip() for c in raw.split() if c.strip()}
+
+
+from html.parser import HTMLParser as _StdHTMLParser
+
+
+class _SimpleDomParser(_StdHTMLParser):
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.root = _HtmlNode("root")
+        self._stack = [self.root]
+
+    def handle_starttag(self, tag, attrs):
+        t = (tag or "").lower()
+        node = _HtmlNode(t, {k.lower(): (v or "") for k, v in attrs})
+        self._stack[-1].children.append(node)
+        if t not in _VOID_HTML_TAGS:
+            self._stack.append(node)
+
+    def handle_startendtag(self, tag, attrs):
+        t = (tag or "").lower()
+        node = _HtmlNode(t, {k.lower(): (v or "") for k, v in attrs})
+        self._stack[-1].children.append(node)
+
+    def handle_endtag(self, tag):
+        t = (tag or "").lower()
+        if t in _VOID_HTML_TAGS:
+            return
+        for idx in range(len(self._stack) - 1, 0, -1):
+            if self._stack[idx].tag == t:
+                del self._stack[idx:]
+                break
+
+    def handle_data(self, data):
+        if data:
+            self._stack[-1].children.append(data)
+
+
+def _polish_note_brand_text(md_text: str) -> str:
+    """Normalize internal 'OLG' / bare 'オリエンタル' in prose while preserving URLs untouched."""
+    if not md_text:
+        return ""
+    protected = []
+
+    def _stash_url(m):
+        protected.append(m.group(0))
+        return f"__URL_TOKEN_{len(protected) - 1}__"
+
+    work = re.sub(r"https?://[^\s\)\]>]+", _stash_url, md_text)
+    work = re.sub(r"\bOLG\s*ag", "ag", work)
+    work = re.sub(r"OLG\s*(?=[ァ-ヶー一-龠々A-Za-z])", "オリエンタルラウンジ", work)
+    work = re.sub(r"\bOLG\b", "オリエンタルラウンジ", work)
+    work = _sanitize_brand_names(work, prefer_casual_if_tight=False)
+    for i, orig in enumerate(protected):
+        work = work.replace(f"__URL_TOKEN_{i}__", orig)
+    return work
+
+
+def _subtree_has_affiliate_link(node: _HtmlNode) -> bool:
+    if isinstance(node, str):
+        return False
+    if node.tag == "a":
+        href = (node.attrs.get("href") or "").strip()
+        if "/link/" in href or "sponsored" in (node.attrs.get("rel") or ""):
+            return True
+    return any(_subtree_has_affiliate_link(ch) for ch in node.children)
+
+
+def _should_skip_dom_node(node: _HtmlNode) -> bool:
+    if isinstance(node, str):
+        return False
+    if node.tag in _SKIP_HTML_TAGS:
+        return True
+    cls_set = node.classes()
+    if cls_set & _SKIP_EXACT_CLASSES:
+        return True
+    if any(c.startswith("related-") for c in cls_set):
+        return True
+    # Exclude PR / affiliate cards (e.g. .rec-card with /link/...) while keeping pure dress-code rule cards
+    if ("rec-card" in cls_set or "ladies-pr-card" in cls_set) and _subtree_has_affiliate_link(node):
+        return True
+    # Exclude standalone CTA button wrappers at the bottom of articles
+    if node.tag == "div" and not cls_set:
+        non_ws_children = [
+            ch for ch in node.children
+            if not (isinstance(ch, str) and not ch.strip())
+        ]
+        if len(non_ws_children) == 1 and isinstance(non_ws_children[0], _HtmlNode):
+            only = non_ws_children[0]
+            if only.tag == "a" and (only.classes() & {"btn-rose", "btn-outline", "cta-btn", "live-tool-btn"}):
+                return True
+    return False
+
+
+def _render_inline_for_note(node, site_url: str, allow_bold: bool = True) -> str:
+    if isinstance(node, str):
+        return re.sub(r"[ \t\r\f\v]+", " ", node.replace("\n", " "))
+    if _should_skip_dom_node(node):
+        return ""
+    if node.tag == "br":
+        return "\n"
+    inner = "".join(_render_inline_for_note(ch, site_url, allow_bold=allow_bold) for ch in node.children)
+    if node.tag in ("strong", "b"):
+        clean = inner.strip()
+        if not clean:
+            return ""
+        return f"**{clean}**" if allow_bold else clean
+    if node.tag == "code":
+        clean = inner.strip()
+        return f"「{clean}」" if clean else ""
+    if node.tag == "a":
+        label = re.sub(r"\s+", " ", inner).strip()
+        href = (node.attrs.get("href") or "").strip()
+        if not label:
+            return ""
+        if not href or href.startswith("#") or "/link/" in href or "sponsored" in (node.attrs.get("rel") or ""):
+            return "" if (node.classes() & {"rec-btn", "ladies-pr-link", "cta-btn", "btn-rose"}) else label
+        if href.startswith("/"):
+            full_href = f"{site_url.rstrip('/')}{href}"
+            return f"[{label}]({full_href})"
+        if href.startswith("https://aiseki-navi.com"):
+            return f"[{label}]({href})"
+        return label
+    return inner
+
+
+def _clean_multiline_block(raw_text: str) -> str:
+    lines = []
+    for ln in (raw_text or "").split("\n"):
+        cleaned = re.sub(r"[ \t]+", " ", ln).strip()
+        # Collapse accidental nested **...** markers
+        cleaned = re.sub(r"\*{3,}", "**", cleaned)
+        lines.append(cleaned)
+    out = "\n".join(lines).strip()
+    out = re.sub(r"\n{3,}", "\n\n", out)
+    return out
+
+
+def _collect_elements_by_tag(node: _HtmlNode, target_tags: tuple) -> list:
+    found = []
+    for ch in node.children:
+        if isinstance(ch, _HtmlNode) and not _should_skip_dom_node(ch):
+            if ch.tag in target_tags:
+                found.append(ch)
+            else:
+                found.extend(_collect_elements_by_tag(ch, target_tags))
+    return found
+
+
+def _convert_static_html_to_note(raw_html: str, meta: dict, site_url: str = "https://aiseki-navi.com") -> dict:
+    """Convert any static/scheduled column HTML template into clean note.com Markdown + metadata."""
+    site_base = site_url.rstrip("/")
+    og_img_m = re.search(r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']', raw_html, flags=re.I)
+    if not og_img_m:
+        og_img_m = re.search(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:image["\']', raw_html, flags=re.I)
+    eyecatch_url = ""
+    if og_img_m:
+        eyecatch_url = og_img_m.group(1).strip()
+    elif meta.get("eyecatch_jpg"):
+        eyecatch_url = meta["eyecatch_jpg"]
+    else:
+        body_img_m = re.search(r'<img[^>]+src=["\'](/static/[^"\']+\.(?:jpg|png|webp))["\']', raw_html, flags=re.I)
+        if body_img_m:
+            eyecatch_url = body_img_m.group(1)
+    if not eyecatch_url:
+        eyecatch_url = "/static/note-eyecatch.jpg"
+    if eyecatch_url.startswith("/"):
+        eyecatch_url = f"{site_base}{eyecatch_url}"
+
+    # Strip HTML comments and Jinja2 preview/loop blocks before DOM parsing
+    cleaned = re.sub(r"<!--.*?-->", "", raw_html, flags=re.S)
+    cleaned = re.sub(r"\{%\s*if\s+is_scheduled_preview\s*%\}[\s\S]*?\{%\s*endif\s*%\}", "", cleaned)
+    cleaned = re.sub(r"\{%\s*for\s+[\s\S]*?\{%\s*endfor\s*%\}", "", cleaned)
+    cleaned = re.sub(r"\{%[\s\S]*?%\}", "", cleaned)
+    cleaned = re.sub(r"\{\{[\s\S]*?\}\}", "", cleaned)
+
+    parser = _SimpleDomParser()
+    parser.feed(cleaned)
+    parser.close()
+
+    extracted_h1 = []
+    blocks = []
+
+    def _walk(node):
+        if isinstance(node, str) or _should_skip_dom_node(node):
+            return
+        cls_set = node.classes()
+        tag = node.tag
+
+        if tag == "h1":
+            h1_txt = re.sub(r"\s+", " ", _render_inline_for_note(node, site_base, allow_bold=False)).strip()
+            if h1_txt and h1_txt != "相席ナビ":
+                extracted_h1.append(h1_txt)
+            return
+
+        if tag == "h2":
+            h2_txt = re.sub(r"\s+", " ", _render_inline_for_note(node, site_base, allow_bold=False)).strip()
+            if h2_txt:
+                blocks.append(f"## {h2_txt}")
+            return
+
+        if tag == "h3":
+            h3_txt = re.sub(r"\s+", " ", _render_inline_for_note(node, site_base, allow_bold=False)).strip()
+            if h3_txt:
+                blocks.append(f"### {h3_txt}")
+            return
+
+        if tag == "h4":
+            h4_txt = re.sub(r"\s+", " ", _render_inline_for_note(node, site_base, allow_bold=False)).strip()
+            if h4_txt:
+                blocks.append(f"**■ {h4_txt}**")
+            return
+
+        if "dialogue-box" in cls_set:
+            dl_raw = _clean_multiline_block(_render_inline_for_note(node, site_base, allow_bold=True))
+            dl_lines = [f"> {ln}" for ln in dl_raw.split("\n") if ln.strip()]
+            if dl_lines:
+                blocks.append("\n".join(dl_lines))
+            return
+
+        if "stat-box" in cls_set:
+            parts = []
+            for ch in node.children:
+                if isinstance(ch, _HtmlNode):
+                    t = re.sub(r"\s+", " ", _render_inline_for_note(ch, site_base, allow_bold=False)).strip()
+                    if t:
+                        parts.append(t)
+            if parts:
+                if len(parts) >= 2:
+                    blocks.append(f"- 📊 **{parts[0]}：{parts[1]}**（{' '.join(parts[2:])}）".replace("（）", ""))
+                else:
+                    blocks.append(f"- 📊 {parts[0]}")
+            return
+
+        if "faq-item" in cls_set or "faq-card" in cls_set:
+            for ch in node.children:
+                if isinstance(ch, _HtmlNode):
+                    c_cls = ch.classes()
+                    txt = _clean_multiline_block(_render_inline_for_note(ch, site_base, allow_bold=True))
+                    if not txt:
+                        continue
+                    if "faq-q" in c_cls:
+                        q_clean = re.sub(r"\*\*([^*]+)\*\*", r"\1", txt)
+                        blocks.append(f"### 💬 {q_clean}")
+                    else:
+                        blocks.append(txt)
+            return
+
+        if tag in ("ul", "ol"):
+            items = []
+            for ch in node.children:
+                if isinstance(ch, _HtmlNode) and ch.tag == "li" and not _should_skip_dom_node(ch):
+                    li_txt = _clean_multiline_block(_render_inline_for_note(ch, site_base, allow_bold=True))
+                    li_single = " ／ ".join(s.strip() for s in li_txt.split("\n") if s.strip())
+                    if li_single:
+                        items.append(f"- {li_single}")
+            if items:
+                blocks.append("\n".join(items))
+            return
+
+        if tag == "table":
+            trs = _collect_elements_by_tag(node, ("tr",))
+            headers = []
+            row_lines = []
+            for tr in trs:
+                ths = [c for c in tr.children if isinstance(c, _HtmlNode) and c.tag == "th"]
+                tds = [c for c in tr.children if isinstance(c, _HtmlNode) and c.tag == "td"]
+                if ths and not headers:
+                    headers = [
+                        re.sub(r"\s+", " ", _render_inline_for_note(th, site_base, allow_bold=False)).strip()
+                        for th in ths
+                    ]
+                elif tds:
+                    vals = [
+                        re.sub(r"\s+", " ", _render_inline_for_note(td, site_base, allow_bold=False)).strip()
+                        for td in tds
+                    ]
+                    if not any(vals):
+                        continue
+                    if headers and len(vals) >= 2:
+                        lead = vals[0]
+                        rest = [
+                            f"{headers[i]}: {vals[i]}" if i < len(headers) and headers[i] else vals[i]
+                            for i in range(1, len(vals))
+                            if vals[i]
+                        ]
+                        row_lines.append(f"- **{lead}** — " + " ／ ".join(rest))
+                    else:
+                        row_lines.append("- " + " ／ ".join(v for v in vals if v))
+            if row_lines:
+                blocks.append("\n".join(row_lines))
+            return
+
+        if tag == "p":
+            p_txt = _clean_multiline_block(_render_inline_for_note(node, site_base, allow_bold=True))
+            if p_txt and not p_txt.startswith("公開日："):
+                blocks.append(p_txt)
+            return
+
+        # Handle mixed text+br boxes like .lead-box / .article-lead that contain direct text without <p>
+        has_block_child = any(
+            isinstance(ch, _HtmlNode) and ch.tag in ("p", "h1", "h2", "h3", "h4", "ul", "ol", "table", "div", "section", "article", "header")
+            for ch in node.children
+        )
+        if not has_block_child and tag in ("div", "section"):
+            box_txt = _clean_multiline_block(_render_inline_for_note(node, site_base, allow_bold=True))
+            if box_txt:
+                blocks.append(box_txt)
+            return
+
+        for ch in node.children:
+            _walk(ch)
+
+    _walk(parser.root)
+
+    title_final = _polish_note_brand_text(extracted_h1[0] if extracted_h1 else (meta.get("title") or ""))
+    path_str = meta.get("path") or f"/guide/{meta.get('slug', '')}"
+    article_url = f"{site_base}{path_str}"
+
+    slug = meta.get("slug") or ""
+    if slug == "for-women":
+        cta_footer = "\n".join([
+            "---",
+            "",
+            "💄 **全国53店舗の「いま女子待ちゼロで入れるお店＆開催中イベント」は『相席ナビ』でリアルタイム公開中！**",
+            "入店3分前にスマホでチェックできる女性向け特設ガイドはこちら👇",
+            "",
+            article_url,
+            "",
+            "👉 女性目線モード（待ち0・特典順）で現在の全国ランキングを見る",
+            f"{site_base}/?mode=women",
+        ])
+    else:
+        cta_footer = "\n".join([
+            "---",
+            "",
+            "📊 **全国53店舗の「いま現在の男女人数・普段比・終電後維持率」は『相席ナビ』で1分ごとに無料更新中！**",
+            "今回のコラムの詳しい図表データや、これから行く店舗のリアルタイム状況はこちら👇",
+            "",
+            article_url,
+            "",
+            "👉 全国リアルタイム人数ランキング（相席ナビ トップページ）",
+            f"{site_base}/",
+        ])
+
+    body_joined = "\n\n".join(b for b in blocks if b.strip())
+    body_markdown = _polish_note_brand_text(f"{body_joined}\n\n{cta_footer}".strip())
+    hashtags = _NOTE_HASHTAG_PRESETS.get(
+        slug,
+        "#相席ラウンジ #オリエンタルラウンジ #JIS #ag #相席ナビ #出会い #夜遊び",
+    )
+    full_markdown = f"# {title_final}\n\n{body_markdown}\n\n{hashtags}"
+
+    return {
+        "ok": True,
+        "slug": slug,
+        "path": path_str,
+        "article_url": article_url,
+        "title": title_final,
+        "body_markdown": body_markdown,
+        "hashtags": hashtags,
+        "full_markdown": full_markdown,
+        "eyecatch_url": eyecatch_url,
+        "char_count": len(body_markdown),
+    }
+
+
+def export_column_for_note(slug: str, site_url: str = "https://aiseki-navi.com") -> dict:
+    """
+    Export ANY existing static column (15), scheduled column (3), or dynamically published/scheduled
+    editorial column into a ready-to-paste note.com manuscript kit (eyecatch URL, title, body Markdown, hashtags).
+    """
+    slug_clean = (slug or "").strip().strip("/")
+    if slug_clean.startswith("guide/"):
+        slug_clean = slug_clean[len("guide/"):]
+    if not slug_clean:
+        slug_clean = "last-train-cliff"
+
+    site_base = (site_url or "https://aiseki-navi.com").rstrip("/")
+
+    # 1. Check dynamically created editorial columns first (`col_article:<slug>`)
+    for dyn in get_dynamic_scheduled_articles(allow_blocking=True):
+        if dyn.get("slug") == slug_clean:
+            title_val = _polish_note_brand_names_simple(dyn.get("note_title") or dyn.get("title") or "")
+            raw_md = dyn.get("note_markdown") or ""
+            if not raw_md:
+                rendered = _render_candidate_preview_and_note(dict(dyn), site_url=site_base)
+                raw_md = rendered.get("note_markdown") or ""
+            lines = raw_md.splitlines()
+            # Strip leading `# Title` and trailing `#hashtags` line so `body_markdown` pastes cleanly into note body
+            if lines and lines[0].lstrip().startswith("# "):
+                lines = lines[1:]
+                while lines and not lines[0].strip():
+                    lines = lines[1:]
+            hashtags = (dyn.get("note_hashtags") or "#相席ラウンジ #オリエンタルラウンジ #相席ナビ #出会い #夜遊び").strip()
+            if lines and lines[-1].strip().startswith("#") and "##" not in lines[-1]:
+                hashtags = lines[-1].strip()
+                lines = lines[:-1]
+                while lines and not lines[-1].strip():
+                    lines = lines[:-1]
+            body_md = _polish_note_brand_text("\n".join(lines).strip())
+            path_str = dyn.get("path") or f"/guide/{slug_clean}"
+            article_url = f"{site_base}{path_str}"
+            eye_jpg = dyn.get("eyecatch_jpg") or "/static/eyecatch-last-train-cliff.jpg"
+            eye_url = f"{site_base}{eye_jpg}" if eye_jpg.startswith("/") else eye_jpg
+            full_md = f"# {title_val}\n\n{body_md}\n\n{hashtags}"
+            return {
+                "ok": True,
+                "slug": slug_clean,
+                "path": path_str,
+                "article_url": article_url,
+                "title": title_val,
+                "body_markdown": body_md,
+                "hashtags": hashtags,
+                "full_markdown": full_md,
+                "eyecatch_url": eye_url,
+                "char_count": len(body_md),
+            }
+
+    # 2. Check static scheduled columns (`scheduled_articles.SCHEDULED_ARTICLES`) + evergreen static columns
+    import scheduled_articles
+    target_meta = None
+    for sc in scheduled_articles.SCHEDULED_ARTICLES:
+        if sc["slug"] == slug_clean:
+            target_meta = sc
+            break
+    if target_meta is None:
+        for col in EXISTING_STATIC_COLUMNS:
+            if col["slug"] == slug_clean or col["path"].strip("/") == slug_clean:
+                target_meta = col
+                break
+
+    if target_meta is None:
+        return {"ok": False, "error": f"指定されたコラム（{slug_clean}）が見つかりません。"}
+
+    tpl_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates", target_meta["template"])
+    try:
+        with open(tpl_path, "r", encoding="utf-8") as f:
+            raw_html = f.read()
+    except Exception as e:
+        return {"ok": False, "error": f"テンプレートの読み込みに失敗しました: {e}"}
+
+    return _convert_static_html_to_note(raw_html, target_meta, site_url=site_base)
+
+
+def _polish_note_brand_names_simple(text: str) -> str:
+    return _polish_note_brand_text(text)
 
 
 # =====================================================================

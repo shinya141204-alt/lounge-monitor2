@@ -104,10 +104,77 @@
             padding: 18px 20px;
             margin-bottom: 16px;
         }
+        .header-card h1, .section-h2, .article-headline-box h3, .role-card h3 {
+            word-break: normal;
+            overflow-wrap: anywhere;
+        }
         .header-card h1 {
             font-size: 1.24rem;
+            line-height: 1.45;
             margin: 0 0 6px;
         }
+        @media (max-width: 600px) {
+            .header-card h1 { font-size: 1.08rem; }
+            .article-headline-box h3 { font-size: 0.96rem; line-height: 1.45; }
+        }
+        .note-export-panel {
+            background: linear-gradient(135deg, rgba(65, 201, 180, 0.10) 0%, rgba(22, 24, 30, 0.98) 65%);
+            border: 1px solid rgba(65, 201, 180, 0.45);
+            border-radius: 15px;
+            padding: 16px 18px;
+            margin-bottom: 18px;
+        }
+        .note-export-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+            margin-top: 14px;
+        }
+        .note-step-box {
+            background: var(--surface-2);
+            border: 1px solid var(--border-strong);
+            border-radius: 11px;
+            padding: 12px 14px;
+        }
+        .note-step-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 8px;
+        }
+        .note-step-label {
+            font-size: 0.8rem;
+            font-weight: 800;
+            color: #a7f3d0;
+        }
+        .note-textarea, .note-text-input {
+            width: 100%;
+            border-radius: 8px;
+            border: 1px solid var(--border-strong);
+            background: #0b0c0f;
+            color: var(--text);
+            padding: 10px 12px;
+            font-family: inherit;
+            font-size: 0.83rem;
+            line-height: 1.65;
+        }
+        .note-btn {
+            cursor: pointer;
+            padding: 7px 13px;
+            border-radius: 8px;
+            border: 1px solid rgba(65, 201, 180, 0.65);
+            background: rgba(65, 201, 180, 0.18);
+            color: #d1fae5;
+            font-size: 0.79rem;
+            font-weight: 800;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .note-btn:hover { border-color: #6ee7b7; background: rgba(65, 201, 180, 0.28); }
         .header-card p {
             color: var(--sub);
             font-size: 0.82rem;
@@ -497,6 +564,80 @@
             <p>SNS編集部と共通の4役体制で、ご都合主義の綺麗事やAI特有の教科書感を排除した本音コラム（現場リアル会話 <code>.dialogue-box</code> 3箇所＋実測データ比較表＋FAQ）・note原稿・X新着2連スレッドを一括作成。採用案はワンクリックでサイトへ予約公開または即時公開できます。</p>
         </div>
 
+        <!-- Existing & Scheduled Column -> note.com Ready-to-Paste Exporter -->
+        <div class="note-export-panel" id="note-export-panel">
+            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:10px;">
+                <div>
+                    <div style="font-size:0.95rem; font-weight:800; color:#d1fae5;">
+                        📤 公開済み・予約済みコラムの「note.com 貼り付け用出力＆ワンタップコピー」（全 {{ editorial.existing_audit.total_columns }} 本対応）
+                    </div>
+                    <div style="font-size:0.77rem; color:var(--sub); margin-top:2px;">
+                        過去に出した定番コラム・予約記事・編集部作成記事のどれでも、noteのエディタにそのまま貼れる形式（見出し <code>##</code>・会話引用 <code>&gt;</code>・箇条書き表・OGPカードURL・PRリンク自動除外）で即出力できます。
+                    </div>
+                </div>
+                <a href="https://note.com/notes/new" target="_blank" rel="noopener noreferrer" class="back-btn" style="font-size:0.77rem;">✍️ note投稿画面を開く ↗</a>
+            </div>
+
+            <div class="custom-topic-row">
+                <select id="note-export-select" class="topic-input" style="min-width:240px;" onchange="loadNoteExportSelected()">
+                    {% for row in editorial.existing_audit.columns %}
+                    <option value="{{ row.slug }}" {{ 'selected' if export_slug and export_slug == row.slug else '' }}>
+                        {{ row.status_label }} ｜ {{ row.title }}（{{ row.path }}）
+                    </option>
+                    {% endfor %}
+                </select>
+                <button type="button" class="note-btn" id="note-export-load-btn" onclick="loadNoteExportSelected()">📤 note貼り付け原稿を出力する</button>
+            </div>
+
+            <div id="note-export-status" style="font-size:0.78rem; color:#a7f3d0; margin-top:8px; display:none;"></div>
+
+            <div id="note-export-result" class="note-export-grid" style="display:none;">
+                <div class="note-step-box">
+                    <div class="note-step-head">
+                        <span class="note-step-label">① 見出し画像（16:9 アイキャッチ）を保存してnoteへ設定</span>
+                        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                            <a id="note-export-eyecatch-link" href="#" target="_blank" rel="noopener noreferrer" class="note-btn">🖼️ 1. アイキャッチ画像を開く・長押し保存 ↗</a>
+                            <a id="note-export-article-link" href="#" target="_blank" rel="noopener noreferrer" class="back-btn" style="font-size:0.75rem; padding:6px 11px;">🔗 元のWebコラムを確認 ↗</a>
+                        </div>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                        <img id="note-export-eyecatch-img" src="" alt="アイキャッチプレビュー" style="width:160px; max-width:100%; aspect-ratio:16/9; object-fit:cover; border-radius:8px; border:1px solid var(--border-strong);">
+                        <div id="note-export-eyecatch-url" style="font-size:0.74rem; color:var(--sub); word-break:break-all; flex:1; min-width:180px;"></div>
+                    </div>
+                </div>
+
+                <div class="note-step-box">
+                    <div class="note-step-head">
+                        <span class="note-step-label">② 記事タイトル（noteの「記事タイトル」欄へ貼り付け）</span>
+                        <button type="button" class="note-btn" onclick="copyNoteField('note-export-title', this)">📋 2. タイトルをコピー</button>
+                    </div>
+                    <input type="text" id="note-export-title" class="note-text-input" value="">
+                </div>
+
+                <div class="note-step-box">
+                    <div class="note-step-head">
+                        <span class="note-step-label" id="note-export-body-label">③ 本文原稿（noteの本文エディタへそのまま貼り付け）</span>
+                        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                            <button type="button" class="note-btn" onclick="copyNoteField('note-export-body', this)">📋 3. 本文をコピー（noteエディタ貼付用）</button>
+                            <button type="button" class="copy-btn" style="font-size:0.75rem; padding:6px 10px;" onclick="copyNoteFullAll(this)">📄 タイトル＋本文＋タグを一括コピー</button>
+                        </div>
+                    </div>
+                    <textarea id="note-export-body" class="note-textarea" rows="13"></textarea>
+                    <div style="font-size:0.73rem; color:var(--sub); margin-top:5px;">
+                        💡 noteの本文欄に貼り付けると <code>## 見出し</code>・<code>&gt; 会話引用</code>・<code>- 箇条書き</code> が自動整形されます。末尾のURL行の上でEnterを押すとアイキャッチ付きのリンクカードに変わります。
+                    </div>
+                </div>
+
+                <div class="note-step-box">
+                    <div class="note-step-head">
+                        <span class="note-step-label">④ ハッシュタグ（noteの「公開に進む」画面のタグ欄へ貼り付け）</span>
+                        <button type="button" class="note-btn" onclick="copyNoteField('note-export-hashtags', this)">📋 4. ハッシュタグをコピー</button>
+                    </div>
+                    <input type="text" id="note-export-hashtags" class="note-text-input" value="">
+                </div>
+            </div>
+        </div>
+
         <!-- Writing Tone & Perspective Selector -->
         <div class="theme-panel" style="border-color:rgba(216, 161, 170, 0.42);">
             <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:9px;">
@@ -765,11 +906,12 @@
                         </td>
                         <td><strong>{{ row.desk_score }}点</strong></td>
                         <td>
-                            {% if row.is_dynamic %}
-                            <button type="button" class="del-btn" onclick="deleteDynamicColumn('{{ row.slug }}')">削除</button>
-                            {% else %}
-                            <span style="font-size:0.72rem; color:var(--sub);">定番/予約枠</span>
-                            {% endif %}
+                            <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+                                <button type="button" class="note-btn" style="padding:4px 9px; font-size:0.72rem;" onclick="openNoteExportForSlug('{{ row.slug }}')">📝 note出力</button>
+                                {% if row.is_dynamic %}
+                                <button type="button" class="del-btn" onclick="deleteDynamicColumn('{{ row.slug }}')">削除</button>
+                                {% endif %}
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}
@@ -787,7 +929,127 @@
         var CURRENT_TONE = {{ editorial.tone_mode | tojson }};
         var AI_PENDING_ASYNC = {{ editorial.ai_pending_async | tojson }};
         var INITIAL_CONFIGURED = {{ (editorial.gemini_status and editorial.gemini_status.configured) | tojson }};
+        var INITIAL_EXPORT_SLUG = {{ (export_slug or '') | tojson }};
         var ACTIVE_TAB_BY_IDX = {};
+
+        function writeClipboardWithFallback(text, onDone) {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(onDone).catch(function() {
+                    fallbackCopyExec(text, onDone);
+                });
+            } else {
+                fallbackCopyExec(text, onDone);
+            }
+        }
+
+        function fallbackCopyExec(text, onDone) {
+            var ta = document.createElement("textarea");
+            ta.value = text;
+            ta.style.position = "fixed";
+            ta.style.opacity = "0";
+            document.body.appendChild(ta);
+            ta.focus();
+            ta.select();
+            try { document.execCommand("copy"); } catch (e) {}
+            document.body.removeChild(ta);
+            if (onDone) onDone();
+        }
+
+        function openNoteExportForSlug(slug) {
+            var sel = document.getElementById("note-export-select");
+            if (sel && slug) {
+                sel.value = slug;
+            }
+            var panel = document.getElementById("note-export-panel");
+            if (panel && panel.scrollIntoView) {
+                panel.scrollIntoView({behavior: "smooth", block: "start"});
+            }
+            loadNoteExportSelected();
+        }
+
+        function loadNoteExportSelected() {
+            var sel = document.getElementById("note-export-select");
+            var slug = sel ? (sel.value || "").trim() : "";
+            if (!slug) return;
+            var stEl = document.getElementById("note-export-status");
+            var btn = document.getElementById("note-export-load-btn");
+            if (stEl) {
+                stEl.style.display = "block";
+                stEl.style.color = "#a7f3d0";
+                stEl.textContent = "⏳ コラム本文をnote貼り付け用に整形しています...";
+            }
+            if (btn) btn.disabled = true;
+
+            fetch("/api/column-editorial/export-note?slug=" + encodeURIComponent(slug), {
+                headers: {"Accept": "application/json"}
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(res) {
+                if (btn) btn.disabled = false;
+                if (!res || !res.ok) {
+                    if (stEl) {
+                        stEl.style.color = "#ffd6d6";
+                        stEl.textContent = "⚠️ " + ((res && res.error) || "出力に失敗しました");
+                    }
+                    return;
+                }
+                if (stEl) {
+                    stEl.style.color = "#a7f3d0";
+                    stEl.textContent = "✅ 『" + (res.title || "") + "』のnote用原稿（" + (res.char_count || 0) + "文字）を出力しました！上から順にコピーしてnoteへ貼り付けられます。";
+                }
+                var box = document.getElementById("note-export-result");
+                if (box) box.style.display = "grid";
+
+                var imgEl = document.getElementById("note-export-eyecatch-img");
+                var imgLink = document.getElementById("note-export-eyecatch-link");
+                var imgUrlTxt = document.getElementById("note-export-eyecatch-url");
+                var artLink = document.getElementById("note-export-article-link");
+                if (imgEl) imgEl.src = res.eyecatch_url || "";
+                if (imgLink) imgLink.href = res.eyecatch_url || "#";
+                if (imgUrlTxt) imgUrlTxt.textContent = "画像URL: " + (res.eyecatch_url || "");
+                if (artLink) artLink.href = res.path || res.article_url || "#";
+
+                var titleInp = document.getElementById("note-export-title");
+                var bodyTa = document.getElementById("note-export-body");
+                var bodyLbl = document.getElementById("note-export-body-label");
+                var tagInp = document.getElementById("note-export-hashtags");
+                if (titleInp) titleInp.value = res.title || "";
+                if (bodyTa) bodyTa.value = res.body_markdown || "";
+                if (bodyLbl) bodyLbl.textContent = "③ 本文原稿（" + (res.char_count || 0) + "文字｜noteの本文エディタへそのまま貼り付け）";
+                if (tagInp) tagInp.value = res.hashtags || "";
+            })
+            .catch(function() {
+                if (btn) btn.disabled = false;
+                if (stEl) {
+                    stEl.style.display = "block";
+                    stEl.style.color = "#ffd6d6";
+                    stEl.textContent = "⚠️ 通信エラーが発生しました";
+                }
+            });
+        }
+
+        function copyNoteField(elId, btn) {
+            var el = document.getElementById(elId);
+            if (!el) return;
+            var val = el.value || "";
+            writeClipboardWithFallback(val, function() {
+                var orig = btn.innerText;
+                btn.innerText = "✓ コピー完了！";
+                setTimeout(function() { btn.innerText = orig; }, 1800);
+            });
+        }
+
+        function copyNoteFullAll(btn) {
+            var t = (document.getElementById("note-export-title") || {}).value || "";
+            var b = (document.getElementById("note-export-body") || {}).value || "";
+            var h = (document.getElementById("note-export-hashtags") || {}).value || "";
+            var full = "# " + t + "\n\n" + b + "\n\n" + h;
+            writeClipboardWithFallback(full, function() {
+                var orig = btn.innerText;
+                btn.innerText = "✓ 全文コピー完了！";
+                setTimeout(function() { btn.innerText = orig; }, 1800);
+            });
+        }
 
         function saveDefaultToneMode() {
             var msgEl = document.getElementById("tone-save-msg");
@@ -1078,6 +1340,9 @@
         }
 
         document.addEventListener("DOMContentLoaded", function() {
+            if (INITIAL_EXPORT_SLUG) {
+                openNoteExportForSlug(INITIAL_EXPORT_SLUG);
+            }
             if (AI_PENDING_ASYNC) {
                 triggerColumnAiRefresh(false, !INITIAL_CONFIGURED);
             }

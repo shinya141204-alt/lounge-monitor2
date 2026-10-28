@@ -95,7 +95,7 @@
     <!-- Non-render-blocking web font (avoids waiting on Google Fonts at PWA cold launch) -->
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet"></noscript>
-    <link rel="stylesheet" href="/static/style.css?v=20261027_3">
+    <link rel="stylesheet" href="/static/style.css?v=20261028_4">
     <link rel="preload" href="/static/app.js?v=20261028_3" as="script">
     <script>
         window.APP_CONFIG = {
@@ -109,7 +109,7 @@
          crossorigin="anonymous"></script>
     <script src="/static/affiliate_config.js?v=12" defer></script>
     {% endif %}
-    <link rel="stylesheet" href="/static/calm.css?v=15">
+    <link rel="stylesheet" href="/static/calm.css?v=16">
 </head>
 
 <body class="{% if is_staff %}staff-mode{% endif %}">
@@ -376,6 +376,9 @@
                         </a>
                         <a href="/staff/column-editorial" class="staff-action-pill master-sns-kit-pill" style="text-decoration: none;">
                             <span>📖 コラム・note編集部「4役合議・長考執筆＆予約公開」ボード</span>
+                        </a>
+                        <a href="/staff/column-editorial?export=last-train-cliff#note-export-panel" class="staff-action-pill master-sns-kit-pill" style="text-decoration: none;">
+                            <span>📤 公開済み・過去コラムの「note貼り付け用出力・コピー」</span>
                         </a>
                         <a href="/staff/analytics" class="staff-action-pill" style="text-decoration: none;">
                             <span>📈 アクセス集計（閲覧・アフィリエイト・ボタンクリック）</span>
@@ -1933,7 +1936,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/sw.js?v=60', { updateViaCache: 'none' })
+                navigator.serviceWorker.register('/sw.js?v=61', { updateViaCache: 'none' })
                     .then(function(reg) {
                         reg.update();
                         document.addEventListener('visibilitychange', function() {

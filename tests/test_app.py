@@ -1137,9 +1137,9 @@ class GrowthFeaturesTests(unittest.TestCase):
             r = self.client.get(p)
             self.assertEqual(r.status_code, 200, f"Public path {p} returned {r.status_code}")
             body = r.data.decode('utf-8')
-            self.assertIn('/static/calm.css?v=15', body, f"{p} missing /static/calm.css?v=15")
+            self.assertIn('/static/calm.css?v=16', body, f"{p} missing /static/calm.css?v=16")
             if '/static/style.css' in body:
-                self.assertIn('/static/style.css?v=20261027_3', body, f"{p} missing /static/style.css?v=20261027_3")
+                self.assertIn('/static/style.css?v=20261028_4', body, f"{p} missing /static/style.css?v=20261028_4")
             self.assertIn('公式ホームページ', body, f"{p} missing official website verification notice")
 
         # Also check scheduled preview templates via staff session
@@ -1150,9 +1150,9 @@ class GrowthFeaturesTests(unittest.TestCase):
                 sr = self.client.get(sp)
                 self.assertEqual(sr.status_code, 200, f"Scheduled path {sp} returned {sr.status_code}")
                 sbody = sr.data.decode('utf-8')
-                self.assertIn('/static/calm.css?v=15', sbody, f"{sp} missing /static/calm.css?v=15")
+                self.assertIn('/static/calm.css?v=16', sbody, f"{sp} missing /static/calm.css?v=16")
                 if '/static/style.css' in sbody:
-                    self.assertIn('/static/style.css?v=20261027_3', sbody, f"{sp} missing /static/style.css?v=20261027_3")
+                    self.assertIn('/static/style.css?v=20261028_4', sbody, f"{sp} missing /static/style.css?v=20261028_4")
                 self.assertIn('公式ホームページ', sbody, f"{sp} missing official website verification notice")
         finally:
             with self.client.session_transaction() as s:
@@ -1745,7 +1745,7 @@ class FullAuditRegressionTests(unittest.TestCase):
         sw_resp = self.client.get('/sw.js')
         try:
             sw_txt = sw_resp.data.decode('utf-8')
-            self.assertIn("CACHE_NAME = 'aiseki-navi-v60'", sw_txt)
+            self.assertIn("CACHE_NAME = 'aiseki-navi-v61'", sw_txt)
             self.assertIn("event.waitUntil", sw_txt)
         finally:
             sw_resp.close()
@@ -3315,6 +3315,98 @@ class WomenFeaturesACDETests(unittest.TestCase):
             ep_resp = self.client.get('/api/trigger-ladies-sns?channel=threads&force=1')
             self.assertEqual(ep_resp.status_code, 200)
             self.assertEqual(ep_resp.get_json()['status'], 'success')
+
+    def test_mobile_column_heading_wrapping_and_note_exporter(self):
+        import re
+        import column_editorial
+        import scheduled_articles
+
+        # 1. Verify mobile column heading anti-clipping rules in style.css and calm.css
+        with open(os.path.join(ROOT, 'static', 'style.css'), 'r', encoding='utf-8') as f_style:
+            style_css = f_style.read()
+        with open(os.path.join(ROOT, 'static', 'calm.css'), 'r', encoding='utf-8') as f_calm:
+            calm_css = f_calm.read()
+
+        self.assertEqual(style_css.count('{'), style_css.count('}'))
+        self.assertEqual(calm_css.count('{'), calm_css.count('}'))
+        h1_block = re.search(r'(?m)^h1\s*\{([^}]*)\}', style_css)
+        self.assertIsNotNone(h1_block)
+        self.assertNotIn('keep-all', h1_block.group(1))
+        self.assertIn('overflow-wrap: anywhere', h1_block.group(1))
+        card_title_block = re.search(r'\.article-card-title\s*\{([^}]*)\}', style_css)
+        self.assertIsNotNone(card_title_block)
+        self.assertNotIn('-webkit-line-clamp', card_title_block.group(1))
+        self.assertIn('overflow-wrap: anywhere !important;', calm_css)
+        self.assertIn('.content-box h2', calm_css)
+
+        # 2. Verify note.com export quality across ALL 18 static & scheduled columns
+        bare_oriental_re = re.compile(r'オリエンタル(?!ラウンジ)')
+        html_tag_re = re.compile(r'</?[a-zA-Z][^>]*>')
+        all_slugs = [c['slug'] for c in column_editorial.EXISTING_STATIC_COLUMNS] + [
+            c['slug'] for c in scheduled_articles.SCHEDULED_ARTICLES
+        ]
+        self.assertEqual(len(all_slugs), 18)
+        for sl in all_slugs:
+            res = column_editorial.export_column_for_note(sl)
+            self.assertTrue(res.get('ok'), f"Failed exporting {sl}: {res}")
+            self.assertTrue(res['title'])
+            self.assertGreaterEqual(res['char_count'], 1500, f"{sl} body too short: {res['char_count']}")
+            self.assertIn('\n## ', '\n' + res['body_markdown'], f"{sl} missing ## headings")
+            self.assertIn('\n> ', '\n' + res['body_markdown'], f"{sl} missing > dialogue quotes")
+            self.assertFalse(res['body_markdown'].startswith('# '), f"{sl} body must not duplicate # H1")
+            self.assertIn('#相席ラウンジ', res['hashtags'])
+            self.assertTrue(res['eyecatch_url'].startswith('https://aiseki-navi.com/static/'))
+            self.assertIsNone(bare_oriental_re.search(res['full_markdown']), f"Bare オリエンタル in {sl}")
+            self.assertIsNone(html_tag_re.search(res['full_markdown']), f"Raw HTML tag left in {sl}")
+            self.assertNotIn('/link/', res['full_markdown'], f"Affiliate /link/ left in {sl}")
+            self.assertNotIn('{%', res['full_markdown'])
+            self.assertNotIn('{{', res['full_markdown'])
+
+        # 3. Verify dynamic column export & cleanup
+        ed = column_editorial.run_column_editorial_pipeline([], theme_key='female_real_voice', use_ai=False)
+        saved = column_editorial.save_editorial_column(
+            candidate=ed['winner'],
+            publish_mode='schedule',
+            publish_at_str='2026-12-01 19:00',
+            custom_slug='note-export-dyn-test',
+        )
+        self.assertTrue(saved['ok'])
+        try:
+            dyn_exp = column_editorial.export_column_for_note('note-export-dyn-test')
+            self.assertTrue(dyn_exp['ok'])
+            self.assertFalse(dyn_exp['body_markdown'].startswith('# '))
+            self.assertGreater(dyn_exp['char_count'], 500)
+        finally:
+            column_editorial.delete_editorial_column('note-export-dyn-test')
+
+        # 4. Verify master-only authorization on /api/column-editorial/export-note & /columns cache isolation
+        with self.client.session_transaction() as sess:
+            sess.clear()
+        app_module.clear_fast_http_caches()
+        self.assertEqual(self.client.get('/api/column-editorial/export-note?slug=last-train-cliff').status_code, 401)
+        pub_cols = self.client.get('/columns').data.decode('utf-8')
+        self.assertNotIn('note貼り付け出力キットを開く', pub_cols)
+
+        with self.client.session_transaction() as sess:
+            sess['is_staff'] = True
+            sess['is_master'] = False
+        self.assertEqual(self.client.get('/api/column-editorial/export-note?slug=last-train-cliff').status_code, 401)
+        staff_cols = self.client.get('/columns').data.decode('utf-8')
+        self.assertNotIn('note貼り付け出力キットを開く', staff_cols)
+
+        with self.client.session_transaction() as sess:
+            sess['is_staff'] = True
+            sess['is_master'] = True
+        r_api = self.client.get('/api/column-editorial/export-note?slug=last-train-cliff')
+        self.assertEqual(r_api.status_code, 200)
+        self.assertTrue(r_api.get_json()['ok'])
+        master_cols = self.client.get('/columns').data.decode('utf-8')
+        self.assertIn('note貼り付け出力キットを開く', master_cols)
+        r_board = self.client.get('/staff/column-editorial?export=for-women')
+        self.assertEqual(r_board.status_code, 200)
+        board_html = r_board.data.decode('utf-8')
+        self.assertIn('id="note-export-panel"', board_html)
+        self.assertIn('"for-women"', board_html)
 
 
 if __name__ == '__main__':

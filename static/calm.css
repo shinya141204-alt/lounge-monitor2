@@ -1816,3 +1816,92 @@ body.theme-light.audience-women .momentum-tag.ladies-warn {
     color: #92400e !important;
 }
 
+/* ==========================================================================
+   17. スマホ・全端末でのコラムタイトル・記事見出し（h1/h2/h3）見切れ完全防止
+   ========================================================================== */
+h1:not(.portal-brand-title),
+.article-title,
+.article-box h1,
+.content-box h1,
+.page-hero h1,
+.hero-box h1,
+.article-card h2,
+.portal-article-body h3,
+.article-card-title,
+.article-body h2,
+.article-body h3,
+.article-content h2,
+.article-content h3,
+.article-box h2,
+.article-box h3,
+.content-box h2,
+.content-box h3,
+.sec-title,
+.seo-guide-header h2,
+.seo-guide-card h3,
+h2.sec-h2,
+h3.sec-h3 {
+    word-break: normal !important;
+    overflow-wrap: anywhere !important;
+    white-space: normal !important;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+/* flex指定によるインライン要素の横並び潰れ・見切れを解消 */
+.article-content h2,
+.article-body h2,
+.article-box h2,
+.content-box h2 {
+    display: block !important;
+}
+
+.header-brand-block h1 {
+    word-break: keep-all !important;
+    overflow-wrap: normal !important;
+}
+
+@media (max-width: 600px) {
+    .article-title,
+    .article-box h1,
+    .content-box h1,
+    .hero-box h1,
+    .page-hero h1 {
+        font-size: 1.24rem !important;
+        line-height: 1.48 !important;
+        letter-spacing: 0.01em !important;
+    }
+
+    .article-body h2,
+    .article-content h2,
+    .article-box h2,
+    .content-box h2,
+    .sec-title,
+    h2.sec-h2 {
+        font-size: 1.08rem !important;
+        line-height: 1.48 !important;
+        padding-left: 11px !important;
+        padding-right: 10px !important;
+    }
+
+    .article-body h3,
+    .article-content h3,
+    .article-box h3,
+    .content-box h3,
+    h3.sec-h3 {
+        font-size: 0.98rem !important;
+        line-height: 1.46 !important;
+    }
+
+    .article-card h2,
+    .portal-article-body h3,
+    .article-card-title {
+        font-size: 0.94rem !important;
+        line-height: 1.46 !important;
+        display: block !important;
+        overflow: visible !important;
+    }
+}
+
+
