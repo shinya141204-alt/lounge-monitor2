@@ -1442,11 +1442,11 @@ def _generate_gemini_column_candidate(
     prompt = _build_column_gemini_prompt(research, plan, site_url, tone_mode=tm)
     parsed, mn, _ = sns_editorial.call_editorial_ai_json(
         prompt=prompt,
-        max_output_tokens=6500,
-        thinking_budget=2048,
+        max_output_tokens=5600,
+        thinking_budget=768,
         temperature=0.86,
-        total_deadline_sec=45.0,
-        per_call_timeout_sec=30.0,
+        total_deadline_sec=78.0,
+        per_call_timeout_sec=52.0,
         allow_blocking=True,
         now_jst=now_jst,
     )

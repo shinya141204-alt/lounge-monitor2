@@ -2627,32 +2627,62 @@ def _discover_claude_models(api_key: str, timeout: float = 4.0) -> list:
 
 
 def _parse_ai_json_object(raw_text: str):
-    """Robustly parse a JSON object from either Gemini or Claude output."""
+    """Robustly parse a JSON object from either Gemini or Claude output (with trailing-comma repair)."""
     txt = (raw_text or "").strip()
     if not txt:
         return None
     if txt.startswith("```"):
         txt = re.sub(r"^```(?:json)?\s*", "", txt)
         txt = re.sub(r"\s*```$", "", txt).strip()
-    try:
-        parsed = json.loads(txt, strict=False)
-        if isinstance(parsed, list) and parsed:
-            parsed = parsed[0]
-        if isinstance(parsed, dict):
-            return parsed
-    except Exception:
-        pass
-    # Fallback: extract first outermost `{ ... }` block if model prepended/appended commentary
+
+    candidates_to_try = [txt]
     start = txt.find("{")
     end = txt.rfind("}")
     if start != -1 and end > start:
-        try:
-            parsed = json.loads(txt[start : end + 1], strict=False)
-            if isinstance(parsed, dict):
-                return parsed
-        except Exception:
-            pass
+        sub = txt[start : end + 1]
+        if sub != txt:
+            candidates_to_try.append(sub)
+
+    for cand_str in candidates_to_try:
+        for attempt_str in (cand_str, re.sub(r",\s*([}\]])", r"\1", cand_str)):
+            try:
+                parsed = json.loads(attempt_str, strict=False)
+                if isinstance(parsed, list) and parsed:
+                    parsed = parsed[0]
+                if isinstance(parsed, dict):
+                    return parsed
+            except Exception:
+                pass
     return None
+
+
+def _humanize_editorial_ai_error(raw_err: str, g_key: str = "") -> str:
+    """Translate cryptic Google/Vertex HTTP errors into clear actionable Japanese for editorial UI."""
+    err = (raw_err or "").strip()
+    if not err:
+        return ""
+    low = err.lower()
+    if "generative language api has not been used" in low or "api keys are not supported by this api" in low:
+        return (
+            "通常の Google Cloud APIキー（AIza...）は Vertex AI 無料クレジット枠では認証できない仕様です。"
+            "無料クレジットを使うには Google Cloud の「サービスアカウントJSONファイル」を選択して登録するか、"
+            "Vertex AI Studio の AQ. キーをご利用ください"
+        )
+    if "agent platform api has not been used" in low or "vertex ai api has not been used" in low:
+        m_p = re.search(r"project\s+([A-Za-z0-9_-]{6,})", err)
+        pid = m_p.group(1) if m_p else ""
+        if pid and pid != "loungemonitor":
+            return f"登録中のキーは別プロジェクト『{pid}』（API未有効）のキーです。無料クレジット側プロジェクトのJSONキーまたはAQ.キーを登録してください"
+        return err
+    if "read timed out" in low or "timed out" in low:
+        return "AI長考モデルの応答がタイムアウトしました（「再生成」ボタンを押すと解消します）"
+    if "resource_exhausted" in low or "quota exceeded" in low or "http 429" in low:
+        return "APIの1分あたり利用上限（429）に達しました。30秒ほど待ってから再生成してください"
+    if "api_key_invalid" in low or "api key not valid" in low:
+        if g_key and g_key.startswith("AQ."):
+            return "登録中の AQ. キーのプロジェクトで Agent Platform API が未有効です。無料クレジット側プロジェクトのキーまたはJSONファイルを登録してください"
+        return "登録されたAPIキーが無効です。キーを再度コピーして貼り直してください"
+    return err
 
 
 def _build_endpoint_request(
@@ -2696,7 +2726,7 @@ def _build_endpoint_request(
     if endpoint_kind == "vertex_express":
         return (
             f"https://aiplatform.googleapis.com/v1/publishers/google/models/{model_name}:generateContent",
-            {"Content-Type": "application/json"},
+            {"Content-Type": "application/json", "x-goog-api-key": api_key},
             {"key": api_key},
             payload,
         )
@@ -2784,6 +2814,13 @@ def verify_vertex_connection(timeout: float = 14.0) -> dict:
             )
             try:
                 resp = requests.post(url, headers=headers, params=params, json=payload, timeout=max(4.0, float(timeout)))
+                if resp.status_code == 400 and "thinkingConfig" in (payload.get("generationConfig") or {}):
+                    alt_payload = {
+                        "contents": payload["contents"],
+                        "generationConfig": {k: v for k, v in payload["generationConfig"].items() if k != "thinkingConfig"},
+                    }
+                    alt_url = url.replace("/v1/", "/v1beta1/")
+                    resp = requests.post(alt_url, headers=headers, params=params, json=alt_payload, timeout=max(4.0, float(timeout)))
                 if resp.status_code == 200:
                     now_str = datetime.datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
                     set_vertex_enabled(True)
@@ -2807,17 +2844,22 @@ def verify_vertex_connection(timeout: float = 14.0) -> dict:
                     }
                 if resp.status_code == 404:
                     continue
+                body_txt = resp.text or ""
                 if g_key.startswith("AQ."):
-                    body_txt = resp.text or ""
                     m_proj = re.search(r"project\s+([A-Za-z0-9_-]{6,})", body_txt)
                     if m_proj:
                         aq_proj_id = m_proj.group(1)
                         aq_err_msg = (
                             f"現在登録中のキー（{masked_aq}）は別プロジェクト『{aq_proj_id}』（API未有効）のキーです。"
-                            "すでに「APIが有効です」になっている無料クレジット側プロジェクトで新しいAPIキーを1つ作成して貼り替えてください"
+                            "無料クレジット側プロジェクトのJSONキーファイルまたはAQ.キーを登録してください"
                         )
                     else:
                         aq_err_msg = f"登録済み AQ. キー HTTP {resp.status_code}: {body_txt[:110]}"
+                elif "api keys are not supported by this api" in body_txt.lower():
+                    aq_err_msg = (
+                        f"登録された通常APIキー（{masked_aq}）は Google Cloud 無料クレジット枠（Vertex AI）では認証できない仕様です。"
+                        "無料クレジットで使うには「📂 JSONキーファイルを選択」からサービスアカウントJSONを登録してください"
+                    )
                 if resp.status_code in (401, 403):
                     break
             except Exception as e:
@@ -2946,7 +2988,7 @@ def call_editorial_ai_json(
     pref = get_ai_engine_pref(allow_blocking=False)
     is_vkey = _is_vertex_express_candidate(g_key, pref)
     vkey_ready = bool(is_vkey and time.time() >= _vertex_auth_state.get("aq_backoff_until", 0.0))
-    has_ai_studio = bool(g_key)
+    has_ai_studio = bool(g_key and not g_key.startswith("AQ."))
     v_info = _resolve_vertex_service_account_info()
     v_ready = bool(v_info and time.time() >= _vertex_auth_state.get("backoff_until", 0.0))
 
@@ -3018,6 +3060,20 @@ def call_editorial_ai_json(
                         json=payload,
                         timeout=min(float(per_call_timeout_sec), rem),
                     )
+                    if resp.status_code == 400 and "thinkingConfig" in (payload.get("generationConfig") or {}):
+                        rem2 = deadline - time.monotonic()
+                        if rem2 > 1.2:
+                            alt_payload = {
+                                "contents": payload["contents"],
+                                "generationConfig": {k: v for k, v in payload["generationConfig"].items() if k != "thinkingConfig"},
+                            }
+                            resp = requests.post(
+                                url.replace("/v1/", "/v1beta1/"),
+                                headers=headers,
+                                params=params,
+                                json=alt_payload,
+                                timeout=min(float(per_call_timeout_sec), rem2),
+                            )
                     if resp.status_code >= 400:
                         last_err = f"Vertex Express HTTP {resp.status_code} ({vxm}): {(resp.text or '')[:130]}"
                         logger.warning(f"[editorial_ai] {last_err}")
@@ -3107,6 +3163,19 @@ def call_editorial_ai_json(
                             json=payload,
                             timeout=min(float(per_call_timeout_sec), rem),
                         )
+                        if resp.status_code == 400 and "thinkingConfig" in (payload.get("generationConfig") or {}):
+                            rem2 = deadline - time.monotonic()
+                            if rem2 > 1.2:
+                                alt_payload = {
+                                    "contents": payload["contents"],
+                                    "generationConfig": {k: v for k, v in payload["generationConfig"].items() if k != "thinkingConfig"},
+                                }
+                                resp = requests.post(
+                                    url.replace("/v1/", "/v1beta1/"),
+                                    headers=headers,
+                                    json=alt_payload,
+                                    timeout=min(float(per_call_timeout_sec), rem2),
+                                )
                         if resp.status_code == 401:
                             with _vertex_auth_lock:
                                 _vertex_auth_state["token"] = ""
@@ -3261,6 +3330,20 @@ def call_editorial_ai_json(
                         json=payload,
                         timeout=min(float(per_call_timeout_sec), rem),
                     )
+                    if resp.status_code == 400 and "thinkingConfig" in (payload.get("generationConfig") or {}):
+                        rem2 = deadline - time.monotonic()
+                        if rem2 > 1.2:
+                            alt_payload = {
+                                "contents": payload["contents"],
+                                "generationConfig": {k: v for k, v in payload["generationConfig"].items() if k != "thinkingConfig"},
+                            }
+                            resp = requests.post(
+                                url.replace("/v1/", "/v1beta1/"),
+                                headers=headers,
+                                params=params,
+                                json=alt_payload,
+                                timeout=min(float(per_call_timeout_sec), rem2),
+                            )
                     if resp.status_code >= 400:
                         last_err = f"Gemini HTTP {resp.status_code} ({gm}): {(resp.text or '')[:130]}"
                         logger.warning(f"[editorial_ai] {last_err}")
@@ -3291,7 +3374,9 @@ def call_editorial_ai_json(
                         _last_gemini_meta["working_route"] = None
 
     if last_err:
-        _last_gemini_meta["last_error"] = last_err
+        friendly_final = _humanize_editorial_ai_error(last_err, g_key)
+        _last_gemini_meta["last_error"] = friendly_final
+        return None, "", friendly_final
     return None, "", last_err
 
 
