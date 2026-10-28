@@ -85,6 +85,97 @@ STYLE_LABELS = {
     "ig_classic_template": "📊 従来型・定型アナウンスキャプション",
 }
 
+TONE_STATE_KEY = "editorial:default_tone_mode"
+DEFAULT_TONE_MODE = "spicy_female"
+
+EDITORIAL_TONE_MODES = {
+    "spicy_female": {
+        "key": "spicy_female",
+        "label": "🌶️💄 辛口本音×女性目線ミックス（新標準）",
+        "short_label": "🌶️💄 辛口×女性本音",
+        "desc": "ご都合主義の綺麗事を排除し、「男性が気づかない敗因の図星（毒）」と「女性ペアの本音・裏側」の両方を効かせるモード。",
+        "prompt_directive": (
+            "【トーン＆視点指定：🌶️💄 辛口本音×女性目線ミックス】\n"
+            "- 誰にでも好かれようとする無難な優等生トーン（「〜がおすすめです✨」「楽しく飲めますよ😊」等の浅い綺麗事）を封印すること。\n"
+            "- 「看板の知名度だけで並んで時間を溶かす非効率」や「男余りの店で惰性で粘るサンクコスト」を少しビターな本音で突きつつ、同時に「女の子側も待たされる店や必死すぎる席はすぐ見切って好バランス店へ流れている」「女子組が今すぐ待ちゼロで入れる店」という女性目線のリアルな肌感覚を織り交ぜること。"
+        ),
+    },
+    "spicy": {
+        "key": "spicy",
+        "label": "🔥 辛口・毒強め特化（綺麗事ゼロの現場解剖）",
+        "short_label": "🔥 辛口・毒強め",
+        "desc": "優等生アドバイスを完全封印し、耳が痛い図星と残酷な現場構造（なぜノープラン組が負けるのか）をズバッと切るビター特化モード。",
+        "prompt_directive": (
+            "【トーン＆視点指定：🔥 辛口・毒強め特化（ビター＆シニカル）】\n"
+            "- キラキラした宣伝文句や「ぜひ行ってみてください」的な優しい語尾を禁止し、現場を知り尽くした常連が深夜のバーでぶっちゃけるような、少し毒と苦味のある鋭い語り口にすること。\n"
+            "- 「何も見ずに人気店へ突撃して受付待ちで消耗する一番もったいない負けパターン」や「徒歩3分で世界が違うのに1店舗に固執する罠」など、読者が思わず『うわ、図星だ…』と保存したくなる鋭い観察眼を入れること（ただし特定の個人や店舗への誹謗中傷はせず、あくまで立ち回りの構造を辛口に斬ること）。"
+        ),
+    },
+    "female_real": {
+        "key": "female_real",
+        "label": "💄 女性目線リアル特化（女子の本音・裏側解剖）",
+        "short_label": "💄 女性目線リアル",
+        "desc": "女性2人組が実は見ている減点サイン、女子トイレや帰り道LINEの本音、女性側が待ちゼロで当たり席を引く立ち回りに特化するモード。",
+        "prompt_directive": (
+            "【トーン＆視点指定：💄 女性目線リアル特化（女子の本音・裏側）】\n"
+            "- ラウンジに通う20〜30代女性ペアのリアルな本音（「せっかく髪もメイクも整えたのに受付で待たされる店はすぐ出る」「余裕のない質問攻め席より、落ち着いて話せるバランスの店がいい」「雨の日は前髪が死ぬから地下直結しか勝たん」など）を軸に語ること。\n"
+            "- 男性読者には「実は女子側はここを見ている」というハッとする気づきを与え、女性フォロワーには「今すぐ待ち時間ゼロで即乾杯できる男性先行の狙い目店」がすぐ分かる実用性を両立させること。"
+        ),
+    },
+    "standard": {
+        "key": "standard",
+        "label": "🥂 マイルド標準（初心者向け・丁寧ガイド）",
+        "short_label": "🥂 マイルド標準",
+        "desc": "毒や辛口表現を抑え、初めて相席ラウンジへ行く読者にも安心感を与えるフラットで丁寧なガイドモード。",
+        "prompt_directive": (
+            "【トーン＆視点指定：🥂 マイルド標準（丁寧・フラット）】\n"
+            "- 辛口すぎる表現は控え、相席ラウンジ初心者でも安心して参考にできる親しみやすく落ち着いた常連トーンで書くこと。"
+        ),
+    },
+}
+
+
+def normalize_tone_mode(tone_mode: str) -> str:
+    tm = (tone_mode or "").strip().lower()
+    return tm if tm in EDITORIAL_TONE_MODES else ""
+
+
+def get_default_editorial_tone_mode(allow_blocking: bool = False) -> str:
+    try:
+        saved = job_state.get_value(TONE_STATE_KEY, allow_blocking=allow_blocking) or ""
+        norm = normalize_tone_mode(saved)
+        if norm:
+            return norm
+    except Exception:
+        pass
+    return DEFAULT_TONE_MODE
+
+
+def get_editorial_tone_mode(tone_mode: str = None, allow_blocking: bool = False) -> str:
+    explicit = normalize_tone_mode(tone_mode)
+    if explicit:
+        return explicit
+    return get_default_editorial_tone_mode(allow_blocking=allow_blocking)
+
+
+def set_default_editorial_tone_mode(tone_mode: str) -> str:
+    resolved = normalize_tone_mode(tone_mode) or DEFAULT_TONE_MODE
+    job_state.set_value(TONE_STATE_KEY, resolved)
+    clear_editorial_ai_cache()
+    return resolved
+
+
+def get_tone_modes_catalog() -> list:
+    return [
+        {
+            "key": v["key"],
+            "label": v["label"],
+            "short_label": v["short_label"],
+            "desc": v["desc"],
+        }
+        for v in EDITORIAL_TONE_MODES.values()
+    ]
+
 URBAN_CLUSTERS = [
     ("新宿", "shinjuku", ("新宿", "SHINJUKU")),
     ("渋谷・恵比寿", "shibuya", ("渋谷", "恵比寿", "SHIBUYA", "EBISU")),
@@ -769,12 +860,19 @@ def _pick_distinct_store(stores: list, exclude_names: set):
     return None
 
 
-def _write_x_candidates(research: dict, slot_label: str, now_jst: datetime.datetime, site_url: str) -> list:
+def _write_x_candidates(
+    research: dict,
+    slot_label: str,
+    now_jst: datetime.datetime,
+    site_url: str,
+    tone_mode: str = DEFAULT_TONE_MODE,
+) -> list:
     weekdays_ja = ["月", "火", "水", "木", "金", "土", "日"]
     wd_str = weekdays_ja[_business_datetime(now_jst).weekday()]
     t_str = now_jst.strftime("%H:%M")
     slot_hh = (slot_label or "20:00")[:2]
     ymd = now_jst.strftime("%Y%m%d")
+    tm = get_editorial_tone_mode(tone_mode)
 
     top_stores = research.get("top_stores") or []
     if not top_stores:
@@ -784,6 +882,7 @@ def _write_x_candidates(research: dict, slot_label: str, now_jst: datetime.datet
     cluster = research.get("best_cluster")
     focus = research.get("focus_store") or s1
     anomaly = research.get("anomaly_store")
+    male_lead = research.get("male_lead_store")
     east = research.get("east_top")
     west = research.get("west_top")
 
@@ -802,24 +901,43 @@ def _write_x_candidates(research: dict, slot_label: str, now_jst: datetime.datet
         )
 
         if cluster["pct_gap"] >= 12:
+            if tm == "spicy":
+                hook_a = f"看板の知名度だけで並んで時間を溶かすのが一番もったいない夜。{hub_name}でもここまで割れてる👀"
+                tail_a = "男余り店で粘る前にリプ欄で比較を👇"
+            elif tm == "female_real":
+                hook_a = f"女の子側も待たされる店はすぐ見切って移動する時間。いま{hub_name}で空気感が割れてる💄"
+                tail_a = "女子は男性先行店なら待ち0分で即乾杯👇"
+            elif tm == "spicy_female":
+                hook_a = f"男余り店で粘る裏で、慣れた女子組は好バランス店へ流れてる夜。{hub_name}がかなり割れてる👀"
+                tail_a = "空振り回避の比較はリプ欄へ👇"
+            else:
+                hook_a = f"いま（{t_str}）の{hub_name}、徒歩圏でも店舗で男女比が割れてる👀"
+                tail_a = f"{outside_line}比較はリプ欄へ👇"
+
             body_a = (
-                f"いま（{t_str}）の{hub_name}、徒歩圏でも店舗で男女比が割れてる👀\n\n"
+                f"{hook_a}\n\n"
                 f"・{hs['ja_name']}：女性{hs['women']}・男性{hs['men']}（女性比{hs['wpct']}%）\n"
                 f"・{ls['ja_name']}：女性{ls['women']}・男性{ls['men']}（女性比{ls['wpct']}%）\n\n"
-                f"{outside_line}比較はリプ欄へ👇\n"
+                f"{tail_a}\n"
                 f"#相席ナビ #相席ラウンジ"
             )
             if x_poster.compute_twitter_weight(body_a) > 272:
                 body_a = (
-                    f"いま（{t_str}）の{hub_name}、徒歩圏でも店舗で男女比が割れてる👀\n\n"
-                    f"・{hs['ja_name']}：女性{hs['women']}・男性{hs['men']}（女性比{hs['wpct']}%）\n"
-                    f"・{ls['ja_name']}：女性{ls['women']}・男性{ls['men']}（女性比{ls['wpct']}%）\n\n"
-                    f"向かう前の比較はリプ欄から👇\n"
+                    f"{hook_a}\n\n"
+                    f"・{hs['casual_name']}：女性{hs['women']}・男性{hs['men']}（女性比{hs['wpct']}%）\n"
+                    f"・{ls['casual_name']}：女性{ls['women']}・男性{ls['men']}（女性比{ls['wpct']}%）\n\n"
+                    f"向かう前の比較はリプ欄へ👇\n"
                     f"#相席ナビ #相席ラウンジ"
                 )
         else:
+            if tm in ("spicy", "spicy_female"):
+                hook_a2 = f"{wd_str}曜{t_str}、ノープラン突撃より数字を見て選ぶ方が勝てる夜。{hub_name}の現在値👇"
+            elif tm == "female_real":
+                hook_a2 = f"{wd_str}曜{t_str}、女子2人組も落ち着いて飲めるバランスで{hub_name}が推移中🥂"
+            else:
+                hook_a2 = f"{wd_str}曜{t_str}時点、いま{hub_name}まわりがいいバランスで集まってる🍻"
             body_a = (
-                f"{wd_str}曜{t_str}時点、いま{hub_name}まわりがいいバランスで集まってる🍻\n\n"
+                f"{hook_a2}\n\n"
                 f"・{hs['ja_name']}：女性{hs['women']}・男性{hs['men']}（女性比{hs['wpct']}%）\n"
                 f"・{ls['ja_name']}：女性{ls['women']}・男性{ls['men']}\n\n"
                 f"待ちが出そうな時は近くの別店舗も覗くのが確実👇\n"
@@ -835,39 +953,66 @@ def _write_x_candidates(research: dict, slot_label: str, now_jst: datetime.datet
         candidates.append({
             "style": "hub_gap",
             "style_label": STYLE_LABELS["hub_gap"],
-            "writer_note": f"{hub_name}内の男女比差（{hs['ja_name']} {hs['wpct']}% vs {ls['ja_name']} {ls['wpct']}%）を切り取り、同一店舗の重複言及を排除して作成。",
+            "writer_note": f"【{EDITORIAL_TONE_MODES[tm]['short_label']}】{hub_name}内の男女比差（{hs['ja_name']} {hs['wpct']}% vs {ls['ja_name']} {ls['wpct']}%）を切り取り作成。",
             "main_text": body_a,
             "reply_text": reply_a,
         })
 
-    # 2) surge_focus: Spotlight 1 sweet-spot store + 2 distinct runners-up (weather/calendar aware)
+    # 2) surge_focus: Spotlight 1 sweet-spot store + distinct runner-up (weather/calendar/tone aware)
     w_diff = int(focus.get("women_diff") or 0)
     cal_ctx = research.get("calendar") or {}
     weather_ctx = research.get("weather") or {}
     if slot_label == "20:00":
-        if cal_ctx.get("is_payday_window"):
-            opener_b = f"給料日後の20時台、今夜は「{focus['ja_name']}」の立ち上がりがかなり早い👀"
+        if tm in ("spicy", "spicy_female"):
+            opener_b = f"21時過ぎて男性待ちに並ぶ前に動くのが正解。今夜は「{focus['ja_name']}」の立ち上がりがかなり早い👀"
+            closing_b = "余裕のあるうちに座るなら今の時間帯👇"
+        elif tm == "female_real":
+            opener_b = f"1軒目帰りの女子組が早くも動き出してる20時台。「{focus['ja_name']}」の立ち上がりがかなり早い💄"
+            closing_b = "ガヤガヤする前に落ち着いて飲みたい組は今が狙い目👇"
         else:
-            opener_b = f"まだ20時台だけど、今夜は「{focus['ja_name']}」の立ち上がりがかなり早い👀"
-        closing_b = "混み始める前に待ちなしで座るなら今のうちが狙い目👇"
+            opener_b = (
+                f"給料日後の20時台、今夜は「{focus['ja_name']}」の立ち上がりがかなり早い👀"
+                if cal_ctx.get("is_payday_window")
+                else f"まだ20時台だけど、今夜は「{focus['ja_name']}」の立ち上がりがかなり早い👀"
+            )
+            closing_b = "混み始める前に待ちなしで座るなら今のうちが狙い目👇"
     elif slot_label in ("00:00", "02:00"):
-        opener_b = f"終電すぎのこの時間（{t_str}）、いま一番女性が残ってるのは「{focus['ja_name']}」🌙"
-        closing_b = "深夜は人が集まる店と静かな店が分かれるので事前確認が確実👇"
+        if tm in ("spicy", "spicy_female"):
+            opener_b = f"終電後に過疎ってる店へ突撃すると寒いけど、いま「{focus['ja_name']}」はしっかり女性が残ってる🌙"
+            closing_b = "深夜は勝ち店と静かな店が真っ二つに割れるので要確認👇"
+        elif tm == "female_real":
+            opener_b = f"終電後もまだ飲み足りない女子2軒目組が集まってるのが「{focus['ja_name']}」🌙"
+            closing_b = "深夜帯のリアルな男女バランスはリプ欄へ👇"
+        else:
+            opener_b = f"終電すぎのこの時間（{t_str}）、いま一番女性が残ってるのは「{focus['ja_name']}」🌙"
+            closing_b = "深夜は人が集まる店と静かな店が分かれるので事前確認が確実👇"
     else:
         if weather_ctx.get("is_rainy"):
-            opener_b = f"雨の{t_str}時点☔ 駅チカでいま女性比率が高めなのが「{focus['ja_name']}」✨"
-        elif cal_ctx.get("is_pre_holiday"):
-            opener_b = f"祝前日の{t_str}時点、いま女性比率が高めで座りやすいのが「{focus['ja_name']}」✨"
+            opener_b = (
+                f"雨の日は巻き髪が死ぬから女子は駅チカしか行かない☔ いま「{focus['ja_name']}」が好バランス💄"
+                if tm in ("female_real", "spicy_female")
+                else f"雨の{t_str}時点☔ 駅チカでいま女性比率が高めなのが「{focus['ja_name']}」✨"
+            )
         elif w_diff >= 3:
             opener_b = f"{t_str}時点、「{focus['ja_name']}」に直近で女性が+{w_diff}名増えて狙い目🔥"
+        elif tm == "spicy":
+            opener_b = f"金曜ピーク感覚で男余り店に突っ込むより、いま女性比が高い「{focus['ja_name']}」が堅い👀"
+        elif tm == "female_real" and male_lead and male_lead["name"] != focus["name"]:
+            opener_b = f"男性目線の穴場は「{focus['ja_name']}」、逆に女子組が待ち0分で即座れるのは「{male_lead['casual_name']}」🥂"
         else:
-            opener_b = f"{t_str}時点、いま女性比率が高めで座りやすいのが「{focus['ja_name']}」✨"
-        closing_b = "向かう前に近隣店舗のバランスも見比べてみてください👇"
+            opener_b = f"{t_str}時点、いま女性比率が高めで座りやすいのが「{focus['ja_name']}」👀"
+        closing_b = (
+            "惰性で店を選ぶ前に近隣バランスを要チェック👇"
+            if tm in ("spicy", "spicy_female")
+            else "向かう前に近隣店舗のバランスも見比べてみてください👇"
+        )
 
     other_top = [s for s in top_stores if s["name"] != focus["name"]][:2]
     other_line = ""
-    if len(other_top) >= 2:
+    if len(other_top) >= 2 and tm == "standard":
         other_line = f"ほかにも{other_top[0]['ja_name']}（女性{other_top[0]['women']}名）、{other_top[1]['ja_name']}（女性{other_top[1]['women']}名）が好調。\n\n"
+    elif other_top:
+        other_line = f"他エリアでは{other_top[0]['ja_name']}（女性{other_top[0]['women']}名）も好調。\n\n"
 
     body_b = (
         f"{opener_b}\n"
@@ -876,16 +1021,15 @@ def _write_x_candidates(research: dict, slot_label: str, now_jst: datetime.datet
         f"{closing_b}\n"
         f"#相席ラウンジ #相席ナビ"
     )
-    if x_poster.compute_twitter_weight(body_b) > 272 and other_top:
+    if x_poster.compute_twitter_weight(body_b) > 272:
+        body_b = body_b.replace("オリエンタルラウンジ", "オリラジ")
+    if x_poster.compute_twitter_weight(body_b) > 272:
         body_b = (
-            f"{opener_b}\n"
+            f"{opener_b.replace('オリエンタルラウンジ', 'オリラジ')}\n"
             f"現在：女性{focus['women']}名 / 男性{focus['men']}名（女性比{focus['wpct']}%）\n\n"
-            f"ほかにも{other_top[0]['ja_name']}（女性{other_top[0]['women']}名）が盛り上がってます。\n"
             f"{closing_b}\n"
             f"#相席ラウンジ #相席ナビ"
         )
-    if x_poster.compute_twitter_weight(body_b) > 272:
-        body_b = body_b.replace("オリエンタルラウンジ", "オリラジ")
     f_slug = store_master.slug_of(focus["name"])
     reply_b = (
         f"📊 {focus['ja_name']}の現在人数・終電後の残りやすさ指標はこちら\n"
@@ -895,7 +1039,7 @@ def _write_x_candidates(research: dict, slot_label: str, now_jst: datetime.datet
     candidates.append({
         "style": "surge_focus",
         "style_label": STYLE_LABELS["surge_focus"],
-        "writer_note": f"女性比・勢いが良好な「{focus['ja_name']}」を主役に据え、機械的なメダル記号を使わず自然な観察文で作成。",
+        "writer_note": f"【{EDITORIAL_TONE_MODES[tm]['short_label']}】女性比・勢いが良好な「{focus['ja_name']}」を主役に作成。",
         "main_text": body_b,
         "reply_text": reply_b,
     })
@@ -908,15 +1052,20 @@ def _write_x_candidates(research: dict, slot_label: str, now_jst: datetime.datet
             f"・{partner['ja_name']}：女性{partner['women']}・男性{partner['men']}（女性比{partner['wpct']}%）\n"
             if partner else ""
         )
+        anom_tail = (
+            "ライバルが気づく前に座れる普段比プラス店が一番コスパいい👇"
+            if tm in ("spicy", "spicy_female")
+            else "普段比プラスの店は当たりやすいので今夜の候補にどうぞ👇"
+        )
         body_c = (
             f"いつもの{wd_str}曜{slot_label[:2]}時台より、今夜は「{anomaly['ja_name']}」に女性が+{u_diff}名多く入ってる📊\n\n"
             f"・{anomaly['ja_name']}：女性{anomaly['women']}・男性{anomaly['men']}（女性比{anomaly['wpct']}%）\n"
             f"{partner_line}\n"
-            f"普段比プラスの店は当たりやすいので今夜の候補にどうぞ👇\n"
+            f"{anom_tail}\n"
             f"#相席ナビ #相席ラウンジ"
         )
         c_style = "usual_anomaly"
-        w_note_c = f"普段の{wd_str}曜同時間帯より女性が+{u_diff}名多い実測ギャップをフックに作成。"
+        w_note_c = f"【{EDITORIAL_TONE_MODES[tm]['short_label']}】普段の{wd_str}曜同時間帯より女性が+{u_diff}名多い実測ギャップをフックに作成。"
     else:
         has_distinct_ew = (
             bool(east)
@@ -927,15 +1076,20 @@ def _write_x_candidates(research: dict, slot_label: str, now_jst: datetime.datet
             and (int(west.get("women") or 0) + int(west.get("men") or 0)) > 0
         )
         if has_distinct_ew:
+            ew_tail = (
+                "人気店ほど時間帯で待ちが出るため、徒歩圏の穴場比較はリプ欄へ👇"
+                if tm in ("spicy", "spicy_female")
+                else "どちらも好ペースで推移中。各街の穴場・待ち状況はリプ欄へ👇"
+            )
             body_c = (
                 f"{wd_str}曜{t_str}時点、関東と関西でいま一番人が集まってる2店舗🍻\n\n"
                 f"🗼関東：{east['ja_name']}（女性{east['women']}・男性{east['men']} / {east['wpct']}%）\n"
                 f"🐙関西：{west['ja_name']}（女性{west['women']}・男性{west['men']} / {west['wpct']}%）\n\n"
-                f"どちらも好ペースで推移中。各街の穴場・待ち状況はリプ欄へ👇\n"
+                f"{ew_tail}\n"
                 f"#相席ナビ #相席ラウンジ"
             )
             c_style = "east_west_talk"
-            w_note_c = f"関東トップ（{east['ja_name']}）と関西トップ（{west['ja_name']}）を対比し、東西どちらのフォロワーにも刺さる構成で作成。"
+            w_note_c = f"関東トップ（{east['ja_name']}）と関西トップ（{west['ja_name']}）を対比して作成。"
         else:
             lead = (
                 east if (east and (int(east.get("women") or 0) + int(east.get("men") or 0)) > 0)
@@ -947,7 +1101,7 @@ def _write_x_candidates(research: dict, slot_label: str, now_jst: datetime.datet
                     f"{wd_str}曜{t_str}時点、いま全国で先行して人が集まってる上位店舗🍻\n\n"
                     f"・{lead['ja_name']}（女性{lead['women']}・男性{lead['men']} / {lead['wpct']}%）\n"
                     f"・{second['ja_name']}（女性{second['women']}・男性{second['men']} / {second['wpct']}%）\n\n"
-                    f"どちらも好ペースで推移中。各街の穴場・待ち状況はリプ欄へ👇\n"
+                    f"各街の穴場・待ち状況はリプ欄へ👇\n"
                     f"#相席ナビ #相席ラウンジ"
                 )
                 w_note_c = f"現在先行して稼働中の「{lead['ja_name']}」と「{second['ja_name']}」を重複なく対比して作成。"
@@ -989,7 +1143,13 @@ def _write_x_candidates(research: dict, slot_label: str, now_jst: datetime.datet
     return candidates
 
 
-def _write_threads_candidates(research: dict, slot_label: str, now_jst: datetime.datetime, site_url: str) -> list:
+def _write_threads_candidates(
+    research: dict,
+    slot_label: str,
+    now_jst: datetime.datetime,
+    site_url: str,
+    tone_mode: str = DEFAULT_TONE_MODE,
+) -> list:
     """
     Generate 4 Meta Threads candidates (strictly <= 495 chars; conversational essay style works best on Threads).
     Respects odd/even day URL vs Bio-link anti-spam rotation.
@@ -998,6 +1158,7 @@ def _write_threads_candidates(research: dict, slot_label: str, now_jst: datetime
     weekdays_ja = ["月", "火", "水", "木", "金", "土", "日"]
     wd_str = weekdays_ja[_business_datetime(now_jst).weekday()]
     t_str = now_jst.strftime("%H:%M")
+    tm = get_editorial_tone_mode(tone_mode)
 
     top_stores = research.get("top_stores") or []
     if not top_stores:
@@ -1030,22 +1191,27 @@ def _write_threads_candidates(research: dict, slot_label: str, now_jst: datetime
             f"・{c['hub_label']}：{c['store']['ja_name']}（女性{c['store']['women']}・男性{c['store']['men']}）"
             for c in other_cities
         )
-        if cluster["pct_gap"] >= 12 and ls["wpct"] <= 48:
-            lead_1 = f"{wd_str}曜{t_str}すぎ、今夜は{hub_name}まわりで店舗ごとの男女比がかなりはっきり分かれてます👀"
-            contrast_1 = f"近くの「{ls['ja_name']}」は女性{ls['women']}名・男性{ls['men']}名（女性比{ls['wpct']}%）と男性先行で空気感が対照的。"
-        elif cluster["pct_gap"] >= 10:
-            lead_1 = f"{wd_str}曜{t_str}すぎ、同じ{hub_name}エリアでも店舗によって入りやすさに結構差が出てます👀"
-            contrast_1 = f"近くの「{ls['ja_name']}」は女性{ls['women']}名・男性{ls['men']}名（女性比{ls['wpct']}%）で推移中。"
+        if tm == "spicy":
+            lead_1 = f"正直、{wd_str}曜{t_str}に看板の知名度だけで突撃して受付待ちで消耗する人が一番損してます。今の{hub_name}のリアルな温度差がこちら👀"
+            closing_1 = "男余りの店で『せっかく来たし』と粘っても席替えすら回らないので、徒歩3〜4分の好バランス店へさっさと切り替えるのが鉄則です。"
+        elif tm == "female_real":
+            lead_1 = f"女子側の本音で言うと、せっかくメイクも髪も整えて来たのに『受付で待たされる店』や『必死すぎる空気の店』は1杯で出たくなるもの💄 今の{hub_name}はこんな感じ👇"
+            closing_1 = "女性組は男性先行店なら待ち0分で即乾杯できるし、男性組も余裕のある比率の店を選ぶ方がお互い空気感が良くなります🥂"
+        elif tm == "spicy_female":
+            lead_1 = f"{wd_str}曜{t_str}すぎ、今の{hub_name}はかなり残酷なくらい店舗で明暗が割れてます👀（慣れた女子組ほど待たされる店を嫌ってすぐ別店舗へ流れる時間帯）"
+            closing_1 = "受付待ちで疲弊したテンションで乾杯しても女子に見透かされるだけなので、入る前の30秒で比率の良い店を選ぶのが一番賢いです🍸"
         else:
-            lead_1 = f"{wd_str}曜{t_str}すぎ、今夜は{hub_name}エリアの大型店がどこも高い熱量で盛り上がってます🍻"
-            contrast_1 = f"近くの「{ls['ja_name']}」も女性{ls['women']}名・男性{ls['men']}名（女性比{ls['wpct']}%）と好バランス。"
+            lead_1 = f"{wd_str}曜{t_str}すぎ、今夜は{hub_name}まわりで店舗ごとの男女比がかなりはっきり分かれてます👀"
+            closing_1 = "1軒目で「男性待ち長そうだな」と思ったら、無理に粘らず徒歩3〜4分の別ブランドを覗くのが一番コスパいいです🥂"
+
+        contrast_1 = f"近くの「{ls['ja_name']}」は女性{ls['women']}名・男性{ls['men']}名（女性比{ls['wpct']}%）。"
         body_1 = (
             f"{lead_1}\n\n"
-            f"たとえば「{hs['ja_name']}」は女性{hs['women']}名・男性{hs['men']}名（女性比{hs['wpct']}%）で座りやすく、"
+            f"「{hs['ja_name']}」は女性{hs['women']}名・男性{hs['men']}名（女性比{hs['wpct']}%）と余裕がある一方、"
             f"{contrast_1}\n\n"
-            f"ほかの主要エリアの現在トップはこんな感じ👇\n"
+            f"他エリアの現在トップ👇\n"
             f"{city_sub}\n\n"
-            f"1軒目で「男性待ち長そうだな」と思ったら、無理に粘らず徒歩3〜4分の別ブランドを覗くのが一番コスパいいです🥂\n\n"
+            f"{closing_1}\n\n"
             f"{cta_footer_1}"
         )
     else:
@@ -1057,7 +1223,7 @@ def _write_threads_candidates(research: dict, slot_label: str, now_jst: datetime
             f"{wd_str}曜{t_str}すぎ、全国{research['domestic_count']}店舗でいま女性{research['total_women']:,}名・男性{research['total_men']:,}名が入ってます🥂\n\n"
             f"今夜特にバランスがいいのは「{focus['ja_name']}（女性{focus['women']}名 / 男性{focus['men']}名・女性比{focus['wpct']}%）」。\n\n"
             f"主要エリアの現在トップメモ📝\n{c_lines}\n\n"
-            f"向かう前の30秒で人数バランスを見ておくだけで「行ったのに1時間待ち」を回避できます。\n\n"
+            f"向かう前の30秒で人数を見ておくだけで、受付立ち往生の気まずさをゼロにできます。\n\n"
             f"{cta_footer_1}"
         )
 
@@ -1066,7 +1232,7 @@ def _write_threads_candidates(research: dict, slot_label: str, now_jst: datetime
     candidates.append({
         "style": "threads_city_story",
         "style_label": STYLE_LABELS["threads_city_story"],
-        "writer_note": "Threadsで最も伸びやすい「現場の温度差を語りかけるエッセイ調」で作成（メダル記号なし）。",
+        "writer_note": f"【{EDITORIAL_TONE_MODES[tm]['short_label']}】Threadsで伸びやすい現場の本音エッセイ調で作成（メダル記号なし）。",
         "main_text": body_1[:495],
         "reply_text": "（Threadsは1投稿完結・偶数日はプロフ誘導／奇数日はURL付与でリンク制限を回避）",
     })
@@ -1079,25 +1245,25 @@ def _write_threads_candidates(research: dict, slot_label: str, now_jst: datetime
         )
     else:
         hook_2 = (
-            f"今夜（{wd_str}曜{t_str}）の相席ラウンジ、全国で女性{research['total_women']:,}名・男性{research['total_men']:,}名とかなり動いてます🥂"
+            f"今夜（{wd_str}曜{t_str}）の相席ラウンジ、全国で女性{research['total_women']:,}名・男性{research['total_men']:,}名と動いてます🥂"
         )
 
     if male_lead:
         female_tip = (
-            f"逆に女性グループなら、いま男性{male_lead['men']}名・女性{male_lead['women']}名で盛り上がっている"
-            f"「{male_lead['ja_name']}」あたりが待ち時間ゼロで即乾杯できて狙い目です✨"
+            f"💄女性組のリアル目線なら：女余りで30分放置される店より、いま男性{male_lead['men']}名・女性{male_lead['women']}名で回転している"
+            f"「{male_lead['ja_name']}」の方が待ち0分で即乾杯できて圧倒的にラクです。"
         )
     else:
-        female_tip = "逆に女性グループなら、男性が先行して入っている大型店を選ぶと待ち0分で即乾杯しやすいです✨"
+        female_tip = "💄女性組のリアル目線なら：女余りで放置される店より、男性が先行して入っている大型店を選ぶ方が待ち0分で即乾杯できて圧倒的にラクです。"
 
     runner = _pick_distinct_store(top_stores, {focus["name"]})
     runner_txt = f"と「{runner['ja_name']}（女性{runner['women']}名 / 男性{runner['men']}名）」" if runner else ""
 
     body_2 = (
         f"{hook_2}\n\n"
-        f"男性目線でいま待ち時間を避けて座りやすいのは「{focus['ja_name']}（女性{focus['women']}名 / 男性{focus['men']}名・女性比{focus['wpct']}%）」{runner_txt}。\n\n"
+        f"🔥男性目線で無理なく勝てるのは「{focus['ja_name']}（女性{focus['women']}名 / 男性{focus['men']}名・女性比{focus['wpct']}%）」{runner_txt}。\n\n"
         f"{female_tip}\n\n"
-        f"同じ街でも店によって男女比が15〜25%違うので、入る前にチラッと比較してみてください👇\n\n"
+        f"男女で『行くべき正解の店』は真逆になるので、入る前に見比べてみてください👇\n\n"
         f"{cta_footer_2}"
     )
     if len(body_2) > 465:
@@ -1105,7 +1271,7 @@ def _write_threads_candidates(research: dict, slot_label: str, now_jst: datetime
     candidates.append({
         "style": "threads_anomaly_insight",
         "style_label": STYLE_LABELS["threads_anomaly_insight"],
-        "writer_note": "男性向けの穴場店舗と、女性向けの即相席店舗（男性先行店）の両目線を入れて保存・共感を狙う構成。",
+        "writer_note": f"【{EDITORIAL_TONE_MODES[tm]['short_label']}】男女で『正解の店が真逆になる』リアルな構造と即相席データを対比。",
         "main_text": body_2[:495],
         "reply_text": "（Threadsは1投稿完結）",
     })
@@ -1116,10 +1282,15 @@ def _write_threads_candidates(research: dict, slot_label: str, now_jst: datetime
         f"📍{c['hub_label']}：{c['store']['ja_name']}（女性{c['store']['women']}・男性{c['store']['men']} / 女性比{c['store']['wpct']}%）"
         for c in city_leaders[:4]
     )
+    bitter_tip_3 = (
+        "正直、微妙な空気の席で『いい人ぶって90分延長』しても誰も幸せになりません（女子側も内心いつ帰ろうか時計を見てます）。40分で見切って好バランス店へ動く方がお財布にもお互いのためにも正解です🍸"
+        if tm in ("spicy", "spicy_female", "female_real")
+        else "席替えがしっかり回るのは「女性10名以上×女性比55%以上」のお店。微妙な席で惰性で90分粘るより、40分で見切って好バランス店に回る方が満足度もコスパも段違いです🍸"
+    )
     body_3 = (
-        f"いま（{t_str}時点）から1軒目・2軒目で相席ラウンジ動く人向けに、主要エリアで一番人が集まってる店舗だけ抜粋しました📝\n\n"
+        f"いま（{t_str}時点）主要エリアで一番人が集まってる店舗だけ抜粋しました📝\n\n"
         f"{hub_bullets}\n\n"
-        f"席替えがしっかり回るのは「女性10名以上（約5組）×女性比55%以上」のお店。微妙な席で惰性で90分粘るより、40分で見切って近くの好バランス店に回る方が満足度もコスパも段違いです🍸\n\n"
+        f"{bitter_tip_3}\n\n"
         f"{cta_footer_3}"
     )
     if len(body_3) > 465:
@@ -1127,7 +1298,7 @@ def _write_threads_candidates(research: dict, slot_label: str, now_jst: datetime
     candidates.append({
         "style": "threads_hopping_guide",
         "style_label": STYLE_LABELS["threads_hopping_guide"],
-        "writer_note": "東西主要4エリアの現在トップと「40分見切り・女性10名基準」の実践セオリーを組み合わせた実用投稿。",
+        "writer_note": f"【{EDITORIAL_TONE_MODES[tm]['short_label']}】主要4エリアの現在トップと、惰性延長に対する辛口・本音アドバイスを融合。",
         "main_text": body_3[:495],
         "reply_text": "（Threadsは1投稿完結）",
     })
@@ -1145,7 +1316,11 @@ def _write_threads_candidates(research: dict, slot_label: str, now_jst: datetime
     return candidates
 
 
-def _write_instagram_candidates(research: dict, now_jst: datetime.datetime) -> list:
+def _write_instagram_candidates(
+    research: dict,
+    now_jst: datetime.datetime,
+    tone_mode: str = DEFAULT_TONE_MODE,
+) -> list:
     """
     Generate 4 Instagram Carousel/Feed caption candidates.
     Instagram prioritizes:
@@ -1154,6 +1329,7 @@ def _write_instagram_candidates(research: dict, now_jst: datetime.datetime) -> l
       - Clean alignment with the 5 portrait slides (`top_volume` & `top_anaba`)
     """
     import ig_carousel_generator
+    tm = get_editorial_tone_mode(tone_mode)
     ig_ctx = research.get("ig_ctx")
     if not ig_ctx:
         ig_ctx = ig_carousel_generator.build_forecast_context(live_stores=research.get("top_stores") or [], now_jst=now_jst)
@@ -1174,31 +1350,39 @@ def _write_instagram_candidates(research: dict, now_jst: datetime.datetime) -> l
     candidates = []
 
     # 1) ig_empathy_story: Strong 1st-line human hook before fold
-    if t_key == "weekday":
-        hook_1 = "「平日の仕事帰り、どの店なら待たずに楽しく飲める？」って迷う夜用のまとめです📝"
-    elif t_key == "sunday":
-        hook_1 = "今週も全国51店舗のデータを追っていて、「やっぱり店選びで9割決まるな…」と実感した結果がこちら📊"
+    if tm == "female_real":
+        hook_1 = "女子の本音で言うと「せっかく髪もメイクも仕上げたのに受付で待たされる店」も「余裕のない席」も一番疲れますよね…💄"
+    elif tm in ("spicy", "spicy_female"):
+        if t_key == "weekday":
+            hook_1 = "平日の仕事帰りに『とりあえず一番有名な店』へ突っ込んで男余りに当たるの、正直一番もったいないです…💸"
+        else:
+            hook_1 = "週末21時半に何も見ず突撃して『男性待ち50分です』って言われるの、お金もテンションも一番削られますよね…😇"
     else:
-        hook_1 = "金土の21時半に何も見ないで突撃して「男性待ち50分です」って言われるの、一番もったいないですよね…😂"
+        if t_key == "weekday":
+            hook_1 = "「平日の仕事帰り、どの店なら待たずに楽しく飲める？」って迷う夜用のまとめです📝"
+        elif t_key == "sunday":
+            hook_1 = "今週も全国51店舗のデータを追っていて、「やっぱり店選びで9割決まるな…」と実感した結果がこちら📊"
+        else:
+            hook_1 = "金土の21時半に何も見ないで突撃して「男性待ち50分です」って言われるの、一番もったいないですよね…😂"
 
     body_ig_1 = (
         f"{hook_1}\n"
-        f"実は同じ新宿や梅田・渋谷でも、歩いて3分の別ブランドを見るだけで待ち時間ゼロで座れることが本当に多いんです。\n\n"
-        f"お店に向かう前にすぐ見返せるよう、右上の「保存📌」をどうぞ！\n\n"
+        f"実は同じ新宿や梅田・渋谷でも、徒歩3分の別ブランドを見るだけで空気感も待ち時間もガラッと変わります。\n\n"
+        f"向かう直前に見返せるよう、右上の「保存📌」をどうぞ！\n\n"
         f"── スライド2枚目：圧倒的に人が集まる人気店\n"
         f"{v_lines}\n\n"
         f"── スライド3枚目：男性待ちを回避しやすい高女性比率の穴場\n"
         f"{a_lines}\n\n"
-        f"💡 男女別の賢い選び方\n"
-        f"・男性は「女性10名以上×女性比55%以上」の店舗を選ぶと席替えもスムーズ！\n"
-        f"・女性は「男性が先行して盛り上がっている大型店」を選ぶと待ち0分で即乾杯できます🥂\n\n"
-        f"いま現在のリアルタイム男女人数と、全51店舗の料金・イベント比較はプロフィールのリンク（aiseki-navi.com）から3秒で見れます🔍\n\n"
+        f"💡 男女で『正解の店』は逆になります\n"
+        f"・男性組：見栄で激混み店に並ばず「女性10名以上×女性比55%以上」の余裕ある店へ\n"
+        f"・女性組：女余りで放置される店より「男性先行で盛り上がっている大型店」の方が待ち0分で即乾杯できます🥂\n\n"
+        f"いま現在のリアルタイム男女人数と料金比較はプロフィールのリンク（aiseki-navi.com）から3秒で見れます🔍\n\n"
         f"{tags}"
     )
     candidates.append({
         "style": "ig_empathy_story",
         "style_label": STYLE_LABELS["ig_empathy_story"],
-        "writer_note": "インスタの『…続きを読む』で折りたたまれる前の1行目に、一番共感されやすい現場あるあるを配置。",
+        "writer_note": f"【{EDITORIAL_TONE_MODES[tm]['short_label']}】インスタの『…続きを読む』前の1行目に本音フックを置き、男女別の逆張り店選びを解説。",
         "main_text": body_ig_1,
         "reply_text": "（5枚組カルーセル画像とセットで投稿）",
     })
@@ -1394,8 +1578,11 @@ def _build_gemini_prompt(
     channel: str,
     now_jst: datetime.datetime,
     site_url: str,
+    tone_mode: str = DEFAULT_TONE_MODE,
 ) -> tuple:
     ch = (channel or "x").lower()
+    tm = get_editorial_tone_mode(tone_mode)
+    tone_meta = EDITORIAL_TONE_MODES[tm]
     t_str = now_jst.strftime("%H:%M")
     cal_ctx = research.get("calendar") or {}
     weather_ctx = research.get("weather") or {}
@@ -1554,17 +1741,18 @@ def _build_gemini_prompt(
 
     prompt = (
         "あなたは全国53店舗の相席ラウンジ人数をリアルタイム計測している『相席ナビ』のベテランSNS編集長です。\n"
-        "毎回同じボットのような投稿ではなく、本当にスマホで今の店内人数と外の空気（天気・気温・曜日・給料日など）を見ながら、"
-        "フォロワーに『今夜ここ狙い目だよ』と自然に呟いているアドリブ投稿を1案作成してください。\n\n"
+        "毎回同じボットのような投稿や浅い優等生アドバイスではなく、本当にスマホで今の店内人数と外の空気（天気・気温・曜日・給料日など）を見ながら、"
+        "フォロワーに本音で呟いているアドリブ投稿を1案作成してください。\n\n"
+        f"{tone_meta['prompt_directive']}\n\n"
         f"【今夜の時間帯テンション設定：{slot_persona['label']}】\n"
         f"- {slot_persona['guidance']}\n\n"
         "【長考（Thinking）プロセス：脳内3案コンペ＆脱AI推敲手順】\n"
         "いきなり書き始めず、内部思考の中で必ず次の3ステップを行ってから最終1本を出力してください：\n"
         "  Step 1. 性格の違う3つの切り口を頭の中でラフに書き比べる\n"
-        "    - 案①（現場ウォッチャーの独り言風）：モニターを見ながら『え、今日〇〇なのに梅田すごいな…』とポロッと漏らすトーン\n"
-        "    - 案②（常連の友達・先輩にLINEする風）：『今から〇〇行くなら正直こっちにしとき』と親身にそっと教えるトーン\n"
+        "    - 案①（辛口ウォッチャーの本音風）：『看板だけで並んで1時間溶かすのが一番もったいない夜…』と図星を突くトーン\n"
+        "    - 案②（女性目線のリアル裏側風）：『慣れた女子組ほど待たされる店や余裕のない席はすぐ出てこっちへ流れてる…』と裏側を明かすトーン\n"
         "    - 案③（現場の違和感・温度差発見風）：『普段のこの時間よりだいぶ早い』『徒歩3分なのにここまで割れるか…』という気づきトーン\n"
-        "  Step 2. 3案を見比べ、一番『業者の宣伝』『AIの優等生構文』に見えず、人間がスマホでフリック入力したような自然な呼吸感・改行の1案に推敲する（良いフレーズの掛け合わせOK）。キラキラ絵文字の連打は削り、絵文字は自然な位置に1〜3個までに抑える。\n"
+        "  Step 2. 3案を見比べ、指定された【トーン＆視点】に最も合致し、かつ『業者の宣伝』『AIの優等生構文』に見えない自然な1案に推敲する（良いフレーズの掛け合わせOK）。キラキラ絵文字の連打は削り、絵文字は自然な位置に1〜3個までに抑える。\n"
         "  Step 3. ファクトシートの数字と1人・1%の狂いもないか指差し確認する。\n\n"
         f"{platform_spec}\n\n"
         "【絶対厳守ルール（違反するとデスク検閲で減点・不採用になります）】\n"
@@ -1667,12 +1855,19 @@ def _postprocess_ai_main_text(main_text: str, channel: str = "x") -> str:
     return text
 
 
-def _make_ai_cache_key(ch: str, slot_label: str, research: dict, now_jst: datetime.datetime = None):
+def _make_ai_cache_key(
+    ch: str,
+    slot_label: str,
+    research: dict,
+    now_jst: datetime.datetime = None,
+    tone_mode: str = DEFAULT_TONE_MODE,
+):
     """
-    Build a precise cache key incorporating channel, business date, slot, top-3 stores `(name, women, men)`,
-    and `focus_store` `(name, women, men)` so rank-2/3 or sweet-spot shifts never serve stale AI text.
+    Build a precise cache key incorporating channel, tone_mode, business date, slot, top-3 stores `(name, women, men)`,
+    and `focus_store` `(name, women, men)` so rank-2/3, sweet-spot, or tone shifts never serve stale AI text.
     """
     ch_norm = (ch or "x").lower()
+    tm_norm = get_editorial_tone_mode(tone_mode)
     top_s = (research or {}).get("top_stores") or []
     if not top_s:
         return None
@@ -1691,7 +1886,7 @@ def _make_ai_cache_key(ch: str, slot_label: str, research: dict, now_jst: dateti
         (focus.get("name", ""), int(focus.get("women") or 0), int(focus.get("men") or 0))
         if focus else None
     )
-    return (ch_norm, slot_label or "", biz_date_str, top3_sig, focus_sig)
+    return (ch_norm, tm_norm, slot_label or "", biz_date_str, top3_sig, focus_sig)
 
 
 def _store_ai_candidate_cache(cache_key, candidate: dict, model_name: str, now_t: float = None):
@@ -1708,8 +1903,14 @@ def _store_ai_candidate_cache(cache_key, candidate: dict, model_name: str, now_t
         _prune_ai_candidate_cache_unlocked(now_t)
 
 
-def has_cached_ai_candidate(research: dict, slot_label: str, channel: str, now_jst: datetime.datetime = None) -> bool:
-    cache_key = _make_ai_cache_key(channel, slot_label, research, now_jst)
+def has_cached_ai_candidate(
+    research: dict,
+    slot_label: str,
+    channel: str,
+    now_jst: datetime.datetime = None,
+    tone_mode: str = DEFAULT_TONE_MODE,
+) -> bool:
+    cache_key = _make_ai_cache_key(channel, slot_label, research, now_jst, tone_mode=tone_mode)
     if cache_key is None:
         return False
     now_t = time.time()
@@ -1728,6 +1929,7 @@ def _generate_gemini_adlib_candidate(
     site_url: str,
     force_refresh: bool = False,
     cache_only: bool = False,
+    tone_mode: str = DEFAULT_TONE_MODE,
 ) -> dict:
     """
     Call Gemini Flash REST API (`generativelanguage.googleapis.com` for both `AIza...` and `AQ....` AI Studio keys,
@@ -1739,7 +1941,8 @@ def _generate_gemini_adlib_candidate(
         return None
 
     ch = (channel or "x").lower()
-    cache_key = _make_ai_cache_key(ch, slot_label, research, now_jst)
+    tm = get_editorial_tone_mode(tone_mode)
+    cache_key = _make_ai_cache_key(ch, slot_label, research, now_jst, tone_mode=tm)
     if cache_key is None:
         return None
 
@@ -1762,6 +1965,7 @@ def _generate_gemini_adlib_candidate(
         channel=ch,
         now_jst=now_jst,
         site_url=site_url,
+        tone_mode=tm,
     )
 
     preferred_env = (os.environ.get("GEMINI_MODEL") or "").strip()
@@ -1917,16 +2121,18 @@ def run_writer(
     use_ai: bool = True,
     force_ai_refresh: bool = False,
     ai_cache_only: bool = False,
+    tone_mode: str = None,
 ) -> list:
     now_jst = now_jst or datetime.datetime.now(JST)
     site_url = (app_url or os.environ.get("PUBLIC_SITE_URL") or "https://aiseki-navi.com").rstrip("/")
     ch = (channel or "x").lower()
+    tm = get_editorial_tone_mode(tone_mode, allow_blocking=(not ai_cache_only))
     if ch == "threads":
-        base_cands = _write_threads_candidates(research, slot_label=slot_label, now_jst=now_jst, site_url=site_url)
+        base_cands = _write_threads_candidates(research, slot_label=slot_label, now_jst=now_jst, site_url=site_url, tone_mode=tm)
     elif ch == "instagram":
-        base_cands = _write_instagram_candidates(research, now_jst=now_jst)
+        base_cands = _write_instagram_candidates(research, now_jst=now_jst, tone_mode=tm)
     else:
-        base_cands = _write_x_candidates(research, slot_label=slot_label, now_jst=now_jst, site_url=site_url)
+        base_cands = _write_x_candidates(research, slot_label=slot_label, now_jst=now_jst, site_url=site_url, tone_mode=tm)
 
     if use_ai:
         ai_cand = _generate_gemini_adlib_candidate(
@@ -1938,6 +2144,7 @@ def run_writer(
             site_url=site_url,
             force_refresh=force_ai_refresh,
             cache_only=ai_cache_only,
+            tone_mode=tm,
         )
         if ai_cand:
             return [ai_cand] + base_cands
@@ -2007,7 +2214,7 @@ def run_evaluator(
             human_comment = "◎ 長考3案コンペ＆脱AI推敲クリア：AI臭ワード0個・時間帯の空気に馴染む生きた人間の語り口です。"
         else:
             human_score = 34
-            if any(w in text for w in ("割れてる", "立ち上がりがかなり早い", "いつもの", "もったいない", "実は同じ", "温度差", "雨の", "給料日", "祝前日")):
+            if any(w in text for w in ("割れてる", "立ち上がりがかなり早い", "いつもの", "もったいない", "実は同じ", "温度差", "雨の", "給料日", "祝前日", "残酷", "女子", "待たされる", "消耗", "正解の店", "見切")):
                 human_score = 35
             human_comment = "◎ 人間がスマホで現場を見ながら話しかけている自然な導入で、タイムラインに馴染みます。"
 
@@ -2164,6 +2371,7 @@ def run_editorial_pipeline(
     use_ai: bool = True,
     force_ai_refresh: bool = False,
     ai_cache_only: bool = False,
+    tone_mode: str = None,
 ) -> dict:
     """
     Run the full 4-role SNS Editorial Room pipeline for `channel` ('x', 'threads', or 'instagram').
@@ -2176,6 +2384,9 @@ def run_editorial_pipeline(
         ch = "x"
 
     allow_state_blocking = bool(record_history or (use_ai and not ai_cache_only))
+    default_tm = get_default_editorial_tone_mode(allow_blocking=allow_state_blocking)
+    resolved_tm = get_editorial_tone_mode(tone_mode, allow_blocking=allow_state_blocking)
+
     research = run_researcher(
         stores,
         slot_label=slot_label,
@@ -2201,6 +2412,7 @@ def run_editorial_pipeline(
         use_ai=use_ai,
         force_ai_refresh=force_ai_refresh,
         ai_cache_only=ai_cache_only,
+        tone_mode=resolved_tm,
     )
     evaluation = run_evaluator(candidates, research, plan, channel=ch, now_jst=now_jst)
 
@@ -2218,6 +2430,8 @@ def run_editorial_pipeline(
     session_record = {
         "channel": ch,
         "channel_label": CHANNEL_LABELS.get(ch, ch),
+        "tone_mode": resolved_tm,
+        "tone_mode_label": EDITORIAL_TONE_MODES[resolved_tm]["short_label"],
         "timestamp": now_jst.strftime("%Y-%m-%d %H:%M:%S"),
         "slot_label": slot_label,
         "selected_style": winner.get("style", ""),
@@ -2262,6 +2476,10 @@ def run_editorial_pipeline(
     return {
         "channel": ch,
         "channel_label": CHANNEL_LABELS.get(ch, ch),
+        "tone_mode": resolved_tm,
+        "tone_mode_label": EDITORIAL_TONE_MODES[resolved_tm]["label"],
+        "default_tone_mode": default_tm,
+        "tone_modes": get_tone_modes_catalog(),
         "gemini_status": get_gemini_status(allow_blocking=allow_state_blocking),
         "ai_pending_async": ai_pending_async,
         "research": research,

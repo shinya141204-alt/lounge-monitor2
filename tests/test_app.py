@@ -2608,5 +2608,139 @@ class OrientalColdStartResilienceTests(unittest.TestCase):
         app_module.clear_fast_http_caches()
 
 
+class SpicyAndFemaleRealToneTests(unittest.TestCase):
+    """Verify the 4-mode Editorial Tone & Female Perspective system across SNS, Columns, Tips, and Templates."""
+
+    def tearDown(self):
+        import sns_editorial
+        sns_editorial.set_default_editorial_tone_mode('spicy_female')
+        app_module.clear_fast_http_caches()
+
+    def test_all_four_tone_modes_across_sns_and_column_pipelines(self):
+        import re
+        import sns_editorial
+        import column_editorial
+        import x_poster
+
+        stores = _fake_stores()
+        bare_oriental_re = re.compile(r'オリエンタル(?!ラウンジ)')
+        bare_olg_re = re.compile(r'\bOLG\b')
+
+        with mock.patch('sns_editorial.get_gemini_api_key', return_value=''):
+            for mode in ('spicy_female', 'spicy', 'female_real', 'standard'):
+                for ch in ('x', 'threads', 'instagram'):
+                    res = sns_editorial.run_editorial_pipeline(
+                        stores,
+                        slot_label='22:00',
+                        channel=ch,
+                        record_history=False,
+                        use_ai=False,
+                        tone_mode=mode,
+                    )
+                    self.assertEqual(res['tone_mode'], mode)
+                    winner = res['winner']
+                    self.assertIsNotNone(winner)
+                    text = winner['main_text']
+                    self.assertIsNone(bare_oriental_re.search(text), f"Bare オリエンタル in SNS {ch} ({mode}): {text}")
+                    self.assertIsNone(bare_olg_re.search(text), f"Raw OLG in SNS {ch} ({mode}): {text}")
+                    if ch == 'x':
+                        self.assertLessEqual(x_poster.compute_twitter_weight(text), 280)
+
+                for theme_key in ('area_hopping', 'female_real_voice', 'bitter_loser_habits'):
+                    col_res = column_editorial.run_column_editorial_pipeline(
+                        stores,
+                        theme_key=theme_key,
+                        use_ai=False,
+                        tone_mode=mode,
+                    )
+                    self.assertEqual(col_res['tone_mode'], mode)
+                    col_winner = col_res['winner']
+                    self.assertIsNotNone(col_winner)
+                    combined = "\n".join([
+                        col_winner.get('title', ''),
+                        col_winner.get('desc', ''),
+                        col_winner.get('preview_text', ''),
+                        col_winner.get('note_markdown', ''),
+                        col_winner.get('x_main_text', ''),
+                    ])
+                    self.assertIsNone(bare_oriental_re.search(combined), f"Bare オリエンタル in column {theme_key} ({mode})")
+                    self.assertIsNone(bare_olg_re.search(combined), f"Raw OLG in column {theme_key} ({mode})")
+                    for sweet in column_editorial.SWEET_FANTASY_CLICHES:
+                        self.assertNotIn(sweet, combined)
+                    self.assertLessEqual(x_poster.compute_twitter_weight(col_winner['x_main_text']), 280)
+
+    def test_tone_mode_api_persistence_and_editorial_ui_rendering(self):
+        import sns_editorial
+
+        client = app_module.app.test_client()
+        # Unauthorized request must return 401
+        r_unauth = client.post('/api/editorial/tone-mode', json={'tone_mode': 'spicy'})
+        self.assertEqual(r_unauth.status_code, 401)
+
+        with client.session_transaction() as sess:
+            sess['is_master'] = True
+
+        # Invalid mode must return 400
+        r_bad = client.post('/api/editorial/tone-mode', json={'tone_mode': 'unknown_mode'})
+        self.assertEqual(r_bad.status_code, 400)
+
+        # Save 'spicy' as default and verify both editorial UIs reflect it
+        r_ok = client.post('/api/editorial/tone-mode', json={'tone_mode': 'spicy'})
+        self.assertEqual(r_ok.status_code, 200)
+        data = r_ok.get_json()
+        self.assertTrue(data['ok'])
+        self.assertEqual(data['tone_mode'], 'spicy')
+        self.assertEqual(sns_editorial.get_default_editorial_tone_mode(allow_blocking=True), 'spicy')
+
+        r_sns_ui = client.get('/staff/sns-editorial?tone=female_real')
+        self.assertEqual(r_sns_ui.status_code, 200)
+        html_sns = r_sns_ui.get_data(as_text=True)
+        self.assertIn('執筆トーン＆視点', html_sns)
+        self.assertIn('female_real', html_sns)
+
+        r_col_ui = client.get('/staff/column-editorial?theme=female_real_voice&tone=spicy_female')
+        self.assertEqual(r_col_ui.status_code, 200)
+        html_col = r_col_ui.get_data(as_text=True)
+        self.assertIn('女性目線の本音・女子トイレ反省会', html_col)
+        self.assertIn('辛口解剖・「いい人止まり」の敗因', html_col)
+
+    def test_all_62_tips_and_rewritten_columns_hygiene(self):
+        import re
+        import tips_poster
+        import x_poster
+        import column_editorial
+
+        bare_oriental_re = re.compile(r'オリエンタル(?!ラウンジ)')
+        bare_olg_re = re.compile(r'\bOLG\b')
+
+        self.assertGreaterEqual(len(tips_poster.TIPS_LIST), 62)
+        for idx in range(len(tips_poster.TIPS_LIST)):
+            for slot in ('12:00', '18:00'):
+                tweet = tips_poster.get_tip_for_slot(slot_label=slot, tip_index=idx)
+                w = x_poster.compute_twitter_weight(tweet)
+                self.assertLessEqual(w, 280, f"Tip #{idx} ({slot}) exceeded 280 weight ({w}): {tweet}")
+                self.assertIsNone(bare_oriental_re.search(tweet), f"Tip #{idx} has bare オリエンタル: {tweet}")
+                self.assertIsNone(bare_olg_re.search(tweet), f"Tip #{idx} has raw OLG: {tweet}")
+
+        audit = column_editorial.audit_existing_columns(force=True)
+        self.assertEqual(audit['total_bare_oriental'], 0)
+
+        rewritten_files = (
+            'guide_local_vs_urban.html',
+            'guide_cost_break_even.html',
+            'guide_rain_payday.html',
+            'guide_first_10min.html',
+            'guide_second_venue.html',
+        )
+        templates_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'templates')
+        for fname in rewritten_files:
+            fpath = os.path.join(templates_dir, fname)
+            with open(fpath, 'r', encoding='utf-8') as f:
+                raw_html = f.read()
+            self.assertIsNone(bare_oriental_re.search(raw_html), f"Bare オリエンタル in {fname}")
+            for sweet in column_editorial.SWEET_FANTASY_CLICHES:
+                self.assertNotIn(sweet, raw_html, f"Sweet fantasy cliché '{sweet}' still in {fname}")
+
+
 if __name__ == '__main__':
     unittest.main()

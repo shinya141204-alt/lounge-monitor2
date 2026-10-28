@@ -264,7 +264,7 @@ def mark_done(key):
     sheets_store.append_rows_async(SHEET_TITLE, HEADER, [[key, _now_str()]])
 
 
-def get_value(prefix, allow_blocking: bool = True):
+def get_value(prefix, allow_blocking: bool = True, default=None):
     """Retrieve the latest stored value for a prefix like 'token:threads' from Job State."""
     _ensure_loaded(allow_blocking=allow_blocking)
     full_prefix = f"{prefix}="
@@ -274,7 +274,7 @@ def get_value(prefix, allow_blocking: bool = True):
             return _kv[prefix]
         matched = [k for k in keys if k.startswith(full_prefix)]
     if not matched:
-        return None
+        return default
     matched.sort()
     raw = matched[-1][len(full_prefix):]
     if "|" in raw:

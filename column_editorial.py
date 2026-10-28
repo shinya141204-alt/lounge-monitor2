@@ -84,6 +84,14 @@ COLUMN_AI_CLICHES = (
     "ぜひ足を運んで",
 )
 
+SWEET_FANTASY_CLICHES = (
+    "え、行きたいです",
+    "ちょうどもう少しゆっくり話したい",
+    "白Tに",
+    "爪を短く",
+    "間違いなくモテます",
+)
+
 EYECATCH_PRESETS = {
     "last-train": {
         "label": "🌃 終電崖・深夜ラウンジ夜景",
@@ -188,6 +196,28 @@ COLUMN_THEMES = {
         "slug_prefix": "solo-local-expedition",
         "target_reader": "相方と予定が合わない夜に1人でふらっと寄りたい人や、出張・旅行先の夜を楽しく過ごしたい男性",
         "core_question": "1人（ソロ）参戦で浮かない時間帯・店舗選びと、出張先や地元外のラウンジで『街のことを教えて』を武器にする会話術とは",
+    },
+    "female_real_voice": {
+        "key": "female_real_voice",
+        "label": "💄 女性目線の本音・女子トイレ反省会",
+        "badge": "女性目線リアル",
+        "eyecatch_key": "first-10min",
+        "tag_primary": ["tag-pink", "💄 女性ペアの本音解剖"],
+        "tag_secondary": ["tag-cyan", "女子トイレ反省会"],
+        "slug_prefix": "female-real-voice",
+        "target_reader": "『普通に盛り上がっていたはずなのに、なぜ解散後に既読スルーされるのか』を知りたい男性＆ハズレ店を避けて即乾杯したい女性2人組",
+        "core_question": "乾杯15分後の女子トイレLINEで実は何が送られているのか？女性側が『タダ飯消化モード』に切り替わる境界線と、女子組が待ち0分で当たり席を引く店舗選びとは",
+    },
+    "bitter_loser_habits": {
+        "key": "bitter_loser_habits",
+        "label": "🌶️ 辛口解剖・「いい人止まり」の敗因",
+        "badge": "辛口・敗因解剖",
+        "eyecatch_key": "second-venue",
+        "tag_primary": ["tag-amber", "🌶️ 現場の残酷なリアル"],
+        "tag_secondary": ["tag-pink", "脱・いい人止まり"],
+        "slug_prefix": "bitter-loser-habits",
+        "target_reader": "礼儀正しく気を配っているつもりなのに、いつも『4人のグループLINE』や『またみんなで飲もう』で終わってしまう男性",
+        "core_question": "なぜ『優しい質問役』や『お会計間際の2軒目打診』は9割が社交辞令で終わるのか？綺麗事抜きの敗因解剖とスマートに抜け出す立ち回りとは",
     },
 }
 
@@ -808,8 +838,15 @@ def _render_candidate_preview_and_note(cand: dict, site_url: str = "https://aise
     return cand
 
 
-def _build_deterministic_candidates(research: dict, plan: dict, site_url: str) -> list:
-    """Generate 2 rich, human-voiced baseline column candidates grounded in live research numbers."""
+def _build_deterministic_candidates(
+    research: dict,
+    plan: dict,
+    site_url: str,
+    tone_mode: str = None,
+) -> list:
+    """Generate 2 rich, human-voiced baseline column candidates grounded in live research numbers and `tone_mode`."""
+    tm = sns_editorial.get_editorial_tone_mode(tone_mode)
+    tone_meta = sns_editorial.EDITORIAL_TONE_MODES[tm]
     stores = research.get("featured_stores") or []
     s1 = stores[0] if len(stores) > 0 else {
         "ja_name": "オリエンタルラウンジ新宿", "casual_name": "オリラジ新宿",
@@ -845,212 +882,420 @@ def _build_deterministic_candidates(research: dict, plan: dict, site_url: str) -
     store_links_1 = [{"label": s1["ja_name"], "href": s1["store_href"]}, {"label": s2["ja_name"], "href": s2["store_href"]}]
     store_links_2 = [{"label": s3["ja_name"], "href": s3["store_href"]}]
 
-    # Candidate A: Field Report & Dialogue-Driven Story
-    slug_a = plan["suggested_slug"]
-    title_a = (
-        f"「{plan['custom_topic']}」を現場と実測ログで検証——徒歩5分で女性比が{gap_pt}%割れる夜のリアルな立ち回り"
-        if plan.get("custom_topic")
-        else f"エレベーターが開いた瞬間の「男性待ち」で帰らなくていい——{area_name}の実測ログで見えた徒歩5分ハシゴと会話の温度感"
-    )
-    cand_a = {
-        "style": "field_dialogue_story",
-        "style_label": "🗣️ 現場ルポ・リアル会話重視案（体験導入×空気感解剖）",
-        "writer_note": f"『{s1['ja_name']}』と『{s2['ja_name']}』の実測差（女性比{gap_pt}pt差）を軸に、受付前・乾杯直後・2軒目声かけの3場面の会話を織り込んだストーリー構成。",
-        "thinking_memo": "",
-        "is_ai_generated": False,
-        "slug": slug_a,
-        "eyecatch_key": plan["eyecatch_key"],
-        "badge": plan["badge"],
-        "read_time": "約6分で読める",
-        "tag_primary": plan["tag_primary"],
-        "tag_secondary": plan["tag_secondary"],
-        "title": title_a,
-        "short_title": (plan["custom_topic"][:28] if plan.get("custom_topic") else f"{area_name}の徒歩5分男女比ギャップと会話術"),
-        "desc": f"「せっかく来たのに受付がスーツ姿の男性だらけ…」と肩を落とした夜から一転、徒歩数分の別店舗へ切り替えて自然に盛り上がった実例と、{s1['ja_name']}・{s3['ja_name']}などの実測ログをまとめました。",
-        "keywords": f"相席ラウンジ,{s1['ja_name']},{s2['ja_name']},{s3['ja_name']},男女比,ハシゴ,相席ナビ",
-        "sections": [
-            {
-                "heading": f"1. 「ここ、さっきの店と空気ぜんぜん違うね」——徒歩4分で景色が変わった夜",
-                "paragraphs": [
-                    f"{research['calendar']['tag']}の21時半すぎ。仕事終わりに相方と合流して最初に向かった店では、エレベーターの扉が開いた瞬間に受付前のソファまで男性グループが並んでいました。",
-                    f"以前の僕たちなら「せっかく来たし30分くらい待つか…」とそのまま番号札を受け取って、案内される頃にはすっかり疲れ切っていたと思います。でもその夜はスマホで近隣店舗の人数を見比べ、徒歩4分の『{s1['casual_name']}』へサッと切り替えました。",
-                ],
-                "dialogue": [
-                    "「さっきの店、受付まで男の人でパンパンだったのに、こっちはすぐ座れたね」",
-                    f"「ほんとだ。しかも周りのテーブル、仕事帰りの2人組が多くて落ち着いて話せそう」",
-                ],
-                "after_paragraphs": [
-                    f"実際に計測画面を見ていると、同じ{area_name}の目と鼻の先でも『{s1['ja_name']}』（女性{s1['women']}名・女性比{s1['wpct']}%）と『{s2['ja_name']}』（女性{s2['women']}名・女性比{s2['wpct']}%）のように、15〜20分で空気感がガラッと割れる瞬間が毎晩のように起きています。",
-                ],
-                "highlight_title": f"今夜のテーマ焦点：{topic_focus}",
-                "highlight_body": f"1店舗目の混雑だけで「今日はハズレの日だ」と決めつけず、徒歩5分圏の男女比ギャップを見てフラットに店を選び直すだけで、最初の乾杯の余裕がまったく変わります。",
-                "store_links": store_links_1,
-            },
-            {
-                "heading": "2. 数字で見ると納得する「1軒目の波」と「終電前のエアポケット」",
-                "paragraphs": [
-                    "なぜ同じ駅のすぐ近くでここまで男女比に差がつくのでしょうか。全国53店舗の人数推移を追いかけていると、立地（駅地下直結か路面か）やブランドの年齢層によって、女性が入ってくるタイミングに明確な時差があることが分かります。",
-                ],
-                "dialogue": [
-                    "「私たち最初ごはん食べてて、甘いお酒飲みたくなって2軒目でふらっと来たんです〜」",
-                    "「実はさっき別のお店覗いたらすごい混んでてさ、こっち来て大正解だったよ（笑）」",
-                ],
-                "after_paragraphs": [
-                    f"たとえば『{s1['ja_name']}』のように早い時間から女性比率が{s1['wpct']}%前後で安定しやすい店舗もあれば、『{s3['ja_name']}』のように22時半〜深夜にかけて終電後の維持目安が{s3['midnight_retention_pct']}%と粘り強い店舗もあります。下の実測スナップを見比べるだけでも、店舗ごとの個性がはっきり浮かび上がります。",
-                ],
-                "highlight_title": "",
-                "highlight_body": "",
-                "store_links": store_links_2,
-            },
-            {
-                "heading": "3. 乾杯10分で空気がほぐれる席は「質問攻め」をしない",
-                "paragraphs": [
-                    "もうひとつ、良い男女比の店舗に入れたあとに大事なのが「座って最初の10分」の温度感です。照明が落ち着いた70cmほどの距離のソファ席では、履歴書のような質問を繰り返すよりも、その日の街の空気や1軒目の話を軽くシェアするほうが何倍も自然に打ち解けます。",
-                ],
-                "dialogue": [
-                    "「今日外ちょっと風あったよね、1軒目どのへんで飲んでたの？」",
-                    "「すぐ裏のイタリアンにいました！ そっちはお仕事帰りですか？ なんか落ち着いて話せる席でよかった〜」",
-                ],
-                "after_paragraphs": [
-                    "この「落ち着いて話せる席でよかった」という一言が相手から出れば、無理にテンションを作らなくても会話は自然に転がり始めます。逆に30〜40分話してみてお互いスマホが気になり始めたら、気まずくなる前にスマートに席替えや店舗移動を選ぶのがお互いにとって一番心地いい立ち回りです。",
-                ],
-                "highlight_title": "明日から使える「3つの現場マイルール」",
-                "highlight_body": "①入店前のエレベーター下で必ず近隣2〜3店舗の女性比率を見比べる ／ ②座って3分は一問一答ではなく「今日1軒目どこだった？」の雑談から入る ／ ③40分経って噛み合わなければ予算を溶かす前に軽やかに切り替える。",
-                "store_links": store_links_1 + store_links_2,
-            },
-        ],
-        "data_table": common_table,
-        "summary_points": [
-            f"同じ街でも『{s1['ja_name']}』（女性比{s1['wpct']}%）と近隣店で{gap_pt}pt近い差が出るため、入店前の10秒確認を習慣にする",
-            f"22時半以降の2軒目ラウンドでは、終電後維持目安が{s3['midnight_retention_pct']}%と高い『{s3['ja_name']}』のような粘り強い店舗を候補に入れる",
-            "乾杯直後は面接のような質問を避け、その日の街況や1軒目トークで空気を温めてから波長を見極める",
-        ],
-        "faqs": [
-            {
-                "q": f"{area_name}で1軒目が男性待ちだった場合、どれくらい待つか移動すべきですか？",
-                "a": f"受付で20分以上の待ち案内が出ている場合、同じビルや徒歩5分圏内に『{s1['ja_name']}』など女性比率が55%を超えている別店舗があれば、待たずに移動した方がトータル料金も体力も温存できます。",
-            },
-            {
-                "q": "22時半や23時過ぎから入店しても間に合いますか？",
-                "a": f"終電前の23時20分前後は一時的に帰宅組が増えますが、『{s3['ja_name']}』（深夜維持目安{s3['midnight_retention_pct']}%）など繁華街中心部の店舗では0時過ぎから2軒目・3軒目組の第2波が入るため十分狙えます。",
-            },
-        ],
-        "x_title": f"{area_name}で徒歩5分の男女比が{gap_pt}%割れる理由と失敗しないハシゴ術",
-        "x_main_text": (
-            f"エレベーターが開いた瞬間に受付まで男性待ちで「今日ハズレか…」と帰りかけた夜、徒歩4分の『{s1['casual_name']}』を見たら女性{s1['women']}名（女性比{s1['wpct']}%）で別世界だった話🌃\n\n"
-            f"同じ街でも{gap_pt}%近く割れる理由と、乾杯10分のリアルな会話術を書きました👇\n"
-            "#相席ラウンジ #相席ナビ"
-        ),
-        "note_title": title_a,
-        "note_hashtags": "#相席ラウンジ #オリエンタルラウンジ #相席ナビ #夜遊び #恋愛コラム",
-    }
+    if tm == "standard":
+        # Mild / polite evergreen baseline (still realistic, zero cheesy fantasy clichés)
+        slug_a = plan["suggested_slug"]
+        title_a = (
+            f"「{plan['custom_topic']}」を現場と実測ログで検証——徒歩5分で女性比が{gap_pt}%割れる夜の立ち回り"
+            if plan.get("custom_topic")
+            else f"エレベーター前の「男性待ち」で消耗しない——{area_name}の実測ログで見えた徒歩5分ハシゴと会話の温度感"
+        )
+        cand_a = {
+            "style": "field_dialogue_story",
+            "style_label": f"🥂 【{tone_meta['short_label']}】現場ルポ・丁寧ストーリー案",
+            "writer_note": f"『{s1['ja_name']}』と『{s2['ja_name']}』の実測差（女性比{gap_pt}pt差）を軸に、初心者にも馴染みやすい落ち着いたトーンで執筆。",
+            "thinking_memo": "",
+            "is_ai_generated": False,
+            "slug": slug_a,
+            "eyecatch_key": plan["eyecatch_key"],
+            "badge": plan["badge"],
+            "read_time": "約6分で読める",
+            "tag_primary": plan["tag_primary"],
+            "tag_secondary": plan["tag_secondary"],
+            "title": title_a,
+            "short_title": (plan["custom_topic"][:28] if plan.get("custom_topic") else f"{area_name}の徒歩5分男女比ギャップと会話術"),
+            "desc": f"「せっかく来たのに受付がスーツ姿の男性だらけ…」と迷った夜に、徒歩数分の別店舗へ切り替えて落ち着いた席を引けた実例と、{s1['ja_name']}・{s3['ja_name']}の実測ログを整理しました。",
+            "keywords": f"相席ラウンジ,{s1['ja_name']},{s2['ja_name']},{s3['ja_name']},男女比,ハシゴ,相席ナビ",
+            "sections": [
+                {
+                    "heading": "1. 「ここ、さっきの店と空気ぜんぜん違うね」——徒歩4分で景色が変わった夜",
+                    "paragraphs": [
+                        f"{research['calendar']['tag']}の21時半すぎ。仕事終わりに相方と合流して最初に向かった店では、エレベーターの扉が開いた瞬間に受付前のソファまで男性グループが並んでいました。",
+                        f"以前の僕たちなら「せっかく来たし待つか…」と番号札を受け取って、案内される頃にはすっかり疲れていたと思います。でもその夜はスマホで近隣店舗の人数を見比べ、徒歩4分の『{s1['casual_name']}』へサッと切り替えました。",
+                    ],
+                    "dialogue": [
+                        "「さっきの店、受付まで男の人でいっぱいだったのに、こっちはすぐ案内されたね」",
+                        "「ほんとだ。周りのテーブルも仕事帰りの2人組が多くて落ち着いて話せそう」",
+                    ],
+                    "after_paragraphs": [
+                        f"実際に計測画面を見ていると、同じ{area_name}の目と鼻の先でも『{s1['ja_name']}』（女性{s1['women']}名・女性比{s1['wpct']}%）と『{s2['ja_name']}』（女性{s2['women']}名・女性比{s2['wpct']}%）のように、15〜20分で空気感がガラッと割れる瞬間が毎晩起きています。",
+                    ],
+                    "highlight_title": f"今夜のテーマ焦点：{topic_focus}",
+                    "highlight_body": "1店舗目の混雑だけで判断せず、徒歩5分圏の男女比ギャップを見てフラットに店を選び直すだけで、最初の乾杯の余裕が変わります。",
+                    "store_links": store_links_1,
+                },
+                {
+                    "heading": "2. 数字で見ると納得する「1軒目の波」と「終電後の粘り強さ」",
+                    "paragraphs": [
+                        "なぜ同じ駅のすぐ近くでここまで男女比に差がつくのでしょうか。全国53店舗の人数推移を追いかけていると、立地やブランドの年齢層によって、女性が入ってくるタイミングに明確な時差があることが分かります。",
+                    ],
+                    "dialogue": [
+                        "「私たち1軒目でビストロにいて、甘いお酒飲みたくなって2軒目で寄ったんです」",
+                        "「実は僕たちもさっき別のお店覗いたら混んでて、こっちに切り替えて正解だったよ（笑）」",
+                    ],
+                    "after_paragraphs": [
+                        f"『{s1['ja_name']}』のように女性比率が{s1['wpct']}%前後で安定しやすい店舗もあれば、『{s3['ja_name']}』のように終電後の維持目安が{s3['midnight_retention_pct']}%と粘り強い店舗もあります。",
+                    ],
+                    "highlight_title": "",
+                    "highlight_body": "",
+                    "store_links": store_links_2,
+                },
+                {
+                    "heading": "3. 乾杯10分で空気がほぐれる席は「一問一答」をしない",
+                    "paragraphs": [
+                        "良い男女比の店舗に入れたあとに大切なのが、座って最初の10分の温度感です。履歴書のような質問を繰り返すよりも、その日の街の空気や1軒目の話を軽くシェアするほうが自然に打ち解けます。",
+                    ],
+                    "dialogue": [
+                        "「ここ少し音楽大きくなってきたし、裏に落ち着いた夜カフェあるんだけどコーヒーか甘いもの寄ってかない？」",
+                        "「明日仕事だから1杯だけなら！ 甘いものちょっと食べたいかもです」",
+                    ],
+                    "after_paragraphs": [
+                        "「1杯だけ・30分だけ」と出口を明確にしてあげると、相手も構えずに頷きやすくなります。まずは入店前の店舗選びで余裕を作るところから始めてみてください。",
+                    ],
+                    "highlight_title": "明日から使える「3つの現場マイルール」",
+                    "highlight_body": "①エレベーター下で必ず近隣2〜3店舗の女性比率を見比べる ／ ②座って3分は一問一答ではなく1軒目トークから入る ／ ③外へ誘うときは「1杯だけ・30分だけ」と帰宅時間の安心感をセットで伝える。",
+                    "store_links": store_links_1 + store_links_2,
+                },
+            ],
+            "data_table": common_table,
+            "summary_points": [
+                f"同じ街でも『{s1['ja_name']}』（女性比{s1['wpct']}%）と近隣店で{gap_pt}pt近い差が出るため、入店前の10秒確認を習慣にする",
+                f"22時半以降の2軒目ラウンドでは、終電後維持目安が{s3['midnight_retention_pct']}%の『{s3['ja_name']}』など粘り強い店舗を候補に入れる",
+                "乾杯直後は面接のような質問を避け、2軒目打診は「1杯だけ」とハードルを下げて提案する",
+            ],
+            "faqs": [
+                {
+                    "q": f"{area_name}で1軒目が男性待ちだった場合、どれくらい待つか移動すべきですか？",
+                    "a": f"受付で20分以上の待ち案内が出ている場合、徒歩5分圏内に『{s1['ja_name']}』など女性比率55%超の別店舗があれば移動した方が体力も予算も温存できます。",
+                },
+                {
+                    "q": "22時半や23時過ぎから入店しても間に合いますか？",
+                    "a": f"『{s3['ja_name']}』（深夜維持目安{s3['midnight_retention_pct']}%）など繁華街中心部の店舗では0時過ぎから第2波が入るため十分狙えます。",
+                },
+            ],
+            "x_title": f"{area_name}で徒歩5分の男女比が{gap_pt}%割れる理由とハシゴ術",
+            "x_main_text": (
+                f"受付まで男性待ちだった夜、徒歩4分の『{s1['casual_name']}』を見たら女性{s1['women']}名（女性比{s1['wpct']}%）で別世界だった話🌃\n\n"
+                f"同じ街でも{gap_pt}%近く割れる理由と、乾杯10分の自然な会話のコツをまとめました👇\n"
+                "#相席ラウンジ #相席ナビ"
+            ),
+            "note_title": title_a,
+            "note_hashtags": "#相席ラウンジ #オリエンタルラウンジ #相席ナビ #夜遊び #恋愛コラム",
+        }
+    else:
+        # Spicy / Bitter Reality Candidate (featured in `spicy`, `spicy_female`, and #2 in `female_real`)
+        slug_a = plan["suggested_slug"]
+        title_a = (
+            f"【辛口検証】{plan['custom_topic']}——綺麗事抜きで解剖する「いい人止まり組」と勝てる組の残酷な差"
+            if plan.get("custom_topic")
+            else f"なぜ「礼儀正しいいい人」ほどグループLINEの墓場で終わるのか？{area_name}の男女比{gap_pt}%差と現場の残酷なリアル"
+        )
+        cand_a = {
+            "style": "field_dialogue_story",
+            "style_label": f"🌶️ 【{tone_meta['short_label']}】綺麗事ゼロ・現場の敗因＆本音解剖案",
+            "writer_note": f"『{s1['ja_name']}』（女性比{s1['wpct']}%）と『{s2['ja_name']}』（女性比{s2['wpct']}%）のリアルな格差を軸に、受付待ち消耗・面接トーク・グループLINE墓場の図星を辛口に解剖。",
+            "thinking_memo": "",
+            "is_ai_generated": False,
+            "slug": slug_a,
+            "eyecatch_key": plan["eyecatch_key"],
+            "badge": "辛口・現場解剖",
+            "read_time": "約6分で読める",
+            "tag_primary": ["tag-amber", "🌶️ 綺麗事ゼロの現場解剖"],
+            "tag_secondary": plan["tag_secondary"],
+            "title": title_a,
+            "short_title": (plan["custom_topic"][:28] if plan.get("custom_topic") else "脱いい人止まり｜現場の残酷な敗因と比率差"),
+            "desc": f"「普通に盛り上がったのに既読スルーされた」——その原因の8割は、店選びの段階での消耗と着席15分の『無難な面接官ムーブ』にあります。{s1['ja_name']}・{s2['ja_name']}の実測差とともに本音で斬ります。",
+            "keywords": f"相席ラウンジ,{s1['ja_name']},{s2['ja_name']},{s3['ja_name']},本音,脈なしサイン,相席ナビ",
+            "sections": [
+                {
+                    "heading": f"1. 残酷な現実：看板の知名度だけで並んで「疲れた顔」で座った時点で負けている",
+                    "paragraphs": [
+                        f"少し耳の痛い話から始めます。{research['calendar']['tag']}の夜、何も調べずに一番有名な店舗へ突撃し、受付前の黒いソファでスーツ姿のまま35分待たされてから席に着く男性ペアを毎晩のように見かけます。",
+                        f"待たされたイライラと「せっかく高いチャージ払うんだから元を取らなきゃ」という必死さは、座って3秒で女性側に伝染します。しかも皮肉なことに、その同じ瞬間、歩いて4分の『{s1['casual_name']}』を見れば女性{s1['women']}名・男性{s1['men']}名（女性比{s1['wpct']}%）で待ち時間ゼロで回っていたりするのです。",
+                    ],
+                    "dialogue": [
+                        "「さっきの店、男10組待ちで空気ピリついてたのに、こっち普通に女の子だらけじゃん…」",
+                        "「マジで危なかったな。あそこで意地張って並んでたら、1杯目から死んだ目で『お仕事何ですか？』って聞くところだった笑」",
+                    ],
+                    "after_paragraphs": [
+                        f"実測データを見れば一目瞭然ですが、同じ{area_name}でも『{s1['ja_name']}』（女性比{s1['wpct']}%）と『{s2['ja_name']}』（女性比{s2['wpct']}%）のように{gap_pt}pt近い差がつくのは日常茶飯事です。トーク力を磨く前に、まず「戦う前から不利な戦場に並ばない」だけで勝率は半分決まります。",
+                    ],
+                    "highlight_title": f"現場の図星チェック：{topic_focus}",
+                    "highlight_body": "「どの店も大差ないでしょ」と看板だけで入る人ほど男余りの店を引いて消耗します。余裕のある男に見える最大の秘訣は、精神論ではなく『女性比率に余裕がある店に最初から座ること』です。",
+                    "store_links": store_links_1,
+                },
+                {
+                    "heading": "2. スマホの「表置き・裏置き」に出る、女子側のシビアな15分査定",
+                    "paragraphs": [
+                        "運よく良い比率の店に入れたとしても、次に待っているのが「いい人止まり」の罠です。一生懸命盛り上げようとして『休みの日なにしてるの？』『どこ住み？』『何歳に見える？』と履歴書確認を始めた瞬間、慣れている女性ペアは心の中で静かにシャッターを下ろします。",
+                    ],
+                    "dialogue": [
+                        "「（女子2人が同時に化粧室へ立った直後、相方と小声で）…なあ、向こうのスマホ、最初からずっと画面上向きでLINE通知見える状態だったよな」",
+                        "「うん、たぶん今の化粧室で『次のドリンク来たら出よっか』って作戦会議されてるやつだ。次の席は質問攻めやめよう…」",
+                    ],
+                    "after_paragraphs": [
+                        f"実際、女性グループは驚くほど冷静です。テーブルの上にスマホが画面上向きで置かれ、相方とアイコンタクトが増えたら黄色信号。逆に本当に居心地がいい席ではスマホはバッグの中か画面下向きになり、終電維持目安{s3['midnight_retention_pct']}%の『{s3['ja_name']}』のような店舗ではそのまま2回転目まで話が弾みます。",
+                    ],
+                    "highlight_title": "",
+                    "highlight_body": "",
+                    "store_links": store_links_2,
+                },
+                {
+                    "heading": "3. 「4人でグループLINE作ろう！」は9割が社交辞令の墓場になる",
+                    "paragraphs": [
+                        "そして極めつけの敗因が、お会計や席替えの直前になって慌てて『みんなでグループLINE作ろうよ！』と提案するパターンです。あれは誰も傷つかない代わりに、翌日の昼には通知オフにされて二度と動かない『社交辞令の墓場』になりがちです。",
+                    ],
+                    "dialogue": [
+                        "「さっき言ってた三茶のビストロ、忘れないうちにインスタのDMで店名だけ送っとくね。今アカウント出せる？」",
+                        "「あ、嬉しい！ そこ気になってたから保存しときたいです、今出しますね」",
+                    ],
+                    "after_paragraphs": [
+                        "連絡先も2軒目も、「お会計の瞬間」ではなく「食べ物の話や趣味の話が一番盛り上がったピークの瞬間」に1対1の導線（お店のURL共有やインスタ交換）で作ってしまうのが鉄則です。ご都合主義の甘い期待を捨てて、店選びの数字と会話のピーク設計だけシビアに押さえてみてください。",
+                    ],
+                    "highlight_title": "綺麗事抜きの「脱・負け組」3原則",
+                    "highlight_body": "①男性待ちが出ている店に意地で並ばず、女性比55%超の近隣店へ即移動する ／ ②『休みの日何してる？』の面接質問と相方イジりを封印する ／ ③4人グループLINEに逃げず、会話が一番跳ねた瞬間に店リンク共有で個別交換する。",
+                    "store_links": store_links_1 + store_links_2,
+                },
+            ],
+            "data_table": common_table,
+            "summary_points": [
+                f"同じ街でも『{s1['ja_name']}』（女性比{s1['wpct']}%）と『{s2['ja_name']}』（女性比{s2['wpct']}%）で{gap_pt}pt差がつくため、受付待ちで消耗する店を最初から避ける",
+                "スマホ画面上向き放置や同時トイレ離席は「タダ飯消化モード」のサイン。質問攻めではなく共通の話題で空気を変える",
+                "解散間際の「4人グループLINE」は9割自然消滅するため、盛り上がった最中に店情報シェアで個別交換を済ませる",
+            ],
+            "faqs": [
+                {
+                    "q": "相席した女性ペアが盛り上がっているのか社交辞令なのか見分けるサインは？",
+                    "a": "一番わかりやすいのは「質問が相手からも返ってくるか」と「スマホの置き方」です。こちらが質問しないと沈黙になる状態が25分続くなら、お互いに消耗する前に笑顔でお礼を言って切り替える方が賢明です。",
+                },
+                {
+                    "q": "2軒目に誘っても『明日早いから』と断られやすいのはなぜですか？",
+                    "a": f"長居しすぎて23時を回ってから重たく「もう1軒飲みに行こう」と誘うからです。遅い時間から合流したい夜は最初から終電後キープ目安{s3['midnight_retention_pct']}%の『{s3['ja_name']}』のような深夜強い店舗を選び、早い時間なら開始45分で「30分だけ夜カフェ寄らない？」と出口時間を切って誘うのが自然です。",
+                },
+            ],
+            "x_title": f"なぜ「いい人」ほどグループLINEの墓場で終わるのか？{area_name}の実測比率と敗因解剖",
+            "x_main_text": (
+                f"正直、相席で一番もったいないのは「看板だけで男余りの店に並んで疲れ果て、お会計前に4人グループLINEを作って自然消滅する」パターン💸\n\n"
+                f"『{s1['casual_name']}』（女性比{s1['wpct']}%）など実測格差と女子側のシビアな15分査定を本音で書きました👇\n"
+                "#相席ラウンジ #相席ナビ"
+            ),
+            "note_title": title_a,
+            "note_hashtags": "#相席ラウンジ #オリエンタルラウンジ #相席ナビ #恋愛の本音 #夜遊び",
+        }
 
-    # Candidate B: Data Contrast & Cost-Performance / Timing Strategy
-    slug_b = f"{plan['suggested_slug']}-data"
-    title_b = (
-        f"【実測比較】{plan['custom_topic']}——90分粘って後悔した夜と「数字を見て40分で動いた夜」の決定的な差"
-        if plan.get("custom_topic")
-        else f"気を使って90分粘る人ほど損をする？全国{research['national_women'] + research['national_men']}名のリアルタイム比率から逆算する「外さない店選びと引き際」"
-    )
-    cand_b = {
-        "style": "data_contrast_guide",
-        "style_label": "📊 実測データ×失敗談対比案（損益比較×時間帯ロジック）",
-        "writer_note": f"全国稼働（女性{research['national_women']}名・平均女性比{research['national_wpct']}%）と上位店舗の深夜維持率を対比し、「惰性の90分滞在」を防ぐ実践判断軸に落とし込んだ構成。",
-        "thinking_memo": "",
-        "is_ai_generated": False,
-        "slug": slug_b,
-        "eyecatch_key": "cost-break" if plan["theme_key"] == "second_venue_move" else plan["eyecatch_key"],
-        "badge": "実測×損益比較",
-        "read_time": "約6分で読める",
-        "tag_primary": ["tag-amber", "📊 実測ログ×引き際検証"],
-        "tag_secondary": plan["tag_secondary"],
-        "title": title_b,
-        "short_title": "惰性90分vs40分見切り｜実測比率で選ぶ立ち回り",
-        "desc": f"「悪い子じゃないけど話が弾まないな…」と思いながら延長を重ねて1万円近く払った苦い経験をもとに、全国女性比{research['national_wpct']}%の実測データを使った店選びとスマートな引き際を整理しました。",
-        "keywords": f"相席ラウンジ,料金,男女比,{s1['ja_name']},{s3['ja_name']},見切り,相席ナビ",
-        "sections": [
-            {
-                "heading": "1. 改札前のレシートを見て相方と苦笑いした「気使いすぎた90分」",
-                "paragraphs": [
-                    "相席ラウンジに何度か通っていると、一番もったいない出費になるのが「大外れではないけれど、お互い2軒目に行くほどでもない席」でなんとなく90分・100分と居続けてしまうパターンです。",
-                ],
-                "dialogue": [
-                    "「悪い子たちじゃなかったけど、後半ほぼ仕事の話で終わっちゃったな…」",
-                    "「しかも気づいたら1人9,000円超えてるじゃん。40分で切り上げて2軒目行けばよかったね（笑）」",
-                ],
-                "after_paragraphs": [
-                    f"そんな反省から私たちが徹底するようになったのが、入店前と着席35分時点の2回だけ「今の周辺店舗の男女比」を冷静にチェックする習慣です。現在も全国で女性{research['national_women']}名・男性{research['national_men']}名（女性比{research['national_wpct']}%）が動いていますが、店舗ごとの偏りは想像以上に大きく出ます。",
-                ],
-                "highlight_title": "感覚ではなく「周辺の現在地」を持って座る強み",
-                "highlight_body": f"たとえば『{s1['ja_name']}』が女性{s1['women']}名（女性比{s1['wpct']}%）と余裕があることを知っていれば、目の前の席が噛み合わなくても焦らずフラットに次の判断ができます。",
-                "store_links": store_links_1,
-            },
-            {
-                "heading": "2. 店舗ごとの「ピーク波形」と「終電後の残り方」を比べてみる",
-                "paragraphs": [
-                    f"同じ10分単位のチャージを払うなら、今の時間帯に強い店舗を選ぶだけで相席のテンポが劇的に変わります。特に{research['calendar']['tag']}のような夜は、1軒目組と2軒目組が動く境界線を知っておくことが武器になります。",
-                ],
-                "dialogue": [
-                    "「さっき23時前に1組帰っちゃったけど、0時回ってからまた女の子入ってきたね」",
-                    f"「ほんとだ。『{s3['casual_name']}』は終電後も残る子が多いって聞いてたけど、この時間からでも普通に出会えるね」",
-                ],
-                "after_paragraphs": [
-                    f"実測データを見ても、『{s3['ja_name']}』のように深夜帯の維持目安が{s3['midnight_retention_pct']}%ある店舗と、22時台にピークが集中する店舗では戦い方が違います。早い時間は『{s1['ja_name']}』、遅めの合流なら『{s3['ja_name']}』というように役割分担を決めておくと迷いません。",
-                ],
-                "highlight_title": "",
-                "highlight_body": "",
-                "store_links": store_links_2,
-            },
-            {
-                "heading": "3. 盛り上がったら45分で外へ、噛み合わなければ40分でリセット",
-                "paragraphs": [
-                    "面白いことに、うまくいく席ほど店内に2時間も居座りません。乾杯して30〜40分ほど笑って話せたら、「ちょっと静かなカフェかバーで1杯だけ飲まない？」と声をかけたほうが、男性側のチャージも抑えられ、2人の距離もぐっと縮まります。",
-                ],
-                "dialogue": [
-                    "「ここちょっと音楽大きくなってきたし、すぐ近くに美味しいフルーツカクテルのバーあるから1杯だけ行かない？」",
-                    "「え、行きたいです！ ちょうどもう少しゆっくり話したいなって思ってました」",
-                ],
-                "after_paragraphs": [
-                    "「盛り上がった席は45分で2軒目へ」「噛み合わない席は40分で感謝を伝えてリセット」。このシンプルな基準を持っておくだけで、お財布にもメンタルにも驚くほど余裕が生まれます。",
-                ],
-                "highlight_title": "今夜の判断チェックリスト",
-                "highlight_body": "①女性比率55%以上かつ女性15名以上の店舗を第1候補にする ／ ②35分話して会話が仕事の一問一答から広がらなければ引き際サイン ／ ③波長が合ったらデザートや静かなバーを口実に45〜50分でスマートに外へ誘う。",
-                "store_links": store_links_1 + store_links_2,
-            },
-        ],
-        "data_table": common_table,
-        "summary_points": [
-            f"全国平均女性比（現在 {research['national_wpct']}%）より高い店舗を選ぶだけで、席替え待ちのロスを大幅に減らせる",
-            "微妙な席での「気使い延長」が一番コスパを悪化させるため、40分をひとつの分岐点にする",
-            f"23時以降の2軒目参戦なら『{s3['ja_name']}』など終電後維持力の高い店舗へ絞って短期決戦にする",
-        ],
-        "faqs": [
-            {
-                "q": "40分で見切るとき、相手に失礼にならない切り上げ方はありますか？",
-                "a": "「明日朝イチで大事な打ち合わせがあって、今日は1時間だけって決めてたんだよね。乾杯できて楽しかった、ありがとう！」と最初から時間制限があった形で明るくお礼を伝えれば、お互い気持ちよく終われます。",
-            },
-            {
-                "q": "2軒目に誘うベストなタイミングは何分くらいですか？",
-                "a": "2杯目のグラスが半分ほど空いた入店40〜50分頃が最も自然です。長居しすぎると終電や眠気が勝ってしまうため、「ちょっと静かなお店で1杯だけ」とハードルを下げて誘うのがコツです。",
-            },
-        ],
-        "x_title": "90分粘って後悔した夜と「数字を見て40分で動いた夜」の決定的な差",
-        "x_main_text": (
-            f"「悪い子じゃないけど話が広がらないな…」と気を使って90分いて、改札前で1万円近いレシートを見て相方と苦笑いした夜の話💸\n\n"
-            f"『{s1['casual_name']}』（女性比{s1['wpct']}%）など実測ログを使った店選びと「40分見切り」のコツをまとめました👇\n"
-            "#相席ラウンジ #相席ナビ"
-        ),
-        "note_title": title_b,
-        "note_hashtags": "#相席ラウンジ #オリエンタルラウンジ #コスパ #恋愛攻略 #相席ナビ",
-    }
+    # Candidate B: Female Real Perspective ("女子トイレ反省会＆女性側から見た勝ち店舗の逆張り法則")
+    slug_b = f"{plan['suggested_slug']}-female-real" if tm != "standard" else f"{plan['suggested_slug']}-data"
+    if tm == "standard":
+        title_b = (
+            f"【実測比較】{plan['custom_topic']}——全国{research['national_women'] + research['national_men']}名の比率から逆算する店選びと引き際"
+            if plan.get("custom_topic")
+            else f"気を使って長居するほど疲れやすい？全国女性比{research['national_wpct']}%の実測ログから逆算するスマートな店選び"
+        )
+        cand_b = {
+            "style": "data_contrast_guide",
+            "style_label": f"📊 【{tone_meta['short_label']}】実測データ×引き際ロジック案",
+            "writer_note": f"全国稼働（女性{research['national_women']}名・平均女性比{research['national_wpct']}%）と上位店舗の深夜維持率を対比したデータガイド構成。",
+            "thinking_memo": "",
+            "is_ai_generated": False,
+            "slug": slug_b,
+            "eyecatch_key": "cost-break" if plan["theme_key"] == "second_venue_move" else plan["eyecatch_key"],
+            "badge": "実測×データ比較",
+            "read_time": "約6分で読める",
+            "tag_primary": ["tag-amber", "📊 実測ログ×店舗比較"],
+            "tag_secondary": plan["tag_secondary"],
+            "title": title_b,
+            "short_title": "実測比率で選ぶ外さない店舗と引き際",
+            "desc": f"全国女性比{research['national_wpct']}%の実測データをもとに、時間帯ごとの店舗の使い分けとスマートな声かけタイミングを整理しました。",
+            "keywords": f"相席ラウンジ,料金,男女比,{s1['ja_name']},{s3['ja_name']},相席ナビ",
+            "sections": [
+                {
+                    "heading": "1. レシートを見て相方と振り返った「なんとなく延長」の落とし穴",
+                    "paragraphs": [
+                        "相席ラウンジで意外と多いのが、会話が盛り上がりきらない席で気を使って90分以上滞在してしまうケースです。",
+                    ],
+                    "dialogue": [
+                        "「悪い子たちじゃなかったけど、後半はお互いちょっと話すことなくなってたね」",
+                        "「最初に周辺の比率を見ておけば、もう少し余裕を持って動けたかもね」",
+                    ],
+                    "after_paragraphs": [
+                        f"現在も全国で女性{research['national_women']}名・男性{research['national_men']}名（女性比{research['national_wpct']}%）が稼働していますが、店舗ごとのバランスを見ておくだけで落ち着いて判断できます。",
+                    ],
+                    "highlight_title": "周辺の現在地を知っておくメリット",
+                    "highlight_body": f"『{s1['ja_name']}』（女性{s1['women']}名・女性比{s1['wpct']}%）のようにバランスが良い店舗を把握しておくと安心です。",
+                    "store_links": store_links_1,
+                },
+                {
+                    "heading": "2. 早い時間に強い店舗と、終電後に強い店舗を使い分ける",
+                    "paragraphs": [
+                        f"{research['calendar']['tag']}のような夜は、時間帯ごとに人が集まるブランドが変化します。",
+                    ],
+                    "dialogue": [
+                        "「23時前に一度落ち着いたけど、0時回ってからまた2軒目組が入ってきたね」",
+                        f"「『{s3['casual_name']}』は遅い時間でも活気があるから2軒目からでも入りやすいね」",
+                    ],
+                    "after_paragraphs": [
+                        f"『{s3['ja_name']}』は終電後の維持目安が{s3['midnight_retention_pct']}%と高く、早い時間は『{s1['ja_name']}』、遅めなら『{s3['ja_name']}』と使い分けるのがスムーズです。",
+                    ],
+                    "highlight_title": "",
+                    "highlight_body": "",
+                    "store_links": store_links_2,
+                },
+                {
+                    "heading": "3. 波長が合ったら「短時間・低ハードル」で2軒目を提案する",
+                    "paragraphs": [
+                        "会話が弾んだ席では、ダラダラ長居するよりも少し余韻が残る45分前後に声をかけるほうが自然です。",
+                    ],
+                    "dialogue": [
+                        "「すぐ近くにコーヒーも飲める静かなバーがあるんだけど、終電まで30分だけ寄らない？」",
+                        "「30分だけなら大丈夫かな、ちょっと行ってみようか！」",
+                    ],
+                    "after_paragraphs": [
+                        "相手の帰宅時間を気遣う一言を添えるだけで、誠実な印象がぐっと伝わります。",
+                    ],
+                    "highlight_title": "今夜の判断チェックリスト",
+                    "highlight_body": "①女性比率55%以上の店舗を第1候補にする ／ ②遅い時間帯は深夜維持率の高い店舗を選ぶ ／ ③声かけは帰宅時間を気遣う短時間提案にする。",
+                    "store_links": store_links_1 + store_links_2,
+                },
+            ],
+            "data_table": common_table,
+            "summary_points": [
+                f"全国平均女性比（{research['national_wpct']}%）より余裕のある店舗を優先する",
+                f"23時以降は深夜維持目安{s3['midnight_retention_pct']}%の『{s3['ja_name']}』などを選ぶ",
+                "2軒目の提案は「終電まで30分だけ」と時間を区切って安心感を作る",
+            ],
+            "faqs": [
+                {
+                    "q": "初めて行く場合、どの時間帯が一番話しやすいですか？",
+                    "a": "金土なら混雑前の20時台、平日なら20時半〜22時頃が待ち時間も少なく落ち着いて会話できます。",
+                },
+                {
+                    "q": "店舗ごとの現在の男女比はどこで確認できますか？",
+                    "a": "相席ナビのトップページおよび各店舗ページで毎分リアルタイム更新しています。",
+                },
+            ],
+            "x_title": "実測比率から逆算するスマートな店選びと引き際",
+            "x_main_text": (
+                f"なんとなく長居して疲れてしまう夜を減らすために、『{s1['casual_name']}』（女性比{s1['wpct']}%）など実測ログを使った時間帯別の店選びを整理しました📊👇\n"
+                "#相席ラウンジ #相席ナビ"
+            ),
+            "note_title": title_b,
+            "note_hashtags": "#相席ラウンジ #オリエンタルラウンジ #相席ナビ #夜遊び #出会い",
+        }
+    else:
+        title_b = (
+            f"【女性目線の本音】{plan['custom_topic']}——女子トイレのLINE反省会と「タダだから気楽でしょ」の大誤解"
+            if plan.get("custom_topic")
+            else f"「女の子は無料だから気楽でしょ？」が大間違いな理由——女子トイレの本音LINEと、男女で真逆になる『正解の店』"
+        )
+        cand_b = {
+            "style": "female_real_perspective",
+            "style_label": f"💄 【{tone_meta['short_label']}】女性目線リアル・女子トイレ本音＆逆張り店選び案",
+            "writer_note": f"女性2人組が乾杯15分でチェックしているリアルな減点ポイントと、女子側にとっては『{s2['ja_name']}』のような男性先行店こそ即乾杯の穴場になる非対称構造を執筆。",
+            "thinking_memo": "",
+            "is_ai_generated": False,
+            "slug": slug_b,
+            "eyecatch_key": "first-10min",
+            "badge": "女性目線の本音",
+            "read_time": "約6分で読める",
+            "tag_primary": ["tag-pink", "💄 女性ペアの本音解剖"],
+            "tag_secondary": ["tag-cyan", "男女逆張りの店選び"],
+            "title": title_b,
+            "short_title": "女子トイレの本音LINEと男女で真逆の店選び",
+            "desc": f"1時間かけてメイクと髪を巻いて来た女子2人組が、乾杯15分後の化粧室でどんなLINEを送り合っているのか。男性が気づかない減点サインと、{s1['ja_name']}・{s2['ja_name']}の男女別・正解ルートを明かします。",
+            "keywords": f"相席ラウンジ,女性目線,本音,{s1['ja_name']},{s2['ja_name']},女子会,相席ナビ",
+            "sections": [
+                {
+                    "heading": "1. 「女の子はタダで飲めていいよね」と言った瞬間、恋愛対象から外れる理由",
+                    "paragraphs": [
+                        "男性側が一番やりがちな勘違いに、「女の子は無料なんだから待たされてもハズレ席でもノーダメージでしょ」という思い込みがあります。でも女性側のリアルなコストは『お金』ではなく『準備の1時間半とヒールで歩く体力、そして今夜という時間』です。",
+                        f"仕事終わりにコテで髪を直し、せっかくメイクを整えて入ったのに、女余りの店舗で相席がつかないまま30分放置されたり、やっと座ってきた男性から開口一番「タダ飯いいよね〜」と軽く扱われた瞬間、女子2人の温度は一気に氷点下まで下がります。",
+                    ],
+                    "dialogue": [
+                        "「（席を立って化粧室の鏡の前で）…ねえ、さっきの右側の人、乾杯して3分で『今日何人目？』って聞いてきたんだけど笑」",
+                        "「それな、しかも相方の人ずっと自分の仕事の武勇伝だし…ごめん、戻って今のドリンク飲み干したら別のお店行こ！」",
+                    ],
+                    "after_paragraphs": [
+                        "これが現場で毎晩起きている『女子トイレ反省会』のリアルです。女性ペアが急に2人揃って化粧室へ立ち、戻ってきてから食事のペースが急に早くなったら、それは楽しんでいるのではなく『早く食べて出る準備』に入っています。",
+                    ],
+                    "highlight_title": "女性ペアが最初の10分で密かに見ている3箇所",
+                    "highlight_body": "①店員さんへの口の利き方（タメ口・横柄さは一発アウト） ／ ②距離70cmで漂うタバコ・ニンニク臭と肌の清潔感 ／ ③片方の女の子だけでなく『友達側にもちゃんと敬意を払って話を振れるか』（相方の女の子を退屈させた時点で帰られます）。",
+                    "store_links": store_links_1,
+                },
+                {
+                    "heading": f"2. 男女で「行くべき正解の店」は真逆になる——実測比率のカラクリ",
+                    "paragraphs": [
+                        f"ここで面白いのが、リアルタイム人数を見ると『男性にとっての天国』と『女性にとっての天国』が真逆になることです。たとえば今、{area_name}まわりでは『{s1['ja_name']}』（女性{s1['women']}名 / 男性{s1['men']}名・女性比{s1['wpct']}%）と『{s2['ja_name']}』（女性{s2['women']}名 / 男性{s2['men']}名・女性比{s2['wpct']}%）でくっきりバランスが分かれています。",
+                    ],
+                    "dialogue": [
+                        f"「女余りすぎてる店に入ると、女子だけで30分放置されて気まずいんだよね…」",
+                        f"「わかる！ 私たちが入るなら男性がちゃんといっぱい入ってる『{s2['casual_name']}』の方が、待ち0分で即乾杯できるし席替えもすぐ来てラクだよね💄」",
+                    ],
+                    "after_paragraphs": [
+                        f"そう、男性目線なら女性比率が{s1['wpct']}%ある『{s1['ja_name']}』が圧倒的に有利ですが、女性2人組の目線なら、男性がしっかり入っている『{s2['ja_name']}』や深夜まで活気のある『{s3['ja_name']}』を選んだほうが、放置ゼロ＆余裕のある男性陣とすぐ飲めるのです。",
+                    ],
+                    "highlight_title": "",
+                    "highlight_body": "",
+                    "store_links": store_links_2,
+                },
+                {
+                    "heading": "3. 女子が「この席は当たりかも」とガードを解く瞬間",
+                    "paragraphs": [
+                        "では、女性側が『あ、この人たちともう少し話したいな』と思うのはどんな席でしょうか。実はイケメンや派手な盛り上げではなく、拍子抜けするほどシンプルな『対等な余裕』です。",
+                    ],
+                    "dialogue": [
+                        "「今日外ちょっと湿気すごかったよね、髪巻くの大変じゃなかった？ 何か冷たいもの頼もうか」",
+                        "「えっ、わかるんですか！？ そうなんですよ前髪すぐ取れちゃって…！ ありがとうございます、じゃあジャスミン茶もらおうかな」",
+                    ],
+                    "after_paragraphs": [
+                        "相手の準備の手間をさらっと労い、お酒を強要せず、2人の女の子両方が笑える話題を選ぶ。それだけで上位1割の『また会いたい席』に入れます。男性も女性も、入店前に今の男女バランスを10秒チェックして、自分たちにとって一番ストレスのない店舗から夜を始めてみてください。",
+                    ],
+                    "highlight_title": "男女別・今夜のスマートな店舗選び",
+                    "highlight_body": f"【男性ペア】女性比{s1['wpct']}%の『{s1['ja_name']}』など女性先行店を選び、余裕を持って乾杯する ／ 【女性ペア】女余り放置を避け、『{s2['ja_name']}』など男性がしっかり入っている店舗で待ち0分＆好待遇を狙う。",
+                    "store_links": store_links_1 + store_links_2,
+                },
+            ],
+            "data_table": common_table,
+            "summary_points": [
+                "女性側のコストは「準備の1時間半と今夜の時間」。『タダでいいよね』発言や店員への横柄な態度は即座に女子トイレ反省会行きになる",
+                "相方の女の子を退屈させない気配り（4人全員が話せる話題選び）こそが、2軒目へ進める最大の鍵になる",
+                f"男性は女性比率の高い『{s1['ja_name']}』、女性は即相席できる『{s2['ja_name']}』と、データを見て逆張りで使い分けるのが正解",
+            ],
+            "faqs": [
+                {
+                    "q": "女性2人組で行く場合、一番ハズレを引きにくい時間帯・お店選びは？",
+                    "a": f"極端に女性ばかり多い店（女性75%超など）に入ると相席待ちで放置されやすいため、相席ナビで『男性人数がしっかり入っている大型店（{s2['ja_name']}など）』を見てから入ると、待ち0分で歓迎されやすく非常に快適です。",
+                },
+                {
+                    "q": "雨の日に女性が特定の店舗に集中しやすいのは本当ですか？",
+                    "a": "本当です。雨や湿気の強い夜はせっかく整えた前髪や靴が濡れるのを避けるため、路面店よりも駅・地下街直結の店舗へ女性ペアが一極集中します。",
+                },
+            ],
+            "x_title": "女子トイレの本音LINEと、男女で真逆になる「正解の相席ラウンジ選び」",
+            "x_main_text": (
+                "「女の子はタダだから気楽でしょ」って言っちゃう人ほど、乾杯15分後の女子トイレLINEで『この杯飲み干したら出よ笑』って書かれてる現実💄\n\n"
+                f"女性が見ている減点サインと、『{s1['casual_name']}』など男女で真逆になる店選びの本音👇\n"
+                "#相席ラウンジ #相席ナビ"
+            ),
+            "note_title": title_b,
+            "note_hashtags": "#相席ラウンジ #女子の本音 #オリエンタルラウンジ #相席ナビ #恋愛コラム",
+        }
 
-    return [
-        _render_candidate_preview_and_note(cand_a, site_url=site_url),
-        _render_candidate_preview_and_note(cand_b, site_url=site_url),
-    ]
+    rendered_a = _render_candidate_preview_and_note(cand_a, site_url=site_url)
+    rendered_b = _render_candidate_preview_and_note(cand_b, site_url=site_url)
+    # In `female_real` mode or `female_real_voice` theme, place the Female Perspective draft first!
+    if tm == "female_real" or plan.get("theme_key") == "female_real_voice":
+        return [rendered_b, rendered_a]
+    return [rendered_a, rendered_b]
 
 
-def _build_column_gemini_prompt(research: dict, plan: dict, site_url: str) -> str:
+def _build_column_gemini_prompt(
+    research: dict,
+    plan: dict,
+    site_url: str,
+    tone_mode: str = None,
+) -> str:
+    tm = sns_editorial.get_editorial_tone_mode(tone_mode)
+    tone_directive = sns_editorial.EDITORIAL_TONE_MODES[tm]["prompt_directive"]
     fact_sheet = {
         "calendar": research.get("calendar"),
         "weather": research.get("weather"),
@@ -1064,51 +1309,55 @@ def _build_column_gemini_prompt(research: dict, plan: dict, site_url: str) -> st
         "core_question": plan.get("core_question"),
         "target_reader": plan.get("target_reader"),
         "suggested_slug": plan.get("suggested_slug"),
+        "tone_mode": tm,
     }
     cliches_str = "・".join(f"「{w}」" for w in COLUMN_AI_CLICHES)
+    fantasy_str = "・".join(f"「{w}」" for w in SWEET_FANTASY_CLICHES)
     return (
         "あなたは全国53店舗の相席ラウンジ人数をリアルタイム計測しているメディア『相席ナビ』の敏腕コラム編集長です。\n"
-        "AIが書いたような無機質な解説記事ではなく、本当に週末や仕事帰りにラウンジの現場空気（エレベーターが開いた瞬間の景色、乾杯直後のちょっとした沈黙や盛り上がり、相方との帰り道の反省会）を知る人間が書いた、温かみとリアリティのあるWebコラム＆note原稿＆X告知文を1セット執筆してください。\n\n"
-        "【長考（Thinking）プロセス：脳内3案コンペ＆脱AI推敲】\n"
+        "AIが書いたような当たり障りのない解説記事やご都合主義の甘い恋愛マニュアルではなく、本当に週末や仕事帰りにラウンジの現場空気（エレベーターが開いた瞬間の景色、女子2人組が化粧室で送り合うシビアな本音LINE、相方との帰り道の苦い反省会）を知る人間が書いた、鋭い観察眼とリアリティのあるWebコラム＆note原稿＆X告知文を1セット執筆してください。\n\n"
+        f"{tone_directive}\n\n"
+        "【長考（Thinking）プロセス：脳内3案コンペ＆脱・安易さ推敲】\n"
         "内部思考で必ず以下の3ステップを行ってからJSONを出力してください：\n"
-        "  Step 1. 導入の人間味エピソードを3通り（①受付待ちや席でのちょっと苦い失敗談から入る案、②友達・相方とのリアルなLINEや会話から入る案、③雨や終電前など街の空気感から入る案）頭の中で比べる。\n"
-        "  Step 2. 一番「AIの教科書構文」に見えず、読者が『うわ、それあるある…！』と3行目で引き込まれる1案を選び、3章すべてに自然な口語の会話（dialogue配列、各2セリフ）を入れる。\n"
+        "  Step 1. 導入の人間味エピソードを3通り（①受付待ちや席での苦い敗因・空回りから入る辛口案、②女性2人組の女子トイレや帰り道LINEのリアルな本音から入る案、③雨や終電前など街の空気と男女比の非対称性から入る案）頭の中で比べる。\n"
+        "  Step 2. 今回のトーン指定に最も刺さり、読者が『うわ、それ図星すぎる…！』と3行目で引き込まれる1案を選び、3章すべてに生身の口語会話（dialogue配列、各2セリフ）を入れる。\n"
         "  Step 3. ファクトシートの実測数値・店舗名・URLと1人・1%の狂いもないか確認する。\n\n"
         "【絶対厳守ルール（違反すると鬼デスク検閲で大幅減点されます）】\n"
         "1. 店舗名・人数・女性比率は下記ファクトシートにある数値のみを使い、架空の人数を捏造しないこと。\n"
         "2. ブランド呼称ルール：単体の『オリエンタル』や『オリエンタル新宿』（「ラウンジ」抜け）、内部コード『OLG』は絶対に使わないこと！必ず正式名称『オリエンタルラウンジ〇〇』または常連の自然な口語略称『オリラジ〇〇』（会話やX告知で有効）と表記すること。『ag〇〇』『JIS〇〇』はそのまま表記。\n"
         f"3. AI臭ワードの完全禁止：{cliches_str} はタイトル・本文・FAQ・X告知のどこにも絶対に使わないこと。\n"
-        "4. X告知文（`x_main_text`）は全角125文字前後（最大でもTwitter weight 265以内）に引き締め、末尾に `#相席ラウンジ #相席ナビ` を付けること。\n\n"
+        f"4. 通販マンガ・進研ゼミ的なご都合主義セリフ＆手垢テンプレの禁止：{fantasy_str} のような『都合よく女の子が即答で食いつくファンタジー会話』や浅い一般論は禁止。迷い・駆け引き・女子側のシビアな視点を入れること。また毎回ワンパターンな『40分見切り』一辺倒の結論にせず、テーマ固有の深い示唆で締めること。\n"
+        "5. X告知文（`x_main_text`）は全角125文字前後（最大でもTwitter weight 265以内）に引き締め、末尾に `#相席ラウンジ #相席ナビ` を付けること。\n\n"
         f"【検証済みファクトシート】\n{json.dumps(fact_sheet, ensure_ascii=False, indent=2)}\n\n"
         "以下のJSONオブジェクト形式のみで出力してください（Markdownコードブロック不要）：\n"
         "{\n"
-        '  "thinking_memo": "脳内でどんな導入3案を比較し、なぜこの体験エピソードと会話トーンを採用したかの編集長推敲メモ（90〜150文字）",\n'
-        '  "writer_note": "今回の記事で一番効かせた実測データと人間味フックの1行要約",\n'
+        '  "thinking_memo": "脳内でどんな導入3案を比較し、どう綺麗事を排して辛口・女性本音のリアリティを効かせたかの編集長推敲メモ（90〜150文字）",\n'
+        '  "writer_note": "今回の記事で一番効かせた実測データと辛口/女性目線フックの1行要約",\n'
         '  "slug": "英小文字とハイフンのみのURLスラッグ（例: umeda-gap-hopping-1028）",\n'
-        '  "title": "読者が思わずクリックしたくなる人間味×データ根拠のある記事タイトル（36〜62文字）",\n'
+        '  "title": "読者が思わずクリックしたくなる本音×データ根拠のある記事タイトル（36〜62文字）",\n'
         '  "short_title": "パンくず・一覧用の短いタイトル（18〜28文字）",\n'
         '  "desc": "検索スニペット・カード用の共感リード文（90〜135文字）",\n'
         '  "sections": [\n'
         '    {\n'
         '      "heading": "1. 第1章見出し",\n'
-        '      "paragraphs": ["導入段落1（情景・体験）", "導入段落2"],\n'
-        '      "dialogue": ["「現場でのリアルな会話セリフ1」", "「それに対する自然な返答セリフ2」"],\n'
+        '      "paragraphs": ["導入段落1（情景・苦いリアル体験）", "導入段落2"],\n'
+        '      "dialogue": ["「現場での生々しくもリアルな会話セリフ1」", "「それに対するリアルな返答セリフ2」"],\n'
         '      "after_paragraphs": ["会話を踏まえた実測データへの橋渡し段落"],\n'
         '      "highlight_title": "要点ボックス見出し",\n'
         '      "highlight_body": "要点ボックス本文"\n'
         '    },\n'
         '    {\n'
-        '      "heading": "2. 第2章見出し（データ裏付け）",\n'
+        '      "heading": "2. 第2章見出し（データ裏付け×男女の温度差）",\n'
         '      "paragraphs": ["データ分析段落"],\n'
-        '      "dialogue": ["「女性側や相方のリアルなセリフ1」", "「返答セリフ2」"],\n'
+        '      "dialogue": ["「女性ペアの本音や相方とのリアルなセリフ1」", "「返答セリフ2」"],\n'
         '      "after_paragraphs": ["店舗ごとの使い分け解説段落"],\n'
         '      "highlight_title": "",\n'
         '      "highlight_body": ""\n'
         '    },\n'
         '    {\n'
-        '      "heading": "3. 第3章見出し（実践アクション・引き際）",\n'
+        '      "heading": "3. 第3章見出し（実践アクション）",\n'
         '      "paragraphs": ["立ち回り解説段落"],\n'
-        '      "dialogue": ["「2軒目声かけや乾杯10分の自然なセリフ1」", "「返答セリフ2」"],\n'
+        '      "dialogue": ["「駆け引きや温度感のある自然なセリフ1」", "「返答セリフ2」"],\n'
         '      "after_paragraphs": ["締めくくり段落"],\n'
         '      "highlight_title": "明日から使える実践ルール",\n'
         '      "highlight_body": "具体的な3つの行動指針"\n'
@@ -1116,31 +1365,33 @@ def _build_column_gemini_prompt(research: dict, plan: dict, site_url: str) -> st
         '  ],\n'
         '  "summary_points": ["まとめ箇条書き1", "まとめ箇条書き2", "まとめ箇条書き3"],\n'
         '  "faqs": [\n'
-        '    {"q": "読者がよく迷う質問1", "a": "具体的で誠実な回答1"},\n'
+        '    {"q": "読者がよく迷う質問1", "a": "綺麗事抜きの具体的で誠実な回答1"},\n'
         '    {"q": "読者がよく迷う質問2", "a": "具体的で誠実な回答2"}\n'
         '  ],\n'
         '  "x_title": "Xリプ欄用の短い記事見出し",\n'
-        '  "x_main_text": "X告知1投目（体験あるある＋実測の驚き＋👇 #相席ラウンジ #相席ナビ）",\n'
-        '  "note_title": "note読者向けに少しエッセイ感を強めたタイトル",\n'
+        '  "x_main_text": "X告知1投目（図星あるある＋実測の驚き＋👇 #相席ラウンジ #相席ナビ）",\n'
+        '  "note_title": "note読者向けに少しエッセイ感と本音感を強めたタイトル",\n'
         '  "note_hashtags": "#相席ラウンジ #オリエンタルラウンジ #相席ナビ #夜遊び #恋愛コラム"\n'
         "}"
     )
 
 
-def _make_col_cache_key(research: dict, plan: dict):
+def _make_col_cache_key(research: dict, plan: dict, tone_mode: str = None):
+    tm = sns_editorial.get_editorial_tone_mode(tone_mode)
     stores_sig = tuple(
         (s.get("raw_name", ""), int(s.get("women") or 0), int(s.get("men") or 0))
         for s in (research.get("featured_stores") or [])[:3]
     )
     return (
+        tm,
         plan.get("theme_key") or "area_hopping",
         plan.get("custom_topic") or "",
         stores_sig,
     )
 
 
-def has_cached_column_ai(research: dict, plan: dict) -> bool:
-    ck = _make_col_cache_key(research, plan)
+def has_cached_column_ai(research: dict, plan: dict, tone_mode: str = None) -> bool:
+    ck = _make_col_cache_key(research, plan, tone_mode=tone_mode)
     now_t = time.time()
     with _col_ai_lock:
         item = _col_ai_cache.get(ck)
@@ -1150,17 +1401,20 @@ def has_cached_column_ai(research: dict, plan: dict) -> bool:
 def _generate_gemini_column_candidate(
     research: dict,
     plan: dict,
-     baseline_cand: dict,
+    baseline_cand: dict,
     site_url: str,
     now_jst: datetime.datetime,
     force_refresh: bool = False,
     cache_only: bool = False,
+    tone_mode: str = None,
 ) -> dict:
     api_key = sns_editorial.get_gemini_api_key(allow_blocking=(not cache_only))
     if not api_key:
         return None
 
-    ck = _make_col_cache_key(research, plan)
+    tm = sns_editorial.get_editorial_tone_mode(tone_mode)
+    tone_short = sns_editorial.EDITORIAL_TONE_MODES[tm]["short_label"]
+    ck = _make_col_cache_key(research, plan, tone_mode=tm)
     now_t = time.time()
     with _col_ai_lock:
         expired = [k for k, v in _col_ai_cache.items() if now_t - v["ts"] >= _COL_AI_CACHE_TTL_SEC]
@@ -1173,7 +1427,7 @@ def _generate_gemini_column_candidate(
     if cache_only:
         return None
 
-    prompt = _build_column_gemini_prompt(research, plan, site_url)
+    prompt = _build_column_gemini_prompt(research, plan, site_url, tone_mode=tm)
     preferred_env = (os.environ.get("GEMINI_MODEL") or "").strip()
     models_to_try = (
         [preferred_env] + [m for m in sns_editorial.DEFAULT_GEMINI_MODELS if m != preferred_env]
@@ -1255,8 +1509,8 @@ def _generate_gemini_column_candidate(
 
         cand = {
             "style": "ai_longform_story",
-            "style_label": "✨ Gemini AI 長考ストーリー＆データ融合案（編集長推敲）",
-            "writer_note": f"【{mn}・長考執筆】{_sanitize_brand_names(parsed.get('writer_note') or '現場の空気感と実測ログを掛け合わせたAI編集長案')}",
+            "style_label": f"✨ Gemini AI 長考ストーリー案（{tone_short}）",
+            "writer_note": f"【{mn}・{tone_short}】{_sanitize_brand_names(parsed.get('writer_note') or '現場の本音と実測ログを掛け合わせたAI編集長案')}",
             "thinking_memo": _sanitize_brand_names(parsed.get("thinking_memo") or ""),
             "is_ai_generated": True,
             "ai_model": mn,
@@ -1345,10 +1599,12 @@ def run_column_writer(
     use_ai: bool = True,
     force_ai_refresh: bool = False,
     ai_cache_only: bool = False,
+    tone_mode: str = None,
 ) -> list:
     now_jst = now_jst or datetime.datetime.now(JST)
     site_url = (app_url or os.environ.get("PUBLIC_SITE_URL") or "https://aiseki-navi.com").rstrip("/")
-    base_cands = _build_deterministic_candidates(research, plan, site_url=site_url)
+    tm = sns_editorial.get_editorial_tone_mode(tone_mode, allow_blocking=(not ai_cache_only))
+    base_cands = _build_deterministic_candidates(research, plan, site_url=site_url, tone_mode=tm)
 
     if use_ai:
         ai_cand = _generate_gemini_column_candidate(
@@ -1359,6 +1615,7 @@ def run_column_writer(
             now_jst=now_jst,
             force_refresh=force_ai_refresh,
             cache_only=ai_cache_only,
+            tone_mode=tm,
         )
         if ai_cand:
             return [ai_cand] + base_cands
@@ -1368,8 +1625,9 @@ def run_column_writer(
 # =====================================================================
 # Role 4: Evaluator / Desk (鬼デスク・100点採点＆検閲係)
 # =====================================================================
-def run_column_evaluator(candidates: list, research: dict, plan: dict) -> dict:
+def run_column_evaluator(candidates: list, research: dict, plan: dict, tone_mode: str = None) -> dict:
     evaluated = []
+    tm = sns_editorial.get_editorial_tone_mode(tone_mode)
     verified_names = [s["ja_name"] for s in (research.get("featured_stores") or [])] + [
         s["casual_name"] for s in (research.get("featured_stores") or [])
     ]
@@ -1409,18 +1667,25 @@ def run_column_evaluator(candidates: list, research: dict, plan: dict) -> dict:
         if c.get("is_ai_generated") and c.get("thinking_memo"):
             human_pts += 4
             pros.append("Gemini長考3案コンペによる独自の情景導入・言い回し推敲済み")
+        elif c.get("style") == "female_real_perspective":
+            human_pts += (4 if tm == "female_real" else 3)
+            pros.append("女子トイレ反省会・女性目線の本音と男女逆張りロジックが鮮明")
         elif c.get("style") == "field_dialogue_story":
-            human_pts += 3
-            pros.append("受付前〜乾杯10分の体験ストーリー導入で共感性が高い")
+            human_pts += (4 if tm in ("spicy", "spicy_female") else 3)
+            pros.append("綺麗事を排した現場の敗因解剖・リアル会話で読者の図星を突く構成")
         else:
             human_pts += 2
 
         cliche_hits = [w for w in COLUMN_AI_CLICHES if w in full_blob]
+        fantasy_hits = [w for w in SWEET_FANTASY_CLICHES if w in full_blob]
         if cliche_hits:
             human_pts -= min(14, len(cliche_hits) * 4)
             warnings.append(f"AI定型句（{', '.join(cliche_hits[:3])}）を検出したため減点")
+        elif fantasy_hits:
+            human_pts -= min(10, len(fantasy_hits) * 4)
+            warnings.append(f"ご都合主義・手垢テンプレ表現（{', '.join(fantasy_hits[:2])}）を検出したため減点")
         else:
-            pros.append("AI臭ワード（「徹底解説」「いかがでしたか」等）ゼロクリア")
+            pros.append("AI臭ワード・通販マンガ風のご都合主義セリフともにゼロクリア")
         human_pts = max(8, min(35, human_pts))
 
         # 2. Fact & Brand Hygiene (25 pts)
@@ -1505,7 +1770,8 @@ def run_column_evaluator(candidates: list, research: dict, plan: dict) -> dict:
 
     winner = evaluated[0] if evaluated else None
     desk_summary = (
-        f"全{len(evaluated)}案を100点満点で検閲し、『{winner['style_label']}』（{winner['total_score']}点／会話{winner['dialogue_count']}箇所・X weight {winner['x_weight']}/280）を第1位推薦に選出しました。"
+        f"【{sns_editorial.EDITORIAL_TONE_MODES[tm]['short_label']}】全{len(evaluated)}案を100点満点で検閲し、"
+        f"『{winner['style_label']}』（{winner['total_score']}点／会話{winner['dialogue_count']}箇所・X weight {winner['x_weight']}/280）を第1位推薦に選出しました。"
         if winner else "候補案がありません。"
     )
     return {
@@ -1547,7 +1813,7 @@ def audit_existing_columns(force: bool = False) -> dict:
         store_links = len(set(re.findall(r'href=["\'](/store/[a-z0-9\-]+)["\']', raw_html)))
         has_table = ("data-table" in raw_html or "<table" in raw_html)
         bare_oriental = len(re.findall(r"オリエンタル(?!ラウンジ)", plain))
-        cliche_cnt = sum(1 for w in COLUMN_AI_CLICHES if w in plain)
+        cliche_cnt = sum(1 for w in COLUMN_AI_CLICHES if w in plain) + sum(1 for w in SWEET_FANTASY_CLICHES if w in plain)
 
         score = 72
         if dialogue_cnt >= 2:
@@ -1564,7 +1830,7 @@ def audit_existing_columns(force: bool = False) -> dict:
             score += 2
         else:
             score -= min(20, bare_oriental * 8)
-        score -= min(10, cliche_cnt * 2)
+        score -= min(10, cliche_cnt * 3)
         score = max(40, min(100, score))
 
         return {
@@ -1649,9 +1915,13 @@ def run_column_editorial_pipeline(
     use_ai: bool = True,
     force_ai_refresh: bool = False,
     ai_cache_only: bool = False,
+    tone_mode: str = None,
 ) -> dict:
     now_jst = now_jst or datetime.datetime.now(JST)
     t_key = theme_key if theme_key in COLUMN_THEMES else "area_hopping"
+    allow_blocking = not ai_cache_only
+    default_tm = sns_editorial.get_default_editorial_tone_mode(allow_blocking=allow_blocking)
+    resolved_tm = sns_editorial.get_editorial_tone_mode(tone_mode, allow_blocking=allow_blocking)
 
     research = run_column_researcher(
         live_stores=live_stores,
@@ -1661,8 +1931,8 @@ def run_column_editorial_pipeline(
     )
     plan = run_column_planner(research=research, now_jst=now_jst)
 
-    gemini_status = sns_editorial.get_gemini_status(allow_blocking=(not ai_cache_only))
-    ai_cached = has_cached_column_ai(research, plan)
+    gemini_status = sns_editorial.get_gemini_status(allow_blocking=allow_blocking)
+    ai_cached = has_cached_column_ai(research, plan, tone_mode=resolved_tm)
     ai_pending_async = bool(use_ai and ai_cache_only and gemini_status.get("configured") and not ai_cached)
 
     candidates = run_column_writer(
@@ -1673,8 +1943,9 @@ def run_column_editorial_pipeline(
         use_ai=use_ai,
         force_ai_refresh=force_ai_refresh,
         ai_cache_only=ai_cache_only,
+        tone_mode=resolved_tm,
     )
-    evaluation = run_column_evaluator(candidates=candidates, research=research, plan=plan)
+    evaluation = run_column_evaluator(candidates=candidates, research=research, plan=plan, tone_mode=resolved_tm)
 
     default_sched_dt = (now_jst.astimezone(JST).replace(tzinfo=None) + datetime.timedelta(days=1)).replace(
         hour=19, minute=0, second=0, microsecond=0
@@ -1690,6 +1961,10 @@ def run_column_editorial_pipeline(
     return {
         "theme_key": t_key,
         "themes": list(COLUMN_THEMES.values()),
+        "tone_mode": resolved_tm,
+        "tone_mode_label": sns_editorial.EDITORIAL_TONE_MODES[resolved_tm]["label"],
+        "default_tone_mode": default_tm,
+        "tone_modes": sns_editorial.get_tone_modes_catalog(),
         "eyecatch_presets": [
             {"key": k, "label": v["label"], "jpg": v["jpg"]}
             for k, v in EYECATCH_PRESETS.items()

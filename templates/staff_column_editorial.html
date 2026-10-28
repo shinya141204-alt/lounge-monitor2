@@ -484,17 +484,46 @@
 
         <div class="channel-bar">
             <div class="tab-group" aria-label="編集部切替">
-                <a href="/staff/sns-editorial?channel=x">𝕏 X（旧Twitter）編集部</a>
-                <a href="/staff/sns-editorial?channel=threads">🧵 Threads（スレッズ）編集部</a>
-                <a href="/staff/sns-editorial?channel=instagram">📸 Instagram（インスタ）編集部</a>
-                <a href="/staff/column-editorial" class="active">📖 コラム・note編集部</a>
+                <a href="/staff/sns-editorial?channel=x&tone={{ editorial.tone_mode }}">𝕏 X（旧Twitter）編集部</a>
+                <a href="/staff/sns-editorial?channel=threads&tone={{ editorial.tone_mode }}">🧵 Threads（スレッズ）編集部</a>
+                <a href="/staff/sns-editorial?channel=instagram&tone={{ editorial.tone_mode }}">📸 Instagram（インスタ）編集部</a>
+                <a href="/staff/column-editorial?tone={{ editorial.tone_mode }}" class="active">📖 コラム・note編集部</a>
                 <a href="/staff/pdca">🧭 PDCA参謀本部</a>
             </div>
         </div>
 
         <div class="header-card">
             <h1>📖 相席ナビ「コラム・note編集部」4役合議・長考執筆＆予約公開ボード（マスター専用）</h1>
-            <p>SNS編集部と共通の4役体制で、AI特有の教科書感を排除した人間味コラム（現場リアル会話 <code>.dialogue-box</code> 3箇所＋実測データ比較表＋FAQ）・note原稿・X新着2連スレッドを一括作成。採用案はワンクリックでサイトへ予約公開または即時公開できます。</p>
+            <p>SNS編集部と共通の4役体制で、ご都合主義の綺麗事やAI特有の教科書感を排除した本音コラム（現場リアル会話 <code>.dialogue-box</code> 3箇所＋実測データ比較表＋FAQ）・note原稿・X新着2連スレッドを一括作成。採用案はワンクリックでサイトへ予約公開または即時公開できます。</p>
+        </div>
+
+        <!-- Writing Tone & Perspective Selector -->
+        <div class="theme-panel" style="border-color:rgba(216, 161, 170, 0.42);">
+            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:9px;">
+                <div style="font-size:0.84rem; font-weight:800; color:#f6d5dc;">
+                    🌶️💄 Step 0：執筆トーン＆視点モード切替（現在：{{ editorial.tone_mode_label }}）
+                </div>
+                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                    <span id="default-tone-badge" style="font-size:0.74rem; color:var(--sub);">
+                        全編集部の標準トーン：<strong style="color:var(--text);">{{ editorial.default_tone_mode }}</strong>
+                    </span>
+                    <button type="button" class="copy-btn" style="padding:5px 11px; font-size:0.74rem;" onclick="saveDefaultToneMode()">
+                        📌 このトーンを全編集部の標準に保存
+                    </button>
+                </div>
+            </div>
+            <div class="theme-chips" style="margin-bottom:8px;">
+                {% for tm in editorial.tone_modes %}
+                <a href="/staff/column-editorial?theme={{ editorial.theme_key }}&topic={{ custom_topic | urlencode }}&tone={{ tm.key }}"
+                   class="theme-chip {{ 'active' if editorial.tone_mode == tm.key else '' }}"
+                   title="{{ tm.desc }}">
+                    {{ tm.label }}{% if editorial.default_tone_mode == tm.key %} ★標準{% endif %}
+                </a>
+                {% endfor %}
+            </div>
+            <div id="tone-save-msg" style="font-size:0.76rem; color:var(--sub);">
+                {% for tm in editorial.tone_modes %}{% if tm.key == editorial.tone_mode %}💡 {{ tm.desc }}{% endif %}{% endfor %}
+            </div>
         </div>
 
         <!-- Theme & Custom Topic Selector -->
@@ -506,19 +535,20 @@
                     <strong style="color:#d3f3e2;">🧭 PDCA参謀の次回特命お題：</strong>
                     <span>『{{ editorial.pdca_directives.recommended_custom_topic }}』</span>
                 </div>
-                <a href="/staff/column-editorial?theme={{ editorial.pdca_directives.recommended_column_theme or 'area_hopping' }}&topic={{ editorial.pdca_directives.recommended_custom_topic | urlencode }}" class="pub-now-btn" style="text-decoration:none; padding:5px 11px; font-size:0.76rem;">⚡ この特命お題で執筆する</a>
+                <a href="/staff/column-editorial?theme={{ editorial.pdca_directives.recommended_column_theme or 'area_hopping' }}&topic={{ editorial.pdca_directives.recommended_custom_topic | urlencode }}&tone={{ editorial.tone_mode }}" class="pub-now-btn" style="text-decoration:none; padding:5px 11px; font-size:0.76rem;">⚡ この特命お題で執筆する</a>
             </div>
             {% endif %}
             <div class="theme-chips">
                 {% for th in editorial.themes %}
-                <a href="/staff/column-editorial?theme={{ th.key }}" class="theme-chip {{ 'active' if editorial.theme_key == th.key and not custom_topic else '' }}">
+                <a href="/staff/column-editorial?theme={{ th.key }}&tone={{ editorial.tone_mode }}" class="theme-chip {{ 'active' if editorial.theme_key == th.key and not custom_topic else '' }}">
                     {{ th.label }}
                 </a>
                 {% endfor %}
             </div>
             <form method="get" action="/staff/column-editorial" class="custom-topic-row" onsubmit="onCustomTopicSubmit(event)">
                 <input type="hidden" name="theme" id="theme-hidden-input" value="{{ editorial.theme_key }}">
-                <input type="text" name="topic" id="custom-topic-input" class="topic-input" value="{{ custom_topic }}" placeholder="自由テーマ入力（例：日曜20時の穴場勝負、梅田エリアの1軒目→2軒目比較、雨の日の駅直結ラウンジなど）">
+                <input type="hidden" name="tone" value="{{ editorial.tone_mode }}">
+                <input type="text" name="topic" id="custom-topic-input" class="topic-input" value="{{ custom_topic }}" placeholder="自由テーマ入力（例：女子トイレで引かれる男の特徴、日曜20時の穴場勝負、雨の日の駅直結ラウンジなど）">
                 <button type="submit" class="copy-btn">🧠 このお題で4役合議・執筆コンペを実行</button>
             </form>
         </div>
@@ -754,9 +784,39 @@
         var DEFAULT_SCHED_INPUT = {{ editorial.default_schedule_input | tojson }};
         var CURRENT_THEME = {{ editorial.theme_key | tojson }};
         var CURRENT_TOPIC = {{ custom_topic | tojson }};
+        var CURRENT_TONE = {{ editorial.tone_mode | tojson }};
         var AI_PENDING_ASYNC = {{ editorial.ai_pending_async | tojson }};
         var INITIAL_CONFIGURED = {{ (editorial.gemini_status and editorial.gemini_status.configured) | tojson }};
         var ACTIVE_TAB_BY_IDX = {};
+
+        function saveDefaultToneMode() {
+            var msgEl = document.getElementById("tone-save-msg");
+            if (msgEl) {
+                msgEl.style.color = "#d3f3e2";
+                msgEl.textContent = "標準トーンを保存中...";
+            }
+            fetch("/api/editorial/tone-mode", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({tone_mode: CURRENT_TONE})
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(res) {
+                if (res && res.ok) {
+                    if (msgEl) {
+                        msgEl.style.color = "#d3f3e2";
+                        msgEl.textContent = "✅ " + res.message;
+                    }
+                    var badge = document.getElementById("default-tone-badge");
+                    if (badge) {
+                        badge.innerHTML = '全編集部の標準トーン：<strong style="color:var(--green);">' + escHtml(res.short_label || res.tone_mode) + '（保存済）</strong>';
+                    }
+                } else if (msgEl) {
+                    msgEl.style.color = "#ffd6d6";
+                    msgEl.textContent = "⚠️ " + ((res && res.error) || "保存に失敗しました");
+                }
+            });
+        }
 
         function escHtml(s) {
             return String(s == null ? "" : s)
@@ -878,7 +938,7 @@
                 regenBtn.disabled = true;
                 regenBtn.textContent = "🧠 長考執筆中...";
             }
-            var url = "/api/column-editorial?theme=" + encodeURIComponent(CURRENT_THEME) + "&topic=" + encodeURIComponent(CURRENT_TOPIC || "");
+            var url = "/api/column-editorial?theme=" + encodeURIComponent(CURRENT_THEME) + "&topic=" + encodeURIComponent(CURRENT_TOPIC || "") + "&tone=" + encodeURIComponent(CURRENT_TONE || "");
             if (forceRefresh) url += "&refresh_ai=1";
             fetch(url, {headers: {"Accept": "application/json"}})
                 .then(function(r) { return r.json(); })

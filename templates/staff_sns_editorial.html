@@ -406,17 +406,17 @@
 
         <div class="channel-bar">
             <div class="tab-group" aria-label="SNS媒体切替">
-                <a href="/staff/sns-editorial?channel=x&slot={{ slot_label }}" class="{{ 'active' if channel == 'x' else '' }}">𝕏 X（旧Twitter）編集部</a>
-                <a href="/staff/sns-editorial?channel=threads&slot={{ slot_label }}" class="{{ 'active' if channel == 'threads' else '' }}">🧵 Threads（スレッズ）編集部</a>
-                <a href="/staff/sns-editorial?channel=instagram" class="{{ 'active' if channel == 'instagram' else '' }}">📸 Instagram（インスタ）編集部</a>
-                <a href="/staff/column-editorial">📖 コラム・note編集部</a>
+                <a href="/staff/sns-editorial?channel=x&slot={{ slot_label }}&tone={{ editorial.tone_mode }}" class="{{ 'active' if channel == 'x' else '' }}">𝕏 X（旧Twitter）編集部</a>
+                <a href="/staff/sns-editorial?channel=threads&slot={{ slot_label }}&tone={{ editorial.tone_mode }}" class="{{ 'active' if channel == 'threads' else '' }}">🧵 Threads（スレッズ）編集部</a>
+                <a href="/staff/sns-editorial?channel=instagram&tone={{ editorial.tone_mode }}" class="{{ 'active' if channel == 'instagram' else '' }}">📸 Instagram（インスタ）編集部</a>
+                <a href="/staff/column-editorial?tone={{ editorial.tone_mode }}">📖 コラム・note編集部</a>
                 <a href="/staff/pdca">🧭 PDCA参謀本部</a>
             </div>
             {% if channel != 'instagram' %}
             <div class="tab-group" aria-label="時間帯枠切替">
-                <a href="/staff/sns-editorial?channel={{ channel }}&slot=20:00" class="{{ 'active' if slot_label == '20:00' else '' }}">20:00枠</a>
-                <a href="/staff/sns-editorial?channel={{ channel }}&slot=22:00" class="{{ 'active' if slot_label == '22:00' else '' }}">22:00枠</a>
-                <a href="/staff/sns-editorial?channel={{ channel }}&slot=00:00" class="{{ 'active' if slot_label == '00:00' else '' }}">00:00枠</a>
+                <a href="/staff/sns-editorial?channel={{ channel }}&slot=20:00&tone={{ editorial.tone_mode }}" class="{{ 'active' if slot_label == '20:00' else '' }}">20:00枠</a>
+                <a href="/staff/sns-editorial?channel={{ channel }}&slot=22:00&tone={{ editorial.tone_mode }}" class="{{ 'active' if slot_label == '22:00' else '' }}">22:00枠</a>
+                <a href="/staff/sns-editorial?channel={{ channel }}&slot=00:00&tone={{ editorial.tone_mode }}" class="{{ 'active' if slot_label == '00:00' else '' }}">00:00枠</a>
             </div>
             {% endif %}
         </div>
@@ -424,6 +424,35 @@
         <div class="header-card">
             <h1>👑 相席ナビ「SNS編集部」{{ editorial.channel_label }} 4役合議・採点ボード（マスター専用）</h1>
             <p>X・Threads・Instagramの全3媒体で、毎回同じ『🥇🥈🥉 TOP3』や定型見出しになるボット感を排除。①現場データ発掘（天気・曜日連動） → ②編成係 → ③執筆係（Gemini AIアドリブ＋検証済み候補） → ④鬼デスク（数値改ざん検閲＆100点採点）が合議して最良の1案を自動採用します。</p>
+        </div>
+
+        <!-- Writing Tone & Perspective Selector (Spicy / Female Real / Mix / Standard) -->
+        <div class="channel-bar" style="flex-direction:column; align-items:stretch; gap:10px; border-color:rgba(216, 161, 170, 0.38);">
+            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+                <div style="font-size:0.84rem; font-weight:800; color:#f6d5dc;">
+                    🌶️💄 執筆トーン＆視点セレクター（現在表示：{{ editorial.tone_mode_label }}）
+                </div>
+                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                    <span id="default-tone-badge" style="font-size:0.74rem; color:var(--sub);">
+                        自動投稿の標準トーン：<strong style="color:var(--text);">{{ editorial.default_tone_mode }}</strong>
+                    </span>
+                    <button type="button" class="copy-btn" style="padding:5px 11px; font-size:0.74rem;" onclick="saveDefaultToneMode()">
+                        📌 このトーンを自動投稿の標準に保存
+                    </button>
+                </div>
+            </div>
+            <div class="tab-group" aria-label="執筆トーン切替">
+                {% for tm in editorial.tone_modes %}
+                <a href="/staff/sns-editorial?channel={{ channel }}&slot={{ slot_label }}&tone={{ tm.key }}"
+                   class="{{ 'active' if editorial.tone_mode == tm.key else '' }}"
+                   title="{{ tm.desc }}">
+                    {{ tm.short_label }}{% if editorial.default_tone_mode == tm.key %} ★標準{% endif %}
+                </a>
+                {% endfor %}
+            </div>
+            <div id="tone-save-msg" style="font-size:0.76rem; color:var(--sub);">
+                {% for tm in editorial.tone_modes %}{% if tm.key == editorial.tone_mode %}💡 {{ tm.desc }}{% endif %}{% endfor %}
+            </div>
         </div>
 
         <!-- Gemini AI Ad-lib & Live Weather Control Panel -->
@@ -574,10 +603,40 @@
     <script>
         var CURRENT_CHANNEL = {{ channel | tojson }};
         var CURRENT_SLOT = {{ slot_label | tojson }};
+        var CURRENT_TONE = {{ editorial.tone_mode | tojson }};
         var CHANNEL_LABEL = {{ editorial.channel_label | tojson }};
         var AI_PENDING_ASYNC = {{ editorial.ai_pending_async | tojson }};
         var INITIAL_CONFIGURED = {{ (editorial.gemini_status and editorial.gemini_status.configured) | tojson }};
         var INITIAL_FORCE_REFRESH = {{ (request.args.get('refresh_ai') == '1') | tojson }};
+
+        function saveDefaultToneMode() {
+            var msgEl = document.getElementById("tone-save-msg");
+            if (msgEl) {
+                msgEl.style.color = "#d3f3e2";
+                msgEl.textContent = "標準トーンを保存中...";
+            }
+            fetch("/api/editorial/tone-mode", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({tone_mode: CURRENT_TONE})
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(res) {
+                if (res && res.ok) {
+                    if (msgEl) {
+                        msgEl.style.color = "#d3f3e2";
+                        msgEl.textContent = "✅ " + res.message;
+                    }
+                    var badge = document.getElementById("default-tone-badge");
+                    if (badge) {
+                        badge.innerHTML = '自動投稿の標準トーン：<strong style="color:var(--green);">' + escHtml(res.short_label || res.tone_mode) + '（保存済）</strong>';
+                    }
+                } else if (msgEl) {
+                    msgEl.style.color = "#ffd6d6";
+                    msgEl.textContent = "⚠️ " + ((res && res.error) || "保存に失敗しました");
+                }
+            });
+        }
 
         function escHtml(str) {
             return String(str == null ? "" : str)
@@ -730,7 +789,7 @@
                 regenBtn.disabled = true;
                 regenBtn.textContent = "🧠 長考推敲中...";
             }
-            var url = "/api/sns-editorial?channel=" + encodeURIComponent(CURRENT_CHANNEL) + "&slot=" + encodeURIComponent(CURRENT_SLOT);
+            var url = "/api/sns-editorial?channel=" + encodeURIComponent(CURRENT_CHANNEL) + "&slot=" + encodeURIComponent(CURRENT_SLOT) + "&tone=" + encodeURIComponent(CURRENT_TONE || "");
             if (forceRefresh) {
                 url += "&refresh_ai=1";
             }

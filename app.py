@@ -1692,6 +1692,7 @@ def staff_sns_editorial():
     slot_label = (request.args.get('slot') or '22:00').strip()
     if slot_label not in ('20:00', '22:00', '00:00', '02:00'):
         slot_label = '22:00'
+    tone_mode = (request.args.get('tone') or '').strip().lower() or None
     with data_lock:
         live_s = list(latest_data.get('full_data') or [])
     ig_ctx = _get_sns_kit_context(fast=True) if channel == 'instagram' else None
@@ -1706,6 +1707,7 @@ def staff_sns_editorial():
         use_ai=True,
         force_ai_refresh=force_ai,
         ai_cache_only=(not is_json_req),
+        tone_mode=tone_mode,
     )
     if is_json_req:
         return jsonify(editorial)
@@ -1714,6 +1716,7 @@ def staff_sns_editorial():
         editorial=editorial,
         slot_label=slot_label,
         channel=channel,
+        tone_mode=editorial.get('tone_mode'),
     )
 
 
@@ -1728,6 +1731,7 @@ def api_sns_editorial():
     if channel not in ('x', 'threads', 'instagram'):
         channel = 'x'
     slot_label = (request.args.get('slot') or '22:00').strip()
+    tone_mode = (request.args.get('tone') or '').strip().lower() or None
     force_ai = request.args.get('refresh_ai') == '1'
     with data_lock:
         live_s = list(latest_data.get('full_data') or [])
@@ -1740,7 +1744,33 @@ def api_sns_editorial():
         record_history=False,
         use_ai=True,
         force_ai_refresh=force_ai,
+        tone_mode=tone_mode,
     ))
+
+
+@app.route('/api/editorial/tone-mode', methods=['POST'])
+def api_editorial_tone_mode():
+    """Master-only endpoint to persist the default writing tone & perspective across SNS and Column editorial rooms."""
+    if not is_master_authorized():
+        return jsonify({'error': 'Unauthorized'}), 401
+    import sns_editorial
+    import column_editorial
+    payload = request.get_json(silent=True) or {}
+    raw_tm = (payload.get('tone_mode') or '').strip().lower()
+    norm_tm = sns_editorial.normalize_tone_mode(raw_tm)
+    if not norm_tm:
+        return jsonify({'ok': False, 'error': '有効な執筆トーン（spicy_female / spicy / female_real / standard）を指定してください。'}), 400
+    saved_tm = sns_editorial.set_default_editorial_tone_mode(norm_tm)
+    column_editorial.clear_column_ai_cache()
+    clear_fast_http_caches()
+    meta = sns_editorial.EDITORIAL_TONE_MODES[saved_tm]
+    return jsonify({
+        'ok': True,
+        'tone_mode': saved_tm,
+        'label': meta['label'],
+        'short_label': meta['short_label'],
+        'message': f"自動投稿＆編集部の標準トーンを『{meta['label']}』に保存しました！",
+    })
 
 
 @app.route('/api/sns-editorial/gemini-key', methods=['POST'])
@@ -1793,6 +1823,7 @@ def staff_column_editorial():
     trigger_background_fetch_if_needed()
     theme_key = (request.args.get('theme') or 'area_hopping').strip().lower()
     custom_topic = (request.args.get('topic') or '').strip()
+    tone_mode = (request.args.get('tone') or '').strip().lower() or None
     force_ai = request.args.get('refresh_ai') == '1'
     is_json_req = request.args.get('format') == 'json'
     with data_lock:
@@ -1804,6 +1835,7 @@ def staff_column_editorial():
         use_ai=True,
         force_ai_refresh=force_ai,
         ai_cache_only=(not is_json_req),
+        tone_mode=tone_mode,
     )
     if is_json_req:
         return jsonify(editorial)
@@ -1811,6 +1843,7 @@ def staff_column_editorial():
         'staff_column_editorial.html',
         editorial=editorial,
         custom_topic=custom_topic,
+        tone_mode=editorial.get('tone_mode'),
     )
 
 
@@ -1823,16 +1856,18 @@ def api_column_editorial():
     restore_latest_data_if_empty()
     theme_key = (request.args.get('theme') or 'area_hopping').strip().lower()
     custom_topic = (request.args.get('topic') or '').strip()
+    tone_mode = (request.args.get('tone') or '').strip().lower() or None
     force_ai = request.args.get('refresh_ai') == '1'
     with data_lock:
         live_s = list(latest_data.get('full_data') or [])
     return jsonify(column_editorial.run_column_editorial_pipeline(
-        live_s,
+        live_stores=live_s,
         theme_key=theme_key,
         custom_topic=custom_topic,
         use_ai=True,
         force_ai_refresh=force_ai,
         ai_cache_only=False,
+        tone_mode=tone_mode,
     ))
 
 
