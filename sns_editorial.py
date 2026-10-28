@@ -708,10 +708,10 @@ def _classify_vertex_http_error(status_code: int, body_text: str, project_id: st
     iam_url = f"https://console.cloud.google.com/iam-admin/iam?project={project_id}"
     billing_url = f"https://console.cloud.google.com/billing/linkedaccount?project={project_id}"
 
-    if status_code == 403 and ("service_disabled" in low or "has not been used in project" in low or "aiplatform.googleapis.com" in low and "disabled" in low):
+    if status_code == 403 and ("service_disabled" in low or "has not been used in project" in low or ("aiplatform.googleapis.com" in low and "disabled" in low)):
         return (
             "api_disabled",
-            f"プロジェクト『{project_id}』で「Vertex AI API」がまだ有効化されていません（Google Cloud画面で「有効にする」を押すだけで開通します）。",
+            f"スプレッドシート用プロジェクト『{project_id}』側では「Agent Platform API（旧Vertex AI API）」がまだ有効化されていません（Google Cloud内に別プロジェクトがある場合は、画面上部のプロジェクト選択を『{project_id}』に切り替えて「有効にする」を押すか、無料クレジット側プロジェクトの AQ.... キーを登録してください）。",
             api_url,
         )
     if status_code == 403 and ("billing_disabled" in low or "billing account" in low):
@@ -848,18 +848,30 @@ def get_gemini_status(allow_blocking: bool = True) -> dict:
     v_err = _vertex_auth_state.get("last_vertex_error") or ""
     v_in_backoff = bool(v_info and time.time() < _vertex_auth_state.get("backoff_until", 0.0))
 
+    is_aq_vertex_key = g_key.startswith("AQ.")
     pref = get_ai_engine_pref(allow_blocking=allow_blocking)
     any_configured = bool(g_key or c_key or (v_info and not v_in_backoff))
 
     # Determine primary active provider based on preference & configured credentials
-    if pref == "vertex" and v_info and not v_in_backoff:
-        primary_provider = "vertex"
+    if pref == "vertex":
+        if is_aq_vertex_key:
+            primary_provider = "vertex_express"
+        elif v_info and not v_in_backoff:
+            primary_provider = "vertex"
+        elif g_key:
+            primary_provider = "gemini"
+        elif c_key:
+            primary_provider = "claude"
+        else:
+            primary_provider = "none"
     elif pref == "gemini" and g_key:
-        primary_provider = "gemini"
+        primary_provider = "vertex_express" if is_aq_vertex_key else "gemini"
     elif pref == "claude" and c_key:
         primary_provider = "claude"
     elif c_key and pref != "vertex":
         primary_provider = "claude"
+    elif is_aq_vertex_key:
+        primary_provider = "vertex_express"
     elif v_info and not v_in_backoff:
         primary_provider = "vertex"
     elif g_key:
@@ -870,7 +882,10 @@ def get_gemini_status(allow_blocking: bool = True) -> dict:
         primary_provider = "none"
 
     active_prov = _last_gemini_meta.get("last_provider") or primary_provider
-    if active_prov == "vertex" or (primary_provider == "vertex" and not g_key and not c_key):
+    if active_prov == "vertex_express":
+        masked = _mask_secret(g_key)
+        src_label = f"{g_source}（Vertex AI Express / Agent Platform）"
+    elif active_prov == "vertex" or (primary_provider == "vertex" and not g_key and not c_key):
         masked = f"GCP:{v_proj}" if v_proj else "GCP:Vertex"
         src_label = (v_raw_info or {}).get("source_label") or "google_credentials.json"
     elif primary_provider == "claude":
@@ -890,7 +905,10 @@ def get_gemini_status(allow_blocking: bool = True) -> dict:
     else:
         state = "active"
 
-    if active_prov == "vertex":
+    if active_prov == "vertex_express":
+        default_model = DEFAULT_VERTEX_MODELS[0]
+        provider_badge = "☁️ Google Cloud 無料クレジット枠（Vertex AI キー接続）"
+    elif active_prov == "vertex":
         default_model = DEFAULT_VERTEX_MODELS[0]
         provider_badge = f"☁️ Google Cloud 無料クレジット枠（Vertex AI：{v_proj}）"
     elif active_prov == "claude":
@@ -913,8 +931,9 @@ def get_gemini_status(allow_blocking: bool = True) -> dict:
         "engine_pref": pref,
         "engine_badge": provider_badge,
         "key_kind": (
-            "vertex_sa" if active_prov == "vertex"
-            else ("claude" if primary_provider == "claude" else ("vertex_express" if g_key.startswith("AQ.") else ("ai_studio" if g_key else "none")))
+            "vertex_express" if active_prov == "vertex_express"
+            else ("vertex_sa" if active_prov == "vertex"
+                  else ("claude" if primary_provider == "claude" else ("vertex_express" if is_aq_vertex_key else ("ai_studio" if g_key else "none"))))
         ),
         "masked_key": masked,
         "source": src_label,
@@ -2568,6 +2587,16 @@ def _build_endpoint_request(
         "contents": [{"role": "user", "parts": [{"text": prompt}]}],
         "generationConfig": gen_cfg,
     }
+
+    # `AQ....` keys belong to Google Cloud Vertex AI (Express / Agent Platform API) and MUST target `aiplatform.googleapis.com`!
+    if endpoint_kind == "vertex_express" or (api_key or "").startswith("AQ."):
+        return (
+            f"https://aiplatform.googleapis.com/v1/publishers/google/models/{model_name}:generateContent",
+            {"Content-Type": "application/json"},
+            {"key": api_key},
+            payload,
+        )
+
     return (
         f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent",
         {"Content-Type": "application/json", "x-goog-api-key": api_key},
@@ -2611,12 +2640,11 @@ def _build_vertex_endpoint_request(
         "responseMimeType": "application/json",
         "thinkingConfig": {"thinkingBudget": tb_used},
     }
+    full_prompt = f"{system_prompt}\n\n{prompt}" if system_prompt else prompt
     payload = {
-        "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+        "contents": [{"role": "user", "parts": [{"text": full_prompt}]}],
         "generationConfig": gen_cfg,
     }
-    if system_prompt:
-        payload["systemInstruction"] = {"parts": [{"text": system_prompt}]}
 
     headers = {
         "Authorization": f"Bearer {access_token}",
@@ -2627,15 +2655,61 @@ def _build_vertex_endpoint_request(
 
 def verify_vertex_connection(timeout: float = 14.0) -> dict:
     """
-    Live one-click diagnostic for Google Cloud Vertex AI Free Credit mode using the shared `google_credentials.json`.
-    Clears any soft backoff, verifies OAuth2 + `gemini-2.5-pro` (with regional fallback), and returns plain Japanese steps if 403.
+    Live one-click diagnostic for Google Cloud Vertex AI Free Credit mode:
+      1. First checks if a Vertex AI API key (`AQ....` from Agent Platform / Vertex AI Express) is already registered,
+         hitting `aiplatform.googleapis.com/v1/publishers/google/models/...` directly!
+      2. Next checks the shared Google Sheets service account (`google_credentials.json`).
     """
+    g_key = get_gemini_api_key(allow_blocking=True)
+    aq_err_msg = ""
+    if g_key and g_key.startswith("AQ."):
+        masked_aq = _mask_secret(g_key)
+        for model_try in ("gemini-2.5-pro", "gemini-2.5-flash"):
+            url, headers, params, payload = _build_endpoint_request(
+                "vertex_express",
+                model_try,
+                g_key,
+                '{"status":"ok"} とだけJSONで返してください。',
+                max_output_tokens=256,
+                thinking_budget=512,
+                temperature=0.2,
+            )
+            try:
+                resp = requests.post(url, headers=headers, params=params, json=payload, timeout=max(4.0, float(timeout)))
+                if resp.status_code == 200:
+                    now_str = datetime.datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
+                    set_vertex_enabled(True)
+                    with _vertex_auth_lock:
+                        _vertex_auth_state["backoff_until"] = 0.0
+                        _vertex_auth_state["last_vertex_error"] = ""
+                        _vertex_auth_state["last_vertex_reason"] = "ok"
+                    label_m = f"{model_try} (Vertex無料枠)"
+                    _last_gemini_meta["working_route"] = ("vertex_express", model_try)
+                    _last_gemini_meta["last_provider"] = "vertex_express"
+                    _last_gemini_meta["last_model"] = label_m
+                    _last_gemini_meta["last_error"] = ""
+                    _last_gemini_meta["last_ok_at"] = now_str
+                    return {
+                        "ok": True,
+                        "reason_code": "ok",
+                        "model": model_try,
+                        "key_kind": "vertex_express",
+                        "message": f"開通成功！登録済みの Vertex AI キー（{masked_aq} ／ {model_try}）で Google Cloud 無料クレジット枠（Agent Platform API）に正常接続しました！追加の設定は一切不要です。",
+                    }
+                if resp.status_code == 404:
+                    continue
+                aq_err_msg = f"登録済み AQ. キー HTTP {resp.status_code}: {(resp.text or '')[:110]}"
+                if resp.status_code in (401, 403):
+                    break
+            except Exception as e:
+                aq_err_msg = f"登録済み AQ. キー通信エラー: {str(e)[:100]}"
+
     v_info = _resolve_vertex_service_account_info(ignore_enabled_flag=True)
     if not v_info:
         return {
             "ok": False,
             "reason_code": "missing_credentials",
-            "error": "google_credentials.json（スプレッドシート共通認証）が見つかりません。RenderのSecret Files設定をご確認ください。",
+            "error": aq_err_msg or "Vertex AI キー（AQ....）または google_credentials.json が見つかりません。",
         }
 
     proj = v_info["project_id"]
@@ -2653,7 +2727,7 @@ def verify_vertex_connection(timeout: float = 14.0) -> dict:
             "reason_code": "oauth_failed",
             "project_id": proj,
             "client_email": email,
-            "error": tok_err,
+            "error": (f"{aq_err_msg} ／ " if aq_err_msg else "") + tok_err,
             "api_console_url": api_url,
             "iam_console_url": iam_url,
         }
@@ -2701,7 +2775,6 @@ def verify_vertex_connection(timeout: float = 14.0) -> dict:
                     }
                 if resp.status_code == 404:
                     continue
-                # 403 / 401 is project/IAM-level, no need to retry 4x
                 if resp.status_code in (401, 403):
                     break
             except Exception as e:
@@ -2710,6 +2783,8 @@ def verify_vertex_connection(timeout: float = 14.0) -> dict:
             break
 
     rcode, friendly_err, fix_url = _classify_vertex_http_error(last_status, last_body, proj, email)
+    if aq_err_msg:
+        friendly_err = f"{aq_err_msg} ／ {friendly_err}"
     with _vertex_auth_lock:
         _vertex_auth_state["last_vertex_error"] = friendly_err
         _vertex_auth_state["last_vertex_reason"] = rcode
@@ -2739,14 +2814,17 @@ def call_editorial_ai_json(
 ) -> tuple:
     """
     Unified Multi-Engine AI JSON caller supporting:
-      1. Google Cloud Vertex AI (`aiplatform.googleapis.com` via `google_credentials.json` — consumes Google Cloud Free Credits at 0 yen!)
-      2. Anthropic Claude Sonnet (`api.anthropic.com`)
-      3. Google AI Studio (`generativelanguage.googleapis.com` fallback)
+      1. Google Cloud Vertex AI Express (`AQ....` key -> `aiplatform.googleapis.com` — consumes Google Cloud Free Credits!)
+      2. Google Cloud Vertex AI Service Account (`google_credentials.json` -> `aiplatform.googleapis.com`)
+      3. Anthropic Claude Sonnet (`api.anthropic.com`)
+      4. Google AI Studio (`AIza...` key -> `generativelanguage.googleapis.com` fallback)
     Returns `(parsed_dict_or_None, model_label_str, last_error_str)`.
     """
     now_jst = now_jst or datetime.datetime.now(JST)
     g_key = get_gemini_api_key(allow_blocking=allow_blocking)
     c_key = get_claude_api_key(allow_blocking=allow_blocking)
+    is_aq = bool(g_key and g_key.startswith("AQ."))
+    has_ai_studio = bool(g_key and not is_aq)
     v_info = _resolve_vertex_service_account_info()
     v_ready = bool(v_info and time.time() >= _vertex_auth_state.get("backoff_until", 0.0))
 
@@ -2756,21 +2834,19 @@ def call_editorial_ai_json(
     pref = get_ai_engine_pref(allow_blocking=False)
     providers = []
     if pref == "vertex":
-        for p, ok in (("vertex", v_ready), ("gemini", bool(g_key)), ("claude", bool(c_key))):
+        for p, ok in (("vertex_express", is_aq), ("vertex", v_ready), ("gemini", has_ai_studio), ("claude", bool(c_key))):
             if ok:
                 providers.append(p)
     elif pref == "gemini":
-        for p, ok in (("gemini", bool(g_key)), ("vertex", v_ready), ("claude", bool(c_key))):
+        for p, ok in (("vertex_express", is_aq), ("gemini", has_ai_studio), ("vertex", v_ready), ("claude", bool(c_key))):
             if ok:
                 providers.append(p)
     elif pref == "claude":
-        for p, ok in (("claude", bool(c_key)), ("vertex", v_ready), ("gemini", bool(g_key))):
+        for p, ok in (("claude", bool(c_key)), ("vertex_express", is_aq), ("vertex", v_ready), ("gemini", has_ai_studio)):
             if ok:
                 providers.append(p)
     else:
-        # 'auto' default: if Claude key is set, Claude -> Vertex Free Credit -> AI Studio;
-        # otherwise Google Cloud Free Credit (Vertex AI `gemini-2.5-pro`) takes #1 priority automatically!
-        for p, ok in (("claude", bool(c_key)), ("vertex", v_ready), ("gemini", bool(g_key))):
+        for p, ok in (("claude", bool(c_key)), ("vertex_express", is_aq), ("vertex", v_ready), ("gemini", has_ai_studio)):
             if ok:
                 providers.append(p)
 
@@ -2787,7 +2863,73 @@ def call_editorial_ai_json(
         if time.monotonic() >= deadline - 0.8:
             break
 
-        if prov == "vertex" and v_info:
+        if prov == "vertex_express" and is_aq:
+            preferred_vx = (os.environ.get("VERTEX_MODEL") or os.environ.get("GEMINI_MODEL") or "").strip()
+            vx_models = []
+            if preferred_vx and "latest" not in preferred_vx:
+                vx_models.append(preferred_vx)
+            saved_r = _last_gemini_meta.get("working_route")
+            if saved_r and saved_r[0] == "vertex_express" and "lite" not in saved_r[1].lower() and saved_r[1] not in vx_models:
+                vx_models.append(saved_r[1])
+            for m in DEFAULT_VERTEX_MODELS:
+                if m not in vx_models:
+                    vx_models.append(m)
+
+            full_prompt = f"{sys_instr}\n\n{prompt}" if system_prompt else prompt
+            for vxm in vx_models[:3]:
+                rem = deadline - time.monotonic()
+                if rem <= 0.8:
+                    break
+                try:
+                    url, headers, params, payload = _build_endpoint_request(
+                        "vertex_express",
+                        vxm,
+                        g_key,
+                        full_prompt,
+                        max_output_tokens=max_output_tokens,
+                        thinking_budget=thinking_budget,
+                        temperature=temperature,
+                    )
+                    resp = requests.post(
+                        url,
+                        headers=headers,
+                        params=params,
+                        json=payload,
+                        timeout=min(float(per_call_timeout_sec), rem),
+                    )
+                    if resp.status_code >= 400:
+                        last_err = f"Vertex Express HTTP {resp.status_code} ({vxm}): {(resp.text or '')[:130]}"
+                        logger.warning(f"[editorial_ai] {last_err}")
+                        if _last_gemini_meta.get("working_route") == ("vertex_express", vxm):
+                            _last_gemini_meta["working_route"] = None
+                        if resp.status_code in (401, 403):
+                            break
+                        continue
+                    cands = ((resp.json() or {}).get("candidates")) or []
+                    if not cands:
+                        last_err = f"Vertex Express empty candidates ({vxm})"
+                        continue
+                    parts = ((cands[0].get("content") or {}).get("parts")) or []
+                    raw_txt = "".join(p.get("text", "") for p in parts if not p.get("thought")).strip()
+                    if not raw_txt:
+                        raw_txt = "".join(p.get("text", "") for p in parts).strip()
+                    parsed = _parse_ai_json_object(raw_txt)
+                    if parsed:
+                        label_m = f"{vxm} (Vertex無料枠)"
+                        _last_gemini_meta["working_route"] = ("vertex_express", vxm)
+                        _last_gemini_meta["last_provider"] = "vertex_express"
+                        _last_gemini_meta["last_model"] = label_m
+                        _last_gemini_meta["last_error"] = ""
+                        _last_gemini_meta["last_ok_at"] = now_jst.strftime("%Y-%m-%d %H:%M:%S")
+                        return parsed, label_m, ""
+                    last_err = f"Vertex Express JSON parse failed ({vxm})"
+                except Exception as e:
+                    last_err = f"Vertex Express通信エラー ({vxm}): {str(e)[:110]}"
+                    logger.warning(f"[editorial_ai] {last_err}")
+                    if _last_gemini_meta.get("working_route") == ("vertex_express", vxm):
+                        _last_gemini_meta["working_route"] = None
+
+        elif prov == "vertex" and v_info:
             proj = v_info["project_id"]
             email = v_info["client_email"]
             tok, tok_err = _get_vertex_access_token(v_info, timeout=min(5.0, max(1.5, deadline - time.monotonic() - 1.5)))

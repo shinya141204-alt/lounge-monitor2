@@ -2052,24 +2052,30 @@ class FullAuditRegressionTests(unittest.TestCase):
             ai_cand_eval = next(c for c in res_bad['evaluation']['candidates'] if c['style'] == 'ai_live_adlib')
             self.assertEqual(ai_cand_eval['scores']['data_specificity'], -50)
 
-            # 5. Upgraded AI Studio key targets flagship `gemini-2.5-pro` first with deep thinking (`thinkingBudget: 1536`, headroom-adjusted `maxOutputTokens: 4136`)
+            # 5. Vertex AI Express `AQ....` key routes directly to `aiplatform.googleapis.com` (Google Cloud Free Credit / Agent Platform API!)
             sns_editorial.set_gemini_api_key('AQ.Ab8RN6SampleExpressKey1234dgKQ')
-            with patch('sns_editorial.requests.get') as mock_disc_get, \
-                 patch('sns_editorial.requests.post', return_value=mock_resp_ok) as mock_aq_post:
-                mock_disc_get.return_value = MagicMock(status_code=503)
+            with patch('sns_editorial.requests.post', return_value=mock_resp_ok) as mock_aq_post:
                 res_aq = sns_editorial.run_editorial_pipeline(
                     sample_stores, slot_label='22:00', channel='x', use_ai=True, force_ai_refresh=True
                 )
+                rv_aq_ok = self.client.post('/api/sns-editorial/ai-config', json={'action': 'verify_vertex'}).get_json()
             self.assertEqual(res_aq['winner']['style'], 'ai_live_adlib')
-            called_url = mock_aq_post.call_args[0][0]
-            called_json = mock_aq_post.call_args[1]['json']
-            self.assertIn('generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent', called_url)
+            called_url = mock_aq_post.call_args_list[0][0][0]
+            called_params = mock_aq_post.call_args_list[0][1]['params']
+            called_json = mock_aq_post.call_args_list[0][1]['json']
+            self.assertEqual(
+                called_url,
+                'https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-2.5-pro:generateContent',
+            )
+            self.assertEqual(called_params, {'key': 'AQ.Ab8RN6SampleExpressKey1234dgKQ'})
             self.assertEqual(called_json['generationConfig'].get('thinkingConfig'), {'thinkingBudget': 1536})
             self.assertEqual(called_json['generationConfig'].get('maxOutputTokens'), 4136)
-            self.assertEqual(res_aq['gemini_status']['state'], 'active')
+            self.assertTrue(rv_aq_ok['ok'])
+            self.assertEqual(rv_aq_ok['key_kind'], 'vertex_express')
 
-            # 5b. Google Cloud Free Credit (Vertex AI via shared `google_credentials.json`) automatically takes #1 priority at 0 yen,
-            #     and cleanly fails over to AI Studio if Vertex AI returns 403 SERVICE_DISABLED before API enablement!
+            # 5b. Standard `AIza...` key + shared `google_credentials.json` Service Account:
+            #     Vertex SA takes #1 priority at 0 yen, and cleanly fails over to AI Studio `AIza...` if Vertex SA returns 403 SERVICE_DISABLED!
+            sns_editorial.set_gemini_api_key('AIzaSyDummyKey1234567890')
             fake_sa_info = {
                 'project_id': 'loungemonitor',
                 'client_email': 'lounge-monitor-bot@loungemonitor.iam.gserviceaccount.com',
