@@ -34,7 +34,7 @@ def get_worksheet(title, header):
             client = logger.get_client()
             if not client:
                 return None
-            sh = client.open(logger.SHEET_NAME)
+            sh = logger.open_spreadsheet(client) if hasattr(logger, 'open_spreadsheet') else client.open(logger.SHEET_NAME)
             try:
                 ws = sh.worksheet(title)
             except Exception:

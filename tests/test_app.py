@@ -1744,7 +1744,7 @@ class FullAuditRegressionTests(unittest.TestCase):
         sw_resp = self.client.get('/sw.js')
         try:
             sw_txt = sw_resp.data.decode('utf-8')
-            self.assertIn("CACHE_NAME = 'aiseki-navi-v57'", sw_txt)
+            self.assertIn("CACHE_NAME = 'aiseki-navi-v58'", sw_txt)
             self.assertIn("event.waitUntil", sw_txt)
         finally:
             sw_resp.close()
@@ -2740,6 +2740,124 @@ class SpicyAndFemaleRealToneTests(unittest.TestCase):
             self.assertIsNone(bare_oriental_re.search(raw_html), f"Bare オリエンタル in {fname}")
             for sweet in column_editorial.SWEET_FANTASY_CLICHES:
                 self.assertNotIn(sweet, raw_html, f"Sweet fantasy cliché '{sweet}' still in {fname}")
+
+
+class PerformanceNonBlockingRegressionTests(unittest.TestCase):
+    """Regression suite guaranteeing zero synchronous Sheets/SQLite stalls on cold start and top-of-hour transitions."""
+
+    def test_hourly_benchmark_transition_reuses_base_cache_without_sqlite_rescan(self):
+        from unittest.mock import patch
+        import tempfile
+        import local_db
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            test_db = os.path.join(tmpdir, 'perf_bench.db')
+            old_db = local_db.DB_PATH
+            try:
+                local_db.DB_PATH = test_db
+                local_db.init_db()
+                local_db.clear_store_7d_cache(clear_benchmarks=True)
+                local_db.insert_logs_with_ts([
+                    {'ts': '2026-10-20 21:10:00', 'name': 'OLG 新宿', 'men': 18, 'women': 30, 'source': 'oriental'},
+                    {'ts': '2026-10-27 21:20:00', 'name': 'OLG 新宿', 'men': 22, 'women': 34, 'source': 'oriental'},
+                    {'ts': '2026-10-20 22:10:00', 'name': 'OLG 新宿', 'men': 25, 'women': 46, 'source': 'oriental'},
+                    {'ts': '2026-10-27 22:20:00', 'name': 'OLG 新宿', 'men': 27, 'women': 50, 'source': 'oriental'},
+                ])
+                dt_21 = datetime.datetime(2026, 10, 27, 21, 59, 0)
+                dt_22 = datetime.datetime(2026, 10, 27, 22, 0, 5)
+
+                bm_21 = local_db.get_all_stores_live_benchmarks(now_jst=dt_21, allow_blocking=False)
+                self.assertEqual(bm_21['OLG 新宿']['usual_women'], 32.0)
+
+                # Transitioning to 22:00 MUST NOT rescan SQLite; it must derive from _benchmark_base_cache in O(1)
+                with patch.object(local_db, '_compute_benchmark_base_from_sqlite', side_effect=AssertionError('Must not rescan SQLite on hour rollover!')):
+                    bm_22 = local_db.get_all_stores_live_benchmarks(now_jst=dt_22, allow_blocking=False)
+                self.assertEqual(bm_22['OLG 新宿']['usual_women'], 48.0)
+            finally:
+                local_db.clear_store_7d_cache(clear_benchmarks=True)
+                local_db.DB_PATH = old_db
+
+    def test_store_analysis_avoids_sync_sheets_during_backfill_and_bounds_gviz_window(self):
+        from unittest.mock import patch
+        import tempfile
+        import urllib.parse
+        import local_db
+        import store_analysis
+        import logger
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            test_db = os.path.join(tmpdir, 'perf_analysis.db')
+            old_db = local_db.DB_PATH
+            old_sync = local_db._sync_in_progress
+            old_partial = local_db._partial_recent_only
+            try:
+                local_db.DB_PATH = test_db
+                local_db.init_db()
+                now_str = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).strftime('%Y-%m-%d %H:%M:%S')
+                local_db.insert_logs([{'name': 'OLG 新宿', 'men': 15, 'women': 28, 'source': 'oriental'}], now_str)
+                local_db._partial_recent_only = True
+                local_db._sync_in_progress = True
+
+                # 1. While background sync is running and SQLite has recent rows, never hit Google Sheets synchronously
+                cache_box = {}
+                with patch.object(local_db, '_trigger_store_backfill_async') as mock_async_bf, \
+                     patch.object(logger.http_session, 'get', side_effect=AssertionError('Must not call gviz synchronously while syncing!')):
+                    payload, code = store_analysis.compute_store_analysis_payload('OLG 新宿', cache_box, cache_duration=900)
+                self.assertEqual(code, 200)
+                self.assertEqual(payload['store_name'], 'OLG 新宿')
+                self.assertTrue(mock_async_bf.called)
+
+                # 2. When SQLite is completely empty, fallback gviz query MUST include a 30-day date lower bound (A >= '...')
+                empty_db = os.path.join(tmpdir, 'empty.db')
+                local_db.DB_PATH = empty_db
+                local_db.init_db()
+                local_db._sync_in_progress = False
+                captured_urls = []
+
+                class _FakeResp:
+                    status_code = 200
+                    text = 'google.visualization.Query.setResponse({"table":{"rows":[{"c":[{"v":"2026-10-27 21:00:00"},{"v":"OLG 渋谷本店"},{"v":12},{"v":24}]}]}})'
+
+                def _fake_get(url, headers=None, timeout=None):
+                    captured_urls.append(url)
+                    return _FakeResp()
+
+                with patch.object(logger, 'get_access_token', return_value='tok'), \
+                     patch.object(logger, 'get_spreadsheet_id', return_value='sid'), \
+                     patch.object(logger.http_session, 'get', side_effect=_fake_get):
+                    p2, c2 = store_analysis.compute_store_analysis_payload('OLG 渋谷本店', {}, cache_duration=900)
+                self.assertEqual(c2, 200)
+                self.assertEqual(len(captured_urls), 1)
+                decoded_tq = urllib.parse.unquote(captured_urls[0])
+                self.assertIn("WHERE B='OLG 渋谷本店' AND A >=", decoded_tq)
+            finally:
+                local_db.DB_PATH = old_db
+                local_db._sync_in_progress = old_sync
+                local_db._partial_recent_only = old_partial
+
+    def test_analytics_summary_allow_blocking_false_is_instant(self):
+        from unittest.mock import patch
+        import analytics
+        import sheets_store
+
+        old_disabled = os.environ.get('DISABLE_SHEETS')
+        try:
+            os.environ.pop('DISABLE_SHEETS', None)
+            with analytics._lock:
+                old_cache = dict(analytics._sheet_rows_cache)
+                analytics._sheet_rows_cache['ts'] = 0.0
+                analytics._sheet_rows_cache['rows'] = None
+            try:
+                with patch.object(analytics, '_refresh_sheet_rows_async') as mock_bg:
+                    res = analytics.summary(days=7, allow_blocking=False)
+                self.assertIn('by_event', res)
+                self.assertTrue(mock_bg.called)
+            finally:
+                with analytics._lock:
+                    analytics._sheet_rows_cache.update(old_cache)
+        finally:
+            if old_disabled is not None:
+                os.environ['DISABLE_SHEETS'] = old_disabled
 
 
 if __name__ == '__main__':

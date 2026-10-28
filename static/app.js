@@ -114,9 +114,9 @@
                     .catch(() => {});
             };
             if ('requestIdleCallback' in window) {
-                window.requestIdleCallback(doFetchMaster, { timeout: 1200 });
+                window.requestIdleCallback(doFetchMaster, { timeout: 2500 });
             } else {
-                setTimeout(doFetchMaster, 250);
+                setTimeout(doFetchMaster, 800);
             }
         })();
 
@@ -864,36 +864,10 @@
             }
         }
 
-        async function prefetchKeyStores(ranking) {
-            if (prefetchTriggered || !ranking || ranking.length === 0) return;
-            prefetchTriggered = true;
-
-            // Prioritize pinned stores + top 2 stores (max 3 total) to minimize background SQLite load
-            const targets = [...pinnedStores];
-            for (let i = 0; i < Math.min(2, ranking.length); i++) {
-                if (!targets.includes(ranking[i].name)) {
-                    targets.push(ranking[i].name);
-                }
-            }
-
-            // Wait 4s after initial render so UI stays completely snappy, then prefetch sequentially while visible
-            await new Promise(r => setTimeout(r, 4000));
-            for (const storeName of targets.slice(0, 3)) {
-                if (document.visibilityState === 'hidden') break;
-                if (clientAnalysisCache[storeName] && (Date.now() - clientAnalysisCache[storeName].fetchedAt < CLIENT_CACHE_TTL)) {
-                    continue;
-                }
-                try {
-                    const res = await fetch('/api/analysis/' + encodeURIComponent(storeName));
-                    if (res.ok) {
-                        const d = await res.json();
-                        if (!d.error) {
-                            clientAnalysisCache[storeName] = { data: d, fetchedAt: Date.now() };
-                        }
-                    }
-                } catch (e) {}
-                await new Promise(r => setTimeout(r, 500));
-            }
+        async function prefetchKeyStores(_ranking) {
+            // Disabled automatic multi-store /api/analysis prefetching to prevent cold-start & top-of-hour self-DDoS.
+            // Store analysis is served in <10ms from local SQLite on-demand when the user opens a store modal.
+            return;
         }
 
         async function fetchData() {
@@ -3440,9 +3414,9 @@
         // Kick off background events fetch during browser idle time ONLY when events are visible
         if (shouldShowEvents()) {
             if ('requestIdleCallback' in window) {
-                window.requestIdleCallback(() => loadEvents(), { timeout: 1800 });
+                window.requestIdleCallback(() => loadEvents(), { timeout: 2800 });
             } else {
-                setTimeout(loadEvents, 900);
+                setTimeout(loadEvents, 1600);
             }
         }
 

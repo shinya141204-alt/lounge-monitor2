@@ -56,7 +56,7 @@ def _compute_weekly_report_locked(now_utc: datetime.datetime):
     # 1. Fast Path: Read from local SQLite database in milliseconds
     try:
         sqlite_items = local_db.get_weekly_history(start_ts_str) or []
-        if len(sqlite_items) >= 20 and (not local_db.is_partial_recent_only() or local_db.has_multi_day_span(sqlite_items)):
+        if len(sqlite_items) >= 20 and (not local_db.is_partial_recent_only() or local_db.has_multi_day_span(sqlite_items) or getattr(local_db, '_sync_in_progress', False)):
             items = sqlite_items
             print(f"[Weekly Report] High-speed cache hit: loaded {len(items)} rows from local SQLite in <10ms.")
     except Exception as dbe:

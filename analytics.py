@@ -34,8 +34,36 @@ ALLOWED_EVENTS = {
 _lock = threading.Lock()
 _pending = defaultdict(int)   # (date, event, label) -> count（Sheets未送信）
 _flushed = defaultdict(int)   # 起動後に送信済みの分（Sheets読込失敗時の表示用）
-_SHEET_ROWS_CACHE_TTL = 60.0
+_SHEET_ROWS_CACHE_TTL = 900.0
 _sheet_rows_cache = {'ts': 0.0, 'rows': None}
+_sheet_refresh_in_flight = False
+
+
+def _refresh_sheet_rows_async():
+    """Refresh Analytics Daily rows from Google Sheets in a background daemon thread (Stale-While-Revalidate)."""
+    global _sheet_refresh_in_flight
+    if sheets_store.is_disabled():
+        return
+    with _lock:
+        if _sheet_refresh_in_flight:
+            return
+        _sheet_refresh_in_flight = True
+
+    def _worker():
+        global _sheet_refresh_in_flight
+        try:
+            rows = sheets_store.read_rows_or_none(SHEET_TITLE, HEADER)
+            if rows is not None:
+                with _lock:
+                    _sheet_rows_cache['ts'] = time.monotonic()
+                    _sheet_rows_cache['rows'] = rows
+        except Exception as err:
+            logging.warning(f"[analytics] async sheet refresh failed: {err}")
+        finally:
+            with _lock:
+                _sheet_refresh_in_flight = False
+
+    threading.Thread(target=_worker, daemon=True).start()
 
 
 def _today():
@@ -227,7 +255,7 @@ def describe_label(event, raw_label):
             gslug = label.split('/guide/', 1)[1].strip('/')
             try:
                 import scheduled_articles
-                sitem = scheduled_articles.get_article_by_slug(gslug)
+                sitem = scheduled_articles.get_article_by_slug(gslug, allow_blocking=False)
                 if sitem:
                     return {'title': f"📖 {sitem.get('short_title') or sitem.get('title')}", 'sub': label, 'href': label}
             except Exception:
@@ -298,7 +326,7 @@ def describe_label(event, raw_label):
     return {'title': label or '-', 'sub': '', 'href': ''}
 
 
-def summary(days=7):
+def summary(days=7, allow_blocking=True):
     """直近 days 日の集計: {'by_event': {...}, 'by_label': {...}, 'by_label_pretty': {...}, 'funnel': {...}, 'revenue': {...}, 'daily_series': [...]}"""
     now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
     start = (now_jst - datetime.timedelta(days=days - 1)).strftime('%Y-%m-%d')
@@ -317,6 +345,12 @@ def summary(days=7):
             cached_rows = _sheet_rows_cache['rows']
         if cached_rows is not None and cached_ts > 0.0 and (now_mono - cached_ts < _SHEET_ROWS_CACHE_TTL):
             sheet_rows = cached_rows
+        elif cached_rows is not None and not allow_blocking:
+            _refresh_sheet_rows_async()
+            sheet_rows = cached_rows
+        elif not allow_blocking:
+            _refresh_sheet_rows_async()
+            sheet_rows = []
         else:
             sheet_rows = sheets_store.read_rows(SHEET_TITLE, HEADER)
             with _lock:

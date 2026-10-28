@@ -225,9 +225,9 @@ def _detect_hot_cluster_and_topic(live_stores: list, store_opens: dict, store_pv
     }
 
 
-def analyze_site_performance(live_stores: list = None, days: int = 14) -> dict:
+def analyze_site_performance(live_stores: list = None, days: int = 14, allow_blocking: bool = True) -> dict:
     """Run comprehensive Check diagnostics across traffic, affiliate CTR, SNS inflows, and content queue."""
-    stats = analytics.summary(days=days)
+    stats = analytics.summary(days=days, allow_blocking=allow_blocking)
     all_labels = stats.get("all_by_label") or {}
     pv_by_path = all_labels.get("page_view") or {}
     aff_by_label = all_labels.get("affiliate_click") or {}
@@ -550,8 +550,9 @@ def run_pdca_cycle(
       3. If `auto_replenish_columns` is enabled and upcoming scheduled columns <= 1,
          automatically draft, Desk-verify (>=85 pts), and schedule a new column!
     """
-    settings = get_pdca_settings(allow_blocking=(not ai_cache_only))
-    diag = analyze_site_performance(live_stores=live_stores, days=days)
+    allow_io_blocking = bool(apply_actions or not ai_cache_only)
+    settings = get_pdca_settings(allow_blocking=allow_io_blocking)
+    diag = analyze_site_performance(live_stores=live_stores, days=days, allow_blocking=allow_io_blocking)
     briefing = _generate_pdca_briefing(
         diag,
         use_ai=use_ai,

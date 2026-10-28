@@ -21,6 +21,8 @@ _STORE_7D_CACHE_MAX = 128
 _live_benchmarks_cache = {}
 _LIVE_BENCHMARKS_TTL = 600.0
 _LIVE_BENCHMARKS_CACHE_MAX = 8
+_benchmark_base_cache = {}
+_BENCHMARK_BASE_TTL = 1800.0
 _live_benchmarks_computing = False
 _live_benchmarks_lock = threading.Lock()
 _db_stats_cache = {}
@@ -37,6 +39,7 @@ def clear_store_7d_cache(store_name: str = None, clear_benchmarks: bool = False)
         _store_7d_cache.clear()
     if clear_benchmarks:
         _live_benchmarks_cache.clear()
+        _benchmark_base_cache.clear()
 
 
 def refresh_live_benchmarks_async():
@@ -154,7 +157,7 @@ def init_db():
                 );
             """)
             cur.execute("CREATE INDEX IF NOT EXISTS idx_store_ts ON monitor_logs(store_name, timestamp);")
-            cur.execute("CREATE INDEX IF NOT EXISTS idx_ts ON monitor_logs(timestamp);")
+            cur.execute("DROP INDEX IF EXISTS idx_ts;")
             cur.execute("CREATE INDEX IF NOT EXISTS idx_ts_store_wm ON monitor_logs(timestamp, store_name, women, men);")
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS crowd_votes (
@@ -238,7 +241,7 @@ def insert_logs_with_ts(items):
         return 0
 
     total_inserted = 0
-    chunk_size = 1500
+    chunk_size = 800
     for offset in range(0, len(rows), chunk_size):
         sub_rows = rows[offset:offset + chunk_size]
         with _db_lock:
@@ -258,7 +261,7 @@ def insert_logs_with_ts(items):
             finally:
                 conn.close()
         if offset + chunk_size < len(rows):
-            time.sleep(0.015)
+            time.sleep(0.05)
 
     clear_store_7d_cache()
     return total_inserted
@@ -424,7 +427,7 @@ def _fetch_gviz_rows_and_insert(query: str, timeout: int = 35) -> int:
     if not batch:
         return 0
 
-    chunk_size = 1500
+    chunk_size = 800
     for idx in range(0, len(batch), chunk_size):
         sub_batch = batch[idx:idx + chunk_size]
         with _db_lock:
@@ -439,7 +442,7 @@ def _fetch_gviz_rows_and_insert(query: str, timeout: int = 35) -> int:
             finally:
                 conn.close()
         if idx + chunk_size < len(batch):
-            time.sleep(0.015)
+            time.sleep(0.05)
 
     clear_store_7d_cache()
     return len(batch)
@@ -449,6 +452,7 @@ def sync_recent_from_google_sheets(hours=2):
     """
     Fast synchronous/priority sync of the last N hours (~600 rows, <0.5s) from Google Sheets
     so that 30-min momentum (women_diff / men_diff) is immediately available on cold start / redeploy.
+    During daytime off-hours (07:00-17:00 JST), automatically widens to 14h if 2h returns 0 rows.
     """
     global _partial_recent_only
     try:
@@ -457,6 +461,13 @@ def sync_recent_from_google_sheets(hours=2):
         start_ts_str = start_dt.strftime("%Y-%m-%d %H:%M:%S")
         query = f"SELECT A, B, C, D, E WHERE A >= '{start_ts_str}'"
         count = _fetch_gviz_rows_and_insert(query, timeout=12)
+        if not count and hours <= 3:
+            fallback_hours = 14
+            fb_start_str = (now_jst - datetime.timedelta(hours=fallback_hours)).strftime("%Y-%m-%d %H:%M:%S")
+            fb_query = f"SELECT A, B, C, D, E WHERE A >= '{fb_start_str}'"
+            count = _fetch_gviz_rows_and_insert(fb_query, timeout=15)
+            if count:
+                hours = fallback_hours
         if count:
             if not _full_sync_completed:
                 _partial_recent_only = True
@@ -514,7 +525,7 @@ def _trigger_store_backfill_async(store_name: str, days: int = 10):
 
 def _notify_sync_complete():
     try:
-        get_all_stores_live_benchmarks(allow_blocking=True, force_refresh=True)
+        refresh_live_benchmarks_async()
     except Exception:
         pass
     for cb in list(_sync_complete_callbacks):
@@ -610,7 +621,7 @@ def sync_from_google_sheets(days=30, on_recent_synced=None):
             remaining_days -= step
             first_chunk = False
             if remaining_days > 0:
-                time.sleep(0.35)
+                time.sleep(0.8)
 
         if total_imported > 0:
             _partial_recent_only = False
@@ -1043,47 +1054,9 @@ def get_store_7day_analytics(store_name: str) -> dict:
     return result
 
 
-def get_all_stores_live_benchmarks(now_jst: datetime.datetime = None, allow_blocking: bool = True, force_refresh: bool = False) -> dict:
-    """
-    Computes per-store live benchmarks from the last 30 days of SQLite monitor_logs in a single grouped query:
-      - usual_women / usual_men: average women & men for the current business weekday & hour
-      - usual_slot_label: e.g. '火曜21時台' (or '火曜ピーク帯' during daytime fallback)
-      - core_time_short: e.g. '20-22時' (best 2-hour window balancing female ratio & volume)
-      - core_time_wpct: average female ratio (%) during core_time_short
-      - midnight_retention_pct: ratio (%) of 00:00-01:59 avg women vs 21:00-22:59 avg women
-      - midnight_label_short: '深夜増加型' (>=95%), '深夜安定' (70-94%), or '終電前型' (<70%)
-    Memoized in memory for 10 minutes per (DB_PATH, biz_wd, cur_hour).
-    When allow_blocking=False, returns the cached dict immediately and refreshes asynchronously if expired.
-    """
-    if now_jst is None:
-        now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
-    cur_h = now_jst.hour
-    biz_date = (now_jst.date() - datetime.timedelta(days=1)) if cur_h <= 6 else now_jst.date()
-    cur_wd = biz_date.weekday()
-
-    cache_key = (DB_PATH, cur_wd, cur_h)
-    now_mono = time.monotonic()
-    cached = _live_benchmarks_cache.get(cache_key)
-    if not force_refresh and cached is not None:
-        if now_mono - cached[0] < _LIVE_BENCHMARKS_TTL:
-            return cached[1]
-        if not allow_blocking:
-            refresh_live_benchmarks_async()
-            return cached[1]
-    if not force_refresh and not allow_blocking and _sync_in_progress:
-        refresh_live_benchmarks_async()
-        for k, v in list(_live_benchmarks_cache.items()):
-            if k[0] == DB_PATH and v and v[1]:
-                return v[1]
-        return {}
-
+def _compute_benchmark_base_from_sqlite(cutoff_str: str) -> dict:
+    """Scans the last 30 days of monitor_logs once and returns hour/weekday base accumulators for all stores."""
     from collections import defaultdict
-    weekdays_ja = ["月", "火", "水", "木", "金", "土", "日"]
-    wd_ja = weekdays_ja[cur_wd]
-    cutoff_str = (now_jst - datetime.timedelta(days=30)).strftime("%Y-%m-%d %H:%M:%S")
-
-    # Store-level accumulators
-    # by_wd_hour[store][(wd, h)] = [sum_w, sum_m, cnt]
     by_wd_hour = defaultdict(lambda: defaultdict(lambda: [0.0, 0.0, 0]))
     by_hour = defaultdict(lambda: defaultdict(lambda: [0.0, 0.0, 0]))
     by_wd_peak = defaultdict(lambda: defaultdict(lambda: [0.0, 0.0, 0]))
@@ -1097,6 +1070,7 @@ def get_all_stores_live_benchmarks(now_jst: datetime.datetime = None, allow_bloc
         conn = _get_read_connection()
         cur = None
         try:
+            conn.row_factory = None
             cur = conn.cursor()
             cur.execute(
                 """
@@ -1123,16 +1097,17 @@ def get_all_stores_live_benchmarks(now_jst: datetime.datetime = None, allow_bloc
                     cur.close()
                 except Exception:
                     pass
+            conn.row_factory = sqlite3.Row
     else:
         grouped_rows = []
 
     for r in grouped_rows:
-        sname = r["store_name"]
-        d_str = r["d_str"]
-        h = r["h"]
-        sum_w = float(r["sum_w"] or 0.0)
-        sum_m = float(r["sum_m"] or 0.0)
-        cnt = int(r["cnt"] or 0)
+        sname = r[0]
+        d_str = r[1]
+        h = r[2]
+        sum_w = float(r[3] or 0.0)
+        sum_m = float(r[4] or 0.0)
+        cnt = int(r[5] or 0)
         if not sname or not d_str or len(d_str) < 10 or cnt <= 0:
             continue
 
@@ -1174,7 +1149,6 @@ def get_all_stores_live_benchmarks(now_jst: datetime.datetime = None, allow_bloc
             m01[0] += sum_w
             m01[1] += cnt
 
-        # 2-hour core bands during evening/night
         if h in (19, 20):
             bs = band_stats[sname]["19-21時"]
             bs[0] += sum_w
@@ -1196,36 +1170,10 @@ def get_all_stores_live_benchmarks(now_jst: datetime.datetime = None, allow_bloc
             bs[1] += sum_m
             bs[2] += cnt
 
+    # Precompute hour-independent static store metrics (core_time & midnight_retention) once!
     club_keywords = ("梅田", "茶屋町", "心斎橋", "難波", "渋谷", "新宿", "栄", "錦", "福岡", "札幌", "熊本", "UMEDA", "CHAYAMACHI", "NAMBA", "SHIBUYA", "SHINJUKU", "FUKUOKA", "SAPPORO")
-    is_active_hour = (18 <= cur_h <= 23) or (0 <= cur_h <= 5)
-
-    out = {}
+    static_per_store = {}
     for sname in stores_seen:
-        # 1. Usual women & men for (cur_wd, cur_h)
-        wh_stat = by_wd_hour[sname].get((cur_wd, cur_h))
-        slot_label = f"{wd_ja}曜{cur_h}時台"
-        is_fallback_peak = False
-        if not wh_stat or wh_stat[2] < 2:
-            h_stat = by_hour[sname].get(cur_h)
-            if h_stat and h_stat[2] >= 2:
-                wh_stat = h_stat
-                slot_label = f"普段の{cur_h}時台"
-            elif not is_active_hour:
-                # Daytime fallback: use this weekday's 20-23h peak average so non-zero test/preview snapshots still work
-                wp_stat = by_wd_peak[sname].get(cur_wd)
-                if wp_stat and wp_stat[2] >= 2:
-                    wh_stat = wp_stat
-                    slot_label = f"{wd_ja}曜夜平均"
-                    is_fallback_peak = True
-
-        if wh_stat and wh_stat[2] > 0:
-            usual_w = round(wh_stat[0] / wh_stat[2], 1)
-            usual_m = round(wh_stat[1] / wh_stat[2], 1)
-        else:
-            usual_w = None
-            usual_m = None
-
-        # 2. Core time band (best female ratio among bands with solid attendance)
         b_map = band_stats[sname]
         core_short = "20-22時"
         core_wpct = 58
@@ -1237,7 +1185,6 @@ def get_all_stores_live_benchmarks(now_jst: datetime.datetime = None, allow_bloc
                     continue
                 avg_w_band = sw / sc
                 wpct_band = (sw / (sw + sm)) * 100.0
-                # Prefer bands that have at least 55% of the store's peak female volume (or >= 8 women)
                 if avg_w_band >= max(4.0, max_band_w * 0.55):
                     candidates.append((wpct_band, avg_w_band, b_label))
             if not candidates:
@@ -1249,7 +1196,6 @@ def get_all_stores_live_benchmarks(now_jst: datetime.datetime = None, allow_bloc
                 core_wpct = round(best_cand[0])
                 core_short = best_cand[2]
 
-        # 3. Midnight retention % (00:00-01:59 avg women vs 21:00-22:59 avg women)
         p_sum_w, p_cnt = peak_21_22[sname]
         m_sum_w, m_cnt = mid_00_01[sname]
         p_avg_w = (p_sum_w / p_cnt) if p_cnt >= 3 else 0.0
@@ -1268,12 +1214,7 @@ def get_all_stores_live_benchmarks(now_jst: datetime.datetime = None, allow_bloc
         else:
             mid_label = "終電前型"
 
-        out[sname] = {
-            "usual_women": usual_w,
-            "usual_men": usual_m,
-            "usual_slot_label": slot_label,
-            "is_active_hour": is_active_hour,
-            "is_fallback_peak": is_fallback_peak,
+        static_per_store[sname] = {
             "core_time_short": core_short,
             "core_time_wpct": core_wpct,
             "midnight_retention_pct": ret_pct,
@@ -1282,7 +1223,131 @@ def get_all_stores_live_benchmarks(now_jst: datetime.datetime = None, allow_bloc
             "midnight_avg_w": round(m_avg_w, 1),
         }
 
-    _live_benchmarks_cache[cache_key] = (time.monotonic(), out)
+    return {
+        "stores_seen": stores_seen,
+        "by_wd_hour": by_wd_hour,
+        "by_hour": by_hour,
+        "by_wd_peak": by_wd_peak,
+        "static_per_store": static_per_store,
+    }
+
+
+def _derive_benchmarks_for_slot(base_data: dict, cur_wd: int, cur_h: int) -> dict:
+    """Derives per-store benchmarks for (cur_wd, cur_h) in <0.05ms from pre-aggregated base_data."""
+    if not base_data or not base_data.get("stores_seen"):
+        return {}
+    weekdays_ja = ["月", "火", "水", "木", "金", "土", "日"]
+    wd_ja = weekdays_ja[cur_wd]
+    is_active_hour = (18 <= cur_h <= 23) or (0 <= cur_h <= 5)
+    by_wd_hour = base_data["by_wd_hour"]
+    by_hour = base_data["by_hour"]
+    by_wd_peak = base_data["by_wd_peak"]
+    static_per_store = base_data["static_per_store"]
+
+    out = {}
+    for sname in base_data["stores_seen"]:
+        wh_stat = by_wd_hour[sname].get((cur_wd, cur_h))
+        slot_label = f"{wd_ja}曜{cur_h}時台"
+        is_fallback_peak = False
+        if not wh_stat or wh_stat[2] < 2:
+            h_stat = by_hour[sname].get(cur_h)
+            if h_stat and h_stat[2] >= 2:
+                wh_stat = h_stat
+                slot_label = f"普段の{cur_h}時台"
+            elif not is_active_hour:
+                wp_stat = by_wd_peak[sname].get(cur_wd)
+                if wp_stat and wp_stat[2] >= 2:
+                    wh_stat = wp_stat
+                    slot_label = f"{wd_ja}曜夜平均"
+                    is_fallback_peak = True
+
+        if wh_stat and wh_stat[2] > 0:
+            usual_w = round(wh_stat[0] / wh_stat[2], 1)
+            usual_m = round(wh_stat[1] / wh_stat[2], 1)
+        else:
+            usual_w = None
+            usual_m = None
+
+        st = static_per_store[sname]
+        out[sname] = {
+            "usual_women": usual_w,
+            "usual_men": usual_m,
+            "usual_slot_label": slot_label,
+            "is_active_hour": is_active_hour,
+            "is_fallback_peak": is_fallback_peak,
+            "core_time_short": st["core_time_short"],
+            "core_time_wpct": st["core_time_wpct"],
+            "midnight_retention_pct": st["midnight_retention_pct"],
+            "midnight_label_short": st["midnight_label_short"],
+            "peak_band_avg_w": st["peak_band_avg_w"],
+            "midnight_avg_w": st["midnight_avg_w"],
+        }
+    return out
+
+
+def get_all_stores_live_benchmarks(now_jst: datetime.datetime = None, allow_blocking: bool = True, force_refresh: bool = False) -> dict:
+    """
+    Computes per-store live benchmarks from the last 30 days of SQLite monitor_logs:
+      - Base 30-day store accumulators are cached per DB_PATH for 30 minutes, so top-of-the-hour
+        transitions (e.g. 21:59 -> 22:00) derive new slot benchmarks in <0.05ms with ZERO SQLite queries.
+      - When allow_blocking=False on a large/syncing DB without a warm cache, returns immediately ({})
+        and triggers an async background computation so HTTP worker threads never block.
+    """
+    if now_jst is None:
+        now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
+    cur_h = now_jst.hour
+    biz_date = (now_jst.date() - datetime.timedelta(days=1)) if cur_h <= 6 else now_jst.date()
+    cur_wd = biz_date.weekday()
+
+    cache_key = (DB_PATH, cur_wd, cur_h)
+    now_mono = time.monotonic()
+    db_row_count = int(get_db_stats().get("count") or 0) if os.path.exists(DB_PATH) else 0
+
+    if not force_refresh:
+        cached = _live_benchmarks_cache.get(cache_key)
+        if cached is not None:
+            cached_ts, cached_out = cached[0], cached[1]
+            cached_cnt = cached[2] if len(cached) > 2 else db_row_count
+            small_db_mutated = (db_row_count < 2500 and db_row_count != cached_cnt)
+            if not small_db_mutated:
+                if now_mono - cached_ts < _LIVE_BENCHMARKS_TTL:
+                    return cached_out
+                if not allow_blocking:
+                    refresh_live_benchmarks_async()
+                    return cached_out
+
+        # Fast O(1) derivation from 30-min base cache (eliminates top-of-hour SQLite stampede)
+        base_entry = _benchmark_base_cache.get(DB_PATH)
+        if base_entry is not None:
+            base_ts, base_cnt, base_data = base_entry
+            small_db_mutated = (db_row_count < 2500 and db_row_count != base_cnt)
+            if not small_db_mutated:
+                if now_mono - base_ts < _BENCHMARK_BASE_TTL:
+                    derived = _derive_benchmarks_for_slot(base_data, cur_wd, cur_h)
+                    _live_benchmarks_cache[cache_key] = (now_mono, derived, db_row_count)
+                    return derived
+                if not allow_blocking:
+                    refresh_live_benchmarks_async()
+                    return _derive_benchmarks_for_slot(base_data, cur_wd, cur_h)
+
+        # True non-blocking guard when cold & DB is syncing or large (>=5,000 rows)
+        if not allow_blocking and (_sync_in_progress or db_row_count >= 5000):
+            refresh_live_benchmarks_async()
+            for k, v in list(_live_benchmarks_cache.items()):
+                if k[0] == DB_PATH and v and v[1]:
+                    return v[1]
+            return {}
+
+    cutoff_str = (now_jst - datetime.timedelta(days=30)).strftime("%Y-%m-%d %H:%M:%S")
+    base_data = _compute_benchmark_base_from_sqlite(cutoff_str)
+    now_done = time.monotonic()
+    _benchmark_base_cache[DB_PATH] = (now_done, db_row_count, base_data)
+    if len(_benchmark_base_cache) > 4:
+        oldest_db = min(_benchmark_base_cache.items(), key=lambda kv: kv[1][0])[0]
+        _benchmark_base_cache.pop(oldest_db, None)
+
+    out = _derive_benchmarks_for_slot(base_data, cur_wd, cur_h)
+    _live_benchmarks_cache[cache_key] = (now_done, out, db_row_count)
     if len(_live_benchmarks_cache) > _LIVE_BENCHMARKS_CACHE_MAX:
         items_snap = list(_live_benchmarks_cache.items())
         items_snap.sort(key=lambda kv: kv[1][0])

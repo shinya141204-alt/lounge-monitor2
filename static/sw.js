@@ -1,5 +1,5 @@
-// Supersedes aiseki-navi-v47..v56 (purged automatically on activate)
-const CACHE_NAME = 'aiseki-navi-v57';
+// Supersedes aiseki-navi-v47..v57 (purged automatically on activate)
+const CACHE_NAME = 'aiseki-navi-v58';
 const SHELL_KEY = '/';
 const FAST_NAV_PATHS = new Set([
   '/grooming',
@@ -24,7 +24,7 @@ const CORE_ASSETS = [
   '/static/style.css?v=20261027_3',
   '/static/calm.css?v=13',
   '/static/portal.css?v=6',
-  '/static/app.js?v=20261027_5',
+  '/static/app.js?v=20261028_1',
   '/static/affiliate_config.js?v=11',
   '/static/manifest.json?v=2',
   '/static/icon-192.png?v=2',
@@ -166,7 +166,7 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       (async () => {
         try {
-          return await Promise.race([networkPromise, timeout(isLiveSsr ? 3500 : 1500)]);
+          return await Promise.race([networkPromise, timeout(isLiveSsr ? 1800 : 1200)]);
         } catch (e) {
           const cached = await caches.match(pageCacheKey) || await caches.match(reqUrl.pathname);
           if (cached) return cached;

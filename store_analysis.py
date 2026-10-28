@@ -27,10 +27,10 @@ def _set_negative_cache(neg_key, err_payload, err_status):
         _negative_cache[neg_key] = (time.monotonic(), err_payload, err_status)
 
 
-def compute_store_analysis_payload(store_name, analysis_cache, cache_duration=3600):
+def compute_store_analysis_payload(store_name, analysis_cache, cache_duration=3600, allow_sheets_fallback=True):
     """
     Returns (payload_dict, http_status_code) for `/api/analysis/<store_name>`.
-    Uses in-memory `analysis_cache` -> fast SQLite 30-day history -> Google Sheets gviz fallback.
+    Uses in-memory `analysis_cache` -> fast SQLite 30-day history -> bounded 30-day Google Sheets gviz fallback.
     """
     now = datetime.datetime.now()
     with _analysis_lock:
@@ -57,10 +57,19 @@ def compute_store_analysis_payload(store_name, analysis_cache, cache_duration=36
         if len(sqlite_history) >= 3 and (not local_db.is_partial_recent_only() or local_db.has_multi_day_span(sqlite_history)):
             target_data = sqlite_history
             full_ttl_ready = True
+        elif sqlite_history and (getattr(local_db, '_sync_in_progress', False) or not allow_sheets_fallback):
+            # Never block HTTP workers on Google Sheets while background sync is already running;
+            # serve partial SQLite history immediately (short 60s TTL) and queue async store backfill.
+            target_data = sqlite_history
+            local_db._trigger_store_backfill_async(store_name, days=14)
     except Exception as e:
         print(f"[Analysis] SQLite query error: {e}", file=sys.stderr)
 
-    # 2. Fallback: Query Google Sheets via gviz API if local SQLite had no data or only partial 2h boot data
+    # 2. Fallback: Query bounded 30-day Google Sheets via gviz API only when local SQLite is empty
+    if target_data is None and not allow_sheets_fallback:
+        local_db._trigger_store_backfill_async(store_name, days=14)
+        return {"error": "Warming up store history"}, 503
+
     if target_data is None:
         with _analysis_lock:
             neg_entry = _negative_cache.get(neg_key)
@@ -81,13 +90,15 @@ def compute_store_analysis_payload(store_name, analysis_cache, cache_duration=36
                         _set_negative_cache(neg_key, err, 500)
                         return err, 500
                 else:
-                    print(f"Fetching historical data for {store_name} from Google Sheets via gviz...")
+                    print(f"Fetching 30-day historical data for {store_name} from Google Sheets via gviz...")
+                    now_jst_q = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
+                    start_30d_str = (now_jst_q - datetime.timedelta(days=30)).strftime("%Y-%m-%d 00:00:00")
                     safe_store_name = store_name.replace("\\", "\\\\").replace("'", "\\'")
-                    query = f"SELECT A, B, C, D WHERE B='{safe_store_name}'"
+                    query = f"SELECT A, B, C, D WHERE B='{safe_store_name}' AND A >= '{start_30d_str}'"
                     url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/gviz/tq?tq={urllib.parse.quote(query)}"
                     headers = {"Authorization": f"Bearer {access_token}"}
 
-                    response = logger.http_session.get(url, headers=headers, timeout=15)
+                    response = logger.http_session.get(url, headers=headers, timeout=8)
                     if response.status_code != 200:
                         print(f"Failed to fetch data via gviz: HTTP {response.status_code}")
                         if sqlite_history:

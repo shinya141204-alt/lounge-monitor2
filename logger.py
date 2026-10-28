@@ -26,6 +26,8 @@ _cached_client = None
 _cached_token = None
 _token_expiry = 0
 _cached_spreadsheet_id = None
+_cached_spreadsheet = None
+_cached_spreadsheet_client_id = None
 
 # Shared HTTP session for connection pooling (Keep-Alive to docs.google.com)
 http_session = requests.Session()
@@ -107,6 +109,33 @@ def get_spreadsheet_id():
             return None
 
 
+def open_spreadsheet(client=None):
+    """Returns a cached gspread Spreadsheet object (opening by key when ID is known to skip Google Drive search API)."""
+    global _cached_spreadsheet_id, _cached_spreadsheet, _cached_spreadsheet_client_id
+    if client is None:
+        client = get_client()
+    if not client:
+        return None
+    cid = id(client)
+    with _auth_lock:
+        if _cached_spreadsheet is not None and _cached_spreadsheet_client_id == cid:
+            return _cached_spreadsheet
+        sh = None
+        if _cached_spreadsheet_id and client is _cached_client and hasattr(client, 'open_by_key'):
+            try:
+                sh = client.open_by_key(_cached_spreadsheet_id)
+            except Exception:
+                sh = None
+        if sh is None:
+            sh = client.open(SHEET_NAME)
+            if getattr(sh, 'id', None) and isinstance(sh.id, str) and client is _cached_client:
+                _cached_spreadsheet_id = sh.id
+        if client is _cached_client:
+            _cached_spreadsheet = sh
+            _cached_spreadsheet_client_id = cid
+        return sh
+
+
 last_error = None
 
 
@@ -115,7 +144,7 @@ def log_data(data):
     Logs the provided data to local SQLite and Google Sheets.
     data: list of dicts [{'name': '...', 'men': 10, 'women': 10, 'source': '...'}, ...]
     """
-    global last_error
+    global last_error, _cached_spreadsheet
     # Always obtain accurate JST timestamp regardless of OS timezone (UTC or JST)
     now = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
     timestamp_str = now.strftime("%Y-%m-%d %H:%M:%S")
@@ -135,7 +164,7 @@ def log_data(data):
         return
 
     try:
-        sheet = client.open(SHEET_NAME).sheet1
+        sheet = open_spreadsheet(client).sheet1
 
         rows_to_append = []
         for item in data:
@@ -157,5 +186,6 @@ def log_data(data):
         # Reset cached client on error so next attempt re-authenticates cleanly
         global _token_expiry
         _token_expiry = 0
+        _cached_spreadsheet = None
         last_error = str(e)
         print(f"Google Sheets Logging Error: {e}", file=sys.stderr)

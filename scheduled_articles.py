@@ -124,11 +124,18 @@ def get_all_scheduled_articles(allow_blocking: bool = False) -> list:
     return combined
 
 
-def get_article_by_slug(slug: str) -> dict:
+def get_article_by_slug(slug: str, allow_blocking: bool = True) -> dict:
     slug_clean = (slug or "").strip("/")
+    if not slug_clean:
+        return None
     for item in get_all_scheduled_articles(allow_blocking=False):
         if item["slug"] == slug_clean:
             return item
+    if not allow_blocking:
+        return None
+    import job_state
+    if getattr(job_state, "_sheets_loaded", False) or job_state.sheets_store.is_disabled():
+        return None
     for item in get_all_scheduled_articles(allow_blocking=True):
         if item["slug"] == slug_clean:
             return item

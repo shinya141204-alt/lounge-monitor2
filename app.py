@@ -199,17 +199,6 @@ def _ensure_scheduler_started_async():
         try:
             local_db.init_db()
             restore_latest_data_if_empty()
-            local_db.start_background_sync(days=21, on_recent_synced=refresh_momentum_from_db)
-            threading.Thread(target=local_db.restore_votes_from_sheets, kwargs={'hours': 24}, daemon=True).start()
-            def _warm_editorial_deps():
-                try:
-                    import job_state as _js
-                    import sns_editorial as _se
-                    _js.all_keys()
-                    _se.fetch_live_weather_context(allow_blocking=True)
-                except Exception:
-                    pass
-            threading.Thread(target=_warm_editorial_deps, daemon=True).start()
 
             scheduler = BackgroundScheduler(timezone="UTC", job_defaults={
                 'misfire_grace_time': 600,
@@ -225,7 +214,7 @@ def _ensure_scheduler_started_async():
                     logging.error(f"analytics flush failed: {err}")
             atexit.register(_flush_analytics)
             scheduler.add_job(func=_flush_analytics, trigger="interval", minutes=10)
-            scheduler.add_job(func=lambda: local_db.sync_from_google_sheets(days=3), trigger="interval", hours=2)
+            scheduler.add_job(func=lambda: local_db.sync_from_google_sheets(days=2), trigger="interval", hours=2)
             # Human-paced anti-spam schedule with randomized jitter (90s-540s) so posts never fire at :00:00 sharp:
             # - X Live: 20:00 & 22:00 daily (00:00 late-night removed on Mon-Thu/Sun, kept only Fri/Sat nights; 02:00 removed completely)
             # - X Tips: 18:00 pre-outing prime slot only (12:00 midday removed to cut daily post volume by half)
@@ -314,16 +303,35 @@ def _ensure_scheduler_started_async():
             # Run daily before evening SNS rush (17:35 JST = 08:35 UTC) and after late-night close (03:35 JST = 18:35 UTC)
             scheduler.add_job(func=_pdca_autonomous_job, trigger="cron", hour="8,18", minute=35, jitter=120)
             scheduler.start()
+            # Priority #1 at t=0s: scrape live headcounts first without competing with SQLite backfill or Sheets reads
             trigger_background_fetch_if_needed()
-            def _initial_events_warmup():
+
+            def _staggered_background_warmup():
                 try:
                     import events as _ev_boot
-                    if os.path.exists(_ev_boot.CACHE_FILE):
+                    has_disk_events = os.path.exists(_ev_boot.CACHE_FILE)
+                    if has_disk_events:
                         _ev_boot.fetch_all_events(force_refresh=False, allow_blocking=False)
-                        time.sleep(45)
-                    else:
-                        # Delay initial 20+ page event crawl so cold-start live store count scraping finishes first without contention
-                        time.sleep(25)
+
+                    # Stage 1 (t+5s): Sync 10 days of SQLite crowd history (sufficient for 7d reports & store analytics)
+                    time.sleep(5)
+                    local_db.sync_from_google_sheets(days=10, on_recent_synced=refresh_momentum_from_db)
+
+                    # Stage 2: Restore crowd votes & warm Job State / Analytics caches sequentially (zero lock contention)
+                    time.sleep(2)
+                    local_db.restore_votes_from_sheets(hours=24)
+                    try:
+                        import job_state as _js
+                        import analytics as _an
+                        import sns_editorial as _se
+                        _js.all_keys()
+                        _an._refresh_sheet_rows_async()
+                        _se.fetch_live_weather_context(allow_blocking=True)
+                    except Exception:
+                        pass
+
+                    # Stage 3: Crawl 20+ external event pages & seed PDCA directives after user traffic has settled
+                    time.sleep(30 if has_disk_events else 12)
                     _crawl_events_job()
                     import pdca_engine as _pdca_boot
                     if not _pdca_boot.get_active_directives(allow_blocking=True):
@@ -331,9 +339,10 @@ def _ensure_scheduler_started_async():
                             boot_stores = list(latest_data.get('full_data') or [])
                         _pdca_boot.run_pdca_cycle(live_stores=boot_stores, days=14, apply_actions=True, use_ai=False, record_log=True)
                 except Exception as err:
-                    logging.error(f"Initial events warmup failed: {err}")
-            threading.Thread(target=_initial_events_warmup, daemon=True).start()
-            logging.info("APScheduler & local SQLite high-speed cache started successfully")
+                    logging.error(f"Staggered background warmup error: {err}")
+
+            threading.Thread(target=_staggered_background_warmup, daemon=True).start()
+            logging.info("APScheduler & staggered background warmup started successfully")
         except Exception as e:
             logging.error(f"Scheduler boot error: {e}")
 
@@ -591,6 +600,7 @@ _ogp_bytes_cache_lock = threading.Lock()
 _ogp_bytes_cache = OrderedDict()
 _OGP_BYTES_CACHE_MAX = 24
 _sns_cache_lock = threading.Lock()
+_staff_editorial_preview_cache = {'ts': 0.0, 'sig': None, 'data': None}
 _sitemap_xml_cache = {'key': None, 'xml': None}
 _CACHE_QUERY_ALLOWLIST = ('s', 'area', 'slot', 'channel', 'switch', 'days', 'format')
 
@@ -625,6 +635,9 @@ def clear_fast_http_caches(clear_editorial: bool = True):
         _ogp_bytes_cache.clear()
     if clear_editorial:
         with _sns_cache_lock:
+            _staff_editorial_preview_cache['ts'] = 0.0
+            _staff_editorial_preview_cache['sig'] = None
+            _staff_editorial_preview_cache['data'] = None
             _sns_kit_ctx_cache['ctx'] = None
             _sns_kit_ctx_cache['key'] = None
             _sns_kit_ctx_cache['ts'] = 0.0
@@ -1245,14 +1258,7 @@ def update_job(force=False):
             else:
                 with data_lock:
                     latest_data['last_logged'] = jst_now.strftime("%Y-%m-%d %H:%M:%S")
-                def _log_and_refresh_analysis(items):
-                    logger.log_data(items)
-                    try:
-                        analysis_cache.get('processed_per_store', {}).clear()
-                        analysis_cache.get('raw_data_by_store', {}).clear()
-                    except Exception:
-                        pass
-                threading.Thread(target=_log_and_refresh_analysis, args=(data,), daemon=True).start()
+                threading.Thread(target=logger.log_data, args=(data,), daemon=True).start()
                 print("Logging data to Google Sheets...")
         else:
             print("No data retrieved.")
@@ -1479,16 +1485,18 @@ def staff_analytics():
         return redirect(url_for('staff_monitor', switch='1'))
     import analytics
     days = max(1, min(90, request.args.get('days', 7, type=int)))
+    is_json_req = request.args.get('format') == 'json'
+    force_flush = request.args.get('flush') == '1'
     flushed_rows = 0
-    if request.args.get('flush') == '1':
+    if force_flush:
         try:
             flushed_rows = analytics.flush()
         except Exception:
             pass
-    data = analytics.summary(days=days)
-    if request.args.get('format') == 'json':
+    data = analytics.summary(days=days, allow_blocking=(is_json_req or force_flush))
+    if is_json_req:
         return jsonify(data)
-    return render_template('staff_analytics.html', data=data, days=days, flushed=request.args.get('flush') == '1', flushed_rows=flushed_rows)
+    return render_template('staff_analytics.html', data=data, days=days, flushed=force_flush, flushed_rows=flushed_rows)
 
 @app.route('/staff', methods=['GET', 'POST'])
 def staff_monitor():
@@ -1557,12 +1565,28 @@ def staff_monitor():
                 audit_report = data_audit.run_data_audit(live_stores=cur_live, send_alerts=False)
                 sched_queue = scheduled_articles.get_all_with_status()
                 try:
-                    editorial_preview = sns_editorial.run_editorial_pipeline(
-                        cur_live,
-                        slot_label="22:00",
-                        record_history=False,
-                        use_ai=False,
-                    )
+                    now_ep = time.monotonic()
+                    top_sig = tuple((s.get('name'), int(s.get('women') or 0), int(s.get('men') or 0)) for s in cur_live[:5])
+                    with _sns_cache_lock:
+                        ep_hit = _staff_editorial_preview_cache['data'] if (
+                            _staff_editorial_preview_cache['data'] is not None
+                            and _staff_editorial_preview_cache['sig'] == top_sig
+                            and (now_ep - _staff_editorial_preview_cache['ts'] < 120.0)
+                        ) else None
+                    if ep_hit is not None:
+                        editorial_preview = ep_hit
+                    else:
+                        editorial_preview = sns_editorial.run_editorial_pipeline(
+                            cur_live,
+                            slot_label="22:00",
+                            record_history=False,
+                            use_ai=False,
+                            ai_cache_only=True,
+                        )
+                        with _sns_cache_lock:
+                            _staff_editorial_preview_cache['ts'] = now_ep
+                            _staff_editorial_preview_cache['sig'] = top_sig
+                            _staff_editorial_preview_cache['data'] = editorial_preview
                 except Exception:
                     editorial_preview = None
             return render_template(
@@ -1926,13 +1950,27 @@ def staff_pdca():
     with data_lock:
         live_s = list(latest_data.get('full_data') or [])
     has_existing = bool(pdca_engine.get_active_directives(allow_blocking=False))
+    if not has_existing and not is_json_req:
+        def _seed_pdca_async(stores_snap):
+            try:
+                if not pdca_engine.get_active_directives(allow_blocking=True):
+                    pdca_engine.run_pdca_cycle(
+                        live_stores=stores_snap,
+                        days=days,
+                        apply_actions=True,
+                        use_ai=False,
+                        record_log=True,
+                    )
+            except Exception:
+                pass
+        threading.Thread(target=_seed_pdca_async, args=(live_s,), daemon=True).start()
     pdca_data = pdca_engine.run_pdca_cycle(
         live_stores=live_s,
         days=days,
-        apply_actions=(not has_existing),
+        apply_actions=(not has_existing and is_json_req),
         use_ai=True,
         ai_cache_only=(not is_json_req),
-        record_log=(not has_existing),
+        record_log=(not has_existing and is_json_req),
     )
     if is_json_req:
         return jsonify(pdca_data)
