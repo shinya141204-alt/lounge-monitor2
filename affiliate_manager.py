@@ -22,10 +22,12 @@ AFFILIATE_OVERRIDES_STATE_KEY = "aff_slot_overrides"
 _lock = threading.Lock()
 _mem_overrides = None  # dict[slot_id, {"url": str, "memo": str, "updated_at": str}]
 
-# Canonical 5 affiliate slots aligned with site UI & reader intent
+# Canonical 8 affiliate slots (5 men's slots + 3 women's slots) aligned with site UI & reader intent
 AFFILIATE_SLOTS = [
     {
         "slot_id": "dating_instant",
+        "audience": "men",
+        "audience_label": "🕺 男性向け",
         "aliases": ["dating", "dating_casual"],
         "category_label": "🍻 即時合流・定番恋活アプリ枠",
         "title": "今日これから・近くで飲める恋活アプリ（満席・男余り時の受け皿）",
@@ -36,6 +38,8 @@ AFFILIATE_SLOTS = [
     },
     {
         "slot_id": "dating_bachelor",
+        "audience": "men",
+        "audience_label": "🕺 男性向け",
         "aliases": [],
         "category_label": "🥂 審査制・1対1カフェデート枠",
         "title": "メッセージ不要・週1回デートが決まる審査制アプリ（バチェラーデート等）",
@@ -46,6 +50,8 @@ AFFILIATE_SLOTS = [
     },
     {
         "slot_id": "mens_hair_removal",
+        "audience": "men",
+        "audience_label": "🕺 男性向け",
         "aliases": ["hair_removal", "hair_removal_trial"],
         "category_label": "🪒 メンズ医療ヒゲ脱毛枠",
         "title": "仕事帰り・距離70cmの青ヒゲ対策（メンズ医療ヒゲ脱毛 初回プラン）",
@@ -56,6 +62,8 @@ AFFILIATE_SLOTS = [
     },
     {
         "slot_id": "mens_skincare_clinic",
+        "audience": "men",
+        "audience_label": "🕺 男性向け",
         "aliases": ["orbis"],
         "category_label": "🧴 メンズスキンケア枠",
         "title": "夕方のテカリ・乾燥ケア（ORBIS Mr. トライアルセット等）",
@@ -66,6 +74,8 @@ AFFILIATE_SLOTS = [
     },
     {
         "slot_id": "spu_styleup",
+        "audience": "men",
+        "audience_label": "🕺 男性向け",
         "aliases": ["spu"],
         "category_label": "👔 メンズ服・コーデ定期便枠",
         "title": "相席で浮かないきれいめ私服（SPU スタイルアップ便等）",
@@ -73,6 +83,42 @@ AFFILIATE_SLOTS = [
         "recommended_asp_examples": "SPU スタイルアップ便 / UWear（ユーウェア） 等",
         "env_keys": ["AFFILIATE_URL_SPU"],
         "default_url": "https://h.accesstrade.net/sp/cc?rk=0100oo8500p144",
+    },
+    {
+        "slot_id": "women_dating_bachelor",
+        "audience": "women",
+        "audience_label": "💄 女性向け",
+        "aliases": ["women_dating"],
+        "category_label": "🥂 女性向け｜審査制・完全無料ハイクラスデート枠",
+        "title": "【女性完全無料】顔写真非公開・審査制で週1回ハイスペック男性と1対1カフェデート",
+        "placement": "/for-women 女性特設ガイド / トップ『💄女性目線モード』おすすめモーダル",
+        "recommended_asp_examples": "バチェラーデート（女性無料登録案件） / 東カレデート / ゴージャス 等",
+        "env_keys": ["AFFILIATE_URL_WOMEN_DATING", "AFFILIATE_URL_DATING_BACHELOR", "AFFILIATE_URL_DATING"],
+        "default_url": "https://px.a8.net/svt/ejp?a8mat=4BEK9C+21TRSI+5SFC+61RI9",
+    },
+    {
+        "slot_id": "women_beauty_clinic",
+        "audience": "women",
+        "audience_label": "💄 女性向け",
+        "aliases": ["women_clinic", "women_hair_removal"],
+        "category_label": "💎 女性向け｜美容医療・美肌クリニック＆医療脱毛枠",
+        "title": "ラウンジの間接照明でも映える水光肌・医療脱毛（初回カウンセリング＆体験プラン）",
+        "placement": "/for-women 女性特設ガイド / トップ『💄女性目線モード』おすすめモーダル",
+        "recommended_asp_examples": "湘南美容クリニック（美肌/医療脱毛） / エミナルクリニック / 品川美容外科 等",
+        "env_keys": ["AFFILIATE_URL_WOMEN_BEAUTY_CLINIC", "AFFILIATE_URL_WOMEN_CLINIC"],
+        "default_url": "https://px.a8.net/svt/ejp?a8mat=4BEL1F+61B8KY+328C+2HCB1D",
+    },
+    {
+        "slot_id": "women_cosme_salon",
+        "audience": "women",
+        "audience_label": "💄 女性向け",
+        "aliases": ["women_cosme", "women_skincare"],
+        "category_label": "🧴 女性向け｜デパコス・ご褒美スキンケア＆サロン枠",
+        "title": "夜遊び帰りのメイク崩れ・乾燥リセット（人気スキンケア初回セット・ヘア/ネイル予約）",
+        "placement": "/for-women 女性特設ガイド / トップ『💄女性目線モード』おすすめモーダル",
+        "recommended_asp_examples": "オルビスユー トライアル / アテニア クレンジング / ネイル・ヘアサロン予約 等",
+        "env_keys": ["AFFILIATE_URL_WOMEN_COSME", "AFFILIATE_URL_ORBIS"],
+        "default_url": "https://px.a8.net/svt/ejp?a8mat=4BEL1F+67V08I+1USQ+2Z90WX",
     },
 ]
 
@@ -240,23 +286,30 @@ def get_affiliate_slots_status(analytics_data: dict = None, allow_blocking: bool
                 slot_clicks[cid] += int(cnt or 0)
 
     resolved_map = {s["slot_id"]: _resolve_slot_info(s, overrides) for s in AFFILIATE_SLOTS}
+    # Group duplicate detection by (audience, url) so men's vs women's funnels don't trigger false cross-gender alerts,
+    # while still catching any URL cannibalization inside the men's 5 slots or inside the women's 3 slots!
     url_to_slots = {}
-    for sid, rinfo in resolved_map.items():
-        u = rinfo["url"]
-        url_to_slots.setdefault(u, []).append(sid)
+    for s in AFFILIATE_SLOTS:
+        sid = s["slot_id"]
+        aud = s.get("audience") or "men"
+        u = resolved_map[sid]["url"]
+        url_to_slots.setdefault((aud, u), []).append(sid)
 
     slots_out = []
     duplicate_pair_count = 0
     for s in AFFILIATE_SLOTS:
         sid = s["slot_id"]
+        aud = s.get("audience") or "men"
         rinfo = resolved_map[sid]
-        shared_with = [other for other in url_to_slots.get(rinfo["url"], []) if other != sid]
+        shared_with = [other for other in url_to_slots.get((aud, rinfo["url"]), []) if other != sid]
         is_dup = len(shared_with) > 0
         if is_dup:
             duplicate_pair_count += 1
         shared_labels = [_SLOT_BY_ID[o]["category_label"] for o in shared_with]
         slots_out.append({
             "slot_id": sid,
+            "audience": aud,
+            "audience_label": s.get("audience_label") or ("💄 女性向け" if aud == "women" else "🕺 男性向け"),
             "aliases": s["aliases"],
             "test_path": f"/link/{sid}",
             "category_label": s["category_label"],
@@ -277,6 +330,7 @@ def get_affiliate_slots_status(analytics_data: dict = None, allow_blocking: bool
 
     return {
         "slots": slots_out,
+        "total_slots": len(slots_out),
         "has_duplicates": duplicate_pair_count > 0,
         "duplicate_slot_count": duplicate_pair_count,
     }

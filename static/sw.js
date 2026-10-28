@@ -1,5 +1,5 @@
-// Supersedes aiseki-navi-v47..v57 (purged automatically on activate)
-const CACHE_NAME = 'aiseki-navi-v58';
+// Supersedes aiseki-navi-v47..v58 (purged automatically on activate)
+const CACHE_NAME = 'aiseki-navi-v59';
 const SHELL_KEY = '/';
 const FAST_NAV_PATHS = new Set([
   '/grooming',
@@ -10,6 +10,7 @@ const FAST_NAV_PATHS = new Set([
 ]);
 const LIVE_SSR_EXACT = new Set([
   '/',
+  '/for-women',
   '/areas',
   '/oriental-lounge',
   '/ag',
@@ -22,10 +23,10 @@ const LIVE_SSR_PREFIXES = [
 ];
 const CORE_ASSETS = [
   '/static/style.css?v=20261027_3',
-  '/static/calm.css?v=13',
+  '/static/calm.css?v=14',
   '/static/portal.css?v=6',
-  '/static/app.js?v=20261028_1',
-  '/static/affiliate_config.js?v=11',
+  '/static/app.js?v=20261028_2',
+  '/static/affiliate_config.js?v=12',
   '/static/manifest.json?v=2',
   '/static/icon-192.png?v=2',
   '/static/icon-512.png?v=2'

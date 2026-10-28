@@ -7,6 +7,26 @@
         let currentFilter = 'All';
         let currentSearch = '';
         let currentSort = 'women';
+        let currentAudience = 'men';
+        (function initInitialAudience() {
+            if (IS_STAFF) return;
+            try {
+                const params = new URLSearchParams(window.location.search || '');
+                const qMode = (params.get('mode') || '').toLowerCase();
+                if (qMode === 'women' || qMode === 'ladies') {
+                    currentAudience = 'women';
+                    localStorage.setItem('aiseki_audience_mode', 'women');
+                } else if (qMode === 'men') {
+                    currentAudience = 'men';
+                    localStorage.setItem('aiseki_audience_mode', 'men');
+                } else if (localStorage.getItem('aiseki_audience_mode') === 'women') {
+                    currentAudience = 'women';
+                }
+            } catch (e) {}
+        })();
+        if (currentAudience === 'women') {
+            currentSort = 'ladies_comfort';
+        }
         let _chartJsLoadingPromise = null;
         let comparisonChartInstance = null;
 
@@ -723,10 +743,143 @@
             if (window.lastData) updateUI(window.lastData);
         }
 
+        function evaluateLadiesStoreJs(store) {
+            const w = Math.max(0, Number(store && store.women) || 0);
+            const m = Math.max(0, Number(store && store.men) || 0);
+            const tot = w + m;
+            if (tot === 0) {
+                return { score: -1000, badge: '', cls: '', micro: '' };
+            }
+            let hasEv = false;
+            let evTitle = '';
+            if (shouldShowEvents() && store) {
+                if (_eventsFetched && window.allEvents && window.allEvents.length > 0) {
+                    const matched = getStoreSpecificEvents(store.name);
+                    if (matched && matched.length > 0) {
+                        hasEv = true;
+                        evTitle = matched[0].title || '';
+                    }
+                } else if (store.ssr_event_badge) {
+                    hasEv = true;
+                    evTitle = store.ssr_event_title || '';
+                }
+            }
+            const votes = (store && store.votes) || {};
+            const evBonus = hasEv ? 45 : 0;
+            const voteBonus = (votes.smooth > 0 && votes.smooth >= (votes.waiting || 0)) ? 15 : 0;
+            const wpct = Math.round((w / tot) * 100);
+            const mpct = 100 - wpct;
+            const evSuffix = hasEv ? ` <span class="micro-sep">｜</span> 🎁 ${escapeHtml((evTitle || '店舗限定イベント開催中').slice(0, 26))}` : '';
+
+            if (m >= 4 && m >= w) {
+                const lead = m - w;
+                return {
+                    score: 300 + Math.min(45, lead * 2.5) + Math.min(55, m * 1.5) + evBonus + voteBonus,
+                    badge: '🟢 女子待ち0・即案内圏',
+                    cls: 'ladies-vip',
+                    title: `男性${m}名が先行中（男性比${mpct}%）・受付待ちほぼゼロで即案内されやすい状態`,
+                    micro: `男性${m}名先行（男性比${mpct}%）・待ちほぼゼロ圏${evSuffix}`
+                };
+            }
+            if (m >= 4 && wpct <= 62) {
+                return {
+                    score: 215 + Math.min(45, m * 1.4) - Math.max(0, (w - m) * 1.2) + evBonus + voteBonus,
+                    badge: '✨ スムーズ相席圏',
+                    cls: 'ladies-good',
+                    title: `男女バランス良好（男性${m}名・女性${w}名）・席替えも自然に回りやすい状態`,
+                    micro: `好バランス（男性${m}名・女性${w}名）・席替え回転◎${evSuffix}`
+                };
+            }
+            if (m >= 1 && m < 4 && w <= 6) {
+                return {
+                    score: 150 + m * 8 + evBonus + voteBonus,
+                    badge: '☕ ゆったり2軒目向き',
+                    cls: 'ladies-good',
+                    title: '落ち着いた人数帯・友達とカフェ感覚でゆっくり話したい夜向き',
+                    micro: `落ち着いた人数帯・夜カフェ感覚で話しやすい${evSuffix}`
+                };
+            }
+            if (m === 0 && w > 0) {
+                return {
+                    score: 15 + evBonus * 0.5,
+                    badge: '⏳ 男性来店待ち',
+                    cls: 'ladies-warn',
+                    title: `現在女性${w}名のみ・相席スタートまで少し待つ可能性あり`,
+                    micro: `現在女性${w}名のみ・近隣の男性先行店も比較推奨${evSuffix}`
+                };
+            }
+            const surplus = Math.max(0, w - m);
+            return {
+                score: Math.max(25, 110 - surplus * 1.6) + evBonus * 0.6,
+                badge: '⚠️ 女子多め・待ち注意',
+                cls: 'ladies-warn',
+                title: `女性比率${wpct}%で女子組が集中中・近隣の男性先行店へ回る方がスムーズ`,
+                micro: `女性比${wpct}%で女子集中・近隣の男性先行店が快適${evSuffix}`
+            };
+        }
+
+        function applyAudienceModeDOM() {
+            if (IS_STAFF) return;
+            const isWomen = currentAudience === 'women';
+            document.body.classList.toggle('audience-women', isWomen);
+            document.querySelectorAll('.audience-pill-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.audience === currentAudience);
+            });
+            const quickLinks = document.getElementById('ladies-mode-quicklinks');
+            if (quickLinks) {
+                quickLinks.classList.toggle('hidden', !isWomen);
+            }
+            document.querySelectorAll('.sort-btn').forEach(b => {
+                b.classList.toggle('active', b.dataset.sort === currentSort);
+            });
+        }
+
+        function setAudienceMode(mode, notify = false) {
+            if (IS_STAFF) return;
+            currentAudience = (mode === 'women') ? 'women' : 'men';
+            try {
+                localStorage.setItem('aiseki_audience_mode', currentAudience);
+            } catch (e) {}
+            if (currentAudience === 'women') {
+                currentSort = 'ladies_comfort';
+            } else if (currentSort === 'ladies_comfort') {
+                currentSort = 'women';
+            }
+            applyAudienceModeDOM();
+            if (window.lastData) {
+                updateUI(window.lastData);
+            }
+            if (notify && typeof showRefreshToast === 'function') {
+                showRefreshToast(currentAudience === 'women'
+                    ? '💄 女性目線モード（待ち0・特典順）に切り替えました'
+                    : '🕺 男性目線モード（女性人数順）に切り替えました');
+            }
+            if (notify && navigator.sendBeacon) {
+                try {
+                    navigator.sendBeacon('/api/track', new Blob([JSON.stringify({
+                        event: 'share',
+                        label: 'audience_mode:' + currentAudience
+                    })], { type: 'application/json' }));
+                } catch (e) {}
+            }
+        }
+
+        if (!IS_STAFF) {
+            applyAudienceModeDOM();
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', applyAudienceModeDOM);
+            }
+        }
+
         function setSort(sortType) {
             currentSort = sortType;
             document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
             document.querySelector(`.sort-btn[data-sort="${sortType}"]`)?.classList.add('active');
+            if (!IS_STAFF && sortType === 'ladies_comfort' && currentAudience !== 'women') {
+                currentAudience = 'women';
+                try { localStorage.setItem('aiseki_audience_mode', 'women'); } catch (e) {}
+                applyAudienceModeDOM();
+            }
             if (window.lastData) updateUI(window.lastData);
         }
 
@@ -784,6 +937,7 @@
                         !hasInfeedAds &&
                         !staffEventsMismatch &&
                         pinnedAlreadyHydrated &&
+                        currentAudience === 'men' &&
                         currentFilter === 'All' &&
                         currentSort === 'women' &&
                         currentSearch === '' &&
@@ -1241,13 +1395,20 @@
                 }
             }
 
-            // 15-min Momentum Tag (Shows when female count is actively rising)
+            // 15-min Momentum Tag (or Women's Zero-Wait Comfort Badge when audience === 'women')
             const momTag = node.querySelector('.momentum-tag');
             const wDiff = Number(store.women_diff || 0);
             const mDiff = Number(store.men_diff || 0);
+            const ladiesEval = (!IS_STAFF && currentAudience === 'women') ? evaluateLadiesStoreJs(store) : null;
             if (momTag) {
+                momTag.classList.remove('ladies-vip', 'ladies-good', 'ladies-warn');
                 const votes = store.votes || {};
-                if (wDiff >= 1) {
+                if (ladiesEval && ladiesEval.badge) {
+                    momTag.classList.remove('hidden');
+                    if (ladiesEval.cls) momTag.classList.add(ladiesEval.cls);
+                    momTag.textContent = ladiesEval.badge;
+                    momTag.title = ladiesEval.title || '';
+                } else if (wDiff >= 1) {
                     momTag.classList.remove('hidden');
                     momTag.textContent = `↗ +${wDiff}名`;
                     momTag.title = `直近約15分で女性が+${wDiff}名増えています`;
@@ -1291,7 +1452,10 @@
 
             const microEl = node.querySelector('.store-micro-metrics');
             if (microEl) {
-                if (store.core_time_short && store.midnight_retention_pct) {
+                if (ladiesEval && ladiesEval.micro) {
+                    microEl.classList.remove('hidden');
+                    microEl.innerHTML = ladiesEval.micro;
+                } else if (store.core_time_short && store.midnight_retention_pct) {
                     microEl.classList.remove('hidden');
                     microEl.innerHTML = `狙い目 ${store.core_time_short} <span class="micro-sep">｜</span> 終電後 ${store.midnight_retention_pct}%（${store.midnight_label_short || '深夜安定'}）`;
                 } else {
@@ -1385,7 +1549,7 @@
             const locSig = userLocation ? `${userLocation.lat.toFixed(3)},${userLocation.lng.toFixed(3)}` : '';
             const nearbyMasterSig = (currentSort === 'nearby' && window.STORE_MASTER) ? Object.keys(window.STORE_MASTER).length : 0;
             const evCount = shouldShowEvents() ? (_eventsFetched ? ((window.allEvents && window.allEvents.length) || 0) : 'ssr') : -1;
-            return `${data.timestamp || ''}#${currentFilter}#${currentSort}#${currentSearch}#${pinnedStores.join(',')}#${locSig}#${nearbyMasterSig}#${evCount}#${storeSig}`;
+            return `${data.timestamp || ''}#${currentAudience}#${currentFilter}#${currentSort}#${currentSearch}#${pinnedStores.join(',')}#${locSig}#${nearbyMasterSig}#${evCount}#${storeSig}`;
         }
 
         function updateUI(data) {
@@ -1463,6 +1627,15 @@
                     const distB = (typeof b._distKm === 'number') ? b._distKm : 99999;
                     if (Math.abs(distA - distB) > 0.05) return distA - distB;
                     return (b.women - a.women) || (b.men - a.men);
+                });
+            } else if (currentSort === 'ladies_comfort') {
+                filteredStores.sort((a, b) => {
+                    const korDiff = _isKorea(a) - _isKorea(b);
+                    if (korDiff !== 0) return korDiff;
+                    const sA = evaluateLadiesStoreJs(a).score;
+                    const sB = evaluateLadiesStoreJs(b).score;
+                    if (Math.abs(sB - sA) > 0.05) return sB - sA;
+                    return (b.men - a.men) || (a.women - b.women);
                 });
             } else if (currentSort === 'men') {
                 filteredStores.sort((a, b) => (_isKorea(a) - _isKorea(b)) || (b.men - a.men) || (b.women - a.women));
@@ -1627,12 +1800,57 @@
 
         function renderGuideModal() {
             const master = getAffiliateMaster();
+            const isWomenMode = !IS_STAFF && currentAudience === 'women';
+            const activeCategories = (isWomenMode && Array.isArray(master.womenCategories) && master.womenCategories.length > 0)
+                ? master.womenCategories
+                : (master.categories || []);
+            const activeItems = (isWomenMode && Array.isArray(master.womenItems) && master.womenItems.length > 0)
+                ? master.womenItems
+                : (master.items || []);
+
+            if (!activeCategories.some(c => c.id === currentGuideCategory)) {
+                currentGuideCategory = 'all';
+            }
+
+            const titleEl = document.getElementById('guide-modal-title');
+            const leadEl = document.getElementById('guide-modal-lead');
+            const tipsBoxEl = document.getElementById('guide-tips-box');
+            if (titleEl) {
+                titleEl.textContent = isWomenMode
+                    ? '💄 女性向け｜1対1無料デート＆自分磨き特集'
+                    : '身だしなみ・おすすめサービス特集';
+            }
+            if (leadEl) {
+                leadEl.innerHTML = isWomenMode
+                    ? '「大人数の相席より<strong>1対1のカフェで落ち着いて話したい日</strong>」に使える審査制アプリや、近距離の間接照明でも自信が持てる<strong>『美肌・ナイトケア』</strong>を厳選しました。'
+                    : '仕事帰りでも口元が気にならない<strong>『ヒゲ脱毛・スキンケア』</strong>や、服選びに迷わない<strong>『きれいめ私服の定期便』</strong>、お店が混んでいる日に頼れる<strong>『恋活アプリ』</strong>など、普段から取り入れておくと便利なサービスをまとめました。';
+            }
+            if (tipsBoxEl) {
+                tipsBoxEl.innerHTML = isWomenMode
+                    ? `
+                        <h4>💄 女性ペアが待ちゼロ＆快適に楽しむ3つのコツ</h4>
+                        <ul>
+                            <li><strong>① 男性が先行している大型店を選ぶ：</strong> 女余りの有名店へ行くと受付で30分待たされやすくなります。男性比率が高い店舗なら待ちゼロで広いソファ席へ案内されやすいです。</li>
+                            <li><strong>② 顔写真付き身分証の「原本」を忘れずに：</strong> 運転免許証・マイナンバーカード・パスポート等の原本が1人でも欠けるとペアごと入店できません。</li>
+                            <li><strong>③ 席替え（チェンジ）はお手洗い帰りにスマートに：</strong> 会話が噛み合わない席で無理に粘らず、30〜40分を目安にスタッフへそっと伝えると角を立てずに移動できます（詳しくは <a href="/for-women" style="color: inherit; text-decoration: underline;">女子向け裏ガイド</a> へ）。</li>
+                        </ul>
+                    `
+                    : `
+                        <h4>お店選びと当日のちょっとしたコツ</h4>
+                        <ul>
+                            <li><strong>① 行く前に「男女比バー」を見ておく：</strong> 女性の人数だけでなく、ピンク（女性）の割合が高い店舗を選ぶと、入ってから待たされずに座りやすくなります。</li>
+                            <li><strong>② ソファ席は距離が近いので「清潔感」が大事：</strong> 照明は暗めですが、席の距離が近いぶん夕方のヒゲや肌のテカリは意外と目に入ります。事前に少し整えておくだけで安心感が変わります。</li>
+                            <li><strong>③ 2軒目に誘うなら22時半〜23時頃に：</strong> 終電近くになると帰り支度の空気になりやすいので、話が盛り上がったら少し早めに「近くで甘いものでも食べに行かない？」と声をかけるのが自然です。</li>
+                        </ul>
+                    `;
+            }
+
             const tabsEl = document.getElementById('guide-category-tabs');
             const listEl = document.getElementById('guide-app-list');
 
             // Render category tabs
-            if (tabsEl && master.categories) {
-                tabsEl.innerHTML = master.categories.map(cat => {
+            if (tabsEl && activeCategories) {
+                tabsEl.innerHTML = activeCategories.map(cat => {
                     const isActive = cat.id === currentGuideCategory;
                     const highlightClass = cat.highlight ? 'tab-pill-highlight' : '';
                     const iconHtml = cat.icon ? `<span class="tab-icon">${cat.icon}</span>` : '';
@@ -1646,7 +1864,7 @@
             }
 
             // Filter items by category
-            let filteredItems = master.items || [];
+            let filteredItems = activeItems;
             if (currentGuideCategory !== 'all') {
                 filteredItems = filteredItems.filter(i => i.category === currentGuideCategory);
             }
@@ -3507,7 +3725,7 @@
             const prefetched = Object.create(null);
 
             function isLiveHtmlHref(href) {
-                return href === '/' || href.indexOf('/price-comparison') === 0 || href.indexOf('/areas') === 0 || href.indexOf('/area/') === 0 || href.indexOf('/store/') === 0;
+                return href === '/' || href.indexOf('/for-women') === 0 || href.indexOf('/price-comparison') === 0 || href.indexOf('/areas') === 0 || href.indexOf('/area/') === 0 || href.indexOf('/store/') === 0;
             }
 
             function prefetchPage(href) {

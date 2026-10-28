@@ -436,3 +436,45 @@ def execute_scheduled_threads_post(stores: list, slot_label: str = "20:00", forc
         return res
     finally:
         _threads_post_lock.release()
+
+
+def execute_scheduled_ladies_threads_post(
+    stores: list,
+    slot_label: str = "19:30",
+    force: bool = False,
+) -> dict:
+    """
+    Execute scheduled women-perspective Threads alert ('🎁 今夜の女子得＆待ちゼロ速報', Plan E).
+    Guarded by persistent job_state deduplication and domestic live male headcount (`men >= 12`).
+    """
+    if not _threads_post_lock.acquire(blocking=False):
+        return {"status": "skipped", "ok": False, "skipped": True, "reason": "already_running"}
+
+    try:
+        import ladies_guide
+
+        now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
+        biz_date = (now_jst - datetime.timedelta(hours=7)).strftime("%Y-%m-%d")
+        dedup_key = f"threads_ladies:{biz_date}_{slot_label}"
+
+        if not force and job_state.is_done(dedup_key):
+            return {"status": "skipped", "reason": "Already posted ladies alert to Threads for this slot"}
+
+        dom = _filter_domestic_stores(stores)
+        total_dom_men = sum(int(s.get("men") or 0) for s in dom)
+        if not force and total_dom_men < 12:
+            logging.info(
+                f"Skipping Threads ladies auto-post ({slot_label}): insufficient live male headcount (men={total_dom_men})."
+            )
+            return {"status": "skipped", "reason": "Insufficient live male headcount for ladies alert"}
+
+        refresh_threads_token_if_needed(force=False)
+        text = ladies_guide.build_threads_ladies_post(stores, slot_label=slot_label, now_jst=now_jst)
+        res = post_to_threads(text)
+        if res.get("status") == "success" and not force:
+            job_state.mark_done(dedup_key)
+        res["threads_text"] = text
+        res["editorial_style"] = "threads_ladies_zero_wait"
+        return res
+    finally:
+        _threads_post_lock.release()

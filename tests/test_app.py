@@ -1118,6 +1118,7 @@ class GrowthFeaturesTests(unittest.TestCase):
             '/grooming',
             '/stats',
             '/privacy',
+            '/for-women',
             '/guide',
             '/guide/brand-comparison',
             '/guide/shinjuku',
@@ -1136,7 +1137,7 @@ class GrowthFeaturesTests(unittest.TestCase):
             r = self.client.get(p)
             self.assertEqual(r.status_code, 200, f"Public path {p} returned {r.status_code}")
             body = r.data.decode('utf-8')
-            self.assertIn('/static/calm.css?v=13', body, f"{p} missing /static/calm.css?v=13")
+            self.assertIn('/static/calm.css?v=14', body, f"{p} missing /static/calm.css?v=14")
             if '/static/style.css' in body:
                 self.assertIn('/static/style.css?v=20261027_3', body, f"{p} missing /static/style.css?v=20261027_3")
             self.assertIn('公式ホームページ', body, f"{p} missing official website verification notice")
@@ -1149,7 +1150,7 @@ class GrowthFeaturesTests(unittest.TestCase):
                 sr = self.client.get(sp)
                 self.assertEqual(sr.status_code, 200, f"Scheduled path {sp} returned {sr.status_code}")
                 sbody = sr.data.decode('utf-8')
-                self.assertIn('/static/calm.css?v=13', sbody, f"{sp} missing /static/calm.css?v=13")
+                self.assertIn('/static/calm.css?v=14', sbody, f"{sp} missing /static/calm.css?v=14")
                 if '/static/style.css' in sbody:
                     self.assertIn('/static/style.css?v=20261027_3', sbody, f"{sp} missing /static/style.css?v=20261027_3")
                 self.assertIn('公式ホームページ', sbody, f"{sp} missing official website verification notice")
@@ -1705,7 +1706,7 @@ class FullAuditRegressionTests(unittest.TestCase):
             s['is_staff'] = True
             s['is_master'] = False
         try:
-            for check_path in ('/', '/grooming', '/store/oriental-lounge-shinjuku', '/guide/price-event-comparison', '/columns', '/areas'):
+            for check_path in ('/', '/for-women', '/grooming', '/store/oriental-lounge-shinjuku', '/guide/price-event-comparison', '/columns', '/areas'):
                 rs = self.client.get(check_path)
                 self.assertEqual(rs.status_code, 200, check_path)
                 body = rs.data.decode('utf-8')
@@ -1744,7 +1745,7 @@ class FullAuditRegressionTests(unittest.TestCase):
         sw_resp = self.client.get('/sw.js')
         try:
             sw_txt = sw_resp.data.decode('utf-8')
-            self.assertIn("CACHE_NAME = 'aiseki-navi-v58'", sw_txt)
+            self.assertIn("CACHE_NAME = 'aiseki-navi-v59'", sw_txt)
             self.assertIn("event.waitUntil", sw_txt)
         finally:
             sw_resp.close()
@@ -3107,6 +3108,200 @@ class AffiliateAndSheetsRetentionTests(unittest.TestCase):
         finally:
             if old_disabled is not None:
                 os.environ['DISABLE_SHEETS'] = old_disabled
+
+
+class WomenFeaturesACDETests(unittest.TestCase):
+    """Verify Plans A, C, D, and E for female users (toggle/sort, /for-women SEO page, 3 women PR slots, Threads/IG alerts)."""
+
+    def setUp(self):
+        app_module.app.config['TESTING'] = True
+        self.client = app_module.app.test_client()
+        import affiliate_manager
+        import job_state
+        shutil.rmtree(os.environ['JOB_STATE_DIR'], ignore_errors=True)
+        os.makedirs(os.environ['JOB_STATE_DIR'], exist_ok=True)
+        job_state.reset_cache_for_tests()
+        affiliate_manager.reset_cache_for_tests()
+        app_module.clear_fast_http_caches()
+
+    def tearDown(self):
+        import affiliate_manager
+        affiliate_manager.reset_cache_for_tests()
+        app_module.clear_fast_http_caches()
+
+    def test_plan_a_audience_toggle_and_ladies_comfort_sort_ui(self):
+        pub_html = self.client.get('/').data.decode('utf-8')
+        self.assertIn('id="audience-mode-bar"', pub_html)
+        self.assertIn("setAudienceMode('women', true)", pub_html)
+        self.assertIn('data-sort="ladies_comfort"', pub_html)
+        self.assertIn('href="/for-women"', pub_html)
+
+        # Staff mode must NOT show public audience mode bar
+        with self.client.session_transaction() as sess:
+            sess['is_staff'] = True
+            sess['is_master'] = False
+        try:
+            staff_html = self.client.get('/staff').data.decode('utf-8')
+            self.assertNotIn('id="audience-mode-bar"', staff_html)
+        finally:
+            with self.client.session_transaction() as sess:
+                sess.clear()
+
+        with open(os.path.join(ROOT, 'static', 'app.js'), 'r', encoding='utf-8') as f_js:
+            app_js = f_js.read()
+        for sym in ('evaluateLadiesStoreJs', 'setAudienceMode', 'currentAudience', 'womenCategories', 'womenItems'):
+            self.assertIn(sym, app_js)
+
+        with open(os.path.join(ROOT, 'static', 'calm.css'), 'r', encoding='utf-8') as f_css:
+            calm_css = f_css.read()
+        self.assertIn('.audience-mode-bar', calm_css)
+        self.assertIn('body.theme-light .audience-mode-bar', calm_css)
+
+    def test_plan_c_for_women_live_seo_page_and_portal_links(self):
+        import re
+        bare_oriental_re = re.compile(r'オリエンタル(?!ラウンジ)')
+
+        with app_module.data_lock:
+            old_full = list(app_module.latest_data.get('full_data') or [])
+            old_upd = app_module.latest_data.get('last_updated')
+            app_module.latest_data['full_data'] = [
+                {'name': 'OLG 新宿', 'women': 10, 'men': 28, 'region': 'Kanto'},
+                {'name': 'JIS UMEDA', 'women': 14, 'men': 20, 'region': 'Kinki'},
+                {'name': 'OLG 渋谷本店', 'women': 34, 'men': 6, 'region': 'Kanto'},
+            ]
+            app_module.latest_data['last_updated'] = '21:15'
+        app_module.clear_fast_http_caches()
+
+        try:
+            r = self.client.get('/for-women')
+            self.assertEqual(r.status_code, 200)
+            self.assertIn('no-store', r.headers.get('Cache-Control', ''))
+            html = r.data.decode('utf-8')
+            self.assertIn('オリエンタルラウンジ新宿', html)
+            self.assertIn('🟢 女子待ち0・即案内圏', html)
+            self.assertIn('"@type": "FAQPage"', html)
+            self.assertIn('/link/women_dating_bachelor', html)
+            self.assertIn('/link/women_beauty_clinic', html)
+            self.assertIn('/link/women_cosme_salon', html)
+            self.assertIsNone(bare_oriental_re.search(html))
+
+            # /ladies 301 redirect
+            r_leg = self.client.get('/ladies')
+            self.assertEqual(r_leg.status_code, 301)
+            self.assertTrue(r_leg.headers['Location'].endswith('/for-women'))
+
+            # Sitemap & Columns index integration
+            smap = self.client.get('/sitemap.xml').data.decode('utf-8')
+            self.assertIn('https://aiseki-navi.com/for-women', smap)
+            cols = self.client.get('/columns').data.decode('utf-8')
+            self.assertIn('href="/for-women"', cols)
+        finally:
+            with app_module.data_lock:
+                app_module.latest_data['full_data'] = old_full
+                app_module.latest_data['last_updated'] = old_upd
+            app_module.clear_fast_http_caches()
+
+    def test_plan_d_women_affiliate_slots_and_live_override(self):
+        import affiliate_manager
+
+        st = affiliate_manager.get_affiliate_slots_status(allow_blocking=True)
+        self.assertEqual(st['total_slots'], 8)
+        slot_ids = {s['slot_id'] for s in st['slots']}
+        self.assertTrue({'women_dating_bachelor', 'women_beauty_clinic', 'women_cosme_salon'}.issubset(slot_ids))
+
+        # Public redirect check for all 3 women canonical slots + alias
+        for sid in ('women_dating_bachelor', 'women_beauty_clinic', 'women_cosme_salon', 'women_dating'):
+            resp = self.client.get(f'/link/{sid}', headers={'User-Agent': 'Mozilla/5.0 Test'})
+            self.assertEqual(resp.status_code, 302, sid)
+
+        # Master live override for women_beauty_clinic
+        with self.client.session_transaction() as sess:
+            sess['is_staff'] = True
+            sess['is_master'] = True
+        r_upd = self.client.post('/api/affiliate/config', json={
+            'slot_id': 'women_beauty_clinic',
+            'url': 'https://example.com/ladies-clinic-a8',
+            'memo': '女性美容皮膚科 A8',
+        })
+        self.assertEqual(r_upd.status_code, 200)
+        self.assertTrue(r_upd.get_json()['ok'])
+
+        with self.client.session_transaction() as sess:
+            sess.clear()
+        r_redir = self.client.get('/link/women_beauty_clinic', headers={'User-Agent': 'Mozilla/5.0 Test'})
+        self.assertEqual(r_redir.status_code, 302)
+        self.assertEqual(r_redir.headers['Location'], 'https://example.com/ladies-clinic-a8')
+        # Alias women_clinic follows the same canonical slot
+        r_alias = self.client.get('/link/women_clinic', headers={'User-Agent': 'Mozilla/5.0 Test'})
+        self.assertEqual(r_alias.headers['Location'], 'https://example.com/ladies-clinic-a8')
+
+    def test_plan_e_ladies_threads_and_instagram_alerts(self):
+        import re
+        import ladies_guide
+        import threads_poster
+        import instagram_poster
+
+        bare_oriental_re = re.compile(r'オリエンタル(?!ラウンジ)')
+        sample_stores = [
+            {'name': 'OLG 新宿', 'women': 8, 'men': 22, 'region': 'Kanto'},
+            {'name': 'JIS UMEDA', 'women': 10, 'men': 18, 'region': 'Kinki'},
+            {'name': 'OLG ag渋谷', 'women': 24, 'men': 6, 'region': 'Kanto'},
+            {'name': 'OLG ソウル カンナム', 'women': 30, 'men': 40, 'region': 'Korea'},
+        ]
+
+        th_txt = ladies_guide.build_threads_ladies_post(sample_stores, slot_label='19:30')
+        self.assertLessEqual(len(th_txt), 495)
+        self.assertNotIn('OLG ', th_txt)
+        self.assertIsNone(bare_oriental_re.search(th_txt))
+        self.assertNotIn('カンナム', th_txt)
+
+        ig_txt = ladies_guide.build_instagram_ladies_caption(sample_stores, slot_label='19:45')
+        self.assertLessEqual(len(ig_txt), 2100)
+        self.assertIn('保存', ig_txt)
+        self.assertNotIn('OLG ', ig_txt)
+        self.assertIsNone(bare_oriental_re.search(ig_txt))
+
+        # Guard: low domestic male headcount (< 12) must skip both Threads and IG ladies alerts
+        low_men_stores = [{'name': 'OLG 新宿', 'women': 15, 'men': 4, 'region': 'Kanto'}]
+        self.assertEqual(
+            threads_poster.execute_scheduled_ladies_threads_post(low_men_stores, slot_label='19:30', force=False)['status'],
+            'skipped',
+        )
+        self.assertEqual(
+            instagram_poster.execute_scheduled_ladies_instagram_post(low_men_stores, slot_label='19:45', force=False)['status'],
+            'skipped',
+        )
+
+        # Success + job_state deduplication check
+        with mock.patch('threads_poster.refresh_threads_token_if_needed'), \
+             mock.patch('threads_poster.post_to_threads', return_value={'status': 'success', 'id': 'th_ladies_1'}) as m_th:
+            res1 = threads_poster.execute_scheduled_ladies_threads_post(sample_stores, slot_label='19:30', force=False)
+            self.assertEqual(res1['status'], 'success')
+            self.assertEqual(res1['editorial_style'], 'threads_ladies_zero_wait')
+            self.assertEqual(m_th.call_count, 1)
+            # Duplicate call on same business date & slot is skipped
+            res2 = threads_poster.execute_scheduled_ladies_threads_post(sample_stores, slot_label='19:30', force=False)
+            self.assertEqual(res2['status'], 'skipped')
+
+        with mock.patch('instagram_poster.refresh_ig_token_if_needed'), \
+             mock.patch('instagram_poster._warm_slide_urls'), \
+             mock.patch('instagram_poster.post_single_image_to_instagram', return_value={'status': 'success', 'id': 'ig_ladies_1'}) as m_ig:
+            ig1 = instagram_poster.execute_scheduled_ladies_instagram_post(sample_stores, slot_label='19:45', force=False)
+            self.assertEqual(ig1['status'], 'success')
+            self.assertEqual(ig1['editorial_style'], 'ig_ladies_night_guide')
+            self.assertEqual(m_ig.call_count, 1)
+            ig2 = instagram_poster.execute_scheduled_ladies_instagram_post(sample_stores, slot_label='19:45', force=False)
+            self.assertEqual(ig2['status'], 'skipped')
+
+        # Endpoint auth check
+        self.assertEqual(self.client.get('/api/trigger-ladies-sns').status_code, 401)
+        with self.client.session_transaction() as sess:
+            sess['is_staff'] = True
+            sess['is_master'] = True
+        with mock.patch('threads_poster.execute_scheduled_ladies_threads_post', return_value={'status': 'success', 'id': 'ok1'}):
+            ep_resp = self.client.get('/api/trigger-ladies-sns?channel=threads&force=1')
+            self.assertEqual(ep_resp.status_code, 200)
+            self.assertEqual(ep_resp.get_json()['status'], 'success')
 
 
 if __name__ == '__main__':

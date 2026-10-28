@@ -1605,9 +1605,199 @@ body.theme-light .dialogue-box strong {
     color: var(--calm-light-accent);
 }
 
+/* ==========================================================================
+   11. 男女目線ワンタップ切替バー（案A: 🕺男性目線 ／ 💄女性目線 待ち0・特典順）
+   ========================================================================== */
+.audience-mode-bar {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 0 0 12px;
+    padding: 9px 11px;
+    border-radius: 12px;
+    background: var(--calm-surface);
+    border: 1px solid var(--calm-border);
+}
 
+.audience-mode-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+}
 
+.audience-mode-label {
+    font-size: 0.74rem;
+    font-weight: 600;
+    color: var(--calm-sub);
+    letter-spacing: 0.02em;
+}
 
+.audience-mode-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid var(--calm-border-strong);
+    flex: 1 1 auto;
+    max-width: 440px;
+}
 
+.audience-pill-btn {
+    flex: 1 1 50%;
+    border: none;
+    background: transparent;
+    color: var(--calm-sub);
+    font-size: 0.78rem;
+    font-weight: 700;
+    padding: 6px 12px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background 0.16s ease, color 0.16s ease;
+    white-space: nowrap;
+}
 
+.audience-pill-btn.active[data-audience="men"] {
+    background: rgba(200, 164, 110, 0.18);
+    color: #f0e6d2;
+    box-shadow: inset 0 0 0 1px rgba(200, 164, 110, 0.42);
+}
+
+.audience-pill-btn.active[data-audience="women"] {
+    background: rgba(223, 163, 176, 0.22);
+    color: #fae3e8;
+    box-shadow: inset 0 0 0 1px rgba(223, 163, 176, 0.52);
+}
+
+.ladies-mode-quicklinks {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding-top: 7px;
+    border-top: 1px dashed rgba(223, 163, 176, 0.28);
+    font-size: 0.76rem;
+    color: #e9cfd5;
+}
+
+.ladies-mode-quicklinks.hidden {
+    display: none !important;
+}
+
+.ladies-mode-hint {
+    font-size: 0.75rem;
+    color: #d9bfc5;
+}
+
+.ladies-quick-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.ladies-quick-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(223, 163, 176, 0.14);
+    border: 1px solid rgba(223, 163, 176, 0.36);
+    color: #f8dfe5;
+    font-size: 0.74rem;
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.ladies-quick-link:hover {
+    background: rgba(223, 163, 176, 0.24);
+}
+
+/* 女子目線モード時の判定バッジ色分け */
+body.audience-women .momentum-tag.ladies-vip {
+    background: rgba(52, 211, 153, 0.14) !important;
+    border-color: rgba(52, 211, 153, 0.42) !important;
+    color: #86efac !important;
+}
+
+body.audience-women .momentum-tag.ladies-good {
+    background: rgba(223, 163, 176, 0.16) !important;
+    border-color: rgba(223, 163, 176, 0.42) !important;
+    color: #f7dce2 !important;
+}
+
+body.audience-women .momentum-tag.ladies-warn {
+    background: rgba(251, 191, 36, 0.12) !important;
+    border-color: rgba(251, 191, 36, 0.38) !important;
+    color: #fde68a !important;
+}
+
+body.theme-light .audience-mode-bar {
+    background: var(--calm-light-surface);
+    border-color: var(--calm-light-border);
+}
+
+body.theme-light .audience-mode-label {
+    color: var(--calm-light-sub);
+}
+
+body.theme-light .audience-mode-toggle {
+    background: var(--calm-light-surface-2);
+    border-color: var(--calm-light-border-strong);
+}
+
+body.theme-light .audience-pill-btn {
+    color: var(--calm-light-sub);
+}
+
+body.theme-light .audience-pill-btn.active[data-audience="men"] {
+    background: rgba(140, 107, 63, 0.15);
+    color: var(--calm-light-text);
+    box-shadow: inset 0 0 0 1px rgba(140, 107, 63, 0.4);
+}
+
+body.theme-light .audience-pill-btn.active[data-audience="women"] {
+    background: rgba(186, 93, 117, 0.14);
+    color: #7a283d;
+    box-shadow: inset 0 0 0 1px rgba(186, 93, 117, 0.38);
+}
+
+body.theme-light .ladies-mode-quicklinks {
+    border-top-color: rgba(186, 93, 117, 0.25);
+    color: #6e3343;
+}
+
+body.theme-light .ladies-mode-hint {
+    color: #6e3343;
+}
+
+body.theme-light .ladies-quick-link {
+    background: rgba(186, 93, 117, 0.1);
+    border-color: rgba(186, 93, 117, 0.32);
+    color: #7a283d;
+}
+
+body.theme-light.audience-women .momentum-tag.ladies-vip {
+    background: rgba(16, 185, 129, 0.12) !important;
+    border-color: rgba(16, 185, 129, 0.38) !important;
+    color: #065f46 !important;
+}
+
+body.theme-light.audience-women .momentum-tag.ladies-good {
+    background: rgba(186, 93, 117, 0.12) !important;
+    border-color: rgba(186, 93, 117, 0.35) !important;
+    color: #7a283d !important;
+}
+
+body.theme-light.audience-women .momentum-tag.ladies-warn {
+    background: rgba(217, 119, 6, 0.12) !important;
+    border-color: rgba(217, 119, 6, 0.35) !important;
+    color: #92400e !important;
+}
 

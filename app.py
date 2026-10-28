@@ -257,6 +257,29 @@ def _ensure_scheduler_started_async():
             # Friday pre-outing forecast (18:45 JST = 09:45 UTC) + Tue/Sun evening report (21:45 JST = 12:45 UTC)
             scheduler.add_job(func=_ig_carousel_job, trigger="cron", day_of_week="fri", hour=9, minute=45, jitter=300, args=["18:45"])
             scheduler.add_job(func=_ig_carousel_job, trigger="cron", day_of_week="tue,sun", hour=12, minute=45, jitter=300, args=["21:45"])
+            # Plan E: Women-perspective 'Tonight's Zero-Wait & Ladies Perks' alerts on Threads (Wed/Fri/Sat 19:30 JST) & Instagram (Thu/Sat 19:45 JST)
+            def _threads_ladies_job():
+                try:
+                    import threads_poster
+                    with data_lock:
+                        cur_stores = list(latest_data.get('full_data') or [])
+                        is_seed = bool(latest_data.get('is_seed'))
+                    if cur_stores and not is_seed:
+                        threads_poster.execute_scheduled_ladies_threads_post(cur_stores, slot_label="19:30")
+                except Exception as err:
+                    logging.error(f"Scheduled Threads ladies post failed: {err}")
+            scheduler.add_job(func=_threads_ladies_job, trigger="cron", day_of_week="wed,fri,sat", hour=10, minute=30, jitter=240)
+            def _ig_ladies_job():
+                try:
+                    import instagram_poster
+                    with data_lock:
+                        cur_stores = list(latest_data.get('full_data') or [])
+                        is_seed = bool(latest_data.get('is_seed'))
+                    if cur_stores and not is_seed:
+                        instagram_poster.execute_scheduled_ladies_instagram_post(cur_stores, slot_label="19:45")
+                except Exception as err:
+                    logging.error(f"Scheduled Instagram ladies post failed: {err}")
+            scheduler.add_job(func=_ig_ladies_job, trigger="cron", day_of_week="thu,sat", hour=10, minute=45, jitter=240)
             def _crawl_events_job():
                 try:
                     import events
@@ -1404,6 +1427,14 @@ AFFILIATE_REDIRECTS = {
     'dating_instant': os.environ.get('AFFILIATE_URL_DATING_INSTANT') or os.environ.get('AFFILIATE_URL_DATING') or 'https://px.a8.net/svt/ejp?a8mat=4BEK9C+21TRSI+5SFC+61RI9',
     'dating_bachelor': os.environ.get('AFFILIATE_URL_DATING_BACHELOR') or os.environ.get('AFFILIATE_URL_DATING') or 'https://px.a8.net/svt/ejp?a8mat=4BEK9C+21TRSI+5SFC+61RI9',
     'dating_casual': os.environ.get('AFFILIATE_URL_DATING_CASUAL') or os.environ.get('AFFILIATE_URL_DATING') or 'https://px.a8.net/svt/ejp?a8mat=4BEK9C+21TRSI+5SFC+61RI9',
+    'women_dating_bachelor': os.environ.get('AFFILIATE_URL_WOMEN_DATING') or os.environ.get('AFFILIATE_URL_DATING_BACHELOR') or 'https://px.a8.net/svt/ejp?a8mat=4BEK9C+21TRSI+5SFC+61RI9',
+    'women_dating': os.environ.get('AFFILIATE_URL_WOMEN_DATING') or os.environ.get('AFFILIATE_URL_DATING_BACHELOR') or 'https://px.a8.net/svt/ejp?a8mat=4BEK9C+21TRSI+5SFC+61RI9',
+    'women_beauty_clinic': os.environ.get('AFFILIATE_URL_WOMEN_CLINIC') or 'https://px.a8.net/svt/ejp?a8mat=4BEL1F+61B8KY+328C+2HCB1D',
+    'women_clinic': os.environ.get('AFFILIATE_URL_WOMEN_CLINIC') or 'https://px.a8.net/svt/ejp?a8mat=4BEL1F+61B8KY+328C+2HCB1D',
+    'women_hair_removal': os.environ.get('AFFILIATE_URL_WOMEN_CLINIC') or 'https://px.a8.net/svt/ejp?a8mat=4BEL1F+61B8KY+328C+2HCB1D',
+    'women_cosme_salon': os.environ.get('AFFILIATE_URL_WOMEN_COSME') or 'https://px.a8.net/svt/ejp?a8mat=4BEL1F+67V08I+1USQ+2Z90WX',
+    'women_cosme': os.environ.get('AFFILIATE_URL_WOMEN_COSME') or 'https://px.a8.net/svt/ejp?a8mat=4BEL1F+67V08I+1USQ+2Z90WX',
+    'women_skincare': os.environ.get('AFFILIATE_URL_WOMEN_COSME') or 'https://px.a8.net/svt/ejp?a8mat=4BEL1F+67V08I+1USQ+2Z90WX',
 }
 
 @app.route('/link/<path:item_id>')
@@ -1434,8 +1465,8 @@ def affiliate_redirect(item_id):
 import urllib.parse as urllib_parse
 
 _BOT_MARKERS = ('bot', 'spider', 'crawl', 'slurp', 'facebookexternalhit', 'preview', 'headless', 'python-requests', 'curl')
-_TRACKED_PAGE_PREFIXES = ('/guide', '/columns', '/areas', '/area/', '/grooming', '/stats', '/price-comparison', '/oriental-lounge', '/ag', '/jis', '/store/')
-_LIVE_NO_CACHE_PREFIXES = ('/price-comparison', '/store/', '/areas', '/area/', '/oriental-lounge', '/ag', '/jis')
+_TRACKED_PAGE_PREFIXES = ('/guide', '/columns', '/areas', '/area/', '/grooming', '/for-women', '/stats', '/price-comparison', '/oriental-lounge', '/ag', '/jis', '/store/')
+_LIVE_NO_CACHE_PREFIXES = ('/price-comparison', '/for-women', '/store/', '/areas', '/area/', '/oriental-lounge', '/ag', '/jis')
 
 @app.template_filter('seo_store_name')
 def _jinja_seo_store_name(name):
@@ -2806,6 +2837,12 @@ def sitemap_xml():
     <priority>0.9</priority>
   </url>
   <url>
+    <loc>https://aiseki-navi.com/for-women</loc>
+    <lastmod>{today}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
     <loc>https://aiseki-navi.com/grooming</loc>
     <lastmod>{today}</lastmod>
     <changefreq>weekly</changefreq>
@@ -3017,6 +3054,34 @@ def price_comparison_page():
             is_staff=bool(session.get('is_staff')),
         )
     return _get_cached_html_or_render('price_comp', _render)
+
+@app.route('/for-women')
+def for_women_guide():
+    """Dedicated SEO & real-time zero-wait lounge guide for female pairs (Plan C & D)."""
+    import ladies_guide
+    restore_latest_data_if_empty()
+    trigger_background_fetch_if_needed()
+
+    def _render():
+        with data_lock:
+            live_stores = list(latest_data.get('full_data') or [])
+            last_updated = latest_data.get('last_updated') or '--:--'
+        board = ladies_guide.build_ladies_live_board(live_stores=live_stores)
+        return render_template(
+            'for_women.html',
+            board=board,
+            last_updated=last_updated,
+            is_staff=bool(session.get('is_staff')),
+        )
+
+    return _get_cached_html_or_render('for_women', _render, ttl_sec=20.0)
+
+
+@app.route('/ladies')
+def ladies_legacy_redirect():
+    """301 Permanent redirect from short alias /ladies to canonical /for-women."""
+    return redirect('/for-women', code=301)
+
 
 @app.route('/grooming')
 def grooming_guide():
@@ -3281,6 +3346,26 @@ def trigger_ig_post_endpoint():
     with data_lock:
         stores = list(latest_data.get('full_data') or [])
     res = instagram_poster.execute_scheduled_instagram_post(stores, mode=mode, slot_label=slot, force=force)
+    return jsonify(res)
+
+
+@app.route('/api/trigger-ladies-sns')
+def trigger_ladies_sns_endpoint():
+    """Endpoint to test or externally trigger Plan E Women-Perspective Zero-Wait & Perks SNS alerts (master only)."""
+    if not is_master_authorized():
+        return jsonify({'error': 'Unauthorized'}), 401
+    channel = (request.args.get('channel') or 'threads').strip().lower()
+    force = request.args.get('force', '0') == '1'
+    with data_lock:
+        stores = list(latest_data.get('full_data') or [])
+    if channel in ('ig', 'instagram'):
+        import instagram_poster
+        slot = request.args.get('slot', '19:45')
+        res = instagram_poster.execute_scheduled_ladies_instagram_post(stores, slot_label=slot, force=force)
+    else:
+        import threads_poster
+        slot = request.args.get('slot', '19:30')
+        res = threads_poster.execute_scheduled_ladies_threads_post(stores, slot_label=slot, force=force)
     return jsonify(res)
 
 

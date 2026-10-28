@@ -974,20 +974,20 @@
     </div>
 
     {% if aff_status %}
-    <!-- Affiliate 5-Slot URL Separation & Live Override Manager -->
+    <!-- Affiliate 8-Slot (5 Men + 3 Women) URL Separation & Live Override Manager -->
     <div class="ops-section" id="affiliate-slot-manager">
         <div class="ops-header">
             <div>
-                <h2>💰 アフィリエイト5枠・遷移先URL分離＆ノーコード差し替え</h2>
-                <p>再デプロイ・コード編集不要。ここでASPリンクを保存するとサイト内の全PR枠・コラム記事リンクへ 0秒で即時反映され、Google Sheets にも永続保存されます。</p>
+                <h2>💰 男女別アフィリエイト全8枠・遷移先URL分離＆ノーコード差し替え</h2>
+                <p>男性向け5枠＋女性向け3枠（/for-women・女子モード専用）。再デプロイ・コード編集不要で、保存すると0秒で即時反映＆Google Sheetsへ永続保存されます。</p>
             </div>
         </div>
 
         <div id="aff-dup-banner" class="dup-banner {% if aff_status.has_duplicates %}warn{% else %}ok{% endif %}">
             {% if aff_status.has_duplicates %}
-            ⚠️ <strong>遷移先URLの重複（カニバリ）を検知中：</strong>現在 <strong>{{ aff_status.duplicate_slot_count }}枠</strong> で同一のASPリンクが共有されています。『🍻 即時合流・定番恋活アプリ枠』にタップル・ペアーズ・Dine等の別ASPリンクを入力して保存すると、読者ニーズ別にCVを取りこぼさなくなります。
+            ⚠️ <strong>同一ターゲット内の遷移先URL重複（カニバリ）を検知中：</strong>現在 <strong>{{ aff_status.duplicate_slot_count }}枠</strong> で同一のASPリンクが共有されています。『🍻 即時合流・定番恋活アプリ枠』や女性向け各枠に別ASPリンクを入力して保存すると、読者ニーズ別にCVを取りこぼさなくなります。
             {% else %}
-            ✅ <strong>全5枠の遷移先URLが正常に分離されています：</strong>各ユーザー導線（即時合流 / 審査制1対1 / ヒゲ脱毛 / スキンケア / メンズ服）ごとに独立した案件へ送客中です。
+            ✅ <strong>男女別全{{ aff_status.slots|length }}枠の遷移先URLが正常に分離されています：</strong>男性向け5枠・女性向け3枠それぞれの導線ごとに独立した案件へ送客中です。
             {% endif %}
         </div>
 
@@ -996,7 +996,11 @@
             <div class="aff-slot-card {% if slot.is_duplicate_url %}is-dup{% endif %}" id="aff-card-{{ slot.slot_id }}" data-slot-id="{{ slot.slot_id }}">
                 <div class="aff-slot-top">
                     <div>
-                        <div class="aff-slot-name">{{ slot.category_label }} <span style="font-weight:500;font-size:0.75rem;color:var(--sub);">（/link/{{ slot.slot_id }}{% if slot.aliases %}・互換: {{ slot.aliases | join(', ') }}{% endif %}）</span></div>
+                        <div class="aff-slot-name">
+                            <span class="ops-pill" style="margin-right:6px;{% if slot.audience == 'women' %}border-color:rgba(223,163,176,0.45);color:#f6dce2;{% endif %}">{{ slot.audience_label }}</span>
+                            {{ slot.category_label }}
+                            <span style="font-weight:500;font-size:0.75rem;color:var(--sub);">（/link/{{ slot.slot_id }}{% if slot.aliases %}・互換: {{ slot.aliases | join(', ') }}{% endif %}）</span>
+                        </div>
                         <div class="aff-slot-meta">掲載箇所：{{ slot.placement }}</div>
                         <div class="aff-slot-meta">推奨案件例：{{ slot.recommended_asp_examples }}</div>
                     </div>
@@ -1112,7 +1116,7 @@ async function saveAffiliateSlot(slotId, resetToDefault) {
                     banner.innerHTML = '⚠️ <strong>遷移先URLの重複（カニバリ）を検知中：</strong>現在 <strong>' + res.aff_status.duplicate_slot_count + '枠</strong> で同一のASPリンクが共有されています。『🍻 即時合流・定番恋活アプリ枠』に別ASPリンクを設定すると成約率が向上します。';
                 } else {
                     banner.className = 'dup-banner ok';
-                    banner.innerHTML = '✅ <strong>全5枠の遷移先URLが正常に分離されています：</strong>各ユーザー導線ごとに独立した案件へ送客中です。';
+                    banner.innerHTML = '✅ <strong>男女別全' + res.aff_status.slots.length + '枠の遷移先URLが正常に分離されています：</strong>各ユーザー導線ごとに独立した案件へ送客中です。';
                 }
             }
             for (const s of res.aff_status.slots) {

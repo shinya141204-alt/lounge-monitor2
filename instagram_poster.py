@@ -473,3 +473,49 @@ def execute_scheduled_instagram_post(stores: list, mode: str = "carousel", slot_
         return res
     finally:
         _ig_post_lock.release()
+
+
+def execute_scheduled_ladies_instagram_post(
+    stores: list,
+    slot_label: str = "19:45",
+    force: bool = False,
+) -> dict:
+    """
+    Execute scheduled women-perspective Instagram Feed alert ('🎁 今夜の女子得＆待ちゼロ速報', Plan E).
+    Guarded by persistent job_state deduplication and domestic live male headcount (`men >= 12`).
+    """
+    if not _ig_post_lock.acquire(blocking=False):
+        return {"status": "skipped", "ok": False, "skipped": True, "reason": "already_running"}
+
+    try:
+        import ladies_guide
+
+        now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
+        biz_date = (now_jst - datetime.timedelta(hours=7)).strftime("%Y-%m-%d")
+        dedup_key = f"ig_ladies:{biz_date}_{slot_label}"
+
+        if not force and job_state.is_done(dedup_key):
+            return {"status": "skipped", "reason": "Already posted ladies alert to Instagram for this slot"}
+
+        dom = threads_poster._filter_domestic_stores(stores)
+        total_dom_men = sum(int(s.get("men") or 0) for s in dom)
+        if not force and total_dom_men < 12:
+            logging.info(
+                f"Skipping Instagram ladies post ({slot_label}): insufficient live male headcount (men={total_dom_men})."
+            )
+            return {"status": "skipped", "reason": "Insufficient live male headcount for ladies alert"}
+
+        refresh_ig_token_if_needed(force=False)
+        ts_code = now_jst.strftime("%Y%m%d_%H%M")
+        live_ctx = ig_carousel_generator.build_forecast_context(live_stores=stores, now_jst=now_jst)
+        caption = ladies_guide.build_instagram_ladies_caption(stores, slot_label=slot_label, now_jst=now_jst)
+        image_url = f"{SITE_URL}/ogp/ig-slide/2.jpg?s={ts_code}"
+        _warm_slide_urls([image_url], ctx=live_ctx)
+        res = post_single_image_to_instagram(image_url, caption)
+        res["caption"] = caption
+        res["editorial_style"] = "ig_ladies_night_guide"
+        if res.get("status") == "success" and not force:
+            job_state.mark_done(dedup_key)
+        return res
+    finally:
+        _ig_post_lock.release()

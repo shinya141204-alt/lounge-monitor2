@@ -77,11 +77,13 @@ STYLE_LABELS = {
     "threads_city_story": "🗣️ 街の温度差＆リアル現場エッセイ型",
     "threads_anomaly_insight": "📊 普段比（平比）の異変＆男女別立ち回り型",
     "threads_hopping_guide": "👟 東西4大エリア「1軒目→2軒目」実践比較型",
+    "threads_ladies_zero_wait": "💄 女子得・待ちゼロ＆特典速報型",
     "threads_classic_top3": "🏆 従来型・全国TOP3＆主要街掲示板型",
     # Instagram styles
     "ig_empathy_story": "💬 共感1行目フック＆待ち回避ストーリー型",
     "ig_data_discovery": "📖 データ編集長コラム＆穴場法則マガジン型",
     "ig_concise_save": "📌 余白重視・男女別スマート保存ガイド型",
+    "ig_ladies_night_guide": "💄 女子組・待ちゼロ＆特典保存ガイド型",
     "ig_classic_template": "📊 従来型・定型アナウンスキャプション",
 }
 
@@ -807,10 +809,16 @@ def run_planner(
             pass
 
     if ch == "threads":
-        base_conv = ["threads_city_story", "threads_anomaly_insight", "threads_hopping_guide"]
+        if slot_label in ("19:30", "19:45"):
+            base_conv = ["threads_ladies_zero_wait", "threads_anomaly_insight", "threads_city_story", "threads_hopping_guide"]
+        else:
+            base_conv = ["threads_city_story", "threads_anomaly_insight", "threads_hopping_guide", "threads_ladies_zero_wait"]
         classic_key = "threads_classic_top3"
     elif ch == "instagram":
-        base_conv = ["ig_empathy_story", "ig_data_discovery", "ig_concise_save"]
+        if slot_label in ("19:30", "19:45"):
+            base_conv = ["ig_ladies_night_guide", "ig_empathy_story", "ig_data_discovery", "ig_concise_save"]
+        else:
+            base_conv = ["ig_empathy_story", "ig_data_discovery", "ig_concise_save", "ig_ladies_night_guide"]
         classic_key = "ig_classic_template"
     else:
         if slot_label == "20:00":
@@ -1303,6 +1311,24 @@ def _write_threads_candidates(
         "reply_text": "（Threadsは1投稿完結）",
     })
 
+    # 3b) threads_ladies_zero_wait: Women-perspective zero-wait & perks alert (Plan E)
+    try:
+        import ladies_guide
+        ladies_th = ladies_guide.build_threads_ladies_post(
+            research.get("all_domestic_stores") or top_stores,
+            slot_label=slot_label,
+            now_jst=now_jst,
+        )
+        candidates.append({
+            "style": "threads_ladies_zero_wait",
+            "style_label": STYLE_LABELS["threads_ladies_zero_wait"],
+            "writer_note": "【💄 女子得＆待ちゼロ速報】女性2人組向けに『男性先行で即案内される店』と開催中イベントを抜粋。",
+            "main_text": ladies_th,
+            "reply_text": "（女性向け特設 /for-women への導線付き）",
+        })
+    except Exception as err:
+        logger.warning(f"ladies_guide threads candidate skipped: {err}")
+
     # 4) threads_classic_top3: Legacy baseline
     classic_th = threads_poster.build_threads_live_post(top_stores, slot_label=slot_label, now_jst=now_jst)
     candidates.append({
@@ -1428,6 +1454,24 @@ def _write_instagram_candidates(
         "main_text": body_ig_3,
         "reply_text": "（5枚組カルーセル画像とセットで投稿）",
     })
+
+    # 3b) ig_ladies_night_guide: Women-perspective zero-wait & perks saveable guide (Plan E)
+    try:
+        import ladies_guide
+        ladies_ig = ladies_guide.build_instagram_ladies_caption(
+            research.get("all_domestic_stores") or research.get("top_stores") or [],
+            slot_label="19:45",
+            now_jst=now_jst,
+        )
+        candidates.append({
+            "style": "ig_ladies_night_guide",
+            "style_label": STYLE_LABELS["ig_ladies_night_guide"],
+            "writer_note": "【💄 女子組保存ガイド】受付待ちゼロの男性先行店・イベント特典・角が立たない席替えルールを凝縮。",
+            "main_text": ladies_ig,
+            "reply_text": "（ライブスライド画像または5枚カルーセルとセットで投稿）",
+        })
+    except Exception as err:
+        logger.warning(f"ladies_guide instagram candidate skipped: {err}")
 
     # 4) ig_classic_template: Legacy baseline
     classic_ig = ig_carousel_generator.build_captions(ig_ctx)["instagram_caption"]

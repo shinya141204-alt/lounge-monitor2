@@ -96,7 +96,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet"></noscript>
     <link rel="stylesheet" href="/static/style.css?v=20261027_3">
-    <link rel="preload" href="/static/app.js?v=20261028_1" as="script">
+    <link rel="preload" href="/static/app.js?v=20261028_2" as="script">
     <script>
         window.APP_CONFIG = {
             isStaff: {{ 'true' if is_staff else 'false' }},
@@ -107,9 +107,9 @@
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
          crossorigin="anonymous"></script>
-    <script src="/static/affiliate_config.js?v=11" defer></script>
+    <script src="/static/affiliate_config.js?v=12" defer></script>
     {% endif %}
-    <link rel="stylesheet" href="/static/calm.css?v=13">
+    <link rel="stylesheet" href="/static/calm.css?v=14">
 </head>
 
 <body class="{% if is_staff %}staff-mode{% endif %}">
@@ -248,6 +248,7 @@
             <!-- Portal Global Navigation Bar -->
             <nav class="portal-global-nav" aria-label="サイト内メニュー">
                 <a href="/" class="portal-nav-link active">リアルタイム順位</a>
+                <a href="/for-women" class="portal-nav-link">💄 女子向け裏ガイド</a>
                 <a href="/price-comparison" class="portal-nav-link">料金・イベント比較</a>
                 <a href="/columns" class="portal-nav-link">コラム・記事一覧</a>
                 <a href="/areas" class="portal-nav-link">エリアから探す</a>
@@ -270,12 +271,34 @@
 
             <div id="content" class="content{% if not (initial_status and initial_status.ranking) %} hidden{% endif %}">
 
+                {% if not is_staff %}
+                <div id="audience-mode-bar" class="audience-mode-bar" role="region" aria-label="目線モード切替">
+                    <div class="audience-mode-row">
+                        <span class="audience-mode-label">表示モード</span>
+                        <div class="audience-mode-toggle" role="group" aria-label="男女目線の切り替え">
+                            <button type="button" class="audience-pill-btn active" data-audience="men" onclick="setAudienceMode('men', true)">🕺 男性目線（女性人数順）</button>
+                            <button type="button" class="audience-pill-btn" data-audience="women" onclick="setAudienceMode('women', true)">💄 女性目線（待ち0・特典順）</button>
+                        </div>
+                    </div>
+                    <div id="ladies-mode-quicklinks" class="ladies-mode-quicklinks hidden">
+                        <span class="ladies-mode-hint">🟢 男性が先行中＆限定フェア開催中の「受付待ちゼロ圏」を上段に表示中</span>
+                        <div class="ladies-quick-actions">
+                            <a href="/for-women" class="ladies-quick-link">📖 女子向け裏ガイド＆席替え術 ›</a>
+                            <button type="button" class="ladies-quick-link" onclick="openGuideModal('all')">✨ 女性向け特典・1対1デート特集 ›</button>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
                 <div class="search-sort-container">
                     <input type="text" id="search-input" placeholder="店舗名で検索" oninput="handleSearch(this.value)">
                     <div class="sort-controls">
                         <button class="sort-btn active" data-sort="women" onclick="setSort('women')">女性順</button>
                         <button class="sort-btn" data-sort="men" onclick="setSort('men')">男性順</button>
                         <button class="sort-btn" data-sort="ratio" onclick="setSort('ratio')">女性比率順</button>
+                        {% if not is_staff %}
+                        <button class="sort-btn" id="ladies-comfort-sort-btn" data-sort="ladies_comfort" onclick="setSort('ladies_comfort')" title="女性ペア向けに受付待ちゼロ・特典開催中の店舗順で並び替え">待ち0・特典順</button>
+                        {% endif %}
                         <button class="sort-btn" id="nearby-sort-btn" data-sort="nearby" onclick="setNearbySort()" title="現在地から近い順に並び替え">現在地順</button>
                     </div>
                 </div>
@@ -620,6 +643,7 @@
                     <div class="seo-guide-header">
                         <h2>特集コラム・ブランド比較ガイド</h2>
                         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <a href="/for-women" class="guide-open-btn" style="text-decoration: none;">💄 女子向け裏ガイド ›</a>
                             <a href="/columns" class="guide-open-btn" style="text-decoration: none;">コラム一覧を見る ›</a>
                             <a href="/areas" class="guide-open-btn" style="text-decoration: none;">エリア別ガイド ›</a>
                         </div>
@@ -858,7 +882,8 @@
                 <div class="sitemap-col">
                     <h4>コラム・特集記事</h4>
                     <ul>
-                        <li><a href="/columns">コラム・記事一覧（全{{ 13 + (published_scheduled|length if published_scheduled else 0) }}本）</a></li>
+                        <li><a href="/columns">コラム・記事一覧（全{{ 14 + (published_scheduled|length if published_scheduled else 0) }}本）</a></li>
+                        <li><a href="/for-women">💄 女子向け裏ガイド＆待ちゼロ店舗ボード</a></li>
                         {% for item in published_scheduled or [] %}
                         <li><a href="{{ item.path }}">{{ item.short_title }}</a></li>
                         {% endfor %}
@@ -1088,11 +1113,11 @@
     <div id="guide-modal" class="modal hidden">
         <div class="modal-content" style="max-width: 740px;">
             <div class="modal-header">
-                <h2>身だしなみ・おすすめサービス特集</h2>
+                <h2 id="guide-modal-title">身だしなみ・おすすめサービス特集</h2>
                 <button class="close-btn-pill" onclick="closeGuideModal()" aria-label="閉じる">✕ 閉じる</button>
             </div>
             <div class="guide-modal-body">
-                <p class="guide-lead">
+                <p class="guide-lead" id="guide-modal-lead">
                     仕事帰りでも口元が気にならない<strong>『ヒゲ脱毛・スキンケア』</strong>や、服選びに迷わない<strong>『きれいめ私服の定期便』</strong>、お店が混んでいる日に頼れる<strong>『恋活アプリ』</strong>など、普段から取り入れておくと便利なサービスをまとめました。
                 </p>
 
@@ -1105,7 +1130,7 @@
                     <!-- Populated dynamically from AFFILIATE_MASTER.items -->
                 </div>
 
-                <div class="guide-tips-box">
+                <div class="guide-tips-box" id="guide-tips-box">
                     <h4>お店選びと当日のちょっとしたコツ</h4>
                     <ul>
                         <li><strong>① 行く前に「男女比バー」を見ておく：</strong> 女性の人数だけでなく、ピンク（女性）の割合が高い店舗を選ぶと、入ってから待たされずに座りやすくなります。</li>
@@ -1132,6 +1157,24 @@
                 </p>
 
                 <div class="article-cards-grid">
+                    <a href="/for-women" class="article-card-item highlight-card">
+                        <div class="article-card-thumb">
+                            <picture>
+                                <source srcset="/static/eyecatch-beauty-lounge.webp" type="image/webp">
+                                <img src="/static/eyecatch-beauty-lounge.jpg" alt="女性のための相席ラウンジ完全裏ガイド" width="640" height="360" decoding="async" loading="lazy">
+                            </picture>
+                            <span class="article-card-badge">💄 女性限定・LIVE連動</span>
+                        </div>
+                        <div class="article-card-info">
+                            <div class="article-card-meta">
+                                <span class="article-tag">女子向け裏ガイド</span>
+                                <span class="article-read-time">5分 / LIVE連動</span>
+                            </div>
+                            <h3 class="article-card-title">【女性限定】相席ラウンジ完全裏ガイド——受付待ちゼロの店選び・客層比較・角が立たない席替え＆退店術</h3>
+                            <p class="article-card-desc">「タダ飯のつもりが女余りで30分待ち・ハズレ席で消耗」を防ぐために。今すぐ受付待ちゼロで座れる注目店ボードとスマート撤退マニュアル。</p>
+                            <span class="article-read-more">裏ガイドを読む ›</span>
+                        </div>
+                    </a>
                     {% for item in published_scheduled or [] %}
                     <a href="{{ item.path }}" class="article-card-item{% if loop.first %} highlight-card{% endif %}">
                         <div class="article-card-thumb">
@@ -1723,6 +1766,12 @@
                 <div class="menu-section">
                     <div class="menu-section-title">ポータル・ガイド</div>
                     <div class="menu-grid">
+                        <a href="/for-women" class="menu-grid-item" style="text-decoration: none; color: inherit;">
+                            <div class="menu-grid-text">
+                                <strong>💄 女子向け裏ガイド</strong>
+                                <span>受付待ちゼロ店・客層・席替えマニュアル</span>
+                            </div>
+                        </a>
                         <a href="/price-comparison" class="menu-grid-item" style="text-decoration: none; color: inherit;">
                             <div class="menu-grid-text">
                                 <strong>料金・イベント比較</strong>
@@ -1846,12 +1895,12 @@
         window.INITIAL_STATUS_DATA = {{ initial_status | tojson }};
         {% endif %}
     </script>
-    <script src="/static/app.js?v=20261028_1" defer></script>
+    <script src="/static/app.js?v=20261028_2" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/sw.js?v=58', { updateViaCache: 'none' })
+                navigator.serviceWorker.register('/sw.js?v=59', { updateViaCache: 'none' })
                     .then(function(reg) {
                         reg.update();
                         document.addEventListener('visibilitychange', function() {

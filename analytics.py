@@ -135,6 +135,7 @@ _PAGE_TITLES = {
     '/guide/local-vs-urban': '📖 地方店vs都心大型店｜深夜0時に女性が121%へ逆転増加する一極集中の法則',
     '/guide/cost-break-even': '📖 90分粘るvs40分で見切る｜男性の滞在時間と料金の損益分岐点検証',
     '/guide/rain-payday': '📖 雨の日・給料日前・連休中日の男女比変動と隠れ穴場日データ',
+    '/for-women': '💄 女子のための相席ラウンジ完全ガイド＆待ちゼロ店舗ボード',
     '/privacy': '⚖️ 運営者情報・プライバシーポリシー',
 }
 
@@ -150,6 +151,14 @@ _AFFILIATE_NAMES = {
     'dating_instant': '💝 近くで今日会える恋活・マッチングアプリ',
     'dating_bachelor': '🥂 審査制・ハイクラスデートアプリ（バチェラーデート等）',
     'dating_casual': '🍻 今日すぐ近くで飲める恋活アプリ（即時合流枠）',
+    'women_dating_bachelor': '💄🥂 女性向け｜審査制・完全無料ハイクラスデート枠',
+    'women_dating': '💄🥂 女性向け｜審査制・完全無料ハイクラスデート枠',
+    'women_beauty_clinic': '💄💎 女性向け｜美容医療・美肌クリニック＆医療脱毛枠',
+    'women_clinic': '💄💎 女性向け｜美容医療・美肌クリニック＆医療脱毛枠',
+    'women_hair_removal': '💄💎 女性向け｜美容医療・美肌クリニック＆医療脱毛枠',
+    'women_cosme_salon': '💄🧴 女性向け｜デパコス・ご褒美スキンケア＆サロン枠',
+    'women_cosme': '💄🧴 女性向け｜デパコス・ご褒美スキンケア＆サロン枠',
+    'women_skincare': '💄🧴 女性向け｜デパコス・ご褒美スキンケア＆サロン枠',
 }
 
 _AREA_NAMES = {
@@ -192,6 +201,9 @@ _INFLOW_STYLE_JA = {
     'threads_anomaly_insight': '普段比異変＆立ち回り型',
     'threads_hopping_guide': '1軒目→2軒目比較型',
     'threads_classic_top3': '定型TOP3掲示板型',
+    'threads_ladies_zero_wait': '女子得・待ちゼロ＆特典速報型',
+    'ig_ladies_night_guide': '女子組・待ちゼロ＆特典保存ガイド型',
+    'ladies_night': '女子得・待ちゼロ速報枠',
     'live': 'リアルタイム速報枠',
     'tip': '解説コラム紹介枠',
     'rel': '新着コラム解禁告知',
