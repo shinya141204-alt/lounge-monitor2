@@ -2061,8 +2061,8 @@ class FullAuditRegressionTests(unittest.TestCase):
             self.assertEqual(res_aq['winner']['style'], 'ai_live_adlib')
             called_url = mock_aq_post.call_args[0][0]
             called_json = mock_aq_post.call_args[1]['json']
-            self.assertIn('generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent', called_url)
-            self.assertEqual(called_json['generationConfig'].get('thinkingConfig'), {'thinkingBudget': 1536})
+            self.assertIn('generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent', called_url)
+            self.assertEqual(called_json['generationConfig'].get('thinkingConfig'), {'thinkingLevel': 'MEDIUM'})
             self.assertEqual(called_json['generationConfig'].get('maxOutputTokens'), 2600)
             self.assertEqual(res_aq['gemini_status']['state'], 'active')
 

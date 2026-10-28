@@ -34,6 +34,7 @@ AI_ENGINE_PREF_KEY = "editorial:ai_engine_pref"
 
 # Upgraded from Flash-Lite to Pro -> Standard Flash -> Lite emergency fallback
 DEFAULT_GEMINI_MODELS = (
+    "gemini-3.1-pro-preview",
     "gemini-2.5-pro",
     "gemini-2.5-flash",
     "gemini-flash-latest",
@@ -2215,9 +2216,9 @@ def _discover_ai_studio_models(api_key: str, timeout: float = 4.5) -> list:
 
         pro_cands.sort(key=lambda x: (not ("2.5-pro" in x or "3." in x or "3-" in x), "exp" in x, x), reverse=False)
         # Sort version numbers descending while keeping stable ahead of experimental
-        # Stable releases first (preview/exp models are slow & often time out), then newest version.
+        # Newest version first (e.g. gemini-3.1-pro-preview > gemini-2.5-pro); experimental (`exp`) models last.
         def _stable_key(x: str):
-            return (not ("exp" in x), not ("preview" in x), x)
+            return (not ("exp" in x), x)
 
         pro_sorted = sorted(pro_cands, key=_stable_key, reverse=True)
         flash_sorted = sorted(flash_cands, key=_stable_key, reverse=True)
