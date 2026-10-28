@@ -1137,7 +1137,7 @@ class GrowthFeaturesTests(unittest.TestCase):
             r = self.client.get(p)
             self.assertEqual(r.status_code, 200, f"Public path {p} returned {r.status_code}")
             body = r.data.decode('utf-8')
-            self.assertIn('/static/calm.css?v=14', body, f"{p} missing /static/calm.css?v=14")
+            self.assertIn('/static/calm.css?v=15', body, f"{p} missing /static/calm.css?v=15")
             if '/static/style.css' in body:
                 self.assertIn('/static/style.css?v=20261027_3', body, f"{p} missing /static/style.css?v=20261027_3")
             self.assertIn('公式ホームページ', body, f"{p} missing official website verification notice")
@@ -1150,7 +1150,7 @@ class GrowthFeaturesTests(unittest.TestCase):
                 sr = self.client.get(sp)
                 self.assertEqual(sr.status_code, 200, f"Scheduled path {sp} returned {sr.status_code}")
                 sbody = sr.data.decode('utf-8')
-                self.assertIn('/static/calm.css?v=14', sbody, f"{sp} missing /static/calm.css?v=14")
+                self.assertIn('/static/calm.css?v=15', sbody, f"{sp} missing /static/calm.css?v=15")
                 if '/static/style.css' in sbody:
                     self.assertIn('/static/style.css?v=20261027_3', sbody, f"{sp} missing /static/style.css?v=20261027_3")
                 self.assertIn('公式ホームページ', sbody, f"{sp} missing official website verification notice")
@@ -1745,7 +1745,7 @@ class FullAuditRegressionTests(unittest.TestCase):
         sw_resp = self.client.get('/sw.js')
         try:
             sw_txt = sw_resp.data.decode('utf-8')
-            self.assertIn("CACHE_NAME = 'aiseki-navi-v59'", sw_txt)
+            self.assertIn("CACHE_NAME = 'aiseki-navi-v60'", sw_txt)
             self.assertIn("event.waitUntil", sw_txt)
         finally:
             sw_resp.close()
@@ -3149,13 +3149,24 @@ class WomenFeaturesACDETests(unittest.TestCase):
 
         with open(os.path.join(ROOT, 'static', 'app.js'), 'r', encoding='utf-8') as f_js:
             app_js = f_js.read()
-        for sym in ('evaluateLadiesStoreJs', 'setAudienceMode', 'currentAudience', 'womenCategories', 'womenItems'):
+        for sym in (
+            'evaluateLadiesStoreJs',
+            'setAudienceMode',
+            'currentAudience',
+            'womenCategories',
+            'womenItems',
+            "setViewTheme('light', false)",
+            'aiseki_men_prev_theme',
+            'aiseki_women_manual_theme',
+        ):
             self.assertIn(sym, app_js)
 
         with open(os.path.join(ROOT, 'static', 'calm.css'), 'r', encoding='utf-8') as f_css:
             calm_css = f_css.read()
         self.assertIn('.audience-mode-bar', calm_css)
         self.assertIn('body.theme-light .audience-mode-bar', calm_css)
+        self.assertIn('body.theme-light.audience-women', calm_css)
+        self.assertIn('aiseki_women_manual_theme', pub_html)
 
     def test_plan_c_for_women_live_seo_page_and_portal_links(self):
         import re
@@ -3177,6 +3188,8 @@ class WomenFeaturesACDETests(unittest.TestCase):
             self.assertEqual(r.status_code, 200)
             self.assertIn('no-store', r.headers.get('Cache-Control', ''))
             html = r.data.decode('utf-8')
+            self.assertIn('class="theme-light audience-women"', html)
+            self.assertIn('toggleForWomenTheme()', html)
             self.assertIn('オリエンタルラウンジ新宿', html)
             self.assertIn('🟢 女子待ち0・即案内圏', html)
             self.assertIn('"@type": "FAQPage"', html)

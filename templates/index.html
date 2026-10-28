@@ -96,7 +96,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet"></noscript>
     <link rel="stylesheet" href="/static/style.css?v=20261027_3">
-    <link rel="preload" href="/static/app.js?v=20261028_2" as="script">
+    <link rel="preload" href="/static/app.js?v=20261028_3" as="script">
     <script>
         window.APP_CONFIG = {
             isStaff: {{ 'true' if is_staff else 'false' }},
@@ -109,12 +109,45 @@
          crossorigin="anonymous"></script>
     <script src="/static/affiliate_config.js?v=12" defer></script>
     {% endif %}
-    <link rel="stylesheet" href="/static/calm.css?v=14">
+    <link rel="stylesheet" href="/static/calm.css?v=15">
 </head>
 
 <body class="{% if is_staff %}staff-mode{% endif %}">
     <script>
         try {
+            var _isStaff = {{ 'true' if is_staff else 'false' }};
+            if (!_isStaff) {
+                var _qs = new URLSearchParams(window.location.search || '');
+                var _qm = (_qs.get('mode') || '').toLowerCase();
+                var _prevAud = localStorage.getItem('aiseki_audience_mode') || 'men';
+                if (_qm === 'women' || _qm === 'ladies') {
+                    if (_prevAud !== 'women') {
+                        localStorage.setItem('aiseki_men_prev_theme', localStorage.getItem('olg_view_theme') || (localStorage.getItem('olg_compact_view') === 'true' ? 'list' : 'default'));
+                        localStorage.removeItem('aiseki_women_manual_theme');
+                        localStorage.setItem('olg_view_theme', 'light');
+                        localStorage.setItem('olg_compact_view', 'false');
+                    } else if (!localStorage.getItem('aiseki_women_manual_theme')) {
+                        localStorage.setItem('olg_view_theme', 'light');
+                        localStorage.setItem('olg_compact_view', 'false');
+                    }
+                    localStorage.setItem('aiseki_audience_mode', 'women');
+                    document.body.classList.add('audience-women');
+                } else if (_qm === 'men') {
+                    if (_prevAud === 'women') {
+                        var _rest = localStorage.getItem('aiseki_men_prev_theme') || 'default';
+                        localStorage.setItem('olg_view_theme', _rest);
+                        localStorage.setItem('olg_compact_view', _rest === 'list' ? 'true' : 'false');
+                        localStorage.removeItem('aiseki_women_manual_theme');
+                    }
+                    localStorage.setItem('aiseki_audience_mode', 'men');
+                } else if (_prevAud === 'women') {
+                    document.body.classList.add('audience-women');
+                    if (!localStorage.getItem('aiseki_women_manual_theme')) {
+                        localStorage.setItem('olg_view_theme', 'light');
+                        localStorage.setItem('olg_compact_view', 'false');
+                    }
+                }
+            }
             var _t = localStorage.getItem('olg_view_theme') || (localStorage.getItem('olg_compact_view') === 'true' ? 'list' : 'default');
             if (_t === 'list') document.body.classList.add('compact-mode', 'theme-list');
             else if (_t === 'light') document.body.classList.add('theme-light');
@@ -1895,12 +1928,12 @@
         window.INITIAL_STATUS_DATA = {{ initial_status | tojson }};
         {% endif %}
     </script>
-    <script src="/static/app.js?v=20261028_2" defer></script>
+    <script src="/static/app.js?v=20261028_3" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/sw.js?v=59', { updateViaCache: 'none' })
+                navigator.serviceWorker.register('/sw.js?v=60', { updateViaCache: 'none' })
                     .then(function(reg) {
                         reg.update();
                         document.addEventListener('visibilitychange', function() {

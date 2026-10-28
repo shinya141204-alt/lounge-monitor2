@@ -13,14 +13,27 @@
             try {
                 const params = new URLSearchParams(window.location.search || '');
                 const qMode = (params.get('mode') || '').toLowerCase();
+                const savedAud = localStorage.getItem('aiseki_audience_mode') || 'men';
                 if (qMode === 'women' || qMode === 'ladies') {
+                    if (savedAud !== 'women' && !localStorage.getItem('aiseki_men_prev_theme')) {
+                        const prevTh = localStorage.getItem('olg_view_theme') || (localStorage.getItem('olg_compact_view') === 'true' ? 'list' : 'default');
+                        localStorage.setItem('aiseki_men_prev_theme', prevTh);
+                    }
                     currentAudience = 'women';
                     localStorage.setItem('aiseki_audience_mode', 'women');
+                    if (!localStorage.getItem('aiseki_women_manual_theme')) {
+                        localStorage.setItem('olg_view_theme', 'light');
+                        localStorage.setItem('olg_compact_view', 'false');
+                    }
                 } else if (qMode === 'men') {
                     currentAudience = 'men';
                     localStorage.setItem('aiseki_audience_mode', 'men');
-                } else if (localStorage.getItem('aiseki_audience_mode') === 'women') {
+                } else if (savedAud === 'women') {
                     currentAudience = 'women';
+                    if (!localStorage.getItem('aiseki_women_manual_theme')) {
+                        localStorage.setItem('olg_view_theme', 'light');
+                        localStorage.setItem('olg_compact_view', 'false');
+                    }
                 }
             } catch (e) {}
         })();
@@ -674,6 +687,13 @@
             try {
                 localStorage.setItem('olg_view_theme', currentTheme);
                 localStorage.setItem('olg_compact_view', currentTheme === 'list' ? 'true' : 'false');
+                if (!IS_STAFF && notify) {
+                    if (currentAudience === 'women') {
+                        localStorage.setItem('aiseki_women_manual_theme', currentTheme);
+                    } else {
+                        localStorage.setItem('aiseki_men_prev_theme', currentTheme);
+                    }
+                }
             } catch (e) {}
             applyThemeClasses(currentTheme);
             if (notify && typeof showRefreshToast === 'function') {
@@ -836,14 +856,30 @@
 
         function setAudienceMode(mode, notify = false) {
             if (IS_STAFF) return;
+            const prevAudience = currentAudience;
             currentAudience = (mode === 'women') ? 'women' : 'men';
             try {
                 localStorage.setItem('aiseki_audience_mode', currentAudience);
             } catch (e) {}
             if (currentAudience === 'women') {
                 currentSort = 'ladies_comfort';
-            } else if (currentSort === 'ladies_comfort') {
-                currentSort = 'women';
+                try {
+                    if (prevAudience !== 'women') {
+                        localStorage.setItem('aiseki_men_prev_theme', currentTheme || 'default');
+                    }
+                    localStorage.removeItem('aiseki_women_manual_theme');
+                } catch (e) {}
+                setViewTheme('light', false);
+            } else {
+                if (currentSort === 'ladies_comfort') {
+                    currentSort = 'women';
+                }
+                let restoreTheme = 'default';
+                try {
+                    restoreTheme = localStorage.getItem('aiseki_men_prev_theme') || 'default';
+                    localStorage.removeItem('aiseki_women_manual_theme');
+                } catch (e) {}
+                setViewTheme(restoreTheme, false);
             }
             applyAudienceModeDOM();
             if (window.lastData) {
@@ -851,7 +887,7 @@
             }
             if (notify && typeof showRefreshToast === 'function') {
                 showRefreshToast(currentAudience === 'women'
-                    ? '💄 女性目線モード（待ち0・特典順）に切り替えました'
+                    ? '💄 女性目線モード（ライト配色・待ち0順）に切り替えました'
                     : '🕺 男性目線モード（女性人数順）に切り替えました');
             }
             if (notify && navigator.sendBeacon) {
@@ -872,14 +908,13 @@
         }
 
         function setSort(sortType) {
+            if (!IS_STAFF && sortType === 'ladies_comfort' && currentAudience !== 'women') {
+                setAudienceMode('women', false);
+                return;
+            }
             currentSort = sortType;
             document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
             document.querySelector(`.sort-btn[data-sort="${sortType}"]`)?.classList.add('active');
-            if (!IS_STAFF && sortType === 'ladies_comfort' && currentAudience !== 'women') {
-                currentAudience = 'women';
-                try { localStorage.setItem('aiseki_audience_mode', 'women'); } catch (e) {}
-                applyAudienceModeDOM();
-            }
             if (window.lastData) updateUI(window.lastData);
         }
 

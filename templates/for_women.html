@@ -87,27 +87,60 @@
     <link rel="apple-touch-icon" href="/static/icon.png?v=2">
     <link rel="stylesheet" href="/static/portal.css?v=6">
     <style>
+        /* デフォルト（女性向けウォームアイボリー×ローズ調ライトトーン） */
         :root {
-            --bg-dark: #0f1014;
+            --bg-page: #f7f3f1;
+            --card-bg: #fdfbfa;
+            --card-bg-2: #f1e9e5;
+            --text-main: #282124;
+            --text-body: #3b3135;
+            --heading-color: #1e171a;
+            --text-sub: #6d5c62;
+            --rose: #a84960;
+            --rose-strong: #8b3349;
+            --rose-soft: rgba(186, 93, 117, 0.12);
+            --rose-border: rgba(186, 93, 117, 0.34);
+            --gold-strong: #7c5624;
+            --gold-soft: rgba(168, 124, 62, 0.13);
+            --mint-strong: #13684a;
+            --mint-soft: rgba(16, 150, 104, 0.12);
+            --mint-border: rgba(16, 150, 104, 0.34);
+            --men-strong: #2d5c88;
+            --border-subtle: rgba(110, 62, 76, 0.12);
+            --border-outline: rgba(110, 62, 76, 0.24);
+            --hero-grad: linear-gradient(155deg, rgba(216, 141, 158, 0.18) 0%, #fdfbfa 65%);
+        }
+        /* 手動でダーク表示を選んだ場合のフォールバック */
+        body:not(.theme-light) {
+            --bg-page: #0f1014;
             --card-bg: #16171d;
             --card-bg-2: #1d1e26;
             --text-main: #f2eef0;
+            --text-body: #dfd7dc;
+            --heading-color: #ffffff;
             --text-sub: #a89fa5;
             --rose: #dfa3b0;
+            --rose-strong: #f6dce2;
             --rose-soft: rgba(223, 163, 176, 0.14);
-            --gold: #c8a46e;
+            --rose-border: rgba(223, 163, 176, 0.38);
+            --gold-strong: #f3d7a2;
             --gold-soft: rgba(200, 164, 110, 0.14);
-            --mint: #7bc49f;
+            --mint-strong: #cbf3de;
             --mint-soft: rgba(123, 196, 159, 0.15);
+            --mint-border: rgba(123, 196, 159, 0.42);
+            --men-strong: #93c5fd;
             --border-subtle: rgba(255, 255, 255, 0.09);
+            --border-outline: rgba(255, 255, 255, 0.18);
+            --hero-grad: linear-gradient(155deg, rgba(223, 163, 176, 0.12) 0%, #16171d 60%);
         }
         * { box-sizing: border-box; }
         body {
             margin: 0;
-            background: var(--bg-dark);
+            background: var(--bg-page);
             color: var(--text-main);
             font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", Meiryo, sans-serif;
             line-height: 1.82;
+            transition: background-color 0.2s ease, color 0.2s ease;
         }
         .wrap {
             max-width: 880px;
@@ -126,7 +159,7 @@
         }
         .brand-link {
             text-decoration: none;
-            color: var(--text-main);
+            color: var(--heading-color);
             font-weight: 800;
             font-size: 1.25rem;
             display: flex;
@@ -135,12 +168,12 @@
         }
         .brand-link span {
             font-size: 0.76rem;
-            color: var(--text-sub);
-            font-weight: 500;
+            color: var(--rose);
+            font-weight: 700;
         }
         .hero-box {
-            background: linear-gradient(155deg, rgba(223, 163, 176, 0.12) 0%, var(--card-bg) 60%);
-            border: 1px solid rgba(223, 163, 176, 0.35);
+            background: var(--hero-grad);
+            border: 1px solid var(--rose-border);
             border-radius: 16px;
             padding: 26px 24px;
             margin: 18px 0 26px;
@@ -150,8 +183,8 @@
             align-items: center;
             gap: 6px;
             background: var(--rose-soft);
-            color: #f6dce2;
-            border: 1px solid rgba(223, 163, 176, 0.42);
+            color: var(--rose-strong);
+            border: 1px solid var(--rose-border);
             padding: 4px 12px;
             border-radius: 999px;
             font-size: 0.74rem;
@@ -162,12 +195,12 @@
             font-size: 1.48rem;
             line-height: 1.42;
             margin: 0 0 12px;
-            color: #fff;
+            color: var(--heading-color);
         }
         .hero-box p {
             margin: 0 0 16px;
             font-size: 0.92rem;
-            color: #d7cfd4;
+            color: var(--text-body);
         }
         .hero-cta-row {
             display: flex;
@@ -180,12 +213,13 @@
             gap: 6px;
             padding: 10px 18px;
             border-radius: 999px;
-            background: linear-gradient(135deg, #d88d9e, #b96d80);
-            color: #fff;
+            background: linear-gradient(135deg, #c76e83, #a84960);
+            color: #fff !important;
             font-weight: 800;
             font-size: 0.86rem;
             text-decoration: none;
             border: none;
+            box-shadow: 0 2px 10px rgba(168, 73, 96, 0.18);
         }
         .btn-outline {
             display: inline-flex;
@@ -195,16 +229,17 @@
             border-radius: 999px;
             background: var(--card-bg-2);
             color: var(--text-main);
-            border: 1px solid rgba(255, 255, 255, 0.16);
+            border: 1px solid var(--border-outline);
             font-weight: 700;
             font-size: 0.84rem;
             text-decoration: none;
+            cursor: pointer;
         }
 
         /* Live Zero-Wait Board */
         .live-board {
             background: var(--card-bg);
-            border: 1px solid rgba(123, 196, 159, 0.35);
+            border: 1px solid var(--mint-border);
             border-radius: 15px;
             padding: 20px;
             margin-bottom: 30px;
@@ -220,7 +255,7 @@
         .live-board-head h2 {
             font-size: 1.12rem;
             margin: 0;
-            color: #fff;
+            color: var(--heading-color);
         }
         .live-pill {
             font-size: 0.73rem;
@@ -228,8 +263,8 @@
             padding: 3px 10px;
             border-radius: 999px;
             background: var(--mint-soft);
-            border: 1px solid rgba(123, 196, 159, 0.45);
-            color: #cbf3de;
+            border: 1px solid var(--mint-border);
+            color: var(--mint-strong);
         }
         .live-grid {
             display: grid;
@@ -241,11 +276,11 @@
             display: block;
             text-decoration: none;
             color: inherit;
-            background: var(--bg-dark);
+            background: var(--bg-page);
             border: 1px solid var(--border-subtle);
             border-radius: 11px;
             padding: 12px 14px;
-            transition: border-color 0.2s ease;
+            transition: border-color 0.2s ease, transform 0.15s ease;
         }
         .live-pick-card:hover {
             border-color: var(--rose);
@@ -263,11 +298,11 @@
             padding: 2px 8px;
             border-radius: 999px;
             background: var(--mint-soft);
-            color: #b8f1d3;
+            color: var(--mint-strong);
         }
         .pick-badge.good {
             background: var(--rose-soft);
-            color: #f6dce2;
+            color: var(--rose-strong);
         }
         .pick-area {
             font-size: 0.71rem;
@@ -276,24 +311,25 @@
         .pick-name {
             font-size: 0.94rem;
             font-weight: 800;
-            color: #fff;
+            color: var(--heading-color);
             margin-bottom: 4px;
         }
         .pick-counts {
             font-size: 0.82rem;
-            color: #dcd6da;
+            color: var(--text-body);
             font-variant-numeric: tabular-nums;
         }
-        .pick-counts strong.m { color: #93c5fd; }
+        .pick-counts strong.m { color: var(--men-strong); }
         .pick-counts strong.w { color: var(--rose); }
         .pick-ev {
             margin-top: 6px;
             font-size: 0.73rem;
-            color: #f3d7a2;
+            color: var(--gold-strong);
             background: var(--gold-soft);
             padding: 3px 8px;
             border-radius: 6px;
             display: inline-block;
+            font-weight: 600;
         }
 
         /* Editorial Sections */
@@ -302,25 +338,25 @@
             margin: 38px 0 14px;
             padding-left: 12px;
             border-left: 3px solid var(--rose);
-            color: #fff;
+            color: var(--heading-color);
             line-height: 1.45;
         }
         h3.sec-h3 {
             font-size: 1.02rem;
             margin: 24px 0 8px;
-            color: #f6dce2;
+            color: var(--rose-strong);
         }
-        p { margin: 0 0 15px; font-size: 0.94rem; }
+        p { margin: 0 0 15px; font-size: 0.94rem; color: var(--text-body); }
         .dialogue-box {
-            background: rgba(223, 163, 176, 0.06);
+            background: var(--rose-soft);
             border-left: 3px solid var(--rose);
             border-radius: 0 10px 10px 0;
             padding: 14px 18px;
             margin: 18px 0;
             font-size: 0.9rem;
-            color: #ece4e7;
+            color: var(--text-main);
         }
-        .dialogue-box strong { color: #f6dce2; }
+        .dialogue-box strong { color: var(--rose-strong); }
 
         .comp-table-wrap {
             overflow-x: auto;
@@ -334,6 +370,7 @@
             font-size: 0.84rem;
             background: var(--card-bg);
             min-width: 560px;
+            color: var(--text-body);
         }
         .comp-table th, .comp-table td {
             padding: 11px 12px;
@@ -343,7 +380,7 @@
         }
         .comp-table th {
             background: var(--card-bg-2);
-            color: #f6dce2;
+            color: var(--rose-strong);
             font-weight: 700;
         }
 
@@ -362,12 +399,12 @@
         .rule-card h4 {
             margin: 0 0 6px;
             font-size: 0.92rem;
-            color: #f6dce2;
+            color: var(--rose-strong);
         }
         .rule-card p {
             margin: 0;
             font-size: 0.84rem;
-            color: #cfc7cc;
+            color: var(--text-body);
         }
 
         /* Women's Curated Self-Care & Screening App Box (Plan D) */
@@ -376,7 +413,7 @@
             padding: 20px;
             border-radius: 14px;
             background: var(--card-bg);
-            border: 1px solid rgba(223, 163, 176, 0.28);
+            border: 1px solid var(--rose-border);
         }
         .ladies-pr-head {
             display: flex;
@@ -389,8 +426,9 @@
             font-weight: 800;
             padding: 2px 7px;
             border-radius: 4px;
-            background: rgba(255, 255, 255, 0.09);
+            background: var(--card-bg-2);
             color: var(--text-sub);
+            border: 1px solid var(--border-subtle);
         }
         .ladies-pr-grid {
             display: grid;
@@ -399,7 +437,7 @@
             margin-top: 12px;
         }
         .ladies-pr-card {
-            background: var(--bg-dark);
+            background: var(--bg-page);
             border: 1px solid var(--border-subtle);
             border-radius: 11px;
             padding: 14px;
@@ -410,7 +448,7 @@
         .ladies-pr-card h4 {
             font-size: 0.9rem;
             margin: 4px 0 6px;
-            color: #fff;
+            color: var(--heading-color);
         }
         .ladies-pr-card p {
             font-size: 0.8rem;
@@ -423,14 +461,14 @@
             padding: 8px 12px;
             border-radius: 8px;
             background: var(--rose-soft);
-            border: 1px solid rgba(223, 163, 176, 0.42);
-            color: #f8dfe5;
+            border: 1px solid var(--rose-border);
+            color: var(--rose-strong);
             font-size: 0.8rem;
             font-weight: 700;
             text-decoration: none;
         }
         .ladies-pr-link:hover {
-            background: rgba(223, 163, 176, 0.25);
+            background: rgba(186, 93, 117, 0.22);
         }
         .faq-item {
             background: var(--card-bg);
@@ -441,28 +479,54 @@
         }
         .faq-q {
             font-weight: 800;
-            color: #f6dce2;
+            color: var(--rose-strong);
             font-size: 0.92rem;
             margin-bottom: 5px;
         }
         .faq-a {
             font-size: 0.86rem;
-            color: #d4ccd1;
+            color: var(--text-body);
             margin: 0;
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=14">
+    <link rel="stylesheet" href="/static/calm.css?v=15">
 </head>
 
-<body>
+<body class="theme-light audience-women">
+    <script>
+        try {
+            var _manualWomenTheme = localStorage.getItem('aiseki_women_manual_theme');
+            if (_manualWomenTheme === 'default' || _manualWomenTheme === 'list') {
+                document.body.classList.remove('theme-light');
+            }
+        } catch (e) {}
+        function toggleForWomenTheme() {
+            var isLightNow = document.body.classList.toggle('theme-light');
+            try {
+                localStorage.setItem('aiseki_women_manual_theme', isLightNow ? 'light' : 'default');
+                localStorage.setItem('olg_view_theme', isLightNow ? 'light' : 'default');
+            } catch (e) {}
+            var btn = document.getElementById('for-women-theme-btn');
+            if (btn) btn.textContent = isLightNow ? '🌙 ダーク表示' : '☀️ ライト表示';
+        }
+    </script>
     <div class="wrap">
         <div class="top-header">
             <a href="/?mode=women" class="brand-link">相席ナビ <span>💄 女性目線モード対応</span></a>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                <button type="button" id="for-women-theme-btn" class="btn-outline" style="padding:6px 11px;font-size:0.76rem;" onclick="toggleForWomenTheme()">🌙 ダーク表示</button>
                 <a href="/?mode=women" class="btn-outline" style="padding:6px 12px;font-size:0.78rem;">💄 女子モードで全国順位を見る</a>
                 <a href="/columns" class="btn-outline" style="padding:6px 12px;font-size:0.78rem;">コラム一覧</a>
             </div>
         </div>
+        <script>
+            (function() {
+                var btn = document.getElementById('for-women-theme-btn');
+                if (btn && !document.body.classList.contains('theme-light')) {
+                    btn.textContent = '☀️ ライト表示';
+                }
+            })();
+        </script>
 
         <nav class="portal-global-nav" aria-label="サイト内メニュー">
             <a href="/?mode=women" class="portal-nav-link">💄 女子待ち0順位</a>
@@ -616,7 +680,7 @@
         <aside class="ladies-pr-section" aria-label="女性読者向けおすすめサービス">
             <div class="ladies-pr-head">
                 <span class="pr-kicker">PR</span>
-                <strong style="font-size:0.95rem;color:#f6dce2;">💄 ラウンジ派の女性に選ばれている「1対1デート＆自分磨き」特集</strong>
+                <strong style="font-size:0.95rem;color:var(--rose-strong);">💄 ラウンジ派の女性に選ばれている「1対1デート＆自分磨き」特集</strong>
             </div>
             <p style="font-size:0.82rem;color:var(--text-sub);margin:0;">
                 「大人数の相席より1対1のカフェで落ち着いて話したい日」や「近距離のソファ席でも自信が持てる肌メンテナンス」に便利な女性向けサービスを厳選しました。

@@ -1743,6 +1743,21 @@ body.theme-light .audience-mode-bar {
     border-color: var(--calm-light-border);
 }
 
+/* 女性目線×ライトモード：ほんのりローズアイボリー調のサロン・雑誌風パレット */
+body.theme-light.audience-women {
+    --calm-light-bg: #f7f3f1;
+    --calm-light-surface: #fdfbfa;
+    --calm-light-surface-2: #f0e9e6;
+    --calm-light-border: rgba(120, 62, 78, 0.11);
+    --calm-light-border-strong: rgba(120, 62, 78, 0.21);
+    --calm-light-text: #262022;
+    --calm-light-sub: #6d5c61;
+    --calm-light-accent: #9e5266;
+    --calm-light-accent-soft: rgba(158, 82, 102, 0.11);
+    background-color: var(--calm-light-bg) !important;
+    color: var(--calm-light-text) !important;
+}
+
 body.theme-light .audience-mode-label {
     color: var(--calm-light-sub);
 }
