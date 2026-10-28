@@ -2052,84 +2052,19 @@ class FullAuditRegressionTests(unittest.TestCase):
             ai_cand_eval = next(c for c in res_bad['evaluation']['candidates'] if c['style'] == 'ai_live_adlib')
             self.assertEqual(ai_cand_eval['scores']['data_specificity'], -50)
 
-            # 5. Vertex AI Express `AQ....` key routes directly to `aiplatform.googleapis.com` (Google Cloud Free Credit / Agent Platform API!)
+            # 5. Modern AI Studio `AQ....` auth key targets `gemini-2.5-pro` first with deep thinking (`thinkingBudget: 1536`)
             sns_editorial.set_gemini_api_key('AQ.Ab8RN6SampleExpressKey1234dgKQ')
             with patch('sns_editorial.requests.post', return_value=mock_resp_ok) as mock_aq_post:
                 res_aq = sns_editorial.run_editorial_pipeline(
                     sample_stores, slot_label='22:00', channel='x', use_ai=True, force_ai_refresh=True
                 )
-                rv_aq_ok = self.client.post('/api/sns-editorial/ai-config', json={'action': 'verify_vertex'}).get_json()
             self.assertEqual(res_aq['winner']['style'], 'ai_live_adlib')
-            called_url = mock_aq_post.call_args_list[0][0][0]
-            called_params = mock_aq_post.call_args_list[0][1]['params']
-            called_json = mock_aq_post.call_args_list[0][1]['json']
-            self.assertEqual(
-                called_url,
-                'https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-2.5-pro:generateContent',
-            )
-            self.assertEqual(called_params, {'key': 'AQ.Ab8RN6SampleExpressKey1234dgKQ'})
+            called_url = mock_aq_post.call_args[0][0]
+            called_json = mock_aq_post.call_args[1]['json']
+            self.assertIn('generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent', called_url)
             self.assertEqual(called_json['generationConfig'].get('thinkingConfig'), {'thinkingBudget': 1536})
-            self.assertEqual(called_json['generationConfig'].get('maxOutputTokens'), 4136)
-            self.assertTrue(rv_aq_ok['ok'])
-            self.assertEqual(rv_aq_ok['key_kind'], 'vertex_express')
-
-            # 5a. Google Cloud `AIzaSy...` key verified on `aiplatform.googleapis.com` also routes directly to Vertex Free Credit!
-            sns_editorial.set_gemini_api_key('AIzaSyGcpFreeCreditKey9999')
-            with patch('sns_editorial.requests.post', return_value=mock_resp_ok) as mock_gcp_aiza_post:
-                rv_gcp_ok = self.client.post('/api/sns-editorial/ai-config', json={'action': 'verify_vertex'}).get_json()
-                self.assertTrue(rv_gcp_ok['ok'])
-                self.assertEqual(rv_gcp_ok['key_kind'], 'vertex_express')
-                parsed_v, model_v, _ = sns_editorial.call_editorial_ai_json('テストプロンプト')
-                self.assertIsNotNone(parsed_v)
-                self.assertIn('Vertex無料枠', model_v)
-                self.assertIn('aiplatform.googleapis.com', mock_gcp_aiza_post.call_args[0][0])
-
-            # 5b. Standard `AIza...` key + shared `google_credentials.json` Service Account:
-            #     Vertex SA takes #1 priority at 0 yen, and cleanly fails over to AI Studio `AIza...` if Vertex SA returns 403 SERVICE_DISABLED!
-            sns_editorial.set_gemini_api_key('AIzaSyDummyKey1234567890')
-            fake_sa_info = {
-                'project_id': 'loungemonitor',
-                'client_email': 'lounge-monitor-bot@loungemonitor.iam.gserviceaccount.com',
-                'source_label': 'google_credentials.json（テスト）',
-                'cred_dict': {'project_id': 'loungemonitor', 'client_email': 'lounge-monitor-bot@loungemonitor.iam.gserviceaccount.com', 'private_key': 'dummy'},
-            }
-            with patch('sns_editorial._resolve_vertex_service_account_info', return_value=fake_sa_info), \
-                 patch('sns_editorial._get_vertex_access_token', return_value=('ya29.mock_vertex_token', '')), \
-                 patch('sns_editorial.requests.post', return_value=mock_resp_ok) as mock_v_post:
-                sns_editorial._vertex_auth_state['backoff_until'] = 0.0
-                res_vertex = sns_editorial.run_editorial_pipeline(
-                    sample_stores, slot_label='22:00', channel='x', use_ai=True, force_ai_refresh=True
-                )
-                self.assertEqual(res_vertex['winner']['style'], 'ai_live_adlib')
-                v_url = mock_v_post.call_args[0][0]
-                v_headers = mock_v_post.call_args[1]['headers']
-                self.assertEqual(
-                    v_url,
-                    'https://aiplatform.googleapis.com/v1/projects/loungemonitor/locations/global/publishers/google/models/gemini-2.5-pro:generateContent',
-                )
-                self.assertEqual(v_headers.get('Authorization'), 'Bearer ya29.mock_vertex_token')
-                self.assertIn('Vertex無料枠', res_vertex['winner']['ai_model'])
-
-                # Verify `/api/sns-editorial/ai-config` `verify_vertex` translates 403 SERVICE_DISABLED into exact Japanese guide + console URL
-                mock_403 = MagicMock()
-                mock_403.status_code = 403
-                mock_403.text = 'Vertex AI API has not been used in project loungemonitor before or it is disabled. SERVICE_DISABLED'
-                with patch('sns_editorial.requests.post', return_value=mock_403):
-                    rv_diag = self.client.post('/api/sns-editorial/ai-config', json={'action': 'verify_vertex'}).get_json()
-                self.assertFalse(rv_diag['ok'])
-                self.assertEqual(rv_diag['reason_code'], 'api_disabled')
-                self.assertIn('loungemonitor', rv_diag['fix_url'])
-
-                # And if Vertex returns 403 during live posting, `call_editorial_ai_json` seamlessly fails over to AI Studio in the same call!
-                sns_editorial._vertex_auth_state['backoff_until'] = 0.0
-                with patch('sns_editorial.requests.get', return_value=MagicMock(status_code=503)), \
-                     patch('sns_editorial.requests.post', side_effect=[mock_403, mock_resp_ok]) as mock_failover_post:
-                    parsed_fo, model_fo, err_fo = sns_editorial.call_editorial_ai_json('テストプロンプト')
-                self.assertIsNotNone(parsed_fo)
-                self.assertEqual(model_fo, 'gemini-2.5-pro')
-                self.assertEqual(mock_failover_post.call_count, 2)
-            sns_editorial._vertex_auth_state['backoff_until'] = 0.0
-            sns_editorial._vertex_auth_state['last_vertex_error'] = ''
+            self.assertEqual(called_json['generationConfig'].get('maxOutputTokens'), 2600)
+            self.assertEqual(res_aq['gemini_status']['state'], 'active')
 
             # 6. HTML page `GET /staff/sns-editorial` NEVER blocks on Gemini HTTP calls (0 network posts, instant render)
             sns_editorial.clear_editorial_ai_cache()

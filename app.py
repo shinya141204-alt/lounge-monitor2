@@ -1969,36 +1969,13 @@ def api_sns_editorial_gemini_key():
             pass
         clear_fast_http_caches()
 
-    if action == 'verify_vertex':
-        vres = sns_editorial.verify_vertex_connection()
-        if vres.get('ok'):
-            _flush_editorial_caches()
-        vres['gemini_status'] = sns_editorial.get_gemini_status()
-        return jsonify(vres)
-
-    if action == 'toggle_vertex':
-        enabled = bool(payload.get('enabled', True))
-        sns_editorial.set_vertex_enabled(enabled)
-        _flush_editorial_caches()
-        return jsonify({
-            'ok': True,
-            'vertex_enabled': enabled,
-            'message': (
-                '☁️ Google Cloud 無料クレジット枠（Vertex AI）を有効化しました！'
-                if enabled else
-                'Vertex AI ルートを一時停止しました（登録済みAPIキーまたは安全案へ切り替わります）。'
-            ),
-            'gemini_status': sns_editorial.get_gemini_status(),
-        })
-
     if action == 'set_pref':
         saved_pref = sns_editorial.set_ai_engine_pref(payload.get('engine_pref') or 'auto')
         _flush_editorial_caches()
         pref_labels = {
-            'auto': '自動ハイブリッド（Google Cloud 無料クレジット枠 / Claude / Gemini 自動最適切替）',
-            'vertex': '☁️ Google Cloud 無料クレジット最優先（Vertex AI：Gemini 2.5 Pro）',
-            'claude': 'Claude Sonnet 最優先（障害時はVertex/Geminiへ自動退避）',
-            'gemini': 'AI Studio キー最優先（障害時はVertex/Claudeへ自動退避）',
+            'auto': '自動ハイブリッド（Claude登録時はClaude Sonnet優先・未登録時は上位Gemini Pro/Flash）',
+            'claude': 'Claude Sonnet 最優先（障害時はGeminiへ自動退避）',
+            'gemini': '上位 Gemini Pro / Flash 最優先（障害時はClaudeへ自動退避）',
         }
         return jsonify({
             'ok': True,
@@ -2023,21 +2000,7 @@ def api_sns_editorial_gemini_key():
 
     api_key = (payload.get('api_key') or '').strip()
     if not api_key or len(api_key) < 16:
-        return jsonify({'ok': False, 'error': '有効なAPIキーまたはサービスアカウントJSONを入力してください'}), 400
-
-    # Accept Google Cloud Service Account JSON (`{"type": "service_account", ...}`) directly for Free Credit Vertex AI!
-    if api_key.startswith('{') and 'service_account' in api_key:
-        try:
-            sa_res = sns_editorial.set_vertex_sa_json(api_key)
-        except Exception as e:
-            return jsonify({'ok': False, 'error': f'サービスアカウントJSONの形式エラー: {e}'}), 400
-        _flush_editorial_caches()
-        return jsonify({
-            'ok': True,
-            'provider': 'vertex',
-            'message': f"☁️ Google Cloud サービスアカウント（プロジェクト: {sa_res['project_id']}）を暗号化保存しました！無料クレジット枠で稼働します。",
-            'gemini_status': sns_editorial.get_gemini_status(),
-        })
+        return jsonify({'ok': False, 'error': '有効なAPIキーを入力してください（AIza... / AQ.... または sk-ant-...）'}), 400
 
     # Smartly detect Anthropic `sk-ant-...` vs Google `AIza...` / `AQ....` even if pasted into the other box
     is_claude_key = api_key.startswith('sk-ant-') or (provider == 'claude' and not api_key.startswith(('AIza', 'AQ.')))

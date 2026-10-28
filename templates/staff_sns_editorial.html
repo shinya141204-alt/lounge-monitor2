@@ -550,32 +550,14 @@
             </div>
 
             <div id="gemini-key-drawer" class="key-drawer" style="display: {{ 'none' if (editorial.gemini_status and editorial.gemini_status.configured and (editorial.gemini_status.state == 'active' or editorial.ai_pending_async)) else 'block' }};">
-                {% if editorial.gemini_status and editorial.gemini_status.vertex_available %}
-                <div style="padding:10px 12px; border-radius:10px; background:rgba(123,196,159,0.11); border:1px solid rgba(123,196,159,0.38); margin-bottom:10px; font-size:0.79rem; line-height:1.6;">
-                    <div style="font-weight:800; color:#d3f3e2; margin-bottom:4px;">☁️ Google Cloud 無料クレジット連動（スプレッドシート共通認証・新規キー発行不要！）</div>
-                    <div style="color:var(--sub);">
-                        検出済みプロジェクト：<code>{{ editorial.gemini_status.vertex_project_id }}</code> ／ 認証：<code>{{ editorial.gemini_status.vertex_client_email }}</code><br>
-                        ① <a href="{{ editorial.gemini_status.vertex_api_console_url }}" target="_blank" rel="noopener" style="color:var(--gold); font-weight:700;">Vertex AI API を有効化 ↗</a>
-                        　② 必要時のみ <a href="{{ editorial.gemini_status.vertex_iam_console_url }}" target="_blank" rel="noopener" style="color:var(--gold); font-weight:700;">IAM画面 ↗</a> で上記メールにロール <code>Vertex AI ユーザー</code> を追加
-                    </div>
-                    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
-                        <input type="file" id="vertex-sa-file-input" accept=".json,application/json,text/plain" style="display:none;" onchange="uploadVertexJsonFile(this)">
-                        <button type="button" class="copy-btn" onclick="document.getElementById('vertex-sa-file-input').click()">📂 JSONキーファイルを選択して登録</button>
-                        <a href="https://console.cloud.google.com/iam-admin/serviceaccounts" target="_blank" rel="noopener" class="copy-btn" style="text-decoration:none; display:inline-flex; align-items:center;">☁️ サービスアカウント作成画面 ↗</a>
-                        <button type="button" class="copy-btn" onclick="verifyVertexAi(this)">🔍 無料クレジット（Vertex AI）開通テストを実行</button>
-                    </div>
-                </div>
-                {% endif %}
-
                 <div style="font-size:0.79rem; color:var(--sub); line-height:1.55;">
-                    💡 <strong>マルチAI本音執筆エンジン</strong>：Google Cloud 無料クレジット枠（Vertex AI <code>gemini-2.5-pro</code>）を実質0円で最優先消化でき、万が一の未開通時も既存の AI Studio キーや <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener" style="color:var(--gold); font-weight:700;">Claude キー ↗</a> へ自動フェイルオーバーします。
+                    💡 <strong>両対応AI執筆エンジン</strong>：既存の Google キーは自動で上位モデル（<code>Gemini Pro / 標準Flash</code>）へ昇格済みです。さらに日本語の人間味を極めたい場合は、<a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener" style="color:var(--gold); font-weight:700;">Anthropic Console ↗</a> の <code>sk-ant-...</code> キーも追加できます（両方登録時は自動フェイルオーバー対応・全枠使っても月1,000〜1,800円前後）。
                 </div>
 
                 <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:10px;">
                     <span style="font-size:0.76rem; color:var(--sub); font-weight:700;">優先AIエンジン：</span>
-                    <button type="button" class="ai-btn" onclick="saveEnginePref('vertex')" style="opacity:{{ '1' if (editorial.gemini_status and editorial.gemini_status.engine_pref == 'vertex') else '0.72' }};">☁️ 無料クレジット最優先（Vertex AI：Gemini 2.5 Pro）</button>
-                    <button type="button" class="ai-btn" onclick="saveEnginePref('auto')" style="opacity:{{ '1' if (not editorial.gemini_status or editorial.gemini_status.engine_pref == 'auto') else '0.65' }};">⚡ 自動最適切替</button>
-                    <button type="button" class="ai-btn" onclick="saveEnginePref('gemini')" style="opacity:{{ '1' if (editorial.gemini_status and editorial.gemini_status.engine_pref == 'gemini') else '0.65' }};">♊ AI Studio キー優先</button>
+                    <button type="button" class="ai-btn" onclick="saveEnginePref('auto')" style="opacity:{{ '1' if (not editorial.gemini_status or editorial.gemini_status.engine_pref == 'auto') else '0.65' }};">⚡ 自動（Claude登録時はClaude優先）</button>
+                    <button type="button" class="ai-btn" onclick="saveEnginePref('gemini')" style="opacity:{{ '1' if (editorial.gemini_status and editorial.gemini_status.engine_pref == 'gemini') else '0.65' }};">♊ 上位 Gemini Pro/Flash 優先</button>
                     <button type="button" class="ai-btn" onclick="saveEnginePref('claude')" style="opacity:{{ '1' if (editorial.gemini_status and editorial.gemini_status.engine_pref == 'claude') else '0.65' }};">✍️ Claude Sonnet 優先</button>
                 </div>
 
@@ -877,11 +859,6 @@
                 drawer.style.display = "none";
             } else if (drawer && st.state === "degraded") {
                 drawer.style.display = "block";
-                var dMsg = document.getElementById("gemini-key-msg");
-                if (dMsg && st.last_error) {
-                    dMsg.style.color = "#ffd6d6";
-                    dMsg.innerText = "⚠️ " + st.last_error;
-                }
             }
 
             var chipsEl = document.getElementById("context-chips");
@@ -996,52 +973,6 @@
                 });
         }
 
-        function verifyVertexAi(btn) {
-            var msg = document.getElementById("gemini-key-msg");
-            var orig = btn ? btn.innerText : "";
-            if (btn) {
-                btn.disabled = true;
-                btn.innerText = "🔍 Vertex AI 接続テスト中...";
-            }
-            if (msg) {
-                msg.style.color = "#d3f3e2";
-                msg.innerText = "☁️ Google Cloud 無料クレジット枠（Vertex AI：gemini-2.5-pro）への疎通を確認中...";
-            }
-            fetch("/api/sns-editorial/ai-config", {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({action: "verify_vertex"})
-            }).then(function(r) { return r.json(); }).then(function(data) {
-                if (btn) {
-                    btn.disabled = false;
-                    btn.innerText = orig;
-                }
-                if (data && data.ok) {
-                    if (msg) {
-                        msg.style.color = "#d3f3e2";
-                        msg.innerText = "✅ " + data.message;
-                    }
-                    triggerAsyncAiRefresh(true, false);
-                } else if (msg) {
-                    msg.style.color = "#ffd6d6";
-                    var errHtml = "⚠️ " + escHtml((data && data.error) || "開通確認に失敗しました");
-                    if (data && data.fix_url) {
-                        errHtml += ' 👉 <a href="' + escHtml(data.fix_url) + '" target="_blank" rel="noopener" style="color:var(--gold); font-weight:800;">Google Cloudの設定画面を開く ↗</a>';
-                    }
-                    msg.innerHTML = errHtml;
-                }
-            }).catch(function() {
-                if (btn) {
-                    btn.disabled = false;
-                    btn.innerText = orig;
-                }
-                if (msg) {
-                    msg.style.color = "#ffd6d6";
-                    msg.innerText = "⚠️ 通信エラーが発生しました";
-                }
-            });
-        }
-
         function saveEnginePref(pref) {
             var msg = document.getElementById("gemini-key-msg");
             if (msg) {
@@ -1061,43 +992,6 @@
                     triggerAsyncAiRefresh(true, false);
                 }
             });
-        }
-
-        function uploadVertexJsonFile(fileInput) {
-            var file = fileInput && fileInput.files && fileInput.files[0];
-            if (!file) return;
-            var msg = document.getElementById("gemini-key-msg");
-            if (msg) {
-                msg.style.color = "#d3f3e2";
-                msg.innerText = "📂 JSONキーファイルを読み込んで暗号化保存中...";
-            }
-            var reader = new FileReader();
-            reader.onload = function(ev) {
-                var txt = (ev.target && ev.target.result ? String(ev.target.result) : "").trim();
-                fileInput.value = "";
-                fetch("/api/sns-editorial/ai-config", {
-                    method: "POST",
-                    headers: {"Content-Type": "application/json"},
-                    body: JSON.stringify({action: "save", provider: "vertex", api_key: txt})
-                }).then(function(r) { return r.json(); }).then(function(data) {
-                    if (data && data.ok) {
-                        if (msg) {
-                            msg.style.color = "#d3f3e2";
-                            msg.innerText = "✅ " + data.message + " 続けて開通テストを実行します...";
-                        }
-                        verifyVertexAi(null);
-                    } else if (msg) {
-                        msg.style.color = "#ffd6d6";
-                        msg.innerText = "⚠️ " + ((data && data.error) || "JSONキーの保存に失敗しました");
-                    }
-                }).catch(function() {
-                    if (msg) {
-                        msg.style.color = "#ffd6d6";
-                        msg.innerText = "⚠️ 通信エラーが発生しました";
-                    }
-                });
-            };
-            reader.readAsText(file);
         }
 
         function saveGeminiKey(provider) {
