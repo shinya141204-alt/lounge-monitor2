@@ -641,7 +641,7 @@ def execute_scheduled_ladies_instagram_post(
         refresh_ig_token_if_needed(force=False)
         ts_code = now_jst.strftime("%Y%m%d_%H%M")
         live_ctx = ig_carousel_generator.build_forecast_context(live_stores=stores, now_jst=now_jst)
-        caption = ladies_guide.build_instagram_ladies_caption(stores, slot_label=slot_label, now_jst=now_jst)
+        caption = ladies_guide.build_instagram_ladies_caption(stores, slot_label=slot_label, now_jst=now_jst, use_ai=True)
         image_url = f"{SITE_URL}/ogp/ig-slide/2.jpg?s={ts_code}"
         _warm_slide_urls([image_url], ctx=live_ctx)
         res = post_single_image_to_instagram(image_url, caption)

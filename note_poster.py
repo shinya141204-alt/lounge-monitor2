@@ -125,23 +125,57 @@ def fetch_latest_note_articles() -> list:
     return articles
 
 
-def build_note_tweet_text(title: str, link: str, force: bool = False) -> str:
+def build_note_tweet_text(title: str, link: str, force: bool = False, use_ai: bool = False) -> str:
     """
     Build a natural, human-toned promotional post strictly within X's 280 weighted characters limit.
+    When `use_ai=True`, crafts an authentic behind-the-scenes author monologue tailored to `title`.
     """
     now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
-    
-    footer = "』\n\n実際の混雑データを見ながら、外さないお店や時間帯の選び方をまとめました。\n記事リンクはリプ欄へ👇\n#相席ナビ #相席ラウンジ"
+
+    if use_ai and title:
+        try:
+            import sns_editorial
+            if sns_editorial.has_any_ai_key(allow_blocking=True):
+                prompt = (
+                    "あなたは全国53店舗の相席ラウンジ計測サイト『相席ナビ』の運営中の人です。\n"
+                    f"いま note に新しい記事『{title}』を公開したところです。\n"
+                    "定型文の『新しいnoteを書きました✍️』ではなく、なぜこのテーマを深夜に書きたくなったのか、現場モニターを見ていてずっと気になっていた本音をこぼすような"
+                    "Xの告知1ポスト目（90〜122文字以内、X換算256ウェイト以下、URLは本文に絶対に入れない）を書いてください。\n\n"
+                    f"{sns_editorial.HUMAN_INSIDER_VOICE_GUIDE}\n\n"
+                    "・最後は自然にリプ欄のリンクへ流して『#相席ナビ #相席ラウンジ』で締めること。架空の人数は書かないこと。\n"
+                    '出力はJSON形式のみ：{"thinking_memo": "推敲メモ", "main_text": "投稿本文"}'
+                )
+                parsed, _, _ = sns_editorial.call_editorial_ai_json(
+                    prompt=prompt,
+                    max_output_tokens=1200,
+                    thinking_budget=1024,
+                    total_deadline_sec=18.0,
+                    now_jst=now_jst,
+                )
+                if parsed and parsed.get("main_text"):
+                    ai_txt = sns_editorial._postprocess_ai_main_text(parsed["main_text"], channel="x")
+                    if force:
+                        ai_txt += f"\n(⏱️{now_jst.strftime('%H:%M:%S')})"
+                    wt = x_poster.compute_twitter_weight(ai_txt)
+                    if "http" not in ai_txt and 100 <= wt <= 274:
+                        return ai_txt
+        except Exception as e:
+            logger.warning(f"Note X AI intro fallback: {e}")
+
+    intros = [
+        "モニター見てて前からずっと言語化したかった話をnoteにまとめました✍️\n『",
+        "現場の数字見てると綺麗事だけじゃ済まないな…と思う部分をnoteに書きました。\n『",
+        "久しぶりにちょっと踏み込んだ本音コラムをnoteに出しました✍️\n『",
+    ]
+    header = intros[now_jst.day % len(intros)]
+    footer = "』\n\n気になってた人はリプ欄からどうぞ👇\n#相席ナビ #相席ラウンジ"
     if force:
         footer += f"\n(⏱️{now_jst.strftime('%H:%M:%S')})"
-    
-    header = "新しいnoteを書きました✍️\n『"
-    
+
     def calc_weight(t: str) -> int:
         return sum(1 if ord(c) < 128 else 2 for c in t)
 
     base_weight = calc_weight(header + footer)
-    
     max_title_weight = 276 - base_weight
 
     cur_weight = 0
@@ -294,7 +328,7 @@ def check_and_post_new_note(force: bool = False, article_index: int = 0) -> dict
     link = target["link"]
     title = target["title"]
 
-    tweet_text = build_note_tweet_text(title, link, force=force)
+    tweet_text = build_note_tweet_text(title, link, force=force, use_ai=True)
     reply_text = build_note_reply_text(link)
     result = x_poster.post_to_x(tweet_text, reply_text=reply_text)
 

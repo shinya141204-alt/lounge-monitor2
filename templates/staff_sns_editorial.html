@@ -514,23 +514,23 @@
             </div>
         </div>
 
-        <!-- Gemini AI Ad-lib & Live Weather Control Panel -->
+        <!-- Dual-Engine AI (Gemini Pro/Flash + Claude Sonnet) Ad-lib Control Panel -->
         <div class="ai-panel">
             <div class="ai-panel-top">
                 <div>
                     {% if editorial.ai_pending_async and editorial.gemini_status and editorial.gemini_status.configured %}
-                    <span id="ai-status-pill" class="ai-status-pill ai-status-loading">🧠 Gemini AI が長考モードで3案を脳内コンペ・推敲中...（約4〜6秒）</span>
+                    <span id="ai-status-pill" class="ai-status-pill ai-status-loading">🧠 上位AI編集長が長考モードで3案を脳内コンペ・本音推敲中...（約5〜10秒）</span>
                     {% elif editorial.gemini_status and editorial.gemini_status.state == 'active' %}
-                    <span id="ai-status-pill" class="ai-status-pill ai-status-on">🟢 Gemini AI 長考アドリブ執筆：正常稼働中（{{ editorial.gemini_status.last_model }} ｜ {{ editorial.gemini_status.masked_key }}）</span>
+                    <span id="ai-status-pill" class="ai-status-pill ai-status-on">🟢 {{ editorial.gemini_status.engine_badge or 'AI本音執筆' }}：正常稼働中（{{ editorial.gemini_status.last_model }} ｜ {{ editorial.gemini_status.masked_key }}）</span>
                     {% elif editorial.gemini_status and editorial.gemini_status.state == 'degraded' %}
                     <span id="ai-status-pill" class="ai-status-pill ai-status-off">🟠 AI通信エラーのため現在は安全案へ自動切替中（{{ editorial.gemini_status.masked_key }}）</span>
                     {% else %}
-                    <span id="ai-status-pill" class="ai-status-pill ai-status-off">🟡 Gemini APIキー未設定（現在は無料の天気・カレンダー連動モードで稼働中）</span>
+                    <span id="ai-status-pill" class="ai-status-pill ai-status-off">🟡 AIキー未設定（現在は無料の天気・カレンダー連動モードで稼働中）</span>
                     {% endif %}
                 </div>
                 <div class="ai-actions">
                     <button type="button" id="ai-regen-btn" class="ai-btn" onclick="triggerAsyncAiRefresh(true, false)" style="display: {{ 'inline-block' if (editorial.gemini_status and editorial.gemini_status.configured) else 'none' }};">🔄 別の長考アドリブ案を再生成テスト</button>
-                    <button type="button" class="ai-btn" onclick="toggleKeyDrawer()">🔑 Gemini APIキー設定（無料枠OK）</button>
+                    <button type="button" class="ai-btn" onclick="toggleKeyDrawer()">🔑 AIエンジン＆APIキー設定（Gemini / Claude 両対応）</button>
                 </div>
             </div>
 
@@ -550,14 +550,29 @@
             </div>
 
             <div id="gemini-key-drawer" class="key-drawer" style="display: {{ 'none' if (editorial.gemini_status and editorial.gemini_status.configured and (editorial.gemini_status.state == 'active' or editorial.ai_pending_async)) else 'block' }};">
-                <div style="font-size:0.78rem; color:var(--sub);">
-                    💡 <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="color:var(--gold); font-weight:700;">Google AI Studio（公式・無料APIキー発行ページ ↗）</a> で取得した <code>AIza...</code> キー、および <code>AQ....</code> キーの両方に対応しています。下に貼り付けて保存するだけでRenderの再起動なしで即座に有効になります。
+                <div style="font-size:0.79rem; color:var(--sub); line-height:1.55;">
+                    💡 <strong>両対応AI執筆エンジン</strong>：既存の Google キーは自動で上位モデル（<code>Gemini Pro / 標準Flash</code>）へ昇格済みです。さらに日本語の人間味を極めたい場合は、<a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener" style="color:var(--gold); font-weight:700;">Anthropic Console ↗</a> の <code>sk-ant-...</code> キーも追加できます（両方登録時は自動フェイルオーバー対応・全枠使っても月1,000〜1,800円前後）。
                 </div>
-                <div class="key-form-row">
-                    <input type="password" id="gemini-api-key-input" class="key-input" placeholder="AIzaSy... または AQ....（ここにAPIキーを貼り付け）" autocomplete="off">
-                    <button type="button" class="copy-btn" onclick="saveGeminiKey()">💾 暗号化保存してAIアドリブを有効化</button>
-                    <button type="button" id="clear-gemini-key-btn" class="back-btn" onclick="clearGeminiKey()" style="display: {{ 'inline-flex' if (editorial.gemini_status and editorial.gemini_status.configured) else 'none' }}; cursor:pointer;">登録キーを削除</button>
+
+                <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:10px;">
+                    <span style="font-size:0.76rem; color:var(--sub); font-weight:700;">優先AIエンジン：</span>
+                    <button type="button" class="ai-btn" onclick="saveEnginePref('auto')" style="opacity:{{ '1' if (not editorial.gemini_status or editorial.gemini_status.engine_pref == 'auto') else '0.65' }};">⚡ 自動（Claude登録時はClaude優先）</button>
+                    <button type="button" class="ai-btn" onclick="saveEnginePref('gemini')" style="opacity:{{ '1' if (editorial.gemini_status and editorial.gemini_status.engine_pref == 'gemini') else '0.65' }};">♊ 上位 Gemini Pro/Flash 優先</button>
+                    <button type="button" class="ai-btn" onclick="saveEnginePref('claude')" style="opacity:{{ '1' if (editorial.gemini_status and editorial.gemini_status.engine_pref == 'claude') else '0.65' }};">✍️ Claude Sonnet 優先</button>
                 </div>
+
+                <div class="key-form-row" style="margin-top:10px;">
+                    <input type="password" id="gemini-api-key-input" class="key-input" placeholder="Google Geminiキー: AIzaSy... / AQ.... {% if editorial.gemini_status and editorial.gemini_status.gemini_configured %}（現在: {{ editorial.gemini_status.gemini_masked_key }}）{% endif %}" autocomplete="off">
+                    <button type="button" class="copy-btn" onclick="saveGeminiKey('gemini')">💾 Geminiキーを保存</button>
+                    <button type="button" id="clear-gemini-key-btn" class="back-btn" onclick="clearGeminiKey('gemini')" style="display: {{ 'inline-flex' if (editorial.gemini_status and editorial.gemini_status.gemini_configured) else 'none' }}; cursor:pointer;">Gemini削除</button>
+                </div>
+
+                <div class="key-form-row" style="margin-top:8px;">
+                    <input type="password" id="claude-api-key-input" class="key-input" placeholder="Anthropic Claudeキー（任意）: sk-ant-... {% if editorial.gemini_status and editorial.gemini_status.claude_configured %}（現在: {{ editorial.gemini_status.claude_masked_key }}）{% endif %}" autocomplete="off">
+                    <button type="button" class="copy-btn" onclick="saveGeminiKey('claude')">💾 Claudeキーを保存</button>
+                    <button type="button" id="clear-claude-key-btn" class="back-btn" onclick="clearGeminiKey('claude')" style="display: {{ 'inline-flex' if (editorial.gemini_status and editorial.gemini_status.claude_configured) else 'none' }}; cursor:pointer;">Claude削除</button>
+                </div>
+
                 <div id="gemini-key-msg" style="font-size:0.78rem; margin-top:6px; color:#d3f3e2;"></div>
             </div>
         </div>
@@ -815,13 +830,13 @@
             if (pill) {
                 if (st.state === "active") {
                     pill.className = "ai-status-pill ai-status-on";
-                    pill.textContent = "🟢 Gemini AI 長考アドリブ執筆：正常稼働中（" + (st.last_model || "") + " ｜ " + (st.masked_key || "") + "）";
+                    pill.textContent = "🟢 " + (st.engine_badge || "上位AI本音執筆") + "：正常稼働中（" + (st.last_model || "") + " ｜ " + (st.masked_key || "") + "）";
                 } else if (st.state === "degraded") {
                     pill.className = "ai-status-pill ai-status-off";
                     pill.textContent = "🟠 AI通信エラーのため現在は安全案へ自動切替中（" + (st.masked_key || "") + "）";
                 } else {
                     pill.className = "ai-status-pill ai-status-off";
-                    pill.textContent = "🟡 Gemini APIキー未設定（現在は無料の天気・カレンダー連動モードで稼働中）";
+                    pill.textContent = "🟡 AIキー未設定（現在は無料の天気・カレンダー連動モードで稼働中）";
                 }
             }
 
@@ -833,7 +848,11 @@
             }
             var clearBtn = document.getElementById("clear-gemini-key-btn");
             if (clearBtn) {
-                clearBtn.style.display = st.configured ? "inline-flex" : "none";
+                clearBtn.style.display = st.gemini_configured ? "inline-flex" : "none";
+            }
+            var clearClaudeBtn = document.getElementById("clear-claude-key-btn");
+            if (clearClaudeBtn) {
+                clearClaudeBtn.style.display = st.claude_configured ? "inline-flex" : "none";
             }
             var drawer = document.getElementById("gemini-key-drawer");
             if (drawer && st.state === "active") {
@@ -928,7 +947,7 @@
             var regenBtn = document.getElementById("ai-regen-btn");
             if (!silentIfUnconfigured && pill) {
                 pill.className = "ai-status-pill ai-status-loading";
-                pill.textContent = "🧠 Gemini AI が長考モードで3案を脳内コンペ・推敲中...（約4〜6秒）";
+                pill.textContent = "🧠 上位AI編集長が長考モードで3案を脳内コンペ・本音推敲中...（約5〜10秒）";
             }
             if (regenBtn) {
                 regenBtn.disabled = true;
@@ -954,8 +973,30 @@
                 });
         }
 
-        function saveGeminiKey() {
-            var inp = document.getElementById("gemini-api-key-input");
+        function saveEnginePref(pref) {
+            var msg = document.getElementById("gemini-key-msg");
+            if (msg) {
+                msg.style.color = "#d3f3e2";
+                msg.innerText = "優先AIエンジンを切り替えています...";
+            }
+            fetch("/api/sns-editorial/ai-config", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({action: "set_pref", engine_pref: pref})
+            }).then(function(r) { return r.json(); }).then(function(data) {
+                if (data.ok) {
+                    if (msg) {
+                        msg.style.color = "#d3f3e2";
+                        msg.innerText = "✅ " + data.message;
+                    }
+                    triggerAsyncAiRefresh(true, false);
+                }
+            });
+        }
+
+        function saveGeminiKey(provider) {
+            var prov = provider || "gemini";
+            var inp = document.getElementById(prov === "claude" ? "claude-api-key-input" : "gemini-api-key-input");
             var msg = document.getElementById("gemini-key-msg");
             var val = inp ? inp.value.trim() : "";
             if (!val) {
@@ -965,10 +1006,10 @@
             }
             msg.style.color = "#d3f3e2";
             msg.innerText = "暗号化保存しています...";
-            fetch("/api/sns-editorial/gemini-key", {
+            fetch("/api/sns-editorial/ai-config", {
                 method: "POST",
                 headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({action: "save", api_key: val})
+                body: JSON.stringify({action: "save", provider: prov, api_key: val})
             }).then(function(r) { return r.json(); }).then(function(data) {
                 if (data.ok) {
                     msg.style.color = "#d3f3e2";
@@ -985,12 +1026,14 @@
             });
         }
 
-        function clearGeminiKey() {
-            if (!confirm("管理画面に登録したGemini APIキーを削除しますか？")) return;
-            fetch("/api/sns-editorial/gemini-key", {
+        function clearGeminiKey(provider) {
+            var prov = provider || "gemini";
+            var label = prov === "claude" ? "Claude APIキー" : "Gemini APIキー";
+            if (!confirm("管理画面に登録した" + label + "を削除しますか？")) return;
+            fetch("/api/sns-editorial/ai-config", {
                 method: "POST",
                 headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({action: "clear"})
+                body: JSON.stringify({action: "clear", provider: prov})
             }).then(function() {
                 window.location.href = "/staff/sns-editorial?channel=" + encodeURIComponent(CURRENT_CHANNEL) + "&slot=" + encodeURIComponent(CURRENT_SLOT);
             });

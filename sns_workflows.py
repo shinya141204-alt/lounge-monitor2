@@ -283,7 +283,7 @@ def execute_scheduled_weekly_x_post(force=False):
     if not report or "error" in report:
         return {"status": "error", "detail": str(report.get("error") if report else "Empty report")}
 
-    main_text, reply_text = x_poster.build_weekly_report_tweet_thread(report)
+    main_text, reply_text = x_poster.build_weekly_report_tweet_thread(report, use_ai=True)
     if not main_text:
         return {"status": "error", "detail": "Empty weekly tweet text"}
 

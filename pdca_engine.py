@@ -471,11 +471,11 @@ def _generate_pdca_briefing(diag: dict, use_ai: bool = True, cache_only: bool = 
         f"現在は『{diag['demand_gap']['top_hub']['cluster_label']}』周辺の現場関心が高く、"
         f"SNSからは体験・街別ギャップ系の切り口を優遇し、コラムは『{diag['proposed_directives']['recommended_custom_topic']}』を次の勝負球として仕込むのが最も効率的です。"
     )
-    api_key = sns_editorial.get_gemini_api_key(allow_blocking=(not cache_only))
-    if not use_ai or not api_key:
+    if not use_ai or not sns_editorial.has_any_ai_key(allow_blocking=(not cache_only)):
         return {"text": fallback_summary, "is_ai": False, "model": ""}
 
     sig = (
+        sns_editorial.get_ai_engine_pref(allow_blocking=False),
         diag["overall_score"],
         diag["funnel"].get("pv_total", 0),
         diag["funnel"].get("aff_total", 0),
@@ -501,32 +501,31 @@ def _generate_pdca_briefing(diag: dict, use_ai: bool = True, cache_only: bool = 
     prompt = (
         "あなたは『相席ナビ』のグロース統括・作戦参謀長です。以下の実測PDCA診断データを読み、"
         "オーナーに向けて「①いま一番うまくいっている点」「②一番もったいない弱点」「③システムが自動で切り替えた次の一手」を、"
-        "頼もしい人間の参謀が隣でブリーフィングするような自然な口語（220〜320文字程度、箇条書きではなく読みやすい2〜3段落）でまとめてください。\n"
+        "頼もしい人間の参謀が隣で本音でブリーフィングするような自然な口語（220〜320文字程度、箇条書きではなく読みやすい2〜3段落）でまとめてください。\n"
         "※単体の『オリエンタル』表記は禁止（必要なら『オリエンタルラウンジ』または『オリラジ』）。JSON形式 `{\"briefing\": \"...\"}` のみ返してください。\n\n"
         f"{json.dumps(prompt_payload, ensure_ascii=False)}"
     )
 
-    model_name = sns_editorial._last_gemini_meta.get("last_model") or sns_editorial.DEFAULT_GEMINI_MODELS[0]
     try:
-        url, headers, _, payload = sns_editorial._build_endpoint_request("ai_studio", model_name, api_key, prompt)
-        resp = requests.post(url, headers=headers, json=payload, timeout=9.0)
-        if resp.status_code == 200:
-            parts = (((resp.json() or {}).get("candidates") or [{}])[0].get("content") or {}).get("parts") or []
-            raw_txt = "".join(p.get("text", "") for p in parts if not p.get("thought")).strip()
-            if raw_txt.startswith("```"):
-                raw_txt = re.sub(r"^```(?:json)?\s*", "", raw_txt)
-                raw_txt = re.sub(r"\s*```$", "", raw_txt)
-            parsed = json.loads(raw_txt, strict=False)
+        parsed, model_used, _ = sns_editorial.call_editorial_ai_json(
+            prompt=prompt,
+            max_output_tokens=1500,
+            thinking_budget=1024,
+            total_deadline_sec=18.0,
+            per_call_timeout_sec=11.0,
+            allow_blocking=True,
+        )
+        if parsed and parsed.get("briefing"):
             b_txt = column_editorial._sanitize_brand_names((parsed.get("briefing") or "").strip())
             if b_txt:
-                res = {"text": b_txt, "is_ai": True, "model": model_name, "pending_async": False}
+                res = {"text": b_txt, "is_ai": True, "model": model_used, "pending_async": False}
                 with _pdca_lock:
                     _briefing_ai_cache[sig] = {"ts": now_t, "val": res}
                     while len(_briefing_ai_cache) > 16:
                         _briefing_ai_cache.popitem(last=False)
                 return res
     except Exception as e:
-        logger.warning(f"[pdca_engine] Gemini briefing fallback: {e}")
+        logger.warning(f"[pdca_engine] AI briefing fallback: {e}")
 
     return {"text": fallback_summary, "is_ai": False, "model": "", "pending_async": False}
 

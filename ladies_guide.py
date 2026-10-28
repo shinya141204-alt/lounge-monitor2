@@ -210,15 +210,32 @@ def build_ladies_live_board(live_stores: list, all_events: list = None) -> dict:
     }
 
 
+def _verify_ladies_numbers(text: str, picks: list) -> bool:
+    """Ensure every male/female count mentioned in AI-generated ladies text matches `picks`."""
+    import sns_editorial
+    allowed_m = {int(p["men"]) for p in picks} | {0}
+    allowed_w = {int(p["women"]) for p in picks} | {0, 10}
+    for vm in sns_editorial._extract_headcount_values(text, "men"):
+        if vm not in allowed_m:
+            return False
+    for vw in sns_editorial._extract_headcount_values(text, "women"):
+        if vw not in allowed_w:
+            return False
+    return True
+
+
 def build_threads_ladies_post(
     stores: list,
     slot_label: str = "19:30",
     now_jst: datetime.datetime = None,
+    use_ai: bool = False,
 ) -> str:
     """
     Build a women-perspective Threads alert ('今夜の女子得＆待ちゼロ速報', <= 490 chars).
+    When `use_ai=True` (used by scheduled auto-posts), uses Dual-Engine Chief Writer for fresh human monologue.
     Guarantees zero bare 'オリエンタル' (`オリエンタル(?!ラウンジ)`) and natural human conversational tone.
     """
+    import sns_editorial
     now_jst = now_jst or datetime.datetime.now(JST)
     weekdays_ja = ["月", "火", "水", "木", "金", "土", "日"]
     wd = weekdays_ja[now_jst.weekday()]
@@ -239,36 +256,83 @@ def build_threads_ladies_post(
             "#相席ラウンジ"
         )
 
+    if use_ai and picks and sns_editorial.has_any_ai_key(allow_blocking=True):
+        try:
+            weather_ctx = sns_editorial.fetch_live_weather_context(allow_blocking=True) or {}
+            cal_ctx = sns_editorial.build_calendar_context(now_jst)
+            facts = {
+                "time": f"{now_jst.month}/{now_jst.day}({wd}) {now_jst.strftime('%H:%M')}",
+                "calendar": f"{cal_ctx.get('tag', '')} - {cal_ctx.get('note', '')}",
+                "weather": weather_ctx.get("summary") or weather_ctx.get("adlib_hint") or "",
+                "zero_wait_stores": [
+                    {
+                        "name": p["ja_name"],
+                        "casual_alias": p["casual_name"],
+                        "men": p["men"],
+                        "women": p["women"],
+                        "event": p["event_title"] if p.get("has_event") else "",
+                    }
+                    for p in picks
+                ],
+            }
+            prompt = (
+                "あなたは全国53店舗の相席ラウンジ人数モニターを見ている『相席ナビ』の運営中の人です。\n"
+                "これから友達と2軒目やディナー帰りにラウンジへ寄ろうか迷っている20〜30代の女性ペアに向けて、"
+                "Threads用のリアルで人間味あふれる独り言・裏メモ（全体で280〜450文字以内、絶対上限480文字）を1本書いてください。\n\n"
+                f"{sns_editorial.HUMAN_INSIDER_VOICE_GUIDE}\n\n"
+                "【必須ルール】\n"
+                "1. 1行目は『せっかく髪巻いてヒール履いて行ったのに受付で女子待ち30分って言われる夜が一番だるいんだけど…』や外の天気・曜日の空気感に絡めた生身の共感・ボヤきから入ること（角括弧【】見出し禁止）。\n"
+                "2. 下記の検証済みファクトシートにある店舗名と人数（男性XX名・女性YY名）のみを使い、1人も数値を変えないこと。単体の『オリエンタル』は禁止（『オリエンタルラウンジ〇〇』または『オリラジ〇〇』）。\n"
+                f"3. 文章の末尾は必ず次のフッター文字列を一字一句そのまま置いて終えること（ハッシュタグはこの末尾1個のみ）：\n{cta_footer}\n\n"
+                f"【検証済みファクトシート】\n{ sns_editorial.json.dumps(facts, ensure_ascii=False) }\n\n"
+                '出力はJSON形式のみ：{"thinking_memo": "どうAIっぽさを消して女子組に刺さる生の本音にしたか", "main_text": "投稿本文"}'
+            )
+            parsed, _, _ = sns_editorial.call_editorial_ai_json(
+                prompt=prompt,
+                max_output_tokens=1800,
+                thinking_budget=1280,
+                total_deadline_sec=22.0,
+                now_jst=now_jst,
+            )
+            if parsed and parsed.get("main_text"):
+                ai_txt = sns_editorial._postprocess_ai_main_text(parsed["main_text"], channel="threads")
+                if cta_footer not in ai_txt:
+                    ai_txt = re.sub(r"#相席[^\s]*", "", ai_txt).strip() + "\n\n" + cta_footer
+                if 200 <= len(ai_txt) <= 490 and _verify_ladies_numbers(ai_txt, picks):
+                    return ai_txt
+        except Exception:
+            pass
+
     if not picks:
         return (
-            f"{now_jst.month}/{now_jst.day}({wd})の夜、これから友達と2軒目や夜カフェ代わりにラウンジ寄ろうかな〜と迷っている女子組へ💄\n\n"
-            "実は女子が『受付で30分待たされる店』と『待ち0分で即ソファ席へ通される店』の差は、入る前の男女比だけでほぼ決まります。\n\n"
-            "男性が先行して盛り上がっている店舗を選ぶだけで、待ち時間ゼロ＆ドリンク提供まで圧倒的にスムーズ🥂\n\n"
+            f"{now_jst.month}/{now_jst.day}({wd})の夜、これから友達と2軒目どうしようかな〜って話してる女子組へ💄\n\n"
+            "正直、受付で『いま女子待ち30分です』って言われる店と『待ちゼロで即ソファ席に通される店』の差って、入る前の男女比だけでほぼ決まるんですよね。\n\n"
+            "男性が先に盛り上がってる店舗へスッと入る方が、ドリンク提供も席の空気も圧倒的にラクだったりします。\n\n"
             f"{cta_footer}"
         )
 
     openers = [
-        f"せっかく髪もメイクも仕上げたのに、ラウンジの受付で『女子待ち30分です』って言われる夜が一番テンション下がりますよね…💄（{now_jst.month}/{now_jst.day} {wd}曜夜メモ）",
-        f"{now_jst.month}/{now_jst.day}({wd})これから友達と「2軒目どこ行く？」って相談中の女子組へ🥂 いま受付待ちゼロで即座れそうな穴場だけ抜粋しました📝",
-        f"ぶっちゃけ女子組が相席ラウンジで当たり夜を引くコツ、『女余りの有名店を避けて、男性が先行してる店にスッと入る』これだけです💄",
+        f"せっかく髪もメイクも仕上げて行ったのに、受付で『女子待ち30分です』って言われる瞬間が一番テンション下がるじゃないですか…（{now_jst.month}/{now_jst.day} {wd}曜のモニター裏メモ）",
+        f"いまバックヤードでモニター見てたんだけど、{wd}曜のこの時間、店によって女子の入りやすさがだいぶ割れてます。",
+        f"正直、女子2人組がラウンジでハズレ夜を引かない一番シンプルな裏技って『女余りの有名店を避けて、男性が先行してる店にスッと入る』これだけだったりします💄",
     ]
     opener = openers[now_jst.day % len(openers)]
 
     pick_lines = []
     for p in picks:
-        ev_tag = "・🎁イベント中" if p["has_event"] else ""
+        ev_tag = "・特典あり" if p["has_event"] else ""
         pick_lines.append(f"・{p['ja_name']}（男性{p['men']}名 / 女性{p['women']}名{ev_tag}）")
 
     ev_line = ""
     if ev_picks and ev_picks[0]["event_title"]:
-        ev_line = f"\n🎁 本日『{ev_picks[0]['ja_name']}』などで「{ev_picks[0]['event_title']}」も開催中✨\n"
+        ev_line = f"\nちなみに今日『{ev_picks[0]['ja_name']}』あたりで「{ev_picks[0]['event_title']}」も出てるみたいです。\n"
 
     text = (
         f"{opener}\n\n"
-        f"🟢 いま男性先行・好バランスで即案内されやすい店舗\n"
+        f"いま男性先行で待ちゼロ案内になりやすそうなのはこのあたり。\n"
         + "\n".join(pick_lines)
         + f"\n{ev_line}\n"
-        "微妙な席に当たったとき角を立てずに席替え・退店するコツもまとめてるので、入る前の作戦会議にどうぞ👇\n\n"
+        "もし微妙な席に当たったとき角を立てずに抜ける口実もサイト側に置いてあるので、入る前にちらっと覗いてみてください。\n\n"
         f"{cta_footer}"
     )
 
@@ -284,14 +348,59 @@ def build_instagram_ladies_caption(
     stores: list,
     slot_label: str = "19:45",
     now_jst: datetime.datetime = None,
+    use_ai: bool = False,
 ) -> str:
     """Build an Instagram Feed/Carousel caption tailored for female followers ('今夜の女子得＆待ちゼロ速報')."""
+    import sns_editorial
     now_jst = now_jst or datetime.datetime.now(JST)
     weekdays_ja = ["月", "火", "水", "木", "金", "土", "日"]
     wd = weekdays_ja[now_jst.weekday()]
     board = build_ladies_live_board(stores)
     picks = [p for p in board["zero_wait_picks"] if p["men"] > 0][:4]
     ev_picks = board["event_picks"][:3]
+
+    if use_ai and picks and sns_editorial.has_any_ai_key(allow_blocking=True):
+        try:
+            weather_ctx = sns_editorial.fetch_live_weather_context(allow_blocking=True) or {}
+            cal_ctx = sns_editorial.build_calendar_context(now_jst)
+            facts = {
+                "time": f"{now_jst.month}/{now_jst.day}({wd}) {now_jst.strftime('%H:%M')}",
+                "calendar": f"{cal_ctx.get('tag', '')} - {cal_ctx.get('note', '')}",
+                "weather": weather_ctx.get("summary") or weather_ctx.get("adlib_hint") or "",
+                "zero_wait_stores": [
+                    {
+                        "name": p["ja_name"],
+                        "men": p["men"],
+                        "women": p["women"],
+                        "event": p["event_title"] if p.get("has_event") else "",
+                    }
+                    for p in picks
+                ],
+            }
+            prompt = (
+                "あなたは全国53店舗の相席ラウンジ人数モニターを見ている『相席ナビ』の運営中の人です。\n"
+                "Instagramを見ている20〜30代の女性フォロワーに向けて、今夜受付待ちゼロでスムーズに入れる店舗と裏ワザを教える生身のキャプション（420〜720文字）を1本書いてください。\n\n"
+                f"{sns_editorial.HUMAN_INSIDER_VOICE_GUIDE}\n\n"
+                "【必須ルール】\n"
+                "1. 『…続きを読む』で折りたたまれる前の最初の1〜2行目に、天気・前髪・ヒールの疲れ・女子待ちの気まずさなど、思わずタップしたくなるリアルな本音フックを書く（【】角括弧見出し禁止）。\n"
+                "2. 友達と合流する前に見返せるよう自然な口調で『保存📌』を促し、下記ファクトシートの店舗名と人数（男性XX名・女性YY名）を1人の狂いもなく正確に紹介すること。単体の『オリエンタル』表記は禁止。\n"
+                "3. プロフィールのリンク（aiseki-navi.com/for-women）の【女性目線モード】への案内を入れ、末尾は『#相席ナビ #相席ラウンジ #オリエンタルラウンジ #ag #JIS #女子会ディナー #夜カフェ』で締めること。\n\n"
+                f"【検証済みファクトシート】\n{ sns_editorial.json.dumps(facts, ensure_ascii=False) }\n\n"
+                '出力はJSON形式のみ：{"thinking_memo": "推敲メモ", "main_text": "キャプション本文"}'
+            )
+            parsed, _, _ = sns_editorial.call_editorial_ai_json(
+                prompt=prompt,
+                max_output_tokens=2000,
+                thinking_budget=1280,
+                total_deadline_sec=22.0,
+                now_jst=now_jst,
+            )
+            if parsed and parsed.get("main_text"):
+                ai_cap = sns_editorial._postprocess_ai_main_text(parsed["main_text"], channel="instagram")
+                if 320 <= len(ai_cap) <= 2000 and _verify_ladies_numbers(ai_cap, picks):
+                    return ai_cap
+        except Exception:
+            pass
 
     pick_lines = (
         "\n".join(f"・{p['ja_name']}（現在 男性{p['men']}名 / 女性{p['women']}名）" for p in picks)
@@ -306,21 +415,21 @@ def build_instagram_ladies_caption(
             if e.get("event_title")
         )
         if ev_bullets:
-            ev_section = f"\n🎁 本日チェックしたい店舗特典・限定フェア\n{ev_bullets}\n"
+            ev_section = f"\n🎁 今日チェックしておきたい店舗特典・フェア\n{ev_bullets}\n"
 
     caption = (
-        f"「せっかくメイクも服も整えたのに、受付で30分待たされた…」そんな失敗をゼロにする{wd}曜夜の女子向けメモです💄\n"
-        "友達と合流する直前に見返せるよう、右上の「保存📌」をどうぞ！\n\n"
-        "実は相席ラウンジって、女子人気が高すぎる時間帯の1店舗に集中すると『入場制限』や『女子だけの待機席』になりやすいんです。\n"
-        "逆に、いま男性が先行して入っている店舗を選べば【受付待ち0分・即乾杯】でフードやスイーツもスムーズに楽しめます🥂\n\n"
-        "🟢 いま男性先行・好バランスで入りやすい注目店\n"
+        f"せっかく髪巻いてメイク直して行ったのに、受付で『いま女子待ち30分です…』って言われる夜が一番しんどいんですよね（{wd}曜夜の裏メモ💄）\n"
+        "友達と合流する直前にすぐ見返せるよう、右上の「保存📌」置いといてください。\n\n"
+        "実は女子人気が偏りすぎてる1店舗に突撃すると『入場制限』や『女子だけの待機席』になりがちなんだけど、"
+        "逆にいま男性が先行して入っている店舗を選ぶだけで、受付待ちゼロでそのままソファ席へ通されます。\n\n"
+        "🟢 いま男性先行・好バランスで入りやすい店舗\n"
         f"{pick_lines}\n"
         f"{ev_section}\n"
-        "💡 女子2人組が損しない3つのマイルール\n"
-        "① 入る3分前に『相席ナビ』を【💄女性目線モード】にして男性先行店を選ぶ\n"
-        "② 顔写真付きの公的身分証（免許証・マイナカード等）を忘れずに持参する\n"
-        "③ もし会話が噛み合わない席でも無理して粘らず、お手洗いタイミングでスマートに席替え相談する\n\n"
-        "全国53店舗の『いま女子待ちゼロで入れる店舗一覧』と『角が立たない席替え・退店裏ガイド』はプロフィールのリンク（aiseki-navi.com/for-women）で無料公開中です🔍\n\n"
+        "女子2人組で入るときのちょっとしたコツはこの3つだけ。\n"
+        "① 入る3分前に『相席ナビ』を女性目線モードにして男性先行の店を見る\n"
+        "② 顔写真付きの身分証（免許証・マイナカード等）だけは忘れない\n"
+        "③ もし噛み合わない席に当たっても無理して消耗せず、お手洗いタイミングでさらっと席替え相談する\n\n"
+        "全国53店舗の『いま女子待ちゼロで入れる店舗一覧』と『角が立たない席替え・退店裏マニュアル』はプロフィールのリンク（aiseki-navi.com/for-women）に置いてます🔍\n\n"
         "#相席ナビ #相席ラウンジ #オリエンタルラウンジ #ag #JIS #女子会ディナー #夜カフェ"
     )
     caption = re.sub(r"オリエンタル(?!ラウンジ)", "オリエンタルラウンジ", caption)

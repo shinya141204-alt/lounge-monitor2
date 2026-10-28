@@ -29,18 +29,32 @@ logger = logging.getLogger(__name__)
 
 JST = datetime.timezone(datetime.timedelta(hours=9))
 GEMINI_KEY_STORAGE_PREFIX = "token:gemini_api_key"
+CLAUDE_KEY_STORAGE_PREFIX = "token:claude_api_key"
+AI_ENGINE_PREF_KEY = "editorial:ai_engine_pref"
+
+# Upgraded from Flash-Lite to Pro -> Standard Flash -> Lite emergency fallback
 DEFAULT_GEMINI_MODELS = (
+    "gemini-2.5-pro",
+    "gemini-2.5-flash",
+    "gemini-flash-latest",
     "gemini-3.5-flash-lite",
-    "gemini-flash-lite-latest",
-    "gemini-3.1-flash-lite",
+)
+
+# Anthropic Claude Sonnet models (dynamically supplemented via /v1/models when key is set)
+DEFAULT_CLAUDE_MODELS = (
+    "claude-sonnet-4-6",
+    "claude-sonnet-4-5",
+    "claude-3-7-sonnet-latest",
 )
 
 # Words/phrases that betray AI-generated or promotional copywriting — strictly penalized by Desk
 AI_CLICHE_WORDS = (
     "必見",
     "徹底解説",
+    "徹底解剖",
     "いかがでしたか",
     "いかがですか",
+    "いかがでしょうか",
     "まさに",
     "間違いなし",
     "大注目",
@@ -48,8 +62,23 @@ AI_CLICHE_WORDS = (
     "最適解",
     "盛り上がりを見せて",
     "ぜひ足を運んで",
+    "足を運んでみて",
     "お見逃しなく",
     "ご紹介",
+    "最高の夜",
+    "賢く立ち回",
+    "参考にしてみて",
+    "チェックしてみて",
+)
+
+# Core human insider voice guide applied across X, Threads, Instagram, and Column prompts
+HUMAN_INSIDER_VOICE_GUIDE = (
+    "【最優先：AIっぽさゼロの『現場モニターを見ている運営のリアルな独り言・本音』ルール】\n"
+    "1. 広報担当の宣伝文やAIの優等生構文ではなく、毎晩バックヤードで全国53店舗の人数モニターを眺めながら『うわ、今日の梅田えぐいな…』『なんでみんなこっち並んじゃうんだろ』と呟いている30代の運営中の人の生の声で書くこと。\n"
+    "2. 毎回きれいに教訓やまとめで締めないこと。『賢く選んで楽しみましょう』『参考にしてみてください』のような優等生オチは厳禁。『〜なんだよな』『〜だったりする』『正直いま動くならこっちかも』『何回見ても不思議』のように、ふと呟いてスマホを置いたような自然な余韻・体言止めを混ぜること。\n"
+    "3. 1行目は『モニターを二度見した素のリアクション・ちょっとしたボヤき・外の空気感とのギャップ』から入ること（例：『小雨なのに今日の立ち上がりちょっと早すぎないか…』『同じ新宿の徒歩3分でここまで天国と地獄に割れるの、ほんと残酷なんだよな』等）。\n"
+    "4. 句読点や改行に人間の息継ぎを入れること。『〜となっております』『〜ですが、』のような硬い接続詞ではなく、『〜なんだけど、』『正直さ、』『いやこれ、』『〜なんだよね』など声に出して自然な口語リズムにすること。絵文字は0〜2個までに抑え、キラキラ絵文字の連打はしない（自然な『笑』や『…』は1回までOK）。\n"
+    "5. 数字は機械的な箇条書き表の羅列にせず、できる限り会話の流れに溶かし込むこと（ただし店舗名・女性XX名・男性YY名・女性比ZZ%の数値そのものはファクトシートと1人・1%も違わず一致させること）。"
 )
 
 _weather_cache = {"ts": 0.0, "data": None, "fetching": False}
@@ -57,7 +86,14 @@ _AI_CACHE_TTL_SEC = 900
 _AI_CACHE_MAX_SIZE = 64
 _ai_candidate_cache = collections.OrderedDict()  # cache_key -> {"ts": float, "candidate": dict, "model": str}
 _ai_cache_lock = threading.Lock()
-_last_gemini_meta = {"last_model": "", "last_error": "", "last_ok_at": "", "working_route": None}
+_model_discovery_cache = {}  # provider_sig -> {"ts": float, "models": list[str]}
+_last_gemini_meta = {
+    "last_model": "",
+    "last_provider": "",
+    "last_error": "",
+    "last_ok_at": "",
+    "working_route": None,
+}
 
 CHANNEL_LABELS = {
     "x": "𝕏 X（旧Twitter）",
@@ -66,7 +102,7 @@ CHANNEL_LABELS = {
 }
 
 STYLE_LABELS = {
-    "ai_live_adlib": "✨ Gemini AI 現場アドリブ実況型（天気・街況連動）",
+    "ai_live_adlib": "✨ AI編集長・現場本音アドリブ実況型（天気・街況連動）",
     # X styles
     "hub_gap": "🚶 エリア内ギャップ・ハシゴ観察型",
     "surge_focus": "📈 1店舗フォーカス・急増/穴場つぶやき型",
@@ -517,6 +553,14 @@ def _prune_ai_candidate_cache_unlocked(now_t: float = None):
         _ai_candidate_cache.popitem(last=False)
 
 
+def _mask_secret(raw: str) -> str:
+    if not raw:
+        return ""
+    if len(raw) > 9:
+        return f"{raw[:5]}...{raw[-4:]}"
+    return "****"
+
+
 def get_gemini_api_key(allow_blocking: bool = True) -> str:
     """
     Resolve active Gemini API key from either:
@@ -538,44 +582,135 @@ def set_gemini_api_key(api_key: str):
     cleaned = (api_key or "").strip()
     job_state.set_value(GEMINI_KEY_STORAGE_PREFIX, cleaned)
     clear_editorial_ai_cache()
+    _model_discovery_cache.clear()
     _last_gemini_meta["last_error"] = ""
     _last_gemini_meta["working_route"] = None
 
 
-def get_gemini_status(allow_blocking: bool = True) -> dict:
-    """Return safe, masked status metadata for the Master editorial dashboard (never exposes raw key)."""
-    stored = (job_state.get_value(GEMINI_KEY_STORAGE_PREFIX, allow_blocking=allow_blocking) or "").strip()
-    env_key = (os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY") or "").strip()
-    active_key = stored or env_key
+def get_claude_api_key(allow_blocking: bool = True) -> str:
+    """
+    Resolve active Anthropic Claude API key from either:
+      1. Master-configured persistent secret in `job_state` (`token:claude_api_key`)
+      2. Render environment variable `ANTHROPIC_API_KEY` or `CLAUDE_API_KEY`
+    """
+    stored = (job_state.get_value(CLAUDE_KEY_STORAGE_PREFIX, allow_blocking=allow_blocking) or "").strip()
     if stored:
-        source = "管理画面から登録済み（暗号化保存）"
-    elif env_key:
-        source = "Render環境変数（GEMINI_API_KEY）"
+        return stored
+    return (
+        os.environ.get("ANTHROPIC_API_KEY")
+        or os.environ.get("CLAUDE_API_KEY")
+        or ""
+    ).strip()
+
+
+def set_claude_api_key(api_key: str):
+    """Persist or clear Master-provided Anthropic Claude API key (obfuscated via `token:` prefix in job_state)."""
+    cleaned = (api_key or "").strip()
+    job_state.set_value(CLAUDE_KEY_STORAGE_PREFIX, cleaned)
+    clear_editorial_ai_cache()
+    _model_discovery_cache.clear()
+    _last_gemini_meta["last_error"] = ""
+    _last_gemini_meta["working_route"] = None
+
+
+def get_ai_engine_pref(allow_blocking: bool = False) -> str:
+    """Return engine priority mode: 'auto' (Claude if set else Gemini Pro/Flash), 'claude', or 'gemini'."""
+    try:
+        raw = (job_state.get_value(AI_ENGINE_PREF_KEY, allow_blocking=allow_blocking) or "").strip().lower()
+        if raw in ("auto", "claude", "gemini"):
+            return raw
+    except Exception:
+        pass
+    env_p = (os.environ.get("EDITORIAL_AI_ENGINE") or "").strip().lower()
+    return env_p if env_p in ("auto", "claude", "gemini") else "auto"
+
+
+def set_ai_engine_pref(pref: str) -> str:
+    norm = (pref or "").strip().lower()
+    if norm not in ("auto", "claude", "gemini"):
+        norm = "auto"
+    job_state.set_value(AI_ENGINE_PREF_KEY, norm)
+    clear_editorial_ai_cache()
+    _last_gemini_meta["last_error"] = ""
+    _last_gemini_meta["working_route"] = None
+    return norm
+
+
+def has_any_ai_key(allow_blocking: bool = True) -> bool:
+    return bool(get_claude_api_key(allow_blocking=allow_blocking) or get_gemini_api_key(allow_blocking=allow_blocking))
+
+
+def get_gemini_status(allow_blocking: bool = True) -> dict:
+    """
+    Return safe, masked Dual-Engine AI status metadata (Gemini Pro/Flash + Claude Sonnet)
+    for Master editorial dashboards while preserving 100% backward-compatible field names.
+    """
+    g_stored = (job_state.get_value(GEMINI_KEY_STORAGE_PREFIX, allow_blocking=allow_blocking) or "").strip()
+    g_env = (os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY") or "").strip()
+    g_key = g_stored or g_env
+    g_source = (
+        "管理画面から登録済み（暗号化保存）" if g_stored
+        else ("Render環境変数（GEMINI_API_KEY）" if g_env else "未設定")
+    )
+
+    c_stored = (job_state.get_value(CLAUDE_KEY_STORAGE_PREFIX, allow_blocking=allow_blocking) or "").strip()
+    c_env = (os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("CLAUDE_API_KEY") or "").strip()
+    c_key = c_stored or c_env
+    c_source = (
+        "管理画面から登録済み（暗号化保存）" if c_stored
+        else ("Render環境変数（ANTHROPIC_API_KEY）" if c_env else "未設定")
+    )
+
+    pref = get_ai_engine_pref(allow_blocking=allow_blocking)
+    any_configured = bool(g_key or c_key)
+
+    # Determine primary active provider based on preference & configured keys
+    if pref == "gemini" and g_key:
+        primary_provider = "gemini"
+    elif pref == "claude" and c_key:
+        primary_provider = "claude"
+    elif c_key:
+        primary_provider = "claude"
+    elif g_key:
+        primary_provider = "gemini"
     else:
-        source = "未設定"
+        primary_provider = "none"
 
-    masked = ""
-    if active_key:
-        if len(active_key) > 8:
-            masked = f"{active_key[:4]}...{active_key[-4:]}"
-        else:
-            masked = "****"
-
+    active_key = c_key if primary_provider == "claude" else g_key
+    masked = _mask_secret(active_key)
     last_err = _last_gemini_meta.get("last_error") or ""
-    if not active_key:
+    if not any_configured:
         state = "unconfigured"
-    elif last_err:
+    elif last_err and not _last_gemini_meta.get("last_model"):
         state = "degraded"
     else:
         state = "active"
 
+    default_model = DEFAULT_CLAUDE_MODELS[0] if primary_provider == "claude" else DEFAULT_GEMINI_MODELS[0]
+    last_model = _last_gemini_meta.get("last_model") or default_model
+    provider_badge = (
+        "Claude Sonnet × Gemini 両対応ハイブリッド"
+        if (c_key and g_key)
+        else ("Claude Sonnet 長考執筆" if c_key else "Gemini Pro / 上位Flash 長考執筆")
+    )
+
     return {
-        "configured": bool(active_key),
+        "configured": any_configured,
         "state": state,
-        "key_kind": "vertex_express" if active_key.startswith("AQ.") else ("ai_studio" if active_key else "none"),
+        "active_provider": _last_gemini_meta.get("last_provider") or primary_provider,
+        "primary_provider": primary_provider,
+        "engine_pref": pref,
+        "engine_badge": provider_badge,
+        "key_kind": "claude" if primary_provider == "claude" else ("vertex_express" if g_key.startswith("AQ.") else ("ai_studio" if g_key else "none")),
         "masked_key": masked,
-        "source": source,
-        "last_model": _last_gemini_meta.get("last_model") or DEFAULT_GEMINI_MODELS[0],
+        "source": c_source if primary_provider == "claude" else g_source,
+        "gemini_configured": bool(g_key),
+        "gemini_masked_key": _mask_secret(g_key),
+        "gemini_source": g_source,
+        "claude_configured": bool(c_key),
+        "claude_masked_key": _mask_secret(c_key),
+        "claude_source": c_source,
+        "last_model": last_model,
         "last_error": last_err,
         "last_ok_at": _last_gemini_meta.get("last_ok_at") or "",
     }
@@ -1953,21 +2088,23 @@ def _build_gemini_prompt(
         )
         platform_spec = (
             "【対象SNS：X（旧Twitter）】\n"
-            "- 文字数制限：日本語で **95文字〜122文字以内**（X換算で必ず255ウェイト以下になるようコンパクトに引き締めること）\n"
+            "- 文字数制限：日本語で **95文字〜124文字以内**（X換算で必ず258ウェイト以下になるよう引き締めること）\n"
             "- 禁止事項：URL（http...）は本文に絶対に入れない。『🥇🥈🥉』メダル記号や『【〇〇速報】』のような業者見出しは禁止。同じ店舗名を2回書かない。\n"
-            "- 構成：1行目で今夜の天気・気温・曜日・給料日などの空気感と現場データの面白い気づきを友達に話すような自然なアドリブで切り出し、中盤で2〜3店舗の正確な人数（例：女性122・男性52（女性比70%））を示し、最後はリプ欄へ自然に誘導して『#相席ナビ #相席ラウンジ』で締める。"
+            "- リズムの手本（数字はダミー。この空気感・口語の抜け感だけ参考にすること）：\n"
+            "  『外ちょっと冷えてきた木曜なんだけど、モニター見てたらオリラジ新宿が女性84名・男性36名（女性比70%）まで伸びてて二度見した…徒歩すぐの別店舗は男余りなのに、ほんと看板だけで並ぶともったいない夜。細かい数字はリプ欄置いときます👇 #相席ナビ #相席ラウンジ』\n"
+            "- 構成：1行目で外の天気・気温・曜日・給料日などの空気感とモニターを見た素のリアクションを切り出し、会話の流れで2〜3店舗の正確な人数（例：女性122名・男性52名（女性比70%））を溶かし込み、最後はリプ欄へ自然に流して『#相席ナビ #相席ラウンジ』で締める。"
         )
     elif ch == "threads":
         if now_jst.day % 2 == 0:
             cta_footer = "🔍 全51店舗の現在人数＆料金比較はプロフィールのリンク（相席ナビ）から見れます\n#相席ラウンジ"
         else:
             cta_footer = f"▼ 全51店舗の現在人数＆料金・イベント比較\n{site_url}/price-comparison?s=th{slot_hh}_ai_live_adlib\n#相席ラウンジ"
-        reply_text = "（Threadsは1投稿完結・AIアドリブ生成＋リンク制限回避済）"
+        reply_text = "（Threadsは1投稿完結・上位AI長考アドリブ生成＋リンク制限回避済）"
         platform_spec = (
             "【対象SNS：Meta Threads（スレッズ）】\n"
-            "- 文字数制限：全体で **290文字〜440文字以内**（絶対上限480文字）\n"
-            "- 禁止事項：『🥇🥈🥉』メダル記号や『【〇〇】』角括弧タイトルは禁止。ハッシュタグは末尾の1個のみ。\n"
-            "- 構成：Threads特有の『中の人が現場データと外の天気・曜日を見ながら本音で語るエッセイ・会話調』で書くこと。男性目線の穴場だけでなく可能なら女性目線の即相席店やハシゴのコツも自然に織り交ぜる。\n"
+            "- 文字数制限：全体で **290文字〜445文字以内**（絶対上限480文字）\n"
+            "- 禁止事項：『🥇🥈🥉』メダル記号や『【〇〇】』角括弧タイトルは禁止。ハッシュタグは末尾の1個のみ。箇条書きばかりにせず、人間の独り言エッセイの流れで書くこと。\n"
+            "- 構成：Threads特有の『運営中の人がバックヤードでモニターと外の天気・曜日を眺めながら本音をこぼす会話エッセイ調（〜なんだよな、正直さ…等）』で書くこと。男性目線の穴場だけでなく、可能なら女性2人組が待ちゼロで即座れる逆張り店やハシゴのリアルも自然に混ぜる。\n"
             f"- 末尾固定フッター：文章の最後は必ず次のフッター文字列を一字一句変えずに置いて締めること：\n{cta_footer}"
         )
     else:
@@ -1985,93 +2122,218 @@ def _build_gemini_prompt(
             {"name": s["seo_name"], "label": f"{a_lbl}{s['avg_wpct']}%"} for s in a_top
         ]
         fact_payload["weekend_label"] = ig_ctx.get("weekend_label", "")
-        reply_text = "（5枚組カルーセル画像とセットで投稿・AIアドリブ生成）"
+        reply_text = "（5枚組カルーセル画像とセットで投稿・上位AI長考アドリブ生成）"
         platform_spec = (
             "【対象SNS：Instagram（5枚組カルーセル投稿キャプション）】\n"
             "- 文字数制限：**400文字〜680文字以内**\n"
-            "- 禁止事項：1行目を『【〇〇予報】』のような堅い角括弧見出しにしないこと。\n"
-            "- 構成：『…続きを読む』で折りたたまれる前の最初の1〜2行目に、天気・季節・週末あるあるを交えた思わずタップしたくなる人間味100%の共感アドリブを書く。『保存📌』を促す一言を入れ、スライド2枚目の盛り上がり上位3店舗とスライド3枚目の高女性比率上位3店舗の数値を正確に紹介し、プロフィールのリンク（aiseki-navi.com）への誘導と、末尾に『#相席ナビ #相席ラウンジ #オリエンタルラウンジ #ag #JIS #夜遊びガイド』の6タグを付ける。"
+            "- 禁止事項：1行目を『【〇〇予報】』のような堅い角括弧見出しにしないこと。宣伝っぽいハイテンション絵文字連打をしないこと。\n"
+            "- 構成：『…続きを読む』で折りたたまれる前の最初の1〜2行目に、天気・季節・その曜日のリアルな空気感（「1軒目そろそろ出る頃だけど…」のような生の呟き）を書く。途中で自然な流れで『あとで見返せるように保存📌しとくと便利』と添え、スライド2枚目の盛り上がり上位3店舗とスライド3枚目の高女性比率上位3店舗の数値を正確に織り交ぜ、プロフィールのリンク（aiseki-navi.com）への案内と、末尾に『#相席ナビ #相席ラウンジ #オリエンタルラウンジ #ag #JIS #夜遊びガイド』の6タグを付ける。"
         )
 
     slot_persona = research.get("slot_persona") or build_slot_persona_context(slot_label=slot_label, channel=ch)
     cliche_list_str = "・".join(f"『{w}』" for w in AI_CLICHE_WORDS)
 
     prompt = (
-        "あなたは全国53店舗の相席ラウンジ人数をリアルタイム計測している『相席ナビ』のベテランSNS編集長です。\n"
-        "毎回同じボットのような投稿や浅い優等生アドバイスではなく、本当にスマホで今の店内人数と外の空気（天気・気温・曜日・給料日など）を見ながら、"
-        "フォロワーに本音で呟いているアドリブ投稿を1案作成してください。\n\n"
+        "あなたは全国53店舗の相席ラウンジ人数をリアルタイム計測している『相席ナビ』の運営中の人です。\n"
+        "毎回同じボットのような投稿や綺麗にまとまりすぎたAI構文ではなく、本当にスマホと店内モニターを見ながら、"
+        "外の空気（天気・気温・曜日・給料日など）と一緒にフォロワーへ本音で呟いている生身のアドリブ投稿を1本作成してください。\n\n"
+        f"{HUMAN_INSIDER_VOICE_GUIDE}\n\n"
         f"{tone_meta['prompt_directive']}\n\n"
         f"【今夜の時間帯テンション設定：{slot_persona['label']}】\n"
         f"- {slot_persona['guidance']}\n\n"
-        "【長考（Thinking）プロセス：脳内3案コンペ＆脱AI推敲手順】\n"
-        "いきなり書き始めず、内部思考の中で必ず次の3ステップを行ってから最終1本を出力してください：\n"
-        "  Step 1. 性格の違う3つの切り口を頭の中でラフに書き比べる\n"
-        "    - 案①（辛口ウォッチャーの本音風）：『看板だけで並んで1時間溶かすのが一番もったいない夜…』と図星を突くトーン\n"
-        "    - 案②（女性目線のリアル裏側風）：『慣れた女子組ほど待たされる店や余裕のない席はすぐ出てこっちへ流れてる…』と裏側を明かすトーン\n"
-        "    - 案③（現場の違和感・温度差発見風）：『普段のこの時間よりだいぶ早い』『徒歩3分なのにここまで割れるか…』という気づきトーン\n"
-        "  Step 2. 3案を見比べ、指定された【トーン＆視点】に最も合致し、かつ『業者の宣伝』『AIの優等生構文』に見えない自然な1案に推敲する（良いフレーズの掛け合わせOK）。キラキラ絵文字の連打は削り、絵文字は自然な位置に1〜3個までに抑える。\n"
+        "【長考（Thinking）プロセス：脳内3案コンペ＆脱AI臭フィルタリング】\n"
+        "出力前にまず `thinking_memo` の中で次の3ステップを必ず実行してから `main_text` を書き上げてください：\n"
+        "  Step 1. 切り口の違う3つの生の呟きを比べる（①看板だけで並んで消耗する負けパターンへの苦笑い、②女子組が実は見切って流れている裏側、③モニターを見て二度見した街の温度差・普段比の違和感）\n"
+        "  Step 2. 一番『人間がふとスマホで打った空気感』に近い1案を選び、AIっぽい綺麗なまとめ文句や過剰な絵文字を削ぎ落とす。\n"
         "  Step 3. ファクトシートの数字と1人・1%の狂いもないか指差し確認する。\n\n"
         f"{platform_spec}\n\n"
         "【絶対厳守ルール（違反するとデスク検閲で減点・不採用になります）】\n"
         "1. 下記の JSON ファクトシートに含まれる店舗名・人数・パーセンテージ以外は絶対に書かないこと。数値を1人でも盛ったり丸めたり変更することは厳禁。\n"
         "2. あなたは『相席ナビ運営（リアルタイム計測モニターを見ている中の人）』です。自分が客として入店した架空の体験談（『行ってきた』『相席相手が〜』等）は絶対に書かないこと。\n"
-        "3. 店名の呼び方ルール：内部略称『OLG』や、中途半端な『オリエンタル〇〇』（「ラウンジ」抜け）・『オリエンタル』単体呼びは絶対に使わないこと。必ず正式名称『オリエンタルラウンジ〇〇』、または現場の自然な口語略称『オリラジ〇〇』（casual_alias がある店舗のみ。例：『オリエンタルラウンジ大阪駅前』または『オリラジ大阪駅前』）を使うこと（くだけた会話調や文字数を引き締めたいXでは『オリラジ〇〇』も自然でおすすめ。『ag〇〇』『JIS〇〇』はそのまま表記）。\n"
+        "3. 店名の呼び方ルール：内部略称『OLG』や、中途半端な『オリエンタル〇〇』（「ラウンジ」抜け）・『オリエンタル』単体呼びは絶対に使わないこと。必ず正式名称『オリエンタルラウンジ〇〇』、または現場の自然な口語略称『オリラジ〇〇』（casual_alias がある店舗のみ。例：『オリエンタルラウンジ大阪駅前』または『オリラジ大阪駅前』）を使うこと（くだけた会話調や文字数を引き締めたいXでは『オリラジ〇〇』が特に自然。『ag〇〇』『JIS〇〇』はそのまま表記）。\n"
         f"4. AI臭・宣伝臭ワードの完全禁止：{cliche_list_str} は本文に絶対に使わないこと。\n"
         f"5. 直近の過去投稿の書き出し（{json.dumps(recent_openers, ensure_ascii=False)}）とは全く違う新鮮な1行目の切り口・語尾にすること。\n\n"
         f"【今夜の検証済みファクトシート】\n{json.dumps(fact_payload, ensure_ascii=False, indent=2)}\n\n"
-        "出力は必ず以下のJSON形式のみを返してください（Markdownコードブロック不要）：\n"
-        '{"main_text": "投稿本文（改行は\\n）", "writer_note": "今回どの天気・街況・データをどうアドリブに活かしたかの1行メモ", "thinking_memo": "脳内3案（①独り言風・②常連風・③違和感発見風）をどう比較し、なぜこの言い回し・温度感に削ぎ落としたかの編集長思考メモ（80〜140文字）"}'
+        "出力は必ず以下のJSON形式のみを返してください（`thinking_memo` を最初に書いて推敲してから `main_text` を出力すること。Markdownコードブロック不要）：\n"
+        '{"thinking_memo": "脳内3案の比較と、AIっぽさを消すためにどこを削りどんな口語の余韻にしたかのメモ（80〜150文字）", "writer_note": "今回どの天気・街況・データをどう本音アドリブに活かしたかの1行メモ", "main_text": "投稿本文（改行は\\n）"}'
     )
     return prompt, reply_text
 
 
-def _discover_ai_studio_flash_model(api_key: str, timeout: float = 5.0) -> str:
-    """Dynamically query `/v1beta/models` to find an active Flash model if hardcoded names 404."""
+_DISCOVERY_TTL_SEC = 21600  # 6 hours
+
+
+def _discover_ai_studio_models(api_key: str, timeout: float = 4.5) -> list:
+    """
+    Dynamically query `/v1beta/models` (cached 6h) and rank live Gemini text models
+    in strict human-writing quality order:
+      1. Latest Pro (`gemini-3*-pro*`, `gemini-2.5-pro`, `gemini-pro-latest`)
+      2. Latest Standard Flash (`gemini-3*-flash`, `gemini-2.5-flash` — excluding `-lite`)
+      3. Emergency Flash-Lite fallback ONLY if Pro & Standard Flash hit quota limits.
+    """
+    if not api_key:
+        return []
+    sig = f"gemini:{api_key[:8]}"
+    now_t = time.time()
+    cached = _model_discovery_cache.get(sig)
+    if cached and (now_t - cached["ts"] < _DISCOVERY_TTL_SEC) and cached.get("models"):
+        return list(cached["models"])
+
     try:
         r = requests.get(
             "https://generativelanguage.googleapis.com/v1beta/models",
             headers={"x-goog-api-key": api_key},
-            timeout=max(0.5, min(5.0, float(timeout))),
+            timeout=max(0.8, min(5.0, float(timeout))),
         )
         if r.status_code != 200:
-            return ""
+            return []
         models = (r.json() or {}).get("models") or []
+        pro_cands = []
         flash_cands = []
-        fallback_cands = []
+        lite_cands = []
+        skip_tokens = ("embedding", "imagen", "tts", "audio", "vision", "veo", "aqa", "1.0", "1.5", "robotics", "computer-use")
         for m in models:
             methods = m.get("supportedGenerationMethods") or []
             if "generateContent" not in methods:
                 continue
-            name = (m.get("name") or "").replace("models/", "")
-            if not name or "embedding" in name or "imagen" in name or "tts" in name or "audio" in name:
+            name = (m.get("name") or "").replace("models/", "").strip()
+            low = name.lower()
+            if not low.startswith("gemini") or any(tok in low for tok in skip_tokens):
                 continue
-            if "gemini" in name and "flash" in name and "vision" not in name:
+            if "pro" in low and "customtools" not in low:
+                pro_cands.append(name)
+            elif "flash" in low and "lite" not in low and "8b" not in low:
                 flash_cands.append(name)
-            elif "gemini" in name:
-                fallback_cands.append(name)
-        if flash_cands:
-            flash_cands.sort(reverse=True)
-            return flash_cands[0]
-        if fallback_cands:
-            return fallback_cands[0]
+            elif "flash" in low and "lite" in low:
+                lite_cands.append(name)
+
+        def _rank_key(n: str):
+            # Prefer stable numbered releases (3.x > 2.5 > latest > preview/exp)
+            is_exp = ("exp" in n)
+            is_prev = ("preview" in n)
+            return (0 if not (is_exp or is_prev) else (1 if is_prev else 2), n)
+
+        pro_cands.sort(key=lambda x: (not ("2.5-pro" in x or "3." in x or "3-" in x), "exp" in x, x), reverse=False)
+        # Sort version numbers descending while keeping stable ahead of experimental
+        pro_sorted = sorted(pro_cands, key=lambda x: (not ("exp" in x), x), reverse=True)
+        flash_sorted = sorted(flash_cands, key=lambda x: (not ("exp" in x), x), reverse=True)
+        lite_sorted = sorted(lite_cands, key=lambda x: (not ("exp" in x), x), reverse=True)
+
+        ranked = []
+        for lst, cap in ((pro_sorted, 2), (flash_sorted, 2), (lite_sorted, 1)):
+            for item in lst[:cap]:
+                if item not in ranked:
+                    ranked.append(item)
+        if ranked:
+            _model_discovery_cache[sig] = {"ts": now_t, "models": ranked}
+            return list(ranked)
     except Exception:
         pass
-    return ""
+    return []
 
 
-def _build_endpoint_request(endpoint_kind: str, model_name: str, api_key: str, prompt: str) -> tuple:
+def _discover_ai_studio_flash_model(api_key: str, timeout: float = 4.5) -> str:
+    """Backward-compatible helper returning the top ranked Gemini model."""
+    ranked = _discover_ai_studio_models(api_key, timeout=timeout)
+    return ranked[0] if ranked else ""
+
+
+def _discover_claude_models(api_key: str, timeout: float = 4.0) -> list:
+    """
+    Dynamically query Anthropic `/v1/models` (cached 6h) to find the newest active Claude Sonnet models.
+    """
+    if not api_key:
+        return []
+    sig = f"claude:{api_key[:10]}"
+    now_t = time.time()
+    cached = _model_discovery_cache.get(sig)
+    if cached and (now_t - cached["ts"] < _DISCOVERY_TTL_SEC) and cached.get("models"):
+        return list(cached["models"])
+
+    try:
+        r = requests.get(
+            "https://api.anthropic.com/v1/models",
+            headers={
+                "x-api-key": api_key,
+                "anthropic-version": "2023-06-01",
+            },
+            timeout=max(0.8, min(4.5, float(timeout))),
+        )
+        if r.status_code != 200:
+            return []
+        items = (r.json() or {}).get("data") or []
+        sonnets = []
+        others = []
+        for it in items:
+            mid = (it.get("id") or "").strip()
+            low = mid.lower()
+            if not mid or "claude" not in low:
+                continue
+            if "sonnet" in low:
+                sonnets.append(mid)
+            elif "opus" in low:
+                others.append(mid)
+        ranked = (sonnets[:2] + others[:1]) or list(DEFAULT_CLAUDE_MODELS)
+        _model_discovery_cache[sig] = {"ts": now_t, "models": ranked}
+        return list(ranked)
+    except Exception:
+        pass
+    return list(DEFAULT_CLAUDE_MODELS)
+
+
+def _parse_ai_json_object(raw_text: str):
+    """Robustly parse a JSON object from either Gemini or Claude output."""
+    txt = (raw_text or "").strip()
+    if not txt:
+        return None
+    if txt.startswith("```"):
+        txt = re.sub(r"^```(?:json)?\s*", "", txt)
+        txt = re.sub(r"\s*```$", "", txt).strip()
+    try:
+        parsed = json.loads(txt, strict=False)
+        if isinstance(parsed, list) and parsed:
+            parsed = parsed[0]
+        if isinstance(parsed, dict):
+            return parsed
+    except Exception:
+        pass
+    # Fallback: extract first outermost `{ ... }` block if model prepended/appended commentary
+    start = txt.find("{")
+    end = txt.rfind("}")
+    if start != -1 and end > start:
+        try:
+            parsed = json.loads(txt[start : end + 1], strict=False)
+            if isinstance(parsed, dict):
+                return parsed
+        except Exception:
+            pass
+    return None
+
+
+def _build_endpoint_request(
+    endpoint_kind: str,
+    model_name: str,
+    api_key: str,
+    prompt: str,
+    max_output_tokens: int = 2600,
+    thinking_budget: int = 1536,
+    temperature: float = 0.88,
+) -> tuple:
     gen_cfg = {
-        "temperature": 0.88,
-        "maxOutputTokens": 2500,
+        "temperature": temperature,
+        "maxOutputTokens": max_output_tokens,
         "responseMimeType": "application/json",
     }
-    # Configure optimal bounded thinking per Gemini model generation (~5-8s response, safely under Gunicorn 30s timeout):
-    # - Gemini 3.5 / 2.5 / flash-lite-latest use numeric `thinkingBudget: 512`
-    # - Gemini 3.1 / 3.6 / 3.7 / 3.8 use `thinkingLevel: "LOW"`
-    if model_name.startswith(("gemini-3.5", "gemini-2.5")) or model_name in ("gemini-flash-lite-latest", "gemini-flash-latest"):
-        gen_cfg["thinkingConfig"] = {"thinkingBudget": 512}
-    elif model_name.startswith("gemini-3"):
-        gen_cfg["thinkingConfig"] = {"thinkingLevel": "LOW"}
+    low_m = (model_name or "").lower()
+    if low_m.startswith(("gemini-3.5", "gemini-2.5")) or low_m in (
+        "gemini-flash-lite-latest",
+        "gemini-flash-latest",
+        "gemini-pro-latest",
+    ):
+        # Pro models require >=128 thinkingBudget and shine around 1536-2048
+        gen_cfg["thinkingConfig"] = {"thinkingBudget": max(512, int(thinking_budget))}
+    elif low_m.startswith("gemini-3"):
+        gen_cfg["thinkingConfig"] = {"thinkingLevel": "MEDIUM" if thinking_budget >= 1024 else "LOW"}
 
     payload = {
         "contents": [{"role": "user", "parts": [{"text": prompt}]}],
@@ -2083,6 +2345,190 @@ def _build_endpoint_request(endpoint_kind: str, model_name: str, api_key: str, p
         None,
         payload,
     )
+
+
+def call_editorial_ai_json(
+    prompt: str,
+    system_prompt: str = "",
+    max_output_tokens: int = 2600,
+    thinking_budget: int = 1536,
+    temperature: float = 0.87,
+    total_deadline_sec: float = 24.0,
+    per_call_timeout_sec: float = 13.5,
+    allow_blocking: bool = True,
+    now_jst: datetime.datetime = None,
+) -> tuple:
+    """
+    Unified Dual-Engine AI JSON caller supporting BOTH Anthropic Claude Sonnet and Upgraded Google Gemini (Pro / Flash).
+    Automatically routes based on configured keys and `get_ai_engine_pref()`, with instant failover across providers/models.
+    Returns `(parsed_dict_or_None, model_label_str, last_error_str)`.
+    """
+    now_jst = now_jst or datetime.datetime.now(JST)
+    g_key = get_gemini_api_key(allow_blocking=allow_blocking)
+    c_key = get_claude_api_key(allow_blocking=allow_blocking)
+    if not g_key and not c_key:
+        return None, "", "APIキー未設定"
+
+    pref = get_ai_engine_pref(allow_blocking=False)
+    providers = []
+    if pref == "gemini":
+        if g_key:
+            providers.append("gemini")
+        if c_key:
+            providers.append("claude")
+    else:
+        # Both 'auto' and 'claude' try Claude Sonnet first when Claude key is present, then fail over to Gemini Pro/Flash
+        if c_key:
+            providers.append("claude")
+        if g_key:
+            providers.append("gemini")
+
+    deadline = time.monotonic() + max(4.0, float(total_deadline_sec))
+    last_err = ""
+
+    sys_instr = system_prompt or (
+        "あなたは『相席ナビ』の運営中の人・編集長です。AI特有の優等生構文や定型表現を徹底排除し、"
+        "生身の人間が現場モニターを見ながら本音で語る自然な口語・余韻で執筆してください。"
+        "必ず有効なJSONオブジェクトのみを返してください（Markdownの```jsonフェンスは不要）。"
+    )
+
+    for prov in providers:
+        if time.monotonic() >= deadline - 0.8:
+            break
+
+        if prov == "claude":
+            preferred_c = (os.environ.get("CLAUDE_MODEL") or "").strip()
+            discovered_c = _discover_claude_models(c_key, timeout=min(3.2, max(1.0, deadline - time.monotonic() - 2.0)))
+            c_models = []
+            if preferred_c:
+                c_models.append(preferred_c)
+            saved_r = _last_gemini_meta.get("working_route")
+            if saved_r and saved_r[0] == "claude" and saved_r[1] not in c_models:
+                c_models.append(saved_r[1])
+            for m in (discovered_c or DEFAULT_CLAUDE_MODELS):
+                if m not in c_models:
+                    c_models.append(m)
+
+            for cm in c_models[:2]:
+                rem = deadline - time.monotonic()
+                if rem <= 0.8:
+                    break
+                try:
+                    resp = requests.post(
+                        "https://api.anthropic.com/v1/messages",
+                        headers={
+                            "x-api-key": c_key,
+                            "anthropic-version": "2023-06-01",
+                            "content-type": "application/json",
+                        },
+                        json={
+                            "model": cm,
+                            "max_tokens": max_output_tokens,
+                            "temperature": min(1.0, max(0.1, float(temperature))),
+                            "system": sys_instr,
+                            "messages": [{"role": "user", "content": prompt}],
+                        },
+                        timeout=min(float(per_call_timeout_sec), rem),
+                    )
+                    if resp.status_code >= 400:
+                        last_err = f"Claude HTTP {resp.status_code} ({cm}): {(resp.text or '')[:130]}"
+                        logger.warning(f"[editorial_ai] {last_err}")
+                        if _last_gemini_meta.get("working_route") == ("claude", cm):
+                            _last_gemini_meta["working_route"] = None
+                        continue
+                    blocks = (resp.json() or {}).get("content") or []
+                    raw_txt = "".join(b.get("text", "") for b in blocks if b.get("type") == "text").strip()
+                    parsed = _parse_ai_json_object(raw_txt)
+                    if parsed:
+                        _last_gemini_meta["working_route"] = ("claude", cm)
+                        _last_gemini_meta["last_provider"] = "claude"
+                        _last_gemini_meta["last_model"] = cm
+                        _last_gemini_meta["last_error"] = ""
+                        _last_gemini_meta["last_ok_at"] = now_jst.strftime("%Y-%m-%d %H:%M:%S")
+                        return parsed, cm, ""
+                    last_err = f"Claude JSON parse failed ({cm})"
+                except Exception as e:
+                    last_err = f"Claude通信エラー ({cm}): {str(e)[:110]}"
+                    logger.warning(f"[editorial_ai] {last_err}")
+                    if _last_gemini_meta.get("working_route") == ("claude", cm):
+                        _last_gemini_meta["working_route"] = None
+
+        elif prov == "gemini":
+            preferred_g = (os.environ.get("GEMINI_MODEL") or "").strip()
+            discovered_g = _discover_ai_studio_models(g_key, timeout=min(3.5, max(1.0, deadline - time.monotonic() - 2.0)))
+            g_models = []
+            if preferred_g:
+                g_models.append(preferred_g)
+            saved_r = _last_gemini_meta.get("working_route")
+            # Only reuse cached working_route if it isn't an old flash-lite leftover when Pro/Flash are available!
+            if (
+                saved_r
+                and saved_r[0] == "ai_studio"
+                and ("lite" not in saved_r[1].lower() or not discovered_g)
+                and saved_r[1] not in g_models
+            ):
+                g_models.append(saved_r[1])
+            for m in (discovered_g or list(DEFAULT_GEMINI_MODELS)):
+                if m not in g_models:
+                    g_models.append(m)
+            for m in DEFAULT_GEMINI_MODELS:
+                if m not in g_models:
+                    g_models.append(m)
+
+            full_prompt = f"{sys_instr}\n\n{prompt}" if system_prompt else prompt
+            for gm in g_models[:3]:
+                rem = deadline - time.monotonic()
+                if rem <= 0.8:
+                    break
+                try:
+                    url, headers, params, payload = _build_endpoint_request(
+                        "ai_studio",
+                        gm,
+                        g_key,
+                        full_prompt,
+                        max_output_tokens=max_output_tokens,
+                        thinking_budget=thinking_budget,
+                        temperature=temperature,
+                    )
+                    resp = requests.post(
+                        url,
+                        headers=headers,
+                        params=params,
+                        json=payload,
+                        timeout=min(float(per_call_timeout_sec), rem),
+                    )
+                    if resp.status_code >= 400:
+                        last_err = f"Gemini HTTP {resp.status_code} ({gm}): {(resp.text or '')[:130]}"
+                        logger.warning(f"[editorial_ai] {last_err}")
+                        if _last_gemini_meta.get("working_route") == ("ai_studio", gm):
+                            _last_gemini_meta["working_route"] = None
+                        continue
+                    cands = ((resp.json() or {}).get("candidates")) or []
+                    if not cands:
+                        last_err = f"Gemini empty candidates ({gm})"
+                        continue
+                    parts = ((cands[0].get("content") or {}).get("parts")) or []
+                    raw_txt = "".join(p.get("text", "") for p in parts if not p.get("thought")).strip()
+                    if not raw_txt:
+                        raw_txt = "".join(p.get("text", "") for p in parts).strip()
+                    parsed = _parse_ai_json_object(raw_txt)
+                    if parsed:
+                        _last_gemini_meta["working_route"] = ("ai_studio", gm)
+                        _last_gemini_meta["last_provider"] = "gemini"
+                        _last_gemini_meta["last_model"] = gm
+                        _last_gemini_meta["last_error"] = ""
+                        _last_gemini_meta["last_ok_at"] = now_jst.strftime("%Y-%m-%d %H:%M:%S")
+                        return parsed, gm, ""
+                    last_err = f"Gemini JSON parse failed ({gm})"
+                except Exception as e:
+                    last_err = f"Gemini通信エラー ({gm}): {str(e)[:110]}"
+                    logger.warning(f"[editorial_ai] {last_err}")
+                    if _last_gemini_meta.get("working_route") == ("ai_studio", gm):
+                        _last_gemini_meta["working_route"] = None
+
+    if last_err:
+        _last_gemini_meta["last_error"] = last_err
+    return None, "", last_err
 
 
 def _postprocess_ai_main_text(main_text: str, channel: str = "x") -> str:
@@ -2120,11 +2566,13 @@ def _make_ai_cache_key(
     tone_mode: str = DEFAULT_TONE_MODE,
 ):
     """
-    Build a precise cache key incorporating channel, tone_mode, business date, slot, top-3 stores `(name, women, men)`,
-    and `focus_store` `(name, women, men)` so rank-2/3, sweet-spot, or tone shifts never serve stale AI text.
+    Build a precise cache key incorporating engine_pref, channel, tone_mode, business date, slot,
+    top-3 stores `(name, women, men)`, and `focus_store` `(name, women, men)`.
     """
     ch_norm = (ch or "x").lower()
     tm_norm = get_editorial_tone_mode(tone_mode)
+    eng_pref = get_ai_engine_pref(allow_blocking=False)
+    has_c = bool(get_claude_api_key(allow_blocking=False))
     top_s = (research or {}).get("top_stores") or []
     if not top_s:
         return None
@@ -2143,7 +2591,7 @@ def _make_ai_cache_key(
         (focus.get("name", ""), int(focus.get("women") or 0), int(focus.get("men") or 0))
         if focus else None
     )
-    return (ch_norm, tm_norm, slot_label or "", biz_date_str, top3_sig, focus_sig)
+    return (eng_pref, has_c, ch_norm, tm_norm, slot_label or "", biz_date_str, top3_sig, focus_sig)
 
 
 def _store_ai_candidate_cache(cache_key, candidate: dict, model_name: str, now_t: float = None):
@@ -2189,12 +2637,10 @@ def _generate_gemini_adlib_candidate(
     tone_mode: str = DEFAULT_TONE_MODE,
 ) -> dict:
     """
-    Call Gemini Flash REST API (`generativelanguage.googleapis.com` for both `AIza...` and `AQ....` AI Studio keys,
-    with bounded thinking and strict 18s overall deadline so Gunicorn's 30s timeout is never exceeded).
-    When `cache_only=True`, returns cached draft in 0ms without blocking page render.
+    Generate live human-voiced SNS draft via Dual-Engine Chief Writer (Claude Sonnet or Upgraded Gemini Pro/Flash).
+    When `cache_only=True`, returns cached draft in 0ms without blocking HTML page render.
     """
-    api_key = get_gemini_api_key(allow_blocking=(not cache_only))
-    if not api_key:
+    if not has_any_ai_key(allow_blocking=(not cache_only)):
         return None
 
     ch = (channel or "x").lower()
@@ -2225,147 +2671,37 @@ def _generate_gemini_adlib_candidate(
         tone_mode=tm,
     )
 
-    preferred_env = (os.environ.get("GEMINI_MODEL") or "").strip()
-    models_to_try = [preferred_env] + [m for m in DEFAULT_GEMINI_MODELS if m != preferred_env] if preferred_env else list(DEFAULT_GEMINI_MODELS)
+    parsed, model_used, _ = call_editorial_ai_json(
+        prompt=prompt,
+        max_output_tokens=2600,
+        thinking_budget=1536,
+        temperature=0.88,
+        total_deadline_sec=24.0,
+        per_call_timeout_sec=13.5,
+        allow_blocking=True,
+        now_jst=now_jst,
+    )
+    if not parsed:
+        return None
 
-    # Both modern AI Studio `AQ.` auth keys and classic `AIza` keys target `ai_studio` (`generativelanguage.googleapis.com`)!
-    routes = []
-    saved_route = _last_gemini_meta.get("working_route")
-    if saved_route and saved_route[0] == "ai_studio":
-        routes.append(saved_route)
-    for mn in models_to_try:
-        if ("ai_studio", mn) not in routes:
-            routes.append(("ai_studio", mn))
-    # Cap at 2 attempts max per request + enforce overall 18s deadline (max 10s per call) under Gunicorn's 30s timeout
-    routes = routes[:2]
-    deadline = time.monotonic() + 18.0
+    main_text = _postprocess_ai_main_text(parsed.get("main_text") or "", channel=ch)
+    if not main_text:
+        return None
+    writer_note = (parsed.get("writer_note") or "天気・曜日・リアルタイム人数を掛け合わせた本音アドリブ執筆案。").strip()
+    thinking_memo = (parsed.get("thinking_memo") or "").strip()
 
-    last_err = ""
-    saw_404_on_ai_studio = False
-
-    def _try_single_route(ek: str, mn: str):
-        remaining = deadline - time.monotonic()
-        if remaining <= 0.4:
-            raise requests.exceptions.Timeout("Gemini overall deadline (18.0s) reached")
-        req_timeout = min(10.0, remaining)
-        url, headers, params, payload = _build_endpoint_request(ek, mn, api_key, prompt)
-        return requests.post(url, headers=headers, params=params, json=payload, timeout=req_timeout)
-
-    for ek, model_name in routes:
-        if time.monotonic() >= deadline - 0.4:
-            if not last_err:
-                last_err = "Gemini全体タイムアウト上限(18s)に達しました"
-            break
-        try:
-            resp = _try_single_route(ek, model_name)
-            if resp.status_code == 404:
-                if ek == "ai_studio":
-                    saw_404_on_ai_studio = True
-                last_err = f"Model {model_name} HTTP 404"
-                continue
-            if resp.status_code >= 400:
-                err_snippet = (resp.text or "")[:140]
-                last_err = f"Gemini HTTP {resp.status_code} ({model_name}): {err_snippet}"
-                logger.warning(f"Gemini API error ({ek}/{model_name}): {last_err}")
-                if _last_gemini_meta.get("working_route") == (ek, model_name):
-                    _last_gemini_meta["working_route"] = None
-                continue
-
-            data = resp.json() or {}
-            cands = data.get("candidates") or []
-            if not cands:
-                last_err = "Gemini returned empty candidates"
-                continue
-            parts = ((cands[0].get("content") or {}).get("parts")) or []
-            raw_text = "".join(p.get("text", "") for p in parts if not p.get("thought")).strip()
-            if not raw_text:
-                raw_text = "".join(p.get("text", "") for p in parts).strip()
-            if raw_text.startswith("```"):
-                raw_text = re.sub(r"^```(?:json)?\s*", "", raw_text)
-                raw_text = re.sub(r"\s*```$", "", raw_text)
-            parsed = json.loads(raw_text, strict=False)
-            if isinstance(parsed, list) and parsed:
-                parsed = parsed[0]
-            if not isinstance(parsed, dict):
-                last_err = "Parsed JSON is not an object"
-                continue
-            main_text = _postprocess_ai_main_text(parsed.get("main_text") or "", channel=ch)
-            writer_note = (parsed.get("writer_note") or "天気・曜日・リアルタイム人数を掛け合わせたGemini AIアドリブ執筆案。").strip()
-            thinking_memo = (parsed.get("thinking_memo") or "").strip()
-            if not main_text:
-                last_err = "Parsed JSON missing main_text"
-                continue
-
-            candidate = {
-                "style": "ai_live_adlib",
-                "style_label": STYLE_LABELS["ai_live_adlib"],
-                "writer_note": f"【{model_name}・長考推敲】{writer_note}",
-                "thinking_memo": thinking_memo,
-                "main_text": main_text,
-                "reply_text": reply_text,
-                "is_ai_generated": True,
-                "ai_model": model_name,
-            }
-            _store_ai_candidate_cache(cache_key, candidate, model_name, now_t=time.time())
-            _last_gemini_meta["working_route"] = (ek, model_name)
-            _last_gemini_meta["last_model"] = model_name
-            _last_gemini_meta["last_error"] = ""
-            _last_gemini_meta["last_ok_at"] = now_jst.strftime("%Y-%m-%d %H:%M:%S")
-            return dict(candidate)
-        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
-            last_err = f"通信タイムアウト ({model_name}): {str(e)[:110]}"
-            logger.warning(f"Gemini adlib network timeout ({ek}/{model_name}): {e}")
-            if _last_gemini_meta.get("working_route") == (ek, model_name):
-                _last_gemini_meta["working_route"] = None
-            continue
-        except Exception as e:
-            last_err = str(e)[:160]
-            logger.warning(f"Gemini adlib generation exception ({ek}/{model_name}): {e}")
-            if _last_gemini_meta.get("working_route") == (ek, model_name):
-                _last_gemini_meta["working_route"] = None
-            continue
-
-    # Dynamic model auto-discovery fallback if preset model names returned 404 (within remaining deadline)
-    remaining_for_disc = deadline - time.monotonic()
-    if saw_404_on_ai_studio and remaining_for_disc > 1.5:
-        discovered = _discover_ai_studio_flash_model(api_key, timeout=min(4.0, remaining_for_disc - 1.0))
-        if discovered and discovered not in models_to_try and (deadline - time.monotonic()) > 0.6:
-            try:
-                resp = _try_single_route("ai_studio", discovered)
-                if resp.status_code == 200:
-                    data = resp.json() or {}
-                    parts = (((data.get("candidates") or [{}])[0].get("content") or {}).get("parts")) or []
-                    raw_text = "".join(p.get("text", "") for p in parts if not p.get("thought")).strip()
-                    if raw_text.startswith("```"):
-                        raw_text = re.sub(r"^```(?:json)?\s*", "", raw_text)
-                        raw_text = re.sub(r"\s*```$", "", raw_text)
-                    parsed = json.loads(raw_text, strict=False)
-                    main_text = _postprocess_ai_main_text(parsed.get("main_text") or "", channel=ch)
-                    writer_note = (parsed.get("writer_note") or "Gemini AIアドリブ執筆案。").strip()
-                    thinking_memo = (parsed.get("thinking_memo") or "").strip()
-                    if main_text:
-                        candidate = {
-                            "style": "ai_live_adlib",
-                            "style_label": STYLE_LABELS["ai_live_adlib"],
-                            "writer_note": f"【{discovered}・長考推敲】{writer_note}",
-                            "thinking_memo": thinking_memo,
-                            "main_text": main_text,
-                            "reply_text": reply_text,
-                            "is_ai_generated": True,
-                            "ai_model": discovered,
-                        }
-                        _store_ai_candidate_cache(cache_key, candidate, discovered, now_t=time.time())
-                        _last_gemini_meta["working_route"] = ("ai_studio", discovered)
-                        _last_gemini_meta["last_model"] = discovered
-                        _last_gemini_meta["last_error"] = ""
-                        _last_gemini_meta["last_ok_at"] = now_jst.strftime("%Y-%m-%d %H:%M:%S")
-                        return dict(candidate)
-            except Exception:
-                pass
-
-    if last_err:
-        _last_gemini_meta["last_error"] = last_err
-    return None
+    candidate = {
+        "style": "ai_live_adlib",
+        "style_label": f"✨ AI編集長・現場本音アドリブ実況型（{model_used}）",
+        "writer_note": f"【{model_used}・本音長考推敲】{writer_note}",
+        "thinking_memo": thinking_memo,
+        "main_text": main_text,
+        "reply_text": reply_text,
+        "is_ai_generated": True,
+        "ai_model": model_used,
+    }
+    _store_ai_candidate_cache(cache_key, candidate, model_used, now_t=time.time())
+    return dict(candidate)
 
 
 def run_writer(
@@ -2678,7 +3014,7 @@ def run_editorial_pipeline(
     ai_pending_async = bool(
         ai_cache_only
         and use_ai
-        and (bool(get_gemini_api_key(allow_blocking=False)) or sheets_warming)
+        and (has_any_ai_key(allow_blocking=False) or sheets_warming)
         and (force_ai_refresh or not has_ai_cand)
         and bool(research.get("top_stores"))
     )

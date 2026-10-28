@@ -710,7 +710,7 @@ def build_column_tweet_thread(col_index: int = 0, app_url: str = "") -> tuple:
     return main_text, reply_text, item
 
 
-def build_weekly_report_tweet_thread(report: dict, app_url: str = "") -> tuple:
+def build_weekly_report_tweet_thread(report: dict, app_url: str = "", use_ai: bool = False) -> tuple:
     """Build a 2-post Sunday Weekly Ranking Report thread with dynamic weekly OGP card URL."""
     site_url = (app_url or os.environ.get("PUBLIC_SITE_URL") or "https://aiseki-navi.com").rstrip("/")
     now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
@@ -718,31 +718,81 @@ def build_weekly_report_tweet_thread(report: dict, app_url: str = "") -> tuple:
     stores = report.get("stores") or []
     anaba_stores = report.get("anaba_stores") or []
 
-    medals = ["🥇", "🥈", "🥉"]
-    lines = ["📊 今週の全国相席ラウンジ統計レポート", ""]
-    for idx, s in enumerate(stores[:3]):
+    week_key = now_jst.strftime("%Y%m%d")
+    reply_text = (
+        f"📈 今週の全国53店舗ピーク推移＆曜日別データまとめはこちら👇\n"
+        f"{site_url}/stats?w={week_key}"
+    )
+
+    if use_ai and stores:
+        try:
+            import sns_editorial
+            if sns_editorial.has_any_ai_key(allow_blocking=True):
+                top_facts = [
+                    {
+                        "name": format_ja_store_name(s.get("name", "")),
+                        "avg_women": int(round(float(s.get("avg_women") or 0))),
+                        "max_women": int(s.get("max_women") or 0),
+                    }
+                    for s in stores[:3]
+                ]
+                anaba_fact = None
+                if anaba_stores:
+                    a1 = anaba_stores[0]
+                    anaba_fact = {
+                        "name": format_ja_store_name(a1.get("name", "")),
+                        "avg_wpct": int(round(float(a1.get("avg_wpct") or 56))),
+                    }
+                prompt = (
+                    "あなたは全国53店舗の相席ラウンジ人数を記録している『相席ナビ』の運営中の人です。\n"
+                    "日曜の夜、今週1週間分のSQLite計測ログを見返しながらふと呟いた『人間味あふれる週間振り返りポスト（95〜124文字以内、X換算260ウェイト以下）』を1本書いてください。\n\n"
+                    f"{sns_editorial.HUMAN_INSIDER_VOICE_GUIDE}\n\n"
+                    "【必須ルール】\n"
+                    "1. 『🥇🥈🥉』メダルや『📊 今週の統計レポート』のようなボット見出しは使わず、『今週1週間分のログ見返してたんだけど…』のような生の語り口から入ること。\n"
+                    "2. 下の検証済み数値（平均女性XX名・最大YY名・女性比ZZ%）から2〜3個を1人の狂いもなく正確に織り交ぜ、URLは入れずリプ欄へ自然に流して『#相席ナビ #相席ラウンジ』で締めること。\n\n"
+                    f"【今週の検証済み数値】\n{sns_editorial.json.dumps({'top3': top_facts, 'anaba_no1': anaba_fact}, ensure_ascii=False)}\n\n"
+                    '出力はJSON形式のみ：{"thinking_memo": "推敲メモ", "main_text": "投稿本文"}'
+                )
+                parsed, _, _ = sns_editorial.call_editorial_ai_json(
+                    prompt=prompt,
+                    max_output_tokens=1400,
+                    thinking_budget=1152,
+                    total_deadline_sec=22.0,
+                    now_jst=now_jst,
+                )
+                if parsed and parsed.get("main_text"):
+                    ai_txt = sns_editorial._postprocess_ai_main_text(parsed["main_text"], channel="x")
+                    wt = compute_twitter_weight(ai_txt)
+                    allowed_nums = {x["avg_women"] for x in top_facts} | {x["max_women"] for x in top_facts}
+                    if anaba_fact:
+                        allowed_nums.add(anaba_fact["avg_wpct"])
+                    found_nums = {int(n) for n in re.findall(r"(\d+)\s*(?:名|%|人)", ai_txt)}
+                    if "http" not in ai_txt and 115 <= wt <= 274 and found_nums and found_nums.issubset(allowed_nums):
+                        return ai_txt, reply_text
+        except Exception as e:
+            logger.warning(f"Weekly X AI generation fallback: {e}")
+
+    lines = ["今週1週間分のモニターログを見返してたんだけど、やっぱり集まり方のクセがはっきり出てる。", ""]
+    for s in stores[:2]:
         ja_name = format_ja_store_name(s.get("name", ""))
         avg_w = int(round(float(s.get("avg_women") or 0)))
         max_w = int(s.get("max_women") or 0)
-        lines.append(f"{medals[idx]} {ja_name}：平均女性{avg_w}名 / 最大{max_w}名")
+        lines.append(f"・{ja_name}（平均女性{avg_w}名 / ピーク{max_w}名）")
 
     if anaba_stores:
         a1 = anaba_stores[0]
         a1_name = format_ja_store_name(a1.get("name", ""))
         a1_pct = int(round(float(a1.get("avg_wpct") or 56)))
-        lines.extend(["", f"💎 週間穴場1位：{a1_name}（女性比{a1_pct}%）"])
+        lines.append(f"・一番バランス良かった穴場：{a1_name}（女性比{a1_pct}%）")
 
     lines.extend([
         "",
-        "全53店舗の週間データ白書はリプ欄へ👇",
+        "曜日ごとの細かい波はリプ欄置いときます👇",
         "#相席ナビ #相席ラウンジ",
     ])
     main_text = "\n".join(lines)
-    week_key = now_jst.strftime("%Y%m%d")
-    reply_text = (
-        f"📈 全国53店舗の週間ピークランキングTOP30＆曜日別データ白書はこちら👇\n"
-        f"{site_url}/stats?w={week_key}"
-    )
+    if compute_twitter_weight(main_text) > 274:
+        main_text = main_text.replace("オリエンタルラウンジ", "オリラジ")
     return main_text, reply_text
 
 

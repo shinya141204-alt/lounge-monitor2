@@ -1319,24 +1319,28 @@ def _build_column_gemini_prompt(
     cliches_str = "・".join(f"「{w}」" for w in COLUMN_AI_CLICHES)
     fantasy_str = "・".join(f"「{w}」" for w in SWEET_FANTASY_CLICHES)
     return (
-        "あなたは全国53店舗の相席ラウンジ人数をリアルタイム計測しているメディア『相席ナビ』の敏腕コラム編集長です。\n"
-        "AIが書いたような当たり障りのない解説記事やご都合主義の甘い恋愛マニュアルではなく、本当に週末や仕事帰りにラウンジの現場空気（エレベーターが開いた瞬間の景色、女子2人組が化粧室で送り合うシビアな本音LINE、相方との帰り道の苦い反省会）を知る人間が書いた、鋭い観察眼とリアリティのあるWebコラム＆note原稿＆X告知文を1セット執筆してください。\n\n"
+        "あなたは全国53店舗の相席ラウンジ人数を毎晩リアルタイム計測している『相席ナビ』の運営中の人・コラム編集長です。\n"
+        "AIが書いたような教科書的な解説記事や綺麗にまとまりすぎた優等生コラムではなく、毎晩53店舗のモニターの波と現場の空気（エレベーターが開いた瞬間の重たい空気、女子2人組が化粧室で送り合うシビアな本音LINE、相方との帰り道のちょっと苦い反省会）を見続けてきた生身の人間が、深夜に本音で書き下ろしたエッセイ調のWebコラム＆note原稿＆X告知文を1セット執筆してください。\n\n"
+        f"{sns_editorial.HUMAN_INSIDER_VOICE_GUIDE}\n\n"
         f"{tone_directive}\n\n"
+        "【コラム・note特有の『人間味エッセイ文体』ルール】\n"
+        "- すべての段落を同じ長さ・同じ『〜です。〜ます。』の単調なリズムで揃えないこと。『正直、ここが一番残酷なところで。』『理由は拍子抜けするほどシンプルだ。』のような短い一文や、読者に語りかける自然な緩急を混ぜること。\n"
+        "- 最後の締めくくりも『いかがでしたか』『ぜひ最高の夜を楽しんでくださいね』のような宣伝・道徳オチにせず、夜の街を見続けてきた人間のリアルな余韻で締めること。\n\n"
         "【長考（Thinking）プロセス：脳内3案コンペ＆脱・安易さ推敲】\n"
-        "内部思考で必ず以下の3ステップを行ってからJSONを出力してください：\n"
-        "  Step 1. 導入の人間味エピソードを3通り（①受付待ちや席での苦い敗因・空回りから入る辛口案、②女性2人組の女子トイレや帰り道LINEのリアルな本音から入る案、③雨や終電前など街の空気と男女比の非対称性から入る案）頭の中で比べる。\n"
-        "  Step 2. 今回のトーン指定に最も刺さり、読者が『うわ、それ図星すぎる…！』と3行目で引き込まれる1案を選び、3章すべてに生身の口語会話（dialogue配列、各2セリフ）を入れる。\n"
-        "  Step 3. ファクトシートの実測数値・店舗名・URLと1人・1%の狂いもないか確認する。\n\n"
+        "まず `thinking_memo` の中で以下の3ステップを実行してから記事本編を出力してください：\n"
+        "  Step 1. 導入の人間味エピソードを3通り（①受付待ちや席での苦い敗因・空回りから入る辛口案、②女性2人組の女子トイレや帰り道LINEのリアルな本音から入る案、③雨や終電前など街の空気と男女比のねじれから入る案）頭の中で比べる。\n"
+        "  Step 2. 今回のトーン指定に最も刺さり、読者が『うわ、それ図星すぎる…』と3行目で引き込まれる1案を選び、3章すべてに生身の口語会話（dialogue配列、各2セリフ）を入れる。\n"
+        "  Step 3. ファクトシートの実測数値・店舗名と1人・1%の狂いもないか確認する。\n\n"
         "【絶対厳守ルール（違反すると鬼デスク検閲で大幅減点されます）】\n"
         "1. 店舗名・人数・女性比率は下記ファクトシートにある数値のみを使い、架空の人数を捏造しないこと。\n"
         "2. ブランド呼称ルール：単体の『オリエンタル』や『オリエンタル新宿』（「ラウンジ」抜け）、内部コード『OLG』は絶対に使わないこと！必ず正式名称『オリエンタルラウンジ〇〇』または常連の自然な口語略称『オリラジ〇〇』（会話やX告知で有効）と表記すること。『ag〇〇』『JIS〇〇』はそのまま表記。\n"
         f"3. AI臭ワードの完全禁止：{cliches_str} はタイトル・本文・FAQ・X告知のどこにも絶対に使わないこと。\n"
         f"4. 通販マンガ・進研ゼミ的なご都合主義セリフ＆手垢テンプレの禁止：{fantasy_str} のような『都合よく女の子が即答で食いつくファンタジー会話』や浅い一般論は禁止。迷い・駆け引き・女子側のシビアな視点を入れること。また毎回ワンパターンな『40分見切り』一辺倒の結論にせず、テーマ固有の深い示唆で締めること。\n"
-        "5. X告知文（`x_main_text`）は全角125文字前後（最大でもTwitter weight 265以内）に引き締め、末尾に `#相席ラウンジ #相席ナビ` を付けること。\n\n"
+        "5. X告知文（`x_main_text`）は全角122文字前後（最大でもTwitter weight 262以内）に引き締め、運営中の人のリアルな独り言トーンで書き、末尾に `#相席ラウンジ #相席ナビ` を付けること。\n\n"
         f"【検証済みファクトシート】\n{json.dumps(fact_sheet, ensure_ascii=False, indent=2)}\n\n"
         "以下のJSONオブジェクト形式のみで出力してください（Markdownコードブロック不要）：\n"
         "{\n"
-        '  "thinking_memo": "脳内でどんな導入3案を比較し、どう綺麗事を排して辛口・女性本音のリアリティを効かせたかの編集長推敲メモ（90〜150文字）",\n'
+        '  "thinking_memo": "脳内でどんな導入3案を比較し、どうAI臭を削ぎ落として人間らしい行間・本音にしたかの編集長推敲メモ（90〜150文字）",\n'
         '  "writer_note": "今回の記事で一番効かせた実測データと辛口/女性目線フックの1行要約",\n'
         '  "slug": "英小文字とハイフンのみのURLスラッグ（例: umeda-gap-hopping-1028）",\n'
         '  "title": "読者が思わずクリックしたくなる本音×データ根拠のある記事タイトル（36〜62文字）",\n'
@@ -1363,7 +1367,7 @@ def _build_column_gemini_prompt(
         '      "heading": "3. 第3章見出し（実践アクション）",\n'
         '      "paragraphs": ["立ち回り解説段落"],\n'
         '      "dialogue": ["「駆け引きや温度感のある自然なセリフ1」", "「返答セリフ2」"],\n'
-        '      "after_paragraphs": ["締めくくり段落"],\n'
+        '      "after_paragraphs": ["余韻のある締めくくり段落"],\n'
         '      "highlight_title": "明日から使える実践ルール",\n'
         '      "highlight_body": "具体的な3つの行動指針"\n'
         '    }\n'
@@ -1374,7 +1378,7 @@ def _build_column_gemini_prompt(
         '    {"q": "読者がよく迷う質問2", "a": "具体的で誠実な回答2"}\n'
         '  ],\n'
         '  "x_title": "Xリプ欄用の短い記事見出し",\n'
-        '  "x_main_text": "X告知1投目（図星あるある＋実測の驚き＋👇 #相席ラウンジ #相席ナビ）",\n'
+        '  "x_main_text": "X告知1投目（運営中の人の本音独り言＋実測の気づき＋👇 #相席ラウンジ #相席ナビ）",\n'
         '  "note_title": "note読者向けに少しエッセイ感と本音感を強めたタイトル",\n'
         '  "note_hashtags": "#相席ラウンジ #オリエンタルラウンジ #相席ナビ #夜遊び #恋愛コラム"\n'
         "}"
@@ -1383,11 +1387,15 @@ def _build_column_gemini_prompt(
 
 def _make_col_cache_key(research: dict, plan: dict, tone_mode: str = None):
     tm = sns_editorial.get_editorial_tone_mode(tone_mode)
+    eng_pref = sns_editorial.get_ai_engine_pref(allow_blocking=False)
+    has_c = bool(sns_editorial.get_claude_api_key(allow_blocking=False))
     stores_sig = tuple(
         (s.get("raw_name", ""), int(s.get("women") or 0), int(s.get("men") or 0))
         for s in (research.get("featured_stores") or [])[:3]
     )
     return (
+        eng_pref,
+        has_c,
         tm,
         plan.get("theme_key") or "area_hopping",
         plan.get("custom_topic") or "",
@@ -1413,8 +1421,7 @@ def _generate_gemini_column_candidate(
     cache_only: bool = False,
     tone_mode: str = None,
 ) -> dict:
-    api_key = sns_editorial.get_gemini_api_key(allow_blocking=(not cache_only))
-    if not api_key:
+    if not sns_editorial.has_any_ai_key(allow_blocking=(not cache_only)):
         return None
 
     tm = sns_editorial.get_editorial_tone_mode(tone_mode)
@@ -1433,167 +1440,80 @@ def _generate_gemini_column_candidate(
         return None
 
     prompt = _build_column_gemini_prompt(research, plan, site_url, tone_mode=tm)
-    preferred_env = (os.environ.get("GEMINI_MODEL") or "").strip()
-    models_to_try = (
-        [preferred_env] + [m for m in sns_editorial.DEFAULT_GEMINI_MODELS if m != preferred_env]
-        if preferred_env
-        else list(sns_editorial.DEFAULT_GEMINI_MODELS)
+    parsed, mn, _ = sns_editorial.call_editorial_ai_json(
+        prompt=prompt,
+        max_output_tokens=6500,
+        thinking_budget=2048,
+        temperature=0.86,
+        total_deadline_sec=36.0,
+        per_call_timeout_sec=22.0,
+        allow_blocking=True,
+        now_jst=now_jst,
     )
-    saved_route = sns_editorial._last_gemini_meta.get("working_route")
-    routes = []
-    if saved_route and saved_route[0] == "ai_studio":
-        routes.append(saved_route)
-    for mn in models_to_try:
-        if ("ai_studio", mn) not in routes:
-            routes.append(("ai_studio", mn))
-    routes = routes[:2]
-    deadline = time.monotonic() + 21.0
-    last_err = ""
-    saw_404 = False
+    if not isinstance(parsed, dict) or not parsed.get("title") or not parsed.get("sections"):
+        return None
 
-    def _call_model(mn: str):
-        rem = deadline - time.monotonic()
-        if rem <= 0.6:
-            raise requests.exceptions.Timeout("Column Gemini deadline (21s) reached")
-        gen_cfg = {
-            "temperature": 0.85,
-            "maxOutputTokens": 6000,
-            "responseMimeType": "application/json",
-        }
-        if mn.startswith(("gemini-3.5", "gemini-2.5")) or mn in ("gemini-flash-lite-latest", "gemini-flash-latest"):
-            gen_cfg["thinkingConfig"] = {"thinkingBudget": 768}
-        elif mn.startswith("gemini-3"):
-            gen_cfg["thinkingConfig"] = {"thinkingLevel": "LOW"}
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{mn}:generateContent"
-        headers = {"Content-Type": "application/json", "x-goog-api-key": api_key}
-        payload = {"contents": [{"role": "user", "parts": [{"text": prompt}]}], "generationConfig": gen_cfg}
-        return requests.post(url, headers=headers, json=payload, timeout=min(13.0, rem))
+    ai_slug = _normalize_slug(parsed.get("slug") or plan["suggested_slug"])
+    if ai_slug in RESERVED_STATIC_SLUGS:
+        ai_slug = f"{ai_slug}-{now_jst.strftime('%m%d')}"
 
-    def _parse_response(resp, mn: str):
-        data = resp.json() or {}
-        cands = data.get("candidates") or []
-        if not cands:
-            return None, "Empty Gemini candidates"
-        parts = ((cands[0].get("content") or {}).get("parts")) or []
-        raw_text = "".join(p.get("text", "") for p in parts if not p.get("thought")).strip()
-        if not raw_text:
-            raw_text = "".join(p.get("text", "") for p in parts).strip()
-        if raw_text.startswith("```"):
-            raw_text = re.sub(r"^```(?:json)?\s*", "", raw_text)
-            raw_text = re.sub(r"\s*```$", "", raw_text)
-        parsed = json.loads(raw_text, strict=False)
-        if isinstance(parsed, list) and parsed:
-            parsed = parsed[0]
-        if not isinstance(parsed, dict) or not parsed.get("title") or not parsed.get("sections"):
-            return None, "Incomplete JSON fields from Gemini"
+    links_pool = plan.get("internal_links") or []
+    built_sections = []
+    for idx, sec in enumerate(parsed.get("sections") or []):
+        if not isinstance(sec, dict):
+            continue
+        built_sections.append({
+            "heading": _sanitize_brand_names(sec.get("heading") or f"{idx + 1}. 現場のポイント"),
+            "paragraphs": [_sanitize_brand_names(p) for p in (sec.get("paragraphs") or []) if str(p).strip()],
+            "dialogue": [_sanitize_brand_names(d) for d in (sec.get("dialogue") or []) if str(d).strip()],
+            "after_paragraphs": [_sanitize_brand_names(p) for p in (sec.get("after_paragraphs") or []) if str(p).strip()],
+            "highlight_title": _sanitize_brand_names(sec.get("highlight_title") or ""),
+            "highlight_body": _sanitize_brand_names(sec.get("highlight_body") or ""),
+            "store_links": links_pool[:2] if idx == 0 else (links_pool[1:3] if idx == 1 else links_pool),
+        })
+    if len(built_sections) < 2:
+        return None
 
-        ai_slug = _normalize_slug(parsed.get("slug") or plan["suggested_slug"])
-        if ai_slug in RESERVED_STATIC_SLUGS:
-            ai_slug = f"{ai_slug}-{now_jst.strftime('%m%d')}"
+    x_main = _sanitize_brand_names(parsed.get("x_main_text") or baseline_cand["x_main_text"], prefer_casual_if_tight=True)
+    if x_poster.compute_twitter_weight(x_main) > 272 and "オリエンタルラウンジ" in x_main:
+        x_main = x_main.replace("オリエンタルラウンジ", "オリラジ")
 
-        links_pool = plan.get("internal_links") or []
-        built_sections = []
-        for idx, sec in enumerate(parsed.get("sections") or []):
-            if not isinstance(sec, dict):
-                continue
-            built_sections.append({
-                "heading": _sanitize_brand_names(sec.get("heading") or f"{idx + 1}. 現場のポイント"),
-                "paragraphs": [_sanitize_brand_names(p) for p in (sec.get("paragraphs") or []) if str(p).strip()],
-                "dialogue": [_sanitize_brand_names(d) for d in (sec.get("dialogue") or []) if str(d).strip()],
-                "after_paragraphs": [_sanitize_brand_names(p) for p in (sec.get("after_paragraphs") or []) if str(p).strip()],
-                "highlight_title": _sanitize_brand_names(sec.get("highlight_title") or ""),
-                "highlight_body": _sanitize_brand_names(sec.get("highlight_body") or ""),
-                "store_links": links_pool[:2] if idx == 0 else (links_pool[1:3] if idx == 1 else links_pool),
-            })
-        if len(built_sections) < 2:
-            return None, "Too few sections in Gemini output"
-
-        x_main = _sanitize_brand_names(parsed.get("x_main_text") or baseline_cand["x_main_text"], prefer_casual_if_tight=True)
-        if x_poster.compute_twitter_weight(x_main) > 272 and "オリエンタルラウンジ" in x_main:
-            x_main = x_main.replace("オリエンタルラウンジ", "オリラジ")
-
-        cand = {
-            "style": "ai_longform_story",
-            "style_label": f"✨ Gemini AI 長考ストーリー案（{tone_short}）",
-            "writer_note": f"【{mn}・{tone_short}】{_sanitize_brand_names(parsed.get('writer_note') or '現場の本音と実測ログを掛け合わせたAI編集長案')}",
-            "thinking_memo": _sanitize_brand_names(parsed.get("thinking_memo") or ""),
-            "is_ai_generated": True,
-            "ai_model": mn,
-            "slug": ai_slug,
-            "eyecatch_key": plan["eyecatch_key"],
-            "badge": plan["badge"],
-            "read_time": "約6分で読める",
-            "tag_primary": plan["tag_primary"],
-            "tag_secondary": plan["tag_secondary"],
-            "title": _sanitize_brand_names(parsed.get("title")),
-            "short_title": _sanitize_brand_names(parsed.get("short_title") or parsed.get("title")[:28]),
-            "desc": _sanitize_brand_names(parsed.get("desc") or baseline_cand["desc"]),
-            "keywords": baseline_cand["keywords"],
-            "sections": built_sections,
-            "data_table": baseline_cand["data_table"],
-            "summary_points": [_sanitize_brand_names(pt) for pt in (parsed.get("summary_points") or baseline_cand["summary_points"])],
-            "faqs": [
-                {"q": _sanitize_brand_names(f.get("q", "")), "a": _sanitize_brand_names(f.get("a", ""))}
-                for f in (parsed.get("faqs") or baseline_cand["faqs"])
-                if isinstance(f, dict) and f.get("q") and f.get("a")
-            ] or baseline_cand["faqs"],
-            "x_title": _sanitize_brand_names(parsed.get("x_title") or parsed.get("short_title") or baseline_cand["x_title"]),
-            "x_main_text": x_main,
-            "note_title": _sanitize_brand_names(parsed.get("note_title") or parsed.get("title")),
-            "note_hashtags": str(parsed.get("note_hashtags") or baseline_cand["note_hashtags"]),
-        }
-        _render_candidate_preview_and_note(cand, site_url=site_url)
-        return cand, ""
-
-    for _, mn in routes:
-        if time.monotonic() >= deadline - 0.6:
-            break
-        try:
-            resp = _call_model(mn)
-            if resp.status_code == 404:
-                saw_404 = True
-                last_err = f"Model {mn} HTTP 404"
-                continue
-            if resp.status_code >= 400:
-                last_err = f"Gemini HTTP {resp.status_code} ({mn}): {(resp.text or '')[:120]}"
-                continue
-            cand, p_err = _parse_response(resp, mn)
-            if cand:
-                with _col_ai_lock:
-                    _col_ai_cache[ck] = {"ts": time.time(), "candidate": cand, "model": mn}
-                    while len(_col_ai_cache) > _COL_AI_CACHE_MAX_SIZE:
-                        _col_ai_cache.popitem(last=False)
-                sns_editorial._last_gemini_meta["working_route"] = ("ai_studio", mn)
-                sns_editorial._last_gemini_meta["last_model"] = mn
-                sns_editorial._last_gemini_meta["last_error"] = ""
-                sns_editorial._last_gemini_meta["last_ok_at"] = now_jst.strftime("%Y-%m-%d %H:%M:%S")
-                return dict(cand)
-            last_err = p_err
-        except Exception as e:
-            last_err = str(e)[:140]
-            logger.warning(f"[column_editorial] Gemini error ({mn}): {e}")
-
-    if saw_404 and (deadline - time.monotonic()) > 2.0:
-        disc = sns_editorial._discover_ai_studio_flash_model(api_key, timeout=3.0)
-        if disc and disc not in models_to_try:
-            try:
-                resp = _call_model(disc)
-                if resp.status_code == 200:
-                    cand, _ = _parse_response(resp, disc)
-                    if cand:
-                        with _col_ai_lock:
-                            _col_ai_cache[ck] = {"ts": time.time(), "candidate": cand, "model": disc}
-                        sns_editorial._last_gemini_meta["working_route"] = ("ai_studio", disc)
-                        sns_editorial._last_gemini_meta["last_model"] = disc
-                        sns_editorial._last_gemini_meta["last_error"] = ""
-                        sns_editorial._last_gemini_meta["last_ok_at"] = now_jst.strftime("%Y-%m-%d %H:%M:%S")
-                        return dict(cand)
-            except Exception:
-                pass
-
-    if last_err:
-        sns_editorial._last_gemini_meta["last_error"] = last_err
-    return None
+    cand = {
+        "style": "ai_longform_story",
+        "style_label": f"✨ AI編集長・本音エッセイ案（{mn} ｜ {tone_short}）",
+        "writer_note": f"【{mn}・{tone_short}】{_sanitize_brand_names(parsed.get('writer_note') or '現場の本音と実測ログを掛け合わせたAI編集長案')}",
+        "thinking_memo": _sanitize_brand_names(parsed.get("thinking_memo") or ""),
+        "is_ai_generated": True,
+        "ai_model": mn,
+        "slug": ai_slug,
+        "eyecatch_key": plan["eyecatch_key"],
+        "badge": plan["badge"],
+        "read_time": "約6分で読める",
+        "tag_primary": plan["tag_primary"],
+        "tag_secondary": plan["tag_secondary"],
+        "title": _sanitize_brand_names(parsed.get("title")),
+        "short_title": _sanitize_brand_names(parsed.get("short_title") or parsed.get("title")[:28]),
+        "desc": _sanitize_brand_names(parsed.get("desc") or baseline_cand["desc"]),
+        "keywords": baseline_cand["keywords"],
+        "sections": built_sections,
+        "data_table": baseline_cand["data_table"],
+        "summary_points": [_sanitize_brand_names(pt) for pt in (parsed.get("summary_points") or baseline_cand["summary_points"])],
+        "faqs": [
+            {"q": _sanitize_brand_names(f.get("q", "")), "a": _sanitize_brand_names(f.get("a", ""))}
+            for f in (parsed.get("faqs") or baseline_cand["faqs"])
+            if isinstance(f, dict) and f.get("q") and f.get("a")
+        ] or baseline_cand["faqs"],
+        "x_title": _sanitize_brand_names(parsed.get("x_title") or parsed.get("short_title") or baseline_cand["x_title"]),
+        "x_main_text": x_main,
+        "note_title": _sanitize_brand_names(parsed.get("note_title") or parsed.get("title")),
+        "note_hashtags": str(parsed.get("note_hashtags") or baseline_cand["note_hashtags"]),
+    }
+    _render_candidate_preview_and_note(cand, site_url=site_url)
+    with _col_ai_lock:
+        _col_ai_cache[ck] = {"ts": time.time(), "candidate": cand, "model": mn}
+        while len(_col_ai_cache) > _COL_AI_CACHE_MAX_SIZE:
+            _col_ai_cache.popitem(last=False)
+    return dict(cand)
 
 
 def run_column_writer(

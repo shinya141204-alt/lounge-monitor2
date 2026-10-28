@@ -624,7 +624,7 @@ def execute_scheduled_ladies_threads_post(
             return {"status": "skipped", "reason": "Insufficient live male headcount for ladies alert"}
 
         refresh_threads_token_if_needed(force=False)
-        text = ladies_guide.build_threads_ladies_post(stores, slot_label=slot_label, now_jst=now_jst)
+        text = ladies_guide.build_threads_ladies_post(stores, slot_label=slot_label, now_jst=now_jst, use_ai=True)
         res = post_to_threads(text)
         try:
             import sns_editorial

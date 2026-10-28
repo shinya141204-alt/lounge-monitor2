@@ -154,6 +154,7 @@ def build_bonus_alert_tweet_thread(
     candidate: dict,
     now_jst: datetime.datetime = None,
     app_url: str = "",
+    use_ai: bool = False,
 ) -> tuple:
     """Build URL-free 1st guerrilla alert post (<=274 weight) + store-detail reply URL."""
     now_jst = now_jst or datetime.datetime.now(JST)
@@ -172,29 +173,78 @@ def build_bonus_alert_tweet_thread(
     wpct = round((w / tot) * 100) if tot > 0 else 50
     t_str = now_jst.strftime("%H:%M")
 
+    store_url = f"{site_url}/store/{slug}" if slug else f"{site_url}/"
+    reply_text = (
+        f"📍 {seo_label}の現在人数推移＆徒歩圏の他店舗とのバランス比較はこちら👇\n"
+        f"{store_url}"
+    )
+
+    if use_ai:
+        try:
+            import sns_editorial
+            if sns_editorial.has_any_ai_key(allow_blocking=True):
+                casual_n = sns_editorial.casual_store_name(sname)
+                weather_ctx = sns_editorial.fetch_live_weather_context(allow_blocking=True) or {}
+                cal_ctx = sns_editorial.build_calendar_context(now_jst)
+                facts = {
+                    "time": f"{cal_ctx.get('weekday_ja', '')}曜 {t_str}",
+                    "weather": weather_ctx.get("adlib_hint") or "",
+                    "mode": "女子待ちゼロ（男性大幅先行）" if mode == "male_lead" else "男性ボーナスタイム（女性大幅先行）",
+                    "store_name": ja_name,
+                    "casual_alias": casual_n,
+                    "women": w,
+                    "men": m,
+                    "women_pct": wpct,
+                }
+                prompt = (
+                    "あなたは全国53店舗の相席ラウンジ人数モニターを見ている『相席ナビ』の運営中の人です。\n"
+                    "いまモニターをふと見たら1店舗だけ極端な男女比の偏り（レアな狙い目状態）が出ているのを発見し、"
+                    "思わずXで呟いたような『人間味100%のゲリラ独り言ポスト（90〜122文字以内、X換算258ウェイト以下）』を1本書いてください。\n\n"
+                    f"{sns_editorial.HUMAN_INSIDER_VOICE_GUIDE}\n\n"
+                    "【必須ルール】\n"
+                    "1. 『🚨【速報】』のような業者見出しやURL（http...）は絶対に入れないこと。\n"
+                    f"2. 店舗名（『{ja_name}』または『{casual_n}』）と実測値（女性{w}名・男性{m}名、必要なら女性比{wpct}%）を1人の狂いもなく正確に入れ、最後はリプ欄へ自然に流して『#相席ナビ #相席ラウンジ』で締めること。\n\n"
+                    f"【検証済みファクト】\n{sns_editorial.json.dumps(facts, ensure_ascii=False)}\n\n"
+                    '出力はJSON形式のみ：{"thinking_memo": "推敲メモ", "main_text": "投稿本文"}'
+                )
+                parsed, _, _ = sns_editorial.call_editorial_ai_json(
+                    prompt=prompt,
+                    max_output_tokens=1400,
+                    thinking_budget=1024,
+                    total_deadline_sec=20.0,
+                    now_jst=now_jst,
+                )
+                if parsed and parsed.get("main_text"):
+                    ai_txt = sns_editorial._postprocess_ai_main_text(parsed["main_text"], channel="x")
+                    wt = x_poster.compute_twitter_weight(ai_txt)
+                    w_vals = sns_editorial._extract_headcount_values(ai_txt, "women")
+                    m_vals = sns_editorial._extract_headcount_values(ai_txt, "men")
+                    has_url = ("http://" in ai_txt or "https://" in ai_txt)
+                    if (
+                        not has_url
+                        and 110 <= wt <= 274
+                        and all(v == w for v in w_vals)
+                        and all(v == m for v in m_vals)
+                        and (w in w_vals or m in m_vals)
+                    ):
+                        return ai_txt, reply_text
+        except Exception as e:
+            logger.warning(f"Bonus alert AI generation fallback: {e}")
+
     if mode == "male_lead":
         main_text = (
-            f"🚨【盛り上がり速報】{t_str}時点\n"
-            f"いま「{ja_name}」が男性{m}名・女性{w}名で大盛況中🥂\n\n"
-            f"・女性は待ち時間ゼロで即相席◎\n"
-            f"・過去ログでは男性先行の30分後に女性も急増しやすい傾向📊\n\n"
-            f"近隣店舗との比較はリプ欄へ👇\n"
+            f"いま{t_str}のモニター見てたんだけど、「{ja_name}」が男性{m}名・女性{w}名でだいぶ男性先行になってる…🥂\n\n"
+            f"近くにいる女子組なら受付待ちゼロでそのままソファ席通されそうな空気。男性先行の30分後に女性が増えやすい傾向もあるので推移はリプ欄置いときます👇\n"
             f"#相席ナビ #相席ラウンジ"
         )
     else:
         main_text = (
-            f"🚨【ボーナスタイム速報】{t_str}時点\n"
-            f"いま「{ja_name}」が女性大幅リードの狙い目状態🔥\n\n"
-            f"👩 女性：{w}名 / 👨 男性：{m}名（女性比{wpct}%）\n\n"
-            f"人気店でこの男女比はかなりレア！男性待ちになる前にどうぞ👇\n"
+            f"ちょっと待って、{t_str}時点で「{ja_name}」のモニター二度見したんだけど、いま女性{w}名・男性{m}名（女性比{wpct}%）まで偏ってる…\n\n"
+            f"人気店でこのバランスはさすがに珍しいやつ。男性待ちに切り替わる前の細かい推移はリプ欄置いときます👇\n"
             f"#相席ナビ #相席ラウンジ"
         )
-
-    store_url = f"{site_url}/store/{slug}" if slug else f"{site_url}/"
-    reply_text = (
-        f"📍 {seo_label}の最新人数＆徒歩圏の周辺店舗とのハシゴ比較はこちら👇\n"
-        f"{store_url}"
-    )
+    if x_poster.compute_twitter_weight(main_text) > 274:
+        main_text = main_text.replace("オリエンタルラウンジ", "オリラジ")
     return main_text, reply_text
 
 
@@ -241,7 +291,7 @@ def check_and_post_bonus_alert(
     if not candidate:
         return {"status": "skipped", "reason": "No store currently meets bonus-time threshold"}
 
-    main_text, reply_text = build_bonus_alert_tweet_thread(candidate, now_jst=now_jst, app_url=app_url)
+    main_text, reply_text = build_bonus_alert_tweet_thread(candidate, now_jst=now_jst, app_url=app_url, use_ai=True)
     png_bytes = None
     try:
         import ogp_generator

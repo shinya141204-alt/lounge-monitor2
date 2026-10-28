@@ -1951,41 +1951,71 @@ def api_editorial_tone_mode():
 
 
 @app.route('/api/sns-editorial/gemini-key', methods=['POST'])
+@app.route('/api/sns-editorial/ai-config', methods=['POST'])
 def api_sns_editorial_gemini_key():
-    """Master-only endpoint to securely store or clear the Gemini API key in obfuscated job_state."""
+    """Master-only endpoint to securely store/clear Gemini & Claude API keys and switch AI engine preference."""
     if not is_master_authorized():
         return jsonify({'error': 'Unauthorized'}), 401
     import sns_editorial
     payload = request.get_json(silent=True) or {}
     action = (payload.get('action') or 'save').strip().lower()
-    if action == 'clear':
-        sns_editorial.set_gemini_api_key('')
+    provider = (payload.get('provider') or 'auto').strip().lower()
+
+    def _flush_editorial_caches():
         try:
             import column_editorial
             column_editorial.clear_column_ai_cache()
         except Exception:
             pass
         clear_fast_http_caches()
+
+    if action == 'set_pref':
+        saved_pref = sns_editorial.set_ai_engine_pref(payload.get('engine_pref') or 'auto')
+        _flush_editorial_caches()
+        pref_labels = {
+            'auto': '自動ハイブリッド（Claude登録時はClaude Sonnet優先・未登録時は上位Gemini Pro/Flash）',
+            'claude': 'Claude Sonnet 最優先（障害時はGeminiへ自動退避）',
+            'gemini': '上位 Gemini Pro / Flash 最優先（障害時はClaudeへ自動退避）',
+        }
         return jsonify({
             'ok': True,
-            'message': '登録済みのGemini APIキーを削除しました（Render環境変数がある場合はそちらが使用されます）。',
+            'engine_pref': saved_pref,
+            'message': f"優先AIエンジンを『{pref_labels.get(saved_pref, saved_pref)}』に切り替えました！",
+            'gemini_status': sns_editorial.get_gemini_status(),
+        })
+
+    if action == 'clear':
+        if provider == 'claude':
+            sns_editorial.set_claude_api_key('')
+            msg = '登録済みのClaude APIキーを削除しました。'
+        else:
+            sns_editorial.set_gemini_api_key('')
+            msg = '登録済みのGemini APIキーを削除しました（Render環境変数がある場合はそちらが使用されます）。'
+        _flush_editorial_caches()
+        return jsonify({
+            'ok': True,
+            'message': msg,
             'gemini_status': sns_editorial.get_gemini_status(),
         })
 
     api_key = (payload.get('api_key') or '').strip()
     if not api_key or len(api_key) < 16:
-        return jsonify({'ok': False, 'error': '有効なGemini APIキーを入力してください（AIza... で始まる文字列）'}), 400
+        return jsonify({'ok': False, 'error': '有効なAPIキーを入力してください（AIza... / AQ.... または sk-ant-...）'}), 400
 
-    sns_editorial.set_gemini_api_key(api_key)
-    try:
-        import column_editorial
-        column_editorial.clear_column_ai_cache()
-    except Exception:
-        pass
-    clear_fast_http_caches()
+    # Smartly detect Anthropic `sk-ant-...` vs Google `AIza...` / `AQ....` even if pasted into the other box
+    is_claude_key = api_key.startswith('sk-ant-') or (provider == 'claude' and not api_key.startswith(('AIza', 'AQ.')))
+    if is_claude_key:
+        sns_editorial.set_claude_api_key(api_key)
+        saved_msg = 'Claude Sonnet APIキーを暗号化保存しました！人間味重視のメイン執筆エンジンとして即座に稼働します。'
+    else:
+        sns_editorial.set_gemini_api_key(api_key)
+        saved_msg = 'Gemini APIキーを暗号化保存しました！上位モデル（Gemini Pro / Flash）での本音執筆が有効になります。'
+
+    _flush_editorial_caches()
     return jsonify({
         'ok': True,
-        'message': 'Gemini APIキーを暗号化保存しました！自動でAIアドリブ執筆＆鬼デスク数値検閲が有効になります。',
+        'provider': 'claude' if is_claude_key else 'gemini',
+        'message': saved_msg,
         'gemini_status': sns_editorial.get_gemini_status(),
     })
 

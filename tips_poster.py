@@ -579,6 +579,72 @@ def get_tip_reply_text(slot_label: str = "12:00", tip_index: int = None, now_jst
     )
 
 
+def _generate_ai_daily_human_tip(
+    seed_tip_text: str,
+    slot_label: str,
+    standalone_no_reply: bool,
+    col_title: str,
+    now_jst: datetime.datetime,
+) -> str:
+    """
+    Re-express today's curated lounge observation (`seed_tip_text`) as a fresh, never-repeated
+    human insider monologue tuned to tonight's actual weather, day-of-week, and calendar mood.
+    Returns "" if AI is unconfigured or output exceeds strict X hygiene constraints.
+    """
+    try:
+        import re
+        import sns_editorial
+        if not sns_editorial.has_any_ai_key(allow_blocking=True):
+            return ""
+        weather_ctx = sns_editorial.fetch_live_weather_context(allow_blocking=True) or {}
+        cal_ctx = sns_editorial.build_calendar_context(now_jst)
+        ctx_info = {
+            "slot": slot_label,
+            "weekday": f"{cal_ctx.get('weekday_ja', '')}曜",
+            "calendar_vibe": f"{cal_ctx.get('tag', '')}（{cal_ctx.get('note', '')}）",
+            "weather": weather_ctx.get("adlib_hint") or weather_ctx.get("summary") or "",
+            "theme_seed": seed_tip_text,
+            "has_reply_column": (not standalone_no_reply),
+            "reply_column_title": col_title if not standalone_no_reply else "",
+        }
+        ending_rule = (
+            "今日はリプ欄なしの完全1ツイート独り言の日なので、『👇』や『リプ欄』への誘導は書かず、ふと呟いた余韻と末尾の『#相席ラウンジ』1個だけで締めること。"
+            if standalone_no_reply
+            else "最後は宣伝臭くならない自然な一言でリプ欄の深掘りメモへ流すか、余韻を残しつつ末尾に『#相席ラウンジ #相席ナビ』を置くこと。"
+        )
+        prompt = (
+            "あなたは全国53店舗の相席ラウンジを見続けている『相席ナビ』の運営中の人です。\n"
+            "夕方18時頃、これから飲みに出る人たちへ向けてXでふと呟いた『人間味100%のリアル観察・本音ポスト（88〜124文字以内、X換算262ウェイト以下）』を1本書いてください。\n\n"
+            f"{sns_editorial.HUMAN_INSIDER_VOICE_GUIDE}\n\n"
+            "【必須ルール】\n"
+            "1. 下の `theme_seed`（今日のテーマ原案）の核心となる気づき・毒・女性目線の図星を活かしつつ、今日の曜日・天気・季節の空気感をほんの少し絡めて、過去と一字一句被らない新しい生の口語ツイートに書き直すこと。\n"
+            "2. URL（http...）や架空の店舗人数、角括弧【】見出しは絶対に入れないこと。単体の『オリエンタル』表記も禁止。\n"
+            f"3. {ending_rule}\n\n"
+            f"【今日のコンテキスト】\n{sns_editorial.json.dumps(ctx_info, ensure_ascii=False)}\n\n"
+            '出力はJSON形式のみ：{"thinking_memo": "どう定型感を消して生の独り言にしたか", "main_text": "投稿本文"}'
+        )
+        parsed, _, _ = sns_editorial.call_editorial_ai_json(
+            prompt=prompt,
+            max_output_tokens=1400,
+            thinking_budget=1152,
+            total_deadline_sec=20.0,
+            now_jst=now_jst,
+        )
+        if not parsed or not parsed.get("main_text"):
+            return ""
+        txt = sns_editorial._postprocess_ai_main_text(parsed["main_text"], channel="x")
+        if "http://" in txt or "https://" in txt:
+            return ""
+        if standalone_no_reply:
+            txt = txt.replace("👇", "").replace("リプ欄", "")
+        wt = x_poster.compute_twitter_weight(txt)
+        if 105 <= wt <= 272 and not any(w in txt for w in sns_editorial.AI_CLICHE_WORDS):
+            return txt
+    except Exception as e:
+        logger.warning(f"Tip AI generation fallback: {e}")
+    return ""
+
+
 def run_scheduled_tip_post(slot_label: str = "12:00", force: bool = False, tip_index: int = None, now_jst: datetime.datetime = None) -> dict:
     """
     Execute daily tip posting to X (Twitter).
@@ -599,13 +665,11 @@ def run_scheduled_tip_post(slot_label: str = "12:00", force: bool = False, tip_i
 
     standalone = is_standalone_url_free_tip(slot_label=slot_label, now_jst=now_jst, tip_index=orig_tip_index) and not force
     idx = _select_tip_index(slot_label=slot_label, tip_index=tip_index, now_jst=now_jst)
-    text = get_tip_for_slot(slot_label=slot_label, tip_index=idx, now_jst=now_jst, standalone_no_reply=standalone)
-    if not text:
+    fallback_text = get_tip_for_slot(slot_label=slot_label, tip_index=idx, now_jst=now_jst, standalone_no_reply=standalone)
+    if not fallback_text:
         return {"status": "error", "detail": "Empty tip text"}
 
-    if force:
-        text = f"{text}\n(⏱️{now_jst.strftime('%H:%M')})"
-
+    col_title = ""
     col_path = ""
     reply_text = None
     if not standalone:
@@ -617,7 +681,22 @@ def run_scheduled_tip_post(slot_label: str = "12:00", force: bool = False, tip_i
         )
         site_url = os.environ.get("PUBLIC_SITE_URL", "https://aiseki-navi.com").rstrip("/")
         slot_hh = (slot_label or "12:00")[:2]
-        reply_text = f"📖 詳しい解説コラム：{col_title}👇\n{site_url}{col_path}?s=x{slot_hh}_tip"
+        reply_text = f"📖 現場ログからの深掘りメモ：{col_title}👇\n{site_url}{col_path}?s=x{slot_hh}_tip"
+
+    raw_seed = TIPS_LIST[idx % len(TIPS_LIST)]
+    ai_text = _generate_ai_daily_human_tip(
+        seed_tip_text=raw_seed,
+        slot_label=slot_label,
+        standalone_no_reply=standalone,
+        col_title=col_title,
+        now_jst=now_jst,
+    )
+    text = ai_text or fallback_text
+
+    if force:
+        suffix = f"\n(⏱️{now_jst.strftime('%H:%M')})"
+        if x_poster.compute_twitter_weight(text + suffix) <= 278:
+            text = text + suffix
 
     result = x_poster.post_to_x(text, reply_text=reply_text)
     if result.get("status") == "success" and not force:
