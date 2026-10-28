@@ -954,6 +954,45 @@
             }
         }
 
+        // Reusable DOM pool for store cards (zero 1,500-node teardown/clone on women-mode hydration, sort/filter switches, and 30s polls)
+        const _cardDomPool = new Map();
+        function _cacheCardRefs(item) {
+            if (item._refs) return item._refs;
+            item._refs = {
+                pinBtn: item.querySelector('.pin-btn'),
+                analysisBtn: item.querySelector('.analysis-btn'),
+                rankBadge: item.querySelector('.rank-badge'),
+                badgeEl: item.querySelector('.brand-badge'),
+                areaEl: item.querySelector('.area-tag'),
+                distTag: item.querySelector('.distance-tag'),
+                momTag: item.querySelector('.momentum-tag'),
+                storeNameEl: item.querySelector('.store-name'),
+                microEl: item.querySelector('.store-micro-metrics'),
+                ladiesCountEl: item.querySelector('.stat.ladies .count'),
+                menCountEl: item.querySelector('.stat.men .count'),
+                ladiesDiffEl: item.querySelector('.stat.ladies .stat-diff'),
+                menDiffEl: item.querySelector('.stat.men .stat-diff'),
+                ladiesUsualEl: item.querySelector('.stat.ladies .stat-usual'),
+                menUsualEl: item.querySelector('.stat.men .stat-usual'),
+                ladiesBar: item.querySelector('.bar-fill-ladies'),
+                menBar: item.querySelector('.bar-fill-men'),
+            };
+            return item._refs;
+        }
+        (function _seedCardPoolFromSsr() {
+            try {
+                const ssrCards = document.querySelectorAll('#ranking-list .ranking-item[data-store], #pinned-list .ranking-item[data-store]');
+                for (let i = 0; i < ssrCards.length; i++) {
+                    const el = ssrCards[i];
+                    const sName = el.getAttribute('data-store');
+                    if (sName && !_cardDomPool.has(sName)) {
+                        _cacheCardRefs(el);
+                        _cardDomPool.set(sName, el);
+                    }
+                }
+            } catch (e) {}
+        })();
+
         // Instant Load: Render server-embedded INITIAL_STATUS_DATA (0ms, zero network roundtrip) or localStorage cache
         function restoreCachedStatus() {
             try {
@@ -1362,61 +1401,82 @@
         }
 
         function renderStore(store, index, container, isPinned = false, globalIndex = null, isDuplicateName = false) {
-            const template = document.getElementById('ranking-item-template');
-            const node = template.content.cloneNode(true);
-            const item = node.querySelector('.ranking-item');
-            if (store && store.name) {
-                item.setAttribute('data-store', store.name);
+            const storeKey = (store && store.name) ? store.name : '';
+            let item = storeKey ? _cardDomPool.get(storeKey) : null;
+            if (!item) {
+                const template = document.getElementById('ranking-item-template');
+                const node = template.content.cloneNode(true);
+                item = node.querySelector('.ranking-item');
+                if (storeKey) {
+                    item.setAttribute('data-store', storeKey);
+                    _cardDomPool.set(storeKey, item);
+                }
+            }
+            const refs = _cacheCardRefs(item);
+            const pinBtn = refs.pinBtn;
+            const analysisBtn = refs.analysisBtn;
+
+            if (item._boundStore !== storeKey) {
+                item._boundStore = storeKey;
+                item.removeAttribute('onclick');
+                item.style.cursor = 'pointer';
+                item.onclick = () => openModal(store.name);
+                if (pinBtn) {
+                    pinBtn.removeAttribute('onclick');
+                    pinBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        togglePin(store.name);
+                    };
+                }
+                if (analysisBtn) {
+                    analysisBtn.removeAttribute('onclick');
+                    analysisBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        openModal(store.name);
+                    };
+                }
             }
 
-            const pinBtn = node.querySelector('.pin-btn');
-            if (pinnedStores.includes(store.name)) {
-                pinBtn.classList.add('active');
+            if (pinBtn) {
+                pinBtn.classList.toggle('active', pinnedStores.includes(store.name));
             }
-
-            pinBtn.onclick = (e) => {
-                e.stopPropagation();
-                togglePin(store.name);
-            };
-
-            const analysisBtn = node.querySelector('.analysis-btn');
-            analysisBtn.onclick = (e) => {
-                e.stopPropagation();
-                openModal(store.name);
-            };
-
-            item.style.cursor = 'pointer';
-            item.onclick = () => openModal(store.name);
 
             const isKoreaStore = store.region === 'Korea' || (store.name && (store.name.includes('カンナム') || store.name.includes('ホンデ')));
             const displayRank = isKoreaStore ? '-' : (globalIndex !== null ? globalIndex + 1 : index + 1);
 
+            item.classList.remove('rank-1', 'rank-2', 'rank-3', 'pinned-item');
             if (!isPinned) {
                 if (!isKoreaStore) {
                     if (index === 0) item.classList.add('rank-1');
-                    if (index === 1) item.classList.add('rank-2');
-                    if (index === 2) item.classList.add('rank-3');
+                    else if (index === 1) item.classList.add('rank-2');
+                    else if (index === 2) item.classList.add('rank-3');
                 }
             } else {
                 item.classList.add('pinned-item');
             }
 
-            node.querySelector('.rank-badge').textContent = displayRank;
+            if (refs.rankBadge) refs.rankBadge.textContent = displayRank;
 
             const brandInfo = detectBrandInfo(store);
-            const badgeEl = node.querySelector('.brand-badge');
-            badgeEl.textContent = brandInfo.code;
-            badgeEl.classList.add(brandInfo.cls);
+            const badgeEl = refs.badgeEl;
+            if (badgeEl) {
+                badgeEl.className = 'brand-badge ' + brandInfo.cls;
+                badgeEl.textContent = brandInfo.code;
+            }
 
-            const areaEl = node.querySelector('.area-tag');
-            if (brandInfo.areaLabel) {
-                areaEl.textContent = brandInfo.areaLabel;
-            } else {
-                areaEl.classList.add('hidden');
+            const areaEl = refs.areaEl;
+            if (areaEl) {
+                if (brandInfo.areaLabel) {
+                    areaEl.classList.remove('hidden');
+                    areaEl.textContent = brandInfo.areaLabel;
+                } else {
+                    areaEl.classList.add('hidden');
+                    areaEl.textContent = '';
+                }
             }
 
             // Distance Tag (GPS Geolocation - ONLY visible when sorted by nearby)
-            const distTag = node.querySelector('.distance-tag');
+            const distTag = refs.distTag;
             if (distTag) {
                 if (currentSort === 'nearby' && typeof store._distKm === 'number' && userLocation) {
                     distTag.classList.remove('hidden');
@@ -1431,7 +1491,7 @@
             }
 
             // 15-min Momentum Tag (or Women's Zero-Wait Comfort Badge when audience === 'women')
-            const momTag = node.querySelector('.momentum-tag');
+            const momTag = refs.momTag;
             const wDiff = Number(store.women_diff || 0);
             const mDiff = Number(store.men_diff || 0);
             const ladiesEval = (!IS_STAFF && currentAudience === 'women') ? evaluateLadiesStoreJs(store) : null;
@@ -1457,7 +1517,7 @@
             }
 
             const baseName = brandInfo.cleanName || store.name;
-            const storeNameEl = node.querySelector('.store-name');
+            const storeNameEl = refs.storeNameEl;
             storeNameEl.textContent = isDuplicateName
                 ? `${brandInfo.code} ${baseName}`
                 : baseName;
@@ -1485,7 +1545,7 @@
                 }
             }
 
-            const microEl = node.querySelector('.store-micro-metrics');
+            const microEl = refs.microEl;
             if (microEl) {
                 if (ladiesEval && ladiesEval.micro) {
                     microEl.classList.remove('hidden');
@@ -1503,10 +1563,10 @@
             const menCount = store.men || 0;
             const totalCount = ladiesCount + menCount;
 
-            node.querySelector('.stat.ladies .count').textContent = ladiesCount;
-            node.querySelector('.stat.men .count').textContent = menCount;
+            if (refs.ladiesCountEl) refs.ladiesCountEl.textContent = ladiesCount;
+            if (refs.menCountEl) refs.menCountEl.textContent = menCount;
 
-            const ladiesDiffEl = node.querySelector('.stat.ladies .stat-diff');
+            const ladiesDiffEl = refs.ladiesDiffEl;
             if (ladiesDiffEl) {
                 if (wDiff > 0) {
                     ladiesDiffEl.classList.remove('hidden');
@@ -1517,7 +1577,7 @@
                     ladiesDiffEl.textContent = '';
                 }
             }
-            const menDiffEl = node.querySelector('.stat.men .stat-diff');
+            const menDiffEl = refs.menDiffEl;
             if (menDiffEl) {
                 if (mDiff > 0) {
                     menDiffEl.classList.remove('hidden');
@@ -1530,7 +1590,7 @@
             }
 
             const slotLabel = store.usual_slot_label || '普段同時間帯';
-            const ladiesUsualEl = node.querySelector('.stat.ladies .stat-usual');
+            const ladiesUsualEl = refs.ladiesUsualEl;
             if (ladiesUsualEl) {
                 const uWDiff = store.usual_w_diff;
                 if (uWDiff !== null && uWDiff !== undefined && totalCount > 0) {
@@ -1544,7 +1604,7 @@
                     ladiesUsualEl.textContent = '';
                 }
             }
-            const menUsualEl = node.querySelector('.stat.men .stat-usual');
+            const menUsualEl = refs.menUsualEl;
             if (menUsualEl) {
                 const uMDiff = store.usual_m_diff;
                 if (uMDiff !== null && uMDiff !== undefined && totalCount > 0) {
@@ -1560,8 +1620,8 @@
             }
 
             // Gender ratio bar calculation
-            const ladiesBar = node.querySelector('.bar-fill-ladies');
-            const menBar = node.querySelector('.bar-fill-men');
+            const ladiesBar = refs.ladiesBar;
+            const menBar = refs.menBar;
             if (totalCount > 0) {
                 const ladiesPct = Math.round((ladiesCount / totalCount) * 100);
                 const menPct = 100 - ladiesPct;
@@ -1572,7 +1632,7 @@
                 menBar.style.width = '0%';
             }
 
-            container.appendChild(node);
+            container.appendChild(item);
         }
 
         function _computeUiSignature(data) {
@@ -1623,9 +1683,6 @@
                 return;
             }
             _lastRenderedSignature = nextSig;
-
-            rankingList.innerHTML = '';
-            pinnedList.innerHTML = '';
 
             // Count occurrences of each cleanName across all stores so duplicate names get their brand prefixed
             const cleanNameCounts = {};
@@ -1695,7 +1752,11 @@
             }
 
             if (filteredStores.length === 0) {
-                rankingList.innerHTML = '<p style="color: #666; width: 100%; text-align: center;">該当する店舗がありません</p>';
+                const emptyP = document.createElement('p');
+                emptyP.style.cssText = 'color: var(--text-secondary); width: 100%; text-align: center;';
+                emptyP.textContent = '該当する店舗がありません';
+                rankingList.replaceChildren(emptyP);
+                pinnedList.replaceChildren();
                 pinnedContainer.classList.add('hidden');
                 return;
             }
@@ -1720,8 +1781,9 @@
                 pinnedItems.forEach(item => {
                     renderStore(item.store, -1, pinnedFrag, true, item.rank, item.isDup);
                 });
-                pinnedList.appendChild(pinnedFrag);
+                pinnedList.replaceChildren(pinnedFrag);
             } else {
+                pinnedList.replaceChildren();
                 pinnedContainer.classList.add('hidden');
             }
 
@@ -1738,7 +1800,7 @@
                     }
                 }
             });
-            rankingList.appendChild(rankingFrag);
+            rankingList.replaceChildren(rankingFrag);
 
             const lastUpdateEl = document.getElementById('last-update');
             if (lastUpdateEl) {
@@ -2407,6 +2469,50 @@
                 fetchData();
             }
         });
+
+        // Instant bfcache back-navigation support + touch/hover link prefetching on top page
+        (function _initTopNavAcceleration() {
+            const prefetched = Object.create(null);
+            function prefetchHref(href) {
+                if (!href || prefetched[href] || href.indexOf('/') !== 0 || href.indexOf('/staff') === 0) return;
+                prefetched[href] = true;
+                try {
+                    const link = document.createElement('link');
+                    link.rel = 'prefetch';
+                    link.href = href;
+                    link.as = 'document';
+                    document.head.appendChild(link);
+                } catch (e) {}
+            }
+            document.addEventListener('pointerdown', (e) => {
+                const a = e.target && e.target.closest ? e.target.closest('.portal-nav-link, .ladies-quick-link[href], .portal-area-chip') : null;
+                if (a) prefetchHref(a.getAttribute('href'));
+            }, { passive: true });
+            document.addEventListener('mouseover', (e) => {
+                const a = e.target && e.target.closest ? e.target.closest('.portal-nav-link') : null;
+                if (a) prefetchHref(a.getAttribute('href'));
+            }, { passive: true });
+            document.addEventListener('click', (e) => {
+                if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+                const a = e.target && e.target.closest ? e.target.closest('.portal-nav-link, .menu-grid-item[href]') : null;
+                if (!a) return;
+                const href = a.getAttribute('href');
+                if (!href || href.indexOf('#') === 0 || a.target === '_blank') return;
+                if (href === window.location.pathname + window.location.search) return;
+                a.classList.add('nav-loading');
+            });
+            window.addEventListener('pageshow', (e) => {
+                document.querySelectorAll('.nav-loading').forEach(el => el.classList.remove('nav-loading'));
+                if (e.persisted && getStatusAgeSec(window.lastData) > 15) {
+                    fetchData();
+                }
+            });
+            if ('requestIdleCallback' in window && !IS_STAFF) {
+                requestIdleCallback(() => {
+                    ['/for-women', '/price-comparison', '/columns'].forEach(prefetchHref);
+                }, { timeout: 3000 });
+            }
+        })();
 
         // --- Analysis Modal Logic ---
         let dailyChartInstance = null;
@@ -3469,36 +3575,36 @@
             const reversed = [...rows].reverse();
             let trs = '';
             reversed.forEach(r => {
-                const ratioColor = r.w > r.m ? '#d8a1aa' : (r.m > r.w ? '#93b1c9' : '#cbd5e1');
+                const ratioCls = r.w > r.m ? 'daily-col-w' : (r.m > r.w ? 'daily-col-m' : 'daily-col-eq');
                 trs += `
-                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-                        <td style="padding: 5px 8px; font-variant-numeric: tabular-nums; color: var(--text-secondary);">${escapeHtml(r.timeStr)}</td>
-                        <td style="padding: 5px 8px; font-weight: 700; color: #d8a1aa; text-align: right;">${r.w}名</td>
-                        <td style="padding: 5px 8px; font-weight: 600; color: #93b1c9; text-align: right;">${r.m}名</td>
-                        <td style="padding: 5px 8px; color: var(--text-primary); text-align: right;">${r.tot}名</td>
-                        <td style="padding: 5px 8px; font-weight: 600; color: ${ratioColor}; text-align: right;">女性${r.wPct}%</td>
+                    <tr>
+                        <td class="daily-col-time">${escapeHtml(r.timeStr)}</td>
+                        <td class="daily-col-w">${r.w}名</td>
+                        <td class="daily-col-m">${r.m}名</td>
+                        <td class="daily-col-tot">${r.tot}名</td>
+                        <td class="${ratioCls}">女性${r.wPct}%</td>
                     </tr>
                 `;
             });
 
             wrap.innerHTML = `
-                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:8px; padding:6px 10px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:8px; font-size:0.78rem;">
+                <div class="daily-log-summary-bar">
                     <span>📅 <strong>${escapeHtml(dateStr)}</strong> 営業日ログ（全${rows.length}件）</span>
-                    <span>最高ピーク: <strong style="color:#d8a1aa;">女性${peakW}名</strong> / <strong style="color:#93b1c9;">男性${peakM}名</strong> (${escapeHtml(peakTime)})</span>
+                    <span>最高ピーク: <strong class="daily-col-w">女性${peakW}名</strong> / <strong class="daily-col-m">男性${peakM}名</strong> (${escapeHtml(peakTime)})</span>
                 </div>
-                <details ${ IS_STAFF ? 'open' : '' } style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.07); border-radius:8px; padding:6px 10px;">
-                    <summary style="cursor:pointer; font-size:0.78rem; font-weight:700; color:#93b1c9; user-select:none;">
+                <details class="daily-log-details" ${ IS_STAFF ? 'open' : '' }>
+                    <summary>
                         🕒 時刻別の詳細数値ログ一覧を表示（${rows.length}回計測）
                     </summary>
                     <div style="max-height:220px; overflow-y:auto; margin-top:8px;">
-                        <table style="width:100%; border-collapse:collapse; font-size:0.76rem;">
+                        <table class="daily-log-table">
                             <thead>
-                                <tr style="border-bottom:1px solid rgba(255,255,255,0.12); color:var(--text-secondary); text-align:right;">
-                                    <th style="padding:4px 8px; text-align:left;">時刻</th>
-                                    <th style="padding:4px 8px;">女性</th>
-                                    <th style="padding:4px 8px;">男性</th>
-                                    <th style="padding:4px 8px;">合計</th>
-                                    <th style="padding:4px 8px;">比率</th>
+                                <tr>
+                                    <th style="text-align:left;">時刻</th>
+                                    <th>女性</th>
+                                    <th>男性</th>
+                                    <th>合計</th>
+                                    <th>比率</th>
                                 </tr>
                             </thead>
                             <tbody>${trs}</tbody>

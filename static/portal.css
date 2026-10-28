@@ -14,8 +14,14 @@
     margin-top: 0;
     gap: 8px;
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
     padding: 4px 0 14px;
     margin-bottom: 22px;
+}
+
+.portal-global-nav::-webkit-scrollbar {
+    display: none;
 }
 
 .portal-nav-item {

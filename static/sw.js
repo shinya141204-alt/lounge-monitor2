@@ -1,5 +1,5 @@
-// Supersedes aiseki-navi-v47..v60 (purged automatically on activate)
-const CACHE_NAME = 'aiseki-navi-v61';
+// Supersedes aiseki-navi-v47..v61 (purged automatically on activate)
+const CACHE_NAME = 'aiseki-navi-v62';
 const SHELL_KEY = '/';
 const FAST_NAV_PATHS = new Set([
   '/grooming',
@@ -22,14 +22,12 @@ const LIVE_SSR_PREFIXES = [
   '/area/'
 ];
 const CORE_ASSETS = [
-  '/static/style.css?v=20261028_4',
-  '/static/calm.css?v=16',
-  '/static/portal.css?v=6',
-  '/static/app.js?v=20261028_3',
+  '/static/style.css?v=20261029_1',
+  '/static/calm.css?v=17',
+  '/static/portal.css?v=7',
+  '/static/app.js?v=20261029_1',
   '/static/affiliate_config.js?v=12',
-  '/static/manifest.json?v=2',
-  '/static/icon-192.png?v=2',
-  '/static/icon-512.png?v=2'
+  '/static/manifest.json?v=2'
 ];
 const OPTIONAL_EXTERNAL_ASSETS = [
   'https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap'
@@ -51,7 +49,7 @@ function isLiveSsrPath(pathname) {
   return LIVE_SSR_EXACT.has(pathname) || LIVE_SSR_PREFIXES.some((p) => pathname === p || pathname.startsWith(p));
 }
 
-// Install: Cache critical shell assets (+ the top page HTML as the app shell)
+// Install: Cache critical CSS/JS assets only (avoid competing for bandwidth with large icons or duplicate HTML fetch)
 self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
@@ -62,12 +60,6 @@ self.addEventListener('install', (event) => {
           await cache.add(extUrl);
         } catch (e) {}
       }
-      try {
-        const shell = await fetch(SHELL_KEY, { cache: 'no-store' });
-        if (shell && shell.ok && !isStaffOrPrivateNoStore(shell)) {
-          await cache.put(SHELL_KEY, shell);
-        }
-      } catch (e) {}
     })
   );
 });
@@ -100,7 +92,7 @@ function fetchAndCache(event, cacheKey, forceFresh) {
     try {
       preload = await event.preloadResponse;
     } catch (e) {}
-    const resp = preload || await fetch(event.request, forceFresh ? { cache: 'no-store' } : undefined);
+    const resp = preload || await fetch(event.request, forceFresh ? { cache: 'no-cache' } : undefined);
     if (resp && resp.ok && !isStaffOrPrivateNoStore(resp)) {
       const copy = resp.clone();
       event.waitUntil(

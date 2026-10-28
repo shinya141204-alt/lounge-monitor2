@@ -95,8 +95,8 @@
     <!-- Non-render-blocking web font (avoids waiting on Google Fonts at PWA cold launch) -->
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet"></noscript>
-    <link rel="stylesheet" href="/static/style.css?v=20261028_4">
-    <link rel="preload" href="/static/app.js?v=20261028_3" as="script">
+    <link rel="stylesheet" href="/static/style.css?v=20261029_1">
+    <link rel="preload" href="/static/app.js?v=20261029_1" as="script">
     <script>
         window.APP_CONFIG = {
             isStaff: {{ 'true' if is_staff else 'false' }},
@@ -109,7 +109,7 @@
          crossorigin="anonymous"></script>
     <script src="/static/affiliate_config.js?v=12" defer></script>
     {% endif %}
-    <link rel="stylesheet" href="/static/calm.css?v=16">
+    <link rel="stylesheet" href="/static/calm.css?v=17">
 </head>
 
 <body class="{% if is_staff %}staff-mode{% endif %}">
@@ -309,8 +309,8 @@
                     <div class="audience-mode-row">
                         <span class="audience-mode-label">表示モード</span>
                         <div class="audience-mode-toggle" role="group" aria-label="男女目線の切り替え">
-                            <button type="button" class="audience-pill-btn active" data-audience="men" onclick="setAudienceMode('men', true)">🕺 男性目線（女性人数順）</button>
-                            <button type="button" class="audience-pill-btn" data-audience="women" onclick="setAudienceMode('women', true)">💄 女性目線（待ち0・特典順）</button>
+                            <button type="button" class="audience-pill-btn active" data-audience="men" onclick="setAudienceMode('men', true)">🕺 男性目線<span class="aud-sub-pc">（女性人数順）</span><span class="aud-sub-sp">・女性順</span></button>
+                            <button type="button" class="audience-pill-btn" data-audience="women" onclick="setAudienceMode('women', true)">💄 女性目線<span class="aud-sub-pc">（待ち0・特典順）</span><span class="aud-sub-sp">・待ち0順</span></button>
                         </div>
                     </div>
                     <div id="ladies-mode-quicklinks" class="ladies-mode-quicklinks hidden">
@@ -328,9 +328,9 @@
                     <div class="sort-controls">
                         <button class="sort-btn active" data-sort="women" onclick="setSort('women')">女性順</button>
                         <button class="sort-btn" data-sort="men" onclick="setSort('men')">男性順</button>
-                        <button class="sort-btn" data-sort="ratio" onclick="setSort('ratio')">女性比率順</button>
+                        <button class="sort-btn" data-sort="ratio" onclick="setSort('ratio')"><span class="aud-sub-pc">女性比率順</span><span class="aud-sub-sp">比率順</span></button>
                         {% if not is_staff %}
-                        <button class="sort-btn" id="ladies-comfort-sort-btn" data-sort="ladies_comfort" onclick="setSort('ladies_comfort')" title="女性ペア向けに受付待ちゼロ・特典開催中の店舗順で並び替え">待ち0・特典順</button>
+                        <button class="sort-btn" id="ladies-comfort-sort-btn" data-sort="ladies_comfort" onclick="setSort('ladies_comfort')" title="女性ペア向けに受付待ちゼロ・特典開催中の店舗順で並び替え"><span class="aud-sub-pc">待ち0・特典順</span><span class="aud-sub-sp">待ち0順</span></button>
                         {% endif %}
                         <button class="sort-btn" id="nearby-sort-btn" data-sort="nearby" onclick="setNearbySort()" title="現在地から近い順に並び替え">現在地順</button>
                     </div>
@@ -952,15 +952,15 @@
             </div>
 
             {% if initial_status and initial_status.ranking %}
-            <details style="margin: 14px 0 8px; background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.07); border-radius: 12px; padding: 10px 14px; text-align: left;">
-                <summary style="cursor: pointer; font-size: 0.78rem; font-weight: 700; color: #9a968e; list-style: none;">
+            <details class="footer-store-details">
+                <summary class="footer-store-summary">
                     全国{{ initial_status.ranking|length }}店舗の現在人数テキスト一覧・店舗別ページ（オリエンタルラウンジ / ag（アグ） / JIS）▼
                 </summary>
-                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px 12px; margin-top: 10px; font-size: 0.75rem;">
+                <div class="footer-store-grid">
                     {% for s in initial_status.ranking %}
-                    <a href="/store/{{ s.name | store_slug }}" style="color: #cbd5e1; text-decoration: none; display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.04);">
+                    <a href="/store/{{ s.name | store_slug }}" class="footer-store-link">
                         <span>{{ s.name | seo_store_name }}</span>
-                        <span style="color: #94a3b8;">{% if (s.women or 0) + (s.men or 0) > 0 %}女性{{ s.women }}・男性{{ s.men }}{% elif s.is_open_now %}0 : 0（営業中）{% else %}店舗詳細 ›{% endif %}</span>
+                        <span class="footer-store-count">{% if (s.women or 0) + (s.men or 0) > 0 %}女性{{ s.women }}・男性{{ s.men }}{% elif s.is_open_now %}0 : 0（営業中）{% else %}店舗詳細 ›{% endif %}</span>
                     </a>
                     {% endfor %}
                 </div>
@@ -972,9 +972,9 @@
                 <div class="footer-legal-links">
                     <a href="/privacy" class="footer-sub-link" style="text-decoration: none;">運営者情報・プライバシーポリシー・免責事項</a>
                     <span class="footer-divider" style="opacity: 0.3;">|</span>
-                    <a href="/staff" class="footer-sub-link" style="color: #93b1c9;">社内業務モニター</a>
+                    <a href="/staff" class="footer-sub-link footer-staff-link">社内業務モニター</a>
                 </div>
-                <p style="font-size: 0.72rem; color: #9a968e; line-height: 1.6; max-width: 720px; margin: 0 auto 8px;">
+                <p class="footer-disclaimer-note">
                     ※掲載しているイベントの開催有無・適用条件、料金システム、入店ルール等は変更される場合や表記に差異がある場合がございます。ご来店の際は必ず各店舗の公式ホームページ・公式アプリにて最新情報をご確認ください。
                 </p>
                 <p class="footer-mini-copy">
@@ -1931,12 +1931,12 @@
         window.INITIAL_STATUS_DATA = {{ initial_status | tojson }};
         {% endif %}
     </script>
-    <script src="/static/app.js?v=20261028_3" defer></script>
+    <script src="/static/app.js?v=20261029_1" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/sw.js?v=61', { updateViaCache: 'none' })
+                navigator.serviceWorker.register('/sw.js?v=62', { updateViaCache: 'none' })
                     .then(function(reg) {
                         reg.update();
                         document.addEventListener('visibilitychange', function() {

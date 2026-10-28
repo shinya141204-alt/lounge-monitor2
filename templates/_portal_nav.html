@@ -20,8 +20,9 @@
             function isLiveHtmlHref(href) {
                 return href === '/' || href.indexOf('/for-women') === 0 || href.indexOf('/price-comparison') === 0 || href.indexOf('/areas') === 0 || href.indexOf('/area/') === 0 || href.indexOf('/store/') === 0;
             }
-            function prefetchUrl(href) {
-                if (!href || prefetched[href] || href.indexOf('/') !== 0 || isLiveHtmlHref(href)) return;
+            function prefetchUrl(href, allowLive) {
+                if (!href || prefetched[href] || href.indexOf('/') !== 0) return;
+                if (!allowLive && isLiveHtmlHref(href)) return;
                 prefetched[href] = true;
                 try {
                     var link = document.createElement('link');
@@ -33,7 +34,11 @@
             }
             document.addEventListener('pointerdown', function(e) {
                 var a = e.target && e.target.closest ? e.target.closest('.portal-nav-item, .portal-nav-link, .area-pill') : null;
-                if (a) prefetchUrl(a.getAttribute('href'));
+                if (a) prefetchUrl(a.getAttribute('href'), true);
+            }, { passive: true });
+            document.addEventListener('mouseover', function(e) {
+                var a = e.target && e.target.closest ? e.target.closest('.portal-nav-item, .portal-nav-link') : null;
+                if (a) prefetchUrl(a.getAttribute('href'), true);
             }, { passive: true });
             document.addEventListener('click', function(e) {
                 if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
@@ -49,7 +54,7 @@
             });
             if ('requestIdleCallback' in window) {
                 requestIdleCallback(function() {
-                    ['/guide/brand-comparison', '/columns', '/grooming', '/stats'].forEach(prefetchUrl);
+                    ['/guide/brand-comparison', '/columns', '/grooming', '/stats'].forEach(function(u) { prefetchUrl(u, false); });
                 }, { timeout: 2500 });
             }
         })();

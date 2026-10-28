@@ -1465,11 +1465,20 @@ body.staff-mode .header-top-row .header-controls {
 
     .sort-controls {
         padding: 3px !important;
+        gap: 3px !important;
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+
+    .sort-controls::-webkit-scrollbar {
+        display: none;
     }
 
     .sort-btn {
-        padding: 5px 0 !important;
-        font-size: 0.78rem !important;
+        padding: 6px 4px !important;
+        font-size: 0.74rem !important;
+        white-space: nowrap !important;
+        line-height: 1.25 !important;
     }
 
     .filter-bar {
@@ -1881,8 +1890,12 @@ h3.sec-h3 {
     h2.sec-h2 {
         font-size: 1.08rem !important;
         line-height: 1.48 !important;
+    }
+
+    .sec-title,
+    h2.sec-h2,
+    .section-title {
         padding-left: 11px !important;
-        padding-right: 10px !important;
     }
 
     .article-body h3,
@@ -1903,5 +1916,303 @@ h3.sec-h3 {
         overflow: visible !important;
     }
 }
+
+/* ==========================================================================
+   18. レスポンシブ目線切替・5連ソート最適化 ＆ ライトモード細部補完 ＆ 描画軽量化
+   ========================================================================== */
+.aud-sub-sp {
+    display: none;
+}
+
+.audience-mode-toggle {
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.audience-pill-btn {
+    min-width: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1.25;
+}
+
+@media (max-width: 600px) {
+    .aud-sub-pc {
+        display: none !important;
+    }
+    .aud-sub-sp {
+        display: inline !important;
+    }
+    .audience-mode-bar {
+        padding: 8px 9px;
+        gap: 6px;
+    }
+    .audience-mode-label {
+        display: none;
+    }
+    .audience-mode-toggle {
+        width: 100%;
+        max-width: 100%;
+    }
+    .audience-pill-btn {
+        padding: 6px 8px;
+        font-size: 0.74rem;
+    }
+    .ladies-quick-actions {
+        width: 100%;
+    }
+    .ladies-quick-link {
+        font-size: 0.72rem;
+        padding: 4px 9px;
+    }
+}
+
+@media (max-width: 360px) {
+    .audience-pill-btn {
+        font-size: 0.69rem;
+        padding: 6px 5px;
+    }
+    .sort-btn {
+        font-size: 0.69rem !important;
+        padding: 5px 3px !important;
+    }
+}
+
+/* フッター53店舗テキスト一覧・免責注記（ダーク＆ライト両対応） */
+.footer-store-details {
+    margin: 14px 0 8px;
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid var(--calm-border);
+    border-radius: 12px;
+    padding: 10px 14px;
+    text-align: left;
+}
+
+.footer-store-summary {
+    cursor: pointer;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--calm-sub);
+    list-style: none;
+}
+
+.footer-store-summary::-webkit-details-marker {
+    display: none;
+}
+
+.footer-store-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 6px 12px;
+    margin-top: 10px;
+    font-size: 0.75rem;
+}
+
+.footer-store-link {
+    color: var(--calm-text);
+    text-decoration: none;
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 3px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.footer-store-link:hover {
+    color: var(--calm-accent-text);
+}
+
+.footer-store-count {
+    color: var(--calm-sub);
+    white-space: nowrap;
+}
+
+.footer-staff-link {
+    color: var(--calm-men) !important;
+}
+
+.footer-disclaimer-note {
+    font-size: 0.72rem;
+    color: var(--calm-sub);
+    line-height: 1.6;
+    max-width: 720px;
+    margin: 0 auto 8px;
+}
+
+body.theme-light .footer-store-details {
+    background: var(--calm-light-surface);
+    border-color: var(--calm-light-border);
+}
+
+body.theme-light .footer-store-summary {
+    color: var(--calm-light-sub);
+}
+
+body.theme-light .footer-store-link {
+    color: var(--calm-light-text);
+    border-bottom-color: var(--calm-light-border);
+}
+
+body.theme-light .footer-store-link:hover {
+    color: var(--calm-light-accent);
+}
+
+body.theme-light .footer-store-count {
+    color: var(--calm-light-sub);
+}
+
+body.theme-light .footer-staff-link {
+    color: var(--calm-light-men) !important;
+}
+
+body.theme-light .footer-disclaimer-note {
+    color: var(--calm-light-sub);
+}
+
+/* サブページ共通フッター (_portal_footer.html) のライトモード視認性補正 */
+body.theme-light .portal-footer {
+    border-top-color: var(--calm-light-border-strong);
+    color: var(--calm-light-sub);
+}
+
+body.theme-light .portal-footer-links a {
+    color: var(--calm-light-text);
+}
+
+body.theme-light .portal-footer-links a:hover {
+    color: var(--calm-light-accent);
+}
+
+body.theme-light .portal-footer-disclaimer {
+    color: var(--calm-light-sub);
+}
+
+/* 詳細モーダル内：日別詳細ログテーブル（ダーク＆ライト両対応） */
+.daily-log-summary-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 8px;
+    padding: 6px 10px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--calm-border);
+    border-radius: 8px;
+    font-size: 0.78rem;
+    color: var(--calm-text);
+}
+
+.daily-log-details {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--calm-border);
+    border-radius: 8px;
+    padding: 6px 10px;
+}
+
+.daily-log-details > summary {
+    cursor: pointer;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--calm-men);
+    user-select: none;
+}
+
+.daily-log-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.76rem;
+}
+
+.daily-log-table thead tr {
+    border-bottom: 1px solid var(--calm-border-strong);
+    color: var(--calm-sub);
+    text-align: right;
+}
+
+.daily-log-table tbody tr {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.daily-log-table th,
+.daily-log-table td {
+    padding: 5px 8px;
+}
+
+.daily-col-time {
+    font-variant-numeric: tabular-nums;
+    color: var(--calm-sub);
+    text-align: left;
+}
+
+.daily-col-w {
+    font-weight: 700;
+    color: var(--calm-women);
+    text-align: right;
+}
+
+.daily-col-m {
+    font-weight: 600;
+    color: var(--calm-men);
+    text-align: right;
+}
+
+.daily-col-tot {
+    color: var(--calm-text);
+    text-align: right;
+}
+
+.daily-col-eq {
+    font-weight: 600;
+    color: var(--calm-sub);
+    text-align: right;
+}
+
+body.theme-light .daily-log-summary-bar,
+body.theme-light .daily-log-details {
+    background: var(--calm-light-surface);
+    border-color: var(--calm-light-border);
+    color: var(--calm-light-text);
+}
+
+body.theme-light .daily-log-details > summary {
+    color: var(--calm-light-men);
+}
+
+body.theme-light .daily-log-table thead tr {
+    border-bottom-color: var(--calm-light-border-strong);
+    color: var(--calm-light-sub);
+}
+
+body.theme-light .daily-log-table tbody tr {
+    border-bottom-color: var(--calm-light-border);
+}
+
+body.theme-light .daily-col-time,
+body.theme-light .daily-col-eq {
+    color: var(--calm-light-sub);
+}
+
+body.theme-light .daily-col-w {
+    color: var(--calm-light-women);
+}
+
+body.theme-light .daily-col-m {
+    color: var(--calm-light-men);
+}
+
+body.theme-light .daily-col-tot {
+    color: var(--calm-light-text);
+}
+
+/* 画面外大型ブロックの初期レイアウト負荷削減（content-visibility） */
+.seo-guide-section,
+.portal-footer-sitemap,
+#all-stores-price-catalog {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 480px;
+}
+
 
 

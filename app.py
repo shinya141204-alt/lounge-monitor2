@@ -775,7 +775,7 @@ def _is_static_editorial_route(path: str) -> bool:
     return path == '/guide' or path.startswith('/guide/') or path in ('/grooming', '/privacy', '/columns')
 
 
-def _get_cached_html_or_render(cache_extra_key, render_fn, ttl_sec=55.0):
+def _get_cached_html_or_render(cache_extra_key, render_fn, ttl_sec=660.0):
     """Fast thread-safe memoizer for rendered HTML strings keyed on session auth + live data signature."""
     is_editorial = _is_static_editorial_route(request.path)
     pub_slugs = tuple(a.get('slug') for a in scheduled_articles.get_published_articles())
@@ -998,12 +998,34 @@ def get_initial_status_payload():
     return payload
 
 
+_prewarm_in_progress = False
+_last_data_audit_mono = 0.0
+
+
 def prewarm_ssr_and_status_caches():
-    """Pre-populate SSR payload and index HTML cache on background update thread so user GET / never misses."""
+    """Pre-populate SSR payload, /api/status, and primary HTML route caches on background update thread so user GET never misses."""
+    global _prewarm_in_progress
+    if _prewarm_in_progress:
+        return
+    _prewarm_in_progress = True
     try:
         get_initial_status_payload()
+        if os.environ.get('DISABLE_SCHEDULER') == '1' or app.testing:
+            return
+        headers = {
+            'User-Agent': 'aiseki-internal-prewarm-bot/1.0',
+            'Accept-Encoding': 'gzip',
+        }
+        with app.test_client() as client:
+            for path in ('/api/status', '/', '/for-women', '/price-comparison', '/areas'):
+                try:
+                    client.get(path, headers=headers)
+                except Exception:
+                    pass
     except Exception:
         pass
+    finally:
+        _prewarm_in_progress = False
 
 # Region Definitions
 REGIONS = {
@@ -1144,7 +1166,7 @@ def refresh_momentum_from_db():
         print(f"[app] refresh_momentum_from_db error: {e}", file=sys.stderr)
 
 def update_job(force=False):
-    global latest_data, _last_update_error, rolling_snapshots, _last_fetch_at
+    global latest_data, _last_update_error, rolling_snapshots, _last_fetch_at, _last_data_audit_mono
     with data_lock:
         has_live_data = bool(latest_data.get('full_data')) and not latest_data.get('is_seed')
     if not force and has_live_data and _last_fetch_at is not None:
@@ -1263,15 +1285,29 @@ def update_job(force=False):
                 latest_data['last_updated'] = jst_now.strftime("%Y-%m-%d %H:%M:%S")
                 latest_data['is_seed'] = False
             save_latest_status_snapshot()
-            clear_fast_http_caches(clear_editorial=False)
+            with _ssr_payload_cache_lock:
+                _ssr_payload_cache['key'] = None
+                _ssr_payload_cache['payload'] = None
+            with _status_json_cache_lock:
+                _status_json_cache['key'] = None
+                _status_json_cache['raw'] = None
+                _status_json_cache['gzip'] = None
+                _status_json_cache['etag'] = None
+            with _api_json_cache_lock:
+                _api_json_cache.clear()
+            with _ogp_bytes_cache_lock:
+                _ogp_bytes_cache.clear()
             prewarm_ssr_and_status_caches()
             print(f"Data updated. Top store: {top_store['name'] if top_store else 'None'}")
             _last_update_error = None
-            try:
-                import data_audit
-                data_audit.run_data_audit(live_stores=sorted_data, send_alerts=True)
-            except Exception:
-                pass
+            now_audit_mono = time.monotonic()
+            if (now_audit_mono - _last_data_audit_mono) >= 300.0:
+                _last_data_audit_mono = now_audit_mono
+                try:
+                    import data_audit
+                    data_audit.run_data_audit(live_stores=sorted_data, send_alerts=True)
+                except Exception:
+                    pass
             
             # --- Logging Optimization ---
             total_guests = sum(d.get('men', 0) + d.get('women', 0) for d in data)
@@ -1491,11 +1527,13 @@ def track_page_views(response):
             else:
                 response.headers['Cache-Control'] = 'public, max-age=86400'
         else:
-            if (request.path in ('/', '/sw.js', '/api/status')
-                    or request.path.startswith(_LIVE_NO_CACHE_PREFIXES)):
+            if request.path in ('/sw.js', '/api/status'):
                 response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
                 response.headers['Pragma'] = 'no-cache'
                 response.headers['Expires'] = '0'
+            elif (request.path == '/' or request.path.startswith(_LIVE_NO_CACHE_PREFIXES)) and not session.get('is_staff'):
+                # Allow browser back/forward cache (bfcache) for instant 0ms back-navigation while revalidating normal visits
+                response.headers['Cache-Control'] = 'private, no-cache, must-revalidate, max-age=0'
             if (request.method == 'GET' and response.status_code == 200
                     and (request.path == '/' or request.path.startswith(_TRACKED_PAGE_PREFIXES))
                     and not session.get('is_staff')
@@ -3162,7 +3200,7 @@ def for_women_guide():
             is_staff=bool(session.get('is_staff')),
         )
 
-    return _get_cached_html_or_render('for_women', _render, ttl_sec=20.0)
+    return _get_cached_html_or_render('for_women', _render)
 
 
 @app.route('/ladies')

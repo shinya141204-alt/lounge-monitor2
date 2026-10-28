@@ -484,13 +484,18 @@ h1 {
 
 .sort-btn {
     flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     background: none;
     border: none;
     color: var(--text-secondary);
-    padding: 6px 0;
+    padding: 6px 4px;
     border-radius: 16px;
     cursor: pointer;
     font-size: 0.8rem;
+    line-height: 1.25;
+    white-space: nowrap;
     font-family: var(--font-main);
     transition: all 0.2s ease;
 }
@@ -4086,14 +4091,14 @@ body.theme-light .how-to-dont-show {
 
 /* Header live button in Light Mode */
 body.theme-light #header-x-btn {
-    background: #fef2f2 !important;
-    border-color: #fca5a5 !important;
-    color: #dc2626 !important;
+    background: #fef2f2;
+    border-color: #fca5a5;
+    color: #dc2626;
 }
 
 body.theme-light #header-x-btn:hover {
-    background: #fee2e2 !important;
-    border-color: #f87171 !important;
+    background: #fee2e2;
+    border-color: #f87171;
 }
 
 /* ==========================================================================
@@ -4470,9 +4475,9 @@ body.theme-light .pwa-step-text {
 
 /* Light mode for Menu Modal */
 body.theme-light .mobile-only-btn {
-    background: linear-gradient(135deg, #fdf2f8, #f0fdf4) !important;
-    border-color: #fbcfe8 !important;
-    color: #be185d !important;
+    background: linear-gradient(135deg, #fdf2f8, #f0fdf4);
+    border-color: #fbcfe8;
+    color: #be185d;
 }
 
 body.theme-light .menu-section-title {
@@ -4515,13 +4520,22 @@ body.theme-light .menu-sub-link:hover {
    ========================================================================== */
 .portal-global-nav {
     display: flex;
-    justify-content: center;
+    justify-content: flex-start;
     align-items: center;
     gap: 8px;
     margin-top: 12px;
     padding: 6px 4px;
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
+}
+
+.portal-global-nav > :first-child {
+    margin-left: auto;
+}
+
+.portal-global-nav > :last-child {
+    margin-right: auto;
 }
 
 .portal-global-nav::-webkit-scrollbar {
