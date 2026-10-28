@@ -723,13 +723,27 @@
             </div>
 
             <div id="gemini-key-drawer" class="key-drawer" style="display: none;">
+                {% if editorial.gemini_status and editorial.gemini_status.vertex_available %}
+                <div style="padding:10px 12px; border-radius:10px; background:rgba(123,196,159,0.11); border:1px solid rgba(123,196,159,0.38); margin-bottom:10px; font-size:0.78rem; line-height:1.6;">
+                    <div style="font-weight:800; color:#d3f3e2; margin-bottom:4px;">☁️ Google Cloud 無料クレジット連動（スプレッドシート共通認証・新規キー発行不要！）</div>
+                    <div style="color:var(--sub);">
+                        プロジェクト：<code>{{ editorial.gemini_status.vertex_project_id }}</code> ／ 認証：<code>{{ editorial.gemini_status.vertex_client_email }}</code><br>
+                        ① <a href="{{ editorial.gemini_status.vertex_api_console_url }}" target="_blank" rel="noopener" style="color:var(--gold); font-weight:700;">Vertex AI API を有効化 ↗</a>
+                        　② 必要時のみ <a href="{{ editorial.gemini_status.vertex_iam_console_url }}" target="_blank" rel="noopener" style="color:var(--gold); font-weight:700;">IAM画面 ↗</a> でロール <code>Vertex AI ユーザー</code> を追加
+                    </div>
+                    <div style="margin-top:8px;">
+                        <button type="button" class="copy-btn" onclick="verifyColVertexAi(this)">🔍 無料クレジット（Vertex AI）開通テストを実行</button>
+                    </div>
+                </div>
+                {% endif %}
                 <div style="font-size:0.78rem; color:var(--sub); margin-bottom:8px; line-height:1.55;">
-                    💡 SNS編集部と共通の両対応AIキー設定です。Google キーは上位 <code>Gemini Pro / 標準Flash</code> で動作し、さらに <code>sk-ant-...</code>（Anthropic Claude Sonnet）を追加すると人間味エッセイ特化エンジンへ即時切替できます。
+                    💡 SNS編集部と共通のマルチAI設定です。Google Cloud 無料クレジット枠（Vertex AI <code>gemini-2.5-pro</code>）で実質0円執筆でき、AI Studio キーや Claude Sonnet とも自動フェイルオーバーします。
                 </div>
                 <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:8px;">
                     <span style="font-size:0.76rem; color:var(--sub); font-weight:700;">優先AIエンジン：</span>
-                    <button type="button" class="ai-btn" onclick="saveColEnginePref('auto')">⚡ 自動（Claude登録時はClaude優先）</button>
-                    <button type="button" class="ai-btn" onclick="saveColEnginePref('gemini')">♊ 上位 Gemini Pro/Flash 優先</button>
+                    <button type="button" class="ai-btn" onclick="saveColEnginePref('vertex')">☁️ 無料クレジット最優先（Vertex AI：Gemini 2.5 Pro）</button>
+                    <button type="button" class="ai-btn" onclick="saveColEnginePref('auto')">⚡ 自動最適切替</button>
+                    <button type="button" class="ai-btn" onclick="saveColEnginePref('gemini')">♊ AI Studio キー優先</button>
                     <button type="button" class="ai-btn" onclick="saveColEnginePref('claude')">✍️ Claude Sonnet 優先</button>
                 </div>
                 <div class="custom-topic-row" style="margin-bottom:6px;">
@@ -1317,6 +1331,52 @@
                     window.location.reload();
                 } else {
                     alert(res.error || "削除に失敗しました");
+                }
+            });
+        }
+
+        function verifyColVertexAi(btn) {
+            var msg = document.getElementById("gemini-key-msg");
+            var orig = btn ? btn.innerText : "";
+            if (btn) {
+                btn.disabled = true;
+                btn.innerText = "🔍 Vertex AI 接続テスト中...";
+            }
+            if (msg) {
+                msg.style.color = "#d3f3e2";
+                msg.innerText = "☁️ Google Cloud 無料クレジット枠（Vertex AI：gemini-2.5-pro）への疎通を確認中...";
+            }
+            fetch("/api/sns-editorial/ai-config", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({action: "verify_vertex"})
+            }).then(function(r) { return r.json(); }).then(function(data) {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerText = orig;
+                }
+                if (data && data.ok) {
+                    if (msg) {
+                        msg.style.color = "#d3f3e2";
+                        msg.innerText = "✅ " + data.message;
+                    }
+                    triggerColumnAiRefresh(true, false);
+                } else if (msg) {
+                    msg.style.color = "#ffd6d6";
+                    var errHtml = "⚠️ " + escHtml((data && data.error) || "開通確認に失敗しました");
+                    if (data && data.fix_url) {
+                        errHtml += ' 👉 <a href="' + escHtml(data.fix_url) + '" target="_blank" rel="noopener" style="color:var(--gold); font-weight:800;">Google Cloudの設定画面を開く ↗</a>';
+                    }
+                    msg.innerHTML = errHtml;
+                }
+            }).catch(function() {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerText = orig;
+                }
+                if (msg) {
+                    msg.style.color = "#ffd6d6";
+                    msg.innerText = "⚠️ 通信エラーが発生しました";
                 }
             });
         }

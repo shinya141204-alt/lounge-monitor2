@@ -1969,13 +1969,36 @@ def api_sns_editorial_gemini_key():
             pass
         clear_fast_http_caches()
 
+    if action == 'verify_vertex':
+        vres = sns_editorial.verify_vertex_connection()
+        if vres.get('ok'):
+            _flush_editorial_caches()
+        vres['gemini_status'] = sns_editorial.get_gemini_status()
+        return jsonify(vres)
+
+    if action == 'toggle_vertex':
+        enabled = bool(payload.get('enabled', True))
+        sns_editorial.set_vertex_enabled(enabled)
+        _flush_editorial_caches()
+        return jsonify({
+            'ok': True,
+            'vertex_enabled': enabled,
+            'message': (
+                '☁️ Google Cloud 無料クレジット枠（Vertex AI）を有効化しました！'
+                if enabled else
+                'Vertex AI ルートを一時停止しました（登録済みAPIキーまたは安全案へ切り替わります）。'
+            ),
+            'gemini_status': sns_editorial.get_gemini_status(),
+        })
+
     if action == 'set_pref':
         saved_pref = sns_editorial.set_ai_engine_pref(payload.get('engine_pref') or 'auto')
         _flush_editorial_caches()
         pref_labels = {
-            'auto': '自動ハイブリッド（Claude登録時はClaude Sonnet優先・未登録時は上位Gemini Pro/Flash）',
-            'claude': 'Claude Sonnet 最優先（障害時はGeminiへ自動退避）',
-            'gemini': '上位 Gemini Pro / Flash 最優先（障害時はClaudeへ自動退避）',
+            'auto': '自動ハイブリッド（Google Cloud 無料クレジット枠 / Claude / Gemini 自動最適切替）',
+            'vertex': '☁️ Google Cloud 無料クレジット最優先（Vertex AI：Gemini 2.5 Pro）',
+            'claude': 'Claude Sonnet 最優先（障害時はVertex/Geminiへ自動退避）',
+            'gemini': 'AI Studio キー最優先（障害時はVertex/Claudeへ自動退避）',
         }
         return jsonify({
             'ok': True,

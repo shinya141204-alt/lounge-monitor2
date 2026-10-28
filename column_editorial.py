@@ -1445,8 +1445,8 @@ def _generate_gemini_column_candidate(
         max_output_tokens=6500,
         thinking_budget=2048,
         temperature=0.86,
-        total_deadline_sec=36.0,
-        per_call_timeout_sec=22.0,
+        total_deadline_sec=45.0,
+        per_call_timeout_sec=30.0,
         allow_blocking=True,
         now_jst=now_jst,
     )
