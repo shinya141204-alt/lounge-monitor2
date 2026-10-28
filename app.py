@@ -2023,7 +2023,21 @@ def api_sns_editorial_gemini_key():
 
     api_key = (payload.get('api_key') or '').strip()
     if not api_key or len(api_key) < 16:
-        return jsonify({'ok': False, 'error': '有効なAPIキーを入力してください（AIza... / AQ.... または sk-ant-...）'}), 400
+        return jsonify({'ok': False, 'error': '有効なAPIキーまたはサービスアカウントJSONを入力してください'}), 400
+
+    # Accept Google Cloud Service Account JSON (`{"type": "service_account", ...}`) directly for Free Credit Vertex AI!
+    if api_key.startswith('{') and 'service_account' in api_key:
+        try:
+            sa_res = sns_editorial.set_vertex_sa_json(api_key)
+        except Exception as e:
+            return jsonify({'ok': False, 'error': f'サービスアカウントJSONの形式エラー: {e}'}), 400
+        _flush_editorial_caches()
+        return jsonify({
+            'ok': True,
+            'provider': 'vertex',
+            'message': f"☁️ Google Cloud サービスアカウント（プロジェクト: {sa_res['project_id']}）を暗号化保存しました！無料クレジット枠で稼働します。",
+            'gemini_status': sns_editorial.get_gemini_status(),
+        })
 
     # Smartly detect Anthropic `sk-ant-...` vs Google `AIza...` / `AQ....` even if pasted into the other box
     is_claude_key = api_key.startswith('sk-ant-') or (provider == 'claude' and not api_key.startswith(('AIza', 'AQ.')))

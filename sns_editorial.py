@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 JST = datetime.timezone(datetime.timedelta(hours=9))
 GEMINI_KEY_STORAGE_PREFIX = "token:gemini_api_key"
 CLAUDE_KEY_STORAGE_PREFIX = "token:claude_api_key"
+VERTEX_SA_JSON_STORAGE_PREFIX = "token:vertex_sa_json"
 AI_ENGINE_PREF_KEY = "editorial:ai_engine_pref"
 VERTEX_ENABLED_KEY = "editorial:vertex_ai_enabled"
 
@@ -567,6 +568,7 @@ _vertex_auth_state = {
     "token": "",
     "expiry": 0.0,
     "backoff_until": 0.0,
+    "aq_backoff_until": 0.0,
     "last_vertex_error": "",
     "last_vertex_reason": "",
 }
@@ -608,15 +610,60 @@ def set_vertex_enabled(enabled: bool) -> bool:
     return bool(enabled)
 
 
+def set_vertex_sa_json(raw_json: str) -> dict:
+    """Save or clear a custom Google Cloud Service Account JSON (`token:vertex_sa_json`) for Free Credit Vertex AI."""
+    cleaned = (raw_json or "").strip()
+    if not cleaned:
+        job_state.set_value(VERTEX_SA_JSON_STORAGE_PREFIX, "")
+        with _vertex_auth_lock:
+            _vertex_auth_state["token"] = ""
+            _vertex_auth_state["expiry"] = 0.0
+            _vertex_auth_state["backoff_until"] = 0.0
+        clear_editorial_ai_cache()
+        return {"ok": True, "project_id": "", "client_email": ""}
+    data = json.loads(cleaned)
+    proj = (data.get("project_id") or "").strip()
+    email = (data.get("client_email") or "").strip()
+    if not proj or not email or not data.get("private_key"):
+        raise ValueError("サービスアカウントJSONに project_id / client_email / private_key が含まれていません")
+    job_state.set_value(VERTEX_SA_JSON_STORAGE_PREFIX, cleaned)
+    set_vertex_enabled(True)
+    with _vertex_auth_lock:
+        _vertex_auth_state["token"] = ""
+        _vertex_auth_state["expiry"] = 0.0
+        _vertex_auth_state["backoff_until"] = 0.0
+        _vertex_auth_state["last_vertex_error"] = ""
+    clear_editorial_ai_cache()
+    return {"ok": True, "project_id": proj, "client_email": email}
+
+
 def _resolve_vertex_service_account_info(ignore_enabled_flag: bool = False):
     """
-    Discover existing Google Cloud service account JSON (`google_credentials.json` shared with Google Sheets)
-    so the user's Google Cloud Free Credits can run `gemini-2.5-pro` at 0 yen out-of-pocket without issuing any new key.
-    Respects `DISABLE_SHEETS=1` during unit tests unless `ENABLE_VERTEX_IN_TESTS=1`.
+    Discover Google Cloud service account JSON from:
+      1. Master-pasted Service Account JSON (`token:vertex_sa_json` in `job_state`)
+      2. Render env `VERTEX_CREDENTIALS_JSON` or `GOOGLE_APPLICATION_CREDENTIALS`
+      3. Shared Google Sheets `google_credentials.json`
+    Respects `DISABLE_SHEETS=1` during unit tests unless `ENABLE_VERTEX_IN_TESTS=1` or custom JSON is explicitly saved.
     """
-    if os.environ.get("DISABLE_SHEETS") == "1" and os.environ.get("ENABLE_VERTEX_IN_TESTS") != "1":
-        return None
     if not ignore_enabled_flag and not get_vertex_enabled(allow_blocking=False):
+        return None
+
+    try:
+        stored_sa = (job_state.get_value(VERTEX_SA_JSON_STORAGE_PREFIX, allow_blocking=False) or "").strip()
+        if stored_sa:
+            data = json.loads(stored_sa)
+            proj = (data.get("project_id") or "").strip()
+            if proj and data.get("client_email") and data.get("private_key"):
+                return {
+                    "project_id": proj,
+                    "client_email": data.get("client_email", ""),
+                    "source_label": f"管理画面から登録済みサービスアカウント（{proj}）",
+                    "cred_dict": data,
+                }
+    except Exception:
+        pass
+
+    if os.environ.get("DISABLE_SHEETS") == "1" and os.environ.get("ENABLE_VERTEX_IN_TESTS") != "1":
         return None
 
     raw_json_env = (os.environ.get("VERTEX_CREDENTIALS_JSON") or "").strip()
@@ -704,7 +751,7 @@ def _get_vertex_access_token(cred_info: dict, timeout: float = 6.0) -> tuple:
 def _classify_vertex_http_error(status_code: int, body_text: str, project_id: str, client_email: str) -> tuple:
     """Translate raw Google Cloud Vertex AI 403/404 responses into clear Japanese setup steps."""
     low = (body_text or "").lower()
-    api_url = f"https://console.cloud.google.com/apis/library/aiplatform.googleapis.com?project={project_id}"
+    api_url = f"https://console.developers.google.com/apis/api/aiplatform.googleapis.com/overview?project={project_id}"
     iam_url = f"https://console.cloud.google.com/iam-admin/iam?project={project_id}"
     billing_url = f"https://console.cloud.google.com/billing/linkedaccount?project={project_id}"
 
@@ -948,7 +995,7 @@ def get_gemini_status(allow_blocking: bool = True) -> dict:
         "vertex_project_id": v_proj,
         "vertex_client_email": v_email,
         "vertex_last_error": v_err,
-        "vertex_api_console_url": f"https://console.cloud.google.com/apis/library/aiplatform.googleapis.com?project={v_proj}" if v_proj else "https://console.cloud.google.com/apis/library/aiplatform.googleapis.com",
+        "vertex_api_console_url": f"https://console.developers.google.com/apis/api/aiplatform.googleapis.com/overview?project={v_proj}" if v_proj else "https://console.developers.google.com/apis/api/aiplatform.googleapis.com/overview",
         "vertex_iam_console_url": f"https://console.cloud.google.com/iam-admin/iam?project={v_proj}" if v_proj else "https://console.cloud.google.com/iam-admin/iam",
         "last_model": last_model,
         "last_error": last_err,
@@ -2588,8 +2635,7 @@ def _build_endpoint_request(
         "generationConfig": gen_cfg,
     }
 
-    # `AQ....` keys belong to Google Cloud Vertex AI (Express / Agent Platform API) and MUST target `aiplatform.googleapis.com`!
-    if endpoint_kind == "vertex_express" or (api_key or "").startswith("AQ."):
+    if endpoint_kind == "vertex_express":
         return (
             f"https://aiplatform.googleapis.com/v1/publishers/google/models/{model_name}:generateContent",
             {"Content-Type": "application/json"},
@@ -2714,7 +2760,7 @@ def verify_vertex_connection(timeout: float = 14.0) -> dict:
 
     proj = v_info["project_id"]
     email = v_info["client_email"]
-    api_url = f"https://console.cloud.google.com/apis/library/aiplatform.googleapis.com?project={proj}"
+    api_url = f"https://console.developers.google.com/apis/api/aiplatform.googleapis.com/overview?project={proj}"
     iam_url = f"https://console.cloud.google.com/iam-admin/iam?project={proj}"
 
     with _vertex_auth_lock:
@@ -2824,7 +2870,8 @@ def call_editorial_ai_json(
     g_key = get_gemini_api_key(allow_blocking=allow_blocking)
     c_key = get_claude_api_key(allow_blocking=allow_blocking)
     is_aq = bool(g_key and g_key.startswith("AQ."))
-    has_ai_studio = bool(g_key and not is_aq)
+    aq_ready = bool(is_aq and time.time() >= _vertex_auth_state.get("aq_backoff_until", 0.0))
+    has_ai_studio = bool(g_key)
     v_info = _resolve_vertex_service_account_info()
     v_ready = bool(v_info and time.time() >= _vertex_auth_state.get("backoff_until", 0.0))
 
@@ -2834,19 +2881,19 @@ def call_editorial_ai_json(
     pref = get_ai_engine_pref(allow_blocking=False)
     providers = []
     if pref == "vertex":
-        for p, ok in (("vertex_express", is_aq), ("vertex", v_ready), ("gemini", has_ai_studio), ("claude", bool(c_key))):
+        for p, ok in (("vertex", v_ready), ("vertex_express", aq_ready), ("gemini", has_ai_studio), ("claude", bool(c_key))):
             if ok:
                 providers.append(p)
     elif pref == "gemini":
-        for p, ok in (("vertex_express", is_aq), ("gemini", has_ai_studio), ("vertex", v_ready), ("claude", bool(c_key))):
+        for p, ok in (("gemini", has_ai_studio), ("vertex", v_ready), ("claude", bool(c_key))):
             if ok:
                 providers.append(p)
     elif pref == "claude":
-        for p, ok in (("claude", bool(c_key)), ("vertex_express", is_aq), ("vertex", v_ready), ("gemini", has_ai_studio)):
+        for p, ok in (("claude", bool(c_key)), ("vertex", v_ready), ("vertex_express", aq_ready), ("gemini", has_ai_studio)):
             if ok:
                 providers.append(p)
     else:
-        for p, ok in (("claude", bool(c_key)), ("vertex_express", is_aq), ("vertex", v_ready), ("gemini", has_ai_studio)):
+        for p, ok in (("claude", bool(c_key)), ("vertex", v_ready), ("vertex_express", aq_ready), ("gemini", has_ai_studio)):
             if ok:
                 providers.append(p)
 
@@ -2903,6 +2950,8 @@ def call_editorial_ai_json(
                         if _last_gemini_meta.get("working_route") == ("vertex_express", vxm):
                             _last_gemini_meta["working_route"] = None
                         if resp.status_code in (401, 403):
+                            with _vertex_auth_lock:
+                                _vertex_auth_state["aq_backoff_until"] = time.time() + 300.0
                             break
                         continue
                     cands = ((resp.json() or {}).get("candidates")) or []
