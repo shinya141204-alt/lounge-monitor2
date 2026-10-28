@@ -2215,9 +2215,13 @@ def _discover_ai_studio_models(api_key: str, timeout: float = 4.5) -> list:
 
         pro_cands.sort(key=lambda x: (not ("2.5-pro" in x or "3." in x or "3-" in x), "exp" in x, x), reverse=False)
         # Sort version numbers descending while keeping stable ahead of experimental
-        pro_sorted = sorted(pro_cands, key=lambda x: (not ("exp" in x), x), reverse=True)
-        flash_sorted = sorted(flash_cands, key=lambda x: (not ("exp" in x), x), reverse=True)
-        lite_sorted = sorted(lite_cands, key=lambda x: (not ("exp" in x), x), reverse=True)
+        # Stable releases first (preview/exp models are slow & often time out), then newest version.
+        def _stable_key(x: str):
+            return (not ("exp" in x), not ("preview" in x), x)
+
+        pro_sorted = sorted(pro_cands, key=_stable_key, reverse=True)
+        flash_sorted = sorted(flash_cands, key=_stable_key, reverse=True)
+        lite_sorted = sorted(lite_cands, key=_stable_key, reverse=True)
 
         ranked = []
         for lst, cap in ((pro_sorted, 2), (flash_sorted, 2), (lite_sorted, 1)):
@@ -2676,8 +2680,8 @@ def _generate_gemini_adlib_candidate(
         max_output_tokens=2600,
         thinking_budget=1536,
         temperature=0.88,
-        total_deadline_sec=24.0,
-        per_call_timeout_sec=13.5,
+        total_deadline_sec=50.0,
+        per_call_timeout_sec=28.0,
         allow_blocking=True,
         now_jst=now_jst,
     )
