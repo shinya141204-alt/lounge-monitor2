@@ -1998,6 +1998,7 @@
                                     <a href="${escapeHtml(item.url)}" ${isExt ? 'target="_blank" rel="noopener noreferrer sponsored"' : `onclick="event.preventDefault(); showRefreshToast('アフィリエイトURL設定完了後に公式ページへ遷移します')"`} class="guide-app-cta">
                                         ${escapeHtml(item.cta || '詳細・キャンペーンを見る ›')}
                                     </a>
+                                    ${item.trackingImg ? `<img border="0" width="1" height="1" src="${escapeHtml(item.trackingImg)}" alt="" style="display:none;">` : ''}
                                 </div>
                             </div>
                         </div>

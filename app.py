@@ -1468,9 +1468,9 @@ AFFILIATE_REDIRECTS = {
     'women_beauty_clinic': os.environ.get('AFFILIATE_URL_WOMEN_CLINIC') or 'https://px.a8.net/svt/ejp?a8mat=4BEL1F+61B8KY+328C+2HCB1D',
     'women_clinic': os.environ.get('AFFILIATE_URL_WOMEN_CLINIC') or 'https://px.a8.net/svt/ejp?a8mat=4BEL1F+61B8KY+328C+2HCB1D',
     'women_hair_removal': os.environ.get('AFFILIATE_URL_WOMEN_CLINIC') or 'https://px.a8.net/svt/ejp?a8mat=4BEL1F+61B8KY+328C+2HCB1D',
-    'women_cosme_salon': os.environ.get('AFFILIATE_URL_WOMEN_COSME') or 'https://px.a8.net/svt/ejp?a8mat=4BEL1F+67V08I+1USQ+2Z90WX',
-    'women_cosme': os.environ.get('AFFILIATE_URL_WOMEN_COSME') or 'https://px.a8.net/svt/ejp?a8mat=4BEL1F+67V08I+1USQ+2Z90WX',
-    'women_skincare': os.environ.get('AFFILIATE_URL_WOMEN_COSME') or 'https://px.a8.net/svt/ejp?a8mat=4BEL1F+67V08I+1USQ+2Z90WX',
+    'women_cosme_salon': os.environ.get('AFFILIATE_URL_WOMEN_COSME') or 'https://px.a8.net/svt/ejp?a8mat=4BERA3+6J68QA+5GZ4+5YZ75',
+    'women_cosme': os.environ.get('AFFILIATE_URL_WOMEN_COSME') or 'https://px.a8.net/svt/ejp?a8mat=4BERA3+6J68QA+5GZ4+5YZ75',
+    'women_skincare': os.environ.get('AFFILIATE_URL_WOMEN_COSME') or 'https://px.a8.net/svt/ejp?a8mat=4BERA3+6J68QA+5GZ4+5YZ75',
 }
 
 @app.route('/link/<path:item_id>')

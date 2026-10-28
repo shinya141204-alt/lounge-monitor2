@@ -114,11 +114,11 @@ AFFILIATE_SLOTS = [
         "audience_label": "💄 女性向け",
         "aliases": ["women_cosme", "women_skincare"],
         "category_label": "🧴 女性向け｜デパコス・ご褒美スキンケア＆サロン枠",
-        "title": "夜遊び帰りのメイク崩れ・乾燥リセット（人気スキンケア初回セット・ヘア/ネイル予約）",
+        "title": "夜遊び帰りのメイク崩れ・乾燥リセット（人気スキンケア・ヘアケア初回セット・サロン予約）",
         "placement": "/for-women 女性特設ガイド / トップ『💄女性目線モード』おすすめモーダル",
-        "recommended_asp_examples": "オルビスユー トライアル / アテニア クレンジング / ネイル・ヘアサロン予約 等",
-        "env_keys": ["AFFILIATE_URL_WOMEN_COSME", "AFFILIATE_URL_ORBIS"],
-        "default_url": "https://px.a8.net/svt/ejp?a8mat=4BEL1F+67V08I+1USQ+2Z90WX",
+        "recommended_asp_examples": "サロン専売ヘアケア・高保湿スキンケア初回トライアル / ネイル・ヘアサロン予約 等",
+        "env_keys": ["AFFILIATE_URL_WOMEN_COSME"],
+        "default_url": "https://px.a8.net/svt/ejp?a8mat=4BERA3+6J68QA+5GZ4+5YZ75",
     },
 ]
 

@@ -3186,7 +3186,7 @@ class WomenFeaturesACDETests(unittest.TestCase):
         try:
             r = self.client.get('/for-women')
             self.assertEqual(r.status_code, 200)
-            self.assertIn('no-store', r.headers.get('Cache-Control', ''))
+            self.assertIn('no-cache', r.headers.get('Cache-Control', ''))
             html = r.data.decode('utf-8')
             self.assertIn('class="theme-light audience-women"', html)
             self.assertIn('toggleForWomenTheme()', html)
@@ -3226,6 +3226,8 @@ class WomenFeaturesACDETests(unittest.TestCase):
         for sid in ('women_dating_bachelor', 'women_beauty_clinic', 'women_cosme_salon', 'women_dating'):
             resp = self.client.get(f'/link/{sid}', headers={'User-Agent': 'Mozilla/5.0 Test'})
             self.assertEqual(resp.status_code, 302, sid)
+        cosme_resp = self.client.get('/link/women_cosme_salon', headers={'User-Agent': 'Mozilla/5.0 Test'})
+        self.assertIn('a8mat=4BERA3+6J68QA+5GZ4+5YZ75', cosme_resp.headers.get('Location', ''))
 
         # Master live override for women_beauty_clinic
         with self.client.session_transaction() as sess:
