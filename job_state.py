@@ -19,6 +19,7 @@ import datetime
 import threading
 
 import sheets_store
+import turbo_store
 
 SHEET_TITLE = 'Job State'
 HEADER = ['key', 'done_at_jst']
@@ -36,6 +37,8 @@ _kv = None         # dict[str, str] exempt from history truncation
 _kv_ts = None      # dict[str, str] latest timestamp per kv prefix
 _local_loaded = False
 _sheets_loaded = False
+_turbo_loaded = False
+_last_turbo_sync_mono = 0.0
 _last_sheet_try = 0.0
 
 
@@ -162,6 +165,48 @@ def _ensure_local_loaded_locked():
     return _keys
 
 
+def _merge_turbo_snapshot_if_needed(force: bool = False):
+    """Merge shared state from Redis / PostgreSQL / test bus so `web` and `worker` stay in sync (<1ms)."""
+    global _keys, _turbo_loaded, _last_turbo_sync_mono
+    import time
+    now_m = time.monotonic()
+    if not force and _turbo_loaded and (now_m - _last_turbo_sync_mono < 1.5):
+        return
+    snap = turbo_store.state_load_snapshot()
+    if snap is None:
+        return
+    with _lock:
+        _ensure_local_loaded_locked()
+        for k in snap.get('keys') or []:
+            _ingest_entry(k)
+        kv_ts_map = snap.get('kv_ts') or {}
+        for pfx, raw_v in (snap.get('kv') or {}).items():
+            ts_s = str(kv_ts_map.get(pfx) or '')
+            if not ts_s or ts_s >= _kv_ts.get(pfx, ''):
+                _kv[pfx] = _deobfuscate_secret(raw_v) if str(pfx).startswith('token:') else raw_v
+                if ts_s:
+                    _kv_ts[pfx] = ts_s
+        _keys = {k: None for k in _trimmed_history_list(_keys.keys())}
+        _turbo_loaded = True
+        _last_turbo_sync_mono = now_m
+
+
+def _seed_turbo_from_memory():
+    """Backfill newly imported Google Sheets Job State entries into Redis / PostgreSQL automatically."""
+    if not (turbo_store.is_postgres_active() or turbo_store.is_shared_bus_active()):
+        return
+    with _lock:
+        keys_snap = list((_keys or {}).keys())
+        kv_snap = dict(_kv or {})
+        kv_ts_snap = dict(_kv_ts or {})
+    now_s = _now_str()
+    for k in keys_snap[-500:]:
+        turbo_store.state_mark_done(k, now_s)
+    for pfx, plain_v in kv_snap.items():
+        stored_v = _obfuscate_secret(plain_v) if str(pfx).startswith('token:') else str(plain_v)
+        turbo_store.state_set_kv(str(pfx), stored_v, kv_ts_snap.get(pfx, ''), now_s)
+
+
 def _sync_sheets_worker():
     """`_lock` を保持せずに Google Sheets から読み込み、完了時のみ短時間ロックしてマージする。"""
     global _keys, _sheets_loaded, _last_sheet_try
@@ -185,17 +230,24 @@ def _sync_sheets_worker():
                 _keys = {k: None for k in _trimmed_history_list(_keys.keys())}
                 _sheets_loaded = True
                 _save_local()
+            try:
+                _seed_turbo_from_memory()
+            except Exception:
+                pass
 
 
 def _ensure_loaded(allow_blocking: bool = True):
-    """ローカル初期化後、必要なら Google Sheets 同期を行う（`allow_blocking=False` 時は非同期起動して即返却）。"""
+    """ローカル＆共有バス初期化後、必要なら Google Sheets 同期を行う（`allow_blocking=False` 時は非同期起動して即返却）。"""
     import time
+    _merge_turbo_snapshot_if_needed(force=False)
     with _lock:
         _ensure_local_loaded_locked()
         already_synced = _sheets_loaded or sheets_store.is_disabled()
         should_try = (not already_synced) and (time.time() - _last_sheet_try > 300)
+        fast_backend_ready = _turbo_loaded and (turbo_store.is_postgres_active() or turbo_store.get_redis_client() is not None)
     if should_try:
-        if allow_blocking:
+        # When Postgres/Redis is active, never block request threads waiting for Google Sheets
+        if allow_blocking and not fast_backend_ready:
             _sync_sheets_worker()
         else:
             threading.Thread(target=_sync_sheets_worker, daemon=True).start()
@@ -203,12 +255,12 @@ def _ensure_loaded(allow_blocking: bool = True):
 
 def is_storage_healthy() -> bool:
     """
-    Return False when running with Sheets enabled and the initial Sheets read has not succeeded yet,
-    so callers like note_poster never rely solely on stale local state before Sheets sync completes.
+    Return False when running with Sheets enabled and neither fast persistent storage nor initial Sheets read is ready,
+    so callers like note_poster never rely solely on stale ephemeral state.
     """
     _ensure_loaded(allow_blocking=True)
     with _lock:
-        if sheets_store.is_disabled():
+        if sheets_store.is_disabled() or _turbo_loaded:
             return True
         return bool(_sheets_loaded)
 
@@ -255,13 +307,15 @@ def all_keys():
 
 def mark_done(key):
     _ensure_loaded(allow_blocking=True)
+    now_s = _now_str()
     with _lock:
         keys = _ensure_local_loaded_locked()
         if key in keys:
             return
         _ingest_entry(key)
         _save_local()
-    sheets_store.append_rows_async(SHEET_TITLE, HEADER, [[key, _now_str()]])
+    turbo_store.state_mark_done(key, now_s)
+    sheets_store.append_rows_async(SHEET_TITLE, HEADER, [[key, now_s]])
 
 
 def get_value(prefix, allow_blocking: bool = True, default=None):
@@ -286,6 +340,7 @@ def set_value(prefix, val):
     """Persist a key-value entry in Job State across restarts and redeploys (exempt from key cap)."""
     val_str = "" if val is None else str(val)
     ts = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).strftime('%Y%m%d%H%M%S')
+    now_s = _now_str()
     _ensure_loaded(allow_blocking=False)
     with _lock:
         _ensure_local_loaded_locked()
@@ -293,16 +348,19 @@ def set_value(prefix, val):
         _kv_ts[str(prefix)] = ts
         _save_local()
     sheet_val = _obfuscate_secret(val_str) if str(prefix).startswith('token:') else val_str
+    turbo_store.state_set_kv(str(prefix), sheet_val, ts, now_s)
     entry = f"{prefix}={ts}|{sheet_val}"
-    sheets_store.append_rows_async(SHEET_TITLE, HEADER, [[entry, _now_str()]])
+    sheets_store.append_rows_async(SHEET_TITLE, HEADER, [[entry, now_s]])
 
 
 def reset_cache_for_tests():
-    global _keys, _kv, _kv_ts, _local_loaded, _sheets_loaded, _last_sheet_try
+    global _keys, _kv, _kv_ts, _local_loaded, _sheets_loaded, _turbo_loaded, _last_turbo_sync_mono, _last_sheet_try
     with _lock:
         _keys = None
         _kv = None
         _kv_ts = None
         _local_loaded = False
         _sheets_loaded = False
+        _turbo_loaded = False
+        _last_turbo_sync_mono = 0.0
         _last_sheet_try = 0.0

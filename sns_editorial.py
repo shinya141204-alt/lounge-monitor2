@@ -23,6 +23,7 @@ import requests
 
 import job_state
 import store_master
+import turbo_store
 import x_poster
 
 logger = logging.getLogger(__name__)
@@ -543,9 +544,10 @@ def get_sns_delivery_health(allow_blocking: bool = False) -> dict:
 # Gemini API Key Management + Weather & Calendar Live Context
 # =====================================================================
 def clear_editorial_ai_cache():
-    """Clear in-memory AI draft cache (called when API key updates or manual refresh requested)."""
+    """Clear in-memory and shared Redis AI draft caches (called when API key updates or manual refresh requested)."""
     with _ai_cache_lock:
         _ai_candidate_cache.clear()
+    turbo_store.clear_ai_cache("sns_editorial")
     _unhealthy_models.clear()
     _last_gemini_meta["working_route"] = None
 
@@ -2769,6 +2771,17 @@ def _store_ai_candidate_cache(cache_key, candidate: dict, model_name: str, now_t
             "model": model_name,
         }
         _prune_ai_candidate_cache_unlocked(now_t)
+    turbo_store.set_ai_cache(
+        "sns_editorial",
+        cache_key,
+        {
+            "ts": now_t,
+            "candidate": candidate,
+            "model": model_name,
+            "ok_at": _last_gemini_meta.get("last_ok_at") or datetime.datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S"),
+        },
+        ttl_sec=max(_AI_CACHE_TTL_SEC, 1800),
+    )
 
 
 def has_cached_ai_candidate(
@@ -2785,7 +2798,18 @@ def has_cached_ai_candidate(
     with _ai_cache_lock:
         _prune_ai_candidate_cache_unlocked(now_t)
         cached = _ai_candidate_cache.get(cache_key)
-        return bool(cached and (now_t - cached["ts"] < _AI_CACHE_TTL_SEC))
+        if cached and (now_t - cached["ts"] < _AI_CACHE_TTL_SEC):
+            return True
+    shared = turbo_store.get_ai_cache("sns_editorial", cache_key)
+    if shared and isinstance(shared.get("candidate"), dict):
+        with _ai_cache_lock:
+            _ai_candidate_cache[cache_key] = {
+                "ts": float(shared.get("ts") or now_t),
+                "candidate": shared["candidate"],
+                "model": str(shared.get("model") or ""),
+            }
+        return True
+    return False
 
 
 def _generate_gemini_adlib_candidate(
@@ -2813,13 +2837,31 @@ def _generate_gemini_adlib_candidate(
         return None
 
     now_t = time.time()
-    with _ai_cache_lock:
-        _prune_ai_candidate_cache_unlocked(now_t)
-        if not force_refresh and cache_key in _ai_candidate_cache:
-            cached = _ai_candidate_cache[cache_key]
-            if now_t - cached["ts"] < _AI_CACHE_TTL_SEC:
+    if not force_refresh:
+        with _ai_cache_lock:
+            _prune_ai_candidate_cache_unlocked(now_t)
+            if cache_key in _ai_candidate_cache:
+                cached = _ai_candidate_cache[cache_key]
+                if now_t - cached["ts"] < _AI_CACHE_TTL_SEC:
+                    _ai_candidate_cache.move_to_end(cache_key)
+                    return dict(cached["candidate"])
+        shared = turbo_store.get_ai_cache("sns_editorial", cache_key)
+        if shared and isinstance(shared.get("candidate"), dict):
+            m_name = str(shared.get("model") or shared["candidate"].get("ai_model") or "")
+            if m_name:
+                _last_gemini_meta["last_model"] = m_name
+                _last_gemini_meta["last_provider"] = "claude" if "claude" in m_name.lower() else "gemini"
+                _last_gemini_meta["last_error"] = ""
+                if shared.get("ok_at"):
+                    _last_gemini_meta["last_ok_at"] = str(shared["ok_at"])
+            with _ai_cache_lock:
+                _ai_candidate_cache[cache_key] = {
+                    "ts": now_t,
+                    "candidate": shared["candidate"],
+                    "model": m_name,
+                }
                 _ai_candidate_cache.move_to_end(cache_key)
-                return dict(cached["candidate"])
+            return dict(shared["candidate"])
 
     if cache_only:
         return None

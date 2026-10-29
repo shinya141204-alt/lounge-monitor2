@@ -7,8 +7,45 @@ import threading
 import urllib.parse
 import json
 import requests
+import turbo_store
 
 DB_PATH = os.environ.get('LOCAL_DB_PATH') or os.path.join(os.path.dirname(os.path.abspath(__file__)), 'lounge_data.db')
+
+
+def _is_pg() -> bool:
+    return turbo_store.is_postgres_active()
+
+
+def _active_db_key() -> str:
+    return f"pg:{turbo_store.get_database_url()}" if _is_pg() else DB_PATH
+
+
+def _db_available() -> bool:
+    return _is_pg() or os.path.exists(DB_PATH)
+
+
+def _fetch_all_rows(sql_qmark: str, params: tuple = ()):
+    """Execute a read query against PostgreSQL (`DATABASE_URL`) or SQLite (`DB_PATH`) seamlessly."""
+    if _is_pg():
+        pg_sql = sql_qmark.replace("?", "%s")
+        with turbo_store.pg_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(pg_sql, params)
+                return cur.fetchall()
+    conn = _get_read_connection()
+    cur = None
+    try:
+        cur = conn.cursor()
+        cur.execute(sql_qmark, params)
+        return cur.fetchall()
+    finally:
+        if cur is not None:
+            try:
+                cur.close()
+            except Exception:
+                pass
+
+
 _db_lock = threading.Lock()
 _read_tls = threading.local()
 _sync_in_progress = False
@@ -33,8 +70,9 @@ _store_backfill_lock = threading.Lock()
 
 def clear_store_7d_cache(store_name: str = None, clear_benchmarks: bool = False):
     _db_stats_cache.clear()
+    db_k = _active_db_key()
     if store_name:
-        _store_7d_cache.pop((DB_PATH, store_name), None)
+        _store_7d_cache.pop((db_k, store_name), None)
     else:
         _store_7d_cache.clear()
     if clear_benchmarks:
@@ -138,7 +176,44 @@ def _get_read_connection():
 
 
 def init_db():
-    """Initializes tables, indexes, and WAL mode for high performance."""
+    """Initializes tables and indexes on PostgreSQL (`DATABASE_URL`) or SQLite WAL (`DB_PATH`)."""
+    if _is_pg():
+        try:
+            with turbo_store.pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        CREATE TABLE IF NOT EXISTS monitor_logs (
+                            id BIGSERIAL PRIMARY KEY,
+                            timestamp TEXT NOT NULL,
+                            store_name TEXT NOT NULL,
+                            men INTEGER NOT NULL,
+                            women INTEGER NOT NULL,
+                            source TEXT,
+                            UNIQUE(timestamp, store_name)
+                        );
+                    """)
+                    cur.execute("CREATE INDEX IF NOT EXISTS idx_store_ts ON monitor_logs(store_name, timestamp);")
+                    cur.execute("CREATE INDEX IF NOT EXISTS idx_ts_store_wm ON monitor_logs(timestamp, store_name, women, men);")
+                    cur.execute("""
+                        CREATE TABLE IF NOT EXISTS crowd_votes (
+                            id BIGSERIAL PRIMARY KEY,
+                            timestamp TEXT NOT NULL,
+                            store_name TEXT NOT NULL,
+                            vote_type TEXT NOT NULL,
+                            ip_hash TEXT
+                        );
+                    """)
+                    cur.execute("CREATE INDEX IF NOT EXISTS idx_votes_store_ts ON crowd_votes(store_name, timestamp);")
+                    cur.execute("CREATE INDEX IF NOT EXISTS idx_votes_ts ON crowd_votes(timestamp, store_name, vote_type);")
+                conn.commit()
+            turbo_store.init_postgres_aux_schema()
+            _db_stats_cache.clear()
+            print("[local_db] PostgreSQL database initialized successfully.")
+            return
+        except Exception as e:
+            print(f"[local_db] Error initializing PostgreSQL: {e}", file=sys.stderr)
+            return
+
     with _db_lock:
         conn = get_connection()
         try:
@@ -180,7 +255,7 @@ def init_db():
 
 def insert_logs(items, timestamp_str):
     """
-    Inserts a batch of store records into SQLite.
+    Inserts a batch of store records into PostgreSQL or SQLite.
     items: list of dicts [{'name': '...', 'men': 10, 'women': 15, 'source': '...'}, ...]
     """
     if not items:
@@ -196,6 +271,33 @@ def insert_logs(items, timestamp_str):
             item.get('source', '')
         ))
 
+    db_k = _active_db_key()
+    if _is_pg():
+        try:
+            inserted = turbo_store.execute_pg_values_batch(
+                """
+                INSERT INTO monitor_logs (timestamp, store_name, men, women, source)
+                VALUES %s
+                ON CONFLICT (timestamp, store_name) DO NOTHING
+                """,
+                rows,
+                page_size=500,
+            )
+            cached_stat = _db_stats_cache.get(db_k)
+            if cached_stat is not None and int((cached_stat[1] or {}).get('count') or 0) >= 500:
+                prev_info = dict(cached_stat[1])
+                prev_info['count'] = int(prev_info.get('count') or 0) + inserted
+                if timestamp_str and (not prev_info.get('max_timestamp') or timestamp_str > prev_info['max_timestamp']):
+                    prev_info['max_timestamp'] = timestamp_str
+                _db_stats_cache[db_k] = (cached_stat[0], prev_info)
+                _store_7d_cache.clear()
+            else:
+                clear_store_7d_cache()
+            return inserted
+        except Exception as e:
+            print(f"[local_db] PostgreSQL insert error: {e}", file=sys.stderr)
+            return 0
+
     with _db_lock:
         conn = get_connection()
         try:
@@ -206,13 +308,13 @@ def insert_logs(items, timestamp_str):
             """, rows)
             conn.commit()
             inserted = cur.rowcount if cur.rowcount and cur.rowcount > 0 else 0
-            cached_stat = _db_stats_cache.get(DB_PATH)
+            cached_stat = _db_stats_cache.get(db_k)
             if cached_stat is not None and int((cached_stat[1] or {}).get('count') or 0) >= 500:
                 prev_info = dict(cached_stat[1])
                 prev_info['count'] = int(prev_info.get('count') or 0) + inserted
                 if timestamp_str and (not prev_info.get('max_timestamp') or timestamp_str > prev_info['max_timestamp']):
                     prev_info['max_timestamp'] = timestamp_str
-                _db_stats_cache[DB_PATH] = (cached_stat[0], prev_info)
+                _db_stats_cache[db_k] = (cached_stat[0], prev_info)
                 _store_7d_cache.clear()
             else:
                 clear_store_7d_cache()
@@ -227,7 +329,7 @@ def insert_logs(items, timestamp_str):
 def insert_logs_with_ts(items):
     """
     Batch-inserts records where each item has its own 'ts' field.
-    Splits large backfills into 1,500-row micro-batches to avoid holding _db_lock / GIL for long.
+    Splits large backfills into micro-batches to avoid holding _db_lock / GIL for long.
     """
     if not items:
         return 0
@@ -248,6 +350,23 @@ def insert_logs_with_ts(items):
 
     if not rows:
         return 0
+
+    if _is_pg():
+        try:
+            total_inserted = turbo_store.execute_pg_values_batch(
+                """
+                INSERT INTO monitor_logs (timestamp, store_name, men, women, source)
+                VALUES %s
+                ON CONFLICT (timestamp, store_name) DO NOTHING
+                """,
+                rows,
+                page_size=800,
+            )
+            clear_store_7d_cache()
+            return total_inserted
+        except Exception as e:
+            print(f"[local_db] PostgreSQL batch insert error: {e}", file=sys.stderr)
+            return 0
 
     total_inserted = 0
     chunk_size = 800
@@ -277,24 +396,20 @@ def insert_logs_with_ts(items):
 
 def get_store_history(store_name, days=30):
     """
-    Retrieves history logs for a specific store from SQLite in milliseconds.
+    Retrieves history logs for a specific store from PostgreSQL/SQLite in milliseconds.
     Returns: list of dicts [{'ts': '...', 'name': '...', 'men': ..., 'women': ...}]
     """
     now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
     start_dt = now_jst - datetime.timedelta(days=days)
     start_ts = start_dt.strftime("%Y-%m-%d %H:%M:%S")
 
-    conn = _get_read_connection()
-    cur = None
     try:
-        cur = conn.cursor()
-        cur.execute("""
+        rows = _fetch_all_rows("""
             SELECT timestamp, store_name, men, women
             FROM monitor_logs
             WHERE store_name = ? AND timestamp >= ?
             ORDER BY timestamp ASC
         """, (store_name, start_ts))
-        rows = cur.fetchall()
         return [
             {
                 'ts': r[0],
@@ -307,29 +422,19 @@ def get_store_history(store_name, days=30):
     except Exception as e:
         print(f"[local_db] Query store history error: {e}", file=sys.stderr)
         return []
-    finally:
-        if cur is not None:
-            try:
-                cur.close()
-            except Exception:
-                pass
 
 def get_weekly_history(start_ts_str):
     """
-    Retrieves all store records from start_ts_str to current from SQLite.
+    Retrieves all store records from start_ts_str to current from PostgreSQL/SQLite.
     Returns: list of dicts [{'ts': ..., 'name': ..., 'men': ..., 'women': ..., 'source': ...}]
     """
-    conn = _get_read_connection()
-    cur = None
     try:
-        cur = conn.cursor()
-        cur.execute("""
+        rows = _fetch_all_rows("""
             SELECT timestamp, store_name, men, women, source
             FROM monitor_logs
             WHERE timestamp >= ?
             ORDER BY timestamp ASC
         """, (start_ts_str,))
-        rows = cur.fetchall()
         return [
             {
                 'ts': r[0],
@@ -343,48 +448,34 @@ def get_weekly_history(start_ts_str):
     except Exception as e:
         print(f"[local_db] Query weekly history error: {e}", file=sys.stderr)
         return []
-    finally:
-        if cur is not None:
-            try:
-                cur.close()
-            except Exception:
-                pass
 
 def get_db_stats():
-    """Returns row count and time range from SQLite with O(1) index min/max lookup and 30s memory cache."""
+    """Returns row count and time range from PostgreSQL/SQLite with O(1) index min/max lookup and memory cache."""
     now_mono = time.monotonic()
-    cached = _db_stats_cache.get(DB_PATH)
-    if cached is not None and os.path.exists(DB_PATH) and (now_mono - cached[0] < _DB_STATS_TTL):
+    db_k = _active_db_key()
+    cached = _db_stats_cache.get(db_k)
+    if cached is not None and _db_available() and (now_mono - cached[0] < _DB_STATS_TTL):
         return dict(cached[1])
 
-    conn = _get_read_connection()
-    cur = None
     try:
-        cur = conn.cursor()
-        cur.execute(
+        rows = _fetch_all_rows(
             "SELECT (SELECT COUNT(*) FROM monitor_logs), "
             "(SELECT MIN(timestamp) FROM monitor_logs), "
             "(SELECT MAX(timestamp) FROM monitor_logs)"
         )
-        row = cur.fetchone()
+        row = rows[0] if rows else None
         count, min_ts, max_ts = (row[0], row[1], row[2]) if row else (0, None, None)
         res = {
-            'count': count or 0,
+            'count': int(count or 0),
             'min_timestamp': min_ts,
             'max_timestamp': max_ts
         }
         if len(_db_stats_cache) >= 8:
             _db_stats_cache.clear()
-        _db_stats_cache[DB_PATH] = (now_mono, res)
+        _db_stats_cache[db_k] = (now_mono, res)
         return dict(res)
     except Exception as e:
         return {'count': 0, 'error': str(e)}
-    finally:
-        if cur is not None:
-            try:
-                cur.close()
-            except Exception:
-                pass
 
 def _fetch_gviz_rows_and_insert(query: str, timeout: int = 35) -> int:
     """Executes a Google Sheets gviz query and inserts returned rows into SQLite."""
@@ -431,6 +522,19 @@ def _fetch_gviz_rows_and_insert(query: str, timeout: int = 35) -> int:
 
     if not batch:
         return 0
+
+    if _is_pg():
+        turbo_store.execute_pg_values_batch(
+            """
+            INSERT INTO monitor_logs (timestamp, store_name, men, women, source)
+            VALUES %s
+            ON CONFLICT (timestamp, store_name) DO NOTHING
+            """,
+            batch,
+            page_size=800,
+        )
+        clear_store_7d_cache()
+        return len(batch)
 
     chunk_size = 800
     for idx in range(0, len(batch), chunk_size):
@@ -569,24 +673,15 @@ def sync_from_google_sheets(days=30, on_recent_synced=None):
         now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
         total_imported = 0
 
-        # Shortcut: if local SQLite already covers the requested history window, only sync delta since max_ts
+        # Shortcut: if PostgreSQL/SQLite already covers the requested history window, only sync delta since max_ts
         try:
             target_min_str = (now_jst - datetime.timedelta(days=max(1, int(days)) - 1)).strftime("%Y-%m-%d 00:00:00")
-            conn = _get_read_connection()
-            cur = None
-            try:
-                cur = conn.execute(
-                    "SELECT (SELECT COUNT(*) FROM monitor_logs), "
-                    "(SELECT MIN(timestamp) FROM monitor_logs), "
-                    "(SELECT MAX(timestamp) FROM monitor_logs)"
-                )
-                cnt_row = cur.fetchone()
-            finally:
-                if cur is not None:
-                    try:
-                        cur.close()
-                    except Exception:
-                        pass
+            cnt_rows = _fetch_all_rows(
+                "SELECT (SELECT COUNT(*) FROM monitor_logs), "
+                "(SELECT MIN(timestamp) FROM monitor_logs), "
+                "(SELECT MAX(timestamp) FROM monitor_logs)"
+            )
+            cnt_row = cnt_rows[0] if cnt_rows else None
             if cnt_row and int(cnt_row[0] or 0) >= 8000 and cnt_row[1] and cnt_row[2] and str(cnt_row[1]) <= target_min_str:
                 delta_query = f"SELECT A, B, C, D, E WHERE A >= '{cnt_row[2]}'"
                 delta_imported = _fetch_gviz_rows_and_insert(delta_query, timeout=25)
@@ -662,34 +757,23 @@ def get_snapshot_around(minutes_ago_min=10, minutes_ago_max=25):
     if minutes_ago_min == 10 and minutes_ago_max == 25:
         windows.append((5, 45))
     try:
-        conn = _get_read_connection()
-        cur = None
-        try:
-            cur = conn.cursor()
-            for w_min, w_max in windows:
-                start_ts = (now_jst - datetime.timedelta(minutes=w_max)).strftime("%Y-%m-%d %H:%M:%S")
-                end_ts = (now_jst - datetime.timedelta(minutes=w_min)).strftime("%Y-%m-%d %H:%M:%S")
-                cur.execute("""
-                    SELECT store_name, men, women, timestamp
-                    FROM monitor_logs
-                    WHERE timestamp >= ? AND timestamp <= ?
-                    ORDER BY timestamp DESC
-                """, (start_ts, end_ts))
-                rows = cur.fetchall()
-                if rows:
-                    result = {}
-                    for r in rows:
-                        sname = r['store_name']
-                        if sname not in result:
-                            result[sname] = {'men': r['men'], 'women': r['women'], 'ts': r['timestamp']}
-                    return result
-            return {}
-        finally:
-            if cur is not None:
-                try:
-                    cur.close()
-                except Exception:
-                    pass
+        for w_min, w_max in windows:
+            start_ts = (now_jst - datetime.timedelta(minutes=w_max)).strftime("%Y-%m-%d %H:%M:%S")
+            end_ts = (now_jst - datetime.timedelta(minutes=w_min)).strftime("%Y-%m-%d %H:%M:%S")
+            rows = _fetch_all_rows("""
+                SELECT store_name, men, women, timestamp
+                FROM monitor_logs
+                WHERE timestamp >= ? AND timestamp <= ?
+                ORDER BY timestamp DESC
+            """, (start_ts, end_ts))
+            if rows:
+                result = {}
+                for r in rows:
+                    sname = r[0]
+                    if sname not in result:
+                        result[sname] = {'men': r[1], 'women': r[2], 'ts': r[3]}
+                return result
+        return {}
     except Exception:
         return {}
 
@@ -760,6 +844,18 @@ def add_crowd_vote(store_name, vote_type, ip_hash="", voter_id=""):
 
 def _insert_vote_row(ts, store_name, vote_type, identity):
     try:
+        if _is_pg():
+            with turbo_store.pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """
+                        INSERT INTO crowd_votes (timestamp, store_name, vote_type, ip_hash)
+                        VALUES (%s, %s, %s, %s)
+                        """,
+                        (ts, store_name, vote_type, identity),
+                    )
+                conn.commit()
+            return
         with _db_lock:
             conn = get_connection()
             try:
@@ -779,7 +875,7 @@ _votes_restored = False
 
 
 def restore_votes_from_sheets(hours=24):
-    """起動時に Sheets から直近の投票を SQLite とメモリへ重複除外マージで復元する。
+    """起動時に Sheets から直近の投票を PostgreSQL/SQLite とメモリへ重複除外マージで復元する。
     起動直後に1票入った場合でも過去の投票履歴を取りこぼさない。"""
     global _votes_restored
     if _votes_restored:
@@ -788,21 +884,11 @@ def restore_votes_from_sheets(hours=24):
     cutoff = (now_jst - datetime.timedelta(hours=hours)).strftime("%Y-%m-%d %H:%M:%S")
     existing_keys = set()
     try:
-        conn = _get_read_connection()
-        cur = None
-        try:
-            cur = conn.execute(
-                "SELECT timestamp, store_name, vote_type, COALESCE(ip_hash, '') FROM crowd_votes WHERE timestamp >= ?",
-                (cutoff,),
-            )
-            for row in cur.fetchall():
-                existing_keys.add((str(row[0]), str(row[1]), str(row[2]), str(row[3])))
-        finally:
-            if cur is not None:
-                try:
-                    cur.close()
-                except Exception:
-                    pass
+        for row in _fetch_all_rows(
+            "SELECT timestamp, store_name, vote_type, COALESCE(ip_hash, '') FROM crowd_votes WHERE timestamp >= ?",
+            (cutoff,),
+        ):
+            existing_keys.add((str(row[0]), str(row[1]), str(row[2]), str(row[3])))
         import sheets_store
         rows = sheets_store.read_rows(VOTE_SHEET_TITLE, VOTE_SHEET_HEADER)
     except Exception as e:
@@ -833,16 +919,23 @@ def restore_votes_from_sheets(hours=24):
 
     if rows_to_insert:
         try:
-            with _db_lock:
-                conn = get_connection()
-                try:
-                    conn.executemany(
-                        "INSERT INTO crowd_votes (timestamp, store_name, vote_type, ip_hash) VALUES (?, ?, ?, ?)",
-                        rows_to_insert,
-                    )
-                    conn.commit()
-                finally:
-                    conn.close()
+            if _is_pg():
+                turbo_store.execute_pg_values_batch(
+                    "INSERT INTO crowd_votes (timestamp, store_name, vote_type, ip_hash) VALUES %s",
+                    rows_to_insert,
+                    page_size=500,
+                )
+            else:
+                with _db_lock:
+                    conn = get_connection()
+                    try:
+                        conn.executemany(
+                            "INSERT INTO crowd_votes (timestamp, store_name, vote_type, ip_hash) VALUES (?, ?, ?, ?)",
+                            rows_to_insert,
+                        )
+                        conn.commit()
+                    finally:
+                        conn.close()
         except Exception as err:
             print(f"[local_db] batch vote restore insert failed: {err}", file=sys.stderr)
         with _votes_lock:
@@ -855,24 +948,33 @@ def restore_votes_from_sheets(hours=24):
 
 
 def prune_old_logs(monitor_days: int = 60, vote_days: int = 14) -> dict:
-    """Prune expired SQLite monitor_logs and crowd_votes rows during daily off-hours maintenance."""
+    """Prune expired PostgreSQL/SQLite monitor_logs and crowd_votes rows during daily off-hours maintenance."""
     now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
     mon_cutoff = (now_jst - datetime.timedelta(days=max(31, int(monitor_days)))).strftime("%Y-%m-%d %H:%M:%S")
     vote_cutoff = (now_jst - datetime.timedelta(days=max(2, int(vote_days)))).strftime("%Y-%m-%d %H:%M:%S")
     deleted_mon = 0
     deleted_votes = 0
     try:
-        with _db_lock:
-            conn = get_connection()
-            try:
-                cur = conn.cursor()
-                cur.execute("DELETE FROM monitor_logs WHERE timestamp < ?", (mon_cutoff,))
-                deleted_mon = max(0, cur.rowcount or 0)
-                cur.execute("DELETE FROM crowd_votes WHERE timestamp < ?", (vote_cutoff,))
-                deleted_votes = max(0, cur.rowcount or 0)
+        if _is_pg():
+            with turbo_store.pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("DELETE FROM monitor_logs WHERE timestamp < %s", (mon_cutoff,))
+                    deleted_mon = max(0, cur.rowcount or 0)
+                    cur.execute("DELETE FROM crowd_votes WHERE timestamp < %s", (vote_cutoff,))
+                    deleted_votes = max(0, cur.rowcount or 0)
                 conn.commit()
-            finally:
-                conn.close()
+        else:
+            with _db_lock:
+                conn = get_connection()
+                try:
+                    cur = conn.cursor()
+                    cur.execute("DELETE FROM monitor_logs WHERE timestamp < ?", (mon_cutoff,))
+                    deleted_mon = max(0, cur.rowcount or 0)
+                    cur.execute("DELETE FROM crowd_votes WHERE timestamp < ?", (vote_cutoff,))
+                    deleted_votes = max(0, cur.rowcount or 0)
+                    conn.commit()
+                finally:
+                    conn.close()
         if deleted_mon > 0 or deleted_votes > 0:
             clear_store_7d_cache(clear_benchmarks=True)
     except Exception as err:
@@ -892,38 +994,27 @@ def get_recent_votes(store_name=None, hours=4):
 
     used_db = False
     try:
-        conn = _get_read_connection()
-        cur = None
-        try:
-            cur = conn.cursor()
-            if store_name:
-                cur.execute("""
-                    SELECT store_name, vote_type, COUNT(*) as cnt
-                    FROM crowd_votes
-                    WHERE store_name = ? AND timestamp >= ?
-                    GROUP BY store_name, vote_type
-                """, (store_name, cutoff_str))
-            else:
-                cur.execute("""
-                    SELECT store_name, vote_type, COUNT(*) as cnt
-                    FROM crowd_votes
-                    WHERE timestamp >= ?
-                    GROUP BY store_name, vote_type
-                """, (cutoff_str,))
-            rows = cur.fetchall()
-            for r in rows:
-                sname = r['store_name']
-                vtype = r['vote_type']
-                _ensure(sname)
-                if vtype in counts_by_store[sname]:
-                    counts_by_store[sname][vtype] = int(r['cnt'])
-            used_db = True
-        finally:
-            if cur is not None:
-                try:
-                    cur.close()
-                except Exception:
-                    pass
+        if store_name:
+            rows = _fetch_all_rows("""
+                SELECT store_name, vote_type, COUNT(*) as cnt
+                FROM crowd_votes
+                WHERE store_name = ? AND timestamp >= ?
+                GROUP BY store_name, vote_type
+            """, (store_name, cutoff_str))
+        else:
+            rows = _fetch_all_rows("""
+                SELECT store_name, vote_type, COUNT(*) as cnt
+                FROM crowd_votes
+                WHERE timestamp >= ?
+                GROUP BY store_name, vote_type
+            """, (cutoff_str,))
+        for r in rows:
+            sname = r[0]
+            vtype = r[1]
+            _ensure(sname)
+            if vtype in counts_by_store[sname]:
+                counts_by_store[sname][vtype] = int(r[2])
+        used_db = True
     except Exception:
         pass
 
@@ -947,7 +1038,7 @@ def get_store_7day_analytics(store_name: str) -> dict:
     Computes the past 7 business days' daily peak log and data-driven strategy insights for a store.
     Used on individual store pages (/store/<slug>) to provide unique primary research data (E-E-A-T).
     """
-    cache_key = (DB_PATH, store_name)
+    cache_key = (_active_db_key(), store_name)
     now_mono = time.monotonic()
     cached = _store_7d_cache.get(cache_key)
     if cached is not None and (now_mono - cached[0] < _STORE_7D_TTL):
@@ -1119,12 +1210,9 @@ def _compute_benchmark_base_from_sqlite(cutoff_str: str) -> dict:
     stores_seen = set()
     _date_memo = {}
 
-    if os.path.exists(DB_PATH):
-        conn = _get_read_connection()
-        cur = None
+    if _db_available():
         try:
-            cur = conn.cursor()
-            cur.execute(
+            grouped_rows = _fetch_all_rows(
                 """
                 SELECT
                     store_name,
@@ -1139,16 +1227,9 @@ def _compute_benchmark_base_from_sqlite(cutoff_str: str) -> dict:
                 """,
                 (cutoff_str,),
             )
-            grouped_rows = cur.fetchall()
         except Exception as e:
             print(f"[local_db] get_all_stores_live_benchmarks error: {e}", file=sys.stderr)
             grouped_rows = []
-        finally:
-            if cur is not None:
-                try:
-                    cur.close()
-                except Exception:
-                    pass
     else:
         grouped_rows = []
 
@@ -1350,9 +1431,10 @@ def get_all_stores_live_benchmarks(now_jst: datetime.datetime = None, allow_bloc
     biz_date = (now_jst.date() - datetime.timedelta(days=1)) if cur_h <= 6 else now_jst.date()
     cur_wd = biz_date.weekday()
 
-    cache_key = (DB_PATH, cur_wd, cur_h)
+    db_k = _active_db_key()
+    cache_key = (db_k, cur_wd, cur_h)
     now_mono = time.monotonic()
-    db_row_count = int(get_db_stats().get("count") or 0) if os.path.exists(DB_PATH) else 0
+    db_row_count = int(get_db_stats().get("count") or 0) if _db_available() else 0
 
     if not force_refresh:
         cached = _live_benchmarks_cache.get(cache_key)
@@ -1367,8 +1449,8 @@ def get_all_stores_live_benchmarks(now_jst: datetime.datetime = None, allow_bloc
                     refresh_live_benchmarks_async()
                     return cached_out
 
-        # Fast O(1) derivation from 30-min base cache (eliminates top-of-hour SQLite stampede)
-        base_entry = _benchmark_base_cache.get(DB_PATH)
+        # Fast O(1) derivation from 30-min base cache (eliminates top-of-hour DB stampede)
+        base_entry = _benchmark_base_cache.get(db_k)
         if base_entry is not None:
             base_ts, base_cnt, base_data = base_entry
             small_db_mutated = (db_row_count < 2500 and db_row_count != base_cnt)
@@ -1385,14 +1467,14 @@ def get_all_stores_live_benchmarks(now_jst: datetime.datetime = None, allow_bloc
         if not allow_blocking and (_sync_in_progress or db_row_count >= 5000):
             refresh_live_benchmarks_async()
             for k, v in list(_live_benchmarks_cache.items()):
-                if k[0] == DB_PATH and v and v[1]:
+                if k[0] == db_k and v and v[1]:
                     return v[1]
             return {}
 
     cutoff_str = (now_jst - datetime.timedelta(days=30)).strftime("%Y-%m-%d %H:%M:%S")
     base_data = _compute_benchmark_base_from_sqlite(cutoff_str)
     now_done = time.monotonic()
-    _benchmark_base_cache[DB_PATH] = (now_done, db_row_count, base_data)
+    _benchmark_base_cache[db_k] = (now_done, db_row_count, base_data)
     if len(_benchmark_base_cache) > 4:
         oldest_db = min(_benchmark_base_cache.items(), key=lambda kv: kv[1][0])[0]
         _benchmark_base_cache.pop(oldest_db, None)

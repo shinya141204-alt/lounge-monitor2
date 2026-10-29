@@ -26,6 +26,7 @@ import store_master
 import sns_editorial
 import column_editorial
 import scheduled_articles
+import turbo_store
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +47,7 @@ def reset_pdca_cache_for_tests():
         _directives_mem_cache["ts"] = 0.0
         _directives_mem_cache["data"] = None
         _briefing_ai_cache.clear()
+    turbo_store.clear_ai_cache("pdca_briefing")
 
 
 def get_pdca_settings(allow_blocking: bool = True) -> dict:
@@ -482,11 +484,17 @@ def _generate_pdca_briefing(diag: dict, use_ai: bool = True, cache_only: bool = 
         diag["proposed_directives"]["recommended_custom_topic"],
     )
     now_t = time.time()
-    with _pdca_lock:
-        if not force_refresh and sig in _briefing_ai_cache:
-            cached = _briefing_ai_cache[sig]
-            if now_t - cached["ts"] < _BRIEFING_TTL_SEC:
-                return dict(cached["val"])
+    if not force_refresh:
+        with _pdca_lock:
+            if sig in _briefing_ai_cache:
+                cached = _briefing_ai_cache[sig]
+                if now_t - cached["ts"] < _BRIEFING_TTL_SEC:
+                    return dict(cached["val"])
+        shared = turbo_store.get_ai_cache("pdca_briefing", sig)
+        if shared and isinstance(shared.get("val"), dict):
+            with _pdca_lock:
+                _briefing_ai_cache[sig] = {"ts": now_t, "val": shared["val"]}
+            return dict(shared["val"])
 
     if cache_only:
         return {"text": fallback_summary, "is_ai": False, "model": "", "pending_async": True}
@@ -523,6 +531,7 @@ def _generate_pdca_briefing(diag: dict, use_ai: bool = True, cache_only: bool = 
                     _briefing_ai_cache[sig] = {"ts": now_t, "val": res}
                     while len(_briefing_ai_cache) > 16:
                         _briefing_ai_cache.popitem(last=False)
+                turbo_store.set_ai_cache("pdca_briefing", sig, {"ts": now_t, "val": res}, ttl_sec=3600)
                 return res
     except Exception as e:
         logger.warning(f"[pdca_engine] AI briefing fallback: {e}")

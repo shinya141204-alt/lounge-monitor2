@@ -13,6 +13,7 @@ import json
 import time
 import local_db
 import scheduled_articles
+import turbo_store
 import zlib
 from collections import defaultdict, OrderedDict
 
@@ -137,8 +138,11 @@ def compress_response(response):
                     response.headers['Cache-Control'] = 'private, no-store, no-cache, must-revalidate, max-age=0'
                     response.headers['Pragma'] = 'no-cache'
                 else:
-                    # Allow browser back/forward cache (bfcache) for instant 0ms back-navigation while revalidating normal loads
-                    response.headers['Cache-Control'] = 'private, no-cache, must-revalidate, max-age=0'
+                    if os.environ.get('ENABLE_PUBLIC_EDGE_CACHE') == '1' and request.method == 'GET' and 'Set-Cookie' not in response.headers:
+                        response.headers['Cache-Control'] = 'public, max-age=0, s-maxage=15, stale-while-revalidate=45'
+                    else:
+                        # Allow browser back/forward cache (bfcache) for instant 0ms back-navigation while revalidating normal loads
+                        response.headers['Cache-Control'] = 'private, no-cache, must-revalidate, max-age=0'
 
     # 2. Gzip compression
     if (
@@ -185,9 +189,34 @@ def redirect_to_custom_domain():
 
 _scheduler_started = False
 _scheduler_lock = threading.Lock()
+_web_boot_initialized = False
+
+
+def get_app_role() -> str:
+    """Return active process role: 'web' (HTTP-only Gunicorn worker), 'worker' (background engine), or 'all' (legacy single-process)."""
+    role = (os.environ.get('APP_ROLE') or 'all').strip().lower()
+    return role if role in ('web', 'worker', 'all') else 'all'
+
+
+def is_web_only_role() -> bool:
+    return get_app_role() == 'web'
+
 
 def _ensure_scheduler_started_async():
-    global _scheduler_started
+    global _scheduler_started, _web_boot_initialized
+    if is_web_only_role():
+        if not _web_boot_initialized:
+            with _scheduler_lock:
+                if not _web_boot_initialized:
+                    _web_boot_initialized = True
+                    def _init_web_only():
+                        try:
+                            local_db.init_db()
+                            restore_latest_data_if_empty()
+                        except Exception as e:
+                            logging.warning(f"Web-only lightweight boot warning: {e}")
+                    threading.Thread(target=_init_web_only, daemon=True).start()
+        return
     if os.environ.get('DISABLE_SCHEDULER') == '1' or _scheduler_started:
         return
     with _scheduler_lock:
@@ -410,6 +439,8 @@ def _ensure_scheduler_started_async():
 @app.before_request
 def start_scheduler():
     _ensure_scheduler_started_async()
+    if is_web_only_role() and not request.path.startswith('/static/') and request.path != '/api/health':
+        sync_latest_data_from_shared_bus()
 
 # Global storage for analysis cache
 analysis_cache = {
@@ -497,11 +528,42 @@ latest_data = {
     'last_updated': None,
     'full_data': []
 }
+_shared_source_health = {}
 LATEST_STATUS_SNAPSHOT_FILE = os.environ.get('LATEST_STATUS_SNAPSHOT_FILE') or os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'latest_status_cache.json')
 
 
+def sync_latest_data_from_shared_bus(force_l1: bool = False) -> bool:
+    """Pull the latest 53-store snapshot published by `worker.py` via Redis / shared bus in <0.5ms."""
+    global _shared_source_health
+    if not turbo_store.is_shared_bus_active():
+        return False
+    snap = turbo_store.get_live_snapshot(bypass_l1=force_l1)
+    if not snap or not isinstance(snap.get('full_data'), list) or not snap['full_data']:
+        return False
+    snap_stores = snap['full_data']
+    snap_updated = snap.get('last_updated')
+    snap_seed = bool(snap.get('is_seed'))
+    if isinstance(snap.get('source_health'), dict) and snap['source_health']:
+        _shared_source_health = snap['source_health']
+
+    changed = False
+    with data_lock:
+        cur_stores = latest_data.get('full_data') or []
+        cur_sig = _live_data_signature(cur_stores, latest_data.get('last_updated'), bool(latest_data.get('is_seed')))
+        new_sig = _live_data_signature(snap_stores, snap_updated, snap_seed)
+        if cur_sig != new_sig:
+            latest_data['full_data'] = list(snap_stores)
+            latest_data['top_store'] = snap_stores[0] if snap_stores else None
+            latest_data['last_updated'] = snap_updated
+            latest_data['is_seed'] = snap_seed
+            changed = True
+    if changed:
+        clear_fast_http_caches(clear_editorial=False)
+    return True
+
+
 def save_latest_status_snapshot():
-    """Persist latest_data to disk so server restarts/redeploys have 0ms cold-start latency."""
+    """Persist latest_data to disk and publish to shared Redis bus so all web workers have 0ms latency."""
     try:
         with data_lock:
             if not latest_data.get('full_data') or latest_data.get('is_seed'):
@@ -510,6 +572,16 @@ def save_latest_status_snapshot():
                 'last_updated': latest_data.get('last_updated'),
                 'full_data': latest_data.get('full_data', [])
             }
+        try:
+            import health as _hlth
+            turbo_store.publish_live_snapshot(
+                full_data=payload['full_data'],
+                last_updated=payload['last_updated'],
+                is_seed=False,
+                source_health=_hlth.snapshot(),
+            )
+        except Exception:
+            pass
         os.makedirs(os.path.dirname(LATEST_STATUS_SNAPSHOT_FILE), exist_ok=True)
         tmp_path = LATEST_STATUS_SNAPSHOT_FILE + '.tmp'
         with open(tmp_path, 'w', encoding='utf-8') as f:
@@ -521,11 +593,15 @@ def save_latest_status_snapshot():
 
 
 def restore_latest_data_if_empty():
-    """Immediately populate latest_data from disk snapshot, SQLite, or store_master on cold start
-    so users NEVER see a blocking loading screen even right after a Render redeploy."""
+    """Immediately populate latest_data from shared Redis bus, disk snapshot, DB, or store_master on cold start
+    so users NEVER see a blocking loading screen even right after a redeploy."""
+    if is_web_only_role() and sync_latest_data_from_shared_bus():
+        return True
     with data_lock:
         if latest_data.get('full_data'):
             return True
+    if sync_latest_data_from_shared_bus(force_l1=True):
+        return True
     try:
         if os.path.exists(LATEST_STATUS_SNAPSHOT_FILE):
             import json
@@ -1874,6 +1950,23 @@ def _get_sns_kit_context(fast=False):
         if _sns_kit_ctx_cache['ctx'] is not None and _sns_kit_ctx_cache['key'] == cache_key and (now_t - _sns_kit_ctx_cache['ts'] < 300):
             return _sns_kit_ctx_cache['ctx']
 
+    shared_ctx_wrap = turbo_store.get_ai_cache("ig_kit_ctx", "latest")
+    if isinstance(shared_ctx_wrap, dict) and isinstance(shared_ctx_wrap.get("ctx"), dict):
+        saved_top_sig = tuple(tuple(x) for x in (shared_ctx_wrap.get("live_top_sig") or []))
+        if saved_top_sig == live_top_sig or fast or is_web_only_role():
+            ctx = dict(shared_ctx_wrap["ctx"])
+            if isinstance(ctx.get("theme"), dict):
+                restored_theme = dict(ctx["theme"])
+                for tk, tv in list(restored_theme.items()):
+                    if isinstance(tv, list):
+                        restored_theme[tk] = tuple(tv)
+                ctx["theme"] = restored_theme
+            with _sns_cache_lock:
+                _sns_kit_ctx_cache['ctx'] = ctx
+                _sns_kit_ctx_cache['key'] = cache_key
+                _sns_kit_ctx_cache['ts'] = now_t
+            return ctx
+
     rep = None
     try:
         # Unify context across IG editorial captions and carousel slides so rankings/numbers always match
@@ -1892,19 +1985,37 @@ def _get_sns_kit_context(fast=False):
         _sns_kit_ctx_cache['ctx'] = ctx
         _sns_kit_ctx_cache['key'] = cache_key
         _sns_kit_ctx_cache['ts'] = now_t
+    turbo_store.set_ai_cache(
+        "ig_kit_ctx",
+        "latest",
+        {"ctx": ctx, "live_top_sig": [list(x) for x in live_top_sig]},
+        ttl_sec=900,
+    )
     return ctx
 
 
 def _render_cached_ig_slide_bytes(slide_num: int, is_jpg: bool, ctx: dict) -> bytes:
     import ig_carousel_generator
     clamped = max(1, min(5, int(slide_num)))
-    cache_key = (clamped, bool(is_jpg), _sns_context_sig(ctx))
+    ctx_sig = _sns_context_sig(ctx)
+    cache_key = (clamped, bool(is_jpg), ctx_sig)
+    media_blob_key = f"ig_slide:{clamped}:{'jpg' if is_jpg else 'png'}:{turbo_store.make_cache_hash(ctx_sig)}"
     now_t = time.time()
     with _sns_cache_lock:
         cached = _sns_slide_bytes_cache.get(cache_key)
         if cached is not None and (now_t - cached[0] < 300):
             _sns_slide_bytes_cache.move_to_end(cache_key)
             return cached[1]
+
+    shared_blob = turbo_store.get_media_blob(media_blob_key)
+    if shared_blob and shared_blob[0]:
+        img_bytes = shared_blob[0]
+        with _sns_cache_lock:
+            _sns_slide_bytes_cache[cache_key] = (now_t, img_bytes)
+            _sns_slide_bytes_cache.move_to_end(cache_key)
+            while len(_sns_slide_bytes_cache) > 20:
+                _sns_slide_bytes_cache.popitem(last=False)
+        return img_bytes
 
     if is_jpg and hasattr(ig_carousel_generator, 'render_slide_jpeg'):
         img_bytes = ig_carousel_generator.render_slide_jpeg(clamped, ctx=ctx)
@@ -1924,6 +2035,12 @@ def _render_cached_ig_slide_bytes(slide_num: int, is_jpg: bool, ctx: dict) -> by
         _sns_slide_bytes_cache.move_to_end(cache_key)
         while len(_sns_slide_bytes_cache) > 20:
             _sns_slide_bytes_cache.popitem(last=False)
+    turbo_store.set_media_blob(
+        media_blob_key,
+        img_bytes,
+        mime_type='image/jpeg' if is_jpg else 'image/png',
+        ttl_sec=3600,
+    )
     return img_bytes
 
 
@@ -2427,7 +2544,13 @@ def staff_sns_kit_zip():
         else:
             zip_bytes = None
     if zip_bytes is None:
-        zip_bytes = ig_carousel_generator.render_all_slides_zip(ctx=ctx)
+        zip_blob_key = f"ig_zip:{turbo_store.make_cache_hash(ctx_sig)}"
+        shared_zip = turbo_store.get_media_blob(zip_blob_key)
+        if shared_zip and shared_zip[0]:
+            zip_bytes = shared_zip[0]
+        else:
+            zip_bytes = ig_carousel_generator.render_all_slides_zip(ctx=ctx)
+            turbo_store.set_media_blob(zip_blob_key, zip_bytes, mime_type='application/zip', ttl_sec=3600)
         with _sns_cache_lock:
             _sns_zip_bytes_cache['key'] = ctx_sig
             _sns_zip_bytes_cache['ts'] = now_t
@@ -2460,8 +2583,13 @@ def public_ig_slide_png(slide_num):
 
 def trigger_background_fetch_if_needed():
     """Check if data is stale and trigger a background fetch if needed.
-    MUST be called WITHOUT holding data_lock to avoid deadlock."""
+    In `APP_ROLE=web` mode, syncs from the shared Redis snapshot published by `worker.py` instead of scraping."""
     global _is_fetching, _fetch_started_at
+    if is_web_only_role():
+        if sync_latest_data_from_shared_bus():
+            return
+        if turbo_store.is_shared_bus_active():
+            return
     if os.environ.get('DISABLE_SCHEDULER') == '1':
         return
 
@@ -2581,6 +2709,8 @@ def health_check():
 def health_check_deep():
     """Data freshness + per-source scraper health. Returns 503 when data is stale (for external uptime monitors)."""
     import health
+    if is_web_only_role():
+        sync_latest_data_from_shared_bus()
     with data_lock:
         last_updated = latest_data.get('last_updated')
         store_count = len(latest_data.get('full_data') or [])
@@ -2590,7 +2720,9 @@ def health_check_deep():
         now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
         age_sec = int((now_jst - last_time).total_seconds())
     snap = health.snapshot()
-    down = [k for k, v in snap['sources'].items() if v.get('down')]
+    if not snap.get('sources') and isinstance(_shared_source_health, dict) and _shared_source_health.get('sources'):
+        snap = _shared_source_health
+    down = [k for k, v in (snap.get('sources') or {}).items() if isinstance(v, dict) and v.get('down')]
     stale = age_sec is None or age_sec > fetch_interval_sec() * 3 + 120
     ok = not stale and not down
     body = {
@@ -2599,10 +2731,12 @@ def health_check_deep():
         'data_age_sec': age_sec,
         'store_count': store_count,
         'down_sources': down,
-        'webhook_configured': snap['webhook_configured'],
+        'webhook_configured': bool(snap.get('webhook_configured')),
     }
     if is_admin_authorized():
         body['detail'] = snap
+        body['app_role'] = get_app_role()
+        body['turbo'] = turbo_store.get_backend_status()
     return jsonify(body), (200 if ok else 503)
 
 @app.route('/api/debug_ps')
@@ -2736,6 +2870,7 @@ def post_store_vote():
                 s['votes'] = counts
                 break
     if ok:
+        turbo_store.update_live_snapshot_store_votes(store_name, counts)
         clear_fast_http_caches(clear_editorial=False)
 
     return jsonify({
@@ -2755,6 +2890,7 @@ def robots_txt():
         "Disallow: /api/thread_status\n"
         "Disallow: /api/data-audit\n"
         "Disallow: /api/trigger-\n"
+        "Disallow: /api/sns-jobs\n"
         "Disallow: /staff\n"
         "\n"
         "# AI Search & LLM Grounding Crawlers (Explicitly Welcomed)\n"
@@ -3703,6 +3839,371 @@ def run_scheduled_x_post(slot_label="20:00", force=False):
     return sns_workflows.execute_scheduled_x_post(latest_data, slot_label=slot_label, force=force)
 
 
+def precompute_editorial_and_media_bundle(
+    channels=('x', 'threads', 'instagram'),
+    slot_labels=None,
+    include_column: bool = False,
+    include_pdca: bool = False,
+    include_ig_slides: bool = True,
+) -> dict:
+    """Pre-generate AI editorial drafts and 5-slide IG carousel images on `worker` so `web` & SNS APIs respond in 0ms."""
+    import sns_editorial
+    started_m = time.monotonic()
+    restore_latest_data_if_empty()
+    with data_lock:
+        live_s = list(latest_data.get('full_data') or [])
+        is_seed = bool(latest_data.get('is_seed'))
+
+    summary = {
+        'ok': True,
+        'store_count': len(live_s),
+        'is_seed': is_seed,
+        'ig_slides_rendered': 0,
+        'editorial_warmed': [],
+        'column_warmed': False,
+        'pdca_warmed': False,
+        'errors': [],
+    }
+    if not live_s:
+        summary['ok'] = False
+        summary['errors'].append('no_live_stores')
+        return summary
+
+    ig_ctx = None
+    if include_ig_slides or ('instagram' in (channels or ())):
+        try:
+            ig_ctx = _get_sns_kit_context(fast=False)
+            if include_ig_slides and isinstance(ig_ctx, dict):
+                for s_num in range(1, 6):
+                    _render_cached_ig_slide_bytes(s_num, is_jpg=True, ctx=ig_ctx)
+                    _render_cached_ig_slide_bytes(s_num, is_jpg=False, ctx=ig_ctx)
+                    summary['ig_slides_rendered'] += 1
+                try:
+                    import ig_carousel_generator
+                    ctx_sig = _sns_context_sig(ig_ctx)
+                    zip_blob_key = f"ig_zip:{turbo_store.make_cache_hash(ctx_sig)}"
+                    if not turbo_store.get_media_blob(zip_blob_key):
+                        z_bytes = ig_carousel_generator.render_all_slides_zip(ctx=ig_ctx)
+                        turbo_store.set_media_blob(zip_blob_key, z_bytes, mime_type='application/zip', ttl_sec=3600)
+                except Exception as z_err:
+                    summary['errors'].append(f"ig_zip:{z_err}")
+        except Exception as ig_err:
+            summary['errors'].append(f"ig_ctx:{ig_err}")
+
+    now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
+    if not slot_labels:
+        hr = now_jst.hour
+        if hr < 20:
+            default_slots = ('20:00',)
+        elif hr < 22:
+            default_slots = ('22:00',)
+        else:
+            default_slots = ('00:00', '22:00')
+    else:
+        default_slots = tuple(slot_labels)
+
+    try:
+        sns_editorial.fetch_live_weather_context(allow_blocking=True)
+    except Exception:
+        pass
+
+    for ch in (channels or ()):
+        ch_clean = str(ch or '').strip().lower()
+        if ch_clean not in ('x', 'threads', 'instagram'):
+            continue
+        ch_slots = ('21:45',) if ch_clean == 'instagram' and not slot_labels else default_slots
+        for sl in ch_slots:
+            try:
+                ed = sns_editorial.run_editorial_pipeline(
+                    live_s,
+                    slot_label=sl,
+                    channel=ch_clean,
+                    ig_ctx=ig_ctx if ch_clean == 'instagram' else None,
+                    record_history=False,
+                    use_ai=True,
+                    force_ai_refresh=False,
+                    ai_cache_only=False,
+                )
+                winner_style = ((ed or {}).get('winner') or {}).get('style', '')
+                summary['editorial_warmed'].append(f"{ch_clean}:{sl}:{winner_style}")
+            except Exception as ed_err:
+                summary['errors'].append(f"editorial:{ch_clean}:{sl}:{ed_err}")
+
+    if include_column:
+        try:
+            import column_editorial
+            column_editorial.run_column_editorial_pipeline(
+                live_s,
+                theme_key='area_hopping',
+                use_ai=True,
+                force_ai_refresh=False,
+                ai_cache_only=False,
+            )
+            summary['column_warmed'] = True
+        except Exception as col_err:
+            summary['errors'].append(f"column:{col_err}")
+
+    if include_pdca:
+        try:
+            import pdca_engine
+            pdca_engine.run_pdca_cycle(
+                live_stores=live_s,
+                days=14,
+                apply_actions=False,
+                use_ai=True,
+                ai_cache_only=False,
+                force_ai_refresh=False,
+                record_log=False,
+            )
+            summary['pdca_warmed'] = True
+        except Exception as pdca_err:
+            summary['errors'].append(f"pdca:{pdca_err}")
+
+    summary['elapsed_ms'] = int((time.monotonic() - started_m) * 1000)
+    return summary
+
+
+SUPPORTED_SNS_JOB_TYPES = (
+    'x_post',
+    'x_tip',
+    'note_share',
+    'x_pinned',
+    'x_column',
+    'x_weekly',
+    'x_bonus',
+    'threads_post',
+    'ig_post',
+    'ladies_sns',
+    'prewarm_bundle',
+)
+
+
+def execute_sns_job_payload(job_type: str, params: dict = None) -> dict:
+    """Execute a single SNS / prewarm job synchronously (invoked by `worker.py` queue consumer or inline fallback)."""
+    p = dict(params or {})
+    jtype = str(job_type or '').strip().lower()
+    force = bool(p.get('force')) if isinstance(p.get('force'), bool) else (str(p.get('force', '0')) == '1')
+    restore_latest_data_if_empty()
+
+    if jtype == 'x_post':
+        slot = str(p.get('slot') or '20:00').strip()
+        return run_scheduled_x_post(slot_label=slot, force=force)
+
+    if jtype == 'x_tip':
+        import tips_poster
+        slot = str(p.get('slot') or '12:00').strip()
+        idx_raw = p.get('idx')
+        idx = int(idx_raw) if idx_raw is not None and str(idx_raw).strip() != '' else None
+        return tips_poster.run_scheduled_tip_post(slot_label=slot, force=force, tip_index=idx)
+
+    if jtype == 'note_share':
+        import note_poster
+        idx = int(p.get('idx') or 0)
+        return note_poster.check_and_post_new_note(force=force, article_index=idx)
+
+    if jtype == 'x_pinned':
+        import x_poster
+        main_text, reply_text = x_poster.build_pinned_tweet_thread()
+        res = x_poster.post_to_x(main_text, reply_text=reply_text)
+        res['tweet_text'] = main_text
+        res['reply_text'] = reply_text
+        return res
+
+    if jtype == 'x_column':
+        import x_poster
+        idx = int(p.get('idx') or 0)
+        main_text, reply_text, item = x_poster.build_column_tweet_thread(col_index=idx)
+        media_bytes, media_mime = x_poster.load_column_eyecatch_bytes(item)
+        res = x_poster.post_to_x(
+            main_text,
+            reply_text=reply_text,
+            media_bytes=media_bytes,
+            media_mime_type=media_mime,
+        )
+        res['column'] = item
+        res['tweet_text'] = main_text
+        res['reply_text'] = reply_text
+        return res
+
+    if jtype == 'x_weekly':
+        return run_scheduled_weekly_x_post(force=force)
+
+    if jtype == 'x_bonus':
+        import bonus_alert
+        with data_lock:
+            stores = list(latest_data.get('full_data') or [])
+        return bonus_alert.check_and_post_bonus_alert(stores, force=force)
+
+    if jtype == 'threads_post':
+        import threads_poster
+        slot = str(p.get('slot') or '20:00').strip()
+        with data_lock:
+            stores = list(latest_data.get('full_data') or [])
+        return threads_poster.execute_scheduled_threads_post(stores, slot_label=slot, force=force)
+
+    if jtype == 'ig_post':
+        import instagram_poster
+        mode = str(p.get('mode') or 'carousel').strip()
+        slot = str(p.get('slot') or '22:00').strip()
+        with data_lock:
+            stores = list(latest_data.get('full_data') or [])
+        return instagram_poster.execute_scheduled_instagram_post(stores, mode=mode, slot_label=slot, force=force)
+
+    if jtype == 'ladies_sns':
+        channel = str(p.get('channel') or 'threads').strip().lower()
+        with data_lock:
+            stores = list(latest_data.get('full_data') or [])
+        if channel in ('ig', 'instagram'):
+            import instagram_poster
+            slot = str(p.get('slot') or '19:45').strip()
+            return instagram_poster.execute_scheduled_ladies_instagram_post(stores, slot_label=slot, force=force)
+        import threads_poster
+        slot = str(p.get('slot') or '19:30').strip()
+        return threads_poster.execute_scheduled_ladies_threads_post(stores, slot_label=slot, force=force)
+
+    if jtype == 'prewarm_bundle':
+        channels = p.get('channels') or ('x', 'threads', 'instagram')
+        slot_labels = p.get('slot_labels')
+        return precompute_editorial_and_media_bundle(
+            channels=channels,
+            slot_labels=slot_labels,
+            include_column=bool(p.get('include_column')),
+            include_pdca=bool(p.get('include_pdca')),
+            include_ig_slides=bool(p.get('include_ig_slides', True)),
+        )
+
+    raise ValueError(f"Unsupported SNS job_type: {jtype}")
+
+
+_inline_sns_consumer_lock = threading.Lock()
+_inline_sns_consumer_running = False
+
+
+def drain_sns_job_queue_once(timeout_sec: float = 0.05) -> dict:
+    """Claim and execute a single queued SNS job, updating its final record in `turbo_store`."""
+    claimed = turbo_store.claim_next_sns_job(timeout_sec=timeout_sec)
+    if not claimed:
+        return None
+    jid = claimed.get('job_id')
+    jtype = claimed.get('job_type')
+    jparams = claimed.get('params') or {}
+    try:
+        res = execute_sns_job_payload(jtype, jparams)
+        err_msg = ''
+        if isinstance(res, dict):
+            st = str(res.get('status') or '').lower()
+            if st in ('error', 'failed') or res.get('ok') is False:
+                err_msg = str(res.get('error') or res.get('reason') or res.get('detail') or 'delivery_error')
+        return turbo_store.complete_sns_job(jid, result=res if isinstance(res, dict) else {'result': res}, error=err_msg)
+    except Exception as exc:
+        logging.error(f"Async SNS job {jid} ({jtype}) failed: {exc}")
+        return turbo_store.complete_sns_job(jid, result={'status': 'error', 'error': str(exc)}, error=str(exc))
+
+
+def _ensure_inline_sns_consumer_started():
+    """Fallback background consumer when no external Redis-connected `worker.py` process is active."""
+    global _inline_sns_consumer_running
+    with _inline_sns_consumer_lock:
+        if _inline_sns_consumer_running:
+            return
+        _inline_sns_consumer_running = True
+
+    def _runner():
+        global _inline_sns_consumer_running
+        try:
+            for _ in range(32):
+                done = drain_sns_job_queue_once(timeout_sec=0.05)
+                if done is None:
+                    break
+        finally:
+            with _inline_sns_consumer_lock:
+                _inline_sns_consumer_running = False
+
+    threading.Thread(target=_runner, daemon=True).start()
+
+
+def _enqueue_sns_job_and_maybe_dispatch(job_type: str, params: dict = None, worker_only: bool = False) -> dict:
+    job = turbo_store.enqueue_sns_job(job_type, params=params or {}, requested_by='master')
+    dedicated_redis_worker = is_web_only_role() and (turbo_store.get_redis_client() is not None)
+    if not worker_only and not dedicated_redis_worker:
+        _ensure_inline_sns_consumer_started()
+    return job
+
+
+def _maybe_enqueue_async_sns_trigger(job_type: str, params: dict = None):
+    if request.args.get('async') != '1':
+        return None
+    worker_only = request.args.get('worker_only') == '1'
+    job = _enqueue_sns_job_and_maybe_dispatch(job_type, params=params, worker_only=worker_only)
+    return jsonify({
+        'ok': True,
+        'queued': True,
+        'job_id': job['job_id'],
+        'job_type': job['job_type'],
+        'status': job['status'],
+        'poll_url': f"/api/sns-jobs/{job['job_id']}",
+    }), 202
+
+
+@app.route('/api/sns-jobs/enqueue', methods=['POST'])
+def api_sns_jobs_enqueue():
+    """Master-only endpoint to enqueue an SNS post or prewarm bundle onto the background worker in <1ms."""
+    if not is_master_authorized():
+        return jsonify({'error': 'Unauthorized'}), 401
+    payload = request.get_json(silent=True, force=True) or {}
+    job_type = str(payload.get('job_type') or '').strip().lower()
+    if job_type not in SUPPORTED_SNS_JOB_TYPES:
+        return jsonify({'ok': False, 'error': f'Unsupported job_type: {job_type}'}), 400
+    params = payload.get('params') if isinstance(payload.get('params'), dict) else {}
+    worker_only = bool(payload.get('worker_only')) or (request.args.get('worker_only') == '1')
+    job = _enqueue_sns_job_and_maybe_dispatch(job_type, params=params, worker_only=worker_only)
+    return jsonify({
+        'ok': True,
+        'queued': True,
+        'job': job,
+        'job_id': job['job_id'],
+        'poll_url': f"/api/sns-jobs/{job['job_id']}",
+    }), 202
+
+
+@app.route('/api/sns-jobs/<job_id>')
+def api_sns_job_detail(job_id):
+    """Master-only status polling endpoint for async SNS jobs."""
+    if not is_master_authorized():
+        return jsonify({'error': 'Unauthorized'}), 401
+    job = turbo_store.get_sns_job(str(job_id or '').strip()[:64])
+    if not job:
+        return jsonify({'ok': False, 'error': 'Job not found'}), 404
+    return jsonify({'ok': True, 'job': job})
+
+
+@app.route('/api/sns-jobs')
+def api_sns_jobs_list():
+    """Master-only list of recent async SNS jobs."""
+    if not is_master_authorized():
+        return jsonify({'error': 'Unauthorized'}), 401
+    limit = request.args.get('limit', 12, type=int)
+    jobs = turbo_store.list_recent_sns_jobs(limit=limit)
+    return jsonify({'ok': True, 'jobs': jobs, 'turbo': turbo_store.get_backend_status()})
+
+
+@app.route('/api/trigger-prewarm', methods=['GET', 'POST'])
+def trigger_prewarm_endpoint():
+    """Master-only endpoint to precompute AI editorial drafts & 5 IG slides."""
+    if not is_master_authorized():
+        return jsonify({'error': 'Unauthorized'}), 401
+    include_col = request.args.get('column', '0') == '1'
+    include_pdca = request.args.get('pdca', '0') == '1'
+    queued_resp = _maybe_enqueue_async_sns_trigger(
+        'prewarm_bundle',
+        {'include_column': include_col, 'include_pdca': include_pdca, 'include_ig_slides': True},
+    )
+    if queued_resp is not None:
+        return queued_resp
+    res = precompute_editorial_and_media_bundle(include_column=include_col, include_pdca=include_pdca, include_ig_slides=True)
+    return jsonify(res)
+
+
 @app.route('/api/trigger-x-post')
 def trigger_x_post_endpoint():
     """Endpoint to test or externally trigger X auto-posting (master only)."""
@@ -3710,6 +4211,9 @@ def trigger_x_post_endpoint():
         return jsonify({'error': 'Unauthorized'}), 401
     slot = request.args.get('slot', '20:00')
     force = request.args.get('force', '0') == '1'
+    queued_resp = _maybe_enqueue_async_sns_trigger('x_post', {'slot': slot, 'force': force})
+    if queued_resp is not None:
+        return queued_resp
     res = run_scheduled_x_post(slot_label=slot, force=force)
     return jsonify(res)
 
@@ -3722,6 +4226,9 @@ def trigger_x_tip_endpoint():
     slot = request.args.get('slot', '12:00')
     force = request.args.get('force', '0') == '1'
     idx = request.args.get('idx', type=int)
+    queued_resp = _maybe_enqueue_async_sns_trigger('x_tip', {'slot': slot, 'force': force, 'idx': idx})
+    if queued_resp is not None:
+        return queued_resp
     import tips_poster
     res = tips_poster.run_scheduled_tip_post(slot_label=slot, force=force, tip_index=idx)
     return jsonify(res)
@@ -3734,6 +4241,9 @@ def trigger_note_share_endpoint():
         return jsonify({'error': 'Unauthorized'}), 401
     force = request.args.get('force', '0') == '1'
     idx = request.args.get('idx', 0, type=int)
+    queued_resp = _maybe_enqueue_async_sns_trigger('note_share', {'force': force, 'idx': idx})
+    if queued_resp is not None:
+        return queued_resp
     import note_poster
     res = note_poster.check_and_post_new_note(force=force, article_index=idx)
     return jsonify(res)
@@ -3744,6 +4254,9 @@ def trigger_x_pinned_endpoint():
     """Endpoint to post the 2-post Pinned Tweet thread (master only)."""
     if not is_master_authorized():
         return jsonify({'error': 'Unauthorized'}), 401
+    queued_resp = _maybe_enqueue_async_sns_trigger('x_pinned', {})
+    if queued_resp is not None:
+        return queued_resp
     import x_poster
     main_text, reply_text = x_poster.build_pinned_tweet_thread()
     res = x_poster.post_to_x(main_text, reply_text=reply_text)
@@ -3758,6 +4271,9 @@ def trigger_x_column_endpoint():
     if not is_master_authorized():
         return jsonify({'error': 'Unauthorized'}), 401
     idx = request.args.get('idx', 0, type=int)
+    queued_resp = _maybe_enqueue_async_sns_trigger('x_column', {'idx': idx})
+    if queued_resp is not None:
+        return queued_resp
     import x_poster
     main_text, reply_text, item = x_poster.build_column_tweet_thread(col_index=idx)
     media_bytes, media_mime = x_poster.load_column_eyecatch_bytes(item)
@@ -3785,6 +4301,9 @@ def trigger_x_weekly_endpoint():
     if not is_master_authorized():
         return jsonify({'error': 'Unauthorized'}), 401
     force = request.args.get('force', '0') == '1'
+    queued_resp = _maybe_enqueue_async_sns_trigger('x_weekly', {'force': force})
+    if queued_resp is not None:
+        return queued_resp
     res = run_scheduled_weekly_x_post(force=force)
     return jsonify(res)
 
@@ -3794,8 +4313,11 @@ def trigger_x_bonus_endpoint():
     """Endpoint to test or externally trigger the Bonus-Time Guerrilla Alert X post (master only)."""
     if not is_master_authorized():
         return jsonify({'error': 'Unauthorized'}), 401
-    import bonus_alert
     force = request.args.get('force', '0') == '1'
+    queued_resp = _maybe_enqueue_async_sns_trigger('x_bonus', {'force': force})
+    if queued_resp is not None:
+        return queued_resp
+    import bonus_alert
     with data_lock:
         stores = list(latest_data.get('full_data') or [])
     res = bonus_alert.check_and_post_bonus_alert(stores, force=force)
@@ -3807,9 +4329,12 @@ def trigger_threads_post_endpoint():
     """Endpoint to test or externally trigger Meta Threads auto-post (master only)."""
     if not is_master_authorized():
         return jsonify({'error': 'Unauthorized'}), 401
-    import threads_poster
     slot = request.args.get('slot', '20:00')
     force = request.args.get('force', '0') == '1'
+    queued_resp = _maybe_enqueue_async_sns_trigger('threads_post', {'slot': slot, 'force': force})
+    if queued_resp is not None:
+        return queued_resp
+    import threads_poster
     with data_lock:
         stores = list(latest_data.get('full_data') or [])
     res = threads_poster.execute_scheduled_threads_post(stores, slot_label=slot, force=force)
@@ -3821,10 +4346,13 @@ def trigger_ig_post_endpoint():
     """Endpoint to test or externally trigger Meta Instagram Graph API auto-post (master only)."""
     if not is_master_authorized():
         return jsonify({'error': 'Unauthorized'}), 401
-    import instagram_poster
     mode = request.args.get('mode', 'carousel')
     slot = request.args.get('slot', '22:00')
     force = request.args.get('force', '0') == '1'
+    queued_resp = _maybe_enqueue_async_sns_trigger('ig_post', {'mode': mode, 'slot': slot, 'force': force})
+    if queued_resp is not None:
+        return queued_resp
+    import instagram_poster
     with data_lock:
         stores = list(latest_data.get('full_data') or [])
     res = instagram_poster.execute_scheduled_instagram_post(stores, mode=mode, slot_label=slot, force=force)
@@ -3838,16 +4366,18 @@ def trigger_ladies_sns_endpoint():
         return jsonify({'error': 'Unauthorized'}), 401
     channel = (request.args.get('channel') or 'threads').strip().lower()
     force = request.args.get('force', '0') == '1'
+    slot_arg = request.args.get('slot') or ('19:45' if channel in ('ig', 'instagram') else '19:30')
+    queued_resp = _maybe_enqueue_async_sns_trigger('ladies_sns', {'channel': channel, 'slot': slot_arg, 'force': force})
+    if queued_resp is not None:
+        return queued_resp
     with data_lock:
         stores = list(latest_data.get('full_data') or [])
     if channel in ('ig', 'instagram'):
         import instagram_poster
-        slot = request.args.get('slot', '19:45')
-        res = instagram_poster.execute_scheduled_ladies_instagram_post(stores, slot_label=slot, force=force)
+        res = instagram_poster.execute_scheduled_ladies_instagram_post(stores, slot_label=slot_arg, force=force)
     else:
         import threads_poster
-        slot = request.args.get('slot', '19:30')
-        res = threads_poster.execute_scheduled_ladies_threads_post(stores, slot_label=slot, force=force)
+        res = threads_poster.execute_scheduled_ladies_threads_post(stores, slot_label=slot_arg, force=force)
     return jsonify(res)
 
 

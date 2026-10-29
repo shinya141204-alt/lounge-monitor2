@@ -14,6 +14,7 @@ import logging
 from collections import defaultdict
 
 import sheets_store
+import turbo_store
 
 SHEET_TITLE = 'Analytics Daily'
 HEADER = ['date_jst', 'event', 'label', 'count']
@@ -32,11 +33,13 @@ ALLOWED_EVENTS = {
 }
 
 _lock = threading.Lock()
-_pending = defaultdict(int)   # (date, event, label) -> count（Sheets未送信）
+_pending = defaultdict(int)   # (date, event, label) -> count（未フラッシュ分）
+_sheets_retry = defaultdict(int)  # Postgres保存済み・Sheetsのみ再送待ち分
 _flushed = defaultdict(int)   # 起動後に送信済みの分（Sheets読込失敗時の表示用）
 _SHEET_ROWS_CACHE_TTL = 900.0
 _sheet_rows_cache = {'ts': 0.0, 'rows': None}
 _sheet_refresh_in_flight = False
+_pg_seeded_from_sheets = False
 
 
 def _refresh_sheet_rows_async():
@@ -80,7 +83,7 @@ def track(event, label=''):
 
 
 def flush():
-    """未送信分を Sheets に追記。失敗したら戻して次回再送。"""
+    """未送信分を PostgreSQL / Sheets に追記。失敗したら戻して次回再送。"""
     cutoff_3d = (
         datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
         - datetime.timedelta(days=3)
@@ -88,24 +91,41 @@ def flush():
     with _lock:
         for k in [k for k in _flushed.keys() if k[0] <= cutoff_3d]:
             del _flushed[k]
-        if not _pending:
-            return 0
-        items = list(_pending.items())
+        new_items = list(_pending.items())
         _pending.clear()
-    rows = [[d, e, l, c] for (d, e, l), c in items]
+        retry_items = list(_sheets_retry.items())
+        _sheets_retry.clear()
+    if not new_items and not retry_items:
+        return 0
+
+    pg_saved = False
+    if new_items:
+        pg_saved = turbo_store.analytics_add_batch(new_items)
+
+    merged_for_sheets = defaultdict(int)
+    for k, c in retry_items:
+        merged_for_sheets[k] += c
+    for k, c in new_items:
+        merged_for_sheets[k] += c
+
+    rows = [[d, e, l, c] for (d, e, l), c in merged_for_sheets.items()]
     ok = sheets_store.append_rows(SHEET_TITLE, HEADER, rows)
     with _lock:
-        for key, c in items:
-            if ok:
+        if ok:
+            for key, c in merged_for_sheets.items():
                 if key[0] > cutoff_3d:
                     _flushed[key] += c
-            else:
-                _pending[key] += c
-        if ok:
             _sheet_rows_cache['ts'] = 0.0
-    if not ok:
+        elif pg_saved:
+            # Already persisted safely in PostgreSQL/turbo_store; only retry Google Sheets mirror next tick
+            for key, c in merged_for_sheets.items():
+                _sheets_retry[key] += c
+        else:
+            for key, c in merged_for_sheets.items():
+                _pending[key] += c
+    if not ok and not pg_saved:
         logging.warning('[analytics] flush failed; will retry')
-    return len(rows) if ok else 0
+    return len(rows) if (ok or pg_saved) else 0
 
 
 _PAGE_TITLES = {
@@ -355,39 +375,62 @@ def summary(days=7, allow_blocking=True):
     yesterday_str = (now_jst - datetime.timedelta(days=1)).strftime('%Y-%m-%d')
 
     totals = defaultdict(int)
-    if getattr(sheets_store.read_rows, '__module__', '') != 'sheets_store':
-        sheet_rows = sheets_store.read_rows(SHEET_TITLE, HEADER)
-    elif sheets_store.is_disabled():
-        sheet_rows = []
-    else:
-        now_mono = time.monotonic()
-        with _lock:
-            cached_ts = _sheet_rows_cache['ts']
-            cached_rows = _sheet_rows_cache['rows']
-        if cached_rows is not None and cached_ts > 0.0 and (now_mono - cached_ts < _SHEET_ROWS_CACHE_TTL):
-            sheet_rows = cached_rows
-        elif cached_rows is not None and not allow_blocking:
-            _refresh_sheet_rows_async()
-            sheet_rows = cached_rows
-        elif not allow_blocking:
-            _refresh_sheet_rows_async()
-            sheet_rows = []
-        else:
-            sheet_rows = sheets_store.read_rows(SHEET_TITLE, HEADER)
-            with _lock:
-                _sheet_rows_cache['ts'] = time.monotonic()
-                _sheet_rows_cache['rows'] = sheet_rows
-    if sheet_rows:
-        for r in sheet_rows:
+    is_mocked_sheets = getattr(sheets_store.read_rows, '__module__', '') != 'sheets_store'
+    fast_rows = None if is_mocked_sheets else turbo_store.analytics_query_since(start)
+
+    if fast_rows is not None:
+        if not fast_rows and turbo_store.is_postgres_active() and not sheets_store.is_disabled():
+            global _pg_seeded_from_sheets
+            if not _pg_seeded_from_sheets:
+                _pg_seeded_from_sheets = True
+                def _seed_pg_analytics():
+                    try:
+                        hist_rows = sheets_store.read_rows_or_none(SHEET_TITLE, HEADER)
+                        if hist_rows:
+                            turbo_store.analytics_replace_from_sheets(hist_rows)
+                    except Exception:
+                        pass
+                threading.Thread(target=_seed_pg_analytics, daemon=True).start()
+        for r in fast_rows:
             if len(r) >= 4 and r[0] >= start:
                 try:
                     totals[(r[0], r[1], r[2])] += int(r[3])
                 except ValueError:
                     continue
     else:
-        with _lock:
-            for k, c in _flushed.items():
-                totals[k] += c
+        if is_mocked_sheets:
+            sheet_rows = sheets_store.read_rows(SHEET_TITLE, HEADER)
+        elif sheets_store.is_disabled():
+            sheet_rows = []
+        else:
+            now_mono = time.monotonic()
+            with _lock:
+                cached_ts = _sheet_rows_cache['ts']
+                cached_rows = _sheet_rows_cache['rows']
+            if cached_rows is not None and cached_ts > 0.0 and (now_mono - cached_ts < _SHEET_ROWS_CACHE_TTL):
+                sheet_rows = cached_rows
+            elif cached_rows is not None and not allow_blocking:
+                _refresh_sheet_rows_async()
+                sheet_rows = cached_rows
+            elif not allow_blocking:
+                _refresh_sheet_rows_async()
+                sheet_rows = []
+            else:
+                sheet_rows = sheets_store.read_rows(SHEET_TITLE, HEADER)
+                with _lock:
+                    _sheet_rows_cache['ts'] = time.monotonic()
+                    _sheet_rows_cache['rows'] = sheet_rows
+        if sheet_rows:
+            for r in sheet_rows:
+                if len(r) >= 4 and r[0] >= start:
+                    try:
+                        totals[(r[0], r[1], r[2])] += int(r[3])
+                    except ValueError:
+                        continue
+        else:
+            with _lock:
+                for k, c in _flushed.items():
+                    totals[k] += c
     with _lock:
         for k, c in _pending.items():
             totals[k] += c
@@ -507,8 +550,11 @@ def summary(days=7, allow_blocking=True):
 
 
 def reset_for_tests():
+    global _pg_seeded_from_sheets
     with _lock:
         _pending.clear()
+        _sheets_retry.clear()
         _flushed.clear()
         _sheet_rows_cache['ts'] = 0.0
         _sheet_rows_cache['rows'] = None
+        _pg_seeded_from_sheets = False

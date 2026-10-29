@@ -3726,5 +3726,304 @@ class SystemStabilityAndSpeedRegressionTests(unittest.TestCase):
         self.assertNotEqual(app_module._sns_context_sig(ctx_a), app_module._sns_context_sig(ctx_c))
 
 
+class TurboArchitectureTests(unittest.TestCase):
+    """End-to-end verification of Plan Take (`APP_ROLE=web` + `worker.py` + `turbo_store` shared bus & async SNS queue)."""
+
+    def setUp(self):
+        import turbo_store
+        self._orig_role = os.environ.get('APP_ROLE')
+        with app_module.data_lock:
+            self._saved_full = list(app_module.latest_data.get('full_data') or [])
+            self._saved_upd = app_module.latest_data.get('last_updated')
+            self._saved_seed = app_module.latest_data.get('is_seed')
+        self._saved_shared_health = dict(app_module._shared_source_health or {})
+        turbo_store.reset_for_tests()
+        turbo_store.enable_memory_bus_for_tests(True)
+        shutil.rmtree(os.environ['JOB_STATE_DIR'], ignore_errors=True)
+        job_state.reset_cache_for_tests()
+        app_module.clear_fast_http_caches()
+        app_module.app.config['TESTING'] = True
+        self.client = app_module.app.test_client()
+
+    def tearDown(self):
+        import analytics
+        import turbo_store
+        import sns_editorial
+        import column_editorial
+        import pdca_engine
+        if self._orig_role is None:
+            os.environ.pop('APP_ROLE', None)
+        else:
+            os.environ['APP_ROLE'] = self._orig_role
+        sns_editorial.set_gemini_api_key('')
+        sns_editorial.clear_editorial_ai_cache()
+        column_editorial.clear_column_ai_cache()
+        pdca_engine.reset_pdca_cache_for_tests()
+        analytics.reset_for_tests()
+        turbo_store.reset_for_tests()
+        shutil.rmtree(os.environ['JOB_STATE_DIR'], ignore_errors=True)
+        job_state.reset_cache_for_tests()
+        with app_module.data_lock:
+            app_module.latest_data['full_data'] = self._saved_full
+            app_module.latest_data['last_updated'] = self._saved_upd
+            app_module.latest_data['is_seed'] = self._saved_seed
+        app_module._shared_source_health = self._saved_shared_health
+        app_module.clear_fast_http_caches()
+
+    def test_web_worker_live_snapshot_bus_and_health_deep_zero_scrape(self):
+        import turbo_store
+        from unittest.mock import patch
+
+        now_str = datetime.datetime.now(
+            datetime.timezone(datetime.timedelta(hours=9))
+        ).strftime('%Y-%m-%d %H:%M:%S')
+        worker_stores = [
+            {
+                'name': 'OLG 新宿',
+                'women': 58,
+                'men': 26,
+                'women_diff': 8,
+                'men_diff': 2,
+                'region': 'Kanto',
+                'source': 'oriental',
+                'votes': {'smooth': 2, 'waiting': 0, 'lively': 1},
+            },
+            {
+                'name': 'OLG 梅田茶屋町',
+                'women': 46,
+                'men': 21,
+                'women_diff': 5,
+                'men_diff': 1,
+                'region': 'Kinki',
+                'source': 'oriental',
+                'votes': {'smooth': 1, 'waiting': 0, 'lively': 0},
+            },
+        ]
+        worker_health = {
+            'webhook_configured': True,
+            'sources': {
+                'oriental': {'down': False, 'last_count': 38},
+                'jis': {'down': False, 'last_count': 11},
+            },
+        }
+        self.assertTrue(
+            turbo_store.publish_live_snapshot(
+                full_data=worker_stores,
+                last_updated=now_str,
+                is_seed=False,
+                source_health=worker_health,
+            )
+        )
+
+        # Simulate a fresh HTTP-only `APP_ROLE=web` Gunicorn worker with empty local memory
+        os.environ['APP_ROLE'] = 'web'
+        with app_module.data_lock:
+            app_module.latest_data['full_data'] = []
+            app_module.latest_data['last_updated'] = None
+            app_module.latest_data['is_seed'] = False
+        app_module._shared_source_health = {}
+        app_module.clear_fast_http_caches()
+
+        with patch('monitor.get_all_data', side_effect=AssertionError('Web role must NEVER scrape directly!')):
+            r_status = self.client.get('/api/status')
+            self.assertEqual(r_status.status_code, 200)
+            st_json = r_status.get_json()
+            self.assertEqual(st_json['status'], 'success')
+            self.assertEqual(st_json['ranking'][0]['name'], 'OLG 新宿')
+            self.assertEqual(st_json['ranking'][0]['women'], 58)
+
+            r_home = self.client.get('/')
+            self.assertEqual(r_home.status_code, 200)
+            self.assertIn('data-store="OLG 新宿"', r_home.get_data(as_text=True))
+
+            with self.client.session_transaction() as sess:
+                sess['is_staff'] = True
+                sess['is_master'] = True
+            r_deep = self.client.get('/api/health/deep')
+            self.assertEqual(r_deep.status_code, 200)
+            deep_json = r_deep.get_json()
+            self.assertEqual(deep_json['status'], 'ok')
+            self.assertEqual(deep_json['app_role'], 'web')
+            self.assertEqual(deep_json['store_count'], 2)
+            self.assertTrue(deep_json['turbo']['memory_bus_test_mode'])
+
+            # User crowd vote updates shared snapshot across all web workers immediately
+            r_vote = self.client.post(
+                '/api/vote',
+                json={'store_name': 'OLG 新宿', 'vote_type': 'lively', 'voter_id': 'turbo_voter_1'},
+            )
+            self.assertEqual(r_vote.status_code, 200)
+            shared_after_vote = turbo_store.get_live_snapshot(bypass_l1=True)
+            shinjuku_shared = next(s for s in shared_after_vote['full_data'] if s['name'] == 'OLG 新宿')
+            self.assertGreaterEqual(shinjuku_shared['votes']['lively'], 1)
+
+    def test_cross_worker_precomputed_ai_and_ig_media_zero_latency_hit(self):
+        import sns_editorial
+        import ig_carousel_generator
+        from unittest.mock import patch, MagicMock
+
+        sample_stores = [
+            {'name': 'OLG 梅田茶屋町', 'women': 44, 'men': 22, 'women_diff': 6, 'usual_w_diff': 9, 'region': 'Kinki'},
+            {'name': 'OLG 新宿', 'women': 38, 'men': 24, 'women_diff': 4, 'usual_w_diff': 5, 'region': 'Kanto'},
+        ]
+        now_str = datetime.datetime.now(
+            datetime.timezone(datetime.timedelta(hours=9))
+        ).strftime('%Y-%m-%d %H:%M:%S')
+        with app_module.data_lock:
+            app_module.latest_data['full_data'] = sample_stores
+            app_module.latest_data['last_updated'] = now_str
+            app_module.latest_data['is_seed'] = False
+
+        sns_editorial.set_gemini_api_key('AIzaSyTurboPrewarmKey1234567890')
+        valid_ai_json = json.dumps({
+            'main_text': (
+                '金曜夜の梅田まわり、いま座りやすいのがオリエンタルラウンジ梅田茶屋町✨\n\n'
+                '・オリラジ梅田茶屋町：女性44・男性22（女性比67%）\n'
+                '・オリラジ新宿：女性38・男性24\n\n'
+                '向かう前の比較はリプ欄から👇\n#相席ナビ #相席ラウンジ'
+            ),
+            'writer_note': 'ワーカー事前生成テスト案',
+            'thinking_memo': '裏方ワーカーが投稿8分前に3案コンペ完了済みのメモ。',
+        }, ensure_ascii=False)
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {'candidates': [{'content': {'parts': [{'text': valid_ai_json}]}}]}
+
+        # 1. `worker` precomputes AI editorial drafts + all 5 IG slides + ZIP into `turbo_store`
+        os.environ['APP_ROLE'] = 'worker'
+        with patch('sns_editorial.requests.post', return_value=mock_resp):
+            bundle_res = app_module.precompute_editorial_and_media_bundle(
+                channels=('x',),
+                slot_labels=('22:00',),
+                include_column=False,
+                include_pdca=False,
+                include_ig_slides=True,
+            )
+        self.assertTrue(bundle_res['ok'])
+        self.assertEqual(bundle_res['ig_slides_rendered'], 5)
+        self.assertIn('x:22:00:ai_live_adlib', bundle_res['editorial_warmed'])
+
+        # 2. Simulate separate `APP_ROLE=web` Gunicorn worker by wiping all process-local RAM caches
+        os.environ['APP_ROLE'] = 'web'
+        with sns_editorial._ai_cache_lock:
+            sns_editorial._ai_candidate_cache.clear()
+        with app_module._sns_cache_lock:
+            app_module._sns_kit_ctx_cache['ctx'] = None
+            app_module._sns_kit_ctx_cache['key'] = None
+            app_module._sns_slide_bytes_cache.clear()
+            app_module._sns_zip_bytes_cache['bytes'] = None
+            app_module._sns_zip_bytes_cache['key'] = None
+
+        with self.client.session_transaction() as sess:
+            sess['is_staff'] = True
+            sess['is_master'] = True
+
+        # Web worker serves precomputed AI draft in 0ms without calling Gemini
+        with patch('sns_editorial.requests.post', side_effect=AssertionError('Must hit shared turbo_store AI cache!')):
+            r_ed = self.client.get('/api/sns-editorial?channel=x&slot=22:00&cache_only=1')
+            self.assertEqual(r_ed.status_code, 200)
+            ed_json = r_ed.get_json()
+            self.assertEqual(ed_json['winner']['style'], 'ai_live_adlib')
+            self.assertIn('裏方ワーカーが投稿8分前', ed_json['winner']['thinking_memo'])
+
+        # Web worker serves pre-rendered IG JPEG, PNG, and ZIP in 0ms without invoking Pillow renderer
+        with patch.object(ig_carousel_generator, 'render_slide_jpeg', side_effect=AssertionError('Must hit shared media blob!')), \
+             patch.object(ig_carousel_generator, 'render_slide_png', side_effect=AssertionError('Must hit shared media blob!')), \
+             patch.object(ig_carousel_generator, 'render_all_slides_zip', side_effect=AssertionError('Must hit shared ZIP blob!')):
+            r_jpg = self.client.get('/ogp/ig-slide/1.jpg')
+            self.assertEqual(r_jpg.status_code, 200)
+            self.assertTrue(r_jpg.data.startswith(b'\xff\xd8'))
+
+            r_png = self.client.get('/staff/sns-kit/slide/2.png')
+            self.assertEqual(r_png.status_code, 200)
+            self.assertTrue(r_png.data.startswith(b'\x89PNG'))
+
+            r_zip = self.client.get('/staff/sns-kit/download.zip')
+            self.assertEqual(r_zip.status_code, 200)
+            self.assertTrue(r_zip.data.startswith(b'PK'))
+
+    def test_async_sns_job_queue_and_shared_state_analytics_and_worker_scheduler(self):
+        import analytics
+        import turbo_store
+        import worker as worker_module
+        from unittest.mock import patch
+
+        # 1. Access control on `/api/sns-jobs/*`
+        self.assertEqual(self.client.post('/api/sns-jobs/enqueue', json={'job_type': 'x_post'}).status_code, 401)
+        self.assertEqual(self.client.get('/api/sns-jobs').status_code, 401)
+        with self.client.session_transaction() as sess:
+            sess['is_staff'] = True
+            sess['is_master'] = False
+        self.assertEqual(self.client.post('/api/sns-jobs/enqueue', json={'job_type': 'x_post'}).status_code, 401)
+
+        # 2. Master enqueues async SNS job (`202 Accepted` in <1ms) -> `worker` drains -> status becomes `succeeded`
+        with self.client.session_transaction() as sess:
+            sess['is_staff'] = True
+            sess['is_master'] = True
+
+        r_bad = self.client.post('/api/sns-jobs/enqueue', json={'job_type': 'unknown_type'})
+        self.assertEqual(r_bad.status_code, 400)
+
+        r_enq = self.client.get('/api/trigger-x-post?slot=22:00&force=1&async=1&worker_only=1')
+        self.assertEqual(r_enq.status_code, 202)
+        enq_json = r_enq.get_json()
+        self.assertTrue(enq_json['queued'])
+        job_id = enq_json['job_id']
+
+        r_queued = self.client.get(f'/api/sns-jobs/{job_id}')
+        self.assertEqual(r_queued.status_code, 200)
+        self.assertEqual(r_queued.get_json()['job']['status'], 'queued')
+
+        with patch.object(app_module, 'run_scheduled_x_post', return_value={'status': 'success', 'tweet_id': '777888'}) as mock_x:
+            done_job = app_module.drain_sns_job_queue_once(timeout_sec=0.1)
+        self.assertIsNotNone(done_job)
+        self.assertEqual(done_job['status'], 'succeeded')
+        mock_x.assert_called_once_with(slot_label='22:00', force=True)
+
+        r_done = self.client.get(f'/api/sns-jobs/{job_id}')
+        self.assertEqual(r_done.status_code, 200)
+        self.assertEqual(r_done.get_json()['job']['result']['tweet_id'], '777888')
+
+        r_list = self.client.get('/api/sns-jobs?limit=5')
+        self.assertEqual(r_list.status_code, 200)
+        self.assertTrue(any(j['job_id'] == job_id for j in r_list.get_json()['jobs']))
+
+        # 3. Shared `job_state` & `analytics` across separate worker caches
+        job_state.set_value('token:threads_access_token', 'THAA_SHARED_60D_TOKEN')
+        job_state.mark_done('threads_post:2026-10-29:22:00')
+        shutil.rmtree(os.environ['JOB_STATE_DIR'], ignore_errors=True)
+        job_state.reset_cache_for_tests()
+        self.assertEqual(job_state.get_value('token:threads_access_token'), 'THAA_SHARED_60D_TOKEN')
+        self.assertTrue(job_state.is_done('threads_post:2026-10-29:22:00'))
+
+        with analytics._lock:
+            analytics._pending.clear()
+            analytics._flushed.clear()
+        analytics.track('page_view', '/')
+        analytics.track('page_view', '/')
+        analytics.track('affiliate_click', 'orbis')
+        analytics.flush()
+        with analytics._lock:
+            analytics._flushed.clear()
+        sum_data = analytics.summary(days=7)
+        self.assertGreaterEqual(sum_data['by_event'].get('page_view', 0), 2)
+        self.assertGreaterEqual(sum_data['by_event'].get('affiliate_click', 0), 1)
+
+        # 4. Dedicated `worker.py` scheduler contains scraping, prewarm, and all SNS cron jobs
+        sched = worker_module.build_worker_scheduler()
+        job_ids = {j.id for j in sched.get_jobs()}
+        for expected_id in (
+            'live_scrape_1m',
+            'prewarm_rolling_30m',
+            'prewarm_2137',
+            'x_post_2000',
+            'x_post_2200',
+            'threads_daily_2200',
+            'ig_tuesun_2145',
+            'daily_token_db_maint',
+        ):
+            self.assertIn(expected_id, job_ids)
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -465,6 +465,8 @@
                     📡 自動投稿ステータス＆トークン疎通モニター（人間ゆらぎ 4〜8分・X最低48分クールダウン稼働中）
                 </div>
                 <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <button type="button" id="async-dispatch-btn" class="ai-btn" style="font-size:0.76rem; padding:5px 11px; border-color:rgba(123,196,159,0.65); background:rgba(123,196,159,0.18); color:#e6fff2;" onclick="enqueueAsyncChannelPost()">⚡ {{ editorial.channel_label }}を裏方ワーカーで今すぐ配信（待ち0秒）</button>
+                    <button type="button" id="async-prewarm-btn" class="back-btn" style="cursor:pointer; font-size:0.76rem; padding:5px 11px;" onclick="enqueueAsyncPrewarm()">🔥 AI原稿＆IG5枚を裏で事前生成</button>
                     <button type="button" class="back-btn" style="cursor:pointer; font-size:0.76rem; padding:5px 11px;" onclick="verifyPlatformToken('threads')">🔍 Threads疎通テスト</button>
                     <button type="button" class="back-btn" style="cursor:pointer; font-size:0.76rem; padding:5px 11px;" onclick="verifyPlatformToken('instagram')">🔍 IG疎通テスト</button>
                     <button type="button" class="copy-btn" style="font-size:0.76rem; padding:5px 11px;" onclick="togglePlatformTokenDrawer()">🔑 Threads / IG トークン更新</button>
@@ -1133,6 +1135,111 @@
                 }
             } finally {
                 _aiConfigInFlight = false;
+            }
+        }
+
+        var _snsJobPollTimer = null;
+
+        function _pollAsyncSnsJob(jobId, labelText) {
+            var msg = document.getElementById("platform-token-msg");
+            if (_snsJobPollTimer) clearInterval(_snsJobPollTimer);
+            var startedAt = Date.now();
+            _snsJobPollTimer = setInterval(async function() {
+                if (Date.now() - startedAt > 90000) {
+                    clearInterval(_snsJobPollTimer);
+                    _snsJobPollTimer = null;
+                    return;
+                }
+                try {
+                    var data = await fetchJsonSafe("/api/sns-jobs/" + encodeURIComponent(jobId), {}, 15000);
+                    var job = data && data.job;
+                    if (!job) return;
+                    if (job.status === "queued" || job.status === "running") {
+                        if (msg) {
+                            msg.style.color = "#d3f3e2";
+                            msg.textContent = "⏳ 裏方ワーカーで実行中（" + labelText + " / ID: " + jobId + " / 状態: " + job.status + "）...";
+                        }
+                        return;
+                    }
+                    clearInterval(_snsJobPollTimer);
+                    _snsJobPollTimer = null;
+                    if (job.status === "succeeded") {
+                        var resObj = job.result || {};
+                        var summary = resObj.status || (resObj.ok ? "完了" : "完了");
+                        if (msg) {
+                            msg.style.color = "#d3f3e2";
+                            msg.textContent = "✅ " + labelText + " が裏方ワーカーで完了しました！（結果: " + summary + "）";
+                        }
+                    } else {
+                        if (msg) {
+                            msg.style.color = "#ffd6d6";
+                            msg.textContent = "⚠️ " + labelText + " エラー: " + (job.error || "詳細をログで確認してください");
+                        }
+                    }
+                } catch (e) {}
+            }, 1500);
+        }
+
+        async function enqueueAsyncChannelPost() {
+            var mapType = CURRENT_CHANNEL === "instagram" ? "ig_post" : (CURRENT_CHANNEL === "threads" ? "threads_post" : "x_post");
+            var slotVal = CURRENT_CHANNEL === "instagram" ? "21:45" : CURRENT_SLOT;
+            if (!confirm(CHANNEL_LABEL + "（" + slotVal + "枠）の本番投稿ジョブを裏方ワーカーへ即時投入しますか？（画面は待ち時間0秒で操作を続けられます）")) return;
+            var msg = document.getElementById("platform-token-msg");
+            if (msg) {
+                msg.style.color = "#d3f3e2";
+                msg.textContent = "⚡ 裏方ワーカーの非同期ジョブキューへ投入しています...";
+            }
+            try {
+                var res = await fetchJsonSafe("/api/sns-jobs/enqueue", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json", "Accept": "application/json"},
+                    body: JSON.stringify({
+                        job_type: mapType,
+                        params: {slot: slotVal, mode: "carousel", force: true}
+                    })
+                }, 15000);
+                if (res && res.ok && res.job_id) {
+                    if (msg) {
+                        msg.style.color = "#d3f3e2";
+                        msg.textContent = "🚀 キュー受付完了（ID: " + res.job_id + "）！裏方ワーカーが非同期で投稿処理を進めています...";
+                    }
+                    _pollAsyncSnsJob(res.job_id, CHANNEL_LABEL + "自動配信");
+                }
+            } catch (err) {
+                if (msg) {
+                    msg.style.color = "#ffd6d6";
+                    msg.textContent = "⚠️ キュー投入エラー: " + ((err && err.message) || "通信エラー");
+                }
+            }
+        }
+
+        async function enqueueAsyncPrewarm() {
+            var msg = document.getElementById("platform-token-msg");
+            if (msg) {
+                msg.style.color = "#d3f3e2";
+                msg.textContent = "🔥 全媒体AI原稿＆IGカルーセル5枚画像の事前生成ジョブを投入中...";
+            }
+            try {
+                var res = await fetchJsonSafe("/api/sns-jobs/enqueue", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json", "Accept": "application/json"},
+                    body: JSON.stringify({
+                        job_type: "prewarm_bundle",
+                        params: {include_ig_slides: true, include_column: false, include_pdca: false}
+                    })
+                }, 15000);
+                if (res && res.ok && res.job_id) {
+                    if (msg) {
+                        msg.style.color = "#d3f3e2";
+                        msg.textContent = "🔥 事前生成キュー受付完了（ID: " + res.job_id + "）！裏方でAI長考と画像5枚を生成中...";
+                    }
+                    _pollAsyncSnsJob(res.job_id, "AI原稿＆IG画像5枚の事前生成");
+                }
+            } catch (err) {
+                if (msg) {
+                    msg.style.color = "#ffd6d6";
+                    msg.textContent = "⚠️ 事前生成投入エラー: " + ((err && err.message) || "通信エラー");
+                }
             }
         }
 

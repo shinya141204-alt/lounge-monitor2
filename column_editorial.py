@@ -30,6 +30,7 @@ import requests
 import job_state
 import store_master
 import sns_editorial
+import turbo_store
 import x_poster
 
 logger = logging.getLogger(__name__)
@@ -247,6 +248,7 @@ EXISTING_STATIC_COLUMNS = [
 def clear_column_ai_cache():
     with _col_ai_lock:
         _col_ai_cache.clear()
+    turbo_store.clear_ai_cache("column_editorial")
     with _audit_lock:
         _audit_cache["ts"] = 0.0
         _audit_cache["data"] = None
@@ -1408,7 +1410,14 @@ def has_cached_column_ai(research: dict, plan: dict, tone_mode: str = None) -> b
     now_t = time.time()
     with _col_ai_lock:
         item = _col_ai_cache.get(ck)
-        return bool(item and (now_t - item["ts"] < _COL_AI_CACHE_TTL_SEC))
+        if item and (now_t - item["ts"] < _COL_AI_CACHE_TTL_SEC):
+            return True
+    shared = turbo_store.get_ai_cache("column_editorial", ck)
+    if shared and isinstance(shared.get("candidate"), dict):
+        with _col_ai_lock:
+            _col_ai_cache[ck] = {"ts": now_t, "candidate": shared["candidate"], "model": str(shared.get("model") or "")}
+        return True
+    return False
 
 
 def _generate_gemini_column_candidate(
@@ -1428,13 +1437,20 @@ def _generate_gemini_column_candidate(
     tone_short = sns_editorial.EDITORIAL_TONE_MODES[tm]["short_label"]
     ck = _make_col_cache_key(research, plan, tone_mode=tm)
     now_t = time.time()
-    with _col_ai_lock:
-        expired = [k for k, v in _col_ai_cache.items() if now_t - v["ts"] >= _COL_AI_CACHE_TTL_SEC]
-        for k in expired:
-            _col_ai_cache.pop(k, None)
-        if not force_refresh and ck in _col_ai_cache:
-            _col_ai_cache.move_to_end(ck)
-            return dict(_col_ai_cache[ck]["candidate"])
+    if not force_refresh:
+        with _col_ai_lock:
+            expired = [k for k, v in _col_ai_cache.items() if now_t - v["ts"] >= _COL_AI_CACHE_TTL_SEC]
+            for k in expired:
+                _col_ai_cache.pop(k, None)
+            if ck in _col_ai_cache:
+                _col_ai_cache.move_to_end(ck)
+                return dict(_col_ai_cache[ck]["candidate"])
+        shared = turbo_store.get_ai_cache("column_editorial", ck)
+        if shared and isinstance(shared.get("candidate"), dict):
+            with _col_ai_lock:
+                _col_ai_cache[ck] = {"ts": now_t, "candidate": shared["candidate"], "model": str(shared.get("model") or "")}
+                _col_ai_cache.move_to_end(ck)
+            return dict(shared["candidate"])
 
     if cache_only:
         return None
@@ -1509,10 +1525,12 @@ def _generate_gemini_column_candidate(
         "note_hashtags": str(parsed.get("note_hashtags") or baseline_cand["note_hashtags"]),
     }
     _render_candidate_preview_and_note(cand, site_url=site_url)
+    now_done = time.time()
     with _col_ai_lock:
-        _col_ai_cache[ck] = {"ts": time.time(), "candidate": cand, "model": mn}
+        _col_ai_cache[ck] = {"ts": now_done, "candidate": cand, "model": mn}
         while len(_col_ai_cache) > _COL_AI_CACHE_MAX_SIZE:
             _col_ai_cache.popitem(last=False)
+    turbo_store.set_ai_cache("column_editorial", ck, {"ts": now_done, "candidate": cand, "model": mn}, ttl_sec=3600)
     return dict(cand)
 
 
