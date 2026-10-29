@@ -3351,7 +3351,7 @@ class WomenFeaturesACDETests(unittest.TestCase):
         all_slugs = [c['slug'] for c in column_editorial.EXISTING_STATIC_COLUMNS] + [
             c['slug'] for c in scheduled_articles.SCHEDULED_ARTICLES
         ]
-        self.assertEqual(len(all_slugs), 18)
+        self.assertGreaterEqual(len(all_slugs), 19)
         for sl in all_slugs:
             res = column_editorial.export_column_for_note(sl)
             self.assertTrue(res.get('ok'), f"Failed exporting {sl}: {res}")

@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="google-site-verification" content="9kZaSJbaCuvn8QpGErUwI59w7Lf4N8ILhb_nWqDHI2s">
+    <title>大阪キタ（梅田・茶屋町・天満）vs ミナミ（難波・心斎橋）全9店舗を27万件ログで徹底比較｜時間帯で逆転する「南北ハシゴ法則」｜相席ナビ</title>
+    <meta name="description" content="全国27.6万件のリアルタイム入店ログから大阪全9店舗（JIS梅田・JIS茶屋町・オリエンタルラウンジ大阪駅前・ag梅田・ヤタコイ梅田茶屋町・オリエンタルラウンジ天満・JIS難波・オリエンタルラウンジ難波・心斎橋）を徹底比較！20時台の茶屋町（女性比86.3%）、22時台の天満・お初天神、深夜0時以降の東通り＆難波ひっかけ橋で主役が入れ替わる南北ハシゴルートを解説。">
+    <meta name="keywords" content="梅田 相席ラウンジ,難波 相席ラウンジ,心斎橋 相席ラウンジ,茶屋町 JIS,天満 オリエンタルラウンジ,大阪 相席 比較,相席ナビ">
+    <link rel="canonical" href="https://aiseki-navi.com/guide/osaka-kita-vs-minami">
+    {% if is_scheduled_preview %}
+    <meta name="robots" content="noindex, nofollow">
+    {% else %}
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+    {% endif %}
+
+    <!-- OGP / SNS Card Settings -->
+    <meta property="og:title" content="梅田キタ vs 難波ミナミ｜大阪全9店舗を27万件ログで解剖した「南北ハシゴ法則」｜相席ナビ">
+    <meta property="og:description" content="20時台はJIS茶屋町（平均女子率86.3%）、22時台は裏天満＆大阪駅前、深夜0時以降はJIS梅田と難波へ主役が逆転！御堂筋線9分で勝率が変わる大阪全9店舗の使い分けガイド。">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://aiseki-navi.com/guide/osaka-kita-vs-minami">
+    <meta property="og:site_name" content="相席ナビ">
+    <meta property="og:locale" content="ja_JP">
+    <meta property="og:image" content="https://aiseki-navi.com/static/eyecatch-osaka-kita-vs-minami.jpg">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="梅田キタ vs 難波ミナミ｜時間帯で逆転する大阪全9店舗「南北ハシゴ法則」">
+    <meta name="twitter:description" content="27.6万件のログが証明！茶屋町・東通り・裏天満・心斎橋・難波で時間帯ごとに勝ち筋がどう変わるかを現場ストーリーで解説。">
+    <meta name="twitter:image" content="https://aiseki-navi.com/static/eyecatch-osaka-kita-vs-minami.jpg">
+
+    <!-- Structured Data (Article + BreadcrumbList + FAQPage) -->
+    <script type="application/ld+json">
+    [
+      {
+        "@context": "https://schema.org",
+        "@type": "Article",
+        "headline": "大阪キタ（梅田・茶屋町・天満）vs ミナミ（難波・心斎橋）全9店舗を27万件ログで徹底比較｜時間帯で逆転する「南北ハシゴ法則」",
+        "image": ["https://aiseki-navi.com/static/eyecatch-osaka-kita-vs-minami.jpg"],
+        "datePublished": "2026-10-31T19:00:00+09:00",
+        "dateModified": "2026-10-31T19:00:00+09:00",
+        "author": {
+          "@type": "Organization",
+          "name": "相席ナビ データ分析チーム",
+          "url": "https://aiseki-navi.com/"
+        },
+        "publisher": {
+          "@type": "Organization",
+          "name": "相席ナビ",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://aiseki-navi.com/static/icon.png"
+          }
+        },
+        "description": "大阪キタ6店舗（梅田・茶屋町・天満）とミナミ3店舗（心斎橋・難波）の全9店舗について、27.6万件のリアルタイム人数ログから時間帯別の男女比・客層・徒歩および御堂筋線ハシゴ戦略を体系化したデータコラム。"
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {"@type": "ListItem", "position": 1, "name": "ホーム", "item": "https://aiseki-navi.com/"},
+          {"@type": "ListItem", "position": 2, "name": "コラム一覧", "item": "https://aiseki-navi.com/columns"},
+          {"@type": "ListItem", "position": 3, "name": "梅田キタvs難波ミナミ全9店舗比較", "item": "https://aiseki-navi.com/guide/osaka-kita-vs-minami"}
+        ]
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "大阪の梅田（キタ）と難波・心斎橋（ミナミ）では、どちらの相席ラウンジの方が女性が多いですか？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "総人数規模では6店舗が集中するキタ（梅田・茶屋町・天満）が大きく、特にJIS梅田（ピーク女性100名超）や早時間帯のJIS茶屋町（平均女性比率86.3%）が圧倒的です。一方、週末22時以降にキタの大型店で男性入場待ちが発生している時間帯は、オリエンタルラウンジ難波（女性比約68%）や心斎橋（女性比約69%）、JIS難波（ピーク女性85名規模）があるミナミの方が男性待ち時間を抑えてスムーズに相席しやすい傾向があります。"
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "梅田エリア内で1軒目が混んでいた場合、どの順番でハシゴするのが効率的ですか？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "19時〜21時台ならNU茶屋町周辺の『JIS茶屋町』や『ag梅田』からスタートし、22時以降に東通り側の『JIS梅田』と地下街直結の『オリエンタルラウンジ大阪駅前』の男女比を見比べるのが王道です。両方とも男性過多の夜は、JRや谷町線で1駅隣の『オリエンタルラウンジ天満』へ抜けるか、御堂筋線で約9分の心斎橋・難波へ移動すると待ち時間を大幅に短縮できます。"
+            }
+          }
+        ]
+      }
+    ]
+    </script>
+
+    <link rel="manifest" href="/static/manifest.json?v=2">
+    <meta name="theme-color" content="#0a0a0f">
+    <link rel="icon" type="image/png" href="/static/icon-192.png?v=2">
+    <link rel="apple-touch-icon" href="/static/icon.png?v=2">
+    <link rel="stylesheet" href="/static/style.css?v=20261029_2" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="/static/style.css?v=20261029_2"></noscript>
+    <link rel="stylesheet" href="/static/portal.css?v=8">
+    <style>
+        body {
+            display: block !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background-color: #0a0a0f !important;
+            color: #ffffff !important;
+            overflow-x: hidden !important;
+        }
+        .article-container {
+            max-width: 820px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 24px 16px 80px 16px;
+            box-sizing: border-box;
+        }
+        .preview-banner {
+            background: rgba(245, 158, 11, 0.16);
+            border: 1px solid rgba(245, 158, 11, 0.5);
+            color: #fde68a;
+            padding: 12px 16px;
+            border-radius: 12px;
+            margin-bottom: 18px;
+            font-size: 0.85rem;
+            line-height: 1.6;
+        }
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.78rem;
+            color: #94a3b8;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        .breadcrumb a { color: #38bdf8; text-decoration: none; }
+        .article-header {
+            margin-bottom: 28px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .article-cat-tag {
+            background: linear-gradient(135deg, #c8a46e, #ec4899);
+            color: #fff;
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 99px;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+        .article-title {
+            font-size: 1.5rem;
+            font-weight: 800;
+            line-height: 1.45;
+            color: #f8fafc;
+            margin: 0 0 12px 0;
+        }
+        .article-eyecatch {
+            width: 100%;
+            border-radius: 14px;
+            overflow: hidden;
+            margin: 16px 0 28px 0;
+            border: 1px solid rgba(255,255,255,0.12);
+        }
+        .article-eyecatch img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        .article-body h2 {
+            font-size: 1.2rem;
+            font-weight: 800;
+            color: #f8fafc;
+            margin: 38px 0 14px 0;
+            padding: 10px 14px;
+            background: rgba(200, 164, 110, 0.12);
+            border-left: 4px solid #c8a46e;
+            border-radius: 0 8px 8px 0;
+        }
+        .article-body h3 {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: #f1f5f9;
+            margin: 26px 0 10px 0;
+        }
+        .article-body p, .article-body li {
+            font-size: 0.94rem;
+            line-height: 1.85;
+            color: #cbd5e1;
+        }
+        .article-body a {
+            color: #7dd3fc;
+            text-decoration: underline;
+            text-underline-offset: 3px;
+        }
+        .dialogue-box {
+            background: rgba(255, 255, 255, 0.03);
+            border-left: 3px solid rgba(200, 164, 110, 0.55);
+            border-radius: 0 10px 10px 0;
+            padding: 14px 18px;
+            margin: 18px 0;
+            font-size: 0.92rem;
+            line-height: 1.8;
+            color: #e2e8f0;
+        }
+        .highlight-box {
+            background: rgba(15, 23, 42, 0.78);
+            border: 1px solid rgba(200, 164, 110, 0.35);
+            border-radius: 12px;
+            padding: 18px;
+            margin: 20px 0;
+        }
+        .data-table-wrap {
+            overflow-x: auto;
+            margin: 18px 0;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            min-width: 580px;
+        }
+        .data-table th, .data-table td {
+            padding: 12px 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            text-align: left;
+        }
+        .data-table th {
+            background: rgba(255,255,255,0.05);
+            color: #94a3b8;
+            font-weight: 700;
+        }
+        .cta-box {
+            margin-top: 36px;
+            padding: 24px 20px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, rgba(200,164,110,0.16), rgba(56,189,248,0.14));
+            border: 1px solid rgba(200,164,110,0.4);
+            text-align: center;
+        }
+        .cta-btn {
+            display: inline-block;
+            margin-top: 12px;
+            padding: 12px 26px;
+            border-radius: 99px;
+            background: linear-gradient(135deg, #c8a46e, #a87f47);
+            color: #0b0d13 !important;
+            font-weight: 800;
+            text-decoration: none !important;
+            font-size: 0.92rem;
+        }
+    </style>
+    <link rel="stylesheet" href="/static/calm.css?v=19">
+    {% if not is_staff and not session.get('is_staff') and not is_scheduled_preview %}
+    <meta name="google-adsense-account" content="ca-pub-3043764334238627">
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
+         crossorigin="anonymous"></script>
+    {% endif %}
+</head>
+
+<body>
+    <div class="article-container">
+        {% if is_scheduled_preview and scheduled_item %}
+        <div class="preview-banner">
+            🗓️ 【社内限定プレビュー（Google検索非公開）】この記事は <strong>{{ scheduled_item.publish_at_ja }}</strong> に自動で一般公開＆X告知されます。
+        </div>
+        {% endif %}
+
+        {% set nav_active = 'columns' %}
+        {% include '_portal_nav.html' %}
+
+        <nav class="breadcrumb" aria-label="Breadcrumb">
+            <a href="/">ホーム</a><span>›</span>
+            <a href="/columns">コラム・攻略一覧</a><span>›</span>
+            <span>梅田キタ vs 難波ミナミ 全9店舗ハシゴ比較</span>
+        </nav>
+
+        <header class="article-header">
+            <span class="article-cat-tag">🐙 大阪全9店舗・27.6万件ログ徹底解剖</span>
+            <h1 class="article-title">大阪キタ（梅田・茶屋町・天満）vs ミナミ（難波・心斎橋）全9店舗を27万件ログで徹底比較｜時間帯で逆転する「南北ハシゴ法則」</h1>
+            <p style="font-size:0.8rem;color:#94a3b8;margin:0;">公開日：2026年10月31日 ｜ 執筆：相席ナビ データ分析チーム</p>
+        </header>
+
+        <figure class="article-eyecatch">
+            <picture>
+                <source srcset="/static/eyecatch-osaka-kita-vs-minami.webp" type="image/webp">
+                <img src="/static/eyecatch-osaka-kita-vs-minami.jpg" alt="梅田キタ vs 難波ミナミ 時間帯で逆転する南北ハシゴ法則" width="1280" height="720" loading="eager">
+            </picture>
+        </figure>
+
+        <div class="article-body">
+            <p>
+                金曜22時半、阪急東通商店街のアーケード下。焼き鳥屋を出たばかりの僕と大学時代の友人は、スマホの画面と目の前のエレベーターホールを交互に見比べて立ち尽くしていました。<br>
+                「梅田ならとりあえず一番デカい店に行けば間違いないやろ」と軽い気持ちで上がったものの、受付の前にはスーツ姿の2人組が何組も待機中。スタッフさんから「ただいま男性は45分ほどお待ちいただいております」と告げられ、外へ出た瞬間に友人がぽつりと漏らしました。
+            </p>
+
+            <div class="dialogue-box">
+                「なあ、このまま梅田で45分突っ立って待つか、御堂筋線で9分乗って難波まで降りるか、どっちが正解なんやろ？」<br>
+                「いや、待って。そもそも徒歩6分の茶屋町と、1駅隣の天満って今どうなってるん？」
+            </div>
+
+            <p>
+                東京でいえば「新宿と渋谷と恵比寿と上野」がわずか地下鉄数分〜徒歩圏内にギュッと凝縮されているのが大阪の凄まじいところです。<br>
+                現在、大阪府内には<strong>キタ（梅田・茶屋町・天満）に6店舗、ミナミ（心斎橋・難波）に3店舗の計9店舗</strong>がひしめき合っています。ところが多くの人が「いつも行く1軒」しか見ないまま行列に並び、すぐ徒歩5分先や御堂筋線9分先で起きている<strong>「女性比率80%超えのボーナスタイム」</strong>を取り逃がしています。<br>
+                今回、『相席ナビ』に蓄積された<strong>累計276,607件のリアルタイム入店ログ</strong>から大阪全9店舗の波形を時間帯別に丸裸にしたところ、地元常連だけが肌感覚で使っていた「時計の針とともに主役が北から南へ、そして東通りへと移り変わる法則」がくっきりと浮かび上がってきました。
+            </p>
+
+            <div class="highlight-box">
+                <strong style="color:#fde68a;font-size:0.95rem;">📌 忙しい人のための「大阪9店舗・時間帯別勝ち筋」3行まとめ</strong>
+                <ul style="margin:10px 0 0 0;padding-left:20px;">
+                    <li><strong>19:00〜21:30（1軒目帯）</strong>：美容院・買い物帰りの女性が集まる<strong>茶屋町エリア（<a href="/store/jis-chayamachi">JIS 茶屋町</a>はピーク女性比86.3%）</strong>と<a href="/store/ag-umeda">ag 梅田</a>が圧倒的先行有利。</li>
+                    <li><strong>21:30〜23:30（激戦ピーク帯）</strong>：東通りが男性待ちになったら、地下直結の<a href="/store/oriental-lounge-osaka-ekimae">オリエンタルラウンジ 大阪駅前</a>か、裏天満飲みの2軒目女子が流れる<strong><a href="/store/oriental-lounge-tenma">オリエンタルラウンジ 天満</a>・心斎橋</strong>が穴場化。</li>
+                    <li><strong>23:30〜深夜2:00（終電後の第2波）</strong>：茶屋町の若年層が終電で引いた後、モンスター箱の<strong><a href="/store/jis-umeda">JIS 梅田</a>（100名超規模）</strong>と<strong>難波2店舗（<a href="/store/jis-namba">JIS 難波</a>・<a href="/store/oriental-lounge-namba">オリラジ難波</a>）</strong>へ深夜組が一極集中して大逆転する。</li>
+                </ul>
+            </div>
+
+            <h2>1. 【実測データ一覧】大阪キタ6店舗 vs ミナミ3店舗の規模・男女比・客層マップ</h2>
+            <p>
+                まずは直近の週末ピークを含む実測ログから、大阪全9店舗の「最大女性規模」「狙い目コアタイム」「リアルな客層の違い」を一覧で比較してみましょう。同じブランドでも、立地が500メートル違うだけで集まる女性のテンションと年齢層が驚くほど変わります。
+            </p>
+
+            <div class="data-table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>エリア</th>
+                            <th>店舗名（リアルタイム詳細）</th>
+                            <th>ピーク女性規模</th>
+                            <th>強い時間帯</th>
+                            <th>客層・現場の空気感</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>キタ・東通り</td>
+                            <td><a href="/store/jis-umeda">JIS 梅田</a></td>
+                            <td><strong>約103名</strong>（全国屈指）</td>
+                            <td>21:00〜翌2:00</td>
+                            <td>西日本最大の王道箱。終電後も女性100名近い熱気が続く</td>
+                        </tr>
+                        <tr>
+                            <td>キタ・茶屋町</td>
+                            <td><a href="/store/jis-chayamachi">JIS 茶屋町</a></td>
+                            <td><strong>約58名</strong>（女子率86%超）</td>
+                            <td>19:30〜22:30</td>
+                            <td>NU茶屋町・美容サロン帰りの20代綺麗め層が多く早時間帯が最強</td>
+                        </tr>
+                        <tr>
+                            <td>キタ・駅ビル側</td>
+                            <td><a href="/store/oriental-lounge-osaka-ekimae">オリエンタルラウンジ 大阪駅前</a></td>
+                            <td><strong>約60名</strong></td>
+                            <td>20:30〜翌1:00</td>
+                            <td>地下街直結で雨の日も無双。丸ビル・北新地寄りの落ち着いたOL層</td>
+                        </tr>
+                        <tr>
+                            <td>キタ・梅田</td>
+                            <td><a href="/store/ag-umeda">ag 梅田</a></td>
+                            <td><strong>約40名</strong></td>
+                            <td>19:00〜22:00</td>
+                            <td>20代前半・学生〜若手社会人中心。1軒目からテンポよく盛り上がる</td>
+                        </tr>
+                        <tr>
+                            <td>キタ・茶屋町</td>
+                            <td><a href="/store/yatakoi-umeda">ヤタコイ 梅田茶屋町</a></td>
+                            <td><strong>約34名</strong></td>
+                            <td>20:00〜23:30</td>
+                            <td>お祭り屋台×ゲーム感覚で初対面でも会話が詰まらない変化球スポット</td>
+                        </tr>
+                        <tr>
+                            <td>キタ・天満</td>
+                            <td><a href="/store/oriental-lounge-tenma">オリエンタルラウンジ 天満</a></td>
+                            <td><strong>約31名</strong></td>
+                            <td>21:00〜24:00</td>
+                            <td>裏天満・天満市場でお酒を楽しんだ気さくなグルメ好き女子が多い隠れ家</td>
+                        </tr>
+                        <tr>
+                            <td>ミナミ・難波</td>
+                            <td><a href="/store/jis-namba">JIS 難波</a></td>
+                            <td><strong>約85名</strong></td>
+                            <td>21:00〜翌2:00</td>
+                            <td>ミナミ最大の大型店。金曜・土曜の深夜帯も2回転目の流入が分厚い</td>
+                        </tr>
+                        <tr>
+                            <td>ミナミ・難波</td>
+                            <td><a href="/store/oriental-lounge-namba">オリエンタルラウンジ 難波</a></td>
+                            <td><strong>約65名</strong>（女子率68%台）</td>
+                            <td>20:00〜翌1:00</td>
+                            <td>なんば駅すぐ。女性比率が安定して高く、男性待ち回避の最有力候補</td>
+                        </tr>
+                        <tr>
+                            <td>ミナミ・心斎橋</td>
+                            <td><a href="/store/oriental-lounge-shinsaibashi">オリエンタルラウンジ 心斎橋</a></td>
+                            <td><strong>約20名</strong>（女子率69%台）</td>
+                            <td>20:30〜24:00</td>
+                            <td>アパレル・美容系が多く、ガヤガヤしすぎない大人な会話を楽しめる穴場</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h2>2. なぜ「20時の茶屋町」は女性比率86%まで跳ね上がるのか？</h2>
+            <p>
+                データを初めて集計したとき、僕ら自身も一番驚いたのが<strong><a href="/store/jis-chayamachi">JIS 茶屋町</a>の早時間帯（19時半〜21時半）の異常なまでの女性先行ぶり</strong>でした。直近データでもピーク女性58名に対し、女性比率が86.3%に達する時間帯が何度も観測されています。<br>
+                実際に土曜の20時すぎに茶屋町で相席した女性ペアに話を聞いてみると、納得の理由が返ってきました。
+            </p>
+
+            <div class="dialogue-box">
+                「梅田の東通りって、早い時間から行くとキャッチも多いしちょっと構えちゃうんですけど、茶屋町ならカフェやロフトの帰りにそのまま入れるからハードル低いんです」<br>
+                「しかもこの時間ならまだ酔っ払ってる男の人も少ないから、1軒目にちょうどよくて！」
+            </div>
+
+            <p>
+                つまり、<strong>茶屋町エリアは「美容院・ショッピング帰りの1軒目女子」が19時〜20時台に一番乗りする街</strong>なのです。一方で男性側は1軒目の居酒屋を終えた21時半〜22時半にならないと動き出しません。<br>
+                この「男女の始動時間のズレ（約90分）」があるからこそ、梅田で確実に勝ちたい夜は「居酒屋へ行く前に、まず20時台に茶屋町（<a href="/store/jis-chayamachi">JIS 茶屋町</a>・<a href="/store/ag-umeda">ag 梅田</a>・<a href="/store/yatakoi-umeda">ヤタコイ 梅田茶屋町</a>）を覗く」のが最もコスパの高い初手になります。
+            </p>
+
+            <h2>3. 梅田がパンクした22時半、「天満スライド」と「御堂筋線9分ワープ」が効く理由</h2>
+            <p>
+                問題は22時を回ってからです。北新地や東通りで1軒目を終えた男性グループが一斉に動き出すと、人気店ほど男性の待機列が伸び始めます。<br>
+                ここで絶対にやってはいけないのが、スマホも見ずに目の前の1店舗だけで40分以上待ち続けること。大阪には<strong>2つの超優秀なエスケープルート</strong>があります。
+            </p>
+
+            <h3>① キタ内部での「裏天満・大阪駅前スライド」（移動5〜8分）</h3>
+            <p>
+                東通りの<a href="/store/jis-umeda">JIS 梅田</a>が男性過多になっている瞬間でも、ディアモール・ホワイティうめだの地下街で繋がっている<a href="/store/oriental-lounge-osaka-ekimae">オリエンタルラウンジ 大阪駅前</a>や、谷町線・JRでわずか1駅の<a href="/store/oriental-lounge-tenma">オリエンタルラウンジ 天満</a>を見ると、すんなり女性優位で入れるケースが多々あります。<br>
+                特に天満は、おしゃれな立ち飲みやビストロで1杯引っ掛けた「お酒好き・ノリの良い20代後半女子」が2軒目でふらっと上がってくるため、最初から会話の温度感が高く、乾杯10分で一気に打ち解けやすいのが隠れた魅力です。
+            </p>
+
+            <h3>② 御堂筋線で9分！「ミナミ（心斎橋・難波）への南北ワープ」</h3>
+            <p>
+                さらに強力なのが、梅田駅から御堂筋線に飛び乗って心斎橋（約6分）・難波（約9分）へ降りる南北移動です。<br>
+                実測ログを並べて見るとわかるのですが、<strong>「梅田がサラリーマンで男性過多になっている金曜22時半に、<a href="/store/oriental-lounge-namba">オリラジ難波</a>と<a href="/store/oriental-lounge-shinsaibashi">オリラジ心斎橋</a>が女性比率68〜69%のガラ空き天国になっている」</strong>という逆転現象が毎週のように起きています。
+            </p>
+
+            <div class="dialogue-box">
+                「さっき梅田で40分待ちって言われて、電車で9分揺られて難波に来たら待ちゼロで入れたわ（笑）」<br>
+                「ミナミの方が2軒目に出た後も裏なんばやアメ村のバーが深夜まで開いてるから、実は終電近くからでも誘いやすいんよね」
+            </div>
+
+            <p>
+                タクシーを使わなくても地下鉄1本・240円で別世界へワープできるのは大阪だけの特権です。出発前に<a href="/area/umeda">梅田エリア攻略ページ</a>と<a href="/area/namba">難波・心斎橋エリア攻略ページ</a>のリアルタイム人数を並べて見比べるだけで、無駄な待機料金と待ち時間をゼロにできます。
+            </p>
+
+            <h2>4. 終電後（24時以降）は「JIS梅田」と「難波2強」の二極化へ</h2>
+            <p>
+                そして23時30分の終電タイムを過ぎると、大阪の勢力図はもう一度ガラリと塗り替わります（詳しい時間帯メカニズムは<a href="/guide/last-train-cliff">「23時20分の終電崖」データ検証コラム</a>でも解説しています）。<br>
+                兵庫（西宮・神戸方面）や北摂・京阪沿線へ帰る実家暮らしの若い女性が多い茶屋町周辺が落ち着く一方で、<strong>深夜0時30分以降に驚異的な粘りと「第2波（クラブやバー帰りの再流入）」を見せるのが以下の3店舗</strong>です。
+            </p>
+            <ul>
+                <li><strong><a href="/store/jis-umeda">JIS（ジス）梅田</a></strong>：終電後の維持率が100%を超え、深夜1時でも女性70〜100名規模が残る西日本の不夜城。</li>
+                <li><strong><a href="/store/jis-namba">JIS（ジス）難波</a> ＆ <a href="/store/oriental-lounge-namba">オリエンタルラウンジ 難波</a></strong>：心斎橋〜宗右衛門町エリアのナイトクラブやガールズバー、アパレル・飲食スタッフの仕事終わり組が合流し、深夜2時まで活気が落ちないミナミの双璧。</li>
+            </ul>
+            <p>
+                また、至近距離の照明が落ち着いた深夜帯のソファ席ほど、仕事帰りのヨレや夕方のテカリをサッとリセットしているかどうかで第一印象の歩留まりが大きく変わります。入店前の5分でできる最低限のケアは<a href="/grooming">ラウンジ前の身だしなみ＆清潔感ガイド</a>にまとめてあるので、向かう電車の中で軽くチェックしてみてください。
+            </p>
+
+            <h2>まとめ：大阪は「1店舗決め打ち」をやめた瞬間に勝率が跳ね上がる</h2>
+            <p>
+                全9店舗もある大阪で「なんとなくいつもの店」に直行して待ち列に並ぶのは、カードを見ずにポーカーをするようなものです。<br>
+                <strong>「20時台は茶屋町、22時台は天満・大阪駅前・心斎橋も含めて比較、24時以降はJIS梅田か難波2強」</strong>——この時計の針に合わせた南北マップを頭に入れておくだけで、同じ予算・同じ1晩でも出会える組数と空気の良さが劇的に変わります。今夜これから動く方は、ぜひ下の3秒診断で「いま本当に空いていて女性が多い1軒目と徒歩ハシゴ先」をチェックしてからエレベーターに乗ってみてください！
+            </p>
+
+            <div class="cta-box">
+                <div style="font-size:1.05rem;font-weight:800;color:#f8fafc;">🧭 今夜の梅田・難波、いま入るべき1軒目と徒歩ハシゴ先は？</div>
+                <p style="font-size:0.86rem;color:#cbd5e1;margin:8px 0 4px;">リアルタイム人数とGPS距離から、待ち時間ゼロで勝てる最適ルートを0.1秒で自動診断します。</p>
+                <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:12px;">
+                    <a href="/concierge?area=umeda" class="cta-btn">梅田・キタで3秒穴場診断する ›</a>
+                    <a href="/concierge?area=namba" class="cta-btn" style="background:linear-gradient(135deg,#38bdf8,#6366f1);color:#fff !important;">難波・ミナミで3秒穴場診断する ›</a>
+                </div>
+            </div>
+        </div>
+
+        {% include '_portal_footer.html' %}
+    </div>
+</body>
+
+</html>

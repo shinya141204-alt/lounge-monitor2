@@ -279,6 +279,10 @@ TIPS_LIST = [
         "1軒目が23時すぎに終わったあと、23時20分〜23時55分の「魔の40分間」に飛び込むと終電帰りの退店ラッシュに巻き込まれて空振りしやすい🚃\n"
         "夜カフェで30分だけ時間を潰して、0時30分の「第2波」が戻ってからオリラジやJISに入る方が勝率が段違いだよ🌙"
     ),
+    (
+        "大阪で梅田の東通りが男性40分待ちの夜、そのまま突っ立って待つより「徒歩6分の茶屋町」か「御堂筋線9分の難波」を見た方が圧倒的に早い🐙\n"
+        "20時台はJIS茶屋町、22時台は裏天満やオリラジ難波って時間帯で主役が入れ替わるから1店決め打ちは損だよ📊"
+    ),
 ]
 
 
@@ -366,6 +370,11 @@ def _column_for_tip_index(idx: int) -> tuple:
         return ("相席ラウンジ実践コラム・攻略記事一覧", "/columns")
     if idx == 61:
         return ("「23時20分、店内の空気が変わる」——魔の40分間と街別ハシゴ法則", "/guide/last-train-cliff")
+    if idx == 62:
+        import scheduled_articles
+        if scheduled_articles.is_published("osaka-kita-vs-minami"):
+            return ("梅田キタ vs 難波ミナミ｜大阪全9店舗の南北ハシゴ法則", "/guide/osaka-kita-vs-minami")
+        return ("大阪・梅田エリアのリアルタイム混雑＆攻略", "/area/umeda")
     return ("相席ラウンジ実践コラム・攻略記事一覧", "/columns")
 
 

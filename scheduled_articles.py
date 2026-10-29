@@ -44,6 +44,30 @@ SCHEDULED_ARTICLES = [
         ),
     },
     {
+        "slug": "osaka-kita-vs-minami",
+        "path": "/guide/osaka-kita-vs-minami",
+        "template": "guide_osaka_kita_vs_minami.html",
+        "publish_at": "2026-10-31 19:00:00",
+        "publish_at_ja": "2026年10月31日(土) 19:00",
+        "lastmod": "2026-10-31",
+        "eyecatch_jpg": "/static/eyecatch-osaka-kita-vs-minami.jpg",
+        "eyecatch_webp": "/static/eyecatch-osaka-kita-vs-minami.webp",
+        "badge": "大阪9店舗データ",
+        "read_time": "約6分で読める",
+        "tag_primary": ("tag-amber", "🐙 大阪全9店舗・27万件ログ"),
+        "tag_secondary": ("tag-cyan", "キタvsミナミ南北ハシゴ"),
+        "title": "大阪キタ（梅田・茶屋町・天満）vs ミナミ（難波・心斎橋）全9店舗を27万件ログで徹底比較｜時間帯で逆転する「南北ハシゴ法則」",
+        "short_title": "梅田キタvs難波ミナミ｜大阪全9店舗の南北ハシゴ比較",
+        "desc": "「梅田の東通りで45分待ちと言われた夜、そのまま粘るか御堂筋線で難波へ降りるか」——20時の茶屋町（女子率86%）、22時の裏天満、24時以降のJIS梅田＆難波2強で主役が入れ替わる全9店舗データ。",
+        "x_title": "梅田キタ vs 難波ミナミ｜大阪全9店舗「南北ハシゴ法則」",
+        "x_main_text": (
+            "梅田の1軒目で「45分待ち」って言われた夜、そのまま東通りで粘るか御堂筋線で9分降りるかで勝敗が真っ二つに分かれる話🐙\n\n"
+            "20時は茶屋町（女子率86%）、深夜0時以降はJIS梅田と難波へ主役が逆転します📊\n"
+            "大阪全9店の南北ハシゴ術はリプ欄へ👇\n"
+            "#相席ラウンジ #相席ナビ"
+        ),
+    },
+    {
         "slug": "cost-break-even",
         "path": "/guide/cost-break-even",
         "template": "guide_cost_break_even.html",

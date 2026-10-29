@@ -3999,6 +3999,12 @@ def guide_rain_payday():
     return _render_scheduled_guide('rain-payday')
 
 
+@app.route('/guide/osaka-kita-vs-minami')
+def guide_osaka_kita_vs_minami():
+    """Scheduled editorial data study comparing all 9 Osaka Kita vs Minami lounges across 276k logs."""
+    return _render_scheduled_guide('osaka-kita-vs-minami')
+
+
 @app.route('/guide/<slug>')
 def guide_dynamic_scheduled(slug):
     """Dynamic route serving scheduled or live columns published from the Column Editorial Room."""
