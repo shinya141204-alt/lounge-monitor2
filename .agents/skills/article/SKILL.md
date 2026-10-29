@@ -79,9 +79,10 @@ description: >-
 
 ---
 
-## Step 5: テスト検証 ＆ GitHub本番デプロイ（＋Xへの即時紹介投稿）
+## Step 5: テスト検証 ＆ GitHub・東京本番サーバー（Fly.io）デプロイ
 1. Flask `test_client()` で `/guide/<slug>`, `/columns`, `/sitemap.xml` がすべて `HTTP 200` を返し、追加したTipの文字数ウェイトが `<= 280` であることを検証する。
-2. `git add` → `git commit` → `git push origin main` で本番環境（Render）へデプロイする。
+2. `git add` → `git commit` → `git push origin main` で GitHub へ反映する。
+3. 続けて `/Users/kuwanoshinya/.fly/bin/flyctl deploy -a aiseki-navi-tokyo --ha=false` を実行し、本番環境（Fly.io 東京 `nrt`：`https://aiseki-navi.com`）へ無停止デプロイする。
 
 ---
 
