@@ -36,11 +36,26 @@ http_session = requests.Session()
 def _find_creds_path():
     possible_paths = [
         os.path.join(os.path.dirname(__file__), CREDENTIALS_FILE),
-        os.path.join('/etc/secrets/', CREDENTIALS_FILE)
+        os.path.join('/etc/secrets/', CREDENTIALS_FILE),
+        '/tmp/aiseki_google_credentials.json',
     ]
     for path in possible_paths:
         if os.path.exists(path):
             return path
+    raw_env = (os.environ.get('GOOGLE_CREDENTIALS_JSON') or os.environ.get('GOOGLE_CREDENTIALS_B64') or '').strip()
+    if raw_env:
+        try:
+            import base64
+            import json
+            decoded = raw_env if raw_env.startswith('{') else base64.b64decode(raw_env).decode('utf-8')
+            json.loads(decoded)  # validate JSON
+            tmp_path = '/tmp/aiseki_google_credentials.json'
+            fd = os.open(tmp_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+            with os.fdopen(fd, 'w', encoding='utf-8') as f:
+                f.write(decoded)
+            return tmp_path
+        except Exception as e:
+            print(f"GOOGLE_CREDENTIALS_JSON decode error: {e}", file=sys.stderr)
     return None
 
 
