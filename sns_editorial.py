@@ -497,15 +497,20 @@ def get_sns_delivery_health(allow_blocking: bool = False) -> dict:
         last_ok_at = str(saved.get("last_ok_at") or "")
         latest_key = base["latest_slot_key"]
 
-        # Detect silent historical mismatch on Threads (e.g., editorial log ran on a newer date than threads_post:<date>)
+        # Detect silent historical mismatch on Threads (unless a fresh token_refreshed succeeded after that failed attempt)
         if ch == "threads" and not last_err:
             th_hist = get_recent_editorial_history(channel="threads", limit=1, allow_blocking=False)
             if th_hist:
-                hist_date = str(th_hist[0].get("timestamp") or "")[:10]
+                hist_ts = str(th_hist[0].get("timestamp") or "")
+                hist_date = hist_ts[:10]
                 post_date = latest_key.split(":", 1)[1][:10] if ":" in latest_key else ""
-                if hist_date and (not post_date or hist_date > post_date) and not saved.get("last_ok_at"):
+                recovered_since = (
+                    saved.get("last_status") == "token_refreshed"
+                    and str(saved.get("last_attempt_at") or "") > hist_ts
+                )
+                if hist_date and (not post_date or hist_date > post_date) and not saved.get("last_ok_at") and not recovered_since:
                     last_err = (
-                        f"直近（{th_hist[0].get('timestamp')}）の自動投稿で文面生成後にThreads API送信が不発です。"
+                        f"直近（{hist_ts}）の自動投稿で文面生成後にThreads API送信が不発です。"
                         "トークン期限切れ（短期トークン失効）または未設定の可能性があります。"
                     )
 
