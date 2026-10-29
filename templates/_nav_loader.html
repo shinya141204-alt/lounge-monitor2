@@ -69,6 +69,7 @@
                 ? '女性目線ランキング を読み込み中...'
                 : 'リアルタイム順位 を読み込み中...';
         }
+        if (p === '/concierge') return '3秒穴場＆ハシゴ診断 を読み込み中...';
         if (p === '/for-women') return '女子向け裏ガイド を読み込み中...';
         if (p === '/price-comparison') return '料金・イベント比較 を読み込み中...';
         if (p === '/columns') return 'コラム・記事一覧 を読み込み中...';
@@ -243,7 +244,7 @@
                 } catch (e) {}
             } else if (!window.__swRegistered) {
                 window.__swRegistered = true;
-                navigator.serviceWorker.register('/sw.js?v=64', { updateViaCache: 'none' }).catch(function() {});
+                navigator.serviceWorker.register('/sw.js?v=66', { updateViaCache: 'none' }).catch(function() {});
             }
         }
         if (canBackgroundPrefetch()) {

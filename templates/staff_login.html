@@ -7,94 +7,165 @@
     <meta name="robots" content="noindex, nofollow">
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=2">
     <link rel="apple-touch-icon" href="/static/icon.png?v=2">
-    <meta name="theme-color" content="#0a0a0f">
+    <meta name="theme-color" content="#0f1014" id="staff-theme-meta">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet"></noscript>
     <style>
         :root {
-            --bg-color: #0a0a0f;
-            --text-primary: #ffffff;
-            --text-secondary: #94a3b8;
-            --font-main: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            --bg: #0f1014;
+            --surface: #16171c;
+            --surface-2: #1d1f26;
+            --input-bg: #0b0c0f;
+            --border: rgba(255, 255, 255, 0.08);
+            --border-strong: rgba(255, 255, 255, 0.16);
+            --text: #f1efe9;
+            --sub: #9b978f;
+            --placeholder: rgba(241, 239, 233, 0.24);
+            --gold: #c8a46e;
+            --gold-soft: rgba(200, 164, 110, 0.15);
+            --gold-border: rgba(200, 164, 110, 0.42);
+            --gold-ink: #f5e6cc;
+            --btn-primary-ink: #0f1014;
+            --rose: #d8a1aa;
+            --blue: #93b1c9;
+            --green: #7bc49f;
+            --amber: #d9b36c;
+            --red: #f87171;
+            --err-ink: #fca5a5;
+            --glow-1: rgba(200, 164, 110, 0.14);
+            --glow-2: rgba(147, 177, 201, 0.10);
+            --card-shadow: 0 20px 50px rgba(0, 0, 0, 0.55);
+            --font-main: 'Outfit', -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif;
+        }
+        body.theme-light {
+            --bg: #f4f2ed;
+            --surface: #faf9f6;
+            --surface-2: #edeae3;
+            --input-bg: #ffffff;
+            --border: rgba(28, 27, 24, 0.12);
+            --border-strong: rgba(28, 27, 24, 0.22);
+            --text: #1f1e1b;
+            --sub: #5c574f;
+            --placeholder: rgba(31, 30, 27, 0.30);
+            --gold: #7d5b24;
+            --gold-soft: rgba(125, 91, 36, 0.12);
+            --gold-border: rgba(125, 91, 36, 0.38);
+            --gold-ink: #664919;
+            --btn-primary-ink: #ffffff;
+            --rose: #a84858;
+            --blue: #3d6282;
+            --green: #1e6b47;
+            --amber: #8f5814;
+            --red: #a93838;
+            --err-ink: #a93838;
+            --glow-1: rgba(125, 91, 36, 0.08);
+            --glow-2: rgba(61, 98, 130, 0.07);
+            --card-shadow: 0 14px 36px rgba(28, 27, 24, 0.10);
         }
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
         }
+        html, body {
+            overflow-x: hidden;
+            max-width: 100%;
+        }
         body {
             font-family: var(--font-main);
-            background-color: var(--bg-color);
-            color: var(--text-primary);
+            background-color: var(--bg);
+            color: var(--text);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 20px;
+            padding: 20px 16px;
             position: relative;
-            overflow: hidden;
         }
         .bg-glow-1 {
-            position: absolute;
-            width: 450px;
-            height: 450px;
-            background: radial-gradient(circle, rgba(59, 130, 246, 0.18) 0%, rgba(0, 0, 0, 0) 70%);
-            top: -150px;
-            left: -150px;
+            position: fixed;
+            width: 420px;
+            height: 420px;
+            background: radial-gradient(circle, var(--glow-1) 0%, rgba(0, 0, 0, 0) 70%);
+            top: -140px;
+            left: -140px;
             z-index: 0;
+            pointer-events: none;
         }
         .bg-glow-2 {
-            position: absolute;
-            width: 450px;
-            height: 450px;
-            background: radial-gradient(circle, rgba(236, 72, 153, 0.16) 0%, rgba(0, 0, 0, 0) 70%);
-            bottom: -150px;
-            right: -150px;
+            position: fixed;
+            width: 420px;
+            height: 420px;
+            background: radial-gradient(circle, var(--glow-2) 0%, rgba(0, 0, 0, 0) 70%);
+            bottom: -140px;
+            right: -140px;
             z-index: 0;
+            pointer-events: none;
         }
         .login-card {
             position: relative;
             z-index: 1;
             width: 100%;
-            max-width: 380px;
-            background: rgba(18, 20, 32, 0.85);
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            max-width: 390px;
+            background: var(--surface);
+            border: 1px solid var(--border-strong);
             border-radius: 20px;
-            padding: 36px 28px;
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+            padding: 28px 26px 32px;
+            box-shadow: var(--card-shadow);
             text-align: center;
+        }
+        .card-top-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 16px;
         }
         .badge {
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(236, 72, 153, 0.2));
-            border: 1px solid rgba(236, 72, 153, 0.35);
-            color: #f472b6;
-            font-size: 0.75rem;
+            background: var(--gold-soft);
+            border: 1px solid var(--gold-border);
+            color: var(--gold-ink);
+            font-size: 0.74rem;
             font-weight: 700;
             padding: 4px 12px;
             border-radius: 999px;
-            margin-bottom: 16px;
             letter-spacing: 0.05em;
         }
+        .pill-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            color: var(--text);
+            background: var(--surface-2);
+            border: 1px solid var(--border-strong);
+            border-radius: 999px;
+            padding: 5px 11px;
+            font-size: 0.74rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+        }
+        .pill-btn:hover {
+            border-color: var(--gold);
+        }
         h1 {
-            font-size: 1.4rem;
+            font-size: 1.38rem;
             font-weight: 700;
             margin-bottom: 8px;
-            background: linear-gradient(90deg, #ffffff 0%, #f3e8ff 50%, #f9a8d4 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+            color: var(--text);
+            letter-spacing: 0.02em;
         }
         .desc {
             font-size: 0.82rem;
-            color: var(--text-secondary);
-            line-height: 1.5;
-            margin-bottom: 28px;
+            color: var(--sub);
+            line-height: 1.55;
+            margin-bottom: 26px;
         }
         .form-group {
             margin-bottom: 20px;
@@ -104,37 +175,37 @@
             display: block;
             font-size: 0.78rem;
             font-weight: 600;
-            color: #cbd5e1;
+            color: var(--sub);
             margin-bottom: 8px;
             text-align: center;
         }
         .passcode-input {
             width: 100%;
+            max-width: 100%;
             height: 54px;
-            background: rgba(10, 10, 16, 0.8);
-            border: 1.5px solid rgba(255, 255, 255, 0.12);
+            background: var(--input-bg);
+            border: 1.5px solid var(--border-strong);
             border-radius: 12px;
-            color: #ffffff;
-            font-size: 1.6rem;
+            color: var(--text);
+            font-size: 1.5rem;
             font-weight: 700;
             text-align: center;
-            letter-spacing: 0.35em;
+            letter-spacing: 0.32em;
             padding: 0 16px;
             outline: none;
-            transition: all 0.2s ease;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
         }
         .passcode-input:focus {
-            border-color: #ec4899;
-            box-shadow: 0 0 16px rgba(236, 72, 153, 0.3);
-            background: rgba(15, 15, 24, 0.95);
+            border-color: var(--gold);
+            box-shadow: 0 0 0 3px var(--gold-soft);
         }
         .passcode-input::placeholder {
-            color: rgba(255, 255, 255, 0.15);
+            color: var(--placeholder);
             letter-spacing: 0.1em;
             font-size: 1.1rem;
         }
         .error-msg {
-            color: #ef4444;
+            color: var(--err-ink);
             font-size: 0.8rem;
             margin-top: 8px;
             text-align: center;
@@ -149,19 +220,19 @@
         .submit-btn {
             width: 100%;
             height: 48px;
-            background: linear-gradient(135deg, #3b82f6 0%, #ec4899 100%);
-            border: none;
+            background: var(--gold);
+            border: 1px solid var(--gold);
             border-radius: 12px;
-            color: #ffffff;
+            color: var(--btn-primary-ink);
             font-size: 0.95rem;
             font-weight: 700;
+            font-family: inherit;
             cursor: pointer;
-            transition: all 0.2s ease;
-            box-shadow: 0 4px 15px rgba(236, 72, 153, 0.3);
+            transition: filter 0.18s ease, transform 0.18s ease;
         }
         .submit-btn:hover {
+            filter: brightness(1.06);
             transform: translateY(-1px);
-            box-shadow: 0 6px 20px rgba(236, 72, 153, 0.45);
         }
         .submit-btn:active {
             transform: translateY(1px);
@@ -170,21 +241,47 @@
             display: inline-block;
             margin-top: 22px;
             font-size: 0.78rem;
-            color: var(--text-secondary);
+            color: var(--sub);
             text-decoration: none;
             transition: color 0.15s;
         }
         .back-link:hover {
-            color: #ffffff;
+            color: var(--gold);
         }
     </style>
 </head>
 <body>
+    <script>
+        (function() {
+            try {
+                if (localStorage.getItem('olg_view_theme') === 'light') {
+                    document.body.classList.add('theme-light');
+                    var meta = document.getElementById('staff-theme-meta');
+                    if (meta) meta.setAttribute('content', '#f4f2ed');
+                }
+            } catch (e) {}
+        })();
+        function toggleStaffTheme() {
+            var isLight = document.body.classList.toggle('theme-light');
+            try {
+                localStorage.setItem('olg_view_theme', isLight ? 'light' : 'default');
+            } catch (e) {}
+            var meta = document.getElementById('staff-theme-meta');
+            if (meta) meta.setAttribute('content', isLight ? '#f4f2ed' : '#0f1014');
+            var btn = document.getElementById('staff-theme-toggle-btn');
+            if (btn) {
+                btn.setAttribute('aria-pressed', isLight ? 'true' : 'false');
+            }
+        }
+    </script>
     <div class="bg-glow-1"></div>
     <div class="bg-glow-2"></div>
 
     <div class="login-card">
-        <div class="badge">🔒 STAFF / MASTER</div>
+        <div class="card-top-row top-links">
+            <div class="badge">🔒 STAFF / MASTER</div>
+            <button type="button" class="pill-btn" onclick="toggleStaffTheme()" id="staff-theme-toggle-btn">☀️/🌙 表示切替</button>
+        </div>
         <h1>社内・マスター認証</h1>
         <p class="desc">
             広告・PRを一切表示しない業務専用モニタリング画面です。<br>

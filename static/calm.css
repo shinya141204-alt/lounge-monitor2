@@ -20,20 +20,20 @@
     --calm-women: #d8a1aa;           /* くすみローズ */
     --calm-men: #93b1c9;             /* スレートブルー */
 
-    /* ライトモード用（ウォームペーパー・アイボリー調） */
+    /* ライトモード用（ウォームペーパー・アイボリー調・WCAG AA高視認コントラスト） */
     --calm-light-bg: #f4f2ed;
     --calm-light-surface: #faf9f6;
     --calm-light-surface-2: #edeae3;
-    --calm-light-border: rgba(28, 27, 24, 0.09);
-    --calm-light-border-strong: rgba(28, 27, 24, 0.17);
+    --calm-light-border: rgba(28, 27, 24, 0.1);
+    --calm-light-border-strong: rgba(28, 27, 24, 0.2);
     --calm-light-text: #1f1e1b;
-    --calm-light-sub: #6b665e;
-    --calm-light-accent: #8c6b3f;    /* アンティークブロンズ */
-    --calm-light-accent-soft: rgba(140, 107, 63, 0.11);
-    --calm-light-women: #b05a68;     /* ディープローズ */
-    --calm-light-men: #4a6f8f;       /* ディープスレート */
-    --calm-light-bar-w: #c98994;
-    --calm-light-bar-m: #7d9cb8;
+    --calm-light-sub: #58534b;
+    --calm-light-accent: #755528;    /* ディープアンティークブロンズ */
+    --calm-light-accent-soft: rgba(117, 85, 40, 0.12);
+    --calm-light-women: #9e3f50;     /* ディープローズ */
+    --calm-light-men: #33597a;       /* ディープスレート */
+    --calm-light-bar-w: #c27885;
+    --calm-light-bar-m: #6f92b0;
 }
 
 /* ---------- 1. 動き：点滅・パルス・背景のゆらぎを止める ---------- */
@@ -165,6 +165,25 @@ body:not(.theme-light) .stat.ladies .stat-diff {
 
 body:not(.theme-light) .stat.men .stat-diff {
     color: #93b1c9 !important;
+}
+
+body.theme-light .momentum-tag {
+    background: rgba(158, 63, 80, 0.1) !important;
+    border: 1px solid rgba(158, 63, 80, 0.38) !important;
+    color: var(--calm-light-women) !important;
+    box-shadow: none !important;
+}
+
+body.theme-light .stat.ladies .stat-diff {
+    background: rgba(158, 63, 80, 0.08) !important;
+    border-color: rgba(158, 63, 80, 0.3) !important;
+    color: var(--calm-light-women) !important;
+}
+
+body.theme-light .stat.men .stat-diff {
+    background: rgba(51, 89, 122, 0.08) !important;
+    border-color: rgba(51, 89, 122, 0.3) !important;
+    color: var(--calm-light-men) !important;
 }
 
 /* ---------- 4. ボタン類：グラデーション＋発光 → 落ち着いた面＋細い線 ---------- */
@@ -489,13 +508,29 @@ body:not(.theme-light) .area-point-box {
    ========================================================================== */
 body.theme-light {
     --bg-color: var(--calm-light-bg);
+    --bg-dark: var(--calm-light-bg);
     --card-bg: var(--calm-light-surface);
+    --card-bg-2: var(--calm-light-surface-2);
+    --card-sub-bg: var(--calm-light-surface-2);
+    --card-elevated: var(--calm-light-surface-2);
     --card-hover: var(--calm-light-surface-2);
     --card-border: var(--calm-light-border);
+    --border-subtle: var(--calm-light-border);
+    --border-strong: var(--calm-light-border-strong);
+    --border-gold: rgba(117, 85, 40, 0.42);
+    --gold-tint: var(--calm-light-accent-soft);
     --text-primary: var(--calm-light-text);
+    --text-main: var(--calm-light-text);
     --text-secondary: var(--calm-light-sub);
+    --text-sub: var(--calm-light-sub);
     --primary: var(--calm-light-text);
-    --calm-accent-text: #8c6b3f;
+    --accent: var(--calm-light-accent);
+    --accent-gold: var(--calm-light-accent);
+    --accent-text: var(--calm-light-accent);
+    --accent-soft: var(--calm-light-accent-soft);
+    --calm-accent-text: var(--calm-light-accent);
+    --women: var(--calm-light-women);
+    --men: var(--calm-light-men);
     background-color: var(--calm-light-bg) !important;
     background-image: none !important;
     color: var(--calm-light-text) !important;
@@ -566,17 +601,17 @@ body.theme-light .rank-badge {
 }
 
 body.theme-light .rank-1 .rank-badge {
-    background: #b5915b !important;
+    background: #82602d !important;
     color: #ffffff !important;
 }
 
 body.theme-light .rank-2 .rank-badge {
-    background: #8e9299 !important;
+    background: #5e646e !important;
     color: #ffffff !important;
 }
 
 body.theme-light .rank-3 .rank-badge {
-    background: #9c7a56 !important;
+    background: #785638 !important;
     color: #ffffff !important;
 }
 
@@ -1236,7 +1271,7 @@ body.theme-light .sns-compact-label {
 
 .sns-compact-pill:hover {
     border-color: rgba(200, 164, 110, 0.55);
-    color: var(--calm-accent-soft);
+    color: var(--calm-accent-text);
 }
 
 body.theme-light .sns-compact-pill {
@@ -1346,6 +1381,8 @@ body.staff-mode .header-top-row .header-controls {
 
 @media (max-width: 768px) {
     .container {
+        max-width: 100% !important;
+        box-sizing: border-box !important;
         padding: 10px 12px 24px 12px !important;
     }
 
@@ -1759,12 +1796,15 @@ body.theme-light.audience-women {
     --calm-light-bg: #f7f3f1;
     --calm-light-surface: #fdfbfa;
     --calm-light-surface-2: #f0e9e6;
-    --calm-light-border: rgba(120, 62, 78, 0.11);
-    --calm-light-border-strong: rgba(120, 62, 78, 0.21);
+    --calm-light-border: rgba(120, 62, 78, 0.12);
+    --calm-light-border-strong: rgba(120, 62, 78, 0.22);
     --calm-light-text: #262022;
-    --calm-light-sub: #6d5c61;
-    --calm-light-accent: #9e5266;
-    --calm-light-accent-soft: rgba(158, 82, 102, 0.11);
+    --calm-light-sub: #5f4d52;
+    --calm-light-accent: #8f3e54;
+    --calm-light-accent-soft: rgba(143, 62, 84, 0.12);
+    --accent: #8f3e54;
+    --accent-gold: #8f3e54;
+    --accent-text: #8f3e54;
     background-color: var(--calm-light-bg) !important;
     color: var(--calm-light-text) !important;
 }
@@ -2325,3 +2365,811 @@ body.theme-light a.nav-loading {
 
 
 
+
+/* ==========================================================================
+   20. 全サブページ・全18コラム・クイック診断バナー・モーダル ライト＆ダーク完全視認性保証レイヤー
+   ========================================================================== */
+
+/* --- トップページ 3秒ハシゴ診断クイックバー (.concierge-quick-banner) --- */
+.concierge-quick-banner {
+    margin: 0 0 12px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(200, 164, 110, 0.14), rgba(22, 23, 28, 0.94));
+    border: 1px solid rgba(200, 164, 110, 0.38);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    text-align: left;
+}
+
+.cqb-left,
+.cqb-actions {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    flex-wrap: wrap;
+}
+
+.cqb-badge {
+    font-size: 0.71rem;
+    font-weight: 800;
+    color: #16171c;
+    background: #dfc496;
+    padding: 2px 8px;
+    border-radius: 999px;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+}
+
+.cqb-title {
+    font-size: 0.84rem;
+    font-weight: 700;
+    color: #f3efe8;
+    line-height: 1.45;
+}
+
+.cqb-chip {
+    font-size: 0.76rem;
+    font-weight: 600;
+    color: #dfc496;
+    text-decoration: none;
+    padding: 4px 9px;
+    border-radius: 7px;
+    border: 1px solid rgba(200, 164, 110, 0.38);
+    background: rgba(255, 255, 255, 0.03);
+    white-space: nowrap;
+}
+
+.cqb-chip:hover {
+    background: rgba(200, 164, 110, 0.14);
+}
+
+.cqb-cta {
+    font-size: 0.8rem;
+    font-weight: 800;
+    color: #14120e;
+    background: #dfc496;
+    text-decoration: none;
+    padding: 5px 12px;
+    border-radius: 8px;
+    white-space: nowrap;
+}
+
+body.theme-light .concierge-quick-banner {
+    background: var(--calm-light-surface);
+    border-color: rgba(117, 85, 40, 0.38);
+    box-shadow: 0 1px 2px rgba(28, 27, 24, 0.04);
+}
+
+body.theme-light.audience-women .concierge-quick-banner {
+    border-color: rgba(143, 62, 84, 0.34);
+}
+
+body.theme-light .cqb-badge {
+    background: var(--calm-light-accent);
+    color: #ffffff;
+}
+
+body.theme-light .cqb-title {
+    color: var(--calm-light-text);
+}
+
+body.theme-light .cqb-chip {
+    background: var(--calm-light-surface-2);
+    border-color: var(--calm-light-border-strong);
+    color: var(--calm-light-text);
+}
+
+body.theme-light .cqb-chip:hover {
+    border-color: var(--calm-light-accent);
+    color: var(--calm-light-accent);
+}
+
+body.theme-light .cqb-cta {
+    background: var(--calm-light-accent);
+    color: #ffffff;
+}
+
+/* --- フッター・ヘッダー・モーダル共通のコントラスト補正 --- */
+.footer-mini-copy {
+    color: #8e96a4 !important;
+}
+
+body.theme-light .footer-mini-copy {
+    color: var(--calm-light-sub) !important;
+}
+
+body.theme-light .live-indicator {
+    color: var(--calm-light-women) !important;
+}
+
+body.theme-light .live-indicator .dot {
+    background-color: var(--calm-light-women) !important;
+}
+
+.master-header-badge {
+    border-color: rgba(200, 164, 110, 0.55) !important;
+    color: #f1e3cb !important;
+}
+
+body.theme-light .master-header-badge {
+    background: var(--calm-light-accent-soft) !important;
+    border-color: rgba(117, 85, 40, 0.48) !important;
+    color: var(--calm-light-accent) !important;
+}
+
+.staff-footer-logout {
+    color: var(--calm-women) !important;
+    font-weight: 700;
+}
+
+body.theme-light .staff-footer-logout {
+    color: var(--calm-light-women) !important;
+}
+
+.legal-inline-link {
+    color: var(--calm-accent-text) !important;
+}
+
+body.theme-light .legal-inline-link,
+body.theme-light .legal-body h3 {
+    color: var(--calm-light-accent) !important;
+}
+
+body.theme-light .legal-body,
+body.theme-light .legal-body p,
+body.theme-light .legal-body li {
+    color: var(--calm-light-text) !important;
+}
+
+body.theme-light .legal-body code {
+    background: var(--calm-light-surface-2) !important;
+    color: var(--calm-light-text) !important;
+}
+
+body.theme-light .refresh-toast {
+    background: rgba(250, 249, 246, 0.98) !important;
+    border-color: var(--calm-light-border-strong) !important;
+    color: var(--calm-light-text) !important;
+    box-shadow: 0 8px 24px rgba(28, 27, 24, 0.14) !important;
+}
+
+body.theme-light .second-venue-badge {
+    background: transparent !important;
+    border: 1px solid var(--calm-light-border-strong) !important;
+    color: var(--calm-light-sub) !important;
+}
+
+/* イベントタグ＆週間レポートモーダル数値（app.js生成DOM） */
+.event-pill-tag.tag-women {
+    background: rgba(216, 161, 170, 0.14);
+    color: var(--calm-women);
+    border: 1px solid rgba(216, 161, 170, 0.34);
+    font-weight: 700;
+}
+
+.event-pill-tag.tag-men {
+    background: rgba(147, 177, 201, 0.14);
+    color: var(--calm-men);
+    border: 1px solid rgba(147, 177, 201, 0.34);
+    font-weight: 700;
+}
+
+.event-pill-tag.tag-sm {
+    font-size: 0.68rem;
+    padding: 1px 5px;
+}
+
+body.theme-light .event-pill-tag.tag-women {
+    background: rgba(158, 63, 80, 0.1);
+    color: var(--calm-light-women);
+    border-color: rgba(158, 63, 80, 0.35);
+}
+
+body.theme-light .event-pill-tag.tag-men {
+    background: rgba(51, 89, 122, 0.1);
+    color: var(--calm-light-men);
+    border-color: rgba(51, 89, 122, 0.35);
+}
+
+.rep-val-women {
+    color: var(--calm-women);
+    font-weight: 700;
+}
+
+.rep-val-men {
+    color: var(--calm-men);
+    font-weight: 600;
+}
+
+body.theme-light .rep-val-women {
+    color: var(--calm-light-women);
+}
+
+body.theme-light .rep-val-men {
+    color: var(--calm-light-men);
+}
+
+body.theme-light .report-table th {
+    background: var(--calm-light-surface-2) !important;
+    color: var(--calm-light-sub) !important;
+    border-bottom-color: var(--calm-light-border-strong) !important;
+}
+
+body.theme-light .report-table td {
+    color: var(--calm-light-text) !important;
+    border-bottom-color: var(--calm-light-border) !important;
+}
+
+/* 社内イベント表示ON/OFFトグルのアクティブ状態復元 */
+body:not(.theme-light) .staff-event-toggle-pill.active {
+    background: var(--calm-accent-soft) !important;
+    border-color: rgba(200, 164, 110, 0.62) !important;
+    color: #f1e3cb !important;
+}
+
+body.theme-light .staff-event-toggle-pill.active {
+    background: var(--calm-light-accent-soft) !important;
+    border-color: rgba(117, 85, 40, 0.55) !important;
+    color: var(--calm-light-accent) !important;
+}
+
+/* --- columns.html / stats_report.html 専用ブロック --- */
+.columns-master-banner {
+    background: linear-gradient(135deg, rgba(200, 164, 110, 0.13) 0%, rgba(22, 24, 30, 0.96) 100%);
+    border: 1px solid rgba(200, 164, 110, 0.42);
+    border-radius: 12px;
+    padding: 14px 18px;
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.columns-master-kicker {
+    color: #dfc496;
+}
+
+.columns-master-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: 999px;
+    background: var(--calm-surface-2);
+    border: 1px solid rgba(200, 164, 110, 0.55);
+    color: #f1e3cb;
+    font-size: 0.8rem;
+    font-weight: 800;
+    text-decoration: none;
+}
+
+.columns-upcoming-box {
+    background: rgba(200, 164, 110, 0.07);
+    border: 1px solid rgba(200, 164, 110, 0.35);
+    border-radius: 12px;
+    padding: 16px 18px;
+    margin-bottom: 24px;
+}
+
+.columns-upcoming-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    background: var(--calm-surface-2);
+    border: 1px solid var(--calm-border);
+    padding: 9px 12px;
+    border-radius: 8px;
+    font-size: 0.82rem;
+}
+
+.columns-note-link {
+    color: #dfc496;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.columns-grooming-body {
+    background: var(--calm-surface-2);
+}
+
+.stats-citation-box {
+    background: var(--calm-surface-2);
+    border: 1px solid var(--calm-border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-family: monospace;
+    font-size: 0.79rem;
+    color: var(--calm-text);
+    overflow-x: auto;
+}
+
+body.theme-light .columns-master-banner {
+    background: var(--calm-light-surface);
+    border-color: rgba(117, 85, 40, 0.42);
+}
+
+body.theme-light .columns-master-kicker,
+body.theme-light .columns-note-link {
+    color: var(--calm-light-accent);
+}
+
+body.theme-light .columns-master-btn {
+    background: var(--calm-light-accent-soft);
+    border-color: rgba(117, 85, 40, 0.5);
+    color: var(--calm-light-text);
+}
+
+body.theme-light .columns-upcoming-box {
+    background: var(--calm-light-surface);
+    border-color: rgba(117, 85, 40, 0.35);
+}
+
+body.theme-light .columns-upcoming-row,
+body.theme-light .columns-grooming-body,
+body.theme-light .stats-citation-box {
+    background: var(--calm-light-surface-2);
+    border-color: var(--calm-light-border);
+    color: var(--calm-light-text);
+}
+
+/* --- 男女比率バー（ライトモードで男性側ゲージが消えないよう明示） --- */
+body.theme-light .ratio-bar,
+body.theme-light .ratio-bar-lg,
+body.theme-light .mini-ratio-bar {
+    background: rgba(51, 89, 122, 0.28) !important;
+}
+
+body.theme-light .ratio-fill-lg,
+body.theme-light .mini-ratio-fill {
+    background: var(--calm-light-bar-w) !important;
+}
+
+body.theme-light .w-color,
+body.theme-light .tot-w,
+body.theme-light .w-num {
+    color: var(--calm-light-women) !important;
+}
+
+body.theme-light .m-color,
+body.theme-light .tot-m,
+body.theme-light .m-num {
+    color: var(--calm-light-men) !important;
+}
+
+body.theme-light .r-color,
+body.theme-light .stat-num {
+    color: var(--calm-light-accent) !important;
+}
+
+body.theme-light .stat-num.pink {
+    color: var(--calm-light-women) !important;
+}
+
+/* --- サブページ＆全18コラム記事 ライトモード サーフェス統一 --- */
+body.theme-light:not(.audience-women) .hero-box,
+body.theme-light .hero-card,
+body.theme-light .live-hero-card,
+body.theme-light .section-card,
+body.theme-light .content-box,
+body.theme-light .guide-box,
+body.theme-light .stats-table-wrap,
+body.theme-light .brand-stat-card,
+body.theme-light .article-box,
+body.theme-light .page-hero,
+body.theme-light .area-section-card,
+body.theme-light .article-card,
+body.theme-light .area-mini-card,
+body.theme-light .decision-card,
+body.theme-light .aff-card,
+body.theme-light .article-affiliate-card,
+body.theme-light .stat-box,
+body.theme-light .faq-card,
+body.theme-light .related-article-card,
+body.theme-light .cta-box,
+body.theme-light .live-tool-cta-box {
+    background: var(--calm-light-surface) !important;
+    border: 1px solid var(--calm-light-border) !important;
+    box-shadow: 0 1px 2px rgba(28, 27, 24, 0.04) !important;
+}
+
+body.theme-light .rec-card,
+body.theme-light .verify-card,
+body.theme-light .count-box,
+body.theme-light .stat-subcard,
+body.theme-light .nearby-item,
+body.theme-light .totals-bar,
+body.theme-light .area-live-totals,
+body.theme-light .store-card,
+body.theme-light .c-card,
+body.theme-light .tip-card,
+body.theme-light .slot-box,
+body.theme-light .toc-box,
+body.theme-light .article-toc,
+body.theme-light .live-store-card,
+body.theme-light .area-point-box,
+body.theme-light .highlight-box,
+body.theme-light .article-highlight-box,
+body.theme-light .article-lead,
+body.theme-light .lead-box,
+body.theme-light .ev-item {
+    background: var(--calm-light-surface-2) !important;
+    border: 1px solid var(--calm-light-border) !important;
+    box-shadow: none !important;
+}
+
+body.theme-light .article-lead,
+body.theme-light .lead-box {
+    border-left: 3px solid var(--calm-light-accent) !important;
+}
+
+body.theme-light .best-pick-banner {
+    background: var(--calm-light-surface-2) !important;
+    border: 1px solid rgba(117, 85, 40, 0.35) !important;
+    border-left: 3px solid var(--calm-light-accent) !important;
+}
+
+body.theme-light .top-nav-bar,
+body.theme-light .article-header,
+body.theme-light .article-footer {
+    border-color: var(--calm-light-border-strong) !important;
+}
+
+body.theme-light .article-eyecatch {
+    border-color: var(--calm-light-border-strong) !important;
+    box-shadow: 0 4px 14px rgba(28, 27, 24, 0.08) !important;
+}
+
+/* 予約公開プレビューバナー（ライトモードで完全同色になっていた問題を解消） */
+body.theme-light .preview-banner {
+    background: #fef3c7 !important;
+    border: 1px solid #d97706 !important;
+    color: #78350f !important;
+}
+
+body.theme-light .preview-banner strong {
+    color: #451a03 !important;
+}
+
+/* --- サブページ＆全18コラム記事 ライトモード 見出し・本文・リンク統一 --- */
+body.theme-light .article-title,
+body.theme-light .sec-title,
+body.theme-light .section-title,
+body.theme-light .rec-title,
+body.theme-light .aff-name,
+body.theme-light .faq-q,
+body.theme-light .toc-title,
+body.theme-light .best-pick-title,
+body.theme-light .store-name,
+body.theme-light .area-mini-name,
+body.theme-light .nav-logo,
+body.theme-light .article-card h2,
+body.theme-light .decision-card h4,
+body.theme-light .c-card h3,
+body.theme-light .c-card h4,
+body.theme-light .slot-box h3,
+body.theme-light .slot-box h4,
+body.theme-light .brand-stat-card h3 {
+    color: var(--calm-light-text) !important;
+}
+
+body.theme-light .article-body h2,
+body.theme-light .article-content h2,
+body.theme-light .article-box h2,
+body.theme-light .content-box h2,
+body.theme-light .guide-box h2 {
+    background: transparent !important;
+    border-left: 3px solid var(--calm-light-accent) !important;
+    border-bottom: 1px solid var(--calm-light-border-strong) !important;
+    border-radius: 0 !important;
+    padding: 4px 0 8px 12px !important;
+    color: var(--calm-light-text) !important;
+}
+
+body.theme-light .article-body h3,
+body.theme-light .article-content h3,
+body.theme-light .article-box h3,
+body.theme-light .area-point-box h3,
+body.theme-light .tip-card h4,
+body.theme-light .article-highlight-box h4,
+body.theme-light .article-toc h3,
+body.theme-light .store-meta {
+    color: var(--calm-light-accent) !important;
+}
+
+body.theme-light .article-body p,
+body.theme-light .article-body li,
+body.theme-light .article-content p,
+body.theme-light .article-content li,
+body.theme-light .article-box p,
+body.theme-light .article-box li,
+body.theme-light:not(.audience-women) .content-box p,
+body.theme-light:not(.audience-women) .content-box li,
+body.theme-light .guide-box p,
+body.theme-light .guide-box li,
+body.theme-light .article-lead,
+body.theme-light .lead-box,
+body.theme-light .faq-a,
+body.theme-light .article-toc ol,
+body.theme-light .toc-list,
+body.theme-light .decision-card p,
+body.theme-light .aff-desc,
+body.theme-light .aff-points,
+body.theme-light .c-card p,
+body.theme-light .c-card li,
+body.theme-light .tip-card p,
+body.theme-light .slot-box p,
+body.theme-light .slot-box li,
+body.theme-light .store-card p,
+body.theme-light .page-hero p,
+body.theme-light .article-card p {
+    color: #2f2d29 !important;
+}
+
+body.theme-light .article-body strong,
+body.theme-light .article-content strong,
+body.theme-light .article-lead strong,
+body.theme-light .lead-box strong,
+body.theme-light .highlight-box strong,
+body.theme-light .article-highlight-box strong,
+body.theme-light .cta-box strong,
+body.theme-light .content-box strong {
+    color: var(--calm-light-text) !important;
+}
+
+body.theme-light .breadcrumb,
+body.theme-light .article-date,
+body.theme-light .article-meta-line,
+body.theme-light .aff-link-subtext,
+body.theme-light .best-pick-sub,
+body.theme-light .count-label,
+body.theme-light .article-footer,
+body.theme-light .article-footer p,
+body.theme-light .portal-footer--guide p,
+body.theme-light .footer-copy {
+    color: var(--calm-light-sub) !important;
+}
+
+body.theme-light .cta-box h3,
+body.theme-light .cta-box h4,
+body.theme-light .live-tool-cta-box h3,
+body.theme-light .live-tool-cta-box h4,
+body.theme-light .aff-card h3,
+body.theme-light .aff-card h4,
+body.theme-light .affiliate-card h3,
+body.theme-light .affiliate-card h4 {
+    color: var(--calm-light-text) !important;
+}
+
+body.theme-light .breadcrumb a,
+body.theme-light .article-read-more,
+body.theme-light .article-toc a,
+body.theme-light .toc-list a,
+body.theme-light .toc-box a,
+body.theme-light .article-footer-links a,
+body.theme-light .article-body a:not(.cta-btn):not(.aff-btn):not(.aff-cta-btn):not(.live-tool-btn):not(.store-chip-link) {
+    color: var(--calm-light-accent) !important;
+}
+
+/* サムネイル画像上のオーバーレイバッジは不透明アイボリー背景で確実に読めるように */
+body.theme-light .portal-article-badge,
+body.theme-light .article-card-badge {
+    background: rgba(250, 249, 246, 0.95) !important;
+    border: 1px solid var(--calm-light-border-strong) !important;
+    color: var(--calm-light-text) !important;
+    box-shadow: 0 2px 6px rgba(28, 27, 24, 0.12) !important;
+}
+
+/* --- サブページ＆全18コラム記事 ライトモード テーブル完全対応 --- */
+body.theme-light .comp-table-wrap,
+body.theme-light .table-scroll-wrapper,
+body.theme-light .data-table-wrap,
+body.theme-light .club-table-wrap,
+body.theme-light .comp-table,
+body.theme-light .store-comp-table,
+body.theme-light .data-table,
+body.theme-light .club-table,
+body.theme-light .area-table,
+body.theme-light .spec-table {
+    background: var(--calm-light-surface) !important;
+    border-color: var(--calm-light-border-strong) !important;
+    color: var(--calm-light-text) !important;
+}
+
+body.theme-light .comp-table th,
+body.theme-light .store-comp-table th,
+body.theme-light .stats-table-wrap th,
+body.theme-light .data-table th,
+body.theme-light .club-table th,
+body.theme-light .area-table th,
+body.theme-light .spec-table th {
+    background: var(--calm-light-surface-2) !important;
+    color: var(--calm-light-sub) !important;
+    border-bottom: 1px solid var(--calm-light-border-strong) !important;
+}
+
+body.theme-light .comp-table td,
+body.theme-light .store-comp-table td,
+body.theme-light .stats-table-wrap td,
+body.theme-light .data-table td,
+body.theme-light .club-table td,
+body.theme-light .area-table td,
+body.theme-light .spec-table td {
+    background: transparent !important;
+    color: var(--calm-light-text) !important;
+    border-bottom: 1px solid var(--calm-light-border) !important;
+}
+
+body.theme-light .comp-table tr.best-row td,
+body.theme-light .store-comp-table tr.is-best-row td {
+    background: rgba(117, 85, 40, 0.08) !important;
+}
+
+body.theme-light .store-comp-table tr.is-current-row td {
+    background: rgba(28, 27, 24, 0.04) !important;
+}
+
+/* --- サブページ＆全18コラム記事 ライトモード タブ・バッジ・ボタン統一 --- */
+body.theme-light .area-tab-btn,
+body.theme-light .brand-tab,
+body.theme-light .nav-back-btn,
+body.theme-light .btn-secondary,
+body.theme-light .share-chip-btn,
+body.theme-light .store-chip-link {
+    background: var(--calm-light-surface) !important;
+    border: 1px solid var(--calm-light-border-strong) !important;
+    color: var(--calm-light-text) !important;
+    box-shadow: none !important;
+}
+
+body.theme-light .area-tab-btn.active,
+body.theme-light .brand-tab.active,
+body.theme-light .btn-primary,
+body.theme-light .aff-btn,
+body.theme-light .related-article-card a {
+    background: var(--calm-light-accent-soft) !important;
+    border: 1px solid rgba(117, 85, 40, 0.52) !important;
+    color: var(--calm-light-text) !important;
+    box-shadow: none !important;
+}
+
+body.theme-light .hero-kicker,
+body.theme-light .rec-badge,
+body.theme-light .badge,
+body.theme-light .status-badge,
+body.theme-light .area-badge,
+body.theme-light .store-area-badge,
+body.theme-light .page-hero-badge,
+body.theme-light .cat-badge,
+body.theme-light .article-cat-tag,
+body.theme-light .aff-badge,
+body.theme-light .aff-card-badge,
+body.theme-light .affiliate-badge-title,
+body.theme-light .decision-tag,
+body.theme-light .ev-badge-men,
+body.theme-light .ev-badge-women,
+body.theme-light .verdict-pill,
+body.theme-light .row-tag-current,
+body.theme-light .brand-pill {
+    background: rgba(28, 27, 24, 0.04) !important;
+    border: 1px solid var(--calm-light-border-strong) !important;
+    color: var(--calm-light-sub) !important;
+    box-shadow: none !important;
+}
+
+body.theme-light .crown-tag,
+body.theme-light .verdict-pill.verdict-hot,
+body.theme-light .row-tag-best {
+    background: var(--calm-light-accent-soft) !important;
+    border: 1px solid rgba(117, 85, 40, 0.52) !important;
+    color: var(--calm-light-accent) !important;
+}
+
+body.theme-light .verdict-pill.verdict-good {
+    background: rgba(158, 63, 80, 0.1) !important;
+    border: 1px solid rgba(158, 63, 80, 0.4) !important;
+    color: var(--calm-light-women) !important;
+}
+
+/* --- 記事内インライングラデーションCTAボタンのダーク・ライト統一 --- */
+body:not(.theme-light) a[style*="linear-gradient"] {
+    background: var(--calm-surface-2) !important;
+    border: 1px solid rgba(200, 164, 110, 0.52) !important;
+    color: #f1e3cb !important;
+    box-shadow: none !important;
+    text-decoration: none !important;
+}
+
+body.theme-light a[style*="linear-gradient"] {
+    background: var(--calm-light-surface-2) !important;
+    border: 1px solid rgba(117, 85, 40, 0.52) !important;
+    color: var(--calm-light-text) !important;
+    box-shadow: none !important;
+    text-decoration: none !important;
+}
+
+/* --- 記事・サブページ内のダーク前提インライン配色 自動レスキュー（ライトモード時のみ） --- */
+body.theme-light [style*="background: #16171c"],
+body.theme-light [style*="background:#16171c"],
+body.theme-light [style*="background: #1b1c22"],
+body.theme-light [style*="background:#1b1c22"] {
+    background: var(--calm-light-surface-2) !important;
+    border-color: var(--calm-light-border-strong) !important;
+}
+
+body.theme-light [style*="color: #fff"]:not(.rank-badge):not(.concierge-gold-btn):not(.cqb-badge):not(.cqb-cta):not(a[style*="linear-gradient"]),
+body.theme-light [style*="color:#fff"]:not(.rank-badge):not(.concierge-gold-btn):not(.cqb-badge):not(.cqb-cta):not(a[style*="linear-gradient"]),
+body.theme-light [style*="color: #f8fafc"],
+body.theme-light [style*="color:#f8fafc"],
+body.theme-light [style*="color: #f3efe8"],
+body.theme-light [style*="color:#f3efe8"],
+body.theme-light [style*="color: #f1e3cb"],
+body.theme-light [style*="color:#f1e3cb"],
+body.theme-light [style*="color: #ebe8e3"],
+body.theme-light [style*="color:#ebe8e3"],
+body.theme-light [style*="color: #e2e8f0"],
+body.theme-light [style*="color:#e2e8f0"],
+body.theme-light [style*="color: #cbd5e1"],
+body.theme-light [style*="color:#cbd5e1"],
+body.theme-light [style*="color: #d1fae5"],
+body.theme-light [style*="color:#d1fae5"] {
+    color: var(--calm-light-text) !important;
+}
+
+body.theme-light [style*="color: #94a3b8"],
+body.theme-light [style*="color:#94a3b8"],
+body.theme-light [style*="color: #9b978f"],
+body.theme-light [style*="color:#9b978f"] {
+    color: var(--calm-light-sub) !important;
+}
+
+body.theme-light [style*="color: #c8a46e"],
+body.theme-light [style*="color:#c8a46e"],
+body.theme-light [style*="color: #dfc496"],
+body.theme-light [style*="color:#dfc496"],
+body.theme-light [style*="color: #fbbf24"],
+body.theme-light [style*="color:#fbbf24"],
+body.theme-light [style*="color: #fde68a"],
+body.theme-light [style*="color:#fde68a"] {
+    color: var(--calm-light-accent) !important;
+}
+
+body.theme-light [style*="color: #38bdf8"],
+body.theme-light [style*="color:#38bdf8"],
+body.theme-light [style*="color: #93b1c9"],
+body.theme-light [style*="color:#93b1c9"] {
+    color: var(--calm-light-men) !important;
+}
+
+body.theme-light [style*="color: #f472b6"],
+body.theme-light [style*="color:#f472b6"],
+body.theme-light [style*="color: #ec4899"],
+body.theme-light [style*="color:#ec4899"],
+body.theme-light [style*="color: #fb7185"],
+body.theme-light [style*="color:#fb7185"],
+body.theme-light [style*="color: #fda4af"],
+body.theme-light [style*="color:#fda4af"],
+body.theme-light [style*="color: #f87171"],
+body.theme-light [style*="color:#f87171"],
+body.theme-light [style*="color: #d8a1aa"],
+body.theme-light [style*="color:#d8a1aa"] {
+    color: var(--calm-light-women) !important;
+}
+
+body.theme-light [style*="color: #4ade80"],
+body.theme-light [style*="color:#4ade80"],
+body.theme-light [style*="color: #6ee7b7"],
+body.theme-light [style*="color:#6ee7b7"],
+body.theme-light [style*="color: #a7f3d0"],
+body.theme-light [style*="color:#a7f3d0"],
+body.theme-light [style*="color: #8fb89d"],
+body.theme-light [style*="color:#8fb89d"] {
+    color: #166534 !important;
+}

@@ -10,20 +10,77 @@
             --bg: #0f1014;
             --surface: #16171c;
             --surface-2: #1d1f26;
+            --card-inner: #0f1014;
+            --input-bg: #16171c;
+            --chip-bg: rgba(255, 255, 255, 0.06);
+            --track-bg: rgba(255, 255, 255, 0.06);
             --border: rgba(255, 255, 255, 0.08);
             --border-strong: rgba(255, 255, 255, 0.15);
             --text: #f1efe9;
             --sub: #9b978f;
             --gold: #c8a46e;
             --gold-soft: rgba(200, 164, 110, 0.15);
+            --gold-border: rgba(200, 164, 110, 0.45);
+            --gold-ink: #f5e6cc;
             --rose: #d8a1aa;
             --rose-soft: rgba(216, 161, 170, 0.16);
+            --rose-border: rgba(216, 161, 170, 0.42);
+            --rose-ink: #f6dce2;
             --blue: #93b1c9;
             --blue-soft: rgba(147, 177, 201, 0.16);
+            --blue-border: rgba(147, 177, 201, 0.38);
+            --blue-ink: #cde2f5;
             --green: #7bc49f;
             --green-soft: rgba(123, 196, 159, 0.16);
+            --green-border: rgba(123, 196, 159, 0.40);
+            --green-ink: #d3f3e2;
+            --amber: #f59e0b;
+            --amber-soft: rgba(245, 158, 11, 0.14);
+            --amber-border: rgba(245, 158, 11, 0.45);
+            --amber-ink: #fde68a;
+            --red: #ef4444;
+            --err-ink: #fca5a5;
+        }
+        body.theme-light {
+            --bg: #f4f2ed;
+            --surface: #faf9f6;
+            --surface-2: #edeae3;
+            --card-inner: #ffffff;
+            --input-bg: #ffffff;
+            --chip-bg: rgba(28, 27, 24, 0.06);
+            --track-bg: rgba(28, 27, 24, 0.08);
+            --border: rgba(28, 27, 24, 0.12);
+            --border-strong: rgba(28, 27, 24, 0.22);
+            --text: #1f1e1b;
+            --sub: #5c574f;
+            --gold: #7d5b24;
+            --gold-soft: rgba(125, 91, 36, 0.12);
+            --gold-border: rgba(125, 91, 36, 0.38);
+            --gold-ink: #664919;
+            --rose: #a84858;
+            --rose-soft: rgba(168, 72, 88, 0.11);
+            --rose-border: rgba(168, 72, 88, 0.35);
+            --rose-ink: #8c3343;
+            --blue: #3d6282;
+            --blue-soft: rgba(61, 98, 130, 0.11);
+            --blue-border: rgba(61, 98, 130, 0.35);
+            --blue-ink: #2b4d6b;
+            --green: #1e6b47;
+            --green-soft: rgba(30, 107, 71, 0.11);
+            --green-border: rgba(30, 107, 71, 0.35);
+            --green-ink: #17593a;
+            --amber: #8f5814;
+            --amber-soft: rgba(143, 88, 20, 0.11);
+            --amber-border: rgba(143, 88, 20, 0.38);
+            --amber-ink: #78480c;
+            --red: #a93838;
+            --err-ink: #9e2f2f;
         }
         * { box-sizing: border-box; }
+        html, body {
+            overflow-x: hidden;
+            max-width: 100%;
+        }
         body {
             margin: 0;
             background: var(--bg);
@@ -45,7 +102,7 @@
             gap: 10px;
             margin-bottom: 14px;
         }
-        a.back-btn, button.back-btn {
+        a.back-btn, button.back-btn, .pill-btn {
             display: inline-flex;
             align-items: center;
             gap: 6px;
@@ -60,8 +117,8 @@
             cursor: pointer;
             font-family: inherit;
         }
-        a.back-btn:hover, button.back-btn:hover { border-color: var(--gold); }
-        .top-actions {
+        a.back-btn:hover, button.back-btn:hover, .pill-btn:hover { border-color: var(--gold); }
+        .top-actions, .top-links {
             display: flex;
             align-items: center;
             gap: 8px;
@@ -71,14 +128,14 @@
             display: inline-flex;
             align-items: center;
             gap: 5px;
-            color: #f1e3cb;
+            color: var(--gold-ink);
             text-decoration: none;
             font-size: 0.8rem;
             font-weight: 700;
             padding: 7px 13px;
             border-radius: 999px;
             background: var(--surface-2);
-            border: 1px solid rgba(200, 164, 110, 0.45);
+            border: 1px solid var(--gold-border);
         }
         .flush-btn:hover { background: var(--gold-soft); }
 
@@ -87,8 +144,8 @@
             padding: 10px 14px;
             border-radius: 10px;
             background: var(--green-soft);
-            border: 1px solid rgba(123, 196, 159, 0.4);
-            color: #d3f3e2;
+            border: 1px solid var(--green-border);
+            color: var(--green-ink);
             font-size: 0.83rem;
             font-weight: 600;
         }
@@ -130,20 +187,23 @@
             border-radius: 999px;
             font-size: 0.8rem;
             font-weight: 700;
-            background: var(--bg);
+            background: var(--input-bg);
         }
         .range-tabs a.active {
             background: var(--gold-soft);
             border-color: var(--gold);
-            color: #f5e6cc;
+            color: var(--gold-ink);
         }
 
         /* Funnel + Revenue Overview Row */
         .overview-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
             gap: 12px;
             margin-bottom: 20px;
+        }
+        .overview-grid > * {
+            min-width: 0;
         }
         .funnel-card {
             background: var(--surface);
@@ -153,8 +213,8 @@
             position: relative;
         }
         .funnel-card.highlight-gold {
-            border-color: rgba(200, 164, 110, 0.4);
-            background: linear-gradient(180deg, rgba(200, 164, 110, 0.08) 0%, var(--surface) 100%);
+            border-color: var(--gold-border);
+            background: linear-gradient(180deg, var(--gold-soft) 0%, var(--surface) 100%);
         }
         .step-badge {
             display: inline-block;
@@ -165,10 +225,10 @@
             margin-bottom: 8px;
             letter-spacing: 0.04em;
         }
-        .step-1 { background: var(--blue-soft); color: var(--blue); border: 1px solid rgba(147, 177, 201, 0.35); }
-        .step-2 { background: var(--rose-soft); color: var(--rose); border: 1px solid rgba(216, 161, 170, 0.35); }
-        .step-3 { background: var(--green-soft); color: var(--green); border: 1px solid rgba(123, 196, 159, 0.35); }
-        .step-rev { background: var(--gold-soft); color: var(--gold); border: 1px solid rgba(200, 164, 110, 0.45); }
+        .step-1 { background: var(--blue-soft); color: var(--blue-ink); border: 1px solid var(--blue-border); }
+        .step-2 { background: var(--rose-soft); color: var(--rose-ink); border: 1px solid var(--rose-border); }
+        .step-3 { background: var(--green-soft); color: var(--green-ink); border: 1px solid var(--green-border); }
+        .step-rev { background: var(--gold-soft); color: var(--gold-ink); border: 1px solid var(--gold-border); }
 
         .funnel-label {
             font-size: 0.8rem;
@@ -178,6 +238,7 @@
         .funnel-num-row {
             display: flex;
             align-items: baseline;
+            flex-wrap: wrap;
             gap: 8px;
             margin: 4px 0 6px;
         }
@@ -198,7 +259,7 @@
             font-weight: 800;
             padding: 2px 8px;
             border-radius: 6px;
-            background: rgba(255, 255, 255, 0.06);
+            background: var(--chip-bg);
         }
         .funnel-breakdown {
             font-size: 0.74rem;
@@ -224,6 +285,7 @@
             border: 1px solid var(--border);
             border-radius: 11px;
             padding: 11px 13px;
+            min-width: 0;
         }
         .mini-kpi .k { font-size: 0.73rem; color: var(--sub); margin-bottom: 2px; }
         .mini-kpi .v { font-size: 1.25rem; font-weight: 800; font-variant-numeric: tabular-nums; }
@@ -231,9 +293,12 @@
         /* Section Panels */
         .panel-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
             gap: 16px;
             margin-bottom: 22px;
+        }
+        .panel-grid > .panel {
+            min-width: 0;
         }
         .panel {
             background: var(--surface);
@@ -247,6 +312,8 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 6px;
         }
         .panel .panel-sub {
             font-size: 0.75rem;
@@ -261,7 +328,7 @@
             gap: 10px;
         }
         .bar-item {
-            background: var(--bg);
+            background: var(--card-inner);
             border: 1px solid var(--border);
             border-radius: 10px;
             padding: 9px 12px;
@@ -279,6 +346,7 @@
             color: var(--text);
             text-decoration: none;
             word-break: break-word;
+            overflow-wrap: anywhere;
         }
         a.bar-item-title:hover { color: var(--gold); text-decoration: underline; }
         .bar-item-sub {
@@ -286,6 +354,8 @@
             color: var(--sub);
             display: block;
             margin-top: 1px;
+            word-break: break-word;
+            overflow-wrap: anywhere;
         }
         .bar-item-nums {
             display: flex;
@@ -306,7 +376,7 @@
         .bar-track {
             width: 100%;
             height: 6px;
-            background: rgba(255, 255, 255, 0.05);
+            background: var(--track-bg);
             border-radius: 999px;
             overflow: hidden;
         }
@@ -329,6 +399,7 @@
             border-bottom: 1px solid var(--border);
             margin-bottom: 14px;
             overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
         }
         .day-col {
             flex: 1;
@@ -366,6 +437,11 @@
         }
 
         /* Daily Table */
+        .table-scroll-wrap {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            max-width: 100%;
+        }
         table.daily-table {
             width: 100%;
             border-collapse: collapse;
@@ -375,6 +451,7 @@
             padding: 8px 10px;
             border-bottom: 1px solid var(--border);
             text-align: left;
+            white-space: nowrap;
         }
         .daily-table th { color: var(--sub); font-weight: 600; font-size: 0.75rem; }
         .daily-table td.n, .daily-table th.n {
@@ -389,14 +466,14 @@
             border-radius: 4px;
             margin-left: 6px;
             background: var(--gold-soft);
-            color: var(--gold);
+            color: var(--gold-ink);
         }
         .empty-box {
             padding: 20px;
             text-align: center;
             color: var(--sub);
             font-size: 0.82rem;
-            background: var(--bg);
+            background: var(--card-inner);
             border-radius: 10px;
             border: 1px dashed var(--border-strong);
         }
@@ -434,14 +511,14 @@
             line-height: 1.5;
         }
         .dup-banner.warn {
-            background: rgba(245, 158, 11, 0.12);
-            border: 1px solid rgba(245, 158, 11, 0.42);
-            color: #fde68a;
+            background: var(--amber-soft);
+            border: 1px solid var(--amber-border);
+            color: var(--amber-ink);
         }
         .dup-banner.ok {
             background: var(--green-soft);
-            border: 1px solid rgba(123, 196, 159, 0.38);
-            color: #d3f3e2;
+            border: 1px solid var(--green-border);
+            color: var(--green-ink);
         }
         .aff-slots-list {
             display: flex;
@@ -449,13 +526,13 @@
             gap: 12px;
         }
         .aff-slot-card {
-            background: var(--bg);
+            background: var(--card-inner);
             border: 1px solid var(--border);
             border-radius: 12px;
             padding: 13px 15px;
         }
         .aff-slot-card.is-dup {
-            border-color: rgba(245, 158, 11, 0.45);
+            border-color: var(--amber-border);
         }
         .aff-slot-top {
             display: flex;
@@ -469,11 +546,15 @@
             font-size: 0.9rem;
             font-weight: 800;
             color: var(--text);
+            overflow-wrap: anywhere;
+            word-break: break-word;
         }
         .aff-slot-meta {
             font-size: 0.73rem;
             color: var(--sub);
             margin-top: 2px;
+            overflow-wrap: anywhere;
+            word-break: break-word;
         }
         .aff-badges {
             display: flex;
@@ -494,14 +575,19 @@
             color: var(--text);
         }
         .ops-pill.warn {
-            background: rgba(245, 158, 11, 0.16);
-            border-color: rgba(245, 158, 11, 0.5);
-            color: #fcd34d;
+            background: var(--amber-soft);
+            border-color: var(--amber-border);
+            color: var(--amber-ink);
         }
         .ops-pill.gold {
             background: var(--gold-soft);
-            border-color: rgba(200, 164, 110, 0.45);
-            color: #f5e6cc;
+            border-color: var(--gold-border);
+            color: var(--gold-ink);
+        }
+        .ops-pill.women {
+            background: var(--rose-soft);
+            border-color: var(--rose-border);
+            color: var(--rose-ink);
         }
         .aff-form-row {
             display: grid;
@@ -510,6 +596,9 @@
             align-items: center;
             margin-top: 8px;
         }
+        .aff-form-row > * {
+            min-width: 0;
+        }
         @media (max-width: 760px) {
             .aff-form-row {
                 grid-template-columns: 1fr;
@@ -517,13 +606,20 @@
         }
         .ops-input {
             width: 100%;
-            background: var(--surface);
+            max-width: 100%;
+            box-sizing: border-box;
+            background: var(--input-bg);
             color: var(--text);
             border: 1px solid var(--border-strong);
             border-radius: 8px;
             padding: 8px 10px;
             font-size: 0.8rem;
             font-family: inherit;
+        }
+        @media (max-width: 560px) {
+            .ops-input {
+                font-size: 16px;
+            }
         }
         .ops-input:focus {
             outline: none;
@@ -537,9 +633,9 @@
         }
         .ops-btn {
             cursor: pointer;
-            border: 1px solid rgba(200, 164, 110, 0.5);
+            border: 1px solid var(--gold-border);
             background: var(--gold-soft);
-            color: #f5e6cc;
+            color: var(--gold-ink);
             font-size: 0.76rem;
             font-weight: 700;
             padding: 7px 12px;
@@ -550,7 +646,7 @@
             align-items: center;
             gap: 4px;
         }
-        .ops-btn:hover { background: rgba(200, 164, 110, 0.28); }
+        .ops-btn:hover { filter: brightness(1.06); }
         .ops-btn.secondary {
             background: var(--surface-2);
             border-color: var(--border-strong);
@@ -564,7 +660,7 @@
             display: none;
         }
         .cap-meter-box {
-            background: var(--bg);
+            background: var(--card-inner);
             border: 1px solid var(--border);
             border-radius: 12px;
             padding: 13px 15px;
@@ -581,7 +677,7 @@
         .cap-bar-track {
             width: 100%;
             height: 9px;
-            background: rgba(255, 255, 255, 0.06);
+            background: var(--track-bg);
             border-radius: 999px;
             overflow: hidden;
             margin-bottom: 9px;
@@ -592,8 +688,8 @@
             background: var(--green);
             transition: width 0.3s ease;
         }
-        .cap-bar-fill.warn { background: #f59e0b; }
-        .cap-bar-fill.critical { background: #ef4444; }
+        .cap-bar-fill.warn { background: var(--amber); }
+        .cap-bar-fill.critical { background: var(--red); }
         .ws-chips {
             display: flex;
             flex-wrap: wrap;
@@ -610,16 +706,40 @@
             font-variant-numeric: tabular-nums;
         }
         .ws-chip strong { color: var(--text); }
+        code {
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
     </style>
 </head>
 <body>
+<script>
+    (function() {
+        try {
+            if (localStorage.getItem('olg_view_theme') === 'light') {
+                document.body.classList.add('theme-light');
+            }
+        } catch (e) {}
+    })();
+    function toggleStaffTheme() {
+        var isLight = document.body.classList.toggle('theme-light');
+        try {
+            localStorage.setItem('olg_view_theme', isLight ? 'light' : 'default');
+        } catch (e) {}
+        var btn = document.getElementById('staff-theme-toggle-btn');
+        if (btn) {
+            btn.setAttribute('aria-pressed', isLight ? 'true' : 'false');
+        }
+    }
+</script>
 <div class="wrap">
     <div class="top-nav">
         <a class="back-btn" href="/staff">← 社内業務モニターへ戻る</a>
-        <div class="top-actions">
+        <div class="top-actions top-links">
             <a class="flush-btn" href="/staff/pdca">🧭 自律PDCA作戦参謀ボードへ →</a>
             <a class="flush-btn" href="/staff/analytics?days={{ days }}&flush=1">🔄 いまの最新カウントを即時集計</a>
             <a class="back-btn" href="/staff/analytics?days={{ days }}&format=json" style="font-size:0.75rem;">JSON出力</a>
+            <button type="button" class="pill-btn" onclick="toggleStaffTheme()" id="staff-theme-toggle-btn">☀️/🌙 表示切替</button>
         </div>
     </div>
 
@@ -695,7 +815,7 @@
             <div class="funnel-label">期間内の推定収益（AdSense＋アフィリエイト期待値）</div>
             <div class="funnel-num-row">
                 <span class="funnel-big" style="color: var(--gold);">¥{{ "{:,}".format(rev.est_total_yen) }}</span>
-                <span class="funnel-rate" style="color: #f5e6cc;">月換算 約¥{{ "{:,}".format(rev.est_monthly_pace_yen) }}/月</span>
+                <span class="funnel-rate" style="color: var(--gold-ink);">月換算 約¥{{ "{:,}".format(rev.est_monthly_pace_yen) }}/月</span>
             </div>
             <div class="funnel-breakdown">
                 <span>AdSense目安: <strong>¥{{ "{:,}".format(rev.est_adsense_yen) }}</strong> <small>(0.35円/PV)</small></span>
@@ -736,6 +856,7 @@
             {% endfor %}
         </div>
 
+        <div class="table-scroll-wrap" style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
         <table class="daily-table">
             <thead>
                 <tr>
@@ -763,6 +884,7 @@
                 {% endfor %}
             </tbody>
         </table>
+        </div>
         {% else %}
         <div class="empty-box">まだ日別データがありません。</div>
         {% endif %}
@@ -999,7 +1121,7 @@
                 <div class="aff-slot-top">
                     <div>
                         <div class="aff-slot-name">
-                            <span class="ops-pill" style="margin-right:6px;{% if slot.audience == 'women' %}border-color:rgba(223,163,176,0.45);color:#f6dce2;{% endif %}">{{ slot.audience_label }}</span>
+                            <span class="ops-pill{% if slot.audience == 'women' %} women{% endif %}" style="margin-right:6px;">{{ slot.audience_label }}</span>
                             {{ slot.category_label }}
                             <span style="font-weight:500;font-size:0.75rem;color:var(--sub);">（/link/{{ slot.slot_id }}{% if slot.aliases %}・互換: {{ slot.aliases | join(', ') }}{% endif %}）</span>
                         </div>
@@ -1143,7 +1265,7 @@ async function saveAffiliateSlot(slotId, resetToDefault) {
         days: CURRENT_DAYS,
     };
     msgEl.style.display = 'block';
-    msgEl.style.color = '#cbd5e1';
+    msgEl.style.color = 'var(--sub)';
     msgEl.textContent = '保存中...';
 
     try {
@@ -1153,11 +1275,11 @@ async function saveAffiliateSlot(slotId, resetToDefault) {
             body: JSON.stringify(payload),
         }, 25000);
         if (!res.ok) {
-            msgEl.style.color = '#fca5a5';
+            msgEl.style.color = 'var(--err-ink)';
             msgEl.textContent = '⚠️ ' + (res.error || '保存に失敗しました');
             return;
         }
-        msgEl.style.color = '#86efac';
+        msgEl.style.color = 'var(--green-ink)';
         msgEl.textContent = '✅ ' + (res.message || '保存しました');
 
         if (res.aff_status && Array.isArray(res.aff_status.slots)) {
@@ -1185,7 +1307,7 @@ async function saveAffiliateSlot(slotId, resetToDefault) {
             }
         }
     } catch (e) {
-        msgEl.style.color = '#fca5a5';
+        msgEl.style.color = 'var(--err-ink)';
         msgEl.textContent = '⚠️ ' + ((e && e.message) || '通信エラーが発生しました');
     } finally {
         _affSavingSlots[slotId] = false;
@@ -1203,7 +1325,7 @@ async function runSheetsRetention(dryRun) {
         return;
     }
     msgEl.style.display = 'block';
-    msgEl.style.color = '#cbd5e1';
+    msgEl.style.color = 'var(--sub)';
     msgEl.textContent = dryRun ? '🔍 Google Sheets の全シート容量と削減対象行数を計測中...' : '🧹 日次サマリー圧縮＆シート整理を実行中...';
     if (btnDry) btnDry.disabled = true;
     if (btnExec) btnExec.disabled = true;
@@ -1215,7 +1337,7 @@ async function runSheetsRetention(dryRun) {
             body: JSON.stringify({dry_run: !!dryRun}),
         }, 60000);
         if (!res.ok) {
-            msgEl.style.color = '#fca5a5';
+            msgEl.style.color = 'var(--err-ink)';
             msgEl.textContent = '⚠️ ' + (res.error || 'シート整理に失敗しました');
             return;
         }
@@ -1249,7 +1371,7 @@ async function runSheetsRetention(dryRun) {
             ).join('');
         }
 
-        msgEl.style.color = '#86efac';
+        msgEl.style.color = 'var(--green-ink)';
         msgEl.textContent = (dryRun ? '✅ 【ドライラン試算結果】' : '✅ 【圧縮・ローテーション完了】') +
             ' 合計削減対象: ' + Number(res.total_deleted_rows || 0).toLocaleString() + '行' +
             '（生ログ圧縮: ' + Number(mainD.deleted_rows || 0).toLocaleString() + '行 → 日次サマリー +' + Number(mainD.summary_rows_added || 0).toLocaleString() + '行 / ' +
@@ -1257,7 +1379,7 @@ async function runSheetsRetention(dryRun) {
             '投票整理: ' + Number(voteD.deleted_rows || 0).toLocaleString() + '行 / ' +
             'JobState圧縮: ' + Number(jsD.deleted_rows || 0).toLocaleString() + '行）';
     } catch (e) {
-        msgEl.style.color = '#fca5a5';
+        msgEl.style.color = 'var(--err-ink)';
         msgEl.textContent = '⚠️ ' + ((e && e.message) || '通信エラーが発生しました');
     } finally {
         if (btnDry) btnDry.disabled = false;

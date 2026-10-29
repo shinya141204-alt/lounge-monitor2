@@ -134,8 +134,8 @@
     <!-- Non-render-blocking web font (avoids waiting on Google Fonts at PWA cold launch) -->
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet"></noscript>
-    <link rel="stylesheet" href="/static/style.css?v=20261029_2">
-    <link rel="preload" href="/static/app.js?v=20261029_3" as="script">
+    <link rel="stylesheet" href="/static/style.css?v=20261030_1">
+    <link rel="preload" href="/static/app.js?v=20261030_1" as="script">
     <script>
         window.APP_CONFIG = {
             isStaff: {{ 'true' if is_staff else 'false' }},
@@ -149,7 +149,7 @@
          crossorigin="anonymous"></script>
     <script src="/static/affiliate_config.js?v=12" defer></script>
     {% endif %}
-    <link rel="stylesheet" href="/static/calm.css?v=19">
+    <link rel="stylesheet" href="/static/calm.css?v=20">
 </head>
 
 <body class="{% if is_staff %}staff-mode{% endif %}">
@@ -217,7 +217,7 @@
             {% if is_staff %}
             <div class="staff-header-top" style="display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap;">
                 {% if is_master %}
-                <span class="staff-header-badge" style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(217, 119, 6, 0.35)); border: 1px solid rgba(251, 191, 36, 0.55); color: #fde68a;">👑 MASTER MONITOR（マスター全権限モード・広告OFF）</span>
+                <span class="staff-header-badge master-header-badge">👑 MASTER MONITOR（マスター全権限モード・広告OFF）</span>
                 {% else %}
                 <span class="staff-header-badge">社内業務モニター（現場データ専用・広告OFF）</span>
                 {% endif %}
@@ -367,16 +367,16 @@
                 </div>
 
                 <!-- 3-Second Tonight's Lounge & Hopping Concierge Quick Bar -->
-                <div class="concierge-quick-banner" style="margin: 0 0 12px; padding: 10px 14px; border-radius: 12px; background: linear-gradient(135deg, rgba(200, 164, 110, 0.14), rgba(22, 23, 28, 0.92)); border: 1px solid rgba(200, 164, 110, 0.38); display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;">
-                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                        <span style="font-size: 0.72rem; font-weight: 800; color: #16171c; background: #dfc496; padding: 2px 7px; border-radius: 999px; letter-spacing: 0.03em;">NEW 診断</span>
-                        <span style="font-size: 0.85rem; font-weight: 700; color: #f3efe8;">🧭 今夜どこ行く？現在人数×17万件データで「本命＆徒歩ハシゴ先」を3秒診断</span>
+                <div class="concierge-quick-banner">
+                    <div class="cqb-left">
+                        <span class="cqb-badge">NEW 診断</span>
+                        <span class="cqb-title">🧭 今夜どこ行く？現在人数×17万件データで「本命＆徒歩ハシゴ先」を3秒診断</span>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-                        <a href="/concierge?area=shinjuku" style="font-size: 0.76rem; color: #dfc496; text-decoration: none; padding: 4px 9px; border-radius: 7px; border: 1px solid rgba(200, 164, 110, 0.35); background: rgba(255, 255, 255, 0.03);">新宿</a>
-                        <a href="/concierge?area=umeda" style="font-size: 0.76rem; color: #dfc496; text-decoration: none; padding: 4px 9px; border-radius: 7px; border: 1px solid rgba(200, 164, 110, 0.35); background: rgba(255, 255, 255, 0.03);">梅田</a>
-                        <a href="/concierge?area=shibuya" style="font-size: 0.76rem; color: #dfc496; text-decoration: none; padding: 4px 9px; border-radius: 7px; border: 1px solid rgba(200, 164, 110, 0.35); background: rgba(255, 255, 255, 0.03);">渋谷</a>
-                        <a href="/concierge" style="font-size: 0.8rem; font-weight: 700; color: #111216; background: linear-gradient(135deg, #e5cb9f, #c8a46e); text-decoration: none; padding: 5px 12px; border-radius: 8px;">3秒診断する ›</a>
+                    <div class="cqb-actions">
+                        <a href="/concierge?area=shinjuku" class="cqb-chip">新宿</a>
+                        <a href="/concierge?area=umeda" class="cqb-chip">梅田</a>
+                        <a href="/concierge?area=shibuya" class="cqb-chip">渋谷</a>
+                        <a href="/concierge" class="cqb-cta">3秒診断する ›</a>
                     </div>
                 </div>
                 {% endif %}
@@ -907,7 +907,7 @@
             <div class="footer-links" style="margin-top: 15px;">
                 <span class="footer-copy">相席ナビ 社内業務モニター（広告・PR完全OFFモード稼働中）</span>
                 <span class="footer-divider">|</span>
-                <a href="/staff/logout" class="footer-link-btn" style="color: #d8a1aa; font-weight: 700;">社内モード解除（ログアウト）</a>
+                <a href="/staff/logout" class="footer-link-btn staff-footer-logout">社内モード解除（ログアウト）</a>
             </div>
             {% else %}
             <!-- Top Row: Pillar Guide Buttons -->
@@ -1196,7 +1196,7 @@
                 <h3>5. 運営者情報・お問い合わせ窓口</h3>
                 <p>
                     <strong>サイト名：</strong>相席ナビ (AISEKI NAVI)<br>
-                    <strong>サイトURL：</strong><a href="https://aiseki-navi.com" style="color: #ec4899;">https://aiseki-navi.com</a><br>
+                    <strong>サイトURL：</strong><a href="https://aiseki-navi.com" class="legal-inline-link">https://aiseki-navi.com</a><br>
                     <strong>運営元：</strong>相席ナビ運営事務局<br>
                     <strong>お問い合わせ：</strong>掲載内容や著作権に関するご相談、広告掲載・提携のご相談は、サイト内の各お問い合わせ窓口または公式SNSよりご連絡ください。
                 </p>
@@ -1272,7 +1272,9 @@
                             </div>
                             <h3 class="article-card-title">【女性限定】相席ラウンジ完全裏ガイド——受付待ちゼロの店選び・客層比較・角が立たない席替え＆退店術</h3>
                             <p class="article-card-desc">「タダ飯のつもりが女余りで30分待ち・ハズレ席で消耗」を防ぐために。今すぐ受付待ちゼロで座れる注目店ボードとスマート撤退マニュアル。</p>
-                            <span class="article-read-more">裏ガイドを読む ›</span>
+                            <div class="article-card-footer">
+                                <span class="article-read-btn">裏ガイドを読む ›</span>
+                            </div>
                         </div>
                     </a>
                     {% for item in published_scheduled or [] %}
@@ -1862,10 +1864,70 @@
                     </div>
                 </div>
 
+                {% if is_staff %}
+                <!-- Staff / Master Mobile Quick Menu -->
+                <div class="menu-section">
+                    <div class="menu-section-title">{% if is_master %}👑 マスター運営・編集部ボード{% else %}社内管理メニュー{% endif %}</div>
+                    <div class="menu-grid">
+                        {% if is_master %}
+                        <a href="/staff/pdca" class="menu-grid-item" style="text-decoration: none; color: inherit;">
+                            <div class="menu-grid-text">
+                                <strong>🧭 自律PDCA作戦参謀</strong>
+                                <span>勝ち筋・収益CVR診断＆自動最適化</span>
+                            </div>
+                        </a>
+                        <a href="/staff/sns-editorial" class="menu-grid-item" style="text-decoration: none; color: inherit;">
+                            <div class="menu-grid-text">
+                                <strong>🧠 SNS編集部＆動画スタジオ</strong>
+                                <span>X・Threads・IG合議＆縦型リール生成</span>
+                            </div>
+                        </a>
+                        <a href="/staff/column-editorial" class="menu-grid-item" style="text-decoration: none; color: inherit;">
+                            <div class="menu-grid-text">
+                                <strong>📖 コラム・note編集部</strong>
+                                <span>4役合議執筆・予約公開・note出力</span>
+                            </div>
+                        </a>
+                        <a href="/staff/analytics" class="menu-grid-item" style="text-decoration: none; color: inherit;">
+                            <div class="menu-grid-text">
+                                <strong>📈 アクセス・収益集計</strong>
+                                <span>PV・アフィリエイト・ボタン計測</span>
+                            </div>
+                        </a>
+                        <a href="/staff/sns-kit" class="menu-grid-item" style="text-decoration: none; color: inherit;">
+                            <div class="menu-grid-text">
+                                <strong>📸 週末予報画像キット</strong>
+                                <span>IG・Threads用速報画像を生成</span>
+                            </div>
+                        </a>
+                        {% else %}
+                        <a href="/staff?switch=1" class="menu-grid-item" style="text-decoration: none; color: inherit;">
+                            <div class="menu-grid-text">
+                                <strong>👑 マスター権限へ切替</strong>
+                                <span>マスターパスコードで全機能解放</span>
+                            </div>
+                        </a>
+                        {% endif %}
+                        <a href="/staff/logout" class="menu-grid-item" style="text-decoration: none; color: inherit;">
+                            <div class="menu-grid-text">
+                                <strong>社内モードをログアウト</strong>
+                                <span>一般公開モードへ戻る</span>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+
                 <!-- Strategy & Guides Section -->
                 <div class="menu-section">
                     <div class="menu-section-title">ポータル・ガイド</div>
                     <div class="menu-grid">
+                        <a href="/concierge" class="menu-grid-item" style="text-decoration: none; color: inherit;">
+                            <div class="menu-grid-text">
+                                <strong>🧭 3秒穴場＆ハシゴ診断</strong>
+                                <span>現在人数×徒歩距離で本命＆第2候補を提案</span>
+                            </div>
+                        </a>
                         <a href="/for-women" class="menu-grid-item" style="text-decoration: none; color: inherit;">
                             <div class="menu-grid-text">
                                 <strong>💄 女子向け裏ガイド</strong>
@@ -1991,7 +2053,7 @@
         window.INITIAL_STATUS_DATA = {{ initial_status | tojson }};
     </script>
     {% endif %}
-    <script src="/static/app.js?v=20261029_3" defer></script>
+    <script src="/static/app.js?v=20261030_1" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
@@ -2007,7 +2069,7 @@
                 }
                 if (window.__swRegistered) return;
                 window.__swRegistered = true;
-                navigator.serviceWorker.register('/sw.js?v=64', { updateViaCache: 'none' })
+                navigator.serviceWorker.register('/sw.js?v=66', { updateViaCache: 'none' })
                     .then(function(reg) {
                         reg.update();
                         document.addEventListener('visibilitychange', function() {

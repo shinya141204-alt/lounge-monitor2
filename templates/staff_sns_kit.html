@@ -7,17 +7,58 @@
     <title>Instagram・Threads用「週末予報画像」自動生成キット（スタッフ専用）｜相席ナビ</title>
     <style>
         :root {
-            --bg: #0c0d14;
-            --surface: #151824;
-            --surface-2: #1e2233;
-            --border: rgba(255, 255, 255, 0.1);
-            --text: #f8fafc;
-            --sub: #94a3b8;
-            --pink: #ec4899;
-            --gold: #fbbf24;
-            --cyan: #38bdf8;
+            --bg: #0f1014;
+            --surface: #16171c;
+            --surface-2: #1d1f26;
+            --input-bg: #0b0c0f;
+            --border: rgba(255, 255, 255, 0.08);
+            --border-strong: rgba(255, 255, 255, 0.16);
+            --text: #f1efe9;
+            --sub: #9b978f;
+            --gold: #c8a46e;
+            --gold-soft: rgba(200, 164, 110, 0.15);
+            --gold-border: rgba(200, 164, 110, 0.45);
+            --gold-ink: #f5e6cc;
+            --btn-primary-ink: #0f1014;
+            --rose: #d8a1aa;
+            --blue: #93b1c9;
+            --blue-soft: rgba(147, 177, 201, 0.16);
+            --blue-border: rgba(147, 177, 201, 0.42);
+            --blue-ink: #cde2f5;
+            --green: #7bc49f;
+            --toast-ink: #0f1014;
+            --amber: #d9b36c;
+            --red: #f87171;
+        }
+        body.theme-light {
+            --bg: #f4f2ed;
+            --surface: #faf9f6;
+            --surface-2: #edeae3;
+            --input-bg: #ffffff;
+            --border: rgba(28, 27, 24, 0.12);
+            --border-strong: rgba(28, 27, 24, 0.22);
+            --text: #1f1e1b;
+            --sub: #5c574f;
+            --gold: #7d5b24;
+            --gold-soft: rgba(125, 91, 36, 0.12);
+            --gold-border: rgba(125, 91, 36, 0.38);
+            --gold-ink: #664919;
+            --btn-primary-ink: #ffffff;
+            --rose: #a84858;
+            --blue: #3d6282;
+            --blue-soft: rgba(61, 98, 130, 0.11);
+            --blue-border: rgba(61, 98, 130, 0.38);
+            --blue-ink: #2b4d6b;
+            --green: #1e6b47;
+            --toast-ink: #ffffff;
+            --amber: #8f5814;
+            --red: #a93838;
         }
         * { box-sizing: border-box; }
+        html, body {
+            overflow-x: hidden;
+            max-width: 100%;
+        }
         body {
             margin: 0;
             background: var(--bg);
@@ -38,22 +79,33 @@
             gap: 10px;
             margin-bottom: 18px;
         }
-        .back-btn {
+        .top-links {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .back-btn, .pill-btn {
             display: inline-flex;
             align-items: center;
             gap: 6px;
             color: var(--text);
             text-decoration: none;
-            font-size: 0.85rem;
+            font-size: 0.84rem;
             font-weight: 700;
-            padding: 8px 16px;
+            padding: 8px 15px;
             border-radius: 999px;
             background: var(--surface);
-            border: 1px solid var(--border);
+            border: 1px solid var(--border-strong);
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .back-btn:hover, .pill-btn:hover {
+            border-color: var(--gold);
         }
         .hero-box {
-            background: linear-gradient(135deg, rgba(236, 72, 153, 0.14), rgba(56, 189, 248, 0.12));
-            border: 1px solid rgba(244, 114, 182, 0.35);
+            background: linear-gradient(135deg, var(--gold-soft), var(--surface));
+            border: 1px solid var(--gold-border);
             border-radius: 18px;
             padding: 20px 22px;
             margin-bottom: 24px;
@@ -67,30 +119,55 @@
             margin: 0 0 6px;
             font-size: 1.3rem;
             font-weight: 800;
+            color: var(--text);
         }
         .hero-box p {
             margin: 0;
             font-size: 0.86rem;
-            color: #cbd5e1;
+            color: var(--sub);
+        }
+        .hero-box p strong {
+            color: var(--text);
         }
         .zip-btn {
             display: inline-flex;
             align-items: center;
+            justify-content: center;
             gap: 8px;
-            padding: 12px 22px;
+            padding: 11px 20px;
             border-radius: 999px;
-            background: linear-gradient(135deg, #ec4899, #8b5cf6);
-            color: #fff;
+            background: var(--gold);
+            color: var(--btn-primary-ink);
+            border: 1px solid var(--gold);
             text-decoration: none;
             font-weight: 800;
-            font-size: 0.9rem;
-            box-shadow: 0 6px 20px rgba(236, 72, 153, 0.35);
+            font-size: 0.88rem;
+            font-family: inherit;
+            cursor: pointer;
+            max-width: 100%;
+            transition: filter 0.15s ease;
+        }
+        .zip-btn:hover {
+            filter: brightness(1.06);
+        }
+        .zip-btn.threads {
+            background: var(--blue-soft);
+            border: 1px solid var(--blue-border);
+            color: var(--blue-ink);
+        }
+        .zip-btn.secondary {
+            background: var(--surface-2);
+            border: 1px solid var(--border-strong);
+            color: var(--text);
         }
         .slides-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
             gap: 16px;
             margin-bottom: 28px;
+        }
+        .slides-grid > * {
+            min-width: 0;
         }
         .slide-card {
             background: var(--surface);
@@ -105,7 +182,7 @@
             width: 100%;
             height: auto;
             border-radius: 10px;
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            border: 1px solid var(--border);
             display: block;
         }
         .slide-meta {
@@ -122,16 +199,22 @@
             padding: 8px 12px;
             border-radius: 10px;
             background: var(--surface-2);
-            border: 1px solid rgba(56, 189, 248, 0.4);
-            color: var(--cyan);
+            border: 1px solid var(--gold-border);
+            color: var(--gold-ink);
             text-decoration: none;
             font-size: 0.8rem;
             font-weight: 700;
         }
+        .dl-btn:hover {
+            background: var(--gold-soft);
+        }
         .caption-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
             gap: 18px;
+        }
+        .caption-grid > * {
+            min-width: 0;
         }
         .caption-card {
             background: var(--surface);
@@ -143,6 +226,7 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
+            flex-wrap: wrap;
             gap: 10px;
             margin-bottom: 10px;
         }
@@ -155,18 +239,21 @@
             cursor: pointer;
             padding: 7px 14px;
             border-radius: 999px;
-            border: 1px solid rgba(251, 191, 36, 0.5);
-            background: rgba(251, 191, 36, 0.14);
-            color: var(--gold);
+            border: 1px solid var(--gold-border);
+            background: var(--gold-soft);
+            color: var(--gold-ink);
             font-weight: 800;
             font-size: 0.8rem;
+            font-family: inherit;
         }
         textarea.cap-area {
             width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
             min-height: 220px;
-            background: #0a0c14;
-            color: #e2e8f0;
-            border: 1px solid var(--border);
+            background: var(--input-bg);
+            color: var(--text);
+            border: 1px solid var(--border-strong);
             border-radius: 10px;
             padding: 12px;
             font-size: 0.84rem;
@@ -174,28 +261,60 @@
             font-family: inherit;
             resize: vertical;
         }
+        @media (max-width: 560px) {
+            textarea.cap-area {
+                font-size: 16px;
+            }
+            .zip-btn {
+                width: 100%;
+            }
+        }
         .toast {
             position: fixed;
             bottom: 24px;
             left: 50%;
             transform: translateX(-50%);
-            background: #10b981;
-            color: #fff;
+            background: var(--green);
+            color: var(--toast-ink);
             padding: 10px 22px;
             border-radius: 999px;
             font-weight: 800;
             font-size: 0.88rem;
             display: none;
             z-index: 9999;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+            max-width: calc(100vw - 32px);
+            text-align: center;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
         }
     </style>
 </head>
 <body>
+    <script>
+        (function() {
+            try {
+                if (localStorage.getItem('olg_view_theme') === 'light') {
+                    document.body.classList.add('theme-light');
+                }
+            } catch (e) {}
+        })();
+        function toggleStaffTheme() {
+            var isLight = document.body.classList.toggle('theme-light');
+            try {
+                localStorage.setItem('olg_view_theme', isLight ? 'light' : 'default');
+            } catch (e) {}
+            var btn = document.getElementById('staff-theme-toggle-btn');
+            if (btn) {
+                btn.setAttribute('aria-pressed', isLight ? 'true' : 'false');
+            }
+        }
+    </script>
     <div class="wrap">
         <div class="top-bar">
             <a href="/staff" class="back-btn">← 社内業務モニターへ戻る</a>
-            <span style="font-size:0.8rem; color:var(--sub);">対象週末：{{ ctx.weekend_label }} ｜ 集計時刻：{{ ctx.generated_at }}</span>
+            <div class="top-links">
+                <span style="font-size:0.8rem; color:var(--sub);">対象週末：{{ ctx.weekend_label }} ｜ 集計時刻：{{ ctx.generated_at }}</span>
+                <button type="button" class="pill-btn" onclick="toggleStaffTheme()" id="staff-theme-toggle-btn">☀️/🌙 表示切替</button>
+            </div>
         </div>
 
         <div class="hero-box">
@@ -203,10 +322,10 @@
                 <h1>📸 Instagram / Threads「週末狙い目予報」ワンクリック生成</h1>
                 <p>蓄積データベースから最新の<strong>4:5縦長カルーセル画像（1080×1350px・全5枚）</strong>と投稿文を自動生成しました。<br>スマホの場合は画像を長押しで「写真に保存」、PCの場合はZIP一括ダウンロード、またはAPI設定済みなら「今すぐ自動投稿」が可能です。</p>
             </div>
-            <div style="display:flex; flex-wrap:wrap; gap:10px;">
-                <button type="button" class="zip-btn" style="border:none; cursor:pointer;" onclick="triggerDirectSnsPost('ig')">📸 Instagramへ5枚組を今すぐ投稿</button>
-                <button type="button" class="zip-btn" style="border:none; cursor:pointer; background:linear-gradient(135deg, #0ea5e9, #6366f1);" onclick="triggerDirectSnsPost('threads')">🧵 Threadsへ今すぐ投稿</button>
-                <a href="/staff/sns-kit/download.zip" class="zip-btn" style="background:var(--surface-2); border:1px solid var(--border); box-shadow:none;">📦 全5枚＋キャプションをZIP保存</a>
+            <div style="display:flex; flex-wrap:wrap; gap:10px; max-width:100%;">
+                <button type="button" class="zip-btn" onclick="triggerDirectSnsPost('ig')">📸 Instagramへ5枚組を今すぐ投稿</button>
+                <button type="button" class="zip-btn threads" onclick="triggerDirectSnsPost('threads')">🧵 Threadsへ今すぐ投稿</button>
+                <a href="/staff/sns-kit/download.zip" class="zip-btn secondary">📦 全5枚＋キャプションをZIP保存</a>
             </div>
         </div>
 

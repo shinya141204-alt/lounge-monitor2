@@ -57,6 +57,7 @@ body {
     max-width: 95vw;
     /* Wider container */
     padding: 20px;
+    box-sizing: border-box;
     text-align: center;
     z-index: 1;
 }

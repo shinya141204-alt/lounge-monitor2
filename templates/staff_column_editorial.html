@@ -10,19 +10,75 @@
             --bg: #0f1014;
             --surface: #16171c;
             --surface-2: #1d1f26;
+            --input-bg: #0b0c0f;
+            --subtle-bg: rgba(255, 255, 255, 0.03);
+            --chip-bg: rgba(255, 255, 255, 0.05);
             --border: rgba(255, 255, 255, 0.08);
             --border-strong: rgba(255, 255, 255, 0.16);
             --text: #f1efe9;
             --sub: #9b978f;
             --gold: #c8a46e;
             --gold-soft: rgba(200, 164, 110, 0.16);
+            --gold-ink: #f5e6cc;
+            --muted-warm: #d8cdb8;
             --green: #7bc49f;
             --green-soft: rgba(123, 196, 159, 0.16);
+            --green-ink: #d3f3e2;
             --blue: #93b1c9;
             --blue-soft: rgba(147, 177, 201, 0.16);
+            --blue-ink: #cde2f5;
+            --link-ink: #7dd3fc;
             --rose: #d8a1aa;
             --rose-soft: rgba(216, 161, 170, 0.16);
+            --rose-ink: #f6d5dc;
             --amber: #d9b36c;
+            --amber-soft: rgba(217, 179, 108, 0.15);
+            --amber-ink: #f6e2b8;
+            --red: #f87171;
+            --err-ink: #ffd6d6;
+            --purple: #c084fc;
+            --purple-soft: rgba(168, 85, 247, 0.16);
+            --purple-ink: #ebd9ff;
+            --teal: #41c9b4;
+            --teal-soft: rgba(65, 201, 180, 0.18);
+            --teal-ink: #d1fae5;
+        }
+        body.theme-light {
+            --bg: #f4f2ed;
+            --surface: #faf9f6;
+            --surface-2: #edeae3;
+            --input-bg: #ffffff;
+            --subtle-bg: rgba(28, 27, 24, 0.04);
+            --chip-bg: rgba(28, 27, 24, 0.055);
+            --border: rgba(28, 27, 24, 0.12);
+            --border-strong: rgba(28, 27, 24, 0.22);
+            --text: #1f1e1b;
+            --sub: #5c574f;
+            --gold: #7d5b24;
+            --gold-soft: rgba(125, 91, 36, 0.12);
+            --gold-ink: #664919;
+            --muted-warm: #584c3b;
+            --green: #1e6b47;
+            --green-soft: rgba(30, 107, 71, 0.11);
+            --green-ink: #17593a;
+            --blue: #3d6282;
+            --blue-soft: rgba(61, 98, 130, 0.11);
+            --blue-ink: #2b4d6b;
+            --link-ink: #2b5478;
+            --rose: #a84858;
+            --rose-soft: rgba(168, 72, 88, 0.11);
+            --rose-ink: #8c3343;
+            --amber: #8f5814;
+            --amber-soft: rgba(143, 88, 20, 0.11);
+            --amber-ink: #78480c;
+            --red: #a93838;
+            --err-ink: #9e2f2f;
+            --purple: #6b3fa0;
+            --purple-soft: rgba(107, 63, 160, 0.10);
+            --purple-ink: #532d82;
+            --teal: #156759;
+            --teal-soft: rgba(21, 103, 89, 0.11);
+            --teal-ink: #125448;
         }
         * { box-sizing: border-box; }
         html, body {
@@ -49,7 +105,13 @@
             gap: 10px;
             margin-bottom: 14px;
         }
-        a.back-btn, button.back-btn {
+        .top-links {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        a.back-btn, button.back-btn, .pill-btn {
             display: inline-flex;
             align-items: center;
             gap: 6px;
@@ -62,8 +124,9 @@
             background: var(--surface);
             border: 1px solid var(--border-strong);
             cursor: pointer;
+            font-family: inherit;
         }
-        a.back-btn:hover, button.back-btn:hover { border-color: var(--gold); }
+        a.back-btn:hover, button.back-btn:hover, .pill-btn:hover { border-color: var(--gold); }
         .channel-bar {
             display: flex;
             align-items: center;
@@ -95,7 +158,7 @@
         .tab-group a.active {
             background: var(--gold-soft);
             border-color: var(--gold);
-            color: #f5e6cc;
+            color: var(--gold-ink);
         }
         .header-card {
             background: var(--surface);
@@ -124,6 +187,10 @@
             padding: 16px 18px;
             margin-bottom: 18px;
         }
+        body.theme-light .note-export-panel {
+            background: linear-gradient(135deg, rgba(21, 103, 89, 0.08) 0%, #faf9f6 70%);
+            border-color: rgba(21, 103, 89, 0.34);
+        }
         .note-export-grid {
             display: grid;
             grid-template-columns: 1fr;
@@ -135,6 +202,7 @@
             border: 1px solid var(--border-strong);
             border-radius: 11px;
             padding: 12px 14px;
+            min-width: 0;
         }
         .note-step-head {
             display: flex;
@@ -147,13 +215,15 @@
         .note-step-label {
             font-size: 0.8rem;
             font-weight: 800;
-            color: #a7f3d0;
+            color: var(--teal-ink);
         }
         .note-textarea, .note-text-input {
             width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
             border-radius: 8px;
             border: 1px solid var(--border-strong);
-            background: #0b0c0f;
+            background: var(--input-bg);
             color: var(--text);
             padding: 10px 12px;
             font-family: inherit;
@@ -164,9 +234,9 @@
             cursor: pointer;
             padding: 7px 13px;
             border-radius: 8px;
-            border: 1px solid rgba(65, 201, 180, 0.65);
-            background: rgba(65, 201, 180, 0.18);
-            color: #d1fae5;
+            border: 1px solid var(--teal);
+            background: var(--teal-soft);
+            color: var(--teal-ink);
             font-size: 0.79rem;
             font-weight: 800;
             text-decoration: none;
@@ -174,7 +244,7 @@
             align-items: center;
             gap: 5px;
         }
-        .note-btn:hover { border-color: #6ee7b7; background: rgba(65, 201, 180, 0.28); }
+        .note-btn:hover { opacity: 0.9; }
         .header-card p {
             color: var(--sub);
             font-size: 0.82rem;
@@ -182,7 +252,7 @@
         }
         .theme-panel {
             background: var(--surface);
-            border: 1px solid rgba(200, 164, 110, 0.35);
+            border: 1px solid var(--gold);
             border-radius: 14px;
             padding: 15px 18px;
             margin-bottom: 16px;
@@ -206,7 +276,7 @@
         .theme-chip.active {
             background: var(--gold-soft);
             border-color: var(--gold);
-            color: #f5e6cc;
+            color: var(--gold-ink);
         }
         .custom-topic-row {
             display: flex;
@@ -217,12 +287,18 @@
         .topic-input {
             flex: 1;
             min-width: 240px;
+            max-width: 100%;
+            box-sizing: border-box;
             padding: 9px 13px;
             border-radius: 9px;
             border: 1px solid var(--border-strong);
-            background: #0b0c0f;
+            background: var(--input-bg);
             color: var(--text);
             font-size: 0.84rem;
+        }
+        #note-export-select {
+            max-width: 100%;
+            box-sizing: border-box;
         }
         .ai-panel {
             background: linear-gradient(135deg, rgba(168, 85, 247, 0.11) 0%, rgba(22, 24, 29, 0.96) 65%);
@@ -230,6 +306,10 @@
             border-radius: 16px;
             padding: 15px 18px;
             margin-bottom: 18px;
+        }
+        body.theme-light .ai-panel {
+            background: linear-gradient(135deg, rgba(107, 63, 160, 0.08) 0%, #faf9f6 70%);
+            border-color: rgba(107, 63, 160, 0.28);
         }
         .ai-panel-top {
             display: flex;
@@ -246,19 +326,22 @@
             border-radius: 999px;
             font-size: 0.78rem;
             font-weight: 800;
+            max-width: 100%;
+            overflow-wrap: anywhere;
+            word-break: break-word;
         }
-        .ai-status-on { background: var(--green-soft); border: 1px solid var(--green); color: #d3f3e2; }
-        .ai-status-off { background: rgba(217, 179, 108, 0.15); border: 1px solid var(--amber); color: #f6e2b8; }
-        .ai-status-loading { background: rgba(168, 85, 247, 0.22); border: 1px solid rgba(192, 132, 252, 0.7); color: #f3e8ff; }
+        .ai-status-on { background: var(--green-soft); border: 1px solid var(--green); color: var(--green-ink); }
+        .ai-status-off { background: var(--amber-soft); border: 1px solid var(--amber); color: var(--amber-ink); }
+        .ai-status-loading { background: var(--purple-soft); border: 1px solid var(--purple); color: var(--purple-ink); }
         .ai-btn {
             cursor: pointer;
             font-size: 0.78rem;
             font-weight: 700;
             padding: 7px 13px;
             border-radius: 8px;
-            border: 1px solid rgba(192, 132, 252, 0.55);
-            background: rgba(168, 85, 247, 0.2);
-            color: #f3e8ff;
+            border: 1px solid var(--purple);
+            background: var(--purple-soft);
+            color: var(--purple-ink);
         }
         .ai-btn:disabled { opacity: 0.55; cursor: wait; }
         .context-chips {
@@ -267,13 +350,16 @@
             gap: 8px;
             margin-top: 10px;
             font-size: 0.75rem;
-            color: #dcd5e8;
+            color: var(--text);
         }
         .context-chip {
-            background: rgba(255, 255, 255, 0.05);
+            background: var(--chip-bg);
             border: 1px solid var(--border-strong);
             padding: 4px 10px;
             border-radius: 8px;
+            max-width: 100%;
+            overflow-wrap: anywhere;
+            word-break: break-word;
         }
         .key-drawer {
             margin-top: 12px;
@@ -282,7 +368,7 @@
         }
         .roles-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
             gap: 12px;
             margin-bottom: 22px;
         }
@@ -291,6 +377,7 @@
             border: 1px solid var(--border);
             border-radius: 13px;
             padding: 14px 16px;
+            min-width: 0;
         }
         .role-badge {
             display: inline-block;
@@ -300,10 +387,10 @@
             border-radius: 999px;
             margin-bottom: 8px;
         }
-        .role-1 { background: var(--blue-soft); color: #cde2f5; border: 1px solid rgba(147, 177, 201, 0.35); }
-        .role-2 { background: var(--gold-soft); color: #f5e6cc; border: 1px solid rgba(200, 164, 110, 0.35); }
-        .role-3 { background: var(--green-soft); color: #d3f3e2; border: 1px solid rgba(123, 196, 159, 0.35); }
-        .role-4 { background: var(--rose-soft); color: #f6d5dc; border: 1px solid rgba(216, 161, 170, 0.35); }
+        .role-1 { background: var(--blue-soft); color: var(--blue-ink); border: 1px solid var(--blue); }
+        .role-2 { background: var(--gold-soft); color: var(--gold-ink); border: 1px solid var(--gold); }
+        .role-3 { background: var(--green-soft); color: var(--green-ink); border: 1px solid var(--green); }
+        .role-4 { background: var(--rose-soft); color: var(--rose-ink); border: 1px solid var(--rose); }
         .role-card h3 { font-size: 0.92rem; margin: 0 0 6px; }
         .role-card ul, .role-card p {
             font-size: 0.79rem;
@@ -336,10 +423,11 @@
             display: flex;
             flex-direction: column;
             gap: 11px;
+            min-width: 0;
         }
         .cand-card.winner {
             border: 2px solid var(--green);
-            background: linear-gradient(180deg, rgba(123, 196, 159, 0.06) 0%, var(--surface) 100%);
+            background: linear-gradient(180deg, var(--green-soft) 0%, var(--surface) 100%);
         }
         .cand-top {
             display: flex;
@@ -359,7 +447,7 @@
         .cand-card.winner .score-pill {
             background: var(--green-soft);
             border-color: var(--green);
-            color: #d3f3e2;
+            color: var(--green-ink);
         }
         .article-headline-box {
             background: var(--surface-2);
@@ -370,7 +458,7 @@
         .article-headline-box h3 {
             margin: 0 0 5px 0;
             font-size: 1.02rem;
-            color: #f8fafc;
+            color: var(--text);
         }
         .article-headline-box p {
             margin: 0;
@@ -379,7 +467,7 @@
         }
         .score-bars {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
             gap: 6px;
             background: var(--surface-2);
             padding: 9px 12px;
@@ -390,24 +478,28 @@
         .score-bars span strong { color: var(--text); }
         .writer-memo {
             font-size: 0.79rem;
-            color: #d8cdb8;
-            background: rgba(200, 164, 110, 0.08);
+            color: var(--muted-warm);
+            background: var(--gold-soft);
             border-left: 3px solid var(--gold);
             padding: 7px 11px;
             border-radius: 4px;
+            overflow-wrap: anywhere;
+            word-break: break-word;
         }
         .thinking-memo {
             font-size: 0.78rem;
-            color: #ebd9ff;
-            background: rgba(168, 85, 247, 0.11);
-            border-left: 3px solid #c084fc;
+            color: var(--purple-ink);
+            background: var(--purple-soft);
+            border-left: 3px solid var(--purple);
             padding: 7px 11px;
             border-radius: 4px;
+            overflow-wrap: anywhere;
+            word-break: break-word;
         }
         .desk-box {
             font-size: 0.77rem;
             color: var(--sub);
-            background: rgba(255, 255, 255, 0.03);
+            background: var(--subtle-bg);
             border-radius: 8px;
             padding: 9px 12px;
         }
@@ -429,7 +521,7 @@
         .ptab-btn.active {
             background: var(--gold-soft);
             border-color: var(--gold);
-            color: #f5e6cc;
+            color: var(--gold-ink);
         }
         .doc-preview {
             white-space: pre-wrap;
@@ -438,14 +530,14 @@
             max-height: 340px;
             overflow-y: auto;
             font-size: 0.81rem;
-            background: #0b0c0f;
+            background: var(--input-bg);
             border: 1px solid var(--border);
             border-radius: 10px;
             padding: 13px 14px;
             color: var(--text);
         }
         .publish-bar {
-            background: rgba(255, 255, 255, 0.025);
+            background: var(--subtle-bg);
             border: 1px solid var(--border-strong);
             border-radius: 12px;
             padding: 12px 14px;
@@ -466,9 +558,11 @@
             padding: 7px 10px;
             border-radius: 7px;
             border: 1px solid var(--border-strong);
-            background: #0b0c0f;
+            background: var(--input-bg);
             color: var(--text);
             font-size: 0.8rem;
+            max-width: 100%;
+            box-sizing: border-box;
         }
         .copy-btn {
             cursor: pointer;
@@ -476,7 +570,7 @@
             border-radius: 8px;
             border: 1px solid var(--gold);
             background: var(--gold-soft);
-            color: #f5e6cc;
+            color: var(--gold-ink);
             font-size: 0.79rem;
             font-weight: 700;
         }
@@ -486,12 +580,14 @@
             border-radius: 8px;
             border: 1px solid var(--green);
             background: var(--green-soft);
-            color: #d3f3e2;
+            color: var(--green-ink);
             font-size: 0.79rem;
             font-weight: 800;
         }
         .audit-table-wrap {
             overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            max-width: 100%;
             background: var(--surface);
             border: 1px solid var(--border);
             border-radius: 13px;
@@ -517,7 +613,7 @@
             padding: 2px 8px;
             border-radius: 999px;
             background: var(--green-soft);
-            color: #d3f3e2;
+            color: var(--green-ink);
             font-size: 0.72rem;
             font-weight: 700;
         }
@@ -526,7 +622,7 @@
             padding: 2px 8px;
             border-radius: 999px;
             background: var(--gold-soft);
-            color: #f5e6cc;
+            color: var(--gold-ink);
             font-size: 0.72rem;
             font-weight: 700;
         }
@@ -534,19 +630,67 @@
             cursor: pointer;
             padding: 4px 9px;
             border-radius: 6px;
-            border: 1px solid rgba(216, 161, 170, 0.45);
+            border: 1px solid var(--rose);
             background: var(--rose-soft);
-            color: #ffd6dc;
+            color: var(--err-ink);
             font-size: 0.72rem;
             font-weight: 700;
+        }
+        @media (max-width: 560px) {
+            .custom-topic-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .custom-topic-row > * {
+                width: 100% !important;
+                flex: none !important;
+            }
+            .publish-bar > div {
+                width: 100%;
+            }
+            .pub-field {
+                width: 100%;
+            }
+            .pub-input, .pub-select, .topic-input, #note-export-select {
+                width: 100% !important;
+                min-width: 0 !important;
+                font-size: 16px;
+            }
+            .preview-tabs .copy-btn {
+                margin-left: 0 !important;
+                width: 100%;
+                text-align: center;
+            }
         }
     </style>
 </head>
 <body>
+    <script>
+        (function() {
+            try {
+                if (localStorage.getItem('olg_view_theme') === 'light') {
+                    document.body.classList.add('theme-light');
+                }
+            } catch (e) {}
+        })();
+        function toggleStaffTheme() {
+            var isLight = document.body.classList.toggle('theme-light');
+            try {
+                localStorage.setItem('olg_view_theme', isLight ? 'light' : 'default');
+            } catch (e) {}
+            var btn = document.getElementById('staff-theme-toggle-btn');
+            if (btn) {
+                btn.setAttribute('aria-pressed', isLight ? 'true' : 'false');
+            }
+        }
+    </script>
     <div class="wrap">
         <div class="top-nav">
             <a href="/staff" class="back-btn">← マスター管理画面へ戻る</a>
-            <a href="/columns" target="_blank" rel="noopener" class="back-btn">📚 公開コラム一覧（社内プレビュー付）を開く ↗</a>
+            <div class="top-links">
+                <a href="/columns" target="_blank" rel="noopener" class="back-btn">📚 公開コラム一覧（社内プレビュー付）を開く ↗</a>
+                <button type="button" class="pill-btn" onclick="toggleStaffTheme()" id="staff-theme-toggle-btn">☀️/🌙 表示切替</button>
+            </div>
         </div>
 
         <div class="channel-bar">
@@ -568,7 +712,7 @@
         <div class="note-export-panel" id="note-export-panel">
             <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:10px;">
                 <div>
-                    <div style="font-size:0.95rem; font-weight:800; color:#d1fae5;">
+                    <div style="font-size:0.95rem; font-weight:800; color:var(--teal-ink);">
                         📤 公開済み・予約済みコラムの「note.com 貼り付け用出力＆ワンタップコピー」（全 {{ editorial.existing_audit.total_columns }} 本対応）
                     </div>
                     <div style="font-size:0.77rem; color:var(--sub); margin-top:2px;">
@@ -589,7 +733,7 @@
                 <button type="button" class="note-btn" id="note-export-load-btn" onclick="loadNoteExportSelected()">📤 note貼り付け原稿を出力する</button>
             </div>
 
-            <div id="note-export-status" style="font-size:0.78rem; color:#a7f3d0; margin-top:8px; display:none;"></div>
+            <div id="note-export-status" style="font-size:0.78rem; color:var(--teal-ink); margin-top:8px; display:none;"></div>
 
             <div id="note-export-result" class="note-export-grid" style="display:none;">
                 <div class="note-step-box">
@@ -639,9 +783,9 @@
         </div>
 
         <!-- Writing Tone & Perspective Selector -->
-        <div class="theme-panel" style="border-color:rgba(216, 161, 170, 0.42);">
+        <div class="theme-panel" style="border-color:var(--rose);">
             <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:9px;">
-                <div style="font-size:0.84rem; font-weight:800; color:#f6d5dc;">
+                <div style="font-size:0.84rem; font-weight:800; color:var(--rose-ink);">
                     🌶️💄 Step 0：執筆トーン＆視点モード切替（現在：{{ editorial.tone_mode_label }}）
                 </div>
                 <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
@@ -671,9 +815,9 @@
         <div class="theme-panel">
             <div style="font-size:0.8rem; font-weight:700; color:var(--gold); margin-bottom:8px;">🎯 Step 1：企画テーマ選択 または 自由お題オーダー</div>
             {% if editorial.pdca_directives and editorial.pdca_directives.recommended_custom_topic %}
-            <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; background:rgba(123, 196, 159, 0.11); border:1px solid rgba(123, 196, 159, 0.38); border-radius:10px; padding:9px 13px; margin-bottom:11px; font-size:0.8rem;">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; background:var(--green-soft); border:1px solid var(--green); border-radius:10px; padding:9px 13px; margin-bottom:11px; font-size:0.8rem;">
                 <div>
-                    <strong style="color:#d3f3e2;">🧭 PDCA参謀の次回特命お題：</strong>
+                    <strong style="color:var(--green-ink);">🧭 PDCA参謀の次回特命お題：</strong>
                     <span>『{{ editorial.pdca_directives.recommended_custom_topic }}』</span>
                 </div>
                 <a href="/staff/column-editorial?theme={{ editorial.pdca_directives.recommended_column_theme or 'area_hopping' }}&topic={{ editorial.pdca_directives.recommended_custom_topic | urlencode }}&tone={{ editorial.tone_mode }}" class="pub-now-btn" style="text-decoration:none; padding:5px 11px; font-size:0.76rem;">⚡ この特命お題で執筆する</a>
@@ -718,7 +862,7 @@
                 <span class="context-chip">📅 {{ editorial.research.calendar.tag }}：{{ editorial.research.calendar.note }}</span>
                 <span class="context-chip">📊 全国稼働：女性 {{ editorial.research.national_women }}名 / 男性 {{ editorial.research.national_men }}名（女性比 {{ editorial.research.national_wpct }}%）</span>
                 {% if editorial.gemini_status and editorial.gemini_status.last_error and not editorial.ai_pending_async %}
-                <span class="context-chip" style="border-color:var(--rose); color:#ffd6d6;">⚠️ AI通信メモ：{{ editorial.gemini_status.last_error }}（安全案フォールバック済）</span>
+                <span class="context-chip" style="border-color:var(--rose); color:var(--err-ink);">⚠️ AI通信メモ：{{ editorial.gemini_status.last_error }}（安全案フォールバック済）</span>
                 {% endif %}
             </div>
 
@@ -740,7 +884,7 @@
                     <input type="password" id="claude-api-key-input" class="topic-input" placeholder="Anthropic Claudeキー（任意）: sk-ant-... {% if editorial.gemini_status and editorial.gemini_status.claude_configured %}（現在: {{ editorial.gemini_status.claude_masked_key }}）{% endif %}" autocomplete="off">
                     <button type="button" class="copy-btn" onclick="saveGeminiKey('claude')">💾 Claudeキーを保存</button>
                 </div>
-                <div id="gemini-key-msg" style="font-size:0.78rem; margin-top:6px; color:#d3f3e2;"></div>
+                <div id="gemini-key-msg" style="font-size:0.78rem; margin-top:6px; color:var(--green-ink);"></div>
             </div>
         </div>
 
@@ -759,7 +903,7 @@
                 <span class="role-badge role-2">② プランナー（構成・カニバリ防止係）</span>
                 <h3>切り口設計・重複チェック</h3>
                 <p id="plan-angle-text">{{ editorial.plan.angle_summary }}</p>
-                <p style="margin-top:6px; color:#d8cdb8; font-size:0.76rem;">🎯 読者像：{{ editorial.plan.target_reader }}</p>
+                <p style="margin-top:6px; color:var(--muted-warm); font-size:0.76rem;">🎯 読者像：{{ editorial.plan.target_reader }}</p>
             </div>
             <div class="role-card">
                 <span class="role-badge role-3">③ ライター（人間味ストーリー＆note執筆係）</span>
@@ -813,10 +957,10 @@
                 <div class="desk-box">
                     <strong>🧐 鬼デスク検閲コメント：</strong>
                     {% for pr in c.pros %}
-                    <div style="color:#b9f0d3;">✓ {{ pr }}</div>
+                    <div style="color:var(--green-ink);">✓ {{ pr }}</div>
                     {% endfor %}
                     {% for wn in c.warnings %}
-                    <div style="color:#ffd6d6;">⚠️ {{ wn }}</div>
+                    <div style="color:var(--err-ink);">⚠️ {{ wn }}</div>
                     {% endfor %}
                 </div>
 
@@ -894,7 +1038,7 @@
                             <div style="font-size:0.72rem; color:var(--sub);">{{ row.publish_at_ja }}</div>
                         </td>
                         <td>
-                            <a href="{{ row.path }}" target="_blank" rel="noopener" style="color:#7dd3fc; text-decoration:none; font-weight:700;">{{ row.title }} ↗</a>
+                            <a href="{{ row.path }}" target="_blank" rel="noopener" style="color:var(--link-ink); text-decoration:none; font-weight:700;">{{ row.title }} ↗</a>
                             <div style="font-size:0.71rem; color:var(--sub);"><code>{{ row.path }}</code></div>
                         </td>
                         <td>
@@ -911,7 +1055,7 @@
                             {% if row.bare_oriental_count == 0 %}
                             <span class="pill-ok">✓ 適合</span>
                             {% else %}
-                            <span style="color:#ffd6d6;">⚠️ 要修正({{ row.bare_oriental_count }})</span>
+                            <span style="color:var(--err-ink);">⚠️ 要修正({{ row.bare_oriental_count }})</span>
                             {% endif %}
                         </td>
                         <td><strong>{{ row.desk_score }}点</strong></td>
@@ -1022,7 +1166,7 @@
             if (btn && btn.disabled) return;
             if (stEl) {
                 stEl.style.display = "block";
-                stEl.style.color = "#a7f3d0";
+                stEl.style.color = "var(--teal-ink)";
                 stEl.textContent = "⏳ コラム本文をnote貼り付け用に整形しています...";
             }
             if (btn) btn.disabled = true;
@@ -1033,13 +1177,13 @@
                 }, 25000);
                 if (!res || !res.ok) {
                     if (stEl) {
-                        stEl.style.color = "#ffd6d6";
+                        stEl.style.color = "var(--err-ink)";
                         stEl.textContent = "⚠️ " + ((res && res.error) || "出力に失敗しました");
                     }
                     return;
                 }
                 if (stEl) {
-                    stEl.style.color = "#a7f3d0";
+                    stEl.style.color = "var(--teal-ink)";
                     stEl.textContent = "✅ 『" + (res.title || "") + "』のnote用原稿（" + (res.char_count || 0) + "文字）を出力しました！上から順にコピーしてnoteへ貼り付けられます。";
                 }
                 var box = document.getElementById("note-export-result");
@@ -1065,7 +1209,7 @@
             } catch (err) {
                 if (stEl) {
                     stEl.style.display = "block";
-                    stEl.style.color = "#ffd6d6";
+                    stEl.style.color = "var(--err-ink)";
                     stEl.textContent = "⚠️ " + ((err && err.message) || "通信エラーが発生しました");
                 }
             } finally {
@@ -1099,7 +1243,7 @@
         async function saveDefaultToneMode() {
             var msgEl = document.getElementById("tone-save-msg");
             if (msgEl) {
-                msgEl.style.color = "#d3f3e2";
+                msgEl.style.color = "var(--green-ink)";
                 msgEl.textContent = "標準トーンを保存中...";
             }
             try {
@@ -1110,7 +1254,7 @@
                 }, 20000);
                 if (res && res.ok) {
                     if (msgEl) {
-                        msgEl.style.color = "#d3f3e2";
+                        msgEl.style.color = "var(--green-ink)";
                         msgEl.textContent = "✅ " + res.message;
                     }
                     var badge = document.getElementById("default-tone-badge");
@@ -1118,12 +1262,12 @@
                         badge.innerHTML = '全編集部の標準トーン：<strong style="color:var(--green);">' + escHtml(res.short_label || res.tone_mode) + '（保存済）</strong>';
                     }
                 } else if (msgEl) {
-                    msgEl.style.color = "#ffd6d6";
+                    msgEl.style.color = "var(--err-ink)";
                     msgEl.textContent = "⚠️ " + ((res && res.error) || "保存に失敗しました");
                 }
             } catch (err) {
                 if (msgEl) {
-                    msgEl.style.color = "#ffd6d6";
+                    msgEl.style.color = "var(--err-ink)";
                     msgEl.textContent = "⚠️ " + ((err && err.message) || "通信エラーが発生しました");
                 }
             }
@@ -1183,8 +1327,8 @@
                 ACTIVE_TAB_BY_IDX[idx] = "web";
                 var rankTitle = (c.is_selected ? "🏆 鬼デスク推薦 1位：" : ("候補 " + c.rank + "位：")) + (c.style_label || "");
                 var sc = c.scores || {};
-                var prosHtml = (c.pros || []).map(function(p) { return '<div style="color:#b9f0d3;">✓ ' + escHtml(p) + '</div>'; }).join("");
-                var warnHtml = (c.warnings || []).map(function(w) { return '<div style="color:#ffd6d6;">⚠️ ' + escHtml(w) + '</div>'; }).join("");
+                var prosHtml = (c.pros || []).map(function(p) { return '<div style="color:var(--green-ink);">✓ ' + escHtml(p) + '</div>'; }).join("");
+                var warnHtml = (c.warnings || []).map(function(w) { return '<div style="color:var(--err-ink);">⚠️ ' + escHtml(w) + '</div>'; }).join("");
                 var thinkHtml = c.thinking_memo
                     ? '<div class="thinking-memo"><strong>🧠 AI編集長の脳内メモ（導入3案コンペ＆推敲プロセス）：</strong>' + escHtml(c.thinking_memo) + '</div>'
                     : '';
@@ -1338,15 +1482,15 @@
                 }, 30000);
                 if (res && res.ok) {
                     var statusWord = res.published_now ? "🚀 即時公開しました！" : ("🗓️ " + escHtml(res.publish_at_ja) + " で予約公開に登録しました！");
-                    msgEl.innerHTML = '<div style="padding:10px 12px; border-radius:8px; background:rgba(123,196,159,0.16); border:1px solid var(--green); color:#d3f3e2;">' +
+                    msgEl.innerHTML = '<div style="padding:10px 12px; border-radius:8px; background:var(--green-soft); border:1px solid var(--green); color:var(--green-ink);">' +
                         '<strong>' + statusWord + '</strong> ' +
-                        '<a href="' + escHtml(res.path) + '" target="_blank" rel="noopener" style="color:#fff; font-weight:800; margin-left:8px;">👉 記事ページを確認する（' + escHtml(res.path) + '）↗</a>' +
+                        '<a href="' + escHtml(res.path) + '" target="_blank" rel="noopener" style="color:var(--text); font-weight:800; margin-left:8px;">👉 記事ページを確認する（' + escHtml(res.path) + '）↗</a>' +
                     '</div>';
                 } else {
-                    msgEl.innerHTML = '<span style="color:#ffd6d6;">⚠️ ' + escHtml((res && res.error) || "保存に失敗しました") + '</span>';
+                    msgEl.innerHTML = '<span style="color:var(--err-ink);">⚠️ ' + escHtml((res && res.error) || "保存に失敗しました") + '</span>';
                 }
             } catch (err) {
-                msgEl.innerHTML = '<span style="color:#ffd6d6;">⚠️ ' + escHtml((err && err.message) || "通信エラーが発生しました") + '</span>';
+                msgEl.innerHTML = '<span style="color:var(--err-ink);">⚠️ ' + escHtml((err && err.message) || "通信エラーが発生しました") + '</span>';
             } finally {
                 btn.disabled = false;
                 btn.innerText = origLabel;
@@ -1376,7 +1520,7 @@
             _colAiConfigInFlight = true;
             var msg = document.getElementById("gemini-key-msg");
             if (msg) {
-                msg.style.color = "#d3f3e2";
+                msg.style.color = "var(--green-ink)";
                 msg.innerText = "優先AIエンジンを切り替えています...";
             }
             try {
@@ -1387,17 +1531,17 @@
                 }, 20000);
                 if (data && data.ok) {
                     if (msg) {
-                        msg.style.color = "#d3f3e2";
+                        msg.style.color = "var(--green-ink)";
                         msg.innerText = "✅ " + data.message;
                     }
                     triggerColumnAiRefresh(true, false);
                 } else if (msg) {
-                    msg.style.color = "#ffd6d6";
+                    msg.style.color = "var(--err-ink)";
                     msg.innerText = "⚠️ " + ((data && data.error) || "切り替えに失敗しました");
                 }
             } catch (err) {
                 if (msg) {
-                    msg.style.color = "#ffd6d6";
+                    msg.style.color = "var(--err-ink)";
                     msg.innerText = "⚠️ " + ((err && err.message) || "通信エラーが発生しました");
                 }
             } finally {
@@ -1413,14 +1557,14 @@
             var val = inp ? inp.value.trim() : "";
             if (!val) {
                 if (msg) {
-                    msg.style.color = "#ffd6d6";
+                    msg.style.color = "var(--err-ink)";
                     msg.innerText = "⚠️ APIキーを入力してください。";
                 }
                 return;
             }
             _colAiConfigInFlight = true;
             if (msg) {
-                msg.style.color = "#d3f3e2";
+                msg.style.color = "var(--green-ink)";
                 msg.innerText = "暗号化保存しています...";
             }
             try {
@@ -1431,18 +1575,18 @@
                 }, 25000);
                 if (data && data.ok) {
                     if (msg) {
-                        msg.style.color = "#d3f3e2";
+                        msg.style.color = "var(--green-ink)";
                         msg.innerText = "✅ " + data.message;
                     }
                     if (inp) inp.value = "";
                     triggerColumnAiRefresh(true, false);
                 } else if (msg) {
-                    msg.style.color = "#ffd6d6";
+                    msg.style.color = "var(--err-ink)";
                     msg.innerText = "⚠️ " + ((data && data.error) || "保存に失敗しました");
                 }
             } catch (err) {
                 if (msg) {
-                    msg.style.color = "#ffd6d6";
+                    msg.style.color = "var(--err-ink)";
                     msg.innerText = "⚠️ " + ((err && err.message) || "通信エラーが発生しました");
                 }
             } finally {

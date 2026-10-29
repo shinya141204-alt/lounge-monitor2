@@ -11,22 +11,63 @@
             --bg: #0f1014;
             --surface: #16181d;
             --surface-2: #1d2027;
+            --inner-card: #0f1014;
+            --track-bg: rgba(255, 255, 255, 0.06);
             --border: rgba(255, 255, 255, 0.08);
             --border-strong: rgba(255, 255, 255, 0.16);
             --text: #eceef2;
             --sub: #9ca3af;
             --gold: #c8a46e;
             --gold-soft: rgba(200, 164, 110, 0.14);
+            --gold-ink: #f5e6cc;
             --green: #7bc49f;
             --green-soft: rgba(123, 196, 159, 0.14);
+            --green-ink: #d3f3e2;
             --rose: #d8a1aa;
             --rose-soft: rgba(216, 161, 170, 0.14);
+            --rose-ink: #f6d5dc;
             --blue: #93b1c9;
             --blue-soft: rgba(147, 177, 201, 0.14);
+            --blue-ink: #dcebf7;
+            --amber: #d9b36c;
+            --red: #f87171;
             --purple: #c084fc;
             --purple-soft: rgba(192, 132, 252, 0.14);
+            --purple-ink: #f3e8ff;
+        }
+        body.theme-light {
+            --bg: #f4f2ed;
+            --surface: #faf9f6;
+            --surface-2: #edeae3;
+            --inner-card: #ffffff;
+            --track-bg: rgba(28, 27, 24, 0.09);
+            --border: rgba(28, 27, 24, 0.12);
+            --border-strong: rgba(28, 27, 24, 0.22);
+            --text: #1f1e1b;
+            --sub: #5c574f;
+            --gold: #7d5b24;
+            --gold-soft: rgba(125, 91, 36, 0.12);
+            --gold-ink: #664919;
+            --green: #1e6b47;
+            --green-soft: rgba(30, 107, 71, 0.11);
+            --green-ink: #17593a;
+            --rose: #a84858;
+            --rose-soft: rgba(168, 72, 88, 0.11);
+            --rose-ink: #8c3343;
+            --blue: #3d6282;
+            --blue-soft: rgba(61, 98, 130, 0.11);
+            --blue-ink: #2b4d6b;
+            --amber: #8f5814;
+            --red: #a93838;
+            --purple: #6b3fa0;
+            --purple-soft: rgba(107, 63, 160, 0.10);
+            --purple-ink: #532d82;
         }
         * { box-sizing: border-box; }
+        html, body {
+            overflow-x: hidden;
+            max-width: 100%;
+        }
         body {
             margin: 0;
             background: var(--bg);
@@ -47,15 +88,28 @@
             gap: 10px;
             margin-bottom: 14px;
         }
-        .back-btn {
+        .top-links {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .back-btn, .pill-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
             color: var(--text);
             text-decoration: none;
             font-size: 0.84rem;
+            font-weight: 600;
             padding: 7px 14px;
             border-radius: 999px;
             background: var(--surface);
             border: 1px solid var(--border-strong);
+            cursor: pointer;
+            font-family: inherit;
         }
+        .back-btn:hover, .pill-btn:hover { border-color: var(--gold); }
         .channel-bar {
             display: flex;
             align-items: center;
@@ -87,7 +141,7 @@
         .tab-group a.active {
             background: var(--gold-soft);
             border-color: var(--gold);
-            color: #f5e6cc;
+            color: var(--gold-ink);
         }
         .hero-grid {
             display: grid;
@@ -97,6 +151,9 @@
         }
         @media (max-width: 860px) {
             .hero-grid { grid-template-columns: 1fr; }
+        }
+        .hero-grid > *, .two-col > *, .growth-grid > * {
+            min-width: 0;
         }
         .card {
             background: var(--surface);
@@ -119,14 +176,14 @@
             gap: 16px;
             padding: 12px 14px;
             border-radius: 12px;
-            background: var(--bg);
-            border: 1px solid rgba(200, 164, 110, 0.35);
+            background: var(--inner-card);
+            border: 1px solid var(--gold);
             margin-bottom: 12px;
         }
         .score-big {
             font-size: 2.2rem;
             font-weight: 900;
-            color: #f5e6cc;
+            color: var(--gold-ink);
             line-height: 1;
             font-variant-numeric: tabular-nums;
         }
@@ -141,7 +198,7 @@
             gap: 8px;
         }
         .axis-item {
-            background: var(--bg);
+            background: var(--inner-card);
             border: 1px solid var(--border);
             border-radius: 9px;
             padding: 8px 10px;
@@ -156,7 +213,7 @@
         .bar-track {
             width: 100%;
             height: 6px;
-            background: rgba(255, 255, 255, 0.06);
+            background: var(--track-bg);
             border-radius: 999px;
             overflow: hidden;
         }
@@ -164,6 +221,9 @@
             height: 100%;
             border-radius: 999px;
             background: linear-gradient(90deg, #b89158, #dfbe89);
+        }
+        body.theme-light .bar-fill {
+            background: linear-gradient(90deg, #9a7332, #7d5b24);
         }
         .control-card {
             display: flex;
@@ -178,7 +238,7 @@
             gap: 12px;
             padding: 11px 13px;
             border-radius: 11px;
-            background: var(--bg);
+            background: var(--inner-card);
             border: 1px solid var(--border-strong);
         }
         .toggle-title {
@@ -208,6 +268,9 @@
             transition: 0.2s;
             border: 1px solid var(--border-strong);
         }
+        body.theme-light .slider {
+            background: #d6d1c7;
+        }
         .slider:before {
             position: absolute;
             content: "";
@@ -219,13 +282,16 @@
             border-radius: 50%;
             transition: 0.2s;
         }
+        body.theme-light .slider:before {
+            box-shadow: 0 1px 3px rgba(28, 27, 24, 0.22);
+        }
         input:checked + .slider {
-            background: rgba(123, 196, 159, 0.48);
+            background: var(--green-soft);
             border-color: var(--green);
         }
         input:checked + .slider:before {
             transform: translateX(20px);
-            background: #d3f3e2;
+            background: var(--green);
         }
         .run-btn {
             cursor: pointer;
@@ -234,9 +300,12 @@
             border-radius: 10px;
             border: 1px solid var(--gold);
             background: linear-gradient(135deg, rgba(200, 164, 110, 0.26), rgba(200, 164, 110, 0.12));
-            color: #f5e6cc;
+            color: var(--gold-ink);
             font-size: 0.86rem;
             font-weight: 800;
+        }
+        body.theme-light .run-btn {
+            background: linear-gradient(135deg, rgba(125, 91, 36, 0.16), rgba(125, 91, 36, 0.08));
         }
         .run-btn:hover { opacity: 0.92; }
         .run-btn:disabled { opacity: 0.55; cursor: wait; }
@@ -247,6 +316,10 @@
             border-radius: 15px;
             padding: 16px 20px;
             margin-bottom: 18px;
+        }
+        body.theme-light .briefing-card {
+            background: linear-gradient(135deg, rgba(107, 63, 160, 0.08) 0%, #faf9f6 70%);
+            border-color: rgba(107, 63, 160, 0.28);
         }
         .briefing-head {
             display: flex;
@@ -265,8 +338,8 @@
             font-size: 0.75rem;
             font-weight: 700;
             background: var(--purple-soft);
-            color: #f3e8ff;
-            border: 1px solid rgba(192, 132, 252, 0.4);
+            color: var(--purple-ink);
+            border: 1px solid var(--purple);
         }
         .briefing-body {
             font-size: 0.88rem;
@@ -277,9 +350,9 @@
             cursor: pointer;
             padding: 5px 11px;
             border-radius: 8px;
-            border: 1px solid rgba(192, 132, 252, 0.45);
-            background: rgba(168, 85, 247, 0.18);
-            color: #f3e8ff;
+            border: 1px solid var(--purple);
+            background: var(--purple-soft);
+            color: var(--purple-ink);
             font-size: 0.76rem;
             font-weight: 700;
             text-decoration: none;
@@ -299,7 +372,7 @@
             margin: 0 0 10px;
         }
         .diag-item {
-            background: var(--bg);
+            background: var(--inner-card);
             border: 1px solid var(--border);
             border-radius: 10px;
             padding: 11px 13px;
@@ -321,40 +394,45 @@
             padding: 5px 9px;
             border-radius: 7px;
             background: var(--gold-soft);
-            border: 1px solid rgba(200, 164, 110, 0.35);
-            color: #f5e6cc;
+            border: 1px solid var(--gold);
+            color: var(--gold-ink);
             font-size: 0.74rem;
             font-weight: 600;
         }
 
         .directives-panel {
             background: var(--surface);
-            border: 1px solid rgba(123, 196, 159, 0.35);
+            border: 1px solid var(--green);
             border-radius: 14px;
             padding: 18px 20px;
             margin-bottom: 18px;
         }
         .directives-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
             gap: 12px;
             margin-top: 10px;
         }
         .dir-box {
-            background: var(--bg);
+            background: var(--inner-card);
             border: 1px solid var(--border);
             border-radius: 11px;
             padding: 12px 14px;
+            min-width: 0;
         }
         .dir-box h3 {
             font-size: 0.85rem;
             margin: 0 0 8px;
-            color: #d3f3e2;
+            color: var(--green-ink);
         }
         .chip-list {
             display: flex;
             flex-wrap: wrap;
             gap: 6px;
+        }
+        .chip, code {
+            overflow-wrap: anywhere;
+            word-break: break-word;
         }
         .chip {
             display: inline-block;
@@ -366,9 +444,10 @@
             border: 1px solid var(--border-strong);
             color: var(--text);
             text-decoration: none;
+            max-width: 100%;
         }
-        .chip.plus { background: var(--green-soft); border-color: rgba(123, 196, 159, 0.45); color: #d3f3e2; }
-        .chip.minus { background: var(--rose-soft); border-color: rgba(216, 161, 170, 0.45); color: #f6d5dc; }
+        .chip.plus { background: var(--green-soft); border-color: var(--green); color: var(--green-ink); }
+        .chip.minus { background: var(--rose-soft); border-color: var(--rose); color: var(--rose-ink); }
         .cta-editorial-btn {
             display: inline-block;
             margin-top: 10px;
@@ -376,7 +455,7 @@
             border-radius: 9px;
             background: var(--green-soft);
             border: 1px solid var(--green);
-            color: #d3f3e2;
+            color: var(--green-ink);
             font-size: 0.8rem;
             font-weight: 800;
             text-decoration: none;
@@ -384,6 +463,8 @@
 
         .table-wrap {
             overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            max-width: 100%;
             background: var(--surface);
             border: 1px solid var(--border);
             border-radius: 13px;
@@ -411,8 +492,8 @@
             padding: 10px 14px;
             border-radius: 10px;
             background: var(--green-soft);
-            border: 1px solid rgba(123, 196, 159, 0.45);
-            color: #d3f3e2;
+            border: 1px solid var(--green);
+            color: var(--green-ink);
             font-size: 0.82rem;
             font-weight: 700;
         }
@@ -425,8 +506,11 @@
             font-size: 0.72rem;
             font-weight: 800;
             background: linear-gradient(135deg, rgba(200, 164, 110, 0.22), rgba(192, 132, 252, 0.2));
-            border: 1px solid rgba(200, 164, 110, 0.45);
-            color: #f5e6cc;
+            border: 1px solid var(--gold);
+            color: var(--gold-ink);
+        }
+        body.theme-light .ultra-badge {
+            background: linear-gradient(135deg, rgba(125, 91, 36, 0.14), rgba(107, 63, 160, 0.12));
         }
         .growth-section {
             background: linear-gradient(145deg, rgba(200, 164, 110, 0.09) 0%, rgba(22, 24, 29, 0.98) 65%);
@@ -434,6 +518,10 @@
             border-radius: 15px;
             padding: 18px 20px;
             margin-bottom: 18px;
+        }
+        body.theme-light .growth-section {
+            background: linear-gradient(145deg, rgba(125, 91, 36, 0.08) 0%, #faf9f6 70%);
+            border-color: rgba(125, 91, 36, 0.32);
         }
         .growth-grid {
             display: grid;
@@ -445,7 +533,7 @@
             .growth-grid { grid-template-columns: 1fr; }
         }
         .growth-card {
-            background: var(--bg);
+            background: var(--inner-card);
             border: 1px solid var(--border-strong);
             border-radius: 12px;
             padding: 14px 15px;
@@ -464,13 +552,13 @@
             font-size: 0.7rem;
             font-weight: 800;
             background: var(--gold-soft);
-            color: #f5e6cc;
-            border: 1px solid rgba(200, 164, 110, 0.4);
+            color: var(--gold-ink);
+            border: 1px solid var(--gold);
         }
-        .growth-card.p2 .prio-pill { background: var(--green-soft); color: #d3f3e2; border-color: rgba(123, 196, 159, 0.45); }
-        .growth-card.p3 .prio-pill { background: var(--purple-soft); color: #f3e8ff; border-color: rgba(192, 132, 252, 0.45); }
+        .growth-card.p2 .prio-pill { background: var(--green-soft); color: var(--green-ink); border-color: var(--green); }
+        .growth-card.p3 .prio-pill { background: var(--purple-soft); color: var(--purple-ink); border-color: var(--purple); }
         .offer-row {
-            background: var(--bg);
+            background: var(--inner-card);
             border: 1px solid var(--border);
             border-radius: 11px;
             padding: 12px 14px;
@@ -488,7 +576,7 @@
         .offer-bar-track {
             width: 100%;
             height: 9px;
-            background: rgba(255, 255, 255, 0.06);
+            background: var(--track-bg);
             border-radius: 999px;
             overflow: hidden;
             margin-bottom: 7px;
@@ -496,7 +584,7 @@
         .offer-bar-fill {
             height: 100%;
             border-radius: 999px;
-            background: linear-gradient(90deg, #c8a46e, #7bc49f);
+            background: linear-gradient(90deg, var(--gold), var(--green));
             transition: width 0.3s ease;
         }
         .trend-pill {
@@ -509,39 +597,80 @@
             border: 1px solid var(--border-strong);
             color: var(--sub);
         }
-        .trend-pill.up { background: var(--green-soft); border-color: rgba(123, 196, 159, 0.45); color: #d3f3e2; }
-        .trend-pill.down { background: var(--rose-soft); border-color: rgba(216, 161, 170, 0.45); color: #f6d5dc; }
-        .trend-pill.flat { background: var(--blue-soft); border-color: rgba(147, 177, 201, 0.45); color: #dcebf7; }
+        .trend-pill.up { background: var(--green-soft); border-color: var(--green); color: var(--green-ink); }
+        .trend-pill.down { background: var(--rose-soft); border-color: var(--rose); color: var(--rose-ink); }
+        .trend-pill.flat { background: var(--blue-soft); border-color: var(--blue); color: var(--blue-ink); }
         .gap-card {
-            background: var(--bg);
+            background: var(--inner-card);
             border: 1px solid var(--border);
             border-left: 3px solid var(--gold);
             border-radius: 11px;
             padding: 12px 14px;
             margin-bottom: 10px;
         }
-        .gap-card.critical { border-left-color: #f87171; }
+        .gap-card.critical { border-left-color: var(--red); }
         .gap-card.high { border-left-color: var(--rose); }
         .gap-card:last-child { margin-bottom: 0; }
         .gap-rx-box {
             margin-top: 8px;
             padding: 9px 11px;
             border-radius: 8px;
-            background: rgba(200, 164, 110, 0.08);
-            border: 1px solid rgba(200, 164, 110, 0.26);
+            background: var(--gold-soft);
+            border: 1px solid var(--gold);
             font-size: 0.76rem;
         }
         .reels-box {
-            background: var(--bg);
-            border: 1px solid rgba(192, 132, 252, 0.3);
+            background: var(--inner-card);
+            border: 1px solid var(--purple);
             border-radius: 11px;
             padding: 12px 14px;
             margin-bottom: 10px;
         }
         .reels-box:last-child { margin-bottom: 0; }
+        .empty-state-box {
+            padding: 14px;
+            border-radius: 10px;
+            background: var(--inner-card);
+            border: 1px dashed var(--border-strong);
+            color: var(--sub);
+            font-size: 0.8rem;
+        }
+        @media (max-width: 520px) {
+            .score-box {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+            .score-big {
+                font-size: 1.85rem;
+                white-space: nowrap;
+            }
+            .axis-grid {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 <body>
+    <script>
+        (function() {
+            try {
+                if (localStorage.getItem('olg_view_theme') === 'light') {
+                    document.body.classList.add('theme-light');
+                }
+            } catch (e) {}
+        })();
+        function toggleStaffTheme() {
+            var isLight = document.body.classList.toggle('theme-light');
+            try {
+                localStorage.setItem('olg_view_theme', isLight ? 'light' : 'default');
+            } catch (e) {}
+            var btn = document.getElementById('staff-theme-toggle-btn');
+            if (btn) {
+                btn.setAttribute('aria-pressed', isLight ? 'true' : 'false');
+            }
+        }
+    </script>
     {% set d = pdca.diagnostics if pdca is defined and pdca.diagnostics is defined else {} %}
     {% set sb = d.score_breakdown if d.score_breakdown is defined else {} %}
     {% set act = (pdca.active_directives if pdca is defined else None) or d.proposed_directives or {} %}
@@ -552,9 +681,10 @@
     <div class="wrap">
         <div class="top-nav">
             <a href="/staff" class="back-btn">← マスター管理画面へ戻る</a>
-            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <div class="top-links">
                 <a href="/staff/analytics?days={{ days }}" class="back-btn">📊 アクセス・収益詳細集計へ →</a>
                 <a href="/staff/pdca?days={{ days }}&format=json" class="back-btn" style="font-size:0.76rem;">JSON診断出力</a>
+                <button type="button" class="pill-btn" onclick="toggleStaffTheme()" id="staff-theme-toggle-btn">☀️/🌙 表示切替</button>
             </div>
         </div>
 
@@ -671,7 +801,7 @@
                             <span class="prio-pill">PRIORITY #{{ p_num }}</span>
                             <span style="font-size:0.74rem; font-weight:700; color:var(--sub);">{{ ga.category_badge|default('📌 成長施策') }}</span>
                         </div>
-                        <div style="font-size:0.88rem; font-weight:800; color:#f5e6cc; margin-bottom:7px; line-height:1.45;">{{ ga.title|default('') }}</div>
+                        <div style="font-size:0.88rem; font-weight:800; color:var(--gold-ink); margin-bottom:7px; line-height:1.45;">{{ ga.title|default('') }}</div>
                         <div style="font-size:0.76rem; color:var(--sub); margin-bottom:7px;">
                             <strong style="color:var(--text);">根拠：</strong>{{ ga.why|default('') }}
                         </div>
@@ -691,7 +821,7 @@
                 {% endfor %}
             </div>
             {% else %}
-            <div style="margin-top:10px; padding:12px; border-radius:10px; background:var(--bg); border:1px dashed var(--border-strong); color:var(--sub); font-size:0.8rem;">
+            <div class="empty-state-box" style="margin-top:10px;">
                 PDCAサイクルを実行すると、導線改善・特命コラム・リール動画の最優先アクションTOP3が自動生成されます。
             </div>
             {% endif %}
@@ -759,7 +889,7 @@
 
                 <div class="dir-box">
                     <h3>③ コラム編集部への次回特命お題</h3>
-                    <div style="font-size:0.82rem; font-weight:700; color:#f5e6cc;">『{{ act.recommended_custom_topic or (d.proposed_directives.recommended_custom_topic if d.proposed_directives is defined else '') }}』</div>
+                    <div style="font-size:0.82rem; font-weight:700; color:var(--gold-ink);">『{{ act.recommended_custom_topic or (d.proposed_directives.recommended_custom_topic if d.proposed_directives is defined else '') }}』</div>
                     <a class="cta-editorial-btn" href="/staff/column-editorial?theme={{ act.recommended_column_theme or 'area_hopping' }}&topic={{ (act.recommended_custom_topic or (d.proposed_directives.recommended_custom_topic if d.proposed_directives is defined else '')) | urlencode }}">
                         📝 この特命お題をコラム編集部で開いてワンクリック予約する →
                     </a>
@@ -784,7 +914,7 @@
                                 <span style="color:var(--gold); margin-right:4px;">#{{ ofr.rank|default(loop.index) }}</span>{{ ofr.label|default(ofr.category_key) }}
                             </div>
                             <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-                                <span style="font-size:0.84rem; font-weight:900; color:#f5e6cc;">{{ ofr.clicks|default(0) }}件</span>
+                                <span style="font-size:0.84rem; font-weight:900; color:var(--gold-ink);">{{ ofr.clicks|default(0) }}件</span>
                                 <span style="font-size:0.74rem; color:var(--sub);">（シェア {{ ofr.share_pct|default(0) }}%）</span>
                                 <span class="trend-pill {{ ofr.trend_7d|default('zero') }}">{{ ofr.trend_7d_label|default('直近7日 0件') }}</span>
                             </div>
@@ -797,12 +927,12 @@
                             <span>想定収益寄与：約 ¥{{ '{:,}'.format(ofr.est_revenue_yen|default(0)|int) }}</span>
                         </div>
                         {% if ofr.winning_pitch %}
-                        <div style="font-size:0.74rem; color:#d3f3e2;">💡 勝ち筋：{{ ofr.winning_pitch }}</div>
+                        <div style="font-size:0.74rem; color:var(--green-ink);">💡 勝ち筋：{{ ofr.winning_pitch }}</div>
                         {% endif %}
                     </div>
                     {% endfor %}
                 {% else %}
-                <div style="padding:14px; border-radius:10px; background:var(--bg); border:1px dashed var(--border-strong); color:var(--sub); font-size:0.8rem;">
+                <div class="empty-state-box">
                     アフィリエイトクリック集計データを読み込み中です。広告リンク経由のクリックが発生するとカテゴリ別ランキングと7日トレンドが表示されます。
                 </div>
                 {% endif %}
@@ -817,13 +947,13 @@
                     <div class="gap-card {{ g.severity|default('medium') }}">
                         <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; flex-wrap:wrap; margin-bottom:5px;">
                             <div>
-                                <a href="{{ g.path|default('#') }}" target="_blank" style="color:#f5e6cc; font-size:0.84rem; font-weight:800; text-decoration:none;">{{ g.title|default(g.path) }} ↗</a>
+                                <a href="{{ g.path|default('#') }}" target="_blank" style="color:var(--gold-ink); font-size:0.84rem; font-weight:800; text-decoration:none;">{{ g.title|default(g.path) }} ↗</a>
                                 <div style="font-size:0.72rem; color:var(--sub);"><code>{{ g.path|default('-') }}</code> ｜ 閲覧 <strong>{{ g.pv|default(0) }} PV</strong> ／ 広告 <strong>{{ g.aff_clicks|default(0) }}件</strong>（CVR {{ g.cvr_pct|default(0) }}% → 目標 {{ g.target_cvr_pct|default(2.5) }}%）</div>
                             </div>
                             <span class="chip {{ 'minus' if g.severity in ('critical', 'high') else '' }}">{{ g.severity_badge|default('🔍 導線チェック') }}</span>
                         </div>
                         <div class="gap-rx-box">
-                            <div style="font-weight:800; color:#f5e6cc; margin-bottom:4px;">🛠️ 追加すべき導線：{{ g.recommended_funnel|default('') }}</div>
+                            <div style="font-weight:800; color:var(--gold-ink); margin-bottom:4px;">🛠️ 追加すべき導線：{{ g.recommended_funnel|default('') }}</div>
                             <div style="color:var(--sub); margin-bottom:5px;"><strong style="color:var(--text);">推奨設置箇所：</strong>{{ g.placement_position|default('') }}</div>
                             <div style="color:var(--text); margin-bottom:6px;">{{ g.action_proposal|default('') }}</div>
                             {% if g.recommended_links %}
@@ -837,7 +967,7 @@
                     </div>
                     {% endfor %}
                 {% else %}
-                <div style="padding:14px; border-radius:10px; background:var(--bg); border:1px dashed var(--border-strong); color:var(--sub); font-size:0.8rem;">
+                <div class="empty-state-box">
                     現在、深刻な機会損失ページは検出されていません。PV蓄積に応じて自動で導線改善ポイントが表示されます。
                 </div>
                 {% endif %}
@@ -848,7 +978,7 @@
         <div class="card" style="margin-bottom:18px;">
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:6px;">
                 <h2 style="font-size:1rem; margin:0;">📲 SNSチャネル別 集客効率＆ショート動画（Reels）推奨ネタ</h2>
-                <a href="/staff/sns-kit" class="mini-btn" style="background:var(--gold-soft); border-color:rgba(200,164,110,0.45); color:#f5e6cc;">🎨 SNSスライド素材キットへ →</a>
+                <a href="/staff/sns-kit" class="mini-btn" style="background:var(--gold-soft); border-color:var(--gold); color:var(--gold-ink);">🎨 SNSスライド素材キットへ →</a>
             </div>
             <p class="lead" style="margin-bottom:12px;">
                 {{ sns_eff.summary_insight|default('X / Threads / Instagram / Reels の ?s= 流入・CV効率を横断比較し、今一番伸びる投稿時間帯とショート動画企画を提示します。') }}
@@ -868,12 +998,12 @@
                                 </div>
                                 <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
                                     <span class="chip {{ 'plus' if loop.index == 1 and ch.visits|default(0) > 0 else '' }}" style="font-size:0.7rem;">{{ ch.status_badge|default('計測中') }}</span>
-                                    <span style="font-size:0.8rem; font-weight:800; color:#f5e6cc;">流入 {{ ch.visits|default(0) }} ／ CV {{ ch.conversions|default(0) }}件</span>
+                                    <span style="font-size:0.8rem; font-weight:800; color:var(--gold-ink);">流入 {{ ch.visits|default(0) }} ／ CV {{ ch.conversions|default(0) }}件</span>
                                     <span style="font-size:0.73rem; color:var(--sub);">（CVR {{ ch.cvr_pct|default(0) }}%）</span>
                                 </div>
                             </div>
                             <div class="offer-bar-track">
-                                <div class="offer-bar-fill" style="width: {{ ch.bar_pct|default(0) }}%; background: linear-gradient(90deg, #93b1c9, #c084fc);"></div>
+                                <div class="offer-bar-fill" style="width: {{ ch.bar_pct|default(0) }}%; background: linear-gradient(90deg, var(--blue), var(--purple));"></div>
                             </div>
                             <div style="font-size:0.74rem; color:var(--text); margin-bottom:3px;">
                                 ⏰ <strong>強化時間帯：</strong>{{ ch.best_time_slot|default('-') }} ｜ 🎯 <strong>勝ち切り口：</strong>{{ ch.best_style_label|default('-') }}
@@ -884,7 +1014,7 @@
                         </div>
                         {% endfor %}
                     {% else %}
-                    <div style="padding:12px; border-radius:10px; background:var(--bg); border:1px dashed var(--border-strong); color:var(--sub); font-size:0.79rem;">
+                    <div class="empty-state-box">
                         SNSチャネル別の流入効率データを集計中です。
                     </div>
                     {% endif %}
@@ -892,7 +1022,7 @@
 
                 <!-- Reels Recommended Short Video Ideas -->
                 <div>
-                    <div style="font-size:0.84rem; font-weight:800; color:#f3e8ff; margin-bottom:8px;">🎬 ショート動画（Reels / Shorts）今週の推奨ネタ3選</div>
+                    <div style="font-size:0.84rem; font-weight:800; color:var(--purple-ink); margin-bottom:8px;">🎬 ショート動画（Reels / Shorts）今週の推奨ネタ3選</div>
                     {% set reels_list = sns_eff.reels_recommendations if sns_eff is mapping and sns_eff.reels_recommendations is defined else [] %}
                     {% if reels_list %}
                         {% for rl in reels_list %}
@@ -901,14 +1031,14 @@
                                 <span class="ai-pill" style="padding:2px 9px; font-size:0.7rem;">ネタ案 #{{ rl.idea_no|default(loop.index) }}</span>
                                 <span style="font-size:0.72rem; color:var(--gold); font-weight:700;">⏰ 推奨投稿：{{ rl.best_post_time|default('金曜 21:30') }}</span>
                             </div>
-                            <div style="font-size:0.83rem; font-weight:800; color:#f5e6cc; margin-bottom:5px;">{{ rl.title|default('') }}</div>
-                            <div style="font-size:0.75rem; color:#d3f3e2; margin-bottom:4px;"><strong>🎙️ 冒頭0〜3秒フック：</strong>{{ rl.hook_0_3s|default('') }}</div>
+                            <div style="font-size:0.83rem; font-weight:800; color:var(--gold-ink); margin-bottom:5px;">{{ rl.title|default('') }}</div>
+                            <div style="font-size:0.75rem; color:var(--green-ink); margin-bottom:4px;"><strong>🎙️ 冒頭0〜3秒フック：</strong>{{ rl.hook_0_3s|default('') }}</div>
                             <div style="font-size:0.74rem; color:var(--sub); margin-bottom:5px;">{{ rl.body_outline|default('') }}</div>
                             <div style="font-size:0.72rem; color:var(--blue); font-weight:700;">🔗 誘導導線：<code>{{ rl.cta_route|default('?s=reel_gap') }}</code></div>
                         </div>
                         {% endfor %}
                     {% else %}
-                    <div style="padding:12px; border-radius:10px; background:var(--bg); border:1px dashed var(--border-strong); color:var(--sub); font-size:0.79rem;">
+                    <div class="empty-state-box">
                         現場の男女比ギャップに応じたショート動画企画案を自動生成します。
                     </div>
                     {% endif %}
@@ -946,7 +1076,7 @@
                 </table>
             </div>
             {% else %}
-            <div style="padding:14px; border-radius:10px; background:var(--bg); border:1px dashed var(--border-strong); color:var(--sub); font-size:0.8rem;">
+            <div class="empty-state-box">
                 まだ <code>?s=</code> 識別子付きのSNS流入ログが蓄積されていません。本日のX・Threads自動投稿から切り口別の流入とCVが自動集計されます。
             </div>
             {% endif %}
@@ -970,7 +1100,7 @@
                     <tbody>
                         {% for a in d.article_perf %}
                         <tr>
-                            <td><a href="{{ a.path }}" target="_blank" style="color:#f5e6cc; text-decoration:none; font-weight:700;">{{ a.title }} ↗</a><br><span style="font-size:0.72rem; color:var(--sub);">{{ a.path }}</span></td>
+                            <td><a href="{{ a.path }}" target="_blank" style="color:var(--gold-ink); text-decoration:none; font-weight:700;">{{ a.title }} ↗</a><br><span style="font-size:0.72rem; color:var(--sub);">{{ a.path }}</span></td>
                             <td>{{ a.status_badge }}</td>
                             <td>{{ a.pv }}回</td>
                             <td><strong>{{ a.aff_clicks }}件</strong></td>

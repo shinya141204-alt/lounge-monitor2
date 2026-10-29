@@ -5,6 +5,68 @@
    - 各ページでは /static/style.css より後、ページ内 <style> より前に読み込むこと
    ========================================================================== */
 
+/* ---- ポータル共通トップヘッダー＆ブランドリンク（縦割れ・未装飾リンク防止） ---- */
+.portal-top-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px 12px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    margin-bottom: 14px;
+}
+
+.portal-brand-link {
+    text-decoration: none;
+    display: inline-flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+    color: inherit;
+    min-width: 0;
+}
+
+.portal-brand-title {
+    font-size: 1.42rem;
+    font-weight: 800;
+    color: #ebe8e3;
+    letter-spacing: 0.05em;
+    margin: 0;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.portal-brand-sub {
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: #9b978f;
+    line-height: 1.4;
+}
+
+.portal-global-nav-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 20px;
+    max-width: 100%;
+}
+
+.portal-global-nav-row > .portal-global-nav {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin-bottom: 0 !important;
+    padding: 3px 0 !important;
+}
+
+.portal-theme-toggle-btn {
+    cursor: pointer;
+    font-family: inherit;
+    flex-shrink: 0;
+    padding: 8px 12px !important;
+    font-size: 0.78rem !important;
+}
+
 /* ---- グローバルナビ ---- */
 .portal-global-nav {
     display: flex;
@@ -161,6 +223,31 @@
     color: #858179;
 }
 
+.portal-footer-sns {
+    margin: 12px 0 10px;
+    font-size: 0.78rem;
+    color: #9a968e;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.portal-footer-sns-label {
+    opacity: 0.9;
+}
+
+.portal-footer-sns a {
+    color: #dfc496;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.portal-footer-sns a:hover {
+    text-decoration: underline;
+}
+
 /* ---- ガイド記事用フッター（_guide_footer.html） ---- */
 .portal-footer--guide {
     margin-top: 48px;
@@ -179,4 +266,34 @@
 
 .portal-footer--guide a:hover {
     color: #c8a46e;
+}
+
+/* ---- ライトモード（body.theme-light）共通ヘッダー・フッター補正 ---- */
+body.theme-light .portal-top-header {
+    border-bottom-color: rgba(28, 27, 24, 0.12);
+}
+
+body.theme-light .portal-brand-sub {
+    color: #58534b;
+}
+
+body.theme-light .portal-footer-sns {
+    color: #58534b;
+}
+
+body.theme-light .portal-footer-sns a {
+    color: #755528;
+}
+
+body.theme-light .portal-footer--guide {
+    border-top-color: rgba(28, 27, 24, 0.16);
+    color: #58534b;
+}
+
+body.theme-light .portal-footer--guide a {
+    color: #1f1e1b;
+}
+
+body.theme-light .portal-footer--guide a:hover {
+    color: #755528;
 }

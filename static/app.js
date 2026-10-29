@@ -2807,9 +2807,9 @@
 
                 let genderBadge = '';
                 if (ev.gender === 'women' || (ev.title && ev.title.includes('女性'))) {
-                    genderBadge = '<span class="event-pill-tag tag-women" style="background:rgba(216,161,170,0.14); color:#d8a1aa; border:1px solid rgba(216,161,170,0.3); font-weight:700;">女性限定</span>';
+                    genderBadge = '<span class="event-pill-tag tag-women">女性限定</span>';
                 } else if (ev.gender === 'men' || (ev.title && (ev.title.includes('男性') || ev.title.includes('🚹')))) {
-                    genderBadge = '<span class="event-pill-tag tag-men" style="background:rgba(147,177,201,0.14); color:#93b1c9; border:1px solid rgba(147,177,201,0.3); font-weight:700;">男性限定</span>';
+                    genderBadge = '<span class="event-pill-tag tag-men">男性限定</span>';
                 }
 
                 html += `
@@ -2879,9 +2879,9 @@
 
                 let genderBadge = '';
                 if (ev.gender === 'women' || (ev.title && ev.title.includes('女性'))) {
-                    genderBadge = '<span class="event-pill-tag tag-women" style="background:rgba(216,161,170,0.14); color:#d8a1aa; border:1px solid rgba(216,161,170,0.3); font-size:0.68rem; padding:1px 5px;">女性限定</span>';
+                    genderBadge = '<span class="event-pill-tag tag-women tag-sm">女性限定</span>';
                 } else if (ev.gender === 'men' || (ev.title && (ev.title.includes('男性') || ev.title.includes('🚹')))) {
-                    genderBadge = '<span class="event-pill-tag tag-men" style="background:rgba(147,177,201,0.14); color:#93b1c9; border:1px solid rgba(147,177,201,0.3); font-size:0.68rem; padding:1px 5px;">男性限定</span>';
+                    genderBadge = '<span class="event-pill-tag tag-men tag-sm">男性限定</span>';
                 }
 
                 html += `
@@ -3237,8 +3237,8 @@
                         <tr>
                             <td>${escapeHtml(brand)}</td>
                             <td>${Number(stats.store_count)}</td>
-                            <td style="color:#ffb7b7; font-weight:600;">${Number(stats.total_avg_women)}</td>
-                            <td style="color:#b7caff;">${Number(stats.total_avg_men)}</td>
+                            <td class="rep-val-women">${Number(stats.total_avg_women)}</td>
+                            <td class="rep-val-men">${Number(stats.total_avg_men)}</td>
                         </tr>
                     `;
                 }
@@ -3260,8 +3260,8 @@
                         <tr>
                             <td>${escapeHtml(store.name)}</td>
                             <td>${escapeHtml(store.brand)}</td>
-                            <td style="color:#ffb7b7; font-weight:600;">${Number(store.avg_women)}</td>
-                            <td style="color:#b7caff;">${Number(store.avg_men)}</td>
+                            <td class="rep-val-women">${Number(store.avg_women)}</td>
+                            <td class="rep-val-men">${Number(store.avg_men)}</td>
                             <td>${Number(store.max_women)}</td>
                             <td>${escapeHtml(store.peak_hour)}</td>
                             <td>${Number(store.days_with_data)}日</td>
