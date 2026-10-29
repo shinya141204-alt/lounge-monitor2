@@ -9,11 +9,15 @@ import requests
 import os
 import sys
 
-# Force IPv4 globally so httplib2 (oauth2client) and requests never hang on broken IPv6 on Render
+# Force IPv4 only on legacy Render environments where outbound IPv6 hangs;
+# NEVER block IPv6 on Fly.io (`FLY_APP_NAME`), where private 6PN (`.internal`, `.flycast`, `fly-*.upstash.io`) is IPv6-native!
 _orig_getaddrinfo = socket.getaddrinfo
 def _ipv4_only_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
+    h_str = host.decode('utf-8', errors='ignore') if isinstance(host, bytes) else str(host or '')
+    if os.environ.get('FLY_APP_NAME') or h_str.endswith(('.internal', '.flycast', '.upstash.io')) or ':' in h_str:
+        return _orig_getaddrinfo(host, port, family, type, proto, flags)
     return _orig_getaddrinfo(host, port, socket.AF_INET, type, proto, flags)
-if getattr(socket.getaddrinfo, '__name__', '') != '_ipv4_only_getaddrinfo':
+if not os.environ.get('FLY_APP_NAME') and getattr(socket.getaddrinfo, '__name__', '') != '_ipv4_only_getaddrinfo':
     socket.getaddrinfo = _ipv4_only_getaddrinfo
 
 # Constants
