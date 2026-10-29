@@ -146,8 +146,8 @@ def get_redis_client():
             return None
         try:
             kwargs = {
-                "socket_connect_timeout": 2.5,
-                "socket_timeout": 3.5,
+                "socket_connect_timeout": 3.0,
+                "socket_timeout": 20.0,
                 "health_check_interval": 30,
                 "decode_responses": False,
             }

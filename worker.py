@@ -261,7 +261,7 @@ def _sns_queue_consumer_loop(stop_event: threading.Event):
     logger.info("[worker] Async SNS job queue consumer started.")
     while not stop_event.is_set():
         try:
-            finished_job = app_module.drain_sns_job_queue_once(timeout_sec=2.0)
+            finished_job = app_module.drain_sns_job_queue_once(timeout_sec=15.0)
             if finished_job:
                 logger.info(
                     f"[worker] Completed async SNS job {finished_job.get('job_id')} "
