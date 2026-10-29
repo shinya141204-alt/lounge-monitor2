@@ -730,6 +730,10 @@
                     </option>
                     {% endfor %}
                 </select>
+                <select id="note-export-mode" class="pub-select" onchange="loadNoteExportSelected()" title="note出力の文体・構成モード切替">
+                    <option value="essay" selected>📝 一人称・深層構造エッセイ変換（Web重複回避・推奨）</option>
+                    <option value="verbatim">📄 Webコラム構成そのまま変換</option>
+                </select>
                 <button type="button" class="note-btn" id="note-export-load-btn" onclick="loadNoteExportSelected()">📤 note貼り付け原稿を出力する</button>
             </div>
 
@@ -939,12 +943,17 @@
                 </div>
 
                 <div class="score-bars">
-                    <span>🗣️ 人間味・会話リアリティ: <strong>{{ c.scores.human_story }}/35</strong>（会話{{ c.dialogue_count }}箇所）</span>
+                    <span>🗣️ 構造考察・現場リアリティ: <strong>{{ c.scores.human_story }}/35</strong>（会話{{ c.dialogue_count }}箇所）</span>
                     <span>🛡️ ファクト＆ブランド呼称: <strong>{{ c.scores.fact_brand_hygiene }}/25</strong></span>
                     <span>🔍 SEO構造・内部回遊: <strong>{{ c.scores.seo_structure }}/25</strong></span>
-                    <span>📣 X告知＆note完成度: <strong>{{ c.scores.sns_note_ready }}/15</strong>（X {{ c.x_weight }}/280）</span>
+                    <span>📣 X＆note書き分け: <strong>{{ c.scores.sns_note_ready }}/15</strong>（note独自率 {{ c.web_note_distinct_pct or 80 }}%・X {{ c.x_weight }}/280）</span>
                 </div>
 
+                {% if c.mechanism_thesis %}
+                <div class="writer-memo" style="border-left:3px solid var(--gold);">
+                    <strong>🧠 構造考察コア仮説（二面市場・行動経済学レンズ）：</strong>{{ c.mechanism_thesis }}
+                </div>
+                {% endif %}
                 <div class="writer-memo">
                     <strong>✍️ ライター構成意図：</strong>{{ c.writer_note }}
                 </div>
@@ -1159,7 +1168,9 @@
 
         async function loadNoteExportSelected() {
             var sel = document.getElementById("note-export-select");
+            var modeSel = document.getElementById("note-export-mode");
             var slug = sel ? (sel.value || "").trim() : "";
+            var exportMode = modeSel ? (modeSel.value || "essay").trim() : "essay";
             if (!slug) return;
             var stEl = document.getElementById("note-export-status");
             var btn = document.getElementById("note-export-load-btn");
@@ -1172,7 +1183,7 @@
             if (btn) btn.disabled = true;
 
             try {
-                var res = await fetchJsonSafe("/api/column-editorial/export-note?slug=" + encodeURIComponent(slug), {
+                var res = await fetchJsonSafe("/api/column-editorial/export-note?slug=" + encodeURIComponent(slug) + "&mode=" + encodeURIComponent(exportMode), {
                     headers: {"Accept": "application/json"}
                 }, 25000);
                 if (!res || !res.ok) {
@@ -1184,7 +1195,8 @@
                 }
                 if (stEl) {
                     stEl.style.color = "var(--teal-ink)";
-                    stEl.textContent = "✅ 『" + (res.title || "") + "』のnote用原稿（" + (res.char_count || 0) + "文字）を出力しました！上から順にコピーしてnoteへ貼り付けられます。";
+                    var modeBadge = (res.mode === "verbatim") ? "Web構成忠実変換" : ("一人称・深層エッセイ書き分け｜Web非重複率 " + (res.distinct_from_web_pct != null ? res.distinct_from_web_pct : 80) + "%");
+                    stEl.textContent = "✅ 『" + (res.title || "") + "』のnote原稿（" + (res.char_count || 0) + "文字｜" + modeBadge + "）を出力しました！";
                 }
                 var box = document.getElementById("note-export-result");
                 if (box) box.style.display = "grid";
@@ -1329,14 +1341,18 @@
                 var sc = c.scores || {};
                 var prosHtml = (c.pros || []).map(function(p) { return '<div style="color:var(--green-ink);">✓ ' + escHtml(p) + '</div>'; }).join("");
                 var warnHtml = (c.warnings || []).map(function(w) { return '<div style="color:var(--err-ink);">⚠️ ' + escHtml(w) + '</div>'; }).join("");
+                var thesisHtml = c.mechanism_thesis
+                    ? '<div class="writer-memo" style="border-left:3px solid var(--gold);"><strong>🧠 構造考察コア仮説（二面市場・行動経済学レンズ）：</strong>' + escHtml(c.mechanism_thesis) + '</div>'
+                    : '';
                 var thinkHtml = c.thinking_memo
-                    ? '<div class="thinking-memo"><strong>🧠 AI編集長の脳内メモ（導入3案コンペ＆推敲プロセス）：</strong>' + escHtml(c.thinking_memo) + '</div>'
+                    ? '<div class="thinking-memo"><strong>🧠 AI編集長の脳内メモ（構造仮説＆Web/note書き分け推敲）：</strong>' + escHtml(c.thinking_memo) + '</div>'
                     : '';
                 var eyeOpts = EYECATCH_PRESETS.map(function(ep) {
                     var sel = (ep.key === c.eyecatch_key) ? " selected" : "";
                     return '<option value="' + escHtml(ep.key) + '"' + sel + '>' + escHtml(ep.label) + '</option>';
                 }).join("");
                 var xCombined = "【1投目（メイン告知）】\n" + (c.x_main_text || "") + "\n\n【2投目（自動リプライURL）】\n" + (c.x_reply_text || "");
+                var distinctPct = (c.web_note_distinct_pct != null) ? c.web_note_distinct_pct : 80;
                 return (
                     '<div class="cand-card ' + (c.is_selected ? 'winner' : '') + '">' +
                         '<div class="cand-top">' +
@@ -1348,11 +1364,12 @@
                             '<p>' + escHtml(c.desc) + '</p>' +
                         '</div>' +
                         '<div class="score-bars">' +
-                            '<span>🗣️ 人間味・会話リアリティ: <strong>' + escHtml(sc.human_story) + '/35</strong>（会話' + escHtml(c.dialogue_count) + '箇所）</span>' +
+                            '<span>🗣️ 構造考察・現場リアリティ: <strong>' + escHtml(sc.human_story) + '/35</strong>（会話' + escHtml(c.dialogue_count) + '箇所）</span>' +
                             '<span>🛡️ ファクト＆ブランド呼称: <strong>' + escHtml(sc.fact_brand_hygiene) + '/25</strong></span>' +
                             '<span>🔍 SEO構造・内部回遊: <strong>' + escHtml(sc.seo_structure) + '/25</strong></span>' +
-                            '<span>📣 X告知＆note完成度: <strong>' + escHtml(sc.sns_note_ready) + '/15</strong>（X ' + escHtml(c.x_weight) + '/280）</span>' +
+                            '<span>📣 X＆note書き分け: <strong>' + escHtml(sc.sns_note_ready) + '/15</strong>（note独自率 ' + escHtml(distinctPct) + '%・X ' + escHtml(c.x_weight) + '/280）</span>' +
                         '</div>' +
+                        thesisHtml +
                         '<div class="writer-memo"><strong>✍️ ライター構成意図：</strong>' + escHtml(c.writer_note || "") + '</div>' +
                         thinkHtml +
                         '<div class="desk-box"><strong>🧐 鬼デスク検閲コメント：</strong>' + prosHtml + warnHtml + '</div>' +

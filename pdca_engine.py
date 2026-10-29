@@ -987,15 +987,38 @@ def _detect_hot_cluster_and_topic(live_stores: list, store_opens: dict, store_pv
     }
 
     hub = top_hub["cluster_label"]
-    if top_hub["gap_pt"] >= 12:
+    now_j = datetime.datetime.now(JST)
+    wd = now_j.weekday()  # 0=Mon ... 6=Sun
+    hr = now_j.hour
+    total_live = top_hub["live_women"] + top_hub["live_men"]
+    hub_wpct = round((top_hub["live_women"] / total_live) * 100) if total_live > 0 else 55
+
+    # Rotate across all 8 deep-mechanism themes based on live gap, day-of-week, hour, and gender balance
+    if top_hub["gap_pt"] >= 18:
         rec_theme = "area_hopping"
-        rec_topic = f"{hub}エリアの店舗間男女比ギャップ（最大{top_hub['gap_pt']}pt差）と失敗しない徒歩5分ハシゴ基準"
-    elif hub in ("梅田・茶屋町", "難波・心斎橋", "渋谷・恵比寿"):
+        rec_topic = f"{hub}の店舗間男女比ギャップ（最大{top_hub['gap_pt']}pt差）を生む群集心理と徒歩5分アービトラージ基準"
+    elif hr >= 23 or hr <= 4:
         rec_theme = "midnight_wave"
-        rec_topic = f"{hub}で23時過ぎから逆転する「深夜0時半の第2波」と2軒目ラウンジの選び方"
+        rec_topic = f"{hub}で終電後に客層コホートが入れ替わる「深夜第2波」の構造と2軒目ラウンジ選別法"
+    elif wd in (0, 1, 2, 3):  # Mon-Thu: weekday structural advantage or solo/female lens
+        weekday_pool = [
+            ("weekday_anaba", f"{hub}の平日夜になぜ『真剣対話層』が残るのか——27万件ログで見る火〜木曜・雨天の需給優位性"),
+            ("female_real_voice", f"{hub}の女性ペアが支払う『準備90分の機会費用』と、男女で真逆になる最適店舗のカラクリ"),
+            ("solo_trip", f"出張・1人飲みの夜に{hub}で浮かない理由——ペア合意形成と1名入店規定の構造解剖"),
+            ("first_talk_clean", f"{hub}の間接照明と距離70cmで最初の3分に起きている『非言語減点』の正体"),
+        ]
+        rec_theme, rec_topic = weekday_pool[(now_j.day + wd) % len(weekday_pool)]
+    elif hub_wpct <= 46:
+        rec_theme = "bitter_loser_habits"
+        rec_topic = f"{hub}の男性過密タイムになぜサンクコスト延長が起きるのか——待機課金と損切りの行動経済学"
     else:
-        rec_theme = "second_venue_move"
-        rec_topic = f"{hub}で気を使って90分粘らず「40分見切り＆2軒目バー誘導」で勝率を上げる実践ルート"
+        weekend_pool = [
+            ("second_venue_move", f"{hub}で『もう一軒』が通る席・断られる席——ピーク・エンドの法則と出口時刻明示の科学"),
+            ("female_real_voice", f"週末の{hub}で女子トイレ反省会行きになる席の共通点——非対称コスト構造からの逆算"),
+            ("area_hopping", f"週末ピークの{hub}で看板店集中を避ける『徒歩4分・需給ギャップ』活用プロトコル"),
+            ("bitter_loser_habits", f"{hub}の週末レシートから解剖する『元を取ろうとして赤字になる夜』の構造的敗因"),
+        ]
+        rec_theme, rec_topic = weekend_pool[(now_j.day + hr) % len(weekend_pool)]
 
     return {
         "top_hub": top_hub,

@@ -36,19 +36,21 @@ description: >-
 
 ---
 
-## Step 3: サイト内コラムHTMLの作成（人間味のある現場ストーリー＋SEO構造化データ＋内部リンク）
-[`templates/guide_last_train_cliff.html`](file:///Users/kuwanoshinya/.gemini/相席業務改善/相席モニター/templates/guide_last_train_cliff.html) をお手本ベースにして、`templates/guide_<slug_underscored>.html` を作成する。必ず以下を含めること：
-1. **【最重要】人間味・現場リアリティのある執筆トーン（AI解説調の徹底排除）**：
-   * 冒頭は「本記事では〜を解説します」「構造はとてもシンプルです」などの教科書調で始めず、**居酒屋を出た夜風の中・エレベーター前・乾杯直後のソファ席・お会計伝票を見た瞬間など、誰もが共感するリアルな情景・ちょっと苦い実体験シーン**から入ること。
-   * 記事内に **`<div class="dialogue-box">...</div>` を使った自然な会話・心の声（男友達同士のリアルなやり取りや、女性客の本音トーク）を2〜4箇所** 織り込み、ストーリーと9.6万件超のSQLite実測データが自然に噛み合う構成にすること（noteコピペ用原稿も同様に引用ブロック `>` で会話シーンを入れること）。
-   * **ブランド呼称ルール厳守**：本文・見出し・会話文ともに、単体の『オリエンタル』（例: `オリエンタル新宿`）は絶対に使わず、必ず正式名称 **『オリエンタルラウンジ』** または会話・略称の **『オリラジ』** を使用すること。
-2. **メタタグ＆OGP**：
+## Step 3: サイト内コラムHTMLの作成（4層因果ピラミッド構造考察＋脱・金太郎飴＋内部リンク）
+[`templates/guide_last_train_cliff.html`](file:///Users/kuwanoshinya/.gemini/相席業務改善/相席モニター/templates/guide_last_train_cliff.html) はHTML/CSSのタグ構造のみ参考にし、**文章構成・導入シーン・結論パターンは絶対にクローンしないこと（金太郎飴化の禁止）**。必ず以下を含めること：
+1. **【最重要】4層因果ピラミッド＆脱マンネリ執筆ルール**：
+   * **手垢トロープの流用禁止**：既存記事で多用された「エレベーターが開いた瞬間の重たい空気」「23時20分の終電崖」「とりあえず40分見切り」をテーマ無関係に使い回さないこと。必ず今回のテーマ固有の現場シーンから始めること。
+   * **4層因果ピラミッドで深掘りする**：①現場の具体的な違和感（What） → ②二面市場・行動経済学・都市導線の構造的理由（Why：男性の10分従量課金によるサンクコスト錯誤 vs 女性の準備90分・機会費用、客層コホート交代など） → ③累計27万件超のSQLite実測データと店舗別の時間帯単価・待機チャージ・1名規定のクロス検証（Proof） → ④読者がその夜そのまま実行できる条件分岐プロトコル（Protocol）。
+   * 記事内に **`<div class="dialogue-box">...</div>` を使った自然な会話・心の声を2〜4箇所** 織り込むこと。
+   * **ブランド呼称ルール厳守**：単体の『オリエンタル』（例: `オリエンタル新宿`）や内部コード `OLG` は絶対に使わず、必ず正式名称 **『オリエンタルラウンジ』** または会話・略称の **『オリラジ』** を使用すること。
+2. **メタタグ＆OGP＆LLMO**：
    * `<link rel="canonical" href="https://aiseki-navi.com/guide/<slug>">`
+   * `<link rel="alternate" type="text/markdown" href="https://aiseki-navi.com/llms.txt" title="相席ナビ AI要約ドキュメント (llms.txt)">`
    * `<meta property="og:image" content="https://aiseki-navi.com/static/eyecatch-<slug>.jpg">`
    * `<meta name="twitter:card" content="summary_large_image">`
-3. **JSON-LD 構造化データ**：`Article` + `BreadcrumbList` + `FAQPage`
+3. **JSON-LD 構造化データ**：`Article`（`SpeakableSpecification` 付） + `BreadcrumbList` + `FAQPage`
 4. **ナビゲーション・共通CSS・フッター**：
-   * `<link rel="stylesheet" href="/static/calm.css?v=13">` を必ず読み込むこと
+   * `<link rel="stylesheet" href="/static/calm.css?v=20">` を必ず読み込むこと（ライトモード `body.theme-light` でのコントラスト崩れも確認すること）
    * 上部に `{% set nav_active = 'columns' %}` と `{% include '_portal_nav.html' %}`
    * 下部に `{% include '_portal_footer.html' %}`
    * スタッフ非表示ガード `{% if not is_staff and not session.get('is_staff') %}`（予約記事なら `and not is_scheduled_preview` も追加）で AdSense タグを囲むこと
@@ -86,8 +88,9 @@ description: >-
 
 ---
 
-## Step 6: ユーザーへの完了報告（noteコピペ用原稿＋アイキャッチ＋ハッシュタグ）
+## Step 6: ユーザーへの完了報告（Webとは別構成のnote専用深層エッセイ原稿＋アイキャッチ＋ハッシュタグ）
 チャットへの返答では以下を分かりやすく提示する：
 1. 生成した **16:9 アイキャッチ画像のプレビュー**
 2. 公開された **サイト内コラムURL（`https://aiseki-navi.com/guide/<slug>`）**
-3. **【そのままコピペ用】note記事タイトル・ハッシュタグ一式・本文（Markdown）**
+3. **【そのままコピペ用】note専用・独立書き下ろしエッセイ原稿（タイトル・ハッシュタグ・本文Markdown）**
+   * **※Web記事のコピペ転載は厳禁！** Web版が「検索読者向けの構造化データリファレンス（番号付き見出し・比較表・FAQ）」であるのに対し、note版は「編集長の一人称による人間観察・行動経済学エッセイ（番号なし `## ` 見出し・`> ` 引用・1,700〜2,500文字）」として完全に別原稿で書き分けること（または `column_editorial.export_column_for_note('<slug>', mode='essay')` を活用すること）。

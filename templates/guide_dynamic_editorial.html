@@ -13,6 +13,8 @@
     <meta name="robots" content="noindex, nofollow">
     {% else %}
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+    <link rel="alternate" type="text/markdown" href="https://aiseki-navi.com/llms.txt" title="相席ナビ AI要約ドキュメント (llms.txt)">
+    <link rel="alternate" type="application/json" href="https://aiseki-navi.com/api/llms-facts.json" title="相席ナビ AIグラウンディング構造化JSON (llms-facts.json)">
     {% endif %}
 
     <!-- OGP / SNS Card Settings -->
@@ -51,7 +53,11 @@
             "url": "https://aiseki-navi.com/static/icon.png"
           }
         },
-        "description": {{ scheduled_item.desc | tojson }}
+        "description": {{ scheduled_item.desc | tojson }},
+        "speakable": {
+          "@type": "SpeakableSpecification",
+          "cssSelector": [".article-title", ".article-lead-desc", ".mechanism-thesis-box"]
+        }
       },
       {
         "@context": "https://schema.org",
@@ -201,6 +207,46 @@
             padding: 18px;
             margin: 20px 0;
         }
+        .mechanism-thesis-box {
+            background: rgba(200, 164, 110, 0.08);
+            border: 1px solid rgba(200, 164, 110, 0.38);
+            border-radius: 12px;
+            padding: 15px 18px;
+            margin: 18px 0 24px 0;
+            font-size: 0.9rem;
+            line-height: 1.78;
+            color: #f1f5f9;
+        }
+        .mechanism-thesis-label {
+            display: inline-block;
+            font-size: 0.75rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            color: #e6c687;
+            margin-bottom: 6px;
+        }
+        .mechanism-note-box {
+            background: rgba(56, 189, 248, 0.07);
+            border-left: 3px solid #38bdf8;
+            border-radius: 0 10px 10px 0;
+            padding: 12px 16px;
+            margin: 16px 0;
+            font-size: 0.88rem;
+            line-height: 1.75;
+            color: #dbeafe;
+        }
+        body.theme-light .article-lead-desc { color: #334155 !important; }
+        body.theme-light .mechanism-thesis-box {
+            background: #fdfaf3;
+            border-color: rgba(154, 115, 50, 0.35);
+            color: #1e293b;
+        }
+        body.theme-light .mechanism-thesis-label { color: #855a18; }
+        body.theme-light .mechanism-note-box {
+            background: #f0f9ff;
+            border-left-color: #0284c7;
+            color: #1e293b;
+        }
         .store-chip-row {
             display: flex;
             flex-wrap: wrap;
@@ -323,7 +369,14 @@
         </div>
 
         <article class="article-body">
-            <p style="font-size:0.98rem; color:#e2e8f0;">{{ scheduled_item.desc }}</p>
+            <p class="article-lead-desc" style="font-size:0.98rem; color:#e2e8f0;">{{ scheduled_item.desc }}</p>
+
+            {% if scheduled_item.mechanism_thesis %}
+            <div class="mechanism-thesis-box">
+                <div class="mechanism-thesis-label">🧠 編集部の構造考察・行動経済学レンズ</div>
+                <div>{{ scheduled_item.mechanism_thesis }}</div>
+            </div>
+            {% endif %}
 
             {% for sec in scheduled_item.sections or [] %}
                 {% if sec.heading %}
@@ -345,6 +398,12 @@
                 {% for p in sec.after_paragraphs or [] %}
                 <p>{{ p }}</p>
                 {% endfor %}
+
+                {% if sec.mechanism_note %}
+                <div class="mechanism-note-box">
+                    <strong>🔎 構造メカニズム解説：</strong>{{ sec.mechanism_note }}
+                </div>
+                {% endif %}
 
                 {% if loop.index == 2 and scheduled_item.data_table and scheduled_item.data_table.rows %}
                 <div class="data-table-wrap">

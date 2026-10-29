@@ -4223,6 +4223,94 @@ class AIUltraGrowthSuiteTests(unittest.TestCase):
                 msg=f"Bare オリエンタル found in {fname}",
             )
 
+    def test_deep_column_anti_cookie_cutter_and_llmo_endpoints(self):
+        """Verify 8-theme structural differentiation, Web-vs-note non-duplication, and upgraded LLMO endpoints."""
+        import column_editorial
+
+        sample_stores = [
+            {'name': '新宿', 'women': 46, 'men': 26, 'total': 72, 'region': 'Kanto'},
+            {'name': 'JIS新宿', 'women': 28, 'men': 34, 'total': 62, 'region': 'Kanto'},
+            {'name': 'ag渋谷', 'women': 38, 'men': 22, 'total': 60, 'region': 'Kanto'},
+            {'name': '梅田', 'women': 42, 'men': 25, 'total': 67, 'region': 'Kansai'},
+            {'name': '福岡', 'women': 31, 'men': 19, 'total': 50, 'region': 'Kyushu'},
+        ]
+
+        # 1. All 8 themes produce distinct titles, opening scenes, and mechanism theses, with non-duplicate note essays
+        seen_titles = set()
+        seen_openings = set()
+        for t_key in column_editorial.COLUMN_THEMES.keys():
+            res = column_editorial.run_column_editorial_pipeline(
+                sample_stores,
+                theme_key=t_key,
+                use_ai=False,
+                tone_mode='spicy',
+            )
+            cands = res['evaluation']['candidates']
+            field_cand = next(c for c in cands if c['style'] == 'field_dialogue_story')
+            seen_titles.add(field_cand['title'])
+            seen_openings.add(field_cand['sections'][0]['paragraphs'][0])
+            self.assertTrue(field_cand.get('mechanism_thesis'), msg=f"Missing mechanism_thesis for {t_key}")
+            self.assertGreaterEqual(field_cand.get('web_note_distinct_pct', 0), 60, msg=f"Web/note too similar for {t_key}")
+            self.assertGreaterEqual(len(field_cand.get('note_markdown', '')), 1500)
+            self.assertIsNone(re.search(r'オリエンタル(?!ラウンジ)', field_cand['preview_text'] + ' ' + field_cand['note_markdown']))
+
+        self.assertEqual(len(seen_titles), 8)
+        self.assertEqual(len(seen_openings), 8)
+
+        # 2. Static note exporter supports both `essay` (distinct structural essay) and `verbatim` modes
+        essay_res = column_editorial.export_column_for_note('osaka-kita-vs-minami', mode='essay')
+        verb_res = column_editorial.export_column_for_note('osaka-kita-vs-minami', mode='verbatim')
+        self.assertTrue(essay_res['ok'] and verb_res['ok'])
+        self.assertEqual(essay_res['mode'], 'essay')
+        self.assertEqual(verb_res['mode'], 'verbatim')
+        self.assertGreaterEqual(essay_res['char_count'], 1600)
+        self.assertGreaterEqual(essay_res['distinct_from_web_pct'], 60)
+        self.assertNotEqual(essay_res['title'], verb_res['title'])
+
+        with self.client.session_transaction() as s:
+            s['is_staff'] = True
+            s['is_master'] = True
+        r_exp = self.client.get('/api/column-editorial/export-note?slug=last-train-cliff&mode=verbatim')
+        self.assertEqual(r_exp.status_code, 200)
+        self.assertEqual(r_exp.get_json()['mode'], 'verbatim')
+
+        with self.client.session_transaction() as s:
+            s.clear()
+        app_module.clear_fast_http_caches()
+
+        # 3. Upgraded LLMO endpoints: /robots.txt, /llms.txt, /llms-full.txt, /api/llms-facts.json
+        rob_txt = self.client.get('/robots.txt').data.decode('utf-8')
+        for bot in ('OAI-SearchBot', 'PerplexityBot', 'Claude-SearchBot', 'anthropic-ai', 'Meta-ExternalAgent', 'YouBot'):
+            self.assertIn(f'User-agent: {bot}', rob_txt)
+        self.assertIn('https://aiseki-navi.com/api/llms-facts.json', rob_txt)
+
+        r_llms = self.client.get('/llms.txt')
+        self.assertEqual(r_llms.status_code, 200)
+        self.assertIn('llms-facts.json', r_llms.headers.get('Link', ''))
+        llms_body = r_llms.data.decode('utf-8')
+        self.assertIn('/api/llms-facts.json', llms_body)
+        self.assertIn('ヤタコイ', llms_body)
+        self.assertIsNone(re.search(r'オリエンタル(?!ラウンジ)', llms_body))
+        self.assertIsNone(re.search(r'\bOLG\b', llms_body))
+
+        r_facts = self.client.get('/api/llms-facts.json')
+        self.assertEqual(r_facts.status_code, 200)
+        self.assertEqual(r_facts.headers.get('Access-Control-Allow-Origin'), '*')
+        facts = r_facts.get_json()
+        self.assertEqual(facts['schema_version'], '2.0')
+        self.assertGreaterEqual(facts['dataset_summary']['historical_log_records'], 276000)
+        self.assertGreaterEqual(len(facts['brands']), 6)
+        self.assertGreaterEqual(len(facts['stores']), 50)
+        facts_raw = json.dumps(facts, ensure_ascii=False)
+        self.assertIsNone(re.search(r'オリエンタル(?!ラウンジ)', facts_raw))
+        self.assertIsNone(re.search(r'\bOLG\b', facts_raw))
+
+        # 4. Key public pages expose <link rel="alternate" ... llms.txt / llms-facts.json>
+        for pub_p in ('/', '/concierge', '/price-comparison', '/stats', '/for-women', '/columns'):
+            html_p = self.client.get(pub_p).data.decode('utf-8')
+            self.assertIn('https://aiseki-navi.com/llms.txt', html_p, msg=f"Missing llms.txt link on {pub_p}")
+            self.assertIn('https://aiseki-navi.com/api/llms-facts.json', html_p, msg=f"Missing llms-facts.json link on {pub_p}")
+
 
 if __name__ == '__main__':
     unittest.main()
