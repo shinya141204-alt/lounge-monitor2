@@ -1,0 +1,1153 @@
+{% set res = initial_result if (initial_result is defined and initial_result) else result %}
+{% set p = res.primary %}
+{% set b = res.backup %}
+{% set asum = res.area_summary %}
+{% set sv = res.second_venue_tip %}
+{% set sac = res.smart_action_card %}
+{% set areas_list = concierge_areas if (concierge_areas is defined and concierge_areas) else res.available_areas %}
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>今夜どこ行く？相席ラウンジ3秒穴場＆徒歩ハシゴ診断（全国53店舗リアルタイム対応）｜相席ナビ</title>
+    <meta name="description" content="新宿・渋谷・恵比寿・梅田・難波・名古屋・福岡・札幌・仙台・広島など全国53店舗の現在男女人数と過去ログ統計から、今夜もっとも出会いやすい本命店と徒歩ハシゴ第2候補を3秒で無料診断。男性目線（男余り回避）・女性目線（受付待ち0分）・ソロ参戦にも対応。">
+    <meta name="keywords" content="相席ラウンジ 診断,オリエンタルラウンジ 穴場,JIS 相席 待ち時間,ag 相席 男女比,相席ラウンジ ハシゴ,相席ラウンジ 一人,相席ナビ">
+    <link rel="canonical" href="https://aiseki-navi.com/concierge">
+
+    <meta property="og:title" content="今夜どこ行く？相席ラウンジ3秒穴場＆徒歩ハシゴ診断｜相席ナビ">
+    <meta property="og:description" content="現在リアルタイム男女数×過去統計×徒歩距離から、今夜の本命ラウンジとハシゴ保険店を0.1秒で判定！">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://aiseki-navi.com/concierge">
+    <meta property="og:image" content="https://aiseki-navi.com/ogp/live.png">
+    <meta property="og:site_name" content="相席ナビ">
+    <meta name="twitter:card" content="summary_large_image">
+
+    <script type="application/ld+json">
+    [
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "相席ナビ 今夜どこ行く？3秒穴場＆徒歩ハシゴ診断ツール",
+        "url": "https://aiseki-navi.com/concierge",
+        "applicationCategory": "LifestyleApplication",
+        "operatingSystem": "All",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "JPY"
+        },
+        "description": "全国53店舗の相席ラウンジ（オリエンタルラウンジ・ag・JIS等）の現在人数・過去30日統計・店舗間徒歩分数をもとに、最適な第1候補と徒歩ハシゴ第2候補を即座に診断する無料Webツール。"
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "相席ナビ（全国リアルタイム人数ランキング）",
+            "item": "https://aiseki-navi.com/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "3秒穴場＆ハシゴ診断",
+            "item": "https://aiseki-navi.com/concierge"
+          }
+        ]
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "3秒穴場＆ハシゴ診断はどのようなデータをもとに店舗を選んでいますか？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "全国53店舗のリアルタイム男女人数・男女比率に加え、蓄積された過去ログから算出した時間帯別コアタイム統計・23時以降の終電後定着率、各店舗の1名（ソロ）入店可否ルール、さらに緯度経度から計算した店舗間の推定徒歩分数を統合してスコア化しています。"
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "本命店から第2候補へハシゴ移動する判断基準は？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "男性ペアの場合、向かっている途中で本命店の男性比率が55%を超えた場合や、店頭受付で15分以上の待機案内が出た場合は、単独待機料金を払う前に徒歩数分の第2候補（女性比率が優位な店舗）へ切り替えるのが最も効率的です。"
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "男性1人（ソロ）で行く場合も診断できますか？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "はい、「人数」で「1人（ソロ）」を選択すると、2名以上必須の店舗（オリエンタルラウンジ新宿・渋谷本店・恵比寿・大阪駅前・名古屋錦など）を自動的に除外・減点し、JIS西新宿やJIS梅田、オリエンタルラウンジ名古屋栄など1名入店に対応した店舗を優先提案します。"
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "女性ペアが使うメリットは何ですか？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "「女性目線」に切り替えると、女性過多で受付20〜40分待ちになりやすい混雑店を避け、現在男性が先行して入店していて「受付待ち時間ゼロで広いソファ席へ即案内されやすい店舗」を優先表示します。"
+            }
+          }
+        ]
+      }
+    ]
+    </script>
+
+    <link rel="icon" type="image/png" href="/static/icon-192.png?v=2">
+    <link rel="apple-touch-icon" href="/static/icon.png?v=2">
+    <link rel="stylesheet" href="/static/portal.css?v=8">
+    <style>
+        :root {
+            --bg-dark: #0f1014;
+            --card-bg: #16171c;
+            --card-bg-2: #1b1c22;
+            --text-main: #ebe8e3;
+            --text-sub: #9a968e;
+            --accent-gold: #c8a46e;
+            --accent-text: #dfc496;
+            --women: #d8a1aa;
+            --men: #93b1c9;
+            --border-subtle: rgba(255, 255, 255, 0.08);
+            --border-gold: rgba(200, 164, 110, 0.44);
+        }
+        body.theme-light {
+            --bg-dark: #f4f2ed;
+            --card-bg: #faf9f6;
+            --card-bg-2: #edeae3;
+            --text-main: #1f1e1b;
+            --text-sub: #6b665e;
+            --accent-gold: #8c6b3f;
+            --accent-text: #7a5a30;
+            --women: #b05a68;
+            --men: #4a6f8f;
+            --border-subtle: rgba(28, 27, 24, 0.1);
+            --border-gold: rgba(140, 107, 63, 0.45);
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+            line-height: 1.72;
+        }
+        .portal-wrap {
+            max-width: 940px;
+            margin: 0 auto;
+            padding: 18px 16px 84px;
+        }
+        .portal-top-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border-subtle);
+            margin-bottom: 14px;
+        }
+        .portal-brand-link {
+            text-decoration: none;
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+        }
+        .portal-brand-title {
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: var(--text-main);
+            margin: 0;
+        }
+        .portal-brand-sub {
+            font-size: 0.77rem;
+            color: var(--text-sub);
+        }
+
+        /* Hero & Selector Console */
+        .concierge-console {
+            background: var(--card-bg);
+            border: 1px solid var(--border-gold);
+            border-radius: 16px;
+            padding: 22px 20px;
+            margin-bottom: 20px;
+        }
+        .concierge-kicker {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 3px 11px;
+            border-radius: 999px;
+            border: 1px solid var(--border-gold);
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            color: var(--accent-text);
+            margin-bottom: 10px;
+        }
+        .concierge-console h1 {
+            margin: 0 0 8px;
+            font-size: 1.38rem;
+            line-height: 1.4;
+            color: var(--text-main);
+        }
+        .concierge-lead {
+            margin: 0 0 18px;
+            font-size: 0.85rem;
+            color: var(--text-sub);
+        }
+
+        .ctrl-group {
+            margin-bottom: 14px;
+        }
+        .ctrl-group:last-child {
+            margin-bottom: 0;
+        }
+        .ctrl-label {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--accent-text);
+            margin-bottom: 6px;
+            letter-spacing: 0.03em;
+        }
+        .ctrl-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 7px;
+        }
+        .ctrl-row--audience {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+        .c-pill {
+            appearance: none;
+            border: 1px solid var(--border-subtle);
+            background: var(--card-bg-2);
+            color: var(--text-sub);
+            padding: 8px 13px;
+            border-radius: 9px;
+            font-size: 0.81rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: border-color 0.14s ease, background 0.14s ease, color 0.14s ease, transform 0.08s ease;
+            text-align: center;
+            font-family: inherit;
+            touch-action: manipulation;
+        }
+        .c-pill:hover {
+            border-color: var(--border-gold);
+            color: var(--text-main);
+        }
+        .c-pill:active {
+            transform: scale(0.97);
+        }
+        .c-pill.active {
+            background: rgba(200, 164, 110, 0.16);
+            border-color: var(--accent-gold);
+            color: var(--text-main);
+            font-weight: 700;
+        }
+        .c-pill[data-param="audience"][data-val="women"].active {
+            background: rgba(216, 161, 170, 0.18);
+            border-color: var(--women);
+        }
+        .c-pill[data-param="audience"][data-val="men"].active {
+            background: rgba(147, 177, 201, 0.18);
+            border-color: var(--men);
+        }
+
+        /* Live Area Status Bar */
+        .area-status-strip {
+            background: var(--card-bg-2);
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
+            padding: 13px 16px;
+            margin-bottom: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .area-status-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .crowd-status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 3px 10px;
+            border-radius: 999px;
+            font-size: 0.76rem;
+            font-weight: 700;
+            border: 1px solid var(--border-gold);
+            color: var(--accent-text);
+        }
+        .area-totals-inline {
+            font-size: 0.82rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .tot-w { color: var(--women); }
+        .tot-m { color: var(--men); }
+        .area-status-comment {
+            margin: 0;
+            font-size: 0.8rem;
+            color: var(--text-sub);
+        }
+
+        /* Results Stage & Smooth Transition */
+        .concierge-stage {
+            transition: opacity 0.14s ease, transform 0.14s ease;
+        }
+        .concierge-stage.is-updating {
+            opacity: 0.45;
+            transform: translateY(3px);
+            pointer-events: none;
+        }
+
+        .verdict-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        @media (min-width: 780px) {
+            .verdict-grid {
+                grid-template-columns: 1.15fr 0.85fr;
+                align-items: start;
+            }
+        }
+
+        .verdict-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-subtle);
+            border-radius: 15px;
+            padding: 20px;
+            position: relative;
+        }
+        .verdict-card--primary {
+            border-color: var(--border-gold);
+        }
+        .verdict-head-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+        .rank-crown-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-size: 0.74rem;
+            font-weight: 800;
+            background: rgba(200, 164, 110, 0.16);
+            border: 1px solid var(--border-gold);
+            color: var(--accent-text);
+        }
+        .rank-backup-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-size: 0.74rem;
+            font-weight: 700;
+            border: 1px solid var(--border-subtle);
+            color: var(--text-sub);
+        }
+        .score-chip {
+            font-size: 0.78rem;
+            font-weight: 800;
+            color: var(--accent-text);
+        }
+        .verdict-store-title {
+            margin: 0 0 6px;
+            font-size: 1.24rem;
+            line-height: 1.35;
+        }
+        .verdict-store-title a {
+            color: var(--text-main);
+            text-decoration: none;
+            border-bottom: 1px solid rgba(200, 164, 110, 0.35);
+        }
+        .verdict-store-title a:hover {
+            color: var(--accent-text);
+        }
+        .verdict-headline {
+            margin: 0 0 14px;
+            font-size: 0.88rem;
+            font-weight: 700;
+            color: var(--accent-text);
+            line-height: 1.55;
+        }
+
+        /* Live Headcount Meter */
+        .headcount-panel {
+            background: var(--card-bg-2);
+            border: 1px solid var(--border-subtle);
+            border-radius: 11px;
+            padding: 13px 14px;
+            margin-bottom: 14px;
+        }
+        .hc-numbers {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .hc-num-w {
+            font-size: 1.05rem;
+            font-weight: 800;
+            color: var(--women);
+        }
+        .hc-num-m {
+            font-size: 1.05rem;
+            font-weight: 800;
+            color: var(--men);
+        }
+        .hc-pct-badge {
+            font-size: 0.77rem;
+            font-weight: 700;
+            color: var(--text-sub);
+        }
+        .ratio-bar {
+            height: 7px;
+            border-radius: 999px;
+            background: rgba(147, 177, 201, 0.32);
+            overflow: hidden;
+        }
+        .ratio-fill-w {
+            height: 100%;
+            background: var(--women);
+            transition: width 0.25s ease;
+        }
+        .meta-specs-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 10px;
+        }
+        .spec-tag {
+            font-size: 0.72rem;
+            color: var(--text-sub);
+            padding: 2px 8px;
+            border-radius: 5px;
+            border: 1px solid var(--border-subtle);
+        }
+
+        /* 3 Reasons List */
+        .reasons-list {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .reasons-list li {
+            font-size: 0.82rem;
+            color: var(--text-main);
+            background: var(--card-bg-2);
+            border-left: 2px solid var(--accent-gold);
+            padding: 8px 11px;
+            border-radius: 0 8px 8px 0;
+            line-height: 1.6;
+        }
+
+        /* Switch Trigger Callout in Backup Card */
+        .switch-trigger-box {
+            background: rgba(200, 164, 110, 0.09);
+            border: 1px solid var(--border-gold);
+            border-radius: 9px;
+            padding: 10px 12px;
+            margin-bottom: 12px;
+            font-size: 0.81rem;
+            color: var(--text-main);
+            line-height: 1.58;
+        }
+        .switch-trigger-label {
+            display: block;
+            font-size: 0.72rem;
+            font-weight: 800;
+            color: var(--accent-text);
+            margin-bottom: 3px;
+        }
+
+        .card-btn-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .btn-gold-action {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 9px 15px;
+            border-radius: 8px;
+            background: var(--card-bg-2);
+            border: 1px solid var(--border-gold);
+            color: var(--accent-text);
+            font-size: 0.82rem;
+            font-weight: 700;
+            text-decoration: none;
+            flex: 1;
+            min-width: 170px;
+            text-align: center;
+        }
+        .btn-gold-action:hover {
+            background: rgba(200, 164, 110, 0.16);
+        }
+        .btn-subtle-action {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            padding: 8px 13px;
+            border-radius: 8px;
+            border: 1px solid var(--border-subtle);
+            color: var(--text-sub);
+            font-size: 0.79rem;
+            font-weight: 600;
+            text-decoration: none;
+        }
+        .btn-subtle-action:hover {
+            border-color: var(--border-gold);
+            color: var(--text-main);
+        }
+
+        /* Other Area Stores Mini List */
+        .other-stores-box {
+            background: var(--card-bg);
+            border: 1px solid var(--border-subtle);
+            border-radius: 13px;
+            padding: 16px 18px;
+            margin-bottom: 18px;
+        }
+        .other-stores-title {
+            margin: 0 0 10px;
+            font-size: 0.88rem;
+            font-weight: 700;
+            color: var(--accent-text);
+        }
+        .other-stores-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 9px;
+        }
+        .other-store-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 9px 12px;
+            border-radius: 8px;
+            background: var(--card-bg-2);
+            border: 1px solid var(--border-subtle);
+            text-decoration: none;
+            color: var(--text-main);
+            font-size: 0.8rem;
+        }
+        .other-store-item:hover {
+            border-color: var(--border-gold);
+        }
+
+        /* Second Venue & Smart Prep Cards */
+        .after-plan-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-subtle);
+            border-radius: 14px;
+            padding: 18px 20px;
+            margin-bottom: 18px;
+        }
+        .after-plan-card h2 {
+            margin: 0 0 8px;
+            font-size: 1rem;
+            color: var(--accent-text);
+        }
+        .invite-quote {
+            margin: 10px 0;
+            padding: 10px 14px;
+            border-radius: 9px;
+            background: var(--card-bg-2);
+            border-left: 3px solid var(--accent-gold);
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .smart-prep-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-gold);
+            border-radius: 14px;
+            padding: 18px 20px;
+            margin-bottom: 20px;
+        }
+        .smart-prep-kicker {
+            font-size: 0.73rem;
+            font-weight: 700;
+            color: var(--accent-text);
+            margin-bottom: 4px;
+        }
+        .smart-prep-card h3 {
+            margin: 0 0 8px;
+            font-size: 0.98rem;
+            color: var(--text-main);
+        }
+        .smart-prep-card p {
+            margin: 0 0 14px;
+            font-size: 0.83rem;
+            color: var(--text-sub);
+        }
+
+        /* Share & FAQ Section */
+        .share-bar-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+            padding: 14px 16px;
+            background: var(--card-bg-2);
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
+            margin-bottom: 26px;
+        }
+        .faq-section {
+            background: var(--card-bg);
+            border: 1px solid var(--border-subtle);
+            border-radius: 14px;
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+        .faq-section h2 {
+            margin: 0 0 14px;
+            font-size: 1.05rem;
+            color: var(--text-main);
+        }
+        .faq-item {
+            background: var(--card-bg-2);
+            border: 1px solid var(--border-subtle);
+            border-radius: 9px;
+            padding: 12px 14px;
+            margin-bottom: 9px;
+        }
+        .faq-item:last-child { margin-bottom: 0; }
+        .faq-item summary {
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 0.86rem;
+            color: var(--text-main);
+        }
+        .faq-item p {
+            margin: 8px 0 0;
+            font-size: 0.82rem;
+            color: var(--text-sub);
+        }
+    </style>
+    <link rel="stylesheet" href="/static/calm.css?v=19">
+    {% if not is_staff and not session.get('is_staff') %}
+    <meta name="google-adsense-account" content="ca-pub-3043764334238627">
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
+         crossorigin="anonymous"></script>
+    {% endif %}
+</head>
+
+<body>
+    <div class="portal-wrap">
+        <div class="portal-top-header">
+            <a href="/" class="portal-brand-link">
+                <span class="portal-brand-title">相席ナビ</span>
+                <span class="portal-brand-sub">全国ラウンジのリアルタイム人数＆攻略メディア</span>
+            </a>
+            <span style="font-size: 0.76rem; color: var(--text-sub);">判定時刻: <span id="concierge-updated-at">{{ last_updated | default(res.generated_at, true) }}</span></span>
+        </div>
+
+        {% set nav_active = 'concierge' %}
+        {% include '_portal_nav.html' %}
+
+        <!-- Interactive 3-Second Concierge Console -->
+        <section class="concierge-console" aria-label="診断条件の選択">
+            <div class="concierge-kicker">🧭 REALTIME × 30-DAY STATS × WALKING DISTANCE</div>
+            <h1>今夜どこ行く？3秒穴場＆徒歩ハシゴ診断</h1>
+            <p class="concierge-lead">全国53店舗の現在男女比・過去ログの終電後定着率・店舗間の徒歩距離から、「いま入るべき第1候補」と「空振り時の徒歩ハシゴ第2候補」を0.1秒で算出します。</p>
+
+            <div class="ctrl-group">
+                <span class="ctrl-label">1. どちらの目線で探す？</span>
+                <div class="ctrl-row ctrl-row--audience">
+                    <button type="button" class="c-pill {% if res.audience == 'men' %}active{% endif %}" data-param="audience" data-val="men">🕺 男性目線（女性優位・待ち回避）</button>
+                    <button type="button" class="c-pill {% if res.audience == 'women' %}active{% endif %}" data-param="audience" data-val="women">💄 女性目線（待ち0分・快適着席）</button>
+                </div>
+            </div>
+
+            <div class="ctrl-group">
+                <span class="ctrl-label">2. これから向かうエリア</span>
+                <div class="ctrl-row">
+                    {% for a in areas_list %}
+                    <button type="button" class="c-pill {% if res.area_key == a.key %}active{% endif %}" data-param="area" data-val="{{ a.key }}">{{ a.short_label }}</button>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="ctrl-group">
+                <span class="ctrl-label">3. 入店する時間帯</span>
+                <div class="ctrl-row">
+                    <button type="button" class="c-pill {% if res.timing == 'now' %}active{% endif %}" data-param="timing" data-val="now">⚡ 今から直行（現在人数重視）</button>
+                    <button type="button" class="c-pill {% if res.timing == 'prime_21' %}active{% endif %}" data-param="timing" data-val="prime_21">🍻 20〜22時（1軒目コア帯）</button>
+                    <button type="button" class="c-pill {% if res.timing == 'late_23' %}active{% endif %}" data-param="timing" data-val="late_23">🌙 23時以降（終電後・2回転目）</button>
+                </div>
+            </div>
+
+            <div class="ctrl-group">
+                <span class="ctrl-label">4. 今夜の人数 / 5. 希望の雰囲気</span>
+                <div class="ctrl-row" style="margin-bottom: 7px;">
+                    <button type="button" class="c-pill {% if res.party_size == 'solo' %}active{% endif %}" data-param="party_size" data-val="solo">👤 1人参戦（ソロ対応店優先）</button>
+                    <button type="button" class="c-pill {% if res.party_size == 'pair' %}active{% endif %}" data-param="party_size" data-val="pair">👥 2人組（王道ペア）</button>
+                    <button type="button" class="c-pill {% if res.party_size == 'group' %}active{% endif %}" data-param="party_size" data-val="group">🎉 3人以上（大型フロア優先）</button>
+                </div>
+                <div class="ctrl-row">
+                    <button type="button" class="c-pill {% if res.vibe == 'any' %}active{% endif %}" data-param="vibe" data-val="any">⚖️ バランス重視</button>
+                    <button type="button" class="c-pill {% if res.vibe == 'lively' %}active{% endif %}" data-param="vibe" data-val="lively">🔥 ワイワイ・20代前半多め</button>
+                    <button type="button" class="c-pill {% if res.vibe == 'calm' %}active{% endif %}" data-param="vibe" data-val="calm">🥂 落ち着いて会話・大人め</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Dynamic Stage -->
+        <div id="concierge-stage" class="concierge-stage">
+            <!-- Area Summary Strip -->
+            <div class="area-status-strip" id="area-summary-box">
+                <div class="area-status-top">
+                    <span class="crowd-status-badge" id="area-crowd-badge">{{ asum.crowd_badge }}</span>
+                    <div class="area-totals-inline">
+                        <span id="area-label-inline">{{ res.area_label }}（{{ asum.store_count }}店）</span>
+                        <span>｜</span>
+                        <span class="tot-w" id="area-tot-w">女性 {{ asum.total_women }}名</span>
+                        <span class="tot-m" id="area-tot-m">男性 {{ asum.total_men }}名</span>
+                        <span style="color: var(--text-sub); font-size: 0.76rem;" id="area-avg-fpct">（女性比 {{ asum.avg_female_pct }}%）</span>
+                    </div>
+                </div>
+                <p class="area-status-comment" id="area-status-comment">{{ asum.status_comment }}</p>
+            </div>
+
+            <!-- Primary & Backup Cards -->
+            <div class="verdict-grid">
+                <!-- Primary Pick -->
+                <article class="verdict-card verdict-card--primary" id="primary-card">
+                    <div class="verdict-head-row">
+                        <span class="rank-crown-pill">👑 第1候補（今夜の本命）</span>
+                        <span class="score-chip" id="p-score">適合スコア {{ p.score }}点</span>
+                    </div>
+                    <h2 class="verdict-store-title">
+                        <a href="{{ p.store_url }}" id="p-store-link">{{ p.display_name }}</a>
+                    </h2>
+                    <p class="verdict-headline" id="p-headline">{{ p.headline_reason }}</p>
+
+                    <div class="headcount-panel">
+                        <div class="hc-numbers">
+                            <span class="hc-num-w" id="p-women">女性 {{ p.women }}名{% if (p.women_diff or 0) > 0 %} <small style="font-size:0.75rem;">(↗ +{{ p.women_diff }})</small>{% endif %}</span>
+                            <span class="hc-pct-badge" id="p-fpct-label">{% if p.total > 0 %}女性比 {{ p.female_pct }}%{% elif p.is_open_now %}営業中（0 : 0）{% else %}営業時間外（本日 {{ p.today_hours_label }}）{% endif %}</span>
+                            <span class="hc-num-m" id="p-men">男性 {{ p.men }}名{% if (p.men_diff or 0) > 0 %} <small style="font-size:0.75rem;">(↗ +{{ p.men_diff }})</small>{% endif %}</span>
+                        </div>
+                        <div class="ratio-bar">
+                            <div class="ratio-fill-w" id="p-ratio-bar" style="width: {{ p.female_pct if p.total > 0 else 50 }}%;"></div>
+                        </div>
+                        <div class="meta-specs-row" id="p-meta-tags">
+                            <span class="spec-tag">本日 {{ p.today_hours_label }}</span>
+                            <span class="spec-tag">終電後定着率 {{ p.midnight_retention_pct }}%</span>
+                            <span class="spec-tag">コア帯 {{ p.core_time_short | default('20-22時') }}</span>
+                            {% if p.price_60m_label %}<span class="spec-tag">男性60分目安 {{ p.price_60m_label }}</span>{% endif %}
+                        </div>
+                    </div>
+
+                    <ul class="reasons-list" id="p-reasons">
+                        {% for r_text in p.reasons %}
+                        <li>{{ r_text }}</li>
+                        {% endfor %}
+                    </ul>
+
+                    <div class="card-btn-row">
+                        <a href="{{ p.store_url }}" class="btn-gold-action" id="p-detail-btn">店舗のリアルタイム詳細・7日間データ ›</a>
+                        <a href="{{ p.area_url }}" class="btn-subtle-action" id="p-area-btn">この街の攻略ガイド ›</a>
+                    </div>
+                </article>
+
+                <!-- Backup Hopping Pick -->
+                {% set b_view = b if b else p %}
+                <article class="verdict-card" id="backup-card" {% if not b %}style="display:none;"{% endif %}>
+                    <div class="verdict-head-row">
+                        <span class="rank-backup-pill" id="b-badge">
+                            🚶 第2候補（ハシゴ保険）{% if b_view.walk_minutes_from_primary %}｜本命から徒歩約{{ b_view.walk_minutes_from_primary }}分{% endif %}
+                        </span>
+                        <span class="score-chip" id="b-score">スコア {{ b_view.score }}点</span>
+                    </div>
+                    <h2 class="verdict-store-title" style="font-size: 1.12rem;">
+                        <a href="{{ b_view.store_url }}" id="b-store-link">{{ b_view.display_name }}</a>
+                    </h2>
+
+                    <div class="switch-trigger-box">
+                        <span class="switch-trigger-label">⚡ ハシゴ切り替えの判断ライン</span>
+                        <span id="b-trigger">{{ b_view.switch_trigger | default('') }}</span>
+                    </div>
+
+                    <div class="headcount-panel">
+                        <div class="hc-numbers">
+                            <span class="hc-num-w" id="b-women" style="font-size:0.95rem;">女性 {{ b_view.women }}名</span>
+                            <span class="hc-pct-badge" id="b-fpct-label">{% if b_view.total > 0 %}女性比 {{ b_view.female_pct }}%{% elif b_view.is_open_now %}営業中（0 : 0）{% else %}本日 {{ b_view.today_hours_label }}{% endif %}</span>
+                            <span class="hc-num-m" id="b-men" style="font-size:0.95rem;">男性 {{ b_view.men }}名</span>
+                        </div>
+                        <div class="ratio-bar">
+                            <div class="ratio-fill-w" id="b-ratio-bar" style="width: {{ b_view.female_pct if b_view.total > 0 else 50 }}%;"></div>
+                        </div>
+                        <div class="meta-specs-row" id="b-meta-tags">
+                            <span class="spec-tag">終電後定着 {{ b_view.midnight_retention_pct }}%</span>
+                            {% if b_view.solo_rule_short %}<span class="spec-tag">{{ b_view.solo_rule_short }}</span>{% endif %}
+                        </div>
+                    </div>
+
+                    <p style="font-size: 0.81rem; color: var(--text-sub); margin: 0 0 14px;" id="b-reason-first">{{ b_view.reasons[0] if b_view.reasons else b_view.headline_reason }}</p>
+
+                    <div class="card-btn-row">
+                        <a href="{{ b_view.store_url }}" class="btn-subtle-action" id="b-detail-btn" style="width: 100%;">第2候補の店舗データを見る ›</a>
+                    </div>
+                </article>
+            </div>
+
+            <!-- Other Candidates in Same Area -->
+            <section class="other-stores-box" id="other-stores-section" {% if not res.other_candidates %}style="display:none;"{% endif %}>
+                <h3 class="other-stores-title">📍 同エリア内の他店舗リアルタイム比較</h3>
+                <div class="other-stores-grid" id="other-stores-grid">
+                    {% for oc in res.other_candidates %}
+                    <a href="{{ oc.store_url }}" class="other-store-item">
+                        <span style="font-weight: 700;">{{ oc.display_name }}{% if oc.walk_minutes_from_primary %} <small style="color:var(--text-sub); font-weight:500;">(徒歩{{ oc.walk_minutes_from_primary }}分)</small>{% endif %}</span>
+                        <span><strong class="tot-w">女{{ oc.women }}</strong> : <strong class="tot-m">男{{ oc.men }}</strong></span>
+                    </a>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <!-- Second Venue Plan -->
+            <section class="after-plan-card" id="second-venue-box">
+                <h2>🍸 相席後の2軒目おすすめスポット＆自然な誘い出しプラン</h2>
+                <p style="margin: 0 0 6px; font-size: 0.85rem; font-weight: 700; color: var(--text-main);" id="sv-title">狙い目エリア：{{ sv.spot_title }}</p>
+                <p style="margin: 0 0 10px; font-size: 0.83rem; color: var(--text-sub);" id="sv-spots">{{ sv.spots }}</p>
+                <div class="invite-quote" id="sv-phrase">💬 誘い方例：{{ sv.invite_phrase }}</div>
+                <p style="margin: 0; font-size: 0.79rem; color: var(--text-sub);" id="sv-timing">⏱️ {{ sv.timing_advice }} <a href="{{ sv.guide_url | default('/guide/second-venue') }}" class="editorial-inline-link" style="margin-left: 6px;">2軒目誘い出し完全ガイド ›</a></p>
+            </section>
+
+            {% if not is_staff and not session.get('is_staff') %}
+            <!-- Smart Action Card (Hidden completely in Staff Mode) -->
+            <aside class="smart-prep-card" id="concierge-smart-action-wrap">
+                <div class="smart-prep-kicker" id="sac-kicker">{{ sac.kicker }}</div>
+                <h3 id="sac-title">{{ sac.title }}</h3>
+                <p id="sac-body">{{ sac.body }}</p>
+                <div class="card-btn-row">
+                    <a href="{{ sac.primary_url }}" class="btn-gold-action" id="sac-primary-btn" rel="nofollow sponsored noopener" target="_blank">{{ sac.primary_label }} ›</a>
+                    <a href="{{ sac.secondary_url }}" class="btn-subtle-action" id="sac-secondary-btn">{{ sac.secondary_label }} ›</a>
+                </div>
+            </aside>
+            {% endif %}
+        </div>
+
+        <!-- Share & Cross-Navigation Bar -->
+        <div class="share-bar-row">
+            <span style="font-size: 0.82rem; color: var(--text-sub);">今夜の合流メンバーにこの診断プランを共有：</span>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <button type="button" id="copy-plan-url-btn" class="c-pill" style="color: var(--accent-text); border-color: var(--border-gold);">🔗 この診断URLをコピー</button>
+                <a href="/price-comparison" class="btn-subtle-action">💰 料金・開催中イベント比較</a>
+                <a href="{{ res.area_portal_url }}" class="btn-subtle-action" id="bottom-area-guide-link">🗺️ エリア詳細ガイド</a>
+            </div>
+        </div>
+
+        <!-- SEO FAQ Section -->
+        <section class="faq-section">
+            <h2>❓ 3秒穴場＆ハシゴ診断のよくある質問</h2>
+            <details class="faq-item" open>
+                <summary>どのようなデータをもとに「本命」と「第2候補」を選んでいますか？</summary>
+                <p>全国53店舗（オリエンタルラウンジ・ag・JIS・各地の人気相席ラウンジ）の現在リアルタイム男女人数に加え、過去30日間の蓄積ログから算出した時間帯別コアタイム比率・23時以降の終電後定着率、各店舗の1名（ソロ）入店規定、そして店舗間の緯度経度から算出した推定徒歩分数を掛け合わせて判定しています。</p>
+            </details>
+            <details class="faq-item">
+                <summary>本命店から第2候補へハシゴ移動するベストなタイミングは？</summary>
+                <p>男性組の場合、お店へ向かう途中で本命店の男性比率が55%を超えたときや、店頭受付で「15分以上の待機案内」が出たときは、単独待機課金を払う前に徒歩数分の第2候補へ移動するのが最もスマートです。</p>
+            </details>
+            <details class="faq-item">
+                <summary>男性1人（ソロ）で行くときの注意点はありますか？</summary>
+                <p>オリエンタルラウンジ新宿・渋谷本店・恵比寿・大阪駅前・名古屋錦やag渋谷・ag上野・ag名古屋などは公式規定で「男性2名以上必須」となっています。上の条件ボタンで「👤 1人参戦」を選ぶと、JIS西新宿やJIS梅田、オリエンタルラウンジ名古屋栄・上野など1名入店OKの店舗を自動的に最優先で提案します。</p>
+            </details>
+            <details class="faq-item">
+                <summary>女性ペアが受付で待たされずに座るコツは？</summary>
+                <p>週末21時〜22時半に女性比率が70%近い店舗へ行くと、女性でも受付で20〜40分待つケースがあります。「💄 女性目線」を選んで現在男性が先行している店舗へ向かうと、待ち時間ゼロで広いソファ席へ案内されやすくなります。</p>
+            </details>
+        </section>
+
+        {% include '_portal_footer.html' %}
+    </div>
+
+    <script>
+    (function() {
+        var state = {
+            area: {{ res.area_key | tojson }},
+            audience: {{ res.audience | tojson }},
+            timing: {{ res.timing | tojson }},
+            party_size: {{ res.party_size | tojson }},
+            vibe: {{ res.vibe | tojson }}
+        };
+        var IS_PUBLIC_VIEW = {{ 'true' if (not is_staff and not session.get('is_staff')) else 'false' }};
+        var activeController = null;
+        var stageEl = document.getElementById('concierge-stage');
+
+        function escHtml(str) {
+            var d = document.createElement('div');
+            d.textContent = str == null ? '' : String(str);
+            return d.innerHTML;
+        }
+
+        function setText(id, val) {
+            var el = document.getElementById(id);
+            if (el) el.textContent = val == null ? '' : String(val);
+        }
+
+        function updateActivePills() {
+            var pills = document.querySelectorAll('.c-pill[data-param]');
+            for (var i = 0; i < pills.length; i++) {
+                var btn = pills[i];
+                var p = btn.getAttribute('data-param');
+                var v = btn.getAttribute('data-val');
+                if (state[p] === v) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            }
+        }
+
+        function renderStoreRatioLabel(st, includeClosedDetail) {
+            if (st.total > 0) return '女性比 ' + st.female_pct + '%';
+            if (st.is_open_now) return '営業中（0 : 0）';
+            return includeClosedDetail ? ('営業時間外（本日 ' + st.today_hours_label + '）') : ('本日 ' + st.today_hours_label);
+        }
+
+        function applyResult(data) {
+            if (!data || !data.ok || !data.primary) return;
+            setText('concierge-updated-at', data.generated_at || '');
+
+            var asum = data.area_summary || {};
+            setText('area-crowd-badge', asum.crowd_badge || '');
+            setText('area-label-inline', (data.area_label || '') + '（' + (asum.store_count || 0) + '店）');
+            setText('area-tot-w', '女性 ' + (asum.total_women || 0) + '名');
+            setText('area-tot-m', '男性 ' + (asum.total_men || 0) + '名');
+            setText('area-avg-fpct', '（女性比 ' + (asum.avg_female_pct || 50) + '%）');
+            setText('area-status-comment', asum.status_comment || '');
+
+            var p = data.primary;
+            setText('p-score', '適合スコア ' + p.score + '点');
+            var pLink = document.getElementById('p-store-link');
+            if (pLink) {
+                pLink.textContent = p.display_name;
+                pLink.href = p.store_url;
+            }
+            setText('p-headline', p.headline_reason || '');
+
+            var pWEl = document.getElementById('p-women');
+            if (pWEl) {
+                pWEl.innerHTML = '女性 ' + Number(p.women || 0) + '名' + ((p.women_diff > 0) ? ' <small style="font-size:0.75rem;">(↗ +' + Number(p.women_diff) + ')</small>' : '');
+            }
+            var pMEl = document.getElementById('p-men');
+            if (pMEl) {
+                pMEl.innerHTML = '男性 ' + Number(p.men || 0) + '名' + ((p.men_diff > 0) ? ' <small style="font-size:0.75rem;">(↗ +' + Number(p.men_diff) + ')</small>' : '');
+            }
+            setText('p-fpct-label', renderStoreRatioLabel(p, true));
+            var pBar = document.getElementById('p-ratio-bar');
+            if (pBar) pBar.style.width = (p.total > 0 ? p.female_pct : 50) + '%';
+
+            var pTags = document.getElementById('p-meta-tags');
+            if (pTags) {
+                var tagsHtml = '<span class="spec-tag">本日 ' + escHtml(p.today_hours_label) + '</span>' +
+                    '<span class="spec-tag">終電後定着率 ' + Number(p.midnight_retention_pct || 0) + '%</span>' +
+                    '<span class="spec-tag">コア帯 ' + escHtml(p.core_time_short || '20-22時') + '</span>';
+                if (p.price_60m_label) {
+                    tagsHtml += '<span class="spec-tag">男性60分目安 ' + escHtml(p.price_60m_label) + '</span>';
+                }
+                pTags.innerHTML = tagsHtml;
+            }
+
+            var pReasons = document.getElementById('p-reasons');
+            if (pReasons && Array.isArray(p.reasons)) {
+                pReasons.innerHTML = p.reasons.map(function(r) {
+                    return '<li>' + escHtml(r) + '</li>';
+                }).join('');
+            }
+            var pDetBtn = document.getElementById('p-detail-btn');
+            if (pDetBtn) pDetBtn.href = p.store_url;
+            var pAreaBtn = document.getElementById('p-area-btn');
+            if (pAreaBtn) pAreaBtn.href = p.area_url || data.area_portal_url || '/areas';
+            var btmAreaLink = document.getElementById('bottom-area-guide-link');
+            if (btmAreaLink) btmAreaLink.href = data.area_portal_url || p.area_url || '/areas';
+
+            // Backup Card
+            var bCard = document.getElementById('backup-card');
+            var b = data.backup;
+            if (bCard) {
+                if (!b) {
+                    bCard.style.display = 'none';
+                } else {
+                    bCard.style.display = '';
+                    var walkTxt = b.walk_minutes_from_primary ? ('｜本命から徒歩約' + b.walk_minutes_from_primary + '分') : '';
+                    setText('b-badge', '🚶 第2候補（ハシゴ保険）' + walkTxt);
+                    setText('b-score', 'スコア ' + b.score + '点');
+                    var bLink = document.getElementById('b-store-link');
+                    if (bLink) {
+                        bLink.textContent = b.display_name;
+                        bLink.href = b.store_url;
+                    }
+                    setText('b-trigger', b.switch_trigger || '');
+                    setText('b-women', '女性 ' + Number(b.women || 0) + '名');
+                    setText('b-men', '男性 ' + Number(b.men || 0) + '名');
+                    setText('b-fpct-label', renderStoreRatioLabel(b, false));
+                    var bBar = document.getElementById('b-ratio-bar');
+                    if (bBar) bBar.style.width = (b.total > 0 ? b.female_pct : 50) + '%';
+                    var bTags = document.getElementById('b-meta-tags');
+                    if (bTags) {
+                        var bt = '<span class="spec-tag">終電後定着 ' + Number(b.midnight_retention_pct || 0) + '%</span>';
+                        if (b.solo_rule_short) bt += '<span class="spec-tag">' + escHtml(b.solo_rule_short) + '</span>';
+                        bTags.innerHTML = bt;
+                    }
+                    setText('b-reason-first', (b.reasons && b.reasons[0]) ? b.reasons[0] : (b.headline_reason || ''));
+                    var bDetBtn = document.getElementById('b-detail-btn');
+                    if (bDetBtn) bDetBtn.href = b.store_url;
+                }
+            }
+
+            // Other Candidates
+            var otherSec = document.getElementById('other-stores-section');
+            var otherGrid = document.getElementById('other-stores-grid');
+            var others = data.other_candidates || [];
+            if (otherSec && otherGrid) {
+                if (!others.length) {
+                    otherSec.style.display = 'none';
+                } else {
+                    otherSec.style.display = '';
+                    otherGrid.innerHTML = others.map(function(oc) {
+                        var wNote = oc.walk_minutes_from_primary ? (' <small style="color:var(--text-sub); font-weight:500;">(徒歩' + Number(oc.walk_minutes_from_primary) + '分)</small>') : '';
+                        return '<a href="' + escHtml(oc.store_url) + '" class="other-store-item">' +
+                            '<span style="font-weight:700;">' + escHtml(oc.display_name) + wNote + '</span>' +
+                            '<span><strong class="tot-w">女' + Number(oc.women || 0) + '</strong> : <strong class="tot-m">男' + Number(oc.men || 0) + '</strong></span>' +
+                            '</a>';
+                    }).join('');
+                }
+            }
+
+            // Second Venue
+            var sv = data.second_venue_tip || {};
+            setText('sv-title', '狙い目エリア：' + (sv.spot_title || ''));
+            setText('sv-spots', sv.spots || '');
+            setText('sv-phrase', '💬 誘い方例：' + (sv.invite_phrase || ''));
+            var svTiming = document.getElementById('sv-timing');
+            if (svTiming) {
+                svTiming.innerHTML = '⏱️ ' + escHtml(sv.timing_advice || '') +
+                    ' <a href="' + escHtml(sv.guide_url || '/guide/second-venue') + '" class="editorial-inline-link" style="margin-left:6px;">2軒目誘い出し完全ガイド ›</a>';
+            }
+
+            // Smart Action Card (Public View Only)
+            if (IS_PUBLIC_VIEW && data.smart_action_card) {
+                var sac = data.smart_action_card;
+                setText('sac-kicker', sac.kicker || '');
+                setText('sac-title', sac.title || '');
+                setText('sac-body', sac.body || '');
+                var sacP = document.getElementById('sac-primary-btn');
+                if (sacP && sac.primary_url) {
+                    sacP.textContent = (sac.primary_label || '詳細を見る') + ' ›';
+                    sacP.href = sac.primary_url;
+                }
+                var sacS = document.getElementById('sac-secondary-btn');
+                if (sacS && sac.secondary_url) {
+                    sacS.textContent = (sac.secondary_label || 'ガイドを読む') + ' ›';
+                    sacS.href = sac.secondary_url;
+                }
+            }
+        }
+
+        function buildQuery() {
+            var params = new URLSearchParams();
+            params.set('area', state.area);
+            params.set('audience', state.audience);
+            params.set('timing', state.timing);
+            params.set('party_size', state.party_size);
+            params.set('vibe', state.vibe);
+            return params.toString();
+        }
+
+        function fetchConcierge() {
+            var qs = buildQuery();
+            try {
+                window.history.replaceState(null, '', '/concierge?' + qs);
+            } catch (e) {}
+
+            if (activeController) {
+                try { activeController.abort(); } catch (e) {}
+            }
+            activeController = window.AbortController ? new AbortController() : null;
+            if (stageEl) stageEl.classList.add('is-updating');
+
+            fetch('/api/concierge?' + qs, {
+                signal: activeController ? activeController.signal : undefined,
+                headers: { 'Accept': 'application/json' }
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                applyResult(data);
+                if (stageEl) stageEl.classList.remove('is-updating');
+            })
+            .catch(function(err) {
+                if (err && err.name === 'AbortError') return;
+                if (stageEl) stageEl.classList.remove('is-updating');
+            });
+        }
+
+        document.addEventListener('click', function(ev) {
+            var btn = ev.target.closest('.c-pill[data-param]');
+            if (!btn) return;
+            var p = btn.getAttribute('data-param');
+            var v = btn.getAttribute('data-val');
+            if (!p || !v || state[p] === v) return;
+            state[p] = v;
+            updateActivePills();
+            fetchConcierge();
+        });
+
+        var copyBtn = document.getElementById('copy-plan-url-btn');
+        if (copyBtn) {
+            copyBtn.addEventListener('click', function() {
+                var url = window.location.origin + '/concierge?' + buildQuery();
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(url).then(function() {
+                        copyBtn.textContent = '✅ コピーしました！';
+                        setTimeout(function() { copyBtn.textContent = '🔗 この診断URLをコピー'; }, 2000);
+                    });
+                }
+            });
+        }
+    })();
+    </script>
+</body>
+
+</html>

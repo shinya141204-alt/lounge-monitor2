@@ -1,5 +1,5 @@
-// Supersedes aiseki-navi-v47..v63 (purged automatically on activate)
-const CACHE_NAME = 'aiseki-navi-v64';
+// Supersedes aiseki-navi-v47..v64 (purged automatically on activate)
+const CACHE_NAME = 'aiseki-navi-v65';
 const SHELL_KEY = '/';
 const LIVE_FRESH_TTL_MS = 45000;
 const PREFETCH_DEDUP_MS = 25000;
@@ -13,6 +13,7 @@ const FAST_NAV_PATHS = new Set([
 ]);
 const LIVE_SSR_EXACT = new Set([
   '/',
+  '/concierge',
   '/for-women',
   '/areas',
   '/stats',

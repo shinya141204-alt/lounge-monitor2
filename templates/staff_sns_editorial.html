@@ -395,6 +395,245 @@
             color: var(--text);
             font-size: 0.82rem;
         }
+        /* Google AI Ultra Short Video Studio (Reels / Shorts / TikTok) */
+        .reel-studio-card {
+            background: linear-gradient(140deg, rgba(216, 161, 170, 0.11) 0%, rgba(200, 164, 110, 0.08) 45%, rgba(22, 23, 28, 0.98) 100%);
+            border: 1px solid rgba(200, 164, 110, 0.44);
+            border-radius: 16px;
+            padding: 18px 20px;
+            margin-bottom: 22px;
+        }
+        .reel-studio-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+        .reel-studio-title {
+            font-size: 1.06rem;
+            font-weight: 800;
+            margin: 0 0 4px;
+            color: #f9efe0;
+        }
+        .reel-studio-sub {
+            font-size: 0.79rem;
+            color: var(--sub);
+            margin: 0;
+        }
+        .reel-auto-box {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(15, 16, 20, 0.82);
+            border: 1px solid var(--border-strong);
+            border-radius: 999px;
+            padding: 7px 14px;
+            font-size: 0.78rem;
+            font-weight: 700;
+        }
+        .reel-switch {
+            position: relative;
+            display: inline-block;
+            width: 42px;
+            height: 23px;
+            flex-shrink: 0;
+        }
+        .reel-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .reel-switch-slider {
+            position: absolute;
+            cursor: pointer;
+            inset: 0;
+            background-color: #2d303c;
+            border: 1px solid var(--border-strong);
+            transition: 0.2s;
+            border-radius: 999px;
+        }
+        .reel-switch-slider:before {
+            position: absolute;
+            content: "";
+            height: 17px;
+            width: 17px;
+            left: 2px;
+            bottom: 2px;
+            background-color: #e5e2dc;
+            transition: 0.2s;
+            border-radius: 50%;
+        }
+        .reel-switch input:checked + .reel-switch-slider {
+            background-color: rgba(123, 196, 159, 0.35);
+            border-color: var(--green);
+        }
+        .reel-switch input:checked + .reel-switch-slider:before {
+            transform: translateX(19px);
+            background-color: var(--green);
+        }
+        .reel-studio-grid {
+            display: grid;
+            grid-template-columns: minmax(220px, 265px) minmax(0, 1fr);
+            gap: 18px;
+            align-items: start;
+        }
+        @media (max-width: 760px) {
+            .reel-studio-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        .reel-player-col {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+        .reel-phone-frame {
+            width: 100%;
+            max-width: 262px;
+            aspect-ratio: 9 / 16;
+            background: #07080d;
+            border: 2px solid rgba(200, 164, 110, 0.45);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+            position: relative;
+        }
+        .reel-phone-frame video {
+            width: 100%;
+            height: 100%;
+            display: block;
+            object-fit: cover;
+            background: #07080d;
+        }
+        .reel-dl-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            width: 100%;
+            max-width: 262px;
+            text-decoration: none;
+            font-size: 0.8rem;
+            font-weight: 800;
+            padding: 9px 12px;
+            border-radius: 10px;
+            background: var(--surface-2);
+            border: 1px solid var(--gold);
+            color: #f5e6cc;
+            text-align: center;
+        }
+        .reel-dl-btn:hover { background: var(--gold-soft); }
+        .reel-tab-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 7px;
+            margin-bottom: 10px;
+        }
+        .reel-tab-btn {
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.8rem;
+            font-weight: 700;
+            padding: 7px 13px;
+            border-radius: 999px;
+            background: var(--bg);
+            color: var(--sub);
+            border: 1px solid var(--border-strong);
+        }
+        .reel-tab-btn.active {
+            background: var(--gold-soft);
+            border-color: var(--gold);
+            color: #f9efe0;
+        }
+        .reel-gen-btn {
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.82rem;
+            font-weight: 800;
+            padding: 9px 15px;
+            border-radius: 10px;
+            border: 1px solid rgba(244, 114, 182, 0.7);
+            background: linear-gradient(135deg, rgba(236, 72, 153, 0.28), rgba(200, 164, 110, 0.25));
+            color: #fff3f8;
+        }
+        .reel-gen-btn:hover { opacity: 0.92; }
+        .reel-gen-btn:disabled { opacity: 0.55; cursor: wait; }
+        .reel-caption-area {
+            width: 100%;
+            min-height: 158px;
+            padding: 11px 12px;
+            border-radius: 10px;
+            border: 1px solid var(--border-strong);
+            background: #0b0c0f;
+            color: var(--text);
+            font-family: inherit;
+            font-size: 0.81rem;
+            line-height: 1.55;
+            resize: vertical;
+        }
+        .reel-publish-btn {
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.83rem;
+            font-weight: 800;
+            padding: 9px 16px;
+            border-radius: 10px;
+            border: 1px solid var(--green);
+            background: rgba(123, 196, 159, 0.22);
+            color: #e6fff2;
+        }
+        .reel-publish-btn:hover { opacity: 0.92; }
+        .reel-publish-btn:disabled { opacity: 0.55; cursor: wait; }
+        .reel-veo-details {
+            margin-top: 14px;
+            background: rgba(11, 12, 16, 0.72);
+            border: 1px dashed rgba(200, 164, 110, 0.42);
+            border-radius: 12px;
+            padding: 10px 14px;
+        }
+        .reel-veo-details summary {
+            cursor: pointer;
+            font-size: 0.83rem;
+            font-weight: 800;
+            color: #f5e6cc;
+            list-style: none;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+        .reel-veo-details summary::-webkit-details-marker { display: none; }
+        .reel-veo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 275px), 1fr));
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .reel-veo-card {
+            background: var(--surface);
+            border: 1px solid var(--border-strong);
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-size: 0.76rem;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .reel-veo-prompt-box {
+            background: #090a0d;
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            padding: 7px 9px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 0.72rem;
+            color: #cbd5e1;
+            line-height: 1.45;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
     </style>
 </head>
 <body>
@@ -579,6 +818,191 @@
 
                 <div id="gemini-key-msg" style="font-size:0.78rem; margin-top:6px; color:#d3f3e2;"></div>
             </div>
+        </div>
+
+        <!-- Google AI Ultra Short Video Studio (Reels / Shorts / TikTok) -->
+        {% set _reel_studio = reel_studio | default(reel_info | default({})) %}
+        {% set _reel_init_type = (_reel_studio.get('reel_type') if _reel_studio else '') or (reel_type | default('live_top5')) %}
+        {% set _reel_init_auto = (_reel_studio.get('auto_schedule_enabled') if (_reel_studio and 'auto_schedule_enabled' in _reel_studio) else (reel_auto_schedule_enabled | default(reel_auto_enabled | default(false)))) %}
+        {% set _reel_init_caption = (_reel_studio.get('caption') if _reel_studio else '') or (reel_caption | default('')) %}
+        {% set _reel_init_bgs = (_reel_studio.get('backgrounds') if _reel_studio else none) or (reel_backgrounds | default({})) %}
+        {% set _reel_init_prompts = (_reel_studio.get('veo3_prompts') if _reel_studio else none) or (veo3_prompts | default([
+            {
+                "id": "veo_neon",
+                "title": "🌃 夜の東京ネオン＆雨粒ボケ（全国TOP5速報・王道）",
+                "scene_ja": "夜の渋谷・新宿の濡れた路面とネオン光彩が美しく玉ボケする9:16シネマティック背景。文字カードが最も映える暗めトーン。",
+                "prompt_en": "Vertical 9:16 cinematic slow-motion b-roll of Tokyo luxury nightlife street at night after rain, out-of-focus warm champagne gold, magenta pink, and cyan neon bokeh lights reflecting on wet pavement, shallow depth of field f/1.4, dark moody exposure so white UI text overlays remain ultra-readable, smooth gentle forward camera glide, photorealistic 4k, no people faces, no text, no watermark.",
+                "recommended_filename": "veo_neon.mp4"
+            },
+            {
+                "id": "veo_lounge",
+                "title": "🥂 ラグジュアリーラウンジ・シャンパンゴールド光彩（全タイプ万能）",
+                "scene_ja": "高級相席ラウンジを連想させるダークベルベット＆シャンデリアのボケ光彩とグラスの泡が揺らめく上品な背景。",
+                "prompt_en": "Vertical 9:16 ultra-luxury dark velvet lounge interior ambiance at night, warm amber chandelier bokeh and subtle sparkling champagne bubbles rising in slow motion in foreground macro, deep dark shadows, slow cinematic dolly movement, shallow depth of field, rich gold and obsidian color grading, no people, no text, no logos.",
+                "recommended_filename": "veo_lounge.mp4"
+            },
+            {
+                "id": "veo_city_battle",
+                "title": "⚡ 大都会ナイトスカイライン＆光跡（3大都市バトル向け）",
+                "scene_ja": "新宿・梅田・渋谷のナイトバトルにぴったりな高層ビル群とシアン×ピンクの光跡が流れるスピード感ある背景。",
+                "prompt_en": "Vertical 9:16 aerial twilight-to-night cinematic drone shot gliding slowly above modern Japanese metropolis skyscrapers with glowing cyan and magenta highway light trails below, moody dark exposure, soft atmospheric haze, high contrast luxury cyber-night color palette, smooth motion, no text, no watermark.",
+                "recommended_filename": "veo_city_battle.mp4"
+            },
+            {
+                "id": "veo_rosegold",
+                "title": "💄 ローズゴールド＆キャンドル揺らめくVIP席（女子待ち0速報向け）",
+                "scene_ja": "女性フォロワーの保存率を高める、ローズゴールドの間接照明とキャンドルが柔らかく揺れる大人エレガント背景。",
+                "prompt_en": "Vertical 9:16 elegant rose-gold and warm candlelight bokeh in a chic upscale cocktail lounge, soft silk and dark marble reflections, dreamy shallow depth of field, gentle floating warm light particles, dark moody background ideal for typography overlay, slow smooth camera pan, photorealistic, no people, no text.",
+                "recommended_filename": "veo_rosegold.mp4"
+            },
+            {
+                "id": "veo_champagne",
+                "title": "✨ ダーククリスタル＆舞い上がる金色の泡マクロスロー（週末ピーク向け）",
+                "scene_ja": "金・土のピーク速報や特典案内に映える、黒背景に金色のシャンパンバブルがゆっくり昇る華やかなマクロ映像。",
+                "prompt_en": "Vertical 9:16 extreme macro slow-motion shot of fine golden champagne bubbles rising gracefully against a deep pitch-black and warm bronze background, subtle rose-gold rim lighting, crystal glass refraction bokeh, luxury commercial aesthetic, 4k photorealistic, no text, no watermark.",
+                "recommended_filename": "veo_champagne.mp4"
+            }
+        ])) %}
+        <div class="reel-studio-card" id="reel-studio-section">
+            <div class="reel-studio-head">
+                <div>
+                    <h2 class="reel-studio-title">🎬 Google AI Ultra ショート動画スタジオ（Reels / Shorts / TikTok）</h2>
+                    <p class="reel-studio-sub">全国リアルタイム人数から 9:16 縦型ショート動画（H.264 + 音声トラック付きMP4・約11.5秒）を自動合成。Instagram Reels への1クリック直接公開、または MP4 保存で TikTok / YouTube Shorts へそのまま投稿できます。</p>
+                </div>
+                <label class="reel-auto-box" for="reel-auto-schedule-toggle" title="ONにすると週末・夜のピーク枠で自動リール定期投稿を有効化します（初期OFF）">
+                    <span id="reel-auto-schedule-label">
+                        🔄 週末・夜の自動リール定期投稿：<strong id="reel-auto-state-text" style="color:{{ 'var(--green)' if _reel_init_auto else 'var(--sub)' }};">{{ 'ON（稼働中）' if _reel_init_auto else 'OFF（手動のみ）' }}</strong>
+                    </span>
+                    <span class="reel-switch">
+                        <input type="checkbox" id="reel-auto-schedule-toggle" {{ 'checked' if _reel_init_auto else '' }} onchange="saveReelAutoSchedule(this.checked)">
+                        <span class="reel-switch-slider"></span>
+                    </span>
+                </label>
+            </div>
+
+            <div class="reel-studio-grid">
+                <!-- Left: 9:16 Vertical Video Player + Download -->
+                <div class="reel-player-col">
+                    <div class="reel-phone-frame">
+                        <video id="reel-video-player"
+                               controls
+                               playsinline
+                               preload="none"
+                               poster="/ogp/reel/{{ _reel_init_type }}.jpg?t=init">
+                            <source id="reel-video-source" src="/ogp/reel/{{ _reel_init_type }}.mp4?t=init" type="video/mp4">
+                        </video>
+                    </div>
+                    <a id="reel-download-link"
+                       class="reel-dl-btn"
+                       href="/ogp/reel/{{ _reel_init_type }}.mp4?t=init"
+                       download="aiseki_navi_{{ _reel_init_type }}.mp4">
+                        ⬇️ MP4を保存（TikTok / Shorts用）
+                    </a>
+                    <div id="reel-bg-status-badge" style="font-size:0.73rem; color:var(--sub); text-align:center; line-height:1.45;">
+                        {% if _reel_init_bgs and _reel_init_bgs.get('active_mode') == 'veo3_video' %}
+                        🟢 Veo 3 実写動画背景モード稼働中（<code>{{ _reel_init_bgs.get('active_file') }}</code>）
+                        {% elif _reel_init_bgs and _reel_init_bgs.get('active_mode') == 'custom_image' %}
+                        🖼️ カスタム9:16画像＋Ken Burnsズーム稼働中（<code>{{ _reel_init_bgs.get('active_file') }}</code>）
+                        {% else %}
+                        ✨ ラグジュアリー光彩ボケ＋Ken Burns自動ズーム稼働中
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Right: Template Tabs, Generate Button, Editable Caption & 1-Click IG Publish -->
+                <div style="display:flex; flex-direction:column; gap:10px; min-width:0;">
+                    <div>
+                        <div style="font-size:0.78rem; font-weight:700; color:#f5e6cc; margin-bottom:6px;">① ショート動画テンプレートを選択：</div>
+                        <div class="reel-tab-row" role="tablist" aria-label="リール動画タイプ切替">
+                            <button type="button"
+                                    class="reel-tab-btn {{ 'active' if _reel_init_type == 'live_top5' else '' }}"
+                                    data-reel-type="live_top5"
+                                    onclick="selectReelType('live_top5')">
+                                🔥 全国TOP5速報
+                            </button>
+                            <button type="button"
+                                    class="reel-tab-btn {{ 'active' if _reel_init_type == 'area_battle' else '' }}"
+                                    data-reel-type="area_battle"
+                                    onclick="selectReelType('area_battle')">
+                                ⚡ 3大都市バトル
+                            </button>
+                            <button type="button"
+                                    class="reel-tab-btn {{ 'active' if _reel_init_type == 'ladies_zero_wait' else '' }}"
+                                    data-reel-type="ladies_zero_wait"
+                                    onclick="selectReelType('ladies_zero_wait')">
+                                💄 女子待ち0速報
+                            </button>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:8px;">
+                            <button type="button" id="reel-generate-btn" class="reel-gen-btn" onclick="previewReelVideoNow()">
+                                🎬 最新データでリール動画を生成・プレビュー
+                            </button>
+                            <span id="reel-template-desc" style="font-size:0.76rem; color:var(--sub);">
+                                1位〜5位の男女比バーが滑らかに伸びるアニメーション＋高女性比率穴場＆プロフ誘導CTA
+                            </span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:6px;">
+                            <label for="reel-caption-input" style="font-size:0.78rem; font-weight:700; color:#f5e6cc;">
+                                ② 投稿キャプション＆ハッシュタグ（編集可能・Reels / TikTok / Shorts 共通）：
+                            </label>
+                            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                                <button type="button" class="back-btn" style="font-size:0.74rem; padding:4px 10px;" onclick="loadReelStudioInfo(null, true)">
+                                    🔄 最新データから文面を再取得
+                                </button>
+                                <button type="button" class="copy-btn" style="font-size:0.74rem; padding:4px 10px;" onclick="copyReelCaption(this)">
+                                    📋 キャプションをコピー
+                                </button>
+                            </div>
+                        </div>
+                        <textarea id="reel-caption-input"
+                                  class="reel-caption-area"
+                                  placeholder="最新データからリール用キャプションを自動生成します...">{{ _reel_init_caption }}</textarea>
+                    </div>
+
+                    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; padding-top:2px;">
+                        <label style="display:inline-flex; align-items:center; gap:7px; font-size:0.78rem; color:var(--sub); cursor:pointer;">
+                            <input type="checkbox" id="reel-share-feed-chk" checked>
+                            <span>Instagramフィード（プロフィールグリッド）にも同時表示する</span>
+                        </label>
+                        <button type="button" id="reel-publish-ig-btn" class="reel-publish-btn" onclick="publishInstagramReelNow()">
+                            📸 Instagramリールへ今すぐ投稿
+                        </button>
+                    </div>
+
+                    <div id="reel-action-msg" style="font-size:0.78rem; min-height:1.2em; color:#d3f3e2; overflow-wrap:anywhere;"></div>
+                </div>
+            </div>
+
+            <!-- Collapsible Google Flow (Veo 3) Cinematic 9:16 Prompt Book -->
+            <details class="reel-veo-details">
+                <summary>
+                    <span>✨ Google Flow (Veo 3) 専用・映画級9:16背景プロンプト帳（実写動画背景へ自動アップグレード）</span>
+                    <span style="font-size:0.74rem; color:var(--gold);">▼ クリックで開閉</span>
+                </summary>
+                <div style="font-size:0.77rem; color:var(--sub); margin-top:10px; line-height:1.6;">
+                    💡 <strong>Google AI Ultra 連携ガイド（GCP不要・追加APIコスト0円）</strong>：<br>
+                    1. Google AI Ultra の <strong>Google Flow (Veo 3)</strong> を開き、アスペクト比 <code>9:16（縦型）</code> を選択して下の英語プロンプトをワンクリックコピー＆動画生成します。<br>
+                    2. ダウンロードした <code>.mp4</code> を <code>static/reels_bg/</code> フォルダ（推奨名：<code>veo_neon.mp4</code> / <code>veo_lounge.mp4</code> / <code>veo_rosegold.mp4</code> 等、任意の <code>*.mp4</code> でも可）に置くだけで、自動的に実写シネマティック背景＋暗幕オーバーレイ＋リアルタイム人数アニメーション合成へ切り替わります！
+                </div>
+                <div class="reel-veo-grid" id="reel-veo-prompts-grid">
+                    {% for vp in _reel_init_prompts %}
+                    <div class="reel-veo-card">
+                        <div style="display:flex; align-items:center; justify-content:space-between; gap:6px; flex-wrap:wrap;">
+                            <strong style="color:#f9efe0;">{{ vp.title }}</strong>
+                            <code style="font-size:0.7rem; color:var(--gold); background:rgba(200,164,110,0.12); padding:2px 6px; border-radius:4px;">{{ vp.recommended_filename }}</code>
+                        </div>
+                        <div style="color:var(--sub);">{{ vp.scene_ja }}</div>
+                        <div class="reel-veo-prompt-box" id="veo-prompt-text-{{ loop.index0 }}">{{ vp.prompt_en }}</div>
+                        <button type="button" class="copy-btn" style="font-size:0.73rem; padding:5px 10px; align-self:flex-start;" onclick="copyVeoPrompt({{ loop.index0 }}, this)">
+                            📋 英語プロンプトをコピー
+                        </button>
+                    </div>
+                    {% endfor %}
+                </div>
+            </details>
         </div>
 
         <!-- 4 Roles Live Output -->
@@ -1243,11 +1667,313 @@
             }
         }
 
+        var _currentReelType = {{ _reel_init_type | tojson }};
+        var _reelPublishInFlight = false;
+        var _reelSettingInFlight = false;
+        var _reelTemplatesMeta = {
+            "live_top5": {
+                "label": "🔥 全国TOP5速報",
+                "desc": "全国のリアルタイム女性人数TOP5店舗の男女比バーアニメーション＋高女性比率穴場ピックアップ"
+            },
+            "area_battle": {
+                "label": "⚡ 3大都市バトル",
+                "desc": "新宿 vs 梅田 vs 渋谷の合計女性人数・女性比率・今一番入りやすい狙い目店をアニメーション比較"
+            },
+            "ladies_zero_wait": {
+                "label": "💄 女子待ち0速報",
+                "desc": "男性先行中＝受付待ちゼロ圏の上位店舗をエレガントなローズゴールド調でアニメーション表示"
+            }
+        };
+
+        function _updateReelMediaUrls(reelType, forcePlay) {
+            var ts = Date.now();
+            var mp4Url = "/ogp/reel/" + encodeURIComponent(reelType) + ".mp4?t=" + ts;
+            var jpgUrl = "/ogp/reel/" + encodeURIComponent(reelType) + ".jpg?t=" + ts;
+            var videoEl = document.getElementById("reel-video-player");
+            var srcEl = document.getElementById("reel-video-source");
+            var dlEl = document.getElementById("reel-download-link");
+
+            if (dlEl) {
+                dlEl.href = mp4Url;
+                dlEl.setAttribute("download", "aiseki_navi_" + reelType + "_" + ts + ".mp4");
+            }
+            if (videoEl) {
+                videoEl.setAttribute("poster", jpgUrl);
+                if (srcEl) {
+                    srcEl.src = mp4Url;
+                } else {
+                    videoEl.src = mp4Url;
+                }
+                if (forcePlay) {
+                    videoEl.preload = "auto";
+                    videoEl.load();
+                    var playPromise = videoEl.play();
+                    if (playPromise && typeof playPromise.catch === "function") {
+                        playPromise.catch(function() {});
+                    }
+                }
+            }
+        }
+
+        function _renderVeoPromptCards(prompts) {
+            if (!Array.isArray(prompts) || !prompts.length) return;
+            var grid = document.getElementById("reel-veo-prompts-grid");
+            if (!grid) return;
+            grid.innerHTML = prompts.map(function(vp, idx) {
+                return (
+                    '<div class="reel-veo-card">' +
+                        '<div style="display:flex; align-items:center; justify-content:space-between; gap:6px; flex-wrap:wrap;">' +
+                            '<strong style="color:#f9efe0;">' + escHtml(vp.title || "") + '</strong>' +
+                            '<code style="font-size:0.7rem; color:var(--gold); background:rgba(200,164,110,0.12); padding:2px 6px; border-radius:4px;">' + escHtml(vp.recommended_filename || "") + '</code>' +
+                        '</div>' +
+                        '<div style="color:var(--sub);">' + escHtml(vp.scene_ja || "") + '</div>' +
+                        '<div class="reel-veo-prompt-box" id="veo-prompt-text-' + idx + '">' + escHtml(vp.prompt_en || "") + '</div>' +
+                        '<button type="button" class="copy-btn" style="font-size:0.73rem; padding:5px 10px; align-self:flex-start;" onclick="copyVeoPrompt(' + idx + ', this)">📋 英語プロンプトをコピー</button>' +
+                    '</div>'
+                );
+            }).join("");
+        }
+
+        function _applyReelBackgroundBadge(bgs) {
+            var badge = document.getElementById("reel-bg-status-badge");
+            if (!badge || !bgs) return;
+            if (bgs.active_mode === "veo3_video" && bgs.active_file) {
+                badge.innerHTML = '🟢 Veo 3 実写動画背景モード稼働中（<code>' + escHtml(bgs.active_file) + '</code>）';
+            } else if (bgs.active_mode === "custom_image" && bgs.active_file) {
+                badge.innerHTML = '🖼️ カスタム9:16画像＋Ken Burnsズーム稼働中（<code>' + escHtml(bgs.active_file) + '</code>）';
+            } else {
+                badge.innerHTML = '✨ ラグジュアリー光彩ボケ＋Ken Burns自動ズーム稼働中';
+            }
+        }
+
+        function _applyReelAutoScheduleUi(enabled) {
+            var chk = document.getElementById("reel-auto-schedule-toggle");
+            var txt = document.getElementById("reel-auto-state-text");
+            if (chk) chk.checked = !!enabled;
+            if (txt) {
+                txt.textContent = enabled ? "ON（稼働中）" : "OFF（手動のみ）";
+                txt.style.color = enabled ? "var(--green)" : "var(--sub)";
+            }
+        }
+
+        async function loadReelStudioInfo(reelType, overwriteCaption) {
+            var rt = reelType || _currentReelType || "live_top5";
+            try {
+                var data = await fetchJsonSafe("/api/staff/sns-reel/info?reel_type=" + encodeURIComponent(rt), {
+                    headers: {"Accept": "application/json"}
+                }, 20000);
+                if (!data || !data.ok) return;
+
+                if (data.templates) {
+                    if (Array.isArray(data.templates)) {
+                        data.templates.forEach(function(t) {
+                            if (t && t.key) _reelTemplatesMeta[t.key] = t;
+                        });
+                    } else if (typeof data.templates === "object") {
+                        Object.keys(data.templates).forEach(function(k) {
+                            _reelTemplatesMeta[k] = data.templates[k];
+                        });
+                    }
+                }
+                var meta = _reelTemplatesMeta[rt];
+                var descEl = document.getElementById("reel-template-desc");
+                if (descEl && meta && meta.desc) {
+                    descEl.textContent = meta.desc;
+                }
+
+                var capEl = document.getElementById("reel-caption-input");
+                if (capEl && typeof data.caption === "string" && (overwriteCaption || !capEl.value.trim())) {
+                    capEl.value = data.caption;
+                }
+                if (typeof data.auto_schedule_enabled === "boolean") {
+                    _applyReelAutoScheduleUi(data.auto_schedule_enabled);
+                }
+                if (data.backgrounds) {
+                    _applyReelBackgroundBadge(data.backgrounds);
+                }
+                if (Array.isArray(data.veo3_prompts) && data.veo3_prompts.length) {
+                    _renderVeoPromptCards(data.veo3_prompts);
+                }
+            } catch (e) {
+                // Silent fallback when initial page renders before API fetch completes
+            }
+        }
+
+        function selectReelType(reelType) {
+            _currentReelType = reelType || "live_top5";
+            var btns = document.querySelectorAll(".reel-tab-btn");
+            for (var i = 0; i < btns.length; i++) {
+                var isMatch = btns[i].getAttribute("data-reel-type") === _currentReelType;
+                btns[i].classList.toggle("active", isMatch);
+            }
+            var meta = _reelTemplatesMeta[_currentReelType];
+            var descEl = document.getElementById("reel-template-desc");
+            if (descEl && meta && meta.desc) {
+                descEl.textContent = meta.desc;
+            }
+            var videoEl = document.getElementById("reel-video-player");
+            if (videoEl) {
+                try { videoEl.pause(); } catch (e) {}
+                videoEl.preload = "none";
+            }
+            _updateReelMediaUrls(_currentReelType, false);
+            loadReelStudioInfo(_currentReelType, true);
+        }
+
+        function previewReelVideoNow() {
+            var msgEl = document.getElementById("reel-action-msg");
+            var genBtn = document.getElementById("reel-generate-btn");
+            var videoEl = document.getElementById("reel-video-player");
+            if (msgEl) {
+                msgEl.style.color = "#d3f3e2";
+                msgEl.textContent = "🎬 最新データで9:16ショート動画（MP4）を生成・読み込み中です（約2〜4秒）...";
+            }
+            if (genBtn) genBtn.disabled = true;
+
+            if (videoEl) {
+                videoEl.onloadeddata = function() {
+                    if (genBtn) genBtn.disabled = false;
+                    if (msgEl) {
+                        msgEl.style.color = "#d3f3e2";
+                        msgEl.textContent = "✅ リール動画の生成・プレビュー準備が完了しました！（そのまま再生またはMP4保存できます）";
+                    }
+                };
+                videoEl.onerror = function() {
+                    if (genBtn) genBtn.disabled = false;
+                    if (msgEl) {
+                        msgEl.style.color = "#ffd6d6";
+                        msgEl.textContent = "⚠️ MP4動画の読み込みに失敗しました（FFmpeg未導入環境では静止画サムネイルのみ表示されます）。";
+                    }
+                };
+            }
+            _updateReelMediaUrls(_currentReelType, true);
+            loadReelStudioInfo(_currentReelType, false);
+            setTimeout(function() {
+                if (genBtn) genBtn.disabled = false;
+            }, 6000);
+        }
+
+        function copyReelCaption(btn) {
+            var capEl = document.getElementById("reel-caption-input");
+            if (!capEl || !capEl.value) return;
+            navigator.clipboard.writeText(capEl.value).then(function() {
+                var orig = btn.innerText;
+                btn.innerText = "✓ コピーしました！";
+                setTimeout(function() { btn.innerText = orig; }, 1800);
+            });
+        }
+
+        function copyVeoPrompt(idx, btn) {
+            var el = document.getElementById("veo-prompt-text-" + idx);
+            if (!el) return;
+            navigator.clipboard.writeText(el.innerText).then(function() {
+                var orig = btn.innerText;
+                btn.innerText = "✓ コピー完了！";
+                setTimeout(function() { btn.innerText = orig; }, 1800);
+            });
+        }
+
+        async function saveReelAutoSchedule(enabled) {
+            if (_reelSettingInFlight) return;
+            _reelSettingInFlight = true;
+            var msgEl = document.getElementById("reel-action-msg");
+            if (msgEl) {
+                msgEl.style.color = "#d3f3e2";
+                msgEl.textContent = "🔄 自動リール定期投稿の設定を保存しています...";
+            }
+            try {
+                var res = await fetchJsonSafe("/api/staff/sns-reel/settings", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json", "Accept": "application/json"},
+                    body: JSON.stringify({auto_schedule_enabled: !!enabled})
+                }, 20000);
+                var savedState = (res && typeof res.auto_schedule_enabled === "boolean") ? res.auto_schedule_enabled : !!enabled;
+                _applyReelAutoScheduleUi(savedState);
+                if (msgEl) {
+                    msgEl.style.color = "#d3f3e2";
+                    msgEl.textContent = "✅ 週末・夜の自動リール定期投稿を「" + (savedState ? "ON" : "OFF") + "」に保存しました。";
+                }
+            } catch (err) {
+                _applyReelAutoScheduleUi(!enabled);
+                if (msgEl) {
+                    msgEl.style.color = "#ffd6d6";
+                    msgEl.textContent = "⚠️ 設定保存エラー: " + ((err && err.message) || "通信エラーが発生しました");
+                }
+            } finally {
+                _reelSettingInFlight = false;
+            }
+        }
+
+        async function publishInstagramReelNow() {
+            if (_reelPublishInFlight) return;
+            var capEl = document.getElementById("reel-caption-input");
+            var shareChk = document.getElementById("reel-share-feed-chk");
+            var pubBtn = document.getElementById("reel-publish-ig-btn");
+            var msgEl = document.getElementById("reel-action-msg");
+
+            var caption = capEl ? capEl.value.trim() : "";
+            var shareToFeed = shareChk ? !!shareChk.checked : true;
+            var meta = _reelTemplatesMeta[_currentReelType] || {};
+            var typeLabel = meta.label || _currentReelType;
+
+            if (!confirm("選択中のショート動画（" + typeLabel + "）を本番の Instagram Reels へ今すぐ公開しますか？\n※ Metaサーバーでの動画エンコード処理のため、完了まで20〜60秒ほどかかります。")) {
+                return;
+            }
+
+            _reelPublishInFlight = true;
+            if (pubBtn) {
+                pubBtn.disabled = true;
+                pubBtn.textContent = "⏳ Instagramへリール公開処理中...";
+            }
+            if (msgEl) {
+                msgEl.style.color = "#d3f3e2";
+                msgEl.textContent = "⏳ MP4生成＆Meta Instagramサーバーでの動画処理待機中です（最大60秒ほどこのままお待ちください）...";
+            }
+
+            try {
+                var res = await fetchJsonSafe("/api/staff/sns-reel/publish", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json", "Accept": "application/json"},
+                    body: JSON.stringify({
+                        reel_type: _currentReelType,
+                        caption: caption,
+                        share_to_feed: shareToFeed
+                    })
+                }, 95000);
+
+                if (res && (res.ok || res.status === "success")) {
+                    if (msgEl) {
+                        msgEl.style.color = "#d3f3e2";
+                        msgEl.textContent = "✅ Instagramリールへの公開が完了しました！" + (res.id ? ("（Media ID: " + res.id + "）") : "");
+                    }
+                } else {
+                    var detail = (res && (res.detail || res.error || res.reason)) || "公開処理に失敗しました";
+                    if (msgEl) {
+                        msgEl.style.color = "#ffd6d6";
+                        msgEl.textContent = "⚠️ Instagramリール投稿結果: " + detail;
+                    }
+                }
+            } catch (err) {
+                if (msgEl) {
+                    msgEl.style.color = "#ffd6d6";
+                    msgEl.textContent = "⚠️ Instagramリール投稿エラー: " + ((err && err.message) || "通信エラーが発生しました");
+                }
+            } finally {
+                _reelPublishInFlight = false;
+                if (pubBtn) {
+                    pubBtn.disabled = false;
+                    pubBtn.textContent = "📸 Instagramリールへ今すぐ投稿";
+                }
+            }
+        }
+
         document.addEventListener("DOMContentLoaded", function() {
             if (INITIAL_FORCE_REFRESH && window.history && window.history.replaceState) {
                 var cleanUrl = "/staff/sns-editorial?channel=" + encodeURIComponent(CURRENT_CHANNEL) + "&slot=" + encodeURIComponent(CURRENT_SLOT);
                 window.history.replaceState(null, "", cleanUrl);
             }
+            _updateReelMediaUrls(_currentReelType, false);
+            loadReelStudioInfo(_currentReelType, false);
             if (AI_PENDING_ASYNC) {
                 triggerAsyncAiRefresh(INITIAL_FORCE_REFRESH, !INITIAL_CONFIGURED);
             }

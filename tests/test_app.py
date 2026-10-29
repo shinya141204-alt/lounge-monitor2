@@ -7,7 +7,9 @@
 外部への通信（公式サイト・Google Sheets・X）は一切行いません。
 """
 import os
+import re
 import sys
+import copy
 import json
 import shutil
 import tempfile
@@ -272,6 +274,7 @@ class JobStateTests(unittest.TestCase):
     def test_scheduled_x_post_runs_once_per_slot(self):
         with app_module.data_lock:
             app_module.latest_data['full_data'] = _fake_stores()
+            app_module.latest_data['is_seed'] = False
         with mock.patch('x_poster.post_to_x', return_value={'status': 'success'}) as post:
             r1 = app_module.run_scheduled_x_post('22:00')
             r2 = app_module.run_scheduled_x_post('22:00')
@@ -282,6 +285,7 @@ class JobStateTests(unittest.TestCase):
     def test_failed_post_is_not_marked_done(self):
         with app_module.data_lock:
             app_module.latest_data['full_data'] = _fake_stores()
+            app_module.latest_data['is_seed'] = False
         with mock.patch('x_poster.post_to_x', return_value={'status': 'error', 'detail': '503'}) as post:
             app_module.run_scheduled_x_post('20:00')
             app_module.run_scheduled_x_post('20:00')
@@ -1745,7 +1749,7 @@ class FullAuditRegressionTests(unittest.TestCase):
         sw_resp = self.client.get('/sw.js')
         try:
             sw_txt = sw_resp.data.decode('utf-8')
-            self.assertIn("CACHE_NAME = 'aiseki-navi-v64'", sw_txt)
+            self.assertIn("CACHE_NAME = 'aiseki-navi-v65'", sw_txt)
             self.assertIn("event.waitUntil", sw_txt)
         finally:
             sw_resp.close()
@@ -3587,6 +3591,14 @@ class SystemStabilityAndSpeedRegressionTests(unittest.TestCase):
     def setUp(self):
         app_module.app.config['TESTING'] = True
         self.client = app_module.app.test_client()
+        with app_module.data_lock:
+            self._saved_latest_data = copy.deepcopy(app_module.latest_data)
+
+    def tearDown(self):
+        with app_module.data_lock:
+            app_module.latest_data.clear()
+            app_module.latest_data.update(self._saved_latest_data)
+        app_module.clear_fast_http_caches()
 
     def test_oriental_doh_and_ag_official_fallback_parsing(self):
         import monitor
@@ -4020,9 +4032,127 @@ class TurboArchitectureTests(unittest.TestCase):
             'x_post_2200',
             'threads_daily_2200',
             'ig_tuesun_2145',
+            'ig_reel_2115',
             'daily_token_db_maint',
         ):
             self.assertIn(expected_id, job_ids)
+
+
+class AIUltraGrowthSuiteTests(unittest.TestCase):
+    """End-to-end tests for the 5 Google AI Ultra growth features:
+    1. 9:16 Short Video Studio (`reel_generator`, `/ogp/reel/*`, `/api/staff/sns-reel/*`, IG Reels API)
+    2. 3-Second Tonight's Lounge & Hopping Concierge (`/concierge`, `/api/concierge`, staff ad-free guard)
+    3. Expanded 16-Area SEO & City Sub-Guides (`/area/umeda`, `/area/namba`, `/area/yokohama`, FAQPage JSON-LD)
+    4. Autonomous PDCA Revenue & CVR Intelligence (`offer_breakdown`, `monetization_gaps`, `sns_channel_efficiency`)
+    """
+
+    def setUp(self):
+        app_module.app.config['TESTING'] = True
+        self.client = app_module.app.test_client()
+        with app_module.data_lock:
+            self._saved_latest_data = copy.deepcopy(app_module.latest_data)
+
+    def tearDown(self):
+        with app_module.data_lock:
+            app_module.latest_data.clear()
+            app_module.latest_data.update(self._saved_latest_data)
+        app_module.clear_fast_http_caches()
+
+    def test_concierge_page_api_and_staff_ad_guard(self):
+        r_page = self.client.get('/concierge?area=shinjuku&audience=men&party_size=solo')
+        self.assertEqual(r_page.status_code, 200)
+        html = r_page.data.decode('utf-8')
+        self.assertIn('application/ld+json', html)
+        self.assertIsNone(re.search(r'オリエンタル(?!ラウンジ)', html))
+
+        r_api = self.client.get('/api/concierge?area=umeda&audience=women&timing=now')
+        self.assertEqual(r_api.status_code, 200)
+        j = r_api.get_json()
+        self.assertTrue(j['ok'])
+        self.assertIsNotNone(j['primary'])
+
+        # Staff session must strictly hide AdSense and `/link/` affiliate links
+        with self.client.session_transaction() as s:
+            s['is_staff'] = True
+            s['is_master'] = True
+        r_staff = self.client.get('/concierge?area=shinjuku')
+        self.assertEqual(r_staff.status_code, 200)
+        staff_html = r_staff.data.decode('utf-8')
+        self.assertNotIn('ca-pub-3043764334238627', staff_html)
+        self.assertNotIn('/link/', staff_html)
+
+    def test_expanded_16_area_seo_guides_and_sitemap(self):
+        for slug in ('umeda', 'namba', 'yokohama', 'omiya', 'sapporo', 'sendai', 'hiroshima'):
+            r = self.client.get(f'/area/{slug}')
+            self.assertEqual(r.status_code, 200, msg=f"/area/{slug} failed")
+            txt = r.data.decode('utf-8')
+            self.assertIn('FAQPage', txt)
+            self.assertIn('/concierge?area=', txt)
+            self.assertIsNone(re.search(r'オリエンタル(?!ラウンジ)', txt))
+
+        smap = self.client.get('/sitemap.xml').data.decode('utf-8')
+        self.assertIn('https://aiseki-navi.com/concierge', smap)
+        self.assertIn('https://aiseki-navi.com/area/umeda', smap)
+
+    def test_reel_studio_preview_endpoints_and_ig_reels_api(self):
+        import reel_generator
+        import instagram_poster
+
+        # Pure-Pillow JPEG poster frame works even without FFmpeg
+        for rt in ('live_top5', 'area_battle', 'ladies_zero_wait'):
+            r_jpg = self.client.get(f'/ogp/reel/{rt}.jpg')
+            self.assertEqual(r_jpg.status_code, 200)
+            self.assertEqual(r_jpg.mimetype, 'image/jpeg')
+            self.assertGreater(len(r_jpg.data), 5000)
+            cap = reel_generator.build_reel_caption([], reel_type=rt)
+            self.assertIsNone(re.search(r'オリエンタル(?!ラウンジ)', cap))
+
+        # Master API endpoints
+        with self.client.session_transaction() as s:
+            s['is_staff'] = True
+            s['is_master'] = True
+
+        r_info = self.client.get('/api/staff/sns-reel/info?reel_type=area_battle')
+        self.assertEqual(r_info.status_code, 200)
+        info_json = r_info.get_json()
+        self.assertTrue(info_json['ok'])
+        self.assertGreaterEqual(len(info_json['veo3_prompts']), 5)
+
+        r_set = self.client.post('/api/staff/sns-reel/settings', json={'auto_schedule_enabled': False})
+        self.assertEqual(r_set.status_code, 200)
+        self.assertFalse(r_set.get_json()['auto_schedule_enabled'])
+
+        # Mock Graph API container + status FINISHED + publish
+        with mock.patch.object(reel_generator, 'render_reel_mp4_bytes', return_value=b'\x00\x00\x00\x18ftypmp42mockvideo'), \
+             mock.patch.dict(os.environ, {'INSTAGRAM_ACCESS_TOKEN': 'IGAA_TEST_TOKEN'}, clear=False), \
+             mock.patch.object(instagram_poster, '_resolve_ig_user_id', return_value='17841410169754469'), \
+             mock.patch('instagram_poster.requests.post') as mock_post, \
+             mock.patch('instagram_poster.requests.get') as mock_get:
+            mock_post.side_effect = [
+                unittest.mock.MagicMock(status_code=200, json=lambda: {'id': 'creation_999'}),
+                unittest.mock.MagicMock(status_code=200, json=lambda: {'id': 'published_reel_123'}),
+            ]
+            mock_get.return_value = unittest.mock.MagicMock(status_code=200, json=lambda: {'status_code': 'FINISHED'})
+            r_pub = self.client.post('/api/staff/sns-reel/publish', json={
+                'reel_type': 'live_top5',
+                'caption': 'テストキャプション #オリエンタルラウンジ',
+                'share_to_feed': True,
+            })
+            self.assertEqual(r_pub.status_code, 200)
+            self.assertTrue(r_pub.get_json()['ok'])
+
+    def test_pdca_revenue_and_cvr_intelligence_fields(self):
+        import pdca_engine
+        res = pdca_engine.run_pdca_cycle(live_stores=[], days=7, apply_actions=False, use_ai=False, record_log=False)
+        for key in ('offer_breakdown', 'monetization_gaps', 'sns_channel_efficiency', 'weekly_growth_actions'):
+            self.assertIn(key, res)
+            self.assertIn(key, res['diagnostics'])
+        with self.client.session_transaction() as s:
+            s['is_staff'] = True
+            s['is_master'] = True
+        r_pdca = self.client.get('/staff/pdca')
+        self.assertEqual(r_pdca.status_code, 200)
+        self.assertIn('アフィリエイト案件別クリック内訳', r_pdca.data.decode('utf-8'))
 
 
 if __name__ == '__main__':

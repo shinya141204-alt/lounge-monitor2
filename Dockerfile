@@ -5,9 +5,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     PORT=8080
 
-# Install Noto CJK Japanese fonts (required by Pillow for OGP & 5-slide IG carousels) + libpq5 for PostgreSQL
+# Install Noto CJK Japanese fonts (required by Pillow for OGP & 5-slide IG carousels), ffmpeg for Reels MP4, + libpq5 for PostgreSQL
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
+    ffmpeg \
     fonts-noto-cjk \
     libpq5 \
     && rm -rf /var/lib/apt/lists/*

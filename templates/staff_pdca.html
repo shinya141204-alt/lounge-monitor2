@@ -416,12 +416,139 @@
             font-size: 0.82rem;
             font-weight: 700;
         }
+        .ultra-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 3px 10px;
+            border-radius: 999px;
+            font-size: 0.72rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, rgba(200, 164, 110, 0.22), rgba(192, 132, 252, 0.2));
+            border: 1px solid rgba(200, 164, 110, 0.45);
+            color: #f5e6cc;
+        }
+        .growth-section {
+            background: linear-gradient(145deg, rgba(200, 164, 110, 0.09) 0%, rgba(22, 24, 29, 0.98) 65%);
+            border: 1px solid rgba(200, 164, 110, 0.36);
+            border-radius: 15px;
+            padding: 18px 20px;
+            margin-bottom: 18px;
+        }
+        .growth-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-top: 12px;
+        }
+        @media (max-width: 960px) {
+            .growth-grid { grid-template-columns: 1fr; }
+        }
+        .growth-card {
+            background: var(--bg);
+            border: 1px solid var(--border-strong);
+            border-radius: 12px;
+            padding: 14px 15px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        .growth-card.p1 { border-top: 3px solid var(--gold); }
+        .growth-card.p2 { border-top: 3px solid var(--green); }
+        .growth-card.p3 { border-top: 3px solid var(--purple); }
+        .prio-pill {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 0.7rem;
+            font-weight: 800;
+            background: var(--gold-soft);
+            color: #f5e6cc;
+            border: 1px solid rgba(200, 164, 110, 0.4);
+        }
+        .growth-card.p2 .prio-pill { background: var(--green-soft); color: #d3f3e2; border-color: rgba(123, 196, 159, 0.45); }
+        .growth-card.p3 .prio-pill { background: var(--purple-soft); color: #f3e8ff; border-color: rgba(192, 132, 252, 0.45); }
+        .offer-row {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 11px;
+            padding: 12px 14px;
+            margin-bottom: 10px;
+        }
+        .offer-row:last-child { margin-bottom: 0; }
+        .offer-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 7px;
+        }
+        .offer-bar-track {
+            width: 100%;
+            height: 9px;
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 999px;
+            overflow: hidden;
+            margin-bottom: 7px;
+        }
+        .offer-bar-fill {
+            height: 100%;
+            border-radius: 999px;
+            background: linear-gradient(90deg, #c8a46e, #7bc49f);
+            transition: width 0.3s ease;
+        }
+        .trend-pill {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            background: var(--surface-2);
+            border: 1px solid var(--border-strong);
+            color: var(--sub);
+        }
+        .trend-pill.up { background: var(--green-soft); border-color: rgba(123, 196, 159, 0.45); color: #d3f3e2; }
+        .trend-pill.down { background: var(--rose-soft); border-color: rgba(216, 161, 170, 0.45); color: #f6d5dc; }
+        .trend-pill.flat { background: var(--blue-soft); border-color: rgba(147, 177, 201, 0.45); color: #dcebf7; }
+        .gap-card {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--gold);
+            border-radius: 11px;
+            padding: 12px 14px;
+            margin-bottom: 10px;
+        }
+        .gap-card.critical { border-left-color: #f87171; }
+        .gap-card.high { border-left-color: var(--rose); }
+        .gap-card:last-child { margin-bottom: 0; }
+        .gap-rx-box {
+            margin-top: 8px;
+            padding: 9px 11px;
+            border-radius: 8px;
+            background: rgba(200, 164, 110, 0.08);
+            border: 1px solid rgba(200, 164, 110, 0.26);
+            font-size: 0.76rem;
+        }
+        .reels-box {
+            background: var(--bg);
+            border: 1px solid rgba(192, 132, 252, 0.3);
+            border-radius: 11px;
+            padding: 12px 14px;
+            margin-bottom: 10px;
+        }
+        .reels-box:last-child { margin-bottom: 0; }
     </style>
 </head>
 <body>
-    {% set d = pdca.diagnostics %}
-    {% set sb = d.score_breakdown %}
-    {% set act = pdca.active_directives or d.proposed_directives %}
+    {% set d = pdca.diagnostics if pdca is defined and pdca.diagnostics is defined else {} %}
+    {% set sb = d.score_breakdown if d.score_breakdown is defined else {} %}
+    {% set act = (pdca.active_directives if pdca is defined else None) or d.proposed_directives or {} %}
+    {% set offers = d.offer_breakdown or (pdca.offer_breakdown if pdca is defined else []) or [] %}
+    {% set gaps = d.monetization_gaps or (pdca.monetization_gaps if pdca is defined else []) or [] %}
+    {% set sns_eff = d.sns_channel_efficiency or (pdca.sns_channel_efficiency if pdca is defined else {}) or {} %}
+    {% set growth_actions = d.weekly_growth_actions or (pdca.weekly_growth_actions if pdca is defined else []) or [] %}
     <div class="wrap">
         <div class="top-nav">
             <a href="/staff" class="back-btn">← マスター管理画面へ戻る</a>
@@ -525,11 +652,56 @@
             <div id="briefing-text" class="briefing-body">{{ pdca.briefing.text }}</div>
         </div>
 
+        <!-- 🚀 Weekly Top 3 Growth Actions -->
+        <div class="growth-section">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                <div>
+                    <h2 style="font-size:1.02rem; margin:0 0 3px;">🚀 今週の最優先グロース・アクションTOP3</h2>
+                    <div style="font-size:0.78rem; color:var(--sub);">実測PV・案件CVR・現場男女比ギャップから算出した、今週マスター管理者が打つべき最もレバレッジの高い3大施策です。</div>
+                </div>
+                <span class="ultra-badge">✨ Google AI Ultra 収益＆成長インテリジェンス</span>
+            </div>
+            {% if growth_actions %}
+            <div class="growth-grid">
+                {% for ga in growth_actions %}
+                {% set p_num = ga.priority|default(loop.index) %}
+                <div class="growth-card p{{ p_num if p_num in (1, 2, 3) else 1 }}">
+                    <div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; margin-bottom:8px;">
+                            <span class="prio-pill">PRIORITY #{{ p_num }}</span>
+                            <span style="font-size:0.74rem; font-weight:700; color:var(--sub);">{{ ga.category_badge|default('📌 成長施策') }}</span>
+                        </div>
+                        <div style="font-size:0.88rem; font-weight:800; color:#f5e6cc; margin-bottom:7px; line-height:1.45;">{{ ga.title|default('') }}</div>
+                        <div style="font-size:0.76rem; color:var(--sub); margin-bottom:7px;">
+                            <strong style="color:var(--text);">根拠：</strong>{{ ga.why|default('') }}
+                        </div>
+                        <div style="font-size:0.75rem; color:var(--text); background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:8px 10px; margin-bottom:7px;">
+                            <strong style="color:var(--gold);">具体手順：</strong>{{ ga.how_to|default('') }}
+                        </div>
+                        {% if ga.expected_impact %}
+                        <div style="font-size:0.73rem; color:var(--green); font-weight:700;">📈 期待インパクト：{{ ga.expected_impact }}</div>
+                        {% endif %}
+                    </div>
+                    {% if ga.cta_url %}
+                    <a href="{{ ga.cta_url }}" class="cta-editorial-btn" style="text-align:center; margin-top:4px;">
+                        {{ ga.cta_label|default('施策画面を開く →') }}
+                    </a>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div style="margin-top:10px; padding:12px; border-radius:10px; background:var(--bg); border:1px dashed var(--border-strong); color:var(--sub); font-size:0.8rem;">
+                PDCAサイクルを実行すると、導線改善・特命コラム・リール動画の最優先アクションTOP3が自動生成されます。
+            </div>
+            {% endif %}
+        </div>
+
         <!-- Wins vs Issues -->
         <div class="two-col">
             <div class="card diag-card">
                 <h2>🟢 いま上手くいっていること（勝ち筋・伸ばす領域）</h2>
-                {% for w in d.wins %}
+                {% for w in (d.wins or []) %}
                 <div class="diag-item win">
                     <div class="diag-title">{{ w.title }}</div>
                     <div class="diag-detail">{{ w.detail }}</div>
@@ -539,7 +711,7 @@
 
             <div class="card diag-card">
                 <h2>🔴 いま上手くいっていないこと（課題＆システムの自動対処）</h2>
-                {% for iss in d.issues %}
+                {% for iss in (d.issues or []) %}
                 <div class="diag-item issue">
                     <div class="diag-title">{{ iss.title }}</div>
                     <div class="diag-detail">{{ iss.detail }}</div>
@@ -587,10 +759,159 @@
 
                 <div class="dir-box">
                     <h3>③ コラム編集部への次回特命お題</h3>
-                    <div style="font-size:0.82rem; font-weight:700; color:#f5e6cc;">『{{ act.recommended_custom_topic or d.proposed_directives.recommended_custom_topic }}』</div>
-                    <a class="cta-editorial-btn" href="/staff/column-editorial?theme={{ act.recommended_column_theme or 'area_hopping' }}&topic={{ (act.recommended_custom_topic or d.proposed_directives.recommended_custom_topic) | urlencode }}">
+                    <div style="font-size:0.82rem; font-weight:700; color:#f5e6cc;">『{{ act.recommended_custom_topic or (d.proposed_directives.recommended_custom_topic if d.proposed_directives is defined else '') }}』</div>
+                    <a class="cta-editorial-btn" href="/staff/column-editorial?theme={{ act.recommended_column_theme or 'area_hopping' }}&topic={{ (act.recommended_custom_topic or (d.proposed_directives.recommended_custom_topic if d.proposed_directives is defined else '')) | urlencode }}">
                         📝 この特命お題をコラム編集部で開いてワンクリック予約する →
                     </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- 💰 Offer Breakdown & 🔍 Monetization Gaps -->
+        <div class="two-col">
+            <!-- 💰 Affiliate Offer Category Breakdown -->
+            <div class="card">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:6px;">
+                    <h2 style="font-size:0.98rem; margin:0;">💰 アフィリエイト案件別クリック内訳＆勝ち筋ランキング</h2>
+                    <a href="/staff/analytics?days={{ days }}" style="font-size:0.75rem; color:var(--gold); text-decoration:none; font-weight:700;">案件URL管理 →</a>
+                </div>
+                <p class="lead" style="margin-bottom:12px;">5大案件カテゴリ（<code>spu</code> / <code>orbis</code> / <code>hair_removal</code> / <code>dating</code> / <code>women_*</code>）のクリックシェア・直近7日トレンド・勝ち訴求です。</p>
+                {% if offers %}
+                    {% for ofr in offers %}
+                    <div class="offer-row">
+                        <div class="offer-top">
+                            <div style="font-size:0.84rem; font-weight:800; color:var(--text);">
+                                <span style="color:var(--gold); margin-right:4px;">#{{ ofr.rank|default(loop.index) }}</span>{{ ofr.label|default(ofr.category_key) }}
+                            </div>
+                            <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                                <span style="font-size:0.84rem; font-weight:900; color:#f5e6cc;">{{ ofr.clicks|default(0) }}件</span>
+                                <span style="font-size:0.74rem; color:var(--sub);">（シェア {{ ofr.share_pct|default(0) }}%）</span>
+                                <span class="trend-pill {{ ofr.trend_7d|default('zero') }}">{{ ofr.trend_7d_label|default('直近7日 0件') }}</span>
+                            </div>
+                        </div>
+                        <div class="offer-bar-track">
+                            <div class="offer-bar-fill" style="width: {{ ofr.bar_pct|default(0) }}%;"></div>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:6px; font-size:0.73rem; color:var(--sub); margin-bottom:4px;">
+                            <span>主発生元：{% if ofr.top_source_path and ofr.top_source_path != '-' %}<a href="{{ ofr.top_source_path }}" target="_blank" style="color:var(--blue); text-decoration:none;">{{ ofr.top_source_path }} ↗</a>{% else %}これから配置{% endif %}</span>
+                            <span>想定収益寄与：約 ¥{{ '{:,}'.format(ofr.est_revenue_yen|default(0)|int) }}</span>
+                        </div>
+                        {% if ofr.winning_pitch %}
+                        <div style="font-size:0.74rem; color:#d3f3e2;">💡 勝ち筋：{{ ofr.winning_pitch }}</div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                {% else %}
+                <div style="padding:14px; border-radius:10px; background:var(--bg); border:1px dashed var(--border-strong); color:var(--sub); font-size:0.8rem;">
+                    アフィリエイトクリック集計データを読み込み中です。広告リンク経由のクリックが発生するとカテゴリ別ランキングと7日トレンドが表示されます。
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- 🔍 High PV x Low CVR Monetization Gaps -->
+            <div class="card">
+                <h2 style="font-size:0.98rem; margin:0 0 6px;">🔍 「高PV × 低CV」機会損失ページ検出＆導線チューニング提案</h2>
+                <p class="lead" style="margin-bottom:12px;">閲覧が多いのに広告遷移や <code>/grooming</code> 誘導が少ないページを自動特定し、「どの導線を・どの位置に足すべきか」を処方します。</p>
+                {% if gaps %}
+                    {% for g in gaps %}
+                    <div class="gap-card {{ g.severity|default('medium') }}">
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; flex-wrap:wrap; margin-bottom:5px;">
+                            <div>
+                                <a href="{{ g.path|default('#') }}" target="_blank" style="color:#f5e6cc; font-size:0.84rem; font-weight:800; text-decoration:none;">{{ g.title|default(g.path) }} ↗</a>
+                                <div style="font-size:0.72rem; color:var(--sub);"><code>{{ g.path|default('-') }}</code> ｜ 閲覧 <strong>{{ g.pv|default(0) }} PV</strong> ／ 広告 <strong>{{ g.aff_clicks|default(0) }}件</strong>（CVR {{ g.cvr_pct|default(0) }}% → 目標 {{ g.target_cvr_pct|default(2.5) }}%）</div>
+                            </div>
+                            <span class="chip {{ 'minus' if g.severity in ('critical', 'high') else '' }}">{{ g.severity_badge|default('🔍 導線チェック') }}</span>
+                        </div>
+                        <div class="gap-rx-box">
+                            <div style="font-weight:800; color:#f5e6cc; margin-bottom:4px;">🛠️ 追加すべき導線：{{ g.recommended_funnel|default('') }}</div>
+                            <div style="color:var(--sub); margin-bottom:5px;"><strong style="color:var(--text);">推奨設置箇所：</strong>{{ g.placement_position|default('') }}</div>
+                            <div style="color:var(--text); margin-bottom:6px;">{{ g.action_proposal|default('') }}</div>
+                            {% if g.recommended_links %}
+                            <div class="chip-list">
+                                {% for rl in g.recommended_links %}
+                                <span class="chip plus" style="font-size:0.7rem;">推奨リンク: {{ rl }}</span>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                <div style="padding:14px; border-radius:10px; background:var(--bg); border:1px dashed var(--border-strong); color:var(--sub); font-size:0.8rem;">
+                    現在、深刻な機会損失ページは検出されていません。PV蓄積に応じて自動で導線改善ポイントが表示されます。
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- 📲 SNS Channel Efficiency & Reels Video Concepts -->
+        <div class="card" style="margin-bottom:18px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:6px;">
+                <h2 style="font-size:1rem; margin:0;">📲 SNSチャネル別 集客効率＆ショート動画（Reels）推奨ネタ</h2>
+                <a href="/staff/sns-kit" class="mini-btn" style="background:var(--gold-soft); border-color:rgba(200,164,110,0.45); color:#f5e6cc;">🎨 SNSスライド素材キットへ →</a>
+            </div>
+            <p class="lead" style="margin-bottom:12px;">
+                {{ sns_eff.summary_insight|default('X / Threads / Instagram / Reels の ?s= 流入・CV効率を横断比較し、今一番伸びる投稿時間帯とショート動画企画を提示します。') }}
+            </p>
+
+            <div class="two-col" style="margin-bottom:0;">
+                <!-- Channel Efficiency Ranking -->
+                <div>
+                    <div style="font-size:0.84rem; font-weight:800; color:var(--gold); margin-bottom:8px;">📊 チャネル別サイト誘導効率ランキング（強化時間帯＆勝ち切り口）</div>
+                    {% set sns_channels = sns_eff.channels if sns_eff is mapping and sns_eff.channels is defined else [] %}
+                    {% if sns_channels %}
+                        {% for ch in sns_channels %}
+                        <div class="offer-row">
+                            <div class="offer-top">
+                                <div style="font-size:0.84rem; font-weight:800;">
+                                    <span style="color:var(--gold); margin-right:4px;">#{{ ch.rank|default(loop.index) }}</span>{{ ch.label|default(ch.channel_key) }}
+                                </div>
+                                <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                                    <span class="chip {{ 'plus' if loop.index == 1 and ch.visits|default(0) > 0 else '' }}" style="font-size:0.7rem;">{{ ch.status_badge|default('計測中') }}</span>
+                                    <span style="font-size:0.8rem; font-weight:800; color:#f5e6cc;">流入 {{ ch.visits|default(0) }} ／ CV {{ ch.conversions|default(0) }}件</span>
+                                    <span style="font-size:0.73rem; color:var(--sub);">（CVR {{ ch.cvr_pct|default(0) }}%）</span>
+                                </div>
+                            </div>
+                            <div class="offer-bar-track">
+                                <div class="offer-bar-fill" style="width: {{ ch.bar_pct|default(0) }}%; background: linear-gradient(90deg, #93b1c9, #c084fc);"></div>
+                            </div>
+                            <div style="font-size:0.74rem; color:var(--text); margin-bottom:3px;">
+                                ⏰ <strong>強化時間帯：</strong>{{ ch.best_time_slot|default('-') }} ｜ 🎯 <strong>勝ち切り口：</strong>{{ ch.best_style_label|default('-') }}
+                            </div>
+                            {% if ch.tactic %}
+                            <div style="font-size:0.73rem; color:var(--sub);">{{ ch.tactic }}</div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                    <div style="padding:12px; border-radius:10px; background:var(--bg); border:1px dashed var(--border-strong); color:var(--sub); font-size:0.79rem;">
+                        SNSチャネル別の流入効率データを集計中です。
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Reels Recommended Short Video Ideas -->
+                <div>
+                    <div style="font-size:0.84rem; font-weight:800; color:#f3e8ff; margin-bottom:8px;">🎬 ショート動画（Reels / Shorts）今週の推奨ネタ3選</div>
+                    {% set reels_list = sns_eff.reels_recommendations if sns_eff is mapping and sns_eff.reels_recommendations is defined else [] %}
+                    {% if reels_list %}
+                        {% for rl in reels_list %}
+                        <div class="reels-box">
+                            <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:5px;">
+                                <span class="ai-pill" style="padding:2px 9px; font-size:0.7rem;">ネタ案 #{{ rl.idea_no|default(loop.index) }}</span>
+                                <span style="font-size:0.72rem; color:var(--gold); font-weight:700;">⏰ 推奨投稿：{{ rl.best_post_time|default('金曜 21:30') }}</span>
+                            </div>
+                            <div style="font-size:0.83rem; font-weight:800; color:#f5e6cc; margin-bottom:5px;">{{ rl.title|default('') }}</div>
+                            <div style="font-size:0.75rem; color:#d3f3e2; margin-bottom:4px;"><strong>🎙️ 冒頭0〜3秒フック：</strong>{{ rl.hook_0_3s|default('') }}</div>
+                            <div style="font-size:0.74rem; color:var(--sub); margin-bottom:5px;">{{ rl.body_outline|default('') }}</div>
+                            <div style="font-size:0.72rem; color:var(--blue); font-weight:700;">🔗 誘導導線：<code>{{ rl.cta_route|default('?s=reel_gap') }}</code></div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                    <div style="padding:12px; border-radius:10px; background:var(--bg); border:1px dashed var(--border-strong); color:var(--sub); font-size:0.79rem;">
+                        現場の男女比ギャップに応じたショート動画企画案を自動生成します。
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>

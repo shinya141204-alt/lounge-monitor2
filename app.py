@@ -1636,8 +1636,8 @@ def affiliate_redirect(item_id):
 import urllib.parse as urllib_parse
 
 _BOT_MARKERS = ('bot', 'spider', 'crawl', 'slurp', 'facebookexternalhit', 'preview', 'headless', 'python-requests', 'curl')
-_TRACKED_PAGE_PREFIXES = ('/guide', '/columns', '/areas', '/area/', '/grooming', '/for-women', '/stats', '/price-comparison', '/oriental-lounge', '/ag', '/jis', '/store/')
-_LIVE_NO_CACHE_PREFIXES = ('/price-comparison', '/for-women', '/store/', '/areas', '/area/', '/oriental-lounge', '/ag', '/jis')
+_TRACKED_PAGE_PREFIXES = ('/guide', '/columns', '/areas', '/area/', '/concierge', '/grooming', '/for-women', '/stats', '/price-comparison', '/oriental-lounge', '/ag', '/jis', '/store/')
+_LIVE_NO_CACHE_PREFIXES = ('/price-comparison', '/for-women', '/concierge', '/store/', '/areas', '/area/', '/oriental-lounge', '/ag', '/jis')
 
 @app.template_filter('seo_store_name')
 def _jinja_seo_store_name(name):
@@ -2077,13 +2077,97 @@ def staff_sns_editorial():
     )
     if is_json_req:
         return jsonify(editorial)
+    reel_auto_enabled = False
+    reel_studio = None
+    try:
+        import instagram_poster
+        import reel_generator
+        reel_auto_enabled = instagram_poster.is_reel_auto_schedule_enabled(allow_blocking=False)
+        reel_studio = reel_generator.get_reel_studio_info(
+            live_s,
+            reel_type='live_top5',
+            auto_schedule_enabled=reel_auto_enabled,
+        )
+    except Exception as _re_err:
+        logging.debug(f"Reel studio init fallback: {_re_err}")
     return render_template(
         'staff_sns_editorial.html',
         editorial=editorial,
         slot_label=slot_label,
         channel=channel,
         tone_mode=editorial.get('tone_mode'),
+        reel_auto_enabled=reel_auto_enabled,
+        reel_studio=reel_studio,
     )
+
+
+@app.route('/api/staff/sns-reel/info')
+def api_staff_sns_reel_info():
+    """Master-only JSON metadata for the Google AI Ultra 9:16 Short Video Studio (Reels / Shorts / TikTok)."""
+    if not is_master_authorized():
+        return jsonify({'ok': False, 'error': 'Unauthorized'}), 401
+    import instagram_poster
+    import reel_generator
+    restore_latest_data_if_empty()
+    reel_type = reel_generator.normalize_reel_type(request.args.get('reel_type', 'live_top5'))
+    with data_lock:
+        live_s = list(latest_data.get('full_data') or [])
+    auto_on = instagram_poster.is_reel_auto_schedule_enabled(allow_blocking=False)
+    return jsonify(reel_generator.get_reel_studio_info(
+        live_s,
+        reel_type=reel_type,
+        auto_schedule_enabled=auto_on,
+    ))
+
+
+@app.route('/api/staff/sns-reel/settings', methods=['POST'])
+def api_staff_sns_reel_settings():
+    """Master-only endpoint to toggle scheduled Instagram Reels auto-posting."""
+    if not is_master_authorized():
+        return jsonify({'ok': False, 'error': 'Unauthorized'}), 401
+    import instagram_poster
+    payload = request.get_json(silent=True) or {}
+    enabled = bool(payload.get('auto_schedule_enabled'))
+    saved = instagram_poster.set_reel_auto_schedule_enabled(enabled)
+    return jsonify({
+        'ok': True,
+        'auto_schedule_enabled': saved,
+        'message': 'Instagramリールの定期自動投稿をONにしました！' if saved else 'Instagramリールの定期自動投稿をOFF（手動1クリック運用）に設定しました。',
+    })
+
+
+@app.route('/api/staff/sns-reel/publish', methods=['POST'])
+def api_staff_sns_reel_publish():
+    """Master-only 1-click trigger to render and publish a 9:16 vertical Reel to Instagram."""
+    if not is_master_authorized():
+        return jsonify({'ok': False, 'error': 'Unauthorized'}), 401
+    import instagram_poster
+    import reel_generator
+    restore_latest_data_if_empty()
+    payload = request.get_json(silent=True) or {}
+    reel_type = reel_generator.normalize_reel_type(payload.get('reel_type', 'live_top5'))
+    custom_caption = (payload.get('caption') or '').strip()
+    share_to_feed = bool(payload.get('share_to_feed', True))
+    if request.args.get('async') == '1' or payload.get('async') is True:
+        job_rec = enqueue_sns_job_request('ig_reel', {
+            'reel_type': reel_type,
+            'caption': custom_caption,
+            'share_to_feed': share_to_feed,
+            'force': True,
+        })
+        return jsonify({'ok': True, 'queued': True, 'job': job_rec}), 202
+    with data_lock:
+        live_s = list(latest_data.get('full_data') or [])
+    res = instagram_poster.publish_live_reel_to_instagram(
+        live_s,
+        reel_type=reel_type,
+        custom_caption=custom_caption,
+        share_to_feed=share_to_feed,
+        slot_label='manual_reel',
+        force=True,
+    )
+    ok_flag = res.get('status') == 'success'
+    return jsonify({'ok': ok_flag, **res}), (200 if ok_flag else 400)
 
 
 @app.route('/api/sns-editorial')
@@ -2581,6 +2665,51 @@ def public_ig_slide_png(slide_num):
         logging.error(f"Public IG slide generation failed: {e}")
         abort(503)
 
+
+@app.route('/ogp/reel/<reel_type>.mp4')
+def public_reel_mp4(reel_type):
+    """Publicly accessible 720x1280 9:16 H.264+AAC MP4 endpoint for Meta Instagram Reels API & TikTok/Shorts download."""
+    import reel_generator
+    restore_latest_data_if_empty()
+    trigger_background_fetch_if_needed()
+    rt = reel_generator.normalize_reel_type(reel_type)
+    force_refresh = request.args.get('refresh') == '1'
+    with data_lock:
+        live_s = list(latest_data.get('full_data') or [])
+    try:
+        mp4_bytes = reel_generator.render_reel_mp4_bytes(live_s, reel_type=rt, force_refresh=force_refresh)
+        headers = {
+            'Cache-Control': 'public, max-age=120',
+            'Accept-Ranges': 'bytes',
+        }
+        if request.args.get('download') == '1':
+            today_s = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).strftime('%Y%m%d_%H%M')
+            headers['Content-Disposition'] = f'attachment; filename="aiseki_navi_reel_{rt}_{today_s}.mp4"'
+        return Response(mp4_bytes, mimetype='video/mp4', headers=headers)
+    except RuntimeError as re_err:
+        logging.warning(f"Reel MP4 unavailable ({rt}): {re_err}")
+        return jsonify({'ok': False, 'error': str(re_err)}), 503
+    except Exception as e:
+        logging.error(f"Public Reel MP4 generation failed ({rt}): {e}")
+        abort(503)
+
+
+@app.route('/ogp/reel/<reel_type>.jpg')
+def public_reel_preview_jpg(reel_type):
+    """Pure-Pillow 720x1280 9:16 JPEG poster frame for `<video poster=...>` and instant preview."""
+    import reel_generator
+    restore_latest_data_if_empty()
+    trigger_background_fetch_if_needed()
+    rt = reel_generator.normalize_reel_type(reel_type)
+    with data_lock:
+        live_s = list(latest_data.get('full_data') or [])
+    try:
+        jpg_bytes = reel_generator.render_reel_preview_frame_jpeg(live_s, reel_type=rt, sec=6.0)
+        return Response(jpg_bytes, mimetype='image/jpeg', headers={'Cache-Control': 'public, max-age=120'})
+    except Exception as e:
+        logging.error(f"Public Reel preview JPEG failed ({rt}): {e}")
+        abort(503)
+
 def trigger_background_fetch_if_needed():
     """Check if data is stale and trigger a background fetch if needed.
     In `APP_ROLE=web` mode, syncs from the shared Redis snapshot published by `worker.py` instead of scraping."""
@@ -3054,6 +3183,7 @@ def _build_llms_txt_documents() -> tuple:
 
 ## 5. 主要ガイド・比較ページ・データ白書一覧
 - [リアルタイム全国ランキング（トップページ）](https://aiseki-navi.com/): 全国53店舗の現在人数・男女比・15分推移をリアルタイム表示
+- [今夜どこ行く？3秒穴場＆徒歩ハシゴ診断ツール (/concierge)](https://aiseki-navi.com/concierge): エリア・行く時間・人数・雰囲気から今夜の本命1軒目と徒歩ハシゴ第2候補を即座に診断
 - [女性向けリアルタイム快適度＆完全ガイド (/for-women)](https://aiseki-navi.com/for-women): 女性ペアが待ち時間ゼロで入れて料理・雰囲気が良い店舗をリアルタイム順に表示
 - [3大ブランド料金システム・イベント比較ボード (/price-comparison)](https://aiseki-navi.com/price-comparison): 男性・女性の料金シミュレーションと開催中イベント比較
 - [全国相席ラウンジ統計データ白書 (/stats)](https://aiseki-navi.com/stats): 曜日別・時間帯別の平均男女人数と混雑ピーク統計
@@ -3425,6 +3555,12 @@ def sitemap_xml():
     <changefreq>hourly</changefreq>
     <priority>1.0</priority>
   </url>
+  <url>
+    <loc>https://aiseki-navi.com/concierge</loc>
+    <lastmod>{today}</lastmod>
+    <changefreq>hourly</changefreq>
+    <priority>0.95</priority>
+  </url>
 {brand_urls}
   <url>
     <loc>https://aiseki-navi.com/areas</loc>
@@ -3701,6 +3837,53 @@ def ladies_legacy_redirect():
     return redirect('/for-women', code=301)
 
 
+@app.route('/concierge')
+def concierge_page():
+    """Interactive 3-second tonight's lounge & walking-distance hopping concierge."""
+    import concierge_matcher
+    restore_latest_data_if_empty()
+    trigger_background_fetch_if_needed()
+    with data_lock:
+        stores = [dict(s) for s in (latest_data.get('full_data') or [])]
+        last_upd = latest_data.get('last_updated') or '--:--'
+    res = concierge_matcher.diagnose_tonight_plan(
+        stores,
+        area=request.args.get('area', 'shinjuku'),
+        audience=request.args.get('audience', 'men'),
+        timing=request.args.get('timing', 'now'),
+        party_size=request.args.get('party_size', 'pair'),
+        vibe=request.args.get('vibe', 'any'),
+    )
+    return render_template(
+        'concierge.html',
+        initial_result=res,
+        concierge_areas=res.get('available_areas', []),
+        last_updated=last_upd,
+        is_staff=bool(session.get('is_staff')),
+    )
+
+
+@app.route('/api/concierge')
+def api_concierge():
+    """Ultra-fast (<5ms) JSON endpoint for interactive 3-second lounge & hopping diagnosis."""
+    import concierge_matcher
+    restore_latest_data_if_empty()
+    trigger_background_fetch_if_needed()
+    with data_lock:
+        stores = [dict(s) for s in (latest_data.get('full_data') or [])]
+        last_upd = latest_data.get('last_updated') or ''
+    res = concierge_matcher.diagnose_tonight_plan(
+        stores,
+        area=request.args.get('area', 'shinjuku'),
+        audience=request.args.get('audience', 'men'),
+        timing=request.args.get('timing', 'now'),
+        party_size=request.args.get('party_size', 'pair'),
+        vibe=request.args.get('vibe', 'any'),
+    )
+    res['last_updated'] = last_upd
+    return jsonify(res)
+
+
 @app.route('/grooming')
 def grooming_guide():
     """Dedicated editorial guide for men's grooming, fashion, and backup dating apps."""
@@ -3973,6 +4156,7 @@ SUPPORTED_SNS_JOB_TYPES = (
     'x_bonus',
     'threads_post',
     'ig_post',
+    'ig_reel',
     'ladies_sns',
     'prewarm_bundle',
 )
@@ -4048,6 +4232,24 @@ def execute_sns_job_payload(job_type: str, params: dict = None) -> dict:
         with data_lock:
             stores = list(latest_data.get('full_data') or [])
         return instagram_poster.execute_scheduled_instagram_post(stores, mode=mode, slot_label=slot, force=force)
+
+    if jtype == 'ig_reel':
+        import instagram_poster
+        import reel_generator
+        rt = reel_generator.normalize_reel_type(p.get('reel_type', 'live_top5'))
+        cap = str(p.get('caption') or '').strip()
+        share_feed = bool(p.get('share_to_feed', True))
+        slot = str(p.get('slot') or 'manual_reel').strip()
+        with data_lock:
+            stores = list(latest_data.get('full_data') or [])
+        return instagram_poster.publish_live_reel_to_instagram(
+            stores,
+            reel_type=rt,
+            custom_caption=cap,
+            share_to_feed=share_feed,
+            slot_label=slot,
+            force=force,
+        )
 
     if jtype == 'ladies_sns':
         channel = str(p.get('channel') or 'threads').strip().lower()

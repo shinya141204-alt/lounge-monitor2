@@ -101,6 +101,26 @@ def _ig_ladies_job():
         logger.error(f"[worker] Scheduled Instagram ladies post failed: {err}")
 
 
+def _ig_reel_scheduled_job(slot_lbl="21:15"):
+    """Scheduled weekend Reel post; runs ONLY when master toggles `reel_auto_schedule_enabled` ON."""
+    try:
+        import instagram_poster
+        if not instagram_poster.is_reel_auto_schedule_enabled(allow_blocking=False):
+            return
+        with app_module.data_lock:
+            cur_stores = list(app_module.latest_data.get("full_data") or [])
+            is_seed = bool(app_module.latest_data.get("is_seed"))
+        if cur_stores and not is_seed:
+            instagram_poster.publish_live_reel_to_instagram(
+                cur_stores,
+                reel_type="live_top5",
+                slot_label=slot_lbl,
+                force=False,
+            )
+    except Exception as err:
+        logger.error(f"[worker] Scheduled Instagram Reel post failed: {err}")
+
+
 def _crawl_events_job():
     try:
         import data_audit
@@ -245,6 +265,7 @@ def build_worker_scheduler() -> BackgroundScheduler:
     scheduler.add_job(id="ig_tuesun_2145", func=_ig_carousel_job, trigger="cron", day_of_week="tue,sun", hour=12, minute="45,56", jitter=60, args=["21:45"], executor="sns_ai")
     scheduler.add_job(id="threads_ladies_1930", func=_threads_ladies_job, trigger="cron", day_of_week="wed,fri,sat", hour=10, minute="30,42", jitter=90, executor="sns_ai")
     scheduler.add_job(id="ig_ladies_1945", func=_ig_ladies_job, trigger="cron", day_of_week="thu,sat", hour=10, minute="45,56", jitter=60, executor="sns_ai")
+    scheduler.add_job(id="ig_reel_2115", func=_ig_reel_scheduled_job, trigger="cron", day_of_week="fri,sat", hour=12, minute=15, jitter=90, args=["21:15"], executor="sns_ai")
     scheduler.add_job(id="events_crawl", func=_crawl_events_job, trigger="cron", hour="1,8,20", minute=0)
     scheduler.add_job(id="scheduled_articles_15m", func=_scheduled_articles_release_job, trigger="interval", minutes=15, executor="sns_ai")
     scheduler.add_job(id="bonus_alert_10m", func=_bonus_alert_check_job, trigger="interval", minutes=10, executor="sns_ai")

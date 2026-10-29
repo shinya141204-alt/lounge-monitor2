@@ -26,8 +26,25 @@ IG_GRAPH_BASE = "https://graph.instagram.com/v21.0"
 FB_GRAPH_BASE = "https://graph.facebook.com/v21.0"
 DEFAULT_IG_USER_ID = "17841410169754469"  # @aiseki_navi1 professional user_id
 SITE_URL = "https://aiseki-navi.com"
+REEL_AUTO_ENABLED_KEY = "reel_auto_schedule_enabled"
 _cached_ig_user_id = None
 _ig_post_lock = threading.Lock()
+
+
+def is_reel_auto_schedule_enabled(allow_blocking: bool = False) -> bool:
+    """Return whether automated Instagram Reels scheduled posting is enabled (default False)."""
+    try:
+        raw = (job_state.get_value(REEL_AUTO_ENABLED_KEY, allow_blocking=allow_blocking) or "").strip().lower()
+        return raw in ("1", "true", "on", "yes")
+    except Exception:
+        return False
+
+
+def set_reel_auto_schedule_enabled(enabled: bool) -> bool:
+    """Persist automated Instagram Reels scheduled posting toggle in `job_state`."""
+    flag = bool(enabled)
+    job_state.set_value(REEL_AUTO_ENABLED_KEY, "1" if flag else "0")
+    return flag
 
 
 def _warm_slide_urls(urls: list, ctx: dict = None) -> None:
@@ -730,6 +747,249 @@ def execute_scheduled_ladies_instagram_post(
                 )
         except Exception:
             pass
+        if res.get("status") == "success" and not force:
+            job_state.mark_done(dedup_key)
+        return res
+    finally:
+        _ig_post_lock.release()
+
+
+def _publish_ig_container(
+    base: str,
+    ig_user_id: str,
+    creation_id: str,
+    access_token: str,
+    max_attempts: int = 3,
+    retry_wait: float = None,
+):
+    """Publish a prepared IG media/reel container with transient 9007/2207027 not-ready retry."""
+    wait_s = retry_wait if retry_wait is not None else (0.05 if os.environ.get("DISABLE_SCHEDULER") == "1" else 3.0)
+    resp = None
+    for pub_attempt in range(max_attempts):
+        resp = requests.post(
+            f"{base}/{ig_user_id}/media_publish",
+            data={
+                "creation_id": creation_id,
+                "access_token": access_token,
+            },
+            timeout=25,
+        )
+        if resp.status_code < 400:
+            break
+        if pub_attempt < max_attempts - 1 and _is_ig_publish_not_ready(resp):
+            logging.warning(
+                f"IG media_publish not ready yet for {creation_id} (attempt {pub_attempt + 1}/{max_attempts}); "
+                f"retrying in {wait_s}s: {resp.text[:160]}"
+            )
+            time.sleep(wait_s)
+            continue
+        break
+    return resp
+
+
+def post_reel_to_instagram(video_url: str, caption: str, share_to_feed: bool = True) -> dict:
+    """
+    Publish a 9:16 MP4 Reel to Instagram via Meta Graph API:
+      1. POST /{ig_user_id}/media (media_type=REELS, video_url=..., caption=..., share_to_feed=...)
+      2. Poll GET /{creation_id}?fields=status_code,status up to 20 times (3s interval, 60s max) until FINISHED
+      3. Publish via `_publish_ig_container` (`media_publish`)
+    """
+    access_token = _get_active_ig_token()
+    if not access_token:
+        return {"status": "skipped", "ok": False, "reason": "INSTAGRAM_ACCESS_TOKEN not configured"}
+
+    ig_user_id = _resolve_ig_user_id(access_token)
+    if not ig_user_id:
+        return {"status": "error", "ok": False, "detail": "Could not resolve INSTAGRAM_USER_ID from token"}
+
+    base = _graph_base_for_token(access_token)
+    poll_wait = 0.05 if os.environ.get("DISABLE_SCHEDULER") == "1" else 3.0
+
+    try:
+        r1 = requests.post(
+            f"{base}/{ig_user_id}/media",
+            data={
+                "media_type": "REELS",
+                "video_url": video_url,
+                "caption": (caption or "")[:2100],
+                "share_to_feed": "true" if share_to_feed else "false",
+                "access_token": access_token,
+            },
+            timeout=30,
+        )
+        if r1.status_code >= 400:
+            return {
+                "status": "error",
+                "ok": False,
+                "detail": f"IG Reel container HTTP {r1.status_code}: {r1.text[:240]}",
+            }
+        creation_id = (r1.json() or {}).get("id")
+        if not creation_id:
+            return {
+                "status": "error",
+                "ok": False,
+                "detail": f"Missing Reel creation_id: {r1.text[:200]}",
+            }
+
+        max_checks = 20
+        last_code = ""
+        for attempt in range(max_checks):
+            try:
+                r_poll = requests.get(
+                    f"{base}/{creation_id}",
+                    params={"fields": "status_code,status", "access_token": access_token},
+                    timeout=12,
+                )
+                sc = getattr(r_poll, "status_code", None)
+                if not isinstance(sc, int) or (400 <= sc < 500):
+                    break
+                if sc >= 500:
+                    logging.warning(
+                        f"IG Reel status check HTTP {sc} for {creation_id} (attempt {attempt + 1}/{max_checks})"
+                    )
+                else:
+                    pdata = r_poll.json() if hasattr(r_poll, "json") else {}
+                    if not isinstance(pdata, dict) or "status_code" not in pdata:
+                        break
+                    code = str(pdata.get("status_code") or "").upper()
+                    status_msg = str(pdata.get("status") or "").strip()
+                    last_code = code
+                    if code in ("FINISHED", "PUBLISHED"):
+                        break
+                    if code in ("ERROR", "EXPIRED"):
+                        err_info = f"{status_msg} | {pdata}" if status_msg else str(pdata)
+                        return {
+                            "status": "error",
+                            "ok": False,
+                            "detail": f"IG Reel container status={code}: {err_info[:260]}",
+                        }
+            except Exception as poll_err:
+                logging.warning(
+                    f"IG Reel container poll transient exception (attempt {attempt + 1}/{max_checks}): {poll_err}"
+                )
+
+            if attempt < max_checks - 1:
+                time.sleep(poll_wait)
+
+        r2 = _publish_ig_container(base, ig_user_id, creation_id, access_token)
+        if r2.status_code >= 400:
+            extra_state = f" (last_poll={last_code})" if last_code else ""
+            return {
+                "status": "error",
+                "ok": False,
+                "detail": f"IG Reel publish HTTP {r2.status_code}{extra_state}: {r2.text[:240]}",
+            }
+
+        post_id = (r2.json() or {}).get("id")
+        logging.info(f"Successfully published Reel to Instagram: id={post_id} url={video_url}")
+        return {
+            "status": "success",
+            "ok": True,
+            "id": post_id,
+            "creation_id": creation_id,
+            "video_url": video_url,
+        }
+    except Exception as e:
+        logging.error(f"Instagram Reel post exception: {e}")
+        return {"status": "error", "ok": False, "detail": str(e)}
+
+
+def publish_live_reel_to_instagram(
+    stores: list,
+    reel_type: str = "live_top5",
+    custom_caption: str = "",
+    share_to_feed: bool = True,
+    slot_label: str = "manual_reel",
+    force: bool = True,
+) -> dict:
+    """
+    Warm-generate the live 9:16 MP4 Reel in-process, publish via Meta Instagram Graph API
+    using `{SITE_URL}/ogp/reel/{reel_type}.mp4?s={ts_code}`, and record delivery status.
+    """
+    if not _ig_post_lock.acquire(blocking=False):
+        return {"status": "skipped", "ok": False, "skipped": True, "reason": "already_running"}
+
+    try:
+        import reel_generator
+
+        rt = reel_generator.normalize_reel_type(reel_type)
+        now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
+        biz_date = (now_jst - datetime.timedelta(hours=7)).strftime("%Y-%m-%d")
+        dedup_key = f"ig_post:{biz_date}_reel_{rt}_{slot_label}"
+
+        if not force:
+            if not is_reel_auto_schedule_enabled(allow_blocking=False):
+                return {"status": "skipped", "ok": False, "reason": "Reel auto-schedule is disabled"}
+            if job_state.is_done(dedup_key):
+                return {"status": "skipped", "ok": False, "reason": "Already posted Reel to Instagram for this slot"}
+
+            dom = threads_poster._filter_domestic_stores(stores)
+            if rt == "ladies_zero_wait":
+                total_dom_men = sum(int(s.get("men") or 0) for s in dom)
+                if total_dom_men < 12:
+                    logging.info(
+                        f"Skipping scheduled IG ladies Reel ({slot_label}): insufficient male headcount (men={total_dom_men})."
+                    )
+                    return {"status": "skipped", "ok": False, "reason": "Insufficient live male headcount"}
+            else:
+                total_dom_women = sum(int(s.get("women") or 0) for s in dom)
+                if total_dom_women < 15:
+                    logging.info(
+                        f"Skipping scheduled IG Reel ({slot_label}): insufficient female headcount (women={total_dom_women})."
+                    )
+                    return {"status": "skipped", "ok": False, "reason": "Insufficient live headcount"}
+
+        refresh_ig_token_if_needed(force=False)
+        cleaned_custom = reel_generator.enforce_brand_rule((custom_caption or "").strip())
+        caption = cleaned_custom or reel_generator.build_reel_caption(stores, reel_type=rt, now_jst=now_jst)
+
+        try:
+            reel_generator.render_reel_mp4_bytes(stores, reel_type=rt)
+        except Exception as warm_err:
+            err_detail = f"Reel MP4 warm generation failed: {warm_err}"
+            logging.error(err_detail)
+            try:
+                import sns_editorial
+                sns_editorial.record_sns_delivery_status(
+                    "instagram",
+                    "error",
+                    slot_label=slot_label,
+                    detail=err_detail,
+                    now_jst=now_jst,
+                )
+            except Exception:
+                pass
+            return {"status": "error", "ok": False, "detail": err_detail, "reel_type": rt}
+
+        ts_code = now_jst.strftime("%Y%m%d_%H%M")
+        video_url = f"{SITE_URL}/ogp/reel/{rt}.mp4?s={ts_code}"
+        res = post_reel_to_instagram(video_url, caption, share_to_feed=share_to_feed)
+        res["caption"] = caption
+        res["video_url"] = video_url
+        res["reel_type"] = rt
+        res.setdefault("ok", res.get("status") == "success")
+
+        try:
+            import sns_editorial
+            if res.get("status") == "success":
+                sns_editorial.record_sns_delivery_status(
+                    "instagram",
+                    "success",
+                    slot_label=slot_label,
+                    post_id=res.get("id") or "",
+                    now_jst=now_jst,
+                )
+            else:
+                sns_editorial.record_sns_delivery_status(
+                    "instagram",
+                    res.get("status") or "error",
+                    slot_label=slot_label,
+                    detail=res.get("detail") or res.get("reason") or "",
+                    now_jst=now_jst,
+                )
+        except Exception:
+            pass
+
         if res.get("status") == "success" and not force:
             job_state.mark_done(dedup_key)
         return res
