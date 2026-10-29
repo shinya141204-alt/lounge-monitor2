@@ -2199,7 +2199,12 @@ def _discover_ai_studio_models(api_key: str, timeout: float = 4.5) -> list:
         pro_cands = []
         flash_cands = []
         lite_cands = []
-        skip_tokens = ("embedding", "imagen", "tts", "audio", "vision", "veo", "aqa", "1.0", "1.5", "robotics", "computer-use")
+        skip_tokens = (
+            "embedding", "imagen", "tts", "audio", "vision", "veo", "aqa",
+            "1.0", "1.5", "robotics", "computer-use", "omni", "live", "image",
+            "dialog", "learnlm", "gemma", "bison", "thinking",
+        )
+        ver_re = re.compile(r"^gemini-(\d+(?:\.\d+)?)-(pro|flash)(?:-[a-z0-9.-]+)?$")
         for m in models:
             methods = m.get("supportedGenerationMethods") or []
             if "generateContent" not in methods:
@@ -2208,20 +2213,37 @@ def _discover_ai_studio_models(api_key: str, timeout: float = 4.5) -> list:
             low = name.lower()
             if not low.startswith("gemini") or any(tok in low for tok in skip_tokens):
                 continue
+            vm = ver_re.match(low)
+            if not vm:
+                continue
+            try:
+                ver_num = float(vm.group(1))
+            except ValueError:
+                continue
+            if ver_num < 2.5:
+                continue
             if "pro" in low and "customtools" not in low:
-                pro_cands.append(name)
+                pro_cands.append((ver_num, name))
             elif "flash" in low and "lite" not in low and "8b" not in low:
-                flash_cands.append(name)
+                flash_cands.append((ver_num, name))
             elif "flash" in low and "lite" in low:
-                lite_cands.append(name)
+                lite_cands.append((ver_num, name))
 
-        # Newest version first (e.g. gemini-3.1-pro-preview > gemini-2.5-pro); experimental (`exp`) models last.
-        def _stable_key(x: str):
-            return (not ("exp" in x), x)
+        # Pro: newest numeric version first (e.g. gemini-3.1-pro-preview > gemini-2.5-pro); non-exp first.
+        def _pro_key(item):
+            ver_num, nm = item
+            low_nm = nm.lower()
+            return (not ("exp" in low_nm), ver_num, "preview" not in low_nm, low_nm)
 
-        pro_sorted = sorted(pro_cands, key=_stable_key, reverse=True)
-        flash_sorted = sorted(flash_cands, key=_stable_key, reverse=True)
-        lite_sorted = sorted(lite_cands, key=_stable_key, reverse=True)
+        # Flash: prefer stable GA (`not preview`) first so fast fallback never hits preview-only API incompatibilities.
+        def _flash_key(item):
+            ver_num, nm = item
+            low_nm = nm.lower()
+            return (not ("exp" in low_nm), "preview" not in low_nm, ver_num, low_nm)
+
+        pro_sorted = [nm for _, nm in sorted(pro_cands, key=_pro_key, reverse=True)]
+        flash_sorted = [nm for _, nm in sorted(flash_cands, key=_flash_key, reverse=True)]
+        lite_sorted = [nm for _, nm in sorted(lite_cands, key=_flash_key, reverse=True)]
 
         ranked = []
         for lst, cap in ((pro_sorted, 2), (flash_sorted, 2), (lite_sorted, 1)):
@@ -2323,7 +2345,7 @@ def _is_requests_post_mocked() -> bool:
 
 def _mark_model_unhealthy(model_name: str):
     low = (model_name or "").lower()
-    if "preview" in low or "pro" in low or "exp" in low:
+    if low not in ("gemini-2.5-flash", "gemini-2.5-flash-lite"):
         _unhealthy_models[model_name] = time.monotonic() + _UNHEALTHY_COOLDOWN_SEC
 
 
@@ -2566,14 +2588,27 @@ def call_editorial_ai_json(
                     ]
                     g_models = healthy_primary + cooled_down + healthy_lite
 
-            trial_models = list(g_models[:3])
-            if not any("flash" in m.lower() and "lite" not in m.lower() for m in trial_models):
-                std_flash = next(
-                    (m for m in g_models if "flash" in m.lower() and "lite" not in m.lower()),
+            if prefer_fast:
+                trial_models = list(g_models[:3])
+            else:
+                # Never stack two slow Pro models back-to-back in one request:
+                # Try #1 healthy Pro (with full timeout), then immediately GA Flash (`gemini-2.5-flash`), then Flash-Lite.
+                trial_models = []
+                top_pro = next((m for m in g_models if "pro" in m.lower()), None)
+                if top_pro:
+                    trial_models.append(top_pro)
+                ga_flash = next(
+                    (
+                        m for m in g_models
+                        if "flash" in m.lower() and "lite" not in m.lower() and "preview" not in m.lower()
+                    ),
                     "gemini-2.5-flash",
                 )
-                if std_flash not in trial_models:
-                    trial_models.append(std_flash)
+                if ga_flash not in trial_models:
+                    trial_models.append(ga_flash)
+                lite_fb = next((m for m in g_models if "lite" in m.lower()), "gemini-2.5-flash-lite")
+                if lite_fb not in trial_models:
+                    trial_models.append(lite_fb)
 
             full_prompt = f"{sys_instr}\n\n{prompt}" if system_prompt else prompt
             for g_idx, gm in enumerate(trial_models):
@@ -2581,11 +2616,12 @@ def call_editorial_ai_json(
                 if rem <= 0.8:
                     break
                 has_fallback = (g_idx < len(trial_models) - 1) or has_later_provider
-                # If earlier model already ate the non-reserve budget, skip additional heavy Pro models so Flash runs cleanly
-                if has_fallback and rem <= reserve_sec + 1.0 and "flash" not in gm.lower():
+                gm_low = gm.lower()
+                eff_reserve = 2.5 if "flash" in gm_low else reserve_sec
+                if has_fallback and rem <= eff_reserve + 1.0 and "flash" not in gm_low:
                     continue
                 g_timeout = (
-                    min(float(per_call_timeout_sec), max(1.2, rem - reserve_sec))
+                    min(float(per_call_timeout_sec), max(1.8, rem - eff_reserve))
                     if has_fallback
                     else min(float(per_call_timeout_sec), rem)
                 )
@@ -2609,7 +2645,7 @@ def call_editorial_ai_json(
                     if resp.status_code >= 400:
                         last_err = f"Gemini HTTP {resp.status_code} ({gm}): {(resp.text or '')[:130]}"
                         logger.warning(f"[editorial_ai] {last_err}")
-                        if not is_mocked_post and (resp.status_code == 429 or resp.status_code >= 500):
+                        if not is_mocked_post and resp.status_code not in (401, 403):
                             _mark_model_unhealthy(gm)
                         if _last_gemini_meta.get("working_route") == ("ai_studio", gm):
                             _last_gemini_meta["working_route"] = None
@@ -2798,8 +2834,8 @@ def _generate_gemini_adlib_candidate(
         max_output_tokens=2600,
         thinking_budget=1536,
         temperature=0.88,
-        total_deadline_sec=32.0,
-        per_call_timeout_sec=16.0,
+        total_deadline_sec=35.0,
+        per_call_timeout_sec=22.0,
         allow_blocking=True,
         now_jst=now_jst,
     )

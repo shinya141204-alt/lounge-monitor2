@@ -3634,7 +3634,29 @@ class SystemStabilityAndSpeedRegressionTests(unittest.TestCase):
         import sns_editorial
         import column_editorial
         import pdca_engine
-        from unittest.mock import patch
+        from unittest.mock import patch, MagicMock
+
+        # Ensure live model discovery excludes Interactions-only omni/latest aliases and ranks 3.1-pro #1 + GA 2.5-flash #1 Flash
+        sns_editorial._model_discovery_cache.clear()
+        fake_models_resp = MagicMock()
+        fake_models_resp.status_code = 200
+        fake_models_resp.json.return_value = {
+            "models": [
+                {"name": "models/gemini-pro-latest", "supportedGenerationMethods": ["generateContent"]},
+                {"name": "models/gemini-omni-flash-preview", "supportedGenerationMethods": ["generateContent"]},
+                {"name": "models/gemini-3-flash-preview", "supportedGenerationMethods": ["generateContent"]},
+                {"name": "models/gemini-2.5-flash", "supportedGenerationMethods": ["generateContent"]},
+                {"name": "models/gemini-2.5-pro", "supportedGenerationMethods": ["generateContent"]},
+                {"name": "models/gemini-3.1-pro-preview", "supportedGenerationMethods": ["generateContent"]},
+                {"name": "models/gemini-2.5-flash-lite", "supportedGenerationMethods": ["generateContent"]},
+            ]
+        }
+        with patch("sns_editorial.requests.get", return_value=fake_models_resp):
+            ranked = sns_editorial._discover_ai_studio_models("AQ.TestDiscoveryKey999")
+        self.assertEqual(ranked[0], "gemini-3.1-pro-preview")
+        self.assertNotIn("gemini-omni-flash-preview", ranked)
+        self.assertNotIn("gemini-pro-latest", ranked)
+        self.assertEqual(ranked[2], "gemini-2.5-flash")
 
         sns_editorial.clear_editorial_ai_cache()
         column_editorial.clear_column_ai_cache()
