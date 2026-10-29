@@ -26,7 +26,7 @@ _BENCHMARK_BASE_TTL = 1800.0
 _live_benchmarks_computing = False
 _live_benchmarks_lock = threading.Lock()
 _db_stats_cache = {}
-_DB_STATS_TTL = 30.0
+_DB_STATS_TTL = 120.0
 _store_backfill_in_flight = set()
 _store_backfill_lock = threading.Lock()
 
@@ -205,8 +205,17 @@ def insert_logs(items, timestamp_str):
                 VALUES (?, ?, ?, ?, ?)
             """, rows)
             conn.commit()
-            inserted = cur.rowcount
-            clear_store_7d_cache()
+            inserted = cur.rowcount if cur.rowcount and cur.rowcount > 0 else 0
+            cached_stat = _db_stats_cache.get(DB_PATH)
+            if cached_stat is not None and int((cached_stat[1] or {}).get('count') or 0) >= 500:
+                prev_info = dict(cached_stat[1])
+                prev_info['count'] = int(prev_info.get('count') or 0) + inserted
+                if timestamp_str and (not prev_info.get('max_timestamp') or timestamp_str > prev_info['max_timestamp']):
+                    prev_info['max_timestamp'] = timestamp_str
+                _db_stats_cache[DB_PATH] = (cached_stat[0], prev_info)
+                _store_7d_cache.clear()
+            else:
+                clear_store_7d_cache()
             return inserted
         except Exception as e:
             print(f"[local_db] Insert error: {e}", file=sys.stderr)
@@ -278,7 +287,6 @@ def get_store_history(store_name, days=30):
     conn = _get_read_connection()
     cur = None
     try:
-        conn.row_factory = None
         cur = conn.cursor()
         cur.execute("""
             SELECT timestamp, store_name, men, women
@@ -305,7 +313,6 @@ def get_store_history(store_name, days=30):
                 cur.close()
             except Exception:
                 pass
-        conn.row_factory = sqlite3.Row
 
 def get_weekly_history(start_ts_str):
     """
@@ -315,7 +322,6 @@ def get_weekly_history(start_ts_str):
     conn = _get_read_connection()
     cur = None
     try:
-        conn.row_factory = None
         cur = conn.cursor()
         cur.execute("""
             SELECT timestamp, store_name, men, women, source
@@ -343,7 +349,6 @@ def get_weekly_history(start_ts_str):
                 cur.close()
             except Exception:
                 pass
-        conn.row_factory = sqlite3.Row
 
 def get_db_stats():
     """Returns row count and time range from SQLite with O(1) index min/max lookup and 30s memory cache."""
@@ -805,7 +810,8 @@ def restore_votes_from_sheets(hours=24):
         return 0
 
     _votes_restored = True
-    restored = 0
+    rows_to_insert = []
+    mem_to_append = []
     for r in rows:
         if len(r) < 3 or not r[0] or r[0] < cutoff:
             continue
@@ -816,15 +822,62 @@ def restore_votes_from_sheets(hours=24):
         if dedup_key in existing_keys:
             continue
         existing_keys.add(dedup_key)
-        _insert_vote_row(r[0], r[1], r[2], identity)
+        rows_to_insert.append((r[0], r[1], r[2], identity))
+        mem_to_append.append({
+            'timestamp': r[0],
+            'store_name': r[1],
+            'vote_type': r[2],
+            'ip_hash': identity,
+            'voter_id': identity,
+        })
+
+    if rows_to_insert:
+        try:
+            with _db_lock:
+                conn = get_connection()
+                try:
+                    conn.executemany(
+                        "INSERT INTO crowd_votes (timestamp, store_name, vote_type, ip_hash) VALUES (?, ?, ?, ?)",
+                        rows_to_insert,
+                    )
+                    conn.commit()
+                finally:
+                    conn.close()
+        except Exception as err:
+            print(f"[local_db] batch vote restore insert failed: {err}", file=sys.stderr)
         with _votes_lock:
-            _memory_votes.append({'timestamp': r[0], 'store_name': r[1], 'vote_type': r[2],
-                                  'ip_hash': identity, 'voter_id': identity})
-        restored += 1
-    if restored > 0:
+            _memory_votes.extend(mem_to_append)
         clear_store_7d_cache()
+
+    restored = len(rows_to_insert)
     print(f"[local_db] Restored {restored} crowd votes from Google Sheets.")
     return restored
+
+
+def prune_old_logs(monitor_days: int = 60, vote_days: int = 14) -> dict:
+    """Prune expired SQLite monitor_logs and crowd_votes rows during daily off-hours maintenance."""
+    now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
+    mon_cutoff = (now_jst - datetime.timedelta(days=max(31, int(monitor_days)))).strftime("%Y-%m-%d %H:%M:%S")
+    vote_cutoff = (now_jst - datetime.timedelta(days=max(2, int(vote_days)))).strftime("%Y-%m-%d %H:%M:%S")
+    deleted_mon = 0
+    deleted_votes = 0
+    try:
+        with _db_lock:
+            conn = get_connection()
+            try:
+                cur = conn.cursor()
+                cur.execute("DELETE FROM monitor_logs WHERE timestamp < ?", (mon_cutoff,))
+                deleted_mon = max(0, cur.rowcount or 0)
+                cur.execute("DELETE FROM crowd_votes WHERE timestamp < ?", (vote_cutoff,))
+                deleted_votes = max(0, cur.rowcount or 0)
+                conn.commit()
+            finally:
+                conn.close()
+        if deleted_mon > 0 or deleted_votes > 0:
+            clear_store_7d_cache(clear_benchmarks=True)
+    except Exception as err:
+        print(f"[local_db] prune_old_logs error: {err}", file=sys.stderr)
+    return {'deleted_monitor_logs': deleted_mon, 'deleted_crowd_votes': deleted_votes}
 
 def get_recent_votes(store_name=None, hours=4):
     """Returns aggregated vote counts in the last `hours` hours."""
@@ -1070,7 +1123,6 @@ def _compute_benchmark_base_from_sqlite(cutoff_str: str) -> dict:
         conn = _get_read_connection()
         cur = None
         try:
-            conn.row_factory = None
             cur = conn.cursor()
             cur.execute(
                 """
@@ -1097,7 +1149,6 @@ def _compute_benchmark_base_from_sqlite(cutoff_str: str) -> dict:
                     cur.close()
                 except Exception:
                     pass
-            conn.row_factory = sqlite3.Row
     else:
         grouped_rows = []
 

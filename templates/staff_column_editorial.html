@@ -931,6 +931,10 @@
     </div>
 
     <script>
+        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+            try { navigator.serviceWorker.controller.postMessage({ type: 'PURGE_HTML_CACHE' }); } catch (e) {}
+        }
+
         var CANDIDATES_DATA = {{ editorial.evaluation.candidates | tojson }};
         var EYECATCH_PRESETS = {{ editorial.eyecatch_presets | tojson }};
         var DEFAULT_SCHED_INPUT = {{ editorial.default_schedule_input | tojson }};
@@ -941,6 +945,38 @@
         var INITIAL_CONFIGURED = {{ (editorial.gemini_status and editorial.gemini_status.configured) | tojson }};
         var INITIAL_EXPORT_SLUG = {{ (export_slug or '') | tojson }};
         var ACTIVE_TAB_BY_IDX = {};
+        var _colAiConfigInFlight = false;
+
+        async function fetchJsonSafe(url, opts, timeoutMs) {
+            var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+            var timer = controller ? setTimeout(function() { controller.abort(); }, timeoutMs || 50000) : null;
+            try {
+                var reqOpts = Object.assign({}, opts || {});
+                if (controller) reqOpts.signal = controller.signal;
+                var resp = await fetch(url, reqOpts);
+                var rawText = await resp.text();
+                var data = null;
+                if (rawText) {
+                    try {
+                        data = JSON.parse(rawText);
+                    } catch (parseErr) {
+                        throw new Error('サーバー応答エラー（HTTP ' + resp.status + '：タイムアウトまたは再起動中です）');
+                    }
+                }
+                if (!resp.ok) {
+                    var errMsg = (data && (data.error || data.detail || data.message)) || ('HTTP ' + resp.status + ' エラーが発生しました');
+                    throw new Error(errMsg);
+                }
+                return data || {};
+            } catch (err) {
+                if (err && err.name === 'AbortError') {
+                    throw new Error('通信がタイムアウトしました。時間をおいて再度お試しください');
+                }
+                throw err;
+            } finally {
+                if (timer) clearTimeout(timer);
+            }
+        }
 
         function writeClipboardWithFallback(text, onDone) {
             if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -977,12 +1013,13 @@
             loadNoteExportSelected();
         }
 
-        function loadNoteExportSelected() {
+        async function loadNoteExportSelected() {
             var sel = document.getElementById("note-export-select");
             var slug = sel ? (sel.value || "").trim() : "";
             if (!slug) return;
             var stEl = document.getElementById("note-export-status");
             var btn = document.getElementById("note-export-load-btn");
+            if (btn && btn.disabled) return;
             if (stEl) {
                 stEl.style.display = "block";
                 stEl.style.color = "#a7f3d0";
@@ -990,12 +1027,10 @@
             }
             if (btn) btn.disabled = true;
 
-            fetch("/api/column-editorial/export-note?slug=" + encodeURIComponent(slug), {
-                headers: {"Accept": "application/json"}
-            })
-            .then(function(r) { return r.json(); })
-            .then(function(res) {
-                if (btn) btn.disabled = false;
+            try {
+                var res = await fetchJsonSafe("/api/column-editorial/export-note?slug=" + encodeURIComponent(slug), {
+                    headers: {"Accept": "application/json"}
+                }, 25000);
                 if (!res || !res.ok) {
                     if (stEl) {
                         stEl.style.color = "#ffd6d6";
@@ -1027,15 +1062,15 @@
                 if (bodyTa) bodyTa.value = res.body_markdown || "";
                 if (bodyLbl) bodyLbl.textContent = "③ 本文原稿（" + (res.char_count || 0) + "文字｜noteの本文エディタへそのまま貼り付け）";
                 if (tagInp) tagInp.value = res.hashtags || "";
-            })
-            .catch(function() {
-                if (btn) btn.disabled = false;
+            } catch (err) {
                 if (stEl) {
                     stEl.style.display = "block";
                     stEl.style.color = "#ffd6d6";
-                    stEl.textContent = "⚠️ 通信エラーが発生しました";
+                    stEl.textContent = "⚠️ " + ((err && err.message) || "通信エラーが発生しました");
                 }
-            });
+            } finally {
+                if (btn) btn.disabled = false;
+            }
         }
 
         function copyNoteField(elId, btn) {
@@ -1061,19 +1096,18 @@
             });
         }
 
-        function saveDefaultToneMode() {
+        async function saveDefaultToneMode() {
             var msgEl = document.getElementById("tone-save-msg");
             if (msgEl) {
                 msgEl.style.color = "#d3f3e2";
                 msgEl.textContent = "標準トーンを保存中...";
             }
-            fetch("/api/editorial/tone-mode", {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({tone_mode: CURRENT_TONE})
-            })
-            .then(function(r) { return r.json(); })
-            .then(function(res) {
+            try {
+                var res = await fetchJsonSafe("/api/editorial/tone-mode", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json", "Accept": "application/json"},
+                    body: JSON.stringify({tone_mode: CURRENT_TONE})
+                }, 20000);
                 if (res && res.ok) {
                     if (msgEl) {
                         msgEl.style.color = "#d3f3e2";
@@ -1087,7 +1121,12 @@
                     msgEl.style.color = "#ffd6d6";
                     msgEl.textContent = "⚠️ " + ((res && res.error) || "保存に失敗しました");
                 }
-            });
+            } catch (err) {
+                if (msgEl) {
+                    msgEl.style.color = "#ffd6d6";
+                    msgEl.textContent = "⚠️ " + ((err && err.message) || "通信エラーが発生しました");
+                }
+            }
         }
 
         function escHtml(s) {
@@ -1199,7 +1238,7 @@
             }).join("");
         }
 
-        function triggerColumnAiRefresh(forceRefresh, silentIfUnconfigured) {
+        async function triggerColumnAiRefresh(forceRefresh, silentIfUnconfigured) {
             var pill = document.getElementById("ai-status-pill");
             var regenBtn = document.getElementById("ai-regen-btn");
             if (!silentIfUnconfigured && pill) {
@@ -1212,54 +1251,67 @@
             }
             var url = "/api/column-editorial?theme=" + encodeURIComponent(CURRENT_THEME) + "&topic=" + encodeURIComponent(CURRENT_TOPIC || "") + "&tone=" + encodeURIComponent(CURRENT_TONE || "");
             if (forceRefresh) url += "&refresh_ai=1";
-            fetch(url, {headers: {"Accept": "application/json"}})
-                .then(function(r) { return r.json(); })
-                .then(function(ed) {
-                    if (!ed || !ed.evaluation) return;
-                    var st = ed.gemini_status || {};
-                    if (pill) {
-                        if (st.state === "active") {
-                            pill.className = "ai-status-pill ai-status-on";
-                            pill.textContent = "🟢 " + (st.engine_badge || "上位AI本音コラム執筆") + "：正常稼働中（" + (st.last_model || "") + " ｜ " + (st.masked_key || "") + "）";
-                        } else if (st.state === "degraded") {
-                            pill.className = "ai-status-pill ai-status-off";
-                            pill.textContent = "🟠 AI通信エラーのため現在は実測ストーリー安全案へ自動切替中（" + (st.masked_key || "") + "）";
-                        } else {
-                            pill.className = "ai-status-pill ai-status-off";
-                            pill.textContent = "🟡 AIキー未設定（現在は実測データ連動ストーリー案で稼働中）";
-                        }
+            var applied = false;
+            try {
+                var ed = await fetchJsonSafe(url, {headers: {"Accept": "application/json"}}, 55000);
+                if (silentIfUnconfigured && (!ed || !ed.gemini_status || !ed.gemini_status.configured)) {
+                    applied = true;
+                    return;
+                }
+                if (!ed || !ed.evaluation) {
+                    throw new Error((ed && ed.error) || "執筆データを取得できませんでした");
+                }
+                var st = ed.gemini_status || {};
+                if (pill) {
+                    if (st.state === "active") {
+                        pill.className = "ai-status-pill ai-status-on";
+                        pill.textContent = "🟢 " + (st.engine_badge || "上位AI本音コラム執筆") + "：正常稼働中（" + (st.last_model || "") + " ｜ " + (st.masked_key || "") + "）";
+                    } else if (st.state === "degraded") {
+                        pill.className = "ai-status-pill ai-status-off";
+                        pill.textContent = "🟠 AI通信エラーのため現在は実測ストーリー安全案へ自動切替中（" + (st.masked_key || "") + "）";
+                    } else {
+                        pill.className = "ai-status-pill ai-status-off";
+                        pill.textContent = "🟡 AIキー未設定（現在は実測データ連動ストーリー案で稼働中）";
                     }
-                    if (regenBtn) {
-                        regenBtn.style.display = st.configured ? "inline-block" : "none";
-                        regenBtn.disabled = false;
-                        regenBtn.textContent = "🔄 別の長考ストーリー案を再生成";
-                    }
-                    if (ed.plan && document.getElementById("plan-angle-text")) {
-                        document.getElementById("plan-angle-text").textContent = ed.plan.angle_summary || "";
-                    }
-                    if (ed.evaluation.desk_summary && document.getElementById("desk-summary-text")) {
-                        document.getElementById("desk-summary-text").textContent = ed.evaluation.desk_summary;
-                    }
-                    var cands = ed.evaluation.candidates || [];
-                    if (document.getElementById("writer-count-title")) {
-                        document.getElementById("writer-count-title").textContent = "Webコラム＋note＋X告知 " + cands.length + "案作成";
-                    }
-                    if (document.getElementById("cands-heading")) {
-                        document.getElementById("cands-heading").textContent = "📝 コラム・note 提案候補（" + cands.length + "案）＆ ワンクリック公開予約";
-                    }
-                    renderCandidatesList(cands);
-                })
-                .catch(function() {
-                    if (regenBtn) {
-                        regenBtn.disabled = false;
-                        regenBtn.textContent = "🔄 別の長考ストーリー案を再生成";
-                    }
-                });
+                }
+                if (regenBtn) {
+                    regenBtn.style.display = st.configured ? "inline-block" : "none";
+                }
+                if (ed.plan && document.getElementById("plan-angle-text")) {
+                    document.getElementById("plan-angle-text").textContent = ed.plan.angle_summary || "";
+                }
+                if (ed.evaluation.desk_summary && document.getElementById("desk-summary-text")) {
+                    document.getElementById("desk-summary-text").textContent = ed.evaluation.desk_summary;
+                }
+                var cands = ed.evaluation.candidates || [];
+                if (document.getElementById("writer-count-title")) {
+                    document.getElementById("writer-count-title").textContent = "Webコラム＋note＋X告知 " + cands.length + "案作成";
+                }
+                if (document.getElementById("cands-heading")) {
+                    document.getElementById("cands-heading").textContent = "📝 コラム・note 提案候補（" + cands.length + "案）＆ ワンクリック公開予約";
+                }
+                renderCandidatesList(cands);
+                applied = true;
+            } catch (err) {
+                if (pill && !silentIfUnconfigured) {
+                    pill.className = "ai-status-pill ai-status-off";
+                    pill.textContent = "⚠️ AI執筆の取得に失敗しました（" + ((err && err.message) || "通信エラー") + "｜現在の実測ストーリー案を表示中）";
+                }
+            } finally {
+                if (regenBtn) {
+                    regenBtn.disabled = false;
+                    regenBtn.textContent = "🔄 別の長考ストーリー案を再生成";
+                }
+                if (!applied && pill && pill.classList.contains("ai-status-loading")) {
+                    pill.className = "ai-status-pill ai-status-off";
+                    pill.textContent = "🟠 AI執筆の取得を中断しました（現在の実測ストーリー案を表示中）";
+                }
+            }
         }
 
-        function publishCandidate(idx, mode, btn) {
+        async function publishCandidate(idx, mode, btn) {
             var cand = CANDIDATES_DATA[idx];
-            if (!cand) return;
+            if (!cand || (btn && btn.disabled)) return;
             var slugVal = (document.getElementById("slug-input-" + idx).value || "").trim();
             var eyeVal = (document.getElementById("eyecatch-select-" + idx).value || "").trim();
             var dtVal = (document.getElementById("pubdt-input-" + idx).value || "").trim();
@@ -1272,103 +1324,130 @@
             btn.disabled = true;
             btn.innerText = "保存中...";
 
-            fetch("/api/column-editorial/publish", {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({
-                    candidate: cand,
-                    publish_mode: mode,
-                    publish_at: dtVal,
-                    slug: slugVal,
-                    eyecatch_key: eyeVal
-                })
-            })
-            .then(function(r) { return r.json(); })
-            .then(function(res) {
-                btn.disabled = false;
-                btn.innerText = origLabel;
-                if (res.ok) {
+            try {
+                var res = await fetchJsonSafe("/api/column-editorial/publish", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json", "Accept": "application/json"},
+                    body: JSON.stringify({
+                        candidate: cand,
+                        publish_mode: mode,
+                        publish_at: dtVal,
+                        slug: slugVal,
+                        eyecatch_key: eyeVal
+                    })
+                }, 30000);
+                if (res && res.ok) {
                     var statusWord = res.published_now ? "🚀 即時公開しました！" : ("🗓️ " + escHtml(res.publish_at_ja) + " で予約公開に登録しました！");
                     msgEl.innerHTML = '<div style="padding:10px 12px; border-radius:8px; background:rgba(123,196,159,0.16); border:1px solid var(--green); color:#d3f3e2;">' +
                         '<strong>' + statusWord + '</strong> ' +
                         '<a href="' + escHtml(res.path) + '" target="_blank" rel="noopener" style="color:#fff; font-weight:800; margin-left:8px;">👉 記事ページを確認する（' + escHtml(res.path) + '）↗</a>' +
                     '</div>';
                 } else {
-                    msgEl.innerHTML = '<span style="color:#ffd6d6;">⚠️ ' + escHtml(res.error || "保存に失敗しました") + '</span>';
+                    msgEl.innerHTML = '<span style="color:#ffd6d6;">⚠️ ' + escHtml((res && res.error) || "保存に失敗しました") + '</span>';
                 }
-            })
-            .catch(function() {
+            } catch (err) {
+                msgEl.innerHTML = '<span style="color:#ffd6d6;">⚠️ ' + escHtml((err && err.message) || "通信エラーが発生しました") + '</span>';
+            } finally {
                 btn.disabled = false;
                 btn.innerText = origLabel;
-                msgEl.innerHTML = '<span style="color:#ffd6d6;">⚠️ 通信エラーが発生しました</span>';
-            });
+            }
         }
 
-        function deleteDynamicColumn(slug) {
+        async function deleteDynamicColumn(slug) {
             if (!confirm("編集部作成コラム（/guide/" + slug + "）を公開・予約リストから削除しますか？")) return;
-            fetch("/api/column-editorial/delete", {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({slug: slug})
-            })
-            .then(function(r) { return r.json(); })
-            .then(function(res) {
-                if (res.ok) {
+            try {
+                var res = await fetchJsonSafe("/api/column-editorial/delete", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json", "Accept": "application/json"},
+                    body: JSON.stringify({slug: slug})
+                }, 20000);
+                if (res && res.ok) {
                     window.location.reload();
                 } else {
-                    alert(res.error || "削除に失敗しました");
+                    alert((res && res.error) || "削除に失敗しました");
                 }
-            });
+            } catch (err) {
+                alert("削除に失敗しました: " + ((err && err.message) || "通信エラー"));
+            }
         }
 
-        function saveColEnginePref(pref) {
+        async function saveColEnginePref(pref) {
+            if (_colAiConfigInFlight) return;
+            _colAiConfigInFlight = true;
             var msg = document.getElementById("gemini-key-msg");
             if (msg) {
                 msg.style.color = "#d3f3e2";
                 msg.innerText = "優先AIエンジンを切り替えています...";
             }
-            fetch("/api/sns-editorial/ai-config", {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({action: "set_pref", engine_pref: pref})
-            }).then(function(r) { return r.json(); }).then(function(data) {
-                if (data.ok) {
+            try {
+                var data = await fetchJsonSafe("/api/sns-editorial/ai-config", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json", "Accept": "application/json"},
+                    body: JSON.stringify({action: "set_pref", engine_pref: pref})
+                }, 20000);
+                if (data && data.ok) {
                     if (msg) {
                         msg.style.color = "#d3f3e2";
                         msg.innerText = "✅ " + data.message;
                     }
                     triggerColumnAiRefresh(true, false);
+                } else if (msg) {
+                    msg.style.color = "#ffd6d6";
+                    msg.innerText = "⚠️ " + ((data && data.error) || "切り替えに失敗しました");
                 }
-            });
+            } catch (err) {
+                if (msg) {
+                    msg.style.color = "#ffd6d6";
+                    msg.innerText = "⚠️ " + ((err && err.message) || "通信エラーが発生しました");
+                }
+            } finally {
+                _colAiConfigInFlight = false;
+            }
         }
 
-        function saveGeminiKey(provider) {
+        async function saveGeminiKey(provider) {
+            if (_colAiConfigInFlight) return;
             var prov = provider || "gemini";
             var inp = document.getElementById(prov === "claude" ? "claude-api-key-input" : "gemini-api-key-input");
             var msg = document.getElementById("gemini-key-msg");
             var val = inp ? inp.value.trim() : "";
             if (!val) {
-                msg.style.color = "#ffd6d6";
-                msg.innerText = "⚠️ APIキーを入力してください。";
+                if (msg) {
+                    msg.style.color = "#ffd6d6";
+                    msg.innerText = "⚠️ APIキーを入力してください。";
+                }
                 return;
             }
-            msg.style.color = "#d3f3e2";
-            msg.innerText = "暗号化保存しています...";
-            fetch("/api/sns-editorial/ai-config", {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({action: "save", provider: prov, api_key: val})
-            }).then(function(r) { return r.json(); }).then(function(data) {
-                if (data.ok) {
-                    msg.style.color = "#d3f3e2";
-                    msg.innerText = "✅ " + data.message;
+            _colAiConfigInFlight = true;
+            if (msg) {
+                msg.style.color = "#d3f3e2";
+                msg.innerText = "暗号化保存しています...";
+            }
+            try {
+                var data = await fetchJsonSafe("/api/sns-editorial/ai-config", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json", "Accept": "application/json"},
+                    body: JSON.stringify({action: "save", provider: prov, api_key: val})
+                }, 25000);
+                if (data && data.ok) {
+                    if (msg) {
+                        msg.style.color = "#d3f3e2";
+                        msg.innerText = "✅ " + data.message;
+                    }
                     if (inp) inp.value = "";
                     triggerColumnAiRefresh(true, false);
-                } else {
+                } else if (msg) {
                     msg.style.color = "#ffd6d6";
-                    msg.innerText = "⚠️ " + (data.error || "保存に失敗しました");
+                    msg.innerText = "⚠️ " + ((data && data.error) || "保存に失敗しました");
                 }
-            });
+            } catch (err) {
+                if (msg) {
+                    msg.style.color = "#ffd6d6";
+                    msg.innerText = "⚠️ " + ((err && err.message) || "通信エラーが発生しました");
+                }
+            } finally {
+                _colAiConfigInFlight = false;
+            }
         }
 
         document.addEventListener("DOMContentLoaded", function() {

@@ -625,7 +625,7 @@ def run_column_researcher(
     weather_ctx = {"available": False, "summary": "", "adlib_hint": ""}
     try:
         if hasattr(sns_editorial, "fetch_live_weather_context"):
-            weather_ctx = sns_editorial.fetch_live_weather_context(allow_network=False) or weather_ctx
+            weather_ctx = sns_editorial.fetch_live_weather_context(allow_blocking=False) or weather_ctx
     except Exception:
         pass
 
@@ -1386,7 +1386,7 @@ def _build_column_gemini_prompt(
 
 
 def _make_col_cache_key(research: dict, plan: dict, tone_mode: str = None):
-    tm = sns_editorial.get_editorial_tone_mode(tone_mode)
+    tm = sns_editorial.get_editorial_tone_mode(tone_mode, allow_blocking=False)
     eng_pref = sns_editorial.get_ai_engine_pref(allow_blocking=False)
     has_c = bool(sns_editorial.get_claude_api_key(allow_blocking=False))
     stores_sig = tuple(
@@ -1424,7 +1424,7 @@ def _generate_gemini_column_candidate(
     if not sns_editorial.has_any_ai_key(allow_blocking=(not cache_only)):
         return None
 
-    tm = sns_editorial.get_editorial_tone_mode(tone_mode)
+    tm = sns_editorial.get_editorial_tone_mode(tone_mode, allow_blocking=False)
     tone_short = sns_editorial.EDITORIAL_TONE_MODES[tm]["short_label"]
     ck = _make_col_cache_key(research, plan, tone_mode=tm)
     now_t = time.time()
@@ -1445,8 +1445,8 @@ def _generate_gemini_column_candidate(
         max_output_tokens=5600,
         thinking_budget=768,
         temperature=0.86,
-        total_deadline_sec=78.0,
-        per_call_timeout_sec=52.0,
+        total_deadline_sec=48.0,
+        per_call_timeout_sec=24.0,
         allow_blocking=True,
         now_jst=now_jst,
     )
@@ -1552,7 +1552,7 @@ def run_column_writer(
 # =====================================================================
 def run_column_evaluator(candidates: list, research: dict, plan: dict, tone_mode: str = None) -> dict:
     evaluated = []
-    tm = sns_editorial.get_editorial_tone_mode(tone_mode)
+    tm = sns_editorial.get_editorial_tone_mode(tone_mode, allow_blocking=False)
     verified_names = [s["ja_name"] for s in (research.get("featured_stores") or [])] + [
         s["casual_name"] for s in (research.get("featured_stores") or [])
     ]
@@ -2363,7 +2363,13 @@ def run_column_editorial_pipeline(
 
     gemini_status = sns_editorial.get_gemini_status(allow_blocking=allow_blocking)
     ai_cached = has_cached_column_ai(research, plan, tone_mode=resolved_tm)
-    ai_pending_async = bool(use_ai and ai_cache_only and gemini_status.get("configured") and not ai_cached)
+    sheets_warming = (not getattr(job_state, "_sheets_loaded", True)) and (not job_state.sheets_store.is_disabled())
+    ai_pending_async = bool(
+        use_ai
+        and ai_cache_only
+        and (gemini_status.get("configured") or sheets_warming)
+        and (force_ai_refresh or not ai_cached)
+    )
 
     candidates = run_column_writer(
         research=research,

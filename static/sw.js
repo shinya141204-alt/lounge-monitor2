@@ -1,19 +1,22 @@
-// Supersedes aiseki-navi-v47..v62 (purged automatically on activate)
-const CACHE_NAME = 'aiseki-navi-v63';
+// Supersedes aiseki-navi-v47..v63 (purged automatically on activate)
+const CACHE_NAME = 'aiseki-navi-v64';
 const SHELL_KEY = '/';
 const LIVE_FRESH_TTL_MS = 45000;
 const PREFETCH_DEDUP_MS = 25000;
+const EDITORIAL_MAX_AGE_MS = 1200000;
+const MAX_DYNAMIC_CACHE_ENTRIES = 65;
+
 const FAST_NAV_PATHS = new Set([
   '/grooming',
-  '/stats',
   '/guide',
-  '/columns',
   '/privacy'
 ]);
 const LIVE_SSR_EXACT = new Set([
   '/',
   '/for-women',
   '/areas',
+  '/stats',
+  '/columns',
   '/oriental-lounge',
   '/ag',
   '/jis'
@@ -24,13 +27,14 @@ const LIVE_SSR_PREFIXES = [
   '/area/'
 ];
 const CORE_ASSETS = [
-  '/static/style.css?v=20261029_1',
-  '/static/calm.css?v=18',
-  '/static/portal.css?v=7',
-  '/static/app.js?v=20261029_2',
+  '/static/style.css?v=20261029_2',
+  '/static/calm.css?v=19',
+  '/static/portal.css?v=8',
+  '/static/app.js?v=20261029_3',
   '/static/affiliate_config.js?v=12',
   '/static/manifest.json?v=2'
 ];
+const CORE_ASSET_SET = new Set(CORE_ASSETS);
 const OPTIONAL_EXTERNAL_ASSETS = [
   'https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap'
 ];
@@ -49,6 +53,30 @@ function isFastEditorialPath(pathname) {
 
 function isLiveSsrPath(pathname) {
   return LIVE_SSR_EXACT.has(pathname) || LIVE_SSR_PREFIXES.some((p) => pathname === p || pathname.startsWith(p));
+}
+
+function isProtectedAssetRequest(req) {
+  try {
+    const u = new URL(req.url);
+    if (u.origin === self.location.origin) {
+      return CORE_ASSET_SET.has(u.pathname + u.search);
+    }
+    return OPTIONAL_EXTERNAL_ASSETS.includes(req.url);
+  } catch (e) {
+    return false;
+  }
+}
+
+async function trimDynamicCache(cache) {
+  try {
+    const keys = await cache.keys();
+    const dynamicKeys = keys.filter((req) => !isProtectedAssetRequest(req));
+    if (dynamicKeys.length <= MAX_DYNAMIC_CACHE_ENTRIES) return;
+    const overflow = dynamicKeys.length - MAX_DYNAMIC_CACHE_ENTRIES;
+    for (let i = 0; i < overflow; i++) {
+      await cache.delete(dynamicKeys[i]);
+    }
+  } catch (e) {}
 }
 
 // Install: Cache critical CSS/JS assets only (avoid competing for bandwidth with large icons or duplicate HTML fetch)
@@ -87,6 +115,28 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// Allow authenticated staff pages to purge cached public HTML (preventing stale ad-bearing pages)
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'PURGE_HTML_CACHE') {
+    event.waitUntil(
+      caches.open(CACHE_NAME).then(async (cache) => {
+        const keys = await cache.keys();
+        await Promise.all(
+          keys.map((req) => {
+            try {
+              const u = new URL(req.url);
+              if (u.origin === self.location.origin && !u.pathname.startsWith('/static/')) {
+                return cache.delete(req);
+              }
+            } catch (e) {}
+            return Promise.resolve();
+          })
+        );
+      }).catch(() => {})
+    );
+  }
+});
+
 function getCachedAgeMs(resp) {
   if (!resp || !resp.headers) return Infinity;
   const ts = Number(resp.headers.get('X-Sw-Stored-At') || 0);
@@ -107,18 +157,19 @@ async function putHtmlWithTimestamp(cacheKey, resp) {
     });
     const cache = await caches.open(CACHE_NAME);
     await cache.put(cacheKey, stamped);
+    await trimDynamicCache(cache);
   } catch (e) {}
 }
 
 // Fetch the latest HTML (navigation preload first) and write to CacheStorage asynchronously without blocking UI response
-function fetchAndCache(event, cacheKey, forceFresh) {
+function fetchAndCache(event, cacheKey, forceFresh, skipStore) {
   return (async () => {
     let preload = null;
     try {
       preload = event.preloadResponse ? await event.preloadResponse : null;
     } catch (e) {}
     const resp = preload || await fetch(event.request, forceFresh ? { cache: 'no-cache' } : undefined);
-    if (resp && resp.ok && !resp.redirected && !isStaffOrPrivateNoStore(resp)) {
+    if (!skipStore && resp && resp.ok && !resp.redirected && !isStaffOrPrivateNoStore(resp)) {
       const copy = resp.clone();
       event.waitUntil(putHtmlWithTimestamp(cacheKey, copy));
     }
@@ -141,8 +192,18 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Always bypass Service Worker for staff monitor, dynamic OGP/carousel images, and ads.txt
-  if (reqUrl.pathname.startsWith('/staff') || reqUrl.pathname.startsWith('/ogp/') || reqUrl.pathname === '/ads.txt') {
+  // Always bypass Service Worker for staff monitor, affiliate redirects, dynamic OGP/carousel images, and crawler metadata files
+  if (
+    reqUrl.pathname.startsWith('/staff') ||
+    reqUrl.pathname === '/link' ||
+    reqUrl.pathname.startsWith('/link/') ||
+    reqUrl.pathname.startsWith('/ogp/') ||
+    reqUrl.pathname === '/ads.txt' ||
+    reqUrl.pathname === '/robots.txt' ||
+    reqUrl.pathname === '/sitemap.xml' ||
+    reqUrl.pathname === '/llms.txt' ||
+    reqUrl.pathname === '/llms-full.txt'
+  ) {
     return;
   }
 
@@ -158,15 +219,16 @@ self.addEventListener('fetch', (event) => {
 
   // Background warm-prefetch from touchstart/pointerdown/idle (works on iOS Safari & Android Chrome)
   if (event.request.headers.get('X-Sw-Prefetch') === '1') {
-    const pfKey = reqUrl.pathname === '/' ? SHELL_KEY : (reqUrl.pathname + reqUrl.search);
+    const pfKey = reqUrl.pathname + reqUrl.search;
     event.respondWith(
       (async () => {
         try {
           const existing = await caches.match(pfKey);
-          if (existing && (isFastEditorialPath(reqUrl.pathname) || getCachedAgeMs(existing) < PREFETCH_DEDUP_MS)) {
+          const maxDedupMs = isFastEditorialPath(reqUrl.pathname) ? EDITORIAL_MAX_AGE_MS : PREFETCH_DEDUP_MS;
+          if (existing && getCachedAgeMs(existing) < maxDedupMs) {
             return new Response('', { status: 204 });
           }
-          const resp = await fetch(reqUrl.pathname + reqUrl.search, {
+          const resp = await fetch(pfKey, {
             cache: 'no-cache',
             credentials: 'same-origin',
             headers: { 'X-Sw-Prefetch': '1' }
@@ -181,46 +243,56 @@ self.addEventListener('fetch', (event) => {
 
   // Navigation requests (HTML page visits from bookmarks / home screen / in-site tabs)
   if (event.request.mode === 'navigate') {
-    const cacheKey = reqUrl.pathname === '/' ? SHELL_KEY : (reqUrl.pathname + reqUrl.search);
-    // Static guide & editorial pages: Stale-While-Revalidate
+    const cacheKey = reqUrl.pathname + reqUrl.search;
+    const hasTrackingParam = reqUrl.searchParams.has('s') || reqUrl.searchParams.has('utm_source');
+
+    // Static guide & editorial pages: bounded Stale-While-Revalidate (20 min freshness cap)
     if (isFastEditorialPath(reqUrl.pathname)) {
-      const networkPromise = fetchAndCache(event, cacheKey, false);
+      const networkPromise = fetchAndCache(event, cacheKey, hasTrackingParam, hasTrackingParam);
       event.waitUntil(networkPromise.catch(() => {}));
       event.respondWith(
         (async () => {
-          const cached = await caches.match(cacheKey) || await caches.match(reqUrl.pathname);
-          if (cached) return cached;
-          return networkPromise;
+          const cached = await caches.match(cacheKey);
+          if (!hasTrackingParam && cached && getCachedAgeMs(cached) < EDITORIAL_MAX_AGE_MS) {
+            return cached;
+          }
+          try {
+            return await networkPromise;
+          } catch (e) {
+            if (cached) return cached;
+            const pathFallback = await caches.match(reqUrl.pathname);
+            if (pathFallback) return pathFallback;
+            throw e;
+          }
         })()
       );
       return;
     }
 
-    // Top page ("/") and live SSR pages (/for-women, /price-comparison, /store/*, /areas):
-    // If warmed within the last 45s (via touchstart/idle prefetch or recent visit), serve in ~5ms and revalidate in background!
+    // Top page ("/") and live SSR pages (/for-women, /price-comparison, /store/*, /areas, /stats, /columns):
+    // Match exact URL+query only (never serve default Shinjuku cache for ?area=umeda, nor skip ?s= inflow tracking)
     const isLiveSsr = isLiveSsrPath(reqUrl.pathname);
     const pageCacheKey = cacheKey;
     event.respondWith(
       (async () => {
-        const cachedFresh = await caches.match(pageCacheKey) || (reqUrl.pathname === '/' ? null : await caches.match(reqUrl.pathname));
-        if (cachedFresh && getCachedAgeMs(cachedFresh) < LIVE_FRESH_TTL_MS) {
-          const bgPromise = fetchAndCache(event, pageCacheKey, isLiveSsr);
+        const cachedFresh = await caches.match(pageCacheKey);
+        if (!hasTrackingParam && cachedFresh && getCachedAgeMs(cachedFresh) < LIVE_FRESH_TTL_MS) {
+          const bgPromise = fetchAndCache(event, pageCacheKey, isLiveSsr, false);
           event.waitUntil(bgPromise.catch(() => {}));
           return cachedFresh;
         }
-        const networkPromise = fetchAndCache(event, pageCacheKey, isLiveSsr);
+        const networkPromise = fetchAndCache(event, pageCacheKey, isLiveSsr || hasTrackingParam, hasTrackingParam);
         event.waitUntil(networkPromise.catch(() => {}));
         try {
           return await Promise.race([networkPromise, timeout(isLiveSsr ? 1800 : 1200)]);
         } catch (e) {
-          if (cachedFresh) return cachedFresh;
+          if (!hasTrackingParam && cachedFresh) return cachedFresh;
           try {
             return await networkPromise;
           } catch (e2) {
-            if (reqUrl.pathname === '/') {
-              const fallback = await caches.match(SHELL_KEY);
-              if (fallback) return fallback;
-            }
+            if (cachedFresh) return cachedFresh;
+            const fallback = await caches.match(reqUrl.pathname === '/' ? SHELL_KEY : reqUrl.pathname);
+            if (fallback) return fallback;
             throw e2;
           }
         }
@@ -235,7 +307,10 @@ self.addEventListener('fetch', (event) => {
       const fetchPromise = fetch(event.request).then((networkResponse) => {
         if (networkResponse && networkResponse.status === 200 && !isStaffOrPrivateNoStore(networkResponse)) {
           const copy = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy)).catch(() => {});
+          caches.open(CACHE_NAME).then(async (cache) => {
+            await cache.put(event.request, copy);
+            await trimDynamicCache(cache);
+          }).catch(() => {});
         }
         return networkResponse;
       });

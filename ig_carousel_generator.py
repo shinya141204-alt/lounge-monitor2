@@ -21,7 +21,8 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 JST = datetime.timezone(datetime.timedelta(hours=9))
 _PORTRAIT_BASE_CACHE = collections.OrderedDict()
 _PORTRAIT_BASE_LOCK = threading.Lock()
-_PORTRAIT_BASE_MAX = 16
+_PORTRAIT_BASE_INFLIGHT = {}
+_PORTRAIT_BASE_MAX = 5
 _KINSOKU_LEADING = frozenset("。、．，・：；！？）」』】〉》〕％%")
 
 
@@ -225,96 +226,136 @@ def _make_portrait_base(bg_filename: str, glow1: tuple, glow2: tuple) -> tuple:
             _PORTRAIT_BASE_CACHE.move_to_end(cache_key)
             canvas_copy = cached.copy()
             return canvas_copy, ogp_generator.make_safe_draw(canvas_copy, "RGBA")
+        inflight = _PORTRAIT_BASE_INFLIGHT.get(cache_key)
+        if inflight is None:
+            inflight = [threading.Lock(), 0]
+            _PORTRAIT_BASE_INFLIGHT[cache_key] = inflight
+        inflight[1] += 1
+        key_lock = inflight[0]
 
-    if os.path.exists(bg_path):
-        try:
-            with Image.open(bg_path) as raw_img:
-                bg = raw_img.convert("RGBA")
-            sw, sh = bg.size
-            scale = max(W / sw, H / sh)
-            nw, nh = int(sw * scale), int(sh * scale)
-            bg = bg.resize((nw, nh), Image.Resampling.LANCZOS)
-            left = (nw - W) // 2
-            top = (nh - H) // 2
-            bg = bg.crop((left, top, left + W, top + H))
-            bg = bg.filter(ImageFilter.GaussianBlur(radius=14))
-        except Exception:
-            bg = Image.new("RGBA", (W, H), (14, 14, 24, 255))
-    else:
-        bg = Image.new("RGBA", (W, H), (14, 14, 24, 255))
+    try:
+        with key_lock:
+            with _PORTRAIT_BASE_LOCK:
+                cached = _PORTRAIT_BASE_CACHE.get(cache_key)
+                if cached is not None:
+                    _PORTRAIT_BASE_CACHE.move_to_end(cache_key)
+                    canvas_copy = cached.copy()
+                    return canvas_copy, ogp_generator.make_safe_draw(canvas_copy, "RGBA")
 
-    canvas = Image.new("RGBA", (W, H), (10, 10, 18, 255))
-    canvas.alpha_composite(bg)
-    tint = Image.new("RGBA", (W, H), (10, 12, 22, 226))
-    canvas.alpha_composite(tint)
-    ogp_generator._draw_radial_glow(canvas, (180, 180), 540, glow1)
-    ogp_generator._draw_radial_glow(canvas, (900, 1160), 540, glow2)
-    rgb_base = canvas.convert("RGB")
+            if os.path.exists(bg_path):
+                try:
+                    with Image.open(bg_path) as raw_img:
+                        bg = raw_img.convert("RGBA")
+                    sw, sh = bg.size
+                    scale = max(W / sw, H / sh)
+                    nw, nh = int(sw * scale), int(sh * scale)
+                    bg = bg.resize((nw, nh), Image.Resampling.LANCZOS)
+                    left = (nw - W) // 2
+                    top = (nh - H) // 2
+                    bg = bg.crop((left, top, left + W, top + H))
+                    bg = bg.filter(ImageFilter.GaussianBlur(radius=14))
+                except Exception:
+                    bg = Image.new("RGBA", (W, H), (14, 14, 24, 255))
+            else:
+                bg = Image.new("RGBA", (W, H), (14, 14, 24, 255))
 
-    with _PORTRAIT_BASE_LOCK:
-        _PORTRAIT_BASE_CACHE.pop(cache_key, None)
-        _PORTRAIT_BASE_CACHE[cache_key] = rgb_base
-        while len(_PORTRAIT_BASE_CACHE) > _PORTRAIT_BASE_MAX:
-            _, evicted = _PORTRAIT_BASE_CACHE.popitem(last=False)
-            try:
-                evicted.close()
-            except Exception:
-                pass
-        canvas_copy = rgb_base.copy()
-    draw = ogp_generator.make_safe_draw(canvas_copy, "RGBA")
-    return canvas_copy, draw
+            canvas = Image.new("RGBA", (W, H), (10, 10, 18, 255))
+            canvas.alpha_composite(bg)
+            tint = Image.new("RGBA", (W, H), (10, 12, 22, 226))
+            canvas.alpha_composite(tint)
+            ogp_generator._draw_radial_glow(canvas, (180, 180), 540, glow1)
+            ogp_generator._draw_radial_glow(canvas, (900, 1160), 540, glow2)
+            rgb_base = canvas.convert("RGB")
+
+            with _PORTRAIT_BASE_LOCK:
+                _PORTRAIT_BASE_CACHE.pop(cache_key, None)
+                _PORTRAIT_BASE_CACHE[cache_key] = rgb_base
+                while len(_PORTRAIT_BASE_CACHE) > _PORTRAIT_BASE_MAX:
+                    _, evicted = _PORTRAIT_BASE_CACHE.popitem(last=False)
+                    try:
+                        evicted.close()
+                    except Exception:
+                        pass
+                canvas_copy = rgb_base.copy()
+            return canvas_copy, ogp_generator.make_safe_draw(canvas_copy, "RGBA")
+    finally:
+        with _PORTRAIT_BASE_LOCK:
+            cur_inf = _PORTRAIT_BASE_INFLIGHT.get(cache_key)
+            if cur_inf is inflight:
+                cur_inf[1] -= 1
+                if cur_inf[1] <= 0:
+                    _PORTRAIT_BASE_INFLIGHT.pop(cache_key, None)
 
 
 def _wrap_text_by_pixel_width(draw, text: str, font, max_width: int, max_lines: int = 3) -> tuple:
     """
     Wrap Japanese/ASCII text cleanly within `max_width` pixels with basic kinsoku (no leading punctuation).
+    Uses binary search per line on already-sanitized text to avoid O(N^2) measurement overhead.
     Returns `(lines: list[str], truncated: bool)`. When `truncated` is True, the final line ends with `...`.
     """
     clean = ogp_generator.sanitize_font_text(text or "").strip()
     if not clean:
         return ([], False)
 
+    raw_draw = getattr(draw, "_draw", draw)
+    measure = ogp_generator._measure_clean_text_width
     lines = []
-    cur = ""
-    idx = 0
-    n = len(clean)
-    while idx < n:
-        ch = clean[idx]
-        if ch == "\n":
-            lines.append(cur)
-            cur = ""
-            idx += 1
+
+    for para in clean.split("\n"):
+        if not para:
+            lines.append("")
             continue
-        cand = cur + ch
-        if cur and ogp_generator._measure_text_width(draw, cand, font) > max_width:
-            if ch in _KINSOKU_LEADING and len(cur) > 1:
-                # Allow 1 trailing punctuation char or push previous char to next line
-                if ogp_generator._measure_text_width(draw, cand, font) <= max_width + 24:
-                    lines.append(cand)
-                    cur = ""
-                    idx += 1
-                    continue
-                carry = cur[-1]
-                lines.append(cur[:-1])
-                cur = carry + ch
-                idx += 1
-                continue
-            lines.append(cur)
-            cur = ch
-        else:
-            cur = cand
-        idx += 1
-    if cur:
-        lines.append(cur)
+        p_len = len(para)
+        pos = 0
+        min_take = 1
+        while pos < p_len:
+            rem_str = para[pos:]
+            r_len = len(rem_str)
+            if r_len <= min_take or measure(raw_draw, rem_str, font) <= max_width:
+                lines.append(rem_str)
+                break
+
+            lo = max(1, min_take)
+            hi = r_len - 1
+            fit_len = lo
+            while lo <= hi:
+                mid = (lo + hi) // 2
+                if measure(raw_draw, rem_str[:mid], font) <= max_width:
+                    fit_len = mid
+                    lo = mid + 1
+                else:
+                    hi = mid - 1
+
+            min_take = 1
+            next_ch = rem_str[fit_len]
+            if next_ch in _KINSOKU_LEADING and fit_len > 1:
+                cand_with_punct = rem_str[: fit_len + 1]
+                if measure(raw_draw, cand_with_punct, font) <= max_width + 24:
+                    lines.append(cand_with_punct)
+                    pos += fit_len + 1
+                else:
+                    lines.append(rem_str[: fit_len - 1])
+                    pos += fit_len - 1
+                    min_take = 2
+            else:
+                lines.append(rem_str[:fit_len])
+                pos += fit_len
 
     if len(lines) <= max_lines:
         return (lines, False)
 
-    kept = lines[:max_lines - 1]
-    overflow = "".join(lines[max_lines - 1:])
-    trimmed = overflow
-    while trimmed and ogp_generator._measure_text_width(draw, trimmed + "...", font) > max_width:
-        trimmed = trimmed[:-1]
+    kept = lines[: max_lines - 1]
+    overflow = "".join(lines[max_lines - 1 :])
+    lo, hi = 1, len(overflow)
+    best_len = 0
+    while lo <= hi:
+        mid = (lo + hi) // 2
+        if measure(raw_draw, overflow[:mid] + "...", font) <= max_width:
+            best_len = mid
+            lo = mid + 1
+        else:
+            hi = mid - 1
+    trimmed = overflow[:best_len] if best_len > 0 else ""
     kept.append((trimmed.rstrip("、。・ ") + "...") if trimmed else "...")
     return (kept, True)
 

@@ -701,71 +701,137 @@
     </div>
 
     <script>
+        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+            try { navigator.serviceWorker.controller.postMessage({ type: 'PURGE_HTML_CACHE' }); } catch (e) {}
+        }
+
         const CURRENT_DAYS = {{ days }};
         const PENDING_ASYNC_AI = {{ 'true' if pdca.briefing.pending_async else 'false' }};
 
+        async function fetchJsonSafe(url, opts, timeoutMs) {
+            const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+            const timer = controller ? setTimeout(() => controller.abort(), timeoutMs || 40000) : null;
+            try {
+                const reqOpts = Object.assign({}, opts || {});
+                if (controller) reqOpts.signal = controller.signal;
+                const resp = await fetch(url, reqOpts);
+                const rawText = await resp.text();
+                let data = null;
+                if (rawText) {
+                    try {
+                        data = JSON.parse(rawText);
+                    } catch (parseErr) {
+                        throw new Error(`サーバー応答エラー（HTTP ${resp.status}：タイムアウトまたは再起動中です）`);
+                    }
+                }
+                if (!resp.ok) {
+                    const errMsg = (data && (data.error || data.detail || data.message)) || `HTTP ${resp.status} エラーが発生しました`;
+                    throw new Error(errMsg);
+                }
+                return data || {};
+            } catch (err) {
+                if (err && err.name === 'AbortError') {
+                    throw new Error('通信がタイムアウトしました。時間をおいて再度お試しください');
+                }
+                throw err;
+            } finally {
+                if (timer) clearTimeout(timer);
+            }
+        }
+
         function showToast(msg) {
             const el = document.getElementById('pdca-toast');
+            if (!el) return;
             el.textContent = msg;
             el.style.display = 'block';
         }
 
         async function savePdcaSettings() {
-            const autoSns = document.getElementById('toggle-auto-sns').checked;
-            const autoCol = document.getElementById('toggle-auto-col').checked;
+            const snsEl = document.getElementById('toggle-auto-sns');
+            const colEl = document.getElementById('toggle-auto-col');
+            const autoSns = snsEl ? snsEl.checked : false;
+            const autoCol = colEl ? colEl.checked : false;
+            if (snsEl) snsEl.disabled = true;
+            if (colEl) colEl.disabled = true;
             try {
-                const r = await fetch('/api/pdca/settings', {
+                const j = await fetchJsonSafe('/api/pdca/settings', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
                     body: JSON.stringify({
                         auto_optimize_sns: autoSns,
                         auto_replenish_columns: autoCol
                     })
-                });
-                const j = await r.json();
-                if (j.ok) {
+                }, 20000);
+                if (j && j.ok) {
                     showToast(`✅ 自律PDCA設定を保存しました（SNS最適化: ${autoSns ? 'ON' : 'OFF'} ／ 在庫切れ自動コラム補充: ${autoCol ? 'ON' : 'OFF'}）`);
+                } else {
+                    showToast('⚠️ ' + ((j && j.error) || '設定保存に失敗しました'));
                 }
             } catch (e) {
-                alert('設定保存中に通信エラーが発生しました。');
+                showToast('⚠️ 設定保存エラー: ' + ((e && e.message) || '通信エラーが発生しました'));
+            } finally {
+                if (snsEl) snsEl.disabled = false;
+                if (colEl) colEl.disabled = false;
             }
         }
 
         async function runPdcaNow() {
             const btn = document.getElementById('run-pdca-btn');
+            if (!btn || btn.disabled) return;
             btn.disabled = true;
             btn.textContent = '🧭 実測データを集計し、SNS＆コラム編集部への指令を更新中...';
+            let redirected = false;
             try {
-                const r = await fetch('/api/pdca/run', {
+                const j = await fetchJsonSafe('/api/pdca/run', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
                     body: JSON.stringify({ days: CURRENT_DAYS, refresh_ai: true })
-                });
-                const j = await r.json();
-                if (j.ok) {
+                }, 55000);
+                if (j && j.ok) {
+                    redirected = true;
                     window.location.href = `/staff/pdca?days=${CURRENT_DAYS}`;
                     return;
                 }
-            } catch (e) {}
-            btn.disabled = false;
-            btn.textContent = '⚡ いま最新データでPDCAサイクルを実行して編成指令を更新';
+                showToast('⚠️ ' + ((j && j.error) || 'PDCAサイクル実行に失敗しました'));
+            } catch (e) {
+                showToast('⚠️ PDCA実行エラー: ' + ((e && e.message) || '通信エラーが発生しました'));
+            } finally {
+                if (!redirected && btn) {
+                    btn.disabled = false;
+                    btn.textContent = '⚡ いま最新データでPDCAサイクルを実行して編成指令を更新';
+                }
+            }
         }
 
         async function refreshBriefing(forceRefresh) {
             const pill = document.getElementById('briefing-pill');
-            pill.textContent = '🧠 Gemini 作戦参謀長が実測データを長考分析中...';
+            if (pill) {
+                pill.textContent = '🧠 Gemini 作戦参謀長が実測データを長考分析中...';
+            }
+            let updatedPill = false;
             try {
                 const url = `/api/pdca?days=${CURRENT_DAYS}` + (forceRefresh ? '&refresh_ai=1' : '');
-                const r = await fetch(url);
-                if (!r.ok) return;
-                const j = await r.json();
-                if (j.briefing && j.briefing.text) {
-                    document.getElementById('briefing-text').textContent = j.briefing.text;
-                    pill.textContent = j.briefing.is_ai
-                        ? `🧠 作戦参謀長ブリーフィング（${j.briefing.model}）`
-                        : '🧭 作戦参謀ブリーフィング（実測データ総括）';
+                const j = await fetchJsonSafe(url, { headers: { 'Accept': 'application/json' } }, 45000);
+                if (j && j.briefing && j.briefing.text) {
+                    const txtEl = document.getElementById('briefing-text');
+                    if (txtEl) txtEl.textContent = j.briefing.text;
+                    if (pill) {
+                        pill.textContent = j.briefing.is_ai
+                            ? `🧠 作戦参謀長ブリーフィング（${j.briefing.model}）`
+                            : '🧭 作戦参謀ブリーフィング（実測データ総括）';
+                    }
+                    updatedPill = true;
                 }
-            } catch (e) {}
+            } catch (e) {
+                if (pill) {
+                    pill.textContent = '⚠️ AI長考分析の取得に失敗しました（' + ((e && e.message) || '通信エラー') + '｜実測総括を表示中）';
+                    updatedPill = true;
+                }
+            } finally {
+                if (!updatedPill && pill) {
+                    pill.textContent = '🧭 作戦参謀ブリーフィング（実測データ総括）';
+                }
+            }
         }
 
         if (PENDING_ASYNC_AI) {

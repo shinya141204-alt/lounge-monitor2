@@ -16,6 +16,12 @@ from datetime import datetime, timezone, timedelta
 from urllib.parse import urljoin
 from concurrent.futures import ThreadPoolExecutor
 
+try:
+    import lxml  # noqa: F401
+    _BS_PARSER = 'lxml'
+except ImportError:
+    _BS_PARSER = 'html.parser'
+
 logger = logging.getLogger(__name__)
 _JST = timezone(timedelta(hours=9))
 
@@ -27,6 +33,20 @@ _events_memory_cache = {
 }
 _refresh_lock = threading.Lock()
 _is_refreshing = False
+_events_http_tls = threading.local()
+_store_events_memo = {}
+_store_events_memo_lock = threading.Lock()
+
+
+def _get_events_http():
+    """Return a thread-local Keep-Alive requests.Session, or `requests` when mocked in tests."""
+    if getattr(requests.get, '__module__', '') != 'requests.api':
+        return requests
+    sess = getattr(_events_http_tls, 'session', None)
+    if sess is None:
+        sess = requests.Session()
+        _events_http_tls.session = sess
+    return sess
 
 HEADERS = {
     'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
@@ -435,10 +455,10 @@ def _parse_oriental_roundup_article(article_url: str, date_str: str):
     """Parse store-specific events from monthly roundup announcement articles (e.g. 10月イベントを一挙ご紹介)."""
     sub_events = []
     try:
-        res = requests.get(article_url, headers=HEADERS, timeout=8)
+        res = _get_events_http().get(article_url, headers=HEADERS, timeout=8)
         if res.status_code != 200:
             return sub_events
-        soup = BeautifulSoup(res.text, 'html.parser')
+        soup = BeautifulSoup(res.text, _BS_PARSER)
         content = soup.find(class_='announcement-detail-content') or soup.find('article') or soup.find('main')
         if not content:
             return sub_events
@@ -582,10 +602,10 @@ def _store_matches_area(store_name: str, area_keyword: str) -> bool:
 def _fetch_olg_announcement_body(detail_url: str) -> str:
     """Fetch detail text of an Oriental Lounge announcement when needed to resolve multi-store target lists."""
     try:
-        r = requests.get(detail_url, headers=HEADERS, timeout=5)
+        r = _get_events_http().get(detail_url, headers=HEADERS, timeout=5)
         if r.status_code != 200:
             return ''
-        soup = BeautifulSoup(r.text, 'html.parser')
+        soup = BeautifulSoup(r.text, _BS_PARSER)
         content = soup.find(class_='announcement-detail-content') or soup.find('article') or soup.find('main')
         return _clean_text(content.get_text()) if content else ''
     except Exception:
@@ -604,10 +624,10 @@ def crawl_oriental_events():
 
     for url in sources:
         try:
-            res = requests.get(url, headers=HEADERS, timeout=8)
+            res = _get_events_http().get(url, headers=HEADERS, timeout=8)
             if res.status_code != 200:
                 continue
-            soup = BeautifulSoup(res.text, 'html.parser')
+            soup = BeautifulSoup(res.text, _BS_PARSER)
 
             # 1. /announcements items (rich list)
             for li in soup.find_all('li', class_='info-list-text-inner'):
@@ -735,11 +755,11 @@ def _crawl_single_jis_shop(shop_tuple):
     store_name, area, base_url = shop_tuple
     events = []
     try:
-        r = requests.get(base_url, headers=HEADERS, timeout=6)
+        r = _get_events_http().get(base_url, headers=HEADERS, timeout=6)
         if r.status_code != 200:
             return events
 
-        soup = BeautifulSoup(r.text, 'html.parser')
+        soup = BeautifulSoup(r.text, _BS_PARSER)
 
         raw_items = soup.find_all(class_='event-item')
         if not raw_items:
@@ -773,9 +793,9 @@ def _crawl_single_jis_shop(shop_tuple):
             title = ''
             if href.endswith('.html') and not href.endswith('index.html'):
                 try:
-                    d_res = requests.get(href, headers=HEADERS, timeout=2.5)
+                    d_res = _get_events_http().get(href, headers=HEADERS, timeout=2.5)
                     if d_res.status_code == 200:
-                        d_soup = BeautifulSoup(d_res.text, 'html.parser')
+                        d_soup = BeautifulSoup(d_res.text, _BS_PARSER)
                         if d_soup.title and d_soup.title.string:
                             title = _clean_text(d_soup.title.string)
                 except Exception:
@@ -1164,6 +1184,8 @@ def _crawl_and_save_events():
             'events': all_events,
             'operational_notices': get_operational_notices(),
         }
+        with _store_events_memo_lock:
+            _store_events_memo.clear()
         try:
             os.makedirs(os.path.dirname(CACHE_FILE), exist_ok=True)
             with open(CACHE_FILE, 'w', encoding='utf-8') as f:
@@ -1279,8 +1301,28 @@ def get_events_for_store(
     allow_blocking: bool = True,
     preloaded_events: list = None,
 ):
-    """Filter events relevant to a specific store (prioritizes store-specific banners and campaigns)."""
+    """Filter events relevant to a specific store (prioritizes store-specific banners and campaigns) with O(1) memoization."""
     all_events = preloaded_events if preloaded_events is not None else fetch_all_events(allow_blocking=allow_blocking)
+    if not all_events:
+        return []
+
+    first_ev = all_events[0] if isinstance(all_events[0], dict) else {}
+    last_ev = all_events[-1] if isinstance(all_events[-1], dict) else {}
+    memo_key = (
+        id(all_events),
+        len(all_events),
+        first_ev.get('id'),
+        first_ev.get('title'),
+        last_ev.get('id'),
+        last_ev.get('title'),
+        store_name,
+        bool(store_only),
+    )
+    with _store_events_memo_lock:
+        hit = _store_events_memo.get(memo_key)
+        if hit is not None:
+            return list(hit)
+
     matched = []
     global_matched = []
 
@@ -1329,4 +1371,9 @@ def get_events_for_store(
         deduped_matched.append(ev)
 
     # Return store-specific events first, then brand-wide events
-    return deduped_matched if store_only else (deduped_matched + global_matched)
+    result = deduped_matched if store_only else (deduped_matched + global_matched)
+    with _store_events_memo_lock:
+        if len(_store_events_memo) >= 512:
+            _store_events_memo.clear()
+        _store_events_memo[memo_key] = result
+    return list(result)

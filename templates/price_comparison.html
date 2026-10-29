@@ -35,7 +35,7 @@
 
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=2">
     <link rel="apple-touch-icon" href="/static/icon.png?v=2">
-    <link rel="stylesheet" href="/static/portal.css?v=7">
+    <link rel="stylesheet" href="/static/portal.css?v=8">
 
     <script type="application/ld+json">
     {
@@ -428,7 +428,7 @@
             margin-right: 4px;
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=18">
+    <link rel="stylesheet" href="/static/calm.css?v=19">
 </head>
 
 <body>
@@ -849,6 +849,24 @@
                 history.replaceState(null, '', '/price-comparison?area=' + encodeURIComponent(clusterId));
             }
         }
+
+        (function initPriceAreaFromUrl() {
+            try {
+                var qs = new URLSearchParams(window.location.search || '');
+                var reqArea = (qs.get('area') || '').trim();
+                if (reqArea) {
+                    var targetPanel = document.getElementById('cluster-' + reqArea);
+                    if (targetPanel && !targetPanel.classList.contains('active')) {
+                        document.querySelectorAll('.area-tab-btn').forEach(function(btn) {
+                            btn.classList.toggle('active', btn.dataset.cluster === reqArea);
+                        });
+                        document.querySelectorAll('.cluster-panel').forEach(function(panel) {
+                            panel.classList.toggle('active', panel.id === 'cluster-' + reqArea);
+                        });
+                    }
+                }
+            } catch (e) {}
+        })();
 
         function sharePriceComparison(platform) {
             const activeBtn = document.querySelector('.area-tab-btn.active');

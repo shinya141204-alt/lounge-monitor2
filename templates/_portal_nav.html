@@ -2,6 +2,7 @@
     使い方: {% set nav_active = 'columns' %}{% include '_portal_nav.html' %}
     nav_active: 'ranking' | 'price_comparison' | 'for_women' | 'areas' | 'columns' | 'stats' | 'comparison' | 'grooming'（未指定ならアクティブなし）
     スタイルの共通部分は /static/portal.css、ページ固有の差分は各ページの <style> に記述。 -#}
+<script>try{if(localStorage.getItem('olg_view_theme')==='light')document.body.classList.add('theme-light');}catch(e){}</script>
 <nav class="portal-global-nav" aria-label="メインナビゲーション">
             <a href="/" class="portal-nav-item{% if nav_active == 'ranking' %} active{% endif %}">リアルタイム順位</a>
             <a href="/for-women" class="portal-nav-item{% if nav_active == 'for_women' %} active{% endif %}">💄 女子向け裏ガイド</a>

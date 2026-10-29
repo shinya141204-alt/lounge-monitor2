@@ -841,7 +841,7 @@ class GrowthFeaturesTests(unittest.TestCase):
         try:
             resp = self.client.get('/price-comparison?area=shinjuku')
             self.assertEqual(resp.status_code, 200)
-            self.assertIn('no-store', resp.headers.get('Cache-Control', ''))
+            self.assertIn('no-cache', resp.headers.get('Cache-Control', ''))
             html = resp.data.decode('utf-8')
             self.assertIn('店舗別料金（待機・相席単価・1名入店可否）＆開催中イベント', html)
             self.assertIn('オリエンタルラウンジ 新宿', html)
@@ -910,10 +910,10 @@ class GrowthFeaturesTests(unittest.TestCase):
                 sr = self.client.get(f'/store/{sslug}')
                 self.assertEqual(sr.status_code, 200, f"/store/{sslug} failed")
 
-            # Verify store detail page also embeds the nearby price & event comparison table + live sync JS + no-store header
+            # Verify store detail page also embeds the nearby price & event comparison table + live sync JS + no-cache ETag header
             s_resp = self.client.get('/store/oriental-lounge-shinjuku')
             self.assertEqual(s_resp.status_code, 200)
-            self.assertIn('no-store', s_resp.headers.get('Cache-Control', ''))
+            self.assertIn('no-cache', s_resp.headers.get('Cache-Control', ''))
             s_html = s_resp.data.decode('utf-8')
             self.assertIn('近隣ライバル店の料金・開催中イベント・現在人数比較', s_html)
             self.assertIn('JIS（ジス）新宿', s_html)
@@ -1137,9 +1137,9 @@ class GrowthFeaturesTests(unittest.TestCase):
             r = self.client.get(p)
             self.assertEqual(r.status_code, 200, f"Public path {p} returned {r.status_code}")
             body = r.data.decode('utf-8')
-            self.assertIn('/static/calm.css?v=16', body, f"{p} missing /static/calm.css?v=16")
+            self.assertIn('/static/calm.css?v=19', body, f"{p} missing /static/calm.css?v=19")
             if '/static/style.css' in body:
-                self.assertIn('/static/style.css?v=20261028_4', body, f"{p} missing /static/style.css?v=20261028_4")
+                self.assertIn('/static/style.css?v=20261029_2', body, f"{p} missing /static/style.css?v=20261029_2")
             self.assertIn('公式ホームページ', body, f"{p} missing official website verification notice")
 
         # Also check scheduled preview templates via staff session
@@ -1150,9 +1150,9 @@ class GrowthFeaturesTests(unittest.TestCase):
                 sr = self.client.get(sp)
                 self.assertEqual(sr.status_code, 200, f"Scheduled path {sp} returned {sr.status_code}")
                 sbody = sr.data.decode('utf-8')
-                self.assertIn('/static/calm.css?v=16', sbody, f"{sp} missing /static/calm.css?v=16")
+                self.assertIn('/static/calm.css?v=19', sbody, f"{sp} missing /static/calm.css?v=19")
                 if '/static/style.css' in sbody:
-                    self.assertIn('/static/style.css?v=20261028_4', sbody, f"{sp} missing /static/style.css?v=20261028_4")
+                    self.assertIn('/static/style.css?v=20261029_2', sbody, f"{sp} missing /static/style.css?v=20261029_2")
                 self.assertIn('公式ホームページ', sbody, f"{sp} missing official website verification notice")
         finally:
             with self.client.session_transaction() as s:
@@ -1745,7 +1745,7 @@ class FullAuditRegressionTests(unittest.TestCase):
         sw_resp = self.client.get('/sw.js')
         try:
             sw_txt = sw_resp.data.decode('utf-8')
-            self.assertIn("CACHE_NAME = 'aiseki-navi-v61'", sw_txt)
+            self.assertIn("CACHE_NAME = 'aiseki-navi-v64'", sw_txt)
             self.assertIn("event.waitUntil", sw_txt)
         finally:
             sw_resp.close()
@@ -2063,7 +2063,7 @@ class FullAuditRegressionTests(unittest.TestCase):
             called_json = mock_aq_post.call_args[1]['json']
             self.assertIn('generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent', called_url)
             self.assertEqual(called_json['generationConfig'].get('thinkingConfig'), {'thinkingLevel': 'MEDIUM'})
-            self.assertEqual(called_json['generationConfig'].get('maxOutputTokens'), 2600)
+            self.assertEqual(called_json['generationConfig'].get('maxOutputTokens'), 4648)
             self.assertEqual(res_aq['gemini_status']['state'], 'active')
 
             # 6. HTML page `GET /staff/sns-editorial` NEVER blocks on Gemini HTTP calls (0 network posts, instant render)
@@ -3579,6 +3579,129 @@ class WomenFeaturesACDETests(unittest.TestCase):
                 app_module.latest_data['full_data'] = old_full
                 app_module.latest_data['last_updated'] = old_upd
             app_module.clear_fast_http_caches()
+
+
+class SystemStabilityAndSpeedRegressionTests(unittest.TestCase):
+    """Regression suite covering OLG DoH/ag-ree.jp recovery, cache_only=1 non-blocking APIs, lively vote invalidation, and staff tracking guards."""
+
+    def setUp(self):
+        app_module.app.config['TESTING'] = True
+        self.client = app_module.app.test_client()
+
+    def test_oriental_doh_and_ag_official_fallback_parsing(self):
+        import monitor
+        from unittest.mock import patch, MagicMock
+
+        ag_sample_html = b"""
+        <html><body>
+          <a class="top_restaurant" href="/shibuya/">
+            <p class="top_restaurant_ttl2">\xe6\xb8\x8b\xe8\xb0\xb7\xe5\xba\x97</p>
+            <div class="customers_num"><span>18</span><span>34</span></div>
+          </a>
+          <a class="top_restaurant" href="/umeda/">
+            <p class="top_restaurant_ttl2">\xe6\xa2\x85\xe7\x94\xb0</p>
+            <div class="customers_num"><span>21</span><span>29</span></div>
+          </a>
+        </body></html>
+        """
+        mock_ag_resp = MagicMock()
+        mock_ag_resp.status_code = 200
+        mock_ag_resp.content = ag_sample_html
+        mock_ag_resp.raise_for_status = lambda: None
+        with patch('monitor.requests.get', return_value=mock_ag_resp):
+            ag_stores = monitor._fetch_ag_official_fallback()
+        self.assertEqual(len(ag_stores), 2)
+        self.assertEqual(ag_stores[0], {'name': 'OLG ag渋谷', 'men': 18, 'women': 34, 'source': 'oriental'})
+        self.assertEqual(ag_stores[1], {'name': 'OLG ag梅田', 'men': 21, 'women': 29, 'source': 'oriental'})
+
+        # Verify DoH recovery promotes fresh stores with served_stale=False when local DNS serves 678-byte stub
+        stub_resp = MagicMock()
+        stub_resp.status_code = 200
+        stub_resp.content = b"<html><body>403 Decommissioned Server Stub</body></html>"
+        stub_resp.raise_for_status = lambda: None
+        fake_sess = MagicMock()
+        fake_sess.get.return_value = stub_resp
+        recovered_stores = [{'name': 'OLG 新宿', 'men': 24, 'women': 46, 'source': 'oriental'}]
+        with patch('monitor._get_http_session', return_value=fake_sess), \
+             patch('monitor._reset_http_session', return_value=fake_sess), \
+             patch('monitor.time.sleep'), \
+             patch('monitor._fetch_oriental_via_doh', return_value=(recovered_stores, None)):
+            out = monitor.get_oriental_data()
+        self.assertEqual(out, recovered_stores)
+        self.assertFalse(monitor._olg_cache.get('served_stale'))
+
+    def test_editorial_and_pdca_cache_only_never_blocks_on_ai(self):
+        import sns_editorial
+        import column_editorial
+        import pdca_engine
+        from unittest.mock import patch
+
+        sns_editorial.clear_editorial_ai_cache()
+        column_editorial.clear_column_ai_cache()
+        with self.client.session_transaction() as sess:
+            sess['is_staff'] = True
+            sess['is_master'] = True
+
+        with patch('sns_editorial.requests.post', side_effect=AssertionError('cache_only=1 must NEVER call outbound AI!')):
+            r1 = self.client.get('/api/sns-editorial?channel=x&slot=20:00&cache_only=1')
+            self.assertEqual(r1.status_code, 200)
+            self.assertIn('winner', r1.get_json())
+
+            r2 = self.client.get('/api/column-editorial?theme=area_hopping&cache_only=1')
+            self.assertEqual(r2.status_code, 200)
+            self.assertIn('winner', r2.get_json())
+
+            r3 = self.client.get('/api/pdca?days=14&cache_only=1')
+            self.assertEqual(r3.status_code, 200)
+            self.assertIn('diagnostics', r3.get_json())
+
+    def test_lively_vote_cache_invalidation_and_staff_analytics_suppression(self):
+        import analytics
+        from unittest.mock import patch
+
+        sample_store = {
+            'name': 'OLG 新宿',
+            'men': 20,
+            'women': 35,
+            'region': 'Kanto',
+            'source': 'oriental',
+            'votes': {'smooth': 1, 'waiting': 0, 'lively': 0},
+        }
+        sample_store_2 = {
+            'name': 'OLG 新宿',
+            'men': 20,
+            'women': 35,
+            'region': 'Kanto',
+            'source': 'oriental',
+            'votes': {'smooth': 1, 'waiting': 0, 'lively': 2},
+        }
+        sig1 = app_module._live_data_signature([sample_store], '2026-10-29 21:00:00', False)
+        sig2 = app_module._live_data_signature([sample_store_2], '2026-10-29 21:00:00', False)
+        self.assertNotEqual(sig1, sig2)
+
+        # Staff sessions must not pollute /api/track or /link/<id> conversion metrics
+        with self.client.session_transaction() as sess:
+            sess['is_staff'] = True
+            sess['is_master'] = False
+        with patch.object(analytics, 'track') as mock_track:
+            tr_resp = self.client.post('/api/track', json={'event': 'pr_click', 'label': 'test'})
+            self.assertEqual(tr_resp.status_code, 204)
+            lk_resp = self.client.get('/link/orbis')
+            self.assertEqual(lk_resp.status_code, 302)
+            mock_track.assert_not_called()
+
+        # IG slide cache signature ignores volatile generated_at and uses live rankings
+        ctx_a = {
+            'theme_key': 'fri_forecast',
+            'weekend_label': '10/30(金)〜11/1(日)',
+            'generated_at': '2026-10-29 21:00:01',
+            'top_volume': [{'raw_name': 'OLG 新宿', 'women': 45, 'men': 25, 'avg_wpct': 64}],
+            'top_anaba': [{'raw_name': 'OLG 恵比寿', 'women': 28, 'avg_wpct': 68}],
+        }
+        ctx_b = dict(ctx_a, generated_at='2026-10-29 21:00:59')
+        ctx_c = dict(ctx_a, top_volume=[{'raw_name': 'OLG 新宿', 'women': 52, 'men': 25, 'avg_wpct': 68}])
+        self.assertEqual(app_module._sns_context_sig(ctx_a), app_module._sns_context_sig(ctx_b))
+        self.assertNotEqual(app_module._sns_context_sig(ctx_a), app_module._sns_context_sig(ctx_c))
 
 
 if __name__ == '__main__':

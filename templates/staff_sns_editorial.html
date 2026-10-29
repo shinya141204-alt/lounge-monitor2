@@ -49,7 +49,7 @@
             gap: 10px;
             margin-bottom: 14px;
         }
-        a.back-btn {
+        a.back-btn, button.back-btn {
             display: inline-flex;
             align-items: center;
             gap: 6px;
@@ -61,8 +61,10 @@
             border-radius: 999px;
             background: var(--surface);
             border: 1px solid var(--border-strong);
+            cursor: pointer;
+            font-family: inherit;
         }
-        a.back-btn:hover { border-color: var(--gold); }
+        a.back-btn:hover, button.back-btn:hover { border-color: var(--gold); }
         .channel-bar {
             display: flex;
             align-items: center;
@@ -675,6 +677,10 @@
     </div>
 
     <script>
+        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+            try { navigator.serviceWorker.controller.postMessage({ type: 'PURGE_HTML_CACHE' }); } catch (e) {}
+        }
+
         var CURRENT_CHANNEL = {{ channel | tojson }};
         var CURRENT_SLOT = {{ slot_label | tojson }};
         var CURRENT_TONE = {{ editorial.tone_mode | tojson }};
@@ -682,20 +688,52 @@
         var AI_PENDING_ASYNC = {{ editorial.ai_pending_async | tojson }};
         var INITIAL_CONFIGURED = {{ (editorial.gemini_status and editorial.gemini_status.configured) | tojson }};
         var INITIAL_FORCE_REFRESH = {{ (request.args.get('refresh_ai') == '1') | tojson }};
+        var _platformTokenInFlight = false;
+        var _aiConfigInFlight = false;
 
-        function saveDefaultToneMode() {
+        async function fetchJsonSafe(url, opts, timeoutMs) {
+            var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+            var timer = controller ? setTimeout(function() { controller.abort(); }, timeoutMs || 40000) : null;
+            try {
+                var reqOpts = Object.assign({}, opts || {});
+                if (controller) reqOpts.signal = controller.signal;
+                var resp = await fetch(url, reqOpts);
+                var rawText = await resp.text();
+                var data = null;
+                if (rawText) {
+                    try {
+                        data = JSON.parse(rawText);
+                    } catch (parseErr) {
+                        throw new Error('サーバー応答エラー（HTTP ' + resp.status + '：タイムアウトまたは再起動中です）');
+                    }
+                }
+                if (!resp.ok) {
+                    var errMsg = (data && (data.error || data.detail || data.message)) || ('HTTP ' + resp.status + ' エラーが発生しました');
+                    throw new Error(errMsg);
+                }
+                return data || {};
+            } catch (err) {
+                if (err && err.name === 'AbortError') {
+                    throw new Error('通信がタイムアウトしました。時間をおいて再度お試しください');
+                }
+                throw err;
+            } finally {
+                if (timer) clearTimeout(timer);
+            }
+        }
+
+        async function saveDefaultToneMode() {
             var msgEl = document.getElementById("tone-save-msg");
             if (msgEl) {
                 msgEl.style.color = "#d3f3e2";
                 msgEl.textContent = "標準トーンを保存中...";
             }
-            fetch("/api/editorial/tone-mode", {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({tone_mode: CURRENT_TONE})
-            })
-            .then(function(r) { return r.json(); })
-            .then(function(res) {
+            try {
+                var res = await fetchJsonSafe("/api/editorial/tone-mode", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json", "Accept": "application/json"},
+                    body: JSON.stringify({tone_mode: CURRENT_TONE})
+                }, 20000);
                 if (res && res.ok) {
                     if (msgEl) {
                         msgEl.style.color = "#d3f3e2";
@@ -709,7 +747,12 @@
                     msgEl.style.color = "#ffd6d6";
                     msgEl.textContent = "⚠️ " + ((res && res.error) || "保存に失敗しました");
                 }
-            });
+            } catch (err) {
+                if (msgEl) {
+                    msgEl.style.color = "#ffd6d6";
+                    msgEl.textContent = "⚠️ " + ((err && err.message) || "通信エラーが発生しました");
+                }
+            }
         }
 
         function escHtml(str) {
@@ -743,19 +786,20 @@
             d.style.display = (d.style.display === "none") ? "block" : "none";
         }
 
-        function verifyPlatformToken(ch) {
+        async function verifyPlatformToken(ch) {
+            if (_platformTokenInFlight) return;
+            _platformTokenInFlight = true;
             var msg = document.getElementById("platform-token-msg");
             if (msg) {
                 msg.style.color = "#d3f3e2";
                 msg.textContent = "🔍 " + ch.toUpperCase() + " のトークン疎通を確認中（投稿は行いません）...";
             }
-            fetch("/api/sns-editorial/platform-token", {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({channel: ch, action: "verify"})
-            })
-            .then(function(r) { return r.json(); })
-            .then(function(res) {
+            try {
+                var res = await fetchJsonSafe("/api/sns-editorial/platform-token", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json", "Accept": "application/json"},
+                    body: JSON.stringify({channel: ch, action: "verify"})
+                }, 30000);
                 if (msg) {
                     if (res && res.ok) {
                         msg.style.color = "#d3f3e2";
@@ -767,16 +811,18 @@
                         if (dr) dr.style.display = "block";
                     }
                 }
-            })
-            .catch(function() {
+            } catch (err) {
                 if (msg) {
                     msg.style.color = "#ffd6d6";
-                    msg.textContent = "⚠️ 通信エラーが発生しました";
+                    msg.textContent = "⚠️ " + ((err && err.message) || "通信エラーが発生しました");
                 }
-            });
+            } finally {
+                _platformTokenInFlight = false;
+            }
         }
 
-        function savePlatformToken() {
+        async function savePlatformToken() {
+            if (_platformTokenInFlight) return;
             var chEl = document.getElementById("platform-token-channel");
             var tokEl = document.getElementById("platform-access-token-input");
             var secEl = document.getElementById("platform-app-secret-input");
@@ -791,17 +837,17 @@
                 }
                 return;
             }
+            _platformTokenInFlight = true;
             if (msg) {
                 msg.style.color = "#d3f3e2";
                 msg.textContent = "🔄 トークンの疎通確認・60日長期トークン変換＆暗号化保存を実行中...";
             }
-            fetch("/api/sns-editorial/platform-token", {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({channel: ch, action: "save", access_token: tok, app_secret: sec})
-            })
-            .then(function(r) { return r.json(); })
-            .then(function(res) {
+            try {
+                var res = await fetchJsonSafe("/api/sns-editorial/platform-token", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json", "Accept": "application/json"},
+                    body: JSON.stringify({channel: ch, action: "save", access_token: tok, app_secret: sec})
+                }, 35000);
                 if (res && res.ok) {
                     if (msg) {
                         msg.style.color = "#d3f3e2";
@@ -814,13 +860,14 @@
                     msg.style.color = "#ffd6d6";
                     msg.textContent = "⚠️ " + ((res && res.error) || "保存に失敗しました");
                 }
-            })
-            .catch(function() {
+            } catch (err) {
                 if (msg) {
                     msg.style.color = "#ffd6d6";
-                    msg.textContent = "⚠️ 通信エラーが発生しました";
+                    msg.textContent = "⚠️ " + ((err && err.message) || "通信エラーが発生しました");
                 }
-            });
+            } finally {
+                _platformTokenInFlight = false;
+            }
         }
 
         function applyEditorialUpdate(ed) {
@@ -942,7 +989,7 @@
             }
         }
 
-        function triggerAsyncAiRefresh(forceRefresh, silentIfUnconfigured) {
+        async function triggerAsyncAiRefresh(forceRefresh, silentIfUnconfigured) {
             var pill = document.getElementById("ai-status-pill");
             var regenBtn = document.getElementById("ai-regen-btn");
             if (!silentIfUnconfigured && pill) {
@@ -957,86 +1004,136 @@
             if (forceRefresh) {
                 url += "&refresh_ai=1";
             }
-            fetch(url, {headers: {"Accept": "application/json"}})
-                .then(function(r) { return r.json(); })
-                .then(function(data) {
-                    if (silentIfUnconfigured && (!data.gemini_status || !data.gemini_status.configured)) {
-                        return;
-                    }
-                    applyEditorialUpdate(data);
-                })
-                .catch(function() {
-                    if (regenBtn) {
-                        regenBtn.disabled = false;
-                        regenBtn.textContent = "🔄 別の長考アドリブ案を再生成テスト";
-                    }
-                });
+            var applied = false;
+            try {
+                var data = await fetchJsonSafe(url, {headers: {"Accept": "application/json"}}, 45000);
+                if (silentIfUnconfigured && (!data || !data.gemini_status || !data.gemini_status.configured)) {
+                    applied = true;
+                    return;
+                }
+                if (!data || !data.evaluation) {
+                    throw new Error((data && data.error) || "推敲データを取得できませんでした");
+                }
+                applyEditorialUpdate(data);
+                applied = true;
+            } catch (err) {
+                if (pill && !silentIfUnconfigured) {
+                    pill.className = "ai-status-pill ai-status-off";
+                    pill.textContent = "⚠️ AI推敲の取得に失敗しました（" + ((err && err.message) || "通信エラー") + "｜現在の安全案を表示中）";
+                }
+            } finally {
+                if (regenBtn) {
+                    regenBtn.disabled = false;
+                    regenBtn.textContent = "🔄 別の長考アドリブ案を再生成テスト";
+                }
+                if (!applied && pill && pill.classList.contains("ai-status-loading")) {
+                    pill.className = "ai-status-pill ai-status-off";
+                    pill.textContent = "🟠 AI推敲の取得を中断しました（現在の安全案を表示中）";
+                }
+            }
         }
 
-        function saveEnginePref(pref) {
+        async function saveEnginePref(pref) {
+            if (_aiConfigInFlight) return;
+            _aiConfigInFlight = true;
             var msg = document.getElementById("gemini-key-msg");
             if (msg) {
                 msg.style.color = "#d3f3e2";
                 msg.innerText = "優先AIエンジンを切り替えています...";
             }
-            fetch("/api/sns-editorial/ai-config", {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({action: "set_pref", engine_pref: pref})
-            }).then(function(r) { return r.json(); }).then(function(data) {
-                if (data.ok) {
+            try {
+                var data = await fetchJsonSafe("/api/sns-editorial/ai-config", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json", "Accept": "application/json"},
+                    body: JSON.stringify({action: "set_pref", engine_pref: pref})
+                }, 20000);
+                if (data && data.ok) {
                     if (msg) {
                         msg.style.color = "#d3f3e2";
                         msg.innerText = "✅ " + data.message;
                     }
                     triggerAsyncAiRefresh(true, false);
+                } else if (msg) {
+                    msg.style.color = "#ffd6d6";
+                    msg.innerText = "⚠️ " + ((data && data.error) || "切り替えに失敗しました");
                 }
-            });
+            } catch (err) {
+                if (msg) {
+                    msg.style.color = "#ffd6d6";
+                    msg.innerText = "⚠️ " + ((err && err.message) || "通信エラーが発生しました");
+                }
+            } finally {
+                _aiConfigInFlight = false;
+            }
         }
 
-        function saveGeminiKey(provider) {
+        async function saveGeminiKey(provider) {
+            if (_aiConfigInFlight) return;
             var prov = provider || "gemini";
             var inp = document.getElementById(prov === "claude" ? "claude-api-key-input" : "gemini-api-key-input");
             var msg = document.getElementById("gemini-key-msg");
             var val = inp ? inp.value.trim() : "";
             if (!val) {
-                msg.style.color = "#ffd6d6";
-                msg.innerText = "⚠️ APIキーを入力してください。";
+                if (msg) {
+                    msg.style.color = "#ffd6d6";
+                    msg.innerText = "⚠️ APIキーを入力してください。";
+                }
                 return;
             }
-            msg.style.color = "#d3f3e2";
-            msg.innerText = "暗号化保存しています...";
-            fetch("/api/sns-editorial/ai-config", {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({action: "save", provider: prov, api_key: val})
-            }).then(function(r) { return r.json(); }).then(function(data) {
-                if (data.ok) {
-                    msg.style.color = "#d3f3e2";
-                    msg.innerText = "✅ " + data.message;
+            _aiConfigInFlight = true;
+            if (msg) {
+                msg.style.color = "#d3f3e2";
+                msg.innerText = "暗号化保存しています...";
+            }
+            try {
+                var data = await fetchJsonSafe("/api/sns-editorial/ai-config", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json", "Accept": "application/json"},
+                    body: JSON.stringify({action: "save", provider: prov, api_key: val})
+                }, 25000);
+                if (data && data.ok) {
+                    if (msg) {
+                        msg.style.color = "#d3f3e2";
+                        msg.innerText = "✅ " + data.message;
+                    }
                     if (inp) inp.value = "";
                     triggerAsyncAiRefresh(true, false);
-                } else {
+                } else if (msg) {
                     msg.style.color = "#ffd6d6";
-                    msg.innerText = "⚠️ " + (data.error || "保存に失敗しました");
+                    msg.innerText = "⚠️ " + ((data && data.error) || "保存に失敗しました");
                 }
-            }).catch(function() {
-                msg.style.color = "#ffd6d6";
-                msg.innerText = "⚠️ 通信エラーが発生しました";
-            });
+            } catch (err) {
+                if (msg) {
+                    msg.style.color = "#ffd6d6";
+                    msg.innerText = "⚠️ " + ((err && err.message) || "通信エラーが発生しました");
+                }
+            } finally {
+                _aiConfigInFlight = false;
+            }
         }
 
-        function clearGeminiKey(provider) {
+        async function clearGeminiKey(provider) {
+            if (_aiConfigInFlight) return;
             var prov = provider || "gemini";
             var label = prov === "claude" ? "Claude APIキー" : "Gemini APIキー";
             if (!confirm("管理画面に登録した" + label + "を削除しますか？")) return;
-            fetch("/api/sns-editorial/ai-config", {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({action: "clear", provider: prov})
-            }).then(function() {
+            _aiConfigInFlight = true;
+            var msg = document.getElementById("gemini-key-msg");
+            try {
+                await fetchJsonSafe("/api/sns-editorial/ai-config", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json", "Accept": "application/json"},
+                    body: JSON.stringify({action: "clear", provider: prov})
+                }, 20000);
                 window.location.href = "/staff/sns-editorial?channel=" + encodeURIComponent(CURRENT_CHANNEL) + "&slot=" + encodeURIComponent(CURRENT_SLOT);
-            });
+            } catch (err) {
+                if (msg) {
+                    msg.style.color = "#ffd6d6";
+                    msg.innerText = "⚠️ " + ((err && err.message) || "削除中に通信エラーが発生しました");
+                }
+            } finally {
+                _aiConfigInFlight = false;
+            }
         }
 
         document.addEventListener("DOMContentLoaded", function() {

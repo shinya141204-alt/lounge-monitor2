@@ -16,6 +16,7 @@
     --calm-sub: #9b978f;
     --calm-accent: #c8a46e;          /* シャンパンゴールド */
     --calm-accent-soft: rgba(200, 164, 110, 0.14);
+    --calm-accent-text: #dfc496;
     --calm-women: #d8a1aa;           /* くすみローズ */
     --calm-men: #93b1c9;             /* スレートブルー */
 
@@ -494,6 +495,7 @@ body.theme-light {
     --text-primary: var(--calm-light-text);
     --text-secondary: var(--calm-light-sub);
     --primary: var(--calm-light-text);
+    --calm-accent-text: #8c6b3f;
     background-color: var(--calm-light-bg) !important;
     background-image: none !important;
     color: var(--calm-light-text) !important;

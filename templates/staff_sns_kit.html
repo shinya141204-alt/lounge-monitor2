@@ -252,6 +252,41 @@
     <div id="copy-toast" class="toast">コピーしました！そのままSNSに貼り付けできます✨</div>
 
     <script>
+        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+            try { navigator.serviceWorker.controller.postMessage({ type: 'PURGE_HTML_CACHE' }); } catch (e) {}
+        }
+
+        async function fetchJsonSafe(url, opts, timeoutMs) {
+            var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+            var timer = controller ? setTimeout(function() { controller.abort(); }, timeoutMs || 45000) : null;
+            try {
+                var reqOpts = Object.assign({}, opts || {});
+                if (controller) reqOpts.signal = controller.signal;
+                var resp = await fetch(url, reqOpts);
+                var rawText = await resp.text();
+                var data = null;
+                if (rawText) {
+                    try {
+                        data = JSON.parse(rawText);
+                    } catch (parseErr) {
+                        throw new Error('サーバー応答エラー（HTTP ' + resp.status + '：タイムアウトまたは一時混雑中）');
+                    }
+                }
+                if (!resp.ok) {
+                    var msg = (data && (data.reason || data.detail || data.error || data.message)) || ('HTTP ' + resp.status + ' エラー');
+                    throw new Error(msg);
+                }
+                return data || {};
+            } catch (err) {
+                if (err && err.name === 'AbortError') {
+                    throw new Error('通信がタイムアウトしました。時間をおいて再度お試しください');
+                }
+                throw err;
+            } finally {
+                if (timer) clearTimeout(timer);
+            }
+        }
+
         function copyText(elId) {
             var el = document.getElementById(elId);
             if (!el) return;
@@ -278,20 +313,19 @@
             t.style.display = 'block';
             try {
                 var url = target === 'ig' ? '/api/trigger-ig-post?mode=carousel&force=1' : '/api/trigger-threads-post?slot=22:00&force=1';
-                var res = await fetch(url);
-                var data = await res.json();
+                var data = await fetchJsonSafe(url, { headers: { 'Accept': 'application/json' } }, 45000);
                 if (data && data.status === 'success') {
                     t.textContent = (target === 'ig' ? '✅ Instagramへの自動投稿が完了しました！' : '✅ Threadsへの自動投稿が完了しました！');
                 } else {
-                    t.textContent = '⚠️ ' + (data.reason || data.detail || '設定を確認してください');
+                    t.textContent = '⚠️ ' + ((data && (data.reason || data.detail || data.error)) || '設定を確認してください');
                 }
             } catch (e) {
-                t.textContent = '⚠️ 通信エラーが発生しました';
+                t.textContent = '⚠️ ' + ((e && e.message) || '通信エラーが発生しました');
             } finally {
                 _snsPostInFlight = false;
                 btns.forEach(function(b) { b.disabled = false; b.style.opacity = ''; });
             }
-            setTimeout(function() { t.style.display = 'none'; }, 4000);
+            setTimeout(function() { t.style.display = 'none'; }, 4500);
         }
     </script>
 </body>

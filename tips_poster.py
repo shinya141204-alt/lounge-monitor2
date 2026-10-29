@@ -625,10 +625,11 @@ def _generate_ai_daily_human_tip(
         )
         parsed, _, _ = sns_editorial.call_editorial_ai_json(
             prompt=prompt,
-            max_output_tokens=1400,
-            thinking_budget=1152,
+            max_output_tokens=1800,
+            thinking_budget=1024,
             total_deadline_sec=20.0,
             now_jst=now_jst,
+            prefer_fast=True,
         )
         if not parsed or not parsed.get("main_text"):
             return ""

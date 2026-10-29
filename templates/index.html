@@ -134,12 +134,13 @@
     <!-- Non-render-blocking web font (avoids waiting on Google Fonts at PWA cold launch) -->
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet"></noscript>
-    <link rel="stylesheet" href="/static/style.css?v=20261029_1">
-    <link rel="preload" href="/static/app.js?v=20261029_2" as="script">
+    <link rel="stylesheet" href="/static/style.css?v=20261029_2">
+    <link rel="preload" href="/static/app.js?v=20261029_3" as="script">
     <script>
         window.APP_CONFIG = {
             isStaff: {{ 'true' if is_staff else 'false' }},
-            isMaster: {{ 'true' if (is_staff and is_master) else 'false' }}
+            isMaster: {{ 'true' if (is_staff and is_master) else 'false' }},
+            isStaffSession: {{ 'true' if (is_staff or session.get('is_staff')) else 'false' }}
         };
     </script>
     {% if not is_staff and not session.get('is_staff') %}
@@ -148,7 +149,7 @@
          crossorigin="anonymous"></script>
     <script src="/static/affiliate_config.js?v=12" defer></script>
     {% endif %}
-    <link rel="stylesheet" href="/static/calm.css?v=18">
+    <link rel="stylesheet" href="/static/calm.css?v=19">
 </head>
 
 <body class="{% if is_staff %}staff-mode{% endif %}">
@@ -357,7 +358,9 @@
                         <span class="ladies-mode-hint">🟢 男性が先行中＆限定フェア開催中の「受付待ちゼロ圏」を上段に表示中</span>
                         <div class="ladies-quick-actions">
                             <a href="/for-women" class="ladies-quick-link">📖 女子向け裏ガイド＆席替え術 ›</a>
+                            {% if not is_staff and not session.get('is_staff') %}
                             <button type="button" class="ladies-quick-link" onclick="openGuideModal('all')">✨ 女性向け特典・1対1デート特集 ›</button>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -1141,7 +1144,7 @@
                 </div>
             </div>
 
-            {% if not is_staff %}
+            {% if not is_staff and not session.get('is_staff') %}
             <div id="modal-pr-slot" class="modal-pr-box hidden"></div>
             {% endif %}
 
@@ -1184,7 +1187,7 @@
     </div>
     <!-- End Legal Modal -->
 
-    {% if not is_staff %}
+    {% if not is_staff and not session.get('is_staff') %}
     <!-- Recommended Apps & Lounge Strategy Guide Modal -->
     <div id="guide-modal" class="modal hidden">
         <div class="modal-content" style="max-width: 740px;">
@@ -1219,7 +1222,9 @@
         </div>
     </div>
     <!-- End Guide Modal -->
+    {% endif %}
 
+    {% if not is_staff %}
     <!-- Editorial Articles Selector Modal -->
     <div id="articles-modal" class="modal hidden">
         <div class="modal-content articles-modal-content">
@@ -1236,8 +1241,8 @@
                     <a href="/for-women" class="article-card-item highlight-card">
                         <div class="article-card-thumb">
                             <picture>
-                                <source srcset="/static/eyecatch-beauty-lounge.webp" type="image/webp">
-                                <img src="/static/eyecatch-beauty-lounge.jpg" alt="女性のための相席ラウンジ完全裏ガイド" width="640" height="360" decoding="async" loading="lazy">
+                                <source srcset="/static/eyecatch-beauty-stage.webp" type="image/webp">
+                                <img src="/static/eyecatch-beauty-stage.jpg" alt="女性のための相席ラウンジ完全裏ガイド" width="640" height="360" decoding="async" loading="lazy">
                             </picture>
                             <span class="article-card-badge">💄 女性限定・LIVE連動</span>
                         </div>
@@ -1962,21 +1967,28 @@
         </div>
     </template>
 
+    {% if initial_status %}
     <script>
-        window.APP_CONFIG = {
-            isStaff: {{ 'true' if is_staff else 'false' }},
-            isMaster: {{ 'true' if (is_staff and is_master) else 'false' }}
-        };
-        {% if initial_status %}
         window.INITIAL_STATUS_DATA = {{ initial_status | tojson }};
-        {% endif %}
     </script>
-    <script src="/static/app.js?v=20261029_2" defer></script>
+    {% endif %}
+    <script src="/static/app.js?v=20261029_3" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/sw.js?v=63', { updateViaCache: 'none' })
+                var isStaffSess = Boolean(window.APP_CONFIG && (window.APP_CONFIG.isStaff || window.APP_CONFIG.isStaffSession));
+                if (isStaffSess) {
+                    try {
+                        if (navigator.serviceWorker.controller) {
+                            navigator.serviceWorker.controller.postMessage({ type: 'PURGE_HTML_CACHE' });
+                        }
+                    } catch (e) {}
+                    return;
+                }
+                if (window.__swRegistered) return;
+                window.__swRegistered = true;
+                navigator.serviceWorker.register('/sw.js?v=64', { updateViaCache: 'none' })
                     .then(function(reg) {
                         reg.update();
                         document.addEventListener('visibilitychange', function() {

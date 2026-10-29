@@ -45,7 +45,7 @@
             gap: 10px;
             margin-bottom: 14px;
         }
-        a.back-btn {
+        a.back-btn, button.back-btn {
             display: inline-flex;
             align-items: center;
             gap: 6px;
@@ -57,8 +57,10 @@
             border-radius: 999px;
             background: var(--surface);
             border: 1px solid var(--border-strong);
+            cursor: pointer;
+            font-family: inherit;
         }
-        a.back-btn:hover { border-color: var(--gold); }
+        a.back-btn:hover, button.back-btn:hover { border-color: var(--gold); }
         .top-actions {
             display: flex;
             align-items: center;
@@ -1022,7 +1024,7 @@
                     <div class="ops-btn-group">
                         <button type="button" class="ops-btn" onclick="saveAffiliateSlot('{{ slot.slot_id }}', false)">💾 保存・即時反映</button>
                         <button type="button" class="ops-btn secondary" onclick="saveAffiliateSlot('{{ slot.slot_id }}', true)" title="カスタム設定を解除して環境変数・初期URLへ戻す">初期値に戻す</button>
-                        <button type="button" class="ops-btn secondary" data-test-slot="{{ slot.slot_id }}" onclick="window.open('/link/' + this.dataset.testSlot, '_blank', 'noopener')" title="現在の遷移先を新しいタブで確認">遷移確認 ↗</button>
+                        <button type="button" class="ops-btn secondary" data-test-slot="{{ slot.slot_id }}" onclick="window.open('/link/' + this.dataset.testSlot + '?staff_test=1', '_blank', 'noopener')" title="現在の遷移先を新しいタブで確認">遷移確認 ↗</button>
                     </div>
                 </div>
                 <div class="ops-msg" id="aff-msg-{{ slot.slot_id }}"></div>
@@ -1075,13 +1077,64 @@
 </div>
 
 <script>
+if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+    try { navigator.serviceWorker.controller.postMessage({ type: 'PURGE_HTML_CACHE' }); } catch (e) {}
+}
+
 const CURRENT_DAYS = {{ days }};
+const _affSavingSlots = Object.create(null);
+
+function esc(str) {
+    return String(str == null ? '' : str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+async function fetchJsonSafe(url, opts, timeoutMs) {
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timer = controller ? setTimeout(() => controller.abort(), timeoutMs || 30000) : null;
+    try {
+        const reqOpts = Object.assign({}, opts || {});
+        if (controller) reqOpts.signal = controller.signal;
+        const resp = await fetch(url, reqOpts);
+        const rawText = await resp.text();
+        let data = null;
+        if (rawText) {
+            try {
+                data = JSON.parse(rawText);
+            } catch (parseErr) {
+                throw new Error(`サーバー応答エラー（HTTP ${resp.status}：タイムアウトまたは一時混雑中です）`);
+            }
+        }
+        if (!resp.ok) {
+            const errMsg = (data && (data.error || data.detail || data.message)) || `HTTP ${resp.status} エラーが発生しました`;
+            throw new Error(errMsg);
+        }
+        return data || {};
+    } catch (err) {
+        if (err && err.name === 'AbortError') {
+            throw new Error('通信がタイムアウトしました。時間をおいて再度お試しください');
+        }
+        throw err;
+    } finally {
+        if (timer) clearTimeout(timer);
+    }
+}
 
 async function saveAffiliateSlot(slotId, resetToDefault) {
+    if (_affSavingSlots[slotId]) return;
     const urlInput = document.getElementById('aff-url-' + slotId);
     const memoInput = document.getElementById('aff-memo-' + slotId);
     const msgEl = document.getElementById('aff-msg-' + slotId);
+    const cardEl = document.getElementById('aff-card-' + slotId);
     if (!urlInput || !msgEl) return;
+
+    _affSavingSlots[slotId] = true;
+    const cardBtns = cardEl ? Array.from(cardEl.querySelectorAll('button')) : [];
+    cardBtns.forEach(b => { b.disabled = true; });
 
     const payload = {
         slot_id: slotId,
@@ -1094,13 +1147,12 @@ async function saveAffiliateSlot(slotId, resetToDefault) {
     msgEl.textContent = '保存中...';
 
     try {
-        const resp = await fetch('/api/affiliate/config', {
+        const res = await fetchJsonSafe('/api/affiliate/config', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
+            headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
             body: JSON.stringify(payload),
-        });
-        const res = await resp.json();
-        if (!resp.ok || !res.ok) {
+        }, 25000);
+        if (!res.ok) {
             msgEl.style.color = '#fca5a5';
             msgEl.textContent = '⚠️ ' + (res.error || '保存に失敗しました');
             return;
@@ -1113,10 +1165,10 @@ async function saveAffiliateSlot(slotId, resetToDefault) {
             if (banner) {
                 if (res.aff_status.has_duplicates) {
                     banner.className = 'dup-banner warn';
-                    banner.innerHTML = '⚠️ <strong>遷移先URLの重複（カニバリ）を検知中：</strong>現在 <strong>' + res.aff_status.duplicate_slot_count + '枠</strong> で同一のASPリンクが共有されています。『🍻 即時合流・定番恋活アプリ枠』に別ASPリンクを設定すると成約率が向上します。';
+                    banner.innerHTML = '⚠️ <strong>遷移先URLの重複（カニバリ）を検知中：</strong>現在 <strong>' + Number(res.aff_status.duplicate_slot_count || 0) + '枠</strong> で同一のASPリンクが共有されています。『🍻 即時合流・定番恋活アプリ枠』に別ASPリンクを設定すると成約率が向上します。';
                 } else {
                     banner.className = 'dup-banner ok';
-                    banner.innerHTML = '✅ <strong>男女別全' + res.aff_status.slots.length + '枠の遷移先URLが正常に分離されています：</strong>各ユーザー導線ごとに独立した案件へ送客中です。';
+                    banner.innerHTML = '✅ <strong>男女別全' + Number(res.aff_status.slots.length || 0) + '枠の遷移先URLが正常に分離されています：</strong>各ユーザー導線ごとに独立した案件へ送客中です。';
                 }
             }
             for (const s of res.aff_status.slots) {
@@ -1124,17 +1176,20 @@ async function saveAffiliateSlot(slotId, resetToDefault) {
                 const mEl = document.getElementById('aff-memo-' + s.slot_id);
                 const srcEl = document.getElementById('aff-src-' + s.slot_id);
                 const dupEl = document.getElementById('aff-dup-' + s.slot_id);
-                const cardEl = document.getElementById('aff-card-' + s.slot_id);
+                const cEl = document.getElementById('aff-card-' + s.slot_id);
                 if (uEl && s.slot_id === slotId) uEl.value = s.active_url || '';
                 if (mEl && s.slot_id === slotId) mEl.value = s.memo || '';
                 if (srcEl) srcEl.textContent = s.source_label || '';
                 if (dupEl) dupEl.style.display = s.is_duplicate_url ? 'inline-flex' : 'none';
-                if (cardEl) cardEl.classList.toggle('is-dup', !!s.is_duplicate_url);
+                if (cEl) cEl.classList.toggle('is-dup', !!s.is_duplicate_url);
             }
         }
     } catch (e) {
         msgEl.style.color = '#fca5a5';
-        msgEl.textContent = '⚠️ 通信エラーが発生しました: ' + e;
+        msgEl.textContent = '⚠️ ' + ((e && e.message) || '通信エラーが発生しました');
+    } finally {
+        _affSavingSlots[slotId] = false;
+        cardBtns.forEach(b => { b.disabled = false; });
     }
 }
 
@@ -1154,13 +1209,12 @@ async function runSheetsRetention(dryRun) {
     if (btnExec) btnExec.disabled = true;
 
     try {
-        const resp = await fetch('/api/sheets/retention', {
+        const res = await fetchJsonSafe('/api/sheets/retention', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
+            headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
             body: JSON.stringify({dry_run: !!dryRun}),
-        });
-        const res = await resp.json();
-        if (!resp.ok || !res.ok) {
+        }, 60000);
+        if (!res.ok) {
             msgEl.style.color = '#fca5a5';
             msgEl.textContent = '⚠️ ' + (res.error || 'シート整理に失敗しました');
             return;
@@ -1189,8 +1243,8 @@ async function runSheetsRetention(dryRun) {
         }
         if (chipsEl && Array.isArray(cap.worksheets)) {
             chipsEl.innerHTML = cap.worksheets.map(w =>
-                '<span class="ws-chip"><strong>' + w.title + '</strong>: ' +
-                Number(w.rows || 0).toLocaleString() + '行 × ' + w.cols + '列（' +
+                '<span class="ws-chip"><strong>' + esc(w.title) + '</strong>: ' +
+                Number(w.rows || 0).toLocaleString() + '行 × ' + Number(w.cols || 0) + '列（' +
                 Number(w.grid_cells || 0).toLocaleString() + 'セル）</span>'
             ).join('');
         }
@@ -1204,7 +1258,7 @@ async function runSheetsRetention(dryRun) {
             'JobState圧縮: ' + Number(jsD.deleted_rows || 0).toLocaleString() + '行）';
     } catch (e) {
         msgEl.style.color = '#fca5a5';
-        msgEl.textContent = '⚠️ 通信エラーが発生しました: ' + e;
+        msgEl.textContent = '⚠️ ' + ((e && e.message) || '通信エラーが発生しました');
     } finally {
         if (btnDry) btnDry.disabled = false;
         if (btnExec) btnExec.disabled = false;

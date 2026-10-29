@@ -509,10 +509,10 @@ def _generate_pdca_briefing(diag: dict, use_ai: bool = True, cache_only: bool = 
     try:
         parsed, model_used, _ = sns_editorial.call_editorial_ai_json(
             prompt=prompt,
-            max_output_tokens=1500,
+            max_output_tokens=2000,
             thinking_budget=1024,
-            total_deadline_sec=18.0,
-            per_call_timeout_sec=11.0,
+            total_deadline_sec=28.0,
+            per_call_timeout_sec=14.0,
             allow_blocking=True,
         )
         if parsed and parsed.get("briefing"):
@@ -549,7 +549,7 @@ def run_pdca_cycle(
       3. If `auto_replenish_columns` is enabled and upcoming scheduled columns <= 1,
          automatically draft, Desk-verify (>=85 pts), and schedule a new column!
     """
-    allow_io_blocking = bool(apply_actions or not ai_cache_only)
+    allow_io_blocking = False if ai_cache_only else bool(apply_actions or not ai_cache_only)
     settings = get_pdca_settings(allow_blocking=allow_io_blocking)
     diag = analyze_site_performance(live_stores=live_stores, days=days, allow_blocking=allow_io_blocking)
     briefing = _generate_pdca_briefing(

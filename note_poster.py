@@ -147,10 +147,11 @@ def build_note_tweet_text(title: str, link: str, force: bool = False, use_ai: bo
                 )
                 parsed, _, _ = sns_editorial.call_editorial_ai_json(
                     prompt=prompt,
-                    max_output_tokens=1200,
-                    thinking_budget=1024,
+                    max_output_tokens=1800,
+                    thinking_budget=896,
                     total_deadline_sec=18.0,
                     now_jst=now_jst,
+                    prefer_fast=True,
                 )
                 if parsed and parsed.get("main_text"):
                     ai_txt = sns_editorial._postprocess_ai_main_text(parsed["main_text"], channel="x")

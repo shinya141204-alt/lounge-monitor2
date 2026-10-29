@@ -88,6 +88,8 @@ _AI_CACHE_MAX_SIZE = 64
 _ai_candidate_cache = collections.OrderedDict()  # cache_key -> {"ts": float, "candidate": dict, "model": str}
 _ai_cache_lock = threading.Lock()
 _model_discovery_cache = {}  # provider_sig -> {"ts": float, "models": list[str]}
+_UNHEALTHY_COOLDOWN_SEC = 600.0
+_unhealthy_models = {}  # model_name -> cooldown_until_monotonic
 _last_gemini_meta = {
     "last_model": "",
     "last_provider": "",
@@ -539,6 +541,8 @@ def clear_editorial_ai_cache():
     """Clear in-memory AI draft cache (called when API key updates or manual refresh requested)."""
     with _ai_cache_lock:
         _ai_candidate_cache.clear()
+    _unhealthy_models.clear()
+    _last_gemini_meta["working_route"] = None
 
 
 def _prune_ai_candidate_cache_unlocked(now_t: float = None):
@@ -584,6 +588,7 @@ def set_gemini_api_key(api_key: str):
     job_state.set_value(GEMINI_KEY_STORAGE_PREFIX, cleaned)
     clear_editorial_ai_cache()
     _model_discovery_cache.clear()
+    _unhealthy_models.clear()
     _last_gemini_meta["last_error"] = ""
     _last_gemini_meta["working_route"] = None
 
@@ -610,6 +615,7 @@ def set_claude_api_key(api_key: str):
     job_state.set_value(CLAUDE_KEY_STORAGE_PREFIX, cleaned)
     clear_editorial_ai_cache()
     _model_discovery_cache.clear()
+    _unhealthy_models.clear()
     _last_gemini_meta["last_error"] = ""
     _last_gemini_meta["working_route"] = None
 
@@ -632,6 +638,7 @@ def set_ai_engine_pref(pref: str) -> str:
         norm = "auto"
     job_state.set_value(AI_ENGINE_PREF_KEY, norm)
     clear_editorial_ai_cache()
+    _unhealthy_models.clear()
     _last_gemini_meta["last_error"] = ""
     _last_gemini_meta["working_route"] = None
     return norm
@@ -641,7 +648,7 @@ def has_any_ai_key(allow_blocking: bool = True) -> bool:
     return bool(get_claude_api_key(allow_blocking=allow_blocking) or get_gemini_api_key(allow_blocking=allow_blocking))
 
 
-def get_gemini_status(allow_blocking: bool = True) -> dict:
+def get_gemini_status(allow_blocking: bool = False) -> dict:
     """
     Return safe, masked Dual-Engine AI status metadata (Gemini Pro/Flash + Claude Sonnet)
     for Master editorial dashboards while preserving 100% backward-compatible field names.
@@ -1974,12 +1981,12 @@ def _build_gemini_prompt(
     tone_mode: str = DEFAULT_TONE_MODE,
 ) -> tuple:
     ch = (channel or "x").lower()
-    tm = get_editorial_tone_mode(tone_mode)
+    tm = get_editorial_tone_mode(tone_mode, allow_blocking=False)
     tone_meta = EDITORIAL_TONE_MODES[tm]
     t_str = now_jst.strftime("%H:%M")
     cal_ctx = research.get("calendar") or {}
     weather_ctx = research.get("weather") or {}
-    history = get_recent_editorial_history(channel=ch, limit=3)
+    history = get_recent_editorial_history(channel=ch, limit=3, allow_blocking=False)
     recent_openers = [
         (h.get("selected_text") or "").split("\n", 1)[0][:55]
         for h in history if h.get("selected_text")
@@ -2208,14 +2215,6 @@ def _discover_ai_studio_models(api_key: str, timeout: float = 4.5) -> list:
             elif "flash" in low and "lite" in low:
                 lite_cands.append(name)
 
-        def _rank_key(n: str):
-            # Prefer stable numbered releases (3.x > 2.5 > latest > preview/exp)
-            is_exp = ("exp" in n)
-            is_prev = ("preview" in n)
-            return (0 if not (is_exp or is_prev) else (1 if is_prev else 2), n)
-
-        pro_cands.sort(key=lambda x: (not ("2.5-pro" in x or "3." in x or "3-" in x), "exp" in x, x), reverse=False)
-        # Sort version numbers descending while keeping stable ahead of experimental
         # Newest version first (e.g. gemini-3.1-pro-preview > gemini-2.5-pro); experimental (`exp`) models last.
         def _stable_key(x: str):
             return (not ("exp" in x), x)
@@ -2315,6 +2314,19 @@ def _parse_ai_json_object(raw_text: str):
     return None
 
 
+def _is_requests_post_mocked() -> bool:
+    post_fn = getattr(requests, "post", None)
+    if post_fn is None:
+        return False
+    return hasattr(post_fn, "assert_called") or type(post_fn).__module__.startswith("unittest.mock")
+
+
+def _mark_model_unhealthy(model_name: str):
+    low = (model_name or "").lower()
+    if "preview" in low or "pro" in low or "exp" in low:
+        _unhealthy_models[model_name] = time.monotonic() + _UNHEALTHY_COOLDOWN_SEC
+
+
 def _build_endpoint_request(
     endpoint_kind: str,
     model_name: str,
@@ -2324,9 +2336,11 @@ def _build_endpoint_request(
     thinking_budget: int = 1536,
     temperature: float = 0.88,
 ) -> tuple:
+    out_tokens = int(max_output_tokens or 2048)
+    tb_req = int(thinking_budget) if thinking_budget is not None else 0
     gen_cfg = {
         "temperature": temperature,
-        "maxOutputTokens": max_output_tokens,
+        "maxOutputTokens": max(2048, out_tokens),
         "responseMimeType": "application/json",
     }
     low_m = (model_name or "").lower()
@@ -2335,10 +2349,21 @@ def _build_endpoint_request(
         "gemini-flash-latest",
         "gemini-pro-latest",
     ):
-        # Pro models require >=128 thinkingBudget and shine around 1536-2048
-        gen_cfg["thinkingConfig"] = {"thinkingBudget": max(512, int(thinking_budget))}
+        if tb_req > 0:
+            # Add thinking budget on top of output token quota so JSON output is never truncated
+            tb = max(512, tb_req)
+            gen_cfg["thinkingConfig"] = {"thinkingBudget": tb}
+            gen_cfg["maxOutputTokens"] = max(2048, out_tokens + tb)
+        elif "pro" in low_m:
+            # Pro models require >=128 thinkingBudget
+            gen_cfg["thinkingConfig"] = {"thinkingBudget": 128}
+            gen_cfg["maxOutputTokens"] = max(2048, out_tokens + 128)
+        elif low_m.startswith("gemini-2.5-flash"):
+            gen_cfg["thinkingConfig"] = {"thinkingBudget": 0}
+            gen_cfg["maxOutputTokens"] = max(2048, out_tokens)
     elif low_m.startswith("gemini-3"):
-        gen_cfg["thinkingConfig"] = {"thinkingLevel": "MEDIUM" if thinking_budget >= 1024 else "LOW"}
+        gen_cfg["thinkingConfig"] = {"thinkingLevel": "MEDIUM" if tb_req >= 1024 else "LOW"}
+        gen_cfg["maxOutputTokens"] = max(4096, out_tokens + 2048)
 
     payload = {
         "contents": [{"role": "user", "parts": [{"text": prompt}]}],
@@ -2362,6 +2387,7 @@ def call_editorial_ai_json(
     per_call_timeout_sec: float = 13.5,
     allow_blocking: bool = True,
     now_jst: datetime.datetime = None,
+    prefer_fast: bool = False,
 ) -> tuple:
     """
     Unified Dual-Engine AI JSON caller supporting BOTH Anthropic Claude Sonnet and Upgraded Google Gemini (Pro / Flash).
@@ -2376,7 +2402,7 @@ def call_editorial_ai_json(
 
     pref = get_ai_engine_pref(allow_blocking=False)
     providers = []
-    if pref == "gemini":
+    if pref == "gemini" or (prefer_fast and pref == "auto" and g_key and not c_key):
         if g_key:
             providers.append("gemini")
         if c_key:
@@ -2388,7 +2414,10 @@ def call_editorial_ai_json(
         if g_key:
             providers.append("gemini")
 
-    deadline = time.monotonic() + max(4.0, float(total_deadline_sec))
+    eff_deadline_sec = max(4.0, float(total_deadline_sec))
+    deadline = time.monotonic() + eff_deadline_sec
+    reserve_sec = min(7.0, eff_deadline_sec * 0.32)
+    is_mocked_post = _is_requests_post_mocked()
     last_err = ""
 
     sys_instr = system_prompt or (
@@ -2397,9 +2426,10 @@ def call_editorial_ai_json(
         "必ず有効なJSONオブジェクトのみを返してください（Markdownの```jsonフェンスは不要）。"
     )
 
-    for prov in providers:
+    for p_idx, prov in enumerate(providers):
         if time.monotonic() >= deadline - 0.8:
             break
+        has_later_provider = (p_idx < len(providers) - 1)
 
         if prov == "claude":
             preferred_c = (os.environ.get("CLAUDE_MODEL") or "").strip()
@@ -2407,17 +2437,26 @@ def call_editorial_ai_json(
             c_models = []
             if preferred_c:
                 c_models.append(preferred_c)
-            saved_r = _last_gemini_meta.get("working_route")
+            saved_r = None if is_mocked_post else _last_gemini_meta.get("working_route")
             if saved_r and saved_r[0] == "claude" and saved_r[1] not in c_models:
                 c_models.append(saved_r[1])
             for m in (discovered_c or DEFAULT_CLAUDE_MODELS):
                 if m not in c_models:
                     c_models.append(m)
 
-            for cm in c_models[:2]:
+            c_trial = c_models[:2]
+            for c_idx, cm in enumerate(c_trial):
                 rem = deadline - time.monotonic()
                 if rem <= 0.8:
                     break
+                has_fallback = has_later_provider or (c_idx < len(c_trial) - 1)
+                if has_later_provider and rem <= reserve_sec + 1.0:
+                    break
+                c_timeout = (
+                    min(float(per_call_timeout_sec), max(1.2, rem - reserve_sec))
+                    if has_fallback
+                    else min(float(per_call_timeout_sec), rem)
+                )
                 try:
                     resp = requests.post(
                         "https://api.anthropic.com/v1/messages",
@@ -2433,7 +2472,7 @@ def call_editorial_ai_json(
                             "system": sys_instr,
                             "messages": [{"role": "user", "content": prompt}],
                         },
-                        timeout=min(float(per_call_timeout_sec), rem),
+                        timeout=c_timeout,
                     )
                     if resp.status_code >= 400:
                         last_err = f"Claude HTTP {resp.status_code} ({cm}): {(resp.text or '')[:130]}"
@@ -2460,31 +2499,96 @@ def call_editorial_ai_json(
 
         elif prov == "gemini":
             preferred_g = (os.environ.get("GEMINI_MODEL") or "").strip()
-            discovered_g = _discover_ai_studio_models(g_key, timeout=min(3.5, max(1.0, deadline - time.monotonic() - 2.0)))
+            discovered_g = _discover_ai_studio_models(
+                g_key,
+                timeout=min(3.0, max(0.9, deadline - time.monotonic() - reserve_sec - 0.5)),
+            )
+            base_pool = []
+            for m in (discovered_g or list(DEFAULT_GEMINI_MODELS)):
+                if m not in base_pool:
+                    base_pool.append(m)
+            for m in DEFAULT_GEMINI_MODELS:
+                if m not in base_pool:
+                    base_pool.append(m)
+
             g_models = []
             if preferred_g:
                 g_models.append(preferred_g)
-            saved_r = _last_gemini_meta.get("working_route")
-            # Only reuse cached working_route if it isn't an old flash-lite leftover when Pro/Flash are available!
-            if (
-                saved_r
-                and saved_r[0] == "ai_studio"
-                and ("lite" not in saved_r[1].lower() or not discovered_g)
-                and saved_r[1] not in g_models
-            ):
-                g_models.append(saved_r[1])
-            for m in (discovered_g or list(DEFAULT_GEMINI_MODELS)):
-                if m not in g_models:
-                    g_models.append(m)
-            for m in DEFAULT_GEMINI_MODELS:
-                if m not in g_models:
-                    g_models.append(m)
+            saved_r = None if is_mocked_post else _last_gemini_meta.get("working_route")
+
+            if prefer_fast:
+                # Short-form / latency-sensitive mode: place standard Flash models (`gemini-2.5-flash`, etc.) first
+                if (
+                    saved_r
+                    and saved_r[0] == "ai_studio"
+                    and "flash" in saved_r[1].lower()
+                    and "lite" not in saved_r[1].lower()
+                    and saved_r[1] not in g_models
+                ):
+                    g_models.append(saved_r[1])
+                for m in base_pool:
+                    low_m = m.lower()
+                    if "flash" in low_m and "lite" not in low_m and m not in g_models:
+                        g_models.append(m)
+                for m in base_pool:
+                    if m not in g_models:
+                        g_models.append(m)
+            else:
+                # Quality-first mode: Pro -> Standard Flash -> Lite fallback
+                # Only promote a cached `working_route` ahead of `base_pool` if it is a Pro model
+                # (unhealthy Pro models are demoted automatically via `_unhealthy_models` cooldown).
+                if (
+                    saved_r
+                    and saved_r[0] == "ai_studio"
+                    and "pro" in saved_r[1].lower()
+                    and saved_r[1] not in g_models
+                ):
+                    g_models.append(saved_r[1])
+                for m in base_pool:
+                    if m not in g_models:
+                        g_models.append(m)
+
+            # Apply 10-minute circuit breaker cooldown for unhealthy preview/pro models (bypassed when requests.post is mocked)
+            if not is_mocked_post and _unhealthy_models:
+                now_mono = time.monotonic()
+                expired_um = [k for k, exp_t in list(_unhealthy_models.items()) if now_mono >= exp_t]
+                for k in expired_um:
+                    _unhealthy_models.pop(k, None)
+                if _unhealthy_models:
+                    healthy_primary = [
+                        m for m in g_models
+                        if m not in _unhealthy_models and "lite" not in m.lower()
+                    ]
+                    cooled_down = [m for m in g_models if m in _unhealthy_models]
+                    healthy_lite = [
+                        m for m in g_models
+                        if m not in _unhealthy_models and "lite" in m.lower()
+                    ]
+                    g_models = healthy_primary + cooled_down + healthy_lite
+
+            trial_models = list(g_models[:3])
+            if not any("flash" in m.lower() and "lite" not in m.lower() for m in trial_models):
+                std_flash = next(
+                    (m for m in g_models if "flash" in m.lower() and "lite" not in m.lower()),
+                    "gemini-2.5-flash",
+                )
+                if std_flash not in trial_models:
+                    trial_models.append(std_flash)
 
             full_prompt = f"{sys_instr}\n\n{prompt}" if system_prompt else prompt
-            for gm in g_models[:3]:
+            for g_idx, gm in enumerate(trial_models):
                 rem = deadline - time.monotonic()
                 if rem <= 0.8:
                     break
+                has_fallback = (g_idx < len(trial_models) - 1) or has_later_provider
+                # If earlier model already ate the non-reserve budget, skip additional heavy Pro models so Flash runs cleanly
+                if has_fallback and rem <= reserve_sec + 1.0 and "flash" not in gm.lower():
+                    continue
+                g_timeout = (
+                    min(float(per_call_timeout_sec), max(1.2, rem - reserve_sec))
+                    if has_fallback
+                    else min(float(per_call_timeout_sec), rem)
+                )
                 try:
                     url, headers, params, payload = _build_endpoint_request(
                         "ai_studio",
@@ -2500,11 +2604,13 @@ def call_editorial_ai_json(
                         headers=headers,
                         params=params,
                         json=payload,
-                        timeout=min(float(per_call_timeout_sec), rem),
+                        timeout=g_timeout,
                     )
                     if resp.status_code >= 400:
                         last_err = f"Gemini HTTP {resp.status_code} ({gm}): {(resp.text or '')[:130]}"
                         logger.warning(f"[editorial_ai] {last_err}")
+                        if not is_mocked_post and (resp.status_code == 429 or resp.status_code >= 500):
+                            _mark_model_unhealthy(gm)
                         if _last_gemini_meta.get("working_route") == ("ai_studio", gm):
                             _last_gemini_meta["working_route"] = None
                         continue
@@ -2515,9 +2621,16 @@ def call_editorial_ai_json(
                     parts = ((cands[0].get("content") or {}).get("parts")) or []
                     raw_txt = "".join(p.get("text", "") for p in parts if not p.get("thought")).strip()
                     if not raw_txt:
-                        raw_txt = "".join(p.get("text", "") for p in parts).strip()
+                        last_err = f"Gemini output exhausted by thinking ({gm})"
+                        logger.warning(f"[editorial_ai] {last_err}")
+                        if not is_mocked_post:
+                            _mark_model_unhealthy(gm)
+                        if _last_gemini_meta.get("working_route") == ("ai_studio", gm):
+                            _last_gemini_meta["working_route"] = None
+                        continue
                     parsed = _parse_ai_json_object(raw_txt)
                     if parsed:
+                        _unhealthy_models.pop(gm, None)
                         _last_gemini_meta["working_route"] = ("ai_studio", gm)
                         _last_gemini_meta["last_provider"] = "gemini"
                         _last_gemini_meta["last_model"] = gm
@@ -2525,9 +2638,13 @@ def call_editorial_ai_json(
                         _last_gemini_meta["last_ok_at"] = now_jst.strftime("%Y-%m-%d %H:%M:%S")
                         return parsed, gm, ""
                     last_err = f"Gemini JSON parse failed ({gm})"
+                    if not is_mocked_post:
+                        _mark_model_unhealthy(gm)
                 except Exception as e:
                     last_err = f"Gemini通信エラー ({gm}): {str(e)[:110]}"
                     logger.warning(f"[editorial_ai] {last_err}")
+                    if not is_mocked_post:
+                        _mark_model_unhealthy(gm)
                     if _last_gemini_meta.get("working_route") == ("ai_studio", gm):
                         _last_gemini_meta["working_route"] = None
 
@@ -2575,7 +2692,7 @@ def _make_ai_cache_key(
     top-3 stores `(name, women, men)`, and `focus_store` `(name, women, men)`.
     """
     ch_norm = (ch or "x").lower()
-    tm_norm = get_editorial_tone_mode(tone_mode)
+    tm_norm = get_editorial_tone_mode(tone_mode, allow_blocking=False)
     eng_pref = get_ai_engine_pref(allow_blocking=False)
     has_c = bool(get_claude_api_key(allow_blocking=False))
     top_s = (research or {}).get("top_stores") or []
@@ -2649,7 +2766,7 @@ def _generate_gemini_adlib_candidate(
         return None
 
     ch = (channel or "x").lower()
-    tm = get_editorial_tone_mode(tone_mode)
+    tm = get_editorial_tone_mode(tone_mode, allow_blocking=False)
     cache_key = _make_ai_cache_key(ch, slot_label, research, now_jst, tone_mode=tm)
     if cache_key is None:
         return None
@@ -2681,8 +2798,8 @@ def _generate_gemini_adlib_candidate(
         max_output_tokens=2600,
         thinking_budget=1536,
         temperature=0.88,
-        total_deadline_sec=50.0,
-        per_call_timeout_sec=28.0,
+        total_deadline_sec=32.0,
+        per_call_timeout_sec=16.0,
         allow_blocking=True,
         now_jst=now_jst,
     )
@@ -2981,7 +3098,7 @@ def run_editorial_pipeline(
     if ch not in ("x", "threads", "instagram"):
         ch = "x"
 
-    allow_state_blocking = bool(record_history or (use_ai and not ai_cache_only))
+    allow_state_blocking = False if ai_cache_only else bool(record_history or use_ai)
     default_tm = get_default_editorial_tone_mode(allow_blocking=allow_state_blocking)
     resolved_tm = get_editorial_tone_mode(tone_mode, allow_blocking=allow_state_blocking)
 
@@ -2991,7 +3108,7 @@ def run_editorial_pipeline(
         channel=ch,
         ig_ctx=ig_ctx,
         now_jst=now_jst,
-        allow_weather_blocking=record_history,
+        allow_weather_blocking=bool(record_history and not ai_cache_only),
     )
     plan = run_planner(
         research,

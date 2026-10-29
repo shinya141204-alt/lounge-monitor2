@@ -274,8 +274,26 @@ def refresh_ig_token_if_needed(force: bool = False) -> dict:
                 job_state.mark_done(week_key)
                 os.environ["INSTAGRAM_ACCESS_TOKEN"] = new_tok
                 logging.info("Successfully refreshed Instagram long-lived access token.")
+                try:
+                    import sns_editorial
+                    sns_editorial.record_sns_delivery_status("instagram", "token_refreshed", now_jst=now_jst)
+                except Exception:
+                    pass
                 return {"status": "refreshed", "expires_in": data.get("expires_in")}
-        return {"status": "error", "detail": f"HTTP {r.status_code}: {r.text[:200]}"}
+        err_detail = f"HTTP {r.status_code}: {r.text[:200]}"
+        ver = verify_ig_token(token)
+        if not ver.get("ok"):
+            try:
+                import sns_editorial
+                sns_editorial.record_sns_delivery_status(
+                    "instagram",
+                    "token_error",
+                    detail=ver.get("error") or err_detail,
+                    now_jst=now_jst,
+                )
+            except Exception:
+                pass
+        return {"status": "error", "detail": err_detail}
     except Exception as e:
         logging.warning(f"Instagram token refresh exception: {e}")
         return {"status": "error", "detail": str(e)}
@@ -288,16 +306,30 @@ def _graph_base_for_token(access_token: str) -> str:
     return IG_GRAPH_BASE
 
 
+def _is_ig_publish_not_ready(resp) -> bool:
+    """Detect transient IG error 9007 / 2207027 ('Media ID is not available' / 'not ready') during publish."""
+    if getattr(resp, "status_code", None) != 400:
+        return False
+    body_low = (getattr(resp, "text", "") or "").lower()
+    return (
+        "9007" in body_low
+        or "2207027" in body_low
+        or "not ready" in body_low
+        or "media id is not available" in body_low
+    )
+
+
 def _wait_for_ig_container_ready(
     base: str,
     creation_id: str,
     access_token: str,
-    max_checks: int = 5,
-    interval_sec: float = 2.5,
+    max_checks: int = 12,
+    interval_sec: float = 3.0,
 ) -> tuple:
     """
     Poll `GET /{creation_id}?fields=status_code` up to `max_checks` times until `FINISHED`.
-    Exits immediately on mocks or responses lacking `status_code` so unit tests never stall.
+    Exits immediately on mocks or 4xx responses lacking `status_code` so unit tests never stall,
+    while continuing across transient 5xx or network exceptions.
     """
     if not creation_id:
         return False, "Missing creation_id"
@@ -311,18 +343,25 @@ def _wait_for_ig_container_ready(
                 timeout=10,
             )
             sc = getattr(r, "status_code", None)
-            if not isinstance(sc, int) or sc >= 400:
+            if not isinstance(sc, int) or (400 <= sc < 500):
                 return True, "status_check_unsupported"
-            data = r.json() if hasattr(r, "json") else {}
-            if not isinstance(data, dict) or "status_code" not in data:
-                return True, "no_status_code_field"
-            code = str(data.get("status_code") or "").upper()
-            if code in ("FINISHED", "PUBLISHED"):
-                return True, code
-            if code in ("ERROR", "EXPIRED"):
-                return False, f"IG container status={code}: {data}"
-        except Exception:
-            return True, "status_check_exception"
+            if sc >= 500:
+                logging.warning(
+                    f"IG container status check HTTP {sc} for {creation_id} (attempt {attempt + 1}/{max_checks})"
+                )
+            else:
+                data = r.json() if hasattr(r, "json") else {}
+                if not isinstance(data, dict) or "status_code" not in data:
+                    return True, "no_status_code_field"
+                code = str(data.get("status_code") or "").upper()
+                if code in ("FINISHED", "PUBLISHED"):
+                    return True, code
+                if code in ("ERROR", "EXPIRED"):
+                    return False, f"IG container status={code}: {data}"
+        except Exception as e:
+            logging.warning(
+                f"IG container status check transient exception (attempt {attempt + 1}/{max_checks}): {e}"
+            )
 
         if attempt < max_checks - 1:
             time.sleep(wait_s)
@@ -346,6 +385,7 @@ def post_single_image_to_instagram(image_url: str, caption: str) -> dict:
         return {"status": "error", "detail": "Could not resolve INSTAGRAM_USER_ID from token"}
 
     base = _graph_base_for_token(access_token)
+    pub_retry_wait = 0.05 if os.environ.get("DISABLE_SCHEDULER") == "1" else 3.0
     try:
         _warm_slide_urls([image_url])
 
@@ -368,14 +408,25 @@ def post_single_image_to_instagram(image_url: str, caption: str) -> dict:
         if not ok_ready:
             return {"status": "error", "detail": ready_detail}
 
-        r2 = requests.post(
-            f"{base}/{ig_user_id}/media_publish",
-            data={
-                "creation_id": creation_id,
-                "access_token": access_token,
-            },
-            timeout=25,
-        )
+        r2 = None
+        for pub_attempt in range(3):
+            r2 = requests.post(
+                f"{base}/{ig_user_id}/media_publish",
+                data={
+                    "creation_id": creation_id,
+                    "access_token": access_token,
+                },
+                timeout=25,
+            )
+            if r2.status_code < 400:
+                break
+            if pub_attempt < 2 and _is_ig_publish_not_ready(r2):
+                logging.warning(
+                    f"IG single media_publish not ready yet (attempt {pub_attempt + 1}/3); retrying in {pub_retry_wait}s: {r2.text[:160]}"
+                )
+                time.sleep(pub_retry_wait)
+                continue
+            break
         if r2.status_code >= 400:
             return {"status": "error", "detail": f"IG media publish HTTP {r2.status_code}: {r2.text[:200]}"}
 
@@ -405,6 +456,7 @@ def post_carousel_to_instagram(image_urls: list, caption: str) -> dict:
     base = _graph_base_for_token(access_token)
     child_ids = []
     retry_wait = 0.05 if os.environ.get("DISABLE_SCHEDULER") == "1" else 2.0
+    pub_retry_wait = 0.05 if os.environ.get("DISABLE_SCHEDULER") == "1" else 3.0
     try:
         # Warm up all slide images in-process (never via self-HTTP loopback) before Meta's crawler fetches them
         _warm_slide_urls(image_urls[:10])
@@ -455,14 +507,25 @@ def post_carousel_to_instagram(image_urls: list, caption: str) -> dict:
         if not ok_car:
             return {"status": "error", "detail": car_detail}
 
-        r_pub = requests.post(
-            f"{base}/{ig_user_id}/media_publish",
-            data={
-                "creation_id": carousel_id,
-                "access_token": access_token,
-            },
-            timeout=25,
-        )
+        r_pub = None
+        for pub_attempt in range(3):
+            r_pub = requests.post(
+                f"{base}/{ig_user_id}/media_publish",
+                data={
+                    "creation_id": carousel_id,
+                    "access_token": access_token,
+                },
+                timeout=25,
+            )
+            if r_pub.status_code < 400:
+                break
+            if pub_attempt < 2 and _is_ig_publish_not_ready(r_pub):
+                logging.warning(
+                    f"IG carousel media_publish not ready yet (attempt {pub_attempt + 1}/3); retrying in {pub_retry_wait}s: {r_pub.text[:160]}"
+                )
+                time.sleep(pub_retry_wait)
+                continue
+            break
         if r_pub.status_code >= 400:
             return {"status": "error", "detail": f"Carousel publish HTTP {r_pub.status_code}: {r_pub.text[:200]}"}
 

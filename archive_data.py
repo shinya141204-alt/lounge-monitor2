@@ -149,39 +149,83 @@ def _compress_rows_to_daily_summaries(rows_to_archive: list) -> list:
 
 def _rotate_main_sheet(spreadsheet, retention_days: int, max_delete_rows: int, dry_run: bool) -> dict:
     main_sheet = spreadsheet.sheet1
-    all_values = main_sheet.get_all_values()
-    total_data_rows = max(0, len(all_values) - 1)
-    if total_data_rows == 0:
-        return {"data_rows_before": 0, "archived_raw_rows": 0, "summary_rows_added": 0, "deleted_rows": 0}
-
     cutoff = get_cutoff_date(retention_days)
-    data_rows = all_values[1:]
 
-    # Identify contiguous leading prefix of rows older than cutoff so `delete_rows(2, end_row)`
-    # NEVER accidentally deletes a newer row even if timestamps were ever out-of-order.
-    contiguous_old = []
-    for row in data_rows:
-        if not row or not str(row[0]).strip():
-            contiguous_old.append(row)
-            continue
-        try:
-            ts = datetime.datetime.strptime(str(row[0]).strip(), "%Y-%m-%d %H:%M:%S")
-        except ValueError:
-            break
-        if ts < cutoff:
-            contiguous_old.append(row)
-        else:
-            break
-        if len(contiguous_old) >= max_delete_rows:
-            break
+    # Memory-safe path for production gspread Worksheet: inspect column A timestamps first
+    # instead of loading 250k+ 5-column rows into RAM at once (prevents Render 512MB OOM).
+    if hasattr(main_sheet, "col_values") and hasattr(main_sheet, "get"):
+        col_a = main_sheet.col_values(1) or []
+        total_data_rows = max(0, len(col_a) - 1)
+        if total_data_rows == 0:
+            return {"data_rows_before": 0, "archived_raw_rows": 0, "summary_rows_added": 0, "deleted_rows": 0}
 
-    if not contiguous_old:
-        return {
-            "data_rows_before": total_data_rows,
-            "archived_raw_rows": 0,
-            "summary_rows_added": 0,
-            "deleted_rows": 0,
-        }
+        old_count = 0
+        for raw_ts in col_a[1:]:
+            ts_str = str(raw_ts or "").strip()
+            if not ts_str:
+                old_count += 1
+            else:
+                try:
+                    ts = datetime.datetime.strptime(ts_str, "%Y-%m-%d %H:%M:%S")
+                except ValueError:
+                    break
+                if ts < cutoff:
+                    old_count += 1
+                else:
+                    break
+            if old_count >= max_delete_rows:
+                break
+
+        if old_count == 0:
+            return {
+                "data_rows_before": total_data_rows,
+                "archived_raw_rows": 0,
+                "summary_rows_added": 0,
+                "deleted_rows": 0,
+            }
+
+        contiguous_old = []
+        chunk_rows = 8000
+        for offset in range(0, old_count, chunk_rows):
+            r_start = 2 + offset
+            r_end = 1 + min(old_count, offset + chunk_rows)
+            fetched = main_sheet.get(f"A{r_start}:E{r_end}") or []
+            expected_len = r_end - r_start + 1
+            if len(fetched) < expected_len:
+                fetched = list(fetched) + ([[]] * (expected_len - len(fetched)))
+            contiguous_old.extend(fetched)
+    else:
+        all_values = main_sheet.get_all_values()
+        total_data_rows = max(0, len(all_values) - 1)
+        if total_data_rows == 0:
+            return {"data_rows_before": 0, "archived_raw_rows": 0, "summary_rows_added": 0, "deleted_rows": 0}
+
+        data_rows = all_values[1:]
+        # Identify contiguous leading prefix of rows older than cutoff so `delete_rows(2, end_row)`
+        # NEVER accidentally deletes a newer row even if timestamps were ever out-of-order.
+        contiguous_old = []
+        for row in data_rows:
+            if not row or not str(row[0]).strip():
+                contiguous_old.append(row)
+                continue
+            try:
+                ts = datetime.datetime.strptime(str(row[0]).strip(), "%Y-%m-%d %H:%M:%S")
+            except ValueError:
+                break
+            if ts < cutoff:
+                contiguous_old.append(row)
+            else:
+                break
+            if len(contiguous_old) >= max_delete_rows:
+                break
+
+        if not contiguous_old:
+            return {
+                "data_rows_before": total_data_rows,
+                "archived_raw_rows": 0,
+                "summary_rows_added": 0,
+                "deleted_rows": 0,
+            }
 
     summary_candidates = _compress_rows_to_daily_summaries(contiguous_old)
     summary_added = 0

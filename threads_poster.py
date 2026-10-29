@@ -211,11 +211,41 @@ def _get_active_threads_token() -> str:
     return (os.environ.get("THREADS_ACCESS_TOKEN") or "").strip()
 
 
+def _format_threads_api_error(prefix: str, status_code: int, body_text: str) -> str:
+    """Build a clear, actionable Japanese error message when a short-lived or expired Threads token fails."""
+    snippet = (body_text or "").strip()
+    low = snippet.lower()
+    is_token_expired = (
+        status_code == 401
+        or '"code":190' in low
+        or '"code": 190' in low
+        or "session has expired" in low
+        or "error validating access token" in low
+        or "invalid oauth access token" in low
+        or "access token has expired" in low
+    )
+    if is_token_expired:
+        has_saved = bool((job_state.get_value("token:threads", allow_blocking=False) or "").strip())
+        src_label = "保存済みThreadsトークン" if has_saved else "環境変数 THREADS_ACCESS_TOKEN の短期トークン"
+        head = f"{prefix} HTTP {status_code}" if prefix else f"HTTP {status_code}"
+        return (
+            f"{head}: {src_label}が失効しています。"
+            "管理画面 `/staff/sns-editorial` で長期トークン（または短期トークン＋App Secret）を貼り付けて保存すれば再デプロイ不要で即復旧できます。"
+            f" ({snippet[:85]})"
+        )
+    head = f"{prefix} HTTP {status_code}" if prefix else f"HTTP {status_code}"
+    return f"{head}: {snippet[:200]}"
+
+
 def verify_threads_token(access_token: str = None) -> dict:
     """Verify a Threads access token via `GET /v1.0/me` without creating any post."""
     tok = (access_token if access_token is not None else _get_active_threads_token()).strip()
     if not tok:
-        return {"ok": False, "status": "unconfigured", "error": "THREADS_ACCESS_TOKEN が未設定です"}
+        return {
+            "ok": False,
+            "status": "unconfigured",
+            "error": "THREADS_ACCESS_TOKEN が未設定です（管理画面 /staff/sns-editorial から再デプロイ不要で登録できます）",
+        }
     try:
         r = requests.get(
             f"{THREADS_API_BASE}/me",
@@ -230,7 +260,7 @@ def verify_threads_token(access_token: str = None) -> dict:
                 global _cached_user_id
                 _cached_user_id = uid
             return {"ok": True, "status": "active", "id": uid, "username": uname}
-        detail = f"HTTP {r.status_code}: {r.text[:220]}"
+        detail = _format_threads_api_error("", r.status_code, r.text)
         return {"ok": False, "status": "error", "error": detail}
     except Exception as e:
         return {"ok": False, "status": "error", "error": str(e)}
@@ -365,7 +395,7 @@ def refresh_threads_token_if_needed(force: bool = False) -> dict:
                 except Exception:
                     pass
                 return {"status": "refreshed", "expires_in": data.get("expires_in")}
-        err_detail = f"HTTP {r.status_code}: {r.text[:200]}"
+        err_detail = _format_threads_api_error("Refresh", r.status_code, r.text)
         # Note: Long-lived tokens <24h old cannot be refreshed yet; only mark token_error if /me also fails
         ver = verify_threads_token(token)
         if not ver.get("ok"):
@@ -404,10 +434,31 @@ def _resolve_threads_user_id(access_token: str) -> str:
     return DEFAULT_THREADS_USER_ID
 
 
-def _wait_for_threads_container_ready(creation_id: str, access_token: str, max_checks: int = 5, interval_sec: float = 2.0) -> tuple:
+def _is_threads_publish_not_ready(resp) -> bool:
+    """Detect transient Threads container processing errors (e.g. HTTP 400 'not ready' / '4279009') on publish."""
+    if getattr(resp, "status_code", None) != 400:
+        return False
+    body_low = (getattr(resp, "text", "") or "").lower()
+    return (
+        "not ready" in body_low
+        or "4279009" in body_low
+        or "media id is not available" in body_low
+        or "not finished" in body_low
+        or "in_progress" in body_low
+        or "processing" in body_low
+    )
+
+
+def _wait_for_threads_container_ready(
+    creation_id: str,
+    access_token: str,
+    max_checks: int = 10,
+    interval_sec: float = 2.5,
+) -> tuple:
     """
     Poll `GET /{creation_id}?fields=status,error_message` until `FINISHED` (especially needed for IMAGE containers).
-    Exits immediately on mocks or responses without `status` field so unit tests never stall.
+    Exits immediately on mocks or 4xx responses without `status` field so unit tests never stall,
+    while continuing across transient 5xx or network exceptions.
     """
     if not creation_id:
         return False, "Missing creation_id"
@@ -421,18 +472,25 @@ def _wait_for_threads_container_ready(creation_id: str, access_token: str, max_c
                 timeout=10,
             )
             sc = getattr(r, "status_code", None)
-            if not isinstance(sc, int) or sc >= 400:
+            if not isinstance(sc, int) or (400 <= sc < 500):
                 return True, "status_check_unsupported"
-            data = r.json() if hasattr(r, "json") else {}
-            if not isinstance(data, dict) or "status" not in data:
-                return True, "no_status_field"
-            st = str(data.get("status") or "").upper()
-            if st in ("FINISHED", "PUBLISHED"):
-                return True, st
-            if st in ("ERROR", "EXPIRED"):
-                return False, f"Threads container status={st}: {data.get('error_message') or data}"
-        except Exception:
-            return True, "status_check_exception"
+            if sc >= 500:
+                logging.warning(
+                    f"Threads container status check HTTP {sc} for {creation_id} (attempt {attempt + 1}/{max_checks})"
+                )
+            else:
+                data = r.json() if hasattr(r, "json") else {}
+                if not isinstance(data, dict) or "status" not in data:
+                    return True, "no_status_field"
+                st = str(data.get("status") or "").upper()
+                if st in ("FINISHED", "PUBLISHED"):
+                    return True, st
+                if st in ("ERROR", "EXPIRED"):
+                    return False, f"Threads container status={st}: {data.get('error_message') or data}"
+        except Exception as e:
+            logging.warning(
+                f"Threads container status check transient exception (attempt {attempt + 1}/{max_checks}): {e}"
+            )
 
         if attempt < max_checks - 1:
             time.sleep(wait_s)
@@ -455,6 +513,7 @@ def post_to_threads(text: str, image_url: str = None) -> dict:
         }
 
     user_id = _resolve_threads_user_id(access_token)
+    pub_retry_wait = 0.05 if os.environ.get("DISABLE_SCHEDULER") == "1" else 2.5
 
     try:
         if image_url:
@@ -476,7 +535,7 @@ def post_to_threads(text: str, image_url: str = None) -> dict:
         )
         if r1.status_code >= 400:
             logging.error(f"Threads container creation failed ({r1.status_code}): {r1.text}")
-            return {"status": "error", "detail": f"Step1 HTTP {r1.status_code}: {r1.text[:200]}"}
+            return {"status": "error", "detail": _format_threads_api_error("Step1", r1.status_code, r1.text)}
 
         creation_id = (r1.json() or {}).get("id")
         if not creation_id:
@@ -489,17 +548,28 @@ def post_to_threads(text: str, image_url: str = None) -> dict:
                 return {"status": "error", "detail": ready_detail}
 
         publish_url = f"{THREADS_API_BASE}/{user_id}/threads_publish"
-        r2 = requests.post(
-            publish_url,
-            data={
-                "creation_id": creation_id,
-                "access_token": access_token,
-            },
-            timeout=20,
-        )
+        r2 = None
+        for pub_attempt in range(3):
+            r2 = requests.post(
+                publish_url,
+                data={
+                    "creation_id": creation_id,
+                    "access_token": access_token,
+                },
+                timeout=20,
+            )
+            if r2.status_code < 400:
+                break
+            if pub_attempt < 2 and _is_threads_publish_not_ready(r2):
+                logging.warning(
+                    f"Threads publish not ready yet (attempt {pub_attempt + 1}/3); retrying in {pub_retry_wait}s: {r2.text[:160]}"
+                )
+                time.sleep(pub_retry_wait)
+                continue
+            break
         if r2.status_code >= 400:
             logging.error(f"Threads publish failed ({r2.status_code}): {r2.text}")
-            return {"status": "error", "detail": f"Step2 HTTP {r2.status_code}: {r2.text[:200]}"}
+            return {"status": "error", "detail": _format_threads_api_error("Step2", r2.status_code, r2.text)}
 
         post_id = (r2.json() or {}).get("id")
         logging.info(f"Successfully published to Threads: id={post_id}")

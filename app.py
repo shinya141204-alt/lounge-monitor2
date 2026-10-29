@@ -161,7 +161,7 @@ def compress_response(response):
     ):
         data = response.get_data()
         if len(data) > 500:
-            compressed = gzip.compress(data, compresslevel=5)
+            compressed = gzip.compress(data, compresslevel=4)
             response.set_data(compressed)
             response.headers['Content-Encoding'] = 'gzip'
             response.headers['Content-Length'] = len(compressed)
@@ -197,14 +197,22 @@ def _ensure_scheduler_started_async():
 
     def _boot():
         try:
+            from apscheduler.executors.pool import ThreadPoolExecutor as APSThreadPoolExecutor
             local_db.init_db()
             restore_latest_data_if_empty()
 
-            scheduler = BackgroundScheduler(timezone="UTC", job_defaults={
-                'misfire_grace_time': 600,
-                'coalesce': True,
-                'max_instances': 1,
-            })
+            scheduler = BackgroundScheduler(
+                timezone="UTC",
+                executors={
+                    'default': APSThreadPoolExecutor(8),
+                    'sns_ai': APSThreadPoolExecutor(4),
+                },
+                job_defaults={
+                    'misfire_grace_time': 600,
+                    'coalesce': True,
+                    'max_instances': 1,
+                },
+            )
             scheduler.add_job(func=update_job, trigger="interval", minutes=1)
             def _flush_analytics():
                 try:
@@ -215,16 +223,16 @@ def _ensure_scheduler_started_async():
             atexit.register(_flush_analytics)
             scheduler.add_job(func=_flush_analytics, trigger="interval", minutes=10)
             scheduler.add_job(func=lambda: local_db.sync_from_google_sheets(days=2), trigger="interval", hours=2)
-            # Human-paced anti-spam schedule with randomized jitter (90s-540s) so posts never fire at :00:00 sharp:
-            # - X Live: 20:00 & 22:00 daily (00:00 late-night removed on Mon-Thu/Sun, kept only Fri/Sat nights; 02:00 removed completely)
-            # - X Tips: 18:00 pre-outing prime slot only (12:00 midday removed to cut daily post volume by half)
-            scheduler.add_job(func=run_scheduled_x_post, trigger="cron", hour=11, minute=2, jitter=420, args=["20:00"])
-            scheduler.add_job(func=run_scheduled_x_post, trigger="cron", hour=13, minute=3, jitter=420, args=["22:00"])
-            scheduler.add_job(func=run_scheduled_x_post, trigger="cron", day_of_week="fri,sat", hour=15, minute=4, jitter=420, args=["00:00"])
+            # Human-paced anti-spam schedule with idempotent retry windows within each target hour:
+            # First run posts with natural jitter; if a transient API/network hiccup occurs, the follow-up tick
+            # within the same hour automatically retries (and exits in <0.1ms once `job_state.is_done` is True).
+            scheduler.add_job(func=run_scheduled_x_post, trigger="cron", hour=11, minute="2,14,26", jitter=120, args=["20:00"], executor="sns_ai")
+            scheduler.add_job(func=run_scheduled_x_post, trigger="cron", hour=13, minute="3,15,27", jitter=120, args=["22:00"], executor="sns_ai")
+            scheduler.add_job(func=run_scheduled_x_post, trigger="cron", day_of_week="fri,sat", hour=15, minute="4,16,28", jitter=120, args=["00:00"], executor="sns_ai")
             def _tip_18():
                 import tips_poster
                 tips_poster.run_scheduled_tip_post(slot_label="18:00")
-            scheduler.add_job(func=_tip_18, trigger="cron", hour=9, minute=3, jitter=480)
+            scheduler.add_job(func=_tip_18, trigger="cron", hour=9, minute="3,18", jitter=120, executor="sns_ai")
             def _note_check_job():
                 try:
                     import note_poster
@@ -232,7 +240,7 @@ def _ensure_scheduler_started_async():
                 except Exception as err:
                     logging.error(f"Scheduled note promotion check failed: {err}")
             # Check note RSS during calm midday (12:15 JST) and pre-evening (17:15 JST) windows to avoid 20:00-22:00 X rush
-            scheduler.add_job(func=_note_check_job, trigger="cron", hour="3,8", minute=15, jitter=300)
+            scheduler.add_job(func=_note_check_job, trigger="cron", hour="3,8", minute=15, jitter=180, executor="sns_ai")
             def _threads_daily_job():
                 try:
                     import threads_poster
@@ -243,7 +251,7 @@ def _ensure_scheduler_started_async():
                         threads_poster.execute_scheduled_threads_post(cur_stores, slot_label="22:00")
                 except Exception as err:
                     logging.error(f"Scheduled Threads post failed: {err}")
-            scheduler.add_job(func=_threads_daily_job, trigger="cron", hour=13, minute=8, jitter=300)
+            scheduler.add_job(func=_threads_daily_job, trigger="cron", hour=13, minute="8,20,32", jitter=90, executor="sns_ai")
             def _ig_carousel_job(slot_lbl="21:45"):
                 try:
                     import instagram_poster
@@ -255,8 +263,8 @@ def _ensure_scheduler_started_async():
                 except Exception as err:
                     logging.error(f"Scheduled Instagram carousel post failed: {err}")
             # Friday pre-outing forecast (18:45 JST = 09:45 UTC) + Tue/Sun evening report (21:45 JST = 12:45 UTC)
-            scheduler.add_job(func=_ig_carousel_job, trigger="cron", day_of_week="fri", hour=9, minute=45, jitter=300, args=["18:45"])
-            scheduler.add_job(func=_ig_carousel_job, trigger="cron", day_of_week="tue,sun", hour=12, minute=45, jitter=300, args=["21:45"])
+            scheduler.add_job(func=_ig_carousel_job, trigger="cron", day_of_week="fri", hour=9, minute="45,56", jitter=60, args=["18:45"], executor="sns_ai")
+            scheduler.add_job(func=_ig_carousel_job, trigger="cron", day_of_week="tue,sun", hour=12, minute="45,56", jitter=60, args=["21:45"], executor="sns_ai")
             # Plan E: Women-perspective 'Tonight's Zero-Wait & Ladies Perks' alerts on Threads (Wed/Fri/Sat 19:30 JST) & Instagram (Thu/Sat 19:45 JST)
             def _threads_ladies_job():
                 try:
@@ -268,7 +276,7 @@ def _ensure_scheduler_started_async():
                         threads_poster.execute_scheduled_ladies_threads_post(cur_stores, slot_label="19:30")
                 except Exception as err:
                     logging.error(f"Scheduled Threads ladies post failed: {err}")
-            scheduler.add_job(func=_threads_ladies_job, trigger="cron", day_of_week="wed,fri,sat", hour=10, minute=30, jitter=240)
+            scheduler.add_job(func=_threads_ladies_job, trigger="cron", day_of_week="wed,fri,sat", hour=10, minute="30,42", jitter=90, executor="sns_ai")
             def _ig_ladies_job():
                 try:
                     import instagram_poster
@@ -279,7 +287,7 @@ def _ensure_scheduler_started_async():
                         instagram_poster.execute_scheduled_ladies_instagram_post(cur_stores, slot_label="19:45")
                 except Exception as err:
                     logging.error(f"Scheduled Instagram ladies post failed: {err}")
-            scheduler.add_job(func=_ig_ladies_job, trigger="cron", day_of_week="thu,sat", hour=10, minute=45, jitter=240)
+            scheduler.add_job(func=_ig_ladies_job, trigger="cron", day_of_week="thu,sat", hour=10, minute="45,56", jitter=60, executor="sns_ai")
             def _crawl_events_job():
                 try:
                     import events
@@ -296,7 +304,7 @@ def _ensure_scheduler_started_async():
                     scheduled_articles.check_and_announce_newly_published()
                 except Exception as err:
                     logging.error(f"Scheduled articles release check failed: {err}")
-            scheduler.add_job(func=_scheduled_articles_release_job, trigger="interval", minutes=15)
+            scheduler.add_job(func=_scheduled_articles_release_job, trigger="interval", minutes=15, executor="sns_ai")
             def _bonus_alert_check_job():
                 try:
                     import bonus_alert
@@ -307,8 +315,8 @@ def _ensure_scheduler_started_async():
                         bonus_alert.check_and_post_bonus_alert(cur_stores)
                 except Exception as err:
                     logging.error(f"Bonus alert check failed: {err}")
-            scheduler.add_job(func=_bonus_alert_check_job, trigger="interval", minutes=10)
-            scheduler.add_job(func=run_scheduled_weekly_x_post, trigger="cron", day_of_week="sun", hour=10, minute=0, jitter=300)
+            scheduler.add_job(func=_bonus_alert_check_job, trigger="interval", minutes=10, executor="sns_ai")
+            scheduler.add_job(func=run_scheduled_weekly_x_post, trigger="cron", day_of_week="sun", hour=10, minute="0,15", jitter=120, executor="sns_ai")
             def _pdca_autonomous_job():
                 try:
                     import pdca_engine
@@ -324,7 +332,7 @@ def _ensure_scheduler_started_async():
                 except Exception as err:
                     logging.error(f"Autonomous PDCA cycle failed: {err}")
             # Run daily before evening SNS rush (17:35 JST = 08:35 UTC) and after late-night close (03:35 JST = 18:35 UTC)
-            scheduler.add_job(func=_pdca_autonomous_job, trigger="cron", hour="8,18", minute=35, jitter=120)
+            scheduler.add_job(func=_pdca_autonomous_job, trigger="cron", hour="8,18", minute=35, jitter=120, executor="sns_ai")
             def _sheets_retention_job():
                 try:
                     import archive_data
@@ -333,6 +341,22 @@ def _ensure_scheduler_started_async():
                     logging.error(f"Scheduled Google Sheets retention job failed: {err}")
             # Run daily during quiet early-morning off-hours (06:20 JST = 21:20 UTC) to prevent 10M-cell ceiling
             scheduler.add_job(func=_sheets_retention_job, trigger="cron", hour=21, minute=20, jitter=120)
+            def _daily_token_and_db_maintenance_job():
+                try:
+                    import threads_poster
+                    import instagram_poster
+                    if hasattr(threads_poster, 'maybe_refresh_threads_token'):
+                        threads_poster.maybe_refresh_threads_token()
+                    if hasattr(instagram_poster, 'maybe_refresh_ig_token'):
+                        instagram_poster.maybe_refresh_ig_token()
+                except Exception as err:
+                    logging.warning(f"Daily Meta token auto-refresh check warning: {err}")
+                try:
+                    local_db.prune_old_logs(monitor_days=60, vote_days=14)
+                except Exception as err:
+                    logging.warning(f"Daily SQLite prune warning: {err}")
+            # Run daily at 06:35 JST (21:35 UTC) so Meta 60-day tokens renew even on quiet weekdays and SQLite stays lean
+            scheduler.add_job(func=_daily_token_and_db_maintenance_job, trigger="cron", hour=21, minute=35, jitter=120, executor="sns_ai")
             scheduler.start()
             # Priority #1 at t=0s: scrape live headcounts first without competing with SQLite backfill or Sheets reads
             trigger_background_fetch_if_needed()
@@ -636,6 +660,7 @@ _ogp_bytes_cache = OrderedDict()
 _OGP_BYTES_CACHE_MAX = 24
 _sns_cache_lock = threading.Lock()
 _staff_editorial_preview_cache = {'ts': 0.0, 'sig': None, 'data': None}
+_aux_doc_cache_lock = threading.Lock()
 _sitemap_xml_cache = {'key': None, 'xml': None}
 _llms_txt_cache = {'key': None, 'short': None, 'full': None}
 _CACHE_QUERY_ALLOWLIST = ('s', 'area', 'slot', 'channel', 'switch', 'days', 'format')
@@ -669,9 +694,13 @@ def clear_fast_http_caches(clear_editorial: bool = True):
             _editorial_html_cache.clear()
     with _ogp_bytes_cache_lock:
         _ogp_bytes_cache.clear()
-    _llms_txt_cache['key'] = None
-    _llms_txt_cache['short'] = None
-    _llms_txt_cache['full'] = None
+    with _aux_doc_cache_lock:
+        _llms_txt_cache['key'] = None
+        _llms_txt_cache['short'] = None
+        _llms_txt_cache['full'] = None
+        if clear_editorial:
+            _sitemap_xml_cache['key'] = None
+            _sitemap_xml_cache['xml'] = None
     if clear_editorial:
         with _sns_cache_lock:
             _staff_editorial_preview_cache['ts'] = 0.0
@@ -706,7 +735,7 @@ def _cached_json_response(cache_key, build_dict_fn, ttl_sec=30.0):
             return _build_precompressed_response(hit[1], hit[2], 'application/json', hit[3])
     payload, status_code = build_dict_fn()
     raw_bytes = json.dumps(payload, ensure_ascii=False).encode('utf-8')
-    gz_bytes = gzip.compress(raw_bytes, compresslevel=6) if (status_code == 200 and len(raw_bytes) > 500) else None
+    gz_bytes = gzip.compress(raw_bytes, compresslevel=4) if (status_code == 200 and len(raw_bytes) > 500) else None
     if status_code == 200:
         with _api_json_cache_lock:
             _api_json_cache[cache_key] = (now_mono, raw_bytes, gz_bytes, status_code)
@@ -729,6 +758,7 @@ def _live_data_signature(stores, last_updated=None, is_seed=False):
                 int(s.get('men_diff') or 0),
                 int((s.get('votes') or {}).get('smooth') or 0),
                 int((s.get('votes') or {}).get('waiting') or 0),
+                int((s.get('votes') or {}).get('lively') or 0),
             )
             for s in (stores or [])
         ),
@@ -835,7 +865,7 @@ def _get_cached_html_or_render(cache_extra_key, render_fn, ttl_sec=660.0):
     rendered = render_fn()
     if isinstance(rendered, str):
         raw_bytes = rendered.encode('utf-8')
-        gz_bytes = gzip.compress(raw_bytes, compresslevel=6) if len(raw_bytes) > 500 else None
+        gz_bytes = gzip.compress(raw_bytes, compresslevel=4) if len(raw_bytes) > 500 else None
         with _page_html_cache_lock:
             target_cache[full_key] = (now_mono, raw_bytes, gz_bytes)
             target_cache.move_to_end(full_key)
@@ -1003,33 +1033,44 @@ def get_initial_status_payload():
 
 
 _prewarm_in_progress = False
+_last_html_prewarm_mono = 0.0
 _last_data_audit_mono = 0.0
 
 
 def prewarm_ssr_and_status_caches():
-    """Pre-populate SSR payload, /api/status, and primary HTML route caches on background update thread so user GET never misses."""
-    global _prewarm_in_progress
-    if _prewarm_in_progress:
-        return
-    _prewarm_in_progress = True
+    """Pre-populate SSR payload immediately and warm primary gzip caches asynchronously without per-minute CPU spikes."""
+    global _prewarm_in_progress, _last_html_prewarm_mono
     try:
         get_initial_status_payload()
-        if os.environ.get('DISABLE_SCHEDULER') == '1' or app.testing:
-            return
-        headers = {
-            'User-Agent': 'aiseki-internal-prewarm-bot/1.0',
-            'Accept-Encoding': 'gzip',
-        }
-        with app.test_client() as client:
-            for path in ('/api/status', '/', '/for-women', '/price-comparison', '/areas'):
-                try:
-                    client.get(path, headers=headers)
-                except Exception:
-                    pass
     except Exception:
         pass
-    finally:
-        _prewarm_in_progress = False
+    if os.environ.get('DISABLE_SCHEDULER') == '1' or app.testing or _prewarm_in_progress:
+        return
+    now_mono = time.monotonic()
+    # Warm `/api/status` every cycle (tiny JSON) and full `/` HTML every 180s in a background thread
+    warm_full_html = (now_mono - _last_html_prewarm_mono) >= 180.0
+    if warm_full_html:
+        _last_html_prewarm_mono = now_mono
+    _prewarm_in_progress = True
+
+    def _bg_warm(do_html: bool):
+        global _prewarm_in_progress
+        try:
+            headers = {
+                'User-Agent': 'aiseki-internal-prewarm-bot/1.0',
+                'Accept-Encoding': 'gzip',
+            }
+            paths = ('/api/status', '/', '/for-women', '/price-comparison') if do_html else ('/api/status', '/')
+            with app.test_client() as client:
+                for path in paths:
+                    try:
+                        client.get(path, headers=headers)
+                    except Exception:
+                        pass
+        finally:
+            _prewarm_in_progress = False
+
+    threading.Thread(target=_bg_warm, args=(warm_full_html,), daemon=True).start()
 
 # Region Definitions
 REGIONS = {
@@ -1169,17 +1210,36 @@ def refresh_momentum_from_db():
     except Exception as e:
         print(f"[app] refresh_momentum_from_db error: {e}", file=sys.stderr)
 
-def update_job(force=False):
-    global latest_data, _last_update_error, rolling_snapshots, _last_fetch_at, _last_data_audit_mono
-    with data_lock:
-        has_live_data = bool(latest_data.get('full_data')) and not latest_data.get('is_seed')
-    if not force and has_live_data and _last_fetch_at is not None:
-        elapsed = (datetime.datetime.now() - _last_fetch_at).total_seconds()
-        if elapsed < fetch_interval_sec() - 5:
-            return
-    _last_fetch_at = datetime.datetime.now()
-    print(f"[{datetime.datetime.now()}] Updating data...")
+_is_fetching = False
+_fetch_started_at = None
+_last_update_error = None
+_fetch_lock = threading.Lock()
+
+
+def update_job(force=False, _claimed=False):
+    global latest_data, _last_update_error, rolling_snapshots, _last_fetch_at, _last_data_audit_mono, _is_fetching, _fetch_started_at
+    claimed_here = False
+    if not _claimed:
+        with _fetch_lock:
+            if _is_fetching:
+                if _fetch_started_at and (datetime.datetime.now() - _fetch_started_at).total_seconds() > 150:
+                    _is_fetching = False
+                elif not force:
+                    return
+            if not _is_fetching:
+                _is_fetching = True
+                _fetch_started_at = datetime.datetime.now()
+                claimed_here = True
+
     try:
+        with data_lock:
+            has_live_data = bool(latest_data.get('full_data')) and not latest_data.get('is_seed')
+        if not force and has_live_data and _last_fetch_at is not None:
+            elapsed = (datetime.datetime.now() - _last_fetch_at).total_seconds()
+            if elapsed < fetch_interval_sec() - 5:
+                return
+        _last_fetch_at = datetime.datetime.now()
+        print(f"[{datetime.datetime.now()}] Updating data...")
         data = monitor.get_all_data()
         if data:
             for store in data:
@@ -1212,7 +1272,7 @@ def update_job(force=False):
                 if len(rolling_snapshots) > 25:
                     rolling_snapshots[:] = rolling_snapshots[-25:]
 
-            # Fetch recent crowd votes (last 4 hours)
+            # Fetch recent crowd votes & recent DB fallback OUTSIDE `data_lock` so web threads never wait on SQLite
             try:
                 votes_map = local_db.get_recent_votes(hours=4)
             except Exception:
@@ -1220,6 +1280,12 @@ def update_job(force=False):
 
             import store_master
             valid_master = store_master.load()
+            recent_db_snap = {}
+            if valid_master:
+                try:
+                    recent_db_snap = local_db.get_snapshot_around(0, 30) or {}
+                except Exception:
+                    recent_db_snap = {}
             now_epoch = time.time()
 
             with data_lock:
@@ -1229,11 +1295,6 @@ def update_job(force=False):
                 # transiently times out on a cold-start deploy (prevents Oriental Lounge / JIS vanishing for 10m!)
                 merged_map = {}
                 if valid_master:
-                    recent_db_snap = {}
-                    try:
-                        recent_db_snap = local_db.get_snapshot_around(0, 30) or {}
-                    except Exception:
-                        recent_db_snap = {}
                     for m_name, m_info in valid_master.items():
                         brand_u = (m_info.get('brand') or 'OLG').upper()
                         m_source = 'oriental' if brand_u in ('OLG', 'AG') else brand_u.lower()
@@ -1279,28 +1340,17 @@ def update_job(force=False):
                     s['votes'] = votes_map.get(sname, {'smooth': 0, 'waiting': 0, 'lively': 0})
                     s['fetched_at'] = now_epoch
                     merged_map[sname] = s
-                
+
                 merged_data = list(merged_map.values())
                 sorted_data = sorted(merged_data, key=lambda x: (x.get('region') != 'Korea', x['women'], x['men']), reverse=True)
                 top_store = sorted_data[0] if sorted_data else None
-                
+
                 latest_data['top_store'] = top_store
                 latest_data['full_data'] = sorted_data
                 latest_data['last_updated'] = jst_now.strftime("%Y-%m-%d %H:%M:%S")
                 latest_data['is_seed'] = False
             save_latest_status_snapshot()
-            with _ssr_payload_cache_lock:
-                _ssr_payload_cache['key'] = None
-                _ssr_payload_cache['payload'] = None
-            with _status_json_cache_lock:
-                _status_json_cache['key'] = None
-                _status_json_cache['raw'] = None
-                _status_json_cache['gzip'] = None
-                _status_json_cache['etag'] = None
-            with _api_json_cache_lock:
-                _api_json_cache.clear()
-            with _ogp_bytes_cache_lock:
-                _ogp_bytes_cache.clear()
+            clear_fast_http_caches(clear_editorial=False)
             prewarm_ssr_and_status_caches()
             print(f"Data updated. Top store: {top_store['name'] if top_store else 'None'}")
             _last_update_error = None
@@ -1312,11 +1362,11 @@ def update_job(force=False):
                     data_audit.run_data_audit(live_stores=sorted_data, send_alerts=True)
                 except Exception:
                     pass
-            
+
             # --- Logging Optimization ---
             total_guests = sum(d.get('men', 0) + d.get('women', 0) for d in data)
             is_off_hours = 7 <= jst_now.hour < 17
-            
+
             last_logged_str = latest_data.get('last_logged')
             is_logging_time = True
             if last_logged_str:
@@ -1343,6 +1393,11 @@ def update_job(force=False):
         import traceback
         traceback.print_exc()
         _last_update_error = e
+    finally:
+        if claimed_here:
+            with _fetch_lock:
+                _is_fetching = False
+                _fetch_started_at = None
 
 
 
@@ -1485,7 +1540,7 @@ def affiliate_redirect(item_id):
     target_url = affiliate_manager.resolve_affiliate_url(clean_id, allow_blocking=False) or AFFILIATE_REDIRECTS.get(clean_id)
     if not target_url:
         return redirect(url_for('index'))
-    if not _is_bot_request():
+    if not _is_bot_request() and not session.get('is_staff') and request.args.get('staff_test') != '1':
         try:
             import analytics
             parsed_ref = urllib_parse.urlparse(request.referrer or '')
@@ -1565,7 +1620,7 @@ def track_page_views(response):
 @app.route('/api/track', methods=['POST'])
 def track_event():
     """Receives navigator.sendBeacon events from the frontend (event + short label only)."""
-    if _is_bot_request():
+    if _is_bot_request() or session.get('is_staff'):
         return ('', 204)
     payload = request.get_json(silent=True, force=True) or {}
     import analytics
@@ -1787,11 +1842,24 @@ _sns_zip_bytes_cache = {'key': None, 'ts': 0.0, 'bytes': None}
 def _sns_context_sig(ctx: dict) -> tuple:
     if not isinstance(ctx, dict):
         return ()
-    top_sig = tuple(
-        (p.get('raw_name') or p.get('short_name'), p.get('peak_women'), p.get('avg_wpct'))
-        for p in (ctx.get('top_picks') or [])[:5]
+    vol_sig = tuple(
+        (
+            p.get('raw_name') or p.get('short_name'),
+            p.get('women') if p.get('women') is not None else p.get('peak_women'),
+            p.get('men'),
+            p.get('avg_wpct'),
+        )
+        for p in (ctx.get('top_volume') or ctx.get('top_picks') or [])[:5]
     )
-    return (ctx.get('weekend_label'), ctx.get('generated_at'), top_sig)
+    ana_sig = tuple(
+        (
+            p.get('raw_name') or p.get('short_name'),
+            p.get('women') if p.get('women') is not None else p.get('peak_women'),
+            p.get('avg_wpct'),
+        )
+        for p in (ctx.get('top_anaba') or [])[:3]
+    )
+    return (ctx.get('theme_key'), ctx.get('weekend_label'), vol_sig, ana_sig)
 
 
 def _get_sns_kit_context(fast=False):
@@ -1914,6 +1982,7 @@ def api_sns_editorial():
     slot_label = (request.args.get('slot') or '22:00').strip()
     tone_mode = (request.args.get('tone') or '').strip().lower() or None
     force_ai = request.args.get('refresh_ai') == '1'
+    cache_only = (request.args.get('cache_only') == '1') and not force_ai
     with data_lock:
         live_s = list(latest_data.get('full_data') or [])
     ig_ctx = _get_sns_kit_context(fast=True) if channel == 'instagram' else None
@@ -1925,6 +1994,7 @@ def api_sns_editorial():
         record_history=False,
         use_ai=True,
         force_ai_refresh=force_ai,
+        ai_cache_only=cache_only,
         tone_mode=tone_mode,
     ))
 
@@ -2141,6 +2211,7 @@ def api_column_editorial():
     custom_topic = (request.args.get('topic') or '').strip()
     tone_mode = (request.args.get('tone') or '').strip().lower() or None
     force_ai = request.args.get('refresh_ai') == '1'
+    cache_only = (request.args.get('cache_only') == '1') and not force_ai
     with data_lock:
         live_s = list(latest_data.get('full_data') or [])
     return jsonify(column_editorial.run_column_editorial_pipeline(
@@ -2149,7 +2220,7 @@ def api_column_editorial():
         custom_topic=custom_topic,
         use_ai=True,
         force_ai_refresh=force_ai,
-        ai_cache_only=False,
+        ai_cache_only=cache_only,
         tone_mode=tone_mode,
     ))
 
@@ -2258,6 +2329,7 @@ def api_pdca():
     restore_latest_data_if_empty()
     days = max(1, min(90, request.args.get('days', 14, type=int)))
     force_ai = request.args.get('refresh_ai') == '1'
+    cache_only = (request.args.get('cache_only') == '1') and not force_ai
     with data_lock:
         live_s = list(latest_data.get('full_data') or [])
     return jsonify(pdca_engine.run_pdca_cycle(
@@ -2265,7 +2337,7 @@ def api_pdca():
         days=days,
         apply_actions=False,
         use_ai=True,
-        ai_cache_only=False,
+        ai_cache_only=cache_only,
         force_ai_refresh=force_ai,
         record_log=False,
     ))
@@ -2386,22 +2458,17 @@ def public_ig_slide_png(slide_num):
         logging.error(f"Public IG slide generation failed: {e}")
         abort(503)
 
-_is_fetching = False
-_fetch_started_at = None
-_last_update_error = None
-_fetch_lock = threading.Lock()
-
 def trigger_background_fetch_if_needed():
     """Check if data is stale and trigger a background fetch if needed.
     MUST be called WITHOUT holding data_lock to avoid deadlock."""
     global _is_fetching, _fetch_started_at
     if os.environ.get('DISABLE_SCHEDULER') == '1':
         return
-    
+
     with data_lock:
         last_updated = latest_data.get('last_updated')
         has_data = bool(latest_data.get('full_data')) and not latest_data.get('is_seed')
-    
+
     is_stale = False
     if last_updated and has_data:
         last_time = datetime.datetime.strptime(last_updated, "%Y-%m-%d %H:%M:%S")
@@ -2411,10 +2478,10 @@ def trigger_background_fetch_if_needed():
 
     if not has_data or is_stale:
         with _fetch_lock:
-            # If a fetch has been running for more than 200s, assume it's hung and reset
+            # If a fetch has been running for more than 150s, assume it's hung and reset
             if _is_fetching and _fetch_started_at:
                 elapsed = (datetime.datetime.now() - _fetch_started_at).total_seconds()
-                if elapsed > 200:
+                if elapsed > 150:
                     print(f"WARNING: Previous fetch hung for {elapsed:.0f}s. Resetting flag.")
                     _is_fetching = False
                 else:
@@ -2423,12 +2490,12 @@ def trigger_background_fetch_if_needed():
                 return
             _is_fetching = True
             _fetch_started_at = datetime.datetime.now()
-        
+
         print("Data missing or stale. Triggering background fetch in worker...")
         def background_fetch():
             global _is_fetching, _fetch_started_at
             try:
-                update_job(force=not has_data)
+                update_job(force=not has_data, _claimed=True)
             finally:
                 with _fetch_lock:
                     _is_fetching = False
@@ -2490,7 +2557,7 @@ def get_status():
         'status': 'success',
         'is_seed': is_s,
     }, ensure_ascii=False).encode('utf-8')
-    gz_bytes = gzip.compress(raw_bytes, compresslevel=6) if len(raw_bytes) > 500 else None
+    gz_bytes = gzip.compress(raw_bytes, compresslevel=4) if len(raw_bytes) > 500 else None
     etag_val = f'W/"{zlib.crc32(raw_bytes):08x}-{len(raw_bytes):x}"'
     with _status_json_cache_lock:
         _status_json_cache['key'] = c_key
@@ -2668,6 +2735,8 @@ def post_store_vote():
             if s.get('name') == store_name:
                 s['votes'] = counts
                 break
+    if ok:
+        clear_fast_http_caches(clear_editorial=False)
 
     return jsonify({
         'status': 'success' if ok else 'duplicate',
@@ -2749,12 +2818,13 @@ def _build_llms_txt_documents() -> tuple:
         _live_data_signature(stores, last_u, is_s),
         tuple(it.get('slug') for it in pub_items),
     )
-    if (
-        _llms_txt_cache['key'] == cache_key
-        and _llms_txt_cache['short'] is not None
-        and _llms_txt_cache['full'] is not None
-    ):
-        return _llms_txt_cache['short'], _llms_txt_cache['full']
+    with _aux_doc_cache_lock:
+        if (
+            _llms_txt_cache['key'] == cache_key
+            and _llms_txt_cache['short'] is not None
+            and _llms_txt_cache['full'] is not None
+        ):
+            return _llms_txt_cache['short'], _llms_txt_cache['full']
 
     master_map = store_master.load()
     total_stores = len(master_map) or 53
@@ -2907,9 +2977,10 @@ def _build_llms_txt_documents() -> tuple:
 """
 
     full_doc = common_header + faq_section
-    _llms_txt_cache['key'] = cache_key
-    _llms_txt_cache['short'] = short_doc
-    _llms_txt_cache['full'] = full_doc
+    with _aux_doc_cache_lock:
+        _llms_txt_cache['key'] = cache_key
+        _llms_txt_cache['short'] = short_doc
+        _llms_txt_cache['full'] = full_doc
     return short_doc, full_doc
 
 
@@ -3173,8 +3244,9 @@ def sitemap_xml():
     today = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).strftime('%Y-%m-%d')
     pub_items = scheduled_articles.get_published_articles()
     smap_key = (today, tuple(it.get('slug') for it in pub_items))
-    if _sitemap_xml_cache['key'] == smap_key and _sitemap_xml_cache['xml'] is not None:
-        return Response(_sitemap_xml_cache['xml'], mimetype='application/xml')
+    with _aux_doc_cache_lock:
+        if _sitemap_xml_cache['key'] == smap_key and _sitemap_xml_cache['xml'] is not None:
+            return Response(_sitemap_xml_cache['xml'], mimetype='application/xml')
     brand_urls = "\n".join([
         f"""  <url>
     <loc>https://aiseki-navi.com/{bslug}</loc>
@@ -3341,8 +3413,9 @@ def sitemap_xml():
     <priority>0.5</priority>
   </url>
 </urlset>"""
-    _sitemap_xml_cache['key'] = smap_key
-    _sitemap_xml_cache['xml'] = xml
+    with _aux_doc_cache_lock:
+        _sitemap_xml_cache['key'] = smap_key
+        _sitemap_xml_cache['xml'] = xml
     return Response(xml, mimetype='application/xml')
 
 @app.route('/columns')

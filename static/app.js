@@ -4,6 +4,7 @@
  */
 
         const IS_STAFF = (window.APP_CONFIG && window.APP_CONFIG.isStaff) || false;
+        const IS_STAFF_SESSION = IS_STAFF || Boolean(window.APP_CONFIG && window.APP_CONFIG.isStaffSession);
         let currentFilter = 'All';
         let currentSearch = '';
         let currentSort = 'women';
@@ -155,7 +156,7 @@
 
         // --- First-party analytics (event + short label only, no personal data) ---
         function trackEvent(event, label) {
-            if (IS_STAFF) return;
+            if (IS_STAFF || IS_STAFF_SESSION) return;
             try {
                 const body = JSON.stringify({ event: String(event || ''), label: String(label || '').slice(0, 80) });
                 if (navigator.sendBeacon) {
@@ -595,7 +596,14 @@
 
         // --- Staff Events Visibility Control ---
         // In staff mode, events are hidden by default to prioritize analytics and operations
-        let staffHideEvents = IS_STAFF ? (localStorage.getItem('olg_staff_hide_events') !== 'false') : false;
+        let staffHideEvents = false;
+        if (IS_STAFF) {
+            try {
+                staffHideEvents = localStorage.getItem('olg_staff_hide_events') !== 'false';
+            } catch (e) {
+                staffHideEvents = true;
+            }
+        }
 
         function shouldShowEvents() {
             if (IS_STAFF && staffHideEvents) return false;
@@ -662,9 +670,19 @@
             list: 'リストモード（1行表示）',
             light: 'ライトモード（白背景）'
         };
-        let currentTheme = localStorage.getItem('olg_view_theme') || (localStorage.getItem('olg_compact_view') === 'true' ? 'list' : 'default');
+        let currentTheme = 'default';
+        try {
+            currentTheme = localStorage.getItem('olg_view_theme') || (localStorage.getItem('olg_compact_view') === 'true' ? 'list' : 'default');
+        } catch (e) {}
         if (!THEME_ORDER.includes(currentTheme)) currentTheme = 'default';
-        let pinnedStores = JSON.parse(localStorage.getItem('olg_pinned_stores')) || [];
+        let pinnedStores = [];
+        try {
+            const rawPinned = localStorage.getItem('olg_pinned_stores');
+            const parsedPinned = rawPinned ? JSON.parse(rawPinned) : [];
+            if (Array.isArray(parsedPinned)) pinnedStores = parsedPinned;
+        } catch (e) {
+            pinnedStores = [];
+        }
 
         function applyThemeClasses(themeName) {
             document.body.classList.remove('compact-mode', 'theme-list', 'theme-flat', 'theme-light');
@@ -750,7 +768,9 @@
             } else {
                 pinnedStores.push(storeName);
             }
-            localStorage.setItem('olg_pinned_stores', JSON.stringify(pinnedStores));
+            try {
+                localStorage.setItem('olg_pinned_stores', JSON.stringify(pinnedStores));
+            } catch (e) {}
 
             // Re-render immediately
             if (window.lastData) {
@@ -890,7 +910,7 @@
                     ? '💄 女性目線モード（ライト配色・待ち0順）に切り替えました'
                     : '🕺 男性目線モード（女性人数順）に切り替えました');
             }
-            if (notify && navigator.sendBeacon) {
+            if (!IS_STAFF && !IS_STAFF_SESSION && notify && navigator.sendBeacon) {
                 try {
                     navigator.sendBeacon('/api/track', new Blob([JSON.stringify({
                         event: 'share',
@@ -1004,7 +1024,7 @@
                     // Only skip the first /api/status call when the embedded data is very fresh (< 20s).
                     _renderedFromSSR = getStatusAgeSec(window.INITIAL_STATUS_DATA) < 20;
                     const rankingListEl = document.getElementById('ranking-list');
-                    const hasInfeedAds = !IS_STAFF && typeof AFFILIATE_MASTER !== 'undefined' && AFFILIATE_MASTER && AFFILIATE_MASTER.enabled && Array.isArray(AFFILIATE_MASTER.infeedSlots) && AFFILIATE_MASTER.infeedSlots.length > 0;
+                    const hasInfeedAds = !IS_STAFF_SESSION && typeof AFFILIATE_MASTER !== 'undefined' && AFFILIATE_MASTER && AFFILIATE_MASTER.enabled && Array.isArray(AFFILIATE_MASTER.infeedSlots) && AFFILIATE_MASTER.infeedSlots.length > 0;
                     const staffEventsMismatch = IS_STAFF && shouldShowEvents();
                     const pinnedAlreadyHydrated = (pinnedStores.length === 0) || Boolean(window.__SSR_PINNED_HYDRATED);
                     const canHydrateSsrZeroDom = (
@@ -1103,7 +1123,7 @@
                 const reqHeaders = (!isInitialLoad && _lastStatusEtag) ? { 'If-None-Match': _lastStatusEtag } : null;
                 const response = await fetchWithTimeout('/api/status', 15000, reqHeaders);
                 if (response.status === 304) {
-                    return;
+                    return true;
                 }
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 const respEtag = response.headers ? response.headers.get('ETag') : '';
@@ -1126,7 +1146,7 @@
                         }
                     }
                     setTimeout(fetchData, 2500);
-                    return;
+                    return false;
                 }
 
                 if (data.error || data.status !== 'success') {
@@ -1134,13 +1154,13 @@
                     if (list.children.length === 0) {
                         showError();
                     }
-                    return;
+                    return false;
                 }
 
                 // Never overwrite the UI with 0:0 cold-start seed data; retry quickly until real scrape finishes
                 if (data.is_seed) {
                     setTimeout(fetchData, 1500);
-                    return;
+                    return false;
                 }
 
                 isInitialLoad = false;
@@ -1161,6 +1181,7 @@
                 if (shouldShowEvents() && !_eventsFetched) {
                     loadEvents();
                 }
+                return true;
             } catch (e) {
                 console.error("Fetch error:", e);
                 if (isInitialLoad) {
@@ -1173,6 +1194,7 @@
                 } else {
                     console.warn("Background fetch failed, keeping existing data");
                 }
+                return false;
             }
         }
 
@@ -1206,17 +1228,25 @@
             if (labelSpan) labelSpan.textContent = '更新中...';
             showRefreshToast('最新データを取得中...');
             
-            await fetchData();
-            
-            if (btn) {
-                btn.classList.remove('spinning');
-                btn.disabled = false;
+            let ok = false;
+            try {
+                ok = Boolean(await fetchData());
+            } finally {
+                if (btn) {
+                    btn.classList.remove('spinning');
+                    btn.disabled = false;
+                }
+                if (labelSpan) labelSpan.textContent = '更新';
             }
-            if (labelSpan) labelSpan.textContent = '更新';
-            const timeStr = (window.lastData && window.lastData.timestamp)
-                ? window.lastData.timestamp.split(' ')[1]
-                : new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            showRefreshToast(`最新データに更新しました (${timeStr})`);
+
+            if (ok) {
+                const timeStr = (window.lastData && window.lastData.timestamp)
+                    ? window.lastData.timestamp.split(' ')[1]
+                    : new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                showRefreshToast(`最新データに更新しました (${timeStr})`);
+            } else {
+                showRefreshToast('最新データの取得に失敗しました。通信環境をご確認ください', true);
+            }
         }
 
         // Map English location names to readable Japanese
@@ -1632,7 +1662,9 @@
                 menBar.style.width = '0%';
             }
 
-            container.appendChild(item);
+            if (container) {
+                container.appendChild(item);
+            }
         }
 
         function _computeUiSignature(data) {
@@ -1777,30 +1809,79 @@
 
             if (pinnedItems.length > 0) {
                 pinnedContainer.classList.remove('hidden');
-                const pinnedFrag = document.createDocumentFragment();
-                pinnedItems.forEach(item => {
-                    renderStore(item.store, -1, pinnedFrag, true, item.rank, item.isDup);
-                });
-                pinnedList.replaceChildren(pinnedFrag);
+                const pinnedDom = pinnedList.children;
+                const canPatchPinnedInPlace = (
+                    pinnedDom.length === pinnedItems.length &&
+                    pinnedItems.every((it, idx) => {
+                        const key = String(it.store.name || '').trim();
+                        return key && pinnedDom[idx] && pinnedDom[idx].getAttribute('data-store') === key && _cardDomPool.get(key) === pinnedDom[idx];
+                    })
+                );
+                if (canPatchPinnedInPlace) {
+                    pinnedItems.forEach(item => {
+                        renderStore(item.store, -1, null, true, item.rank, item.isDup);
+                    });
+                } else {
+                    const pinnedFrag = document.createDocumentFragment();
+                    pinnedItems.forEach(item => {
+                        renderStore(item.store, -1, pinnedFrag, true, item.rank, item.isDup);
+                    });
+                    pinnedList.replaceChildren(pinnedFrag);
+                }
             } else {
-                pinnedList.replaceChildren();
+                if (pinnedList.children.length > 0) {
+                    pinnedList.replaceChildren();
+                }
                 pinnedContainer.classList.add('hidden');
             }
 
-            const rankingFrag = document.createDocumentFragment();
-            otherItems.forEach((item, idx) => {
-                renderStore(item.store, item.rank, rankingFrag, false, item.rank, item.isDup);
-                // In staff mode, skip all native in-feed PR cards completely
-                if (!IS_STAFF && typeof AFFILIATE_MASTER !== 'undefined' && AFFILIATE_MASTER.enabled) {
-                    const currentRank = idx + 1;
-                    const slot = AFFILIATE_MASTER.infeedSlots.find(s => s.afterRank === currentRank);
-                    if (slot) {
-                        const prEl = createInfeedPrElement(slot);
-                        if (prEl) rankingFrag.appendChild(prEl);
+            const infeedActive = !IS_STAFF_SESSION && typeof AFFILIATE_MASTER !== 'undefined' && AFFILIATE_MASTER && AFFILIATE_MASTER.enabled && Array.isArray(AFFILIATE_MASTER.infeedSlots);
+            const expectedPrCount = infeedActive
+                ? otherItems.reduce((acc, _it, idx) => acc + (AFFILIATE_MASTER.infeedSlots.some(s => s.afterRank === idx + 1) ? 1 : 0), 0)
+                : 0;
+            const domChildren = rankingList.children;
+            let domPrCount = 0;
+            let storeIdx = 0;
+            let canPatchRankingInPlace = otherItems.length > 0 && domChildren.length === (otherItems.length + expectedPrCount);
+            if (canPatchRankingInPlace) {
+                for (let ci = 0; ci < domChildren.length; ci++) {
+                    const child = domChildren[ci];
+                    if (child.classList && child.classList.contains('pr-card-item')) {
+                        domPrCount++;
+                        continue;
                     }
+                    const expectedKey = storeIdx < otherItems.length ? String(otherItems[storeIdx].store.name || '').trim() : '';
+                    if (!expectedKey || child.getAttribute('data-store') !== expectedKey || _cardDomPool.get(expectedKey) !== child) {
+                        canPatchRankingInPlace = false;
+                        break;
+                    }
+                    storeIdx++;
                 }
-            });
-            rankingList.replaceChildren(rankingFrag);
+                if (storeIdx !== otherItems.length || domPrCount !== expectedPrCount) {
+                    canPatchRankingInPlace = false;
+                }
+            }
+
+            if (canPatchRankingInPlace) {
+                otherItems.forEach((item) => {
+                    renderStore(item.store, item.rank, null, false, item.rank, item.isDup);
+                });
+            } else {
+                const rankingFrag = document.createDocumentFragment();
+                otherItems.forEach((item, idx) => {
+                    renderStore(item.store, item.rank, rankingFrag, false, item.rank, item.isDup);
+                    // In staff mode / staff session, skip all native in-feed PR cards completely
+                    if (infeedActive) {
+                        const currentRank = idx + 1;
+                        const slot = AFFILIATE_MASTER.infeedSlots.find(s => s.afterRank === currentRank);
+                        if (slot) {
+                            const prEl = createInfeedPrElement(slot);
+                            if (prEl) rankingFrag.appendChild(prEl);
+                        }
+                    }
+                });
+                rankingList.replaceChildren(rankingFrag);
+            }
 
             const lastUpdateEl = document.getElementById('last-update');
             if (lastUpdateEl) {
@@ -1816,7 +1897,7 @@
                 return AFFILIATE_MASTER;
             }
             return {
-                enabled: !IS_STAFF,
+                enabled: !IS_STAFF_SESSION,
                 categories: [
                     { id: 'all', name: 'すべて', icon: '' },
                     { id: 'beauty', name: 'メンズ脱毛・美肌', icon: '', highlight: true },
@@ -1829,7 +1910,7 @@
         }
 
         function createInfeedPrElement(slotConfig) {
-            if (IS_STAFF) return null;
+            if (IS_STAFF_SESSION) return null;
             const master = getAffiliateMaster();
             if (!master.enabled) return null;
 
@@ -1885,6 +1966,7 @@
         }
 
         function openGuideModal(initialCategory = 'all') {
+            if (IS_STAFF_SESSION) return;
             currentGuideCategory = initialCategory;
             renderGuideModal();
             document.getElementById('guide-modal')?.classList.remove('hidden');
@@ -3676,6 +3758,7 @@
         }
 
         // Pull to refresh logic
+        let touchstartX = 0;
         let touchstartY = 0;
         let touchendY = 0;
         const pullThreshold = 80;
@@ -3685,7 +3768,7 @@
 
         function isModalActiveForPull(e) {
             if (document.querySelector('.modal:not(.hidden)')) return true;
-            if (e && e.target && e.target.closest && e.target.closest('.modal')) return true;
+            if (e && e.target && e.target.closest && e.target.closest('.portal-global-nav, .filter-bar, .modal')) return true;
             return false;
         }
 
@@ -3694,7 +3777,8 @@
                 isPulling = false;
                 return;
             }
-            if (window.scrollY === 0) {
+            if (window.scrollY === 0 && e.changedTouches && e.changedTouches[0]) {
+                touchstartX = e.changedTouches[0].screenX;
                 touchstartY = e.changedTouches[0].screenY;
                 isPulling = true;
             }
@@ -3706,8 +3790,16 @@
                 pullIndicator?.classList.remove('show');
                 return;
             }
-            const y = e.changedTouches[0].screenY;
-            if (y > touchstartY + pullThreshold) {
+            const touch = e.changedTouches && e.changedTouches[0];
+            if (!touch) return;
+            const dx = Math.abs(touch.screenX - touchstartX);
+            const dy = touch.screenY - touchstartY;
+            if (dx > 22 && dx > Math.abs(dy) * 0.8) {
+                isPulling = false;
+                pullIndicator?.classList.remove('show');
+                return;
+            }
+            if (dy > pullThreshold && dy > dx * 1.5) {
                 pullIndicator?.classList.add('show');
             } else {
                 pullIndicator?.classList.remove('show');
@@ -3720,10 +3812,13 @@
                 pullIndicator?.classList.remove('show');
                 return;
             }
-            touchendY = e.changedTouches[0].screenY;
+            const touch = e.changedTouches && e.changedTouches[0];
+            const dx = touch ? Math.abs(touch.screenX - touchstartX) : 0;
+            touchendY = touch ? touch.screenY : touchstartY;
+            const dy = touchendY - touchstartY;
             isPulling = false;
             
-            if (touchendY > touchstartY + pullThreshold && window.scrollY === 0) {
+            if (dy > pullThreshold && dy > dx * 1.5 && window.scrollY === 0) {
                 // Trigger refresh
                 manualRefresh();
                 setTimeout(() => {
@@ -3821,10 +3916,20 @@
         // Initialize PWA banner check shortly after page load
         setTimeout(checkPwaBannerVisibility, 2000);
 
+        window.addEventListener('pageshow', (e) => {
+            if (e && e.persisted) {
+                document.querySelectorAll('.modal:not(.hidden)').forEach(m => m.classList.add('hidden'));
+                if (document.body) document.body.style.overflow = '';
+            } else if (!document.querySelector('.modal:not(.hidden)') && document.body && document.body.style.overflow === 'hidden') {
+                document.body.style.overflow = '';
+            }
+        });
+
         // ==========================================
         // Instant Navigation Preload & Tap Feedback
         // ==========================================
         (function initFastPortalNavigation() {
+            if (IS_STAFF || IS_STAFF_SESSION) return;
             if (window.__portalNavFastInit) return;
             window.__portalNavFastInit = true;
             const prefetched = Object.create(null);

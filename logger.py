@@ -45,32 +45,38 @@ def _find_creds_path():
 
 
 def get_client():
-    """Authenticates and returns a cached gspread client."""
+    """Authenticates and returns a cached gspread client without holding _auth_lock across network I/O."""
     global _cached_creds, _cached_client, _cached_token, _token_expiry
     now = time.time()
     with _auth_lock:
         if _cached_client and _cached_creds and now < _token_expiry:
             return _cached_client
 
-        creds_path = _find_creds_path()
-        if not creds_path:
-            print(f"Auth Error: Credentials file '{CREDENTIALS_FILE}' not found.", file=sys.stderr)
-            return None
+    creds_path = _find_creds_path()
+    if not creds_path:
+        print(f"Auth Error: Credentials file '{CREDENTIALS_FILE}' not found.", file=sys.stderr)
+        return None
 
-        try:
-            scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-            _cached_creds = ServiceAccountCredentials.from_json_keyfile_name(creds_path, scope)
-            _cached_client = gspread.authorize(_cached_creds)
-            if hasattr(_cached_client, 'set_timeout'):
-                _cached_client.set_timeout(10)
-            token_info = _cached_creds.get_access_token(httplib2.Http(timeout=8))
-            _cached_token = token_info.access_token
+    try:
+        scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+        new_creds = ServiceAccountCredentials.from_json_keyfile_name(creds_path, scope)
+        new_client = gspread.authorize(new_creds)
+        if hasattr(new_client, 'set_timeout'):
+            new_client.set_timeout(10)
+        new_token = getattr(new_creds, 'access_token', None)
+        if not new_token:
+            token_info = new_creds.get_access_token(httplib2.Http(timeout=8))
+            new_token = token_info.access_token
+        with _auth_lock:
+            _cached_creds = new_creds
+            _cached_client = new_client
+            _cached_token = new_token
             # Cache token for 50 minutes (Google tokens last 60 minutes)
-            _token_expiry = now + 3000
+            _token_expiry = time.time() + 3000
             return _cached_client
-        except Exception as e:
-            print(f"Google Sheets Auth Error: {e}", file=sys.stderr)
-            return None
+    except Exception as e:
+        print(f"Google Sheets Auth Error: {e}", file=sys.stderr)
+        return None
 
 
 def get_access_token():
@@ -80,33 +86,47 @@ def get_access_token():
     with _auth_lock:
         if _cached_token and now < _token_expiry:
             return _cached_token
+        creds_ref = _cached_creds
 
-    # Trigger client/token refresh
+    if creds_ref is not None:
+        try:
+            token_info = creds_ref.get_access_token(httplib2.Http(timeout=8))
+            if token_info and token_info.access_token:
+                with _auth_lock:
+                    _cached_token = token_info.access_token
+                    _token_expiry = time.time() + 3000
+                    return _cached_token
+        except Exception:
+            pass
+
+    # Full client/token refresh fallback
     client = get_client()
     if not client:
         return None
-    return _cached_token
+    with _auth_lock:
+        return _cached_token
 
 
 def get_spreadsheet_id():
     """Returns cached spreadsheet ID so we don't query Google Drive on every analysis request."""
     global _cached_spreadsheet_id
-    if _cached_spreadsheet_id:
-        return _cached_spreadsheet_id
+    with _auth_lock:
+        if _cached_spreadsheet_id:
+            return _cached_spreadsheet_id
 
     client = get_client()
     if not client:
         return None
-    with _auth_lock:
-        if _cached_spreadsheet_id:
-            return _cached_spreadsheet_id
-        try:
-            sheet = client.open(SHEET_NAME)
-            _cached_spreadsheet_id = sheet.id
-            return _cached_spreadsheet_id
-        except Exception as e:
-            print(f"Error resolving spreadsheet ID: {e}", file=sys.stderr)
-            return None
+    try:
+        sheet = client.open(SHEET_NAME)
+        sid = getattr(sheet, 'id', None)
+        if sid:
+            with _auth_lock:
+                _cached_spreadsheet_id = sid
+        return sid
+    except Exception as e:
+        print(f"Error resolving spreadsheet ID: {e}", file=sys.stderr)
+        return None
 
 
 def open_spreadsheet(client=None):
@@ -120,20 +140,25 @@ def open_spreadsheet(client=None):
     with _auth_lock:
         if _cached_spreadsheet is not None and _cached_spreadsheet_client_id == cid:
             return _cached_spreadsheet
-        sh = None
-        if _cached_spreadsheet_id and client is _cached_client and hasattr(client, 'open_by_key'):
-            try:
-                sh = client.open_by_key(_cached_spreadsheet_id)
-            except Exception:
-                sh = None
-        if sh is None:
-            sh = client.open(SHEET_NAME)
-            if getattr(sh, 'id', None) and isinstance(sh.id, str) and client is _cached_client:
-                _cached_spreadsheet_id = sh.id
-        if client is _cached_client:
+        known_sid = _cached_spreadsheet_id
+        is_default_client = (client is _cached_client)
+
+    sh = None
+    if known_sid and is_default_client and hasattr(client, 'open_by_key'):
+        try:
+            sh = client.open_by_key(known_sid)
+        except Exception:
+            sh = None
+    if sh is None:
+        sh = client.open(SHEET_NAME)
+
+    with _auth_lock:
+        if getattr(sh, 'id', None) and isinstance(sh.id, str) and (client is _cached_client or is_default_client):
+            _cached_spreadsheet_id = sh.id
+        if client is _cached_client or is_default_client:
             _cached_spreadsheet = sh
             _cached_spreadsheet_client_id = cid
-        return sh
+    return sh
 
 
 last_error = None

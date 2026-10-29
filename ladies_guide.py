@@ -289,7 +289,7 @@ def build_threads_ladies_post(
             )
             parsed, _, _ = sns_editorial.call_editorial_ai_json(
                 prompt=prompt,
-                max_output_tokens=1800,
+                max_output_tokens=2200,
                 thinking_budget=1280,
                 total_deadline_sec=22.0,
                 now_jst=now_jst,
@@ -390,7 +390,7 @@ def build_instagram_ladies_caption(
             )
             parsed, _, _ = sns_editorial.call_editorial_ai_json(
                 prompt=prompt,
-                max_output_tokens=2000,
+                max_output_tokens=2200,
                 thinking_budget=1280,
                 total_deadline_sec=22.0,
                 now_jst=now_jst,

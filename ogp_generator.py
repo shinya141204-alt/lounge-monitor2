@@ -1,5 +1,6 @@
 import io
 import os
+import re
 import datetime
 import threading
 import collections
@@ -11,9 +12,11 @@ FONT_PATH = os.path.join(BASE_DIR, "static", "fonts", "ogp-jp-bold.otf")
 MAC_FONT_BOLD = "/System/Library/Fonts/ヒラギノ角ゴシック W8.ttc"
 
 _FONT_CACHE = {}
+_FONT_LOCK = threading.Lock()
 _BASE_CANVAS_CACHE = collections.OrderedDict()
 _BASE_CANVAS_LOCK = threading.Lock()
-_BASE_CANVAS_MAX = 16
+_BASE_CANVAS_INFLIGHT = {}
+_BASE_CANVAS_MAX = 5
 
 _GLYPH_REPLACEMENTS = {
     "…": "...",
@@ -30,23 +33,16 @@ for _i in range(1, 21):
 for _i in range(1, 11):
     _GLYPH_REPLACEMENTS[chr(0x2775 + _i)] = f"({_i})"
 
+_GLYPH_TRANS_TABLE = str.maketrans(_GLYPH_REPLACEMENTS)
+_STRIP_EMOJI_RE = re.compile(r"[\uFE0E\uFE0F\u200D\U0001F000-\U0010FFFF]+")
+
 
 def sanitize_font_text(text: str) -> str:
     """Replace glyphs missing in bundled `ogp-jp-bold.otf` (e.g. …, ①②③, emojis) to prevent tofu boxes."""
     if not text:
         return ""
-    s = str(text)
-    for src, dst in _GLYPH_REPLACEMENTS.items():
-        if src in s:
-            s = s.replace(src, dst)
-    # Strip supplementary-plane emoji characters not supported by CJK OTF fonts
-    cleaned = []
-    for ch in s:
-        cp = ord(ch)
-        if cp >= 0x1F000 or cp in (0xFE0E, 0xFE0F, 0x200D):
-            continue
-        cleaned.append(ch)
-    return "".join(cleaned)
+    s = str(text).translate(_GLYPH_TRANS_TABLE)
+    return _STRIP_EMOJI_RE.sub("", s)
 
 
 class _SafeImageDraw:
@@ -72,45 +68,83 @@ def make_safe_draw(canvas: Image.Image, mode: str = "RGBA") -> _SafeImageDraw:
     return _SafeImageDraw(ImageDraw.Draw(canvas, mode))
 
 
-def _measure_text_width(draw, text: str, font) -> float:
-    clean = sanitize_font_text(text)
-    w_len = float(draw.textlength(clean, font=font))
+def _measure_clean_text_width(raw_draw, clean_text: str, font) -> float:
+    """Measure already-sanitized text directly on the underlying ImageDraw without re-sanitizing."""
+    if not clean_text:
+        return 0.0
+    w_len = float(raw_draw.textlength(clean_text, font=font))
     try:
-        bbox = draw.textbbox((0, 0), clean, font=font)
+        bbox = raw_draw.textbbox((0, 0), clean_text, font=font)
         return max(w_len, float(bbox[2] - bbox[0]))
     except Exception:
         return w_len
 
 
-def fit_text_and_font(draw, text: str, max_width: int, max_size: int, min_size: int = 15):
-    """Shrink font from `max_size` down to `min_size` so `text` fits within `max_width` (truncating if still wider)."""
+def _measure_text_width(draw, text: str, font) -> float:
     clean = sanitize_font_text(text)
-    for sz in range(max_size, min_size - 1, -1):
-        f_cand = _get_font(sz)
-        if _measure_text_width(draw, clean, f_cand) <= max_width:
-            return clean, f_cand, sz
+    raw_draw = getattr(draw, "_draw", draw)
+    return _measure_clean_text_width(raw_draw, clean, font)
 
-    f_min = _get_font(min_size)
-    trimmed = clean
-    while trimmed and _measure_text_width(draw, trimmed + "...", f_min) > max_width:
-        trimmed = trimmed[:-1]
-    return (trimmed + "..." if trimmed else clean), f_min, min_size
+
+def fit_text_and_font(draw, text: str, max_width: int, max_size: int, min_size: int = 15):
+    """Shrink font from `max_size` down to `min_size` via binary search so `text` fits within `max_width`."""
+    clean = sanitize_font_text(text)
+    raw_draw = getattr(draw, "_draw", draw)
+    f_max = _get_font(max_size)
+    if not clean or _measure_clean_text_width(raw_draw, clean, f_max) <= max_width:
+        return clean, f_max, max_size
+
+    if max_size > min_size:
+        f_min = _get_font(min_size)
+        if _measure_clean_text_width(raw_draw, clean, f_min) <= max_width:
+            lo, hi = min_size + 1, max_size - 1
+            best_sz = min_size
+            best_font = f_min
+            while lo <= hi:
+                mid = (lo + hi) // 2
+                f_mid = _get_font(mid)
+                if _measure_clean_text_width(raw_draw, clean, f_mid) <= max_width:
+                    best_sz = mid
+                    best_font = f_mid
+                    lo = mid + 1
+                else:
+                    hi = mid - 1
+            return clean, best_font, best_sz
+    else:
+        f_min = f_max
+        min_size = max_size
+
+    # Binary search longest prefix that fits with "..."
+    lo, hi = 1, len(clean)
+    best_len = 0
+    while lo <= hi:
+        mid = (lo + hi) // 2
+        if _measure_clean_text_width(raw_draw, clean[:mid] + "...", f_min) <= max_width:
+            best_len = mid
+            lo = mid + 1
+        else:
+            hi = mid - 1
+    return (clean[:best_len] + "..." if best_len > 0 else clean), f_min, min_size
 
 
 def _get_font(size: int) -> ImageFont.FreeTypeFont:
-    if size in _FONT_CACHE:
-        return _FONT_CACHE[size]
-    for path in (FONT_PATH, MAC_FONT_BOLD):
-        if os.path.exists(path):
-            try:
-                f = ImageFont.truetype(path, size)
-                _FONT_CACHE[size] = f
-                return f
-            except Exception:
-                pass
-    f = ImageFont.load_default()
-    _FONT_CACHE[size] = f
-    return f
+    cached = _FONT_CACHE.get(size)
+    if cached is not None:
+        return cached
+    with _FONT_LOCK:
+        if size in _FONT_CACHE:
+            return _FONT_CACHE[size]
+        for path in (FONT_PATH, MAC_FONT_BOLD):
+            if os.path.exists(path):
+                try:
+                    f = ImageFont.truetype(path, size)
+                    _FONT_CACHE[size] = f
+                    return f
+                except Exception:
+                    pass
+        f = ImageFont.load_default()
+        _FONT_CACHE[size] = f
+        return f
 
 
 SLOT_THEMES = {
@@ -262,7 +296,8 @@ def _get_cached_base_canvas(
 ) -> Image.Image:
     """
     Build or retrieve a pre-composited RGB base canvas (background decode + LANCZOS cover resize +
-    GaussianBlur + dark overlay + radial glows) from `_BASE_CANVAS_CACHE` (max 16 entries) and return `.copy()`.
+    GaussianBlur + dark overlay + radial glows) from `_BASE_CANVAS_CACHE` (max 5 entries) with
+    per-key singleflight locking so concurrent requests never duplicate heavy Pillow blurs.
     """
     bg_path = os.path.join(BASE_DIR, "static", bg_filename)
     try:
@@ -287,47 +322,68 @@ def _get_cached_base_canvas(
         if cached is not None:
             _BASE_CANVAS_CACHE.move_to_end(cache_key)
             return cached.copy()
+        inflight = _BASE_CANVAS_INFLIGHT.get(cache_key)
+        if inflight is None:
+            inflight = [threading.Lock(), 0]
+            _BASE_CANVAS_INFLIGHT[cache_key] = inflight
+        inflight[1] += 1
+        key_lock = inflight[0]
 
-    if os.path.exists(bg_path):
-        try:
-            with Image.open(bg_path) as raw_img:
-                bg = raw_img.convert("RGBA")
-            src_w, src_h = bg.size
-            scale = max(width / src_w, height / src_h)
-            nw, nh = int(src_w * scale), int(src_h * scale)
-            bg = bg.resize((nw, nh), Image.Resampling.LANCZOS)
-            left = (nw - width) // 2
-            top = (nh - height) // 2
-            bg = bg.crop((left, top, left + width, top + height))
-            if blur_radius > 0:
-                bg = bg.filter(ImageFilter.GaussianBlur(radius=blur_radius))
-        except Exception:
-            bg = Image.new("RGBA", (width, height), fallback_rgba)
-    else:
-        bg = Image.new("RGBA", (width, height), fallback_rgba)
+    try:
+        with key_lock:
+            with _BASE_CANVAS_LOCK:
+                cached = _BASE_CANVAS_CACHE.get(cache_key)
+                if cached is not None:
+                    _BASE_CANVAS_CACHE.move_to_end(cache_key)
+                    return cached.copy()
 
-    if base_rgba is not None:
-        canvas = Image.new("RGBA", (width, height), base_rgba)
-        canvas.alpha_composite(bg)
-    else:
-        canvas = bg
+            if os.path.exists(bg_path):
+                try:
+                    with Image.open(bg_path) as raw_img:
+                        bg = raw_img.convert("RGBA")
+                    src_w, src_h = bg.size
+                    scale = max(width / src_w, height / src_h)
+                    nw, nh = int(src_w * scale), int(src_h * scale)
+                    bg = bg.resize((nw, nh), Image.Resampling.LANCZOS)
+                    left = (nw - width) // 2
+                    top = (nh - height) // 2
+                    bg = bg.crop((left, top, left + width, top + height))
+                    if blur_radius > 0:
+                        bg = bg.filter(ImageFilter.GaussianBlur(radius=blur_radius))
+                except Exception:
+                    bg = Image.new("RGBA", (width, height), fallback_rgba)
+            else:
+                bg = Image.new("RGBA", (width, height), fallback_rgba)
 
-    overlay = Image.new("RGBA", (width, height), tint_rgba)
-    canvas = Image.alpha_composite(canvas, overlay)
-    for center, rad, col in glows:
-        _draw_radial_glow(canvas, center, rad, col)
+            if base_rgba is not None:
+                canvas = Image.new("RGBA", (width, height), base_rgba)
+                canvas.alpha_composite(bg)
+            else:
+                canvas = bg
 
-    rgb_base = canvas.convert("RGB")
-    with _BASE_CANVAS_LOCK:
-        _BASE_CANVAS_CACHE.pop(cache_key, None)
-        _BASE_CANVAS_CACHE[cache_key] = rgb_base
-        while len(_BASE_CANVAS_CACHE) > _BASE_CANVAS_MAX:
-            _, evicted = _BASE_CANVAS_CACHE.popitem(last=False)
-            try:
-                evicted.close()
-            except Exception:
-                pass
-        return rgb_base.copy()
+            overlay = Image.new("RGBA", (width, height), tint_rgba)
+            canvas = Image.alpha_composite(canvas, overlay)
+            for center, rad, col in glows:
+                _draw_radial_glow(canvas, center, rad, col)
+
+            rgb_base = canvas.convert("RGB")
+            with _BASE_CANVAS_LOCK:
+                _BASE_CANVAS_CACHE.pop(cache_key, None)
+                _BASE_CANVAS_CACHE[cache_key] = rgb_base
+                while len(_BASE_CANVAS_CACHE) > _BASE_CANVAS_MAX:
+                    _, evicted = _BASE_CANVAS_CACHE.popitem(last=False)
+                    try:
+                        evicted.close()
+                    except Exception:
+                        pass
+                return rgb_base.copy()
+    finally:
+        with _BASE_CANVAS_LOCK:
+            cur_inf = _BASE_CANVAS_INFLIGHT.get(cache_key)
+            if cur_inf is inflight:
+                cur_inf[1] -= 1
+                if cur_inf[1] <= 0:
+                    _BASE_CANVAS_INFLIGHT.pop(cache_key, None)
 
 
 def generate_live_ogp_png(stores: list, s_param: str = "", now_jst: datetime.datetime = None) -> bytes:

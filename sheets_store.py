@@ -27,24 +27,36 @@ def get_worksheet(title, header):
     if is_disabled():
         return None
     with _ws_lock:
-        if title in _ws_cache:
-            return _ws_cache[title]
+        cached = _ws_cache.get(title)
+        if cached is not None:
+            return cached
+
+    try:
+        import logger
+        client = logger.get_client()
+        if not client:
+            return None
+        sh = logger.open_spreadsheet(client) if hasattr(logger, 'open_spreadsheet') else client.open(logger.SHEET_NAME)
+        if sh is None:
+            return None
         try:
-            import logger
-            client = logger.get_client()
-            if not client:
-                return None
-            sh = logger.open_spreadsheet(client) if hasattr(logger, 'open_spreadsheet') else client.open(logger.SHEET_NAME)
+            ws = sh.worksheet(title)
+        except Exception:
+            with _ws_lock:
+                cached = _ws_cache.get(title)
+                if cached is not None:
+                    return cached
             try:
-                ws = sh.worksheet(title)
-            except Exception:
                 ws = sh.add_worksheet(title=title, rows=1000, cols=max(len(header), 4))
                 ws.append_row(header)
+            except Exception:
+                ws = sh.worksheet(title)
+        with _ws_lock:
             _ws_cache[title] = ws
-            return ws
-        except Exception as e:
-            logging.error(f"[sheets_store] worksheet '{title}' unavailable: {e}")
-            return None
+        return ws
+    except Exception as e:
+        logging.error(f"[sheets_store] worksheet '{title}' unavailable: {e}")
+        return None
 
 
 def append_rows(title, header, rows):

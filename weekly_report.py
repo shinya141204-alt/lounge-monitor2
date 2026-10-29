@@ -8,6 +8,7 @@ import local_db
 import sys
 
 _report_lock = threading.Lock()
+_report_refreshing = False
 _report_cache = {
     'last_fetched': None,
     'data': None
@@ -23,25 +24,45 @@ def get_business_date_str(dt):
     return dt.strftime("%Y-%m-%d")
 
 
+def _refresh_weekly_report_async():
+    global _report_refreshing
+    with _report_lock:
+        if _report_refreshing:
+            return
+        _report_refreshing = True
+
+    def _worker():
+        global _report_refreshing
+        try:
+            _compute_weekly_report(datetime.datetime.now())
+        except Exception as err:
+            print(f"[Weekly Report] Async refresh failed: {err}", file=sys.stderr)
+        finally:
+            with _report_lock:
+                _report_refreshing = False
+
+    threading.Thread(target=_worker, daemon=True).start()
+
+
 def generate_weekly_report():
     now_utc = datetime.datetime.now()
     cached_data = _report_cache.get('data')
     cached_lf = _report_cache.get('last_fetched')
-    if cached_data and cached_lf and _report_cache_db_path in (None, local_db.DB_PATH):
-        if (now_utc - cached_lf).total_seconds() < REPORT_CACHE_DURATION:
+    same_db = _report_cache_db_path in (None, local_db.DB_PATH)
+    if cached_data and cached_lf and same_db:
+        age = (now_utc - cached_lf).total_seconds()
+        if age < REPORT_CACHE_DURATION:
+            return cached_data
+        # Stale-while-revalidate when prior report exists for the same DB (0ms non-blocking response)
+        if age < REPORT_CACHE_DURATION * 4:
+            _refresh_weekly_report_async()
             return cached_data
 
-    with _report_lock:
-        now_utc = datetime.datetime.now()
-        cached_data = _report_cache.get('data')
-        cached_lf = _report_cache.get('last_fetched')
-        if cached_data and cached_lf and _report_cache_db_path in (None, local_db.DB_PATH):
-            if (now_utc - cached_lf).total_seconds() < REPORT_CACHE_DURATION:
-                return cached_data
-        return _compute_weekly_report_locked(now_utc)
+    # Compute outside global lock so slow gviz HTTP calls never freeze other threads
+    return _compute_weekly_report(now_utc)
 
 
-def _compute_weekly_report_locked(now_utc: datetime.datetime):
+def _compute_weekly_report(now_utc: datetime.datetime):
     global _report_cache, _report_cache_db_path
 
     # Define the 7-day period in JST (excluding today to get full past 7 days)
