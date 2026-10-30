@@ -47,8 +47,31 @@ def _flush_analytics_safe():
         logger.error(f"[worker] analytics flush failed: {err}")
 
 
+def _x_scheduled_job(slot_lbl="20:00"):
+    try:
+        import sns_editorial
+        if not sns_editorial.should_fire_scheduled_slot_now("x", slot_lbl):
+            return
+        app_module.run_scheduled_x_post(slot_lbl)
+    except Exception as err:
+        logger.error(f"[worker] Scheduled X post ({slot_lbl}) failed: {err}")
+
+
+def _x_weekly_sun_job():
+    try:
+        import sns_editorial
+        if not sns_editorial.should_fire_scheduled_slot_now("x_weekly", "19:00"):
+            return
+        app_module.run_scheduled_weekly_x_post()
+    except Exception as err:
+        logger.error(f"[worker] Scheduled weekly X post failed: {err}")
+
+
 def _tip_18_job():
     try:
+        import sns_editorial
+        if not sns_editorial.should_fire_scheduled_slot_now("x_tip", "18:00"):
+            return
         import tips_poster
         tips_poster.run_scheduled_tip_post(slot_label="18:00")
     except Exception as err:
@@ -65,6 +88,9 @@ def _note_check_job():
 
 def _threads_daily_job():
     try:
+        import sns_editorial
+        if not sns_editorial.should_fire_scheduled_slot_now("threads", "22:00"):
+            return
         import threads_poster
         with app_module.data_lock:
             cur_stores = list(app_module.latest_data.get("full_data") or [])
@@ -77,6 +103,9 @@ def _threads_daily_job():
 
 def _ig_carousel_job(slot_lbl="21:45"):
     try:
+        import sns_editorial
+        if not sns_editorial.should_fire_scheduled_slot_now("instagram", slot_lbl):
+            return
         import instagram_poster
         with app_module.data_lock:
             cur_stores = list(app_module.latest_data.get("full_data") or [])
@@ -89,6 +118,9 @@ def _ig_carousel_job(slot_lbl="21:45"):
 
 def _threads_ladies_job():
     try:
+        import sns_editorial
+        if not sns_editorial.should_fire_scheduled_slot_now("threads_ladies", "19:30"):
+            return
         import threads_poster
         with app_module.data_lock:
             cur_stores = list(app_module.latest_data.get("full_data") or [])
@@ -101,6 +133,9 @@ def _threads_ladies_job():
 
 def _ig_ladies_job():
     try:
+        import sns_editorial
+        if not sns_editorial.should_fire_scheduled_slot_now("ig_ladies", "19:45"):
+            return
         import instagram_poster
         with app_module.data_lock:
             cur_stores = list(app_module.latest_data.get("full_data") or [])
@@ -264,22 +299,22 @@ def build_worker_scheduler() -> BackgroundScheduler:
     # 23:52 JST (14:52 UTC) -> right before Fri/Sat X 00:00 midnight wave
     scheduler.add_job(id="prewarm_2352", func=_prewarm_slot_job, trigger="cron", day_of_week="fri,sat", hour=14, minute=52, args=["00:00"], executor="sns_ai")
 
-    # 3. Scheduled X / Threads / Instagram / Note / Bonus / PDCA / Maintenance jobs
-    scheduler.add_job(id="x_post_2000", func=app_module.run_scheduled_x_post, trigger="cron", hour=11, minute="2,14,26", jitter=120, args=["20:00"], executor="sns_ai")
-    scheduler.add_job(id="x_post_2200", func=app_module.run_scheduled_x_post, trigger="cron", hour=13, minute="3,15,27", jitter=120, args=["22:00"], executor="sns_ai")
-    scheduler.add_job(id="x_post_0000", func=app_module.run_scheduled_x_post, trigger="cron", day_of_week="fri,sat", hour=15, minute="4,16,28", jitter=120, args=["00:00"], executor="sns_ai")
-    scheduler.add_job(id="x_tip_1800", func=_tip_18_job, trigger="cron", hour=9, minute="3,18", jitter=120, executor="sns_ai")
+    # 3. Scheduled X / Threads / Instagram / Note / Bonus / PDCA / Maintenance jobs (with daily human timing jitter)
+    scheduler.add_job(id="x_post_2000", func=_x_scheduled_job, trigger="cron", hour=11, minute="2,6,10,14,18,22,27", jitter=75, args=["20:00"], executor="sns_ai")
+    scheduler.add_job(id="x_post_2200", func=_x_scheduled_job, trigger="cron", hour=13, minute="2,6,10,14,18,22,27", jitter=75, args=["22:00"], executor="sns_ai")
+    scheduler.add_job(id="x_post_0000", func=_x_scheduled_job, trigger="cron", day_of_week="fri,sat", hour=15, minute="2,6,10,14,18,22,27", jitter=75, args=["00:00"], executor="sns_ai")
+    scheduler.add_job(id="x_tip_1800", func=_tip_18_job, trigger="cron", hour=9, minute="2,6,10,14,18,23,28", jitter=75, executor="sns_ai")
     scheduler.add_job(id="note_rss_check", func=_note_check_job, trigger="cron", hour="3,8", minute=15, jitter=180, executor="sns_ai")
-    scheduler.add_job(id="threads_daily_2200", func=_threads_daily_job, trigger="cron", hour=13, minute="8,20,32", jitter=90, executor="sns_ai")
-    scheduler.add_job(id="ig_fri_1845", func=_ig_carousel_job, trigger="cron", day_of_week="fri", hour=9, minute="45,56", jitter=60, args=["18:45"], executor="sns_ai")
-    scheduler.add_job(id="ig_tuesun_2145", func=_ig_carousel_job, trigger="cron", day_of_week="tue,sun", hour=12, minute="45,56", jitter=60, args=["21:45"], executor="sns_ai")
-    scheduler.add_job(id="threads_ladies_1930", func=_threads_ladies_job, trigger="cron", day_of_week="wed,fri,sat", hour=10, minute="30,42", jitter=90, executor="sns_ai")
-    scheduler.add_job(id="ig_ladies_1945", func=_ig_ladies_job, trigger="cron", day_of_week="thu,sat", hour=10, minute="45,56", jitter=60, executor="sns_ai")
+    scheduler.add_job(id="threads_daily_2200", func=_threads_daily_job, trigger="cron", hour=13, minute="5,9,13,17,21,26,32", jitter=75, executor="sns_ai")
+    scheduler.add_job(id="ig_fri_1845", func=_ig_carousel_job, trigger="cron", day_of_week="fri", hour=9, minute="46,50,54,58", jitter=45, args=["18:45"], executor="sns_ai")
+    scheduler.add_job(id="ig_tuesun_2145", func=_ig_carousel_job, trigger="cron", day_of_week="tue,sun", hour=12, minute="46,50,54,58", jitter=45, args=["21:45"], executor="sns_ai")
+    scheduler.add_job(id="threads_ladies_1930", func=_threads_ladies_job, trigger="cron", day_of_week="wed,fri,sat", hour=10, minute="31,35,39,44,49", jitter=60, executor="sns_ai")
+    scheduler.add_job(id="ig_ladies_1945", func=_ig_ladies_job, trigger="cron", day_of_week="thu,sat", hour=10, minute="46,50,54,58", jitter=45, executor="sns_ai")
     scheduler.add_job(id="ig_reel_2115", func=_ig_reel_scheduled_job, trigger="cron", day_of_week="fri,sat", hour=12, minute=15, jitter=90, args=["21:15"], executor="sns_ai")
     scheduler.add_job(id="events_crawl", func=_crawl_events_job, trigger="cron", hour="1,8,20", minute=0)
     scheduler.add_job(id="scheduled_articles_15m", func=_scheduled_articles_release_job, trigger="interval", minutes=15, executor="sns_ai")
     scheduler.add_job(id="bonus_alert_10m", func=_bonus_alert_check_job, trigger="interval", minutes=10, executor="sns_ai")
-    scheduler.add_job(id="x_weekly_sun", func=app_module.run_scheduled_weekly_x_post, trigger="cron", day_of_week="sun", hour=10, minute="0,15", jitter=120, executor="sns_ai")
+    scheduler.add_job(id="x_weekly_sun", func=_x_weekly_sun_job, trigger="cron", day_of_week="sun", hour=10, minute="2,7,12,18,24", jitter=75, executor="sns_ai")
     scheduler.add_job(id="pdca_cycle", func=_pdca_autonomous_job, trigger="cron", hour="8,18", minute=35, jitter=120, executor="sns_ai")
     scheduler.add_job(id="sheets_retention", func=_sheets_retention_job, trigger="cron", hour=21, minute=20, jitter=120)
     scheduler.add_job(id="daily_token_db_maint", func=_daily_token_and_db_maintenance_job, trigger="cron", hour=21, minute=35, jitter=120, executor="sns_ai")

@@ -718,6 +718,7 @@ def _generate_ai_daily_human_tip(
         if not sns_editorial.has_any_ai_key(allow_blocking=True):
             return "", ""
         weather_ctx = sns_editorial.fetch_live_weather_context(allow_blocking=True) or {}
+        street_pulse = sns_editorial.fetch_tonight_street_pulse(now_jst=now_jst, allow_blocking=True) or {}
         cal_ctx = sns_editorial.build_calendar_context(now_jst)
         recent_tips = get_recent_tips_history(limit=20, allow_blocking=True)
         seed_obj = select_fresh_observation_seed(
@@ -746,12 +747,16 @@ def _generate_ai_daily_human_tip(
         else:
             footer_rule = "宣伝臭い誘導は書かず、自然な文章のあとに控えめに『#相席ラウンジ』を1個だけ添えるか、さらっとリプ欄に触れて終えること。"
 
+        pulse_note = " ／ ".join(
+            street_pulse.get(k) for k in ("national_vibe", "kanto", "kansai") if street_pulse.get(k)
+        )
         ctx_info = {
             "slot": slot_label,
             "month_season": f"{now_jst.month}月",
             "weekday": f"{cal_ctx.get('weekday_ja', '')}曜",
             "calendar_vibe": f"{cal_ctx.get('tag', '')}",
             "weather": weather_ctx.get("adlib_hint") or weather_ctx.get("summary") or "",
+            **({"tonight_street_vibe": pulse_note} if pulse_note else {}),
             "observation_lens": seed_obj["lens"],
         }
         cliche_list_str = "・".join(f"『{w}』" for w in sns_editorial.AI_CLICHE_WORDS)
@@ -760,7 +765,7 @@ def _generate_ai_daily_human_tip(
             "これから飲みに出る人も多い時間帯に、Xでふと呟いた『卓上の男女あるある・人間観察の短い雑談ポスト（70〜118文字以内、X換算250ウェイト以下）』をゼロベースで1本書いてください。\n\n"
             f"{sns_editorial.HUMAN_INSIDER_VOICE_GUIDE}\n\n"
             "【執筆ルール】\n"
-            "1. 下の `observation_lens`（今日の人間観察の切り口）をヒントに、季節・曜日・天気の空気感をほんの少しだけ滲ませつつ、思わず『あー、わかる』と頷くリアルな1場面を切り取ること。\n"
+            "1. 下の `observation_lens`（今日の人間観察の切り口）をヒントに、季節・曜日・天気（やもし `tonight_street_vibe` が自然に合えばほんの少しだけ夜の街の空気感）を滲ませつつ、思わず『あー、わかる』と頷くリアルな1場面を切り取ること。\n"
             "2. 『モニター見てたら』『バックヤードで』等の裏方アピールや、『〜せよ』『鉄則』『絶対NG』のような上から目線の説教・指南書口調は禁止。絵文字や『！』は0〜1個までに抑えること。\n"
             f"3. 今回の語尾トーン目安：{chosen_ending_hint}（ただし直近使った文末 {sns_editorial.json.dumps(banned_endings[:5], ensure_ascii=False)} の連続使用は避けること）。\n"
             f"4. 直近の過去Tips（{sns_editorial.json.dumps(recent_tip_texts[:5], ensure_ascii=False)}）と主張・例え・1行目の入り方が絶対に被らないようにすること。\n"
@@ -771,12 +776,12 @@ def _generate_ai_daily_human_tip(
         )
         parsed, _, _ = sns_editorial.call_editorial_ai_json(
             prompt=prompt,
-            max_output_tokens=1800,
-            thinking_budget=1024,
-            total_deadline_sec=28.0,
-            per_call_timeout_sec=19.0,
+            max_output_tokens=2000,
+            thinking_budget=1280,
+            total_deadline_sec=36.0,
+            per_call_timeout_sec=24.0,
             now_jst=now_jst,
-            prefer_fast=True,
+            prefer_fast=False,
         )
         if not parsed or not parsed.get("main_text"):
             return "", ""
@@ -785,6 +790,17 @@ def _generate_ai_daily_human_tip(
             return "", ""
         if standalone_no_reply or silent_tree:
             txt = txt.replace("👇", "").replace("リプ欄へ", "").replace("リプ欄", "").strip()
+        pol_txt, _ = sns_editorial.polish_draft_to_human_voice(
+            draft_text=txt,
+            channel="x",
+            research=None,
+            slot_label=slot_label,
+            now_jst=now_jst,
+            silent_tree=(standalone_no_reply or silent_tree),
+            recent_endings=banned_endings,
+        )
+        if pol_txt:
+            txt = pol_txt
         wt = x_poster.compute_twitter_weight(txt)
         if 84 <= wt <= 272 and not any(w in txt for w in sns_editorial.AI_CLICHE_WORDS):
             return txt, seed_obj["key"]

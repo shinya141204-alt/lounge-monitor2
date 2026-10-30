@@ -340,8 +340,10 @@ class SnsEditorialUpgradeTests(unittest.TestCase):
     # -------------------------------------------------------------------------
 
     def test_claude_5_omits_temperature_and_takes_priority(self):
-        """Claude 5+ models must omit deprecated `temperature` and take priority over Gemini when configured."""
+        """Claude 5+ Opus/Sonnet models must omit deprecated `temperature` and route Opus primary / Sonnet fast."""
         sns_editorial._claude_no_temp_models.clear()
+        sns_editorial._last_gemini_meta["working_route"] = None
+        self.assertFalse(sns_editorial._claude_supports_temperature("claude-opus-5-5"))
         self.assertFalse(sns_editorial._claude_supports_temperature("claude-sonnet-5-5"))
         self.assertFalse(sns_editorial._claude_supports_temperature("claude-sonnet-5"))
         self.assertFalse(sns_editorial._claude_supports_temperature("claude-haiku-5-5"))
@@ -350,11 +352,12 @@ class SnsEditorialUpgradeTests(unittest.TestCase):
         fake_resp = mock.MagicMock()
         fake_resp.status_code = 200
         fake_resp.json.return_value = {
-            "model": "claude-sonnet-5-5",
+            "model": "claude-opus-5-5",
             "content": [{"type": "text", "text": '{"thinking_memo": "ok", "main_text": "テスト本文"}'}],
         }
 
         with (
+            mock.patch.dict(os.environ, {"CLAUDE_MODEL": ""}, clear=False),
             mock.patch("sns_editorial.get_claude_api_key", return_value="sk-ant-test-key-1234567890"),
             mock.patch("sns_editorial.get_gemini_api_key", return_value="AIzaSyTestKey1234567890"),
             mock.patch("sns_editorial.get_ai_engine_pref", return_value="auto"),
@@ -362,7 +365,7 @@ class SnsEditorialUpgradeTests(unittest.TestCase):
         ):
             parsed, model_used, err = sns_editorial.call_editorial_ai_json('{"hello": 1}')
             self.assertEqual(err, "")
-            self.assertEqual(model_used, "claude-sonnet-5-5")
+            self.assertEqual(model_used, "claude-opus-5-5")
             self.assertEqual(parsed.get("main_text"), "テスト本文")
             self.assertEqual(mock_post.call_count, 1)
             called_url = mock_post.call_args[0][0]
@@ -371,6 +374,11 @@ class SnsEditorialUpgradeTests(unittest.TestCase):
             self.assertNotIn("temperature", called_json)
             self.assertEqual(called_json.get("output_config"), {"effort": "medium"})
             self.assertGreaterEqual(called_json["max_tokens"], 4096)
+
+            # Fast/polisher pass (`prefer_fast=True`) routes to Sonnet (`claude-sonnet-5-5`) with low effort
+            _, fast_model, err2 = sns_editorial.call_editorial_ai_json('{"hello": 2}', prefer_fast=True)
+            self.assertEqual(err2, "")
+            self.assertEqual(fast_model, "claude-sonnet-5-5")
 
         # Ensure SNS & Column prompts never request `thinking_memo` (avoids Claude 5.5 reasoning_extraction refusal)
         res = sns_editorial.run_researcher(self.sample_stores, channel="x")
@@ -580,6 +588,103 @@ class SnsEditorialUpgradeTests(unittest.TestCase):
         note_exp = column_editorial.export_column_for_note("osaka-kita-vs-minami", mode="essay")
         self.assertTrue(note_exp["ok"])
         self.assertNotIn("Two-Sided Market", note_exp["body_markdown"])
+
+    def test_two_pass_humanizer_polish_and_digit_lock(self):
+        """Ensure 2nd-pass humanizer softens stiff AI phrasing while rejecting any altered numbers."""
+        stores = [
+            {"name": "OLG 新宿", "women": 52, "men": 24, "region": "Kanto"},
+            {"name": "JIS 新宿", "women": 38, "men": 31, "region": "Kanto"},
+        ]
+        research = sns_editorial.run_researcher(stores, slot_label="22:00", channel="x")
+        draft_stiff = "新宿エリアにおいてはオリエンタルラウンジ 新宿が女性52名・男性24名（女性比68%）という傾向にあります。今から動くのが正解。"
+        polished_natural = "いまの新宿、オリエンタルラウンジ 新宿は女性52名・男性24名（68%）になってます。1軒目終わりに置いときます。"
+
+        with mock.patch(
+            "sns_editorial.call_editorial_ai_json",
+            return_value=({"polished_text": polished_natural}, "claude-sonnet-5-5", ""),
+        ):
+            out_ok, p_mod = sns_editorial.polish_draft_to_human_voice(
+                draft_text=draft_stiff,
+                channel="x",
+                research=research,
+                slot_label="22:00",
+                force_polish=True,
+            )
+            self.assertEqual(p_mod, "claude-sonnet-5-5")
+            self.assertEqual(out_ok, polished_natural)
+
+        tampered_digits = "いまの新宿、オリエンタルラウンジ 新宿は女性60名・男性24名（68%）。この時間でも崩れてないですね。"
+        with mock.patch(
+            "sns_editorial.call_editorial_ai_json",
+            return_value=({"polished_text": tampered_digits}, "claude-sonnet-5-5", ""),
+        ):
+            out_bad, p_mod_bad = sns_editorial.polish_draft_to_human_voice(
+                draft_text=draft_stiff,
+                channel="x",
+                research=research,
+                slot_label="22:00",
+                force_polish=True,
+            )
+            self.assertEqual(p_mod_bad, "")
+            self.assertEqual(out_bad, draft_stiff)
+
+    def test_tonight_street_pulse_web_search_and_prompt_injection(self):
+        """Ensure Claude web_search_20250305 fetches tonight street pulse once and caches across calls."""
+        with sns_editorial._street_pulse_cache["lock"]:
+            sns_editorial._street_pulse_cache["entries"].clear()
+
+        fake_search_resp = mock.MagicMock()
+        fake_search_resp.status_code = 200
+        fake_search_resp.json.return_value = {
+            "model": "claude-haiku-5-5",
+            "content": [
+                {
+                    "type": "text",
+                    "text": '{"national_vibe": "月末の週末で繁華街は早めから賑わい", "kanto": "東京ドームでライブ終演後の人の流れあり", "kansai": "京セラドーム帰りで難波・心斎橋が早め", "other": ""}',
+                }
+            ],
+        }
+        dt = datetime.datetime(2026, 10, 31, 20, 0, tzinfo=sns_editorial.JST)
+        with (
+            mock.patch("sns_editorial.get_claude_api_key", return_value="sk-ant-test-key-1234567890"),
+            mock.patch("sns_editorial._discover_claude_models", return_value=["claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5"]),
+            mock.patch("sns_editorial.requests.post", return_value=fake_search_resp) as mock_post,
+        ):
+            p1 = sns_editorial.fetch_tonight_street_pulse(now_jst=dt, force_network=True, allow_blocking=True)
+            self.assertTrue(p1["available"])
+            self.assertIn("東京ドーム", p1["kanto"])
+            self.assertEqual(mock_post.call_count, 1)
+            sent_tools = mock_post.call_args[1]["json"]["tools"]
+            self.assertEqual(sent_tools[0]["type"], "web_search_20250305")
+
+            # Subsequent call within 4h hits cache with 0 network calls
+            p2 = sns_editorial.fetch_tonight_street_pulse(now_jst=dt, force_network=False, allow_blocking=False)
+            self.assertTrue(p2["available"])
+            self.assertEqual(mock_post.call_count, 1)
+
+        res = sns_editorial.run_researcher(self.sample_stores, slot_label="20:00", channel="x", now_jst=dt)
+        res["street_pulse"] = p1
+        prompt_str, _ = sns_editorial._build_gemini_prompt(res, {}, "20:00", "x", dt, "https://aiseki-navi.com")
+        self.assertIn("tonight_street_pulse", prompt_str)
+        self.assertIn("東京ドーム", prompt_str)
+
+    def test_human_schedule_jitter_spread_and_fail_open(self):
+        """Ensure daily human timing offsets vary across days/channels and never block late retries."""
+        offsets_x = {
+            sns_editorial.compute_human_schedule_offset_min(
+                "x", "20:00", now_jst=datetime.datetime(2026, 11, d, 20, 0, tzinfo=sns_editorial.JST)
+            )
+            for d in range(1, 15)
+        }
+        self.assertGreaterEqual(len(offsets_x), 6)
+        for off in offsets_x:
+            self.assertTrue(2 <= off <= 21)
+
+        # Early minute (20:01) holds back; past +25m always fail-opens
+        dt_early = datetime.datetime(2026, 11, 1, 20, 1, tzinfo=sns_editorial.JST)
+        dt_late = datetime.datetime(2026, 11, 1, 20, 26, tzinfo=sns_editorial.JST)
+        self.assertFalse(sns_editorial.should_fire_scheduled_slot_now("x", "20:00", now_jst=dt_early))
+        self.assertTrue(sns_editorial.should_fire_scheduled_slot_now("x", "20:00", now_jst=dt_late))
 
 
 if __name__ == "__main__":

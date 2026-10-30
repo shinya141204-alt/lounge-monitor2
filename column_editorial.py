@@ -1842,7 +1842,7 @@ def _make_col_cache_key(research: dict, plan: dict, tone_mode: str = None):
         for s in (research.get("featured_stores") or [])[:3]
     )
     return (
-        "v5_human_styles",
+        "v6_opus_human_styles",
         eng_pref,
         has_c,
         tm,

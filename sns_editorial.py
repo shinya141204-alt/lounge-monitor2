@@ -15,6 +15,7 @@ import os
 import re
 import time
 import json
+import hashlib
 import datetime
 import logging
 import threading
@@ -42,12 +43,15 @@ DEFAULT_GEMINI_MODELS = (
     "gemini-3.5-flash-lite",
 )
 
-# Anthropic Claude Sonnet models (dynamically supplemented via /v1/models when key is set)
+# Anthropic Claude Opus & Sonnet models (dynamically supplemented via /v1/models when key is set)
 DEFAULT_CLAUDE_MODELS = (
+    "claude-opus-5-5",
     "claude-sonnet-5-5",
+    "claude-opus-5",
     "claude-sonnet-5",
+    "claude-opus-4-8",
     "claude-sonnet-4-6",
-    "claude-sonnet-4-5",
+    "claude-haiku-5-5",
 )
 
 # Words/phrases that betray AI-generated or promotional copywriting (or overused hooks) — strictly penalized by Desk
@@ -517,6 +521,67 @@ def extract_sentence_endings(texts: list) -> list:
     return endings[:8]
 
 
+HUMAN_JITTER_WINDOWS = {
+    "x": (2, 21),              # e.g., 20:03 one night, 20:19 the next, 22:07 vs 22:20
+    "x_tip": (2, 22),          # e.g., 18:04, 18:18, 18:11
+    "x_weekly": (2, 18),
+    "threads": (5, 25),        # distinct seed & window from X so X and Threads never fire together
+    "threads_ladies": (1, 14), # 19:31 .. 19:44
+    "instagram": (1, 12),      # 18:46 .. 18:57 / 21:46 .. 21:57
+    "ig_ladies": (1, 12),      # 19:46 .. 19:57
+}
+
+
+def compute_human_schedule_offset_min(
+    channel_key: str,
+    slot_label: str,
+    now_jst: datetime.datetime = None,
+) -> int:
+    """
+    Compute a deterministic, human-like daily minute offset within `(min_off, max_off)`
+    for `(channel_key, biz_date, slot_label)` so scheduled posts never look like `:00`/`:02` clockwork bots.
+    """
+    now_jst = now_jst or datetime.datetime.now(JST)
+    ch_k = (channel_key or "x").strip().lower()
+    min_off, max_off = HUMAN_JITTER_WINDOWS.get(ch_k, (2, 19))
+    biz_date_str = (now_jst - datetime.timedelta(hours=7)).strftime("%Y-%m-%d")
+    seed_raw = f"aiseki_human_jitter_v1:{ch_k}:{biz_date_str}:{slot_label or ''}"
+    digest = hashlib.sha256(seed_raw.encode("utf-8")).digest()
+    span = max(1, (max_off - min_off) + 1)
+    return min_off + (int.from_bytes(digest[:4], "big") % span)
+
+
+def should_fire_scheduled_slot_now(
+    channel_key: str,
+    slot_label: str,
+    now_jst: datetime.datetime = None,
+) -> bool:
+    """
+    Non-blocking scheduler gate (`<0.05ms`, zero `time.sleep`):
+    Returns `False` while `now_jst` is earlier than today's natural target minute for `(channel_key, slot_label)`,
+    and `True` once `now_jst` reaches or passes today's target minute (with a fail-open safety net >= +24m).
+    """
+    now_jst = now_jst or datetime.datetime.now(JST)
+    m = re.match(r"^(\d{1,2}):(\d{2})$", (slot_label or "").strip())
+    if not m:
+        return True
+    slot_h = int(m.group(1))
+    slot_m = int(m.group(2))
+    base_dt = now_jst.replace(hour=slot_h, minute=slot_m, second=0, microsecond=0)
+    # Handle midnight wrap if now_jst is e.g. 00:05 vs slot 23:45
+    diff_sec = (now_jst - base_dt).total_seconds()
+    if diff_sec < -43200:
+        diff_sec += 86400
+    elif diff_sec > 43200:
+        diff_sec -= 86400
+    elapsed_min = diff_sec / 60.0
+    if elapsed_min < 0 or elapsed_min >= 24.0:
+        # Fail-open outside normal early hold window so late retries always execute
+        return True
+    target_off = compute_human_schedule_offset_min(channel_key, slot_label, now_jst=now_jst)
+    return elapsed_min >= float(target_off)
+
+
 def persist_editorial_session_record(channel: str, session_record: dict):
     """Persist an adopted editorial session record to `job_state` (called ONLY after actual post success or explicit record_history=True)."""
     if not session_record:
@@ -938,9 +1003,9 @@ def get_gemini_status(allow_blocking: bool = False) -> dict:
     default_model = DEFAULT_CLAUDE_MODELS[0] if primary_provider == "claude" else DEFAULT_GEMINI_MODELS[0]
     last_model = _last_gemini_meta.get("last_model") or default_model
     provider_badge = (
-        "Claude Sonnet × Gemini 両対応ハイブリッド"
+        "Claude Opus × 2段階推敲 ＋ 街況Web検索（Gemini予備）"
         if (c_key and g_key)
-        else ("Claude Sonnet 長考執筆" if c_key else "Gemini Pro / 上位Flash 長考執筆")
+        else ("Claude Opus × 2段階人間語推敲 ＋ 街況Web検索" if c_key else "Gemini Pro / 上位Flash 長考執筆")
     )
 
     return {
@@ -1330,6 +1395,155 @@ def fetch_live_weather_context(force_network: bool = False, allow_blocking: bool
     }
 
 
+_street_pulse_cache = {
+    "lock": threading.Lock(),
+    "entries": {},
+    "fetching_keys": set(),
+}
+_STREET_PULSE_TTL_SEC = 14400  # 4 hours (at most 1-2 searches per evening across all SNS channels)
+
+
+def _clean_pulse_snippet(val: str, max_chars: int = 70) -> str:
+    s = re.sub(r"<[^>]+>", "", str(val or "")).strip()
+    s = re.sub(r"https?://\S+", "", s)
+    s = re.sub(r"\[\d+\]", "", s)
+    s = re.sub(r"\s+", " ", s).strip()
+    return s[:max_chars]
+
+
+def _refresh_street_pulse_sync(cache_key: tuple, now_jst: datetime.datetime) -> dict:
+    try:
+        c_key = get_claude_api_key(allow_blocking=True)
+        if not c_key:
+            return None
+        discovered = _discover_claude_models(c_key, timeout=2.8)
+        haiku_m = next((m for m in discovered if "haiku" in m.lower()), None)
+        sonnet_m = next((m for m in discovered if "sonnet" in m.lower()), "claude-sonnet-5-5")
+        search_models = [m for m in (haiku_m, sonnet_m) if m][:2]
+
+        weekdays_ja = ("月", "火", "水", "木", "金", "土", "日")
+        wd_ja = weekdays_ja[now_jst.weekday()]
+        date_jp = f"{now_jst.year}年{now_jst.month}月{now_jst.day}日({wd_ja})"
+        query_prompt = (
+            f"今日（{date_jp}）の日本の夜の繁華街（東京：新宿・渋谷・東京ドーム・横浜周辺、大阪：梅田・難波・京セラドーム周辺、および名古屋・福岡等）で、"
+            "今夜の人の流れや街の空気に関係しそうなリアルな出来事（大型ライブ・コンサート終演、野球・サッカー等のナイター、花火・ハロウィン・季節イベント、連休前や給料日後の週末ムード、急な天候変化など）をWeb検索で1回だけサッと確認し、"
+            "確認できた事実だけを短いJSONで返してください。\n"
+            "【注意】未確認のイベントを推測で作らないこと。特に目立った催しがない項目は空文字 \"\" にすること。人数などの細かい数字やURLは入れないこと。\n"
+            '出力JSON形式のみ：{"national_vibe": "全国的な今夜の街の空気（45字以内・なければ空文字）", "kanto": "東京・横浜周辺の今夜のライブ・催し・街の動き（55字以内・なければ空文字）", "kansai": "大阪・梅田・難波周辺の今夜のライブ・催し・街の動き（55字以内・なければ空文字）", "other": "名古屋・福岡・札幌等の今夜の催し（55字以内・なければ空文字）"}'
+        )
+
+        for sm in search_models:
+            body = {
+                "model": sm,
+                "max_tokens": 900,
+                "tools": [
+                    {
+                        "type": "web_search_20250305",
+                        "name": "web_search",
+                        "max_uses": 2,
+                        "user_location": {
+                            "type": "approximate",
+                            "country": "JP",
+                            "city": "Tokyo",
+                            "timezone": "Asia/Tokyo",
+                        },
+                    }
+                ],
+                "messages": [{"role": "user", "content": query_prompt}],
+            }
+            resp = requests.post(
+                "https://api.anthropic.com/v1/messages",
+                headers={
+                    "x-api-key": c_key,
+                    "anthropic-version": "2023-06-01",
+                    "content-type": "application/json",
+                },
+                json=body,
+                timeout=18.0,
+            )
+            if resp.status_code >= 400:
+                continue
+            rjson = resp.json() or {}
+            blocks = rjson.get("content") or []
+            raw_txt = "".join(b.get("text", "") for b in blocks if b.get("type") == "text").strip()
+            parsed = _parse_ai_json_object(raw_txt)
+            if isinstance(parsed, dict):
+                result = {
+                    "available": True,
+                    "fetched_at": now_jst.strftime("%Y-%m-%d %H:%M:%S"),
+                    "model": sm,
+                    "national_vibe": _clean_pulse_snippet(parsed.get("national_vibe"), 55),
+                    "kanto": _clean_pulse_snippet(parsed.get("kanto"), 65),
+                    "kansai": _clean_pulse_snippet(parsed.get("kansai"), 65),
+                    "other": _clean_pulse_snippet(parsed.get("other"), 65),
+                }
+                now_t = time.time()
+                with _street_pulse_cache["lock"]:
+                    _street_pulse_cache["entries"][cache_key] = {"ts": now_t, "data": result}
+                turbo_store.set_ai_cache("street_pulse", cache_key, {"ts": now_t, "data": result}, ttl_sec=_STREET_PULSE_TTL_SEC)
+                return result
+    except Exception as e:
+        logger.debug(f"Street pulse web search skipped: {e}")
+    finally:
+        with _street_pulse_cache["lock"]:
+            _street_pulse_cache["fetching_keys"].discard(cache_key)
+    return None
+
+
+def fetch_tonight_street_pulse(
+    now_jst: datetime.datetime = None,
+    force_network: bool = False,
+    allow_blocking: bool = False,
+) -> dict:
+    """
+    Fetch real-time tonight street topics (concerts, dome events, seasonal buzz) via Claude Web Search.
+    Cached for 4 hours in memory + `turbo_store` so it runs at most 1-2 times per evening across all channels,
+    and returns in 0ms on web page renders (`allow_blocking=False`).
+    """
+    now_jst = now_jst or datetime.datetime.now(JST)
+    biz_date_str = _business_datetime(now_jst).strftime("%Y-%m-%d")
+    phase = "late" if (now_jst.hour >= 21 or now_jst.hour < 4) else "early"
+    cache_key = ("street_pulse_v1", biz_date_str, phase)
+    now_t = time.time()
+
+    if not force_network:
+        with _street_pulse_cache["lock"]:
+            mem_hit = _street_pulse_cache["entries"].get(cache_key)
+            if mem_hit and (now_t - mem_hit["ts"] < _STREET_PULSE_TTL_SEC):
+                return dict(mem_hit["data"])
+        shared = turbo_store.get_ai_cache("street_pulse", cache_key)
+        if shared and isinstance(shared.get("data"), dict):
+            with _street_pulse_cache["lock"]:
+                _street_pulse_cache["entries"][cache_key] = {
+                    "ts": float(shared.get("ts") or now_t),
+                    "data": shared["data"],
+                }
+            return dict(shared["data"])
+
+    empty_res = {"available": False, "national_vibe": "", "kanto": "", "kansai": "", "other": ""}
+    is_evening_window = (16 <= now_jst.hour <= 23) or (0 <= now_jst.hour <= 2)
+    if not force_network:
+        if os.environ.get("DISABLE_SCHEDULER") == "1" or _is_requests_post_mocked() or not is_evening_window:
+            return empty_res
+    if not get_claude_api_key(allow_blocking=allow_blocking):
+        return empty_res
+
+    if allow_blocking or force_network:
+        with _street_pulse_cache["lock"]:
+            _street_pulse_cache["fetching_keys"].add(cache_key)
+        fresh = _refresh_street_pulse_sync(cache_key, now_jst)
+        if fresh:
+            return dict(fresh)
+    else:
+        with _street_pulse_cache["lock"]:
+            already_fetching = cache_key in _street_pulse_cache["fetching_keys"]
+            if not already_fetching:
+                _street_pulse_cache["fetching_keys"].add(cache_key)
+        if not already_fetching:
+            threading.Thread(target=_refresh_street_pulse_sync, args=(cache_key, now_jst), daemon=True).start()
+    return empty_res
+
+
 # =====================================================================
 # Role 1: Researcher (現場データ発掘係)
 # =====================================================================
@@ -1482,6 +1696,7 @@ def run_researcher(
 
     cal_ctx = build_calendar_context(now_jst=now_jst)
     weather_ctx = fetch_live_weather_context(allow_blocking=allow_weather_blocking)
+    street_pulse = fetch_tonight_street_pulse(now_jst=now_jst, allow_blocking=allow_weather_blocking)
     slot_persona = build_slot_persona_context(slot_label=slot_label, channel=channel)
 
     notes = [
@@ -1491,6 +1706,9 @@ def run_researcher(
     ]
     if weather_ctx.get("available"):
         notes.append(f"【リアルタイム気象】{weather_ctx['summary']} — {weather_ctx['adlib_hint']}")
+    if street_pulse.get("available") and any(street_pulse.get(k) for k in ("national_vibe", "kanto", "kansai", "other")):
+        pulse_parts = [street_pulse.get(k) for k in ("national_vibe", "kanto", "kansai", "other") if street_pulse.get(k)]
+        notes.append(f"【今夜のリアル街ネタ検索】{' ／ '.join(pulse_parts[:3])}")
     if best_cluster:
         hs = best_cluster["high_store"]
         ls = best_cluster["low_store"]
@@ -1543,6 +1761,7 @@ def run_researcher(
         "ig_ctx": ig_ctx,
         "calendar": cal_ctx,
         "weather": weather_ctx,
+        "street_pulse": street_pulse,
         "slot_persona": slot_persona,
         "research_notes": notes,
     }
@@ -3003,6 +3222,9 @@ def _build_gemini_prompt(
     t_str = now_jst.strftime("%H:%M")
     cal_ctx = research.get("calendar") or {}
     weather_ctx = research.get("weather") or {}
+    street_pulse = research.get("street_pulse") or {}
+    if not street_pulse.get("available"):
+        street_pulse = fetch_tonight_street_pulse(now_jst=now_jst, allow_blocking=True)
     recent_full_texts = get_recent_cross_channel_texts(channel=ch, limit=5, allow_blocking=False)
     recent_endings = extract_sentence_endings(recent_full_texts)
 
@@ -3015,11 +3237,20 @@ def _build_gemini_prompt(
     submajor_hl = research.get("submajor_highlights") or []
     regional_hl = research.get("regional_highlights") or []
 
+    pulse_dict = None
+    if street_pulse.get("available") and any(street_pulse.get(k) for k in ("national_vibe", "kanto", "kansai", "other")):
+        pulse_dict = {
+            k: street_pulse[k]
+            for k in ("national_vibe", "kanto", "kansai", "other")
+            if street_pulse.get(k)
+        }
+
     fact_payload = {
         "current_time": f"{cal_ctx.get('weekday_ja', '')}曜 {t_str}",
         "calendar_vibe": f"{cal_ctx.get('tag', '')} - {cal_ctx.get('note', '')}",
         "weather_vibe": weather_ctx.get("adlib_hint") or "穏やかな夜",
         "weather_detail": weather_ctx.get("summary") or "",
+        **({"tonight_street_pulse": pulse_dict} if pulse_dict else {}),
         "recommended_spotlight_tier": research.get("spotlight_tier_label") or "",
         "recently_used_stores_avoid_if_possible": research.get("recently_featured_names") or [],
         "national_active_stores": research.get("active_store_count", 0),
@@ -3224,6 +3455,7 @@ def _build_gemini_prompt(
         "【編集デスクの執筆指針（脱AI臭・脱マンネリ）】\n"
         "- 『モニター見てたら』『バックヤードで』『看板だけで並んで〜』のような決まり文句や上から目線の説教・まとめ教訓は書かず、今夜の街況・ギャップ・意外な好調エリアから1つの切り口だけを自然体で切り取ること。\n"
         "- 絵文字や感嘆符（！）は極力減らし（0〜1個）、体言止め・普通の言い切り・素の丁寧語（『〜ですね』『〜かも』『〜置いときます』）を日によって自然に使い分けること。\n"
+        "- ファクトシートに `tonight_street_pulse`（今夜のリアルな街の催し・ライブ帰り・空気感）が含まれており、かつ今回取り上げるエリアと自然に噛み合う場合のみ、半フレーズだけさりげなく街の空気を滲ませてもよい（エリアが違ったり無理がある場合は触れなくてよい）。\n"
         "- ファクトシートの数字と1人・1%の狂いもないよう正確に書くこと。\n\n"
         f"{platform_spec}\n\n"
         "【絶対厳守ルール（違反するとデスク検閲で減点・不採用になります）】\n"
@@ -3360,15 +3592,25 @@ def _is_requests_get_mocked() -> bool:
     return hasattr(get_fn, "assert_called") or type(get_fn).__module__.startswith("unittest.mock")
 
 
+def _claude_version_key(model_id: str) -> tuple:
+    low = (model_id or "").lower()
+    m = re.search(r"claude-(?:opus|sonnet|haiku)-(\d+)(?:-(\d+))?", low)
+    if m:
+        maj = int(m.group(1))
+        mnr = int(m.group(2)) if m.group(2) and len(m.group(2)) <= 2 else 0
+        return (maj, mnr, -len(low))
+    return (0, 0, 0)
+
+
 def _discover_claude_models(api_key: str, timeout: float = 4.0) -> list:
     """
-    Dynamically query Anthropic `/v1/models` (cached 6h) to find the newest active Claude Sonnet / Haiku models.
+    Dynamically query Anthropic `/v1/models` (cached 6h) and rank newest Claude Opus -> Sonnet -> Haiku models.
     """
     if not api_key:
         return []
     if _is_requests_post_mocked() and not _is_requests_get_mocked():
         return list(DEFAULT_CLAUDE_MODELS)
-    sig = f"claude:{api_key[:10]}"
+    sig = f"claude_v2_opus:{api_key[:10]}"
     now_t = time.time()
     cached = _model_discovery_cache.get(sig)
     if cached and (now_t - cached["ts"] < _DISCOVERY_TTL_SEC) and cached.get("models"):
@@ -3386,21 +3628,24 @@ def _discover_claude_models(api_key: str, timeout: float = 4.0) -> list:
         if r.status_code != 200:
             return list(DEFAULT_CLAUDE_MODELS)
         items = (r.json() or {}).get("data") or []
+        opuses = []
         sonnets = []
         haikus = []
-        others = []
         for it in items:
             mid = (it.get("id") or "").strip()
             low = mid.lower()
             if not mid or "claude" not in low:
                 continue
-            if "sonnet" in low:
+            if "opus" in low:
+                opuses.append(mid)
+            elif "sonnet" in low:
                 sonnets.append(mid)
             elif "haiku" in low:
                 haikus.append(mid)
-            elif "opus" in low:
-                others.append(mid)
-        ranked = (sonnets[:2] + haikus[:1] + others[:1]) or list(DEFAULT_CLAUDE_MODELS)
+        opuses.sort(key=_claude_version_key, reverse=True)
+        sonnets.sort(key=_claude_version_key, reverse=True)
+        haikus.sort(key=_claude_version_key, reverse=True)
+        ranked = (opuses[:2] + sonnets[:2] + haikus[:1]) or list(DEFAULT_CLAUDE_MODELS)
         _model_discovery_cache[sig] = {"ts": now_t, "models": ranked}
         return list(ranked)
     except Exception:
@@ -3563,19 +3808,33 @@ def call_editorial_ai_json(
             if preferred_c:
                 c_models.append(preferred_c)
             saved_r = None if is_mocked_post else _last_gemini_meta.get("working_route")
-            if saved_r and saved_r[0] == "claude" and saved_r[1] not in c_models:
+            if (
+                saved_r
+                and saved_r[0] == "claude"
+                and saved_r[1] not in c_models
+                and (prefer_fast or "opus" in saved_r[1].lower())
+            ):
                 c_models.append(saved_r[1])
             for m in (discovered_c or DEFAULT_CLAUDE_MODELS):
                 if m not in c_models:
                     c_models.append(m)
 
-            if prefer_fast and len(c_models) >= 2:
-                # Keep top Sonnet #1 for human voice quality, and place fast Haiku (if discovered) as #2 safety net
-                top_first = c_models[0]
-                fast_haiku = next((m for m in c_models[1:] if "haiku" in m.lower()), None)
-                c_trial = [top_first, fast_haiku] if fast_haiku else c_models[:2]
+            if prefer_fast:
+                # Fast / 2nd-pass polish mode: prefer top Sonnet #1 (distinct editor persona) + Haiku #2 safety net
+                if preferred_c:
+                    top_fast = preferred_c
+                else:
+                    top_fast = next((m for m in c_models if "sonnet" in m.lower()), c_models[0])
+                fast_haiku = next((m for m in c_models if "haiku" in m.lower() and m != top_fast), None)
+                c_trial = [top_fast, fast_haiku] if fast_haiku else [top_fast]
             else:
-                c_trial = [m for m in c_models if "haiku" not in m.lower()][:2] or c_models[:2]
+                # Primary creative mode: lead with flagship Claude Opus (#1), with top Sonnet (#2) as instant fallback
+                if preferred_c:
+                    c_trial = [preferred_c] + [m for m in c_models if m != preferred_c and "haiku" not in m.lower()][:1]
+                else:
+                    top_opus = next((m for m in c_models if "opus" in m.lower()), None)
+                    top_sonnet = next((m for m in c_models if "sonnet" in m.lower()), None)
+                    c_trial = [m for m in (top_opus, top_sonnet) if m] or c_models[:2]
 
             claude_max_tokens = max(
                 4096,
@@ -3907,7 +4166,7 @@ def _make_ai_cache_key(
         (focus.get("name", ""), int(focus.get("women") or 0), int(focus.get("men") or 0))
         if focus else None
     )
-    return ("v6_human_archetypes", eng_pref, has_c, ch_norm, arch_key, tm_norm, sit_norm, slot_label or "", biz_date_str, top3_sig, focus_sig)
+    return ("v7_opus_2pass_street_pulse", eng_pref, has_c, ch_norm, arch_key, tm_norm, sit_norm, slot_label or "", biz_date_str, top3_sig, focus_sig)
 
 
 def _store_ai_candidate_cache(cache_key, candidate: dict, model_name: str, now_t: float = None):
@@ -3964,6 +4223,135 @@ def has_cached_ai_candidate(
     return False
 
 
+def polish_draft_to_human_voice(
+    draft_text: str,
+    channel: str = "x",
+    research: dict = None,
+    slot_label: str = "22:00",
+    now_jst: datetime.datetime = None,
+    silent_tree: bool = False,
+    recent_endings: list = None,
+    force_polish: bool = False,
+) -> tuple:
+    """
+    2nd-Pass Humanizer ('書いてから人間語に崩す' 赤ペン推敲パス):
+    Reviews Pass-1's draft with a separate fast editor call (`claude-sonnet-*`) to strip subtle AI neatness,
+    stiff conjunctions ('〜ため、', '〜傾向にあり', '〜という構図'), or preachy wrap-ups while strictly locking
+    100% of verified numbers, brand names, and platform length/footer rules.
+    Returns `(final_text, polisher_model_or_empty)`. Falls back to `(draft_text, "")` on any safety check miss.
+    """
+    base_text = (draft_text or "").strip()
+    if not base_text:
+        return "", ""
+    ch = (channel or "x").lower()
+    if ch not in ("x", "threads", "instagram", "tiktok"):
+        return base_text, ""
+    if not force_polish:
+        if _is_requests_post_mocked() or not get_claude_api_key(allow_blocking=False):
+            return base_text, ""
+
+    now_jst = now_jst or datetime.datetime.now(JST)
+    detached_footer = ""
+    body_only = base_text
+    if ch == "threads":
+        m_foot = re.search(r"(\n+(?:🔍|▼)\s*全\d+店舗の現在人数[\s\S]*)$", base_text)
+        if m_foot:
+            detached_footer = m_foot.group(1).strip()
+            body_only = base_text[:m_foot.start()].strip()
+
+    def _extract_fact_nums(s: str) -> collections.Counter:
+        # Lock all crowd counts, percentages, temperatures, and minute/hour figures (excluding '1軒目'/'2軒目'/'1人'/'2人組')
+        cleaned = re.sub(r"[123]軒目|[12]人組?", "", s or "")
+        return collections.Counter(re.findall(r"\d+", cleaned))
+
+    orig_digits = _extract_fact_nums(body_only)
+    endings_list = recent_endings if recent_endings is not None else extract_sentence_endings(
+        get_recent_cross_channel_texts(channel=ch, limit=5, allow_blocking=False)
+    )
+    cliche_list_str = "・".join(f"『{w}』" for w in AI_CLICHE_WORDS)
+    silent_note = (
+        "今回はサイレントツリー回のため、末尾に『👇』『リプ欄』やハッシュタグ（#）は一切付けず余韻だけで終えること。"
+        if (ch == "x" and silent_tree)
+        else ""
+    )
+
+    polish_sys = (
+        "あなたは生身の人間のSNS編集者です。渡された下書きの『事実・店舗名・数値』は1文字1桁も変えずに、"
+        "AIが書いたような『整いすぎた接続詞・説明くささ・綺麗なまとめオチ』だけを削ぎ落とし、"
+        "スマホでふと親指打ちしたような自然な呼吸・余白・口語リズムに微調整してください。"
+        "既に十分短く自然なら無理に書き換えすぎず、気になるところだけ軽く整えてJSONで返してください。"
+    )
+    polish_prompt = (
+        f"【対象SNS：{ch.upper()}（{slot_label}枠）｜2段階目：脱AI・人間語くずし推敲】\n"
+        "以下の下書きを読み返し、少しでも『AIっぽい硬さ・説明調・作られた上手さ』があれば自然な話し言葉や体言止め・素の余韻に崩してください。\n\n"
+        "【赤ペン推敲のポイント】\n"
+        "1. 『〜ため、』『〜によって』『〜傾向』『〜という構図』『〜なのが特徴』『〜と言える』等の書き言葉・解説調があれば、自然な読点や話し言葉（『〜だし』『〜ぶん』『〜ですね』『〜かも』や体言止め）に崩す。\n"
+        "2. 最後の1文が『〜が正解』『〜してみては』『〜がおすすめ』のような指南・まとめ口調なら、力を抜いた独り言や置きメモの余韻に変える。\n"
+        "3. 【絶対厳守】下書きに含まれる店舗名（『オリエンタルラウンジ〇〇』『JIS〇〇』『ag〇〇』等）と、すべての数字（人数・パーセント・気温・時刻等）は **1桁たりとも変更・削除・追加しないこと**。\n"
+        f"4. 禁止語（{cliche_list_str}）やURLは絶対に入れないこと。絵文字や『！』は増やさないこと。{silent_note}\n"
+        f"5. 直近使った文末語尾（{json.dumps(endings_list[:5], ensure_ascii=False)}）と末尾が被る場合は、別の自然な語尾に変えること。\n\n"
+        f"【推敲対象の下書き】\n{body_only}\n\n"
+        '出力はJSON形式のみ：{"polished_text": "推敲後の本文"}'
+    )
+
+    try:
+        parsed_p, p_model, _ = call_editorial_ai_json(
+            prompt=polish_prompt,
+            system_prompt=polish_sys,
+            max_output_tokens=1500,
+            thinking_budget=512,
+            temperature=0.72,
+            total_deadline_sec=16.0,
+            per_call_timeout_sec=12.0,
+            allow_blocking=True,
+            now_jst=now_jst,
+            prefer_fast=True,
+        )
+        if not parsed_p:
+            return base_text, ""
+        raw_pol = (parsed_p.get("polished_text") or parsed_p.get("main_text") or "").strip()
+        if not raw_pol:
+            return base_text, ""
+        pol_body = _postprocess_ai_main_text(raw_pol, channel=ch)
+        if not pol_body:
+            return base_text, ""
+        if ch == "x" and silent_tree:
+            pol_body = re.sub(r"#\S+", "", pol_body).replace("👇", "").replace("リプ欄へ", "").replace("リプ欄", "").strip()
+
+        # Lock 1: Exact preservation of every factual numeric token in the prose body
+        if _extract_fact_nums(pol_body) != orig_digits:
+            return base_text, ""
+
+        cand_full = f"{pol_body}\n\n{detached_footer}" if detached_footer else pol_body
+        if any(w in cand_full for w in AI_CLICHE_WORDS):
+            return base_text, ""
+
+        # Lock 2: Strict Desk Factual Verification against `research`
+        if research is not None:
+            ok_fact, _ = verify_ai_factual_numbers(cand_full, research, channel=ch)
+            if not ok_fact:
+                return base_text, ""
+
+        # Lock 3: Platform weight / character bounds
+        if ch == "x":
+            if "http://" in cand_full or "https://" in cand_full:
+                return base_text, ""
+            wt = x_poster.compute_twitter_weight(cand_full)
+            if not (84 <= wt <= 270):
+                return base_text, ""
+        elif ch == "threads":
+            if not (255 <= len(cand_full) <= 478):
+                return base_text, ""
+        elif ch == "instagram":
+            if not (200 <= len(cand_full) <= 680):
+                return base_text, ""
+
+        return cand_full, p_model
+    except Exception as e:
+        logger.debug(f"2nd-pass humanizer skipped: {e}")
+        return base_text, ""
+
+
 def _generate_gemini_adlib_candidate(
     research: dict,
     plan: dict,
@@ -3977,7 +4365,8 @@ def _generate_gemini_adlib_candidate(
     situation: str = None,
 ) -> dict:
     """
-    Generate live human-voiced SNS draft via Dual-Engine Chief Writer (Claude Sonnet or Upgraded Gemini Pro/Flash).
+    Generate live human-voiced SNS draft via Flagship Chief Writer (`Claude Opus` -> 2nd-Pass `Sonnet` Humanizer,
+    or Upgraded Gemini Pro/Flash fallback).
     When `cache_only=True`, returns cached draft in 0ms without blocking HTML page render.
     """
     if not has_any_ai_key(allow_blocking=(not cache_only)):
@@ -4047,18 +4436,40 @@ def _generate_gemini_adlib_candidate(
     main_text = _postprocess_ai_main_text(parsed.get("main_text") or "", channel=ch)
     if not main_text:
         return None
+
+    x_silent = False
+    if ch == "x":
+        x_arch_meta = select_x_post_archetype(slot_label=slot_label, now_jst=now_jst)
+        x_silent = bool(x_arch_meta.get("silent_tree"))
+
+    polished_text, polisher_model = polish_draft_to_human_voice(
+        draft_text=main_text,
+        channel=ch,
+        research=research,
+        slot_label=slot_label,
+        now_jst=now_jst,
+        silent_tree=x_silent,
+    )
+    if polished_text:
+        main_text = polished_text
+
+    display_model = f"{model_used} → 2段階推敲" if polisher_model else model_used
+    if model_used:
+        _last_gemini_meta["last_model"] = model_used
+        _last_gemini_meta["last_provider"] = "claude" if "claude" in model_used.lower() else "gemini"
+
     writer_note = (parsed.get("writer_note") or "天気・曜日・リアルタイム人数を掛け合わせた本音アドリブ執筆案。").strip()
     thinking_memo = (parsed.get("editorial_angle") or parsed.get("thinking_memo") or "").strip()
 
     candidate = {
         "style": "ai_live_adlib",
-        "style_label": f"✨ AI編集長・現場本音アドリブ実況型（{model_used}）",
-        "writer_note": f"【{model_used}・本音長考推敲】{writer_note}",
+        "style_label": f"✨ AI編集長・現場本音アドリブ実況型（{display_model}）",
+        "writer_note": f"【{display_model}】{writer_note}",
         "thinking_memo": thinking_memo,
         "main_text": main_text,
         "reply_text": reply_text,
         "is_ai_generated": True,
-        "ai_model": model_used,
+        "ai_model": display_model,
         **(
             {
                 "tiktok_hook_text": (main_text.split("\n", 1)[0][:46] if main_text else "同駅・徒歩4分の男女比ギャップ速報"),
