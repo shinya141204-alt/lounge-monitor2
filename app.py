@@ -4302,6 +4302,12 @@ def guide_osaka_kita_vs_minami():
     return _render_scheduled_guide('osaka-kita-vs-minami')
 
 
+@app.route('/guide/table-change-protocol')
+def guide_table_change_protocol():
+    """Scheduled editorial data study on table change / change protocols and optimal store conditions."""
+    return _render_scheduled_guide('table-change-protocol')
+
+
 @app.route('/guide/<slug>')
 def guide_dynamic_scheduled(slug):
     """Dynamic route serving scheduled or live columns published from the Column Editorial Room."""

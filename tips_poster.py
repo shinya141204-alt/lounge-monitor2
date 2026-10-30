@@ -287,10 +287,15 @@ TIPS_LIST = [
         "金曜22時に「女性比60%」を見て向かったのに、着いた頃には男余りになってた経験ない？📊\n"
         "22時台は1次会終わりの男が一斉に向かうから約3割が到着時に逆転する。22時以降は『女性比70%超』の店を選ぶのが鉄則⚡"
     ),
+    (
+        "相席で会話が死んだとき「席替え頼んだら失礼かな…」と迷う男性、実は女子側も内心『誰か助けて』って思ってる。\n"
+        "「明日早いですよね、そろそろ交代お願いしましょうか」って男側から笑顔で切り出せる人は、むしろ神対応扱いされるよ🍸"
+    ),
 ]
 
 
 _FALLBACK_COLUMNS = [
+    ("相席ラウンジの席替え完全攻略｜言えない男と察する女の心理学", "/guide/table-change-protocol"),
     ("金土22時の「女性比60%」が3割逆転する群衆殺到パラドックス", "/guide/crowd-rush-paradox"),
     ("全51店舗「料金・イベント・現在人数」比較ボード活用ガイド", "/guide/price-event-comparison"),
     ("最初の10分で差がつく会話＆清潔感ガイド", "/guide/first-10-minutes"),
@@ -382,6 +387,11 @@ def _column_for_tip_index(idx: int) -> tuple:
         return ("大阪・梅田エリアのリアルタイム混雑＆攻略", "/area/umeda")
     if idx == 63:
         return ("金土22時の「女性比60%」が3割逆転する群衆殺到パラドックス", "/guide/crowd-rush-paradox")
+    if idx == 64:
+        import scheduled_articles
+        if scheduled_articles.is_published("table-change-protocol"):
+            return ("相席ラウンジの席替え完全攻略｜言えない男と察する女の心理学", "/guide/table-change-protocol")
+        return ("相席ラウンジ実践コラム・攻略記事一覧", "/columns")
     return ("相席ラウンジ実践コラム・攻略記事一覧", "/columns")
 
 

@@ -68,6 +68,30 @@ SCHEDULED_ARTICLES = [
         ),
     },
     {
+        "slug": "table-change-protocol",
+        "path": "/guide/table-change-protocol",
+        "template": "guide_table_change_protocol.html",
+        "publish_at": "2026-10-31 19:00:00",
+        "publish_at_ja": "2026年10月31日(土) 19:00",
+        "lastmod": "2026-10-31",
+        "eyecatch_jpg": "/static/eyecatch-table-change-protocol.jpg",
+        "eyecatch_webp": "/static/eyecatch-table-change-protocol.webp",
+        "badge": "席替え・チェンジ検証",
+        "read_time": "約6分で読める",
+        "tag_primary": ("tag-pink", "🔄 27.6万件ログ実測"),
+        "tag_secondary": ("tag-cyan", "スマート離脱プロトコル"),
+        "title": "相席ラウンジの席替え（チェンジ）完全攻略｜言えない男と察する女の心理学と、27万件ログが教える「成功店舗の最低条件」",
+        "short_title": "気まずい沈黙を終わらせる席替え（チェンジ）完全攻略",
+        "desc": "「会話が盛り上がらないのに気まずくて席替えを頼めず、10分750円のメーターだけが回る地獄の沈黙」——女性が化粧室で作戦会議を始めるサイン、スタッフへのスマートな3大耳打ち術、そして店内に女性10名以上いないと席替えが失敗するデータ的根拠。",
+        "x_title": "相席ラウンジの席替え完全攻略｜言えない男と察する女の心理学",
+        "x_main_text": (
+            "会話が死んだテーブルで「席替え頼んだら失礼かな…」と迷う間にも、10分750円の課金メーターは回り続けてます💸\n\n"
+            "実は女性10名未満の店で席替えを頼むと「男性一人待機課金」に転落する罠も📊\n"
+            "男女双方の自尊心を傷つけないスマート離脱術はリプ欄へ👇\n"
+            "#相席ラウンジ #相席ナビ"
+        ),
+    },
+    {
         "slug": "cost-break-even",
         "path": "/guide/cost-break-even",
         "template": "guide_cost_break_even.html",

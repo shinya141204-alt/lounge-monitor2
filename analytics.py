@@ -158,6 +158,7 @@ _PAGE_TITLES = {
     '/guide/cost-break-even': '📖 90分粘るvs40分で見切る｜男性の滞在時間と料金の損益分岐点検証',
     '/guide/rain-payday': '📖 雨の日・給料日前・連休中日の男女比変動と隠れ穴場日データ',
     '/guide/osaka-kita-vs-minami': '📖 大阪キタvsミナミ全9店舗比較｜時間帯で逆転する南北ハシゴ法則',
+    '/guide/table-change-protocol': '📖 相席ラウンジの席替え（チェンジ）完全攻略｜言えない男と察する女の心理学と成功店舗の条件',
     '/guide/crowd-rush-paradox': '📖 金土22時の群衆殺到パラドックスと女性比70%安全バッファ検証',
     '/for-women': '💄 女子のための相席ラウンジ完全ガイド＆待ちゼロ店舗ボード',
     '/privacy': '⚖️ 運営者情報・プライバシーポリシー',
