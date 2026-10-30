@@ -31,7 +31,12 @@ def _fetch_all_rows(sql_qmark: str, params: tuple = ()):
         with turbo_store.pg_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(pg_sql, params)
-                return cur.fetchall()
+                rows = cur.fetchall()
+            try:
+                conn.rollback()  # BUG-09: Close read transaction to prevent 'idle in transaction' in pool
+            except Exception:
+                pass
+            return rows
     conn = _get_read_connection()
     cur = None
     try:
@@ -141,11 +146,22 @@ def get_connection():
     return conn
 
 
+_INODE_CHECK_INTERVAL = 2.0  # seconds between os.stat inode checks to minimize system call overhead (BUG-08)
+
+
 def _get_read_connection():
     """Returns a persistent per-thread SQLite read connection, reopening if DB_PATH changed or was recreated."""
+    now = time.monotonic()
     conn = getattr(_read_tls, 'conn', None)
     tls_db_path = getattr(_read_tls, 'db_path', None)
     tls_inode = getattr(_read_tls, 'db_inode', None)
+    last_check = getattr(_read_tls, 'last_check', 0.0)
+
+    # Fast path: reuse connection without os.stat if checked recently (BUG-08)
+    if conn is not None and tls_db_path == DB_PATH and (now - last_check) < _INODE_CHECK_INTERVAL:
+        conn.row_factory = sqlite3.Row
+        return conn
+
     exists_now = os.path.exists(DB_PATH)
     cur_inode = None
     if exists_now:
@@ -153,6 +169,9 @@ def _get_read_connection():
             cur_inode = os.stat(DB_PATH).st_ino
         except OSError:
             exists_now = False
+
+    _read_tls.last_check = now
+
     if conn is not None and tls_db_path == DB_PATH and exists_now and tls_inode == cur_inode:
         conn.row_factory = sqlite3.Row
         return conn
@@ -172,7 +191,9 @@ def _get_read_connection():
     _read_tls.conn = conn
     _read_tls.db_path = DB_PATH
     _read_tls.db_inode = cur_inode
+    _read_tls.last_check = now
     return conn
+
 
 
 def init_db():
@@ -423,13 +444,11 @@ def _save_moat_aux_logs(items, timestamp_str):
     ext_rows = []
     try:
         import moat_intelligence
-        allow_weather_net = (
-            os.environ.get("DISABLE_SCHEDULER") != "1"
-            and os.environ.get("DISABLE_EXTERNAL_WEATHER") != "1"
-        )
+        # BUG-02: Never block DB insert transaction with synchronous external weather API call.
+        # Use allow_blocking=False so weather snapshot is read from RAM cache or refreshed in background.
         ctx_list = moat_intelligence.capture_external_context_snapshot(
             live_stores=items,
-            allow_blocking=allow_weather_net,
+            allow_blocking=False,
         )
         for c in (ctx_list or []):
             ext_rows.append((
@@ -938,6 +957,7 @@ def get_snapshot_around(minutes_ago_min=10, minutes_ago_max=25):
     Returns {store_name: {'men': m, 'women': w}} from ~15 minutes ago (10-25 min window)
     to calculate real-time 15-min crowd momentum.
     Automatically widens window to 5-45 mins if the primary window has no snapshot.
+    Optimized via SQL window function (ROW_NUMBER OVER PARTITION) to fetch only latest row per store directly from DB (BUG-03 / F5.1).
     """
     now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
     windows = [(minutes_ago_min, minutes_ago_max)]
@@ -948,18 +968,18 @@ def get_snapshot_around(minutes_ago_min=10, minutes_ago_max=25):
             start_ts = (now_jst - datetime.timedelta(minutes=w_max)).strftime("%Y-%m-%d %H:%M:%S")
             end_ts = (now_jst - datetime.timedelta(minutes=w_min)).strftime("%Y-%m-%d %H:%M:%S")
             rows = _fetch_all_rows("""
+                WITH ranked AS (
+                    SELECT store_name, men, women, timestamp,
+                           ROW_NUMBER() OVER (PARTITION BY store_name ORDER BY timestamp DESC) as rn
+                    FROM monitor_logs
+                    WHERE timestamp >= ? AND timestamp <= ?
+                )
                 SELECT store_name, men, women, timestamp
-                FROM monitor_logs
-                WHERE timestamp >= ? AND timestamp <= ?
-                ORDER BY timestamp DESC
+                FROM ranked
+                WHERE rn = 1
             """, (start_ts, end_ts))
             if rows:
-                result = {}
-                for r in rows:
-                    sname = r[0]
-                    if sname not in result:
-                        result[sname] = {'men': r[1], 'women': r[2], 'ts': r[3]}
-                return result
+                return {r[0]: {'men': r[1], 'women': r[2], 'ts': r[3]} for r in rows}
         return {}
     except Exception:
         return {}

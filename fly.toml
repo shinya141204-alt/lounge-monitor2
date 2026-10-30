@@ -18,7 +18,11 @@ kill_timeout = "25s"
 
 [processes]
   app = "sh -c 'APP_ROLE=web exec gunicorn --workers 2 --threads 16 --timeout 60 --graceful-timeout 20 -b 0.0.0.0:8080 app:app'"
-  worker = "sh -c 'APP_ROLE=worker DISABLE_SCHEDULER=1 exec python3 worker.py'"
+  worker = "sh -c 'APP_ROLE=worker exec python3 worker.py'"
+
+[[statics]]
+  guest_path = "/app/static"
+  url_prefix = "/static"
 
 [http_service]
   internal_port = 8080

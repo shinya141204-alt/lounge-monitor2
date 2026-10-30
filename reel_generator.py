@@ -754,7 +754,7 @@ def build_reel_caption(
 ) -> str:
     """
     Generate human-voiced, save-worthy caption + hashtags for Instagram Reels / TikTok / YouTube Shorts.
-    Strictly uses full 'オリエンタルラウンジ' or shorthand 'オリラジ' across all generated text.
+    Strictly uses full 'オリエンタルラウンジ' across all generated text.
     """
     ctx = build_reel_context(stores, reel_type=reel_type, now_jst=now_jst)
     rt = ctx["reel_type"]
@@ -781,10 +781,10 @@ def build_reel_caption(
             f"今の3大激戦区（新宿 vs 梅田 vs 渋谷）のリアル集計がこちら👇\n"
             f"{joined_z}\n\n"
             f"人数ボリュームが一番熱いのは【{lead_name}】、男性が待ち時間を避けて座りやすい比率なのは【{ratio_name}】という結果に。\n"
-            f"同じ駅でも徒歩3〜4分の別ブランド（オリラジ・ag・JIS）を見比べるだけで「男性待ち50分」を余裕で回避できます💡\n\n"
+            f"同じ駅でも徒歩3〜4分の別ブランド（オリエンタルラウンジ・ag・JIS）を見比べるだけで「男性待ち50分」を余裕で回避できます💡\n\n"
             f"お店に向かう直前の「全53店舗の現在人数＆男女比」は、プロフィールのリンク『相席ナビ』（aiseki-navi.com）から登録不要・3秒で無料検索できます🔍\n"
             f"週末の作戦会議用に「保存📌」しておくと便利です！\n\n"
-            f"#相席ナビ #相席ラウンジ #オリエンタルラウンジ #オリラジ #ag #JIS #新宿グルメ #梅田グルメ #渋谷グルメ #夜遊び"
+            f"#相席ナビ #相席ラウンジ #オリエンタルラウンジ #ag #JIS #新宿グルメ #梅田グルメ #渋谷グルメ #夜遊び"
         )
         return enforce_brand_rule(caption)
 
@@ -805,7 +805,7 @@ def build_reel_caption(
             f"女性比率が70%超えで女子が集中している店舗より、男性が先行している店舗を選ぶ方が入店直後から席替えもスムーズで快適です✨\n\n"
             f"いま現在「女子待ち0」で入れる店舗と今夜の限定特典・フード比較は、プロフィールのリンク『相席ナビ』（aiseki-navi.com）から3秒でチェックできます🔍\n"
             f"友達との2軒目探し用に「保存📌」して使ってください🥂\n\n"
-            f"#相席ナビ #女子会 #相席ラウンジ #オリエンタルラウンジ #オリラジ #ag #JIS #週末女子会 #夜カフェ #2軒目"
+            f"#相席ナビ #女子会 #相席ラウンジ #オリエンタルラウンジ #ag #JIS #週末女子会 #夜カフェ #2軒目"
         )
         return enforce_brand_rule(caption)
 
@@ -824,10 +824,10 @@ def build_reel_caption(
         caption = (
             f"同じ駅で徒歩4分しか離れてないのに、お店のドア1枚でここまで男女比が変わる…😳📊{mode_note}\n\n"
             f"{joined_gp}\n\n"
-            f"「相席ラウンジどこも男待ちでしょ…」って諦める前に、駅を出る直前に別ブランド（オリラジ・ag・JIS）を見比べるだけで待ち時間ゼロの店舗が見つかります💡\n\n"
+            f"「相席ラウンジどこも男待ちでしょ…」って諦める前に、駅を出る直前に別ブランド（オリエンタルラウンジ・ag・JIS）を見比べるだけで待ち時間ゼロの店舗が見つかります💡\n\n"
             f"いま現在の全53店舗の男女人数・料金シミュレーターは『相席ナビ』（aiseki-navi.com）で検索🔍（プロフリンクからも3秒で見れます）\n"
             f"今夜・週末に使う用に「保存🔖」しておいてください！\n\n"
-            f"#相席ナビ #相席ラウンジ #オリエンタルラウンジ #オリラジ #ag #JIS #新宿夜遊び #梅田グルメ #渋谷夜遊び #相席"
+            f"#相席ナビ #相席ラウンジ #オリエンタルラウンジ #ag #JIS #新宿夜遊び #梅田グルメ #渋谷夜遊び #相席"
         )
         return enforce_brand_rule(caption)
 
@@ -845,7 +845,7 @@ def build_reel_caption(
             f"友達との2軒目や夜カフェ代わりに使うなら、行く3分前に男性先行店を選ぶのが一番快適✨\n"
             f"現在人数と今夜の女子向け特典は『相席ナビ』（aiseki-navi.com）で検索🔍（登録不要・無料）\n"
             f"女子会の作戦会議用に「保存🔖」推奨です🥂\n\n"
-            f"#相席ナビ #相席ラウンジ #女子会 #オリエンタルラウンジ #オリラジ #ag #JIS #2軒目 #夜カフェ #週末女子会"
+            f"#相席ナビ #相席ラウンジ #女子会 #オリエンタルラウンジ #ag #JIS #2軒目 #夜カフェ #週末女子会"
         )
         return enforce_brand_rule(caption)
 
@@ -862,7 +862,7 @@ def build_reel_caption(
             f"2軒目・3軒目で失敗したくない夜は、入店直前のリアルタイム人数を見てから動くのが鉄則💡\n"
             f"全国53店舗の現在人数と深夜維持率は『相席ナビ』（aiseki-navi.com）で検索🔍\n"
             f"終電後の駆け込み用に「保存🔖」しておくと役立ちます！\n\n"
-            f"#相席ナビ #相席ラウンジ #オリエンタルラウンジ #オリラジ #ag #JIS #終電逃した #2軒目 #新宿 #梅田"
+            f"#相席ナビ #相席ラウンジ #オリエンタルラウンジ #ag #JIS #終電逃した #2軒目 #新宿 #梅田"
         )
         return enforce_brand_rule(caption)
 
@@ -886,7 +886,7 @@ def build_reel_caption(
         f"男性は「女性10名以上×女性比率55%以上」の店舗、女性ペアは逆に「男性先行中」の店舗を選ぶと待ち時間ゼロでスムーズに楽しめます🥂\n\n"
         f"全国53店舗のいま現在の男女人数・比率・料金比較は、プロフィールのリンク『相席ナビ』（aiseki-navi.com）で24時間無料公開中🔍\n"
         f"お店に入る3分前に見返せるよう「保存📌」推奨です！\n\n"
-        f"#相席ナビ #相席ラウンジ #オリエンタルラウンジ #オリラジ #ag #JIS #相席 #新宿 #梅田 #渋谷"
+        f"#相席ナビ #相席ラウンジ #オリエンタルラウンジ #ag #JIS #相席 #新宿 #梅田 #渋谷"
     )
     return enforce_brand_rule(caption)
 
@@ -1258,7 +1258,7 @@ class _ReelSceneRenderer:
         sm_fit, sm_font, _ = ogp_generator.fit_text_and_font(draw, stat_main, sw - 48, 38 if self.is_tiktok else 40, 24)
         draw.text((lx + 24, cy1 + 68), sm_fit, font=sm_font, fill=(255, 255, 255, 255))
 
-        ratio_note = f"国内全体 女性比率 {self.ctx['overall_wpct']}%  ｜  オリラジ・ag・JIS 全53店対応"
+        ratio_note = f"国内全体 女性比率 {self.ctx['overall_wpct']}%  ｜  オリエンタルラウンジ・ag・JIS 全53店対応"
         rn_fit, rn_font, _ = ogp_generator.fit_text_and_font(draw, ratio_note, sw - 48, 18, 14)
         draw.text((lx + 24, cy1 + 142), rn_fit, font=rn_font, fill=(182, 194, 212, 240))
 

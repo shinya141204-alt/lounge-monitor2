@@ -1967,12 +1967,12 @@ class FullAuditRegressionTests(unittest.TestCase):
         self.assertNotIn('DummyKey', json.dumps(st))
 
         try:
-            # 3. Valid Gemini deep-thinking ad-lib draft ('オリエンタルラウンジ' + colloquial 'オリラジ' + weather vibe + thinking_memo) wins #1 with 100/100
+            # 3. Valid Gemini deep-thinking ad-lib draft ('オリエンタルラウンジ' + weather vibe + thinking_memo) wins #1 with 100/100
             valid_ai_json = json.dumps({
                 'main_text': (
                     '小雨の金曜夜☔ 駅チカの梅田まわりで今かなり座りやすいのがオリエンタルラウンジ梅田茶屋町✨\n\n'
-                    '・オリラジ梅田茶屋町：女性44・男性22（女性比67%）\n'
-                    '・オリラジ新宿：女性38・男性24\n\n'
+                    '・オリエンタルラウンジ梅田茶屋町：女性44・男性22（女性比67%）\n'
+                    '・オリエンタルラウンジ新宿：女性38・男性24\n\n'
                     '向かう前の比較はリプ欄から👇\n#相席ナビ #相席ラウンジ'
                 ),
                 'writer_note': '雨天の駅チカ集中と梅田の実測値を掛け合わせたアドリブ案',
@@ -1990,11 +1990,12 @@ class FullAuditRegressionTests(unittest.TestCase):
             self.assertEqual(res_ok['winner']['total_score'], 100)
             self.assertIn('小雨の金曜夜', res_ok['winner']['main_text'])
             self.assertIn('オリエンタルラウンジ梅田茶屋町', res_ok['winner']['main_text'])
-            self.assertIn('オリラジ新宿', res_ok['winner']['main_text'])
+            self.assertIn('オリエンタルラウンジ新宿', res_ok['winner']['main_text'])
+            self.assertNotIn('オリラジ', res_ok['winner']['main_text'])
             self.assertIn('3案を比較', res_ok['winner']['thinking_memo'])
             self.assertIn('22:00', res_ok['research']['slot_persona']['label'])
 
-            # 3a. Bare 'オリエンタル〇〇' ('ラウンジ' omitted) in AI output is automatically normalized to 'オリエンタルラウンジ〇〇' / 'オリラジ〇〇'
+            # 3a. Bare 'オリエンタル〇〇' ('ラウンジ' omitted) in AI output is automatically normalized to 'オリエンタルラウンジ〇〇'
             bare_oriental_json = json.dumps({
                 'main_text': (
                     '雨上がりで動きが早い夜🌙 いま狙い目なのはオリエンタル梅田茶屋町！\n\n'
@@ -2014,10 +2015,8 @@ class FullAuditRegressionTests(unittest.TestCase):
             self.assertEqual(res_bare['winner']['style'], 'ai_live_adlib')
             self.assertEqual(res_bare['winner']['total_score'], 100)
             self.assertNotIn('オリエンタル梅田茶屋町', res_bare['winner']['main_text'])
-            self.assertTrue(
-                'オリエンタルラウンジ梅田茶屋町' in res_bare['winner']['main_text']
-                or 'オリラジ梅田茶屋町' in res_bare['winner']['main_text']
-            )
+            self.assertIn('オリエンタルラウンジ梅田茶屋町', res_bare['winner']['main_text'])
+            self.assertNotIn('オリラジ', res_bare['winner']['main_text'])
 
             # 3b. AI draft containing robotic copywriting cliches ('必見', 'まさに') is penalized on human_tone by Desk
             cliche_ai_json = json.dumps({
@@ -2041,7 +2040,7 @@ class FullAuditRegressionTests(unittest.TestCase):
             # 4. Hallucinated AI draft (invents 女性99名 instead of 44名) is strictly blocked by Desk (-50 data score)
             bad_ai_json = json.dumps({
                 'main_text': (
-                    '今夜のオリラジ梅田茶屋町、なんと女性99名・男性22名で大爆発中🔥\n'
+                    '今夜のオリエンタルラウンジ梅田茶屋町、なんと女性99名・男性22名で大爆発中🔥\n'
                     'いますぐリプ欄からチェック👇\n#相席ナビ #相席ラウンジ'
                 ),
                 'writer_note': '誇張テスト',
@@ -3197,7 +3196,7 @@ class WomenFeaturesACDETests(unittest.TestCase):
             html = r.data.decode('utf-8')
             self.assertIn('class="theme-light audience-women"', html)
             self.assertIn('toggleForWomenTheme()', html)
-            self.assertIn('オリエンタルラウンジ新宿', html)
+            self.assertTrue('オリエンタルラウンジ 新宿' in html or 'オリエンタルラウンジ新宿' in html)
             self.assertIn('🟢 女子待ち0・即案内圏', html)
             self.assertIn('"@type": "FAQPage"', html)
             self.assertIn('/link/women_dating_bachelor', html)
@@ -3893,8 +3892,8 @@ class TurboArchitectureTests(unittest.TestCase):
         valid_ai_json = json.dumps({
             'main_text': (
                 '金曜夜の梅田まわり、いま座りやすいのがオリエンタルラウンジ梅田茶屋町✨\n\n'
-                '・オリラジ梅田茶屋町：女性44・男性22（女性比67%）\n'
-                '・オリラジ新宿：女性38・男性24\n\n'
+                '・オリエンタルラウンジ梅田茶屋町：女性44・男性22（女性比67%）\n'
+                '・オリエンタルラウンジ新宿：女性38・男性24\n\n'
                 '向かう前の比較はリプ欄から👇\n#相席ナビ #相席ラウンジ'
             ),
             'writer_note': 'ワーカー事前生成テスト案',

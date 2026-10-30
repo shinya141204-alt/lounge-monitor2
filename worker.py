@@ -16,12 +16,22 @@ import time
 
 # Force worker role and prevent `app.py` from auto-starting its legacy embedded scheduler on import
 os.environ.setdefault("APP_ROLE", "worker")
-os.environ.setdefault("DISABLE_SCHEDULER", "1")
+_was_disable_scheduler = os.environ.get("DISABLE_SCHEDULER")
+# Ensure app.py module import does not trigger its embedded legacy BackgroundScheduler
+os.environ["DISABLE_SCHEDULER"] = "1"
 
 from apscheduler.executors.pool import ThreadPoolExecutor as APSThreadPoolExecutor
 from apscheduler.schedulers.background import BackgroundScheduler
 
 import app as app_module
+# Mark app legacy scheduler as started to prevent any subsequent trigger
+app_module._scheduler_started = True
+# Restore original DISABLE_SCHEDULER environment variable (removes it if it wasn't originally set)
+if _was_disable_scheduler is not None:
+    os.environ["DISABLE_SCHEDULER"] = _was_disable_scheduler
+else:
+    os.environ.pop("DISABLE_SCHEDULER", None)
+
 import local_db
 import scheduled_articles
 import turbo_store

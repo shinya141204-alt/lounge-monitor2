@@ -1460,15 +1460,15 @@
             let cls = 'brand-other';
             let stripped = name;
 
-            if (rawSource === 'ORIENTAL' || name.startsWith('OLG ') || name.startsWith('ag ')) {
+            if (rawSource === 'ORIENTAL' || name.startsWith('OLG ') || name.startsWith('ag ') || name.startsWith('オリエンタルラウンジ')) {
                 if (/^OLG\s+ag/i.test(name) || /^ag\s*/i.test(name)) {
                     code = 'ag';
                     cls = 'brand-ag';
                     stripped = name.replace(/^OLG\s+ag\s*/i, '').replace(/^ag\s*/i, '');
                 } else {
-                    code = 'OLG';
+                    code = 'オリエンタルラウンジ';
                     cls = 'brand-olg';
-                    stripped = name.replace(/^OLG\s+/i, '');
+                    stripped = name.replace(/^OLG\s+/i, '').replace(/^オリエンタルラウンジ\s*/i, '');
                 }
             } else if (rawSource === 'JIS' || name.startsWith('JIS ')) {
                 code = 'JIS';
@@ -2441,7 +2441,7 @@
         function getOfficialBrandUrl(brandCode, rawName) {
             const name = String(rawName || '');
             if (brandCode === 'ag' || /^ag\s/i.test(name)) return 'https://ag-ree.jp/';
-            if (brandCode === 'OLG') return 'https://oriental-lounge.com/';
+            if (brandCode === 'OLG' || brandCode === 'オリエンタルラウンジ') return 'https://oriental-lounge.com/';
             if (brandCode === 'JIS') return 'https://jis.bar/';
             if (brandCode === 'ASOBIBAR') return 'https://asobibar.net/';
             if (brandCode === 'XIX') return 'https://xix-thelounge.com/';
@@ -3183,7 +3183,7 @@
                                 <div class="event-item-meta">
                                     <span class="event-pill-tag ${escapeHtml(ev.tag_cls || 'tag-event')}">${escapeHtml(ev.tag || 'イベント')}</span>
                                     ${genderBadge}
-                                    <span class="brand-badge ${ev.brand === 'OLG' ? 'brand-olg' : 'brand-jis'}" style="font-size:0.68rem; padding:1px 5px;">${escapeHtml(ev.brand)}</span>
+                                    <span class="brand-badge ${ev.brand === 'OLG' ? 'brand-olg' : 'brand-jis'}" style="font-size:0.68rem; padding:1px 5px;">${escapeHtml(ev.brand === 'OLG' ? 'オリエンタルラウンジ' : ev.brand)}</span>
                                     <span class="event-store-label">${escapeHtml(ev.target_label || '全店')}</span>
                                     <span style="color:var(--text-secondary); font-size:0.72rem;">${escapeHtml(ev.date_str || '')}</span>
                                 </div>

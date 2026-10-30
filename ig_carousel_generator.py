@@ -97,7 +97,7 @@ def _resolve_day_theme(now_jst: datetime.datetime, weekend_label: str) -> dict:
         "h1_line2": "狙い目店舗＆",
         "h1_line3": "穴場時間予報",
         "sub_line1": "「男性待ち1時間」を回避してスムーズに相席するための",
-        "sub_line2": "週末データ攻略ガイド（オリラジ / ag / JIS 対応）",
+        "sub_line2": "週末データ攻略ガイド（オリエンタルラウンジ / ag / JIS 対応）",
         "slide2_title": "今週末の盛り上がり予測 TOP5",
         "slide2_sub": "直近のピーク時に女性が多く集まっている大型人気店舗",
         "glow1": (236, 72, 153, 110),

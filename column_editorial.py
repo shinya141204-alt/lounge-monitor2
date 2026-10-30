@@ -392,15 +392,16 @@ def clear_column_ai_cache():
 
 
 def _sanitize_brand_names(text: str, prefer_casual_if_tight: bool = False) -> str:
-    """Ensure zero bare 'オリエンタル' (`オリエンタル(?!ラウンジ)`) or raw internal 'OLG ' codes."""
+    """Ensure zero bare 'オリエンタル' (`オリエンタル(?!ラウンジ)`), zero 'オリラジ', or raw internal 'OLG ' codes."""
     if not text:
         return ""
     out = str(text)
     out = re.sub(r"\bOLG\s*ag", "ag", out)
     out = re.sub(r"\bOLG\s+", "オリエンタルラウンジ", out)
+    if "オリラジ" in out:
+        out = out.replace("オリラジ", "オリエンタルラウンジ")
     if re.search(r"オリエンタル(?!ラウンジ)", out):
-        rep = "オリラジ" if prefer_casual_if_tight else "オリエンタルラウンジ"
-        out = re.sub(r"オリエンタル(?!ラウンジ)", rep, out)
+        out = re.sub(r"オリエンタル(?!ラウンジ)", "オリエンタルラウンジ", out)
     return out
 
 
@@ -580,9 +581,7 @@ def save_editorial_column(
                 "a": _sanitize_brand_names(str(f["a"])),
             })
 
-    x_main = _sanitize_brand_names(candidate.get("x_main_text") or "", prefer_casual_if_tight=True)
-    if x_poster.compute_twitter_weight(x_main) > 274 and "オリエンタルラウンジ" in x_main:
-        x_main = x_main.replace("オリエンタルラウンジ", "オリラジ")
+    x_main = _sanitize_brand_names(candidate.get("x_main_text") or "", prefer_casual_if_tight=False)
     if x_poster.compute_twitter_weight(x_main) > 278:
         # Safe trim while preserving hashtag tail
         lines = [ln for ln in x_main.splitlines() if ln.strip()]
@@ -1168,7 +1167,7 @@ def _build_deterministic_candidates(
     archetype = THEME_ARCHETYPES.get(theme_key, THEME_ARCHETYPES["area_hopping"])
     stores = research.get("featured_stores") or []
     s1 = stores[0] if len(stores) > 0 else {
-        "ja_name": "オリエンタルラウンジ新宿", "casual_name": "オリラジ新宿",
+        "ja_name": "オリエンタルラウンジ新宿", "casual_name": "オリエンタルラウンジ新宿",
         "women": 45, "men": 27, "wpct": 62, "midnight_retention_pct": 86,
         "slot_20_22": "平日660円 / 金土880円", "slot_22_24": "平日770円 / 金土990円",
         "wait_fee_str": "220円 / 10分", "solo_rule": "店舗混雑状況により案内",
@@ -1718,7 +1717,7 @@ def _build_column_gemini_prompt(
         "  Step 3. Web版（検索読者向けの構造化リファレンス）とは完全に別構成で、note版（`note_essay_markdown`：番号なし見出し `## ` と `> ` 引用を用いた1,600〜2,400文字の一人称エッセイ）を書き下ろす。\n\n"
         "【絶対厳守ルール】\n"
         "1. 店舗名・人数・女性比率・単価・待機料は下記ファクトシートにある検証済みデータのみを使い、架空の数値を捏造しないこと。\n"
-        "2. ブランド呼称ルール：単体の『オリエンタル』や『オリエンタル新宿』（「ラウンジ」抜け）、内部コード『OLG』は絶対に使わないこと！必ず正式名称『オリエンタルラウンジ〇〇』または口語略称『オリラジ〇〇』と表記すること。\n"
+        "2. ブランド呼称ルール：単体の『オリエンタル』や略称『オリラジ』、中途半端な『オリエンタル新宿』（「ラウンジ」抜け）、内部コード『OLG』は絶対に使わないこと！必ず正式名称『オリエンタルラウンジ〇〇』と表記すること。\n"
         f"3. AI臭ワードの完全禁止：{cliches_str} はどこにも使わないこと。\n"
         f"4. ご都合主義セリフの禁止：{fantasy_str} のような浅いファンタジー会話は禁止。\n"
         "5. `note_essay_markdown` は先頭に `# タイトル` を付けず（本文のみ）、必ず `## ` 見出しを2〜3個と `> ` 会話引用を1〜2箇所含め、Web版の段落をそのままコピペせずエッセイとして独立執筆し、末尾にWeb版URLと `https://aiseki-navi.com/` への案内を添えて合計1,600文字以上にすること。\n"
@@ -1907,9 +1906,7 @@ def _generate_gemini_column_candidate(
                 "rows": clean_rows,
             }
 
-    x_main = _sanitize_brand_names(parsed.get("x_main_text") or baseline_cand["x_main_text"], prefer_casual_if_tight=True)
-    if x_poster.compute_twitter_weight(x_main) > 272 and "オリエンタルラウンジ" in x_main:
-        x_main = x_main.replace("オリエンタルラウンジ", "オリラジ")
+    x_main = _sanitize_brand_names(parsed.get("x_main_text") or baseline_cand["x_main_text"], prefer_casual_if_tight=False)
 
     note_title_clean = _sanitize_brand_names(parsed.get("note_title") or f"{parsed.get('title')}｜夜の行動経済学ノート")
     note_hashtags_clean = str(parsed.get("note_hashtags") or baseline_cand["note_hashtags"]).strip()
@@ -2109,11 +2106,12 @@ def run_column_evaluator(candidates: list, research: dict, plan: dict, tone_mode
         fact_pts = 25
         bare_oriental = len(re.findall(r"オリエンタル(?!ラウンジ)", full_blob + " " + (c.get("note_markdown") or "")))
         raw_olg = len(re.findall(r"\bOLG\b", full_blob + " " + (c.get("note_markdown") or "")))
-        if bare_oriental > 0 or raw_olg > 0:
+        isolated_oriradi = len(re.findall(r"オリラジ", full_blob + " " + (c.get("note_markdown") or "")))
+        if bare_oriental > 0 or raw_olg > 0 or isolated_oriradi > 0:
             fact_pts -= 12
-            warnings.append("ブランド呼称違反（単体『オリエンタル』または『OLG』残存）を検出")
+            warnings.append("ブランド呼称違反（単体『オリエンタル』『OLG』または『オリラジ』残存）を検出")
         else:
-            pros.append("ブランド呼称検閲OK（『オリエンタルラウンジ』／『オリラジ』統一）")
+            pros.append("ブランド呼称検閲OK（『オリエンタルラウンジ』統一）")
 
         matched_stores = [nm for nm in verified_names if nm and nm in full_blob]
         if not matched_stores:

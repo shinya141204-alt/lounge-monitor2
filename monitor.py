@@ -53,6 +53,7 @@ _olg_cache = {
     'data': [],
     'last_success': None
 }
+_olg_cache_lock = threading.Lock()
 
 _http_tls = threading.local()
 _FETCHER_SESSIONS = {}
@@ -283,7 +284,8 @@ def _fetch_ag_official_fallback() -> list:
 
 def get_oriental_data():
     global _olg_cache
-    _olg_cache['served_stale'] = False
+    with _olg_cache_lock:
+        _olg_cache['served_stale'] = False
     is_mocked = getattr(requests.get, '__module__', '') != 'requests.api'
     last_err = None
 
@@ -296,8 +298,9 @@ def get_oriental_data():
             response.raise_for_status()
             store_data = _extract_oriental_stores_from_html(response.content)
             if store_data:
-                _olg_cache['data'] = store_data
-                _olg_cache['last_success'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                with _olg_cache_lock:
+                    _olg_cache['data'] = list(store_data)
+                    _olg_cache['last_success'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 return store_data
             preview = (response.content or b'')[:120].decode('utf-8', errors='replace').strip()
             last_err = f"no store elements found ({len(response.content)} bytes; preview={preview!r})"
@@ -308,8 +311,9 @@ def get_oriental_data():
     if not is_mocked:
         doh_stores, doh_err = _fetch_oriental_via_doh()
         if doh_stores:
-            _olg_cache['data'] = doh_stores
-            _olg_cache['last_success'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            with _olg_cache_lock:
+                _olg_cache['data'] = list(doh_stores)
+                _olg_cache['last_success'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             return doh_stores
         last_err = f"{last_err} | DoH: {doh_err}"
 
@@ -317,25 +321,28 @@ def get_oriental_data():
         ag_live = _fetch_ag_official_fallback()
         if ag_live:
             ag_by_name = {s['name']: s for s in ag_live}
-            if _olg_cache['data']:
-                merged = [ag_by_name.get(s['name'], s) for s in _olg_cache['data']]
-                existing_names = {s['name'] for s in merged}
-                for ag_s in ag_live:
-                    if ag_s['name'] not in existing_names:
-                        merged.append(ag_s)
+            with _olg_cache_lock:
+                cached_data = list(_olg_cache.get('data') or [])
+                if cached_data:
+                    merged = [ag_by_name.get(s['name'], s) for s in cached_data]
+                    existing_names = {s['name'] for s in merged}
+                    for ag_s in ag_live:
+                        if ag_s['name'] not in existing_names:
+                            merged.append(ag_s)
+                    _olg_cache['served_stale'] = True
+                    _olg_cache['stale_reason'] = f"{last_err} (ag live={len(ag_live)})"
+                    return merged
                 _olg_cache['served_stale'] = True
-                _olg_cache['stale_reason'] = f"{last_err} (ag live={len(ag_live)})"
-                return merged
-            _olg_cache['served_stale'] = True
-            _olg_cache['stale_reason'] = f"{last_err} (ag-only={len(ag_live)})"
+                _olg_cache['stale_reason'] = f"{last_err} (ag-only={len(ag_live)})"
             return ag_live
 
     logging.error(f"Error fetching Oriental data: {last_err}")
-    if _olg_cache['data']:
-        logging.error(f"Using cached OLG data from {_olg_cache['last_success']}")
-        _olg_cache['served_stale'] = True
-        _olg_cache['stale_reason'] = str(last_err)
-        return _olg_cache['data']
+    with _olg_cache_lock:
+        if _olg_cache.get('data'):
+            logging.error(f"Using cached OLG data from {_olg_cache.get('last_success')}")
+            _olg_cache['served_stale'] = True
+            _olg_cache['stale_reason'] = str(last_err)
+            return list(_olg_cache['data'])
     return []
 
 
@@ -420,8 +427,8 @@ def get_xix_data():
         
         if data and len(data) > 0:
             info = data[0]
-            men_count = int(info.get('m_cnt', 0))
-            women_count = int(info.get('w_cnt', 0))
+            men_count = int(info.get('m_cnt') or 0)
+            women_count = int(info.get('w_cnt') or 0)
             return [{
                 'name': "XIX OKAYAMA",
                 'men': men_count,
@@ -441,8 +448,8 @@ def get_alfa_data():
         except Exception:
             data = json.loads(response.content.decode('utf-8-sig'))
         
-        men_count = int(data.get('man_num', 0))
-        women_count = int(data.get('woman_num', 0))
+        men_count = int(data.get('man_num') or 0)
+        women_count = int(data.get('woman_num') or 0)
         
         return [{
             'name': "ALFA HIROSHIMA",
@@ -477,10 +484,10 @@ def get_yatakoi_data(now_jst=None):
             except Exception:
                 pass
 
-            men = int(data.get('males', 0))
-            women = int(data.get('females', 0))
-            yk_men = int(data.get('ykMales', 0))
-            yk_women = int(data.get('ykFemales', 0))
+            men = int(data.get('males') or 0)
+            women = int(data.get('females') or 0)
+            yk_men = int(data.get('ykMales') or 0)
+            yk_women = int(data.get('ykFemales') or 0)
             
             return [{
                 'name': "YATAKOI UMEDA",
@@ -583,8 +590,8 @@ def get_clovers_data():
         if len(rows) >= 2:
             cells = rows[1].select('td')
             if len(cells) >= 2:
-                men_count = int(cells[0].get_text(strip=True))
-                women_count = int(cells[1].get_text(strip=True))
+                men_count = _parse_int_count(cells[0])
+                women_count = _parse_int_count(cells[1])
                 return [{
                     'name': 'CLOVERS HIROSHIMA',
                     'men': men_count,
@@ -667,8 +674,12 @@ def get_all_data():
         if res:
             data.extend(res)
 
-    if _olg_cache.get('served_stale'):
-        local_errors['get_oriental_data'] = f"stale cache: {_olg_cache.get('stale_reason')}"
+    with _olg_cache_lock:
+        served_stale = _olg_cache.get('served_stale')
+        stale_reason = _olg_cache.get('stale_reason')
+
+    if served_stale:
+        local_errors['get_oriental_data'] = f"stale cache: {stale_reason}"
 
     with _fetch_errors_lock:
         fetch_errors.clear()
@@ -678,7 +689,7 @@ def get_all_data():
     try:
         import health
         health_results = dict(results_by_name)
-        if _olg_cache.get('served_stale'):
+        if served_stale:
             health_results.pop('get_oriental_data', None)
         health.record_fetch(health_results, dict(local_errors), [fn.__name__ for fn in fetchers])
         health.check_unknown_stores([s.get('name') for s in data])

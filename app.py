@@ -43,13 +43,31 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 
 app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
-app.secret_key = os.environ.get('SECRET_KEY', 'aiseki-navi-staff-monitor-secret-key-2026')
+def _load_secure_config(env_key: str, fallback_value: str, is_sensitive: bool = True) -> str:
+    """Load configuration with fallback safety, value sanitization, and security warning logging."""
+    val = os.environ.get(env_key)
+    if val is not None and val.strip():
+        return val.strip()
+
+    if is_sensitive:
+        is_fly_prod = bool(os.environ.get('FLY_APP_NAME'))
+        log_level = logging.WARNING if not is_fly_prod else logging.ERROR
+        logging.log(
+            log_level,
+            f"[SECURITY NOTICE] Environment variable '{env_key}' is not set. "
+            f"Using default fallback value. In production environments (e.g. Fly.io), "
+            f"ensure '{env_key}' is explicitly configured via secrets."
+        )
+    return fallback_value
+
+
+app.secret_key = _load_secure_config('SECRET_KEY', 'aiseki-navi-staff-monitor-secret-key-2026')
 app.permanent_session_lifetime = datetime.timedelta(days=90)
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-STAFF_PASSCODE = os.environ.get('STAFF_PASSCODE', '5555')
-MASTER_PASSCODE = os.environ.get('MASTER_PASSCODE', '2918')
-ADMIN_API_SECRET = os.environ.get('ADMIN_API_SECRET', 'lounge2026')
+STAFF_PASSCODE = _load_secure_config('STAFF_PASSCODE', '5555')
+MASTER_PASSCODE = _load_secure_config('MASTER_PASSCODE', '2918')
+ADMIN_API_SECRET = _load_secure_config('ADMIN_API_SECRET', 'lounge2026')
 
 _login_failures_lock = threading.Lock()
 _login_failures = defaultdict(list)  # ip -> [epoch_ts, ...]
@@ -117,32 +135,103 @@ def is_master_authorized():
     return False
 
 
+def _is_json_request() -> bool:
+    """Determine whether the current request expects a JSON error response."""
+    if request.path.startswith('/api/'):
+        return True
+    accept = request.headers.get('Accept', '')
+    if 'application/json' in accept:
+        return True
+    if request.is_json:
+        return True
+    return False
+
+
+@app.errorhandler(404)
+def handle_404_error(e):
+    """Handle 404 Not Found error with JSON for API requests and friendly HTML for web pages."""
+    if _is_json_request():
+        error_name = getattr(e, 'name', None) or 'Not Found'
+        return jsonify({
+            'status': 'error',
+            'error': error_name,
+            'code': 404
+        }), 404
+    return render_template(
+        'error.html',
+        code=404,
+        title='ページが見つかりませんでした',
+        message='お探しのページは削除されたか、URLが変更された可能性があります。'
+    ), 404
+
+
+@app.errorhandler(500)
+def handle_500_error(e):
+    """Handle 500 Internal Server Error with JSON for API requests and friendly HTML for web pages."""
+    logging.exception(f"[HTTP 500] Internal Server Error on {request.path}: {e}")
+    if _is_json_request():
+        error_name = getattr(e, 'name', None) or 'Internal Server Error'
+        return jsonify({
+            'status': 'error',
+            'error': error_name,
+            'code': 500
+        }), 500
+    return render_template(
+        'error.html',
+        code=500,
+        title='システムエラーが発生しました',
+        message='一時的にサーバーで問題が発生しています。しばらく待ってから再度お試しください。'
+    ), 500
+
+
+@app.errorhandler(400)
+def handle_400_error(e):
+    """Handle 400 Bad Request error with JSON for API requests and friendly HTML for web pages."""
+    if _is_json_request():
+        error_name = getattr(e, 'name', None) or 'Bad Request'
+        return jsonify({
+            'status': 'error',
+            'error': error_name,
+            'code': 400
+        }), 400
+    return render_template(
+        'error.html',
+        code=400,
+        title='不正なリクエストです',
+        message='リクエストの形式が正しくありません。入力内容をご確認の上、再度お試しください。'
+    ), 400
+
+
 @app.after_request
 def compress_response(response):
     """Set cache headers and automatically gzip-compress JSON/HTML/CSS/JS/XML/SVG responses."""
     is_staff_sess = bool(session.get('is_staff') or session.get('is_master'))
-    # 1. Cache headers (must run regardless of gzip compression)
+
+    # 1. Unified Cache-Control headers (ISSUE-01 / F5.2)
     if request.path.startswith('/static/') and response.status_code == 200:
         if request.args.get('v'):
             response.headers['Cache-Control'] = 'public, max-age=31536000, immutable'
         else:
             response.headers['Cache-Control'] = 'public, max-age=86400'
-    else:
+    elif request.path in ('/sw.js', '/api/status'):
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+    elif is_staff_sess or request.path.startswith('/staff'):
         if is_staff_sess:
             response.headers['X-Staff-View'] = '1'
-            response.headers['Cache-Control'] = 'private, no-store, no-cache, must-revalidate, max-age=0'
-            response.headers['Pragma'] = 'no-cache'
-        elif response.content_type and 'text/html' in response.content_type and response.status_code == 200:
-            if 'Cache-Control' not in response.headers:
-                if request.path.startswith('/staff'):
-                    response.headers['Cache-Control'] = 'private, no-store, no-cache, must-revalidate, max-age=0'
-                    response.headers['Pragma'] = 'no-cache'
-                else:
-                    if os.environ.get('ENABLE_PUBLIC_EDGE_CACHE') == '1' and request.method == 'GET' and 'Set-Cookie' not in response.headers:
-                        response.headers['Cache-Control'] = 'public, max-age=0, s-maxage=15, stale-while-revalidate=45'
-                    else:
-                        # Allow browser back/forward cache (bfcache) for instant 0ms back-navigation while revalidating normal loads
-                        response.headers['Cache-Control'] = 'private, no-cache, must-revalidate, max-age=0'
+        response.headers['Cache-Control'] = 'private, no-cache, no-store, must-revalidate'
+        response.headers['Pragma'] = 'no-cache'
+    elif response.content_type and 'text/html' in response.content_type and response.status_code == 200:
+        if (
+            os.environ.get('ENABLE_PUBLIC_EDGE_CACHE') == '1'
+            and request.method == 'GET'
+            and 'Set-Cookie' not in response.headers
+        ):
+            response.headers['Cache-Control'] = 'public, max-age=0, s-maxage=15, stale-while-revalidate=45'
+        else:
+            # Allow browser back/forward cache (bfcache) for instant 0ms back-navigation while revalidating normal loads
+            response.headers['Cache-Control'] = 'private, no-cache, must-revalidate, max-age=0'
 
     # 2. Gzip compression
     if (
@@ -711,6 +800,7 @@ def restore_latest_data_if_empty():
 
 _BRAND_CLS_MAP = {
     'OLG': 'brand-olg',
+    'オリエンタルラウンジ': 'brand-olg',
     'ag': 'brand-ag',
     'JIS': 'brand-jis',
     'ASOBIBAR': 'brand-asobibar',
@@ -1027,6 +1117,8 @@ def _enrich_for_ssr(stores):
         brand = info.get('brand') or ('ag' if 'ag' in sname else sname.split(' ')[0])
         if brand == 'YATAKOI':
             brand = 'ヤタコイ'
+        if brand == 'OLG':
+            brand = 'オリエンタルラウンジ'
         disp = info.get('display_name') or sname
         area = info.get('area_label') or ''
         disp_counts[disp] += 1
@@ -1680,32 +1772,20 @@ def _is_prefetch_request():
 @app.after_request
 def track_page_views(response):
     try:
-        if request.path.startswith('/static/'):
-            if request.args.get('v'):
-                response.headers['Cache-Control'] = 'public, max-age=31536000, immutable'
-            else:
-                response.headers['Cache-Control'] = 'public, max-age=86400'
-        else:
-            if request.path in ('/sw.js', '/api/status'):
-                response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-                response.headers['Pragma'] = 'no-cache'
-                response.headers['Expires'] = '0'
-            elif (request.path == '/' or request.path.startswith(_LIVE_NO_CACHE_PREFIXES)) and not session.get('is_staff'):
-                # Allow browser back/forward cache (bfcache) for instant 0ms back-navigation while revalidating normal visits
-                response.headers['Cache-Control'] = 'private, no-cache, must-revalidate, max-age=0'
-            if (request.method == 'GET' and response.status_code == 200
-                    and (request.path == '/' or request.path.startswith(_TRACKED_PAGE_PREFIXES))
-                    and not session.get('is_staff')
-                    and not _is_bot_request()
-                    and not _is_prefetch_request()):
-                import analytics
-                analytics.track('page_view', request.path)
-                raw_s = (request.args.get('s') or '').strip()
-                if raw_s:
-                    inflow_tag = analytics.normalize_inflow_source(raw_s)
-                    if inflow_tag:
-                        analytics.track('sns_inflow', f"{inflow_tag} @ {request.path}")
-                        response.set_cookie('an_src', inflow_tag, max_age=86400, path='/', samesite='Lax')
+        if (request.method == 'GET' and response.status_code == 200
+                and (request.path == '/' or request.path.startswith(_TRACKED_PAGE_PREFIXES))
+                and not session.get('is_staff')
+                and not session.get('is_master')
+                and not _is_bot_request()
+                and not _is_prefetch_request()):
+            import analytics
+            analytics.track('page_view', request.path)
+            raw_s = (request.args.get('s') or '').strip()
+            if raw_s:
+                inflow_tag = analytics.normalize_inflow_source(raw_s)
+                if inflow_tag:
+                    analytics.track('sns_inflow', f"{inflow_tag} @ {request.path}")
+                    response.set_cookie('an_src', inflow_tag, max_age=86400, path='/', samesite='Lax')
     except Exception:
         pass
     return response
@@ -4130,49 +4210,75 @@ def ladies_legacy_redirect():
 
 @app.route('/concierge')
 def concierge_page():
-    """Interactive 3-second tonight's lounge & walking-distance hopping concierge."""
+    """Interactive 3-second tonight's lounge & walking-distance hopping concierge (cached 60s)."""
     import concierge_matcher
     restore_latest_data_if_empty()
     trigger_background_fetch_if_needed()
-    with data_lock:
-        stores = [dict(s) for s in (latest_data.get('full_data') or [])]
-        last_upd = latest_data.get('last_updated') or '--:--'
-    res = concierge_matcher.diagnose_tonight_plan(
-        stores,
-        area=request.args.get('area', 'shinjuku'),
-        audience=request.args.get('audience', 'men'),
-        timing=request.args.get('timing', 'now'),
-        party_size=request.args.get('party_size', 'pair'),
-        vibe=request.args.get('vibe', 'any'),
-    )
-    return render_template(
-        'concierge.html',
-        initial_result=res,
-        concierge_areas=res.get('available_areas', []),
-        last_updated=last_upd,
-        is_staff=bool(session.get('is_staff')),
-    )
+
+    area = request.args.get('area', 'shinjuku')
+    audience = request.args.get('audience', 'men')
+    timing = request.args.get('timing', 'now')
+    party_size = request.args.get('party_size', 'pair')
+    vibe = request.args.get('vibe', 'any')
+    cache_extra = f"concierge_{area}_{audience}_{timing}_{party_size}_{vibe}"
+
+    def _render():
+        with data_lock:
+            stores = [dict(s) for s in (latest_data.get('full_data') or [])]
+            last_upd = latest_data.get('last_updated') or '--:--'
+        res = concierge_matcher.diagnose_tonight_plan(
+            stores,
+            area=area,
+            audience=audience,
+            timing=timing,
+            party_size=party_size,
+            vibe=vibe,
+        )
+        return render_template(
+            'concierge.html',
+            initial_result=res,
+            concierge_areas=res.get('available_areas', []),
+            last_updated=last_upd,
+            is_staff=bool(session.get('is_staff')),
+        )
+
+    return _get_cached_html_or_render(cache_extra, _render, ttl_sec=60.0)
 
 
 @app.route('/api/concierge')
 def api_concierge():
-    """Ultra-fast (<5ms) JSON endpoint for interactive 3-second lounge & hopping diagnosis."""
+    """Ultra-fast (<5ms) JSON endpoint for interactive 3-second lounge & hopping diagnosis (cached 30s)."""
     import concierge_matcher
     restore_latest_data_if_empty()
     trigger_background_fetch_if_needed()
+
+    area = request.args.get('area', 'shinjuku')
+    audience = request.args.get('audience', 'men')
+    timing = request.args.get('timing', 'now')
+    party_size = request.args.get('party_size', 'pair')
+    vibe = request.args.get('vibe', 'any')
+
     with data_lock:
-        stores = [dict(s) for s in (latest_data.get('full_data') or [])]
         last_upd = latest_data.get('last_updated') or ''
-    res = concierge_matcher.diagnose_tonight_plan(
-        stores,
-        area=request.args.get('area', 'shinjuku'),
-        audience=request.args.get('audience', 'men'),
-        timing=request.args.get('timing', 'now'),
-        party_size=request.args.get('party_size', 'pair'),
-        vibe=request.args.get('vibe', 'any'),
-    )
-    res['last_updated'] = last_upd
-    return jsonify(res)
+
+    cache_key = ('api_concierge', area, audience, timing, party_size, vibe, last_upd)
+
+    def _build_concierge_dict():
+        with data_lock:
+            stores = [dict(s) for s in (latest_data.get('full_data') or [])]
+            cur_last_upd = latest_data.get('last_updated') or ''
+        res = concierge_matcher.diagnose_tonight_plan(
+            stores,
+            area=area,
+            audience=audience,
+            timing=timing,
+            party_size=party_size,
+            vibe=vibe,
+        )
+        res['last_updated'] = cur_last_upd
+        return res, 200
+
+    return _cached_json_response(cache_key, _build_concierge_dict, ttl_sec=30.0)
 
 
 @app.route('/grooming')

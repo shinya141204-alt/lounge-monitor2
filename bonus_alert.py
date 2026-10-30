@@ -245,7 +245,18 @@ def build_bonus_alert_tweet_thread(
             f"#相席ナビ #相席ラウンジ"
         )
     if x_poster.compute_twitter_weight(main_text) > 274:
-        main_text = main_text.replace("オリエンタルラウンジ", "オリラジ")
+        if mode == "male_lead":
+            main_text = (
+                f"{t_str}速報：「{ja_name}」が男性{m}名・女性{w}名で男性先行に🥂\n\n"
+                f"女子組は待ちゼロで案内されやすい状況。推移はリプ欄へ👇\n"
+                f"#相席ナビ #相席ラウンジ"
+            )
+        else:
+            main_text = (
+                f"{t_str}速報：「{ja_name}」が女性{w}名・男性{m}名（女性比{wpct}%）に到達📊\n\n"
+                f"混雑前の推移はリプ欄へ👇\n"
+                f"#相席ナビ #相席ラウンジ"
+            )
     return main_text, reply_text
 
 

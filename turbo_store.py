@@ -245,6 +245,13 @@ def pg_connection():
         raise
     finally:
         try:
+            # BUG-09: Prevent 'idle in transaction' when returning connection to pool
+            if not broken and not getattr(conn, "closed", 0):
+                if getattr(conn, "status", 0) != 0:
+                    try:
+                        conn.rollback()
+                    except Exception:
+                        broken = True
             pool_obj.putconn(conn, close=broken)
         except Exception:
             pass
@@ -907,6 +914,10 @@ def state_load_snapshot() -> dict:
                             p_s = str(pfx)
                             kv_out[p_s] = str(val or "")
                             kv_ts_out[p_s] = str(ts_j or "")
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
         except Exception as err:
             logger.warning(f"[turbo_store] state_load_snapshot pg error: {err}")
 
@@ -1028,7 +1039,12 @@ def analytics_query_since(start_date_str: str) -> list:
                         """,
                         (start_date_str,),
                     )
-                    return [[r[0], r[1], r[2], int(r[3])] for r in cur.fetchall()]
+                    rows = cur.fetchall()
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
+                return [[r[0], r[1], r[2], int(r[3])] for r in rows]
         except Exception as err:
             logger.warning(f"[turbo_store] analytics_query_since pg error: {err}")
     return None

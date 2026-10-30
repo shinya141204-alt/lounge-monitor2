@@ -255,14 +255,11 @@ def natural_store_name(raw_name: str) -> str:
 
 def casual_store_name(raw_name: str) -> str:
     """
-    Convert OLG stores into natural colloquial shorthand 'オリラジ〇〇' used by lounge regulars:
-      - 'OLG 新宿' -> 'オリラジ新宿'
-      - 'OLG 大阪駅前' -> 'オリラジ大阪駅前'
+    Format store name naturally for SNS (brand compliance: always uses full 'オリエンタルラウンジ〇〇'):
+      - 'OLG 新宿' -> 'オリエンタルラウンジ新宿'
+      - 'OLG 大阪駅前' -> 'オリエンタルラウンジ大阪駅前'
       - 'OLG ag渋谷' -> 'ag渋谷'
     """
-    formatted = x_poster.format_ja_store_name(raw_name)
-    if formatted.startswith("OLG "):
-        return "オリラジ" + formatted[4:].replace(" ", "")
     return natural_store_name(raw_name)
 
 
@@ -1356,7 +1353,7 @@ def _write_x_candidates(
                 f"#相席ナビ #相席ラウンジ"
             )
         if x_poster.compute_twitter_weight(body_a) > 272:
-            body_a = body_a.replace("オリエンタルラウンジ", "オリラジ")
+            body_a = body_a.replace("待ちが出そうな時は近くの別店舗も覗くのが確実👇", "混雑時は周辺の別店舗へ👇")
         reply_a = (
             f"📍 {hub_name}エリアの料金・現在人数横並び比較はこちら\n"
             f"{site_url}/price-comparison?area={area_id}&s=x{slot_hh}_hub_gap\n\n"
@@ -1434,10 +1431,8 @@ def _write_x_candidates(
         f"#相席ラウンジ #相席ナビ"
     )
     if x_poster.compute_twitter_weight(body_b) > 272:
-        body_b = body_b.replace("オリエンタルラウンジ", "オリラジ")
-    if x_poster.compute_twitter_weight(body_b) > 272:
         body_b = (
-            f"{opener_b.replace('オリエンタルラウンジ', 'オリラジ')}\n"
+            f"{opener_b}\n"
             f"現在：女性{focus['women']}名 / 男性{focus['men']}名（女性比{focus['wpct']}%）\n\n"
             f"{closing_b}\n"
             f"#相席ラウンジ #相席ナビ"
@@ -1527,7 +1522,7 @@ def _write_x_candidates(
                 w_note_c = f"片側エリア未稼働のため同一店舗の重複を避け、「{lead['ja_name']}」単独速報として安全に作成。"
             c_style = "east_west_talk"
     if x_poster.compute_twitter_weight(body_c) > 272:
-        body_c = body_c.replace("オリエンタルラウンジ", "オリラジ")
+        body_c = body_c.replace("早い時間から好ペースで推移中。各街の現在人数はリプ欄へ👇", "各街の現在人数はリプ欄へ👇")
 
     reply_c = (
         f"🔍 全国53店舗の現在人数＆普段の同曜日比（平比）はこちら\n{site_url}/?s=x{slot_hh}_{c_style}_{ymd}\n\n"
@@ -1639,8 +1634,6 @@ def _write_threads_candidates(
             f"{cta_footer_1}"
         )
 
-    if len(body_1) > 465:
-        body_1 = body_1.replace("オリエンタルラウンジ", "オリラジ")
     candidates.append({
         "style": "threads_city_story",
         "style_label": STYLE_LABELS["threads_city_story"],
@@ -1678,8 +1671,6 @@ def _write_threads_candidates(
         f"男女で『行くべき正解の店』は真逆になるので、入る前に見比べてみてください👇\n\n"
         f"{cta_footer_2}"
     )
-    if len(body_2) > 465:
-        body_2 = body_2.replace("オリエンタルラウンジ", "オリラジ")
     candidates.append({
         "style": "threads_anomaly_insight",
         "style_label": STYLE_LABELS["threads_anomaly_insight"],
@@ -1705,8 +1696,6 @@ def _write_threads_candidates(
         f"{bitter_tip_3}\n\n"
         f"{cta_footer_3}"
     )
-    if len(body_3) > 465:
-        body_3 = body_3.replace("オリエンタルラウンジ", "オリラジ")
     candidates.append({
         "style": "threads_hopping_guide",
         "style_label": STYLE_LABELS["threads_hopping_guide"],
@@ -1948,7 +1937,7 @@ def _write_tiktok_candidates(
             f"女の子側も待たされる店はすぐ見切ってテンポよく飲める店に流れてるから、駅を出る直前に別ブランド（オリエンタルラウンジ・ag・JIS）を見比べるだけで夜の密度がまるで変わるんだよね。\n\n"
             f"入店3分前に見返せるように『保存』しとくと便利📌\n"
             f"全国53店舗の現在人数と料金比較はプロフのリンク、または『相席ナビ』（aiseki-navi.com）で無料検索できます🔍\n\n"
-            f"#相席ナビ #相席ラウンジ #オリエンタルラウンジ #オリラジ #ag #JIS #{hub.split('・')[0]}グルメ"
+            f"#相席ナビ #相席ラウンジ #オリエンタルラウンジ #ag #JIS #{hub.split('・')[0]}グルメ"
         )
         script_gap = (
             f"🎬【動画テンプレ連動】🎵 同駅ギャップ比較（tiktok_gap_shock / 11.5秒・UIセーフゾーン設計）\n"
@@ -1980,7 +1969,7 @@ def _write_tiktok_candidates(
             f"・逆に男性側の穴場：{focus['ja_name']}（女性{focus['women']}名・男性{focus['men']}名 / 女性比{focus['wpct']}%）\n"
             f"みたいに、男女で『正解の店』は真逆になるのが面白いところ。\n\n"
             f"友達との2軒目探し用に『保存』しておいて、向かう直前にプロフのリンクか『相席ナビ』（aiseki-navi.com）の女性専用モードを覗いてみてね🥂\n\n"
-            f"#相席ナビ #相席ラウンジ #女子会 #オリエンタルラウンジ #オリラジ #ag #2軒目"
+            f"#相席ナビ #相席ラウンジ #女子会 #オリエンタルラウンジ #ag #2軒目"
         )
         script_f = (
             f"🎬【動画テンプレ連動】🎵 女子本音×待ち0（tiktok_ladies_real / 11.5秒・UIセーフゾーン設計）\n"
@@ -2011,7 +2000,7 @@ def _write_tiktok_candidates(
         f"男性なら『女性12名以上×女性比55%以上』、女性ペアなら『男性先行店』をエレベーターに乗る前に選ぶだけで、受付待ちのストレスがほぼ消えるんだよね。\n\n"
         f"週末にすぐ見返せるようにこの動画を『保存』📌\n"
         f"全53店舗のリアルタイム人数は『相席ナビ』（aiseki-navi.com）で24時間無料公開中です🔍\n\n"
-        f"#相席ナビ #相席ラウンジ #オリエンタルラウンジ #オリラジ #JIS #夜遊びガイド"
+        f"#相席ナビ #相席ラウンジ #オリエンタルラウンジ #JIS #夜遊びガイド"
     )
     script_m = (
         f"🎬【動画テンプレ連動】🎵 同駅ギャップ比較 または 🔥 全国TOP5速報（11.5秒）\n"
@@ -2042,7 +2031,7 @@ def _write_tiktok_candidates(
         f"・{s1['ja_name']}：女性{s1['women']}名・男性{s1['men']}名（女性比{s1['wpct']}%）\n"
         f"・{s3['ja_name']}：女性{s3['women']}名・男性{s3['men']}名（女性比{s3['wpct']}%）\n\n"
         f"2軒目・終電後にハズしたくない夜は、この投稿を『保存』しといて動く直前にプロフのリンク『相席ナビ』（aiseki-navi.com）で終電後維持率を見てから向かうのがほんと鉄板だったりする。\n\n"
-        f"#相席ナビ #相席ラウンジ #オリエンタルラウンジ #オリラジ #ag #JIS #終電逃した"
+        f"#相席ナビ #相席ラウンジ #オリエンタルラウンジ #ag #JIS #終電逃した"
     )
     script_mid = (
         f"🎬【動画テンプレ連動】🎵 終電崖×深夜穴場（tiktok_midnight_cliff / 11.5秒・UIセーフゾーン設計）\n"
@@ -2161,16 +2150,12 @@ def verify_ai_factual_numbers(text: str, research: dict, channel: str = "x") -> 
         allowed_women.add(mw)
         seo_n = s.get("seo_name") or ""
         _reg_alias(seo_n, w_val=mw)
-        if "オリエンタルラウンジ" in seo_n:
-            _reg_alias(seo_n.replace("オリエンタルラウンジ", "オリラジ"), w_val=mw)
 
     for s in ig_ana:
         ap = int(s.get("avg_wpct") or 0)
         allowed_pct.add(ap)
         seo_n = s.get("seo_name") or ""
         _reg_alias(seo_n, p_val=ap)
-        if "オリエンタルラウンジ" in seo_n:
-            _reg_alias(seo_n.replace("オリエンタルラウンジ", "オリラジ"), p_val=ap)
 
     bad = []
 
@@ -2342,7 +2327,7 @@ def _build_gemini_prompt(
             "- 文字数制限：日本語で **95文字〜124文字以内**（X換算で必ず258ウェイト以下になるよう引き締めること）\n"
             "- 禁止事項：URL（http...）は本文に絶対に入れない。『🥇🥈🥉』メダル記号や『【〇〇速報】』のような業者見出しは禁止。同じ店舗名を2回書かない。\n"
             "- リズムの手本（数字はダミー。この空気感・口語の抜け感だけ参考にすること）：\n"
-            "  『外ちょっと冷えてきた木曜なんだけど、モニター見てたらオリラジ新宿が女性84名・男性36名（女性比70%）まで伸びてて二度見した…徒歩すぐの別店舗は男余りなのに、ほんと看板だけで並ぶともったいない夜。細かい数字はリプ欄置いときます👇 #相席ナビ #相席ラウンジ』\n"
+            "  『外ちょっと冷えてきた木曜なんだけど、モニター見てたらオリエンタルラウンジ新宿が女性84名・男性36名（女性比70%）まで伸びてて二度見した…徒歩すぐの別店舗は男余りなのに、ほんと看板だけで並ぶともったいない夜。細かい数字はリプ欄置いときます👇 #相席ナビ #相席ラウンジ』\n"
             "- 構成：1行目で外の天気・気温・曜日・給料日などの空気感とモニターを見た素のリアクションを切り出し、会話の流れで2〜3店舗の正確な人数（例：女性122名・男性52名（女性比70%））を溶かし込み、最後はリプ欄へ自然に流して『#相席ナビ #相席ラウンジ』で締める。"
         )
     elif ch == "threads":
@@ -2373,7 +2358,7 @@ def _build_gemini_prompt(
             "【対象SNS：TikTok（9:16 縦型ショート動画キャプション＆検索SEO）】\n"
             "- 文字数制限：**320文字〜620文字以内**\n"
             "- 禁止事項：1行目を『【〇〇速報】』のような角括弧タイトルにしないこと。『🥇🥈🥉』メダル記号や宣伝臭い絵文字連打は禁止。\n"
-            "- 構成：最初の1行目でTikTok視聴者が思わずコメントや保存をしたくなる『現場モニターを見て気づいたリアルなギャップや女子組・男子組の図星の本音』を切り出す。本文中で2〜3店舗の実測人数（例：女性48名・男性32名（女性比60%））を正確に織り交ぜ、自然な流れで『入店3分前に見返せるように保存📌しとくと便利』と『相席ナビ（aiseki-navi.com）で検索🔍』を案内し、末尾に『#相席ナビ #相席ラウンジ #オリエンタルラウンジ #オリラジ #ag #JIS』の6タグを付ける。"
+            "- 構成：最初の1行目でTikTok視聴者が思わずコメントや保存をしたくなる『現場モニターを見て気づいたリアルなギャップや女子組・男子組の図星の本音』を切り出す。本文中で2〜3店舗の実測人数（例：女性48名・男性32名（女性比60%））を正確に織り交ぜ、自然な流れで『入店3分前に見返せるように保存📌しとくと便利』と『相席ナビ（aiseki-navi.com）で検索🔍』を案内し、末尾に『#相席ナビ #相席ラウンジ #オリエンタルラウンジ #ag #JIS』の5タグを付ける。"
         )
     else:
         import ig_carousel_generator
@@ -2418,7 +2403,7 @@ def _build_gemini_prompt(
         "【絶対厳守ルール（違反するとデスク検閲で減点・不採用になります）】\n"
         "1. 下記の JSON ファクトシートに含まれる店舗名・人数・パーセンテージ以外は絶対に書かないこと。数値を1人でも盛ったり丸めたり変更することは厳禁。\n"
         "2. あなたは『相席ナビ運営（リアルタイム計測モニターを見ている中の人）』です。自分が客として入店した架空の体験談（『行ってきた』『相席相手が〜』等）は絶対に書かないこと。\n"
-        "3. 店名の呼び方ルール：内部略称『OLG』や、中途半端な『オリエンタル〇〇』（「ラウンジ」抜け）・『オリエンタル』単体呼びは絶対に使わないこと。必ず正式名称『オリエンタルラウンジ〇〇』、または現場の自然な口語略称『オリラジ〇〇』（casual_alias がある店舗のみ。例：『オリエンタルラウンジ大阪駅前』または『オリラジ大阪駅前』）を使うこと（くだけた会話調や文字数を引き締めたいXでは『オリラジ〇〇』が特に自然。『ag〇〇』『JIS〇〇』はそのまま表記）。\n"
+        "3. 店名の呼び方ルール：内部略称『OLG』や、略称『オリラジ』、中途半端な『オリエンタル〇〇』（「ラウンジ」抜け）・『オリエンタル』単体呼びは絶対に使わないこと。必ず正式名称『オリエンタルラウンジ〇〇』（例：『オリエンタルラウンジ大阪駅前』）を使うこと（『ag〇〇』『JIS〇〇』はそのまま表記）。\n"
         f"4. AI臭・宣伝臭ワードの完全禁止：{cliche_list_str} は本文に絶対に使わないこと。\n"
         f"5. 直近の過去投稿の書き出し（{json.dumps(recent_openers, ensure_ascii=False)}）とは全く違う新鮮な1行目の切り口・語尾にすること。\n\n"
         f"【今夜の検証済みファクトシート】\n{json.dumps(fact_payload, ensure_ascii=False, indent=2)}\n\n"
@@ -2951,28 +2936,20 @@ def call_editorial_ai_json(
 
 def _postprocess_ai_main_text(main_text: str, channel: str = "x") -> str:
     """
-    Guarantee zero bare 'オリエンタル〇〇' ('ラウンジ' omitted) in AI output:
-      - Converts any 'オリエンタル(?!ラウンジ)' to 'オリエンタルラウンジ' (or colloquial 'オリラジ' if X/Threads length is tight).
-      - Also trims 'オリエンタルラウンジ' -> 'オリラジ' on X if Twitter weight exceeds 272 so posts stay inside optimal range.
+    Guarantee zero bare 'オリエンタル〇〇' ('ラウンジ' omitted) and zero 'オリラジ' in AI output:
+      - Converts any 'オリラジ' to 'オリエンタルラウンジ'.
+      - Converts any 'オリエンタル(?!ラウンジ)' to 'オリエンタルラウンジ'.
     """
     text = (main_text or "").strip()
     if not text:
         return ""
-    ch = (channel or "x").lower()
+
+    if "オリラジ" in text:
+        text = text.replace("オリラジ", "オリエンタルラウンジ")
 
     if re.search(r"オリエンタル(?!ラウンジ)", text):
-        expanded = re.sub(r"オリエンタル(?!ラウンジ)", "オリエンタルラウンジ", text)
-        if ch == "x" and x_poster.compute_twitter_weight(expanded) > 270:
-            text = re.sub(r"オリエンタル(?!ラウンジ)", "オリラジ", text)
-        elif ch == "threads" and len(expanded) > 485:
-            text = re.sub(r"オリエンタル(?!ラウンジ)", "オリラジ", text)
-        else:
-            text = expanded
+        text = re.sub(r"オリエンタル(?!ラウンジ)", "オリエンタルラウンジ", text)
 
-    if ch == "x" and x_poster.compute_twitter_weight(text) > 272 and "オリエンタルラウンジ" in text:
-        text = text.replace("オリエンタルラウンジ", "オリラジ")
-    elif ch == "threads" and len(text) > 485 and "オリエンタルラウンジ" in text:
-        text = text.replace("オリエンタルラウンジ", "オリラジ")
     return text
 
 
@@ -3319,9 +3296,9 @@ def run_evaluator(
             else:
                 data_score = 25
                 data_comment = "◎ 鬼デスク数値検閲クリア：すべての店舗人数・比率がSQLite実測値と1人単位で100%一致しています。"
-        elif has_raw_olg or has_bare_oriental:
+        elif has_raw_olg or has_bare_oriental or "オリラジ" in text:
             data_score = 18
-            data_comment = "⚠️ 店名表記に『OLG』または『オリエンタル（ラウンジ抜け）』が残っているため減点（『オリエンタルラウンジ〇〇』または『オリラジ〇〇』が自然）。"
+            data_comment = "⚠️ 店名表記に『OLG』『オリラジ』または『オリエンタル（ラウンジ抜け）』が残っているため減点（正式名称『オリエンタルラウンジ〇〇』が必須）。"
         elif style in ("hub_gap", "threads_city_story") and research.get("best_cluster"):
             gap = research["best_cluster"].get("pct_gap", 0)
             data_score = 25 if gap >= 12 else 22

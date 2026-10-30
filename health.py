@@ -76,28 +76,32 @@ def send_alert(key, message):
 
 def record_fetch(results_by_name, errors, all_sources):
     """monitor.get_all_data() の1回分の結果を記録し、必要なら通知する。"""
-    for src in all_sources:
-        label = SOURCE_LABELS.get(src, src)
-        res = results_by_name.get(src) or []
-        with _lock:
+    alerts_to_send = []
+    with _lock:
+        for src in all_sources:
+            label = SOURCE_LABELS.get(src, src)
+            res = results_by_name.get(src) or []
             st = _state.setdefault(src, {'consecutive_fail': 0, 'down': False, 'last_ok': None,
                                          'last_error': None, 'last_count': 0})
-        if res:
-            was_down = st['down']
-            st.update({'consecutive_fail': 0, 'down': False, 'last_ok': _now_str(),
-                       'last_error': None, 'last_count': len(res)})
-            if was_down:
-                send_alert(f'recover:{src}', f"✅ {label} のデータ取得が復旧しました（{len(res)}店舗）")
-            exp = EXPECTED_MIN_STORES.get(src)
-            if exp and len(res) < exp:
-                send_alert(f'shrink:{src}', f"⚠️ {label} の取得店舗数が {len(res)} 件に減っています（通常 {exp} 件以上）。公式サイトの構造変更の可能性があります。")
-        else:
-            st['consecutive_fail'] += 1
-            st['last_error'] = errors.get(src, 'empty')
-            # 昼間は店舗側が空データを返すことがあるため、営業時間帯（18時〜翌4時）のみ停止扱いにする
-            if st['consecutive_fail'] >= FAIL_THRESHOLD and not st['down'] and _is_business_hours():
-                st['down'] = True
-                send_alert(f'down:{src}', f"🚨 {label} のデータ取得が {st['consecutive_fail']} 回連続で失敗しています（{st['last_error']}）")
+            if res:
+                was_down = st['down']
+                st.update({'consecutive_fail': 0, 'down': False, 'last_ok': _now_str(),
+                           'last_error': None, 'last_count': len(res)})
+                if was_down:
+                    alerts_to_send.append((f'recover:{src}', f"✅ {label} のデータ取得が復旧しました（{len(res)}店舗）"))
+                exp = EXPECTED_MIN_STORES.get(src)
+                if exp and len(res) < exp:
+                    alerts_to_send.append((f'shrink:{src}', f"⚠️ {label} の取得店舗数が {len(res)} 件に減っています（通常 {exp} 件以上）。公式サイトの構造変更の可能性があります。"))
+            else:
+                st['consecutive_fail'] += 1
+                st['last_error'] = errors.get(src, 'empty')
+                # 昼間は店舗側が空データを返すことがあるため、営業時間帯（18時〜翌4時）のみ停止扱いにする
+                if st['consecutive_fail'] >= FAIL_THRESHOLD and not st['down'] and _is_business_hours():
+                    st['down'] = True
+                    alerts_to_send.append((f'down:{src}', f"🚨 {label} のデータ取得が {st['consecutive_fail']} 回連続で失敗しています（{st['last_error']}）"))
+
+    for key, msg in alerts_to_send:
+        send_alert(key, msg)
 
 
 def _is_business_hours():
@@ -110,11 +114,19 @@ def _is_business_hours():
 def check_unknown_stores(names):
     try:
         import store_master
-        unknown = [n for n in store_master.unknown_stores(names) if n not in _known_unknowns]
+        candidates = store_master.unknown_stores(names)
     except Exception:
         return []
+
+    unknown = []
+    with _lock:
+        for n in (candidates or []):
+            if n not in _known_unknowns:
+                unknown.append(n)
+        if unknown:
+            _known_unknowns.update(unknown)
+
     if unknown:
-        _known_unknowns.update(unknown)
         send_alert('unknown:' + ','.join(unknown), "🆕 店舗マスタ未登録の店舗名を検知しました: " + ' / '.join(unknown) +
                    "（static/store_master.json に追加してください）")
     return unknown

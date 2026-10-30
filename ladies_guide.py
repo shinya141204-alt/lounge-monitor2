@@ -282,7 +282,7 @@ def build_threads_ladies_post(
                 f"{sns_editorial.HUMAN_INSIDER_VOICE_GUIDE}\n\n"
                 "【必須ルール】\n"
                 "1. 1行目は『せっかく髪巻いてヒール履いて行ったのに受付で女子待ち30分って言われる夜が一番だるいんだけど…』や外の天気・曜日の空気感に絡めた生身の共感・ボヤきから入ること（角括弧【】見出し禁止）。\n"
-                "2. 下記の検証済みファクトシートにある店舗名と人数（男性XX名・女性YY名）のみを使い、1人も数値を変えないこと。単体の『オリエンタル』は禁止（『オリエンタルラウンジ〇〇』または『オリラジ〇〇』）。\n"
+                "2. 下記の検証済みファクトシートにある店舗名と人数（男性XX名・女性YY名）のみを使い、1人も数値を変えないこと。単体の『オリエンタル』や略称『オリラジ』は禁止（必ず正式名称『オリエンタルラウンジ〇〇』）。\n"
                 f"3. 文章の末尾は必ず次のフッター文字列を一字一句そのまま置いて終えること（ハッシュタグはこの末尾1個のみ）：\n{cta_footer}\n\n"
                 f"【検証済みファクトシート】\n{ sns_editorial.json.dumps(facts, ensure_ascii=False) }\n\n"
                 '出力はJSON形式のみ：{"thinking_memo": "どうAIっぽさを消して女子組に刺さる生の本音にしたか", "main_text": "投稿本文"}'
@@ -336,11 +336,11 @@ def build_threads_ladies_post(
         f"{cta_footer}"
     )
 
-    if len(text) > 475:
-        text = text.replace("オリエンタルラウンジ", "オリラジ")
+    if "オリラジ" in text:
+        text = text.replace("オリラジ", "オリエンタルラウンジ")
+    text = re.sub(r"オリエンタル(?!ラウンジ)", "オリエンタルラウンジ", text)
     if len(text) > 495:
         text = text[:492] + "..."
-    text = re.sub(r"オリエンタル(?!ラウンジ)", "オリラジ", text)
     return text
 
 

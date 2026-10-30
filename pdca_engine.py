@@ -1209,7 +1209,7 @@ def analyze_site_performance(live_stores: list = None, days: int = 14, allow_blo
         })
     wins.append({
         "title": f"全{col_audit['total_columns']}コラムの人間味＆ブランド呼称監査クリア（平均 {col_audit['avg_desk_score']}点）",
-        "detail": f"会話ボックス導入 {col_audit['with_dialogue_count']}/{col_audit['total_columns']}本・ブランド略称NG表記 {col_audit['total_bare_oriental']}件（オリエンタルラウンジ・オリラジ統一済）と高品質を維持中です。",
+        "detail": f"会話ボックス導入 {col_audit['with_dialogue_count']}/{col_audit['total_columns']}本・ブランド略称NG表記 {col_audit['total_bare_oriental']}件（オリエンタルラウンジ統一済）と高品質を維持中です。",
     })
 
     # Bottlenecks / Issues
@@ -1401,7 +1401,7 @@ def _generate_pdca_briefing(diag: dict, use_ai: bool = True, cache_only: bool = 
         "あなたは『相席ナビ』のグロース統括・作戦参謀長（編集長）です。以下の実測PDCA＆収益インテリジェンス診断データを読み、"
         "マスター管理者に向けて「①いま一番数字が出ている勝ち筋（案件カテゴリ・SNSチャネル）」「②高PVなのに取りこぼしている機会損失ページと足すべき具体導線（/grooming や混雑回避アプリ等）」「③今週仕掛けるべき特命コラム・リール動画の勝負手」を、"
         "頼もしい人間の参謀が隣で本音でブリーフィングするような鋭く自然な口語（260〜380文字程度、箇条書きではなく読みやすい2〜3段落）でまとめてください。\n"
-        "※ブランド名は必ず『オリエンタルラウンジ』または略称『オリラジ』と表記し、『ラウンジ』を省いた呼称は絶対に使わないこと。JSON形式 `{\"briefing\": \"...\"}` のみ返してください。\n\n"
+        "※ブランド名は必ず正式名称『オリエンタルラウンジ』と表記し、『ラウンジ』を省いた呼称や『オリラジ』は絶対に使わないこと。JSON形式 `{\"briefing\": \"...\"}` のみ返してください。\n\n"
         f"{json.dumps(prompt_payload, ensure_ascii=False)}"
     )
 

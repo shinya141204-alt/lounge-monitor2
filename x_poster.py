@@ -61,11 +61,13 @@ DIRECT_STORE_JA_MAP = {
 
 
 def format_ja_store_name(raw_name: str) -> str:
-    """Convert raw store name like 'JIS OMIYA' -> 'JIS 大宮', 'OLG ag渋谷' -> 'ag渋谷', 'YATAKOI UMEDA' -> 'ヤタコイ梅田'."""
+    """Convert raw store name like 'JIS OMIYA' -> 'JIS 大宮', 'OLG ag渋谷' -> 'ag渋谷', 'OLG 渋谷本店' -> 'オリエンタルラウンジ 渋谷本店', 'YATAKOI UMEDA' -> 'ヤタコイ梅田'."""
     name = (raw_name or '').strip()
     if not name:
         return ''
     upper_full = name.upper()
+    if upper_full == 'OLG':
+        return 'オリエンタルラウンジ'
     if upper_full in DIRECT_STORE_JA_MAP:
         return DIRECT_STORE_JA_MAP[upper_full]
     if upper_full.startswith('ASOBIBAR '):
@@ -75,6 +77,10 @@ def format_ja_store_name(raw_name: str) -> str:
         ag_rest = name[6:].strip()
         ag_ja = EN_TO_JA_MAP.get(ag_rest.upper(), ag_rest)
         return f"ag{ag_ja}"
+    if upper_full.startswith('OLG '):
+        olg_rest = name[4:].strip()
+        olg_ja = EN_TO_JA_MAP.get(olg_rest.upper(), olg_rest)
+        return f"オリエンタルラウンジ {olg_ja}"
 
     parts = name.split(' ', 1)
     if len(parts) == 2:
@@ -82,6 +88,8 @@ def format_ja_store_name(raw_name: str) -> str:
         upper_prefix = prefix.upper()
         upper_rest = rest.upper()
         ja_rest = EN_TO_JA_MAP.get(upper_rest, rest)
+        if upper_prefix == 'OLG':
+            return f"オリエンタルラウンジ {ja_rest}"
         if upper_prefix == 'YATAKOI':
             return f"ヤタコイ{ja_rest}"
         if upper_prefix in ('CLOVERS', 'ALFA', 'XIX') and upper_rest in EN_TO_JA_MAP:
@@ -808,7 +816,16 @@ def build_weekly_report_tweet_thread(report: dict, app_url: str = "", use_ai: bo
     ])
     main_text = "\n".join(lines)
     if compute_twitter_weight(main_text) > 274:
-        main_text = main_text.replace("オリエンタルラウンジ", "オリラジ")
+        lines[-2] = "詳細はリプ欄へ👇"
+        main_text = "\n".join(lines)
+    if compute_twitter_weight(main_text) > 274:
+        lines[0] = "今週の相席モニターログ集計📊"
+        main_text = "\n".join(lines)
+    if compute_twitter_weight(main_text) > 274 and anaba_stores:
+        a1_name = format_ja_store_name(anaba_stores[0].get("name", ""))
+        a1_pct = int(round(float(anaba_stores[0].get("avg_wpct") or 56)))
+        lines[3] = f"・穴場：{a1_name}（女性比{a1_pct}%）"
+        main_text = "\n".join(lines)
     return main_text, reply_text
 
 

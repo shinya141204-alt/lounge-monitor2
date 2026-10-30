@@ -20,3 +20,4 @@ google_credentials.json
 *.db-shm
 *.log
 data/
+.agents/

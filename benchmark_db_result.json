@@ -1,0 +1,27 @@
+{
+  "total_rows": 50032,
+  "legacy": {
+    "fetched_rows": 31323,
+    "transfer_bytes": 277336,
+    "peak_memory_kb": 8277.5830078125,
+    "mean_ms": 72.63304498046637,
+    "median_ms": 71.88727147877216,
+    "p95_ms": 73.82254162803292,
+    "min_ms": 70.8450828678906,
+    "max_ms": 102.08029113709927
+  },
+  "window": {
+    "fetched_rows": 53,
+    "transfer_bytes": 568,
+    "peak_memory_kb": 20.0400390625,
+    "mean_ms": 31.38938244432211,
+    "median_ms": 31.30743745714426,
+    "p95_ms": 32.1920420974493,
+    "min_ms": 30.676874797791243,
+    "max_ms": 33.26008282601833
+  },
+  "speedup_mean_percent": 56.78360661767128,
+  "speedup_factor": 2.3139367303355356,
+  "memory_reduction_percent": 99.75789987193622,
+  "row_reduction_percent": 99.83079526226734
+}
