@@ -1710,11 +1710,10 @@ def _build_column_gemini_prompt(
         f"- 掘り下げるべき因果コア仮説：{plan.get('causal_thesis')}\n"
         f"- 導入シーンの舞台指定：{plan.get('opening_scene_hint')}\n"
         f"- 今回のテーマで禁止する手垢トロープ：{banned_str}（既存19記事で使い古された『エレベーターが開いた瞬間の〜』『23時の終電崖』『とりあえず40分見切り』を無関係なテーマに流用しないこと！）\n\n"
-        "【長考（Thinking）プロセス：構造仮説の検証＆Web/note完全書き分け】\n"
-        "まず `thinking_memo` の中で以下の3ステップを実行してからJSONを出力してください：\n"
-        "  Step 1. 既存記事タイトル群と被らない、今回のテーマ固有の切り口と導入シーンを決める。\n"
-        "  Step 2. 現象の裏にある『男女のコスト非対称性・店舗の料金/待機システム・時間帯コホート変化』の因果関係を整理し、全3章にリアルな会話（dialogue）と構造解説（mechanism_note）を配置する。\n"
-        "  Step 3. Web版（検索読者向けの構造化リファレンス）とは完全に別構成で、note版（`note_essay_markdown`：番号なし見出し `## ` と `> ` 引用を用いた1,600〜2,400文字の一人称エッセイ）を書き下ろす。\n\n"
+        "【特集コラムの構成設計指針（構造仮説の検証＆Web/note完全書き分け）】\n"
+        "- 既存記事タイトル群と被らない、今回のテーマ固有の切り口と導入シーンにすること。\n"
+        "- 現象の裏にある『男女のコスト非対称性・店舗の料金/待機システム・時間帯コホート変化』の因果関係を整理し、全3章にリアルな会話（dialogue）と構造解説（mechanism_note）を配置すること。\n"
+        "- Web版（検索読者向けの構造化リファレンス）とは完全に別構成で、note版（`note_essay_markdown`：番号なし見出し `## ` と `> ` 引用を用いた1,600〜2,400文字の一人称エッセイ）を書き下ろすこと。\n\n"
         "【絶対厳守ルール】\n"
         "1. 店舗名・人数・女性比率・単価・待機料は下記ファクトシートにある検証済みデータのみを使い、架空の数値を捏造しないこと。\n"
         "2. ブランド呼称ルール：単体の『オリエンタル』や略称『オリラジ』、中途半端な『オリエンタル新宿』（「ラウンジ」抜け）、内部コード『OLG』は絶対に使わないこと！必ず正式名称『オリエンタルラウンジ〇〇』と表記すること。\n"
@@ -1725,7 +1724,7 @@ def _build_column_gemini_prompt(
         f"【検証済みファクトシート】\n{json.dumps(fact_sheet, ensure_ascii=False, indent=2)}\n\n"
         "以下のJSONオブジェクト形式のみで出力してください（Markdownコードブロック不要）：\n"
         "{\n"
-        '  "thinking_memo": "既存記事との差別化ポイント・構造メカニズムの核・Webとnoteの書き分け設計メモ（100〜180文字）",\n'
+        '  "editorial_angle": "既存記事との差別化ポイント・構造メカニズムの核・Webとnoteの書き分け編集メモ（100〜180文字）",\n'
         '  "writer_note": "今回の記事で解明した構造的メカニズムと実測データの1行要約",\n'
         '  "mechanism_thesis": "この記事全体を貫く構造的メカニズム・行動経済学コア仮説（90〜160文字）",\n'
         '  "slug": "英小文字とハイフンのみのURLスラッグ",\n'
@@ -1789,7 +1788,7 @@ def _make_col_cache_key(research: dict, plan: dict, tone_mode: str = None):
         for s in (research.get("featured_stores") or [])[:3]
     )
     return (
-        "v3_claude5",
+        "v4_claude55_live",
         eng_pref,
         has_c,
         tm,
@@ -1929,7 +1928,7 @@ def _generate_gemini_column_candidate(
         "theme_key": plan.get("theme_key") or "area_hopping",
         "style_label": f"✨ AI編集長・深層構造考察＆note別原稿案（{mn} ｜ {tone_short}）",
         "writer_note": f"【{mn}・{tone_short}】{_sanitize_brand_names(parsed.get('writer_note') or '構造メカニズムと実測ログを掛け合わせたAI編集長案')}",
-        "thinking_memo": _sanitize_brand_names(parsed.get("thinking_memo") or ""),
+        "thinking_memo": _sanitize_brand_names(parsed.get("editorial_angle") or parsed.get("thinking_memo") or ""),
         "mechanism_thesis": _sanitize_brand_names(parsed.get("mechanism_thesis") or plan.get("causal_thesis") or ""),
         "is_ai_generated": True,
         "ai_model": mn,

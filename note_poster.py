@@ -143,7 +143,7 @@ def build_note_tweet_text(title: str, link: str, force: bool = False, use_ai: bo
                     "Xの告知1ポスト目（90〜122文字以内、X換算256ウェイト以下、URLは本文に絶対に入れない）を書いてください。\n\n"
                     f"{sns_editorial.HUMAN_INSIDER_VOICE_GUIDE}\n\n"
                     "・最後は自然にリプ欄のリンクへ流して『#相席ナビ #相席ラウンジ』で締めること。架空の人数は書かないこと。\n"
-                    '出力はJSON形式のみ：{"thinking_memo": "推敲メモ", "main_text": "投稿本文"}'
+                    '出力はJSON形式のみ：{"main_text": "投稿本文"}'
                 )
                 parsed, _, _ = sns_editorial.call_editorial_ai_json(
                     prompt=prompt,

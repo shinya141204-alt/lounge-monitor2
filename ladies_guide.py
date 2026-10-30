@@ -285,7 +285,7 @@ def build_threads_ladies_post(
                 "2. 下記の検証済みファクトシートにある店舗名と人数（男性XX名・女性YY名）のみを使い、1人も数値を変えないこと。単体の『オリエンタル』や略称『オリラジ』は禁止（必ず正式名称『オリエンタルラウンジ〇〇』）。\n"
                 f"3. 文章の末尾は必ず次のフッター文字列を一字一句そのまま置いて終えること（ハッシュタグはこの末尾1個のみ）：\n{cta_footer}\n\n"
                 f"【検証済みファクトシート】\n{ sns_editorial.json.dumps(facts, ensure_ascii=False) }\n\n"
-                '出力はJSON形式のみ：{"thinking_memo": "どうAIっぽさを消して女子組に刺さる生の本音にしたか", "main_text": "投稿本文"}'
+                '出力はJSON形式のみ：{"main_text": "投稿本文"}'
             )
             parsed, _, _ = sns_editorial.call_editorial_ai_json(
                 prompt=prompt,
@@ -386,7 +386,7 @@ def build_instagram_ladies_caption(
                 "2. 友達と合流する前に見返せるよう自然な口調で『保存📌』を促し、下記ファクトシートの店舗名と人数（男性XX名・女性YY名）を1人の狂いもなく正確に紹介すること。単体の『オリエンタル』表記は禁止。\n"
                 "3. プロフィールのリンク（aiseki-navi.com/for-women）の【女性目線モード】への案内を入れ、末尾は『#相席ナビ #相席ラウンジ #オリエンタルラウンジ #ag #JIS #女子会ディナー #夜カフェ』で締めること。\n\n"
                 f"【検証済みファクトシート】\n{ sns_editorial.json.dumps(facts, ensure_ascii=False) }\n\n"
-                '出力はJSON形式のみ：{"thinking_memo": "推敲メモ", "main_text": "キャプション本文"}'
+                '出力はJSON形式のみ：{"main_text": "キャプション本文"}'
             )
             parsed, _, _ = sns_editorial.call_editorial_ai_json(
                 prompt=prompt,

@@ -367,7 +367,16 @@ class SnsEditorialUpgradeTests(unittest.TestCase):
             called_json = mock_post.call_args[1]["json"]
             self.assertEqual(called_url, "https://api.anthropic.com/v1/messages")
             self.assertNotIn("temperature", called_json)
+            self.assertEqual(called_json.get("output_config"), {"effort": "medium"})
             self.assertGreaterEqual(called_json["max_tokens"], 4096)
+
+        # Ensure SNS & Column prompts never request `thinking_memo` (avoids Claude 5.5 reasoning_extraction refusal)
+        res = sns_editorial.run_researcher(self.sample_stores, channel="x")
+        prompt_x, _ = sns_editorial._build_gemini_prompt(
+            res, {}, "22:00", "x", sns_editorial.datetime.datetime.now(sns_editorial.JST), "https://aiseki-navi.com"
+        )
+        self.assertNotIn("thinking_memo", prompt_x)
+        self.assertIn("editorial_angle", prompt_x)
 
     def test_claude_temperature_deprecation_auto_retry(self):
         """If a Claude model returns HTTP 400 deprecating `temperature`, retry immediately without falling back to Gemini."""

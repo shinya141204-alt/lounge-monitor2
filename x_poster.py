@@ -775,7 +775,7 @@ def build_weekly_report_tweet_thread(report: dict, app_url: str = "", use_ai: bo
                     "1. 『🥇🥈🥉』メダルや『📊 今週の統計レポート』のようなボット見出しは使わず、『今週1週間分のログ見返してたんだけど…』のような生の語り口から入ること。\n"
                     "2. 下の検証済み数値（平均女性XX名・最大YY名・女性比ZZ%）から2〜3個を1人の狂いもなく正確に織り交ぜ、URLは入れずリプ欄へ自然に流して『#相席ナビ #相席ラウンジ』で締めること。\n\n"
                     f"【今週の検証済み数値】\n{sns_editorial.json.dumps({'top3': top_facts, 'anaba_no1': anaba_fact}, ensure_ascii=False)}\n\n"
-                    '出力はJSON形式のみ：{"thinking_memo": "推敲メモ", "main_text": "投稿本文"}'
+                    '出力はJSON形式のみ：{"main_text": "投稿本文"}'
                 )
                 parsed, _, _ = sns_editorial.call_editorial_ai_json(
                     prompt=prompt,

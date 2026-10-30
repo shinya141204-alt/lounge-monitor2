@@ -2837,7 +2837,7 @@ def _build_gemini_prompt(
         reply_text = "（note専用・Webエディタへ1クリック転送可能・見出し画像プロンプト連動）"
         platform_spec = (
             "【対象SNS：note.com（ショートエッセイ・つぶやき）】\n"
-            "- 形式選択：思考プロセス（thinking_memo）を踏まえ、『800〜1,400文字の深層考察ショートエッセイ』または『120〜240文字の短いつぶやき』のいずれか最適な構成を出力すること。\n"
+            "- 形式選択：今夜の街の空気感やデータを踏まえ、『800〜1,400文字の深層考察ショートエッセイ』または『120〜240文字の短いつぶやき』のいずれか最適な構成を出力すること。\n"
             "- 構成（ショートエッセイの場合）：\n"
             "  1. 印象的なタイトル案（『【〇〇論】〜』や『なぜ〜なのか？』等の引きのある見出し）\n"
             "  2. 街の夜の空気感や男女の人間模様を切り取った導入\n"
@@ -2886,11 +2886,9 @@ def _build_gemini_prompt(
         f"{sit_block}\n\n"
         f"【今夜の時間帯テンション設定：{slot_persona['label']}】\n"
         f"- {slot_persona['guidance']}\n\n"
-        "【長考（Thinking）プロセス：脳内3案コンペ＆脱AI臭フィルタリング】\n"
-        "出力前にまず `thinking_memo` の中で次の3ステップを必ず実行してから `main_text` を書き上げてください：\n"
-        "  Step 1. 切り口の違う3つの生の呟きを比べる（①看板だけで並んで消耗する負けパターンへの苦笑い、②女子組が実は見切って流れている裏側、③外の空気感とモニター上の普段比ギャップへの素直な気づき）\n"
-        "  Step 2. 一番『人間がふとスマホで打った空気感』に近い1案を選び、AIっぽい綺麗なまとめ文句や過剰な絵文字を削ぎ落とす。\n"
-        "  Step 3. ファクトシートの数字と1人・1%の狂いもないか指差し確認する。\n\n"
+        "【編集デスクの執筆指針（脱AI臭・生身の語り口）】\n"
+        "- 看板の知名度だけで並んで消耗するもったいなさや、女子組が実は待たされる店を見切って流れているリアル、外の空気感とモニター数字の温度差など、人間がふとスマホで呟きたくなる自然な1つの切り口に絞って書くこと。\n"
+        "- AIっぽい綺麗なまとめ文句や過剰な絵文字を削ぎ落とし、ファクトシートの数字と1人・1%の狂いもないよう正確に書くこと。\n\n"
         f"{platform_spec}\n\n"
         "【絶対厳守ルール（違反するとデスク検閲で減点・不採用になります）】\n"
         "1. 下記の JSON ファクトシートに含まれる店舗名・人数・パーセンテージ以外は絶対に書かないこと。数値を1人でも盛ったり丸めたり変更することは厳禁。\n"
@@ -2899,8 +2897,8 @@ def _build_gemini_prompt(
         f"4. AI臭・宣伝臭ワードの完全禁止：{cliche_list_str} は本文に絶対に使わないこと。\n"
         f"5. 直近の過去投稿の書き出し（{json.dumps(recent_openers, ensure_ascii=False)}）とは全く違う新鮮な1行目の切り口・語尾にすること。\n\n"
         f"【今夜の検証済みファクトシート】\n{json.dumps(fact_payload, ensure_ascii=False, indent=2)}\n\n"
-        "出力は必ず以下のJSON形式のみを返してください（`thinking_memo` を最初に書いて推敲してから `main_text` を出力すること。Markdownコードブロック不要）：\n"
-        '{"thinking_memo": "脳内3案の比較と、AIっぽさを消すためにどこを削りどんな口語の余韻にしたかのメモ（80〜150文字）", "writer_note": "今回どの天気・街況・データをどう本音アドリブに活かしたかの1行メモ", "main_text": "投稿本文（改行は\\n）"}'
+        "出力は必ず以下のJSON形式のみを返してください（Markdownコードブロック不要）：\n"
+        '{"editorial_angle": "今回選んだ切り口とトーンの短い編集メモ（50〜110文字）", "writer_note": "今回どの天気・街況・データを活かしたかの1行メモ", "main_text": "投稿本文（改行は\\n）"}'
     )
     return prompt, reply_text
 
@@ -3272,6 +3270,8 @@ def call_editorial_ai_json(
                 }
                 if _claude_supports_temperature(cm):
                     c_body["temperature"] = min(1.0, max(0.1, float(temperature)))
+                else:
+                    c_body["output_config"] = {"effort": "low" if prefer_fast else "medium"}
 
                 try:
                     resp = requests.post(
@@ -3280,22 +3280,25 @@ def call_editorial_ai_json(
                         json=c_body,
                         timeout=c_timeout,
                     )
-                    # Auto-recover if a new Claude model deprecates `temperature`
-                    if (
-                        resp.status_code == 400
-                        and "temperature" in c_body
-                        and "temperature" in (resp.text or "").lower()
-                    ):
-                        _claude_no_temp_models.add(cm.lower())
-                        c_body_retry = dict(c_body)
-                        c_body_retry.pop("temperature", None)
-                        rem_retry = max(1.5, min(float(per_call_timeout_sec), deadline - time.monotonic()))
-                        resp = requests.post(
-                            "https://api.anthropic.com/v1/messages",
-                            headers=c_headers,
-                            json=c_body_retry,
-                            timeout=rem_retry,
-                        )
+                    # Auto-recover if a Claude model rejects `temperature` or `output_config`
+                    if resp.status_code == 400:
+                        err_low = (resp.text or "").lower()
+                        c_body_retry = None
+                        if "temperature" in c_body and "temperature" in err_low:
+                            _claude_no_temp_models.add(cm.lower())
+                            c_body_retry = dict(c_body)
+                            c_body_retry.pop("temperature", None)
+                        elif "output_config" in c_body and ("output_config" in err_low or "effort" in err_low):
+                            c_body_retry = dict(c_body)
+                            c_body_retry.pop("output_config", None)
+                        if c_body_retry is not None:
+                            rem_retry = max(1.5, min(float(per_call_timeout_sec), deadline - time.monotonic()))
+                            resp = requests.post(
+                                "https://api.anthropic.com/v1/messages",
+                                headers=c_headers,
+                                json=c_body_retry,
+                                timeout=rem_retry,
+                            )
                     if resp.status_code >= 400:
                         last_err = f"Claude HTTP {resp.status_code} ({cm}): {(resp.text or '')[:130]}"
                         claude_fail_note = last_err
@@ -3303,7 +3306,14 @@ def call_editorial_ai_json(
                         if _last_gemini_meta.get("working_route") == ("claude", cm):
                             _last_gemini_meta["working_route"] = None
                         continue
-                    blocks = (resp.json() or {}).get("content") or []
+                    resp_json = resp.json() or {}
+                    if resp_json.get("stop_reason") == "refusal":
+                        ref_cat = ((resp_json.get("stop_details") or {}).get("category")) or "policy"
+                        last_err = f"Claude refusal:{ref_cat} ({cm})"
+                        claude_fail_note = last_err
+                        logger.warning(f"[editorial_ai] {last_err}")
+                        continue
+                    blocks = resp_json.get("content") or []
                     raw_txt = "".join(b.get("text", "") for b in blocks if b.get("type") == "text").strip()
                     parsed = _parse_ai_json_object(raw_txt)
                     if parsed:
@@ -3554,7 +3564,7 @@ def _make_ai_cache_key(
         (focus.get("name", ""), int(focus.get("women") or 0), int(focus.get("men") or 0))
         if focus else None
     )
-    return ("v3_claude5", eng_pref, has_c, ch_norm, tm_norm, sit_norm, slot_label or "", biz_date_str, top3_sig, focus_sig)
+    return ("v4_claude55_live", eng_pref, has_c, ch_norm, tm_norm, sit_norm, slot_label or "", biz_date_str, top3_sig, focus_sig)
 
 
 def _store_ai_candidate_cache(cache_key, candidate: dict, model_name: str, now_t: float = None):
@@ -3695,7 +3705,7 @@ def _generate_gemini_adlib_candidate(
     if not main_text:
         return None
     writer_note = (parsed.get("writer_note") or "天気・曜日・リアルタイム人数を掛け合わせた本音アドリブ執筆案。").strip()
-    thinking_memo = (parsed.get("thinking_memo") or "").strip()
+    thinking_memo = (parsed.get("editorial_angle") or parsed.get("thinking_memo") or "").strip()
 
     candidate = {
         "style": "ai_live_adlib",

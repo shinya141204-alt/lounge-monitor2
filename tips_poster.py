@@ -647,7 +647,7 @@ def _generate_ai_daily_human_tip(
             "2. URL（http...）や架空の店舗人数、角括弧【】見出しは絶対に入れないこと。単体の『オリエンタル』表記も禁止。\n"
             f"3. {ending_rule}\n\n"
             f"【今日のコンテキスト】\n{sns_editorial.json.dumps(ctx_info, ensure_ascii=False)}\n\n"
-            '出力はJSON形式のみ：{"thinking_memo": "どう定型感を消して生の独り言にしたか", "main_text": "投稿本文"}'
+            '出力はJSON形式のみ：{"main_text": "投稿本文"}'
         )
         parsed, _, _ = sns_editorial.call_editorial_ai_json(
             prompt=prompt,

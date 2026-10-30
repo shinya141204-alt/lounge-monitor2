@@ -205,7 +205,7 @@ def build_bonus_alert_tweet_thread(
                     "1. 『🚨【速報】』のような業者見出しやURL（http...）は絶対に入れないこと。\n"
                     f"2. 店舗名（『{ja_name}』または『{casual_n}』）と実測値（女性{w}名・男性{m}名、必要なら女性比{wpct}%）を1人の狂いもなく正確に入れ、最後はリプ欄へ自然に流して『#相席ナビ #相席ラウンジ』で締めること。\n\n"
                     f"【検証済みファクト】\n{sns_editorial.json.dumps(facts, ensure_ascii=False)}\n\n"
-                    '出力はJSON形式のみ：{"thinking_memo": "推敲メモ", "main_text": "投稿本文"}'
+                    '出力はJSON形式のみ：{"main_text": "投稿本文"}'
                 )
                 parsed, _, _ = sns_editorial.call_editorial_ai_json(
                     prompt=prompt,
