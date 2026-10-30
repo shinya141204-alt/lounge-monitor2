@@ -9,6 +9,7 @@ Covers:
 - Template integration sanity checks (staff_sns_editorial.html, index.html #sns-modal)
 """
 
+import datetime
 import json
 import os
 import sys
@@ -476,6 +477,109 @@ class SnsEditorialUpgradeTests(unittest.TestCase):
             self.assertEqual(res["winner"]["style"], "ai_live_adlib")
             self.assertEqual(res["winner"]["total_score"], 100)
             self.assertIn("claude-sonnet-5-5", res["winner"]["style_label"])
+
+    def test_x_archetype_rotation_silent_tree_and_short_snap_100pts(self):
+        """Ensure 8 X skeletons rotate (including silent-tree tagless tweets) and crisp short tweets score 100pts."""
+        seen_keys = set()
+        silent_count = 0
+        base_dt = datetime.datetime(2026, 11, 1, 20, 0, tzinfo=sns_editorial.JST)
+        for day_off in range(8):
+            for slot, hh in (("20:00", 20), ("22:00", 22), ("00:00", 0)):
+                dt = (base_dt + datetime.timedelta(days=day_off)).replace(hour=hh)
+                arch = sns_editorial.select_x_post_archetype(slot, dt)
+                seen_keys.add(arch["key"])
+                if arch["silent_tree"]:
+                    silent_count += 1
+        self.assertGreaterEqual(len(seen_keys), 7)
+        self.assertGreater(silent_count, 0)
+
+        # Crisp 52-char silent-tree snap (zero 👇, zero #) must score 100/100 in run_evaluator
+        stores = [
+            {"name": "ag 恵比寿", "women": 34, "men": 18, "region": "Kanto"},
+            {"name": "OLG 新宿", "women": 40, "men": 32, "region": "Kanto"},
+        ]
+        research = sns_editorial.run_researcher(stores, slot_label="22:00", channel="x", now_jst=base_dt)
+        short_human_cand = {
+            "style": "ai_live_adlib",
+            "style_label": "✨ AI編集長（claude-sonnet-5-5）",
+            "main_text": "22時すぎのag恵比寿、女性34名・男性18名（女性比65%）。今夜はだいぶ落ち着いた空気ですね。",
+            "reply_text": "推移メモ\nhttps://aiseki-navi.com/store/ag-ebisu",
+            "is_ai_generated": True,
+        }
+        ev = sns_editorial.run_evaluator([short_human_cand], research, {}, channel="x", now_jst=base_dt)
+        self.assertEqual(ev["winner"]["total_score"], 100)
+
+    def test_store_spotlight_4_4_2_tier_and_recent_cooldown(self):
+        """Ensure stores classify into tier1/tier2/tier3 and recent featured stores get cooled down."""
+        self.assertEqual(sns_editorial.classify_store_spotlight_tier("OLG 新宿"), "tier1")
+        self.assertEqual(sns_editorial.classify_store_spotlight_tier("ag 恵比寿"), "tier2")
+        self.assertEqual(sns_editorial.classify_store_spotlight_tier("JIS 仙台"), "tier3")
+
+        stores = [
+            {"name": "OLG 新宿", "women": 46, "men": 26, "region": "Kanto"},
+            {"name": "ag 恵比寿", "women": 42, "men": 22, "region": "Kanto"},
+            {"name": "JIS 仙台", "women": 32, "men": 16, "region": "Tohoku"},
+        ]
+        recent_fake = ["金曜夜のオリエンタルラウンジ新宿、女性46名・男性26名で盛り上がってる。"]
+        # Pick a date/slot whose 4:4:2 rotation targets 'submajor' or 'regional' and cools down 新宿
+        dt_sub = datetime.datetime(2026, 11, 2, 22, 0, tzinfo=sns_editorial.JST)
+        with mock.patch("sns_editorial.get_recent_cross_channel_texts", return_value=recent_fake):
+            res = sns_editorial.run_researcher(stores, slot_label="22:00", channel="x", now_jst=dt_sub)
+            self.assertIn("オリエンタルラウンジ 新宿", res["recently_featured_names"])
+            self.assertNotEqual(res["focus_store"]["name"], "OLG 新宿")
+
+    def test_backstage_cliche_ban_and_cross_module_clean_tone(self):
+        """Ensure backstage words ('モニター見てたら', 'バックヤード') are stripped and absent from fallbacks."""
+        import bonus_alert
+        import ladies_guide
+        import note_poster
+
+        raw = "バックヤードでモニター見てたら、オリエンタルラウンジ新宿が女性50名・男性22名だった。"
+        cleaned = sns_editorial._postprocess_ai_main_text(raw, channel="x")
+        self.assertNotIn("バックヤード", cleaned)
+        self.assertNotIn("モニター見て", cleaned)
+        self.assertIn("オリエンタルラウンジ新宿", cleaned)
+
+        dt = datetime.datetime(2026, 11, 1, 21, 15, tzinfo=sns_editorial.JST)
+        for day_i in range(3):
+            d_cur = dt + datetime.timedelta(days=day_i)
+            th_post = ladies_guide.build_threads_ladies_post(self.sample_stores, now_jst=d_cur, use_ai=False)
+            self.assertNotIn("モニター", th_post)
+            self.assertNotIn("バックヤード", th_post)
+            b_main, _ = bonus_alert.build_bonus_alert_tweet_thread(
+                {"store": self.sample_stores[0], "mode": "female_lead", "wpct": 70}, now_jst=d_cur, use_ai=False
+            )
+            self.assertNotIn("モニター", b_main)
+        note_tw = note_poster.build_note_tweet_text("終電後の街の空気について", "https://note.com/aiseki_navi/n/n123", use_ai=False)
+        self.assertNotIn("モニター見て", note_tw)
+
+    def test_tips_zero_base_seed_rotation_and_dedup(self):
+        """Ensure 24 human observation seeds never repeat any seed recorded in recent 18 Tips."""
+        import tips_poster
+
+        self.assertGreaterEqual(len(tips_poster.HUMAN_OBSERVATION_SEEDS), 24)
+        used_18 = [{"seed_key": s["key"], "text": f"past {i}"} for i, s in enumerate(tips_poster.HUMAN_OBSERVATION_SEEDS[:18])]
+        picked = tips_poster.select_fresh_observation_seed(
+            now_jst=datetime.datetime(2026, 11, 3, 18, 0, tzinfo=sns_editorial.JST),
+            recent_history=used_18,
+        )
+        self.assertNotIn(picked["key"], {u["seed_key"] for u in used_18})
+
+    def test_column_editorial_three_literary_styles_without_academic_jargon(self):
+        """Ensure column_editorial rotates 3 literary styles and avoids mandatory textbook buzzwords."""
+        import column_editorial
+
+        s1 = column_editorial.select_column_writing_style("area_hopping")
+        s2 = column_editorial.select_column_writing_style("female_real_voice")
+        s3 = column_editorial.select_column_writing_style("second_venue_move")
+        self.assertEqual({s1["key"], s2["key"], s3["key"]}, {"street_reportage", "table_psychology_dialogue", "live_data_gap_anatomy"})
+
+        res = column_editorial.run_column_editorial_pipeline(self.sample_stores, theme_key="second_venue_move", use_ai=False)
+        prompt = column_editorial._build_column_gemini_prompt(res["research"], res["plan"], "https://aiseki-navi.com")
+        self.assertIn("実測ギャップ・時間感覚検証スタイル", prompt)
+        note_exp = column_editorial.export_column_for_note("osaka-kita-vs-minami", mode="essay")
+        self.assertTrue(note_exp["ok"])
+        self.assertNotIn("Two-Sided Market", note_exp["body_markdown"])
 
 
 if __name__ == "__main__":

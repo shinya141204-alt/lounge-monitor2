@@ -137,12 +137,12 @@ def build_note_tweet_text(title: str, link: str, force: bool = False, use_ai: bo
             import sns_editorial
             if sns_editorial.has_any_ai_key(allow_blocking=True):
                 prompt = (
-                    "あなたは全国53店舗の相席ラウンジ計測サイト『相席ナビ』の運営中の人です。\n"
-                    f"いま note に新しい記事『{title}』を公開したところです。\n"
-                    "定型文の『新しいnoteを書きました✍️』ではなく、なぜこのテーマを深夜に書きたくなったのか、現場モニターを見ていてずっと気になっていた本音をこぼすような"
-                    "Xの告知1ポスト目（90〜122文字以内、X換算256ウェイト以下、URLは本文に絶対に入れない）を書いてください。\n\n"
+                    "あなたは夜の街の人間模様とリアルな空気感を綴る執筆者（『相席ナビ』編集長）です。\n"
+                    f"いま note に新しいエッセイ『{title}』を公開したところです。\n"
+                    "定型文の『新しいnoteを書きました✍️』や『モニター見てて〜』のような裏方アピールではなく、なぜこのテーマを書きたくなったのかを落ち着いた大人の素のトーンでこぼす"
+                    "Xの告知1ポスト目（78〜118文字以内、X換算250ウェイト以下、URLは本文に絶対に入れない、絵文字は0〜1個）を書いてください。\n\n"
                     f"{sns_editorial.HUMAN_INSIDER_VOICE_GUIDE}\n\n"
-                    "・最後は自然にリプ欄のリンクへ流して『#相席ナビ #相席ラウンジ』で締めること。架空の人数は書かないこと。\n"
+                    "・最後は宣伝臭くせずさらっとリプ欄に触れるか余韻を残して締めること。架空の人数は書かないこと。\n"
                     '出力はJSON形式のみ：{"main_text": "投稿本文"}'
                 )
                 parsed, _, _ = sns_editorial.call_editorial_ai_json(
@@ -158,18 +158,18 @@ def build_note_tweet_text(title: str, link: str, force: bool = False, use_ai: bo
                     if force:
                         ai_txt += f"\n(⏱️{now_jst.strftime('%H:%M:%S')})"
                     wt = x_poster.compute_twitter_weight(ai_txt)
-                    if "http" not in ai_txt and 100 <= wt <= 274:
+                    if "http" not in ai_txt and 84 <= wt <= 274:
                         return ai_txt
         except Exception as e:
             logger.warning(f"Note X AI intro fallback: {e}")
 
     intros = [
-        "モニター見てて前からずっと言語化したかった話をnoteにまとめました✍️\n『",
-        "現場の数字見てると綺麗事だけじゃ済まないな…と思う部分をnoteに書きました。\n『",
-        "久しぶりにちょっと踏み込んだ本音コラムをnoteに出しました✍️\n『",
+        "前からずっと言葉にしておきたかった夜の話をnoteにまとめました。\n『",
+        "夜の街でよく見るけれど誰もちゃんと言語化していなかった話をnoteに書きました。\n『",
+        "久しぶりに少し長めのエッセイをnoteに置きました。\n『",
     ]
     header = intros[now_jst.day % len(intros)]
-    footer = "』\n\n気になってた人はリプ欄からどうぞ👇\n#相席ナビ #相席ラウンジ"
+    footer = "』\n\n本編はリプ欄に置いてあります。\n#相席ラウンジ"
     if force:
         footer += f"\n(⏱️{now_jst.strftime('%H:%M:%S')})"
 
@@ -341,6 +341,11 @@ def check_and_post_new_note(force: bool = False, article_index: int = 0) -> dict
                 now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
                 job_state.mark_done(f"note_daily:{now_jst.strftime('%Y-%m-%d')}")
                 x_poster.record_x_auto_post_timestamp(now_jst)
+                try:
+                    import sns_editorial
+                    sns_editorial.record_recent_x_text(tweet_text, source="note_share", now_jst=now_jst)
+                except Exception:
+                    pass
                 sig = _normalize_title_signature(title)
                 if sig:
                     job_state.mark_done(f"note_title:{sig}")

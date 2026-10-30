@@ -174,10 +174,12 @@ def build_bonus_alert_tweet_thread(
     t_str = now_jst.strftime("%H:%M")
 
     store_url = f"{site_url}/store/{slug}" if slug else f"{site_url}/"
-    reply_text = (
-        f"📍 {seo_label}の現在人数推移＆徒歩圏の他店舗とのバランス比較はこちら👇\n"
-        f"{store_url}"
+    reply_variants = (
+        f"📍 {seo_label}の現在人数推移＆近隣店舗との比較\n{store_url}",
+        f"{seo_label}の時間帯推移はこちらに置いてあります\n{store_url}",
     )
+    reply_text = reply_variants[(now_jst.day + now_jst.hour) % len(reply_variants)]
+    silent_tree = (now_jst.day % 2 == 0)
 
     if use_ai:
         try:
@@ -186,24 +188,32 @@ def build_bonus_alert_tweet_thread(
                 casual_n = sns_editorial.casual_store_name(sname)
                 weather_ctx = sns_editorial.fetch_live_weather_context(allow_blocking=True) or {}
                 cal_ctx = sns_editorial.build_calendar_context(now_jst)
+                recent_x = sns_editorial.get_recent_cross_channel_texts("x", limit=4, allow_blocking=False)
+                banned_endings = sns_editorial.extract_sentence_endings(recent_x)
                 facts = {
                     "time": f"{cal_ctx.get('weekday_ja', '')}曜 {t_str}",
                     "weather": weather_ctx.get("adlib_hint") or "",
-                    "mode": "女子待ちゼロ（男性大幅先行）" if mode == "male_lead" else "男性ボーナスタイム（女性大幅先行）",
+                    "mode": "女子待ちゼロ（男性大幅先行）" if mode == "male_lead" else "女性大幅先行（レアな偏り）",
                     "store_name": ja_name,
                     "casual_alias": casual_n,
                     "women": w,
                     "men": m,
                     "women_pct": wpct,
                 }
+                ending_rule = (
+                    "今回はサイレントツリー回なので、本文末尾に『リプ欄へ👇』やハッシュタグは一切付けず、短い事実と余韻だけでさらっと終えること。"
+                    if silent_tree
+                    else "最後は説教臭くせず、さらっと『推移はリプ欄置いときます』程度か控えめな『#相席ラウンジ』で締めること（絵文字は全体で0〜1個）。"
+                )
                 prompt = (
-                    "あなたは全国53店舗の相席ラウンジ人数モニターを見ている『相席ナビ』の運営中の人です。\n"
-                    "いまモニターをふと見たら1店舗だけ極端な男女比の偏り（レアな狙い目状態）が出ているのを発見し、"
-                    "思わずXで呟いたような『人間味100%のゲリラ独り言ポスト（90〜122文字以内、X換算258ウェイト以下）』を1本書いてください。\n\n"
+                    "あなたは夜の街の空気感に詳しい、気取らない大人の友人・街ウォッチャーです。\n"
+                    "いま1店舗だけ珍しい男女比の偏りが出ているのを見かけて、ふとXに置いた『短い街況・偏りメモ（62〜115文字以内、X換算248ウェイト以下）』を1本書いてください。\n\n"
                     f"{sns_editorial.HUMAN_INSIDER_VOICE_GUIDE}\n\n"
                     "【必須ルール】\n"
-                    "1. 『🚨【速報】』のような業者見出しやURL（http...）は絶対に入れないこと。\n"
-                    f"2. 店舗名（『{ja_name}』または『{casual_n}』）と実測値（女性{w}名・男性{m}名、必要なら女性比{wpct}%）を1人の狂いもなく正確に入れ、最後はリプ欄へ自然に流して『#相席ナビ #相席ラウンジ』で締めること。\n\n"
+                    "1. 『🚨【速報】』のような業者見出し、『モニター見てたら』『バックヤードで』等の裏方アピール、URL（http...）は絶対に入れないこと。\n"
+                    f"2. 店舗名（『{ja_name}』）と実測値（女性{w}名・男性{m}名、必要なら女性比{wpct}%）を1人の狂いもなく正確に入れ、上から目線の講釈は書かないこと。\n"
+                    f"3. 直近使った文末語尾 {sns_editorial.json.dumps(banned_endings[:4], ensure_ascii=False)} の連続使用は避けること。\n"
+                    f"4. {ending_rule}\n\n"
                     f"【検証済みファクト】\n{sns_editorial.json.dumps(facts, ensure_ascii=False)}\n\n"
                     '出力はJSON形式のみ：{"main_text": "投稿本文"}'
                 )
@@ -218,13 +228,16 @@ def build_bonus_alert_tweet_thread(
                 )
                 if parsed and parsed.get("main_text"):
                     ai_txt = sns_editorial._postprocess_ai_main_text(parsed["main_text"], channel="x")
+                    if silent_tree:
+                        ai_txt = ai_txt.replace("👇", "").replace("リプ欄へ", "").replace("リプ欄", "").strip()
                     wt = x_poster.compute_twitter_weight(ai_txt)
                     w_vals = sns_editorial._extract_headcount_values(ai_txt, "women")
                     m_vals = sns_editorial._extract_headcount_values(ai_txt, "men")
                     has_url = ("http://" in ai_txt or "https://" in ai_txt)
                     if (
                         not has_url
-                        and 110 <= wt <= 274
+                        and 84 <= wt <= 274
+                        and not any(cw in ai_txt for cw in sns_editorial.AI_CLICHE_WORDS)
                         and all(v == w for v in w_vals)
                         and all(v == m for v in m_vals)
                         and (w in w_vals or m in m_vals)
@@ -234,23 +247,35 @@ def build_bonus_alert_tweet_thread(
             logger.warning(f"Bonus alert AI generation fallback: {e}")
 
     if mode == "male_lead":
-        main_text = (
-            f"いま{t_str}のモニター見てたんだけど、「{ja_name}」が男性{m}名・女性{w}名でだいぶ男性先行になってる…🥂\n\n"
-            f"近くにいる女子組なら受付待ちゼロでそのままソファ席通されそうな空気。男性先行の30分後に女性が増えやすい傾向もあるので推移はリプ欄置いときます👇\n"
-            f"#相席ナビ #相席ラウンジ"
-        )
+        if silent_tree:
+            main_text = (
+                f"{t_str}の「{ja_name}」、男性{m}名・女性{w}名でかなり男性先行。\n\n"
+                f"近くにいる女子組なら受付待ちゼロでそのままソファ席通されそうな空気ですね。"
+            )
+        else:
+            main_text = (
+                f"いま{t_str}時点、「{ja_name}」が男性{m}名・女性{w}名でだいぶ男性先行になってますね。\n\n"
+                f"近くにいる女子組なら待ちゼロでそのまま通されそうな空気。推移はリプ欄置いときます。\n"
+                f"#相席ラウンジ"
+            )
     else:
         female_lead_openers = (
-            f"いま{t_str}のモニター見てたんだけど、「{ja_name}」が女性{w}名・男性{m}名（女性比{wpct}%）までかなり偏ってる…",
-            f"{t_str}時点、「{ja_name}」のバランスが女性{w}名・男性{m}名（女性比{wpct}%）で今夜いちばん狙い目な空気になってる👀",
-            f"ふと数字を見比べてたら、「{ja_name}」がいま女性{w}名・男性{m}名（女性比{wpct}%）まで伸びてた（{t_str}時点）",
+            f"{t_str}の「{ja_name}」、女性{w}名・男性{m}名（女性比{wpct}%）。",
+            f"{t_str}時点、「{ja_name}」が女性{w}名・男性{m}名（女性比{wpct}%）まで偏ってますね。",
+            f"いま「{ja_name}」が女性{w}名・男性{m}名（女性比{wpct}%）まで伸びてる（{t_str}時点）。",
         )
         lead_line = female_lead_openers[(now_jst.day + now_jst.hour) % len(female_lead_openers)]
-        main_text = (
-            f"{lead_line}\n\n"
-            f"人気店でこのバランスはなかなか出ないやつ。男性待ちに切り替わる前の細かい推移はリプ欄置いときます👇\n"
-            f"#相席ナビ #相席ラウンジ"
-        )
+        if silent_tree:
+            main_text = (
+                f"{lead_line}\n\n"
+                f"この時間帯でこの比率はなかなか珍しいかも。"
+            )
+        else:
+            main_text = (
+                f"{lead_line}\n\n"
+                f"この時間帯でこのバランスは珍しいですね。細かい推移はリプ欄置いときます。\n"
+                f"#相席ラウンジ"
+            )
     if x_poster.compute_twitter_weight(main_text) > 274:
         if mode == "male_lead":
             main_text = (
@@ -331,6 +356,11 @@ def check_and_post_bonus_alert(
     if res.get("status") == "success" and not force:
         job_state.mark_done(dedup_key)
         x_poster.record_x_auto_post_timestamp(now_jst)
+        try:
+            import sns_editorial
+            sns_editorial.record_recent_x_text(main_text, source="bonus_alert", now_jst=now_jst)
+        except Exception:
+            pass
         sname = (candidate["store"].get("name") or "").strip()
         if sname:
             job_state.mark_done(f"bonus_store:{biz_date}:{sname}")

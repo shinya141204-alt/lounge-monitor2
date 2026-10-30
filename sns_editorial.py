@@ -75,16 +75,21 @@ AI_CLICHE_WORDS = (
     "二度見",
     "２度見",
     "2度見",
+    "バックヤード",
+    "モニター見て",
+    "モニターを見",
+    "看板だけで",
+    "サンクコスト",
 )
 
-# Core human insider voice guide applied across X, Threads, Instagram, and Column prompts
+# Core human voice guide: casual, understated adult friend / regular watcher (zero backstage meta-talk)
 HUMAN_INSIDER_VOICE_GUIDE = (
-    "【最優先：AIっぽさゼロの『現場モニターを見ている運営のリアルな独り言・本音』ルール】\n"
-    "1. 広報担当の宣伝文やAIの優等生構文ではなく、毎晩バックヤードで全国53店舗の人数モニターを眺めながら『うわ、今日の梅田えぐいな…』『なんでみんなこっち並んじゃうんだろ』と呟いている30代の運営中の人の生の声で書くこと。\n"
-    "2. 毎回きれいに教訓やまとめで締めないこと。『賢く選んで楽しみましょう』『参考にしてみてください』のような優等生オチは厳禁。『〜なんだよな』『〜だったりする』『正直いま動くならこっちかも』『何回見ても不思議』のように、ふと呟いてスマホを置いたような自然な余韻・体言止めを混ぜること。\n"
-    "3. 1行目は毎回違う角度の『外の空気感・曜日の足取り・徒歩数分の店舗間ギャップ・ちょっとしたボヤき』から入ること（例：『小雨なのに今日の立ち上がりちょっと早すぎないか…』『同じ新宿の徒歩3分でここまで天国と地獄に割れるの、ほんと残酷なんだよな』『金曜のこの時間、看板の知名度だけで1店舗目に並ぶとだいたい消耗するやつ…』等。同じリアクション語や決まり文句の使い回しは厳禁）。\n"
-    "4. 句読点や改行に人間の息継ぎを入れること。『〜となっております』『〜ですが、』のような硬い接続詞ではなく、『〜なんだけど、』『正直さ、』『いやこれ、』『〜なんだよね』など声に出して自然な口語リズムにすること。絵文字は0〜2個までに抑え、キラキラ絵文字の連打はしない（自然な『笑』や『…』は1回までOK）。\n"
-    "5. 数字は機械的な箇条書き表の羅列にせず、できる限り会話の流れに溶かし込むこと（ただし店舗名・女性XX名・男性YY名・女性比ZZ%の数値そのものはファクトシートと1人・1%も違わず一致させること）。"
+    "【最優先：生身の人間らしさ・『気取らない大人の友人・街ウォッチャー』の文体原則】\n"
+    "1. 『モニター見てたら』『バックヤードで』『集計してたら』などの運営・裏方アピールは一切書かないこと。夜の街の空気感や男女のリアルに詳しい『こなれた友人』が、ふとスマホで呟いたような自然な距離感にすること（ただし自分が今日客として入店した架空の体験談は書かない）。\n"
+    "2. 毎回きれいに教訓や説教（『〜すると損』『〜が正解』『賢く選ぼう』等）でまとめないこと。事実の偏りや街の空気をポンと置くだけで十分伝わる。\n"
+    "3. 語尾をワンパターンにしないこと。『〜なんだよな』『正直さ、』のような口癖の連発は厳禁。体言止め、普通の言い切り（『〜てる』『〜だった』『〜の差。』）、ふと混ざる素の丁寧語（『〜ですね』『〜かも』『〜置いときます』）を日によって自然に織り交ぜること。\n"
+    "4. 絵文字や感嘆符（！）は極力減らし、全体で0〜1個までに抑えること（絵文字ゼロの素っ気ない文面も大歓迎）。キラキラ絵文字の連打や大げさな煽りは一切しない。\n"
+    "5. 店舗名・女性XX名・男性YY名・女性比ZZ%の数値は、ファクトシートの検証済みデータと1人・1%も違わず正確に書くこと。"
 )
 
 _weather_cache = {"ts": 0.0, "data": None, "fetching": False}
@@ -233,9 +238,9 @@ EDITORIAL_TONE_MODES = {
         "short_label": "🌶️💄 辛口×女性本音",
         "desc": "ご都合主義の綺麗事を排除し、「男性が気づかない敗因の図星（毒）」と「女性ペアの本音・裏側」の両方を効かせるモード。",
         "prompt_directive": (
-            "【トーン＆視点指定：🌶️💄 辛口本音×女性目線ミックス】\n"
-            "- 誰にでも好かれようとする無難な優等生トーン（「〜がおすすめです✨」「楽しく飲めますよ😊」等の浅い綺麗事）を封印すること。\n"
-            "- 「看板の知名度だけで並んで時間を溶かす非効率」や「男余りの店で惰性で粘るサンクコスト」を少しビターな本音で突きつつ、同時に「女の子側も待たされる店や必死すぎる席はすぐ見切って好バランス店へ流れている」「女子組が今すぐ待ちゼロで入れる店」という女性目線のリアルな肌感覚を織り交ぜること。"
+            "【トーン＆視点指定：気取らない観察眼×男女両目線のリアル】\n"
+            "- 誰にでも好かれようとする宣伝調（『おすすめです』『楽しく飲めます』等）は使わず、混んでいる店に惰性で向かうもったいなさや、女の子側が待たされる店を避けてバランス店へ動くリアルな空気感をさらっと描くこと。\n"
+            "- 説教くさい決め台詞は避け、知っている友人だけがふと教えてくれる落ち着いた温度感にすること。"
         ),
     },
     "spicy": {
@@ -244,9 +249,8 @@ EDITORIAL_TONE_MODES = {
         "short_label": "🔥 辛口・毒強め",
         "desc": "優等生アドバイスを完全封印し、耳が痛い図星と残酷な現場構造（なぜノープラン組が負けるのか）をズバッと切るビター特化モード。",
         "prompt_directive": (
-            "【トーン＆視点指定：🔥 辛口・毒強め特化（ビター＆シニカル）】\n"
-            "- キラキラした宣伝文句や「ぜひ行ってみてください」的な優しい語尾を禁止し、現場を知り尽くした常連が深夜のバーでぶっちゃけるような、少し毒と苦味のある鋭い語り口にすること。\n"
-            "- 「何も見ずに人気店へ突撃して受付待ちで消耗する一番もったいない負けパターン」や「徒歩3分で世界が違うのに1店舗に固執する罠」など、読者が思わず『うわ、図星だ…』と保存したくなる鋭い観察眼を入れること（ただし特定の個人や店舗への誹謗中傷はせず、あくまで立ち回りの構造を辛口に斬ること）。"
+            "【トーン＆視点指定：少しビターで鋭い大人の観察眼】\n"
+            "- 優しいフォロー語尾や宣伝文句を省き、徒歩数分で空気がまるで違うのに気づかない不思議さや、時間帯ごとのシビアな現実を淡々と切り取ること（特定店舗や個人への誹謗中傷はしない）。"
         ),
     },
     "female_real": {
@@ -255,9 +259,8 @@ EDITORIAL_TONE_MODES = {
         "short_label": "💄 女性目線リアル",
         "desc": "女性2人組が実は見ている減点サイン、女子トイレや帰り道LINEの本音、女性側が待ちゼロで当たり席を引く立ち回りに特化するモード。",
         "prompt_directive": (
-            "【トーン＆視点指定：💄 女性目線リアル特化（女子の本音・裏側）】\n"
-            "- ラウンジに通う20〜30代女性ペアのリアルな本音（「せっかく髪もメイクも整えたのに受付で待たされる店はすぐ出る」「余裕のない質問攻め席より、落ち着いて話せるバランスの店がいい」「雨の日は前髪が死ぬから地下直結しか勝たん」など）を軸に語ること。\n"
-            "- 男性読者には「実は女子側はここを見ている」というハッとする気づきを与え、女性フォロワーには「今すぐ待ち時間ゼロで即乾杯できる男性先行の狙い目店」がすぐ分かる実用性を両立させること。"
+            "【トーン＆視点指定：女性ペアのリアルな肌感覚】\n"
+            "- 受付で待たされる気まずさや雨の日の移動の面倒さなど、20〜30代女性ペアの素直な感覚を添えつつ、女性組がいま待ち時間なしでスッと座れる店舗や空気感を自然に伝えること。"
         ),
     },
     "standard": {
@@ -266,8 +269,8 @@ EDITORIAL_TONE_MODES = {
         "short_label": "🥂 マイルド標準",
         "desc": "毒や辛口表現を抑え、初めて相席ラウンジへ行く読者にも安心感を与えるフラットで丁寧なガイドモード。",
         "prompt_directive": (
-            "【トーン＆視点指定：🥂 マイルド標準（丁寧・フラット）】\n"
-            "- 辛口すぎる表現は控え、相席ラウンジ初心者でも安心して参考にできる親しみやすく落ち着いた常連トーンで書くこと。"
+            "【トーン＆視点指定：落ち着いたフラットな素の丁寧トーン】\n"
+            "- 辛口表現は控え、初めての人でも雰囲気がイメージしやすい穏やかで気取らない言葉遣いにすること。"
         ),
     },
 }
@@ -415,6 +418,105 @@ def get_recent_editorial_history(channel: str = "x", limit: int = 8, allow_block
     return []
 
 
+RECENT_X_TEXTS_KEY = "x_recent_texts_v1"
+
+_TIER1_FLAGSHIP_EXACT = {
+    "OLG 新宿", "JIS 新宿", "JIS SHINJUKU",
+    "OLG 渋谷本店",
+    "OLG 梅田", "JIS 梅田", "JIS UMEDA",
+}
+_TIER2_SUBMAJOR_KEYWORDS = (
+    "恵比寿", "EBISU", "AG渋谷", "ag渋谷", "渋谷駅前", "西新宿", "NISHISHINJUKU",
+    "上野", "UENO", "町田", "MACHIDA", "横浜", "YOKOHAMA", "大宮", "OMIYA", "柏", "KASHIWA",
+    "茶屋町", "CHAYAMACHI", "大阪駅前", "難波", "NAMBA", "心斎橋", "SHINSAIBASHI", "天満", "TENMA",
+    "京都", "KYOTO", "神戸", "KOBE",
+    "名古屋", "栄", "錦", "NAGOYA",
+    "福岡", "天神", "FUKUOKA", "小倉", "KOKURA",
+)
+
+
+def classify_store_spotlight_tier(raw_name: str) -> str:
+    """
+    Classify domestic stores for the 4:4:2 spotlight rotation:
+      - 'tier1' (40%): Flagship Shinjuku, Shibuya Honten, Umeda
+      - 'tier2' (40%): Sub-major urban hubs (Ebisu, Ueno, Yokohama, Omiya, Namba, Chayamachi, Sakae, Tenjin, etc.)
+      - 'tier3' (20%): Regional cities nationwide (Sapporo, Sendai, Hiroshima, Kumamoto, Okinawa, etc.)
+    """
+    nm = (raw_name or "").strip()
+    if not nm:
+        return "tier2"
+    up = nm.upper()
+    if nm in _TIER1_FLAGSHIP_EXACT or up in _TIER1_FLAGSHIP_EXACT:
+        return "tier1"
+    if any(k in up or k in nm for k in _TIER2_SUBMAJOR_KEYWORDS):
+        return "tier2"
+    if any(k in up or k in nm for k in ("新宿", "渋谷", "梅田", "SHINJUKU", "SHIBUYA", "UMEDA")):
+        return "tier1"
+    return "tier3"
+
+
+def record_recent_x_text(text: str, source: str = "x", now_jst: datetime.datetime = None):
+    """Append a posted X text into the shared cross-job anti-repetition ring buffer (`x_recent_texts_v1`)."""
+    cleaned = (text or "").strip()
+    if not cleaned:
+        return
+    try:
+        raw = job_state.get_value(RECENT_X_TEXTS_KEY, allow_blocking=False)
+        items = json.loads(raw) if raw else []
+        if not isinstance(items, list):
+            items = []
+        ts_str = (now_jst or datetime.datetime.now(JST)).strftime("%Y-%m-%d %H:%M:%S")
+        entry = {"source": source, "text": cleaned[:320], "ts": ts_str}
+        items = [it for it in items if isinstance(it, dict) and it.get("text") != cleaned[:320]]
+        items.insert(0, entry)
+        job_state.set_value(RECENT_X_TEXTS_KEY, json.dumps(items[:18], ensure_ascii=False))
+    except Exception:
+        pass
+
+
+def get_recent_cross_channel_texts(channel: str = "x", limit: int = 6, allow_blocking: bool = False) -> list:
+    """Return recent full post texts across editorial history and shared X jobs (Tips/Bonus/Note) to prevent repetition."""
+    ch = (channel or "x").lower()
+    seen = []
+    hist = get_recent_editorial_history(channel=ch, limit=limit, allow_blocking=allow_blocking)
+    for h in hist:
+        txt = (h.get("selected_text") or "").strip()
+        if txt and txt not in seen:
+            seen.append(txt)
+    if ch == "x":
+        try:
+            raw = job_state.get_value(RECENT_X_TEXTS_KEY, allow_blocking=allow_blocking)
+            shared = json.loads(raw) if raw else []
+            if isinstance(shared, list):
+                for it in shared:
+                    txt = (it.get("text") or "").strip() if isinstance(it, dict) else ""
+                    if txt and txt not in seen:
+                        seen.append(txt)
+        except Exception:
+            pass
+    return seen[:limit]
+
+
+def extract_sentence_endings(texts: list) -> list:
+    """Extract characteristic sentence-ending phrases from recent posts so AI avoids repeating the same cadence."""
+    endings = []
+    patterns = (
+        "なんだよな", "なんだよね", "だったりする", "だったりします", "置いときます",
+        "ですね", "かも", "珍しい", "不思議", "差よ", "空気感", "狙い目",
+    )
+    for t in (texts or []):
+        body = re.sub(r"#[^\s#]+", "", t or "").replace("👇", "").strip()
+        for p in patterns:
+            if p in body and p not in endings:
+                endings.append(p)
+        last_line = [ln.strip() for ln in body.splitlines() if ln.strip()]
+        if last_line:
+            tail = re.sub(r"[。…！!？?]+$", "", last_line[-1])[-8:]
+            if len(tail) >= 3 and tail not in endings:
+                endings.append(tail)
+    return endings[:8]
+
+
 def persist_editorial_session_record(channel: str, session_record: dict):
     """Persist an adopted editorial session record to `job_state` (called ONLY after actual post success or explicit record_history=True)."""
     if not session_record:
@@ -425,6 +527,8 @@ def persist_editorial_session_record(channel: str, session_record: dict):
         history = get_recent_editorial_history(channel=ch, limit=11)
         history.insert(0, session_record)
         job_state.set_value(h_key, json.dumps(history[:12], ensure_ascii=False))
+        if ch == "x" and session_record.get("selected_text"):
+            record_recent_x_text(session_record["selected_text"], source="x_editorial")
     except Exception as e:
         logger.warning(f"Failed to persist {ch} editorial log: {e}")
 
@@ -995,9 +1099,9 @@ def build_slot_persona_context(slot_label: str = "22:00", channel: str = "x") ->
     return {
         "label": "🔥 22:00 ピーク・2軒目移動のライブ実況",
         "guidance": (
-            "街が一番動いている22時台のリアルタイム実況トーン。"
-            "『いま1軒目終わりの組が一気に流れてきてて』『徒歩3分なのにここまで男女比割れるか…』"
-            "のように、今まさにスマホで現場モニターを見ている臨場感を出す。"
+            "街が一番動いている22時台のリアルタイム空気感トーン。"
+            "『1軒目終わりの組がどっと動き始める頃』『徒歩3分なのにここまで男女比割れるか…』"
+            "のように、夜の街の空気感を知る友人がふとスマホで呟いたような自然体にする。"
         ),
     }
 
@@ -1252,9 +1356,30 @@ def run_researcher(
     total_m = sum(s["men"] for s in dom)
     active_stores = [s for s in dom if s["total"] >= 6]
 
-    # 1. Urban cluster gap analysis
+    # Identify stores & hubs featured in the last 4 posts so we don't repeat Shinjuku/Umeda every single time
+    recent_texts_for_cd = get_recent_cross_channel_texts(channel=channel, limit=4, allow_blocking=False)
+    recent_joined = "\n".join(recent_texts_for_cd)
+    recently_featured_names = set()
+    for s in dom:
+        ja_n = s.get("ja_name") or ""
+        ja_compact = re.sub(r"[\s　]+", "", ja_n)
+        if (ja_n and ja_n in recent_joined) or (ja_compact and ja_compact in re.sub(r"[\s　]+", "", recent_joined)):
+            recently_featured_names.add(s.get("name") or ja_n)
+
+    # Golden 4:4:2 spotlight rotation: 40% Tier1 (Shinjuku/Shibuya/Umeda), 40% Tier2 (Sub-major), 20% Tier3 (Regional)
+    rotation_wheel = ("tier1", "tier2", "tier1", "tier2", "tier3", "tier1", "tier2", "tier1", "tier2", "tier3")
+    slot_offset = 0 if slot_label == "20:00" else (1 if slot_label in ("22:00", "22:30") else 2)
+    biz_ord = _business_datetime(now_jst).date().toordinal()
+    target_tier = rotation_wheel[(biz_ord * 3 + slot_offset) % len(rotation_wheel)]
+    tier_labels = {
+        "tier1": "王道メガエリア（新宿・渋谷・梅田）",
+        "tier2": "準主要人気街（恵比寿・上野・横浜・大宮・難波・茶屋町・栄・天神ほか）",
+        "tier3": "全国・地方注目都市（札幌・仙台・広島・岡山・熊本・沖縄ほか）",
+    }
+
+    # 1. Urban cluster gap analysis (with gentle anti-repetition cooldown when another hub also has a real gap)
     best_cluster = None
-    best_cluster_score = -1.0
+    best_cluster_score = -1e9
     city_leaders = []
     for hub_label, area_id, kws in URBAN_CLUSTERS:
         hub_s = [
@@ -1272,7 +1397,8 @@ def run_researcher(
             high_s = by_ratio[0]
             low_s = by_ratio[-1]
             pct_gap = high_s["wpct"] - low_s["wpct"]
-            score = pct_gap * 1.35 + (high_s["women"] * 0.25) + (min(high_s["total"], low_s["total"]) * 0.25)
+            hub_cd_penalty = 24.0 if (recent_texts_for_cd and hub_label.split("・")[0] in recent_texts_for_cd[0]) else 0.0
+            score = pct_gap * 1.35 + (high_s["women"] * 0.25) + (min(high_s["total"], low_s["total"]) * 0.25) - hub_cd_penalty
             if high_s["women"] >= 10 and score > best_cluster_score:
                 best_cluster_score = score
                 best_cluster = {
@@ -1284,19 +1410,46 @@ def run_researcher(
                     "store_count": len(active_hub),
                 }
 
-    # 2. Genuine sweet-spot / surge store (strictly prefer stores where women >= men so we never call a male-heavy store "穴場")
+    # 2. Genuine sweet-spot / surge store with 4:4:2 tier rotation + recent-store cooldown
     female_lead_pool = [s for s in dom if s["women"] >= 12 and s["women"] >= s["men"]]
     if not female_lead_pool:
         female_lead_pool = [s for s in dom if s["women"] >= 10]
-    female_lead_pool.sort(
-        key=lambda x: (
-            int(x.get("women_diff") or 0) * 3.0
-            + (x["women"] - x["men"]) * 1.6
-            + x["women"] * 0.45
-        ),
-        reverse=True,
+
+    has_target_tier_candidate = any(
+        classify_store_spotlight_tier(s.get("name", "")) == target_tier and s["women"] >= 12
+        for s in female_lead_pool
     )
+    apply_tier_rotation = len(active_stores) >= 6
+    pool_size = len(female_lead_pool)
+
+    def _focus_rank_key(s: dict) -> float:
+        base_sc = (
+            int(s.get("women_diff") or 0) * 3.0
+            + (s["women"] - s["men"]) * 1.5
+            + s["women"] * 0.38
+        )
+        cd_pen = 65.0 if (s.get("name") in recently_featured_names and pool_size >= 2) else 0.0
+        if not apply_tier_rotation:
+            return base_sc - cd_pen
+        st_tier = classify_store_spotlight_tier(s.get("name", ""))
+        tier_bonus = 0.0
+        if has_target_tier_candidate and st_tier == target_tier:
+            tier_bonus = 55.0
+        elif target_tier == "tier3" and not has_target_tier_candidate and st_tier == "tier2":
+            tier_bonus = 40.0
+        return base_sc + tier_bonus - cd_pen
+
+    female_lead_pool.sort(key=_focus_rank_key, reverse=True)
     focus_store = female_lead_pool[0] if female_lead_pool else (dom[0] if dom else None)
+
+    submajor_highlights = [
+        s for s in dom
+        if classify_store_spotlight_tier(s.get("name", "")) == "tier2" and s["women"] >= 10 and s["total"] >= 16
+    ][:3]
+    regional_highlights = [
+        s for s in dom
+        if classify_store_spotlight_tier(s.get("name", "")) == "tier3" and s["women"] >= 8 and s["total"] >= 12
+    ][:3]
 
     # Also detect strongest male-lead lively store (great for female followers: 0-min wait)
     male_lead_pool = [s for s in dom if s["men"] >= 18 and s["women"] >= 10 and (s["men"] - s["women"]) >= 6]
@@ -1362,6 +1515,9 @@ def run_researcher(
             f"【カルーセル連動】スライド3枚目の高女性比率1位は「{top_a['seo_name']}（{top_a['avg_wpct']}%）」。"
         )
 
+    if apply_tier_rotation:
+        notes.append(f"【店舗スポット配分（4:4:2黄金比）】今回優先枠：{tier_labels.get(target_tier, target_tier)}")
+
     return {
         "channel": channel,
         "slot_label": slot_label,
@@ -1379,6 +1535,11 @@ def run_researcher(
         "anomaly_store": anomaly_store,
         "east_top": east_top,
         "west_top": west_top,
+        "spotlight_tier": target_tier,
+        "spotlight_tier_label": tier_labels.get(target_tier, ""),
+        "submajor_highlights": submajor_highlights,
+        "regional_highlights": regional_highlights,
+        "recently_featured_names": sorted(natural_store_name(nm) for nm in recently_featured_names),
         "ig_ctx": ig_ctx,
         "calendar": cal_ctx,
         "weather": weather_ctx,
@@ -1552,7 +1713,7 @@ def _write_x_candidates(
 
         if cluster["pct_gap"] >= 12:
             if tm == "spicy":
-                hook_a = f"看板の知名度だけで並んで時間を溶かすのが一番もったいない夜。{hub_name}でもここまで割れてる👀"
+                hook_a = f"駅チカの1店舗目だけで並んで時間を溶かすのが一番もったいない夜。{hub_name}でもここまで割れてる"
                 tail_a = "男余り店で粘る前にリプ欄で比較を👇"
             elif tm == "female_real":
                 hook_a = f"女の子側も待たされる店はすぐ見切って移動する時間。いま{hub_name}で空気感が割れてる💄"
@@ -1840,7 +2001,7 @@ def _write_threads_candidates(
             for c in other_cities
         )
         if tm == "spicy":
-            lead_1 = f"正直、{wd_str}曜{t_str}に看板の知名度だけで突撃して受付待ちで消耗する人が一番損してます。今の{hub_name}のリアルな温度差がこちら👀"
+            lead_1 = f"正直、{wd_str}曜{t_str}に一番近い店舗だけで突撃して受付待ちで消耗する人が一番損してます。今の{hub_name}のリアルな温度差がこちら"
             closing_1 = "男余りの店で『せっかく来たし』と粘っても席替えすら回らないので、徒歩3〜4分の好バランス店へさっさと切り替えるのが鉄則です。"
         elif tm == "female_real":
             lead_1 = f"女子側の本音で言うと、せっかくメイクも髪も整えて来たのに『受付で待たされる店』や『必死すぎる空気の店』は1杯で出たくなるもの💄 今の{hub_name}はこんな感じ👇"
@@ -2165,9 +2326,9 @@ def _write_tiktok_candidates(
         gap = cluster["pct_gap"]
         hook_txt = f"同じ{hub}・徒歩4分で『女性比{hs['wpct']}% vs {ls['wpct']}%』の残酷な差"
         opener = (
-            f"同じ{hub}の徒歩4分圏内なのに、看板の知名度だけで1店舗目に突撃して受付待ちで消耗してる人が多すぎるんだよね…（{wd_str}曜 {t_str}の実測モニターより）"
+            f"同じ{hub}の徒歩4分圏内なのに、駅チカの1店舗目だけに突撃して受付待ちで消耗してる人が多すぎる…（{wd_str}曜 {t_str}実測）"
             if tm in ("spicy_female", "spicy")
-            else f"同じ{hub}の徒歩4分なのに、ドア1枚でここまで男女比が割れてるの毎回モニター見てて不思議になる…（{wd_str}曜 {t_str}実測）"
+            else f"同じ{hub}の徒歩4分なのに、ドア1枚でここまで男女比が割れてるの毎回ちょっと不思議になる…（{wd_str}曜 {t_str}実測）"
         )
         main_gap = (
             f"{opener}\n\n"
@@ -2370,11 +2531,11 @@ def _write_note_candidates(
             f"今夜の相席ラウンジを最高の思い出にするか、ただの飲み会で終わらせるか。鍵はいつだって、退店の一歩手前のスマートな切り出しにある。"
         )
     elif sit_key == "zero_wait":
-        essay_title = f"【女子の本音と逆張り】看板だけで並ぶ男性を横目に、賢い女性ペアが「待ち時間ゼロ」で即座に乾杯する店舗の選び方"
+        essay_title = f"【女子の本音と逆張り】混雑店に並ぶ列を横目に、賢い女性ペアが「待ち時間ゼロ」で即座に乾杯する店舗の選び方"
         essay_p1 = (
             f"繁華街の夜、有名な大型店の前には入場待ちの長い列ができる。今夜のデータでも、{s1['ja_name']}は女性{s1['women']}名・男性{s1['men']}名と大盛況。"
             f"しかし、そのすぐ近くにある店舗へ目を向けると、まったく違う光景が広がっている。"
-            f"男性陣が看板のネームバリューだけで長蛇の列に並んで時間を溶かしている裏側で、立ち回りの上手い女性ペアは最初から『待ちゼロ』の店舗へ滑り込み、颯爽と乾杯を始めているのだ。"
+            f"男性陣がネームバリューだけで長蛇の列に並んで時間を溶かしている裏側で、立ち回りの上手い女性ペアは最初から『待ちゼロ』の店舗へ滑り込み、颯爽と乾杯を始めているのだ。"
         )
         essay_p2 = (
             f"女性側のリアルな本音を言えば、せっかくメイクもヘアセットも完璧に整えてヒールを履いてきた夜に、受付の狭いエントランスで何十分も待たされることほどテンションが下がるものはない。"
@@ -2390,7 +2551,7 @@ def _write_note_candidates(
         essay_title = f"【雨の日の夜遊び戦略】足元の悪さは最大のチャンス。なぜ「地下直結ラウンジ」を知っている大人は雨の夜に一人勝ちできるのか？"
         essay_p1 = (
             f"外はあいにくの雨。濡れたアスファルトに街灯が反射し、繁華街の歩道を行き交う傘の波が見える。"
-            f"一般的に雨の日は客足が鈍ると言われるが、相席ラウンジのリアルタイムモニターを見ているとまったく逆の現象が起きていることに気づく。"
+            f"一般的に雨の日は客足が鈍ると言われるが、相席ラウンジのリアルタイム推移を追っているとまったく逆の現象が起きていることに気づく。"
             f"{s1['ja_name']}では女性{s1['women']}名・男性{s1['men']}名（女性比{s1['wpct']}%）が早くも集まり、店内は外の悪天候を忘れさせる熱気に包まれている。"
         )
         essay_p2 = (
@@ -2446,7 +2607,7 @@ def _write_note_candidates(
         essay_title = f"【街の温度差解剖】なぜ同じ駅・徒歩4分の相席ラウンジで「男女比率の格差」が生まれるのか？実測データから読む夜の歩き方"
         essay_p1 = (
             f"夜の繁華街。駅の改札を出て徒歩数分の範囲に、同じ看板を掲げた相席ラウンジが複数店舗並んでいることがある。"
-            f"多くの人は「どっちに行っても大して変わらないだろう」と直感で近い方へ入ってしまうが、モニターを見ている私からすると、それはあまりにも勿体ないギャンブルだ。"
+            f"多くの人は「どっちに行っても大して変わらないだろう」と直感で近い方へ入ってしまうが、毎晩の推移を知っている身からすると、それはあまりにも勿体ない選択だ。"
             f"今夜のデータを見ても、トップの{s1['ja_name']}は女性{s1['women']}名・男性{s1['men']}名（女性比{s1['wpct']}%）と理想的なバランスを保っているのに対し、"
             f"歩いてすぐの別店舗では男性比率が大きく偏り、受付で待ち時間が発生している。"
         )
@@ -2507,15 +2668,15 @@ def _write_note_candidates(
 
     # 3) note_tsubuyaki_gap (120〜240 chars)
     tsubu = (
-        f"ふとモニター見てて息を呑んだんだけど、今夜の{s1['ja_name']}が女性{s1['women']}名・男性{s1['men']}名（女性比{s1['wpct']}%）で完全に当たり夜。"
-        f"徒歩数分の別店は男余りで並んでるのに、看板の知名度だけで突撃すると本当に勿体ない。"
-        f"夜の勝敗はいつだって入店前の30秒で決まる。数字見てから動くのが正解。"
+        f"今夜の{s1['ja_name']}、女性{s1['women']}名・男性{s1['men']}名（女性比{s1['wpct']}%）でかなり綺麗なバランス。"
+        f"徒歩数分の別店舗は男余りで待ちが出てるので、駅を出て一番近い店にそのまま入るとちょっと勿体ない夜ですね。"
+        f"エレベーターに乗る前の30秒で夜の密度が変わります。"
     )
     tsubu = sanitize_brand_names(tsubu)
     candidates.append({
         "style": "note_tsubuyaki_gap",
         "style_label": STYLE_LABELS["note_tsubuyaki_gap"],
-        "writer_note": "【noteつぶやき】バックヤードでふとモニターを見つめた中の人のリアルな吐露（約170文字・noteつぶやき枠最適長）。",
+        "writer_note": "【noteつぶやき】夜の街の温度差をさらっと切り取った大人の素の呟き（約140文字・noteつぶやき枠最適長）。",
         "main_text": tsubu,
         "reply_text": "（noteつぶやき専用・X等へのクロスポストにも転用可能）",
     })
@@ -2723,6 +2884,109 @@ def verify_ai_factual_numbers(text: str, research: dict, channel: str = "x") -> 
     return (len(bad) == 0, bad)
 
 
+X_POST_ARCHETYPES = (
+    {
+        "key": "bare_contrast",
+        "label": "前置きゼロ・2店舗の温度差スケッチ（余韻クローズ）",
+        "silent_tree": True,
+        "directive": (
+            "- 【今回の骨格：前置きゼロ・温度差スケッチ（60〜98文字）】\n"
+            "- 天気や時間帯の挨拶を一切省き、1行目からいきなり同じ街（または東西）の2店舗の数字差を切り出すこと。\n"
+            "- 説教や教訓は書かず、体言止めや短い事実の余韻（『〜の差。』『〜は珍しい。』等）でスッと終えること。\n"
+            "- **今回は本文末尾に『リプ欄へ👇』もハッシュタグ（#）も一切付けないこと**（人間の素のツイートとして完結させる。詳細URLはシステム側で静かに2ポスト目へ繋ぐ）。"
+        ),
+    },
+    {
+        "key": "polite_drop_memo",
+        "label": "気取らない素の丁寧語・1店舗置きメモ",
+        "silent_tree": False,
+        "directive": (
+            "- 【今回の骨格：素の丁寧語・置きメモ（64〜102文字）】\n"
+            "- 飾り気のない大人の素の敬語（『〜ですね』『〜になってます』『〜探してる人向けに置いときます』等）で、いまバランスが良い1店舗（または準主要街の穴場）を淡々と置いて終えること。\n"
+            "- 絵文字や『！』は **0個** にすること。ハッシュタグは末尾に『#相席ラウンジ』1個だけ添えるか、無くてもよい。"
+        ),
+    },
+    {
+        "key": "regional_submajor_pulse",
+        "label": "準主要街・地方都市の静かな熱気フォーカス",
+        "silent_tree": False,
+        "directive": (
+            "- 【今回の骨格：準主要・地方スポット（70〜110文字）】\n"
+            "- 新宿・渋谷・梅田の定番大型店ばかりではなく、ファクトシート内の準主要街（恵比寿・上野・横浜・大宮・難波・茶屋町・栄・天神など）や好調な地方都市があればそこを主役に拾うこと（無ければ `sweet_spot_store` でOK）。\n"
+            "- 講釈は省き、その街の今の空気感と正確な人数をさらっと伝え、末尾に控えめに『細かい推移は下に置いときます #相席ラウンジ』程度で締めること。"
+        ),
+    },
+    {
+        "key": "question_linger",
+        "label": "ふとした疑問・ボヤき余韻クローズ",
+        "silent_tree": True,
+        "directive": (
+            "- 【今回の骨格：ふとした疑問・余韻終わり（58〜96文字）】\n"
+            "- 今夜の数字のちょっとした偏りや意外な店舗の伸びを1つだけ挙げ、『まだ1軒目から動いてないだけかな。』『雨の日はやっぱり駅直結に寄るのかも。』のように独り言の疑問・推測でふと終えること。\n"
+            "- **今回は『リプ欄へ👇』もハッシュタグも一切書かず**、余韻だけで終えること。"
+        ),
+    },
+    {
+        "key": "female_zero_wait_casual",
+        "label": "女子ペア目線・待ちゼロ即案内の空気メモ",
+        "silent_tree": False,
+        "directive": (
+            "- 【今回の骨格：女性組目線の待ちゼロ共有（70〜110文字）】\n"
+            "- ファクトシートの `female_group_zero_wait_store`（男性先行店）や好バランス店を使い、女の子2人組がいま受付で待たされずにそのまま座れそうな空気感を友達に教えるような口調で書くこと（男性先行店が無ければ `sweet_spot_store` でOK）。\n"
+            "- 絵文字は0〜1個まで。末尾は『#相席ラウンジ』1個のみ、またはタグなしで自然に終える。"
+        ),
+    },
+    {
+        "key": "minimal_snap",
+        "label": "引き算の超短文スナップ（52〜85文字）",
+        "silent_tree": True,
+        "directive": (
+            "- 【今回の骨格：引き算の超短文スナップ（52〜85文字）】\n"
+            "- 説明・理由付け・オチをすべて削ぎ落とし、いま一番空気が良い1〜2店舗の実測人数と短い一言だけを2行以内で端的に置くこと。\n"
+            "- **『リプ欄へ👇』も絵文字もハッシュタグも付けない**、一番人間らしい素の短文にすること。"
+        ),
+    },
+    {
+        "key": "street_air_note",
+        "label": "外の季節感・空気1フレーズ＋街況メモ",
+        "silent_tree": False,
+        "directive": (
+            "- 【今回の骨格：外の空気感×街況メモ（78〜114文字）】\n"
+            "- 外の気温や曜日・時間帯の空気を短い1フレーズだけ添え、1〜2店舗の正確な人数を会話の流れに溶かし込むこと。\n"
+            "- 宣伝臭い煽りは避け、末尾に小さくリプ欄案内または『#相席ナビ #相席ラウンジ』を添える。"
+        ),
+    },
+    {
+        "key": "hopper_timing",
+        "label": "1軒目終わり・ハシゴ時間帯のフラット比較",
+        "silent_tree": False,
+        "directive": (
+            "- 【今回の骨格：ハシゴ時間帯のフラット比較（74〜112文字）】\n"
+            "- 1軒目を出る頃や2軒目を探すタイミングに触れつつ、混みすぎている店とまだ余裕がある店の実測値をフラットに並べること。\n"
+            "- 素の丁寧語（『〜ですね』『〜かも』）または体言止めで落ち着いて締め、絵文字は0〜1個に抑える。"
+        ),
+    },
+)
+
+
+def select_x_post_archetype(slot_label: str, now_jst: datetime.datetime, recent_texts: list = None) -> dict:
+    """Deterministically rotate across 8 distinct X post skeletons so consecutive posts never share the same shape."""
+    slot_idx = 0 if slot_label == "20:00" else (3 if slot_label in ("22:00", "22:30") else 5)
+    seed = (_business_datetime(now_jst).date().toordinal() * 5 + slot_idx + now_jst.hour) % len(X_POST_ARCHETYPES)
+    cand = X_POST_ARCHETYPES[seed]
+    # If the very last X post was already tagless/silent-tree, prefer a varied archetype next (and vice versa)
+    if recent_texts:
+        last_t = recent_texts[0]
+        last_was_silent = ("#" not in last_t and "👇" not in last_t)
+        if last_was_silent and cand["silent_tree"]:
+            cand = X_POST_ARCHETYPES[(seed + 1) % len(X_POST_ARCHETYPES)]
+        elif (not last_was_silent) and ("👇" in last_t) and (not cand["silent_tree"]):
+            alt = X_POST_ARCHETYPES[(seed + 1) % len(X_POST_ARCHETYPES)]
+            if alt["silent_tree"]:
+                cand = alt
+    return cand
+
+
 def _build_gemini_prompt(
     research: dict,
     plan: dict,
@@ -2739,11 +3003,8 @@ def _build_gemini_prompt(
     t_str = now_jst.strftime("%H:%M")
     cal_ctx = research.get("calendar") or {}
     weather_ctx = research.get("weather") or {}
-    history = get_recent_editorial_history(channel=ch, limit=3, allow_blocking=False)
-    recent_openers = [
-        (h.get("selected_text") or "").split("\n", 1)[0][:55]
-        for h in history if h.get("selected_text")
-    ]
+    recent_full_texts = get_recent_cross_channel_texts(channel=ch, limit=5, allow_blocking=False)
+    recent_endings = extract_sentence_endings(recent_full_texts)
 
     top_s = research.get("top_stores") or []
     focus = research.get("focus_store") or (top_s[0] if top_s else None)
@@ -2751,12 +3012,16 @@ def _build_gemini_prompt(
     anomaly = research.get("anomaly_store")
     male_lead = research.get("male_lead_store")
     city_leaders = research.get("city_leaders") or []
+    submajor_hl = research.get("submajor_highlights") or []
+    regional_hl = research.get("regional_highlights") or []
 
     fact_payload = {
         "current_time": f"{cal_ctx.get('weekday_ja', '')}曜 {t_str}",
         "calendar_vibe": f"{cal_ctx.get('tag', '')} - {cal_ctx.get('note', '')}",
         "weather_vibe": weather_ctx.get("adlib_hint") or "穏やかな夜",
         "weather_detail": weather_ctx.get("summary") or "",
+        "recommended_spotlight_tier": research.get("spotlight_tier_label") or "",
+        "recently_used_stores_avoid_if_possible": research.get("recently_featured_names") or [],
         "national_active_stores": research.get("active_store_count", 0),
         "national_total_women": research.get("total_women", 0),
         "national_total_men": research.get("total_men", 0),
@@ -2771,6 +3036,14 @@ def _build_gemini_prompt(
             }
             if focus else None
         ),
+        "submajor_city_highlights": [
+            {"name": s["ja_name"], "women": s["women"], "men": s["men"], "women_pct": s["wpct"]}
+            for s in submajor_hl[:3]
+        ],
+        "regional_city_highlights": [
+            {"name": s["ja_name"], "women": s["women"], "men": s["men"], "women_pct": s["wpct"]}
+            for s in regional_hl[:3]
+        ],
         "same_area_gap": (
             {
                 "area": cluster["hub_label"],
@@ -2841,32 +3114,30 @@ def _build_gemini_prompt(
 
     if ch == "x":
         f_slug = store_master.slug_of(focus["name"]) if focus else ""
-        reply_text = (
-            f"📊 {focus['ja_name']}の現在人数・終電後の残りやすさ指標はこちら\n"
-            f"{site_url}/store/{f_slug}?s=x{slot_hh}_ai_live_adlib\n\n"
-            f"🔍 全国53店舗リアルタイム人数ランキング\n{live_url}"
-            if focus else f"🔍 全国53店舗リアルタイム人数ランキング\n{live_url}"
-        )
+        x_arch = select_x_post_archetype(slot_label=slot_label, now_jst=now_jst, recent_texts=recent_full_texts)
+        reply_variants = (
+            f"{focus['ja_name']}の推移と近隣店舗の比較メモ\n{site_url}/store/{f_slug}?s=x{slot_hh}_ai_live_adlib\n\n全国リアルタイム一覧\n{live_url}",
+            f"いまの{focus['ja_name']}の時間帯データはこちらに置いてあります\n{site_url}/store/{f_slug}?s=x{slot_hh}_ai_live_adlib\n\n他エリアの現在人数\n{live_url}",
+            f"📍 {focus['ja_name']}の現在値・終電後の残りやすさ\n{site_url}/store/{f_slug}?s=x{slot_hh}_ai_live_adlib\n\n全国53店舗の一覧\n{live_url}",
+        ) if focus else (f"全国リアルタイム人数一覧\n{live_url}",)
+        reply_text = reply_variants[(now_jst.day + now_jst.hour) % len(reply_variants)]
         platform_spec = (
-            "【対象SNS：X（旧Twitter）】\n"
-            "- 文字数制限：日本語で **88文字〜116文字以内**（全角125文字・X換算252ウェイト絶対上限。280ウェイトを超えると不採用になるため必ず短く引き締めること）\n"
-            "- 禁止事項：URL（http...）は本文に絶対に入れない。『🥇🥈🥉』メダル記号や『【〇〇速報】』のような業者見出しは禁止。毎回同じ驚き表現の使い回しも禁止。同じ店舗名を2回書かない。\n"
-            "- リズムの手本（数字はダミー。言い回しを丸写しせず、毎回違う自然な切り出しにすること）：\n"
-            "  例A：『外ちょっと冷えてきた木曜なんだけど、いまオリエンタルラウンジ新宿が女性84名・男性36名（女性比70%）まで伸びてる。徒歩すぐの別店舗は男余りだし、看板だけで並ぶともったいない夜。細かい数字はリプ欄へ👇 #相席ナビ #相席ラウンジ』\n"
-            "  例B：『1軒目そろそろ出る時間帯、モニター見てたらJIS梅田が女性72名・男性44名でかなりいい空気感になってきた。金曜は22時すぎると一気に混むから動くなら今がラクかも👇 #相席ナビ #相席ラウンジ』\n"
-            "- 構成：1行目で外の天気・気温・曜日・時間帯の空気感から自然に切り出し、会話の流れで **1〜2店舗に絞って** 正確な人数（例：女性122名・男性52名（女性比70%））を溶かし込み、最後はリプ欄へ自然に流して『#相席ナビ #相席ラウンジ』で締める。"
+            f"【対象SNS：X（旧Twitter）｜今回の指定構成：{x_arch['label']}】\n"
+            "- 文字数上限：全角122文字・X換算250ウェイト絶対上限（短く余白があるほど人間らしい）\n"
+            "- 禁止事項：URL（http...）は本文に絶対に入れない。『🥇🥈🥉』メダルや『【〇〇】』見出しは禁止。『モニター見てたら』『看板だけで〜』『〜なんだよな』のような定型口癖は使わない。同じ店舗名を2回繰り返さない。\n"
+            f"{x_arch['directive']}"
         )
     elif ch == "threads":
         if now_jst.day % 2 == 0:
             cta_footer = "🔍 全51店舗の現在人数＆料金比較はプロフィールのリンク（相席ナビ）から見れます\n#相席ラウンジ"
         else:
             cta_footer = f"▼ 全51店舗の現在人数＆料金・イベント比較\n{site_url}/price-comparison?s=th{slot_hh}_ai_live_adlib\n#相席ラウンジ"
-        reply_text = "（Threadsは1投稿完結・上位AI長考アドリブ生成＋リンク制限回避済）"
+        reply_text = "（Threadsは1投稿完結・ゆるい日常エッセイ調＋リンク制限回避済）"
         platform_spec = (
-            "【対象SNS：Meta Threads（スレッズ）】\n"
-            "- 文字数制限：全体で **290文字〜445文字以内**（絶対上限480文字）\n"
-            "- 禁止事項：『🥇🥈🥉』メダル記号や『【〇〇】』角括弧タイトルは禁止。ハッシュタグは末尾の1個のみ。箇条書きばかりにせず、人間の独り言エッセイの流れで書くこと。\n"
-            "- 構成：Threads特有の『運営中の人がバックヤードでモニターと外の天気・曜日を眺めながら本音をこぼす会話エッセイ調（〜なんだよな、正直さ…等）』で書くこと。男性目線の穴場だけでなく、可能なら女性2人組が待ちゼロで即座れる逆張り店やハシゴのリアルも自然に混ぜる。\n"
+            "【対象SNS：Meta Threads（スレッズ）｜肩の力が抜けたゆるい日常エッセイ調】\n"
+            "- 文字数制限：全体で **260文字〜435文字以内**（絶対上限480文字）\n"
+            "- 禁止事項：『🥇🥈🥉』メダルや『【〇〇】』見出し、『モニター見てたら』『バックヤードで』等の裏方アピールは禁止。ハッシュタグは末尾フッター内の1個のみ。\n"
+            "- 構成：Xのような圧縮速報ではなく、帰り道や夜カフェでふと思いついて書いたような『余白のあるゆるい日常エッセイ調（〜ですね、〜かも、体言止めミックス）』で書くこと。絵文字は全体で0〜1個に抑え、街ごとの客層の空気や女の子組がスッと座れる店の話などを穏やかに綴る。\n"
             f"- 末尾固定フッター：文章の最後は必ず次のフッター文字列を一字一句変えずに置いて締めること：\n{cta_footer}"
         )
     elif ch == "tiktok":
@@ -2883,8 +3154,8 @@ def _build_gemini_prompt(
         platform_spec = (
             "【対象SNS：TikTok（9:16 縦型ショート動画キャプション＆検索SEO）】\n"
             "- 文字数制限：**320文字〜620文字以内**\n"
-            "- 禁止事項：1行目を『【〇〇速報】』のような角括弧タイトルにしないこと。『🥇🥈🥉』メダル記号や宣伝臭い絵文字連打は禁止。\n"
-            "- 構成：最初の1行目でTikTok視聴者が思わずコメントや保存をしたくなる『現場モニターを見て気づいたリアルなギャップや女子組・男子組の図星の本音』を切り出す。本文中で2〜3店舗の実測人数（例：女性48名・男性32名（女性比60%））を正確に織り交ぜ、自然な流れで『入店3分前に見返せるように保存📌しとくと便利』と『相席ナビ（aiseki-navi.com）で検索🔍』を案内し、末尾に『#相席ナビ #相席ラウンジ #オリエンタルラウンジ #ag #JIS』の5タグを付ける。"
+            "- 禁止事項：1行目を『【〇〇速報】』のような角括弧タイトルにしないこと。『🥇🥈🥉』メダル記号や『モニター見てたら』等の裏方アピール、宣伝臭い絵文字連打は禁止。\n"
+            "- 構成：最初の1行目でTikTok視聴者が思わずコメントや保存をしたくなる『街ごとのリアルなギャップや女子組・男子組の図星の本音』を切り出す。本文中で2〜3店舗の実測人数（例：女性48名・男性32名（女性比60%））を正確に織り交ぜ、自然な流れで『入店3分前に見返せるように保存📌しとくと便利』と『相席ナビ（aiseki-navi.com）で検索🔍』を案内し、末尾に『#相席ナビ #相席ラウンジ #オリエンタルラウンジ #ag #JIS』の5タグを付ける。"
         )
     elif ch == "note":
         reply_text = "（note専用・Webエディタへ1クリック転送可能・見出し画像プロンプト連動）"
@@ -2897,7 +3168,7 @@ def _build_gemini_prompt(
             "  3. ファクトシート記載の正確な人数・比率（例：オリエンタルラウンジ新宿が女性84名・男性36名（女性比70%））と街の温度差の提示\n"
             "  4. なぜその現象が起きるかの心理・夜の行動構造の深い解剖\n"
             "  5. 読者へのスマートな立ち回り提言（退店後の夜カフェや2軒目誘導、相席ナビ aiseki-navi.com の活用）\n"
-            "- 構成（つぶやきの場合）：ふとモニターを見た時のリアルな吐露・街の温度差を120〜240文字で端的に表現。\n"
+            "- 構成（つぶやきの場合）：夜の街の空気感や店ごとの温度差を120〜240文字でさらっと端的に表現（『モニター見てたら』等の裏方アピールは不要）。\n"
             "- 禁止事項：架空の店舗名・人数のハルシネーション、『オリエンタル』単体表記（必ず『オリエンタルラウンジ』）。"
         )
     else:
@@ -2930,28 +3201,40 @@ def _build_gemini_prompt(
     sit_meta = SITUATION_SPECS.get(sit_key, {})
     sit_block = f"\n\n{sit_meta['directive']}\n" if sit_meta.get("directive") else ""
 
+    recent_history_block = (
+        json.dumps([t[:160] for t in recent_full_texts[:4]], ensure_ascii=False)
+        if recent_full_texts
+        else "[]"
+    )
+    banned_endings_str = (
+        json.dumps(recent_endings[:5], ensure_ascii=False)
+        if recent_endings
+        else "[]"
+    )
+
     prompt = (
-        "あなたは全国53店舗の相席ラウンジ人数をリアルタイム計測している『相席ナビ』の運営中の人です。\n"
-        "毎回同じボットのような投稿や綺麗にまとまりすぎたAI構文ではなく、本当にスマホと店内モニターを見ながら、"
-        "外の空気（天気・気温・曜日・給料日など）と一緒にフォロワーへ本音で呟いている生身のアドリブ投稿を1本作成してください。\n\n"
+        "あなたは夜の街の空気感や男女のリアルな温度差によく通じた、気取らない大人の友人・街ウォッチャー（『相席ナビ』執筆者）です。\n"
+        "毎回似た構成のボット投稿や綺麗にまとまりすぎたAI構文ではなく、"
+        "生身の人間がふとスマホを開いて、今の街の空気や店舗ごとのリアルな偏りをさらっと呟いたような自然な1本を書いてください。\n\n"
         f"{HUMAN_INSIDER_VOICE_GUIDE}\n\n"
         f"{tone_meta['prompt_directive']}"
         f"{sit_block}\n\n"
         f"【今夜の時間帯テンション設定：{slot_persona['label']}】\n"
         f"- {slot_persona['guidance']}\n\n"
-        "【編集デスクの執筆指針（脱AI臭・生身の語り口）】\n"
-        "- 看板の知名度だけで並んで消耗するもったいなさや、女子組が実は待たされる店を見切って流れているリアル、外の空気感とモニター数字の温度差など、人間がふとスマホで呟きたくなる自然な1つの切り口に絞って書くこと。\n"
-        "- AIっぽい綺麗なまとめ文句や過剰な絵文字を削ぎ落とし、ファクトシートの数字と1人・1%の狂いもないよう正確に書くこと。\n\n"
+        "【編集デスクの執筆指針（脱AI臭・脱マンネリ）】\n"
+        "- 『モニター見てたら』『バックヤードで』『看板だけで並んで〜』のような決まり文句や上から目線の説教・まとめ教訓は書かず、今夜の街況・ギャップ・意外な好調エリアから1つの切り口だけを自然体で切り取ること。\n"
+        "- 絵文字や感嘆符（！）は極力減らし（0〜1個）、体言止め・普通の言い切り・素の丁寧語（『〜ですね』『〜かも』『〜置いときます』）を日によって自然に使い分けること。\n"
+        "- ファクトシートの数字と1人・1%の狂いもないよう正確に書くこと。\n\n"
         f"{platform_spec}\n\n"
         "【絶対厳守ルール（違反するとデスク検閲で減点・不採用になります）】\n"
         "1. 下記の JSON ファクトシートに含まれる店舗名・人数・パーセンテージ以外は絶対に書かないこと。数値を1人でも盛ったり丸めたり変更することは厳禁。\n"
-        "2. あなたは『相席ナビ運営（リアルタイム計測モニターを見ている中の人）』です。自分が客として入店した架空の体験談（『行ってきた』『相席相手が〜』等）は絶対に書かないこと。\n"
+        "2. 自分が今日客として入店した架空の体験談（『さっき行ってきた』『相席相手が〜』等）は絶対に書かないこと。\n"
         "3. 店名の呼び方ルール：内部略称『OLG』や、略称『オリラジ』、中途半端な『オリエンタル〇〇』（「ラウンジ」抜け）・『オリエンタル』単体呼びは絶対に使わないこと。必ず正式名称『オリエンタルラウンジ〇〇』（例：『オリエンタルラウンジ大阪駅前』）を使うこと（『ag〇〇』『JIS〇〇』はそのまま表記）。\n"
-        f"4. AI臭・宣伝臭ワードの完全禁止：{cliche_list_str} は本文に絶対に使わないこと。\n"
-        f"5. 直近の過去投稿の書き出し（{json.dumps(recent_openers, ensure_ascii=False)}）とは全く違う新鮮な1行目の切り口・語尾にすること。\n\n"
+        f"4. AI臭・宣伝臭・裏方口癖ワードの完全禁止：{cliche_list_str} は本文に絶対に使わないこと。\n"
+        f"5. 横断アンチマンネリ検閲：直近の投稿全文（{recent_history_block}）と構成・取り上げる主役店舗・1行目の入り方・オチが絶対に似ないようにすること。また直近使った文末語尾（{banned_endings_str}）の連続使用は避け、別の自然な語尾に変えること。\n\n"
         f"【今夜の検証済みファクトシート】\n{json.dumps(fact_payload, ensure_ascii=False, indent=2)}\n\n"
         "出力は必ず以下のJSON形式のみを返してください（Markdownコードブロック不要）：\n"
-        '{"editorial_angle": "今回選んだ切り口とトーンの短い編集メモ（50〜110文字）", "writer_note": "今回どの天気・街況・データを活かしたかの1行メモ", "main_text": "投稿本文（改行は\\n）"}'
+        '{"editorial_angle": "今回選んだ骨格・店舗・語尾の短い編集メモ（50〜110文字）", "writer_note": "今回どの街況・データをどう切り取ったかの1行メモ", "main_text": "投稿本文（改行は\\n）"}'
     )
     return prompt, reply_text
 
@@ -3262,8 +3545,9 @@ def call_editorial_ai_json(
     claude_fail_note = ""
 
     sys_instr = system_prompt or (
-        "あなたは『相席ナビ』の運営中の人・編集長です。AI特有の優等生構文や定型表現を徹底排除し、"
-        "生身の人間が現場モニターを見ながら本音で語る自然な口語・余韻で執筆してください。"
+        "あなたは夜の街の空気感と男女のリアルに通じた、気取らない大人の執筆者（『相席ナビ』編集長）です。"
+        "AI特有の優等生構文・過剰な絵文字・『モニター見てたら』『バックヤードで』『看板だけで〜』等のわざとらしい裏方アピールや決まり文句を徹底排除し、"
+        "体言止め・言い切り・素の丁寧語（〜ですね、〜かも）を自然に混ぜた生身の人間の距離感と余韻で執筆してください。"
         "必ず有効なJSONオブジェクトのみを返してください（Markdownの```jsonフェンスは不要）。"
     )
 
@@ -3560,26 +3844,31 @@ def call_editorial_ai_json(
 
 
 _NIDOMI_REPLACEMENTS = (
-    (re.compile(r"モニターを?(?:二度見|２度見|2度見)したんだけど"), "モニターの数字を見比べてたんだけど"),
+    (re.compile(r"(?:店内|現場|実測)?モニターを?(?:二度見|２度見|2度見)したんだけど[、,\s]*"), ""),
     (re.compile(r"(?:二度見|２度見|2度見)したんだけど"), "思わず手が止まったんだけど"),
-    (re.compile(r"て(?:二度見|２度見|2度見)した"), "て思わず声が出た"),
+    (re.compile(r"て(?:二度見|２度見|2度見)した"), "て思わず目が留まった"),
     (re.compile(r"(?:二度見|２度見|2度見)するレベル"), "ちょっと珍しいレベル"),
     (re.compile(r"(?:二度見|２度見|2度見)する"), "不思議になる"),
     (re.compile(r"(?:二度見|２度見|2度見)"), "注目"),
+    (re.compile(r"バックヤードで(?:モニターを?見てたら|見てたんだけど|見てたら)[、,\s]*"), ""),
+    (re.compile(r"バックヤードで[、,\s]*"), ""),
+    (re.compile(r"(?:さっき|ふと|いま|毎晩)?(?:店内|現場|リアルタイム)?モニターを?(?:見てたんだけど|見てたら|見てて|見比べてたんだけど|眺めながら|眺めてたら)[、,\s]*"), ""),
+    (re.compile(r"看板の知名度だけで"), "駅チカの1店舗目だけで"),
+    (re.compile(r"看板だけで"), "近い店だけで"),
 )
 
 
 def _postprocess_ai_main_text(main_text: str, channel: str = "x") -> str:
     """
     Guarantee zero bare 'オリエンタル〇〇' ('ラウンジ' omitted), zero 'オリラジ'/'OLG',
-    and zero repetitive '二度見' cliches in AI output.
+    zero repetitive '二度見' cliches, and zero artificial backstage ('モニター見てたら') phrasing in AI output.
     """
     text = (main_text or "").strip()
     if not text:
         return ""
     for pat, repl in _NIDOMI_REPLACEMENTS:
         text = pat.sub(repl, text)
-    return sanitize_brand_names(text)
+    return sanitize_brand_names(text).strip()
 
 
 def _make_ai_cache_key(
@@ -3608,6 +3897,7 @@ def _make_ai_cache_key(
         except Exception:
             now_jst = None
     biz_date_str = _business_datetime(now_jst).strftime("%Y-%m-%d")
+    arch_key = select_x_post_archetype(slot_label or "22:00", now_jst or datetime.datetime.now(JST))["key"] if ch_norm == "x" else ""
     top3_sig = tuple(
         (s.get("name", ""), int(s.get("women") or 0), int(s.get("men") or 0))
         for s in top_s[:3]
@@ -3617,7 +3907,7 @@ def _make_ai_cache_key(
         (focus.get("name", ""), int(focus.get("women") or 0), int(focus.get("men") or 0))
         if focus else None
     )
-    return ("v5_claude55_live", eng_pref, has_c, ch_norm, tm_norm, sit_norm, slot_label or "", biz_date_str, top3_sig, focus_sig)
+    return ("v6_human_archetypes", eng_pref, has_c, ch_norm, arch_key, tm_norm, sit_norm, slot_label or "", biz_date_str, top3_sig, focus_sig)
 
 
 def _store_ai_candidate_cache(cache_key, candidate: dict, model_name: str, now_t: float = None):
@@ -3966,9 +4256,9 @@ def run_evaluator(
             if metric_val > 280 or has_url_in_main:
                 weight_score = -40
                 weight_comment = f"❌ X制限超過({metric_unit})または1ポスト目URL混入のため不採用。"
-            elif 130 <= metric_val <= 274:
+            elif 84 <= metric_val <= 274:
                 weight_score = 10
-                weight_comment = f"◎ X最適ウェイト（{metric_unit}・1ポスト目URLなし・リプ欄誘導）を完璧にクリア。"
+                weight_comment = f"◎ X最適ウェイト（{metric_unit}・1ポスト目URLなし・余白設計クリア）を完璧に満たしています。"
             else:
                 weight_score = 7
                 weight_comment = f"◯ 文字数ウェイト（{metric_unit}）は許容範囲内。"

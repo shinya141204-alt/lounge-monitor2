@@ -600,9 +600,103 @@ def get_tip_reply_text(slot_label: str = "12:00", tip_index: int = None, now_jst
     col_title, col_path = resolve_tip_column(slot_label=slot_label, tip_index=tip_index, now_jst=now_jst)
 
     return (
-        f"📖 詳しい解説コラム：{col_title}👇\n"
+        f"📖 関連コラムメモ：{col_title}\n"
         f"{site_url}{col_path}?s=x{slot_hh}_tip"
     )
+
+
+TIPS_RECENT_HISTORY_KEY = "tips_recent_history_v1"
+
+HUMAN_OBSERVATION_SEEDS = (
+    {"key": "first_drink_order", "lens": "乾杯の1杯目を頼む一瞬の空気感と、店員さんへの何気ない一言に出る余裕", "related_path": "/guide/first-10-minutes"},
+    {"key": "silence_after_toast", "lens": "乾杯して10分後のふとした沈黙と、メニュー選びを一緒に楽しむ空気のほぐし方", "related_path": "/guide/first-10-minutes"},
+    {"key": "buddy_chemistry", "lens": "男2人組で行くときの相方とのパス回し（相方をイジって下げる組と自然に立てる組の差）", "related_path": "/guide/solo-vs-pair"},
+    {"key": "female_pair_eye_contact", "lens": "女子ペアが一瞬だけ目を合わせる合図や、友達側も退屈させない席の空気感", "related_path": "/guide/solo-vs-pair"},
+    {"key": "sofa_70cm_grooming", "lens": "間接照明でもソファ席70cmだと意外と目に入る袖口・靴・夕方の肌感", "related_path": "/grooming"},
+    {"key": "rain_hair_heels", "lens": "雨や湿気のある夜に女性側が一番気にしている前髪・足元と、地下直結店のありがたさ", "related_path": "/guide/rain-payday"},
+    {"key": "smartphone_table_habit", "lens": "テーブルの上のスマホの置き方（画面上向きで通知を見る席と、自然にバッグへしまう席）", "related_path": "/guide/first-10-minutes"},
+    {"key": "graceful_wrap_up_45m", "lens": "45分くらいで余韻を残して切り上げる組と、惰性で90分粘って疲れてしまう組の差", "related_path": "/guide/cost-break-even"},
+    {"key": "second_venue_cafe_sweet", "lens": "2軒目に『もう1軒飲もう』ではなく『夜カフェや甘いもの30分だけ』と切り出す軽やかさ", "related_path": "/guide/second-venue"},
+    {"key": "station_gate_5min_line", "lens": "改札で別れて5分以内に届く短い1行LINEと、帰宅後の長文メッセージの温度差", "related_path": "/guide/second-venue"},
+    {"key": "declined_second_venue_grace", "lens": "2軒目を断られた瞬間の引き際の爽やかさで、実は翌週のご飯が決まっている話", "related_path": "/guide/second-venue"},
+    {"key": "weekday_wed_thu_calm", "lens": "週末のガヤガヤ感とは違う、水曜・木曜20時台の仕事終わり層の落ち着いた会話テンポ", "related_path": "/guide/weekday-strategy"},
+    {"key": "salon_return_early_evening", "lens": "美容院やネイル帰りの早い時間帯（18時半〜20時）にふらっと立ち寄る女子組の空気", "related_path": "/guide/beauty-area-stage"},
+    {"key": "local_business_trip_night", "lens": "札幌・仙台・福岡・広島など出張先の夜に、現地の美味しい店を聞く会話の弾みやすさ", "related_path": "/guide/local-vs-urban"},
+    {"key": "drink_pace_water_care", "lens": "お酒が強くない相手や2軒目組に、さらっとお水や温かいお茶を頼める気遣い", "related_path": "/guide/strategy"},
+    {"key": "resume_interview_trap", "lens": "初対面で休日や住んでる駅を一問一答で聞いてしまう『面接モード』から抜ける雑談感", "related_path": "/guide/first-10-minutes"},
+    {"key": "instagram_vs_group_line", "lens": "会計前の社交辞令グループLINEより、話が盛り上がった瞬間のインスタ交換が自然に残る理由", "related_path": "/guide/second-venue"},
+    {"key": "payday_vs_quiet_week", "lens": "給料日直後の混雑した週末と、月の半ばの落ち着いた平日の居心地の違い", "related_path": "/guide/rain-payday"},
+    {"key": "late_night_0030_second_wave", "lens": "終電が抜けた0時半すぎ、肩の力が抜けた2回転目の独特なゆるさと話しやすさ", "related_path": "/guide/club-area-midnight"},
+    {"key": "seasonal_outerwear_scent", "lens": "強い香水よりも、季節に合った清潔なニットやシャツと控えめな柔軟剤くらいの距離感", "related_path": "/grooming"},
+    {"key": "female_side_zero_wait_choice", "lens": "女の子2人組が『女性だらけの人気店』を避けて、待たずに座れる店を選ぶリアルな心理", "related_path": "/guide/male-lead-mechanics"},
+    {"key": "table_change_politeness", "lens": "少し噛み合わない席でお互い気まずくならずに笑顔で交代を切り出せる大人の優しさ", "related_path": "/guide/table-change-protocol"},
+    {"key": "pocket_bar_3min_walk", "lens": "外に出てから路上で検索を始めず、徒歩3分の静かなバーやカフェを1軒だけ知っている安心感", "related_path": "/guide/second-venue"},
+    {"key": "friday_20pm_before_rush", "lens": "金土22時の大混雑に突っ込むより、19時台後半に一足早く乾杯している組のゆとり", "related_path": "/guide/crowd-rush-paradox"},
+)
+
+
+def get_recent_tips_history(limit: int = 20, allow_blocking: bool = True) -> list:
+    """Return recent zero-base Tips entries `[{'seed_key': ..., 'text': ..., 'ts': ...}]` from `job_state`."""
+    try:
+        import json
+        import job_state
+        raw = job_state.get_value(TIPS_RECENT_HISTORY_KEY, allow_blocking=allow_blocking)
+        if raw:
+            items = json.loads(raw)
+            if isinstance(items, list):
+                return items[:limit]
+    except Exception:
+        pass
+    return []
+
+
+def record_recent_tip_history(seed_key: str, text: str, now_jst: datetime.datetime = None):
+    """Persist a posted zero-base Tip so none of the last 20 seed lenses or texts repeat."""
+    txt = (text or "").strip()
+    if not txt:
+        return
+    now_jst = now_jst or datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
+    try:
+        import json
+        import job_state
+        items = get_recent_tips_history(limit=24, allow_blocking=True)
+        items = [it for it in items if isinstance(it, dict) and it.get("text") != txt]
+        items.insert(0, {
+            "seed_key": seed_key or "",
+            "text": txt[:280],
+            "ts": now_jst.strftime("%Y-%m-%d %H:%M:%S"),
+        })
+        job_state.set_value(TIPS_RECENT_HISTORY_KEY, json.dumps(items[:22], ensure_ascii=False))
+    except Exception as e:
+        logger.warning(f"Failed to persist recent tip history: {e}")
+
+
+def select_fresh_observation_seed(
+    now_jst: datetime.datetime = None,
+    col_path: str = "",
+    slot_label: str = "18:00",
+    recent_history: list = None,
+) -> dict:
+    """
+    Pick a human-observation situation seed guaranteed NOT to overlap with the recent ~18-20 posted seeds.
+    Gently prefers a seed aligned with `col_path` when unused recently, otherwise rotates deterministically.
+    """
+    now_jst = now_jst or datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
+    hist = recent_history if recent_history is not None else get_recent_tips_history(limit=20, allow_blocking=False)
+    recent_keys = {str(it.get("seed_key") or "") for it in hist[:18] if isinstance(it, dict)}
+
+    fresh_pool = [s for s in HUMAN_OBSERVATION_SEEDS if s["key"] not in recent_keys]
+    if not fresh_pool:
+        recent_short = {str(it.get("seed_key") or "") for it in hist[:8] if isinstance(it, dict)}
+        fresh_pool = [s for s in HUMAN_OBSERVATION_SEEDS if s["key"] not in recent_short] or list(HUMAN_OBSERVATION_SEEDS)
+
+    slot_off = 0 if slot_label == "12:00" else 7
+    base_idx = (now_jst.toordinal() * 3 + slot_off) % len(fresh_pool)
+    if col_path:
+        matching = [s for s in fresh_pool if s.get("related_path") == col_path]
+        if matching:
+            return matching[(now_jst.toordinal() + slot_off) % len(matching)]
+    return fresh_pool[base_idx]
 
 
 def _generate_ai_daily_human_tip(
@@ -611,41 +705,67 @@ def _generate_ai_daily_human_tip(
     standalone_no_reply: bool,
     col_title: str,
     now_jst: datetime.datetime,
-) -> str:
+    col_path: str = "",
+) -> tuple:
     """
-    Re-express today's curated lounge observation (`seed_tip_text`) as a fresh, never-repeated
-    human insider monologue tuned to tonight's actual weather, day-of-week, and calendar mood.
-    Returns "" if AI is unconfigured or output exceeds strict X hygiene constraints.
+    Generate a zero-base, unpretentious human tabletop/relationship observation tweet
+    from `HUMAN_OBSERVATION_SEEDS` + today's weekday/season/weather, strictly avoiding the last 20 Tips
+    and cross-channel X endings.
+    Returns `(tweet_text, used_seed_key)` or `("", "")` on fallback.
     """
     try:
-        import re
         import sns_editorial
         if not sns_editorial.has_any_ai_key(allow_blocking=True):
-            return ""
+            return "", ""
         weather_ctx = sns_editorial.fetch_live_weather_context(allow_blocking=True) or {}
         cal_ctx = sns_editorial.build_calendar_context(now_jst)
+        recent_tips = get_recent_tips_history(limit=20, allow_blocking=True)
+        seed_obj = select_fresh_observation_seed(
+            now_jst=now_jst,
+            col_path=col_path,
+            slot_label=slot_label,
+            recent_history=recent_tips,
+        )
+        cross_x_texts = sns_editorial.get_recent_cross_channel_texts("x", limit=5, allow_blocking=False)
+        recent_tip_texts = [str(it.get("text") or "")[:140] for it in recent_tips[:6] if isinstance(it, dict) and it.get("text")]
+        banned_endings = sns_editorial.extract_sentence_endings(cross_x_texts + recent_tip_texts)
+
+        # Even on thread days, half the time use a "silent tree" (zero 👇 / zero hashtags in main post)
+        silent_tree = standalone_no_reply or ((now_jst.day + (0 if slot_label == "12:00" else 1)) % 2 == 0)
+        ending_styles = (
+            "体言止めや短い余韻（『〜の差。』『〜だったりする。』等）でさらっと終える",
+            "気取らない素の丁寧語（『〜ですね。』『〜かもです。』等）で穏やかに終える",
+            "友人との雑談のような自然な言い切り（『〜って思う。』『〜がちょうどいい。』等）で終える",
+        )
+        chosen_ending_hint = ending_styles[(now_jst.toordinal() + now_jst.hour) % len(ending_styles)]
+
+        if standalone_no_reply:
+            footer_rule = "今日は完全1ツイートの雑談回なので、『👇』や『リプ欄』への誘導もハッシュタグも一切書かず、余韻だけで終えること。"
+        elif silent_tree:
+            footer_rule = "今回は『サイレントツリー回』（関連URLは2ポスト目に静かに繋ぐ形式）なので、1ポスト目の本文末尾に『リプ欄へ👇』やハッシュタグは一切付けず、自然な文章の余韻だけで終えること。"
+        else:
+            footer_rule = "宣伝臭い誘導は書かず、自然な文章のあとに控えめに『#相席ラウンジ』を1個だけ添えるか、さらっとリプ欄に触れて終えること。"
+
         ctx_info = {
             "slot": slot_label,
+            "month_season": f"{now_jst.month}月",
             "weekday": f"{cal_ctx.get('weekday_ja', '')}曜",
-            "calendar_vibe": f"{cal_ctx.get('tag', '')}（{cal_ctx.get('note', '')}）",
+            "calendar_vibe": f"{cal_ctx.get('tag', '')}",
             "weather": weather_ctx.get("adlib_hint") or weather_ctx.get("summary") or "",
-            "theme_seed": seed_tip_text,
-            "has_reply_column": (not standalone_no_reply),
-            "reply_column_title": col_title if not standalone_no_reply else "",
+            "observation_lens": seed_obj["lens"],
         }
-        ending_rule = (
-            "今日はリプ欄なしの完全1ツイート独り言の日なので、『👇』や『リプ欄』への誘導は書かず、ふと呟いた余韻と末尾の『#相席ラウンジ』1個だけで締めること。"
-            if standalone_no_reply
-            else "最後は宣伝臭くならない自然な一言でリプ欄の深掘りメモへ流すか、余韻を残しつつ末尾に『#相席ラウンジ #相席ナビ』を置くこと。"
-        )
+        cliche_list_str = "・".join(f"『{w}』" for w in sns_editorial.AI_CLICHE_WORDS)
         prompt = (
-            "あなたは全国53店舗の相席ラウンジを見続けている『相席ナビ』の運営中の人です。\n"
-            "夕方18時頃、これから飲みに出る人たちへ向けてXでふと呟いた『人間味100%のリアル観察・本音ポスト（88〜124文字以内、X換算262ウェイト以下）』を1本書いてください。\n\n"
+            "あなたは夜の街や男女の距離感・会話の空気に詳しい、気取らない大人の友人です。\n"
+            "これから飲みに出る人も多い時間帯に、Xでふと呟いた『卓上の男女あるある・人間観察の短い雑談ポスト（70〜118文字以内、X換算250ウェイト以下）』をゼロベースで1本書いてください。\n\n"
             f"{sns_editorial.HUMAN_INSIDER_VOICE_GUIDE}\n\n"
-            "【必須ルール】\n"
-            "1. 下の `theme_seed`（今日のテーマ原案）の核心となる気づき・毒・女性目線の図星を活かしつつ、今日の曜日・天気・季節の空気感をほんの少し絡めて、過去と一字一句被らない新しい生の口語ツイートに書き直すこと。\n"
-            "2. URL（http...）や架空の店舗人数、角括弧【】見出しは絶対に入れないこと。単体の『オリエンタル』表記も禁止。\n"
-            f"3. {ending_rule}\n\n"
+            "【執筆ルール】\n"
+            "1. 下の `observation_lens`（今日の人間観察の切り口）をヒントに、季節・曜日・天気の空気感をほんの少しだけ滲ませつつ、思わず『あー、わかる』と頷くリアルな1場面を切り取ること。\n"
+            "2. 『モニター見てたら』『バックヤードで』等の裏方アピールや、『〜せよ』『鉄則』『絶対NG』のような上から目線の説教・指南書口調は禁止。絵文字や『！』は0〜1個までに抑えること。\n"
+            f"3. 今回の語尾トーン目安：{chosen_ending_hint}（ただし直近使った文末 {sns_editorial.json.dumps(banned_endings[:5], ensure_ascii=False)} の連続使用は避けること）。\n"
+            f"4. 直近の過去Tips（{sns_editorial.json.dumps(recent_tip_texts[:5], ensure_ascii=False)}）と主張・例え・1行目の入り方が絶対に被らないようにすること。\n"
+            f"5. URL（http...）、架空の店舗人数、角括弧【】見出し、単体の『オリエンタル』表記、および禁止語（{cliche_list_str}）は絶対に使わないこと。\n"
+            f"6. {footer_rule}\n\n"
             f"【今日のコンテキスト】\n{sns_editorial.json.dumps(ctx_info, ensure_ascii=False)}\n\n"
             '出力はJSON形式のみ：{"main_text": "投稿本文"}'
         )
@@ -659,18 +779,18 @@ def _generate_ai_daily_human_tip(
             prefer_fast=True,
         )
         if not parsed or not parsed.get("main_text"):
-            return ""
+            return "", ""
         txt = sns_editorial._postprocess_ai_main_text(parsed["main_text"], channel="x")
         if "http://" in txt or "https://" in txt:
-            return ""
-        if standalone_no_reply:
-            txt = txt.replace("👇", "").replace("リプ欄", "")
+            return "", ""
+        if standalone_no_reply or silent_tree:
+            txt = txt.replace("👇", "").replace("リプ欄へ", "").replace("リプ欄", "").strip()
         wt = x_poster.compute_twitter_weight(txt)
-        if 105 <= wt <= 272 and not any(w in txt for w in sns_editorial.AI_CLICHE_WORDS):
-            return txt
+        if 84 <= wt <= 272 and not any(w in txt for w in sns_editorial.AI_CLICHE_WORDS):
+            return txt, seed_obj["key"]
     except Exception as e:
         logger.warning(f"Tip AI generation fallback: {e}")
-    return ""
+    return "", ""
 
 
 def run_scheduled_tip_post(slot_label: str = "12:00", force: bool = False, tip_index: int = None, now_jst: datetime.datetime = None) -> dict:
@@ -709,15 +829,21 @@ def run_scheduled_tip_post(slot_label: str = "12:00", force: bool = False, tip_i
         )
         site_url = os.environ.get("PUBLIC_SITE_URL", "https://aiseki-navi.com").rstrip("/")
         slot_hh = (slot_label or "12:00")[:2]
-        reply_text = f"📖 現場ログからの深掘りメモ：{col_title}👇\n{site_url}{col_path}?s=x{slot_hh}_tip"
+        reply_variants = (
+            f"{col_title}\n{site_url}{col_path}?s=x{slot_hh}_tip",
+            f"関連コラムはこちらに置いてあります\n{col_title}\n{site_url}{col_path}?s=x{slot_hh}_tip",
+            f"📖 {col_title}\n{site_url}{col_path}?s=x{slot_hh}_tip",
+        )
+        reply_text = reply_variants[(now_jst.day + now_jst.hour) % len(reply_variants)]
 
     raw_seed = TIPS_LIST[idx % len(TIPS_LIST)]
-    ai_text = _generate_ai_daily_human_tip(
+    ai_text, used_seed_key = _generate_ai_daily_human_tip(
         seed_tip_text=raw_seed,
         slot_label=slot_label,
         standalone_no_reply=standalone,
         col_title=col_title,
         now_jst=now_jst,
+        col_path=col_path,
     )
     text = ai_text or fallback_text
 
@@ -730,12 +856,19 @@ def run_scheduled_tip_post(slot_label: str = "12:00", force: bool = False, tip_i
     if result.get("status") == "success" and not force:
         job_state.mark_done(dedup_key)
         x_poster.record_x_auto_post_timestamp(now_jst)
+        record_recent_tip_history(used_seed_key or f"static_{idx}", text, now_jst=now_jst)
+        try:
+            import sns_editorial
+            sns_editorial.record_recent_x_text(text, source=f"tip_{slot_label}", now_jst=now_jst)
+        except Exception:
+            pass
         if col_path:
             job_state.mark_done(f"x_col_used:{date_str}:{col_path}")
 
     result["tweet_text"] = text
     result["reply_text"] = reply_text or ""
     result["column_path"] = col_path
+    result["seed_key"] = used_seed_key
     result["standalone_no_reply"] = standalone
     result["slot"] = slot_label
     return result
