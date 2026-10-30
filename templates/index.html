@@ -137,8 +137,8 @@
     <!-- Non-render-blocking web font (avoids waiting on Google Fonts at PWA cold launch) -->
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet"></noscript>
-    <link rel="stylesheet" href="/static/style.css?v=20261030_3">
-    <link rel="preload" href="/static/app.js?v=20261030_4" as="script">
+    <link rel="stylesheet" href="/static/style.css?v=20261030_5">
+    <link rel="preload" href="/static/app.js?v=20261030_5" as="script">
     <script>
         window.APP_CONFIG = {
             isStaff: {{ 'true' if is_staff else 'false' }},
@@ -599,7 +599,7 @@
                                 <span class="area-tag hidden"></span>
                                 {% endif %}
                             </div>
-                            <h3 class="store-name">{{ s.ssr_title }}{% if not is_staff and s.ssr_event_badge %}<span class="event-tag-badge" title="{{ s.ssr_event_title }}">{{ s.ssr_event_badge }}</span>{% endif %}</h3>
+                            <h3 class="store-name">{% if s.ssr_is_dup %}<span class="store-brand-prefix">{{ s.ssr_brand }} </span><span class="store-branch-name">{{ s.ssr_disp }}</span>{% else %}<span class="store-branch-name">{{ s.ssr_title }}</span>{% endif %}{% if not is_staff and s.ssr_event_badge %}<span class="event-tag-badge" title="{{ s.ssr_event_title }}">{{ s.ssr_event_badge }}</span>{% endif %}</h3>
                             <div class="store-micro-metrics{% if not (s.core_time_short and s.midnight_retention_pct) %} hidden{% endif %}">{% if s.core_time_short and s.midnight_retention_pct %}狙い目 {{ s.core_time_short }} <span class="micro-sep">｜</span> 終電後 {{ s.midnight_retention_pct }}%（{{ s.midnight_label_short }}）{% endif %}</div>
                             {% set ssr_has_guest = ((s.women or 0) + (s.men or 0)) > 0 or (s.wait_estimate and (s.wait_estimate.est_men_wait_groups or 0) > 0) %}
                             {% set ssr_w_badge = (s.wait_estimate.wait_badge_men if (s.wait_estimate and ssr_has_guest) else '') %}
@@ -2108,7 +2108,7 @@
         window.INITIAL_STATUS_DATA = {{ initial_status | tojson }};
     </script>
     {% endif %}
-    <script src="/static/app.js?v=20261030_4" defer></script>
+    <script src="/static/app.js?v=20261030_5" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
@@ -2124,7 +2124,7 @@
                 }
                 if (window.__swRegistered) return;
                 window.__swRegistered = true;
-                navigator.serviceWorker.register('/sw.js?v=69', { updateViaCache: 'none' })
+                navigator.serviceWorker.register('/sw.js?v=70', { updateViaCache: 'none' })
                     .then(function(reg) {
                         reg.update();
                         document.addEventListener('visibilitychange', function() {

@@ -1641,9 +1641,17 @@
 
             const baseName = brandInfo.cleanName || store.name;
             const storeNameEl = refs.storeNameEl;
-            storeNameEl.textContent = isDuplicateName
-                ? `${brandInfo.code} ${baseName}`
-                : baseName;
+            storeNameEl.textContent = '';
+            if (isDuplicateName) {
+                const prefixSpan = document.createElement('span');
+                prefixSpan.className = 'store-brand-prefix';
+                prefixSpan.textContent = `${brandInfo.code} `;
+                storeNameEl.appendChild(prefixSpan);
+            }
+            const branchSpan = document.createElement('span');
+            branchSpan.className = 'store-branch-name';
+            branchSpan.textContent = baseName;
+            storeNameEl.appendChild(branchSpan);
 
             // Display event badge ONLY if events are visible and current store has store-specific promotion
             if (shouldShowEvents()) {

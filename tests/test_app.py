@@ -1752,7 +1752,7 @@ class FullAuditRegressionTests(unittest.TestCase):
         sw_resp = self.client.get('/sw.js')
         try:
             sw_txt = sw_resp.data.decode('utf-8')
-            self.assertIn("CACHE_NAME = 'aiseki-navi-v69'", sw_txt)
+            self.assertIn("CACHE_NAME = 'aiseki-navi-v70'", sw_txt)
             self.assertIn("event.waitUntil", sw_txt)
         finally:
             sw_resp.close()
@@ -4352,8 +4352,8 @@ class AIUltraGrowthSuiteTests(unittest.TestCase):
         app_module.clear_fast_http_caches()
         home_html = self.client.get('/').data.decode('utf-8')
         self.assertIn('calm.css?v=20', home_html)
-        self.assertIn('app.js?v=20261030_4', home_html)
-        self.assertIn('/sw.js?v=69', home_html)
+        self.assertIn('app.js?v=20261030_5', home_html)
+        self.assertIn('/sw.js?v=70', home_html)
 
         # 2. TikTok 9:16 Safe-Zone Reel Templates & Captions (zero bare 'オリエンタル' or 'OLG')
         sample_stores = [
@@ -4722,6 +4722,32 @@ class MoatIntelligenceAndAsobibarTests(unittest.TestCase):
         self.assertNotIn('錦', nagoya_js_tokens)
         self.assertFalse(any(tok.upper() in 'OLG 錦糸町 東京・錦糸町' for tok in nagoya_js_tokens))
         self.assertTrue(any(tok.upper() in 'OLG 名古屋 錦 愛知・名古屋' for tok in nagoya_js_tokens))
+
+        # 3. Duplicate-city Oriental Lounge ranking items must never truncate branch names with nowrap/ellipsis
+        enriched_dup = app_module._enrich_for_ssr([
+            {'name': 'OLG 新宿', 'women': 32, 'men': 18, 'region': 'Kanto'},
+            {'name': 'JIS SHINJUKU', 'women': 24, 'men': 20, 'region': 'Kanto'},
+            {'name': 'OLG 名古屋 栄', 'women': 26, 'men': 14, 'region': 'Chubu'},
+            {'name': 'ASOBIBAR 名古屋 栄', 'women': 15, 'men': 12, 'region': 'Chubu'},
+            {'name': 'OLG 渋谷本店', 'women': 30, 'men': 16, 'region': 'Kanto'},
+        ])
+        by_name = {x['name']: x for x in enriched_dup}
+        self.assertTrue(by_name['OLG 新宿']['ssr_is_dup'])
+        self.assertEqual(by_name['OLG 新宿']['ssr_brand'], 'オリエンタルラウンジ')
+        self.assertEqual(by_name['OLG 新宿']['ssr_disp'], '新宿')
+        self.assertTrue(by_name['OLG 名古屋 栄']['ssr_is_dup'])
+        self.assertEqual(by_name['OLG 名古屋 栄']['ssr_disp'], '名古屋 栄')
+        self.assertFalse(by_name['OLG 渋谷本店']['ssr_is_dup'])
+
+        with open(os.path.join(ROOT, 'static', 'style.css'), encoding='utf-8') as f:
+            style_css = f.read()
+        m_store_name = re.search(r'(?m)^\.store-name\s*\{([^}]+)\}', style_css)
+        self.assertIsNotNone(m_store_name)
+        store_name_block = m_store_name.group(1)
+        self.assertIn('flex-wrap: wrap', store_name_block)
+        self.assertNotIn('text-overflow: ellipsis', store_name_block)
+        self.assertIn('store-brand-prefix', app_js)
+        self.assertIn('store-branch-name', app_js)
 
 
 if __name__ == '__main__':

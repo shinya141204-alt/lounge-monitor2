@@ -1141,9 +1141,12 @@ def _enrich_for_ssr(stores):
             item['ssr_rank'] = dom_rank
         else:
             item['ssr_rank'] = None
+        is_dup = disp_counts[disp] > 1
         item['ssr_brand'] = brand
         item['ssr_brand_cls'] = _BRAND_CLS_MAP.get(brand, 'brand-other')
-        item['ssr_title'] = f"{brand} {disp}" if disp_counts[disp] > 1 else disp
+        item['ssr_is_dup'] = is_dup
+        item['ssr_disp'] = disp
+        item['ssr_title'] = f"{brand} {disp}" if is_dup else disp
         item['ssr_area'] = area
         item['ssr_ladies_pct'] = l_pct
         item['ssr_men_pct'] = m_pct
