@@ -4673,6 +4673,23 @@ class MoatIntelligenceAndAsobibarTests(unittest.TestCase):
             for ds in dataset_objs:
                 self.assertTrue(str(ds.get('license', '')).startswith('https://'), f"{path} Dataset missing license URL")
 
+        # 1b. /guide pillar page must expose robots=index,follow and Article + BreadcrumbList + FAQPage JSON-LD
+        r_guide = self.client.get('/guide')
+        self.assertEqual(r_guide.status_code, 200)
+        g_html = r_guide.data.decode('utf-8')
+        self.assertIn('name="robots" content="index, follow', g_html)
+        self.assertIn('rel="canonical" href="https://aiseki-navi.com/guide"', g_html)
+        self.assertNotIn('/link/', g_html)
+        g_blocks = re.findall(r'<script[^>]*application/ld\+json[^>]*>(.*?)</script>', g_html, re.S)
+        self.assertGreaterEqual(len(g_blocks), 1)
+        g_types = set()
+        for raw in g_blocks:
+            parsed = json.loads(raw)
+            for item in (parsed if isinstance(parsed, list) else [parsed]):
+                if isinstance(item, dict) and item.get('@type'):
+                    g_types.add(item['@type'])
+        self.assertTrue({'Article', 'BreadcrumbList', 'FAQPage'}.issubset(g_types))
+
         # 2. Kinshicho ('OLG 錦糸町') must strictly map to Tokyo/Kanto and NEVER match Nagoya ('錦')
         self.assertEqual(app_module.detect_region('OLG 錦糸町'), 'Kanto')
         self.assertEqual(app_module.detect_region('オリエンタルラウンジ 錦糸町'), 'Kanto')

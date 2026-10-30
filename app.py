@@ -3966,7 +3966,7 @@ def sitemap_xml():
   <url>
     <loc>https://aiseki-navi.com/guide</loc>
     <lastmod>{today}</lastmod>
-    <changefreq>daily</changefreq>
+    <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
