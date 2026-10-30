@@ -205,6 +205,39 @@ def init_db():
                     """)
                     cur.execute("CREATE INDEX IF NOT EXISTS idx_votes_store_ts ON crowd_votes(store_name, timestamp);")
                     cur.execute("CREATE INDEX IF NOT EXISTS idx_votes_ts ON crowd_votes(timestamp, store_name, vote_type);")
+                    cur.execute("""
+                        CREATE TABLE IF NOT EXISTS store_pos_telemetry_logs (
+                            id BIGSERIAL PRIMARY KEY,
+                            timestamp TEXT NOT NULL,
+                            store_name TEXT NOT NULL,
+                            telemetry_type TEXT NOT NULL,
+                            men_groups INTEGER NOT NULL DEFAULT 0,
+                            women_groups INTEGER NOT NULL DEFAULT 0,
+                            matched_groups INTEGER NOT NULL DEFAULT 0,
+                            men_waiting_groups INTEGER NOT NULL DEFAULT 0,
+                            men_waiting_guests INTEGER NOT NULL DEFAULT 0,
+                            women_waiting_groups INTEGER NOT NULL DEFAULT 0,
+                            vip_guests INTEGER NOT NULL DEFAULT 0,
+                            raw_json TEXT,
+                            UNIQUE(timestamp, store_name)
+                        );
+                    """)
+                    cur.execute("CREATE INDEX IF NOT EXISTS idx_pos_tel_store_ts ON store_pos_telemetry_logs(store_name, timestamp);")
+                    cur.execute("""
+                        CREATE TABLE IF NOT EXISTS external_context_logs (
+                            id BIGSERIAL PRIMARY KEY,
+                            timestamp TEXT NOT NULL,
+                            city_key TEXT NOT NULL,
+                            temp_c DOUBLE PRECISION,
+                            precip_mm DOUBLE PRECISION,
+                            weather_code INTEGER,
+                            wind_kmh DOUBLE PRECISION,
+                            is_rainy INTEGER NOT NULL DEFAULT 0,
+                            active_arenas_json TEXT,
+                            UNIQUE(timestamp, city_key)
+                        );
+                    """)
+                    cur.execute("CREATE INDEX IF NOT EXISTS idx_ext_ctx_city_ts ON external_context_logs(city_key, timestamp);")
                 conn.commit()
             turbo_store.init_postgres_aux_schema()
             _db_stats_cache.clear()
@@ -245,6 +278,39 @@ def init_db():
             """)
             cur.execute("CREATE INDEX IF NOT EXISTS idx_votes_store_ts ON crowd_votes(store_name, timestamp);")
             cur.execute("CREATE INDEX IF NOT EXISTS idx_votes_ts ON crowd_votes(timestamp, store_name, vote_type);")
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS store_pos_telemetry_logs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    timestamp TEXT NOT NULL,
+                    store_name TEXT NOT NULL,
+                    telemetry_type TEXT NOT NULL,
+                    men_groups INTEGER NOT NULL DEFAULT 0,
+                    women_groups INTEGER NOT NULL DEFAULT 0,
+                    matched_groups INTEGER NOT NULL DEFAULT 0,
+                    men_waiting_groups INTEGER NOT NULL DEFAULT 0,
+                    men_waiting_guests INTEGER NOT NULL DEFAULT 0,
+                    women_waiting_groups INTEGER NOT NULL DEFAULT 0,
+                    vip_guests INTEGER NOT NULL DEFAULT 0,
+                    raw_json TEXT,
+                    UNIQUE(timestamp, store_name)
+                );
+            """)
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_pos_tel_store_ts ON store_pos_telemetry_logs(store_name, timestamp);")
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS external_context_logs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    timestamp TEXT NOT NULL,
+                    city_key TEXT NOT NULL,
+                    temp_c REAL,
+                    precip_mm REAL,
+                    weather_code INTEGER,
+                    wind_kmh REAL,
+                    is_rainy INTEGER NOT NULL DEFAULT 0,
+                    active_arenas_json TEXT,
+                    UNIQUE(timestamp, city_key)
+                );
+            """)
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_ext_ctx_city_ts ON external_context_logs(city_key, timestamp);")
             conn.commit()
             _db_stats_cache.clear()
             print("[local_db] SQLite database initialized successfully (WAL mode enabled).")
@@ -293,6 +359,7 @@ def insert_logs(items, timestamp_str):
                 _store_7d_cache.clear()
             else:
                 clear_store_7d_cache()
+            _save_moat_aux_logs(items, timestamp_str)
             return inserted
         except Exception as e:
             print(f"[local_db] PostgreSQL insert error: {e}", file=sys.stderr)
@@ -318,10 +385,130 @@ def insert_logs(items, timestamp_str):
                 _store_7d_cache.clear()
             else:
                 clear_store_7d_cache()
-            return inserted
         except Exception as e:
             print(f"[local_db] Insert error: {e}", file=sys.stderr)
             return 0
+        finally:
+            conn.close()
+    _save_moat_aux_logs(items, timestamp_str)
+    return inserted
+
+
+def _save_moat_aux_logs(items, timestamp_str):
+    """Persist Plan A (`pos_telemetry`) and Plan B (`external_context_logs`) alongside 10-min snapshots.
+    Best-effort and fault-isolated so `monitor_logs` ingestion is never disrupted.
+    """
+    if not items or not timestamp_str:
+        return
+
+    pos_rows = []
+    for item in items:
+        pos = item.get('pos_telemetry')
+        if not isinstance(pos, dict) or not pos.get('telemetry_type'):
+            continue
+        pos_rows.append((
+            str(timestamp_str),
+            str(item.get('name', '')),
+            str(pos.get('telemetry_type', '')),
+            int(pos.get('men_total_groups', 0) or 0),
+            int(pos.get('women_total_groups', 0) or 0),
+            int(pos.get('matched_groups', 0) or 0),
+            int(pos.get('men_waiting_groups', 0) or 0),
+            int(pos.get('men_waiting_guests', 0) or 0),
+            int(pos.get('women_waiting_groups', 0) or 0),
+            int(pos.get('vip_guests', 0) or 0),
+            json.dumps(pos, ensure_ascii=False),
+        ))
+
+    ext_rows = []
+    try:
+        import moat_intelligence
+        allow_weather_net = (
+            os.environ.get("DISABLE_SCHEDULER") != "1"
+            and os.environ.get("DISABLE_EXTERNAL_WEATHER") != "1"
+        )
+        ctx_list = moat_intelligence.capture_external_context_snapshot(
+            live_stores=items,
+            allow_blocking=allow_weather_net,
+        )
+        for c in (ctx_list or []):
+            ext_rows.append((
+                str(timestamp_str),
+                str(c.get('city_key', '')),
+                float(c.get('temp_c', 0.0) or 0.0),
+                float(c.get('precip_mm', 0.0) or 0.0),
+                int(c.get('weather_code', 0) or 0),
+                float(c.get('wind_kmh', 0.0) or 0.0),
+                int(c.get('is_rainy', 0) or 0),
+                str(c.get('active_arenas_json', '[]')),
+            ))
+    except Exception:
+        ext_rows = []
+
+    if not pos_rows and not ext_rows:
+        return
+
+    if _is_pg():
+        try:
+            if pos_rows:
+                turbo_store.execute_pg_values_batch(
+                    """
+                    INSERT INTO store_pos_telemetry_logs (
+                        timestamp, store_name, telemetry_type,
+                        men_groups, women_groups, matched_groups,
+                        men_waiting_groups, men_waiting_guests, women_waiting_groups,
+                        vip_guests, raw_json
+                    ) VALUES %s
+                    ON CONFLICT (timestamp, store_name) DO NOTHING
+                    """,
+                    pos_rows,
+                    page_size=200,
+                )
+            if ext_rows:
+                turbo_store.execute_pg_values_batch(
+                    """
+                    INSERT INTO external_context_logs (
+                        timestamp, city_key, temp_c, precip_mm,
+                        weather_code, wind_kmh, is_rainy, active_arenas_json
+                    ) VALUES %s
+                    ON CONFLICT (timestamp, city_key) DO NOTHING
+                    """,
+                    ext_rows,
+                    page_size=100,
+                )
+        except Exception as err:
+            print(f"[local_db] PostgreSQL moat aux insert skipped: {err}", file=sys.stderr)
+        return
+
+    with _db_lock:
+        conn = get_connection()
+        try:
+            cur = conn.cursor()
+            if pos_rows:
+                cur.executemany(
+                    """
+                    INSERT OR IGNORE INTO store_pos_telemetry_logs (
+                        timestamp, store_name, telemetry_type,
+                        men_groups, women_groups, matched_groups,
+                        men_waiting_groups, men_waiting_guests, women_waiting_groups,
+                        vip_guests, raw_json
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    pos_rows,
+                )
+            if ext_rows:
+                cur.executemany(
+                    """
+                    INSERT OR IGNORE INTO external_context_logs (
+                        timestamp, city_key, temp_c, precip_mm,
+                        weather_code, wind_kmh, is_rainy, active_arenas_json
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    ext_rows,
+                )
+            conn.commit()
+        except Exception:
+            pass
         finally:
             conn.close()
 
@@ -962,6 +1149,11 @@ def prune_old_logs(monitor_days: int = 60, vote_days: int = 14) -> dict:
                     deleted_mon = max(0, cur.rowcount or 0)
                     cur.execute("DELETE FROM crowd_votes WHERE timestamp < %s", (vote_cutoff,))
                     deleted_votes = max(0, cur.rowcount or 0)
+                    try:
+                        cur.execute("DELETE FROM store_pos_telemetry_logs WHERE timestamp < %s", (mon_cutoff,))
+                        cur.execute("DELETE FROM external_context_logs WHERE timestamp < %s", (mon_cutoff,))
+                    except Exception:
+                        pass
                 conn.commit()
         else:
             with _db_lock:
@@ -972,6 +1164,11 @@ def prune_old_logs(monitor_days: int = 60, vote_days: int = 14) -> dict:
                     deleted_mon = max(0, cur.rowcount or 0)
                     cur.execute("DELETE FROM crowd_votes WHERE timestamp < ?", (vote_cutoff,))
                     deleted_votes = max(0, cur.rowcount or 0)
+                    try:
+                        cur.execute("DELETE FROM store_pos_telemetry_logs WHERE timestamp < ?", (mon_cutoff,))
+                        cur.execute("DELETE FROM external_context_logs WHERE timestamp < ?", (mon_cutoff,))
+                    except Exception:
+                        pass
                     conn.commit()
                 finally:
                     conn.close()

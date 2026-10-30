@@ -283,10 +283,15 @@ TIPS_LIST = [
         "大阪で梅田の東通りが男性40分待ちの夜、そのまま突っ立って待つより「徒歩6分の茶屋町」か「御堂筋線9分の難波」を見た方が圧倒的に早い🐙\n"
         "20時台はJIS茶屋町、22時台は裏天満やオリラジ難波って時間帯で主役が入れ替わるから1店決め打ちは損だよ📊"
     ),
+    (
+        "金曜22時に「女性比60%」を見て向かったのに、着いた頃には男余りになってた経験ない？📊\n"
+        "22時台は1次会終わりの男が一斉に向かうから約3割が到着時に逆転する。22時以降は『女性比70%超』の店を選ぶのが鉄則⚡"
+    ),
 ]
 
 
 _FALLBACK_COLUMNS = [
+    ("金土22時の「女性比60%」が3割逆転する群衆殺到パラドックス", "/guide/crowd-rush-paradox"),
     ("全51店舗「料金・イベント・現在人数」比較ボード活用ガイド", "/guide/price-event-comparison"),
     ("最初の10分で差がつく会話＆清潔感ガイド", "/guide/first-10-minutes"),
     ("相席ラウンジ前の身だしなみ・清潔感チェック", "/grooming"),
@@ -375,6 +380,8 @@ def _column_for_tip_index(idx: int) -> tuple:
         if scheduled_articles.is_published("osaka-kita-vs-minami"):
             return ("梅田キタ vs 難波ミナミ｜大阪全9店舗の南北ハシゴ法則", "/guide/osaka-kita-vs-minami")
         return ("大阪・梅田エリアのリアルタイム混雑＆攻略", "/area/umeda")
+    if idx == 63:
+        return ("金土22時の「女性比60%」が3割逆転する群衆殺到パラドックス", "/guide/crowd-rush-paradox")
     return ("相席ラウンジ実践コラム・攻略記事一覧", "/columns")
 
 

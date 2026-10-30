@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="google-site-verification" content="9kZaSJbaCuvn8QpGErUwI59w7Lf4N8ILhb_nWqDHI2s">
+    <title>金曜22時の「女性比60%」を見て向かうと3割が男余りに逆転する｜98万件ログが暴いた『群衆殺到パラドックス』と70%安全圏｜相席ナビ</title>
+    <meta name="description" content="累計979,768件のリアルタイム入店ログを追跡検証。なぜ金土22時台に「女性比60%」の好条件店を見て出発すると、到着する60分後に29.8%（約3回に1回）が男余り待機列へ転落するのか？行動経済学のマイノリティ・ゲーム構造と、逆転率わずか2.3%の「女性比70%安全バッファ」、男余りロック現象をデータで解明します。">
+    <meta name="keywords" content="相席ラウンジ 22時 待ち時間,相席ラウンジ 男女比 逆転,オリエンタルラウンジ 混雑 予測,JIS 待ち時間,相席ナビ 60分後予測">
+    <link rel="canonical" href="https://aiseki-navi.com/guide/crowd-rush-paradox">
+    <link rel="alternate" type="text/markdown" href="https://aiseki-navi.com/llms.txt" title="相席ナビ AI要約ドキュメント (llms.txt)">
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+
+    <!-- OGP / SNS Card Settings -->
+    <meta property="og:title" content="金土22時の「女性比60%」を見て向かうと3割が逆転する｜98万件ログが暴いた『群衆殺到パラドックス』｜相席ナビ">
+    <meta property="og:description" content="19時台発なら逆転率6.1%なのに、22時台発は29.8%が到着時に男余りへ転落。一方で女性比70%超の店は97.7%が女子優位を維持する「70%安全バッファ」の実測データを公開。">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://aiseki-navi.com/guide/crowd-rush-paradox">
+    <meta property="og:site_name" content="相席ナビ">
+    <meta property="og:locale" content="ja_JP">
+    <meta property="og:image" content="https://aiseki-navi.com/static/eyecatch-crowd-rush-paradox.jpg">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="金土22時の「女性比60%」はなぜ到着時に男余りへ変わるのか？（98万件ログ検証）">
+    <meta name="twitter:description" content="22時台の女性流入天井（Δ女-0.3名）に1次会帰りの男性（Δ男+13.2名）が集中する群衆殺到パラドックスと、逆転を防ぐ70%バッファの法則。">
+    <meta name="twitter:image" content="https://aiseki-navi.com/static/eyecatch-crowd-rush-paradox.jpg">
+
+    <!-- Structured Data (Article + BreadcrumbList + FAQPage) -->
+    <script type="application/ld+json">
+    [
+      {
+        "@context": "https://schema.org",
+        "@type": "Article",
+        "headline": "金曜22時の「女性比60%」を見て向かうと3割が男余りに逆転する｜98万件ログが暴いた『群衆殺到パラドックス』と70%安全圏",
+        "image": ["https://aiseki-navi.com/static/eyecatch-crowd-rush-paradox.jpg"],
+        "datePublished": "2026-10-30T10:30:00+09:00",
+        "dateModified": "2026-10-30T10:30:00+09:00",
+        "author": {
+          "@type": "Organization",
+          "name": "相席ナビ データ分析チーム",
+          "url": "https://aiseki-navi.com/"
+        },
+        "publisher": {
+          "@type": "Organization",
+          "name": "相席ナビ",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://aiseki-navi.com/static/icon.png"
+          }
+        },
+        "speakable": {
+          "@type": "SpeakableSpecification",
+          "cssSelector": [".article-title", ".highlight-box"]
+        },
+        "description": "累計979,768件のリアルタイム入店ログから、金・土・祝前日の時間帯別に「女性比55〜65%の店舗が60分後に男余り（50%未満）へ転落する確率」を算出し、群衆殺到パラドックスと70%安全バッファの法則を実証したデータレポート。"
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {"@type": "ListItem", "position": 1, "name": "ホーム", "item": "https://aiseki-navi.com/"},
+          {"@type": "ListItem", "position": 2, "name": "コラム一覧", "item": "https://aiseki-navi.com/columns"},
+          {"@type": "ListItem", "position": 3, "name": "金土22時の群衆殺到パラドックス", "item": "https://aiseki-navi.com/guide/crowd-rush-paradox"}
+        ]
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "金・土の22時台に「女性比60%」のお店へ向かうと、なぜ到着時に男余りになりやすいのですか？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "累計97.9万件のログ分析（n=19,791）によると、週末22時台は女性の1回転目入店がすでに天井に達しており60分後の女性増減が平均-0.3名と横ばいなのに対し、1次会を終えた複数の男性グループが同じ画面を見て一斉に向かうため、60分で男性が平均+13.2名急増します。この移動タイムラグ（20〜40分）により、22時台発では29.8%（約3回に1回）が到着時に女性比50%未満へ逆転します。"
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "週末22時以降でも男余りに逆転しにくい店舗の見分け方はありますか？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "最も確実な指標は「女性20名以上かつ女性比70%以上」の安全バッファに入っている店舗を選ぶことです。実測33,555サンプルの追跡では、この条件を満たす店舗は男性が後から平均+13.9名流入しても女性も+9.3名増え続け、60分後も97.7%が女性優位を維持（逆転率わずか2.3%）しています。相席ナビの各店舗カードに表示される「60分後予測バッジ」もあわせてご確認ください。"
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "すでに男性過多（女性比40%以下）になっている店舗で待てば、1時間後に男女比は回復しますか？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "回復しにくいのが実測データの結論です。男性15名以上かつ女性比40%以下の深刻な男余り状態（n=562）を追跡した結果、90分後も56.8%、120分後も57.3%の店舗が男余りのまま推移していました。受付で長く待つよりも、徒歩5分圏内の別ブランドや近隣店舗へ切り替える方が時間・料金ともに合理的です。"
+            }
+          }
+        ]
+      }
+    ]
+    </script>
+
+    <link rel="manifest" href="/static/manifest.json?v=2">
+    <meta name="theme-color" content="#0a0a0f">
+    <link rel="icon" type="image/png" href="/static/icon-192.png?v=2">
+    <link rel="apple-touch-icon" href="/static/icon.png?v=2">
+    <link rel="stylesheet" href="/static/style.css?v=20261030_3" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="/static/style.css?v=20261030_3"></noscript>
+    <link rel="stylesheet" href="/static/portal.css?v=9">
+    <style>
+        body {
+            display: block !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background-color: #0a0a0f !important;
+            color: #ffffff !important;
+            overflow-x: hidden !important;
+        }
+        .article-container {
+            max-width: 820px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 24px 16px 80px 16px;
+            box-sizing: border-box;
+        }
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.78rem;
+            color: #94a3b8;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        .breadcrumb a { color: #38bdf8; text-decoration: none; }
+        .article-header {
+            margin-bottom: 28px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .article-cat-tag {
+            background: linear-gradient(135deg, #c8a46e, #ec4899);
+            color: #fff;
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 99px;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+        .article-title {
+            font-size: 1.48rem;
+            font-weight: 800;
+            line-height: 1.45;
+            color: #f8fafc;
+            margin: 0 0 12px 0;
+        }
+        .article-eyecatch {
+            width: 100%;
+            border-radius: 14px;
+            overflow: hidden;
+            margin: 16px 0 28px 0;
+            border: 1px solid rgba(255,255,255,0.12);
+        }
+        .article-eyecatch img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        .article-body h2 {
+            font-size: 1.18rem;
+            font-weight: 800;
+            color: #f8fafc;
+            margin: 38px 0 14px 0;
+            padding: 10px 14px;
+            background: rgba(200, 164, 110, 0.12);
+            border-left: 4px solid #c8a46e;
+            border-radius: 0 8px 8px 0;
+        }
+        .article-body h3 {
+            font-size: 1.04rem;
+            font-weight: 700;
+            color: #f1f5f9;
+            margin: 26px 0 10px 0;
+        }
+        .article-body p, .article-body li {
+            font-size: 0.94rem;
+            line-height: 1.85;
+            color: #cbd5e1;
+        }
+        .article-body a {
+            color: #7dd3fc;
+            text-decoration: underline;
+            text-underline-offset: 3px;
+        }
+        .dialogue-box {
+            background: rgba(255, 255, 255, 0.03);
+            border-left: 3px solid rgba(200, 164, 110, 0.55);
+            border-radius: 0 10px 10px 0;
+            padding: 14px 18px;
+            margin: 18px 0;
+            font-size: 0.92rem;
+            line-height: 1.8;
+            color: #e2e8f0;
+        }
+        .highlight-box {
+            background: rgba(15, 23, 42, 0.78);
+            border: 1px solid rgba(200, 164, 110, 0.35);
+            border-radius: 12px;
+            padding: 18px;
+            margin: 20px 0;
+        }
+        .data-table-wrap {
+            overflow-x: auto;
+            margin: 18px 0;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            min-width: 580px;
+        }
+        .data-table th, .data-table td {
+            padding: 12px 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            text-align: left;
+        }
+        .data-table th {
+            background: rgba(255,255,255,0.05);
+            color: #94a3b8;
+            font-weight: 700;
+        }
+        .cta-box {
+            margin-top: 36px;
+            padding: 24px 20px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, rgba(200,164,110,0.16), rgba(56,189,248,0.14));
+            border: 1px solid rgba(200,164,110,0.4);
+            text-align: center;
+        }
+        .cta-btn {
+            display: inline-block;
+            margin-top: 12px;
+            padding: 12px 26px;
+            border-radius: 99px;
+            background: linear-gradient(135deg, #c8a46e, #a87f47);
+            color: #0b0d13 !important;
+            font-weight: 800;
+            text-decoration: none !important;
+            font-size: 0.92rem;
+        }
+    </style>
+    <link rel="stylesheet" href="/static/calm.css?v=20">
+    {% if not is_staff and not session.get('is_staff') %}
+    <meta name="google-adsense-account" content="ca-pub-3043764334238627">
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
+         crossorigin="anonymous"></script>
+    {% endif %}
+</head>
+
+<body>
+    <div class="article-container">
+        {% set nav_active = 'columns' %}
+        {% include '_portal_nav.html' %}
+
+        <nav class="breadcrumb" aria-label="Breadcrumb">
+            <a href="/">ホーム</a><span>›</span>
+            <a href="/columns">コラム・攻略一覧</a><span>›</span>
+            <span>金土22時の群衆殺到パラドックス</span>
+        </nav>
+
+        <header class="article-header">
+            <span class="article-cat-tag">⚡ 97.9万件ログ実証・行動経済学</span>
+            <h1 class="article-title">金曜22時の「女性比60%」を見て向かうと3割が男余りに逆転する｜98万件ログが暴いた『群衆殺到パラドックス』と70%安全圏</h1>
+            <p style="font-size:0.8rem;color:#94a3b8;margin:0;">公開日：2026年10月30日 ｜ 執筆：相席ナビ データ分析チーム（検証母数：累計979,768件）</p>
+        </header>
+
+        <figure class="article-eyecatch">
+            <picture>
+                <source srcset="/static/eyecatch-crowd-rush-paradox.webp" type="image/webp">
+                <img src="/static/eyecatch-crowd-rush-paradox.jpg" alt="金土22時の群衆殺到パラドックス 98万件ログ検証" width="1280" height="720" loading="eager">
+            </picture>
+        </figure>
+
+        <div class="article-body">
+            <p>
+                金曜日の22時10分、1軒目のバルで伝票を済ませた帰り道。手元のスマホで人数速報を開くと、徒歩12分ほどの人気店が<strong>「女性24名・男性16名（女性比60%）」</strong>と表示されていました。<br>
+                「今夜はちゃんと数字を見てから動いたし、これならすぐ座れるだろう」。そう確信してタクシーを拾い、スクランブル交差点を抜けて22時50分に受付カウンターへ着いた瞬間——画面の数字は<strong>「女性21名・男性31名（女性比40%・男性25分待ち）」</strong>へと真っ逆さまにひっくり返っていました。
+            </p>
+
+            <div class="dialogue-box">
+                「え、30分前に見たときは確実に女子6割あったよな？ 数字の反映ズレか？」<br>
+                「いや、俺らと同じタイミングで1軒目を出た男グループが、みんな同じ『60%』を見てここへ来たんじゃないか……？」
+            </div>
+
+            <p>
+                まさにその直感こそが正解でした。これはシステムの不具合でもなければ、たまたま運が悪かったわけでもありません。<br>
+                『相席ナビ』に蓄積された<strong>累計979,768件の時系列入店ログ</strong>から、金・土・祝前日に「好バランス（女性比55〜65%・客数20名以上）」だった店舗の<strong>ちょうど60分後の姿（計19,791サンプル）</strong>を追跡したところ、22時台を境に恐ろしい確率で男女比が反転する<strong>『群衆殺到パラドックス』</strong>が浮かび上がってきたのです。
+            </p>
+
+            <div class="highlight-box">
+                <strong style="color:#fde68a;font-size:0.95rem;">📌 98万件ログが証明した「22時の逆転現象」3つの結論</strong>
+                <ul style="margin:10px 0 0 0;padding-left:20px;">
+                    <li><strong>19時台発と22時台発は別世界</strong>：同じ「女性比60%」を見て出発しても、19時台発の男余り転落率は<strong>わずか6.1%</strong>なのに対し、22時台発では<strong>29.8%（約3回に1回）</strong>が60分後に男余りへ転落する。</li>
+                    <li><strong>「女性比70%安全バッファ」の法則</strong>：週末22時以降でも、出発時点で<strong>「女性20名以上 かつ 女性比70%以上」</strong>の店舗（n=33,555）は、男性が殺到しても<strong>97.7%が女子優位を維持（逆転率わずか2.3%）</strong>する。</li>
+                    <li><strong>男余り店の「慢性ロック」に注意</strong>：一度「男性15名以上・女性比40%以下」に陥った店舗は、<strong>90分後も56.8%が男余りのまま回復しない</strong>ため、受付で粘るより徒歩5分圏への移動が圧倒的に合理的。</li>
+                </ul>
+            </div>
+
+            <h2>1. なぜ「正しい数字を見て動いた人」ほど22時50分に鉢合わせするのか？</h2>
+            <p>
+                経済学やゲーム理論の世界には、<strong>「エル・ファロル・バー問題（マイノリティ・ゲーム）」</strong>と呼ばれる有名なパラドックスがあります。「今夜はあのバーが空いていて快適そうだ」という公開情報を街中の人が同時に見て、全員が合理的にそこへ向かうと、結果としてそのバーだけが超満員になり全員が損をする——という現象です。
+            </p>
+            <p>
+                週末夜の繁華街（新宿・渋谷・梅田・栄・天神）では、まさにこの現象が<strong>「約30〜45分の移動タイムラグ（情報遅延）」</strong>を伴って発生しています。
+            </p>
+            <ul>
+                <li><strong>22:00〜22:15（意思決定の同時発生）</strong>：近隣の居酒屋で2時間制の1次会を終えた数十組の男性ペアが、一斉に会計を済ませて路上に出る。</li>
+                <li><strong>22:15〜22:45（見えない移動予備軍）</strong>：画面上で「女性24名・男性16名（60%）」と光っている上位1〜2店舗へ、お互いの存在を知らないまま10組以上の男性が同時に歩き始める。この移動中の30分間、まだ店内の数字は「60%」のまま変わらない。</li>
+                <li><strong>22:45〜23:05（受付での同時着弾）</strong>：移動していたグループが数分差で一斉に受付へ到着。さらにこの時間帯特有の「女性流入の頭打ち」が重なり、一気に男性待機列が膨れ上がる。</li>
+            </ul>
+
+            <h2>2. 【実測19,791件】時間帯別「女性比60%の店が60分後に男余りへ転落する確率」</h2>
+            <p>
+                では、なぜ19時や20時に「女性比60%」を見て向かったときはすんなり座れるのに、22時台だけ急激に裏切られるのでしょうか？<br>
+                金・土・祝前日に<strong>「店内合計20名以上 かつ 女性比率55〜65%」</strong>という全く同じ好条件だった瞬間を切り出し、その60分後に男女人数がどう変化したかを集計した実測テーブルをご覧ください。
+            </p>
+
+            <div class="data-table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>出発時刻（金土祝前）</th>
+                            <th>60分後の女性増減（平均）</th>
+                            <th>60分後の男性増減（平均）</th>
+                            <th>60分後の男余り転落率（50%未満）</th>
+                            <th>現場で起きている構造変化</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>19時台に出発</strong></td>
+                            <td><strong style="color:#f472b6;">+20.6名</strong>（急増中）</td>
+                            <td>+13.5名</td>
+                            <td><strong>6.1%</strong>（ほぼ安全）</td>
+                            <td>1軒目女子の入店ラッシュが男性流入を上回り吸収する</td>
+                        </tr>
+                        <tr>
+                            <td><strong>20時台に出発</strong></td>
+                            <td><strong style="color:#f472b6;">+19.1名</strong>（増加中）</td>
+                            <td>+18.1名</td>
+                            <td><strong>11.0%</strong>（低リスク）</td>
+                            <td>男女ともに増えるが、女性の総量も伸び続ける黄金帯</td>
+                        </tr>
+                        <tr>
+                            <td><strong>21時台に出発</strong></td>
+                            <td>+12.8名（鈍化）</td>
+                            <td><strong>+20.9名</strong>（最大波）</td>
+                            <td><strong>19.4%</strong>（約5回に1回逆転）</td>
+                            <td>1次会終わり男性の第1波が女性の増加ペースを追い抜く</td>
+                        </tr>
+                        <tr>
+                            <td><strong>22時台に出発</strong></td>
+                            <td><strong>-0.3名（天井到達）</strong></td>
+                            <td><strong>+13.2名（殺到継続）</strong></td>
+                            <td><strong style="color:#fbbf24;">29.8%（約3回に1回逆転）</strong></td>
+                            <td>女性の新規入店が止まった箱に男性だけが雪崩れ込む</td>
+                        </tr>
+                        <tr>
+                            <td><strong>23時台に出発</strong></td>
+                            <td><strong>-7.0名（終電離脱）</strong></td>
+                            <td>+5.2名（居残り）</td>
+                            <td><strong style="color:#fbbf24;">30.3%（高リスク帯）</strong></td>
+                            <td>終電帰りの女性退店と男性のサンクコスト滞在が交差</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p>
+                数字を並べると、原因は一目瞭然です。<strong>19時〜20時台は「エスカレーター式に女性も増え続けている（60分で約+20名）」</strong>ため、画面を見て男性が15名向かっても比率は崩れません。<br>
+                ところが<strong>22時台に入った瞬間、女性の60分後増減は「-0.3名」とピタリと天井を打ちます</strong>。受け皿となる女性の数が増えないにもかかわらず、1次会を終えた男性だけが平均<strong>+13.2名（約6〜7組）</strong>積み上がるため、「女性比58%（女22：男16）」程度のマージンはたった30〜40分であっさり食い潰されてしまうのです。
+            </p>
+
+            <h2>3. 22時以降でも崩れない「70%安全バッファ」と、戻らない「男余りロック現象」</h2>
+            <p>
+                さらに98万件のログを深掘りすると、22時以降の店舗選びで勝敗を分ける<strong>2つの強烈な非線形ルール</strong>が見つかりました。
+            </p>
+
+            <h3>① 逆転率わずか2.3%！「女性20名以上×女性比70%超」の安全バッファ</h3>
+            <p>
+                同じ金土の夜でも、出発時点で<strong>「女性20名以上 かつ 女性比率70%以上」</strong>に入っていた超確変状態の店舗（n=33,555件）を追跡すると、60分後に男性が平均<strong>+13.9名</strong>押し寄せているにもかかわらず、女性側も平均<strong>+9.3名</strong>増え続け、実に<strong>97.7%のケースで60分後も女性優位を維持（男余り転落率はわずか2.3%）</strong>していました。<br>
+                たとえば<a href="/store/jis-shinjuku">JIS 新宿</a>や<a href="/store/jis-umeda">JIS 梅田</a>、<a href="/store/oriental-lounge-shibuya-honten">オリエンタルラウンジ 渋谷本店</a>、<a href="/store/oriental-lounge-fukuoka">オリエンタルラウンジ 福岡</a>のように基礎キャパシティが大きく、70%超の厚みがある状態なら、移動中の男性流入を十分に飲み込めます。逆に危険なのは「女性14名・男性10名（女性比58%）」のような<strong>薄氷の60%台前半</strong>なのです。
+            </p>
+
+            <h3>② 一度ハマると90分後も56.8%がそのまま！「男余り慢性ロック現象」</h3>
+            <p>
+                もうひとつ知っておきたいのが、到着した店がすでに男余りだったときの引き際です。「せっかく来たし、30分くらい待てば女の子が入ってきて戻るだろう」と受付や単独待機席で粘りたくなる心理は誰にでもあります。
+            </p>
+
+            <div class="dialogue-box">
+                「ここまで10分歩いて来たし、今から別の店を探し直すのも面倒だよな。とりあえず待機で入るか」<br>
+                「……って言って40分待った結果、相席できないまま待機チャージと1軒目の酔いだけが冷めていくんだよな」
+            </div>
+
+            <p>
+                しかし実測データは無慈悲です。週末に<strong>「男性15名以上 かつ 女性比40%以下」</strong>の重い男余りに陥った店舗（n=562件）を追跡した結果、<strong>90分後も56.8%、120分後も57.3%の店舗が男余りのまま解消していませんでした</strong>。<br>
+                理由は二面市場の非対称コストにあります。男性側は「ここまで並んだ待ち時間と10分ごとのチャージを無駄にしたくない」というサンクコスト（埋没費用）で店内に留まり続ける一方、女性ペアは入口の雰囲気やリアルタイム画面を見て別店舗へ流れるため、需給のロックが2時間近く解けないのです（滞在時間と損益分岐の詳しい計算は<a href="/guide/cost-break-even">「90分粘るvs40分で見切る」損益分岐データ検証</a>も参照してください）。
+            </p>
+
+            <h2>4. 今夜から使える「時間帯別・逆転回避プロトコル」と新予測バッジの見方</h2>
+            <p>
+                こうした移動ラグによるミスマッチをなくすため、『相席ナビ』では全店舗のカードと分析モーダルに<strong>「🔮 60分後のAI男女比予測バッジ（⚡殺到注意アラート）」</strong>および<strong>「JIS公式POS実測データをオンライン学習した全店リアル待ち時間推論」</strong>を新搭載しました。<br>
+                出発時刻に合わせて、次の4ステップで判断するだけで空振りはほぼゼロに抑えられます。
+            </p>
+
+            <div class="data-table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>現在時刻</th>
+                            <th>狙うべき店舗条件</th>
+                            <th>避けるべき危険シグナル</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>19:00〜20:45</strong></td>
+                            <td>女性10名以上 ＆ 女性比55%以上なら素直に直行OK</td>
+                            <td>男女合計5名以下の立ち上がり前店舗（1組目待ちリスク）</td>
+                        </tr>
+                        <tr>
+                            <td><strong>21:30〜23:15</strong><br>（殺到ピーク帯）</td>
+                            <td>① <strong>女性20名+ ＆ 女性比70%以上</strong>の安全バッファ店<br>② 徒歩4〜6分離れた準大型店・姉妹ブランド</td>
+                            <td><strong>「⚡殺到注意」バッジ点灯店</strong>（女性比55〜63%で直近15分の男性増加が速い店）</td>
+                        </tr>
+                        <tr>
+                            <td><strong>23:20〜24:00</strong></td>
+                            <td>終電後維持率100%超の繁華街コア店（<a href="/guide/last-train-cliff">終電崖コラム参照</a>）</td>
+                            <td>郊外・オフィス街寄りで23時半に女性が急減する1回転型店舗</td>
+                        </tr>
+                        <tr>
+                            <td><strong>0:15以降</strong><br>（深夜第2波）</td>
+                            <td><a href="/asobibar">ASOBIBAR（アソビバー）</a>等の自由回遊バー業態や、<a href="/ag">ag</a>・大型<a href="/jis">JIS</a>の深夜再流入店</td>
+                            <td>男性15名+・女性比40%以下でロックされている店舗での待機</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>同じ街の「徒歩5分エスケープ先」を最初からセットで持つ</h3>
+            <p>
+                特に22時台に強いのは、街の最大手1店舗だけを決め打ちせず、徒歩4〜6分圏内の別ブランドを最初から第2候補に入れておく動き方です。
+            </p>
+            <ul>
+                <li><strong>新宿エリア</strong>：靖国通り沿いの<a href="/store/oriental-lounge-shinjuku">オリエンタルラウンジ 新宿</a>や<a href="/store/jis-shinjuku">JIS 新宿</a>に「⚡殺到注意」が出ている夜は、徒歩数分の<a href="/store/jis-nishishinjuku">JIS 西新宿</a>や自由回遊型の<a href="/store/asobibar-shinjuku">ASOBIBAR 新宿</a>のバランスを並べて確認する。</li>
+                <li><strong>渋谷・恵比寿エリア</strong>：<a href="/store/oriental-lounge-shibuya-honten">オリエンタルラウンジ 渋谷本店</a>と<a href="/store/ag-shibuya">ag 渋谷</a>、<a href="/store/asobibar-shibuya">ASOBIBAR 渋谷</a>に加え、山手線1駅・タクシーワンメーターの<a href="/store/oriental-lounge-ebisu">オリエンタルラウンジ 恵比寿</a>を逃がし先にする。</li>
+                <li><strong>大阪キタ・ミナミ</strong>：東通りの<a href="/store/jis-umeda">JIS 梅田</a>に男性が集中する22時半は、地下直結の<a href="/store/oriental-lounge-osaka-ekimae">オリエンタルラウンジ 大阪駅前</a>、<a href="/store/jis-chayamachi">JIS 茶屋町</a>、あるいは御堂筋線9分の<a href="/store/oriental-lounge-namba">オリラジ難波</a>・<a href="/store/asobibar-shinsaibashi">ASOBIBAR 心斎橋</a>へ視野を広げる。</li>
+            </ul>
+
+            <div class="dialogue-box">
+                「『いま何%か』じゃなくて『俺らが着く40分後に何%になってるか』を見るようにしてから、受付で待たされる夜がマジでなくなったな」<br>
+                「浮いた待ち時間の30分で、コンビニ寄って口元と髪だけ整えてから余裕持って入れるのもデカいよな」
+            </div>
+
+            <p>
+                実際、待ち時間ゼロで案内された直後のソファ席は相手との距離が70cmしかありません。1次会の居酒屋から直行する夜ほど、移動前の3分で口元のケアや夕方のテカリをリセットしておくだけで乾杯直後の空気がまるで変わります（最低限のポイントは<a href="/grooming">ラウンジ入店前の身だしなみ＆清潔感ガイド</a>に整理しています）。
+            </p>
+
+            <h2>まとめ：「いまの数字」ではなく「到着時刻の数字」を読む人が勝つ</h2>
+            <p>
+                リアルタイム人数データはとても強力な武器ですが、週末22時台だけは「街中のライバルも同じ画面を見ている」という一歩先の視点を持つかどうかで結果が正反対に分かれます。<br>
+                <strong>「22時台の60%前半は3割が逆転する」「70%超のバッファ店か、予測バッジが安定している近隣店を選ぶ」「男余りロック店では待たずに歩く」</strong>——今夜これから1次会を出る方は、ぜひトップ画面の各店舗カードに新しく表示された<strong>『60分後予測バッジ』と『リアル待ち時間推論』</strong>をチェックしてから次の一歩を選んでみてください。
+            </p>
+
+            <div class="cta-box">
+                <div style="font-size:1.05rem;font-weight:800;color:#f8fafc;">🔮 今夜これから向かう店、60分後も女性優位をキープできる？</div>
+                <p style="font-size:0.86rem;color:#cbd5e1;margin:8px 0 4px;">全国63店舗の「60分後AI男女比予測バッジ」と「JIS学習型リアル待ち時間推論」をリアルタイム公開中。</p>
+                <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:12px;">
+                    <a href="/" class="cta-btn">60分後予測つき全国ランキングを見る ›</a>
+                    <a href="/concierge" class="cta-btn" style="background:rgba(255,255,255,0.1);color:#f8fafc !important;border:1px solid rgba(200,164,110,0.5);">3秒穴場＆徒歩ハシゴ診断 ›</a>
+                </div>
+            </div>
+        </div>
+
+        {% include '_portal_footer.html' %}
+    </div>
+</body>
+
+</html>

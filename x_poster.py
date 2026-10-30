@@ -68,6 +68,9 @@ def format_ja_store_name(raw_name: str) -> str:
     upper_full = name.upper()
     if upper_full in DIRECT_STORE_JA_MAP:
         return DIRECT_STORE_JA_MAP[upper_full]
+    if upper_full.startswith('ASOBIBAR '):
+        ab_rest = name[9:].strip().replace(' ', '')
+        return f"アソビバー{ab_rest}"
     if upper_full.startswith('OLG AG'):
         ag_rest = name[6:].strip()
         ag_ja = EN_TO_JA_MAP.get(ag_rest.upper(), ag_rest)
@@ -500,6 +503,19 @@ def build_pinned_tweet_thread(app_url: str = "") -> tuple:
 
 
 COLUMN_PROMO_LIST = [
+    {
+        "slug": "crowd-rush-paradox",
+        "path": "/guide/crowd-rush-paradox",
+        "eyecatch": "/static/eyecatch-crowd-rush-paradox.jpg",
+        "title": "金曜22時の「女性比60%」を見て向かうと3割が男余りに逆転する｜98万件ログ検証『群衆殺到パラドックス』",
+        "main_text": (
+            "金曜22時に「女性比60%」を見て向かったのに、着いた頃には男余り待ちになってた現象。\n\n"
+            "98万件のログを追跡したら、22時台発は29.8%（約3回に1回）が60分後に男余りへ転落📊\n"
+            "一方「女性比70%超」の店は97.7%が女子優位を維持！\n\n"
+            "逆転回避の条件はリプ欄👇\n"
+            "#相席ナビ #相席ラウンジ"
+        ),
+    },
     {
         "slug": "last-train-cliff",
         "path": "/guide/last-train-cliff",

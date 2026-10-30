@@ -139,6 +139,7 @@ _PAGE_TITLES = {
     '/oriental-lounge': '🥂 オリエンタルラウンジ全店リアルタイム一覧',
     '/ag': '⚡ ag（アグ）全店リアルタイム一覧',
     '/jis': '💎 JIS（ジス）全店リアルタイム一覧',
+    '/asobibar': '🍸 ASOBIBAR（アソビバー）全店リアルタイム一覧',
     '/guide': '📖 相席ラウンジ完全攻略ガイド（基本編）',
     '/guide/strategy': '📖 相席ラウンジ完全攻略ガイド（基本編）',
     '/guide/brand-comparison': '📖 3大ブランド徹底比較（オリエンタルラウンジ・ag・JIS）',
@@ -157,6 +158,7 @@ _PAGE_TITLES = {
     '/guide/cost-break-even': '📖 90分粘るvs40分で見切る｜男性の滞在時間と料金の損益分岐点検証',
     '/guide/rain-payday': '📖 雨の日・給料日前・連休中日の男女比変動と隠れ穴場日データ',
     '/guide/osaka-kita-vs-minami': '📖 大阪キタvsミナミ全9店舗比較｜時間帯で逆転する南北ハシゴ法則',
+    '/guide/crowd-rush-paradox': '📖 金土22時の群衆殺到パラドックスと女性比70%安全バッファ検証',
     '/for-women': '💄 女子のための相席ラウンジ完全ガイド＆待ちゼロ店舗ボード',
     '/privacy': '⚖️ 運営者情報・プライバシーポリシー',
 }

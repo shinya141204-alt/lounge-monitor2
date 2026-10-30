@@ -292,6 +292,47 @@ def init_postgres_aux_schema() -> bool:
                 cur.execute(
                     "CREATE INDEX IF NOT EXISTS idx_analytics_daily_date ON analytics_daily(date_jst);"
                 )
+                cur.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS store_pos_telemetry_logs (
+                        id BIGSERIAL PRIMARY KEY,
+                        timestamp TEXT NOT NULL,
+                        store_name TEXT NOT NULL,
+                        telemetry_type TEXT NOT NULL,
+                        men_groups INTEGER NOT NULL DEFAULT 0,
+                        women_groups INTEGER NOT NULL DEFAULT 0,
+                        matched_groups INTEGER NOT NULL DEFAULT 0,
+                        men_waiting_groups INTEGER NOT NULL DEFAULT 0,
+                        men_waiting_guests INTEGER NOT NULL DEFAULT 0,
+                        women_waiting_groups INTEGER NOT NULL DEFAULT 0,
+                        vip_guests INTEGER NOT NULL DEFAULT 0,
+                        raw_json TEXT,
+                        UNIQUE(timestamp, store_name)
+                    );
+                    """
+                )
+                cur.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_pos_tel_store_ts ON store_pos_telemetry_logs(store_name, timestamp);"
+                )
+                cur.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS external_context_logs (
+                        id BIGSERIAL PRIMARY KEY,
+                        timestamp TEXT NOT NULL,
+                        city_key TEXT NOT NULL,
+                        temp_c DOUBLE PRECISION,
+                        precip_mm DOUBLE PRECISION,
+                        weather_code INTEGER,
+                        wind_kmh DOUBLE PRECISION,
+                        is_rainy INTEGER NOT NULL DEFAULT 0,
+                        active_arenas_json TEXT,
+                        UNIQUE(timestamp, city_key)
+                    );
+                    """
+                )
+                cur.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_ext_ctx_city_ts ON external_context_logs(city_key, timestamp);"
+                )
             conn.commit()
         _pg_schema_ready = True
         return True

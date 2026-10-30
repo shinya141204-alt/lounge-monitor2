@@ -228,6 +228,12 @@ h1 {
     border-color: rgba(105, 219, 124, 0.4);
 }
 
+.brand-asobibar {
+    background: rgba(56, 189, 248, 0.15);
+    color: #bae6fd;
+    border-color: rgba(56, 189, 248, 0.38);
+}
+
 .brand-other {
     background: rgba(255, 255, 255, 0.1);
     color: #ccc;
@@ -5097,6 +5103,358 @@ body.theme-light .momentum-legend-bar {
 body.theme-light .momentum-legend-pill {
     color: #8c6b3f;
 }
+
+/* ============================================================================
+   Moat Intelligence UI: 60-Min Crowd Dynamics Forecast & JIS-Learned Wait Time
+   ============================================================================ */
+.moat-signals-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px;
+    margin-top: 5px;
+}
+
+.moat-signals-row.hidden {
+    display: none !important;
+}
+
+body.compact-mode .moat-signals-row {
+    display: none !important;
+}
+
+.moat-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    line-height: 1.25;
+    padding: 2px 7px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.04);
+    color: #d4d4d8;
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.moat-pill.tone-safe {
+    background: rgba(74, 222, 128, 0.09);
+    border-color: rgba(74, 222, 128, 0.34);
+    color: #bbf7d0;
+}
+
+.moat-pill.tone-warn {
+    background: rgba(234, 179, 8, 0.11);
+    border-color: rgba(234, 179, 8, 0.42);
+    color: #fde68a;
+}
+
+.moat-pill.tone-danger {
+    background: rgba(244, 63, 94, 0.11);
+    border-color: rgba(244, 63, 94, 0.4);
+    color: #fecdd3;
+}
+
+.moat-pill.tone-rain {
+    background: rgba(56, 189, 248, 0.11);
+    border-color: rgba(56, 189, 248, 0.38);
+    color: #bae6fd;
+}
+
+.moat-pill.tone-standing {
+    background: rgba(200, 164, 110, 0.11);
+    border-color: rgba(200, 164, 110, 0.38);
+    color: #f1e3cb;
+}
+
+.modal-moat-box {
+    margin: 10px 0 14px;
+    padding: 13px 14px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.028);
+    border: 1px solid rgba(200, 164, 110, 0.26);
+}
+
+.modal-moat-box.hidden {
+    display: none !important;
+}
+
+.moat-modal-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+.moat-modal-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #f1e3cb;
+    letter-spacing: 0.01em;
+}
+
+.moat-weather-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    color: #d4d4d8;
+}
+
+.moat-weather-chip.is-rainy {
+    background: rgba(56, 189, 248, 0.12);
+    border-color: rgba(56, 189, 248, 0.4);
+    color: #bae6fd;
+}
+
+.moat-modal-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.moat-modal-card {
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.moat-modal-card.tone-warn {
+    border-color: rgba(234, 179, 8, 0.36);
+}
+
+.moat-modal-card.tone-danger {
+    border-color: rgba(244, 63, 94, 0.36);
+}
+
+.moat-modal-card.tone-safe {
+    border-color: rgba(74, 222, 128, 0.32);
+}
+
+.moat-card-eyebrow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    font-size: 0.69rem;
+    font-weight: 700;
+    color: #a1a1aa;
+}
+
+.moat-delta-chip,
+.moat-source-chip {
+    font-size: 0.64rem;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #e4e4e7;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.moat-source-chip.is-measured {
+    border-color: rgba(74, 222, 128, 0.42);
+    color: #bbf7d0;
+    background: rgba(74, 222, 128, 0.1);
+}
+
+.moat-source-chip.is-standing {
+    border-color: rgba(200, 164, 110, 0.45);
+    color: #f1e3cb;
+    background: rgba(200, 164, 110, 0.1);
+}
+
+.moat-card-primary {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #f4f4f5;
+    line-height: 1.38;
+}
+
+.moat-card-primary strong {
+    color: #f1e3cb;
+    font-size: 1rem;
+}
+
+.moat-card-counts {
+    font-size: 0.74rem;
+    font-weight: 500;
+    color: #a1a1aa;
+}
+
+.moat-card-status {
+    font-size: 0.76rem;
+    font-weight: 600;
+    color: #e4e4e7;
+}
+
+.moat-card-desc {
+    margin: 2px 0 0;
+    font-size: 0.73rem;
+    line-height: 1.5;
+    color: #a1a1aa;
+}
+
+.moat-modal-link {
+    display: inline-block;
+    margin-top: 4px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #dec08f;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+@media (max-width: 600px) {
+    .moat-modal-grid {
+        grid-template-columns: 1fr;
+    }
+    .moat-pill {
+        font-size: 0.65rem;
+        padding: 2px 6px;
+    }
+}
+
+/* --- Light Mode High-Contrast Overrides (WCAG AA) --- */
+body.theme-light .brand-asobibar {
+    background: rgba(14, 116, 144, 0.09);
+    color: #0e7490;
+    border-color: rgba(14, 116, 144, 0.35);
+}
+
+body.theme-light .moat-pill {
+    background: rgba(28, 27, 24, 0.045);
+    border-color: rgba(28, 27, 24, 0.18);
+    color: #3f3b36;
+}
+
+body.theme-light .moat-pill.tone-safe {
+    background: rgba(21, 128, 61, 0.09);
+    border-color: rgba(21, 128, 61, 0.36);
+    color: #166534;
+}
+
+body.theme-light .moat-pill.tone-warn {
+    background: rgba(161, 98, 7, 0.1);
+    border-color: rgba(161, 98, 7, 0.4);
+    color: #854d0e;
+}
+
+body.theme-light .moat-pill.tone-danger {
+    background: rgba(158, 63, 80, 0.1);
+    border-color: rgba(158, 63, 80, 0.42);
+    color: #881337;
+}
+
+body.theme-light .moat-pill.tone-rain {
+    background: rgba(3, 105, 161, 0.09);
+    border-color: rgba(3, 105, 161, 0.36);
+    color: #0c4a6e;
+}
+
+body.theme-light .moat-pill.tone-standing {
+    background: rgba(117, 85, 40, 0.1);
+    border-color: rgba(117, 85, 40, 0.38);
+    color: #6b4c24;
+}
+
+body.theme-light .modal-moat-box {
+    background: #f5f2eb;
+    border-color: rgba(117, 85, 40, 0.3);
+}
+
+body.theme-light .moat-modal-title {
+    color: #5c401d;
+}
+
+body.theme-light .moat-weather-chip {
+    background: #ffffff;
+    border-color: rgba(28, 27, 24, 0.18);
+    color: #3f3b36;
+}
+
+body.theme-light .moat-weather-chip.is-rainy {
+    background: rgba(3, 105, 161, 0.08);
+    border-color: rgba(3, 105, 161, 0.35);
+    color: #0c4a6e;
+}
+
+body.theme-light .moat-modal-card {
+    background: #ffffff;
+    border-color: rgba(28, 27, 24, 0.14);
+}
+
+body.theme-light .moat-modal-card.tone-warn {
+    border-color: rgba(161, 98, 7, 0.42);
+}
+
+body.theme-light .moat-modal-card.tone-danger {
+    border-color: rgba(158, 63, 80, 0.42);
+}
+
+body.theme-light .moat-modal-card.tone-safe {
+    border-color: rgba(21, 128, 61, 0.38);
+}
+
+body.theme-light .moat-card-eyebrow {
+    color: #57534e;
+}
+
+body.theme-light .moat-delta-chip,
+body.theme-light .moat-source-chip {
+    background: rgba(28, 27, 24, 0.05);
+    border-color: rgba(28, 27, 24, 0.18);
+    color: #292524;
+}
+
+body.theme-light .moat-source-chip.is-measured {
+    background: rgba(21, 128, 61, 0.09);
+    border-color: rgba(21, 128, 61, 0.38);
+    color: #166534;
+}
+
+body.theme-light .moat-source-chip.is-standing {
+    background: rgba(117, 85, 40, 0.1);
+    border-color: rgba(117, 85, 40, 0.38);
+    color: #5c401d;
+}
+
+body.theme-light .moat-card-primary {
+    color: #1c1917;
+}
+
+body.theme-light .moat-card-primary strong {
+    color: #755528;
+}
+
+body.theme-light .moat-card-counts,
+body.theme-light .moat-card-desc {
+    color: #57534e;
+}
+
+body.theme-light .moat-card-status {
+    color: #292524;
+}
+
+body.theme-light .moat-modal-link {
+    color: #755528;
+}
+
 
 
 

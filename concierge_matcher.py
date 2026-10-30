@@ -28,7 +28,7 @@ CONCIERGE_AREAS = {
         "label": "新宿・西新宿",
         "short_label": "新宿・西新宿",
         "portal_slug": "shinjuku",
-        "stores": ["OLG 新宿", "JIS SHINJUKU", "JIS NISHISHINJUKU"],
+        "stores": ["OLG 新宿", "JIS SHINJUKU", "JIS NISHISHINJUKU", "ASOBIBAR 新宿"],
         "second_venue": {
             "spot_title": "新宿三丁目・靖国通り裏／西新宿ガード下〜野村ビル周辺",
             "spots": "東口側なら歌舞伎町の喧騒を抜けた新宿三丁目の隠れ家ビストロやダイニングバー、西口側なら西新宿一丁目の落ち着いたオーセンティックバーが徒歩3〜5分で移動しやすく成功率が高めです。",
@@ -42,7 +42,7 @@ CONCIERGE_AREAS = {
         "label": "渋谷・恵比寿",
         "short_label": "渋谷・恵比寿",
         "portal_slug": "shibuya",
-        "stores": ["OLG 渋谷本店", "OLG ag渋谷", "OLG 恵比寿"],
+        "stores": ["OLG 渋谷本店", "OLG ag渋谷", "OLG 恵比寿", "ASOBIBAR 渋谷", "ASOBIBAR 恵比寿"],
         "second_venue": {
             "spot_title": "渋谷・道玄坂上の夜カフェ＆バー／恵比寿西口・裏路地ワインバー",
             "spots": "渋谷ならセンター街の混雑を避けて道玄坂上・神泉寄りのソファカフェバーへ。恵比寿なら駅西口から徒歩3分の裏恵比寿ワインバーや恵比寿横丁脇の落ち着いたバルが鉄板です。",
@@ -90,6 +90,8 @@ CONCIERGE_AREAS = {
             "JIS UMEDA",
             "JIS CHAYAMACHI",
             "YATAKOI UMEDA",
+            "ASOBIBAR 梅田",
+            "ASOBIBAR 茶屋町",
             "OLG 天満",
         ],
         "second_venue": {
@@ -105,7 +107,7 @@ CONCIERGE_AREAS = {
         "label": "難波・心斎橋・京都・神戸",
         "short_label": "難波・心斎橋・京神",
         "portal_slug": "namba",
-        "stores": ["OLG 心斎橋", "OLG 難波", "JIS NAMBA", "OLG 京都", "OLG 神戸"],
+        "stores": ["OLG 心斎橋", "OLG 難波", "JIS NAMBA", "ASOBIBAR 心斎橋", "OLG 京都", "OLG 神戸", "ASOBIBAR 神戸 三宮"],
         "second_venue": {
             "spot_title": "裏なんば・東心斎橋の隠れ家バー／京都先斗町・木屋町／神戸三宮・北野坂",
             "spots": "ミナミなら東心斎橋の落ち着いたフルーツカクテルバーや裏なんばのビストロ、京都なら木屋町から1本入った先斗町の町家バー、神戸なら三宮・北野坂沿いの大人なバーが好評です。",
@@ -119,7 +121,7 @@ CONCIERGE_AREAS = {
         "label": "名古屋（栄・錦）・中部",
         "short_label": "名古屋・中部",
         "portal_slug": "nagoya",
-        "stores": ["OLG 名古屋 栄", "OLG 名古屋 錦", "OLG ag名古屋", "OLG 静岡", "OLG 浜松", "OLG ag金沢"],
+        "stores": ["OLG 名古屋 栄", "OLG 名古屋 錦", "OLG ag名古屋", "ASOBIBAR 名古屋 栄", "ASOBIBAR 名古屋 住吉", "OLG 静岡", "OLG 浜松", "OLG ag金沢"],
         "second_venue": {
             "spot_title": "栄三丁目・住吉のカジュアルバル／錦三丁目のオーセンティックバー",
             "spots": "栄・住吉側（ag名古屋・オリエンタルラウンジ名古屋栄）ならプリンセス大通り裏のダイニングバーや夜カフェ、錦側（オリエンタルラウンジ名古屋錦）なら錦三丁目の静かなバーが徒歩2〜4分です。",
@@ -136,6 +138,7 @@ CONCIERGE_AREAS = {
         "stores": [
             "OLG 福岡",
             "JIS FUKUOKA",
+            "ASOBIBAR 福岡 天神",
             "OLG 小倉",
             "OLG 熊本",
             "JIS KUMAMOTO",
@@ -247,10 +250,13 @@ _STORE_FINE_AREA_SLUG = {
     "JIS UMEDA": "umeda",
     "JIS CHAYAMACHI": "umeda",
     "YATAKOI UMEDA": "umeda",
+    "ASOBIBAR 梅田": "umeda",
+    "ASOBIBAR 茶屋町": "umeda",
     "OLG 天満": "umeda",
     "OLG 心斎橋": "namba",
     "OLG 難波": "namba",
     "JIS NAMBA": "namba",
+    "ASOBIBAR 心斎橋": "namba",
     "OLG 横浜": "yokohama",
     "OLG 大宮": "omiya",
     "JIS OMIYA": "omiya",
@@ -336,6 +342,15 @@ _LIVELY_PARTY_STORES = {
     "ALFA HIROSHIMA",
     "OLG ag金沢",
     "OLG ag沖縄",
+    "ASOBIBAR 新宿",
+    "ASOBIBAR 渋谷",
+    "ASOBIBAR 梅田",
+    "ASOBIBAR 茶屋町",
+    "ASOBIBAR 心斎橋",
+    "ASOBIBAR 名古屋 栄",
+    "ASOBIBAR 名古屋 住吉",
+    "ASOBIBAR 神戸 三宮",
+    "ASOBIBAR 福岡 天神",
 }
 
 
@@ -404,6 +419,8 @@ def _brand_display_label(sname: str, info: dict) -> str:
         return "相席CLOVERS"
     if brand == "ALFA":
         return "相席ラウンジALFA"
+    if brand == "ASOBIBAR":
+        return "ASOBIBAR（アソビバー）"
     return "オリエンタルラウンジ" if sname.startswith("OLG ") else (brand or "相席ラウンジ")
 
 
@@ -568,7 +585,7 @@ def _evaluate_store_candidate(
         if party_size == "solo":
             if solo_allowed_men:
                 raw_score += 16.0
-                if b_code in ("JIS", "ヤタコイ", "XIX", "CLOVERS", "ALFA"):
+                if b_code in ("JIS", "ASOBIBAR", "ヤタコイ", "XIX", "CLOVERS", "ALFA"):
                     raw_score += 4.0
             else:
                 raw_score -= 36.0

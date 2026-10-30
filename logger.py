@@ -8,6 +8,7 @@ import threading
 import requests
 import os
 import sys
+import json
 
 # Force IPv4 only on legacy Render environments where outbound IPv6 hangs;
 # NEVER block IPv6 on Fly.io (`FLY_APP_NAME`), where private 6PN (`.internal`, `.flycast`, `fly-*.upstash.io`) is IPv6-native!
@@ -225,6 +226,45 @@ def log_data(data):
             sheet.append_rows(rows_to_append)
             last_error = None
             print(f"Logged {len(rows_to_append)} rows to Google Sheets.")
+
+        # 3. Best-effort mirror of Plan A (POS wait/match telemetry) & Plan B (weather/arena context)
+        # into separate worksheet 'Moat Telemetry' without touching 'Lounge Monitor Data' 5-column layout.
+        try:
+            import sheets_store
+            import moat_intelligence
+            moat_header = [
+                'timestamp_jst', 'record_type', 'key_name',
+                'metric_1', 'metric_2', 'metric_3', 'detail_json'
+            ]
+            moat_rows = []
+            for item in data:
+                pos = item.get('pos_telemetry')
+                if isinstance(pos, dict) and pos.get('telemetry_type') == 'jis_pos':
+                    moat_rows.append([
+                        timestamp_str,
+                        'jis_pos',
+                        item.get('name', ''),
+                        int(pos.get('men_waiting_groups', 0) or 0),
+                        int(pos.get('matched_groups', 0) or 0),
+                        int(pos.get('men_total_groups', 0) or 0),
+                        json.dumps(pos, ensure_ascii=False),
+                    ])
+            ctx_snap = moat_intelligence.capture_external_context_snapshot(live_stores=data, allow_blocking=False)
+            for c in (ctx_snap or []):
+                if c.get('is_rainy') or c.get('active_arenas_json') not in ('[]', '', None):
+                    moat_rows.append([
+                        timestamp_str,
+                        'weather_event',
+                        c.get('city_key', ''),
+                        c.get('temp_c', 0.0),
+                        c.get('precip_mm', 0.0),
+                        c.get('condition_ja', ''),
+                        c.get('active_arenas_json', '[]'),
+                    ])
+            if moat_rows:
+                sheets_store.append_rows_async('Moat Telemetry', moat_header, moat_rows)
+        except Exception:
+            pass
 
     except Exception as e:
         # Reset cached client on error so next attempt re-authenticates cleanly

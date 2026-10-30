@@ -73,6 +73,7 @@ RESERVED_STATIC_SLUGS = {
     "cost-break-even",
     "rain-payday",
     "osaka-kita-vs-minami",
+    "crowd-rush-paradox",
 }
 
 COLUMN_AI_CLICHES = (
@@ -362,6 +363,7 @@ THEME_ARCHETYPES = {
 }
 
 EXISTING_STATIC_COLUMNS = [
+    {"slug": "crowd-rush-paradox", "path": "/guide/crowd-rush-paradox", "template": "guide_crowd_rush_paradox.html", "title": "金曜22時の「女性比60%」を見て向かうと3割が男余りに逆転する｜98万件ログが暴いた『群衆殺到パラドックス』と70%安全圏"},
     {"slug": "for-women", "path": "/for-women", "template": "for_women.html", "title": "「受付で30分放置…」をゼロにする女子のための相席ラウンジ完全ガイド｜待ち0店舗の見分け方＆席替え・退店術"},
     {"slug": "last-train-cliff", "path": "/guide/last-train-cliff", "template": "guide_last_train_cliff.html", "title": "23時20分の終電崖（魔の40分間）と23時を境に逆転する街別ハシゴ法則"},
     {"slug": "price-event-comparison", "path": "/guide/price-event-comparison", "template": "guide_price_comparison.html", "title": "全51店舗「料金・イベント・現在人数」比較ボード活用ガイド"},
@@ -2747,6 +2749,11 @@ def _convert_static_html_to_note(raw_html: str, meta: dict, site_url: str = "htt
 
 
 _STATIC_SLUG_ESSAY_LENSES = {
+    "crowd-rush-paradox": {
+        "essay_title_suffix": "みんなが同じ『正解の数字』を見た瞬間に、正解が壊れる夜のゲーム理論",
+        "hook": "金曜日の22時15分。居酒屋を出たばかりの路上でスマホを開き、『よし、女性比60%だ』と確かめてから歩き出したはずなのに、35分後に店の扉を開けると男性の待機列ができていた——あの狐につままれたような逆転現象には、明確な数理的理由がある。",
+        "mechanism": "経済学で『エル・ファロル・バー問題（マイノリティ・ゲーム）』と呼ばれる構造だ。公開情報がリアルタイムに行き渡る時代には、街中の合理的なプレイヤーが同じ『60%の好条件店』を同時に見つけ、誰にも相談せず一斉にそこへ向かう。19時〜20時台なら女性の新規流入（60分で平均+20名）がその殺到を吸収してくれるが、女性の1回転目入店が天井を打つ22時台（60分後女性増減-0.3名）には、移動中のタイムラグ30分のあいだに男性だけが+13.2名積み上がり、実に29.8%の店舗が到着時に男余りへ転落する。一方で『女性20名以上かつ70%超』の厚みがある店だけは97.7%が崩れない。『いまの数字』ではなく『他人の移動を含めた40分後の数字』を想像できるかどうかが、週末の夜の余裕を決める。",
+    },
     "last-train-cliff": {
         "essay_title_suffix": "23時20分の改札と、夜の街が二度呼吸する理由",
         "hook": "深夜23時15分を過ぎたあたりで、53店舗の人数モニターを眺めていると、まるで潮が引くように全国のグラフが一斉に揺れる瞬間がある。終電という名の見えないベルが、街全体の空気を一度リセットする時間だ。",

@@ -25,11 +25,13 @@ COOLDOWN_SEC = int(os.environ.get('ALERT_COOLDOWN_MIN', '60')) * 60
 EXPECTED_MIN_STORES = {
     'get_oriental_data': 30,
     'get_jis_data': 8,
+    'get_asobibar_data': 8,
 }
 
 SOURCE_LABELS = {
     'get_oriental_data': 'オリエンタルラウンジ/ag',
     'get_jis_data': 'JIS',
+    'get_asobibar_data': 'ASOBIBAR',
     'get_xix_data': 'XIX岡山',
     'get_alfa_data': 'ALFA広島',
     'get_yatakoi_data': 'ヤタコイ',

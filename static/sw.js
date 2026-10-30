@@ -1,5 +1,5 @@
-// Supersedes aiseki-navi-v47..v66 (purged automatically on activate)
-const CACHE_NAME = 'aiseki-navi-v67';
+// Supersedes aiseki-navi-v47..v67 (purged automatically on activate)
+const CACHE_NAME = 'aiseki-navi-v68';
 const SHELL_KEY = '/';
 const LIVE_FRESH_TTL_MS = 45000;
 const PREFETCH_DEDUP_MS = 25000;
@@ -20,7 +20,8 @@ const LIVE_SSR_EXACT = new Set([
   '/columns',
   '/oriental-lounge',
   '/ag',
-  '/jis'
+  '/jis',
+  '/asobibar'
 ]);
 const LIVE_SSR_PREFIXES = [
   '/price-comparison',
@@ -28,10 +29,10 @@ const LIVE_SSR_PREFIXES = [
   '/area/'
 ];
 const CORE_ASSETS = [
-  '/static/style.css?v=20261030_1',
+  '/static/style.css?v=20261030_3',
   '/static/calm.css?v=20',
   '/static/portal.css?v=9',
-  '/static/app.js?v=20261030_2',
+  '/static/app.js?v=20261030_3',
   '/static/affiliate_config.js?v=12',
   '/static/manifest.json?v=2'
 ];

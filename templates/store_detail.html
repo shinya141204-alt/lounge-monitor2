@@ -354,6 +354,80 @@
             white-space: nowrap;
             flex-shrink: 0;
         }
+        .moat-detail-panel {
+            margin: 14px 0 4px;
+            padding: 13px 14px;
+            border-radius: 12px;
+            background: var(--card-elevated);
+            border: 1px solid var(--border-subtle);
+        }
+        .moat-detail-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 10px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: var(--accent-text);
+        }
+        .moat-detail-weather {
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: var(--text-sub);
+            padding: 2px 8px;
+            border-radius: 999px;
+            border: 1px solid var(--border-subtle);
+        }
+        .moat-detail-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+        .moat-detail-card {
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-subtle);
+        }
+        body.theme-light .moat-detail-card {
+            background: rgba(28, 27, 24, 0.025);
+        }
+        .moat-detail-eyebrow {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 6px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: var(--text-sub);
+            margin-bottom: 4px;
+        }
+        .moat-detail-chip {
+            font-size: 0.66rem;
+            padding: 1px 6px;
+            border-radius: 4px;
+            border: 1px solid var(--border-subtle);
+            color: var(--accent-text);
+        }
+        .moat-detail-main {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--text-main);
+            line-height: 1.4;
+        }
+        .moat-detail-sub {
+            margin: 4px 0 0;
+            font-size: 0.75rem;
+            color: var(--text-sub);
+            line-height: 1.5;
+        }
+        @media (max-width: 620px) {
+            .moat-detail-grid {
+                grid-template-columns: 1fr;
+            }
+        }
         @media (max-width: 560px) {
             .live-hero-card,
             .section-card {
@@ -454,6 +528,46 @@
                 現在の<strong style="color: var(--text-main);">{{ store.seo_name }}</strong>は営業時間外（公式営業時間：{{ store.hours_label }}）です。{% if store_analytics and store_analytics.max_7d_women > 0 %}直近7日間の営業ピークでは<strong style="color: var(--text-main);">女性最大{{ store_analytics.max_7d_women }}名</strong>が来店しており、入りやすい狙い目は<strong style="color: var(--text-main);">{{ store_analytics.best_slot_name }}（平均女性比{{ store_analytics.best_slot_pct }}%）</strong>です。{% endif %}営業開始後は毎分自動でリアルタイム男女人数を更新します。
                 {% endif %}
             </p>
+
+            {% set we = store.wait_estimate %}
+            {% set fc = store.forecast_60m %}
+            {% set wb = store.weather_brief %}
+            {% set show_moat_panel = ('ソウル' not in store.name) and (store.total > 0 or (we and (we.est_men_wait_groups or 0) > 0)) %}
+            <div id="hero-moat-panel" class="moat-detail-panel"{% if not show_moat_panel %} style="display:none;"{% endif %}>
+                <div class="moat-detail-head">
+                    <span>🔮 60分後AI推移予測 ＆ リアル待ち時間解析</span>
+                    {% if wb and wb.city %}
+                    <span class="moat-detail-weather" id="hero-moat-weather">{% if wb.is_rainy %}☔{% else %}🌤️{% endif %} {{ wb.city }} {{ wb.condition }}{% if wb.temp_c is not none %} {{ '%.1f'|format(wb.temp_c) }}℃{% endif %}</span>
+                    {% else %}
+                    <span class="moat-detail-weather" id="hero-moat-weather" style="display:none;"></span>
+                    {% endif %}
+                </div>
+                <div class="moat-detail-grid" id="hero-moat-grid">
+                    <div class="moat-detail-card">
+                        <div class="moat-detail-eyebrow">
+                            <span>60分後のAI男女比予測</span>
+                            {% if fc and fc.pred_60m_wpct is not none %}
+                            <span class="moat-detail-chip">{% if (fc.pred_delta_pt or 0) > 0 %}+{{ fc.pred_delta_pt }}pt{% else %}{{ fc.pred_delta_pt or 0 }}pt{% endif %}</span>
+                            {% endif %}
+                        </div>
+                        {% if fc and fc.pred_60m_wpct is not none %}
+                        <div class="moat-detail-main">予測女性比 {{ fc.pred_60m_wpct }}% <span style="font-size:0.76rem; font-weight:500; color:var(--text-sub);">（女 約{{ fc.pred_60m_women }} : 男 約{{ fc.pred_60m_men }}｜逆転リスク {{ fc.flip_risk_pct }}%）</span></div>
+                        {% if fc.reason_short %}<p class="moat-detail-sub">{{ fc.reason_short }}{% if fc.alert_code in ['crowd_rush_warn', 'jackpot_hold', 'male_glut_lock'] %} <a href="/guide/crowd-rush-paradox" style="color:var(--accent-text); text-decoration:underline;">22時殺到パラドックス解説 ›</a>{% endif %}</p>{% endif %}
+                        {% else %}
+                        <div class="moat-detail-main">現在少人数（6名以上で自動予測）</div>
+                        <p class="moat-detail-sub">店内の男女合計が6名以上に達すると、98万件の実測データから60分後の男女比と男余り逆転確率を算出します。</p>
+                        {% endif %}
+                    </div>
+                    <div class="moat-detail-card">
+                        <div class="moat-detail-eyebrow">
+                            <span>リアル待ち時間・稼働解析</span>
+                            <span class="moat-detail-chip">{% if we and we.is_standing_free %}自由回遊スタンディング{% elif we and we.is_measured %}JIS公式POS実測{% else %}JIS実測学習AI推論{% endif %}</span>
+                        </div>
+                        <div class="moat-detail-main">{{ we.wait_badge_men if we else '稼働データ集計中' }}</div>
+                        {% if we and we.pos_summary_short %}<p class="moat-detail-sub">{{ we.pos_summary_short }}</p>{% endif %}
+                    </div>
+                </div>
+            </div>
 
             <div class="action-btns">
                 <a href="/" class="btn-primary">トップ画面で時間帯・曜日別グラフを見る ›</a>
@@ -1015,6 +1129,56 @@
                                 sumEl.innerHTML = ts + '時点の<strong style="color: var(--text-main);">' + seoName + '</strong>の店内状況は、<strong style="color: var(--text-main);">女性' + w + '名・男性' + m + '名（合計' + tot + '名）</strong>です。 ' + tail;
                             } else if (heroHours.isOpenNow) {
                                 sumEl.innerHTML = ts + '時点の<strong style="color: var(--text-main);">' + seoName + '</strong>は公式営業時間内（本日 ' + heroHours.todayHoursLabel + '）で、店内人数は<strong style="color: var(--text-main);"> 0 : 0（空席）</strong>です。入店が発生し次第、毎分自動でリアルタイム反映します。';
+                            }
+                        }
+
+                        const moatPanel = document.getElementById('hero-moat-panel');
+                        if (moatPanel && sname.indexOf('ソウル') === -1) {
+                            const we = live.wait_estimate || null;
+                            const fc = live.forecast_60m || null;
+                            const wb = live.weather_brief || null;
+                            const hasMoatActive = tot > 0 || Boolean(we && Number(we.est_men_wait_groups || 0) > 0);
+                            const esc = (v) => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+                            if (hasMoatActive && (we || fc)) {
+                                moatPanel.style.display = '';
+                                const wChip = document.getElementById('hero-moat-weather');
+                                if (wChip) {
+                                    if (wb && wb.city) {
+                                        wChip.style.display = '';
+                                        const tStr = (wb.temp_c !== null && wb.temp_c !== undefined) ? (' ' + Number(wb.temp_c).toFixed(1) + '℃') : '';
+                                        wChip.textContent = (wb.is_rainy ? '☔ ' : '🌤️ ') + wb.city + ' ' + (wb.condition || '') + tStr;
+                                    } else {
+                                        wChip.style.display = 'none';
+                                    }
+                                }
+                                const mGrid = document.getElementById('hero-moat-grid');
+                                if (mGrid) {
+                                    let fcHtml = '';
+                                    if (fc && fc.pred_60m_wpct !== null && fc.pred_60m_wpct !== undefined) {
+                                        const dp = Number(fc.pred_delta_pt || 0);
+                                        const dpTxt = dp > 0 ? ('+' + dp + 'pt') : (dp + 'pt');
+                                        const pLink = (fc.alert_code === 'crowd_rush_warn' || fc.alert_code === 'jackpot_hold' || fc.alert_code === 'male_glut_lock')
+                                            ? ' <a href="/guide/crowd-rush-paradox" style="color:var(--accent-text); text-decoration:underline;">22時殺到パラドックス解説 ›</a>' : '';
+                                        fcHtml = '<div class="moat-detail-card">' +
+                                            '<div class="moat-detail-eyebrow"><span>60分後のAI男女比予測</span><span class="moat-detail-chip">' + esc(dpTxt) + '</span></div>' +
+                                            '<div class="moat-detail-main">予測女性比 ' + Number(fc.pred_60m_wpct) + '% <span style="font-size:0.76rem; font-weight:500; color:var(--text-sub);">（女 約' + Number(fc.pred_60m_women || 0) + ' : 男 約' + Number(fc.pred_60m_men || 0) + '｜逆転リスク ' + Number(fc.flip_risk_pct || 0) + '%）</span></div>' +
+                                            (fc.reason_short ? '<p class="moat-detail-sub">' + esc(fc.reason_short) + pLink + '</p>' : '') +
+                                            '</div>';
+                                    } else {
+                                        fcHtml = '<div class="moat-detail-card"><div class="moat-detail-eyebrow"><span>60分後のAI男女比予測</span></div><div class="moat-detail-main">現在少人数（6名以上で自動予測）</div><p class="moat-detail-sub">店内の男女合計が6名以上に達すると、98万件の実測データから60分後の男女比と男余り逆転確率を算出します。</p></div>';
+                                    }
+                                    let srcTxt = 'JIS実測学習AI推論';
+                                    if (we && we.is_standing_free) srcTxt = '自由回遊スタンディング';
+                                    else if (we && we.is_measured) srcTxt = 'JIS公式POS実測';
+                                    const weHtml = '<div class="moat-detail-card">' +
+                                        '<div class="moat-detail-eyebrow"><span>リアル待ち時間・稼働解析</span><span class="moat-detail-chip">' + esc(srcTxt) + '</span></div>' +
+                                        '<div class="moat-detail-main">' + esc(we ? we.wait_badge_men : '稼働データ集計中') + '</div>' +
+                                        (we && we.pos_summary_short ? '<p class="moat-detail-sub">' + esc(we.pos_summary_short) + '</p>' : '') +
+                                        '</div>';
+                                    mGrid.innerHTML = fcHtml + weHtml;
+                                }
+                            } else {
+                                moatPanel.style.display = 'none';
                             }
                         }
                     }

@@ -531,6 +531,106 @@
    "lng": 132.464,
    "map_anchor": "相席ラウンジALFA 広島 流川",
    "area_slug": "chugoku-shikoku"
+  },
+  "ASOBIBAR 新宿": {
+   "brand": "ASOBIBAR",
+   "display_name": "新宿",
+   "area_label": "東京・新宿",
+   "region": "Kanto",
+   "lat": 35.6941,
+   "lng": 139.7016,
+   "map_anchor": "ASOBIBAR 新宿 歌舞伎町",
+   "area_slug": "shinjuku"
+  },
+  "ASOBIBAR 渋谷": {
+   "brand": "ASOBIBAR",
+   "display_name": "渋谷",
+   "area_label": "東京・渋谷",
+   "region": "Kanto",
+   "lat": 35.6601,
+   "lng": 139.6991,
+   "map_anchor": "ASOBIBAR 渋谷 宇田川町",
+   "area_slug": "shibuya"
+  },
+  "ASOBIBAR 恵比寿": {
+   "brand": "ASOBIBAR",
+   "display_name": "恵比寿",
+   "area_label": "東京・恵比寿",
+   "region": "Kanto",
+   "lat": 35.6472,
+   "lng": 139.7092,
+   "map_anchor": "ASOBIBAR 恵比寿 恵比寿西",
+   "area_slug": "shibuya"
+  },
+  "ASOBIBAR 梅田": {
+   "brand": "ASOBIBAR",
+   "display_name": "梅田",
+   "area_label": "大阪・梅田",
+   "region": "Kinki",
+   "lat": 34.7032,
+   "lng": 135.5021,
+   "map_anchor": "ASOBIBAR 梅田 阪急東通り",
+   "area_slug": "osaka"
+  },
+  "ASOBIBAR 茶屋町": {
+   "brand": "ASOBIBAR",
+   "display_name": "茶屋町",
+   "area_label": "大阪・梅田",
+   "region": "Kinki",
+   "lat": 34.7061,
+   "lng": 135.4994,
+   "map_anchor": "ASOBIBAR 茶屋町 梅田茶屋町",
+   "area_slug": "osaka"
+  },
+  "ASOBIBAR 心斎橋": {
+   "brand": "ASOBIBAR",
+   "display_name": "心斎橋",
+   "area_label": "大阪・心斎橋",
+   "region": "Kinki",
+   "lat": 34.6728,
+   "lng": 135.5008,
+   "map_anchor": "ASOBIBAR 心斎橋 心斎橋筋",
+   "area_slug": "osaka"
+  },
+  "ASOBIBAR 名古屋 栄": {
+   "brand": "ASOBIBAR",
+   "display_name": "名古屋 栄",
+   "area_label": "愛知・名古屋",
+   "region": "Chubu",
+   "lat": 35.1691,
+   "lng": 136.9068,
+   "map_anchor": "ASOBIBAR 名古屋栄 錦三丁目",
+   "area_slug": "nagoya"
+  },
+  "ASOBIBAR 名古屋 住吉": {
+   "brand": "ASOBIBAR",
+   "display_name": "名古屋 住吉",
+   "area_label": "愛知・名古屋",
+   "region": "Chubu",
+   "lat": 35.1668,
+   "lng": 136.9038,
+   "map_anchor": "ASOBIBAR 名古屋住吉 栄三丁目",
+   "area_slug": "nagoya"
+  },
+  "ASOBIBAR 神戸 三宮": {
+   "brand": "ASOBIBAR",
+   "display_name": "神戸 三宮",
+   "area_label": "兵庫・神戸",
+   "region": "Kinki",
+   "lat": 34.6941,
+   "lng": 135.1926,
+   "map_anchor": "ASOBIBAR 神戸三宮 生田ロード",
+   "area_slug": "osaka"
+  },
+  "ASOBIBAR 福岡 天神": {
+   "brand": "ASOBIBAR",
+   "display_name": "福岡 天神",
+   "area_label": "福岡・天神",
+   "region": "Kyushu",
+   "lat": 33.5889,
+   "lng": 130.3978,
+   "map_anchor": "ASOBIBAR 福岡天神 大名",
+   "area_slug": "fukuoka"
   }
  }
 }

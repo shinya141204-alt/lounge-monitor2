@@ -103,6 +103,16 @@
             'JIS FUKUOKA': 'jis-fukuoka',
             'JIS KUMAMOTO': 'jis-kumamoto',
             'JIS MATSUYAMA': 'jis-matsuyama',
+            'ASOBIBAR 新宿': 'asobibar-shinjuku',
+            'ASOBIBAR 渋谷': 'asobibar-shibuya',
+            'ASOBIBAR 恵比寿': 'asobibar-ebisu',
+            'ASOBIBAR 梅田': 'asobibar-umeda',
+            'ASOBIBAR 茶屋町': 'asobibar-chayamachi',
+            'ASOBIBAR 心斎橋': 'asobibar-shinsaibashi',
+            'ASOBIBAR 名古屋 栄': 'asobibar-nagoya-sakae',
+            'ASOBIBAR 名古屋 住吉': 'asobibar-nagoya-sumiyoshi',
+            'ASOBIBAR 神戸 三宮': 'asobibar-kobe-sannomiya',
+            'ASOBIBAR 福岡 天神': 'asobibar-fukuoka-tenjin',
             'XIX OKAYAMA': 'xix-okayama',
             'YATAKOI UMEDA': 'yatakoi-umeda',
             'CLOVERS HIROSHIMA': 'clovers-hiroshima',
@@ -133,7 +143,7 @@
         }
         (function loadStoreMaster() {
             const doFetchMaster = () => {
-                fetch('/static/store_master.json?v=20261023')
+                fetch('/static/store_master.json?v=20261030')
                     .then(r => r.ok ? r.json() : null)
                     .then(d => {
                         if (d && d.stores) {
@@ -1043,6 +1053,7 @@
                 momTag: item.querySelector('.momentum-tag'),
                 storeNameEl: item.querySelector('.store-name'),
                 microEl: item.querySelector('.store-micro-metrics'),
+                moatRowEl: item.querySelector('.moat-signals-row'),
                 ladiesCountEl: item.querySelector('.stat.ladies .count'),
                 menCountEl: item.querySelector('.stat.men .count'),
                 ladiesDiffEl: item.querySelector('.stat.ladies .stat-diff'),
@@ -1463,6 +1474,10 @@
                 code = 'JIS';
                 cls = 'brand-jis';
                 stripped = name.replace(/^JIS\s+/i, '');
+            } else if (rawSource === 'ASOBIBAR' || name.startsWith('ASOBIBAR ')) {
+                code = 'ASOBIBAR';
+                cls = 'brand-asobibar';
+                stripped = name.replace(/^ASOBIBAR\s+/i, '');
             } else if (rawSource === 'XIX' || name.startsWith('XIX ')) {
                 code = 'XIX';
                 cls = 'brand-xix';
@@ -1661,6 +1676,34 @@
                 }
             }
 
+            const moatRowEl = refs.moatRowEl;
+            if (moatRowEl) {
+                const isWomenView = !IS_STAFF && currentAudience === 'women';
+                const we = store.wait_estimate || null;
+                const fc = store.forecast_60m || null;
+                const hasActiveGuests = ((store.women || 0) + (store.men || 0)) > 0 || Boolean(we && Number(we.est_men_wait_groups || 0) > 0);
+                const wBadge = (we && hasActiveGuests) ? (isWomenView ? we.wait_badge_women : we.wait_badge_men) : '';
+                const fBadge = fc ? (isWomenView ? fc.badge_women : fc.badge_men) : '';
+                if (wBadge || fBadge) {
+                    const pills = [];
+                    if (wBadge) {
+                        const wTone = escapeHtml(we.wait_tone || 'neutral');
+                        const wTitle = escapeHtml(we.pos_summary_short || '');
+                        pills.push(`<span class="moat-pill tone-${wTone}" title="${wTitle}">${escapeHtml(wBadge)}</span>`);
+                    }
+                    if (fBadge) {
+                        const fTone = escapeHtml(fc.badge_tone || 'neutral');
+                        const fTitle = escapeHtml(fc.reason_short || '');
+                        pills.push(`<span class="moat-pill tone-${fTone}" title="${fTitle}">${escapeHtml(fBadge)}</span>`);
+                    }
+                    moatRowEl.innerHTML = pills.join('');
+                    moatRowEl.classList.remove('hidden');
+                } else {
+                    moatRowEl.classList.add('hidden');
+                    moatRowEl.textContent = '';
+                }
+            }
+
             const ladiesCount = store.women || 0;
             const menCount = store.men || 0;
             const totalCount = ladiesCount + menCount;
@@ -1785,7 +1828,9 @@
             const stores = (data && data.ranking) || [];
             const storeSig = stores.map(s => {
                 const v = s.votes || {};
-                return `${s.name}:${s.women}:${s.men}:${s.women_diff || 0}:${s.men_diff || 0}:${s.usual_w_diff ?? ''}:${s.usual_m_diff ?? ''}:${v.smooth || 0}:${v.waiting || 0}`;
+                const wb = (s.wait_estimate && s.wait_estimate.wait_badge_men) || '';
+                const fb = (s.forecast_60m && s.forecast_60m.badge_men) || '';
+                return `${s.name}:${s.women}:${s.men}:${s.women_diff || 0}:${s.men_diff || 0}:${s.usual_w_diff ?? ''}:${s.usual_m_diff ?? ''}:${v.smooth || 0}:${v.waiting || 0}:${wb}:${fb}`;
             }).join('|');
             const locSig = userLocation ? `${userLocation.lat.toFixed(3)},${userLocation.lng.toFixed(3)}` : '';
             const nearbyMasterSig = (currentSort === 'nearby' && window.STORE_MASTER) ? Object.keys(window.STORE_MASTER).length : 0;
@@ -2013,6 +2058,12 @@
             if (data.timestamp) _lastAnimatedTimestamp = data.timestamp;
             _allowDeltaTickerThisPass = false;
             _didInitialLiveIntro = true;
+            if (typeof currentModalStoreName !== 'undefined' && currentModalStoreName) {
+                const openMdl = document.getElementById('analysis-modal');
+                if (openMdl && !openMdl.classList.contains('hidden')) {
+                    renderModalMoatForecast(currentModalStoreName);
+                }
+            }
         }
 
         // --- High-Speed Affiliate & Promotion Master Integration ---
@@ -2089,6 +2140,117 @@
                 slot.classList.add('hidden');
                 slot.innerHTML = '';
             }
+        }
+
+        function renderModalMoatForecast(storeName) {
+            const box = document.getElementById('modal-moat-forecast-box');
+            if (!box) return;
+            if (!storeName || String(storeName).indexOf('ソウル') !== -1) {
+                box.classList.add('hidden');
+                box.innerHTML = '';
+                return;
+            }
+            const ranking = (window.lastData && Array.isArray(window.lastData.ranking)) ? window.lastData.ranking : [];
+            const st = ranking.find(s => s && s.name === storeName);
+            if (!st) {
+                box.classList.add('hidden');
+                box.innerHTML = '';
+                return;
+            }
+            const we = st.wait_estimate || null;
+            const fc = st.forecast_60m || null;
+            const wb = st.weather_brief || null;
+            const wNow = Number(st.women || 0);
+            const mNow = Number(st.men || 0);
+            const totNow = wNow + mNow;
+            const hasActive = totNow > 0 || Boolean(we && Number(we.est_men_wait_groups || 0) > 0);
+            if ((!we && !fc) || (!hasActive && !st.is_open_now)) {
+                box.classList.add('hidden');
+                box.innerHTML = '';
+                return;
+            }
+
+            const isWomenView = !IS_STAFF && currentAudience === 'women';
+            let weatherHtml = '';
+            if (wb && wb.city) {
+                const wIcon = wb.is_rainy ? '☔' : '🌤️';
+                const tempTxt = (wb.temp_c !== null && wb.temp_c !== undefined) ? ` ${Number(wb.temp_c).toFixed(1)}℃` : '';
+                weatherHtml = `<span class="moat-weather-chip${wb.is_rainy ? ' is-rainy' : ''}">${wIcon} ${escapeHtml(wb.city)} ${escapeHtml(wb.condition || '')}${escapeHtml(tempTxt)}</span>`;
+            }
+
+            let fcCardHtml = '';
+            if (fc && fc.pred_60m_wpct !== null && fc.pred_60m_wpct !== undefined) {
+                const fTone = escapeHtml(fc.badge_tone || 'neutral');
+                const dPt = Number(fc.pred_delta_pt || 0);
+                const dLabel = dPt > 0 ? `+${dPt}pt` : `${dPt}pt`;
+                const subHeadline = isWomenView
+                    ? escapeHtml(fc.badge_women || '🟢 1時間後もスムーズ案内圏')
+                    : `男余り逆転リスク <strong>${Number(fc.flip_risk_pct || 0)}%</strong>${fc.badge_men ? ' ｜ ' + escapeHtml(fc.badge_men) : ''}`;
+                const showParadoxLink = !IS_STAFF && (fc.alert_code === 'crowd_rush_warn' || fc.alert_code === 'jackpot_hold' || fc.alert_code === 'male_glut_lock');
+                const linkHtml = showParadoxLink
+                    ? `<a href="/guide/crowd-rush-paradox" class="moat-modal-link">📊 なぜ22時台は到着時に逆転しやすいのか？（98万件検証） ›</a>`
+                    : '';
+                fcCardHtml = `
+                    <div class="moat-modal-card tone-${fTone}">
+                        <div class="moat-card-eyebrow">
+                            <span>60分後のAI推移予測</span>
+                            <span class="moat-delta-chip">${escapeHtml(dLabel)}</span>
+                        </div>
+                        <div class="moat-card-primary">
+                            予測女性比 <strong>${Number(fc.pred_60m_wpct)}%</strong>
+                            <span class="moat-card-counts">（女 約${Number(fc.pred_60m_women || 0)} : 男 約${Number(fc.pred_60m_men || 0)}）</span>
+                        </div>
+                        <div class="moat-card-status">${subHeadline}</div>
+                        ${fc.reason_short ? `<p class="moat-card-desc">${escapeHtml(fc.reason_short)}</p>` : ''}
+                        ${linkHtml}
+                    </div>
+                `;
+            } else {
+                fcCardHtml = `
+                    <div class="moat-modal-card tone-neutral">
+                        <div class="moat-card-eyebrow"><span>60分後のAI推移予測</span></div>
+                        <div class="moat-card-primary">現在少人数（合計${totNow}名）</div>
+                        <p class="moat-card-desc">店内の男女合計が6名以上に達すると、98万件の実測遷移データから60分後の男女比・逆転確率を自動予測します。</p>
+                    </div>
+                `;
+            }
+
+            let waitCardHtml = '';
+            if (we) {
+                const wTone = escapeHtml(we.wait_tone || 'neutral');
+                let srcLabel = 'JIS実測学習AI推論';
+                let srcCls = 'is-inferred';
+                if (we.is_standing_free) {
+                    srcLabel = '自由回遊スタンディング';
+                    srcCls = 'is-standing';
+                } else if (we.is_measured) {
+                    srcLabel = 'JIS公式POS実測';
+                    srcCls = 'is-measured';
+                }
+                const mainBadge = isWomenView ? (we.wait_badge_women || '待ち時間情報なし') : (we.wait_badge_men || '待ち時間情報なし');
+                waitCardHtml = `
+                    <div class="moat-modal-card tone-${wTone}">
+                        <div class="moat-card-eyebrow">
+                            <span>リアル待ち時間・稼働解析</span>
+                            <span class="moat-source-chip ${srcCls}">${srcLabel}</span>
+                        </div>
+                        <div class="moat-card-primary">${escapeHtml(mainBadge)}</div>
+                        ${we.pos_summary_short ? `<p class="moat-card-desc">${escapeHtml(we.pos_summary_short)}</p>` : ''}
+                    </div>
+                `;
+            }
+
+            box.innerHTML = `
+                <div class="moat-modal-head">
+                    <span class="moat-modal-title">🔮 60分後AI予測 ＆ リアル待ち時間解析</span>
+                    ${weatherHtml}
+                </div>
+                <div class="moat-modal-grid">
+                    ${fcCardHtml}
+                    ${waitCardHtml}
+                </div>
+            `;
+            box.classList.remove('hidden');
         }
 
         function openGuideModal(initialCategory = 'all') {
@@ -2281,6 +2443,7 @@
             if (brandCode === 'ag' || /^ag\s/i.test(name)) return 'https://ag-ree.jp/';
             if (brandCode === 'OLG') return 'https://oriental-lounge.com/';
             if (brandCode === 'JIS') return 'https://jis.bar/';
+            if (brandCode === 'ASOBIBAR') return 'https://asobibar.net/';
             if (brandCode === 'XIX') return 'https://xix-thelounge.com/';
             if (brandCode === 'ALFA') return 'https://aiseki-hiroshima.com/';
             if (brandCode === 'ヤタコイ') return 'https://yatakoi.com/';
@@ -2711,6 +2874,7 @@
             const topOfficialLinkEl = document.getElementById('modal-top-official-link');
             if (topOfficialLinkEl) topOfficialLinkEl.href = officialUrl;
             renderModalPrSlot(storeName);
+            renderModalMoatForecast(storeName);
             if (shouldShowEvents() && !_eventsFetched) {
                 loadEvents().then(() => {
                     if (currentModalStoreName === storeName) renderModalEvents(storeName);
@@ -4061,7 +4225,7 @@
             const prefetched = Object.create(null);
 
             function isLiveHtmlHref(href) {
-                return href === '/' || href.indexOf('/for-women') === 0 || href.indexOf('/price-comparison') === 0 || href.indexOf('/areas') === 0 || href.indexOf('/area/') === 0 || href.indexOf('/store/') === 0;
+                return href === '/' || href === '/asobibar' || href.indexOf('/for-women') === 0 || href.indexOf('/price-comparison') === 0 || href.indexOf('/areas') === 0 || href.indexOf('/area/') === 0 || href.indexOf('/store/') === 0;
             }
 
             function prefetchPage(href) {

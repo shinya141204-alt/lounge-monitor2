@@ -79,6 +79,16 @@ STORE_SLUGS = {
     "YATAKOI UMEDA": "yatakoi-umeda",
     "CLOVERS HIROSHIMA": "clovers-hiroshima",
     "ALFA HIROSHIMA": "alfa-hiroshima",
+    "ASOBIBAR 新宿": "asobibar-shinjuku",
+    "ASOBIBAR 渋谷": "asobibar-shibuya",
+    "ASOBIBAR 恵比寿": "asobibar-ebisu",
+    "ASOBIBAR 梅田": "asobibar-umeda",
+    "ASOBIBAR 茶屋町": "asobibar-chayamachi",
+    "ASOBIBAR 心斎橋": "asobibar-shinsaibashi",
+    "ASOBIBAR 名古屋 栄": "asobibar-nagoya-sakae",
+    "ASOBIBAR 名古屋 住吉": "asobibar-nagoya-sumiyoshi",
+    "ASOBIBAR 神戸 三宮": "asobibar-kobe-sannomiya",
+    "ASOBIBAR 福岡 天神": "asobibar-fukuoka-tenjin",
 }
 
 _SLUG_TO_STORE = {v: k for k, v in STORE_SLUGS.items()}
@@ -155,6 +165,8 @@ def seo_name(store_name: str) -> str:
             return f"相席CLOVERS {disp}"
         elif brand == "ALFA":
             return f"相席ラウンジALFA {disp}"
+        elif brand == "ASOBIBAR":
+            return f"ASOBIBAR（アソビバー）{disp}"
         return f"{brand} {disp}".strip()
 
     # マスタ未登録時のフォールバック変換
@@ -165,6 +177,8 @@ def seo_name(store_name: str) -> str:
         return "オリエンタルラウンジ " + s[len("OLG "):].strip()
     if s.startswith("JIS "):
         return "JIS（ジス）" + s[len("JIS "):].strip()
+    if s.startswith("ASOBIBAR "):
+        return "ASOBIBAR（アソビバー）" + s[len("ASOBIBAR "):].strip()
     return s
 
 
@@ -202,7 +216,7 @@ def store_by_slug(slug: str, live_stores=None) -> str:
 
 
 def brand_key_of(store_name: str) -> str:
-    """店舗のブランド識別子（'oriental-lounge' / 'ag' / 'jis' / 'other'）を返す。"""
+    """店舗のブランド識別子（'oriental-lounge' / 'ag' / 'jis' / 'asobibar' / 'other'）を返す。"""
     info = get(store_name)
     if info:
         b = info.get("brand", "")
@@ -212,6 +226,8 @@ def brand_key_of(store_name: str) -> str:
             return "ag"
         if b == "JIS":
             return "jis"
+        if b == "ASOBIBAR":
+            return "asobibar"
         return "other"
     if store_name.startswith("OLG ag"):
         return "ag"
@@ -219,4 +235,6 @@ def brand_key_of(store_name: str) -> str:
         return "oriental-lounge"
     if store_name.startswith("JIS "):
         return "jis"
+    if store_name.startswith("ASOBIBAR "):
+        return "asobibar"
     return "other"

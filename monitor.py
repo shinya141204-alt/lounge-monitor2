@@ -35,6 +35,7 @@ JIS_URL = "https://jis.bar/"
 XIX_URL = "https://aiseki-okayama.conohawing.com/aiseki/parts/get_cs_info.php"
 ALFA_URL = "https://aiseki-hiroshima.com/wp/display.php"
 YATAKOI_URL = "https://asobibar-823d1.firebaseio.com/shops/chayamachi.json"
+ASOBIBAR_URL = "https://asobibar-823d1.firebaseio.com/shops.json"
 
 _HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
@@ -56,7 +57,7 @@ _olg_cache = {
 _http_tls = threading.local()
 _FETCHER_SESSIONS = {}
 _fetcher_session_lock = threading.Lock()
-_FETCH_EXECUTOR = ThreadPoolExecutor(max_workers=6, thread_name_prefix='scraper')
+_FETCH_EXECUTOR = ThreadPoolExecutor(max_workers=8, thread_name_prefix='scraper')
 
 _doh_lock = threading.Lock()
 _doh_ip_cache = {'ips': [], 'expires_at': 0.0}
@@ -377,14 +378,34 @@ def get_jis_data():
         data = json.loads(match.group(1))
         for store_key, store_info in data.items():
             if 'shared' in store_info:
-                men_count = store_info['shared'].get('mens_customer_num', 0)
-                women_count = store_info['shared'].get('ladys_customer_num', 0)
+                sh = store_info['shared'] or {}
+                men_count = int(sh.get('mens_customer_num', 0) or 0)
+                women_count = int(sh.get('ladys_customer_num', 0) or 0)
                 name = name_map.get(store_key, store_key.upper())
+                pos_telemetry = {
+                    'telemetry_type': 'jis_pos',
+                    'men_total_guests': men_count,
+                    'women_total_guests': women_count,
+                    'men_total_groups': int(sh.get('mens_group_num', 0) or 0),
+                    'women_total_groups': int(sh.get('ladys_group_num', 0) or 0),
+                    'matched_groups': int(sh.get('mens_share_num', 0) or 0),
+                    'women_matched_groups': int(sh.get('ladys_share_num', 0) or 0),
+                    'men_matched_guests': int(sh.get('mens_share_customer_num', 0) or 0),
+                    'women_matched_guests': int(sh.get('ladys_share_customer_num', 0) or 0),
+                    'men_waiting_groups': int(sh.get('mens_waiting_num', 0) or 0) + int(sh.get('mens_waiting_uncounted_num', 0) or 0),
+                    'men_waiting_guests': int(sh.get('mens_waiting_customer_num', 0) or 0) + int(sh.get('mens_waiting_uncounted_customer_num', 0) or 0),
+                    'women_waiting_groups': int(sh.get('ladys_waiting_num', 0) or 0) + int(sh.get('ladys_waiting_uncounted_num', 0) or 0),
+                    'women_waiting_guests': int(sh.get('ladys_waiting_customer_num', 0) or 0) + int(sh.get('ladys_waiting_uncounted_customer_num', 0) or 0),
+                    'standing_guests': int(sh.get('mens_st_customer_num', 0) or 0) + int(sh.get('ladys_st_customer_num', 0) or 0),
+                    'vip_guests': int(sh.get('vip_mens_customer_num', 0) or 0) + int(sh.get('vip_ladys_customer_num', 0) or 0),
+                    'ex_guests': int(sh.get('ex_mens_customer_num', 0) or 0) + int(sh.get('ex_ladys_customer_num', 0) or 0),
+                }
                 store_data.append({
                     'name': f"JIS {name}",
                     'men': men_count,
                     'women': women_count,
-                    'source': 'jis'
+                    'source': 'jis',
+                    'pos_telemetry': pos_telemetry,
                 })
     except json.JSONDecodeError as e:
         logging.error(f"Error parsing JIS JSON: {e}")
@@ -471,6 +492,76 @@ def get_yatakoi_data(now_jst=None):
         logging.error(f"Error fetching Yatakoi data: {e}")
     return []
 
+
+def get_asobibar_data(now_jst=None):
+    """Fetch all 10 active ASOBIBAR stores from official Firebase realtime DB (`shops.json`).
+    Note: `chayamachi` uses `males`/`females` strictly for ASOBIBAR 茶屋町 without double-counting `ykMales`/`ykFemales`.
+    Outside official operating hours, stale manual counts are zeroed out just like YATAKOI.
+    """
+    asobibar_map = [
+        ('shinjuku', 'ASOBIBAR 新宿'),
+        ('shibuya', 'ASOBIBAR 渋谷'),
+        ('ebisu', 'ASOBIBAR 恵比寿'),
+        ('umeda', 'ASOBIBAR 梅田'),
+        ('chayamachi', 'ASOBIBAR 茶屋町'),
+        ('shinsaibashi', 'ASOBIBAR 心斎橋'),
+        ('sakae', 'ASOBIBAR 名古屋 栄'),
+        ('sumiyoshi', 'ASOBIBAR 名古屋 住吉'),
+        ('sannomiya', 'ASOBIBAR 神戸 三宮'),
+        ('fukuokatenjin', 'ASOBIBAR 福岡 天神'),
+    ]
+    try:
+        response = _get_http_session('asobibar').get(ASOBIBAR_URL, headers=_HEADERS, timeout=(3, 7))
+        response.raise_for_status()
+        payload = response.json()
+        if not isinstance(payload, dict):
+            return []
+
+        try:
+            import store_hours as _sh_mod
+        except Exception:
+            _sh_mod = None
+
+        out = []
+        for fb_key, canon_name in asobibar_map:
+            node = payload.get(fb_key)
+            if not isinstance(node, dict):
+                continue
+            scheduled_open = True
+            if _sh_mod is not None:
+                try:
+                    h_st = _sh_mod.get_business_hours_status(canon_name, now_jst=now_jst, total_guests=0)
+                    scheduled_open = bool(h_st.get('scheduled_open', True))
+                except Exception:
+                    scheduled_open = True
+
+            if scheduled_open:
+                men_cnt = max(0, int(node.get('males', 0) or 0))
+                women_cnt = max(0, int(node.get('females', 0) or 0))
+                vip_cnt = max(0, int(node.get('vip', 0) or 0))
+            else:
+                men_cnt = 0
+                women_cnt = 0
+                vip_cnt = 0
+
+            out.append({
+                'name': canon_name,
+                'men': men_cnt,
+                'women': women_cnt,
+                'source': 'asobibar',
+                'pos_telemetry': {
+                    'telemetry_type': 'asobibar_pos',
+                    'vip_guests': vip_cnt,
+                    'seats': max(0, int(node.get('seats', 0) or 0)),
+                    'amusement': max(0, int(node.get('amusement', 0) or 0)),
+                    'fun': max(0, int(node.get('fun', 0) or 0)),
+                },
+            })
+        return out
+    except Exception as e:
+        logging.error(f"Error fetching ASOBIBAR data: {e}")
+    return []
+
 def get_clovers_data():
     """Scrape 相席CLOVERS (Hiroshima) from bar-clovers.com"""
     try:
@@ -533,6 +624,7 @@ def get_all_data():
     fetchers = [
         get_oriental_data,
         get_jis_data,
+        get_asobibar_data,
         get_xix_data,
         get_alfa_data,
         get_yatakoi_data,

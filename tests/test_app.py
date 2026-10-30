@@ -423,6 +423,7 @@ class AnalyticsTests(unittest.TestCase):
             '/guide/male-lead-mechanics',
             '/guide/price-event-comparison',
             '/guide/last-train-cliff',
+            '/guide/crowd-rush-paradox',
         ]
         for path in routes:
             with self.subTest(path=path):
@@ -652,6 +653,7 @@ class ScheduledArticlesTests(unittest.TestCase):
             '/guide/local-vs-urban',
             '/guide/cost-break-even',
             '/guide/rain-payday',
+            '/guide/crowd-rush-paradox',
             '/grooming',
         ]
         with mock.patch.object(scheduled_articles, 'now_jst_naive', return_value=all_dt):
@@ -854,7 +856,7 @@ class GrowthFeaturesTests(unittest.TestCase):
             self.assertIn('330円 / 10分', html)
             self.assertIn('平日990円 / 金土1,500円', html)  # OLG 恵比寿 24:00~Close rate
             self.assertIn('2名以上必須（男性1名入店不可）', html)
-            self.assertIn('全国全51店舗の「4時間帯別相席料金・単独（待機）料金・1名入店可否」完全一覧表', html)
+            self.assertIn('全国全61店舗の「4時間帯別相席料金・単独（待機）料金・1名入店可否」完全一覧表', html)
             self.assertIn('initLivePriceComparisonSync', html)
             self.assertNotIn('0円〜220円', html)
             self.assertNotIn('ロス0円', html)
@@ -864,17 +866,17 @@ class GrowthFeaturesTests(unittest.TestCase):
             for block in ld_blocks:
                 json.loads(block)
 
-            # Verify all 51 domestic stores in store_master match STORE_PRICE_TABLE 1-to-1 with accurate solo/wait & 4-slot rules
+            # Verify all 61 domestic stores in store_master match STORE_PRICE_TABLE 1-to-1 with accurate solo/wait & 4-slot rules
             import price_comparison
             domestic_master = {k for k, v in store_master.load().items() if v.get('region') != 'Korea'}
             self.assertEqual(set(price_comparison.STORE_PRICE_TABLE.keys()), domestic_master)
-            self.assertEqual(len(domestic_master), 51)
+            self.assertEqual(len(domestic_master), 61)
             for sname in domestic_master:
                 prof = price_comparison.get_store_price_profile(sname)
                 self.assertNotIn('0円〜', prof['wait_fee_str'], f"{sname} has ambiguous 0円〜 wait_fee_str")
                 self.assertNotIn('ロス0円', prof['verdict_badge'])
                 if prof.get('is_flat_rate'):
-                    self.assertEqual(sname, 'YATAKOI UMEDA')
+                    self.assertTrue(sname == 'YATAKOI UMEDA' or sname.startswith('ASOBIBAR '), f"Unexpected flat-rate store: {sname}")
                     self.assertFalse(prof['has_wait_fee'])
                 else:
                     self.assertGreater(prof['wait_10m_yen'], 0, f"{sname} wait_10m_yen must be > 0")
@@ -1136,6 +1138,7 @@ class GrowthFeaturesTests(unittest.TestCase):
             '/guide/male-lead-mechanics',
             '/guide/price-event-comparison',
             '/guide/last-train-cliff',
+            '/guide/crowd-rush-paradox',
         ]
         for p in public_paths:
             r = self.client.get(p)
@@ -1143,7 +1146,7 @@ class GrowthFeaturesTests(unittest.TestCase):
             body = r.data.decode('utf-8')
             self.assertIn('/static/calm.css?v=20', body, f"{p} missing /static/calm.css?v=20")
             if '/static/style.css' in body:
-                self.assertIn('/static/style.css?v=20261030_1', body, f"{p} missing /static/style.css?v=20261030_1")
+                self.assertRegex(body, r'/static/style\.css\?v=20261030_\d+', f"{p} missing versioned /static/style.css")
             self.assertIn('公式ホームページ', body, f"{p} missing official website verification notice")
 
         # Also check scheduled preview templates via staff session
@@ -1156,7 +1159,7 @@ class GrowthFeaturesTests(unittest.TestCase):
                 sbody = sr.data.decode('utf-8')
                 self.assertIn('/static/calm.css?v=20', sbody, f"{sp} missing /static/calm.css?v=20")
                 if '/static/style.css' in sbody:
-                    self.assertIn('/static/style.css?v=20261030_1', sbody, f"{sp} missing /static/style.css?v=20261030_1")
+                    self.assertRegex(sbody, r'/static/style\.css\?v=20261030_\d+', f"{sp} missing versioned /static/style.css")
                 self.assertIn('公式ホームページ', sbody, f"{sp} missing official website verification notice")
         finally:
             with self.client.session_transaction() as s:
@@ -1412,8 +1415,8 @@ class GrowthFeaturesTests(unittest.TestCase):
         clean_rep = data_audit.run_data_audit(live_stores=[], all_events=[], now_jst=datetime.datetime(2026, 10, 28, 21, 0, tzinfo=jst))
         self.assertEqual(clean_rep['status'], 'ok')
         self.assertEqual(clean_rep['summary']['issue_count'], 0)
-        self.assertEqual(clean_rep['summary']['hours_registered'], 53)
-        self.assertEqual(clean_rep['summary']['price_registered'], 51)
+        self.assertEqual(clean_rep['summary']['hours_registered'], 63)
+        self.assertEqual(clean_rep['summary']['price_registered'], 61)
 
         # Simulate off-hours guest drift (14:00 Wednesday when OLG 新宿 is closed, but 6 guests detected)
         drift_rep = data_audit.run_data_audit(
@@ -1749,7 +1752,7 @@ class FullAuditRegressionTests(unittest.TestCase):
         sw_resp = self.client.get('/sw.js')
         try:
             sw_txt = sw_resp.data.decode('utf-8')
-            self.assertIn("CACHE_NAME = 'aiseki-navi-v67'", sw_txt)
+            self.assertIn("CACHE_NAME = 'aiseki-navi-v68'", sw_txt)
             self.assertIn("event.waitUntil", sw_txt)
         finally:
             sw_resp.close()
@@ -3564,11 +3567,11 @@ class WomenFeaturesACDETests(unittest.TestCase):
             self.assertIn('女性 48名 / 男性 22名', llms_txt)
             self.assertIn('https://aiseki-navi.com/llms-full.txt', llms_txt)
 
-            # 3. /llms-full.txt includes complete 53-store directory + FAQ
+            # 3. /llms-full.txt includes complete 61-store domestic directory + FAQ
             r_full = self.client.get('/llms-full.txt')
             self.assertEqual(r_full.status_code, 200)
             full_txt = r_full.get_data(as_text=True)
-            self.assertIn('全国53店舗 リアルタイム人数＆個別データページ完全一覧', full_txt)
+            self.assertIn('国内61店舗 リアルタイム人数＆個別データページ完全一覧', full_txt)
             self.assertIn('よくある質問と回答 (FAQ for AI Assistants)', full_txt)
 
             # 4. Homepage <head> exposes alternate markdown links & Dataset/FAQPage JSON-LD
@@ -4350,8 +4353,8 @@ class AIUltraGrowthSuiteTests(unittest.TestCase):
         app_module.clear_fast_http_caches()
         home_html = self.client.get('/').data.decode('utf-8')
         self.assertIn('calm.css?v=20', home_html)
-        self.assertIn('app.js?v=20261030_2', home_html)
-        self.assertIn('/sw.js?v=67', home_html)
+        self.assertIn('app.js?v=20261030_3', home_html)
+        self.assertIn('/sw.js?v=68', home_html)
 
         # 2. TikTok 9:16 Safe-Zone Reel Templates & Captions (zero bare 'オリエンタル' or 'OLG')
         sample_stores = [
@@ -4467,6 +4470,188 @@ class AIUltraGrowthSuiteTests(unittest.TestCase):
             with self.client.session_transaction() as s:
                 s.clear()
             app_module.clear_fast_http_caches()
+
+
+class MoatIntelligenceAndAsobibarTests(unittest.TestCase):
+    """Verify Plan A (JIS POS + ASOBIBAR 10 stores), Plan B (weather/arena context), 60m forecast, JIS-learned wait inference, and crowd-rush-paradox column."""
+
+    def setUp(self):
+        app_module.app.config['TESTING'] = True
+        self.client = app_module.app.test_client()
+        with app_module.data_lock:
+            self._saved_latest_data = copy.deepcopy(app_module.latest_data)
+
+    def tearDown(self):
+        with app_module.data_lock:
+            app_module.latest_data.clear()
+            app_module.latest_data.update(self._saved_latest_data)
+        app_module.clear_fast_http_caches()
+
+    def test_asobibar_10_stores_and_off_hours_zeroing(self):
+        import monitor
+        jst = datetime.timezone(datetime.timedelta(hours=9))
+        fake_fb = {
+            'shinjuku': {'males': 24, 'females': 28, 'vip': 2, 'seats': 14},
+            'shibuya': {'males': 18, 'females': 22, 'vip': 0, 'seats': 10},
+            'ebisu': {'males': 12, 'females': 16, 'vip': 1, 'seats': 8},
+            'umeda': {'males': 30, 'females': 34, 'vip': 4, 'seats': 18},
+            'chayamachi': {'males': 14, 'females': 19, 'vip': 0, 'seats': 9},
+            'shinsaibashi': {'males': 21, 'females': 25, 'vip': 2, 'seats': 12},
+            'sakae': {'males': 15, 'females': 17, 'vip': 0, 'seats': 8},
+            'sumiyoshi': {'males': 11, 'females': 13, 'vip': 0, 'seats': 6},
+            'sannomiya': {'males': 9, 'females': 12, 'vip': 0, 'seats': 5},
+            'fukuokatenjin': {'males': 20, 'females': 26, 'vip': 2, 'seats': 11},
+        }
+        mock_resp = mock.MagicMock(status_code=200)
+        mock_resp.json.return_value = fake_fb
+        mock_resp.raise_for_status.return_value = None
+
+        mock_sess = mock.MagicMock()
+        mock_sess.get.return_value = mock_resp
+
+        with mock.patch('monitor._get_http_session', return_value=mock_sess):
+            # 1) Open hours (22:00 JST) -> live headcounts preserved
+            open_rows = monitor.get_asobibar_data(now_jst=datetime.datetime(2026, 10, 30, 22, 0, tzinfo=jst))
+            self.assertEqual(len(open_rows), 10)
+            shinjuku = next(r for r in open_rows if r['name'] == 'ASOBIBAR 新宿')
+            self.assertEqual(shinjuku['women'], 28)
+            self.assertEqual(shinjuku['men'], 24)
+            self.assertEqual(shinjuku['pos_telemetry']['telemetry_type'], 'asobibar_pos')
+
+            # 2) Off-hours (13:00 JST) -> stale Firebase numbers zeroed out cleanly
+            closed_rows = monitor.get_asobibar_data(now_jst=datetime.datetime(2026, 10, 30, 13, 0, tzinfo=jst))
+            self.assertEqual(len(closed_rows), 10)
+            self.assertTrue(all(r['women'] == 0 and r['men'] == 0 for r in closed_rows))
+
+    def test_moat_intelligence_60m_forecast_jis_pos_and_sqlite_persistence(self):
+        import moat_intelligence
+        jst = datetime.timezone(datetime.timedelta(hours=9))
+        fri_22 = datetime.datetime(2026, 10, 30, 22, 15, tzinfo=jst)
+
+        sample_stores = [
+            {
+                'name': 'JIS SHINJUKU',
+                'women': 24,
+                'men': 30,
+                'women_diff': 1,
+                'men_diff': 6,
+                'is_open_now': True,
+                'pos_telemetry': {
+                    'telemetry_type': 'jis_pos',
+                    'matched_groups': 10,
+                    'men_groups': 15,
+                    'women_groups': 11,
+                    'men_waiting_groups': 4,
+                    'women_waiting_groups': 0,
+                    'men_waiting_guests': 8,
+                    'women_waiting_guests': 0,
+                    'vip_guests': 2,
+                },
+            },
+            {
+                'name': 'OLG 渋谷本店',
+                'women': 24,
+                'men': 16,
+                'women_diff': 0,
+                'men_diff': 5,
+                'is_open_now': True,
+            },
+            {
+                'name': 'OLG 福岡',
+                'women': 38,
+                'men': 12,
+                'women_diff': 4,
+                'men_diff': 2,
+                'is_open_now': True,
+            },
+            {
+                'name': 'ASOBIBAR 新宿',
+                'women': 22,
+                'men': 18,
+                'women_diff': 3,
+                'men_diff': 2,
+                'is_open_now': True,
+            },
+        ]
+
+        fake_weather = {
+            'tokyo': {
+                'city_key': 'tokyo',
+                'city_label': '東京',
+                'weather_code': 61,
+                'condition_ja': '雨',
+                'temp_c': 15.4,
+                'precip_mm': 2.5,
+                'wind_kmh': 12.0,
+                'is_rainy': True,
+            }
+        }
+        with mock.patch('moat_intelligence.get_city_weather_map', return_value=fake_weather):
+            enriched = moat_intelligence.enrich_stores_with_moat_signals(sample_stores, now_jst=fri_22)
+
+        jis = next(s for s in enriched if s['name'] == 'JIS SHINJUKU')
+        self.assertTrue(jis['wait_estimate']['is_measured'])
+        self.assertEqual(jis['wait_estimate']['est_men_wait_groups'], 4)
+        self.assertIn('実測:男待ち4組', jis['wait_estimate']['wait_badge_men'])
+
+        shibuya = next(s for s in enriched if s['name'] == 'OLG 渋谷本店')
+        self.assertFalse(shibuya['wait_estimate']['is_measured'])
+        self.assertEqual(shibuya['forecast_60m']['alert_code'], 'crowd_rush_warn')
+        self.assertGreaterEqual(shibuya['forecast_60m']['flip_risk_pct'], 22)
+
+        fukuoka = next(s for s in enriched if s['name'] == 'OLG 福岡')
+        self.assertEqual(fukuoka['forecast_60m']['alert_code'], 'jackpot_hold')
+        self.assertLessEqual(fukuoka['forecast_60m']['flip_risk_pct'], 12)
+
+        asobi = next(s for s in enriched if s['name'] == 'ASOBIBAR 新宿')
+        self.assertTrue(asobi['wait_estimate']['is_standing_free'])
+        self.assertIn('自由回遊', asobi['wait_estimate']['wait_badge_men'])
+
+        # Verify SQLite persistence of Plan A (store_pos_telemetry_logs) and Plan B (external_context_logs)
+        with mock.patch('moat_intelligence.get_city_weather_map', return_value=fake_weather):
+            local_db.insert_logs(sample_stores, '2026-10-30 22:15:00')
+        conn = local_db.get_connection()
+        try:
+            pos_cnt = conn.execute("SELECT COUNT(*) FROM store_pos_telemetry_logs WHERE store_name = 'JIS SHINJUKU'").fetchone()[0]
+            ctx_cnt = conn.execute("SELECT COUNT(*) FROM external_context_logs WHERE city_key = 'tokyo'").fetchone()[0]
+        finally:
+            conn.close()
+        self.assertGreaterEqual(pos_cnt, 1)
+        self.assertGreaterEqual(ctx_cnt, 1)
+
+    def test_asobibar_routes_and_crowd_rush_paradox_column_and_note_essay(self):
+        import column_editorial
+        with app_module.data_lock:
+            app_module.latest_data['full_data'] = _fake_stores() + [
+                {'name': 'ASOBIBAR 新宿', 'women': 26, 'men': 19, 'source': 'asobibar', 'region': 'Kanto'},
+                {'name': 'ASOBIBAR 梅田', 'women': 30, 'men': 22, 'source': 'asobibar', 'region': 'Kinki'},
+            ]
+            app_module.latest_data['last_updated'] = '2026-10-30 22:20:00'
+        app_module.clear_fast_http_caches()
+
+        for path in ('/asobibar', '/store/asobibar-shinjuku', '/store/asobibar-kobe-sannomiya', '/guide/crowd-rush-paradox'):
+            r = self.client.get(path)
+            self.assertEqual(r.status_code, 200, path)
+            body = r.data.decode('utf-8')
+            self.assertNotIn('/link/', body if path == '/guide/crowd-rush-paradox' else '')
+            if path == '/guide/crowd-rush-paradox':
+                self.assertIn('群衆殺到パラドックス', body)
+                self.assertIn('29.8%', body)
+                self.assertIn('97.7%', body)
+                self.assertEqual(re.findall(r'オリエンタル(?!ラウンジ)', body), [])
+
+        r_status = self.client.get('/api/status')
+        self.assertEqual(r_status.status_code, 200)
+        st_payload = r_status.get_json()
+        asobi_item = next((x for x in st_payload['ranking'] if x['name'] == 'ASOBIBAR 新宿'), None)
+        self.assertIsNotNone(asobi_item)
+        self.assertIn('wait_estimate', asobi_item)
+        self.assertIn('forecast_60m', asobi_item)
+
+        note_res = column_editorial.export_column_for_note('crowd-rush-paradox', mode='essay')
+        self.assertTrue(note_res['ok'])
+        self.assertGreaterEqual(note_res['distinct_from_web_pct'], 45)
+        self.assertEqual(re.findall(r'オリエンタル(?!ラウンジ)', note_res['full_markdown']), [])
 
 
 if __name__ == '__main__':
