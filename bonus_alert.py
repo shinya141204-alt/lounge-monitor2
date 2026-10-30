@@ -211,7 +211,8 @@ def build_bonus_alert_tweet_thread(
                     prompt=prompt,
                     max_output_tokens=1800,
                     thinking_budget=896,
-                    total_deadline_sec=20.0,
+                    total_deadline_sec=28.0,
+                    per_call_timeout_sec=19.0,
                     now_jst=now_jst,
                     prefer_fast=True,
                 )
@@ -239,9 +240,15 @@ def build_bonus_alert_tweet_thread(
             f"#相席ナビ #相席ラウンジ"
         )
     else:
+        female_lead_openers = (
+            f"いま{t_str}のモニター見てたんだけど、「{ja_name}」が女性{w}名・男性{m}名（女性比{wpct}%）までかなり偏ってる…",
+            f"{t_str}時点、「{ja_name}」のバランスが女性{w}名・男性{m}名（女性比{wpct}%）で今夜いちばん狙い目な空気になってる👀",
+            f"ふと数字を見比べてたら、「{ja_name}」がいま女性{w}名・男性{m}名（女性比{wpct}%）まで伸びてた（{t_str}時点）",
+        )
+        lead_line = female_lead_openers[(now_jst.day + now_jst.hour) % len(female_lead_openers)]
         main_text = (
-            f"ちょっと待って、{t_str}時点で「{ja_name}」のモニター二度見したんだけど、いま女性{w}名・男性{m}名（女性比{wpct}%）まで偏ってる…\n\n"
-            f"人気店でこのバランスはさすがに珍しいやつ。男性待ちに切り替わる前の細かい推移はリプ欄置いときます👇\n"
+            f"{lead_line}\n\n"
+            f"人気店でこのバランスはなかなか出ないやつ。男性待ちに切り替わる前の細かい推移はリプ欄置いときます👇\n"
             f"#相席ナビ #相席ラウンジ"
         )
     if x_poster.compute_twitter_weight(main_text) > 274:

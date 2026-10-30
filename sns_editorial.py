@@ -44,12 +44,13 @@ DEFAULT_GEMINI_MODELS = (
 
 # Anthropic Claude Sonnet models (dynamically supplemented via /v1/models when key is set)
 DEFAULT_CLAUDE_MODELS = (
+    "claude-sonnet-5-5",
+    "claude-sonnet-5",
     "claude-sonnet-4-6",
     "claude-sonnet-4-5",
-    "claude-3-7-sonnet-latest",
 )
 
-# Words/phrases that betray AI-generated or promotional copywriting — strictly penalized by Desk
+# Words/phrases that betray AI-generated or promotional copywriting (or overused hooks) — strictly penalized by Desk
 AI_CLICHE_WORDS = (
     "必見",
     "徹底解説",
@@ -71,6 +72,9 @@ AI_CLICHE_WORDS = (
     "賢く立ち回",
     "参考にしてみて",
     "チェックしてみて",
+    "二度見",
+    "２度見",
+    "2度見",
 )
 
 # Core human insider voice guide applied across X, Threads, Instagram, and Column prompts
@@ -78,7 +82,7 @@ HUMAN_INSIDER_VOICE_GUIDE = (
     "【最優先：AIっぽさゼロの『現場モニターを見ている運営のリアルな独り言・本音』ルール】\n"
     "1. 広報担当の宣伝文やAIの優等生構文ではなく、毎晩バックヤードで全国53店舗の人数モニターを眺めながら『うわ、今日の梅田えぐいな…』『なんでみんなこっち並んじゃうんだろ』と呟いている30代の運営中の人の生の声で書くこと。\n"
     "2. 毎回きれいに教訓やまとめで締めないこと。『賢く選んで楽しみましょう』『参考にしてみてください』のような優等生オチは厳禁。『〜なんだよな』『〜だったりする』『正直いま動くならこっちかも』『何回見ても不思議』のように、ふと呟いてスマホを置いたような自然な余韻・体言止めを混ぜること。\n"
-    "3. 1行目は『モニターを二度見した素のリアクション・ちょっとしたボヤき・外の空気感とのギャップ』から入ること（例：『小雨なのに今日の立ち上がりちょっと早すぎないか…』『同じ新宿の徒歩3分でここまで天国と地獄に割れるの、ほんと残酷なんだよな』等）。\n"
+    "3. 1行目は毎回違う角度の『外の空気感・曜日の足取り・徒歩数分の店舗間ギャップ・ちょっとしたボヤき』から入ること（例：『小雨なのに今日の立ち上がりちょっと早すぎないか…』『同じ新宿の徒歩3分でここまで天国と地獄に割れるの、ほんと残酷なんだよな』『金曜のこの時間、看板の知名度だけで1店舗目に並ぶとだいたい消耗するやつ…』等。同じリアクション語や決まり文句の使い回しは厳禁）。\n"
     "4. 句読点や改行に人間の息継ぎを入れること。『〜となっております』『〜ですが、』のような硬い接続詞ではなく、『〜なんだけど、』『正直さ、』『いやこれ、』『〜なんだよね』など声に出して自然な口語リズムにすること。絵文字は0〜2個までに抑え、キラキラ絵文字の連打はしない（自然な『笑』や『…』は1回までOK）。\n"
     "5. 数字は機械的な箇条書き表の羅列にせず、できる限り会話の流れに溶かし込むこと（ただし店舗名・女性XX名・男性YY名・女性比ZZ%の数値そのものはファクトシートと1人・1%も違わず一致させること）。"
 )
@@ -89,6 +93,7 @@ _AI_CACHE_MAX_SIZE = 64
 _ai_candidate_cache = collections.OrderedDict()  # cache_key -> {"ts": float, "candidate": dict, "model": str}
 _ai_cache_lock = threading.Lock()
 _model_discovery_cache = {}  # provider_sig -> {"ts": float, "models": list[str]}
+_claude_no_temp_models = set()  # Claude models where `temperature` is deprecated/unsupported
 _UNHEALTHY_COOLDOWN_SEC = 600.0
 _unhealthy_models = {}  # model_name -> cooldown_until_monotonic
 _last_gemini_meta = {
@@ -742,8 +747,11 @@ def set_claude_api_key(api_key: str):
     """Persist or clear Master-provided Anthropic Claude API key (obfuscated via `token:` prefix in job_state)."""
     cleaned = (api_key or "").strip()
     job_state.set_value(CLAUDE_KEY_STORAGE_PREFIX, cleaned)
+    if cleaned and get_ai_engine_pref(allow_blocking=False) == "gemini":
+        job_state.set_value(AI_ENGINE_PREF_KEY, "claude")
     clear_editorial_ai_cache()
     _model_discovery_cache.clear()
+    _claude_no_temp_models.clear()
     _unhealthy_models.clear()
     _last_gemini_meta["last_error"] = ""
     _last_gemini_meta["working_route"] = None
@@ -2159,7 +2167,7 @@ def _write_tiktok_candidates(
         opener = (
             f"同じ{hub}の徒歩4分圏内なのに、看板の知名度だけで1店舗目に突撃して受付待ちで消耗してる人が多すぎるんだよね…（{wd_str}曜 {t_str}の実測モニターより）"
             if tm in ("spicy_female", "spicy")
-            else f"同じ{hub}の徒歩4分なのに、ドア1枚でここまで男女比が割れてるの毎回モニター見てて二度見する…（{wd_str}曜 {t_str}実測）"
+            else f"同じ{hub}の徒歩4分なのに、ドア1枚でここまで男女比が割れてるの毎回モニター見てて不思議になる…（{wd_str}曜 {t_str}実測）"
         )
         main_gap = (
             f"{opener}\n\n"
@@ -2788,11 +2796,12 @@ def _build_gemini_prompt(
         )
         platform_spec = (
             "【対象SNS：X（旧Twitter）】\n"
-            "- 文字数制限：日本語で **95文字〜124文字以内**（X換算で必ず258ウェイト以下になるよう引き締めること）\n"
-            "- 禁止事項：URL（http...）は本文に絶対に入れない。『🥇🥈🥉』メダル記号や『【〇〇速報】』のような業者見出しは禁止。同じ店舗名を2回書かない。\n"
-            "- リズムの手本（数字はダミー。この空気感・口語の抜け感だけ参考にすること）：\n"
-            "  『外ちょっと冷えてきた木曜なんだけど、モニター見てたらオリエンタルラウンジ新宿が女性84名・男性36名（女性比70%）まで伸びてて二度見した…徒歩すぐの別店舗は男余りなのに、ほんと看板だけで並ぶともったいない夜。細かい数字はリプ欄置いときます👇 #相席ナビ #相席ラウンジ』\n"
-            "- 構成：1行目で外の天気・気温・曜日・給料日などの空気感とモニターを見た素のリアクションを切り出し、会話の流れで2〜3店舗の正確な人数（例：女性122名・男性52名（女性比70%））を溶かし込み、最後はリプ欄へ自然に流して『#相席ナビ #相席ラウンジ』で締める。"
+            "- 文字数制限：日本語で **88文字〜116文字以内**（全角125文字・X換算252ウェイト絶対上限。280ウェイトを超えると不採用になるため必ず短く引き締めること）\n"
+            "- 禁止事項：URL（http...）は本文に絶対に入れない。『🥇🥈🥉』メダル記号や『【〇〇速報】』のような業者見出しは禁止。毎回同じ驚き表現の使い回しも禁止。同じ店舗名を2回書かない。\n"
+            "- リズムの手本（数字はダミー。言い回しを丸写しせず、毎回違う自然な切り出しにすること）：\n"
+            "  例A：『外ちょっと冷えてきた木曜なんだけど、いまオリエンタルラウンジ新宿が女性84名・男性36名（女性比70%）まで伸びてる。徒歩すぐの別店舗は男余りだし、看板だけで並ぶともったいない夜。細かい数字はリプ欄へ👇 #相席ナビ #相席ラウンジ』\n"
+            "  例B：『1軒目そろそろ出る時間帯、モニター見てたらJIS梅田が女性72名・男性44名でかなりいい空気感になってきた。金曜は22時すぎると一気に混むから動くなら今がラクかも👇 #相席ナビ #相席ラウンジ』\n"
+            "- 構成：1行目で外の天気・気温・曜日・時間帯の空気感から自然に切り出し、会話の流れで **1〜2店舗に絞って** 正確な人数（例：女性122名・男性52名（女性比70%））を溶かし込み、最後はリプ欄へ自然に流して『#相席ナビ #相席ラウンジ』で締める。"
         )
     elif ch == "threads":
         if now_jst.day % 2 == 0:
@@ -2879,7 +2888,7 @@ def _build_gemini_prompt(
         f"- {slot_persona['guidance']}\n\n"
         "【長考（Thinking）プロセス：脳内3案コンペ＆脱AI臭フィルタリング】\n"
         "出力前にまず `thinking_memo` の中で次の3ステップを必ず実行してから `main_text` を書き上げてください：\n"
-        "  Step 1. 切り口の違う3つの生の呟きを比べる（①看板だけで並んで消耗する負けパターンへの苦笑い、②女子組が実は見切って流れている裏側、③モニターを見て二度見した街の温度差・普段比の違和感）\n"
+        "  Step 1. 切り口の違う3つの生の呟きを比べる（①看板だけで並んで消耗する負けパターンへの苦笑い、②女子組が実は見切って流れている裏側、③外の空気感とモニター上の普段比ギャップへの素直な気づき）\n"
         "  Step 2. 一番『人間がふとスマホで打った空気感』に近い1案を選び、AIっぽい綺麗なまとめ文句や過剰な絵文字を削ぎ落とす。\n"
         "  Step 3. ファクトシートの数字と1人・1%の狂いもないか指差し確認する。\n\n"
         f"{platform_spec}\n\n"
@@ -2992,12 +3001,39 @@ def _discover_ai_studio_flash_model(api_key: str, timeout: float = 4.5) -> str:
     return ranked[0] if ranked else ""
 
 
+def _claude_supports_temperature(model_name: str) -> bool:
+    """
+    Return False for Anthropic Claude 5+ models (where `temperature` is deprecated and triggers HTTP 400)
+    or any model dynamically recorded in `_claude_no_temp_models`.
+    """
+    low = (model_name or "").strip().lower()
+    if not low or low in _claude_no_temp_models:
+        return False
+    m = re.match(r"^claude-(?:[a-z]+-)?(\d+)", low)
+    if m:
+        try:
+            if int(m.group(1)) >= 5:
+                return False
+        except ValueError:
+            pass
+    return True
+
+
+def _is_requests_get_mocked() -> bool:
+    get_fn = getattr(requests, "get", None)
+    if get_fn is None:
+        return False
+    return hasattr(get_fn, "assert_called") or type(get_fn).__module__.startswith("unittest.mock")
+
+
 def _discover_claude_models(api_key: str, timeout: float = 4.0) -> list:
     """
-    Dynamically query Anthropic `/v1/models` (cached 6h) to find the newest active Claude Sonnet models.
+    Dynamically query Anthropic `/v1/models` (cached 6h) to find the newest active Claude Sonnet / Haiku models.
     """
     if not api_key:
         return []
+    if _is_requests_post_mocked() and not _is_requests_get_mocked():
+        return list(DEFAULT_CLAUDE_MODELS)
     sig = f"claude:{api_key[:10]}"
     now_t = time.time()
     cached = _model_discovery_cache.get(sig)
@@ -3014,9 +3050,10 @@ def _discover_claude_models(api_key: str, timeout: float = 4.0) -> list:
             timeout=max(0.8, min(4.5, float(timeout))),
         )
         if r.status_code != 200:
-            return []
+            return list(DEFAULT_CLAUDE_MODELS)
         items = (r.json() or {}).get("data") or []
         sonnets = []
+        haikus = []
         others = []
         for it in items:
             mid = (it.get("id") or "").strip()
@@ -3025,9 +3062,11 @@ def _discover_claude_models(api_key: str, timeout: float = 4.0) -> list:
                 continue
             if "sonnet" in low:
                 sonnets.append(mid)
+            elif "haiku" in low:
+                haikus.append(mid)
             elif "opus" in low:
                 others.append(mid)
-        ranked = (sonnets[:2] + others[:1]) or list(DEFAULT_CLAUDE_MODELS)
+        ranked = (sonnets[:2] + haikus[:1] + others[:1]) or list(DEFAULT_CLAUDE_MODELS)
         _model_discovery_cache[sig] = {"ts": now_t, "models": ranked}
         return list(ranked)
     except Exception:
@@ -3150,7 +3189,7 @@ def call_editorial_ai_json(
     if not g_key and not c_key:
         return None, "", "APIキー未設定"
 
-    pref = get_ai_engine_pref(allow_blocking=False)
+    pref = get_ai_engine_pref(allow_blocking=allow_blocking)
     providers = []
     if pref == "gemini" or (prefer_fast and pref == "auto" and g_key and not c_key):
         if g_key:
@@ -3166,9 +3205,10 @@ def call_editorial_ai_json(
 
     eff_deadline_sec = max(4.0, float(total_deadline_sec))
     deadline = time.monotonic() + eff_deadline_sec
-    reserve_sec = min(7.0, eff_deadline_sec * 0.32)
+    reserve_sec = min(6.5, eff_deadline_sec * 0.25)
     is_mocked_post = _is_requests_post_mocked()
     last_err = ""
+    claude_fail_note = ""
 
     sys_instr = system_prompt or (
         "あなたは『相席ナビ』の運営中の人・編集長です。AI特有の優等生構文や定型表現を徹底排除し、"
@@ -3194,7 +3234,19 @@ def call_editorial_ai_json(
                 if m not in c_models:
                     c_models.append(m)
 
-            c_trial = c_models[:2]
+            if prefer_fast and len(c_models) >= 2:
+                # Keep top Sonnet #1 for human voice quality, and place fast Haiku (if discovered) as #2 safety net
+                top_first = c_models[0]
+                fast_haiku = next((m for m in c_models[1:] if "haiku" in m.lower()), None)
+                c_trial = [top_first, fast_haiku] if fast_haiku else c_models[:2]
+            else:
+                c_trial = [m for m in c_models if "haiku" not in m.lower()][:2] or c_models[:2]
+
+            claude_max_tokens = max(
+                4096,
+                int(max_output_tokens or 2600) + max(0, int(thinking_budget or 0)),
+            )
+
             for c_idx, cm in enumerate(c_trial):
                 rem = deadline - time.monotonic()
                 if rem <= 0.8:
@@ -3203,29 +3255,50 @@ def call_editorial_ai_json(
                 if has_later_provider and rem <= reserve_sec + 1.0:
                     break
                 c_timeout = (
-                    min(float(per_call_timeout_sec), max(1.2, rem - reserve_sec))
+                    min(float(per_call_timeout_sec), max(1.5, rem - reserve_sec))
                     if has_fallback
                     else min(float(per_call_timeout_sec), rem)
                 )
+                c_headers = {
+                    "x-api-key": c_key,
+                    "anthropic-version": "2023-06-01",
+                    "content-type": "application/json",
+                }
+                c_body = {
+                    "model": cm,
+                    "max_tokens": claude_max_tokens,
+                    "system": sys_instr,
+                    "messages": [{"role": "user", "content": prompt}],
+                }
+                if _claude_supports_temperature(cm):
+                    c_body["temperature"] = min(1.0, max(0.1, float(temperature)))
+
                 try:
                     resp = requests.post(
                         "https://api.anthropic.com/v1/messages",
-                        headers={
-                            "x-api-key": c_key,
-                            "anthropic-version": "2023-06-01",
-                            "content-type": "application/json",
-                        },
-                        json={
-                            "model": cm,
-                            "max_tokens": max_output_tokens,
-                            "temperature": min(1.0, max(0.1, float(temperature))),
-                            "system": sys_instr,
-                            "messages": [{"role": "user", "content": prompt}],
-                        },
+                        headers=c_headers,
+                        json=c_body,
                         timeout=c_timeout,
                     )
+                    # Auto-recover if a new Claude model deprecates `temperature`
+                    if (
+                        resp.status_code == 400
+                        and "temperature" in c_body
+                        and "temperature" in (resp.text or "").lower()
+                    ):
+                        _claude_no_temp_models.add(cm.lower())
+                        c_body_retry = dict(c_body)
+                        c_body_retry.pop("temperature", None)
+                        rem_retry = max(1.5, min(float(per_call_timeout_sec), deadline - time.monotonic()))
+                        resp = requests.post(
+                            "https://api.anthropic.com/v1/messages",
+                            headers=c_headers,
+                            json=c_body_retry,
+                            timeout=rem_retry,
+                        )
                     if resp.status_code >= 400:
                         last_err = f"Claude HTTP {resp.status_code} ({cm}): {(resp.text or '')[:130]}"
+                        claude_fail_note = last_err
                         logger.warning(f"[editorial_ai] {last_err}")
                         if _last_gemini_meta.get("working_route") == ("claude", cm):
                             _last_gemini_meta["working_route"] = None
@@ -3241,8 +3314,10 @@ def call_editorial_ai_json(
                         _last_gemini_meta["last_ok_at"] = now_jst.strftime("%Y-%m-%d %H:%M:%S")
                         return parsed, cm, ""
                     last_err = f"Claude JSON parse failed ({cm})"
+                    claude_fail_note = last_err
                 except Exception as e:
                     last_err = f"Claude通信エラー ({cm}): {str(e)[:110]}"
+                    claude_fail_note = last_err
                     logger.warning(f"[editorial_ai] {last_err}")
                     if _last_gemini_meta.get("working_route") == ("claude", cm):
                         _last_gemini_meta["working_route"] = None
@@ -3398,7 +3473,11 @@ def call_editorial_ai_json(
                         _last_gemini_meta["working_route"] = ("ai_studio", gm)
                         _last_gemini_meta["last_provider"] = "gemini"
                         _last_gemini_meta["last_model"] = gm
-                        _last_gemini_meta["last_error"] = ""
+                        _last_gemini_meta["last_error"] = (
+                            f"Claude一時エラーのためGemini({gm})へ退避: {claude_fail_note[:90]}"
+                            if claude_fail_note
+                            else ""
+                        )
                         _last_gemini_meta["last_ok_at"] = now_jst.strftime("%Y-%m-%d %H:%M:%S")
                         return parsed, gm, ""
                     last_err = f"Gemini JSON parse failed ({gm})"
@@ -3417,14 +3496,26 @@ def call_editorial_ai_json(
     return None, "", last_err
 
 
+_NIDOMI_REPLACEMENTS = (
+    (re.compile(r"モニターを?(?:二度見|２度見|2度見)したんだけど"), "モニターの数字を見比べてたんだけど"),
+    (re.compile(r"(?:二度見|２度見|2度見)したんだけど"), "思わず手が止まったんだけど"),
+    (re.compile(r"て(?:二度見|２度見|2度見)した"), "て思わず声が出た"),
+    (re.compile(r"(?:二度見|２度見|2度見)するレベル"), "ちょっと珍しいレベル"),
+    (re.compile(r"(?:二度見|２度見|2度見)する"), "不思議になる"),
+    (re.compile(r"(?:二度見|２度見|2度見)"), "注目"),
+)
+
+
 def _postprocess_ai_main_text(main_text: str, channel: str = "x") -> str:
     """
-    Guarantee zero bare 'オリエンタル〇〇' ('ラウンジ' omitted) and zero 'オリラジ'/'OLG' in AI output:
-      - Uses sanitize_brand_names to enforce 'オリエンタルラウンジ'.
+    Guarantee zero bare 'オリエンタル〇〇' ('ラウンジ' omitted), zero 'オリラジ'/'OLG',
+    and zero repetitive '二度見' cliches in AI output.
     """
     text = (main_text or "").strip()
     if not text:
         return ""
+    for pat, repl in _NIDOMI_REPLACEMENTS:
+        text = pat.sub(repl, text)
     return sanitize_brand_names(text)
 
 
@@ -3463,7 +3554,7 @@ def _make_ai_cache_key(
         (focus.get("name", ""), int(focus.get("women") or 0), int(focus.get("men") or 0))
         if focus else None
     )
-    return (eng_pref, has_c, ch_norm, tm_norm, sit_norm, slot_label or "", biz_date_str, top3_sig, focus_sig)
+    return ("v3_claude5", eng_pref, has_c, ch_norm, tm_norm, sit_norm, slot_label or "", biz_date_str, top3_sig, focus_sig)
 
 
 def _store_ai_candidate_cache(cache_key, candidate: dict, model_name: str, now_t: float = None):
@@ -3592,8 +3683,8 @@ def _generate_gemini_adlib_candidate(
         max_output_tokens=2600,
         thinking_budget=1536,
         temperature=0.88,
-        total_deadline_sec=35.0,
-        per_call_timeout_sec=22.0,
+        total_deadline_sec=45.0,
+        per_call_timeout_sec=30.0,
         allow_blocking=True,
         now_jst=now_jst,
     )

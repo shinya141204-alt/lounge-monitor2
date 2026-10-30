@@ -771,7 +771,7 @@
             <div class="briefing-head">
                 <span id="briefing-pill" class="ai-pill">
                     {% if pdca.briefing.pending_async %}
-                    🧠 Gemini 作戦参謀長が実測データを長考分析中...
+                    🧠 {{ 'Claude Sonnet' if (pdca.gemini_status and pdca.gemini_status.primary_provider == 'claude') else '上位AI' }} 作戦参謀長が実測データを長考分析中...
                     {% elif pdca.briefing.is_ai %}
                     🧠 作戦参謀長ブリーフィング（{{ pdca.briefing.model }}）
                     {% else %}
@@ -1255,10 +1255,11 @@
             }
         }
 
+        const PRIMARY_AI_LABEL = {{ ('Claude Sonnet' if (pdca.gemini_status and pdca.gemini_status.primary_provider == 'claude') else '上位AI') | tojson }};
         async function refreshBriefing(forceRefresh) {
             const pill = document.getElementById('briefing-pill');
             if (pill) {
-                pill.textContent = '🧠 Gemini 作戦参謀長が実測データを長考分析中...';
+                pill.textContent = `🧠 ${PRIMARY_AI_LABEL} 作戦参謀長が実測データを長考分析中...`;
             }
             let updatedPill = false;
             try {

@@ -333,6 +333,99 @@ class SnsEditorialUpgradeTests(unittest.TestCase):
         self.assertIn("オリエンタルラウンジ", content)
         self.assertNotIn("'OLG '", content)
 
+    # -------------------------------------------------------------------------
+    # Claude 5.x Compatibility & Anti-"二度見" Regression Tests
+    # -------------------------------------------------------------------------
+
+    def test_claude_5_omits_temperature_and_takes_priority(self):
+        """Claude 5+ models must omit deprecated `temperature` and take priority over Gemini when configured."""
+        sns_editorial._claude_no_temp_models.clear()
+        self.assertFalse(sns_editorial._claude_supports_temperature("claude-sonnet-5-5"))
+        self.assertFalse(sns_editorial._claude_supports_temperature("claude-sonnet-5"))
+        self.assertFalse(sns_editorial._claude_supports_temperature("claude-haiku-5-5"))
+        self.assertTrue(sns_editorial._claude_supports_temperature("claude-sonnet-4-6"))
+
+        fake_resp = mock.MagicMock()
+        fake_resp.status_code = 200
+        fake_resp.json.return_value = {
+            "model": "claude-sonnet-5-5",
+            "content": [{"type": "text", "text": '{"thinking_memo": "ok", "main_text": "テスト本文"}'}],
+        }
+
+        with (
+            mock.patch("sns_editorial.get_claude_api_key", return_value="sk-ant-test-key-1234567890"),
+            mock.patch("sns_editorial.get_gemini_api_key", return_value="AIzaSyTestKey1234567890"),
+            mock.patch("sns_editorial.get_ai_engine_pref", return_value="auto"),
+            mock.patch("sns_editorial.requests.post", return_value=fake_resp) as mock_post,
+        ):
+            parsed, model_used, err = sns_editorial.call_editorial_ai_json('{"hello": 1}')
+            self.assertEqual(err, "")
+            self.assertEqual(model_used, "claude-sonnet-5-5")
+            self.assertEqual(parsed.get("main_text"), "テスト本文")
+            self.assertEqual(mock_post.call_count, 1)
+            called_url = mock_post.call_args[0][0]
+            called_json = mock_post.call_args[1]["json"]
+            self.assertEqual(called_url, "https://api.anthropic.com/v1/messages")
+            self.assertNotIn("temperature", called_json)
+            self.assertGreaterEqual(called_json["max_tokens"], 4096)
+
+    def test_claude_temperature_deprecation_auto_retry(self):
+        """If a Claude model returns HTTP 400 deprecating `temperature`, retry immediately without falling back to Gemini."""
+        sns_editorial._claude_no_temp_models.clear()
+        err_resp = mock.MagicMock()
+        err_resp.status_code = 400
+        err_resp.text = '{"type":"error","error":{"type":"invalid_request_error","message":"`temperature` is deprecated for this model."}}'
+
+        ok_resp = mock.MagicMock()
+        ok_resp.status_code = 200
+        ok_resp.json.return_value = {
+            "model": "claude-sonnet-4-6",
+            "content": [{"type": "text", "text": '{"main_text": "リトライ成功"}'}],
+        }
+
+        with (
+            mock.patch.dict(os.environ, {"CLAUDE_MODEL": "claude-sonnet-4-6"}, clear=False),
+            mock.patch("sns_editorial.get_claude_api_key", return_value="sk-ant-test-key-1234567890"),
+            mock.patch("sns_editorial.get_gemini_api_key", return_value="AIzaSyTestKey1234567890"),
+            mock.patch("sns_editorial.get_ai_engine_pref", return_value="claude"),
+            mock.patch("sns_editorial.requests.post", side_effect=[err_resp, ok_resp]) as mock_post,
+        ):
+            parsed, model_used, err = sns_editorial.call_editorial_ai_json('{"hello": 1}')
+            self.assertEqual(err, "")
+            self.assertEqual(model_used, "claude-sonnet-4-6")
+            self.assertEqual(parsed.get("main_text"), "リトライ成功")
+            self.assertEqual(mock_post.call_count, 2)
+            first_json = mock_post.call_args_list[0][1]["json"]
+            second_json = mock_post.call_args_list[1][1]["json"]
+            self.assertIn("temperature", first_json)
+            self.assertNotIn("temperature", second_json)
+
+    def test_zero_nidomiru_cliche_in_prompts_and_outputs(self):
+        """Ensure '二度見 / ２度見 / 2度見' is purged from guides/templates and stripped by postprocess."""
+        import bonus_alert
+
+        for w in ("二度見", "２度見", "2度見"):
+            self.assertIn(w, sns_editorial.AI_CLICHE_WORDS)
+            self.assertNotIn(w, sns_editorial.HUMAN_INSIDER_VOICE_GUIDE)
+
+        for ch in ("x", "threads", "instagram", "tiktok", "note"):
+            cands = sns_editorial.run_writer(self.sample_stores and sns_editorial.run_researcher(self.sample_stores, channel=ch), {}, channel=ch, use_ai=False)
+            for c in cands:
+                for w in ("二度見", "２度見", "2度見"):
+                    self.assertNotIn(w, c.get("main_text", ""))
+
+        cleaned = sns_editorial._postprocess_ai_main_text(
+            "モニターを二度見したんだけど、オリエンタルラウンジ新宿が女性60名・男性25名まで伸びてて２度見した…",
+            channel="x",
+        )
+        for w in ("二度見", "２度見", "2度見"):
+            self.assertNotIn(w, cleaned)
+
+        alert_cand = {"store": self.sample_stores[0], "mode": "female_lead", "wpct": 70}
+        main_t, _ = bonus_alert.build_bonus_alert_tweet_thread(alert_cand, use_ai=False)
+        for w in ("二度見", "２度見", "2度見"):
+            self.assertNotIn(w, main_t)
+
 
 if __name__ == "__main__":
     unittest.main()

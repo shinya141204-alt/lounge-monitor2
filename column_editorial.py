@@ -1789,7 +1789,7 @@ def _make_col_cache_key(research: dict, plan: dict, tone_mode: str = None):
         for s in (research.get("featured_stores") or [])[:3]
     )
     return (
-        "v2_deep",
+        "v3_claude5",
         eng_pref,
         has_c,
         tm,
@@ -1855,8 +1855,8 @@ def _generate_gemini_column_candidate(
         max_output_tokens=6800,
         thinking_budget=2048,
         temperature=0.84,
-        total_deadline_sec=52.0,
-        per_call_timeout_sec=28.0,
+        total_deadline_sec=78.0,
+        per_call_timeout_sec=54.0,
         allow_blocking=True,
         now_jst=now_jst,
     )

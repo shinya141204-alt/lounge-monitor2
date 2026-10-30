@@ -653,7 +653,8 @@ def _generate_ai_daily_human_tip(
             prompt=prompt,
             max_output_tokens=1800,
             thinking_budget=1024,
-            total_deadline_sec=20.0,
+            total_deadline_sec=28.0,
+            per_call_timeout_sec=19.0,
             now_jst=now_jst,
             prefer_fast=True,
         )

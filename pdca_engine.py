@@ -1338,7 +1338,9 @@ def _generate_pdca_briefing(diag: dict, use_ai: bool = True, cache_only: bool = 
     top_offer_key = diag["offer_breakdown"][0]["category_key"] if diag.get("offer_breakdown") else ""
     top_gap_path = diag["monetization_gaps"][0]["path"] if diag.get("monetization_gaps") else ""
     sig = (
+        "v3_claude5",
         sns_editorial.get_ai_engine_pref(allow_blocking=False),
+        bool(sns_editorial.get_claude_api_key(allow_blocking=False)),
         diag["overall_score"],
         diag["funnel"].get("pv_total", 0),
         diag["funnel"].get("aff_total", 0),
@@ -1410,8 +1412,8 @@ def _generate_pdca_briefing(diag: dict, use_ai: bool = True, cache_only: bool = 
             prompt=prompt,
             max_output_tokens=2000,
             thinking_budget=1024,
-            total_deadline_sec=28.0,
-            per_call_timeout_sec=14.0,
+            total_deadline_sec=36.0,
+            per_call_timeout_sec=24.0,
             allow_blocking=True,
         )
         if parsed and parsed.get("briefing"):
