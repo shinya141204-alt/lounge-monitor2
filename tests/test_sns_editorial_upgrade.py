@@ -9,6 +9,7 @@ Covers:
 - Template integration sanity checks (staff_sns_editorial.html, index.html #sns-modal)
 """
 
+import json
 import os
 import sys
 import unittest
@@ -434,6 +435,47 @@ class SnsEditorialUpgradeTests(unittest.TestCase):
         main_t, _ = bonus_alert.build_bonus_alert_tweet_thread(alert_cand, use_ai=False)
         for w in ("二度見", "２度見", "2度見"):
             self.assertNotIn(w, main_t)
+
+    def test_unspaced_oriental_lounge_two_store_comparison_wins_100pts(self):
+        """Ensure unspaced 'オリエンタルラウンジ新宿' + 'JIS新宿' on the same line passes fact-check and wins 100pts."""
+        stores = [
+            {"name": "OLG 新宿", "women": 52, "men": 24, "region": "Kanto"},
+            {"name": "JIS 新宿", "women": 38, "men": 31, "region": "Kanto"},
+            {"name": "JIS 梅田", "women": 61, "men": 35, "region": "Kinki"},
+        ]
+        research = sns_editorial.run_researcher(stores, slot_label="22:00", channel="x")
+        claude_text = (
+            "穏やかな夜なのに、モニターの新宿だけ温度差すごい。"
+            "オリエンタルラウンジ新宿が女性52名・男性24名（女性比68%）で、徒歩圏のJIS新宿は55%。"
+            "看板だけで選ぶと損なんだよな…細かい数字はリプ欄へ👇 #相席ナビ #相席ラウンジ"
+        )
+        ok, bad = sns_editorial.verify_ai_factual_numbers(claude_text, research, channel="x")
+        self.assertTrue(ok, f"Unexpected false-positive rejection: {bad}")
+
+        # Swapping JIS梅田's headcount (61) onto single-store オリエンタルラウンジ新宿 line must still be rejected
+        swapped = "オリエンタルラウンジ新宿が女性61名・男性35名まで伸びてる👇 #相席ナビ"
+        ok_swap, bad_swap = sns_editorial.verify_ai_factual_numbers(swapped, research, channel="x")
+        self.assertFalse(ok_swap)
+        self.assertTrue(bad_swap)
+
+        fake_resp = mock.MagicMock()
+        fake_resp.status_code = 200
+        fake_resp.json.return_value = {
+            "model": "claude-sonnet-5-5",
+            "content": [{"type": "text", "text": json.dumps({"editorial_angle": "新宿ギャップ", "main_text": claude_text}, ensure_ascii=False)}],
+        }
+        with (
+            mock.patch.dict(os.environ, {"CLAUDE_MODEL": "claude-sonnet-5-5"}, clear=False),
+            mock.patch("sns_editorial.get_claude_api_key", return_value="sk-ant-test-key-1234567890"),
+            mock.patch("sns_editorial.get_ai_engine_pref", return_value="claude"),
+            mock.patch("sns_editorial.requests.post", return_value=fake_resp),
+        ):
+            res = sns_editorial.run_editorial_pipeline(
+                stores, slot_label="22:00", channel="x", use_ai=True, force_ai_refresh=True, record_history=False
+            )
+            self.assertEqual(res["winner"]["style"], "ai_live_adlib")
+            self.assertEqual(res["winner"]["total_score"], 100)
+            self.assertIn("claude-sonnet-5-5", res["winner"]["style_label"])
 
 
 if __name__ == "__main__":

@@ -2585,18 +2585,55 @@ def verify_ai_factual_numbers(text: str, research: dict, channel: str = "x") -> 
     allowed_men = {0, int(research.get("total_men") or 0)}
     allowed_pct = {15, 20, 25, 50, 55, 60}
     allowed_diff = set()
-    store_facts = {}
+    canon_facts = {}
+    alias_to_canon = {}
+    bare_brands = {"オリエンタルラウンジ", "JIS", "ag", "アソビバー", "ヤタコイ", "CLOVERS", "ALFA", "XIX"}
+
+    def _canon_id(raw_alias: str) -> str:
+        c = re.sub(r"[\s　]+", "", (raw_alias or "").strip())
+        if c.endswith("店") and not c.endswith("本店"):
+            c = c[:-1]
+        return c
+
+    def _expand_aliases(raw_alias: str) -> list:
+        base = (raw_alias or "").strip()
+        if not base:
+            return []
+        compact = re.sub(r"[\s　]+", "", base)
+        if not compact or compact in bare_brands:
+            return []
+        spaced = re.sub(
+            r"^(オリエンタルラウンジ|JIS|ag|アソビバー|ヤタコイ|CLOVERS|ALFA|XIX)(?![\s　])",
+            r"\1 ",
+            compact,
+        )
+        seeds = {base, compact, spaced}
+        out = set()
+        for item in seeds:
+            if not item or re.sub(r"[\s　]+", "", item) in bare_brands:
+                continue
+            out.add(item)
+            if item.endswith("店") and not item.endswith("本店"):
+                stripped = item[:-1].strip()
+                if stripped and re.sub(r"[\s　]+", "", stripped) not in bare_brands:
+                    out.add(stripped)
+            elif not item.endswith("店"):
+                out.add(f"{item}店")
+        return list(out)
 
     def _reg_alias(alias: str, w_val=None, m_val=None, p_val=None):
-        if not alias:
+        cid = _canon_id(alias)
+        if not cid or cid in bare_brands:
             return
-        rec = store_facts.setdefault(alias, {"women": set(), "men": set(), "pct": set()})
+        rec = canon_facts.setdefault(cid, {"label": (alias or cid).strip(), "women": set(), "men": set(), "pct": set()})
         if w_val is not None:
             rec["women"].add(int(w_val))
         if m_val is not None:
             rec["men"].add(int(m_val))
         if p_val is not None:
             rec["pct"].add(int(p_val))
+        for variant in _expand_aliases(alias):
+            alias_to_canon[variant] = cid
 
     for s in all_dom:
         w = int(s.get("women") or 0)
@@ -2648,24 +2685,40 @@ def verify_ai_factual_numbers(text: str, research: dict, channel: str = "x") -> 
         if val not in allowed_diff:
             bad.append(f"+{val}名")
 
-    # Line-level single-store cross-check (prevents swapping store A's count onto store B)
-    sorted_aliases = sorted(store_facts.keys(), key=len, reverse=True)
+    # Line-level store cross-check (recognizes both spaced & unspaced brand names so 2-store comparisons never false-reject)
+    nat_w = int(research.get("total_women") or -1)
+    nat_m = int(research.get("total_men") or -1)
+    sorted_aliases = sorted(alias_to_canon.keys(), key=len, reverse=True)
     for line in text.splitlines():
-        matched_aliases = []
+        matched_cids = []
         line_probe = line
         for al in sorted_aliases:
             if al in line_probe:
-                matched_aliases.append(al)
+                cid = alias_to_canon[al]
+                if cid not in matched_cids:
+                    matched_cids.append(cid)
                 line_probe = line_probe.replace(al, " ")
-        if len(matched_aliases) == 1:
-            al = matched_aliases[0]
-            facts = store_facts[al]
+        if len(matched_cids) == 1:
+            cid = matched_cids[0]
+            facts = canon_facts[cid]
+            lbl = facts["label"]
             for vw in _extract_headcount_values(line, "women"):
-                if facts["women"] and vw not in facts["women"]:
-                    bad.append(f"{al}:女性{vw}(実測不一致)")
+                if facts["women"] and vw not in facts["women"] and vw not in (10, nat_w):
+                    bad.append(f"{lbl}:女性{vw}(実測不一致)")
             for vm in _extract_headcount_values(line, "men"):
-                if facts["men"] and vm not in facts["men"]:
-                    bad.append(f"{al}:男性{vm}(実測不一致)")
+                if facts["men"] and vm not in facts["men"] and vm not in (0, nat_m):
+                    bad.append(f"{lbl}:男性{vm}(実測不一致)")
+        elif len(matched_cids) >= 2:
+            union_w = set().union(*(canon_facts[c]["women"] for c in matched_cids)) | {10, nat_w}
+            union_m = set().union(*(canon_facts[c]["men"] for c in matched_cids)) | {0, nat_m}
+            has_any_w = any(canon_facts[c]["women"] for c in matched_cids)
+            has_any_m = any(canon_facts[c]["men"] for c in matched_cids)
+            for vw in _extract_headcount_values(line, "women"):
+                if has_any_w and vw not in union_w:
+                    bad.append(f"比較行:女性{vw}(実測不一致)")
+            for vm in _extract_headcount_values(line, "men"):
+                if has_any_m and vm not in union_m:
+                    bad.append(f"比較行:男性{vm}(実測不一致)")
 
     return (len(bad) == 0, bad)
 
@@ -3564,7 +3617,7 @@ def _make_ai_cache_key(
         (focus.get("name", ""), int(focus.get("women") or 0), int(focus.get("men") or 0))
         if focus else None
     )
-    return ("v4_claude55_live", eng_pref, has_c, ch_norm, tm_norm, sit_norm, slot_label or "", biz_date_str, top3_sig, focus_sig)
+    return ("v5_claude55_live", eng_pref, has_c, ch_norm, tm_norm, sit_norm, slot_label or "", biz_date_str, top3_sig, focus_sig)
 
 
 def _store_ai_candidate_cache(cache_key, candidate: dict, model_name: str, now_t: float = None):
