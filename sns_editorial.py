@@ -104,6 +104,7 @@ CHANNEL_LABELS = {
     "threads": "🧵 Threads（スレッズ）",
     "instagram": "📸 Instagram（インスタグラム）",
     "tiktok": "🎵 TikTok（縦型ショート）",
+    "note": "note (ショートエッセイ・つぶやき)",
 }
 
 STYLE_LABELS = {
@@ -132,7 +133,90 @@ STYLE_LABELS = {
     "tiktok_data_myth": "📊 常識破壊・『看板だけで並ぶと負ける』実測解剖型",
     "tiktok_midnight_reverse": "🌙 23時20分の終電崖・深夜逆転ラウンジ速報型",
     "tiktok_classic_rank": "🏆 従来型・定型ランキング読み上げキャプション",
+    # note styles
+    "note_essay_insight": "📖 夜の人間模様・深層考察ショートエッセイ型（800〜1,400文字）",
+    "note_short_column": "💡 混雑データ解剖・勝てる立ち回りミニコラム型（800〜1,200文字）",
+    "note_tsubuyaki_gap": "💬 現場の独り言・街の温度差つぶやき型（120〜240文字）",
+    "note_classic_summary": "📊 note・主要都市ラウンジ混雑動向まとめ",
 }
+
+# =====================================================================
+# Situation Specialization Specs (F2.2)
+# =====================================================================
+SITUATION_SPECS = {
+    "second_venue": {
+        "key": "second_venue",
+        "label": "🍸 2軒目ハシゴ・夜カフェ移動",
+        "short_label": "🍸 2軒目・夜カフェ",
+        "desc": "相席後のスマートな退店と落ち着いた2軒目（夜カフェ・バー等）へのハシゴを指南する切り口。",
+        "directive": (
+            "【シチュエーション切り口：🍸 2軒目ハシゴ・夜カフェ移動特化】\n"
+            "- 相席ラウンジ退店後の「次どうする？」をスマートに解決する視点で書くこと。\n"
+            "- ガヤガヤした店内から一息つける静かな夜カフェ、落ち着いたバー、甘いもの（夜パフェ等）への自然な誘導フレーズ（例：「30分だけ静かな夜カフェで甘いもの食べない？」）や、徒歩数分の移動戦略を織り込むこと。\n"
+            "- 会話がピークの40〜50分で切り出す重要性や、相席ナビの周辺2軒目スポット情報に触れること。"
+        ),
+    },
+    "zero_wait": {
+        "key": "zero_wait",
+        "label": "💄 女子待ちゼロ即乾杯",
+        "short_label": "💄 女子待ちゼロ",
+        "desc": "男性先行＝女性が待ち時間ゼロで即座に案内される狙い目店舗を突く切り口。",
+        "directive": (
+            "【シチュエーション切り口：💄 女子待ちゼロ即乾杯特化】\n"
+            "- 男性が先行しており女性ペアが受付待ち時間ゼロで即座に乾杯できる狙い目店舗をフォーカスすること。\n"
+            "- 女性側の『せっかくメイクしたのに待たされる店は嫌』『すぐ座れてフード・スイーツも充実している店に行きたい』という本音に寄り添い、今すぐ入れる店舗を具体的に提示すること。"
+        ),
+    },
+    "rain_underground": {
+        "key": "rain_underground",
+        "label": "☔ 雨天・駅直結穴場",
+        "short_label": "☔ 雨天・駅直結",
+        "desc": "悪天候時に濡れずに行ける地下直結店や、足元の悪さによる男女比の逆張り穴場を突く切り口。",
+        "directive": (
+            "【シチュエーション切り口：☔ 雨天・駅直結穴場特化】\n"
+            "- 雨や悪天候、足元の悪さを切り口にし、地下街直結や駅から濡れずに行ける店舗、または雨の日の男女比の偏り・逆張り穴場にフォーカスすること。\n"
+            "- 「雨の日は前髪や靴を濡らしたくない」「地下直結店にスマートに滑り込むのが正解」という視点を入れること。"
+        ),
+    },
+    "last_train_cliff": {
+        "key": "last_train_cliff",
+        "label": "🌙 終電崖逆転・深夜ラジオ",
+        "short_label": "🌙 終電崖逆転",
+        "desc": "23時台の終電駆け込みや深夜0時以降の朝まで組のリアルな人間模様に迫る切り口。",
+        "directive": (
+            "【シチュエーション切り口：🌙 終電崖逆転・深夜ラジオ特化】\n"
+            "- 23時台の「終電前の駆け込み・ラストチャンス」や、深夜0時〜2時の「終電を逃した・最初から朝までコース組」のリアルな深夜テンションにフォーカスすること。\n"
+            "- 終電20分前の判断、深夜でも盛り上がっている店舗、朝まで残る男女の心理を少しビター＆深夜ラジオの独り言風に書くこと。"
+        ),
+    },
+    "start_dash": {
+        "key": "start_dash",
+        "label": "🍻 早割・スタートダッシュ",
+        "short_label": "🍻 早割ダッシュ",
+        "desc": "18時〜20時台の早い時間帯、早割特典やピーク前のウォームアップを狙う切り口。",
+        "directive": (
+            "【シチュエーション切り口：🍻 早割・スタートダッシュ特化】\n"
+            "- 18時〜20時台の立ち上がり、早割特典、混雑する前のウォームアップにフォーカスすること。\n"
+            "- ピーク前に良い席を確保するメリットや、仕事終わりの1軒目としてスマートに使う立ち回りを提示すること。"
+        ),
+    },
+}
+
+def sanitize_brand_names(text: str) -> str:
+    """
+    ブランド表記ルール厳守サニタイザー:
+    単体の『オリエンタル』『OLG』『オリラジ』を禁止し、必ず正式名称『オリエンタルラウンジ』と表記する。
+    """
+    if not text:
+        return ""
+    s = str(text)
+    if "オリラジ" in s:
+        s = s.replace("オリラジ", "オリエンタルラウンジ")
+    # 'OLG ' or 'OLG\n' or 'OLG' at word boundaries
+    s = re.sub(r"(?<![A-Za-z0-9])OLG(?![A-Za-z0-9])\s*", "オリエンタルラウンジ ", s)
+    # 単体オリエンタル (ラウンジが後ろにない場合)
+    s = re.sub(r"オリエンタル(?!ラウンジ)", "オリエンタルラウンジ", s)
+    return s
 
 TONE_STATE_KEY = "editorial:default_tone_mode"
 DEFAULT_TONE_MODE = "spicy_female"
@@ -362,7 +446,7 @@ def record_sns_delivery_status(
     into `job_state` (`sns_delivery:<channel>`) so Master can inspect silent API/token failures across redeploys.
     """
     ch = (channel or "x").strip().lower()
-    if ch not in ("x", "threads", "instagram", "tiktok"):
+    if ch not in ("x", "threads", "instagram", "tiktok", "note"):
         return
     now_jst = now_jst or datetime.datetime.now(JST)
     ts_str = now_jst.strftime("%Y-%m-%d %H:%M:%S")
@@ -507,6 +591,14 @@ def get_sns_delivery_health(allow_blocking: bool = False) -> dict:
             "masked_token": tt_masked,
             "latest_slot_key": _latest_matching_key(("tiktok_post:",)),
             "refresh_key": _latest_matching_key(("token_refresh:tiktok:",)),
+        },
+        "note": {
+            "label": "📝 note（エッセイ・つぶやき）",
+            "configured": True,
+            "source": "note Webエディタ直行連携／RSS告知連動",
+            "masked_token": "web_intent_or_rss",
+            "latest_slot_key": _latest_matching_key(("note_post:", "col_release:")),
+            "refresh_key": "",
         },
     }
 
@@ -884,6 +976,14 @@ def build_slot_persona_context(slot_label: str = "22:00", channel: str = "x") ->
                 "のように静かに呟く空気感にする。"
             ),
         }
+    if ch == "note":
+        return {
+            "label": "📖 note 深層考察・夜の人間模様エッセイトーン",
+            "guidance": (
+                "街の夜の空気とリアルタイム混雑データを見つめながら、男女の心理や夜遊びの立ち回り構造を深く解剖する、知的好奇心と共感を刺激するエッセイトーン。"
+                "煽りや宣伝臭を排し、読者が最後まで引き込まれて読める一人称視点の文体にすること。"
+            ),
+        }
     return {
         "label": "🔥 22:00 ピーク・2軒目移動のライブ実況",
         "guidance": (
@@ -891,6 +991,118 @@ def build_slot_persona_context(slot_label: str = "22:00", channel: str = "x") ->
             "『いま1軒目終わりの組が一気に流れてきてて』『徒歩3分なのにここまで男女比割れるか…』"
             "のように、今まさにスマホで現場モニターを見ている臨場感を出す。"
         ),
+    }
+
+
+def generate_image_prompts(
+    research: dict,
+    channel: str = "x",
+    slot_label: str = "22:00",
+    situation: str = None,
+    tone_mode: str = None,
+) -> dict:
+    """
+    Generate unified AI eyecatch / image generation prompts (English prompt + Japanese description + aspect ratio)
+    tailored to X (16:9), Instagram (4:5 / 1:1), note (1.91:1), TikTok (9:16), and Threads (1:1).
+    Takes into account live night atmosphere, crowd highlights, and current situation context (second_venue, zero_wait, etc.).
+    """
+    ch = (channel or "x").lower()
+    sit_key = (situation or "").strip().lower()
+    sit_meta = SITUATION_SPECS.get(sit_key, {})
+
+    # Base prompt elements depending on situation
+    if sit_key == "second_venue":
+        concept_en = "Chic late-night cafe and intimate cocktail bar in Tokyo, cozy emerald velvet sofa, warm low-key pendant lighting, artisan latte art and elegant cocktail glasses on marble table, relaxed conversation ambience, cinematic lighting, 8k photorealistic"
+        concept_ja = "相席ラウンジ後の2軒目にぴったりな、落ち着いた夜カフェ＆バーの雰囲気。ベルベットソファと間接照明が心地よい親密な空間。"
+    elif sit_key == "zero_wait":
+        concept_en = "Upscale luxury lounge bar entrance, inviting warm golden lighting, welcome champagne flutes on sleek gold tray, polished marble reception, glamorous nightlife aesthetic, photorealistic 8k"
+        concept_ja = "待ち時間ゼロで即乾杯できる華やかなラグジュアリーラウンジのエントランス。冷えたシャンパングラスと上質な夜の輝き。"
+    elif sit_key == "rain_underground":
+        concept_en = "Cozy modern nightlife lounge directly connected to underground shopping concourse, raindrops on window reflection, warm ambient lighting, elegant handcrafted cocktails, tranquil urban sanctuary, 8k photorealistic"
+        concept_ja = "雨に濡れずに直結で入れる大人の隠れ家ラウンジ。雨の夜のネオンの反射と温かみのある琥珀色のカクテル。"
+    elif sit_key == "last_train_cliff":
+        concept_en = "Moody atmospheric midnight cocktail bar, subtle glowing clock indicating past 11:30 PM, bokeh city night lights, deep navy and amber color palette, thoughtful late-night conversation mood, cinematic depth of field"
+        concept_ja = "終電後の深夜、静かに盛り上がる都会の隠れ家バー。深いネイビーと琥珀色の光が織りなす大人の夜。"
+    elif sit_key == "start_dash":
+        concept_en = "Vibrant early evening stylish lounge bar at golden hour sunset transitioning to city lights, fresh sparkling cocktails, welcoming premium vibe, clean composition, 8k photorealistic"
+        concept_ja = "仕事終わりのスタートダッシュにふさわしい、夕暮れから夜へと移り変わる洗練されたラウンジ。フレッシュなカクテル。"
+    else:
+        concept_en = "High-end social lounge bar in Tokyo Shibuya at midnight, modern neon accents, stylish craft cocktail glasses on polished marble counter, subtle data analytics screen softly glowing in dark background, cinematic lighting, 8k photorealistic"
+        concept_ja = "真夜中の都会的でラグジュアリーなラウンジバー。大理石のカウンターに置かれた美しいカクテルと、背景に溶け込むデータダッシュボード。"
+
+    gallery = [
+        {
+            "id": "x_16_9",
+            "channel": "x",
+            "title": "𝕏 X（Twitter）告知・添付画像",
+            "aspect_ratio": "16:9",
+            "ratio_label": "横長 16:9",
+            "recommended_resolution": "1200 x 675 px",
+            "prompt_en": f"{concept_en}, 16:9 wide aspect ratio, editorial photography, highly detailed, masterwork --ar 16:9",
+            "prompt_ja": f"Xのタイムラインで視線を止める横長アイキャッチ画像。【{concept_ja}】",
+            "copy_target": "prompt_en",
+        },
+        {
+            "id": "ig_4_5",
+            "channel": "instagram",
+            "title": "📸 Instagram カルーセル表紙 (1枚目)",
+            "aspect_ratio": "4:5",
+            "ratio_label": "縦長 4:5",
+            "recommended_resolution": "1080 x 1350 px",
+            "prompt_en": f"Editorial luxury nightlife photography, aesthetic cocktail glasses on dark marble table with gold rim, plush emerald green velvet sofa, ambient warm pendant lamp, Tokyo upscale lounge mood, 4:5 vertical framing --ar 4:5",
+            "prompt_ja": "Instagramカルーセル保存率を高める雑誌風の表紙スライド。深みのあるベルベットソファと琥珀色の照明。",
+            "copy_target": "prompt_en",
+        },
+        {
+            "id": "note_header",
+            "channel": "note",
+            "title": "📝 note 見出し画像（ヘッダー）",
+            "aspect_ratio": "1.91:1",
+            "ratio_label": "note見出し 1.91:1",
+            "recommended_resolution": "1280 x 670 px",
+            "prompt_en": f"Reflective moody evening view overlooking Tokyo neon city lights from an upscale lounge window, smartphone screen showing live analytics chart, thoughtful modern essay atmosphere, cinematic shallow depth of field, 1.91:1 ratio --ar 1.91:1",
+            "prompt_ja": "noteショートエッセイの読了率を高めるシックな見出し画像。東京の夜景と知的でアンニュイな雰囲気。",
+            "copy_target": "prompt_en",
+        },
+        {
+            "id": "tiktok_9_16",
+            "channel": "tiktok",
+            "title": "🎵 TikTok / Reels 縦型ショート表紙",
+            "aspect_ratio": "9:16",
+            "ratio_label": "縦型フル 9:16",
+            "recommended_resolution": "1080 x 1920 px",
+            "prompt_en": f"Vertical cinematic shot of bustling luxury lounge, vibrant nightlife energy, neon glow reflections on sleek bar counter, dynamic city night vibe, 9:16 vertical ratio --ar 9:16",
+            "prompt_ja": "TikTokやInstagramリール動画の冒頭指止め用サムネイル。夜の熱気とネオンが輝く9:16全画面。",
+            "copy_target": "prompt_en",
+        },
+        {
+            "id": "threads_1_1",
+            "channel": "threads",
+            "title": "🧵 Threads リアルスナップ風画像",
+            "aspect_ratio": "1:1",
+            "ratio_label": "正方形 1:1",
+            "recommended_resolution": "1080 x 1080 px",
+            "prompt_en": f"Authentic candid viewpoint from a cozy corner table at a stylish nightlife lounge, artisanal cocktail glass with lime garnish, relaxed casual night out, warm film grain, modern Tokyo mood --ar 1:1",
+            "prompt_ja": "Threadsのタイムラインに馴染む、等身大でリアルな夜の日常スナップ風スクエア画像。",
+            "copy_target": "prompt_en",
+        },
+    ]
+
+    primary_map = {
+        "x": gallery[0],
+        "instagram": gallery[1],
+        "note": gallery[2],
+        "tiktok": gallery[3],
+        "threads": gallery[4],
+    }
+    primary = primary_map.get(ch, gallery[0])
+
+    return {
+        "current_channel": ch,
+        "situation": sit_key,
+        "situation_label": sit_meta.get("label", ""),
+        "primary": primary,
+        "gallery": gallery,
     }
 
 
@@ -1176,9 +1388,11 @@ def run_planner(
     channel: str = "x",
     now_jst: datetime.datetime = None,
     allow_blocking: bool = True,
+    situation: str = None,
 ) -> dict:
     """
-    Determine style rotation and anti-repetition rules per SNS channel (`x`, `threads`, `instagram`).
+    Determine style rotation and anti-repetition rules per SNS channel (`x`, `threads`, `instagram`, `tiktok`, `note`),
+    and inject situation-specific editorial directives (F2.2).
     """
     now_jst = now_jst or datetime.datetime.now(JST)
     ch = (channel or "x").lower()
@@ -1201,6 +1415,9 @@ def run_planner(
         except Exception:
             pass
 
+    sit_key = (situation or "").strip().lower()
+    sit_meta = SITUATION_SPECS.get(sit_key, {})
+
     if ch == "threads":
         if slot_label in ("19:30", "19:45"):
             base_conv = ["threads_ladies_zero_wait", "threads_anomaly_insight", "threads_city_story", "threads_hopping_guide"]
@@ -1221,6 +1438,12 @@ def run_planner(
         else:
             base_conv = ["tiktok_hook_gap", "tiktok_data_myth", "tiktok_female_confession", "tiktok_midnight_reverse"]
         classic_key = "tiktok_classic_rank"
+    elif ch == "note":
+        if slot_label in ("00:00", "02:00"):
+            base_conv = ["note_essay_insight", "note_tsubuyaki_gap", "note_short_column"]
+        else:
+            base_conv = ["note_essay_insight", "note_short_column", "note_tsubuyaki_gap"]
+        classic_key = "note_classic_summary"
     else:
         if slot_label == "20:00":
             base_conv = ["usual_anomaly", "surge_focus", "hub_gap", "east_west_talk"]
@@ -1235,16 +1458,26 @@ def run_planner(
     style_priority = [st for st in rotated if st != last_style] + ([last_style] if last_style in rotated else [])
     style_priority.append(classic_key)
 
-    planner_memo = (
-        f"【{CHANNEL_LABELS.get(ch, ch)}・{wd_str}曜編成】"
-        f"前回採用『{STYLE_LABELS.get(last_style, '履歴なし')}』との被りをブロックし、"
-        f"定型テンプレ（{STYLE_LABELS.get(classic_key, '')}）を抑えて『{STYLE_LABELS.get(style_priority[0], '')}』を最優先に設定。"
-    )
+    if sit_meta:
+        planner_memo = (
+            f"【{CHANNEL_LABELS.get(ch, ch)}・{sit_meta['label']}特化編成】"
+            f"シチュエーション特化切り口（{sit_meta['desc']}）を優先注入し、"
+            f"定型テンプレを抑えて『{STYLE_LABELS.get(style_priority[0], '')}』を最優先に設定。"
+        )
+    else:
+        planner_memo = (
+            f"【{CHANNEL_LABELS.get(ch, ch)}・{wd_str}曜編成】"
+            f"前回採用『{STYLE_LABELS.get(last_style, '履歴なし')}』との被りをブロックし、"
+            f"定型テンプレ（{STYLE_LABELS.get(classic_key, '')}）を抑えて『{STYLE_LABELS.get(style_priority[0], '')}』を最優先に設定。"
+        )
 
     return {
         "channel": ch,
         "slot_label": slot_label,
         "weekday_ja": wd_str,
+        "situation": sit_key,
+        "situation_label": sit_meta.get("label", ""),
+        "situation_meta": sit_meta,
         "last_style": last_style,
         "recent_styles": recent_styles[:4],
         "classic_key": classic_key,
@@ -2074,6 +2307,236 @@ def _write_tiktok_candidates(
     return candidates
 
 
+def _write_note_candidates(
+    research: dict,
+    slot_label: str = "22:00",
+    now_jst: datetime.datetime = None,
+    site_url: str = "https://aiseki-navi.com",
+    tone_mode: str = DEFAULT_TONE_MODE,
+    situation: str = None,
+) -> list:
+    """
+    Generate 4 distinct note.com candidates tailored for deep reading, essays, and short thoughts (F2.1):
+      1) note_essay_insight: Deep-dive human psychology & night street essay (800〜1,400 chars)
+      2) note_short_column: Data-driven night economy & strategy mini column (800〜1,200 chars)
+      3) note_tsubuyaki_gap: Short poignant insider whisper / observation (120〜240 chars)
+      4) note_classic_summary: Comprehensive national & regional crowd summary (800〜1,100 chars)
+    """
+    now_jst = now_jst or datetime.datetime.now(JST)
+    cal = research.get("calendar") or build_calendar_context(now_jst)
+    wd_str = cal["weekday_ja"]
+    sit_key = (situation or "").strip().lower()
+    sit_meta = SITUATION_SPECS.get(sit_key, {})
+
+    stores = research.get("top_stores") or []
+    if len(stores) < 3:
+        stores = [
+            {"ja_name": "オリエンタルラウンジ渋谷本店", "women": 42, "men": 30, "wpct": 58, "women_diff": 4},
+            {"ja_name": "オリエンタルラウンジ新宿", "women": 38, "men": 28, "wpct": 58, "women_diff": 2},
+            {"ja_name": "オリエンタルラウンジ梅田", "women": 35, "men": 24, "wpct": 59, "women_diff": 3},
+        ]
+    s1, s2, s3 = stores[0], stores[1], stores[2]
+
+    active_stores = research.get("active_stores") or stores
+    total_w = sum(int(s.get("women") or 0) for s in active_stores)
+    total_m = sum(int(s.get("men") or 0) for s in active_stores)
+    candidates = []
+
+    # 1) note_essay_insight (800〜1,400 chars)
+    if sit_key == "second_venue":
+        essay_title = f"【夜の立ち回り論】相席ラウンジで一番盛り上がった瞬間に「静かな夜カフェ行かない？」と言える男が結局一番勝てる理由"
+        essay_p1 = (
+            f"街に人が溢れかえる{wd_str}曜の夜。モニターを眺めていると、{s1['ja_name']}には女性{s1['women']}名・男性{s1['men']}名（女性比{s1['wpct']}%）が集まり、"
+            f"フロアの熱気はピークを迎えている。周囲の{s2['ja_name']}（女性{s2['women']}名 / 男性{s2['men']}名）や{s3['ja_name']}も活況だ。"
+            f"だが、現場で何百組もの男女の会話を観察していて痛感する残酷な事実がある。それは『店内でどれだけ会話が弾んでも、2軒目の切り出し方を間違えるとすべてが水の泡になる』ということだ。"
+        )
+        essay_p2 = (
+            f"多くの男性がやりがちな典型的な敗因は、席の時間が盛り上がっているからと惰性で1時間半も粘り続け、話題が出尽くして沈黙が流れたタイミングで「この後どうする？」とお茶を濁すことだ。"
+            f"女性ペアの心理は明快だ。会話の熱量が最高潮に達している40分〜50分のピーク時にこそ、スマートに席を切り上げられる余裕に魅力を感じる。"
+            f"そして何より、ガヤガヤと大音量のBGMが流れる店内から抜け出し、少し落ち着いて話せる『静かな夜カフェ』や『徒歩3分のバー』へ自然に誘導できるかどうかが成否を分ける。"
+        )
+        essay_p3 = (
+            f"「ここ音楽で少し声張らないとだから、30分だけ近くの静かな夜カフェで美味しいスイーツ食べない？」"
+            f"この一言の強さは異常だ。『30分だけ』と明確な出口を示すことで女性側の警戒心を解き、お酒ではなく甘いものや落ち着いた空間を理由にすることで、無理のない自然な合意が生まれる。"
+            f"現在地から徒歩何分でどんな落ち着いた空間があるのか。相席ナビ（aiseki-navi.com）が周辺の厳選2軒目スポットやシチュエーション別フレーズを提供しているのも、まさにこの『相席後の勝負どころ』で迷子にならないためだ。"
+            f"今夜の相席ラウンジを最高の思い出にするか、ただの飲み会で終わらせるか。鍵はいつだって、退店の一歩手前のスマートな切り出しにある。"
+        )
+    elif sit_key == "zero_wait":
+        essay_title = f"【女子の本音と逆張り】看板だけで並ぶ男性を横目に、賢い女性ペアが「待ち時間ゼロ」で即座に乾杯する店舗の選び方"
+        essay_p1 = (
+            f"繁華街の夜、有名な大型店の前には入場待ちの長い列ができる。今夜のデータでも、{s1['ja_name']}は女性{s1['women']}名・男性{s1['men']}名と大盛況。"
+            f"しかし、そのすぐ近くにある店舗へ目を向けると、まったく違う光景が広がっている。"
+            f"男性陣が看板のネームバリューだけで長蛇の列に並んで時間を溶かしている裏側で、立ち回りの上手い女性ペアは最初から『待ちゼロ』の店舗へ滑り込み、颯爽と乾杯を始めているのだ。"
+        )
+        essay_p2 = (
+            f"女性側のリアルな本音を言えば、せっかくメイクもヘアセットも完璧に整えてヒールを履いてきた夜に、受付の狭いエントランスで何十分も待たされることほどテンションが下がるものはない。"
+            f"特に{wd_str}曜の夜は、男性先行のバランスになっている店舗を選べば、到着した瞬間に待ち時間なしで即席へ案内され、ウェルカムドリンクや限定フードをゆったり楽しむことができる。"
+            f"例えば今夜なら、{s2['ja_name']}（女性{s2['women']}名 / 男性{s2['men']}名）のように男性比率がしっかり確保された店舗こそ、女性グループにとっては最も待遇が良く、ゆとりを持った相席が期待できる穴場なのだ。"
+        )
+        essay_p3 = (
+            f"『とりあえず有名な店に行けばいいや』という思考停止は、時間とお金の両方を浪費する最大の罠だ。"
+            f"リアルタイムの男女人数と待ち時間をスマホ1つで可視化する相席ナビ（aiseki-navi.com）を開いて、今まさに女性待ちゼロで入れる店舗をピンポイントで狙い撃つ。"
+            f"それだけで、夜遊びの質は劇的に変わる。無駄な待ち時間をゼロにして、最高の席で乾杯する夜をぜひ選んでほしい。"
+        )
+    elif sit_key == "rain_underground":
+        essay_title = f"【雨の日の夜遊び戦略】足元の悪さは最大のチャンス。なぜ「地下直結ラウンジ」を知っている大人は雨の夜に一人勝ちできるのか？"
+        essay_p1 = (
+            f"外はあいにくの雨。濡れたアスファルトに街灯が反射し、繁華街の歩道を行き交う傘の波が見える。"
+            f"一般的に雨の日は客足が鈍ると言われるが、相席ラウンジのリアルタイムモニターを見ているとまったく逆の現象が起きていることに気づく。"
+            f"{s1['ja_name']}では女性{s1['women']}名・男性{s1['men']}名（女性比{s1['wpct']}%）が早くも集まり、店内は外の悪天候を忘れさせる熱気に包まれている。"
+        )
+        essay_p2 = (
+            f"なぜ雨の日にこれほど人が集まるのか。その答えは『地下街直結』という圧倒的な利便性にある。"
+            f"女性にとって、雨の日に傘を差して何分も路面を歩くのは絶対に避けたいストレスだ。湿気で髪は崩れ、お気に入りの靴や服が濡れてしまう。"
+            f"だからこそ、駅から改札を出て地下通路をそのまま歩いて濡れずにエレベーターへ直行できる店舗には、美意識の高い女性ペアが自然と一極集中するのだ。"
+            f"雨の日こそ、地下直結や駅徒歩1分以内の店舗に女性が集中し、逆に少し離れた路面店には男性先行の穴場が生まれるという鮮やかなコントラストが生まれる。"
+        )
+        essay_p3 = (
+            f"スマートな大人は、雨を言い訳にして家にこもるのではなく、雨だからこそ生まれる偏りと地下直結の利便性を味方につける。"
+            f"「雨だから駅直結のラウンジにいるんだけど、濡れずに合流しない？」という誘い文句がどれほど強力か、想像してみてほしい。"
+            f"今夜の天候と各店舗の混雑差は相席ナビ（aiseki-navi.com）でリアルタイムに確認できる。足元の悪い夜だからこそ、賢い選択で差をつけてほしい。"
+        )
+    elif sit_key == "last_train_cliff":
+        essay_title = f"【深夜24時の人間模様】終電崖を越えたラウンジで起きているドラマと、朝まで残る男女のリアルな立ち回り"
+        essay_p1 = (
+            f"時計の針が23時30分を回り、駅へ向かう人波が足早になる頃。相席ラウンジのフロアには、独特の静けさと濃密な空気が漂い始める。"
+            f"終電で帰るスマートな組が解散し、店内には『最初から朝までコースを決めている組』と『思いがけず話が弾んで終電を逃した組』だけが残る。"
+            f"今夜の{s1['ja_name']}は女性{s1['women']}名・男性{s1['men']}名。深夜0時を過ぎてもなお、この人数が維持されていること自体が、今夜の熱量の高さを雄弁に物語っている。"
+        )
+        essay_p2 = (
+            f"終電後の相席ラウンジは、20時台や21時台の慌ただしさとはまったく別の顔を見せる。"
+            f"「次の店へ移動しなきゃ」「終電に間に合わせなきゃ」という時間制限のプレッシャーから解放され、お互いのプライベートや本音の深い会話が自然と引き出される時間帯だ。"
+            f"ただし、ここで勘違いしてはいけないのは、朝まで残っているからといって誰でもいいわけではないということだ。"
+            f"女性側も深夜まで残る以上、安心できる相手、楽しく会話ができる好感度の高い相手をシビアに見極めている。"
+        )
+        essay_p3 = (
+            f"深夜の立ち回りで最も重要なのは、決してがっつかない余裕と、眠気や疲れを気遣えるスマートな配慮だ。"
+            f"ソフトドリンクを頼んだり、軽く甘いものをシェアしたり、心地よいペースを保てる人が最後に選ばれる。"
+            f"終電を逃して途方に暮れるのではなく、深夜営業の店舗の混雑状況を相席ナビ（aiseki-navi.com）で確認しながら、無理のない大人の夜を楽しむ。"
+            f"終電崖の向こう側には、昼間や宵の口には見られない、本物の人間模様が広がっている。"
+        )
+    elif sit_key == "start_dash":
+        essay_title = f"【19時の立ち上がり論】なぜ金曜の夜遊びは「スタートダッシュ」を制した者が最も良い席を引けるのか？"
+        essay_p1 = (
+            f"19時を少し回ったところ。街はまだ仕事終わりの喧騒が始まったばかりだが、すでに相席ラウンジの扉は開いている。"
+            f"今夜の{s1['ja_name']}では、早くも女性{s1['women']}名・男性{s1['men']}名がチェックイン。"
+            f"ピークの21時半に比べればフロアはまだ穏やかだが、この『混み始める前の早い時間帯』にこそ、最も質の高い出会いと快適な滞在が約束されている。"
+        )
+        essay_p2 = (
+            f"スタートダッシュの最大のメリットは、早割特典や限定サービスを存分に活用できるだけでなく、"
+            f"スタッフの案内やオペレーションにも余裕があり、希望のエリアや落ち着いたソファ席を確保しやすい点にある。"
+            f"混雑ピーク時にありがちな『男性待ちで受付で立ち往生する』『急かされるように相席が入れ替わる』といったストレスとは無縁の時間がここにある。"
+            f"仕事を定時でスマートに切り上げた女性グループも、この落ち着いた1軒目を狙って来店しているケースが多い。"
+        )
+        essay_p3 = (
+            f"遅れて戦場に飛び込むより、先手を打って余裕を持つ。"
+            f"早い時間に1〜2席軽く会話を交わし、一番気の合う相手とピーク前の落ち着いた時間帯に2軒目へシフトする。"
+            f"これこそが、経験豊富な大人が実践している最もスマートなラウンジ活用法だ。"
+            f"相席ナビ（aiseki-navi.com）で18時〜20時台の立ち上がり人数を確認し、今夜のスタートダッシュを決めてほしい。"
+        )
+    else:  # standard / default essay
+        essay_title = f"【街の温度差解剖】なぜ同じ駅・徒歩4分の相席ラウンジで「男女比率の格差」が生まれるのか？実測データから読む夜の歩き方"
+        essay_p1 = (
+            f"夜の繁華街。駅の改札を出て徒歩数分の範囲に、同じ看板を掲げた相席ラウンジが複数店舗並んでいることがある。"
+            f"多くの人は「どっちに行っても大して変わらないだろう」と直感で近い方へ入ってしまうが、モニターを見ている私からすると、それはあまりにも勿体ないギャンブルだ。"
+            f"今夜のデータを見ても、トップの{s1['ja_name']}は女性{s1['women']}名・男性{s1['men']}名（女性比{s1['wpct']}%）と理想的なバランスを保っているのに対し、"
+            f"歩いてすぐの別店舗では男性比率が大きく偏り、受付で待ち時間が発生している。"
+        )
+        essay_p2 = (
+            f"なぜ、わずか数百メートルしか離れていない店舗同士で、これほど極端な温度差が生まれるのか。"
+            f"理由は実にシンプルだ。駅からの動線、店舗の内装やソファの座り心地、女性限定のスイーツビュッフェの充実度、そしてSNSでの認知の差が、目に見えない形で客層をふるい分けているからだ。"
+            f"女性客は居心地の良さに極めて敏感で、少しでも待たされたり落ち着かないと感じた店舗はあっさり見切り、好バランスの店舗へと流れていく。"
+            f"その結果、片方の店舗は女性で賑わい、もう片方の店舗は男性ばかりが並ぶという残酷なコントラストが生じるのだ。"
+        )
+        essay_p3 = (
+            f"夜遊びで最も重要なリソースは『時間』だ。事前の情報を持たずに飛び込んで、40分も受付で消耗するのはあまりにも非効率だ。"
+            f"全国主要店舗のリアルタイム混雑と男女比を瞬時に比較できる相席ナビ（aiseki-navi.com）を活用し、"
+            f"「いま一番勢いのある店」または「今すぐ待ちゼロで入れる店」を把握してから動く。"
+            f"ほんの30秒のデータ確認が、あなたの今夜を決定的に充実させる。街の温度差を味方につけて、賢くスマートな夜を過ごしてほしい。"
+        )
+
+    essay_full = f"{essay_title}\n\n{essay_p1}\n\n{essay_p2}\n\n{essay_p3}"
+    essay_full = sanitize_brand_names(essay_full)
+
+    candidates.append({
+        "style": "note_essay_insight",
+        "style_label": STYLE_LABELS["note_essay_insight"],
+        "writer_note": f"【note深層考察】実測データ（{s1['ja_name']} 女{s1['women']}:男{s1['men']}）を織り交ぜ、夜の人間模様と立ち回り戦略を深く描いた読了感あるエッセイ（約1,000文字）。",
+        "main_text": essay_full,
+        "reply_text": "（note専用・Webエディタへ1クリック転送可能・見出し画像プロンプト連動）",
+    })
+
+    # 2) note_short_column (800〜1,200 chars)
+    col_title = f"【データで読み解く夜の相席戦略】平常比ギャップと女性比率の偏りから見出す、今夜の最適解"
+    col_p1 = (
+        f"相席ナビ編集室のモニターには、全国稼働{len(active_stores)}店舗のデータが毎分リアルタイムに集約されている。"
+        f"現在の全国総来店者数は女性{total_w:,}名・男性{total_m:,}名。全体としては活発に動いているが、個々の店舗へフォーカスすると極めて興味深い偏りが見えてくる。"
+        f"例えば{s1['ja_name']}は女性{s1['women']}名・男性{s1['men']}名（女性比{s1['wpct']}%）に達しており、フロア全体で女性優勢のバランスが形成されている。"
+    )
+    col_p2 = (
+        f"データ分析において私たちが特に注目しているのが『平常同曜日比（普段比）』と『女性比率』の2軸だ。"
+        f"普段の{wd_str}曜日の同時刻と比べて女性が急増している店舗は、フロア全体の活気と回転率が高く、会話の弾みやすさが格段に向上する。"
+        f"一方で、女性比率が45%を下回り男性が過剰になっている店舗では、スタッフの案内待ちが発生しやすく、男性側の滞在コストと疲労度ばかりが積み上がってしまう。"
+        f"{s2['ja_name']}（女性{s2['women']}名 / 男性{s2['men']}名）や{s3['ja_name']}（女性{s3['women']}名 / 男性{s3['men']}名）のように、"
+        f"女性比率が50%〜65%の黄金比を保っている店舗こそが、今夜最もコストパフォーマンスの高い選択肢と言える。"
+    )
+    col_p3 = (
+        f"直感や運任せで店を選ぶ時代は終わった。現代の夜遊びは、データを賢く活用した者が最もスマートに果実を得る構造になっている。"
+        f"相席ナビ（aiseki-navi.com）でリアルタイムの人数・比率を確認し、無駄な待ち時間を削ぎ落としてベストな席に着く。"
+        f"そして盛り上がった後は、周辺の落ち着いた夜カフェやバーへスマートに2軒目移動する。"
+        f"この一連の黄金フローを徹底することこそが、大人の洗練された夜の過ごし方である。"
+    )
+    col_full = f"{col_title}\n\n{col_p1}\n\n{col_p2}\n\n{col_p3}"
+    col_full = sanitize_brand_names(col_full)
+
+    candidates.append({
+        "style": "note_short_column",
+        "style_label": STYLE_LABELS["note_short_column"],
+        "writer_note": f"【noteミニコラム】全国実測データと黄金比（女性比50〜65%）を根拠に、論理的で説得力のある立ち回り論を提示する構成（約900文字）。",
+        "main_text": col_full,
+        "reply_text": "（note専用・Webエディタへ1クリック転送可能・見出し画像プロンプト連動）",
+    })
+
+    # 3) note_tsubuyaki_gap (120〜240 chars)
+    tsubu = (
+        f"ふとモニター見てて息を呑んだんだけど、今夜の{s1['ja_name']}が女性{s1['women']}名・男性{s1['men']}名（女性比{s1['wpct']}%）で完全に当たり夜。"
+        f"徒歩数分の別店は男余りで並んでるのに、看板の知名度だけで突撃すると本当に勿体ない。"
+        f"夜の勝敗はいつだって入店前の30秒で決まる。数字見てから動くのが正解。"
+    )
+    tsubu = sanitize_brand_names(tsubu)
+    candidates.append({
+        "style": "note_tsubuyaki_gap",
+        "style_label": STYLE_LABELS["note_tsubuyaki_gap"],
+        "writer_note": "【noteつぶやき】バックヤードでふとモニターを見つめた中の人のリアルな吐露（約170文字・noteつぶやき枠最適長）。",
+        "main_text": tsubu,
+        "reply_text": "（noteつぶやき専用・X等へのクロスポストにも転用可能）",
+    })
+
+    # 4) note_classic_summary (800〜1,100 chars)
+    classic_summary = (
+        f"【{wd_str}曜夜 全国相席ラウンジ混雑動向サマリーレポート】\n\n"
+        f"現在、全国稼働{len(active_stores)}店舗における総来店者数は女性{total_w:,}名・男性{total_m:,}名となっております。\n\n"
+        f"■ 今夜の全国主要店舗 混雑ハイライト：\n"
+        f"・第1位：{s1['ja_name']}（女性{s1['women']}名 / 男性{s1['men']}名・女性比{s1['wpct']}%）\n"
+        f"・第2位：{s2['ja_name']}（女性{s2['women']}名 / 男性{s2['men']}名・女性比{s2['wpct']}%）\n"
+        f"・第3位：{s3['ja_name']}（女性{s3['women']}名 / 男性{s3['men']}名・女性比{s3['wpct']}%）\n\n"
+        f"■ エリア動向と傾向分析：\n"
+        f"主要都市部（東京、大阪、名古屋、福岡）を中心に、ピーク時間帯における女性の来店ペースが加速しております。"
+        f"特に同一駅周辺において、店舗ごとに男女比率の偏りが発生しており、事前の人数確認を行ってから向かうことが推奨されます。\n\n"
+        f"全53店舗のリアルタイム混雑データおよび料金・イベント詳細については、『相席ナビ』（https://aiseki-navi.com）をご参照ください。"
+    )
+    classic_summary = sanitize_brand_names(classic_summary)
+    candidates.append({
+        "style": "note_classic_summary",
+        "style_label": STYLE_LABELS["note_classic_summary"],
+        "writer_note": "【note定型サマリー】主要店舗の数値を網羅した速報まとめ（比較用ベンチマーク）。",
+        "main_text": classic_summary,
+        "reply_text": "（noteまとめ定型・比較ベンチマーク）",
+    })
+
+    return candidates
+
+
 _NON_HEADCOUNT_SUFFIX_RE = re.compile(
     r"^(?:組|目|以上|以下|未満|限定|待ち|分|時間|円|歳|代|%|％|割|ペア|ソロ|入店|でも)"
 )
@@ -2207,6 +2670,7 @@ def _build_gemini_prompt(
     now_jst: datetime.datetime,
     site_url: str,
     tone_mode: str = DEFAULT_TONE_MODE,
+    situation: str = None,
 ) -> tuple:
     ch = (channel or "x").lower()
     tm = get_editorial_tone_mode(tone_mode, allow_blocking=False)
@@ -2360,6 +2824,20 @@ def _build_gemini_prompt(
             "- 禁止事項：1行目を『【〇〇速報】』のような角括弧タイトルにしないこと。『🥇🥈🥉』メダル記号や宣伝臭い絵文字連打は禁止。\n"
             "- 構成：最初の1行目でTikTok視聴者が思わずコメントや保存をしたくなる『現場モニターを見て気づいたリアルなギャップや女子組・男子組の図星の本音』を切り出す。本文中で2〜3店舗の実測人数（例：女性48名・男性32名（女性比60%））を正確に織り交ぜ、自然な流れで『入店3分前に見返せるように保存📌しとくと便利』と『相席ナビ（aiseki-navi.com）で検索🔍』を案内し、末尾に『#相席ナビ #相席ラウンジ #オリエンタルラウンジ #ag #JIS』の5タグを付ける。"
         )
+    elif ch == "note":
+        reply_text = "（note専用・Webエディタへ1クリック転送可能・見出し画像プロンプト連動）"
+        platform_spec = (
+            "【対象SNS：note.com（ショートエッセイ・つぶやき）】\n"
+            "- 形式選択：思考プロセス（thinking_memo）を踏まえ、『800〜1,400文字の深層考察ショートエッセイ』または『120〜240文字の短いつぶやき』のいずれか最適な構成を出力すること。\n"
+            "- 構成（ショートエッセイの場合）：\n"
+            "  1. 印象的なタイトル案（『【〇〇論】〜』や『なぜ〜なのか？』等の引きのある見出し）\n"
+            "  2. 街の夜の空気感や男女の人間模様を切り取った導入\n"
+            "  3. ファクトシート記載の正確な人数・比率（例：オリエンタルラウンジ新宿が女性84名・男性36名（女性比70%））と街の温度差の提示\n"
+            "  4. なぜその現象が起きるかの心理・夜の行動構造の深い解剖\n"
+            "  5. 読者へのスマートな立ち回り提言（退店後の夜カフェや2軒目誘導、相席ナビ aiseki-navi.com の活用）\n"
+            "- 構成（つぶやきの場合）：ふとモニターを見た時のリアルな吐露・街の温度差を120〜240文字で端的に表現。\n"
+            "- 禁止事項：架空の店舗名・人数のハルシネーション、『オリエンタル』単体表記（必ず『オリエンタルラウンジ』）。"
+        )
     else:
         import ig_carousel_generator
         ig_ctx = research.get("ig_ctx") or ig_carousel_generator.build_forecast_context(live_stores=top_s, now_jst=now_jst)
@@ -2386,12 +2864,17 @@ def _build_gemini_prompt(
     slot_persona = research.get("slot_persona") or build_slot_persona_context(slot_label=slot_label, channel=ch)
     cliche_list_str = "・".join(f"『{w}』" for w in AI_CLICHE_WORDS)
 
+    sit_key = (situation or (plan.get("situation") if plan else "") or "").strip().lower()
+    sit_meta = SITUATION_SPECS.get(sit_key, {})
+    sit_block = f"\n\n{sit_meta['directive']}\n" if sit_meta.get("directive") else ""
+
     prompt = (
         "あなたは全国53店舗の相席ラウンジ人数をリアルタイム計測している『相席ナビ』の運営中の人です。\n"
         "毎回同じボットのような投稿や綺麗にまとまりすぎたAI構文ではなく、本当にスマホと店内モニターを見ながら、"
         "外の空気（天気・気温・曜日・給料日など）と一緒にフォロワーへ本音で呟いている生身のアドリブ投稿を1本作成してください。\n\n"
         f"{HUMAN_INSIDER_VOICE_GUIDE}\n\n"
-        f"{tone_meta['prompt_directive']}\n\n"
+        f"{tone_meta['prompt_directive']}"
+        f"{sit_block}\n\n"
         f"【今夜の時間帯テンション設定：{slot_persona['label']}】\n"
         f"- {slot_persona['guidance']}\n\n"
         "【長考（Thinking）プロセス：脳内3案コンペ＆脱AI臭フィルタリング】\n"
@@ -2936,21 +3419,13 @@ def call_editorial_ai_json(
 
 def _postprocess_ai_main_text(main_text: str, channel: str = "x") -> str:
     """
-    Guarantee zero bare 'オリエンタル〇〇' ('ラウンジ' omitted) and zero 'オリラジ' in AI output:
-      - Converts any 'オリラジ' to 'オリエンタルラウンジ'.
-      - Converts any 'オリエンタル(?!ラウンジ)' to 'オリエンタルラウンジ'.
+    Guarantee zero bare 'オリエンタル〇〇' ('ラウンジ' omitted) and zero 'オリラジ'/'OLG' in AI output:
+      - Uses sanitize_brand_names to enforce 'オリエンタルラウンジ'.
     """
     text = (main_text or "").strip()
     if not text:
         return ""
-
-    if "オリラジ" in text:
-        text = text.replace("オリラジ", "オリエンタルラウンジ")
-
-    if re.search(r"オリエンタル(?!ラウンジ)", text):
-        text = re.sub(r"オリエンタル(?!ラウンジ)", "オリエンタルラウンジ", text)
-
-    return text
+    return sanitize_brand_names(text)
 
 
 def _make_ai_cache_key(
@@ -2959,13 +3434,15 @@ def _make_ai_cache_key(
     research: dict,
     now_jst: datetime.datetime = None,
     tone_mode: str = DEFAULT_TONE_MODE,
+    situation: str = None,
 ):
     """
-    Build a precise cache key incorporating engine_pref, channel, tone_mode, business date, slot,
+    Build a precise cache key incorporating engine_pref, channel, tone_mode, situation, business date, slot,
     top-3 stores `(name, women, men)`, and `focus_store` `(name, women, men)`.
     """
     ch_norm = (ch or "x").lower()
     tm_norm = get_editorial_tone_mode(tone_mode, allow_blocking=False)
+    sit_norm = (situation or "").strip().lower()
     eng_pref = get_ai_engine_pref(allow_blocking=False)
     has_c = bool(get_claude_api_key(allow_blocking=False))
     top_s = (research or {}).get("top_stores") or []
@@ -2986,7 +3463,7 @@ def _make_ai_cache_key(
         (focus.get("name", ""), int(focus.get("women") or 0), int(focus.get("men") or 0))
         if focus else None
     )
-    return (eng_pref, has_c, ch_norm, tm_norm, slot_label or "", biz_date_str, top3_sig, focus_sig)
+    return (eng_pref, has_c, ch_norm, tm_norm, sit_norm, slot_label or "", biz_date_str, top3_sig, focus_sig)
 
 
 def _store_ai_candidate_cache(cache_key, candidate: dict, model_name: str, now_t: float = None):
@@ -3020,8 +3497,9 @@ def has_cached_ai_candidate(
     channel: str,
     now_jst: datetime.datetime = None,
     tone_mode: str = DEFAULT_TONE_MODE,
+    situation: str = None,
 ) -> bool:
-    cache_key = _make_ai_cache_key(channel, slot_label, research, now_jst, tone_mode=tone_mode)
+    cache_key = _make_ai_cache_key(channel, slot_label, research, now_jst, tone_mode=tone_mode, situation=situation)
     if cache_key is None:
         return False
     now_t = time.time()
@@ -3052,6 +3530,7 @@ def _generate_gemini_adlib_candidate(
     force_refresh: bool = False,
     cache_only: bool = False,
     tone_mode: str = DEFAULT_TONE_MODE,
+    situation: str = None,
 ) -> dict:
     """
     Generate live human-voiced SNS draft via Dual-Engine Chief Writer (Claude Sonnet or Upgraded Gemini Pro/Flash).
@@ -3062,7 +3541,8 @@ def _generate_gemini_adlib_candidate(
 
     ch = (channel or "x").lower()
     tm = get_editorial_tone_mode(tone_mode, allow_blocking=False)
-    cache_key = _make_ai_cache_key(ch, slot_label, research, now_jst, tone_mode=tm)
+    sit_key = (situation or (plan.get("situation") if plan else "") or "").strip().lower()
+    cache_key = _make_ai_cache_key(ch, slot_label, research, now_jst, tone_mode=tm, situation=sit_key)
     if cache_key is None:
         return None
 
@@ -3104,6 +3584,7 @@ def _generate_gemini_adlib_candidate(
         now_jst=now_jst,
         site_url=site_url,
         tone_mode=tm,
+        situation=sit_key,
     )
 
     parsed, model_used, _ = call_editorial_ai_json(
@@ -3159,17 +3640,22 @@ def run_writer(
     force_ai_refresh: bool = False,
     ai_cache_only: bool = False,
     tone_mode: str = None,
+    situation: str = None,
 ) -> list:
     now_jst = now_jst or datetime.datetime.now(JST)
     site_url = (app_url or os.environ.get("PUBLIC_SITE_URL") or "https://aiseki-navi.com").rstrip("/")
     ch = (channel or "x").lower()
     tm = get_editorial_tone_mode(tone_mode, allow_blocking=(not ai_cache_only))
+    sit_key = (situation or (plan.get("situation") if plan else "") or "").strip().lower()
+
     if ch == "threads":
         base_cands = _write_threads_candidates(research, slot_label=slot_label, now_jst=now_jst, site_url=site_url, tone_mode=tm)
     elif ch == "instagram":
         base_cands = _write_instagram_candidates(research, now_jst=now_jst, tone_mode=tm)
     elif ch == "tiktok":
         base_cands = _write_tiktok_candidates(research, slot_label=slot_label, now_jst=now_jst, site_url=site_url, tone_mode=tm)
+    elif ch == "note":
+        base_cands = _write_note_candidates(research, slot_label=slot_label, now_jst=now_jst, site_url=site_url, tone_mode=tm, situation=sit_key)
     else:
         base_cands = _write_x_candidates(research, slot_label=slot_label, now_jst=now_jst, site_url=site_url, tone_mode=tm)
 
@@ -3184,6 +3670,7 @@ def run_writer(
             force_refresh=force_ai_refresh,
             cache_only=ai_cache_only,
             tone_mode=tm,
+            situation=sit_key,
         )
         if ai_cand:
             return [ai_cand] + base_cands
@@ -3223,7 +3710,7 @@ def run_evaluator(
 
     evaluated = []
     for cand in candidates:
-        text = cand.get("main_text") or ""
+        text = cand.get("main_text") or cand.get("text") or ""
         style = cand.get("style") or ""
         is_ai = bool(cand.get("is_ai_generated") or style == "ai_live_adlib")
         first_line = text.split("\n", 1)[0] if text else ""
@@ -3312,6 +3799,9 @@ def run_evaluator(
         elif style in ("tiktok_hook_gap", "tiktok_female_confession", "tiktok_data_myth", "tiktok_midnight_reverse"):
             data_score = 25
             data_comment = "◎ TikTok縦型動画（UIセーフゾーン設計）の比率バー＆冒頭2秒フックと完全連動し、実測根拠が明快。"
+        elif ch == "note":
+            data_score = 25
+            data_comment = "◎ note深層考察：混雑実測値と街の温度差の分析根拠が1人単位で整合しています。"
         else:
             data_score = 23 if style != classic_key else 20
             data_comment = "◎ 主要店舗の実測人数・比率が過不足なく整理されています。"
@@ -3352,6 +3842,28 @@ def run_evaluator(
             else:
                 weight_score = 7
                 weight_comment = f"◯ 文字数（{metric_unit}）・タグ{tag_cnt}個はTikTok標準範囲内。"
+        elif ch == "note":
+            is_tsubuyaki = (style == "note_tsubuyaki_gap" or metric_val <= 300)
+            if is_tsubuyaki:
+                if metric_val > 350:
+                    weight_score = -30
+                    weight_comment = f"❌ noteつぶやき上限超過（{metric_unit}）。240文字以下を推奨。"
+                elif 120 <= metric_val <= 260:
+                    weight_score = 10
+                    weight_comment = f"◎ noteつぶやき最適文字数（{metric_unit}・120〜240字目安）に合致。"
+                else:
+                    weight_score = 7
+                    weight_comment = f"◯ つぶやき文字数（{metric_unit}）は許容範囲内。"
+            else:
+                if metric_val > 1800 or metric_val < 400:
+                    weight_score = 6
+                    weight_comment = f"△ noteショートエッセイ文字数（{metric_unit}）。800〜1,400文字が推奨です。"
+                elif 750 <= metric_val <= 1450:
+                    weight_score = 10
+                    weight_comment = f"◎ noteショートエッセイ最適長（{metric_unit}・800〜1,400字）を完璧にクリア。"
+                else:
+                    weight_score = 8
+                    weight_comment = f"◯ noteエッセイ文字数（{metric_unit}）は概ね良好。"
         else:  # instagram
             tag_cnt = len(re.findall(r"#[^\s#]+", text))
             if 340 <= metric_val <= 980 and 4 <= tag_cnt <= 8 and "保存" in text:
@@ -3377,6 +3889,7 @@ def run_evaluator(
         item_copy = dict(cand)
         item_copy.update({
             "channel": ch,
+            "style_label": cand.get("style_label") or STYLE_LABELS.get(style, style),
             "total_score": total_score,
             "raw_total_score": raw_total,
             "pdca_boost": pdca_boost,
@@ -3415,6 +3928,7 @@ def run_evaluator(
     }
 
 
+
 def run_editorial_pipeline(
     stores: list,
     slot_label: str = "22:00",
@@ -3427,16 +3941,21 @@ def run_editorial_pipeline(
     force_ai_refresh: bool = False,
     ai_cache_only: bool = False,
     tone_mode: str = None,
+    situation: str = None,
 ) -> dict:
     """
-    Run the full 4-role SNS Editorial Room pipeline for `channel` ('x', 'threads', or 'instagram').
+    Run the full 4-role SNS Editorial Room pipeline for `channel` ('x', 'threads', 'instagram', 'tiktok', 'note').
+    Supports situation-specific quick editorial focus (F2.2) and AI image prompt generation (F2.3).
     When `ai_cache_only=True` (used on HTML page render), returns in <30ms using cached AI draft if available,
     and flags `ai_pending_async=True` so client JS can fetch the fresh AI draft asynchronously without blocking UI.
     """
     now_jst = now_jst or datetime.datetime.now(JST)
     ch = (channel or "x").lower()
-    if ch not in ("x", "threads", "instagram", "tiktok"):
+    if ch not in ("x", "threads", "instagram", "tiktok", "note"):
         ch = "x"
+
+    sit_key = (situation or "").strip().lower()
+    sit_meta = SITUATION_SPECS.get(sit_key, {})
 
     allow_state_blocking = False if ai_cache_only else bool(record_history or use_ai)
     default_tm = get_default_editorial_tone_mode(allow_blocking=allow_state_blocking)
@@ -3456,6 +3975,7 @@ def run_editorial_pipeline(
         channel=ch,
         now_jst=now_jst,
         allow_blocking=allow_state_blocking,
+        situation=sit_key,
     )
     candidates = run_writer(
         research,
@@ -3468,8 +3988,17 @@ def run_editorial_pipeline(
         force_ai_refresh=force_ai_refresh,
         ai_cache_only=ai_cache_only,
         tone_mode=resolved_tm,
+        situation=sit_key,
     )
     evaluation = run_evaluator(candidates, research, plan, channel=ch, now_jst=now_jst)
+
+    image_prompts = generate_image_prompts(
+        research=research,
+        channel=ch,
+        slot_label=slot_label,
+        situation=sit_key,
+        tone_mode=resolved_tm,
+    )
 
     has_ai_cand = any(c.get("is_ai_generated") for c in (evaluation.get("candidates") or []))
     sheets_warming = (not getattr(job_state, "_sheets_loaded", True)) and (not job_state.sheets_store.is_disabled())
@@ -3487,6 +4016,8 @@ def run_editorial_pipeline(
         "channel_label": CHANNEL_LABELS.get(ch, ch),
         "tone_mode": resolved_tm,
         "tone_mode_label": EDITORIAL_TONE_MODES[resolved_tm]["short_label"],
+        "situation": sit_key,
+        "situation_label": sit_meta.get("label", ""),
         "timestamp": now_jst.strftime("%Y-%m-%d %H:%M:%S"),
         "slot_label": slot_label,
         "selected_style": winner.get("style", ""),
@@ -3498,6 +4029,7 @@ def run_editorial_pipeline(
         "desk_summary": evaluation.get("desk_summary", ""),
         "planner_memo": plan.get("planner_memo", ""),
         "research_notes": research.get("research_notes", []),
+        "image_prompts": image_prompts,
         "candidates": [
             {
                 "rank": c.get("rank"),
@@ -3532,6 +4064,11 @@ def run_editorial_pipeline(
         "tone_mode_label": EDITORIAL_TONE_MODES[resolved_tm]["label"],
         "default_tone_mode": default_tm,
         "tone_modes": get_tone_modes_catalog(),
+        "situation": sit_key,
+        "situation_label": sit_meta.get("label", ""),
+        "situation_meta": sit_meta,
+        "situation_specs": list(SITUATION_SPECS.values()),
+        "image_prompts": image_prompts,
         "gemini_status": get_gemini_status(allow_blocking=allow_state_blocking),
         "delivery_health": get_sns_delivery_health(allow_blocking=allow_state_blocking),
         "ai_pending_async": ai_pending_async,

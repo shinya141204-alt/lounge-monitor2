@@ -1,72 +1,95 @@
-# Project: 相席ナビ (AISEKI NAVI) システム改善・高速化・安定化・本番デプロイ
+# Project: 相席ナビ (AISEKI NAVI) SNS AI機能強化 & 2軒目案内UI/UX刷新 & 本番デプロイ
 
 ## Architecture
 本システムは Fly.io 東京リージョン（`nrt`）上で、2つの独立したプロセスロールとして稼働する：
-- **Web プロセス (`APP_ROLE=web`)**: Gunicorn (2w × 16t, 2 CPU)。Flask HTTPサーバー、Redis/L1キャッシュからのリアルタイム混雑データ返却 (<0.5ms)、SSR、公開API、管理UI。
+- **Web プロセス (`APP_ROLE=web`)**: Gunicorn (2w × 16t, 2 CPU)。Flask HTTPサーバー、Redis/L1キャッシュからのリアルタイム混雑データ返却 (<0.5ms)、SSR、公開API、スタッフ用生成UI、店舗詳細モーダル。
 - **Worker プロセス (`APP_ROLE=worker`)**: APScheduler による毎分データ収集（全53店舗スクレイピング）、Redis/PostgreSQL/Google Sheets への最新データ保存、非同期SNSジョブキュー消費。
-- **共有データストア**: Upstash Redis (リアルタイム状態・SNSキュー)、Fly PostgreSQL (長期ログ)、Google Sheets (生ログ5列アーカイブ)、ローカル SQLite (フォールバック)。
+- **データストア**: Upstash Redis (リアルタイム状態・SNSキュー)、Fly PostgreSQL (長期ログ)、Google Sheets (生ログ5列アーカイブ)、ローカル SQLite (フォールバック)、静的マスター JSON (`store_master.json`, `second_venues.json`)。
 
 ## Feature Inventory
 Phase 0 調査で特定された全改修項目および要件の割り当て一覧（抜け漏れゼロ保証）：
 | # | Feature | Description | Milestone | Source |
 |---|---------|-------------|-----------|--------|
-| 1 | F1.1 | `x_poster.py` の `format_ja_store_name()` から OLG プレフィックスを排除し正式名称化 | M1 | survey_constraints_sns |
-| 2 | F1.2 | `templates/guide_last_train_cliff.html` の9箇所の単体 OLG を「オリエンタルラウンジ」等に置換 | M1 | survey_constraints_sns, survey_web_api |
-| 3 | F1.3 | `templates/index.html`, `static/app.js`, `app.py` のUIバッジ・タブにおける OLG/オリラジ露出を適正化 | M1 | survey_web_api |
-| 4 | F2.1 | Google Cloud (GCP) 依存ゼロの永続的バリデーションテスト追加 | M1 | survey_constraints_sns |
-| 5 | F2.2 | Google Sheets 'Lounge Monitor Data' 5列構造維持の厳格検証テスト追加 | M1 | survey_constraints_sns |
-| 6 | F2.3 | 単体「オリエンタル」「OLG」全自動走査テストの追加 | M1 | survey_constraints_sns |
-| 7 | F3.1 | BUG-01: `DISABLE_SCHEDULER=1` の本番Worker誤設定解消（本番Workerとテスト環境のフラグ分離） | M2 | survey_db_worker |
-| 8 | F3.2 | BUG-02: `local_db.py` の `insert_logs` 内での Open-Meteo 同期API呼び出しを完全分離・非同期化 | M2 | survey_db_worker |
-| 9 | F3.3 | BUG-04: CLOVERSスクレイパーの `_parse_int_count` 適用による非数値パース例外防護 | M2 | survey_db_worker |
-| 10 | F3.4 | BUG-05: XIX/ALFA/Yatakoi スクレイパーの `None` パース `TypeError` 防護（`or 0` 適用） | M2 | survey_db_worker |
-| 11 | F3.5 | BUG-06: `monitor.py` の `_olg_cache` への排他ロック（スレッドセーフ化）適用 | M2 | survey_db_worker |
-| 12 | F3.6 | BUG-07 / ISSUE-05: `health.py` の `_state` および `_known_unknowns` の排他ロックスコープ完全化 | M2 | survey_db_worker, survey_web_api |
-| 13 | F3.7 | BUG-09: `local_db.py` / `turbo_store.py` の PostgreSQL コネクション滞留（idle in transaction）防護 | M2 | survey_db_worker |
-| 14 | F4.1 | ISSUE-04: カスタムエラーハンドラー（404, 500, 400）実装（APIパス/JSONはJSON返却、Webは親切画面） | M3 | survey_web_api |
-| 15 | F4.2 | ISSUE-06: `app.py` の秘密鍵・パスコード設定管理のフォールバック安全性向上 | M3 | survey_web_api |
-| 16 | F5.1 | BUG-03: `get_snapshot_around` の Window関数（ROW_NUMBER OVER）最適化（5万行→53行、95%高速化） | M4 | survey_db_worker |
-| 17 | F5.2 | ISSUE-01: `app.py` の `after_request` 統合による `ENABLE_PUBLIC_EDGE_CACHE=1` 完全稼働 | M4 | survey_web_api |
-| 18 | F5.3 | ISSUE-07: `/concierge` および `/api/concierge` への短時間キャッシュ導入 | M4 | survey_web_api |
-| 19 | F5.4 | 静的アセット直接配信: `fly.toml` への `[[statics]]` 定義追加による Fly.io プロキシ直接配信 | M4 | survey_web_api |
-| 20 | F5.5 | BUG-08: SQLiteコネクション取得時の `os.stat` 頻度低減・最適化 | M4 | survey_db_worker |
-| 21 | F6.1 | 既存ユニットテスト全97件の合格維持および新規テスト全件合格確認 | M5 | ORIGINAL_REQUEST |
-| 22 | F6.2 | 最適化前後の処理時間・レイテンシベンチマーク計測と改善結果レポート作成 | M5 | ORIGINAL_REQUEST |
-| 23 | F6.3 | E2Eテストスイート（Tiers 1-4）全件合格およびTier 5カバレッジ検証 | M5 | Project Pattern |
-| 24 | F7.1 | GitHub main ブランチへのコミット・プッシュ | M6 | ORIGINAL_REQUEST |
-| 25 | F7.2 | Fly.io 本番環境（`aiseki-navi-tokyo`）へのデプロイ実行 | M6 | ORIGINAL_REQUEST |
-| 26 | F7.3 | 本番環境でのエンドポイント応答・稼働確認 | M6 | ORIGINAL_REQUEST |
+| 1 | F1.1 | 2軒目静的マスター策定: 主要エリア（渋谷, 新宿, 恵比寿, 銀座, 横浜, 道頓堀, 梅田, 栄, 博多等）の厳選スポット（夜カフェ, バー, シーシャ等）およびシチュエーション別Tips・切り出しフレーズ・タイミング定義 (`static/second_venues.json`) | M1 | explorer_survey_second_party |
+| 2 | F1.2 | 2軒目バックエンド連携: マスター読み込み、エリアマッチング、未登録店舗向けスマートフォールバック（動的マップ検索クエリ＋汎用Tips）を提供する `second_venues.py` 実装 | M1 | explorer_survey_second_party |
+| 3 | F1.3 | 店舗詳細モーダルUI/UX刷新: カテゴリタブ（夜カフェ・バー・シーシャ）、厳選スポットカード（徒歩分数、予算、タグ、GoogleマップインテントURL、店名コピー）、シチュエーション別Tipsカード、ワンタップコピー、LINE友達共有の実装 (`templates/index.html`, `static/app.js`, `static/style.css`) | M1 | explorer_survey_second_party |
+| 4 | F1.4 | 店舗詳細個別ページ連携: `templates/store_detail.html` の周辺スポット枠を静的マスターと連動し、実用的なスポットカード・フレーズを表示 | M1 | explorer_survey_second_party |
+| 5 | F2.1 | note チャンネル新設: `sns_editorial.py` に `note` を追加し、リアルタイム混雑データ・夜の動向を反映したnoteショートエッセイ・つぶやき下書きの自動生成ロジックを実装 | M2 | explorer_survey_sns |
+| 6 | F2.2 | シチュエーション特化型クイック切り口セレクター: 2軒目移動・夜カフェハシゴ、女子待ちゼロ即乾杯、雨天・地下直結、終電崖逆転等の切り口に応じたプロンプト・生成パイプライン追加 | M2 | explorer_survey_sns |
+| 7 | F2.3 | スタッフ編集部UI強化: `/staff/sns-editorial` に note タブ追加、シチュエーションセレクター、文面のインライン編集（Editable Textarea）、リアルタイム文字数・Twitterウェイトカウンター、Web Intent（X/Threads）直接投稿ボタン、アイキャッチ画像プロンプト帳を実装 (`templates/staff_sns_editorial.html`) | M2 | explorer_survey_sns |
+| 8 | F2.4 | クイックSNSモーダル連携: `templates/index.html` のスタッフ用SNSモーダル（`#sns-modal`）にシチュエーション別フレーズ・新切り口を連動 | M2 | explorer_survey_sns |
+| 9 | F3.1 | 新規テストスイート追加: 2軒目案内機能テスト (`tests/test_second_venues.py`)、SNS AI強化テスト (`tests/test_sns_editorial_upgrade.py`) の実装 | M3 | explorer_survey_constraints |
+| 10 | F3.2 | 制約検査の拡充: フロントエンドへのGCP有料Maps APIキー漏洩防止テスト、2軒目マスターのGCP非依存検証、全テキストでのブランド表記ルール（『オリエンタルラウンジ』厳守）テストを `tests/test_e2e_compliance.py` に追加 | M3 | explorer_survey_constraints |
+| 11 | F3.3 | 既存全143テストおよび新設テストの100%合格、Challengerによる負荷・整合性検証、Forensic Auditorによる完全性監査 | M3 | explorer_survey_constraints |
+| 12 | F4.1 | GitHub main ブランチへのコミット・プッシュ | M4 | ORIGINAL_REQUEST |
+| 13 | F4.2 | Fly.io 本番環境（`aiseki-navi-tokyo`）へのデプロイ実行 (`/Users/kuwanoshinya/.fly/bin/flyctl deploy`) | M4 | ORIGINAL_REQUEST |
+| 14 | F4.3 | 本番環境 (`https://aiseki-navi.com`) でのヘルスチェックおよび新機能（2軒目案内UI、SNS編集部UI、API等）の稼働確認 | M4 | ORIGINAL_REQUEST |
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| M1 | Brand & Compliance | F1.1, F1.2, F1.3, F2.1, F2.2, F2.3 | none | DONE |
-| M2 | Worker & DB Robustness | F3.1, F3.2, F3.3, F3.4, F3.5, F3.6, F3.7 | none | DONE |
-| M3 | Web & API Robustness | F4.1, F4.2 | none | DONE |
-| M4 | Performance & Optimization | F5.1, F5.2, F5.3, F5.4, F5.5 | M2, M3 | DONE |
-| M5 | Verification & Benchmark | F6.1, F6.2, F6.3, E2E Tests Pass | M1, M2, M3, M4, TEST_READY | DONE |
-| M6 | Production Deployment | F7.1, F7.2, F7.3 | M5 | DONE |
+| M1 | 2nd Party Venue Guide UI/UX | F1.1, F1.2, F1.3, F1.4 | none | DONE |
+| M2 | SNS AI & Workflow Upgrade | F2.1, F2.2, F2.3, F2.4 | none | DONE |
+| M3 | Comprehensive Testing & Verification | F3.1, F3.2, F3.3 | M1, M2 | DONE |
+| M4 | Production Deployment & Healthcheck | F4.1, F4.2, F4.3 | M3 | PLANNED |
 
 ## Interface Contracts
-### Web ↔ Worker (Redis / DB)
-- `aiseki:live_snapshot`: 最新53店舗スナップショットのJSON文字列（キー: 店舗名、値: dict(men, women, updated, etc.)）
-- `aiseki:sns_queue`: 非同期SNS投稿ジョブのリスト（LPUSH/RPOP）
-- Google Sheets 'Lounge Monitor Data': 厳格に5列 [timestamp, name, men, women, source]
+### 2nd Party Master Data (`static/second_venues.json`)
+```json
+{
+  "venues_by_area": {
+    "shibuya": [
+      {
+        "id": "shibuya-cafe-01",
+        "name": "宇田川カフェ suite",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 3,
+        "budget": "¥1,000〜¥2,000",
+        "features": ["ソファ席あり", "深夜2時まで営業", "落ち着いた照明"],
+        "map_query": "宇田川カフェ suite 渋谷",
+        "comment": "相席ラウンジから徒歩3分。落ち着いた薄暗い照明とゆったりソファで自然と距離が縮まる定番。"
+      }
+    ]
+  },
+  "situation_tips": [
+    {
+      "id": "phrase_cafe",
+      "situation": "甘いもの・落ち着いた場所へ誘う場合",
+      "tag": "王道・高成功率",
+      "phrase": "ここ音楽で少し声張らないとだから、30分だけ近くの静かな夜カフェで美味しいスイーツ食べない？",
+      "point": "「30分だけ」と出口を示し、お酒ではなく甘いもの・静かさを理由にすることで警戒心を解除。"
+    }
+  ],
+  "timing_rules": [
+    {
+      "rule": "40〜50分ルール",
+      "desc": "話題が出尽くす前、会話が一番盛り上がっているピーク時に切り出すのが鉄則。"
+    },
+    {
+      "rule": "23:10終電前ルール",
+      "desc": "終電（23:30前後）の20分前までに2軒目へ入店するか、無理せず解散して後日デートを確約する。"
+    }
+  ]
+}
+```
 
-### Web API Error Responses
-- APIエンドポイント（`/api/*`）でのエラーは必ず JSON 形式: `{"status": "error", "error": "<message>", "code": <int>}` を HTTP ステータスコード（400, 404, 500等）と共に返却。
+### Free Google Maps Intent URL Contract
+- 全てのマップリンクはGoogle公式の無料WebインテントURLを採用（GCP有料API呼び出しは完全ゼロ）：
+  `https://www.google.com/maps/search/?api=1&query={encodeURIComponent(venue.map_query)}`
 
 ### Brand Display Rule
 - 公開UI・記事・SNS出力において、単体の「オリエンタル」や「OLG」「オリラジ」を出力しない。「オリエンタルラウンジ」と表記する。
 
 ## Code Layout
-- `app.py`: Flask Webサーバー、エンドポイント、SSRレンダリング、エラーハンドラー、キャッシュヘッダー
-- `worker.py`: データ収集・定期ジョブワーカー
-- `monitor.py`: スクレイピングエンジン、キャッシュ
-- `local_db.py`: SQLite / PostgreSQL クエリ、データアクセス層
-- `health.py`: 内部状態・死活監視
-- `x_poster.py`, `sns_editorial.py`: SNS投稿・店舗名フォーマット
-- `templates/`: Jinja2 テンプレート
-- `static/`: フロントエンド JS/CSS
-- `fly.toml`: Fly.io インフラ設定
-- `tests/`: ユニットテスト・E2Eテストスイート
+- `static/second_venues.json`: 2軒目厳選スポット＆Tips静的マスター
+- `second_venues.py`: 2軒目マスターローダー・フォールバックヘルパー
+- `templates/index.html`: 店舗詳細モーダル（2軒目セクション刷新、SNSクイックモーダル）
+- `static/app.js`: 2軒目モーダルタブ・カード・Tipsレンダリング、クリップボードコピー
+- `static/style.css`: 2軒目UI用スタイル定義
+- `templates/store_detail.html`: 個別店舗詳細ページ
+- `sns_editorial.py`: SNS AI合議エンジン（noteチャンネル新設、シチュエーションセレクター）
+- `templates/staff_sns_editorial.html`: スタッフ用SNS編集部UI（noteタブ、インライン編集、文字数カウンター）
+- `tests/test_second_venues.py`: 2軒目機能テスト
+- `tests/test_sns_editorial_upgrade.py`: SNS AI強化テスト
+- `tests/test_e2e_compliance.py`: 制約検証テスト

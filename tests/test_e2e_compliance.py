@@ -249,6 +249,100 @@ class BrandComplianceE2ETests(unittest.TestCase):
         self.assertIn("オリエンタルラウンジ新宿", cleaned_bare)
         self.assertNotIn("オリラジ", cleaned_bare)
 
+    def test_second_venues_and_sns_editorial_brand_rules(self):
+        """static/second_venues.json, second_venues.py, templates/staff_sns_editorial.html 等において
+        単体の『オリエンタル』『OLG』『オリラジ』が混入せず、すべて『オリエンタルラウンジ』と表記されていることを網羅検証"""
+        import json
+        from bs4 import BeautifulSoup
+        import second_venues
+
+        violations = []
+
+        # 1. static/second_venues.json の検証
+        venues_path = os.path.join(PROJECT_ROOT, "static", "second_venues.json")
+        self.assertTrue(os.path.isfile(venues_path), "static/second_venues.json が存在しません")
+        with open(venues_path, "r", encoding="utf-8") as f:
+            venues_raw = f.read()
+
+        for line_no, line in enumerate(venues_raw.splitlines(), start=1):
+            line_str = line.strip()
+            if self.re_isolated_olg.search(line_str):
+                violations.append(f"[OLG] static/second_venues.json:{line_no} -> {line_str[:100]}")
+            if self.re_isolated_oriental.search(line_str):
+                violations.append(f"[Oriental] static/second_venues.json:{line_no} -> {line_str[:100]}")
+            if self.re_oriradi.search(line_str):
+                violations.append(f"[Oriradi] static/second_venues.json:{line_no} -> {line_str[:100]}")
+
+        # JSONデータ内のスポットコメントやTipsフレーズに「オリエンタルラウンジ」が正しく使われていること
+        master_data = json.loads(venues_raw)
+        found_formal_name = False
+        for area, spots in master_data.get("venues_by_area", {}).items():
+            for sp in spots:
+                comment = sp.get("comment", "")
+                if "オリエンタルラウンジ" in comment:
+                    found_formal_name = True
+        self.assertTrue(found_formal_name, "static/second_venues.json 内に 'オリエンタルラウンジ' の言及が存在しません")
+
+        # 2. templates/staff_sns_editorial.html の全可視テキストおよび属性値の検証
+        editorial_path = os.path.join(PROJECT_ROOT, "templates", "staff_sns_editorial.html")
+        self.assertTrue(os.path.isfile(editorial_path), "templates/staff_sns_editorial.html が存在しません")
+        with open(editorial_path, "r", encoding="utf-8") as f:
+            soup = BeautifulSoup(f.read(), "html.parser")
+
+        # ユーザー可視テキスト
+        for s in soup(["script", "style"]):
+            s.extract()
+        for line in soup.get_text().splitlines():
+            line_clean = line.strip()
+            if not line_clean:
+                continue
+            if self.re_isolated_olg.search(line_clean):
+                violations.append(f"[OLG Text] templates/staff_sns_editorial.html -> {line_clean[:100]}")
+            if self.re_isolated_oriental.search(line_clean):
+                violations.append(f"[Oriental Text] templates/staff_sns_editorial.html -> {line_clean[:100]}")
+            if self.re_oriradi.search(line_clean):
+                violations.append(f"[Oriradi Text] templates/staff_sns_editorial.html -> {line_clean[:100]}")
+
+        # 属性値
+        for tag in soup.find_all(True):
+            for attr in ["title", "alt", "placeholder", "value"]:
+                val = tag.get(attr)
+                if val and isinstance(val, str):
+                    if self.re_isolated_olg.search(val):
+                        violations.append(f"[OLG Attr {attr}] templates/staff_sns_editorial.html <{tag.name}> -> {val[:100]}")
+                    if self.re_isolated_oriental.search(val):
+                        violations.append(f"[Oriental Attr {attr}] templates/staff_sns_editorial.html <{tag.name}> -> {val[:100]}")
+                    if self.re_oriradi.search(val):
+                        violations.append(f"[Oriradi Attr {attr}] templates/staff_sns_editorial.html <{tag.name}> -> {val[:100]}")
+
+        # 3. second_venues.py の動的出力検証
+        test_stores = ["OLG 渋谷本店", "OLG 新宿", "OLG 恵比寿", "OLG 難波", "OLG 栄", "OLG 札幌", "OLG 熊本"]
+        for store in test_stores:
+            anchor = second_venues.get_store_anchor(store)
+            # anchor は必ず "オリエンタルラウンジ" で始まること（OLGが残存してはならない）
+            self.assertTrue(
+                anchor.startswith("オリエンタルラウンジ"),
+                f"second_venues.get_store_anchor('{store}') -> '{anchor}' は 'オリエンタルラウンジ' で始まる必要があります",
+            )
+            self.assertNotIn("OLG", anchor)
+
+            res = second_venues.get_second_venues_for_store(store)
+            # 入力引数のエコーバック (res['store_name']) 以外の全出力フィールドでブランドルールを検証
+            res_content = {k: v for k, v in res.items() if k != "store_name"}
+            content_dump = json.dumps(res_content, ensure_ascii=False)
+            if self.re_isolated_olg.search(content_dump):
+                violations.append(f"[OLG In Output] store={store} -> {content_dump[:150]}")
+            if self.re_isolated_oriental.search(content_dump):
+                violations.append(f"[Oriental In Output] store={store} -> {content_dump[:150]}")
+            if self.re_oriradi.search(content_dump):
+                violations.append(f"[Oriradi In Output] store={store} -> {content_dump[:150]}")
+
+        self.assertEqual(
+            violations,
+            [],
+            f"ブランド表記ルール違反が検出されました:\n" + "\n".join(violations),
+        )
+
 
 class GcpZeroDependencyE2ETests(unittest.TestCase):
     """Google Cloud (GCP) ゼロ依存静的解析 E2E テスト"""
@@ -324,6 +418,115 @@ class GcpZeroDependencyE2ETests(unittest.TestCase):
             [],
             f"Python コードベースに GCP インポートが検出されました: {violations}",
         )
+
+    def test_frontend_has_no_gcp_maps_api_keys_or_scripts(self):
+        """templates/*.html および static/*.js を全走査し、maps.googleapis.com や key=AIza などの有料Google Maps APIキー・スクリプトタグが一切含まれていないこと"""
+        scan_targets = [
+            (os.path.join(PROJECT_ROOT, "templates"), ".html"),
+            (os.path.join(PROJECT_ROOT, "static"), ".js"),
+        ]
+
+        forbidden_patterns = [
+            (re.compile(r"maps\.googleapis\.com"), "有料 Google Maps JavaScript API / スクリプト参照 (maps.googleapis.com)"),
+            (re.compile(r"places\.googleapis\.com"), "有料 Google Places API エンドポイント (places.googleapis.com)"),
+            (re.compile(r"AIza[0-9A-Za-z\-_]{35}"), "Google Maps / GCP API キー (AIza...)"),
+            (re.compile(r"key=AIza", re.IGNORECASE), "Google API キーパラメータ (key=AIza)"),
+        ]
+
+        violations = []
+        for base_dir, extension in scan_targets:
+            self.assertTrue(os.path.isdir(base_dir), f"走査対象ディレクトリが存在しません: {base_dir}")
+            for root, dirs, files in os.walk(base_dir):
+                for file_name in files:
+                    if not file_name.endswith(extension):
+                        continue
+                    file_path = os.path.join(root, file_name)
+                    rel_path = os.path.relpath(file_path, PROJECT_ROOT)
+
+                    with open(file_path, "r", encoding="utf-8", errors="ignore") as fp:
+                        for line_no, line in enumerate(fp, start=1):
+                            line_strip = line.strip()
+                            if not line_strip:
+                                continue
+                            for pattern, desc in forbidden_patterns:
+                                if pattern.search(line_strip):
+                                    violations.append(
+                                        f"[{desc}] {rel_path}:{line_no} -> {line_strip[:120]}"
+                                    )
+
+        self.assertEqual(
+            violations,
+            [],
+            f"フロントエンド (templates/*.html, static/*.js) 内に有料 Google Maps API 参照が検出されました:\n"
+            + "\n".join(violations),
+        )
+
+    def test_second_venues_master_gcp_zero_dependency(self):
+        """static/second_venues.json 内の全スポットデータが無料インテント検索クエリのみを使用し、GCP有料API参照が一切ないこと"""
+        import json
+        import second_venues
+
+        venues_path = os.path.join(PROJECT_ROOT, "static", "second_venues.json")
+        self.assertTrue(os.path.isfile(venues_path), "static/second_venues.json が存在しません")
+
+        # 1. JSON ファイル全体の静的テキスト解析（APIキーやエンドポイントの混入防止）
+        with open(venues_path, "r", encoding="utf-8") as f:
+            raw_content = f.read()
+
+        gcp_forbidden_patterns = [
+            re.compile(r"maps\.googleapis\.com"),
+            re.compile(r"places\.googleapis\.com"),
+            re.compile(r"AIza[0-9A-Za-z\-_]{35}"),
+            re.compile(r"key=AIza", re.IGNORECASE),
+        ]
+        for pattern in gcp_forbidden_patterns:
+            matches = pattern.findall(raw_content)
+            self.assertEqual(
+                matches,
+                [],
+                f"static/second_venues.json 内に GCP 有料 API 参照パターンが検出されました: {matches}",
+            )
+
+        # 2. JSON パース後のデータ構造検証
+        master_data = json.loads(raw_content)
+        venues_by_area = master_data.get("venues_by_area", {})
+        self.assertTrue(len(venues_by_area) > 0, "venues_by_area が空です")
+
+        total_spots = 0
+        for area_key, spots in venues_by_area.items():
+            for spot in spots:
+                total_spots += 1
+                spot_id = spot.get("id", "unknown")
+                # map_query が必須かつ非空であること
+                self.assertIn("map_query", spot, f"Spot {spot_id} に map_query が存在しません")
+                self.assertTrue(isinstance(spot["map_query"], str) and len(spot["map_query"].strip()) > 0)
+                # 有料API固有のプロパティ（place_id 等）が存在しないこと
+                self.assertNotIn("place_id", spot, f"Spot {spot_id} に有料API依存の 'place_id' が存在します")
+                self.assertNotIn("api_key", spot, f"Spot {spot_id} に 'api_key' が存在します")
+                self.assertNotIn("reference", spot, f"Spot {spot_id} に 'reference' が存在します")
+
+        self.assertGreaterEqual(total_spots, 30, f"検証スポット数が少なすぎます ({total_spots}件)")
+
+        # 3. second_venues.py が生成するマップURLが全て無料インテントURL契約に準拠していること
+        for area_key, spots in venues_by_area.items():
+            for spot in spots:
+                intent_url = second_venues.get_google_maps_intent_url(spot["map_query"])
+                self.assertTrue(
+                    intent_url.startswith("https://www.google.com/maps/search/?api=1&query="),
+                    f"マップURLが無料WebインテントURL仕様に準拠していません: {intent_url}",
+                )
+                self.assertNotIn("key=", intent_url)
+                self.assertNotIn("AIza", intent_url)
+
+        # 4. 未登録店舗向けスマートフォールバックのスポットも同様に無料インテントURLであること
+        fallback_res = second_venues.get_second_venues_for_store("OLG 盛岡")
+        self.assertTrue(fallback_res["is_fallback"])
+        for fb_spot in fallback_res["spots"]:
+            self.assertTrue(
+                fb_spot["map_url"].startswith("https://www.google.com/maps/search/?api=1&query="),
+                f"フォールバックスポットのマップURLが無料インテント仕様に準拠していません: {fb_spot['map_url']}",
+            )
+            self.assertNotIn("key=", fb_spot["map_url"])
 
 
 class GoogleSheetsFiveColumnSchemaE2ETests(unittest.TestCase):

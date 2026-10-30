@@ -2961,31 +2961,334 @@
             return `${brandFull}${bInfo.cleanName} ${bInfo.areaLabel || ''}`.trim();
         }
 
-        function renderModalSecondVenues(storeName) {
+        // --- 2nd Venue Guide & Smart Fallback (No GCP Paid API, Free Web Intent Only) ---
+        let secondVenuesMasterCache = null;
+        let currentModalSecondVenues = [];
+        let currentModalSecondTips = [];
+        let currentModalSecondTimingRules = [];
+        let currentSecondActiveTab = 'all';
+
+        async function fetchSecondVenuesMaster() {
+            if (secondVenuesMasterCache) return secondVenuesMasterCache;
+            try {
+                const res = await fetch('/static/second_venues.json');
+                if (res.ok) {
+                    secondVenuesMasterCache = await res.json();
+                    return secondVenuesMasterCache;
+                }
+            } catch (err) {
+                console.warn('[second_venues] Failed to load static/second_venues.json:', err);
+            }
+            return { venues_by_area: {}, situation_tips: [], timing_rules: [] };
+        }
+
+        function resolveAreaKeyForStore(storeName, masterInfo) {
+            const s = String(storeName || '').trim();
+            const sLower = s.toLowerCase();
+            const combined = [
+                s,
+                (masterInfo && masterInfo.display_name) || '',
+                (masterInfo && masterInfo.area_label) || '',
+                (masterInfo && masterInfo.map_anchor) || ''
+            ].join(' ');
+
+            if (combined.includes('恵比寿') || sLower.includes('ebisu')) return 'ebisu';
+            if (combined.includes('銀座') || combined.includes('有楽町') || sLower.includes('ginza')) return 'ginza';
+            if (combined.includes('横浜') || sLower.includes('yokohama')) return 'yokohama';
+            if (combined.includes('道頓堀') || combined.includes('難波') || combined.includes('なんば') || sLower.includes('namba')) return 'namba';
+            if (combined.includes('心斎橋') || sLower.includes('shinsaibashi')) return 'shinsaibashi';
+            if (combined.includes('梅田') || combined.includes('北新地') || sLower.includes('umeda')) return 'umeda';
+            if (combined.includes('栄') || combined.includes('錦') || combined.includes('名古屋') || sLower.includes('sakae')) return 'sakae';
+            if (combined.includes('天神') || combined.includes('大名') || combined.includes('中洲') || combined.includes('博多') || combined.includes('福岡') || sLower.includes('tenjin')) return 'tenjin';
+            if (combined.includes('すすきの') || combined.includes('札幌') || sLower.includes('susukino')) return 'susukino';
+            if (combined.includes('渋谷') || sLower.includes('shibuya')) return 'shibuya';
+            if (combined.includes('新宿') || sLower.includes('shinjuku')) return 'shinjuku';
+            return null;
+        }
+
+        function createFallbackSecondVenues(cleanName, storeAnchor) {
+            return [
+                {
+                    id: `fallback-cafe-${cleanName}`,
+                    name: `${cleanName}周辺の夜カフェ・スイーツ`,
+                    category: 'cafe',
+                    category_label: '夜カフェ',
+                    walk_minutes: 3,
+                    budget: '¥1,000〜¥2,000',
+                    features: ['落ち着いた照明', '甘いもの・スイーツ', 'ゆったり会話'],
+                    map_query: `${storeAnchor} 近く 夜カフェ スイーツ カフェバー`,
+                    comment: '退店後の口直しや落ち着いた会話に最適。Googleマップで現在営業中の近くの夜カフェをワンタップ検索。'
+                },
+                {
+                    id: `fallback-bar-${cleanName}`,
+                    name: `${cleanName}周辺の隠れ家バー・バル`,
+                    category: 'bar',
+                    category_label: 'バー・バル',
+                    walk_minutes: 4,
+                    budget: '¥2,000〜¥4,000',
+                    features: ['カウンター席あり', '落ち着いた大人の空間', 'サクッと1杯'],
+                    map_query: `${storeAnchor} 近く 隠れ家バー ワインバル ダイニングバー`,
+                    comment: '騒がしい店内から横並びのカウンターへ。距離を縮めたい時にすぐ見つかる周辺バー検索。'
+                },
+                {
+                    id: `fallback-shisha-${cleanName}`,
+                    name: `${cleanName}周辺のシーシャカフェ`,
+                    category: 'shisha',
+                    category_label: 'シーシャ',
+                    walk_minutes: 3,
+                    budget: '¥2,000〜¥3,000',
+                    features: ['ソファ席', 'リラックス空間', 'お酒が弱くても安心'],
+                    map_query: `${storeAnchor} 近く シーシャ カフェ ラウンジ`,
+                    comment: 'ゆったりソファで深く語り合えるシーシャ。深夜営業の店舗を優先してマップ検索。'
+                },
+                {
+                    id: `fallback-yokocho-${cleanName}`,
+                    name: `${cleanName}周辺の横丁・大衆バル`,
+                    category: 'yokocho',
+                    category_label: '横丁',
+                    walk_minutes: 3,
+                    budget: '¥2,000〜¥3,500',
+                    features: ['はしご酒', '賑やかで活気あり', 'カジュアル'],
+                    map_query: `${storeAnchor} 近く 横丁 大衆バル 居酒屋`,
+                    comment: 'もう1杯ワイワイ楽しく飲みたいときに。気軽に入れる周辺のバル・横丁をマップ検索。'
+                }
+            ];
+        }
+
+        async function renderModalSecondVenues(storeName) {
             const headingEl = document.getElementById('modal-second-venue-heading');
             const cafeBtn = document.getElementById('modal-map-cafe-btn');
             const barBtn = document.getElementById('modal-map-bar-btn');
-            if (!cafeBtn && !barBtn) return;
+            const shishaBtn = document.getElementById('modal-map-shisha-btn');
+            const yokochoBtn = document.getElementById('modal-map-yokocho-btn');
+            const listEl = document.getElementById('modal-second-venue-list');
+            if (!listEl) return;
 
             const bInfo = detectBrandInfo(storeName);
             const rawKey = String(storeName || '').trim();
             const master = getStoreMasterInfo(rawKey);
             const storeAnchor = (master && master.map_anchor) || getFullBrandStoreQuery(bInfo);
-            const shortStoreLabel = `${bInfo.code} ${bInfo.cleanName}`;
-            const storeLabel = String(bInfo.cleanName || '').endsWith('店') ? bInfo.cleanName : `${bInfo.cleanName}店`;
+            const brandLabel = bInfo.code === 'OLG' ? 'オリエンタルラウンジ' : bInfo.code;
+            const cleanName = bInfo.cleanName || '';
+            const fullStoreHeading = `${brandLabel} ${cleanName}`;
 
             if (headingEl) {
-                headingEl.textContent = `${shortStoreLabel} の近くで2軒目を探す`;
+                headingEl.textContent = `🥂 ${fullStoreHeading} 近くの2軒目＆切り出しTips`;
             }
+
+            // Quick footer map search links update
             if (cafeBtn) {
-                cafeBtn.textContent = `${storeLabel}近くの夜カフェをマップ検索 ↗`;
+                cafeBtn.textContent = '☕ 夜カフェ検索 ↗';
                 cafeBtn.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(storeAnchor + ' 近く 夜カフェ スイーツ カフェバー')}`;
             }
             if (barBtn) {
-                barBtn.textContent = `${storeLabel}近くのバー・バルをマップ検索 ↗`;
+                barBtn.textContent = '🍸 バー検索 ↗';
                 barBtn.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(storeAnchor + ' 近く 隠れ家バー ワインバル ダイニングバー')}`;
             }
+            if (shishaBtn) {
+                shishaBtn.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(storeAnchor + ' 近く シーシャ カフェ ラウンジ')}`;
+            }
+            if (yokochoBtn) {
+                yokochoBtn.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(storeAnchor + ' 近く 横丁 大衆バル 居酒屋')}`;
+            }
+
+            // Fetch master data
+            const masterData = await fetchSecondVenuesMaster();
+            const venuesByArea = masterData.venues_by_area || {};
+            currentModalSecondTips = masterData.situation_tips || [];
+            currentModalSecondTimingRules = masterData.timing_rules || [];
+
+            const areaKey = resolveAreaKeyForStore(storeName, master);
+            if (areaKey && venuesByArea[areaKey] && venuesByArea[areaKey].length > 0) {
+                currentModalSecondVenues = venuesByArea[areaKey];
+            } else {
+                currentModalSecondVenues = createFallbackSecondVenues(cleanName, storeAnchor);
+            }
+
+            // Render Tips list
+            renderSecondTipsCards(currentModalSecondTips);
+
+            // Default to 'all' tab
+            switchSecondVenueTab('all');
         }
+
+        function renderSecondVenueCards(category) {
+            const listEl = document.getElementById('modal-second-venue-list');
+            if (!listEl) return;
+
+            const filtered = (category === 'all')
+                ? currentModalSecondVenues
+                : currentModalSecondVenues.filter(v => v.category === category);
+
+            if (!filtered || filtered.length === 0) {
+                listEl.innerHTML = `
+                    <div class="second-venue-empty">
+                        <p style="margin: 0; color: var(--text-sub); font-size: 0.85rem;">該当するスポットが見つかりませんでした。下のGoogleマップ検索をご利用ください。</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const html = filtered.map(v => {
+                const mapQuery = v.map_query || (v.name + ' 近く');
+                const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`;
+                const lineShareText = `【2軒目候補】${v.name}（${v.category_label || ''}・徒歩${v.walk_minutes || 3}分）\n${mapUrl}`;
+                const lineShareUrl = `https://line.me/R/msg/text/?${encodeURIComponent(lineShareText)}`;
+                const featuresHtml = (v.features || []).map(f => `<span class="venue-tag">#${escapeHtml(f)}</span>`).join('');
+                const catIcon = v.category === 'cafe' ? '☕' : v.category === 'bar' ? '🍸' : v.category === 'shisha' ? '🎯' : '🍻';
+
+                return `
+                    <div class="second-venue-card" data-category="${escapeHtml(v.category)}">
+                        <div class="second-venue-card-header">
+                            <div class="second-venue-badges">
+                                <span class="venue-category-badge ${escapeHtml(v.category)}">${catIcon} ${escapeHtml(v.category_label || '')}</span>
+                                <span class="venue-walk-badge">🚶 徒歩${escapeHtml(String(v.walk_minutes || '3'))}分</span>
+                            </div>
+                            <span class="venue-budget-pill">💰 ${escapeHtml(v.budget || '')}</span>
+                        </div>
+                        <h4 class="second-venue-name">${escapeHtml(v.name)}</h4>
+                        <p class="second-venue-comment">${escapeHtml(v.comment || '')}</p>
+                        ${featuresHtml ? `<div class="second-venue-tags">${featuresHtml}</div>` : ''}
+                        <div class="second-venue-card-actions">
+                            <a href="${mapUrl}" target="_blank" rel="noopener noreferrer" class="venue-action-btn map-btn">
+                                🗺️ マップ ↗
+                            </a>
+                            <button type="button" class="venue-action-btn copy-btn" onclick="copySecondVenueText('${escapeJsString(v.name)}', this, '店名をコピーしました')">
+                                📋 店名コピー
+                            </button>
+                            <a href="${lineShareUrl}" target="_blank" rel="noopener noreferrer" class="venue-action-btn line-btn">
+                                💬 LINE共有
+                            </a>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            listEl.innerHTML = html;
+        }
+
+        function renderSecondTipsCards(tips) {
+            const tipsEl = document.getElementById('modal-second-tips-list');
+            if (!tipsEl) return;
+
+            if (!tips || tips.length === 0) {
+                tipsEl.innerHTML = '<p style="color: var(--text-sub); font-size: 0.85rem; padding: 12px;">Tipsを読み込み中...</p>';
+                return;
+            }
+
+            const html = tips.map(tip => `
+                <div class="second-tip-card">
+                    <div class="second-tip-header">
+                        <span class="second-tip-tag">${escapeHtml(tip.tag || 'おすすめ')}</span>
+                        <h4 class="second-tip-situation">${escapeHtml(tip.situation || '')}</h4>
+                    </div>
+                    <div class="second-tip-phrase-box">
+                        <p class="second-tip-phrase">「${escapeHtml(tip.phrase || '')}」</p>
+                        <button type="button" class="tip-phrase-copy-btn" onclick="copySecondVenueText('${escapeJsString(tip.phrase || '')}', this, 'フレーズをコピーしました')">
+                            📋 フレーズをコピー
+                        </button>
+                    </div>
+                    <p class="second-tip-point">💡 <strong>狙いと解説:</strong> ${escapeHtml(tip.point || '')}</p>
+                </div>
+            `).join('');
+
+            tipsEl.innerHTML = html;
+        }
+
+        function switchSecondVenueTab(tabCategory) {
+            currentSecondActiveTab = tabCategory;
+            const tabsContainer = document.getElementById('modal-second-venue-tabs');
+            if (tabsContainer) {
+                const btns = tabsContainer.querySelectorAll('.second-tab-btn');
+                btns.forEach(b => {
+                    b.classList.toggle('active', b.dataset.tab === tabCategory);
+                });
+            }
+
+            const listEl = document.getElementById('modal-second-venue-list');
+            const tipsEl = document.getElementById('modal-second-tips-list');
+
+            if (tabCategory === 'tips') {
+                if (listEl) listEl.classList.add('hidden');
+                if (tipsEl) tipsEl.classList.remove('hidden');
+            } else {
+                if (tipsEl) tipsEl.classList.add('hidden');
+                if (listEl) {
+                    listEl.classList.remove('hidden');
+                    renderSecondVenueCards(tabCategory);
+                }
+            }
+        }
+
+        function toggleSecondTimingDetails() {
+            const details = document.getElementById('modal-second-venue-timing-details');
+            const arrow = document.getElementById('timing-toggle-arrow');
+            if (!details) return;
+
+            const isHidden = details.classList.contains('hidden');
+            if (isHidden) {
+                details.classList.remove('hidden');
+                if (arrow) arrow.textContent = '▴ 閉じる';
+            } else {
+                details.classList.add('hidden');
+                if (arrow) arrow.textContent = '▾ 理由を見る';
+            }
+        }
+
+        function copySecondVenueText(text, btnElement, successMsg) {
+            if (!text) return;
+            const msg = successMsg || 'コピーしました';
+
+            const onSuccess = () => {
+                if (typeof showRefreshToast === 'function') {
+                    showRefreshToast(`📋 ${msg}`);
+                }
+                if (btnElement) {
+                    const originalText = btnElement.innerHTML;
+                    btnElement.innerHTML = '✓ コピー完了';
+                    btnElement.classList.add('copied');
+                    setTimeout(() => {
+                        btnElement.innerHTML = originalText;
+                        btnElement.classList.remove('copied');
+                    }, 2000);
+                }
+            };
+
+            const fallbackCopy = () => {
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                textarea.style.position = 'fixed';
+                textarea.style.opacity = '0';
+                document.body.appendChild(textarea);
+                textarea.select();
+                try {
+                    document.execCommand('copy');
+                    onSuccess();
+                } catch (e) {
+                    console.error('Fallback copy failed', e);
+                }
+                document.body.removeChild(textarea);
+            };
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(onSuccess).catch(fallbackCopy);
+            } else {
+                fallbackCopy();
+            }
+        }
+
+        function escapeJsString(str) {
+            return String(str || '')
+                .replace(/\\/g, '\\\\')
+                .replace(/'/g, "\\'")
+                .replace(/"/g, '\\"')
+                .replace(/\n/g, '\\n')
+                .replace(/\r/g, '\\r');
+        }
+
+        window.switchSecondVenueTab = switchSecondVenueTab;
+        window.toggleSecondTimingDetails = toggleSecondTimingDetails;
+        window.copySecondVenueText = copySecondVenueText;
 
         function updateVoteNumbersUI(votes) {
             const v = votes || { smooth: 0, waiting: 0, lively: 0 };

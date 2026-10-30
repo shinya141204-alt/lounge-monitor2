@@ -1172,15 +1172,53 @@
                 <div id="daily-log-table-wrap" class="hidden" style="margin-top: 12px;"></div>
             </div>
 
-            <!-- 4. Nearby 2nd Venue Google Maps Box -->
+            <!-- 4. Nearby 2nd Venue Guide & Timing Box -->
             <div id="modal-second-venue-box" class="modal-second-venue-box">
                 <div class="second-venue-header">
-                    <h3 id="modal-second-venue-heading">この店舗の近くで2軒目を探す</h3>
-                    <a href="/guide/second-venue" class="second-venue-sub" style="color: #93b1c9; text-decoration: none;">2軒目の誘い方コラム ›</a>
+                    <div class="second-venue-title-row">
+                        <h3 id="modal-second-venue-heading">この店舗近くの2軒目＆切り出しTips</h3>
+                        <a href="/guide/second-venue" class="second-venue-guide-link" target="_blank" rel="noopener noreferrer">誘い方コラム ›</a>
+                    </div>
+                    <div id="modal-second-venue-timing-badge" class="second-venue-timing-badge" onclick="toggleSecondTimingDetails()">
+                        <span class="timing-badge-tag">💡 ベストタイミング</span>
+                        <span class="timing-badge-text">着席40〜50分後 / 23:10前</span>
+                        <span class="timing-toggle-arrow" id="timing-toggle-arrow">▾ 理由を見る</span>
+                    </div>
+                    <div id="modal-second-venue-timing-details" class="second-venue-timing-details hidden">
+                        <div class="timing-rule-item"><span class="rule-title">40〜50分ルール:</span> 話題が出尽くす前、会話が一番盛り上がっているピーク時に切り出すのが鉄則。</div>
+                        <div class="timing-rule-item"><span class="rule-title">23:10終電前ルール:</span> 終電（23:30前後）の20分前までに2軒目へ入店するか、無理せず解散して後日デートを確約。</div>
+                        <div class="timing-rule-item"><span class="rule-title">2杯目半分ルール:</span> 2杯目ドリンクが半分空いた時が声かけ・退店準備の合図。</div>
+                    </div>
                 </div>
-                <div class="second-venue-map-actions">
-                    <a id="modal-map-cafe-btn" href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer" class="second-map-btn cafe">店舗近くの夜カフェをマップ検索 ↗</a>
-                    <a id="modal-map-bar-btn" href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer" class="second-map-btn bar">店舗近くのバー・バルをマップ検索 ↗</a>
+
+                <!-- Tabs: All / Cafe / Bar / Shisha / Tips -->
+                <div class="second-venue-tabs" id="modal-second-venue-tabs">
+                    <button type="button" class="second-tab-btn active" data-tab="all" onclick="switchSecondVenueTab('all')">すべて</button>
+                    <button type="button" class="second-tab-btn" data-tab="cafe" onclick="switchSecondVenueTab('cafe')">☕ 夜カフェ</button>
+                    <button type="button" class="second-tab-btn" data-tab="bar" onclick="switchSecondVenueTab('bar')">🍸 バー・バル</button>
+                    <button type="button" class="second-tab-btn" data-tab="shisha" onclick="switchSecondVenueTab('shisha')">🎯 シーシャ</button>
+                    <button type="button" class="second-tab-btn" data-tab="tips" onclick="switchSecondVenueTab('tips')">💡 誘い方フレーズ</button>
+                </div>
+
+                <!-- Venues Cards Container -->
+                <div id="modal-second-venue-list" class="second-venue-card-list">
+                    <!-- Populated dynamically by app.js -->
+                </div>
+
+                <!-- Situation Tips Cards Container (shown when tips tab is active) -->
+                <div id="modal-second-tips-list" class="second-tips-list hidden">
+                    <!-- Populated dynamically by app.js -->
+                </div>
+
+                <!-- Quick Fallback Search Links (for searching more) -->
+                <div class="second-venue-quick-footer">
+                    <span class="quick-footer-label">その他の条件で周辺マップ検索（Google公式無料リンク）:</span>
+                    <div class="quick-footer-links">
+                        <a id="modal-map-cafe-btn" href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer" class="second-quick-pill cafe">☕ 夜カフェ検索 ↗</a>
+                        <a id="modal-map-bar-btn" href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer" class="second-quick-pill bar">🍸 バー検索 ↗</a>
+                        <a id="modal-map-shisha-btn" href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer" class="second-quick-pill shisha">🎯 シーシャ検索 ↗</a>
+                        <a id="modal-map-yokocho-btn" href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer" class="second-quick-pill yokocho">🍻 横丁検索 ↗</a>
+                    </div>
                 </div>
             </div>
 
@@ -1660,6 +1698,10 @@
                 </p>
                 <div class="sns-preset-tabs">
                     <button class="sns-tab-btn active" data-preset="events" onclick="selectSnsPreset('events')">特典＆イベント開催店</button>
+                    <button class="sns-tab-btn" data-preset="second_venue" onclick="selectSnsPreset('second_venue')">🍸 2軒目ハシゴ案内</button>
+                    <button class="sns-tab-btn" data-preset="zero_wait" onclick="selectSnsPreset('zero_wait')">💄 女子待ちゼロ速報</button>
+                    <button class="sns-tab-btn" data-preset="rain_underground" onclick="selectSnsPreset('rain_underground')">☔ 雨天・直結穴場</button>
+                    <button class="sns-tab-btn" data-preset="last_train_cliff" onclick="selectSnsPreset('last_train_cliff')">🌙 終電前ラストチャンス</button>
                     <button class="sns-tab-btn" data-preset="threads" onclick="selectSnsPreset('threads')">Threads・IG長文速報</button>
                     <button class="sns-tab-btn" data-preset="price" onclick="selectSnsPreset('price')">料金・イベント比較ボード告知</button>
                     <button class="sns-tab-btn" data-preset="timely" onclick="selectSnsPreset('timely')">時間帯別おすすめ</button>
@@ -1678,6 +1720,82 @@
             <button class="modal-bottom-close-btn" onclick="closeSnsModal()">✕ 閉じる</button>
         </div>
     </div>
+    <script>
+    (function() {
+        var _origSelectSnsPreset = window.selectSnsPreset;
+        window.selectSnsPreset = function(preset) {
+            document.querySelectorAll('.sns-tab-btn').forEach(function(btn) {
+                btn.classList.toggle('active', btn.dataset.preset === preset);
+            });
+            var ta = document.getElementById('sns-preview-textarea');
+            if (!ta) return;
+
+            var stores = (window.lastData && window.lastData.ranking) ? window.lastData.ranking : [];
+            var d = new Date();
+            var ts = (d.getHours() < 10 ? '0' : '') + d.getHours() + ':' + (d.getMinutes() < 10 ? '0' : '') + d.getMinutes();
+            var medals = ['🥇', '🥈', '🥉'];
+            var shareUrl = 'https://aiseki-navi.com';
+
+            function getBrandTitle(s) {
+                var name = s.name || '';
+                if (name.indexOf('オリエンタルラウンジ') === -1 && name.indexOf('OLG') !== -1) {
+                    name = name.replace(/OLG\s*/g, 'オリエンタルラウンジ ');
+                }
+                return name;
+            }
+
+            if (preset === 'second_venue') {
+                var top3 = stores.slice().sort(function(a, b) { return (b.women - a.women) || (b.men - a.men); }).slice(0, 3);
+                var lines = [
+                    ts + '時点、いま盛り上がっている相席ラウンジTOP3🍸',
+                    '「30分だけ静かな夜カフェ行かない？」会話が一番盛り上がったピーク（40〜50分）で切り出すのが2軒目成功の鉄則👇'
+                ];
+                top3.forEach(function(s, i) {
+                    lines.push(medals[i] + ' ' + getBrandTitle(s) + '（女性' + (s.women||0) + '名 / 男性' + (s.men||0) + '名）');
+                });
+                lines.push('\n各店舗から徒歩3分以内の厳選夜カフェ・バーはこちら👇\n' + shareUrl + '\n#相席ナビ #相席ラウンジ #2軒目 #夜カフェ');
+                ta.value = lines.join('\n');
+            } else if (preset === 'zero_wait') {
+                var maleLeads = stores.filter(function(s) { return (s.men || 0) > (s.women || 0); })
+                                      .sort(function(a, b) { return (b.men - a.men); }).slice(0, 3);
+                if (maleLeads.length === 0) maleLeads = stores.slice(0, 3);
+                var lines = [
+                    ts + '時点、女子グループが待ち時間ゼロで即乾杯できる狙い目3店舗💄',
+                    '男性先行につき受付待ちなしで即座に案内＆フード充実👇'
+                ];
+                maleLeads.forEach(function(s, i) {
+                    lines.push(medals[i] + ' ' + getBrandTitle(s) + '（男性' + (s.men||0) + '名 / 女性' + (s.women||0) + '名）');
+                });
+                lines.push('\n待ちゼロで入れる現在人数速報はこちら👇\n' + shareUrl + '\n#相席ナビ #相席ラウンジ #女子待ちゼロ');
+                ta.value = lines.join('\n');
+            } else if (preset === 'rain_underground') {
+                var top3 = stores.slice().sort(function(a, b) { return (b.women - a.women) || (b.men - a.men); }).slice(0, 3);
+                var lines = [
+                    ts + '時点、雨天でも濡れずに直結で入れるおすすめラウンジ速報☔',
+                    '足元の悪い夜は、前髪も靴も濡らさない「駅直結・地下街直結」が一番勝てる選択肢👇'
+                ];
+                top3.forEach(function(s, i) {
+                    lines.push(medals[i] + ' ' + getBrandTitle(s) + '（女性' + (s.women||0) + '名 / 男性' + (s.men||0) + '名）');
+                });
+                lines.push('\n駅直結の混雑状況・人数速報はこちら👇\n' + shareUrl + '\n#相席ナビ #相席ラウンジ #雨の日');
+                ta.value = lines.join('\n');
+            } else if (preset === 'last_train_cliff') {
+                var top3 = stores.slice().sort(function(a, b) { return (b.women - a.women) || (b.men - a.men); }).slice(0, 3);
+                var lines = [
+                    ts + '時点、終電前駆け込み＆深夜営業ラウンジ速報🌙',
+                    '終電20分前の判断が夜の分かれ道。深夜でも活気のある店舗はこちら👇'
+                ];
+                top3.forEach(function(s, i) {
+                    lines.push(medals[i] + ' ' + getBrandTitle(s) + '（女性' + (s.women||0) + '名 / 男性' + (s.men||0) + '名）');
+                });
+                lines.push('\n終電後の残りやすさ指標・リアルタイム人数はこちら👇\n' + shareUrl + '\n#相席ナビ #相席ラウンジ #深夜営業');
+                ta.value = lines.join('\n');
+            } else if (typeof _origSelectSnsPreset === 'function') {
+                _origSelectSnsPreset(preset);
+            }
+        };
+    })();
+    </script>
     <!-- End SNS Modal -->
 
     <!-- Comparison Modal -->

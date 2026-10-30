@@ -72,6 +72,7 @@
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=2">
     <link rel="apple-touch-icon" href="/static/icon.png?v=2">
     <link rel="stylesheet" href="/static/portal.css?v=9">
+    <link rel="stylesheet" href="/static/style.css?v=20261030_6">
     <style>
         :root {
             --bg-dark: #0f1014;
@@ -802,6 +803,61 @@
         </section>
         {% endif %}
 
+        <!-- 2nd Venue Guide & Recommended Spots Section -->
+        <section class="section-card" id="store-second-venue-section">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 6px;">
+                <h2 style="margin: 0; font-size: 1.15rem;">🥂 {{ store.seo_name }} 近くの厳選2軒目＆切り出しTips</h2>
+                <a href="/guide/second-venue" style="color: var(--accent-text); font-size: 0.82rem; text-decoration: none; font-weight: 600;">2軒目の誘い方コラム ›</a>
+            </div>
+            <p style="margin: 0 0 12px; font-size: 0.83rem; color: var(--text-sub); line-height: 1.55;">
+                話題が出尽くす前・会話のピーク時（着席40〜50分目／23:10前）にスムーズに移動できる、徒歩圏内の厳選夜カフェ・隠れ家バー・シーシャ・横丁です。Google公式無料マップリンクからワンタップでルートを確認できます。
+            </p>
+
+            <!-- Timing Badge -->
+            <div class="second-venue-timing-badge" style="margin-bottom: 12px;" onclick="toggleDetailTimingRules()">
+                <span class="timing-badge-tag">💡 ベストタイミング</span>
+                <span class="timing-badge-text">着席40〜50分後 / 23:10前（ピークで切り出すのが鉄則）</span>
+                <span class="timing-toggle-arrow" id="detail-timing-arrow">▾ 理由を見る</span>
+            </div>
+            <div id="detail-timing-details" class="second-venue-timing-details hidden" style="margin-bottom: 14px;">
+                <div class="timing-rule-item"><span class="rule-title">40〜50分ルール:</span> 話題が出尽くす前、会話が一番盛り上がっているピーク時に切り出すのが鉄則。</div>
+                <div class="timing-rule-item"><span class="rule-title">23:10終電前ルール:</span> 終電（23:30前後）の20分前までに2軒目へ入店するか、無理せず解散して後日デートを確約。</div>
+                <div class="timing-rule-item"><span class="rule-title">2杯目半分ルール:</span> 2杯目ドリンクが半分空いた時が声かけ・退店準備の合図。</div>
+            </div>
+
+            <!-- Category Tabs -->
+            <div class="second-venue-tabs" id="detail-second-venue-tabs">
+                <button type="button" class="second-tab-btn active" data-tab="all" onclick="switchDetailSecondTab('all')">すべて</button>
+                <button type="button" class="second-tab-btn" data-tab="cafe" onclick="switchDetailSecondTab('cafe')">☕ 夜カフェ</button>
+                <button type="button" class="second-tab-btn" data-tab="bar" onclick="switchDetailSecondTab('bar')">🍸 バー・バル</button>
+                <button type="button" class="second-tab-btn" data-tab="shisha" onclick="switchDetailSecondTab('shisha')">🎯 シーシャ</button>
+                <button type="button" class="second-tab-btn" data-tab="tips" onclick="switchDetailSecondTab('tips')">💡 誘い方フレーズ</button>
+            </div>
+
+            <!-- Spot Cards Container -->
+            <div id="detail-second-venue-cards" class="second-venue-card-list">
+                <div class="second-venue-card" style="padding: 16px; text-align: center; color: var(--text-sub);">
+                    2軒目スポットデータを読み込み中...
+                </div>
+            </div>
+
+            <!-- Situation Tips Container -->
+            <div id="detail-second-tips-list" class="second-tips-list hidden">
+                <!-- Populated dynamically -->
+            </div>
+
+            <!-- Quick Map Search Footer -->
+            <div class="second-venue-quick-footer" style="margin-top: 10px;">
+                <span class="quick-footer-label">その他の条件で周辺マップ検索（Google公式無料リンク）:</span>
+                <div class="quick-footer-links">
+                    <a id="detail-map-cafe-btn" href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer" class="second-quick-pill cafe">☕ 夜カフェ検索 ↗</a>
+                    <a id="detail-map-bar-btn" href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer" class="second-quick-pill bar">🍸 バー検索 ↗</a>
+                    <a id="detail-map-shisha-btn" href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer" class="second-quick-pill shisha">🎯 シーシャ検索 ↗</a>
+                    <a id="detail-map-yokocho-btn" href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer" class="second-quick-pill yokocho">🍻 横丁検索 ↗</a>
+                </div>
+            </div>
+        </section>
+
         {% if not is_staff and not session.get('is_staff') %}
         <section class="section-card" aria-label="来店前の関連データと立ち回りガイド">
             <h2 style="margin:0 0 10px;">{{ store.seo_name }}へ行く前に役立つ関連データ・コラム</h2>
@@ -1301,6 +1357,260 @@
                     lastSyncedAt = Date.now();
                     syncStoreDetail();
                 }
+            });
+        })();
+    </script>
+
+    <script>
+        (function initStoreDetailSecondVenues() {
+            let masterDataCache = null;
+            let currentVenues = [];
+            let currentTips = [];
+
+            const storeName = {{ (store.name or store.seo_name or '') | tojson }};
+            const storeAnchor = {{ (store.map_anchor or (store.brand_label ~ store.name ~ ' ' ~ store.area_label)) | tojson }};
+
+            function escapeHtml(str) {
+                return String(str || '')
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
+            }
+
+            function escapeJs(str) {
+                return String(str || '')
+                    .replace(/\\/g, '\\\\')
+                    .replace(/'/g, "\\'")
+                    .replace(/"/g, '\\"')
+                    .replace(/\n/g, '\\n');
+            }
+
+            function resolveAreaKey(name, anchor) {
+                const combined = (String(name || '') + ' ' + String(anchor || '')).toLowerCase();
+                if (combined.includes('恵比寿') || combined.includes('ebisu')) return 'ebisu';
+                if (combined.includes('銀座') || combined.includes('有楽町') || combined.includes('ginza')) return 'ginza';
+                if (combined.includes('横浜') || combined.includes('yokohama')) return 'yokohama';
+                if (combined.includes('道頓堀') || combined.includes('難波') || combined.includes('なんば') || combined.includes('namba')) return 'namba';
+                if (combined.includes('心斎橋') || combined.includes('shinsaibashi')) return 'shinsaibashi';
+                if (combined.includes('梅田') || combined.includes('北新地') || combined.includes('umeda')) return 'umeda';
+                if (combined.includes('栄') || combined.includes('錦') || combined.includes('名古屋') || combined.includes('sakae')) return 'sakae';
+                if (combined.includes('天神') || combined.includes('大名') || combined.includes('中洲') || combined.includes('博多') || combined.includes('福岡') || combined.includes('tenjin')) return 'tenjin';
+                if (combined.includes('すすきの') || combined.includes('札幌') || combined.includes('susukino')) return 'susukino';
+                if (combined.includes('渋谷') || combined.includes('shibuya')) return 'shibuya';
+                if (combined.includes('新宿') || combined.includes('shinjuku')) return 'shinjuku';
+                return null;
+            }
+
+            function createFallbackVenues(sName, sAnchor) {
+                const clean = String(sName || '').replace('OLG', '').replace('ag', '').trim();
+                return [
+                    {
+                        name: `${clean}周辺の夜カフェ・スイーツ`,
+                        category: 'cafe',
+                        category_label: '夜カフェ',
+                        walk_minutes: 3,
+                        budget: '¥1,000〜¥2,000',
+                        features: ['落ち着いた照明', 'スイーツ', '会話向き'],
+                        map_query: `${sAnchor} 近く 夜カフェ スイーツ カフェバー`,
+                        comment: '退店後の口直しや落ち着いた会話に最適。現在営業中の近くの夜カフェを検索。'
+                    },
+                    {
+                        name: `${clean}周辺の隠れ家バー・バル`,
+                        category: 'bar',
+                        category_label: 'バー・バル',
+                        walk_minutes: 4,
+                        budget: '¥2,000〜¥4,000',
+                        features: ['カウンター席', '大人の空間', 'サクッと1杯'],
+                        map_query: `${sAnchor} 近く 隠れ家バー ワインバル ダイニングバー`,
+                        comment: '静かなカウンターで距離を縮めたい時に。すぐ行ける周辺バーをマップ検索。'
+                    },
+                    {
+                        name: `${clean}周辺のシーシャカフェ`,
+                        category: 'shisha',
+                        category_label: 'シーシャ',
+                        walk_minutes: 3,
+                        budget: '¥2,000〜¥3,000',
+                        features: ['ソファ席', 'リラックス', '深夜営業'],
+                        map_query: `${sAnchor} 近く シーシャ カフェ ラウンジ`,
+                        comment: 'ゆったりソファでくつろげるシーシャ。深夜営業の店舗を優先して検索。'
+                    },
+                    {
+                        name: `${clean}周辺の横丁・大衆バル`,
+                        category: 'yokocho',
+                        category_label: '横丁',
+                        walk_minutes: 3,
+                        budget: '¥2,000〜¥3,500',
+                        features: ['はしご酒', '賑やか', 'カジュアル'],
+                        map_query: `${sAnchor} 近く 横丁 大衆バル 居酒屋`,
+                        comment: 'もう1杯ワイワイ楽しく飲みたいときに。気軽に入れる横丁・バルを検索。'
+                    }
+                ];
+            }
+
+            async function loadMaster() {
+                try {
+                    const res = await fetch('/static/second_venues.json');
+                    if (res.ok) {
+                        masterDataCache = await res.json();
+                        return masterDataCache;
+                    }
+                } catch (e) {
+                    console.warn('[store_detail] Failed to load second venues data', e);
+                }
+                return { venues_by_area: {}, situation_tips: [], timing_rules: [] };
+            }
+
+            function renderCards(category) {
+                const container = document.getElementById('detail-second-venue-cards');
+                if (!container) return;
+
+                const filtered = (category === 'all')
+                    ? currentVenues
+                    : currentVenues.filter(v => v.category === category);
+
+                if (!filtered || filtered.length === 0) {
+                    container.innerHTML = '<div style="padding: 16px; color: var(--text-sub); font-size: 0.85rem;">該当するスポットがありません。下のGoogleマップ検索をご利用ください。</div>';
+                    return;
+                }
+
+                container.innerHTML = filtered.map(v => {
+                    const mapQuery = v.map_query || (v.name + ' 近く');
+                    const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`;
+                    const lineText = `【2軒目候補】${v.name}（${v.category_label || ''}・徒歩${v.walk_minutes || 3}分）\n${mapUrl}`;
+                    const lineUrl = `https://line.me/R/msg/text/?${encodeURIComponent(lineText)}`;
+                    const featuresHtml = (v.features || []).map(f => `<span class="venue-tag">#${escapeHtml(f)}</span>`).join('');
+                    const catIcon = v.category === 'cafe' ? '☕' : v.category === 'bar' ? '🍸' : v.category === 'shisha' ? '🎯' : '🍻';
+
+                    return `
+                        <div class="second-venue-card" data-category="${escapeHtml(v.category)}">
+                            <div class="second-venue-card-header">
+                                <div class="second-venue-badges">
+                                    <span class="venue-category-badge ${escapeHtml(v.category)}">${catIcon} ${escapeHtml(v.category_label || '')}</span>
+                                    <span class="venue-walk-badge">🚶 徒歩${escapeHtml(String(v.walk_minutes || '3'))}分</span>
+                                </div>
+                                <span class="venue-budget-pill">💰 ${escapeHtml(v.budget || '')}</span>
+                            </div>
+                            <h4 class="second-venue-name">${escapeHtml(v.name)}</h4>
+                            <p class="second-venue-comment">${escapeHtml(v.comment || '')}</p>
+                            ${featuresHtml ? `<div class="second-venue-tags">${featuresHtml}</div>` : ''}
+                            <div class="second-venue-card-actions">
+                                <a href="${mapUrl}" target="_blank" rel="noopener noreferrer" class="venue-action-btn map-btn">🗺️ マップ ↗</a>
+                                <button type="button" class="venue-action-btn copy-btn" onclick="copyDetailText('${escapeJs(v.name)}', this, '店名をコピーしました')">📋 店名コピー</button>
+                                <a href="${lineUrl}" target="_blank" rel="noopener noreferrer" class="venue-action-btn line-btn">💬 LINE共有</a>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            function renderTips(tips) {
+                const container = document.getElementById('detail-second-tips-list');
+                if (!container) return;
+
+                container.innerHTML = (tips || []).map(t => `
+                    <div class="second-tip-card">
+                        <div class="second-tip-header">
+                            <span class="second-tip-tag">${escapeHtml(t.tag || 'おすすめ')}</span>
+                            <h4 class="second-tip-situation">${escapeHtml(t.situation || '')}</h4>
+                        </div>
+                        <div class="second-tip-phrase-box">
+                            <p class="second-tip-phrase">「${escapeHtml(t.phrase || '')}」</p>
+                            <button type="button" class="tip-phrase-copy-btn" onclick="copyDetailText('${escapeJs(t.phrase || '')}', this, 'フレーズをコピーしました')">📋 フレーズをコピー</button>
+                        </div>
+                        <p class="second-tip-point">💡 <strong>狙いと解説:</strong> ${escapeHtml(t.point || '')}</p>
+                    </div>
+                `).join('');
+            }
+
+            window.switchDetailSecondTab = function(category) {
+                const tabs = document.getElementById('detail-second-venue-tabs');
+                if (tabs) {
+                    tabs.querySelectorAll('.second-tab-btn').forEach(b => {
+                        b.classList.toggle('active', b.dataset.tab === category);
+                    });
+                }
+                const cardsEl = document.getElementById('detail-second-venue-cards');
+                const tipsEl = document.getElementById('detail-second-tips-list');
+
+                if (category === 'tips') {
+                    if (cardsEl) cardsEl.classList.add('hidden');
+                    if (tipsEl) tipsEl.classList.remove('hidden');
+                } else {
+                    if (tipsEl) tipsEl.classList.add('hidden');
+                    if (cardsEl) {
+                        cardsEl.classList.remove('hidden');
+                        renderCards(category);
+                    }
+                }
+            };
+
+            window.toggleDetailTimingRules = function() {
+                const el = document.getElementById('detail-timing-details');
+                const arrow = document.getElementById('detail-timing-arrow');
+                if (!el) return;
+                const isHidden = el.classList.contains('hidden');
+                if (isHidden) {
+                    el.classList.remove('hidden');
+                    if (arrow) arrow.textContent = '▴ 閉じる';
+                } else {
+                    el.classList.add('hidden');
+                    if (arrow) arrow.textContent = '▾ 理由を見る';
+                }
+            };
+
+            window.copyDetailText = function(text, btn, msg) {
+                if (!text) return;
+                const done = () => {
+                    if (btn) {
+                        const orig = btn.innerHTML;
+                        btn.innerHTML = '✓ コピー完了';
+                        btn.classList.add('copied');
+                        setTimeout(() => {
+                            btn.innerHTML = orig;
+                            btn.classList.remove('copied');
+                        }, 2000);
+                    }
+                };
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(text).then(done).catch(() => {});
+                } else {
+                    const ta = document.createElement('textarea');
+                    ta.value = text;
+                    ta.style.position = 'fixed';
+                    ta.style.opacity = '0';
+                    document.body.appendChild(ta);
+                    ta.select();
+                    try { document.execCommand('copy'); done(); } catch(e){}
+                    document.body.removeChild(ta);
+                }
+            };
+
+            // Init
+            loadMaster().then(master => {
+                const areaKey = resolveAreaKey(storeName, storeAnchor);
+                const venuesByArea = master.venues_by_area || {};
+                currentTips = master.situation_tips || [];
+
+                if (areaKey && venuesByArea[areaKey] && venuesByArea[areaKey].length > 0) {
+                    currentVenues = venuesByArea[areaKey];
+                } else {
+                    currentVenues = createFallbackVenues(storeName, storeAnchor);
+                }
+
+                // Update Quick map search links
+                const cBtn = document.getElementById('detail-map-cafe-btn');
+                const bBtn = document.getElementById('detail-map-bar-btn');
+                const sBtn = document.getElementById('detail-map-shisha-btn');
+                const yBtn = document.getElementById('detail-map-yokocho-btn');
+                if (cBtn) cBtn.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(storeAnchor + ' 近く 夜カフェ スイーツ カフェバー')}`;
+                if (bBtn) bBtn.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(storeAnchor + ' 近く 隠れ家バー ワインバル ダイニングバー')}`;
+                if (sBtn) sBtn.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(storeAnchor + ' 近く シーシャ カフェ ラウンジ')}`;
+                if (yBtn) yBtn.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(storeAnchor + ' 近く 横丁 大衆バル 居酒屋')}`;
+
+                renderCards('all');
+                renderTips(currentTips);
             });
         })();
     </script>

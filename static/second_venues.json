@@ -1,0 +1,566 @@
+{
+  "version": "2026-10-30",
+  "venues_by_area": {
+    "shibuya": [
+      {
+        "id": "shibuya-cafe-01",
+        "name": "宇田川カフェ suite",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 3,
+        "budget": "¥1,000〜¥2,000",
+        "features": ["ソファ席あり", "深夜2時まで営業", "落ち着いた照明"],
+        "map_query": "宇田川カフェ suite 渋谷",
+        "comment": "オリエンタルラウンジ渋谷本店やag渋谷から徒歩3分。落ち着いた薄暗い照明とゆったりソファで自然と距離が縮まる定番。"
+      },
+      {
+        "id": "shibuya-cafe-02",
+        "name": "夜パフェ専門店 パフェテリア ベル 渋谷",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 3,
+        "budget": "¥1,800〜¥2,800",
+        "features": ["映えスイーツ", "カウンター席あり", "女子ウケ抜群"],
+        "map_query": "夜パフェ専門店 パフェテリア ベル 渋谷 道玄坂",
+        "comment": "「甘いもの食べに行かない？」で最も断られにくいシメパフェの名店。お酒の後の口直しに最適。"
+      },
+      {
+        "id": "shibuya-bar-01",
+        "name": "Bar 石の華",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 4,
+        "budget": "¥2,500〜¥4,000",
+        "features": ["本格カクテル", "横並びカウンター", "落ち着いた大人の空間"],
+        "map_query": "Bar 石の華 渋谷 渋谷駅前",
+        "comment": "賑やかなラウンジから静かな大人の空間へ。横並びのカウンターで2人の距離が自然に近づきます。"
+      },
+      {
+        "id": "shibuya-shisha-01",
+        "name": "C.STAND 渋谷センター街店",
+        "category": "shisha",
+        "category_label": "シーシャ",
+        "walk_minutes": 2,
+        "budget": "¥2,000〜¥3,000",
+        "features": ["ソファ席完備", "持ち込みOK", "リラックス空間"],
+        "map_query": "C.STAND 渋谷センター街店 シーシャカフェ",
+        "comment": "ゆったりソファでリラックスして話せるシーシャカフェ。お酒が強くない女性にも好評。"
+      },
+      {
+        "id": "shibuya-yokocho-01",
+        "name": "渋谷肉横丁",
+        "category": "yokocho",
+        "category_label": "横丁",
+        "walk_minutes": 2,
+        "budget": "¥2,000〜¥3,500",
+        "features": ["賑やかで活気あり", "はしご酒に最適", "カジュアル"],
+        "map_query": "渋谷肉横丁 渋谷ちとせ会館",
+        "comment": "もう1杯カジュアルに盛り上がりたい時にぴったり。ワイワイした空気で打ち解けやすい。"
+      }
+    ],
+    "shinjuku": [
+      {
+        "id": "shinjuku-cafe-01",
+        "name": "cafe degrade (カフェ ディグレード)",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 3,
+        "budget": "¥1,200〜¥2,200",
+        "features": ["深夜営業", "落ち着いたソファ席", "隠れ家空間"],
+        "map_query": "cafe degrade 新宿",
+        "comment": "歌舞伎町の喧騒から離れた隠れ家夜カフェ。落ち着いた照明でじっくり話せます。"
+      },
+      {
+        "id": "shinjuku-bar-01",
+        "name": "Bar cocktailante KARASU",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 4,
+        "budget": "¥2,000〜¥3,500",
+        "features": ["季節の生フルーツカクテル", "カウンター席", "上質な雰囲気"],
+        "map_query": "Bar cocktailante KARASU 新宿 歌舞伎町",
+        "comment": "オリエンタルラウンジ新宿からすぐ。旬のフルーツカクテルが女性に大好評の上品なバー。"
+      },
+      {
+        "id": "shinjuku-shisha-01",
+        "name": "チルイン 新宿歌舞伎町店",
+        "category": "shisha",
+        "category_label": "シーシャ",
+        "walk_minutes": 2,
+        "budget": "¥2,000〜¥3,000",
+        "features": ["ソファ完備", "落ち着いた照明", "深夜営業"],
+        "map_query": "チルイン 新宿歌舞伎町店",
+        "comment": "歌舞伎町中心部でゆったり過ごせる人気シーシャ。席間が広く落ち着いて会話に集中できます。"
+      },
+      {
+        "id": "shinjuku-yokocho-01",
+        "name": "新宿ゴールデン街",
+        "category": "yokocho",
+        "category_label": "横丁",
+        "walk_minutes": 4,
+        "budget": "¥2,000〜¥4,000",
+        "features": ["レトロな街並み", "隠れ家バー", "距離が縮まる"],
+        "map_query": "新宿ゴールデン街 新宿",
+        "comment": "ノスタルジックな名所で肩を並べて飲めるスポット。カルチャー好きの相手に刺さる2軒目。"
+      }
+    ],
+    "ebisu": [
+      {
+        "id": "ebisu-cafe-01",
+        "name": "rew roll espresso bar 恵比寿",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 2,
+        "budget": "¥1,000〜¥2,000",
+        "features": ["駅近西口", "本格エスプレッソ", "洗練された内装"],
+        "map_query": "rew roll espresso bar 恵比寿",
+        "comment": "オリエンタルラウンジ恵比寿から駅方向へ徒歩2分。スマートに夜カフェを楽しめる大人の空間。"
+      },
+      {
+        "id": "ebisu-bar-01",
+        "name": "BAR FIVE G 恵比寿",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 3,
+        "budget": "¥2,500〜¥4,500",
+        "features": ["恵比寿西口隠れ家", "カウンター席", "フルーツカクテル"],
+        "map_query": "BAR FIVE G 恵比寿",
+        "comment": "恵比寿らしい洗練されたオーセンティックバー。デート向きの落ち着いた雰囲気で好印象。"
+      },
+      {
+        "id": "ebisu-yokocho-01",
+        "name": "恵比寿横丁",
+        "category": "yokocho",
+        "category_label": "横丁",
+        "walk_minutes": 3,
+        "budget": "¥2,500〜¥4,000",
+        "features": ["圧倒的な活気", "はしご酒", "ワイワイ楽しい"],
+        "map_query": "恵比寿横丁 恵比寿",
+        "comment": "恵比寿随一の賑やかスポット。相席ラウンジの熱気をそのままに楽しく飲みたいときに最適。"
+      },
+      {
+        "id": "ebisu-shisha-01",
+        "name": "C.STAND 恵比寿西口店",
+        "category": "shisha",
+        "category_label": "シーシャ",
+        "walk_minutes": 2,
+        "budget": "¥2,000〜¥3,500",
+        "features": ["ラグジュアリー内装", "ペアシート", "深夜営業"],
+        "map_query": "C.STAND 恵比寿西口店",
+        "comment": "西口すぐの落ち着いたシーシャ。座り心地の良いソファと照明で親密度が深まります。"
+      }
+    ],
+    "ginza": [
+      {
+        "id": "ginza-cafe-01",
+        "name": "銀座みゆき館 銀座本店",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 3,
+        "budget": "¥1,500〜¥2,500",
+        "features": ["名物和栗モンブラン", "レトロモダン", "深夜営業カフェ"],
+        "map_query": "銀座みゆき館 本店 銀座",
+        "comment": "オリエンタルラウンジ銀座から徒歩3分。名物モンブランを口実に誘いやすい銀座の定番。"
+      },
+      {
+        "id": "ginza-bar-01",
+        "name": "BAR 保志 (バー ホシ)",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 3,
+        "budget": "¥3,000〜¥5,000",
+        "features": ["バーテンダー名店", "さくらカクテル", "大人のカウンター"],
+        "map_query": "BAR 保志 銀座",
+        "comment": "世界一のカクテルを味わえる銀座屈指の名門バー。エスコートの質で差をつけたいときに。"
+      },
+      {
+        "id": "ginza-yokocho-01",
+        "name": "有楽町産直飲食街",
+        "category": "yokocho",
+        "category_label": "横丁",
+        "walk_minutes": 4,
+        "budget": "¥2,500〜¥4,000",
+        "features": ["ガード下レトロ", "産直食材", "気取らないバル"],
+        "map_query": "有楽町産直飲食街 有楽町 ガード下",
+        "comment": "コリドー街から有楽町ガード下へ。肩肘張らずカジュアルに乾杯できる楽しい横丁街。"
+      },
+      {
+        "id": "ginza-shisha-01",
+        "name": "黄昏シーシャ 銀座店",
+        "category": "shisha",
+        "category_label": "シーシャ",
+        "walk_minutes": 3,
+        "budget": "¥2,500〜¥4,000",
+        "features": ["銀座の隠れ家", "上質ソファー", "落ち着いたチル空間"],
+        "map_query": "黄昏シーシャ 銀座店",
+        "comment": "銀座の夜を静かに締めくくる洗練空間。大人のリラックスした会話にぴったり。"
+      }
+    ],
+    "yokohama": [
+      {
+        "id": "yokohama-cafe-01",
+        "name": "Butter 横浜ベイクォーター",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 5,
+        "budget": "¥1,200〜¥2,200",
+        "features": ["夜景が見えるテラス", "人気スイーツ", "お洒落空間"],
+        "map_query": "Butter 横浜ベイクォーター",
+        "comment": "横浜駅東口・ベイクォーターの水辺ロケーション。スイーツと夜風で心地よい2軒目。"
+      },
+      {
+        "id": "yokohama-bar-01",
+        "name": "Bar SuperNova (スーパーノヴァ)",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 4,
+        "budget": "¥2,500〜¥4,500",
+        "features": ["西口隠れ家", "横並びカウンター", "豊富なウイスキー・カクテル"],
+        "map_query": "Bar SuperNova 横浜 西口",
+        "comment": "オリエンタルラウンジ横浜から西口方面へ。喧騒を忘れさせる静かなバーでじっくり会話できます。"
+      },
+      {
+        "id": "yokohama-shisha-01",
+        "name": "C.STAND 横浜西口店",
+        "category": "shisha",
+        "category_label": "シーシャ",
+        "walk_minutes": 3,
+        "budget": "¥2,000〜¥3,000",
+        "features": ["西口駅近", "ゆったりソファ", "深夜営業"],
+        "map_query": "C.STAND 横浜西口店",
+        "comment": "横浜西口すぐ。座り心地の良いソファーでリラックスしながら親密に話せます。"
+      },
+      {
+        "id": "yokohama-yokocho-01",
+        "name": "横浜西口一番街",
+        "category": "yokocho",
+        "category_label": "横丁",
+        "walk_minutes": 3,
+        "budget": "¥2,000〜¥3,500",
+        "features": ["飲み歩き横丁", "多彩なバル・居酒屋", "活気ある空間"],
+        "map_query": "横浜西口一番街 横浜 西口",
+        "comment": "個性豊かな飲食店が集う西口の人気横丁。カジュアルにハシゴしたいときに最適。"
+      }
+    ],
+    "namba": [
+      {
+        "id": "namba-cafe-01",
+        "name": "クレープリー アルション 難波",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 3,
+        "budget": "¥1,200〜¥2,200",
+        "features": ["本格クレープ", "アンティーク洋館", "女子ウケ抜群"],
+        "map_query": "クレープリー アルション 難波",
+        "comment": "オリエンタルラウンジ難波やJIS難波から徒歩3分。黄色い洋館で絶品クレープとお茶を楽しめる大人気スポット。"
+      },
+      {
+        "id": "namba-bar-01",
+        "name": "BAR 堀川 道頓堀",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 3,
+        "budget": "¥2,000〜¥3,500",
+        "features": ["法善寺近く", "落ち着いた照明", "カウンターバー"],
+        "map_query": "BAR 堀川 道頓堀 難波",
+        "comment": "道頓堀の喧騒を抜けた静かな隠れ家バー。落ち着いたトーンで距離を縮めたい時に。"
+      },
+      {
+        "id": "namba-yokocho-01",
+        "name": "法善寺横丁",
+        "category": "yokocho",
+        "category_label": "横丁",
+        "walk_minutes": 2,
+        "budget": "¥2,500〜¥4,500",
+        "features": ["石畳の風情", "浪花情緒", "大人の雰囲気"],
+        "map_query": "法善寺横丁 難波 道頓堀",
+        "comment": "提灯と石畳が美しい難波の名所。雰囲気ある路地裏で大人の2軒目を演出できます。"
+      },
+      {
+        "id": "namba-shisha-01",
+        "name": "シーシャカフェ 煙人 (Engine) 難波店",
+        "category": "shisha",
+        "category_label": "シーシャ",
+        "walk_minutes": 3,
+        "budget": "¥2,000〜¥3,000",
+        "features": ["居心地の良いソファ", "落ち着いた店内", "深夜営業"],
+        "map_query": "シーシャカフェ 煙人 難波",
+        "comment": "千日前近くの隠れ家シーシャ。ソファーで肩を並べてくつろぎながら話せる安心空間。"
+      }
+    ],
+    "shinsaibashi": [
+      {
+        "id": "shinsaibashi-cafe-01",
+        "name": "サロン・ド・テ・プレジール 心斎橋",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 4,
+        "budget": "¥1,200〜¥2,500",
+        "features": ["本格紅茶とスイーツ", "ヨーロッパ調", "上品な空間"],
+        "map_query": "サロン・ド・テ・プレジール 心斎橋",
+        "comment": "オリエンタルラウンジ心斎橋から徒歩4分。落ち着いた店内でゆったり紅茶とスイーツを楽しめます。"
+      },
+      {
+        "id": "shinsaibashi-bar-01",
+        "name": "BAR K-SPOT 心斎橋",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 3,
+        "budget": "¥2,000〜¥3,500",
+        "features": ["周防町筋すぐ", "落ち着いたカウンター", "気さくなマスター"],
+        "map_query": "BAR K-SPOT 心斎橋",
+        "comment": "心斎橋・周防町筋のすぐ近く。自然体で話せる居心地の良い隠れ家バー。"
+      },
+      {
+        "id": "shinsaibashi-shisha-01",
+        "name": "C.STAND 心斎橋店",
+        "category": "shisha",
+        "category_label": "シーシャ",
+        "walk_minutes": 2,
+        "budget": "¥2,000〜¥3,000",
+        "features": ["御堂筋すぐ", "ペアシート完備", "高級感ある内装"],
+        "map_query": "C.STAND 心斎橋店",
+        "comment": "御堂筋近くのラグジュアリーなシーシャカフェ。座り心地の良いソファでリラックス。"
+      },
+      {
+        "id": "shinsaibashi-yokocho-01",
+        "name": "心斎橋ネオン食堂街 (PARCO B2F)",
+        "category": "yokocho",
+        "category_label": "横丁",
+        "walk_minutes": 3,
+        "budget": "¥2,000〜¥3,500",
+        "features": ["ネオン映え空間", "駅直結で雨の日も安心", "個性派バル集結"],
+        "map_query": "心斎橋ネオン食堂街 心斎橋PARCO",
+        "comment": "最新トレンドのネオ酒場街。雨天でも濡れずに移動でき、写真映えも抜群。"
+      }
+    ],
+    "umeda": [
+      {
+        "id": "umeda-cafe-01",
+        "name": "パフェ×酒 パフェテリア ラルゴ 梅田",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 4,
+        "budget": "¥1,800〜¥2,800",
+        "features": ["映えシメパフェ", "お酒×スイーツ", "洗練された内装"],
+        "map_query": "パフェテリア ラルゴ 堂山町 梅田",
+        "comment": "オリエンタルラウンジ梅田やすすきの・茶屋町周辺から徒歩すぐ。お酒と楽しむシメパフェで盛り上がります。"
+      },
+      {
+        "id": "umeda-bar-01",
+        "name": "BAR BESO (バー ベソ) 北新地",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 5,
+        "budget": "¥2,500〜¥4,500",
+        "features": ["北新地名門", "オーセンティックカウンター", "最高峰のカクテル"],
+        "map_query": "BAR BESO 北新地 梅田",
+        "comment": "北新地屈指の名店。上質な大人のカウンターで、エスコートの洗練度をアピールできます。"
+      },
+      {
+        "id": "umeda-yokocho-01",
+        "name": "お初天神裏参道",
+        "category": "yokocho",
+        "category_label": "横丁",
+        "walk_minutes": 3,
+        "budget": "¥2,500〜¥4,000",
+        "features": ["古民家バル街", "おしゃれな路地裏", "はしご酒に最高"],
+        "map_query": "お初天神裏参道 梅田 曽根崎",
+        "comment": "梅田の2軒目といえばここ。風情ある裏路地に上質な肉バルやワイン酒場が連なります。"
+      },
+      {
+        "id": "umeda-shisha-01",
+        "name": "C.STAND 梅田東通り店",
+        "category": "shisha",
+        "category_label": "シーシャ",
+        "walk_minutes": 2,
+        "budget": "¥2,000〜¥3,000",
+        "features": ["東通りすぐ", "ソファ席完備", "深夜営業"],
+        "map_query": "C.STAND 梅田東通り店",
+        "comment": "東通り商店街すぐでアクセス抜群。広々としたソファー席で落ち着いて話せます。"
+      }
+    ],
+    "sakae": [
+      {
+        "id": "sakae-cafe-01",
+        "name": "カフェ スケッチ 栄",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 4,
+        "budget": "¥1,200〜¥2,200",
+        "features": ["韓国風カフェ", "映えスイーツ", "落ち着いた店内"],
+        "map_query": "カフェ スケッチ 栄 名古屋",
+        "comment": "オリエンタルラウンジ栄や名古屋錦から徒歩圏内。女性人気の高い洗練された夜カフェ。"
+      },
+      {
+        "id": "sakae-bar-01",
+        "name": "BAR BARNS (バー バーンズ) 栄",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 5,
+        "budget": "¥2,500〜¥4,500",
+        "features": ["名古屋屈指の名バー", "フレッシュフルーツカクテル", "極上のホスピタリティ"],
+        "map_query": "BAR BARNS 栄 伏見 名古屋",
+        "comment": "全国的な知名度を誇る名店。フルーツカクテルが絶品で、誰を連れて行っても喜ばれます。"
+      },
+      {
+        "id": "sakae-yokocho-01",
+        "name": "ほぼ栄駅一番街 のれん街",
+        "category": "yokocho",
+        "category_label": "横丁",
+        "walk_minutes": 3,
+        "budget": "¥2,000〜¥3,500",
+        "features": ["錦通沿い", "ネオ横丁", "活気ある酒場"],
+        "map_query": "ほぼ栄駅一番街 のれん街 名古屋 錦",
+        "comment": "錦通沿いにある人気横丁。賑やかな空気感でもう1軒軽く楽しみたいときに。"
+      },
+      {
+        "id": "sakae-shisha-01",
+        "name": "シーシャカフェ musch (ミュシャ) 栄店",
+        "category": "shisha",
+        "category_label": "シーシャ",
+        "walk_minutes": 3,
+        "budget": "¥2,000〜¥3,500",
+        "features": ["暖炉のある空間", "上質ソファ", "女子ウケ抜群"],
+        "map_query": "musch 栄店 シーシャ 名古屋",
+        "comment": "暖炉の炎と心地よいソファが贅沢なシーシャラウンジ。デート向きのムード満点。"
+      }
+    ],
+    "tenjin": [
+      {
+        "id": "tenjin-cafe-01",
+        "name": "夜カフェ 8# (エイトナンバー) 天神大名",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 3,
+        "budget": "¥1,200〜¥2,200",
+        "features": ["大名中心部", "深夜スイーツ", "ソファ席完備"],
+        "map_query": "夜カフェ 8# 天神 大名 福岡",
+        "comment": "オリエンタルラウンジ福岡天神から徒歩3分。大名のおしゃれな雰囲気と美味しいスイーツが自慢。"
+      },
+      {
+        "id": "tenjin-bar-01",
+        "name": "Bar Oscar (バー オスカー) 大名",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 4,
+        "budget": "¥2,500〜¥4,500",
+        "features": ["大名の老舗バー", "本格カクテル", "大人のカウンター"],
+        "map_query": "Bar Oscar 大名 福岡 天神",
+        "comment": "福岡・大名を代表するオーセンティックバー。静かに落ち着いて会話を深めたい時に。"
+      },
+      {
+        "id": "tenjin-yokocho-01",
+        "name": "天神 屋台街 (渡辺通周辺)",
+        "category": "yokocho",
+        "category_label": "横丁",
+        "walk_minutes": 4,
+        "budget": "¥1,800〜¥3,000",
+        "features": ["博多名物屋台", "密着カウンター", "一気に距離が縮まる"],
+        "map_query": "天神屋台 渡辺通 福岡",
+        "comment": "博多ならではの屋台体験。肩が触れ合う距離感で一気に親密になれる名物スポット。"
+      },
+      {
+        "id": "tenjin-shisha-01",
+        "name": "C.STAND 福岡天神西通り店",
+        "category": "shisha",
+        "category_label": "シーシャ",
+        "walk_minutes": 2,
+        "budget": "¥2,000〜¥3,000",
+        "features": ["西通り沿い", "ペアソファ", "朝まで営業"],
+        "map_query": "C.STAND 福岡天神西通り店",
+        "comment": "西通り沿いでアクセス抜群。まったりとリラックスして会話を楽しめる空間。"
+      }
+    ],
+    "susukino": [
+      {
+        "id": "susukino-cafe-01",
+        "name": "夜パフェ専門店 パフェテリア ミル すすきの",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 3,
+        "budget": "¥1,800〜¥2,800",
+        "features": ["元祖シメパフェ", "芸術的パフェ", "女子ウケNo.1"],
+        "map_query": "夜パフェ専門店 パフェテリア ミル すすきの 札幌",
+        "comment": "オリエンタルラウンジ札幌やすすきの駅から徒歩3分。札幌シメパフェの代名詞的存在で喜ばれること確実。"
+      },
+      {
+        "id": "susukino-bar-01",
+        "name": "The Bar nano. gould. すすきの",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 3,
+        "budget": "¥2,500〜¥4,500",
+        "features": ["北海道産果実カクテル", "落ち着いたカウンター", "大人の隠れ家"],
+        "map_query": "The Bar nano gould すすきの 札幌",
+        "comment": "北海道の旬の果実を活かした絶品カクテル。すすきのの喧騒を離れてしっとり飲めます。"
+      },
+      {
+        "id": "susukino-yokocho-01",
+        "name": "すすきのゼロ番地飲食街",
+        "category": "yokocho",
+        "category_label": "横丁",
+        "walk_minutes": 4,
+        "budget": "¥2,000〜¥3,500",
+        "features": ["地下飲食街", "昭和レトロ", "味わい深い隠れ家バー"],
+        "map_query": "すすきのゼロ番地 札幌 すすきの",
+        "comment": "すすきの最古の地下飲食店街。ディープで個性的な隠れ家バーが集う通好みのスポット。"
+      },
+      {
+        "id": "susukino-shisha-01",
+        "name": "シーシャカフェ PukuPuku 札幌すすきの店",
+        "category": "shisha",
+        "category_label": "シーシャ",
+        "walk_minutes": 2,
+        "budget": "¥2,000〜¥3,000",
+        "features": ["すすきの交差点すぐ", "ゆったりソファ", "落ち着いた照明"],
+        "map_query": "シーシャカフェ PukuPuku 札幌すすきの店",
+        "comment": "交差点すぐの暖かな空間。寒い夜でもソファーで温まりながら会話を楽しめます。"
+      }
+    ]
+  },
+  "situation_tips": [
+    {
+      "id": "phrase_cafe",
+      "situation": "甘いもの・落ち着いた場所へ誘う場合",
+      "tag": "王道・高成功率",
+      "phrase": "ここ音楽で少し声張らないとだから、30分だけ近くの静かな夜カフェで美味しいスイーツ食べない？",
+      "point": "「30分だけ」と出口を示し、お酒ではなく甘いもの・静かさを理由にすることで警戒心を解除。"
+    },
+    {
+      "id": "phrase_quiet",
+      "situation": "もっと落ち着いてゆっくり話したい場合",
+      "tag": "自然な展開",
+      "phrase": "せっかく話面白いから、もっと静かなカウンターのバーでサクッと1杯だけ続き話そうよ！",
+      "point": "「話が面白いから」と相手を肯定し、横並びのカウンターで親密度を深める。"
+    },
+    {
+      "id": "phrase_short",
+      "situation": "終電が近い・明日早いと言われた場合",
+      "tag": "安心感・下心ゼロ",
+      "phrase": "明日早いよね！無理させたくないから、駅前のバーで30分だけサクッと乾杯して終電で解散しよ！",
+      "point": "男性側から先に「終電で解散」を提案することで警戒を完全に解き、OK率を最大化。"
+    },
+    {
+      "id": "phrase_next",
+      "situation": "その日は深追いせず次回に繋げたい場合",
+      "tag": "次回アポ率UP",
+      "phrase": "今日めっちゃ楽しかったから遅くなる前に帰ろ！その代わり来週、さっき話してたお店行こうよ。LINE交換しよ！",
+      "point": "盛り上がったピークで引き際よく解散することで好印象を残し、その場で次回デートの約束を確定。"
+    }
+  ],
+  "timing_rules": [
+    {
+      "rule": "40〜50分ルール",
+      "desc": "話題が出尽くす前、会話が一番盛り上がっているピーク時に切り出すのが鉄則。同じ席で長居すると移動のモチベーションが下がります。"
+    },
+    {
+      "rule": "23:10終電前ルール",
+      "desc": "終電（23:30前後）の20分前までに2軒目へ入店するか、無理せず解散して後日デートを確約する。終電間際の路上検索は厳禁。"
+    },
+    {
+      "rule": "2杯目半分ルール",
+      "desc": "相席ラウンジで注文した2杯目のドリンクが半分空いたタイミングが声かけの準備シグナル。お会計や退店準備も逆算してスムーズに動けます。"
+    }
+  ]
+}

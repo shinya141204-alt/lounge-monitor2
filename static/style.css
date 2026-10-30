@@ -4998,107 +4998,456 @@ body.theme-light .portal-area-chip {
 
 /* Modal 2nd Venue Guide Box */
 .modal-second-venue-box {
-    background: rgba(15, 23, 42, 0.72);
-    border: 1px solid rgba(56, 189, 248, 0.28);
+    background: linear-gradient(180deg, rgba(15, 23, 42, 0.88), rgba(15, 23, 42, 0.72));
+    border: 1px solid rgba(56, 189, 248, 0.35);
     border-radius: 14px;
-    padding: 15px;
-    margin: 14px 0;
+    padding: 16px;
+    margin: 16px 0;
     text-align: left;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
 }
 
 .second-venue-header {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-bottom: 10px;
-}
-
-.second-venue-header h3 {
-    margin: 0;
-    font-size: 0.92rem;
-    color: #f8fafc;
-}
-
-.second-venue-sub {
-    font-size: 0.72rem;
-    color: #94a3b8;
-}
-
-.second-venue-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 10px;
     margin-bottom: 12px;
 }
 
-.second-venue-card {
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 10px;
-    padding: 11px 12px;
+.second-venue-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
 }
 
-.second-venue-badge {
-    display: inline-block;
-    font-size: 0.68rem;
-    font-weight: 700;
-    color: #38bdf8;
-    background: rgba(56, 189, 248, 0.15);
-    border: 1px solid rgba(56, 189, 248, 0.35);
-    padding: 1px 7px;
-    border-radius: 5px;
-    margin-bottom: 5px;
-}
-
-.second-venue-title {
-    font-size: 0.82rem;
+.second-venue-title-row h3 {
+    margin: 0;
+    font-size: 0.96rem;
     font-weight: 700;
     color: #f8fafc;
-    margin-bottom: 4px;
-    line-height: 1.4;
 }
 
-.second-venue-desc {
+.second-venue-guide-link {
+    font-size: 0.75rem;
+    color: #38bdf8;
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.15s ease;
+    white-space: nowrap;
+}
+
+.second-venue-guide-link:hover {
+    color: #7dd3fc;
+    text-decoration: underline;
+}
+
+.second-venue-timing-badge {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(217, 119, 6, 0.08));
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    border-radius: 8px;
+    padding: 7px 12px;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.second-venue-timing-badge:hover {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.22), rgba(217, 119, 6, 0.14));
+    border-color: rgba(245, 158, 11, 0.6);
+}
+
+.timing-badge-tag {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #fbbf24;
+    margin-right: 6px;
+}
+
+.timing-badge-text {
+    font-size: 0.76rem;
+    font-weight: 600;
+    color: #fef3c7;
+    flex: 1;
+}
+
+.timing-toggle-arrow {
+    font-size: 0.7rem;
+    color: #f59e0b;
+    font-weight: 600;
+    margin-left: 8px;
+    white-space: nowrap;
+}
+
+.second-venue-timing-details {
+    background: rgba(0, 0, 0, 0.28);
+    border: 1px dashed rgba(245, 158, 11, 0.3);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.timing-rule-item {
+    font-size: 0.76rem;
+    line-height: 1.5;
+    color: #e2e8f0;
+}
+
+.timing-rule-item .rule-title {
+    color: #fbbf24;
+    font-weight: 700;
+    margin-right: 4px;
+}
+
+/* Category Tabs */
+.second-venue-tabs {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 6px;
+    margin-bottom: 12px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+}
+
+.second-tab-btn {
+    flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 999px;
+    color: #cbd5e1;
+    font-size: 0.76rem;
+    font-weight: 600;
+    padding: 5px 12px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.second-tab-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #f8fafc;
+}
+
+.second-tab-btn.active {
+    background: #0284c7;
+    border-color: #38bdf8;
+    color: #ffffff;
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.35);
+}
+
+/* Spot Cards */
+.second-venue-card-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.second-venue-card {
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 12px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.second-venue-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(56, 189, 248, 0.35);
+}
+
+.second-venue-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.second-venue-badges {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+
+.venue-category-badge {
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 4px;
+    color: #fff;
+}
+
+.venue-category-badge.cafe {
+    background: rgba(245, 158, 11, 0.25);
+    border: 1px solid rgba(245, 158, 11, 0.5);
+    color: #fde68a;
+}
+
+.venue-category-badge.bar {
+    background: rgba(168, 85, 247, 0.25);
+    border: 1px solid rgba(168, 85, 247, 0.5);
+    color: #e9d5ff;
+}
+
+.venue-category-badge.shisha {
+    background: rgba(20, 184, 166, 0.25);
+    border: 1px solid rgba(20, 184, 166, 0.5);
+    color: #99f6e4;
+}
+
+.venue-category-badge.yokocho {
+    background: rgba(239, 68, 68, 0.25);
+    border: 1px solid rgba(239, 68, 68, 0.5);
+    color: #fecaca;
+}
+
+.venue-walk-badge {
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(56, 189, 248, 0.18);
+    border: 1px solid rgba(56, 189, 248, 0.4);
+    color: #bae6fd;
+}
+
+.venue-budget-pill {
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: #94a3b8;
+    white-space: nowrap;
+}
+
+.second-venue-name {
+    margin: 0 0 6px 0;
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: #f8fafc;
+    line-height: 1.35;
+}
+
+.second-venue-comment {
+    margin: 0 0 8px 0;
     font-size: 0.75rem;
     color: #cbd5e1;
-    margin: 0;
     line-height: 1.5;
 }
 
-.second-venue-map-actions {
+.second-venue-tags {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 4px;
+    margin-bottom: 10px;
 }
 
-.second-map-btn {
+.venue-tag {
+    font-size: 0.66rem;
+    color: #94a3b8;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 1px 6px;
+    border-radius: 4px;
+}
+
+.second-venue-card-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: auto;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.venue-action-btn {
     flex: 1;
-    min-width: 180px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 5px;
-    padding: 9px 12px;
-    border-radius: 999px;
-    font-size: 0.78rem;
-    font-weight: 700;
+    padding: 6px 4px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    border-radius: 6px;
     text-decoration: none;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    border: none;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.venue-action-btn.map-btn {
+    background: rgba(2, 132, 199, 0.25);
+    border: 1px solid rgba(56, 189, 248, 0.4);
+    color: #7dd3fc;
+}
+
+.venue-action-btn.map-btn:hover {
+    background: rgba(2, 132, 199, 0.45);
     color: #fff;
-    background: linear-gradient(135deg, rgba(2, 132, 199, 0.85), rgba(59, 130, 246, 0.85));
-    border: 1px solid rgba(56, 189, 248, 0.45);
-    transition: all 0.2s ease;
 }
 
-.second-map-btn.bar {
-    background: linear-gradient(135deg, rgba(139, 92, 246, 0.85), rgba(236, 72, 153, 0.85));
-    border-color: rgba(236, 72, 153, 0.45);
+.venue-action-btn.copy-btn {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #e2e8f0;
 }
 
-.second-map-btn:hover {
-    filter: brightness(1.1);
-    transform: translateY(-1px);
+.venue-action-btn.copy-btn:hover {
+    background: rgba(255, 255, 255, 0.16);
+    color: #fff;
+}
+
+.venue-action-btn.copy-btn.copied {
+    background: rgba(16, 185, 129, 0.35);
+    border-color: #10b981;
+    color: #a7f3d0;
+}
+
+.venue-action-btn.line-btn {
+    background: rgba(6, 199, 85, 0.2);
+    border: 1px solid rgba(6, 199, 85, 0.4);
+    color: #86efac;
+}
+
+.venue-action-btn.line-btn:hover {
+    background: rgba(6, 199, 85, 0.35);
+    color: #fff;
+}
+
+/* Tips Cards */
+.second-tips-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.second-tip-card {
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 10px;
+    padding: 12px 14px;
+}
+
+.second-tip-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.second-tip-tag {
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #f59e0b;
+    background: rgba(245, 158, 11, 0.18);
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    padding: 2px 7px;
+    border-radius: 4px;
+}
+
+.second-tip-situation {
+    margin: 0;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #f8fafc;
+}
+
+.second-tip-phrase-box {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px dashed rgba(56, 189, 248, 0.3);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.second-tip-phrase {
+    margin: 0;
+    font-size: 0.82rem;
+    font-weight: 600;
+    line-height: 1.5;
+    color: #e0f2fe;
+}
+
+.tip-phrase-copy-btn {
+    align-self: flex-start;
+    background: rgba(56, 189, 248, 0.2);
+    border: 1px solid rgba(56, 189, 248, 0.4);
+    border-radius: 6px;
+    color: #7dd3fc;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 5px 12px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.tip-phrase-copy-btn:hover {
+    background: rgba(56, 189, 248, 0.35);
+    color: #fff;
+}
+
+.tip-phrase-copy-btn.copied {
+    background: rgba(16, 185, 129, 0.35);
+    border-color: #10b981;
+    color: #a7f3d0;
+}
+
+.second-tip-point {
+    margin: 0;
+    font-size: 0.74rem;
+    color: #94a3b8;
+    line-height: 1.45;
+}
+
+/* Quick Map Search Footer */
+.second-venue-quick-footer {
+    padding-top: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.quick-footer-label {
+    display: block;
+    font-size: 0.72rem;
+    color: #94a3b8;
+    margin-bottom: 6px;
+}
+
+.quick-footer-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.second-quick-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-decoration: none;
+    color: #cbd5e1;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    transition: all 0.15s ease;
+}
+
+.second-quick-pill:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: #f8fafc;
+    border-color: rgba(56, 189, 248, 0.4);
 }
 
 /* Light mode overrides */
