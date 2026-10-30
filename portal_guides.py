@@ -164,7 +164,7 @@ AREA_GUIDES = {
         'name': '名古屋（栄・錦）・静岡・北陸エリア',
         'short_name': '名古屋・静岡・金沢',
         'icon': '',
-        'keywords': ['名古屋', '栄', '錦', '静岡', '浜松', '金沢', 'Nagoya', 'Shizuoka', 'Hamamatsu', 'Kanazawa'],
+        'keywords': ['名古屋', '栄', '名古屋 錦', '名古屋錦', '静岡', '浜松', '金沢', 'Nagoya', 'Shizuoka', 'Hamamatsu', 'Kanazawa'],
         'region_code': 'Chubu',
         'concierge_area': 'nagoya',
         'lead': '東海最大の歓楽街である名古屋（栄・錦）を中心に、静岡・浜松・金沢の人気店舗が集まる中部・北陸エリア。',

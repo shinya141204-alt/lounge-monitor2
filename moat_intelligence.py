@@ -250,7 +250,9 @@ def city_key_for_store(store_name: str) -> str:
         return "sendai"
     if "横浜" in s or "YOKOHAMA" in s:
         return "yokohama"
-    if any(k in s for k in ("名古屋", "栄", "錦", "住吉", "静岡", "浜松", "金沢", "SAKAE", "SUMIYOSHI")):
+    if "錦糸町" in s or "KINSHICHO" in s:
+        return "tokyo"
+    if any(k in s for k in ("名古屋", "名古屋 栄", "名古屋栄", "名古屋 錦", "名古屋錦", "栄", "住吉", "静岡", "浜松", "金沢", "NAGOYA", "SAKAE", "SUMIYOSHI")):
         return "nagoya"
     if "神戸" in s or "三宮" in s or "SANNOMIYA" in s or "KOBE" in s:
         return "kobe"

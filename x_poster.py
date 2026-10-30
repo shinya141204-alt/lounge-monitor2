@@ -157,7 +157,7 @@ def _build_live_insight_line(stores: list, slot_label: str = "20:00") -> str:
         ("渋谷", ("渋谷", "恵比寿", "SHIBUYA", "EBISU")),
         ("梅田", ("梅田", "茶屋町", "UMEDA", "CHAYAMACHI")),
         ("難波・心斎橋", ("難波", "心斎橋", "NAMBA", "SHINSAIBASHI")),
-        ("名古屋", ("名古屋", "NAGOYA", "栄", "錦")),
+        ("名古屋", ("名古屋", "NAGOYA", "栄", "名古屋 錦", "名古屋錦")),
         ("福岡", ("福岡", "天神", "FUKUOKA")),
         ("札幌", ("札幌", "SAPPORO")),
     ]

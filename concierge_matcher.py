@@ -467,7 +467,7 @@ def _evaluate_store_candidate(
     usual_slot_label = bm.get("usual_slot_label") or "普段の同時間帯"
     usual_w_diff = round(w - float(usual_w), 1) if (usual_w is not None and tot > 0) else None
 
-    club_kw = ("梅田", "茶屋町", "心斎橋", "難波", "渋谷", "新宿", "栄", "錦", "福岡", "札幌", "UMEDA", "CHAYAMACHI", "NAMBA", "SHIBUYA", "SHINJUKU", "FUKUOKA", "SAPPORO")
+    club_kw = ("梅田", "茶屋町", "心斎橋", "難波", "渋谷", "新宿", "栄", "名古屋 錦", "名古屋錦", "福岡", "札幌", "UMEDA", "CHAYAMACHI", "NAMBA", "SHIBUYA", "SHINJUKU", "FUKUOKA", "SAPPORO")
     is_club_zone = any(k in sname.upper() for k in club_kw)
     mid_ret = bm.get("midnight_retention_pct")
     if mid_ret is None:

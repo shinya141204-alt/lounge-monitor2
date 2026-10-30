@@ -1363,7 +1363,7 @@ def get_store_7day_analytics(store_name: str) -> dict:
         best_wd_name = f"{weekdays_ja[best_w[0]]}曜日"
         best_wd_pct = round(sum(best_w[1]) / len(best_w[1]))
 
-    club_keywords = ("梅田", "茶屋町", "心斎橋", "難波", "渋谷", "新宿", "栄", "錦", "福岡", "札幌", "UMEDA", "CHAYAMACHI", "NAMBA", "SHIBUYA", "SHINJUKU", "FUKUOKA", "SAPPORO")
+    club_keywords = ("梅田", "茶屋町", "心斎橋", "難波", "渋谷", "新宿", "栄", "名古屋 錦", "名古屋錦", "福岡", "札幌", "UMEDA", "CHAYAMACHI", "NAMBA", "SHIBUYA", "SHINJUKU", "FUKUOKA", "SAPPORO")
     is_club_area = any(k in (store_name or "").upper() for k in club_keywords)
     avg_mid_w = (sum(midnight_women) / len(midnight_women)) if midnight_women else 0
     avg_peak_w = (sum(peak_band_women) / len(peak_band_women)) if peak_band_women else 0
@@ -1520,7 +1520,7 @@ def _compute_benchmark_base_from_sqlite(cutoff_str: str) -> dict:
             bs[2] += cnt
 
     # Precompute hour-independent static store metrics (core_time & midnight_retention) once!
-    club_keywords = ("梅田", "茶屋町", "心斎橋", "難波", "渋谷", "新宿", "栄", "錦", "福岡", "札幌", "熊本", "UMEDA", "CHAYAMACHI", "NAMBA", "SHIBUYA", "SHINJUKU", "FUKUOKA", "SAPPORO")
+    club_keywords = ("梅田", "茶屋町", "心斎橋", "難波", "渋谷", "新宿", "栄", "名古屋 錦", "名古屋錦", "福岡", "札幌", "熊本", "UMEDA", "CHAYAMACHI", "NAMBA", "SHIBUYA", "SHINJUKU", "FUKUOKA", "SAPPORO")
     static_per_store = {}
     for sname in stores_seen:
         b_map = band_stats[sname]

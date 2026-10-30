@@ -313,7 +313,7 @@ def compute_store_analysis_payload(store_name, analysis_cache, cache_duration=36
     if p_avg_w >= 2.0 and len(mid_00_01_w) >= 3:
         midnight_retention_pct = max(15, min(180, round((m_avg_w / p_avg_w) * 100)))
     else:
-        club_keywords = ("梅田", "茶屋町", "心斎橋", "難波", "渋谷", "新宿", "栄", "錦", "福岡", "札幌", "熊本", "UMEDA", "CHAYAMACHI", "NAMBA", "SHIBUYA", "SHINJUKU", "FUKUOKA", "SAPPORO")
+        club_keywords = ("梅田", "茶屋町", "心斎橋", "難波", "渋谷", "新宿", "栄", "名古屋 錦", "名古屋錦", "福岡", "札幌", "熊本", "UMEDA", "CHAYAMACHI", "NAMBA", "SHIBUYA", "SHINJUKU", "FUKUOKA", "SAPPORO")
         is_club = any(k in (store_name or "").upper() for k in club_keywords)
         midnight_retention_pct = 82 if is_club else 58
     if midnight_retention_pct >= 95:

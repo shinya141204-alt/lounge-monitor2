@@ -226,7 +226,7 @@
             '仙台': ['仙台', 'sendai'],
             '名古屋': ['名古屋', 'nagoya'],
             '栄': ['栄', '名古屋栄', 'sakae'],
-            '錦': ['錦', '名古屋錦', 'nishiki'],
+            '名古屋錦': ['名古屋錦', '名古屋 錦', 'nishiki'],
             '広島': ['広島', 'hiroshima'],
             '岡山': ['岡山', 'okayama'],
             '宇都宮': ['宇都宮', 'utsunomiya'],
@@ -474,11 +474,17 @@
                 if (cleanKw.includes('渋谷駅前')) return false;
             }
 
-            // 4. Nagoya Sakae vs Nishiki separation
+            // 4. Nagoya Sakae vs Nishiki separation & Kinshicho guard
+            if (cleanStore.includes('錦糸町') || cleanStore.includes('KINSHICHO')) {
+                if (cleanKw === '錦' || cleanKw === 'NISHIKI' || cleanKw.includes('名古屋') || cleanKw.includes('NAGOYA')) return false;
+            }
+            if (cleanKw.includes('錦糸町') || cleanKw.includes('KINSHICHO')) {
+                if (!cleanStore.includes('錦糸町') && !cleanStore.includes('KINSHICHO')) return false;
+            }
             if (cleanStore.includes('栄')) {
                 if (cleanKw.includes('錦') || cleanKw.includes('NISHIKI') || cleanKw === '名古屋' || cleanKw === 'NAGOYA') return false;
             }
-            if (cleanStore.includes('錦')) {
+            if (cleanStore.includes('錦') && !cleanStore.includes('錦糸町')) {
                 if (cleanKw.includes('栄') || cleanKw.includes('SAKAE') || cleanKw === '名古屋' || cleanKw === 'NAGOYA') return false;
             }
 
@@ -1389,7 +1395,7 @@
             { keys: ['柏', 'KASHIWA'], label: '千葉・柏' },
             { keys: ['宇都宮', 'UTSUNOMIYA'], label: '栃木・宇都宮' },
             { keys: ['高崎', 'TAKASAKI'], label: '群馬・高崎' },
-            { keys: ['名古屋', '錦', '栄', 'NAGOYA'], label: '愛知・名古屋' },
+            { keys: ['名古屋', '名古屋錦', '名古屋 錦', '名古屋栄', '名古屋 栄', '栄', 'NAGOYA'], label: '愛知・名古屋' },
             { keys: ['静岡', 'SHIZUOKA'], label: '静岡' },
             { keys: ['浜松', 'HAMAMATSU'], label: '静岡・浜松' },
             { keys: ['金沢', 'KANAZAWA'], label: '石川・金沢' },
@@ -2456,13 +2462,26 @@
             'City:shibuya': ['渋谷', '恵比寿', 'SHIBUYA', 'EBISU'],
             'City:umeda': ['梅田', '茶屋町', '天満', '大阪駅前', 'UMEDA', 'CHAYAMACHI', 'TENMA'],
             'City:namba': ['難波', 'なんば', '心斎橋', 'NAMBA', 'SHINSAIBASHI'],
-            'City:nagoya': ['名古屋', '栄', '錦', 'NAGOYA', 'SAKAE', 'NISHIKI'],
+            'City:nagoya': ['名古屋', '名古屋 栄', '名古屋栄', '名古屋 錦', '名古屋錦', '名古屋 住吉', '名古屋住吉', 'NAGOYA', 'SAKAE', 'NISHIKI'],
             'City:fukuoka': ['福岡', '天神', '中洲', '小倉', 'FUKUOKA', 'TENJIN', 'KOKURA']
+        };
+
+        const CITY_CLUSTER_REGION = {
+            'City:shinjuku': 'Kanto',
+            'City:shibuya': 'Kanto',
+            'City:umeda': 'Kinki',
+            'City:namba': 'Kinki',
+            'City:nagoya': 'Chubu',
+            'City:fukuoka': 'Kyushu'
         };
 
         function matchesRegionOrCityFilter(store, filterVal) {
             if (!filterVal || filterVal === 'All') return true;
             if (CITY_CLUSTER_KEYWORDS[filterVal]) {
+                const masterInfo = getStoreMasterInfo(store && store.name);
+                const effectiveRegion = (store && store.region && store.region !== 'Other') ? store.region : (masterInfo && masterInfo.region);
+                const reqRegion = CITY_CLUSTER_REGION[filterVal];
+                if (reqRegion && effectiveRegion && effectiveRegion !== reqRegion) return false;
                 const bInfo = detectBrandInfo(store);
                 const haystack = `${store.name || ''} ${bInfo.cleanName || ''} ${bInfo.areaLabel || ''}`.toUpperCase();
                 return CITY_CLUSTER_KEYWORDS[filterVal].some(k => haystack.includes(k.toUpperCase()));

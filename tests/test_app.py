@@ -1752,7 +1752,7 @@ class FullAuditRegressionTests(unittest.TestCase):
         sw_resp = self.client.get('/sw.js')
         try:
             sw_txt = sw_resp.data.decode('utf-8')
-            self.assertIn("CACHE_NAME = 'aiseki-navi-v68'", sw_txt)
+            self.assertIn("CACHE_NAME = 'aiseki-navi-v69'", sw_txt)
             self.assertIn("event.waitUntil", sw_txt)
         finally:
             sw_resp.close()
@@ -4352,8 +4352,8 @@ class AIUltraGrowthSuiteTests(unittest.TestCase):
         app_module.clear_fast_http_caches()
         home_html = self.client.get('/').data.decode('utf-8')
         self.assertIn('calm.css?v=20', home_html)
-        self.assertIn('app.js?v=20261030_3', home_html)
-        self.assertIn('/sw.js?v=68', home_html)
+        self.assertIn('app.js?v=20261030_4', home_html)
+        self.assertIn('/sw.js?v=69', home_html)
 
         # 2. TikTok 9:16 Safe-Zone Reel Templates & Captions (zero bare 'オリエンタル' or 'OLG')
         sample_stores = [
@@ -4651,6 +4651,60 @@ class MoatIntelligenceAndAsobibarTests(unittest.TestCase):
         self.assertTrue(note_res['ok'])
         self.assertGreaterEqual(note_res['distinct_from_web_pct'], 45)
         self.assertEqual(re.findall(r'オリエンタル(?!ラウンジ)', note_res['full_markdown']), [])
+
+    def test_dataset_license_jsonld_and_kinshicho_not_in_nagoya(self):
+        import moat_intelligence
+        import portal_guides
+        import sns_editorial
+        import threads_poster
+
+        # 1. Google Search Console Dataset JSON-LD must include "license" on both / and /stats
+        for path in ('/', '/stats'):
+            resp = self.client.get(path)
+            self.assertEqual(resp.status_code, 200)
+            html = resp.data.decode('utf-8')
+            blocks = re.findall(r'<script[^>]*application/ld\+json[^>]*>(.*?)</script>', html, re.S)
+            dataset_objs = []
+            for raw in blocks:
+                parsed = json.loads(raw)
+                items = parsed if isinstance(parsed, list) else [parsed]
+                dataset_objs.extend([o for o in items if isinstance(o, dict) and o.get('@type') == 'Dataset'])
+            self.assertGreaterEqual(len(dataset_objs), 1, f"{path} should define Dataset JSON-LD")
+            for ds in dataset_objs:
+                self.assertTrue(str(ds.get('license', '')).startswith('https://'), f"{path} Dataset missing license URL")
+
+        # 2. Kinshicho ('OLG 錦糸町') must strictly map to Tokyo/Kanto and NEVER match Nagoya ('錦')
+        self.assertEqual(app_module.detect_region('OLG 錦糸町'), 'Kanto')
+        self.assertEqual(app_module.detect_region('オリエンタルラウンジ 錦糸町'), 'Kanto')
+        self.assertEqual(app_module.detect_region('OLG 名古屋 錦'), 'Chubu')
+        self.assertEqual(moat_intelligence.city_key_for_store('OLG 錦糸町'), 'tokyo')
+        self.assertEqual(moat_intelligence.city_key_for_store('OLG 名古屋 錦'), 'nagoya')
+
+        probe_stores = [
+            {'name': 'OLG 錦糸町', 'women': 28, 'men': 12, 'region': 'Kanto'},
+            {'name': 'OLG 名古屋 錦', 'women': 18, 'men': 10, 'region': 'Chubu'},
+        ]
+        nagoya_area = portal_guides.get_stores_for_area('nagoya', probe_stores)
+        tokyo_east_area = portal_guides.get_stores_for_area('tokyo-east', probe_stores)
+        self.assertEqual([s['name'] for s in nagoya_area], ['OLG 名古屋 錦'])
+        self.assertEqual([s['name'] for s in tokyo_east_area], ['OLG 錦糸町'])
+
+        nagoya_cluster = next(kws for _, slug, kws in sns_editorial.URBAN_CLUSTERS if slug == 'nagoya')
+        self.assertFalse(any(k in 'OLG 錦糸町' for k in nagoya_cluster))
+        self.assertTrue(any(k in 'OLG 名古屋 錦' for k in nagoya_cluster))
+
+        th_post = threads_poster.build_threads_live_post(probe_stores, slot_label='22:00')
+        self.assertNotIn('名古屋・福岡：オリエンタルラウンジ 錦糸町', th_post)
+        self.assertIn('名古屋・福岡：オリエンタルラウンジ 名古屋 錦', th_post)
+
+        with open(os.path.join(ROOT, 'static', 'app.js'), encoding='utf-8') as f:
+            app_js = f.read()
+        m_nagoya = re.search(r"'City:nagoya'\s*:\s*\[([^\]]+)\]", app_js)
+        self.assertIsNotNone(m_nagoya)
+        nagoya_js_tokens = [t.strip().strip("'\"") for t in m_nagoya.group(1).split(',') if t.strip()]
+        self.assertNotIn('錦', nagoya_js_tokens)
+        self.assertFalse(any(tok.upper() in 'OLG 錦糸町 東京・錦糸町' for tok in nagoya_js_tokens))
+        self.assertTrue(any(tok.upper() in 'OLG 名古屋 錦 愛知・名古屋' for tok in nagoya_js_tokens))
 
 
 if __name__ == '__main__':

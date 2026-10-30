@@ -20,7 +20,7 @@ JST = datetime.timezone(datetime.timedelta(hours=9))
 
 MAJOR_HUB_KEYWORDS = (
     "新宿", "渋谷", "恵比寿", "銀座", "上野", "大宮", "横浜",
-    "梅田", "茶屋町", "難波", "心斎橋", "名古屋", "栄", "錦",
+    "梅田", "茶屋町", "難波", "心斎橋", "名古屋", "栄", "名古屋 錦", "名古屋錦",
     "福岡", "天神", "札幌", "仙台",
     "SHINJUKU", "SHIBUYA", "EBISU", "UMEDA", "CHAYAMACHI",
     "NAMBA", "SHINSAIBASHI", "NAGOYA", "FUKUOKA", "SAPPORO",

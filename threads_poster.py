@@ -158,7 +158,7 @@ def build_threads_live_post(stores: list, slot_label: str = "20:00", now_jst: da
         ("渋谷・恵比寿", ("渋谷", "恵比寿", "SHIBUYA", "EBISU")),
         ("梅田・茶屋町", ("梅田", "茶屋町", "天満", "UMEDA", "CHAYAMACHI")),
         ("難波・心斎橋", ("難波", "なんば", "心斎橋", "NAMBA", "SHINSAIBASHI")),
-        ("名古屋・福岡", ("名古屋", "栄", "錦", "福岡", "天神", "NAGOYA", "FUKUOKA")),
+        ("名古屋・福岡", ("名古屋", "栄", "名古屋 錦", "名古屋錦", "福岡", "天神", "NAGOYA", "FUKUOKA")),
     ]
     city_lines = []
     for label, keys in city_defs:

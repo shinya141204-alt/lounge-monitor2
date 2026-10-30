@@ -230,7 +230,7 @@ URBAN_CLUSTERS = [
     ("渋谷・恵比寿", "shibuya", ("渋谷", "恵比寿", "SHIBUYA", "EBISU")),
     ("梅田・茶屋町", "umeda", ("梅田", "茶屋町", "大阪駅前", "UMEDA", "CHAYAMACHI")),
     ("難波・心斎橋", "namba", ("難波", "心斎橋", "NAMBA", "SHINSAIBASHI")),
-    ("名古屋・栄", "nagoya", ("名古屋", "栄", "錦", "NAGOYA")),
+    ("名古屋・栄", "nagoya", ("名古屋", "栄", "名古屋 錦", "名古屋錦", "NAGOYA")),
     ("福岡・天神", "fukuoka", ("福岡", "天神", "FUKUOKA")),
     ("札幌・すすきの", "sapporo", ("札幌", "SAPPORO")),
 ]
