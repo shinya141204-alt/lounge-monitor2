@@ -1749,7 +1749,7 @@ class FullAuditRegressionTests(unittest.TestCase):
         sw_resp = self.client.get('/sw.js')
         try:
             sw_txt = sw_resp.data.decode('utf-8')
-            self.assertIn("CACHE_NAME = 'aiseki-navi-v66'", sw_txt)
+            self.assertIn("CACHE_NAME = 'aiseki-navi-v67'", sw_txt)
             self.assertIn("event.waitUntil", sw_txt)
         finally:
             sw_resp.close()
@@ -4310,6 +4310,163 @@ class AIUltraGrowthSuiteTests(unittest.TestCase):
             html_p = self.client.get(pub_p).data.decode('utf-8')
             self.assertIn('https://aiseki-navi.com/llms.txt', html_p, msg=f"Missing llms.txt link on {pub_p}")
             self.assertIn('https://aiseki-navi.com/api/llms-facts.json', html_p, msg=f"Missing llms-facts.json link on {pub_p}")
+
+    def test_live_pulse_ticker_and_tiktok_editorial_studio(self):
+        """Verify Design Option A (Live Pulse & Count Ticker) and TikTok Editorial + 9:16 Safe-Zone Studio."""
+        import io
+        from PIL import Image
+        import reel_generator
+        import sns_editorial
+        import tiktok_poster
+
+        ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+        # 1. Design Option A: CSS keyframes, light-mode & reduced-motion guards, JS ticker helpers, and SSR cache busters
+        with open(os.path.join(ROOT, 'static', 'calm.css'), 'r', encoding='utf-8') as f_css:
+            calm_css = f_css.read()
+        for css_token in (
+            '@keyframes calmLiveDotBreath',
+            '@keyframes calmTickerRollUp',
+            '.ranking-item.live-pulse-card',
+            '.momentum-tag.is-pulsing',
+            '.live-delta-ticker',
+            'body.theme-light .live-delta-ticker',
+            'prefers-reduced-motion: reduce',
+        ):
+            self.assertIn(css_token, calm_css)
+
+        with open(os.path.join(ROOT, 'static', 'app.js'), 'r', encoding='utf-8') as f_js:
+            app_js = f_js.read()
+        for js_token in (
+            '_prevStoreCounts',
+            '_triggerCountTicker',
+            '_showLiveDeltaPill',
+            '_syncPrevStoreCounts',
+            'live-pulse-card',
+            'is-pulsing',
+        ):
+            self.assertIn(js_token, app_js)
+
+        app_module.clear_fast_http_caches()
+        home_html = self.client.get('/').data.decode('utf-8')
+        self.assertIn('calm.css?v=20', home_html)
+        self.assertIn('app.js?v=20261030_2', home_html)
+        self.assertIn('/sw.js?v=67', home_html)
+
+        # 2. TikTok 9:16 Safe-Zone Reel Templates & Captions (zero bare 'オリエンタル' or 'OLG')
+        sample_stores = [
+            {'name': '新宿', 'women': 48, 'men': 24, 'total': 72, 'region': 'Kanto', 'midnight_retention_pct': 86},
+            {'name': 'JIS新宿', 'women': 16, 'men': 34, 'total': 50, 'region': 'Kanto', 'midnight_retention_pct': 74},
+            {'name': 'ag渋谷', 'women': 38, 'men': 20, 'total': 58, 'region': 'Kanto', 'midnight_retention_pct': 89},
+            {'name': '渋谷本店', 'women': 19, 'men': 31, 'total': 50, 'region': 'Kanto', 'midnight_retention_pct': 78},
+            {'name': '梅田', 'women': 42, 'men': 26, 'total': 68, 'region': 'Kansai', 'midnight_retention_pct': 84},
+        ]
+        for tk_type in ('tiktok_gap_shock', 'tiktok_ladies_real', 'tiktok_midnight_cliff'):
+            self.assertIn(tk_type, reel_generator.REEL_TEMPLATES)
+            for test_sec in (0.8, 4.5, 9.5):
+                jpg_bytes = reel_generator.render_reel_preview_frame_jpeg(
+                    sample_stores,
+                    reel_type=tk_type,
+                    sec=test_sec,
+                )
+                self.assertGreater(len(jpg_bytes), 10000)
+                with Image.open(io.BytesIO(jpg_bytes)) as im:
+                    self.assertEqual(im.size, (720, 1280))
+            r_route_jpg = self.client.get(f'/ogp/reel/{tk_type}.jpg')
+            self.assertEqual(r_route_jpg.status_code, 200)
+            self.assertEqual(r_route_jpg.mimetype, 'image/jpeg')
+            cap_txt = reel_generator.build_reel_caption(sample_stores, reel_type=tk_type)
+            self.assertIn('#相席ナビ', cap_txt)
+            self.assertIsNone(re.search(r'オリエンタル(?!ラウンジ)', cap_txt))
+            self.assertIsNone(re.search(r'\bOLG\b', cap_txt))
+
+        # 3. TikTok 4-Role Editorial Pipeline
+        tk_pipe = sns_editorial.run_editorial_pipeline(
+            sample_stores,
+            channel='tiktok',
+            slot_label='22:00',
+            use_ai=False,
+            tone_mode='spicy_female',
+        )
+        self.assertEqual(tk_pipe['channel'], 'tiktok')
+        tk_cands = tk_pipe['evaluation']['candidates']
+        self.assertGreaterEqual(len(tk_cands), 4)
+        for c in tk_cands:
+            self.assertTrue(c.get('tiktok_hook_text'))
+            self.assertIn(c.get('tiktok_reel_type'), reel_generator.REEL_TEMPLATES)
+            if c.get('style') != 'tiktok_classic_rank':
+                self.assertIn('0.0〜2.0秒', c.get('reply_text', ''))
+            blob = f"{c.get('tiktok_hook_text', '')} {c.get('main_text', '')} {c.get('reply_text', '')}"
+            self.assertIsNone(re.search(r'オリエンタル(?!ラウンジ)', blob))
+            self.assertIsNone(re.search(r'\bOLG\b', blob))
+
+        # 4. Master Routes: /staff/sns-editorial?channel=tiktok, /api/sns-editorial, /api/staff/sns-reel/info, /api/staff/tiktok/publish-inbox
+        with self.client.session_transaction() as s:
+            s['is_staff'] = True
+            s['is_master'] = True
+        app_module.clear_fast_http_caches()
+
+        r_tk_page = self.client.get('/staff/sns-editorial?channel=tiktok&slot=22:00')
+        self.assertEqual(r_tk_page.status_code, 200)
+        tk_html = r_tk_page.data.decode('utf-8')
+        self.assertIn('🎵 TikTok（縦型ショート）編集部', tk_html)
+        self.assertIn('publishTikTokInboxNow', tk_html)
+        self.assertIn('tiktok_gap_shock', tk_html)
+        self.assertIn('tiktok_ladies_real', tk_html)
+        self.assertIn('tiktok_midnight_cliff', tk_html)
+
+        r_tk_api = self.client.get('/api/sns-editorial?channel=tiktok&slot=22:00')
+        self.assertEqual(r_tk_api.status_code, 200)
+        tk_api_json = r_tk_api.get_json()
+        self.assertEqual(tk_api_json['channel'], 'tiktok')
+        self.assertGreaterEqual(len(tk_api_json['evaluation']['candidates']), 4)
+
+        r_reel_info = self.client.get('/api/staff/sns-reel/info?reel_type=tiktok_gap_shock')
+        self.assertEqual(r_reel_info.status_code, 200)
+        reel_info_json = r_reel_info.get_json()
+        self.assertEqual(reel_info_json['reel_type'], 'tiktok_gap_shock')
+        veo_ids = [p.get('id') for p in reel_info_json.get('veo3_prompts', [])]
+        self.assertIn('veo_tiktok_hook', veo_ids)
+
+        # Unconfigured TikTok token safely returns phase1_manual guidance
+        orig_env_tok = os.environ.pop('TIKTOK_ACCESS_TOKEN', None)
+        try:
+            r_inbox = self.client.post('/api/staff/tiktok/publish-inbox', json={'reel_type': 'tiktok_gap_shock'})
+            self.assertEqual(r_inbox.status_code, 200)
+            inbox_json = r_inbox.get_json()
+            self.assertEqual(inbox_json.get('status'), 'phase1_manual')
+
+            r_tok_verify = self.client.post(
+                '/api/sns-editorial/platform-token',
+                json={'channel': 'tiktok', 'action': 'verify'},
+            )
+            self.assertEqual(r_tok_verify.status_code, 200)
+            tok_v_json = r_tok_verify.get_json()
+            self.assertTrue(tok_v_json.get('ok'))
+            self.assertEqual(tok_v_json.get('verify', {}).get('phase'), 'phase1_manual')
+
+            # Phase 2 configured token: TikTok Content Posting API v2 Inbox draft upload succeeds
+            with mock.patch.dict(os.environ, {'TIKTOK_ACCESS_TOKEN': 'act.tiktok_test_token_123'}, clear=False), \
+                 mock.patch.object(reel_generator, 'render_reel_mp4_bytes', return_value=b'\x00\x00\x00\x18ftypmp42mocktiktok'), \
+                 mock.patch('tiktok_poster.requests.post') as mock_tk_post:
+                mock_tk_post.return_value = unittest.mock.MagicMock(
+                    status_code=200,
+                    json=lambda: {'data': {'publish_id': 'v_inbox_pub_777'}, 'error': {'code': 'ok'}},
+                )
+                r_inbox_ok = self.client.post(
+                    '/api/staff/tiktok/publish-inbox',
+                    json={'reel_type': 'tiktok_gap_shock', 'caption': 'テスト #相席ナビ #オリエンタルラウンジ'},
+                )
+                self.assertEqual(r_inbox_ok.status_code, 200)
+                inbox_ok_json = r_inbox_ok.get_json()
+                self.assertTrue(inbox_ok_json.get('ok'))
+                self.assertEqual(inbox_ok_json.get('publish_id'), 'v_inbox_pub_777')
+        finally:
+            if orig_env_tok is not None:
+                os.environ['TIKTOK_ACCESS_TOKEN'] = orig_env_tok
+            with self.client.session_transaction() as s:
+                s.clear()
+            app_module.clear_fast_http_caches()
 
 
 if __name__ == '__main__':

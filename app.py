@@ -2054,7 +2054,7 @@ def staff_sns_editorial():
     restore_latest_data_if_empty()
     trigger_background_fetch_if_needed()
     channel = (request.args.get('channel') or 'x').strip().lower()
-    if channel not in ('x', 'threads', 'instagram'):
+    if channel not in ('x', 'threads', 'instagram', 'tiktok'):
         channel = 'x'
     slot_label = (request.args.get('slot') or '22:00').strip()
     if slot_label not in ('20:00', '22:00', '00:00', '02:00'):
@@ -2084,9 +2084,10 @@ def staff_sns_editorial():
         import instagram_poster
         import reel_generator
         reel_auto_enabled = instagram_poster.is_reel_auto_schedule_enabled(allow_blocking=False)
+        init_rt = 'tiktok_gap_shock' if channel == 'tiktok' else 'live_top5'
         reel_studio = reel_generator.get_reel_studio_info(
             live_s,
-            reel_type='live_top5',
+            reel_type=init_rt,
             auto_schedule_enabled=reel_auto_enabled,
         )
     except Exception as _re_err:
@@ -2171,6 +2172,32 @@ def api_staff_sns_reel_publish():
     return jsonify({'ok': ok_flag, **res}), (200 if ok_flag else 400)
 
 
+@app.route('/api/staff/tiktok/publish-inbox', methods=['POST'])
+def api_staff_tiktok_publish_inbox():
+    """Master-only 1-click trigger to render and push a 9:16 short video to the TikTok mobile app Inbox (or return Phase 1 ready info)."""
+    if not is_master_authorized():
+        return jsonify({'ok': False, 'error': 'Unauthorized'}), 401
+    import reel_generator
+    import tiktok_poster
+    restore_latest_data_if_empty()
+    payload = request.get_json(silent=True) or {}
+    reel_type = reel_generator.normalize_reel_type(payload.get('reel_type', 'tiktok_gap_shock'))
+    custom_caption = (payload.get('caption') or '').strip()
+    with data_lock:
+        live_s = list(latest_data.get('full_data') or [])
+    res = tiktok_poster.publish_live_reel_to_tiktok_inbox(
+        live_s,
+        reel_type=reel_type,
+        custom_caption=custom_caption,
+        slot_label='manual_tiktok',
+        force=True,
+    )
+    st = res.get('status')
+    ok_flag = (st == 'success')
+    http_code = 200 if st in ('success', 'phase1_manual', 'skipped') else 400
+    return jsonify({'ok': ok_flag, **res}), http_code
+
+
 @app.route('/api/sns-editorial')
 def api_sns_editorial():
     """Master-only JSON API returning the 4-role SNS editorial proposals and scores for X, Threads, or Instagram."""
@@ -2179,7 +2206,7 @@ def api_sns_editorial():
     import sns_editorial
     restore_latest_data_if_empty()
     channel = (request.args.get('channel') or 'x').strip().lower()
-    if channel not in ('x', 'threads', 'instagram'):
+    if channel not in ('x', 'threads', 'instagram', 'tiktok'):
         channel = 'x'
     slot_label = (request.args.get('slot') or '22:00').strip()
     tone_mode = (request.args.get('tone') or '').strip().lower() or None
@@ -2298,25 +2325,27 @@ def api_sns_editorial_gemini_key():
 
 @app.route('/api/sns-editorial/platform-token', methods=['POST'])
 def api_sns_editorial_platform_token():
-    """Master-only endpoint to verify, exchange (short->60d long-lived), save, or clear Threads / Instagram tokens without redeploying."""
+    """Master-only endpoint to verify, exchange (short->60d long-lived), save, or clear Threads / Instagram / TikTok tokens without redeploying."""
     if not is_master_authorized():
         return jsonify({'error': 'Unauthorized'}), 401
     import sns_editorial
     import threads_poster
     import instagram_poster
+    import tiktok_poster
 
     payload = request.get_json(silent=True) or {}
     ch = (payload.get('channel') or 'threads').strip().lower()
-    if ch not in ('threads', 'instagram'):
-        return jsonify({'ok': False, 'error': 'channel は threads または instagram を指定してください。'}), 400
+    if ch not in ('threads', 'instagram', 'tiktok'):
+        return jsonify({'ok': False, 'error': 'channel は threads / instagram / tiktok を指定してください。'}), 400
 
     action = (payload.get('action') or 'save').strip().lower()
     if action == 'clear':
-        res = (
-            threads_poster.save_and_prepare_threads_token('')
-            if ch == 'threads'
-            else instagram_poster.save_and_prepare_ig_token('')
-        )
+        if ch == 'threads':
+            res = threads_poster.save_and_prepare_threads_token('')
+        elif ch == 'tiktok':
+            res = tiktok_poster.save_and_prepare_tiktok_token('')
+        else:
+            res = instagram_poster.save_and_prepare_ig_token('')
         clear_fast_http_caches()
         return jsonify({
             **res,
@@ -2324,11 +2353,12 @@ def api_sns_editorial_platform_token():
         })
 
     if action == 'verify':
-        ver = (
-            threads_poster.verify_threads_token()
-            if ch == 'threads'
-            else instagram_poster.verify_ig_token()
-        )
+        if ch == 'threads':
+            ver = threads_poster.verify_threads_token()
+        elif ch == 'tiktok':
+            ver = tiktok_poster.verify_tiktok_token()
+        else:
+            ver = instagram_poster.verify_ig_token()
         if ver.get('ok'):
             sns_editorial.record_sns_delivery_status(ch, 'token_refreshed', detail='verified')
             uname = ver.get('username') or ver.get('id') or ch
@@ -2336,6 +2366,13 @@ def api_sns_editorial_platform_token():
                 'ok': True,
                 'verify': ver,
                 'message': f"疎通確認OK！ @{uname} と正常に接続されています（投稿は行っていません）。",
+                'delivery_health': sns_editorial.get_sns_delivery_health(allow_blocking=True),
+            })
+        if ch == 'tiktok' and ver.get('status') == 'unconfigured':
+            return jsonify({
+                'ok': True,
+                'verify': ver,
+                'message': "🔵 TikTok は現在 Phase 1 稼働中（MP4 1タップ保存＋台本コピー運用）です。APIトークンを登録するとアプリInbox下書き送信（Phase 2）へ即移行できます。",
                 'delivery_health': sns_editorial.get_sns_delivery_health(allow_blocking=True),
             })
         err_msg = ver.get('error') or 'トークンが無効または未設定です'
@@ -2353,11 +2390,12 @@ def api_sns_editorial_platform_token():
     if not raw_token or len(raw_token) < 20:
         return jsonify({'ok': False, 'error': '有効なアクセストークンを貼り付けてください。'}), 400
 
-    res = (
-        threads_poster.save_and_prepare_threads_token(raw_token, app_secret=app_secret)
-        if ch == 'threads'
-        else instagram_poster.save_and_prepare_ig_token(raw_token, app_secret=app_secret)
-    )
+    if ch == 'threads':
+        res = threads_poster.save_and_prepare_threads_token(raw_token, app_secret=app_secret)
+    elif ch == 'tiktok':
+        res = tiktok_poster.save_and_prepare_tiktok_token(raw_token, app_secret=app_secret)
+    else:
+        res = instagram_poster.save_and_prepare_ig_token(raw_token, app_secret=app_secret)
     clear_fast_http_caches()
     status_code = 200 if res.get('ok') else 400
     return jsonify({

@@ -976,6 +976,61 @@
 
         // Reusable DOM pool for store cards (zero 1,500-node teardown/clone on women-mode hydration, sort/filter switches, and 30s polls)
         const _cardDomPool = new Map();
+        const _prevStoreCounts = new Map();
+        let _lastAnimatedTimestamp = '';
+        let _allowDeltaTickerThisPass = false;
+        let _didInitialLiveIntro = false;
+        let _liveIntroRemaining = 8;
+
+        function _triggerCountTicker(el, cls, durationMs = 520) {
+            if (!el || !el.classList) return;
+            const timerKey = `_tkTimer_${cls}`;
+            if (el[timerKey]) {
+                clearTimeout(el[timerKey]);
+                el.classList.remove(cls);
+                requestAnimationFrame(() => {
+                    el.classList.add(cls);
+                });
+            } else {
+                el.classList.add(cls);
+            }
+            el[timerKey] = setTimeout(() => {
+                el.classList.remove(cls);
+                el[timerKey] = null;
+            }, durationMs);
+        }
+
+        function _showLiveDeltaPill(numRowEl, delta) {
+            if (!numRowEl || !delta) return;
+            let pill = numRowEl.querySelector('.live-delta-ticker');
+            if (!pill) {
+                pill = document.createElement('span');
+                pill.className = 'live-delta-ticker';
+                numRowEl.appendChild(pill);
+            }
+            if (pill._hideTimer) clearTimeout(pill._hideTimer);
+            pill.classList.remove('is-up', 'is-down');
+            pill.classList.add(delta > 0 ? 'is-up' : 'is-down');
+            pill.textContent = delta > 0 ? `▲+${delta}` : `▼${delta}`;
+            pill._hideTimer = setTimeout(() => {
+                if (pill.parentNode) pill.parentNode.removeChild(pill);
+            }, 3800);
+        }
+
+        function _syncPrevStoreCounts(stores) {
+            if (!Array.isArray(stores)) return;
+            for (let i = 0; i < stores.length; i++) {
+                const st = stores[i];
+                const k = st && st.name ? String(st.name).trim() : '';
+                if (k) {
+                    _prevStoreCounts.set(k, {
+                        women: Number(st.women || 0),
+                        men: Number(st.men || 0)
+                    });
+                }
+            }
+        }
+
         function _cacheCardRefs(item) {
             if (item._refs) return item._refs;
             item._refs = {
@@ -1040,6 +1095,23 @@
                     );
                     if (canHydrateSsrZeroDom) {
                         _lastRenderedSignature = _computeUiSignature(window.INITIAL_STATUS_DATA);
+                        _lastAnimatedTimestamp = window.INITIAL_STATUS_DATA.timestamp || '';
+                        _syncPrevStoreCounts(window.INITIAL_STATUS_DATA.ranking);
+                        if (!_didInitialLiveIntro) {
+                            _didInitialLiveIntro = true;
+                            try {
+                                const ssrPulseCards = rankingListEl.querySelectorAll('.ranking-item.live-pulse-card');
+                                const maxIntro = Math.min(ssrPulseCards.length, _liveIntroRemaining);
+                                for (let pi = 0; pi < maxIntro; pi++) {
+                                    const refs = _cacheCardRefs(ssrPulseCards[pi]);
+                                    if (refs.ladiesCountEl) _triggerCountTicker(refs.ladiesCountEl, 'ticker-roll-up', 500);
+                                    if (refs.ladiesDiffEl && !refs.ladiesDiffEl.classList.contains('hidden')) {
+                                        _triggerCountTicker(refs.ladiesDiffEl, 'ticker-bump', 520);
+                                    }
+                                }
+                                _liveIntroRemaining = Math.max(0, _liveIntroRemaining - maxIntro);
+                            } catch (e) {}
+                        }
                         const lastUpdateEl = document.getElementById('last-update');
                         if (lastUpdateEl && window.INITIAL_STATUS_DATA.timestamp) {
                             lastUpdateEl.textContent = window.INITIAL_STATUS_DATA.timestamp.split(' ')[1] || '--:--';
@@ -1662,6 +1734,48 @@
                 menBar.style.width = '0%';
             }
 
+            // Live Pulse & Count Ticker (Design Plan A)
+            const isWomenAudience = (!IS_STAFF && currentAudience === 'women');
+            const isLivePulsing = isWomenAudience
+                ? (mDiff >= 2 || Boolean(ladiesEval && ladiesEval.cls === 'ladies-vip' && mDiff >= 1))
+                : (wDiff >= 2 || (wDiff >= 1 && ladiesCount >= 12 && totalCount > 0 && (ladiesCount / totalCount) >= 0.55));
+            item.classList.toggle('live-pulse-card', isLivePulsing);
+            if (momTag) {
+                const pulseMom = !momTag.classList.contains('hidden') && (isLivePulsing || (isWomenAudience ? mDiff >= 2 : wDiff >= 2));
+                momTag.classList.toggle('is-pulsing', pulseMom);
+            }
+
+            const prevCounts = storeKey ? _prevStoreCounts.get(storeKey) : null;
+            if (prevCounts && _allowDeltaTickerThisPass) {
+                const dW = ladiesCount - prevCounts.women;
+                const dM = menCount - prevCounts.men;
+                if (dW !== 0 && refs.ladiesCountEl) {
+                    _triggerCountTicker(refs.ladiesCountEl, dW > 0 ? 'ticker-roll-up' : 'ticker-roll-down', dW > 0 ? 500 : 420);
+                    _showLiveDeltaPill(refs.ladiesCountEl.parentElement, dW);
+                    if (dW > 0 && ladiesDiffEl && !ladiesDiffEl.classList.contains('hidden')) {
+                        _triggerCountTicker(ladiesDiffEl, 'ticker-bump', 520);
+                    }
+                }
+                if (dM !== 0 && refs.menCountEl) {
+                    _triggerCountTicker(refs.menCountEl, dM > 0 ? 'ticker-roll-up' : 'ticker-roll-down', dM > 0 ? 500 : 420);
+                    _showLiveDeltaPill(refs.menCountEl.parentElement, dM);
+                    if (dM > 0 && menDiffEl && !menDiffEl.classList.contains('hidden')) {
+                        _triggerCountTicker(menDiffEl, 'ticker-bump', 520);
+                    }
+                }
+                if ((isWomenAudience && dM > 0) || (!isWomenAudience && dW > 0)) {
+                    _triggerCountTicker(item, 'card-delta-up', 1200);
+                }
+            } else if (!_didInitialLiveIntro && _liveIntroRemaining > 0 && isLivePulsing) {
+                _liveIntroRemaining--;
+                const primaryCountEl = isWomenAudience ? refs.menCountEl : refs.ladiesCountEl;
+                const primaryDiffEl = isWomenAudience ? menDiffEl : ladiesDiffEl;
+                if (primaryCountEl) _triggerCountTicker(primaryCountEl, 'ticker-roll-up', 500);
+                if (primaryDiffEl && !primaryDiffEl.classList.contains('hidden')) {
+                    _triggerCountTicker(primaryDiffEl, 'ticker-bump', 520);
+                }
+            }
+
             if (container) {
                 container.appendChild(item);
             }
@@ -1715,6 +1829,10 @@
                 return;
             }
             _lastRenderedSignature = nextSig;
+            _allowDeltaTickerThisPass = Boolean(
+                _prevStoreCounts.size > 0 &&
+                (!data.timestamp || data.timestamp !== _lastAnimatedTimestamp)
+            );
 
             // Count occurrences of each cleanName across all stores so duplicate names get their brand prefixed
             const cleanNameCounts = {};
@@ -1790,6 +1908,10 @@
                 rankingList.replaceChildren(emptyP);
                 pinnedList.replaceChildren();
                 pinnedContainer.classList.add('hidden');
+                _syncPrevStoreCounts(stores);
+                if (data.timestamp) _lastAnimatedTimestamp = data.timestamp;
+                _allowDeltaTickerThisPass = false;
+                _didInitialLiveIntro = true;
                 return;
             }
 
@@ -1887,6 +2009,10 @@
             if (lastUpdateEl) {
                 lastUpdateEl.textContent = data.timestamp ? data.timestamp.split(' ')[1] : '--:--';
             }
+            _syncPrevStoreCounts(stores);
+            if (data.timestamp) _lastAnimatedTimestamp = data.timestamp;
+            _allowDeltaTickerThisPass = false;
+            _didInitialLiveIntro = true;
         }
 
         // --- High-Speed Affiliate & Promotion Master Integration ---

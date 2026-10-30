@@ -103,6 +103,7 @@ CHANNEL_LABELS = {
     "x": "𝕏 X（旧Twitter）",
     "threads": "🧵 Threads（スレッズ）",
     "instagram": "📸 Instagram（インスタグラム）",
+    "tiktok": "🎵 TikTok（縦型ショート）",
 }
 
 STYLE_LABELS = {
@@ -125,6 +126,12 @@ STYLE_LABELS = {
     "ig_concise_save": "📌 余白重視・男女別スマート保存ガイド型",
     "ig_ladies_night_guide": "💄 女子組・待ちゼロ＆特典保存ガイド型",
     "ig_classic_template": "📊 従来型・定型アナウンスキャプション",
+    # TikTok styles
+    "tiktok_hook_gap": "⚡ 冒頭1.5秒フック・徒歩4分男女比ギャップ衝撃型",
+    "tiktok_female_confession": "💄 女子の本音暴露・受付待ちゼロ逆張り穴場型",
+    "tiktok_data_myth": "📊 常識破壊・『看板だけで並ぶと負ける』実測解剖型",
+    "tiktok_midnight_reverse": "🌙 23時20分の終電崖・深夜逆転ラウンジ速報型",
+    "tiktok_classic_rank": "🏆 従来型・定型ランキング読み上げキャプション",
 }
 
 TONE_STATE_KEY = "editorial:default_tone_mode"
@@ -358,7 +365,7 @@ def record_sns_delivery_status(
     into `job_state` (`sns_delivery:<channel>`) so Master can inspect silent API/token failures across redeploys.
     """
     ch = (channel or "x").strip().lower()
-    if ch not in ("x", "threads", "instagram"):
+    if ch not in ("x", "threads", "instagram", "tiktok"):
         return
     now_jst = now_jst or datetime.datetime.now(JST)
     ts_str = now_jst.strftime("%Y-%m-%d %H:%M:%S")
@@ -455,6 +462,22 @@ def get_sns_delivery_health(allow_blocking: bool = False) -> dict:
     )
     ig_masked = _mask_secret_token(ig_active)
 
+    # 4. TikTok credentials & status (Phase 1 works out-of-the-box via MP4 save + script copy; Phase 2 Inbox API optional)
+    tt_stored = (job_state.get_value("token:tiktok", allow_blocking=allow_blocking) or "").strip()
+    tt_env = (os.environ.get("TIKTOK_ACCESS_TOKEN") or "").strip()
+    tt_active = tt_stored or tt_env
+    tt_configured = bool(tt_active)
+    tt_source = (
+        "Phase 2 API連携済（管理画面・暗号化保存）"
+        if tt_stored
+        else (
+            "Phase 2 API連携済（環境変数 TIKTOK_ACCESS_TOKEN）"
+            if tt_env
+            else "Phase 1 稼働中（MP4保存＋台本コピー運用 ／ APIトークン任意）"
+        )
+    )
+    tt_masked = _mask_secret_token(tt_active)
+
     meta_map = {
         "x": {
             "label": "𝕏 X（旧Twitter）",
@@ -479,6 +502,14 @@ def get_sns_delivery_health(allow_blocking: bool = False) -> dict:
             "masked_token": ig_masked,
             "latest_slot_key": _latest_matching_key(("ig_post:", "ig_ladies:")),
             "refresh_key": _latest_matching_key(("token_refresh:instagram:",)),
+        },
+        "tiktok": {
+            "label": "🎵 TikTok（縦型ショート）",
+            "configured": tt_configured,
+            "source": tt_source,
+            "masked_token": tt_masked,
+            "latest_slot_key": _latest_matching_key(("tiktok_post:",)),
+            "refresh_key": _latest_matching_key(("token_refresh:tiktok:",)),
         },
     }
 
@@ -519,6 +550,8 @@ def get_sns_delivery_health(allow_blocking: bool = False) -> dict:
             state = "error"
         elif base["configured"] or latest_key:
             state = "active"
+        elif ch == "tiktok":
+            state = "phase1_ready"
         else:
             state = "unconfigured"
 
@@ -1183,6 +1216,14 @@ def run_planner(
         else:
             base_conv = ["ig_empathy_story", "ig_data_discovery", "ig_concise_save", "ig_ladies_night_guide"]
         classic_key = "ig_classic_template"
+    elif ch == "tiktok":
+        if slot_label in ("19:30", "19:45", "20:00"):
+            base_conv = ["tiktok_female_confession", "tiktok_hook_gap", "tiktok_data_myth", "tiktok_midnight_reverse"]
+        elif slot_label in ("00:00", "02:00"):
+            base_conv = ["tiktok_midnight_reverse", "tiktok_hook_gap", "tiktok_data_myth", "tiktok_female_confession"]
+        else:
+            base_conv = ["tiktok_hook_gap", "tiktok_data_myth", "tiktok_female_confession", "tiktok_midnight_reverse"]
+        classic_key = "tiktok_classic_rank"
     else:
         if slot_label == "20:00":
             base_conv = ["usual_anomaly", "surge_focus", "hub_gap", "east_west_talk"]
@@ -1849,6 +1890,201 @@ def _write_instagram_candidates(
     return candidates
 
 
+def _write_tiktok_candidates(
+    research: dict,
+    slot_label: str,
+    now_jst: datetime.datetime,
+    site_url: str,
+    tone_mode: str = DEFAULT_TONE_MODE,
+) -> list:
+    """
+    Generate 5 TikTok-native candidates combining:
+      - `tiktok_hook_text`: 0.0-1.8s scroll-stopping on-screen hook
+      - `tiktok_reel_type`: Linked 9:16 safe-zone MP4 template (`tiktok_gap_shock` / `tiktok_ladies_real` / `tiktok_midnight_cliff`)
+      - `tiktok_bgm_mood`: Recommended trending BGM tempo/genre for TikTok mobile app
+      - `main_text`: TikTok Search SEO caption + save CTA (320-650 chars, 5-7 hashtags, zero AI cliches, zero bare 'オリエンタル')
+      - `reply_text`: Cut-by-cut director storyboard (`0.0-2.0s` / `2.0-8.5s` / `8.5-11.5s`)
+    """
+    weekdays_ja = ["月", "火", "水", "木", "金", "土", "日"]
+    wd_str = weekdays_ja[_business_datetime(now_jst).weekday()]
+    t_str = now_jst.strftime("%H:%M")
+    tm = get_editorial_tone_mode(tone_mode, allow_blocking=False)
+
+    top_stores = research.get("top_stores") or []
+    all_dom = research.get("all_domestic_stores") or top_stores
+    if not top_stores:
+        return []
+
+    s1 = top_stores[0]
+    s2 = top_stores[1] if len(top_stores) > 1 else s1
+    s3 = top_stores[2] if len(top_stores) > 2 else s2
+    focus = research.get("focus_store") or s1
+    cluster = research.get("best_cluster")
+    male_lead = research.get("male_lead_store")
+    if not male_lead and all_dom:
+        by_male = sorted(all_dom, key=lambda x: (x["men"] - x["women"], x["men"]), reverse=True)
+        male_lead = by_male[0]
+
+    candidates = []
+
+    # 1) tiktok_hook_gap: Walkable 4-min gender-ratio shock contrast
+    if cluster and cluster["high_store"]["name"] != cluster["low_store"]["name"]:
+        hs = cluster["high_store"]
+        ls = cluster["low_store"]
+        hub = cluster["hub_label"]
+        gap = cluster["pct_gap"]
+        hook_txt = f"同じ{hub}・徒歩4分で『女性比{hs['wpct']}% vs {ls['wpct']}%』の残酷な差"
+        opener = (
+            f"同じ{hub}の徒歩4分圏内なのに、看板の知名度だけで1店舗目に突撃して受付待ちで消耗してる人が多すぎるんだよね…（{wd_str}曜 {t_str}の実測モニターより）"
+            if tm in ("spicy_female", "spicy")
+            else f"同じ{hub}の徒歩4分なのに、ドア1枚でここまで男女比が割れてるの毎回モニター見てて二度見する…（{wd_str}曜 {t_str}実測）"
+        )
+        main_gap = (
+            f"{opener}\n\n"
+            f"いま{hub}のリアル人数を並べてみると、\n"
+            f"・{hs['ja_name']}：女性{hs['women']}名・男性{hs['men']}名（女性比{hs['wpct']}%）\n"
+            f"・{ls['ja_name']}：女性{ls['women']}名・男性{ls['men']}名（女性比{ls['wpct']}%）\n"
+            f"で、同じ駅のすぐ近くでも {gap}pt も差が開いてたりする。\n\n"
+            f"女の子側も待たされる店はすぐ見切ってテンポよく飲める店に流れてるから、駅を出る直前に別ブランド（オリエンタルラウンジ・ag・JIS）を見比べるだけで夜の密度がまるで変わるんだよね。\n\n"
+            f"入店3分前に見返せるように『保存』しとくと便利📌\n"
+            f"全国53店舗の現在人数と料金比較はプロフのリンク、または『相席ナビ』（aiseki-navi.com）で無料検索できます🔍\n\n"
+            f"#相席ナビ #相席ラウンジ #オリエンタルラウンジ #オリラジ #ag #JIS #{hub.split('・')[0]}グルメ"
+        )
+        script_gap = (
+            f"🎬【動画テンプレ連動】🎵 同駅ギャップ比較（tiktok_gap_shock / 11.5秒・UIセーフゾーン設計）\n"
+            f"・0.0〜2.0秒（指止めフック）：「同じ{hub}・徒歩4分なのに 女性比{hs['wpct']}% vs {ls['wpct']}%」\n"
+            f"・2.0〜8.5秒（実測ギャップ比較）：{hs['ja_name']}（女{hs['women']}:男{hs['men']}）と{ls['ja_name']}（女{ls['women']}:男{ls['men']}）の比率バー比較\n"
+            f"・8.5〜11.5秒（保存＆検索CTA）：「保存して入店3分前に確認！『相席ナビ』で検索🔍」\n"
+            f"🎵【推奨BGMムード】BPM118〜126の都会的ローファイハウス / シティポップ系インスト（音量15〜20%）"
+        )
+        candidates.append({
+            "style": "tiktok_hook_gap",
+            "style_label": STYLE_LABELS["tiktok_hook_gap"],
+            "writer_note": f"【TikTok王道バズ型】{hub}の{gap}ptギャップを冒頭1.8秒で突きつけ、保存＆『相席ナビ』指名検索を促す構成。",
+            "tiktok_hook_text": hook_txt,
+            "tiktok_reel_type": "tiktok_gap_shock",
+            "tiktok_bgm_mood": "都会的ローファイハウス / シティポップ（BPM120前後）",
+            "main_text": main_gap,
+            "reply_text": script_gap,
+        })
+
+    # 2) tiktok_female_confession: Female perspective — why 70%+ female stores make girls wait
+    if male_lead:
+        ml_mpct = 100 - int(male_lead["wpct"])
+        hook_f = f"女子ペアが『女性70%超の店』に行くと、実は受付で待たされる話"
+        main_f = (
+            f"女の子2人組で「女性がいっぱい入ってる人気店なら安心でしょ」って向かうと、実は一番受付で待たされる罠になりがちだったりする…💄（{wd_str}曜 {t_str}の現場モニターより）\n\n"
+            f"女性が7割を超えて集中してるお店は席替えの回転も重くなりやすいから、女子組が待ちゼロでスマートに乾杯するなら「男性が先行して盛り上がってるお店」を逆張りで選ぶのが一番ラクなんだよね。\n\n"
+            f"たとえば今この瞬間のデータだと、\n"
+            f"・女子組の即案内狙い目：{male_lead['ja_name']}（男性{male_lead['men']}名・女性{male_lead['women']}名 / 男性比{ml_mpct}%）\n"
+            f"・逆に男性側の穴場：{focus['ja_name']}（女性{focus['women']}名・男性{focus['men']}名 / 女性比{focus['wpct']}%）\n"
+            f"みたいに、男女で『正解の店』は真逆になるのが面白いところ。\n\n"
+            f"友達との2軒目探し用に『保存』しておいて、向かう直前にプロフのリンクか『相席ナビ』（aiseki-navi.com）の女性専用モードを覗いてみてね🥂\n\n"
+            f"#相席ナビ #相席ラウンジ #女子会 #オリエンタルラウンジ #オリラジ #ag #2軒目"
+        )
+        script_f = (
+            f"🎬【動画テンプレ連動】🎵 女子本音×待ち0（tiktok_ladies_real / 11.5秒・UIセーフゾーン設計）\n"
+            f"・0.0〜2.0秒（女子共感フック）：「女子70%超の店に行くと 実は受付で待たされる!?」\n"
+            f"・2.0〜8.5秒（待ち0ランキング）：{male_lead['ja_name']}（男{male_lead['men']}:女{male_lead['women']}）ほか男性先行TOP4\n"
+            f"・8.5〜11.5秒（保存CTA）：「女子会の2軒目用に保存🔖『相席ナビ』で3秒検索」\n"
+            f"🎵【推奨BGMムード】おしゃれなR&B / 韓国カフェ風チルビート（女性視聴者の保存率重視）"
+        )
+        candidates.append({
+            "style": "tiktok_female_confession",
+            "style_label": STYLE_LABELS["tiktok_female_confession"],
+            "writer_note": "【女性保存率＆コメント誘発型】男女で正解の店が真逆になる構造を女性目線の本音で解き明かす構成。",
+            "tiktok_hook_text": hook_f,
+            "tiktok_reel_type": "tiktok_ladies_real",
+            "tiktok_bgm_mood": "おしゃれなR&B / 韓国カフェ風チルビート",
+            "main_text": main_f,
+            "reply_text": script_f,
+        })
+
+    # 3) tiktok_data_myth: Counter-intuitive data breakdown
+    hook_m = f"『とりあえず1番有名な店舗へ直行』が一番時間を溶かす理由"
+    main_m = (
+        f"相席ラウンジで一番もったいない負けパターンって、現地に着いてからノープランで1店舗目だけ見て並んじゃうことなんだよな…📊（{wd_str}曜 {t_str}・全国{research.get('active_store_count', 0)}店稼働中）\n\n"
+        f"いま全国の合計は女性{research.get('total_women', 0)}名・男性{research.get('total_men', 0)}名なんだけど、店舗ごとに見ると驚くほど偏りがある。\n"
+        f"・{s1['ja_name']}：女性{s1['women']}名・男性{s1['men']}名（女性比{s1['wpct']}%）\n"
+        f"・{s2['ja_name']}：女性{s2['women']}名・男性{s2['men']}名（女性比{s2['wpct']}%）\n"
+        f"・{focus['ja_name']}：女性{focus['women']}名・男性{focus['men']}名（女性比{focus['wpct']}%）\n\n"
+        f"男性なら『女性12名以上×女性比55%以上』、女性ペアなら『男性先行店』をエレベーターに乗る前に選ぶだけで、受付待ちのストレスがほぼ消えるんだよね。\n\n"
+        f"週末にすぐ見返せるようにこの動画を『保存』📌\n"
+        f"全53店舗のリアルタイム人数は『相席ナビ』（aiseki-navi.com）で24時間無料公開中です🔍\n\n"
+        f"#相席ナビ #相席ラウンジ #オリエンタルラウンジ #オリラジ #JIS #夜遊びガイド"
+    )
+    script_m = (
+        f"🎬【動画テンプレ連動】🎵 同駅ギャップ比較 または 🔥 全国TOP5速報（11.5秒）\n"
+        f"・0.0〜2.0秒（図星フック）：「ノープランで1店舗目に並ぶのが一番もったいない理由」\n"
+        f"・2.0〜8.5秒（実測データ提示）：{s1['ja_name']}（女{s1['women']}:男{s1['men']}）など上位店のリアルタイム比率\n"
+        f"・8.5〜11.5秒（検索誘導CTA）：「エレベーターに乗る3分前に『相席ナビ』で検索🔍」\n"
+        f"🎵【推奨BGMムード】テンポ感のあるミニマルテック / トレンド解説系BGM"
+    )
+    candidates.append({
+        "style": "tiktok_data_myth",
+        "style_label": STYLE_LABELS["tiktok_data_myth"],
+        "writer_note": "【TikTok検索SEO＆ブックマーク特化】『相席ラウンジ 待ち時間』検索層に刺さるデータ比較構成。",
+        "tiktok_hook_text": hook_m,
+        "tiktok_reel_type": "tiktok_gap_shock",
+        "tiktok_bgm_mood": "ミニマルテック / トレンド解説系ビート",
+        "main_text": main_m,
+        "reply_text": script_m,
+    })
+
+    # 4) tiktok_midnight_reverse: 23:20 Last-Train Cliff ("終電崖") & late-night survivors
+    mid_ret_val = int(focus.get("midnight_retention_pct") or 82)
+    hook_mid = f"23時20分の『終電崖』で人が消える店と、深夜から増える店の違い"
+    main_mid = (
+        f"毎晩モニターを追ってるとはっきり出るんだけど、相席ラウンジには23時20分前後に『終電の崖』があるんだよね…🌙\n\n"
+        f"終電を境にサッと女性陣が引く店舗と、逆に居酒屋の2軒目組が流れ込んで深夜0時過ぎから一気に熱量が上がる店舗に真っ二つに割れる。\n\n"
+        f"いま（{wd_str}曜 {t_str}）実測でしっかり人が入っていて深夜帯も粘り強いのはこのあたり👇\n"
+        f"・{focus['ja_name']}：女性{focus['women']}名・男性{focus['men']}名（女性比{focus['wpct']}%）\n"
+        f"・{s1['ja_name']}：女性{s1['women']}名・男性{s1['men']}名（女性比{s1['wpct']}%）\n"
+        f"・{s3['ja_name']}：女性{s3['women']}名・男性{s3['men']}名（女性比{s3['wpct']}%）\n\n"
+        f"2軒目・終電後にハズしたくない夜は、この投稿を『保存』しといて動く直前にプロフのリンク『相席ナビ』（aiseki-navi.com）で終電後維持率を見てから向かうのがほんと鉄板だったりする。\n\n"
+        f"#相席ナビ #相席ラウンジ #オリエンタルラウンジ #オリラジ #ag #JIS #終電逃した"
+    )
+    script_mid = (
+        f"🎬【動画テンプレ連動】🎵 終電崖×深夜穴場（tiktok_midnight_cliff / 11.5秒・UIセーフゾーン設計）\n"
+        f"・0.0〜2.0秒（インサイトフック）：「23時20分の『終電崖』で人が消える店 vs 残る店」\n"
+        f"・2.0〜8.5秒（深夜強い店TOP4）：{focus['ja_name']}（維持率{mid_ret_val}%目安）ほか現在人数アニメーション\n"
+        f"・8.5〜11.5秒（保存CTA）：「2軒目・終電後の保険に保存📌『相席ナビ』で無料公開中」\n"
+        f"🎵【推奨BGMムード】深夜ドライブ系チルシンセ / ナイトシティポップ"
+    )
+    candidates.append({
+        "style": "tiktok_midnight_reverse",
+        "style_label": STYLE_LABELS["tiktok_midnight_reverse"],
+        "writer_note": "【深夜2軒目・独自知見型】相席ナビ独自の『23時20分の終電崖×深夜維持率』を切り口にした高滞在時間構成。",
+        "tiktok_hook_text": hook_mid,
+        "tiktok_reel_type": "tiktok_midnight_cliff",
+        "tiktok_bgm_mood": "深夜ドライブ系チルシンセ / ナイトシティポップ",
+        "main_text": main_mid,
+        "reply_text": script_mid,
+    })
+
+    # 5) tiktok_classic_rank: Legacy baseline for Desk comparison
+    classic_tt = (
+        f"【{wd_str}曜 {t_str} 全国相席ラウンジ人数TOP3速報】\n"
+        f"🥇 1位：{s1['ja_name']}（女性{s1['women']}名 / 男性{s1['men']}名）\n"
+        f"🥈 2位：{s2['ja_name']}（女性{s2['women']}名 / 男性{s2['men']}名）\n"
+        f"🥉 3位：{s3['ja_name']}（女性{s3['women']}名 / 男性{s3['men']}名）\n\n"
+        f"リアルタイム人数はプロフィールの『相席ナビ』（aiseki-navi.com）から保存して確認！\n"
+        f"#相席ナビ #相席ラウンジ #オリエンタルラウンジ #ag #JIS"
+    )
+    candidates.append({
+        "style": "tiktok_classic_rank",
+        "style_label": STYLE_LABELS["tiktok_classic_rank"],
+        "writer_note": "従来の『【TOP3速報】🥇🥈🥉』定型読み上げキャプション（鬼デスク比較ベンチマーク用）。",
+        "tiktok_hook_text": "全国リアルタイム人数ランキングTOP3",
+        "tiktok_reel_type": "live_top5",
+        "tiktok_bgm_mood": "汎用ポップBGM",
+        "main_text": classic_tt,
+        "reply_text": "（従来型TOP3読み上げ構成・比較ベンチマーク）",
+    })
+
+    return candidates
+
+
 _NON_HEADCOUNT_SUFFIX_RE = re.compile(
     r"^(?:組|目|以上|以下|未満|限定|待ち|分|時間|円|歳|代|%|％|割|ペア|ソロ|入店|でも)"
 )
@@ -2121,6 +2357,23 @@ def _build_gemini_prompt(
             "- 禁止事項：『🥇🥈🥉』メダル記号や『【〇〇】』角括弧タイトルは禁止。ハッシュタグは末尾の1個のみ。箇条書きばかりにせず、人間の独り言エッセイの流れで書くこと。\n"
             "- 構成：Threads特有の『運営中の人がバックヤードでモニターと外の天気・曜日を眺めながら本音をこぼす会話エッセイ調（〜なんだよな、正直さ…等）』で書くこと。男性目線の穴場だけでなく、可能なら女性2人組が待ちゼロで即座れる逆張り店やハシゴのリアルも自然に混ぜる。\n"
             f"- 末尾固定フッター：文章の最後は必ず次のフッター文字列を一字一句変えずに置いて締めること：\n{cta_footer}"
+        )
+    elif ch == "tiktok":
+        f_name = focus["ja_name"] if focus else "上位店舗"
+        f_w = focus["women"] if focus else 0
+        f_m = focus["men"] if focus else 0
+        reply_text = (
+            f"🎬【動画テンプレ連動】🎵 同駅ギャップ比較（tiktok_gap_shock / 11.5秒・UIセーフゾーン設計）\n"
+            f"・0.0〜2.0秒（指止めフック）：AI生成キャプションの1行目と連動した結論フックを表示\n"
+            f"・2.0〜8.5秒（実測データ比較）：{f_name}（女{f_w}:男{f_m}）ほか上位店舗の比率バーアニメーション\n"
+            f"・8.5〜11.5秒（保存＆検索CTA）：「保存して入店3分前に見返す！『相席ナビ』で検索🔍」\n"
+            f"🎵【推奨BGMムード】都会的ローファイハウス / シティポップ（BPM118〜124・音量18%）"
+        )
+        platform_spec = (
+            "【対象SNS：TikTok（9:16 縦型ショート動画キャプション＆検索SEO）】\n"
+            "- 文字数制限：**320文字〜620文字以内**\n"
+            "- 禁止事項：1行目を『【〇〇速報】』のような角括弧タイトルにしないこと。『🥇🥈🥉』メダル記号や宣伝臭い絵文字連打は禁止。\n"
+            "- 構成：最初の1行目でTikTok視聴者が思わずコメントや保存をしたくなる『現場モニターを見て気づいたリアルなギャップや女子組・男子組の図星の本音』を切り出す。本文中で2〜3店舗の実測人数（例：女性48名・男性32名（女性比60%））を正確に織り交ぜ、自然な流れで『入店3分前に見返せるように保存📌しとくと便利』と『相席ナビ（aiseki-navi.com）で検索🔍』を案内し、末尾に『#相席ナビ #相席ラウンジ #オリエンタルラウンジ #オリラジ #ag #JIS』の6タグを付ける。"
         )
     else:
         import ig_carousel_generator
@@ -2904,6 +3157,15 @@ def _generate_gemini_adlib_candidate(
         "reply_text": reply_text,
         "is_ai_generated": True,
         "ai_model": model_used,
+        **(
+            {
+                "tiktok_hook_text": (main_text.split("\n", 1)[0][:46] if main_text else "同駅・徒歩4分の男女比ギャップ速報"),
+                "tiktok_reel_type": "tiktok_gap_shock",
+                "tiktok_bgm_mood": "都会的ローファイハウス / シティポップ（BPM120前後）",
+            }
+            if ch == "tiktok"
+            else {}
+        ),
     }
     _store_ai_candidate_cache(cache_key, candidate, model_used, now_t=time.time())
     return dict(candidate)
@@ -2929,6 +3191,8 @@ def run_writer(
         base_cands = _write_threads_candidates(research, slot_label=slot_label, now_jst=now_jst, site_url=site_url, tone_mode=tm)
     elif ch == "instagram":
         base_cands = _write_instagram_candidates(research, now_jst=now_jst, tone_mode=tm)
+    elif ch == "tiktok":
+        base_cands = _write_tiktok_candidates(research, slot_label=slot_label, now_jst=now_jst, site_url=site_url, tone_mode=tm)
     else:
         base_cands = _write_x_candidates(research, slot_label=slot_label, now_jst=now_jst, site_url=site_url, tone_mode=tm)
 
@@ -3068,6 +3332,9 @@ def run_evaluator(
         elif style in ("ig_empathy_story", "ig_data_discovery"):
             data_score = 25
             data_comment = "◎ カルーセル5枚の統計データと完全連動し、保存したくなる具体的な立ち回り根拠あり。"
+        elif style in ("tiktok_hook_gap", "tiktok_female_confession", "tiktok_data_myth", "tiktok_midnight_reverse"):
+            data_score = 25
+            data_comment = "◎ TikTok縦型動画（UIセーフゾーン設計）の比率バー＆冒頭2秒フックと完全連動し、実測根拠が明快。"
         else:
             data_score = 23 if style != classic_key else 20
             data_comment = "◎ 主要店舗の実測人数・比率が過不足なく整理されています。"
@@ -3095,6 +3362,19 @@ def run_evaluator(
             else:
                 weight_score = 7
                 weight_comment = f"◯ 文字数（{metric_unit}）・タグ数（{tag_cnt}個）は許容範囲内。"
+        elif ch == "tiktok":
+            tag_cnt = len(re.findall(r"#[^\s#]+", text))
+            has_save_cta = "保存" in text
+            has_search_seo = "相席ナビ" in text and "相席ラウンジ" in text
+            if metric_val > 2200:
+                weight_score = -40
+                weight_comment = f"❌ TikTokキャプション上限2200文字を超過（{metric_unit}）しているため不採用。"
+            elif 260 <= metric_val <= 850 and 4 <= tag_cnt <= 9 and has_save_cta and has_search_seo:
+                weight_score = 10
+                weight_comment = f"◎ TikTok検索SEO最適長（{metric_unit}）・保存導線＆指名検索語あり・タグ{tag_cnt}個で発見タブ最適。"
+            else:
+                weight_score = 7
+                weight_comment = f"◯ 文字数（{metric_unit}）・タグ{tag_cnt}個はTikTok標準範囲内。"
         else:  # instagram
             tag_cnt = len(re.findall(r"#[^\s#]+", text))
             if 340 <= metric_val <= 980 and 4 <= tag_cnt <= 8 and "保存" in text:
@@ -3178,7 +3458,7 @@ def run_editorial_pipeline(
     """
     now_jst = now_jst or datetime.datetime.now(JST)
     ch = (channel or "x").lower()
-    if ch not in ("x", "threads", "instagram"):
+    if ch not in ("x", "threads", "instagram", "tiktok"):
         ch = "x"
 
     allow_state_blocking = False if ai_cache_only else bool(record_history or use_ai)
@@ -3257,6 +3537,9 @@ def run_editorial_pipeline(
                 "main_text": c.get("main_text"),
                 "reply_text": c.get("reply_text"),
                 "is_ai_generated": bool(c.get("is_ai_generated")),
+                "tiktok_hook_text": c.get("tiktok_hook_text") or "",
+                "tiktok_reel_type": c.get("tiktok_reel_type") or "",
+                "tiktok_bgm_mood": c.get("tiktok_bgm_mood") or "",
             }
             for c in (evaluation.get("candidates") or [])
         ],

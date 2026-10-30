@@ -3173,3 +3173,296 @@ body.theme-light [style*="color: #8fb89d"],
 body.theme-light [style*="color:#8fb89d"] {
     color: #166534 !important;
 }
+
+/* ==========================================================================
+   21. リアルタイム鼓動（ライブパルス）＆人数変化ティッカー演出（Design Plan A）
+   - 大人の雑誌トーンを崩さないシャンパンゴールド／くすみローズの微細な呼吸
+   - GPU合成（transform / opacity）のみでCLS=0・スマホ60fps維持
+   - ライトモード（body.theme-light）＆ prefers-reduced-motion 完全対応
+   ========================================================================== */
+
+@keyframes calmLiveDotBreath {
+    0%, 100% {
+        opacity: 0.48;
+        transform: scale(0.9);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.12);
+    }
+}
+
+@keyframes calmLiveRingRipple {
+    0% {
+        opacity: 0.62;
+        transform: scale(0.85);
+    }
+    75%, 100% {
+        opacity: 0;
+        transform: scale(2.15);
+    }
+}
+
+@keyframes calmCardEdgePulse {
+    0%, 100% {
+        opacity: 0.38;
+    }
+    50% {
+        opacity: 0.95;
+    }
+}
+
+@keyframes calmTickerRollUp {
+    0% {
+        opacity: 0.28;
+        transform: translateY(34%) scale(0.96);
+    }
+    60% {
+        opacity: 1;
+        transform: translateY(-4%) scale(1.03);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes calmTickerRollDown {
+    0% {
+        opacity: 0.35;
+        transform: translateY(-28%) scale(0.97);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes calmDeltaPop {
+    0% {
+        opacity: 0;
+        transform: translateY(4px) scale(0.88);
+    }
+    45% {
+        opacity: 1;
+        transform: translateY(-1px) scale(1.06);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes calmCardDeltaSheen {
+    0% {
+        opacity: 0;
+    }
+    25% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+    }
+}
+
+/* 1) 1分自動更新インジケーターの静かなライブ呼吸 */
+.live-indicator .dot {
+    position: relative;
+    animation: calmLiveDotBreath 3.8s ease-in-out infinite !important;
+    will-change: transform, opacity;
+}
+
+/* 2) 急増・注目店舗カードのリアルタイム鼓動（左端シャンパン／ローズ呼吸ライン） */
+.ranking-item {
+    position: relative;
+}
+
+.ranking-item.live-pulse-card::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 10px;
+    bottom: 10px;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: linear-gradient(180deg, #dfc496 0%, #d8a1aa 100%);
+    pointer-events: none;
+    animation: calmCardEdgePulse 3.4s ease-in-out infinite;
+    will-change: opacity;
+}
+
+body:not(.theme-light) .ranking-item.live-pulse-card {
+    border-color: rgba(216, 161, 170, 0.34);
+}
+
+body:not(.theme-light) .ranking-item.rank-1.live-pulse-card {
+    border-color: rgba(200, 164, 110, 0.5);
+}
+
+body.theme-light .ranking-item.live-pulse-card {
+    border-color: rgba(158, 63, 80, 0.32) !important;
+}
+
+body.theme-light .ranking-item.live-pulse-card::before {
+    background: linear-gradient(180deg, #9e3f50 0%, #755528 100%);
+}
+
+body.audience-women .ranking-item.live-pulse-card::before {
+    background: linear-gradient(180deg, #10b981 0%, #c8a46e 100%);
+}
+
+body.theme-light.audience-women .ranking-item.live-pulse-card {
+    border-color: rgba(16, 185, 129, 0.38) !important;
+}
+
+body.theme-light.audience-women .ranking-item.live-pulse-card::before {
+    background: linear-gradient(180deg, #059669 0%, #8f3e54 100%);
+}
+
+/* 3) モメンタムタグ内の波紋パルスドット（↗ +N名 のライブ脈動） */
+.momentum-tag.is-pulsing {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.momentum-tag.is-pulsing::before {
+    content: "";
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    flex-shrink: 0;
+    box-shadow: 0 0 0 0 currentColor;
+    animation: calmLiveDotBreath 2.4s ease-in-out infinite;
+}
+
+.live-pulse-beacon {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 7px;
+    height: 7px;
+    margin-right: 4px;
+    vertical-align: middle;
+}
+
+.live-pulse-beacon::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.live-pulse-beacon::after {
+    content: "";
+    position: absolute;
+    inset: -2px;
+    border-radius: 50%;
+    border: 1.5px solid currentColor;
+    animation: calmLiveRingRipple 2.6s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+    pointer-events: none;
+}
+
+/* 4) 人数変化ティッカー（スロット風縦ロール＆リアルタイム増減ハイライト） */
+.stat-num-row {
+    overflow: hidden;
+}
+
+.stat .count {
+    display: inline-block;
+    font-variant-numeric: tabular-nums;
+    will-change: transform, opacity;
+}
+
+.stat .count.ticker-roll-up {
+    animation: calmTickerRollUp 0.44s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.stat .count.ticker-roll-down {
+    animation: calmTickerRollDown 0.36s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.stat .stat-diff.ticker-bump {
+    animation: calmDeltaPop 0.48s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ライブ更新で人数が増えた瞬間のカード全体の控えめなシャンパン光彩 */
+.ranking-item.card-delta-up::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background: linear-gradient(120deg, rgba(200, 164, 110, 0.14) 0%, rgba(216, 161, 170, 0.1) 55%, transparent 100%);
+    animation: calmCardDeltaSheen 1.15s ease-out forwards;
+}
+
+body.theme-light .ranking-item.card-delta-up::after {
+    background: linear-gradient(120deg, rgba(158, 63, 80, 0.09) 0%, rgba(117, 85, 40, 0.08) 55%, transparent 100%);
+}
+
+/* ライブ差分ティッカーピル（リアルタイム更新時に▲+N / ▼-Nを一時表示） */
+.live-delta-ticker {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.68rem;
+    font-weight: 800;
+    line-height: 1;
+    padding: 2px 5px;
+    border-radius: 999px;
+    margin-left: 3px;
+    font-variant-numeric: tabular-nums;
+    animation: calmDeltaPop 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.live-delta-ticker.is-up {
+    background: rgba(200, 164, 110, 0.2);
+    border: 1px solid rgba(200, 164, 110, 0.48);
+    color: #f1e3cb;
+}
+
+.live-delta-ticker.is-down {
+    background: rgba(148, 163, 184, 0.14);
+    border: 1px solid rgba(148, 163, 184, 0.32);
+    color: var(--calm-sub);
+}
+
+body.theme-light .live-delta-ticker.is-up {
+    background: rgba(158, 63, 80, 0.11);
+    border-color: rgba(158, 63, 80, 0.36);
+    color: var(--calm-light-women);
+}
+
+body.theme-light .live-delta-ticker.is-down {
+    background: rgba(88, 83, 75, 0.09);
+    border-color: rgba(88, 83, 75, 0.26);
+    color: var(--calm-light-sub);
+}
+
+/* 男女比率バーの滑らかな伸縮トランジション */
+.bar-fill-ladies,
+.bar-fill-men {
+    transition: width 0.52s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .live-indicator .dot,
+    .ranking-item.live-pulse-card::before,
+    .momentum-tag.is-pulsing::before,
+    .live-pulse-beacon::after,
+    .stat .count.ticker-roll-up,
+    .stat .count.ticker-roll-down,
+    .stat .stat-diff.ticker-bump,
+    .ranking-item.card-delta-up::after,
+    .live-delta-ticker {
+        animation: none !important;
+    }
+    .bar-fill-ladies,
+    .bar-fill-men {
+        transition: none !important;
+    }
+}

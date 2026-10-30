@@ -79,6 +79,31 @@ REEL_TEMPLATES = {
         "short_label": "💄 女子待ち0速報",
         "desc": "男性先行中＝受付待ちゼロ圏の上位店舗をエレガントなローズゴールド調でアニメーション表示",
         "duration_sec": REEL_DURATION_SEC,
+        "platform": "instagram",
+    },
+    "tiktok_gap_shock": {
+        "key": "tiktok_gap_shock",
+        "label": "🎵【TikTok特化】徒歩4分の天国と地獄！同エリア男女比ギャップ衝撃比較",
+        "short_label": "🎵 同駅ギャップ比較",
+        "desc": "TikTok冒頭2秒フック＆UIセーフゾーン設計（右端アイコン列・下部字幕回避）！同じ駅で女性比が高い狙い目店と混雑店の差を可視化",
+        "duration_sec": REEL_DURATION_SEC,
+        "platform": "tiktok",
+    },
+    "tiktok_ladies_real": {
+        "key": "tiktok_ladies_real",
+        "label": "🎵【TikTok特化】女子の本音×今すぐ待ち0で乾杯できる穴場TOP4",
+        "short_label": "🎵 女子本音×待ち0",
+        "desc": "TikTok女性層の保存率特化！『女子過多店に行って受付待ち…』を回避する男性先行・即案内ラウンジTOP4（UIセーフゾーン対応）",
+        "duration_sec": REEL_DURATION_SEC,
+        "platform": "tiktok",
+    },
+    "tiktok_midnight_cliff": {
+        "key": "tiktok_midnight_cliff",
+        "label": "🎵【TikTok特化】23時20分の『終電崖』と今夜残る深夜狙い目TOP4",
+        "short_label": "🎵 終電崖×深夜穴場",
+        "desc": "終電撤退（23時20分の崖）後でも人数が落ちにくい深夜強い系ラウンジTOP4をTikTokセーフゾーン設計でアニメーション表示",
+        "duration_sec": REEL_DURATION_SEC,
+        "platform": "tiktok",
     },
 }
 
@@ -163,6 +188,20 @@ VEO3_PROMPT_PRESETS = [
         "aspect_ratio": "9:16",
         "target_reel_type": "area_battle",
     },
+    {
+        "id": "veo_tiktok_hook",
+        "title": "🎵 TikTok特化・渋谷スクランブル風ダークシアン×ルビー光跡（冒頭2秒ストップ率UP）",
+        "scene_ja": "TikTokのスクロールを指止めするコントラスト強めのダークストリート光跡ボケ。文字セーフゾーンがくっきり浮き立つ設計。",
+        "prompt_en": (
+            "Vertical 9:16 dynamic luxury night street hyperlapse bokeh in Tokyo Shibuya and Shinjuku, "
+            "deep obsidian shadows with vibrant cyan-emerald and ruby-rose light streaks gliding smoothly, "
+            "ultra-clean dark center frame optimized for bold Japanese mobile UI cards, f/1.4 shallow depth of field, "
+            "cinematic 4k, no faces, no readable text, no watermark."
+        ),
+        "recommended_filename": "veo_tiktok_hook.mp4",
+        "aspect_ratio": "9:16",
+        "target_reel_type": "tiktok_gap_shock",
+    },
 ]
 
 _REEL_THEMES = {
@@ -209,6 +248,51 @@ _REEL_THEMES = {
         "bg_bot": (11, 8, 14),
         "badge_bg": (68, 24, 44, 236),
         "preferred_videos": ("veo_rosegold.mp4", "veo_champagne.mp4", "veo_lounge.mp4"),
+        "preferred_images": ("luxury_lounge_9x16.jpg", "neon_city_9x16.jpg"),
+    },
+    "tiktok_gap_shock": {
+        "accent": (37, 244, 238),
+        "accent2": (254, 88, 124),
+        "bar_left": (254, 68, 114),
+        "bar_right": (37, 212, 238),
+        "glow1": (37, 244, 238, 94),
+        "glow2": (254, 44, 85, 92),
+        "glow3": (251, 191, 36, 56),
+        "bg_top": (6, 10, 20),
+        "bg_mid": (16, 12, 28),
+        "bg_bot": (6, 8, 16),
+        "badge_bg": (12, 46, 58, 240),
+        "preferred_videos": ("veo_tiktok_hook.mp4", "veo_city_battle.mp4", "veo_neon.mp4"),
+        "preferred_images": ("neon_city_9x16.jpg", "luxury_lounge_9x16.jpg"),
+    },
+    "tiktok_ladies_real": {
+        "accent": (248, 150, 184),
+        "accent2": (238, 206, 148),
+        "bar_left": (238, 194, 128),
+        "bar_right": (244, 118, 166),
+        "glow1": (244, 118, 166, 98),
+        "glow2": (238, 196, 132, 90),
+        "glow3": (37, 244, 238, 48),
+        "bg_top": (16, 9, 18),
+        "bg_mid": (28, 14, 26),
+        "bg_bot": (10, 7, 14),
+        "badge_bg": (66, 20, 44, 240),
+        "preferred_videos": ("veo_rosegold.mp4", "veo_tiktok_hook.mp4", "veo_lounge.mp4"),
+        "preferred_images": ("luxury_lounge_9x16.jpg", "neon_city_9x16.jpg"),
+    },
+    "tiktok_midnight_cliff": {
+        "accent": (234, 196, 124),
+        "accent2": (56, 189, 248),
+        "bar_left": (244, 114, 182),
+        "bar_right": (56, 189, 248),
+        "glow1": (234, 196, 124, 92),
+        "glow2": (56, 189, 248, 88),
+        "glow3": (168, 85, 247, 58),
+        "bg_top": (7, 9, 20),
+        "bg_mid": (15, 16, 34),
+        "bg_bot": (6, 8, 15),
+        "badge_bg": (48, 36, 16, 240),
+        "preferred_videos": ("veo_rain_cyber.mp4", "veo_tiktok_hook.mp4", "veo_lounge.mp4"),
         "preferred_images": ("luxury_lounge_9x16.jpg", "neon_city_9x16.jpg"),
     },
 }
@@ -450,6 +534,11 @@ def _enrich_store_entry(s: dict, preloaded_events: list = None) -> dict:
         has_event=has_event,
     )
 
+    mid_ret = int(s.get("midnight_retention_pct") or 0)
+    if mid_ret <= 0:
+        mid_ret = min(94, max(64, 70 + min(22, tot // 4)))
+    mid_lbl = enforce_brand_rule(str(s.get("midnight_label_short") or ("深夜安定" if mid_ret >= 78 else "終電前推奨")))
+
     return {
         "raw_name": raw_name,
         "ja_name": ja_name,
@@ -466,6 +555,8 @@ def _enrich_store_entry(s: dict, preloaded_events: list = None) -> dict:
         "ladies_score": float(ladies_eval.get("score") or 0.0),
         "ladies_tier": ladies_eval.get("tier") or "",
         "ladies_badge": enforce_brand_rule(ladies_eval.get("badge") or ""),
+        "midnight_retention_pct": mid_ret,
+        "midnight_label_short": mid_lbl,
     }
 
 
@@ -582,6 +673,59 @@ def build_reel_context(
         reverse=True,
     )[:5]
 
+    # 4. TikTok Same-Area Gap Pairs (walkable same-station heaven vs male-wait contrast)
+    hub_defs = [
+        ("新宿徒歩4分圏", ("新宿", "SHINJUKU", "NISHISHINJUKU")),
+        ("梅田徒歩4分圏", ("梅田", "茶屋町", "大阪駅前", "天満", "UMEDA", "CHAYAMACHI")),
+        ("渋谷・恵比寿圏", ("渋谷", "恵比寿", "SHIBUYA", "EBISU")),
+        ("難波・心斎橋圏", ("難波", "心斎橋", "NAMBA", "SHINSAIBASHI")),
+        ("名古屋・栄圏", ("名古屋", "栄", "NAGOYA", "SAKAE")),
+        ("福岡・天神圏", ("福岡", "天神", "小倉", "FUKUOKA", "TENJIN")),
+    ]
+    gap_pairs = []
+    for hub_label, kw_tuple in hub_defs:
+        hub_stores = [
+            s for s in active_stores
+            if s["total"] >= 4 and any(k in s["raw_name"].upper() or k in s["ja_name"] or k in s["area_label"] for k in kw_tuple)
+        ]
+        if len(hub_stores) >= 2:
+            by_w = sorted(hub_stores, key=lambda x: (x["wpct"], x["women"]), reverse=True)
+            hi_s = by_w[0]
+            lo_s = by_w[-1]
+            if hi_s["raw_name"] != lo_s["raw_name"]:
+                gap_pairs.append({
+                    "hub_label": hub_label,
+                    "heaven_store": hi_s,
+                    "crowded_store": lo_s,
+                    "gap_pt": max(1, hi_s["wpct"] - lo_s["wpct"]),
+                })
+    gap_pairs.sort(key=lambda g: (g["gap_pt"], g["heaven_store"]["women"]), reverse=True)
+    if len(gap_pairs) < 3 and len(active_stores) >= 2:
+        by_global_w = sorted(active_stores, key=lambda x: (x["wpct"], x["women"]), reverse=True)
+        for idx_fb in range(min(3 - len(gap_pairs), len(by_global_w) // 2)):
+            hi_fb = by_global_w[idx_fb]
+            lo_fb = by_global_w[-(idx_fb + 1)]
+            if hi_fb["raw_name"] != lo_fb["raw_name"]:
+                gap_pairs.append({
+                    "hub_label": f"{hi_fb['area_label']} vs {lo_fb['area_label']}",
+                    "heaven_store": hi_fb,
+                    "crowded_store": lo_fb,
+                    "gap_pt": max(1, hi_fb["wpct"] - lo_fb["wpct"]),
+                })
+    gap_pairs = gap_pairs[:3]
+
+    # 5. TikTok Midnight Cliff Survivors Top 4
+    midnight_top4 = sorted(
+        active_stores,
+        key=lambda x: (
+            1 if x["women"] >= 8 else 0,
+            x["midnight_retention_pct"],
+            x["wpct"],
+            x["women"],
+        ),
+        reverse=True,
+    )[:4]
+
     return {
         "reel_type": rt,
         "now_jst": now_jst,
@@ -598,6 +742,8 @@ def build_reel_context(
         "area_battles": area_battles,
         "best_ratio_zone": best_ratio_zone,
         "ladies_top5": ladies_sorted,
+        "gap_pairs": gap_pairs,
+        "midnight_top4": midnight_top4,
     }
 
 
@@ -660,6 +806,63 @@ def build_reel_caption(
             f"いま現在「女子待ち0」で入れる店舗と今夜の限定特典・フード比較は、プロフィールのリンク『相席ナビ』（aiseki-navi.com）から3秒でチェックできます🔍\n"
             f"友達との2軒目探し用に「保存📌」して使ってください🥂\n\n"
             f"#相席ナビ #女子会 #相席ラウンジ #オリエンタルラウンジ #オリラジ #ag #JIS #週末女子会 #夜カフェ #2軒目"
+        )
+        return enforce_brand_rule(caption)
+
+    if rt == "tiktok_gap_shock":
+        gp_list = ctx.get("gap_pairs") or []
+        gp_lines = []
+        for idx, gp in enumerate(gp_list[:3], start=1):
+            hi = gp["heaven_store"]
+            lo = gp["crowded_store"]
+            gp_lines.append(
+                f"📍 {gp['hub_label']}（比率差 {gp['gap_pt']}pt）\n"
+                f"　🟢 狙い目：{hi['ja_name']}（女{hi['women']}:男{hi['men']}｜女性比{hi['wpct']}%）\n"
+                f"　🔴 対照店：{lo['ja_name']}（女{lo['women']}:男{lo['men']}｜女性比{lo['wpct']}%）"
+            )
+        joined_gp = "\n".join(gp_lines)
+        caption = (
+            f"同じ駅で徒歩4分しか離れてないのに、お店のドア1枚でここまで男女比が変わる…😳📊{mode_note}\n\n"
+            f"{joined_gp}\n\n"
+            f"「相席ラウンジどこも男待ちでしょ…」って諦める前に、駅を出る直前に別ブランド（オリラジ・ag・JIS）を見比べるだけで待ち時間ゼロの店舗が見つかります💡\n\n"
+            f"いま現在の全53店舗の男女人数・料金シミュレーターは『相席ナビ』（aiseki-navi.com）で検索🔍（プロフリンクからも3秒で見れます）\n"
+            f"今夜・週末に使う用に「保存🔖」しておいてください！\n\n"
+            f"#相席ナビ #相席ラウンジ #オリエンタルラウンジ #オリラジ #ag #JIS #新宿夜遊び #梅田グルメ #渋谷夜遊び #相席"
+        )
+        return enforce_brand_rule(caption)
+
+    if rt == "tiktok_ladies_real":
+        l_top = ctx["ladies_top5"][:4]
+        l_lines = "\n".join(
+            f"🥂 {idx}位：{s['ja_name']}（男性{s['men']}名 / 女性{s['women']}名"
+            + (f"・🎁{s['event_title']}）" if s.get("event_title") else "）")
+            for idx, s in enumerate(l_top, start=1)
+        )
+        caption = (
+            f"女子ペアで「女性70%超えの店舗」に行くと、実は受付で待たされたり席替えが止まりやすいって知ってた？💄{mode_note}\n\n"
+            f"いま男性が先行していて「受付待ちほぼゼロ」でスマートに乾杯できる狙い目ラウンジTOP4👇\n"
+            f"{l_lines}\n\n"
+            f"友達との2軒目や夜カフェ代わりに使うなら、行く3分前に男性先行店を選ぶのが一番快適✨\n"
+            f"現在人数と今夜の女子向け特典は『相席ナビ』（aiseki-navi.com）で検索🔍（登録不要・無料）\n"
+            f"女子会の作戦会議用に「保存🔖」推奨です🥂\n\n"
+            f"#相席ナビ #相席ラウンジ #女子会 #オリエンタルラウンジ #オリラジ #ag #JIS #2軒目 #夜カフェ #週末女子会"
+        )
+        return enforce_brand_rule(caption)
+
+    if rt == "tiktok_midnight_cliff":
+        m_top = ctx.get("midnight_top4") or ctx["top5_volume"][:4]
+        m_lines = "\n".join(
+            f"🌙 {idx}位：{s['ja_name']}（女{s['women']}:男{s['men']}｜終電後維持 {s['midnight_retention_pct']}%）"
+            for idx, s in enumerate(m_top[:4], start=1)
+        )
+        caption = (
+            f"相席ラウンジには「23時20分の終電崖」があって、終電で一気に人が引く店と深夜0時過ぎから逆転で盛り上がる店に真っ二つに分かれます🌙{mode_note}\n\n"
+            f"いま現在盛り上がっていて終電後も強いラウンジTOP4👇\n"
+            f"{m_lines}\n\n"
+            f"2軒目・3軒目で失敗したくない夜は、入店直前のリアルタイム人数を見てから動くのが鉄則💡\n"
+            f"全国53店舗の現在人数と深夜維持率は『相席ナビ』（aiseki-navi.com）で検索🔍\n"
+            f"終電後の駆け込み用に「保存🔖」しておくと役立ちます！\n\n"
+            f"#相席ナビ #相席ラウンジ #オリエンタルラウンジ #オリラジ #ag #JIS #終電逃した #2軒目 #新宿 #梅田"
         )
         return enforce_brand_rule(caption)
 
@@ -886,9 +1089,16 @@ class _ReelSceneRenderer:
     def __init__(self, ctx: dict):
         self.ctx = ctx
         self.rt = ctx["reel_type"]
+        self.is_tiktok = self.rt.startswith("tiktok_")
         self.theme = _REEL_THEMES[self.rt]
         self.W = REEL_WIDTH
         self.H = REEL_HEIGHT
+        # TikTok UI Safe-Zone: keep clear of top feed tabs (y<96), right action column (96px), and bottom caption area (y>1016)
+        self.safe_left = 28 if self.is_tiktok else 36
+        self.safe_right_pad = 96 if self.is_tiktok else 36
+        self.safe_w = self.W - self.safe_left - self.safe_right_pad
+        self.top_y = 96 if self.is_tiktok else 36
+        self.prog_y = 1002 if self.is_tiktok else 1208
 
         self.chrome_base = self._build_chrome_sprite()
         self.scene1_sprite = self._build_scene1_hook_sprite()
@@ -901,28 +1111,38 @@ class _ReelSceneRenderer:
         sp = Image.new("RGBA", (W, H), (0, 0, 0, 0))
         draw = ogp_generator.make_safe_draw(sp, "RGBA")
         acc = self.theme["accent"]
+        lx = self.safe_left
+        rx_end = W - self.safe_right_pad
+        ty = self.top_y
 
-        f_brand = _get_reel_font(16)
-        f_time = _get_reel_font(15)
-        f_foot = _get_reel_font(15)
+        f_brand = _get_reel_font(15 if self.is_tiktok else 16)
+        f_time = _get_reel_font(14 if self.is_tiktok else 15)
+        f_foot = _get_reel_font(14 if self.is_tiktok else 15)
 
-        brand_txt = "AISEKI NAVI  |  相席ナビ速報"
-        bw = int(draw.textlength(brand_txt, font=f_brand)) + 28
-        draw.rounded_rectangle((36, 36, 36 + bw, 76), radius=20, fill=(18, 22, 36, 228), outline=acc, width=2)
-        draw.text((50, 46), brand_txt, font=f_brand, fill=acc)
+        brand_txt = "AISEKI NAVI | 相席ナビ" if self.is_tiktok else "AISEKI NAVI  |  相席ナビ速報"
+        bw = int(draw.textlength(brand_txt, font=f_brand)) + 26
+        draw.rounded_rectangle((lx, ty, lx + bw, ty + 38), radius=19, fill=(18, 22, 36, 232), outline=acc, width=2)
+        draw.text((lx + 13, ty + 9), brand_txt, font=f_brand, fill=acc)
 
-        time_txt = f"LIVE  {self.ctx['time_label']}"
-        tw = int(draw.textlength(time_txt, font=f_time)) + 42
-        rx1 = W - 36 - tw
-        self.live_dot_cx = rx1 + 16
-        draw.rounded_rectangle((rx1, 36, W - 36, 76), radius=20, fill=(18, 22, 36, 228), outline=(255, 255, 255, 70), width=1)
-        draw.text((rx1 + 28, 47), time_txt, font=f_time, fill=(241, 245, 249, 245))
+        time_txt = f"LIVE {self.ctx['time_label']}"
+        tw = int(draw.textlength(time_txt, font=f_time)) + 38
+        rx1 = rx_end - tw
+        self.live_dot_cx = rx1 + 15
+        self.live_dot_cy = ty + 19
+        draw.rounded_rectangle((rx1, ty, rx_end, ty + 38), radius=19, fill=(18, 22, 36, 232), outline=(255, 255, 255, 70), width=1)
+        draw.text((rx1 + 26, ty + 10), time_txt, font=f_time, fill=(241, 245, 249, 245))
 
-        # Progress bar background track + footer caption
-        draw.rounded_rectangle((36, 1208, W - 36, 1214), radius=3, fill=(255, 255, 255, 42))
-        foot_txt = "全国53店舗の現在人数は『相席ナビ』(aiseki-navi.com) で無料公開中"
-        fw = int(draw.textlength(foot_txt, font=f_foot))
-        draw.text(((W - fw) // 2, 1226), foot_txt, font=f_foot, fill=(165, 178, 198, 235))
+        # Progress bar background track + footer caption inside safe zone
+        py = self.prog_y
+        draw.rounded_rectangle((lx, py, rx_end, py + 6), radius=3, fill=(255, 255, 255, 46))
+        foot_txt = (
+            "『相席ナビ』(aiseki-navi.com) 全53店舗の現在人数を無料公開中"
+            if self.is_tiktok
+            else "全国53店舗の現在人数は『相席ナビ』(aiseki-navi.com) で無料公開中"
+        )
+        foot_fit, f_foot_fit, _ = ogp_generator.fit_text_and_font(draw, foot_txt, self.safe_w, 15, 12)
+        fw = int(draw.textlength(foot_fit, font=f_foot_fit))
+        draw.text((lx + max(0, (self.safe_w - fw) // 2), py + 14), foot_fit, font=f_foot_fit, fill=(180, 192, 212, 238))
         return sp
 
     def _build_scene1_hook_sprite(self) -> Image.Image:
@@ -931,15 +1151,45 @@ class _ReelSceneRenderer:
         draw = ogp_generator.make_safe_draw(sp, "RGBA")
         acc = self.theme["accent"]
         acc2 = self.theme["accent2"]
+        lx = self.safe_left
+        sw = self.safe_w
+        rx_end = lx + sw
 
-        f_kicker = _get_reel_font(20)
-        f_sub = _get_reel_font(21)
-        f_stat_lbl = _get_reel_font(19)
-        f_stat_big = _get_reel_font(40)
-        f_stat_sm = _get_reel_font(20)
-        f_next = _get_reel_font(20)
+        f_kicker = _get_reel_font(19 if self.is_tiktok else 20)
+        f_stat_lbl = _get_reel_font(18 if self.is_tiktok else 19)
+        f_next = _get_reel_font(18 if self.is_tiktok else 20)
 
-        if self.rt == "area_battle":
+        if self.rt == "tiktok_gap_shock":
+            gp0 = (self.ctx.get("gap_pairs") or [None])[0]
+            hi_pct = gp0["heaven_store"]["wpct"] if gp0 else 64
+            lo_pct = gp0["crowded_store"]["wpct"] if gp0 else 36
+            kicker = f"TIKTOK LIVE GAP  |  {self.ctx['weekday_ja']}曜夜・同駅比較"
+            lines = [
+                ("同じ駅・徒歩4分なのに", (255, 255, 255, 255)),
+                (f"女性比 {hi_pct}% vs {lo_pct}%", acc),
+                ("ドア1枚で待ち時間激変！", acc2),
+            ]
+            sub1 = "1店舗目の男性待ち行列に並ぶ前に3秒チェック！"
+            sub2 = "同じ繁華街で『今すぐ座れる天国店』と混雑店をリアル比較"
+        elif self.rt == "tiktok_ladies_real":
+            kicker = f"LADIES REAL DATA  |  {self.ctx['weekday_ja']}曜夜の女子会裏ワザ"
+            lines = [
+                ("女子70%超の店に行くと", (255, 255, 255, 255)),
+                ("実は受付で待たされる!?", acc2),
+                ("今すぐ待ち0の穴場TOP4", acc),
+            ]
+            sub1 = "女子ペアがスマートに即乾杯するなら『男性先行店』が鉄則！"
+            sub2 = "いま男性が盛り上がっている受付待ちゼロ圏の上位店を公開"
+        elif self.rt == "tiktok_midnight_cliff":
+            kicker = f"MIDNIGHT CLIFF  |  {self.ctx['weekday_ja']}曜夜・終電後の真実"
+            lines = [
+                ("23時20分の「終電崖」で", (255, 255, 255, 255)),
+                ("人が消える店 vs 残る店", acc),
+                ("今夜の深夜狙い目TOP4", acc2),
+            ]
+            sub1 = "終電を境に急減する店と、2軒目組で逆転する店が真っ二つ！"
+            sub2 = "実測データから判明した深夜維持率トップ級の現在人数速報"
+        elif self.rt == "area_battle":
             kicker = f"AREA REALTIME BATTLE  |  {self.ctx['weekday_ja']}曜夜"
             lines = [
                 ("新宿 vs 梅田 vs 渋谷", acc),
@@ -967,26 +1217,32 @@ class _ReelSceneRenderer:
             sub1 = "「男性待ち1時間」を回避してスマートに相席するための"
             sub2 = "全国リアルタイム人数＆高女性比率ピックアップ"
 
-        kw = int(draw.textlength(kicker, font=f_kicker)) + 40
-        draw.rounded_rectangle((36, 178, 36 + kw, 226), radius=14, fill=self.theme["badge_bg"], outline=acc, width=2)
-        draw.text((56, 190), kicker, font=f_kicker, fill=(255, 255, 255, 255))
+        ky = 162 if self.is_tiktok else 178
+        kw = min(sw, int(draw.textlength(kicker, font=f_kicker)) + 36)
+        draw.rounded_rectangle((lx, ky, lx + kw, ky + 46), radius=14, fill=self.theme["badge_bg"], outline=acc, width=2)
+        draw.text((lx + 18, ky + 11), kicker, font=f_kicker, fill=(255, 255, 255, 255))
 
-        hy = 264
+        hy = 236 if self.is_tiktok else 264
+        line_step = 74 if self.is_tiktok else 80
+        max_h_sz = 50 if self.is_tiktok else 54
         for txt, col in lines:
-            fit_t, fit_f, fit_sz = ogp_generator.fit_text_and_font(draw, txt, W - 72, 54, 34)
-            draw.text((36, hy + max(0, (54 - fit_sz) // 2)), fit_t, font=fit_f, fill=col)
-            hy += 80
+            fit_t, fit_f, fit_sz = ogp_generator.fit_text_and_font(draw, txt, sw, max_h_sz, 30)
+            draw.text((lx, hy + max(0, (max_h_sz - fit_sz) // 2)), fit_t, font=fit_f, fill=col)
+            hy += line_step
 
-        s1_fit, f_s1, _ = ogp_generator.fit_text_and_font(draw, sub1, W - 72, 21, 16)
-        s2_fit, f_s2, _ = ogp_generator.fit_text_and_font(draw, sub2, W - 72, 21, 16)
-        draw.text((36, 528), s1_fit, font=f_s1, fill=(214, 222, 235, 245))
-        draw.text((36, 562), s2_fit, font=f_s2, fill=(214, 222, 235, 245))
+        sub_y1 = 478 if self.is_tiktok else 528
+        s1_fit, f_s1, _ = ogp_generator.fit_text_and_font(draw, sub1, sw, 20 if self.is_tiktok else 21, 15)
+        s2_fit, f_s2, _ = ogp_generator.fit_text_and_font(draw, sub2, sw, 20 if self.is_tiktok else 21, 15)
+        draw.text((lx, sub_y1), s1_fit, font=f_s1, fill=(214, 222, 235, 245))
+        draw.text((lx, sub_y1 + 32), s2_fit, font=f_s2, fill=(214, 222, 235, 245))
 
         # Nationwide live counter glass card
+        cy1 = 568 if self.is_tiktok else 634
+        cy2 = 772 if self.is_tiktok else 846
         draw.rounded_rectangle(
-            (36, 634, W - 36, 846),
+            (lx, cy1, rx_end, cy2),
             radius=24,
-            fill=(16, 20, 34, 236),
+            fill=(16, 20, 34, 238),
             outline=(acc2[0], acc2[1], acc2[2], 195),
             width=2,
         )
@@ -995,30 +1251,44 @@ class _ReelSceneRenderer:
             if self.ctx["is_fallback"]
             else f"現在集計中の国内ラウンジ合計（{self.ctx['active_store_count']}店舗）"
         )
-        draw.text((64, 658), hdr_lbl, font=f_stat_lbl, fill=acc2)
+        hl_fit, f_hl, _ = ogp_generator.fit_text_and_font(draw, hdr_lbl, sw - 48, 19, 14)
+        draw.text((lx + 24, cy1 + 22), hl_fit, font=f_hl, fill=acc2)
 
         stat_main = f"女性 {self.ctx['total_women']}名   /   男性 {self.ctx['total_men']}名"
-        sm_fit, sm_font, _ = ogp_generator.fit_text_and_font(draw, stat_main, W - 128, 40, 26)
-        draw.text((64, 704), sm_fit, font=sm_font, fill=(255, 255, 255, 255))
+        sm_fit, sm_font, _ = ogp_generator.fit_text_and_font(draw, stat_main, sw - 48, 38 if self.is_tiktok else 40, 24)
+        draw.text((lx + 24, cy1 + 68), sm_fit, font=sm_font, fill=(255, 255, 255, 255))
 
         ratio_note = f"国内全体 女性比率 {self.ctx['overall_wpct']}%  ｜  オリラジ・ag・JIS 全53店対応"
-        rn_fit, rn_font, _ = ogp_generator.fit_text_and_font(draw, ratio_note, W - 128, 19, 15)
-        draw.text((64, 782), rn_fit, font=rn_font, fill=(182, 194, 212, 240))
+        rn_fit, rn_font, _ = ogp_generator.fit_text_and_font(draw, ratio_note, sw - 48, 18, 14)
+        draw.text((lx + 24, cy1 + 142), rn_fit, font=rn_font, fill=(182, 194, 212, 240))
 
-        # Bottom teaser pill
-        next_txt = "このあと上位ランキング＆男女比バーを公開  >>>"
-        nw = int(draw.textlength(next_txt, font=f_next)) + 44
-        nx = (W - nw) // 2
-        draw.rounded_rectangle((nx, 906, nx + nw, 958), radius=26, fill=(24, 28, 46, 230), outline=acc, width=2)
-        draw.text((nx + 22, 920), next_txt, font=f_next, fill=acc)
+        # Bottom teaser pill (inside safe zone)
+        ty_pill = 832 if self.is_tiktok else 906
+        next_txt = "すぐ下にリアル比較データ＆狙い目店を公開 >>>" if self.is_tiktok else "このあと上位ランキング＆男女比バーを公開  >>>"
+        nt_fit, f_nt, _ = ogp_generator.fit_text_and_font(draw, next_txt, sw - 36, 19, 14)
+        nw = int(draw.textlength(nt_fit, font=f_nt)) + 36
+        nx = lx + max(0, (sw - nw) // 2)
+        draw.rounded_rectangle((nx, ty_pill, nx + nw, ty_pill + 50), radius=25, fill=(24, 28, 46, 234), outline=acc, width=2)
+        draw.text((nx + 18, ty_pill + 14), nt_fit, font=f_nt, fill=acc)
         return sp
 
     def _build_scene2_header_sprite(self) -> Image.Image:
         W = self.W
-        sp = Image.new("RGBA", (W, 100), (0, 0, 0, 0))
+        sp = Image.new("RGBA", (W, 96), (0, 0, 0, 0))
         draw = ogp_generator.make_safe_draw(sp, "RGBA")
+        lx = self.safe_left
+        sw = self.safe_w
 
-        if self.rt == "area_battle":
+        if self.rt == "tiktok_gap_shock":
+            t1 = "同駅・徒歩4分 男女比ギャップ衝撃比較"
+            sub = "同じ繁華街でもお店選び1つで待ち時間がここまで変わる！"
+        elif self.rt == "tiktok_ladies_real":
+            t1 = "女子待ち0・男性先行ラウンジ TOP4"
+            sub = "女子過多の受付待ちを回避！今すぐ乾杯しやすい狙い目店"
+        elif self.rt == "tiktok_midnight_cliff":
+            t1 = "終電崖に強い！深夜狙い目ラウンジ TOP4"
+            sub = "23時20分以降も人数が落ちにくい深夜維持率上位店"
+        elif self.rt == "area_battle":
             t1 = "3大激戦区 男女比＆狙い目店対決"
             sub = "新宿・梅田・渋谷の現在人数合計と今いちばん入りやすい店舗"
         elif self.rt == "ladies_zero_wait":
@@ -1028,10 +1298,10 @@ class _ReelSceneRenderer:
             t1 = "全国リアルタイム 女性人数 TOP5"
             sub = "ピンク＝女性比率 / シアン＝男性比率（上位5店舗を比較）"
 
-        t_fit, f_t, _ = ogp_generator.fit_text_and_font(draw, t1, W - 72, 33, 24)
-        s_fit, f_s, _ = ogp_generator.fit_text_and_font(draw, sub, W - 72, 18, 14)
-        draw.text((36, 8), t_fit, font=f_t, fill=(255, 255, 255, 255))
-        draw.text((36, 54), s_fit, font=f_s, fill=(203, 213, 225, 238))
+        t_fit, f_t, _ = ogp_generator.fit_text_and_font(draw, t1, sw, 31 if self.is_tiktok else 33, 21)
+        s_fit, f_s, _ = ogp_generator.fit_text_and_font(draw, sub, sw, 17 if self.is_tiktok else 18, 13)
+        draw.text((lx, 6), t_fit, font=f_t, fill=(255, 255, 255, 255))
+        draw.text((lx, 50), s_fit, font=f_s, fill=(203, 213, 225, 238))
         return sp
 
     def _build_scene2_card_sprites(self) -> list:
@@ -1039,7 +1309,8 @@ class _ReelSceneRenderer:
         Pre-render static card chrome + typography for Scene 2, alongside bar geometry metadata
         so frame loop only draws the smoothly-animating ratio bar!
         """
-        cw = self.W - 72  # 648
+        lx = self.safe_left
+        cw = self.safe_w
         rank_cols = [
             (251, 191, 36),
             (226, 232, 240),
@@ -1047,6 +1318,70 @@ class _ReelSceneRenderer:
             (148, 163, 184),
             (148, 163, 184),
         ]
+
+        if self.rt == "tiktok_gap_shock":
+            cards = []
+            ch = 230
+            f_pill = _get_reel_font(16)
+            f_row = _get_reel_font(18)
+            for idx, gp in enumerate((self.ctx.get("gap_pairs") or [])[:3]):
+                sp = Image.new("RGBA", (cw, ch), (0, 0, 0, 0))
+                draw = ogp_generator.make_safe_draw(sp, "RGBA")
+                hi = gp["heaven_store"]
+                lo = gp["crowded_store"]
+                b_col = self.theme["accent"] if idx == 0 else self.theme["accent2"]
+
+                draw.rounded_rectangle(
+                    (0, 0, cw - 1, ch - 1),
+                    radius=20,
+                    fill=(15, 20, 34, 242),
+                    outline=(b_col[0], b_col[1], b_col[2], 210 if idx == 0 else 135),
+                    width=3 if idx == 0 else 2,
+                )
+
+                pill_txt = f"比率差 {gp['gap_pt']}pt！"
+                pw = int(draw.textlength(pill_txt, font=f_pill)) + 24
+                px = cw - 18 - pw
+                draw.rounded_rectangle((px, 16, px + pw, 50), radius=11, fill=(190, 24, 93, 238))
+                draw.text((px + 12, 23), pill_txt, font=f_pill, fill=(255, 255, 255, 255))
+
+                hub_fit, f_hub, _ = ogp_generator.fit_text_and_font(draw, gp["hub_label"], max(150, px - 34), 25, 18)
+                draw.text((20, 18), hub_fit, font=f_hub, fill=(255, 255, 255, 255))
+
+                hi_line = f"◎ 狙い目：{hi['ja_name']}（女{hi['women']}:男{hi['men']}｜女性比{hi['wpct']}%）"
+                hi_fit, f_hi, _ = ogp_generator.fit_text_and_font(draw, hi_line, cw - 40, 19, 14)
+                draw.text((20, 68), hi_fit, font=f_hi, fill=(37, 244, 238, 255))
+
+                lo_line = f"△ 混雑注意：{lo['ja_name']}（女{lo['women']}:男{lo['men']}｜女性比{lo['wpct']}%）"
+                lo_fit, f_lo, _ = ogp_generator.fit_text_and_font(draw, lo_line, cw - 40, 18, 13)
+                draw.text((20, 108), lo_fit, font=f_lo, fill=(254, 142, 164, 242))
+
+                draw.text((20, 148), "狙い目店の男女バランス（ピンク＝女性 / シアン＝男性）", font=_get_reel_font(14), fill=(182, 194, 212, 230))
+                bx, by, bw, bh = 20, 178, cw - 40, 20
+                draw.rounded_rectangle((bx, by, bx + bw, by + bh), radius=10, fill=(32, 40, 62, 235))
+
+                left_ratio = max(0.08, min(0.92, hi["wpct"] / 100.0))
+                full_sp = sp.copy()
+                fdraw = ImageDraw.Draw(full_sp, "RGBA")
+                fdraw.rounded_rectangle((bx, by, bx + bw, by + bh), radius=10, fill=(*self.theme["bar_right"], 235))
+                fdraw.rounded_rectangle(
+                    (bx, by, bx + max(20, min(bw, int(bw * left_ratio))), by + bh),
+                    radius=10,
+                    fill=(*self.theme["bar_left"], 255),
+                )
+
+                cards.append({
+                    "sprite": sp,
+                    "full_sprite": full_sp,
+                    "x": lx,
+                    "y": 242 + idx * (ch + 14),
+                    "t_in": 2.08 + idx * 0.38,
+                    "bar_rect": (bx, by, bw, bh, 10),
+                    "left_ratio": left_ratio,
+                    "left_col": self.theme["bar_left"],
+                    "right_col": self.theme["bar_right"],
+                })
+            return cards
 
         if self.rt == "area_battle":
             cards = []
@@ -1118,7 +1453,7 @@ class _ReelSceneRenderer:
                 cards.append({
                     "sprite": sp,
                     "full_sprite": full_sp,
-                    "x": 36,
+                    "x": lx,
                     "y": 196 + idx * (ch + 18),
                     "t_in": 2.28 + idx * 0.42,
                     "bar_rect": (bx, by, bw, bh, 11),
@@ -1128,20 +1463,28 @@ class _ReelSceneRenderer:
                 })
             return cards
 
-        # Top 5 list (`live_top5` or `ladies_zero_wait`)
-        items = self.ctx["ladies_top5"][:5] if self.rt == "ladies_zero_wait" else self.ctx["top5_volume"][:5]
+        # Top list (`live_top5`, `ladies_zero_wait`, `tiktok_ladies_real`, `tiktok_midnight_cliff`)
+        is_ladies_mode = self.rt in ("ladies_zero_wait", "tiktok_ladies_real")
+        if self.rt == "tiktok_midnight_cliff":
+            items = (self.ctx.get("midnight_top4") or self.ctx["top5_volume"])[:4]
+        elif self.rt == "tiktok_ladies_real":
+            items = self.ctx["ladies_top5"][:4]
+        elif self.rt == "ladies_zero_wait":
+            items = self.ctx["ladies_top5"][:5]
+        else:
+            items = self.ctx["top5_volume"][:5]
+
         cards = []
-        ch = 176
-        f_rank = _get_reel_font(24)
-        f_pill = _get_reel_font(17)
-        f_area = _get_reel_font(15)
+        ch = 174 if self.is_tiktok else 176
+        f_rank = _get_reel_font(23 if self.is_tiktok else 24)
+        f_pill = _get_reel_font(16 if self.is_tiktok else 17)
 
         for idx, st in enumerate(items):
             sp = Image.new("RGBA", (cw, ch), (0, 0, 0, 0))
             draw = ogp_generator.make_safe_draw(sp, "RGBA")
             rc = rank_cols[idx] if idx < len(rank_cols) else (148, 163, 184)
 
-            card_bg = (26, 15, 26, 238) if self.rt == "ladies_zero_wait" else (17, 22, 36, 238)
+            card_bg = (26, 15, 26, 240) if is_ladies_mode else (17, 22, 36, 240)
             draw.rounded_rectangle(
                 (0, 0, cw - 1, ch - 1),
                 radius=20,
@@ -1157,47 +1500,52 @@ class _ReelSceneRenderer:
             draw.text((42 - rw // 2, 28), r_str, font=f_rank, fill=rc)
 
             # Right highlight pill
-            if self.rt == "ladies_zero_wait":
+            if is_ladies_mode:
                 is_vip = st["men"] >= 4 and st["men"] >= st["women"]
                 pill_txt = "待ち0・即案内圏" if is_vip else "スムーズ相席圏"
                 pill_bg = (158, 72, 108, 238) if is_vip else (88, 52, 92, 235)
+            elif self.rt == "tiktok_midnight_cliff":
+                pill_txt = f"深夜維持 {st['midnight_retention_pct']}%"
+                pill_bg = (146, 102, 28, 238) if st["midnight_retention_pct"] >= 78 else (14, 116, 144, 238)
             else:
                 pill_txt = f"女性比 {st['wpct']}%"
                 pill_bg = (190, 24, 93, 238) if st["wpct"] >= 55 else (14, 116, 144, 238)
 
-            pw = int(draw.textlength(pill_txt, font=f_pill)) + 26
+            pw = int(draw.textlength(pill_txt, font=f_pill)) + 24
             px = cw - 18 - pw
             draw.rounded_rectangle((px, 18, px + pw, 56), radius=11, fill=pill_bg)
-            draw.text((px + 13, 27), pill_txt, font=f_pill, fill=(255, 255, 255, 255))
+            draw.text((px + 12, 27), pill_txt, font=f_pill, fill=(255, 255, 255, 255))
 
             # Store name + area
             sn_txt, sn_font, sn_sz = ogp_generator.fit_text_and_font(
-                draw, st["ja_name"], max(170, px - 96), 25, 17
+                draw, st["ja_name"], max(150, px - 94), 24 if self.is_tiktok else 25, 16
             )
             draw.text((80, 17 + max(0, (25 - sn_sz) // 2)), sn_txt, font=sn_font, fill=(255, 255, 255, 255))
 
             sub_meta = f"エリア：{st['area_label']}"
-            if self.rt == "ladies_zero_wait" and st.get("event_title"):
+            if is_ladies_mode and st.get("event_title"):
                 sub_meta += f"  ｜  特典：{st['event_title']}"
-            sm_fit, sm_f, _ = ogp_generator.fit_text_and_font(draw, sub_meta, max(165, px - 96), 15, 13)
+            elif self.rt == "tiktok_midnight_cliff":
+                sub_meta += f"  ｜  {st['midnight_label_short']}"
+            sm_fit, sm_f, _ = ogp_generator.fit_text_and_font(draw, sub_meta, max(150, px - 94), 15, 12)
             draw.text((80, 50), sm_fit, font=sm_f, fill=(176, 188, 206, 235))
 
             # Live headcount row
-            if self.rt == "ladies_zero_wait":
+            if is_ladies_mode:
                 lead_s = f"（+{st['male_lead']}名先行）" if st["male_lead"] > 0 else ""
                 stat_s = f"男性 {st['men']}名{lead_s}  /  女性 {st['women']}名（男性比 {st['mpct']}%）"
                 stat_col = (244, 198, 152, 255)
                 left_ratio = max(0.08, min(0.92, st["mpct"] / 100.0))
             else:
                 lbl_pfx = "実績目安" if self.ctx["is_fallback"] else "現在人数"
-                stat_s = f"{lbl_pfx}：女性 {st['women']}名  /  男性 {st['men']}名（合計 {st['total']}名）"
+                stat_s = f"{lbl_pfx}：女性 {st['women']}名  /  男性 {st['men']}名（女性比 {st['wpct']}%）"
                 stat_col = (244, 114, 182, 255)
                 left_ratio = max(0.08, min(0.92, st["wpct"] / 100.0))
 
-            st_fit, f_stat_fit, _ = ogp_generator.fit_text_and_font(draw, stat_s, cw - 40, 20, 15)
+            st_fit, f_stat_fit, _ = ogp_generator.fit_text_and_font(draw, stat_s, cw - 40, 19 if self.is_tiktok else 20, 14)
             draw.text((20, 88), st_fit, font=f_stat_fit, fill=stat_col)
 
-            bx, by, bw, bh = 20, 132, cw - 40, 18
+            bx, by, bw, bh = 20, 130, cw - 40, 18
             draw.rounded_rectangle((bx, by, bx + bw, by + bh), radius=9, fill=(32, 40, 62, 235))
 
             full_sp = sp.copy()
@@ -1209,12 +1557,15 @@ class _ReelSceneRenderer:
                 fill=(*self.theme["bar_left"], 255),
             )
 
+            base_y = 240 if self.is_tiktok else 192
+            step_gap = 12 if self.is_tiktok else 14
+            t_base = 2.08 if self.is_tiktok else 2.28
             cards.append({
                 "sprite": sp,
                 "full_sprite": full_sp,
-                "x": 36,
-                "y": 192 + idx * (ch + 14),
-                "t_in": 2.28 + idx * 0.32,
+                "x": lx,
+                "y": base_y + idx * (ch + step_gap),
+                "t_in": t_base + idx * 0.30,
                 "bar_rect": (bx, by, bw, bh, 9),
                 "left_ratio": left_ratio,
                 "left_col": self.theme["bar_left"],
@@ -1228,8 +1579,33 @@ class _ReelSceneRenderer:
         draw = ogp_generator.make_safe_draw(sp, "RGBA")
         acc = self.theme["accent"]
         acc2 = self.theme["accent2"]
+        lx = self.safe_left
+        sw = self.safe_w
+        rx_end = lx + sw
 
-        if self.rt == "area_battle":
+        if self.rt == "tiktok_gap_shock":
+            t1 = "今夜の同駅ギャップ結論＆狙い目店"
+            sub = "1店舗目で並ばず、徒歩4分の高女性比店へスマート移動！"
+            pick_rows = [
+                (
+                    f"差{gp['gap_pt']}pt 狙い目",
+                    gp["heaven_store"]["ja_name"],
+                    f"女性 {gp['heaven_store']['women']}名 / 男性 {gp['heaven_store']['men']}名（女性比 {gp['heaven_store']['wpct']}%）",
+                )
+                for gp in (self.ctx.get("gap_pairs") or [])[:3]
+            ]
+        elif self.rt == "tiktok_midnight_cliff":
+            t1 = "終電後も強い！深夜推奨ピックアップ"
+            sub = "23時20分の終電崖を越えても盛り上がる上位ラウンジ"
+            pick_rows = [
+                (
+                    f"維持率 {s['midnight_retention_pct']}%",
+                    s["ja_name"],
+                    f"現在 女性 {s['women']}名 / 男性 {s['men']}名（{s['area_label']}）",
+                )
+                for s in (self.ctx.get("midnight_top4") or self.ctx["top5_volume"])[:3]
+            ]
+        elif self.rt == "area_battle":
             t1 = "今夜の3大都市ジャッジ＆攻略メモ"
             sub = "1店舗の行列に並ばず、徒歩4分の別ブランド比較で即相席！"
             zones = self.ctx["area_battles"]
@@ -1245,7 +1621,7 @@ class _ReelSceneRenderer:
                 )
                 for z in zones[:3]
             ]
-        elif self.rt == "ladies_zero_wait":
+        elif self.rt in ("ladies_zero_wait", "tiktok_ladies_real"):
             t1 = "女子ペア向け！今すぐ狙い目ピックアップ"
             sub = "女性過多の店舗を避け、男性先行店を選ぶと入店直後から快適！"
             pick_rows = [
@@ -1268,75 +1644,88 @@ class _ReelSceneRenderer:
                 for s in self.ctx["anaba_pickups"][:3]
             ]
 
-        t_fit, f_t, _ = ogp_generator.fit_text_and_font(draw, t1, W - 72, 31, 22)
-        s_fit, f_s, _ = ogp_generator.fit_text_and_font(draw, sub, W - 72, 18, 14)
-        draw.text((36, 104), t_fit, font=f_t, fill=(255, 255, 255, 255))
-        draw.text((36, 148), s_fit, font=f_s, fill=(203, 213, 225, 238))
+        hdr_y = 148 if self.is_tiktok else 104
+        t_fit, f_t, _ = ogp_generator.fit_text_and_font(draw, t1, sw, 29 if self.is_tiktok else 31, 20)
+        s_fit, f_s, _ = ogp_generator.fit_text_and_font(draw, sub, sw, 17 if self.is_tiktok else 18, 13)
+        draw.text((lx, hdr_y), t_fit, font=f_t, fill=(255, 255, 255, 255))
+        draw.text((lx, hdr_y + 42), s_fit, font=f_s, fill=(203, 213, 225, 238))
 
-        f_tag = _get_reel_font(17)
-        py = 192
+        f_tag = _get_reel_font(15 if self.is_tiktok else 17)
+        py = 228 if self.is_tiktok else 192
+        row_h = 108 if self.is_tiktok else 142
+        row_step = 118 if self.is_tiktok else 156
         for badge_s, name_s, detail_s in pick_rows:
             draw.rounded_rectangle(
-                (36, py, W - 36, py + 142),
-                radius=20,
-                fill=(18, 22, 38, 238),
+                (lx, py, rx_end, py + row_h),
+                radius=18 if self.is_tiktok else 20,
+                fill=(18, 22, 38, 240),
                 outline=(acc[0], acc[1], acc[2], 165),
                 width=2,
             )
-            bw = int(draw.textlength(badge_s, font=f_tag)) + 28
-            draw.rounded_rectangle((56, py + 18, 56 + bw, py + 52), radius=10, fill=self.theme["badge_bg"], outline=acc, width=1)
-            draw.text((70, py + 24), badge_s, font=f_tag, fill=acc)
+            bw = int(draw.textlength(badge_s, font=f_tag)) + 24
+            draw.rounded_rectangle((lx + 18, py + 14, lx + 18 + bw, py + 46), radius=10, fill=self.theme["badge_bg"], outline=acc, width=1)
+            draw.text((lx + 30, py + 20), badge_s, font=f_tag, fill=acc)
 
-            nm_fit, f_nm, _ = ogp_generator.fit_text_and_font(draw, name_s, W - 92 - bw - 28, 25, 18)
-            draw.text((70 + bw, py + 20), nm_fit, font=f_nm, fill=(255, 255, 255, 255))
+            nm_fit, f_nm, _ = ogp_generator.fit_text_and_font(draw, name_s, sw - 52 - bw, 22 if self.is_tiktok else 25, 16)
+            draw.text((lx + 30 + bw, py + 17), nm_fit, font=f_nm, fill=(255, 255, 255, 255))
 
-            dt_fit, f_dt, _ = ogp_generator.fit_text_and_font(draw, detail_s, W - 112, 20, 15)
-            draw.text((56, py + 82), dt_fit, font=f_dt, fill=acc2)
-            py += 156
+            dt_y = py + (64 if self.is_tiktok else 82)
+            dt_fit, f_dt, _ = ogp_generator.fit_text_and_font(draw, detail_s, sw - 36, 18 if self.is_tiktok else 20, 14)
+            draw.text((lx + 18, dt_y), dt_fit, font=f_dt, fill=acc2)
+            py += row_step
 
-        # Prominent CTA box (y = 684 .. 1144)
+        # Prominent CTA box (TikTok safe-zone: y = 590 .. 984 / Standard: y = 684 .. 1144)
+        cta_y1 = 590 if self.is_tiktok else 684
+        cta_y2 = 984 if self.is_tiktok else 1144
         draw.rounded_rectangle(
-            (36, 684, W - 36, 1144),
-            radius=28,
+            (lx, cta_y1, rx_end, cta_y2),
+            radius=26,
             fill=(28, 14, 34, 244),
             outline=(acc2[0], acc2[1], acc2[2], 235),
             width=3,
         )
-        f_kicker = _get_reel_font(22)
-        f_url = _get_reel_font(28)
-        f_note = _get_reel_font(18)
+        f_kicker = _get_reel_font(20 if self.is_tiktok else 22)
+        f_url = _get_reel_font(25 if self.is_tiktok else 28)
+        f_note = _get_reel_font(16 if self.is_tiktok else 18)
 
-        k_txt = "お店に向かう3分前にスマホでチェック！"
-        kw = int(draw.textlength(k_txt, font=f_kicker))
-        draw.text(((W - kw) // 2, 724), k_txt, font=f_kicker, fill=acc)
+        k_txt = "「保存」して入店3分前に見返すのが鉄則！" if self.is_tiktok else "お店に向かう3分前にスマホでチェック！"
+        k_fit, f_k_fit, _ = ogp_generator.fit_text_and_font(draw, k_txt, sw - 40, 21, 15)
+        kw = int(draw.textlength(k_fit, font=f_k_fit))
+        draw.text((lx + max(0, (sw - kw) // 2), cta_y1 + (28 if self.is_tiktok else 40)), k_fit, font=f_k_fit, fill=acc)
 
-        cta_l1 = "プロフのリンク『相席ナビ』で"
-        cta_l2 = "全53店舗の現在人数を3秒検索"
-        c1_fit, f_c1, _ = ogp_generator.fit_text_and_font(draw, cta_l1, W - 120, 34, 24)
-        c2_fit, f_c2, _ = ogp_generator.fit_text_and_font(draw, cta_l2, W - 120, 34, 24)
+        cta_l1 = "『相席ナビ』で検索 or プロフから" if self.is_tiktok else "プロフのリンク『相席ナビ』で"
+        cta_l2 = "全53店舗の現在人数を3秒チェック" if self.is_tiktok else "全53店舗の現在人数を3秒検索"
+        c1_fit, f_c1, _ = ogp_generator.fit_text_and_font(draw, cta_l1, sw - 48, 30 if self.is_tiktok else 34, 20)
+        c2_fit, f_c2, _ = ogp_generator.fit_text_and_font(draw, cta_l2, sw - 48, 30 if self.is_tiktok else 34, 20)
         c1w = int(draw.textlength(c1_fit, font=f_c1))
         c2w = int(draw.textlength(c2_fit, font=f_c2))
-        draw.text(((W - c1w) // 2, 778), c1_fit, font=f_c1, fill=(255, 255, 255, 255))
-        draw.text(((W - c2w) // 2, 832), c2_fit, font=f_c2, fill=acc2)
+        draw.text((lx + max(0, (sw - c1w) // 2), cta_y1 + (74 if self.is_tiktok else 94)), c1_fit, font=f_c1, fill=(255, 255, 255, 255))
+        draw.text((lx + max(0, (sw - c2w) // 2), cta_y1 + (120 if self.is_tiktok else 148)), c2_fit, font=f_c2, fill=acc2)
 
         url_txt = "相席ナビ  /  aiseki-navi.com"
-        uw = int(draw.textlength(url_txt, font=f_url)) + 56
-        ux = (W - uw) // 2
-        draw.rounded_rectangle((ux, 914, ux + uw, 990), radius=18, fill=(12, 18, 34, 248), outline=acc2, width=2)
-        draw.text((ux + 28, 934), url_txt, font=f_url, fill=acc2)
+        u_fit, f_u_fit, _ = ogp_generator.fit_text_and_font(draw, url_txt, sw - 80, 26 if self.is_tiktok else 28, 18)
+        uw = int(draw.textlength(u_fit, font=f_u_fit)) + 48
+        ux = lx + max(0, (sw - uw) // 2)
+        uy = cta_y1 + (186 if self.is_tiktok else 230)
+        uh = 66 if self.is_tiktok else 76
+        draw.rounded_rectangle((ux, uy, ux + uw, uy + uh), radius=16, fill=(12, 18, 34, 248), outline=acc2, width=2)
+        draw.text((ux + 24, uy + (17 if self.is_tiktok else 20)), u_fit, font=f_u_fit, fill=acc2)
 
         n1 = "オリエンタルラウンジ・ag・JIS ほか全国対応"
         n2 = "会員登録・アプリDL不要 / 24時間リアルタイム無料"
-        n1w = int(draw.textlength(n1, font=f_note))
-        n2w = int(draw.textlength(n2, font=f_note))
-        draw.text(((W - n1w) // 2, 1028), n1, font=f_note, fill=(226, 232, 240, 240))
-        draw.text(((W - n2w) // 2, 1064), n2, font=f_note, fill=(165, 178, 198, 235))
+        n1_fit, f_n1, _ = ogp_generator.fit_text_and_font(draw, n1, sw - 36, 16 if self.is_tiktok else 18, 13)
+        n2_fit, f_n2, _ = ogp_generator.fit_text_and_font(draw, n2, sw - 36, 16 if self.is_tiktok else 18, 13)
+        n1w = int(draw.textlength(n1_fit, font=f_n1))
+        n2w = int(draw.textlength(n2_fit, font=f_n2))
+        ny1 = cta_y1 + (280 if self.is_tiktok else 344)
+        draw.text((lx + max(0, (sw - n1w) // 2), ny1), n1_fit, font=f_n1, fill=(226, 232, 240, 240))
+        draw.text((lx + max(0, (sw - n2w) // 2), ny1 + 32), n2_fit, font=f_n2, fill=(165, 178, 198, 235))
         return sp
 
     def _composite_ui_layers_onto(self, canvas: Image.Image, t_sec: float) -> None:
         """Composite animated chrome and scene sprites directly onto `canvas` (in-place RGBA)."""
         t = max(0.0, min(REEL_DURATION_SEC, float(t_sec)))
-        W = self.W
+        lx = self.safe_left
 
         canvas.alpha_composite(self.chrome_base)
         draw = ImageDraw.Draw(canvas, "RGBA")
@@ -1344,29 +1733,34 @@ class _ReelSceneRenderer:
         pulse = 0.55 + 0.45 * math.sin(t * 6.0)
         dot_a = int(155 + 100 * pulse)
         dot_cx = self.live_dot_cx
-        draw.ellipse((dot_cx - 5, 51, dot_cx + 5, 61), fill=(248, 113, 113, dot_a))
+        dot_cy = getattr(self, "live_dot_cy", 56)
+        draw.ellipse((dot_cx - 5, dot_cy - 5, dot_cx + 5, dot_cy + 5), fill=(248, 113, 113, dot_a))
 
-        prog_w = max(6, int((W - 72) * (t / REEL_DURATION_SEC)))
+        prog_w = max(6, int(self.safe_w * (t / REEL_DURATION_SEC)))
         acc = self.theme["accent"]
-        draw.rounded_rectangle((36, 1208, 36 + prog_w, 1214), radius=3, fill=(*acc, 245))
+        py = self.prog_y
+        draw.rounded_rectangle((lx, py, lx + prog_w, py + 6), radius=3, fill=(*acc, 245))
 
-        # Scene 1: 0.0 .. 2.22s
-        s1_alpha = _fade_window(t, 0.0, 2.22, fade_in=0.38, fade_out=0.22)
+        s1_end = 2.04 if self.is_tiktok else 2.22
+        s2_start = 1.98 if self.is_tiktok else 2.18
+
+        # Scene 1: Hook
+        s1_alpha = _fade_window(t, 0.0, s1_end, fade_in=0.32 if self.is_tiktok else 0.38, fade_out=0.20)
         if s1_alpha > 0.01:
-            dy = int(24 * (1.0 - _ease_out_cubic(min(1.0, t / 0.42))))
+            dy = int(24 * (1.0 - _ease_out_cubic(min(1.0, t / 0.38))))
             sp1 = _apply_opacity(self.scene1_sprite, s1_alpha)
             canvas.alpha_composite(sp1, dest=(0, dy))
             if sp1 is not self.scene1_sprite:
                 sp1.close()
 
-        # Scene 2: 2.18 .. 8.52s
+        # Scene 2: Cards + Animated Gender Bars
         s2_out = 1.0 if t < 8.26 else max(0.0, (8.52 - t) / 0.26)
-        if 2.18 <= t <= 8.52 and s2_out > 0.01:
-            hdr_in = _ease_out_cubic((t - 2.18) / 0.30)
+        if s2_start <= t <= 8.52 and s2_out > 0.01:
+            hdr_in = _ease_out_cubic((t - s2_start) / 0.30)
             hdr_alpha = min(hdr_in, s2_out)
             if hdr_alpha > 0.01:
                 h_sp = _apply_opacity(self.scene2_header, hdr_alpha)
-                canvas.alpha_composite(h_sp, dest=(0, 96))
+                canvas.alpha_composite(h_sp, dest=(0, 144 if self.is_tiktok else 96))
                 if h_sp is not self.scene2_header:
                     h_sp.close()
 

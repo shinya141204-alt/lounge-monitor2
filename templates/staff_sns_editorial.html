@@ -787,6 +787,7 @@
                 <a href="/staff/sns-editorial?channel=x&slot={{ slot_label }}&tone={{ editorial.tone_mode }}" class="{{ 'active' if channel == 'x' else '' }}">𝕏 X（旧Twitter）編集部</a>
                 <a href="/staff/sns-editorial?channel=threads&slot={{ slot_label }}&tone={{ editorial.tone_mode }}" class="{{ 'active' if channel == 'threads' else '' }}">🧵 Threads（スレッズ）編集部</a>
                 <a href="/staff/sns-editorial?channel=instagram&tone={{ editorial.tone_mode }}" class="{{ 'active' if channel == 'instagram' else '' }}">📸 Instagram（インスタ）編集部</a>
+                <a href="/staff/sns-editorial?channel=tiktok&slot={{ slot_label }}&tone={{ editorial.tone_mode }}" class="{{ 'active' if channel == 'tiktok' else '' }}">🎵 TikTok（縦型ショート）編集部</a>
                 <a href="/staff/column-editorial?tone={{ editorial.tone_mode }}">📖 コラム・note編集部</a>
                 <a href="/staff/pdca">🧭 PDCA参謀本部</a>
             </div>
@@ -801,7 +802,7 @@
 
         <div class="header-card">
             <h1>👑 相席ナビ「SNS編集部」{{ editorial.channel_label }} 4役合議・採点ボード（マスター専用）</h1>
-            <p>X・Threads・Instagramの全3媒体で、毎回同じ『🥇🥈🥉 TOP3』や定型見出しになるボット感を排除。①現場データ発掘（天気・曜日連動） → ②編成係 → ③執筆係（Gemini AIアドリブ＋検証済み候補） → ④鬼デスク（数値改ざん検閲＆100点採点）が合議して最良の1案を自動採用します。</p>
+            <p>X・Threads・Instagram・TikTokの全4媒体で、毎回同じ『🥇🥈🥉 TOP3』や定型見出しになるボット感を排除。①現場データ発掘（天気・曜日連動） → ②編成係 → ③執筆係（Gemini / Claudeアドリブ＋検証済み候補） → ④鬼デスク（数値改ざん検閲＆100点採点）が合議して最良の1案を自動採用します。</p>
         </div>
 
         <!-- Writing Tone & Perspective Selector (Spicy / Female Real / Mix / Standard) -->
@@ -841,21 +842,28 @@
                     📡 自動投稿ステータス＆トークン疎通モニター（人間ゆらぎ 4〜8分・X最低48分クールダウン稼働中）
                 </div>
                 <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    {% if channel == 'tiktok' %}
+                    <button type="button" id="async-dispatch-btn" class="ai-btn" style="font-size:0.76rem; padding:5px 11px; border-color:var(--gold); background:var(--gold-soft); color:var(--gold-ink);" onclick="enqueueAsyncChannelPost()">🎵 TikTokアプリInboxへ下書き送信（動画スタジオ連動）</button>
+                    {% else %}
                     <button type="button" id="async-dispatch-btn" class="ai-btn" style="font-size:0.76rem; padding:5px 11px; border-color:var(--green); background:var(--green-soft); color:var(--green-ink);" onclick="enqueueAsyncChannelPost()">⚡ {{ editorial.channel_label }}を裏方ワーカーで今すぐ配信（待ち0秒）</button>
+                    {% endif %}
                     <button type="button" id="async-prewarm-btn" class="back-btn" style="cursor:pointer; font-size:0.76rem; padding:5px 11px;" onclick="enqueueAsyncPrewarm()">🔥 AI原稿＆IG5枚を裏で事前生成</button>
                     <button type="button" class="back-btn" style="cursor:pointer; font-size:0.76rem; padding:5px 11px;" onclick="verifyPlatformToken('threads')">🔍 Threads疎通テスト</button>
                     <button type="button" class="back-btn" style="cursor:pointer; font-size:0.76rem; padding:5px 11px;" onclick="verifyPlatformToken('instagram')">🔍 IG疎通テスト</button>
-                    <button type="button" class="copy-btn" style="font-size:0.76rem; padding:5px 11px;" onclick="togglePlatformTokenDrawer()">🔑 Threads / IG トークン更新</button>
+                    <button type="button" class="back-btn" style="cursor:pointer; font-size:0.76rem; padding:5px 11px;" onclick="verifyPlatformToken('tiktok')">🔍 TikTok疎通確認</button>
+                    <button type="button" class="copy-btn" style="font-size:0.76rem; padding:5px 11px;" onclick="togglePlatformTokenDrawer()">🔑 Threads / IG / TikTok トークン設定</button>
                 </div>
             </div>
-            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap:10px; margin-top:12px;">
-                {% for ch_key in ['x', 'threads', 'instagram'] %}
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap:10px; margin-top:12px;">
+                {% for ch_key in ['x', 'threads', 'instagram', 'tiktok'] %}
                 {% set info = dh.get(ch_key, {}) %}
-                <div style="background:var(--surface-2); border:1px solid {{ 'var(--rose)' if info.state == 'error' else ('var(--green)' if info.state == 'active' else 'var(--border-strong)') }}; border-radius:10px; padding:10px 12px; font-size:0.77rem;">
+                <div style="background:var(--surface-2); border:1px solid {{ 'var(--rose)' if info.state == 'error' else ('var(--green)' if info.state == 'active' else ('var(--gold)' if info.state == 'phase1_ready' else 'var(--border-strong)')) }}; border-radius:10px; padding:10px 12px; font-size:0.77rem;">
                     <div style="display:flex; align-items:center; justify-content:space-between; gap:6px; font-weight:800;">
                         <span>{{ info.label or ch_key }}</span>
                         {% if info.state == 'active' %}
                         <span style="color:var(--green);">🟢 正常稼働</span>
+                        {% elif info.state == 'phase1_ready' %}
+                        <span style="color:var(--gold-ink);">🔵 Phase 1 稼働中（MP4＋台本即利用可）</span>
                         {% elif info.state == 'error' %}
                         <span style="color:var(--err-ink);">🔴 要確認（API/トークン）</span>
                         {% else %}
@@ -866,7 +874,7 @@
                         直近完了枠：<code style="color:var(--text);">{{ info.latest_slot_key or '記録なし' }}</code>
                     </div>
                     {% if info.refresh_key %}
-                    <div style="color:var(--sub); margin-top:2px;">週次自動更新：<code>{{ info.refresh_key }}</code></div>
+                    <div style="color:var(--sub); margin-top:2px;">自動更新・運用メモ：<code>{{ info.refresh_key }}</code></div>
                     {% endif %}
                     {% if info.last_error %}
                     <div style="color:var(--err-ink); margin-top:5px; line-height:1.45; overflow-wrap:anywhere;">
@@ -878,18 +886,19 @@
             </div>
             <div id="platform-token-msg" style="font-size:0.78rem; margin-top:8px; color:var(--green-ink);"></div>
 
-            <div id="platform-token-drawer" class="key-drawer" style="display: {{ 'block' if (dh.get('threads', {}).get('state') == 'error' or dh.get('instagram', {}).get('state') == 'error') else 'none' }};">
+            <div id="platform-token-drawer" class="key-drawer" style="display: {{ 'block' if (dh.get('threads', {}).get('state') == 'error' or dh.get('instagram', {}).get('state') == 'error' or dh.get('tiktok', {}).get('state') == 'error') else 'none' }};">
                 <div style="font-size:0.78rem; color:var(--sub); line-height:1.55;">
-                    💡 Meta Developers で発行したアクセストークンを貼り付けて保存すると、Render再デプロイ不要で即座に暗号化保存＆週次60日自動延長の対象になります（短期トークンの場合はアプリの <code>App Secret</code> も一緒に入力すると自動で60日長期トークンへ変換します）。
+                    💡 Meta Developers（Threads / IG）または TikTok for Developers（Content Posting API v2 <code>video.upload</code>）で発行したアクセストークンを貼り付けて保存すると、再デプロイ不要で即座に暗号化保存されます（TikTokはトークン未設定のままでも <strong>Phase 1：MP4 1タップ保存＋台本コピー＋アプリ内トレンド音源</strong> で今日からすぐ運用可能です）。
                 </div>
                 <div class="key-form-row" style="margin-top:8px;">
-                    <select id="platform-token-channel" class="key-input" style="flex:0 0 180px; min-width:160px;">
+                    <select id="platform-token-channel" class="key-input" style="flex:0 0 210px; min-width:170px;">
                         <option value="threads" {{ 'selected' if channel == 'threads' or dh.get('threads', {}).get('state') == 'error' else '' }}>🧵 Threads トークン</option>
                         <option value="instagram" {{ 'selected' if channel == 'instagram' and dh.get('threads', {}).get('state') != 'error' else '' }}>📸 Instagram トークン</option>
+                        <option value="tiktok" {{ 'selected' if channel == 'tiktok' and dh.get('threads', {}).get('state') != 'error' else '' }}>🎵 TikTok API v2 トークン（任意・Inbox用）</option>
                     </select>
-                    <input type="password" id="platform-access-token-input" class="key-input" placeholder="THAA... / IGAA...（アクセストークンを貼り付け）" autocomplete="off">
-                    <input type="password" id="platform-app-secret-input" class="key-input" style="flex:0 1 220px; min-width:180px;" placeholder="任意：App Secret（短期→60日変換用）" autocomplete="off">
-                    <button type="button" class="copy-btn" onclick="savePlatformToken()">💾 疎通確認＆60日化して保存</button>
+                    <input type="password" id="platform-access-token-input" class="key-input" placeholder="THAA... / IGAA... / act....（アクセストークンを貼り付け）" autocomplete="off">
+                    <input type="password" id="platform-app-secret-input" class="key-input" style="flex:0 1 220px; min-width:180px;" placeholder="任意：App Secret / Refresh Token" autocomplete="off">
+                    <button type="button" class="copy-btn" onclick="savePlatformToken()">💾 疎通確認＆暗号化保存</button>
                 </div>
             </div>
         </div>
@@ -1046,11 +1055,29 @@
                     </div>
                 </div>
 
-                <!-- Right: Template Tabs, Generate Button, Editable Caption & 1-Click IG Publish -->
+                <!-- Right: Template Tabs, Generate Button, Editable Caption & 1-Click IG / TikTok Publish -->
                 <div style="display:flex; flex-direction:column; gap:10px; min-width:0;">
                     <div>
-                        <div style="font-size:0.78rem; font-weight:700; color:var(--gold-ink); margin-bottom:6px;">① ショート動画テンプレートを選択：</div>
+                        <div style="font-size:0.78rem; font-weight:700; color:var(--gold-ink); margin-bottom:6px;">① ショート動画テンプレートを選択（🎵マークはTikTok右端アイコン・下部キャプション回避のセーフゾーン＆冒頭結論フック特化）：</div>
                         <div class="reel-tab-row" role="tablist" aria-label="リール動画タイプ切替">
+                            <button type="button"
+                                    class="reel-tab-btn {{ 'active' if _reel_init_type == 'tiktok_gap_shock' else '' }}"
+                                    data-reel-type="tiktok_gap_shock"
+                                    onclick="selectReelType('tiktok_gap_shock')">
+                                🎵 同駅ギャップ比較
+                            </button>
+                            <button type="button"
+                                    class="reel-tab-btn {{ 'active' if _reel_init_type == 'tiktok_ladies_real' else '' }}"
+                                    data-reel-type="tiktok_ladies_real"
+                                    onclick="selectReelType('tiktok_ladies_real')">
+                                🎵 女子本音×待ち0
+                            </button>
+                            <button type="button"
+                                    class="reel-tab-btn {{ 'active' if _reel_init_type == 'tiktok_midnight_cliff' else '' }}"
+                                    data-reel-type="tiktok_midnight_cliff"
+                                    onclick="selectReelType('tiktok_midnight_cliff')">
+                                🎵 終電崖×深夜穴場
+                            </button>
                             <button type="button"
                                     class="reel-tab-btn {{ 'active' if _reel_init_type == 'live_top5' else '' }}"
                                     data-reel-type="live_top5"
@@ -1075,7 +1102,7 @@
                                 🎬 最新データでリール動画を生成・プレビュー
                             </button>
                             <span id="reel-template-desc" style="font-size:0.76rem; color:var(--sub);">
-                                1位〜5位の男女比バーが滑らかに伸びるアニメーション＋高女性比率穴場＆プロフ誘導CTA
+                                冒頭2秒結論フック＆TikTokセーフゾーン設計の縦型ショート動画を自動合成
                             </span>
                         </div>
                     </div>
@@ -1096,7 +1123,7 @@
                         </div>
                         <textarea id="reel-caption-input"
                                   class="reel-caption-area"
-                                  placeholder="最新データからリール用キャプションを自動生成します...">{{ _reel_init_caption }}</textarea>
+                                  placeholder="最新データからリール・TikTok用キャプションを自動生成します...">{{ _reel_init_caption }}</textarea>
                     </div>
 
                     <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; padding-top:2px;">
@@ -1104,9 +1131,14 @@
                             <input type="checkbox" id="reel-share-feed-chk" checked>
                             <span>Instagramフィード（プロフィールグリッド）にも同時表示する</span>
                         </label>
-                        <button type="button" id="reel-publish-ig-btn" class="reel-publish-btn" onclick="publishInstagramReelNow()">
-                            📸 Instagramリールへ今すぐ投稿
-                        </button>
+                        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                            <button type="button" id="reel-publish-tiktok-btn" class="copy-btn" style="padding:9px 14px; font-size:0.8rem;" onclick="publishTikTokInboxNow()">
+                                🎵 TikTokアプリInboxへ下書き送信
+                            </button>
+                            <button type="button" id="reel-publish-ig-btn" class="reel-publish-btn" onclick="publishInstagramReelNow()">
+                                📸 Instagramリールへ今すぐ投稿
+                            </button>
+                        </div>
                     </div>
 
                     <div id="reel-action-msg" style="font-size:0.78rem; min-height:1.2em; color:var(--green-ink); overflow-wrap:anywhere;"></div>
@@ -1196,6 +1228,14 @@
                 <div class="writer-memo">
                     <strong>✍️ 執筆係の狙い：</strong>{{ c.writer_note }}
                 </div>
+                {% if c.tiktok_hook_text %}
+                <div class="thinking-memo" style="border-color:var(--gold); background:var(--gold-soft);">
+                    <div><strong>🎯 冒頭1.8秒スクロール停止フック：</strong><span style="font-weight:800; color:var(--gold-ink);">{{ c.tiktok_hook_text }}</span></div>
+                    {% if c.tiktok_bgm_mood %}
+                    <div style="margin-top:4px; font-size:0.78rem; color:var(--sub);"><strong>🎵 推奨トレンドBGMムード：</strong>{{ c.tiktok_bgm_mood }}</div>
+                    {% endif %}
+                </div>
+                {% endif %}
                 {% if c.thinking_memo %}
                 <div class="thinking-memo">
                     <strong>🧠 AI編集長の脳内メモ（3案コンペ・推敲プロセス）：</strong>{{ c.thinking_memo }}
@@ -1210,9 +1250,17 @@
                 </div>
 
                 <div class="tweet-preview" id="cand-main-{{ loop.index }}">{{ c.main_text }}</div>
-                <div class="reply-preview"><strong>💬 補足・連結仕様：</strong><br>{{ c.reply_text }}</div>
+                <div class="reply-preview" id="cand-reply-{{ loop.index }}"><strong>💬 {% if channel == 'tiktok' %}秒数別カット割り台本＆動画テンプレ連動{% else %}補足・連結仕様{% endif %}：</strong><br>{{ c.reply_text }}</div>
 
-                <button type="button" class="copy-btn" onclick="copyText('cand-main-{{ loop.index }}', this)">この本文をコピーする</button>
+                <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:4px;">
+                    <button type="button" class="copy-btn" onclick="copyText('cand-main-{{ loop.index }}', this)">📋 本文キャプションをコピー</button>
+                    {% if channel == 'tiktok' %}
+                    <button type="button" class="back-btn" style="cursor:pointer; font-size:0.76rem; padding:6px 11px;" onclick="copyText('cand-reply-{{ loop.index }}', this)">🎬 秒数別台本をコピー</button>
+                    {% if c.tiktok_reel_type %}
+                    <button type="button" class="ai-btn" style="font-size:0.76rem; padding:6px 12px;" onclick="applyCandidateToReelStudio('{{ c.tiktok_reel_type }}', {{ loop.index }})">🎵 この企画でTikTok動画をプレビュー＆文面反映</button>
+                    {% endif %}
+                    {% endif %}
+                </div>
             </div>
             {% endfor %}
         </div>
@@ -1525,9 +1573,24 @@
                     var commentsHtml = (c.desk_comments || []).map(function(cm) {
                         return "<div>" + escHtml(cm) + "</div>";
                     }).join("");
+                    var hookHtml = "";
+                    if (c.tiktok_hook_text) {
+                        hookHtml = '<div class="thinking-memo" style="border-color:var(--gold); background:var(--gold-soft);">' +
+                            '<div><strong>🎯 冒頭1.8秒スクロール停止フック：</strong><span style="font-weight:800; color:var(--gold-ink);">' + escHtml(c.tiktok_hook_text) + '</span></div>' +
+                            (c.tiktok_bgm_mood ? ('<div style="margin-top:4px; font-size:0.78rem; color:var(--sub);"><strong>🎵 推奨トレンドBGMムード：</strong>' + escHtml(c.tiktok_bgm_mood) + '</div>') : '') +
+                        '</div>';
+                    }
                     var thinkingHtml = c.thinking_memo
                         ? ('<div class="thinking-memo"><strong>🧠 AI編集長の脳内メモ（3案コンペ・推敲プロセス）：</strong>' + escHtml(c.thinking_memo) + '</div>')
                         : "";
+                    var replyTitle = CURRENT_CHANNEL === "tiktok" ? "秒数別カット割り台本＆動画テンプレ連動" : "補足・連結仕様";
+                    var extraBtns = "";
+                    if (CURRENT_CHANNEL === "tiktok") {
+                        extraBtns += '<button type="button" class="back-btn" style="cursor:pointer; font-size:0.76rem; padding:6px 11px;" onclick="copyText(\'cand-reply-' + n + '\', this)">🎬 秒数別台本をコピー</button>';
+                        if (c.tiktok_reel_type) {
+                            extraBtns += '<button type="button" class="ai-btn" style="font-size:0.76rem; padding:6px 12px;" onclick="applyCandidateToReelStudio(\'' + escHtml(c.tiktok_reel_type) + '\', ' + n + ')">🎵 この企画でTikTok動画をプレビュー＆文面反映</button>';
+                        }
+                    }
                     return (
                         '<div class="cand-card ' + (c.is_selected ? 'winner' : '') + '">' +
                             '<div class="cand-top">' +
@@ -1541,11 +1604,15 @@
                                 '<span>📏 媒体ルール適合: <strong>' + escHtml(sc.weight_fit) + '/10</strong> (' + escHtml(c.metric_unit || "") + ')</span>' +
                             '</div>' +
                             '<div class="writer-memo"><strong>✍️ 執筆係の狙い：</strong>' + escHtml(c.writer_note || "") + '</div>' +
+                            hookHtml +
                             thinkingHtml +
                             '<div class="desk-box"><strong>🧐 評価係（デスク）の講評：</strong>' + commentsHtml + '</div>' +
                             '<div class="tweet-preview" id="cand-main-' + n + '">' + escHtml(c.main_text || "") + '</div>' +
-                            '<div class="reply-preview"><strong>💬 補足・連結仕様：</strong><br>' + escHtml(c.reply_text || "") + '</div>' +
-                            '<button type="button" class="copy-btn" onclick="copyText(\'cand-main-' + n + '\', this)">この本文をコピーする</button>' +
+                            '<div class="reply-preview" id="cand-reply-' + n + '"><strong>💬 ' + replyTitle + '：</strong><br>' + escHtml(c.reply_text || "") + '</div>' +
+                            '<div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:4px;">' +
+                                '<button type="button" class="copy-btn" onclick="copyText(\'cand-main-' + n + '\', this)">📋 本文キャプションをコピー</button>' +
+                                extraBtns +
+                            '</div>' +
                         '</div>'
                     );
                 }).join("");
@@ -1742,6 +1809,14 @@
         }
 
         async function enqueueAsyncChannelPost() {
+            if (CURRENT_CHANNEL === "tiktok") {
+                var sec = document.getElementById("reel-studio-section");
+                if (sec && typeof sec.scrollIntoView === "function") {
+                    sec.scrollIntoView({behavior: "smooth", block: "center"});
+                }
+                publishTikTokInboxNow();
+                return;
+            }
             var mapType = CURRENT_CHANNEL === "instagram" ? "ig_post" : (CURRENT_CHANNEL === "threads" ? "threads_post" : "x_post");
             var slotVal = CURRENT_CHANNEL === "instagram" ? "21:45" : CURRENT_SLOT;
             if (!confirm(CHANNEL_LABEL + "（" + slotVal + "枠）の本番投稿ジョブを裏方ワーカーへ即時投入しますか？（画面は待ち時間0秒で操作を続けられます）")) return;
@@ -1808,6 +1883,18 @@
         var _reelPublishInFlight = false;
         var _reelSettingInFlight = false;
         var _reelTemplatesMeta = {
+            "tiktok_gap_shock": {
+                "label": "🎵 同駅ギャップ比較",
+                "desc": "【TikTokセーフゾーン＆冒頭結論フック】同じ駅の徒歩4分圏で男女比が大きく割れている2店舗を対比"
+            },
+            "tiktok_ladies_real": {
+                "label": "🎵 女子本音×待ち0",
+                "desc": "【TikTokセーフゾーン＆女性保存特化】女子組が本当に待ちゼロで乾杯できる男性先行店をローズゴールド調で表示"
+            },
+            "tiktok_midnight_cliff": {
+                "label": "🎵 終電崖×深夜穴場",
+                "desc": "【TikTokセーフゾーン＆深夜2軒目特化】23時20分の終電崖を越えて深夜も盛り上がる上位店舗を比較"
+            },
             "live_top5": {
                 "label": "🔥 全国TOP5速報",
                 "desc": "全国のリアルタイム女性人数TOP5店舗の男女比バーアニメーション＋高女性比率穴場ピックアップ"
@@ -2105,6 +2192,81 @@
                 if (pubBtn) {
                     pubBtn.disabled = false;
                     pubBtn.textContent = "📸 Instagramリールへ今すぐ投稿";
+                }
+            }
+        }
+
+        function applyCandidateToReelStudio(reelType, candIdx) {
+            var rt = reelType || "tiktok_gap_shock";
+            _currentReelType = rt;
+            selectReelTextTab(rt);
+            var mainEl = document.getElementById("cand-main-" + candIdx);
+            var capEl = document.getElementById("reel-caption-input");
+            if (mainEl && capEl) {
+                capEl.value = mainEl.innerText.trim();
+            }
+            var sec = document.getElementById("reel-studio-section");
+            if (sec && typeof sec.scrollIntoView === "function") {
+                sec.scrollIntoView({behavior: "smooth", block: "center"});
+            }
+            previewReelVideoNow();
+        }
+
+        async function publishTikTokInboxNow() {
+            if (_reelPublishInFlight) return;
+            var pubBtn = document.getElementById("reel-publish-tiktok-btn");
+            var msgEl = document.getElementById("reel-action-msg");
+            var capEl = document.getElementById("reel-caption-input");
+            var meta = _reelTemplatesMeta[_currentReelType] || {};
+            var typeLabel = meta.label || _currentReelType;
+
+            _reelPublishInFlight = true;
+            if (pubBtn) {
+                pubBtn.disabled = true;
+                pubBtn.textContent = "⏳ TikTok Inboxへ送信確認中...";
+            }
+            if (msgEl) {
+                msgEl.style.color = "var(--green-ink)";
+                msgEl.textContent = "⏳ TikTok Content Posting API v2（Inbox下書き送信）を確認中...";
+            }
+
+            try {
+                var res = await fetchJsonSafe("/api/staff/tiktok/publish-inbox", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json", "Accept": "application/json"},
+                    body: JSON.stringify({
+                        reel_type: _currentReelType,
+                        caption: capEl ? capEl.value.trim() : ""
+                    })
+                }, 75000);
+
+                if (res && (res.ok || res.status === "success")) {
+                    if (msgEl) {
+                        msgEl.style.color = "var(--green-ink)";
+                        msgEl.textContent = "✅ " + (res.message || "TikTokアプリのInbox（通知→下書き）へ9:16動画を送信しました！スマホのTikTokアプリでトレンド音源を選んで公開してください。") + (res.publish_id ? ("（Publish ID: " + res.publish_id + "）") : "");
+                    }
+                } else if (res && res.status === "phase1_manual") {
+                    if (msgEl) {
+                        msgEl.style.color = "var(--gold-ink)";
+                        msgEl.textContent = "💡 Phase 1 即時運用ガイド（" + typeLabel + "）：左の『⬇️ MP4を保存』＋上の『📋 キャプションをコピー』でスマホのTikTokアプリからトレンドBGMを乗せてそのまま投稿できます！（TikTok APIトークンを登録すると1タップInbox下書き送信も有効になります）";
+                    }
+                } else {
+                    var detail = (res && (res.detail || res.error || res.message)) || "TikTok送信処理を確認してください";
+                    if (msgEl) {
+                        msgEl.style.color = "var(--err-ink)";
+                        msgEl.textContent = "⚠️ TikTok Inbox結果: " + detail;
+                    }
+                }
+            } catch (err) {
+                if (msgEl) {
+                    msgEl.style.color = "var(--err-ink)";
+                    msgEl.textContent = "⚠️ TikTok Inbox通信エラー: " + ((err && err.message) || "通信エラーが発生しました");
+                }
+            } finally {
+                _reelPublishInFlight = false;
+                if (pubBtn) {
+                    pubBtn.disabled = false;
+                    pubBtn.textContent = "🎵 TikTokアプリInboxへ下書き送信";
                 }
             }
         }

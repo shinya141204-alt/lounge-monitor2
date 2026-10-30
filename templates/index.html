@@ -136,7 +136,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet"></noscript>
     <link rel="stylesheet" href="/static/style.css?v=20261030_1">
-    <link rel="preload" href="/static/app.js?v=20261030_1" as="script">
+    <link rel="preload" href="/static/app.js?v=20261030_2" as="script">
     <script>
         window.APP_CONFIG = {
             isStaff: {{ 'true' if is_staff else 'false' }},
@@ -475,11 +475,12 @@
                     {% if is_master and editorial_preview and editorial_preview.winner %}
                     <div class="master-subpanel">
                         <div class="master-subpanel-head">
-                            <span class="master-subpanel-title">🧠 SNS編集部（4役合議）X・Threads・Instagram 提案＆評価スコア（マスター専用）</span>
+                            <span class="master-subpanel-title">🧠 SNS編集部（4役合議）X・Threads・IG・TikTok 提案＆評価スコア（マスター専用）</span>
                             <div style="display:flex; gap:10px; flex-wrap:wrap;">
                                 <a href="/staff/sns-editorial?channel=x" class="master-inline-link">𝕏 X合議 ↗</a>
                                 <a href="/staff/sns-editorial?channel=threads" class="master-inline-link">🧵 Threads合議 ↗</a>
                                 <a href="/staff/sns-editorial?channel=instagram" class="master-inline-link">📸 IG合議 ↗</a>
+                                <a href="/staff/sns-editorial?channel=tiktok" class="master-inline-link">🎵 TikTok合議 ↗</a>
                             </div>
                         </div>
                         <div class="master-subpanel-meta">
@@ -576,14 +577,15 @@
                 <div id="ranking-list" class="ranking-list">
                     {% if initial_status and initial_status.ranking %}
                     {% for s in initial_status.ranking %}
-                    <div class="ranking-item{% if s.ssr_rank == 1 %} rank-1{% elif s.ssr_rank == 2 %} rank-2{% elif s.ssr_rank == 3 %} rank-3{% endif %}" data-store="{{ s.name }}" style="cursor: pointer;" onclick="if(window.openModal)openModal({{ s.name | tojson | forceescape }})">
+                    {% set ssr_pulsing = (s.women_diff or 0) >= 2 or ((s.women_diff or 0) >= 1 and (s.women or 0) >= 12 and (s.ssr_ladies_pct or 0) >= 55) %}
+                    <div class="ranking-item{% if s.ssr_rank == 1 %} rank-1{% elif s.ssr_rank == 2 %} rank-2{% elif s.ssr_rank == 3 %} rank-3{% endif %}{% if ssr_pulsing %} live-pulse-card{% endif %}" data-store="{{ s.name }}" style="cursor: pointer;" onclick="if(window.openModal)openModal({{ s.name | tojson | forceescape }})">
                         <div class="rank-badge">{{ s.ssr_rank if s.ssr_rank else '-' }}</div>
                         <div class="store-info">
                             <div class="store-meta-row">
                                 <span class="brand-badge {{ s.ssr_brand_cls }}">{{ s.ssr_brand }}</span>
                                 <span class="distance-tag hidden"></span>
                                 {% if (s.women_diff or 0) >= 1 %}
-                                <span class="momentum-tag" title="直近約15分で女性が+{{ s.women_diff }}名増えています">↗ +{{ s.women_diff }}名</span>
+                                <span class="momentum-tag{% if ssr_pulsing %} is-pulsing{% endif %}" title="直近約15分で女性が+{{ s.women_diff }}名増えています">↗ +{{ s.women_diff }}名</span>
                                 {% elif s.votes and (s.votes.smooth or 0) > 0 and (s.votes.smooth or 0) >= (s.votes.waiting or 0) %}
                                 <span class="momentum-tag" title="直近の現場レポートで「待ちなしで入れた」が報告されています">即入店</span>
                                 {% else %}
@@ -2054,7 +2056,7 @@
         window.INITIAL_STATUS_DATA = {{ initial_status | tojson }};
     </script>
     {% endif %}
-    <script src="/static/app.js?v=20261030_1" defer></script>
+    <script src="/static/app.js?v=20261030_2" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
@@ -2070,7 +2072,7 @@
                 }
                 if (window.__swRegistered) return;
                 window.__swRegistered = true;
-                navigator.serviceWorker.register('/sw.js?v=66', { updateViaCache: 'none' })
+                navigator.serviceWorker.register('/sw.js?v=67', { updateViaCache: 'none' })
                     .then(function(reg) {
                         reg.update();
                         document.addEventListener('visibilitychange', function() {
