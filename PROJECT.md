@@ -45,7 +45,7 @@ Phase 0 調査で特定された全改修項目および要件の割り当て一
 | M3 | Web & API Robustness | F4.1, F4.2 | none | DONE |
 | M4 | Performance & Optimization | F5.1, F5.2, F5.3, F5.4, F5.5 | M2, M3 | DONE |
 | M5 | Verification & Benchmark | F6.1, F6.2, F6.3, E2E Tests Pass | M1, M2, M3, M4, TEST_READY | DONE |
-| M6 | Production Deployment | F7.1, F7.2, F7.3 | M5 | IN_PROGRESS |
+| M6 | Production Deployment | F7.1, F7.2, F7.3 | M5 | DONE |
 
 ## Interface Contracts
 ### Web ↔ Worker (Redis / DB)
