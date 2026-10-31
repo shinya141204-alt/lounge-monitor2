@@ -22,7 +22,7 @@ AFFILIATE_OVERRIDES_STATE_KEY = "aff_slot_overrides"
 _lock = threading.Lock()
 _mem_overrides = None  # dict[slot_id, {"url": str, "memo": str, "updated_at": str}]
 
-# Canonical 8 affiliate slots (5 men's slots + 3 women's slots) aligned with site UI & reader intent
+# Canonical 9 affiliate slots (5 men's slots + 3 women's slots + 1 unisex night-care slot) aligned with site UI & reader intent
 AFFILIATE_SLOTS = [
     {
         "slot_id": "dating_instant",
@@ -119,6 +119,18 @@ AFFILIATE_SLOTS = [
         "recommended_asp_examples": "サロン専売ヘアケア・高保湿スキンケア初回トライアル / ネイル・ヘアサロン予約 等",
         "env_keys": ["AFFILIATE_URL_WOMEN_COSME"],
         "default_url": "https://px.a8.net/svt/ejp?a8mat=4BERA3+6J68QA+5GZ4+5YZ75",
+    },
+    {
+        "slot_id": "night_care_supplement",
+        "audience": "common",
+        "audience_label": "🥂 男女共通",
+        "aliases": ["hangover_supplement", "supplement", "night_supplement", "women_night_supplement"],
+        "category_label": "🥂 乾杯・翌朝すっきりナイトケアサプリ枠",
+        "title": "飲み放題・2軒目バーの翌朝対策（乾杯前後のナイトケア・コンディションサポートサプリ）",
+        "placement": "/grooming 事前準備ガイド / /for-women 女性特設ガイド / トップおすすめモーダル（男女両方）",
+        "recommended_asp_examples": "乾杯サポート・ナイトケアサプリ（オルニチン・ウコン・酵素・ビタミン系案件）",
+        "env_keys": ["AFFILIATE_URL_NIGHT_SUPPLEMENT", "AFFILIATE_URL_SUPPLEMENT"],
+        "default_url": "https://px.a8.net/svt/ejp?a8mat=4BELTJ+7RTR3M+3H28+5ZU29",
     },
 ]
 

@@ -2117,6 +2117,7 @@
                 categories: [
                     { id: 'all', name: 'すべて', icon: '' },
                     { id: 'beauty', name: 'メンズ脱毛・美肌', icon: '', highlight: true },
+                    { id: 'night', name: '乾杯・翌朝ケア', icon: '', highlight: true },
                     { id: 'dating', name: '恋活・即日出会い', icon: '', highlight: true },
                     { id: 'grooming', name: 'ファッション・身だしなみ', icon: '' }
                 ],
@@ -2347,8 +2348,8 @@
             }
             if (leadEl) {
                 leadEl.innerHTML = isWomenMode
-                    ? '「大人数の相席より<strong>1対1のカフェで落ち着いて話したい日</strong>」に使える審査制アプリや、近距離の間接照明でも自信が持てる<strong>『美肌・ナイトケア』</strong>を厳選しました。'
-                    : '仕事帰りでも口元が気にならない<strong>『ヒゲ脱毛・スキンケア』</strong>や、服選びに迷わない<strong>『きれいめ私服の定期便』</strong>、お店が混んでいる日に頼れる<strong>『恋活アプリ』</strong>など、普段から取り入れておくと便利なサービスをまとめました。';
+                    ? '「大人数の相席より<strong>1対1のカフェで落ち着いて話したい日</strong>」に使える審査制アプリや、近距離の間接照明でも自信が持てる<strong>『美肌・乾杯ナイトケア』</strong>を厳選しました。'
+                    : '仕事帰りでも口元が気にならない<strong>『ヒゲ脱毛・スキンケア』</strong>、飲み放題や2軒目の夜に心強い<strong>『乾杯ナイトケアサプリ』</strong>、服選びに迷わない<strong>『きれいめ私服の定期便』</strong>、お店が混んでいる日に頼れる<strong>『恋活アプリ』</strong>をまとめました。';
             }
             if (tipsBoxEl) {
                 tipsBoxEl.innerHTML = isWomenMode

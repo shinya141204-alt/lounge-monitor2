@@ -138,7 +138,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Shippori+Mincho:wght@600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Shippori+Mincho:wght@600;700&display=swap" rel="stylesheet"></noscript>
     <link rel="stylesheet" href="/static/style.css?v=20261030_6">
-    <link rel="preload" href="/static/app.js?v=20261101_1" as="script">
+    <link rel="preload" href="/static/app.js?v=20261101_2" as="script">
     <script>
         window.APP_CONFIG = {
             isStaff: {{ 'true' if is_staff else 'false' }},
@@ -150,7 +150,7 @@
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
          crossorigin="anonymous"></script>
-    <script src="/static/affiliate_config.js?v=12" defer></script>
+    <script src="/static/affiliate_config.js?v=13" defer></script>
     {% endif %}
     <link rel="stylesheet" href="/static/calm.css?v=22">
 </head>
@@ -858,6 +858,9 @@
                     <div class="seo-guide-header" style="margin-top: 26px;">
                         <h2>データで見るお店選び・当日のチェックポイント</h2>
                         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            {% if not is_staff and not session.get('is_staff') %}
+                            <button type="button" class="guide-open-btn" onclick="openGuideModal('all')">事前ケア・便利サービス ›</button>
+                            {% endif %}
                             <a href="/stats" class="guide-open-btn" style="text-decoration: none;">統計データ白書 ›</a>
                         </div>
                     </div>
@@ -1289,7 +1292,7 @@
             </div>
             <div class="guide-modal-body">
                 <p class="guide-lead" id="guide-modal-lead">
-                    仕事帰りでも口元が気にならない<strong>『ヒゲ脱毛・スキンケア』</strong>や、服選びに迷わない<strong>『きれいめ私服の定期便』</strong>、お店が混んでいる日に頼れる<strong>『恋活アプリ』</strong>など、普段から取り入れておくと便利なサービスをまとめました。
+                    仕事帰りでも口元が気にならない<strong>『ヒゲ脱毛・スキンケア』</strong>、飲み放題や2軒目の夜に心強い<strong>『乾杯ナイトケアサプリ』</strong>、服選びに迷わない<strong>『きれいめ私服の定期便』</strong>、お店が混んでいる日に頼れる<strong>『恋活アプリ』</strong>をまとめました。
                 </p>
 
                 <!-- Category Tabs -->
@@ -2229,7 +2232,7 @@
         window.INITIAL_STATUS_DATA = {{ initial_status | tojson }};
     </script>
     {% endif %}
-    <script src="/static/app.js?v=20261101_1" defer></script>
+    <script src="/static/app.js?v=20261101_2" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
@@ -2245,7 +2248,7 @@
                 }
                 if (window.__swRegistered) return;
                 window.__swRegistered = true;
-                navigator.serviceWorker.register('/sw.js?v=73', { updateViaCache: 'none' })
+                navigator.serviceWorker.register('/sw.js?v=74', { updateViaCache: 'none' })
                     .then(function(reg) {
                         reg.update();
                         document.addEventListener('visibilitychange', function() {

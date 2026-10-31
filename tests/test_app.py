@@ -1752,7 +1752,7 @@ class FullAuditRegressionTests(unittest.TestCase):
         sw_resp = self.client.get('/sw.js')
         try:
             sw_txt = sw_resp.data.decode('utf-8')
-            self.assertIn("CACHE_NAME = 'aiseki-navi-v73'", sw_txt)
+            self.assertIn("CACHE_NAME = 'aiseki-navi-v74'", sw_txt)
             self.assertIn("event.waitUntil", sw_txt)
         finally:
             sw_resp.close()
@@ -3202,6 +3202,8 @@ class WomenFeaturesACDETests(unittest.TestCase):
             self.assertIn('/link/women_dating_bachelor', html)
             self.assertIn('/link/women_beauty_clinic', html)
             self.assertIn('/link/women_cosme_salon', html)
+            self.assertIn('/link/women_night_supplement', html)
+            self.assertIn('a8mat=4BELTJ+7RTR3M+3H28+5ZU29', html)
             self.assertIsNone(bare_oriental_re.search(html))
 
             # /ladies 301 redirect
@@ -3224,16 +3226,43 @@ class WomenFeaturesACDETests(unittest.TestCase):
         import affiliate_manager
 
         st = affiliate_manager.get_affiliate_slots_status(allow_blocking=True)
-        self.assertEqual(st['total_slots'], 8)
+        self.assertEqual(st['total_slots'], 9)
         slot_ids = {s['slot_id'] for s in st['slots']}
-        self.assertTrue({'women_dating_bachelor', 'women_beauty_clinic', 'women_cosme_salon'}.issubset(slot_ids))
+        self.assertTrue({'women_dating_bachelor', 'women_beauty_clinic', 'women_cosme_salon', 'night_care_supplement'}.issubset(slot_ids))
 
-        # Public redirect check for all 3 women canonical slots + alias
-        for sid in ('women_dating_bachelor', 'women_beauty_clinic', 'women_cosme_salon', 'women_dating'):
+        # Public redirect check for all 3 women canonical slots + alias + night supplement
+        for sid in ('women_dating_bachelor', 'women_beauty_clinic', 'women_cosme_salon', 'women_dating', 'night_care_supplement', 'women_night_supplement', 'hangover_supplement'):
             resp = self.client.get(f'/link/{sid}', headers={'User-Agent': 'Mozilla/5.0 Test'})
             self.assertEqual(resp.status_code, 302, sid)
         cosme_resp = self.client.get('/link/women_cosme_salon', headers={'User-Agent': 'Mozilla/5.0 Test'})
         self.assertIn('a8mat=4BERA3+6J68QA+5GZ4+5YZ75', cosme_resp.headers.get('Location', ''))
+        supp_resp = self.client.get('/link/night_care_supplement', headers={'User-Agent': 'Mozilla/5.0 Test'})
+        self.assertEqual('https://px.a8.net/svt/ejp?a8mat=4BELTJ+7RTR3M+3H28+5ZU29', supp_resp.headers.get('Location', ''))
+        wsupp_resp = self.client.get('/link/women_night_supplement', headers={'User-Agent': 'Mozilla/5.0 Test'})
+        self.assertEqual('https://px.a8.net/svt/ejp?a8mat=4BELTJ+7RTR3M+3H28+5ZU29', wsupp_resp.headers.get('Location', ''))
+
+        # Verify /grooming renders night_care_supplement & tracking pixel for public visitors and hides for staff
+        app_module.clear_fast_http_caches()
+        grooming_pub = self.client.get('/grooming').data.decode('utf-8')
+        self.assertIn('/link/night_care_supplement', grooming_pub)
+        self.assertIn('https://www19.a8.net/0.gif?a8mat=4BELTJ+7RTR3M+3H28+5ZU29', grooming_pub)
+        with self.client.session_transaction() as sess_st:
+            sess_st['is_staff'] = True
+        grooming_staff = self.client.get('/grooming').data.decode('utf-8')
+        self.assertNotIn('/link/night_care_supplement', grooming_staff)
+        with self.client.session_transaction() as sess_st:
+            sess_st.clear()
+
+        # Verify affiliate_config.js and pdca_engine supplement category mapping
+        with open(os.path.join(ROOT, 'static', 'affiliate_config.js'), 'r', encoding='utf-8') as af:
+            aff_cfg = af.read()
+        self.assertIn("id: 'night_care_supplement'", aff_cfg)
+        self.assertIn("id: 'women_night_supplement'", aff_cfg)
+        self.assertIn('mid=s00000016208001007000', aff_cfg)
+        self.assertIn('a8mat=4BELTJ+7RTR3M+3H28+5ZU29', aff_cfg)
+        import pdca_engine
+        self.assertEqual(pdca_engine._classify_offer_category('night_care_supplement'), 'supplement')
+        self.assertEqual(pdca_engine._classify_offer_category('women_night_supplement'), 'supplement')
 
         # Master live override for women_beauty_clinic
         with self.client.session_transaction() as sess:
@@ -4352,8 +4381,8 @@ class AIUltraGrowthSuiteTests(unittest.TestCase):
         app_module.clear_fast_http_caches()
         home_html = self.client.get('/').data.decode('utf-8')
         self.assertIn('calm.css?v=22', home_html)
-        self.assertIn('app.js?v=20261101_1', home_html)
-        self.assertIn('/sw.js?v=73', home_html)
+        self.assertIn('app.js?v=20261101_2', home_html)
+        self.assertIn('/sw.js?v=74', home_html)
 
         # 2. TikTok 9:16 Safe-Zone Reel Templates & Captions (zero bare 'オリエンタル' or 'OLG')
         sample_stores = [

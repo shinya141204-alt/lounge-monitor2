@@ -3,7 +3,7 @@
 tests/test_ui_audit_regression.py - UI・コントラスト・キャッシュバスティング・ブランド表記 回帰テストスイート
 
 独立監査の9項目に対する自動回帰テスト:
-1. Cache-Control: immutable 対応のキャッシュバスティング同期 (calm.css?v=22, portal.css?v=10, app.js?v=20261101_1, sw.js?v=73, aiseki-navi-v73)
+1. Cache-Control: immutable 対応のキャッシュバスティング同期 (calm.css?v=22, portal.css?v=10, app.js?v=20261101_2, affiliate_config.js?v=13, sw.js?v=74, aiseki-navi-v74)
 2. ページバンドル単位でのCSSカスタムプロパティ未定義参照ゼロ（フォールバック付き var() 含む） & #comparison-modal 男女人数カラー変数
 3. ライトモード .area-tag の枠線・背景なし端正タイポグラフィ統一
 4. PC (860px / 1280px) .portal-global-nav の折り返し表示（右端文字切れ・テーマ切替ボタン干渉ゼロ）＆モバイル横スワイプ維持
@@ -107,15 +107,17 @@ class UiAuditRegressionTests(unittest.TestCase):
         """全テンプレートと static/sw.js のアセットバージョンが完全同期し、immutable ヘッダが正しく付与されること"""
         expected_calm = "/static/calm.css?v=22"
         expected_portal = "/static/portal.css?v=10"
-        expected_app_js = "/static/app.js?v=20261101_1"
+        expected_app_js = "/static/app.js?v=20261101_2"
+        expected_aff_js = "/static/affiliate_config.js?v=13"
         expected_style = "/static/style.css?v=20261030_6"
-        expected_sw_url = "/sw.js?v=73"
-        expected_cache_name = "aiseki-navi-v73"
+        expected_sw_url = "/sw.js?v=74"
+        expected_cache_name = "aiseki-navi-v74"
 
         templates_dir = os.path.join(PROJECT_ROOT, "templates")
         calm_seen = 0
         portal_seen = 0
         app_js_seen = 0
+        aff_js_seen = 0
         style_seen = 0
         sw_reg_seen = 0
 
@@ -139,6 +141,10 @@ class UiAuditRegressionTests(unittest.TestCase):
                 self.assertEqual(m, expected_app_js, f"Outdated app.js ref in {fname}: {m}")
                 app_js_seen += 1
 
+            for m in re.findall(r"/static/affiliate_config\.js(?:\?v=[^\"'\s>]+)?", txt):
+                self.assertEqual(m, expected_aff_js, f"Outdated affiliate_config.js ref in {fname}: {m}")
+                aff_js_seen += 1
+
             for m in re.findall(r"/static/style\.css(?:\?v=[^\"'\s>]+)?", txt):
                 self.assertEqual(m, expected_style, f"Outdated style.css ref in {fname}: {m}")
                 style_seen += 1
@@ -150,6 +156,7 @@ class UiAuditRegressionTests(unittest.TestCase):
         self.assertGreaterEqual(calm_seen, 29)
         self.assertGreaterEqual(portal_seen, 28)
         self.assertEqual(app_js_seen, 2)  # preload + defer script in index.html
+        self.assertEqual(aff_js_seen, 1)  # defer script in index.html
         self.assertGreaterEqual(style_seen, 34)
         self.assertEqual(sw_reg_seen, 2)  # index.html + _nav_loader.html
 
@@ -162,8 +169,9 @@ class UiAuditRegressionTests(unittest.TestCase):
         self.assertIn(f"'{expected_calm}'", sw_txt)
         self.assertIn(f"'{expected_portal}'", sw_txt)
         self.assertIn(f"'{expected_app_js}'", sw_txt)
+        self.assertIn(f"'{expected_aff_js}'", sw_txt)
 
-        for asset_url in (expected_calm, expected_portal, expected_app_js, expected_style):
+        for asset_url in (expected_calm, expected_portal, expected_app_js, expected_aff_js, expected_style):
             resp = self.client.get(asset_url)
             try:
                 self.assertEqual(resp.status_code, 200, f"{asset_url} returned {resp.status_code}")

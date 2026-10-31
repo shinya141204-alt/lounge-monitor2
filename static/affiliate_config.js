@@ -13,6 +13,7 @@ const AFFILIATE_MASTER = {
     categories: [
         { id: 'all', name: 'すべて', icon: '' },
         { id: 'beauty', name: 'ヒゲ脱毛・スキンケア', icon: '', highlight: true },
+        { id: 'night', name: '乾杯・翌朝ケア', icon: '', highlight: true },
         { id: 'dating', name: '恋活・近くの出会い', icon: '', highlight: true },
         { id: 'grooming', name: '服装・身だしなみ', icon: '' }
     ],
@@ -69,6 +70,34 @@ const AFFILIATE_MASTER = {
             bannerImg: 'https://www28.a8.net/svt/bgt?aid=261020931376&wid=001&eno=01&mid=s00000008657018014000&mc=1',
             trackingImg: 'https://www18.a8.net/0.gif?a8mat=4BEL1F+67V08I+1USQ+2Z90WX',
             url: '/link/mens_skincare_clinic'
+        },
+
+        // ==========================================
+        // 1.5 乾杯・翌朝サポート（ナイトケアサプリ）
+        // ==========================================
+        {
+            id: 'night_care_supplement',
+            category: 'night',
+            featured: true,
+            badge: '飲み放題・2軒目の夜に',
+            tag: '乾杯・ナイトケアサプリ',
+            name: '翌朝もスマートに動きたい夜の「乾杯サポート・ナイトケアサプリ」',
+            shortTitle: '乾杯サポート・ナイトケアサプリ',
+            infeedTag: 'ナイトケア',
+            infeedSub: '飲み放題・2軒目のお供に',
+            infeedTitle: '乾杯前後のナイトケアサプリ',
+            infeedCta: '詳細 ›',
+            target: '平日夜の仕事帰りに飲み放題へ行く方、2軒目バーまで楽しんだ翌朝も軽やかに動きたい方',
+            desc: '相席ラウンジは時間制の飲み放題が基本なので、会話が盛り上がって乾杯を重ねたり2軒目へ流れたりすると、ついペースが早くなりがちです。ポケットやカバンに忍ばせてサッと飲めるナイトケアサプリを習慣にしておくと、翌朝に仕事や予定がある夜でも余裕を持って楽しめます。',
+            points: [
+                '乾杯前後に水やドリンクと一緒にサッと取り入れやすい携帯設計',
+                '飲み放題や2軒目バーまでしっかり楽しみたい夜のコンディション習慣に',
+                'ジャケットやバッグに常備しておくと急な飲み会や相席の夜も安心'
+            ],
+            cta: '公式サイト・キャンペーンを見る ›',
+            bannerImg: 'https://www20.a8.net/svt/bgt?aid=261021943470&wid=001&eno=01&mid=s00000016208001007000&mc=1',
+            trackingImg: 'https://www19.a8.net/0.gif?a8mat=4BELTJ+7RTR3M+3H28+5ZU29',
+            url: '/link/night_care_supplement'
         },
 
         // ==========================================
@@ -156,7 +185,7 @@ const AFFILIATE_MASTER = {
         { id: 'all', name: 'すべて', icon: '' },
         { id: 'w_dating', name: '審査制・1対1カフェデート', icon: '', highlight: true },
         { id: 'w_clinic', name: '美肌クリニック・医療脱毛', icon: '', highlight: true },
-        { id: 'w_cosme', name: '夜ケア・ご褒美スキンケア', icon: '' }
+        { id: 'w_cosme', name: '夜ケア・翌朝サポート', icon: '' }
     ],
 
     womenItems: [
@@ -215,6 +244,26 @@ const AFFILIATE_MASTER = {
             bannerImg: 'https://www29.a8.net/svt/bgt?aid=261029019395&wid=001&eno=01&mid=s00000025528001003000&mc=1',
             trackingImg: 'https://www17.a8.net/0.gif?a8mat=4BERA3+6J68QA+5GZ4+5YZ75',
             url: '/link/women_cosme_salon'
+        },
+        {
+            id: 'women_night_supplement',
+            category: 'w_cosme',
+            featured: true,
+            badge: '乾杯・カクテルを楽しむ夜に',
+            tag: 'ナイトケア・翌朝サポート',
+            name: '飲み放題やワインを楽しむ夜の「乾杯サポート・ナイトケアサプリ」',
+            shortTitle: '乾杯サポート・ナイトケアサプリ',
+            target: 'カクテルやワインを楽しんだ翌朝も、朝から予定通り軽やかに動きたい方',
+            desc: '女性無料の飲み放題でカクテルやスパークリングを楽しんでいると、気づけばいつもより杯数が進んでいることも。ミニバッグやポーチに入れておけるナイトケアサプリを乾杯前後のルーティンにしておくと、翌日の仕事や予定にも響きにくく安心です。',
+            points: [
+                'ミニバッグやポーチにすっきり収まり、乾杯前後にサッと飲める',
+                'カクテル・ワイン・2軒目バーを楽しむ夜のスマートなコンディション習慣',
+                '友達の分もシェアしやすい大人のナイトケアアイテムとして人気'
+            ],
+            cta: '公式サイトで詳細を見る ›',
+            bannerImg: 'https://www20.a8.net/svt/bgt?aid=261021943470&wid=001&eno=01&mid=s00000016208001007000&mc=1',
+            trackingImg: 'https://www19.a8.net/0.gif?a8mat=4BELTJ+7RTR3M+3H28+5ZU29',
+            url: '/link/women_night_supplement'
         }
     ],
 

@@ -191,17 +191,30 @@ OFFER_CATEGORIES = [
         "default_priority": 1,
         "winning_pitch": "Threads・Instagramの『女子組・待ちゼロ速報』から /for-women へ誘導し、完全無料デート＆美肌クリニック枠をセット提示すると伸びます。",
     },
+    {
+        "category_key": "supplement",
+        "pattern": "night_care_supplement",
+        "label": "🥂 乾杯サポート・ナイトケアサプリ",
+        "short_label": "ナイトケアサプリ (supplement)",
+        "audience": "common",
+        "epc_yen": 90,
+        "primary_link": "/link/night_care_supplement",
+        "default_priority": 3,
+        "winning_pitch": "飲み放題・2軒目バーの乾杯前ルーティン＆『会話のきっかけになる個包装シェア術』として /grooming と /for-women で訴求すると男女双方から安定CVが出ます。",
+    },
 ]
 _OFFER_META_BY_KEY = {c["category_key"]: c for c in OFFER_CATEGORIES}
 
 
 def _classify_offer_category(raw_item_id: str) -> str:
-    """Map raw `/link/<id>` or `aff_click:<id>` identifier into one of the 5 canonical offer categories."""
+    """Map raw `/link/<id>` or `aff_click:<id>` identifier into one of the canonical offer categories."""
     it = (raw_item_id or "").strip().lower()
     if it.startswith("aff_click:"):
         it = it.split(":", 1)[1].strip()
     if not it:
         return "dating"
+    if "supplement" in it or "hangover" in it:
+        return "supplement"
     if it.startswith("women_") or it == "women":
         return "women"
     if it in ("spu", "spu_styleup") or "spu" in it or "fashion" in it or "styleup" in it:

@@ -1102,8 +1102,8 @@
     <div class="ops-section" id="affiliate-slot-manager">
         <div class="ops-header">
             <div>
-                <h2>💰 男女別アフィリエイト全8枠・遷移先URL分離＆ノーコード差し替え</h2>
-                <p>男性向け5枠＋女性向け3枠（/for-women・女子モード専用）。再デプロイ・コード編集不要で、保存すると0秒で即時反映＆Google Sheetsへ永続保存されます。</p>
+                <h2>💰 男女別アフィリエイト全{{ aff_status.slots|length }}枠・遷移先URL分離＆ノーコード差し替え</h2>
+                <p>男性向け5枠＋女性向け3枠＋男女共通ナイトケア1枠。再デプロイ・コード編集不要で、保存すると0秒で即時反映＆Google Sheetsへ永続保存されます。</p>
             </div>
         </div>
 
@@ -1111,7 +1111,7 @@
             {% if aff_status.has_duplicates %}
             ⚠️ <strong>同一ターゲット内の遷移先URL重複（カニバリ）を検知中：</strong>現在 <strong>{{ aff_status.duplicate_slot_count }}枠</strong> で同一のASPリンクが共有されています。『🍻 即時合流・定番恋活アプリ枠』や女性向け各枠に別ASPリンクを入力して保存すると、読者ニーズ別にCVを取りこぼさなくなります。
             {% else %}
-            ✅ <strong>男女別全{{ aff_status.slots|length }}枠の遷移先URLが正常に分離されています：</strong>男性向け5枠・女性向け3枠それぞれの導線ごとに独立した案件へ送客中です。
+            ✅ <strong>全{{ aff_status.slots|length }}枠の遷移先URLが正常に分離されています：</strong>男性向け・女性向け・男女共通それぞれの導線ごとに独立した案件へ送客中です。
             {% endif %}
         </div>
 

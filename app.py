@@ -1818,6 +1818,11 @@ AFFILIATE_REDIRECTS = {
     'women_cosme_salon': os.environ.get('AFFILIATE_URL_WOMEN_COSME') or 'https://px.a8.net/svt/ejp?a8mat=4BERA3+6J68QA+5GZ4+5YZ75',
     'women_cosme': os.environ.get('AFFILIATE_URL_WOMEN_COSME') or 'https://px.a8.net/svt/ejp?a8mat=4BERA3+6J68QA+5GZ4+5YZ75',
     'women_skincare': os.environ.get('AFFILIATE_URL_WOMEN_COSME') or 'https://px.a8.net/svt/ejp?a8mat=4BERA3+6J68QA+5GZ4+5YZ75',
+    'night_care_supplement': os.environ.get('AFFILIATE_URL_NIGHT_SUPPLEMENT') or os.environ.get('AFFILIATE_URL_SUPPLEMENT') or 'https://px.a8.net/svt/ejp?a8mat=4BELTJ+7RTR3M+3H28+5ZU29',
+    'hangover_supplement': os.environ.get('AFFILIATE_URL_NIGHT_SUPPLEMENT') or os.environ.get('AFFILIATE_URL_SUPPLEMENT') or 'https://px.a8.net/svt/ejp?a8mat=4BELTJ+7RTR3M+3H28+5ZU29',
+    'supplement': os.environ.get('AFFILIATE_URL_NIGHT_SUPPLEMENT') or os.environ.get('AFFILIATE_URL_SUPPLEMENT') or 'https://px.a8.net/svt/ejp?a8mat=4BELTJ+7RTR3M+3H28+5ZU29',
+    'night_supplement': os.environ.get('AFFILIATE_URL_NIGHT_SUPPLEMENT') or os.environ.get('AFFILIATE_URL_SUPPLEMENT') or 'https://px.a8.net/svt/ejp?a8mat=4BELTJ+7RTR3M+3H28+5ZU29',
+    'women_night_supplement': os.environ.get('AFFILIATE_URL_NIGHT_SUPPLEMENT') or os.environ.get('AFFILIATE_URL_SUPPLEMENT') or 'https://px.a8.net/svt/ejp?a8mat=4BELTJ+7RTR3M+3H28+5ZU29',
 }
 
 @app.route('/link/<path:item_id>')

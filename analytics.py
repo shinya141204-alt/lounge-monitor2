@@ -184,6 +184,11 @@ _AFFILIATE_NAMES = {
     'women_cosme_salon': '💄🧴 女性向け｜デパコス・ご褒美スキンケア＆サロン枠',
     'women_cosme': '💄🧴 女性向け｜デパコス・ご褒美スキンケア＆サロン枠',
     'women_skincare': '💄🧴 女性向け｜デパコス・ご褒美スキンケア＆サロン枠',
+    'night_care_supplement': '🥂 乾杯サポート・ナイトケアサプリ',
+    'hangover_supplement': '🥂 乾杯サポート・ナイトケアサプリ',
+    'supplement': '🥂 乾杯サポート・ナイトケアサプリ',
+    'night_supplement': '🥂 乾杯サポート・ナイトケアサプリ',
+    'women_night_supplement': '💄🥂 女性向け｜乾杯サポート・ナイトケアサプリ',
 }
 
 _AREA_NAMES = {
