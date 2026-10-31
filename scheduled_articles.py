@@ -68,30 +68,6 @@ SCHEDULED_ARTICLES = [
         ),
     },
     {
-        "slug": "table-change-protocol",
-        "path": "/guide/table-change-protocol",
-        "template": "guide_table_change_protocol.html",
-        "publish_at": "2026-10-31 19:00:00",
-        "publish_at_ja": "2026年10月31日(土) 19:00",
-        "lastmod": "2026-10-31",
-        "eyecatch_jpg": "/static/eyecatch-table-change-protocol.jpg",
-        "eyecatch_webp": "/static/eyecatch-table-change-protocol.webp",
-        "badge": "席替え・チェンジ検証",
-        "read_time": "約6分で読める",
-        "tag_primary": ("tag-pink", "🔄 27.6万件ログ実測"),
-        "tag_secondary": ("tag-cyan", "スマート離脱プロトコル"),
-        "title": "相席ラウンジの席替え（チェンジ）完全攻略｜言えない男と察する女の心理学と、27万件ログが教える「成功店舗の最低条件」",
-        "short_title": "気まずい沈黙を終わらせる席替え（チェンジ）完全攻略",
-        "desc": "「会話が盛り上がらないのに気まずくて席替えを頼めず、10分750円のメーターだけが回る地獄の沈黙」——女性が化粧室で作戦会議を始めるサイン、スタッフへのスマートな3大耳打ち術、そして店内に女性10名以上いないと席替えが失敗するデータ的根拠。",
-        "x_title": "相席ラウンジの席替え完全攻略｜言えない男と察する女の心理学",
-        "x_main_text": (
-            "会話が死んだテーブルで「席替え頼んだら失礼かな…」と迷う間にも、10分750円の課金メーターは回り続けてます💸\n\n"
-            "実は女性10名未満の店で席替えを頼むと「男性一人待機課金」に転落する罠も📊\n"
-            "男女双方の自尊心を傷つけないスマート離脱術はリプ欄へ👇\n"
-            "#相席ラウンジ #相席ナビ"
-        ),
-    },
-    {
         "slug": "cost-break-even",
         "path": "/guide/cost-break-even",
         "template": "guide_cost_break_even.html",
@@ -111,6 +87,30 @@ SCHEDULED_ARTICLES = [
         "x_main_text": (
             "残酷な本音を言うと、微妙な空気の席で「悪い気もするし…」って90分延長しても、女子側も内心『いつ出ようか』と時計を見てます💸\n\n"
             "1万近いレシートを見て改札で後悔する前に知っておきたい、男女双方に優しい「40分見切り」の損益分岐点👇\n"
+            "#相席ラウンジ #相席ナビ"
+        ),
+    },
+    {
+        "slug": "table-change-protocol",
+        "path": "/guide/table-change-protocol",
+        "template": "guide_table_change_protocol.html",
+        "publish_at": "2026-11-03 19:00:00",
+        "publish_at_ja": "2026年11月3日(火・祝) 19:00",
+        "lastmod": "2026-11-03",
+        "eyecatch_jpg": "/static/eyecatch-table-change-protocol.jpg",
+        "eyecatch_webp": "/static/eyecatch-table-change-protocol.webp",
+        "badge": "席替え・チェンジ検証",
+        "read_time": "約6分で読める",
+        "tag_primary": ("tag-pink", "🔄 27.6万件ログ実測"),
+        "tag_secondary": ("tag-cyan", "スマート離脱プロトコル"),
+        "title": "相席ラウンジの席替え（チェンジ）完全攻略｜言えない男と察する女の心理学と、27万件ログが教える「成功店舗の最低条件」",
+        "short_title": "気まずい沈黙を終わらせる席替え（チェンジ）完全攻略",
+        "desc": "「会話が盛り上がらないのに気まずくて席替えを頼めず、10分750円のメーターだけが回る地獄の沈黙」——女性が化粧室で作戦会議を始めるサイン、スタッフへのスマートな3大耳打ち術、そして店内に女性10名以上いないと席替えが失敗するデータ的根拠。",
+        "x_title": "相席ラウンジの席替え完全攻略｜言えない男と察する女の心理学",
+        "x_main_text": (
+            "会話が死んだテーブルで「席替え頼んだら失礼かな…」と迷う間にも、10分750円の課金メーターは回り続けてます💸\n\n"
+            "実は女性10名未満の店で席替えを頼むと「男性一人待機課金」に転落する罠も📊\n"
+            "男女双方の自尊心を傷つけないスマート離脱術はリプ欄へ👇\n"
             "#相席ラウンジ #相席ナビ"
         ),
     },
@@ -252,10 +252,31 @@ def check_and_announce_newly_published(app_url: str = "", now_jst: datetime.date
         if job_state.is_done(dedup_key):
             continue
 
+        biz_date_str = (now_jst - datetime.timedelta(hours=7)).strftime("%Y-%m-%d")
+        daily_col_key = f"col_release_daily:{biz_date_str}"
+        if job_state.is_done(daily_col_key):
+            reason = f"Daily column X release cap reached ({daily_col_key})"
+            logger.info(f"[scheduled_articles] Deferring X announcement for {item['slug']} ({reason})")
+            results.append({"slug": item["slug"], "result": {"status": "skipped", "reason": reason}})
+            break
+
+        mins_of_day = now_jst.hour * 60 + now_jst.minute
+        if (19 * 60 + 42 <= mins_of_day <= 20 * 60 + 30) or (21 * 60 + 42 <= mins_of_day <= 22 * 60 + 30):
+            reason = f"Holding column X announcement outside prime live slot rush ({now_jst.strftime('%H:%M')} JST)"
+            logger.info(f"[scheduled_articles] Deferring X announcement for {item['slug']} ({reason})")
+            results.append({"slug": item["slug"], "result": {"status": "skipped", "reason": reason}})
+            break
+
         in_cd, cd_reason = x_poster.check_x_auto_post_cooldown(min_interval_minutes=48, now_jst=now_jst)
         if in_cd:
             logger.info(f"[scheduled_articles] Deferring X announcement for {item['slug']} ({cd_reason})")
             results.append({"slug": item["slug"], "result": {"status": "skipped", "reason": cd_reason}})
+            break
+
+        over_b, b_reason = x_poster.check_x_daily_post_budget(now_jst=now_jst, is_primary_peak=False)
+        if over_b:
+            logger.info(f"[scheduled_articles] Deferring X announcement for {item['slug']} ({b_reason})")
+            results.append({"slug": item["slug"], "result": {"status": "skipped", "reason": b_reason}})
             break
 
         reply_text = (
@@ -272,6 +293,7 @@ def check_and_announce_newly_published(app_url: str = "", now_jst: datetime.date
         )
         if res.get("status") == "success":
             job_state.mark_done(dedup_key)
+            job_state.mark_done(daily_col_key)
             job_state.mark_done(f"x_col_used:{now_jst.strftime('%Y-%m-%d')}:{item['path']}")
             x_poster.record_x_auto_post_timestamp(now_jst)
             logger.info(f"[scheduled_articles] Announced newly released column on X: {item['slug']}")

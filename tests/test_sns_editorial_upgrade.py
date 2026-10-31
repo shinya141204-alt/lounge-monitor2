@@ -686,6 +686,336 @@ class SnsEditorialUpgradeTests(unittest.TestCase):
         self.assertFalse(sns_editorial.should_fire_scheduled_slot_now("x", "20:00", now_jst=dt_early))
         self.assertTrue(sns_editorial.should_fire_scheduled_slot_now("x", "20:00", now_jst=dt_late))
 
+    def test_reel_4x_schedule_rotation_captions_and_cliche_purge(self):
+        """Verify 4x/week IG Reel cron schedule, default-ON toggle, non-repeating 4-template rotation, and cliché-free captions."""
+        import tempfile
+        import instagram_poster
+        import job_state
+        import reel_generator
+        import worker as worker_module
+
+        sched = worker_module.build_worker_scheduler()
+        jobs_by_id = {j.id: j for j in sched.get_jobs()}
+        self.assertIn("ig_reel_2115", jobs_by_id)
+        self.assertIn("tiktok_inbox_2035", jobs_by_id)
+        reel_trig_str = str(jobs_by_id["ig_reel_2115"].trigger)
+        for day_tok in ("wed", "thu", "fri", "sat"):
+            self.assertIn(day_tok, reel_trig_str)
+
+        bare_oriental_re = re.compile(r"オリエンタル(?!ラウンジ)")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with mock.patch.dict(os.environ, {"JOB_STATE_DIR": tmpdir}):
+                job_state.reset_cache_for_tests()
+                # Default is ON when unset, respects explicit OFF ("0") and ON ("1")
+                self.assertTrue(instagram_poster.is_reel_auto_schedule_enabled())
+                instagram_poster.set_reel_auto_schedule_enabled(False)
+                self.assertFalse(instagram_poster.is_reel_auto_schedule_enabled())
+                instagram_poster.set_reel_auto_schedule_enabled(True)
+                self.assertTrue(instagram_poster.is_reel_auto_schedule_enabled())
+
+                rich_stores = [
+                    {"name": "OLG 新宿", "women": 34, "men": 12, "region": "Kanto", "area": "新宿"},
+                    {"name": "JIS SHINJUKU", "women": 8, "men": 24, "region": "Kanto", "area": "新宿"},
+                    {"name": "OLG 梅田", "women": 28, "men": 14, "region": "Kinki", "area": "梅田"},
+                    {"name": "JIS UMEDA", "women": 10, "men": 22, "region": "Kinki", "area": "梅田"},
+                    {"name": "OLG 渋谷本店", "women": 26, "men": 15, "region": "Kanto", "area": "渋谷"},
+                ]
+                chosen_seq = []
+                base_dt = datetime.datetime(2026, 11, 4, 21, 25, tzinfo=sns_editorial.JST)  # Wednesday
+                for step in range(8):
+                    cur_dt = base_dt + datetime.timedelta(days=step)
+                    picked = reel_generator.select_scheduled_reel_type(rich_stores, now_jst=cur_dt, platform="instagram")
+                    if chosen_seq:
+                        self.assertNotEqual(picked, chosen_seq[-1], "Back-to-back IG Reel template repeat detected")
+                    reel_generator.record_recent_reel_type(picked, platform="instagram")
+                    chosen_seq.append(picked)
+                self.assertGreaterEqual(len(set(chosen_seq)), 3)
+
+                # Edge case: empty stores list never crashes rotation or caption builder
+                empty_pick = reel_generator.select_scheduled_reel_type([], now_jst=base_dt, platform="instagram")
+                self.assertIn(empty_pick, reel_generator.REEL_TEMPLATES)
+
+                for rt in reel_generator.REEL_TEMPLATES:
+                    for stores_arg in (rich_stores, []):
+                        cap = reel_generator.build_reel_caption(stores_arg, reel_type=rt, now_jst=base_dt)
+                        self.assertNotIn("モニター見て", cap)
+                        self.assertNotIn("バックヤード", cap)
+                        self.assertNotIn("全51店舗", cap)
+                        self.assertNotIn("全国53店舗", cap)
+                        self.assertIsNone(bare_oriental_re.search(cap))
+                        self.assertIn("#相席ナビ", cap)
+                        tags = re.findall(r"#[^\s#]+", cap)
+                        self.assertTrue(3 <= len(tags) <= 6, f"Unexpected hashtag count ({len(tags)}) for {rt}: {tags}")
+
+    def test_ig_reel_grid_protection_cooldown_and_slot_dedup(self):
+        """Verify scheduled IG Reel slot deduplication, 95m IG cooldown, error recovery, and automatic share_to_feed=False grid protection."""
+        import tempfile
+        import instagram_poster
+        import job_state
+
+        stores = [
+            {"name": "OLG 新宿", "women": 32, "men": 14, "region": "Kanto"},
+            {"name": "JIS UMEDA", "women": 24, "men": 16, "region": "Kinki"},
+        ]
+        wed_dt = datetime.datetime(2026, 11, 4, 21, 30, tzinfo=sns_editorial.JST)
+        fri_feed_dt = datetime.datetime(2026, 11, 6, 18, 52, tzinfo=sns_editorial.JST)
+        fri_early_reel_dt = datetime.datetime(2026, 11, 6, 19, 55, tzinfo=sns_editorial.JST)  # +63m (<95m)
+        fri_ok_reel_dt = datetime.datetime(2026, 11, 6, 21, 35, tzinfo=sns_editorial.JST)     # +163m (>=95m)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with mock.patch.dict(os.environ, {"JOB_STATE_DIR": tmpdir}):
+                job_state.reset_cache_for_tests()
+                reel_calls = []
+
+                def _fake_post_reel(video_url, caption, share_to_feed=True, thumb_offset_ms=3500):
+                    reel_calls.append({"video_url": video_url, "caption": caption, "share_to_feed": share_to_feed})
+                    return {"status": "success", "ok": True, "id": f"reel_{len(reel_calls)}"}
+
+                with (
+                    mock.patch("instagram_poster.refresh_ig_token_if_needed"),
+                    mock.patch("reel_generator.render_reel_mp4_bytes", return_value=b"FAKE_MP4"),
+                    mock.patch("instagram_poster.post_reel_to_instagram", side_effect=_fake_post_reel),
+                ):
+                    # 1) Wednesday (no Feed post today) -> share_to_feed=True, marks slot done
+                    r_wed = instagram_poster.publish_live_reel_to_instagram(
+                        stores, reel_type="auto", slot_label="21:15", force=False, now_jst=wed_dt
+                    )
+                    self.assertEqual(r_wed["status"], "success")
+                    self.assertTrue(reel_calls[-1]["share_to_feed"])
+
+                    # Retry tick on same Wednesday slot -> fast-skips
+                    r_wed_dup = instagram_poster.publish_live_reel_to_instagram(
+                        stores, reel_type="auto", slot_label="21:15", force=False, now_jst=wed_dt + datetime.timedelta(minutes=6)
+                    )
+                    self.assertEqual(r_wed_dup["status"], "skipped")
+                    self.assertEqual(len(reel_calls), 1)
+
+                    # 2) Friday: 18:52 Carousel posted -> 19:55 Reel blocked by 95m cooldown -> 21:35 Reel fires with share_to_feed=False!
+                    instagram_poster.record_ig_auto_post_timestamp(fri_feed_dt, is_feed=True)
+                    r_fri_cd = instagram_poster.publish_live_reel_to_instagram(
+                        stores, reel_type="auto", slot_label="21:15", force=False, now_jst=fri_early_reel_dt
+                    )
+                    self.assertEqual(r_fri_cd["status"], "skipped")
+                    self.assertIn("cooldown", r_fri_cd["reason"].lower())
+
+                    r_fri_ok = instagram_poster.publish_live_reel_to_instagram(
+                        stores, reel_type="auto", slot_label="21:15", force=False, now_jst=fri_ok_reel_dt
+                    )
+                    self.assertEqual(r_fri_ok["status"], "success")
+                    self.assertFalse(r_fri_ok["share_to_feed"])
+                    self.assertFalse(reel_calls[-1]["share_to_feed"])
+
+                # 3) Error path: failed Meta API call must NOT mark slot done so retry tick can recover
+                sat_dt = datetime.datetime(2026, 11, 7, 21, 30, tzinfo=sns_editorial.JST)
+                with (
+                    mock.patch("instagram_poster.refresh_ig_token_if_needed"),
+                    mock.patch("reel_generator.render_reel_mp4_bytes", return_value=b"FAKE_MP4"),
+                    mock.patch("instagram_poster.post_reel_to_instagram", return_value={"status": "error", "detail": "HTTP 500"}),
+                ):
+                    r_err = instagram_poster.publish_live_reel_to_instagram(
+                        stores, reel_type="auto", slot_label="21:15", force=False, now_jst=sat_dt
+                    )
+                    self.assertEqual(r_err["status"], "error")
+                    self.assertFalse(job_state.is_done("ig_reel_slot:2026-11-07_21:15"))
+
+    def test_all_sns_antibot_pacing_rest_slots_and_live_surge_override(self):
+        """Verify natural weekday rest slots on X/Threads and live surge override when total women >= 140/120."""
+        quiet_stores = [{"name": "OLG 新宿", "women": 28, "men": 18, "region": "Kanto"}]
+        surge_stores = [
+            {"name": "OLG 新宿", "women": 85, "men": 40, "region": "Kanto"},
+            {"name": "OLG 渋谷本店", "women": 70, "men": 35, "region": "Kanto"},
+        ]  # total_women = 155
+
+        mon_20 = datetime.datetime(2026, 11, 2, 20, 10, tzinfo=sns_editorial.JST)  # Monday
+        fri_20 = datetime.datetime(2026, 11, 6, 20, 10, tzinfo=sns_editorial.JST)  # Friday
+        sun_18 = datetime.datetime(2026, 11, 8, 18, 10, tzinfo=sns_editorial.JST)  # Sunday
+
+        # X 20:00 skips quiet Monday, overrides on Monday surge, never skips Friday 20:00 or any 22:00 peak
+        self.assertTrue(sns_editorial.should_skip_slot_for_human_pacing("x", "20:00", now_jst=mon_20, stores=quiet_stores)[0])
+        self.assertFalse(sns_editorial.should_skip_slot_for_human_pacing("x", "20:00", now_jst=mon_20, stores=surge_stores)[0])
+        self.assertFalse(sns_editorial.should_skip_slot_for_human_pacing("x", "20:00", now_jst=fri_20, stores=quiet_stores)[0])
+        self.assertFalse(sns_editorial.should_skip_slot_for_human_pacing("x", "22:00", now_jst=mon_20, stores=quiet_stores)[0])
+
+        # X 18:00 Tip rests on Sunday + 1 rotating weekday (5x/week active)
+        self.assertTrue(sns_editorial.should_skip_slot_for_human_pacing("x_tip", "18:00", now_jst=sun_18)[0])
+        active_tip_days = sum(
+            0 if sns_editorial.should_skip_slot_for_human_pacing(
+                "x_tip", "18:00", now_jst=datetime.datetime(2026, 11, 2 + d, 18, 10, tzinfo=sns_editorial.JST)
+            )[0] else 1
+            for d in range(7)
+        )
+        self.assertEqual(active_tip_days, 5)
+
+        # Threads 22:00 runs 6x/week on quiet weeks, 7x/week during surge
+        active_th_days = sum(
+            0 if sns_editorial.should_skip_slot_for_human_pacing(
+                "threads", "22:00",
+                now_jst=datetime.datetime(2026, 11, 2 + d, 22, 10, tzinfo=sns_editorial.JST),
+                stores=quiet_stores,
+            )[0] else 1
+            for d in range(7)
+        )
+        self.assertEqual(active_th_days, 6)
+
+        # IG Reel human jitter spread (3..28m) and fail-open after +32m
+        off_r = sns_editorial.compute_human_schedule_offset_min("ig_reel", "21:15", now_jst=fri_20)
+        self.assertTrue(3 <= off_r <= 28)
+        self.assertFalse(sns_editorial.should_fire_scheduled_slot_now(
+            "ig_reel", "21:15", now_jst=datetime.datetime(2026, 11, 6, 21, 16, tzinfo=sns_editorial.JST)
+        ))
+        self.assertTrue(sns_editorial.should_fire_scheduled_slot_now(
+            "ig_reel", "21:15", now_jst=datetime.datetime(2026, 11, 6, 21, 48, tzinfo=sns_editorial.JST)
+        ))
+
+    def test_x_daily_budget_standalone_mix_and_column_rush_avoidance(self):
+        """Verify X daily post budget ceiling, standalone 1-tweet anti-bot mix, and column release rush/daily guards."""
+        import tempfile
+        import job_state
+        import scheduled_articles
+        import sns_workflows
+        import x_poster
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with mock.patch.dict(os.environ, {"JOB_STATE_DIR": tmpdir}):
+                job_state.reset_cache_for_tests()
+                wed_dt = datetime.datetime(2026, 11, 4, 21, 0, tzinfo=sns_editorial.JST)  # Wednesday (cap=4, peak=5)
+                for i in range(4):
+                    x_poster.record_x_auto_post_timestamp(wed_dt - datetime.timedelta(hours=4 - i))
+                self.assertEqual(x_poster.get_x_daily_auto_post_count(now_jst=wed_dt), 4)
+                over_reg, _ = x_poster.check_x_daily_post_budget(now_jst=wed_dt, is_primary_peak=False)
+                over_peak, _ = x_poster.check_x_daily_post_budget(now_jst=wed_dt, is_primary_peak=True)
+                self.assertTrue(over_reg)
+                self.assertFalse(over_peak)
+
+                # Sub-step 1b: 5th non-peak scheduled X post on Wednesday is blocked by daily budget!
+                res_over = sns_workflows.execute_scheduled_x_post(
+                    {"full_data": self.sample_stores, "is_seed": False},
+                    slot_label="20:00",
+                    force=False,
+                    now_jst=wed_dt,
+                )
+                self.assertEqual(res_over["status"], "skipped")
+                self.assertIn("cap reached", res_over["reason"])
+
+                # Standalone 1-tweet X mix on Friday: minimal_snap omits self-reply URL and OGP card
+                fri_dt = datetime.datetime(2026, 11, 6, 20, 12, tzinfo=sns_editorial.JST)
+                sent_x = []
+                fake_ed = {
+                    "winner": {
+                        "main_text": "金曜の渋谷、雨が上がってからオリエンタルラウンジ渋谷本店の女性28名・男性25名で急に華やいできた。",
+                        "reply_text": "https://aiseki-navi.com/?s=x20",
+                        "archetype_key": "minimal_snap",
+                        "style": "ai_live_adlib",
+                        "total_score": 93,
+                    },
+                    "session_record": {"slot_label": "20:00", "selected_text": "金曜の渋谷"},
+                }
+                with (
+                    mock.patch("sns_editorial.run_editorial_pipeline", return_value=fake_ed),
+                    mock.patch("x_poster.post_to_x", side_effect=lambda txt, reply_text=None, media_bytes=None, **kw: (sent_x.append((txt, reply_text, media_bytes)) or {"status": "success"})),
+                ):
+                    res_x = sns_workflows.execute_scheduled_x_post(
+                        {"full_data": self.sample_stores, "is_seed": False},
+                        slot_label="20:00",
+                        force=False,
+                        now_jst=fri_dt,
+                    )
+                self.assertEqual(res_x["status"], "success")
+                self.assertTrue(res_x.get("standalone_no_reply"))
+                self.assertIsNone(sent_x[0][1])
+                self.assertIsNone(sent_x[0][2])
+
+                # Column X release: holds during 19:50 rush, posts at 19:20, caps at max 1 column release per business day
+                for fn in os.listdir(tmpdir):
+                    os.remove(os.path.join(tmpdir, fn))
+                job_state.reset_cache_for_tests()
+                fake_articles = [
+                    {
+                        "slug": "col-a",
+                        "path": "/guide/col-a",
+                        "publish_at": "2026-11-04 19:00:00",
+                        "x_title": "テスト記事A",
+                        "x_main_text": "テスト記事Aの本音ツイート",
+                    },
+                    {
+                        "slug": "col-b",
+                        "path": "/guide/col-b",
+                        "publish_at": "2026-11-04 19:00:00",
+                        "x_title": "テスト記事B",
+                        "x_main_text": "テスト記事Bの本音ツイート",
+                    },
+                ]
+                with (
+                    mock.patch("scheduled_articles.get_all_scheduled_articles", return_value=fake_articles),
+                    mock.patch("x_poster.load_column_eyecatch_bytes", return_value=(None, "image/jpeg")),
+                    mock.patch("x_poster.post_to_x", return_value={"status": "success"}) as mock_col_x,
+                ):
+                    rush_res = scheduled_articles.check_and_announce_newly_published(
+                        now_jst=datetime.datetime(2026, 11, 4, 19, 50, 0)
+                    )
+                    self.assertEqual(mock_col_x.call_count, 0)
+                    self.assertEqual(rush_res[0]["result"]["status"], "skipped")
+
+                    ok_res = scheduled_articles.check_and_announce_newly_published(
+                        now_jst=datetime.datetime(2026, 11, 4, 19, 20, 0)
+                    )
+                    self.assertEqual(mock_col_x.call_count, 1)
+                    self.assertEqual(ok_res[0]["slug"], "col-a")
+
+                    # Even 2 hours later on same business night, 2nd article is held until tomorrow
+                    same_night_2nd = scheduled_articles.check_and_announce_newly_published(
+                        now_jst=datetime.datetime(2026, 11, 4, 21, 10, 0)
+                    )
+                    self.assertEqual(mock_col_x.call_count, 1)
+                    self.assertEqual(same_night_2nd[0]["result"]["status"], "skipped")
+
+    def test_threads_1_in_3_url_non_collision_cooldown_and_visual_card(self):
+        """Ensure Threads 19:30 Ladies and 22:00 Daily never both include URLs on the same night, and enforce 90m cooldown."""
+        import tempfile
+        import job_state
+        import ladies_guide
+        import threads_poster
+
+        stores = [
+            {"name": "OLG 新宿", "women": 12, "men": 28, "region": "Kanto"},
+            {"name": "JIS UMEDA", "women": 24, "men": 18, "region": "Kinki"},
+        ]
+        url_ladies_days = 0
+        url_daily_days = 0
+        img_days = 0
+        for d in range(1, 10):
+            dt_1930 = datetime.datetime(2026, 11, d, 19, 30, tzinfo=sns_editorial.JST)
+            dt_2200 = datetime.datetime(2026, 11, d, 22, 0, tzinfo=sns_editorial.JST)
+            l_txt = ladies_guide.build_threads_ladies_post(stores, slot_label="19:30", now_jst=dt_1930, use_ai=False)
+            d_footer = sns_editorial.build_threads_cta_footer(
+                site_url="https://aiseki-navi.com",
+                slot_label="22:00",
+                style_key="live",
+                now_jst=dt_2200,
+            )
+            img_u = threads_poster.select_scheduled_threads_image_url(now_jst=dt_2200)
+            has_l_url = "https://" in l_txt
+            has_d_url = "https://" in d_footer
+            self.assertFalse(has_l_url and has_d_url, f"Both 19:30 and 22:00 Threads posts had URLs on 2026-11-{d:02d}")
+            if img_u:
+                self.assertFalse(has_d_url, "Visual card night should be URL-free")
+                img_days += 1
+            if has_l_url:
+                url_ladies_days += 1
+            if has_d_url:
+                url_daily_days += 1
+        self.assertEqual(url_ladies_days, 3)
+        self.assertEqual(url_daily_days, 3)
+        self.assertEqual(img_days, 3)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with mock.patch.dict(os.environ, {"JOB_STATE_DIR": tmpdir}):
+                job_state.reset_cache_for_tests()
+                t0 = datetime.datetime(2026, 11, 6, 19, 35, tzinfo=sns_editorial.JST)
+                threads_poster.record_threads_auto_post_timestamp(t0)
+                self.assertTrue(threads_poster.check_threads_auto_post_cooldown(90, now_jst=t0 + datetime.timedelta(minutes=60))[0])
+                self.assertFalse(threads_poster.check_threads_auto_post_cooldown(90, now_jst=t0 + datetime.timedelta(minutes=95))[0])
+
 
 if __name__ == "__main__":
     unittest.main()

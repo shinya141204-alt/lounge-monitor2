@@ -27,17 +27,28 @@ FB_GRAPH_BASE = "https://graph.facebook.com/v21.0"
 DEFAULT_IG_USER_ID = "17841410169754469"  # @aiseki_navi1 professional user_id
 SITE_URL = "https://aiseki-navi.com"
 REEL_AUTO_ENABLED_KEY = "reel_auto_schedule_enabled"
+LAST_IG_AUTO_POST_KEY = "last_ig_auto_post_ts"
+_JST = datetime.timezone(datetime.timedelta(hours=9))
 _cached_ig_user_id = None
 _ig_post_lock = threading.Lock()
 
 
 def is_reel_auto_schedule_enabled(allow_blocking: bool = False) -> bool:
-    """Return whether automated Instagram Reels scheduled posting is enabled (default False)."""
+    """
+    Return whether automated Instagram Reels scheduled posting is enabled.
+    Defaults to True when unset in `job_state` (unless `IG_REEL_AUTO_SCHEDULE_DEFAULT=0`),
+    while strictly honoring explicit OFF ('0'/'false'/'off'/'no') set from `/staff/sns-editorial`.
+    """
     try:
         raw = (job_state.get_value(REEL_AUTO_ENABLED_KEY, allow_blocking=allow_blocking) or "").strip().lower()
-        return raw in ("1", "true", "on", "yes")
+        if raw in ("0", "false", "off", "no"):
+            return False
+        if raw in ("1", "true", "on", "yes"):
+            return True
+        env_def = (os.environ.get("IG_REEL_AUTO_SCHEDULE_DEFAULT") or "1").strip().lower()
+        return env_def not in ("0", "false", "off", "no")
     except Exception:
-        return False
+        return True
 
 
 def set_reel_auto_schedule_enabled(enabled: bool) -> bool:
@@ -45,6 +56,52 @@ def set_reel_auto_schedule_enabled(enabled: bool) -> bool:
     flag = bool(enabled)
     job_state.set_value(REEL_AUTO_ENABLED_KEY, "1" if flag else "0")
     return flag
+
+
+def _coerce_ig_jst_naive(dt: datetime.datetime = None) -> datetime.datetime:
+    if dt is None:
+        return datetime.datetime.now(_JST).replace(tzinfo=None)
+    if dt.tzinfo is not None:
+        return dt.astimezone(_JST).replace(tzinfo=None)
+    return dt
+
+
+def record_ig_auto_post_timestamp(now_jst: datetime.datetime = None, is_feed: bool = True) -> None:
+    """Record timestamp of automated IG post and whether a Feed/Grid post ran on this business date."""
+    try:
+        ts_naive = _coerce_ig_jst_naive(now_jst)
+        job_state.set_value(LAST_IG_AUTO_POST_KEY, ts_naive.strftime("%Y-%m-%d %H:%M:%S"))
+        if is_feed:
+            biz_date = (ts_naive - datetime.timedelta(hours=7)).strftime("%Y-%m-%d")
+            job_state.mark_done(f"ig_feed_daily:{biz_date}")
+    except Exception as e:
+        logging.debug(f"record_ig_auto_post_timestamp skipped: {e}")
+
+
+def has_ig_feed_posted_today(now_jst: datetime.datetime = None) -> bool:
+    """Return True if an IG Carousel or Feed post has already been published to the profile grid today."""
+    try:
+        ts_naive = _coerce_ig_jst_naive(now_jst)
+        biz_date = (ts_naive - datetime.timedelta(hours=7)).strftime("%Y-%m-%d")
+        return job_state.is_done(f"ig_feed_daily:{biz_date}")
+    except Exception:
+        return False
+
+
+def check_ig_auto_post_cooldown(min_interval_minutes: int = 95, now_jst: datetime.datetime = None) -> tuple:
+    """Return `(in_cooldown: bool, reason: str)` if an automated IG post ran within `min_interval_minutes`."""
+    try:
+        raw = (job_state.get_value(LAST_IG_AUTO_POST_KEY, allow_blocking=False) or "").strip()
+        if not raw:
+            return False, "ok"
+        last_naive = datetime.datetime.strptime(raw, "%Y-%m-%d %H:%M:%S")
+        cur_naive = _coerce_ig_jst_naive(now_jst)
+        diff_min = (cur_naive - last_naive).total_seconds() / 60.0
+        if 0 <= diff_min < float(min_interval_minutes):
+            return True, f"IG auto-post cooldown active ({int(diff_min)}m < {min_interval_minutes}m since last IG post)"
+    except Exception:
+        pass
+    return False, "ok"
 
 
 def _warm_slide_urls(urls: list, ctx: dict = None) -> None:
@@ -571,6 +628,12 @@ def execute_scheduled_instagram_post(stores: list, mode: str = "carousel", slot_
         if not force and job_state.is_done(dedup_key):
             return {"status": "skipped", "reason": "Already posted to Instagram for this slot"}
 
+        if not force:
+            in_cd, cd_reason = check_ig_auto_post_cooldown(min_interval_minutes=95, now_jst=now_jst)
+            if in_cd:
+                logging.info(f"Deferring Instagram post ({slot_label}): {cd_reason}")
+                return {"status": "skipped", "reason": cd_reason}
+
         if mode != "carousel" and not force:
             dom = threads_poster._filter_domestic_stores(stores)
             total_dom_women = sum(int(s.get("women") or 0) for s in dom)
@@ -670,6 +733,7 @@ def execute_scheduled_instagram_post(stores: list, mode: str = "carousel", slot_
                 )
                 if not force:
                     job_state.mark_done(dedup_key)
+                    record_ig_auto_post_timestamp(now_jst, is_feed=True)
                     if ed_session_record:
                         sns_editorial.persist_editorial_session_record("instagram", ed_session_record)
             else:
@@ -683,6 +747,7 @@ def execute_scheduled_instagram_post(stores: list, mode: str = "carousel", slot_
         except Exception:
             if res.get("status") == "success" and not force:
                 job_state.mark_done(dedup_key)
+                record_ig_auto_post_timestamp(now_jst, is_feed=True)
         return res
     finally:
         _ig_post_lock.release()
@@ -709,6 +774,12 @@ def execute_scheduled_ladies_instagram_post(
 
         if not force and job_state.is_done(dedup_key):
             return {"status": "skipped", "reason": "Already posted ladies alert to Instagram for this slot"}
+
+        if not force:
+            in_cd, cd_reason = check_ig_auto_post_cooldown(min_interval_minutes=95, now_jst=now_jst)
+            if in_cd:
+                logging.info(f"Deferring Instagram ladies post ({slot_label}): {cd_reason}")
+                return {"status": "skipped", "reason": cd_reason}
 
         dom = threads_poster._filter_domestic_stores(stores)
         total_dom_men = sum(int(s.get("men") or 0) for s in dom)
@@ -737,6 +808,13 @@ def execute_scheduled_ladies_instagram_post(
                     post_id=res.get("id") or "",
                     now_jst=now_jst,
                 )
+                if not force:
+                    sns_editorial.persist_editorial_session_record("instagram", {
+                        "timestamp": now_jst.strftime("%Y-%m-%d %H:%M:%S"),
+                        "slot_label": slot_label,
+                        "selected_style": "ig_ladies_night_guide",
+                        "selected_text": caption,
+                    })
             else:
                 sns_editorial.record_sns_delivery_status(
                     "instagram",
@@ -749,6 +827,7 @@ def execute_scheduled_ladies_instagram_post(
             pass
         if res.get("status") == "success" and not force:
             job_state.mark_done(dedup_key)
+            record_ig_auto_post_timestamp(now_jst, is_feed=True)
         return res
     finally:
         _ig_post_lock.release()
@@ -901,10 +980,13 @@ def publish_live_reel_to_instagram(
     share_to_feed: bool = True,
     slot_label: str = "manual_reel",
     force: bool = True,
+    now_jst: datetime.datetime = None,
 ) -> dict:
     """
     Warm-generate the live 9:16 MP4 Reel in-process, publish via Meta Instagram Graph API
     using `{SITE_URL}/ogp/reel/{reel_type}.mp4?s={ts_code}`, and record delivery status.
+    Supports `reel_type="auto"` (4-template rotation), slot-level deduplication, IG 95m cooldown,
+    and automatic `share_to_feed=False` switching when a Feed/Carousel already posted to the grid today.
     """
     if not _ig_post_lock.acquire(blocking=False):
         return {"status": "skipped", "ok": False, "skipped": True, "reason": "already_running"}
@@ -912,14 +994,29 @@ def publish_live_reel_to_instagram(
     try:
         import reel_generator
 
-        rt = reel_generator.normalize_reel_type(reel_type)
-        now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
+        now_jst = now_jst or datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
+        if now_jst.tzinfo is None:
+            now_jst = now_jst.replace(tzinfo=_JST)
         biz_date = (now_jst - datetime.timedelta(hours=7)).strftime("%Y-%m-%d")
-        dedup_key = f"ig_post:{biz_date}_reel_{rt}_{slot_label}"
+        slot_dedup_key = f"ig_reel_slot:{biz_date}_{slot_label}"
 
         if not force:
             if not is_reel_auto_schedule_enabled(allow_blocking=False):
                 return {"status": "skipped", "ok": False, "reason": "Reel auto-schedule is disabled"}
+            if job_state.is_done(slot_dedup_key):
+                return {"status": "skipped", "ok": False, "reason": "Already posted scheduled Reel for this slot"}
+            in_cd, cd_reason = check_ig_auto_post_cooldown(min_interval_minutes=95, now_jst=now_jst)
+            if in_cd:
+                logging.info(f"Deferring scheduled IG Reel ({slot_label}): {cd_reason}")
+                return {"status": "skipped", "ok": False, "reason": cd_reason}
+
+        if (reel_type or "").strip().lower() == "auto":
+            rt = reel_generator.select_scheduled_reel_type(stores, now_jst=now_jst, platform="instagram")
+        else:
+            rt = reel_generator.normalize_reel_type(reel_type)
+        dedup_key = f"ig_post:{biz_date}_reel_{rt}_{slot_label}"
+
+        if not force:
             if job_state.is_done(dedup_key):
                 return {"status": "skipped", "ok": False, "reason": "Already posted Reel to Instagram for this slot"}
 
@@ -939,9 +1036,20 @@ def publish_live_reel_to_instagram(
                     )
                     return {"status": "skipped", "ok": False, "reason": "Insufficient live headcount"}
 
+        # Smart profile-grid protection: if a Carousel or Feed post already ran today on a scheduled night,
+        # publish this Reel to Reels/Explore non-follower discovery (`share_to_feed=False`) so the grid stays clean.
+        effective_share_to_feed = bool(share_to_feed)
+        if not force and has_ig_feed_posted_today(now_jst):
+            effective_share_to_feed = False
+
         refresh_ig_token_if_needed(force=False)
         cleaned_custom = reel_generator.enforce_brand_rule((custom_caption or "").strip())
-        caption = cleaned_custom or reel_generator.build_reel_caption(stores, reel_type=rt, now_jst=now_jst)
+        if cleaned_custom:
+            caption = cleaned_custom
+        elif not force:
+            caption = reel_generator.build_ai_reel_caption(stores, reel_type=rt, now_jst=now_jst)
+        else:
+            caption = reel_generator.build_reel_caption(stores, reel_type=rt, now_jst=now_jst)
 
         try:
             reel_generator.render_reel_mp4_bytes(stores, reel_type=rt)
@@ -963,10 +1071,11 @@ def publish_live_reel_to_instagram(
 
         ts_code = now_jst.strftime("%Y%m%d_%H%M")
         video_url = f"{SITE_URL}/ogp/reel/{rt}.mp4?s={ts_code}"
-        res = post_reel_to_instagram(video_url, caption, share_to_feed=share_to_feed)
+        res = post_reel_to_instagram(video_url, caption, share_to_feed=effective_share_to_feed)
         res["caption"] = caption
         res["video_url"] = video_url
         res["reel_type"] = rt
+        res["share_to_feed"] = effective_share_to_feed
         res.setdefault("ok", res.get("status") == "success")
 
         try:
@@ -979,6 +1088,13 @@ def publish_live_reel_to_instagram(
                     post_id=res.get("id") or "",
                     now_jst=now_jst,
                 )
+                if not force:
+                    sns_editorial.persist_editorial_session_record("instagram", {
+                        "timestamp": now_jst.strftime("%Y-%m-%d %H:%M:%S"),
+                        "slot_label": slot_label,
+                        "selected_style": f"reel_{rt}",
+                        "selected_text": caption,
+                    })
             else:
                 sns_editorial.record_sns_delivery_status(
                     "instagram",
@@ -990,8 +1106,12 @@ def publish_live_reel_to_instagram(
         except Exception:
             pass
 
-        if res.get("status") == "success" and not force:
-            job_state.mark_done(dedup_key)
+        if res.get("status") == "success":
+            reel_generator.record_recent_reel_type(rt, platform="instagram")
+            if not force:
+                job_state.mark_done(dedup_key)
+                job_state.mark_done(slot_dedup_key)
+                record_ig_auto_post_timestamp(now_jst, is_feed=effective_share_to_feed)
         return res
     finally:
         _ig_post_lock.release()

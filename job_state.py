@@ -27,8 +27,16 @@ MAX_HISTORY_KEYS = 3000
 _OBF_PREFIX = 'obf1:'
 _KV_ENTRY_RE = re.compile(r'^([^=]+)=(\d{14})\|(.*)$', re.S)
 
-_LOCAL_DIR = os.environ.get('JOB_STATE_DIR') or os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
+_DEFAULT_LOCAL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
+_LOCAL_DIR = os.environ.get('JOB_STATE_DIR') or _DEFAULT_LOCAL_DIR
 _LOCAL_FILE = os.path.join(_LOCAL_DIR, 'job_state.json')
+
+
+def _resolve_local_file() -> str:
+    env_dir = os.environ.get('JOB_STATE_DIR')
+    if env_dir:
+        return os.path.join(env_dir, 'job_state.json')
+    return _LOCAL_FILE
 
 _lock = threading.Lock()
 _sheets_sync_lock = threading.Lock()
@@ -122,16 +130,17 @@ def _ensure_local_loaded_locked():
         _kv = {}
         _kv_ts = {}
         _local_loaded = False
+        local_path = _resolve_local_file()
         try:
-            if os.path.exists(_LOCAL_FILE):
+            if os.path.exists(local_path):
                 jst_tz = datetime.timezone(datetime.timedelta(hours=9))
                 try:
                     mtime_ts = datetime.datetime.fromtimestamp(
-                        os.path.getmtime(_LOCAL_FILE), tz=jst_tz
+                        os.path.getmtime(local_path), tz=jst_tz
                     ).strftime('%Y%m%d%H%M%S')
                 except Exception:
                     mtime_ts = ''
-                with open(_LOCAL_FILE, 'r', encoding='utf-8') as f:
+                with open(local_path, 'r', encoding='utf-8') as f:
                     data = json.load(f) or {}
                 for k in data.get('keys', []):
                     _ingest_entry(k)
@@ -267,9 +276,10 @@ def is_storage_healthy() -> bool:
 
 def _save_local():
     global _keys
-    tmp_path = f"{_LOCAL_FILE}.{threading.get_ident()}.tmp"
+    local_path = _resolve_local_file()
+    tmp_path = f"{local_path}.{threading.get_ident()}.tmp"
     try:
-        os.makedirs(os.path.dirname(_LOCAL_FILE) or _LOCAL_DIR, exist_ok=True)
+        os.makedirs(os.path.dirname(local_path) or _LOCAL_DIR, exist_ok=True)
         trimmed = _trimmed_history_list(_keys.keys())
         _keys = {k: None for k in trimmed}
         local_kv = {}
@@ -284,7 +294,7 @@ def _save_local():
         }
         with open(tmp_path, 'w', encoding='utf-8') as f:
             json.dump(payload, f, ensure_ascii=False)
-        os.replace(tmp_path, _LOCAL_FILE)
+        os.replace(tmp_path, local_path)
     except Exception:
         try:
             if os.path.exists(tmp_path):

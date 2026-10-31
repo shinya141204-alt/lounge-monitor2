@@ -827,6 +827,16 @@ def run_scheduled_tip_post(slot_label: str = "12:00", force: bool = False, tip_i
         logger.info(f"X tip post already sent for {dedup_key}, skipping.")
         return {"status": "skipped", "reason": "Already posted for this slot today"}
 
+    if not force:
+        in_cd, cd_reason = x_poster.check_x_auto_post_cooldown(min_interval_minutes=48, now_jst=now_jst)
+        if in_cd:
+            logger.info(f"Deferring X tip post ({slot_label}): {cd_reason}")
+            return {"status": "skipped", "reason": cd_reason}
+        over_b, b_reason = x_poster.check_x_daily_post_budget(now_jst=now_jst)
+        if over_b:
+            logger.info(f"Skipping X tip post ({slot_label}): {b_reason}")
+            return {"status": "skipped", "reason": b_reason}
+
     standalone = is_standalone_url_free_tip(slot_label=slot_label, now_jst=now_jst, tip_index=orig_tip_index) and not force
     idx = _select_tip_index(slot_label=slot_label, tip_index=tip_index, now_jst=now_jst)
     fallback_text = get_tip_for_slot(slot_label=slot_label, tip_index=idx, now_jst=now_jst, standalone_no_reply=standalone)

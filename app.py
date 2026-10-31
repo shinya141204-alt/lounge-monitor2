@@ -348,6 +348,12 @@ def _ensure_scheduler_started_async():
                 import sns_editorial
                 if not sns_editorial.should_fire_scheduled_slot_now("x", slot_lbl):
                     return
+                with data_lock:
+                    cur_stores = list(latest_data.get('full_data') or [])
+                skip_pace, pace_reason = sns_editorial.should_skip_slot_for_human_pacing("x", slot_lbl, stores=cur_stores)
+                if skip_pace:
+                    logging.info(f"Skipping X {slot_lbl} for human pacing: {pace_reason}")
+                    return
                 run_scheduled_x_post(slot_lbl)
             scheduler.add_job(func=_x_sched_wrap, trigger="cron", hour=11, minute="2,6,10,14,18,22,27", jitter=75, args=["20:00"], executor="sns_ai")
             scheduler.add_job(func=_x_sched_wrap, trigger="cron", hour=13, minute="2,6,10,14,18,22,27", jitter=75, args=["22:00"], executor="sns_ai")
@@ -355,6 +361,10 @@ def _ensure_scheduler_started_async():
             def _tip_18():
                 import sns_editorial
                 if not sns_editorial.should_fire_scheduled_slot_now("x_tip", "18:00"):
+                    return
+                skip_pace, pace_reason = sns_editorial.should_skip_slot_for_human_pacing("x_tip", "18:00")
+                if skip_pace:
+                    logging.info(f"Skipping X tip 18:00 for human pacing: {pace_reason}")
                     return
                 import tips_poster
                 tips_poster.run_scheduled_tip_post(slot_label="18:00")
@@ -377,7 +387,12 @@ def _ensure_scheduler_started_async():
                         cur_stores = list(latest_data.get('full_data') or [])
                         is_seed = bool(latest_data.get('is_seed'))
                     if cur_stores and not is_seed:
-                        threads_poster.execute_scheduled_threads_post(cur_stores, slot_label="22:00")
+                        skip_pace, pace_reason = sns_editorial.should_skip_slot_for_human_pacing("threads", "22:00", stores=cur_stores)
+                        if skip_pace:
+                            logging.info(f"Skipping Threads 22:00 for human pacing: {pace_reason}")
+                            return
+                        img_url = threads_poster.select_scheduled_threads_image_url()
+                        threads_poster.execute_scheduled_threads_post(cur_stores, slot_label="22:00", image_url=img_url)
                 except Exception as err:
                     logging.error(f"Scheduled Threads post failed: {err}")
             scheduler.add_job(func=_threads_daily_job, trigger="cron", hour=13, minute="5,9,13,17,21,26,32", jitter=75, executor="sns_ai")
@@ -397,7 +412,7 @@ def _ensure_scheduler_started_async():
             # Friday pre-outing forecast (18:45 JST = 09:45 UTC) + Tue/Sun evening report (21:45 JST = 12:45 UTC)
             scheduler.add_job(func=_ig_carousel_job, trigger="cron", day_of_week="fri", hour=9, minute="46,50,54,58", jitter=45, args=["18:45"], executor="sns_ai")
             scheduler.add_job(func=_ig_carousel_job, trigger="cron", day_of_week="tue,sun", hour=12, minute="46,50,54,58", jitter=45, args=["21:45"], executor="sns_ai")
-            # Plan E: Women-perspective 'Tonight's Zero-Wait & Ladies Perks' alerts on Threads (Wed/Fri/Sat 19:30 JST) & Instagram (Thu/Sat 19:45 JST)
+            # Plan E: Women-perspective 'Tonight's Zero-Wait & Ladies Perks' alerts on Threads (Wed/Fri/Sat 19:30 JST) & Instagram (Thu 19:45 JST)
             def _threads_ladies_job():
                 try:
                     import sns_editorial
@@ -425,7 +440,39 @@ def _ensure_scheduler_started_async():
                         instagram_poster.execute_scheduled_ladies_instagram_post(cur_stores, slot_label="19:45")
                 except Exception as err:
                     logging.error(f"Scheduled Instagram ladies post failed: {err}")
-            scheduler.add_job(func=_ig_ladies_job, trigger="cron", day_of_week="thu,sat", hour=10, minute="46,50,54,58", jitter=45, executor="sns_ai")
+            scheduler.add_job(func=_ig_ladies_job, trigger="cron", day_of_week="thu", hour=10, minute="46,50,54,58", jitter=45, executor="sns_ai")
+            def _ig_reel_scheduled_job(slot_lbl="21:15"):
+                try:
+                    import sns_editorial
+                    if not sns_editorial.should_fire_scheduled_slot_now("ig_reel", slot_lbl):
+                        return
+                    import instagram_poster
+                    if not instagram_poster.is_reel_auto_schedule_enabled(allow_blocking=False):
+                        return
+                    with data_lock:
+                        cur_stores = list(latest_data.get('full_data') or [])
+                        is_seed = bool(latest_data.get('is_seed'))
+                    if cur_stores and not is_seed:
+                        instagram_poster.publish_live_reel_to_instagram(cur_stores, reel_type="auto", slot_label=slot_lbl, force=False)
+                except Exception as err:
+                    logging.error(f"Scheduled Instagram Reel post failed: {err}")
+            scheduler.add_job(func=_ig_reel_scheduled_job, trigger="cron", day_of_week="wed,thu,fri,sat", hour=12, minute="18,24,30,36,42,48", jitter=50, args=["21:15"], executor="sns_ai")
+            def _tiktok_inbox_job(slot_lbl="20:35"):
+                try:
+                    import tiktok_poster
+                    if not tiktok_poster.is_tiktok_auto_schedule_enabled(allow_blocking=False) or not tiktok_poster.is_tiktok_token_configured():
+                        return
+                    import sns_editorial
+                    if not sns_editorial.should_fire_scheduled_slot_now("tiktok", slot_lbl):
+                        return
+                    with data_lock:
+                        cur_stores = list(latest_data.get('full_data') or [])
+                        is_seed = bool(latest_data.get('is_seed'))
+                    if cur_stores and not is_seed:
+                        tiktok_poster.execute_scheduled_tiktok_inbox_post(cur_stores, slot_label=slot_lbl, force=False)
+                except Exception as err:
+                    logging.error(f"Scheduled TikTok Inbox post failed: {err}")
+            scheduler.add_job(func=_tiktok_inbox_job, trigger="cron", day_of_week="wed,fri,sat", hour=11, minute="39,45,51,57", jitter=50, args=["20:35"], executor="sns_ai")
             def _crawl_events_job():
                 try:
                     import events

@@ -326,6 +326,15 @@ def check_and_post_new_note(force: bool = False, article_index: int = 0) -> dict
                 "article": target,
             }
 
+        over_b, b_reason = x_poster.check_x_daily_post_budget(now_jst=now_jst, is_primary_peak=False)
+        if over_b:
+            logger.info(f"Deferring note X share due to daily budget ({b_reason}): {target['link']}")
+            return {
+                "status": "skipped",
+                "reason": b_reason,
+                "article": target,
+            }
+
     link = target["link"]
     title = target["title"]
 

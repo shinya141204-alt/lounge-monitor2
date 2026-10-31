@@ -747,19 +747,172 @@ def build_reel_context(
     }
 
 
+REEL_RECENT_TYPES_KEY = "reel_recent_types"
+TK_RECENT_TYPES_KEY = "tiktok_recent_types"
+
+
+def _coerce_jst(dt: datetime.datetime = None) -> datetime.datetime:
+    if dt is None:
+        return datetime.datetime.now(JST)
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=JST)
+    return dt.astimezone(JST)
+
+
+def get_recent_reel_types(platform: str = "instagram", limit: int = 4) -> list:
+    """Return recently auto-published Reel/TikTok template keys (newest first)."""
+    try:
+        import job_state
+        import json
+        key = TK_RECENT_TYPES_KEY if platform == "tiktok" else REEL_RECENT_TYPES_KEY
+        raw = job_state.get_value(key, allow_blocking=False)
+        if not raw:
+            return []
+        parsed = json.loads(raw)
+        if isinstance(parsed, list):
+            return [str(x) for x in parsed if x][:limit]
+    except Exception:
+        pass
+    return []
+
+
+def record_recent_reel_type(reel_type: str, platform: str = "instagram") -> None:
+    """Persist published template key so consecutive scheduled videos never repeat the same layout."""
+    rt = normalize_reel_type(reel_type)
+    try:
+        import job_state
+        import json
+        key = TK_RECENT_TYPES_KEY if platform == "tiktok" else REEL_RECENT_TYPES_KEY
+        cur = get_recent_reel_types(platform=platform, limit=6)
+        updated = [rt] + [x for x in cur if x != rt or len(cur) == 0]
+        # Keep chronological order (allow older occurrence while keeping top unique from immediate repeat)
+        chron = [rt] + cur[:5]
+        job_state.set_value(key, json.dumps(chron[:6], ensure_ascii=False))
+    except Exception as e:
+        logger.debug(f"record_recent_reel_type skipped: {e}")
+
+
+def select_scheduled_reel_type(
+    stores: list,
+    now_jst: datetime.datetime = None,
+    recent_types: list = None,
+    platform: str = "instagram",
+) -> str:
+    """
+    Intelligently rotate Reel/TikTok templates based on live crowd shape, day of week, and recent history
+    so scheduled vertical videos never repeat the same visual template back-to-back.
+    """
+    now_jst = _coerce_jst(now_jst)
+    biz_dt = now_jst - datetime.timedelta(hours=7)
+    wd = biz_dt.weekday()  # 0=Mon .. 6=Sun
+    recent = list(recent_types) if recent_types is not None else get_recent_reel_types(platform=platform, limit=4)
+    last_1 = recent[0] if len(recent) >= 1 else ""
+    last_2 = recent[1] if len(recent) >= 2 else ""
+
+    ctx = build_reel_context(stores, reel_type="live_top5", now_jst=now_jst)
+    gap_pairs = ctx.get("gap_pairs") or []
+    top_gap_pt = max((int(gp.get("gap_pt") or 0) for gp in gap_pairs), default=0)
+    ladies_cands = [s for s in (ctx.get("ladies_top5") or []) if int(s.get("men") or 0) > int(s.get("women") or 0) and int(s.get("men") or 0) >= 6]
+
+    if platform == "tiktok":
+        pool = ["tiktok_gap_shock", "tiktok_ladies_real", "tiktok_midnight_cliff"]
+        if now_jst.hour >= 22 or now_jst.hour <= 3:
+            preferred = ["tiktok_midnight_cliff", "tiktok_gap_shock", "tiktok_ladies_real"]
+        elif wd in (2, 3) and len(ladies_cands) >= 2:
+            preferred = ["tiktok_ladies_real", "tiktok_gap_shock", "tiktok_midnight_cliff"]
+        else:
+            rot = biz_dt.toordinal() % len(pool)
+            preferred = pool[rot:] + pool[:rot]
+        for cand in preferred:
+            if cand != last_1:
+                return cand
+        return preferred[0]
+
+    # Instagram Reels: rotate across 4 distinct visual templates
+    # - Wednesday (or strong male-lead nights without Thu Ladies Feed): prioritize `ladies_zero_wait`
+    # - High intra-station gap (>=15pt): prioritize `tiktok_gap_shock` or `area_battle`
+    # - Fri/Sat peak: rotate `live_top5`, `area_battle`, `tiktok_gap_shock`, `ladies_zero_wait`
+    ig_pool = ["live_top5", "area_battle", "ladies_zero_wait", "tiktok_gap_shock"]
+    if wd == 2 and len(ladies_cands) >= 2:
+        ranked = ["ladies_zero_wait", "area_battle", "live_top5", "tiktok_gap_shock"]
+    elif wd == 3:
+        # Thursday already has 19:45 Ladies Feed, so favor area_battle / gap_shock / live_top5
+        ranked = ["area_battle", "tiktok_gap_shock", "live_top5", "ladies_zero_wait"]
+    elif top_gap_pt >= 16 and (biz_dt.toordinal() % 2 == 1):
+        ranked = ["tiktok_gap_shock", "live_top5", "area_battle", "ladies_zero_wait"]
+    else:
+        base_order = ["live_top5", "area_battle", "tiktok_gap_shock", "ladies_zero_wait"]
+        rot = biz_dt.toordinal() % len(base_order)
+        ranked = base_order[rot:] + base_order[:rot]
+        if len(ladies_cands) < 2 and "ladies_zero_wait" in ranked:
+            ranked = [x for x in ranked if x != "ladies_zero_wait"] + ["ladies_zero_wait"]
+
+    # Strictly avoid immediate repeat (`last_1`), and avoid `last_2` first when possible
+    for cand in ranked:
+        if cand != last_1 and cand != last_2:
+            return cand
+    for cand in ranked:
+        if cand != last_1:
+            return cand
+    return ranked[0]
+
+
+def _pick_reel_tag_line(reel_type: str, seed_num: int) -> str:
+    """Return 4–5 specific rotated hashtags (always including `#相席ナビ`) instead of repetitive 9-tag blocks."""
+    tag_sets = {
+        "area_battle": (
+            "#相席ナビ #相席ラウンジ #オリエンタルラウンジ #新宿夜遊び #梅田グルメ",
+            "#相席ナビ #相席ラウンジ #ag #JIS #渋谷グルメ",
+            "#相席ナビ #相席ラウンジ #オリエンタルラウンジ #2軒目 #夜遊び",
+        ),
+        "ladies_zero_wait": (
+            "#相席ナビ #相席ラウンジ #女子会 #オリエンタルラウンジ #2軒目",
+            "#相席ナビ #女子会ディナー #相席ラウンジ #ag #夜カフェ",
+            "#相席ナビ #相席ラウンジ #週末女子会 #JIS #オリエンタルラウンジ",
+        ),
+        "tiktok_gap_shock": (
+            "#相席ナビ #相席ラウンジ #オリエンタルラウンジ #新宿夜遊び #梅田夜遊び",
+            "#相席ナビ #相席ラウンジ #ag #JIS #渋谷夜遊び",
+            "#相席ナビ #相席ラウンジ #オリエンタルラウンジ #2軒目探し #相席",
+        ),
+        "tiktok_ladies_real": (
+            "#相席ナビ #相席ラウンジ #女子会 #オリエンタルラウンジ #夜カフェ",
+            "#相席ナビ #週末女子会 #相席ラウンジ #ag #2軒目",
+            "#相席ナビ #相席ラウンジ #女子会ディナー #JIS #オリエンタルラウンジ",
+        ),
+        "tiktok_midnight_cliff": (
+            "#相席ナビ #相席ラウンジ #オリエンタルラウンジ #2軒目 #終電後",
+            "#相席ナビ #相席ラウンジ #JIS #ag #深夜グルメ",
+            "#相席ナビ #相席ラウンジ #オリエンタルラウンジ #新宿 #梅田",
+        ),
+        "live_top5": (
+            "#相席ナビ #相席ラウンジ #オリエンタルラウンジ #新宿 #梅田",
+            "#相席ナビ #相席ラウンジ #ag #JIS #渋谷",
+            "#相席ナビ #相席ラウンジ #オリエンタルラウンジ #2軒目 #夜遊び",
+        ),
+    }
+    opts = tag_sets.get(reel_type) or tag_sets["live_top5"]
+    return opts[seed_num % len(opts)]
+
+
 def build_reel_caption(
     stores: list,
     reel_type: str = "live_top5",
     now_jst: datetime.datetime = None,
 ) -> str:
     """
-    Generate human-voiced, save-worthy caption + hashtags for Instagram Reels / TikTok / YouTube Shorts.
-    Strictly uses full 'オリエンタルラウンジ' across all generated text.
+    Generate human-voiced, cliché-free, save-worthy caption + 4–5 rotated hashtags
+    for Instagram Reels / TikTok / YouTube Shorts.
+    Strictly uses full 'オリエンタルラウンジ' and zero backstage clichés across all generated text.
     """
     ctx = build_reel_context(stores, reel_type=reel_type, now_jst=now_jst)
     rt = ctx["reel_type"]
     t_lbl = ctx["time_label"]
-    mode_note = "（※直近ピーク実績ベース）" if ctx["is_fallback"] else f"（{t_lbl} リアルタイム集計）"
+    eff_dt = _coerce_jst(now_jst)
+    biz_dt = eff_dt - datetime.timedelta(hours=7)
+    seed_num = biz_dt.toordinal() + sum(ord(ch) for ch in rt)
+    mode_note = "（※直近ピーク実績ベース）" if ctx["is_fallback"] else f"（{t_lbl} 時点）"
+    tags_line = _pick_reel_tag_line(rt, seed_num)
 
     if rt == "area_battle":
         zones = ctx["area_battles"]
@@ -776,15 +929,24 @@ def build_reel_caption(
         joined_z = "\n".join(z_lines)
         lead_name = leader["label"] if leader else "新宿エリア"
         ratio_name = ratio_win["label"] if ratio_win else "梅田エリア"
+        openers = (
+            f"同じ時間帯でも街によって男女比の空気ってここまで変わるんですよね{mode_note}",
+            f"新宿・梅田・渋谷、今夜いま一番バランスが良い街を並べてみました{mode_note}",
+            f"1軒目を出る前に知っておきたい、3大エリアのリアルな温度差メモです{mode_note}",
+            f"今夜の3大激戦区、人数ボリュームと入りやすさで綺麗に割れてます{mode_note}",
+        )
+        closers = (
+            "お店に向かう直前の現在人数と男女比は、プロフィールのリンク『相席ナビ』（aiseki-navi.com）から3秒で見れます。\n2軒目探しのメモ代わりに保存どうぞ📌",
+            "全国60店舗超のいま現在の人数と料金比較はプロフの『相席ナビ』（aiseki-navi.com）に置いてます🔍\n週末の作戦会議用に保存しておくとラクです。",
+            "改札を出る前に『相席ナビ』（aiseki-navi.com）で近くの別ブランドを見比べるだけで受付待ちを回避できます。",
+        )
         caption = (
-            f"同じ夜でもエリアでここまで男女比が割れるの、毎回モニター見てて面白い…📊{mode_note}\n\n"
-            f"今の3大激戦区（新宿 vs 梅田 vs 渋谷）のリアル集計がこちら👇\n"
+            f"{openers[seed_num % len(openers)]}\n\n"
             f"{joined_z}\n\n"
-            f"人数ボリュームが一番熱いのは【{lead_name}】、男性が待ち時間を避けて座りやすい比率なのは【{ratio_name}】という結果に。\n"
-            f"同じ駅でも徒歩3〜4分の別ブランド（オリエンタルラウンジ・ag・JIS）を見比べるだけで「男性待ち50分」を余裕で回避できます💡\n\n"
-            f"お店に向かう直前の「全53店舗の現在人数＆男女比」は、プロフィールのリンク『相席ナビ』（aiseki-navi.com）から登録不要・3秒で無料検索できます🔍\n"
-            f"週末の作戦会議用に「保存📌」しておくと便利です！\n\n"
-            f"#相席ナビ #相席ラウンジ #オリエンタルラウンジ #ag #JIS #新宿グルメ #梅田グルメ #渋谷グルメ #夜遊び"
+            f"人数が一番集まっているのは【{lead_name}】、男性が待ち時間を避けて座りやすい比率なのは【{ratio_name}】。\n"
+            f"同じ駅でも徒歩3〜4分の別ブランド（オリエンタルラウンジ・ag・JIS）を見比べるだけで体感がガラッと変わります。\n\n"
+            f"{closers[seed_num % len(closers)]}\n\n"
+            f"{tags_line}"
         )
         return enforce_brand_rule(caption)
 
@@ -797,15 +959,23 @@ def build_reel_caption(
                 f"・{idx}位：{s['ja_name']}（男性{s['men']}名 / 女性{s['women']}名{perk_s}）"
             )
         joined_l = "\n".join(l_lines)
+        openers = (
+            f"せっかく準備して出た夜に、受付で待たされるのだけは避けたいですよね💄{mode_note}",
+            f"友達とディナー帰りにふらっと寄りやすい、いま男性先行で案内がスムーズなお店メモ🥂{mode_note}",
+            f"女子2人組でラウンジ寄るなら、実は女性過多のお店より男性先行店のほうが圧倒的に快適だったりします{mode_note}",
+            f"いま受付待ちほぼゼロでそのまま乾杯しやすそうな狙い目ラウンジ上位です✨{mode_note}",
+        )
+        closers = (
+            "いま女子待ちゼロ圏の店舗一覧と限定フード・特典は、プロフィールのリンク『相席ナビ』（aiseki-navi.com）から見れます🔍\n友達との2軒目用に保存どうぞ🥂",
+            "角が立たない席替えのコツや全国の現在人数はプロフの『相席ナビ』（aiseki-navi.com）にまとめてあります📌",
+            "お店に入る3分前にプロフィールの『相席ナビ』（aiseki-navi.com）を覗いてから動くのが一番ラクです✨",
+        )
         caption = (
-            f"せっかく髪もメイクも整えたのに、受付で待たされるのだけはほんと避けたいよね…💄{mode_note}\n\n"
-            f"女子ペアが「待ち時間ほぼゼロ」でスマートに乾杯しやすい、いま男性が先行して盛り上がっている狙い目ラウンジ上位はこちら🥂\n\n"
+            f"{openers[seed_num % len(openers)]}\n\n"
             f"{joined_l}\n\n"
-            f"💡 女子組の失敗しないお店選びメモ\n"
-            f"女性比率が70%超えで女子が集中している店舗より、男性が先行している店舗を選ぶ方が入店直後から席替えもスムーズで快適です✨\n\n"
-            f"いま現在「女子待ち0」で入れる店舗と今夜の限定特典・フード比較は、プロフィールのリンク『相席ナビ』（aiseki-navi.com）から3秒でチェックできます🔍\n"
-            f"友達との2軒目探し用に「保存📌」して使ってください🥂\n\n"
-            f"#相席ナビ #女子会 #相席ラウンジ #オリエンタルラウンジ #ag #JIS #週末女子会 #夜カフェ #2軒目"
+            f"女性比率が70%超えで女子が集中している店舗より、男性が先に盛り上がっている店舗を選ぶ方が席替えもスムーズです。\n\n"
+            f"{closers[seed_num % len(closers)]}\n\n"
+            f"{tags_line}"
         )
         return enforce_brand_rule(caption)
 
@@ -821,13 +991,18 @@ def build_reel_caption(
                 f"　🔴 対照店：{lo['ja_name']}（女{lo['women']}:男{lo['men']}｜女性比{lo['wpct']}%）"
             )
         joined_gp = "\n".join(gp_lines)
+        openers = (
+            f"同じ駅で徒歩4分しか離れてないのに、お店のドア1枚でここまで男女比が変わります{mode_note}",
+            f"「今日はどこも混んでそう…」って諦める前に見てほしい、同じ駅の中のリアルな男女比ギャップ📊{mode_note}",
+            f"1軒目終わりにそのまま一番近い店へ並ぶと損しやすい理由がこれです{mode_note}",
+        )
         caption = (
-            f"同じ駅で徒歩4分しか離れてないのに、お店のドア1枚でここまで男女比が変わる…😳📊{mode_note}\n\n"
+            f"{openers[seed_num % len(openers)]}\n\n"
             f"{joined_gp}\n\n"
-            f"「相席ラウンジどこも男待ちでしょ…」って諦める前に、駅を出る直前に別ブランド（オリエンタルラウンジ・ag・JIS）を見比べるだけで待ち時間ゼロの店舗が見つかります💡\n\n"
-            f"いま現在の全53店舗の男女人数・料金シミュレーターは『相席ナビ』（aiseki-navi.com）で検索🔍（プロフリンクからも3秒で見れます）\n"
-            f"今夜・週末に使う用に「保存🔖」しておいてください！\n\n"
-            f"#相席ナビ #相席ラウンジ #オリエンタルラウンジ #ag #JIS #新宿夜遊び #梅田グルメ #渋谷夜遊び #相席"
+            f"駅を出る直前に別ブランド（オリエンタルラウンジ・ag・JIS）を見比べるだけで、待ち時間ゼロ圏のお店が見つかります。\n\n"
+            f"全国60店舗超の現在人数と料金シミュレーターはプロフの『相席ナビ』（aiseki-navi.com）から無料で見れます🔍\n"
+            f"今夜・週末に使う用に保存しておいてください📌\n\n"
+            f"{tags_line}"
         )
         return enforce_brand_rule(caption)
 
@@ -838,14 +1013,17 @@ def build_reel_caption(
             + (f"・🎁{s['event_title']}）" if s.get("event_title") else "）")
             for idx, s in enumerate(l_top, start=1)
         )
+        openers = (
+            f"女子ペアで「女性70%超えの店舗」に行くと、実は受付待ちになったり席替えが止まりやすいって知ってました？💄{mode_note}",
+            f"女子2人組がいま受付待ちゼロでスマートに乾杯しやすい、男性先行ラウンジ上位4店です🥂{mode_note}",
+            f"2軒目や夜カフェ代わりに使うなら、行く直前に男性先行のお店を選ぶのが一番ラクです✨{mode_note}",
+        )
         caption = (
-            f"女子ペアで「女性70%超えの店舗」に行くと、実は受付で待たされたり席替えが止まりやすいって知ってた？💄{mode_note}\n\n"
-            f"いま男性が先行していて「受付待ちほぼゼロ」でスマートに乾杯できる狙い目ラウンジTOP4👇\n"
+            f"{openers[seed_num % len(openers)]}\n\n"
             f"{l_lines}\n\n"
-            f"友達との2軒目や夜カフェ代わりに使うなら、行く3分前に男性先行店を選ぶのが一番快適✨\n"
-            f"現在人数と今夜の女子向け特典は『相席ナビ』（aiseki-navi.com）で検索🔍（登録不要・無料）\n"
-            f"女子会の作戦会議用に「保存🔖」推奨です🥂\n\n"
-            f"#相席ナビ #相席ラウンジ #女子会 #オリエンタルラウンジ #ag #JIS #2軒目 #夜カフェ #週末女子会"
+            f"現在人数と今夜の女子向け特典はプロフの『相席ナビ』（aiseki-navi.com）から3秒でチェックできます🔍\n"
+            f"女子会の2軒目メモ用に保存どうぞ🥂\n\n"
+            f"{tags_line}"
         )
         return enforce_brand_rule(caption)
 
@@ -855,14 +1033,17 @@ def build_reel_caption(
             f"🌙 {idx}位：{s['ja_name']}（女{s['women']}:男{s['men']}｜終電後維持 {s['midnight_retention_pct']}%）"
             for idx, s in enumerate(m_top[:4], start=1)
         )
+        openers = (
+            f"相席ラウンジには「23時20分の終電崖」があって、終電で一気に人が引く店と深夜0時過ぎから逆転で伸びる店に分かれます🌙{mode_note}",
+            f"終電を逃したあとや23時過ぎの2軒目で外しにくい、深夜維持率が高いラウンジ上位です🌙{mode_note}",
+            f"23時半を境に街の空気がガラッと変わるので、遅い時間ほど深夜強い系の店舗を選ぶのが鉄則です{mode_note}",
+        )
         caption = (
-            f"相席ラウンジには「23時20分の終電崖」があって、終電で一気に人が引く店と深夜0時過ぎから逆転で盛り上がる店に真っ二つに分かれます🌙{mode_note}\n\n"
-            f"いま現在盛り上がっていて終電後も強いラウンジTOP4👇\n"
+            f"{openers[seed_num % len(openers)]}\n\n"
             f"{m_lines}\n\n"
-            f"2軒目・3軒目で失敗したくない夜は、入店直前のリアルタイム人数を見てから動くのが鉄則💡\n"
-            f"全国53店舗の現在人数と深夜維持率は『相席ナビ』（aiseki-navi.com）で検索🔍\n"
-            f"終電後の駆け込み用に「保存🔖」しておくと役立ちます！\n\n"
-            f"#相席ナビ #相席ラウンジ #オリエンタルラウンジ #ag #JIS #終電逃した #2軒目 #新宿 #梅田"
+            f"全国60店舗超の現在人数と深夜維持率はプロフの『相席ナビ』（aiseki-navi.com）で公開中🔍\n"
+            f"終電後の2軒目・3軒目用に保存しておくと役立ちます📌\n\n"
+            f"{tags_line}"
         )
         return enforce_brand_rule(caption)
 
@@ -877,18 +1058,96 @@ def build_reel_caption(
         f"💎 {s['ja_name']}（女性{s['women']}名・男性{s['men']}名｜女性比{s['wpct']}%）"
         for s in a_top
     )
+    openers = (
+        f"ノープランで1店舗目から並んで受付1時間待ちになる前に、今のリアルな人数だけ置いておきます{mode_note}",
+        f"今夜いま女性が集まっている上位5店舗と、比率が良くて座りやすい穴場ピックアップです{mode_note}",
+        f"同じ夜でもお店選びひとつで待ち時間が全然違うので、動く前の参考にどうぞ{mode_note}",
+        f"1軒目終わりの移動前にサクッと見比べたい、全国の現在人数上位＆好バランス穴場メモ{mode_note}",
+    )
+    closers = (
+        "全国60店舗超のいま現在の男女人数・料金比較は、プロフィールのリンク『相席ナビ』（aiseki-navi.com）から登録不要で見れます🔍\nお店に入る3分前の確認用に保存どうぞ📌",
+        "男性は「女性10名以上×女性比55%以上」、女性ペアは「男性先行中」のお店を選ぶとスムーズです🥂\nリアルタイム検索はプロフの『相席ナビ』（aiseki-navi.com）から。",
+        "近くのお店の現在人数と2軒目候補はプロフィールの『相席ナビ』（aiseki-navi.com）にまとめてあります🔍",
+    )
+    anaba_block = f"\n\n🎯 いま比率が良くて入りやすい穴場\n{a_lines}" if a_lines else ""
     caption = (
-        f"ノープランで1店舗目から突撃して「受付待ち1時間」になる前に、これだけ見ておいてほしい…🔥{mode_note}\n\n"
+        f"{openers[seed_num % len(openers)]}\n\n"
         f"🔥 全国リアルタイム女性人数 TOP5\n"
-        f"{v_lines}\n\n"
-        f"🎯 いま女性比率が高めで入りやすい狙い目穴場\n"
-        f"{a_lines}\n\n"
-        f"男性は「女性10名以上×女性比率55%以上」の店舗、女性ペアは逆に「男性先行中」の店舗を選ぶと待ち時間ゼロでスムーズに楽しめます🥂\n\n"
-        f"全国53店舗のいま現在の男女人数・比率・料金比較は、プロフィールのリンク『相席ナビ』（aiseki-navi.com）で24時間無料公開中🔍\n"
-        f"お店に入る3分前に見返せるよう「保存📌」推奨です！\n\n"
-        f"#相席ナビ #相席ラウンジ #オリエンタルラウンジ #ag #JIS #相席 #新宿 #梅田 #渋谷"
+        f"{v_lines}"
+        f"{anaba_block}\n\n"
+        f"{closers[seed_num % len(closers)]}\n\n"
+        f"{tags_line}"
     )
     return enforce_brand_rule(caption)
+
+
+def build_ai_reel_caption(
+    stores: list,
+    reel_type: str = "live_top5",
+    now_jst: datetime.datetime = None,
+    use_ai: bool = True,
+) -> str:
+    """
+    Generate a fresh, natural human-voiced Reel caption by replacing only the opening hook line
+    via the fast editorial AI engine (when configured), while keeping the verified live headcount lines
+    and rotated 4–5 hashtags 100% deterministic and hallucination-free.
+    """
+    base_caption = build_reel_caption(stores, reel_type=reel_type, now_jst=now_jst)
+    if not use_ai or os.environ.get("DISABLE_SCHEDULER") == "1":
+        return base_caption
+    try:
+        if not sns_editorial.has_any_ai_key(allow_blocking=False):
+            return base_caption
+        eff_dt = _coerce_jst(now_jst)
+        ctx = build_reel_context(stores, reel_type=reel_type, now_jst=eff_dt)
+        if ctx.get("is_fallback"):
+            return base_caption
+        paragraphs = base_caption.split("\n\n")
+        if len(paragraphs) < 3:
+            return base_caption
+
+        top_s = (ctx.get("top5_volume") or [{}])[0]
+        weather_ctx = sns_editorial.fetch_live_weather_context(allow_blocking=False) or {}
+        cal_ctx = sns_editorial.build_calendar_context(eff_dt)
+        recent_ig = sns_editorial.get_recent_cross_channel_texts("instagram", limit=4, allow_blocking=False)
+        prompt = (
+            "あなたは夜の街の空気に詳しい気取らない大人の友人です。\n"
+            "Instagramリール動画のキャプションの『冒頭1段落目（40〜78文字、1〜2行）』だけを自然な人間の口調で書いてください。\n"
+            f"・動画テーマ：{REEL_TEMPLATES.get(ctx['reel_type'], {}).get('short_label', ctx['reel_type'])}\n"
+            f"・日時背景：{cal_ctx.get('tag', '')}（{eff_dt.strftime('%H:%M')}時点） / 天気：{weather_ctx.get('summary') or '特になし'}\n"
+            f"・現在の象徴データ：{top_s.get('ja_name', '')}（女性{top_s.get('women', 0)}名・男性{top_s.get('men', 0)}名）\n"
+            f"・直近のIG書き出し（被り厳禁）：{sns_editorial.json.dumps([t[:60] for t in recent_ig[:3]], ensure_ascii=False)}\n"
+            "・禁止表現：『モニター見て』『バックヤード』『必見』『徹底解説』『最適解』『二度見』、単体の『オリエンタル』や『OLG』、過剰な絵文字（0〜1個まで）。\n"
+            "・具体的な人数を書く場合は上記データの数値を1人も変えないこと（無理に数字を入れず街の空気感フックだけでもOK）。\n"
+            '出力はJSONのみ：{"hook_line": "冒頭1段落テキスト"}'
+        )
+        parsed, _, err = sns_editorial.call_editorial_ai_json(
+            prompt=prompt,
+            max_output_tokens=400,
+            thinking_budget=256,
+            total_deadline_sec=8.0,
+            now_jst=eff_dt,
+            prefer_fast=True,
+        )
+        hook = str((parsed or {}).get("hook_line") or "").strip()
+        if not err and hook and 22 <= len(hook) <= 95:
+            hook = enforce_brand_rule(sns_editorial._postprocess_ai_main_text(hook, channel="instagram"))
+            if not any(w in hook for w in sns_editorial.AI_CLICHE_WORDS):
+                # Ensure no hallucinated numbers in hook
+                hook_nums = set(re.findall(r"\d+", hook))
+                allowed_nums = {
+                    str(top_s.get("women", 0)),
+                    str(top_s.get("men", 0)),
+                    str(top_s.get("wpct", 0)),
+                    str(eff_dt.hour),
+                    "1", "2", "3", "4", "5", "0", "30", "20", "23",
+                }
+                if hook_nums.issubset(allowed_nums):
+                    rebuilt = "\n\n".join([hook] + paragraphs[1:])
+                    return enforce_brand_rule(rebuilt)
+    except Exception as e:
+        logger.debug(f"build_ai_reel_caption fallback: {e}")
+    return base_caption
 
 
 # =====================================================================

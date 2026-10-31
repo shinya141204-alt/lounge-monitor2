@@ -271,7 +271,7 @@ def build_scheduled_tweet_text(stores: list, slot_label: str = "20:00", app_url:
             rank_lines.append(f"{medals[i]} {ja_name}：女性{w}・男性{m} ({pct}%)")
 
         footer_variants = [
-            "全51店舗の現在人数はリプ欄へ👇",
+            "全国60店舗超の現在人数はリプ欄へ👇",
             "詳しい店舗別データ・料金比較はリプ欄へ👇",
             "各エリアの現在の男女比・穴場はリプ欄へ👇",
         ]
@@ -482,7 +482,7 @@ def build_scheduled_reply_text(slot_label: str = "20:00", app_url: str = "") -> 
     slot_code = (slot_label or "20:00").replace(":", "")
     live_url = f"{site_url}/?s={now_jst.strftime('%Y%m%d')}_{slot_code}"
     return (
-        f"🔍 全国53店舗のリアルタイム人数・男女比ランキング\n{live_url}\n\n"
+        f"🔍 全国60店舗超のリアルタイム人数・男女比ランキング\n{live_url}\n\n"
         f"💴 店舗別の時間帯料金・開催中イベント比較ボード\n{site_url}/price-comparison"
     )
 
@@ -495,16 +495,16 @@ def build_pinned_tweet_thread(app_url: str = "") -> tuple:
     """
     site_url = (app_url or os.environ.get("PUBLIC_SITE_URL") or "https://aiseki-navi.com").rstrip("/")
     main_text = (
-        "🍸全国53店舗の相席ラウンジ人数速報『相席ナビ』\n\n"
-        "・オリエンタルラウンジ / ag / JIS 等の現在人数＆男女比をリアルタイム集計\n"
-        "・全51店舗の時間帯料金・ソロ入店可否・イベント比較\n"
+        "🍸全国60店舗超の相席ラウンジ人数速報『相席ナビ』\n\n"
+        "・オリエンタルラウンジ / ag / JIS / ASOBIBAR 等の現在人数＆男女比をリアルタイム集計\n"
+        "・時間帯料金・ソロ入店可否・イベント比較\n"
         "・曜日×時間帯別の平均グラフで「いま狙い目の店舗」がわかる\n\n"
         "サイトURL・比較ボードはリプ欄へ👇\n"
         "#相席ナビ #相席ラウンジ"
     )
     reply_text = (
-        f"🔍 全国53店舗リアルタイム人数ランキング\n{site_url}/\n\n"
-        f"💴 全51店舗の料金・開催中イベント比較ボード\n{site_url}/price-comparison\n\n"
+        f"🔍 全国60店舗超リアルタイム人数ランキング\n{site_url}/\n\n"
+        f"💴 料金・開催中イベント比較ボード\n{site_url}/price-comparison\n\n"
         f"📖 人気の攻略コラム一覧\n{site_url}/columns"
     )
     return main_text, reply_text
@@ -576,7 +576,7 @@ COLUMN_PROMO_LIST = [
         "eyecatch": "/static/eyecatch-club-midnight.jpg",
         "title": "なぜ梅田・渋谷・新宿は深夜0時過ぎても女性が減らない？「ダンスクラブ×相席」の回遊法則",
         "main_text": (
-            "全国53店舗の人数データを夜中まで追っていると、「終電で一気に過疎る街」と「深夜0時〜2時にむしろ第2波が来る街」がはっきり分かれる。\n\n"
+            "全国60店舗超の人数データを夜中まで追っていると、「終電で一気に過疎る街」と「深夜0時〜2時にむしろ第2波が来る街」がはっきり分かれる。\n\n"
             "その決定打になってるのが、徒歩3分圏内にある「大型ダンスクラブ」の存在🎧\n\n"
             "深夜ボーナスタイムの法則はリプ欄へ👇\n"
             "#相席ナビ #相席ラウンジ"
@@ -744,7 +744,7 @@ def build_weekly_report_tweet_thread(report: dict, app_url: str = "", use_ai: bo
 
     week_key = now_jst.strftime("%Y%m%d")
     reply_text = (
-        f"📈 今週の全国53店舗ピーク推移＆曜日別データまとめはこちら👇\n"
+        f"📈 今週の全国60店舗超ピーク推移＆曜日別データまとめはこちら👇\n"
         f"{site_url}/stats?w={week_key}"
     )
 
@@ -768,7 +768,7 @@ def build_weekly_report_tweet_thread(report: dict, app_url: str = "", use_ai: bo
                         "avg_wpct": int(round(float(a1.get("avg_wpct") or 56))),
                     }
                 prompt = (
-                    "あなたは全国53店舗の相席ラウンジ人数を記録している『相席ナビ』の運営中の人です。\n"
+                    "あなたは全国60店舗超の相席ラウンジ人数を記録している『相席ナビ』の運営中の人です。\n"
                     "日曜の夜、今週1週間分のSQLite計測ログを見返しながらふと呟いた『人間味あふれる週間振り返りポスト（95〜124文字以内、X換算260ウェイト以下）』を1本書いてください。\n\n"
                     f"{sns_editorial.HUMAN_INSIDER_VOICE_GUIDE}\n\n"
                     "【必須ルール】\n"
@@ -957,19 +957,61 @@ def _coerce_jst_naive(dt: datetime.datetime = None) -> datetime.datetime:
 
 
 def record_x_auto_post_timestamp(now_jst: datetime.datetime = None):
-    """Persist the timestamp of the most recent automated X post to prevent short-burst clustering."""
+    """Persist the timestamp & business-date counter of automated X posts to prevent burst clustering and daily spam."""
     try:
         import job_state
         ts_naive = _coerce_jst_naive(now_jst)
         job_state.set_value(LAST_X_AUTO_POST_KEY, ts_naive.strftime("%Y-%m-%d %H:%M:%S"))
+        biz_date = (ts_naive - datetime.timedelta(hours=7)).strftime("%Y-%m-%d")
+        cnt_key = f"x_daily_count:{biz_date}"
+        cur_raw = (job_state.get_value(cnt_key, allow_blocking=False) or "0").strip()
+        cur_cnt = int(cur_raw) if cur_raw.isdigit() else 0
+        job_state.set_value(cnt_key, str(cur_cnt + 1))
     except Exception as e:
         logger.warning(f"Failed to record last X auto-post timestamp: {e}")
+
+
+def get_x_daily_auto_post_count(now_jst: datetime.datetime = None) -> int:
+    """Return how many automated X posts have already fired on the current business date."""
+    try:
+        import job_state
+        ts_naive = _coerce_jst_naive(now_jst)
+        biz_date = (ts_naive - datetime.timedelta(hours=7)).strftime("%Y-%m-%d")
+        raw = (job_state.get_value(f"x_daily_count:{biz_date}", allow_blocking=False) or "0").strip()
+        return int(raw) if raw.isdigit() else 0
+    except Exception:
+        return 0
+
+
+def check_x_daily_post_budget(
+    max_daily: int = None,
+    now_jst: datetime.datetime = None,
+    is_primary_peak: bool = False,
+) -> tuple:
+    """
+    Return `(over_budget: bool, reason: str)` if today's automated X posts have reached the anti-bot daily ceiling.
+    Defaults: Mon–Thu max 4/day, Fri–Sun max 5/day (+1 reserve for the primary 22:00 peak slot).
+    """
+    try:
+        ts_naive = _coerce_jst_naive(now_jst)
+        biz_dt = ts_naive - datetime.timedelta(hours=7)
+        if max_daily is None:
+            base_cap = 5 if biz_dt.weekday() in (4, 5, 6) else 4
+            limit = base_cap + (1 if is_primary_peak else 0)
+        else:
+            limit = int(max_daily)
+        cur = get_x_daily_auto_post_count(now_jst=now_jst)
+        if cur >= limit:
+            return True, f"Daily X auto-post cap reached ({cur} >= {limit} for {biz_dt.strftime('%Y-%m-%d')})"
+    except Exception:
+        pass
+    return False, "ok"
 
 
 def check_x_auto_post_cooldown(min_interval_minutes: int = 48, now_jst: datetime.datetime = None) -> tuple:
     """
     Return `(in_cooldown: bool, reason: str)` if an automated X post already fired within `min_interval_minutes`.
-    Prevents secondary auto-posts (column releases, note shares, bonus alerts) from clustering back-to-back.
+    Prevents automated X posts (live slots, tips, column releases, note shares, bonus alerts) from clustering back-to-back.
     """
     try:
         import job_state

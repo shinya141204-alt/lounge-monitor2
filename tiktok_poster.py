@@ -289,10 +289,12 @@ def publish_live_reel_to_tiktok_inbox(
     custom_caption: str = "",
     slot_label: str = "manual_tiktok",
     force: bool = True,
+    now_jst: datetime.datetime = None,
 ) -> dict:
     """
     Render the TikTok safe-zone 9:16 MP4 and send it to the TikTok mobile app Inbox (`video.upload` scope)
     when `TIKTOK_ACCESS_TOKEN` is configured, or return a helpful Phase 1 download-ready response when unconfigured.
+    Supports `reel_type='auto'` for non-repeating rotation across TikTok templates.
     """
     if not _tiktok_post_lock.acquire(blocking=False):
         return {"status": "skipped", "ok": False, "skipped": True, "reason": "already_running"}
@@ -300,10 +302,20 @@ def publish_live_reel_to_tiktok_inbox(
     try:
         import reel_generator
 
-        rt = reel_generator.normalize_reel_type(reel_type or "tiktok_gap_shock")
-        now_jst = datetime.datetime.now(JST)
+        now_jst = now_jst or datetime.datetime.now(JST)
+        raw_rt = (reel_type or "").strip().lower()
+        if raw_rt in ("", "auto"):
+            rt = reel_generator.select_scheduled_reel_type(stores, now_jst=now_jst, platform="tiktok")
+        else:
+            rt = reel_generator.normalize_reel_type(raw_rt)
+
         cleaned_custom = reel_generator.enforce_brand_rule((custom_caption or "").strip())
-        caption = cleaned_custom or reel_generator.build_reel_caption(stores, reel_type=rt, now_jst=now_jst)
+        caption = cleaned_custom or reel_generator.build_ai_reel_caption(
+            stores,
+            reel_type=rt,
+            now_jst=now_jst,
+            use_ai=not force,
+        )
         ts_code = now_jst.strftime("%Y%m%d_%H%M")
         video_url = f"{SITE_URL}/ogp/reel/{rt}.mp4?s={ts_code}"
         download_url = f"/ogp/reel/{rt}.mp4?download=1&s={ts_code}"
@@ -339,6 +351,9 @@ def publish_live_reel_to_tiktok_inbox(
         res["download_url"] = download_url
         res["reel_type"] = rt
 
+        if res.get("status") == "success":
+            reel_generator.record_recent_reel_type(rt, platform="tiktok")
+
         try:
             import sns_editorial
             if res.get("status") == "success":
@@ -363,3 +378,41 @@ def publish_live_reel_to_tiktok_inbox(
         return res
     finally:
         _tiktok_post_lock.release()
+
+
+def execute_scheduled_tiktok_inbox_post(
+    stores: list,
+    slot_label: str = "20:35",
+    force: bool = False,
+    now_jst: datetime.datetime = None,
+) -> dict:
+    """
+    Phase 2 scheduled TikTok Inbox delivery (Wed/Fri/Sat 20:35 JST + human jitter).
+    Fast-skips with zero MP4 rendering overhead when Phase 2 token or auto-schedule toggle is off.
+    """
+    now_jst = now_jst or datetime.datetime.now(JST)
+    biz_date = (now_jst - datetime.timedelta(hours=7)).strftime("%Y-%m-%d")
+    dedup_key = f"tiktok_post:{biz_date}_{slot_label}"
+
+    if not force:
+        if not is_tiktok_auto_schedule_enabled(allow_blocking=False):
+            return {"status": "skipped", "reason": "TikTok auto-schedule disabled"}
+        if not _get_active_tiktok_token():
+            return {"status": "skipped", "reason": "TikTok Phase 2 token unconfigured"}
+        if job_state.is_done(dedup_key):
+            return {"status": "skipped", "reason": "Already pushed TikTok Inbox video for this slot"}
+        dom = [s for s in (stores or []) if s.get("region") != "Korea"]
+        total_w = sum(int(s.get("women") or 0) for s in dom)
+        if total_w < 18:
+            return {"status": "skipped", "reason": f"Insufficient live headcount for TikTok ({total_w} women)"}
+
+    res = publish_live_reel_to_tiktok_inbox(
+        stores,
+        reel_type="auto",
+        slot_label=slot_label,
+        force=force,
+        now_jst=now_jst,
+    )
+    if res.get("status") == "success" and not force:
+        job_state.mark_done(dedup_key)
+    return res

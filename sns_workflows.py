@@ -109,15 +109,28 @@ def build_sns_post_payload(post_type, base_url, latest_data):
     }
 
 
-def execute_scheduled_x_post(latest_data, slot_label="20:00", force=False, include_meta=False):
-    """Execute scheduled X auto-post with duplicate prevention and live headcount safety guards."""
-    now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
+def execute_scheduled_x_post(latest_data, slot_label="20:00", force=False, include_meta=False, now_jst=None):
+    """Execute scheduled X auto-post with duplicate prevention, anti-bot cooldown/budget, and standalone mix."""
+    now_jst = now_jst or datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
     biz_date = (now_jst - datetime.timedelta(hours=7)).strftime('%Y-%m-%d')
     dedup_key = f"x_post:{biz_date}_{slot_label}"
 
     if not force and job_state.is_done(dedup_key):
         logging.info(f"X auto-post already sent for {dedup_key}, skipping.")
         return {"status": "skipped", "reason": "Already posted for this slot"}
+
+    if not force:
+        in_cd, cd_reason = x_poster.check_x_auto_post_cooldown(min_interval_minutes=48, now_jst=now_jst)
+        if in_cd:
+            logging.info(f"Deferring X auto-post ({slot_label}): {cd_reason}")
+            return {"status": "skipped", "reason": cd_reason}
+        over_b, b_reason = x_poster.check_x_daily_post_budget(
+            now_jst=now_jst,
+            is_primary_peak=(slot_label == "22:00"),
+        )
+        if over_b:
+            logging.info(f"Skipping X auto-post ({slot_label}): {b_reason}")
+            return {"status": "skipped", "reason": b_reason}
 
     latest_data = latest_data or {}
     is_seed = bool(latest_data.get('is_seed'))
@@ -148,8 +161,11 @@ def execute_scheduled_x_post(latest_data, slot_label="20:00", force=False, inclu
     # Run 4-role SNS Editorial Room pipeline (Researcher -> Planner -> Writer -> Evaluator)
     editorial_winner = None
     ed_session_record = None
+    selected_arch_key = ""
     try:
         import sns_editorial
+        recent_x = sns_editorial.get_recent_cross_channel_texts(channel="x", limit=3, allow_blocking=False)
+        selected_arch_key = (sns_editorial.select_x_post_archetype(slot_label, now_jst, recent_texts=recent_x) or {}).get("key") or ""
         editorial_res = sns_editorial.run_editorial_pipeline(
             stores,
             slot_label=slot_label,
@@ -163,9 +179,24 @@ def execute_scheduled_x_post(latest_data, slot_label="20:00", force=False, inclu
     except Exception as e:
         logging.warning(f"SNS editorial pipeline fallback to legacy builder ({slot_label}): {e}")
 
+    standalone_no_reply = False
+    skip_media_card = False
     if editorial_winner and editorial_winner.get("main_text"):
         text = editorial_winner["main_text"]
-        reply_text = editorial_winner.get("reply_text") or x_poster.build_scheduled_reply_text(slot_label=slot_label)
+        eff_arch_key = (editorial_winner.get("archetype_key") or selected_arch_key or "").strip()
+        if (
+            not force
+            and eff_arch_key in ("minimal_snap", "question_linger")
+            and "👇" not in text
+            and "リプ" not in text
+            and "下に置" not in text
+        ):
+            standalone_no_reply = True
+            reply_text = None
+            if eff_arch_key == "minimal_snap":
+                skip_media_card = True
+        else:
+            reply_text = editorial_winner.get("reply_text") or x_poster.build_scheduled_reply_text(slot_label=slot_label)
     else:
         text = x_poster.build_scheduled_tweet_text(stores, slot_label=slot_label)
         if not text:
@@ -173,16 +204,17 @@ def execute_scheduled_x_post(latest_data, slot_label="20:00", force=False, inclu
         reply_text = x_poster.build_scheduled_reply_text(slot_label=slot_label)
 
     png_bytes = None
-    try:
-        import ogp_generator
-        slot_code = (slot_label or "20:00").replace(":", "")
-        png_bytes = ogp_generator.generate_live_ogp_png(
-            stores,
-            s_param=f"{now_jst.strftime('%Y%m%d')}_{slot_code}",
-            now_jst=now_jst,
-        )
-    except Exception as e:
-        logging.warning(f"Failed to generate live OGP PNG for X post ({slot_label}): {e}")
+    if not skip_media_card:
+        try:
+            import ogp_generator
+            slot_code = (slot_label or "20:00").replace(":", "")
+            png_bytes = ogp_generator.generate_live_ogp_png(
+                stores,
+                s_param=f"{now_jst.strftime('%Y%m%d')}_{slot_code}",
+                now_jst=now_jst,
+            )
+        except Exception as e:
+            logging.warning(f"Failed to generate live OGP PNG for X post ({slot_label}): {e}")
 
     result = x_poster.post_to_x(
         text,
@@ -238,7 +270,8 @@ def execute_scheduled_x_post(latest_data, slot_label="20:00", force=False, inclu
         except Exception:
             pass
     result["tweet_text"] = text
-    result["reply_text"] = reply_text
+    result["reply_text"] = reply_text or ""
+    result["standalone_no_reply"] = standalone_no_reply
     if editorial_winner:
         result["editorial_style"] = editorial_winner.get("style")
         result["editorial_score"] = editorial_winner.get("total_score")
@@ -273,6 +306,12 @@ def execute_scheduled_weekly_x_post(force=False):
     if not force and job_state.is_done(dedup_key):
         logging.info(f"Weekly X auto-post already sent for {dedup_key}, skipping.")
         return {"status": "skipped", "reason": "Already posted for this week"}
+
+    if not force:
+        in_cd, cd_reason = x_poster.check_x_auto_post_cooldown(min_interval_minutes=48, now_jst=now_jst)
+        if in_cd:
+            logging.info(f"Deferring weekly X auto-post: {cd_reason}")
+            return {"status": "skipped", "reason": cd_reason}
 
     try:
         report = weekly_report.generate_weekly_report()

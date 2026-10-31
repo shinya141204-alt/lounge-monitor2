@@ -244,17 +244,20 @@ def build_threads_ladies_post(
     ev_picks = [p for p in board["event_picks"] if p["total"] > 0][:2]
 
     slot_hh = (slot_label or "19:30")[:2]
-    if now_jst.day % 2 == 0:
-        cta_footer = (
-            "💄 いま女子待ち0で入れる全国一覧＆席替え裏マニュアルはプロフィールのリンク（相席ナビ）から見れます\n"
-            "#相席ラウンジ"
-        )
-    else:
+    biz_dt = now_jst - datetime.timedelta(hours=7)
+    if biz_dt.day % 3 == 0:
         cta_footer = (
             f"💄 いま女子待ち0で入れる全国店舗＆裏ガイド\n"
             f"{SITE_URL}/for-women?s=th{slot_hh}_ladies_night\n"
             "#相席ラウンジ"
         )
+    elif biz_dt.day % 3 == 1:
+        cta_footer = (
+            "💄 いま女子待ち0で入れる全国60店舗超一覧＆席替え裏マニュアルはプロフィールのリンク（相席ナビ）から見れます\n"
+            "#相席ラウンジ"
+        )
+    else:
+        cta_footer = "💄 いま女子待ち0で入れるお店一覧や席替えの口実メモはプロフィールのリンク（相席ナビ）に置いてます"
 
     if use_ai and picks and sns_editorial.has_any_ai_key(allow_blocking=True):
         try:
@@ -431,7 +434,7 @@ def build_instagram_ladies_caption(
         "① 入る3分前に『相席ナビ』を女性目線モードにして男性先行の店を見る\n"
         "② 顔写真付きの身分証（免許証・マイナカード等）だけは忘れない\n"
         "③ もし噛み合わない席に当たっても無理して消耗せず、お手洗いタイミングでさらっと席替え相談する\n\n"
-        "全国53店舗の『いま女子待ちゼロで入れる店舗一覧』と『角が立たない席替え・退店裏マニュアル』はプロフィールのリンク（aiseki-navi.com/for-women）に置いてます🔍\n\n"
+        "全国60店舗超の『いま女子待ちゼロで入れる店舗一覧』と『角が立たない席替え・退店裏マニュアル』はプロフィールのリンク（aiseki-navi.com/for-women）に置いてます🔍\n\n"
         "#相席ナビ #相席ラウンジ #オリエンタルラウンジ #ag #JIS #女子会ディナー #夜カフェ"
     )
     caption = re.sub(r"オリエンタル(?!ラウンジ)", "オリエンタルラウンジ", caption)

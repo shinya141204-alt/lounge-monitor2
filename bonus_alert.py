@@ -313,9 +313,12 @@ def check_and_post_bonus_alert(
             return {"status": "skipped", "reason": reason}
         if job_state.is_done(dedup_key):
             return {"status": "skipped", "reason": "Already posted bonus alert tonight"}
-        in_cd, cd_reason = x_poster.check_x_auto_post_cooldown(min_interval_minutes=45, now_jst=now_jst)
+        in_cd, cd_reason = x_poster.check_x_auto_post_cooldown(min_interval_minutes=48, now_jst=now_jst)
         if in_cd:
             return {"status": "skipped", "reason": cd_reason}
+        over_b, b_reason = x_poster.check_x_daily_post_budget(now_jst=now_jst, is_primary_peak=False)
+        if over_b:
+            return {"status": "skipped", "reason": b_reason}
 
     recent_names = _recent_alerted_store_names(now_jst)
     candidate = find_bonus_time_candidate(stores, now_jst=now_jst, recently_alerted_names=recent_names)

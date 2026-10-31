@@ -102,8 +102,9 @@ def enable_memory_bus_for_tests(enabled: bool = True):
 
 def reset_for_tests():
     """Clear all in-memory bus state and L1 caches between unit tests."""
-    global _mem_live_snapshot
+    global _mem_live_snapshot, _mem_bus_enabled
     with _mem_lock:
+        _mem_bus_enabled = False
         _mem_live_snapshot = None
         _mem_ai_cache.clear()
         _mem_media_cache.clear()

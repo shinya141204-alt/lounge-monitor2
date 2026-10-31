@@ -57,7 +57,7 @@ def _resolve_day_theme(now_jst: datetime.datetime, weekend_label: str) -> dict:
         return {
             "theme_key": "weekday",
             "date_badge": f"平日夜データ特集：{today_str} 最新版",
-            "kicker": "全国51店舗・リアルタイム統計から算出",
+            "kicker": "全国60店舗超・リアルタイム統計から算出",
             "h1_line1": "平日の相席",
             "h1_line2": "待ち時間ゼロで",
             "h1_line3": "飲める穴場TOP5",
@@ -75,7 +75,7 @@ def _resolve_day_theme(now_jst: datetime.datetime, weekend_label: str) -> dict:
         return {
             "theme_key": "sunday",
             "date_badge": f"週間データ総括：{today_str} 集計号",
-            "kicker": "全国51店舗・直近1週間の稼働ログ白書",
+            "kicker": "全国60店舗超・直近1週間の稼働ログ白書",
             "h1_line1": "週間ランキング",
             "h1_line2": "女性来店数＆",
             "h1_line3": "穴場データ白書",
@@ -92,7 +92,7 @@ def _resolve_day_theme(now_jst: datetime.datetime, weekend_label: str) -> dict:
     return {
         "theme_key": "weekend",
         "date_badge": f"対象週末：{weekend_label} 夜",
-        "kicker": "全国51店舗・9.6万件のログから算出",
+        "kicker": "全国60店舗超・リアルタイムログから算出",
         "h1_line1": "今週末の相席",
         "h1_line2": "狙い目店舗＆",
         "h1_line3": "穴場時間予報",
@@ -379,7 +379,7 @@ def _draw_header_and_footer(draw: ImageDraw.ImageDraw, slide_num: int, total_sli
 
     # Bottom footer bar
     draw.line((64, H - 86, W - 64, H - 86), fill=(255, 255, 255, 35), width=1)
-    foot_l = "全国51店舗の現在人数は「相席ナビ」(aiseki-navi.com) で無料公開中"
+    foot_l = "全国60店舗超の現在人数は「相席ナビ」(aiseki-navi.com) で無料公開中"
     draw.text((64, H - 64), foot_l, font=f_foot, fill=(148, 163, 184, 235))
 
 
@@ -719,11 +719,11 @@ def build_captions(ctx: dict = None) -> dict:
         headline = f"【{theme['date_badge']}｜平日夜の穴場＆高女性比率ガイド📊】"
         intro = "平日の仕事帰りに「男性待ち0分」でスムーズに相席できる狙い目店舗と、高女性比率の穴場TOP5をまとめました！"
     elif t_key == "sunday":
-        headline = f"【{theme['date_badge']}｜全国51店舗 週間データ白書📊】"
+        headline = f"【{theme['date_badge']}｜全国60店舗超 週間データ白書📊】"
         intro = "今週もっとも女性来店数が多かった人気店舗と、男性待ちを回避しやすかった高女性比率の穴場店舗を総括しました！"
     else:
         headline = f"【{wk} 相席ラウンジ週末狙い目予報📊】"
-        intro = "全国51店舗・9.6万件超のリアルタイム人数ログから、今週末に盛り上がりやすい店舗と「男性待ちを回避しやすい穴場店舗」を予測しました！"
+        intro = "全国60店舗超・リアルタイム人数ログから、今週末に盛り上がりやすい店舗と「男性待ちを回避しやすい穴場店舗」を予測しました！"
 
     ig_caption = (
         f"{headline}\n"
@@ -736,7 +736,7 @@ def build_captions(ctx: dict = None) -> dict:
         f"💡 失敗しない立ち回りポイント\n"
         f"・男性は「女性10名以上（約5組）×女性比率55%以上」の店舗を選ぶと席替えもスムーズ！\n"
         f"・女性は逆に「男性が先行して盛り上がっているお店」を選ぶと、待ち時間ゼロで即乾杯しやすいです🥂\n\n"
-        f"お店に向かう直前の「いま現在の男女人数・比率」と「全51店舗の料金・イベント横並び比較」は、プロフィールのリンク（aiseki-navi.com）から3秒で無料チェックできます🔍\n\n"
+        f"お店に向かう直前の「いま現在の男女人数・比率」と「全国60店舗超の料金・イベント横並び比較」は、プロフィールのリンク（aiseki-navi.com）から3秒で無料チェックできます🔍\n\n"
         f"#相席ナビ #相席ラウンジ #オリエンタルラウンジ #ag #JIS #相席"
     )
 

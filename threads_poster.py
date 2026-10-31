@@ -181,14 +181,15 @@ def build_threads_live_post(stores: list, slot_label: str = "20:00", now_jst: da
     ]
     chosen_tip = tips_rot[now_jst.day % len(tips_rot)]
 
-    # Alternate URL vs Bio-link guidance so Meta's algorithm doesn't flag every post as external link spam
+    # Rotate direct URL (1-in-3 nights) vs Bio-link guidance so Meta's algorithm never flags external link spam
     slot_hh = (slot_label or "22:00")[:2]
-    if now_jst.day % 2 == 0:
-        cta_line = "🔍 全51店舗の現在人数＆料金・イベント比較はプロフィールのリンク（相席ナビ）から見れます"
-        tag_line = "#相席ナビ #相席ラウンジ"
-    else:
-        cta_line = f"▼ 全51店舗の現在人数＆料金・イベント比較\n{SITE_URL}/price-comparison?s=th{slot_hh}_live"
+    biz_dt = now_jst - datetime.timedelta(hours=7)
+    if biz_dt.day % 3 == 1:
+        cta_line = f"▼ 全国60店舗超の現在人数＆料金・イベント比較\n{SITE_URL}/price-comparison?s=th{slot_hh}_live"
         tag_line = "#相席ナビ"
+    else:
+        cta_line = "🔍 全国60店舗超の現在人数＆料金・イベント比較はプロフィールのリンク（相席ナビ）から見れます"
+        tag_line = "#相席ナビ #相席ラウンジ"
 
     lines.extend([
         "",
@@ -579,8 +580,58 @@ def post_to_threads(text: str, image_url: str = None) -> dict:
         return {"status": "error", "detail": str(e)}
 
 
+LAST_THREADS_AUTO_POST_KEY = "last_threads_auto_post_ts"
+_JST_TH = datetime.timezone(datetime.timedelta(hours=9))
+
+
+def _coerce_threads_jst_naive(dt: datetime.datetime = None) -> datetime.datetime:
+    if dt is None:
+        return datetime.datetime.now(_JST_TH).replace(tzinfo=None)
+    if dt.tzinfo is not None:
+        return dt.astimezone(_JST_TH).replace(tzinfo=None)
+    return dt
+
+
+def record_threads_auto_post_timestamp(now_jst: datetime.datetime = None):
+    """Record timestamp of the latest automated Threads post to prevent back-to-back slot clustering."""
+    try:
+        ts_naive = _coerce_threads_jst_naive(now_jst)
+        job_state.set_value(LAST_THREADS_AUTO_POST_KEY, ts_naive.strftime("%Y-%m-%d %H:%M:%S"))
+    except Exception as e:
+        logging.warning(f"Failed to record Threads auto-post timestamp: {e}")
+
+
+def check_threads_auto_post_cooldown(min_interval_minutes: int = 90, now_jst: datetime.datetime = None) -> tuple:
+    """Return `(in_cooldown: bool, reason: str)` if an automated Threads post fired within `min_interval_minutes`."""
+    try:
+        raw = (job_state.get_value(LAST_THREADS_AUTO_POST_KEY, allow_blocking=False) or "").strip()
+        if not raw:
+            return False, "ok"
+        last_naive = datetime.datetime.strptime(raw, "%Y-%m-%d %H:%M:%S")
+        cur_naive = _coerce_threads_jst_naive(now_jst)
+        diff_min = (cur_naive - last_naive).total_seconds() / 60.0
+        if 0 <= diff_min < float(min_interval_minutes):
+            return True, f"Threads auto-post cooldown active ({int(diff_min)}m < {min_interval_minutes}m)"
+    except Exception:
+        pass
+    return False, "ok"
+
+
+def select_scheduled_threads_image_url(now_jst: datetime.datetime = None) -> str:
+    """
+    Attach a live visual OGP summary card on ~1-in-3 nights (`biz_dt.day % 3 == 2`, always a URL-free night)
+    so Threads posts naturally mix text-only monologues with visual live snapshots.
+    """
+    now_jst = now_jst or datetime.datetime.now(_JST_TH)
+    biz_dt = _coerce_threads_jst_naive(now_jst) - datetime.timedelta(hours=7)
+    if biz_dt.day % 3 == 2:
+        ts_code = _coerce_threads_jst_naive(now_jst).strftime("%Y%m%d_%H")
+        return f"{SITE_URL}/ogp/live.png?s={ts_code}"
+    return None
+
+
 def execute_scheduled_threads_post(stores: list, slot_label: str = "20:00", force: bool = False, image_url: str = None) -> dict:
-    """Execute scheduled Threads post with persistent job_state deduplication, headcount guard, and weekly token auto-refresh."""
+    """Execute scheduled Threads post with persistent job_state deduplication, 90m cooldown, headcount guard, and weekly token auto-refresh."""
     if not _threads_post_lock.acquire(blocking=False):
         return {"status": "skipped", "ok": False, "skipped": True, "reason": "already_running"}
 
@@ -591,6 +642,11 @@ def execute_scheduled_threads_post(stores: list, slot_label: str = "20:00", forc
 
         if not force and job_state.is_done(dedup_key):
             return {"status": "skipped", "reason": "Already posted to Threads for this slot"}
+
+        if not force:
+            in_cd, cd_reason = check_threads_auto_post_cooldown(min_interval_minutes=90, now_jst=now_jst)
+            if in_cd:
+                return {"status": "skipped", "reason": cd_reason}
 
         dom = _filter_domestic_stores(stores)
         if not force:
@@ -639,6 +695,7 @@ def execute_scheduled_threads_post(stores: list, slot_label: str = "20:00", forc
                 )
                 if not force:
                     job_state.mark_done(dedup_key)
+                    record_threads_auto_post_timestamp(now_jst)
                     if ed_session_record:
                         sns_editorial.persist_editorial_session_record("threads", ed_session_record)
             else:
@@ -653,6 +710,7 @@ def execute_scheduled_threads_post(stores: list, slot_label: str = "20:00", forc
             logging.warning(f"Threads post state persistence warning: {e}")
             if res.get("status") == "success" and not force:
                 job_state.mark_done(dedup_key)
+                record_threads_auto_post_timestamp(now_jst)
 
         res["threads_text"] = text
         if editorial_winner:
@@ -670,7 +728,7 @@ def execute_scheduled_ladies_threads_post(
 ) -> dict:
     """
     Execute scheduled women-perspective Threads alert ('🎁 今夜の女子得＆待ちゼロ速報', Plan E).
-    Guarded by persistent job_state deduplication and domestic live male headcount (`men >= 12`).
+    Guarded by persistent job_state deduplication, 90m cooldown, and domestic live male headcount (`men >= 12`).
     """
     if not _threads_post_lock.acquire(blocking=False):
         return {"status": "skipped", "ok": False, "skipped": True, "reason": "already_running"}
@@ -684,6 +742,11 @@ def execute_scheduled_ladies_threads_post(
 
         if not force and job_state.is_done(dedup_key):
             return {"status": "skipped", "reason": "Already posted ladies alert to Threads for this slot"}
+
+        if not force:
+            in_cd, cd_reason = check_threads_auto_post_cooldown(min_interval_minutes=90, now_jst=now_jst)
+            if in_cd:
+                return {"status": "skipped", "reason": cd_reason}
 
         dom = _filter_domestic_stores(stores)
         total_dom_men = sum(int(s.get("men") or 0) for s in dom)
@@ -706,6 +769,17 @@ def execute_scheduled_ladies_threads_post(
                     post_id=res.get("id") or "",
                     now_jst=now_jst,
                 )
+                if not force:
+                    sns_editorial.persist_editorial_session_record(
+                        "threads",
+                        {
+                            "slot_label": slot_label,
+                            "style": "threads_ladies_zero_wait",
+                            "selected_text": text[:360],
+                            "opener": (text.splitlines() or [""])[0][:80],
+                            "timestamp": now_jst.strftime("%Y-%m-%d %H:%M:%S"),
+                        },
+                    )
             else:
                 sns_editorial.record_sns_delivery_status(
                     "threads",
@@ -718,6 +792,7 @@ def execute_scheduled_ladies_threads_post(
             pass
         if res.get("status") == "success" and not force:
             job_state.mark_done(dedup_key)
+            record_threads_auto_post_timestamp(now_jst)
         res["threads_text"] = text
         res["editorial_style"] = "threads_ladies_zero_wait"
         return res

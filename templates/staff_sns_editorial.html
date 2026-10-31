@@ -1012,7 +1012,7 @@
         <div class="header-card" style="padding:14px 18px; border-color:var(--green);">
             <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
                 <div style="font-size:0.86rem; font-weight:800;">
-                    📡 自動投稿ステータス＆トークン疎通モニター（人間ゆらぎ 4〜8分・X最低48分クールダウン稼働中）
+                    📡 自動投稿ステータス＆トークン疎通モニター（人間ゆらぎ・全SNS Bot回避ペース制御・IGリール週4回自動ローテ稼働中）
                 </div>
                 <div style="display:flex; gap:8px; flex-wrap:wrap;">
                     {% if channel == 'tiktok' %}
@@ -1188,9 +1188,9 @@
                     <h2 class="reel-studio-title">🎬 Google AI Ultra ショート動画スタジオ（Reels / Shorts / TikTok）</h2>
                     <p class="reel-studio-sub">全国リアルタイム人数から 9:16 縦型ショート動画（H.264 + 音声トラック付きMP4・約11.5秒）を自動合成。Instagram Reels への1クリック直接公開、または MP4 保存で TikTok / YouTube Shorts へそのまま投稿できます。</p>
                 </div>
-                <label class="reel-auto-box" for="reel-auto-schedule-toggle" title="ONにすると週末・夜のピーク枠で自動リール定期投稿を有効化します（初期OFF）">
+                <label class="reel-auto-box" for="reel-auto-schedule-toggle" title="水・木・金・土の夜ピーク枠（人間ゆらぎ付）で4テンプレ自動ローテーション投稿します（同日にカルーセル投稿がある日はフィード非表示でグリッド保護）">
                     <span id="reel-auto-schedule-label">
-                        🔄 週末・夜の自動リール定期投稿：<strong id="reel-auto-state-text" style="color:{{ 'var(--green)' if _reel_init_auto else 'var(--sub)' }};">{{ 'ON（稼働中）' if _reel_init_auto else 'OFF（手動のみ）' }}</strong>
+                        🔄 水・木・金・土の自動リール定期投稿（4型ローテ）：<strong id="reel-auto-state-text" style="color:{{ 'var(--green)' if _reel_init_auto else 'var(--sub)' }};">{{ 'ON（稼働中）' if _reel_init_auto else 'OFF（手動のみ）' }}</strong>
                     </span>
                     <span class="reel-switch">
                         <input type="checkbox" id="reel-auto-schedule-toggle" {{ 'checked' if _reel_init_auto else '' }} onchange="saveReelAutoSchedule(this.checked)">

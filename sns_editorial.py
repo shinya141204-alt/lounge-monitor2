@@ -529,6 +529,8 @@ HUMAN_JITTER_WINDOWS = {
     "threads_ladies": (1, 14), # 19:31 .. 19:44
     "instagram": (1, 12),      # 18:46 .. 18:57 / 21:46 .. 21:57
     "ig_ladies": (1, 12),      # 19:46 .. 19:57
+    "ig_reel": (3, 28),        # 21:08 .. 21:33 (natural vertical video post timing)
+    "tiktok": (4, 24),         # 20:39 .. 20:59 Inbox draft timing
 }
 
 
@@ -559,7 +561,7 @@ def should_fire_scheduled_slot_now(
     """
     Non-blocking scheduler gate (`<0.05ms`, zero `time.sleep`):
     Returns `False` while `now_jst` is earlier than today's natural target minute for `(channel_key, slot_label)`,
-    and `True` once `now_jst` reaches or passes today's target minute (with a fail-open safety net >= +24m).
+    and `True` once `now_jst` reaches or passes today's target minute (with a fail-open safety net).
     """
     now_jst = now_jst or datetime.datetime.now(JST)
     m = re.match(r"^(\d{1,2}):(\d{2})$", (slot_label or "").strip())
@@ -575,11 +577,123 @@ def should_fire_scheduled_slot_now(
     elif diff_sec > 43200:
         diff_sec -= 86400
     elapsed_min = diff_sec / 60.0
-    if elapsed_min < 0 or elapsed_min >= 24.0:
+    ch_k = (channel_key or "x").strip().lower()
+    _, max_off = HUMAN_JITTER_WINDOWS.get(ch_k, (2, 19))
+    fail_open_min = max(24.0, float(max_off + 4))
+    if elapsed_min < 0 or elapsed_min >= fail_open_min:
         # Fail-open outside normal early hold window so late retries always execute
         return True
     target_off = compute_human_schedule_offset_min(channel_key, slot_label, now_jst=now_jst)
     return elapsed_min >= float(target_off)
+
+
+def should_skip_slot_for_human_pacing(
+    channel_key: str,
+    slot_label: str,
+    now_jst: datetime.datetime = None,
+    stores: list = None,
+) -> tuple:
+    """
+    Anti-bot weekly rhythm & quiet-weekday breathing gate (`(should_skip: bool, reason: str)`).
+    Prevents 7/7-day identical multi-slot posting patterns on X and Threads while keeping
+    peak Fri/Sat nights active and automatically overriding rest days when live crowd surges occur.
+    """
+    now_jst = now_jst or datetime.datetime.now(JST)
+    biz_dt = now_jst - datetime.timedelta(hours=7)
+    wd = biz_dt.weekday()  # 0=Mon .. 6=Sun
+    iso_year, iso_week, _ = biz_dt.isocalendar()
+    ch_k = (channel_key or "").strip().lower()
+    slot_s = (slot_label or "").strip()
+
+    korea_kws = ("カンナム", "ホンデ", "ソウル", "GANGNAM", "HONGDAE", "SEOUL")
+    dom_women = 0
+    if stores:
+        dom_women = sum(
+            int(s.get("women") or 0)
+            for s in stores
+            if s.get("region") != "Korea"
+            and not any(k in (s.get("name") or "").upper() for k in korea_kws)
+        )
+
+    # 1. X 18:00 Tip: runs 5 days/week instead of 7/7 clockwork
+    #    - Always rests Sunday (since 19:00 Weekly Report runs on Sunday)
+    #    - Rests 1 rotating quiet weekday out of {Mon(0), Wed(2)} per ISO week
+    if ch_k == "x_tip" and slot_s == "18:00":
+        if wd == 6:
+            return True, "Sunday 18:00 Tip rested to avoid clustering with 19:00 Weekly Report"
+        quiet_pick_seed = hashlib.sha256(f"aiseki_xtip_rest:{iso_year}-W{iso_week:02d}".encode("utf-8")).digest()
+        rest_wd = (0, 2)[quiet_pick_seed[0] % 2]
+        if wd == rest_wd:
+            return True, f"Human weekday breathing rest for X 18:00 Tip (wd={wd})"
+        return False, "ok"
+
+    # 2. X 20:00 early live slot: runs on active Thu/Fri/Sat + 1 mid-week night (unless crowd surge >=140 women)
+    #    - Rests Monday (quiet start of week -> 22:00 single-slot night)
+    #    - Rests Sunday (since 19:00 Weekly Report already covers early evening)
+    #    - Rests 1 rotating weekday out of {Tue(1), Wed(2)} per ISO week
+    if ch_k == "x" and slot_s == "20:00":
+        if dom_women >= 140:
+            return False, "live_surge_override"
+        if wd == 0:
+            return True, "Monday 20:00 X slot rested (human quiet-Monday 1-slot rhythm)"
+        if wd == 6:
+            return True, "Sunday 20:00 X slot rested after 19:00 Weekly Report"
+        x20_seed = hashlib.sha256(f"aiseki_x20_rest:{iso_year}-W{iso_week:02d}".encode("utf-8")).digest()
+        rest_wd = (1, 2)[x20_seed[0] % 2]
+        if wd == rest_wd:
+            return True, f"Mid-week 20:00 X slot rested (wd={wd}) for natural human cadence"
+        return False, "ok"
+
+    # 3. Threads 22:00 daily essay: runs 6 nights/week (rests 1 rotating quiet Mon/Tue night unless surge >=120 women)
+    if ch_k == "threads" and slot_s == "22:00":
+        if dom_women >= 120:
+            return False, "live_surge_override"
+        th_seed = hashlib.sha256(f"aiseki_threads_rest:{iso_year}-W{iso_week:02d}".encode("utf-8")).digest()
+        rest_wd = (0, 1)[th_seed[0] % 2]
+        if wd == rest_wd:
+            return True, f"Weekly human rest night for Threads 22:00 (wd={wd})"
+        return False, "ok"
+
+    return False, "ok"
+
+
+def build_threads_cta_footer(
+    site_url: str,
+    slot_label: str = "22:00",
+    style_key: str = "live",
+    now_jst: datetime.datetime = None,
+) -> str:
+    """
+    Meta Threads anti-spam footer builder:
+    - Attaches a direct URL on only ~1 in 3 nights (`day % 3 == 1`; never colliding with `ladies_guide` which uses `day % 3 == 0`).
+    - On the other 2/3 of nights, rotates across understated human bio-link notes or completely tagless clean endings
+      so consecutive Threads posts never carry identical footer blocks.
+    """
+    now_jst = now_jst or datetime.datetime.now(JST)
+    biz_dt = now_jst - datetime.timedelta(hours=7)
+    slot_hh = (slot_label or "22:00")[:2]
+    day_mod = biz_dt.day % 3
+    if day_mod == 1:
+        return f"▼ 全国60店舗超の現在人数＆料金・イベント比較\n{site_url}/price-comparison?s=th{slot_hh}_{style_key}"
+    variants = (
+        "細かいリアルタイム人数と料金比較はプロフィールのリンク（相席ナビ）に置いてます。",
+        "🔍 全国の現在人数・男女比はプロフのリンク（相席ナビ）から見れます\n#相席ラウンジ",
+        "気になる街のリアルタイム推移はプロフィールの『相席ナビ』からどうぞ。",
+        "#相席ラウンジ",
+    )
+    v_idx = (biz_dt.toordinal() + len(style_key or "")) % len(variants)
+    return variants[v_idx]
+
+
+def get_sns_human_pacing_summary(now_jst: datetime.datetime = None) -> dict:
+    """Return human-readable summary of anti-bot pacing & Reel schedule for `/staff/sns-editorial`."""
+    return {
+        "ig_reels_weekly": 4,
+        "ig_reels_days_ja": "水・木・金・土（週4回・4テンプレ自動ローテ・同日グリッド重複自動OFF）",
+        "x_cadence_ja": "最低48分間隔＋日次上限（平日3・週末5）＋月/日休養ゆらぎ＋単独ポスト混在",
+        "threads_cadence_ja": "週6日稼働（週1自然休養）＋最低90分間隔＋URL添付1/3以下＋画像1/3混在",
+        "col_release_ja": "1日最大1記事告知・ピーク枠（20時/22時前後）自動回避",
+    }
 
 
 def persist_editorial_session_record(channel: str, session_record: dict):
@@ -690,7 +804,7 @@ def get_sns_delivery_health(allow_blocking: bool = False) -> dict:
         bool((os.environ.get(k) or "").strip())
         for k in ("X_API_KEY", "X_API_SECRET", "X_ACCESS_TOKEN", "X_ACCESS_TOKEN_SECRET")
     )
-    x_source = "Render環境変数（OAuth 1.0a 4キー設定済）" if x_configured else "未設定（環境変数 X_API_KEY 等が必要）"
+    x_source = "Fly.io環境変数（OAuth 1.0a 4キー設定済）" if x_configured else "未設定（環境変数 X_API_KEY 等が必要）"
     x_masked = _mask_secret_token(os.environ.get("X_ACCESS_TOKEN") or "")
 
     # 2. Threads credentials & status
@@ -701,7 +815,7 @@ def get_sns_delivery_health(allow_blocking: bool = False) -> dict:
     th_source = (
         "管理画面・自動更新（暗号化保存）"
         if th_stored
-        else ("Render環境変数（THREADS_ACCESS_TOKEN）" if th_env else "未設定")
+        else ("Fly.io環境変数（THREADS_ACCESS_TOKEN）" if th_env else "未設定")
     )
     th_masked = _mask_secret_token(th_active)
 
@@ -713,7 +827,7 @@ def get_sns_delivery_health(allow_blocking: bool = False) -> dict:
     ig_source = (
         "管理画面・自動更新（暗号化保存）"
         if ig_stored
-        else ("Render環境変数（INSTAGRAM_ACCESS_TOKEN）" if ig_env else "未設定")
+        else ("Fly.io環境変数（INSTAGRAM_ACCESS_TOKEN）" if ig_env else "未設定")
     )
     ig_masked = _mask_secret_token(ig_active)
 
@@ -755,7 +869,7 @@ def get_sns_delivery_health(allow_blocking: bool = False) -> dict:
             "configured": ig_configured,
             "source": ig_source,
             "masked_token": ig_masked,
-            "latest_slot_key": _latest_matching_key(("ig_post:", "ig_ladies:")),
+            "latest_slot_key": _latest_matching_key(("ig_post:", "ig_reel_slot:", "ig_ladies:")),
             "refresh_key": _latest_matching_key(("token_refresh:instagram:",)),
         },
         "tiktok": {
@@ -1978,7 +2092,7 @@ def _write_x_candidates(
         reply_a = (
             f"📍 {hub_name}エリアの料金・現在人数横並び比較はこちら\n"
             f"{site_url}/price-comparison?area={area_id}&s=x{slot_hh}_hub_gap\n\n"
-            f"🔍 全国53店舗リアルタイム人数ランキング\n{site_url}/?s=x{slot_hh}_hub_gap_{ymd}"
+            f"🔍 全国60店舗超リアルタイム人数ランキング\n{site_url}/?s=x{slot_hh}_hub_gap_{ymd}"
         )
         candidates.append({
             "style": "hub_gap",
@@ -2062,7 +2176,7 @@ def _write_x_candidates(
     reply_b = (
         f"📊 {focus['ja_name']}の現在人数・終電後の残りやすさ指標はこちら\n"
         f"{site_url}/store/{f_slug}?s=x{slot_hh}_surge_focus\n\n"
-        f"🔍 全国53店舗リアルタイム人数ランキング\n{site_url}/?s=x{slot_hh}_surge_focus_{ymd}"
+        f"🔍 全国60店舗超リアルタイム人数ランキング\n{site_url}/?s=x{slot_hh}_surge_focus_{ymd}"
     )
     candidates.append({
         "style": "surge_focus",
@@ -2146,8 +2260,8 @@ def _write_x_candidates(
         body_c = body_c.replace("早い時間から好ペースで推移中。各街の現在人数はリプ欄へ👇", "各街の現在人数はリプ欄へ👇")
 
     reply_c = (
-        f"🔍 全国53店舗の現在人数＆普段の同曜日比（平比）はこちら\n{site_url}/?s=x{slot_hh}_{c_style}_{ymd}\n\n"
-        f"💴 全51店舗の時間帯料金・開催中イベント比較ボード\n{site_url}/price-comparison?s=x{slot_hh}_{c_style}"
+        f"🔍 全国60店舗超の現在人数＆普段の同曜日比（平比）はこちら\n{site_url}/?s=x{slot_hh}_{c_style}_{ymd}\n\n"
+        f"💴 時間帯料金・開催中イベント横並び比較ボード\n{site_url}/price-comparison?s=x{slot_hh}_{c_style}"
     )
     candidates.append({
         "style": c_style,
@@ -2180,7 +2294,7 @@ def _write_threads_candidates(
 ) -> list:
     """
     Generate 4 Meta Threads candidates (strictly <= 495 chars; conversational essay style works best on Threads).
-    Respects odd/even day URL vs Bio-link anti-spam rotation.
+    Respects 1-in-3 direct URL vs varied human bio-link anti-spam rotation.
     """
     import threads_poster
     weekdays_ja = ["月", "火", "水", "木", "金", "土", "日"]
@@ -2200,11 +2314,9 @@ def _write_threads_candidates(
 
     slot_hh = (slot_label or "22:00")[:2]
 
-    # Meta anti-spam link rotation (even day = bio link, odd day = direct link with PDCA cohort tag)
+    # Meta anti-spam link rotation (~1/3 direct link, ~2/3 varied human bio-link or clean tag)
     def _th_footer(st_key: str) -> str:
-        if now_jst.day % 2 == 0:
-            return "🔍 全51店舗の現在人数＆料金比較はプロフィールのリンク（相席ナビ）から見れます\n#相席ラウンジ"
-        return f"▼ 全51店舗の現在人数＆料金・イベント比較\n{site_url}/price-comparison?s=th{slot_hh}_{st_key}\n#相席ラウンジ"
+        return build_threads_cta_footer(site_url, slot_label=slot_label, style_key=st_key, now_jst=now_jst)
 
     candidates = []
 
@@ -2557,7 +2669,7 @@ def _write_tiktok_candidates(
             f"で、同じ駅のすぐ近くでも {gap}pt も差が開いてたりする。\n\n"
             f"女の子側も待たされる店はすぐ見切ってテンポよく飲める店に流れてるから、駅を出る直前に別ブランド（オリエンタルラウンジ・ag・JIS）を見比べるだけで夜の密度がまるで変わるんだよね。\n\n"
             f"入店3分前に見返せるように『保存』しとくと便利📌\n"
-            f"全国53店舗の現在人数と料金比較はプロフのリンク、または『相席ナビ』（aiseki-navi.com）で無料検索できます🔍\n\n"
+            f"全国60店舗超の現在人数と料金比較はプロフのリンク、または『相席ナビ』（aiseki-navi.com）で無料検索できます🔍\n\n"
             f"#相席ナビ #相席ラウンジ #オリエンタルラウンジ #ag #JIS #{hub.split('・')[0]}グルメ"
         )
         script_gap = (
@@ -2620,7 +2732,7 @@ def _write_tiktok_candidates(
         f"・{focus['ja_name']}：女性{focus['women']}名・男性{focus['men']}名（女性比{focus['wpct']}%）\n\n"
         f"男性なら『女性12名以上×女性比55%以上』、女性ペアなら『男性先行店』をエレベーターに乗る前に選ぶだけで、受付待ちのストレスがほぼ消えるんだよね。\n\n"
         f"週末にすぐ見返せるようにこの動画を『保存』📌\n"
-        f"全53店舗のリアルタイム人数は『相席ナビ』（aiseki-navi.com）で24時間無料公開中です🔍\n\n"
+        f"全国60店舗超のリアルタイム人数は『相席ナビ』（aiseki-navi.com）で24時間無料公開中です🔍\n\n"
         f"#相席ナビ #相席ラウンジ #オリエンタルラウンジ #JIS #夜遊びガイド"
     )
     script_m = (
@@ -2911,7 +3023,7 @@ def _write_note_candidates(
         f"■ エリア動向と傾向分析：\n"
         f"主要都市部（東京、大阪、名古屋、福岡）を中心に、ピーク時間帯における女性の来店ペースが加速しております。"
         f"特に同一駅周辺において、店舗ごとに男女比率の偏りが発生しており、事前の人数確認を行ってから向かうことが推奨されます。\n\n"
-        f"全53店舗のリアルタイム混雑データおよび料金・イベント詳細については、『相席ナビ』（https://aiseki-navi.com）をご参照ください。"
+        f"全国60店舗超のリアルタイム混雑データおよび料金・イベント詳細については、『相席ナビ』（https://aiseki-navi.com）をご参照ください。"
     )
     classic_summary = sanitize_brand_names(classic_summary)
     candidates.append({
@@ -3349,7 +3461,7 @@ def _build_gemini_prompt(
         reply_variants = (
             f"{focus['ja_name']}の推移と近隣店舗の比較メモ\n{site_url}/store/{f_slug}?s=x{slot_hh}_ai_live_adlib\n\n全国リアルタイム一覧\n{live_url}",
             f"いまの{focus['ja_name']}の時間帯データはこちらに置いてあります\n{site_url}/store/{f_slug}?s=x{slot_hh}_ai_live_adlib\n\n他エリアの現在人数\n{live_url}",
-            f"📍 {focus['ja_name']}の現在値・終電後の残りやすさ\n{site_url}/store/{f_slug}?s=x{slot_hh}_ai_live_adlib\n\n全国53店舗の一覧\n{live_url}",
+            f"📍 {focus['ja_name']}の現在値・終電後の残りやすさ\n{site_url}/store/{f_slug}?s=x{slot_hh}_ai_live_adlib\n\n全国60店舗超の一覧\n{live_url}",
         ) if focus else (f"全国リアルタイム人数一覧\n{live_url}",)
         reply_text = reply_variants[(now_jst.day + now_jst.hour) % len(reply_variants)]
         platform_spec = (
@@ -3359,15 +3471,12 @@ def _build_gemini_prompt(
             f"{x_arch['directive']}"
         )
     elif ch == "threads":
-        if now_jst.day % 2 == 0:
-            cta_footer = "🔍 全51店舗の現在人数＆料金比較はプロフィールのリンク（相席ナビ）から見れます\n#相席ラウンジ"
-        else:
-            cta_footer = f"▼ 全51店舗の現在人数＆料金・イベント比較\n{site_url}/price-comparison?s=th{slot_hh}_ai_live_adlib\n#相席ラウンジ"
+        cta_footer = build_threads_cta_footer(site_url, slot_label=slot_label, style_key="ai_live_adlib", now_jst=now_jst)
         reply_text = "（Threadsは1投稿完結・ゆるい日常エッセイ調＋リンク制限回避済）"
         platform_spec = (
             "【対象SNS：Meta Threads（スレッズ）｜肩の力が抜けたゆるい日常エッセイ調】\n"
             "- 文字数制限：全体で **260文字〜435文字以内**（絶対上限480文字）\n"
-            "- 禁止事項：『🥇🥈🥉』メダルや『【〇〇】』見出し、『モニター見てたら』『バックヤードで』等の裏方アピールは禁止。ハッシュタグは末尾フッター内の1個のみ。\n"
+            "- 禁止事項：『🥇🥈🥉』メダルや『【〇〇】』見出し、『モニター見てたら』『バックヤードで』等の裏方アピールは禁止。ハッシュタグは末尾フッター内のもの以外付けない。\n"
             "- 構成：Xのような圧縮速報ではなく、帰り道や夜カフェでふと思いついて書いたような『余白のあるゆるい日常エッセイ調（〜ですね、〜かも、体言止めミックス）』で書くこと。絵文字は全体で0〜1個に抑え、街ごとの客層の空気や女の子組がスッと座れる店の話などを穏やかに綴る。\n"
             f"- 末尾固定フッター：文章の最後は必ず次のフッター文字列を一字一句変えずに置いて締めること：\n{cta_footer}"
         )
@@ -4926,6 +5035,7 @@ def run_editorial_pipeline(
         "image_prompts": image_prompts,
         "gemini_status": get_gemini_status(allow_blocking=allow_state_blocking),
         "delivery_health": get_sns_delivery_health(allow_blocking=allow_state_blocking),
+        "pacing_summary": get_sns_human_pacing_summary(now_jst),
         "ai_pending_async": ai_pending_async,
         "research": research,
         "plan": plan,
