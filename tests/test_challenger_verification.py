@@ -309,6 +309,7 @@ class ChallengerConcurrencyStressTests(unittest.TestCase):
                     errors.append((idx, endpoint, resp.status_code))
                 else:
                     latencies.append(elapsed)
+                resp.close()
             except Exception as e:
                 errors.append((idx, endpoint, str(e)))
 

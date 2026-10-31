@@ -108,6 +108,7 @@ class UiAuditRegressionTests(unittest.TestCase):
         expected_calm = "/static/calm.css?v=22"
         expected_portal = "/static/portal.css?v=10"
         expected_app_js = "/static/app.js?v=20261101_1"
+        expected_style = "/static/style.css?v=20261030_6"
         expected_sw_url = "/sw.js?v=73"
         expected_cache_name = "aiseki-navi-v73"
 
@@ -115,6 +116,7 @@ class UiAuditRegressionTests(unittest.TestCase):
         calm_seen = 0
         portal_seen = 0
         app_js_seen = 0
+        style_seen = 0
         sw_reg_seen = 0
 
         for fname in sorted(os.listdir(templates_dir)):
@@ -137,6 +139,10 @@ class UiAuditRegressionTests(unittest.TestCase):
                 self.assertEqual(m, expected_app_js, f"Outdated app.js ref in {fname}: {m}")
                 app_js_seen += 1
 
+            for m in re.findall(r"/static/style\.css(?:\?v=[^\"'\s>]+)?", txt):
+                self.assertEqual(m, expected_style, f"Outdated style.css ref in {fname}: {m}")
+                style_seen += 1
+
             for m in re.findall(r"/sw\.js(?:\?v=[^\"'\s>)]+)?", txt):
                 self.assertEqual(m, expected_sw_url, f"Outdated sw.js ref in {fname}: {m}")
                 sw_reg_seen += 1
@@ -144,6 +150,7 @@ class UiAuditRegressionTests(unittest.TestCase):
         self.assertGreaterEqual(calm_seen, 29)
         self.assertGreaterEqual(portal_seen, 28)
         self.assertEqual(app_js_seen, 2)  # preload + defer script in index.html
+        self.assertGreaterEqual(style_seen, 34)
         self.assertEqual(sw_reg_seen, 2)  # index.html + _nav_loader.html
 
         sw_path = os.path.join(PROJECT_ROOT, "static", "sw.js")
@@ -151,11 +158,12 @@ class UiAuditRegressionTests(unittest.TestCase):
             sw_txt = fp.read()
         self.assertIn(f"CACHE_NAME = '{expected_cache_name}'", sw_txt)
         self.assertIn("aiseki-navi-v47", sw_txt)
+        self.assertIn(f"'{expected_style}'", sw_txt)
         self.assertIn(f"'{expected_calm}'", sw_txt)
         self.assertIn(f"'{expected_portal}'", sw_txt)
         self.assertIn(f"'{expected_app_js}'", sw_txt)
 
-        for asset_url in (expected_calm, expected_portal, expected_app_js):
+        for asset_url in (expected_calm, expected_portal, expected_app_js, expected_style):
             resp = self.client.get(asset_url)
             try:
                 self.assertEqual(resp.status_code, 200, f"{asset_url} returned {resp.status_code}")

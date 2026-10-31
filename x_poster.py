@@ -170,13 +170,13 @@ def _build_live_insight_line(stores: list, slot_label: str = "20:00") -> str:
         hub_stores = [
             s for s in stores
             if any(k in (s.get("name") or "").upper() or k in (s.get("name") or "") for k in kws)
-            and (s.get("women", 0) + s.get("men", 0)) >= 10
+            and (int(s.get("women") or 0) + int(s.get("men") or 0)) >= 10
         ]
         if len(hub_stores) >= 2:
-            has_male_heavy = any(s.get("men", 0) >= s.get("women", 0) + 4 for s in hub_stores)
-            has_female_lead = any(s.get("women", 0) > s.get("men", 0) and s.get("women", 0) >= 8 for s in hub_stores)
+            has_male_heavy = any(int(s.get("men") or 0) >= int(s.get("women") or 0) + 4 for s in hub_stores)
+            has_female_lead = any(int(s.get("women") or 0) > int(s.get("men") or 0) and int(s.get("women") or 0) >= 8 for s in hub_stores)
             if has_male_heavy and has_female_lead:
-                ratios = [s.get("women", 0) / max(1, s.get("women", 0) + s.get("men", 0)) for s in hub_stores]
+                ratios = [int(s.get("women") or 0) / max(1, int(s.get("women") or 0) + int(s.get("men") or 0)) for s in hub_stores]
                 gap = max(ratios) - min(ratios)
                 if gap > best_gap:
                     best_gap = gap
@@ -192,13 +192,13 @@ def _build_live_insight_line(stores: list, slot_label: str = "20:00") -> str:
 
     male_lead_candidates = [
         s for s in stores
-        if s.get("men", 0) >= 15 and s.get("men", 0) >= s.get("women", 0) + 4
+        if int(s.get("men") or 0) >= 15 and int(s.get("men") or 0) >= int(s.get("women") or 0) + 4
     ]
     if male_lead_candidates:
-        male_lead_candidates.sort(key=lambda x: x.get("men", 0), reverse=True)
+        male_lead_candidates.sort(key=lambda x: int(x.get("men") or 0), reverse=True)
         top_m = male_lead_candidates[0]
         ja_name = format_ja_store_name(top_m.get("name", ""))
-        return f"💡女性目線なら男性{top_m.get('men', 0)}名の{ja_name}が即相席◎"
+        return f"💡女性目線なら男性{int(top_m.get('men') or 0)}名の{ja_name}が即相席◎"
 
     if slot_label in ("22:00", "22:30"):
         return "💡混む時間は徒歩圏の別ブランド比較がおすすめ"
@@ -244,11 +244,11 @@ def build_scheduled_tweet_text(stores: list, slot_label: str = "20:00", app_url:
     # --- Compact Mode for Automated X API Posting (Weight <= 280) ---
     if compact:
         if slot_label in ("22:00", "22:30"):
-            candidates = [s for s in stores if s.get("women", 0) >= 10]
+            candidates = [s for s in stores if int(s.get("women") or 0) >= 10]
             candidates.sort(
                 key=lambda x: (
-                    x.get("women", 0) / max(1, x.get("women", 0) + x.get("men", 0)),
-                    x.get("women", 0),
+                    int(x.get("women") or 0) / max(1, int(x.get("women") or 0) + int(x.get("men") or 0)),
+                    int(x.get("women") or 0),
                 ),
                 reverse=True,
             )
@@ -266,8 +266,8 @@ def build_scheduled_tweet_text(stores: list, slot_label: str = "20:00", app_url:
 
         rank_lines = [header, ""]
         for i, s in enumerate(top_stores):
-            w = s.get("women", 0)
-            m = s.get("men", 0)
+            w = int(s.get("women") or 0)
+            m = int(s.get("men") or 0)
             tot = w + m
             pct = round((w / tot) * 100) if tot > 0 else 0
             ja_name = format_ja_store_name(s.get("name", ""))
@@ -304,8 +304,8 @@ def build_scheduled_tweet_text(stores: list, slot_label: str = "20:00", app_url:
             "いま女性人数が多い上位店舗はこちら👇"
         ]
         for i, s in enumerate(stores[:5]):
-            w = s.get("women", 0)
-            m = s.get("men", 0)
+            w = int(s.get("women") or 0)
+            m = int(s.get("men") or 0)
             tot = w + m
             pct = round((w / tot) * 100) if tot > 0 else 0
             ja_name = format_ja_store_name(s.get("name", ""))
@@ -327,11 +327,11 @@ def build_scheduled_tweet_text(stores: list, slot_label: str = "20:00", app_url:
         return "\n".join(lines)
 
     elif slot_label in ("22:00", "22:30"):
-        candidates = [s for s in stores if s.get("women", 0) >= 10]
+        candidates = [s for s in stores if int(s.get("women") or 0) >= 10]
         candidates.sort(
             key=lambda x: (
-                x.get("women", 0) / max(1, x.get("women", 0) + x.get("men", 0)),
-                x.get("women", 0),
+                int(x.get("women") or 0) / max(1, int(x.get("women") or 0) + int(x.get("men") or 0)),
+                int(x.get("women") or 0),
             ),
             reverse=True,
         )
@@ -342,8 +342,8 @@ def build_scheduled_tweet_text(stores: list, slot_label: str = "20:00", app_url:
             "女性の割合が高い狙い目店舗をピックアップしました👇"
         ]
         for i, s in enumerate(top_anaba[:5]):
-            w = s.get("women", 0)
-            m = s.get("men", 0)
+            w = int(s.get("women") or 0)
+            m = int(s.get("men") or 0)
             tot = w + m
             pct = round((w / tot) * 100) if tot > 0 else 0
             ja_name = format_ja_store_name(s.get("name", ""))
@@ -371,8 +371,8 @@ def build_scheduled_tweet_text(stores: list, slot_label: str = "20:00", app_url:
             "0時を過ぎても賑わっている店舗はこちら👇"
         ]
         for i, s in enumerate(stores[:5]):
-            w = s.get("women", 0)
-            m = s.get("men", 0)
+            w = int(s.get("women") or 0)
+            m = int(s.get("men") or 0)
             tot = w + m
             pct = round((w / tot) * 100) if tot > 0 else 0
             ja_name = format_ja_store_name(s.get("name", ""))
@@ -400,8 +400,8 @@ def build_scheduled_tweet_text(stores: list, slot_label: str = "20:00", app_url:
             "朝まで営業している店舗の現在人数です👇"
         ]
         for i, s in enumerate(stores[:5]):
-            w = s.get("women", 0)
-            m = s.get("men", 0)
+            w = int(s.get("women") or 0)
+            m = int(s.get("men") or 0)
             tot = w + m
             pct = round((w / tot) * 100) if tot > 0 else 0
             ja_name = format_ja_store_name(s.get("name", ""))
@@ -426,8 +426,8 @@ def build_scheduled_tweet_text(stores: list, slot_label: str = "20:00", app_url:
             "最新の女性人数ランキングはこちら👇"
         ]
         for i, s in enumerate(stores[:5]):
-            w = s.get("women", 0)
-            m = s.get("men", 0)
+            w = int(s.get("women") or 0)
+            m = int(s.get("men") or 0)
             tot = w + m
             pct = round((w / tot) * 100) if tot > 0 else 0
             ja_name = format_ja_store_name(s.get("name", ""))

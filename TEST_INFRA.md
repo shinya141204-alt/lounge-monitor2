@@ -1,144 +1,133 @@
-# TEST_INFRA — 相席ナビ (AISEKI NAVI) 包括的テストインフラ仕様書
+# 相席ナビ (AISEKI NAVI) テストインフラストラクチャ設計書 (TEST_INFRA.md)
 
-## 1. 概要 (Overview)
-
-本ドキュメントは、『相席ナビ (AISEKI NAVI)』システムの品質保証、不具合防止、高可用性、および長期安定運用を担保するための包括的テストインフラおよび4層テストピラミッド（Tier 1〜Tier 4）の構造・実行方法・検証基準を定義する。
-
-テストスイートは、Flask Webサーバー、スクレイピング Worker、データアクセス層（Redis/PostgreSQL/SQLite/Google Sheets）、SNS連携・自動記事配信パイプライン、およびフロントエンド UI を網羅し、Python 標準の `unittest` フレームワークに基づいて実行される。
+本ドキュメントは、要求仕様書 (`ORIGINAL_REQUEST.md`) およびプロジェクト仕様書 (`PROJECT.md`) に基づき構築された、相席ナビの E2E・結合・単体テストスイート全体のインフラストラクチャ設計、4階層テストアーキテクチャ、およびフィーチャーカバレッジマトリクスを定義するものである。
 
 ---
 
-## 2. 4層テスト構成 (4-Tier Test Architecture)
+## 1. テストアーキテクチャ概要 (4-Tier Architecture)
 
-相席ナビのテスト基盤は、以下の4層で構成される：
+本プロジェクトでは、実装詳細に依存しない不透明ボックス（Opaque-box）検証を採用し、以下の4階層アプローチで品質とリグレッション耐性を担保する：
 
 ```
-+-------------------------------------------------------------+
-| Tier 4: 実運用シナリオ (E2E Operational Scenarios)           |
-| - ユーザー巡回・コラム閲覧・AIコンシェルジュ・ヘルス監視統合   |
-+-------------------------------------------------------------+
-| Tier 3: 結合・複合機能 (Integration & Contract Compliance)  |
-| - ブランド表記自動走査 / GCP非依存性 / Google Sheets 5列構造 |
-| - Web ↔ Worker 連携 / DB・キャッシュ整合性                   |
-+-------------------------------------------------------------+
-| Tier 2: 境界値・異常系 (Edge Cases & Resilience)            |
-| - API/Web統一エラーハンドリング (404/500/400 JSON/HTML)      |
-| - 外部APIタイムアウト・ネットワーク障害・フォールバック     |
-| - パース例外防護 (None, 非数値, 欠落キー)                   |
-+-------------------------------------------------------------+
-| Tier 1: 機能網羅 (Unit & Direct Route Coverage)             |
-| - 全ルート HTTP 200 / 店舗マスタ整合性 / 集計・重み計算     |
-| - 投票・レートリミット / 記事スケジューリング                |
-+-------------------------------------------------------------+
-```
-
-### 2.1 Tier 1: 機能網羅 (Unit & Direct Route Coverage)
-- **目的**: システムの各単体機能、マスタデータ整合性、主要な公開エンドポイントの基本動作を高速に検証する。
-- **対象**:
-  - `tests/test_app.py` 内の基本テスト群（`PageRouteTests`, `StoreMasterTests`, `CrowdVoteTests`, `ScheduledArticlesTests` 等）
-  - 全53店舗マスタデータの構造検証（ID, 店舗名, エリア, ブランドコード, ソース）
-  - Twitter文字数重み計算（CJK 2文字、ASCII 1文字、URL 23文字）
-  - 店舗別混雑スナップショット生成およびランキングソートロジック
-- **実行速度目標**: < 5秒（全件）
-
-### 2.2 Tier 2: 境界値・異常系 (Edge Cases & Resilience)
-- **目的**: 外部API切断、ネットワークタイムアウト、不正データ入力、例外発生時のフォールバックおよびエラーハンドリングを検証する。
-- **対象**:
-  - **カスタムエラーハンドリング**:
-    - Webページ（`/non-existent-page`）へのアクセス時: HTTP 404 親切HTMLUI返却
-    - APIエンドポイント（`/api/non-existent-endpoint`）へのアクセス時: HTTP 404 かつ JSON形式 `{"status": "error", "error": "<message>", "code": 404}`
-    - サーバー内部エラー発生時: APIは JSON 500、Webは親切HTML 500
-  - **外部連携タイムアウト・障害耐性**:
-    - X API タイムアウト時の画像アップロードからテキスト単体ツイートへの安全なフォールバック
-    - Threads / Instagram API エラー時のリトライ・フォールバック
-    - note RSS 取得失敗時（HTTP 500 / タイムアウト）の安全な空リスト返却
-    - 天気予報・Open-Meteo API 遅延・障害時の非同期分離とスキップ
-  - **スクレイピング耐性**:
-    - `None` や非数値文字列（"満席", "調整中" 等）が混入した際のアパース例外防護（`TypeError` / `ValueError` ゼロ保証）
-
-### 2.3 Tier 3: 結合・複合機能 (Integration & Contract Compliance)
-- **目的**: プロジェクト全体の厳格な制約（ブランド表記、クラウド非依存、シート列構造）および複数コンポーネント間のインターフェース契約を検証する。
-- **対象**:
-  - `tests/test_e2e_compliance.py`
-  - **ブランド表記ルール自動全走査 (Brand Compliance)**:
-    - `templates/` 配下の公開テンプレート全ファイル、`static/` 配下のJS/CSS、公開Pythonモジュール（`x_poster.py`, `sns_workflows.py`, `ogp_generator.py` 等）を自動走査。
-    - 単体「`OLG`」（単語境界 `\bOLG\b`）および単体「`オリエンタル`」（後ろにラウンジがつかない `オリエンタル(?!ラウンジ)`）の露出が完全ゼロであることを保証。
-    - `format_ja_store_name('OLG 渋谷本店')` 等の呼び出しに対し、単体 OLG が排除され「オリエンタルラウンジ 渋谷本店」等の正式名称に正規化されること。
-  - **Google Cloud (GCP) ゼロ依存性自動検証 (GCP Zero-Dependency)**:
-    - `requirements.txt`, `Dockerfile`, `fly.toml`, およびリポジトリ内の全 `.py` ファイルを静的解析走査。
-    - `google.cloud`, `google-cloud-storage`, `bigquery`, `cloud_run` 等へのインポート・依存関係が完全ゼロであることを保証。
-    - Google Sheets は GCP SDK を一切使用せず `gspread` + `oauth2client` のみで利用されていることを確認。
-  - **Google Sheets 5列構造厳格維持 (Google Sheets 5-Column Schema)**:
-    - `'Lounge Monitor Data'`（sheet1）への書き込み行要素数が常に厳格に 5列（`[timestamp, name, men, women, source]`）であることを検証。
-    - gvizクエリ読み込みが `SELECT A, B, C, D, E` の5列のみを要求すること。
-    - 拡張テレメトリデータは別シート `'Moat Telemetry'` に正しく分離されていること。
-  - **キャッシュ整合性・Web/Worker分離 (Turbo Architecture)**:
-    - WebプロセスとWorkerプロセスの役割分離（`APP_ROLE=web` / `APP_ROLE=worker`）。
-    - Redis / L1 インメモリキャッシュ / PostgreSQL / SQLite のフォールバックチェーンの整合性。
-
-### 2.4 Tier 4: 実運用シナリオ (E2E Operational Scenarios)
-- **目的**: 実際のユーザー訪問、ブラウジング、記事購読、SNS自動配信、システム死活監視のライフサイクルを模倣したシナリオ検証を行う。
-- **対象**:
-  - `tests/test_e2e_scenarios.py`
-  - **ユーザー回遊シナリオ**:
-    1. トップページ（`/`）にアクセスして混雑状況ランキングを確認
-    2. ブランド別詳細ページ（`/oriental-lounge`）に遷移して店舗一覧・営業状況を確認
-    3. ナレッジコラム一覧（`/columns`）および個別記事に遷移して解説を読む
-    4. AIコンシェルジュ（`/concierge`）へアクセスし、おすすめ店舗相談を行う
-    5. バックグラウンドで `/api/status`, `/api/health`, `/api/events`, `/api/weekly-report` をポーリング取得
-  - **ヘルスチェック・自動復旧シナリオ**:
-    - 各スクレイパー・データストアのステータスが `/api/health` で `healthy` / `degraded` として正確に報告されること。
-    - 連続障害発生時のアラートトリガーとクールダウン、復旧検知。
-
----
-
-## 3. テストファイル構成と責務
-
-| ファイルパス | 担当 Tier | 検証内容 |
-|:---|:---|:---|
-| `tests/test_app.py` | Tier 1, 2, 3 | 既存テストスイート全97件（ルーティング、DB、SNS、キャッシュ、投票、バッジ等） |
-| `tests/test_e2e_compliance.py` | Tier 3 | 制約・整合性検証（ブランド表記自動走査、GCPゼロ依存静的解析、Google Sheets 5列構造） |
-| `tests/test_e2e_scenarios.py` | Tier 2, 4 | 実運用E2Eシナリオ（主要Web画面遷移、公開API応答構造、404/500エラーハンドリング） |
-
----
-
-## 4. テスト実行方法 (Test Execution)
-
-### 4.1 全テストスイートの実行 (推奨)
-```bash
-cd "/Users/kuwanoshinya/.gemini/相席業務改善/相席モニター"
-python3 -m unittest discover -s tests -p 'test_*.py'
-```
-
-### 4.2 制約・整合性テスト (Tier 3 Compliance) の単独実行
-```bash
-cd "/Users/kuwanoshinya/.gemini/相席業務改善/相席モニター"
-python3 -m unittest tests.test_e2e_compliance -v
-```
-
-### 4.3 実運用シナリオ & エラーハンドリング (Tier 2, 4 Scenarios) の単独実行
-```bash
-cd "/Users/kuwanoshinya/.gemini/相席業務改善/相席モニター"
-python3 -m unittest tests.test_e2e_scenarios -v
-```
-
-### 4.4 既存ユニットテスト (Tier 1 Baseline) の単独実行
-```bash
-cd "/Users/kuwanoshinya/.gemini/相席業務改善/相席モニター"
-python3 -m unittest tests.test_app -v
++-------------------------------------------------------------------------------+
+|  Tier 4: Real-World Scenarios (本番相当環境・API疎通・ヘルスチェック)         |
+|  - 公開API (GET /api/status, /api/events, /api/health) 200疎通 & 構造検証      |
+|  - 404エラーハンドラ (HTML / JSON コンテントネゴシエーション契約)             |
++-------------------------------------------------------------------------------+
+                                    ▲
++-------------------------------------------------------------------------------+
+|  Tier 3: Cross-Feature Combinations (複合障害シナリオ・システム間結合)        |
+|  - スクレイピング障害時の直近DBスナップショット補完による全店舗非消失検証      |
+|  - ServiceWorker (sw.js) CORE_ASSETS プリキャッシュ実体ファイル実在性検証     |
++-------------------------------------------------------------------------------+
+                                    ▲
++-------------------------------------------------------------------------------+
+|  Tier 2: Boundary & Corner Cases (境界値・異常入力・耐障害性)                 |
+|  - x_poster: 店舗人数が None / 未設定 / 空文字 時の TypeError 防御            |
+|  - sns_workflows: 店舗人数が None / 空文字 時の比較・加算エラー防御           |
+|  - moat_intelligence: 前日差分値が空文字 "" / 異常値時の ValueError 防御      |
+|  - local_db: Google Sheets GViz API 通信障害時の 0 件クリーンフォールバック    |
+|  - local_db: 非同期バックフィルにおける _active_db_key() インフライトキー整合  |
++-------------------------------------------------------------------------------+
+                                    ▲
++-------------------------------------------------------------------------------+
+|  Tier 1: Feature Coverage (仕様遵守・コードベース健全性・静的アセット)        |
+|  - F1.1: scripts/legacy/ 配下全21スクリプト完全削除検証                       |
+|  - F1.3: static/ 配下の未参照デッド画像 (thumb-note-eyecatch*) 削除検証        |
+|  - F1.4: benchmark_*_result.json の Git 追跡除外 (.gitignore) 検証           |
+|  - F3.1: style.css キャッシュバスティング (?v=20261030_6) 全テンプレート同期  |
+|  - R3: 公開UI全域における単体「OLG」「オリラジ」「オリエンタル」ゼロ検証      |
+|  - R3: Google Cloud (google.cloud) 有料SDK依存ゼロ検証                        |
+|  - R3: static/calm.css の html セレクタ PC縦スクロール維持 (overflowなし)    |
++-------------------------------------------------------------------------------+
 ```
 
 ---
 
-## 5. 合格基準 (Acceptance Criteria)
+## 2. Feature Inventory とテスト対応マトリクス (Coverage Mapping)
 
-1. **テスト合格率 100%**:
-   全テスト（既存97件 + 新規E2Eテストスイート）が例外・エラーなく PASS すること。
-2. **高速実行性**:
-   全テストがローカル環境において 15秒以内 に完了すること（外部ネットワーク遮断環境でもモック/フォールバックにより完走すること）。
-3. **副作用ゼロ**:
-   テスト実行によって本番データストア（Redis / PostgreSQL / Google Sheets）への意図しない汚染や破壊が行われないこと（テスト用DB/モックの利用）。
-4. **制約の完全担保**:
-   - ブランド表記走査テストにおいて違反行が 0件 であること。
-   - GCP依存性走査テストにおいて違反ファイルが 0件 であること。
-   - Google Sheets 5列構造テストにおいて要素数不一致が 0件 であること。
+PROJECT.md に定義された全 Feature（F1.1〜F4.3）とテストスイートの対応表：
+
+| # | Feature | 概要 | 実装マイルストーン | テストケース (`tests/test_clean_architecture_e2e.py`) | 現況 (Testing Track) |
+|---|---------|------|-------------------|------------------------------------------------------|----------------------|
+| 1 | **F1.1** | `scripts/legacy/` 配下全21スクリプト完全削除 | M1 | `Tier1FeatureCoverageTests.test_01_legacy_scripts_completely_removed` | **PASS** (削除確認済) |
+| 2 | **F1.2** | `monitor.py` 未参照関数削除 | M1 | 既存 `test_m2_worker_robustness.py` & 参照ゼロ | **PASS** |
+| 3 | **F1.3** | `static/thumb-note-eyecatch*` 4ファイル削除 | M1 | `Tier1FeatureCoverageTests.test_02_dead_images_completely_removed` | **PASS** (削除確認済) |
+| 4 | **F1.4** | `benchmark_*_result.json` の `.gitignore` 追跡除外 | M1 | `Tier1FeatureCoverageTests.test_03_benchmark_result_json_ignored` | **PASS** (登録確認済) |
+| 5 | **F2.1** | `x_poster.py` の `None` 起因 `TypeError` 防御 | M2 | `Tier2BoundaryAndCornerCasesTests.test_01_x_poster_none_and_empty_headcount_robustness` | **RED** (M2改修待ち) |
+| 6 | **F2.2** | `sns_workflows.py` の `None` 起因比較・加算エラー防御 | M2 | `Tier2BoundaryAndCornerCasesTests.test_02_sns_workflows_none_and_empty_robustness` | **RED** (M2改修待ち) |
+| 7 | **F2.3** | `moat_intelligence.py` の空文字型キャスト `ValueError` 防御 | M2 | `Tier2BoundaryAndCornerCasesTests.test_03_moat_intelligence_diff_empty_and_abnormal_handling` | **RED** (M2改修待ち) |
+| 8 | **F2.4** | `local_db.py` の GViz 通信例外ハンドリング強化 | M2 | `Tier2BoundaryAndCornerCasesTests.test_04_local_db_gviz_network_failure_fallback` | **PASS** |
+| 9 | **F2.4** | `local_db.py` の `_active_db_key()` キー整合 | M2 | `Tier2BoundaryAndCornerCasesTests.test_05_local_db_inflight_key_consistency` | **RED** (M2改修待ち) |
+| 10 | **F2.5** | `monitor.py` Fly.io IPv6 ガード | M2 | 既存 `test_m2_worker_robustness.py` | **PASS** |
+| 11 | **F2.6** | `worker.py` graceful shutdown タイムアウト短縮 | M2 | 既存 `test_m2_worker_robustness.py` | **PASS** |
+| 12 | **F2.7** | `templates/index.html` サムネイル画像軽量化 | M2 | 既存 `test_ui_audit_regression.py` | **PASS** |
+| 13 | **F2.8** | `test_challenger_verification.py` ResourceWarning 解消 | M2 | 既存 `test_challenger_verification.py` | **PASS** |
+| 14 | **F3.1** | `style.css` バージョン (`?v=20261030_6`) 全テンプレート・sw.js 完全同期 | M3 | `Tier1FeatureCoverageTests.test_04_cache_busting_sync_across_templates_and_sw` | **RED** (M3改修待ち) |
+| 15 | **F3.2** | クリーンアーキテクチャ E2E 検証スイート新設 | M3 | `tests/test_clean_architecture_e2e.py` (全16テスト新設) | **READY** |
+| 16 | **F3.3** | 既存全228件＋新設テスト全件通過確認 | M3 | `python3 -m unittest discover -s tests` | **M3完了後に全件PASS予定** |
+| 17 | **F4.1** | GitHub `main` ブランチへのコミット・プッシュ | M4 | Git CI/CD | M4予定 |
+| 18 | **F4.2** | Fly.io 本番デプロイ (`flyctl deploy`) | M4 | Fly.io Release Engine | M4予定 |
+| 19 | **F4.3** | 本番稼働確認 & ヘルスチェック | M4 | `Tier4RealWorldScenariosTests.test_01_production_endpoint_health_checks` | **PASS** (ローカル検証済) |
+| 20 | **R3** | 正式名称『オリエンタルラウンジ』遵守 | 全般 | `Tier1FeatureCoverageTests.test_05_brand_compliance_public_surface` | **PASS** |
+| 21 | **R3** | GCP 有料SDK完全ゼロ依存 | 全般 | `Tier1FeatureCoverageTests.test_06_no_paid_gcp_sdk_imports` | **PASS** |
+| 22 | **R3** | `static/calm.css` PC縦スクロール維持 | 全般 | `Tier1FeatureCoverageTests.test_07_calm_css_pc_vertical_scroll_rule` | **PASS** |
+| 23 | **複合** | スクレイピング障害時 店舗非消失保護 | 全般 | `Tier3CrossFeatureCombinationsTests.test_01_scraper_failure_db_snapshot_compensation_store_retention` | **PASS** |
+| 24 | **複合** | ServiceWorker プリキャッシュ実体整合性 | 全般 | `Tier3CrossFeatureCombinationsTests.test_02_serviceworker_offline_cache_asset_existence` | **PASS** |
+| 25 | **契約** | 404エラーハンドラ (HTML / JSON 切り分け) | 全般 | `Tier4RealWorldScenariosTests.test_02_error_page_contract` | **PASS** |
+
+---
+
+## 3. テストファイル構成一覧
+
+プロジェクト内のテストスイート（計14モジュール、244テスト）：
+
+```
+tests/
+├── test_clean_architecture_e2e.py    # 【新規構築】4階層 E2E テストスイート (16テスト)
+├── test_app.py                       # Webアプリケーション・認証・キャッシュ制御 (99テスト)
+├── test_sns_editorial_upgrade.py     # SNS自動編集室・AI生成・マルチチャネル配信 (45テスト)
+├── test_e2e_compliance.py            # ブランド表記・GCP依存ゼロ・スプレッドシート整合性 (18テスト)
+├── test_forecast_accuracy.py         # 60分後男女比予測・状態空間モデル (12テスト)
+├── test_e2e_scenarios.py             # 運用シナリオE2E (11テスト)
+├── test_challenger_verification.py   # 並行負荷・リソースリーク検証 (10テスト)
+├── test_second_venues.py             # 2軒目案内・Googleマップ無料インテント (8テスト)
+├── test_m2_worker_robustness.py      # ワーカー耐障害性・二重実行抑止 (7テスト)
+├── test_m4_performance.py           # 高速キャッシュ・SQLite WALレスポンス (7テスト)
+├── test_ui_audit_regression.py       # UI崩れ防止・アセット整合性 (6テスト)
+├── test_tier5_adversarial.py         # 極限負荷・敵対的入力・フェイルオーバー (5テスト)
+├── benchmark_db.py                   # DBベンチマークハーネス
+└── benchmark_web_api.py              # Web API負荷ベンチマークハーネス
+```
+
+---
+
+## 4. テスト実行方法
+
+### 4.1 新設 E2E テストスイート単体実行
+```bash
+cd /Users/kuwanoshinya/.gemini/相席業務改善/相席モニター
+python3 -m unittest tests/test_clean_architecture_e2e.py
+```
+
+### 4.2 全テストスイート一括実行 (回帰検証)
+```bash
+cd /Users/kuwanoshinya/.gemini/相席業務改善/相席モニター
+python3 -m unittest discover -s tests -p "test_*.py"
+```
+
+---
+
+## 5. 品質保証・リグレッション判定基準
+
+1. **Gate 1 (M1完了判定)**:
+   - `test_01_legacy_scripts_completely_removed`, `test_02_dead_images_completely_removed`, `test_03_benchmark_result_json_ignored` が **PASS** すること。
+2. **Gate 2 (M2完了判定)**:
+   - `test_01_x_poster_none_and_empty_headcount_robustness`
+   - `test_02_sns_workflows_none_and_empty_robustness`
+   - `test_03_moat_intelligence_diff_empty_and_abnormal_handling`
+   - `test_05_local_db_inflight_key_consistency`
+   上記4件の境界値・堅牢性テストが **PASS** すること。
+3. **Gate 3 (M3完了判定)**:
+   - `test_04_cache_busting_sync_across_templates_and_sw` が **PASS** すること。
+   - 全244件の単体・結合・E2Eテストが 100% エラーゼロで通過（`Ran 244 tests ... OK`）すること。

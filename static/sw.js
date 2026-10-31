@@ -29,7 +29,7 @@ const LIVE_SSR_PREFIXES = [
   '/area/'
 ];
 const CORE_ASSETS = [
-  '/static/style.css?v=20261030_5',
+  '/static/style.css?v=20261030_6',
   '/static/calm.css?v=22',
   '/static/portal.css?v=10',
   '/static/app.js?v=20261101_1',

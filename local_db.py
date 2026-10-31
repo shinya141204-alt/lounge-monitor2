@@ -786,8 +786,11 @@ def _fetch_gviz_rows_and_insert(query: str, timeout: int = 35) -> int:
     url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/gviz/tq?tq={urllib.parse.quote(query)}"
     headers = {"Authorization": f"Bearer {access_token}"}
     session = getattr(logger, 'http_session', requests)
-    response = session.get(url, headers=headers, timeout=timeout)
-    if response.status_code != 200:
+    try:
+        response = session.get(url, headers=headers, timeout=timeout)
+        if response.status_code != 200:
+            return 0
+    except Exception as req_err:
         return 0
 
     text = response.text
@@ -911,7 +914,7 @@ def _trigger_store_backfill_async(store_name: str, days: int = 10):
     """Runs `sync_store_from_google_sheets` in a deduplicated background thread so HTTP requests never block."""
     if not store_name:
         return
-    inflight_key = (DB_PATH, store_name)
+    inflight_key = (_active_db_key(), store_name)
     with _store_backfill_lock:
         if inflight_key in _store_backfill_in_flight:
             return

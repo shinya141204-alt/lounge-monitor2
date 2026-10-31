@@ -9,6 +9,7 @@ import re
 import sys
 import threading
 import socket
+import os
 import certifi
 import urllib3
 import requests.packages.urllib3.util.connection as urllib3_cn
@@ -20,9 +21,11 @@ except ImportError:
     _BS_PARSER = 'html.parser'
 
 # Force IPv4 to prevent hanging on broken IPv6 networks (common on Render free instances)
-def allowed_gai_family():
-    return socket.AF_INET
-urllib3_cn.allowed_gai_family = allowed_gai_family
+# NEVER override on Fly.io (`FLY_APP_NAME`), where private 6PN is IPv6-native!
+if "FLY_APP_NAME" not in os.environ:
+    def allowed_gai_family():
+        return socket.AF_INET
+    urllib3_cn.allowed_gai_family = allowed_gai_family
 
 # Global error log for debugging Render timeouts
 fetch_errors = {}
@@ -603,29 +606,6 @@ def get_clovers_data():
     
     return []
 
-def _run_with_timeout(fn, timeout=30):
-    """Run fn in a daemon thread with a hard timeout. Returns result or raises."""
-    result_holder = [None]
-    error_holder = [None]
-    
-    def wrapper():
-        try:
-            result_holder[0] = fn()
-        except Exception as e:
-            error_holder[0] = e
-    
-    t = threading.Thread(target=wrapper, daemon=True)
-    t.start()
-    t.join(timeout=timeout)
-    
-    if t.is_alive():
-        # Thread is still running - abandon it (daemon thread will die with process)
-        raise TimeoutError(f"Exceeded {timeout}s hard timeout")
-    
-    if error_holder[0]:
-        raise error_holder[0]
-    
-    return result_holder[0]
 
 def get_all_data():
     fetchers = [
@@ -697,11 +677,3 @@ def get_all_data():
         logging.error(f"health check failed: {e}")
 
     return data
-
-
-
-def find_store_with_max_women(data):
-    if not data:
-        return None
-    sorted_data = sorted(data, key=lambda x: x['women'], reverse=True)
-    return sorted_data[0]

@@ -21,3 +21,4 @@ google_credentials.json
 *.log
 data/
 .agents/
+benchmark_*_result.json

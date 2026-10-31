@@ -31,8 +31,8 @@ def build_sns_post_payload(post_type, base_url, latest_data):
         header = f"{time_part}時点、関西でいま女性が多く入っている上位5店舗🐙"
         tags = "#相席ナビ #相席ラウンジ #梅田 #難波 #心斎橋"
     elif post_type == 'anaba':
-        candidates = [s for s in stores if s.get('women', 0) >= 10]
-        candidates.sort(key=lambda x: (x.get('women', 0) / max(1, x.get('women', 0) + x.get('men', 0)), x.get('women', 0)), reverse=True)
+        candidates = [s for s in stores if int(s.get('women') or 0) >= 10]
+        candidates.sort(key=lambda x: (int(x.get('women') or 0) / max(1, int(x.get('women') or 0) + int(x.get('men') or 0)), int(x.get('women') or 0)), reverse=True)
         filtered = candidates
         header = f"{time_part}時点、いま女性比率が高めで入りやすい穴場店舗✨"
         tags = "#相席ナビ #相席ラウンジ #オリエンタルラウンジ #JIS"
@@ -78,8 +78,8 @@ def build_sns_post_payload(post_type, base_url, latest_data):
     medals = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣']
     lines = [header, ""]
     for i, s in enumerate(filtered[:limit]):
-        w = s.get('women', 0)
-        m = s.get('men', 0)
+        w = int(s.get('women') or 0)
+        m = int(s.get('men') or 0)
         tot = w + m
         pct = round((w / tot) * 100) if tot > 0 else 0
         ja_name = x_poster.format_ja_store_name(s.get('name') or '')

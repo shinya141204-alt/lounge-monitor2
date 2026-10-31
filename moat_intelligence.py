@@ -804,7 +804,15 @@ def estimate_store_wait_and_pos(
         }
 
     male_excess = men - women
-    momentum_excess = max(0, int(men_diff or 0) - int(women_diff or 0))
+    try:
+        _m_d = int(men_diff or 0) if str(men_diff).strip() not in ('', 'None') else 0
+    except (ValueError, TypeError):
+        _m_d = 0
+    try:
+        _w_d = int(women_diff or 0) if str(women_diff).strip() not in ('', 'None') else 0
+    except (ValueError, TypeError):
+        _w_d = 0
+    momentum_excess = max(0, _m_d - _w_d)
     # 収容率は必ず [0.0, 1.0] にクランプ（ピーク夜に total > cap となっても待機組数が発散しないようにする）
     occ_ratio = min(1.0, total / float(physical_cap))
 
@@ -1274,8 +1282,14 @@ def _predict_store_60m_v1_legacy(
             dw -= (75 - mid_ret) * 0.14 * scale
         elif mid_ret >= 115:
             dw += (mid_ret - 105) * 0.10 * scale
-    w_d15 = int(women_diff or 0)
-    m_d15 = int(men_diff or 0)
+    try:
+        w_d15 = int(women_diff or 0) if str(women_diff).strip() not in ('', 'None') else 0
+    except (ValueError, TypeError):
+        w_d15 = 0
+    try:
+        m_d15 = int(men_diff or 0) if str(men_diff).strip() not in ('', 'None') else 0
+    except (ValueError, TypeError):
+        m_d15 = 0
     dw += max(-8.0, min(10.0, w_d15 * 0.85))
     dm += max(-8.0, min(12.0, m_d15 * 1.05))
     if women >= 20 and cur_wpct >= 70:
@@ -1353,8 +1367,14 @@ def predict_store_60m_dynamics(
     mid_ret = int(STORE_MIDNIGHT_RETENTION.get(store_name, 85))
     mid_r = (float(mid_ret) - 85.0) / 100.0
 
-    w_d15 = int(women_diff or 0)
-    m_d15 = int(men_diff or 0)
+    try:
+        w_d15 = int(women_diff or 0) if str(women_diff).strip() not in ('', 'None') else 0
+    except (ValueError, TypeError):
+        w_d15 = 0
+    try:
+        m_d15 = int(men_diff or 0) if str(men_diff).strip() not in ('', 'None') else 0
+    except (ValueError, TypeError):
+        m_d15 = 0
     wd_c = max(-16.0, min(18.0, float(w_d15)))
     md_c = max(-16.0, min(18.0, float(m_d15)))
 
