@@ -2200,9 +2200,24 @@
                 const subHeadline = isWomenView
                     ? escapeHtml(fc.badge_women || '🟢 1時間後もスムーズ案内圏')
                     : `男余り逆転リスク <strong>${Number(fc.flip_risk_pct || 0)}%</strong>${fc.badge_men ? ' ｜ ' + escapeHtml(fc.badge_men) : ''}`;
+                const acc = fc.accuracy || null;
+                let accHtml = '';
+                if (acc && Number(acc.resolved_count || 0) >= 3) {
+                    const lat = acc.latest || null;
+                    let latTxt = '';
+                    if (lat && lat.pred_wpct !== undefined && lat.actual_wpct !== undefined) {
+                        const ep = Number(lat.error_pt || 0);
+                        const epStr = ep > 0 ? `+${ep}pt` : (ep < 0 ? `${ep}pt` : '±0pt');
+                        latTxt = `<br>直近答え合わせ（${escapeHtml(lat.predicted_hm || '')}発）：予測<strong>${Number(lat.pred_wpct)}%</strong> → 60分後実測<strong>${Number(lat.actual_wpct)}%</strong>（ズレ ${escapeHtml(epStr)}）`;
+                    }
+                    accHtml = `<div class="moat-acc-track">🎯 当店の予測実績（直近${Number(acc.resolved_count)}回検証）：平均ズレ <strong>±${Number(acc.mae_wpct).toFixed(1)}pt</strong> ｜ ±10pt的中 <strong>${Number(acc.within_10pt_pct).toFixed(0)}%</strong>${latTxt}</div>`;
+                }
                 const showParadoxLink = !IS_STAFF && (fc.alert_code === 'crowd_rush_warn' || fc.alert_code === 'jackpot_hold' || fc.alert_code === 'male_glut_lock');
-                const linkHtml = showParadoxLink
+                const paradoxLinkHtml = showParadoxLink
                     ? `<a href="/guide/crowd-rush-paradox" class="moat-modal-link">📊 なぜ22時台は到着時に逆転しやすいのか？（98万件検証） ›</a>`
+                    : '';
+                const accLinkHtml = !IS_STAFF
+                    ? `<a href="/stats#forecast-accuracy" class="moat-modal-link">📈 全店舗の「60分後予測 vs 実際の結果」答え合わせログを見る ›</a>`
                     : '';
                 fcCardHtml = `
                     <div class="moat-modal-card tone-${fTone}">
@@ -2216,7 +2231,9 @@
                         </div>
                         <div class="moat-card-status">${subHeadline}</div>
                         ${fc.reason_short ? `<p class="moat-card-desc">${escapeHtml(fc.reason_short)}</p>` : ''}
-                        ${linkHtml}
+                        ${accHtml}
+                        ${paradoxLinkHtml}
+                        ${accLinkHtml}
                     </div>
                 `;
             } else {
@@ -2225,6 +2242,7 @@
                         <div class="moat-card-eyebrow"><span>60分後のAI推移予測</span></div>
                         <div class="moat-card-primary">現在少人数（合計${totNow}名）</div>
                         <p class="moat-card-desc">店内の男女合計が6名以上に達すると、98万件の実測遷移データから60分後の男女比・逆転確率を自動予測します。</p>
+                        ${!IS_STAFF ? '<a href="/stats#forecast-accuracy" class="moat-modal-link">📈 全店舗の「60分後予測 vs 実測」答え合わせログを見る ›</a>' : ''}
                     </div>
                 `;
             }

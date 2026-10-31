@@ -554,9 +554,18 @@
                         {% if fc and fc.pred_60m_wpct is not none %}
                         <div class="moat-detail-main">予測女性比 {{ fc.pred_60m_wpct }}% <span style="font-size:0.76rem; font-weight:500; color:var(--text-sub);">（女 約{{ fc.pred_60m_women }} : 男 約{{ fc.pred_60m_men }}｜逆転リスク {{ fc.flip_risk_pct }}%）</span></div>
                         {% if fc.reason_short %}<p class="moat-detail-sub">{{ fc.reason_short }}{% if fc.alert_code in ['crowd_rush_warn', 'jackpot_hold', 'male_glut_lock'] %} <a href="/guide/crowd-rush-paradox" style="color:var(--accent-text); text-decoration:underline;">22時殺到パラドックス解説 ›</a>{% endif %}</p>{% endif %}
+                        {% if fc.accuracy and (fc.accuracy.resolved_count or 0) >= 3 %}
+                        <p class="moat-detail-sub" style="margin-top:5px; padding-top:5px; border-top:1px dashed var(--border-subtle);">
+                            🎯 当店予測実績（直近{{ fc.accuracy.resolved_count }}回検証）：平均ズレ <strong style="color:var(--accent-text);">±{{ '%.1f'|format(fc.accuracy.mae_wpct) }}pt</strong> ｜ ±10pt的中 <strong style="color:var(--accent-text);">{{ '%.0f'|format(fc.accuracy.within_10pt_pct) }}%</strong>
+                            {% if fc.accuracy.latest %}（直近{{ fc.accuracy.latest.predicted_hm }}発: 予測{{ fc.accuracy.latest.pred_wpct }}%→実測{{ fc.accuracy.latest.actual_wpct }}%）{% endif %}
+                            <a href="/stats#forecast-accuracy" style="color:var(--accent-text); text-decoration:underline; margin-left:4px;">答え合わせ一覧 ›</a>
+                        </p>
+                        {% else %}
+                        <p class="moat-detail-sub" style="margin-top:4px;"><a href="/stats#forecast-accuracy" style="color:var(--accent-text); text-decoration:underline;">📈 全店舗の60分後予測・答え合わせ検証ログを見る ›</a></p>
+                        {% endif %}
                         {% else %}
                         <div class="moat-detail-main">現在少人数（6名以上で自動予測）</div>
-                        <p class="moat-detail-sub">店内の男女合計が6名以上に達すると、98万件の実測データから60分後の男女比と男余り逆転確率を算出します。</p>
+                        <p class="moat-detail-sub">店内の男女合計が6名以上に達すると、98万件の実測データから60分後の男女比と男余り逆転確率を算出します。 <a href="/stats#forecast-accuracy" style="color:var(--accent-text); text-decoration:underline;">答え合わせ検証ログ ›</a></p>
                         {% endif %}
                     </div>
                     <div class="moat-detail-card">
@@ -1215,13 +1224,23 @@
                                         const dpTxt = dp > 0 ? ('+' + dp + 'pt') : (dp + 'pt');
                                         const pLink = (fc.alert_code === 'crowd_rush_warn' || fc.alert_code === 'jackpot_hold' || fc.alert_code === 'male_glut_lock')
                                             ? ' <a href="/guide/crowd-rush-paradox" style="color:var(--accent-text); text-decoration:underline;">22時殺到パラドックス解説 ›</a>' : '';
+                                        const acc = fc.accuracy || null;
+                                        let accLine = '<p class="moat-detail-sub" style="margin-top:4px;"><a href="/stats#forecast-accuracy" style="color:var(--accent-text); text-decoration:underline;">📈 全店舗の60分後予測・答え合わせ検証ログを見る ›</a></p>';
+                                        if (acc && Number(acc.resolved_count || 0) >= 3) {
+                                            const lat = acc.latest || null;
+                                            const latPart = (lat && lat.pred_wpct !== undefined && lat.actual_wpct !== undefined)
+                                                ? ('（直近' + esc(lat.predicted_hm || '') + '発: 予測' + Number(lat.pred_wpct) + '%→実測' + Number(lat.actual_wpct) + '%）')
+                                                : '';
+                                            accLine = '<p class="moat-detail-sub" style="margin-top:5px; padding-top:5px; border-top:1px dashed var(--border-subtle);">🎯 当店予測実績（直近' + Number(acc.resolved_count) + '回検証）：平均ズレ <strong style="color:var(--accent-text);">±' + Number(acc.mae_wpct).toFixed(1) + 'pt</strong> ｜ ±10pt的中 <strong style="color:var(--accent-text);">' + Number(acc.within_10pt_pct).toFixed(0) + '%</strong>' + latPart + ' <a href="/stats#forecast-accuracy" style="color:var(--accent-text); text-decoration:underline; margin-left:4px;">答え合わせ一覧 ›</a></p>';
+                                        }
                                         fcHtml = '<div class="moat-detail-card">' +
                                             '<div class="moat-detail-eyebrow"><span>60分後のAI男女比予測</span><span class="moat-detail-chip">' + esc(dpTxt) + '</span></div>' +
                                             '<div class="moat-detail-main">予測女性比 ' + Number(fc.pred_60m_wpct) + '% <span style="font-size:0.76rem; font-weight:500; color:var(--text-sub);">（女 約' + Number(fc.pred_60m_women || 0) + ' : 男 約' + Number(fc.pred_60m_men || 0) + '｜逆転リスク ' + Number(fc.flip_risk_pct || 0) + '%）</span></div>' +
                                             (fc.reason_short ? '<p class="moat-detail-sub">' + esc(fc.reason_short) + pLink + '</p>' : '') +
+                                            accLine +
                                             '</div>';
                                     } else {
-                                        fcHtml = '<div class="moat-detail-card"><div class="moat-detail-eyebrow"><span>60分後のAI男女比予測</span></div><div class="moat-detail-main">現在少人数（6名以上で自動予測）</div><p class="moat-detail-sub">店内の男女合計が6名以上に達すると、98万件の実測データから60分後の男女比と男余り逆転確率を算出します。</p></div>';
+                                        fcHtml = '<div class="moat-detail-card"><div class="moat-detail-eyebrow"><span>60分後のAI男女比予測</span></div><div class="moat-detail-main">現在少人数（6名以上で自動予測）</div><p class="moat-detail-sub">店内の男女合計が6名以上に達すると、98万件の実測データから60分後の男女比と男余り逆転確率を算出します。 <a href="/stats#forecast-accuracy" style="color:var(--accent-text); text-decoration:underline;">答え合わせ検証ログ ›</a></p></div>';
                                     }
                                     let srcTxt = 'JIS実測学習AI推論';
                                     if (we && we.is_standing_free) srcTxt = '自由回遊スタンディング';

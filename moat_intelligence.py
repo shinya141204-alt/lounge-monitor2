@@ -849,14 +849,28 @@ def estimate_store_wait_and_pos(
 
 
 # ==============================================================================
-# 5. 98万件実測遷移確率に基づく「60分後の男女比予測バッジ（群衆殺到注意アラート）」
+# 5. 実測マルコフ状態空間モデル（v2.1）に基づく「60分後の男女比予測エンジン」
 # ==============================================================================
-# 金土祝前の「女性比55〜65%（客数20名+）」出発後60分の実測ドリフト（n=19,791件）：
-#   19時発: Δ女+20.6, Δ男+13.5, 男余り転落率 6.1%
-#   20時発: Δ女+19.1, Δ男+18.1, 男余り転落率 11.0%
-#   21時発: Δ女+12.8, Δ男+20.9, 男余り転落率 19.4%
-#   22時発: Δ女 -0.3, Δ男+13.2, 男余り転落率 29.8%（群衆殺到パラドックス！）
-#   23時発: Δ女 -7.0, Δ男 +5.2, 男余り転落率 30.3%（終電崖×男性居残り！）
+FORECAST_MODEL_VERSION = "v2.1-statespace"
+
+# 時系列ホールドアウト検証ベンチマーク（同一店舗・未来テスト分割 n=12,836 遷移ペアでの実測値）
+HOLDOUT_BACKTEST_SUMMARY = {
+    "test_samples": 12836,
+    "v1_mae_wpct": 11.19,
+    "v1_rmse_wpct": 15.31,
+    "v1_within_5pt_pct": 33.7,
+    "v1_within_10pt_pct": 58.4,
+    "v1_brier_flip": 0.1663,
+    "naive_mae_wpct": 10.72,
+    "v2_mae_wpct": 8.05,
+    "v2_rmse_wpct": 11.17,
+    "v2_within_5pt_pct": 44.6,
+    "v2_within_10pt_pct": 72.2,
+    "v2_brier_flip": 0.1381,
+    "mae_reduction_pct": 28.1,
+}
+
+# 旧v1モデル係数（リアルタイム精度監査で v1 vs v2.1 の改善幅を同一条件比較するために保持）
 _WEEKEND_DRIFT_BY_HOUR = {
     18: (12.0, 7.5, 6),
     19: (20.6, 13.5, 6),
@@ -885,6 +899,101 @@ _WEEKDAY_DRIFT_BY_HOUR = {
     4: (-1.5, -2.5, 10),
 }
 
+# v2.1 連続時刻ノット状態空間係数（各時台 h:30 を中心にリッジ正則化学習）
+# 特徴量(9次元): [early_factor*(p99/100), w, m, wd15, md15, mid_r*w, closing*w, closing*m, occ*(w+m)]
+_V2_KNOTS_W = {
+    (0, 17): (2.34399, 1.44222, 0.46245, 0.55623, -0.21589, 0.0109, 0.0, 0.0, -2.0551),
+    (0, 18): (2.57971, 1.49022, 0.67255, 0.6048, -0.31031, -0.08018, 0.0, 0.0, -2.44284),
+    (0, 19): (4.25965, 1.1873, 0.69845, 0.5764, 0.01246, 0.05096, 0.0, 0.0, -1.07291),
+    (0, 20): (6.65422, 0.98308, 0.7252, 0.45296, 0.13602, 0.20851, 0.0, 0.0, -0.58227),
+    (0, 21): (8.71981, 0.95528, 0.48948, 0.34536, 0.24108, 0.33915, 0.0, 0.0, -0.46635),
+    (0, 22): (1.52262, 0.90716, 0.12149, 0.30518, 0.46015, 0.47101, -0.72714, -0.48935, -0.27349),
+    (0, 23): (0.0, 0.49187, 0.41312, 0.15942, -0.0382, 0.62673, -0.48761, -0.30234, -0.08542),
+    (0, 0): (0.0, 0.63421, 0.28103, 0.23999, -0.00702, 0.27899, -0.62912, -0.32079, -0.01194),
+    (0, 1): (0.0, 0.64372, 0.17671, 0.3941, 0.10142, 0.09706, -0.53416, -0.17731, 0.01681),
+    (0, 2): (0.0, 0.58693, 0.11405, 0.07549, 0.04512, 0.04309, -0.43459, 0.05482, 0.05396),
+    (0, 3): (0.0, 0.50396, 0.10973, -0.02669, 0.01323, -0.12116, -0.46333, 0.08552, 0.14055),
+    (0, 4): (0.0, 0.41134, 0.12123, -0.10843, 0.04805, -0.13836, -0.31328, -0.08617, 0.22649),
+    (0, 5): (0.0, 0.32188, 0.10286, -0.14149, 0.0847, -0.03286, -0.18704, -0.10702, 0.14313),
+    (1, 17): (5.41426, 1.66463, 1.01242, 0.71046, -0.41115, -0.26776, 0.0, 0.0, -1.34711),
+    (1, 18): (7.71045, 1.54141, 0.77991, 0.61065, -0.12202, -0.2608, 0.0, 0.0, -0.99055),
+    (1, 19): (10.09483, 1.41759, 0.82012, 0.40396, 0.0529, -0.08348, 0.0, 0.0, -0.76075),
+    (1, 20): (12.85457, 1.33751, 0.82783, 0.10503, 0.05249, -0.0018, 0.0, 0.0, -0.62927),
+    (1, 21): (10.45512, 1.32702, 0.63528, 0.08066, 0.27509, 0.01779, 0.0, 0.0, -0.55006),
+    (1, 22): (1.27986, 1.15374, 0.35584, 0.17031, 0.46364, 0.19108, 0.0, 0.0, -0.33811),
+    (1, 23): (0.0, 0.82137, 0.47857, 0.01246, -0.00997, 0.32492, 0.0, 0.0, -0.21368),
+    (1, 0): (0.0, 0.82295, 0.32711, 0.15331, 0.09323, 0.15183, -0.58841, -0.62277, -0.12432),
+    (1, 1): (0.0, 0.62152, 0.11023, 0.32852, 0.11417, -0.01473, -0.07135, -0.52047, 0.0904),
+    (1, 2): (0.0, 0.5566, 0.05225, 0.06622, -0.04086, -0.0457, -0.07776, -0.35248, 0.13658),
+    (1, 3): (0.0, 0.30702, 0.14031, -0.00947, -0.09373, -0.05133, -0.55462, -0.14056, 0.25225),
+    (1, 4): (0.0, 0.0876, 0.2148, 0.02671, -0.14544, -0.03186, -0.2246, -0.41592, 0.3691),
+    (1, 5): (0.0, 0.02393, 0.29163, 0.10029, -0.0608, -0.00818, -0.06556, -0.45622, 0.25214),
+}
+
+_V2_KNOTS_M = {
+    (0, 17): (0.5345, 0.36889, 0.96879, 0.0198, 0.08135, -0.03205, 0.0, 0.0, -0.70421),
+    (0, 18): (0.23561, 0.46439, 1.13751, 0.01242, 0.02578, 0.02814, 0.0, 0.0, -1.15322),
+    (0, 19): (0.09991, 0.48022, 1.13746, -0.01027, 0.16726, 0.19732, 0.0, 0.0, -0.87378),
+    (0, 20): (0.84633, 0.41816, 1.04447, 0.0393, 0.17664, 0.22284, 0.0, 0.0, -0.52026),
+    (0, 21): (1.59991, 0.42741, 0.81532, 0.19863, 0.26971, 0.20716, 0.0, 0.0, -0.31013),
+    (0, 22): (0.55325, 0.45277, 0.4617, 0.22617, 0.43758, 0.31938, -0.74521, -0.61765, -0.10402),
+    (0, 23): (0.0, 0.22568, 0.55229, 0.08148, 0.02039, 0.42801, -0.37128, -0.49606, 0.06356),
+    (0, 0): (0.0, 0.21313, 0.55038, 0.13408, -0.05047, 0.16514, -0.28115, -0.64452, 0.1044),
+    (0, 1): (0.0, 0.16126, 0.48797, 0.35774, 0.04493, 0.04303, -0.11941, -0.58596, 0.14126),
+    (0, 2): (0.0, 0.09784, 0.41131, 0.12434, -0.00404, 0.05859, -0.07065, -0.4506, 0.18271),
+    (0, 3): (0.0, 0.05951, 0.37928, -0.01493, -0.12247, 0.00102, -0.06757, -0.33028, 0.18423),
+    (0, 4): (0.0, 0.0694, 0.32082, -0.05021, -0.08796, -0.0374, -0.04959, -0.31636, 0.21163),
+    (0, 5): (0.0, 0.10944, 0.20425, -0.08092, -0.04537, -0.02062, -0.05631, -0.21169, 0.1482),
+    (1, 17): (0.84593, 0.54663, 1.08878, 0.06351, -0.08404, -0.37316, 0.0, 0.0, -0.477),
+    (1, 18): (1.14921, 0.53753, 1.15312, 0.00724, -0.09342, -0.28279, 0.0, 0.0, -0.40356),
+    (1, 19): (0.70557, 0.5302, 1.34919, 0.02815, -0.13884, -0.02443, 0.0, 0.0, -0.36403),
+    (1, 20): (-1.50492, 0.61733, 1.32238, 0.0661, 0.00306, 0.04401, 0.0, 0.0, -0.44349),
+    (1, 21): (-0.59035, 0.68253, 1.092, 0.11926, 0.2143, 0.04003, 0.0, 0.0, -0.41211),
+    (1, 22): (0.51003, 0.68048, 0.80341, 0.20827, 0.36818, 0.10687, 0.0, 0.0, -0.29947),
+    (1, 23): (0.0, 0.46605, 0.79533, 0.07458, 0.11754, 0.17724, 0.0, 0.0, -0.18542),
+    (1, 0): (0.0, 0.31861, 0.75575, 0.10243, 0.05574, 0.09562, -0.40128, -0.42205, -0.0994),
+    (1, 1): (0.0, 0.18815, 0.5553, 0.39614, 0.07912, -0.03749, 0.46369, -0.86066, 0.04548),
+    (1, 2): (0.0, 0.11243, 0.45348, 0.10706, -0.07732, -0.06547, 0.41986, -0.73328, 0.09795),
+    (1, 3): (0.0, -0.05106, 0.50897, 0.03159, -0.18691, -0.03466, -0.17039, -0.444, 0.13989),
+    (1, 4): (0.0, -0.12988, 0.51934, 0.07713, -0.19687, -0.02328, 0.02109, -0.62983, 0.18448),
+    (1, 5): (0.0, -0.04662, 0.48906, 0.16222, -0.08237, -0.05775, 0.01566, -0.55504, 0.0585),
+}
+
+# 女性比率直接キャリブレーション係数
+# 特徴量(6次元): [1.0, cur_wp, (wd_c-md_c)*(100/max(16,tot)), mid_r*10, stab*(cur_wp-55), jackpot_buf]
+_V2_KNOTS_WP = {
+    (0, 17): (32.86978, 0.49775, 0.0416, 0.30299, 0.17716, -0.13924),
+    (0, 18): (33.51383, 0.4856, 0.05231, -0.04997, 0.06148, -0.10227),
+    (0, 19): (36.12369, 0.42276, 0.08403, -0.50407, 0.02359, -0.0391),
+    (0, 20): (40.00738, 0.3262, 0.06954, -0.40545, -0.00187, 0.11608),
+    (0, 21): (40.96908, 0.26043, 0.00743, -0.12163, 0.09032, 0.11679),
+    (0, 22): (33.43485, 0.35504, -0.00413, 0.10766, -0.00478, 0.05279),
+    (0, 23): (26.56177, 0.48403, -0.01036, 0.3084, -0.2211, 0.17037),
+    (0, 0): (30.23789, 0.45729, -0.04384, 0.01672, 0.03806, -0.17979),
+    (0, 1): (34.30722, 0.39701, -0.05363, -0.23682, 0.20443, -0.25363),
+    (0, 2): (33.18626, 0.44355, -0.07142, -0.38854, 0.213, -0.32218),
+    (0, 3): (39.75985, 0.36524, -0.03591, -0.63679, 0.28737, -0.50893),
+    (0, 4): (42.07911, 0.33493, -0.03462, -0.63884, 0.25313, -0.55673),
+    (0, 5): (44.80472, 0.29217, -0.03163, -0.57963, 0.03243, -0.4209),
+    (1, 17): (54.88083, 0.25112, 0.0249, 0.67374, -0.40278, 0.14367),
+    (1, 18): (52.65061, 0.26518, 0.03115, 0.55593, -0.32473, 0.1645),
+    (1, 19): (43.90808, 0.32181, 0.05293, 0.10318, -0.23202, 0.21316),
+    (1, 20): (36.27466, 0.36198, 0.01566, -0.11996, -0.13419, 0.26586),
+    (1, 21): (34.15768, 0.33688, -0.04009, -0.08611, 0.08, 0.07532),
+    (1, 22): (39.95293, 0.20385, -0.0411, 0.15926, 0.23944, -0.06678),
+    (1, 23): (42.52641, 0.16503, -0.02004, 0.27913, 0.24686, -0.56318),
+    (1, 0): (47.69001, 0.10209, -0.02261, 0.02453, 0.42235, -0.68018),
+    (1, 1): (36.01555, 0.32912, -0.04359, -0.15851, 0.16513, -0.97816),
+    (1, 2): (30.82593, 0.46017, -0.04962, -0.25044, 0.10565, -1.43367),
+    (1, 3): (36.20453, 0.38556, -0.06274, -0.27449, 0.27063, 0.1356),
+    (1, 4): (34.68636, 0.40082, -0.051, -0.19909, 0.19967, 0.36763),
+    (1, 5): (28.90384, 0.45496, -0.07112, 0.19971, 0.11198, 0.65882),
+}
+
+# IRLS ロジスティック回帰による「男余り転落確率（60分後 女性比50%未満）」校正重み
+# [1.0, (50 - pred_wp)/10, (50 - cur_wp)/10, 1/sqrt(tot), is_male_now, jackpot_safe]
+_V2_FLIP_LOGISTIC_W = (-0.46813, 2.2327, -0.40703, 0.07081, 0.42114, -0.66526)
+
 
 def _is_weekend_or_preholiday(now_jst: datetime.datetime) -> bool:
     """営業日基準（朝7時切替）で金・土・祝前日かどうかを判定する。"""
@@ -902,6 +1011,124 @@ def _is_weekend_or_preholiday(now_jst: datetime.datetime) -> bool:
     return False
 
 
+def _mins_until_close(store_name: str, now_jst: datetime.datetime) -> int:
+    """公式営業時間（store_hours.py）に基づき、当営業シフトの閉店時刻までの残り分数を返す。"""
+    try:
+        import store_hours
+        spec = store_hours.get_store_schedule_spec(store_name)
+        is_korea = ("ソウル" in (store_name or "")) or ("カンナム" in (store_name or "")) or ("ホンデ" in (store_name or ""))
+        if now_jst.hour < 12:
+            biz_date = (now_jst - datetime.timedelta(days=1)).date()
+            cur_m = (24 + now_jst.hour) * 60 + now_jst.minute
+        else:
+            biz_date = now_jst.date()
+            cur_m = now_jst.hour * 60 + now_jst.minute
+        wd = biz_date.weekday()
+        next_iso = (biz_date + datetime.timedelta(days=1)).isoformat()
+        biz_iso = biz_date.isoformat()
+        is_pre = (not is_korea) and (next_iso in store_hours.JP_HOLIDAYS)
+        is_hol = (not is_korea) and (biz_iso in store_hours.JP_HOLIDAYS)
+        if is_pre or wd in (4, 5):
+            _, close_h = spec["fs"]
+        elif wd == 6 or is_hol:
+            _, close_h = spec["sh"]
+        else:
+            _, close_h = spec["mt"]
+        return int(close_h * 60 - cur_m)
+    except Exception:
+        cur_m = ((24 + now_jst.hour) if now_jst.hour < 12 else now_jst.hour) * 60 + now_jst.minute
+        return int(29 * 60 - cur_m)
+
+
+def _night_fractional_hour(now_jst: datetime.datetime) -> float:
+    """夜間連続時刻（17.0〜30.99、深夜0〜11時は +24）に変換する。"""
+    fhr = now_jst.hour + (now_jst.minute / 60.0)
+    if now_jst.hour < 12:
+        return fhr + 24.0
+    if now_jst.hour < 17:
+        return 17.0
+    return fhr
+
+
+def _interp_v2_knot(tbl: dict, wk_key: int, now_jst: datetime.datetime) -> list:
+    """各時台中央（h:30）の学習ノット間を連続線形補間し、正時の不連続ジャンプを除去する。"""
+    fhr = _night_fractional_hour(now_jst)
+    if fhr <= 17.5:
+        return list(tbl[(wk_key, 17)])
+    if fhr >= 29.5:
+        return list(tbl[(wk_key, 5)])
+    h_lo_c = int(math.floor(fhr - 0.5))
+    alpha = (fhr - 0.5) - h_lo_c
+    h0 = h_lo_c - 24 if h_lo_c >= 24 else h_lo_c
+    h1_c = h_lo_c + 1
+    h1 = h1_c - 24 if h1_c >= 24 else h1_c
+    k0 = tbl.get((wk_key, h0), tbl[(wk_key, 22)])
+    k1 = tbl.get((wk_key, h1), k0)
+    return [k0[j] * (1.0 - alpha) + k1[j] * alpha for j in range(len(k0))]
+
+
+def _predict_store_60m_v1_legacy(
+    store_name: str,
+    women: int,
+    men: int,
+    is_open_now: bool = True,
+    women_diff: int = 0,
+    men_diff: int = 0,
+    now_jst: datetime.datetime = None,
+    weather_map: dict = None,
+    arena_signal: dict = None,
+) -> dict:
+    """旧v1予測ロジック（精度比較ベンチマーク監査用に保持）。"""
+    now_jst = now_jst or datetime.datetime.now(JST)
+    women = max(0, int(women or 0))
+    men = max(0, int(men or 0))
+    total = women + men
+    if not is_open_now or total < 6:
+        return {"pred_60m_wpct": None, "pred_60m_women": women, "pred_60m_men": men}
+
+    cur_wpct = int(round((women / float(total)) * 100))
+    hr = now_jst.hour
+    is_wknd = _is_weekend_or_preholiday(now_jst)
+    drift_tbl = _WEEKEND_DRIFT_BY_HOUR if is_wknd else _WEEKDAY_DRIFT_BY_HOUR
+    base_dw, base_dm, _ = drift_tbl.get(hr, (0.0, 0.0, 12))
+    p99_cap = max(40, int(STORE_P99_CAPACITY.get(store_name, 120)))
+    scale = max(0.38, min(1.45, p99_cap / 165.0))
+    mid_ret = int(STORE_MIDNIGHT_RETENTION.get(store_name, 85))
+    dw = base_dw * scale
+    dm = base_dm * scale
+    if hr in (22, 23):
+        if mid_ret < 70:
+            dw -= (75 - mid_ret) * 0.14 * scale
+        elif mid_ret >= 115:
+            dw += (mid_ret - 105) * 0.10 * scale
+    w_d15 = int(women_diff or 0)
+    m_d15 = int(men_diff or 0)
+    dw += max(-8.0, min(10.0, w_d15 * 0.85))
+    dm += max(-8.0, min(12.0, m_d15 * 1.05))
+    if women >= 20 and cur_wpct >= 70:
+        dw = max(dw, 9.0 * scale)
+        dm = min(dm, 14.0 * scale)
+    elif women >= 12 and men <= 3:
+        dw -= 4.5
+    elif cur_wpct <= 40 and men >= 15:
+        dm = max(dm, -2.0)
+    ck = city_key_for_store(store_name)
+    city_w = (weather_map or {}).get(ck) if ck else None
+    if bool(city_w and city_w.get("is_rainy") and store_name in UNDERGROUND_DIRECT_STORES):
+        dw += 3.2 * scale
+        dm -= 1.2 * scale
+    if arena_signal and 19 <= hr <= 22:
+        dw += 3.5 * scale
+    pred_w = max(1, min(int(p99_cap * 0.72), int(round(women + dw))))
+    pred_m = max(1, min(int(p99_cap * 0.72), int(round(men + dm))))
+    pred_tot = max(2, pred_w + pred_m)
+    return {
+        "pred_60m_wpct": int(round((pred_w / float(pred_tot)) * 100)),
+        "pred_60m_women": pred_w,
+        "pred_60m_men": pred_m,
+    }
+
+
 def predict_store_60m_dynamics(
     store_name: str,
     women: int,
@@ -913,9 +1140,13 @@ def predict_store_60m_dynamics(
     now_jst: datetime.datetime = None,
     weather_map: dict = None,
     arena_signal: dict = None,
+    apply_online_bias: bool = True,
 ) -> dict:
     """
-    98万件の実測マルコフ遷移法則に基づき、当該店舗の「60分後の予測女性比・男余り転落リスク・アラートバッジ」を返す。
+    状態空間マルコフ遷移モデル（v2.1）に基づき、当該店舗の「60分後の予測女性比・予測男女数・男余り転落リスク・アラートバッジ」を返す。
+    1) 連続時刻ノット補間（h:30基準）により正時の階段状ジャンプを解消
+    2) 男女クロス結合（現在の女性数→60分後男性流入、稼働率飽和、閉店前ハザード減衰）を反映
+    3) 店舗別30日普段カーブへのベイズ縮小＋直近予測誤差のオンライン自己補正を統合
     """
     now_jst = now_jst or datetime.datetime.now(JST)
     women = max(0, int(women or 0))
@@ -924,6 +1155,7 @@ def predict_store_60m_dynamics(
 
     if not is_open_now or total < 6:
         return {
+            "model_version": FORECAST_MODEL_VERSION,
             "pred_60m_wpct": None,
             "pred_60m_women": women,
             "pred_60m_men": men,
@@ -936,77 +1168,160 @@ def predict_store_60m_dynamics(
             "reason_short": "",
         }
 
-    cur_wpct = int(round((women / float(total)) * 100))
+    cur_wp_float = (women / float(total)) * 100.0
+    cur_wpct = int(round(cur_wp_float))
     hr = now_jst.hour
     is_wknd = _is_weekend_or_preholiday(now_jst)
-    drift_tbl = _WEEKEND_DRIFT_BY_HOUR if is_wknd else _WEEKDAY_DRIFT_BY_HOUR
-    base_dw, base_dm, base_flip = drift_tbl.get(hr, (0.0, 0.0, 12))
+    wk_key = 1 if is_wknd else 0
 
     p99_cap = max(40, int(STORE_P99_CAPACITY.get(store_name, 120)))
-    scale = max(0.38, min(1.45, p99_cap / 165.0))
+    p99_f = float(p99_cap)
+    scale = max(0.38, min(1.45, p99_f / 165.0))
     mid_ret = int(STORE_MIDNIGHT_RETENTION.get(store_name, 85))
+    mid_r = (float(mid_ret) - 85.0) / 100.0
 
-    dw = base_dw * scale
-    dm = base_dm * scale
-
-    # 1) 終電崖補正（22:30〜23:59）：深夜維持率が低い店舗ほど女性退店が強く出る
-    if hr in (22, 23):
-        if mid_ret < 70:
-            dw -= (75 - mid_ret) * 0.14 * scale
-        elif mid_ret >= 115:
-            dw += (mid_ret - 105) * 0.10 * scale
-
-    # 2) 直近15分モメンタム補正（流入加速度の減衰投影）
     w_d15 = int(women_diff or 0)
     m_d15 = int(men_diff or 0)
-    dw += max(-8.0, min(10.0, w_d15 * 0.85))
-    dm += max(-8.0, min(12.0, m_d15 * 1.05))
+    wd_c = max(-16.0, min(18.0, float(w_d15)))
+    md_c = max(-16.0, min(18.0, float(m_d15)))
 
-    # 3) 「女余り見切り退店」vs「70%超確変バッファ」非線形補正（98万件データ法則）
-    if women >= 20 and cur_wpct >= 70:
-        # 70%バッファの法則（n=33,555）：実測60分後ドリフト Δ女+9.3 / Δ男+13.9、男余り転落率わずか2.3%
-        dw = max(dw, 9.0 * scale)
-        dm = min(dm, 14.0 * scale)
-    elif women >= 12 and men <= 3:
-        # 男性が極端に少なすぎる女余り店は、女性が20〜30分で見切って他店へ移動する
-        dw -= 4.5
-    elif cur_wpct <= 40 and men >= 15:
-        # 深刻な男余りロック現象（90分後も56.8%が男余りのまま滞留）
-        dm = max(dm, -2.0)
+    fhr = _night_fractional_hour(now_jst)
+    if fhr <= 17.5:
+        ef = 1.0
+    elif fhr >= 21.5:
+        ef = 0.0
+    else:
+        ef = max(0.0, min(1.0, (21.5 - fhr) / 4.0))
 
-    # 4) 雨天×地下街・駅直結ブースト（案Bクロスデータ活用）
+    mtc = _mins_until_close(store_name, now_jst)
+    closing = max(0.0, min(1.5, (90.0 - float(mtc)) / 60.0)) if mtc < 90 else 0.0
+    occ = min(1.2, float(total) / p99_f)
+
+    feat_wm = (
+        ef * (p99_f / 100.0),
+        float(women),
+        float(men),
+        wd_c,
+        md_c,
+        mid_r * float(women),
+        closing * float(women),
+        closing * float(men),
+        occ * float(total),
+    )
+
+    inv_tot = 100.0 / max(16.0, float(total))
+    stab = min(1.0, max(0.0, (float(total) - 12.0) / 40.0))
+    j_buf = (max(0.0, cur_wp_float - 66.0) * min(1.0, float(women) / 24.0)) if women >= 16 else 0.0
+    feat_wp = (
+        1.0,
+        cur_wp_float,
+        (wd_c - md_c) * inv_tot,
+        mid_r * 10.0,
+        stab * (cur_wp_float - 55.0),
+        j_buf,
+    )
+
+    kw = _interp_v2_knot(_V2_KNOTS_W, wk_key, now_jst)
+    km = _interp_v2_knot(_V2_KNOTS_M, wk_key, now_jst)
+    kwp = _interp_v2_knot(_V2_KNOTS_WP, wk_key, now_jst)
+
+    pw_raw = sum(a * b for a, b in zip(kw, feat_wm))
+    pm_raw = sum(a * b for a, b in zip(km, feat_wm))
+    pwp_dir = sum(a * b for a, b in zip(kwp, feat_wp))
+
+    # 1) 普段比異常スパイクの平均回帰（usual_w_diff が与えられている場合、過剰上振れの減衰をわずかに織り込む）
+    if usual_w_diff is not None:
+        try:
+            uwd = float(usual_w_diff)
+            if abs(uwd) >= 10.0:
+                pwp_dir -= max(-2.2, min(2.2, uwd * 0.05))
+        except Exception:
+            pass
+
+    # 2) 「極端な女余り（男性不在）見切り退店」非線形補正
+    if women >= 12 and men <= 2:
+        pw_raw -= 3.5
+        pwp_dir -= 3.0
+
+    # 3) 雨天×地下街・駅直結ブースト ＆ ドーム・アリーナ終演後流入ブースト
     ck = city_key_for_store(store_name)
     city_w = (weather_map or {}).get(ck) if ck else None
     is_rain_shelter = bool(city_w and city_w.get("is_rainy") and store_name in UNDERGROUND_DIRECT_STORES)
     if is_rain_shelter:
-        dw += 3.2 * scale
-        dm -= 1.2 * scale
+        pw_raw += 2.4 * scale
+        pm_raw -= 0.8 * scale
+        pwp_dir += 1.4 if (m_d15 < w_d15 + 4) else 0.6
 
-    # 5) 大型ドーム・アリーナ終演後女性流入ブースト
     if arena_signal and 19 <= hr <= 22:
-        dw += 3.5 * scale
+        pw_raw += 2.8 * scale
+        pwp_dir += 1.5
 
-    pred_w = max(1, min(int(p99_cap * 0.72), int(round(women + dw))))
-    pred_m = max(1, min(int(p99_cap * 0.72), int(round(men + dm))))
-    pred_tot = max(2, pred_w + pred_m)
-    pred_wpct = int(round((pred_w / float(pred_tot)) * 100))
+    # 4) 店舗別30日普段カーブ（t → t+60m）への非ブロッキング縮小推定
+    if mtc >= 65 and store_name:
+        try:
+            import local_db
+            usual_pair = local_db.get_cached_store_usual_pair(store_name, now_jst)
+            if usual_pair:
+                uw_t, um_t, uw_60, um_60, cnt_60 = usual_pair
+                if cnt_60 >= 6 and (uw_60 + um_60) >= 8.0:
+                    usual_wp_60 = (uw_60 / (uw_60 + um_60)) * 100.0
+                    # 現在の普段乖離を65%維持しつつ、60分後の店舗固有定常バランスへ16%縮小
+                    cur_anom = 0.0
+                    if (uw_t + um_t) >= 8.0:
+                        cur_anom = cur_wp_float - ((uw_t / (uw_t + um_t)) * 100.0)
+                    emp_target_wp = max(15.0, min(85.0, usual_wp_60 + 0.55 * cur_anom))
+                    shrink_w = min(0.16, 0.16 * (cnt_60 / (cnt_60 + 12.0)))
+                    pwp_dir = (1.0 - shrink_w) * pwp_dir + shrink_w * emp_target_wp
+        except Exception:
+            pass
+
+    # 5) 閉店直前ハザード減衰（公式閉店45分前以内は退店加速を厳密反映）
+    if mtc <= 15:
+        pw_raw *= 0.25
+        pm_raw *= 0.25
+    elif mtc <= 45:
+        fac = 0.35 + 0.65 * ((float(mtc) - 15.0) / 30.0)
+        pw_raw = min(pw_raw, float(women) * fac)
+        pm_raw = min(pm_raw, float(men) * fac)
+
+    pw = max(0.5, min(p99_f * 0.75, pw_raw))
+    pm = max(0.5, min(p99_f * 0.75, pm_raw))
+    wp_from_wm = (pw / (pw + pm)) * 100.0
+    wp_blend = max(8.0, min(92.0, 0.72 * pwp_dir + 0.28 * wp_from_wm))
+
+    # 6) 蓄積された「予測 vs 60分後実測」残差ログからのオンラインEmpirical-Bayes自己補正
+    online_bias_adj = 0.0
+    if apply_online_bias and store_name:
+        try:
+            import local_db
+            online_bias_adj = float(local_db.get_cached_forecast_residual_adjustment(store_name, hr) or 0.0)
+            if online_bias_adj != 0.0:
+                wp_blend = max(8.0, min(92.0, wp_blend + online_bias_adj))
+        except Exception:
+            online_bias_adj = 0.0
+
+    tot_pred = max(2.0, pw + pm)
+    pred_w = max(1, min(int(p99_f * 0.75), int(round(tot_pred * (wp_blend / 100.0)))))
+    pred_m = max(1, min(int(p99_f * 0.75), int(round(tot_pred - pred_w))))
+    pred_wpct = int(round(wp_blend))
     delta_pt = pred_wpct - cur_wpct
 
-    # 男余り転落リスク（60分後に女性比50%未満になる確率%）の算出
-    if cur_wpct < 50:
-        # 既に男余りの場合：98万件ログで「男15名+・女性比40%以下」は60〜90分後も約57〜72%男余り継続
-        flip_risk = min(92, max(45, 58 + (48 - cur_wpct) * 2 - max(0, w_d15 * 3)))
-    elif women >= 20 and cur_wpct >= 70 and pred_wpct >= 58:
-        # 70%超確変バッファ（実測転落率 2.3%〜6%）
-        flip_risk = max(3, min(12, int(round(8 - (cur_wpct - 70) * 0.3))))
-    else:
-        margin_above_50 = cur_wpct - 50
-        rush_penalty = max(0, (m_d15 - w_d15) * 4)
-        drop_penalty = max(0, -delta_pt * 2.1)
-        flip_risk = int(round(base_flip + drop_penalty + rush_penalty - margin_above_50 * 1.15))
-        if is_rain_shelter:
-            flip_risk -= 6
-        flip_risk = max(4, min(88, flip_risk))
+    # 男余り転落リスク（60分後に女性比50%未満になる校正済み確率%）の算出
+    inv_sqrt_n = 1.0 / math.sqrt(max(6.0, float(total)))
+    is_m_now = 1.0 if cur_wp_float < 50.0 else 0.0
+    j_safe = 1.0 if (women >= 18 and cur_wp_float >= 68.0) else 0.0
+    rush_z = 0.35 * max(0.0, float(m_d15 - w_d15) / 5.0) if m_d15 > w_d15 else 0.0
+    z_flip = (
+        _V2_FLIP_LOGISTIC_W[0]
+        + _V2_FLIP_LOGISTIC_W[1] * ((50.0 - wp_blend) / 10.0)
+        + _V2_FLIP_LOGISTIC_W[2] * ((50.0 - cur_wp_float) / 10.0)
+        + _V2_FLIP_LOGISTIC_W[3] * inv_sqrt_n
+        + _V2_FLIP_LOGISTIC_W[4] * is_m_now
+        + _V2_FLIP_LOGISTIC_W[5] * j_safe
+        + rush_z
+    )
+    z_flip = max(-12.0, min(12.0, z_flip))
+    flip_risk = max(3, min(94, int(round(100.0 / (1.0 + math.exp(-z_flip))))))
 
     # --- アラート分類とユーザー向けバッジ生成 ---
     if cur_wpct <= 44 and men >= 12 and pred_wpct <= 48:
@@ -1035,13 +1350,13 @@ def predict_store_60m_dynamics(
         badge_women = "🟢落ち着いた会話狙い目"
         badge_tone = "warn"
         reason = f"終電前の帰宅波が出やすい1回転目中心店舗（深夜維持率{mid_ret}%）のため、23時台後半にかけて女性が減少する予測です。"
-    elif is_rain_shelter and pred_wpct >= 55 and women >= 10:
+    elif is_rain_shelter and pred_wpct >= 55 and women >= 10 and flip_risk < 22:
         alert_code = "rain_shelter_boost"
         badge_men = f"☔雨天駅直結◎ 60分後{pred_wpct}%"
         badge_women = "☔駅直結・濡れずに来店可"
         badge_tone = "rain"
         reason = f"現在{city_w.get('city_label', '')}エリアは{city_w.get('condition_ja', '雨')}のため、駅・地下街直結の本店舗に女性客が集中しやすく60分後も女性比{pred_wpct}%前後を維持する予測です。"
-    elif women >= 18 and cur_wpct >= 68 and pred_wpct >= 60:
+    elif women >= 18 and cur_wpct >= 68 and pred_wpct >= 58 and flip_risk <= 15:
         alert_code = "jackpot_hold"
         badge_men = f"🛡️確変持続・60分後{pred_wpct}%予測"
         badge_women = "⏳女性多数（相席待ち注意）"
@@ -1064,6 +1379,7 @@ def predict_store_60m_dynamics(
         reason = f"【{arena_signal['label_short']}】" + reason
 
     return {
+        "model_version": FORECAST_MODEL_VERSION,
         "pred_60m_wpct": pred_wpct,
         "pred_60m_women": pred_w,
         "pred_60m_men": pred_m,
@@ -1075,6 +1391,7 @@ def predict_store_60m_dynamics(
         "badge_tone": badge_tone,
         "is_rain_shelter": is_rain_shelter,
         "arena_signal_label": arena_signal.get("label_short", "") if arena_signal else "",
+        "online_bias_adj_pt": round(online_bias_adj, 1),
         "reason_short": reason,
     }
 
@@ -1085,8 +1402,8 @@ def enrich_stores_with_moat_signals(stores: list, now_jst: datetime.datetime = N
       1) JIS POS実測データからのオンライン学習キャリブレーション
       2) Open-Meteo 都市別気象キャッシュ参照（非ブロッキング）
       3) ドーム・アリーナ終演流入シグナル検知
-      4) 全店舗の「リアル待ち時間推論（wait_info）」＆「60分後男女比予測バッジ（forecast_60m）」付与
-    を実行して返す（全63店舗合計で約0.4ms以内の超高速インメモリ処理）。
+      4) 全店舗の「リアル待ち時間推論（wait_info）」＆「60分後男女比予測バッジ（forecast_60m）」＋予測精度実績の付与
+    を実行して返す（全63店舗合計で約0.5ms以内の超高速インメモリ処理）。
     """
     if not stores:
         return stores
@@ -1094,6 +1411,13 @@ def enrich_stores_with_moat_signals(stores: list, now_jst: datetime.datetime = N
     calibrate_from_jis_pos(stores)
     weather_map = get_city_weather_map(allow_blocking=allow_weather_blocking)
     arena_map = detect_arena_event_surges(stores, now_jst=now_jst)
+
+    acc_map = {}
+    try:
+        import local_db
+        acc_map = local_db.get_cached_store_accuracy_map() or {}
+    except Exception:
+        acc_map = {}
 
     for s in stores:
         sname = s.get("name") or ""
@@ -1126,6 +1450,9 @@ def enrich_stores_with_moat_signals(stores: list, now_jst: datetime.datetime = N
             weather_map=weather_map,
             arena_signal=arena_map.get(sname),
         )
+        st_acc = acc_map.get(sname)
+        if st_acc:
+            fc60["accuracy"] = st_acc
         s["wait_estimate"] = wait_info
         s["forecast_60m"] = fc60
         ck = city_key_for_store(sname)

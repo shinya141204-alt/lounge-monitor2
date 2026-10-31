@@ -1630,6 +1630,10 @@ def update_job(force=False, _claimed=False):
                     data_audit.run_data_audit(live_stores=sorted_data, send_alerts=True)
                 except Exception:
                     pass
+                try:
+                    local_db.resolve_due_forecasts_only(sorted_data, jst_now.strftime("%Y-%m-%d %H:%M:%S"))
+                except Exception:
+                    pass
 
             # --- Logging Optimization ---
             total_guests = sum(d.get('men', 0) + d.get('women', 0) for d in data)
@@ -1905,6 +1909,15 @@ def staff_analytics():
         return jsonify(data)
     aff_status = affiliate_manager.get_affiliate_slots_status(analytics_data=data, allow_blocking=False)
     retention_status = archive_data.get_retention_status(allow_blocking=False)
+    try:
+        forecast_accuracy = local_db.get_forecast_accuracy_report(
+            days=max(7, min(30, days)),
+            limit_recent=25,
+            allow_blocking=True,
+            auto_backfill=False,
+        )
+    except Exception:
+        forecast_accuracy = None
     return render_template(
         'staff_analytics.html',
         data=data,
@@ -1913,6 +1926,7 @@ def staff_analytics():
         flushed_rows=flushed_rows,
         aff_status=aff_status,
         retention_status=retention_status,
+        forecast_accuracy=forecast_accuracy,
     )
 
 
@@ -4254,6 +4268,31 @@ def columns_index():
         ),
     )
 
+@app.route('/api/forecast-accuracy')
+def api_forecast_accuracy():
+    """Public JSON report of 60-minute AI crowd forecast vs. actual outcome verification."""
+    days = max(1, min(60, request.args.get('days', 21, type=int)))
+    store_q = (request.args.get('store') or '').strip() or None
+    limit_q = max(5, min(100, request.args.get('limit', 30, type=int)))
+    try:
+        rep = local_db.get_forecast_accuracy_report(
+            days=days,
+            store_name=store_q,
+            limit_recent=limit_q,
+            allow_blocking=True,
+            auto_backfill=False,
+        )
+        if not app.testing and rep.get('summary', {}).get('resolved_count', 0) == 0:
+            threading.Thread(
+                target=local_db.backfill_forecast_accuracy_from_history,
+                kwargs={'days': 21, 'min_existing': 80, 'max_rows': 4500},
+                daemon=True,
+            ).start()
+        return jsonify({'ok': True, **rep})
+    except Exception as err:
+        return jsonify({'ok': False, 'error': str(err)}), 500
+
+
 @app.route('/stats')
 def stats_whitepaper():
     """SEO-indexed primary statistical data whitepaper & weekly ranking page."""
@@ -4261,6 +4300,22 @@ def stats_whitepaper():
     trigger_background_fetch_if_needed()
     cached_rep = (getattr(weekly_report, '_report_cache', None) or {}).get('data')
     rep_sig = cached_rep.get('generated_at') if isinstance(cached_rep, dict) else None
+    try:
+        fc_acc = local_db.get_forecast_accuracy_report(
+            days=21,
+            limit_recent=20,
+            allow_blocking=True,
+            auto_backfill=False,
+        )
+        if not app.testing and fc_acc.get('summary', {}).get('resolved_count', 0) == 0:
+            threading.Thread(
+                target=local_db.backfill_forecast_accuracy_from_history,
+                kwargs={'days': 21, 'min_existing': 80, 'max_rows': 4500},
+                daemon=True,
+            ).start()
+    except Exception:
+        fc_acc = None
+    fc_sig = (fc_acc.get('summary', {}).get('resolved_count', 0), fc_acc.get('summary', {}).get('pending_count', 0)) if isinstance(fc_acc, dict) else (0, 0)
 
     def _render():
         report_data = None
@@ -4276,10 +4331,11 @@ def stats_whitepaper():
         return render_template(
             'stats_report.html',
             report=report_data,
+            forecast_accuracy=fc_acc,
             live_stores=live_stores,
             last_updated=last_updated
         )
-    return _get_cached_html_or_render(('stats', rep_sig), _render)
+    return _get_cached_html_or_render(('stats', rep_sig, fc_sig), _render)
 
 @app.route('/areas')
 @app.route('/area/<area_slug>')

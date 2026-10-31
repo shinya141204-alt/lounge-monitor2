@@ -5880,6 +5880,27 @@ body.theme-light .moat-modal-link {
     color: #755528;
 }
 
+.moat-acc-track {
+    margin-top: 5px;
+    padding: 6px 8px;
+    border-radius: 7px;
+    background: rgba(200, 164, 110, 0.08);
+    border: 1px solid rgba(200, 164, 110, 0.24);
+    font-size: 0.7rem;
+    line-height: 1.48;
+    color: #d4d4d8;
+}
 
+.moat-acc-track strong {
+    color: #f1e3cb;
+}
 
+body.theme-light .moat-acc-track {
+    background: rgba(117, 85, 40, 0.06);
+    border-color: rgba(117, 85, 40, 0.25);
+    color: #3f3b36;
+}
 
+body.theme-light .moat-acc-track strong {
+    color: #5c401d;
+}

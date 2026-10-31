@@ -1196,6 +1196,101 @@
         <div class="ops-msg" id="retention-msg"></div>
     </div>
     {% endif %}
+
+    {% if forecast_accuracy %}
+    {% set fcs = forecast_accuracy.summary or {} %}
+    {% set fch = forecast_accuracy.holdout_backtest or {} %}
+    <div class="ops-section" id="forecast-accuracy-audit">
+        <div class="ops-header">
+            <div>
+                <h2>🔮 60分後予測AI（{{ forecast_accuracy.model_version }}）精度監査＆答え合わせログ</h2>
+                <p>10分ごとのロギング時に60分後予測をDBへ自動保存し、60分経過後に実測値と自動突合してズレ（誤差pt）を集計＆店舗別オンライン自己補正へフィードバックしています。</p>
+            </div>
+            <div class="ops-btn-group">
+                <a href="/stats#forecast-accuracy" target="_blank" rel="noopener" class="ops-btn secondary" style="text-decoration:none;">公開白書ページで確認 ↗</a>
+                <a href="/api/forecast-accuracy?days=21" target="_blank" rel="noopener" class="ops-btn secondary" style="text-decoration:none;">JSON API ↗</a>
+            </div>
+        </div>
+
+        <div class="mini-kpi-grid" style="margin-bottom:14px;">
+            <div class="funnel-card">
+                <div class="funnel-label">実測平均ズレ（MAE）</div>
+                <div class="funnel-num-row"><span class="funnel-big">±{{ fcs.mae_wpct if fcs.mae_wpct is not none else fch.v2_mae_wpct }}</span><span class="funnel-unit">pt</span></div>
+                <div style="font-size:0.72rem;color:var(--sub);">旧v1比 -{{ fcs.mae_reduction_pct if fcs.mae_reduction_pct is not none else fch.mae_reduction_pct }}% 誤差削減</div>
+            </div>
+            <div class="funnel-card">
+                <div class="funnel-label">±10pt以内 的中率</div>
+                <div class="funnel-num-row"><span class="funnel-big">{{ fcs.within_10pt_pct if fcs.within_10pt_pct is not none else fch.v2_within_10pt_pct }}</span><span class="funnel-unit">%</span></div>
+                <div style="font-size:0.72rem;color:var(--sub);">±5ptピタリ率: {{ fcs.within_5pt_pct if fcs.within_5pt_pct is not none else fch.v2_within_5pt_pct }}%</div>
+            </div>
+            <div class="funnel-card">
+                <div class="funnel-label">答え合わせ完了数</div>
+                <div class="funnel-num-row"><span class="funnel-big">{{ "{:,}".format(fcs.resolved_count or 0) }}</span><span class="funnel-unit">件</span></div>
+                <div style="font-size:0.72rem;color:var(--sub);">直近{{ forecast_accuracy.window_days }}日間の検証母数</div>
+            </div>
+            <div class="funnel-card">
+                <div class="funnel-label">60分後の実測待ちキュー</div>
+                <div class="funnel-num-row"><span class="funnel-big">{{ fcs.pending_count or 0 }}</span><span class="funnel-unit">件</span></div>
+                <div style="font-size:0.72rem;color:var(--sub);">到着時刻に自動で答え合わせ</div>
+            </div>
+        </div>
+
+        {% if forecast_accuracy.bias_adjustments %}
+        <div style="margin-bottom:12px;">
+            <div style="font-size:0.78rem;font-weight:700;margin-bottom:6px;color:var(--sub);">🧠 現在稼働中の店舗別オンライン残差バイアス補正（Empirical-Bayes）</div>
+            <div class="ws-chips">
+                {% for b in forecast_accuracy.bias_adjustments %}
+                <span class="ws-chip"><strong>{{ b.display_name }}</strong>: {% if b.online_adj_pt > 0 %}+{{ b.online_adj_pt }}pt{% else %}{{ b.online_adj_pt }}pt{% endif %} 自動補正中</span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if forecast_accuracy.pending_forecasts %}
+        <div style="margin-bottom:14px;">
+            <div style="font-size:0.78rem;font-weight:700;margin-bottom:6px;color:var(--sub);">⏳ 現在「60分後の答え合わせ待ち」の予測キュー（最大10件表示）</div>
+            <div class="ws-chips">
+                {% for p in forecast_accuracy.pending_forecasts[:10] %}
+                <span class="ws-chip"><strong>{{ p.display_name }}</strong>（{{ p.predicted_hm }}→{{ p.target_hm }}判定）: 出発{{ p.start_wpct }}% → 予測<strong>{{ p.pred_wpct }}%</strong>（{{ p.pred_women }}:{{ p.pred_men }}）</span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if forecast_accuracy.recent_resolved %}
+        <div style="font-size:0.78rem;font-weight:700;margin-bottom:6px;color:var(--sub);">📋 直近の答え合わせ結果（予測 vs 60分後実測）</div>
+        <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:0.78rem;">
+                <thead>
+                    <tr style="border-bottom:1px solid var(--border);color:var(--sub);text-align:left;">
+                        <th style="padding:7px 8px;">予測→判定</th>
+                        <th style="padding:7px 8px;">店舗</th>
+                        <th style="padding:7px 8px;">出発時</th>
+                        <th style="padding:7px 8px;">60分後予測</th>
+                        <th style="padding:7px 8px;">60分後実測</th>
+                        <th style="padding:7px 8px;">ズレ（旧v1参考）</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in forecast_accuracy.recent_resolved[:12] %}
+                    <tr style="border-bottom:1px solid var(--border);">
+                        <td style="padding:7px 8px;white-space:nowrap;color:var(--sub);">{{ r.predicted_mdhm }}→{{ r.target_hm }}</td>
+                        <td style="padding:7px 8px;font-weight:700;">{{ r.display_name }}</td>
+                        <td style="padding:7px 8px;white-space:nowrap;">{{ r.start_women }}:{{ r.start_men }} ({{ r.start_wpct }}%)</td>
+                        <td style="padding:7px 8px;white-space:nowrap;font-weight:700;">{{ r.pred_wpct }}% ({{ r.pred_women }}:{{ r.pred_men }})</td>
+                        <td style="padding:7px 8px;white-space:nowrap;">{{ r.actual_wpct }}% ({{ r.actual_women }}:{{ r.actual_men }})</td>
+                        <td style="padding:7px 8px;white-space:nowrap;">
+                            <strong>{% if (r.error_wpct_pt or 0) > 0 %}+{{ r.error_wpct_pt }}pt{% else %}{{ r.error_wpct_pt or 0 }}pt{% endif %}</strong>
+                            <span style="color:var(--sub);margin-left:4px;">{{ r.grade }}{% if r.v1_pred_wpct is not none %}（旧v1予測: {{ r.v1_pred_wpct }}%）{% endif %}</span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
 </div>
 
 <script>

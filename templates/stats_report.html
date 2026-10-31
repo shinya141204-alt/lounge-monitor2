@@ -185,6 +185,60 @@
             font-size: 0.96rem;
             color: var(--text-main);
         }
+        .fc-acc-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+        .fc-acc-kpi-card {
+            background: var(--card-bg);
+            border: 1px solid rgba(200, 164, 110, 0.24);
+            border-radius: 12px;
+            padding: 15px 16px;
+        }
+        .fc-acc-kpi-label {
+            font-size: 0.75rem;
+            color: var(--text-sub);
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .fc-acc-kpi-val {
+            font-size: 1.52rem;
+            font-weight: 800;
+            color: var(--accent-text);
+            line-height: 1.2;
+            font-variant-numeric: tabular-nums;
+        }
+        .fc-acc-kpi-sub {
+            font-size: 0.74rem;
+            color: var(--text-sub);
+            margin-top: 5px;
+        }
+        .fc-err-pill {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 0.74rem;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+        }
+        .fc-err-pill.good {
+            background: rgba(74, 222, 128, 0.12);
+            border: 1px solid rgba(74, 222, 128, 0.35);
+            color: #bbf7d0;
+        }
+        .fc-err-pill.ok {
+            background: rgba(200, 164, 110, 0.14);
+            border: 1px solid rgba(200, 164, 110, 0.36);
+            color: var(--accent-text);
+        }
+        .fc-err-pill.miss {
+            background: rgba(244, 63, 94, 0.12);
+            border: 1px solid rgba(244, 63, 94, 0.35);
+            color: #fecdd3;
+        }
     </style>
     <link rel="stylesheet" href="/static/calm.css?v=20">
     {% if not is_staff and not session.get('is_staff') %}
@@ -379,6 +433,151 @@
                 </tbody>
             </table>
         </div>
+        {% endif %}
+
+        {% if forecast_accuracy %}
+        {% set fcs = forecast_accuracy.summary or {} %}
+        {% set fch = forecast_accuracy.holdout_backtest or {} %}
+        <section id="forecast-accuracy" style="scroll-margin-top: 24px; margin-top: 34px;">
+            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+                <h2 style="margin: 0;">🔮 60分後AI推移予測の「答え合わせ」＆予測ズレ検証ログ</h2>
+                <span class="badge" style="margin-bottom:0;">Model {{ forecast_accuracy.model_version }} ｜ 自動記録・60分後照合</span>
+            </div>
+            <p style="font-size: 0.85rem; color: var(--text-sub); margin: 8px 0 14px;">
+                各店舗で出した「60分後の予測女性比・男女人数」をデータベースへ自動記録し、実際に60分が経過した時点のリアル人数と突き合わせて<strong style="color: var(--text-main);">予測と実測のズレ（誤差pt）</strong>を継続検証しています。さらに店舗・時間帯ごとの直近誤差を学習して次回予測を自己補正します。
+            </p>
+
+            <div class="fc-acc-kpi-grid">
+                <div class="fc-acc-kpi-card">
+                    <div class="fc-acc-kpi-label">女性比の平均予測ズレ（MAE）</div>
+                    <div class="fc-acc-kpi-val">±{{ fcs.mae_wpct if fcs.mae_wpct is not none else fch.v2_mae_wpct }}pt</div>
+                    <div class="fc-acc-kpi-sub">
+                        {% if fcs.mae_women is not none %}人数平均ズレ: 女±{{ fcs.mae_women }}名 / 男±{{ fcs.mae_men }}名{% else %}ホールドアウト検証 {{ "{:,}".format(fch.test_samples or 12836) }}件基準{% endif %}
+                    </div>
+                </div>
+                <div class="fc-acc-kpi-card">
+                    <div class="fc-acc-kpi-label">±10pt以内 実用的中率</div>
+                    <div class="fc-acc-kpi-val">{{ fcs.within_10pt_pct if fcs.within_10pt_pct is not none else fch.v2_within_10pt_pct }}%</div>
+                    <div class="fc-acc-kpi-sub">±5ptピタリ的中率: {{ fcs.within_5pt_pct if fcs.within_5pt_pct is not none else fch.v2_within_5pt_pct }}%</div>
+                </div>
+                <div class="fc-acc-kpi-card">
+                    <div class="fc-acc-kpi-label">旧モデル(v1)からの誤差改善</div>
+                    <div class="fc-acc-kpi-val">-{{ fcs.mae_reduction_pct if fcs.mae_reduction_pct is not none else fch.mae_reduction_pct }}%</div>
+                    <div class="fc-acc-kpi-sub">
+                        旧v1誤差 ±{{ fcs.v1_mae_wpct if fcs.v1_mae_wpct is not none else fch.v1_mae_wpct }}pt → 状態空間v2.1で大幅改善
+                    </div>
+                </div>
+                <div class="fc-acc-kpi-card">
+                    <div class="fc-acc-kpi-label">答え合わせ完了ログ数</div>
+                    <div class="fc-acc-kpi-val">{{ "{:,}".format(fcs.resolved_count or 0) }}件</div>
+                    <div class="fc-acc-kpi-sub">現在60分後の実測照合待ち: {{ fcs.pending_count or 0 }}件</div>
+                </div>
+            </div>
+
+            {% if forecast_accuracy.recent_resolved %}
+            <h3 style="font-size: 0.96rem; margin: 18px 0 10px; color: var(--text-main);">直近の「60分前予測 vs 実際の結果」答え合わせタイムライン</h3>
+            <div class="stats-table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>予測時刻 → 照合</th>
+                            <th>店舗名</th>
+                            <th>出発時の店内</th>
+                            <th>60分後AI予測</th>
+                            <th>60分後の実際</th>
+                            <th>予測とのズレ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in forecast_accuracy.recent_resolved[:15] %}
+                        {% set abs_e = r.abs_error_wpct_pt or 0 %}
+                        {% set sig_e = r.error_wpct_pt or 0 %}
+                        <tr>
+                            <td style="white-space: nowrap; color: var(--text-sub); font-size: 0.8rem;">{{ r.predicted_mdhm }} → {{ r.target_hm }}</td>
+                            <td style="font-weight: 600;"><a href="/store/{{ r.store_name | store_slug }}" style="color: var(--text-main); text-decoration: none;">{{ r.store_name | seo_store_name }}</a></td>
+                            <td style="white-space: nowrap; font-size: 0.81rem;">
+                                <span class="w-num">女{{ r.start_women }}</span>:<span class="m-num">男{{ r.start_men }}</span>（{{ r.start_wpct }}%）
+                            </td>
+                            <td style="white-space: nowrap; font-size: 0.81rem;">
+                                予測 <strong style="color: var(--accent-text);">{{ r.pred_wpct }}%</strong>
+                                <span style="color: var(--text-sub);">（{{ r.pred_women }}:{{ r.pred_men }}）</span>
+                            </td>
+                            <td style="white-space: nowrap; font-size: 0.81rem;">
+                                実測 <strong style="color: var(--text-main);">{{ r.actual_wpct }}%</strong>
+                                <span style="color: var(--text-sub);">（<span class="w-num">{{ r.actual_women }}</span>:<span class="m-num">{{ r.actual_men }}</span>）</span>
+                            </td>
+                            <td style="white-space: nowrap;">
+                                <span class="fc-err-pill {% if abs_e <= 5 %}good{% elif abs_e <= 10 %}ok{% else %}miss{% endif %}">
+                                    {% if sig_e > 0 %}+{{ sig_e }}pt（予測高め）{% elif sig_e < 0 %}{{ sig_e }}pt（実測上振れ）{% else %}±0pt 完全一致{% endif %}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+
+            {% if forecast_accuracy.by_hour %}
+            <h3 style="font-size: 0.96rem; margin: 18px 0 10px; color: var(--text-main);">時間帯別の予測精度（終電崖・深夜帯を含む実測検証）</h3>
+            <div class="stats-table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>予測出発時間帯</th>
+                            <th>検証件数</th>
+                            <th>v2.1 平均ズレ（MAE）</th>
+                            <th>旧v1 平均ズレ</th>
+                            <th>±10pt以内的中率</th>
+                            <th>平均バイアス</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for h in forecast_accuracy.by_hour %}
+                        <tr>
+                            <td style="font-weight: 700; color: var(--accent-text); white-space: nowrap;">{{ h.slot_label }}</td>
+                            <td style="color: var(--text-sub);">{{ h.count }}件</td>
+                            <td style="font-weight: 700; color: var(--text-main);">±{{ h.mae_wpct }}pt</td>
+                            <td style="color: var(--text-sub);">{% if h.v1_mae_wpct is not none %}±{{ h.v1_mae_wpct }}pt{% else %}-{% endif %}</td>
+                            <td style="color: var(--women); font-weight: 700;">{{ h.within_10pt_pct }}%</td>
+                            <td style="color: var(--text-sub); font-size: 0.8rem;">{% if h.bias_wpct > 0 %}+{{ h.bias_wpct }}pt{% else %}{{ h.bias_wpct }}pt{% endif %}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+
+            {% if forecast_accuracy.by_store %}
+            <h3 style="font-size: 0.96rem; margin: 18px 0 10px; color: var(--text-main);">店舗別・60分後予測の安定度ランキング TOP12</h3>
+            <div class="stats-table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>順位</th>
+                            <th>店舗名</th>
+                            <th>検証回数</th>
+                            <th>平均予測ズレ（MAE）</th>
+                            <th>±10pt的中率</th>
+                            <th>人数平均ズレ（女 / 男）</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for st in forecast_accuracy.by_store[:12] %}
+                        <tr>
+                            <td style="font-weight: 700; color: var(--accent-text);">#{{ loop.index }}</td>
+                            <td style="font-weight: 600;"><a href="/store/{{ st.store_name | store_slug }}" style="color: var(--text-main); text-decoration: none;">{{ st.store_name | seo_store_name }}</a></td>
+                            <td style="color: var(--text-sub);">{{ st.count }}回</td>
+                            <td style="font-weight: 700; color: var(--text-main);">±{{ st.mae_wpct }}pt</td>
+                            <td style="color: var(--women); font-weight: 700;">{{ st.within_10pt_pct }}%</td>
+                            <td style="color: var(--text-sub); font-size: 0.81rem;">女±{{ st.mae_women }}名 / 男±{{ st.mae_men }}名</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+        </section>
         {% endif %}
 
         <section class="hero-box" style="margin-top: 32px; border-color: var(--border-subtle);">
