@@ -1724,7 +1724,8 @@
                 if (wBadge || fBadge) {
                     const pills = [];
                     if (wBadge) {
-                        const wTone = escapeHtml(we.wait_tone || 'neutral');
+                        const rawWTone = isWomenView ? (we.wait_tone_women || we.wait_tone) : we.wait_tone;
+                        const wTone = escapeHtml(rawWTone || 'neutral');
                         const wTitle = escapeHtml(we.pos_summary_short || '');
                         pills.push(`<span class="moat-pill tone-${wTone}" title="${wTitle}">${escapeHtml(wBadge)}</span>`);
                     }
@@ -1865,8 +1866,9 @@
             const stores = (data && data.ranking) || [];
             const storeSig = stores.map(s => {
                 const v = s.votes || {};
-                const wb = (s.wait_estimate && s.wait_estimate.wait_badge_men) || '';
-                const fb = (s.forecast_60m && s.forecast_60m.badge_men) || '';
+                const isWView = !IS_STAFF && currentAudience === 'women';
+                const wb = (s.wait_estimate && (isWView ? s.wait_estimate.wait_badge_women : s.wait_estimate.wait_badge_men)) || '';
+                const fb = (s.forecast_60m && (isWView ? s.forecast_60m.badge_women : s.forecast_60m.badge_men)) || '';
                 return `${s.name}:${s.women}:${s.men}:${s.women_diff || 0}:${s.men_diff || 0}:${s.usual_w_diff ?? ''}:${s.usual_m_diff ?? ''}:${v.smooth || 0}:${v.waiting || 0}:${wb}:${fb}`;
             }).join('|');
             const locSig = userLocation ? `${userLocation.lat.toFixed(3)},${userLocation.lng.toFixed(3)}` : '';
@@ -2272,7 +2274,8 @@
 
             let waitCardHtml = '';
             if (we) {
-                const wTone = escapeHtml(we.wait_tone || 'neutral');
+                const rawModalWTone = isWomenView ? (we.wait_tone_women || we.wait_tone) : we.wait_tone;
+                const wTone = escapeHtml(rawModalWTone || 'neutral');
                 let srcLabel = 'JIS実測学習AI推論';
                 let srcCls = 'is-inferred';
                 if (we.is_standing_free) {

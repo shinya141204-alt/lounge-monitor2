@@ -1752,7 +1752,7 @@ class FullAuditRegressionTests(unittest.TestCase):
         sw_resp = self.client.get('/sw.js')
         try:
             sw_txt = sw_resp.data.decode('utf-8')
-            self.assertIn("CACHE_NAME = 'aiseki-navi-v72'", sw_txt)
+            self.assertIn("CACHE_NAME = 'aiseki-navi-v73'", sw_txt)
             self.assertIn("event.waitUntil", sw_txt)
         finally:
             sw_resp.close()
@@ -4352,8 +4352,8 @@ class AIUltraGrowthSuiteTests(unittest.TestCase):
         app_module.clear_fast_http_caches()
         home_html = self.client.get('/').data.decode('utf-8')
         self.assertIn('calm.css?v=22', home_html)
-        self.assertIn('app.js?v=20261031_1', home_html)
-        self.assertIn('/sw.js?v=72', home_html)
+        self.assertIn('app.js?v=20261101_1', home_html)
+        self.assertIn('/sw.js?v=73', home_html)
 
         # 2. TikTok 9:16 Safe-Zone Reel Templates & Captions (zero bare 'オリエンタル' or 'OLG')
         sample_stores = [
@@ -4748,6 +4748,75 @@ class MoatIntelligenceAndAsobibarTests(unittest.TestCase):
         self.assertNotIn('text-overflow: ellipsis', store_name_block)
         self.assertIn('store-brand-prefix', app_js)
         self.assertIn('store-branch-name', app_js)
+
+    def test_wait_estimate_never_shows_male_wait_when_women_outnumber_men(self):
+        """女性人数 >= 男性人数の店舗ではピーク高稼働時でも男性に『分待ち』が出ず、男女別の待ち状況・トーンが正確に算出されること"""
+        import moat_intelligence
+
+        # 1. Peak crowd where total > STORE_P99_CAPACITY yet women >= men (actual Halloween peak cases)
+        for store_name, w, m, wd, md in [
+            ('OLG 大分', 79, 76, 9, 0),
+            ('OLG 難波', 132, 130, 3, 1),
+            ('OLG 福岡', 107, 95, 3, 0),
+            ('ALFA HIROSHIMA', 72, 66, 0, 0),
+            ('OLG 大宮', 67, 62, 1, 0),
+            ('OLG 小倉', 42, 37, 0, 1),
+            ('XIX OKAYAMA', 36, 33, 0, 4),
+            ('OLG ソウル ホンデ', 62, 40, 0, 7),
+        ]:
+            we = moat_intelligence.estimate_store_wait_and_pos(
+                store_name=store_name, women=w, men=m, is_open_now=True, women_diff=wd, men_diff=md
+            )
+            self.assertEqual(we['est_men_wait_groups'], 0, f"{store_name} ({w}:{m}) had non-zero est_men_wait_groups: {we}")
+            self.assertEqual(we['est_men_wait_min'], 0, f"{store_name} ({w}:{m}) had non-zero est_men_wait_min: {we}")
+            self.assertNotIn('分待ち', we['wait_badge_men'], f"{store_name} ({w}:{m}) falsely showed wait time: {we}")
+            self.assertEqual(we['wait_tone'], 'safe', f"{store_name} ({w}:{m}) should be safe tone for men: {we}")
+            self.assertGreaterEqual(we['instant_match_prob_pct'], 75)
+
+        # 2. Near-even parity (difference within 1-2 guests on busy floor) should not inflate to 45min wait
+        for store_name, w, m in [('OLG 渋谷本店', 119, 120), ('OLG ag金沢', 63, 65), ('OLG 宮崎', 42, 43)]:
+            we_even = moat_intelligence.estimate_store_wait_and_pos(store_name=store_name, women=w, men=m, is_open_now=True)
+            self.assertEqual(we_even['est_men_wait_groups'], 0)
+            self.assertEqual(we_even['est_men_wait_min'], 0)
+            self.assertNotIn('分待ち', we_even['wait_badge_men'])
+
+        # 3. Genuine male excess produces realistic wait bounded by physical male excess
+        we_male_heavy = moat_intelligence.estimate_store_wait_and_pos(store_name='OLG 新宿', women=69, men=93, is_open_now=True)
+        self.assertGreater(we_male_heavy['est_men_wait_groups'], 0)
+        self.assertLessEqual(we_male_heavy['est_men_wait_groups'], 15)
+        self.assertIn('分待ち', we_male_heavy['wait_badge_men'])
+        self.assertEqual(we_male_heavy['wait_tone'], 'danger')
+        self.assertEqual(we_male_heavy['wait_tone_women'], 'safe')
+        self.assertIn('女子待ち0分', we_male_heavy['wait_badge_women'])
+
+        # 4. JIS POS full-floor case where BOTH men and women wait in lobby must not claim '女子待ち0分'
+        we_jis_full = moat_intelligence.estimate_store_wait_and_pos(
+            store_name='JIS FUKUOKA',
+            women=118,
+            men=135,
+            is_open_now=True,
+            pos_telemetry={
+                'telemetry_type': 'jis_pos',
+                'men_waiting_groups': 7,
+                'men_waiting_guests': 14,
+                'women_waiting_groups': 13,
+                'matched_groups': 54,
+                'men_total_groups': 56,
+                'women_total_groups': 58,
+                'vip_guests': 0,
+            },
+        )
+        self.assertIn('実測:男待ち7組', we_jis_full['wait_badge_men'])
+        self.assertIn('実測:女待ち13組', we_jis_full['wait_badge_women'])
+        self.assertEqual(we_jis_full['wait_tone_women'], 'danger')
+
+        # 5. Extreme female glut shows female wait warning for women while men have 0 wait
+        we_fem_glut = moat_intelligence.estimate_store_wait_and_pos(store_name='OLG 恵比寿', women=38, men=10, is_open_now=True)
+        self.assertEqual(we_fem_glut['est_men_wait_min'], 0)
+        self.assertEqual(we_fem_glut['wait_tone'], 'safe')
+        self.assertGreaterEqual(we_fem_glut['est_women_wait_min'], 10)
+        self.assertIn('女余り', we_fem_glut['wait_badge_women'])
+        self.assertIn(we_fem_glut['wait_tone_women'], ('warn', 'danger'))
 
 
 if __name__ == '__main__':

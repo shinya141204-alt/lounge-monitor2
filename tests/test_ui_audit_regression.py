@@ -3,7 +3,7 @@
 tests/test_ui_audit_regression.py - UI・コントラスト・キャッシュバスティング・ブランド表記 回帰テストスイート
 
 独立監査の9項目に対する自動回帰テスト:
-1. Cache-Control: immutable 対応のキャッシュバスティング同期 (calm.css?v=22, portal.css?v=10, app.js?v=20261031_1, sw.js?v=72, aiseki-navi-v72)
+1. Cache-Control: immutable 対応のキャッシュバスティング同期 (calm.css?v=22, portal.css?v=10, app.js?v=20261101_1, sw.js?v=73, aiseki-navi-v73)
 2. ページバンドル単位でのCSSカスタムプロパティ未定義参照ゼロ（フォールバック付き var() 含む） & #comparison-modal 男女人数カラー変数
 3. ライトモード .area-tag の枠線・背景なし端正タイポグラフィ統一
 4. PC (860px / 1280px) .portal-global-nav の折り返し表示（右端文字切れ・テーマ切替ボタン干渉ゼロ）＆モバイル横スワイプ維持
@@ -107,9 +107,9 @@ class UiAuditRegressionTests(unittest.TestCase):
         """全テンプレートと static/sw.js のアセットバージョンが完全同期し、immutable ヘッダが正しく付与されること"""
         expected_calm = "/static/calm.css?v=22"
         expected_portal = "/static/portal.css?v=10"
-        expected_app_js = "/static/app.js?v=20261031_1"
-        expected_sw_url = "/sw.js?v=72"
-        expected_cache_name = "aiseki-navi-v72"
+        expected_app_js = "/static/app.js?v=20261101_1"
+        expected_sw_url = "/sw.js?v=73"
+        expected_cache_name = "aiseki-navi-v73"
 
         templates_dir = os.path.join(PROJECT_ROOT, "templates")
         calm_seen = 0

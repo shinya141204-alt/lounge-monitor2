@@ -554,9 +554,9 @@ def capture_external_context_snapshot(live_stores: list = None, allow_blocking: 
 _calib_lock = threading.Lock()
 _jis_calibration = {
     # 初期事前分布（JIS全10店のPOS構造に基づくベースライン係数）
-    # 収容率 occ と男性超過人数 male_excess から待ち組数を推論する重み
-    "excess_to_wait_group_ratio": 0.42,   # 男性超過10名（約5組）あたりの実測待ち組数係数
-    "high_occ_threshold": 0.68,           # 満席詰まりで男女双方に席待ちが出始めるP99収容率
+    # 1組あたり人数差スラック控除後の実効男性超過人数 eff_male_excess から待ち組数を推論する重み
+    "excess_to_wait_group_ratio": 0.36,   # 実効男性超過10名あたりの実測待ち組数係数
+    "high_occ_threshold": 0.85,           # 満席回転詰まりで男性超過時の案内摩擦が出始める実効収容率
     "avg_men_party_size": 1.82,           # 実測1組あたり男性平均人数（ソロ1名とペア2名の混合）
     "avg_women_party_size": 1.94,         # 実測1組あたり女性平均人数（ペア中心）
     "minutes_per_wait_group": 6.5,        # 待ち1組あたりの平均解消分数（大箱基準）
@@ -569,7 +569,7 @@ def calibrate_from_jis_pos(stores_data: list) -> dict:
     """
     JIS各店のリアルタイム `pos_telemetry` から、
     ・男性1組あたり平均人数 / 女性1組あたり平均人数
-    ・男性超過人数に対する実測待ち組数の発生比率
+    ・実効男性超過人数（1組平均人数差スラック控除後）に対する実測待ち組数の発生比率
     を指数移動平均（EMA）でオンライン学習する。
     """
     if not stores_data:
@@ -594,9 +594,10 @@ def calibrate_from_jis_pos(stores_data: list) -> dict:
         if w_cust >= 4 and w_grp >= 2:
             women_party_samples.append(max(1.0, min(3.5, w_cust / float(w_grp))))
 
-        excess_men = m_cust - w_cust
-        if excess_men >= 4 and (m_cust + w_cust) >= 16:
-            wait_ratio_samples.append(max(0.05, min(0.85, m_wait_grp / float(excess_men))))
+        party_slack = min(8, max(1, int(round(w_cust * 0.05)))) if w_cust > 0 else 0
+        eff_excess_men = (m_cust - w_cust) - party_slack
+        if eff_excess_men >= 4 and (m_cust + w_cust) >= 16:
+            wait_ratio_samples.append(max(0.05, min(0.65, m_wait_grp / float(eff_excess_men))))
 
     if not (men_party_samples or women_party_samples or wait_ratio_samples):
         return dict(_jis_calibration)
@@ -647,7 +648,9 @@ def estimate_store_wait_and_pos(
     men = max(0, int(men or 0))
     total = women + men
     p99_cap = max(35, int(STORE_P99_CAPACITY.get(store_name, 120)))
-    occ_pct = min(100, int(round((total / float(p99_cap)) * 100)))
+    # STORE_P99_CAPACITY は全時間帯（平日・早朝深夜含む）の99%点のため、金土ピーク時の実効物理収容枠は約1.18倍
+    physical_cap = max(45, int(round(p99_cap * 1.18)))
+    occ_pct = min(100, int(round((total / float(physical_cap)) * 100)))
 
     if not is_open_now and total == 0:
         return {
@@ -661,6 +664,7 @@ def estimate_store_wait_and_pos(
             "wait_badge_men": "",
             "wait_badge_women": "",
             "wait_tone": "closed",
+            "wait_tone_women": "closed",
             "pos_summary_short": "",
         }
 
@@ -688,6 +692,7 @@ def estimate_store_wait_and_pos(
             "wait_badge_men": badge_m,
             "wait_badge_women": badge_w,
             "wait_tone": "standing",
+            "wait_tone_women": "standing",
             "pos_summary_short": f"スタンディング回遊制（フロア稼働率 約{occ_pct}%{vip_note}）",
         }
 
@@ -716,33 +721,44 @@ def estimate_store_wait_and_pos(
         elif total > 0 and women == 0 and men >= 2:
             est_m_min = 15
 
-        est_w_min = int(round(w_wait_grp * 5.0 * size_factor)) if w_wait_grp > 0 else 0
+        est_w_min = max(5, min(60, int(round(w_wait_grp * 5.0 * size_factor)))) if w_wait_grp > 0 else 0
 
         if total == 0:
             badge_m = "実測:待ち0組（空席）"
             badge_w = "実測:待ち0組（空席）"
             tone = "neutral"
+            tone_w = "neutral"
             prob = 40
-        elif m_wait_grp == 0 and women >= max(4, men):
-            badge_m = f"🟢実測:男待ち0組（相席{matched_grp}卓）" if matched_grp > 0 else "🟢実測:男待ち0組（即相席圏）"
-            badge_w = "🟢実測:女待ち0組" if w_wait_grp == 0 else f"🟡実測:女待ち{w_wait_grp}組"
-            tone = "safe"
-            prob = 94
-        elif m_wait_grp == 0:
-            badge_m = "🟢実測:男待ち0組"
-            badge_w = "👑実測:女子即案内（男先行）" if men > women else "🟢実測:女待ち0組"
-            tone = "safe" if women >= 6 else "neutral"
-            prob = 82 if women >= 6 else 55
-        elif est_m_min <= 15:
-            badge_m = f"🟡実測:男待ち{m_wait_grp}組（約{est_m_min}分）"
-            badge_w = "👑実測:女子待ち0分（即相席）"
-            tone = "warn"
-            prob = 45
         else:
-            badge_m = f"🔴実測:男待ち{m_wait_grp}組（約{est_m_min}分）"
-            badge_w = "👑実測:女子待ち0分（大歓迎）"
-            tone = "danger"
-            prob = 18
+            if m_wait_grp == 0 and women >= max(4, men):
+                badge_m = f"🟢実測:男待ち0組（相席{matched_grp}卓）" if matched_grp > 0 else "🟢実測:男待ち0組（即相席圏）"
+                tone = "safe"
+                prob = 94
+            elif m_wait_grp == 0:
+                badge_m = "🟢実測:男待ち0組"
+                tone = "safe" if women >= 6 else "neutral"
+                prob = 82 if women >= 6 else 55
+            elif est_m_min <= 15:
+                badge_m = f"🟡実測:男待ち{m_wait_grp}組（約{est_m_min}分）"
+                tone = "warn"
+                prob = 45
+            else:
+                badge_m = f"🔴実測:男待ち{m_wait_grp}組（約{est_m_min}分）"
+                tone = "danger"
+                prob = 18
+
+            if w_wait_grp == 0:
+                if m_wait_grp > 0 or men >= women + 4:
+                    badge_w = "👑実測:女子待ち0組（即相席）"
+                else:
+                    badge_w = "🟢実測:女待ち0組"
+                tone_w = "safe"
+            elif est_w_min <= 15:
+                badge_w = f"🟡実測:女待ち{w_wait_grp}組（約{est_w_min}分）"
+                tone_w = "warn"
+            else:
+                badge_w = f"🔴実測:女待ち{w_wait_grp}組（約{est_w_min}分）"
+                tone_w = "danger"
 
         pos_parts = [f"公式POS実測：相席成立 {matched_grp}組 / 男性待機 {m_wait_grp}組({m_wait_gst}名) / 女性待機 {w_wait_grp}組"]
         if avg_m_party is not None:
@@ -766,6 +782,7 @@ def estimate_store_wait_and_pos(
             "wait_badge_men": badge_m,
             "wait_badge_women": badge_w,
             "wait_tone": tone,
+            "wait_tone_women": tone_w,
             "pos_summary_short": " ｜ ".join(pos_parts),
         }
 
@@ -782,65 +799,136 @@ def estimate_store_wait_and_pos(
             "wait_badge_men": "空席（0 : 0）",
             "wait_badge_women": "空席（0 : 0）",
             "wait_tone": "neutral",
+            "wait_tone_women": "neutral",
             "pos_summary_short": "現在店内 0 : 0（1組目待機になりやすい時間帯）",
         }
 
     male_excess = men - women
     momentum_excess = max(0, int(men_diff or 0) - int(women_diff or 0))
-    occ_ratio = total / float(p99_cap)
+    # 収容率は必ず [0.0, 1.0] にクランプ（ピーク夜に total > cap となっても待機組数が発散しないようにする）
+    occ_ratio = min(1.0, total / float(physical_cap))
 
-    # 1) 男性超過による相席相手待ち組数（JISの学習済み excess_to_wait_group_ratio を使用）
-    raw_wait_groups = 0.0
-    if male_excess > 0:
-        raw_wait_groups += male_excess * calib["excess_to_wait_group_ratio"]
-    # 2) フロア満席詰まり（収容率72%超）による受付案内待ち加算
-    if occ_ratio > calib["high_occ_threshold"]:
-        congestion_over = (occ_ratio - calib["high_occ_threshold"]) / (1.0 - calib["high_occ_threshold"])
-        raw_wait_groups += congestion_over * (2.8 if male_excess >= -4 else 1.2)
-    # 3) 直近15分で男性が急増中の場合は受付列のタイムラグを加味
-    if momentum_excess >= 4 and women <= men + 4:
-        raw_wait_groups += momentum_excess * 0.22
+    # --- 男性側の待ち組数・待ち分数推論 ---
+    # 物理原則：女性人数 >= 男性人数（male_excess <= 0）のときは店内に単独着席中の女性卓が存在し、
+    # 来店男性は新規空き卓を待たず既存女性卓へ即合流できるため、男性の相席相手待ち組数は常に 0 とする。
+    if male_excess <= 0:
+        est_m_groups = 0
+        est_m_min = 0
+        female_lead = women - men
+        if women >= 8 and female_lead >= 3:
+            badge_m = "🟢推定:待ち約0分（即相席圏）"
+            tone = "safe"
+            prob = min(96, 82 + min(14, female_lead // 2 + 2))
+            balance_note = f"女性+{female_lead}名優位・男性即案内圏"
+        elif women >= 6:
+            if occ_pct >= 92 or momentum_excess >= 6:
+                badge_m = "🟢推定:待ち約0〜5分（受付順）"
+                tone = "safe"
+                prob = 78
+                balance_note = "女性優位〜同数（高稼働・受付順案内）"
+            elif women >= 10:
+                badge_m = "🟢推定:待ち約0分（即相席圏）"
+                tone = "safe"
+                prob = 84
+                balance_note = "女性優位〜同数・即相席圏"
+            else:
+                badge_m = "🟢推定:男待ち少（約0〜5分）"
+                tone = "safe"
+                prob = 75
+                balance_note = "女性優位〜同数・スムーズ案内圏"
+        else:
+            if female_lead >= 1 and women >= 3:
+                badge_m = "🟢推定:待ち約0分（少人数）"
+                tone = "safe"
+                prob = 68
+                balance_note = f"女性+{female_lead}名先行（少人数稼働）"
+            else:
+                badge_m = "🟡少人数（相手組数に注意）"
+                tone = "neutral"
+                prob = 48
+                balance_note = "立ち上がり少人数帯"
+    elif women == 0:
+        # 女性0名で男性のみ入店している状態
+        est_m_groups = max(1, int(round(men / max(1.2, calib["avg_men_party_size"]))))
+        est_m_min = max(10, min(45, int(round(est_m_groups * 7.5 / 5.0) * 5)))
+        tone = "warn" if est_m_min <= 15 else "danger"
+        badge_m = f"{'🟡' if tone == 'warn' else '🔴'}推定:女性待ち（男約{est_m_groups}組）"
+        prob = 20
+        balance_note = f"女性来店待ち（男性{men}名待機中）"
+    else:
+        # 男性超過（men > women > 0）
+        # 1組あたり平均人数差・VIP同席による自然な男性人数バッファ（女性数の約5%、1〜8名）
+        party_slack = min(8, max(1, int(round(women * 0.05))))
+        eff_male_excess = max(0, male_excess - party_slack)
 
-    est_m_groups = int(round(raw_wait_groups)) if raw_wait_groups >= 0.75 else 0
-    size_factor = max(0.68, min(1.32, 155.0 / float(p99_cap)))
-    est_m_min = int(round(est_m_groups * calib["minutes_per_wait_group"] * size_factor))
-    if est_m_groups > 0:
-        est_m_min = max(5, min(70, int(round(est_m_min / 5.0) * 5)))
-    elif women == 0 and men >= 2:
-        est_m_groups = max(1, int(round(men / calib["avg_men_party_size"])))
-        est_m_min = 15
+        if eff_male_excess == 0:
+            est_m_groups = 0
+            est_m_min = 0
+            if occ_pct >= 90 or momentum_excess >= 6:
+                badge_m = "🟡推定:男女拮抗（約0〜10分）"
+                tone = "neutral"
+                prob = 62
+                balance_note = "男女ほぼ同数（高稼働につき受付順）"
+            else:
+                badge_m = "🟢推定:男女均衡（約0〜5分）"
+                tone = "safe"
+                prob = 70
+                balance_note = "男女ほぼ同数でスムーズ推移中"
+        else:
+            raw_wait_groups = eff_male_excess * calib["excess_to_wait_group_ratio"]
+            high_thr = min(0.92, max(0.75, float(calib.get("high_occ_threshold", 0.85))))
+            if occ_ratio > high_thr:
+                congestion_over = (occ_ratio - high_thr) / max(0.05, 1.0 - high_thr)
+                raw_wait_groups += congestion_over * 1.0
+            if momentum_excess >= 6:
+                raw_wait_groups += min(1.2, (momentum_excess - 4) * 0.15)
 
-    # 女性側の受付・相席待ち推論（極端な女余り＋高稼働時）
+            max_phys_groups = max(1, int(math.ceil(male_excess / max(1.4, calib["avg_men_party_size"] * 0.88))))
+            est_m_groups = min(max_phys_groups, int(round(raw_wait_groups))) if raw_wait_groups >= 0.75 else 0
+
+            if est_m_groups == 0:
+                est_m_min = 0
+                badge_m = "🟢推定:男待ち少（約0〜5分）"
+                tone = "safe"
+                prob = 68
+                balance_note = f"男性+{male_excess}名（1組人数差の範囲内）"
+            else:
+                size_factor = max(0.68, min(1.25, 155.0 / float(p99_cap)))
+                est_m_min = int(round(est_m_groups * calib["minutes_per_wait_group"] * size_factor))
+                est_m_min = max(5, min(70, int(round(est_m_min / 5.0) * 5)))
+                if est_m_min <= 15:
+                    badge_m = f"🟡推定:男 約{est_m_min}分待ち（約{est_m_groups}組）"
+                    tone = "warn"
+                    prob = max(38, 58 - est_m_min)
+                else:
+                    badge_m = f"🔴推定:男 約{est_m_min}分待ち（約{est_m_groups}組）"
+                    tone = "danger"
+                    prob = max(10, 42 - est_m_min // 2)
+                balance_note = f"男性+{male_excess}名超過（待機 約{est_m_groups}組推計）"
+
+    # --- 女性側の受付・相席待ち推論（女余り時 vs 男性先行時） ---
     female_excess = women - men
     est_w_min = 0
-    if female_excess >= 14 and men < 8:
-        est_w_min = min(30, int(round((female_excess - 8) * 1.1 / 5.0) * 5))
-    elif occ_ratio >= 0.85 and female_excess >= 16:
-        est_w_min = 10
+    if women >= 10 and female_excess >= max(10, int(round(men * 0.35))):
+        f_slack = min(8, max(2, int(round(men * 0.08))))
+        eff_f_excess = max(1, female_excess - f_slack)
+        est_w_groups = max(1, int(round(eff_f_excess * 0.35)))
+        est_w_min = min(35, max(10, int(round(est_w_groups * 6.0 / 5.0) * 5)))
+    elif female_excess >= 14 and men < 8:
+        est_w_min = min(30, max(10, int(round((female_excess - 8) * 1.1 / 5.0) * 5)))
 
-    if est_m_min == 0 and women >= 10 and women >= men:
-        badge_m = "🟢推定:待ち約0分（即相席圏）"
-        tone = "safe"
-        prob = min(96, 78 + min(18, women - men + 4))
-    elif est_m_min == 0:
-        badge_m = "🟢推定:男待ち少（約0〜5分）" if women >= 6 else "🟡少人数（相手組数に注意）"
-        tone = "safe" if women >= 6 else "neutral"
-        prob = 74 if women >= 6 else 48
-    elif est_m_min <= 15:
-        badge_m = f"🟡推定:男 約{est_m_min}分待ち（約{est_m_groups}組）"
-        tone = "warn"
-        prob = 44
-    else:
-        badge_m = f"🔴推定:男 約{est_m_min}分待ち（約{est_m_groups}組）"
-        tone = "danger"
-        prob = max(10, 35 - est_m_min // 2)
-
-    if est_w_min >= 10:
+    if est_w_min >= 20:
+        badge_w = f"🔴推定:女余り（相席まで約{est_w_min}分）"
+        tone_w = "danger"
+    elif est_w_min >= 10:
         badge_w = f"🟡推定:女余り（相席まで約{est_w_min}分）"
-    elif men >= women + 4 and men >= 10:
+        tone_w = "warn"
+    elif men >= women + 4 and men >= 8:
         badge_w = "👑推定:女子待ち0分（即相席◎）"
+        tone_w = "safe"
     else:
         badge_w = "🟢推定:女子待ち約0分"
+        tone_w = "safe"
 
     return {
         "is_measured": False,
@@ -853,7 +941,8 @@ def estimate_store_wait_and_pos(
         "wait_badge_men": badge_m,
         "wait_badge_women": badge_w,
         "wait_tone": tone,
-        "pos_summary_short": f"JIS待機学習推論：フロア稼働率 約{occ_pct}% ／ 即相席確率 {prob}%",
+        "wait_tone_women": tone_w,
+        "pos_summary_short": f"JIS待機学習推論：{balance_note} ／ フロア稼働率 約{occ_pct}%（即相席確率 {prob}%）",
     }
 
 
