@@ -304,6 +304,9 @@ def _ensure_scheduler_started_async():
                         try:
                             local_db.init_db()
                             restore_latest_data_if_empty()
+                            if os.environ.get('DISABLE_SCHEDULER') != '1':
+                                local_db.refresh_forecast_caches_async(days=21)
+                                local_db.trigger_forecast_backfill_async(days=21, min_existing=80, max_rows=4500)
                         except Exception as e:
                             logging.warning(f"Web-only lightweight boot warning: {e}")
                     threading.Thread(target=_init_web_only, daemon=True).start()
@@ -320,6 +323,8 @@ def _ensure_scheduler_started_async():
             from apscheduler.executors.pool import ThreadPoolExecutor as APSThreadPoolExecutor
             local_db.init_db()
             restore_latest_data_if_empty()
+            local_db.refresh_forecast_caches_async(days=21)
+            local_db.trigger_forecast_backfill_async(days=21, min_existing=80, max_rows=4500)
 
             scheduler = BackgroundScheduler(
                 timezone="UTC",
@@ -1631,7 +1636,7 @@ def update_job(force=False, _claimed=False):
                 except Exception:
                     pass
                 try:
-                    local_db.resolve_due_forecasts_only(sorted_data, jst_now.strftime("%Y-%m-%d %H:%M:%S"))
+                    local_db.resolve_due_forecasts_only(data, jst_now.strftime("%Y-%m-%d %H:%M:%S"))
                 except Exception:
                     pass
 
@@ -4282,12 +4287,8 @@ def api_forecast_accuracy():
             allow_blocking=True,
             auto_backfill=False,
         )
-        if not app.testing and rep.get('summary', {}).get('resolved_count', 0) == 0:
-            threading.Thread(
-                target=local_db.backfill_forecast_accuracy_from_history,
-                kwargs={'days': 21, 'min_existing': 80, 'max_rows': 4500},
-                daemon=True,
-            ).start()
+        if not app.testing and store_q is None and rep.get('summary', {}).get('resolved_count', 0) == 0:
+            local_db.trigger_forecast_backfill_async(days=21, min_existing=80, max_rows=4500)
         return jsonify({'ok': True, **rep})
     except Exception as err:
         return jsonify({'ok': False, 'error': str(err)}), 500
@@ -4308,11 +4309,7 @@ def stats_whitepaper():
             auto_backfill=False,
         )
         if not app.testing and fc_acc.get('summary', {}).get('resolved_count', 0) == 0:
-            threading.Thread(
-                target=local_db.backfill_forecast_accuracy_from_history,
-                kwargs={'days': 21, 'min_existing': 80, 'max_rows': 4500},
-                daemon=True,
-            ).start()
+            local_db.trigger_forecast_backfill_async(days=21, min_existing=80, max_rows=4500)
     except Exception:
         fc_acc = None
     fc_sig = (fc_acc.get('summary', {}).get('resolved_count', 0), fc_acc.get('summary', {}).get('pending_count', 0)) if isinstance(fc_acc, dict) else (0, 0)

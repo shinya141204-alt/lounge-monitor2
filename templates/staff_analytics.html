@@ -1214,9 +1214,10 @@
 
         <div class="mini-kpi-grid" style="margin-bottom:14px;">
             <div class="funnel-card">
+                {% set staff_red_val = fcs.mae_reduction_pct if fcs.mae_reduction_pct is not none else fch.mae_reduction_pct %}
                 <div class="funnel-label">実測平均ズレ（MAE）</div>
                 <div class="funnel-num-row"><span class="funnel-big">±{{ fcs.mae_wpct if fcs.mae_wpct is not none else fch.v2_mae_wpct }}</span><span class="funnel-unit">pt</span></div>
-                <div style="font-size:0.72rem;color:var(--sub);">旧v1比 -{{ fcs.mae_reduction_pct if fcs.mae_reduction_pct is not none else fch.mae_reduction_pct }}% 誤差削減</div>
+                <div style="font-size:0.72rem;color:var(--sub);">旧v1比 {% if staff_red_val is not none and staff_red_val >= 0 %}-{{ staff_red_val }}% 誤差削減{% elif staff_red_val is not none %}+{{ (-staff_red_val)|round(1) }}% 誤差変化{% else %}-{% endif %}</div>
             </div>
             <div class="funnel-card">
                 <div class="funnel-label">±10pt以内 的中率</div>

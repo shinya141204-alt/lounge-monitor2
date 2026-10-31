@@ -239,6 +239,25 @@
             border: 1px solid rgba(244, 63, 94, 0.35);
             color: #fecdd3;
         }
+        body.theme-light .fc-acc-kpi-card {
+            border-color: rgba(140, 106, 56, 0.28);
+            box-shadow: 0 2px 10px rgba(24, 24, 27, 0.04);
+        }
+        body.theme-light .fc-err-pill.good {
+            background: rgba(22, 163, 74, 0.10);
+            border-color: rgba(22, 163, 74, 0.36);
+            color: #166534;
+        }
+        body.theme-light .fc-err-pill.ok {
+            background: rgba(140, 106, 56, 0.12);
+            border-color: rgba(140, 106, 56, 0.38);
+            color: #755528;
+        }
+        body.theme-light .fc-err-pill.miss {
+            background: rgba(225, 29, 72, 0.10);
+            border-color: rgba(225, 29, 72, 0.34);
+            color: #9f1239;
+        }
     </style>
     <link rel="stylesheet" href="/static/calm.css?v=20">
     {% if not is_staff and not session.get('is_staff') %}
@@ -452,7 +471,7 @@
                     <div class="fc-acc-kpi-label">女性比の平均予測ズレ（MAE）</div>
                     <div class="fc-acc-kpi-val">±{{ fcs.mae_wpct if fcs.mae_wpct is not none else fch.v2_mae_wpct }}pt</div>
                     <div class="fc-acc-kpi-sub">
-                        {% if fcs.mae_women is not none %}人数平均ズレ: 女±{{ fcs.mae_women }}名 / 男±{{ fcs.mae_men }}名{% else %}ホールドアウト検証 {{ "{:,}".format(fch.test_samples or 12836) }}件基準{% endif %}
+                        {% if fcs.mae_women is not none %}人数平均ズレ: 女±{{ fcs.mae_women }}名 / 男±{{ fcs.mae_men }}名{% else %}ホールドアウト検証 {{ "{:,}".format(fch.test_samples or 14542) }}件基準{% endif %}
                     </div>
                 </div>
                 <div class="fc-acc-kpi-card">
@@ -461,10 +480,11 @@
                     <div class="fc-acc-kpi-sub">±5ptピタリ的中率: {{ fcs.within_5pt_pct if fcs.within_5pt_pct is not none else fch.v2_within_5pt_pct }}%</div>
                 </div>
                 <div class="fc-acc-kpi-card">
+                    {% set red_val = fcs.mae_reduction_pct if fcs.mae_reduction_pct is not none else fch.mae_reduction_pct %}
                     <div class="fc-acc-kpi-label">旧モデル(v1)からの誤差改善</div>
-                    <div class="fc-acc-kpi-val">-{{ fcs.mae_reduction_pct if fcs.mae_reduction_pct is not none else fch.mae_reduction_pct }}%</div>
+                    <div class="fc-acc-kpi-val">{% if red_val is not none and red_val >= 0 %}-{{ red_val }}%{% elif red_val is not none %}+{{ (-red_val)|round(1) }}%{% else %}-{% endif %}</div>
                     <div class="fc-acc-kpi-sub">
-                        旧v1誤差 ±{{ fcs.v1_mae_wpct if fcs.v1_mae_wpct is not none else fch.v1_mae_wpct }}pt → 状態空間v2.1で大幅改善
+                        旧v1誤差 ±{{ fcs.v1_mae_wpct if fcs.v1_mae_wpct is not none else fch.v1_mae_wpct }}pt → 状態空間v2.2で大幅改善
                     </div>
                 </div>
                 <div class="fc-acc-kpi-card">
@@ -494,7 +514,7 @@
                         {% set sig_e = r.error_wpct_pt or 0 %}
                         <tr>
                             <td style="white-space: nowrap; color: var(--text-sub); font-size: 0.8rem;">{{ r.predicted_mdhm }} → {{ r.target_hm }}</td>
-                            <td style="font-weight: 600;"><a href="/store/{{ r.store_name | store_slug }}" style="color: var(--text-main); text-decoration: none;">{{ r.store_name | seo_store_name }}</a></td>
+                            <td style="font-weight: 600;">{% if r.store_slug %}<a href="/store/{{ r.store_slug }}" style="color: var(--text-main); text-decoration: none;">{{ r.store_name | seo_store_name }}</a>{% else %}<span style="color: var(--text-main);">{{ r.store_name | seo_store_name }}</span>{% endif %}</td>
                             <td style="white-space: nowrap; font-size: 0.81rem;">
                                 <span class="w-num">女{{ r.start_women }}</span>:<span class="m-num">男{{ r.start_men }}</span>（{{ r.start_wpct }}%）
                             </td>
@@ -526,7 +546,7 @@
                         <tr>
                             <th>予測出発時間帯</th>
                             <th>検証件数</th>
-                            <th>v2.1 平均ズレ（MAE）</th>
+                            <th>v2.2 平均ズレ（MAE）</th>
                             <th>旧v1 平均ズレ</th>
                             <th>±10pt以内的中率</th>
                             <th>平均バイアス</th>
@@ -566,7 +586,7 @@
                         {% for st in forecast_accuracy.by_store[:12] %}
                         <tr>
                             <td style="font-weight: 700; color: var(--accent-text);">#{{ loop.index }}</td>
-                            <td style="font-weight: 600;"><a href="/store/{{ st.store_name | store_slug }}" style="color: var(--text-main); text-decoration: none;">{{ st.store_name | seo_store_name }}</a></td>
+                            <td style="font-weight: 600;">{% if st.store_slug %}<a href="/store/{{ st.store_slug }}" style="color: var(--text-main); text-decoration: none;">{{ st.store_name | seo_store_name }}</a>{% else %}<span style="color: var(--text-main);">{{ st.store_name | seo_store_name }}</span>{% endif %}</td>
                             <td style="color: var(--text-sub);">{{ st.count }}回</td>
                             <td style="font-weight: 700; color: var(--text-main);">±{{ st.mae_wpct }}pt</td>
                             <td style="color: var(--women); font-weight: 700;">{{ st.within_10pt_pct }}%</td>

@@ -27,10 +27,13 @@ def _db_available() -> bool:
 def _fetch_all_rows(sql_qmark: str, params: tuple = ()):
     """Execute a read query against PostgreSQL (`DATABASE_URL`) or SQLite (`DB_PATH`) seamlessly."""
     if _is_pg():
-        pg_sql = sql_qmark.replace("?", "%s")
         with turbo_store.pg_connection() as conn:
             with conn.cursor() as cur:
-                cur.execute(pg_sql, params)
+                if params:
+                    pg_sql = sql_qmark.replace("%", "%%").replace("?", "%s")
+                    cur.execute(pg_sql, params)
+                else:
+                    cur.execute(sql_qmark)
                 rows = cur.fetchall()
             try:
                 conn.rollback()  # BUG-09: Close read transaction to prevent 'idle in transaction' in pool
@@ -80,6 +83,8 @@ _forecast_residual_bias_cache = {}
 _FORECAST_RESIDUAL_TTL = 300.0
 _forecast_cache_computing = False
 _forecast_cache_lock = threading.Lock()
+_forecast_backfill_in_flight = False
+_forecast_backfill_lock = threading.Lock()
 
 
 def clear_store_7d_cache(store_name: str = None, clear_benchmarks: bool = False):
@@ -1832,6 +1837,81 @@ def _format_brand_safe_store_name(raw_name: str) -> str:
     return s
 
 
+def _is_korea_store_name(store_name: str) -> bool:
+    s = str(store_name or "").upper()
+    if any(k in s for k in ("ソウル", "カンナム", "ホンデ", "SEOUL", "GANGNAM", "HONGDAE")):
+        return True
+    try:
+        import store_master
+        info = store_master.get(store_name)
+        if info and info.get("region") == "Korea":
+            return True
+    except Exception:
+        pass
+    return False
+
+
+def _get_valid_domestic_canonical_stores() -> set:
+    """Return canonical domestic store keys (active master + legacy canonical slugs), excluding Korea and synthetic seed rows."""
+    valid = set()
+    try:
+        import store_master
+        for k, info in (store_master.load() or {}).items():
+            if k and (info or {}).get("region") != "Korea" and not _is_korea_store_name(k):
+                valid.add(k)
+        for k in getattr(store_master, "STORE_SLUGS", {}).keys():
+            if k and not _is_korea_store_name(k):
+                valid.add(k)
+    except Exception:
+        pass
+    return valid
+
+
+def _linkable_store_slug(store_name: str) -> str:
+    """Return `/store/<slug>` slug only when it resolves to an active store or 301 legacy redirect (never 404)."""
+    if not store_name:
+        return ""
+    try:
+        import store_master
+        slug = store_master.slug_of(store_name)
+        if not slug:
+            return ""
+        if store_master.store_by_slug(slug) or store_master.legacy_redirect_for_slug(slug):
+            return slug
+    except Exception:
+        pass
+    return ""
+
+
+def resolve_canonical_store_name(raw_query: str) -> str:
+    """Resolve canonical name, SEO name, brand-safe display name, or URL slug to canonical internal `store_name`."""
+    q = str(raw_query or "").strip()
+    if not q:
+        return ""
+    try:
+        import store_master
+        master = store_master.load() or {}
+        if q in master or q in getattr(store_master, "STORE_SLUGS", {}):
+            return q
+        by_slug = store_master.store_by_slug(q)
+        if by_slug:
+            return by_slug
+        q_norm = q.replace("　", " ").strip()
+        q_nospace = q_norm.replace(" ", "").lower()
+        all_candidates = list(master.keys()) + [k for k in getattr(store_master, "STORE_SLUGS", {}).keys() if k not in master]
+        for cand in all_candidates:
+            disp_brand = _format_brand_safe_store_name(cand)
+            seo_disp = store_master.seo_name(cand)
+            for alias in (disp_brand, seo_disp):
+                if not alias:
+                    continue
+                if alias == q_norm or alias.replace(" ", "").lower() == q_nospace:
+                    return cand
+    except Exception:
+        pass
+    return q
+
+
 def _parse_jst_ts(ts_str: str):
     if not ts_str:
         return None
@@ -1859,7 +1939,7 @@ def _ensure_forecast_schema() -> bool:
                             predicted_at TEXT NOT NULL,
                             target_at TEXT NOT NULL,
                             store_name TEXT NOT NULL,
-                            model_version TEXT NOT NULL DEFAULT 'v2.1-statespace',
+                            model_version TEXT NOT NULL DEFAULT 'v2.2-statespace',
                             start_women INTEGER NOT NULL,
                             start_men INTEGER NOT NULL,
                             start_wpct INTEGER NOT NULL,
@@ -1901,7 +1981,7 @@ def _ensure_forecast_schema() -> bool:
                     predicted_at TEXT NOT NULL,
                     target_at TEXT NOT NULL,
                     store_name TEXT NOT NULL,
-                    model_version TEXT NOT NULL DEFAULT 'v2.1-statespace',
+                    model_version TEXT NOT NULL DEFAULT 'v2.2-statespace',
                     start_women INTEGER NOT NULL,
                     start_men INTEGER NOT NULL,
                     start_wpct INTEGER NOT NULL,
@@ -2013,9 +2093,9 @@ def _compute_resolution_tuple(row_id: int, pred_w: int, pred_m: int, pred_wp: in
 
 def record_and_resolve_forecasts(items: list, timestamp_str: str, resolve_only: bool = False) -> dict:
     """
-    1) Resolve due pending 60m forecasts (`resolved_at IS NULL`) using live `items` (when within [-6m, +25m] of `target_at`)
-       or historical `monitor_logs` (when overdue >25m), expiring unresolvable rows >6h old.
-    2) Record new 60m forecasts for active domestic stores (`women + men >= 6`) with zero blocking I/O.
+    1) Resolve due pending 60m forecasts (`resolved_at IS NULL`) using fresh live `items` (when within [-1.5m, +25m] of `target_at`)
+       or historical `monitor_logs` (when overdue >25m), expiring unresolvable rows >3h old.
+    2) Record new 60m forecasts for active canonical domestic stores (`women + men >= 6`) with zero blocking I/O.
     """
     if not timestamp_str or not _ensure_forecast_schema():
         return {"resolved": 0, "recorded": 0}
@@ -2025,14 +2105,29 @@ def record_and_resolve_forecasts(items: list, timestamp_str: str, resolve_only: 
         return {"resolved": 0, "recorded": 0}
     ts_norm = ts_dt.strftime("%Y-%m-%d %H:%M:%S")
 
+    f_times = [
+        float(it.get("fetched_at") or 0.0)
+        for it in (items or [])
+        if isinstance(it, dict) and "fetched_at" in it and float(it.get("fetched_at") or 0.0) > 0.0
+    ]
+    max_fetched = max(f_times) if f_times else 0.0
+
+    fresh_items = []
     live_map = {}
     for it in (items or []):
+        if not isinstance(it, dict):
+            continue
+        if "fetched_at" in it:
+            fat = float(it.get("fetched_at") or 0.0)
+            if fat <= 0.0 or (max_fetched > 0.0 and (max_fetched - fat) > 180.0):
+                continue
         sname = (it.get("name") or "").strip()
         if sname:
             live_map[sname] = (max(0, int(it.get("women") or 0)), max(0, int(it.get("men") or 0)), it)
+            fresh_items.append(it)
 
-    # --- Step A: Resolve due pending forecasts ---
-    upper_due_str = (ts_dt + datetime.timedelta(minutes=6)).strftime("%Y-%m-%d %H:%M:%S")
+    # --- Step A: Resolve due pending forecasts (allow at most 90s early clock jitter so 5m ticks never resolve at 54m) ---
+    upper_due_str = (ts_dt + datetime.timedelta(seconds=90)).strftime("%Y-%m-%d %H:%M:%S")
     try:
         pending_due = _fetch_all_rows(
             """
@@ -2063,7 +2158,7 @@ def record_and_resolve_forecasts(items: list, timestamp_str: str, resolve_only: 
             continue
 
         diff_min = (ts_dt - tgt_dt).total_seconds() / 60.0
-        if -6.0 <= diff_min <= 25.0 and sname in live_map:
+        if -1.5 <= diff_min <= 25.0 and sname in live_map:
             aw, am, _ = live_map[sname]
             updates.append(_compute_resolution_tuple(row_id, pred_w, pred_m, pred_wp, v1_wp, aw, am, ts_norm))
         elif diff_min > 25.0:
@@ -2094,7 +2189,7 @@ def record_and_resolve_forecasts(items: list, timestamp_str: str, resolve_only: 
                 updates.append(_compute_resolution_tuple(
                     row_id, pred_w, pred_m, pred_wp, v1_wp, int(best_c[1] or 0), int(best_c[2] or 0), str(best_c[0])[:19]
                 ))
-            elif diff_min > 360.0:
+            elif diff_min > 180.0:
                 stale_delete_ids.append(row_id)
 
     resolved_cnt = 0
@@ -2164,7 +2259,7 @@ def record_and_resolve_forecasts(items: list, timestamp_str: str, resolve_only: 
                 finally:
                     conn.close()
 
-    if resolve_only or not items:
+    if resolve_only or not fresh_items:
         if resolved_cnt > 0 or stale_delete_ids:
             _invalidate_forecast_caches()
         return {"resolved": resolved_cnt, "recorded": 0}
@@ -2172,6 +2267,8 @@ def record_and_resolve_forecasts(items: list, timestamp_str: str, resolve_only: 
     # --- Step B: Record new 60-minute forecasts ---
     import moat_intelligence
     import store_hours
+
+    valid_domestic = _get_valid_domestic_canonical_stores()
 
     dup_lo = (ts_dt - datetime.timedelta(minutes=5)).strftime("%Y-%m-%d %H:%M:%S")
     dup_hi = (ts_dt + datetime.timedelta(minutes=5)).strftime("%Y-%m-%d %H:%M:%S")
@@ -2186,10 +2283,10 @@ def record_and_resolve_forecasts(items: list, timestamp_str: str, resolve_only: 
     except Exception:
         recent_existing = set()
 
-    # Check if we need 15-min diffs when `items` didn't carry `women_diff`/`men_diff`
+    # Check if we need 15-min diffs when `fresh_items` didn't carry `women_diff`/`men_diff`
     need_db_diff = any(
         ("women_diff" not in it and (int(it.get("women") or 0) + int(it.get("men") or 0)) >= 6)
-        for it in items
+        for it in fresh_items
     )
     prev15_map = {}
     if need_db_diff:
@@ -2206,13 +2303,15 @@ def record_and_resolve_forecasts(items: list, timestamp_str: str, resolve_only: 
             prev15_map = {}
 
     weather_map = moat_intelligence.get_city_weather_map(allow_blocking=False)
-    arena_map = moat_intelligence.detect_arena_event_surges(items, now_jst=ts_dt)
+    arena_map = moat_intelligence.detect_arena_event_surges(fresh_items, now_jst=ts_dt)
     target_str = (ts_dt + datetime.timedelta(minutes=60)).strftime("%Y-%m-%d %H:%M:%S")
 
     to_insert = []
-    for item in items:
+    for item in fresh_items:
         sname = (item.get("name") or "").strip()
-        if not sname or "ソウル" in sname or sname in recent_existing:
+        if not sname or _is_korea_store_name(sname) or sname in recent_existing:
+            continue
+        if valid_domestic and sname not in valid_domestic:
             continue
         w = max(0, int(item.get("women") or 0))
         m = max(0, int(item.get("men") or 0))
@@ -2332,259 +2431,310 @@ def backfill_forecast_accuracy_from_history(
     min_existing: int = 80,
     max_rows: int = 4500,
     force: bool = False,
+    _already_claimed: bool = False,
 ) -> dict:
     """
     Causally backfill resolved 60-minute predictions from historical `monitor_logs` so accuracy reports
     and online store calibration are populated immediately on existing databases without waiting 60 minutes.
     """
+    global _forecast_backfill_in_flight
+
     if not _db_available() or not _ensure_forecast_schema():
         return {"inserted": 0, "skipped": True}
 
+    acquired_flight = False
+    if not force and not _already_claimed:
+        with _forecast_backfill_lock:
+            if _forecast_backfill_in_flight:
+                return {"inserted": 0, "skipped": True, "in_flight": True}
+            _forecast_backfill_in_flight = True
+            acquired_flight = True
+
     try:
-        cnt_rows = _fetch_all_rows("SELECT COUNT(*) FROM forecast_accuracy_logs WHERE resolved_at IS NOT NULL")
-        existing_resolved = int(cnt_rows[0][0] or 0) if cnt_rows else 0
-    except Exception:
-        existing_resolved = 0
+        try:
+            cnt_rows = _fetch_all_rows("SELECT COUNT(*) FROM forecast_accuracy_logs WHERE resolved_at IS NOT NULL")
+            existing_resolved = int(cnt_rows[0][0] or 0) if cnt_rows else 0
+        except Exception:
+            existing_resolved = 0
 
-    if not force and existing_resolved >= min_existing:
-        return {"inserted": 0, "skipped": True, "existing_resolved": existing_resolved}
+        if not force and existing_resolved >= min_existing:
+            return {"inserted": 0, "skipped": True, "existing_resolved": existing_resolved}
 
-    import moat_intelligence
+        import moat_intelligence
 
-    now_jst = datetime.datetime.now(_JST_TZ).replace(tzinfo=None)
-    cutoff_str = (now_jst - datetime.timedelta(days=max(1, int(days)))).strftime("%Y-%m-%d %H:%M:%S")
-    try:
-        raw_rows = _fetch_all_rows(
-            """
-            SELECT timestamp, store_name, women, men
-            FROM monitor_logs
-            WHERE timestamp >= ? AND store_name NOT LIKE '%ソウル%'
-            ORDER BY timestamp ASC
-            """,
-            (cutoff_str,),
-        )
-    except Exception as err:
-        print(f"[local_db] backfill_forecast_accuracy query error: {err}", file=sys.stderr)
-        return {"inserted": 0, "skipped": False, "error": str(err)}
-
-    if len(raw_rows) < 10:
-        return {"inserted": 0, "skipped": True, "existing_resolved": existing_resolved}
-
-    # Group into snapshot batches (within 90s)
-    batches = []
-    cur_dt = None
-    cur_ts = None
-    cur_map = {}
-    for r in raw_rows:
-        dt = _parse_jst_ts(r[0])
-        if dt is None:
-            continue
-        if cur_dt is None or (dt - cur_dt).total_seconds() > 90.0:
-            if cur_map:
-                batches.append((cur_dt, cur_ts, cur_map))
-            cur_dt = dt
-            cur_ts = dt.strftime("%Y-%m-%d %H:%M:%S")
-            cur_map = {}
-        cur_map[str(r[1])] = (max(0, int(r[2] or 0)), max(0, int(r[3] or 0)))
-    if cur_map:
-        batches.append((cur_dt, cur_ts, cur_map))
-
-    # Filter out rogue interleaved legacy batches when multi-store snapshots are present
-    stage1 = []
-    for dt, ts_s, smap in batches:
-        if len(smap) >= 20:
-            tot_all = sum(w + m for w, m in smap.values())
-            if 8 <= dt.hour <= 16 and tot_all > 60:
-                continue
-            if (20 <= dt.hour <= 23 or 0 <= dt.hour <= 2) and tot_all < 80:
-                continue
-        stage1.append((dt, ts_s, smap))
-
-    clean_batches = []
-    for idx, (dt, ts_s, smap) in enumerate(stage1):
-        if len(smap) >= 20 and 0 < idx < len(stage1) - 1:
-            p_dt, _, p_map = stage1[idx - 1]
-            n_dt, _, n_map = stage1[idx + 1]
-            if (n_dt - p_dt).total_seconds() <= 2100.0:
-                common = [s for s in smap if s in p_map and s in n_map]
-                if len(common) >= 20:
-                    d_prev = sum(abs((smap[s][0] + smap[s][1]) - (p_map[s][0] + p_map[s][1])) for s in common) / len(common)
-                    d_next = sum(abs((smap[s][0] + smap[s][1]) - (n_map[s][0] + n_map[s][1])) for s in common) / len(common)
-                    d_pn = sum(abs((n_map[s][0] + n_map[s][1]) - (p_map[s][0] + p_map[s][1])) for s in common) / len(common)
-                    if d_prev > 16.0 and d_next > 16.0 and d_pn < 12.0:
-                        continue
-        clean_batches.append((dt, ts_s, smap))
-
-    n_b = len(clean_batches)
-    if n_b < 2:
-        return {"inserted": 0, "skipped": True, "existing_resolved": existing_resolved}
-
-    # Walk backwards from newest batch (~25m spacing) up to `max_rows` resolved records
-    backfill_rows = []
-    last_sampled_dt = None
-    for i in range(n_b - 2, -1, -1):
-        dt, ts_s, smap = clean_batches[i]
-        if last_sampled_dt is not None and (last_sampled_dt - dt).total_seconds() < 1400.0 and n_b > 30:
-            continue
-        best_k = None
-        best_err = 999.0
-        for k in range(i + 1, n_b):
-            dm = (clean_batches[k][0] - dt).total_seconds() / 60.0
-            if dm < 50.0:
-                continue
-            if dm > 70.0:
-                break
-            err = abs(dm - 60.0)
-            if err < best_err:
-                best_err = err
-                best_k = k
-        if best_k is None:
-            continue
-
-        p15 = None
-        for k in range(i - 1, -1, -1):
-            dm = (dt - clean_batches[k][0]).total_seconds() / 60.0
-            if 8.0 <= dm <= 23.0:
-                p15 = clean_batches[k][2]
-                break
-            if dm > 25.0:
-                break
-
-        res_dt, res_ts_s, smap60 = clean_batches[best_k]
-        tgt_s = (dt + datetime.timedelta(minutes=60)).strftime("%Y-%m-%d %H:%M:%S")
-        added_in_batch = 0
-
-        for sname, (w, m) in smap.items():
-            tot = w + m
-            if tot < 6 or sname not in smap60:
-                continue
-            w60, m60 = smap60[sname]
-            wd15 = (w - p15[sname][0]) if (p15 and sname in p15) else 0
-            md15 = (m - p15[sname][1]) if (p15 and sname in p15) else 0
-
-            fc = moat_intelligence.predict_store_60m_dynamics(
-                store_name=sname,
-                women=w,
-                men=m,
-                is_open_now=True,
-                women_diff=wd15,
-                men_diff=md15,
-                now_jst=dt,
-                weather_map={},
-                arena_signal=None,
-                apply_online_bias=False,
+        valid_domestic = _get_valid_domestic_canonical_stores()
+        now_jst = datetime.datetime.now(_JST_TZ).replace(tzinfo=None)
+        cutoff_str = (now_jst - datetime.timedelta(days=max(1, int(days)))).strftime("%Y-%m-%d %H:%M:%S")
+        try:
+            raw_rows = _fetch_all_rows(
+                """
+                SELECT timestamp, store_name, women, men
+                FROM monitor_logs
+                WHERE timestamp >= ? AND store_name NOT LIKE ?
+                ORDER BY timestamp ASC
+                """,
+                (cutoff_str, "%ソウル%"),
             )
-            if fc.get("pred_60m_wpct") is None:
-                continue
-            v1_fc = moat_intelligence._predict_store_60m_v1_legacy(
-                store_name=sname,
-                women=w,
-                men=m,
-                is_open_now=True,
-                women_diff=wd15,
-                men_diff=md15,
-                now_jst=dt,
-                weather_map={},
-                arena_signal=None,
-            )
-            start_wp = int(round((w / float(tot)) * 100.0))
-            pred_w = int(fc["pred_60m_women"])
-            pred_m = int(fc["pred_60m_men"])
-            pred_wp = int(fc["pred_60m_wpct"])
-            v1_wp = int(v1_fc["pred_60m_wpct"]) if v1_fc.get("pred_60m_wpct") is not None else None
-            res_tup = _compute_resolution_tuple(0, pred_w, pred_m, pred_wp, v1_wp, w60, m60, res_ts_s)
+        except Exception as err:
+            print(f"[local_db] backfill_forecast_accuracy query error: {err}", file=sys.stderr)
+            return {"inserted": 0, "skipped": False, "error": str(err)}
 
-            backfill_rows.append((
-                ts_s,
-                tgt_s,
-                sname,
-                moat_intelligence.FORECAST_MODEL_VERSION,
-                w,
-                m,
-                start_wp,
-                pred_w,
-                pred_m,
-                pred_wp,
-                v1_wp,
-                int(fc.get("flip_risk_pct") or 0),
-                str(fc.get("alert_code") or "steady"),
-                res_tup[0],
-                res_tup[1],
-                res_tup[2],
-                res_tup[3],
-                res_tup[4],
-                res_tup[5],
-                res_tup[6],
-                res_tup[7],
-                res_tup[8],
-            ))
-            added_in_batch += 1
+        if len(raw_rows) < 10:
+            return {"inserted": 0, "skipped": True, "existing_resolved": existing_resolved}
+
+        # Group into snapshot batches (within 90s), discarding synthetic batches tainted by non-canonical seed store names
+        batches = []
+        cur_dt = None
+        cur_ts = None
+        cur_map = {}
+        cur_tainted = False
+        for r in raw_rows:
+            dt = _parse_jst_ts(r[0])
+            if dt is None:
+                continue
+            if cur_dt is None or (dt - cur_dt).total_seconds() > 90.0:
+                if cur_map and not cur_tainted:
+                    batches.append((cur_dt, cur_ts, cur_map))
+                cur_dt = dt
+                cur_ts = dt.strftime("%Y-%m-%d %H:%M:%S")
+                cur_map = {}
+                cur_tainted = False
+            sname_r = str(r[1] or "").strip()
+            if not sname_r or _is_korea_store_name(sname_r):
+                continue
+            if valid_domestic and sname_r not in valid_domestic:
+                cur_tainted = True
+                continue
+            cur_map[sname_r] = (max(0, int(r[2] or 0)), max(0, int(r[3] or 0)))
+        if cur_map and not cur_tainted:
+            batches.append((cur_dt, cur_ts, cur_map))
+
+        # Filter out rogue interleaved legacy batches when multi-store snapshots are present
+        stage1 = []
+        for dt, ts_s, smap in batches:
+            if len(smap) >= 20:
+                tot_all = sum(w + m for w, m in smap.values())
+                if 8 <= dt.hour <= 16 and tot_all > 60:
+                    continue
+                if (20 <= dt.hour <= 23 or 0 <= dt.hour <= 2) and tot_all < 80:
+                    continue
+            stage1.append((dt, ts_s, smap))
+
+        clean_batches = []
+        for idx, (dt, ts_s, smap) in enumerate(stage1):
+            if len(smap) >= 20 and 0 < idx < len(stage1) - 1:
+                p_dt, _, p_map = stage1[idx - 1]
+                n_dt, _, n_map = stage1[idx + 1]
+                if (n_dt - p_dt).total_seconds() <= 2100.0:
+                    common = [s for s in smap if s in p_map and s in n_map]
+                    if len(common) >= 20:
+                        d_prev = sum(abs((smap[s][0] + smap[s][1]) - (p_map[s][0] + p_map[s][1])) for s in common) / len(common)
+                        d_next = sum(abs((smap[s][0] + smap[s][1]) - (n_map[s][0] + n_map[s][1])) for s in common) / len(common)
+                        d_pn = sum(abs((n_map[s][0] + n_map[s][1]) - (p_map[s][0] + p_map[s][1])) for s in common) / len(common)
+                        if d_prev > 16.0 and d_next > 16.0 and d_pn < 12.0:
+                            continue
+            clean_batches.append((dt, ts_s, smap))
+
+        n_b = len(clean_batches)
+        if n_b < 2:
+            return {"inserted": 0, "skipped": True, "existing_resolved": existing_resolved}
+
+        # Walk backwards from newest batch (~25m spacing) up to `max_rows` resolved records
+        backfill_rows = []
+        last_sampled_dt = None
+        for i in range(n_b - 2, -1, -1):
+            dt, ts_s, smap = clean_batches[i]
+            if last_sampled_dt is not None and (last_sampled_dt - dt).total_seconds() < 1400.0 and n_b > 30:
+                continue
+            best_k = None
+            best_err = 999.0
+            for k in range(i + 1, n_b):
+                dm = (clean_batches[k][0] - dt).total_seconds() / 60.0
+                if dm < 50.0:
+                    continue
+                if dm > 70.0:
+                    break
+                err = abs(dm - 60.0)
+                if err < best_err:
+                    best_err = err
+                    best_k = k
+            if best_k is None:
+                continue
+
+            p15 = None
+            for k in range(i - 1, -1, -1):
+                dm = (dt - clean_batches[k][0]).total_seconds() / 60.0
+                if 8.0 <= dm <= 23.0:
+                    p15 = clean_batches[k][2]
+                    break
+                if dm > 25.0:
+                    break
+
+            res_dt, res_ts_s, smap60 = clean_batches[best_k]
+            tgt_s = (dt + datetime.timedelta(minutes=60)).strftime("%Y-%m-%d %H:%M:%S")
+            added_in_batch = 0
+
+            for sname, (w, m) in smap.items():
+                tot = w + m
+                if tot < 6 or sname not in smap60:
+                    continue
+                w60, m60 = smap60[sname]
+                wd15 = (w - p15[sname][0]) if (p15 and sname in p15) else 0
+                md15 = (m - p15[sname][1]) if (p15 and sname in p15) else 0
+
+                fc = moat_intelligence.predict_store_60m_dynamics(
+                    store_name=sname,
+                    women=w,
+                    men=m,
+                    is_open_now=True,
+                    women_diff=wd15,
+                    men_diff=md15,
+                    now_jst=dt,
+                    weather_map={},
+                    arena_signal=None,
+                    apply_online_bias=False,
+                )
+                if fc.get("pred_60m_wpct") is None:
+                    continue
+                v1_fc = moat_intelligence._predict_store_60m_v1_legacy(
+                    store_name=sname,
+                    women=w,
+                    men=m,
+                    is_open_now=True,
+                    women_diff=wd15,
+                    men_diff=md15,
+                    now_jst=dt,
+                    weather_map={},
+                    arena_signal=None,
+                )
+                start_wp = int(round((w / float(tot)) * 100.0))
+                pred_w = int(fc["pred_60m_women"])
+                pred_m = int(fc["pred_60m_men"])
+                pred_wp = int(fc["pred_60m_wpct"])
+                v1_wp = int(v1_fc["pred_60m_wpct"]) if v1_fc.get("pred_60m_wpct") is not None else None
+                res_tup = _compute_resolution_tuple(0, pred_w, pred_m, pred_wp, v1_wp, w60, m60, res_ts_s)
+
+                backfill_rows.append((
+                    ts_s,
+                    tgt_s,
+                    sname,
+                    moat_intelligence.FORECAST_MODEL_VERSION,
+                    w,
+                    m,
+                    start_wp,
+                    pred_w,
+                    pred_m,
+                    pred_wp,
+                    v1_wp,
+                    int(fc.get("flip_risk_pct") or 0),
+                    str(fc.get("alert_code") or "steady"),
+                    res_tup[0],
+                    res_tup[1],
+                    res_tup[2],
+                    res_tup[3],
+                    res_tup[4],
+                    res_tup[5],
+                    res_tup[6],
+                    res_tup[7],
+                    res_tup[8],
+                ))
+                added_in_batch += 1
+                if len(backfill_rows) >= max_rows:
+                    break
+
+            if added_in_batch > 0:
+                last_sampled_dt = dt
             if len(backfill_rows) >= max_rows:
                 break
 
-        if added_in_batch > 0:
-            last_sampled_dt = dt
-        if len(backfill_rows) >= max_rows:
-            break
+        if not backfill_rows:
+            return {"inserted": 0, "skipped": False, "existing_resolved": existing_resolved}
 
-    if not backfill_rows:
-        return {"inserted": 0, "skipped": False, "existing_resolved": existing_resolved}
+        backfill_rows.reverse()
+        inserted_total = 0
+        if _is_pg():
+            try:
+                inserted_total = turbo_store.execute_pg_values_batch(
+                    """
+                    INSERT INTO forecast_accuracy_logs (
+                        predicted_at, target_at, store_name, model_version,
+                        start_women, start_men, start_wpct,
+                        pred_women, pred_men, pred_wpct, v1_pred_wpct,
+                        flip_risk_pct, alert_code,
+                        resolved_at, actual_women, actual_men, actual_wpct,
+                        error_wpct_pt, abs_error_wpct_pt, v1_abs_error_wpct_pt,
+                        error_women, error_men
+                    ) VALUES %s
+                    ON CONFLICT (predicted_at, store_name) DO NOTHING
+                    """,
+                    backfill_rows,
+                    page_size=400,
+                )
+            except Exception as err:
+                print(f"[local_db] PG backfill_forecast_accuracy error: {err}", file=sys.stderr)
+        else:
+            chunk_sz = 500
+            for off in range(0, len(backfill_rows), chunk_sz):
+                sub = backfill_rows[off:off + chunk_sz]
+                with _db_lock:
+                    conn = get_connection()
+                    try:
+                        cur = conn.cursor()
+                        cur.executemany(
+                            """
+                            INSERT OR IGNORE INTO forecast_accuracy_logs (
+                                predicted_at, target_at, store_name, model_version,
+                                start_women, start_men, start_wpct,
+                                pred_women, pred_men, pred_wpct, v1_pred_wpct,
+                                flip_risk_pct, alert_code,
+                                resolved_at, actual_women, actual_men, actual_wpct,
+                                error_wpct_pt, abs_error_wpct_pt, v1_abs_error_wpct_pt,
+                                error_women, error_men
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            """,
+                            sub,
+                        )
+                        conn.commit()
+                        inserted_total += max(0, cur.rowcount or 0)
+                    except Exception as err:
+                        print(f"[local_db] SQLite backfill_forecast_accuracy error: {err}", file=sys.stderr)
+                        break
+                    finally:
+                        conn.close()
 
-    backfill_rows.reverse()
-    inserted_total = 0
-    if _is_pg():
+        _invalidate_forecast_caches()
+        _refresh_forecast_caches_from_db(days=days)
+        return {"inserted": inserted_total, "skipped": False, "existing_resolved": existing_resolved + inserted_total}
+    finally:
+        if acquired_flight:
+            with _forecast_backfill_lock:
+                _forecast_backfill_in_flight = False
+
+
+def trigger_forecast_backfill_async(days: int = 21, min_existing: int = 80, max_rows: int = 4500) -> bool:
+    """Atomically claim single-flight backfill lock and spawn at most one background daemon thread."""
+    global _forecast_backfill_in_flight
+    if not _db_available():
+        return False
+    with _forecast_backfill_lock:
+        if _forecast_backfill_in_flight:
+            return False
+        _forecast_backfill_in_flight = True
+
+    def _bg():
+        global _forecast_backfill_in_flight
         try:
-            inserted_total = turbo_store.execute_pg_values_batch(
-                """
-                INSERT INTO forecast_accuracy_logs (
-                    predicted_at, target_at, store_name, model_version,
-                    start_women, start_men, start_wpct,
-                    pred_women, pred_men, pred_wpct, v1_pred_wpct,
-                    flip_risk_pct, alert_code,
-                    resolved_at, actual_women, actual_men, actual_wpct,
-                    error_wpct_pt, abs_error_wpct_pt, v1_abs_error_wpct_pt,
-                    error_women, error_men
-                ) VALUES %s
-                ON CONFLICT (predicted_at, store_name) DO NOTHING
-                """,
-                backfill_rows,
-                page_size=400,
+            backfill_forecast_accuracy_from_history(
+                days=days, min_existing=min_existing, max_rows=max_rows, _already_claimed=True
             )
         except Exception as err:
-            print(f"[local_db] PG backfill_forecast_accuracy error: {err}", file=sys.stderr)
-    else:
-        chunk_sz = 500
-        for off in range(0, len(backfill_rows), chunk_sz):
-            sub = backfill_rows[off:off + chunk_sz]
-            with _db_lock:
-                conn = get_connection()
-                try:
-                    cur = conn.cursor()
-                    cur.executemany(
-                        """
-                        INSERT OR IGNORE INTO forecast_accuracy_logs (
-                            predicted_at, target_at, store_name, model_version,
-                            start_women, start_men, start_wpct,
-                            pred_women, pred_men, pred_wpct, v1_pred_wpct,
-                            flip_risk_pct, alert_code,
-                            resolved_at, actual_women, actual_men, actual_wpct,
-                            error_wpct_pt, abs_error_wpct_pt, v1_abs_error_wpct_pt,
-                            error_women, error_men
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """,
-                        sub,
-                    )
-                    conn.commit()
-                    inserted_total += max(0, cur.rowcount or 0)
-                except Exception as err:
-                    print(f"[local_db] SQLite backfill_forecast_accuracy error: {err}", file=sys.stderr)
-                    break
-                finally:
-                    conn.close()
+            print(f"[local_db] trigger_forecast_backfill_async error: {err}", file=sys.stderr)
+        finally:
+            with _forecast_backfill_lock:
+                _forecast_backfill_in_flight = False
 
-    _invalidate_forecast_caches()
-    _refresh_forecast_caches_from_db(days=days)
-    return {"inserted": inserted_total, "skipped": False, "existing_resolved": existing_resolved + inserted_total}
+    threading.Thread(target=_bg, daemon=True).start()
+    return True
 
 
 def _refresh_forecast_caches_from_db(days: int = 21):
@@ -2755,13 +2905,14 @@ def get_forecast_accuracy_report(
 ) -> dict:
     """
     Aggregate 60-minute forecast vs. actual verification metrics, hourly/alert/store breakdowns,
-    v1 vs. v2.1 live error reduction, recent resolved timeline, and pending live forecast queue.
+    v1 vs. v2.2 live error reduction, recent resolved timeline, and pending live forecast queue.
     """
     import moat_intelligence
 
     days = max(1, min(60, int(days or 21)))
     limit_recent = max(5, min(100, int(limit_recent or 30)))
-    store_filter = (store_name or "").strip() or None
+    raw_store = (store_name or "").strip()
+    store_filter = resolve_canonical_store_name(raw_store) if raw_store else None
     db_k = _active_db_key()
     cache_key = (db_k, days, store_filter, limit_recent)
     now_mono = time.monotonic()
@@ -2775,6 +2926,8 @@ def get_forecast_accuracy_report(
     empty_report = {
         "model_version": moat_intelligence.FORECAST_MODEL_VERSION,
         "window_days": days,
+        "store_filter": store_filter,
+        "store_filter_display": _format_brand_safe_store_name(store_filter) if store_filter else None,
         "holdout_backtest": dict(moat_intelligence.HOLDOUT_BACKTEST_SUMMARY),
         "summary": {
             "resolved_count": 0,
@@ -2802,7 +2955,7 @@ def get_forecast_accuracy_report(
     if not _db_available() or not _ensure_forecast_schema():
         return empty_report
 
-    if auto_backfill and allow_blocking:
+    if auto_backfill and allow_blocking and store_filter is None:
         try:
             backfill_forecast_accuracy_from_history(days=days, min_existing=40, max_rows=4500)
         except Exception:
@@ -2825,6 +2978,14 @@ def get_forecast_accuracy_report(
                 FROM forecast_accuracy_logs
                 WHERE resolved_at IS NOT NULL AND predicted_at >= ? AND store_name = ?
                 ORDER BY predicted_at DESC
+                """,
+                (cutoff_str, store_filter),
+            )
+            pend_cnt_rows = _fetch_all_rows(
+                """
+                SELECT COUNT(*)
+                FROM forecast_accuracy_logs
+                WHERE resolved_at IS NULL AND predicted_at >= ? AND store_name = ?
                 """,
                 (cutoff_str, store_filter),
             )
@@ -2856,6 +3017,14 @@ def get_forecast_accuracy_report(
                 """,
                 (cutoff_str,),
             )
+            pend_cnt_rows = _fetch_all_rows(
+                """
+                SELECT COUNT(*)
+                FROM forecast_accuracy_logs
+                WHERE resolved_at IS NULL AND predicted_at >= ?
+                """,
+                (cutoff_str,),
+            )
             pend_rows = _fetch_all_rows(
                 """
                 SELECT predicted_at, target_at, store_name,
@@ -2868,6 +3037,7 @@ def get_forecast_accuracy_report(
                 """,
                 (cutoff_str,),
             )
+        exact_pending_count = int(pend_cnt_rows[0][0] or 0) if pend_cnt_rows else len(pend_rows)
     except Exception as err:
         print(f"[local_db] get_forecast_accuracy_report query error: {err}", file=sys.stderr)
         return empty_report
@@ -2879,6 +3049,7 @@ def get_forecast_accuracy_report(
     wp_sq_list = []
     wp_sig_list = []
     v1_abs_list = []
+    paired_v2_abs_list = []
     w_abs_list = []
     m_abs_list = []
     dir_hits = 0
@@ -2909,16 +3080,16 @@ def get_forecast_accuracy_report(
         err_w = int(r[19] or 0)
         err_m = int(r[20] or 0)
 
-        w_abs_list.append(abs(err_w))
-        m_abs_list.append(abs(err_m))
-
-        # Ratio KPIs require meaningful headcount at t+60m (>=4 guests) to avoid 1-person quantization artifacts
+        # KPIs require meaningful headcount at t+60m (>=4 guests) to avoid 1-person quantization & closed 0:0 artifacts
         if awp is not None and abs_wp is not None and (aw + am) >= 4:
             wp_abs_list.append(float(abs_wp))
             wp_sq_list.append(float(err_wp * err_wp))
             wp_sig_list.append(float(err_wp))
+            w_abs_list.append(abs(err_w))
+            m_abs_list.append(abs(err_m))
             if v1_abs is not None:
                 v1_abs_list.append(float(v1_abs))
+                paired_v2_abs_list.append(float(abs_wp))
 
             pred_chg = pwp - swp
             act_chg = awp - swp
@@ -2977,6 +3148,7 @@ def get_forecast_accuracy_report(
                     "target_hm": tgt_at[11:16] if len(tgt_at) >= 16 else tgt_at,
                     "resolved_at": res_at,
                     "store_name": sname,
+                    "store_slug": _linkable_store_slug(sname),
                     "display_name": _format_brand_safe_store_name(sname),
                     "start_women": sw,
                     "start_men": sm,
@@ -3003,16 +3175,21 @@ def get_forecast_accuracy_report(
         bias_wp = round(sum(wp_sig_list) / n_valid, 2)
         w5_pct = round(sum(1 for e in wp_abs_list if e <= 5.0) / n_valid * 100.0, 1)
         w10_pct = round(sum(1 for e in wp_abs_list if e <= 10.0) / n_valid * 100.0, 1)
-        v1_mae = round(sum(v1_abs_list) / len(v1_abs_list), 2) if v1_abs_list else None
-        imp_pt = round(v1_mae - mae_wp, 2) if v1_mae is not None else None
-        red_pct = round((imp_pt / v1_mae) * 100.0, 1) if (v1_mae and v1_mae > 0 and imp_pt is not None) else None
+        if v1_abs_list:
+            v1_raw = sum(v1_abs_list) / len(v1_abs_list)
+            v2_paired_raw = sum(paired_v2_abs_list) / len(paired_v2_abs_list)
+            v1_mae = round(v1_raw, 2)
+            imp_pt = round(v1_raw - v2_paired_raw, 2)
+            red_pct = round(((v1_raw - v2_paired_raw) / v1_raw) * 100.0, 1) if v1_raw > 0 else None
+        else:
+            v1_mae = imp_pt = red_pct = None
     else:
         mae_wp = rmse_wp = bias_wp = w5_pct = w10_pct = v1_mae = imp_pt = red_pct = None
 
     summary = {
         "resolved_count": n_valid,
         "total_resolved_rows": len(res_rows),
-        "pending_count": len(pend_rows),
+        "pending_count": exact_pending_count,
         "mae_wpct": mae_wp,
         "rmse_wpct": rmse_wp,
         "bias_wpct": bias_wp,
@@ -3068,6 +3245,7 @@ def get_forecast_accuracy_report(
             continue
         by_store.append({
             "store_name": sname,
+            "store_slug": _linkable_store_slug(sname),
             "display_name": _format_brand_safe_store_name(sname),
             "count": cnt,
             "mae_wpct": round(s_abs / cnt, 2),
@@ -3092,6 +3270,7 @@ def get_forecast_accuracy_report(
             "target_at": t_at,
             "target_hm": t_at[11:16] if len(t_at) >= 16 else t_at,
             "store_name": sn,
+            "store_slug": _linkable_store_slug(sn),
             "display_name": _format_brand_safe_store_name(sn),
             "start_women": int(pr[3] or 0),
             "start_men": int(pr[4] or 0),
@@ -3109,6 +3288,7 @@ def get_forecast_accuracy_report(
         if hr_k is None and abs(adj_v) >= 0.4:
             bias_adjustments.append({
                 "store_name": sn,
+                "store_slug": _linkable_store_slug(sn),
                 "display_name": _format_brand_safe_store_name(sn),
                 "online_adj_pt": adj_v,
             })
@@ -3117,6 +3297,8 @@ def get_forecast_accuracy_report(
     result = {
         "model_version": moat_intelligence.FORECAST_MODEL_VERSION,
         "window_days": days,
+        "store_filter": store_filter,
+        "store_filter_display": _format_brand_safe_store_name(store_filter) if store_filter else None,
         "holdout_backtest": dict(moat_intelligence.HOLDOUT_BACKTEST_SUMMARY),
         "summary": summary,
         "by_alert": by_alert,
@@ -3126,6 +3308,9 @@ def get_forecast_accuracy_report(
         "pending_forecasts": pending_list,
         "bias_adjustments": bias_adjustments[:15],
     }
+    if len(_forecast_acc_report_cache) >= 64:
+        oldest_k = min(_forecast_acc_report_cache.items(), key=lambda kv: kv[1][0])[0]
+        _forecast_acc_report_cache.pop(oldest_k, None)
     _forecast_acc_report_cache[cache_key] = (time.monotonic(), result)
     return result
 

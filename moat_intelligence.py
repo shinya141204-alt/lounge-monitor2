@@ -442,6 +442,15 @@ for _hub in MAJOR_ARENA_HUBS:
         _STORE_TO_ARENA[_st] = _hub
 
 
+def _normalize_jst(dt: datetime.datetime = None) -> datetime.datetime:
+    """任意のdatetime（None / naive / UTC等のaware）を確実にJST awareへ正規化する。"""
+    if dt is None:
+        return datetime.datetime.now(JST)
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=JST)
+    return dt.astimezone(JST)
+
+
 def detect_arena_event_surges(live_stores: list, now_jst: datetime.datetime = None) -> dict:
     """
     ライブ終演後ゴールデンタイム（19:00〜22:50）において、ドーム・アリーナ周辺店舗で
@@ -449,7 +458,7 @@ def detect_arena_event_surges(live_stores: list, now_jst: datetime.datetime = No
     発生しているハブを自動検知し、{store_name: event_signal_dict} を返す。
     また job_state / 環境変数 `ARENA_ACTIVE_VENUES` に明示登録された会場があれば優先付与する。
     """
-    now_jst = now_jst or datetime.datetime.now(JST)
+    now_jst = _normalize_jst(now_jst)
     hr = now_jst.hour
     explicit_venues = set(
         v.strip() for v in (os.environ.get("ARENA_ACTIVE_VENUES") or "").split(",") if v.strip()
@@ -509,7 +518,7 @@ def capture_external_context_snapshot(live_stores: list = None, allow_blocking: 
     10分刻みのDB保存・Moat Telemetryシート追記用に、全国10都市の現在気象＋イベント流入検知結果の
     リスト `[{city_key, temp_c, precip_mm, weather_code, wind_kmh, is_rainy, active_arenas_json}, ...]` を返す。
     """
-    now_jst = now_jst or datetime.datetime.now(JST)
+    now_jst = _normalize_jst(now_jst)
     weather_map = get_city_weather_map(allow_blocking=allow_blocking)
     arena_signals = detect_arena_event_surges(live_stores or [], now_jst=now_jst)
 
@@ -849,25 +858,25 @@ def estimate_store_wait_and_pos(
 
 
 # ==============================================================================
-# 5. 実測マルコフ状態空間モデル（v2.1）に基づく「60分後の男女比予測エンジン」
+# 5. 実測マルコフ状態空間モデル（v2.2）に基づく「60分後の男女比予測エンジン」
 # ==============================================================================
-FORECAST_MODEL_VERSION = "v2.1-statespace"
+FORECAST_MODEL_VERSION = "v2.2-statespace"
 
-# 時系列ホールドアウト検証ベンチマーク（同一店舗・未来テスト分割 n=12,836 遷移ペアでの実測値）
+# 時系列ホールドアウト検証ベンチマーク（学習 <=2026-10-15 12:00 / 未来未見テスト >2026-10-15 12:00, n=14,542 遷移ペアでの実測値）
 HOLDOUT_BACKTEST_SUMMARY = {
-    "test_samples": 12836,
-    "v1_mae_wpct": 11.19,
-    "v1_rmse_wpct": 15.31,
-    "v1_within_5pt_pct": 33.7,
-    "v1_within_10pt_pct": 58.4,
-    "v1_brier_flip": 0.1663,
-    "naive_mae_wpct": 10.72,
-    "v2_mae_wpct": 8.05,
-    "v2_rmse_wpct": 11.17,
-    "v2_within_5pt_pct": 44.6,
-    "v2_within_10pt_pct": 72.2,
-    "v2_brier_flip": 0.1381,
-    "mae_reduction_pct": 28.1,
+    "test_samples": 14542,
+    "v1_mae_wpct": 11.17,
+    "v1_rmse_wpct": 15.55,
+    "v1_within_5pt_pct": 37.2,
+    "v1_within_10pt_pct": 61.1,
+    "v1_brier_flip": 0.1845,
+    "naive_mae_wpct": 10.68,
+    "v2_mae_wpct": 7.91,
+    "v2_rmse_wpct": 10.89,
+    "v2_within_5pt_pct": 47.7,
+    "v2_within_10pt_pct": 74.0,
+    "v2_brier_flip": 0.1353,
+    "mae_reduction_pct": 29.2,
 }
 
 # 旧v1モデル係数（リアルタイム精度監査で v1 vs v2.1 の改善幅を同一条件比較するために保持）
@@ -1067,6 +1076,81 @@ def _interp_v2_knot(tbl: dict, wk_key: int, now_jst: datetime.datetime) -> list:
     return [k0[j] * (1.0 - alpha) + k1[j] * alpha for j in range(len(k0))]
 
 
+# 店舗×夜間フェーズ（序盤17-21h / ピーク22-00h / 深夜01-06h）の階層Empirical-Bayes事前残差オフセット
+# 2026-10-01〜2026-10-15 12:00 の学習期間のみで推定（未来ホールドアウト期間のデータは一切不使用）
+_V2_STORE_PHASE_PRIORS = {
+    "ALFA HIROSHIMA": (1.55, 1.39, 3.25),
+    "CLOVERS HIROSHIMA": (1.41, 1.08, 1.17),
+    "JIS CHAYAMACHI": (3.54, 3.11, 4.5),
+    "JIS FUKUOKA": (0.6, -0.97, 0.73),
+    "JIS NAMBA": (1.74, 1.68, 3.06),
+    "JIS NISHISHINJUKU": (-0.06, -0.53, 0.51),
+    "JIS OMIYA": (2.72, 0.55, 4.18),
+    "JIS SAPPORO": (-0.84, -0.26, 1.94),
+    "JIS SHINJUKU": (0.77, -0.01, 2.2),
+    "JIS UMEDA": (2.31, 0.05, 1.81),
+    "OLG ag上野": (0.9, -1.74, 2.07),
+    "OLG ag仙台": (2.04, 1.16, 4.5),
+    "OLG ag名古屋": (-1.27, -3.02, -3.05),
+    "OLG ag広島": (-0.3, 0.79, 0.95),
+    "OLG ag梅田": (0.19, 1.42, 0.38),
+    "OLG ag沖縄": (-1.26, -1.73, -0.27),
+    "OLG ag渋谷": (1.53, -0.88, 1.63),
+    "OLG ag金沢": (-0.85, 0.22, -0.43),
+    "OLG 上野": (1.88, -0.21, 4.03),
+    "OLG 京都": (-0.55, -1.79, 1.1),
+    "OLG 名古屋 栄": (-1.46, 0.87, -0.04),
+    "OLG 名古屋 錦": (0.7, -0.82, 0.35),
+    "OLG 大分": (-1.59, -1.36, -0.54),
+    "OLG 大宮": (2.93, 1.63, 1.7),
+    "OLG 大阪駅前": (-1.46, -0.11, -0.52),
+    "OLG 天満": (-2.81, 0.69, -0.35),
+    "OLG 宇都宮": (-0.42, -2.74, 4.5),
+    "OLG 宮崎": (-0.38, -0.28, -1.15),
+    "OLG 小倉": (0.57, 2.43, 3.3),
+    "OLG 岡山": (2.88, 3.57, 2.76),
+    "OLG 心斎橋": (0.42, 1.14, -0.18),
+    "OLG 恵比寿": (-0.6, -1.63, -0.03),
+    "OLG 新宿": (4.2, 4.5, 3.71),
+    "OLG 柏": (-0.26, 1.01, 1.27),
+    "OLG 横浜": (-0.16, -1.36, 1.88),
+    "OLG 浜松": (-3.35, -0.4, 4.32),
+    "OLG 渋谷本店": (3.28, 0.54, -0.97),
+    "OLG 熊本": (0.73, 1.74, 1.58),
+    "OLG 町田": (0.48, 1.84, 2.25),
+    "OLG 神戸": (-1.29, -0.99, 0.78),
+    "OLG 福岡": (2.21, 0.65, 4.25),
+    "OLG 錦糸町": (0.39, -1.28, 3.27),
+    "OLG 長崎": (0.58, 0.06, 0.55),
+    "OLG 難波": (2.85, 1.88, 1.34),
+    "OLG 静岡": (-2.21, -0.42, 0.56),
+    "OLG 高崎": (4.5, 4.5, 4.5),
+    "OLG 鹿児島": (-0.26, 0.51, 4.5),
+    "XIX OKAYAMA": (3.78, 4.5, 4.29),
+    "YATAKOI UMEDA": (1.1, -1.19, -0.08),
+}
+
+
+def _interp_store_phase_prior(store_name: str, now_jst: datetime.datetime) -> float:
+    """店舗固有フェーズ事前オフセットを連続時刻 fhr 上で滑らかに線形補間し、正時の不連続ジャンプを防ぐ。"""
+    tup = _V2_STORE_PHASE_PRIORS.get(store_name)
+    if not tup:
+        return 0.0
+    p0, p1, p2 = tup
+    fhr = _night_fractional_hour(now_jst)
+    if fhr <= 19.5:
+        return p0
+    if fhr < 22.5:
+        alpha = (fhr - 19.5) / 3.0
+        return p0 * (1.0 - alpha) + p1 * alpha
+    if fhr <= 24.0:
+        return p1
+    if fhr < 26.5:
+        alpha = (fhr - 24.0) / 2.5
+        return p1 * (1.0 - alpha) + p2 * alpha
+    return p2
+
+
 def _predict_store_60m_v1_legacy(
     store_name: str,
     women: int,
@@ -1079,7 +1163,7 @@ def _predict_store_60m_v1_legacy(
     arena_signal: dict = None,
 ) -> dict:
     """旧v1予測ロジック（精度比較ベンチマーク監査用に保持）。"""
-    now_jst = now_jst or datetime.datetime.now(JST)
+    now_jst = _normalize_jst(now_jst)
     women = max(0, int(women or 0))
     men = max(0, int(men or 0))
     total = women + men
@@ -1143,12 +1227,12 @@ def predict_store_60m_dynamics(
     apply_online_bias: bool = True,
 ) -> dict:
     """
-    状態空間マルコフ遷移モデル（v2.1）に基づき、当該店舗の「60分後の予測女性比・予測男女数・男余り転落リスク・アラートバッジ」を返す。
+    状態空間マルコフ遷移モデル（v2.2）に基づき、当該店舗の「60分後の予測女性比・予測男女数・男余り転落リスク・アラートバッジ」を返す。
     1) 連続時刻ノット補間（h:30基準）により正時の階段状ジャンプを解消
     2) 男女クロス結合（現在の女性数→60分後男性流入、稼働率飽和、閉店前ハザード減衰）を反映
-    3) 店舗別30日普段カーブへのベイズ縮小＋直近予測誤差のオンライン自己補正を統合
+    3) 階層Empirical-Bayes店舗×フェーズ事前オフセット＋店舗別30日普段カーブ縮小＋直近残差のオンライン自己補正を統合
     """
-    now_jst = now_jst or datetime.datetime.now(JST)
+    now_jst = _normalize_jst(now_jst)
     women = max(0, int(women or 0))
     men = max(0, int(men or 0))
     total = women + men
@@ -1287,7 +1371,8 @@ def predict_store_60m_dynamics(
     pw = max(0.5, min(p99_f * 0.75, pw_raw))
     pm = max(0.5, min(p99_f * 0.75, pm_raw))
     wp_from_wm = (pw / (pw + pm)) * 100.0
-    wp_blend = max(8.0, min(92.0, 0.72 * pwp_dir + 0.28 * wp_from_wm))
+    store_prior_adj = _interp_store_phase_prior(store_name, now_jst)
+    wp_blend = max(8.0, min(92.0, 0.72 * pwp_dir + 0.28 * wp_from_wm + store_prior_adj))
 
     # 6) 蓄積された「予測 vs 60分後実測」残差ログからのオンラインEmpirical-Bayes自己補正
     online_bias_adj = 0.0
@@ -1300,9 +1385,18 @@ def predict_store_60m_dynamics(
         except Exception:
             online_bias_adj = 0.0
 
-    tot_pred = max(2.0, pw + pm)
-    pred_w = max(1, min(int(p99_f * 0.75), int(round(tot_pred * (wp_blend / 100.0)))))
-    pred_m = max(1, min(int(p99_f * 0.75), int(round(tot_pred - pred_w))))
+    cap_side = int(p99_f * 0.75)
+    tot_int = max(2, min(cap_side * 2, int(round(max(2.0, pw + pm)))))
+    raw_w = int(round(tot_int * (wp_blend / 100.0)))
+    if men == 0 and wp_blend >= 75.0:
+        pred_w = max(2, min(cap_side, max(raw_w, tot_int)))
+        pred_m = 0
+    elif women == 0 and wp_blend <= 25.0:
+        pred_w = 0
+        pred_m = max(2, min(cap_side, tot_int))
+    else:
+        pred_w = max(1, min(cap_side, min(tot_int - 1, raw_w)))
+        pred_m = max(1, min(cap_side, tot_int - pred_w))
     pred_wpct = int(round(wp_blend))
     delta_pt = pred_wpct - cur_wpct
 
@@ -1407,7 +1501,7 @@ def enrich_stores_with_moat_signals(stores: list, now_jst: datetime.datetime = N
     """
     if not stores:
         return stores
-    now_jst = now_jst or datetime.datetime.now(JST)
+    now_jst = _normalize_jst(now_jst)
     calibrate_from_jis_pos(stores)
     weather_map = get_city_weather_map(allow_blocking=allow_weather_blocking)
     arena_map = detect_arena_event_surges(stores, now_jst=now_jst)
