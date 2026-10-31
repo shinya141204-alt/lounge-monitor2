@@ -1,3 +1,4 @@
+<div id="aiseki-reading-progress" class="aiseki-reading-progress" aria-hidden="true"></div>
 <div id="aiseki-nav-progress" class="aiseki-nav-progress" aria-hidden="true"></div>
 <div id="aiseki-nav-pill" class="aiseki-nav-pill" role="status" aria-live="polite">
     <span id="aiseki-nav-spinner" class="aiseki-nav-spinner" aria-hidden="true"></span>
@@ -155,6 +156,65 @@
         safetyTimer = setTimeout(resetNavLoading, 3500);
     }
 
+    function initEditorialReadingProgress() {
+        var bar = document.getElementById('aiseki-reading-progress');
+        if (!bar) return;
+        var p = window.location.pathname || '/';
+        if (p === '/' || p === '/columns' || p === '/areas' || p === '/concierge' || p.indexOf('/staff') === 0) return;
+        var articleRoot = document.querySelector('.article-body, .article-content, .article-box, .guide-box, .content-box');
+        if (!articleRoot) return;
+
+        var ticking = false;
+        function updateBar() {
+            ticking = false;
+            var docEl = document.documentElement;
+            var scrollTop = window.pageYOffset || docEl.scrollTop || 0;
+            var maxScroll = (docEl.scrollHeight || 0) - (window.innerHeight || docEl.clientHeight || 1);
+            if (maxScroll <= 240) {
+                bar.classList.remove('is-visible');
+                return;
+            }
+            var ratio = Math.max(0, Math.min(1, scrollTop / maxScroll));
+            if (scrollTop > 48) {
+                bar.classList.add('is-visible');
+            } else {
+                bar.classList.remove('is-visible');
+            }
+            bar.style.transform = 'scaleX(' + ratio.toFixed(4) + ')';
+        }
+        function onScroll() {
+            if (!ticking) {
+                ticking = true;
+                if (window.requestAnimationFrame) {
+                    window.requestAnimationFrame(updateBar);
+                } else {
+                    updateBar();
+                }
+            }
+        }
+        window.addEventListener('scroll', onScroll, { passive: true });
+        window.addEventListener('resize', onScroll, { passive: true });
+        updateBar();
+    }
+
+    function ensureEditorialFont() {
+        try {
+            if (document.querySelector('link[href*="Shippori+Mincho"]')) return;
+            var l = document.createElement('link');
+            l.rel = 'stylesheet';
+            l.href = 'https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@600;700&display=swap';
+            l.media = 'print';
+            l.onload = function() { l.media = 'all'; };
+            document.head.appendChild(l);
+        } catch (e) {}
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initEditorialReadingProgress, { once: true });
+    } else {
+        initEditorialReadingProgress();
+    }
+
     function onWarmInteraction(e) {
         if (IS_STAFF_VIEW) return;
         var a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
@@ -233,8 +293,12 @@
         unlockModalsAndBodyScroll();
     });
 
-    // Ensure Service Worker v64 is registered on subpages too + warm primary tabs during idle on fast connections
+    // Load editorial serif non-blockingly (media="print" -> "all") without waiting for slow third-party window.load
+    ensureEditorialFont();
+
+    // Ensure Service Worker v70 is registered on subpages too + warm primary tabs during idle
     window.addEventListener('load', function() {
+        ensureEditorialFont();
         if ('serviceWorker' in navigator) {
             if (IS_STAFF_VIEW || window.location.pathname.indexOf('/staff') === 0) {
                 try {
@@ -244,7 +308,7 @@
                 } catch (e) {}
             } else if (!window.__swRegistered) {
                 window.__swRegistered = true;
-                navigator.serviceWorker.register('/sw.js?v=69', { updateViaCache: 'none' }).catch(function() {});
+                navigator.serviceWorker.register('/sw.js?v=71', { updateViaCache: 'none' }).catch(function() {});
             }
         }
         if (canBackgroundPrefetch()) {

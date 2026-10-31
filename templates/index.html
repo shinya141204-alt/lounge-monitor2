@@ -135,10 +135,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- Non-render-blocking web font (avoids waiting on Google Fonts at PWA cold launch) -->
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-    <noscript><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet"></noscript>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Shippori+Mincho:wght@600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Shippori+Mincho:wght@600;700&display=swap" rel="stylesheet"></noscript>
     <link rel="stylesheet" href="/static/style.css?v=20261030_5">
-    <link rel="preload" href="/static/app.js?v=20261030_5" as="script">
+    <link rel="preload" href="/static/app.js?v=20261031_1" as="script">
     <script>
         window.APP_CONFIG = {
             isStaff: {{ 'true' if is_staff else 'false' }},
@@ -152,7 +152,7 @@
          crossorigin="anonymous"></script>
     <script src="/static/affiliate_config.js?v=12" defer></script>
     {% endif %}
-    <link rel="stylesheet" href="/static/calm.css?v=20">
+    <link rel="stylesheet" href="/static/calm.css?v=21">
 </head>
 
 <body class="{% if is_staff %}staff-mode{% endif %}">
@@ -228,6 +228,9 @@
             {% endif %}
             <div class="header-top-row">
                 <div class="header-brand-block">
+                    {% if not is_staff %}
+                    <span class="masthead-kicker">REALTIME NIGHTLIFE JOURNAL — 63 LOUNGES</span>
+                    {% endif %}
                     <h1>{% if is_staff and is_master %}相席ナビ マスター管理{% elif is_staff %}相席ナビ 業務モニター{% else %}相席ナビ{% endif %}</h1>
                     <p class="subtitle">全国ラウンジの今わかる人数ランキング</p>
                 </div>
@@ -710,7 +713,7 @@
                 </div>
 
                 <div class="info-bar">
-                    <p>最終更新: <span id="last-update">{% if initial_status and initial_status.timestamp and ' ' in initial_status.timestamp %}{{ initial_status.timestamp.split(' ')[1] }}{% else %}--:--{% endif %}</span> <span style="opacity: 0.75; margin-left: 6px;">（※+数字は直近15分の伸び）</span></p>
+                    <p>最終更新: <span id="last-update">{% if initial_status and initial_status.timestamp and ' ' in initial_status.timestamp %}{{ initial_status.timestamp.split(' ')[1] }}{% else %}--:--{% endif %}</span> <span class="info-bar-subnote" style="margin-left: 6px;">（※+数字は直近15分の伸び）</span></p>
 
                     <div class="live-indicator">
                         <div class="dot"></div>
@@ -2226,7 +2229,7 @@
         window.INITIAL_STATUS_DATA = {{ initial_status | tojson }};
     </script>
     {% endif %}
-    <script src="/static/app.js?v=20261030_5" defer></script>
+    <script src="/static/app.js?v=20261031_1" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
@@ -2242,7 +2245,7 @@
                 }
                 if (window.__swRegistered) return;
                 window.__swRegistered = true;
-                navigator.serviceWorker.register('/sw.js?v=70', { updateViaCache: 'none' })
+                navigator.serviceWorker.register('/sw.js?v=71', { updateViaCache: 'none' })
                     .then(function(reg) {
                         reg.update();
                         document.addEventListener('visibilitychange', function() {

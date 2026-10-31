@@ -16,7 +16,7 @@
             --border: rgba(255, 255, 255, 0.08);
             --border-strong: rgba(255, 255, 255, 0.16);
             --text: #f1efe9;
-            --sub: #9b978f;
+            --sub: #c2bdb3;
             --gold: #c8a46e;
             --gold-soft: rgba(200, 164, 110, 0.16);
             --gold-ink: #f5e6cc;
@@ -53,26 +53,26 @@
             --border: rgba(28, 27, 24, 0.12);
             --border-strong: rgba(28, 27, 24, 0.22);
             --text: #1f1e1b;
-            --sub: #5c574f;
-            --gold: #7d5b24;
+            --sub: #4d4840;
+            --gold: #6b4d1d;
             --gold-soft: rgba(125, 91, 36, 0.12);
-            --gold-ink: #664919;
+            --gold-ink: #5c4014;
             --muted-warm: #584c3b;
-            --green: #1e6b47;
+            --green: #17593b;
             --green-soft: rgba(30, 107, 71, 0.11);
             --green-ink: #17593a;
-            --blue: #3d6282;
+            --blue: #2c5270;
             --blue-soft: rgba(61, 98, 130, 0.11);
             --blue-ink: #2b4d6b;
             --link-ink: #2b5478;
-            --rose: #a84858;
+            --rose: #8c3343;
             --rose-soft: rgba(168, 72, 88, 0.11);
             --rose-ink: #8c3343;
-            --amber: #8f5814;
+            --amber: #75450c;
             --amber-soft: rgba(143, 88, 20, 0.11);
-            --amber-ink: #78480c;
-            --red: #a93838;
-            --err-ink: #9e2f2f;
+            --amber-ink: #75450c;
+            --red: #8f2424;
+            --err-ink: #8f2424;
             --purple: #6b3fa0;
             --purple-soft: rgba(107, 63, 160, 0.10);
             --purple-ink: #532d82;
@@ -342,6 +342,17 @@
             border: 1px solid var(--purple);
             background: var(--purple-soft);
             color: var(--purple-ink);
+            opacity: 1;
+        }
+        .ai-btn.is-inactive {
+            opacity: 1;
+            background: var(--surface-2);
+            border-color: var(--border-strong);
+            color: var(--text);
+            font-weight: 600;
+        }
+        .ai-btn.is-active {
+            opacity: 1;
         }
         .ai-btn:disabled { opacity: 0.55; cursor: wait; }
         .context-chips {
@@ -498,10 +509,13 @@
         }
         .desk-box {
             font-size: 0.77rem;
-            color: var(--sub);
+            color: #d6d2c9;
             background: var(--subtle-bg);
             border-radius: 8px;
             padding: 9px 12px;
+        }
+        body.theme-light .desk-box {
+            color: #3a3630;
         }
         .preview-tabs {
             display: flex;
@@ -877,9 +891,9 @@
                 </div>
                 <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:8px;">
                     <span style="font-size:0.76rem; color:var(--sub); font-weight:700;">優先AIエンジン：</span>
-                    <button type="button" class="ai-btn" onclick="saveColEnginePref('auto')">⚡ 自動（Claude登録時はClaude優先）</button>
-                    <button type="button" class="ai-btn" onclick="saveColEnginePref('gemini')">♊ 上位 Gemini Pro/Flash 優先</button>
-                    <button type="button" class="ai-btn" onclick="saveColEnginePref('claude')">✍️ Claude Opus × 2段階推敲 優先</button>
+                    <button type="button" data-col-engine-pref="auto" class="ai-btn {{ 'is-active' if (not editorial.gemini_status or editorial.gemini_status.engine_pref == 'auto') else 'is-inactive' }}" onclick="saveColEnginePref('auto')">⚡ 自動（Claude登録時はClaude優先）</button>
+                    <button type="button" data-col-engine-pref="gemini" class="ai-btn {{ 'is-active' if (editorial.gemini_status and editorial.gemini_status.engine_pref == 'gemini') else 'is-inactive' }}" onclick="saveColEnginePref('gemini')">♊ 上位 Gemini Pro/Flash 優先</button>
+                    <button type="button" data-col-engine-pref="claude" class="ai-btn {{ 'is-active' if (editorial.gemini_status and editorial.gemini_status.engine_pref == 'claude') else 'is-inactive' }}" onclick="saveColEnginePref('claude')">✍️ Claude Opus × 2段階推敲 優先</button>
                 </div>
                 <div class="custom-topic-row" style="margin-bottom:6px;">
                     <input type="password" id="gemini-api-key-input" class="topic-input" placeholder="Google Geminiキー: AIzaSy... / AQ.... {% if editorial.gemini_status and editorial.gemini_status.gemini_configured %}（現在: {{ editorial.gemini_status.gemini_masked_key }}）{% endif %}" autocomplete="off">
@@ -1548,6 +1562,11 @@
                     body: JSON.stringify({action: "set_pref", engine_pref: pref})
                 }, 20000);
                 if (data && data.ok) {
+                    document.querySelectorAll("[data-col-engine-pref]").forEach(function(btn) {
+                        var active = btn.getAttribute("data-col-engine-pref") === pref;
+                        btn.classList.toggle("is-active", active);
+                        btn.classList.toggle("is-inactive", !active);
+                    });
                     if (msg) {
                         msg.style.color = "var(--green-ink)";
                         msg.innerText = "✅ " + data.message;

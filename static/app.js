@@ -730,6 +730,9 @@
                 }
             } catch (e) {}
             applyThemeClasses(currentTheme);
+            if (typeof refreshActiveChartsTheme === 'function') {
+                refreshActiveChartsTheme();
+            }
             if (notify && typeof showRefreshToast === 'function') {
                 showRefreshToast(`表示切替: ${THEME_LABELS[currentTheme]}`);
             }
@@ -1455,60 +1458,80 @@
             return '';
         }
 
+        function normalizePublicBrandLabel(rawBrand, rawStoreName = '') {
+            const sn = String(rawStoreName || '').trim();
+            if (/^(?:OLG|ORIENTAL)\s+ag/i.test(sn) || /^ag(?:\s+|(?=[^a-zA-Z0-9])|$)/i.test(sn)) {
+                return 'ag';
+            }
+            const b = String(rawBrand || '').trim();
+            const bu = b.toUpperCase();
+            if (bu === 'OLG' || bu === 'ORIENTAL' || b === 'オリエンタル') {
+                return 'オリエンタルラウンジ';
+            }
+            if (bu === 'YATAKOI') {
+                return 'ヤタコイ';
+            }
+            if (bu === 'AG') {
+                return 'ag';
+            }
+            return b;
+        }
+
         function detectBrandInfo(storeOrName) {
-            const rawSource = (typeof storeOrName === 'object' ? (storeOrName.source || '') : '').toUpperCase();
-            const name = typeof storeOrName === 'object' ? (storeOrName.name || '') : String(storeOrName || '');
-            const cacheKey = `${rawSource}|${name}`;
+            const rawSource = (typeof storeOrName === 'object' ? (storeOrName.source || '') : '').toUpperCase().trim();
+            const name = typeof storeOrName === 'object' ? String(storeOrName.name || '') : String(storeOrName || '');
+            const trimmedName = name.trim();
+            const cacheKey = `${rawSource}|${trimmedName}`;
             if (_brandInfoCache[cacheKey]) {
                 return _brandInfoCache[cacheKey];
             }
             let code = 'OTHER';
             let cls = 'brand-other';
-            let stripped = name;
+            let stripped = trimmedName;
 
-            if (rawSource === 'ORIENTAL' || name.startsWith('OLG ') || name.startsWith('ag ') || name.startsWith('オリエンタルラウンジ')) {
-                if (/^OLG\s+ag/i.test(name) || /^ag\s*/i.test(name)) {
+            if (rawSource === 'ORIENTAL' || rawSource === 'OLG' || /^(?:OLG|ORIENTAL)(?:\s+|$)/i.test(trimmedName) || /^ag(?:\s+|(?=[^a-zA-Z0-9])|$)/i.test(trimmedName) || trimmedName.startsWith('オリエンタルラウンジ')) {
+                if (/^(?:OLG|ORIENTAL)\s+ag/i.test(trimmedName) || /^ag(?:\s+|(?=[^a-zA-Z0-9])|$)/i.test(trimmedName)) {
                     code = 'ag';
                     cls = 'brand-ag';
-                    stripped = name.replace(/^OLG\s+ag\s*/i, '').replace(/^ag\s*/i, '');
+                    stripped = trimmedName.replace(/^(?:OLG|ORIENTAL)\s+ag\s*/i, '').replace(/^ag\s*/i, '');
                 } else {
                     code = 'オリエンタルラウンジ';
                     cls = 'brand-olg';
-                    stripped = name.replace(/^OLG\s+/i, '').replace(/^オリエンタルラウンジ\s*/i, '');
+                    stripped = trimmedName.replace(/^(?:OLG|ORIENTAL)(?:\s+|$)/i, '').replace(/^オリエンタルラウンジ\s*/i, '');
                 }
-            } else if (rawSource === 'JIS' || name.startsWith('JIS ')) {
+            } else if (rawSource === 'JIS' || /^JIS(?:\s+|$)/i.test(trimmedName)) {
                 code = 'JIS';
                 cls = 'brand-jis';
-                stripped = name.replace(/^JIS\s+/i, '');
-            } else if (rawSource === 'ASOBIBAR' || name.startsWith('ASOBIBAR ')) {
+                stripped = trimmedName.replace(/^JIS(?:\s+|$)/i, '');
+            } else if (rawSource === 'ASOBIBAR' || /^ASOBIBAR(?:\s+|$)/i.test(trimmedName)) {
                 code = 'ASOBIBAR';
                 cls = 'brand-asobibar';
-                stripped = name.replace(/^ASOBIBAR\s+/i, '');
-            } else if (rawSource === 'XIX' || name.startsWith('XIX ')) {
+                stripped = trimmedName.replace(/^ASOBIBAR(?:\s+|$)/i, '');
+            } else if (rawSource === 'XIX' || /^XIX(?:\s+|$)/i.test(trimmedName)) {
                 code = 'XIX';
                 cls = 'brand-xix';
-                stripped = name.replace(/^XIX\s+/i, '');
-            } else if (rawSource === 'ALFA' || name.includes('ALFA')) {
+                stripped = trimmedName.replace(/^XIX(?:\s+|$)/i, '');
+            } else if (rawSource === 'ALFA' || /ALFA/i.test(trimmedName)) {
                 code = 'ALFA';
                 cls = 'brand-alfa';
-                stripped = name.replace(/^ALFA\s+/i, '');
-            } else if (rawSource === 'YATAKOI' || name.includes('ヤタコイ') || name.includes('YATAKOI')) {
+                stripped = trimmedName.replace(/^ALFA(?:\s+|$)/i, '');
+            } else if (rawSource === 'YATAKOI' || trimmedName.includes('ヤタコイ') || /YATAKOI/i.test(trimmedName)) {
                 code = 'ヤタコイ';
                 cls = 'brand-yatakoi';
-                stripped = name.replace(/^ヤタコイ\s+|^YATAKOI\s+/i, '');
-            } else if (rawSource === 'CLOVERS' || name.includes('CLOVERS')) {
+                stripped = trimmedName.replace(/^(?:ヤタコイ|YATAKOI)(?:\s+|$)/i, '');
+            } else if (rawSource === 'CLOVERS' || /CLOVERS/i.test(trimmedName)) {
                 code = 'CLOVERS';
                 cls = 'brand-clovers';
-                stripped = name.replace(/^CLOVERS\s+/i, '');
+                stripped = trimmedName.replace(/^CLOVERS(?:\s+|$)/i, '');
             } else {
-                const prefix = name.split(' ')[0];
-                code = prefix.substring(0, 6);
+                const prefix = trimmedName.split(/\s+/)[0] || '';
+                code = normalizePublicBrandLabel(prefix).substring(0, 12);
             }
 
-            const cleanName = localizeStoreName(stripped || name);
+            const cleanName = stripped ? localizeStoreName(stripped) : code;
             const ssrArea = (typeof storeOrName === 'object' && storeOrName && storeOrName.ssr_area) ? storeOrName.ssr_area : '';
-            const areaLabel = ssrArea || detectAreaLabel(name, cleanName);
-            const fullDisplayTitle = `${code} ${cleanName}`;
+            const areaLabel = ssrArea || detectAreaLabel(trimmedName, cleanName);
+            const fullDisplayTitle = (!cleanName || cleanName === code) ? code : `${code} ${cleanName}`;
             const result = { code, cls, cleanName, areaLabel, fullDisplayTitle };
             _brandInfoCache[cacheKey] = result;
             return result;
@@ -3086,9 +3109,9 @@
             const rawKey = String(storeName || '').trim();
             const master = getStoreMasterInfo(rawKey);
             const storeAnchor = (master && master.map_anchor) || getFullBrandStoreQuery(bInfo);
-            const brandLabel = bInfo.code === 'OLG' ? 'オリエンタルラウンジ' : bInfo.code;
+            const brandLabel = normalizePublicBrandLabel(bInfo.code, rawKey);
             const cleanName = bInfo.cleanName || '';
-            const fullStoreHeading = `${brandLabel} ${cleanName}`;
+            const fullStoreHeading = (cleanName && cleanName !== brandLabel) ? `${brandLabel} ${cleanName}` : brandLabel;
 
             if (headingEl) {
                 headingEl.textContent = `🥂 ${fullStoreHeading} 近くの2軒目＆切り出しTips`;
@@ -3624,17 +3647,68 @@
         function getChartThemeColors() {
             const isLight = document.body.classList.contains('theme-light');
             return {
-                textColor: isLight ? '#1f1e1b' : '#ebe8e3',
-                subTextColor: isLight ? '#6b665e' : '#9b978f',
-                gridColor: isLight ? 'rgba(28, 27, 24, 0.08)' : 'rgba(255, 255, 255, 0.08)',
-                axisLineColor: isLight ? 'rgba(28, 27, 24, 0.15)' : 'rgba(255, 255, 255, 0.15)',
-                womenBar: isLight ? '#c98994' : 'rgba(216, 161, 170, 0.85)',
-                menBar: isLight ? '#7d9cb8' : 'rgba(147, 177, 201, 0.85)',
-                womenLine: isLight ? '#b05a68' : '#d8a1aa',
-                womenFill: isLight ? 'rgba(176, 90, 104, 0.15)' : 'rgba(216, 161, 170, 0.16)',
-                menLine: isLight ? '#4a6f8f' : '#93b1c9',
-                menFill: isLight ? 'rgba(74, 111, 143, 0.15)' : 'rgba(147, 177, 201, 0.16)'
+                textColor: isLight ? '#1b1916' : '#f0ede8',
+                subTextColor: isLight ? '#4d4840' : '#b5b0a6',
+                gridColor: isLight ? 'rgba(28, 26, 23, 0.11)' : 'rgba(235, 232, 227, 0.11)',
+                axisLineColor: isLight ? 'rgba(28, 26, 23, 0.22)' : 'rgba(235, 232, 227, 0.22)',
+                womenBar: isLight ? '#b85b6c' : 'rgba(223, 166, 176, 0.88)',
+                menBar: isLight ? '#527898' : 'rgba(152, 183, 208, 0.88)',
+                womenLine: isLight ? '#983849' : '#dfa6b0',
+                womenFill: isLight ? 'rgba(152, 56, 73, 0.15)' : 'rgba(223, 166, 176, 0.17)',
+                menLine: isLight ? '#2d5373' : '#98b7d0',
+                menFill: isLight ? 'rgba(45, 83, 115, 0.15)' : 'rgba(152, 183, 208, 0.17)'
             };
+        }
+
+        function refreshActiveChartsTheme() {
+            const th = getChartThemeColors();
+            const activeCharts = [
+                comparisonChartInstance,
+                weekdayAnalysisChartInstance,
+                hourlyWeekdayChartInstance,
+                dailyChartInstance
+            ];
+            activeCharts.forEach((ch) => {
+                if (!ch || !ch.options) return;
+                try {
+                    if (ch.options.scales) {
+                        Object.keys(ch.options.scales).forEach((axisKey) => {
+                            const scale = ch.options.scales[axisKey];
+                            if (!scale) return;
+                            if (scale.ticks) {
+                                scale.ticks.color = axisKey === 'x' ? th.textColor : th.subTextColor;
+                            }
+                            if (scale.grid && scale.grid.display !== false) {
+                                scale.grid.color = th.gridColor;
+                            }
+                        });
+                    }
+                    if (ch.options.plugins && ch.options.plugins.legend && ch.options.plugins.legend.labels) {
+                        ch.options.plugins.legend.labels.color = th.textColor;
+                    }
+                    if (Array.isArray(ch.data && ch.data.datasets)) {
+                        ch.data.datasets.forEach((ds, idx) => {
+                            const isLine = ch.config && ch.config.type === 'line';
+                            if (idx === 0) {
+                                if (isLine) {
+                                    ds.borderColor = th.womenLine;
+                                    ds.backgroundColor = th.womenFill;
+                                } else {
+                                    ds.backgroundColor = th.womenBar;
+                                }
+                            } else if (idx === 1) {
+                                if (isLine) {
+                                    ds.borderColor = th.menLine;
+                                    ds.backgroundColor = th.menFill;
+                                } else {
+                                    ds.backgroundColor = th.menBar;
+                                }
+                            }
+                        });
+                    }
+                    ch.update('none');
+                } catch (e) {}
+            });
         }
 
         // --- Robust Chart.js Loader (self-hosted /static/chart.min.js, 100% immune to adblockers) ---
@@ -3725,7 +3799,9 @@
 
             const brandTotals = {};
             storesToCompare.forEach(store => {
-                const brand = (store.source || 'Other').toUpperCase();
+                const bInfo = detectBrandInfo(store);
+                const rawCode = (bInfo && bInfo.code) ? bInfo.code : (store.source || 'OTHER').toUpperCase();
+                const brand = normalizePublicBrandLabel(rawCode, store.name);
                 if (!brandTotals[brand]) {
                     brandTotals[brand] = { women: 0, men: 0, count: 0 };
                 }
@@ -3750,7 +3826,7 @@
                             <div class="brand-summary-card">
                                 <div class="brand-card-title">
                                     <span>${escapeHtml(b)}</span>
-                                    <span style="font-size:0.7rem; font-weight:normal; opacity:0.7;">(${info.count}店舗)</span>
+                                    <span class="brand-card-count">(${info.count}店舗)</span>
                                 </div>
                                 <div class="brand-card-counts">
                                     <span class="w-count">♀ ${info.women}</span>
@@ -3776,7 +3852,7 @@
                 return;
             }
 
-            const labels = brands.map(b => `${b} (${brandTotals[b].count}店舗)`);
+            const labels = brands.map(b => [b, `(${brandTotals[b].count}店舗)`]);
             const womenData = brands.map(b => brandTotals[b].women);
             const menData = brands.map(b => brandTotals[b].men);
 
@@ -3812,12 +3888,13 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    layout: { padding: { left: 6, right: 6, bottom: 4 } },
                     animation: { duration: 250 },
                     scales: {
                         x: {
                             stacked: false,
                             grid: { display: false },
-                            ticks: { color: th.textColor, font: { weight: '600' } }
+                            ticks: { color: th.textColor, font: { size: 10, weight: '600' }, maxRotation: 35, minRotation: 0 }
                         },
                         y: {
                             stacked: false,
@@ -3870,13 +3947,25 @@
                             <th>平均 男性</th>
                         </tr>
                 `;
-                for (const [brand, stats] of Object.entries(report.by_brand)) {
+                const mergedByBrand = {};
+                for (const [brand, stats] of Object.entries(report.by_brand || {})) {
+                    const dispBrand = normalizePublicBrandLabel(brand);
+                    if (!mergedByBrand[dispBrand]) {
+                        mergedByBrand[dispBrand] = { store_count: 0, total_avg_women: 0, total_avg_men: 0 };
+                    }
+                    mergedByBrand[dispBrand].store_count += Number(stats.store_count || 0);
+                    mergedByBrand[dispBrand].total_avg_women += Number(stats.total_avg_women || 0);
+                    mergedByBrand[dispBrand].total_avg_men += Number(stats.total_avg_men || 0);
+                }
+                for (const [dispBrand, stats] of Object.entries(mergedByBrand)) {
+                    const avgW = Math.round(stats.total_avg_women * 10) / 10;
+                    const avgM = Math.round(stats.total_avg_men * 10) / 10;
                     html += `
                         <tr>
-                            <td>${escapeHtml(brand)}</td>
+                            <td>${escapeHtml(dispBrand)}</td>
                             <td>${Number(stats.store_count)}</td>
-                            <td class="rep-val-women">${Number(stats.total_avg_women)}</td>
-                            <td class="rep-val-men">${Number(stats.total_avg_men)}</td>
+                            <td class="rep-val-women">${avgW}</td>
+                            <td class="rep-val-men">${avgM}</td>
                         </tr>
                     `;
                 }
@@ -3893,13 +3982,17 @@
                             <th>稼働日</th>
                         </tr>
                 `;
-                report.stores.forEach(store => {
+                (report.stores || []).forEach(store => {
+                    const rawName = String(store.name || '').trim();
+                    const bInfo = detectBrandInfo({ name: rawName, source: store.brand || '' });
+                    const pubName = bInfo.fullDisplayTitle || rawName;
+                    const pubBrand = normalizePublicBrandLabel(bInfo.code || store.brand, rawName);
                     html += `
                         <tr>
-                            <td>${escapeHtml(store.name)}</td>
-                            <td>${escapeHtml(store.brand)}</td>
+                            <td>${escapeHtml(pubName)}</td>
+                            <td>${escapeHtml(pubBrand)}</td>
                             <td class="rep-val-women">${Number(store.avg_women)}</td>
-                            <td class="rep-val-men">${Number(store.avg_men)}</td>
+                            <td class="rep-val-men">${Number(store.total_avg_men !== undefined ? store.total_avg_men : store.avg_men)}</td>
                             <td>${Number(store.max_women)}</td>
                             <td>${escapeHtml(store.peak_hour)}</td>
                             <td>${Number(store.days_with_data)}日</td>

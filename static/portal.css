@@ -5,16 +5,36 @@
    - 各ページでは /static/style.css より後、ページ内 <style> より前に読み込むこと
    ========================================================================== */
 
-/* ---- ポータル共通トップヘッダー＆ブランドリンク（縦割れ・未装飾リンク防止） ---- */
+/* ---- ポータル共通ラッパー＆トップヘッダー（スマホ横はみ出し防止・雑誌マストヘッド二重罫線＆フォリオ） ---- */
+.portal-wrap,
+.article-container,
+.guide-container {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
 .portal-top-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     flex-wrap: wrap;
-    gap: 10px 12px;
-    padding-bottom: 14px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    gap: 8px 12px;
+    padding-bottom: 13px;
+    border-bottom: 3px double rgba(200, 164, 110, 0.34);
     margin-bottom: 14px;
+}
+
+.portal-top-header::before {
+    content: "— REALTIME NIGHTLIFE JOURNAL";
+    flex: 0 0 100%;
+    font-family: "Outfit", -apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif;
+    font-size: 0.61rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    color: #e3c898;
+    opacity: 0.9;
+    margin-bottom: -4px;
 }
 
 .portal-brand-link {
@@ -28,10 +48,11 @@
 }
 
 .portal-brand-title {
-    font-size: 1.42rem;
-    font-weight: 800;
-    color: #ebe8e3;
-    letter-spacing: 0.05em;
+    font-family: "Shippori Mincho", "Hiragino Mincho ProN", "Yu Mincho", "YuMincho", Georgia, serif;
+    font-size: 1.44rem;
+    font-weight: 700;
+    color: #f0ede8;
+    letter-spacing: 0.06em;
     margin: 0;
     white-space: nowrap;
     flex-shrink: 0;
@@ -40,7 +61,7 @@
 .portal-brand-sub {
     font-size: 0.78rem;
     font-weight: 500;
-    color: #9b978f;
+    color: #b5b0a6;
     line-height: 1.4;
 }
 
@@ -86,6 +107,24 @@
     display: none;
 }
 
+@media (min-width: 860px) {
+    .portal-global-nav-row {
+        align-items: flex-start;
+    }
+    .portal-global-nav,
+    .portal-global-nav-row > .portal-global-nav {
+        flex-wrap: wrap !important;
+        overflow-x: visible !important;
+        gap: 7px !important;
+    }
+    .portal-global-nav > :first-child {
+        margin-left: 0 !important;
+    }
+    .portal-global-nav > :last-child {
+        margin-right: 0 !important;
+    }
+}
+
 .portal-nav-item {
     display: inline-flex;
     align-items: center;
@@ -96,9 +135,9 @@
     font-weight: 600;
     letter-spacing: 0.02em;
     text-decoration: none;
-    color: #ebe8e3;
-    background: #16171c;
-    border: 1px solid rgba(255, 255, 255, 0.13);
+    color: #f0ede8;
+    background: #16181f;
+    border: 1px solid rgba(235, 232, 227, 0.22);
     white-space: nowrap;
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
@@ -106,9 +145,9 @@
 }
 
 .portal-nav-item:hover {
-    background: #1b1c22;
-    border-color: rgba(200, 164, 110, 0.45);
-    color: #f1e3cb;
+    background: #1f222c;
+    border-color: rgba(200, 164, 110, 0.52);
+    color: #f5ebd8;
 }
 
 .portal-nav-item:active {
@@ -142,26 +181,26 @@
 }
 
 .portal-nav-item.active {
-    background: rgba(200, 164, 110, 0.14);
-    border-color: rgba(200, 164, 110, 0.55);
-    color: #f1e3cb;
+    background: rgba(200, 164, 110, 0.16);
+    border-color: rgba(200, 164, 110, 0.62);
+    color: #f3e6cf;
 }
 
 /* ---- 公式サイト確認・注意事項ボックス（全ページ共通のシックな注記枠） ---- */
 .official-notice-box {
-    background: #16171c;
-    border: 1px solid rgba(255, 255, 255, 0.09);
-    border-left: 2px solid rgba(200, 164, 110, 0.65);
+    background: #16181f;
+    border: 1px solid rgba(235, 232, 227, 0.14);
+    border-left: 3px solid rgba(200, 164, 110, 0.72);
     border-radius: 10px;
     padding: 13px 16px;
     margin: 14px 0 20px;
     font-size: 0.79rem;
-    line-height: 1.65;
-    color: #b5b0a6;
+    line-height: 1.68;
+    color: #c7c2b8;
 }
 
 .official-notice-box strong {
-    color: #ebe8e3;
+    color: #f0ede8;
     font-weight: 600;
 }
 
@@ -169,7 +208,7 @@
     font-size: 0.78rem;
     font-weight: 700;
     letter-spacing: 0.04em;
-    color: #c8a46e;
+    color: #e3c898;
     margin-bottom: 4px;
 }
 
@@ -179,9 +218,9 @@
     gap: 3px;
     font-size: 0.72rem;
     font-weight: 600;
-    color: #c8a46e;
+    color: #e3c898;
     text-decoration: none;
-    border-bottom: 1px solid rgba(200, 164, 110, 0.35);
+    border-bottom: 1px solid rgba(200, 164, 110, 0.42);
     padding-bottom: 1px;
     transition: opacity 0.15s ease;
 }
@@ -194,8 +233,8 @@
 .portal-footer {
     margin-top: 50px;
     padding-top: 28px;
-    border-top: 1px solid rgba(255, 255, 255, 0.09);
-    color: #9b978f;
+    border-top: 3px double rgba(235, 232, 227, 0.16);
+    color: #b5b0a6;
     font-size: 0.81rem;
 }
 
@@ -207,26 +246,26 @@
 }
 
 .portal-footer-links a {
-    color: #c7c3bc;
+    color: #ddd8cf;
     text-decoration: none;
     transition: color 0.15s ease;
 }
 
 .portal-footer-links a:hover {
-    color: #c8a46e;
+    color: #e3c898;
 }
 
 .portal-footer-disclaimer {
     margin: 0 0 10px;
     font-size: 0.75rem;
-    line-height: 1.6;
-    color: #858179;
+    line-height: 1.65;
+    color: #a39e94;
 }
 
 .portal-footer-sns {
     margin: 12px 0 10px;
     font-size: 0.78rem;
-    color: #9a968e;
+    color: #b5b0a6;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -235,11 +274,11 @@
 }
 
 .portal-footer-sns-label {
-    opacity: 0.9;
+    opacity: 0.92;
 }
 
 .portal-footer-sns a {
-    color: #dfc496;
+    color: #e3c898;
     text-decoration: none;
     font-weight: 600;
 }
@@ -252,48 +291,85 @@
 .portal-footer--guide {
     margin-top: 48px;
     padding-top: 24px;
-    border-top: 1px solid rgba(255, 255, 255, 0.09);
+    border-top: 3px double rgba(235, 232, 227, 0.16);
     text-align: center;
     font-size: 0.79rem;
-    color: #9b978f;
+    color: #b5b0a6;
 }
 
 .portal-footer--guide a {
-    color: #c7c3bc;
+    color: #ddd8cf;
     text-decoration: none;
     margin: 0 8px;
 }
 
 .portal-footer--guide a:hover {
-    color: #c8a46e;
+    color: #e3c898;
 }
 
-/* ---- ライトモード（body.theme-light）共通ヘッダー・フッター補正 ---- */
+/* ---- ライトモード（body.theme-light）共通ヘッダー・注記枠・フッター補正 ---- */
 body.theme-light .portal-top-header {
-    border-bottom-color: rgba(28, 27, 24, 0.12);
+    border-bottom: 3px double rgba(110, 79, 35, 0.36);
+}
+
+body.theme-light .portal-top-header::before {
+    color: #6e4f23;
 }
 
 body.theme-light .portal-brand-sub {
-    color: #58534b;
+    color: #4d4840;
+}
+
+body.theme-light .official-notice-box {
+    background: #ffffff;
+    border-color: rgba(28, 26, 23, 0.16);
+    border-left-color: #6e4f23;
+    color: #3a3630;
+}
+
+body.theme-light .official-notice-box strong {
+    color: #1b1916;
+}
+
+body.theme-light .official-notice-title,
+body.theme-light .official-ext-link {
+    color: #6e4f23;
+}
+
+body.theme-light .portal-footer {
+    border-top-color: rgba(28, 26, 23, 0.2);
+    color: #4d4840;
+}
+
+body.theme-light .portal-footer-links a {
+    color: #1b1916;
+}
+
+body.theme-light .portal-footer-links a:hover {
+    color: #6e4f23;
+}
+
+body.theme-light .portal-footer-disclaimer {
+    color: #544e45;
 }
 
 body.theme-light .portal-footer-sns {
-    color: #58534b;
+    color: #4d4840;
 }
 
 body.theme-light .portal-footer-sns a {
-    color: #755528;
+    color: #6e4f23;
 }
 
 body.theme-light .portal-footer--guide {
-    border-top-color: rgba(28, 27, 24, 0.16);
-    color: #58534b;
+    border-top-color: rgba(28, 26, 23, 0.2);
+    color: #4d4840;
 }
 
 body.theme-light .portal-footer--guide a {
-    color: #1f1e1b;
+    color: #1b1916;
 }
 
 body.theme-light .portal-footer--guide a:hover {
-    color: #755528;
+    color: #6e4f23;
 }

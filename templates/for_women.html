@@ -87,53 +87,53 @@
 
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=2">
     <link rel="apple-touch-icon" href="/static/icon.png?v=2">
-    <link rel="stylesheet" href="/static/portal.css?v=9">
+    <link rel="stylesheet" href="/static/portal.css?v=10">
     <style>
-        /* デフォルト（女性向けウォームアイボリー×ローズ調ライトトーン） */
+        /* デフォルト（女性向けローズリネン地×純白カード紙面の高級サロン誌トーン） */
         :root {
-            --bg-page: #f7f3f1;
-            --card-bg: #fdfbfa;
-            --card-bg-2: #f1e9e5;
-            --text-main: #282124;
-            --text-body: #3b3135;
-            --heading-color: #1e171a;
-            --text-sub: #6d5c62;
-            --rose: #a84960;
-            --rose-strong: #8b3349;
-            --rose-soft: rgba(186, 93, 117, 0.12);
-            --rose-border: rgba(186, 93, 117, 0.34);
-            --gold-strong: #7c5624;
-            --gold-soft: rgba(168, 124, 62, 0.13);
-            --mint-strong: #13684a;
-            --mint-soft: rgba(16, 150, 104, 0.12);
-            --mint-border: rgba(16, 150, 104, 0.34);
-            --men-strong: #2d5c88;
-            --border-subtle: rgba(110, 62, 76, 0.12);
-            --border-outline: rgba(110, 62, 76, 0.24);
-            --hero-grad: linear-gradient(155deg, rgba(216, 141, 158, 0.18) 0%, #fdfbfa 65%);
+            --bg-page: #f2eaeb;
+            --card-bg: #ffffff;
+            --card-bg-2: #e8dcde;
+            --text-main: #221b1d;
+            --text-body: #32282b;
+            --heading-color: #1a1315;
+            --text-sub: #544146;
+            --rose: #9a3950;
+            --rose-strong: #822b40;
+            --rose-soft: rgba(154, 57, 80, 0.12);
+            --rose-border: rgba(154, 57, 80, 0.36);
+            --gold-strong: #6e4f23;
+            --gold-soft: rgba(110, 79, 35, 0.12);
+            --mint-strong: #0f5f43;
+            --mint-soft: rgba(15, 95, 67, 0.11);
+            --mint-border: rgba(15, 95, 67, 0.36);
+            --men-strong: #2b5478;
+            --border-subtle: rgba(120, 62, 78, 0.16);
+            --border-outline: rgba(120, 62, 78, 0.28);
+            --hero-grad: linear-gradient(155deg, rgba(216, 141, 158, 0.18) 0%, #ffffff 68%);
         }
         /* 手動でダーク表示を選んだ場合のフォールバック */
         body:not(.theme-light) {
-            --bg-page: #0f1014;
-            --card-bg: #16171d;
-            --card-bg-2: #1d1e26;
+            --bg-page: #0c0d10;
+            --card-bg: #16181f;
+            --card-bg-2: #1f222c;
             --text-main: #f2eef0;
-            --text-body: #dfd7dc;
+            --text-body: #e4dce0;
             --heading-color: #ffffff;
-            --text-sub: #a89fa5;
-            --rose: #dfa3b0;
+            --text-sub: #b8afb4;
+            --rose: #e3a7b4;
             --rose-strong: #f6dce2;
-            --rose-soft: rgba(223, 163, 176, 0.14);
-            --rose-border: rgba(223, 163, 176, 0.38);
-            --gold-strong: #f3d7a2;
-            --gold-soft: rgba(200, 164, 110, 0.14);
+            --rose-soft: rgba(227, 167, 180, 0.15);
+            --rose-border: rgba(227, 167, 180, 0.42);
+            --gold-strong: #e3c898;
+            --gold-soft: rgba(200, 164, 110, 0.16);
             --mint-strong: #cbf3de;
-            --mint-soft: rgba(123, 196, 159, 0.15);
-            --mint-border: rgba(123, 196, 159, 0.42);
-            --men-strong: #93c5fd;
-            --border-subtle: rgba(255, 255, 255, 0.09);
-            --border-outline: rgba(255, 255, 255, 0.18);
-            --hero-grad: linear-gradient(155deg, rgba(223, 163, 176, 0.12) 0%, #16171d 60%);
+            --mint-soft: rgba(123, 196, 159, 0.16);
+            --mint-border: rgba(123, 196, 159, 0.44);
+            --men-strong: #98b7d0;
+            --border-subtle: rgba(235, 232, 227, 0.15);
+            --border-outline: rgba(235, 232, 227, 0.25);
+            --hero-grad: linear-gradient(155deg, rgba(227, 167, 180, 0.14) 0%, #16181f 62%);
         }
         * { box-sizing: border-box; }
         body {
@@ -155,14 +155,15 @@
             justify-content: space-between;
             flex-wrap: wrap;
             gap: 10px;
-            padding-bottom: 12px;
-            border-bottom: 1px solid var(--border-subtle);
+            padding-bottom: 13px;
+            border-bottom: 3px double var(--border-outline);
             margin-bottom: 14px;
         }
         .brand-link {
+            font-family: "Shippori Mincho", "Hiragino Mincho ProN", "Yu Mincho", Georgia, serif;
             text-decoration: none;
             color: var(--heading-color);
-            font-weight: 800;
+            font-weight: 700;
             font-size: 1.25rem;
             display: flex;
             align-items: baseline;
@@ -216,13 +217,13 @@
             gap: 6px;
             padding: 10px 18px;
             border-radius: 999px;
-            background: linear-gradient(135deg, #c76e83, #a84960);
+            background: linear-gradient(135deg, #a63d57, #852840);
             color: #fff !important;
             font-weight: 800;
             font-size: 0.86rem;
             text-decoration: none;
             border: none;
-            box-shadow: 0 2px 10px rgba(168, 73, 96, 0.18);
+            box-shadow: 0 2px 10px rgba(133, 40, 64, 0.2);
         }
         .btn-outline {
             display: inline-flex;
@@ -492,7 +493,7 @@
             margin: 0;
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=20">
+    <link rel="stylesheet" href="/static/calm.css?v=21">
 </head>
 
 <body class="theme-light audience-women">

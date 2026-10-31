@@ -23,19 +23,19 @@
     <link rel="apple-touch-icon" href="/static/icon.png?v=2">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-    <noscript><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet"></noscript>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Shippori+Mincho:wght@600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Shippori+Mincho:wght@600;700&display=swap" rel="stylesheet"></noscript>
 
-    <link rel="stylesheet" href="/static/portal.css?v=9">
+    <link rel="stylesheet" href="/static/portal.css?v=10">
     <style>
         :root {
-            --bg-dark: #0f1014;
-            --card-bg: #16171c;
-            --text-main: #ebe8e3;
-            --text-sub: #9a968e;
+            --bg-dark: #0c0d10;
+            --card-bg: #16181f;
+            --text-main: #f0ede8;
+            --text-sub: #b5b0a6;
             --accent-gold: #c8a46e;
-            --accent-text: #dfc496;
-            --border-subtle: rgba(255, 255, 255, 0.08);
+            --accent-text: #e3c898;
+            --border-subtle: rgba(235, 232, 227, 0.15);
         }
         * { box-sizing: border-box; }
         body {
@@ -242,7 +242,7 @@
         }
         .area-mini-name { font-size: 0.86rem; font-weight: 600; }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=20">
+    <link rel="stylesheet" href="/static/calm.css?v=21">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -307,7 +307,14 @@
         {% endif %}
 
         <h2 class="sec-title">定番の特集・比較コラム</h2>
-        <div class="articles-grid">
+        <div class="columns-filter-bar" role="tablist" aria-label="コラムのテーマ絞り込み">
+            <span class="columns-filter-label">INDEX</span>
+            <button type="button" class="col-cat-btn active" data-col-cat="all" role="tab" aria-selected="true">すべて <span class="col-cat-count" data-count-for="all"></span></button>
+            <button type="button" class="col-cat-btn" data-col-cat="data" role="tab" aria-selected="false">データ検証・白書 <span class="col-cat-count" data-count-for="data"></span></button>
+            <button type="button" class="col-cat-btn" data-col-cat="strategy" role="tab" aria-selected="false">エリア・ブランド・時間帯 <span class="col-cat-count" data-count-for="strategy"></span></button>
+            <button type="button" class="col-cat-btn" data-col-cat="manner" role="tab" aria-selected="false">会話・2軒目・身だしなみ <span class="col-cat-count" data-count-for="manner"></span></button>
+        </div>
+        <div class="articles-grid" id="columns-articles-grid">
             <!-- NEW Article: Friday/Saturday 22:00 Crowd-Rush Paradox & 70% Buffer -->
             <a href="/guide/crowd-rush-paradox" class="article-card">
                 <div class="article-thumb-wrap">
@@ -635,6 +642,55 @@
 
         {% include '_portal_footer.html' %}
     </div>
+    <script>
+    (function() {
+        var grid = document.getElementById('columns-articles-grid');
+        if (!grid) return;
+        var cards = Array.prototype.slice.call(grid.querySelectorAll('.article-card'));
+        var btns = Array.prototype.slice.call(document.querySelectorAll('.col-cat-btn[data-col-cat]'));
+        if (!cards.length || !btns.length) return;
+
+        function classifyCard(card) {
+            var href = (card.getAttribute('href') || '').toLowerCase();
+            var text = (card.textContent || '');
+            if (href.indexOf('second-venue') !== -1 || href.indexOf('first-10-minutes') !== -1 || href.indexOf('grooming') !== -1 || href.indexOf('for-women') !== -1 || href === '/guide' || href.indexOf('solo-vs-pair') !== -1) {
+                return 'manner';
+            }
+            if (href.indexOf('paradox') !== -1 || href.indexOf('cliff') !== -1 || href.indexOf('male-lead') !== -1 || href.indexOf('beauty-area') !== -1 || href.indexOf('club-area') !== -1 || text.indexOf('万件') !== -1 || text.indexOf('データ検証') !== -1) {
+                return 'data';
+            }
+            return 'strategy';
+        }
+
+        var counts = { all: cards.length, data: 0, strategy: 0, manner: 0 };
+        cards.forEach(function(c) {
+            var cat = classifyCard(c);
+            c.setAttribute('data-col-cat', cat);
+            counts[cat] = (counts[cat] || 0) + 1;
+        });
+
+        Object.keys(counts).forEach(function(k) {
+            var badge = document.querySelector('[data-count-for="' + k + '"]');
+            if (badge) badge.textContent = '(' + counts[k] + ')';
+        });
+
+        btns.forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var target = btn.getAttribute('data-col-cat') || 'all';
+                btns.forEach(function(b) {
+                    var active = (b === btn);
+                    b.classList.toggle('active', active);
+                    b.setAttribute('aria-selected', active ? 'true' : 'false');
+                });
+                grid.classList.toggle('is-filtered', target !== 'all');
+                cards.forEach(function(c) {
+                    var match = (target === 'all' || c.getAttribute('data-col-cat') === target);
+                    c.classList.toggle('is-hidden-by-filter', !match);
+                });
+            });
+        });
+    })();
+    </script>
 </body>
 
 </html>

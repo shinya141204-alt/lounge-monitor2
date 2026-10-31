@@ -62,23 +62,26 @@ DIRECT_STORE_JA_MAP = {
 
 def format_ja_store_name(raw_name: str) -> str:
     """Convert raw store name like 'JIS OMIYA' -> 'JIS 大宮', 'OLG ag渋谷' -> 'ag渋谷', 'OLG 渋谷本店' -> 'オリエンタルラウンジ 渋谷本店', 'YATAKOI UMEDA' -> 'ヤタコイ梅田'."""
-    name = (raw_name or '').strip()
+    import re
+    name = re.sub(r'\s+', ' ', (raw_name or '').strip())
     if not name:
         return ''
     upper_full = name.upper()
-    if upper_full == 'OLG':
+    if upper_full in ('OLG', 'ORIENTAL'):
         return 'オリエンタルラウンジ'
+    if upper_full == 'YATAKOI':
+        return 'ヤタコイ'
     if upper_full in DIRECT_STORE_JA_MAP:
         return DIRECT_STORE_JA_MAP[upper_full]
     if upper_full.startswith('ASOBIBAR '):
         ab_rest = name[9:].strip().replace(' ', '')
         return f"アソビバー{ab_rest}"
-    if upper_full.startswith('OLG AG'):
-        ag_rest = name[6:].strip()
+    if upper_full.startswith('OLG AG') or upper_full.startswith('ORIENTAL AG'):
+        ag_rest = re.sub(r'^(?:OLG|ORIENTAL)\s+AG\s*', '', name, flags=re.IGNORECASE).strip()
         ag_ja = EN_TO_JA_MAP.get(ag_rest.upper(), ag_rest)
         return f"ag{ag_ja}"
-    if upper_full.startswith('OLG '):
-        olg_rest = name[4:].strip()
+    if upper_full.startswith('OLG ') or upper_full.startswith('ORIENTAL '):
+        olg_rest = re.sub(r'^(?:OLG|ORIENTAL)\s+', '', name, flags=re.IGNORECASE).strip()
         olg_ja = EN_TO_JA_MAP.get(olg_rest.upper(), olg_rest)
         return f"オリエンタルラウンジ {olg_ja}"
 
@@ -88,7 +91,7 @@ def format_ja_store_name(raw_name: str) -> str:
         upper_prefix = prefix.upper()
         upper_rest = rest.upper()
         ja_rest = EN_TO_JA_MAP.get(upper_rest, rest)
-        if upper_prefix == 'OLG':
+        if upper_prefix in ('OLG', 'ORIENTAL'):
             return f"オリエンタルラウンジ {ja_rest}"
         if upper_prefix == 'YATAKOI':
             return f"ヤタコイ{ja_rest}"

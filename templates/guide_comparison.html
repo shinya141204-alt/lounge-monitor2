@@ -90,7 +90,7 @@
     <link rel="stylesheet" href="/static/style.css?v=20261030_1" media="print" onload="this.media='all'">
     <noscript><link rel="stylesheet" href="/static/style.css?v=20261030_1"></noscript>
 
-    <link rel="stylesheet" href="/static/portal.css?v=9">
+    <link rel="stylesheet" href="/static/portal.css?v=10">
     <style>
         body {
             display: block !important;
@@ -543,7 +543,7 @@
             border-color: rgba(236, 72, 153, 0.5);
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=20">
+    <link rel="stylesheet" href="/static/calm.css?v=21">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -830,18 +830,18 @@
             </div>
 
             <!-- Related Articles Navigation -->
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-top: 32px;">
-                <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(244, 63, 94, 0.35); border-radius: 14px; padding: 18px;">
-                    <span style="display: inline-block; background: rgba(225, 29, 72, 0.2); color: #fb7185; border: 1px solid rgba(244, 63, 94, 0.4); font-size: 0.72rem; font-weight: 800; padding: 2px 8px; border-radius: 4px; margin-bottom: 8px;">📖 基本の立ち回りガイド</span>
-                    <h4 style="margin: 0 0 6px 0; font-size: 0.96rem; color: #fff; line-height: 1.4;">相席ラウンジの立ち回り＆お店選びガイド</h4>
-                    <p style="margin: 0 0 12px 0; font-size: 0.82rem; color: #94a3b8; line-height: 1.5;">空いている時間帯の見極め方、男女比データの見方、二次会への自然な誘い方までまとめました。</p>
-                    <a href="/guide" style="display: inline-flex; align-items: center; gap: 4px; background: linear-gradient(135deg, #e11d48, #ec4899); color: #fff; text-decoration: none; padding: 7px 16px; border-radius: 8px; font-size: 0.82rem; font-weight: 700;">ガイドを読む ›</a>
+            <div class="related-articles-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 16px; margin-top: 32px;">
+                <div class="related-article-card" style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(200, 164, 110, 0.34); border-radius: 14px; padding: 18px;">
+                    <span class="related-article-badge" style="display: inline-block; background: rgba(200, 164, 110, 0.16); color: #e3c898; border: 1px solid rgba(200, 164, 110, 0.42); font-size: 0.72rem; font-weight: 800; padding: 2px 8px; border-radius: 4px; margin-bottom: 8px;">📖 基本の立ち回りガイド</span>
+                    <h4 style="margin: 0 0 6px 0; font-size: 0.96rem; color: #f0ede8; line-height: 1.4;">相席ラウンジの立ち回り＆お店選びガイド</h4>
+                    <p style="margin: 0 0 12px 0; font-size: 0.82rem; color: #b5b0a6; line-height: 1.5;">空いている時間帯の見極め方、男女比データの見方、二次会への自然な誘い方までまとめました。</p>
+                    <a href="/guide" class="related-article-cta" style="display: inline-flex; align-items: center; gap: 4px; background: rgba(200, 164, 110, 0.16); border: 1px solid rgba(200, 164, 110, 0.5); color: #f3e6cf; text-decoration: none; padding: 7px 16px; border-radius: 8px; font-size: 0.82rem; font-weight: 700;">ガイドを読む ›</a>
                 </div>
-                <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 14px; padding: 18px;">
-                    <span style="display: inline-block; background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.4); font-size: 0.72rem; font-weight: 800; padding: 2px 8px; border-radius: 4px; margin-bottom: 8px;">⚡ 平日の穴場データ</span>
-                    <h4 style="margin: 0 0 6px 0; font-size: 0.96rem; color: #fff; line-height: 1.4;">なぜ水曜・木曜20時が一番相席しやすいのか？</h4>
-                    <p style="margin: 0 0 12px 0; font-size: 0.82rem; color: #94a3b8; line-height: 1.5;">週末の混雑や待ち時間を避けて、女性比率が高い時間帯を狙う平日夜の楽しみ方。</p>
-                    <a href="/guide/weekday-strategy" style="display: inline-flex; align-items: center; gap: 4px; background: linear-gradient(135deg, #06b6d4, #3b82f6); color: #fff; text-decoration: none; padding: 7px 16px; border-radius: 8px; font-size: 0.82rem; font-weight: 700;">平日コラムを読む ›</a>
+                <div class="related-article-card" style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(200, 164, 110, 0.34); border-radius: 14px; padding: 18px;">
+                    <span class="related-article-badge" style="display: inline-block; background: rgba(200, 164, 110, 0.16); color: #e3c898; border: 1px solid rgba(200, 164, 110, 0.42); font-size: 0.72rem; font-weight: 800; padding: 2px 8px; border-radius: 4px; margin-bottom: 8px;">⚡ 平日の穴場データ</span>
+                    <h4 style="margin: 0 0 6px 0; font-size: 0.96rem; color: #f0ede8; line-height: 1.4;">なぜ水曜・木曜20時が一番相席しやすいのか？</h4>
+                    <p style="margin: 0 0 12px 0; font-size: 0.82rem; color: #b5b0a6; line-height: 1.5;">週末の混雑や待ち時間を避けて、女性比率が高い時間帯を狙う平日夜の楽しみ方。</p>
+                    <a href="/guide/weekday-strategy" class="related-article-cta" style="display: inline-flex; align-items: center; gap: 4px; background: rgba(200, 164, 110, 0.16); border: 1px solid rgba(200, 164, 110, 0.5); color: #f3e6cf; text-decoration: none; padding: 7px 16px; border-radius: 8px; font-size: 0.82rem; font-weight: 700;">平日コラムを読む ›</a>
                 </div>
             </div>
 

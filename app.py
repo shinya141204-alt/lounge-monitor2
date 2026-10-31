@@ -1197,14 +1197,25 @@ def _enrich_for_ssr(stores):
     disp_counts = defaultdict(int)
     temp = []
     for s in stores:
-        sname = s.get('name', '')
+        sname = (s.get('name') or '').strip()
         info = master.get(sname, {})
-        brand = info.get('brand') or ('ag' if 'ag' in sname else sname.split(' ')[0])
-        if brand == 'YATAKOI':
-            brand = 'ヤタコイ'
-        if brand == 'OLG':
-            brand = 'オリエンタルラウンジ'
-        disp = info.get('display_name') or sname
+        if info:
+            brand = _jinja_brand_ja(info.get('brand') or '')
+            disp = info.get('display_name') or sname
+        else:
+            if re.match(r'^(?:OLG\s+ag|ORIENTAL\s+ag|ag)(?:\s+|(?=[^a-zA-Z0-9])|$)', sname, flags=re.IGNORECASE):
+                brand = 'ag'
+                disp = re.sub(r'^(?:OLG\s+ag|ORIENTAL\s+ag|ag)\s*', '', sname, flags=re.IGNORECASE).strip() or 'ag'
+            elif re.match(r'^(?:OLG|ORIENTAL)(?:\s+|$)', sname, flags=re.IGNORECASE) or str(s.get('source') or '').upper() in ('OLG', 'ORIENTAL'):
+                brand = 'オリエンタルラウンジ'
+                disp = re.sub(r'^(?:OLG|ORIENTAL)(?:\s+|$)', '', sname, flags=re.IGNORECASE).strip() or 'オリエンタルラウンジ'
+            elif re.match(r'^(?:ヤタコイ|YATAKOI)(?:\s+|$)', sname, flags=re.IGNORECASE) or str(s.get('source') or '').upper() == 'YATAKOI':
+                brand = 'ヤタコイ'
+                disp = re.sub(r'^(?:ヤタコイ|YATAKOI)(?:\s+|$)', '', sname, flags=re.IGNORECASE).strip() or 'ヤタコイ'
+            else:
+                raw_prefix = re.split(r'\s+', sname)[0] if sname else ''
+                brand = _jinja_brand_ja(str(s.get('source') or raw_prefix))
+                disp = re.sub(r'^(?:JIS|ASOBIBAR|XIX|ALFA|CLOVERS)(?:\s+|$)', '', sname, flags=re.IGNORECASE).strip() or sname
         area = info.get('area_label') or ''
         disp_counts[disp] += 1
         temp.append((s, brand, disp, area))
@@ -1849,6 +1860,56 @@ def _jinja_seo_store_name(name):
 def _jinja_store_slug(name):
     import store_master
     return store_master.slug_of(name)
+
+@app.template_filter('brand_ja')
+def _jinja_brand_ja(val):
+    if val is None:
+        return ''
+    s = str(val).strip()
+    su = s.upper()
+    if su in ('OLG', 'ORIENTAL') or s in ('オリエンタル', 'オリラジ'):
+        return 'オリエンタルラウンジ'
+    if su == 'YATAKOI':
+        return 'ヤタコイ'
+    if su == 'AG':
+        return 'ag'
+    return s
+
+
+@app.template_filter('merge_brand_stats')
+def _jinja_merge_brand_stats(by_brand):
+    if not isinstance(by_brand, dict):
+        return {}
+    merged = {}
+    for raw_brand, bdata in by_brand.items():
+        if not isinstance(bdata, dict):
+            continue
+        disp = _jinja_brand_ja(raw_brand)
+        sc = int(bdata.get('store_count', 0) or 0)
+        aw = float(bdata.get('total_avg_women', 0) or 0)
+        am = float(bdata.get('total_avg_men', 0) or 0)
+        if disp not in merged:
+            merged[disp] = {
+                'store_count': sc,
+                'total_avg_women': aw,
+                'total_avg_men': am,
+                '_w_int': isinstance(bdata.get('total_avg_women'), int),
+                '_m_int': isinstance(bdata.get('total_avg_men'), int),
+            }
+        else:
+            merged[disp]['store_count'] += sc
+            merged[disp]['total_avg_women'] += aw
+            merged[disp]['total_avg_men'] += am
+            merged[disp]['_w_int'] = merged[disp]['_w_int'] and isinstance(bdata.get('total_avg_women'), int)
+            merged[disp]['_m_int'] = merged[disp]['_m_int'] and isinstance(bdata.get('total_avg_men'), int)
+    out = {}
+    for disp, m in merged.items():
+        out[disp] = {
+            'store_count': m['store_count'],
+            'total_avg_women': int(round(m['total_avg_women'])) if m['_w_int'] else round(m['total_avg_women'], 1),
+            'total_avg_men': int(round(m['total_avg_men'])) if m['_m_int'] else round(m['total_avg_men'], 1),
+        }
+    return out
 
 def _is_bot_request():
     ua = (request.headers.get('User-Agent') or '').lower()

@@ -50,7 +50,7 @@ description: >-
    * `<meta name="twitter:card" content="summary_large_image">`
 3. **JSON-LD 構造化データ**：`Article`（`SpeakableSpecification` 付） + `BreadcrumbList` + `FAQPage`
 4. **ナビゲーション・共通CSS・フッター**：
-   * `<link rel="stylesheet" href="/static/calm.css?v=20">` を必ず読み込むこと（ライトモード `body.theme-light` でのコントラスト崩れも確認すること）
+   * `<link rel="stylesheet" href="/static/calm.css?v=21">` を必ず読み込むこと（ライトモード `body.theme-light` でのコントラスト崩れも確認すること）
    * 上部に `{% set nav_active = 'columns' %}` と `{% include '_portal_nav.html' %}`
    * 下部に `{% include '_portal_footer.html' %}`
    * スタッフ非表示ガード `{% if not is_staff and not session.get('is_staff') %}`（予約記事なら `and not is_scheduled_preview` も追加）で AdSense タグを囲むこと

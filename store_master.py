@@ -169,16 +169,28 @@ def seo_name(store_name: str) -> str:
             return f"ASOBIBAR（アソビバー）{disp}"
         return f"{brand} {disp}".strip()
 
-    # マスタ未登録時のフォールバック変換
+    # マスタ未登録時のフォールバック変換（大文字小文字・全角空白・単体ブランド名にも対応）
     s = store_name.strip()
-    if s.startswith("OLG ag"):
-        return "ag（アグ）" + s[len("OLG ag"):].strip()
-    if s.startswith("OLG "):
-        return "オリエンタルラウンジ " + s[len("OLG "):].strip()
-    if s.startswith("JIS "):
-        return "JIS（ジス）" + s[len("JIS "):].strip()
-    if s.startswith("ASOBIBAR "):
-        return "ASOBIBAR（アソビバー）" + s[len("ASOBIBAR "):].strip()
+    m_ag = re.match(r"^(?:OLG\s+ag|ORIENTAL\s+ag|ag)(?:\s+|(?=[^a-zA-Z0-9])|$)(.*)$", s, flags=re.IGNORECASE)
+    if m_ag:
+        rest = m_ag.group(1).strip()
+        return f"ag（アグ）{rest}" if rest else "ag（アグ）"
+    m_olg = re.match(r"^(?:OLG|ORIENTAL)(?:\s+(.*))?$", s, flags=re.IGNORECASE)
+    if m_olg:
+        rest = (m_olg.group(1) or "").strip()
+        return f"オリエンタルラウンジ {rest}" if rest else "オリエンタルラウンジ"
+    m_jis = re.match(r"^JIS(?:\s+(.*))?$", s, flags=re.IGNORECASE)
+    if m_jis:
+        rest = (m_jis.group(1) or "").strip()
+        return f"JIS（ジス）{rest}" if rest else "JIS（ジス）"
+    m_asobi = re.match(r"^ASOBIBAR(?:\s+(.*))?$", s, flags=re.IGNORECASE)
+    if m_asobi:
+        rest = (m_asobi.group(1) or "").strip()
+        return f"ASOBIBAR（アソビバー）{rest}" if rest else "ASOBIBAR（アソビバー）"
+    m_yata = re.match(r"^YATAKOI(?:\s+(.*))?$", s, flags=re.IGNORECASE)
+    if m_yata:
+        rest = (m_yata.group(1) or "").strip()
+        return f"ヤタコイ {rest}" if rest else "ヤタコイ"
     return s
 
 

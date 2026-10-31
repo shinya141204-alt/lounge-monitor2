@@ -1,5 +1,5 @@
-// Supersedes aiseki-navi-v47..v69 (purged automatically on activate)
-const CACHE_NAME = 'aiseki-navi-v70';
+// Supersedes aiseki-navi-v47..v70 (purged automatically on activate)
+const CACHE_NAME = 'aiseki-navi-v71';
 const SHELL_KEY = '/';
 const LIVE_FRESH_TTL_MS = 45000;
 const PREFETCH_DEDUP_MS = 25000;
@@ -30,15 +30,16 @@ const LIVE_SSR_PREFIXES = [
 ];
 const CORE_ASSETS = [
   '/static/style.css?v=20261030_5',
-  '/static/calm.css?v=20',
-  '/static/portal.css?v=9',
-  '/static/app.js?v=20261030_5',
+  '/static/calm.css?v=21',
+  '/static/portal.css?v=10',
+  '/static/app.js?v=20261031_1',
   '/static/affiliate_config.js?v=12',
   '/static/manifest.json?v=2'
 ];
 const CORE_ASSET_SET = new Set(CORE_ASSETS);
 const OPTIONAL_EXTERNAL_ASSETS = [
-  'https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap'
+  'https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap',
+  'https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@600;700&display=swap'
 ];
 
 function isStaffOrPrivateNoStore(resp) {
@@ -81,12 +82,25 @@ async function trimDynamicCache(cache) {
   } catch (e) {}
 }
 
-// Install: Cache critical CSS/JS assets only (avoid competing for bandwidth with large icons or duplicate HTML fetch)
+// Install: Refresh critical CSS/JS assets with cache:'reload' so updated calm.css/portal.css/app.js never stay stale
 self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then(async (cache) => {
-      await cache.addAll(CORE_ASSETS);
+      await Promise.all(
+        CORE_ASSETS.map(async (assetUrl) => {
+          try {
+            const resp = await fetch(assetUrl, { cache: 'reload', credentials: 'same-origin' });
+            if (resp && resp.ok) {
+              await cache.put(assetUrl, resp);
+              return;
+            }
+          } catch (e) {}
+          try {
+            await cache.add(assetUrl);
+          } catch (e2) {}
+        })
+      );
       for (const extUrl of OPTIONAL_EXTERNAL_ASSETS) {
         try {
           await cache.add(extUrl);
