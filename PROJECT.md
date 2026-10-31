@@ -35,7 +35,7 @@ Phase 0 調査で特定された全改修項目および要件の割り当て一
 | M1 | Dead Code & Asset Cleanup | F1.1, F1.2, F1.3, F1.4 | none | DONE |
 | M2 | Subsystem Bug Fixes & Hardening | F2.1, F2.2, F2.3, F2.4, F2.5, F2.6, F2.7, F2.8 | M1 | DONE |
 | M3 | Cache-Busting Sync & Test Expansion | F3.1, F3.2, F3.3 | M2 | DONE |
-| M4 | Production Deploy & Live Healthcheck | F4.1, F4.2, F4.3 | M3 | IN_PROGRESS |
+| M4 | Production Deploy & Live Healthcheck | F4.1, F4.2, F4.3 | M3 | DONE |
 
 ## Interface Contracts
 ### Cache-Busting Version Contract
