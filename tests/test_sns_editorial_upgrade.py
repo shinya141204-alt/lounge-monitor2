@@ -1502,15 +1502,18 @@ class SnsEditorialUpgradeTests(unittest.TestCase):
             self.assertEqual(render_calls, [("live_top5", True), ("live_top5", False)])
 
         # 7) Pinned ?s=<ts_code> slot serves byte-identical MP4 without calling render_reel_mp4_bytes
+        import tempfile
         pinned_mp4 = b"\x00\x00\x00\x18ftypisom" + b"PINNED_SLOT_MP4_" * 120
-        with mock.patch.object(turbo_store, "set_media_blob", wraps=turbo_store.set_media_blob) as spy_set:
-            reel_generator.pin_shared_reel_mp4_slot("area_battle", "20261104_2118", pinned_mp4)
-            self.assertTrue(any(c.kwargs.get("ttl_sec") == 900 for c in spy_set.call_args_list))
+        with tempfile.TemporaryDirectory() as tmp_reel_dir, \
+             mock.patch.object(reel_generator, "REEL_TMP_CACHE_DIR", tmp_reel_dir):
+            with mock.patch.object(turbo_store, "set_media_blob", wraps=turbo_store.set_media_blob) as spy_set:
+                reel_generator.pin_shared_reel_mp4_slot("area_battle", "20261104_2118", pinned_mp4)
+                self.assertTrue(any(c.kwargs.get("ttl_sec") == 900 for c in spy_set.call_args_list))
 
-        with mock.patch("reel_generator.render_reel_mp4_bytes", side_effect=AssertionError("Should hit pinned slot")):
-            r_pin = client.get("/ogp/reel/area_battle.mp4?s=20261104_2118", headers={"Range": "bytes=0-15"})
-            self.assertEqual(r_pin.status_code, 206)
-            self.assertEqual(r_pin.data, pinned_mp4[:16])
+            with mock.patch("reel_generator.render_reel_mp4_bytes", side_effect=AssertionError("Should hit pinned slot")):
+                r_pin = client.get("/ogp/reel/area_battle.mp4?s=20261104_2118", headers={"Range": "bytes=0-15"})
+                self.assertEqual(r_pin.status_code, 206)
+                self.assertEqual(r_pin.data, pinned_mp4[:16])
 
     def test_reel_background_and_ken_burns_rotation_across_templates_and_days(self):
         """Verify Reel templates rotate across all portrait images, procedural bokeh variants, and 4 Ken Burns drift modes."""
@@ -1684,6 +1687,268 @@ class SnsEditorialUpgradeTests(unittest.TestCase):
             self.assertEqual(res["article"]["guid"], "n_18h_fresh")
             self.assertEqual(post_mock.call_count, 1)
             self.assertTrue(job_state.is_done("note:https://note.com/aiseki_navi/n/n_30h_old"))
+
+    def test_chunked_redis_media_blob_and_cross_worker_disk_slot_cache(self):
+        """Verify >1MB Reel MP4s chunk safely below Upstash 1MB Redis limit, detect tampering, share via /tmp slot disk cache, and pin-on-miss."""
+        import app as app_mod
+        import reel_generator
+        import turbo_store
+
+        class _UpstashStrictFakeRedis:
+            MAX_CMD_BYTES = 1048576  # 1 MB Upstash command limit
+
+            def __init__(self):
+                self.kv = {}
+                self.setex_sizes = []
+
+            def setex(self, key, ttl, val):
+                b_val = val if isinstance(val, (bytes, bytearray)) else str(val).encode("utf-8")
+                if len(b_val) > self.MAX_CMD_BYTES:
+                    raise RuntimeError(f"ERR max request size exceeded ({len(b_val)} > {self.MAX_CMD_BYTES})")
+                self.setex_sizes.append(len(b_val))
+                self.kv[key] = bytes(b_val)
+                return True
+
+            def get(self, key):
+                return self.kv.get(key)
+
+        fake_redis = _UpstashStrictFakeRedis()
+        big_mp4 = b"\x00\x00\x00\x18ftypisom" + (b"AISEKI_REEL_CHUNK_PAYLOAD_9x16_" * 59193)  # ~1.83 MB
+        self.assertGreater(len(big_mp4), 1750000)
+
+        with mock.patch.object(turbo_store, "_mem_bus_enabled", False), \
+             mock.patch.object(turbo_store, "get_redis_client", return_value=fake_redis):
+            ok = turbo_store.set_media_blob("reel_mp4_slot:live_top5:20261106_2118", big_mp4, mime_type="video/mp4", ttl_sec=900)
+            self.assertTrue(ok)
+            self.assertGreaterEqual(len(fake_redis.setex_sizes), 4)
+            self.assertTrue(all(sz < fake_redis.MAX_CMD_BYTES for sz in fake_redis.setex_sizes))
+
+            loaded = turbo_store.get_media_blob("reel_mp4_slot:live_top5:20261106_2118")
+            self.assertIsNotNone(loaded)
+            self.assertEqual(loaded[1], "video/mp4")
+            self.assertEqual(loaded[0], big_mp4)
+
+            # Tamper with one part -> SHA-256 verification must reject torn/corrupt payload
+            part_keys = [k for k in fake_redis.kv if ":part:" in k]
+            self.assertGreaterEqual(len(part_keys), 3)
+            fake_redis.kv[part_keys[1]] = b"CORRUPTED" + fake_redis.kv[part_keys[1]][9:]
+            self.assertIsNone(turbo_store.get_media_blob("reel_mp4_slot:live_top5:20261106_2118"))
+
+        # Cross-worker /tmp/aiseki_reels/slot_*.mp4 recovery when both Redis and process-local RAM miss
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp_reel_dir, \
+             mock.patch.object(reel_generator, "REEL_TMP_CACHE_DIR", tmp_reel_dir):
+            disk_mp4 = b"\x00\x00\x00\x18ftypisom" + (b"CROSS_WORKER_DISK_SLOT_" * 150)
+            reel_generator.pin_shared_reel_mp4_slot("live_top5", "worker2_2118", disk_mp4, ttl_sec=900)
+            with reel_generator._PINNED_SLOT_LOCK:
+                reel_generator._PINNED_SLOT_CACHE.clear()
+            with mock.patch.object(turbo_store, "get_media_blob", return_value=None):
+                recovered = reel_generator.get_pinned_reel_mp4_slot("live_top5", "worker2_2118")
+                self.assertEqual(recovered, disk_mp4)
+
+            # Pin-on-miss in /ogp/reel/<rt>.mp4?s=<slot_token> prevents re-rendering on second Range chunk
+            client = app_mod.app.test_client()
+            miss_calls = []
+            slot_sample = b"\x00\x00\x00\x18ftypisom" + (b"PIN_ON_MISS_SAMPLE_" * 140)
+
+            def _fake_render_once(stores, reel_type="live_top5", force_refresh=False, now_jst=None):
+                miss_calls.append((reel_type, bool(force_refresh)))
+                return slot_sample
+
+            with mock.patch("reel_generator.render_reel_mp4_bytes", side_effect=_fake_render_once):
+                r_c1 = client.get("/ogp/reel/live_top5.mp4?s=miss_20261107_2118", headers={"Range": "bytes=0-31"})
+                r_c2 = client.get("/ogp/reel/live_top5.mp4?s=miss_20261107_2118", headers={"Range": "bytes=32-95"})
+                self.assertEqual(r_c1.status_code, 206)
+                self.assertEqual(r_c2.status_code, 206)
+                self.assertEqual(r_c1.data + r_c2.data, slot_sample[:96])
+                self.assertEqual(len(miss_calls), 1)
+
+    def test_public_reel_mp4_multipart_range_if_range_suffix_and_safari_preview_pin(self):
+        """Verify RFC 9110 §14.2 multipart Range -> 200 OK, OOB multipart -> 416, If-Range, suffix Range, and single-encode Safari preview."""
+        import tempfile
+        import app as app_mod
+        import reel_generator
+
+        sample_mp4 = b"\x00\x00\x00\x18ftypisom" + bytes(range(256)) * 20
+        render_calls = []
+
+        def _fake_render(stores, reel_type="live_top5", force_refresh=False, now_jst=None):
+            render_calls.append((reel_type, bool(force_refresh)))
+            return sample_mp4
+
+        client = app_mod.app.test_client()
+        with tempfile.TemporaryDirectory() as tmp_reel_dir, \
+             mock.patch.object(reel_generator, "REEL_TMP_CACHE_DIR", tmp_reel_dir), \
+             mock.patch("reel_generator.render_reel_mp4_bytes", side_effect=_fake_render):
+            with reel_generator._PINNED_SLOT_LOCK:
+                reel_generator._PINNED_SLOT_CACHE.clear()
+            # 1) Satisfiable multipart Range must fall back to 200 OK instead of crashing with 416
+            r_multi_ok = client.get("/ogp/reel/live_top5.mp4", headers={"Range": "bytes=0-63, 128-191"})
+            self.assertEqual(r_multi_ok.status_code, 200)
+            self.assertEqual(r_multi_ok.data, sample_mp4)
+            etag = r_multi_ok.headers.get("ETag")
+            self.assertTrue(etag)
+
+            # 2) Unsatisfiable multipart Range (all ranges past EOF) must still return 416
+            r_multi_416 = client.get(
+                "/ogp/reel/live_top5.mp4",
+                headers={"Range": "bytes=999999-1000000, 888888-999999"},
+            )
+            self.assertEqual(r_multi_416.status_code, 416)
+
+            # 3) If-Range matching ETag -> 206; mismatched ETag -> 200 full body
+            r_if_match = client.get(
+                "/ogp/reel/live_top5.mp4",
+                headers={"Range": "bytes=32-95", "If-Range": etag},
+            )
+            self.assertEqual(r_if_match.status_code, 206)
+            self.assertEqual(r_if_match.data, sample_mp4[32:96])
+
+            r_if_mismatch = client.get(
+                "/ogp/reel/live_top5.mp4",
+                headers={"Range": "bytes=32-95", "If-Range": '"stale-mismatched-etag"'},
+            )
+            self.assertEqual(r_if_mismatch.status_code, 200)
+            self.assertEqual(r_if_mismatch.data, sample_mp4)
+
+            # 4) Safari ?refresh=1&t=<ts> sequence (0-1 probe -> -64 suffix EOF probe -> 0-127 chunk) encodes ONLY ONCE
+            render_calls.clear()
+            r_p1 = client.get("/ogp/reel/live_top5.mp4?refresh=1&t=1761888123", headers={"Range": "bytes=0-1"})
+            r_p2 = client.get("/ogp/reel/live_top5.mp4?refresh=1&t=1761888123", headers={"Range": "bytes=-64"})
+            r_p3 = client.get("/ogp/reel/live_top5.mp4?refresh=1&t=1761888123", headers={"Range": "bytes=0-127"})
+            self.assertEqual(r_p1.status_code, 206)
+            self.assertEqual(r_p2.status_code, 206)
+            self.assertEqual(r_p2.data, sample_mp4[-64:])
+            self.assertEqual(r_p3.status_code, 206)
+            self.assertEqual(r_p3.data, sample_mp4[:128])
+            self.assertEqual(render_calls, [("live_top5", True)])
+
+        root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        with open(os.path.join(root_dir, "templates", "staff_sns_editorial.html"), encoding="utf-8") as f_tpl:
+            tpl_src = f_tpl.read()
+        self.assertIn("download=1", tpl_src)
+
+    def test_twelve_week_scheduled_reel_zero_adjacent_bg_collision_and_subpixel_ken_burns(self):
+        """Verify 12 weeks (48 nights) of scheduled Wed-Sat IG Reels never repeat background or Ken Burns back-to-back, and Ken Burns moves smoothly per frame."""
+        import reel_generator
+
+        jst = datetime.timezone(datetime.timedelta(hours=9))
+        start_dt = datetime.datetime(2026, 11, 4, 21, 18, tzinfo=jst)
+        rich_stores = self.sample_stores + [
+            {"name": "OLG 新宿", "women": 46, "men": 22, "region": "Kanto"},
+            {"name": "JIS SHINJUKU", "women": 19, "men": 35, "region": "Kanto"},
+            {"name": "OLG 大阪駅前", "women": 42, "men": 29, "region": "Kansai"},
+            {"name": "JIS UMEDA", "women": 24, "men": 36, "region": "Kansai"},
+        ]
+
+        recent_rts = []
+        prev_visual = None
+        prev_kb = None
+        checked_nights = 0
+        for d in range(84):
+            dt = start_dt + datetime.timedelta(days=d)
+            if dt.weekday() not in (2, 3, 4, 5):
+                continue
+            rt = reel_generator.select_scheduled_reel_type(
+                rich_stores,
+                platform="instagram",
+                now_jst=dt,
+                recent_types=recent_rts,
+            )
+            recent_rts.insert(0, rt)
+            bg_info = reel_generator.list_available_backgrounds(rt, now_jst=dt)
+            cur_visual = bg_info["active_file"] or f"procedural:{bg_info['bg_variant']}"
+            cur_kb = bg_info["ken_burns_mode"]
+            if prev_visual is not None:
+                self.assertNotEqual(cur_visual, prev_visual, f"Back-to-back Reel visual collision on {dt.date()} ({rt}): {cur_visual}")
+                self.assertNotEqual(cur_kb, prev_kb, f"Back-to-back Ken Burns collision on {dt.date()} ({rt}): {cur_kb}")
+            prev_visual = cur_visual
+            prev_kb = cur_kb
+            checked_nights += 1
+        self.assertEqual(checked_nights, 48)
+
+        # Subpixel Ken Burns check: two adjacent 24fps frames (t=5.50s vs t=5.5417s, after card entrance settles) smoothly interpolate background
+        ctx = reel_generator.build_reel_context(rich_stores, reel_type="live_top5", now_jst=start_dt)
+        bg_canvas = reel_generator._build_procedural_luxury_bg(828, 1472, "live_top5", bg_variant=0)
+        renderer = reel_generator._ReelSceneRenderer(ctx)
+        try:
+            f0 = renderer.render_full_rgb_frame(5.50, bg_canvas, ken_burns_mode="zoom_in_up")
+            f1 = renderer.render_full_rgb_frame(5.50 + (1.0 / 24.0), bg_canvas, ken_burns_mode="zoom_in_up")
+            self.assertNotEqual(f0.tobytes(), f1.tobytes())
+        finally:
+            renderer.close()
+
+    def test_weekday_consistent_hashtags_28h_note_window_and_copy_unification(self):
+        """Verify Mon-Thu posts never emit #華金/#週末 tags, 25h cooldown-deferred notes still post (<28h), and 53店舗/Claude Sonnet leftovers are gone."""
+        from email.utils import format_datetime
+        import tempfile
+        import column_editorial
+        import job_state
+        import note_poster
+        import reel_generator
+
+        jst = datetime.timezone(datetime.timedelta(hours=9))
+        monday_night = datetime.datetime(2026, 11, 2, 21, 0, tzinfo=jst)  # Monday
+        for offset in range(7):
+            dt = monday_night + datetime.timedelta(days=offset)
+            wd = (dt - datetime.timedelta(hours=7)).weekday()
+            for cat in ("carousel", "ladies", "tiktok_gap", "tiktok_midnight"):
+                line = sns_editorial.pick_rotated_hashtag_line(
+                    "tiktok" if cat.startswith("tiktok") else "instagram",
+                    cat,
+                    now_jst=dt,
+                    area_tag="渋谷",
+                )
+                if wd != 4:
+                    self.assertNotIn("#華金", line, f"Unexpected #華金 on weekday={wd}: {line}")
+                if wd in (0, 1, 2, 3):
+                    self.assertNotIn("#週末", line, f"Unexpected #週末 on weekday={wd}: {line}")
+
+            for rt in ("ladies_zero_wait", "tiktok_ladies_real", "area_battle", "live_top5"):
+                rcap = reel_generator.build_reel_caption(self.sample_stores, reel_type=rt, now_jst=dt)
+                if wd in (0, 1, 2, 3):
+                    self.assertNotIn("#週末", rcap, f"Unexpected #週末 in Reel caption on weekday={wd} ({rt})")
+
+        # 25h deferred note (< 28h) must still be promoted, whereas 30h legacy note (>= 28h) is marked seen and skipped
+        now_utc = datetime.datetime.now(datetime.timezone.utc)
+        deferred_25h_pub = format_datetime(now_utc - datetime.timedelta(hours=25))
+        stale_30h_pub = format_datetime(now_utc - datetime.timedelta(hours=30))
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_file = os.path.join(tmpdir, "notes_28h.json")
+            job_state.mark_done("note:https://note.com/aiseki_navi/n/n_init_28h")
+            articles = [
+                {
+                    "title": "前日午後公開でクールダウン待機した25時間前の記事",
+                    "link": "https://note.com/aiseki_navi/n/n_25h_deferred",
+                    "pub_date": deferred_25h_pub,
+                    "guid": "n_25h_deferred",
+                },
+                {
+                    "title": "30時間前の旧記事",
+                    "link": "https://note.com/aiseki_navi/n/n_30h_legacy",
+                    "pub_date": stale_30h_pub,
+                    "guid": "n_30h_legacy",
+                },
+            ]
+            with mock.patch.object(note_poster, "STATE_FILE", state_file), \
+                 mock.patch("note_poster.fetch_latest_note_articles", return_value=articles), \
+                 mock.patch("x_poster.post_to_x", return_value={"status": "success"}) as post_mock:
+                res = note_poster.check_and_post_new_note()
+            self.assertEqual(res["status"], "success")
+            self.assertEqual(res["article"]["guid"], "n_25h_deferred")
+            self.assertEqual(post_mock.call_count, 1)
+            self.assertTrue(job_state.is_done("note:https://note.com/aiseki_navi/n/n_30h_legacy"))
+
+        with open(column_editorial.__file__, encoding="utf-8") as f_col:
+            col_src = f_col.read()
+        self.assertNotIn("53店舗", col_src)
+        self.assertNotIn("51店舗", col_src)
+
+        root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        with open(os.path.join(root_dir, "templates", "staff_pdca.html"), encoding="utf-8") as f_pdca:
+            pdca_src = f_pdca.read()
+        self.assertNotIn("Claude Sonnet", pdca_src)
+        self.assertIn("Claude Opus", pdca_src)
 
 
 if __name__ == "__main__":

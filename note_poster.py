@@ -210,8 +210,9 @@ def check_and_post_new_note(force: bool = False, article_index: int = 0) -> dict
     """
     Check for newly published note articles and post to X if not yet shared.
     - When `not force`, skips safely if state storage (local STATE_FILE + Sheets) is unavailable after redeploy.
-    - Regardless of `posted_urls`, any article published >= 12 hours ago (or with an invalid/missing `pub_date`)
-      is automatically marked as seen and never tweeted as "新しいnoteを書きました✍️".
+    - Regardless of `posted_urls`, any article published >= 28 hours ago (or with an invalid/missing `pub_date`)
+      is automatically marked as seen and never tweeted as "新しいnoteを書きました✍️", while preserving 24–26h articles
+      deferred across a single daytime cycle by X cooldown or the 1-post/day note cap.
     - Caps automatic note promotions at 1 per calendar day (JST) and skips revised duplicates with the same core title.
     - `force=True` ignores previously posted record for manual testing.
     """
@@ -241,8 +242,9 @@ def check_and_post_new_note(force: bool = False, article_index: int = 0) -> dict
         today_jst_str = now_jst.strftime("%Y-%m-%d")
         daily_cap_key = f"note_daily:{today_jst_str}"
 
-        # Always mark articles older than 24 hours (or with unparseable pub_date) as already seen
-        # so old/legacy note articles are NEVER unearthed and tweeted as "新しいnoteを書きました✍️".
+        # Always mark articles older than 28 hours (or with unparseable pub_date) as already seen
+        # so old/legacy note articles are NEVER unearthed and tweeted as "新しいnoteを書きました✍️",
+        # while giving 15:20 JST -> next-day 15:20 JST cooldown-deferred articles safe breathing room.
         newly_marked = False
         for a in articles:
             if _is_note_already_posted(a["link"], posted_urls):
@@ -254,7 +256,7 @@ def check_and_post_new_note(force: bool = False, article_index: int = 0) -> dict
                 age_h = (now_utc - dt).total_seconds() / 3600.0
             except Exception:
                 age_h = 999.0
-            if age_h >= 24.0:
+            if age_h >= 28.0:
                 logger.info(f"Marking older note article as already seen (age={age_h:.1f}h): {a['link']}")
                 _save_posted_url(a["link"])
                 sig = _normalize_title_signature(a.get("title", ""))

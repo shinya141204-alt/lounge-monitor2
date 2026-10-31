@@ -569,15 +569,19 @@ def clear_ai_cache(namespace: str = None) -> int:
 # =====================================================================
 # 3. Pre-Rendered SNS Media Blob Cache (IG Carousel PNG/JPEG & ZIP)
 # =====================================================================
+_MEDIA_CHUNK_BYTES = 700 * 1024  # Keep every Redis command safely below Upstash 1 MB max request size
+
+
 def set_media_blob(media_key: str, raw_bytes: bytes, mime_type: str = "image/png", ttl_sec: int = 3600) -> bool:
     if not media_key or not isinstance(raw_bytes, (bytes, bytearray)) or not raw_bytes:
         return False
     ttl = max(60, int(ttl_sec))
     b_data = bytes(raw_bytes)
+    safe_mime = (mime_type or "application/octet-stream").strip() or "application/octet-stream"
 
     if _mem_bus_enabled:
         with _mem_lock:
-            _mem_media_cache[media_key] = (time.time() + ttl, b_data, mime_type or "application/octet-stream")
+            _mem_media_cache[media_key] = (time.time() + ttl, b_data, safe_mime)
         return True
 
     r = get_redis_client()
@@ -585,11 +589,23 @@ def set_media_blob(media_key: str, raw_bytes: bytes, mime_type: str = "image/png
         return False
     try:
         rkey = f"{KEY_PREFIX}:media:{media_key}"
-        envelope = (mime_type or "application/octet-stream").encode("ascii", errors="ignore") + b"\n" + b_data
-        r.setex(rkey, ttl, envelope)
+        if len(b_data) <= _MEDIA_CHUNK_BYTES:
+            envelope = safe_mime.encode("ascii", errors="ignore") + b"\n" + b_data
+            r.setex(rkey, ttl, envelope)
+            return True
+
+        digest = hashlib.sha256(b_data).hexdigest()[:24]
+        chunks = [
+            b_data[offset : offset + _MEDIA_CHUNK_BYTES]
+            for offset in range(0, len(b_data), _MEDIA_CHUNK_BYTES)
+        ]
+        for idx, chunk in enumerate(chunks):
+            r.setex(f"{rkey}:part:{digest}:{idx}", ttl, chunk)
+        manifest = f"__CHUNKED_V1__:{len(chunks)}:{len(b_data)}:{digest}:{safe_mime}\n".encode("ascii", errors="ignore")
+        r.setex(rkey, ttl, manifest)
         return True
     except Exception as err:
-        logger.debug(f"[turbo_store] set_media_blob skipped: {err}")
+        logger.warning(f"[turbo_store] set_media_blob failed ({media_key}, {len(b_data)}B): {err}")
         return False
 
 
@@ -618,6 +634,27 @@ def get_media_blob(media_key: str) -> tuple:
         raw = r.get(rkey)
         if not raw or b"\n" not in raw:
             return None
+        if raw.startswith(b"__CHUNKED_V1__:"):
+            hdr_b, _ = raw.split(b"\n", 1)
+            hdr_parts = hdr_b.decode("ascii", errors="replace").split(":", 4)
+            if len(hdr_parts) != 5:
+                return None
+            _, n_str, len_str, digest, mime_str = hdr_parts
+            n_chunks = int(n_str)
+            expected_len = int(len_str)
+            if n_chunks <= 0 or n_chunks > 64 or expected_len <= 0:
+                return None
+            parts = []
+            for idx in range(n_chunks):
+                part = r.get(f"{rkey}:part:{digest}:{idx}")
+                if not part:
+                    return None
+                parts.append(part)
+            joined = b"".join(parts)
+            if len(joined) != expected_len or hashlib.sha256(joined).hexdigest()[:24] != digest:
+                return None
+            return (joined, mime_str)
+
         mime_b, body = raw.split(b"\n", 1)
         return (body, mime_b.decode("ascii", errors="replace"))
     except Exception as err:

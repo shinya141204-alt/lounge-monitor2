@@ -1064,7 +1064,7 @@ def publish_live_reel_to_instagram(
 
         ts_code = now_jst.strftime("%Y%m%d_%H%M")
         try:
-            mp4_bytes = reel_generator.render_reel_mp4_bytes(stores, reel_type=rt)
+            mp4_bytes = reel_generator.render_reel_mp4_bytes(stores, reel_type=rt, now_jst=now_jst)
             if isinstance(mp4_bytes, (bytes, bytearray)) and len(mp4_bytes) > 1024:
                 reel_generator.pin_shared_reel_mp4_slot(rt, ts_code, bytes(mp4_bytes))
         except Exception as warm_err:

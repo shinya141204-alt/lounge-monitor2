@@ -716,6 +716,20 @@ _ROTATED_HASHTAG_SETS = {
 _AREA_TAG_SUFFIXES = ("グルメ", "ディナー", "夜遊び", "夜カフェ")
 
 
+_WEEKDAY_TAG_MAP_MON_THU = {
+    "#華金ディナー": "#仕事帰りディナー",
+    "#華金女子会": "#仕事帰り女子会",
+    "#週末ディナー": "#仕事帰りディナー",
+    "#週末の過ごし方": "#夜遊びスポット",
+    "#週末女子会": "#平日女子会",
+    "#週末の夜": "#仕事帰りの一杯",
+}
+_WEEKDAY_TAG_MAP_SAT_SUN = {
+    "#華金ディナー": "#週末ディナー",
+    "#華金女子会": "#週末女子会",
+}
+
+
 def pick_rotated_hashtag_line(
     channel: str = "instagram",
     category: str = "carousel",
@@ -723,15 +737,25 @@ def pick_rotated_hashtag_line(
     area_tag: str = "",
     seed_extra: int = 0,
 ) -> str:
-    """Return a rotated 5-7 hashtag line avoiding identical bot-like hashtag blocks across posts."""
+    """Return a rotated, weekday-consistent 5-7 hashtag line avoiding identical bot-like hashtag blocks across posts."""
     now_jst = now_jst or datetime.datetime.now(JST)
     biz_dt = (now_jst - datetime.timedelta(hours=7)).date()
+    wd = biz_dt.weekday()
     cat_key = category if category in _ROTATED_HASHTAG_SETS else (
         "tiktok_gap" if (channel or "").lower() == "tiktok" else "carousel"
     )
     pool = _ROTATED_HASHTAG_SETS[cat_key]
     idx = (biz_dt.toordinal() + int(seed_extra)) % len(pool)
-    chosen = list(pool[idx])
+
+    tag_remap = (
+        _WEEKDAY_TAG_MAP_MON_THU if wd in (0, 1, 2, 3)
+        else (_WEEKDAY_TAG_MAP_SAT_SUN if wd in (5, 6) else {})
+    )
+    chosen = []
+    for raw_tag in pool[idx]:
+        mapped_tag = tag_remap.get(raw_tag, raw_tag)
+        if mapped_tag not in chosen:
+            chosen.append(mapped_tag)
 
     raw_area = re.sub(r"[\s#・/／0-9０-９]", "", (area_tag or "").split("・")[0]).strip()
     if raw_area and len(chosen) < 7:
@@ -1130,7 +1154,7 @@ def has_any_ai_key(allow_blocking: bool = True) -> bool:
 
 def get_gemini_status(allow_blocking: bool = False) -> dict:
     """
-    Return safe, masked Dual-Engine AI status metadata (Gemini Pro/Flash + Claude Sonnet)
+    Return safe, masked Dual-Engine AI status metadata (Gemini Pro/Flash + Claude Opus/Sonnet)
     for Master editorial dashboards while preserving 100% backward-compatible field names.
     """
     g_stored = (job_state.get_value(GEMINI_KEY_STORAGE_PREFIX, allow_blocking=allow_blocking) or "").strip()
@@ -3973,7 +3997,7 @@ def call_editorial_ai_json(
     prefer_fast: bool = False,
 ) -> tuple:
     """
-    Unified Dual-Engine AI JSON caller supporting BOTH Anthropic Claude Sonnet and Upgraded Google Gemini (Pro / Flash).
+    Unified Dual-Engine AI JSON caller supporting BOTH Anthropic Claude (Opus / Sonnet) and Upgraded Google Gemini (Pro / Flash).
     Automatically routes based on configured keys and `get_ai_engine_pref()`, with instant failover across providers/models.
     Returns `(parsed_dict_or_None, model_label_str, last_error_str)`.
     """
@@ -3991,7 +4015,7 @@ def call_editorial_ai_json(
         if c_key:
             providers.append("claude")
     else:
-        # Both 'auto' and 'claude' try Claude Sonnet first when Claude key is present, then fail over to Gemini Pro/Flash
+        # Both 'auto' and 'claude' try Claude Opus/Sonnet first when Claude key is present, then fail over to Gemini Pro/Flash
         if c_key:
             providers.append("claude")
         if g_key:

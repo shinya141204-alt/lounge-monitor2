@@ -1238,7 +1238,7 @@
                     </div>
                     <a id="reel-download-link"
                        class="reel-dl-btn"
-                       href="/ogp/reel/{{ _reel_init_type }}.mp4?t=init"
+                       href="/ogp/reel/{{ _reel_init_type }}.mp4?t=init&download=1"
                        download="aiseki_navi_{{ _reel_init_type }}.mp4">
                         ⬇️ MP4を保存（TikTok / Shorts用）
                     </a>
@@ -2331,7 +2331,7 @@
             var dlEl = document.getElementById("reel-download-link");
 
             if (dlEl) {
-                dlEl.href = mp4Url;
+                dlEl.href = mp4Url + "&download=1";
                 dlEl.setAttribute("download", "aiseki_navi_" + reelType + "_" + ts + ".mp4");
             }
             if (videoEl) {

@@ -1,7 +1,7 @@
 """
 concierge_matcher.py - 「今夜どこ行く？3秒穴場＆ハシゴ診断エンジン」
 
-全国53店舗の現在リアルタイム人数（live_stores）＋ 過去ログ統計ベンチマーク
+全国60店舗超の現在リアルタイム人数（live_stores）＋ 過去ログ統計ベンチマーク
 （local_db.get_all_stores_live_benchmarks(allow_blocking=False)）＋
 store_master の緯度経度（Haversine距離×1.3÷80m/分）＋ store_hours の営業判定を統合し、
 ユーザー条件に合う「第1候補（本命）」「第2候補（徒歩ハシゴ保険）」「2軒目＆事前準備プラン」を
@@ -21,7 +21,7 @@ JST = datetime.timezone(datetime.timedelta(hours=9))
 # 同一都市圏（徒歩・1駅ハシゴ圏内）とみなす最大直線距離（メートル）
 MAX_WALKABLE_STRAIGHT_METERS = 3200.0
 
-# 対応エリアプリセット（全国10エリア・国内全51店舗を網羅）
+# 対応エリアプリセット（全国10エリア・国内60店舗超を網羅）
 CONCIERGE_AREAS = {
     "shinjuku": {
         "key": "shinjuku",

@@ -11,6 +11,7 @@ import statistics
 import os
 import sys
 import json
+import re
 import time
 import local_db
 import scheduled_articles
@@ -2936,21 +2937,35 @@ def public_reel_mp4(reel_type):
     restore_latest_data_if_empty()
     trigger_background_fetch_if_needed()
     rt = reel_generator.normalize_reel_type(reel_type)
+    has_range = bool(request.range and request.range.ranges)
+    first_start = request.range.ranges[0][0] if has_range else None
     is_cont_range = bool(
-        request.range
-        and request.range.ranges
-        and (request.range.ranges[0][0] or 0) > 0
+        has_range
+        and (
+            (first_start is not None and first_start != 0)
+            or bool(request.headers.get('If-Range'))
+        )
     )
-    force_refresh = (request.args.get('refresh') == '1') and not is_cont_range
+    wants_refresh = (request.args.get('refresh') == '1')
+    preview_tok = re.sub(r'[^A-Za-z0-9_.-]', '', (request.args.get('t') or '').strip())[:32]
+    force_refresh = wants_refresh and not is_cont_range
     slot_token = (request.args.get('s') or '').strip()
     with data_lock:
         live_s = list(latest_data.get('full_data') or [])
     try:
         mp4_bytes = None
-        if slot_token and not force_refresh:
+        if wants_refresh and preview_tok and preview_tok != 'init':
+            mp4_bytes = reel_generator.get_pinned_reel_mp4_slot(rt, f"prev_{preview_tok}")
+            if mp4_bytes:
+                force_refresh = False
+        if not mp4_bytes and slot_token and not force_refresh:
             mp4_bytes = reel_generator.get_pinned_reel_mp4_slot(rt, slot_token)
         if not mp4_bytes:
             mp4_bytes = reel_generator.render_reel_mp4_bytes(live_s, reel_type=rt, force_refresh=force_refresh)
+            if wants_refresh and preview_tok and preview_tok != 'init':
+                reel_generator.pin_shared_reel_mp4_slot(rt, f"prev_{preview_tok}", mp4_bytes, ttl_sec=300)
+            if slot_token:
+                reel_generator.pin_shared_reel_mp4_slot(rt, slot_token, mp4_bytes)
         headers = {
             'Cache-Control': 'public, max-age=300',
             'Accept-Ranges': 'bytes',
@@ -2959,9 +2974,19 @@ def public_reel_mp4(reel_type):
             today_s = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).strftime('%Y%m%d_%H%M')
             headers['Content-Disposition'] = f'attachment; filename="aiseki_navi_reel_{rt}_{today_s}.mp4"'
             return Response(mp4_bytes, mimetype='video/mp4', headers=headers)
+        total_len = len(mp4_bytes)
         resp = Response(mp4_bytes, mimetype='video/mp4', headers=headers)
         resp.add_etag()
-        return resp.make_conditional(request, accept_ranges=True, complete_length=len(mp4_bytes))
+        # RFC 9110 §14.2: Werkzeug does not pack multipart/byteranges and raises 416 on any multi-range header.
+        # Serve 200 OK when at least one requested range is satisfiable; return 416 only when all ranges are out-of-bounds.
+        if has_range and len(request.range.ranges) > 1:
+            any_satisfiable = any(
+                (total_len > 0) if r_start < 0 else (r_start < total_len and (r_end is None or r_end > r_start))
+                for r_start, r_end in request.range.ranges
+            )
+            if any_satisfiable:
+                return resp.make_conditional(request, accept_ranges=False)
+        return resp.make_conditional(request, accept_ranges=True, complete_length=total_len)
     except HTTPException:
         raise
     except RuntimeError as re_err:

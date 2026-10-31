@@ -56,11 +56,11 @@ REEL_SHARED_CACHE_TTL_SEC = 900
 
 _TEMPLATE_BG_OFFSET = {
     "live_top5": 0,
-    "area_battle": 1,
-    "tiktok_gap_shock": 2,
     "ladies_zero_wait": 1,
-    "tiktok_ladies_real": 2,
-    "tiktok_midnight_cliff": 0,
+    "area_battle": 2,
+    "tiktok_gap_shock": 3,
+    "tiktok_ladies_real": 1,
+    "tiktok_midnight_cliff": 2,
 }
 _KEN_BURNS_MODES = (
     "zoom_in_up",
@@ -452,15 +452,9 @@ def list_available_backgrounds(reel_type: str = "live_top5", now_jst: datetime.d
 
     selected_image = None
     if not selected_video and images:
-        by_img = {im["filename"]: im for im in images}
-        pref_imgs = [by_img[pref] for pref in theme["preferred_images"] if pref in by_img]
-        seen_i = {im["filename"] for im in pref_imgs}
-        extra_imgs = [
-            im for im in sorted(images, key=lambda x: (x["mtime"], x["filename"]), reverse=True)
-            if im["filename"] not in seen_i
-        ]
-        # Rotate across all portrait images + procedural_luxury bokeh canvas (`None`)
-        visual_pool = pref_imgs + extra_imgs + [None]
+        # Use canonical sorted filename order + procedural_luxury (`None`) so bijection template offsets never collide across consecutive days
+        canonical_imgs = sorted(images, key=lambda x: x["filename"])
+        visual_pool = canonical_imgs + [None]
         selected_image = visual_pool[(day_ord + tpl_off) % len(visual_pool)]
 
     if selected_video:
@@ -903,8 +897,8 @@ def select_scheduled_reel_type(
     return ranked[0]
 
 
-def _pick_reel_tag_line(reel_type: str, seed_num: int) -> str:
-    """Return 4–5 specific rotated hashtags (always including `#相席ナビ`) instead of repetitive 9-tag blocks."""
+def _pick_reel_tag_line(reel_type: str, seed_num: int, weekday: int = None) -> str:
+    """Return 4–5 specific rotated, weekday-consistent hashtags (always including `#相席ナビ`) instead of repetitive 9-tag blocks."""
     tag_sets = {
         "area_battle": (
             "#相席ナビ #相席ラウンジ #オリエンタルラウンジ #新宿夜遊び #梅田グルメ",
@@ -938,7 +932,10 @@ def _pick_reel_tag_line(reel_type: str, seed_num: int) -> str:
         ),
     }
     opts = tag_sets.get(reel_type) or tag_sets["live_top5"]
-    return opts[seed_num % len(opts)]
+    line = opts[seed_num % len(opts)]
+    if weekday in (0, 1, 2, 3):
+        line = line.replace("#週末女子会", "#仕事帰り女子会")
+    return line
 
 
 def build_reel_caption(
@@ -958,7 +955,7 @@ def build_reel_caption(
     biz_dt = eff_dt - datetime.timedelta(hours=7)
     seed_num = biz_dt.toordinal() + sum(ord(ch) for ch in rt)
     mode_note = "（※直近ピーク実績ベース）" if ctx["is_fallback"] else f"（{t_lbl} 時点）"
-    tags_line = _pick_reel_tag_line(rt, seed_num)
+    tags_line = _pick_reel_tag_line(rt, seed_num, weekday=biz_dt.weekday())
 
     if rt == "area_battle":
         zones = ctx["area_battles"]
@@ -2237,14 +2234,18 @@ class _ReelSceneRenderer:
             rx = 0.42 + 0.16 * progress
             ry = 0.72 - 0.44 * progress
 
-        crop_w = max(W, min(bw, int(round(bw / zoom))))
-        crop_h = max(H, min(bh, int(round(bh / zoom))))
-        left = max(0, min(bw - crop_w, int(round((bw - crop_w) * rx))))
-        top = max(0, min(bh - crop_h, int(round((bh - crop_h) * ry))))
+        crop_w_f = max(float(W), min(float(bw), float(bw) / zoom))
+        crop_h_f = max(float(H), min(float(bh), float(bh) / zoom))
+        left_f = max(0.0, min(float(bw) - crop_w_f, (float(bw) - crop_w_f) * rx))
+        top_f = max(0.0, min(float(bh) - crop_h_f, (float(bh) - crop_h_f) * ry))
+        right_f = min(float(bw), left_f + crop_w_f)
+        bot_f = min(float(bh), top_f + crop_h_f)
 
-        cropped = bg_oversized.crop((left, top, left + crop_w, top + crop_h))
-        frame_rgba = cropped.resize((W, H), Image.Resampling.BILINEAR).convert("RGBA")
-        cropped.close()
+        frame_rgba = bg_oversized.resize(
+            (W, H),
+            Image.Resampling.BILINEAR,
+            box=(left_f, top_f, right_f, bot_f),
+        ).convert("RGBA")
 
         frame_rgba.alpha_composite(_get_vignette_overlay(self.rt, for_video_bg=False))
         self._composite_ui_layers_onto(frame_rgba, t_sec)
@@ -2354,7 +2355,7 @@ _PINNED_SLOT_MAX = 6
 
 
 def pin_shared_reel_mp4_slot(reel_type: str, slot_token: str, mp4_bytes: bytes, ttl_sec: int = None) -> bool:
-    """Pin exact MP4 bytes under `?s=<slot_token>` in `turbo_store` (+ local bounded fallback) so async Meta/TikTok Range fetches never drift."""
+    """Pin exact MP4 bytes under `?s=<slot_token>` in `turbo_store` + `/tmp/aiseki_reels` + bounded RAM so async Meta/TikTok Range fetches never drift across Gunicorn workers."""
     rt = normalize_reel_type(reel_type)
     clean_tok = re.sub(r"[^A-Za-z0-9_.-]", "", str(slot_token or ""))[:40]
     if not clean_tok or not isinstance(mp4_bytes, (bytes, bytearray)) or not mp4_bytes:
@@ -2362,11 +2363,28 @@ def pin_shared_reel_mp4_slot(reel_type: str, slot_token: str, mp4_bytes: bytes, 
     eff_ttl = max(300, int(ttl_sec if ttl_sec is not None else REEL_SHARED_CACHE_TTL_SEC))
     b_payload = bytes(mp4_bytes)
     slot_key = f"reel_mp4_slot:{rt}:{clean_tok}"
+    now_t = time.time()
+    exp_t = now_t + eff_ttl
     with _PINNED_SLOT_LOCK:
         _PINNED_SLOT_CACHE.pop(slot_key, None)
-        _PINNED_SLOT_CACHE[slot_key] = (time.time() + eff_ttl, b_payload)
+        _PINNED_SLOT_CACHE[slot_key] = (exp_t, b_payload)
         while len(_PINNED_SLOT_CACHE) > _PINNED_SLOT_MAX:
             _PINNED_SLOT_CACHE.popitem(last=False)
+    try:
+        os.makedirs(REEL_TMP_CACHE_DIR, exist_ok=True)
+        _prune_tmp_reel_dir(now_t)
+        slot_path = os.path.join(REEL_TMP_CACHE_DIR, f"slot_{rt}_{clean_tok}.mp4")
+        tmp_path = f"{slot_path}.{os.getpid()}.{ threading.get_ident() }.tmp"
+        with open(tmp_path, "wb") as f_out:
+            f_out.write(b_payload)
+        adj_mtime = exp_t - float(REEL_SHARED_CACHE_TTL_SEC)
+        try:
+            os.utime(tmp_path, (adj_mtime, adj_mtime))
+        except Exception:
+            pass
+        os.replace(tmp_path, slot_path)
+    except Exception:
+        pass
     try:
         turbo_store.set_media_blob(
             slot_key,
@@ -2380,7 +2398,7 @@ def pin_shared_reel_mp4_slot(reel_type: str, slot_token: str, mp4_bytes: bytes, 
 
 
 def get_pinned_reel_mp4_slot(reel_type: str, slot_token: str) -> bytes:
-    """Return byte-identical MP4 pinned for `?s=<slot_token>` if available in `turbo_store` or local slot cache, else `None`."""
+    """Return byte-identical MP4 pinned for `?s=<slot_token>` from `turbo_store`, RAM slot cache, or cross-worker `/tmp/aiseki_reels` disk cache."""
     rt = normalize_reel_type(reel_type)
     clean_tok = re.sub(r"[^A-Za-z0-9_.-]", "", str(slot_token or ""))[:40]
     if not clean_tok:
@@ -2400,6 +2418,22 @@ def get_pinned_reel_mp4_slot(reel_type: str, slot_token: str) -> bytes:
             if now_t < exp_t and len(b_payload) > 1024:
                 return b_payload
             _PINNED_SLOT_CACHE.pop(slot_key, None)
+    try:
+        slot_path = os.path.join(REEL_TMP_CACHE_DIR, f"slot_{rt}_{clean_tok}.mp4")
+        if os.path.isfile(slot_path):
+            st = os.stat(slot_path)
+            rem_sec = float(REEL_SHARED_CACHE_TTL_SEC) - (now_t - st.st_mtime)
+            if rem_sec > 0 and st.st_size > 1024:
+                with open(slot_path, "rb") as f_in:
+                    disk_bytes = f_in.read()
+                if len(disk_bytes) > 1024:
+                    with _PINNED_SLOT_LOCK:
+                        _PINNED_SLOT_CACHE[slot_key] = (now_t + rem_sec, disk_bytes)
+                        while len(_PINNED_SLOT_CACHE) > _PINNED_SLOT_MAX:
+                            _PINNED_SLOT_CACHE.popitem(last=False)
+                    return disk_bytes
+    except Exception:
+        pass
     return None
 
 
