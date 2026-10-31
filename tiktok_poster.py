@@ -351,6 +351,8 @@ def publish_live_reel_to_tiktok_inbox(
 
         try:
             mp4_bytes = reel_generator.render_reel_mp4_bytes(stores, reel_type=rt)
+            if isinstance(mp4_bytes, (bytes, bytearray)) and len(mp4_bytes) > 1024:
+                reel_generator.pin_shared_reel_mp4_slot(rt, ts_code, bytes(mp4_bytes))
         except Exception as warm_err:
             err_detail = f"TikTok MP4 generation failed: {warm_err}"
             logging.error(err_detail)
@@ -398,7 +400,7 @@ def execute_scheduled_tiktok_inbox_post(
     now_jst: datetime.datetime = None,
 ) -> dict:
     """
-    Phase 2 scheduled TikTok Inbox delivery (Tue/Thu/Fri/Sat 20:35 JST + human jitter).
+    Phase 2 scheduled TikTok Inbox delivery (Wed/Fri/Sat 20:35 JST + human jitter).
     Fast-skips with zero MP4 rendering overhead when Phase 2 token or auto-schedule toggle is off.
     """
     now_jst = now_jst or datetime.datetime.now(JST)

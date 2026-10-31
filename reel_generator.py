@@ -52,6 +52,22 @@ REEL_FPS = 24
 REEL_DURATION_SEC = 11.5
 REEL_TOTAL_FRAMES = int(round(REEL_DURATION_SEC * REEL_FPS))  # 276 frames
 REEL_CACHE_TTL_SEC = 120.0
+REEL_SHARED_CACHE_TTL_SEC = 900
+
+_TEMPLATE_BG_OFFSET = {
+    "live_top5": 0,
+    "area_battle": 1,
+    "tiktok_gap_shock": 2,
+    "ladies_zero_wait": 1,
+    "tiktok_ladies_real": 2,
+    "tiktok_midnight_cliff": 0,
+}
+_KEN_BURNS_MODES = (
+    "zoom_in_up",
+    "zoom_out_down",
+    "pan_right_zoom",
+    "pan_left_zoom",
+)
 
 # Enforce official brand naming: never allow standalone prefix without 'ラウンジ'
 _FULL_BRAND_OLG = "オリエンタルラウンジ"
@@ -373,13 +389,21 @@ def _get_reel_font(size: int):
     return ImageFont.load_default()
 
 
-def list_available_backgrounds(reel_type: str = "live_top5") -> dict:
+def list_available_backgrounds(reel_type: str = "live_top5", now_jst: datetime.datetime = None) -> dict:
     """
     Inspect `static/reels_bg/` and return available `.mp4` (Google Flow / Veo 3) videos
-    and `.jpg` / `.png` portrait background images, plus the active selection.
+    and `.jpg` / `.png` portrait background images, plus the rotated active selection
+    and Ken Burns camera drift profile so 4x/week Reels never reuse a static backdrop.
     """
     rt = normalize_reel_type(reel_type)
     theme = _REEL_THEMES[rt]
+    eff_dt = _coerce_jst(now_jst)
+    biz_dt = eff_dt - datetime.timedelta(hours=7)
+    day_ord = biz_dt.toordinal()
+    tpl_off = int(_TEMPLATE_BG_OFFSET.get(rt, 0))
+    ken_burns_mode = _KEN_BURNS_MODES[(day_ord + tpl_off) % len(_KEN_BURNS_MODES)]
+    bg_variant = (day_ord + tpl_off * 2) % 3
+
     videos = []
     images = []
     dir_exists = os.path.isdir(REELS_BG_DIR)
@@ -416,23 +440,28 @@ def list_available_backgrounds(reel_type: str = "live_top5") -> dict:
     selected_video = None
     if videos:
         by_name = {v["filename"]: v for v in videos}
-        for pref in theme["preferred_videos"]:
-            if pref in by_name:
-                selected_video = by_name[pref]
-                break
-        if selected_video is None:
-            # Newest user-dropped Veo 3 mp4 wins
-            selected_video = sorted(videos, key=lambda x: (x["mtime"], x["filename"]), reverse=True)[0]
+        pref_vids = [by_name[pref] for pref in theme["preferred_videos"] if pref in by_name]
+        seen_v = {v["filename"] for v in pref_vids}
+        extra_vids = [
+            v for v in sorted(videos, key=lambda x: (x["mtime"], x["filename"]), reverse=True)
+            if v["filename"] not in seen_v
+        ]
+        vid_pool = pref_vids + extra_vids
+        if vid_pool:
+            selected_video = vid_pool[(day_ord + tpl_off) % len(vid_pool)]
 
     selected_image = None
-    if images:
+    if not selected_video and images:
         by_img = {im["filename"]: im for im in images}
-        for pref in theme["preferred_images"]:
-            if pref in by_img:
-                selected_image = by_img[pref]
-                break
-        if selected_image is None:
-            selected_image = sorted(images, key=lambda x: (x["mtime"], x["filename"]), reverse=True)[0]
+        pref_imgs = [by_img[pref] for pref in theme["preferred_images"] if pref in by_img]
+        seen_i = {im["filename"] for im in pref_imgs}
+        extra_imgs = [
+            im for im in sorted(images, key=lambda x: (x["mtime"], x["filename"]), reverse=True)
+            if im["filename"] not in seen_i
+        ]
+        # Rotate across all portrait images + procedural_luxury bokeh canvas (`None`)
+        visual_pool = pref_imgs + extra_imgs + [None]
+        selected_image = visual_pool[(day_ord + tpl_off) % len(visual_pool)]
 
     if selected_video:
         active_mode = "veo3_video"
@@ -457,6 +486,8 @@ def list_available_backgrounds(reel_type: str = "live_top5") -> dict:
         ],
         "active_mode": active_mode,
         "active_file": active_file,
+        "ken_burns_mode": ken_burns_mode,
+        "bg_variant": bg_variant,
         "selected_video_file": selected_video["filename"] if selected_video else None,
         "selected_video_mtime": selected_video["mtime"] if selected_video else 0,
         "selected_image_file": selected_image["filename"] if selected_image else None,
@@ -1241,9 +1272,10 @@ def _apply_opacity(sprite: Image.Image, opacity: float) -> Image.Image:
     return out
 
 
-def _build_procedural_luxury_bg(width: int, height: int, reel_type: str) -> Image.Image:
+def _build_procedural_luxury_bg(width: int, height: int, reel_type: str, bg_variant: int = 0) -> Image.Image:
     """Create an oversized dark-gold & bokeh luxury 9:16 portrait canvas purely with Pillow."""
     theme = _REEL_THEMES[reel_type]
+    v_idx = int(bg_variant or 0) % 3
     c_top = theme["bg_top"]
     c_mid = theme["bg_mid"]
     c_bot = theme["bg_bot"]
@@ -1251,13 +1283,14 @@ def _build_procedural_luxury_bg(width: int, height: int, reel_type: str) -> Imag
     # Fast vertical gradient via 1x160 strip resized with BILINEAR
     gh = 160
     grad_strip = Image.new("RGB", (1, gh))
+    mid_pivot = (0.48, 0.56, 0.42)[v_idx]
     for y in range(gh):
         ratio = y / max(1, gh - 1)
-        if ratio < 0.5:
-            p = ratio * 2.0
+        if ratio < mid_pivot:
+            p = ratio / max(0.01, mid_pivot)
             col = tuple(int(c_top[k] + (c_mid[k] - c_top[k]) * p) for k in range(3))
         else:
-            p = (ratio - 0.5) * 2.0
+            p = (ratio - mid_pivot) / max(0.01, 1.0 - mid_pivot)
             col = tuple(int(c_mid[k] + (c_bot[k] - c_mid[k]) * p) for k in range(3))
         grad_strip.putpixel((0, y), col)
     base = grad_strip.resize((width, height), Image.Resampling.BILINEAR).convert("RGBA")
@@ -1268,19 +1301,38 @@ def _build_procedural_luxury_bg(width: int, height: int, reel_type: str) -> Imag
     bokeh = Image.new("RGBA", (hw, hh), (0, 0, 0, 0))
     bdraw = ImageDraw.Draw(bokeh, "RGBA")
 
-    # Subtle diagonal luxury light streaks
+    # Subtle diagonal luxury light streaks (angle rotates per variant)
     acc = theme["accent"]
     acc2 = theme["accent2"]
-    bdraw.polygon(
-        [(int(hw * 0.10), 0), (int(hw * 0.36), 0), (int(hw * 0.85), hh), (int(hw * 0.58), hh)],
-        fill=(acc2[0], acc2[1], acc2[2], 24),
-    )
-    bdraw.polygon(
-        [(int(hw * 0.65), 0), (int(hw * 0.92), 0), (int(hw * 0.35), hh), (int(hw * 0.12), hh)],
-        fill=(acc[0], acc[1], acc[2], 22),
-    )
+    if v_idx == 1:
+        bdraw.polygon(
+            [(int(hw * 0.72), 0), (int(hw * 0.96), 0), (int(hw * 0.28), hh), (int(hw * 0.06), hh)],
+            fill=(acc2[0], acc2[1], acc2[2], 26),
+        )
+        bdraw.polygon(
+            [(int(hw * 0.08), 0), (int(hw * 0.30), 0), (int(hw * 0.78), hh), (int(hw * 0.54), hh)],
+            fill=(acc[0], acc[1], acc[2], 22),
+        )
+    elif v_idx == 2:
+        bdraw.polygon(
+            [(0, int(hh * 0.14)), (hw, int(hh * 0.34)), (hw, int(hh * 0.52)), (0, int(hh * 0.30))],
+            fill=(acc[0], acc[1], acc[2], 24),
+        )
+        bdraw.polygon(
+            [(0, int(hh * 0.72)), (hw, int(hh * 0.54)), (hw, int(hh * 0.70)), (0, int(hh * 0.88))],
+            fill=(acc2[0], acc2[1], acc2[2], 24),
+        )
+    else:
+        bdraw.polygon(
+            [(int(hw * 0.10), 0), (int(hw * 0.36), 0), (int(hw * 0.85), hh), (int(hw * 0.58), hh)],
+            fill=(acc2[0], acc2[1], acc2[2], 24),
+        )
+        bdraw.polygon(
+            [(int(hw * 0.65), 0), (int(hw * 0.92), 0), (int(hw * 0.35), hh), (int(hw * 0.12), hh)],
+            fill=(acc[0], acc[1], acc[2], 22),
+        )
 
-    # Multi-layered out-of-focus bokeh circles
+    # Multi-layered out-of-focus bokeh circles (mirrored/shifted by variant)
     orbs = [
         (0.18, 0.14, 0.24, (*acc, 85)),
         (0.84, 0.20, 0.20, (*acc2, 82)),
@@ -1293,7 +1345,9 @@ def _build_procedural_luxury_bg(width: int, height: int, reel_type: str) -> Imag
         (0.34, 0.88, 0.10, (251, 191, 36, 54)),
     ]
     for rx, ry, rr, col in orbs:
-        cx, cy = int(hw * rx), int(hh * ry)
+        eff_x = (1.0 - rx) if v_idx == 1 else ((rx + 0.18) % 0.86 + 0.07 if v_idx == 2 else rx)
+        eff_y = ((ry + 0.14) % 0.84 + 0.08) if v_idx == 2 else ry
+        cx, cy = int(hw * eff_x), int(hh * eff_y)
         rad = int(hw * rr)
         bdraw.ellipse((cx - rad, cy - rad, cx + rad, cy + rad), fill=col)
 
@@ -1304,8 +1358,10 @@ def _build_procedural_luxury_bg(width: int, height: int, reel_type: str) -> Imag
     base.alpha_composite(bokeh_blurred)
     bokeh_blurred.close()
 
-    ogp_generator._draw_radial_glow(base, (int(width * 0.18), int(height * 0.15)), int(width * 0.62), theme["glow1"])
-    ogp_generator._draw_radial_glow(base, (int(width * 0.85), int(height * 0.84)), int(width * 0.62), theme["glow2"])
+    g1_pos = ((int(width * 0.18), int(height * 0.15)), (int(width * 0.82), int(height * 0.18)), (int(width * 0.22), int(height * 0.82)))[v_idx]
+    g2_pos = ((int(width * 0.85), int(height * 0.84)), (int(width * 0.18), int(height * 0.82)), (int(width * 0.80), int(height * 0.20)))[v_idx]
+    ogp_generator._draw_radial_glow(base, g1_pos, int(width * 0.62), theme["glow1"])
+    ogp_generator._draw_radial_glow(base, g2_pos, int(width * 0.62), theme["glow2"])
     ogp_generator._draw_radial_glow(base, (int(width * 0.50), int(height * 0.50)), int(width * 0.48), theme["glow3"])
 
     rgb = base.convert("RGB")
@@ -1313,11 +1369,12 @@ def _build_procedural_luxury_bg(width: int, height: int, reel_type: str) -> Imag
     return rgb
 
 
-def _get_oversized_bg_canvas(reel_type: str, image_path: str = None, image_mtime: int = 0) -> Image.Image:
+def _get_oversized_bg_canvas(reel_type: str, image_path: str = None, image_mtime: int = 0, bg_variant: int = 0) -> Image.Image:
     """Return cached 828x1472 RGB background canvas for smooth Ken Burns zooming."""
     rt = normalize_reel_type(reel_type)
+    v_idx = int(bg_variant or 0) % 3
     bw, bh = int(REEL_WIDTH * 1.15), int(REEL_HEIGHT * 1.15)  # 828 x 1472
-    cache_key = (rt, image_path or "__procedural__", int(image_mtime or 0))
+    cache_key = (rt, image_path or "__procedural__", int(image_mtime or 0), v_idx)
 
     with _BG_CACHE_LOCK:
         cached = _BG_OVERSIZED_CACHE.get(cache_key)
@@ -1345,8 +1402,10 @@ def _get_oversized_bg_canvas(reel_type: str, image_path: str = None, image_mtime
             tint = Image.new("RGBA", (bw, bh), (8, 10, 18, 168))
             blurred.alpha_composite(tint)
             tint.close()
-            ogp_generator._draw_radial_glow(blurred, (int(bw * 0.2), int(bh * 0.16)), int(bw * 0.55), theme["glow1"])
-            ogp_generator._draw_radial_glow(blurred, (int(bw * 0.82), int(bh * 0.84)), int(bw * 0.55), theme["glow2"])
+            g1_pos = ((int(bw * 0.20), int(bh * 0.16)), (int(bw * 0.80), int(bh * 0.18)), (int(bw * 0.24), int(bh * 0.82)))[v_idx]
+            g2_pos = ((int(bw * 0.82), int(bh * 0.84)), (int(bw * 0.18), int(bh * 0.82)), (int(bw * 0.78), int(bh * 0.20)))[v_idx]
+            ogp_generator._draw_radial_glow(blurred, g1_pos, int(bw * 0.55), theme["glow1"])
+            ogp_generator._draw_radial_glow(blurred, g2_pos, int(bw * 0.55), theme["glow2"])
             built = blurred.convert("RGB")
             blurred.close()
         except Exception as e:
@@ -1354,11 +1413,11 @@ def _get_oversized_bg_canvas(reel_type: str, image_path: str = None, image_mtime
             built = None
 
     if built is None:
-        built = _build_procedural_luxury_bg(bw, bh, rt)
+        built = _build_procedural_luxury_bg(bw, bh, rt, bg_variant=v_idx)
 
     with _BG_CACHE_LOCK:
         _BG_OVERSIZED_CACHE[cache_key] = built
-        while len(_BG_OVERSIZED_CACHE) > 6:
+        while len(_BG_OVERSIZED_CACHE) > 8:
             _, old_im = _BG_OVERSIZED_CACHE.popitem(last=False)
             try:
                 old_im.close()
@@ -2149,19 +2208,39 @@ class _ReelSceneRenderer:
         self._composite_ui_layers_onto(canvas, t_sec)
         return canvas
 
-    def render_full_rgb_frame(self, t_sec: float, bg_oversized: Image.Image) -> Image.Image:
-        """Render complete 720x1280 RGB frame with Ken Burns zoom + dark vignette + animated UI."""
+    def render_full_rgb_frame(
+        self,
+        t_sec: float,
+        bg_oversized: Image.Image,
+        ken_burns_mode: str = "zoom_in_up",
+    ) -> Image.Image:
+        """Render complete 720x1280 RGB frame with rotated Ken Burns drift + dark vignette + animated UI."""
         W, H = self.W, self.H
         progress = max(0.0, min(1.0, float(t_sec) / REEL_DURATION_SEC))
 
-        # Smooth Ken Burns zoom-in (1.00x -> 1.12x) + subtle upward drift on cached 828x1472 canvas
         bw, bh = bg_oversized.size
-        zoom = 1.0 + 0.12 * progress
-        crop_w = min(bw, int(round(bw / zoom)))
-        crop_h = min(bh, int(round(bh / zoom)))
-        left = (bw - crop_w) // 2
-        drift_y = int((bh - crop_h) * (0.65 - 0.35 * progress))
-        top = max(0, min(bh - crop_h, drift_y))
+        kb = (ken_burns_mode or "zoom_in_up").strip()
+        if kb == "zoom_out_down":
+            zoom = 1.14 - 0.12 * progress
+            rx = 0.58 - 0.16 * progress
+            ry = 0.26 + 0.46 * progress
+        elif kb == "pan_right_zoom":
+            zoom = 1.05 + 0.09 * progress
+            rx = 0.12 + 0.76 * progress
+            ry = 0.58 - 0.20 * progress
+        elif kb == "pan_left_zoom":
+            zoom = 1.05 + 0.09 * progress
+            rx = 0.88 - 0.76 * progress
+            ry = 0.36 + 0.24 * progress
+        else:
+            zoom = 1.02 + 0.12 * progress
+            rx = 0.42 + 0.16 * progress
+            ry = 0.72 - 0.44 * progress
+
+        crop_w = max(W, min(bw, int(round(bw / zoom))))
+        crop_h = max(H, min(bh, int(round(bh / zoom))))
+        left = max(0, min(bw - crop_w, int(round((bw - crop_w) * rx))))
+        top = max(0, min(bh - crop_h, int(round((bh - crop_h) * ry))))
 
         cropped = bg_oversized.crop((left, top, left + crop_w, top + crop_h))
         frame_rgba = cropped.resize((W, H), Image.Resampling.BILINEAR).convert("RGBA")
@@ -2202,17 +2281,22 @@ def render_reel_preview_frame_jpeg(
     """
     rt = normalize_reel_type(reel_type)
     ctx = build_reel_context(stores, reel_type=rt, now_jst=now_jst)
-    bg_info = list_available_backgrounds(reel_type=rt)
+    bg_info = list_available_backgrounds(reel_type=rt, now_jst=now_jst)
     _, _, im_path, im_mtime = _resolve_bg_paths(bg_info)
     bg_oversized = _get_oversized_bg_canvas(
         rt,
         image_path=im_path,
         image_mtime=im_mtime,
+        bg_variant=bg_info.get("bg_variant", 0),
     )
 
     renderer = _ReelSceneRenderer(ctx)
     try:
-        rgb_frame = renderer.render_full_rgb_frame(float(sec), bg_oversized)
+        rgb_frame = renderer.render_full_rgb_frame(
+            float(sec),
+            bg_oversized,
+            ken_burns_mode=bg_info.get("ken_burns_mode", "zoom_in_up"),
+        )
     finally:
         renderer.close()
 
@@ -2229,7 +2313,11 @@ def _compute_reel_cache_key(stores: list, rt: str, bg_info: dict, now_jst: datet
         f"{s.get('name')}:{int(s.get('women') or 0)}:{int(s.get('men') or 0)}"
         for s in dom[:15]
     )
-    bg_sig = f"{bg_info.get('active_mode')}:{bg_info.get('active_file')}:{bg_info.get('selected_video_mtime')}:{bg_info.get('selected_image_mtime')}"
+    bg_sig = (
+        f"{bg_info.get('active_mode')}:{bg_info.get('active_file')}:"
+        f"{bg_info.get('ken_burns_mode')}:{bg_info.get('bg_variant')}:"
+        f"{bg_info.get('selected_video_mtime')}:{bg_info.get('selected_image_mtime')}"
+    )
     # Only include explicit timestamp override in cache key if caller passed a custom historical/test datetime
     custom_ts = ""
     if now_jst is not None:
@@ -2237,7 +2325,7 @@ def _compute_reel_cache_key(stores: list, rt: str, bg_info: dict, now_jst: datet
         chk = now_jst if now_jst.tzinfo else now_jst.replace(tzinfo=JST)
         if abs((chk - real_now).total_seconds()) > 180:
             custom_ts = chk.strftime("%Y%m%d%H%M")
-    raw = f"v1|{rt}|{bg_sig}|{custom_ts}|{top_sig}"
+    raw = f"v2|{rt}|{bg_sig}|{custom_ts}|{top_sig}"
     digest = hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
     return f"{rt}_{digest}"
 
@@ -2246,17 +2334,73 @@ def _prune_tmp_reel_dir(now_ts: float):
     try:
         if not os.path.isdir(REEL_TMP_CACHE_DIR):
             return
+        max_age = max(900.0, float(REEL_SHARED_CACHE_TTL_SEC))
         for fname in os.listdir(REEL_TMP_CACHE_DIR):
             if not fname.endswith(".mp4"):
                 continue
             fpath = os.path.join(REEL_TMP_CACHE_DIR, fname)
             try:
-                if now_ts - os.path.getmtime(fpath) > 600.0:
+                if now_ts - os.path.getmtime(fpath) > max_age:
                     os.remove(fpath)
             except Exception:
                 pass
     except Exception:
         pass
+
+
+_PINNED_SLOT_LOCK = threading.Lock()
+_PINNED_SLOT_CACHE = collections.OrderedDict()
+_PINNED_SLOT_MAX = 6
+
+
+def pin_shared_reel_mp4_slot(reel_type: str, slot_token: str, mp4_bytes: bytes, ttl_sec: int = None) -> bool:
+    """Pin exact MP4 bytes under `?s=<slot_token>` in `turbo_store` (+ local bounded fallback) so async Meta/TikTok Range fetches never drift."""
+    rt = normalize_reel_type(reel_type)
+    clean_tok = re.sub(r"[^A-Za-z0-9_.-]", "", str(slot_token or ""))[:40]
+    if not clean_tok or not isinstance(mp4_bytes, (bytes, bytearray)) or not mp4_bytes:
+        return False
+    eff_ttl = max(300, int(ttl_sec if ttl_sec is not None else REEL_SHARED_CACHE_TTL_SEC))
+    b_payload = bytes(mp4_bytes)
+    slot_key = f"reel_mp4_slot:{rt}:{clean_tok}"
+    with _PINNED_SLOT_LOCK:
+        _PINNED_SLOT_CACHE.pop(slot_key, None)
+        _PINNED_SLOT_CACHE[slot_key] = (time.time() + eff_ttl, b_payload)
+        while len(_PINNED_SLOT_CACHE) > _PINNED_SLOT_MAX:
+            _PINNED_SLOT_CACHE.popitem(last=False)
+    try:
+        turbo_store.set_media_blob(
+            slot_key,
+            b_payload,
+            mime_type="video/mp4",
+            ttl_sec=eff_ttl,
+        )
+    except Exception:
+        pass
+    return True
+
+
+def get_pinned_reel_mp4_slot(reel_type: str, slot_token: str) -> bytes:
+    """Return byte-identical MP4 pinned for `?s=<slot_token>` if available in `turbo_store` or local slot cache, else `None`."""
+    rt = normalize_reel_type(reel_type)
+    clean_tok = re.sub(r"[^A-Za-z0-9_.-]", "", str(slot_token or ""))[:40]
+    if not clean_tok:
+        return None
+    slot_key = f"reel_mp4_slot:{rt}:{clean_tok}"
+    try:
+        hit = turbo_store.get_media_blob(slot_key)
+        if hit and hit[0] and len(hit[0]) > 1024:
+            return hit[0]
+    except Exception:
+        pass
+    now_t = time.time()
+    with _PINNED_SLOT_LOCK:
+        loc = _PINNED_SLOT_CACHE.get(slot_key)
+        if loc:
+            exp_t, b_payload = loc
+            if now_t < exp_t and len(b_payload) > 1024:
+                return b_payload
+            _PINNED_SLOT_CACHE.pop(slot_key, None)
+    return None
 
 
 def _encode_with_ffmpeg(
@@ -2269,6 +2413,8 @@ def _encode_with_ffmpeg(
     """Stream raw frames one-by-one into FFmpeg stdin (<4MB peak RAM) and mux silent AAC + faststart."""
     W, H = REEL_WIDTH, REEL_HEIGHT
     bg_video_path, _, bg_image_path, bg_image_mtime = _resolve_bg_paths(bg_info)
+    kb_mode = bg_info.get("ken_burns_mode", "zoom_in_up")
+    bg_variant = bg_info.get("bg_variant", 0)
 
     if use_video_bg and bg_video_path and os.path.isfile(bg_video_path):
         filter_complex = (
@@ -2313,6 +2459,7 @@ def _encode_with_ffmpeg(
             renderer.rt,
             image_path=bg_image_path,
             image_mtime=bg_image_mtime,
+            bg_variant=bg_variant,
         )
         cmd = [
             ffmpeg_bin,
@@ -2357,7 +2504,7 @@ def _encode_with_ffmpeg(
                     raw_bytes = fg.tobytes()
                     fg.close()
                 else:
-                    rgb = renderer.render_full_rgb_frame(t_sec, bg_oversized)
+                    rgb = renderer.render_full_rgb_frame(t_sec, bg_oversized, ken_burns_mode=kb_mode)
                     raw_bytes = rgb.tobytes()
                     rgb.close()
                 proc.stdin.write(raw_bytes)
@@ -2384,7 +2531,8 @@ def render_reel_mp4_bytes(
     force_refresh: bool = False,
 ) -> bytes:
     """
-    Render a 720x1280 24fps H.264 + silent AAC MP4 (~11.5s) with 120s in-memory + `/tmp/aiseki_reels/` cache.
+    Render a 720x1280 24fps H.264 + silent AAC MP4 (~11.5s) with 120s in-memory + `/tmp/aiseki_reels/`
+    + 900s shared `turbo_store` cache for cross-process Meta / TikTok async crawlers.
     Raises `RuntimeError("ffmpeg binary not available")` if FFmpeg cannot be resolved.
     """
     ffmpeg_bin = resolve_ffmpeg_bin()
@@ -2392,9 +2540,14 @@ def render_reel_mp4_bytes(
         raise RuntimeError("ffmpeg binary not available")
 
     rt = normalize_reel_type(reel_type)
-    bg_info = list_available_backgrounds(reel_type=rt)
+    bg_info = list_available_backgrounds(reel_type=rt, now_jst=now_jst)
     cache_key = _compute_reel_cache_key(stores, rt, bg_info, now_jst=now_jst)
     now_ts = time.time()
+    is_live_clock = True
+    if now_jst is not None:
+        real_now = datetime.datetime.now(JST)
+        chk = now_jst if now_jst.tzinfo else now_jst.replace(tzinfo=JST)
+        is_live_clock = abs((chk - real_now).total_seconds()) <= 180
 
     os.makedirs(REEL_TMP_CACHE_DIR, exist_ok=True)
     disk_exact_path = os.path.join(REEL_TMP_CACHE_DIR, f"reel_{cache_key}.mp4")
@@ -2407,7 +2560,7 @@ def render_reel_mp4_bytes(
                 _MEM_MP4_CACHE.move_to_end(cache_key)
                 return mem_entry["bytes"]
 
-        for cand_path in (disk_exact_path, disk_latest_path if now_jst is None else ""):
+        for cand_path in (disk_exact_path, disk_latest_path if is_live_clock else ""):
             if cand_path and os.path.isfile(cand_path):
                 try:
                     if (now_ts - os.path.getmtime(cand_path)) < REEL_CACHE_TTL_SEC and os.path.getsize(cand_path) > 1024:
@@ -2423,7 +2576,7 @@ def render_reel_mp4_bytes(
 
         try:
             shared_exact = turbo_store.get_media_blob(f"reel_mp4:{rt}:{cache_key}")
-            if not shared_exact and now_jst is None:
+            if not shared_exact and is_live_clock:
                 shared_exact = turbo_store.get_media_blob(f"reel_mp4_latest:{rt}")
             if shared_exact and shared_exact[0] and len(shared_exact[0]) > 1024:
                 mp4_data = shared_exact[0]
@@ -2466,7 +2619,7 @@ def render_reel_mp4_bytes(
                 os.replace(tmp_mp4_path, disk_exact_path)
             except Exception:
                 pass
-            if now_jst is None:
+            if is_live_clock:
                 try:
                     shutil.copyfile(disk_exact_path, disk_latest_path)
                 except Exception:
@@ -2486,9 +2639,19 @@ def render_reel_mp4_bytes(
                 _MEM_MP4_CACHE.popitem(last=False)
 
         try:
-            turbo_store.set_media_blob(f"reel_mp4:{rt}:{cache_key}", mp4_bytes, mime_type="video/mp4", ttl_sec=180)
-            if now_jst is None:
-                turbo_store.set_media_blob(f"reel_mp4_latest:{rt}", mp4_bytes, mime_type="video/mp4", ttl_sec=180)
+            turbo_store.set_media_blob(
+                f"reel_mp4:{rt}:{cache_key}",
+                mp4_bytes,
+                mime_type="video/mp4",
+                ttl_sec=REEL_SHARED_CACHE_TTL_SEC,
+            )
+            if is_live_clock:
+                turbo_store.set_media_blob(
+                    f"reel_mp4_latest:{rt}",
+                    mp4_bytes,
+                    mime_type="video/mp4",
+                    ttl_sec=REEL_SHARED_CACHE_TTL_SEC,
+                )
         except Exception:
             pass
 
@@ -2505,7 +2668,7 @@ def get_reel_studio_info(
 ) -> dict:
     """Assemble clean JSON metadata payload for `/api/staff/sns-reel/info`."""
     rt = normalize_reel_type(reel_type)
-    bg_raw = list_available_backgrounds(reel_type=rt)
+    bg_raw = list_available_backgrounds(reel_type=rt, now_jst=now_jst)
     bg_public = {
         "bg_dir": bg_raw["bg_dir"],
         "dir_exists": bg_raw["dir_exists"],
@@ -2513,6 +2676,7 @@ def get_reel_studio_info(
         "images": bg_raw["images"],
         "active_mode": bg_raw["active_mode"],
         "active_file": bg_raw["active_file"],
+        "ken_burns_mode": bg_raw["ken_burns_mode"],
     }
     return {
         "ok": True,

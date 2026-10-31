@@ -382,6 +382,12 @@ def build_instagram_ladies_caption(
                     for p in picks
                 ],
             }
+            ladies_tags = sns_editorial.pick_rotated_hashtag_line(
+                "instagram",
+                "ladies",
+                now_jst=now_jst,
+                seed_extra=1,
+            )
             prompt = (
                 "あなたは夜の街の空気感やお店の入りやすさに詳しい、気取らない同世代の友人です。\n"
                 "Instagramを見ている20〜30代の女性フォロワーに向けて、今夜受付待ちゼロでスムーズに入れる店舗と立ち回りのコツを教える生身のキャプション（420〜720文字）を1本書いてください。\n\n"
@@ -389,7 +395,7 @@ def build_instagram_ladies_caption(
                 "【必須ルール】\n"
                 "1. 『…続きを読む』で折りたたまれる前の最初の1〜2行目に、天気・前髪・ヒールの疲れ・女子待ちの気まずさなど、思わずタップしたくなるリアルな本音フックを書く（【】角括弧見出しや『モニター見てたら』等の裏方アピールは禁止）。\n"
                 "2. 友達と合流する前に見返せるよう自然な口調で『保存📌』を促し、下記ファクトシートの店舗名と人数（男性XX名・女性YY名）を1人の狂いもなく正確に紹介すること。単体の『オリエンタル』表記は禁止。\n"
-                "3. プロフィールのリンク（aiseki-navi.com/for-women）の【女性目線モード】への案内を入れ、末尾は『#相席ナビ #相席ラウンジ #オリエンタルラウンジ #ag #JIS #女子会ディナー #夜カフェ』で締めること。\n\n"
+                f"3. プロフィールのリンク（aiseki-navi.com/for-women）の【女性目線モード】への案内を入れ、末尾は『{ladies_tags}』で締めること。\n\n"
                 f"【検証済みファクトシート】\n{ sns_editorial.json.dumps(facts, ensure_ascii=False) }\n\n"
                 '出力はJSON形式のみ：{"main_text": "キャプション本文"}'
             )
@@ -406,6 +412,17 @@ def build_instagram_ladies_caption(
                     return ai_cap
         except Exception:
             pass
+
+    try:
+        import sns_editorial as _se_tags
+        fallback_ladies_tags = _se_tags.pick_rotated_hashtag_line(
+            "instagram",
+            "ladies",
+            now_jst=now_jst,
+            seed_extra=1,
+        )
+    except Exception:
+        fallback_ladies_tags = "#相席ナビ #相席ラウンジ #女子会ディナー #夜カフェ #オリエンタルラウンジ #ag"
 
     pick_lines = (
         "\n".join(f"・{p['ja_name']}（現在 男性{p['men']}名 / 女性{p['women']}名）" for p in picks)
@@ -435,7 +452,7 @@ def build_instagram_ladies_caption(
         "② 顔写真付きの身分証（免許証・マイナカード等）だけは忘れない\n"
         "③ もし噛み合わない席に当たっても無理して消耗せず、お手洗いタイミングでさらっと席替え相談する\n\n"
         "全国60店舗超の『いま女子待ちゼロで入れる店舗一覧』と『角が立たない席替え・退店裏マニュアル』はプロフィールのリンク（aiseki-navi.com/for-women）に置いてます🔍\n\n"
-        "#相席ナビ #相席ラウンジ #オリエンタルラウンジ #ag #JIS #女子会ディナー #夜カフェ"
+        f"{fallback_ladies_tags}"
     )
     caption = re.sub(r"オリエンタル(?!ラウンジ)", "オリエンタルラウンジ", caption)
     return caption[:2100]

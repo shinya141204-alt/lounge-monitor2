@@ -241,7 +241,7 @@ def check_and_post_new_note(force: bool = False, article_index: int = 0) -> dict
         today_jst_str = now_jst.strftime("%Y-%m-%d")
         daily_cap_key = f"note_daily:{today_jst_str}"
 
-        # Always mark articles older than 12 hours (or with unparseable pub_date) as already seen
+        # Always mark articles older than 24 hours (or with unparseable pub_date) as already seen
         # so old/legacy note articles are NEVER unearthed and tweeted as "新しいnoteを書きました✍️".
         newly_marked = False
         for a in articles:
@@ -254,7 +254,7 @@ def check_and_post_new_note(force: bool = False, article_index: int = 0) -> dict
                 age_h = (now_utc - dt).total_seconds() / 3600.0
             except Exception:
                 age_h = 999.0
-            if age_h >= 12.0:
+            if age_h >= 24.0:
                 logger.info(f"Marking older note article as already seen (age={age_h:.1f}h): {a['link']}")
                 _save_posted_url(a["link"])
                 sig = _normalize_title_signature(a.get("title", ""))

@@ -725,6 +725,24 @@ def build_captions(ctx: dict = None) -> dict:
         headline = f"【{wk} 相席ラウンジ週末狙い目予報📊】"
         intro = "全国60店舗超・リアルタイム人数ログから、今週末に盛り上がりやすい店舗と「男性待ちを回避しやすい穴場店舗」を予測しました！"
 
+    now_ref = None
+    gen_at = (ctx.get("generated_at") or "").strip()
+    if gen_at:
+        try:
+            now_ref = datetime.datetime.strptime(gen_at, "%Y/%m/%d %H:%M").replace(tzinfo=JST)
+        except Exception:
+            now_ref = None
+    try:
+        import sns_editorial
+        tag_line = sns_editorial.pick_rotated_hashtag_line(
+            "instagram",
+            "carousel",
+            now_jst=now_ref or datetime.datetime.now(JST),
+            seed_extra=4,
+        )
+    except Exception:
+        tag_line = "#相席ナビ #相席ラウンジ #オリエンタルラウンジ #ag #JIS #週末ディナー"
+
     ig_caption = (
         f"{headline}\n"
         f"お店選びで迷わないように、右上の「保存」をしておくと入店前にすぐ見返せます📌\n\n"
@@ -737,7 +755,7 @@ def build_captions(ctx: dict = None) -> dict:
         f"・男性は「女性10名以上（約5組）×女性比率55%以上」の店舗を選ぶと席替えもスムーズ！\n"
         f"・女性は逆に「男性が先行して盛り上がっているお店」を選ぶと、待ち時間ゼロで即乾杯しやすいです🥂\n\n"
         f"お店に向かう直前の「いま現在の男女人数・比率」と「全国60店舗超の料金・イベント横並び比較」は、プロフィールのリンク（aiseki-navi.com）から3秒で無料チェックできます🔍\n\n"
-        f"#相席ナビ #相席ラウンジ #オリエンタルラウンジ #ag #JIS #相席"
+        f"{tag_line}"
     )
 
     threads_1 = (

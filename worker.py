@@ -345,7 +345,8 @@ def build_worker_scheduler() -> BackgroundScheduler:
     scheduler.add_job(id="x_post_2200", func=_x_scheduled_job, trigger="cron", hour=13, minute="2,6,10,14,18,22,27", jitter=75, args=["22:00"], executor="sns_ai")
     scheduler.add_job(id="x_post_0000", func=_x_scheduled_job, trigger="cron", day_of_week="fri,sat", hour=15, minute="2,6,10,14,18,22,27", jitter=75, args=["00:00"], executor="sns_ai")
     scheduler.add_job(id="x_tip_1800", func=_tip_18_job, trigger="cron", hour=9, minute="2,6,10,14,18,23,28", jitter=75, executor="sns_ai")
-    scheduler.add_job(id="note_rss_check", func=_note_check_job, trigger="cron", hour="3,8", minute=15, jitter=180, executor="sns_ai")
+    # Check note RSS during calm midday (12:20 JST) and mid-afternoon (15:20 JST) windows, well clear of 18:00 Tips & 20:00-22:00 rush
+    scheduler.add_job(id="note_rss_check", func=_note_check_job, trigger="cron", hour="3,6", minute=20, jitter=240, executor="sns_ai")
     scheduler.add_job(id="threads_daily_2200", func=_threads_daily_job, trigger="cron", hour=13, minute="5,9,13,17,21,26,32", jitter=75, executor="sns_ai")
     scheduler.add_job(id="ig_fri_1845", func=_ig_carousel_job, trigger="cron", day_of_week="fri", hour=9, minute="46,50,54,58", jitter=45, args=["18:45"], executor="sns_ai")
     scheduler.add_job(id="ig_tuesun_2145", func=_ig_carousel_job, trigger="cron", day_of_week="tue,sun", hour=12, minute="46,50,54,58", jitter=45, args=["21:45"], executor="sns_ai")

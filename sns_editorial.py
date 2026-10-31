@@ -685,15 +685,74 @@ def build_threads_cta_footer(
     return variants[v_idx]
 
 
+_ROTATED_HASHTAG_SETS = {
+    "carousel": (
+        ("#相席ナビ", "#相席ラウンジ", "#オリエンタルラウンジ", "#ag", "#夜遊びガイド", "#週末ディナー"),
+        ("#相席ナビ", "#相席ラウンジ", "#オリエンタルラウンジ", "#JIS", "#大人ディナー", "#夜カフェ巡り"),
+        ("#相席ナビ", "#相席ラウンジ", "#ag", "#JIS", "#華金ディナー", "#お店選び"),
+        ("#相席ナビ", "#相席ラウンジ", "#オリエンタルラウンジ", "#ラウンジ巡り", "#週末の過ごし方"),
+        ("#相席ナビ", "#相席ラウンジ", "#オリエンタルラウンジ", "#ag", "#JIS", "#ナイトライフ"),
+    ),
+    "ladies": (
+        ("#相席ナビ", "#相席ラウンジ", "#女子会ディナー", "#夜カフェ", "#オリエンタルラウンジ", "#ag"),
+        ("#相席ナビ", "#相席ラウンジ", "#大人女子会", "#二軒目探し", "#オリエンタルラウンジ", "#JIS"),
+        ("#相席ナビ", "#相席ラウンジ", "#女子会グルメ", "#華金女子会", "#ag", "#JIS"),
+        ("#相席ナビ", "#相席ラウンジ", "#夜カフェ巡り", "#週末女子会", "#オリエンタルラウンジ"),
+    ),
+    "tiktok_gap": (
+        ("#相席ナビ", "#相席ラウンジ", "#オリエンタルラウンジ", "#ag", "#夜遊びスポット"),
+        ("#相席ナビ", "#相席ラウンジ", "#オリエンタルラウンジ", "#JIS", "#二軒目探し"),
+        ("#相席ナビ", "#相席ラウンジ", "#ag", "#JIS", "#週末の夜"),
+        ("#相席ナビ", "#相席ラウンジ", "#オリエンタルラウンジ", "#大人ディナー", "#お店選び"),
+    ),
+    "tiktok_midnight": (
+        ("#相席ナビ", "#相席ラウンジ", "#終電逃した", "#二軒目探し", "#オリエンタルラウンジ", "#ag"),
+        ("#相席ナビ", "#相席ラウンジ", "#深夜ディナー", "#夜カフェ", "#オリエンタルラウンジ", "#JIS"),
+        ("#相席ナビ", "#相席ラウンジ", "#終電後", "#大人の夜遊び", "#ag", "#JIS"),
+        ("#相席ナビ", "#相席ラウンジ", "#深夜グルメ", "#二軒目", "#オリエンタルラウンジ"),
+    ),
+}
+
+_AREA_TAG_SUFFIXES = ("グルメ", "ディナー", "夜遊び", "夜カフェ")
+
+
+def pick_rotated_hashtag_line(
+    channel: str = "instagram",
+    category: str = "carousel",
+    now_jst: datetime.datetime = None,
+    area_tag: str = "",
+    seed_extra: int = 0,
+) -> str:
+    """Return a rotated 5-7 hashtag line avoiding identical bot-like hashtag blocks across posts."""
+    now_jst = now_jst or datetime.datetime.now(JST)
+    biz_dt = (now_jst - datetime.timedelta(hours=7)).date()
+    cat_key = category if category in _ROTATED_HASHTAG_SETS else (
+        "tiktok_gap" if (channel or "").lower() == "tiktok" else "carousel"
+    )
+    pool = _ROTATED_HASHTAG_SETS[cat_key]
+    idx = (biz_dt.toordinal() + int(seed_extra)) % len(pool)
+    chosen = list(pool[idx])
+
+    raw_area = re.sub(r"[\s#・/／0-9０-９]", "", (area_tag or "").split("・")[0]).strip()
+    if raw_area and len(chosen) < 7:
+        suf = _AREA_TAG_SUFFIXES[(biz_dt.toordinal() + int(seed_extra)) % len(_AREA_TAG_SUFFIXES)]
+        candidate_area_tag = f"#{raw_area}{suf}"
+        if candidate_area_tag not in chosen:
+            chosen.append(candidate_area_tag)
+
+    line = " ".join(chosen)
+    return re.sub(r"オリエンタル(?!ラウンジ)", "オリエンタルラウンジ", line)
+
+
 def get_sns_human_pacing_summary(now_jst: datetime.datetime = None) -> dict:
     """Return human-readable summary of anti-bot pacing & Reel schedule for `/staff/sns-editorial`."""
     return {
         "ig_reels_weekly": 4,
-        "ig_reels_days_ja": "水・木・金・土（週4回・4テンプレ自動ローテ・1.2秒カバー固定・同日グリッド重複自動OFF）",
+        "ig_reels_days_ja": "水・木・金・土（週4回・4テンプレ＆背景ローテ・1.2秒カバー固定・同日グリッド重複自動OFF）",
         "x_cadence_ja": "最低48分間隔＋日次上限（月〜木4件・金〜日5件／主戦場枠リザーブ付）＋月/日休養ゆらぎ＋単独ポスト混在",
         "threads_cadence_ja": "週6日稼働（週1自然休養）＋最低90分間隔＋URL添付1/3以下＋画像1/3混在",
         "tiktok_cadence_ja": "水・金・土（週3回・20:39〜20:55人間ゆらぎ・3テンプレ自動ローテInbox送信）",
-        "col_release_ja": "1日最大1記事告知・ピーク枠および深夜〜早朝（23:26〜11:29）自動回避",
+        "col_release_ja": "コラム1日最大1本（深夜〜午前23:26〜11:29自動保留）＋note検知は日中12:20/15:20帯に分離（18時Tips近接回避）",
     }
 
 
@@ -2498,7 +2557,14 @@ def _write_instagram_candidates(
 
     v_lines = "\n".join(f"・{s['seo_name']}（{v_lbl}{s['max_women']}名）" for s in v_top)
     a_lines = "\n".join(f"・{s['seo_name']}（{a_lbl}{s['avg_wpct']}%）" for s in a_top)
-    tags = "#相席ナビ #相席ラウンジ #オリエンタルラウンジ #ag #JIS #夜遊びガイド"
+    tags_1 = pick_rotated_hashtag_line(
+        "instagram",
+        "ladies" if tm == "female_real" else "carousel",
+        now_jst=now_jst,
+        seed_extra=0,
+    )
+    tags_2 = pick_rotated_hashtag_line("instagram", "carousel", now_jst=now_jst, seed_extra=1)
+    tags_3 = pick_rotated_hashtag_line("instagram", "carousel", now_jst=now_jst, seed_extra=2)
 
     candidates = []
 
@@ -2530,7 +2596,7 @@ def _write_instagram_candidates(
         f"・男性組：見栄で激混み店に並ばず「女性10名以上×女性比55%以上」の余裕ある店へ\n"
         f"・女性組：女余りで放置される店より「男性先行で盛り上がっている大型店」の方が待ち0分で即乾杯できます🥂\n\n"
         f"いま現在のリアルタイム男女人数と料金比較はプロフィールのリンク（aiseki-navi.com）から3秒で見れます🔍\n\n"
-        f"{tags}"
+        f"{tags_1}"
     )
     candidates.append({
         "style": "ig_empathy_story",
@@ -2553,7 +2619,7 @@ def _write_instagram_candidates(
         f"23時20分前後は終電組の退店で一時的に人数が動くため、1軒目は20時台、2軒目は0時すぎの第2波を狙うのがデータ上の鉄板ルートです🌙\n"
         f"あとで友達との作戦会議に使えるよう「保存📌」しておくのがおすすめ！\n\n"
         f"現在の全店リアルタイム人数はプロフィールのリンク（相席ナビ）で無料公開中です🔍\n\n"
-        f"{tags}"
+        f"{tags_2}"
     )
     candidates.append({
         "style": "ig_data_discovery",
@@ -2572,7 +2638,7 @@ def _write_instagram_candidates(
         f"【待ち時間回避・ゆっくり話すならここ】\n"
         f"{a_lines}\n\n"
         f"同じエリアでも日によって男女比が15〜20%変わるので、向かう3分前にプロフィールのリンク（aiseki-navi.com）で現在人数を見てから入るのが一番確実です✨\n\n"
-        f"{tags}"
+        f"{tags_3}"
     )
     candidates.append({
         "style": "ig_concise_save",
@@ -2656,6 +2722,13 @@ def _write_tiktok_candidates(
         ls = cluster["low_store"]
         hub = cluster["hub_label"]
         gap = cluster["pct_gap"]
+        tt_tags_gap = pick_rotated_hashtag_line(
+            "tiktok",
+            "tiktok_gap",
+            now_jst=now_jst,
+            area_tag=hub,
+            seed_extra=0,
+        )
         hook_txt = f"同じ{hub}・徒歩4分で『女性比{hs['wpct']}% vs {ls['wpct']}%』の残酷な差"
         opener = (
             f"同じ{hub}の徒歩4分圏内なのに、駅チカの1店舗目だけに突撃して受付待ちで消耗してる人が多すぎる…（{wd_str}曜 {t_str}実測）"
@@ -2671,7 +2744,7 @@ def _write_tiktok_candidates(
             f"女の子側も待たされる店はすぐ見切ってテンポよく飲める店に流れてるから、駅を出る直前に別ブランド（オリエンタルラウンジ・ag・JIS）を見比べるだけで夜の密度がまるで変わるんだよね。\n\n"
             f"入店3分前に見返せるように『保存』しとくと便利📌\n"
             f"全国60店舗超の現在人数と料金比較はプロフのリンク、または『相席ナビ』（aiseki-navi.com）で無料検索できます🔍\n\n"
-            f"#相席ナビ #相席ラウンジ #オリエンタルラウンジ #ag #JIS #{hub.split('・')[0]}グルメ"
+            f"{tt_tags_gap}"
         )
         script_gap = (
             f"🎬【動画テンプレ連動】🎵 同駅ギャップ比較（tiktok_gap_shock / 11.5秒・UIセーフゾーン設計）\n"
@@ -2694,16 +2767,22 @@ def _write_tiktok_candidates(
     # 2) tiktok_female_confession: Female perspective — why 70%+ female stores make girls wait
     if male_lead:
         ml_mpct = 100 - int(male_lead["wpct"])
+        tt_tags_ladies = pick_rotated_hashtag_line(
+            "tiktok",
+            "ladies",
+            now_jst=now_jst,
+            seed_extra=1,
+        )
         hook_f = f"女子ペアが『女性70%超の店』に行くと、実は受付で待たされる話"
         main_f = (
-            f"女の子2人組で「女性がいっぱい入ってる人気店なら安心でしょ」って向かうと、実は一番受付で待たされる罠になりがちだったりする…💄（{wd_str}曜 {t_str}の現場モニターより）\n\n"
+            f"女の子2人組で「女性がいっぱい入ってる人気店なら安心でしょ」って向かうと、実は一番受付で待たされる罠になりがちだったりする…💄（{wd_str}曜 {t_str}実測メモ）\n\n"
             f"女性が7割を超えて集中してるお店は席替えの回転も重くなりやすいから、女子組が待ちゼロでスマートに乾杯するなら「男性が先行して盛り上がってるお店」を逆張りで選ぶのが一番ラクなんだよね。\n\n"
             f"たとえば今この瞬間のデータだと、\n"
             f"・女子組の即案内狙い目：{male_lead['ja_name']}（男性{male_lead['men']}名・女性{male_lead['women']}名 / 男性比{ml_mpct}%）\n"
             f"・逆に男性側の穴場：{focus['ja_name']}（女性{focus['women']}名・男性{focus['men']}名 / 女性比{focus['wpct']}%）\n"
             f"みたいに、男女で『正解の店』は真逆になるのが面白いところ。\n\n"
             f"友達との2軒目探し用に『保存』しておいて、向かう直前にプロフのリンクか『相席ナビ』（aiseki-navi.com）の女性専用モードを覗いてみてね🥂\n\n"
-            f"#相席ナビ #相席ラウンジ #女子会 #オリエンタルラウンジ #ag #2軒目"
+            f"{tt_tags_ladies}"
         )
         script_f = (
             f"🎬【動画テンプレ連動】🎵 女子本音×待ち0（tiktok_ladies_real / 11.5秒・UIセーフゾーン設計）\n"
@@ -2724,6 +2803,13 @@ def _write_tiktok_candidates(
         })
 
     # 3) tiktok_data_myth: Counter-intuitive data breakdown
+    tt_tags_myth = pick_rotated_hashtag_line(
+        "tiktok",
+        "tiktok_gap",
+        now_jst=now_jst,
+        area_tag=str(focus.get("area_label") or ""),
+        seed_extra=2,
+    )
     hook_m = f"『とりあえず1番有名な店舗へ直行』が一番時間を溶かす理由"
     main_m = (
         f"相席ラウンジで一番もったいない負けパターンって、現地に着いてからノープランで1店舗目だけ見て並んじゃうことなんだよな…📊（{wd_str}曜 {t_str}・全国{research.get('active_store_count', 0)}店稼働中）\n\n"
@@ -2734,7 +2820,7 @@ def _write_tiktok_candidates(
         f"男性なら『女性12名以上×女性比55%以上』、女性ペアなら『男性先行店』をエレベーターに乗る前に選ぶだけで、受付待ちのストレスがほぼ消えるんだよね。\n\n"
         f"週末にすぐ見返せるようにこの動画を『保存』📌\n"
         f"全国60店舗超のリアルタイム人数は『相席ナビ』（aiseki-navi.com）で24時間無料公開中です🔍\n\n"
-        f"#相席ナビ #相席ラウンジ #オリエンタルラウンジ #JIS #夜遊びガイド"
+        f"{tt_tags_myth}"
     )
     script_m = (
         f"🎬【動画テンプレ連動】🎵 同駅ギャップ比較 または 🔥 全国TOP5速報（11.5秒）\n"
@@ -2756,16 +2842,22 @@ def _write_tiktok_candidates(
 
     # 4) tiktok_midnight_reverse: 23:20 Last-Train Cliff ("終電崖") & late-night survivors
     mid_ret_val = int(focus.get("midnight_retention_pct") or 82)
+    tt_tags_mid = pick_rotated_hashtag_line(
+        "tiktok",
+        "tiktok_midnight",
+        now_jst=now_jst,
+        seed_extra=3,
+    )
     hook_mid = f"23時20分の『終電崖』で人が消える店と、深夜から増える店の違い"
     main_mid = (
-        f"毎晩モニターを追ってるとはっきり出るんだけど、相席ラウンジには23時20分前後に『終電の崖』があるんだよね…🌙\n\n"
+        f"毎晩の推移を追ってるとはっきり出るんだけど、相席ラウンジには23時20分前後に『終電の崖』があるんだよね…🌙\n\n"
         f"終電を境にサッと女性陣が引く店舗と、逆に居酒屋の2軒目組が流れ込んで深夜0時過ぎから一気に熱量が上がる店舗に真っ二つに割れる。\n\n"
         f"いま（{wd_str}曜 {t_str}）実測でしっかり人が入っていて深夜帯も粘り強いのはこのあたり👇\n"
         f"・{focus['ja_name']}：女性{focus['women']}名・男性{focus['men']}名（女性比{focus['wpct']}%）\n"
         f"・{s1['ja_name']}：女性{s1['women']}名・男性{s1['men']}名（女性比{s1['wpct']}%）\n"
         f"・{s3['ja_name']}：女性{s3['women']}名・男性{s3['men']}名（女性比{s3['wpct']}%）\n\n"
         f"2軒目・終電後にハズしたくない夜は、この投稿を『保存』しといて動く直前にプロフのリンク『相席ナビ』（aiseki-navi.com）で終電後維持率を見てから向かうのがほんと鉄板だったりする。\n\n"
-        f"#相席ナビ #相席ラウンジ #オリエンタルラウンジ #ag #JIS #終電逃した"
+        f"{tt_tags_mid}"
     )
     script_mid = (
         f"🎬【動画テンプレ連動】🎵 終電崖×深夜穴場（tiktok_midnight_cliff / 11.5秒・UIセーフゾーン設計）\n"
@@ -3485,6 +3577,13 @@ def _build_gemini_prompt(
         f_name = focus["ja_name"] if focus else "上位店舗"
         f_w = focus["women"] if focus else 0
         f_m = focus["men"] if focus else 0
+        ai_tt_tags = pick_rotated_hashtag_line(
+            "tiktok",
+            "ladies" if tm in ("female_real", "spicy_female") else "tiktok_gap",
+            now_jst=now_jst,
+            area_tag=str(focus.get("area_label") or "") if focus else "",
+            seed_extra=len(slot_label or ""),
+        )
         reply_text = (
             f"🎬【動画テンプレ連動】🎵 同駅ギャップ比較（tiktok_gap_shock / 11.5秒・UIセーフゾーン設計）\n"
             f"・0.0〜2.0秒（指止めフック）：AI生成キャプションの1行目と連動した結論フックを表示\n"
@@ -3496,7 +3595,7 @@ def _build_gemini_prompt(
             "【対象SNS：TikTok（9:16 縦型ショート動画キャプション＆検索SEO）】\n"
             "- 文字数制限：**320文字〜620文字以内**\n"
             "- 禁止事項：1行目を『【〇〇速報】』のような角括弧タイトルにしないこと。『🥇🥈🥉』メダル記号や『モニター見てたら』等の裏方アピール、宣伝臭い絵文字連打は禁止。\n"
-            "- 構成：最初の1行目でTikTok視聴者が思わずコメントや保存をしたくなる『街ごとのリアルなギャップや女子組・男子組の図星の本音』を切り出す。本文中で2〜3店舗の実測人数（例：女性48名・男性32名（女性比60%））を正確に織り交ぜ、自然な流れで『入店3分前に見返せるように保存📌しとくと便利』と『相席ナビ（aiseki-navi.com）で検索🔍』を案内し、末尾に『#相席ナビ #相席ラウンジ #オリエンタルラウンジ #ag #JIS』の5タグを付ける。"
+            f"- 構成：最初の1行目でTikTok視聴者が思わずコメントや保存をしたくなる『街ごとのリアルなギャップや女子組・男子組の図星の本音』を切り出す。本文中で2〜3店舗の実測人数（例：女性48名・男性32名（女性比60%））を正確に織り交ぜ、自然な流れで『入店3分前に見返せるように保存📌しとくと便利』と『相席ナビ（aiseki-navi.com）で検索🔍』を案内し、末尾に『{ai_tt_tags}』を付ける。"
         )
     elif ch == "note":
         reply_text = "（note専用・Webエディタへ1クリック転送可能・見出し画像プロンプト連動）"
@@ -3527,12 +3626,18 @@ def _build_gemini_prompt(
             {"name": s["seo_name"], "label": f"{a_lbl}{s['avg_wpct']}%"} for s in a_top
         ]
         fact_payload["weekend_label"] = ig_ctx.get("weekend_label", "")
+        ai_ig_tags = pick_rotated_hashtag_line(
+            "instagram",
+            "ladies" if tm in ("female_real", "spicy_female") else "carousel",
+            now_jst=now_jst,
+            seed_extra=len(slot_label or ""),
+        )
         reply_text = "（5枚組カルーセル画像とセットで投稿・上位AI長考アドリブ生成）"
         platform_spec = (
             "【対象SNS：Instagram（5枚組カルーセル投稿キャプション）】\n"
             "- 文字数制限：**400文字〜680文字以内**\n"
             "- 禁止事項：1行目を『【〇〇予報】』のような堅い角括弧見出しにしないこと。宣伝っぽいハイテンション絵文字連打をしないこと。\n"
-            "- 構成：『…続きを読む』で折りたたまれる前の最初の1〜2行目に、天気・季節・その曜日のリアルな空気感（「1軒目そろそろ出る頃だけど…」のような生の呟き）を書く。途中で自然な流れで『あとで見返せるように保存📌しとくと便利』と添え、スライド2枚目の盛り上がり上位3店舗とスライド3枚目の高女性比率上位3店舗の数値を正確に織り交ぜ、プロフィールのリンク（aiseki-navi.com）への案内と、末尾に『#相席ナビ #相席ラウンジ #オリエンタルラウンジ #ag #JIS #夜遊びガイド』の6タグを付ける。"
+            f"- 構成：『…続きを読む』で折りたたまれる前の最初の1〜2行目に、天気・季節・その曜日のリアルな空気感（「1軒目そろそろ出る頃だけど…」のような生の呟き）を書く。途中で自然な流れで『あとで見返せるように保存📌しとくと便利』と添え、スライド2枚目の盛り上がり上位3店舗とスライド3枚目の高女性比率上位3店舗の数値を正確に織り交ぜ、プロフィールのリンク（aiseki-navi.com）への案内と、末尾に『{ai_ig_tags}』を付ける。"
         )
 
     slot_persona = research.get("slot_persona") or build_slot_persona_context(slot_label=slot_label, channel=ch)
@@ -4382,7 +4487,7 @@ def polish_draft_to_human_voice(
 
     def _extract_fact_nums(s: str) -> collections.Counter:
         # Lock all crowd counts, percentages, temperatures, and minute/hour figures (excluding '1軒目'/'2軒目'/'1人'/'2人組')
-        cleaned = re.sub(r"[123]軒目|[12]人組?", "", s or "")
+        cleaned = re.sub(r"[123]軒目(?:探し)?|[12]人組?", "", s or "")
         return collections.Counter(re.findall(r"\d+", cleaned))
 
     orig_digits = _extract_fact_nums(body_only)

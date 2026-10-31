@@ -843,7 +843,7 @@
             </form>
         </div>
 
-        <!-- Dual-Engine AI (Gemini Pro/Flash + Claude Sonnet) Status & Shared Key Drawer -->
+        <!-- Dual-Engine AI (Gemini Pro/Flash + Claude Opus 2-Pass) Status & Shared Key Drawer -->
         <div class="ai-panel">
             <div class="ai-panel-top">
                 <div>
@@ -873,13 +873,13 @@
 
             <div id="gemini-key-drawer" class="key-drawer" style="display: none;">
                 <div style="font-size:0.78rem; color:var(--sub); margin-bottom:8px; line-height:1.55;">
-                    💡 SNS編集部と共通の両対応AIキー設定です。Google キーは上位 <code>Gemini Pro / 標準Flash</code> で動作し、さらに <code>sk-ant-...</code>（Anthropic Claude Sonnet）を追加すると人間味エッセイ特化エンジンへ即時切替できます。
+                    💡 SNS編集部と共通の両対応AIキー設定です。Google キーは上位 <code>Gemini Pro / 標準Flash</code> で動作し、さらに <code>sk-ant-...</code>（Anthropic Claude Opus）を追加すると人間味エッセイ特化エンジンへ即時切替できます。
                 </div>
                 <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:8px;">
                     <span style="font-size:0.76rem; color:var(--sub); font-weight:700;">優先AIエンジン：</span>
                     <button type="button" class="ai-btn" onclick="saveColEnginePref('auto')">⚡ 自動（Claude登録時はClaude優先）</button>
                     <button type="button" class="ai-btn" onclick="saveColEnginePref('gemini')">♊ 上位 Gemini Pro/Flash 優先</button>
-                    <button type="button" class="ai-btn" onclick="saveColEnginePref('claude')">✍️ Claude Sonnet 優先</button>
+                    <button type="button" class="ai-btn" onclick="saveColEnginePref('claude')">✍️ Claude Opus × 2段階推敲 優先</button>
                 </div>
                 <div class="custom-topic-row" style="margin-bottom:6px;">
                     <input type="password" id="gemini-api-key-input" class="topic-input" placeholder="Google Geminiキー: AIzaSy... / AQ.... {% if editorial.gemini_status and editorial.gemini_status.gemini_configured %}（現在: {{ editorial.gemini_status.gemini_masked_key }}）{% endif %}" autocomplete="off">

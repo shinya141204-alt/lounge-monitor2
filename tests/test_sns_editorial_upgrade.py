@@ -1411,6 +1411,280 @@ class SnsEditorialUpgradeTests(unittest.TestCase):
         self.assertNotIn("53店舗", ogp_src)
         self.assertNotIn("51店舗", ogp_src)
 
+    def test_tiktok_schedule_label_consistency_and_pacing_summary_ui_wiring(self):
+        """Verify Wed/Fri/Sat TikTok schedule labels, pacing_summary UI rendering, and zero stale Claude Sonnet labels."""
+        import app as app_module
+        import tiktok_poster
+
+        self.assertIn("Wed/Fri/Sat", tiktok_poster.execute_scheduled_tiktok_inbox_post.__doc__ or "")
+        self.assertNotIn("Tue/Thu/Fri/Sat", tiktok_poster.execute_scheduled_tiktok_inbox_post.__doc__ or "")
+
+        client = app_module.app.test_client()
+        with client.session_transaction() as sess:
+            sess["is_master"] = True
+            sess["staff_authenticated"] = True
+
+        for ch in ("x", "tiktok"):
+            resp = client.get(f"/staff/sns-editorial?channel={ch}")
+            self.assertEqual(resp.status_code, 200)
+            html = resp.get_data(as_text=True)
+            self.assertIn('id="sns-pacing-summary-box"', html)
+            self.assertIn("水・木・金・土（週4回", html)
+            self.assertIn("水・金・土（週3回", html)
+            self.assertIn("最低48分間隔", html)
+            self.assertIn("週6日稼働", html)
+            self.assertIn("12:20/15:20", html)
+            self.assertIn("水・金・土のTikTok自動下書き送信", html)
+            self.assertNotIn("火・木・金・土", html)
+            self.assertNotIn("Claude Sonnet 優先", html)
+            self.assertIn("Claude Opus × 2段階推敲 優先", html)
+
+        pref_resp = client.post(
+            "/api/sns-editorial/ai-config",
+            json={"action": "set_pref", "engine_pref": "claude"},
+        )
+        self.assertEqual(pref_resp.status_code, 200)
+        pref_json = pref_resp.get_json()
+        self.assertIn("Claude Opus × 2段階推敲", pref_json.get("message", ""))
+        self.assertNotIn("Claude Sonnet", pref_json.get("message", ""))
+
+    def test_public_reel_mp4_http_206_range_slot_pinning_and_900s_ttl(self):
+        """Verify /ogp/reel/<rt>.mp4 supports HTTP 206 Range, 416 invalid Range, slot pinning, continuation guard, and 900s shared TTL."""
+        import app as app_module
+        import reel_generator
+        import turbo_store
+
+        self.assertEqual(reel_generator.REEL_SHARED_CACHE_TTL_SEC, 900)
+        sample_mp4 = b"\x00\x00\x00\x18ftypmp42" + bytes(range(256)) * 12
+        client = app_module.app.test_client()
+
+        render_calls = []
+
+        def _fake_render(_stores, reel_type="live_top5", force_refresh=False):
+            render_calls.append((reel_type, bool(force_refresh)))
+            return sample_mp4
+
+        with mock.patch("reel_generator.render_reel_mp4_bytes", side_effect=_fake_render):
+            # 1) Standard 200 full fetch
+            r200 = client.get("/ogp/reel/live_top5.mp4")
+            self.assertEqual(r200.status_code, 200)
+            self.assertEqual(r200.headers.get("Accept-Ranges"), "bytes")
+            self.assertTrue(r200.headers.get("ETag"))
+            self.assertEqual(r200.data, sample_mp4)
+
+            # 2) Safari / Meta / TikTok 2-byte probe Range: bytes=0-1
+            r206_probe = client.get("/ogp/reel/live_top5.mp4", headers={"Range": "bytes=0-1"})
+            self.assertEqual(r206_probe.status_code, 206)
+            self.assertEqual(r206_probe.headers.get("Content-Range"), f"bytes 0-1/{len(sample_mp4)}")
+            self.assertEqual(int(r206_probe.headers.get("Content-Length")), 2)
+            self.assertEqual(r206_probe.data, sample_mp4[:2])
+
+            # 3) Mid-stream chunk Range: bytes=64-127
+            r206_mid = client.get("/ogp/reel/live_top5.mp4", headers={"Range": "bytes=64-127"})
+            self.assertEqual(r206_mid.status_code, 206)
+            self.assertEqual(r206_mid.headers.get("Content-Range"), f"bytes 64-127/{len(sample_mp4)}")
+            self.assertEqual(r206_mid.data, sample_mp4[64:128])
+
+            # 4) Out-of-bounds Range -> 416
+            r416 = client.get("/ogp/reel/live_top5.mp4", headers={"Range": "bytes=999999-1000000"})
+            self.assertEqual(r416.status_code, 416)
+
+            # 5) Explicit ?download=1 -> 200 attachment
+            r_dl = client.get("/ogp/reel/live_top5.mp4?download=1")
+            self.assertEqual(r_dl.status_code, 200)
+            self.assertIn("attachment;", r_dl.headers.get("Content-Disposition", ""))
+            self.assertEqual(r_dl.data, sample_mp4)
+
+            # 6) Safari continuation Range on ?refresh=1 must NOT force_refresh on byte offset > 0
+            render_calls.clear()
+            client.get("/ogp/reel/live_top5.mp4?refresh=1", headers={"Range": "bytes=0-1"})
+            client.get("/ogp/reel/live_top5.mp4?refresh=1", headers={"Range": "bytes=64-127"})
+            self.assertEqual(render_calls, [("live_top5", True), ("live_top5", False)])
+
+        # 7) Pinned ?s=<ts_code> slot serves byte-identical MP4 without calling render_reel_mp4_bytes
+        pinned_mp4 = b"\x00\x00\x00\x18ftypisom" + b"PINNED_SLOT_MP4_" * 120
+        with mock.patch.object(turbo_store, "set_media_blob", wraps=turbo_store.set_media_blob) as spy_set:
+            reel_generator.pin_shared_reel_mp4_slot("area_battle", "20261104_2118", pinned_mp4)
+            self.assertTrue(any(c.kwargs.get("ttl_sec") == 900 for c in spy_set.call_args_list))
+
+        with mock.patch("reel_generator.render_reel_mp4_bytes", side_effect=AssertionError("Should hit pinned slot")):
+            r_pin = client.get("/ogp/reel/area_battle.mp4?s=20261104_2118", headers={"Range": "bytes=0-15"})
+            self.assertEqual(r_pin.status_code, 206)
+            self.assertEqual(r_pin.data, pinned_mp4[:16])
+
+    def test_reel_background_and_ken_burns_rotation_across_templates_and_days(self):
+        """Verify Reel templates rotate across all portrait images, procedural bokeh variants, and 4 Ken Burns drift modes."""
+        import reel_generator
+
+        jst = datetime.timezone(datetime.timedelta(hours=9))
+        base_night = datetime.datetime(2026, 11, 4, 21, 15, tzinfo=jst)
+
+        # On the same night, live_top5, area_battle, and tiktok_gap_shock must pick 3 distinct backgrounds
+        same_night_bgs = {
+            rt: reel_generator.list_available_backgrounds(rt, now_jst=base_night)
+            for rt in ("live_top5", "area_battle", "tiktok_gap_shock")
+        }
+        chosen_sources = {
+            info["active_file"] or f"procedural:{info['bg_variant']}"
+            for info in same_night_bgs.values()
+        }
+        self.assertEqual(len(chosen_sources), 3)
+
+        # Across 4 consecutive nights, live_top5 cycles through multiple backgrounds and all 4 Ken Burns modes
+        multi_day_sources = set()
+        multi_day_kb = set()
+        for d in range(4):
+            dt = base_night + datetime.timedelta(days=d)
+            info = reel_generator.list_available_backgrounds("live_top5", now_jst=dt)
+            multi_day_sources.add(info["active_file"] or "procedural_luxury")
+            multi_day_kb.add(info["ken_burns_mode"])
+        self.assertGreaterEqual(len(multi_day_sources), 3)
+        self.assertEqual(multi_day_kb, set(reel_generator._KEN_BURNS_MODES))
+
+        # Procedural luxury variants 0, 1, 2 render distinct valid RGB artwork and preview frames differ across days
+        c0 = reel_generator._build_procedural_luxury_bg(760, 1350, "live_top5", bg_variant=0)
+        c1 = reel_generator._build_procedural_luxury_bg(760, 1350, "live_top5", bg_variant=1)
+        self.assertNotEqual(c0.tobytes(), c1.tobytes())
+
+        jpg_d0 = reel_generator.render_reel_preview_frame_jpeg(self.sample_stores, reel_type="live_top5", sec=4.5, now_jst=base_night)
+        jpg_d1 = reel_generator.render_reel_preview_frame_jpeg(
+            self.sample_stores,
+            reel_type="live_top5",
+            sec=4.5,
+            now_jst=base_night + datetime.timedelta(days=1),
+        )
+        self.assertTrue(jpg_d0.startswith(b"\xff\xd8"))
+        self.assertTrue(jpg_d1.startswith(b"\xff\xd8"))
+        self.assertNotEqual(jpg_d0, jpg_d1)
+
+    def test_rotated_hashtags_across_ig_tiktok_ladies_and_evaluator_100pts(self):
+        """Verify IG/TikTok/Ladies hashtag blocks rotate across days, obey brand rules, and score full marks in run_evaluator."""
+        import ig_carousel_generator
+        import ladies_guide
+
+        jst = datetime.timezone(datetime.timedelta(hours=9))
+        base_dt = datetime.datetime(2026, 11, 4, 21, 0, tzinfo=jst)
+        rich_stores = self.sample_stores + [
+            {"name": "JIS 新宿店", "men": 14, "women": 36, "area": "新宿", "station": "新宿駅", "source": "jis"},
+            {"name": "オリエンタルラウンジ 梅田店", "men": 32, "women": 24, "area": "梅田", "station": "梅田駅", "source": "oriental"},
+        ]
+
+        for cat in ("carousel", "ladies", "tiktok_gap", "tiktok_midnight"):
+            seen_lines = set()
+            for d in range(4):
+                line = sns_editorial.pick_rotated_hashtag_line(
+                    "tiktok" if cat.startswith("tiktok") else "instagram",
+                    cat,
+                    now_jst=base_dt + datetime.timedelta(days=d),
+                    area_tag="新宿・歌舞伎町" if cat == "tiktok_gap" else "",
+                )
+                seen_lines.add(line)
+                tags = re.findall(r"#\S+", line)
+                self.assertGreaterEqual(len(tags), 5)
+                self.assertLessEqual(len(tags), 7)
+                self.assertIn("#相席ナビ", tags)
+                self.assertIn("#相席ラウンジ", tags)
+                self.assertIsNone(re.search(r"オリエンタル(?!ラウンジ)", line))
+                self.assertIsNone(re.search(r"\d", line))
+            self.assertGreaterEqual(len(seen_lines), 3)
+
+        # Verify IG candidates, TikTok candidates, ig_carousel_generator, and ladies_guide rotate across days & pass evaluator
+        research_d0 = sns_editorial.run_researcher(rich_stores, slot_label="21:45", now_jst=base_dt)
+        research_d1 = sns_editorial.run_researcher(
+            rich_stores,
+            slot_label="21:45",
+            now_jst=base_dt + datetime.timedelta(days=1),
+        )
+        ig_cands_d0 = sns_editorial._write_instagram_candidates(research_d0, now_jst=base_dt)
+        ig_cands_d1 = sns_editorial._write_instagram_candidates(research_d1, now_jst=base_dt + datetime.timedelta(days=1))
+        self.assertNotEqual(
+            ig_cands_d0[0]["main_text"].splitlines()[-1],
+            ig_cands_d1[0]["main_text"].splitlines()[-1],
+        )
+        ev_ig = sns_editorial.run_evaluator(ig_cands_d0[:3], research_d0, {}, channel="instagram")
+        self.assertEqual(ev_ig["winner"]["scores"]["weight_fit"], 10)
+
+        tt_cands_d0 = sns_editorial._write_tiktok_candidates(
+            research_d0,
+            slot_label="20:35",
+            now_jst=base_dt,
+            site_url="https://aiseki-navi.com",
+        )
+        tt_cands_d1 = sns_editorial._write_tiktok_candidates(
+            research_d1,
+            slot_label="20:35",
+            now_jst=base_dt + datetime.timedelta(days=1),
+            site_url="https://aiseki-navi.com",
+        )
+        self.assertNotEqual(
+            tt_cands_d0[0]["main_text"].splitlines()[-1],
+            tt_cands_d1[0]["main_text"].splitlines()[-1],
+        )
+        for c in tt_cands_d0:
+            self.assertNotIn("モニター", c["main_text"])
+        ev_tt = sns_editorial.run_evaluator(tt_cands_d0[:3], research_d0, {}, channel="tiktok")
+        self.assertEqual(ev_tt["winner"]["scores"]["weight_fit"], 10)
+
+        ctx0 = ig_carousel_generator.build_forecast_context(live_stores=rich_stores, now_jst=base_dt)
+        ctx1 = ig_carousel_generator.build_forecast_context(live_stores=rich_stores, now_jst=base_dt + datetime.timedelta(days=1))
+        self.assertNotEqual(
+            ig_carousel_generator.build_captions(ctx0)["instagram_caption"].splitlines()[-1],
+            ig_carousel_generator.build_captions(ctx1)["instagram_caption"].splitlines()[-1],
+        )
+
+        lad0 = ladies_guide.build_instagram_ladies_caption(rich_stores, now_jst=base_dt, use_ai=False)
+        lad1 = ladies_guide.build_instagram_ladies_caption(
+            rich_stores,
+            now_jst=base_dt + datetime.timedelta(days=1),
+            use_ai=False,
+        )
+        self.assertNotEqual(lad0.splitlines()[-1], lad1.splitlines()[-1])
+
+    def test_note_rss_check_schedule_spacing_and_24h_freshness_window(self):
+        """Verify note_rss_check runs at 03:20 & 06:20 UTC (12:20 & 15:20 JST) away from 18:00 Tips and retains 24h freshness."""
+        from email.utils import format_datetime
+        import tempfile
+        import job_state
+        import note_poster
+        import worker
+
+        sched = worker.build_worker_scheduler()
+        note_job = sched.get_job("note_rss_check")
+        self.assertIsNotNone(note_job)
+        trig_str = str(note_job.trigger)
+        self.assertIn("hour='3,6'", trig_str)
+        self.assertNotIn("8", trig_str)
+
+        now_utc = datetime.datetime.now(datetime.timezone.utc)
+        evening_yesterday_pub = format_datetime(now_utc - datetime.timedelta(hours=18))
+        stale_30h_pub = format_datetime(now_utc - datetime.timedelta(hours=30))
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_file = os.path.join(tmpdir, "notes_window.json")
+            job_state.mark_done("note:https://note.com/aiseki_navi/n/n_seed_init")
+            articles = [
+                {
+                    "title": "昨夜公開した新鮮な検証記事",
+                    "link": "https://note.com/aiseki_navi/n/n_18h_fresh",
+                    "pub_date": evening_yesterday_pub,
+                    "guid": "n_18h_fresh",
+                },
+                {
+                    "title": "30時間前の過去記事",
+                    "link": "https://note.com/aiseki_navi/n/n_30h_old",
+                    "pub_date": stale_30h_pub,
+                    "guid": "n_30h_old",
+                },
+            ]
+            with mock.patch.object(note_poster, "STATE_FILE", state_file), \
+                 mock.patch("note_poster.fetch_latest_note_articles", return_value=articles), \
+                 mock.patch("x_poster.post_to_x", return_value={"status": "success"}) as post_mock:
+                res = note_poster.check_and_post_new_note()
+            self.assertEqual(res["status"], "success")
+            self.assertEqual(res["article"]["guid"], "n_18h_fresh")
+            self.assertEqual(post_mock.call_count, 1)
+            self.assertTrue(job_state.is_done("note:https://note.com/aiseki_navi/n/n_30h_old"))
+
 
 if __name__ == "__main__":
     unittest.main()

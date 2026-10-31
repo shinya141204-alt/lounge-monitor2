@@ -1,4 +1,5 @@
 from flask import Flask, render_template, jsonify, request, send_from_directory, Response, redirect, session, url_for, abort, make_response
+from werkzeug.exceptions import HTTPException
 from apscheduler.schedulers.background import BackgroundScheduler
 import logging
 import monitor
@@ -375,8 +376,8 @@ def _ensure_scheduler_started_async():
                     note_poster.check_and_post_new_note()
                 except Exception as err:
                     logging.error(f"Scheduled note promotion check failed: {err}")
-            # Check note RSS during calm midday (12:15 JST) and pre-evening (17:15 JST) windows to avoid 20:00-22:00 X rush
-            scheduler.add_job(func=_note_check_job, trigger="cron", hour="3,8", minute=15, jitter=180, executor="sns_ai")
+            # Check note RSS during calm midday (12:20 JST) and mid-afternoon (15:20 JST) windows, well clear of 18:00 Tips & 20:00-22:00 X rush
+            scheduler.add_job(func=_note_check_job, trigger="cron", hour="3,6", minute=20, jitter=240, executor="sns_ai")
             def _threads_daily_job():
                 try:
                     import sns_editorial
@@ -2498,8 +2499,8 @@ def api_sns_editorial_gemini_key():
         saved_pref = sns_editorial.set_ai_engine_pref(payload.get('engine_pref') or 'auto')
         _flush_editorial_caches()
         pref_labels = {
-            'auto': '自動ハイブリッド（Claude登録時はClaude Sonnet優先・未登録時は上位Gemini Pro/Flash）',
-            'claude': 'Claude Sonnet 最優先（障害時はGeminiへ自動退避）',
+            'auto': '自動ハイブリッド（Claude登録時はClaude Opus×2段階推敲優先・未登録時は上位Gemini Pro/Flash）',
+            'claude': 'Claude Opus × 2段階推敲 最優先（障害時はGeminiへ自動退避）',
             'gemini': '上位 Gemini Pro / Flash 最優先（障害時はClaudeへ自動退避）',
         }
         return jsonify({
@@ -2531,7 +2532,7 @@ def api_sns_editorial_gemini_key():
     is_claude_key = api_key.startswith('sk-ant-') or (provider == 'claude' and not api_key.startswith(('AIza', 'AQ.')))
     if is_claude_key:
         sns_editorial.set_claude_api_key(api_key)
-        saved_msg = 'Claude Sonnet APIキーを暗号化保存しました！人間味重視のメイン執筆エンジンとして即座に稼働します。'
+        saved_msg = 'Claude Opus（2段階推敲）APIキーを暗号化保存しました！人間味重視のメイン執筆エンジンとして即座に稼働します。'
     else:
         sns_editorial.set_gemini_api_key(api_key)
         saved_msg = 'Gemini APIキーを暗号化保存しました！上位モデル（Gemini Pro / Flash）での本音執筆が有効になります。'
@@ -2935,19 +2936,34 @@ def public_reel_mp4(reel_type):
     restore_latest_data_if_empty()
     trigger_background_fetch_if_needed()
     rt = reel_generator.normalize_reel_type(reel_type)
-    force_refresh = request.args.get('refresh') == '1'
+    is_cont_range = bool(
+        request.range
+        and request.range.ranges
+        and (request.range.ranges[0][0] or 0) > 0
+    )
+    force_refresh = (request.args.get('refresh') == '1') and not is_cont_range
+    slot_token = (request.args.get('s') or '').strip()
     with data_lock:
         live_s = list(latest_data.get('full_data') or [])
     try:
-        mp4_bytes = reel_generator.render_reel_mp4_bytes(live_s, reel_type=rt, force_refresh=force_refresh)
+        mp4_bytes = None
+        if slot_token and not force_refresh:
+            mp4_bytes = reel_generator.get_pinned_reel_mp4_slot(rt, slot_token)
+        if not mp4_bytes:
+            mp4_bytes = reel_generator.render_reel_mp4_bytes(live_s, reel_type=rt, force_refresh=force_refresh)
         headers = {
-            'Cache-Control': 'public, max-age=120',
+            'Cache-Control': 'public, max-age=300',
             'Accept-Ranges': 'bytes',
         }
         if request.args.get('download') == '1':
             today_s = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).strftime('%Y%m%d_%H%M')
             headers['Content-Disposition'] = f'attachment; filename="aiseki_navi_reel_{rt}_{today_s}.mp4"'
-        return Response(mp4_bytes, mimetype='video/mp4', headers=headers)
+            return Response(mp4_bytes, mimetype='video/mp4', headers=headers)
+        resp = Response(mp4_bytes, mimetype='video/mp4', headers=headers)
+        resp.add_etag()
+        return resp.make_conditional(request, accept_ranges=True, complete_length=len(mp4_bytes))
+    except HTTPException:
+        raise
     except RuntimeError as re_err:
         logging.warning(f"Reel MP4 unavailable ({rt}): {re_err}")
         return jsonify({'ok': False, 'error': str(re_err)}), 503

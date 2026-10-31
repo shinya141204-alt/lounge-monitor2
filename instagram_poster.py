@@ -1062,8 +1062,11 @@ def publish_live_reel_to_instagram(
         else:
             caption = reel_generator.build_reel_caption(stores, reel_type=rt, now_jst=now_jst)
 
+        ts_code = now_jst.strftime("%Y%m%d_%H%M")
         try:
-            reel_generator.render_reel_mp4_bytes(stores, reel_type=rt)
+            mp4_bytes = reel_generator.render_reel_mp4_bytes(stores, reel_type=rt)
+            if isinstance(mp4_bytes, (bytes, bytearray)) and len(mp4_bytes) > 1024:
+                reel_generator.pin_shared_reel_mp4_slot(rt, ts_code, bytes(mp4_bytes))
         except Exception as warm_err:
             err_detail = f"Reel MP4 warm generation failed: {warm_err}"
             logging.error(err_detail)
@@ -1080,7 +1083,6 @@ def publish_live_reel_to_instagram(
                 pass
             return {"status": "error", "ok": False, "detail": err_detail, "reel_type": rt}
 
-        ts_code = now_jst.strftime("%Y%m%d_%H%M")
         video_url = f"{SITE_URL}/ogp/reel/{rt}.mp4?s={ts_code}"
         res = post_reel_to_instagram(
             video_url,

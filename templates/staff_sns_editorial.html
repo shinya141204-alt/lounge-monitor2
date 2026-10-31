@@ -1057,6 +1057,19 @@
                 </div>
                 {% endfor %}
             </div>
+            {% set ps = editorial.pacing_summary or {} %}
+            {% if ps %}
+            <div id="sns-pacing-summary-box" style="margin-top:10px; padding:9px 12px; border-radius:9px; background:var(--surface-2); border:1px dashed var(--border-strong); font-size:0.75rem; color:var(--sub); line-height:1.6;">
+                <div style="font-weight:800; color:var(--text); margin-bottom:3px;">🛡️ 全SNS Bot検知回避ペース制御＆リール稼働サマリー</div>
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap:4px 14px;">
+                    {% if ps.ig_reels_days_ja %}<div>🎬 <strong>IGリール（週{{ ps.ig_reels_weekly or 4 }}）</strong>：{{ ps.ig_reels_days_ja }}</div>{% endif %}
+                    {% if ps.tiktok_cadence_ja %}<div>🎵 <strong>TikTok</strong>：{{ ps.tiktok_cadence_ja }}</div>{% endif %}
+                    {% if ps.x_cadence_ja %}<div>𝕏 <strong>X（旧Twitter）</strong>：{{ ps.x_cadence_ja }}</div>{% endif %}
+                    {% if ps.threads_cadence_ja %}<div>🧵 <strong>Threads</strong>：{{ ps.threads_cadence_ja }}</div>{% endif %}
+                    {% if ps.col_release_ja %}<div style="grid-column: 1 / -1;">📰 <strong>コラム・note告知</strong>：{{ ps.col_release_ja }}</div>{% endif %}
+                </div>
+            </div>
+            {% endif %}
             <div id="platform-token-msg" style="font-size:0.78rem; margin-top:8px; color:var(--green-ink);"></div>
 
             <div id="platform-token-drawer" class="key-drawer" style="display: {{ 'block' if (dh.get('threads', {}).get('state') == 'error' or dh.get('instagram', {}).get('state') == 'error' or dh.get('tiktok', {}).get('state') == 'error') else 'none' }};">
@@ -1076,7 +1089,7 @@
             </div>
         </div>
 
-        <!-- Dual-Engine AI (Gemini Pro/Flash + Claude Sonnet) Ad-lib Control Panel -->
+        <!-- Dual-Engine AI (Gemini Pro/Flash + Claude Opus 2-Pass) Ad-lib Control Panel -->
         <div class="ai-panel">
             <div class="ai-panel-top">
                 <div>
@@ -1120,7 +1133,7 @@
                     <span style="font-size:0.76rem; color:var(--sub); font-weight:700;">優先AIエンジン：</span>
                     <button type="button" class="ai-btn" onclick="saveEnginePref('auto')" style="opacity:{{ '1' if (not editorial.gemini_status or editorial.gemini_status.engine_pref == 'auto') else '0.65' }};">⚡ 自動（Claude登録時はClaude優先）</button>
                     <button type="button" class="ai-btn" onclick="saveEnginePref('gemini')" style="opacity:{{ '1' if (editorial.gemini_status and editorial.gemini_status.engine_pref == 'gemini') else '0.65' }};">♊ 上位 Gemini Pro/Flash 優先</button>
-                    <button type="button" class="ai-btn" onclick="saveEnginePref('claude')" style="opacity:{{ '1' if (editorial.gemini_status and editorial.gemini_status.engine_pref == 'claude') else '0.65' }};">✍️ Claude Sonnet 優先</button>
+                    <button type="button" class="ai-btn" onclick="saveEnginePref('claude')" style="opacity:{{ '1' if (editorial.gemini_status and editorial.gemini_status.engine_pref == 'claude') else '0.65' }};">✍️ Claude Opus × 2段階推敲 優先</button>
                 </div>
 
                 <div class="key-form-row" style="margin-top:10px;">
@@ -1199,9 +1212,9 @@
                             <span class="reel-switch-slider"></span>
                         </span>
                     </label>
-                    <label class="reel-auto-box" for="tiktok-auto-schedule-toggle" title="火・木・金・土の20:39〜20:55 JST（人間ゆらぎ付）にTikTokアプリのInbox下書きへ自動送信します（TIKTOK_ACCESS_TOKEN設定時に稼働）">
+                    <label class="reel-auto-box" for="tiktok-auto-schedule-toggle" title="水・金・土の20:39〜20:55 JST（人間ゆらぎ付）にTikTokアプリのInbox下書きへ自動送信します（TIKTOK_ACCESS_TOKEN設定時に稼働）">
                         <span id="tiktok-auto-schedule-label">
-                            🎵 火・木・金・土のTikTok自動下書き送信：<strong id="tiktok-auto-state-text" style="color:{{ 'var(--green)' if _tiktok_init_auto else 'var(--sub)' }};">{{ 'ON（稼働中）' if _tiktok_init_auto else 'OFF（手動のみ）' }}</strong>
+                            🎵 水・金・土のTikTok自動下書き送信：<strong id="tiktok-auto-state-text" style="color:{{ 'var(--green)' if _tiktok_init_auto else 'var(--sub)' }};">{{ 'ON（稼働中）' if _tiktok_init_auto else 'OFF（手動のみ）' }}</strong>
                         </span>
                         <span class="reel-switch">
                             <input type="checkbox" id="tiktok-auto-schedule-toggle" {{ 'checked' if _tiktok_init_auto else '' }} onchange="saveTikTokAutoSchedule(this.checked)">
@@ -2560,7 +2573,7 @@
                 _applyTikTokAutoScheduleUi(savedState);
                 if (msgEl) {
                     msgEl.style.color = "var(--green-ink)";
-                    msgEl.textContent = "✅ 火・木・金・土のTikTok自動下書き送信を「" + (savedState ? "ON" : "OFF") + "」に保存しました。";
+                    msgEl.textContent = "✅ 水・金・土のTikTok自動下書き送信を「" + (savedState ? "ON" : "OFF") + "」に保存しました。";
                 }
             } catch (err) {
                 _applyTikTokAutoScheduleUi(!enabled);
