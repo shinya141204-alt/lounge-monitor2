@@ -3,7 +3,7 @@
 tests/test_ui_audit_regression.py - UI・コントラスト・キャッシュバスティング・ブランド表記 回帰テストスイート
 
 独立監査の9項目に対する自動回帰テスト:
-1. Cache-Control: immutable 対応のキャッシュバスティング同期 (calm.css?v=21, portal.css?v=10, app.js?v=20261031_1, sw.js?v=71, aiseki-navi-v71)
+1. Cache-Control: immutable 対応のキャッシュバスティング同期 (calm.css?v=22, portal.css?v=10, app.js?v=20261031_1, sw.js?v=72, aiseki-navi-v72)
 2. ページバンドル単位でのCSSカスタムプロパティ未定義参照ゼロ（フォールバック付き var() 含む） & #comparison-modal 男女人数カラー変数
 3. ライトモード .area-tag の枠線・背景なし端正タイポグラフィ統一
 4. PC (860px / 1280px) .portal-global-nav の折り返し表示（右端文字切れ・テーマ切替ボタン干渉ゼロ）＆モバイル横スワイプ維持
@@ -105,11 +105,11 @@ class UiAuditRegressionTests(unittest.TestCase):
     # ------------------------------------------------------------------
     def test_cache_busting_sync_across_templates_and_service_worker(self):
         """全テンプレートと static/sw.js のアセットバージョンが完全同期し、immutable ヘッダが正しく付与されること"""
-        expected_calm = "/static/calm.css?v=21"
+        expected_calm = "/static/calm.css?v=22"
         expected_portal = "/static/portal.css?v=10"
         expected_app_js = "/static/app.js?v=20261031_1"
-        expected_sw_url = "/sw.js?v=71"
-        expected_cache_name = "aiseki-navi-v71"
+        expected_sw_url = "/sw.js?v=72"
+        expected_cache_name = "aiseki-navi-v72"
 
         templates_dir = os.path.join(PROJECT_ROOT, "templates")
         calm_seen = 0
@@ -297,6 +297,14 @@ class UiAuditRegressionTests(unittest.TestCase):
         # Item 7 supplement: .momentum-legend-hint high-contrast override on / and /?staff=1
         self.assertIn("body:not(.theme-light) .momentum-legend-hint", calm_css)
         self.assertIn("body.theme-light .momentum-legend-hint", calm_css)
+
+        # PC vertical scroll guard: html selector in calm.css must NEVER declare overflow/overflow-x/overflow-y
+        calm_no_comments = re.sub(r"/\*.*?\*/", "", calm_css, flags=re.S)
+        for html_block in re.findall(r"(?<![a-zA-Z0-9_.-])html\s*\{([^}]*)\}", calm_no_comments):
+            self.assertIsNone(
+                re.search(r"\boverflow(?:-[xy])?\s*:", html_block),
+                f"html {{ ... }} must not set overflow (breaks body viewport scroll propagation on PC): {html_block}",
+            )
 
     # ------------------------------------------------------------------
     # 6. Public rendered HTML zero 'OLG' / 'ORIENTAL' / bare 'オリエンタル' exposure & brand alias merge
@@ -826,6 +834,40 @@ class UiAuditRegressionTests(unittest.TestCase):
                             self.assertNotRegex(edge_txt, r"\bOLG\b|\bORIENTAL\b")
                             self.assertNotIn("オリエンタルラウンジ オリエンタルラウンジ", edge_txt)
                             page.evaluate("closeModal()")
+
+                    # 2b. PC wheel/trackpad vertical scroll & modal background scroll lock/restore regression check
+                    for scroll_route in ("/", "/store/oriental-lounge-shinjuku", "/columns"):
+                        page.goto(base + scroll_route, wait_until="domcontentloaded")
+                        page.wait_for_timeout(120)
+                        page.mouse.move(640, 450)
+                        page.mouse.wheel(0, 500)
+                        page.wait_for_timeout(120)
+                        sc = page.evaluate("""() => ({
+                            scrollY: window.scrollY,
+                            maxScroll: document.documentElement.scrollHeight - window.innerHeight,
+                            overflowX: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+                            htmlOverflowX: getComputedStyle(document.documentElement).overflowX
+                        })""")
+                        self.assertEqual(sc["htmlOverflowX"], "visible", f"html overflow-x must stay visible on {scroll_route}")
+                        self.assertLessEqual(sc["overflowX"], 0, f"Horizontal overflow on {scroll_route}: {sc}")
+                        self.assertGreater(sc["maxScroll"], 80, f"Expected scrollable page on {scroll_route}: {sc}")
+                        self.assertGreater(sc["scrollY"], 80, f"PC mouse wheel vertical scroll locked on {scroll_route}: {sc}")
+
+                    # Verify openMenuModal() locks background wheel scroll and closeMenuModal() restores PC wheel scroll
+                    page.goto(base + "/", wait_until="domcontentloaded")
+                    page.wait_for_timeout(120)
+                    page.evaluate("window.scrollTo(0, 0); openMenuModal();")
+                    page.wait_for_timeout(100)
+                    page.mouse.move(80, 80)
+                    page.mouse.wheel(0, 400)
+                    page.wait_for_timeout(100)
+                    self.assertEqual(page.evaluate("window.scrollY"), 0, "Background scrolled while #menu-modal was open")
+                    page.evaluate("closeMenuModal()")
+                    page.wait_for_timeout(100)
+                    page.mouse.move(640, 450)
+                    page.mouse.wheel(0, 500)
+                    page.wait_for_timeout(120)
+                    self.assertGreater(page.evaluate("window.scrollY"), 80, "PC mouse wheel scroll did not recover after closeMenuModal()")
 
                     # 3. Full-DOM Staff WCAG contrast verification across all staff routes (dark & light)
                     anon_client = app_module.app.test_client()

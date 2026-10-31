@@ -4614,15 +4614,19 @@ body.theme-light .aiseki-reading-progress {
    ========================================================================== */
 
 /* --- 24-A. サブページ flex-body 横切れ根絶 ＆ データ表の雑誌ブックタブ組版 --- */
+/* NOTE: html に overflow / overflow-x を指定すると body の overflow ビューポート伝播（CSS Overflow L3 §3.3）が停止し、
+   style.css の body { overflow-y: auto; overscroll-behavior-y: contain } により PC のホイール／トラックパッド縦スクロールが
+   ロックされるため、html には overflow 系プロパティを一切指定しないこと */
 html {
     max-width: 100%;
-    overflow-x: clip;
 }
 
 body:has(.portal-wrap, .article-container, .guide-container, .wrap, .page-wrap) {
     display: block !important;
     width: 100% !important;
-    overflow-x: clip;
+    overflow-x: hidden;
+    overflow-y: visible;
+    overscroll-behavior-y: auto;
 }
 
 .portal-wrap,

@@ -152,7 +152,7 @@
          crossorigin="anonymous"></script>
     <script src="/static/affiliate_config.js?v=12" defer></script>
     {% endif %}
-    <link rel="stylesheet" href="/static/calm.css?v=21">
+    <link rel="stylesheet" href="/static/calm.css?v=22">
 </head>
 
 <body class="{% if is_staff %}staff-mode{% endif %}">
@@ -2245,7 +2245,7 @@
                 }
                 if (window.__swRegistered) return;
                 window.__swRegistered = true;
-                navigator.serviceWorker.register('/sw.js?v=71', { updateViaCache: 'none' })
+                navigator.serviceWorker.register('/sw.js?v=72', { updateViaCache: 'none' })
                     .then(function(reg) {
                         reg.update();
                         document.addEventListener('visibilitychange', function() {

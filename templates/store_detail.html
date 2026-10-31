@@ -98,7 +98,8 @@
             color: var(--text-main);
             font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
             line-height: 1.75;
-            overflow-x: clip;
+            overflow-x: hidden;
+            overflow-y: visible;
         }
         .portal-wrap {
             width: 100%;
@@ -453,7 +454,7 @@
             }
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=21">
+    <link rel="stylesheet" href="/static/calm.css?v=22">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
