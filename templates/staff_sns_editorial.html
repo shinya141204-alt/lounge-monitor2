@@ -1143,6 +1143,7 @@
         {% set _reel_studio = reel_studio | default(reel_info | default({})) %}
         {% set _reel_init_type = (_reel_studio.get('reel_type') if _reel_studio else '') or (reel_type | default('live_top5')) %}
         {% set _reel_init_auto = (_reel_studio.get('auto_schedule_enabled') if (_reel_studio and 'auto_schedule_enabled' in _reel_studio) else (reel_auto_schedule_enabled | default(reel_auto_enabled | default(false)))) %}
+        {% set _tiktok_init_auto = (_reel_studio.get('tiktok_auto_schedule_enabled') if (_reel_studio and 'tiktok_auto_schedule_enabled' in _reel_studio) else (tiktok_auto_schedule_enabled | default(tiktok_auto_enabled | default(true)))) %}
         {% set _reel_init_caption = (_reel_studio.get('caption') if _reel_studio else '') or (reel_caption | default('')) %}
         {% set _reel_init_bgs = (_reel_studio.get('backgrounds') if _reel_studio else none) or (reel_backgrounds | default({})) %}
         {% set _reel_init_prompts = (_reel_studio.get('veo3_prompts') if _reel_studio else none) or (veo3_prompts | default([
@@ -1188,15 +1189,26 @@
                     <h2 class="reel-studio-title">🎬 Google AI Ultra ショート動画スタジオ（Reels / Shorts / TikTok）</h2>
                     <p class="reel-studio-sub">全国リアルタイム人数から 9:16 縦型ショート動画（H.264 + 音声トラック付きMP4・約11.5秒）を自動合成。Instagram Reels への1クリック直接公開、または MP4 保存で TikTok / YouTube Shorts へそのまま投稿できます。</p>
                 </div>
-                <label class="reel-auto-box" for="reel-auto-schedule-toggle" title="水・木・金・土の夜ピーク枠（人間ゆらぎ付）で4テンプレ自動ローテーション投稿します（同日にカルーセル投稿がある日はフィード非表示でグリッド保護）">
-                    <span id="reel-auto-schedule-label">
-                        🔄 水・木・金・土の自動リール定期投稿（4型ローテ）：<strong id="reel-auto-state-text" style="color:{{ 'var(--green)' if _reel_init_auto else 'var(--sub)' }};">{{ 'ON（稼働中）' if _reel_init_auto else 'OFF（手動のみ）' }}</strong>
-                    </span>
-                    <span class="reel-switch">
-                        <input type="checkbox" id="reel-auto-schedule-toggle" {{ 'checked' if _reel_init_auto else '' }} onchange="saveReelAutoSchedule(this.checked)">
-                        <span class="reel-switch-slider"></span>
-                    </span>
-                </label>
+                <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-end;">
+                    <label class="reel-auto-box" for="reel-auto-schedule-toggle" title="水・木・金・土の夜ピーク枠（人間ゆらぎ付）で4テンプレ自動ローテーション投稿します（同日にカルーセル投稿がある日はフィード非表示でグリッド保護）">
+                        <span id="reel-auto-schedule-label">
+                            🔄 水・木・金・土の自動リール定期投稿（4型ローテ）：<strong id="reel-auto-state-text" style="color:{{ 'var(--green)' if _reel_init_auto else 'var(--sub)' }};">{{ 'ON（稼働中）' if _reel_init_auto else 'OFF（手動のみ）' }}</strong>
+                        </span>
+                        <span class="reel-switch">
+                            <input type="checkbox" id="reel-auto-schedule-toggle" {{ 'checked' if _reel_init_auto else '' }} onchange="saveReelAutoSchedule(this.checked)">
+                            <span class="reel-switch-slider"></span>
+                        </span>
+                    </label>
+                    <label class="reel-auto-box" for="tiktok-auto-schedule-toggle" title="火・木・金・土の20:39〜20:55 JST（人間ゆらぎ付）にTikTokアプリのInbox下書きへ自動送信します（TIKTOK_ACCESS_TOKEN設定時に稼働）">
+                        <span id="tiktok-auto-schedule-label">
+                            🎵 火・木・金・土のTikTok自動下書き送信：<strong id="tiktok-auto-state-text" style="color:{{ 'var(--green)' if _tiktok_init_auto else 'var(--sub)' }};">{{ 'ON（稼働中）' if _tiktok_init_auto else 'OFF（手動のみ）' }}</strong>
+                        </span>
+                        <span class="reel-switch">
+                            <input type="checkbox" id="tiktok-auto-schedule-toggle" {{ 'checked' if _tiktok_init_auto else '' }} onchange="saveTikTokAutoSchedule(this.checked)">
+                            <span class="reel-switch-slider"></span>
+                        </span>
+                    </label>
+                </div>
             </div>
 
             <div class="reel-studio-grid">
@@ -2369,6 +2381,16 @@
             }
         }
 
+        function _applyTikTokAutoScheduleUi(enabled) {
+            var chk = document.getElementById("tiktok-auto-schedule-toggle");
+            var txt = document.getElementById("tiktok-auto-state-text");
+            if (chk) chk.checked = !!enabled;
+            if (txt) {
+                txt.textContent = enabled ? "ON（稼働中）" : "OFF（手動のみ）";
+                txt.style.color = enabled ? "var(--green)" : "var(--sub)";
+            }
+        }
+
         async function loadReelStudioInfo(reelType, overwriteCaption) {
             var rt = reelType || _currentReelType || "live_top5";
             try {
@@ -2400,6 +2422,9 @@
                 }
                 if (typeof data.auto_schedule_enabled === "boolean") {
                     _applyReelAutoScheduleUi(data.auto_schedule_enabled);
+                }
+                if (typeof data.tiktok_auto_schedule_enabled === "boolean") {
+                    _applyTikTokAutoScheduleUi(data.tiktok_auto_schedule_enabled);
                 }
                 if (data.backgrounds) {
                     _applyReelBackgroundBadge(data.backgrounds);
@@ -2504,13 +2529,44 @@
                 _applyReelAutoScheduleUi(savedState);
                 if (msgEl) {
                     msgEl.style.color = "var(--green-ink)";
-                    msgEl.textContent = "✅ 週末・夜の自動リール定期投稿を「" + (savedState ? "ON" : "OFF") + "」に保存しました。";
+                    msgEl.textContent = "✅ 水・木・金・土の自動リール定期投稿を「" + (savedState ? "ON" : "OFF") + "」に保存しました。";
                 }
             } catch (err) {
                 _applyReelAutoScheduleUi(!enabled);
                 if (msgEl) {
                     msgEl.style.color = "var(--err-ink)";
                     msgEl.textContent = "⚠️ 設定保存エラー: " + ((err && err.message) || "通信エラーが発生しました");
+                }
+            } finally {
+                _reelSettingInFlight = false;
+            }
+        }
+
+        async function saveTikTokAutoSchedule(enabled) {
+            if (_reelSettingInFlight) return;
+            _reelSettingInFlight = true;
+            var msgEl = document.getElementById("reel-action-msg");
+            if (msgEl) {
+                msgEl.style.color = "var(--green-ink)";
+                msgEl.textContent = "🎵 TikTok自動下書き送信の設定を保存しています...";
+            }
+            try {
+                var res = await fetchJsonSafe("/api/staff/tiktok/settings", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json", "Accept": "application/json"},
+                    body: JSON.stringify({auto_schedule_enabled: !!enabled})
+                }, 20000);
+                var savedState = (res && typeof res.auto_schedule_enabled === "boolean") ? res.auto_schedule_enabled : !!enabled;
+                _applyTikTokAutoScheduleUi(savedState);
+                if (msgEl) {
+                    msgEl.style.color = "var(--green-ink)";
+                    msgEl.textContent = "✅ 火・木・金・土のTikTok自動下書き送信を「" + (savedState ? "ON" : "OFF") + "」に保存しました。";
+                }
+            } catch (err) {
+                _applyTikTokAutoScheduleUi(!enabled);
+                if (msgEl) {
+                    msgEl.style.color = "var(--err-ink)";
+                    msgEl.textContent = "⚠️ TikTok設定保存エラー: " + ((err && err.message) || "通信エラーが発生しました");
                 }
             } finally {
                 _reelSettingInFlight = false;

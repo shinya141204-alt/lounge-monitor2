@@ -47,7 +47,7 @@ def build_sns_post_payload(post_type, base_url, latest_data):
         }
     elif post_type == 'price':
         announce_lines = [
-            "【新機能】相席ラウンジ全51店舗「料金・イベント・現在人数」横並び比較ボードを公開しました📊",
+            "【新機能】相席ラウンジ全国60店舗超「料金・イベント・現在人数」横並び比較ボードを公開しました📊",
             "",
             "✅ 単独（待機）料金（220〜330円/10分 or 定額パス）",
             "✅ 4つの時間帯別（〜20時/20〜22時/22〜24時/24時〜）の相席10分単価",
@@ -55,7 +55,7 @@ def build_sns_post_payload(post_type, base_url, latest_data):
             "✅ 席替え余地を考慮した「女性10名以上（約5組）」基準のエリア推奨判定",
             "✅ 公式営業時間に基づくオープン中の「0 : 0」表記",
             "",
-            "👇全51店舗の比較ボードはこちら",
+            "👇全国60店舗超の比較ボードはこちら",
             f"{base_url}/price-comparison",
             "",
             "📖 比較ボードの詳しい見方・活用ガイド",
@@ -112,7 +112,8 @@ def build_sns_post_payload(post_type, base_url, latest_data):
 def execute_scheduled_x_post(latest_data, slot_label="20:00", force=False, include_meta=False, now_jst=None):
     """Execute scheduled X auto-post with duplicate prevention, anti-bot cooldown/budget, and standalone mix."""
     now_jst = now_jst or datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
-    biz_date = (now_jst - datetime.timedelta(hours=7)).strftime('%Y-%m-%d')
+    biz_dt = now_jst - datetime.timedelta(hours=7)
+    biz_date = biz_dt.strftime('%Y-%m-%d')
     dedup_key = f"x_post:{biz_date}_{slot_label}"
 
     if not force and job_state.is_done(dedup_key):
@@ -124,9 +125,10 @@ def execute_scheduled_x_post(latest_data, slot_label="20:00", force=False, inclu
         if in_cd:
             logging.info(f"Deferring X auto-post ({slot_label}): {cd_reason}")
             return {"status": "skipped", "reason": cd_reason}
+        is_peak_slot = (slot_label == "22:00") or (slot_label == "00:00" and biz_dt.weekday() in (4, 5))
         over_b, b_reason = x_poster.check_x_daily_post_budget(
             now_jst=now_jst,
-            is_primary_peak=(slot_label == "22:00"),
+            is_primary_peak=is_peak_slot,
         )
         if over_b:
             logging.info(f"Skipping X auto-post ({slot_label}): {b_reason}")
@@ -183,7 +185,12 @@ def execute_scheduled_x_post(latest_data, slot_label="20:00", force=False, inclu
     skip_media_card = False
     if editorial_winner and editorial_winner.get("main_text"):
         text = editorial_winner["main_text"]
-        eff_arch_key = (editorial_winner.get("archetype_key") or selected_arch_key or "").strip()
+        is_ai_win = bool(editorial_winner.get("is_ai_generated") or editorial_winner.get("style") == "ai_live_adlib")
+        eff_arch_key = (
+            editorial_winner.get("archetype_key")
+            or (selected_arch_key if is_ai_win else "")
+            or ""
+        ).strip()
         if (
             not force
             and eff_arch_key in ("minimal_snap", "question_linger")
@@ -339,9 +346,23 @@ def execute_scheduled_weekly_x_post(force=False):
         media_bytes=png_bytes,
         media_mime_type="image/png",
     )
-    if result.get("status") == "success" and not force:
-        job_state.mark_done(dedup_key)
-        x_poster.record_x_auto_post_timestamp(now_jst)
+    if result.get("status") == "success":
+        tweet_id = ((result.get("data") or {}).get("data") or {}).get("id") or ""
+        try:
+            import sns_editorial
+            sns_editorial.record_sns_delivery_status(
+                "x",
+                "success",
+                slot_label="weekly_19:00",
+                post_id=tweet_id,
+                now_jst=now_jst,
+            )
+            sns_editorial.record_recent_x_text(main_text)
+        except Exception:
+            pass
+        if not force:
+            job_state.mark_done(dedup_key)
+            x_poster.record_x_auto_post_timestamp(now_jst)
     result["tweet_text"] = main_text
     result["reply_text"] = reply_text
     return result

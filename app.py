@@ -456,7 +456,7 @@ def _ensure_scheduler_started_async():
                         instagram_poster.publish_live_reel_to_instagram(cur_stores, reel_type="auto", slot_label=slot_lbl, force=False)
                 except Exception as err:
                     logging.error(f"Scheduled Instagram Reel post failed: {err}")
-            scheduler.add_job(func=_ig_reel_scheduled_job, trigger="cron", day_of_week="wed,thu,fri,sat", hour=12, minute="18,24,30,36,42,48", jitter=50, args=["21:15"], executor="sns_ai")
+            scheduler.add_job(func=_ig_reel_scheduled_job, trigger="cron", day_of_week="wed,thu,fri,sat", hour=12, minute="18,24,30,36,42,48,54", jitter=50, args=["21:15"], executor="sns_ai")
             def _tiktok_inbox_job(slot_lbl="20:35"):
                 try:
                     import tiktok_poster
@@ -501,7 +501,15 @@ def _ensure_scheduler_started_async():
                 except Exception as err:
                     logging.error(f"Bonus alert check failed: {err}")
             scheduler.add_job(func=_bonus_alert_check_job, trigger="interval", minutes=10, executor="sns_ai")
-            scheduler.add_job(func=run_scheduled_weekly_x_post, trigger="cron", day_of_week="sun", hour=10, minute="0,15", jitter=120, executor="sns_ai")
+            def _x_weekly_sun_fallback_job():
+                try:
+                    import sns_editorial
+                    if not sns_editorial.should_fire_scheduled_slot_now("x_weekly", "19:00"):
+                        return
+                    run_scheduled_weekly_x_post(force=False)
+                except Exception as err:
+                    logging.error(f"Scheduled weekly X post failed: {err}")
+            scheduler.add_job(func=_x_weekly_sun_fallback_job, trigger="cron", day_of_week="sun", hour=10, minute="2,7,12,18,24", jitter=75, executor="sns_ai")
             def _pdca_autonomous_job():
                 try:
                     import pdca_engine
@@ -530,17 +538,20 @@ def _ensure_scheduler_started_async():
                 try:
                     import threads_poster
                     import instagram_poster
+                    import tiktok_poster
                     if hasattr(threads_poster, 'maybe_refresh_threads_token'):
                         threads_poster.maybe_refresh_threads_token()
                     if hasattr(instagram_poster, 'maybe_refresh_ig_token'):
                         instagram_poster.maybe_refresh_ig_token()
+                    if hasattr(tiktok_poster, 'refresh_tiktok_token_if_needed'):
+                        tiktok_poster.refresh_tiktok_token_if_needed(force=False)
                 except Exception as err:
-                    logging.warning(f"Daily Meta token auto-refresh check warning: {err}")
+                    logging.warning(f"Daily Meta/TikTok token auto-refresh check warning: {err}")
                 try:
                     local_db.prune_old_logs(monitor_days=60, vote_days=14)
                 except Exception as err:
                     logging.warning(f"Daily SQLite prune warning: {err}")
-            # Run daily at 06:35 JST (21:35 UTC) so Meta 60-day tokens renew even on quiet weekdays and SQLite stays lean
+            # Run daily at 06:35 JST (21:35 UTC) so Meta/TikTok tokens renew even on quiet weekdays and SQLite stays lean
             scheduler.add_job(func=_daily_token_and_db_maintenance_job, trigger="cron", hour=21, minute=35, jitter=120, executor="sns_ai")
             scheduler.start()
             # Priority #1 at t=0s: scrape live headcounts first without competing with SQLite backfill or Sheets reads
@@ -2245,16 +2256,20 @@ def staff_sns_editorial():
     if is_json_req:
         return jsonify(editorial)
     reel_auto_enabled = False
+    tiktok_auto_enabled = False
     reel_studio = None
     try:
         import instagram_poster
         import reel_generator
+        import tiktok_poster
         reel_auto_enabled = instagram_poster.is_reel_auto_schedule_enabled(allow_blocking=False)
+        tiktok_auto_enabled = tiktok_poster.is_tiktok_auto_schedule_enabled(allow_blocking=False)
         init_rt = 'tiktok_gap_shock' if channel == 'tiktok' else 'live_top5'
         reel_studio = reel_generator.get_reel_studio_info(
             live_s,
             reel_type=init_rt,
             auto_schedule_enabled=reel_auto_enabled,
+            tiktok_auto_schedule_enabled=tiktok_auto_enabled,
         )
     except Exception as _re_err:
         logging.debug(f"Reel studio init fallback: {_re_err}")
@@ -2265,6 +2280,7 @@ def staff_sns_editorial():
         channel=channel,
         tone_mode=editorial.get('tone_mode'),
         reel_auto_enabled=reel_auto_enabled,
+        tiktok_auto_enabled=tiktok_auto_enabled,
         reel_studio=reel_studio,
     )
 
@@ -2276,15 +2292,18 @@ def api_staff_sns_reel_info():
         return jsonify({'ok': False, 'error': 'Unauthorized'}), 401
     import instagram_poster
     import reel_generator
+    import tiktok_poster
     restore_latest_data_if_empty()
     reel_type = reel_generator.normalize_reel_type(request.args.get('reel_type', 'live_top5'))
     with data_lock:
         live_s = list(latest_data.get('full_data') or [])
     auto_on = instagram_poster.is_reel_auto_schedule_enabled(allow_blocking=False)
+    tk_auto_on = tiktok_poster.is_tiktok_auto_schedule_enabled(allow_blocking=False)
     return jsonify(reel_generator.get_reel_studio_info(
         live_s,
         reel_type=reel_type,
         auto_schedule_enabled=auto_on,
+        tiktok_auto_schedule_enabled=tk_auto_on,
     ))
 
 
@@ -2304,6 +2323,22 @@ def api_staff_sns_reel_settings():
     })
 
 
+@app.route('/api/staff/tiktok/settings', methods=['POST'])
+def api_staff_tiktok_settings():
+    """Master-only endpoint to toggle scheduled Wed/Fri/Sat TikTok Inbox auto-delivery."""
+    if not is_master_authorized():
+        return jsonify({'ok': False, 'error': 'Unauthorized'}), 401
+    import tiktok_poster
+    payload = request.get_json(silent=True) or {}
+    enabled = bool(payload.get('auto_schedule_enabled'))
+    saved = tiktok_poster.set_tiktok_auto_schedule_enabled(enabled)
+    return jsonify({
+        'ok': True,
+        'auto_schedule_enabled': saved,
+        'message': 'TikTokアプリの定期Inbox下書き送信（水・金・土）をONにしました！' if saved else 'TikTokアプリの定期Inbox下書き送信をOFF（手動1クリック運用）に設定しました。',
+    })
+
+
 @app.route('/api/staff/sns-reel/publish', methods=['POST'])
 def api_staff_sns_reel_publish():
     """Master-only 1-click trigger to render and publish a 9:16 vertical Reel to Instagram."""
@@ -2317,13 +2352,20 @@ def api_staff_sns_reel_publish():
     custom_caption = (payload.get('caption') or '').strip()
     share_to_feed = bool(payload.get('share_to_feed', True))
     if request.args.get('async') == '1' or payload.get('async') is True:
-        job_rec = enqueue_sns_job_request('ig_reel', {
+        worker_only = bool(payload.get('worker_only')) or (request.args.get('worker_only') == '1')
+        job_rec = _enqueue_sns_job_and_maybe_dispatch('ig_reel', {
             'reel_type': reel_type,
             'caption': custom_caption,
             'share_to_feed': share_to_feed,
             'force': True,
-        })
-        return jsonify({'ok': True, 'queued': True, 'job': job_rec}), 202
+        }, worker_only=worker_only)
+        return jsonify({
+            'ok': True,
+            'queued': True,
+            'job': job_rec,
+            'job_id': job_rec['job_id'],
+            'poll_url': f"/api/sns-jobs/{job_rec['job_id']}",
+        }), 202
     with data_lock:
         live_s = list(latest_data.get('full_data') or [])
     res = instagram_poster.publish_live_reel_to_instagram(
@@ -2349,6 +2391,20 @@ def api_staff_tiktok_publish_inbox():
     payload = request.get_json(silent=True) or {}
     reel_type = reel_generator.normalize_reel_type(payload.get('reel_type', 'tiktok_gap_shock'))
     custom_caption = (payload.get('caption') or '').strip()
+    if request.args.get('async') == '1' or payload.get('async') is True:
+        worker_only = bool(payload.get('worker_only')) or (request.args.get('worker_only') == '1')
+        job_rec = _enqueue_sns_job_and_maybe_dispatch('tiktok_inbox', {
+            'reel_type': reel_type,
+            'caption': custom_caption,
+            'force': True,
+        }, worker_only=worker_only)
+        return jsonify({
+            'ok': True,
+            'queued': True,
+            'job': job_rec,
+            'job_id': job_rec['job_id'],
+            'poll_url': f"/api/sns-jobs/{job_rec['job_id']}",
+        }), 202
     with data_lock:
         live_s = list(latest_data.get('full_data') or [])
     res = tiktok_poster.publish_live_reel_to_tiktok_inbox(
@@ -4642,6 +4698,7 @@ SUPPORTED_SNS_JOB_TYPES = (
     'threads_post',
     'ig_post',
     'ig_reel',
+    'tiktok_inbox',
     'ladies_sns',
     'prewarm_bundle',
 )
@@ -4732,6 +4789,22 @@ def execute_sns_job_payload(job_type: str, params: dict = None) -> dict:
             reel_type=rt,
             custom_caption=cap,
             share_to_feed=share_feed,
+            slot_label=slot,
+            force=force,
+        )
+
+    if jtype == 'tiktok_inbox':
+        import reel_generator
+        import tiktok_poster
+        rt = reel_generator.normalize_reel_type(p.get('reel_type', 'tiktok_gap_shock'))
+        cap = str(p.get('caption') or '').strip()
+        slot = str(p.get('slot') or 'manual_tiktok').strip()
+        with data_lock:
+            stores = list(latest_data.get('full_data') or [])
+        return tiktok_poster.publish_live_reel_to_tiktok_inbox(
+            stores,
+            reel_type=rt,
+            custom_caption=cap,
             slot_label=slot,
             force=force,
         )

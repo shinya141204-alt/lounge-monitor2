@@ -21,6 +21,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
+os.environ.setdefault("DISABLE_SCHEDULER", "1")
+os.environ.setdefault("DISABLE_SHEETS", "1")
+
 import sns_editorial
 
 
@@ -878,16 +881,26 @@ class SnsEditorialUpgradeTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             with mock.patch.dict(os.environ, {"JOB_STATE_DIR": tmpdir}):
                 job_state.reset_cache_for_tests()
-                wed_dt = datetime.datetime(2026, 11, 4, 21, 0, tzinfo=sns_editorial.JST)  # Wednesday (cap=4, peak=5)
-                for i in range(4):
+                wed_dt = datetime.datetime(2026, 11, 4, 21, 0, tzinfo=sns_editorial.JST)  # Wednesday (non-peak=3, peak=4 total)
+                for i in range(3):
                     x_poster.record_x_auto_post_timestamp(wed_dt - datetime.timedelta(hours=4 - i))
-                self.assertEqual(x_poster.get_x_daily_auto_post_count(now_jst=wed_dt), 4)
+                self.assertEqual(x_poster.get_x_daily_auto_post_count(now_jst=wed_dt), 3)
                 over_reg, _ = x_poster.check_x_daily_post_budget(now_jst=wed_dt, is_primary_peak=False)
                 over_peak, _ = x_poster.check_x_daily_post_budget(now_jst=wed_dt, is_primary_peak=True)
                 self.assertTrue(over_reg)
                 self.assertFalse(over_peak)
 
-                # Sub-step 1b: 5th non-peak scheduled X post on Wednesday is blocked by daily budget!
+                # Once 4th (peak) post is recorded on Wednesday, even primary peak is capped (hard ceiling = 4/day weekday)
+                x_poster.record_x_auto_post_timestamp(wed_dt - datetime.timedelta(minutes=30))
+                self.assertTrue(x_poster.check_x_daily_post_budget(now_jst=wed_dt, is_primary_peak=True)[0])
+
+                # Reset to 3 posts: 4th non-peak scheduled X post on Wednesday is blocked, while 22:00 peak is allowed
+                for fn in os.listdir(tmpdir):
+                    os.remove(os.path.join(tmpdir, fn))
+                job_state.reset_cache_for_tests()
+                for i in range(3):
+                    x_poster.record_x_auto_post_timestamp(wed_dt - datetime.timedelta(hours=4 - i))
+
                 res_over = sns_workflows.execute_scheduled_x_post(
                     {"full_data": self.sample_stores, "is_seed": False},
                     slot_label="20:00",
@@ -896,6 +909,21 @@ class SnsEditorialUpgradeTests(unittest.TestCase):
                 )
                 self.assertEqual(res_over["status"], "skipped")
                 self.assertIn("cap reached", res_over["reason"])
+
+                # Weekend Fri/Sat 00:00 late-night peak is also treated as is_primary_peak=True (hard ceiling = 5/day Fri-Sun)
+                for fn in os.listdir(tmpdir):
+                    os.remove(os.path.join(tmpdir, fn))
+                job_state.reset_cache_for_tests()
+                sat_midnight = datetime.datetime(2026, 11, 7, 0, 12, tzinfo=sns_editorial.JST)  # business Friday night
+                for i in range(4):
+                    x_poster.record_x_auto_post_timestamp(sat_midnight - datetime.timedelta(hours=5 - i))
+                self.assertTrue(x_poster.check_x_daily_post_budget(now_jst=sat_midnight, is_primary_peak=False)[0])
+                self.assertFalse(x_poster.check_x_daily_post_budget(now_jst=sat_midnight, is_primary_peak=True)[0])
+
+                # Clear budget before testing standalone 1-tweet X mix on Friday
+                for fn in os.listdir(tmpdir):
+                    os.remove(os.path.join(tmpdir, fn))
+                job_state.reset_cache_for_tests()
 
                 # Standalone 1-tweet X mix on Friday: minimal_snap omits self-reply URL and OGP card
                 fri_dt = datetime.datetime(2026, 11, 6, 20, 12, tzinfo=sns_editorial.JST)
@@ -925,7 +953,7 @@ class SnsEditorialUpgradeTests(unittest.TestCase):
                 self.assertIsNone(sent_x[0][1])
                 self.assertIsNone(sent_x[0][2])
 
-                # Column X release: holds during 19:50 rush, posts at 19:20, caps at max 1 column release per business day
+                # Column X release: holds during 07:05 AM sleep hours & 19:50 rush, posts at 19:20, caps at max 1/day
                 for fn in os.listdir(tmpdir):
                     os.remove(os.path.join(tmpdir, fn))
                 job_state.reset_cache_for_tests()
@@ -933,14 +961,14 @@ class SnsEditorialUpgradeTests(unittest.TestCase):
                     {
                         "slug": "col-a",
                         "path": "/guide/col-a",
-                        "publish_at": "2026-11-04 19:00:00",
+                        "publish_at": "2026-11-04 06:00:00",
                         "x_title": "テスト記事A",
                         "x_main_text": "テスト記事Aの本音ツイート",
                     },
                     {
                         "slug": "col-b",
                         "path": "/guide/col-b",
-                        "publish_at": "2026-11-04 19:00:00",
+                        "publish_at": "2026-11-04 06:00:00",
                         "x_title": "テスト記事B",
                         "x_main_text": "テスト記事Bの本音ツイート",
                     },
@@ -950,6 +978,14 @@ class SnsEditorialUpgradeTests(unittest.TestCase):
                     mock.patch("x_poster.load_column_eyecatch_bytes", return_value=(None, "image/jpeg")),
                     mock.patch("x_poster.post_to_x", return_value={"status": "success"}) as mock_col_x,
                 ):
+                    # 07:05 AM JST after biz_date rollover must NOT leak a morning bot post
+                    dawn_res = scheduled_articles.check_and_announce_newly_published(
+                        now_jst=datetime.datetime(2026, 11, 4, 7, 5, 0)
+                    )
+                    self.assertEqual(mock_col_x.call_count, 0)
+                    self.assertEqual(dawn_res[0]["result"]["status"], "skipped")
+                    self.assertIn("quiet off-hours", dawn_res[0]["result"]["reason"])
+
                     rush_res = scheduled_articles.check_and_announce_newly_published(
                         now_jst=datetime.datetime(2026, 11, 4, 19, 50, 0)
                     )
@@ -962,12 +998,26 @@ class SnsEditorialUpgradeTests(unittest.TestCase):
                     self.assertEqual(mock_col_x.call_count, 1)
                     self.assertEqual(ok_res[0]["slug"], "col-a")
 
-                    # Even 2 hours later on same business night, 2nd article is held until tomorrow
+                    # Even 2 hours later on same business night, 2nd article is held until tomorrow's active hours
                     same_night_2nd = scheduled_articles.check_and_announce_newly_published(
                         now_jst=datetime.datetime(2026, 11, 4, 21, 10, 0)
                     )
                     self.assertEqual(mock_col_x.call_count, 1)
                     self.assertEqual(same_night_2nd[0]["result"]["status"], "skipped")
+
+                    # Next morning 07:05 AM JST (biz_date rolled over to 2026-11-05) still holds until >= 11:30 JST!
+                    next_dawn_2nd = scheduled_articles.check_and_announce_newly_published(
+                        now_jst=datetime.datetime(2026, 11, 5, 7, 5, 0)
+                    )
+                    self.assertEqual(mock_col_x.call_count, 1)
+                    self.assertEqual(next_dawn_2nd[0]["result"]["status"], "skipped")
+
+                    # At 12:15 JST next day, col-b announces cleanly
+                    next_noon_2nd = scheduled_articles.check_and_announce_newly_published(
+                        now_jst=datetime.datetime(2026, 11, 5, 12, 15, 0)
+                    )
+                    self.assertEqual(mock_col_x.call_count, 2)
+                    self.assertEqual(next_noon_2nd[0]["slug"], "col-b")
 
     def test_threads_1_in_3_url_non_collision_cooldown_and_visual_card(self):
         """Ensure Threads 19:30 Ladies and 22:00 Daily never both include URLs on the same night, and enforce 90m cooldown."""
@@ -1015,6 +1065,351 @@ class SnsEditorialUpgradeTests(unittest.TestCase):
                 threads_poster.record_threads_auto_post_timestamp(t0)
                 self.assertTrue(threads_poster.check_threads_auto_post_cooldown(90, now_jst=t0 + datetime.timedelta(minutes=60))[0])
                 self.assertFalse(threads_poster.check_threads_auto_post_cooldown(90, now_jst=t0 + datetime.timedelta(minutes=95))[0])
+
+    def test_tiktok_auto_schedule_default_on_settings_api_and_cron_coverage(self):
+        """Verify TikTok scheduled job defaults ON when token exists, toggles via API, filters Korea, and has 100% cron coverage."""
+        import tempfile
+        import app as flask_app
+        import job_state
+        import tiktok_poster
+
+        # 1. Verify 100% cron coverage across 90 consecutive days for TikTok 20:35 (cron ticks at 20:39, 45, 51, 57 JST)
+        cron_minutes = (39, 45, 51, 57)
+        for day_offset in range(90):
+            base_day = datetime.date(2026, 11, 1) + datetime.timedelta(days=day_offset)
+            off = sns_editorial.compute_human_schedule_offset_min(
+                "tiktok", "20:35",
+                now_jst=datetime.datetime(base_day.year, base_day.month, base_day.day, 20, 39, tzinfo=sns_editorial.JST),
+            )
+            self.assertTrue(4 <= off <= 20, f"Unexpected TikTok offset {off} on {base_day}")
+            fired = any(
+                sns_editorial.should_fire_scheduled_slot_now(
+                    "tiktok", "20:35",
+                    now_jst=datetime.datetime(base_day.year, base_day.month, base_day.day, 20, m, tzinfo=sns_editorial.JST),
+                )
+                for m in cron_minutes
+            )
+            self.assertTrue(fired, f"TikTok cron missed scheduled slot on {base_day} (offset={off})")
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with mock.patch.dict(os.environ, {"JOB_STATE_DIR": tmpdir}):
+                job_state.reset_cache_for_tests()
+                # Default is True when unset in job_state
+                self.assertTrue(tiktok_poster.is_tiktok_auto_schedule_enabled())
+
+                # Staff API toggles OFF and back ON
+                client = flask_app.app.test_client()
+                with client.session_transaction() as sess:
+                    sess["is_staff"] = True
+                    sess["is_master"] = True
+                r_off = client.post("/api/staff/tiktok/settings", json={"auto_schedule_enabled": False})
+                self.assertEqual(r_off.status_code, 200)
+                self.assertFalse(r_off.get_json()["auto_schedule_enabled"])
+                self.assertFalse(tiktok_poster.is_tiktok_auto_schedule_enabled())
+
+                r_on = client.post("/api/staff/tiktok/settings", json={"auto_schedule_enabled": True})
+                self.assertEqual(r_on.status_code, 200)
+                self.assertTrue(r_on.get_json()["auto_schedule_enabled"])
+                self.assertTrue(tiktok_poster.is_tiktok_auto_schedule_enabled())
+
+                # Korean stores excluded by keyword even if region missing; male-surge domestic night still runs
+                mixed_stores = [
+                    {"name": "オリエンタルラウンジ カンナム", "women": 40, "men": 40},
+                    {"name": "オリエンタルラウンジ 新宿", "women": 10, "men": 22, "region": "Kanto"},
+                ]
+                tue_dt = datetime.datetime(2026, 11, 3, 20, 51, tzinfo=sns_editorial.JST)  # Tuesday
+                with (
+                    mock.patch.dict(os.environ, {"TIKTOK_ACCESS_TOKEN": "test_tt_tok"}),
+                    mock.patch("tiktok_poster.publish_live_reel_to_tiktok_inbox", return_value={"status": "success", "publish_id": "pub_123"}) as mock_tt_pub,
+                ):
+                    res1 = tiktok_poster.execute_scheduled_tiktok_inbox_post(
+                        {"full_data": mixed_stores, "is_seed": False},
+                        slot_label="20:35",
+                        force=False,
+                        now_jst=tue_dt,
+                    )
+                    self.assertEqual(res1["status"], "success")
+                    self.assertEqual(mock_tt_pub.call_count, 1)
+                    passed_stores = mock_tt_pub.call_args.args[0]
+                    self.assertEqual(len(passed_stores), 1)
+                    self.assertIn("新宿", passed_stores[0]["name"])
+
+                    # Deduplicates on same business day when force=False
+                    res2 = tiktok_poster.execute_scheduled_tiktok_inbox_post(
+                        {"full_data": mixed_stores, "is_seed": False},
+                        slot_label="20:35",
+                        force=False,
+                        now_jst=tue_dt + datetime.timedelta(minutes=6),
+                    )
+                    self.assertEqual(res2["status"], "skipped")
+                    self.assertIn("Already pushed", res2["reason"])
+
+    def test_instagram_reel_thumb_offset_and_thursday_late_feed_cooldown_coverage(self):
+        """Verify IG Reel sets thumb_offset=1200ms (non-blank Scene 1 cover) and minute-54 cron covers Thursday late Feed."""
+        import instagram_poster
+        import reel_generator
+
+        # Frame 0 (t=0.0s) has Scene 1 alpha == 0.0, whereas t=1.2s (1200ms) has Scene 1 alpha == 1.0
+        self.assertEqual(reel_generator._fade_window(0.0, 0.0, 3.0, fade_in=0.38, fade_out=0.28), 0.0)
+        self.assertEqual(reel_generator._fade_window(1.2, 0.0, 3.0, fade_in=0.38, fade_out=0.28), 1.0)
+
+        captured_init_payload = {}
+
+        class _FakeResp:
+            def __init__(self, status_code, data):
+                self.status_code = status_code
+                self._data = data
+                self.text = str(data)
+
+            def json(self):
+                return self._data
+
+        def _fake_post(url, data=None, timeout=None):
+            if url.endswith("/media"):
+                captured_init_payload.update(data or {})
+                return _FakeResp(200, {"id": "creation_999"})
+            if url.endswith("/media_publish"):
+                return _FakeResp(200, {"id": "media_777"})
+            raise AssertionError(f"Unexpected POST url: {url}")
+
+        def _fake_get(url, params=None, timeout=None):
+            return _FakeResp(200, {"status_code": "FINISHED"})
+
+        with (
+            mock.patch.dict(os.environ, {"INSTAGRAM_ACCESS_TOKEN": "ig_tok", "INSTAGRAM_BUSINESS_ACCOUNT_ID": "1784140000"}),
+            mock.patch("instagram_poster.requests.post", side_effect=_fake_post),
+            mock.patch("instagram_poster.requests.get", side_effect=_fake_get),
+            mock.patch("instagram_poster.time.sleep", return_value=None),
+        ):
+            res = instagram_poster.post_reel_to_instagram(
+                "https://aiseki-navi.com/api/sns-card/reel-video/tok/live_top5.mp4",
+                "テストキャプション",
+                share_to_feed=False,
+            )
+        self.assertEqual(res["status"], "success")
+        self.assertEqual(captured_init_payload.get("thumb_offset"), "1200")
+        self.assertEqual(captured_init_payload.get("share_to_feed"), "false")
+
+        # Verify worker.py ig_reel_2115 cron includes minute 54 so a 19:57 Thursday Feed + 95m cooldown still fires at 21:54
+        with open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "worker.py"), "r", encoding="utf-8") as fh:
+            worker_src = fh.read()
+        self.assertIn('minute="18,24,30,36,42,48,54"', worker_src)
+
+    def test_staff_reel_and_tiktok_async_publish_no_nameerror(self):
+        """Verify /api/staff/sns-reel/publish?async=1 and /api/staff/tiktok/publish-inbox?async=1 enqueue without NameError."""
+        import tempfile
+        import app as flask_app
+        import job_state
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with mock.patch.dict(os.environ, {"JOB_STATE_DIR": tmpdir}):
+                job_state.reset_cache_for_tests()
+                client = flask_app.app.test_client()
+                with client.session_transaction() as sess:
+                    sess["is_staff"] = True
+                    sess["is_master"] = True
+
+                with mock.patch.object(flask_app, "_ensure_inline_sns_consumer_started", return_value=None):
+                    r_reel = client.post(
+                        "/api/staff/sns-reel/publish?async=1",
+                        json={"reel_type": "live_top5", "caption": "テスト", "share_to_feed": True},
+                    )
+                    self.assertEqual(r_reel.status_code, 202)
+                    j_reel = r_reel.get_json()
+                    self.assertTrue(j_reel["ok"])
+                    self.assertTrue(j_reel["queued"])
+                    self.assertTrue(j_reel["job_id"])
+
+                    r_tt = client.post(
+                        "/api/staff/tiktok/publish-inbox?async=1",
+                        json={"reel_type": "tiktok_gap_shock", "caption": "テストTikTok"},
+                    )
+                    self.assertEqual(r_tt.status_code, 202)
+                    j_tt = r_tt.get_json()
+                    self.assertTrue(j_tt["ok"])
+                    self.assertTrue(j_tt["queued"])
+                    self.assertTrue(j_tt["job_id"])
+
+                with flask_app.data_lock:
+                    old_full = flask_app.latest_data.get("full_data")
+                    flask_app.latest_data["full_data"] = self.sample_stores
+                try:
+                    with mock.patch("tiktok_poster.publish_live_reel_to_tiktok_inbox", return_value={"status": "success", "publish_id": "tt_async_1"}):
+                        exec_res = flask_app.execute_sns_job_payload(
+                            "tiktok_inbox",
+                            {"reel_type": "tiktok_gap_shock", "caption": "テストTikTok"},
+                        )
+                finally:
+                    with flask_app.data_lock:
+                        flask_app.latest_data["full_data"] = old_full
+                self.assertEqual(exec_res["status"], "success")
+                self.assertEqual(exec_res["publish_id"], "tt_async_1")
+
+    def test_threads_human_polish_preserves_all_5_footer_variants(self):
+        """Verify polish_draft_to_human_voice detaches & reattaches all Threads URL and non-URL footers without Lock 1 rejection."""
+        import ladies_guide
+
+        base_body = (
+            "金曜22時まわって渋谷の空気もかなり温まってきました。\n"
+            "オリエンタルラウンジ渋谷本店が女性28名・男性25名でちょうどいい熱量なのに対して、"
+            "徒歩数分の別ブランドは男性先行で女子組が受付待ちゼロで座りやすいバランス。\n"
+            "2軒目で動くなら入店直前の比率だけ軽く見ておくとハズしにくいです。"
+        )
+        claude_polished_body = (
+            "金曜22時をまわって、渋谷の夜もいい感じに温まってきた。\n"
+            "オリエンタルラウンジ渋谷本店が女性28名・男性25名でちょうどいい熱量なのに対して、"
+            "徒歩数分の別ブランドは男性先行で女子組がそのまま座りやすい空気感。\n"
+            "2軒目で動くなら、入る前の比率だけ軽く覗いておくとラクかも。"
+        )
+
+        with mock.patch(
+            "sns_editorial.call_editorial_ai_json",
+            return_value=({"polished_text": claude_polished_body}, "claude-sonnet-test", None),
+        ):
+            for day in range(1, 7):
+                dt = datetime.datetime(2026, 11, day, 22, 10, tzinfo=sns_editorial.JST)
+                footer = sns_editorial.build_threads_cta_footer(
+                    site_url="https://aiseki-navi.com",
+                    slot_label="22:00",
+                    style_key="ai_live_adlib",
+                    now_jst=dt,
+                )
+                draft = f"{base_body}\n\n{footer}"
+                polished, pol_model = sns_editorial.polish_draft_to_human_voice(
+                    draft, channel="threads", now_jst=dt, force_polish=True
+                )
+                self.assertEqual(pol_model, "claude-sonnet-test", f"Threads polish failed on day={day}")
+                self.assertIn(claude_polished_body, polished)
+                self.assertTrue(polished.endswith(footer), f"Footer was mutated or lost on day={day}: {polished}")
+
+        # Also verify ladies_guide URL and non-URL footers
+        for day in (1, 3):  # day%3==0 carries URL, day%3==1 has bio-link text
+            dt_l = datetime.datetime(2026, 11, day, 19, 35, tzinfo=sns_editorial.JST)
+            l_draft = ladies_guide.build_threads_ladies_post(self.sample_stores, slot_label="19:30", now_jst=dt_l, use_ai=False)
+            l_body_only = l_draft.rsplit("\n\n", 1)[0]
+            with mock.patch(
+                "sns_editorial.call_editorial_ai_json",
+                return_value=({"polished_text": l_body_only}, "claude-sonnet-test", None),
+            ):
+                l_pol, l_model = sns_editorial.polish_draft_to_human_voice(
+                    l_draft, channel="threads", now_jst=dt_l, force_polish=True
+                )
+                self.assertEqual(l_model, "claude-sonnet-test", f"Ladies Threads polish failed on day={day}")
+                if "https://" in l_draft:
+                    self.assertIn("https://aiseki-navi.com", l_pol)
+
+    def test_x_archetype_selection_sync_and_non_ai_winner_preservation(self):
+        """Ensure deterministic non-AI X winners keep their reply URL & OGP even on minimal_snap rotation slots."""
+        import tempfile
+        import job_state
+        import sns_workflows
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with mock.patch.dict(os.environ, {"JOB_STATE_DIR": tmpdir}):
+                job_state.reset_cache_for_tests()
+                fri_dt = datetime.datetime(2026, 11, 6, 20, 12, tzinfo=sns_editorial.JST)
+                sent_x = []
+                fake_det_ed = {
+                    "winner": {
+                        "main_text": "金曜20時、オリエンタルラウンジ渋谷本店が女性28名・男性25名で盛り上がっています。",
+                        "reply_text": "▼リアルタイム空席確認\nhttps://aiseki-navi.com/?s=x20",
+                        "style": "live",
+                        "total_score": 84,
+                    },
+                    "session_record": {"slot_label": "20:00", "selected_text": "金曜20時"},
+                }
+                with (
+                    mock.patch("sns_editorial.select_x_post_archetype", return_value={"key": "minimal_snap"}),
+                    mock.patch("sns_editorial.run_editorial_pipeline", return_value=fake_det_ed),
+                    mock.patch("ogp_generator.generate_live_ogp_png", return_value=b"FAKEPNG"),
+                    mock.patch("x_poster.post_to_x", side_effect=lambda txt, reply_text=None, media_bytes=None, **kw: (sent_x.append((txt, reply_text, media_bytes)) or {"status": "success"})),
+                ):
+                    res = sns_workflows.execute_scheduled_x_post(
+                        {"full_data": self.sample_stores, "is_seed": False},
+                        slot_label="20:00",
+                        force=False,
+                        now_jst=fri_dt,
+                    )
+                self.assertEqual(res["status"], "success")
+                self.assertFalse(res.get("standalone_no_reply"))
+                self.assertIsNotNone(sent_x[0][1])
+                self.assertEqual(sent_x[0][2], b"FAKEPNG")
+
+    def test_reel_ai_caption_fact_lock_same_hub_guard_and_store_count_unification(self):
+        """Verify Reel AI caption accepts weather/time digits, avoids cross-city 'same station' claims, and unifies 全国60店舗超."""
+        import ig_carousel_generator
+        import ogp_generator
+        import reel_generator
+        import tips_poster
+        import x_poster
+
+        # 1. Cross-city stores ONLY (no same-hub pair): select_scheduled_reel_type must NOT pick tiktok_gap_shock,
+        # and build_reel_caption(reel_type="tiktok_gap_shock") must NOT claim "同じ駅で徒歩4分"
+        cross_city_stores = [
+            {"name": "オリエンタルラウンジ 新宿", "women": 32, "men": 26, "region": "Kanto"},
+            {"name": "JIS UMEDA", "women": 4, "men": 19, "region": "Kinki"},
+        ]
+        for day in range(1, 15):
+            dt = datetime.datetime(2026, 11, day, 21, 15, tzinfo=sns_editorial.JST)
+            if dt.weekday() in (2, 3, 4, 5):
+                picked = reel_generator.select_scheduled_reel_type(cross_city_stores, now_jst=dt)
+                self.assertNotEqual(picked, "tiktok_gap_shock")
+        gap_cap = reel_generator.build_reel_caption(cross_city_stores, reel_type="tiktok_gap_shock")
+        self.assertNotIn("同じ駅で徒歩4分", gap_cap)
+
+        # 2. build_ai_reel_caption accepts weather temperature (14℃) & current minute (15分) on ladies_zero_wait
+        ladies_stores = [
+            {"name": "オリエンタルラウンジ 新宿", "women": 8, "men": 24, "region": "Kanto"},
+            {"name": "オリエンタルラウンジ 渋谷本店", "women": 28, "men": 12, "region": "Kanto"},
+        ]
+        dt_2115 = datetime.datetime(2026, 11, 5, 21, 15, tzinfo=sns_editorial.JST)
+        ai_hook = "気温14℃の21時15分、オリエンタルラウンジ新宿は男性24名：女性8名で女性は待ち時間ゼロの好条件。"
+        with (
+            mock.patch.dict(os.environ, {"DISABLE_SCHEDULER": "0"}),
+            mock.patch("sns_editorial.has_any_ai_key", return_value=True),
+            mock.patch("sns_editorial.fetch_live_weather_context", return_value={"summary": "東京 14℃ 晴れ"}),
+            mock.patch("sns_editorial.call_editorial_ai_json", return_value=({"hook_line": ai_hook}, "gemini-test", None)),
+        ):
+            cap = reel_generator.build_ai_reel_caption(ladies_stores, reel_type="ladies_zero_wait", now_jst=dt_2115)
+        self.assertIn("気温14℃の21時15分", cap)
+        self.assertNotIn("53店舗", cap)
+        self.assertNotIn("51店舗", cap)
+
+        # Verify live_top5 closers use 全国60店舗超 across days
+        top5_caps = [
+            reel_generator.build_reel_caption(
+                self.sample_stores,
+                reel_type="live_top5",
+                now_jst=datetime.datetime(2026, 11, d, 21, 15, tzinfo=sns_editorial.JST),
+            )
+            for d in range(1, 5)
+        ]
+        self.assertTrue(any("全国60店舗超" in c for c in top5_caps))
+        for c in top5_caps:
+            self.assertNotIn("53店舗", c)
+            self.assertNotIn("51店舗", c)
+
+        # 3. Verify zero leftover 51店舗 / 53店舗 / 53店 in generated copy & metadata across modules
+        carousel_ctx = ig_carousel_generator.build_forecast_context(self.sample_stores, now_jst=dt_2115)
+        carousel_cap = ig_carousel_generator.build_captions(carousel_ctx)["instagram_caption"]
+        self.assertIn("全国60店舗超", carousel_cap)
+        self.assertNotIn("53店舗", carousel_cap)
+        self.assertNotIn("51店舗", carousel_cap)
+
+        with open(tips_poster.__file__, "r", encoding="utf-8") as fh:
+            tips_src = fh.read()
+        self.assertNotIn("51店舗", tips_src)
+        self.assertNotIn("53店舗", tips_src)
+
+        with open(x_poster.__file__, "r", encoding="utf-8") as fh:
+            xp_src = fh.read()
+        self.assertNotIn("51店舗", xp_src)
+        self.assertNotIn("53店舗", xp_src)
+
+        with open(ogp_generator.__file__, "r", encoding="utf-8") as fh:
+            ogp_src = fh.read()
+        self.assertNotIn("53店舗", ogp_src)
+        self.assertNotIn("51店舗", ogp_src)
 
 
 if __name__ == "__main__":

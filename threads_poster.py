@@ -107,7 +107,7 @@ def build_threads_live_post(stores: list, slot_label: str = "20:00", now_jst: da
     if not dom:
         return (
             f"【{now_jst.month}/{now_jst.day}({wd}) {slot_label}】相席ラウンジ リアルタイム速報🥂\n\n"
-            "現在、全国51店舗（オリエンタルラウンジ・ag・JIS等）の男女人数と時間帯別料金を比較できます。\n\n"
+            "現在、全国60店舗超（オリエンタルラウンジ・ag・JIS等）の男女人数と時間帯別料金を比較できます。\n\n"
             f"▼ 全店舗の現在人数＆料金比較はこちら\n{SITE_URL}/price-comparison\n"
             "#相席ナビ #相席ラウンジ"
         )

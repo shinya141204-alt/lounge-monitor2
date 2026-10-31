@@ -698,6 +698,7 @@ def build_reel_context(
                     "heaven_store": hi_s,
                     "crowded_store": lo_s,
                     "gap_pt": max(1, hi_s["wpct"] - lo_s["wpct"]),
+                    "is_same_hub": True,
                 })
     gap_pairs.sort(key=lambda g: (g["gap_pt"], g["heaven_store"]["women"]), reverse=True)
     if len(gap_pairs) < 3 and len(active_stores) >= 2:
@@ -706,13 +707,16 @@ def build_reel_context(
             hi_fb = by_global_w[idx_fb]
             lo_fb = by_global_w[-(idx_fb + 1)]
             if hi_fb["raw_name"] != lo_fb["raw_name"]:
+                same_area = (hi_fb["area_label"] == lo_fb["area_label"])
                 gap_pairs.append({
-                    "hub_label": f"{hi_fb['area_label']} vs {lo_fb['area_label']}",
+                    "hub_label": hi_fb["area_label"] if same_area else f"{hi_fb['area_label']} vs {lo_fb['area_label']}",
                     "heaven_store": hi_fb,
                     "crowded_store": lo_fb,
                     "gap_pt": max(1, hi_fb["wpct"] - lo_fb["wpct"]),
+                    "is_same_hub": same_area,
                 })
     gap_pairs = gap_pairs[:3]
+    has_same_hub_gap = any(bool(gp.get("is_same_hub")) and int(gp.get("gap_pt") or 0) >= 8 for gp in gap_pairs)
 
     # 5. TikTok Midnight Cliff Survivors Top 4
     midnight_top4 = sorted(
@@ -733,7 +737,7 @@ def build_reel_context(
         "weekday_ja": wd_str,
         "is_fallback": is_fallback,
         "active_store_count": len(active_stores),
-        "total_store_count": max(53, len(enriched)),
+        "total_store_count": max(60, len(enriched)),
         "total_women": total_women,
         "total_men": total_men,
         "overall_wpct": overall_wpct,
@@ -743,6 +747,7 @@ def build_reel_context(
         "best_ratio_zone": best_ratio_zone,
         "ladies_top5": ladies_sorted,
         "gap_pairs": gap_pairs,
+        "has_same_hub_gap": has_same_hub_gap,
         "midnight_top4": midnight_top4,
     }
 
@@ -784,8 +789,6 @@ def record_recent_reel_type(reel_type: str, platform: str = "instagram") -> None
         import json
         key = TK_RECENT_TYPES_KEY if platform == "tiktok" else REEL_RECENT_TYPES_KEY
         cur = get_recent_reel_types(platform=platform, limit=6)
-        updated = [rt] + [x for x in cur if x != rt or len(cur) == 0]
-        # Keep chronological order (allow older occurrence while keeping top unique from immediate repeat)
         chron = [rt] + cur[:5]
         job_state.set_value(key, json.dumps(chron[:6], ensure_ascii=False))
     except Exception as e:
@@ -811,7 +814,15 @@ def select_scheduled_reel_type(
 
     ctx = build_reel_context(stores, reel_type="live_top5", now_jst=now_jst)
     gap_pairs = ctx.get("gap_pairs") or []
-    top_gap_pt = max((int(gp.get("gap_pt") or 0) for gp in gap_pairs), default=0)
+    same_hub_gap_pt = max(
+        (
+            int(gp.get("gap_pt") or 0)
+            for gp in gap_pairs
+            if gp.get("is_same_hub", " vs " not in str(gp.get("hub_label") or ""))
+        ),
+        default=0,
+    )
+    has_real_hub_gap = same_hub_gap_pt >= 8
     ladies_cands = [s for s in (ctx.get("ladies_top5") or []) if int(s.get("men") or 0) > int(s.get("women") or 0) and int(s.get("men") or 0) >= 6]
 
     if platform == "tiktok":
@@ -823,6 +834,8 @@ def select_scheduled_reel_type(
         else:
             rot = biz_dt.toordinal() % len(pool)
             preferred = pool[rot:] + pool[:rot]
+        if not has_real_hub_gap and "tiktok_gap_shock" in preferred:
+            preferred = [x for x in preferred if x != "tiktok_gap_shock"] + ["tiktok_gap_shock"]
         for cand in preferred:
             if cand != last_1:
                 return cand
@@ -830,15 +843,14 @@ def select_scheduled_reel_type(
 
     # Instagram Reels: rotate across 4 distinct visual templates
     # - Wednesday (or strong male-lead nights without Thu Ladies Feed): prioritize `ladies_zero_wait`
-    # - High intra-station gap (>=15pt): prioritize `tiktok_gap_shock` or `area_battle`
+    # - High intra-station gap (>=16pt): prioritize `tiktok_gap_shock` or `area_battle`
     # - Fri/Sat peak: rotate `live_top5`, `area_battle`, `tiktok_gap_shock`, `ladies_zero_wait`
-    ig_pool = ["live_top5", "area_battle", "ladies_zero_wait", "tiktok_gap_shock"]
     if wd == 2 and len(ladies_cands) >= 2:
         ranked = ["ladies_zero_wait", "area_battle", "live_top5", "tiktok_gap_shock"]
     elif wd == 3:
         # Thursday already has 19:45 Ladies Feed, so favor area_battle / gap_shock / live_top5
         ranked = ["area_battle", "tiktok_gap_shock", "live_top5", "ladies_zero_wait"]
-    elif top_gap_pt >= 16 and (biz_dt.toordinal() % 2 == 1):
+    elif same_hub_gap_pt >= 16 and (biz_dt.toordinal() % 2 == 1):
         ranked = ["tiktok_gap_shock", "live_top5", "area_battle", "ladies_zero_wait"]
     else:
         base_order = ["live_top5", "area_battle", "tiktok_gap_shock", "ladies_zero_wait"]
@@ -846,6 +858,9 @@ def select_scheduled_reel_type(
         ranked = base_order[rot:] + base_order[:rot]
         if len(ladies_cands) < 2 and "ladies_zero_wait" in ranked:
             ranked = [x for x in ranked if x != "ladies_zero_wait"] + ["ladies_zero_wait"]
+
+    if not has_real_hub_gap and "tiktok_gap_shock" in ranked:
+        ranked = [x for x in ranked if x != "tiktok_gap_shock"] + ["tiktok_gap_shock"]
 
     # Strictly avoid immediate repeat (`last_1`), and avoid `last_2` first when possible
     for cand in ranked:
@@ -981,6 +996,7 @@ def build_reel_caption(
 
     if rt == "tiktok_gap_shock":
         gp_list = ctx.get("gap_pairs") or []
+        has_hub_gap = bool(ctx.get("has_same_hub_gap"))
         gp_lines = []
         for idx, gp in enumerate(gp_list[:3], start=1):
             hi = gp["heaven_store"]
@@ -991,15 +1007,24 @@ def build_reel_caption(
                 f"　🔴 対照店：{lo['ja_name']}（女{lo['women']}:男{lo['men']}｜女性比{lo['wpct']}%）"
             )
         joined_gp = "\n".join(gp_lines)
-        openers = (
-            f"同じ駅で徒歩4分しか離れてないのに、お店のドア1枚でここまで男女比が変わります{mode_note}",
-            f"「今日はどこも混んでそう…」って諦める前に見てほしい、同じ駅の中のリアルな男女比ギャップ📊{mode_note}",
-            f"1軒目終わりにそのまま一番近い店へ並ぶと損しやすい理由がこれです{mode_note}",
-        )
+        if has_hub_gap:
+            openers = (
+                f"同じ駅で徒歩4分しか離れてないのに、お店のドア1枚でここまで男女比が変わります{mode_note}",
+                f"「今日はどこも混んでそう…」って諦める前に見てほしい、同じ駅の中のリアルな男女比ギャップ📊{mode_note}",
+                f"1軒目終わりにそのまま一番近い店へ並ぶと損しやすい理由がこれです{mode_note}",
+            )
+            mid_tip = "駅を出る直前に別ブランド（オリエンタルラウンジ・ag・JIS）を見比べるだけで、待ち時間ゼロ圏のお店が見つかります。"
+        else:
+            openers = (
+                f"同じ夜の時間帯でも、選ぶお店ひとつでここまで男女比の空気が変わります{mode_note}",
+                f"「今夜はどこも混んでそう…」って決めてしまう前に見てほしい、リアルタイム男女比ギャップ📊{mode_note}",
+                f"ノープランで1店舗目へ入る前に、いま座りやすい店舗との比率差だけ置いておきます{mode_note}",
+            )
+            mid_tip = "向かう直前にブランド横断（オリエンタルラウンジ・ag・JIS）で現在人数を見比べるだけで、待ち時間ゼロ圏のお店が見つかります。"
         caption = (
             f"{openers[seed_num % len(openers)]}\n\n"
             f"{joined_gp}\n\n"
-            f"駅を出る直前に別ブランド（オリエンタルラウンジ・ag・JIS）を見比べるだけで、待ち時間ゼロ圏のお店が見つかります。\n\n"
+            f"{mid_tip}\n\n"
             f"全国60店舗超の現在人数と料金シミュレーターはプロフの『相席ナビ』（aiseki-navi.com）から無料で見れます🔍\n"
             f"今夜・週末に使う用に保存しておいてください📌\n\n"
             f"{tags_line}"
@@ -1106,19 +1131,62 @@ def build_ai_reel_caption(
         if len(paragraphs) < 3:
             return base_caption
 
-        top_s = (ctx.get("top5_volume") or [{}])[0]
+        rt_eff = ctx["reel_type"]
+        allowed_nums = {
+            str(eff_dt.hour),
+            str(eff_dt.minute),
+            f"{eff_dt.minute:02d}",
+            "0", "1", "2", "3", "4", "5", "10", "20", "23", "30", "60", "70",
+        }
+        if rt_eff in ("ladies_zero_wait", "tiktok_ladies_real"):
+            sym_s = (ctx.get("ladies_top5") or ctx.get("top5_volume") or [{}])[0]
+            symbol_line = f"{sym_s.get('ja_name', '')}（男性{sym_s.get('men', 0)}名・女性{sym_s.get('women', 0)}名・受付待ちゼロ圏）"
+            allowed_nums.update({str(sym_s.get("men", 0)), str(sym_s.get("women", 0)), str(sym_s.get("wpct", 0))})
+        elif rt_eff == "tiktok_gap_shock" and (ctx.get("gap_pairs") or []):
+            gp0 = ctx["gap_pairs"][0]
+            hi_s = gp0["heaven_store"]
+            lo_s = gp0["crowded_store"]
+            symbol_line = (
+                f"{gp0['hub_label']}：{hi_s.get('ja_name', '')}（女{hi_s.get('women', 0)}:男{hi_s.get('men', 0)}・女性比{hi_s.get('wpct', 0)}%）"
+                f" vs {lo_s.get('ja_name', '')}（女性比{lo_s.get('wpct', 0)}%、比率差{gp0.get('gap_pt', 0)}pt）"
+            )
+            allowed_nums.update({
+                str(hi_s.get("women", 0)), str(hi_s.get("men", 0)), str(hi_s.get("wpct", 0)),
+                str(lo_s.get("women", 0)), str(lo_s.get("men", 0)), str(lo_s.get("wpct", 0)),
+                str(gp0.get("gap_pt", 0)),
+            })
+        elif rt_eff == "area_battle" and (ctx.get("area_battles") or []):
+            z0 = next((z for z in ctx["area_battles"] if z.get("is_leader")), ctx["area_battles"][0])
+            symbol_line = f"{z0.get('label', '')}（女性{z0.get('women', 0)}名・男性{z0.get('men', 0)}名・女性比{z0.get('wpct', 0)}%）"
+            for z in ctx["area_battles"]:
+                allowed_nums.update({str(z.get("women", 0)), str(z.get("men", 0)), str(z.get("wpct", 0))})
+        elif rt_eff == "tiktok_midnight_cliff" and (ctx.get("midnight_top4") or []):
+            ms0 = ctx["midnight_top4"][0]
+            symbol_line = f"{ms0.get('ja_name', '')}（女性{ms0.get('women', 0)}名・男性{ms0.get('men', 0)}名・終電後維持{ms0.get('midnight_retention_pct', 0)}%）"
+            allowed_nums.update({
+                str(ms0.get("women", 0)), str(ms0.get("men", 0)),
+                str(ms0.get("wpct", 0)), str(ms0.get("midnight_retention_pct", 0)),
+            })
+        else:
+            top_s = (ctx.get("top5_volume") or [{}])[0]
+            symbol_line = f"{top_s.get('ja_name', '')}（女性{top_s.get('women', 0)}名・男性{top_s.get('men', 0)}名・女性比{top_s.get('wpct', 0)}%）"
+            allowed_nums.update({str(top_s.get("women", 0)), str(top_s.get("men", 0)), str(top_s.get("wpct", 0))})
+
         weather_ctx = sns_editorial.fetch_live_weather_context(allow_blocking=False) or {}
+        weather_sum = str(weather_ctx.get("summary") or "特になし")
+        allowed_nums.update(re.findall(r"\d+", weather_sum))
         cal_ctx = sns_editorial.build_calendar_context(eff_dt)
+        allowed_nums.update(re.findall(r"\d+", str(cal_ctx.get("tag") or "")))
         recent_ig = sns_editorial.get_recent_cross_channel_texts("instagram", limit=4, allow_blocking=False)
         prompt = (
             "あなたは夜の街の空気に詳しい気取らない大人の友人です。\n"
-            "Instagramリール動画のキャプションの『冒頭1段落目（40〜78文字、1〜2行）』だけを自然な人間の口調で書いてください。\n"
-            f"・動画テーマ：{REEL_TEMPLATES.get(ctx['reel_type'], {}).get('short_label', ctx['reel_type'])}\n"
-            f"・日時背景：{cal_ctx.get('tag', '')}（{eff_dt.strftime('%H:%M')}時点） / 天気：{weather_ctx.get('summary') or '特になし'}\n"
-            f"・現在の象徴データ：{top_s.get('ja_name', '')}（女性{top_s.get('women', 0)}名・男性{top_s.get('men', 0)}名）\n"
+            "ショート動画（Instagramリール / TikTok）キャプションの『冒頭1段落目（40〜78文字、1〜2行）』だけを自然な人間の口調で書いてください。\n"
+            f"・動画テーマ：{REEL_TEMPLATES.get(rt_eff, {}).get('short_label', rt_eff)}\n"
+            f"・日時背景：{cal_ctx.get('tag', '')}（{eff_dt.strftime('%H:%M')}時点） / 天気：{weather_sum}\n"
+            f"・現在の象徴データ：{symbol_line}\n"
             f"・直近のIG書き出し（被り厳禁）：{sns_editorial.json.dumps([t[:60] for t in recent_ig[:3]], ensure_ascii=False)}\n"
             "・禁止表現：『モニター見て』『バックヤード』『必見』『徹底解説』『最適解』『二度見』、単体の『オリエンタル』や『OLG』、過剰な絵文字（0〜1個まで）。\n"
-            "・具体的な人数を書く場合は上記データの数値を1人も変えないこと（無理に数字を入れず街の空気感フックだけでもOK）。\n"
+            "・具体的な数値を書く場合は上記データの数値を1桁も変えないこと（無理に数字を入れず街の空気感フックだけでもOK）。\n"
             '出力はJSONのみ：{"hook_line": "冒頭1段落テキスト"}'
         )
         parsed, _, err = sns_editorial.call_editorial_ai_json(
@@ -1133,15 +1201,7 @@ def build_ai_reel_caption(
         if not err and hook and 22 <= len(hook) <= 95:
             hook = enforce_brand_rule(sns_editorial._postprocess_ai_main_text(hook, channel="instagram"))
             if not any(w in hook for w in sns_editorial.AI_CLICHE_WORDS):
-                # Ensure no hallucinated numbers in hook
                 hook_nums = set(re.findall(r"\d+", hook))
-                allowed_nums = {
-                    str(top_s.get("women", 0)),
-                    str(top_s.get("men", 0)),
-                    str(top_s.get("wpct", 0)),
-                    str(eff_dt.hour),
-                    "1", "2", "3", "4", "5", "0", "30", "20", "23",
-                }
                 if hook_nums.issubset(allowed_nums):
                     rebuilt = "\n\n".join([hook] + paragraphs[1:])
                     return enforce_brand_rule(rebuilt)
@@ -1395,9 +1455,9 @@ class _ReelSceneRenderer:
         py = self.prog_y
         draw.rounded_rectangle((lx, py, rx_end, py + 6), radius=3, fill=(255, 255, 255, 46))
         foot_txt = (
-            "『相席ナビ』(aiseki-navi.com) 全53店舗の現在人数を無料公開中"
+            "『相席ナビ』(aiseki-navi.com) 全国60店舗超の現在人数を無料公開中"
             if self.is_tiktok
-            else "全国53店舗の現在人数は『相席ナビ』(aiseki-navi.com) で無料公開中"
+            else "全国60店舗超の現在人数は『相席ナビ』(aiseki-navi.com) で無料公開中"
         )
         foot_fit, f_foot_fit, _ = ogp_generator.fit_text_and_font(draw, foot_txt, self.safe_w, 15, 12)
         fw = int(draw.textlength(foot_fit, font=f_foot_fit))
@@ -1422,14 +1482,23 @@ class _ReelSceneRenderer:
             gp0 = (self.ctx.get("gap_pairs") or [None])[0]
             hi_pct = gp0["heaven_store"]["wpct"] if gp0 else 64
             lo_pct = gp0["crowded_store"]["wpct"] if gp0 else 36
-            kicker = f"TIKTOK LIVE GAP  |  {self.ctx['weekday_ja']}曜夜・同駅比較"
+            has_hub_gap = bool(self.ctx.get("has_same_hub_gap", True))
+            kicker = (
+                f"TIKTOK LIVE GAP  |  {self.ctx['weekday_ja']}曜夜・同駅比較"
+                if has_hub_gap
+                else f"TIKTOK LIVE GAP  |  {self.ctx['weekday_ja']}曜夜・店舗比較"
+            )
             lines = [
-                ("同じ駅・徒歩4分なのに", (255, 255, 255, 255)),
+                ("同じ駅・徒歩4分なのに" if has_hub_gap else "同じ夜の時間帯なのに", (255, 255, 255, 255)),
                 (f"女性比 {hi_pct}% vs {lo_pct}%", acc),
-                ("ドア1枚で待ち時間激変！", acc2),
+                ("ドア1枚で待ち時間激変！" if has_hub_gap else "店選びで待ち時間激変！", acc2),
             ]
             sub1 = "1店舗目の男性待ち行列に並ぶ前に3秒チェック！"
-            sub2 = "同じ繁華街で『今すぐ座れる天国店』と混雑店をリアル比較"
+            sub2 = (
+                "同じ繁華街で『今すぐ座れる天国店』と混雑店をリアル比較"
+                if has_hub_gap
+                else "ブランド横断で『今すぐ座れる狙い目店』と混雑店をリアル比較"
+            )
         elif self.rt == "tiktok_ladies_real":
             kicker = f"LADIES REAL DATA  |  {self.ctx['weekday_ja']}曜夜の女子会裏ワザ"
             lines = [
@@ -1517,7 +1586,7 @@ class _ReelSceneRenderer:
         sm_fit, sm_font, _ = ogp_generator.fit_text_and_font(draw, stat_main, sw - 48, 38 if self.is_tiktok else 40, 24)
         draw.text((lx + 24, cy1 + 68), sm_fit, font=sm_font, fill=(255, 255, 255, 255))
 
-        ratio_note = f"国内全体 女性比率 {self.ctx['overall_wpct']}%  ｜  オリエンタルラウンジ・ag・JIS 全53店対応"
+        ratio_note = f"国内全体 女性比率 {self.ctx['overall_wpct']}%  ｜  オリエンタルラウンジ・ag・JIS 全国60店舗超対応"
         rn_fit, rn_font, _ = ogp_generator.fit_text_and_font(draw, ratio_note, sw - 48, 18, 14)
         draw.text((lx + 24, cy1 + 142), rn_fit, font=rn_font, fill=(182, 194, 212, 240))
 
@@ -1953,7 +2022,7 @@ class _ReelSceneRenderer:
         draw.text((lx + max(0, (sw - kw) // 2), cta_y1 + (28 if self.is_tiktok else 40)), k_fit, font=f_k_fit, fill=acc)
 
         cta_l1 = "『相席ナビ』で検索 or プロフから" if self.is_tiktok else "プロフのリンク『相席ナビ』で"
-        cta_l2 = "全53店舗の現在人数を3秒チェック" if self.is_tiktok else "全53店舗の現在人数を3秒検索"
+        cta_l2 = "全国60店舗超の現在人数を3秒チェック" if self.is_tiktok else "全国60店舗超の現在人数を3秒検索"
         c1_fit, f_c1, _ = ogp_generator.fit_text_and_font(draw, cta_l1, sw - 48, 30 if self.is_tiktok else 34, 20)
         c2_fit, f_c2, _ = ogp_generator.fit_text_and_font(draw, cta_l2, sw - 48, 30 if self.is_tiktok else 34, 20)
         c1w = int(draw.textlength(c1_fit, font=f_c1))
@@ -2432,6 +2501,7 @@ def get_reel_studio_info(
     reel_type: str = "live_top5",
     now_jst: datetime.datetime = None,
     auto_schedule_enabled: bool = False,
+    tiktok_auto_schedule_enabled: bool = False,
 ) -> dict:
     """Assemble clean JSON metadata payload for `/api/staff/sns-reel/info`."""
     rt = normalize_reel_type(reel_type)
@@ -2452,5 +2522,6 @@ def get_reel_studio_info(
         "veo3_prompts": VEO3_PROMPT_PRESETS,
         "backgrounds": bg_public,
         "auto_schedule_enabled": bool(auto_schedule_enabled),
+        "tiktok_auto_schedule_enabled": bool(tiktok_auto_schedule_enabled),
         "ffmpeg_available": bool(resolve_ffmpeg_bin()),
     }

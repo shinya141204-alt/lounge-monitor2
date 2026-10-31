@@ -297,7 +297,7 @@ TIPS_LIST = [
 _FALLBACK_COLUMNS = [
     ("相席ラウンジの席替え完全攻略｜言えない男と察する女の心理学", "/guide/table-change-protocol"),
     ("金土22時の「女性比60%」が3割逆転する群衆殺到パラドックス", "/guide/crowd-rush-paradox"),
-    ("全51店舗「料金・イベント・現在人数」比較ボード活用ガイド", "/guide/price-event-comparison"),
+    ("全国60店舗超「料金・イベント・現在人数」比較ボード活用ガイド", "/guide/price-event-comparison"),
     ("最初の10分で差がつく会話＆清潔感ガイド", "/guide/first-10-minutes"),
     ("相席ラウンジ前の身だしなみ・清潔感チェック", "/grooming"),
     ("1人（ソロ）vs 2人ペアの立ち回り比較", "/guide/solo-vs-pair"),
@@ -310,7 +310,7 @@ _FALLBACK_COLUMNS = [
     ("ダンスクラブ街×深夜2回転目の回遊法則", "/guide/club-area-midnight"),
     ("「男性先行」の店ほど女性が増える？女性は待たない新常識", "/guide/male-lead-mechanics"),
     ("相席ラウンジ完全攻略ガイド（基本の立ち回り・お店選び）", "/guide/strategy"),
-    ("全国53店舗の曜日・時間帯別 統計データ白書", "/stats"),
+    ("全国60店舗超の曜日・時間帯別 統計データ白書", "/stats"),
     ("相席ラウンジ実践コラム・攻略記事一覧", "/columns"),
 ]
 
@@ -326,7 +326,7 @@ def _column_for_tip_index(idx: int) -> tuple:
     if idx <= 35:
         return ("2軒目・カフェやバーへの自然な誘い方", "/guide/second-venue")
     if idx == 37:
-        return ("全51店舗「料金・イベント・現在人数」比較ボード活用ガイド", "/guide/price-event-comparison")
+        return ("全国60店舗超「料金・イベント・現在人数」比較ボード活用ガイド", "/guide/price-event-comparison")
     if idx <= 39:
         return ("オリエンタルラウンジ・ag・JISの違い徹底比較", "/guide/brand-comparison")
     if idx == 40:
@@ -345,9 +345,9 @@ def _column_for_tip_index(idx: int) -> tuple:
     if idx == 45:
         return ("ダンスクラブ街×深夜2回転目の回遊法則", "/guide/club-area-midnight")
     if idx == 46:
-        return ("全国53店舗の曜日・時間帯別 統計データ白書", "/stats")
+        return ("全国60店舗超の曜日・時間帯別 統計データ白書", "/stats")
     if idx == 47:
-        return ("全51店舗「料金・イベント・現在人数」比較ボード活用ガイド", "/guide/price-event-comparison")
+        return ("全国60店舗超「料金・イベント・現在人数」比較ボード活用ガイド", "/guide/price-event-comparison")
     if idx == 48:
         import scheduled_articles
         if scheduled_articles.is_published("local-vs-urban"):

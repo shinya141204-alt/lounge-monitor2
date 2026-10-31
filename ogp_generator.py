@@ -238,7 +238,7 @@ def get_ogp_meta_for_slot(s_param: str = "", now_jst: datetime.datetime = None) 
     return {
         "slot_label": slot_label,
         "title": f"{date_prefix}{headline}｜相席ナビ",
-        "description": f"{theme['sub_caption']}。全国53店舗の男女人数・男女比をリアルタイム更新中！",
+        "description": f"{theme['sub_caption']}。全国60店舗超の男女人数・男女比をリアルタイム更新中！",
     }
 
 
@@ -586,7 +586,7 @@ def generate_live_ogp_png(stores: list, s_param: str = "", now_jst: datetime.dat
 
         schedule_rows = [
             ("(1) 18:00 - 20:30", "仕事帰り・待ち時間ゼロの狙い目スタート枠", (244, 114, 182)),
-            ("(2) 21:00 - 23:30", "国内51店舗 ゴールデンタイム男女比ランキング", (251, 191, 36)),
+            ("(2) 21:00 - 23:30", "国内60店舗超 ゴールデンタイム男女比ランキング", (251, 191, 36)),
             ("(3) 00:00 - 05:00", "終電後の第2波・深夜オールナイト稼働速報", (56, 189, 248)),
         ]
         sy_card = ry + 224
@@ -795,7 +795,7 @@ def generate_weekly_ogp_png(report: dict = None) -> bytes:
         width=1,
     )
     draw.rounded_rectangle((lx, sy, lx + 6, sy + 46), radius=3, fill=(251, 191, 36, 255))
-    draw.text((lx + 20, sy + 13), "全国53店舗・7日間のピーク平均＆穴場データ白書", font=f_sub, fill=(238, 240, 246, 255))
+    draw.text((lx + 20, sy + 13), "全国60店舗超・7日間のピーク平均＆穴場データ白書", font=f_sub, fill=(238, 240, 246, 255))
 
     tbox_y = sy + 64
     tbox_w = 492
@@ -1047,7 +1047,7 @@ def generate_bonus_alert_png(store: dict, mode: str = "female_lead", now_jst: da
     draw.rounded_rectangle((bar_x, bar_y, bar_x + fill_w, bar_y + bar_h), radius=11, fill=(236, 72, 153, 255))
 
     # Footer brand line
-    footer_l = "相席ナビ (aiseki-navi.com)  |  全国53店舗リアルタイム人数・男女比モニター"
+    footer_l = "相席ナビ (aiseki-navi.com)  |  全国60店舗超リアルタイム人数・男女比モニター"
     draw.text((76, 540), footer_l, font=f_footer, fill=(148, 163, 184, 235))
 
     out = io.BytesIO()

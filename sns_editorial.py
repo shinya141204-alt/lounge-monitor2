@@ -529,8 +529,8 @@ HUMAN_JITTER_WINDOWS = {
     "threads_ladies": (1, 14), # 19:31 .. 19:44
     "instagram": (1, 12),      # 18:46 .. 18:57 / 21:46 .. 21:57
     "ig_ladies": (1, 12),      # 19:46 .. 19:57
-    "ig_reel": (3, 28),        # 21:08 .. 21:33 (natural vertical video post timing)
-    "tiktok": (4, 24),         # 20:39 .. 20:59 Inbox draft timing
+    "ig_reel": (3, 28),        # 21:18 .. 21:43 (natural vertical video post timing)
+    "tiktok": (4, 20),         # 20:39 .. 20:55 Inbox draft timing (100% covered by 11:39,45,51,57 UTC cron)
 }
 
 
@@ -689,10 +689,11 @@ def get_sns_human_pacing_summary(now_jst: datetime.datetime = None) -> dict:
     """Return human-readable summary of anti-bot pacing & Reel schedule for `/staff/sns-editorial`."""
     return {
         "ig_reels_weekly": 4,
-        "ig_reels_days_ja": "水・木・金・土（週4回・4テンプレ自動ローテ・同日グリッド重複自動OFF）",
-        "x_cadence_ja": "最低48分間隔＋日次上限（平日3・週末5）＋月/日休養ゆらぎ＋単独ポスト混在",
+        "ig_reels_days_ja": "水・木・金・土（週4回・4テンプレ自動ローテ・1.2秒カバー固定・同日グリッド重複自動OFF）",
+        "x_cadence_ja": "最低48分間隔＋日次上限（月〜木4件・金〜日5件／主戦場枠リザーブ付）＋月/日休養ゆらぎ＋単独ポスト混在",
         "threads_cadence_ja": "週6日稼働（週1自然休養）＋最低90分間隔＋URL添付1/3以下＋画像1/3混在",
-        "col_release_ja": "1日最大1記事告知・ピーク枠（20時/22時前後）自動回避",
+        "tiktok_cadence_ja": "水・金・土（週3回・20:39〜20:55人間ゆらぎ・3テンプレ自動ローテInbox送信）",
+        "col_release_ja": "1日最大1記事告知・ピーク枠および深夜〜早朝（23:26〜11:29）自動回避",
     }
 
 
@@ -2513,7 +2514,7 @@ def _write_instagram_candidates(
         if t_key == "weekday":
             hook_1 = "「平日の仕事帰り、どの店なら待たずに楽しく飲める？」って迷う夜用のまとめです📝"
         elif t_key == "sunday":
-            hook_1 = "今週も全国51店舗のデータを追っていて、「やっぱり店選びで9割決まるな…」と実感した結果がこちら📊"
+            hook_1 = "今週も全国60店舗超のデータを追っていて、「やっぱり店選びで9割決まるな…」と実感した結果がこちら📊"
         else:
             hook_1 = "金土の21時半に何も見ないで突撃して「男性待ち50分です」って言われるの、一番もったいないですよね…😂"
 
@@ -4363,7 +4364,18 @@ def polish_draft_to_human_voice(
     detached_footer = ""
     body_only = base_text
     if ch == "threads":
-        m_foot = re.search(r"(\n+(?:🔍|▼)\s*全\d+店舗の現在人数[\s\S]*)$", base_text)
+        m_foot = re.search(
+            r"(\n+(?:"
+            r"(?:🔍|▼)\s*(?:全国?\d+店舗(?:超)?の現在人数|全国の現在人数・男女比は|今の男女人数・開催中イベント一覧はこちら)[\s\S]*"
+            r"|💄\s*いま女子待ち0で入れる[\s\S]*"
+            r"|細かいリアルタイム人数と料金比較はプロフィールのリンク[\s\S]*"
+            r"|気になる街のリアルタイム推移はプロフィールの『相席ナビ』からどうぞ。?"
+            r"|今の各店舗の男女人数や女子向け特典はプロフのリンク[\s\S]*"
+            r"|各店舗のリアルタイム人数はプロフィールの『相席ナビ』から見れます[\s\S]*"
+            r"|#相席ラウンジ(?:\s+#\S+)*"
+            r"))$",
+            base_text,
+        )
         if m_foot:
             detached_footer = m_foot.group(1).strip()
             body_only = base_text[:m_foot.start()].strip()
@@ -4449,7 +4461,7 @@ def polish_draft_to_human_voice(
             if not (84 <= wt <= 270):
                 return base_text, ""
         elif ch == "threads":
-            if not (255 <= len(cand_full) <= 478):
+            if not (140 <= len(cand_full) <= 478):
                 return base_text, ""
         elif ch == "instagram":
             if not (200 <= len(cand_full) <= 680):
@@ -4547,9 +4559,12 @@ def _generate_gemini_adlib_candidate(
         return None
 
     x_silent = False
+    x_arch_key = ""
     if ch == "x":
-        x_arch_meta = select_x_post_archetype(slot_label=slot_label, now_jst=now_jst)
+        recent_x_for_arch = get_recent_cross_channel_texts(channel="x", limit=3, allow_blocking=False)
+        x_arch_meta = select_x_post_archetype(slot_label=slot_label, now_jst=now_jst, recent_texts=recent_x_for_arch)
         x_silent = bool(x_arch_meta.get("silent_tree"))
+        x_arch_key = str(x_arch_meta.get("key") or "")
 
     polished_text, polisher_model = polish_draft_to_human_voice(
         draft_text=main_text,
@@ -4579,6 +4594,7 @@ def _generate_gemini_adlib_candidate(
         "reply_text": reply_text,
         "is_ai_generated": True,
         "ai_model": display_model,
+        **({"archetype_key": x_arch_key} if ch == "x" and x_arch_key else {}),
         **(
             {
                 "tiktok_hook_text": (main_text.split("\n", 1)[0][:46] if main_text else "同駅・徒歩4分の男女比ギャップ速報"),

@@ -261,6 +261,12 @@ def check_and_announce_newly_published(app_url: str = "", now_jst: datetime.date
             break
 
         mins_of_day = now_jst.hour * 60 + now_jst.minute
+        if mins_of_day < (11 * 60 + 30) or mins_of_day > (23 * 60 + 25):
+            reason = f"Holding column X announcement during quiet off-hours ({now_jst.strftime('%H:%M')} JST)"
+            logger.info(f"[scheduled_articles] Deferring X announcement for {item['slug']} ({reason})")
+            results.append({"slug": item["slug"], "result": {"status": "skipped", "reason": reason}})
+            break
+
         if (19 * 60 + 42 <= mins_of_day <= 20 * 60 + 30) or (21 * 60 + 42 <= mins_of_day <= 22 * 60 + 30):
             reason = f"Holding column X announcement outside prime live slot rush ({now_jst.strftime('%H:%M')} JST)"
             logger.info(f"[scheduled_articles] Deferring X announcement for {item['slug']} ({reason})")
@@ -296,6 +302,11 @@ def check_and_announce_newly_published(app_url: str = "", now_jst: datetime.date
             job_state.mark_done(daily_col_key)
             job_state.mark_done(f"x_col_used:{now_jst.strftime('%Y-%m-%d')}:{item['path']}")
             x_poster.record_x_auto_post_timestamp(now_jst)
+            try:
+                import sns_editorial
+                sns_editorial.record_recent_x_text(item["x_main_text"])
+            except Exception:
+                pass
             logger.info(f"[scheduled_articles] Announced newly released column on X: {item['slug']}")
         results.append({"slug": item["slug"], "result": res})
         if res.get("status") == "success":

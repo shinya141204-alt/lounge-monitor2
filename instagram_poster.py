@@ -866,12 +866,19 @@ def _publish_ig_container(
     return resp
 
 
-def post_reel_to_instagram(video_url: str, caption: str, share_to_feed: bool = True) -> dict:
+def post_reel_to_instagram(
+    video_url: str,
+    caption: str,
+    share_to_feed: bool = True,
+    thumb_offset_ms: int = 1200,
+) -> dict:
     """
     Publish a 9:16 MP4 Reel to Instagram via Meta Graph API:
-      1. POST /{ig_user_id}/media (media_type=REELS, video_url=..., caption=..., share_to_feed=...)
+      1. POST /{ig_user_id}/media (media_type=REELS, video_url=..., caption=..., share_to_feed=..., thumb_offset=...)
       2. Poll GET /{creation_id}?fields=status_code,status up to 20 times (3s interval, 60s max) until FINISHED
       3. Publish via `_publish_ig_container` (`media_publish`)
+     Note: `thumb_offset_ms=1200` (`t=1.2s`) ensures Meta never selects Frame 0 (`t=0.0s`, where Scene 1 fade-in alpha is 0.0)
+    and instead captures the 100%-opaque Scene 1 headline + live nationwide glass card centered inside 1:1/4:5 grid crops.
     """
     access_token = _get_active_ig_token()
     if not access_token:
@@ -883,6 +890,7 @@ def post_reel_to_instagram(video_url: str, caption: str, share_to_feed: bool = T
 
     base = _graph_base_for_token(access_token)
     poll_wait = 0.05 if os.environ.get("DISABLE_SCHEDULER") == "1" else 3.0
+    safe_thumb_offset = max(0, int(thumb_offset_ms if thumb_offset_ms is not None else 1200))
 
     try:
         r1 = requests.post(
@@ -892,6 +900,7 @@ def post_reel_to_instagram(video_url: str, caption: str, share_to_feed: bool = T
                 "video_url": video_url,
                 "caption": (caption or "")[:2100],
                 "share_to_feed": "true" if share_to_feed else "false",
+                "thumb_offset": str(safe_thumb_offset),
                 "access_token": access_token,
             },
             timeout=30,
@@ -967,6 +976,7 @@ def post_reel_to_instagram(video_url: str, caption: str, share_to_feed: bool = T
             "id": post_id,
             "creation_id": creation_id,
             "video_url": video_url,
+            "thumb_offset_ms": safe_thumb_offset,
         }
     except Exception as e:
         logging.error(f"Instagram Reel post exception: {e}")
@@ -981,6 +991,7 @@ def publish_live_reel_to_instagram(
     slot_label: str = "manual_reel",
     force: bool = True,
     now_jst: datetime.datetime = None,
+    thumb_offset_ms: int = 1200,
 ) -> dict:
     """
     Warm-generate the live 9:16 MP4 Reel in-process, publish via Meta Instagram Graph API
@@ -1071,7 +1082,12 @@ def publish_live_reel_to_instagram(
 
         ts_code = now_jst.strftime("%Y%m%d_%H%M")
         video_url = f"{SITE_URL}/ogp/reel/{rt}.mp4?s={ts_code}"
-        res = post_reel_to_instagram(video_url, caption, share_to_feed=effective_share_to_feed)
+        res = post_reel_to_instagram(
+            video_url,
+            caption,
+            share_to_feed=effective_share_to_feed,
+            thumb_offset_ms=thumb_offset_ms,
+        )
         res["caption"] = caption
         res["video_url"] = video_url
         res["reel_type"] = rt

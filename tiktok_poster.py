@@ -42,11 +42,22 @@ def is_tiktok_token_configured() -> bool:
 
 
 def is_tiktok_auto_schedule_enabled(allow_blocking: bool = False) -> bool:
+    """
+    Return whether scheduled Phase 2 TikTok Inbox delivery (Wed/Fri/Sat 20:35 JST + jitter) is enabled.
+    Defaults to True when unset in `job_state` (unless `TIKTOK_AUTO_SCHEDULE_DEFAULT=0`),
+    while strictly honoring explicit OFF ('0'/'false'/'off'/'no') set from `/staff/sns-editorial`.
+    When `TIKTOK_ACCESS_TOKEN` is unconfigured (Phase 1), scheduled jobs fast-skip in 0ms.
+    """
     try:
         raw = (job_state.get_value(TIKTOK_AUTO_ENABLED_KEY, allow_blocking=allow_blocking) or "").strip().lower()
-        return raw in ("1", "true", "on", "yes")
+        if raw in ("0", "false", "off", "no"):
+            return False
+        if raw in ("1", "true", "on", "yes"):
+            return True
+        env_def = (os.environ.get("TIKTOK_AUTO_SCHEDULE_DEFAULT") or "1").strip().lower()
+        return env_def not in ("0", "false", "off", "no")
     except Exception:
-        return False
+        return True
 
 
 def set_tiktok_auto_schedule_enabled(enabled: bool) -> bool:
@@ -381,33 +392,50 @@ def publish_live_reel_to_tiktok_inbox(
 
 
 def execute_scheduled_tiktok_inbox_post(
-    stores: list,
+    stores,
     slot_label: str = "20:35",
     force: bool = False,
     now_jst: datetime.datetime = None,
 ) -> dict:
     """
-    Phase 2 scheduled TikTok Inbox delivery (Wed/Fri/Sat 20:35 JST + human jitter).
+    Phase 2 scheduled TikTok Inbox delivery (Tue/Thu/Fri/Sat 20:35 JST + human jitter).
     Fast-skips with zero MP4 rendering overhead when Phase 2 token or auto-schedule toggle is off.
     """
     now_jst = now_jst or datetime.datetime.now(JST)
     biz_date = (now_jst - datetime.timedelta(hours=7)).strftime("%Y-%m-%d")
     dedup_key = f"tiktok_post:{biz_date}_{slot_label}"
 
+    is_seed = False
+    if isinstance(stores, dict):
+        is_seed = bool(stores.get("is_seed"))
+        raw_stores = stores.get("full_data") or []
+    else:
+        raw_stores = stores or []
+
+    korea_kws = ("カンナム", "ホンデ", "ソウル", "GANGNAM", "HONGDAE", "SEOUL")
+    dom = [
+        s for s in raw_stores
+        if isinstance(s, dict)
+        and s.get("region") != "Korea"
+        and not any(k in (s.get("name") or "").upper() for k in korea_kws)
+    ]
+
     if not force:
         if not is_tiktok_auto_schedule_enabled(allow_blocking=False):
             return {"status": "skipped", "reason": "TikTok auto-schedule disabled"}
         if not _get_active_tiktok_token():
             return {"status": "skipped", "reason": "TikTok Phase 2 token unconfigured"}
+        if is_seed:
+            return {"status": "skipped", "reason": "Waiting for live scrape (seed data active)"}
         if job_state.is_done(dedup_key):
             return {"status": "skipped", "reason": "Already pushed TikTok Inbox video for this slot"}
-        dom = [s for s in (stores or []) if s.get("region") != "Korea"]
         total_w = sum(int(s.get("women") or 0) for s in dom)
-        if total_w < 18:
-            return {"status": "skipped", "reason": f"Insufficient live headcount for TikTok ({total_w} women)"}
+        total_m = sum(int(s.get("men") or 0) for s in dom)
+        if total_w < 18 and total_m < 18:
+            return {"status": "skipped", "reason": f"Insufficient live headcount for TikTok ({total_w}W / {total_m}M)"}
 
     res = publish_live_reel_to_tiktok_inbox(
-        stores,
+        dom,
         reel_type="auto",
         slot_label=slot_label,
         force=force,

@@ -540,10 +540,10 @@ COLUMN_PROMO_LIST = [
         "slug": "price-event-comparison",
         "path": "/guide/price-event-comparison",
         "eyecatch": "/static/eyecatch-price-comparison.jpg",
-        "title": "【全51店舗】相席ラウンジ料金・イベント・現在人数の横並び比較ガイド",
+        "title": "【全国60店舗超】相席ラウンジ料金・イベント・現在人数の横並び比較ガイド",
         "main_text": (
             "1人でふらっと入ろうとして「当店は2名様からで…」と断られたり、すぐ隣の店舗でイベント開催＆女性急増中だったのに気づかず損した経験ない？\n\n"
-            "全51店舗の時間帯料金・1名可否・今の人数を1画面で見比べるコツを書きました👇\n"
+            "全国60店舗超の時間帯料金・1名可否・今の人数を1画面で見比べるコツを書きました👇\n"
             "#相席ナビ #相席ラウンジ"
         ),
     },
@@ -957,26 +957,37 @@ def _coerce_jst_naive(dt: datetime.datetime = None) -> datetime.datetime:
 
 
 def record_x_auto_post_timestamp(now_jst: datetime.datetime = None):
-    """Persist the timestamp & business-date counter of automated X posts to prevent burst clustering and daily spam."""
+    """Persist the timestamp & causal per-business-date log of automated X posts to prevent burst clustering and daily spam."""
     try:
         import job_state
         ts_naive = _coerce_jst_naive(now_jst)
-        job_state.set_value(LAST_X_AUTO_POST_KEY, ts_naive.strftime("%Y-%m-%d %H:%M:%S"))
+        ts_str = ts_naive.strftime("%Y-%m-%d %H:%M:%S")
+        job_state.set_value(LAST_X_AUTO_POST_KEY, ts_str)
         biz_date = (ts_naive - datetime.timedelta(hours=7)).strftime("%Y-%m-%d")
+        ts_list_key = f"x_daily_posts:{biz_date}"
+        raw_list = (job_state.get_value(ts_list_key, allow_blocking=False) or "").strip()
+        items = [x.strip() for x in raw_list.split(",") if x.strip()] if raw_list else []
+        if ts_str not in items:
+            items.append(ts_str)
+            items.sort()
+            job_state.set_value(ts_list_key, ",".join(items[-24:]))
         cnt_key = f"x_daily_count:{biz_date}"
-        cur_raw = (job_state.get_value(cnt_key, allow_blocking=False) or "0").strip()
-        cur_cnt = int(cur_raw) if cur_raw.isdigit() else 0
-        job_state.set_value(cnt_key, str(cur_cnt + 1))
+        job_state.set_value(cnt_key, str(len(items)))
     except Exception as e:
         logger.warning(f"Failed to record last X auto-post timestamp: {e}")
 
 
 def get_x_daily_auto_post_count(now_jst: datetime.datetime = None) -> int:
-    """Return how many automated X posts have already fired on the current business date."""
+    """Return how many automated X posts have fired on the current business date at or before `now_jst`."""
     try:
         import job_state
         ts_naive = _coerce_jst_naive(now_jst)
+        ts_cutoff = ts_naive.strftime("%Y-%m-%d %H:%M:%S")
         biz_date = (ts_naive - datetime.timedelta(hours=7)).strftime("%Y-%m-%d")
+        raw_list = (job_state.get_value(f"x_daily_posts:{biz_date}", allow_blocking=False) or "").strip()
+        if raw_list:
+            items = [x.strip() for x in raw_list.split(",") if x.strip()]
+            return sum(1 for x in items if x <= ts_cutoff)
         raw = (job_state.get_value(f"x_daily_count:{biz_date}", allow_blocking=False) or "0").strip()
         return int(raw) if raw.isdigit() else 0
     except Exception:
@@ -990,14 +1001,16 @@ def check_x_daily_post_budget(
 ) -> tuple:
     """
     Return `(over_budget: bool, reason: str)` if today's automated X posts have reached the anti-bot daily ceiling.
-    Defaults: Mon–Thu max 4/day, Fri–Sun max 5/day (+1 reserve for the primary 22:00 peak slot).
+    Defaults:
+      - Mon–Thu: non-peak cap 3 + 1 primary peak reserve = max 4 automated X posts/day total.
+      - Fri–Sun: non-peak cap 4 + 1 primary peak reserve = max 5 automated X posts/day total.
     """
     try:
         ts_naive = _coerce_jst_naive(now_jst)
         biz_dt = ts_naive - datetime.timedelta(hours=7)
         if max_daily is None:
-            base_cap = 5 if biz_dt.weekday() in (4, 5, 6) else 4
-            limit = base_cap + (1 if is_primary_peak else 0)
+            non_peak_cap = 4 if biz_dt.weekday() in (4, 5, 6) else 3
+            limit = non_peak_cap + (1 if is_primary_peak else 0)
         else:
             limit = int(max_daily)
         cur = get_x_daily_auto_post_count(now_jst=now_jst)

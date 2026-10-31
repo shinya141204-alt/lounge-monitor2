@@ -263,12 +263,15 @@ def _daily_token_and_db_maintenance_job():
     try:
         import instagram_poster
         import threads_poster
+        import tiktok_poster
         if hasattr(threads_poster, "maybe_refresh_threads_token"):
             threads_poster.maybe_refresh_threads_token()
         if hasattr(instagram_poster, "maybe_refresh_ig_token"):
             instagram_poster.maybe_refresh_ig_token()
+        if hasattr(tiktok_poster, "refresh_tiktok_token_if_needed"):
+            tiktok_poster.refresh_tiktok_token_if_needed(force=False)
     except Exception as err:
-        logger.warning(f"[worker] Daily Meta token auto-refresh check warning: {err}")
+        logger.warning(f"[worker] Daily Meta/TikTok token auto-refresh check warning: {err}")
     try:
         local_db.prune_old_logs(monitor_days=60, vote_days=14)
     except Exception as err:
@@ -348,7 +351,7 @@ def build_worker_scheduler() -> BackgroundScheduler:
     scheduler.add_job(id="ig_tuesun_2145", func=_ig_carousel_job, trigger="cron", day_of_week="tue,sun", hour=12, minute="46,50,54,58", jitter=45, args=["21:45"], executor="sns_ai")
     scheduler.add_job(id="threads_ladies_1930", func=_threads_ladies_job, trigger="cron", day_of_week="wed,fri,sat", hour=10, minute="31,35,39,44,49", jitter=60, executor="sns_ai")
     scheduler.add_job(id="ig_ladies_1945", func=_ig_ladies_job, trigger="cron", day_of_week="thu", hour=10, minute="46,50,54,58", jitter=45, executor="sns_ai")
-    scheduler.add_job(id="ig_reel_2115", func=_ig_reel_scheduled_job, trigger="cron", day_of_week="wed,thu,fri,sat", hour=12, minute="18,24,30,36,42,48", jitter=50, args=["21:15"], executor="sns_ai")
+    scheduler.add_job(id="ig_reel_2115", func=_ig_reel_scheduled_job, trigger="cron", day_of_week="wed,thu,fri,sat", hour=12, minute="18,24,30,36,42,48,54", jitter=50, args=["21:15"], executor="sns_ai")
     scheduler.add_job(id="tiktok_inbox_2035", func=_tiktok_inbox_scheduled_job, trigger="cron", day_of_week="wed,fri,sat", hour=11, minute="39,45,51,57", jitter=50, args=["20:35"], executor="sns_ai")
     scheduler.add_job(id="events_crawl", func=_crawl_events_job, trigger="cron", hour="1,8,20", minute=0)
     scheduler.add_job(id="scheduled_articles_15m", func=_scheduled_articles_release_job, trigger="interval", minutes=15, executor="sns_ai")
