@@ -682,9 +682,9 @@
         }
         const THEME_ORDER = ['default', 'list', 'light'];
         const THEME_LABELS = {
-            default: '通常モード（カード）',
+            default: 'ダークモード（ニュートラル黒）',
             list: 'リストモード（1行表示）',
-            light: 'ライトモード（白背景）'
+            light: 'ライトモード（昼・白背景）'
         };
         let currentTheme = 'default';
         try {
@@ -710,6 +710,14 @@
             document.querySelectorAll('.theme-pill-btn').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.theme === themeName);
             });
+            const quickLbl = document.getElementById('quick-daylight-label');
+            if (quickLbl) {
+                quickLbl.textContent = themeName === 'light' ? 'ダーク' : 'ライト';
+            }
+            const metaTheme = document.getElementById('meta-theme-color');
+            if (metaTheme) {
+                metaTheme.setAttribute('content', themeName === 'light' ? '#f6f6f7' : '#111113');
+            }
         }
 
         // Apply saved theme immediately on load
@@ -733,9 +741,17 @@
             if (typeof refreshActiveChartsTheme === 'function') {
                 refreshActiveChartsTheme();
             }
+            if (typeof refreshPcInspectorTheme === 'function') {
+                refreshPcInspectorTheme();
+            }
             if (notify && typeof showRefreshToast === 'function') {
                 showRefreshToast(`表示切替: ${THEME_LABELS[currentTheme]}`);
             }
+        }
+
+        function toggleDayNightTheme() {
+            const nextTheme = document.body.classList.contains('theme-light') ? 'default' : 'light';
+            setViewTheme(nextTheme, true);
         }
 
         // Domain change announcement banner logic
@@ -1161,6 +1177,7 @@
                 distTag: item.querySelector('.distance-tag'),
                 momTag: item.querySelector('.momentum-tag'),
                 storeNameEl: item.querySelector('.store-name'),
+                humanLineEl: item.querySelector('.cm-human-line'),
                 microEl: item.querySelector('.store-micro-metrics'),
                 moatRowEl: item.querySelector('.moat-signals-row'),
                 ladiesCountEl: item.querySelector('.stat.ladies .count'),
@@ -1236,6 +1253,11 @@
                         if (lastUpdateEl && window.INITIAL_STATUS_DATA.timestamp) {
                             lastUpdateEl.textContent = window.INITIAL_STATUS_DATA.timestamp.split(' ')[1] || '--:--';
                         }
+                        Promise.resolve().then(() => {
+                            if (typeof syncPcInspector === 'function') {
+                                syncPcInspector(window.INITIAL_STATUS_DATA.ranking);
+                            }
+                        });
                     } else {
                         updateUI(window.INITIAL_STATUS_DATA);
                     }
@@ -1275,6 +1297,12 @@
                     const rankingListEl = document.getElementById('ranking-list');
                     if (!rankingListEl || rankingListEl.children.length === 0) {
                         updateUI(window.INITIAL_STATUS_DATA);
+                    } else {
+                        Promise.resolve().then(() => {
+                            if (typeof syncPcInspector === 'function') {
+                                syncPcInspector(window.INITIAL_STATUS_DATA.ranking);
+                            }
+                        });
                     }
                     const loadingEl = document.getElementById('loading');
                     const contentEl = document.getElementById('content');
@@ -1666,7 +1694,7 @@
                 item._boundStore = storeKey;
                 item.removeAttribute('onclick');
                 item.style.cursor = 'pointer';
-                item.onclick = () => openModal(store.name);
+                item.onclick = () => handleStoreCardClick(store.name);
                 if (pinBtn) {
                     pinBtn.removeAttribute('onclick');
                     pinBtn.onclick = (e) => {
@@ -1796,6 +1824,18 @@
                     eventBadge.textContent = badgeLabel;
                     eventBadge.title = badgeTitle;
                     storeNameEl.appendChild(eventBadge);
+                }
+            }
+
+            const humanLineEl = refs.humanLineEl;
+            if (humanLineEl) {
+                const humanCopy = buildCleanMinimalHumanLine(store, !IS_STAFF && currentAudience === 'women');
+                if (humanCopy) {
+                    humanLineEl.classList.remove('hidden');
+                    humanLineEl.textContent = humanCopy;
+                } else {
+                    humanLineEl.classList.add('hidden');
+                    humanLineEl.textContent = '';
                 }
             }
 
@@ -2200,6 +2240,7 @@
                 rankingList.replaceChildren(emptyBox);
                 pinnedList.replaceChildren();
                 pinnedContainer.classList.add('hidden');
+                syncPcInspector([]);
                 _syncPrevStoreCounts(stores);
                 if (data.timestamp) _lastAnimatedTimestamp = data.timestamp;
                 _allowDeltaTickerThisPass = false;
@@ -2305,6 +2346,7 @@
             if (data.timestamp) _lastAnimatedTimestamp = data.timestamp;
             _allowDeltaTickerThisPass = false;
             _didInitialLiveIntro = true;
+            syncPcInspector(filteredStores);
             if (typeof currentModalStoreName !== 'undefined' && currentModalStoreName) {
                 const openMdl = document.getElementById('analysis-modal');
                 if (openMdl && !openMdl.classList.contains('hidden')) {
@@ -3129,6 +3171,352 @@
             }
         });
 
+        // --- Clean Minimal Human Copy & PC Split Inspector (Plan A) ---
+        var selectedInspectorStore = '';
+        var lastInspectorVisibleStores = [];
+        var _inspectorResizeTimer = null;
+
+        function buildCleanMinimalHumanLine(store, isWomenView) {
+            if (!store) return '';
+            const w = Math.max(0, Number(store.women || 0));
+            const m = Math.max(0, Number(store.men || 0));
+            const tot = w + m;
+            if (tot === 0) {
+                return '営業時間前または準備中の時間帯です';
+            }
+            if (isWomenView) {
+                const wPct = Math.round((w / tot) * 100);
+                if (m >= 4 && m >= w) {
+                    return `いま男性が${m}名先行中で、女性は待ち時間ほぼゼロで入れます`;
+                }
+                if (m >= 4 && wPct <= 62) {
+                    return '男女バランスが良く、席替えもスムーズに回りやすい状況です';
+                }
+                if (m === 0 && w > 0) {
+                    return '現在は女性組のみで、男性の来店待ちの時間帯です';
+                }
+                return '女性組が多めのため、近隣の男性先行店も比較がおすすめです';
+            }
+            const waitM = Number((store.wait_estimate && store.wait_estimate.est_wait_men_min) || 0);
+            if (w >= m + 12 && waitM === 0) {
+                return `いま女性が${w}名いて、男性もスムーズに入れます`;
+            }
+            if (waitM === 0 && w >= m) {
+                return '男女バランスが良く、待ち時間なしで案内中です';
+            }
+            if (waitM > 0) {
+                return '男性はやや混雑（女性はすぐ相席しやすい状況）';
+            }
+            return `現在女性が${w}名・男性が${m}名入店中です`;
+        }
+
+        function isPcSplitActive() {
+            return (
+                !IS_STAFF &&
+                !document.body.classList.contains('theme-list') &&
+                !document.body.classList.contains('compact-mode') &&
+                window.innerWidth >= 1024 &&
+                Boolean(document.getElementById('pc-store-inspector'))
+            );
+        }
+
+        function _buildInspectorSparklineSvg(points, isLight) {
+            const vals = Array.isArray(points) && points.length >= 2 ? points.map(v => Math.max(0, Number(v) || 0)) : [0, 0, 0, 0];
+            const width = 260;
+            const height = 46;
+            const padX = 6;
+            const padTop = 7;
+            const padBottom = 7;
+            const maxVal = Math.max(...vals, 5);
+            const minVal = 0;
+            const span = Math.max(1, maxVal - minVal);
+            const stepX = (width - padX * 2) / Math.max(1, vals.length - 1);
+
+            const coords = vals.map((v, idx) => {
+                const x = +(padX + idx * stepX).toFixed(1);
+                const y = +(height - padBottom - ((v - minVal) / span) * (height - padTop - padBottom)).toFixed(1);
+                return { x, y };
+            });
+
+            let linePath = `M${coords[0].x},${coords[0].y}`;
+            for (let i = 0; i < coords.length - 1; i++) {
+                const p0 = coords[i];
+                const p1 = coords[i + 1];
+                const cx = +((p0.x + p1.x) / 2).toFixed(1);
+                linePath += ` C${cx},${p0.y} ${cx},${p1.y} ${p1.x},${p1.y}`;
+            }
+            const lastPt = coords[coords.length - 1];
+            const firstPt = coords[0];
+            const areaPath = `${linePath} L${lastPt.x},${height} L${firstPt.x},${height} Z`;
+            const strokeHex = isLight ? '#be123c' : '#f4a8b8';
+            const fillRgba = isLight ? 'rgba(190, 18, 60, 0.10)' : 'rgba(244, 168, 184, 0.14)';
+            const dotStroke = isLight ? '#ffffff' : '#111113';
+
+            return `<svg viewBox="0 0 ${width} ${height}" width="100%" height="46" preserveAspectRatio="none" aria-hidden="true" style="display:block; overflow:visible;">
+                <path d="${areaPath}" fill="${fillRgba}"></path>
+                <path d="${linePath}" fill="none" stroke="${strokeHex}" stroke-width="2.4" stroke-linecap="round"></path>
+                <circle cx="${lastPt.x}" cy="${lastPt.y}" r="3.8" fill="${strokeHex}" stroke="${dotStroke}" stroke-width="1.6"></circle>
+            </svg>`;
+        }
+
+        function syncPcInspector(visibleStores) {
+            const inspector = document.getElementById('pc-store-inspector');
+            if (!inspector || IS_STAFF) return;
+
+            if (Array.isArray(visibleStores)) {
+                lastInspectorVisibleStores = visibleStores;
+            }
+            const list = Array.isArray(lastInspectorVisibleStores) ? lastInspectorVisibleStores : [];
+
+            if (list.length === 0) {
+                document.querySelectorAll('#ranking-list .ranking-item.is-inspector-selected, #pinned-list .ranking-item.is-inspector-selected').forEach(el => {
+                    el.classList.remove('is-inspector-selected');
+                });
+                inspector.innerHTML = `
+                    <div>
+                        <div class="cmi-top-row">
+                            <span class="cmi-status-pill is-wait">該当店舗なし</span>
+                        </div>
+                        <h3 class="cmi-title">条件に合う店舗が見つかりません</h3>
+                        <p class="cmi-summary">検索キーワードやエリア絞り込みを解除すると、リアルタイム詳細をここで比較できます。</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let target = list.find(s => s && s.name === selectedInspectorStore);
+            if (!target) {
+                target = list[0];
+                selectedInspectorStore = (target && target.name) ? target.name : '';
+            }
+            if (!target) return;
+
+            document.querySelectorAll('#ranking-list .ranking-item[data-store], #pinned-list .ranking-item[data-store]').forEach(el => {
+                el.classList.toggle('is-inspector-selected', el.getAttribute('data-store') === selectedInspectorStore);
+            });
+
+            const bInfo = detectBrandInfo(target);
+            const fullTitle = bInfo.fullDisplayTitle;
+            const areaLabel = bInfo.areaLabel || '';
+            const w = Math.max(0, Number(target.women || 0));
+            const m = Math.max(0, Number(target.men || 0));
+            const tot = w + m;
+            const wPct = tot > 0 ? Math.round((w / tot) * 100) : 50;
+            const mPct = tot > 0 ? (100 - wPct) : 50;
+            const isWomenView = !IS_STAFF && currentAudience === 'women';
+            const isLight = document.body.classList.contains('theme-light');
+            const waitM = Number((target.wait_estimate && target.wait_estimate.est_wait_men_min) || 0);
+
+            let statusLabel = 'いまスムーズに入れます';
+            let statusCls = 'is-ok';
+            if (tot === 0) {
+                statusLabel = '営業時間前・準備中';
+                statusCls = 'is-wait';
+            } else if (isWomenView) {
+                if (m >= 4 && m >= w) {
+                    statusLabel = '受付待ちほぼゼロで案内中';
+                    statusCls = 'is-ok';
+                } else if (m >= 4 && wPct <= 62) {
+                    statusLabel = 'スムーズに相席しやすい';
+                    statusCls = 'is-ok';
+                } else {
+                    statusLabel = '女性組がやや多め';
+                    statusCls = 'is-wait';
+                }
+            } else {
+                if (waitM > 0) {
+                    statusLabel = `男性やや混雑（目安 ${waitM}分）`;
+                    statusCls = 'is-wait';
+                } else if (w >= m) {
+                    statusLabel = 'いまスムーズに入れます';
+                    statusCls = 'is-ok';
+                } else {
+                    statusLabel = '待ち時間なしで案内中';
+                    statusCls = 'is-ok';
+                }
+            }
+
+            let summaryText = buildCleanMinimalHumanLine(target, isWomenView);
+            if (target.core_time_short) {
+                summaryText += `（狙い目 ${target.core_time_short}）`;
+            }
+
+            const fc = target.forecast_60m || null;
+            const predW = (fc && typeof fc.pred_60m_women === 'number') ? Math.max(0, Math.round(fc.pred_60m_women)) : w;
+            const cached = clientAnalysisCache[target.name];
+            let curvePoints = [];
+            let curveLabel = '';
+            let curveRight = '';
+
+            if (cached && cached.data && cached.data.hourly) {
+                const dayKeys = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                const dKey = dayKeys[getJstBusinessDayIndex()];
+                const dayMap = (cached.data.hourly_by_weekday && cached.data.hourly_by_weekday[dKey]) || cached.data.hourly || {};
+                const slotHours = [19, 20, 21, 22, 23, 0, 1];
+                curvePoints = slotHours.map(h => Math.max(0, Number(dayMap[h] || 0)));
+                const maxSlotVal = Math.max(...curvePoints);
+                const maxIdx = curvePoints.indexOf(maxSlotVal);
+                const peakHour = slotHours[maxIdx >= 0 ? maxIdx : 3];
+                curveLabel = '同曜日の女性推移（19時〜翌1時）';
+                curveRight = maxSlotVal > 0 ? `ピーク目安 ${peakHour}時頃（約${Math.round(maxSlotVal)}名）` : `60分後予測 約${predW}名`;
+            } else {
+                const usualW = (typeof target.usual_women === 'number') ? Math.max(0, target.usual_women) : w;
+                const leadIn = Math.max(1, Math.round((usualW + w) * 0.42));
+                curvePoints = [leadIn, usualW, w, predW];
+                curveLabel = 'いま〜60分後の女性人数見通し';
+                if (tot === 0) {
+                    curveRight = '営業開始後に予測を表示';
+                } else {
+                    const diff60 = predW - w;
+                    const diffStr = diff60 > 0 ? `+${diff60}` : (diff60 < 0 ? `${diff60}` : '横ばい');
+                    curveRight = `60分後予測 約${predW}名（${diffStr}）`;
+                }
+            }
+
+            const allPool = (window.lastData && Array.isArray(window.lastData.ranking)) ? window.lastData.ranking : list;
+            let altCandidates = allPool.filter(s => s && s.name && s.name !== target.name && bInfo.areaLabel && detectBrandInfo(s).areaLabel === bInfo.areaLabel);
+            if (altCandidates.length === 0) {
+                altCandidates = allPool.filter(s => s && s.name && s.name !== target.name && target.region && s.region === target.region);
+            }
+            altCandidates.sort((a, b) => {
+                if (isWomenView) {
+                    return ((b.men || 0) - (b.women || 0)) - ((a.men || 0) - (a.women || 0));
+                }
+                return ((b.women || 0) - (a.women || 0)) || ((a.men || 0) - (b.men || 0));
+            });
+            const altStore = altCandidates[0] || null;
+            let hopHtml = '';
+            if (altStore) {
+                const altBrand = detectBrandInfo(altStore);
+                const altW = Math.max(0, Number(altStore.women || 0));
+                const altM = Math.max(0, Number(altStore.men || 0));
+                const hopKicker = bInfo.areaLabel && altBrand.areaLabel === bInfo.areaLabel
+                    ? `${escapeHtml(bInfo.areaLabel)}エリアの比較・移動候補`
+                    : '同エリア圏の比較候補';
+                hopHtml = `
+                    <div class="cmi-hop-box">
+                        <div style="min-width:0;">
+                            <div class="cmi-hop-kicker">${hopKicker}</div>
+                            <div class="cmi-hop-name">${escapeHtml(altBrand.fullDisplayTitle)}（女性${altW}・男性${altM}）</div>
+                        </div>
+                        <button type="button" class="cmi-hop-btn" data-hop-target="1">切替 ›</button>
+                    </div>
+                `;
+            }
+
+            const officialUrl = getOfficialBrandUrl(bInfo.code, target.name);
+            const sparkSvg = _buildInspectorSparklineSvg(curvePoints, isLight);
+
+            inspector.innerHTML = `
+                <div>
+                    <div class="cmi-top-row">
+                        <span class="cmi-status-pill ${statusCls}">${escapeHtml(statusLabel)}</span>
+                        <span class="cmi-area-pill">${escapeHtml(areaLabel ? areaLabel + 'エリア' : '')}</span>
+                    </div>
+                    <h3 class="cmi-title">${escapeHtml(fullTitle)}</h3>
+                    <p class="cmi-summary">${escapeHtml(summaryText)}</p>
+                    <div class="cmi-metrics-box">
+                        <div class="cmi-counts-row">
+                            <div class="cmi-counts-pair">
+                                <div>
+                                    <div class="cmi-count-lbl">女性</div>
+                                    <div class="cmi-count-val is-w">${w}<span class="cmi-count-unit">名</span></div>
+                                </div>
+                                <div>
+                                    <div class="cmi-count-lbl">男性</div>
+                                    <div class="cmi-count-val is-m">${m}<span class="cmi-count-unit">名</span></div>
+                                </div>
+                            </div>
+                            <div style="text-align:right;">
+                                <div class="cmi-count-lbl">男女バランス</div>
+                                <div class="cmi-curve-val">${tot > 0 ? `女性 ${wPct}%` : '準備中'}</div>
+                            </div>
+                        </div>
+                        <div class="cmi-ratio-bar">
+                            <div class="cmi-bar-w" style="width:${tot > 0 ? wPct : 0}%;"></div>
+                            <div class="cmi-bar-m" style="width:${tot > 0 ? mPct : 0}%;"></div>
+                        </div>
+                        <div class="cmi-curve-wrap">
+                            <div class="cmi-curve-head">
+                                <span class="cmi-curve-lbl">${escapeHtml(curveLabel)}</span>
+                                <span class="cmi-curve-val">${escapeHtml(curveRight)}</span>
+                            </div>
+                            ${sparkSvg}
+                        </div>
+                    </div>
+                    ${hopHtml}
+                </div>
+                <div class="cmi-actions">
+                    <a href="${escapeHtml(officialUrl)}" target="_blank" rel="noopener noreferrer" class="cmi-primary-cta">公式サイト・店舗詳細を確認する ↗</a>
+                    <button type="button" class="cmi-secondary-btn">詳しい曜日・時間帯グラフ＆2軒目を見る</button>
+                </div>
+            `;
+
+            const hopBtn = inspector.querySelector('.cmi-hop-btn');
+            if (hopBtn && altStore) {
+                hopBtn.onclick = () => handleStoreCardClick(altStore.name);
+            }
+            const officialCta = inspector.querySelector('.cmi-primary-cta');
+            if (officialCta) {
+                officialCta.onclick = () => trackEvent('official_click', target.name);
+            }
+            const detailBtn = inspector.querySelector('.cmi-secondary-btn');
+            if (detailBtn) {
+                detailBtn.onclick = () => openModal(target.name);
+            }
+        }
+
+        function refreshPcInspectorTheme() {
+            if (IS_STAFF) return;
+            const list = (Array.isArray(lastInspectorVisibleStores) && lastInspectorVisibleStores.length > 0)
+                ? lastInspectorVisibleStores
+                : ((window.lastData && window.lastData.ranking) || []);
+            if (list.length > 0) {
+                syncPcInspector(list);
+            }
+        }
+
+        function handleStoreCardClick(storeName) {
+            const key = String(storeName || '').trim();
+            if (!key) return;
+            if (isPcSplitActive()) {
+                selectedInspectorStore = key;
+                trackEvent('store_open', key);
+                const list = (Array.isArray(lastInspectorVisibleStores) && lastInspectorVisibleStores.length > 0)
+                    ? lastInspectorVisibleStores
+                    : ((window.lastData && window.lastData.ranking) || []);
+                syncPcInspector(list);
+
+                const cached = clientAnalysisCache[key];
+                if (!cached || (Date.now() - cached.fetchedAt >= CLIENT_CACHE_TTL)) {
+                    fetch('/api/analysis/' + encodeURIComponent(key))
+                        .then(r => r.ok ? r.json() : null)
+                        .then(d => {
+                            if (d && !d.error) {
+                                clientAnalysisCache[key] = { data: d, fetchedAt: Date.now() };
+                                if (selectedInspectorStore === key) {
+                                    syncPcInspector(lastInspectorVisibleStores);
+                                }
+                            }
+                        })
+                        .catch(() => {});
+                }
+                return;
+            }
+            openModal(key);
+        }
+        window.handleStoreCardClick = handleStoreCardClick;
+        window.toggleDayNightTheme = toggleDayNightTheme;
+
+        window.addEventListener('resize', () => {
+            if (_inspectorResizeTimer) clearTimeout(_inspectorResizeTimer);
+            _inspectorResizeTimer = setTimeout(() => {
+                if (isPcSplitActive()) {
+                    refreshPcInspectorTheme();
+                }
+            }, 140);
+        });
+
         // --- Analysis Modal Logic ---
         let dailyChartInstance = null;
         let weekdayAnalysisChartInstance = null;
@@ -3859,16 +4247,16 @@
         function getChartThemeColors() {
             const isLight = document.body.classList.contains('theme-light');
             return {
-                textColor: isLight ? '#1b1916' : '#f0ede8',
-                subTextColor: isLight ? '#4d4840' : '#b5b0a6',
-                gridColor: isLight ? 'rgba(28, 26, 23, 0.11)' : 'rgba(235, 232, 227, 0.11)',
-                axisLineColor: isLight ? 'rgba(28, 26, 23, 0.22)' : 'rgba(235, 232, 227, 0.22)',
-                womenBar: isLight ? '#b85b6c' : 'rgba(223, 166, 176, 0.88)',
-                menBar: isLight ? '#527898' : 'rgba(152, 183, 208, 0.88)',
-                womenLine: isLight ? '#983849' : '#dfa6b0',
-                womenFill: isLight ? 'rgba(152, 56, 73, 0.15)' : 'rgba(223, 166, 176, 0.17)',
-                menLine: isLight ? '#2d5373' : '#98b7d0',
-                menFill: isLight ? 'rgba(45, 83, 115, 0.15)' : 'rgba(152, 183, 208, 0.17)'
+                textColor: isLight ? '#18181b' : '#f4f4f5',
+                subTextColor: isLight ? '#52525b' : '#b4b4be',
+                gridColor: isLight ? 'rgba(24, 24, 27, 0.08)' : 'rgba(244, 244, 245, 0.09)',
+                axisLineColor: isLight ? 'rgba(24, 24, 27, 0.18)' : 'rgba(244, 244, 245, 0.18)',
+                womenBar: isLight ? '#be123c' : 'rgba(244, 168, 184, 0.90)',
+                menBar: isLight ? '#1d4ed8' : 'rgba(147, 197, 253, 0.88)',
+                womenLine: isLight ? '#be123c' : '#f4a8b8',
+                womenFill: isLight ? 'rgba(190, 18, 60, 0.12)' : 'rgba(244, 168, 184, 0.16)',
+                menLine: isLight ? '#1d4ed8' : '#93c5fd',
+                menFill: isLight ? 'rgba(29, 78, 216, 0.12)' : 'rgba(147, 197, 253, 0.15)'
             };
         }
 

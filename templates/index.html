@@ -125,7 +125,7 @@
 
     <!-- PWA Settings -->
     <link rel="manifest" href="/static/manifest.json?v=2">
-    <meta name="theme-color" content="#0a0a0f">
+    <meta name="theme-color" content="#111113" id="meta-theme-color">
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=2">
     <link rel="apple-touch-icon" href="/static/icon.png?v=2">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -135,10 +135,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- Non-render-blocking web font (avoids waiting on Google Fonts at PWA cold launch) -->
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Shippori+Mincho:wght@600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-    <noscript><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Shippori+Mincho:wght@600;700&display=swap" rel="stylesheet"></noscript>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet"></noscript>
     <link rel="stylesheet" href="/static/style.css?v=20261030_6">
-    <link rel="preload" href="/static/app.js?v=20261101_3" as="script">
+    <link rel="preload" href="/static/app.js?v=20261102_1" as="script">
     <script>
         window.APP_CONFIG = {
             isStaff: {{ 'true' if is_staff else 'false' }},
@@ -152,7 +152,7 @@
          crossorigin="anonymous"></script>
     <script src="/static/affiliate_config.js?v=13" defer></script>
     {% endif %}
-    <link rel="stylesheet" href="/static/calm.css?v=23">
+    <link rel="stylesheet" href="/static/calm.css?v=24">
 </head>
 
 <body class="{% if is_staff %}staff-mode{% endif %}">
@@ -229,7 +229,7 @@
             <div class="header-top-row">
                 <div class="header-brand-block">
                     {% if not is_staff %}
-                    <span class="masthead-kicker">REALTIME NIGHTLIFE JOURNAL — 63 LOUNGES</span>
+                    <span class="masthead-kicker"><span class="cm-live-dot" aria-hidden="true"></span>全国63店舗 ・ 1分自動更新</span>
                     {% endif %}
                     <h1>{% if is_staff and is_master %}相席ナビ マスター管理{% elif is_staff %}相席ナビ 業務モニター{% else %}相席ナビ{% endif %}</h1>
                     <p class="subtitle">全国ラウンジの今わかる人数ランキング</p>
@@ -241,6 +241,13 @@
                             <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
                         </svg>
                         <span>更新</span>
+                    </button>
+                    <button id="quick-daylight-btn" type="button" class="header-btn labeled-btn" onclick="toggleDayNightTheme()" title="昼・ライト表示とニュートラル黒ダーク表示を切り替え">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="4"></circle>
+                            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
+                        </svg>
+                        <span id="quick-daylight-label">ライト</span>
                     </button>
                     <button id="events-btn" class="header-btn labeled-btn desktop-only" onclick="openEventsModal()" title="最新イベント・キャンペーン速報">
                         <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -319,7 +326,7 @@
                 </div>
             </div>
             <div class="theme-switcher-bar desktop-only" role="group" aria-label="デザイン切替">
-                <button type="button" class="theme-pill-btn active" data-theme="default" onclick="setViewTheme('default', true)">通常</button>
+                <button type="button" class="theme-pill-btn active" data-theme="default" onclick="setViewTheme('default', true)">ダーク</button>
                 <button type="button" class="theme-pill-btn" data-theme="list" onclick="setViewTheme('list', true)">リスト</button>
                 <button type="button" class="theme-pill-btn" data-theme="light" onclick="setViewTheme('light', true)">ライト</button>
             </div>
@@ -578,102 +585,163 @@
                 </div>
                 {% endif %}
 
-                <!-- Pinned Stores Section -->
-                <div id="pinned-list-container" class="hidden">
-                    <h2 class="section-title">お気に入り店舗</h2>
-                    <div id="pinned-list" class="ranking-list">
-                        <!-- Pinned items will populate here -->
-                    </div>
-                    <div class="separator"></div>
-                </div>
+                <div class="cm-pc-split-layout">
+                    <div class="cm-pc-left-col">
+                        <!-- Pinned Stores Section -->
+                        <div id="pinned-list-container" class="hidden">
+                            <h2 class="section-title">お気に入り店舗</h2>
+                            <div id="pinned-list" class="ranking-list">
+                                <!-- Pinned items will populate here -->
+                            </div>
+                            <div class="separator"></div>
+                        </div>
 
-                <div id="ranking-list" class="ranking-list">
-                    {% if initial_status and initial_status.ranking %}
-                    {% for s in initial_status.ranking %}
-                    {% set ssr_pulsing = (s.women_diff or 0) >= 2 or ((s.women_diff or 0) >= 1 and (s.women or 0) >= 12 and (s.ssr_ladies_pct or 0) >= 55) %}
-                    <div class="ranking-item{% if s.ssr_rank == 1 %} rank-1{% elif s.ssr_rank == 2 %} rank-2{% elif s.ssr_rank == 3 %} rank-3{% endif %}{% if ssr_pulsing %} live-pulse-card{% endif %}" data-store="{{ s.name }}" style="cursor: pointer;" onclick="if(window.openModal)openModal({{ s.name | tojson | forceescape }})">
-                        <div class="rank-badge">{{ s.ssr_rank if s.ssr_rank else '-' }}</div>
-                        <div class="store-info">
-                            <div class="store-meta-row">
-                                <span class="brand-badge {{ s.ssr_brand_cls }}">{{ s.ssr_brand }}</span>
-                                <span class="distance-tag hidden"></span>
-                                {% if (s.women_diff or 0) >= 1 %}
-                                <span class="momentum-tag{% if ssr_pulsing %} is-pulsing{% endif %}" title="直近約15分で女性が+{{ s.women_diff }}名増えています">↗ +{{ s.women_diff }}名</span>
-                                {% elif s.votes and (s.votes.smooth or 0) > 0 and (s.votes.smooth or 0) >= (s.votes.waiting or 0) %}
-                                <span class="momentum-tag" title="直近の現場レポートで「待ちなしで入れた」が報告されています">即入店</span>
-                                {% else %}
-                                <span class="momentum-tag hidden"></span>
-                                {% endif %}
-                                {% if s.ssr_area %}
-                                <span class="area-tag">{{ s.ssr_area }}</span>
-                                {% else %}
-                                <span class="area-tag hidden"></span>
-                                {% endif %}
-                            </div>
-                            <h3 class="store-name">{% if s.ssr_is_dup %}<span class="store-brand-prefix">{{ s.ssr_brand }} </span><span class="store-branch-name">{{ s.ssr_disp }}</span>{% else %}<span class="store-branch-name">{{ s.ssr_title }}</span>{% endif %}{% if not is_staff and s.ssr_event_badge %}<span class="event-tag-badge" title="{{ s.ssr_event_title }}">{{ s.ssr_event_badge }}</span>{% endif %}</h3>
-                            <div class="store-micro-metrics{% if not (s.core_time_short and s.midnight_retention_pct) %} hidden{% endif %}">{% if s.core_time_short and s.midnight_retention_pct %}狙い目 {{ s.core_time_short }} <span class="micro-sep">｜</span> 終電後 {{ s.midnight_retention_pct }}%（{{ s.midnight_label_short }}）{% endif %}</div>
-                            {% set ssr_has_guest = ((s.women or 0) + (s.men or 0)) > 0 or (s.wait_estimate and (s.wait_estimate.est_men_wait_groups or 0) > 0) %}
-                            {% set ssr_w_badge = (s.wait_estimate.wait_badge_men if (s.wait_estimate and ssr_has_guest) else '') %}
-                            {% set ssr_f_badge = (s.forecast_60m.badge_men if s.forecast_60m else '') %}
-                            <div class="moat-signals-row{% if not (ssr_w_badge or ssr_f_badge) %} hidden{% endif %}">
-                                {% if ssr_w_badge %}<span class="moat-pill tone-{{ s.wait_estimate.wait_tone or 'neutral' }}" title="{{ s.wait_estimate.pos_summary_short or '' }}">{{ ssr_w_badge }}</span>{% endif %}
-                                {% if ssr_f_badge %}<span class="moat-pill tone-{{ s.forecast_60m.badge_tone or 'neutral' }}" title="{{ s.forecast_60m.reason_short or '' }}">{{ ssr_f_badge }}</span>{% endif %}
-                            </div>
-                        </div>
-                        <div class="card-actions">
-                            <button class="pin-btn" aria-label="お気に入り" title="お気に入り固定" onclick="event.stopPropagation();if(window.togglePin)togglePin({{ s.name | tojson | forceescape }})">
-                                <svg class="star-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-                                </svg>
-                            </button>
-                            <button class="analysis-btn" aria-label="詳細分析" title="曜日・時間帯別の詳細分析" onclick="event.stopPropagation();if(window.openModal)openModal({{ s.name | tojson | forceescape }})">
-                                <svg class="chart-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                    <line x1="18" y1="20" x2="18" y2="10"></line>
-                                    <line x1="12" y1="20" x2="12" y2="4"></line>
-                                    <line x1="6" y1="20" x2="6" y2="14"></line>
-                                </svg>
-                            </button>
-                        </div>
-                        <div class="stats-group">
-                            <div class="stat ladies">
-                                <div class="stat-num-row">
-                                    <span class="count">{{ s.women or 0 }}</span>
-                                    {% if (s.women_diff or 0) > 0 %}
-                                    <span class="stat-diff" title="直近約15分で女性+{{ s.women_diff }}名">+{{ s.women_diff }}</span>
-                                    {% else %}
-                                    <span class="stat-diff hidden"></span>
-                                    {% endif %}
+                        <div id="ranking-list" class="ranking-list">
+                            {% if initial_status and initial_status.ranking %}
+                            {% for s in initial_status.ranking %}
+                            {% set ssr_pulsing = (s.women_diff or 0) >= 2 or ((s.women_diff or 0) >= 1 and (s.women or 0) >= 12 and (s.ssr_ladies_pct or 0) >= 55) %}
+                            {% set ssr_w_num = (s.women or 0) %}
+                            {% set ssr_m_num = (s.men or 0) %}
+                            {% set ssr_wait_m = (s.wait_estimate.est_wait_men_min if s.wait_estimate else 0) or 0 %}
+                            {% if ssr_w_num == 0 and ssr_m_num == 0 %}
+                                {% set ssr_human_copy = '営業時間前または準備中の時間帯です' %}
+                            {% elif ssr_w_num >= ssr_m_num + 12 and ssr_wait_m == 0 %}
+                                {% set ssr_human_copy = 'いま女性が' ~ ssr_w_num ~ '名いて、男性もスムーズに入れます' %}
+                            {% elif ssr_wait_m == 0 and ssr_w_num >= ssr_m_num %}
+                                {% set ssr_human_copy = '男女バランスが良く、待ち時間なしで案内中です' %}
+                            {% elif ssr_wait_m > 0 %}
+                                {% set ssr_human_copy = '男性はやや混雑（女性はすぐ相席しやすい状況）' %}
+                            {% else %}
+                                {% set ssr_human_copy = '現在女性が' ~ ssr_w_num ~ '名・男性が' ~ ssr_m_num ~ '名入店中です' %}
+                            {% endif %}
+                            <div class="ranking-item{% if loop.first %} is-inspector-selected{% endif %}{% if s.ssr_rank == 1 %} rank-1{% elif s.ssr_rank == 2 %} rank-2{% elif s.ssr_rank == 3 %} rank-3{% endif %}{% if ssr_pulsing %} live-pulse-card{% endif %}" data-store="{{ s.name }}" style="cursor: pointer;" onclick="if(window.handleStoreCardClick)handleStoreCardClick({{ s.name | tojson | forceescape }});else if(window.openModal)openModal({{ s.name | tojson | forceescape }})">
+                                <div class="rank-badge">{{ s.ssr_rank if s.ssr_rank else '-' }}</div>
+                                <div class="store-info">
+                                    <div class="store-meta-row">
+                                        <span class="brand-badge {{ s.ssr_brand_cls }}">{{ s.ssr_brand }}</span>
+                                        <span class="distance-tag hidden"></span>
+                                        {% if (s.women_diff or 0) >= 1 %}
+                                        <span class="momentum-tag{% if ssr_pulsing %} is-pulsing{% endif %}" title="直近約15分で女性が+{{ s.women_diff }}名増えています">↗ +{{ s.women_diff }}名</span>
+                                        {% elif s.votes and (s.votes.smooth or 0) > 0 and (s.votes.smooth or 0) >= (s.votes.waiting or 0) %}
+                                        <span class="momentum-tag" title="直近の現場レポートで「待ちなしで入れた」が報告されています">即入店</span>
+                                        {% else %}
+                                        <span class="momentum-tag hidden"></span>
+                                        {% endif %}
+                                        {% if s.ssr_area %}
+                                        <span class="area-tag">{{ s.ssr_area }}</span>
+                                        {% else %}
+                                        <span class="area-tag hidden"></span>
+                                        {% endif %}
+                                    </div>
+                                    <h3 class="store-name">{% if s.ssr_is_dup %}<span class="store-brand-prefix">{{ s.ssr_brand }} </span><span class="store-branch-name">{{ s.ssr_disp }}</span>{% else %}<span class="store-branch-name">{{ s.ssr_title }}</span>{% endif %}{% if not is_staff and s.ssr_event_badge %}<span class="event-tag-badge" title="{{ s.ssr_event_title }}">{{ s.ssr_event_badge }}</span>{% endif %}</h3>
+                                    <p class="cm-human-line">{{ ssr_human_copy }}</p>
+                                    <div class="store-micro-metrics{% if not (s.core_time_short and s.midnight_retention_pct) %} hidden{% endif %}">{% if s.core_time_short and s.midnight_retention_pct %}狙い目 {{ s.core_time_short }} <span class="micro-sep">｜</span> 終電後 {{ s.midnight_retention_pct }}%（{{ s.midnight_label_short }}）{% endif %}</div>
+                                    {% set ssr_has_guest = ((s.women or 0) + (s.men or 0)) > 0 or (s.wait_estimate and (s.wait_estimate.est_men_wait_groups or 0) > 0) %}
+                                    {% set ssr_w_badge = (s.wait_estimate.wait_badge_men if (s.wait_estimate and ssr_has_guest) else '') %}
+                                    {% set ssr_f_badge = (s.forecast_60m.badge_men if s.forecast_60m else '') %}
+                                    <div class="moat-signals-row{% if not (ssr_w_badge or ssr_f_badge) %} hidden{% endif %}">
+                                        {% if ssr_w_badge %}<span class="moat-pill tone-{{ s.wait_estimate.wait_tone or 'neutral' }}" title="{{ s.wait_estimate.pos_summary_short or '' }}">{{ ssr_w_badge }}</span>{% endif %}
+                                        {% if ssr_f_badge %}<span class="moat-pill tone-{{ s.forecast_60m.badge_tone or 'neutral' }}" title="{{ s.forecast_60m.reason_short or '' }}">{{ ssr_f_badge }}</span>{% endif %}
+                                    </div>
                                 </div>
-                                <span class="label">LADIES</span>
-                                {% if s.usual_w_diff is not none %}
-                                <span class="stat-usual{% if s.usual_w_diff > 0 %} is-up{% elif s.usual_w_diff < 0 %} is-down{% endif %}" title="普段の{{ s.usual_slot_label }}平均({{ s.usual_women }}名)との差">平比{% if s.usual_w_diff > 0 %}+{{ s.usual_w_diff }}{% elif s.usual_w_diff < 0 %}{{ s.usual_w_diff }}{% else %}±0{% endif %}</span>
-                                {% else %}
-                                <span class="stat-usual hidden"></span>
-                                {% endif %}
-                            </div>
-                            <div class="stat men">
-                                <div class="stat-num-row">
-                                    <span class="count">{{ s.men or 0 }}</span>
-                                    {% if (s.men_diff or 0) > 0 %}
-                                    <span class="stat-diff" title="直近約15分で男性+{{ s.men_diff }}名">+{{ s.men_diff }}</span>
-                                    {% else %}
-                                    <span class="stat-diff hidden"></span>
-                                    {% endif %}
+                                <div class="card-actions">
+                                    <button class="pin-btn" aria-label="お気に入り" title="お気に入り固定" onclick="event.stopPropagation();if(window.togglePin)togglePin({{ s.name | tojson | forceescape }})">
+                                        <svg class="star-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                                        </svg>
+                                    </button>
+                                    <button class="analysis-btn" aria-label="詳細分析" title="曜日・時間帯別の詳細分析" onclick="event.stopPropagation();if(window.openModal)openModal({{ s.name | tojson | forceescape }})">
+                                        <svg class="chart-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                            <line x1="18" y1="20" x2="18" y2="10"></line>
+                                            <line x1="12" y1="20" x2="12" y2="4"></line>
+                                            <line x1="6" y1="20" x2="6" y2="14"></line>
+                                        </svg>
+                                    </button>
                                 </div>
-                                <span class="label">MEN</span>
-                                {% if s.usual_m_diff is not none %}
-                                <span class="stat-usual{% if s.usual_m_diff > 0 %} is-up{% elif s.usual_m_diff < 0 %} is-down{% endif %}" title="普段の{{ s.usual_slot_label }}平均({{ s.usual_men }}名)との差">平比{% if s.usual_m_diff > 0 %}+{{ s.usual_m_diff }}{% elif s.usual_m_diff < 0 %}{{ s.usual_m_diff }}{% else %}±0{% endif %}</span>
-                                {% else %}
-                                <span class="stat-usual hidden"></span>
-                                {% endif %}
+                                <div class="stats-group">
+                                    <div class="stat ladies">
+                                        <div class="stat-num-row">
+                                            <span class="count">{{ s.women or 0 }}</span>
+                                            {% if (s.women_diff or 0) > 0 %}
+                                            <span class="stat-diff" title="直近約15分で女性+{{ s.women_diff }}名">+{{ s.women_diff }}</span>
+                                            {% else %}
+                                            <span class="stat-diff hidden"></span>
+                                            {% endif %}
+                                        </div>
+                                        <span class="label">LADIES</span>
+                                        {% if s.usual_w_diff is not none %}
+                                        <span class="stat-usual{% if s.usual_w_diff > 0 %} is-up{% elif s.usual_w_diff < 0 %} is-down{% endif %}" title="普段の{{ s.usual_slot_label }}平均({{ s.usual_women }}名)との差">平比{% if s.usual_w_diff > 0 %}+{{ s.usual_w_diff }}{% elif s.usual_w_diff < 0 %}{{ s.usual_w_diff }}{% else %}±0{% endif %}</span>
+                                        {% else %}
+                                        <span class="stat-usual hidden"></span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="stat men">
+                                        <div class="stat-num-row">
+                                            <span class="count">{{ s.men or 0 }}</span>
+                                            {% if (s.men_diff or 0) > 0 %}
+                                            <span class="stat-diff" title="直近約15分で男性+{{ s.men_diff }}名">+{{ s.men_diff }}</span>
+                                            {% else %}
+                                            <span class="stat-diff hidden"></span>
+                                            {% endif %}
+                                        </div>
+                                        <span class="label">MEN</span>
+                                        {% if s.usual_m_diff is not none %}
+                                        <span class="stat-usual{% if s.usual_m_diff > 0 %} is-up{% elif s.usual_m_diff < 0 %} is-down{% endif %}" title="普段の{{ s.usual_slot_label }}平均({{ s.usual_men }}名)との差">平比{% if s.usual_m_diff > 0 %}+{{ s.usual_m_diff }}{% elif s.usual_m_diff < 0 %}{{ s.usual_m_diff }}{% else %}±0{% endif %}</span>
+                                        {% else %}
+                                        <span class="stat-usual hidden"></span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="occupancy-bar">
+                                    <div class="bar-fill-ladies" style="width: {{ s.ssr_ladies_pct }}%"></div>
+                                    <div class="bar-fill-men" style="width: {{ s.ssr_men_pct }}%"></div>
+                                </div>
                             </div>
-                        </div>
-                        <div class="occupancy-bar">
-                            <div class="bar-fill-ladies" style="width: {{ s.ssr_ladies_pct }}%"></div>
-                            <div class="bar-fill-men" style="width: {{ s.ssr_men_pct }}%"></div>
+                            {% endfor %}
+                            {% endif %}
                         </div>
                     </div>
-                    {% endfor %}
+
+                    {% if not is_staff %}
+                    {% set top_s = (initial_status.ranking[0] if (initial_status and initial_status.ranking) else none) %}
+                    <aside id="pc-store-inspector" class="cm-pc-inspector" aria-label="選択中の店舗詳細">
+                        {% if top_s %}
+                        {% set top_full_name = top_s.ssr_brand if (not top_s.ssr_disp or top_s.ssr_disp == top_s.ssr_brand) else (top_s.ssr_disp if top_s.ssr_disp.startswith(top_s.ssr_brand) else (top_s.ssr_brand ~ ' ' ~ top_s.ssr_disp)) %}
+                        <div>
+                            <div class="cmi-top-row">
+                                <span class="cmi-status-pill is-ok">選択中の店舗</span>
+                                <span class="cmi-area-pill">{{ top_s.ssr_area or '' }}</span>
+                            </div>
+                            <h3 class="cmi-title">{{ top_full_name }}</h3>
+                            <p class="cmi-summary">左のカードをクリックすると、画面遷移なしで詳細を切り替えて比較できます</p>
+                            <div class="cmi-metrics-box">
+                                <div class="cmi-counts-row">
+                                    <div class="cmi-counts-pair">
+                                        <div>
+                                            <div class="cmi-count-lbl">女性</div>
+                                            <div class="cmi-count-val is-w">{{ top_s.women or 0 }}<span class="cmi-count-unit">名</span></div>
+                                        </div>
+                                        <div>
+                                            <div class="cmi-count-lbl">男性</div>
+                                            <div class="cmi-count-val is-m">{{ top_s.men or 0 }}<span class="cmi-count-unit">名</span></div>
+                                        </div>
+                                    </div>
+                                    <div style="text-align: right;">
+                                        <div class="cmi-count-lbl">女性比率</div>
+                                        <div class="cmi-curve-val">{{ top_s.ssr_ladies_pct or 0 }}%</div>
+                                    </div>
+                                </div>
+                                <div class="cmi-ratio-bar">
+                                    <div class="cmi-bar-w" style="width: {{ top_s.ssr_ladies_pct or 50 }}%;"></div>
+                                    <div class="cmi-bar-m" style="width: {{ top_s.ssr_men_pct or 50 }}%;"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="cmi-actions">
+                            <button type="button" class="cmi-primary-cta" onclick="if(window.openModal)openModal({{ top_s.name | tojson | forceescape }})">詳しい曜日・時間帯グラフ＆2軒目を見る</button>
+                        </div>
+                        {% endif %}
+                    </aside>
                     {% endif %}
                 </div>
                 <script>
@@ -2188,6 +2256,7 @@
                     <span class="area-tag">東京</span>
                 </div>
                 <h3 class="store-name">Store Name</h3>
+                <p class="cm-human-line hidden"></p>
                 <div class="store-micro-metrics hidden"></div>
                 <div class="moat-signals-row hidden"></div>
             </div>
@@ -2240,7 +2309,7 @@
         window.INITIAL_STATUS_DATA = {{ initial_status | tojson }};
     </script>
     {% endif %}
-    <script src="/static/app.js?v=20261101_3" defer></script>
+    <script src="/static/app.js?v=20261102_1" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
@@ -2256,7 +2325,7 @@
                 }
                 if (window.__swRegistered) return;
                 window.__swRegistered = true;
-                navigator.serviceWorker.register('/sw.js?v=75', { updateViaCache: 'none' })
+                navigator.serviceWorker.register('/sw.js?v=76', { updateViaCache: 'none' })
                     .then(function(reg) {
                         reg.update();
                         document.addEventListener('visibilitychange', function() {

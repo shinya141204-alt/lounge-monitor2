@@ -294,7 +294,19 @@ def build_scheduled_tweet_text(stores: list, slot_label: str = "20:00", app_url:
             if compute_twitter_weight(candidate) <= 274:
                 return candidate
 
-        return "\n".join(rank_lines + [""] + footer_lines)
+        base_text = "\n".join(rank_lines + [""] + footer_lines)
+        if compute_twitter_weight(base_text) <= 274:
+            return base_text
+
+        for short_footer in (
+            ["全店の現在人数・穴場はリプ欄へ👇", f"{time_tag} #相席ナビ #相席ラウンジ"],
+            ["全店の現在人数はリプ欄へ👇", f"{time_tag} #相席ナビ"],
+            [f"{time_tag} #相席ナビ"],
+        ):
+            compact_cand = "\n".join(rank_lines + [""] + short_footer)
+            if compute_twitter_weight(compact_cand) <= 274:
+                return compact_cand
+        return "\n".join(rank_lines + [f"{time_tag} #相席ナビ"])
 
     # --- Rich Long-Form Mode for Manual X Premium Posting ---
     if slot_label == "20:00":

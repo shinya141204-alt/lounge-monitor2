@@ -105,13 +105,13 @@ class UiAuditRegressionTests(unittest.TestCase):
     # ------------------------------------------------------------------
     def test_cache_busting_sync_across_templates_and_service_worker(self):
         """全テンプレートと static/sw.js のアセットバージョンが完全同期し、immutable ヘッダが正しく付与されること"""
-        expected_calm = "/static/calm.css?v=23"
-        expected_portal = "/static/portal.css?v=10"
-        expected_app_js = "/static/app.js?v=20261101_3"
+        expected_calm = "/static/calm.css?v=24"
+        expected_portal = "/static/portal.css?v=11"
+        expected_app_js = "/static/app.js?v=20261102_1"
         expected_aff_js = "/static/affiliate_config.js?v=13"
         expected_style = "/static/style.css?v=20261030_6"
-        expected_sw_url = "/sw.js?v=75"
-        expected_cache_name = "aiseki-navi-v75"
+        expected_sw_url = "/sw.js?v=76"
+        expected_cache_name = "aiseki-navi-v76"
 
         templates_dir = os.path.join(PROJECT_ROOT, "templates")
         calm_seen = 0
@@ -762,6 +762,48 @@ class UiAuditRegressionTests(unittest.TestCase):
                     ranking_txt = page.evaluate("document.getElementById('ranking-list').innerText")
                     self.assertNotRegex(ranking_txt, r"\bOLG\b|\bORIENTAL\b(?!\s*LOUNGE)|\bYATAKOI\b")
 
+                    # Clean Minimal Neutral Dark (#111113), 1-tap Light toggle (#f6f6f7), and PC Plan A Sticky Inspector (#pc-store-inspector)
+                    cm_pc_initial = page.evaluate("""() => {
+                        const insp = document.getElementById('pc-store-inspector');
+                        const modal = document.getElementById('analysis-modal');
+                        return {
+                            bodyBg: getComputedStyle(document.body).backgroundColor,
+                            inspDisplay: insp ? getComputedStyle(insp).display : 'none',
+                            inspPosition: insp ? getComputedStyle(insp).position : '',
+                            inspText: insp ? insp.innerText : '',
+                            modalHidden: modal ? modal.classList.contains('hidden') : false
+                        };
+                    }""")
+                    self.assertEqual(cm_pc_initial["bodyBg"], "rgb(17, 17, 19)")
+                    self.assertEqual(cm_pc_initial["inspDisplay"], "flex")
+                    self.assertEqual(cm_pc_initial["inspPosition"], "sticky")
+                    self.assertIn("オリエンタルラウンジ 新宿", cm_pc_initial["inspText"])
+                    self.assertNotRegex(cm_pc_initial["inspText"], r"\bOLG\b|\bORIENTAL\b|\bYATAKOI\b")
+                    self.assertTrue(cm_pc_initial["modalHidden"])
+
+                    # Clicking 2nd card on PC updates right inspector without opening #analysis-modal
+                    page.click('#ranking-list .ranking-item[data-store="OLG ag渋谷"]')
+                    page.wait_for_timeout(120)
+                    cm_pc_switched = page.evaluate("""() => ({
+                        inspTitle: document.querySelector('#pc-store-inspector .cmi-title')?.innerText || '',
+                        inspText: document.getElementById('pc-store-inspector')?.innerText || '',
+                        selectedStore: document.querySelector('#ranking-list .ranking-item.is-inspector-selected')?.getAttribute('data-store') || '',
+                        modalHidden: document.getElementById('analysis-modal').classList.contains('hidden')
+                    })""")
+                    self.assertEqual(cm_pc_switched["selectedStore"], "OLG ag渋谷")
+                    self.assertIn("ag", cm_pc_switched["inspTitle"])
+                    self.assertIn("渋谷", cm_pc_switched["inspTitle"])
+                    self.assertNotRegex(cm_pc_switched["inspText"], r"\bOLG\b|\bORIENTAL\b|\bYATAKOI\b")
+                    self.assertTrue(cm_pc_switched["modalHidden"])
+
+                    # Header 1-tap daylight toggle switches between Neutral Dark (#111113) and Clean Light (#f6f6f7)
+                    page.click("#quick-daylight-btn")
+                    page.wait_for_timeout(60)
+                    self.assertEqual(page.evaluate("getComputedStyle(document.body).backgroundColor"), "rgb(246, 246, 247)")
+                    page.click("#quick-daylight-btn")
+                    page.wait_for_timeout(60)
+                    self.assertEqual(page.evaluate("getComputedStyle(document.body).backgroundColor"), "rgb(17, 17, 19)")
+
                     for is_light in (False, True):
                         page.evaluate(f"document.body.classList.toggle('theme-light', {str(is_light).lower()})")
 
@@ -1099,6 +1141,24 @@ class UiAuditRegressionTests(unittest.TestCase):
                         self.assertLessEqual(pill["height"], 24)
                     self.assertEqual(mob_state["navWrap"], "nowrap")
                     self.assertEqual(mob_state["navOverflowX"], "auto")
+                    self.assertEqual(mpage.evaluate("getComputedStyle(document.getElementById('pc-store-inspector')).display"), "none")
+
+                    # Mobile card tap opens #analysis-modal as Clean Minimal bottom sheet (24px top radius)
+                    mpage.click('#ranking-list .ranking-item[data-store="OLG 新宿"]')
+                    mpage.wait_for_timeout(120)
+                    sheet_state = mpage.evaluate("""() => {
+                        const m = document.getElementById('analysis-modal');
+                        const mc = m.querySelector('.modal-content');
+                        return {
+                            hidden: m.classList.contains('hidden'),
+                            alignItems: getComputedStyle(m).alignItems,
+                            topLeftRadius: getComputedStyle(mc).borderTopLeftRadius
+                        };
+                    }""")
+                    self.assertFalse(sheet_state["hidden"])
+                    self.assertEqual(sheet_state["alignItems"], "flex-end")
+                    self.assertEqual(sheet_state["topLeftRadius"], "24px")
+                    mpage.evaluate("closeModal()")
 
                     # 5. Functional UX on Mobile 390px: kana search, 1-tap clear, active filter summary, and 0-hit recovery
                     self.assertTrue(mpage.locator("#search-clear-btn").is_hidden())

@@ -20,21 +20,9 @@
     justify-content: space-between;
     flex-wrap: wrap;
     gap: 8px 12px;
-    padding-bottom: 13px;
-    border-bottom: 3px double rgba(200, 164, 110, 0.34);
+    padding-bottom: 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     margin-bottom: 14px;
-}
-
-.portal-top-header::before {
-    content: "— REALTIME NIGHTLIFE JOURNAL";
-    flex: 0 0 100%;
-    font-family: "Outfit", -apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif;
-    font-size: 0.61rem;
-    font-weight: 700;
-    letter-spacing: 0.16em;
-    color: #e3c898;
-    opacity: 0.9;
-    margin-bottom: -4px;
 }
 
 .portal-brand-link {
@@ -48,11 +36,11 @@
 }
 
 .portal-brand-title {
-    font-family: "Shippori Mincho", "Hiragino Mincho ProN", "Yu Mincho", "YuMincho", Georgia, serif;
-    font-size: 1.44rem;
-    font-weight: 700;
-    color: #f0ede8;
-    letter-spacing: 0.06em;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+    font-size: 1.38rem;
+    font-weight: 800;
+    color: #f4f4f5;
+    letter-spacing: -0.02em;
     margin: 0;
     white-space: nowrap;
     flex-shrink: 0;
@@ -61,7 +49,7 @@
 .portal-brand-sub {
     font-size: 0.78rem;
     font-weight: 500;
-    color: #b5b0a6;
+    color: #a1a1aa;
     line-height: 1.4;
 }
 
@@ -133,11 +121,11 @@
     border-radius: 999px;
     font-size: 0.82rem;
     font-weight: 600;
-    letter-spacing: 0.02em;
+    letter-spacing: 0.01em;
     text-decoration: none;
-    color: #f0ede8;
-    background: #16181f;
-    border: 1px solid rgba(235, 232, 227, 0.22);
+    color: #f4f4f5;
+    background: #1a1a1e;
+    border: 1px solid rgba(255, 255, 255, 0.09);
     white-space: nowrap;
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
@@ -145,9 +133,9 @@
 }
 
 .portal-nav-item:hover {
-    background: #1f222c;
-    border-color: rgba(200, 164, 110, 0.52);
-    color: #f5ebd8;
+    background: #232329;
+    border-color: rgba(255, 255, 255, 0.22);
+    color: #ffffff;
 }
 
 .portal-nav-item:active {
@@ -159,7 +147,7 @@
 .portal-nav-link.nav-loading {
     opacity: 0.72 !important;
     transform: scale(0.97);
-    border-color: rgba(200, 164, 110, 0.75) !important;
+    border-color: rgba(244, 244, 245, 0.5) !important;
     pointer-events: none;
 }
 
@@ -170,8 +158,8 @@
     width: 11px;
     height: 11px;
     margin-left: 5px;
-    border: 2px solid rgba(200, 164, 110, 0.35);
-    border-top-color: #c8a46e;
+    border: 2px solid rgba(244, 244, 245, 0.3);
+    border-top-color: #f4f4f5;
     border-radius: 50%;
     animation: portal-nav-spin 0.55s linear infinite;
 }
@@ -181,34 +169,34 @@
 }
 
 .portal-nav-item.active {
-    background: rgba(200, 164, 110, 0.16);
-    border-color: rgba(200, 164, 110, 0.62);
-    color: #f3e6cf;
+    background: #f4f4f5;
+    border-color: #f4f4f5;
+    color: #111113;
+    font-weight: 700;
 }
 
-/* ---- 公式サイト確認・注意事項ボックス（全ページ共通のシックな注記枠） ---- */
+/* ---- 公式サイト確認・注意事項ボックス（全ページ共通のクリーン・ミニマル注記枠） ---- */
 .official-notice-box {
-    background: #16181f;
-    border: 1px solid rgba(235, 232, 227, 0.14);
-    border-left: 3px solid rgba(200, 164, 110, 0.72);
-    border-radius: 10px;
-    padding: 13px 16px;
+    background: #1a1a1e;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    padding: 14px 16px;
     margin: 14px 0 20px;
     font-size: 0.79rem;
     line-height: 1.68;
-    color: #c7c2b8;
+    color: #b4b4be;
 }
 
 .official-notice-box strong {
-    color: #f0ede8;
+    color: #f4f4f5;
     font-weight: 600;
 }
 
 .official-notice-title {
     font-size: 0.78rem;
     font-weight: 700;
-    letter-spacing: 0.04em;
-    color: #e3c898;
+    letter-spacing: 0.02em;
+    color: #f4f4f5;
     margin-bottom: 4px;
 }
 
@@ -218,9 +206,9 @@
     gap: 3px;
     font-size: 0.72rem;
     font-weight: 600;
-    color: #e3c898;
+    color: #f4f4f5;
     text-decoration: none;
-    border-bottom: 1px solid rgba(200, 164, 110, 0.42);
+    border-bottom: 1px solid rgba(244, 244, 245, 0.35);
     padding-bottom: 1px;
     transition: opacity 0.15s ease;
 }
@@ -233,8 +221,8 @@
 .portal-footer {
     margin-top: 50px;
     padding-top: 28px;
-    border-top: 3px double rgba(235, 232, 227, 0.16);
-    color: #b5b0a6;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    color: #a1a1aa;
     font-size: 0.81rem;
 }
 
@@ -246,26 +234,26 @@
 }
 
 .portal-footer-links a {
-    color: #ddd8cf;
+    color: #e4e4e7;
     text-decoration: none;
     transition: color 0.15s ease;
 }
 
 .portal-footer-links a:hover {
-    color: #e3c898;
+    color: #ffffff;
 }
 
 .portal-footer-disclaimer {
     margin: 0 0 10px;
     font-size: 0.75rem;
     line-height: 1.65;
-    color: #a39e94;
+    color: #a1a1aa;
 }
 
 .portal-footer-sns {
     margin: 12px 0 10px;
     font-size: 0.78rem;
-    color: #b5b0a6;
+    color: #a1a1aa;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -278,7 +266,7 @@
 }
 
 .portal-footer-sns a {
-    color: #e3c898;
+    color: #f4f4f5;
     text-decoration: none;
     font-weight: 600;
 }
@@ -291,85 +279,81 @@
 .portal-footer--guide {
     margin-top: 48px;
     padding-top: 24px;
-    border-top: 3px double rgba(235, 232, 227, 0.16);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
     text-align: center;
     font-size: 0.79rem;
-    color: #b5b0a6;
+    color: #a1a1aa;
 }
 
 .portal-footer--guide a {
-    color: #ddd8cf;
+    color: #e4e4e7;
     text-decoration: none;
     margin: 0 8px;
 }
 
 .portal-footer--guide a:hover {
-    color: #e3c898;
+    color: #ffffff;
 }
 
 /* ---- ライトモード（body.theme-light）共通ヘッダー・注記枠・フッター補正 ---- */
 body.theme-light .portal-top-header {
-    border-bottom: 3px double rgba(110, 79, 35, 0.36);
-}
-
-body.theme-light .portal-top-header::before {
-    color: #6e4f23;
+    border-bottom: 1px solid rgba(24, 24, 27, 0.09);
 }
 
 body.theme-light .portal-brand-sub {
-    color: #4d4840;
+    color: #52525b;
 }
 
 body.theme-light .official-notice-box {
     background: #ffffff;
-    border-color: rgba(28, 26, 23, 0.16);
-    border-left-color: #6e4f23;
-    color: #3a3630;
+    border-color: rgba(24, 24, 27, 0.09);
+    color: #3f3f46;
 }
 
 body.theme-light .official-notice-box strong {
-    color: #1b1916;
+    color: #18181b;
 }
 
 body.theme-light .official-notice-title,
 body.theme-light .official-ext-link {
-    color: #6e4f23;
+    color: #18181b;
+    border-bottom-color: rgba(24, 24, 27, 0.3);
 }
 
 body.theme-light .portal-footer {
-    border-top-color: rgba(28, 26, 23, 0.2);
-    color: #4d4840;
+    border-top-color: rgba(24, 24, 27, 0.09);
+    color: #52525b;
 }
 
 body.theme-light .portal-footer-links a {
-    color: #1b1916;
+    color: #18181b;
 }
 
 body.theme-light .portal-footer-links a:hover {
-    color: #6e4f23;
+    color: #52525b;
 }
 
 body.theme-light .portal-footer-disclaimer {
-    color: #544e45;
+    color: #52525b;
 }
 
 body.theme-light .portal-footer-sns {
-    color: #4d4840;
+    color: #52525b;
 }
 
 body.theme-light .portal-footer-sns a {
-    color: #6e4f23;
+    color: #18181b;
 }
 
 body.theme-light .portal-footer--guide {
-    border-top-color: rgba(28, 26, 23, 0.2);
-    color: #4d4840;
+    border-top-color: rgba(24, 24, 27, 0.09);
+    color: #52525b;
 }
 
 body.theme-light .portal-footer--guide a {
-    color: #1b1916;
+    color: #18181b;
 }
 
 body.theme-light .portal-footer--guide a:hover {
-    color: #6e4f23;
+    color: #52525b;
 }

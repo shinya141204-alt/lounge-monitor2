@@ -7,37 +7,45 @@
    ========================================================================== */
 
 :root {
-    --font-editorial: "Shippori Mincho", "Hiragino Mincho ProN", "Yu Mincho", "YuMincho", "Noto Serif JP", Georgia, serif;
-    --font-num: "Outfit", -apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif;
+    --font-editorial: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+    --font-num: "Outfit", -apple-system, BlinkMacSystemFont, "SF Pro Display", "Hiragino Sans", sans-serif;
 
-    /* ダークモード（オブシディアン紙面×明確に浮き立つチャコールカード・WCAG AAA〜AA） */
-    --calm-bg: #0c0d10;
-    --calm-surface: #16181f;
-    --calm-surface-2: #1f222c;
-    --calm-border: rgba(235, 232, 227, 0.14);
-    --calm-border-strong: rgba(235, 232, 227, 0.24);
-    --calm-text: #f0ede8;
-    --calm-sub: #b5b0a6;
-    --calm-accent: #c8a46e;          /* シャンパンゴールド */
-    --calm-accent-soft: rgba(200, 164, 110, 0.16);
-    --calm-accent-text: #e3c898;
-    --calm-women: #dfa6b0;           /* くすみローズ */
-    --calm-men: #98b7d0;             /* スレートブルー */
+    /* クリーン・ミニマル（ダーク：ニュートラル黒 #111113 × フローティングカード #1a1a1e・WCAG AAA〜AA） */
+    --calm-bg: #111113;
+    --calm-surface: #1a1a1e;
+    --calm-surface-2: #232329;
+    --calm-border: rgba(255, 255, 255, 0.08);
+    --calm-border-strong: rgba(255, 255, 255, 0.16);
+    --calm-text: #f4f4f5;
+    --calm-sub: #b4b4be;
+    --calm-accent: #e4e4e7;          /* クリーン・オフホワイト／シルバー */
+    --calm-accent-soft: rgba(244, 244, 245, 0.10);
+    --calm-accent-text: #f4f4f5;
+    --calm-women: #f4a8b8;           /* ソフトローズ */
+    --calm-men: #93c5fd;             /* ソフトミストブルー */
 
-    /* ライトモード用（ウォームコットン地×純白カード紙面・背景同化ゼロの高視認コントラスト） */
-    --calm-light-bg: #eeebe2;
+    /* クリーン・ミニマル（昼・ライト：ソフトニュートラルグレー #f6f6f7 × 純白カード #ffffff） */
+    --calm-light-bg: #f6f6f7;
     --calm-light-surface: #ffffff;
-    --calm-light-surface-2: #e4dfd4;
-    --calm-light-border: rgba(28, 26, 23, 0.15);
-    --calm-light-border-strong: rgba(28, 26, 23, 0.26);
-    --calm-light-text: #1b1916;
-    --calm-light-sub: #4d4840;
-    --calm-light-accent: #6e4f23;    /* ディープアンティークブロンズ */
-    --calm-light-accent-soft: rgba(110, 79, 35, 0.12);
-    --calm-light-women: #983849;     /* ディープローズ */
-    --calm-light-men: #2d5373;       /* ディープスレート */
-    --calm-light-bar-w: #c27482;
-    --calm-light-bar-m: #668baa;
+    --calm-light-surface-2: #ededf0;
+    --calm-light-border: rgba(24, 24, 27, 0.09);
+    --calm-light-border-strong: rgba(24, 24, 27, 0.16);
+    --calm-light-text: #18181b;
+    --calm-light-sub: #52525b;
+    --calm-light-accent: #18181b;    /* ソリッド・オブシディアン（純黒ピルCTA） */
+    --calm-light-accent-soft: rgba(24, 24, 27, 0.07);
+    --calm-light-women: #be123c;     /* クリーンディープローズ */
+    --calm-light-men: #1d4ed8;       /* クリーンロイヤルブルー */
+    --calm-light-bar-w: #f43f5e;
+    --calm-light-bar-m: #60a5fa;
+
+    /* クリーン・ミニマル専用セマンティックトークン */
+    --cm-cta-bg: #f4f4f5;
+    --cm-cta-text: #111113;
+    --cm-ok-bg: rgba(52, 211, 153, 0.14);
+    --cm-ok-text: #6ee7b7;
+    --cm-wait-bg: rgba(251, 191, 36, 0.14);
+    --cm-wait-text: #fcd34d;
 }
 
 /* ---------- 1. 動き：点滅・パルス・背景のゆらぎを止める ---------- */
@@ -4474,35 +4482,36 @@ body.theme-light .articles-grid > .article-card .article-card-body::before {
 @media (min-width: 760px) and (max-width: 859px) {
     .articles-grid:not(.is-filtered) > .article-card:first-child {
         grid-column: 1 / -1;
-        border-color: rgba(200, 164, 110, 0.44) !important;
+        border-color: var(--calm-border-strong) !important;
     }
 
     body.theme-light .articles-grid:not(.is-filtered) > .article-card:first-child {
-        border-color: rgba(110, 79, 35, 0.45) !important;
+        border-color: var(--calm-light-border-strong) !important;
     }
 
     .articles-grid:not(.is-filtered) > .article-card:first-child .article-card-body::before {
-        content: "COVER STORY — ISSUE No.01";
-        font-size: 0.68rem;
-        letter-spacing: 0.16em;
+        content: "注目データ検証";
+        font-size: 0.72rem;
+        letter-spacing: 0.04em;
         margin-bottom: 8px;
     }
 }
 
-/* 860px以上では額装マット付きの2カラム見開き（16:9図版を一切トリミングせず完全表示） */
+/* 860px以上ではクリーン・ミニマルな2カラムフィーチャーカード（16:9図版を一切トリミングせず完全表示） */
 @media (min-width: 860px) {
     .articles-grid:not(.is-filtered) > .article-card:first-child {
         grid-column: 1 / -1;
         display: grid;
         grid-template-columns: 1.24fr 1fr;
         align-items: center;
-        padding: 14px;
-        gap: 4px;
-        border-color: rgba(200, 164, 110, 0.44) !important;
+        padding: 16px;
+        gap: 6px;
+        border-radius: 20px !important;
+        border-color: var(--calm-border-strong) !important;
     }
 
     body.theme-light .articles-grid:not(.is-filtered) > .article-card:first-child {
-        border-color: rgba(110, 79, 35, 0.45) !important;
+        border-color: var(--calm-light-border-strong) !important;
     }
 
     .articles-grid:not(.is-filtered) > .article-card:first-child .article-thumb-wrap {
@@ -4510,12 +4519,12 @@ body.theme-light .articles-grid > .article-card .article-card-body::before {
         height: auto !important;
         min-height: 0 !important;
         aspect-ratio: 16 / 9 !important;
-        border-radius: 8px;
+        border-radius: 12px;
         border: 1px solid var(--calm-border);
     }
 
     body.theme-light .articles-grid:not(.is-filtered) > .article-card:first-child .article-thumb-wrap {
-        border-color: var(--calm-light-border-strong);
+        border-color: var(--calm-light-border);
     }
 
     .articles-grid:not(.is-filtered) > .article-card:first-child .article-card-body {
@@ -4524,9 +4533,9 @@ body.theme-light .articles-grid > .article-card .article-card-body::before {
     }
 
     .articles-grid:not(.is-filtered) > .article-card:first-child .article-card-body::before {
-        content: "COVER STORY — ISSUE No.01";
-        font-size: 0.68rem;
-        letter-spacing: 0.16em;
+        content: "注目データ検証";
+        font-size: 0.72rem;
+        letter-spacing: 0.04em;
         margin-bottom: 8px;
     }
 
@@ -5489,4 +5498,654 @@ body.theme-light .empty-filter-reset-btn {
 
 body.theme-light .empty-filter-reset-btn:hover {
     background: var(--calm-light-accent-soft);
+}
+
+/* ==========================================================================
+   25. クリーン・ミニマル（ニュートラル黒 #111113 ＋ 昼・ライト #f6f6f7 ＋ PC案A 2ペイン ＋ スマホボトムシート）
+   ========================================================================== */
+body.theme-light {
+    --cm-cta-bg: #18181b;
+    --cm-cta-text: #ffffff;
+    --cm-ok-bg: #ecfdf5;
+    --cm-ok-text: #065f46;
+    --cm-wait-bg: #fffbeb;
+    --cm-wait-text: #92400e;
+}
+
+/* ヘッダー・タイトルの雑誌風二重罫線を撤廃し、すっきり静謐な1pxヘアライン＆サンセリフへ */
+body:not(.staff-mode) .container > header::after {
+    margin-top: 12px;
+    height: 1px !important;
+    border-top: 1px solid var(--calm-border) !important;
+    border-bottom: none !important;
+}
+
+body.theme-light:not(.staff-mode) .container > header::after {
+    border-top-color: var(--calm-light-border) !important;
+}
+
+.portal-top-header {
+    border-bottom: 1px solid var(--calm-border) !important;
+}
+
+body.theme-light .portal-top-header {
+    border-bottom: 1px solid var(--calm-light-border) !important;
+}
+
+body:not(.theme-light) h1,
+body:not(.theme-light) .portal-brand-title,
+body.theme-light h1,
+body.theme-light .portal-brand-title {
+    letter-spacing: -0.02em !important;
+    font-weight: 800 !important;
+}
+
+.masthead-kicker {
+    letter-spacing: 0.03em !important;
+    text-transform: none !important;
+    font-size: 0.72rem !important;
+    font-weight: 600 !important;
+    color: var(--calm-sub) !important;
+}
+
+.masthead-kicker::before {
+    display: none !important;
+}
+
+body.theme-light .masthead-kicker {
+    color: var(--calm-light-sub) !important;
+}
+
+.cm-live-dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #6ee7b7;
+    flex-shrink: 0;
+}
+
+body.theme-light .cm-live-dot {
+    background: #059669;
+}
+
+body:not(.theme-light) #header-x-btn .beacon-dot,
+body:not(.theme-light) .sns-live-beacon .beacon-dot {
+    background: #6ee7b7 !important;
+}
+
+body.theme-light #header-x-btn .beacon-dot,
+body.theme-light .sns-live-beacon .beacon-dot {
+    background: #059669 !important;
+}
+
+/* ヘッダー右上の昼・ライト／ダークワンタップ切替ピルボタン */
+#quick-daylight-btn {
+    border-radius: 999px !important;
+    font-weight: 700 !important;
+}
+
+/* アクティブなナビ・エリアピル・CTAを Apple / Uber 流のソリッド白／黒ピルに統一 */
+body:not(.theme-light):not(.staff-mode) .portal-nav-link,
+body:not(.theme-light):not(.staff-mode) .filter-btn,
+body:not(.theme-light):not(.staff-mode) .header-btn {
+    border-radius: 999px !important;
+    border-color: var(--calm-border) !important;
+    background: var(--calm-surface) !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .portal-nav-link.active,
+body:not(.theme-light):not(.staff-mode) .portal-nav-item.active,
+body:not(.theme-light):not(.staff-mode) .filter-btn.active {
+    background: var(--cm-cta-bg) !important;
+    border-color: var(--cm-cta-bg) !important;
+    color: var(--cm-cta-text) !important;
+    font-weight: 700 !important;
+    box-shadow: none !important;
+}
+
+body.theme-light:not(.staff-mode) .portal-nav-link,
+body.theme-light:not(.staff-mode) .filter-btn,
+body.theme-light:not(.staff-mode) .header-btn {
+    border-radius: 999px !important;
+    border-color: var(--calm-light-border) !important;
+}
+
+body.theme-light:not(.staff-mode) .portal-nav-link.active,
+body.theme-light:not(.staff-mode) .portal-nav-item.active,
+body.theme-light:not(.staff-mode) .filter-btn.active {
+    background: var(--cm-cta-bg) !important;
+    border-color: var(--cm-cta-bg) !important;
+    color: var(--cm-cta-text) !important;
+    font-weight: 700 !important;
+    box-shadow: none !important;
+}
+
+/* 検索バー＆ソートバーの丸み・余白クリーン化 */
+body:not(.staff-mode) #search-input {
+    border-radius: 14px !important;
+    border-color: var(--calm-border-strong) !important;
+}
+
+body.theme-light:not(.staff-mode) #search-input {
+    background: #ffffff !important;
+    border-color: var(--calm-light-border-strong) !important;
+}
+
+body:not(.staff-mode) .concierge-quick-banner {
+    border-radius: 18px !important;
+    border: 1px solid var(--calm-border) !important;
+}
+
+body.theme-light:not(.staff-mode) .concierge-quick-banner {
+    background: #ffffff !important;
+    border: 1px solid var(--calm-light-border) !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .cqb-cta {
+    background: var(--cm-cta-bg) !important;
+    color: var(--cm-cta-text) !important;
+    border-color: var(--cm-cta-bg) !important;
+    border-radius: 999px !important;
+    font-weight: 700 !important;
+}
+
+body.theme-light:not(.staff-mode) .cqb-cta {
+    border-radius: 999px !important;
+}
+
+/* クリーン・ミニマル店舗カード（余白・角丸18px・ゴールド装飾撤廃・やさしい1行ガイド） */
+body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item {
+    border-radius: 18px !important;
+    padding: 14px 16px 18px !important;
+    border: 1px solid var(--calm-border) !important;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18) !important;
+    transition: border-color 0.16s ease, background-color 0.16s ease;
+}
+
+body.theme-light:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item {
+    border: 1px solid var(--calm-light-border) !important;
+    box-shadow: 0 2px 8px rgba(24, 24, 27, 0.04) !important;
+}
+
+body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item.rank-1 {
+    border-color: var(--calm-border-strong) !important;
+}
+
+body.theme-light:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item.rank-1 {
+    border-color: var(--calm-light-border-strong) !important;
+}
+
+/* 順位バッジ：メタリック金銀銅をやめ、ミニマルなモノクローム章へ */
+body:not(.theme-light):not(.staff-mode) .rank-1 .rank-badge {
+    background: #f4f4f5 !important;
+    border-color: #f4f4f5 !important;
+    color: #111113 !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .rank-2 .rank-badge,
+body:not(.theme-light):not(.staff-mode) .rank-3 .rank-badge {
+    background: var(--calm-surface-2) !important;
+    border-color: var(--calm-border-strong) !important;
+    color: var(--calm-text) !important;
+}
+
+body.theme-light:not(.staff-mode) .rank-1 .rank-badge {
+    background: #18181b !important;
+    border-color: #18181b !important;
+    color: #ffffff !important;
+}
+
+body.theme-light:not(.staff-mode) .rank-2 .rank-badge,
+body.theme-light:not(.staff-mode) .rank-3 .rank-badge {
+    background: var(--calm-light-surface-2) !important;
+    border-color: var(--calm-light-border-strong) !important;
+    color: var(--calm-light-text) !important;
+}
+
+body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item .store-name {
+    font-weight: 700 !important;
+    letter-spacing: -0.01em !important;
+}
+
+body:not(.theme-light) .area-tag {
+    color: var(--calm-sub) !important;
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+}
+
+body:not(.theme-light) .stat .label {
+    color: var(--calm-sub) !important;
+}
+
+.cm-human-line {
+    margin: 3px 0 2px;
+    font-size: 0.76rem;
+    line-height: 1.45;
+    color: var(--calm-sub);
+    font-weight: 400;
+}
+
+body.theme-light .cm-human-line {
+    color: var(--calm-light-sub);
+}
+
+body.theme-list .cm-human-line,
+body.compact-mode .cm-human-line,
+body.staff-mode .cm-human-line {
+    display: none !important;
+}
+
+/* --- PC版 案A：左2列クリーン・ミニマルカード × 右・追従詳細パネル（スティッキー・サイドインスペクタ） --- */
+.cm-pc-inspector {
+    display: none;
+}
+
+@media (min-width: 700px) and (max-width: 1023px) {
+    body:not(.staff-mode):not(.theme-list):not(.compact-mode) #ranking-list,
+    body:not(.staff-mode):not(.theme-list):not(.compact-mode) #pinned-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 12px !important;
+    }
+}
+
+@media (min-width: 1024px) {
+    body:not(.staff-mode):not(.theme-list):not(.compact-mode) .container {
+        max-width: 1200px !important;
+    }
+
+    body:not(.staff-mode):not(.theme-list):not(.compact-mode) .cm-pc-split-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 7fr) minmax(330px, 4.7fr);
+        gap: 20px;
+        align-items: start;
+    }
+
+    body:not(.staff-mode):not(.theme-list):not(.compact-mode) .cm-pc-left-col {
+        min-width: 0;
+    }
+
+    body:not(.staff-mode):not(.theme-list):not(.compact-mode) #ranking-list,
+    body:not(.staff-mode):not(.theme-list):not(.compact-mode) #pinned-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 14px !important;
+    }
+
+    body:not(.staff-mode):not(.theme-list):not(.compact-mode) #ranking-list > .empty-filter-state,
+    body:not(.staff-mode):not(.theme-list):not(.compact-mode) #ranking-list > .pr-card-item {
+        grid-column: 1 / -1;
+    }
+
+    body:not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item.is-inspector-selected {
+        border: 1.5px solid rgba(244, 244, 245, 0.55) !important;
+        background: var(--calm-surface-2) !important;
+    }
+
+    body.theme-light:not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item.is-inspector-selected {
+        border: 1.5px solid #18181b !important;
+        background: #ffffff !important;
+        box-shadow: 0 4px 16px rgba(24, 24, 27, 0.08) !important;
+    }
+
+    body:not(.staff-mode):not(.theme-list):not(.compact-mode) .cm-pc-inspector {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        position: sticky;
+        top: 18px;
+        background: var(--calm-surface);
+        border: 1px solid var(--calm-border);
+        border-radius: 24px;
+        padding: 22px;
+        box-shadow: 0 8px 28px rgba(0, 0, 0, 0.24);
+        box-sizing: border-box;
+        min-width: 0;
+    }
+
+    body.theme-light:not(.staff-mode):not(.theme-list):not(.compact-mode) .cm-pc-inspector {
+        background: #ffffff;
+        border-color: var(--calm-light-border);
+        box-shadow: 0 8px 24px rgba(24, 24, 27, 0.06);
+    }
+}
+
+/* PCインスペクタ内部スタイル */
+.cmi-top-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.cmi-status-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 11px;
+    border-radius: 999px;
+    font-size: 0.76rem;
+    font-weight: 700;
+}
+
+.cmi-status-pill.is-ok {
+    background: var(--cm-ok-bg);
+    color: var(--cm-ok-text);
+}
+
+.cmi-status-pill.is-wait {
+    background: var(--cm-wait-bg);
+    color: var(--cm-wait-text);
+}
+
+.cmi-area-pill {
+    font-size: 0.76rem;
+    color: var(--calm-sub);
+    font-weight: 600;
+}
+
+body.theme-light .cmi-area-pill {
+    color: var(--calm-light-sub);
+}
+
+.cmi-title {
+    margin: 0;
+    font-size: 1.18rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--calm-text);
+    line-height: 1.35;
+}
+
+body.theme-light .cmi-title {
+    color: var(--calm-light-text);
+}
+
+.cmi-summary {
+    margin: 5px 0 0;
+    font-size: 0.8rem;
+    line-height: 1.55;
+    color: var(--calm-sub);
+}
+
+body.theme-light .cmi-summary {
+    color: var(--calm-light-sub);
+}
+
+.cmi-metrics-box {
+    margin: 15px 0 12px;
+    padding: 15px 16px;
+    border-radius: 18px;
+    background: var(--calm-bg);
+    border: 1px solid var(--calm-border);
+}
+
+body.theme-light .cmi-metrics-box {
+    background: var(--calm-light-bg);
+    border-color: var(--calm-light-border);
+}
+
+.cmi-counts-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+.cmi-counts-pair {
+    display: flex;
+    align-items: baseline;
+    gap: 20px;
+}
+
+.cmi-count-lbl {
+    font-size: 0.75rem;
+    color: var(--calm-sub);
+    margin-bottom: 2px;
+}
+
+body.theme-light .cmi-count-lbl {
+    color: var(--calm-light-sub);
+}
+
+.cmi-count-val {
+    font-family: var(--font-num);
+    font-variant-numeric: tabular-nums;
+    font-size: 1.55rem;
+    font-weight: 800;
+    line-height: 1.1;
+}
+
+.cmi-count-val.is-w {
+    color: var(--calm-women);
+}
+
+body.theme-light .cmi-count-val.is-w {
+    color: var(--calm-light-women);
+}
+
+.cmi-count-val.is-m {
+    color: var(--calm-text);
+}
+
+body.theme-light .cmi-count-val.is-m {
+    color: var(--calm-light-text);
+}
+
+.cmi-count-unit {
+    font-size: 0.76rem;
+    font-weight: 500;
+    margin-left: 2px;
+    color: var(--calm-sub);
+}
+
+body.theme-light .cmi-count-unit {
+    color: var(--calm-light-sub);
+}
+
+.cmi-ratio-bar {
+    height: 6px;
+    border-radius: 999px;
+    overflow: hidden;
+    display: flex;
+    background: var(--calm-surface-2);
+}
+
+body.theme-light .cmi-ratio-bar {
+    background: var(--calm-light-surface-2);
+}
+
+.cmi-bar-w {
+    background: var(--calm-women);
+    height: 100%;
+}
+
+body.theme-light .cmi-bar-w {
+    background: var(--calm-light-bar-w);
+}
+
+.cmi-bar-m {
+    background: var(--calm-men);
+    height: 100%;
+}
+
+body.theme-light .cmi-bar-m {
+    background: var(--calm-light-bar-m);
+}
+
+.cmi-curve-wrap {
+    margin-top: 12px;
+    padding-top: 11px;
+    border-top: 1px solid var(--calm-border);
+}
+
+body.theme-light .cmi-curve-wrap {
+    border-top-color: var(--calm-light-border);
+}
+
+.cmi-curve-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 0.75rem;
+    margin-bottom: 4px;
+}
+
+.cmi-curve-lbl {
+    color: var(--calm-sub);
+}
+
+body.theme-light .cmi-curve-lbl {
+    color: var(--calm-light-sub);
+}
+
+.cmi-curve-val {
+    font-weight: 700;
+    color: var(--calm-text);
+}
+
+body.theme-light .cmi-curve-val {
+    color: var(--calm-light-text);
+}
+
+.cmi-hop-box {
+    padding: 12px 14px;
+    border-radius: 16px;
+    background: var(--calm-bg);
+    border: 1px solid var(--calm-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+body.theme-light .cmi-hop-box {
+    background: var(--calm-light-bg);
+    border-color: var(--calm-light-border);
+}
+
+.cmi-hop-kicker {
+    font-size: 0.72rem;
+    color: var(--calm-sub);
+}
+
+body.theme-light .cmi-hop-kicker {
+    color: var(--calm-light-sub);
+}
+
+.cmi-hop-name {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--calm-text);
+    margin-top: 2px;
+}
+
+body.theme-light .cmi-hop-name {
+    color: var(--calm-light-text);
+}
+
+.cmi-hop-btn {
+    flex-shrink: 0;
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--calm-border-strong);
+    background: var(--calm-surface-2);
+    color: var(--calm-text);
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+body.theme-light .cmi-hop-btn {
+    background: var(--calm-light-surface-2);
+    border-color: var(--calm-light-border-strong);
+    color: var(--calm-light-text);
+}
+
+.cmi-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.cmi-primary-cta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 42px;
+    padding: 10px 18px;
+    border-radius: 999px;
+    background: var(--cm-cta-bg) !important;
+    color: var(--cm-cta-text) !important;
+    border: 1px solid var(--cm-cta-bg) !important;
+    font-size: 0.84rem;
+    font-weight: 800;
+    text-decoration: none;
+    box-sizing: border-box;
+    cursor: pointer;
+    transition: opacity 0.15s ease;
+}
+
+.cmi-primary-cta:hover {
+    opacity: 0.9;
+}
+
+.cmi-secondary-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 38px;
+    padding: 8px 16px;
+    border-radius: 999px;
+    background: var(--calm-surface-2);
+    color: var(--calm-text);
+    border: 1px solid var(--calm-border-strong);
+    font-size: 0.79rem;
+    font-weight: 700;
+    cursor: pointer;
+    box-sizing: border-box;
+}
+
+body.theme-light .cmi-secondary-btn {
+    background: var(--calm-light-surface-2);
+    color: var(--calm-light-text);
+    border-color: var(--calm-light-border-strong);
+}
+
+/* --- スマホ（768px以下）：詳細モーダルをクリーン・ミニマルなハーフ・ボトムシートとして表示 --- */
+@media (max-width: 768px) {
+    #analysis-modal:not(.hidden) {
+        align-items: flex-end !important;
+        padding: 0 !important;
+    }
+
+    #analysis-modal .modal-content {
+        width: 100% !important;
+        max-width: 100% !important;
+        max-height: 88vh !important;
+        margin: 0 !important;
+        border-radius: 24px 24px 0 0 !important;
+        border-bottom: none !important;
+        padding-top: 14px !important;
+    }
+
+    #analysis-modal .modal-content::before {
+        content: "";
+        display: block;
+        width: 40px;
+        height: 4px;
+        border-radius: 999px;
+        background: var(--calm-border-strong);
+        margin: 0 auto 10px;
+    }
+
+    body.theme-light #analysis-modal .modal-content::before {
+        background: var(--calm-light-border-strong);
+    }
 }
