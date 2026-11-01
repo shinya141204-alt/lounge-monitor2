@@ -13,7 +13,7 @@
         var isLight = document.body.classList.contains('theme-light');
         var nodes = document.querySelectorAll('.portal-theme-btn-text');
         for (var i = 0; i < nodes.length; i++) {
-            nodes[i].textContent = isLight ? '🌙 ダーク' : '☀️ ライト';
+            nodes[i].textContent = isLight ? 'ダーク表示' : 'ライト表示';
         }
     };
     window.__togglePortalTheme = function() {
@@ -31,8 +31,8 @@
 <div class="portal-global-nav-row">
         <nav class="portal-global-nav" aria-label="メインナビゲーション">
             <a href="/" class="portal-nav-item{% if nav_active == 'ranking' %} active{% endif %}">リアルタイム順位</a>
-            <a href="/concierge" class="portal-nav-item{% if nav_active == 'concierge' %} active{% endif %}">🧭 3秒ハシゴ診断</a>
-            <a href="/for-women" class="portal-nav-item{% if nav_active == 'for_women' %} active{% endif %}">💄 女子向け裏ガイド</a>
+            <a href="/concierge" class="portal-nav-item{% if nav_active == 'concierge' %} active{% endif %}">3秒ハシゴ診断</a>
+            <a href="/for-women" class="portal-nav-item{% if nav_active == 'for_women' %} active{% endif %}">女子向け裏ガイド</a>
             <a href="/price-comparison" class="portal-nav-item{% if nav_active == 'price_comparison' %} active{% endif %}">料金・イベント比較</a>
             <a href="/columns" class="portal-nav-item{% if nav_active == 'columns' %} active{% endif %}">コラム・記事一覧</a>
             <a href="/areas" class="portal-nav-item{% if nav_active == 'areas' %} active{% endif %}">エリアから探す</a>
@@ -42,7 +42,7 @@
         </nav>
         {% if nav_active != 'for_women' %}
         <button type="button" class="portal-nav-item portal-theme-toggle-btn" onclick="window.__togglePortalTheme && window.__togglePortalTheme()" title="明るいライトモードとダークモードを切り替え">
-            <span class="portal-theme-btn-text">☀️ ライト</span>
+            <span class="portal-theme-btn-text">ライト表示</span>
         </button>
         {% endif %}
 </div>

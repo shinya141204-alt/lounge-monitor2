@@ -797,10 +797,110 @@
             }
         }
 
+        const SEARCH_KANA_ALIASES = [
+            ['しんじゅく', '新宿 西新宿'],
+            ['しぶや', '渋谷'],
+            ['えびす', '恵比寿'],
+            ['うえの', '上野'],
+            ['きんしちょう', '錦糸町'],
+            ['まちだ', '町田'],
+            ['よこはま', '横浜'],
+            ['おおみや', '大宮'],
+            ['かしわ', '柏'],
+            ['うつのみや', '宇都宮'],
+            ['たかさき', '高崎'],
+            ['なごや', '名古屋 栄 錦'],
+            ['さかえ', '栄 名古屋'],
+            ['にしき', '錦 名古屋'],
+            ['うめだ', '梅田 茶屋町 大阪駅前'],
+            ['ちゃやまち', '茶屋町 梅田'],
+            ['なんば', '難波 心斎橋'],
+            ['しんさいばし', '心斎橋 難波'],
+            ['てんま', '天満'],
+            ['きょうと', '京都'],
+            ['こうべ', '神戸 三宮'],
+            ['さんのみや', '神戸 三宮'],
+            ['ひろしま', '広島'],
+            ['おかやま', '岡山'],
+            ['まつやま', '松山'],
+            ['ふくおか', '福岡 天神 小倉'],
+            ['てんじん', '福岡 天神'],
+            ['こくら', '小倉'],
+            ['さっぽろ', '札幌 すすきの'],
+            ['せんだい', '仙台'],
+            ['おきなわ', '沖縄 那覇']
+        ];
+
+        function expandSearchQueryWithAliases(q) {
+            if (!q) return '';
+            for (let i = 0; i < SEARCH_KANA_ALIASES.length; i++) {
+                const [kana, kanji] = SEARCH_KANA_ALIASES[i];
+                if (q === kana || kana.startsWith(q) && q.length >= 3) {
+                    return { raw: q, altTokens: kanji.toLowerCase().split(/\s+/) };
+                }
+            }
+            return { raw: q, altTokens: null };
+        }
+
+        function syncSearchClearBtn() {
+            const input = document.getElementById('search-input');
+            const clearBtn = document.getElementById('search-clear-btn');
+            if (!clearBtn) return;
+            const hasVal = Boolean(input && String(input.value || '').length > 0);
+            clearBtn.classList.toggle('hidden', !hasVal);
+        }
+
         function handleSearch(query) {
-            currentSearch = query.toLowerCase();
+            currentSearch = String(query || '').trim().toLowerCase();
+            syncSearchClearBtn();
             if (window.lastData) updateUI(window.lastData);
         }
+
+        function clearSearchInput() {
+            const input = document.getElementById('search-input');
+            if (input) {
+                input.value = '';
+            }
+            currentSearch = '';
+            syncSearchClearBtn();
+            if (window.lastData) updateUI(window.lastData);
+            if (input) {
+                try { input.focus(); } catch (e) {}
+            }
+        }
+
+        function resetAllFilters() {
+            currentFilter = 'All';
+            currentSearch = '';
+            const input = document.getElementById('search-input');
+            if (input) input.value = '';
+            syncSearchClearBtn();
+            document.querySelectorAll('.filter-btn').forEach(b => {
+                b.classList.toggle('active', b.dataset.region === 'All');
+            });
+            if (window.lastData) {
+                updateUI(window.lastData);
+            }
+        }
+
+        (function initSearchEscapeShortcut() {
+            const bindEsc = () => {
+                const input = document.getElementById('search-input');
+                if (!input || input._escBound) return;
+                input._escBound = true;
+                input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape' && input.value) {
+                        e.preventDefault();
+                        clearSearchInput();
+                    }
+                });
+                syncSearchClearBtn();
+            };
+            bindEsc();
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', bindEsc);
+            }
+        })();
 
         function evaluateLadiesStoreJs(store) {
             const w = Math.max(0, Number(store && store.women) || 0);
@@ -926,8 +1026,8 @@
             }
             if (notify && typeof showRefreshToast === 'function') {
                 showRefreshToast(currentAudience === 'women'
-                    ? '💄 女性目線モード（ライト配色・待ち0順）に切り替えました'
-                    : '🕺 男性目線モード（女性人数順）に切り替えました');
+                    ? '女性目線モード（ライト配色・待ち0順）に切り替えました'
+                    : '男性目線モード（女性人数順）に切り替えました');
             }
             if (!IS_STAFF && !IS_STAFF_SESSION && notify && navigator.sendBeacon) {
                 try {
@@ -959,13 +1059,13 @@
 
         // Add filter button listeners
         document.querySelectorAll('.filter-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
+            btn.addEventListener('click', () => {
                 // Remove active class from all
                 document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
                 // Add active to clicked
-                e.target.classList.add('active');
+                btn.classList.add('active');
 
-                currentFilter = e.target.dataset.region;
+                currentFilter = btn.dataset.region;
 
                 // Re-render with cached data if available (or wait for next fetch)
                 if (window.lastData) {
@@ -1926,14 +2026,105 @@
                 cleanNameCounts[key] = (cleanNameCounts[key] || 0) + 1;
             });
 
+            const searchSpec = currentSearch ? expandSearchQueryWithAliases(currentSearch) : null;
             let filteredStores = stores.filter(store => {
                 const matchRegion = matchesRegionOrCityFilter(store, currentFilter);
                 if (!matchRegion) return false;
                 if (currentSearch === '') return true;
                 const bInfo = detectBrandInfo(store);
                 const searchable = `${store.name} ${bInfo.code} ${bInfo.cleanName} ${bInfo.areaLabel}`.toLowerCase();
-                return searchable.includes(currentSearch);
+                if (searchable.includes(currentSearch)) return true;
+                if (searchSpec && Array.isArray(searchSpec.altTokens)) {
+                    return searchSpec.altTokens.some(tok => tok && searchable.includes(tok));
+                }
+                return false;
             });
+
+            (function renderActiveFilterSummary() {
+                const summaryBar = document.getElementById('active-filter-summary');
+                const metricsEl = document.getElementById('active-filter-metrics');
+                if (!summaryBar || !metricsEl) return;
+                const isFiltered = (currentFilter !== 'All') || (currentSearch !== '');
+                if (!isFiltered) {
+                    summaryBar.classList.add('hidden');
+                    return;
+                }
+                const activeRegionBtn = document.querySelector('.filter-btn.active');
+                const regionText = (currentFilter !== 'All' && activeRegionBtn) ? activeRegionBtn.textContent.trim() : '';
+                const inputEl = document.getElementById('search-input');
+                const rawQuery = (inputEl && inputEl.value ? inputEl.value.trim() : currentSearch).slice(0, 24);
+                let condLabel = '';
+                if (regionText && rawQuery) {
+                    condLabel = `${regionText}・「${rawQuery}」`;
+                } else if (regionText) {
+                    condLabel = regionText;
+                } else {
+                    condLabel = `検索「${rawQuery}」`;
+                }
+
+                let sumW = 0;
+                let sumM = 0;
+                let vipZeroWait = 0;
+                for (let i = 0; i < filteredStores.length; i++) {
+                    const st = filteredStores[i];
+                    const w = Math.max(0, Number(st.women) || 0);
+                    const m = Math.max(0, Number(st.men) || 0);
+                    sumW += w;
+                    sumM += m;
+                    if (m >= 4 && m >= w) vipZeroWait++;
+                }
+                const tot = sumW + sumM;
+                const wPct = tot > 0 ? Math.round((sumW / tot) * 100) : 0;
+                const isWomenMode = !IS_STAFF && currentAudience === 'women';
+
+                metricsEl.replaceChildren();
+                const strongEl = document.createElement('strong');
+                strongEl.className = 'afs-title';
+                strongEl.textContent = `${condLabel} ${filteredStores.length}店舗`;
+                metricsEl.appendChild(strongEl);
+
+                if (filteredStores.length > 0) {
+                    const sepEl = document.createElement('span');
+                    sepEl.className = 'afs-sep';
+                    sepEl.textContent = '｜';
+                    metricsEl.appendChild(sepEl);
+
+                    const wSpan = document.createElement('span');
+                    wSpan.className = 'afs-w';
+                    wSpan.textContent = `女性 ${sumW}名`;
+
+                    const colonSpan = document.createElement('span');
+                    colonSpan.className = 'afs-colon';
+                    colonSpan.textContent = ' : ';
+
+                    const mSpan = document.createElement('span');
+                    mSpan.className = 'afs-m';
+                    mSpan.textContent = `男性 ${sumM}名`;
+
+                    if (isWomenMode) {
+                        metricsEl.appendChild(mSpan);
+                        metricsEl.appendChild(colonSpan);
+                        metricsEl.appendChild(wSpan);
+                        if (vipZeroWait > 0) {
+                            const subEl = document.createElement('span');
+                            subEl.className = 'afs-sub';
+                            subEl.textContent = `（待ち0圏 ${vipZeroWait}店）`;
+                            metricsEl.appendChild(subEl);
+                        }
+                    } else {
+                        metricsEl.appendChild(wSpan);
+                        metricsEl.appendChild(colonSpan);
+                        metricsEl.appendChild(mSpan);
+                        if (tot > 0) {
+                            const subEl = document.createElement('span');
+                            subEl.className = 'afs-sub';
+                            subEl.textContent = `（女性比 ${wPct}%）`;
+                            metricsEl.appendChild(subEl);
+                        }
+                    }
+                }
+                summaryBar.classList.remove('hidden');
+            })();
 
             // Pre-calculate distance if user location is available
             if (userLocation) {
@@ -1986,10 +2177,27 @@
             }
 
             if (filteredStores.length === 0) {
-                const emptyP = document.createElement('p');
-                emptyP.style.cssText = 'color: var(--text-secondary); width: 100%; text-align: center;';
-                emptyP.textContent = '該当する店舗がありません';
-                rankingList.replaceChildren(emptyP);
+                const emptyBox = document.createElement('div');
+                emptyBox.className = 'empty-filter-state';
+                const emptyTitle = document.createElement('p');
+                emptyTitle.className = 'empty-filter-title';
+                emptyTitle.textContent = '該当する店舗がありません';
+                emptyBox.appendChild(emptyTitle);
+
+                if (currentFilter !== 'All' || currentSearch !== '') {
+                    const emptySub = document.createElement('p');
+                    emptySub.className = 'empty-filter-sub';
+                    emptySub.textContent = '検索キーワードまたはエリア条件を解除すると、全店舗の現在人数を確認できます。';
+                    const resetBtn = document.createElement('button');
+                    resetBtn.type = 'button';
+                    resetBtn.className = 'empty-filter-reset-btn';
+                    resetBtn.textContent = '条件をリセットして全店舗を表示';
+                    resetBtn.onclick = resetAllFilters;
+                    emptyBox.appendChild(emptySub);
+                    emptyBox.appendChild(resetBtn);
+                }
+
+                rankingList.replaceChildren(emptyBox);
                 pinnedList.replaceChildren();
                 pinnedContainer.classList.add('hidden');
                 _syncPrevStoreCounts(stores);

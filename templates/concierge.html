@@ -383,6 +383,7 @@
             font-size: 0.78rem;
             font-weight: 800;
             color: var(--accent-text);
+            font-variant-numeric: tabular-nums;
         }
         .verdict-store-title {
             margin: 0 0 6px;
@@ -420,6 +421,7 @@
             margin-bottom: 8px;
             flex-wrap: wrap;
             gap: 8px;
+            font-variant-numeric: tabular-nums;
         }
         .hc-num-w {
             font-size: 1.05rem;
@@ -684,7 +686,7 @@
             color: var(--text-sub);
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=22">
+    <link rel="stylesheet" href="/static/calm.css?v=23">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -707,15 +709,15 @@
 
         <!-- Interactive 3-Second Concierge Console -->
         <section class="concierge-console" aria-label="診断条件の選択">
-            <div class="concierge-kicker">🧭 REALTIME × 30-DAY STATS × WALKING DISTANCE</div>
+            <div class="concierge-kicker">REALTIME × HISTORICAL LOGS × WALKING DISTANCE</div>
             <h1>今夜どこ行く？3秒穴場＆徒歩ハシゴ診断</h1>
-            <p class="concierge-lead">全国53店舗の現在男女比・過去ログの終電後定着率・店舗間の徒歩距離から、「いま入るべき第1候補」と「空振り時の徒歩ハシゴ第2候補」を0.1秒で算出します。</p>
+            <p class="concierge-lead">全国主要店舗の現在男女比・過去ログの終電後定着率・店舗間の徒歩距離から、「いま入るべき第1候補」と「空振り時の徒歩ハシゴ第2候補」を0.1秒で算出します。</p>
 
             <div class="ctrl-group">
                 <span class="ctrl-label">1. どちらの目線で探す？</span>
                 <div class="ctrl-row ctrl-row--audience">
-                    <button type="button" class="c-pill {% if res.audience == 'men' %}active{% endif %}" data-param="audience" data-val="men">🕺 男性目線（女性優位・待ち回避）</button>
-                    <button type="button" class="c-pill {% if res.audience == 'women' %}active{% endif %}" data-param="audience" data-val="women">💄 女性目線（待ち0分・快適着席）</button>
+                    <button type="button" class="c-pill {% if res.audience == 'men' %}active{% endif %}" data-param="audience" data-val="men">男性目線（女性優位・待ち回避）</button>
+                    <button type="button" class="c-pill {% if res.audience == 'women' %}active{% endif %}" data-param="audience" data-val="women">女性目線（待ち0分・快適着席）</button>
                 </div>
             </div>
 
@@ -731,23 +733,23 @@
             <div class="ctrl-group">
                 <span class="ctrl-label">3. 入店する時間帯</span>
                 <div class="ctrl-row">
-                    <button type="button" class="c-pill {% if res.timing == 'now' %}active{% endif %}" data-param="timing" data-val="now">⚡ 今から直行（現在人数重視）</button>
-                    <button type="button" class="c-pill {% if res.timing == 'prime_21' %}active{% endif %}" data-param="timing" data-val="prime_21">🍻 20〜22時（1軒目コア帯）</button>
-                    <button type="button" class="c-pill {% if res.timing == 'late_23' %}active{% endif %}" data-param="timing" data-val="late_23">🌙 23時以降（終電後・2回転目）</button>
+                    <button type="button" class="c-pill {% if res.timing == 'now' %}active{% endif %}" data-param="timing" data-val="now">今から直行（現在人数重視）</button>
+                    <button type="button" class="c-pill {% if res.timing == 'prime_21' %}active{% endif %}" data-param="timing" data-val="prime_21">20〜22時（1軒目コア帯）</button>
+                    <button type="button" class="c-pill {% if res.timing == 'late_23' %}active{% endif %}" data-param="timing" data-val="late_23">23時以降（終電後・2回転目）</button>
                 </div>
             </div>
 
             <div class="ctrl-group">
                 <span class="ctrl-label">4. 今夜の人数 / 5. 希望の雰囲気</span>
                 <div class="ctrl-row" style="margin-bottom: 7px;">
-                    <button type="button" class="c-pill {% if res.party_size == 'solo' %}active{% endif %}" data-param="party_size" data-val="solo">👤 1人参戦（ソロ対応店優先）</button>
-                    <button type="button" class="c-pill {% if res.party_size == 'pair' %}active{% endif %}" data-param="party_size" data-val="pair">👥 2人組（王道ペア）</button>
-                    <button type="button" class="c-pill {% if res.party_size == 'group' %}active{% endif %}" data-param="party_size" data-val="group">🎉 3人以上（大型フロア優先）</button>
+                    <button type="button" class="c-pill {% if res.party_size == 'solo' %}active{% endif %}" data-param="party_size" data-val="solo">1人参戦（ソロ対応店優先）</button>
+                    <button type="button" class="c-pill {% if res.party_size == 'pair' %}active{% endif %}" data-param="party_size" data-val="pair">2人組（王道ペア）</button>
+                    <button type="button" class="c-pill {% if res.party_size == 'group' %}active{% endif %}" data-param="party_size" data-val="group">3人以上（大型フロア優先）</button>
                 </div>
                 <div class="ctrl-row">
-                    <button type="button" class="c-pill {% if res.vibe == 'any' %}active{% endif %}" data-param="vibe" data-val="any">⚖️ バランス重視</button>
-                    <button type="button" class="c-pill {% if res.vibe == 'lively' %}active{% endif %}" data-param="vibe" data-val="lively">🔥 ワイワイ・20代前半多め</button>
-                    <button type="button" class="c-pill {% if res.vibe == 'calm' %}active{% endif %}" data-param="vibe" data-val="calm">🥂 落ち着いて会話・大人め</button>
+                    <button type="button" class="c-pill {% if res.vibe == 'any' %}active{% endif %}" data-param="vibe" data-val="any">バランス重視</button>
+                    <button type="button" class="c-pill {% if res.vibe == 'lively' %}active{% endif %}" data-param="vibe" data-val="lively">ワイワイ・20代前半多め</button>
+                    <button type="button" class="c-pill {% if res.vibe == 'calm' %}active{% endif %}" data-param="vibe" data-val="calm">落ち着いて会話・大人め</button>
                 </div>
             </div>
         </section>
@@ -774,7 +776,7 @@
                 <!-- Primary Pick -->
                 <article class="verdict-card verdict-card--primary" id="primary-card">
                     <div class="verdict-head-row">
-                        <span class="rank-crown-pill">👑 第1候補（今夜の本命）</span>
+                        <span class="rank-crown-pill">第1候補｜今夜の本命</span>
                         <span class="score-chip" id="p-score">適合スコア {{ p.score }}点</span>
                     </div>
                     <h2 class="verdict-store-title">
@@ -816,7 +818,7 @@
                 <article class="verdict-card" id="backup-card" {% if not b %}style="display:none;"{% endif %}>
                     <div class="verdict-head-row">
                         <span class="rank-backup-pill" id="b-badge">
-                            🚶 第2候補（ハシゴ保険）{% if b_view.walk_minutes_from_primary %}｜本命から徒歩約{{ b_view.walk_minutes_from_primary }}分{% endif %}
+                            第2候補｜ハシゴ保険{% if b_view.walk_minutes_from_primary %}・徒歩約{{ b_view.walk_minutes_from_primary }}分{% endif %}
                         </span>
                         <span class="score-chip" id="b-score">スコア {{ b_view.score }}点</span>
                     </div>
@@ -825,7 +827,7 @@
                     </h2>
 
                     <div class="switch-trigger-box">
-                        <span class="switch-trigger-label">⚡ ハシゴ切り替えの判断ライン</span>
+                        <span class="switch-trigger-label">ハシゴ切り替えの判断ライン</span>
                         <span id="b-trigger">{{ b_view.switch_trigger | default('') }}</span>
                     </div>
 
@@ -854,7 +856,7 @@
 
             <!-- Other Candidates in Same Area -->
             <section class="other-stores-box" id="other-stores-section" {% if not res.other_candidates %}style="display:none;"{% endif %}>
-                <h3 class="other-stores-title">📍 同エリア内の他店舗リアルタイム比較</h3>
+                <h3 class="other-stores-title">同エリア内の他店舗リアルタイム比較</h3>
                 <div class="other-stores-grid" id="other-stores-grid">
                     {% for oc in res.other_candidates %}
                     <a href="{{ oc.store_url }}" class="other-store-item">
@@ -867,11 +869,11 @@
 
             <!-- Second Venue Plan -->
             <section class="after-plan-card" id="second-venue-box">
-                <h2>🍸 相席後の2軒目おすすめスポット＆自然な誘い出しプラン</h2>
+                <h2>相席後の2軒目おすすめスポット＆自然な誘い出しプラン</h2>
                 <p style="margin: 0 0 6px; font-size: 0.85rem; font-weight: 700; color: var(--text-main);" id="sv-title">狙い目エリア：{{ sv.spot_title }}</p>
                 <p style="margin: 0 0 10px; font-size: 0.83rem; color: var(--text-sub);" id="sv-spots">{{ sv.spots }}</p>
-                <div class="invite-quote" id="sv-phrase">💬 誘い方例：{{ sv.invite_phrase }}</div>
-                <p style="margin: 0; font-size: 0.79rem; color: var(--text-sub);" id="sv-timing">⏱️ {{ sv.timing_advice }} <a href="{{ sv.guide_url | default('/guide/second-venue') }}" class="editorial-inline-link" style="margin-left: 6px;">2軒目誘い出し完全ガイド ›</a></p>
+                <div class="invite-quote" id="sv-phrase">誘い方例：{{ sv.invite_phrase }}</div>
+                <p style="margin: 0; font-size: 0.79rem; color: var(--text-sub);" id="sv-timing">目安タイミング：{{ sv.timing_advice }} <a href="{{ sv.guide_url | default('/guide/second-venue') }}" class="editorial-inline-link" style="margin-left: 6px;">2軒目誘い出し完全ガイド ›</a></p>
             </section>
 
             {% if not is_staff and not session.get('is_staff') %}
@@ -892,18 +894,18 @@
         <div class="share-bar-row">
             <span style="font-size: 0.82rem; color: var(--text-sub);">今夜の合流メンバーにこの診断プランを共有：</span>
             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                <button type="button" id="copy-plan-url-btn" class="c-pill" style="color: var(--accent-text); border-color: var(--border-gold);">🔗 この診断URLをコピー</button>
-                <a href="/price-comparison" class="btn-subtle-action">💰 料金・開催中イベント比較</a>
-                <a href="{{ res.area_portal_url }}" class="btn-subtle-action" id="bottom-area-guide-link">🗺️ エリア詳細ガイド</a>
+                <button type="button" id="copy-plan-url-btn" class="c-pill" style="color: var(--accent-text); border-color: var(--border-gold);">この診断URLをコピー</button>
+                <a href="/price-comparison" class="btn-subtle-action">料金・開催中イベント比較</a>
+                <a href="{{ res.area_portal_url }}" class="btn-subtle-action" id="bottom-area-guide-link">エリア詳細ガイド</a>
             </div>
         </div>
 
         <!-- SEO FAQ Section -->
         <section class="faq-section">
-            <h2>❓ 3秒穴場＆ハシゴ診断のよくある質問</h2>
+            <h2>3秒穴場＆ハシゴ診断のよくある質問</h2>
             <details class="faq-item" open>
                 <summary>どのようなデータをもとに「本命」と「第2候補」を選んでいますか？</summary>
-                <p>全国53店舗（オリエンタルラウンジ・ag・JIS・各地の人気相席ラウンジ）の現在リアルタイム男女人数に加え、過去30日間の蓄積ログから算出した時間帯別コアタイム比率・23時以降の終電後定着率、各店舗の1名（ソロ）入店規定、そして店舗間の緯度経度から算出した推定徒歩分数を掛け合わせて判定しています。</p>
+                <p>全国主要店舗（オリエンタルラウンジ・ag・JIS・各地の人気相席ラウンジ）の現在リアルタイム男女人数に加え、過去30日間の蓄積ログから算出した時間帯別コアタイム比率・23時以降の終電後定着率、各店舗の1名（ソロ）入店規定、そして店舗間の緯度経度から算出した推定徒歩分数を掛け合わせて判定しています。</p>
             </details>
             <details class="faq-item">
                 <summary>本命店から第2候補へハシゴ移動するベストなタイミングは？</summary>
@@ -911,11 +913,11 @@
             </details>
             <details class="faq-item">
                 <summary>男性1人（ソロ）で行くときの注意点はありますか？</summary>
-                <p>オリエンタルラウンジ新宿・渋谷本店・恵比寿・大阪駅前・名古屋錦やag渋谷・ag上野・ag名古屋などは公式規定で「男性2名以上必須」となっています。上の条件ボタンで「👤 1人参戦」を選ぶと、JIS西新宿やJIS梅田、オリエンタルラウンジ名古屋栄・上野など1名入店OKの店舗を自動的に最優先で提案します。</p>
+                <p>オリエンタルラウンジ新宿・渋谷本店・恵比寿・大阪駅前・名古屋錦やag渋谷・ag上野・ag名古屋などは公式規定で「男性2名以上必須」となっています。上の条件ボタンで「1人参戦」を選ぶと、JIS西新宿やJIS梅田、オリエンタルラウンジ名古屋栄・上野など1名入店OKの店舗を自動的に最優先で提案します。</p>
             </details>
             <details class="faq-item">
                 <summary>女性ペアが受付で待たされずに座るコツは？</summary>
-                <p>週末21時〜22時半に女性比率が70%近い店舗へ行くと、女性でも受付で20〜40分待つケースがあります。「💄 女性目線」を選んで現在男性が先行している店舗へ向かうと、待ち時間ゼロで広いソファ席へ案内されやすくなります。</p>
+                <p>週末21時〜22時半に女性比率が70%近い店舗へ行くと、女性でも受付で20〜40分待つケースがあります。「女性目線」を選んで現在男性が先行している店舗へ向かうと、待ち時間ゼロで広いソファ席へ案内されやすくなります。</p>
             </details>
         </section>
 
@@ -1031,8 +1033,8 @@
                     bCard.style.display = 'none';
                 } else {
                     bCard.style.display = '';
-                    var walkTxt = b.walk_minutes_from_primary ? ('｜本命から徒歩約' + b.walk_minutes_from_primary + '分') : '';
-                    setText('b-badge', '🚶 第2候補（ハシゴ保険）' + walkTxt);
+                    var walkTxt = b.walk_minutes_from_primary ? ('・徒歩約' + b.walk_minutes_from_primary + '分') : '';
+                    setText('b-badge', '第2候補｜ハシゴ保険' + walkTxt);
                     setText('b-score', 'スコア ' + b.score + '点');
                     var bLink = document.getElementById('b-store-link');
                     if (bLink) {
@@ -1080,10 +1082,10 @@
             var sv = data.second_venue_tip || {};
             setText('sv-title', '狙い目エリア：' + (sv.spot_title || ''));
             setText('sv-spots', sv.spots || '');
-            setText('sv-phrase', '💬 誘い方例：' + (sv.invite_phrase || ''));
+            setText('sv-phrase', '誘い方例：' + (sv.invite_phrase || ''));
             var svTiming = document.getElementById('sv-timing');
             if (svTiming) {
-                svTiming.innerHTML = '⏱️ ' + escHtml(sv.timing_advice || '') +
+                svTiming.innerHTML = '目安タイミング：' + escHtml(sv.timing_advice || '') +
                     ' <a href="' + escHtml(sv.guide_url || '/guide/second-venue') + '" class="editorial-inline-link" style="margin-left:6px;">2軒目誘い出し完全ガイド ›</a>';
             }
 
@@ -1160,8 +1162,8 @@
                 var url = window.location.origin + '/concierge?' + buildQuery();
                 if (navigator.clipboard && navigator.clipboard.writeText) {
                     navigator.clipboard.writeText(url).then(function() {
-                        copyBtn.textContent = '✅ コピーしました！';
-                        setTimeout(function() { copyBtn.textContent = '🔗 この診断URLをコピー'; }, 2000);
+                        copyBtn.textContent = 'コピーしました';
+                        setTimeout(function() { copyBtn.textContent = 'この診断URLをコピー'; }, 2000);
                     });
                 }
             });

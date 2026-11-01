@@ -5199,3 +5199,294 @@ body.theme-light .event-cta-btn {
     border: 1px solid rgba(110, 79, 35, 0.5) !important;
     color: var(--calm-light-accent) !important;
 }
+
+/* ==========================================================================
+   脱AIエディトリアルタイポグラフィ ＆ 機能的片手操作UX拡張（v23）
+   - 全数値要素の縦揃え（tabular-nums）徹底
+   - 絵文字に頼らないステータスドット＆見出しアクセント
+   - 検索クリア（✕）ボタン・リアルタイム絞り込み集計バー・0件時ワンタップ復帰UI
+   ========================================================================== */
+
+.ranking-item .count,
+.ranking-item .stat-diff,
+.ranking-item .stat-usual,
+.ranking-item .rank-badge,
+.ranking-item .store-micro-metrics,
+.ranking-item .moat-pill,
+.ranking-item .momentum-tag,
+.ranking-item .distance-tag,
+#last-update,
+.active-filter-summary,
+.comp-table td,
+.data-table td,
+.area-live-totals,
+.live-counts-row,
+.city-pinpoint-live {
+    font-variant-numeric: tabular-nums;
+}
+
+.status-dot-live {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    margin-right: 6px;
+    vertical-align: middle;
+    background: #4ca87a;
+}
+
+body.theme-light .status-dot-live {
+    background: #22734b;
+}
+
+#pinned-list-container .section-title {
+    font-family: var(--font-editorial);
+    font-size: 0.96rem;
+    letter-spacing: 0.04em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#pinned-list-container .section-title::before {
+    content: "";
+    display: inline-block;
+    width: 3px;
+    height: 14px;
+    border-radius: 2px;
+    background: var(--calm-accent);
+}
+
+body.theme-light #pinned-list-container .section-title::before {
+    background: var(--calm-light-accent);
+}
+
+/* 検索入力ラッパー ＆ ワンタップ「✕」クリアボタン */
+.search-input-wrap {
+    position: relative;
+    width: 100%;
+    display: flex;
+    align-items: center;
+}
+
+.search-input-wrap #search-input {
+    padding-right: 40px !important;
+}
+
+.search-clear-btn {
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1px solid var(--calm-border-strong);
+    background: var(--calm-surface);
+    color: var(--calm-sub);
+    font-size: 0.78rem;
+    font-weight: 700;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.search-clear-btn.hidden {
+    display: none !important;
+}
+
+body:not(.theme-light) .search-clear-btn:hover,
+body:not(.theme-light) .search-clear-btn:focus-visible {
+    background: var(--calm-accent-soft);
+    border-color: var(--calm-accent);
+    color: var(--calm-text);
+}
+
+body.theme-light .search-clear-btn {
+    background: var(--calm-light-surface-2);
+    border-color: var(--calm-light-border-strong);
+    color: var(--calm-light-sub);
+}
+
+body.theme-light .search-clear-btn:hover,
+body.theme-light .search-clear-btn:focus-visible {
+    background: var(--calm-light-accent-soft);
+    border-color: var(--calm-light-accent);
+    color: var(--calm-light-text);
+}
+
+/* リアルタイム絞り込み集計 ＆ ワンタップ解除ストリップ */
+.active-filter-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 12px;
+    flex-wrap: wrap;
+    padding: 8px 12px;
+    margin: 2px 0 10px;
+    border-radius: 10px;
+    background: var(--calm-surface);
+    border: 1px solid var(--calm-border-strong);
+    font-size: 0.8rem;
+    line-height: 1.4;
+}
+
+.active-filter-summary.hidden {
+    display: none !important;
+}
+
+body.theme-light .active-filter-summary {
+    background: var(--calm-light-surface);
+    border-color: var(--calm-light-border-strong);
+}
+
+.afs-metrics {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px 6px;
+    color: var(--calm-text);
+}
+
+body.theme-light .afs-metrics {
+    color: var(--calm-light-text);
+}
+
+.afs-title {
+    font-weight: 700;
+    color: var(--calm-accent-text);
+}
+
+body.theme-light .afs-title {
+    color: var(--calm-light-accent);
+}
+
+.afs-sep,
+.afs-colon,
+.afs-sub {
+    color: var(--calm-sub);
+    font-size: 0.76rem;
+}
+
+body.theme-light .afs-sep,
+body.theme-light .afs-colon,
+body.theme-light .afs-sub {
+    color: var(--calm-light-sub);
+}
+
+.afs-w {
+    font-weight: 700;
+    color: var(--calm-women);
+}
+
+body.theme-light .afs-w {
+    color: var(--calm-light-women);
+}
+
+.afs-m {
+    font-weight: 700;
+    color: var(--calm-men);
+}
+
+body.theme-light .afs-m {
+    color: var(--calm-light-men);
+}
+
+.afs-reset-btn {
+    flex-shrink: 0;
+    min-height: 30px;
+    padding: 4px 11px;
+    border-radius: 999px;
+    border: 1px solid rgba(200, 164, 110, 0.45);
+    background: var(--calm-surface-2);
+    color: var(--calm-text);
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.afs-reset-btn:hover {
+    background: var(--calm-accent-soft);
+}
+
+body.theme-light .afs-reset-btn {
+    background: var(--calm-light-surface-2);
+    border-color: rgba(110, 79, 35, 0.45);
+    color: var(--calm-light-text);
+}
+
+body.theme-light .afs-reset-btn:hover {
+    background: var(--calm-light-accent-soft);
+}
+
+/* 0件ヒット時のデッドエンド解消リカバリーカード */
+.empty-filter-state {
+    width: 100%;
+    padding: 28px 18px;
+    border-radius: 12px;
+    text-align: center;
+    background: var(--calm-surface);
+    border: 1px solid var(--calm-border);
+    box-sizing: border-box;
+}
+
+body.theme-light .empty-filter-state {
+    background: var(--calm-light-surface);
+    border-color: var(--calm-light-border-strong);
+}
+
+.empty-filter-title {
+    margin: 0 0 6px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--calm-text);
+}
+
+body.theme-light .empty-filter-title {
+    color: var(--calm-light-text);
+}
+
+.empty-filter-sub {
+    margin: 0 0 16px;
+    font-size: 0.8rem;
+    color: var(--calm-sub);
+    line-height: 1.55;
+}
+
+body.theme-light .empty-filter-sub {
+    color: var(--calm-light-sub);
+}
+
+.empty-filter-reset-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 38px;
+    padding: 8px 20px;
+    border-radius: 999px;
+    border: 1px solid rgba(200, 164, 110, 0.5);
+    background: var(--calm-surface-2);
+    color: var(--calm-accent-text);
+    font-size: 0.84rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.empty-filter-reset-btn:hover {
+    background: var(--calm-accent-soft);
+}
+
+body.theme-light .empty-filter-reset-btn {
+    background: var(--calm-light-surface-2);
+    border-color: rgba(110, 79, 35, 0.5);
+    color: var(--calm-light-accent);
+}
+
+body.theme-light .empty-filter-reset-btn:hover {
+    background: var(--calm-light-accent-soft);
+}

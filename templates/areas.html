@@ -600,7 +600,7 @@
             .concierge-gold-btn { width: 100%; }
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=22">
+    <link rel="stylesheet" href="/static/calm.css?v=23">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -632,7 +632,7 @@
                 {% endfor %}
             </div>
             <div class="area-pills-bar" style="margin-bottom: 0;">
-                <span class="area-pills-sublabel">📍 主要都市ピンポイント：</span>
+                <span class="area-pills-sublabel">主要都市ピンポイント：</span>
                 {% for item in area_summaries if item.info.parent_area %}
                 <a href="/area/{{ item.slug }}" class="area-pill area-pill--city {% if selected_area and selected_area.slug == item.slug %}active{% endif %}">
                     <span>{{ item.info.short_name }}</span>
@@ -659,7 +659,7 @@
 
             {% if selected_area.info.sub_areas %}
             <div class="subarea-crossbar">
-                <span class="subarea-crossbar-label">🏙️ 都市別ピンポイント深掘りガイド：</span>
+                <span class="subarea-crossbar-label">都市別ピンポイント深掘りガイド：</span>
                 {% for sub_slug in selected_area.info.sub_areas %}
                     {% for item in area_summaries if item.slug == sub_slug %}
                     <a href="/area/{{ item.slug }}" class="subarea-chip-link">
@@ -670,7 +670,7 @@
             </div>
             {% elif selected_area.info.parent_area %}
             <div class="subarea-crossbar">
-                <span class="subarea-crossbar-label">🗺️ 広域エリア比較：</span>
+                <span class="subarea-crossbar-label">広域エリア比較：</span>
                 {% for item in area_summaries if item.slug == selected_area.info.parent_area %}
                 <a href="/area/{{ item.slug }}" class="subarea-chip-link">
                     <span>{{ item.info.name }}（全{{ item.store_count }}店舗）をまとめて見る ›</span>
@@ -689,7 +689,7 @@
                     <p class="concierge-promo-desc">1人参戦の入店規定・営業時間・現在の男女バランス・終電後の定着率まで加味して最適ルートを提案します。</p>
                 </div>
                 <a href="/concierge?area={{ c_area_key }}" class="concierge-gold-btn">
-                    🧭 このエリアで今夜の3秒穴場＆ハシゴ診断をする ›
+                    このエリアで今夜の3秒穴場＆ハシゴ診断をする ›
                 </a>
             </div>
 
@@ -723,7 +723,7 @@
 
             <div style="text-align: center; margin: 18px 0 26px; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
                 <a href="/concierge?area={{ c_area_key }}" class="area-cta-btn">
-                    🧭 {{ selected_area.info.short_name }}の3秒穴場＆ハシゴ診断 ›
+                    {{ selected_area.info.short_name }}の3秒穴場＆ハシゴ診断 ›
                 </a>
                 <a href="/" class="area-pill" style="padding: 10px 18px;">
                     トップ画面で曜日・時間帯別の詳細グラフを見る ›
@@ -738,19 +738,19 @@
             <div class="tactical-deep-grid">
                 {% if selected_area.info.hopping_route %}
                 <section class="tactical-card">
-                    <h3>🚶 徒歩ハシゴ黄金ルート</h3>
+                    <h3>徒歩ハシゴ黄金ルート</h3>
                     <p>{{ selected_area.info.hopping_route }}</p>
                 </section>
                 {% endif %}
                 {% if selected_area.info.last_train_cliff %}
                 <section class="tactical-card">
-                    <h3>🚃 終電崖＆深夜2回転目の境界線</h3>
+                    <h3>終電崖＆深夜2回転目の境界線</h3>
                     <p>{{ selected_area.info.last_train_cliff }}</p>
                 </section>
                 {% endif %}
                 {% if selected_area.info.solo_friendliness %}
                 <section class="tactical-card">
-                    <h3>🕺 1人参戦・ペア別の立ち回り</h3>
+                    <h3>1人参戦・ペア別の立ち回り</h3>
                     <p>{{ selected_area.info.solo_friendliness }}</p>
                 </section>
                 {% endif %}
@@ -759,21 +759,21 @@
             <h2 class="section-subhead">{{ selected_area.info.short_name }}の客層・狙い目時間・2軒目スポット</h2>
             <div class="area-guide-points">
                 <div class="area-point-box">
-                    <h3>✨ 店舗ごとの特徴と客層</h3>
+                    <h3>店舗ごとの特徴と客層</h3>
                     <p>{{ selected_area.info.atmosphere }}</p>
                 </div>
                 <div class="area-point-box">
-                    <h3>⏰ 狙い目の曜日・時間帯</h3>
+                    <h3>狙い目の曜日・時間帯</h3>
                     <p>{{ selected_area.info.best_time }}</p>
                 </div>
                 <div class="area-point-box">
-                    <h3>🍸 2軒目に使いやすい周辺エリア</h3>
+                    <h3>2軒目に使いやすい周辺エリア</h3>
                     <p>{{ selected_area.info.second_spot }}</p>
                 </div>
             </div>
 
             {% if selected_area.info.faqs %}
-            <h2 class="section-subhead">❓ {{ selected_area.info.short_name }}の相席ラウンジ よくある質問（FAQ）</h2>
+            <h2 class="section-subhead">{{ selected_area.info.short_name }}の相席ラウンジ よくある質問（FAQ）</h2>
             <div class="area-faq-list">
                 {% for faq in selected_area.info.faqs %}
                 <details class="area-faq-item" {% if loop.first %}open{% endif %}>
@@ -794,18 +794,18 @@
         <!-- National Concierge Banner -->
         <div class="concierge-promo-banner">
             <div class="concierge-promo-copy">
-                <span class="concierge-promo-badge">NEW ｜ 3秒穴場＆ハシゴ診断コンシェルジュ</span>
+                <span class="concierge-promo-badge">3秒穴場＆ハシゴ診断コンシェルジュ</span>
                 <p class="concierge-promo-title">どの店舗に入るか迷ったら、条件を選ぶだけで「本命＋徒歩ハシゴ候補」を即時判定</p>
                 <p class="concierge-promo-desc">新宿・渋谷・梅田・難波・横浜・大宮・名古屋・福岡・広島・札幌・仙台など全国主要エリアに対応。</p>
             </div>
             <a href="/concierge" class="concierge-gold-btn">
-                🧭 今夜の3秒穴場＆ハシゴ診断を開く ›
+                今夜の3秒穴場＆ハシゴ診断を開く ›
             </a>
         </div>
 
         <!-- Pinpoint High-Demand City Guides -->
         <section class="city-pinpoint-section" aria-label="主要都市ピンポイント攻略ガイド">
-            <h2 class="section-subhead" style="margin-top: 6px;">🏙️ 検索人気の主要7都市ピンポイント攻略ガイド</h2>
+            <h2 class="section-subhead" style="margin-top: 6px;">検索人気の主要7都市ピンポイント攻略ガイド</h2>
             <div class="city-pinpoint-grid">
                 {% for item in area_summaries if item.info.parent_area %}
                 <a href="/area/{{ item.slug }}" class="city-pinpoint-card">
@@ -845,7 +845,7 @@
 
             {% if item.info.sub_areas %}
             <div class="subarea-crossbar" style="margin-bottom: 12px;">
-                <span class="subarea-crossbar-label">📍 都市別ガイド：</span>
+                <span class="subarea-crossbar-label">都市別ガイド：</span>
                 {% for sub_slug in item.info.sub_areas %}
                     {% for sub_item in area_summaries if sub_item.slug == sub_slug %}
                     <a href="/area/{{ sub_item.slug }}" class="subarea-chip-link">{{ sub_item.info.short_name }}（{{ sub_item.store_count }}店） ›</a>
@@ -885,18 +885,18 @@
 
             <div class="area-guide-points">
                 <div class="area-point-box">
-                    <h3>🚶 徒歩ハシゴ＆店舗の選び方</h3>
+                    <h3>徒歩ハシゴ＆店舗の選び方</h3>
                     <p>{{ item.info.hopping_route or item.info.atmosphere }}</p>
                 </div>
                 <div class="area-point-box">
-                    <h3>🚃 終電崖・ソロ参戦・2軒目傾向</h3>
+                    <h3>終電崖・ソロ参戦・2軒目傾向</h3>
                     <p>{{ item.info.solo_friendliness }} {{ item.info.second_spot }}</p>
                 </div>
             </div>
 
             <div style="margin-top: 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
                 <a href="/concierge?area={{ item_c_area }}" style="color: var(--accent-text); font-size: 0.81rem; font-weight: 700; text-decoration: none;">
-                    🧭 {{ item.info.short_name }}で3秒穴場診断 ›
+                    {{ item.info.short_name }}で3秒穴場診断 ›
                 </a>
                 <a href="/area/{{ item.slug }}" style="color: var(--accent-text); font-size: 0.83rem; font-weight: 600; text-decoration: none;">
                     {{ item.info.short_name }}の全店舗・FAQ・詳細ガイドを見る ›

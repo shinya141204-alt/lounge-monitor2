@@ -167,7 +167,7 @@
         }
 
         .article-cat-tag {
-            background: linear-gradient(135deg, #ec4899, #8b5cf6);
+            background: rgba(200, 164, 110, 0.22); border: 1px solid rgba(200, 164, 110, 0.45);
             color: #fff;
             font-size: 0.72rem;
             font-weight: 700;
@@ -431,7 +431,7 @@
             gap: 8px;
             padding: 13px 28px;
             border-radius: 999px;
-            background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);
+            background: rgba(200, 164, 110, 0.22); border: 1px solid rgba(200, 164, 110, 0.45);
             color: #fff !important;
             text-decoration: none;
             font-weight: 700;
@@ -496,7 +496,7 @@
             gap: 8px;
             padding: 12px 28px;
             border-radius: 999px;
-            background: linear-gradient(90deg, #ec4899, #3b82f6);
+            background: rgba(200, 164, 110, 0.22); border: 1px solid rgba(200, 164, 110, 0.45);
             color: #fff;
             text-decoration: none;
             font-size: 0.96rem;
@@ -518,7 +518,7 @@
             border-color: rgba(236, 72, 153, 0.5);
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=22">
+    <link rel="stylesheet" href="/static/calm.css?v=23">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -562,7 +562,7 @@
 
         <!-- Table of Contents -->
         <section class="toc-box">
-            <h2 class="toc-title">📑 目次</h2>
+            <h2 class="toc-title">目次</h2>
             <ul class="toc-list">
                 <li><a href="#section-1">1. 全国の現在人数がわかる『相席ナビ』の使い方（全国63店舗対応）</a></li>
                 <li><a href="#section-brand">2. 相席ラウンジ・相席バー4大タイプの違いと料金システム早見表</a></li>
@@ -593,7 +593,7 @@
             </p>
 
             <div class="article-highlight-box">
-                <h4>✨ 相席ナビでできること（完全無料・登録不要）</h4>
+                <h4>相席ナビでできること（完全無料・登録不要）</h4>
                 <ul>
                     <li><strong>全国63店舗のリアルタイム人数ランキング：</strong>オリエンタルラウンジ、ag（アグ）、JIS（ジス）、ASOBIBAR（アソビバー）、ヤタコイ、XIX、ALFA、CLOVERSなど、全国63店舗（国内61店舗＋韓国2店舗）の現在人数と男女比を1分間隔で確認できます。</li>
                     <li><strong>60分後AI男女比予測＆リアル待ち時間推論：</strong>「いま向かって着く頃にも女性優位が続くか（⚡殺到注意 / 🛡️確変持続）」や、JIS公式POS実測データから学習した予想待ち組数・分数がひと目でわかります。</li>
@@ -602,7 +602,7 @@
             </div>
 
             <div class="live-tool-cta-box">
-                <h3>🍻 いま人が集まっている店舗を見る</h3>
+                <h3>いま人が集まっている店舗を見る</h3>
                 <p>全国63店舗の現在人数・60分後AI予測バッジをリアルタイム更新中</p>
                 <a href="/" class="live-tool-btn">リアルタイム人数ランキングを見る ›</a>
             </div>
@@ -732,28 +732,28 @@
             <div class="live-tool-cta-box">
                 <h3>全国63店舗の今と「60分後」がわかる！</h3>
                 <p>リアルタイム混雑人数・男女比・AI予測バッジ『相席ナビ』</p>
-                <a href="/" class="live-tool-btn">🔥 今すぐランキングを見る ›</a>
+                <a href="/" class="live-tool-btn">今すぐランキングを見る ›</a>
             </div>
 
             <!-- Related Articles Navigation -->
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-top: 24px;">
-                <div class="related-article-card" style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(245, 158, 11, 0.35); border-radius: 14px; padding: 18px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);">
-                    <span style="display: inline-block; background: rgba(245, 158, 11, 0.18); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); font-size: 0.72rem; font-weight: 800; padding: 2px 8px; border-radius: 4px; margin-bottom: 8px;">⚡ 最新98万件検証</span>
+                <div class="related-article-card" style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(200, 164, 110, 0.28); border-radius: 14px; padding: 18px;">
+                    <span class="article-cat-tag" style="display: inline-block; margin-bottom: 8px;">最新98万件検証</span>
                     <h4 style="margin: 0 0 6px 0; font-size: 0.98rem; color: #fff; line-height: 1.4;">金土22時の「群衆殺到パラドックス」と70%バッファの法則</h4>
                     <p style="margin: 0 0 12px 0; font-size: 0.82rem; color: #94a3b8; line-height: 1.5;">週末22時発で29.8%が男余りへ逆転する理由と、97.7%女子優位を維持するお店選び。</p>
-                    <a href="/guide/crowd-rush-paradox" style="display: inline-flex; align-items: center; gap: 4px; background: linear-gradient(135deg, #d97706, #f59e0b); color: #fff; text-decoration: none; padding: 7px 16px; border-radius: 8px; font-size: 0.82rem; font-weight: 700;">検証コラムを読む ›</a>
+                    <a href="/guide/crowd-rush-paradox" class="cta-btn" style="display: inline-flex; align-items: center; gap: 4px; text-decoration: none; padding: 7px 16px; border-radius: 8px; font-size: 0.82rem; font-weight: 700;">検証コラムを読む ›</a>
                 </div>
-                <div class="related-article-card" style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 14px; padding: 18px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);">
-                    <span style="display: inline-block; background: rgba(2, 132, 199, 0.2); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.4); font-size: 0.72rem; font-weight: 800; padding: 2px 8px; border-radius: 4px; margin-bottom: 8px;">⚡ 平日の穴場データ</span>
+                <div class="related-article-card" style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(200, 164, 110, 0.28); border-radius: 14px; padding: 18px;">
+                    <span class="article-cat-tag" style="display: inline-block; margin-bottom: 8px;">平日の穴場データ</span>
                     <h4 style="margin: 0 0 6px 0; font-size: 0.98rem; color: #fff; line-height: 1.4;">なぜ水曜・木曜の20時〜22時が一番相席しやすいのか？</h4>
                     <p style="margin: 0 0 12px 0; font-size: 0.82rem; color: #94a3b8; line-height: 1.5;">週末の入店待ちや混雑を避けて、仕事帰りの女性と落ち着いて話せる平日の穴場時間をデータで解説。</p>
-                    <a href="/guide/weekday-strategy" style="display: inline-flex; align-items: center; gap: 4px; background: linear-gradient(135deg, #0284c7, #3b82f6); color: #fff; text-decoration: none; padding: 7px 16px; border-radius: 8px; font-size: 0.82rem; font-weight: 700; box-shadow: 0 2px 10px rgba(2, 132, 199, 0.3);">平日コラムを読む ›</a>
+                    <a href="/guide/weekday-strategy" class="cta-btn" style="display: inline-flex; align-items: center; gap: 4px; text-decoration: none; padding: 7px 16px; border-radius: 8px; font-size: 0.82rem; font-weight: 700;">平日コラムを読む ›</a>
                 </div>
-                <div class="related-article-card" style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(236, 72, 153, 0.35); border-radius: 14px; padding: 18px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);">
-                    <span style="display: inline-block; background: rgba(236, 72, 153, 0.2); color: #f472b6; border: 1px solid rgba(236, 72, 153, 0.4); font-size: 0.72rem; font-weight: 800; padding: 2px 8px; border-radius: 4px; margin-bottom: 8px;">⚖️ 3大ブランド比較</span>
+                <div class="related-article-card" style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(200, 164, 110, 0.28); border-radius: 14px; padding: 18px;">
+                    <span class="article-cat-tag" style="display: inline-block; margin-bottom: 8px;">3大ブランド比較</span>
                     <h4 style="margin: 0 0 6px 0; font-size: 0.98rem; color: #fff; line-height: 1.4;">オリエンタルラウンジ・JIS・ag 3大ブランドの違い</h4>
                     <p style="margin: 0 0 12px 0; font-size: 0.82rem; color: #94a3b8; line-height: 1.5;">料金・年齢層・客層の違いと、その日の気分に合わせたお店選びのポイント。</p>
-                    <a href="/guide/brand-comparison" style="display: inline-flex; align-items: center; gap: 4px; background: linear-gradient(135deg, #ec4899, #8b5cf6); color: #fff; text-decoration: none; padding: 7px 16px; border-radius: 8px; font-size: 0.82rem; font-weight: 700; box-shadow: 0 2px 10px rgba(236, 72, 199, 0.3);">3大ブランド比較を読む ›</a>
+                    <a href="/guide/brand-comparison" class="cta-btn" style="display: inline-flex; align-items: center; gap: 4px; text-decoration: none; padding: 7px 16px; border-radius: 8px; font-size: 0.82rem; font-weight: 700;">3大ブランド比較を読む ›</a>
                 </div>
             </div>
         </article>

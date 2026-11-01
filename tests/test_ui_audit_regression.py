@@ -3,7 +3,7 @@
 tests/test_ui_audit_regression.py - UI・コントラスト・キャッシュバスティング・ブランド表記 回帰テストスイート
 
 独立監査の9項目に対する自動回帰テスト:
-1. Cache-Control: immutable 対応のキャッシュバスティング同期 (calm.css?v=22, portal.css?v=10, app.js?v=20261101_2, affiliate_config.js?v=13, sw.js?v=74, aiseki-navi-v74)
+1. Cache-Control: immutable 対応のキャッシュバスティング同期 (calm.css?v=23, portal.css?v=10, app.js?v=20261101_3, affiliate_config.js?v=13, sw.js?v=74, aiseki-navi-v75)
 2. ページバンドル単位でのCSSカスタムプロパティ未定義参照ゼロ（フォールバック付き var() 含む） & #comparison-modal 男女人数カラー変数
 3. ライトモード .area-tag の枠線・背景なし端正タイポグラフィ統一
 4. PC (860px / 1280px) .portal-global-nav の折り返し表示（右端文字切れ・テーマ切替ボタン干渉ゼロ）＆モバイル横スワイプ維持
@@ -105,13 +105,13 @@ class UiAuditRegressionTests(unittest.TestCase):
     # ------------------------------------------------------------------
     def test_cache_busting_sync_across_templates_and_service_worker(self):
         """全テンプレートと static/sw.js のアセットバージョンが完全同期し、immutable ヘッダが正しく付与されること"""
-        expected_calm = "/static/calm.css?v=22"
+        expected_calm = "/static/calm.css?v=23"
         expected_portal = "/static/portal.css?v=10"
-        expected_app_js = "/static/app.js?v=20261101_2"
+        expected_app_js = "/static/app.js?v=20261101_3"
         expected_aff_js = "/static/affiliate_config.js?v=13"
         expected_style = "/static/style.css?v=20261030_6"
-        expected_sw_url = "/sw.js?v=74"
-        expected_cache_name = "aiseki-navi-v74"
+        expected_sw_url = "/sw.js?v=75"
+        expected_cache_name = "aiseki-navi-v75"
 
         templates_dir = os.path.join(PROJECT_ROOT, "templates")
         calm_seen = 0
@@ -1099,9 +1099,78 @@ class UiAuditRegressionTests(unittest.TestCase):
                         self.assertLessEqual(pill["height"], 24)
                     self.assertEqual(mob_state["navWrap"], "nowrap")
                     self.assertEqual(mob_state["navOverflowX"], "auto")
+
+                    # 5. Functional UX on Mobile 390px: kana search, 1-tap clear, active filter summary, and 0-hit recovery
+                    self.assertTrue(mpage.locator("#search-clear-btn").is_hidden())
+                    self.assertTrue(mpage.locator("#active-filter-summary").is_hidden())
+
+                    mpage.fill("#search-input", "しんじゅく")
+                    mpage.wait_for_timeout(80)
+                    self.assertFalse(mpage.locator("#search-clear-btn").is_hidden())
+                    self.assertFalse(mpage.locator("#active-filter-summary").is_hidden())
+                    summary_txt = mpage.locator("#active-filter-metrics").inner_text()
+                    self.assertIn("店舗", summary_txt)
+                    self.assertGreaterEqual(mpage.locator("#ranking-list .ranking-item").count(), 1)
+
+                    mpage.click("#search-clear-btn")
+                    mpage.wait_for_timeout(80)
+                    self.assertEqual(mpage.input_value("#search-input"), "")
+                    self.assertTrue(mpage.locator("#search-clear-btn").is_hidden())
+                    self.assertTrue(mpage.locator("#active-filter-summary").is_hidden())
+
+                    # Area filter -> summary strip -> 1-tap reset
+                    mpage.click('.filter-btn[data-region="City:shinjuku"]')
+                    mpage.wait_for_timeout(80)
+                    self.assertFalse(mpage.locator("#active-filter-summary").is_hidden())
+                    self.assertIn("新宿", mpage.locator("#active-filter-metrics").inner_text())
+                    mpage.click(".afs-reset-btn")
+                    mpage.wait_for_timeout(80)
+                    self.assertTrue(mpage.locator("#active-filter-summary").is_hidden())
+
+                    # 0-hit recovery button restores full store list
+                    mpage.fill("#search-input", "存在しない店舗テスト999")
+                    mpage.wait_for_timeout(80)
+                    self.assertEqual(mpage.locator(".empty-filter-reset-btn").count(), 1)
+                    mpage.click(".empty-filter-reset-btn")
+                    mpage.wait_for_timeout(80)
+                    self.assertEqual(mpage.input_value("#search-input"), "")
+                    self.assertGreaterEqual(mpage.locator("#ranking-list .ranking-item").count(), 2)
+
                     ctx_mob.close()
                 finally:
                     browser.close()
+
+    # ------------------------------------------------------------------
+    # 7. Anti-AI Design Guard: zero neon gradients & tabular-nums enforcement
+    # ------------------------------------------------------------------
+    def test_anti_ai_zero_neon_gradients_and_tabular_nums(self):
+        """全公開テンプレートに旧ネオンピンク×紫グラデーションが残存せず、主要数値に tabular-nums が適用されていること"""
+        neon_re = re.compile(r"linear-gradient\([^)]*(?:#ec4899|#8b5cf6|#3b82f6|#d946ef|#f43f5e)", re.I)
+        templates_dir = os.path.join(PROJECT_ROOT, "templates")
+        offenders = []
+        for fname in sorted(os.listdir(templates_dir)):
+            if not fname.endswith(".html") or fname.startswith("staff_"):
+                continue
+            with open(os.path.join(templates_dir, fname), "r", encoding="utf-8") as fp:
+                txt = fp.read()
+            hits = neon_re.findall(txt)
+            if hits:
+                offenders.append((fname, hits[:2]))
+        self.assertEqual(offenders, [], f"Legacy neon gradients found in public templates: {offenders}")
+
+        calm_path = os.path.join(PROJECT_ROOT, "static", "calm.css")
+        with open(calm_path, "r", encoding="utf-8") as fp:
+            calm_txt = fp.read()
+        self.assertIn("font-variant-numeric: tabular-nums", calm_txt)
+        self.assertIn(".search-clear-btn", calm_txt)
+        self.assertIn(".active-filter-summary", calm_txt)
+        self.assertIn(".empty-filter-reset-btn", calm_txt)
+
+        nav_path = os.path.join(templates_dir, "_portal_nav.html")
+        with open(nav_path, "r", encoding="utf-8") as fp:
+            nav_txt = fp.read()
+        for banned_emoji in ("🧭", "💄", "☀️", "🌙"):
+            self.assertNotIn(banned_emoji, nav_txt)
 
 
 if __name__ == "__main__":
