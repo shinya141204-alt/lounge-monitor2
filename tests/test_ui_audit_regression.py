@@ -110,8 +110,8 @@ class UiAuditRegressionTests(unittest.TestCase):
         expected_app_js = "/static/app.js?v=20261102_1"
         expected_aff_js = "/static/affiliate_config.js?v=13"
         expected_style = "/static/style.css?v=20261030_6"
-        expected_sw_url = "/sw.js?v=76"
-        expected_cache_name = "aiseki-navi-v76"
+        expected_sw_url = "/sw.js?v=77"
+        expected_cache_name = "aiseki-navi-v77"
 
         templates_dir = os.path.join(PROJECT_ROOT, "templates")
         calm_seen = 0

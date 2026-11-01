@@ -1,5 +1,5 @@
-// Supersedes aiseki-navi-v47..v75 (purged automatically on activate)
-const CACHE_NAME = 'aiseki-navi-v76';
+// Supersedes aiseki-navi-v47..v76 (purged automatically on activate)
+const CACHE_NAME = 'aiseki-navi-v77';
 const SHELL_KEY = '/';
 const LIVE_FRESH_TTL_MS = 45000;
 const PREFETCH_DEDUP_MS = 25000;

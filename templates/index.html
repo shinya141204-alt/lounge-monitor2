@@ -132,13 +132,14 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="相席ナビ">
 
+    <link rel="stylesheet" href="/static/style.css?v=20261030_6" fetchpriority="high">
+    <link rel="stylesheet" href="/static/calm.css?v=24" fetchpriority="high">
+    <link rel="preload" href="/static/app.js?v=20261102_1" as="script">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- Non-render-blocking web font (avoids waiting on Google Fonts at PWA cold launch) -->
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet"></noscript>
-    <link rel="stylesheet" href="/static/style.css?v=20261030_6">
-    <link rel="preload" href="/static/app.js?v=20261102_1" as="script">
     <script>
         window.APP_CONFIG = {
             isStaff: {{ 'true' if is_staff else 'false' }},
@@ -148,11 +149,8 @@
     </script>
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
-         crossorigin="anonymous"></script>
     <script src="/static/affiliate_config.js?v=13" defer></script>
     {% endif %}
-    <link rel="stylesheet" href="/static/calm.css?v=24">
 </head>
 
 <body class="{% if is_staff %}staff-mode{% endif %}">
@@ -2325,7 +2323,7 @@
                 }
                 if (window.__swRegistered) return;
                 window.__swRegistered = true;
-                navigator.serviceWorker.register('/sw.js?v=76', { updateViaCache: 'none' })
+                navigator.serviceWorker.register('/sw.js?v=77', { updateViaCache: 'none' })
                     .then(function(reg) {
                         reg.update();
                         document.addEventListener('visibilitychange', function() {
@@ -2336,6 +2334,10 @@
             });
         }
     </script>
+    {% if not is_staff and not session.get('is_staff') %}
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
+         crossorigin="anonymous"></script>
+    {% endif %}
 </body>
 
 </html>

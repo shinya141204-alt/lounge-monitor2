@@ -197,18 +197,6 @@
         updateBar();
     }
 
-    function ensureEditorialFont() {
-        try {
-            if (document.querySelector('link[href*="Shippori+Mincho"]')) return;
-            var l = document.createElement('link');
-            l.rel = 'stylesheet';
-            l.href = 'https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@600;700&display=swap';
-            l.media = 'print';
-            l.onload = function() { l.media = 'all'; };
-            document.head.appendChild(l);
-        } catch (e) {}
-    }
-
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initEditorialReadingProgress, { once: true });
     } else {
@@ -293,12 +281,8 @@
         unlockModalsAndBodyScroll();
     });
 
-    // Load editorial serif non-blockingly (media="print" -> "all") without waiting for slow third-party window.load
-    ensureEditorialFont();
-
-    // Ensure Service Worker v70 is registered on subpages too + warm primary tabs during idle
+    // Ensure Service Worker v77 is registered on subpages too + warm primary tabs during idle
     window.addEventListener('load', function() {
-        ensureEditorialFont();
         if ('serviceWorker' in navigator) {
             if (IS_STAFF_VIEW || window.location.pathname.indexOf('/staff') === 0) {
                 try {
@@ -308,7 +292,7 @@
                 } catch (e) {}
             } else if (!window.__swRegistered) {
                 window.__swRegistered = true;
-                navigator.serviceWorker.register('/sw.js?v=76', { updateViaCache: 'none' }).catch(function() {});
+                navigator.serviceWorker.register('/sw.js?v=77', { updateViaCache: 'none' }).catch(function() {});
             }
         }
         if (canBackgroundPrefetch()) {
