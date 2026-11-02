@@ -40,10 +40,10 @@ Phase 0 調査で特定された全改修項目および要件の割り当て一
 ## Interface Contracts
 ### Cache-Busting Version Contract
 - `style.css`: 最新の `/static/style.css?v=20261030_6` に全テンプレートおよび `static/sw.js`（`CORE_ASSETS`）で統一。
-- `calm.css`: `/static/calm.css?v=22`
-- `portal.css`: `/static/portal.css?v=10`
-- `app.js`: `/static/app.js?v=20261101_1`
-- `sw.js`: `/sw.js?v=73`
+- `calm.css`: `/static/calm.css?v=25`
+- `portal.css`: `/static/portal.css?v=11`
+- `app.js`: `/static/app.js?v=20261102_2`
+- `sw.js`: `/sw.js?v=78` (`CACHE_NAME = 'aiseki-navi-v78'`)
 
 ### Operational Constraints & Brand Rules
 - GCP有料SDK（`google.cloud`）は一切使用しない。

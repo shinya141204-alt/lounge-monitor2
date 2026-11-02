@@ -133,8 +133,8 @@
     <meta name="apple-mobile-web-app-title" content="相席ナビ">
 
     <link rel="stylesheet" href="/static/style.css?v=20261030_6" fetchpriority="high">
-    <link rel="stylesheet" href="/static/calm.css?v=24" fetchpriority="high">
-    <link rel="preload" href="/static/app.js?v=20261102_1" as="script">
+    <link rel="stylesheet" href="/static/calm.css?v=25" fetchpriority="high">
+    <link rel="preload" href="/static/app.js?v=20261102_2" as="script">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- Non-render-blocking web font (avoids waiting on Google Fonts at PWA cold launch) -->
@@ -612,8 +612,13 @@
                             {% else %}
                                 {% set ssr_human_copy = '現在女性が' ~ ssr_w_num ~ '名・男性が' ~ ssr_m_num ~ '名入店中です' %}
                             {% endif %}
-                            <div class="ranking-item{% if loop.first %} is-inspector-selected{% endif %}{% if s.ssr_rank == 1 %} rank-1{% elif s.ssr_rank == 2 %} rank-2{% elif s.ssr_rank == 3 %} rank-3{% endif %}{% if ssr_pulsing %} live-pulse-card{% endif %}" data-store="{{ s.name }}" style="cursor: pointer;" onclick="if(window.handleStoreCardClick)handleStoreCardClick({{ s.name | tojson | forceescape }});else if(window.openModal)openModal({{ s.name | tojson | forceescape }})">
-                                <div class="rank-badge">{{ s.ssr_rank if s.ssr_rank else '-' }}</div>
+                            {% set is_bento_hero = (not is_staff) and loop.first and (s.ssr_rank == 1) %}
+                            <div class="ranking-item{% if loop.first %} is-inspector-selected{% endif %}{% if is_bento_hero %} bento-hero-card{% endif %}{% if s.ssr_rank == 1 %} rank-1{% elif s.ssr_rank == 2 %} rank-2{% elif s.ssr_rank == 3 %} rank-3{% endif %}{% if ssr_pulsing %} live-pulse-card{% endif %}" data-store="{{ s.name }}" style="cursor: pointer;" onclick="if(window.handleStoreCardClick)handleStoreCardClick({{ s.name | tojson | forceescape }});else if(window.openModal)openModal({{ s.name | tojson | forceescape }})">
+                                <div class="bento-kicker-row">
+                                    <span class="bento-kicker-label">TONIGHT'S #1 PICK</span>
+                                    <span class="bento-verdict-pill {{ 'is-wait' if ((ssr_w_num == 0 and ssr_m_num == 0) or ssr_wait_m > 0) else 'is-ok' }}">{% if ssr_w_num == 0 and ssr_m_num == 0 %}準備中{% elif ssr_wait_m > 0 %}男性待機目安 {{ ssr_wait_m }}分{% elif ssr_w_num >= ssr_m_num %}即入店圏{% else %}待ちなし案内中{% endif %}</span>
+                                </div>
+                                <div class="rank-badge">{% if not is_staff and s.ssr_rank %}{{ '%02d'|format(s.ssr_rank) }}{% elif s.ssr_rank %}{{ s.ssr_rank }}{% else %}-{% endif %}</div>
                                 <div class="store-info">
                                     <div class="store-meta-row">
                                         <span class="brand-badge {{ s.ssr_brand_cls }}">{{ s.ssr_brand }}</span>
@@ -657,6 +662,10 @@
                                     </button>
                                 </div>
                                 <div class="stats-group">
+                                    <div class="bento-ratio-hero">
+                                        <div class="bento-ratio-main"><span class="bento-ratio-num">{{ s.ssr_ladies_pct if (ssr_w_num + ssr_m_num) > 0 else 0 }}</span><span class="bento-ratio-unit">%</span></div>
+                                        <span class="bento-ratio-caption">女性比</span>
+                                    </div>
                                     <div class="stat ladies">
                                         <div class="stat-num-row">
                                             <span class="count">{{ s.women or 0 }}</span>
@@ -761,7 +770,7 @@
                                             var c = cards[j];
                                             var sName = c.getAttribute('data-store');
                                             if (sName && pinSet[sName]) {
-                                                c.classList.remove('rank-1', 'rank-2', 'rank-3');
+                                                c.classList.remove('rank-1', 'rank-2', 'rank-3', 'bento-hero-card');
                                                 c.classList.add('pinned-item');
                                                 var pb = c.querySelector('.pin-btn');
                                                 if (pb) pb.classList.add('active');
@@ -770,6 +779,13 @@
                                             }
                                         }
                                         if (moved > 0) {
+                                            var newFirst = rList.querySelector('.ranking-item[data-store]');
+                                            if (newFirst && !document.body.classList.contains('staff-mode')) {
+                                                var rb = newFirst.querySelector('.rank-badge');
+                                                if (!rb || rb.textContent.trim() !== '-') {
+                                                    newFirst.classList.add('bento-hero-card');
+                                                }
+                                            }
                                             pCont.classList.remove('hidden');
                                             window.__SSR_PINNED_HYDRATED = true;
                                         }
@@ -2245,7 +2261,11 @@
     <!-- Template for ranking item -->
     <template id="ranking-item-template">
         <div class="ranking-item">
-            <div class="rank-badge">1</div>
+            <div class="bento-kicker-row">
+                <span class="bento-kicker-label">TONIGHT'S #1 PICK</span>
+                <span class="bento-verdict-pill is-ok">即入店圏</span>
+            </div>
+            <div class="rank-badge">01</div>
             <div class="store-info">
                 <div class="store-meta-row">
                     <span class="brand-badge">オリエンタルラウンジ</span>
@@ -2277,6 +2297,10 @@
                 </button>
             </div>
             <div class="stats-group">
+                <div class="bento-ratio-hero">
+                    <div class="bento-ratio-main"><span class="bento-ratio-num">0</span><span class="bento-ratio-unit">%</span></div>
+                    <span class="bento-ratio-caption">女性比</span>
+                </div>
                 <div class="stat ladies">
                     <div class="stat-num-row">
                         <span class="count">0</span>
@@ -2307,7 +2331,7 @@
         window.INITIAL_STATUS_DATA = {{ initial_status | tojson }};
     </script>
     {% endif %}
-    <script src="/static/app.js?v=20261102_1" defer></script>
+    <script src="/static/app.js?v=20261102_2" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
@@ -2323,7 +2347,7 @@
                 }
                 if (window.__swRegistered) return;
                 window.__swRegistered = true;
-                navigator.serviceWorker.register('/sw.js?v=77', { updateViaCache: 'none' })
+                navigator.serviceWorker.register('/sw.js?v=78', { updateViaCache: 'none' })
                     .then(function(reg) {
                         reg.update();
                         document.addEventListener('visibilitychange', function() {

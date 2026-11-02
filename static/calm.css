@@ -5621,15 +5621,33 @@ body.theme-light:not(.staff-mode) .filter-btn.active {
     box-shadow: none !important;
 }
 
-/* 検索バー＆ソートバーの丸み・余白クリーン化 */
-body:not(.staff-mode) #search-input {
-    border-radius: 14px !important;
-    border-color: var(--calm-border-strong) !important;
+/* --- 案2：Editorial Bento（Luma / Apple 流）コマンドカプセル＆シグネチャーBento＋エアリー・ヘアライン行 --- */
+.bento-kicker-row,
+.bento-ratio-hero {
+    display: none;
 }
 
-body.theme-light:not(.staff-mode) #search-input {
-    background: #ffffff !important;
-    border-color: var(--calm-light-border-strong) !important;
+/* 目線モードバー・3秒診断リボンのノイズ引き算 */
+body:not(.staff-mode) .audience-mode-bar {
+    border-radius: 18px;
+    padding: 8px 12px;
+}
+
+body:not(.theme-light):not(.staff-mode) .audience-mode-toggle {
+    background: var(--calm-bg);
+    border-color: var(--calm-border);
+}
+
+body:not(.theme-light):not(.staff-mode) .audience-pill-btn.active {
+    background: var(--cm-cta-bg);
+    color: var(--cm-cta-text);
+    box-shadow: none;
+}
+
+body.theme-light:not(.staff-mode):not(.audience-women) .audience-pill-btn.active {
+    background: var(--cm-cta-bg);
+    color: var(--cm-cta-text);
+    box-shadow: none;
 }
 
 body:not(.staff-mode) .concierge-quick-banner {
@@ -5654,58 +5672,422 @@ body.theme-light:not(.staff-mode) .cqb-cta {
     border-radius: 999px !important;
 }
 
-/* クリーン・ミニマル店舗カード（余白・角丸18px・ゴールド装飾撤廃・やさしい1行ガイド） */
-body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item {
-    border-radius: 18px !important;
-    padding: 14px 16px 18px !important;
-    border: 1px solid var(--calm-border) !important;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18) !important;
-    transition: border-color 0.16s ease, background-color 0.16s ease;
-}
-
-body.theme-light:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item {
-    border: 1px solid var(--calm-light-border) !important;
-    box-shadow: 0 2px 8px rgba(24, 24, 27, 0.04) !important;
-}
-
-body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item.rank-1 {
+/* 検索バー＆ソートバーのカプセル統合（PCは1本のコマンドバー、スマホは端正なピル型） */
+body:not(.staff-mode) #search-input {
+    border-radius: 999px !important;
     border-color: var(--calm-border-strong) !important;
 }
 
-body.theme-light:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item.rank-1 {
+body.theme-light:not(.staff-mode) #search-input {
+    background: #ffffff !important;
     border-color: var(--calm-light-border-strong) !important;
 }
 
-/* 順位バッジ：メタリック金銀銅をやめ、ミニマルなモノクローム章へ */
-body:not(.theme-light):not(.staff-mode) .rank-1 .rank-badge {
+body:not(.theme-light):not(.staff-mode) .sort-controls {
+    background: var(--calm-surface) !important;
+    border: 1px solid var(--calm-border) !important;
+    border-radius: 999px !important;
+}
+
+body.theme-light:not(.staff-mode) .sort-controls {
+    background: #ffffff !important;
+    border: 1px solid var(--calm-light-border) !important;
+    border-radius: 999px !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .sort-btn {
+    background: transparent !important;
+    border: 1px solid transparent !important;
+    border-radius: 999px !important;
+    color: var(--calm-sub) !important;
+}
+
+body.theme-light:not(.staff-mode) .sort-btn {
+    background: transparent !important;
+    border: 1px solid transparent !important;
+    border-radius: 999px !important;
+    color: var(--calm-light-sub) !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .sort-btn.active {
+    background: var(--cm-cta-bg) !important;
+    border-color: var(--cm-cta-bg) !important;
+    color: var(--cm-cta-text) !important;
+    font-weight: 700 !important;
+}
+
+body.theme-light:not(.staff-mode) .sort-btn.active {
+    background: var(--cm-cta-bg) !important;
+    border-color: var(--cm-cta-bg) !important;
+    color: var(--cm-cta-text) !important;
+    font-weight: 700 !important;
+    box-shadow: none !important;
+}
+
+@media (min-width: 769px) {
+    body:not(.staff-mode) .search-sort-container {
+        flex-direction: row;
+        align-items: center;
+        gap: 8px;
+        padding: 5px 6px;
+        border-radius: 999px;
+        background: var(--calm-surface);
+        border: 1px solid var(--calm-border);
+        margin-bottom: 12px;
+    }
+
+    body.theme-light:not(.staff-mode) .search-sort-container {
+        background: #ffffff;
+        border-color: var(--calm-light-border);
+        box-shadow: 0 2px 10px rgba(24, 24, 27, 0.03);
+    }
+
+    body:not(.staff-mode) .search-sort-container .search-input-wrap {
+        flex: 1 1 210px;
+        min-width: 170px;
+    }
+
+    body:not(.staff-mode) .search-sort-container #search-input,
+    body.theme-light:not(.staff-mode) .search-sort-container #search-input {
+        background: transparent !important;
+        border-color: transparent !important;
+        box-shadow: none !important;
+        padding: 8px 32px 8px 14px !important;
+        font-size: 0.86rem;
+    }
+
+    body:not(.theme-light):not(.staff-mode) .search-sort-container .sort-controls {
+        flex: 0 1 auto;
+        background: var(--calm-bg) !important;
+        border-color: var(--calm-border) !important;
+        padding: 3px;
+        gap: 3px;
+    }
+
+    body.theme-light:not(.staff-mode) .search-sort-container .sort-controls {
+        flex: 0 1 auto;
+        background: var(--calm-light-bg) !important;
+        border-color: var(--calm-light-border) !important;
+        padding: 3px;
+        gap: 3px;
+    }
+
+    body:not(.staff-mode) .search-sort-container .sort-btn {
+        flex: 0 0 auto;
+        padding: 6px 12px;
+        font-size: 0.78rem;
+    }
+}
+
+/* Editorial Bento リスト構造（スマホ・タブレット・PC 共通で1列構成：#1 Bentoヒーロー ＋ #2以降エアリー・ヘアライン行） */
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) #ranking-list,
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) #pinned-list {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 0 !important;
+}
+
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) #ranking-list > .pr-card-item {
+    margin: 10px 0;
+}
+
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item.live-pulse-card::before {
+    display: none !important;
+}
+
+body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item .store-name {
+    font-weight: 700 !important;
+    letter-spacing: -0.015em !important;
+}
+
+/* 1) #1 シグネチャー Bento ヒーローカード (.bento-hero-card) */
+body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item.bento-hero-card {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+        "kicker actions"
+        "info   stats"
+        "bar    bar";
+    column-gap: 16px;
+    row-gap: 12px;
+    align-items: end;
+    border-radius: 24px !important;
+    padding: 18px 20px 18px !important;
+    margin-bottom: 14px !important;
+    background: var(--calm-surface) !important;
+    border: 1px solid var(--calm-border-strong) !important;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.22) !important;
+    transition: border-color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+body.theme-light:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item.bento-hero-card {
+    background: #ffffff !important;
+    border: 1px solid var(--calm-light-border-strong) !important;
+    box-shadow: 0 8px 24px rgba(24, 24, 27, 0.05) !important;
+}
+
+body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item.bento-hero-card > .rank-badge {
+    display: none !important;
+}
+
+body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item.bento-hero-card > .bento-kicker-row {
+    grid-area: kicker;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    min-width: 0;
+    align-self: center;
+}
+
+.bento-kicker-label {
+    font-family: var(--font-num);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--calm-sub);
+    white-space: nowrap;
+}
+
+body.theme-light .bento-kicker-label {
+    color: var(--calm-light-sub);
+}
+
+.bento-verdict-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1.25;
+    white-space: nowrap;
+}
+
+.bento-verdict-pill.is-ok {
+    background: var(--cm-ok-bg);
+    color: var(--cm-ok-text);
+}
+
+.bento-verdict-pill.is-wait {
+    background: var(--cm-wait-bg);
+    color: var(--cm-wait-text);
+}
+
+body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item.bento-hero-card > .card-actions {
+    grid-area: actions;
+    align-self: center;
+    justify-self: end;
+    margin: 0 !important;
+}
+
+body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item.bento-hero-card > .store-info {
+    grid-area: info;
+    align-self: end;
+    gap: 5px;
+}
+
+body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item.bento-hero-card .store-name {
+    font-size: 1.2rem !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.02em !important;
+    line-height: 1.3 !important;
+}
+
+body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item.bento-hero-card > .stats-group {
+    grid-area: stats;
+    align-self: end;
+    margin: 0 !important;
+    min-width: 0;
+    display: grid !important;
+    grid-template-columns: auto auto;
+    grid-template-areas:
+        "ratio  ratio"
+        "ladies men";
+    column-gap: 12px;
+    row-gap: 5px;
+    justify-items: end;
+    align-items: end;
+}
+
+body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item.bento-hero-card .bento-ratio-hero {
+    grid-area: ratio;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    line-height: 1;
+}
+
+.bento-ratio-main {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 1px;
+    font-family: var(--font-num);
+    font-variant-numeric: tabular-nums;
+}
+
+.bento-ratio-num {
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1;
+    color: var(--calm-text);
+}
+
+body.theme-light .bento-ratio-num {
+    color: var(--calm-light-text);
+}
+
+.bento-ratio-unit {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--calm-sub);
+    margin-left: 1px;
+}
+
+body.theme-light .bento-ratio-unit {
+    color: var(--calm-light-sub);
+}
+
+.bento-ratio-caption {
+    font-size: 0.66rem;
+    font-weight: 600;
+    color: var(--calm-sub);
+    margin-top: 2px;
+}
+
+body.theme-light .bento-ratio-caption {
+    color: var(--calm-light-sub);
+}
+
+body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item.bento-hero-card .stat.ladies {
+    grid-area: ladies;
+}
+
+body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item.bento-hero-card .stat.men {
+    grid-area: men;
+}
+
+body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item.bento-hero-card > .occupancy-bar {
+    grid-area: bar;
+    position: relative !important;
+    bottom: auto !important;
+    left: auto !important;
+    width: 100% !important;
+    height: 3px !important;
+    border-radius: 999px !important;
+    overflow: hidden !important;
+    margin-top: 2px;
+}
+
+/* 2) #2以降の「エアリー・ヘアライン行リスト」（枠線・箱影・太い底辺バーを引き算） */
+body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item:not(.bento-hero-card) {
+    background: transparent !important;
+    border: none !important;
+    border-bottom: 1px solid var(--calm-border) !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    padding: 13px 10px !important;
+    transition: background-color 0.16s ease, border-color 0.16s ease;
+}
+
+body.theme-light:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item:not(.bento-hero-card) {
+    background: transparent !important;
+    border: none !important;
+    border-bottom: 1px solid var(--calm-light-border) !important;
+    box-shadow: none !important;
+}
+
+body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item:not(.bento-hero-card) > .occupancy-bar {
+    display: none !important;
+}
+
+body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item:not(.bento-hero-card) > .rank-badge,
+body.theme-light:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item:not(.bento-hero-card) > .rank-badge {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    width: 24px !important;
+    height: auto !important;
+    margin-right: 12px !important;
+    padding: 0 !important;
+    font-family: var(--font-num);
+    font-variant-numeric: tabular-nums;
+    font-size: 0.78rem !important;
+    font-weight: 600 !important;
+    color: var(--calm-sub) !important;
+}
+
+body.theme-light:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item:not(.bento-hero-card) > .rank-badge {
+    color: var(--calm-light-sub) !important;
+}
+
+@media (hover: hover) {
+    body:not(.theme-light):not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item:not(.bento-hero-card):hover {
+        background: rgba(255, 255, 255, 0.035) !important;
+        border-radius: 14px !important;
+    }
+
+    body.theme-light:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item:not(.bento-hero-card):hover {
+        background: rgba(24, 24, 27, 0.035) !important;
+        border-radius: 14px !important;
+    }
+}
+
+@media (max-width: 600px) {
+    body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item.bento-hero-card {
+        padding: 15px 14px 15px !important;
+        column-gap: 8px;
+        row-gap: 10px;
+        border-radius: 22px !important;
+        margin-bottom: 10px !important;
+    }
+
+    body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item.bento-hero-card .store-name {
+        font-size: 1.04rem !important;
+    }
+
+    body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item.bento-hero-card > .stats-group {
+        column-gap: 8px;
+    }
+
+    .bento-ratio-num {
+        font-size: 1.62rem;
+    }
+
+    .bento-kicker-label {
+        font-size: 0.66rem;
+        letter-spacing: 0.06em;
+    }
+
+    .bento-verdict-pill {
+        font-size: 0.68rem;
+        padding: 2px 8px;
+    }
+
+    body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item:not(.bento-hero-card) {
+        padding: 11px 4px !important;
+    }
+
+    body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item:not(.bento-hero-card) > .rank-badge {
+        width: 21px !important;
+        margin-right: 7px !important;
+        font-size: 0.74rem !important;
+    }
+}
+
+/* リスト表示モード時用の控えめなモノクロ順位バッジ */
+body.theme-list:not(.theme-light):not(.staff-mode) .rank-1 .rank-badge {
     background: #f4f4f5 !important;
     border-color: #f4f4f5 !important;
     color: #111113 !important;
 }
 
-body:not(.theme-light):not(.staff-mode) .rank-2 .rank-badge,
-body:not(.theme-light):not(.staff-mode) .rank-3 .rank-badge {
-    background: var(--calm-surface-2) !important;
-    border-color: var(--calm-border-strong) !important;
-    color: var(--calm-text) !important;
-}
-
-body.theme-light:not(.staff-mode) .rank-1 .rank-badge {
+body.theme-list.theme-light:not(.staff-mode) .rank-1 .rank-badge {
     background: #18181b !important;
     border-color: #18181b !important;
     color: #ffffff !important;
-}
-
-body.theme-light:not(.staff-mode) .rank-2 .rank-badge,
-body.theme-light:not(.staff-mode) .rank-3 .rank-badge {
-    background: var(--calm-light-surface-2) !important;
-    border-color: var(--calm-light-border-strong) !important;
-    color: var(--calm-light-text) !important;
-}
-
-body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item .store-name {
-    font-weight: 700 !important;
-    letter-spacing: -0.01em !important;
 }
 
 body:not(.theme-light) .area-tag {
@@ -5737,28 +6119,20 @@ body.staff-mode .cm-human-line {
     display: none !important;
 }
 
-/* --- PC版 案A：左2列クリーン・ミニマルカード × 右・追従詳細パネル（スティッキー・サイドインスペクタ） --- */
+/* --- PC版 Editorial Bento 2ペイン：左1列（#1 Bentoヒーロー＋#2以降エアリー行） × 右・スティッキー詳細インスペクタ --- */
 .cm-pc-inspector {
     display: none;
 }
 
-@media (min-width: 700px) and (max-width: 1023px) {
-    body:not(.staff-mode):not(.theme-list):not(.compact-mode) #ranking-list,
-    body:not(.staff-mode):not(.theme-list):not(.compact-mode) #pinned-list {
-        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-        gap: 12px !important;
-    }
-}
-
 @media (min-width: 1024px) {
     body:not(.staff-mode):not(.theme-list):not(.compact-mode) .container {
-        max-width: 1200px !important;
+        max-width: 1180px !important;
     }
 
     body:not(.staff-mode):not(.theme-list):not(.compact-mode) .cm-pc-split-layout {
         display: grid;
-        grid-template-columns: minmax(0, 7fr) minmax(330px, 4.7fr);
-        gap: 20px;
+        grid-template-columns: minmax(0, 6.8fr) minmax(340px, 5.2fr);
+        gap: 28px;
         align-items: start;
     }
 
@@ -5766,26 +6140,35 @@ body.staff-mode .cm-human-line {
         min-width: 0;
     }
 
-    body:not(.staff-mode):not(.theme-list):not(.compact-mode) #ranking-list,
-    body:not(.staff-mode):not(.theme-list):not(.compact-mode) #pinned-list {
-        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-        gap: 14px !important;
-    }
-
     body:not(.staff-mode):not(.theme-list):not(.compact-mode) #ranking-list > .empty-filter-state,
     body:not(.staff-mode):not(.theme-list):not(.compact-mode) #ranking-list > .pr-card-item {
         grid-column: 1 / -1;
     }
 
-    body:not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item.is-inspector-selected {
-        border: 1.5px solid rgba(244, 244, 245, 0.55) !important;
-        background: var(--calm-surface-2) !important;
+    body:not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item.bento-hero-card.is-inspector-selected {
+        border: 1.5px solid rgba(244, 244, 245, 0.52) !important;
     }
 
-    body.theme-light:not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item.is-inspector-selected {
+    body.theme-light:not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item.bento-hero-card.is-inspector-selected {
         border: 1.5px solid #18181b !important;
+        box-shadow: 0 10px 28px rgba(24, 24, 27, 0.08) !important;
+    }
+
+    body:not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item:not(.bento-hero-card).is-inspector-selected {
+        background: var(--calm-surface) !important;
+        border: 1px solid var(--calm-border-strong) !important;
+        border-radius: 16px !important;
+        padding-left: 14px !important;
+        padding-right: 14px !important;
+    }
+
+    body.theme-light:not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item:not(.bento-hero-card).is-inspector-selected {
         background: #ffffff !important;
-        box-shadow: 0 4px 16px rgba(24, 24, 27, 0.08) !important;
+        border: 1px solid var(--calm-light-border-strong) !important;
+        border-radius: 16px !important;
+        padding-left: 14px !important;
+        padding-right: 14px !important;
+        box-shadow: 0 4px 16px rgba(24, 24, 27, 0.06) !important;
     }
 
     body:not(.staff-mode):not(.theme-list):not(.compact-mode) .cm-pc-inspector {

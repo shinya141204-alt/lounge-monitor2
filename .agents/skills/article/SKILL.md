@@ -53,7 +53,7 @@ description: >-
    * `<meta name="twitter:card" content="summary_large_image">`
 3. **JSON-LD 構造化データ**：`Article`（`SpeakableSpecification` 付） + `BreadcrumbList` + `FAQPage`
 4. **ナビゲーション・共通CSS・フッター**：
-   * `<link rel="stylesheet" href="/static/style.css?v=20261030_6">`, `<link rel="stylesheet" href="/static/portal.css?v=11">`, `<link rel="stylesheet" href="/static/calm.css?v=24">`（既存ページと完全一致のクエリ文字列）を読み込み、未定義 `var(--...)` や見出し絵文字・派手ネオングラデを一切使わないこと（ライトモード `body.theme-light` でのコントラスト崩れも確認すること）
+   * `<link rel="stylesheet" href="/static/style.css?v=20261030_6">`, `<link rel="stylesheet" href="/static/portal.css?v=11">`, `<link rel="stylesheet" href="/static/calm.css?v=25">`（既存ページと完全一致のクエリ文字列）を読み込み、未定義 `var(--...)` や見出し絵文字・派手ネオングラデを一切使わないこと（ライトモード `body.theme-light` でのコントラスト崩れも確認すること）
    * 上部に `{% set nav_active = 'columns' %}` と `{% include '_portal_nav.html' %}`
    * 下部に `{% include '_portal_footer.html' %}`
    * スタッフ非表示ガード `{% if not is_staff and not session.get('is_staff') %}`（予約記事なら `and not is_scheduled_preview` も追加）で AdSense タグを囲むこと

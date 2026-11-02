@@ -105,13 +105,13 @@ class UiAuditRegressionTests(unittest.TestCase):
     # ------------------------------------------------------------------
     def test_cache_busting_sync_across_templates_and_service_worker(self):
         """全テンプレートと static/sw.js のアセットバージョンが完全同期し、immutable ヘッダが正しく付与されること"""
-        expected_calm = "/static/calm.css?v=24"
+        expected_calm = "/static/calm.css?v=25"
         expected_portal = "/static/portal.css?v=11"
-        expected_app_js = "/static/app.js?v=20261102_1"
+        expected_app_js = "/static/app.js?v=20261102_2"
         expected_aff_js = "/static/affiliate_config.js?v=13"
         expected_style = "/static/style.css?v=20261030_6"
-        expected_sw_url = "/sw.js?v=77"
-        expected_cache_name = "aiseki-navi-v77"
+        expected_sw_url = "/sw.js?v=78"
+        expected_cache_name = "aiseki-navi-v78"
 
         templates_dir = os.path.join(PROJECT_ROOT, "templates")
         calm_seen = 0
@@ -763,16 +763,28 @@ class UiAuditRegressionTests(unittest.TestCase):
                     ranking_txt = page.evaluate("document.getElementById('ranking-list').innerText")
                     self.assertNotRegex(ranking_txt, r"\bOLG\b|\bORIENTAL\b(?!\s*LOUNGE)|\bYATAKOI\b")
 
-                    # Clean Minimal Neutral Dark (#111113), 1-tap Light toggle (#f6f6f7), and PC Plan A Sticky Inspector (#pc-store-inspector)
+                    # Clean Minimal Neutral Dark (#111113), 1-tap Light toggle (#f6f6f7), Editorial Bento (#1 hero + #2+ airy hairline row), and PC Sticky Inspector (#pc-store-inspector)
                     cm_pc_initial = page.evaluate("""() => {
                         const insp = document.getElementById('pc-store-inspector');
                         const modal = document.getElementById('analysis-modal');
+                        const cards = Array.from(document.querySelectorAll('#ranking-list .ranking-item[data-store]'));
+                        const hero = cards[0];
+                        const row2 = cards[1];
+                        const heroCs = hero ? getComputedStyle(hero) : null;
+                        const row2Cs = row2 ? getComputedStyle(row2) : null;
                         return {
                             bodyBg: getComputedStyle(document.body).backgroundColor,
                             inspDisplay: insp ? getComputedStyle(insp).display : 'none',
                             inspPosition: insp ? getComputedStyle(insp).position : '',
                             inspText: insp ? insp.innerText : '',
-                            modalHidden: modal ? modal.classList.contains('hidden') : false
+                            modalHidden: modal ? modal.classList.contains('hidden') : false,
+                            heroHasCls: hero ? hero.classList.contains('bento-hero-card') : false,
+                            heroRadius: heroCs ? heroCs.borderTopLeftRadius : '',
+                            heroKicker: hero ? (hero.querySelector('.bento-kicker-label')?.innerText || '') : '',
+                            row2HasCls: row2 ? row2.classList.contains('bento-hero-card') : true,
+                            row2Bg: row2Cs ? row2Cs.backgroundColor : '',
+                            row2BorderTop: row2Cs ? row2Cs.borderTopWidth : '',
+                            row2BorderBottom: row2Cs ? row2Cs.borderBottomWidth : ''
                         };
                     }""")
                     self.assertEqual(cm_pc_initial["bodyBg"], "rgb(17, 17, 19)")
@@ -781,6 +793,13 @@ class UiAuditRegressionTests(unittest.TestCase):
                     self.assertIn("オリエンタルラウンジ 新宿", cm_pc_initial["inspText"])
                     self.assertNotRegex(cm_pc_initial["inspText"], r"\bOLG\b|\bORIENTAL\b|\bYATAKOI\b")
                     self.assertTrue(cm_pc_initial["modalHidden"])
+                    self.assertTrue(cm_pc_initial["heroHasCls"])
+                    self.assertEqual(cm_pc_initial["heroRadius"], "24px")
+                    self.assertIn("#1 PICK", cm_pc_initial["heroKicker"])
+                    self.assertFalse(cm_pc_initial["row2HasCls"])
+                    self.assertEqual(cm_pc_initial["row2Bg"], "rgba(0, 0, 0, 0)")
+                    self.assertEqual(cm_pc_initial["row2BorderTop"], "0px")
+                    self.assertEqual(cm_pc_initial["row2BorderBottom"], "1px")
 
                     # Clicking 2nd card on PC updates right inspector without opening #analysis-modal
                     page.click('#ranking-list .ranking-item[data-store="OLG ag渋谷"]')

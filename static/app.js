@@ -1188,6 +1188,10 @@
                 menUsualEl: item.querySelector('.stat.men .stat-usual'),
                 ladiesBar: item.querySelector('.bar-fill-ladies'),
                 menBar: item.querySelector('.bar-fill-men'),
+                bentoKickerLabel: item.querySelector('.bento-kicker-label'),
+                bentoVerdictPill: item.querySelector('.bento-verdict-pill'),
+                bentoRatioNum: item.querySelector('.bento-ratio-num'),
+                bentoRatioCaption: item.querySelector('.bento-ratio-caption'),
             };
             return item._refs;
         }
@@ -1674,7 +1678,7 @@
                 .replace(/'/g, '&#39;');
         }
 
-        function renderStore(store, index, container, isPinned = false, globalIndex = null, isDuplicateName = false) {
+        function renderStore(store, index, container, isPinned = false, globalIndex = null, isDuplicateName = false, isBentoHero = false) {
             const storeKey = (store && store.name) ? store.name : '';
             let item = storeKey ? _cardDomPool.get(storeKey) : null;
             if (!item) {
@@ -1718,18 +1722,23 @@
             const isKoreaStore = store.region === 'Korea' || (store.name && (store.name.includes('カンナム') || store.name.includes('ホンデ')));
             const displayRank = isKoreaStore ? '-' : (globalIndex !== null ? globalIndex + 1 : index + 1);
 
-            item.classList.remove('rank-1', 'rank-2', 'rank-3', 'pinned-item');
+            item.classList.remove('rank-1', 'rank-2', 'rank-3', 'pinned-item', 'bento-hero-card');
             if (!isPinned) {
                 if (!isKoreaStore) {
                     if (index === 0) item.classList.add('rank-1');
                     else if (index === 1) item.classList.add('rank-2');
                     else if (index === 2) item.classList.add('rank-3');
+                    if (isBentoHero && !IS_STAFF) item.classList.add('bento-hero-card');
                 }
             } else {
                 item.classList.add('pinned-item');
             }
 
-            if (refs.rankBadge) refs.rankBadge.textContent = displayRank;
+            if (refs.rankBadge) {
+                refs.rankBadge.textContent = (!IS_STAFF && typeof displayRank === 'number')
+                    ? String(displayRank).padStart(2, '0')
+                    : displayRank;
+            }
 
             const brandInfo = detectBrandInfo(store);
             const badgeEl = refs.badgeEl;
@@ -1942,17 +1951,66 @@
                 }
             }
 
-            // Gender ratio bar calculation
+            // Gender ratio bar & Editorial Bento hero metrics calculation
             const ladiesBar = refs.ladiesBar;
             const menBar = refs.menBar;
+            const ladiesPct = totalCount > 0 ? Math.round((ladiesCount / totalCount) * 100) : 0;
+            const menPct = totalCount > 0 ? (100 - ladiesPct) : 0;
             if (totalCount > 0) {
-                const ladiesPct = Math.round((ladiesCount / totalCount) * 100);
-                const menPct = 100 - ladiesPct;
                 ladiesBar.style.width = ladiesPct + '%';
                 menBar.style.width = menPct + '%';
             } else {
                 ladiesBar.style.width = '0%';
                 menBar.style.width = '0%';
+            }
+
+            const isWomenBentoView = (!IS_STAFF && currentAudience === 'women');
+            if (refs.bentoRatioNum) {
+                refs.bentoRatioNum.textContent = isWomenBentoView ? menPct : ladiesPct;
+            }
+            if (refs.bentoRatioCaption) {
+                refs.bentoRatioCaption.textContent = isWomenBentoView ? '男性比' : '女性比';
+            }
+            if (refs.bentoKickerLabel) {
+                if (isWomenBentoView) {
+                    refs.bentoKickerLabel.textContent = "WOMEN'S #1 PICK";
+                } else if (currentSort === 'nearby') {
+                    refs.bentoKickerLabel.textContent = 'NEAREST #1 PICK';
+                } else {
+                    refs.bentoKickerLabel.textContent = "TONIGHT'S #1 PICK";
+                }
+            }
+            if (refs.bentoVerdictPill) {
+                const waitMenMin = Number((store.wait_estimate && store.wait_estimate.est_wait_men_min) || 0);
+                let vLabel = '即入店圏';
+                let vOk = true;
+                if (totalCount === 0) {
+                    vLabel = '準備中';
+                    vOk = false;
+                } else if (isWomenBentoView) {
+                    if (menCount >= 4 && menCount >= ladiesCount) {
+                        vLabel = '女子待ち0・即乾杯';
+                        vOk = true;
+                    } else if (menCount >= 4 && ladiesPct <= 62) {
+                        vLabel = '案内スムーズ';
+                        vOk = true;
+                    } else {
+                        vLabel = '女子多め・待ち注意';
+                        vOk = false;
+                    }
+                } else if (waitMenMin > 0) {
+                    vLabel = `男性待機目安 ${waitMenMin}分`;
+                    vOk = false;
+                } else if (ladiesCount >= menCount) {
+                    vLabel = '即入店圏';
+                    vOk = true;
+                } else {
+                    vLabel = '待ちなし案内中';
+                    vOk = true;
+                }
+                refs.bentoVerdictPill.textContent = vLabel;
+                refs.bentoVerdictPill.classList.toggle('is-ok', vOk);
+                refs.bentoVerdictPill.classList.toggle('is-wait', !vOk);
             }
 
             // Live Pulse & Count Ticker (Design Plan A)
@@ -2318,13 +2376,13 @@
             }
 
             if (canPatchRankingInPlace) {
-                otherItems.forEach((item) => {
-                    renderStore(item.store, item.rank, null, false, item.rank, item.isDup);
+                otherItems.forEach((item, idx) => {
+                    renderStore(item.store, item.rank, null, false, item.rank, item.isDup, idx === 0);
                 });
             } else {
                 const rankingFrag = document.createDocumentFragment();
                 otherItems.forEach((item, idx) => {
-                    renderStore(item.store, item.rank, rankingFrag, false, item.rank, item.isDup);
+                    renderStore(item.store, item.rank, rankingFrag, false, item.rank, item.isDup, idx === 0);
                     // In staff mode / staff session, skip all native in-feed PR cards completely
                     if (infeedActive) {
                         const currentRank = idx + 1;
