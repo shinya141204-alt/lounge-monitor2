@@ -105,13 +105,13 @@ class UiAuditRegressionTests(unittest.TestCase):
     # ------------------------------------------------------------------
     def test_cache_busting_sync_across_templates_and_service_worker(self):
         """全テンプレートと static/sw.js のアセットバージョンが完全同期し、immutable ヘッダが正しく付与されること"""
-        expected_calm = "/static/calm.css?v=27"
-        expected_portal = "/static/portal.css?v=13"
+        expected_calm = "/static/calm.css?v=28"
+        expected_portal = "/static/portal.css?v=14"
         expected_app_js = "/static/app.js?v=20261102_2"
         expected_aff_js = "/static/affiliate_config.js?v=13"
         expected_style = "/static/style.css?v=20261030_6"
-        expected_sw_url = "/sw.js?v=80"
-        expected_cache_name = "aiseki-navi-v80"
+        expected_sw_url = "/sw.js?v=81"
+        expected_cache_name = "aiseki-navi-v81"
 
         templates_dir = os.path.join(PROJECT_ROOT, "templates")
         calm_seen = 0
@@ -1304,6 +1304,155 @@ class UiAuditRegressionTests(unittest.TestCase):
             nav_txt = fp.read()
         for banned_emoji in ("🧭", "💄", "☀️", "🌙"):
             self.assertNotIn(banned_emoji, nav_txt)
+
+    # ------------------------------------------------------------------
+    # 9. Price slot pills (/ 10分 display), JIS charge accuracy & CSS subgrid row alignment
+    # ------------------------------------------------------------------
+    def test_price_slot_pills_and_subgrid_row_alignment(self):
+        """全時間帯ピルで10分料金（定額店は定額プラン）が空欄にならず表示され、JIS他店への大宮U30誤表記がなく、並列カードの罫線が水平整列すること"""
+        self.assertEqual(price_comparison.BRAND_PRICE_SPECS["JIS"]["charge_str"], "550円（テーブルチャージ）")
+        self.assertEqual(price_comparison.STORE_PRICE_TABLE["JIS OMIYA"]["charge_str"], "550円（U30はチャージ0円）")
+
+        try:
+            from playwright.sync_api import sync_playwright
+        except ImportError:
+            self.skipTest("playwright is not installed in this Python environment")
+
+        osaka_stores = [
+            {"name": "OLG 難波", "source": "oriental", "women": 16, "men": 9, "total": 25, "ratio": 1.78, "timestamp": "2026-11-02 21:15:00"},
+            {"name": "JIS NAMBA", "source": "jis", "women": 11, "men": 7, "total": 18, "ratio": 1.57, "timestamp": "2026-11-02 21:15:00"},
+            {"name": "ASOBIBAR 心斎橋", "source": "asobibar", "women": 14, "men": 12, "total": 26, "ratio": 1.17, "timestamp": "2026-11-02 21:15:00"},
+        ]
+        with app_module.data_lock:
+            app_module.latest_data["full_data"] = osaka_stores
+            app_module.latest_data["top5"] = osaka_stores
+            app_module.latest_data["last_updated"] = "2026-11-02 21:15:00"
+            app_module.latest_data["status"] = "ok"
+        app_module.clear_fast_http_caches()
+
+        base = "http://aiseki.local"
+
+        def attach_router(ctx, client):
+            def handle(route):
+                req = route.request
+                u = urlparse(req.url)
+                if u.netloc != "aiseki.local":
+                    route.abort()
+                    return
+                path_qs = u.path + (("?" + u.query) if u.query else "")
+                headers = {k: v for k, v in req.headers.items() if k.lower() not in ("host", "content-length", "cookie")}
+                resp = client.open(path_qs, method=req.method.upper(), headers=headers, data=req.post_data_buffer, follow_redirects=True)
+                resp_headers = {k: v for k, v in resp.headers.items() if k.lower() not in ("content-encoding", "transfer-encoding", "content-length")}
+                route.fulfill(status=resp.status_code, headers=resp_headers, body=resp.get_data())
+                resp.close()
+            ctx.route("**/*", handle)
+
+        with patch.object(app_module, "trigger_background_fetch_if_needed", lambda *a, **kw: None):
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=True)
+                try:
+                    for vw, vh in ((1280, 900), (390, 844)):
+                        ctx = browser.new_context(viewport={"width": vw, "height": vh}, service_workers="block")
+                        attach_router(ctx, self.client)
+                        page = ctx.new_page()
+
+                        # A. /price-comparison?area=osaka-minami
+                        page.goto(base + "/price-comparison?area=osaka-minami", wait_until="domcontentloaded")
+                        page.add_style_tag(content="*, *::before, *::after { transition: none !important; animation: none !important; }")
+
+                        jis_text = page.locator('#cluster-osaka-minami .apple-compare-col[data-slug="jis-namba"]').inner_text()
+                        self.assertIn("テーブルチャージ", jis_text)
+                        self.assertNotIn("大宮U30", jis_text)
+
+                        for slot_key in ("slot1820", "slot2022", "slot2224", "slot24Last", "auto"):
+                            page.click(f'[data-slot-select="{slot_key}"]')
+                            state = page.evaluate("""() => {
+                                const cards = Array.from(document.querySelectorAll('#cluster-osaka-minami .apple-compare-col'));
+                                const cardInfos = cards.map(c => {
+                                    const rateEl = c.querySelector('[data-active-slot-rate]');
+                                    const unitEl = c.querySelector('[data-slot-unit]');
+                                    const labelRowEl = rateEl ? rateEl.closest('.apple-spec-row')?.querySelector('.apple-spec-label') : null;
+                                    return {
+                                        name: c.dataset.liveStore,
+                                        isFlat: c.dataset.isFlat === '1',
+                                        rate: rateEl ? (rateEl.textContent || '').trim() : '',
+                                        unitHidden: unitEl ? unitEl.style.display === 'none' : true,
+                                        label: labelRowEl ? (labelRowEl.textContent || '').trim() : ''
+                                    };
+                                });
+                                const catCards = Array.from(document.querySelectorAll('#catalog-spec-grid .apple-compare-col')).slice(0, 8).map(c => ({
+                                    isFlat: c.dataset.isFlat === '1',
+                                    rate: (c.querySelector('[data-cat-slot-rate]')?.textContent || '').trim(),
+                                    unitHidden: c.querySelector('[data-cat-slot-unit]')?.style.display === 'none'
+                                }));
+                                const customVals = Array.from(document.querySelectorAll('#apple-custom-compare-stage .apple-compare-col')).map(c => {
+                                    const rows = c.querySelectorAll('.apple-spec-row .apple-spec-val-lg');
+                                    return rows.length ? (rows[0].textContent || '').trim() : '';
+                                });
+
+                                // Check horizontal row alignment between side-by-side cards in #cluster-osaka-minami
+                                const misalignments = [];
+                                const byTop = [];
+                                for (const col of cards) {
+                                    const r = col.getBoundingClientRect();
+                                    let grp = byTop.find(g => Math.abs(g.top - r.top) <= 6);
+                                    if (!grp) { grp = {top: r.top, cols: []}; byTop.push(grp); }
+                                    grp.cols.push(col);
+                                }
+                                for (const grp of byTop) {
+                                    if (grp.cols.length < 2) continue;
+                                    const rowLists = grp.cols.map(c => Array.from(c.querySelectorAll(':scope > .apple-spec-row')));
+                                    const minLen = Math.min(...rowLists.map(l => l.length));
+                                    for (let i = 0; i < minLen; i++) {
+                                        const tops = rowLists.map(l => l[i].getBoundingClientRect().top);
+                                        const diff = Math.max(...tops) - Math.min(...tops);
+                                        if (diff > 2) misalignments.push({rowIdx: i, diff: +diff.toFixed(1)});
+                                    }
+                                }
+                                return {cardInfos, catCards, customVals, misalignments};
+                            }""")
+
+                            self.assertGreaterEqual(len(state["cardInfos"]), 3)
+                            for ci in state["cardInfos"]:
+                                self.assertTrue(ci["rate"], f"Empty slot rate for {ci['name']} on {slot_key} ({vw}px)")
+                                if ci["isFlat"]:
+                                    self.assertTrue(ci["unitHidden"], f"Flat-rate store {ci['name']} should hide / 10分 on {slot_key}")
+                                    self.assertIn("定額", ci["label"])
+                                else:
+                                    self.assertFalse(ci["unitHidden"], f"Metered store {ci['name']} must show / 10分 on {slot_key}")
+                                    self.assertIn("相席10分料金", ci["label"])
+
+                            for cc in state["catCards"]:
+                                self.assertTrue(cc["rate"], f"Empty catalog slot rate on {slot_key}")
+                                self.assertEqual(cc["unitHidden"], cc["isFlat"])
+
+                            for cv in state["customVals"]:
+                                self.assertTrue(cv, f"Empty custom compare rate on {slot_key}")
+
+                            self.assertEqual(state["misalignments"], [], f"Subgrid row misalignment at {vw}px ({slot_key}): {state['misalignments']}")
+
+                        # B. /store/oriental-lounge-namba nearby competitor slot pills
+                        page.goto(base + "/store/oriental-lounge-namba", wait_until="domcontentloaded")
+                        page.add_style_tag(content="*, *::before, *::after { transition: none !important; animation: none !important; }")
+                        for slot_key in ("slot1820", "slot2022", "slot2224", "slot24Last", "auto"):
+                            page.click(f'[data-nearby-slot-btn="{slot_key}"]')
+                            nb_state = page.evaluate("""() => {
+                                const cols = Array.from(document.querySelectorAll('[data-nearby-comp-row]'));
+                                return cols.map(c => ({
+                                    name: c.dataset.nearbyCompRow,
+                                    isFlat: c.dataset.isFlat === '1',
+                                    rate: (c.querySelector('[data-nearby-slot-rate]')?.textContent || '').trim(),
+                                    unitHidden: c.querySelector('[data-nearby-slot-unit]')?.style.display === 'none'
+                                }));
+                            }""")
+                            self.assertGreaterEqual(len(nb_state), 2)
+                            for nb in nb_state:
+                                self.assertTrue(nb["rate"], f"Empty nearby slot rate for {nb['name']} on {slot_key}")
+                                self.assertEqual(nb["unitHidden"], nb["isFlat"])
+
+                        ctx.close()
+                finally:
+                    browser.close()
 
 
 if __name__ == "__main__":

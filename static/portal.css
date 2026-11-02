@@ -544,7 +544,9 @@ body.theme-light .apple-compare-select {
 .apple-compare-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 14px;
+    grid-auto-rows: auto;
+    column-gap: 14px;
+    row-gap: 0;
     width: 100%;
     min-width: 0;
     font-variant-numeric: tabular-nums;
@@ -553,7 +555,8 @@ body.theme-light .apple-compare-select {
 @media (max-width: 859px) {
     .apple-compare-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 10px;
+        column-gap: 10px;
+        row-gap: 0;
     }
     .apple-compare-only-pc {
         display: none !important;
@@ -565,12 +568,37 @@ body.theme-light .apple-compare-select {
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 24px;
     padding: 18px 16px;
-    display: flex;
-    flex-direction: column;
+    margin-bottom: 14px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: subgrid;
+    align-content: start;
     text-align: center;
     min-width: 0;
     overflow-wrap: break-word;
     word-break: normal;
+}
+
+.apple-compare-col:has(> :nth-child(6):last-child) {
+    grid-row: span 6;
+}
+
+.apple-compare-col:has(> :nth-child(5):last-child) {
+    grid-row: span 5;
+}
+
+.apple-compare-col:has(> :nth-child(4):last-child) {
+    grid-row: span 4;
+}
+
+.apple-compare-col:has(> :nth-child(3):last-child) {
+    grid-row: span 3;
+}
+
+@media (max-width: 859px) {
+    .apple-compare-col {
+        margin-bottom: 10px;
+    }
 }
 
 .apple-compare-col.best-row,
@@ -619,6 +647,8 @@ body.theme-light .apple-spec-eyebrow {
     font-weight: 800;
     letter-spacing: -0.02em;
     line-height: 1.35;
+    text-wrap: balance;
+    word-break: auto-phrase;
 }
 
 .apple-spec-store-title a {
@@ -632,7 +662,7 @@ body.theme-light .apple-spec-store-title a {
 
 @media (max-width: 560px) {
     .apple-spec-store-title {
-        font-size: 0.86rem;
+        font-size: 0.80rem;
     }
 }
 
@@ -656,6 +686,7 @@ body.theme-light .apple-spec-row {
     color: #b4b4be;
     margin-bottom: 3px;
     letter-spacing: 0.01em;
+    text-wrap: balance;
 }
 
 body.theme-light .apple-spec-label {
@@ -676,8 +707,20 @@ body.theme-light .apple-spec-val-lg {
 
 @media (max-width: 560px) {
     .apple-spec-val-lg {
-        font-size: 0.92rem;
+        font-size: 0.88rem;
     }
+}
+
+.apple-spec-unit {
+    font-size: 0.74rem;
+    font-weight: 600;
+    color: #b4b4be;
+    letter-spacing: 0;
+    white-space: nowrap;
+}
+
+body.theme-light .apple-spec-unit {
+    color: #52525b;
 }
 
 .apple-spec-sub {

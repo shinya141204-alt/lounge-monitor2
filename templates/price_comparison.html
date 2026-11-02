@@ -37,7 +37,7 @@
 
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=2">
     <link rel="apple-touch-icon" href="/static/icon.png?v=2">
-    <link rel="stylesheet" href="/static/portal.css?v=13">
+    <link rel="stylesheet" href="/static/portal.css?v=14">
 
     <script type="application/ld+json">
     {
@@ -430,7 +430,7 @@
             margin-right: 4px;
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=27">
+    <link rel="stylesheet" href="/static/calm.css?v=28">
 </head>
 
 <body>
@@ -475,7 +475,7 @@
                     <span style="font-size: 0.74rem; color: var(--text-sub);">現在エリアの比較結果を共有：</span>
                     <button type="button" onclick="sharePriceComparison('x')" style="padding: 5px 11px; border-radius: 6px; border: 1px solid var(--border-strong); background: var(--card-elevated); color: var(--text-main); font-size: 0.75rem; font-weight: 600; cursor: pointer;">𝕏 ポスト</button>
                     <button type="button" onclick="sharePriceComparison('line')" style="padding: 5px 11px; border-radius: 6px; border: 1px solid var(--border-strong); background: var(--card-elevated); color: var(--text-main); font-size: 0.75rem; font-weight: 600; cursor: pointer;">LINE共有</button>
-                    <button type="button" id="copy-comp-share-btn" onclick="sharePriceComparison('copy')" style="padding: 5px 11px; border-radius: 6px; border: 1px solid rgba(200, 164, 110, 0.45); background: var(--accent-soft); color: var(--accent-text); font-size: 0.75rem; font-weight: 600; cursor: pointer;">告知文をコピー</button>
+                    <button type="button" id="copy-comp-share-btn" onclick="sharePriceComparison('copy')" style="padding: 5px 11px; border-radius: 6px; border: 1px solid var(--border-strong); background: var(--accent-soft); color: var(--accent-text); font-size: 0.75rem; font-weight: 600; cursor: pointer;">告知文をコピー</button>
                 </div>
             </div>
         </aside>
@@ -566,6 +566,10 @@
                              data-slot-20-22="{{ st.slot_20_22 }}"
                              data-slot-22-24="{{ st.slot_22_24 }}"
                              data-slot-24-last="{{ st.slot_24_last }}"
+                             data-slot1820="{{ st.slot_18_20 }}"
+                             data-slot2022="{{ st.slot_20_22 }}"
+                             data-slot2224="{{ st.slot_22_24 }}"
+                             data-slot24last="{{ st.slot_24_last }}"
                              data-active-ssr-label="{{ st.active_slot_label }}"
                              data-active-ssr-rate="{{ st.active_slot_rate }}"
                              data-hours-spec='{{ st.hours_spec | tojson }}'>
@@ -600,16 +604,16 @@
                         </div>
 
                         <div class="apple-spec-row">
-                            <div class="apple-spec-label"><span data-active-slot-label>{{ st.active_slot_label }}</span>の相席10分</div>
-                            <div class="apple-spec-val-lg" data-active-slot-rate>{{ st.active_slot_rate }}</div>
+                            <div class="apple-spec-label"><span data-active-slot-label>{{ st.active_slot_label }}</span>{% if st.is_flat_rate %}の入場・定額プラン{% else %}の相席10分料金{% endif %}</div>
+                            <div class="apple-spec-val-lg"><span data-active-slot-rate>{{ st.active_slot_rate }}</span><span class="apple-spec-unit" data-slot-unit style="{% if st.is_flat_rate or '10分' in st.active_slot_rate %}display:none;{% endif %}"> / 10分</span></div>
                             <div class="apple-spec-sub">チャージ：{{ st.charge_str }}</div>
                             <details class="apple-spec-fold">
                                 <summary>4時間帯すべて見る ▾</summary>
                                 <div class="apple-spec-fold-body">
-                                    ① Open〜20時：{{ st.slot_18_20 }}<br>
-                                    ② 20時〜22時：{{ st.slot_20_22 }}<br>
-                                    ③ 22時〜24時：{{ st.slot_22_24 }}<br>
-                                    ④ 24時〜Close：{{ st.slot_24_last }}
+                                    ① Open〜20時：{{ st.slot_18_20 }}{% if not st.is_flat_rate and '10分' not in st.slot_18_20 %} / 10分{% endif %}<br>
+                                    ② 20時〜22時：{{ st.slot_20_22 }}{% if not st.is_flat_rate and '10分' not in st.slot_20_22 %} / 10分{% endif %}<br>
+                                    ③ 22時〜24時：{{ st.slot_22_24 }}{% if not st.is_flat_rate and '10分' not in st.slot_22_24 %} / 10分{% endif %}<br>
+                                    ④ 24時〜Close：{{ st.slot_24_last }}{% if not st.is_flat_rate and '10分' not in st.slot_24_last %} / 10分{% endif %}
                                 </div>
                             </details>
                         </div>
@@ -680,6 +684,10 @@
                      data-slot-20-22="{{ st.slot_20_22 }}"
                      data-slot-22-24="{{ st.slot_22_24 }}"
                      data-slot-24-last="{{ st.slot_24_last }}"
+                     data-slot1820="{{ st.slot_18_20 }}"
+                     data-slot2022="{{ st.slot_20_22 }}"
+                     data-slot2224="{{ st.slot_22_24 }}"
+                     data-slot24last="{{ st.slot_24_last }}"
                      data-hours-spec='{{ st.hours_spec | tojson }}'>
                     <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
                         <div>
@@ -843,10 +851,15 @@
                          data-solo-ok="{{ '0' if ('不可' in st.solo_rule or '2名以上' in st.solo_rule) else '1' }}"
                          data-charge-str="{{ st.charge_str }}"
                          data-hours-label="{{ st.hours_label }}"
+                         data-is-flat="{{ '1' if st.is_flat_rate else '0' }}"
                          data-slot-18-20="{{ st.slot_18_20 }}"
                          data-slot-20-22="{{ st.slot_20_22 }}"
                          data-slot-22-24="{{ st.slot_22_24 }}"
                          data-slot-24-last="{{ st.slot_24_last }}"
+                         data-slot1820="{{ st.slot_18_20 }}"
+                         data-slot2022="{{ st.slot_20_22 }}"
+                         data-slot2224="{{ st.slot_22_24 }}"
+                         data-slot24last="{{ st.slot_24_last }}"
                          data-active-ssr-label="{{ st.active_slot_label }}"
                          data-active-ssr-rate="{{ st.active_slot_rate }}"
                          data-search-text="{{ st.area_label }} {{ st.brand_code | brand_ja }} {{ st.seo_name }} {{ st.solo_rule }}">
@@ -857,15 +870,15 @@
                         </h3>
                     </div>
                     <div class="apple-spec-row">
-                        <div class="apple-spec-label"><span data-cat-slot-label>{{ st.active_slot_label }}</span>の相席10分</div>
-                        <div class="apple-spec-val-lg" data-cat-slot-rate>{{ st.active_slot_rate }}</div>
+                        <div class="apple-spec-label"><span data-cat-slot-label>{{ st.active_slot_label }}</span>{% if st.is_flat_rate %}の入場・定額プラン{% else %}の相席10分料金{% endif %}</div>
+                        <div class="apple-spec-val-lg"><span data-cat-slot-rate>{{ st.active_slot_rate }}</span><span class="apple-spec-unit" data-cat-slot-unit style="{% if st.is_flat_rate or '10分' in st.active_slot_rate %}display:none;{% endif %}"> / 10分</span></div>
                         <details class="apple-spec-fold">
                             <summary>4時間帯すべて見る ▾</summary>
                             <div class="apple-spec-fold-body">
-                                ① Open〜20時：{{ st.slot_18_20 }}<br>
-                                ② 20時〜22時：{{ st.slot_20_22 }}<br>
-                                ③ 22時〜24時：{{ st.slot_22_24 }}<br>
-                                ④ 24時〜Close：{{ st.slot_24_last }}
+                                ① Open〜20時：{{ st.slot_18_20 }}{% if not st.is_flat_rate and '10分' not in st.slot_18_20 %} / 10分{% endif %}<br>
+                                ② 20時〜22時：{{ st.slot_20_22 }}{% if not st.is_flat_rate and '10分' not in st.slot_20_22 %} / 10分{% endif %}<br>
+                                ③ 22時〜24時：{{ st.slot_22_24 }}{% if not st.is_flat_rate and '10分' not in st.slot_22_24 %} / 10分{% endif %}<br>
+                                ④ 24時〜Close：{{ st.slot_24_last }}{% if not st.is_flat_rate and '10分' not in st.slot_24_last %} / 10分{% endif %}
                             </div>
                         </details>
                     </div>
@@ -887,13 +900,13 @@
         </section>
 
         {% if not is_staff and not session.get('is_staff') %}
-        <aside class="section-card" aria-label="入店前の身だしなみ・満席対策ガイド" style="padding: 18px 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; border-color: rgba(200, 164, 110, 0.32);">
+        <aside class="section-card" aria-label="入店前の身だしなみ・満席対策ガイド" style="padding: 18px 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; border-color: var(--border-subtle);">
             <div style="flex: 1 1 320px;">
-                <div style="font-size: 0.72rem; font-weight: 700; color: var(--accent); margin-bottom: 3px;">PRE-OUTING PREP & BACKUP GUIDE</div>
+                <div style="font-size: 0.72rem; font-weight: 700; color: var(--text-sub); margin-bottom: 3px;">PRE-OUTING PREP & BACKUP GUIDE</div>
                 <div style="font-size: 0.94rem; font-weight: 700; color: var(--text-main);">距離が近いソファ席での清潔感ケア＆週末満席時の予備手段まとめ</div>
                 <div style="font-size: 0.8rem; color: var(--text-sub); margin-top: 2px;">仕事帰りの青ヒゲ・肌テカリ対策、浮かない私服選び、どのお店も男性待ちの夜に使える恋活アプリの活用法を解説しています。</div>
             </div>
-            <a href="/grooming" style="display: inline-flex; align-items: center; justify-content: center; text-align: center; gap: 6px; padding: 10px 16px; border-radius: 8px; background: var(--accent-soft); border: 1px solid rgba(200, 164, 110, 0.45); color: var(--accent-text); text-decoration: none; font-size: 0.83rem; font-weight: 700; max-width: 100%;">
+            <a href="/grooming" class="btn-secondary" style="display: inline-flex; align-items: center; justify-content: center; text-align: center; gap: 6px; padding: 10px 16px; border-radius: 999px; background: var(--card-elevated); border: 1px solid var(--border-strong); color: var(--text-main); text-decoration: none; font-size: 0.83rem; font-weight: 700; max-width: 100%;">
                 相席ラウンジへ行く前の清潔感ケア＆満席時の予備アプリ特集を見る ›
             </a>
         </aside>
@@ -913,22 +926,34 @@
             slot24Last: '24時〜Close'
         };
 
+        function getSlotFromDataset(ds, slotKey) {
+            if (!ds) return '';
+            if (slotKey === 'slot1820') return ds.slot1820 || ds['slot-18-20'] || '';
+            if (slotKey === 'slot2022') return ds.slot2022 || ds['slot-20-22'] || '';
+            if (slotKey === 'slot2224') return ds.slot2224 || ds['slot-22-24'] || '';
+            if (slotKey === 'slot24Last') return ds.slot24last || ds.slot24Last || ds['slot-24Last'] || ds['slot-24-last'] || '';
+            return '';
+        }
+
+        function needsPer10mSuffix(ds, rateStr) {
+            if (!rateStr) return false;
+            if (ds && ds.isFlat === '1') return false;
+            var s = String(rateStr);
+            return s.indexOf('10分') === -1 && s.indexOf('定額') === -1 && s.indexOf('時間無制限') === -1;
+        }
+
         function resolveSlotForDataset(ds, slotKey) {
+            var fallback2022 = getSlotFromDataset(ds, 'slot2022');
             if (!slotKey || slotKey === 'auto') {
                 return {
                     label: ds.activeSsrLabel || '現在枠',
-                    rate: ds.activeSsrRate || ds.slot2022 || ''
+                    rate: ds.activeSsrRate || fallback2022 || ''
                 };
             }
-            var map = {
-                slot1820: ds.slot1820 || '',
-                slot2022: ds.slot2022 || '',
-                slot2224: ds.slot2224 || '',
-                slot24Last: ds.slot24Last || ''
-            };
+            var chosenRate = getSlotFromDataset(ds, slotKey);
             return {
                 label: PRICE_SLOT_SHORT_MAP[slotKey] || '選択枠',
-                rate: map[slotKey] || ds.slot2022 || ''
+                rate: chosenRate || fallback2022 || ''
             };
         }
 
@@ -941,15 +966,19 @@
                 var resolved = resolveSlotForDataset(col.dataset, window.__selectedPriceSlot);
                 var lblEl = col.querySelector('[data-active-slot-label]');
                 var rateEl = col.querySelector('[data-active-slot-rate]');
+                var unitEl = col.querySelector('[data-slot-unit]');
                 if (lblEl) lblEl.textContent = resolved.label;
                 if (rateEl) rateEl.textContent = resolved.rate;
+                if (unitEl) unitEl.style.display = needsPer10mSuffix(col.dataset, resolved.rate) ? '' : 'none';
             });
             document.querySelectorAll('[data-cat-card]').forEach(function(col) {
                 var resolved = resolveSlotForDataset(col.dataset, window.__selectedPriceSlot);
                 var lblEl = col.querySelector('[data-cat-slot-label]');
                 var rateEl = col.querySelector('[data-cat-slot-rate]');
+                var unitEl = col.querySelector('[data-cat-slot-unit]');
                 if (lblEl) lblEl.textContent = resolved.label;
                 if (rateEl) rateEl.textContent = resolved.rate;
+                if (unitEl) unitEl.style.display = needsPer10mSuffix(col.dataset, resolved.rate) ? '' : 'none';
             });
             renderCustomStoreCompare();
         }
@@ -1018,6 +1047,13 @@
                 var resolved = resolveSlotForDataset(ds, window.__selectedPriceSlot);
                 var soloCls = ds.soloOk === '1' ? 'apple-solo-ok' : 'apple-solo-req';
                 var extraCls = idx === 2 ? ' apple-compare-only-pc' : '';
+                var isFlat = ds.isFlat === '1';
+                var slotHeading = escCompareHtml(resolved.label) + (isFlat ? 'の入場・定額プラン' : 'の相席10分料金');
+                var unitHtml = needsPer10mSuffix(ds, resolved.rate) ? '<span class="apple-spec-unit"> / 10分</span>' : '';
+                var s1820 = getSlotFromDataset(ds, 'slot1820');
+                var s24Last = getSlotFromDataset(ds, 'slot24Last');
+                var sub1820Suffix = needsPer10mSuffix(ds, s1820) ? ' / 10分' : '';
+                var sub24Suffix = needsPer10mSuffix(ds, s24Last) ? ' / 10分' : '';
                 htmlParts.push(
                     '<div class="apple-compare-col' + extraCls + '">' +
                         '<div class="apple-spec-head">' +
@@ -1025,11 +1061,11 @@
                             '<div class="apple-spec-store-title"><a href="/store/' + escCompareHtml(ds.slug) + '">' + escCompareHtml(ds.seoName) + ' ›</a></div>' +
                         '</div>' +
                         '<div class="apple-spec-row">' +
-                            '<div class="apple-spec-label">' + escCompareHtml(resolved.label) + 'の相席10分</div>' +
-                            '<div class="apple-spec-val-lg">' + escCompareHtml(resolved.rate) + '</div>' +
+                            '<div class="apple-spec-label">' + slotHeading + '</div>' +
+                            '<div class="apple-spec-val-lg">' + escCompareHtml(resolved.rate) + unitHtml + '</div>' +
                             '<div class="apple-spec-sub">' +
-                                '〜20時：' + escCompareHtml(ds.slot1820) + '<br>' +
-                                '24時〜：' + escCompareHtml(ds.slot24Last) +
+                                '〜20時：' + escCompareHtml(s1820) + sub1820Suffix + '<br>' +
+                                '24時〜：' + escCompareHtml(s24Last) + sub24Suffix +
                             '</div>' +
                         '</div>' +
                         '<div class="apple-spec-row">' +
@@ -1219,10 +1255,10 @@
                 const hasWomenEv = ds.hasWomenEv === '1';
                 const isFlat = ds.isFlat === '1';
                 const soloRule = ds.soloRule || '';
-                const s1820 = ds.slot1820 || '';
-                const s2022 = ds.slot2022 || '';
-                const s2224 = ds.slot2224 || '';
-                const s24last = ds.slot24Last || '';
+                const s1820 = getSlotFromDataset(ds, 'slot1820');
+                const s2022 = getSlotFromDataset(ds, 'slot2022');
+                const s2224 = getSlotFromDataset(ds, 'slot2224');
+                const s24last = getSlotFromDataset(ds, 'slot24Last');
 
                 const slotRateMap = {
                     slot1820: s1820,
@@ -1394,6 +1430,8 @@
                             if (sLabel) sLabel.textContent = chosen.label;
                             const sRate = row.querySelector('[data-active-slot-rate]');
                             if (sRate) sRate.textContent = chosen.rate;
+                            const sUnit = row.querySelector('[data-slot-unit]');
+                            if (sUnit) sUnit.style.display = needsPer10mSuffix(row.dataset, chosen.rate) ? '' : 'none';
 
                             const vBadge = row.querySelector('[data-verdict-badge]');
                             if (vBadge) {

@@ -7612,3 +7612,386 @@ body.theme-light:not(.staff-mode) .article-body table td {
     padding: 12px 10px !important;
 }
 
+/* --- 26-I. 全公開ページ残存レガシー茶金・水色・ピンクの一括ニュートラル浄化 ＆ Subgrid保護 --- */
+body:not(.theme-light):not(.staff-mode) .aiseki-nav-pill {
+    background: var(--calm-surface-2) !important;
+    border: 1px solid var(--calm-border-strong) !important;
+    color: var(--calm-text) !important;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.36) !important;
+}
+
+body.theme-light:not(.staff-mode) .aiseki-nav-pill {
+    background: #ffffff !important;
+    border: 1px solid var(--calm-light-border-strong) !important;
+    color: var(--calm-light-text) !important;
+    box-shadow: 0 8px 24px rgba(24, 24, 27, 0.08) !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .aiseki-nav-spinner {
+    border-color: var(--calm-border-strong) !important;
+    border-top-color: var(--calm-text) !important;
+}
+
+body.theme-light:not(.staff-mode) .aiseki-nav-spinner {
+    border-color: var(--calm-light-border-strong) !important;
+    border-top-color: var(--calm-light-text) !important;
+}
+
+body:not(.staff-mode) .aiseki-reading-progress,
+body:not(.staff-mode) .aiseki-nav-progress {
+    background: var(--cm-cta-bg) !important;
+    box-shadow: none !important;
+}
+
+/* 注意書き・引用ボックス・対話ボックスの左太線を廃止し 1px 均一カードへ */
+body:not(.theme-light):not(.staff-mode) .official-notice-box,
+body:not(.theme-light):not(.staff-mode) .dialogue-box,
+body:not(.theme-light):not(.staff-mode) .article-lead,
+body:not(.theme-light):not(.staff-mode) .lead-box {
+    background: var(--calm-surface) !important;
+    border: 1px solid var(--calm-border) !important;
+    border-left: 1px solid var(--calm-border) !important;
+    border-radius: 18px !important;
+    color: var(--calm-sub) !important;
+    box-shadow: none !important;
+}
+
+body.theme-light:not(.staff-mode) .official-notice-box,
+body.theme-light:not(.staff-mode) .dialogue-box,
+body.theme-light:not(.staff-mode) .article-lead,
+body.theme-light:not(.staff-mode) .lead-box {
+    background: #ffffff !important;
+    border: 1px solid var(--calm-light-border) !important;
+    border-left: 1px solid var(--calm-light-border) !important;
+    border-radius: 18px !important;
+    color: var(--calm-light-sub) !important;
+    box-shadow: none !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .official-notice-title {
+    color: var(--calm-text) !important;
+}
+
+body.theme-light:not(.staff-mode) .official-notice-title {
+    color: var(--calm-light-text) !important;
+}
+
+/* トップ・ポータル共通ピル・CTAボタン */
+body:not(.staff-mode) .pwa-install-action-btn,
+body:not(.staff-mode) .guide-open-btn,
+body:not(.staff-mode) .cqb-cta,
+body:not(.staff-mode) .cqb-badge,
+body:not(.staff-mode) .best-pick-cta,
+body:not(.staff-mode) .crown-tag,
+body:not(.staff-mode) .row-tag.row-tag-best,
+body:not(.staff-mode) .second-tab-btn.active,
+body:not(.staff-mode) .timing-badge-tag,
+body:not(.staff-mode) .venue-action-btn.map-btn,
+body:not(.staff-mode) .tip-phrase-copy-btn,
+body:not(.staff-mode) .live-tool-btn,
+body:not(.staff-mode) .cta-btn:not(.cta-btn--secondary),
+body:not(.staff-mode) .aff-cta-btn,
+body:not(.staff-mode) .aff-btn {
+    background: var(--cm-cta-bg) !important;
+    background-image: none !important;
+    border: 1px solid var(--cm-cta-bg) !important;
+    color: var(--cm-cta-text) !important;
+    border-radius: 999px !important;
+    box-shadow: none !important;
+    text-decoration: none !important;
+}
+
+body:not(.staff-mode) .crown-tag,
+body:not(.staff-mode) .row-tag.row-tag-best {
+    padding: 2px 9px !important;
+    font-size: 0.68rem !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.01em !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .cqb-chip,
+body:not(.theme-light):not(.staff-mode) .moat-pill.tone-standing,
+body:not(.theme-light):not(.staff-mode) .moat-pill.tone-warn,
+body:not(.theme-light):not(.staff-mode) .portal-article-badge,
+body:not(.theme-light):not(.staff-mode) .portal-article-badge.cyan,
+body:not(.theme-light):not(.staff-mode) .row-tag.row-tag-current,
+body:not(.theme-light):not(.staff-mode) .venue-category-badge,
+body:not(.theme-light):not(.staff-mode) .venue-category-badge.cafe,
+body:not(.theme-light):not(.staff-mode) .venue-category-badge.bar,
+body:not(.theme-light):not(.staff-mode) .venue-category-badge.shisha,
+body:not(.theme-light):not(.staff-mode) .venue-category-badge.yokocho,
+body:not(.theme-light):not(.staff-mode) .second-tip-tag,
+body:not(.theme-light):not(.staff-mode) .footer-pill-btn,
+body:not(.theme-light):not(.staff-mode) .footer-pill-btn.guide-pill,
+body:not(.theme-light):not(.staff-mode) .footer-pill-btn.weekday-pill,
+body:not(.theme-light):not(.staff-mode) .pick-ev,
+body:not(.theme-light):not(.staff-mode) .fc-err-pill.ok,
+body:not(.theme-light):not(.staff-mode) .decision-tag,
+body:not(.theme-light):not(.staff-mode) .decision-tag.tag-ag,
+body:not(.theme-light):not(.staff-mode) .decision-tag.tag-olg,
+body:not(.theme-light):not(.staff-mode) .decision-tag.tag-jis,
+body:not(.theme-light):not(.staff-mode) .related-article-badge {
+    background: var(--calm-surface-2) !important;
+    border: 1px solid var(--calm-border-strong) !important;
+    color: var(--calm-text) !important;
+    box-shadow: none !important;
+}
+
+body.theme-light:not(.staff-mode) .cqb-chip,
+body.theme-light:not(.staff-mode) .moat-pill.tone-standing,
+body.theme-light:not(.staff-mode) .moat-pill.tone-warn,
+body.theme-light:not(.staff-mode) .portal-article-badge,
+body.theme-light:not(.staff-mode) .portal-article-badge.cyan,
+body.theme-light:not(.staff-mode) .row-tag.row-tag-current,
+body.theme-light:not(.staff-mode) .venue-category-badge,
+body.theme-light:not(.staff-mode) .venue-category-badge.cafe,
+body.theme-light:not(.staff-mode) .venue-category-badge.bar,
+body.theme-light:not(.staff-mode) .venue-category-badge.shisha,
+body.theme-light:not(.staff-mode) .venue-category-badge.yokocho,
+body.theme-light:not(.staff-mode) .second-tip-tag,
+body.theme-light:not(.staff-mode) .footer-pill-btn,
+body.theme-light:not(.staff-mode) .footer-pill-btn.guide-pill,
+body.theme-light:not(.staff-mode) .footer-pill-btn.weekday-pill,
+body.theme-light:not(.staff-mode) .pick-ev,
+body.theme-light:not(.staff-mode) .fc-err-pill.ok,
+body.theme-light:not(.staff-mode) .decision-tag,
+body.theme-light:not(.staff-mode) .decision-tag.tag-ag,
+body.theme-light:not(.staff-mode) .decision-tag.tag-olg,
+body.theme-light:not(.staff-mode) .decision-tag.tag-jis,
+body.theme-light:not(.staff-mode) .related-article-badge {
+    background: var(--calm-light-surface-2) !important;
+    border: 1px solid var(--calm-light-border-strong) !important;
+    color: var(--calm-light-text) !important;
+    box-shadow: none !important;
+}
+
+body:not(.staff-mode) .related-article-badge,
+body:not(.staff-mode) .decision-tag {
+    display: inline-block;
+    border-radius: 999px !important;
+    padding: 3px 10px !important;
+    font-size: 0.72rem !important;
+    font-weight: 700 !important;
+    margin-bottom: 8px;
+}
+
+/* 比較ボード判定ピル（.verdict-pill）のクリーン・セマンティック化 */
+body:not(.staff-mode) .verdict-pill {
+    border-radius: 999px !important;
+    padding: 4px 12px !important;
+    font-size: 0.75rem !important;
+    font-weight: 700 !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .verdict-pill.verdict-hot {
+    background: var(--cm-ok-bg) !important;
+    border: 1px solid rgba(110, 231, 183, 0.36) !important;
+    color: var(--cm-ok-text) !important;
+}
+
+body.theme-light:not(.staff-mode) .verdict-pill.verdict-hot {
+    background: rgba(5, 150, 105, 0.10) !important;
+    border: 1px solid rgba(5, 150, 105, 0.32) !important;
+    color: #065f46 !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .verdict-pill.verdict-good {
+    background: rgba(244, 168, 184, 0.12) !important;
+    border: 1px solid rgba(244, 168, 184, 0.34) !important;
+    color: var(--calm-women) !important;
+}
+
+body.theme-light:not(.staff-mode) .verdict-pill.verdict-good {
+    background: rgba(190, 18, 60, 0.08) !important;
+    border: 1px solid rgba(190, 18, 60, 0.28) !important;
+    color: var(--calm-light-women) !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .verdict-pill.verdict-warn,
+body:not(.theme-light):not(.staff-mode) .verdict-pill.verdict-low,
+body:not(.theme-light):not(.staff-mode) .verdict-pill.verdict-neutral {
+    background: var(--calm-surface-2) !important;
+    border: 1px solid var(--calm-border-strong) !important;
+    color: var(--calm-sub) !important;
+}
+
+body.theme-light:not(.staff-mode) .verdict-pill.verdict-warn,
+body.theme-light:not(.staff-mode) .verdict-pill.verdict-low,
+body.theme-light:not(.staff-mode) .verdict-pill.verdict-neutral {
+    background: var(--calm-light-surface-2) !important;
+    border: 1px solid var(--calm-light-border-strong) !important;
+    color: var(--calm-light-sub) !important;
+}
+
+/* エリア推奨バナー・2軒目カード・統計KPIカード・関連記事カード */
+body:not(.theme-light):not(.staff-mode) .best-pick-banner,
+body:not(.theme-light):not(.staff-mode) .second-venue-timing-badge,
+body:not(.theme-light):not(.staff-mode) .second-venue-timing-details,
+body:not(.theme-light):not(.staff-mode) .second-tip-phrase-box,
+body:not(.theme-light):not(.staff-mode) .fc-acc-kpi-card,
+body:not(.theme-light):not(.staff-mode) .live-tool-cta-box,
+body:not(.theme-light):not(.staff-mode) .cta-box,
+body:not(.theme-light):not(.staff-mode) .related-article-card {
+    background: var(--calm-surface) !important;
+    background-image: none !important;
+    border: 1px solid var(--calm-border) !important;
+    border-radius: 20px !important;
+    box-shadow: none !important;
+}
+
+body.theme-light:not(.staff-mode) .best-pick-banner,
+body.theme-light:not(.staff-mode) .second-venue-timing-badge,
+body.theme-light:not(.staff-mode) .second-venue-timing-details,
+body.theme-light:not(.staff-mode) .second-tip-phrase-box,
+body.theme-light:not(.staff-mode) .fc-acc-kpi-card,
+body.theme-light:not(.staff-mode) .live-tool-cta-box,
+body.theme-light:not(.staff-mode) .cta-box,
+body.theme-light:not(.staff-mode) .related-article-card {
+    background: #ffffff !important;
+    background-image: none !important;
+    border: 1px solid var(--calm-light-border) !important;
+    border-radius: 20px !important;
+    box-shadow: 0 4px 16px rgba(24, 24, 27, 0.03) !important;
+}
+
+body:not(.staff-mode) .related-article-card {
+    padding: 18px !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .related-article-card h4,
+body:not(.theme-light):not(.staff-mode) .best-pick-title,
+body:not(.theme-light):not(.staff-mode) .live-tool-cta-box h3,
+body:not(.theme-light):not(.staff-mode) .seo-guide-card h3,
+body:not(.theme-light):not(.staff-mode) .seo-faq-block h3,
+body:not(.theme-light):not(.staff-mode) .seo-directory-block h3,
+body:not(.theme-light):not(.staff-mode) .stat-num:not(.pink) {
+    color: var(--calm-text) !important;
+}
+
+body.theme-light:not(.staff-mode) .related-article-card h4,
+body.theme-light:not(.staff-mode) .best-pick-title,
+body.theme-light:not(.staff-mode) .live-tool-cta-box h3,
+body.theme-light:not(.staff-mode) .seo-guide-card h3,
+body.theme-light:not(.staff-mode) .seo-faq-block h3,
+body.theme-light:not(.staff-mode) .seo-directory-block h3,
+body.theme-light:not(.staff-mode) .stat-num:not(.pink) {
+    color: var(--calm-light-text) !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .related-article-card p {
+    color: var(--calm-sub) !important;
+}
+
+body.theme-light:not(.staff-mode) .related-article-card p {
+    color: var(--calm-light-sub) !important;
+}
+
+/* セカンダリボタン・戻るボタン・シェアチップ */
+body:not(.theme-light):not(.staff-mode) .footer-pill-btn span {
+    color: var(--calm-text) !important;
+}
+
+body.theme-light:not(.staff-mode) .footer-pill-btn span {
+    color: var(--calm-light-text) !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .nav-back-btn,
+body:not(.theme-light):not(.staff-mode) .share-chip-btn,
+body:not(.theme-light):not(.staff-mode) .article-body a.share-chip-btn,
+body:not(.theme-light):not(.staff-mode) .cta-btn.cta-btn--secondary,
+body:not(.theme-light):not(.staff-mode) .related-article-cta,
+body:not(.theme-light):not(.staff-mode) .related-article-card a.related-article-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: var(--calm-surface-2) !important;
+    border: 1px solid var(--calm-border-strong) !important;
+    color: var(--calm-text) !important;
+    border-radius: 999px !important;
+    padding: 7px 16px !important;
+    font-size: 0.81rem !important;
+    font-weight: 700 !important;
+    text-decoration: none !important;
+    box-shadow: none !important;
+}
+
+body.theme-light:not(.staff-mode) .nav-back-btn,
+body.theme-light:not(.staff-mode) .share-chip-btn,
+body.theme-light:not(.staff-mode) .cta-btn.cta-btn--secondary,
+body.theme-light:not(.staff-mode) .related-article-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: var(--calm-light-surface-2) !important;
+    border: 1px solid var(--calm-light-border-strong) !important;
+    color: var(--calm-light-text) !important;
+    border-radius: 999px !important;
+    padding: 7px 16px !important;
+    font-size: 0.81rem !important;
+    font-weight: 700 !important;
+    text-decoration: none !important;
+    box-shadow: none !important;
+}
+
+/* コラム・記事見出し＆リンクのニュートラル化、および Apple Compare タイトルの完全保護 */
+body:not(.staff-mode) .article-content h3 {
+    padding-left: 0 !important;
+}
+
+body:not(.staff-mode) .article-content h3::before {
+    display: none !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .article-body h3,
+body:not(.theme-light):not(.staff-mode) .article-content h3,
+body:not(.theme-light):not(.staff-mode) .article-toc h3,
+body:not(.theme-light):not(.staff-mode) .toc-title,
+body:not(.theme-light):not(.staff-mode) .apple-spec-store-title,
+body:not(.theme-light):not(.staff-mode) .apple-spec-store-title a {
+    color: var(--calm-text) !important;
+}
+
+body.theme-light:not(.staff-mode) .article-body h3,
+body.theme-light:not(.staff-mode) .article-content h3,
+body.theme-light:not(.staff-mode) .article-toc h3,
+body.theme-light:not(.staff-mode) .toc-title,
+body.theme-light:not(.staff-mode) .apple-spec-store-title,
+body.theme-light:not(.staff-mode) .apple-spec-store-title a {
+    color: var(--calm-light-text) !important;
+}
+
+body:not(.staff-mode) .apple-spec-store-title a {
+    text-decoration: none !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .breadcrumb a {
+    color: var(--calm-sub) !important;
+}
+
+body.theme-light:not(.staff-mode) .breadcrumb a {
+    color: var(--calm-light-sub) !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .portal-area-all-link,
+body:not(.theme-light):not(.staff-mode) .editorial-ref-note a,
+body:not(.theme-light):not(.staff-mode) .editorial-inline-link,
+body:not(.theme-light):not(.staff-mode) .aff-link-subtext a,
+body:not(.theme-light):not(.staff-mode) .aff-points .check,
+body:not(.theme-light):not(.staff-mode) .article-body a:not(.cta-btn):not(.aff-btn):not(.aff-cta-btn):not(.live-tool-btn):not(.official-ext-link),
+body:not(.theme-light):not(.staff-mode) .article-content a:not(.cta-btn):not(.aff-btn):not(.aff-cta-btn):not(.live-tool-btn):not(.official-ext-link) {
+    color: var(--calm-text) !important;
+    border-bottom-color: var(--calm-border-strong) !important;
+}
+
+body.theme-light:not(.staff-mode) .portal-area-all-link,
+body.theme-light:not(.staff-mode) .editorial-ref-note a,
+body.theme-light:not(.staff-mode) .editorial-inline-link,
+body.theme-light:not(.staff-mode) .aff-link-subtext a,
+body.theme-light:not(.staff-mode) .aff-points .check,
+body.theme-light:not(.staff-mode) .article-body a:not(.cta-btn):not(.aff-btn):not(.aff-cta-btn):not(.live-tool-btn):not(.official-ext-link),
+body.theme-light:not(.staff-mode) .article-content a:not(.cta-btn):not(.aff-btn):not(.aff-cta-btn):not(.live-tool-btn):not(.official-ext-link) {
+    color: var(--calm-light-text) !important;
+    border-bottom-color: var(--calm-light-border-strong) !important;
+}
+
+

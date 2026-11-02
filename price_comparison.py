@@ -92,7 +92,7 @@ BRAND_PRICE_SPECS = {
         "brand_label": "JIS（ジス）",
         "brand_slug": "jis",
         "charge_yen": 550,
-        "charge_str": "550円（テーブルチャージ／大宮U30は0円）",
+        "charge_str": "550円（テーブルチャージ）",
         "wait_10m_yen": 330,
         "wait_fee_str": "220円または330円 / 10分（店舗別／飲み放題込）",
         "has_wait_fee": True,
