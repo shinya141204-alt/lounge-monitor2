@@ -7465,3 +7465,150 @@ body:not(.theme-light):not(.staff-mode) .btn-rose {
     box-shadow: none !important;
 }
 
+/* --- 26-H. 案3：iPhone Compare 並列スペック比較シート ＆ 全サイトミニマル表システム --- */
+body:not(.staff-mode) .section-card.apple-open-section {
+    background: transparent !important;
+    border: none !important;
+    border-top: 1px solid var(--calm-border) !important;
+    border-radius: 0 !important;
+    padding: 28px 0 8px !important;
+    box-shadow: none !important;
+}
+
+body.theme-light:not(.staff-mode) .section-card.apple-open-section {
+    border-top-color: var(--calm-light-border) !important;
+}
+
+body:not(.staff-mode) .apple-compare-grid,
+body:not(.staff-mode) .apple-compare-col,
+body:not(.staff-mode) .stats-table-wrap table,
+body:not(.staff-mode) .data-table,
+body:not(.staff-mode) .spec-table,
+body:not(.staff-mode) .comp-table,
+body:not(.staff-mode) .store-comp-table,
+body:not(.staff-mode) .report-table,
+body:not(.staff-mode) .daily-log-table,
+body:not(.staff-mode) .article-body table {
+    font-variant-numeric: tabular-nums;
+}
+
+body:not(.theme-light):not(.staff-mode) .apple-compare-col {
+    background: var(--calm-surface) !important;
+    border: 1px solid var(--calm-border) !important;
+    color: var(--calm-text) !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .apple-compare-col.best-row,
+body:not(.theme-light):not(.staff-mode) .apple-compare-col.is-best-row,
+body:not(.theme-light):not(.staff-mode) .apple-compare-col.is-current-row {
+    border-color: var(--calm-border-strong) !important;
+}
+
+body.theme-light:not(.staff-mode) .apple-compare-col {
+    background: #ffffff !important;
+    border: 1px solid var(--calm-light-border) !important;
+    color: var(--calm-light-text) !important;
+    box-shadow: 0 4px 18px rgba(24, 24, 27, 0.035) !important;
+}
+
+body.theme-light:not(.staff-mode) .apple-compare-col.best-row,
+body.theme-light:not(.staff-mode) .apple-compare-col.is-best-row,
+body.theme-light:not(.staff-mode) .apple-compare-col.is-current-row {
+    border-color: var(--calm-light-text) !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .apple-seg-btn.active,
+body.theme-light:not(.staff-mode) .apple-seg-btn.active {
+    background: var(--cm-cta-bg) !important;
+    color: var(--cm-cta-text) !important;
+}
+
+/* 統計・コラム・モーダル内の全テーブル：外枠ボックス・縦罫線を撤廃し 1px 極細ヘアライン表へ統一 */
+body:not(.staff-mode) .comp-table-wrap,
+body:not(.staff-mode) .data-table-wrap,
+body:not(.staff-mode) .table-scroll-wrapper,
+body:not(.staff-mode) .stats-table-wrap {
+    border: none !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    overflow-x: auto;
+    max-width: 100%;
+    -webkit-overflow-scrolling: touch;
+}
+
+body:not(.staff-mode) .stats-table-wrap table,
+body:not(.staff-mode) .data-table,
+body:not(.staff-mode) .spec-table,
+body:not(.staff-mode) .comp-table,
+body:not(.staff-mode) .store-comp-table,
+body:not(.staff-mode) .report-table,
+body:not(.staff-mode) .daily-log-table,
+body:not(.staff-mode) .article-body table {
+    border-collapse: collapse !important;
+    border: none !important;
+    background: transparent !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .stats-table-wrap th,
+body:not(.theme-light):not(.staff-mode) .data-table th,
+body:not(.theme-light):not(.staff-mode) .spec-table th,
+body:not(.theme-light):not(.staff-mode) .comp-table th,
+body:not(.theme-light):not(.staff-mode) .store-comp-table th,
+body:not(.theme-light):not(.staff-mode) .report-table th,
+body:not(.theme-light):not(.staff-mode) .daily-log-table th,
+body:not(.theme-light):not(.staff-mode) .article-body table th {
+    background: transparent !important;
+    color: var(--calm-sub) !important;
+    border: none !important;
+    border-bottom: 1px solid var(--calm-border-strong) !important;
+    font-size: 0.75rem !important;
+    font-weight: 600 !important;
+    padding: 10px 10px !important;
+}
+
+body.theme-light:not(.staff-mode) .stats-table-wrap th,
+body.theme-light:not(.staff-mode) .data-table th,
+body.theme-light:not(.staff-mode) .spec-table th,
+body.theme-light:not(.staff-mode) .comp-table th,
+body.theme-light:not(.staff-mode) .store-comp-table th,
+body.theme-light:not(.staff-mode) .report-table th,
+body.theme-light:not(.staff-mode) .daily-log-table th,
+body.theme-light:not(.staff-mode) .article-body table th {
+    background: transparent !important;
+    color: var(--calm-light-sub) !important;
+    border: none !important;
+    border-bottom: 1px solid var(--calm-light-border-strong) !important;
+    font-size: 0.75rem !important;
+    font-weight: 600 !important;
+    padding: 10px 10px !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .stats-table-wrap td,
+body:not(.theme-light):not(.staff-mode) .data-table td,
+body:not(.theme-light):not(.staff-mode) .spec-table td,
+body:not(.theme-light):not(.staff-mode) .comp-table td,
+body:not(.theme-light):not(.staff-mode) .store-comp-table td,
+body:not(.theme-light):not(.staff-mode) .report-table td,
+body:not(.theme-light):not(.staff-mode) .daily-log-table td,
+body:not(.theme-light):not(.staff-mode) .article-body table td {
+    background: transparent !important;
+    border: none !important;
+    border-bottom: 1px solid var(--calm-border) !important;
+    padding: 12px 10px !important;
+}
+
+body.theme-light:not(.staff-mode) .stats-table-wrap td,
+body.theme-light:not(.staff-mode) .data-table td,
+body.theme-light:not(.staff-mode) .spec-table td,
+body.theme-light:not(.staff-mode) .comp-table td,
+body.theme-light:not(.staff-mode) .store-comp-table td,
+body.theme-light:not(.staff-mode) .report-table td,
+body.theme-light:not(.staff-mode) .daily-log-table td,
+body.theme-light:not(.staff-mode) .article-body table td {
+    background: transparent !important;
+    border: none !important;
+    border-bottom: 1px solid var(--calm-light-border) !important;
+    padding: 12px 10px !important;
+}
+

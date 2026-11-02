@@ -90,7 +90,7 @@
     <link rel="stylesheet" href="/static/style.css?v=20261030_6" media="print" onload="this.media='all'">
     <noscript><link rel="stylesheet" href="/static/style.css?v=20261030_6"></noscript>
 
-    <link rel="stylesheet" href="/static/portal.css?v=12">
+    <link rel="stylesheet" href="/static/portal.css?v=13">
     <style>
         body {
             display: block !important;
@@ -543,7 +543,7 @@
             border-color: rgba(236, 72, 153, 0.5);
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=26">
+    <link rel="stylesheet" href="/static/calm.css?v=27">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -620,61 +620,84 @@
                 まずは、3大ブランドの全体像を比較表でまとめました。
             </p>
 
-            <div class="table-scroll-wrapper">
-                <table class="spec-table">
-                    <thead>
-                        <tr>
-                            <th>比較項目</th>
-                            <th>オリエンタルラウンジ</th>
-                            <th>ag (アグ)</th>
-                            <th>JIS (ジス)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td><strong>コンセプト</strong></td>
-                            <td>高級ホテルラウンジ調の上質な社交場</td>
-                            <td>カジュアル＆ポップな次世代ラウンジ</td>
-                            <td>圧倒的ラグジュアリーな大人のBAR</td>
-                        </tr>
-                        <tr>
-                            <td><strong>女性の主な年齢層</strong></td>
-                            <td><strong>23歳〜32歳</strong>（OL・看護師・事務職）</td>
-                            <td><strong>20歳〜26歳</strong>（女子大生・専門生・若手社会人）</td>
-                            <td><strong>24歳〜34歳</strong>（美容・アパレル・自立系女子）</td>
-                        </tr>
-                        <tr>
-                            <td><strong>男性の主な年齢層</strong></td>
-                            <td>20代後半〜40代（社会人中心）</td>
-                            <td>20代前半〜30代前半</td>
-                            <td>20代後半〜40代（経営者・ハイキャリア多め）</td>
-                        </tr>
-                        <tr>
-                            <td><strong>店内の雰囲気・BGM</strong></td>
-                            <td>落ち着いたモダンジャズ／上品な照明</td>
-                            <td>ネオン装飾・最新トレンド洋楽／賑やか</td>
-                            <td>ほの暗いシックなBAR照明／重厚感</td>
-                        </tr>
-                        <tr>
-                            <td><strong>フード・ドリンク</strong></td>
-                            <td>シェフ監修の本格料理・スイーツ（agと共通）</td>
-                            <td>シェフ監修の本格料理・スイーツ（オリエンタルラウンジと共通）</td>
-                            <td>本格カクテルバー水準（お酒の種類が最多・BARフード）</td>
-                        </tr>
-                        <tr>
-                            <td><strong>男性料金目安（10分相席）</strong></td>
-                            <td>平日440円〜990円 / 週末440円〜1,500円（税込）</td>
-                            <td>平日440円〜880円 / 週末600円〜990円（税込）</td>
-                            <td>平日550円〜880円 / 週末660円〜990円（税込）</td>
-                        </tr>
-                        <tr>
-                            <td><strong>全国店舗数</strong></td>
-                            <td>国内29店舗＋韓国2店舗（最大手）</td>
-                            <td>渋谷・上野・梅田・名古屋・仙台など全国8店舗</td>
-                            <td>新宿・大宮・梅田・難波・福岡・札幌など全国10店舗</td>
-                        </tr>
-                    </tbody>
-                </table>
+            <div class="apple-compare-grid" style="margin: 18px 0 28px;">
+                <article class="apple-compare-col">
+                    <div class="apple-spec-head">
+                        <div class="apple-spec-eyebrow">国内29店舗＋韓国2店舗（最大手）</div>
+                        <h3 class="apple-spec-store-title"><a href="/oriental-lounge">オリエンタルラウンジ ›</a></h3>
+                    </div>
+                    <div class="apple-spec-row">
+                        <div class="apple-spec-label">コンセプト・雰囲気</div>
+                        <div class="apple-spec-val-lg" style="font-size: 0.92rem;">高級ホテルラウンジ調</div>
+                        <div class="apple-spec-sub">落ち着いたモダンジャズ／上品な照明</div>
+                    </div>
+                    <div class="apple-spec-row">
+                        <div class="apple-spec-label">女性の主な年齢層</div>
+                        <div class="apple-spec-val-lg">23歳〜32歳</div>
+                        <div class="apple-spec-sub">OL・看護師・事務職 ｜ 男性は20代後半〜40代（社会人中心）</div>
+                    </div>
+                    <div class="apple-spec-row">
+                        <div class="apple-spec-label">男性料金目安（10分相席）</div>
+                        <div class="apple-spec-val-lg" style="font-size: 0.9rem;">平日 440円〜990円</div>
+                        <div class="apple-spec-sub">週末 440円〜1,500円（税込）</div>
+                    </div>
+                    <div class="apple-spec-row">
+                        <div class="apple-spec-label">フード・ドリンク</div>
+                        <div class="apple-spec-sub">シェフ監修の本格料理・スイーツ（agと共通）</div>
+                    </div>
+                </article>
+
+                <article class="apple-compare-col">
+                    <div class="apple-spec-head">
+                        <div class="apple-spec-eyebrow">渋谷・上野・梅田・名古屋・仙台など全国8店舗</div>
+                        <h3 class="apple-spec-store-title"><a href="/ag">ag (アグ) ›</a></h3>
+                    </div>
+                    <div class="apple-spec-row">
+                        <div class="apple-spec-label">コンセプト・雰囲気</div>
+                        <div class="apple-spec-val-lg" style="font-size: 0.92rem;">カジュアル＆ポップ</div>
+                        <div class="apple-spec-sub">ネオン装飾・最新トレンド洋楽／賑やか</div>
+                    </div>
+                    <div class="apple-spec-row">
+                        <div class="apple-spec-label">女性の主な年齢層</div>
+                        <div class="apple-spec-val-lg">20歳〜26歳</div>
+                        <div class="apple-spec-sub">女子大生・専門生・若手社会人 ｜ 男性は20代前半〜30代前半</div>
+                    </div>
+                    <div class="apple-spec-row">
+                        <div class="apple-spec-label">男性料金目安（10分相席）</div>
+                        <div class="apple-spec-val-lg" style="font-size: 0.9rem;">平日 440円〜880円</div>
+                        <div class="apple-spec-sub">週末 600円〜990円（税込）</div>
+                    </div>
+                    <div class="apple-spec-row">
+                        <div class="apple-spec-label">フード・ドリンク</div>
+                        <div class="apple-spec-sub">シェフ監修の本格料理・スイーツ（オリエンタルラウンジと共通）</div>
+                    </div>
+                </article>
+
+                <article class="apple-compare-col">
+                    <div class="apple-spec-head">
+                        <div class="apple-spec-eyebrow">新宿・大宮・梅田・難波・福岡・札幌など全国10店舗</div>
+                        <h3 class="apple-spec-store-title"><a href="/jis">JIS (ジス) ›</a></h3>
+                    </div>
+                    <div class="apple-spec-row">
+                        <div class="apple-spec-label">コンセプト・雰囲気</div>
+                        <div class="apple-spec-val-lg" style="font-size: 0.92rem;">ラグジュアリーBAR</div>
+                        <div class="apple-spec-sub">ほの暗いシックなBAR照明／重厚感</div>
+                    </div>
+                    <div class="apple-spec-row">
+                        <div class="apple-spec-label">女性の主な年齢層</div>
+                        <div class="apple-spec-val-lg">24歳〜34歳</div>
+                        <div class="apple-spec-sub">美容・アパレル・自立系女子 ｜ 男性は20代後半〜40代</div>
+                    </div>
+                    <div class="apple-spec-row">
+                        <div class="apple-spec-label">男性料金目安（10分相席）</div>
+                        <div class="apple-spec-val-lg" style="font-size: 0.9rem;">平日 550円〜880円</div>
+                        <div class="apple-spec-sub">週末 660円〜990円（税込）</div>
+                    </div>
+                    <div class="apple-spec-row">
+                        <div class="apple-spec-label">フード・ドリンク</div>
+                        <div class="apple-spec-sub">本格カクテルバー水準（お酒の種類が最多・BARフード）</div>
+                    </div>
+                </article>
             </div>
 
             <h2 id="section-2">第2章：【オリエンタルラウンジ】王道の安心感と落ち着いた大人空間（20代半ば〜30代）</h2>

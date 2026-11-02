@@ -105,13 +105,13 @@ class UiAuditRegressionTests(unittest.TestCase):
     # ------------------------------------------------------------------
     def test_cache_busting_sync_across_templates_and_service_worker(self):
         """全テンプレートと static/sw.js のアセットバージョンが完全同期し、immutable ヘッダが正しく付与されること"""
-        expected_calm = "/static/calm.css?v=26"
-        expected_portal = "/static/portal.css?v=12"
+        expected_calm = "/static/calm.css?v=27"
+        expected_portal = "/static/portal.css?v=13"
         expected_app_js = "/static/app.js?v=20261102_2"
         expected_aff_js = "/static/affiliate_config.js?v=13"
         expected_style = "/static/style.css?v=20261030_6"
-        expected_sw_url = "/sw.js?v=79"
-        expected_cache_name = "aiseki-navi-v79"
+        expected_sw_url = "/sw.js?v=80"
+        expected_cache_name = "aiseki-navi-v80"
 
         templates_dir = os.path.join(PROJECT_ROOT, "templates")
         calm_seen = 0
@@ -1251,6 +1251,7 @@ class UiAuditRegressionTests(unittest.TestCase):
                         ("/store/oriental-lounge-shinjuku", ".live-hero-card"),
                         ("/columns", ".articles-grid > .article-card:first-child"),
                         ("/for-women", ".live-board"),
+                        ("/price-comparison", ".apple-compare-col"),
                     ):
                         ap_page.goto(base + sub_route, wait_until="domcontentloaded")
                         ap_page.add_style_tag(content="*, *::before, *::after { transition: none !important; animation: none !important; }")

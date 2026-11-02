@@ -71,7 +71,7 @@
 
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=2">
     <link rel="apple-touch-icon" href="/static/icon.png?v=2">
-    <link rel="stylesheet" href="/static/portal.css?v=12">
+    <link rel="stylesheet" href="/static/portal.css?v=13">
     <link rel="stylesheet" href="/static/style.css?v=20261030_6">
     <style>
         :root {
@@ -454,7 +454,7 @@
             }
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=26">
+    <link rel="stylesheet" href="/static/calm.css?v=27">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -647,15 +647,15 @@
 
             {% if store_analytics.daily_logs %}
             <h3 style="margin: 20px 0 10px; font-size: 0.94rem; color: var(--text-main);">直近の日別ピーク実績ログ（最高女性人数・ピーク時刻）</h3>
-            <div style="overflow-x: auto; border: 1px solid var(--border-subtle); border-radius: 10px;">
-                <table class="store-comp-table" style="min-width: 480px;">
+            <div class="stats-table-wrap">
+                <table class="store-comp-table" style="width: 100%;">
                     <thead>
                         <tr>
                             <th>営業日</th>
-                            <th>最高女性人数</th>
-                            <th>ピーク時男性数</th>
-                            <th>ピーク到達時刻</th>
-                            <th>20〜24時 平均女性比</th>
+                            <th>最高女性</th>
+                            <th>ピーク男性</th>
+                            <th>到達時刻</th>
+                            <th>平均女性比</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -676,96 +676,117 @@
         {% endif %}
 
         {% if nearby_comparison and nearby_comparison.stores %}
-        <section class="section-card">
+        <section class="section-card apple-open-section">
             <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
                 <h2 style="margin:0;">{{ store.seo_name }}と近隣ライバル店の料金・開催中イベント・現在人数比較</h2>
                 <a href="/price-comparison?area={{ nearby_comparison.cluster_id }}" style="font-size:0.78rem; color: var(--accent-text); text-decoration:none; font-weight:600;">全国エリア比較ボードへ ›</a>
             </div>
             <p style="margin: 0 0 12px; font-size: 0.84rem; color: var(--text-sub);">
-                同じエリア内の競合店舗と<strong style="color: var(--text-main);">「店舗別の単独（待機）料金」「時間帯別の相席10分単価」「1名入店の可否」「開催中のイベント」「いまの男女人数・比率」</strong>を横並びで比較できます。※最新条件は各公式サイトでご確認ください。
+                同じエリア内の競合店舗と<strong style="color: var(--text-main);">「単独（待機）料金」「時間帯別の相席10分単価」「1名入店の可否」「開催中イベント」「いまの男女人数」</strong>を並列で比較できます。※最新条件は各公式サイトでご確認ください。
             </p>
-            <div style="overflow-x: auto; border: 1px solid var(--border-subtle); border-radius: 10px;">
-                <table class="store-comp-table">
-                    <thead>
-                        <tr>
-                            <th>店舗名 / 1名入店可否</th>
-                            <th>現在の人数・女性比</th>
-                            <th>店舗別相席料金 / 単独待機料金</th>
-                            <th>開催中の男性特典・イベント</th>
-                            <th>実質コスパ検証</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for st in nearby_comparison.stores %}
-                        <tr class="{% if st.is_current_store %}is-current-row{% elif st.is_best_in_cluster %}is-best-row{% endif %}"
-                            data-nearby-comp-row="{{ st.name }}"
-                            data-is-current="{{ '1' if st.is_current_store else '0' }}"
-                            data-wait-str="{{ st.wait_fee_str }}"
-                            data-wait-yen="{{ st.wait_10m_yen }}"
-                            data-est-wknd="{{ st.est_60m_weekend }}"
-                            data-has-men-perk="{{ '1' if st.has_live_men_perk else '0' }}"
-                            data-has-women-ev="{{ '1' if st.has_live_women_event else '0' }}"
-                            data-is-flat="{{ '1' if st.is_flat_rate else '0' }}"
-                            data-solo-rule="{{ st.solo_rule }}"
-                            data-slot-18-20="{{ st.slot_18_20 }}"
-                            data-slot-20-22="{{ st.slot_20_22 }}"
-                            data-slot-22-24="{{ st.slot_22_24 }}"
-                            data-slot-24-last="{{ st.slot_24_last }}"
-                            data-hours-spec='{{ st.hours_spec | tojson }}'>
-                            <td>
-                                <div style="font-weight: 700;">
-                                    <a href="/store/{{ st.slug }}" style="color: var(--text-main); text-decoration: none;">{{ st.seo_name }}</a>
-                                    {% if st.is_current_store %}
-                                    <span class="row-tag row-tag-current">表示中</span>
-                                    {% endif %}
-                                    <span data-nearby-crown class="row-tag row-tag-best" style="{% if not st.is_best_in_cluster %}display:none;{% endif %}">エリア推奨</span>
-                                </div>
-                                <div style="font-size: 0.72rem; color: var(--text-main); margin-top: 3px; font-weight: 600;">入店条件：{{ st.solo_rule }}</div>
-                                <div style="font-size: 0.71rem; color: var(--text-sub); margin-top: 2px;">営業時間：{{ st.hours_label }}</div>
-                                <div style="font-size: 0.71rem; color: var(--text-sub); margin-top: 2px;">{{ st.age_range }} ｜ {{ st.vibe_short }}</div>
+
+            <div class="apple-compare-toolbar" aria-label="比較時間帯の切り替え">
+                <div class="apple-seg-bar" role="group" aria-label="時間帯別相席単価の切り替え">
+                    <button type="button" class="apple-seg-btn active" data-nearby-slot-btn="auto" onclick="switchNearbySlot('auto')">いま（現在枠）</button>
+                    <button type="button" class="apple-seg-btn" data-nearby-slot-btn="slot1820" onclick="switchNearbySlot('slot1820')">Open〜20時</button>
+                    <button type="button" class="apple-seg-btn" data-nearby-slot-btn="slot2022" onclick="switchNearbySlot('slot2022')">20〜22時</button>
+                    <button type="button" class="apple-seg-btn" data-nearby-slot-btn="slot2224" onclick="switchNearbySlot('slot2224')">22〜24時</button>
+                    <button type="button" class="apple-seg-btn" data-nearby-slot-btn="slot24Last" onclick="switchNearbySlot('slot24Last')">24時〜Close</button>
+                </div>
+            </div>
+
+            <div class="apple-compare-grid">
+                {% for st in nearby_comparison.stores %}
+                <article class="apple-compare-col{% if st.is_current_store %} is-current-row{% elif st.is_best_in_cluster %} is-best-row{% endif %}"
+                         data-nearby-comp-row="{{ st.name }}"
+                         data-is-current="{{ '1' if st.is_current_store else '0' }}"
+                         data-wait-str="{{ st.wait_fee_str }}"
+                         data-wait-yen="{{ st.wait_10m_yen }}"
+                         data-est-wknd="{{ st.est_60m_weekend }}"
+                         data-has-men-perk="{{ '1' if st.has_live_men_perk else '0' }}"
+                         data-has-women-ev="{{ '1' if st.has_live_women_event else '0' }}"
+                         data-is-flat="{{ '1' if st.is_flat_rate else '0' }}"
+                         data-solo-rule="{{ st.solo_rule }}"
+                         data-slot-18-20="{{ st.slot_18_20 }}"
+                         data-slot-20-22="{{ st.slot_20_22 }}"
+                         data-slot-22-24="{{ st.slot_22_24 }}"
+                         data-slot-24-last="{{ st.slot_24_last }}"
+                         data-active-ssr-label="{{ st.active_slot_label }}"
+                         data-active-ssr-rate="{{ st.active_slot_rate }}"
+                         data-hours-spec='{{ st.hours_spec | tojson }}'>
+                    <div class="apple-spec-head">
+                        <div class="apple-spec-eyebrow">
+                            {% if st.is_current_store %}
+                            <span class="row-tag row-tag-current">表示中</span>
+                            {% endif %}
+                            <span data-nearby-crown class="row-tag row-tag-best" style="{% if not st.is_best_in_cluster %}display:none;{% endif %}">エリア推奨</span>
+                            {% if not st.is_current_store and not st.is_best_in_cluster %}
+                            <span>近隣ライバル</span>
+                            {% endif %}
+                        </div>
+                        <h3 class="apple-spec-store-title">
+                            <a href="/store/{{ st.slug }}">{{ st.seo_name }} ›</a>
+                        </h3>
+                    </div>
+
+                    <div class="apple-spec-row" data-nearby-crowd-cell>
+                        <div class="apple-spec-label">現在の人数・女性比</div>
+                        {% if st.total > 0 %}
+                        <div class="apple-spec-val-lg">女性比率 {{ st.wpct }}%{% if st.women < 10 %} <span style="font-size: 0.72rem; color: var(--text-sub); font-weight: 400;">（少人数）</span>{% endif %}</div>
+                        <div class="apple-spec-sub" style="font-weight: 700;"><span class="w-color">女性 {{ st.women }}名</span> / <span class="m-color">男性 {{ st.men }}名</span></div>
+                        {% elif st.is_open_now %}
+                        <div class="apple-spec-val-lg">0 : 0</div>
+                        <div class="apple-spec-sub">営業中（本日 {{ st.today_hours_label }}）</div>
+                        {% else %}
+                        <div class="apple-spec-sub">営業時間外（本日 {{ st.today_hours_label }}）</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="apple-spec-row">
+                        <div class="apple-spec-label"><span data-nearby-slot-label>{{ st.active_slot_label }}</span>の相席10分</div>
+                        <div class="apple-spec-val-lg" data-nearby-slot-rate>{{ st.active_slot_rate }}</div>
+                        <details class="apple-spec-fold">
+                            <summary>4時間帯すべて見る ▾</summary>
+                            <div class="apple-spec-fold-body">
+                                ①〜20時：{{ st.slot_18_20 }}<br>
+                                ②20〜22時：{{ st.slot_20_22 }}<br>
+                                ③22〜24時：{{ st.slot_22_24 }}<br>
+                                ④24時〜：{{ st.slot_24_last }}
+                            </div>
+                        </details>
+                    </div>
+
+                    <div class="apple-spec-row">
+                        <div class="apple-spec-label">1名入店可否 ／ 単独待機</div>
+                        <div class="{% if '不可' in st.solo_rule or '2名以上' in st.solo_rule %}apple-solo-req{% else %}apple-solo-ok{% endif %}">{{ st.solo_rule }}</div>
+                        <div class="apple-spec-sub">単独（待機中）：{{ st.wait_fee_str }}</div>
+                    </div>
+
+                    <div class="apple-spec-row">
+                        <div class="apple-spec-label">開催中の特典・企画</div>
+                        {% for mp in st.men_perks[:1] %}
+                        <div class="apple-spec-sub"><strong style="color: var(--men);">[男性特典]</strong> {{ mp.title }}</div>
+                        {% endfor %}
+                        {% for we in st.women_events[:1] %}
+                        <div class="apple-spec-sub"><strong style="color: var(--women);">[女性企画]</strong> {{ we.title }}</div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="apple-spec-row">
+                        <div style="font-weight: 700; font-size: 0.78rem; color: var(--accent-text);" data-nearby-verdict-badge>{{ st.verdict_badge }}</div>
+                        <details class="apple-spec-fold">
+                            <summary>コスパ検証・店舗情報 ▾</summary>
+                            <div class="apple-spec-fold-body">
+                                <div data-nearby-verdict-comment>{{ st.verdict_comment }}</div>
+                                <div style="margin-top: 5px;">営業時間：{{ st.hours_label }}<br>{{ st.age_range }} ｜ {{ st.vibe_short }}</div>
                                 <div style="margin-top: 5px;">
                                     <a href="{{ st.official_url }}" target="_blank" rel="noopener noreferrer" class="official-ext-link">公式サイト ↗</a>
                                 </div>
-                            </td>
-                            <td data-nearby-crowd-cell>
-                                {% if st.total > 0 %}
-                                <div style="font-weight: 700;"><span class="w-color">女性 {{ st.women }}名</span> / <span class="m-color">男性 {{ st.men }}名</span></div>
-                                <div style="font-size: 0.73rem; color: var(--accent-text); font-weight: 600;">女性比率 {{ st.wpct }}%{% if st.women < 10 %} <span style="color: var(--text-sub); font-weight: 400;">（少人数）</span>{% endif %}</div>
-                                {% elif st.is_open_now %}
-                                <div style="font-weight: 700; color: var(--text-main);">0 : 0</div>
-                                <div style="font-size: 0.72rem; color: var(--accent-text);">営業中（本日 {{ st.today_hours_label }}）</div>
-                                {% else %}
-                                <span style="font-size: 0.75rem; color: var(--text-sub);">営業時間外（本日 {{ st.today_hours_label }}）</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                <div style="font-size: 0.73rem; font-weight: 700; color: var(--accent-text); margin-bottom: 3px;">
-                                    現在枠（<span data-nearby-slot-label>{{ st.active_slot_label }}</span>）：<span data-nearby-slot-rate>{{ st.active_slot_rate }}</span>
-                                </div>
-                                <div style="font-size: 0.72rem; color: var(--text-main); line-height: 1.48;">
-                                    ①〜20時：{{ st.slot_18_20 }}<br>
-                                    ②20〜22時：{{ st.slot_20_22 }}<br>
-                                    ③22〜24時：{{ st.slot_22_24 }}<br>
-                                    ④24時〜：{{ st.slot_24_last }}
-                                </div>
-                                <div style="font-size: 0.72rem; color: var(--accent-text); font-weight: 600; margin-top: 3px;">単独（待機中）：{{ st.wait_fee_str }}</div>
-                            </td>
-                            <td style="font-size: 0.75rem; color: var(--text-sub);">
-                                {% for mp in st.men_perks[:1] %}
-                                <div style="margin-bottom: 4px;"><strong style="color: var(--men);">[男性特典]</strong> {{ mp.title }}</div>
-                                {% endfor %}
-                                {% for we in st.women_events[:1] %}
-                                <div><strong style="color: var(--women);">[女性企画]</strong> {{ we.title }}</div>
-                                {% endfor %}
-                            </td>
-                            <td style="font-size: 0.75rem; color: var(--text-sub);">
-                                <div style="font-weight: 700; color: var(--accent-text); margin-bottom: 3px;" data-nearby-verdict-badge>{{ st.verdict_badge }}</div>
-                                <div data-nearby-verdict-comment>{{ st.verdict_comment }}</div>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                            </div>
+                        </details>
+                    </div>
+                </article>
+                {% endfor %}
             </div>
         </section>
         {% endif %}
@@ -1007,6 +1028,47 @@
                 }
                 return { key: 'slot2224', shortLabel: '22時〜24時' };
             }
+
+            window.__selectedNearbySlot = 'auto';
+            const NEARBY_SLOT_LABELS = {
+                slot1820: 'Open〜20時',
+                slot2022: '20時〜22時',
+                slot2224: '22時〜24時',
+                slot24Last: '24時〜Close'
+            };
+
+            function resolveNearbySlot(ds, slotKey) {
+                if (!slotKey || slotKey === 'auto') {
+                    return {
+                        label: ds.activeSsrLabel || '現在枠',
+                        rate: ds.activeSsrRate || ds.slot2022 || ''
+                    };
+                }
+                const rateMap = {
+                    slot1820: ds.slot1820 || '',
+                    slot2022: ds.slot2022 || '',
+                    slot2224: ds.slot2224 || '',
+                    slot24Last: ds.slot24Last || ''
+                };
+                return {
+                    label: NEARBY_SLOT_LABELS[slotKey] || '選択枠',
+                    rate: rateMap[slotKey] || ds.slot2022 || ''
+                };
+            }
+
+            window.switchNearbySlot = function(slotKey) {
+                window.__selectedNearbySlot = slotKey || 'auto';
+                document.querySelectorAll('[data-nearby-slot-btn]').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.nearbySlotBtn === window.__selectedNearbySlot);
+                });
+                document.querySelectorAll('[data-nearby-comp-row]').forEach(row => {
+                    const resolved = resolveNearbySlot(row.dataset, window.__selectedNearbySlot);
+                    const sLbl = row.querySelector('[data-nearby-slot-label]');
+                    if (sLbl) sLbl.textContent = resolved.label;
+                    const sRate = row.querySelector('[data-nearby-slot-rate]');
+                    if (sRate) sRate.textContent = resolved.rate;
+                });
+            };
 
             function computeNearbyVerdict(ds, storeName, women, men, slotInfo) {
                 const total = women + men;
@@ -1265,7 +1327,7 @@
                     }
 
                     const slotInfo = getJstSlotInfo();
-                    const compRows = Array.from(document.querySelectorAll('tr[data-nearby-comp-row]'));
+                    const compRows = Array.from(document.querySelectorAll('[data-nearby-comp-row]'));
                     let bestRow = null;
                     compRows.forEach(row => {
                         const sname = row.dataset.nearbyCompRow;
@@ -1274,26 +1336,34 @@
                         const m = parseInt(live.men || 0, 10) || 0;
                         const calc = computeNearbyVerdict(row.dataset, sname, w, m, slotInfo);
 
+                        row.dataset.activeSsrLabel = slotInfo.shortLabel;
+                        row.dataset.activeSsrRate = calc.activeRate;
+
                         const crowdCell = row.querySelector('[data-nearby-crowd-cell]');
                         if (crowdCell) {
                             if (calc.total > 0) {
-                                const lowNote = w < MIN_WOMEN_EVAL ? ' <span style="color: var(--text-sub); font-weight: 400;">（少人数）</span>' : '';
+                                const lowNote = w < MIN_WOMEN_EVAL ? ' <span style="font-size: 0.72rem; color: var(--text-sub); font-weight: 400;">（少人数）</span>' : '';
                                 crowdCell.innerHTML =
-                                    '<div style="font-weight: 700;"><span class="w-color">女性 ' + w + '名</span> / <span class="m-color">男性 ' + m + '名</span></div>' +
-                                    '<div style="font-size: 0.73rem; color: var(--accent-text); font-weight: 600;">女性比率 ' + calc.wpct + '%' + lowNote + '</div>';
+                                    '<div class="apple-spec-label">現在の人数・女性比</div>' +
+                                    '<div class="apple-spec-val-lg">女性比率 ' + calc.wpct + '%' + lowNote + '</div>' +
+                                    '<div class="apple-spec-sub" style="font-weight: 700;"><span class="w-color">女性 ' + w + '名</span> / <span class="m-color">男性 ' + m + '名</span></div>';
                             } else if (calc.isOpenNow) {
                                 crowdCell.innerHTML =
-                                    '<div style="font-weight: 700; color: var(--text-main);">0 : 0</div>' +
-                                    '<div style="font-size: 0.72rem; color: var(--accent-text);">営業中（本日 ' + calc.todayHoursLabel + '）</div>';
+                                    '<div class="apple-spec-label">現在の人数・女性比</div>' +
+                                    '<div class="apple-spec-val-lg">0 : 0</div>' +
+                                    '<div class="apple-spec-sub">営業中（本日 ' + calc.todayHoursLabel + '）</div>';
                             } else {
-                                crowdCell.innerHTML = '<span style="font-size: 0.75rem; color: var(--text-sub);">営業時間外（本日 ' + calc.todayHoursLabel + '）</span>';
+                                crowdCell.innerHTML =
+                                    '<div class="apple-spec-label">現在の人数・女性比</div>' +
+                                    '<div class="apple-spec-sub">営業時間外（本日 ' + calc.todayHoursLabel + '）</div>';
                             }
                         }
 
+                        const chosenSlot = resolveNearbySlot(row.dataset, window.__selectedNearbySlot);
                         const sLbl = row.querySelector('[data-nearby-slot-label]');
-                        if (sLbl) sLbl.textContent = slotInfo.shortLabel;
+                        if (sLbl) sLbl.textContent = chosenSlot.label;
                         const sRate = row.querySelector('[data-nearby-slot-rate]');
-                        if (sRate) sRate.textContent = calc.activeRate;
+                        if (sRate) sRate.textContent = chosenSlot.rate;
 
                         const vBadge = row.querySelector('[data-nearby-verdict-badge]');
                         if (vBadge) vBadge.textContent = calc.badge;

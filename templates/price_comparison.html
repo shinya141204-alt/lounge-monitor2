@@ -18,7 +18,7 @@
     <meta name="description" content="{{ active_cluster_ns.item.title }}（{{ active_cluster_ns.item.desc }}）単独待機料金・4時間帯別の相席10分単価・1名入店可否・開催中イベント・現在のリアルタイム男女人数を横並び徹底比較。">
     {% else %}
     <title>相席ラウンジ料金・男性割引イベント徹底比較｜新宿・渋谷・梅田・栄・天神の近隣店コスパ検証 | 相席ナビ</title>
-    <meta name="description" content="オリエンタルラウンジ・ag（アグ）・JIS（ジス）全国51店舗の男性料金（単独待機料金・時間帯別の相席10分単価・60分総額目安・1名入店可否）と、現在開催中の男性割引・女性集客イベント、今のリアルタイム男女人数をエリア別に徹底比較。">
+    <meta name="description" content="オリエンタルラウンジ・ag（アグ）・JIS（ジス）・ASOBIBAR・地域ラウンジ国内全{{ data.all_domestic_stores|length }}店舗の男性料金（単独待機料金・時間帯別の相席10分単価・60分総額目安・1名入店可否）と、現在開催中の男性割引・女性集客イベント、今のリアルタイム男女人数をエリア別に徹底比較。">
     {% endif %}
     <meta name="keywords" content="相席ラウンジ 料金 比較,オリエンタルラウンジ 料金,オリエンタルラウンジ 待機料金,JIS 料金,ag 料金,相席ラウンジ 男性 割引,相席ラウンジ イベント,新宿 相席 料金,梅田 相席 料金">
     <meta name="robots" content="index, follow">
@@ -26,7 +26,7 @@
     <link rel="alternate" type="text/markdown" href="https://aiseki-navi.com/llms.txt" title="相席ナビ AI要約ドキュメント (llms.txt)">
     <link rel="alternate" type="application/json" href="https://aiseki-navi.com/api/llms-facts.json" title="相席ナビ AIグラウンディング構造化JSON (llms-facts.json)">
 
-    <meta property="og:title" content="{% if active_cluster_ns.item %}{{ active_cluster_ns.item.tab_label }}の相席ラウンジ料金・開催中イベント・現在人数比較｜相席ナビ{% else %}相席ラウンジ全51店舗の料金（待機・相席単価・1名可否）＆開催中イベント徹底比較{% endif %}">
+    <meta property="og:title" content="{% if active_cluster_ns.item %}{{ active_cluster_ns.item.tab_label }}の相席ラウンジ料金・開催中イベント・現在人数比較｜相席ナビ{% else %}相席ラウンジ全{{ data.all_domestic_stores|length }}店舗の料金（待機・相席単価・1名可否）＆開催中イベント徹底比較{% endif %}">
     <meta property="og:description" content="{% if active_cluster_ns.item %}{{ active_cluster_ns.item.desc }} 単独待機料金・4時間帯別の相席単価・1名入店可否・今の男女人数を横並び検証。{% else %}オリエンタルラウンジ・ag・JIS各店の単独待機料金（220円〜330円/10分）、店舗ごと・時間帯ごとに異なる相席10分単価、開催中イベント、今の女性人数・比率を横並び検証。{% endif %}">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://aiseki-navi.com/price-comparison{% if active_cluster_ns.item %}?area={{ active_cluster_ns.item.id }}{% endif %}">
@@ -37,7 +37,7 @@
 
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=2">
     <link rel="apple-touch-icon" href="/static/icon.png?v=2">
-    <link rel="stylesheet" href="/static/portal.css?v=12">
+    <link rel="stylesheet" href="/static/portal.css?v=13">
 
     <script type="application/ld+json">
     {
@@ -77,7 +77,7 @@
           "name": "男性1人（ソロ）でも入店できる店舗と2名以上必須の店舗はどこですか？",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "オリエンタルラウンジの都心大型5店舗（恵比寿・渋谷本店・新宿・大阪駅前・名古屋錦）と、agの渋谷・上野・名古屋店、週末のag仙台店は「男性2名以上必須（1名入店不可）」、JIS新宿店も2名以上推奨です。それ以外のオリエンタルラウンジ24店舗・ag各店・JIS 9店舗はシングルチャージ（+1,100円）で、地場ブランド各店も男性1名から入店可能です。当ページの全店舗一覧表で全51店舗の1名入店ルールを確認できます。"
+            "text": "オリエンタルラウンジの都心大型5店舗（恵比寿・渋谷本店・新宿・大阪駅前・名古屋錦）と、agの渋谷・上野・名古屋店、週末のag仙台店は「男性2名以上必須（1名入店不可）」、JIS新宿店も2名以上推奨です。それ以外のオリエンタルラウンジ24店舗・ag各店・JIS 9店舗はシングルチャージ（+1,100円）で、ASOBIBAR・地場ブランド各店も男性1名から入店可能です。当ページの全店舗一覧表で国内全{{ data.all_domestic_stores|length }}店舗の1名入店ルールを確認できます。"
           }
         }
       ]
@@ -430,7 +430,7 @@
             margin-right: 4px;
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=26">
+    <link rel="stylesheet" href="/static/calm.css?v=27">
 </head>
 
 <body>
@@ -455,9 +455,9 @@
 
         <header class="hero-box">
             <span class="hero-kicker">店舗別の単独（待機）料金 × 4時間帯の相席単価 × 開催中イベント × リアルタイム人数</span>
-            <h1>相席ラウンジ全51店舗「店舗別料金（待機・相席単価・1名入店可否）＆開催中イベント」徹底比較ボード</h1>
+            <h1>相席ラウンジ全{{ data.all_domestic_stores|length }}店舗「店舗別料金（待機・相席単価・1名入店可否）＆開催中イベント」徹底比較ボード</h1>
             <p>
-                <strong>オリエンタルラウンジ・ag（アグ）・JIS（ジス）</strong>をはじめ全国50店舗では<strong>「相席していない単独（待機）時にも10分 220円または330円」</strong>が発生し（ヤタコイ梅田のみ定額デイパス制）、さらに<strong>相席10分単価（275円〜1,500円）や男性1名入店の可否も「店舗ごと・4つの時間帯ごと」に異なります</strong>。行きたい街のタブを選ぶか、ページ下部の<a href="#all-stores-price-catalog" style="color: var(--accent); font-weight: 600; text-decoration: underline;">全51店舗の料金・待機単価マスタ一覧表</a>で比較できます。
+                <strong>オリエンタルラウンジ・ag（アグ）・JIS（ジス）・ASOBIBAR・地域ラウンジ</strong>を含む国内全{{ data.all_domestic_stores|length }}店舗について、<strong>単独（待機）料金（220円〜330円/10分 または 定額・チケット制）</strong>、<strong>4時間帯別の相席10分単価（275円〜1,500円）</strong>、<strong>男性1名入店の可否</strong>を並列で比較できます。行きたい街のタブを選ぶか、ページ下部の<a href="#all-stores-price-catalog" style="color: var(--accent); font-weight: 600; text-decoration: underline;">全{{ data.all_domestic_stores|length }}店舗の料金・待機単価マスタ一覧表</a>をご活用ください。
             </p>
         </header>
 
@@ -480,11 +480,11 @@
             </div>
         </aside>
 
-        <!-- Section 1: Urban Area Cluster Comparison Board -->
-        <section class="section-card">
+        <!-- Section 1: Urban Area Cluster Comparison Board (Apple Compare Spec Matrix) -->
+        <section class="section-card apple-open-section">
             <h2 class="section-title">エリア別：徒歩圏内ライバル店の4時間帯料金・イベント・現在人数 横並び比較</h2>
             <p class="section-lead">
-                ボタンを選択すると各エリアの比較表に切り替わります（現在の時間帯区分：<strong id="live-slot-label" style="color: var(--accent-text);">{{ data.current_slot.slot_label }}</strong>）
+                街と時間帯を選ぶだけで、ライバル店の単価・待機料金・1名可否・現在人数を縦に揃えて比較できます（現在の時間帯区分：<strong id="live-slot-label" style="color: var(--accent-text);">{{ data.current_slot.slot_label }}</strong>）
             </p>
 
             <div class="area-tabs" role="tablist">
@@ -496,6 +496,20 @@
                     {{ cl.tab_label }}
                 </button>
                 {% endfor %}
+            </div>
+
+            <div class="apple-compare-toolbar" aria-label="比較時間帯と入店条件の切り替え">
+                <div class="apple-seg-bar" role="group" aria-label="時間帯切り替え">
+                    <button type="button" class="apple-seg-btn active" data-slot-select="auto" onclick="switchPriceSlot('auto')">いま（現在枠）</button>
+                    <button type="button" class="apple-seg-btn" data-slot-select="slot1820" onclick="switchPriceSlot('slot1820')">Open〜20時</button>
+                    <button type="button" class="apple-seg-btn" data-slot-select="slot2022" onclick="switchPriceSlot('slot2022')">20〜22時</button>
+                    <button type="button" class="apple-seg-btn" data-slot-select="slot2224" onclick="switchPriceSlot('slot2224')">22〜24時</button>
+                    <button type="button" class="apple-seg-btn" data-slot-select="slot24Last" onclick="switchPriceSlot('slot24Last')">24時〜Close</button>
+                </div>
+                <div class="apple-seg-bar" role="group" aria-label="1名入店フィルタ">
+                    <button type="button" class="apple-seg-btn active" data-cluster-solo="all" onclick="switchClusterSoloFilter('all')">すべて並列</button>
+                    <button type="button" class="apple-seg-btn" data-cluster-solo="solo" onclick="switchClusterSoloFilter('solo')">1名入店OKのみ</button>
+                </div>
             </div>
 
             {% for cl in data.clusters %}
@@ -520,7 +534,7 @@
                             {% if cl.best_store %}
                             {{ cl.best_store.verdict_comment }}
                             {% elif cl.has_any_open %}
-                            公式営業時間内ですが、全店舗とも女性{{ data.min_women_eval }}名未満（少人数または 0 : 0 空席）のため、席替え（次の相席候補）の余地を考慮して推奨店舗の選出を保留しています。下の表で各店の現在人数・単価・入店条件を比較してください。
+                            公式営業時間内ですが、全店舗とも女性{{ data.min_women_eval }}名未満（少人数または 0 : 0 空席）のため、席替え（次の相席候補）の余地を考慮して推奨店舗の選出を保留しています。下の比較シートで各店の現在人数・単価・入店条件を比較してください。
                             {% else %}
                             各店舗の公式オープン時刻後にリアルタイム男女人数と推奨判定が自動反映されます。事前の時間帯別料金・単独料金・入店条件の比較にご活用ください。
                             {% endif %}
@@ -534,131 +548,118 @@
                     </a>
                 </div>
 
-                <div class="comp-table-wrap">
-                    <table class="comp-table">
-                        <thead>
-                            <tr>
-                                <th>店舗名 / 1名入店可否</th>
-                                <th>現在の男女人数・比率</th>
-                                <th>時間帯別の相席10分料金（平日 / 金土祝前日）</th>
-                                <th>単独時（待機中）料金</th>
-                                <th>開催中の男性特典 ＆ 女性集客イベント</th>
-                                <th>実質コスパ検証ジャッジ</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for st in cl.stores %}
-                            <tr class="{% if st.is_best_in_cluster %}best-row{% endif %}"
-                                data-live-store="{{ st.name }}"
-                                data-seo-name="{{ st.seo_name }}"
-                                data-slug="{{ st.slug }}"
-                                data-wait-str="{{ st.wait_fee_str }}"
-                                data-wait-yen="{{ st.wait_10m_yen }}"
-                                data-est-wknd="{{ st.est_60m_weekend }}"
-                                data-has-men-perk="{{ '1' if st.has_live_men_perk else '0' }}"
-                                data-has-women-ev="{{ '1' if st.has_live_women_event else '0' }}"
-                                data-is-flat="{{ '1' if st.is_flat_rate else '0' }}"
-                                data-solo-rule="{{ st.solo_rule }}"
-                                data-slot-18-20="{{ st.slot_18_20 }}"
-                                data-slot-20-22="{{ st.slot_20_22 }}"
-                                data-slot-22-24="{{ st.slot_22_24 }}"
-                                data-slot-24-last="{{ st.slot_24_last }}"
-                                data-hours-spec='{{ st.hours_spec | tojson }}'>
-                                <td style="min-width: 190px;">
-                                    <div>
-                                        <span class="brand-pill">{{ st.brand_code | brand_ja }}</span>
-                                        <span class="crown-tag" data-crown-tag style="{% if not st.is_best_in_cluster %}display:none;{% endif %}">エリア推奨</span>
-                                    </div>
-                                    <div style="margin-top: 5px; font-weight: 700; font-size: 0.91rem;">
-                                        <a href="/store/{{ st.slug }}" style="color: var(--text-main); text-decoration: none;">{{ st.seo_name }} ›</a>
-                                    </div>
-                                    <div style="font-size: 0.73rem; color: var(--text-main); margin-top: 4px; font-weight: 600;">
-                                        入店条件：{{ st.solo_rule }}
-                                    </div>
-                                    <div style="font-size: 0.72rem; color: var(--text-sub); margin-top: 3px;">
-                                        営業時間：{{ st.hours_label }}<br>
-                                        年齢層：{{ st.age_range }}<br>
+                <div class="apple-compare-grid">
+                    {% for st in cl.stores %}
+                    <article class="apple-compare-col{% if st.is_best_in_cluster %} best-row{% endif %}"
+                             data-live-store="{{ st.name }}"
+                             data-seo-name="{{ st.seo_name }}"
+                             data-slug="{{ st.slug }}"
+                             data-wait-str="{{ st.wait_fee_str }}"
+                             data-wait-yen="{{ st.wait_10m_yen }}"
+                             data-est-wknd="{{ st.est_60m_weekend }}"
+                             data-has-men-perk="{{ '1' if st.has_live_men_perk else '0' }}"
+                             data-has-women-ev="{{ '1' if st.has_live_women_event else '0' }}"
+                             data-is-flat="{{ '1' if st.is_flat_rate else '0' }}"
+                             data-solo-rule="{{ st.solo_rule }}"
+                             data-solo-ok="{{ '0' if ('不可' in st.solo_rule or '2名以上' in st.solo_rule) else '1' }}"
+                             data-slot-18-20="{{ st.slot_18_20 }}"
+                             data-slot-20-22="{{ st.slot_20_22 }}"
+                             data-slot-22-24="{{ st.slot_22_24 }}"
+                             data-slot-24-last="{{ st.slot_24_last }}"
+                             data-active-ssr-label="{{ st.active_slot_label }}"
+                             data-active-ssr-rate="{{ st.active_slot_rate }}"
+                             data-hours-spec='{{ st.hours_spec | tojson }}'>
+                        <div class="apple-spec-head">
+                            <div class="apple-spec-eyebrow">
+                                {{ st.brand_code | brand_ja }}
+                                <span class="crown-tag" data-crown-tag style="{% if not st.is_best_in_cluster %}display:none;{% endif %}">エリア推奨</span>
+                            </div>
+                            <h4 class="apple-spec-store-title">
+                                <a href="/store/{{ st.slug }}">{{ st.seo_name }} ›</a>
+                            </h4>
+                        </div>
+
+                        <div class="apple-spec-row" data-crowd-cell>
+                            <div class="apple-spec-label">現在の店内バランス</div>
+                            {% if st.total > 0 %}
+                            <div class="apple-spec-val-lg">
+                                女性比 {{ st.wpct }}%{% if st.women < data.min_women_eval %} <span style="font-size: 0.72rem; color: var(--text-sub); font-weight: 500;">（少人数）</span>{% endif %}
+                            </div>
+                            <div class="apple-spec-sub" style="font-weight: 700;">
+                                <span style="color: var(--women);">女性 {{ st.women }}名</span> / <span style="color: var(--men);">男性 {{ st.men }}名</span>
+                            </div>
+                            <div class="mini-ratio-bar" style="margin-top: 6px;">
+                                <div class="mini-ratio-fill" style="width: {{ st.wpct }}%;"></div>
+                            </div>
+                            {% elif st.is_open_now %}
+                            <div class="apple-spec-val-lg">0 : 0</div>
+                            <div class="apple-spec-sub">営業中（本日 {{ st.today_hours_label }}）</div>
+                            {% else %}
+                            <div class="apple-spec-sub">営業時間外（本日 {{ st.today_hours_label }}）</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="apple-spec-row">
+                            <div class="apple-spec-label"><span data-active-slot-label>{{ st.active_slot_label }}</span>の相席10分</div>
+                            <div class="apple-spec-val-lg" data-active-slot-rate>{{ st.active_slot_rate }}</div>
+                            <div class="apple-spec-sub">チャージ：{{ st.charge_str }}</div>
+                            <details class="apple-spec-fold">
+                                <summary>4時間帯すべて見る ▾</summary>
+                                <div class="apple-spec-fold-body">
+                                    ① Open〜20時：{{ st.slot_18_20 }}<br>
+                                    ② 20時〜22時：{{ st.slot_20_22 }}<br>
+                                    ③ 22時〜24時：{{ st.slot_22_24 }}<br>
+                                    ④ 24時〜Close：{{ st.slot_24_last }}
+                                </div>
+                            </details>
+                        </div>
+
+                        <div class="apple-spec-row">
+                            <div class="apple-spec-label">1名入店可否 ／ 単独待機</div>
+                            <div class="{% if '不可' in st.solo_rule or '2名以上' in st.solo_rule %}apple-solo-req{% else %}apple-solo-ok{% endif %}">
+                                {{ st.solo_rule }}
+                            </div>
+                            <div class="apple-spec-sub">待機：<strong style="color: var(--text-main);">{{ st.wait_fee_str }}</strong></div>
+                        </div>
+
+                        <div class="apple-spec-row">
+                            <div class="apple-spec-label">開催中の特典・企画</div>
+                            {% for mp in st.men_perks %}
+                            <div class="apple-spec-sub"><strong style="color: var(--text-main);">男性特典：</strong>{{ mp.title }}</div>
+                            {% endfor %}
+                            {% for we in st.women_events[:1] %}
+                            <div class="apple-spec-sub"><strong style="color: var(--women);">女性企画：</strong>{{ we.title }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="apple-spec-row">
+                            <div class="verdict-pill {{ st.verdict_cls }}" data-verdict-badge>{{ st.verdict_badge }}</div>
+                            <details class="apple-spec-fold">
+                                <summary>判定理由・店舗情報 ▾</summary>
+                                <div class="apple-spec-fold-body">
+                                    <div data-verdict-comment>{{ st.verdict_comment }}</div>
+                                    <div style="margin-top: 6px;">
+                                        営業：{{ st.hours_label }} ｜ 年齢層：{{ st.age_range }}<br>
                                         特徴：{{ st.vibe_short }}
                                     </div>
                                     <div style="margin-top: 6px;">
                                         <a href="{{ st.official_url }}" target="_blank" rel="noopener noreferrer" class="official-ext-link">公式サイトで最新条件を確認 ↗</a>
                                     </div>
-                                </td>
-                                <td style="min-width: 145px;" data-crowd-cell>
-                                    {% if st.total > 0 %}
-                                    <div style="font-weight: 700; font-size: 0.89rem;">
-                                        <span style="color: var(--women);">女性 {{ st.women }}名</span> / <span style="color: var(--men);">男性 {{ st.men }}名</span>
-                                    </div>
-                                    <div style="font-size: 0.75rem; color: var(--accent-text); font-weight: 600; margin: 3px 0 6px;">
-                                        女性比率 {{ st.wpct }}%{% if st.women < data.min_women_eval %} <span style="color: var(--text-sub); font-weight: 400;">（少人数）</span>{% endif %}
-                                    </div>
-                                    <div class="mini-ratio-bar">
-                                        <div class="mini-ratio-fill" style="width: {{ st.wpct }}%;"></div>
-                                    </div>
-                                    {% elif st.is_open_now %}
-                                    <div style="font-weight: 700; font-size: 0.92rem; color: var(--text-main);">0 : 0</div>
-                                    <div style="font-size: 0.73rem; color: var(--text-sub); margin-top: 2px;">女性 0名 / 男性 0名</div>
-                                    <div style="font-size: 0.71rem; color: var(--accent-text); margin-top: 3px;">営業中（本日 {{ st.today_hours_label }}）</div>
-                                    {% else %}
-                                    <div style="font-size: 0.79rem; color: var(--text-sub);">営業時間外</div>
-                                    <div style="font-size: 0.71rem; color: var(--text-sub);">本日 {{ st.today_hours_label }}</div>
-                                    {% endif %}
-                                </td>
-                                <td style="min-width: 225px;">
-                                    <div class="active-slot-chip">
-                                        現在枠（<span data-active-slot-label>{{ st.active_slot_label }}</span>）：<span data-active-slot-rate>{{ st.active_slot_rate }}</span>
-                                    </div>
-                                    <div style="font-size: 0.74rem; color: var(--text-main); line-height: 1.55;">
-                                        ① <strong>Open〜20時</strong>：{{ st.slot_18_20 }}<br>
-                                        ② <strong>20時〜22時</strong>：{{ st.slot_20_22 }}<br>
-                                        ③ <strong>22時〜24時</strong>：{{ st.slot_22_24 }}<br>
-                                        ④ <strong>24時〜Close</strong>：{{ st.slot_24_last }}
-                                    </div>
-                                    <div style="font-size: 0.71rem; color: var(--text-sub); margin-top: 4px;">
-                                        チャージ：{{ st.charge_str }}
-                                    </div>
-                                </td>
-                                <td style="min-width: 145px;">
-                                    <span style="color: var(--accent-text); font-weight: 700; font-size: 0.8rem;">{{ st.wait_fee_str }}</span>
-                                    <div style="font-size: 0.71rem; color: var(--text-sub); margin-top: 4px; line-height: 1.45;">
-                                        {% if st.is_flat_rate %}
-                                        ※定額デイパス制（飲み放題込）のため、時間内の単独待機による10分ごとの追加課金はありません
-                                        {% else %}
-                                        ※相席していない待機・休憩中も10分ごとに上記料金（飲み放題込）が発生します
-                                        {% endif %}
-                                    </div>
-                                </td>
-                                <td style="min-width: 215px;">
-                                    {% for mp in st.men_perks %}
-                                    <div class="ev-item">
-                                        <span class="ev-badge-men">男性特典</span>
-                                        <span>{{ mp.title }}</span>
-                                    </div>
-                                    {% endfor %}
-                                    {% for we in st.women_events[:1] %}
-                                    <div class="ev-item">
-                                        <span class="ev-badge-women">女性企画</span>
-                                        <span>{{ we.title }}</span>
-                                    </div>
-                                    {% endfor %}
-                                </td>
-                                <td style="min-width: 215px;">
-                                    <div class="verdict-pill {{ st.verdict_cls }}" data-verdict-badge>{{ st.verdict_badge }}</div>
-                                    <div style="font-size: 0.76rem; color: var(--text-sub); line-height: 1.55;" data-verdict-comment>
-                                        {{ st.verdict_comment }}
-                                    </div>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                                </div>
+                            </details>
+                        </div>
+                    </article>
+                    {% endfor %}
                 </div>
+                <p class="apple-spec-footnote">
+                    ※共通ルール：定額デイパス・チケット制店舗を除き、相席していない単独待機・休憩中も10分ごとに上記待機料金（飲み放題込）が発生します。
+                </p>
             </div>
             {% endfor %}
         </section>
 
         <!-- Section 2: Real-Time Event vs Crowd Verification Board -->
-        <section class="section-card">
+        <section class="section-card apple-open-section">
             <h2 class="section-title">開催中イベントの「リアル集客＆コスパ効果」検証ボード</h2>
             <p class="section-lead">
                 各店舗が開催している<strong>男性割引・共通企画</strong>や<strong>女性向けフェア</strong>に対して、<strong>いま実際に女性が何人集まっているか（初回相席と席替え余地があるか）</strong>をリアルタイム検証しています。※イベントの実施期間・適用条件は各公式サイトでご確認ください。
@@ -688,7 +689,7 @@
                         <span style="font-size: 0.73rem; color: var(--text-sub);">{{ st.area_label }}</span>
                     </div>
 
-                    <div style="background: rgba(255,255,255,0.025); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 8px 10px; display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap;">
+                    <div style="border-top: 1px solid var(--border-subtle); padding-top: 8px; display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap;">
                         <div data-verify-crowd>
                             <span style="font-size: 0.74rem; color: var(--text-sub);">現在の店内人数：</span>
                             {% if st.total > 0 %}
@@ -728,98 +729,160 @@
             </div>
         </section>
 
-        <!-- Section 3: 3 Major Brands Pricing Rule Matrix -->
-        <section class="section-card">
-            <h2 class="section-title">3大ブランド（オリエンタルラウンジ・ag・JIS）料金システムの基本ルール比較</h2>
+        <!-- Section 3: Major & Regional Brands Pricing Rule Matrix (Apple Compare Spec Grid) -->
+        <section class="section-card apple-open-section">
+            <h2 class="section-title">3大ブランド（オリエンタルラウンジ・ag・JIS）＆主要ブランド 料金ルール比較</h2>
             <p class="section-lead">
-                オリエンタルラウンジ・ag・JISは、いずれも<strong>相席していない単独（待機）時に10分 220円または330円（飲み放題込）</strong>がかかります。そのうえで「アプリ会員チャージ無料の有無」「時間帯・店舗別の相席単価」「1名入店ルール」が以下のように異なります。
+                オリエンタルラウンジ・ag・JISは、いずれも<strong>相席していない単独（待機）時に10分 220円または330円（飲み放題込）</strong>がかかります。ブランドごとの単価レンジ・1名入店ルール・客層を並列で比較できます。
             </p>
 
-            <div class="comp-table-wrap">
-                <table class="comp-table" style="min-width: 680px;">
-                    <thead>
-                        <tr>
-                            <th>ブランド</th>
-                            <th>男性チャージ</th>
-                            <th>単独時（待機中）料金</th>
-                            <th>相席10分単価（店舗・時間帯別）</th>
-                            <th>1名（ソロ）入店ルール</th>
-                            <th>主な年齢層・強み</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for b in data.brand_specs %}
-                        <tr>
-                            <td style="font-weight: 700;">
-                                {% if b.brand_slug %}
-                                <a href="/{{ b.brand_slug }}" style="color: var(--accent-text); text-decoration: none;">{{ b.brand_label }} ›</a>
-                                {% else %}
-                                <a href="/areas" style="color: var(--accent-text); text-decoration: none;">{{ b.brand_label }}（全国エリア一覧） ›</a>
-                                {% endif %}
-                            </td>
-                            <td>{{ b.charge_str }}</td>
-                            <td>
-                                <strong style="color: var(--accent-text);">{{ b.wait_fee_str }}</strong>
-                            </td>
-                            <td>平日 {{ b.weekday_10m_str }}<br>金土 {{ b.weekend_10m_str }}</td>
-                            <td style="font-size: 0.78rem; color: var(--text-main);">{{ b.solo_rule }}</td>
-                            <td style="font-size: 0.78rem; color: var(--text-sub);">
-                                <strong style="color: var(--text-main);">{{ b.age_range }}</strong><br>{{ b.vibe_short }}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+            <div class="apple-compare-grid">
+                {% for b in data.brand_specs %}
+                <article class="apple-compare-col">
+                    <div class="apple-spec-head">
+                        <div class="apple-spec-eyebrow">BRAND SPEC</div>
+                        <h3 class="apple-spec-store-title">
+                            {% if b.brand_slug %}
+                            <a href="/{{ b.brand_slug }}">{{ b.brand_label }} ›</a>
+                            {% else %}
+                            <a href="/areas">{{ b.brand_label }} ›</a>
+                            {% endif %}
+                        </h3>
+                    </div>
+                    <div class="apple-spec-row">
+                        <div class="apple-spec-label">相席10分単価（店舗・時間帯別）</div>
+                        <div class="apple-spec-val-lg">平日 {{ b.weekday_10m_str }}</div>
+                        <div class="apple-spec-sub">金土 {{ b.weekend_10m_str }}</div>
+                    </div>
+                    <div class="apple-spec-row">
+                        <div class="apple-spec-label">単独待機料金 ／ チャージ</div>
+                        <div class="apple-spec-val-lg" style="font-size: 0.92rem;">{{ b.wait_fee_str }}</div>
+                        <div class="apple-spec-sub">チャージ：{{ b.charge_str }}</div>
+                    </div>
+                    <div class="apple-spec-row">
+                        <div class="apple-spec-label">1名（ソロ）入店ルール</div>
+                        <div class="{% if '不可' in b.solo_rule %}apple-solo-req{% else %}apple-solo-ok{% endif %}">{{ b.solo_rule }}</div>
+                    </div>
+                    <div class="apple-spec-row">
+                        <div class="apple-spec-label">主な年齢層・空間の特徴</div>
+                        <div class="apple-spec-sub"><strong style="color: var(--text-main);">{{ b.age_range }}</strong><br>{{ b.vibe_short }}</div>
+                    </div>
+                </article>
+                {% endfor %}
             </div>
         </section>
 
-        <!-- Section 4: Complete 51-Store Pricing Master Catalog -->
-        <section id="all-stores-price-catalog" class="section-card">
+        <!-- Section 4: Complete Domestic Store Pricing Master Catalog (Apple Compare Spec Picker + Grid) -->
+        <section id="all-stores-price-catalog" class="section-card apple-open-section">
             <h2 class="section-title">全国全{{ data.all_domestic_stores|length }}店舗の「4時間帯別相席料金・単独（待機）料金・1名入店可否」完全一覧表</h2>
             <p class="section-lead">
-                国内全{{ data.all_domestic_stores|length }}店舗について、<strong>4つの時間帯区分（①Open〜20時 / ②20時〜22時 / ③22時〜24時 / ④24時〜Close）ごとの相席10分料金（平日 / 金土祝前日）</strong>、<strong>単独（待機）料金</strong>、<strong>1名入店ルール</strong>を一覧化しています。※特別営業日や料金改定等がある場合は各店舗の公式ホームページが優先されます。
+                国内全{{ data.all_domestic_stores|length }}店舗について、任意の店舗を選んで横に並べる<strong>ピックアップ比較</strong>と、エリア検索・1名OK絞り込みに対応した<strong>並列スペック一覧</strong>で確認できます。※特別営業日や料金改定等がある場合は各店舗の公式ホームページが優先されます。
             </p>
 
-            <div class="comp-table-wrap">
-                <table class="comp-table" style="min-width: 960px;">
-                    <thead>
-                        <tr>
-                            <th>エリア / 店舗名</th>
-                            <th>単独時（待機中）</th>
-                            <th>① Open〜20時</th>
-                            <th>② 20時〜22時</th>
-                            <th>③ 22時〜24時</th>
-                            <th>④ 24時〜Close</th>
-                            <th>1名（ソロ）入店可否 / チャージ</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for st in data.all_domestic_stores %}
-                        <tr>
-                            <td style="min-width: 175px;">
-                                <div style="font-size: 0.7rem; color: var(--text-sub);">{{ st.area_label }}</div>
-                                <div style="font-weight: 700; margin-top: 2px;">
-                                    <span class="brand-pill">{{ st.brand_code | brand_ja }}</span>
-                                    <a href="/store/{{ st.slug }}" style="color: var(--text-main); text-decoration: none;">{{ st.seo_name }} ›</a>
-                                </div>
-                                <div style="font-size: 0.69rem; color: var(--text-sub); margin-top: 2px;">営業時間：{{ st.hours_label }}</div>
-                                <div style="margin-top: 4px;">
-                                    <a href="{{ st.official_url }}" target="_blank" rel="noopener noreferrer" class="official-ext-link">公式サイト ↗</a>
-                                </div>
-                            </td>
-                            <td style="font-weight: 700; color: var(--accent-text); font-size: 0.78rem;">{{ st.wait_fee_str }}</td>
-                            <td style="font-size: 0.77rem; color: var(--text-main);">{{ st.slot_18_20 }}</td>
-                            <td style="font-size: 0.77rem; color: var(--text-main);">{{ st.slot_20_22 }}</td>
-                            <td style="font-size: 0.77rem; color: var(--text-main);">{{ st.slot_22_24 }}</td>
-                            <td style="font-size: 0.77rem; color: var(--text-main);">{{ st.slot_24_last }}</td>
-                            <td style="font-size: 0.74rem; color: {% if '不可' in st.solo_rule or '2名以上' in st.solo_rule %}var(--women){% else %}var(--text-main){% endif %}; font-weight: 600;">
-                                {{ st.solo_rule }}<br>
-                                <span style="font-size: 0.7rem; color: var(--text-sub); font-weight: 400;">チャージ：{{ st.charge_str }}</span>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+            <!-- iPhone Compare Style 2~3 Store Custom Picker -->
+            <div class="apple-compare-picker" aria-label="気になる店舗を選んで並列スペック比較">
+                <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:6px; margin-bottom:10px;">
+                    <strong style="font-size: 0.85rem; color: var(--text-main);">モデル比較シート：気になる店舗を選んで真横に並べる</strong>
+                    <span style="font-size: 0.75rem; color: var(--text-sub);">全国の店舗をエリア横断で直接対比できます</span>
+                </div>
+                <div class="apple-compare-grid" style="margin-bottom: 12px;">
+                    <div>
+                        <label for="compare-pick-0" class="apple-spec-label" style="display:block; text-align:left;">比較店舗 1</label>
+                        <select id="compare-pick-0" class="apple-compare-select" onchange="renderCustomStoreCompare()">
+                            {% for st in data.all_domestic_stores %}
+                            <option value="{{ st.slug }}"{% if st.slug == 'oriental-lounge-shinjuku' %} selected{% endif %}>{{ st.area_label }}｜{{ st.seo_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label for="compare-pick-1" class="apple-spec-label" style="display:block; text-align:left;">比較店舗 2</label>
+                        <select id="compare-pick-1" class="apple-compare-select" onchange="renderCustomStoreCompare()">
+                            {% for st in data.all_domestic_stores %}
+                            <option value="{{ st.slug }}"{% if st.slug == 'jis-nishishinjuku' %} selected{% endif %}>{{ st.area_label }}｜{{ st.seo_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="apple-compare-only-pc">
+                        <label for="compare-pick-2" class="apple-spec-label" style="display:block; text-align:left;">比較店舗 3（PC）</label>
+                        <select id="compare-pick-2" class="apple-compare-select" onchange="renderCustomStoreCompare()">
+                            {% for st in data.all_domestic_stores %}
+                            <option value="{{ st.slug }}"{% if st.slug == 'oriental-lounge-osaka-ekimae' %} selected{% endif %}>{{ st.area_label }}｜{{ st.seo_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div id="apple-custom-compare-stage" class="apple-compare-grid"></div>
+            </div>
+
+            <!-- Instant Filter & Search Toolbar for All Stores -->
+            <div class="apple-compare-toolbar">
+                <div class="apple-seg-bar" role="group" aria-label="カタログ絞り込み">
+                    <button type="button" class="apple-seg-btn active" data-cat-filter="all" onclick="filterCatalogSpec('all')">全{{ data.all_domestic_stores|length }}店舗</button>
+                    <button type="button" class="apple-seg-btn" data-cat-filter="solo" onclick="filterCatalogSpec('solo')">1名入店OKのみ</button>
+                    <button type="button" class="apple-seg-btn" data-cat-filter="lowwait" onclick="filterCatalogSpec('lowwait')">待機220円以下・定額0円</button>
+                </div>
+                <input type="search"
+                       id="catalog-search-input"
+                       class="apple-spec-search"
+                       placeholder="店名・エリアで絞り込み（例：梅田、大宮）"
+                       aria-label="店舗名やエリア名で絞り込み"
+                       oninput="applyCatalogSearchAndFilter()">
+            </div>
+
+            <div id="catalog-spec-grid" class="apple-compare-grid">
+                {% for st in data.all_domestic_stores %}
+                <article class="apple-compare-col"
+                         data-cat-card="1"
+                         data-slug="{{ st.slug }}"
+                         data-seo-name="{{ st.seo_name }}"
+                         data-area-label="{{ st.area_label }}"
+                         data-brand-ja="{{ st.brand_code | brand_ja }}"
+                         data-wait-str="{{ st.wait_fee_str }}"
+                         data-wait-yen="{{ st.wait_10m_yen }}"
+                         data-solo-rule="{{ st.solo_rule }}"
+                         data-solo-ok="{{ '0' if ('不可' in st.solo_rule or '2名以上' in st.solo_rule) else '1' }}"
+                         data-charge-str="{{ st.charge_str }}"
+                         data-hours-label="{{ st.hours_label }}"
+                         data-slot-18-20="{{ st.slot_18_20 }}"
+                         data-slot-20-22="{{ st.slot_20_22 }}"
+                         data-slot-22-24="{{ st.slot_22_24 }}"
+                         data-slot-24-last="{{ st.slot_24_last }}"
+                         data-active-ssr-label="{{ st.active_slot_label }}"
+                         data-active-ssr-rate="{{ st.active_slot_rate }}"
+                         data-search-text="{{ st.area_label }} {{ st.brand_code | brand_ja }} {{ st.seo_name }} {{ st.solo_rule }}">
+                    <div class="apple-spec-head">
+                        <div class="apple-spec-eyebrow">{{ st.area_label }} ・ {{ st.brand_code | brand_ja }}</div>
+                        <h3 class="apple-spec-store-title">
+                            <a href="/store/{{ st.slug }}">{{ st.seo_name }} ›</a>
+                        </h3>
+                    </div>
+                    <div class="apple-spec-row">
+                        <div class="apple-spec-label"><span data-cat-slot-label>{{ st.active_slot_label }}</span>の相席10分</div>
+                        <div class="apple-spec-val-lg" data-cat-slot-rate>{{ st.active_slot_rate }}</div>
+                        <details class="apple-spec-fold">
+                            <summary>4時間帯すべて見る ▾</summary>
+                            <div class="apple-spec-fold-body">
+                                ① Open〜20時：{{ st.slot_18_20 }}<br>
+                                ② 20時〜22時：{{ st.slot_20_22 }}<br>
+                                ③ 22時〜24時：{{ st.slot_22_24 }}<br>
+                                ④ 24時〜Close：{{ st.slot_24_last }}
+                            </div>
+                        </details>
+                    </div>
+                    <div class="apple-spec-row">
+                        <div class="apple-spec-label">1名入店可否 ／ 単独待機</div>
+                        <div class="{% if '不可' in st.solo_rule or '2名以上' in st.solo_rule %}apple-solo-req{% else %}apple-solo-ok{% endif %}">{{ st.solo_rule }}</div>
+                        <div class="apple-spec-sub">待機：<strong style="color: var(--text-main);">{{ st.wait_fee_str }}</strong></div>
+                        <div class="apple-spec-sub">チャージ：{{ st.charge_str }}</div>
+                    </div>
+                    <div class="apple-spec-row">
+                        <div class="apple-spec-sub">営業時間：{{ st.hours_label }}</div>
+                        <div style="margin-top: 5px;">
+                            <a href="{{ st.official_url }}" target="_blank" rel="noopener noreferrer" class="official-ext-link">公式サイト ↗</a>
+                        </div>
+                    </div>
+                </article>
+                {% endfor %}
             </div>
         </section>
 
@@ -840,6 +903,147 @@
     </div>
 
     <script>
+        window.__selectedPriceSlot = 'auto';
+        window.__catalogFilterMode = 'all';
+
+        var PRICE_SLOT_SHORT_MAP = {
+            slot1820: 'Open〜20時',
+            slot2022: '20時〜22時',
+            slot2224: '22時〜24時',
+            slot24Last: '24時〜Close'
+        };
+
+        function resolveSlotForDataset(ds, slotKey) {
+            if (!slotKey || slotKey === 'auto') {
+                return {
+                    label: ds.activeSsrLabel || '現在枠',
+                    rate: ds.activeSsrRate || ds.slot2022 || ''
+                };
+            }
+            var map = {
+                slot1820: ds.slot1820 || '',
+                slot2022: ds.slot2022 || '',
+                slot2224: ds.slot2224 || '',
+                slot24Last: ds.slot24Last || ''
+            };
+            return {
+                label: PRICE_SLOT_SHORT_MAP[slotKey] || '選択枠',
+                rate: map[slotKey] || ds.slot2022 || ''
+            };
+        }
+
+        function switchPriceSlot(slotKey) {
+            window.__selectedPriceSlot = slotKey || 'auto';
+            document.querySelectorAll('[data-slot-select]').forEach(function(btn) {
+                btn.classList.toggle('active', btn.dataset.slotSelect === window.__selectedPriceSlot);
+            });
+            document.querySelectorAll('[data-live-store]').forEach(function(col) {
+                var resolved = resolveSlotForDataset(col.dataset, window.__selectedPriceSlot);
+                var lblEl = col.querySelector('[data-active-slot-label]');
+                var rateEl = col.querySelector('[data-active-slot-rate]');
+                if (lblEl) lblEl.textContent = resolved.label;
+                if (rateEl) rateEl.textContent = resolved.rate;
+            });
+            document.querySelectorAll('[data-cat-card]').forEach(function(col) {
+                var resolved = resolveSlotForDataset(col.dataset, window.__selectedPriceSlot);
+                var lblEl = col.querySelector('[data-cat-slot-label]');
+                var rateEl = col.querySelector('[data-cat-slot-rate]');
+                if (lblEl) lblEl.textContent = resolved.label;
+                if (rateEl) rateEl.textContent = resolved.rate;
+            });
+            renderCustomStoreCompare();
+        }
+
+        function switchClusterSoloFilter(mode) {
+            var onlySolo = (mode === 'solo');
+            document.querySelectorAll('[data-cluster-solo]').forEach(function(btn) {
+                btn.classList.toggle('active', btn.dataset.clusterSolo === mode);
+            });
+            document.querySelectorAll('[data-live-store]').forEach(function(col) {
+                var isSoloOk = col.dataset.soloOk === '1';
+                col.style.display = (onlySolo && !isSoloOk) ? 'none' : '';
+            });
+        }
+
+        function filterCatalogSpec(mode) {
+            window.__catalogFilterMode = mode || 'all';
+            document.querySelectorAll('[data-cat-filter]').forEach(function(btn) {
+                btn.classList.toggle('active', btn.dataset.catFilter === window.__catalogFilterMode);
+            });
+            applyCatalogSearchAndFilter();
+        }
+
+        function applyCatalogSearchAndFilter() {
+            var qInput = document.getElementById('catalog-search-input');
+            var q = qInput ? String(qInput.value || '').trim().toLowerCase() : '';
+            var mode = window.__catalogFilterMode || 'all';
+            document.querySelectorAll('[data-cat-card]').forEach(function(card) {
+                var ok = true;
+                if (mode === 'solo' && card.dataset.soloOk !== '1') {
+                    ok = false;
+                } else if (mode === 'lowwait') {
+                    var wy = parseInt(card.dataset.waitYen || '999', 10);
+                    if (wy > 220) ok = false;
+                }
+                if (ok && q) {
+                    var hay = String(card.dataset.searchText || '').toLowerCase();
+                    if (hay.indexOf(q) === -1) ok = false;
+                }
+                card.style.display = ok ? '' : 'none';
+            });
+        }
+
+        function escCompareHtml(str) {
+            return String(str == null ? '' : str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function renderCustomStoreCompare() {
+            var stage = document.getElementById('apple-custom-compare-stage');
+            if (!stage) return;
+            var cardMap = Object.create(null);
+            document.querySelectorAll('[data-cat-card]').forEach(function(card) {
+                if (card.dataset.slug) cardMap[card.dataset.slug] = card.dataset;
+            });
+            var ids = ['compare-pick-0', 'compare-pick-1', 'compare-pick-2'];
+            var htmlParts = [];
+            ids.forEach(function(selId, idx) {
+                var sel = document.getElementById(selId);
+                if (!sel) return;
+                var ds = cardMap[sel.value];
+                if (!ds) return;
+                var resolved = resolveSlotForDataset(ds, window.__selectedPriceSlot);
+                var soloCls = ds.soloOk === '1' ? 'apple-solo-ok' : 'apple-solo-req';
+                var extraCls = idx === 2 ? ' apple-compare-only-pc' : '';
+                htmlParts.push(
+                    '<div class="apple-compare-col' + extraCls + '">' +
+                        '<div class="apple-spec-head">' +
+                            '<div class="apple-spec-eyebrow">' + escCompareHtml(ds.areaLabel) + ' ・ ' + escCompareHtml(ds.brandJa) + '</div>' +
+                            '<div class="apple-spec-store-title"><a href="/store/' + escCompareHtml(ds.slug) + '">' + escCompareHtml(ds.seoName) + ' ›</a></div>' +
+                        '</div>' +
+                        '<div class="apple-spec-row">' +
+                            '<div class="apple-spec-label">' + escCompareHtml(resolved.label) + 'の相席10分</div>' +
+                            '<div class="apple-spec-val-lg">' + escCompareHtml(resolved.rate) + '</div>' +
+                            '<div class="apple-spec-sub">' +
+                                '〜20時：' + escCompareHtml(ds.slot1820) + '<br>' +
+                                '24時〜：' + escCompareHtml(ds.slot24Last) +
+                            '</div>' +
+                        '</div>' +
+                        '<div class="apple-spec-row">' +
+                            '<div class="apple-spec-label">1名入店 ／ 単独待機</div>' +
+                            '<div class="' + soloCls + '">' + escCompareHtml(ds.soloRule) + '</div>' +
+                            '<div class="apple-spec-sub">待機：' + escCompareHtml(ds.waitStr) + '</div>' +
+                            '<div class="apple-spec-sub">チャージ：' + escCompareHtml(ds.chargeStr) + '</div>' +
+                        '</div>' +
+                    '</div>'
+                );
+            });
+            stage.innerHTML = htmlParts.join('');
+        }
+
         function switchClusterTab(clusterId) {
             document.querySelectorAll('.area-tab-btn').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.cluster === clusterId);
@@ -868,13 +1072,14 @@
                     }
                 }
             } catch (e) {}
+            renderCustomStoreCompare();
         })();
 
         function sharePriceComparison(platform) {
             const activeBtn = document.querySelector('.area-tab-btn.active');
             const clusterId = activeBtn ? activeBtn.dataset.cluster : 'shinjuku';
             const activePanel = document.getElementById('cluster-' + clusterId);
-            const areaLabel = activePanel ? (activePanel.dataset.clusterLabel || '主要エリア') : '全国51店舗';
+            const areaLabel = activePanel ? (activePanel.dataset.clusterLabel || '主要エリア') : '全国61店舗';
             const bestTitleEl = activePanel ? activePanel.querySelector('[data-best-title]') : null;
             const bestLine = bestTitleEl ? bestTitleEl.textContent.trim() : '';
             const shareUrl = 'https://aiseki-navi.com/price-comparison?area=' + encodeURIComponent(clusterId);
@@ -954,7 +1159,7 @@
                 }
                 const bizDate = new Date(bizDateMs);
                 const nextDate = new Date(bizDateMs + 86400 * 1000);
-                const pyWd = (bizDate.getUTCDay() + 6) % 7; // 0=Mon .. 6=Sun
+                const pyWd = (bizDate.getUTCDay() + 6) % 7;
 
                 const sStr = String(storeName || '');
                 const isKorea = sStr.includes('ソウル') || sStr.includes('カンナム') || sStr.includes('ホンデ');
@@ -1146,7 +1351,7 @@
                     }
 
                     document.querySelectorAll('.cluster-panel').forEach(panel => {
-                        const rows = Array.from(panel.querySelectorAll('tr[data-live-store]'));
+                        const rows = Array.from(panel.querySelectorAll('[data-live-store]'));
                         let bestCandidate = null;
                         let anyOpen = false;
 
@@ -1158,32 +1363,37 @@
                             const calc = computeStoreLiveVerdict(row.dataset, sname, w, m, slotInfo);
                             if (calc.isOpenNow) anyOpen = true;
 
+                            row.dataset.activeSsrLabel = slotInfo.shortLabel;
+                            row.dataset.activeSsrRate = calc.activeRate;
+
                             const crowdCell = row.querySelector('[data-crowd-cell]');
                             if (crowdCell) {
                                 if (calc.total > 0) {
-                                    const lowNote = w < MIN_WOMEN_EVAL ? ' <span style="color: var(--text-sub); font-weight: 400;">（少人数）</span>' : '';
+                                    const lowNote = w < MIN_WOMEN_EVAL ? ' <span style="font-size: 0.72rem; color: var(--text-sub); font-weight: 500;">（少人数）</span>' : '';
                                     crowdCell.innerHTML =
-                                        '<div style="font-weight: 700; font-size: 0.89rem;">' +
+                                        '<div class="apple-spec-label">現在の店内バランス</div>' +
+                                        '<div class="apple-spec-val-lg">女性比 ' + calc.wpct + '%' + lowNote + '</div>' +
+                                        '<div class="apple-spec-sub" style="font-weight: 700;">' +
                                             '<span style="color: var(--women);">女性 ' + w + '名</span> / <span style="color: var(--men);">男性 ' + m + '名</span>' +
                                         '</div>' +
-                                        '<div style="font-size: 0.75rem; color: var(--accent-text); font-weight: 600; margin: 3px 0 6px;">女性比率 ' + calc.wpct + '%' + lowNote + '</div>' +
-                                        '<div class="mini-ratio-bar"><div class="mini-ratio-fill" style="width: ' + calc.wpct + '%;"></div></div>';
+                                        '<div class="mini-ratio-bar" style="margin-top: 6px;"><div class="mini-ratio-fill" style="width: ' + calc.wpct + '%;"></div></div>';
                                 } else if (calc.isOpenNow) {
                                     crowdCell.innerHTML =
-                                        '<div style="font-weight: 700; font-size: 0.92rem; color: var(--text-main);">0 : 0</div>' +
-                                        '<div style="font-size: 0.73rem; color: var(--text-sub); margin-top: 2px;">女性 0名 / 男性 0名</div>' +
-                                        '<div style="font-size: 0.71rem; color: var(--accent-text); margin-top: 3px;">営業中（本日 ' + calc.todayHoursLabel + '）</div>';
+                                        '<div class="apple-spec-label">現在の店内バランス</div>' +
+                                        '<div class="apple-spec-val-lg">0 : 0</div>' +
+                                        '<div class="apple-spec-sub">営業中（本日 ' + calc.todayHoursLabel + '）</div>';
                                 } else {
                                     crowdCell.innerHTML =
-                                        '<div style="font-size: 0.79rem; color: var(--text-sub);">営業時間外</div>' +
-                                        '<div style="font-size: 0.71rem; color: var(--text-sub);">本日 ' + calc.todayHoursLabel + '</div>';
+                                        '<div class="apple-spec-label">現在の店内バランス</div>' +
+                                        '<div class="apple-spec-sub">営業時間外（本日 ' + calc.todayHoursLabel + '）</div>';
                                 }
                             }
 
+                            const chosen = resolveSlotForDataset(row.dataset, window.__selectedPriceSlot);
                             const sLabel = row.querySelector('[data-active-slot-label]');
-                            if (sLabel) sLabel.textContent = slotInfo.shortLabel;
+                            if (sLabel) sLabel.textContent = chosen.label;
                             const sRate = row.querySelector('[data-active-slot-rate]');
-                            if (sRate) sRate.textContent = calc.activeRate;
+                            if (sRate) sRate.textContent = chosen.rate;
 
                             const vBadge = row.querySelector('[data-verdict-badge]');
                             if (vBadge) {
@@ -1240,7 +1450,7 @@
                                 if (bLink) bLink.style.display = 'none';
                                 if (anyOpen) {
                                     if (bTitle) bTitle.textContent = '現在' + cLabel + 'は営業中です（全店 女性' + MIN_WOMEN_EVAL + '名未満）';
-                                    if (bSub) bSub.textContent = '公式営業時間内ですが、全店舗とも女性' + MIN_WOMEN_EVAL + '名未満（少人数または 0 : 0 空席）のため、席替え（次の相席候補）の余地を考慮して推奨店舗の選出を保留しています。下の表で各店の現在人数・単価・入店条件を比較してください。';
+                                    if (bSub) bSub.textContent = '公式営業時間内ですが、全店舗とも女性' + MIN_WOMEN_EVAL + '名未満（少人数または 0 : 0 空席）のため、席替え（次の相席候補）の余地を考慮して推奨店舗の選出を保留しています。下の比較シートで各店の現在人数・単価・入店条件を比較してください。';
                                 } else {
                                     if (bTitle) bTitle.textContent = '現在' + cLabel + 'は営業時間外です';
                                     if (bSub) bSub.textContent = '各店舗の公式オープン時刻後にリアルタイム男女人数と推奨判定が自動反映されます。事前の時間帯別料金・単独料金・入店条件の比較にご活用ください。';
@@ -1284,7 +1494,6 @@
                 }
             }
 
-            // SSR already rendered fresh live counts; only sync immediately on bfcache back-navigation
             const navEntry = (window.performance && performance.getEntriesByType) ? performance.getEntriesByType('navigation')[0] : null;
             if (navEntry && navEntry.type === 'back_forward') {
                 syncLiveCounts();
