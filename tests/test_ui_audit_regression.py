@@ -105,13 +105,13 @@ class UiAuditRegressionTests(unittest.TestCase):
     # ------------------------------------------------------------------
     def test_cache_busting_sync_across_templates_and_service_worker(self):
         """全テンプレートと static/sw.js のアセットバージョンが完全同期し、immutable ヘッダが正しく付与されること"""
-        expected_calm = "/static/calm.css?v=25"
-        expected_portal = "/static/portal.css?v=11"
+        expected_calm = "/static/calm.css?v=26"
+        expected_portal = "/static/portal.css?v=12"
         expected_app_js = "/static/app.js?v=20261102_2"
         expected_aff_js = "/static/affiliate_config.js?v=13"
         expected_style = "/static/style.css?v=20261030_6"
-        expected_sw_url = "/sw.js?v=78"
-        expected_cache_name = "aiseki-navi-v78"
+        expected_sw_url = "/sw.js?v=79"
+        expected_cache_name = "aiseki-navi-v79"
 
         templates_dir = os.path.join(PROJECT_ROOT, "templates")
         calm_seen = 0
@@ -1216,7 +1216,59 @@ class UiAuditRegressionTests(unittest.TestCase):
                     self.assertEqual(mpage.input_value("#search-input"), "")
                     self.assertGreaterEqual(mpage.locator("#ranking-list .ranking-item").count(), 2)
 
+                    # 6. Sitewide Option A (Apple Editorial & Weather Bento) verification on Mobile 390px & PC 1280px
+                    for sub_route in ("/concierge", "/store/oriental-lounge-shinjuku", "/columns", "/for-women", "/price-comparison", "/guide/brand-waveform-asymmetry"):
+                        mpage.goto(base + sub_route, wait_until="domcontentloaded")
+                        mpage.add_style_tag(content="*, *::before, *::after { transition: none !important; animation: none !important; }")
+                        mob_sub = mpage.evaluate("""() => {
+                            const inactiveNav = document.querySelector('.portal-nav-item:not(.active):not(.portal-theme-toggle-btn)');
+                            const hero = document.querySelector('.page-hero, .hero-box, .article-header');
+                            const h2 = document.querySelector('.sec-title, .section-title, .section-card h2, h2.sec-h2, .article-body h2');
+                            return {
+                                overflowX: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+                                navBg: inactiveNav ? getComputedStyle(inactiveNav).backgroundColor : '',
+                                navBorderColor: inactiveNav ? getComputedStyle(inactiveNav).borderTopColor : '',
+                                heroBg: hero ? getComputedStyle(hero).backgroundColor : null,
+                                heroBorderTop: hero ? getComputedStyle(hero).borderTopWidth : null,
+                                h2BorderLeft: h2 ? getComputedStyle(h2).borderLeftWidth : '0px'
+                            };
+                        }""")
+                        self.assertLessEqual(mob_sub["overflowX"], 0, f"Mobile 390px horizontal overflow on {sub_route}: {mob_sub}")
+                        self.assertEqual(mob_sub["navBg"], "rgba(0, 0, 0, 0)", f"Inactive nav must be borderless/transparent on {sub_route}")
+                        self.assertEqual(mob_sub["navBorderColor"], "rgba(0, 0, 0, 0)", f"Inactive nav border must be transparent on {sub_route}")
+                        if mob_sub["heroBg"] is not None:
+                            self.assertEqual(mob_sub["heroBg"], "rgba(0, 0, 0, 0)", f"Open hero must have transparent bg on {sub_route}")
+                            self.assertEqual(mob_sub["heroBorderTop"], "0px", f"Open hero must remove box border on {sub_route}")
+                        self.assertEqual(mob_sub["h2BorderLeft"], "0px", f"h2 left vertical bar must be removed on {sub_route}")
+
                     ctx_mob.close()
+
+                    ctx_apple_pc = browser.new_context(viewport={"width": 1280, "height": 900})
+                    attach_router(ctx_apple_pc, self.client)
+                    ap_page = ctx_apple_pc.new_page()
+                    for sub_route, bento_sel in (
+                        ("/concierge", ".verdict-card--primary"),
+                        ("/store/oriental-lounge-shinjuku", ".live-hero-card"),
+                        ("/columns", ".articles-grid > .article-card:first-child"),
+                        ("/for-women", ".live-board"),
+                    ):
+                        ap_page.goto(base + sub_route, wait_until="domcontentloaded")
+                        ap_page.add_style_tag(content="*, *::before, *::after { transition: none !important; animation: none !important; }")
+                        for is_light in (False, True):
+                            ap_page.evaluate(f"document.body.classList.toggle('theme-light', {str(is_light).lower()})")
+                            bento_state = ap_page.evaluate(f"""() => {{
+                                const el = document.querySelector({json.dumps(bento_sel)});
+                                const cs = el ? getComputedStyle(el) : null;
+                                return {{
+                                    exists: !!el,
+                                    radius: cs ? cs.borderTopLeftRadius : '',
+                                    overflowX: document.documentElement.scrollWidth - document.documentElement.clientWidth
+                                }};
+                            }}""")
+                            self.assertTrue(bento_state["exists"], f"Missing {bento_sel} on {sub_route}")
+                            self.assertEqual(bento_state["radius"], "24px", f"Expected 24px Apple Bento radius for {bento_sel} on {sub_route} (light={is_light})")
+                            self.assertLessEqual(bento_state["overflowX"], 0)
+                    ctx_apple_pc.close()
                 finally:
                     browser.close()
 

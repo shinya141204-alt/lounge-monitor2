@@ -6532,3 +6532,936 @@ body.theme-light .cmi-secondary-btn {
         background: var(--calm-light-border-strong);
     }
 }
+
+
+/* ==========================================================================
+   26. 案A：Apple Editorial & Weather Bento 全ページ統一デザインシステム
+       （Apple Global Ribbon × Open Typography Hero × Modular Bento Tiles）
+   - 全公開ページ（35テンプレート）の旧ゴールド枠・左縦線・箱型ヒーローを一掃
+   - body:not(.staff-mode) スコープで社内モニター（/?staff=1）のコントラストを完全保護
+   - 未定義CSS変数ゼロ保証のため var() 参照は calm.css :root 定義済みトークンのみ使用
+   ========================================================================== */
+
+/* --- 26-A. サブページ共通の旧ゴールド変数を Apple ニュートラルへ一括再バインド --- */
+body:not(.theme-light):not(.staff-mode) {
+    --bg-dark: #111113;
+    --card-bg: #1a1a1e;
+    --card-bg-2: #232329;
+    --card-elevated: #232329;
+    --card-sub-bg: #232329;
+    --text-main: #f4f4f5;
+    --text-sub: #b4b4be;
+    --accent: #f4f4f5;
+    --accent-gold: #e4e4e7;
+    --accent-text: #f4f4f5;
+    --accent-soft: rgba(244, 244, 245, 0.10);
+    --gold-tint: rgba(244, 244, 245, 0.08);
+    --border-subtle: rgba(255, 255, 255, 0.08);
+    --border-strong: rgba(255, 255, 255, 0.16);
+    --border-gold: rgba(255, 255, 255, 0.18);
+    --women: #f4a8b8;
+    --men: #93c5fd;
+}
+
+body.theme-light:not(.staff-mode) {
+    --bg-dark: #f6f6f7;
+    --bg-page: #faf8f9;
+    --card-bg: #ffffff;
+    --card-bg-2: #ededf0;
+    --card-elevated: #f4f4f6;
+    --card-sub-bg: #f1f1f4;
+    --text-main: #18181b;
+    --text-sub: #52525b;
+    --accent: #18181b;
+    --accent-gold: #18181b;
+    --accent-text: #18181b;
+    --accent-soft: rgba(24, 24, 27, 0.07);
+    --gold-tint: rgba(24, 24, 27, 0.06);
+    --border-subtle: rgba(24, 24, 27, 0.09);
+    --border-outline: rgba(24, 24, 27, 0.15);
+    --border-strong: rgba(24, 24, 27, 0.16);
+    --border-gold: rgba(24, 24, 27, 0.18);
+    --women: #be123c;
+    --men: #1d4ed8;
+}
+
+/* --- 26-B. Apple Global Ribbon（全ページ共通1行クリーンナビ）＆ トップヘッダー引き算 --- */
+/* トップページの重複テーマ切替バーを引き算（右上のライト切替＆表示切替に一本化） */
+body:not(.staff-mode) .theme-switcher-bar {
+    display: none !important;
+}
+
+body:not(.staff-mode) .container > header {
+    padding-bottom: 0 !important;
+    margin-bottom: 14px !important;
+}
+
+body:not(.staff-mode) .container > header::after {
+    display: none !important;
+}
+
+/* サブページの .portal-top-header / .top-header 下線を消し、直下のナビリボン上線に一本化 */
+body:not(.staff-mode) .portal-top-header,
+body:not(.staff-mode) .top-header {
+    border-bottom: none !important;
+    padding-bottom: 10px !important;
+    margin-bottom: 4px !important;
+}
+
+body:not(.staff-mode) .portal-brand-title,
+body:not(.staff-mode) .brand-link {
+    font-size: 1.24rem !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.025em !important;
+}
+
+/* トップページのツールボタン群を軽やかな Apple ツールバーピルに整える */
+body:not(.theme-light):not(.staff-mode) .header-controls .header-btn {
+    padding: 6px 11px !important;
+    font-size: 0.76rem !important;
+    font-weight: 600 !important;
+    background: rgba(255, 255, 255, 0.045) !important;
+    border: 1px solid var(--calm-border) !important;
+    color: var(--calm-sub) !important;
+    box-shadow: none !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .header-controls .header-btn:hover,
+body:not(.theme-light):not(.staff-mode) .header-controls #quick-daylight-btn,
+body:not(.theme-light):not(.staff-mode) .header-controls #refresh-btn {
+    color: var(--calm-text) !important;
+    border-color: var(--calm-border-strong) !important;
+    background: var(--calm-surface) !important;
+}
+
+body.theme-light:not(.staff-mode) .header-controls .header-btn {
+    padding: 6px 11px !important;
+    font-size: 0.76rem !important;
+    font-weight: 600 !important;
+    background: rgba(24, 24, 27, 0.035) !important;
+    border: 1px solid var(--calm-light-border) !important;
+    color: var(--calm-light-sub) !important;
+    box-shadow: none !important;
+}
+
+body.theme-light:not(.staff-mode) .header-controls .header-btn:hover,
+body.theme-light:not(.staff-mode) .header-controls #quick-daylight-btn,
+body.theme-light:not(.staff-mode) .header-controls #refresh-btn {
+    color: var(--calm-light-text) !important;
+    border-color: var(--calm-light-border-strong) !important;
+    background: #ffffff !important;
+}
+
+/* トップページ直下の .portal-global-nav とサブページの .portal-global-nav-row を同一 Apple Ribbon 化 */
+body:not(.staff-mode) .container > header > .portal-global-nav {
+    margin-top: 10px !important;
+    margin-bottom: 0 !important;
+    padding: 6px 0 !important;
+    border-top: 1px solid var(--calm-border) !important;
+    border-bottom: 1px solid var(--calm-border) !important;
+    gap: 4px !important;
+}
+
+body.theme-light:not(.staff-mode) .container > header > .portal-global-nav {
+    border-top-color: var(--calm-light-border) !important;
+    border-bottom-color: var(--calm-light-border) !important;
+}
+
+body:not(.staff-mode) .portal-global-nav-row {
+    padding: 6px 0 !important;
+    margin-bottom: 22px !important;
+    border-top: 1px solid var(--calm-border) !important;
+    border-bottom: 1px solid var(--calm-border) !important;
+    gap: 8px !important;
+}
+
+body.theme-light:not(.staff-mode) .portal-global-nav-row {
+    border-top-color: var(--calm-light-border) !important;
+    border-bottom-color: var(--calm-light-border) !important;
+}
+
+@media (min-width: 860px) {
+    body:not(.staff-mode) .portal-global-nav-row {
+        align-items: center !important;
+    }
+    body:not(.staff-mode) .portal-global-nav,
+    body:not(.staff-mode) .portal-global-nav-row > .portal-global-nav {
+        flex-wrap: wrap !important;
+        overflow-x: visible !important;
+        justify-content: flex-start !important;
+        gap: 4px !important;
+    }
+}
+
+/* 非アクティブ項目は枠線・箱背景ゼロのクリーン文字、現在地（.active）のみソリッド白/黒ピル */
+body:not(.theme-light):not(.staff-mode) .portal-nav-link:not(.active),
+body:not(.theme-light):not(.staff-mode) .portal-nav-item:not(.active):not(.portal-theme-toggle-btn) {
+    background: transparent !important;
+    border: 1px solid transparent !important;
+    color: var(--calm-sub) !important;
+    box-shadow: none !important;
+    padding: 6px 11px !important;
+    font-size: 0.785rem !important;
+    font-weight: 600 !important;
+    border-radius: 999px !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .portal-nav-link:not(.active):hover,
+body:not(.theme-light):not(.staff-mode) .portal-nav-item:not(.active):not(.portal-theme-toggle-btn):hover {
+    background: rgba(255, 255, 255, 0.06) !important;
+    border-color: transparent !important;
+    color: var(--calm-text) !important;
+}
+
+body.theme-light:not(.staff-mode) .portal-nav-link:not(.active),
+body.theme-light:not(.staff-mode) .portal-nav-item:not(.active):not(.portal-theme-toggle-btn) {
+    background: transparent !important;
+    border: 1px solid transparent !important;
+    color: var(--calm-light-sub) !important;
+    box-shadow: none !important;
+    padding: 6px 11px !important;
+    font-size: 0.785rem !important;
+    font-weight: 600 !important;
+    border-radius: 999px !important;
+}
+
+body.theme-light:not(.staff-mode) .portal-nav-link:not(.active):hover,
+body.theme-light:not(.staff-mode) .portal-nav-item:not(.active):not(.portal-theme-toggle-btn):hover {
+    background: rgba(24, 24, 27, 0.055) !important;
+    border-color: transparent !important;
+    color: var(--calm-light-text) !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .portal-nav-link.active,
+body:not(.theme-light):not(.staff-mode) .portal-nav-item.active {
+    background: var(--cm-cta-bg) !important;
+    border: 1px solid var(--cm-cta-bg) !important;
+    color: var(--cm-cta-text) !important;
+    padding: 6px 13px !important;
+    font-size: 0.785rem !important;
+    font-weight: 700 !important;
+    border-radius: 999px !important;
+    box-shadow: none !important;
+}
+
+body.theme-light:not(.staff-mode) .portal-nav-link.active,
+body.theme-light:not(.staff-mode) .portal-nav-item.active {
+    background: var(--cm-cta-bg) !important;
+    border: 1px solid var(--cm-cta-bg) !important;
+    color: var(--cm-cta-text) !important;
+    padding: 6px 13px !important;
+    font-size: 0.785rem !important;
+    font-weight: 700 !important;
+    border-radius: 999px !important;
+    box-shadow: none !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .portal-theme-toggle-btn {
+    background: var(--calm-surface) !important;
+    border: 1px solid var(--calm-border-strong) !important;
+    color: var(--calm-text) !important;
+    border-radius: 999px !important;
+    padding: 5px 12px !important;
+    font-size: 0.75rem !important;
+    font-weight: 700 !important;
+}
+
+body.theme-light:not(.staff-mode) .portal-theme-toggle-btn {
+    background: #ffffff !important;
+    border: 1px solid var(--calm-light-border-strong) !important;
+    color: var(--calm-light-text) !important;
+    border-radius: 999px !important;
+    padding: 5px 12px !important;
+    font-size: 0.75rem !important;
+    font-weight: 700 !important;
+}
+
+/* --- 26-C. 全サブページ：枠なしオープン・タイポグラフィ・ヒーロー ＆ 左縦線完全撤廃 --- */
+body:not(.staff-mode) .page-hero,
+body:not(.staff-mode) .hero-box,
+body:not(.staff-mode) .hero-card,
+body:not(.staff-mode) .areas-hero,
+body:not(.staff-mode) .article-header {
+    background: transparent !important;
+    background-image: none !important;
+    border: none !important;
+    border-bottom: 1px solid var(--calm-border) !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    padding: 6px 0 24px !important;
+    margin: 2px 0 26px !important;
+}
+
+body.theme-light:not(.staff-mode) .page-hero,
+body.theme-light:not(.staff-mode) .hero-box,
+body.theme-light:not(.staff-mode) .hero-card,
+body.theme-light:not(.staff-mode) .areas-hero,
+body.theme-light:not(.staff-mode) .article-header {
+    border-bottom-color: var(--calm-light-border) !important;
+}
+
+body:not(.staff-mode) .page-hero h1,
+body:not(.staff-mode) .hero-box h1,
+body:not(.staff-mode) .hero-card h1,
+body:not(.staff-mode) .areas-hero h1,
+body:not(.staff-mode) .article-title,
+body:not(.staff-mode) .article-box h1,
+body:not(.staff-mode) .content-box h1 {
+    font-size: clamp(1.48rem, 2.7vw, 2.02rem) !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.03em !important;
+    line-height: 1.3 !important;
+    margin: 0 0 12px !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .page-hero p,
+body:not(.theme-light):not(.staff-mode) .hero-box p,
+body:not(.theme-light):not(.staff-mode) .hero-card p,
+body:not(.theme-light):not(.staff-mode) .areas-hero p {
+    color: var(--calm-sub) !important;
+    font-size: 0.92rem !important;
+    line-height: 1.75 !important;
+    max-width: 780px;
+}
+
+body.theme-light:not(.staff-mode) .page-hero p,
+body.theme-light:not(.staff-mode) .hero-box p,
+body.theme-light:not(.staff-mode) .hero-card p,
+body.theme-light:not(.staff-mode) .areas-hero p {
+    color: var(--calm-light-sub) !important;
+    font-size: 0.92rem !important;
+    line-height: 1.75 !important;
+    max-width: 780px;
+}
+
+/* キッカーバッジから茶金枠を外し、Apple News+ 風のクリーンマイクロピルへ */
+body:not(.theme-light):not(.staff-mode) .page-hero-badge,
+body:not(.theme-light):not(.staff-mode) .hero-kicker,
+body:not(.theme-light):not(.staff-mode) .hero-box .badge,
+body:not(.theme-light):not(.staff-mode) .article-cat-tag,
+body:not(.theme-light):not(.staff-mode) .cat-badge,
+body:not(.theme-light):not(.staff-mode) .concierge-kicker,
+body:not(.theme-light):not(.staff-mode) .rec-badge {
+    background: var(--calm-surface-2) !important;
+    border: 1px solid var(--calm-border) !important;
+    color: var(--calm-sub) !important;
+    border-radius: 999px !important;
+    padding: 4px 12px !important;
+    font-size: 0.71rem !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.04em !important;
+}
+
+body.theme-light:not(.staff-mode) .page-hero-badge,
+body.theme-light:not(.staff-mode) .hero-kicker,
+body.theme-light:not(.staff-mode) .hero-box .badge,
+body.theme-light:not(.staff-mode) .article-cat-tag,
+body.theme-light:not(.staff-mode) .cat-badge,
+body.theme-light:not(.staff-mode) .concierge-kicker,
+body.theme-light:not(.staff-mode) .rec-badge {
+    background: var(--calm-light-surface-2) !important;
+    border: 1px solid var(--calm-light-border) !important;
+    color: var(--calm-light-sub) !important;
+    border-radius: 999px !important;
+    padding: 4px 12px !important;
+    font-size: 0.71rem !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.04em !important;
+}
+
+/* セクション見出し・記事見出しの左3px縦線と背景帯を完全撤廃 */
+body:not(.staff-mode) .sec-title,
+body:not(.staff-mode) .section-title,
+body:not(.staff-mode) .section-subhead,
+body:not(.staff-mode) .section-card h2,
+body:not(.staff-mode) h2.sec-h2,
+body:not(.staff-mode) .portal-wrap > h2 {
+    border-left: none !important;
+    background: transparent !important;
+    padding-left: 0 !important;
+    border-radius: 0 !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.02em !important;
+    line-height: 1.38 !important;
+}
+
+body:not(.staff-mode) .article-body h2,
+body:not(.staff-mode) .article-content h2,
+body:not(.staff-mode) .article-box h2,
+body:not(.staff-mode) .content-box h2,
+body:not(.staff-mode) .guide-box h2 {
+    border-left: none !important;
+    background: transparent !important;
+    border-bottom: 1px solid var(--calm-border) !important;
+    border-radius: 0 !important;
+    padding: 0 0 10px 0 !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.02em !important;
+    line-height: 1.4 !important;
+}
+
+body.theme-light:not(.staff-mode) .article-body h2,
+body.theme-light:not(.staff-mode) .article-content h2,
+body.theme-light:not(.staff-mode) .article-box h2,
+body.theme-light:not(.staff-mode) .content-box h2,
+body.theme-light:not(.staff-mode) .guide-box h2 {
+    border-bottom-color: var(--calm-light-border) !important;
+}
+
+/* --- 26-D. 3秒ハシゴ診断（/concierge）：Apple Store コンフィギュレータ × 対比Bento --- */
+body:not(.theme-light):not(.staff-mode) .concierge-console {
+    background: var(--calm-surface) !important;
+    border: 1px solid var(--calm-border) !important;
+    border-radius: 24px !important;
+    padding: 24px 22px !important;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.20) !important;
+}
+
+body.theme-light:not(.staff-mode) .concierge-console {
+    background: #ffffff !important;
+    border: 1px solid var(--calm-light-border) !important;
+    border-radius: 24px !important;
+    padding: 24px 22px !important;
+    box-shadow: 0 8px 24px rgba(24, 24, 27, 0.04) !important;
+}
+
+body:not(.staff-mode) .concierge-console h1 {
+    font-size: clamp(1.38rem, 2.4vw, 1.76rem) !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.028em !important;
+    line-height: 1.32 !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .ctrl-label {
+    color: var(--calm-sub) !important;
+    font-size: 0.74rem !important;
+    letter-spacing: 0.01em !important;
+}
+
+body.theme-light:not(.staff-mode) .ctrl-label {
+    color: var(--calm-light-sub) !important;
+    font-size: 0.74rem !important;
+    letter-spacing: 0.01em !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .c-pill {
+    border-radius: 999px !important;
+    padding: 8px 15px !important;
+    background: var(--calm-surface-2) !important;
+    border: 1px solid var(--calm-border) !important;
+    color: var(--calm-sub) !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .c-pill:hover {
+    border-color: var(--calm-border-strong) !important;
+    color: var(--calm-text) !important;
+}
+
+body.theme-light:not(.staff-mode) .c-pill {
+    border-radius: 999px !important;
+    padding: 8px 15px !important;
+    background: var(--calm-light-surface-2) !important;
+    border: 1px solid var(--calm-light-border) !important;
+    color: var(--calm-light-sub) !important;
+}
+
+body.theme-light:not(.staff-mode) .c-pill:hover {
+    border-color: var(--calm-light-border-strong) !important;
+    color: var(--calm-light-text) !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .c-pill.active,
+body.theme-light:not(.staff-mode) .c-pill.active {
+    background: var(--cm-cta-bg) !important;
+    border-color: var(--cm-cta-bg) !important;
+    color: var(--cm-cta-text) !important;
+    font-weight: 700 !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .c-pill[data-param="audience"][data-val="women"].active {
+    background: var(--calm-women) !important;
+    border-color: var(--calm-women) !important;
+    color: #111113 !important;
+}
+
+body.theme-light:not(.staff-mode) .c-pill[data-param="audience"][data-val="women"].active {
+    background: var(--calm-light-women) !important;
+    border-color: var(--calm-light-women) !important;
+    color: #ffffff !important;
+}
+
+body:not(.staff-mode) .area-status-strip {
+    border-radius: 18px !important;
+    padding: 14px 18px !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .verdict-card {
+    background: var(--calm-surface) !important;
+    border: 1px solid var(--calm-border) !important;
+    border-radius: 24px !important;
+    padding: 22px !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .verdict-card--primary {
+    border-color: var(--calm-border-strong) !important;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.26) !important;
+}
+
+body.theme-light:not(.staff-mode) .verdict-card {
+    background: #ffffff !important;
+    border: 1px solid var(--calm-light-border) !important;
+    border-radius: 24px !important;
+    padding: 22px !important;
+    box-shadow: 0 4px 16px rgba(24, 24, 27, 0.03) !important;
+}
+
+body.theme-light:not(.staff-mode) .verdict-card--primary {
+    border-color: var(--calm-light-border-strong) !important;
+    box-shadow: 0 10px 28px rgba(24, 24, 27, 0.06) !important;
+}
+
+body:not(.staff-mode) .rank-crown-pill {
+    border-radius: 999px !important;
+    padding: 4px 12px !important;
+    background: var(--cm-cta-bg) !important;
+    border-color: var(--cm-cta-bg) !important;
+    color: var(--cm-cta-text) !important;
+}
+
+body:not(.staff-mode) .rank-backup-pill {
+    border-radius: 999px !important;
+    padding: 4px 12px !important;
+}
+
+body:not(.staff-mode) .verdict-store-title a {
+    border-bottom: none !important;
+}
+
+body:not(.staff-mode) .headcount-panel {
+    border-radius: 18px !important;
+    padding: 14px 16px !important;
+}
+
+body:not(.staff-mode) .reasons-list li {
+    border-left: none !important;
+    border-radius: 14px !important;
+    padding: 10px 14px !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .switch-trigger-box {
+    background: var(--calm-surface-2) !important;
+    border: 1px solid var(--calm-border-strong) !important;
+    border-radius: 16px !important;
+    padding: 12px 14px !important;
+}
+
+body.theme-light:not(.staff-mode) .switch-trigger-box {
+    background: var(--calm-light-surface-2) !important;
+    border: 1px solid var(--calm-light-border-strong) !important;
+    border-radius: 16px !important;
+    padding: 12px 14px !important;
+}
+
+body:not(.staff-mode) .btn-gold-action {
+    border-radius: 999px !important;
+    padding: 10px 18px !important;
+    background: var(--cm-cta-bg) !important;
+    border: 1px solid var(--cm-cta-bg) !important;
+    color: var(--cm-cta-text) !important;
+    font-weight: 700 !important;
+}
+
+/* --- 26-E. 店舗詳細（/store/*）：iOS Weather モジュラーBentoタイル --- */
+body:not(.theme-light):not(.staff-mode) .live-hero-card {
+    background: var(--calm-surface) !important;
+    border: 1px solid var(--calm-border-strong) !important;
+    border-radius: 24px !important;
+    padding: 26px 24px !important;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.22) !important;
+}
+
+body.theme-light:not(.staff-mode) .live-hero-card {
+    background: #ffffff !important;
+    border: 1px solid var(--calm-light-border-strong) !important;
+    border-radius: 24px !important;
+    padding: 26px 24px !important;
+    box-shadow: 0 10px 26px rgba(24, 24, 27, 0.05) !important;
+}
+
+body:not(.staff-mode) .live-hero-card h1 {
+    font-size: clamp(1.38rem, 2.5vw, 1.84rem) !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.028em !important;
+    line-height: 1.32 !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .section-card {
+    background: var(--calm-surface) !important;
+    border: 1px solid var(--calm-border) !important;
+    border-radius: 24px !important;
+    padding: 24px 22px !important;
+}
+
+body.theme-light:not(.staff-mode) .section-card {
+    background: #ffffff !important;
+    border: 1px solid var(--calm-light-border) !important;
+    border-radius: 24px !important;
+    padding: 24px 22px !important;
+    box-shadow: 0 4px 16px rgba(24, 24, 27, 0.03) !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .count-box {
+    background: var(--calm-surface-2) !important;
+    border: 1px solid var(--calm-border) !important;
+    border-radius: 20px !important;
+    padding: 16px 12px !important;
+}
+
+body.theme-light:not(.staff-mode) .count-box {
+    background: var(--calm-light-bg) !important;
+    border: 1px solid var(--calm-light-border) !important;
+    border-radius: 20px !important;
+    padding: 16px 12px !important;
+}
+
+body:not(.staff-mode) .count-num {
+    font-size: 1.92rem !important;
+    letter-spacing: -0.03em !important;
+    font-variant-numeric: tabular-nums !important;
+}
+
+body:not(.staff-mode) .moat-detail-panel {
+    border-radius: 20px !important;
+    padding: 15px 16px !important;
+}
+
+body:not(.staff-mode) .moat-detail-card,
+body:not(.staff-mode) .stat-subcard,
+body:not(.staff-mode) .nearby-item {
+    border-radius: 18px !important;
+    padding: 14px 16px !important;
+}
+
+body:not(.staff-mode) .btn-primary {
+    border-radius: 999px !important;
+    padding: 10px 20px !important;
+    background: var(--cm-cta-bg) !important;
+    border: 1px solid var(--cm-cta-bg) !important;
+    color: var(--cm-cta-text) !important;
+    font-weight: 700 !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .btn-secondary {
+    border-radius: 999px !important;
+    padding: 10px 18px !important;
+    background: var(--calm-surface-2) !important;
+    border: 1px solid var(--calm-border-strong) !important;
+    color: var(--calm-text) !important;
+}
+
+body.theme-light:not(.staff-mode) .btn-secondary {
+    border-radius: 999px !important;
+    padding: 10px 18px !important;
+    background: var(--calm-light-surface-2) !important;
+    border: 1px solid var(--calm-light-border-strong) !important;
+    color: var(--calm-light-text) !important;
+}
+
+@media (max-width: 560px) {
+    body:not(.staff-mode) .live-hero-card,
+    body:not(.staff-mode) .section-card {
+        padding: 18px 15px !important;
+        border-radius: 20px !important;
+    }
+    body:not(.staff-mode) .count-box {
+        padding: 12px 6px !important;
+        border-radius: 16px !important;
+    }
+    body:not(.staff-mode) .count-num {
+        font-size: 1.35rem !important;
+    }
+}
+
+/* --- 26-F. コラム一覧＆全18記事（/columns, /guide/*, /grooming, /privacy）：Apple News+ --- */
+body:not(.staff-mode) .columns-filter-bar {
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 0 0 8px !important;
+    margin: 0 0 20px !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .columns-filter-label {
+    color: var(--calm-sub) !important;
+}
+
+body.theme-light:not(.staff-mode) .columns-filter-label {
+    color: var(--calm-light-sub) !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .col-cat-btn {
+    background: var(--calm-surface) !important;
+    border: 1px solid var(--calm-border) !important;
+    color: var(--calm-sub) !important;
+    padding: 6px 14px !important;
+}
+
+body.theme-light:not(.staff-mode) .col-cat-btn {
+    background: #ffffff !important;
+    border: 1px solid var(--calm-light-border) !important;
+    color: var(--calm-light-sub) !important;
+    padding: 6px 14px !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .col-cat-btn.active,
+body.theme-light:not(.staff-mode) .col-cat-btn.active {
+    background: var(--cm-cta-bg) !important;
+    border-color: var(--cm-cta-bg) !important;
+    color: var(--cm-cta-text) !important;
+    font-weight: 700 !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .article-card,
+body:not(.theme-light):not(.staff-mode) .portal-article-card {
+    background: var(--calm-surface) !important;
+    border: 1px solid var(--calm-border) !important;
+    border-radius: 22px !important;
+}
+
+body.theme-light:not(.staff-mode) .article-card,
+body.theme-light:not(.staff-mode) .portal-article-card {
+    background: #ffffff !important;
+    border: 1px solid var(--calm-light-border) !important;
+    border-radius: 22px !important;
+    box-shadow: 0 4px 16px rgba(24, 24, 27, 0.035) !important;
+}
+
+body:not(.staff-mode) .articles-grid > .article-card .article-card-body::before {
+    content: "STORY " counter(issue-card, decimal-leading-zero);
+    letter-spacing: 0.08em;
+    font-size: 0.65rem;
+    color: var(--calm-sub) !important;
+    opacity: 0.85;
+}
+
+body.theme-light:not(.staff-mode) .articles-grid > .article-card .article-card-body::before {
+    color: var(--calm-light-sub) !important;
+}
+
+@media (min-width: 860px) {
+    body:not(.staff-mode) .articles-grid:not(.is-filtered) > .article-card:first-child {
+        border-radius: 24px !important;
+        padding: 18px !important;
+    }
+    body:not(.staff-mode) .articles-grid:not(.is-filtered) > .article-card:first-child .article-thumb-wrap {
+        border-radius: 16px !important;
+    }
+    body:not(.staff-mode) .articles-grid:not(.is-filtered) > .article-card:first-child .article-card-body::before {
+        content: "FEATURED STORY" !important;
+        letter-spacing: 0.08em !important;
+    }
+    body:not(.staff-mode) .portal-featured-articles > .portal-article-card:first-child {
+        border-radius: 24px !important;
+        border-color: var(--calm-border-strong) !important;
+    }
+    body.theme-light:not(.staff-mode) .portal-featured-articles > .portal-article-card:first-child {
+        border-color: var(--calm-light-border-strong) !important;
+    }
+}
+
+/* 記事内インラインBentoカード（左縦線・セリフ体巨大引用符を撤廃し角丸18〜20pxタイル化） */
+body:not(.staff-mode) .dialogue-box::before {
+    content: none !important;
+    display: none !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .dialogue-box,
+body:not(.theme-light):not(.staff-mode) .article-lead,
+body:not(.theme-light):not(.staff-mode) .lead-box,
+body:not(.theme-light):not(.staff-mode) .mechanism-note-box {
+    background: var(--calm-surface) !important;
+    border: 1px solid var(--calm-border) !important;
+    border-left: 1px solid var(--calm-border) !important;
+    border-radius: 18px !important;
+    padding: 16px 20px !important;
+    color: var(--calm-text) !important;
+}
+
+body.theme-light:not(.staff-mode) .dialogue-box,
+body.theme-light:not(.staff-mode) .article-lead,
+body.theme-light:not(.staff-mode) .lead-box,
+body.theme-light:not(.staff-mode) .mechanism-note-box {
+    background: #ffffff !important;
+    border: 1px solid var(--calm-light-border) !important;
+    border-left: 1px solid var(--calm-light-border) !important;
+    border-radius: 18px !important;
+    padding: 16px 20px !important;
+    color: var(--calm-light-text) !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .toc-box,
+body:not(.theme-light):not(.staff-mode) .highlight-box,
+body:not(.theme-light):not(.staff-mode) .mechanism-thesis-box,
+body:not(.theme-light):not(.staff-mode) .rec-card,
+body:not(.theme-light):not(.staff-mode) .aff-card,
+body:not(.theme-light):not(.staff-mode) .cta-box {
+    background: var(--calm-surface) !important;
+    background-image: none !important;
+    border: 1px solid var(--calm-border-strong) !important;
+    border-top: 1px solid var(--calm-border-strong) !important;
+    border-radius: 22px !important;
+    padding: 20px 22px !important;
+}
+
+body.theme-light:not(.staff-mode) .toc-box,
+body.theme-light:not(.staff-mode) .highlight-box,
+body.theme-light:not(.staff-mode) .mechanism-thesis-box,
+body.theme-light:not(.staff-mode) .rec-card,
+body.theme-light:not(.staff-mode) .aff-card,
+body.theme-light:not(.staff-mode) .cta-box {
+    background: #ffffff !important;
+    background-image: none !important;
+    border: 1px solid var(--calm-light-border-strong) !important;
+    border-top: 1px solid var(--calm-light-border-strong) !important;
+    border-radius: 22px !important;
+    padding: 20px 22px !important;
+    box-shadow: 0 4px 16px rgba(24, 24, 27, 0.03) !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .article-box,
+body:not(.theme-light):not(.staff-mode) .content-box,
+body:not(.theme-light):not(.staff-mode) .guide-box {
+    background: var(--calm-surface) !important;
+    border: 1px solid var(--calm-border) !important;
+    border-radius: 24px !important;
+}
+
+body.theme-light:not(.staff-mode) .article-box,
+body.theme-light:not(.staff-mode) .content-box,
+body.theme-light:not(.staff-mode) .guide-box {
+    background: #ffffff !important;
+    border: 1px solid var(--calm-light-border) !important;
+    border-radius: 24px !important;
+    box-shadow: 0 4px 18px rgba(24, 24, 27, 0.03) !important;
+}
+
+body:not(.staff-mode) .article-eyecatch {
+    border-radius: 20px !important;
+}
+
+body:not(.staff-mode) .cta-btn,
+body:not(.staff-mode) .rec-btn,
+body:not(.staff-mode) .concierge-gold-btn {
+    border-radius: 999px !important;
+    background: var(--cm-cta-bg) !important;
+    background-image: none !important;
+    border: 1px solid var(--cm-cta-bg) !important;
+    color: var(--cm-cta-text) !important;
+    font-weight: 700 !important;
+    box-shadow: none !important;
+}
+
+/* 記事ページ最上部プログレスバーをミニマルなモノクローム単色へ */
+body:not(.theme-light):not(.staff-mode) .aiseki-reading-progress {
+    background: var(--calm-text) !important;
+}
+
+body.theme-light:not(.staff-mode) .aiseki-reading-progress {
+    background: var(--calm-light-text) !important;
+}
+
+/* --- 26-G. エリア・料金比較・統計・ブランド・女子ガイドのモジュラーBento統一 --- */
+body:not(.staff-mode) .area-pill,
+body:not(.staff-mode) .brand-tab,
+body:not(.staff-mode) .area-tab-btn {
+    border-radius: 999px !important;
+    border-style: solid !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .area-pill.active,
+body:not(.theme-light):not(.staff-mode) .brand-tab.active,
+body:not(.theme-light):not(.staff-mode) .area-tab-btn.active,
+body.theme-light:not(.staff-mode) .area-pill.active,
+body.theme-light:not(.staff-mode) .brand-tab.active,
+body.theme-light:not(.staff-mode) .area-tab-btn.active {
+    background: var(--cm-cta-bg) !important;
+    border-color: var(--cm-cta-bg) !important;
+    color: var(--cm-cta-text) !important;
+    font-weight: 700 !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .concierge-promo-banner,
+body:not(.theme-light):not(.staff-mode) .best-pick-banner {
+    background: var(--calm-surface) !important;
+    background-image: none !important;
+    border: 1px solid var(--calm-border-strong) !important;
+    border-left: 1px solid var(--calm-border-strong) !important;
+    border-radius: 22px !important;
+    padding: 18px 20px !important;
+}
+
+body.theme-light:not(.staff-mode) .concierge-promo-banner,
+body.theme-light:not(.staff-mode) .best-pick-banner {
+    background: #ffffff !important;
+    background-image: none !important;
+    border: 1px solid var(--calm-light-border-strong) !important;
+    border-left: 1px solid var(--calm-light-border-strong) !important;
+    border-radius: 22px !important;
+    padding: 18px 20px !important;
+    box-shadow: 0 4px 16px rgba(24, 24, 27, 0.03) !important;
+}
+
+body:not(.staff-mode) .area-section-card {
+    border-radius: 24px !important;
+}
+
+body:not(.staff-mode) .live-store-card,
+body:not(.staff-mode) .tactical-card,
+body:not(.staff-mode) .brand-stat-card,
+body:not(.staff-mode) .fc-acc-kpi-card,
+body:not(.staff-mode) .store-card {
+    border-radius: 20px !important;
+}
+
+/* 女子向け裏ガイド（/for-women）：Apple Card 風クリスプ・ホワイト × クリーンローズ Bento */
+body.theme-light:not(.staff-mode) .live-board,
+body.theme-light:not(.staff-mode) .ladies-pr-section {
+    background: #ffffff !important;
+    border: 1px solid var(--calm-light-border) !important;
+    border-radius: 24px !important;
+    box-shadow: 0 6px 22px rgba(24, 24, 27, 0.04) !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .live-board,
+body:not(.theme-light):not(.staff-mode) .ladies-pr-section {
+    background: var(--calm-surface) !important;
+    border: 1px solid var(--calm-border) !important;
+    border-radius: 24px !important;
+}
+
+body:not(.staff-mode) .live-pick-card,
+body:not(.staff-mode) .rule-card {
+    border-radius: 18px !important;
+}
+
+body.theme-light:not(.staff-mode) .live-pick-card {
+    background: var(--calm-light-bg) !important;
+    border-color: var(--calm-light-border) !important;
+}
+
+body.theme-light:not(.staff-mode) .btn-rose {
+    background: var(--calm-light-women) !important;
+    background-image: none !important;
+    color: #ffffff !important;
+    border-radius: 999px !important;
+    box-shadow: none !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .btn-rose {
+    background: var(--calm-women) !important;
+    background-image: none !important;
+    color: #111113 !important;
+    border-radius: 999px !important;
+    box-shadow: none !important;
+}
+

@@ -87,7 +87,7 @@
 
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=2">
     <link rel="apple-touch-icon" href="/static/icon.png?v=2">
-    <link rel="stylesheet" href="/static/portal.css?v=11">
+    <link rel="stylesheet" href="/static/portal.css?v=12">
     <style>
         /* デフォルト（女性向けローズリネン地×純白カード紙面の高級サロン誌トーン） */
         :root {
@@ -493,7 +493,7 @@
             margin: 0;
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=25">
+    <link rel="stylesheet" href="/static/calm.css?v=26">
 </head>
 
 <body class="theme-light audience-women">
@@ -511,15 +511,15 @@
                 localStorage.setItem('olg_view_theme', isLightNow ? 'light' : 'default');
             } catch (e) {}
             var btn = document.getElementById('for-women-theme-btn');
-            if (btn) btn.textContent = isLightNow ? '🌙 ダーク表示' : '☀️ ライト表示';
+            if (btn) btn.textContent = isLightNow ? 'ダーク表示' : 'ライト表示';
         }
     </script>
     <div class="wrap">
         <div class="top-header">
-            <a href="/" class="brand-link">相席ナビ <span>💄 女性目線モード対応</span></a>
+            <a href="/" class="brand-link">相席ナビ <span>女性目線モード対応</span></a>
             <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-                <button type="button" id="for-women-theme-btn" class="btn-outline" style="padding:6px 11px;font-size:0.76rem;" onclick="toggleForWomenTheme()">🌙 ダーク表示</button>
-                <a href="/?mode=women" class="btn-outline" style="padding:6px 12px;font-size:0.78rem;">💄 女子モードで全国順位を見る</a>
+                <button type="button" id="for-women-theme-btn" class="btn-outline" style="padding:6px 12px;font-size:0.76rem;" onclick="toggleForWomenTheme()">ダーク表示</button>
+                <a href="/?mode=women" class="btn-outline" style="padding:6px 12px;font-size:0.78rem;">女子モードで全国順位を見る</a>
                 <a href="/columns" class="btn-outline" style="padding:6px 12px;font-size:0.78rem;">コラム一覧</a>
             </div>
         </div>
@@ -527,7 +527,7 @@
             (function() {
                 var btn = document.getElementById('for-women-theme-btn');
                 if (btn && !document.body.classList.contains('theme-light')) {
-                    btn.textContent = '☀️ ライト表示';
+                    btn.textContent = 'ライト表示';
                 }
             })();
         </script>
@@ -536,14 +536,14 @@
         {% include '_portal_nav.html' %}
 
         <section class="hero-box">
-            <span class="hero-kicker">💄 女性2人組・夜カフェ派のための実測データ裏マニュアル</span>
+            <span class="hero-kicker">FOR WOMEN · ZERO-WAIT LIVE GUIDE</span>
             <h1>「せっかくメイクしたのに受付で30分放置…」をゼロにする、女子のための相席ラウンジ完全ガイド</h1>
             <p>
                 女性はチャージもドリンクも無料——だからこそ、何も見ずに一番有名な店舗へ突撃すると<strong>「女子組ばかり溢れて30分待ち」「やっと座れたのに会話が噛み合わない」</strong>という失敗が起きます。<br>
                 全国53店舗の男女人数データから分かった<strong>『待ち時間ゼロでVIP案内されるお店の見分け方』</strong>と<strong>『角を立てずに席替え・退店する大人の裏マナー』</strong>をまとめました。
             </p>
             <div class="hero-cta-row">
-                <a href="/?mode=women" class="btn-rose">💄 トップ画面を「女性目線（待ち0・特典順）」で開く →</a>
+                <a href="/?mode=women" class="btn-rose">トップ画面を「女性目線（待ち0・特典順）」で開く →</a>
                 <a href="#change-seat-manual" class="btn-outline">席替え・スマート退店フレーズを見る ↓</a>
             </div>
         </section>
@@ -551,7 +551,7 @@
         <!-- LIVE Zero-Wait & Perks Store Board -->
         <section class="live-board" aria-label="いま女子待ちゼロで入れるリアルタイム店舗ボード">
             <div class="live-board-head">
-                <h2>🟢 いま「女子待ちゼロ・即案内されやすい」注目店舗</h2>
+                <h2><span class="status-dot-live" aria-hidden="true"></span>いま「女子待ちゼロ・即案内されやすい」注目店舗</h2>
                 <span class="live-pill">リアルタイム計測（更新: {{ last_updated }}）</span>
             </div>
             <p style="font-size:0.83rem;color:var(--text-sub);margin:0 0 8px;">

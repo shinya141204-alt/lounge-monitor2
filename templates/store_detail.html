@@ -71,7 +71,7 @@
 
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=2">
     <link rel="apple-touch-icon" href="/static/icon.png?v=2">
-    <link rel="stylesheet" href="/static/portal.css?v=11">
+    <link rel="stylesheet" href="/static/portal.css?v=12">
     <link rel="stylesheet" href="/static/style.css?v=20261030_6">
     <style>
         :root {
@@ -454,7 +454,7 @@
             }
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=25">
+    <link rel="stylesheet" href="/static/calm.css?v=26">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -542,9 +542,9 @@
             {% set show_moat_panel = ('ソウル' not in store.name) and (store.total > 0 or (we and (we.est_men_wait_groups or 0) > 0)) %}
             <div id="hero-moat-panel" class="moat-detail-panel"{% if not show_moat_panel %} style="display:none;"{% endif %}>
                 <div class="moat-detail-head">
-                    <span>🔮 60分後AI推移予測 ＆ リアル待ち時間解析</span>
+                    <span><span class="status-dot-live" aria-hidden="true"></span>60分後AI推移予測 ＆ リアル待ち時間解析</span>
                     {% if wb and wb.city %}
-                    <span class="moat-detail-weather" id="hero-moat-weather">{% if wb.is_rainy %}☔{% else %}🌤️{% endif %} {{ wb.city }} {{ wb.condition }}{% if wb.temp_c is not none %} {{ '%.1f'|format(wb.temp_c) }}℃{% endif %}</span>
+                    <span class="moat-detail-weather" id="hero-moat-weather">{{ wb.city }} {{ wb.condition }}{% if wb.temp_c is not none %} {{ '%.1f'|format(wb.temp_c) }}℃{% endif %}</span>
                     {% else %}
                     <span class="moat-detail-weather" id="hero-moat-weather" style="display:none;"></span>
                     {% endif %}
@@ -821,7 +821,7 @@
         <!-- 2nd Venue Guide & Recommended Spots Section -->
         <section class="section-card" id="store-second-venue-section">
             <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 6px;">
-                <h2 style="margin: 0; font-size: 1.15rem;">🥂 {{ store.seo_name }} 近くの厳選2軒目＆切り出しTips</h2>
+                <h2 style="margin: 0; font-size: 1.15rem;">{{ store.seo_name }} 近くの厳選2軒目＆切り出しTips</h2>
                 <a href="/guide/second-venue" style="color: var(--accent-text); font-size: 0.82rem; text-decoration: none; font-weight: 600;">2軒目の誘い方コラム ›</a>
             </div>
             <p style="margin: 0 0 12px; font-size: 0.83rem; color: var(--text-sub); line-height: 1.55;">
@@ -830,7 +830,7 @@
 
             <!-- Timing Badge -->
             <div class="second-venue-timing-badge" style="margin-bottom: 12px;" onclick="toggleDetailTimingRules()">
-                <span class="timing-badge-tag">💡 ベストタイミング</span>
+                <span class="timing-badge-tag">ベストタイミング</span>
                 <span class="timing-badge-text">着席40〜50分後 / 23:10前（ピークで切り出すのが鉄則）</span>
                 <span class="timing-toggle-arrow" id="detail-timing-arrow">▾ 理由を見る</span>
             </div>
@@ -843,10 +843,10 @@
             <!-- Category Tabs -->
             <div class="second-venue-tabs" id="detail-second-venue-tabs">
                 <button type="button" class="second-tab-btn active" data-tab="all" onclick="switchDetailSecondTab('all')">すべて</button>
-                <button type="button" class="second-tab-btn" data-tab="cafe" onclick="switchDetailSecondTab('cafe')">☕ 夜カフェ</button>
-                <button type="button" class="second-tab-btn" data-tab="bar" onclick="switchDetailSecondTab('bar')">🍸 バー・バル</button>
-                <button type="button" class="second-tab-btn" data-tab="shisha" onclick="switchDetailSecondTab('shisha')">🎯 シーシャ</button>
-                <button type="button" class="second-tab-btn" data-tab="tips" onclick="switchDetailSecondTab('tips')">💡 誘い方フレーズ</button>
+                <button type="button" class="second-tab-btn" data-tab="cafe" onclick="switchDetailSecondTab('cafe')">夜カフェ</button>
+                <button type="button" class="second-tab-btn" data-tab="bar" onclick="switchDetailSecondTab('bar')">バー・バル</button>
+                <button type="button" class="second-tab-btn" data-tab="shisha" onclick="switchDetailSecondTab('shisha')">シーシャ</button>
+                <button type="button" class="second-tab-btn" data-tab="tips" onclick="switchDetailSecondTab('tips')">誘い方フレーズ</button>
             </div>
 
             <!-- Spot Cards Container -->
@@ -1521,9 +1521,9 @@
                             <p class="second-venue-comment">${escapeHtml(v.comment || '')}</p>
                             ${featuresHtml ? `<div class="second-venue-tags">${featuresHtml}</div>` : ''}
                             <div class="second-venue-card-actions">
-                                <a href="${mapUrl}" target="_blank" rel="noopener noreferrer" class="venue-action-btn map-btn">🗺️ マップ ↗</a>
-                                <button type="button" class="venue-action-btn copy-btn" onclick="copyDetailText('${escapeJs(v.name)}', this, '店名をコピーしました')">📋 店名コピー</button>
-                                <a href="${lineUrl}" target="_blank" rel="noopener noreferrer" class="venue-action-btn line-btn">💬 LINE共有</a>
+                                <a href="${mapUrl}" target="_blank" rel="noopener noreferrer" class="venue-action-btn map-btn">マップ ↗</a>
+                                <button type="button" class="venue-action-btn copy-btn" onclick="copyDetailText('${escapeJs(v.name)}', this, '店名をコピーしました')">店名コピー</button>
+                                <a href="${lineUrl}" target="_blank" rel="noopener noreferrer" class="venue-action-btn line-btn">LINE共有</a>
                             </div>
                         </div>
                     `;
@@ -1542,9 +1542,9 @@
                         </div>
                         <div class="second-tip-phrase-box">
                             <p class="second-tip-phrase">「${escapeHtml(t.phrase || '')}」</p>
-                            <button type="button" class="tip-phrase-copy-btn" onclick="copyDetailText('${escapeJs(t.phrase || '')}', this, 'フレーズをコピーしました')">📋 フレーズをコピー</button>
+                            <button type="button" class="tip-phrase-copy-btn" onclick="copyDetailText('${escapeJs(t.phrase || '')}', this, 'フレーズをコピーしました')">フレーズをコピー</button>
                         </div>
-                        <p class="second-tip-point">💡 <strong>狙いと解説:</strong> ${escapeHtml(t.point || '')}</p>
+                        <p class="second-tip-point"><strong>狙いと解説:</strong> ${escapeHtml(t.point || '')}</p>
                     </div>
                 `).join('');
             }

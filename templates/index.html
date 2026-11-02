@@ -133,7 +133,7 @@
     <meta name="apple-mobile-web-app-title" content="相席ナビ">
 
     <link rel="stylesheet" href="/static/style.css?v=20261030_6" fetchpriority="high">
-    <link rel="stylesheet" href="/static/calm.css?v=25" fetchpriority="high">
+    <link rel="stylesheet" href="/static/calm.css?v=26" fetchpriority="high">
     <link rel="preload" href="/static/app.js?v=20261102_2" as="script">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1290,10 +1290,10 @@
                 <!-- Tabs: All / Cafe / Bar / Shisha / Tips -->
                 <div class="second-venue-tabs" id="modal-second-venue-tabs">
                     <button type="button" class="second-tab-btn active" data-tab="all" onclick="switchSecondVenueTab('all')">すべて</button>
-                    <button type="button" class="second-tab-btn" data-tab="cafe" onclick="switchSecondVenueTab('cafe')">☕ 夜カフェ</button>
-                    <button type="button" class="second-tab-btn" data-tab="bar" onclick="switchSecondVenueTab('bar')">🍸 バー・バル</button>
-                    <button type="button" class="second-tab-btn" data-tab="shisha" onclick="switchSecondVenueTab('shisha')">🎯 シーシャ</button>
-                    <button type="button" class="second-tab-btn" data-tab="tips" onclick="switchSecondVenueTab('tips')">💡 誘い方フレーズ</button>
+                    <button type="button" class="second-tab-btn" data-tab="cafe" onclick="switchSecondVenueTab('cafe')">夜カフェ</button>
+                    <button type="button" class="second-tab-btn" data-tab="bar" onclick="switchSecondVenueTab('bar')">バー・バル</button>
+                    <button type="button" class="second-tab-btn" data-tab="shisha" onclick="switchSecondVenueTab('shisha')">シーシャ</button>
+                    <button type="button" class="second-tab-btn" data-tab="tips" onclick="switchSecondVenueTab('tips')">誘い方フレーズ</button>
                 </div>
 
                 <!-- Venues Cards Container -->
@@ -1794,10 +1794,10 @@
                 </p>
                 <div class="sns-preset-tabs">
                     <button class="sns-tab-btn active" data-preset="events" onclick="selectSnsPreset('events')">特典＆イベント開催店</button>
-                    <button class="sns-tab-btn" data-preset="second_venue" onclick="selectSnsPreset('second_venue')">🍸 2軒目ハシゴ案内</button>
-                    <button class="sns-tab-btn" data-preset="zero_wait" onclick="selectSnsPreset('zero_wait')">💄 女子待ちゼロ速報</button>
-                    <button class="sns-tab-btn" data-preset="rain_underground" onclick="selectSnsPreset('rain_underground')">☔ 雨天・直結穴場</button>
-                    <button class="sns-tab-btn" data-preset="last_train_cliff" onclick="selectSnsPreset('last_train_cliff')">🌙 終電前ラストチャンス</button>
+                    <button class="sns-tab-btn" data-preset="second_venue" onclick="selectSnsPreset('second_venue')">2軒目ハシゴ案内</button>
+                    <button class="sns-tab-btn" data-preset="zero_wait" onclick="selectSnsPreset('zero_wait')">女子待ちゼロ速報</button>
+                    <button class="sns-tab-btn" data-preset="rain_underground" onclick="selectSnsPreset('rain_underground')">雨天・直結穴場</button>
+                    <button class="sns-tab-btn" data-preset="last_train_cliff" onclick="selectSnsPreset('last_train_cliff')">終電前ラストチャンス</button>
                     <button class="sns-tab-btn" data-preset="threads" onclick="selectSnsPreset('threads')">Threads・IG長文速報</button>
                     <button class="sns-tab-btn" data-preset="price" onclick="selectSnsPreset('price')">料金・イベント比較ボード告知</button>
                     <button class="sns-tab-btn" data-preset="timely" onclick="selectSnsPreset('timely')">時間帯別おすすめ</button>
@@ -2347,7 +2347,7 @@
                 }
                 if (window.__swRegistered) return;
                 window.__swRegistered = true;
-                navigator.serviceWorker.register('/sw.js?v=78', { updateViaCache: 'none' })
+                navigator.serviceWorker.register('/sw.js?v=79', { updateViaCache: 'none' })
                     .then(function(reg) {
                         reg.update();
                         document.addEventListener('visibilitychange', function() {

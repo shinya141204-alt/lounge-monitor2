@@ -19,10 +19,10 @@
     align-items: center;
     justify-content: space-between;
     flex-wrap: wrap;
-    gap: 8px 12px;
-    padding-bottom: 14px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    margin-bottom: 14px;
+    gap: 8px 14px;
+    padding-bottom: 10px;
+    border-bottom: none;
+    margin-bottom: 4px;
 }
 
 .portal-brand-link {
@@ -37,17 +37,17 @@
 
 .portal-brand-title {
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
-    font-size: 1.38rem;
+    font-size: 1.24rem;
     font-weight: 800;
     color: #f4f4f5;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.025em;
     margin: 0;
     white-space: nowrap;
     flex-shrink: 0;
 }
 
 .portal-brand-sub {
-    font-size: 0.78rem;
+    font-size: 0.76rem;
     font-weight: 500;
     color: #a1a1aa;
     line-height: 1.4;
@@ -57,7 +57,10 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    margin-bottom: 20px;
+    padding: 6px 0 8px;
+    margin-bottom: 24px;
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     max-width: 100%;
 }
 
@@ -65,29 +68,32 @@
     flex: 1 1 auto;
     min-width: 0;
     margin-bottom: 0 !important;
-    padding: 3px 0 !important;
+    padding: 2px 0 !important;
 }
 
 .portal-theme-toggle-btn {
     cursor: pointer;
     font-family: inherit;
     flex-shrink: 0;
-    padding: 8px 12px !important;
-    font-size: 0.78rem !important;
+    padding: 6px 12px !important;
+    font-size: 0.75rem !important;
+    background: #18181c !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    color: #e4e4e7 !important;
 }
 
-/* ---- グローバルナビ ---- */
+/* ---- グローバルナビ（Apple Global Ribbon：非アクティブは枠なしクリーン文字、現在地のみソリッドピル） ---- */
 .portal-global-nav {
     display: flex;
     /* style.css（トップページ用）の .portal-global-nav 指定を打ち消す */
     justify-content: flex-start;
-    align-items: stretch;
+    align-items: center;
     margin-top: 0;
-    gap: 8px;
+    gap: 4px;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
-    padding: 4px 0 14px;
+    padding: 4px 0 10px;
     margin-bottom: 22px;
 }
 
@@ -97,13 +103,13 @@
 
 @media (min-width: 860px) {
     .portal-global-nav-row {
-        align-items: flex-start;
+        align-items: center;
     }
     .portal-global-nav,
     .portal-global-nav-row > .portal-global-nav {
         flex-wrap: wrap !important;
         overflow-x: visible !important;
-        gap: 7px !important;
+        gap: 4px !important;
     }
     .portal-global-nav > :first-child {
         margin-left: 0 !important;
@@ -116,26 +122,26 @@
 .portal-nav-item {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 8px 15px;
+    gap: 5px;
+    padding: 6px 11px;
     border-radius: 999px;
-    font-size: 0.82rem;
+    font-size: 0.79rem;
     font-weight: 600;
-    letter-spacing: 0.01em;
+    letter-spacing: -0.005em;
     text-decoration: none;
-    color: #f4f4f5;
-    background: #1a1a1e;
-    border: 1px solid rgba(255, 255, 255, 0.09);
+    color: #b4b4be;
+    background: transparent;
+    border: 1px solid transparent;
     white-space: nowrap;
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
-    transition: transform 0.12s ease, opacity 0.12s ease, border-color 0.15s ease, background 0.15s ease;
+    transition: transform 0.12s ease, opacity 0.12s ease, border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
 }
 
 .portal-nav-item:hover {
-    background: #232329;
-    border-color: rgba(255, 255, 255, 0.22);
-    color: #ffffff;
+    background: rgba(255, 255, 255, 0.06);
+    border-color: transparent;
+    color: #fafafa;
 }
 
 .portal-nav-item:active {
@@ -177,11 +183,11 @@
 
 /* ---- 公式サイト確認・注意事項ボックス（全ページ共通のクリーン・ミニマル注記枠） ---- */
 .official-notice-box {
-    background: #1a1a1e;
+    background: #18181c;
     border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 14px;
-    padding: 14px 16px;
-    margin: 14px 0 20px;
+    border-radius: 18px;
+    padding: 15px 18px;
+    margin: 16px 0 22px;
     font-size: 0.79rem;
     line-height: 1.68;
     color: #b4b4be;
@@ -297,11 +303,43 @@
 
 /* ---- ライトモード（body.theme-light）共通ヘッダー・注記枠・フッター補正 ---- */
 body.theme-light .portal-top-header {
-    border-bottom: 1px solid rgba(24, 24, 27, 0.09);
+    border-bottom: none;
+}
+
+body.theme-light .portal-brand-title {
+    color: #18181b;
 }
 
 body.theme-light .portal-brand-sub {
     color: #52525b;
+}
+
+body.theme-light .portal-global-nav-row {
+    border-top-color: rgba(24, 24, 27, 0.08);
+    border-bottom-color: rgba(24, 24, 27, 0.09);
+}
+
+body.theme-light .portal-nav-item {
+    color: #52525b;
+    background: transparent;
+    border-color: transparent;
+}
+
+body.theme-light .portal-nav-item:hover {
+    background: rgba(24, 24, 27, 0.05);
+    color: #18181b;
+}
+
+body.theme-light .portal-nav-item.active {
+    background: #18181b;
+    border-color: #18181b;
+    color: #ffffff;
+}
+
+body.theme-light .portal-theme-toggle-btn {
+    background: #ffffff !important;
+    border: 1px solid rgba(24, 24, 27, 0.14) !important;
+    color: #18181b !important;
 }
 
 body.theme-light .official-notice-box {
