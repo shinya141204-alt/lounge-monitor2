@@ -1026,7 +1026,7 @@
         <div class="header-card" style="padding:14px 18px; border-color:var(--green);">
             <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
                 <div style="font-size:0.86rem; font-weight:800;">
-                    📡 自動投稿ステータス＆トークン疎通モニター（人間ゆらぎ・全SNS Bot回避ペース制御・IGリール週4回自動ローテ稼働中）
+                    📡 自動投稿ステータス＆トークン疎通モニター（IGリール毎日21:15自動1本化・カルーセル＆空打ちAI停止・投稿時のみOpus稼働）
                 </div>
                 <div style="display:flex; gap:8px; flex-wrap:wrap;">
                     {% if channel == 'tiktok' %}
@@ -1034,7 +1034,6 @@
                     {% else %}
                     <button type="button" id="async-dispatch-btn" class="ai-btn" style="font-size:0.76rem; padding:5px 11px; border-color:var(--green); background:var(--green-soft); color:var(--green-ink);" onclick="enqueueAsyncChannelPost()">⚡ {{ editorial.channel_label }}を裏方ワーカーで今すぐ配信（待ち0秒）</button>
                     {% endif %}
-                    <button type="button" id="async-prewarm-btn" class="back-btn" style="cursor:pointer; font-size:0.76rem; padding:5px 11px;" onclick="enqueueAsyncPrewarm()">🔥 AI原稿＆IG5枚を裏で事前生成</button>
                     <button type="button" class="back-btn" style="cursor:pointer; font-size:0.76rem; padding:5px 11px;" onclick="verifyPlatformToken('threads')">🔍 Threads疎通テスト</button>
                     <button type="button" class="back-btn" style="cursor:pointer; font-size:0.76rem; padding:5px 11px;" onclick="verifyPlatformToken('instagram')">🔍 IG疎通テスト</button>
                     <button type="button" class="back-btn" style="cursor:pointer; font-size:0.76rem; padding:5px 11px;" onclick="verifyPlatformToken('tiktok')">🔍 TikTok疎通確認</button>
@@ -1108,7 +1107,7 @@
             <div class="ai-panel-top">
                 <div>
                     {% if editorial.ai_pending_async and editorial.gemini_status and editorial.gemini_status.configured %}
-                    <span id="ai-status-pill" class="ai-status-pill ai-status-loading">🧠 上位AI編集長が長考モードで3案を脳内コンペ・本音推敲中...（約5〜10秒）</span>
+                    <span id="ai-status-pill" class="ai-status-pill ai-status-on">🟢 {{ editorial.gemini_status.engine_badge or 'Claude Opus' }}：省トークン待機中（本番投稿時のみ自動執筆｜手動生成は右ボタンから）</span>
                     {% elif editorial.gemini_status and editorial.gemini_status.state == 'active' %}
                     <span id="ai-status-pill" class="ai-status-pill ai-status-on">🟢 {{ editorial.gemini_status.engine_badge or 'AI本音執筆' }}：正常稼働中（{{ editorial.gemini_status.last_model }} ｜ {{ editorial.gemini_status.masked_key }}）</span>
                     {% elif editorial.gemini_status and editorial.gemini_status.state == 'degraded' %}
@@ -1118,7 +1117,7 @@
                     {% endif %}
                 </div>
                 <div class="ai-actions">
-                    <button type="button" id="ai-regen-btn" class="ai-btn" onclick="triggerAsyncAiRefresh(true, false)" style="display: {{ 'inline-block' if (editorial.gemini_status and editorial.gemini_status.configured) else 'none' }};">🔄 別の長考アドリブ案を再生成テスト</button>
+                    <button type="button" id="ai-regen-btn" class="ai-btn" onclick="triggerAsyncAiRefresh(true, false)" style="display: {{ 'inline-block' if (editorial.gemini_status and editorial.gemini_status.configured) else 'none' }};">✨ AI執筆案を今すぐ生成</button>
                     <button type="button" class="ai-btn" onclick="toggleKeyDrawer()">🔑 AIエンジン＆APIキー設定（Gemini / Claude 両対応）</button>
                 </div>
             </div>
@@ -1217,9 +1216,9 @@
                     <p class="reel-studio-sub">全国リアルタイム人数から 9:16 縦型ショート動画（H.264 + 音声トラック付きMP4・約11.5秒）を自動合成。Instagram Reels への1クリック直接公開、または MP4 保存で TikTok / YouTube Shorts へそのまま投稿できます。</p>
                 </div>
                 <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-end;">
-                    <label class="reel-auto-box" for="reel-auto-schedule-toggle" title="水・木・金・土の夜ピーク枠（人間ゆらぎ付）で4テンプレ自動ローテーション投稿します（同日にカルーセル投稿がある日はフィード非表示でグリッド保護）">
+                    <label class="reel-auto-box" for="reel-auto-schedule-toggle" title="毎日21:15枠（人間ゆらぎ付）で1日1本・4テンプレ自動ローテーション投稿します（カルーセル＆木曜静止画フィードの自動投稿は停止済）">
                         <span id="reel-auto-schedule-label">
-                            🔄 水・木・金・土の自動リール定期投稿（4型ローテ）：<strong id="reel-auto-state-text" style="color:{{ 'var(--green)' if _reel_init_auto else 'var(--sub)' }};">{{ 'ON（稼働中）' if _reel_init_auto else 'OFF（手動のみ）' }}</strong>
+                            🔄 毎日21:15の自動リール定期投稿（1日1本・4型ローテ）：<strong id="reel-auto-state-text" style="color:{{ 'var(--green)' if _reel_init_auto else 'var(--sub)' }};">{{ 'ON（稼働中）' if _reel_init_auto else 'OFF（手動のみ）' }}</strong>
                         </span>
                         <span class="reel-switch">
                             <input type="checkbox" id="reel-auto-schedule-toggle" {{ 'checked' if _reel_init_auto else '' }} onchange="saveReelAutoSchedule(this.checked)">
@@ -2750,8 +2749,8 @@
             }
             selectReelTextTab(_currentReelType);
             loadReelStudioInfo(_currentReelType, false);
-            if (AI_PENDING_ASYNC) {
-                triggerAsyncAiRefresh(INITIAL_FORCE_REFRESH, !INITIAL_CONFIGURED);
+            if (INITIAL_FORCE_REFRESH) {
+                triggerAsyncAiRefresh(true, !INITIAL_CONFIGURED);
             }
         });
     </script>

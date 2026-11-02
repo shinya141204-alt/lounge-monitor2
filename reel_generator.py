@@ -866,14 +866,14 @@ def select_scheduled_reel_type(
                 return cand
         return preferred[0]
 
-    # Instagram Reels: rotate across 4 distinct visual templates
-    # - Wednesday (or strong male-lead nights without Thu Ladies Feed): prioritize `ladies_zero_wait`
+    # Instagram Reels (daily 21:15, 1x/day): rotate across 4 distinct visual templates across all 7 days
+    # - Wednesday with strong male-lead stores: prioritize `ladies_zero_wait`
+    # - Thursday: favor `area_battle` / `tiktok_gap_shock` so mid-week themes alternate naturally
     # - High intra-station gap (>=16pt): prioritize `tiktok_gap_shock` or `area_battle`
-    # - Fri/Sat peak: rotate `live_top5`, `area_battle`, `tiktok_gap_shock`, `ladies_zero_wait`
+    # - Other nights: deterministic daily rotation across all 4 templates with strict non-repeat guards
     if wd == 2 and len(ladies_cands) >= 2:
         ranked = ["ladies_zero_wait", "area_battle", "live_top5", "tiktok_gap_shock"]
     elif wd == 3:
-        # Thursday already has 19:45 Ladies Feed, so favor area_battle / gap_shock / live_top5
         ranked = ["area_battle", "tiktok_gap_shock", "live_top5", "ladies_zero_wait"]
     elif same_hub_gap_pt >= 16 and (biz_dt.toordinal() % 2 == 1):
         ranked = ["tiktok_gap_shock", "live_top5", "area_battle", "ladies_zero_wait"]
@@ -887,7 +887,24 @@ def select_scheduled_reel_type(
     if not has_real_hub_gap and "tiktok_gap_shock" in ranked:
         ranked = [x for x in ranked if x != "tiktok_gap_shock"] + ["tiktok_gap_shock"]
 
-    # Strictly avoid immediate repeat (`last_1`), and avoid `last_2` first when possible
+    # Strictly avoid immediate repeat (`last_1`), avoid `last_2` when possible, AND avoid back-to-back background/Ken Burns collision
+    prev_bg = list_available_backgrounds(last_1, now_jst=now_jst - datetime.timedelta(days=1)) if last_1 else None
+    prev_vis = (prev_bg["active_file"] or f"procedural:{prev_bg['bg_variant']}") if prev_bg else None
+    prev_kb = prev_bg["ken_burns_mode"] if prev_bg else None
+
+    def _no_visual_collision(cand_rt: str) -> bool:
+        if not prev_bg:
+            return True
+        c_bg = list_available_backgrounds(cand_rt, now_jst=now_jst)
+        c_vis = c_bg["active_file"] or f"procedural:{c_bg['bg_variant']}"
+        return c_vis != prev_vis and c_bg["ken_burns_mode"] != prev_kb
+
+    for cand in ranked:
+        if cand != last_1 and cand != last_2 and _no_visual_collision(cand):
+            return cand
+    for cand in ranked:
+        if cand != last_1 and _no_visual_collision(cand):
+            return cand
     for cand in ranked:
         if cand != last_1 and cand != last_2:
             return cand
@@ -1221,9 +1238,10 @@ def build_ai_reel_caption(
             prompt=prompt,
             max_output_tokens=400,
             thinking_budget=256,
-            total_deadline_sec=8.0,
+            total_deadline_sec=18.0,
+            per_call_timeout_sec=12.0,
             now_jst=eff_dt,
-            prefer_fast=True,
+            prefer_fast=False,
         )
         hook = str((parsed or {}).get("hook_line") or "").strip()
         if not err and hook and 22 <= len(hook) <= 95:

@@ -770,15 +770,13 @@
         <div class="briefing-card">
             <div class="briefing-head">
                 <span id="briefing-pill" class="ai-pill">
-                    {% if pdca.briefing.pending_async %}
-                    🧠 {{ 'Claude Opus' if (pdca.gemini_status and pdca.gemini_status.primary_provider == 'claude') else '上位AI' }} 作戦参謀長が実測データを長考分析中...
-                    {% elif pdca.briefing.is_ai %}
+                    {% if pdca.briefing.is_ai %}
                     🧠 作戦参謀長ブリーフィング（{{ pdca.briefing.model }}）
                     {% else %}
-                    🧭 作戦参謀ブリーフィング（実測データ総括）
+                    🧭 作戦参謀ブリーフィング（実測データ総括｜AI参謀分析は右ボタンで実行）
                     {% endif %}
                 </span>
-                <button type="button" class="mini-btn" onclick="refreshBriefing(true)">🔄 参謀コメントを再分析</button>
+                <button type="button" class="mini-btn" onclick="refreshBriefing(true)">✨ AI参謀コメントを生成</button>
             </div>
             <div id="briefing-text" class="briefing-body">{{ pdca.briefing.text }}</div>
         </div>
@@ -1287,9 +1285,10 @@
             }
         }
 
-        if (PENDING_ASYNC_AI) {
+        const INITIAL_PDCA_FORCE_AI = {{ 'true' if request.args.get('refresh_ai') == '1' else 'false' }};
+        if (INITIAL_PDCA_FORCE_AI) {
             window.addEventListener('DOMContentLoaded', () => {
-                setTimeout(() => refreshBriefing(false), 180);
+                setTimeout(() => refreshBriefing(true), 180);
             });
         }
     </script>

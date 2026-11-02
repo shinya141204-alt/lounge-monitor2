@@ -4052,21 +4052,30 @@ class TurboArchitectureTests(unittest.TestCase):
         self.assertGreaterEqual(sum_data['by_event'].get('page_view', 0), 2)
         self.assertGreaterEqual(sum_data['by_event'].get('affiliate_click', 0), 1)
 
-        # 4. Dedicated `worker.py` scheduler contains scraping, prewarm, and all SNS cron jobs
+        # 4. Dedicated `worker.py` scheduler contains scraping and active SNS cron jobs, with zero wasteful prewarm or IG carousel jobs
         sched = worker_module.build_worker_scheduler()
         job_ids = {j.id for j in sched.get_jobs()}
         for expected_id in (
             'live_scrape_1m',
-            'prewarm_rolling_30m',
-            'prewarm_2137',
             'x_post_2000',
             'x_post_2200',
             'threads_daily_2200',
-            'ig_tuesun_2145',
             'ig_reel_2115',
             'daily_token_db_maint',
         ):
             self.assertIn(expected_id, job_ids)
+        for retired_id in (
+            'prewarm_rolling_30m',
+            'prewarm_1837',
+            'prewarm_1922',
+            'prewarm_1952',
+            'prewarm_2137',
+            'prewarm_2352',
+            'ig_fri_1845',
+            'ig_tuesun_2145',
+            'ig_ladies_1945',
+        ):
+            self.assertNotIn(retired_id, job_ids)
 
 
 class AIUltraGrowthSuiteTests(unittest.TestCase):

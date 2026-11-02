@@ -244,7 +244,7 @@ def _pdca_autonomous_job():
             live_stores=cur_stores,
             days=14,
             apply_actions=True,
-            use_ai=True,
+            use_ai=False,
             record_log=True,
         )
     except Exception as err:
@@ -282,15 +282,15 @@ def _prewarm_slot_job(slot_label: str = None, include_column: bool = False):
     try:
         slots = (slot_label,) if slot_label else None
         res = app_module.precompute_editorial_and_media_bundle(
-            channels=("x", "threads", "instagram"),
+            channels=("x", "threads"),
             slot_labels=slots,
             include_column=include_column,
             include_pdca=False,
-            include_ig_slides=True,
+            include_ig_slides=False,
         )
         logger.info(
-            f"[worker] Precomputed editorial & IG media bundle (slot={slot_label or 'auto'}): "
-            f"slides={res.get('ig_slides_rendered')}, warmed={res.get('editorial_warmed')}, ms={res.get('elapsed_ms')}"
+            f"[worker] Precomputed editorial bundle (slot={slot_label or 'auto'}): "
+            f"warmed={res.get('editorial_warmed')}, ms={res.get('elapsed_ms')}"
         )
     except Exception as err:
         logger.warning(f"[worker] Precompute bundle warning: {err}")
@@ -321,26 +321,9 @@ def build_worker_scheduler() -> BackgroundScheduler:
         hours=2,
     )
 
-    # 2. Precomputation jobs (8 minutes before each SNS slot + rolling 30-min refresh for instant staff board)
-    scheduler.add_job(
-        id="prewarm_rolling_30m",
-        func=_prewarm_slot_job,
-        trigger="interval",
-        minutes=30,
-        executor="sns_ai",
-    )
-    # 18:37 JST (09:37 UTC) -> before Fri IG 18:45
-    scheduler.add_job(id="prewarm_1837", func=_prewarm_slot_job, trigger="cron", hour=9, minute=37, args=["20:00"], executor="sns_ai")
-    # 19:22 JST (10:22 UTC) -> before Ladies 19:30 / 19:45 & X 20:00
-    scheduler.add_job(id="prewarm_1922", func=_prewarm_slot_job, trigger="cron", hour=10, minute=22, args=["20:00"], executor="sns_ai")
-    # 19:52 JST (10:52 UTC) -> fresh live headcount draft right before X 20:00
-    scheduler.add_job(id="prewarm_1952", func=_prewarm_slot_job, trigger="cron", hour=10, minute=52, args=["20:00"], executor="sns_ai")
-    # 21:37 JST (12:37 UTC) -> right before IG 21:45 & X/Threads 22:00 peak
-    scheduler.add_job(id="prewarm_2137", func=_prewarm_slot_job, trigger="cron", hour=12, minute=37, args=["22:00"], executor="sns_ai")
-    # 23:52 JST (14:52 UTC) -> right before Fri/Sat X 00:00 midnight wave
-    scheduler.add_job(id="prewarm_2352", func=_prewarm_slot_job, trigger="cron", day_of_week="fri,sat", hour=14, minute=52, args=["00:00"], executor="sns_ai")
-
-    # 3. Scheduled X / Threads / Instagram / Note / Bonus / PDCA / Maintenance jobs (with daily human timing jitter)
+    # 2. Scheduled X / Threads / Instagram Reel (daily 21:15) / Note / Bonus / PDCA / Maintenance jobs
+    #    Note: Unconditional background AI prewarm jobs (`prewarm_rolling_30m` etc.) and IG Carousel/Feed cron jobs
+    #    are intentionally disabled so Claude Opus runs ONLY on actual live post dispatches (~3-4x/day).
     scheduler.add_job(id="x_post_2000", func=_x_scheduled_job, trigger="cron", hour=11, minute="2,6,10,14,18,22,27", jitter=75, args=["20:00"], executor="sns_ai")
     scheduler.add_job(id="x_post_2200", func=_x_scheduled_job, trigger="cron", hour=13, minute="2,6,10,14,18,22,27", jitter=75, args=["22:00"], executor="sns_ai")
     scheduler.add_job(id="x_post_0000", func=_x_scheduled_job, trigger="cron", day_of_week="fri,sat", hour=15, minute="2,6,10,14,18,22,27", jitter=75, args=["00:00"], executor="sns_ai")
@@ -348,11 +331,8 @@ def build_worker_scheduler() -> BackgroundScheduler:
     # Check note RSS during calm midday (12:20 JST) and mid-afternoon (15:20 JST) windows, well clear of 18:00 Tips & 20:00-22:00 rush
     scheduler.add_job(id="note_rss_check", func=_note_check_job, trigger="cron", hour="3,6", minute=20, jitter=240, executor="sns_ai")
     scheduler.add_job(id="threads_daily_2200", func=_threads_daily_job, trigger="cron", hour=13, minute="5,9,13,17,21,26,32", jitter=75, executor="sns_ai")
-    scheduler.add_job(id="ig_fri_1845", func=_ig_carousel_job, trigger="cron", day_of_week="fri", hour=9, minute="46,50,54,58", jitter=45, args=["18:45"], executor="sns_ai")
-    scheduler.add_job(id="ig_tuesun_2145", func=_ig_carousel_job, trigger="cron", day_of_week="tue,sun", hour=12, minute="46,50,54,58", jitter=45, args=["21:45"], executor="sns_ai")
     scheduler.add_job(id="threads_ladies_1930", func=_threads_ladies_job, trigger="cron", day_of_week="wed,fri,sat", hour=10, minute="31,35,39,44,49", jitter=60, executor="sns_ai")
-    scheduler.add_job(id="ig_ladies_1945", func=_ig_ladies_job, trigger="cron", day_of_week="thu", hour=10, minute="46,50,54,58", jitter=45, executor="sns_ai")
-    scheduler.add_job(id="ig_reel_2115", func=_ig_reel_scheduled_job, trigger="cron", day_of_week="wed,thu,fri,sat", hour=12, minute="18,24,30,36,42,48,54", jitter=50, args=["21:15"], executor="sns_ai")
+    scheduler.add_job(id="ig_reel_2115", func=_ig_reel_scheduled_job, trigger="cron", hour=12, minute="18,24,30,36,42,48,54", jitter=50, args=["21:15"], executor="sns_ai")
     scheduler.add_job(id="tiktok_inbox_2035", func=_tiktok_inbox_scheduled_job, trigger="cron", day_of_week="wed,fri,sat", hour=11, minute="39,45,51,57", jitter=50, args=["20:35"], executor="sns_ai")
     scheduler.add_job(id="events_crawl", func=_crawl_events_job, trigger="cron", hour="1,8,20", minute=0)
     scheduler.add_job(id="scheduled_articles_15m", func=_scheduled_articles_release_job, trigger="interval", minutes=15, executor="sns_ai")
@@ -416,11 +396,7 @@ def _worker_staggered_warmup(stop_event: threading.Event):
         except Exception as warm_err:
             logger.warning(f"[worker] State/token warmup warning: {warm_err}")
 
-        # Precompute IG 5-slide images + AI editorial drafts immediately so `web` workers hit 100% warm cache
-        if stop_event.wait(2.0):
-            return
-        _prewarm_slot_job(slot_label=None, include_column=True)
-
+        # Note: Do NOT precompute AI editorial / column drafts on worker boot to prevent unnecessary Claude Opus token burn.
         if stop_event.wait(15.0 if has_disk_events else 8.0):
             return
         _crawl_events_job()

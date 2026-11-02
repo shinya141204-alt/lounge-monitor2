@@ -771,8 +771,8 @@ def pick_rotated_hashtag_line(
 def get_sns_human_pacing_summary(now_jst: datetime.datetime = None) -> dict:
     """Return human-readable summary of anti-bot pacing & Reel schedule for `/staff/sns-editorial`."""
     return {
-        "ig_reels_weekly": 4,
-        "ig_reels_days_ja": "水・木・金・土（週4回・4テンプレ＆背景ローテ・1.2秒カバー固定・同日グリッド重複自動OFF）",
+        "ig_reels_weekly": 7,
+        "ig_reels_days_ja": "毎日21:15枠（1日1本・4テンプレ＆背景ローテ・1.2秒カバー固定・カルーセル自動投稿停止）",
         "x_cadence_ja": "最低48分間隔＋日次上限（月〜木4件・金〜日5件／主戦場枠リザーブ付）＋月/日休養ゆらぎ＋単独ポスト混在",
         "threads_cadence_ja": "週6日稼働（週1自然休養）＋最低90分間隔＋URL添付1/3以下＋画像1/3混在",
         "tiktok_cadence_ja": "水・金・土（週3回・20:39〜20:55人間ゆらぎ・3テンプレ自動ローテInbox送信）",
@@ -1721,7 +1721,14 @@ def fetch_tonight_street_pulse(
     empty_res = {"available": False, "national_vibe": "", "kanto": "", "kansai": "", "other": ""}
     is_evening_window = (16 <= now_jst.hour <= 23) or (0 <= now_jst.hour <= 2)
     if not force_network:
-        if os.environ.get("DISABLE_SCHEDULER") == "1" or _is_requests_post_mocked() or not is_evening_window:
+        # Automatic Claude Web Search (`web_search_20250305`) is disabled by default to prevent heavy token & search billing;
+        # set `ENABLE_CLAUDE_WEB_SEARCH=1` explicitly only when background web search is desired.
+        if (
+            os.environ.get("ENABLE_CLAUDE_WEB_SEARCH") != "1"
+            or os.environ.get("DISABLE_SCHEDULER") == "1"
+            or _is_requests_post_mocked()
+            or not is_evening_window
+        ):
             return empty_res
     if not get_claude_api_key(allow_blocking=allow_blocking):
         return empty_res
@@ -4487,6 +4494,15 @@ def polish_draft_to_human_voice(
         return base_text, ""
     if not force_polish:
         if _is_requests_post_mocked() or not get_claude_api_key(allow_blocking=False):
+            return base_text, ""
+        # Token-saving smart gate: skip 2nd-pass API call when Pass-1 (Claude Opus) already produced clean, natural prose
+        # free of stiff conjunctions, preachy wrap-ups, and AI clichés.
+        stiff_markers = (
+            "ため、", "によって", "傾向", "という構図", "なのが特徴", "と言える",
+            "においては", "が正解", "してみては", "がおすすめ", "最適解",
+        )
+        has_stiff_or_cliche = any(m in base_text for m in stiff_markers) or any(w in base_text for w in AI_CLICHE_WORDS)
+        if not has_stiff_or_cliche:
             return base_text, ""
 
     now_jst = now_jst or datetime.datetime.now(JST)

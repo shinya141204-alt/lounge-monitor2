@@ -403,23 +403,8 @@ def _ensure_scheduler_started_async():
                 except Exception as err:
                     logging.error(f"Scheduled Threads post failed: {err}")
             scheduler.add_job(func=_threads_daily_job, trigger="cron", hour=13, minute="5,9,13,17,21,26,32", jitter=75, executor="sns_ai")
-            def _ig_carousel_job(slot_lbl="21:45"):
-                try:
-                    import sns_editorial
-                    if not sns_editorial.should_fire_scheduled_slot_now("instagram", slot_lbl):
-                        return
-                    import instagram_poster
-                    with data_lock:
-                        cur_stores = list(latest_data.get('full_data') or [])
-                        is_seed = bool(latest_data.get('is_seed'))
-                    if not is_seed:
-                        instagram_poster.execute_scheduled_instagram_post(cur_stores, mode="carousel", slot_label=slot_lbl)
-                except Exception as err:
-                    logging.error(f"Scheduled Instagram carousel post failed: {err}")
-            # Friday pre-outing forecast (18:45 JST = 09:45 UTC) + Tue/Sun evening report (21:45 JST = 12:45 UTC)
-            scheduler.add_job(func=_ig_carousel_job, trigger="cron", day_of_week="fri", hour=9, minute="46,50,54,58", jitter=45, args=["18:45"], executor="sns_ai")
-            scheduler.add_job(func=_ig_carousel_job, trigger="cron", day_of_week="tue,sun", hour=12, minute="46,50,54,58", jitter=45, args=["21:45"], executor="sns_ai")
-            # Plan E: Women-perspective 'Tonight's Zero-Wait & Ladies Perks' alerts on Threads (Wed/Fri/Sat 19:30 JST) & Instagram (Thu 19:45 JST)
+            # Plan E: Women-perspective 'Tonight's Zero-Wait & Ladies Perks' alerts on Threads (Wed/Fri/Sat 19:30 JST)
+            # Note: IG Carousel (Fri 18:45 / Tue,Sun 21:45) and IG Ladies single-image feed (Thu 19:45) are disabled in favor of 1x daily IG Reel (21:15 JST).
             def _threads_ladies_job():
                 try:
                     import sns_editorial
@@ -434,20 +419,6 @@ def _ensure_scheduler_started_async():
                 except Exception as err:
                     logging.error(f"Scheduled Threads ladies post failed: {err}")
             scheduler.add_job(func=_threads_ladies_job, trigger="cron", day_of_week="wed,fri,sat", hour=10, minute="31,35,39,44,49", jitter=60, executor="sns_ai")
-            def _ig_ladies_job():
-                try:
-                    import sns_editorial
-                    if not sns_editorial.should_fire_scheduled_slot_now("ig_ladies", "19:45"):
-                        return
-                    import instagram_poster
-                    with data_lock:
-                        cur_stores = list(latest_data.get('full_data') or [])
-                        is_seed = bool(latest_data.get('is_seed'))
-                    if cur_stores and not is_seed:
-                        instagram_poster.execute_scheduled_ladies_instagram_post(cur_stores, slot_label="19:45")
-                except Exception as err:
-                    logging.error(f"Scheduled Instagram ladies post failed: {err}")
-            scheduler.add_job(func=_ig_ladies_job, trigger="cron", day_of_week="thu", hour=10, minute="46,50,54,58", jitter=45, executor="sns_ai")
             def _ig_reel_scheduled_job(slot_lbl="21:15"):
                 try:
                     import sns_editorial
@@ -463,7 +434,7 @@ def _ensure_scheduler_started_async():
                         instagram_poster.publish_live_reel_to_instagram(cur_stores, reel_type="auto", slot_label=slot_lbl, force=False)
                 except Exception as err:
                     logging.error(f"Scheduled Instagram Reel post failed: {err}")
-            scheduler.add_job(func=_ig_reel_scheduled_job, trigger="cron", day_of_week="wed,thu,fri,sat", hour=12, minute="18,24,30,36,42,48,54", jitter=50, args=["21:15"], executor="sns_ai")
+            scheduler.add_job(func=_ig_reel_scheduled_job, trigger="cron", hour=12, minute="18,24,30,36,42,48,54", jitter=50, args=["21:15"], executor="sns_ai")
             def _tiktok_inbox_job(slot_lbl="20:35"):
                 try:
                     import tiktok_poster
@@ -526,7 +497,7 @@ def _ensure_scheduler_started_async():
                         live_stores=cur_stores,
                         days=14,
                         apply_actions=True,
-                        use_ai=True,
+                        use_ai=False,
                         record_log=True,
                     )
                 except Exception as err:
@@ -4724,11 +4695,11 @@ def run_scheduled_x_post(slot_label="20:00", force=False):
 
 
 def precompute_editorial_and_media_bundle(
-    channels=('x', 'threads', 'instagram'),
+    channels=('x', 'threads'),
     slot_labels=None,
     include_column: bool = False,
     include_pdca: bool = False,
-    include_ig_slides: bool = True,
+    include_ig_slides: bool = False,
 ) -> dict:
     """Pre-generate AI editorial drafts and 5-slide IG carousel images on `worker` so `web` & SNS APIs respond in 0ms."""
     import sns_editorial
@@ -4982,14 +4953,14 @@ def execute_sns_job_payload(job_type: str, params: dict = None) -> dict:
         return threads_poster.execute_scheduled_ladies_threads_post(stores, slot_label=slot, force=force)
 
     if jtype == 'prewarm_bundle':
-        channels = p.get('channels') or ('x', 'threads', 'instagram')
+        channels = p.get('channels') or ('x', 'threads')
         slot_labels = p.get('slot_labels')
         return precompute_editorial_and_media_bundle(
             channels=channels,
             slot_labels=slot_labels,
             include_column=bool(p.get('include_column')),
             include_pdca=bool(p.get('include_pdca')),
-            include_ig_slides=bool(p.get('include_ig_slides', True)),
+            include_ig_slides=bool(p.get('include_ig_slides', False)),
         )
 
     raise ValueError(f"Unsupported SNS job_type: {jtype}")
@@ -5109,18 +5080,19 @@ def api_sns_jobs_list():
 
 @app.route('/api/trigger-prewarm', methods=['GET', 'POST'])
 def trigger_prewarm_endpoint():
-    """Master-only endpoint to precompute AI editorial drafts & 5 IG slides."""
+    """Master-only endpoint to precompute AI editorial drafts on demand."""
     if not is_master_authorized():
         return jsonify({'error': 'Unauthorized'}), 401
     include_col = request.args.get('column', '0') == '1'
     include_pdca = request.args.get('pdca', '0') == '1'
+    include_ig = request.args.get('ig_slides', '0') == '1'
     queued_resp = _maybe_enqueue_async_sns_trigger(
         'prewarm_bundle',
-        {'include_column': include_col, 'include_pdca': include_pdca, 'include_ig_slides': True},
+        {'include_column': include_col, 'include_pdca': include_pdca, 'include_ig_slides': include_ig},
     )
     if queued_resp is not None:
         return queued_resp
-    res = precompute_editorial_and_media_bundle(include_column=include_col, include_pdca=include_pdca, include_ig_slides=True)
+    res = precompute_editorial_and_media_bundle(include_column=include_col, include_pdca=include_pdca, include_ig_slides=include_ig)
     return jsonify(res)
 
 

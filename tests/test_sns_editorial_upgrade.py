@@ -665,6 +665,18 @@ class SnsEditorialUpgradeTests(unittest.TestCase):
             self.assertTrue(p2["available"])
             self.assertEqual(mock_post.call_count, 1)
 
+        # When uncached and force_network=False (default runtime), web_search is NOT triggered unless ENABLE_CLAUDE_WEB_SEARCH=1
+        with sns_editorial._street_pulse_cache["lock"]:
+            sns_editorial._street_pulse_cache["entries"].clear()
+        with (
+            mock.patch.dict(os.environ, {"DISABLE_SCHEDULER": "0"}, clear=False),
+            mock.patch("sns_editorial.get_claude_api_key", return_value="sk-ant-test-key-1234567890"),
+            mock.patch("sns_editorial._refresh_street_pulse_sync", side_effect=AssertionError("Must not auto-run web search!")) as mock_ws,
+        ):
+            p_def = sns_editorial.fetch_tonight_street_pulse(now_jst=dt, force_network=False, allow_blocking=True)
+            self.assertFalse(p_def["available"])
+            self.assertEqual(mock_ws.call_count, 0)
+
         res = sns_editorial.run_researcher(self.sample_stores, slot_label="20:00", channel="x", now_jst=dt)
         res["street_pulse"] = p1
         prompt_str, _ = sns_editorial._build_gemini_prompt(res, {}, "20:00", "x", dt, "https://aiseki-navi.com")
@@ -690,7 +702,7 @@ class SnsEditorialUpgradeTests(unittest.TestCase):
         self.assertTrue(sns_editorial.should_fire_scheduled_slot_now("x", "20:00", now_jst=dt_late))
 
     def test_reel_4x_schedule_rotation_captions_and_cliche_purge(self):
-        """Verify 4x/week IG Reel cron schedule, default-ON toggle, non-repeating 4-template rotation, and cliché-free captions."""
+        """Verify daily 1x IG Reel cron schedule (carousel retired), default-ON toggle, non-repeating 4-template rotation, and cliché-free captions."""
         import tempfile
         import instagram_poster
         import job_state
@@ -701,9 +713,13 @@ class SnsEditorialUpgradeTests(unittest.TestCase):
         jobs_by_id = {j.id: j for j in sched.get_jobs()}
         self.assertIn("ig_reel_2115", jobs_by_id)
         self.assertIn("tiktok_inbox_2035", jobs_by_id)
+        for retired_ig in ("ig_fri_1845", "ig_tuesun_2145", "ig_ladies_1945"):
+            self.assertNotIn(retired_ig, jobs_by_id)
         reel_trig_str = str(jobs_by_id["ig_reel_2115"].trigger)
-        for day_tok in ("wed", "thu", "fri", "sat"):
-            self.assertIn(day_tok, reel_trig_str)
+        self.assertIn("hour='12'", reel_trig_str)
+        self.assertNotIn("day_of_week='wed,thu,fri,sat'", reel_trig_str)
+        pacing_info = sns_editorial.get_sns_human_pacing_summary()
+        self.assertEqual(pacing_info["ig_reels_weekly"], 7)
 
         bare_oriental_re = re.compile(r"オリエンタル(?!ラウンジ)")
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -1429,7 +1445,7 @@ class SnsEditorialUpgradeTests(unittest.TestCase):
             self.assertEqual(resp.status_code, 200)
             html = resp.get_data(as_text=True)
             self.assertIn('id="sns-pacing-summary-box"', html)
-            self.assertIn("水・木・金・土（週4回", html)
+            self.assertIn("毎日21:15枠（1日1本", html)
             self.assertIn("水・金・土（週3回", html)
             self.assertIn("最低48分間隔", html)
             self.assertIn("週6日稼働", html)
@@ -1829,7 +1845,7 @@ class SnsEditorialUpgradeTests(unittest.TestCase):
         self.assertIn("download=1", tpl_src)
 
     def test_twelve_week_scheduled_reel_zero_adjacent_bg_collision_and_subpixel_ken_burns(self):
-        """Verify 12 weeks (48 nights) of scheduled Wed-Sat IG Reels never repeat background or Ken Burns back-to-back, and Ken Burns moves smoothly per frame."""
+        """Verify 12 weeks (84 consecutive daily nights) of scheduled IG Reels never repeat background or Ken Burns back-to-back, and Ken Burns moves smoothly per frame."""
         import reel_generator
 
         jst = datetime.timezone(datetime.timedelta(hours=9))
@@ -1847,8 +1863,6 @@ class SnsEditorialUpgradeTests(unittest.TestCase):
         checked_nights = 0
         for d in range(84):
             dt = start_dt + datetime.timedelta(days=d)
-            if dt.weekday() not in (2, 3, 4, 5):
-                continue
             rt = reel_generator.select_scheduled_reel_type(
                 rich_stores,
                 platform="instagram",
@@ -1865,7 +1879,7 @@ class SnsEditorialUpgradeTests(unittest.TestCase):
             prev_visual = cur_visual
             prev_kb = cur_kb
             checked_nights += 1
-        self.assertEqual(checked_nights, 48)
+        self.assertEqual(checked_nights, 84)
 
         # Subpixel Ken Burns check: two adjacent 24fps frames (t=5.50s vs t=5.5417s, after card entrance settles) smoothly interpolate background
         ctx = reel_generator.build_reel_context(rich_stores, reel_type="live_top5", now_jst=start_dt)

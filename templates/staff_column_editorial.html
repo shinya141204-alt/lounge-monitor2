@@ -852,17 +852,18 @@
             <form method="get" action="/staff/column-editorial" class="custom-topic-row" onsubmit="onCustomTopicSubmit(event)">
                 <input type="hidden" name="theme" id="theme-hidden-input" value="{{ editorial.theme_key }}">
                 <input type="hidden" name="tone" value="{{ editorial.tone_mode }}">
+                <input type="hidden" name="refresh_ai" value="1">
                 <input type="text" name="topic" id="custom-topic-input" class="topic-input" value="{{ custom_topic }}" placeholder="自由テーマ入力（例：女子トイレで引かれる男の特徴、日曜20時の穴場勝負、雨の日の駅直結ラウンジなど）">
                 <button type="submit" class="copy-btn">🧠 このお題で4役合議・執筆コンペを実行</button>
             </form>
         </div>
 
-        <!-- Dual-Engine AI (Gemini Pro/Flash + Claude Opus 2-Pass) Status & Shared Key Drawer -->
+        <!-- Dual-Engine AI (Gemini Pro/Flash + Claude Opus) Status & Shared Key Drawer -->
         <div class="ai-panel">
             <div class="ai-panel-top">
                 <div>
                     {% if editorial.ai_pending_async and editorial.gemini_status and editorial.gemini_status.configured %}
-                    <span id="ai-status-pill" class="ai-status-pill ai-status-loading">🧠 上位AI編集長が長考モードで導入3案を脳内コンペ・エッセイ執筆中...（約8〜15秒）</span>
+                    <span id="ai-status-pill" class="ai-status-pill ai-status-on">🟢 {{ editorial.gemini_status.engine_badge or 'Claude Opus' }}：省トークン待機中（右ボタンまたはお題指定時に長文執筆を実行）</span>
                     {% elif editorial.gemini_status and editorial.gemini_status.state == 'active' %}
                     <span id="ai-status-pill" class="ai-status-pill ai-status-on">🟢 {{ editorial.gemini_status.engine_badge or 'AI本音コラム執筆' }}：正常稼働中（{{ editorial.gemini_status.last_model }} ｜ {{ editorial.gemini_status.masked_key }}）</span>
                     {% elif editorial.gemini_status and editorial.gemini_status.state == 'degraded' %}
@@ -872,7 +873,7 @@
                     {% endif %}
                 </div>
                 <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                    <button type="button" id="ai-regen-btn" class="ai-btn" onclick="triggerColumnAiRefresh(true, false)" style="display: {{ 'inline-block' if (editorial.gemini_status and editorial.gemini_status.configured) else 'none' }};">🔄 別の長考ストーリー案を再生成</button>
+                    <button type="button" id="ai-regen-btn" class="ai-btn" onclick="triggerColumnAiRefresh(true, false)" style="display: {{ 'inline-block' if (editorial.gemini_status and editorial.gemini_status.configured) else 'none' }};">✨ AIコラム案を今すぐ執筆</button>
                     <button type="button" class="ai-btn" onclick="toggleKeyDrawer()">🔑 AIエンジン＆APIキー設定（Gemini / Claude 両対応）</button>
                 </div>
             </div>
@@ -1631,12 +1632,13 @@
             }
         }
 
+        var INITIAL_COL_FORCE_REFRESH = {{ (request.args.get('refresh_ai') == '1') | tojson }};
         document.addEventListener("DOMContentLoaded", function() {
             if (INITIAL_EXPORT_SLUG) {
                 openNoteExportForSlug(INITIAL_EXPORT_SLUG);
             }
-            if (AI_PENDING_ASYNC) {
-                triggerColumnAiRefresh(false, !INITIAL_CONFIGURED);
+            if (INITIAL_COL_FORCE_REFRESH) {
+                triggerColumnAiRefresh(true, !INITIAL_CONFIGURED);
             }
         });
     </script>
