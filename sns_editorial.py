@@ -219,18 +219,82 @@ SITUATION_SPECS = {
 def sanitize_brand_names(text: str) -> str:
     """
     ブランド表記ルール厳守サニタイザー:
-    単体の『オリエンタル』『OLG』『オリラジ』を禁止し、必ず正式名称『オリエンタルラウンジ』と表記する。
+    単体の『オリエンタル』『OLG』『ORIENTAL』『オリラジ』『YATAKOI』を禁止し、
+    必ず正式名称『オリエンタルラウンジ』『ヤタコイ』と表記する。
     """
     if not text:
         return ""
     s = str(text)
     if "オリラジ" in s:
         s = s.replace("オリラジ", "オリエンタルラウンジ")
+    s = re.sub(r"(?i)\bYATAKOI\s*UMEDA\b", "ヤタコイ梅田", s)
+    s = re.sub(r"(?i)\bYATAKOI\b", "ヤタコイ", s)
     # 'OLG ' or 'OLG\n' or 'OLG' at word boundaries
+    s = re.sub(r"(?<![A-Za-z0-9])OLG\s*ag", "ag", s)
     s = re.sub(r"(?<![A-Za-z0-9])OLG(?![A-Za-z0-9])\s*", "オリエンタルラウンジ ", s)
     # 単体オリエンタル (ラウンジが後ろにない場合)
     s = re.sub(r"オリエンタル(?!ラウンジ)", "オリエンタルラウンジ", s)
     return s
+
+
+BRAND_CULTURE_PROFILES = {
+    "oriental_lounge": {
+        "brand_key": "oriental_lounge",
+        "brand_label": "オリエンタルラウンジ",
+        "age_vibe": "20代半ば〜30代前半中心・落ち着いたラウンジ空間",
+        "time_affinity": "20時台から終電後まで女性比率が崩れにくく、1軒目からも腰を据えて話しやすい波形",
+    },
+    "ag": {
+        "brand_key": "ag",
+        "brand_label": "ag",
+        "age_vibe": "20代前半〜半ば中心・音楽と活気のあるカジュアル空間",
+        "time_affinity": "20〜21時は女性高比率で立ち上がり、23時半以降は2軒目男性が増えて女子組が待ちゼロ即案内になりやすい波形",
+    },
+    "jis": {
+        "brand_key": "jis",
+        "brand_label": "JIS",
+        "age_vibe": "20代〜30代前半・圧倒的収容力と席替え回転の速さが特徴の大箱ラウンジ",
+        "time_affinity": "19〜20時は早割目的の女性先行、22時〜深夜1時は100名規模で男女が拮抗して第2波まで熱量が続く波形",
+    },
+    "yatakoi": {
+        "brand_key": "yatakoi",
+        "brand_label": "ヤタコイ",
+        "age_vibe": "屋台横丁スタイルの気取らない距離感・1軒目感覚で打ち解けやすい空気",
+        "time_affinity": "19〜21時は女子組の1軒目利用が多く女性先行、深夜0時を境に2軒目男性が増えて女子待ちゼロへ反転しやすい波形",
+    },
+    "asobibar": {
+        "brand_key": "asobibar",
+        "brand_label": "ASOBIBAR",
+        "age_vibe": "スタンディング＆ゲーム回遊型・固定相席に縛られず自分たちのペースで動ける空間",
+        "time_affinity": "2軒目や終電後に『もう1杯だけ軽く話したい』組が合流しやすく、気まずい延長が発生しない回遊波形",
+    },
+    "regional_lounge": {
+        "brand_key": "regional_lounge",
+        "brand_label": "地域密着ラウンジ",
+        "age_vibe": "地元・出張組が落ち着いて飲めるアットホームなラウンジ空間",
+        "time_affinity": "20〜23時のコア帯に人が集まりやすく、週末と平日で空気の緩急がはっきり出る波形",
+    },
+}
+
+
+def classify_store_brand_culture(raw_name) -> dict:
+    if isinstance(raw_name, dict):
+        raw_name = raw_name.get("name") or ""
+    nm = (raw_name or "").upper()
+    if "AG" in nm and ("OLG AG" in nm or nm.startswith("AG")):
+        return BRAND_CULTURE_PROFILES["ag"]
+    if " ag" in (raw_name or "") or (raw_name or "").startswith("ag"):
+        return BRAND_CULTURE_PROFILES["ag"]
+    if "JIS" in nm:
+        return BRAND_CULTURE_PROFILES["jis"]
+    if "YATAKOI" in nm or "ヤタコイ" in nm:
+        return BRAND_CULTURE_PROFILES["yatakoi"]
+    if "ASOBIBAR" in nm or "アソビバー" in nm:
+        return BRAND_CULTURE_PROFILES["asobibar"]
+    if "OLG" in nm or "オリエンタルラウンジ" in nm:
+        return BRAND_CULTURE_PROFILES["oriental_lounge"]
+    return BRAND_CULTURE_PROFILES["regional_lounge"]
+
 
 TONE_STATE_KEY = "editorial:default_tone_mode"
 DEFAULT_TONE_MODE = "spicy_female"
@@ -238,13 +302,14 @@ DEFAULT_TONE_MODE = "spicy_female"
 EDITORIAL_TONE_MODES = {
     "spicy_female": {
         "key": "spicy_female",
-        "label": "🌶️💄 辛口本音×女性目線ミックス（新標準）",
-        "short_label": "🌶️💄 辛口×女性本音",
-        "desc": "ご都合主義の綺麗事を排除し、「男性が気づかない敗因の図星（毒）」と「女性ペアの本音・裏側」の両方を効かせるモード。",
+        "label": "⚖️ 男女フラット観察×本音解剖（新標準）",
+        "short_label": "⚖️ 男女フラット観察",
+        "desc": "男女どちらの味方にも偏らず、双方の図星・本音の非対称と、時間帯波形・ブランドごとのノリや年齢感の相性をフラットに言語化する標準モード。",
         "prompt_directive": (
-            "【トーン＆視点指定：気取らない観察眼×男女両目線のリアル】\n"
-            "- 誰にでも好かれようとする宣伝調（『おすすめです』『楽しく飲めます』等）は使わず、混んでいる店に惰性で向かうもったいなさや、女の子側が待たされる店を避けてバランス店へ動くリアルな空気感をさらっと描くこと。\n"
-            "- 説教くさい決め台詞は避け、知っている友人だけがふと教えてくれる落ち着いた温度感にすること。"
+            "【トーン＆視点指定：男女両面のフラット観察者スタンス】\n"
+            "- 男性だけを攻略者扱いしたり、逆に片方の性別だけを責めたりせず、男女それぞれのリアルな事情・見栄・疲れ・期待のズレを対等な目線で描くこと。\n"
+            "- 店舗やブランドの違いに触れる際は優劣（当たり・ハズレ）をつけず、『年齢感・空間のノリ・時間帯との相性（例：男性が余裕を持てる時間 vs 女性組が放置ゼロで即乾杯できる時間）』として品よく具体的に踏み込むこと。\n"
+            "- 誰にでも好かれようとする宣伝調（『おすすめです』『楽しく飲めます』等）や説教くさい決め台詞は避け、夜の街をよく知る友人がさらっと本質を置く温度感にすること。"
         ),
     },
     "spicy": {
@@ -368,13 +433,20 @@ def _domestic_stores(stores: list) -> list:
     ]
 
 
-def _enrich_with_benchmarks(stores: list) -> list:
-    """Attach live benchmarks (usual_w_diff, core_time_short, midnight_retention_pct) and natural Japanese names."""
+def _enrich_with_benchmarks(stores: list, now_jst: datetime.datetime = None) -> list:
+    """Attach live benchmarks, 60m/120m crowd waveform shifts, brand culture profiles, and natural Japanese names."""
     try:
         import local_db
-        benchmarks = local_db.get_all_stores_live_benchmarks(allow_blocking=False) or {}
+        benchmarks = local_db.get_all_stores_live_benchmarks(now_jst=now_jst, allow_blocking=False) or {}
+        waveforms = local_db.get_all_stores_hourly_waveforms(now_jst=now_jst, allow_blocking=False) or {}
+        multi_snaps = local_db.get_multi_horizon_snapshots(now_jst=now_jst) or {}
     except Exception:
         benchmarks = {}
+        waveforms = {}
+        multi_snaps = {}
+
+    snap_60 = multi_snaps.get("snap_60m") or multi_snaps.get(60) or {}
+    snap_120 = multi_snaps.get("snap_120m") or multi_snaps.get(120) or {}
 
     enriched = []
     for s in stores:
@@ -389,6 +461,13 @@ def _enrich_with_benchmarks(stores: list) -> list:
         item["wpct"] = round((w / tot) * 100) if tot > 0 else 0
         item["ja_name"] = natural_store_name(sname)
         item["casual_name"] = casual_store_name(sname)
+
+        b_cult = classify_store_brand_culture(sname)
+        item["brand_key"] = b_cult["brand_key"]
+        item["brand_label"] = b_cult["brand_label"]
+        item["brand_age_vibe"] = b_cult["age_vibe"]
+        item["brand_time_affinity"] = b_cult["time_affinity"]
+
         bm = benchmarks.get(sname) or {}
         if "usual_w_diff" not in item:
             avg_w = bm.get("usual_women") if bm.get("usual_women") is not None else bm.get("usual_avg_w")
@@ -397,6 +476,55 @@ def _enrich_with_benchmarks(stores: list) -> list:
             item["midnight_retention_pct"] = bm.get("midnight_retention_pct")
         if "core_time_short" not in item:
             item["core_time_short"] = bm.get("core_time_short")
+
+        wf = waveforms.get(sname) or {}
+        item["waveform_archetype"] = wf.get("waveform_archetype") or ""
+        item["waveform_archetype_ja"] = wf.get("waveform_archetype_ja") or ""
+        item["reversal_hour"] = wf.get("reversal_hour")
+        item["hourly_waveform"] = {
+            k: wf.get(k) for k in ("h20", "h22", "h00", "h01") if wf.get(k)
+        }
+
+        s60 = snap_60.get(sname)
+        if s60 and tot > 0:
+            p60_w = int(s60.get("women") or 0)
+            p60_m = int(s60.get("men") or 0)
+            p60_tot = p60_w + p60_m
+            p60_wpct = round((p60_w / p60_tot) * 100) if p60_tot > 0 else None
+            item["prev_60m_w"] = p60_w
+            item["prev_60m_m"] = p60_m
+            item["diff_60m_w"] = w - p60_w
+            item["diff_60m_m"] = m - p60_m
+            item["prev_60m_wpct"] = p60_wpct
+            item["wpct_shift_60m"] = (item["wpct"] - p60_wpct) if p60_wpct is not None else None
+        else:
+            item.setdefault("prev_60m_w", None)
+            item.setdefault("prev_60m_m", None)
+            item.setdefault("diff_60m_w", None)
+            item.setdefault("diff_60m_m", None)
+            item.setdefault("prev_60m_wpct", None)
+            item.setdefault("wpct_shift_60m", None)
+
+        s120 = snap_120.get(sname)
+        if s120 and tot > 0:
+            p120_w = int(s120.get("women") or 0)
+            p120_m = int(s120.get("men") or 0)
+            p120_tot = p120_w + p120_m
+            p120_wpct = round((p120_w / p120_tot) * 100) if p120_tot > 0 else None
+            item["prev_120m_w"] = p120_w
+            item["prev_120m_m"] = p120_m
+            item["diff_120m_w"] = w - p120_w
+            item["diff_120m_m"] = m - p120_m
+            item["prev_120m_wpct"] = p120_wpct
+            item["wpct_shift_120m"] = (item["wpct"] - p120_wpct) if p120_wpct is not None else None
+        else:
+            item.setdefault("prev_120m_w", None)
+            item.setdefault("prev_120m_m", None)
+            item.setdefault("diff_120m_w", None)
+            item.setdefault("diff_120m_m", None)
+            item.setdefault("prev_120m_wpct", None)
+            item.setdefault("wpct_shift_120m", None)
+
         enriched.append(item)
     return enriched
 
@@ -1768,7 +1896,7 @@ def run_researcher(
       4. City leaders across Shinjuku, Shibuya, Umeda, Namba, Nagoya, Fukuoka
     """
     now_jst = now_jst or datetime.datetime.now(JST)
-    dom = _enrich_with_benchmarks(_domestic_stores(stores))
+    dom = _enrich_with_benchmarks(_domestic_stores(stores), now_jst=now_jst)
     dom.sort(key=lambda x: (x["women"], x["men"]), reverse=True)
 
     total_w = sum(s["women"] for s in dom)
@@ -1883,6 +2011,131 @@ def run_researcher(
     usual_candidates.sort(key=lambda x: (int(x.get("usual_w_diff") or 0), x["women"]), reverse=True)
     anomaly_store = usual_candidates[0] if usual_candidates else None
 
+    # 3b. 60-120m Waveform Drama (Axis 1: Time-series shifts, male rush crossover, or midnight 2nd wave)
+    waveform_drama = None
+    live_shift_cands = []
+    for s in active_stores:
+        d60w = s.get("diff_60m_w")
+        d60m = s.get("diff_60m_m")
+        sh60 = s.get("wpct_shift_60m")
+        if d60w is not None and d60m is not None:
+            drama_mag = abs(int(d60w)) + abs(int(d60m)) + abs(int(sh60 or 0))
+            if drama_mag >= 8:
+                live_shift_cands.append((drama_mag, s))
+    if live_shift_cands:
+        live_shift_cands.sort(key=lambda kv: kv[0], reverse=True)
+        ds = live_shift_cands[0][1]
+        dw, dm, p60 = int(ds["diff_60m_w"]), int(ds["diff_60m_m"]), ds.get("prev_60m_wpct")
+        if dm >= 8 and (ds["wpct"] <= (p60 or ds["wpct"]) - 5):
+            drama_type = "male_rush_shift"
+            drama_note = (
+                f"{ds['ja_name']}は1時間前（女性比{p60}%）から1次会終わりの男性が+{dm}名合流し、"
+                f"いま女性{ds['women']}名・男性{ds['men']}名（女性比{ds['wpct']}%）へ拮抗シフト。女子2人組には待ちゼロの好回転帯。"
+            )
+        elif dw >= 6:
+            drama_type = "female_wave_inflow"
+            drama_note = (
+                f"{ds['ja_name']}はここ1時間で女性が+{dw}名増え、いま女性{ds['women']}名・男性{ds['men']}名（女性比{ds['wpct']}%）へ第2波の流入。"
+            )
+        else:
+            drama_type = "hourly_balance_shift"
+            drama_note = (
+                f"{ds['ja_name']}は直近1時間の出入りを経て、いま女性{ds['women']}名・男性{ds['men']}名（女性比{ds['wpct']}%）で推移。"
+            )
+        waveform_drama = {
+            "type": drama_type,
+            "store_name": ds["ja_name"],
+            "women": ds["women"],
+            "men": ds["men"],
+            "women_pct": ds["wpct"],
+            "prev_60m_wpct": p60,
+            "diff_60m_w": dw if dw > 0 else None,
+            "diff_60m_m": dm if dm > 0 else None,
+            "summary": drama_note,
+        }
+    elif focus_store and focus_store.get("waveform_archetype_ja"):
+        waveform_drama = {
+            "type": focus_store.get("waveform_archetype") or "historical_waveform",
+            "store_name": focus_store["ja_name"],
+            "women": focus_store["women"],
+            "men": focus_store["men"],
+            "women_pct": focus_store["wpct"],
+            "reversal_hour": focus_store.get("reversal_hour"),
+            "summary": f"{focus_store['ja_name']}は普段の波形でも『{focus_store['waveform_archetype_ja']}』の特徴がある店舗。",
+        }
+
+    # 3c. Same-City Cross-Brand Culture & Time Affinity Contrast (Axis 3)
+    brand_contrast = None
+    for hub_label, area_id, kws in URBAN_CLUSTERS:
+        hub_s = [
+            s for s in active_stores
+            if any(k in (s.get("name") or "").upper() or k in (s.get("name") or "") for k in kws)
+            and s["total"] >= 10
+        ]
+        if len(hub_s) >= 2:
+            seen_brands = {}
+            for s in sorted(hub_s, key=lambda x: (x["total"], x["women"]), reverse=True):
+                bk = s.get("brand_key") or "other"
+                if bk not in seen_brands:
+                    seen_brands[bk] = s
+                if len(seen_brands) >= 2:
+                    break
+            if len(seen_brands) >= 2:
+                b_list = list(seen_brands.values())
+                b1, b2 = b_list[0], b_list[1]
+                brand_contrast = {
+                    "area": hub_label,
+                    "store_a": {
+                        "name": b1["ja_name"],
+                        "brand": b1["brand_label"],
+                        "women": b1["women"],
+                        "men": b1["men"],
+                        "women_pct": b1["wpct"],
+                        "vibe": b1["brand_age_vibe"],
+                        "time_affinity": b1["brand_time_affinity"],
+                    },
+                    "store_b": {
+                        "name": b2["ja_name"],
+                        "brand": b2["brand_label"],
+                        "women": b2["women"],
+                        "men": b2["men"],
+                        "women_pct": b2["wpct"],
+                        "vibe": b2["brand_age_vibe"],
+                        "time_affinity": b2["brand_time_affinity"],
+                    },
+                }
+                break
+
+    # 3d. Flat Gender-Asymmetry Pair (Axis 2: Male comfort zone vs Female zero-wait zone)
+    female_comfort_cand = male_lead_store
+    if not female_comfort_cand:
+        alt_f_pool = [
+            s for s in active_stores
+            if s["men"] >= 12 and s["women"] >= 8 and 38 <= s["wpct"] <= 54
+            and (not focus_store or s["name"] != focus_store["name"])
+        ]
+        alt_f_pool.sort(key=lambda x: (x["men"], -x["wpct"]), reverse=True)
+        female_comfort_cand = alt_f_pool[0] if alt_f_pool else None
+
+    gender_asymmetry_pair = None
+    if focus_store and female_comfort_cand and focus_store["name"] != female_comfort_cand["name"]:
+        gender_asymmetry_pair = {
+            "male_side_sweet_spot": {
+                "name": focus_store["ja_name"],
+                "women": focus_store["women"],
+                "men": focus_store["men"],
+                "women_pct": focus_store["wpct"],
+                "reason": "女性が先行していて男性ペアが受付待ち少なく落ち着いて話しやすい空気",
+            },
+            "female_side_sweet_spot": {
+                "name": female_comfort_cand["ja_name"],
+                "women": female_comfort_cand["women"],
+                "men": female_comfort_cand["men"],
+                "women_pct": female_comfort_cand["wpct"],
+                "reason": "女余り店での相席待ち放置を避け、女性2人組が待ちゼロ即乾杯・高回転で楽しめる空気",
+            },
+        }
+
     # 4. East vs West top stores (never duplicate east_top onto west_top when Kansai has 0 active stores)
     kanto_s = [s for s in dom if s.get("region") == "Kanto" and s["total"] > 0] or [
         s for s in dom if s.get("region") == "Kanto"
@@ -1932,6 +2185,15 @@ def run_researcher(
         notes.append(
             f"【普段比プラス】{anomaly_store['ja_name']}が普段の同曜日・同時間帯より女性 +{anomaly_store['usual_w_diff']}名で上振れ中。"
         )
+    if waveform_drama:
+        notes.append(f"【時間波形ドラマ（60m〜）】{waveform_drama['summary']}")
+    if brand_contrast:
+        ba = brand_contrast["store_a"]
+        bb = brand_contrast["store_b"]
+        notes.append(
+            f"【同街ブランド相性】{brand_contrast['area']}で『{ba['name']}（{ba['brand']}：女{ba['women']}:男{ba['men']}）』と"
+            f"『{bb['name']}（{bb['brand']}：女{bb['women']}:男{bb['men']}）』の空間・時間帯波形が対照的。"
+        )
     if ig_ctx and ig_ctx.get("top_anaba"):
         top_a = ig_ctx["top_anaba"][0]
         notes.append(
@@ -1956,6 +2218,9 @@ def run_researcher(
         "focus_store": focus_store,
         "male_lead_store": male_lead_store,
         "anomaly_store": anomaly_store,
+        "waveform_drama": waveform_drama,
+        "brand_contrast": brand_contrast,
+        "gender_asymmetry_pair": gender_asymmetry_pair,
         "east_top": east_top,
         "west_top": west_top,
         "spotlight_tier": target_tier,
@@ -2429,8 +2694,13 @@ def _write_threads_candidates(
             lead_1 = f"女子側の本音で言うと、せっかくメイクも髪も整えて来たのに『受付で待たされる店』や『必死すぎる空気の店』は1杯で出たくなるもの💄 今の{hub_name}はこんな感じ👇"
             closing_1 = "女性組は男性先行店なら待ち0分で即乾杯できるし、男性組も余裕のある比率の店を選ぶ方がお互い空気感が良くなります🥂"
         elif tm == "spicy_female":
-            lead_1 = f"{wd_str}曜{t_str}すぎ、今の{hub_name}はかなり残酷なくらい店舗で明暗が割れてます👀（慣れた女子組ほど待たされる店を嫌ってすぐ別店舗へ流れる時間帯）"
-            closing_1 = "受付待ちで疲弊したテンションで乾杯しても女子に見透かされるだけなので、入る前の30秒で比率の良い店を選ぶのが一番賢いです🍸"
+            hs_cult = classify_store_brand_culture(hs.get("name") or "")
+            ls_cult = classify_store_brand_culture(ls.get("name") or "")
+            lead_1 = f"{wd_str}曜{t_str}すぎ、同じ{hub_name}でもブランドごとの時間帯リズムがきれいに分かれてます。"
+            closing_1 = (
+                f"落ち着いた空間で話したい男性組なら{hs_cult['brand_label']}側、逆に待たされずすぐ乾杯したい女子2人組なら"
+                f"男性がしっかり入っている{ls_cult['brand_label']}側と、今夜の気分と性別で使い分けるのがいちばん居心地いい気がします。"
+            )
         else:
             lead_1 = f"{wd_str}曜{t_str}すぎ、今夜は{hub_name}まわりで店舗ごとの男女比がかなりはっきり分かれてます👀"
             closing_1 = "1軒目で「男性待ち長そうだな」と思ったら、無理に粘らず徒歩3〜4分の別ブランドを覗くのが一番コスパいいです🥂"
@@ -3264,10 +3534,34 @@ def verify_ai_factual_numbers(text: str, research: dict, channel: str = "x") -> 
             allowed_diff.add(wd)
         if ud > 0:
             allowed_diff.add(ud)
+        for dk in ("diff_60m_w", "diff_60m_m", "diff_120m_w", "diff_120m_m"):
+            dv = s.get(dk)
+            if dv is not None and int(dv) > 0:
+                allowed_diff.add(int(dv))
+        for pk in ("prev_60m_wpct", "prev_120m_wpct"):
+            pv = s.get(pk)
+            if pv is not None and int(pv) > 0:
+                allowed_pct.add(int(pv))
+        for wk in ("prev_60m_w", "prev_120m_w"):
+            wv = s.get(wk)
+            if wv is not None and int(wv) >= 0:
+                allowed_women.add(int(wv))
+                _reg_alias(s.get("ja_name"), w_val=int(wv))
+        for mk in ("prev_60m_m", "prev_120m_m"):
+            mv = s.get(mk)
+            if mv is not None and int(mv) >= 0:
+                allowed_men.add(int(mv))
+                _reg_alias(s.get("ja_name"), m_val=int(mv))
         _reg_alias(s.get("ja_name"), w, m, p)
         c_alias = s.get("casual_name") or casual_store_name(s.get("name", ""))
         if c_alias and c_alias != s.get("ja_name"):
             _reg_alias(c_alias, w, m, p)
+            for wk in ("prev_60m_w", "prev_120m_w"):
+                if s.get(wk) is not None:
+                    _reg_alias(c_alias, w_val=int(s.get(wk)))
+            for mk in ("prev_60m_m", "prev_120m_m"):
+                if s.get(mk) is not None:
+                    _reg_alias(c_alias, m_val=int(s.get(mk)))
 
     for s in ig_vol:
         mw = int(s.get("max_women") or 0)
@@ -3342,82 +3636,81 @@ def verify_ai_factual_numbers(text: str, research: dict, channel: str = "x") -> 
 X_POST_ARCHETYPES = (
     {
         "key": "bare_contrast",
-        "label": "前置きゼロ・2店舗の温度差スケッチ（余韻クローズ）",
+        "label": "前置きゼロ・同街ブランドの空気差スケッチ（余韻クローズ）",
         "silent_tree": True,
         "directive": (
-            "- 【今回の骨格：前置きゼロ・温度差スケッチ（60〜98文字）】\n"
-            "- 天気や時間帯の挨拶を一切省き、1行目からいきなり同じ街（または東西）の2店舗の数字差を切り出すこと。\n"
-            "- 説教や教訓は書かず、体言止めや短い事実の余韻（『〜の差。』『〜は珍しい。』等）でスッと終えること。\n"
-            "- **今回は本文末尾に『リプ欄へ👇』もハッシュタグ（#）も一切付けないこと**（人間の素のツイートとして完結させる。詳細URLはシステム側で静かに2ポスト目へ繋ぐ）。"
+            "- 【今回の骨格：同街ブランドの空気差スケッチ（62〜104文字）】\n"
+            "- 挨拶を省き、ファクトシートの `same_city_brand_contrast` または `same_area_gap` から同じ街の2店舗の現在値を並べ、ブランドごとの年齢感や1軒目・2軒目の空気の違いを1フレーズだけ添えて体言止めや短い余韻でスッと終えること。\n"
+            "- **今回は本文末尾に『リプ欄へ👇』もハッシュタグ（#）も一切付けないこと**（素の観察ツイートとして完結させる）。"
         ),
     },
     {
         "key": "polite_drop_memo",
-        "label": "気取らない素の丁寧語・1店舗置きメモ",
+        "label": "60分波形の変化＋素の丁寧語メモ",
         "silent_tree": False,
         "directive": (
-            "- 【今回の骨格：素の丁寧語・置きメモ（64〜102文字）】\n"
-            "- 飾り気のない大人の素の敬語（『〜ですね』『〜になってます』『〜探してる人向けに置いときます』等）で、いまバランスが良い1店舗（または準主要街の穴場）を淡々と置いて終えること。\n"
+            "- 【今回の骨格：時間波形の変化＋素の丁寧語メモ（68〜108文字）】\n"
+            "- ファクトシートの `waveform_drama_60m` や `sweet_spot_store` を使い、1次会終わりや終電前後の時間帯による人の流れ（1時間前からの変化や普段の波形の特徴）を1行で添えつつ、正確な現在人数を素の敬語（『〜ですね』『〜になってます』等）で淡々と置くこと。\n"
             "- 絵文字や『！』は **0個** にすること。ハッシュタグは末尾に『#相席ラウンジ』1個だけ添えるか、無くてもよい。"
         ),
     },
     {
         "key": "regional_submajor_pulse",
-        "label": "準主要街・地方都市の静かな熱気フォーカス",
+        "label": "準主要街・地方都市の客層リズム観察",
         "silent_tree": False,
         "directive": (
-            "- 【今回の骨格：準主要・地方スポット（70〜110文字）】\n"
-            "- 新宿・渋谷・梅田の定番大型店ばかりではなく、ファクトシート内の準主要街（恵比寿・上野・横浜・大宮・難波・茶屋町・栄・天神など）や好調な地方都市があればそこを主役に拾うこと（無ければ `sweet_spot_store` でOK）。\n"
-            "- 講釈は省き、その街の今の空気感と正確な人数をさらっと伝え、末尾に控えめに『細かい推移は下に置いときます #相席ラウンジ』程度で締めること。"
+            "- 【今回の骨格：準主要・地方スポット（70〜112文字）】\n"
+            "- 新宿・渋谷・梅田の定番店ばかりではなく、準主要街（恵比寿・上野・横浜・大宮・難波・茶屋町・栄・天神など）や好調な地方都市があればそこを主役に拾い、その街の今の時間帯らしい落ち着きや熱気と正確な人数をさらっと伝えること。\n"
+            "- 末尾に控えめに『細かい推移は下に置いときます #相席ラウンジ』程度で締めること。"
         ),
     },
     {
         "key": "question_linger",
-        "label": "ふとした疑問・ボヤき余韻クローズ",
+        "label": "男女の意思決定タイミングのズレ・余韻クローズ",
         "silent_tree": True,
         "directive": (
-            "- 【今回の骨格：ふとした疑問・余韻終わり（58〜96文字）】\n"
-            "- 今夜の数字のちょっとした偏りや意外な店舗の伸びを1つだけ挙げ、『まだ1軒目から動いてないだけかな。』『雨の日はやっぱり駅直結に寄るのかも。』のように独り言の疑問・推測でふと終えること。\n"
+            "- 【今回の骨格：人の流れの不思議・余韻終わり（60〜102文字）】\n"
+            "- 今夜の数字の偏りやブランド間の温度差を1つ挙げ、『1軒目帰りは近い店から埋まるからかな。』『雨の日はやっぱり地下直結に集中するのかも。』のように、男女の店選び心理へのフラットな推測でふと終えること。\n"
             "- **今回は『リプ欄へ👇』もハッシュタグも一切書かず**、余韻だけで終えること。"
         ),
     },
     {
         "key": "female_zero_wait_casual",
-        "label": "女子ペア目線・待ちゼロ即案内の空気メモ",
+        "label": "男女非対称のフラット観察（女子組の待ちゼロ視点）",
         "silent_tree": False,
         "directive": (
-            "- 【今回の骨格：女性組目線の待ちゼロ共有（70〜110文字）】\n"
-            "- ファクトシートの `female_group_zero_wait_store`（男性先行店）や好バランス店を使い、女の子2人組がいま受付で待たされずにそのまま座れそうな空気感を友達に教えるような口調で書くこと（男性先行店が無ければ `sweet_spot_store` でOK）。\n"
+            "- 【今回の骨格：男女で逆になる正解店のフラット共有（72〜114文字）】\n"
+            "- ファクトシートの `gender_asymmetry_pair` または `female_group_zero_wait_store` を使い、『女余りの店は女性側だと相席待ちになりやすい一方、男性が先行している店はいま女子2人組が待ちゼロですぐ座れる』という非対称なリアルをフラットな口調で書くこと。\n"
             "- 絵文字は0〜1個まで。末尾は『#相席ラウンジ』1個のみ、またはタグなしで自然に終える。"
         ),
     },
     {
         "key": "minimal_snap",
-        "label": "引き算の超短文スナップ（52〜85文字）",
+        "label": "引き算の超短文・波形スナップ（54〜90文字）",
         "silent_tree": True,
         "directive": (
-            "- 【今回の骨格：引き算の超短文スナップ（52〜85文字）】\n"
-            "- 説明・理由付け・オチをすべて削ぎ落とし、いま一番空気が良い1〜2店舗の実測人数と短い一言だけを2行以内で端的に置くこと。\n"
+            "- 【今回の骨格：引き算の超短文スナップ（54〜90文字）】\n"
+            "- 説明過多を削ぎ落とし、いま空気が良い1〜2店舗の実測人数と、この時間帯ならではの短い1フレーズだけを2行以内で端的に置くこと。\n"
             "- **『リプ欄へ👇』も絵文字もハッシュタグも付けない**、一番人間らしい素の短文にすること。"
         ),
     },
     {
         "key": "street_air_note",
-        "label": "外の季節感・空気1フレーズ＋街況メモ",
+        "label": "外の季節感×ブランドのノリ相性メモ",
         "silent_tree": False,
         "directive": (
-            "- 【今回の骨格：外の空気感×街況メモ（78〜114文字）】\n"
-            "- 外の気温や曜日・時間帯の空気を短い1フレーズだけ添え、1〜2店舗の正確な人数を会話の流れに溶かし込むこと。\n"
+            "- 【今回の骨格：外の空気感×ブランド相性メモ（78〜116文字）】\n"
+            "- 外の気温や曜日・時間帯の空気を短い1フレーズ添え、落ち着いて話せる店と活気がある店の実測人数をフラットに溶かし込むこと。\n"
             "- 宣伝臭い煽りは避け、末尾に小さくリプ欄案内または『#相席ナビ #相席ラウンジ』を添える。"
         ),
     },
     {
         "key": "hopper_timing",
-        "label": "1軒目終わり・ハシゴ時間帯のフラット比較",
+        "label": "1軒目終わり・ハシゴ時間帯の波形比較",
         "silent_tree": False,
         "directive": (
-            "- 【今回の骨格：ハシゴ時間帯のフラット比較（74〜112文字）】\n"
-            "- 1軒目を出る頃や2軒目を探すタイミングに触れつつ、混みすぎている店とまだ余裕がある店の実測値をフラットに並べること。\n"
+            "- 【今回の骨格：ハシゴ時間帯の波形比較（74〜114文字）】\n"
+            "- 1軒目を出る頃や終電前後の人の動きに触れつつ、人が集中し始めた店とまだ余裕がある別ブランドの店の実測値をフラットに並べること。\n"
             "- 素の丁寧語（『〜ですね』『〜かも』）または体言止めで落ち着いて締め、絵文字は0〜1個に抑える。"
         ),
     },
@@ -3543,6 +3836,9 @@ def _build_gemini_prompt(
             }
             if anomaly and anomaly.get("usual_w_diff") else None
         ),
+        "waveform_drama_60m": research.get("waveform_drama"),
+        "same_city_brand_contrast": research.get("brand_contrast"),
+        "gender_asymmetry_pair": research.get("gender_asymmetry_pair"),
         "female_group_zero_wait_store": (
             {
                 "name": male_lead["ja_name"],
@@ -3596,12 +3892,13 @@ def _build_gemini_prompt(
         )
     elif ch == "threads":
         cta_footer = build_threads_cta_footer(site_url, slot_label=slot_label, style_key="ai_live_adlib", now_jst=now_jst)
-        reply_text = "（Threadsは1投稿完結・ゆるい日常エッセイ調＋リンク制限回避済）"
+        reply_text = "（Threadsは1投稿完結・男女両面のフラット観察コラム調＋リンク制限回避済）"
         platform_spec = (
-            "【対象SNS：Meta Threads（スレッズ）｜肩の力が抜けたゆるい日常エッセイ調】\n"
-            "- 文字数制限：全体で **260文字〜435文字以内**（絶対上限480文字）\n"
+            "【対象SNS：Meta Threads（スレッズ）｜350字前後の心理・街・ブランド考察エッセイ】\n"
+            "- 文字数制限：全体で **280文字〜435文字以内**（絶対上限480文字）\n"
             "- 禁止事項：『🥇🥈🥉』メダルや『【〇〇】』見出し、『モニター見てたら』『バックヤードで』等の裏方アピールは禁止。ハッシュタグは末尾フッター内のもの以外付けない。\n"
-            "- 構成：Xのような圧縮速報ではなく、帰り道や夜カフェでふと思いついて書いたような『余白のあるゆるい日常エッセイ調（〜ですね、〜かも、体言止めミックス）』で書くこと。絵文字は全体で0〜1個に抑え、街ごとの客層の空気や女の子組がスッと座れる店の話などを穏やかに綴る。\n"
+            "- 構成（ただの人数列挙ではなく、1段深い気づきを書くこと）：\n"
+            "  ファクトシートの `waveform_drama_60m`（1時間前からの波の変化）、`same_city_brand_contrast`（同じ街でのオリエンタルラウンジ・ag・JIS・ヤタコイ・ASOBIBAR等の年齢感やノリ・時間帯相性の違い）、または `gender_asymmetry_pair`（男性の余裕店＝女余りになりやすく、逆に男性先行店こそ女子2人組が待ちゼロ即乾杯になる非対称構造）の中から一番面白いテーマを1つ選び、男女どちらにも偏らないフラットな観察眼で穏やかに綴ること（絵文字0〜1個）。\n"
             f"- 末尾固定フッター：文章の最後は必ず次のフッター文字列を一字一句変えずに置いて締めること：\n{cta_footer}"
         )
     elif ch == "tiktok":

@@ -315,6 +315,25 @@
             <button type="button" class="col-cat-btn" data-col-cat="manner" role="tab" aria-selected="false">会話・2軒目・身だしなみ <span class="col-cat-count" data-count-for="manner"></span></button>
         </div>
         <div class="articles-grid" id="columns-articles-grid">
+            <!-- NEW Article: 5-Brand Hourly Waveform & Gender Asymmetry Study -->
+            <a href="/guide/brand-waveform-asymmetry" class="article-card">
+                <div class="article-thumb-wrap">
+                    <picture>
+                        <source srcset="/static/eyecatch-brand-waveform-asymmetry.webp" type="image/webp">
+                        <img src="/static/eyecatch-brand-waveform-asymmetry.jpg" alt="20時は女性68%なのに深夜0時は逆転する理由｜5大ブランドの時間波形と男女で真逆になる店選びデータ検証" loading="lazy">
+                    </picture>
+                </div>
+                <div class="article-card-body">
+                    <div class="article-tag-row">
+                        <span class="article-tag tag-pink">📈 新着データ検証</span>
+                        <span class="article-tag tag-cyan">5大ブランド時間波形・男女非対称</span>
+                    </div>
+                    <h2>20時は女性68%なのに深夜0時は逆転する理由｜5大ブランドの時間波形と男女で真逆になる店選びデータ検証</h2>
+                    <p>同じ梅田・新宿・渋谷でも、オリエンタルラウンジ・ag・JIS・ヤタコイ・ASOBIBARでは強い時間帯と年齢感が全く異なる。20時〜深夜1時の時間波形クロスオーバーと、男女で真逆になる「当たり店」の本音を実測ログで検証。</p>
+                    <span class="article-read-more">この記事を読む ›</span>
+                </div>
+            </a>
+
             <!-- NEW Article: Friday/Saturday 22:00 Crowd-Rush Paradox & 70% Buffer -->
             <a href="/guide/crowd-rush-paradox" class="article-card">
                 <div class="article-thumb-wrap">
@@ -656,7 +675,7 @@
             if (href.indexOf('second-venue') !== -1 || href.indexOf('first-10-minutes') !== -1 || href.indexOf('grooming') !== -1 || href.indexOf('for-women') !== -1 || href === '/guide' || href.indexOf('solo-vs-pair') !== -1) {
                 return 'manner';
             }
-            if (href.indexOf('paradox') !== -1 || href.indexOf('cliff') !== -1 || href.indexOf('male-lead') !== -1 || href.indexOf('beauty-area') !== -1 || href.indexOf('club-area') !== -1 || text.indexOf('万件') !== -1 || text.indexOf('データ検証') !== -1) {
+            if (href.indexOf('waveform') !== -1 || href.indexOf('paradox') !== -1 || href.indexOf('cliff') !== -1 || href.indexOf('male-lead') !== -1 || href.indexOf('beauty-area') !== -1 || href.indexOf('club-area') !== -1 || text.indexOf('万件') !== -1 || text.indexOf('データ検証') !== -1) {
                 return 'data';
             }
             return 'strategy';

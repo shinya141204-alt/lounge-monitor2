@@ -3649,6 +3649,7 @@ def _build_llms_txt_documents() -> tuple:
 - [全ブランド料金システム・待機料・イベント比較ボード (/price-comparison)](https://aiseki-navi.com/price-comparison): 4時間帯別料金シミュレーションと開催中イベント
 - [全国相席ラウンジ統計データ白書 (/stats)](https://aiseki-navi.com/stats): 曜日別・時間帯別の平均男女人数と混雑ピーク統計
 - [データ考察コラム一覧 (/columns)](https://aiseki-navi.com/columns): 行動経済学・実測ログに基づく全コラム一覧
+- [5大ブランドの時間波形と男女で真逆になる店選びデータ検証 (/guide/brand-waveform-asymmetry)](https://aiseki-navi.com/guide/brand-waveform-asymmetry): オリエンタルラウンジ・ag・JIS・ヤタコイ・ASOBIBARの時間帯クロスオーバーと男女の本音非対称を解明
 - [金土22時の群衆殺到パラドックスと70%バッファの法則 (/guide/crowd-rush-paradox)](https://aiseki-navi.com/guide/crowd-rush-paradox): 金土22時発で29.8%が男余りへ転落する逆転現象と回避プロトコル
 - [相席ラウンジ初心者向け完全ガイド (/guide)](https://aiseki-navi.com/guide)
 - [オリエンタルラウンジ・ag・JIS 徹底比較 (/guide/brand-comparison)](https://aiseki-navi.com/guide/brand-comparison)
@@ -3788,6 +3789,12 @@ def _build_llms_txt_documents() -> tuple:
                 'title': '二面市場における男女の非対称コスト構造',
                 'summary': '男性は10分従量課金によるサンクコスト延長に陥りやすく、女性は料金0円だが身支度90分と機会費用を負担しているため、男女で最適な店舗選択が逆転する。',
                 'reference_url': 'https://aiseki-navi.com/for-women',
+            },
+            {
+                'id': 'brand_waveform_and_gender_asymmetry',
+                'title': '5大ブランドの時間波形クロスオーバーと男女で真逆になる最適店舗選択',
+                'summary': 'オリエンタルラウンジ・ag・JIS・ヤタコイ・ASOBIBARは同じ街でも20時〜深夜1時の男女波形と年齢感・テンションが異なり、男性の余裕店（女余り帯）は女性の受付待ちリスクに、男性先行帯は女性ペアの待ちゼロ即乾杯に反転する。',
+                'reference_url': 'https://aiseki-navi.com/guide/brand-waveform-asymmetry',
             },
         ],
         'concierge_tool': {
@@ -4270,6 +4277,12 @@ def sitemap_xml():
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
+  <url>
+    <loc>https://aiseki-navi.com/guide/brand-waveform-asymmetry</loc>
+    <lastmod>{today}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
 {scheduled_urls}{area_urls}
 {store_urls}
   <url>
@@ -4622,6 +4635,12 @@ def guide_last_train_cliff():
 def guide_crowd_rush_paradox():
     """Editorial data study on the Friday/Saturday 22:00 crowd-rush paradox (29.8% flip risk) and the 70% buffer law."""
     return _get_cached_html_or_render('guide_crowd_rush_paradox', lambda: render_template('guide_crowd_rush_paradox.html'))
+
+
+@app.route('/guide/brand-waveform-asymmetry')
+def guide_brand_waveform_asymmetry():
+    """Editorial data study on 5-brand hourly crowd waveforms (20:00-01:00 crossover) and male/female asymmetric venue fit."""
+    return _get_cached_html_or_render('guide_brand_waveform_asymmetry', lambda: render_template('guide_brand_waveform_asymmetry.html'))
 
 
 def _render_scheduled_guide(slug: str):

@@ -38,11 +38,14 @@ description: >-
 
 ## Step 3: サイト内コラムHTMLの作成（4層因果ピラミッド構造考察＋脱・金太郎飴＋内部リンク）
 [`templates/guide_last_train_cliff.html`](file:///Users/kuwanoshinya/.gemini/相席業務改善/相席モニター/templates/guide_last_train_cliff.html) はHTML/CSSのタグ構造のみ参考にし、**文章構成・導入シーン・結論パターンは絶対にクローンしないこと（金太郎飴化の禁止）**。必ず以下を含めること：
-1. **【最重要】4層因果ピラミッド＆脱マンネリ執筆ルール**：
-   * **手垢トロープの流用禁止**：既存記事で多用された「エレベーターが開いた瞬間の重たい空気」「23時20分の終電崖」「とりあえず40分見切り」をテーマ無関係に使い回さないこと。必ず今回のテーマ固有の現場シーンから始めること。
-   * **4層因果ピラミッドで深掘りする**：①現場の具体的な違和感（What） → ②二面市場・行動経済学・都市導線の構造的理由（Why：男性の10分従量課金によるサンクコスト錯誤 vs 女性の準備90分・機会費用、客層コホート交代など） → ③累計27万件超のSQLite実測データと店舗別の時間帯単価・待機チャージ・1名規定のクロス検証（Proof） → ④読者がその夜そのまま実行できる条件分岐プロトコル（Protocol）。
-   * 記事内に **`<div class="dialogue-box">...</div>` を使った自然な会話・心の声を2〜4箇所** 織り込むこと。
-   * **ブランド呼称ルール厳守**：単体の『オリエンタル』（例: `オリエンタル新宿`）や内部コード `OLG` は絶対に使わず、必ず正式名称 **『オリエンタルラウンジ』** または会話・略称の **『オリラジ』** を使用すること。
+1. **【最重要】3軸ディープ考察＆脱マンネリ執筆ルール**：
+   * **手垢テンプレ・固定フレーズの流用禁止**：既存記事で多用された「エレベーターが開いた瞬間の重たい空気」「メイク90分」「徒歩4分移動」「とりあえず40分見切り」「サンクコスト錯誤」をテーマ無関係に使い回さないこと。必ず今回のテーマ固有の現場シーンと生データから始めること。
+   * **3軸×4層因果ピラミッドで深掘りする**：
+     - **軸1（60〜120分の時間波形ドラマ）**：20時の女性先行立ち上がり・22時の男性合流・深夜0時の男女クロス反転・終電後の第2波を実測数値で追う。
+     - **軸2（男女それぞれの『本音の非対称』フラット観察）**：男女どちらの味方にも偏らないフラットな観察者として、「男性にとっての余裕店＝女性には受付待ちリスク」「男性先行帯＝女性組には待ちゼロ即乾杯」という双方の図星と本音を対等に描く。
+     - **軸3（同じ街のブランド別カルチャー・時間帯相性）**：オリエンタルラウンジ・ag・JIS・ヤタコイ・ASOBIBARを優劣ではなく「年齢感・ノリ・強い時間帯の相性」として具体的に踏み込む。
+   * 記事内に **`<div class="dialogue-box">...</div>` を使った男女双方の自然な会話・心の声を2〜4箇所** 織り込むこと。
+   * **ブランド呼称ルール厳守**：単体の『オリエンタル』（例: `オリエンタル新宿`）、内部コード `OLG`、英語表記 `YATAKOI`、旧略称 `オリラジ` は一切使用禁止。必ず正式名称 **『オリエンタルラウンジ』**・**『ヤタコイ』** を使用すること。
 2. **メタタグ＆OGP＆LLMO**：
    * `<link rel="canonical" href="https://aiseki-navi.com/guide/<slug>">`
    * `<link rel="alternate" type="text/markdown" href="https://aiseki-navi.com/llms.txt" title="相席ナビ AI要約ドキュメント (llms.txt)">`
@@ -50,7 +53,7 @@ description: >-
    * `<meta name="twitter:card" content="summary_large_image">`
 3. **JSON-LD 構造化データ**：`Article`（`SpeakableSpecification` 付） + `BreadcrumbList` + `FAQPage`
 4. **ナビゲーション・共通CSS・フッター**：
-   * `<link rel="stylesheet" href="/static/calm.css?v=22">` を必ず読み込むこと（ライトモード `body.theme-light` でのコントラスト崩れも確認すること）
+   * `<link rel="stylesheet" href="/static/style.css?v=20261030_6">`, `<link rel="stylesheet" href="/static/portal.css?v=11">`, `<link rel="stylesheet" href="/static/calm.css?v=24">`（既存ページと完全一致のクエリ文字列）を読み込み、未定義 `var(--...)` や見出し絵文字・派手ネオングラデを一切使わないこと（ライトモード `body.theme-light` でのコントラスト崩れも確認すること）
    * 上部に `{% set nav_active = 'columns' %}` と `{% include '_portal_nav.html' %}`
    * 下部に `{% include '_portal_footer.html' %}`
    * スタッフ非表示ガード `{% if not is_staff and not session.get('is_staff') %}`（予約記事なら `and not is_scheduled_preview` も追加）で AdSense タグを囲むこと

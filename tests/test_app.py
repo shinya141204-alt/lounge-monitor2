@@ -654,6 +654,7 @@ class ScheduledArticlesTests(unittest.TestCase):
             '/guide/cost-break-even',
             '/guide/rain-payday',
             '/guide/crowd-rush-paradox',
+            '/guide/brand-waveform-asymmetry',
             '/grooming',
         ]
         with mock.patch.object(scheduled_articles, 'now_jst_naive', return_value=all_dt):
@@ -4294,10 +4295,20 @@ class AIUltraGrowthSuiteTests(unittest.TestCase):
             self.assertGreaterEqual(len(field_cand.get('note_markdown', '')), 1500)
             self.assertIsNone(re.search(r'オリエンタル(?!ラウンジ)', field_cand['preview_text'] + ' ' + field_cand['note_markdown']))
 
-        self.assertEqual(len(seen_titles), 8)
-        self.assertEqual(len(seen_openings), 8)
+        expected_theme_count = len(column_editorial.COLUMN_THEMES)
+        self.assertGreaterEqual(expected_theme_count, 9)
+        self.assertEqual(len(seen_titles), expected_theme_count)
+        self.assertEqual(len(seen_openings), expected_theme_count)
 
         # 2. Static note exporter supports both `essay` (distinct structural essay) and `verbatim` modes
+        wf_essay = column_editorial.export_column_for_note('brand-waveform-asymmetry', mode='essay')
+        self.assertTrue(wf_essay['ok'])
+        self.assertGreaterEqual(wf_essay['char_count'], 1700)
+        self.assertGreaterEqual(wf_essay['distinct_from_web_pct'], 70)
+        self.assertIsNone(re.search(r'オリエンタル(?!ラウンジ)', wf_essay['body_markdown']))
+        self.assertNotIn('OLG', wf_essay['body_markdown'])
+        self.assertNotIn('YATAKOI', wf_essay['body_markdown'])
+        self.assertNotIn('オリラジ', wf_essay['body_markdown'])
         essay_res = column_editorial.export_column_for_note('osaka-kita-vs-minami', mode='essay')
         verb_res = column_editorial.export_column_for_note('osaka-kita-vs-minami', mode='verbatim')
         self.assertTrue(essay_res['ok'] and verb_res['ok'])

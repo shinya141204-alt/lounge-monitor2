@@ -527,6 +527,17 @@ def build_pinned_tweet_thread(app_url: str = "") -> tuple:
 
 COLUMN_PROMO_LIST = [
     {
+        "slug": "brand-waveform-asymmetry",
+        "path": "/guide/brand-waveform-asymmetry",
+        "eyecatch": "/static/eyecatch-brand-waveform-asymmetry.jpg",
+        "title": "20時は女性68%なのに深夜0時は逆転する理由｜5大ブランドの時間波形と男女で真逆になる店選びデータ検証",
+        "main_text": (
+            "20時は女性比率68%だったのに、深夜0時に見たら逆転していた——同じ街でもブランドごとに「強い時間帯の波形」は全く違います📊\n\n"
+            "オリエンタルラウンジ・ag・JIS・ヤタコイ・ASOBIBARの時間波形と、男女で真逆になる本音を検証👇\n"
+            "#相席ナビ #相席ラウンジ"
+        ),
+    },
+    {
         "slug": "crowd-rush-paradox",
         "path": "/guide/crowd-rush-paradox",
         "eyecatch": "/static/eyecatch-crowd-rush-paradox.jpg",

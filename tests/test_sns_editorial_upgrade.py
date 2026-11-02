@@ -1964,6 +1964,98 @@ class SnsEditorialUpgradeTests(unittest.TestCase):
         self.assertNotIn("Claude Sonnet", pdca_src)
         self.assertIn("Claude Opus", pdca_src)
 
+    def test_three_axis_waveform_brand_culture_and_flat_observer_depth(self):
+        """Verify 60-120m waveform, 5-brand culture classification, flat observer asymmetry, and template phrase removal."""
+        import local_db
+        import reel_generator
+        import column_editorial
+
+        # 1. Brand culture classification covers all 5 major brands with proper Japanese normalization
+        for raw_name, expected_key in (
+            ("OLG 大阪駅前", "oriental_lounge"),
+            ("ag 渋谷", "ag"),
+            ("JIS 梅田", "jis"),
+            ("YATAKOI 茶屋町", "yatakoi"),
+            ("ASOBIBAR 新宿", "asobibar"),
+        ):
+            prof = sns_editorial.classify_store_brand_culture({"name": raw_name})
+            self.assertEqual(prof["brand_key"], expected_key)
+            self.assertTrue(prof["time_affinity"])
+            self.assertTrue(prof["age_vibe"])
+
+        self.assertEqual(sns_editorial.casual_store_name("YATAKOI 梅田"), "ヤタコイ梅田")
+
+        # 2. Researcher builds 60-120m waveform drama + male/female asymmetry + same-area brand contrast
+        sample_stores = [
+            {"name": "OLG 大阪駅前", "area": "umeda", "women": 52, "men": 36, "total": 88},
+            {"name": "ag 梅田", "area": "umeda", "women": 24, "men": 34, "total": 58},
+            {"name": "JIS 梅田", "area": "umeda", "women": 46, "men": 32, "total": 78},
+            {"name": "YATAKOI 梅田", "area": "umeda", "women": 18, "men": 22, "total": 40},
+        ]
+        fake_horizons = {
+            "snap_15m": {"OLG 大阪駅前": {"women": 48, "men": 32}, "ag 梅田": {"women": 26, "men": 28}},
+            "snap_60m": {"OLG 大阪駅前": {"women": 40, "men": 24}, "ag 梅田": {"women": 34, "men": 18}},
+            "snap_120m": {"OLG 大阪駅前": {"women": 34, "men": 18}, "ag 梅田": {"women": 38, "men": 14}},
+        }
+        fake_waveforms = {
+            "OLG 大阪駅前": {
+                "h20": {"w": 36, "m": 20, "fp": 64},
+                "h22": {"w": 50, "m": 34, "fp": 60},
+                "h00": {"w": 44, "m": 38, "fp": 54},
+                "reversal_hour": None,
+                "second_wave_rebound_w": 6,
+                "waveform_archetype_ja": "終電後も高水準持続型",
+            },
+            "ag 梅田": {
+                "h20": {"w": 38, "m": 14, "fp": 73},
+                "h22": {"w": 32, "m": 28, "fp": 53},
+                "h00": {"w": 22, "m": 30, "fp": 42},
+                "reversal_hour": 0,
+                "second_wave_rebound_w": 0,
+                "waveform_archetype_ja": "20時女子先行→深夜0時クロス反転型",
+            },
+        }
+        with mock.patch.object(local_db, "get_multi_horizon_snapshots", return_value=fake_horizons), \
+             mock.patch.object(local_db, "get_all_stores_hourly_waveforms", return_value=fake_waveforms):
+            brief = sns_editorial.run_researcher(sample_stores, slot_label="22:00", channel="threads")
+            self.assertTrue(brief.get("waveform_drama"))
+            self.assertTrue(brief.get("gender_asymmetry_pair"))
+            self.assertTrue(brief.get("brand_contrast"))
+            # Verify 60m/120m numbers are whitelisted by factual verifier
+            ok_60, bad_60 = sns_editorial.verify_ai_factual_numbers("60分前の女性40名から現在52名へ増加", brief)
+            self.assertTrue(ok_60, f"Unexpected unverified numbers: {bad_60}")
+
+            th_cands = sns_editorial._write_threads_candidates(
+                brief,
+                "22:00",
+                datetime.datetime.now(sns_editorial.JST),
+                "https://aiseki-navi.com",
+            )
+            self.assertGreaterEqual(len(th_cands), 4)
+            for tc in th_cands:
+                txt = tc.get("main_text") or tc.get("text") or ""
+                self.assertNotIn("YATAKOI", txt)
+                self.assertNotIn("OLG", txt)
+
+        # 3. Reel caption reflects 5-brand flat observation without forbidden codes
+        reel_cap = reel_generator.build_reel_caption(sample_stores)
+        self.assertNotIn("OLG", reel_cap)
+        self.assertNotIn("YATAKOI", reel_cap)
+        self.assertLessEqual(len(reel_cap), 2100)
+
+        # 4. Column generator drops legacy cookie-cutter phrases and separates Web data table vs note first-person essay
+        col_res = column_editorial.run_column_editorial_pipeline(
+            sample_stores,
+            theme_key="brand_waveform_fit",
+            use_ai=False,
+            tone_mode="standard",
+        )
+        chosen_col = col_res["evaluation"]["candidates"][0]
+        for banned_cliche in ("メイク90分", "サンクコストの誤謬", "徒歩4分移動", "とりあえず40分見切り"):
+            self.assertNotIn(banned_cliche, chosen_col["note_markdown"])
+        self.assertNotIn("|---", chosen_col["note_markdown"])
+        self.assertGreaterEqual(chosen_col["web_note_distinct_pct"], 60)
+
 
 if __name__ == "__main__":
     unittest.main()

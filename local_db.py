@@ -1047,17 +1047,24 @@ def start_background_sync(days=30, on_recent_synced=None):
 _memory_votes = []
 _votes_lock = threading.Lock()
 
-def get_snapshot_around(minutes_ago_min=10, minutes_ago_max=25):
+def get_snapshot_around(minutes_ago_min=10, minutes_ago_max=25, now_jst=None):
     """
     Returns {store_name: {'men': m, 'women': w}} from ~15 minutes ago (10-25 min window)
     to calculate real-time 15-min crowd momentum.
     Automatically widens window to 5-45 mins if the primary window has no snapshot.
     Optimized via SQL window function (ROW_NUMBER OVER PARTITION) to fetch only latest row per store directly from DB (BUG-03 / F5.1).
     """
-    now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
+    if now_jst is None:
+        now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
+    elif getattr(now_jst, "tzinfo", None) is not None:
+        now_jst = now_jst.astimezone(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
     windows = [(minutes_ago_min, minutes_ago_max)]
     if minutes_ago_min == 10 and minutes_ago_max == 25:
         windows.append((5, 45))
+    elif minutes_ago_min == 45 and minutes_ago_max == 80:
+        windows.append((35, 95))
+    elif minutes_ago_min == 95 and minutes_ago_max == 150:
+        windows.append((85, 175))
     try:
         for w_min, w_max in windows:
             start_ts = (now_jst - datetime.timedelta(minutes=w_max)).strftime("%Y-%m-%d %H:%M:%S")
@@ -1078,6 +1085,18 @@ def get_snapshot_around(minutes_ago_min=10, minutes_ago_max=25):
         return {}
     except Exception:
         return {}
+
+
+def get_multi_horizon_snapshots(now_jst=None) -> dict:
+    """
+    Return 15m, 60m, and 120m historical snapshots so editorial & column researchers can detect
+    60-120 minute crowd waveform dramas (male rush reversals, post-last-train second waves, steady holds).
+    """
+    return {
+        "snap_15m": get_snapshot_around(10, 25, now_jst=now_jst),
+        "snap_60m": get_snapshot_around(45, 80, now_jst=now_jst),
+        "snap_120m": get_snapshot_around(95, 150, now_jst=now_jst),
+    }
 
 VOTE_SHEET_TITLE = 'Crowd Votes'
 VOTE_SHEET_HEADER = ['timestamp_jst', 'store_name', 'vote_type', 'voter_hash']
@@ -1801,6 +1820,90 @@ def get_all_stores_live_benchmarks(now_jst: datetime.datetime = None, allow_bloc
         for k, _ in items_snap[:max(1, len(items_snap) - _LIVE_BENCHMARKS_CACHE_MAX)]:
             _live_benchmarks_cache.pop(k, None)
     return out
+
+
+def get_all_stores_hourly_waveforms(now_jst: datetime.datetime = None, allow_blocking: bool = True) -> dict:
+    """
+    Derive per-store 20:00 -> 22:00 -> 00:00 -> 01:00 crowd waveform & gender-asymmetry crossover profiles
+    directly from the 30-day `_benchmark_base_cache` in O(1) without extra SQL scans.
+    """
+    if now_jst is None:
+        now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
+    elif getattr(now_jst, "tzinfo", None) is not None:
+        now_jst = now_jst.astimezone(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
+
+    db_k = _active_db_key()
+    base_entry = _benchmark_base_cache.get(db_k)
+    if base_entry is None:
+        get_all_stores_live_benchmarks(now_jst=now_jst, allow_blocking=allow_blocking)
+        base_entry = _benchmark_base_cache.get(db_k)
+    if not base_entry or not base_entry[2]:
+        return {}
+
+    base_data = base_entry[2]
+    by_hour = base_data.get("by_hour") or {}
+    static_per_store = base_data.get("static_per_store") or {}
+    profiles = {}
+
+    def _slot_point(h_map: dict, h: int):
+        st = h_map.get(h)
+        if not st or st[2] < 2:
+            return None
+        aw = round(st[0] / st[2], 1)
+        am = round(st[1] / st[2], 1)
+        tot = aw + am
+        wp = round((aw / tot) * 100, 1) if tot >= 2.0 else 50.0
+        return {"w": aw, "m": am, "total": round(tot, 1), "wpct": wp, "n": int(st[2])}
+
+    for sname in base_data.get("stores_seen") or ():
+        h_map = by_hour.get(sname) or {}
+        p20 = _slot_point(h_map, 20)
+        p22 = _slot_point(h_map, 22)
+        p00 = _slot_point(h_map, 0)
+        p01 = _slot_point(h_map, 1)
+        p23 = _slot_point(h_map, 23)
+
+        reversal_hour = None
+        if p20 and p20["wpct"] >= 58.0:
+            for cand_h in (22, 23, 0, 1, 2):
+                pt = _slot_point(h_map, cand_h)
+                if pt and pt["total"] >= 8.0 and pt["wpct"] < 50.0:
+                    reversal_hour = cand_h
+                    break
+
+        rebound_w = 0.0
+        if p23 and p01 and p01["w"] > p23["w"]:
+            rebound_w = round(p01["w"] - p23["w"], 1)
+        elif p00 and p01 and p01["w"] > p00["w"]:
+            rebound_w = round(p01["w"] - p00["w"], 1)
+
+        if reversal_hour is not None:
+            archetype = "early_female_late_male_flip"
+            archetype_ja = f"序盤女性先行→{reversal_hour}時台から男性先行へ反転（女子待ちゼロ化）"
+        elif p22 and p01 and p01["total"] >= 70.0 and p01["w"] >= p22["w"] * 0.85:
+            archetype = "midnight_monster_surge"
+            archetype_ja = "終電後も100名規模の熱量が続く深夜2波・大箱拮抗型"
+        elif p20 and p00 and p20["wpct"] >= 62.0 and p00["wpct"] >= 56.0:
+            archetype = "steady_female_lead"
+            archetype_ja = "20時〜終電後まで女性優位が崩れにくい安定ラウンジ型"
+        else:
+            archetype = "first_train_early_peak"
+            archetype_ja = "20〜22時が中心で終電前に落ち着く1軒目ピーク型"
+
+        st_meta = static_per_store.get(sname) or {}
+        profiles[sname] = {
+            "h20": p20,
+            "h22": p22,
+            "h23": p23,
+            "h00": p00,
+            "h01": p01,
+            "reversal_hour": reversal_hour,
+            "second_wave_rebound_w": rebound_w,
+            "waveform_archetype": archetype,
+            "waveform_archetype_ja": archetype_ja,
+            "midnight_retention_pct": st_meta.get("midnight_retention_pct"),
+        }
+    return profiles
 
 
 # ==============================================================================

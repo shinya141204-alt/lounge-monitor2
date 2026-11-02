@@ -437,6 +437,7 @@ class UiAuditRegressionTests(unittest.TestCase):
             "/store/oriental-lounge-shinjuku",
             "/guide/brand-comparison",
             "/guide/crowd-rush-paradox",
+            "/guide/brand-waveform-asymmetry",
         ]
 
         app_module.clear_fast_http_caches()

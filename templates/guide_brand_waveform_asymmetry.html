@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="google-site-verification" content="9kZaSJbaCuvn8QpGErUwI59w7Lf4N8ILhb_nWqDHI2s">
+    <title>同じ街でも20時と深夜0時で「主役」は入れ替わる｜実測ログが映す5大ブランドの時間波形と、男女で真逆になる店選び｜相席ナビ</title>
+    <meta name="description" content="全国60店舗超・累計98万件超の入店ログから、オリエンタルラウンジ・ag・JIS・ヤタコイ・ASOBIBARの「20時〜深夜1時の時間波形」を比較検証。20時台に女性比率7〜8割だった店舗が深夜0時に男性先行（女子待ちゼロ）へ反転するクロスオーバー現象と、男女で真逆になる居心地の良い店選びをデータで解き明かします。">
+    <meta name="keywords" content="相席ラウンジ 時間帯 比較,オリエンタルラウンジ ag JIS 違い,ヤタコイ 梅田 男女比,ASOBIBAR 2軒目,相席ラウンジ 女性 待ち時間">
+    <link rel="canonical" href="https://aiseki-navi.com/guide/brand-waveform-asymmetry">
+    <link rel="alternate" type="text/markdown" href="https://aiseki-navi.com/llms.txt" title="相席ナビ AI要約ドキュメント (llms.txt)">
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+
+    <!-- OGP / SNS Card Settings -->
+    <meta property="og:title" content="同じ街でも20時と深夜0時で「主役」は入れ替わる｜5大ブランドの時間波形と男女で真逆の店選び｜相席ナビ">
+    <meta property="og:description" content="梅田・新宿・渋谷・名古屋・福岡の実測波形を横断比較。20時台に女性8割だった店舗が深夜0時に男性先行へ反転する仕組みと、男女それぞれの本音の非対称を検証。">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://aiseki-navi.com/guide/brand-waveform-asymmetry">
+    <meta property="og:site_name" content="相席ナビ">
+    <meta property="og:locale" content="ja_JP">
+    <meta property="og:image" content="https://aiseki-navi.com/static/eyecatch-brand-waveform-asymmetry.jpg">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="20時と深夜0時で「主役」は入れ替わる｜5大ブランドの時間波形×男女非対称データ検証">
+    <meta name="twitter:description" content="オリエンタルラウンジ・ag・JIS・ヤタコイ・ASOBIBARの強い時間帯と、男女で真逆になる「当たり店」の条件。">
+    <meta name="twitter:image" content="https://aiseki-navi.com/static/eyecatch-brand-waveform-asymmetry.jpg">
+
+    <!-- Structured Data (Article + BreadcrumbList + FAQPage) -->
+    <script type="application/ld+json">
+    [
+      {
+        "@context": "https://schema.org",
+        "@type": "Article",
+        "headline": "同じ街でも20時と深夜0時で「主役」は入れ替わる｜実測ログが映す5大ブランドの時間波形と、男女で真逆になる店選び",
+        "image": ["https://aiseki-navi.com/static/eyecatch-brand-waveform-asymmetry.jpg"],
+        "datePublished": "2026-11-02T10:00:00+09:00",
+        "dateModified": "2026-11-02T10:00:00+09:00",
+        "author": {
+          "@type": "Organization",
+          "name": "相席ナビ データ分析チーム",
+          "url": "https://aiseki-navi.com/"
+        },
+        "publisher": {
+          "@type": "Organization",
+          "name": "相席ナビ",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://aiseki-navi.com/static/icon.png"
+          }
+        },
+        "speakable": {
+          "@type": "SpeakableSpecification",
+          "cssSelector": [".article-title", ".highlight-box"]
+        },
+        "description": "梅田・新宿・渋谷・名古屋・福岡におけるオリエンタルラウンジ・ag・JIS・ヤタコイ・ASOBIBARの時間帯別平均人数と女性比率を検証し、深夜0時前後の男女クロスオーバー波形と男女別の店舗選択基準を整理したデータレポート。"
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {"@type": "ListItem", "position": 1, "name": "ホーム", "item": "https://aiseki-navi.com/"},
+          {"@type": "ListItem", "position": 2, "name": "コラム一覧", "item": "https://aiseki-navi.com/columns"},
+          {"@type": "ListItem", "position": 3, "name": "5大ブランドの時間波形と男女非対称の店選び", "item": "https://aiseki-navi.com/guide/brand-waveform-asymmetry"}
+        ]
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "同じ街の相席ラウンジでも、20時台と深夜0時以降で男女比が逆転するのはなぜですか？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "ブランドごとに来店する客層の時間帯リズムが異なるためです。実測ログでは、ヤタコイ梅田（20時 女性比73.6%→深夜0時 48.4%）やag渋谷（20時 80.9%→深夜0時 48.0%）、JIS西新宿（20時 69.6%→深夜0時 47.2%）のように、1軒目帯は女性ペアが先行し、終電後に2軒目男性グループが合流して男性先行へ反転する店舗がある一方、オリエンタルラウンジ新宿（深夜1時 67.8%）やJIS梅田（深夜1時 平均189.8名・女性比53.3%）のように深夜も女性比率を保つ店舗に分かれます。"
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "オリエンタルラウンジ・ag・JIS・ヤタコイ・ASOBIBARはどう使い分ければいいですか？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "優劣ではなく「年齢感・空間のノリ・時間帯の相性」で選ぶのが合理的です。落ち着いた照明でゆっくり会話したい20代半ば〜30代前半はオリエンタルラウンジ、終電後まで高い熱量とソロ対応を活かしたい夜は大型のJIS、20代前半中心のテンポ良い空気ならag、横丁ムードで気取らず乾杯したい夜はヤタコイ、席固定や時間課金を気にせず2軒目・深夜に自由回遊したい夜はASOBIBARが向いています。"
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "男性ペアと女性ペアで「入りやすい正解の店」が逆になるというのは本当ですか？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "はい、実測データ上で明確な非対称性があります。男性ペアにとっては女性比率60〜75%の女性先行店が待ち時間も少なく会話に余裕を持てる一方、JIS新宿の19時台（平均女性30.4名:男性2.5名・女性比94.3%）のように女性が極端に先行しすぎている瞬間は、女性ペア側に相席待ちの空白時間が発生しやすくなります。女性2人組にとっては、深夜0時以降のag渋谷（48.0%）やヤタコイ梅田（48.4%）のように男性がしっかり入っている店舗・時間帯こそ受付待ちゼロで歓迎される快適ゾーンになります。"
+            }
+          }
+        ]
+      }
+    ]
+    </script>
+
+    <link rel="manifest" href="/static/manifest.json?v=2">
+    <meta name="theme-color" content="#111113">
+    <link rel="icon" type="image/png" href="/static/icon-192.png?v=2">
+    <link rel="apple-touch-icon" href="/static/icon.png?v=2">
+    <link rel="stylesheet" href="/static/style.css?v=20261030_6" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="/static/style.css?v=20261030_6"></noscript>
+    <link rel="stylesheet" href="/static/portal.css?v=11">
+    <style>
+        body {
+            display: block !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background-color: #111113 !important;
+            color: #f4f4f6 !important;
+            overflow-x: hidden !important;
+        }
+        .article-container {
+            max-width: 820px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 24px 16px 80px 16px;
+            box-sizing: border-box;
+        }
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.78rem;
+            color: #9ca3af;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        .breadcrumb a { color: #38bdf8; text-decoration: none; }
+        .article-header {
+            margin-bottom: 28px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .article-cat-tag {
+            background: rgba(200, 164, 110, 0.18);
+            border: 1px solid rgba(200, 164, 110, 0.42);
+            color: #f4f4f6;
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 99px;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+        .article-title {
+            font-size: 1.46rem;
+            font-weight: 800;
+            line-height: 1.46;
+            color: #f8fafc;
+            margin: 0 0 12px 0;
+        }
+        .article-meta-sub {
+            font-size: 0.8rem;
+            color: #9ca3af;
+            margin: 0;
+        }
+        .article-eyecatch {
+            width: 100%;
+            border-radius: 14px;
+            overflow: hidden;
+            margin: 16px 0 28px 0;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+        .article-eyecatch img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        .article-body h2 {
+            font-size: 1.18rem;
+            font-weight: 800;
+            color: #f8fafc;
+            margin: 38px 0 14px 0;
+            padding: 10px 14px;
+            background: rgba(200, 164, 110, 0.1);
+            border-left: 4px solid #c8a46e;
+            border-radius: 0 8px 8px 0;
+        }
+        .article-body h3 {
+            font-size: 1.04rem;
+            font-weight: 700;
+            color: #f1f5f9;
+            margin: 26px 0 10px 0;
+        }
+        .article-body p, .article-body li {
+            font-size: 0.94rem;
+            line-height: 1.85;
+            color: #d1d5db;
+        }
+        .article-body a {
+            color: #7dd3fc;
+            text-decoration: underline;
+            text-underline-offset: 3px;
+        }
+        .dialogue-box {
+            background: rgba(255, 255, 255, 0.035);
+            border-left: 3px solid rgba(200, 164, 110, 0.58);
+            border-radius: 0 10px 10px 0;
+            padding: 14px 18px;
+            margin: 18px 0;
+            font-size: 0.92rem;
+            line-height: 1.82;
+            color: #e5e7eb;
+        }
+        .highlight-box {
+            background: rgba(24, 24, 28, 0.88);
+            border: 1px solid rgba(200, 164, 110, 0.36);
+            border-radius: 12px;
+            padding: 18px;
+            margin: 20px 0;
+        }
+        .highlight-kicker {
+            display: block;
+            font-size: 0.95rem;
+            font-weight: 800;
+            color: #e7cfa1;
+            margin-bottom: 8px;
+        }
+        .data-table-wrap {
+            overflow-x: auto;
+            margin: 18px 0;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            min-width: 600px;
+            font-variant-numeric: tabular-nums;
+        }
+        .data-table th, .data-table td {
+            padding: 12px 14px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            text-align: left;
+            vertical-align: top;
+        }
+        .data-table th {
+            background: rgba(255, 255, 255, 0.05);
+            color: #cbd5e1;
+            font-weight: 700;
+        }
+        .tone-women {
+            color: #f472b6;
+            font-weight: 700;
+        }
+        .tone-men {
+            color: #60a5fa;
+            font-weight: 700;
+        }
+        .faq-card {
+            background: rgba(24, 24, 28, 0.72);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 16px 18px;
+            margin: 14px 0;
+        }
+        .faq-q {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #f8fafc;
+            margin: 0 0 8px 0;
+        }
+        .faq-a {
+            font-size: 0.9rem;
+            line-height: 1.8;
+            color: #d1d5db;
+            margin: 0;
+        }
+        .cta-box {
+            margin-top: 36px;
+            padding: 24px 20px;
+            border-radius: 16px;
+            background: rgba(24, 24, 28, 0.92);
+            border: 1px solid rgba(200, 164, 110, 0.42);
+            text-align: center;
+        }
+        .cta-btn {
+            display: inline-block;
+            margin-top: 12px;
+            padding: 12px 26px;
+            border-radius: 99px;
+            background: linear-gradient(135deg, #c8a46e, #a87f47);
+            color: #0b0d13 !important;
+            font-weight: 800;
+            text-decoration: none !important;
+            font-size: 0.92rem;
+        }
+        .cta-btn.cta-btn--secondary {
+            background: rgba(255, 255, 255, 0.08);
+            color: #f0ede8 !important;
+            border: 1px solid rgba(200, 164, 110, 0.52);
+        }
+        body.theme-light .highlight-kicker { color: #7a561c; }
+        body.theme-light .tone-women { color: #be185d; }
+        body.theme-light .tone-men { color: #1d4ed8; }
+        body.theme-light .faq-card {
+            background: #ffffff;
+            border-color: rgba(15, 23, 42, 0.12);
+        }
+        body.theme-light .faq-q { color: #111827; }
+        body.theme-light .faq-a { color: #374151; }
+    </style>
+    <link rel="stylesheet" href="/static/calm.css?v=24">
+    {% if not is_staff and not session.get('is_staff') %}
+    <meta name="google-adsense-account" content="ca-pub-3043764334238627">
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
+         crossorigin="anonymous"></script>
+    {% endif %}
+</head>
+
+<body>
+    <div class="article-container">
+        {% set nav_active = 'columns' %}
+        {% include '_portal_nav.html' %}
+
+        <nav class="breadcrumb" aria-label="Breadcrumb">
+            <a href="/">ホーム</a><span>›</span>
+            <a href="/columns">コラム・攻略一覧</a><span>›</span>
+            <span>5大ブランドの時間波形と男女非対称の店選び</span>
+        </nav>
+
+        <header class="article-header">
+            <span class="article-cat-tag">時間波形×5大ブランド横断検証</span>
+            <h1 class="article-title">同じ街でも20時と深夜0時で「主役」は入れ替わる｜実測ログが映す5大ブランドの時間波形と、男女で真逆になる店選び</h1>
+            <p class="article-meta-sub">公開日：2026年11月2日 ｜ 執筆：相席ナビ データ分析チーム（検証対象：全国60店舗超・時系列スナップショット96,697回／累計98万件超レコード）</p>
+        </header>
+
+        <figure class="article-eyecatch">
+            <picture>
+                <source srcset="/static/eyecatch-brand-waveform-asymmetry.webp" type="image/webp">
+                <img src="/static/eyecatch-brand-waveform-asymmetry.jpg" alt="20時と深夜0時で主役が入れ替わる 5大ブランドの時間波形と男女非対称の店選び" width="1280" height="720" loading="eager">
+            </picture>
+        </figure>
+
+        <div class="article-body">
+            <p>
+                「あの店はいつも女性が多くて落ち着いている」「あっちはいつ行っても男余りで騒がしい」——夜の街で相席ラウンジやバーの話題になると、つい店舗ごとの固定イメージで当たりハズレを語りがちです。<br>
+                けれど、20時15分の1軒目乾杯どきと、終電を見送った深夜0時30分の交差点で同じビルの人数推移を並べてみると、まったく違う景色が浮かび上がります。<strong>20時台には女性が7〜8割を占めていたフロアが、深夜0時を境に男性先行へ綺麗に反転し、逆に隣のビルでは深夜1時に向けてもう一度女性の波が膨らみ始める</strong>のです。
+            </p>
+
+            <div class="dialogue-box">
+                男性ペア：「20時に見たときは女性8割だったのに、2軒目終わりに0時過ぎで覗いたら男性の方が多くなってて驚いたな」<br>
+                女性ペア：「でも女子2人組の側からすると、20時に女余りで25分待たされるより、0時過ぎに男性がちゃんと入ってる店へ行く方が待ちゼロで即乾杯できて一番ラクなんだよね」
+            </div>
+
+            <p>
+                同じ街、同じ夜、同じ1つの数字を見ているのに、<strong>時間帯が変わればブランドの表情が入れ替わり、さらに男性側と女性側で「心地よいと感じる正解の店」が鏡合わせのように真逆を向く</strong>。<br>
+                今回のレポートでは、『相席ナビ』が1分ごとに蓄積してきた全国60店舗超の時系列データから、<strong>オリエンタルラウンジ・ag（アグ）・JIS（ジス）・ヤタコイ・ASOBIBAR（アソビバー）</strong>の5大ブランドが描く「時間波形の違い」と、男女双方の本音のズレをフラットに検証します。
+            </p>
+
+            <div class="highlight-box">
+                <span class="highlight-kicker">実測データが示した「時間波形×ブランド×男女非対称」3つの結論</span>
+                <ul style="margin:8px 0 0 0;padding-left:20px;">
+                    <li><strong>深夜0時のクロスオーバー現象</strong>：20時台はほぼ全ブランドで女性が先行するが、深夜0時を境に「終電後も女性優位を保つ店舗」と「2軒目男性が合流して女性比45〜48%へ反転する店舗」にくっきり分岐する。</li>
+                    <li><strong>ブランド差の本質は「優劣」ではなく「時間帯とノリの相性」</strong>：落ち着いた会話向きのラウンジ型、深夜に最大ピークを迎える大型店、Z世代カジュアル型、横丁型、スタンディング回遊型で強い時間帯が異なる。</li>
+                    <li><strong>男性の余裕圏＝女性の待ちリスクという非対称</strong>：女性比率80〜90%超の瞬間は男性には余裕がある一方、女性ペアには「相席待ちの空白」が生じやすく、逆に女性比45〜49%の男性先行帯こそ女性組が待ちゼロで主役になれる。</li>
+                </ul>
+            </div>
+
+            <h2>1. 大阪キタ（梅田）4ブランド実測比較：20時と深夜1時で入れ替わる時間波形</h2>
+            <p>
+                まずは日本有数の激戦区であり、半径数百メートル圏内に異なるブランドがひしめき合う<strong>大阪キタ（梅田・大阪駅前エリア）</strong>の時間帯別・平均人数推移を見てみましょう。<br>
+                <a href="/store/oriental-lounge-osaka-ekimae">オリエンタルラウンジ 大阪駅前</a>、<a href="/store/jis-umeda">JIS 梅田</a>、<a href="/store/ag-umeda">ag 梅田</a>、<a href="/store/yatakoi-umeda">ヤタコイ 梅田</a>の4店舗を20時・22時・深夜0時・深夜1時の横軸で並べると、驚くほど対照的な4本の波形が現れます。
+            </p>
+
+            <div class="data-table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>店舗名（ブランド）</th>
+                            <th>20時台 平均（女性比）</th>
+                            <th>22時台 平均（女性比）</th>
+                            <th>深夜0時台 平均（女性比）</th>
+                            <th>深夜1時台 平均（女性比）</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong><a href="/store/oriental-lounge-osaka-ekimae">オリエンタルラウンジ 大阪駅前</a></strong><br><small>王道ラウンジ型</small></td>
+                            <td>女37.4 : 男22.8<br><span class="tone-women">62.4%</span></td>
+                            <td>女90.7 : 男65.4<br><span class="tone-women">58.5%</span></td>
+                            <td>女81.6 : 男76.1<br><strong>51.7%</strong></td>
+                            <td>女73.2 : 男68.0<br><strong>51.8%</strong>（安定拮抗）</td>
+                        </tr>
+                        <tr>
+                            <td><strong><a href="/store/jis-umeda">JIS 梅田</a></strong><br><small>深夜強・大箱ラウンジ型</small></td>
+                            <td>女43.2 : 男14.0<br><span class="tone-women">76.3%</span></td>
+                            <td>女98.3 : 男63.6<br><span class="tone-women">61.5%</span></td>
+                            <td>女94.8 : 男84.5<br><strong>52.9%</strong></td>
+                            <td><strong>女100.7 : 男89.1</strong><br><strong>53.3%（深夜最大波）</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong><a href="/store/ag-umeda">ag 梅田</a></strong><br><small>Z世代・20代前半中心型</small></td>
+                            <td>21時 女28.6 : 男16.1<br><span class="tone-women">64.4%</span></td>
+                            <td>23時 女性比 54.1%<br>（終電前に一度一息）</td>
+                            <td>女性比 <span class="tone-women">58.0%</span><br>（第2波で再上昇）</td>
+                            <td>1時 <span class="tone-women">59.2%</span> → 2時 <span class="tone-women">66.2%</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong><a href="/store/yatakoi-umeda">ヤタコイ 梅田</a></strong><br><small>ネオ横丁・定額パス対応型</small></td>
+                            <td>女16.2 : 男7.3<br><span class="tone-women">73.6%</span>（1軒目女子先行）</td>
+                            <td>女21.4 : 男15.8<br><strong>57.5%</strong></td>
+                            <td>女13.3 : 男13.3<br><span class="tone-men">48.4%（クロス反転）</span></td>
+                            <td>女16.6 : 男18.4<br><span class="tone-men">47.6%（女子待ちゼロ圏）</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p>
+                4店舗それぞれの「時間のクセ」が一目でわかります。<br>
+                駅直結の<a href="/store/oriental-lounge-osaka-ekimae">オリエンタルラウンジ 大阪駅前</a>は20時から深夜1時まで常に50〜62%の安定したバランスを保ちます。一方で東通り側の<a href="/store/jis-umeda">JIS 梅田</a>は、なんと終電後の<strong>深夜1時台に平均合計189.8名（女性100.7名・男性89.1名）というその日最大のモンスター波形</strong>を記録し、<a href="/store/ag-umeda">ag 梅田</a>も23時台に一度落ち着いた後、深夜2時にかけて女性比率が66.2%まで再上昇しています。<br>
+                そして最も興味深いのが横丁スタイルの<a href="/store/yatakoi-umeda">ヤタコイ 梅田</a>です。19時（76.4%）〜20時（73.6%）は仕事帰りの1軒目女子ペアで圧倒的な女性先行なのに、<strong>深夜0時を境に女性比48.4%→1時47.6%→2時46.4%へと綺麗にクロスし、今度は「女性ペアが待ち時間ゼロで即案内されるフロア」へと役割が反転</strong>しているのです。
+            </p>
+
+            <h2>2. 新宿・渋谷・名古屋・福岡でも再現する「深夜0時の反転ドラマ」</h2>
+            <p>
+                この「20時台と深夜0時台で主役が入れ替わる現象」は大阪だけのローカルルールではありません。新宿・渋谷・名古屋・福岡の実測データを引き出すと、街をまたいで同じ構造が再現されています。
+            </p>
+
+            <div class="data-table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>都市・店舗名</th>
+                            <th>20時台の実測平均</th>
+                            <th>深夜0時〜1時台の実測平均</th>
+                            <th>時間波形のタイプと特徴</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong><a href="/store/oriental-lounge-shinjuku">オリエンタルラウンジ 新宿</a></strong></td>
+                            <td>女42.7 : 男10.2（<span class="tone-women">84.1%</span>）</td>
+                            <td>1時 女27.1 : 男17.6（<span class="tone-women">67.8%</span>）</td>
+                            <td>23時（61.8%）から深夜1時にかけて女性比率がもう一度盛り返す高比率維持型</td>
+                        </tr>
+                        <tr>
+                            <td><strong><a href="/store/jis-shinjuku">JIS 新宿</a></strong></td>
+                            <td>19時 女30.4:男2.5（<span class="tone-women">94.3%</span>）<br>20時 女62.4:男13.6（<span class="tone-women">83.6%</span>）</td>
+                            <td>23時 女72.4:男66.8（<strong>52.8%</strong>）<br>1時 女71.2:男64.0（<strong>54.3%</strong>）</td>
+                            <td>20時→23時で男性が約5倍流入し、大箱のまま男女拮抗の高速回転へ移行</td>
+                        </tr>
+                        <tr>
+                            <td><strong><a href="/store/jis-nishishinjuku">JIS 西新宿</a></strong></td>
+                            <td>女26.0 : 男13.7（<span class="tone-women">69.6%</span>）</td>
+                            <td>0時 女16.8:男21.8（<span class="tone-men">47.2%</span>）<br>1時 女33.3:男40.6（<span class="tone-men">45.2%</span>）</td>
+                            <td>深夜0時以降に男性先行へ反転。歌舞伎町側の混雑を避けたい女性組の待ちゼロ穴場</td>
+                        </tr>
+                        <tr>
+                            <td><strong><a href="/store/oriental-lounge-shibuya-honten">オリエンタルラウンジ 渋谷本店</a></strong></td>
+                            <td>女性比 <span class="tone-women">77.5%</span>（22時 64.7%）</td>
+                            <td>0時 <strong>52.4%</strong> → 1時 <strong>54.8%</strong></td>
+                            <td>終電後も女性過半数を割り込まない渋谷エリアの安定軸</td>
+                        </tr>
+                        <tr>
+                            <td><strong><a href="/store/ag-shibuya">ag 渋谷</a></strong></td>
+                            <td>女31.2 : 男7.8（<span class="tone-women">80.9%</span>）</td>
+                            <td>0時 女50.4:男54.3（<span class="tone-men">48.0%</span>）<br>2時 女性比 <span class="tone-men">46.7%</span></td>
+                            <td>20時は女性8割超だが、深夜0時は合計100名超の大盛況のまま男性先行へ逆転</td>
+                        </tr>
+                        <tr>
+                            <td><strong><a href="/store/ag-nagoya">ag 名古屋</a></strong><br><small>（比較：<a href="/store/oriental-lounge-nagoya-nishiki">オリエンタルラウンジ 名古屋 錦</a>）</small></td>
+                            <td>ag名古屋：女性比 <span class="tone-women">71.8%</span></td>
+                            <td>ag名古屋：0時 <span class="tone-men">46.8%</span> / 1時 <span class="tone-men">44.9%</span><br>錦店：0時 女55.0:男53.0（<strong>50.9%</strong>）</td>
+                            <td>終電前は<a href="/store/oriental-lounge-nagoya-sakae">名古屋 栄</a>、深夜の拮抗大箱は名古屋 錦、女子即着席は深夜のag名古屋に分岐</td>
+                        </tr>
+                        <tr>
+                            <td><strong><a href="/store/oriental-lounge-fukuoka">オリエンタルラウンジ 福岡</a></strong> ＆ <strong><a href="/store/jis-fukuoka">JIS 福岡</a></strong></td>
+                            <td>福岡店：<span class="tone-women">86.6%</span> ／ JIS福岡：<span class="tone-women">77.4%</span></td>
+                            <td>福岡店：1時 <span class="tone-women">60.4%</span><br>JIS福岡：0時 女65.4:男62.4（<strong>51.0%</strong>）</td>
+                            <td>天神・大名圏は深夜1時でも両ブランドともに100名規模の活気と女性優位を維持</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="dialogue-box">
+                男性：「渋谷のag、20時に前を通ったときは圧倒的に女の子だらけだったのに、0時過ぎは男54人・女50人で熱気すごかったな」<br>
+                女性：「逆に友達と『今から2軒目どこ行く？』って0時過ぎに探してるときは、ag渋谷みたいに男性が多い店の方が座った瞬間に乾杯始まるからありがたいんだよね」
+            </div>
+
+            <h2>3. 優劣ではなく「相性」で選ぶ：5大ブランドの年齢感・空間カルチャー比較</h2>
+            <p>
+                なぜ同じ街の目と鼻の先にあるのに、ここまで時間帯ごとの波形が分かれるのでしょうか。<br>
+                理由はシンプルで、各ブランドが設けている<strong>年齢層ルール・照明と音楽のトーン・料金体系・座席スタイル</strong>が、そのまま「どんな気分で今夜を過ごしたい人が集まるか」の自然なフィルターになっているからです。当たりハズレの上下関係ではなく、<strong>「今夜の自分たちのモードと現在時刻の相性」</strong>で整理すると迷いが消えます。
+            </p>
+
+            <div class="data-table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ブランド</th>
+                            <th>主な年齢感・客層</th>
+                            <th>空間のノリ・会話スタイル</th>
+                            <th>波形が噛み合う狙い目シーン</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong><a href="/oriental-lounge">オリエンタルラウンジ</a></strong></td>
+                            <td>20代半ば〜30代前半中心<br>（社会人・オフィス帰り層）</td>
+                            <td>ホテルラウンジ調の落ち着いた照明。普通の声量でじっくり会話しやすい王道スタイル</td>
+                            <td>仕事帰りの20時〜22時半の1軒目、または終電後も落ち着いたトーンで飲みたい2軒目</td>
+                        </tr>
+                        <tr>
+                            <td><strong><a href="/ag">ag（アグ）</a></strong></td>
+                            <td>20代前半〜半ば中心<br>（Z世代限定ルール店舗多数）</td>
+                            <td>テンポが速くカジュアルで親しみやすい空気。初対面でも堅苦しさゼロで打ち解けやすい</td>
+                            <td>男性は20〜21時台の早い女性先行波、女性ペアは2軒目男性が集まる23時半〜深夜帯が即案内</td>
+                        </tr>
+                        <tr>
+                            <td><strong><a href="/jis">JIS（ジス）</a></strong></td>
+                            <td>20代全般〜30代前半<br>（ペアから1人参戦まで幅広い）</td>
+                            <td>洗練された内装と大型キャパシティ。多くの店舗で男性1名（ソロ）入店にも対応</td>
+                            <td>男性は19〜21時台の圧倒的女性先行帯、男女ともに終電後0時〜2時の深夜ピーク帯</td>
+                        </tr>
+                        <tr>
+                            <td><strong><a href="/store/yatakoi-umeda">ヤタコイ</a></strong></td>
+                            <td>20代中心<br>（気取らず飲みたい友人ペア）</td>
+                            <td>ネオ横丁・屋台風のオープンな距離感。定額パス等の独自システムで乾杯のハードルが低い</td>
+                            <td>男性は19〜21時の1軒目女子波、女性ペアは0時以降の男性先行クロス帯で待ちゼロ合流</td>
+                        </tr>
+                        <tr>
+                            <td><strong><a href="/asobibar">ASOBIBAR</a></strong></td>
+                            <td>20代中心<br>（2軒目・終電後の回遊層）</td>
+                            <td>スタンディング＆ダーツ等のアミューズメント回遊型。席固定の10分延長メーターがない</td>
+                            <td><a href="/store/asobibar-shinjuku">新宿</a>・<a href="/store/asobibar-shibuya">渋谷</a>・<a href="/store/asobibar-umeda">梅田</a>・<a href="/store/asobibar-shinsaibashi">心斎橋</a>等で、2軒目・3軒目に自分のペースで自由に話したい夜</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h2>4. 男女それぞれの「本音の非対称」：同じ数字が真逆の意味を持つ理由</h2>
+            <p>
+                実測ログと現場の声を突き合わせていくと、相席ラウンジにおける最大のすれ違いは、誰かのマナーが悪いからではなく<strong>「男性にとっての好条件と、女性にとっての好条件が構造的に裏返しになっていること」</strong>から生まれています。両方の立場からフラットに本音を並べてみましょう。
+            </p>
+
+            <h3>男性側のリアルな本音：10分単位のメーターがあるから「待ち時間と空回り」を避けたい</h3>
+            <p>
+                男性側は10分ごとの相席チャージ（および単独待機チャージ）が発生するシステムの中にいます（店舗別の細かい時間帯単価は<a href="/price-comparison">全国料金・待機料・イベント比較ボード</a>で確認できます）。<br>
+                だからこそ、男性ペアにとっては<a href="/store/jis-shinjuku">JIS 新宿</a>の20時台（女性62.4名:男性13.6名・女性比83.6%）や<a href="/store/oriental-lounge-fukuoka">オリエンタルラウンジ 福岡</a>の20時台（86.6%）のように<strong>「女性の厚みがあり、受付で待たずにすぐ着席できる時間帯」</strong>が最も心に余裕を持てる環境になります。なお、金土の22時台に「薄氷の女性比60%前後」の店へ移動タイムラグ30分かけて向かうと1次会帰りの男性と鉢合わせしやすいため、22時以降は<a href="/guide/crowd-rush-paradox">『22時の群衆殺到パラドックスと70%安全バッファ』</a>の基準を併用するのが安全です。
+            </p>
+
+            <h3>女性側のリアルな本音：無料でも「女余りの30分放置」が一番つらい</h3>
+            <p>
+                一方、この同じデータを女性2人組の目線から裏返して見ると、まったく逆の図星が浮かび上がります。<br>
+                たとえば19時台の<a href="/store/jis-shinjuku">JIS 新宿</a>（平均女性30.4名:男性2.5名・女性比94.3%）のように女性が9割を超えている瞬間は、せっかく予定を合わせて入店しても<strong>「案内できる男性組が足りず、女子2人だけでテーブルや受付で長く待つ時間」</strong>が発生しやすくなります。料金が0円であっても、限られた夜の時間を手持ち無沙汰に過ごす消耗感は決して小さくありません。
+            </p>
+
+            <div class="dialogue-box">
+                女性：「せっかく2人で予定合わせて来たのに、女の子ばっかりのお店に入って40分ずっと女子会になっちゃうのが一番気まずいんだよね」<br>
+                男性：「言われてみれば確かにそうだよな。男からすると『女性8割＝最高』って思うけど、女の子からしたら男性がちゃんと入ってる時間帯の方が待たされずに歓迎されるわけだ」
+            </div>
+
+            <p>
+                だからこそ女性ペアにとっては、深夜0時以降の<a href="/store/yatakoi-umeda">ヤタコイ 梅田</a>（48.4%）、<a href="/store/jis-nishishinjuku">JIS 西新宿</a>（47.2%）、<a href="/store/ag-shibuya">ag 渋谷</a>（48.0%）、<a href="/store/ag-nagoya">ag 名古屋</a>（46.8%）のように<strong>「男性人数がしっかり先行しているフェーズ」こそが、受付待ちゼロで広い席へ案内され、席替えの回転もスムーズな主役の時間帯</strong>になります（いま現在、女性待ちゼロで入れる店舗の一覧は<a href="/for-women">女性向けリアルタイム待ちゼロ店舗ボード</a>で1分ごとに自動集計しています）。
+            </p>
+
+            <h3>今夜の時間帯とメンバーに合わせて「無理をしない扉」を選ぶ</h3>
+            <p>
+                お互いの事情が非対称であることを知っておくと、店選びもテーブルでの最初の一言もずっと自然になります。
+            </p>
+            <ul>
+                <li><strong>19:30〜21:30（1軒目・仕事帰り帯）</strong>：男性ペアは全ブランドで女性比率が65〜85%に伸びる最も穏やかな時間帯。落ち着いて話すなら<a href="/oriental-lounge">オリエンタルラウンジ</a>や<a href="/jis">JIS</a>、カジュアルに乾杯するなら<a href="/ag">ag</a>や<a href="/store/yatakoi-umeda">ヤタコイ</a>へ。女性ペアは極端な女余り店だけ避け、すでに男性が10名以上入っている店舗を選ぶとスムーズです。</li>
+                <li><strong>22:00〜23:30（1次会終了・合流ピーク帯）</strong>：街全体の人数が最大化する時間帯。看板店1つに決め打ちせず、徒歩数分圏の別ブランドと現在比率を見比べてから入店し、距離70cmの席に座る前に<a href="/grooming">最低限の身だしなみリセット</a>だけ済ませておくと会話の立ち上がりが軽くなります。</li>
+                <li><strong>0:00以降（終電後のクロスオーバー＆第2波帯）</strong>：男性ペアは終電後も女性優位・大箱を維持する<a href="/store/jis-umeda">JIS 梅田</a>・<a href="/store/oriental-lounge-shinjuku">オリエンタルラウンジ 新宿</a>・<a href="/store/ag-umeda">ag 梅田</a>等を優先。女性ペアは男性先行へクロス反転した店舗で待ちゼロ即乾杯を狙うか、男女ともに延長メーターのない<a href="/asobibar">ASOBIBAR</a>で自由に2軒目を楽しむのが快適です。</li>
+            </ul>
+
+            <h2>よくある質問（FAQ）</h2>
+            <div class="faq-card">
+                <p class="faq-q">Q. 同じ街の相席ラウンジでも、20時台と深夜0時以降で男女比が逆転するのはなぜですか？</p>
+                <p class="faq-a">ブランドごとに集まる客層の時間帯リズムが異なるためです。実測ログでは、ヤタコイ梅田（20時 女性比73.6%→深夜0時 48.4%）やag渋谷（20時 80.9%→深夜0時 48.0%）、JIS西新宿（20時 69.6%→深夜0時 47.2%）のように、1軒目帯は女性ペアが先行し終電後に2軒目男性が合流して反転する店舗と、オリエンタルラウンジ新宿（深夜1時 67.8%）やJIS梅田（深夜1時 平均189.8名・女性比53.3%）のように深夜も女性比率を保つ店舗に分かれます。</p>
+            </div>
+            <div class="faq-card">
+                <p class="faq-q">Q. 5大ブランド（オリエンタルラウンジ・ag・JIS・ヤタコイ・ASOBIBAR）はどう選び分ければいいですか？</p>
+                <p class="faq-a">当たりハズレの優劣ではなく「今夜の年齢感・ノリ・時間帯の相性」で選ぶのがおすすめです。落ち着いた照明でゆっくり会話したい夜はオリエンタルラウンジ、終電後まで高い熱量やソロ対応を活かしたい夜はJIS、20代前半中心のテンポ良い空気ならag、横丁ムードで気楽に乾杯したい夜はヤタコイ、時間課金を気にせず立ち飲み＆ダーツで自由回遊したい2軒目はASOBIBARがフィットします。</p>
+            </div>
+            <div class="faq-card">
+                <p class="faq-q">Q. いま向かおうとしている店舗が「どの波形フェーズ」にあるかはどこで見られますか？</p>
+                <p class="faq-a">『相席ナビ』の<a href="/">トップページ</a>では全国60店舗超の現在人数・女性比率・60分後AI予測バッジを1分ごとに更新しており、各店舗をタップすると時間帯別の平均推移グラフもその場で確認できます。迷ったときは<a href="/concierge">3秒穴場＆徒歩ハシゴ診断</a>で性別・時間帯・人数を入れるだけで最適候補が表示されます。</p>
+            </div>
+
+            <div class="cta-box">
+                <div class="cta-box-title" style="font-size:1.05rem;font-weight:800;">今夜これから行く街の「現在バランスと時間波形」を10秒でチェック</div>
+                <p class="cta-box-desc" style="font-size:0.86rem;margin:8px 0 4px;">オリエンタルラウンジ・ag・JIS・ヤタコイ・ASOBIBARなど全国60店舗超の男女人数と60分後予測をリアルタイム公開中。</p>
+                <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:12px;">
+                    <a href="/" class="cta-btn">全国リアルタイム人数ランキングを見る ›</a>
+                    <a href="/concierge" class="cta-btn cta-btn--secondary">男女・時間帯別の3秒診断を使う ›</a>
+                </div>
+            </div>
+        </div>
+
+        {% include '_portal_footer.html' %}
+    </div>
+</body>
+
+</html>

@@ -291,10 +291,23 @@ TIPS_LIST = [
         "相席で会話が死んだとき「席替え頼んだら失礼かな…」と迷う男性、実は女子側も内心『誰か助けて』って思ってる。\n"
         "「明日早いですよね、そろそろ交代お願いしましょうか」って男側から笑顔で切り出せる人は、むしろ神対応扱いされるよ🍸"
     ),
+    (
+        "20時は女性8割だったお店が、深夜0時には男性先行にひっくり返ることって結構ある。\n"
+        "男性は21時前が余裕だけど、女子2人組にとっては深夜0時すぎの男性先行フロアこそ待ちゼロ即乾杯の主役時間だったりする。"
+    ),
+    (
+        "同じ街でもオリエンタルラウンジは終電後まで落ち着いた比率が残りやすく、agやヤタコイは0時すぎに2軒目男子が増えて女子待ちゼロになりやすい。\n"
+        "店の優劣じゃなくて『今夜の時間帯とノリの相性』で選ぶと外さない。"
+    ),
+    (
+        "男性にとっての天国（女性80%の店）って、女性2人組からすると『相席がつかず放置されやすい店』でもあるんだよね。\n"
+        "男女で『いま入るべき正解の店』が真逆になるのが夜の街のいちばん面白いところ。"
+    ),
 ]
 
 
 _FALLBACK_COLUMNS = [
+    ("20時と深夜0時で「主役」は入れ替わる｜5大ブランドの時間波形と男女逆転の店選び", "/guide/brand-waveform-asymmetry"),
     ("相席ラウンジの席替え完全攻略｜言えない男と察する女の心理学", "/guide/table-change-protocol"),
     ("金土22時の「女性比60%」が3割逆転する群衆殺到パラドックス", "/guide/crowd-rush-paradox"),
     ("全国60店舗超「料金・イベント・現在人数」比較ボード活用ガイド", "/guide/price-event-comparison"),
@@ -392,6 +405,8 @@ def _column_for_tip_index(idx: int) -> tuple:
         if scheduled_articles.is_published("table-change-protocol"):
             return ("相席ラウンジの席替え完全攻略｜言えない男と察する女の心理学", "/guide/table-change-protocol")
         return ("相席ラウンジ実践コラム・攻略記事一覧", "/columns")
+    if idx in (65, 66, 67):
+        return ("20時と深夜0時で「主役」は入れ替わる｜5大ブランドの時間波形と男女逆転の店選び", "/guide/brand-waveform-asymmetry")
     return ("相席ラウンジ実践コラム・攻略記事一覧", "/columns")
 
 
@@ -632,6 +647,12 @@ HUMAN_OBSERVATION_SEEDS = (
     {"key": "table_change_politeness", "lens": "少し噛み合わない席でお互い気まずくならずに笑顔で交代を切り出せる大人の優しさ", "related_path": "/guide/table-change-protocol"},
     {"key": "pocket_bar_3min_walk", "lens": "外に出てから路上で検索を始めず、徒歩3分の静かなバーやカフェを1軒だけ知っている安心感", "related_path": "/guide/second-venue"},
     {"key": "friday_20pm_before_rush", "lens": "金土22時の大混雑に突っ込むより、19時台後半に一足早く乾杯している組のゆとり", "related_path": "/guide/crowd-rush-paradox"},
+    {"key": "waveform_20pm_vs_midnight_flip", "lens": "20時台は女性先行だった店が深夜0時すぎに男性先行へひっくり返り、男女で『主役の時間帯』が入れ替わる現象", "related_path": "/guide/brand-waveform-asymmetry"},
+    {"key": "same_city_brand_vibe_match", "lens": "同じ新宿や梅田でも、オリエンタルラウンジ・ag・JIS・ヤタコイ・ASOBIBARで集まる年齢感や1軒目/2軒目の空気がまるで違う面白さ", "related_path": "/guide/brand-waveform-asymmetry"},
+    {"key": "heaven_for_men_wait_for_women", "lens": "男性にとって天国の『女性8割フロア』が、女子2人組にとっては相席がつかず手持無沙汰になりやすい非対称なリアル", "related_path": "/guide/brand-waveform-asymmetry"},
+    {"key": "asobibar_standing_escape", "lens": "しっかり座る相席に少し疲れた2軒目や終電後に、ASOBIBARのような回遊スタイルで1杯だけ気楽に話す身軽さ", "related_path": "/guide/brand-waveform-asymmetry"},
+    {"key": "yatakoi_ag_midnight_ladies", "lens": "早い時間は女子会ムードだったagやヤタコイが、深夜0時を回ると2軒目男性が増えて女子組が待ちゼロ即乾杯になる逆転リズム", "related_path": "/guide/brand-waveform-asymmetry"},
+    {"key": "jis_early_vs_1am_monster", "lens": "19時台の静かな早割タイムと、深夜1時でも100人規模で熱気があるJISの二面性", "related_path": "/guide/brand-waveform-asymmetry"},
 )
 
 
@@ -761,15 +782,15 @@ def _generate_ai_daily_human_tip(
         }
         cliche_list_str = "・".join(f"『{w}』" for w in sns_editorial.AI_CLICHE_WORDS)
         prompt = (
-            "あなたは夜の街や男女の距離感・会話の空気に詳しい、気取らない大人の友人です。\n"
-            "これから飲みに出る人も多い時間帯に、Xでふと呟いた『卓上の男女あるある・人間観察の短い雑談ポスト（70〜118文字以内、X換算250ウェイト以下）』をゼロベースで1本書いてください。\n\n"
+            "あなたは全国60店舗超の時間帯データと男女それぞれの本音をフラットな目線で観察している、気取らない大人の友人です。\n"
+            "これから飲みに出る人も多い夕方に、Xでふと呟いた『実測の裏付けが滲む人間観察・街の法則ポスト（72〜118文字以内、X換算250ウェイト以下）』をゼロベースで1本書いてください。\n\n"
             f"{sns_editorial.HUMAN_INSIDER_VOICE_GUIDE}\n\n"
             "【執筆ルール】\n"
-            "1. 下の `observation_lens`（今日の人間観察の切り口）をヒントに、季節・曜日・天気（やもし `tonight_street_vibe` が自然に合えばほんの少しだけ夜の街の空気感）を滲ませつつ、思わず『あー、わかる』と頷くリアルな1場面を切り取ること。\n"
-            "2. 『モニター見てたら』『バックヤードで』等の裏方アピールや、『〜せよ』『鉄則』『絶対NG』のような上から目線の説教・指南書口調は禁止。絵文字や『！』は0〜1個までに抑えること。\n"
+            "1. 下の `observation_lens`（今日の観察テーマ）を核に、ありきたりな一般恋愛マナーではなく『時間帯による店内の波の変わり方』『男女それぞれの本音・居心地の非対称』『同じ街のブランド（オリエンタルラウンジ・ag・JIS・ヤタコイ・ASOBIBAR）と気分の相性』などが自然に伝わる鋭く穏やかな1場面を切り取ること。\n"
+            "2. 男女どちらの味方にも偏らず対等な観察者として書き、特定ブランドを下げる表現や『モニター見てたら』『バックヤードで』等の裏方アピール、『〜せよ』『鉄則』『絶対NG』のような説教口調は禁止。絵文字や『！』は0〜1個までに抑えること。\n"
             f"3. 今回の語尾トーン目安：{chosen_ending_hint}（ただし直近使った文末 {sns_editorial.json.dumps(banned_endings[:5], ensure_ascii=False)} の連続使用は避けること）。\n"
             f"4. 直近の過去Tips（{sns_editorial.json.dumps(recent_tip_texts[:5], ensure_ascii=False)}）と主張・例え・1行目の入り方が絶対に被らないようにすること。\n"
-            f"5. URL（http...）、架空の店舗人数、角括弧【】見出し、単体の『オリエンタル』表記、および禁止語（{cliche_list_str}）は絶対に使わないこと。\n"
+            f"5. URL（http...）、架空の店舗人数、角括弧【】見出し、単体の『オリエンタル』表記や『YATAKOI』『OLG』表記、および禁止語（{cliche_list_str}）は絶対に使わないこと。\n"
             f"6. {footer_rule}\n\n"
             f"【今日のコンテキスト】\n{sns_editorial.json.dumps(ctx_info, ensure_ascii=False)}\n\n"
             '出力はJSON形式のみ：{"main_text": "投稿本文"}'

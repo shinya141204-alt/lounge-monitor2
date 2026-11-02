@@ -74,6 +74,7 @@ RESERVED_STATIC_SLUGS = {
     "rain-payday",
     "osaka-kita-vs-minami",
     "crowd-rush-paradox",
+    "brand-waveform-asymmetry",
 }
 
 COLUMN_AI_CLICHES = (
@@ -107,17 +108,16 @@ OVERUSED_COLUMN_TROPES = (
     "夜カフェあるんだけどコーヒーか甘いもの",
 )
 
-DEEP_COLUMN_EDITORIAL_GUIDE = """【長文コラム＆noteエッセイのための『生きた人間描写×4層構造』原則】
-単なる『A店が混んでいたからB店へ歩いた』『40分で見切って夜カフェに誘おう』という表層ノウハウの焼き直しや、
-逆に『二面市場（Two-Sided Market）』『サンクコスト錯誤』『コンコルド効果』のような硬い学術・ビジネス専門用語に頼った教科書解説は禁止します。
-専門用語を使わず、誰が読んでも情景が浮かぶ平易で温度のある日本語で、以下の4層を自然に織り交ぜてください：
-  Layer 1（街と数字のリアルな違和感）：累計実測ログ・時間帯の波・店舗ごとの料金や待ち時間から見える具体的なギャップ。
-  Layer 2（多くの人がついやってしまう人間らしいクセ）：なぜ人は一番近い店にそのまま並んだり、微妙な空気の席で気を使って長居したり、一問一答の質問攻めになってしまうのか。
-  Layer 3（男女それぞれの目線と街の仕組み ★最重要）：
-    - 支払っているものの違い：男性側は『10分ごとに進む料金メーターや待ち時間』が気になってつい焦りやすく、女性側は金銭0円でも『退勤後のヘアメイク90分・ヒールでの移動・今夜という限りある時間』をかけて来ているというすれ違い。
-    - 街の動線と終電のリズム：改札出口からの歩きやすさ、23:20前後の終電で帰る会社員層と、0:30以降に2軒目で動き出す層の入れ替わり。
-    - お店ごとの空気感の差：オリエンタルラウンジ・ag（20代中心）・JIS（1人でも入りやすい高回転）それぞれの客層と居心地の違い。
-  Layer 4（無理なく真似できる立ち回り）：説教臭い『鉄則』ではなく、相手の時間と自分の機嫌を同時に守るスマートな判断軸。"""
+DEEP_COLUMN_EDITORIAL_GUIDE = """【長文コラム＆noteエッセイのための『3軸データ×男女フラット観察』原則】
+毎回同じ結論（『徒歩4分歩こう』『40分で見切ろう』『メイク90分』等の定型フレーズ）を繰り返すことや、
+『二面市場』『サンクコスト錯誤』『コンコルド効果』のような硬い学術・ビジネス用語に頼る解説は禁止します。
+男女どちらの味方にも偏らないフラットな観察者の目線で、以下の3軸を実測データから掘り下げてください：
+  軸1（60〜120分の時間波形ドラマ）：その瞬間の人数だけでなく、20時→22時→深夜0時→1時にかけて『どの店に1次会帰りの男性が集まり、どの店で終電後の第2波や男女逆転が起きるか』という時間の線の変化。
+  軸2（同じ街のブランド別カルチャー・相性差）：オリエンタルラウンジ・ag・JIS・ヤタコイ・ASOBIBARなどの違いを優劣ではなく『集まる年齢感・空間のノリ・時間帯ごとの相性』として具体的に比較すること。
+  軸3（男女それぞれの本音の非対称）：男性にとって余裕のある女性先行店が女性ペアには『相席待ちの空白時間』になりやすく、逆に男性が先行している時間帯・店舗こそ女性2人組には『待ちゼロ即乾杯の主役時間』になるような、男女双方のリアルな事情と期待値のズレ。
+  Web版とnote版の役割分離：
+    - Web版コラム：時間波形データ・ブランド別の比較表・男女それぞれの具体的な店選び基準がクリアに整理された『データ検証＆ブランド相性レポート』。
+    - note版原稿：マニュアル感（表や手順箇条書き）を排し、夜の街の空気感や男女双方の図星・すれ違いを一人称で穏やかに描く『読み物エッセイ』。"""
 
 
 COLUMN_WRITING_STYLES = {
@@ -158,6 +158,8 @@ def select_column_writing_style(theme_key: str, custom_topic: str = "") -> dict:
         return COLUMN_WRITING_STYLES["street_reportage"]
     if tk in ("first_talk_clean", "female_real_voice", "bitter_loser_habits"):
         return COLUMN_WRITING_STYLES["table_psychology_dialogue"]
+    if tk in ("brand_waveform_fit", "second_venue_move", "weekday_anaba"):
+        return COLUMN_WRITING_STYLES["live_data_gap_anatomy"]
     if custom_topic:
         idx = sum(ord(ch) for ch in custom_topic) % 3
         keys = ("street_reportage", "table_psychology_dialogue", "live_data_gap_anatomy")
@@ -200,9 +202,25 @@ EYECATCH_PRESETS = {
         "jpg": "/static/eyecatch-cost-break-even.jpg",
         "webp": "/static/eyecatch-cost-break-even.webp",
     },
+    "brand-waveform": {
+        "label": "📈 時間波形×ブランド相性・男女逆転",
+        "jpg": "/static/eyecatch-brand-waveform-asymmetry.jpg",
+        "webp": "/static/eyecatch-brand-waveform-asymmetry.webp",
+    },
 }
 
 COLUMN_THEMES = {
+    "brand_waveform_fit": {
+        "key": "brand_waveform_fit",
+        "label": "⚖️ 時間波形×ブランド相性・男女非対称",
+        "badge": "時間波形×ブランド解剖",
+        "eyecatch_key": "brand-waveform",
+        "tag_primary": ["tag-cyan", "📈 時間波形×ブランド比較"],
+        "tag_secondary": ["tag-pink", "男女の本音クロス検証"],
+        "slug_prefix": "brand-waveform-fit",
+        "target_reader": "同じ街のどのブランドに何時に入るべきか迷う男女ペア・2軒目組",
+        "core_question": "なぜ同じ街でも20時と深夜0時で男女の主役が入れ替わるのか？オリエンタルラウンジ・ag・JIS・ヤタコイ・ASOBIBARの時間波形と、男女で真逆になる居心地の良い店選びとは",
+    },
     "area_hopping": {
         "key": "area_hopping",
         "label": "🚶 街別ギャップ・徒歩5分ハシゴ",
@@ -294,6 +312,19 @@ COLUMN_THEMES = {
 }
 
 THEME_ARCHETYPES = {
+    "brand_waveform_fit": {
+        "archetype_name": "時間波形クロスオーバー×ブランド生態系フラット比較型",
+        "mechanism_lens": "20時台から深夜1時にかけての『時間帯別・男女流入波形の差』と、ブランドごとの年齢感・空間スタイルが生む男女非対称な居心地",
+        "opening_scene_hint": "20時の1軒目乾杯どきと深夜0時を回った繁華街の交差点で、同じビルの看板でも中に入っている男女のバランスがきれいに反転している風景から入る",
+        "causal_thesis": "同じ街でもブランドごとに『強い時間帯』と『男女どちらが主役になるか』は大きく異なる。落ち着いたラウンジ型は終電後も女性比率が安定しやすい一方、カジュアル型や横丁型は20時台に女性先行で立ち上がり深夜0時以降は2軒目男性が合流して女性組が待ちゼロ即案内へ反転する。優劣ではなく時間帯と気分の相性で選ぶとすれ違いが消える。",
+        "banned_tropes": ["エレベーターの扉が開いた瞬間", "受付前の黒いソファでスーツ姿", "4人でグループLINE作ろう", "メイク準備90分"],
+        "blueprint": [
+            "第1章：20時と深夜0時で店内の景色が反転する『時間波形クロスオーバー』の実測データ",
+            "第2章：同じ街のブランド別カルチャー解剖——年齢感・ノリ・強い時間帯のフラット比較",
+            "第3章：男性の天国店＝女性の待ちリスク？男女で真逆になる時間帯別の店選び基準とFAQ",
+        ],
+        "note_essay_hook": "夜の街の数字を時間軸で並べてみると、20時には女性が8割だったフロアが、深夜0時を境にまるで別の店のように男性先行へひっくり返る瞬間に何度も出くわす。",
+    },
     "area_hopping": {
         "archetype_name": "都市空間アービトラージ解剖型",
         "mechanism_lens": "看板認知バイアスと駅出口動線が生む『同一街・半径300mの需給ねじれ（アービトラージ）』",
@@ -409,6 +440,7 @@ THEME_ARCHETYPES = {
 }
 
 EXISTING_STATIC_COLUMNS = [
+    {"slug": "brand-waveform-asymmetry", "path": "/guide/brand-waveform-asymmetry", "template": "guide_brand_waveform_asymmetry.html", "title": "同じ街でも20時と深夜0時で「主役」は入れ替わる｜実測ログが映す5大ブランドの時間波形と、男女で真逆になる店選び"},
     {"slug": "crowd-rush-paradox", "path": "/guide/crowd-rush-paradox", "template": "guide_crowd_rush_paradox.html", "title": "金曜22時の「女性比60%」を見て向かうと3割が男余りに逆転する｜98万件ログが暴いた『群衆殺到パラドックス』と70%安全圏"},
     {"slug": "for-women", "path": "/for-women", "template": "for_women.html", "title": "「受付で30分放置…」をゼロにする女子のための相席ラウンジ完全ガイド｜待ち0店舗の見分け方＆席替え・退店術"},
     {"slug": "last-train-cliff", "path": "/guide/last-train-cliff", "template": "guide_last_train_cliff.html", "title": "23時20分の終電崖（魔の40分間）と23時を境に逆転する街別ハシゴ法則"},
@@ -438,12 +470,15 @@ def clear_column_ai_cache():
 
 
 def _sanitize_brand_names(text: str, prefer_casual_if_tight: bool = False) -> str:
-    """Ensure zero bare 'オリエンタル' (`オリエンタル(?!ラウンジ)`), zero 'オリラジ', or raw internal 'OLG ' codes."""
+    """Ensure zero bare 'オリエンタル' (`オリエンタル(?!ラウンジ)`), zero 'オリラジ', zero 'YATAKOI', or raw internal 'OLG ' codes."""
     if not text:
         return ""
     out = str(text)
-    out = re.sub(r"\bOLG\s*ag", "ag", out)
+    out = re.sub(r"\bYATAKOI\s+UMEDA\b", "ヤタコイ梅田", out, flags=re.IGNORECASE)
+    out = re.sub(r"\bYATAKOI\b", "ヤタコイ", out, flags=re.IGNORECASE)
+    out = re.sub(r"\bOLG\s*ag", "ag", out, flags=re.IGNORECASE)
     out = re.sub(r"\bOLG\s+", "オリエンタルラウンジ", out)
+    out = re.sub(r"\bOLG\b", "オリエンタルラウンジ", out)
     if "オリラジ" in out:
         out = out.replace("オリラジ", "オリエンタルラウンジ")
     if re.search(r"オリエンタル(?!ラウンジ)", out):
@@ -847,6 +882,7 @@ def run_column_researcher(
                     prof = _pc_mod.get_store_price_profile(st["name"], live_store=st, now_jst=now_jst) or {}
                 except Exception:
                     prof = {}
+            b_prof = sns_editorial.classify_store_brand_culture(st["name"])
             featured_stores.append({
                 "raw_name": st["name"],
                 "ja_name": st["ja_name"],
@@ -858,6 +894,15 @@ def run_column_researcher(
                 "midnight_retention_pct": int(st.get("midnight_retention_pct") or 85),
                 "store_slug": sl,
                 "store_href": st["store_href"],
+                "brand_key": st.get("brand_key") or b_prof["brand_key"],
+                "brand_label": st.get("brand_label") or b_prof["brand_label"],
+                "brand_age_vibe": st.get("brand_age_vibe") or b_prof["age_vibe"],
+                "brand_time_affinity": st.get("brand_time_affinity") or b_prof["time_affinity"],
+                "waveform_archetype_ja": st.get("waveform_archetype_ja") or "安定推移型",
+                "reversal_hour": st.get("reversal_hour"),
+                "hourly_waveform": st.get("hourly_waveform") or {},
+                "diff_60m_w": st.get("diff_60m_w"),
+                "diff_60m_m": st.get("diff_60m_m"),
                 "slot_20_22": prof.get("slot_20_22") or "平日660円 / 金土880円",
                 "slot_22_24": prof.get("slot_22_24") or "平日770円 / 金土990円",
                 "wait_fee_str": prof.get("wait_fee_str") or "220円 / 10分（税込）",
@@ -869,24 +914,49 @@ def run_column_researcher(
 
     s_hi = featured_stores[0] if featured_stores else {}
     s_lo = featured_stores[1] if len(featured_stores) > 1 else s_hi
+
+    rev_examples = [
+        f"『{fs['ja_name']}』（{fs['reversal_hour']}時台から男性先行・女子待ちゼロへ反転）"
+        for fs in featured_stores
+        if fs.get("reversal_hour") is not None
+    ]
+    waveform_dynamics_txt = (
+        f"実測時間帯波形では、20時台は女性先行で立ち上がる一方、"
+        + (
+            "、".join(rev_examples[:2]) + "のように深夜に向けて男女の主役が入れ替わる店舗と、"
+            if rev_examples
+            else "22時以降に1次会帰りの男性グループが合流して比率が詰まる店舗と、"
+        )
+        + f"『{s_hi.get('ja_name', '主要大型店')}』（深夜維持目安{s_hi.get('midnight_retention_pct', 88)}%）のように終電後も女性比率を保つ店舗に波形が分岐する。"
+    )
+    brand_comp_parts = [
+        f"『{fs['ja_name']}』［{fs['brand_label']}：{fs['brand_age_vibe']}］"
+        for fs in featured_stores[:3]
+    ]
+    brand_culture_txt = (
+        "同じ街でもブランドごとに集まる年齢感・ノリ・強い時間帯が異なる（"
+        + " ／ ".join(brand_comp_parts)
+        + "）。優劣ではなく時間帯と今夜のテンションの相性で選び分けるのが鍵。"
+    )
+    gender_asymmetry_txt = (
+        f"男性ペアにとっては女性比率{s_hi.get('wpct', 60)}%の『{s_hi.get('ja_name', '女性先行店')}』が落ち着いて話しやすい一方、"
+        f"女性過多のタイミングでは女子組に相席待ちが生まれやすい。逆に女性2人組にとっては男性が厚い『{s_lo.get('ja_name', '男性活況店')}』（女性{s_lo.get('women', 20)}名:男性{s_lo.get('men', 22)}名）こそ受付待ちゼロで歓迎される非対称な関係にある。"
+    )
+
     deep_insights = {
         "historical_log_count": hist_records,
-        "two_sided_cost_structure": (
-            "女性は料金0円だが『ヘアメイク準備90分＋移動体力＋ハズレ席の機会損失』を負担。"
-            "男性は『単独待機10分220〜330円＋相席10分660〜990円』の従量メーターにより、"
-            "一度待つとサンクコスト錯誤で噛み合わない席でも粘りやすい非対称構造がある。"
-        ),
+        "waveform_dynamics": waveform_dynamics_txt,
+        "brand_culture_comparison": brand_culture_txt,
+        "gender_asymmetry_summary": gender_asymmetry_txt,
+        "two_sided_cost_structure": gender_asymmetry_txt,
         "cost_simulation": (
-            f"男性過多店（例: {s_lo.get('ja_name', '競合店')}）で待機30分＋微妙な相席60分粘ると約5,300〜6,800円＆疲労大に対し、"
-            f"女性先行店（例: {s_hi.get('ja_name', '本命店')}）へ徒歩4分移動し待ち0分＋45分集中なら約3,300〜4,400円で2軒目余力も残る。"
+            f"22時台単価（例：『{s_hi.get('ja_name', '注目店')}』相席 {s_hi.get('slot_22_24', '平日770円〜')}・待機 {s_hi.get('wait_fee_str', '220円/10分')}）を踏まえると、"
+            f"男性混雑側の『{s_lo.get('ja_name', '近隣店')}』で長く待機するより、時間帯波形と現在比率が噛み合う店舗へ切り替える方が双方の消耗を抑えられる。"
         ),
-        "cohort_shift_summary": (
-            "20:30〜22:30は仕事帰りのオフィス勤務ペア中心（第1波）。"
-            "23:20の終電崖で一度25〜35%減少したのち、0:30以降は美容・飲食・アパレル上がりやタクシー圏の2軒目ペア（第2波）へ属性が入れ替わる。"
-        ),
+        "cohort_shift_summary": waveform_dynamics_txt,
         "weekday_vs_weekend_summary": (
-            "金土21〜23時は総人数最大だが男性団体ノイズと待ち時間も急増。"
-            "火〜木の20:30〜22:00および雨天の駅・地下直結店は『落ち着いて話したい』女性比率が55〜65%で安定しやすい。"
+            "金土21〜23時は総人数が最大になるぶん時間帯による男女比の振れ幅も大きい。"
+            "火〜木の20:30〜22:00や雨天の駅・地下直結店は客層のトーンが落ち着き、女性比率55〜65%前後で安定しやすい。"
         ),
     }
 
@@ -900,7 +970,7 @@ def run_column_researcher(
         )
     if s_hi:
         findings.append(
-            f"制度・料金クロス検証：『{s_hi['ja_name']}』相席22時台 {s_hi['slot_22_24']}・待機 {s_hi['wait_fee_str']}・{s_hi['solo_rule']}"
+            f"ブランド×時間波形：『{s_hi['ja_name']}』［{s_hi['brand_label']}・{s_hi['waveform_archetype_ja']}］22時台 {s_hi['slot_22_24']}・{s_hi['solo_rule']}"
         )
     if midnight_leaders:
         m0 = midnight_leaders[0]
@@ -1068,44 +1138,44 @@ def _build_note_essay_from_candidate(
         "",
         hook,
         "",
-        f"全国60店舗超のリアルタイム人数ログ（累計{hist_cnt:,}件超）を毎晩追いかけていると、画面の向こう側にあるのは単なる『混雑グラフ』ではなく、仕事終わりに誰かと話したくて街へ出てきた人たちの期待と、ほんの少しの不器用さだと気づかされる。いまこの瞬間も全国で女性{nat_w}名・男性{nat_m}名（平均女性比{nat_wpct}%）が同じ夜を過ごしているのに、あるテーブルでは2軒目の約束が自然に決まり、すぐ隣のビルでは気まずい沈黙のまま伝票が置かれる。",
+        f"全国60店舗超のリアルタイム人数ログ（累計{hist_cnt:,}件超）を時間軸で追いかけていると、画面の向こう側にあるのは単なる『混雑グラフ』ではなく、仕事終わりに誰かと話したくて街へ出てきた人たちの期待と、ほんの少しのボタンの掛け違いだと気づかされる。いまこの瞬間も全国で女性{nat_w}名・男性{nat_m}名（平均女性比{nat_wpct}%）が同じ夜を過ごしているのに、あるテーブルでは自然に次の約束が決まり、すぐ隣のビルでは妙に噛み合わない沈黙が流れている。",
         "",
-        "なぜ、トーク力や外見にそこまで決定的な差がないはずの人たちのあいだで、ここまで残酷なほど結果が分かれてしまうのだろうか。",
+        "なぜ、どちらかが意地悪なわけでも、会話センスに決定的な差があるわけでもないのに、時間帯と選んだ扉ひとつでここまで居心地が変わってしまうのだろうか。",
         "",
-        "## 夜の街で何度も繰り返される「見えないすれ違い」",
+        "## 時間とともに反転する「フロアの主役」とブランドの空気",
         "",
-        "現場の声を拾っていると、うまくいかなかった夜ほど、本人は『自分の話術が足りなかったのかな』『今日は運が悪かったな』と個人のせいにして帰っていく。けれど、一歩引いて街全体の人の流れを眺めると、原因はもっと手前の『場所と時間の構造』に潜んでいることがほとんどだ。",
+        "うまくいかなかった夜ほど、人はつい『自分の盛り上げ方が足りなかったのかな』『今日は相手が悪かったな』と個人のせいにして帰っていく。けれど、20時から深夜1時までの人の流れを一本の線として眺めると、原因はもっと手前の『時間の波とブランドの相性』に潜んでいることがほとんどだ。",
         "",
     ]
     for dl in q1[:2]:
         essay_lines.append(f"> {_sanitize_brand_names(dl)}")
     essay_lines.extend([
         "",
-        f"たとえば同じエリアの目と鼻の先でも、『{s1['ja_name']}』（女性{s1['women']}名・女性比{s1['wpct']}%）のように女性側に余裕がある空間と、『{s2['ja_name']}』（女性{s2['women']}名・女性比{s2['wpct']}%）のように男性側の熱量が過密になっている空間が同時に存在する。人間の心の余裕は環境に従属する。自分がどんなに穏やかに振る舞おうとしても、周囲がピリピリした競争環境のなかに30分置かれれば、知らず知らずのうちに『元を取らなきゃ』という焦りが表情や声のトーンに滲んでしまうのだ。",
+        f"たとえば同じ街の徒歩圏内でも、『{s1['ja_name']}』（女性{s1['women']}名・女性比{s1['wpct']}%）のように女性側に厚みがある空間と、『{s2['ja_name']}』（女性{s2['women']}名・女性比{s2['wpct']}%）のように男性側の熱量が勝っている空間が同時に並び立つ。しかもその関係は固定されたものではなく、1軒目終わりの22時、終電前後の23時半、そして2軒目組が合流する深夜0時半を境に、驚くほど鮮やかに主役が入れ替わっていく。",
         "",
-        f"## 数字の裏側にある「お互いの時間と気持ちのズレ」をほどく",
+        "## 男女それぞれの「図星」と、悪気のない期待値のズレ",
         "",
-        f"今回のテーマをもう一歩だけ踏み込んで眺めると、ひとつの人間らしい仕組みが見えてくる。{thesis}",
+        f"もう一歩だけテーブルの近くへ寄ってみると、男女それぞれの本音の非対称が見えてくる。{thesis}",
         "",
-        "相席ラウンジという空間では、男女で『今夜そこに賭けているもの』の形が少しだけ違っている。男性側は10分ごとに料金が加算されていくメーター（たとえば22時台なら10分あたり660円〜990円前後）が目に入るぶん、一度座ると『せっかく待って入ったんだから元を取りたい』と無意識に力が入ってしまいやすい。一方、女性側はチャージこそ無料だけれど、仕事終わりにコテで髪を巻き直し、メイクを整え、ヒールで歩いてきた『90分の準備時間と今夜という大切な時間』をかけて席に座っている。",
+        f"男性側から見れば、10分ごとに料金が積み上がるシステム（たとえば22時台なら{s1.get('slot_22_24', '10分770円前後')}）のなかにいる以上、『なるべく待たずに座りたいし、座ったからにはちゃんと盛り上げたい』と肩に力が入るのはごく自然な心理だ。一方で女性側から見れば、料金こそかからないものの、限られた夜の時間を割いて足を運んでいるからこそ、女性ばかりが余って受付やソファで長く待たされる空間よりも、実は男性がしっかり入っていて『来てくれてありがとう』と即座に乾杯が始まる店のほうがずっと居心地がよかったりする。",
         "",
     ])
     for dl in q2[:2]:
         essay_lines.append(f"> {_sanitize_brand_names(dl)}")
     essay_lines.extend([
         "",
-        "お金を払っている側と、時間を払っている側。この非対称な2人が幅70センチのテーブルで向き合うからこそ、『タダで飲めて気楽でいいよね』という何気ない一言が決定的な断絶を生んだり、逆に『今日外ちょっと風強かったよね、来てくれてありがとう』という小さな敬意が驚くほど深く刺さったりする。数字の偏りを知ることは、相手を攻略するためではなく、お互いが無理な消耗戦に巻き込まれないための『礼儀としての下準備』なのだと思う。",
+        "男性にとっての『余裕のある天国』と、女性にとっての『待たされない快適さ』がちょうど鏡合わせのようにすれ違う。その構造をどちらか一方の味方から裁くのではなく、『相手はいまどんな時間帯のどんな空気を求めてここに来たんだろう』とフラットに想像できたとき、不思議とテーブルの上の力みが消えていく。",
         "",
-        "## 正解を急ぐ夜よりも、余白を残して帰れる夜へ",
+        "## 当たりハズレで裁く夜から、相性で選ぶ夜へ",
         "",
-        "完璧な盛り上げ役になろうとしなくていいし、噛み合わない席で無理に90分笑い続ける必要もない。ただ、お店に入る前の10秒だけ街の空気を俯瞰して、自分たちが自然体でいられる場所を選ぶこと。そして波長が合ったなら、ピークの余韻が消えないうちに『あと30分だけ静かな場所で話そうか』と出口の時間を添えて手を差し伸べること。",
+        "落ち着いた照明でゆっくり言葉を交わしたい夜もあれば、横丁やバーのような距離感で最初から笑い合いたい夜もある。大切なのは『どのブランドが上か』を決めることではなく、いまの時刻と自分たちの温度感に素直に合う場所を選ぶことだ。",
         "",
-        "夜の街の勝敗を分けているのは、派手なテクニックではなく、そんな『相手の時間と自分の機嫌を同時に守る小さな設計』なのかもしれない。",
+        "お店に入る前のほんの数十秒、街の波を俯瞰してから扉を開ける。その小さな余白ひとつで、夜の会話はもっと穏やかで人間らしいものになる気がしている。",
         "",
         "---",
         "",
-        "📖 **今回のテーマの「店舗別データ比較表・具体的な時間帯別プロトコル」はWeb版コラムにまとめています**",
-        "これから向かうエリアの現在人数や、店舗ごとの詳しい料金・年齢層データを確認したい方はこちらのWeb版リファレンスをどうぞ👇",
+        "📖 **店舗別の時間帯波形データ・ブランド比較表はWeb版レポートに整理しています**",
+        "20時〜深夜1時の具体的な人数推移や、エリア別のリアルタイム状況を確認したい方はこちらのWeb版記事をどうぞ👇",
         "",
         col_url,
         "",
@@ -1158,6 +1228,21 @@ def _render_candidate_preview_and_note(
 def _build_theme_tailored_table(theme_key: str, research: dict, stores_sample: list) -> dict:
     """Build a theme-specific analytical comparison matrix instead of an identical 4-col table on every article."""
     hist_cnt = int(research.get("historical_log_count") or 276000)
+    if theme_key == "brand_waveform_fit":
+        rows = [
+            [
+                f"{st['ja_name']}（{st.get('brand_label') or '主要ブランド'}）",
+                f"女性 {st['women']}名 / 男性 {st['men']}名（{st['wpct']}%）",
+                st.get("waveform_archetype_ja") or f"深夜維持 {st['midnight_retention_pct']}%",
+                st.get("brand_age_vibe") or "20代〜30代中心",
+            ]
+            for st in stores_sample
+        ]
+        return {
+            "caption": f"ブランド別・現在男女比×時間帯波形タイプ×客層スタイル比較（累計実測 {hist_cnt:,}件ログ連動）",
+            "headers": ["店舗・ブランド", "現在人数（女性比）", "時間帯波形タイプ", "集まる年齢感・空間のノリ"],
+            "rows": rows,
+        }
     if theme_key in ("second_venue_move", "weekday_anaba"):
         rows = [
             [
@@ -1251,6 +1336,38 @@ def _build_deterministic_candidates(
 
     # Theme-specific story & causal mechanism blueprints so 8 themes never collapse into one cookie-cutter script
     theme_specs = {
+        "brand_waveform_fit": {
+            "title": f"同じ街でも20時と深夜0時で「主役」は入れ替わる——『{s1['ja_name']}』と近隣ブランドの波形差・男女非対称の店選び",
+            "short": "時間波形×ブランド相性・男女逆転の法則",
+            "desc": f"20時台に女性先行だった店舗が深夜0時で男性先行（女子待ちゼロ）へ反転する理由とは？『{s1['ja_name']}』（女性比{s1['wpct']}%）や『{s2['ja_name']}』などブランド別の時間帯相性と男女それぞれの本音を検証します。",
+            "h1": "1. 20時の1軒目と深夜0時の2軒目で、同じ看板の景色が反転する理由",
+            "p1": [
+                f"{research['calendar']['tag']}の夜、20時台には女性比率70%超で華やいでいた店舗が、23時半を回った途端に男性先行へ切り替わり、逆に隣の別ブランド店では深夜0時半からもう一度女性ペアが増え始める——そんな『時間波形のクロスオーバー』が毎晩のように起きています。",
+                f"現在も『{s1['ja_name']}』（女性{s1['women']}名・男性{s1['men']}名／女性比{s1['wpct']}%）と『{s2['ja_name']}』（女性{s2['women']}名・男性{s2['men']}名／女性比{s2['wpct']}%）では、集まっている客層の動き方そのものが異なります。",
+            ],
+            "dl1": [
+                f"「20時に見たときは『{s2['casual_name']}』が女性先行だったのに、0時過ぎたら男性の方が多くなっててびっくりした」",
+                f"「逆に女子2人組からしたら、深夜の『{s2['casual_name']}』は待ち時間ゼロで即乾杯できる一番ラクな時間帯になってるんだよね」",
+            ],
+            "h2": "2. 優劣ではなく「時間帯×テンションの相性」で分かれるブランド別カルチャー",
+            "p2": [
+                f"オリエンタルラウンジ・ag・JIS・ヤタコイ・ASOBIBARといった各ブランドの違いは、単なる内装の差ではなく『何時にどんな目的の人が集まるか』の波形差として表れます。落ち着いた王道ラウンジ型が終電後も比率を保ちやすい一方、20代前半中心のカジュアル型や横丁スタイルは1軒目と深夜帯で男女の主役がダイナミックに入れ替わります。",
+            ],
+            "dl2": [
+                "「今日は仕事終わりでゆっくり話したい気分だから王道ラウンジ、2軒目でワイワイ合流したい夜はカジュアル系かASOBIBARって使い分けると外さないね」",
+                "「どの店が当たりかじゃなくて、今の時間と自分たちのノリに合ってるかだけでだいぶ変わるよな」",
+            ],
+            "mech2": archetype["causal_thesis"],
+            "h3": "3. 男性の余裕店＝女性の待ちリスク？男女で真逆になるスマートな選び方",
+            "p3": [
+                f"男性ペアにとっては女性比率の高い『{s1['ja_name']}』（女性比{s1['wpct']}%）が落ち着いて会話しやすい選択肢ですが、女性比率が80%を超えすぎると今度は女性側に相席待ちの空白が生まれます。一方、女性ペアなら男性が厚く入っている『{s2['ja_name']}』や深夜まで活気のある『{s3['ja_name']}』を選ぶほうが、受付待ちゼロで歓迎ムードの席へ入れます。",
+            ],
+            "dl3": [
+                "「男目線と女子目線で行くべき正解の店がちょうど逆になるって知っておくと、お互い変に疲れなくていいよね」",
+                "「入る前の10秒で今の波形を見るだけで、無理のない夜になるのが一番いいよ」",
+            ],
+            "x_main": f"同じ街でも20時と深夜0時ではラウンジの「主役」がきれいに反転する📈\n\n『{s1['casual_name']}』（女性比{s1['wpct']}%）と近隣ブランドの時間波形の違い、そして男女で真逆になる店選びの本音をまとめました👇\n#相席ラウンジ #相席ナビ",
+        },
         "area_hopping": {
             "title": f"なぜ半径300mで女性比が{gap_pt}%も割れるのか？{area_name}の「看板店集中バイアス」と二面市場の歪み",
             "short": f"{area_name}・半径300mの需給ねじれ解剖",
@@ -1763,17 +1880,18 @@ def _build_column_gemini_prompt(
         f"- 観察の視点：{plan.get('mechanism_lens')}\n"
         f"- 掘り下げるべき核：{plan.get('causal_thesis')}\n"
         f"- 導入シーンの舞台指定：{plan.get('opening_scene_hint')}\n"
-        f"- 今回のテーマで禁止する手垢トロープ：{banned_str}（既存記事で使い古された『エレベーターが開いた瞬間の〜』『23時の終電崖』『とりあえず40分見切り』を無関係なテーマに流用しないこと。また『二面市場』『Two-Sided Market』『サンクコスト錯誤』『コンコルド効果』『モニター見てたら』のような硬い専門用語・裏方口癖に頼らないこと！）\n\n"
-        "【特集コラムの構成設計指針（人間味ある読み物＆Web/note完全書き分け）】\n"
+        f"- 今回のテーマで禁止する手垢トロープ：{banned_str}（既存記事で使い古された『エレベーターが開いた瞬間の〜』『23時の終電崖』『とりあえず40分見切り』『メイク90分』を無関係なテーマに流用しないこと。また『二面市場』『サンクコスト錯誤』『コンコルド効果』『モニター見てたら』のような硬い専門用語・裏方口癖に頼らないこと！）\n\n"
+        "【特集コラムの構成設計指針（Web＝時間波形＆ブランド比較のデータ検証記事 ／ note＝男女の非対称な本音エッセイ）】\n"
         "- 既存記事タイトル群と被らない、今回のテーマ固有の切り口と導入シーンにすること。\n"
-        "- 難しい学術用語を使わず、男女それぞれのリアルな気持ち・お店の雰囲気や料金システム・時間帯による客層の移り変わりを自然な日本語で描き、全3章にリアルな会話（dialogue）と背景メモ（mechanism_note）を配置すること。\n"
-        "- Web版（検索読者にも読みやすい整理されたコラム）とは完全に別構成で、note版（`note_essay_markdown`：番号なし見出し `## ` と `> ` 引用を用いた1,600〜2,400文字の一人称エッセイ）を書き下ろすこと。\n\n"
+        "- 男女どちらの味方にも偏らないフラットな観察者として、双方のリアルな本音・図星と、ブランド別（オリエンタルラウンジ・ag・JIS・ヤタコイ・ASOBIBAR）の年齢感・時間帯波形の相性差を具体的に描くこと。\n"
+        "- 【Web版（`sections` + `data_table` + `faqs`）の役割】：時間帯ごとの波形推移・ブランド比較マトリクス・男女それぞれの具体的な店選び基準がクリアに整理された『データ検証＆ブランド相性レポート』として執筆し、全3章にリアルな会話（dialogue）と背景メモ（mechanism_note）を配置すること。\n"
+        "- 【note版（`note_essay_markdown`）の役割】：Web版のコピペや表・手順箇条書きの攻略感を一切排し、番号なし見出し `## ` と `> ` 引用を用いた1,700〜2,400文字の『男女の非対称な本音を描く一人称読み物エッセイ』として独立書き下ろしすること。\n\n"
         "【絶対厳守ルール】\n"
         "1. 店舗名・人数・女性比率・単価・待機料は下記ファクトシートにある検証済みデータのみを使い、架空の数値を捏造しないこと。\n"
-        "2. ブランド呼称ルール：単体の『オリエンタル』や略称『オリラジ』、中途半端な『オリエンタル新宿』（「ラウンジ」抜け）、内部コード『OLG』は絶対に使わないこと！必ず正式名称『オリエンタルラウンジ〇〇』と表記すること。\n"
+        "2. ブランド呼称ルール：単体の『オリエンタル』や略称『オリラジ』、中途半端な『オリエンタル新宿』（「ラウンジ」抜け）、内部コード『OLG』、『YATAKOI』は絶対に使わないこと！必ず正式名称『オリエンタルラウンジ〇〇』『ヤタコイ〇〇』と表記すること。\n"
         f"3. AI臭ワードの完全禁止：{cliches_str} はどこにも使わないこと。\n"
         f"4. ご都合主義セリフの禁止：{fantasy_str} のような浅いファンタジー会話は禁止。\n"
-        "5. `note_essay_markdown` は先頭に `# タイトル` を付けず（本文のみ）、必ず `## ` 見出しを2〜3個と `> ` 会話引用を1〜2箇所含め、Web版の段落をそのままコピペせずエッセイとして独立執筆し、末尾にWeb版URLと `https://aiseki-navi.com/` への案内を添えて合計1,600文字以上にすること。\n"
+        "5. `note_essay_markdown` は先頭に `# タイトル` を付けず（本文のみ）、必ず `## ` 見出しを2〜3個と `> ` 会話引用を1〜2箇所含め、表や箇条書き攻略リストを使わず情景と思索で1,700〜2,400文字にまとめ、末尾にWeb版URLと `https://aiseki-navi.com/` への案内を添えること。\n"
         "6. X告知文（`x_main_text`）は全角95〜120文字前後（Twitter weight 252以内、絵文字0〜1個、裏方ワード無し）に引き締め、控えめに `#相席ラウンジ` を添えること。\n\n"
         f"【検証済みファクトシート】\n{json.dumps(fact_sheet, ensure_ascii=False, indent=2)}\n\n"
         "以下のJSONオブジェクト形式のみで出力してください（Markdownコードブロック不要）：\n"
@@ -1842,7 +1960,7 @@ def _make_col_cache_key(research: dict, plan: dict, tone_mode: str = None):
         for s in (research.get("featured_stores") or [])[:3]
     )
     return (
-        "v6_opus_human_styles",
+        "v7_waveform_brand_asymmetry",
         eng_pref,
         has_c,
         tm,
@@ -2403,6 +2521,7 @@ _SKIP_EXACT_CLASSES = frozenset({
 })
 
 _NOTE_HASHTAG_PRESETS = {
+    "brand-waveform-asymmetry": "#相席ラウンジ #オリエンタルラウンジ #JIS #ag #ヤタコイ #ASOBIBAR #相席ナビ #人間観察",
     "for-women": "#相席ラウンジ #女子会 #オリエンタルラウンジ #JIS #ag #夜カフェ #相席ナビ",
     "last-train-cliff": "#相席ラウンジ #オリエンタルラウンジ #JIS #ag #相席ナビ #終電後 #夜遊び",
     "price-event-comparison": "#相席ラウンジ #オリエンタルラウンジ #JIS #ag #コスパ #相席ナビ #出会い",
@@ -2482,7 +2601,9 @@ def _polish_note_brand_text(md_text: str) -> str:
         return f"__URL_TOKEN_{len(protected) - 1}__"
 
     work = re.sub(r"https?://[^\s\)\]>]+", _stash_url, md_text)
-    work = re.sub(r"\bOLG\s*ag", "ag", work)
+    work = re.sub(r"\bYATAKOI\s+UMEDA\b", "ヤタコイ梅田", work, flags=re.IGNORECASE)
+    work = re.sub(r"\bYATAKOI\b", "ヤタコイ", work, flags=re.IGNORECASE)
+    work = re.sub(r"\bOLG\s*ag", "ag", work, flags=re.IGNORECASE)
     work = re.sub(r"OLG\s*(?=[ァ-ヶー一-龠々A-Za-z])", "オリエンタルラウンジ", work)
     work = re.sub(r"\bOLG\b", "オリエンタルラウンジ", work)
     work = _sanitize_brand_names(work, prefer_casual_if_tight=False)
@@ -2801,6 +2922,11 @@ def _convert_static_html_to_note(raw_html: str, meta: dict, site_url: str = "htt
 
 
 _STATIC_SLUG_ESSAY_LENSES = {
+    "brand-waveform-asymmetry": {
+        "essay_title_suffix": "5大ブランドの時間波形を眺めて気づいた、男女で『いい店』が真逆になる夜の不思議",
+        "hook": "夜の街の人数ログを20時から深夜1時までひと続きの線として追いかけてみると、同じビルの同じ看板なのに、時間によってまるで別の生き物のように表情を変える瞬間に出くわす。",
+        "mechanism": "たとえば梅田や渋谷のagやヤタコイでは、20時台には女性が7〜8割を占めて華やかに立ち上がるのに、深夜0時を回った途端に2軒目帰りの男性が合流して女性比が46〜48%へと綺麗に反転する。一方で、すぐ近くのオリエンタルラウンジや大型のJISでは、終電が過ぎた深夜1時になっても100名近い熱量のまま女性が過半数を保ち続ける。面白いのは、この『同じ街の波形の違い』を前にしたとき、男性側の本音と女性側の本音が鏡合わせのように真逆を向くことだ。男性にとっては女性が7割いる20時台のフロアこそ落ち着いて話せる天国だが、その同じ瞬間、女性2人組の側では『せっかく来たのにまだ相席がつかないね』という手持ち無沙汰な待ち時間が生まれやすい。逆に深夜0時を過ぎて男性が先行しているフロアは、男性には少し競争が激しい時間帯でも、2軒目でふらりと立ち寄った女性ペアにとっては待ち時間ゼロで歓迎される一番気楽な止まり木になる。",
+    },
     "crowd-rush-paradox": {
         "essay_title_suffix": "みんなが同じ『正解の数字』を見た瞬間に、正解が壊れる夜のゲーム理論",
         "hook": "金曜日の22時15分。居酒屋を出たばかりの路上でスマホを開き、『よし、女性比60%だ』と確かめてから歩き出したはずなのに、35分後に店の扉を開けると男性の待機列ができていた——あの狐につままれたような逆転現象には、明確な数理的理由がある。",
@@ -2912,7 +3038,7 @@ def _reframe_static_note_as_deep_essay(verbatim_res: dict, slug: str, site_base:
     lens = _STATIC_SLUG_ESSAY_LENSES.get(slug) or {
         "essay_title_suffix": "60店舗超の夜から見えた、すれ違いと余白の記録",
         "hook": "夜の繁華街で全国60店舗超の人の流れを静かに追いかけていると、数字の増減の向こう側に、今夜誰かと話したくて街へ繰り出した人たちのリアルな息遣いが浮かび上がってくる。",
-        "mechanism": "相席ラウンジという空間では、10分ごとの料金メーターがどうしても目に入る男性側と、仕事終わりに90分かけて髪やメイクを整えてきた女性側とで、流れている時間の感覚が少しだけ違っている。うまくいかない夜の原因を自分のトーク力不足だと責める人は多いけれど、実際にはお店に入る前の男女バランスの偏りや、時間帯ごとの街の空気の移り変わりが8割を決めている。",
+        "mechanism": "相席ラウンジという空間では、10分ごとの料金システムを意識せざるを得ない男性側と、限られた夜の時間を使って足を運んでいる女性側とで、流れている時間の感覚が少しだけ違っている。うまくいかない夜の原因を自分の会話センスのせいだと責める人は多いけれど、実際にはお店に入る前の男女バランスの波や、時間帯とブランドの空気の相性が8割を決めている。",
     }
 
     raw_body = verbatim_res.get("body_markdown") or ""
@@ -2972,7 +3098,7 @@ def _reframe_static_note_as_deep_essay(verbatim_res: dict, slug: str, site_base:
         lens["mechanism"],
     ]
 
-    if data_bullets:
+    if data_bullets and slug != "brand-waveform-asymmetry":
         parts.append("実際に今回のテーマに関わる現場データを抜き出してみると、感覚論ではない輪郭がはっきりと浮かび上がる。")
         parts.append("\n".join(data_bullets[:3]))
 
@@ -2983,19 +3109,19 @@ def _reframe_static_note_as_deep_essay(verbatim_res: dict, slug: str, site_base:
         ])
 
     parts.extend([
-        "## テクニックを増やすより、「無理をしなくていい場所」を選ぶこと",
+        "## 当たりハズレで裁くより、「いまの温度感に合う場所」を選ぶこと",
         (
-            "相席ラウンジというと、どうしても『何を話すか』『どう盛り上げるか』という小手先の会話術ばかりが語られやすい。"
-            "けれど、料金メーターが気になってつい急いでしまう男性側の気持ちと、長い時間をかけて身支度をしてきた女性側の気持ち。この2つのちょっとした違いにお互いが少しだけ想像力を持てたとき、テーブルの空気は驚くほど穏やかに変わる。"
+            "夜の街の話をすると、どうしても『どの店が当たりか』『どう振る舞えば勝てるか』という攻略法ばかりが語られやすい。"
+            "けれど、少しでも余裕のある席で落ち着いて話したい男性側の本音と、待たされずに自然な空気で乾杯したい女性側の本音。この双方がどちらも悪くないからこそ、時間帯による波の違いやブランドごとのノリの違いを知っておくことに意味がある。"
         ),
         (
-            "合わない波のなかで無理に90分粘って疲弊する必要はないし、逆に波長が合ったなら、一番楽しいピークの余韻が残るうちに『駅前の静かなお店で30分だけ話そうか』と出口の時間を添えて誘えばいい。"
-            "データを10秒だけ覗いてから動く習慣は、誰かを攻略するための計算ではなく、今夜出会う相手と自分自身の機嫌を丁寧に扱うための『大人の余白』なのだと私は思っている。"
+            "落ち着いたソファでゆっくり言葉を交わしたい夜もあれば、2軒目の勢いのままカジュアルな空間やバー業態へ合流したい夜もある。"
+            "お店に入る前のほんの10秒だけ街の波を覗いて、今夜の自分たちが無理をしなくていい扉を選ぶこと。それは誰かを出し抜くための計算ではなく、同じテーブルに座る相手と自分自身の機嫌を守るための、ささやかな大人の礼儀なのだと私は思っている。"
         ),
         "---",
         (
-            "📊 **Web版の詳細リファレンス（店舗別データ比較表・時間帯別プロトコル）はこちら**\n"
-            "この記事のテーマに関する具体的な店舗比較マトリクスや、入店前に確認しておきたいチェックリストはWeb版コラムに整理しています👇\n\n"
+            "📊 **Web版のデータ検証レポート（時間帯波形・ブランド別比較表）はこちら**\n"
+            "この記事のテーマに関する店舗別の時間帯推移データや、男女それぞれの店選び基準はWeb版コラムに整理しています👇\n\n"
             f"{article_url}\n\n"
             "👉 全国60店舗超の「いま現在の男女人数・女性比率ランキング」を見る（1分更新・無料）\n"
             f"{site_base}/"
