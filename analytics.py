@@ -159,6 +159,7 @@ _PAGE_TITLES = {
     '/guide/rain-payday': '📖 雨の日・給料日前・連休中日の男女比変動と隠れ穴場日データ',
     '/guide/osaka-kita-vs-minami': '📖 大阪キタvsミナミ全9店舗比較｜時間帯で逆転する南北ハシゴ法則',
     '/guide/table-change-protocol': '📖 相席ラウンジの席替え（チェンジ）完全攻略｜言えない男と察する女の心理学と成功店舗の条件',
+    '/guide/thirties-lounge-guide': '📖 相席ラウンジは30代・アラサーでも浮かない？｜店舗選びと客層データの境界線',
     '/guide/crowd-rush-paradox': '📖 金土22時の群衆殺到パラドックスと女性比70%安全バッファ検証',
     '/guide/brand-waveform-asymmetry': '📖 5大ブランドの時間波形と男女で真逆になる店選びデータ検証',
     '/for-women': '💄 女子のための相席ラウンジ完全ガイド＆待ちゼロ店舗ボード',

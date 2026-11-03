@@ -115,6 +115,30 @@ SCHEDULED_ARTICLES = [
         ),
     },
     {
+        "slug": "thirties-lounge-guide",
+        "path": "/guide/thirties-lounge-guide",
+        "template": "guide_thirties_lounge_guide.html",
+        "publish_at": "2026-11-04 19:00:00",
+        "publish_at_ja": "2026年11月4日(水) 19:00",
+        "lastmod": "2026-11-04",
+        "eyecatch_jpg": "/static/eyecatch-thirties-lounge-guide.jpg",
+        "eyecatch_webp": "/static/eyecatch-thirties-lounge-guide.webp",
+        "badge": "30代・年齢層データ",
+        "read_time": "約6分で読める",
+        "tag_primary": ("tag-amber", "📊 27.6万件客層ログ"),
+        "tag_secondary": ("tag-cyan", "アラサーの店舗選び"),
+        "title": "相席ラウンジは30代・アラサーでも浮かない？｜『学生ノリで疲れる店』と『落ち着いた大人が集まる店』の境界線をデータと実態で解明",
+        "short_title": "30代・アラサーのための相席ラウンジ攻略",
+        "desc": "「20代前半ばかりで場違いじゃないか」と躊躇するアラサー男女へ。全国27.6万件ログから、ag・オリエンタルラウンジ・JISの年齢層格差と、平日20時の社会人ゴールデンタイムを解説。",
+        "x_title": "相席ラウンジは30代でも浮かない？｜27.6万件ログで暴く店舗選びの境界線",
+        "x_main_text": (
+            "「相席ラウンジって20代前半ばかりで浮くんじゃ…」と躊躇する30代男女へ。\n\n"
+            "実はagは20代前半が7割ですが、オリエンタルラウンジやJISは社会人が6割超🍸\n"
+            "水木20時の社会人ゴールデンタイムと大人の店舗選びはリプ欄へ👇\n"
+            "#相席ラウンジ #相席ナビ"
+        ),
+    },
+    {
         "slug": "rain-payday",
         "path": "/guide/rain-payday",
         "template": "guide_rain_payday.html",

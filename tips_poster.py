@@ -303,10 +303,15 @@ TIPS_LIST = [
         "男性にとっての天国（女性80%の店）って、女性2人組からすると『相席がつかず放置されやすい店』でもあるんだよね。\n"
         "男女で『いま入るべき正解の店』が真逆になるのが夜の街のいちばん面白いところ。"
     ),
+    (
+        "「相席ラウンジって20代前半ばかりでアラサーは浮く？」と迷う男性、実はagとオリエンタルラウンジやJISでは客層が全く別物🍸\n"
+        "学生街を避けて平日の20時に行くと、落ち着いた同世代のOLさんと一番自然に会話が弾むよ。"
+    ),
 ]
 
 
 _FALLBACK_COLUMNS = [
+    ("相席ラウンジは30代でも浮かない？｜店舗選びと客層データの境界線", "/guide/thirties-lounge-guide"),
     ("20時と深夜0時で「主役」は入れ替わる｜5大ブランドの時間波形と男女逆転の店選び", "/guide/brand-waveform-asymmetry"),
     ("相席ラウンジの席替え完全攻略｜言えない男と察する女の心理学", "/guide/table-change-protocol"),
     ("金土22時の「女性比60%」が3割逆転する群衆殺到パラドックス", "/guide/crowd-rush-paradox"),
@@ -407,6 +412,11 @@ def _column_for_tip_index(idx: int) -> tuple:
         return ("相席ラウンジ実践コラム・攻略記事一覧", "/columns")
     if idx in (65, 66, 67):
         return ("20時と深夜0時で「主役」は入れ替わる｜5大ブランドの時間波形と男女逆転の店選び", "/guide/brand-waveform-asymmetry")
+    if idx == 68:
+        import scheduled_articles
+        if scheduled_articles.is_published("thirties-lounge-guide"):
+            return ("相席ラウンジは30代でも浮かない？｜店舗選びと客層データの境界線", "/guide/thirties-lounge-guide")
+        return ("相席ラウンジ実践コラム・攻略記事一覧", "/columns")
     return ("相席ラウンジ実践コラム・攻略記事一覧", "/columns")
 
 

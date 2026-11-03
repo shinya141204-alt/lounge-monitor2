@@ -4806,6 +4806,12 @@ def guide_table_change_protocol():
     return _render_scheduled_guide('table-change-protocol')
 
 
+@app.route('/guide/thirties-lounge-guide')
+def guide_thirties_lounge_guide():
+    """Scheduled editorial data study on thirties & around-30 demographic strategy and venue selection."""
+    return _render_scheduled_guide('thirties-lounge-guide')
+
+
 @app.route('/guide/<slug>')
 def guide_dynamic_scheduled(slug):
     """Dynamic route serving scheduled or live columns published from the Column Editorial Room."""
