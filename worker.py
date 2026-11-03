@@ -324,6 +324,7 @@ def _worker_staggered_warmup(stop_event: threading.Event):
             return
         local_db.sync_from_google_sheets(days=10, on_recent_synced=app_module.refresh_momentum_from_db)
         try:
+            local_db.get_all_stores_live_benchmarks(allow_blocking=True)
             local_db.backfill_forecast_accuracy_from_history(days=21, min_existing=80, max_rows=4500)
             local_db._refresh_forecast_caches_from_db(days=21)
         except Exception as fc_warm_err:

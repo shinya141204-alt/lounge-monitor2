@@ -40,6 +40,7 @@ import health  # noqa: E402
 import job_state  # noqa: E402
 import analytics  # noqa: E402
 
+local_db.DB_PATH = os.environ['LOCAL_DB_PATH']
 local_db.init_db()
 
 # 2026-10-23 時点で本番 /api/status が返した実店舗名

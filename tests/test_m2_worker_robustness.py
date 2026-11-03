@@ -53,15 +53,20 @@ class M2WorkerRobustnessTests(unittest.TestCase):
 
     def test_bug02_insert_logs_uses_non_blocking_weather(self):
         """BUG-02: local_db._save_moat_aux_logs calls capture_external_context_snapshot with allow_blocking=False."""
-        with mock.patch("moat_intelligence.capture_external_context_snapshot") as mock_cap:
-            mock_cap.return_value = []
-            test_items = [
-                {"name": "OLG 渋谷本店", "men": 10, "women": 15, "source": "oriental"}
-            ]
-            local_db._save_moat_aux_logs(test_items, "2026-10-30 20:00:00")
-            mock_cap.assert_called_once()
-            _, kwargs = mock_cap.call_args
-            self.assertFalse(kwargs.get("allow_blocking"), "allow_blocking must be False to prevent blocking DB transactions")
+        import tempfile
+        with tempfile.TemporaryDirectory(prefix="m2_aux_") as tmp_dir:
+            tmp_db = os.path.join(tmp_dir, "test_m2.db")
+            with mock.patch.object(local_db, "DB_PATH", tmp_db), \
+                 mock.patch("moat_intelligence.capture_external_context_snapshot") as mock_cap:
+                local_db.init_db()
+                mock_cap.return_value = []
+                test_items = [
+                    {"name": "OLG 渋谷本店", "men": 10, "women": 15, "source": "oriental"}
+                ]
+                local_db._save_moat_aux_logs(test_items, "2026-10-30 20:00:00")
+                mock_cap.assert_called_once()
+                _, kwargs = mock_cap.call_args
+                self.assertFalse(kwargs.get("allow_blocking"), "allow_blocking must be False to prevent blocking DB transactions")
 
     def test_bug04_clovers_scraper_non_digit_resilience(self):
         """BUG-04: get_clovers_data safely parses counts containing units or whitespace without ValueError."""

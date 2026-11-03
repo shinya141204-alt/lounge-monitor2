@@ -3174,10 +3174,16 @@ def serve_sw():
 
 @app.route('/api/status')
 def get_status():
+    import store_hours
     restore_latest_data_if_empty()
     trigger_background_fetch_if_needed()
     now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
     now_bucket = f"{now_jst.strftime('%Y%m%d%H')}_{(now_jst.minute // 10) * 10:02d}"
+    try:
+        _hp = store_hours.get_business_hours_status('OLG 新宿', total_guests=0)
+        _sh_sig = (id(store_hours.get_business_hours_status), _hp.get('is_open_now'), _hp.get('today_hours_label'))
+    except Exception:
+        _sh_sig = None
     with data_lock:
         full_d = latest_data.get('full_data')
         if not full_d:
@@ -3189,7 +3195,7 @@ def get_status():
         last_u = latest_data.get('last_updated')
         is_s = bool(latest_data.get('is_seed'))
         raw_copy = list(full_d)
-        c_key = (_live_data_signature(raw_copy, last_u, is_s), now_bucket)
+        c_key = (_live_data_signature(raw_copy, last_u, is_s), now_bucket, _sh_sig)
 
     inm = (request.headers.get('If-None-Match') or '').strip()
     with _status_json_cache_lock:
@@ -3215,6 +3221,13 @@ def get_status():
         sname = item.get('name', '')
         w = int(item.get('women') or 0)
         m = int(item.get('men') or 0)
+        if 'is_open_now' not in item or item.get('is_open_now') is None:
+            h_info = store_hours.get_business_hours_status(sname, total_guests=w + m)
+            item['is_open_now'] = h_info['is_open_now']
+            item['today_hours_label'] = h_info['today_hours_label']
+        elif 'today_hours_label' not in item:
+            h_info = store_hours.get_business_hours_status(sname, total_guests=w + m)
+            item['today_hours_label'] = h_info['today_hours_label']
         _attach_store_benchmarks(item, sname, w, m, benchmarks)
         enriched_ranking.append(item)
     try:
@@ -4181,7 +4194,9 @@ def store_detail_page(store_slug):
             _attach_store_benchmarks(store_obj, sname, women, men, {})
         try:
             import moat_intelligence
-            moat_intelligence.enrich_stores_with_moat_signals([store_obj], allow_weather_blocking=False)
+            moat_intelligence.enrich_stores_with_moat_signals(
+                [store_obj], allow_weather_blocking=False, context_stores=raw_stores
+            )
         except Exception:
             pass
 

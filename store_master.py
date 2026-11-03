@@ -282,16 +282,16 @@ def to_internal_store_name(name_or_slug: str) -> str:
         cand = "ASOBIBAR " + name_clean[len("ASOBIBAR（アソビバー）"):].strip()
         if cand in master:
             return cand
-    if name_clean.startswith("ヤタコイ"):
+    if name_clean in ("ヤタコイ", "YATAKOI") or (name_clean.startswith("ヤタコイ") and ("梅田" in name_clean or "UMEDA" in name_clean.upper())):
         if "YATAKOI UMEDA" in master:
             return "YATAKOI UMEDA"
-    if name_clean.startswith("相席CLOVERS"):
+    if name_clean in ("相席CLOVERS", "CLOVERS") or (name_clean.startswith("相席CLOVERS") and ("広島" in name_clean or "HIROSHIMA" in name_clean.upper())):
         if "CLOVERS HIROSHIMA" in master:
             return "CLOVERS HIROSHIMA"
-    if name_clean.startswith("相席ラウンジALFA"):
+    if name_clean in ("相席ラウンジALFA", "ALFA") or (name_clean.startswith("相席ラウンジALFA") and ("広島" in name_clean or "HIROSHIMA" in name_clean.upper())):
         if "ALFA HIROSHIMA" in master:
             return "ALFA HIROSHIMA"
-    if name_clean.startswith("相席ラウンジXIX"):
+    if name_clean in ("相席ラウンジXIX", "XIX") or (name_clean.startswith("相席ラウンジXIX") and ("岡山" in name_clean or "OKAYAMA" in name_clean.upper())):
         if "XIX OKAYAMA" in master:
             return "XIX OKAYAMA"
     return name_clean

@@ -484,7 +484,7 @@
                     <div class="fc-acc-kpi-label">旧モデル(v1)からの誤差改善</div>
                     <div class="fc-acc-kpi-val">{% if red_val is not none and red_val >= 0 %}-{{ red_val }}%{% elif red_val is not none %}+{{ (-red_val)|round(1) }}%{% else %}-{% endif %}</div>
                     <div class="fc-acc-kpi-sub">
-                        旧v1誤差 ±{{ fcs.v1_mae_wpct if fcs.v1_mae_wpct is not none else fch.v1_mae_wpct }}pt → 状態空間v2.2で大幅改善
+                        旧v1誤差 ±{{ fcs.v1_mae_wpct if fcs.v1_mae_wpct is not none else fch.v1_mae_wpct }}pt → 状態空間{{ (forecast_accuracy.model_version or 'v3.0').split('-')[0] }}で大幅改善
                     </div>
                 </div>
                 <div class="fc-acc-kpi-card">
@@ -546,7 +546,7 @@
                         <tr>
                             <th>予測出発時間帯</th>
                             <th>検証件数</th>
-                            <th>v2.2 平均ズレ（MAE）</th>
+                            <th>{{ (forecast_accuracy.model_version or 'v3.0').split('-')[0] }} 平均ズレ（MAE）</th>
                             <th>旧v1 平均ズレ</th>
                             <th>±10pt以内的中率</th>
                             <th>平均バイアス</th>

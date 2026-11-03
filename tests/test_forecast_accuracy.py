@@ -685,7 +685,416 @@ class TestForecastV2AndAccuracyTracking(unittest.TestCase):
             self.assertNotIn("--18.8%", html_staff)
             self.assertIn("+18.8%", html_staff)
 
+    def test_v30_seo_store_name_normalization_and_city_peer_spillover(self):
+        """SEO display names resolve to identical v3.0 priors/capacities as internal keys, and city peer context responds directionally and safely."""
+        dt = datetime.datetime(2026, 10, 30, 22, 15, tzinfo=JST)
+
+        for raw_key, seo_alias in (
+            ("OLG 渋谷本店", "オリエンタルラウンジ 渋谷本店"),
+            ("OLG ag梅田", "ag（アグ）梅田"),
+            ("OLG ag仙台", "ag 仙台"),
+            ("YATAKOI UMEDA", "ヤタコイ 梅田"),
+        ):
+            fc_raw = moat_intelligence.predict_store_60m_dynamics(
+                raw_key, 28, 20, True, 2, 3, now_jst=dt, weather_map={}, apply_online_bias=False, lag_context={}, usual_pair_override=()
+            )
+            fc_seo = moat_intelligence.predict_store_60m_dynamics(
+                seo_alias, 28, 20, True, 2, 3, now_jst=dt, weather_map={}, apply_online_bias=False, lag_context={}, usual_pair_override=()
+            )
+            self.assertEqual(fc_raw["model_version"], "v3.0-statespace")
+            self.assertEqual(fc_raw["pred_60m_wpct"], fc_seo["pred_60m_wpct"], f"Mismatch for {seo_alias}")
+            self.assertEqual(fc_raw["pred_60m_women"], fc_seo["pred_60m_women"])
+            self.assertEqual(fc_raw["pred_60m_men"], fc_seo["pred_60m_men"])
+            self.assertEqual(fc_raw["flip_risk_pct"], fc_seo["flip_risk_pct"])
+
+        # City peer spillover directional check: female-rich peers vs male-saturated peers in Tokyo
+        stores_fem_peers = [
+            {"name": "オリエンタルラウンジ 渋谷本店", "women": 24, "men": 24, "is_open_now": True},
+            {"name": "オリエンタルラウンジ 新宿", "women": 95, "men": 25, "is_open_now": True},
+            {"name": "オリエンタルラウンジ 恵比寿", "women": 85, "men": 25, "is_open_now": True},
+        ]
+        stores_male_peers = [
+            {"name": "オリエンタルラウンジ 渋谷本店", "women": 24, "men": 24, "is_open_now": True},
+            {"name": "オリエンタルラウンジ 新宿", "women": 25, "men": 95, "is_open_now": True},
+            {"name": "オリエンタルラウンジ 恵比寿", "women": 25, "men": 85, "is_open_now": True},
+        ]
+        pmap_f = moat_intelligence.build_city_peer_context(stores_fem_peers)
+        pmap_m = moat_intelligence.build_city_peer_context(stores_male_peers)
+        self.assertEqual(pmap_f["OLG 渋谷本店"]["peer_women"], 180)
+        self.assertEqual(pmap_f["OLG 渋谷本店"]["peer_stores"], 2)
+
+        fc_peer_f = moat_intelligence.predict_store_60m_dynamics(
+            "オリエンタルラウンジ 渋谷本店", 24, 24, True, 0, 0, now_jst=dt, weather_map={},
+            apply_online_bias=False, lag_context={}, peer_context=pmap_f["OLG 渋谷本店"], usual_pair_override=(),
+        )
+        fc_peer_m = moat_intelligence.predict_store_60m_dynamics(
+            "オリエンタルラウンジ 渋谷本店", 24, 24, True, 0, 0, now_jst=dt, weather_map={},
+            apply_online_bias=False, lag_context={}, peer_context=pmap_m["OLG 渋谷本店"], usual_pair_override=(),
+        )
+        self.assertGreater(fc_peer_f["pred_60m_wpct"], fc_peer_m["pred_60m_wpct"])
+
+        # Boundary safety: tiny/empty/single-store city peer context has zero effect and never errors
+        fc_base = moat_intelligence.predict_store_60m_dynamics(
+            "OLG 長崎", 14, 12, True, 0, 0, now_jst=dt, weather_map={}, apply_online_bias=False, lag_context={}, usual_pair_override=()
+        )
+        for edge_peer in ({}, {"peer_women": 0, "peer_men": 0, "peer_stores": 0}, {"peer_women": 6, "peer_men": 5, "peer_stores": 1}):
+            fc_edge = moat_intelligence.predict_store_60m_dynamics(
+                "OLG 長崎", 14, 12, True, 0, 0, now_jst=dt, weather_map={},
+                apply_online_bias=False, lag_context={}, peer_context=edge_peer, usual_pair_override=(),
+            )
+            self.assertEqual(fc_edge["pred_60m_wpct"], fc_base["pred_60m_wpct"])
+
+    def test_v30_kalman_trajectory_ring_lags_and_continuous_usual_interpolation(self):
+        """In-memory trajectory ring supplies t-15/30/60m Kalman state anchors, and 30-day usual curve interpolates smoothly across hour boundaries."""
+        t0 = datetime.datetime(2026, 10, 30, 22, 0, 0, tzinfo=JST)
+        with mock.patch("moat_intelligence.get_city_weather_map", return_value={}):
+            local_db.insert_logs([{"name": "OLG 渋谷本店", "women": 42, "men": 14}], "2026-10-30 21:00:00")
+            local_db.insert_logs([{"name": "OLG 渋谷本店", "women": 40, "men": 16}], "2026-10-30 21:30:00")
+            local_db.insert_logs([{"name": "OLG 渋谷本店", "women": 38, "men": 18}], "2026-10-30 21:45:00")
+
+        lags = local_db.get_cached_recent_lags_map(t0)
+        self.assertIn("OLG 渋谷本店", lags)
+        self.assertEqual(lags["OLG 渋谷本店"]["lag_15m"], (38, 18))
+        self.assertEqual(lags["OLG 渋谷本店"]["lag_30m"], (40, 16))
+        self.assertEqual(lags["OLG 渋谷本店"]["lag_60m"], (42, 14))
+
+        # Kalman state smoothing: transient 22:22 dip after sustained female-dominant history predicts higher wpct than after chronic male glut
+        fc_after_fem = moat_intelligence.predict_store_60m_dynamics(
+            "OLG 渋谷本店", 22, 22, True, 0, 0, now_jst=t0, weather_map={},
+            apply_online_bias=False, lag_context=lags["OLG 渋谷本店"], usual_pair_override=(),
+        )
+        fc_after_male = moat_intelligence.predict_store_60m_dynamics(
+            "OLG 渋谷本店", 22, 22, True, 0, 0, now_jst=t0, weather_map={},
+            apply_online_bias=False,
+            lag_context={"lag_15m": (22, 22), "lag_30m": (14, 38), "lag_60m": (12, 40)},
+            usual_pair_override=(),
+        )
+        self.assertGreater(fc_after_fem["pred_60m_wpct"], fc_after_male["pred_60m_wpct"])
+
+        # Edge-case lag tuples (zeros, <6 total, None) never raise or divide by zero
+        fc_zero_lag = moat_intelligence.predict_store_60m_dynamics(
+            "OLG 渋谷本店", 20, 15, True, 1, 1, now_jst=t0, weather_map={},
+            apply_online_bias=False, lag_context={"lag_30m": (0, 0), "lag_60m": (2, 1)}, usual_pair_override=(),
+        )
+        self.assertIsNotNone(fc_zero_lag["pred_60m_wpct"])
+
+        # Continuous minute interpolation across 21:59 -> 22:01 on 30-day usual pairs
+        hist_rows = []
+        base_fri = datetime.datetime(2026, 10, 9, 0, 0, 0)
+        for wk in range(3):
+            d_s = (base_fri + datetime.timedelta(days=7 * wk)).strftime("%Y-%m-%d")
+            hist_rows.append({"ts": f"{d_s} 21:15:00", "name": "OLG 新宿", "women": 44, "men": 16, "source": "oriental"})
+            hist_rows.append({"ts": f"{d_s} 22:15:00", "name": "OLG 新宿", "women": 24, "men": 32, "source": "oriental"})
+            hist_rows.append({"ts": f"{d_s} 23:15:00", "name": "OLG 新宿", "women": 16, "men": 30, "source": "oriental"})
+        local_db.insert_logs_with_ts(hist_rows)
+        local_db.get_all_stores_live_benchmarks(now_jst=datetime.datetime(2026, 10, 30, 21, 59, 0), allow_blocking=True, force_refresh=True)
+
+        u_2159 = local_db.get_cached_store_usual_pair("OLG 新宿", datetime.datetime(2026, 10, 30, 21, 59, 0, tzinfo=JST))
+        u_2201 = local_db.get_cached_store_usual_pair("OLG 新宿", datetime.datetime(2026, 10, 30, 22, 1, 0, tzinfo=JST))
+        self.assertIsNotNone(u_2159)
+        self.assertIsNotNone(u_2201)
+        # Across 2 minutes (21:59 -> 22:01), interpolated usual women at t and t+60m must vary smoothly (<1.0 headcount), not jump by 20!
+        self.assertLess(abs(u_2159[0] - u_2201[0]), 1.0)
+        self.assertLess(abs(u_2159[2] - u_2201[2]), 1.0)
+
+    def test_v30_pdt_ghost_batch_surgical_removal_and_legacy_backfill_migration(self):
+        """PDT (-16h) ghost batches (both 04:15 closed-hour ghosts and 5s-apart mid-evening spikes) are removed, and legacy v2.2 rows auto-migrate."""
+        stores_20 = [
+            "OLG 渋谷本店", "OLG 新宿", "OLG 恵比寿", "OLG 上野", "OLG 錦糸町",
+            "OLG 柏", "OLG 町田", "OLG 横浜", "OLG 大宮", "OLG 宇都宮",
+            "OLG 高崎", "OLG 梅田", "OLG 心斎橋", "OLG 難波", "OLG 京都",
+            "OLG 神戸", "OLG 岡山", "OLG 福岡", "OLG 熊本", "JIS SHINJUKU",
+        ]
+        # Use a fixed past weekday (Wednesday night -> Thursday early morning) within the last 7 days
+        today = datetime.datetime.now(JST).date()
+        # Find most recent Wednesday strictly in the past (at least 1 day ago)
+        wed_date = today - datetime.timedelta(days=1)
+        while wed_date.weekday() != 2:
+            wed_date -= datetime.timedelta(days=1)
+        thu_date = wed_date + datetime.timedelta(days=1)
+        w_str = wed_date.strftime("%Y-%m-%d")
+        th_str = thu_date.strftime("%Y-%m-%d")
+
+        logs = []
+        # 1) Genuine evening trajectory at 20:45, 21:00, and 22:00 (~30 women, ~22 men)
+        for ts_real, base_w, base_m in (
+            (f"{w_str} 20:45:00", 28, 18),
+            (f"{w_str} 21:00:00", 30, 22),
+            (f"{w_str} 22:00:00", 26, 24),
+        ):
+            for idx, s in enumerate(stores_20):
+                logs.append({"ts": ts_real, "name": s, "women": base_w + (idx % 3), "men": base_m + (idx % 2), "source": "oriental"})
+
+        # 2) Rogue PDT ghost batch injected just 5 SECONDS after 21:00:00 (21:00:05 -> near-empty morning ghost: 1:0 in 18 stores, 8:0 in 2)
+        #    Old 90s merge window would have overwritten 21:00:00 with these corrupted counts!
+        for idx, s in enumerate(stores_20):
+            logs.append({"ts": f"{w_str} 21:00:05", "name": s, "women": 8 if idx < 2 else 0, "men": 0, "source": "oriental"})
+
+        # 3) Rogue early-morning PDT ghost batch at Thu 04:15:00 (20:15 PDT evening opening: closed weekday stores Ueno/Kashiwa/Machida active & women-only m=0)
+        for idx, s in enumerate(stores_20):
+            logs.append({"ts": f"{th_str} 04:15:00", "name": s, "women": 14, "men": 0, "source": "oriental"})
+            logs.append({"ts": f"{th_str} 05:15:00", "name": s, "women": 18, "men": 4, "source": "oriental"})
+
+        local_db.insert_logs_with_ts(logs)
+
+        # Verify 04:15 ghost batch is excluded from 30-day live benchmarks too
+        bm_04 = local_db.get_all_stores_live_benchmarks(
+            now_jst=datetime.datetime.strptime(f"{th_str} 04:20:00", "%Y-%m-%d %H:%M:%S"),
+            allow_blocking=True,
+            force_refresh=True,
+        )
+        self.assertIsNone(bm_04.get("OLG 上野", {}).get("usual_women"))
+
+        # Seed legacy v2.2 resolved rows + 1 live pending row in forecast_accuracy_logs
+        conn = local_db.get_connection()
+        try:
+            cur = conn.cursor()
+            for i in range(60):
+                p_s = f"{w_str} 19:{i:02d}:00"
+                cur.execute(
+                    """
+                    INSERT INTO forecast_accuracy_logs (
+                        predicted_at, target_at, store_name, model_version,
+                        start_women, start_men, start_wpct, pred_women, pred_men, pred_wpct,
+                        resolved_at, actual_women, actual_men, actual_wpct, error_wpct_pt, abs_error_wpct_pt
+                    ) VALUES (?, ?, ?, 'v2.2-statespace', 10, 10, 50, 10, 10, 50, ?, 1, 19, 5, 45, 45)
+                    """,
+                    (p_s, f"{w_str} 20:{i:02d}:00", "OLG 渋谷本店", f"{w_str} 20:{i:02d}:00"),
+                )
+            # Pending row (resolved_at IS NULL) must NOT be deleted during migration
+            cur.execute(
+                """
+                INSERT INTO forecast_accuracy_logs (
+                    predicted_at, target_at, store_name, model_version,
+                    start_women, start_men, start_wpct, pred_women, pred_men, pred_wpct
+                ) VALUES (?, ?, 'OLG 渋谷本店', 'v2.2-statespace', 25, 20, 56, 24, 21, 53)
+                """,
+                (f"{th_str} 23:30:00", f"{th_str} 23:59:00"),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+        # Legacy v2.2 residuals must NOT contaminate v3.0 online bias cache
+        local_db._invalidate_forecast_caches()
+        self.assertEqual(local_db.get_cached_forecast_residual_adjustment("OLG 渋谷本店", 19), 0.0)
+
+        # Backfill with force=False and min_existing=40 must auto-migrate because v3.0 resolved count is 0
+        bf = local_db.backfill_forecast_accuracy_from_history(days=10, min_existing=40, max_rows=200, force=False)
+        self.assertFalse(bf.get("skipped"))
+        self.assertEqual(bf["inserted"], 20)
+
+        # Verify: 1) Legacy resolved v2.2 rows removed, 2) Pending row preserved, 3) 21:00:00 start_women=30 (not 21:00:05 ghost!), 4) 04:15 ghost absent
+        res_vers = local_db._fetch_all_rows(
+            "SELECT DISTINCT model_version FROM forecast_accuracy_logs WHERE resolved_at IS NOT NULL"
+        )
+        self.assertEqual([r[0] for r in res_vers], ["v3.0-statespace"])
+        pend_cnt = local_db._fetch_all_rows("SELECT COUNT(*) FROM forecast_accuracy_logs WHERE resolved_at IS NULL")[0][0]
+        self.assertEqual(pend_cnt, 1)
+
+        shib_21 = local_db._fetch_all_rows(
+            "SELECT start_women, start_men, actual_women, actual_men FROM forecast_accuracy_logs WHERE store_name = 'OLG 渋谷本店' AND resolved_at IS NOT NULL"
+        )
+        self.assertEqual(len(shib_21), 1)
+        self.assertEqual(tuple(shib_21[0]), (30, 22, 26, 24))
+
+        # Intra-hour 6-row burst in a single hour (eff_n = 1 + 0.55*5 = 3.75 < 5.0) must NOT trigger premature online bias
+        conn = local_db.get_connection()
+        try:
+            cur = conn.cursor()
+            for i in range(6):
+                cur.execute(
+                    """
+                    INSERT INTO forecast_accuracy_logs (
+                        predicted_at, target_at, store_name, model_version,
+                        start_women, start_men, start_wpct, pred_women, pred_men, pred_wpct,
+                        resolved_at, actual_women, actual_men, actual_wpct, error_wpct_pt, abs_error_wpct_pt
+                    ) VALUES (?, ?, 'OLG 長崎', ?, 20, 15, 57, 22, 14, 61, ?, 14, 20, 41, 20, 20)
+                    """,
+                    (f"{th_str} 21:{10 + i * 5:02d}:00", f"{th_str} 22:{10 + i * 5:02d}:00", moat_intelligence.FORECAST_MODEL_VERSION, f"{th_str} 22:{10 + i * 5:02d}:00"),
+                )
+            conn.commit()
+        finally:
+            conn.close()
+        local_db._invalidate_forecast_caches()
+        self.assertEqual(local_db.get_cached_forecast_residual_adjustment("OLG 長崎", 21), 0.0)
+
+    def test_opening_and_closing_ramps_preserved_while_stuck_ghost_and_ring_spike_evicted(self):
+        """Genuine 18:10 opening & 06:00 closing ramps survive Stage-1/Stage-2 & live ring, while 17h/18h stuck ghosts and interleaved spikes are removed."""
+        stores_20 = [
+            "OLG 渋谷本店", "OLG 新宿", "OLG 恵比寿", "OLG 上野", "OLG 錦糸町",
+            "OLG 横浜", "OLG 大宮", "OLG 柏", "OLG 町田", "OLG 大阪駅前",
+            "OLG 心斎橋", "OLG 難波", "OLG 京都", "OLG 神戸", "OLG 名古屋 栄",
+            "OLG 福岡", "OLG 札幌", "JIS SHINJUKU", "JIS UMEDA", "ALFA HIROSHIMA",
+        ]
+        d_sun = "2026-10-18"  # Sunday
+        raw_rows = []
+        # 1) 17:45 PDT stuck-counter ghost: ALFA HIROSHIMA 44:39 while all other 19 stores are 0:0
+        for s in stores_20:
+            w, m = (44, 39) if s == "ALFA HIROSHIMA" else (0, 0)
+            raw_rows.append((f"{d_sun} 17:45:00", s, w, m))
+        # 2) Genuine 17:55 early open -> 18:10 opening surge (bc_prev > 0.45!) -> 18:25 continuation
+        for idx_t, (ts_hm, mult) in enumerate([("17:55:00", 1), ("18:10:00", 3), ("18:25:00", 4)]):
+            for idx_s, s in enumerate(stores_20):
+                if idx_t == 0:
+                    w, m = (8, 6) if idx_s < 8 else (2, 2)
+                else:
+                    w, m = (6 * mult + (idx_s % 3), 4 * mult + (idx_s % 2))
+                raw_rows.append((f"{d_sun} {ts_hm}", s, w, m))
+        # 3) Genuine Monday 06:00 closing tail: 2 mild stragglers (OLG 心斎橋 2:2, OLG 難波 2:1 at mtc=-60), others legitimate/empty
+        d_mon = "2026-10-19"
+        for s in stores_20:
+            if s in ("OLG 心斎橋", "OLG 難波"):
+                w, m = (2, 2)
+            elif s in ("JIS SHINJUKU", "JIS UMEDA"):  # open until 06:00 -> mtc == 0
+                w, m = (8, 6)
+            else:
+                w, m = (0, 0)
+            raw_rows.append((f"{d_mon} 06:00:00", s, w, m))
+
+        cleaned = local_db._extract_clean_snapshot_batches(raw_rows, check_taint=False, exclude_korea=True)
+        ts_kept = [b[1] for b in cleaned]
+        self.assertNotIn(f"{d_sun} 17:45:00", ts_kept)
+        self.assertIn(f"{d_sun} 17:55:00", ts_kept)
+        self.assertIn(f"{d_sun} 18:10:00", ts_kept)
+        self.assertIn(f"{d_sun} 18:25:00", ts_kept)
+        self.assertIn(f"{d_mon} 06:00:00", ts_kept)
+
+        # Live trajectory ring: 18:10 opening jump is NOT dropped, whereas an interleaved 21:08 spike IS retroactively evicted at 21:15
+        local_db.clear_store_7d_cache(clear_benchmarks=True)
+        for ts_hm, mult in [("17:55:00", 1), ("18:10:00", 3)]:
+            items = [
+                {"name": s, "women": (8 if mult == 1 and i < 8 else (2 if mult == 1 else 6 * mult)), "men": (6 if mult == 1 and i < 8 else (2 if mult == 1 else 4 * mult))}
+                for i, s in enumerate(stores_20)
+            ]
+            local_db._record_snapshot_to_trajectory_ring(items, f"{d_sun} {ts_hm}")
+        lags_1825 = local_db.get_cached_recent_lags_map(datetime.datetime(2026, 10, 18, 18, 25, tzinfo=JST))
+        self.assertEqual(lags_1825["OLG 渋谷本店"]["lag_15m"], (18, 12))
+
+        local_db.clear_store_7d_cache(clear_benchmarks=True)
+        real_2100 = [{"name": s, "women": 24 + (i % 3), "men": 18 + (i % 2)} for i, s in enumerate(stores_20)]
+        spike_2108 = [{"name": s, "women": 3, "men": 14} for s in stores_20]
+        real_2115 = [{"name": s, "women": 25 + (i % 3), "men": 19 + (i % 2)} for i, s in enumerate(stores_20)]
+        local_db._record_snapshot_to_trajectory_ring(real_2100, f"{d_sun} 21:00:00")
+        local_db._record_snapshot_to_trajectory_ring(spike_2108, f"{d_sun} 21:08:00")
+        local_db._record_snapshot_to_trajectory_ring(real_2115, f"{d_sun} 21:16:00")
+        lags_2125 = local_db.get_cached_recent_lags_map(datetime.datetime(2026, 10, 18, 21, 25, tzinfo=JST))
+        # 21:08 spike (dt=17m ago) was evicted when 21:16 reconnected to 21:00, so lag_15m at 21:25 comes from 21:16 (dt=9m), NOT 21:08!
+        self.assertEqual(lags_2125["OLG 渋谷本店"]["lag_15m"], (25, 19))
+
+    def test_api_status_closed_wait_tone_and_store_detail_context_parity(self):
+        """`/api/status` marks 0:0 off-hours stores closed, and `/store/<slug>` uses full `raw_stores` context for peer & arena signals."""
+        # 1) Off-hours 0:0 store in /api/status must have is_open_now=False and wait_tone='closed'
+        with app_module.data_lock:
+            app_module.latest_data["full_data"] = [
+                {"name": "OLG 渋谷本店", "women": 0, "men": 0, "source": "oriental", "region": "Kanto"},
+                {"name": "OLG 新宿", "women": 32, "men": 18, "women_diff": 8, "men_diff": 1, "source": "oriental", "region": "Kanto"},
+                {"name": "JIS SHINJUKU", "women": 28, "men": 16, "women_diff": 7, "men_diff": 0, "source": "jis", "region": "Kanto"},
+            ]
+            app_module.latest_data["last_updated"] = "2026-10-30 14:00:00"
+        app_module.clear_fast_http_caches()
+
+        fake_closed = {"is_open_now": False, "scheduled_open": False, "hours_label": "18:00〜翌5:00", "today_hours_label": "18:00〜翌5:00", "schedule_spec": {}}
+        with mock.patch("store_hours.get_business_hours_status", side_effect=lambda name, total_guests=0, now_jst=None: (
+            fake_closed if int(total_guests or 0) == 0 else {**fake_closed, "is_open_now": True}
+        )), mock.patch("moat_intelligence.get_city_weather_map", return_value={}):
+            r_st = self.client.get("/api/status")
+            self.assertEqual(r_st.status_code, 200)
+            ranking = r_st.get_json()["ranking"]
+            shib = next(x for x in ranking if "渋谷本店" in x["name"])
+            self.assertFalse(shib["is_open_now"])
+            self.assertEqual(shib["wait_estimate"]["wait_tone"], "closed")
+
+        # 2) Store detail context parity: enrich([store_obj], context_stores=full_list) == enrich(full_list)
+        t_21 = datetime.datetime(2026, 10, 30, 21, 15, tzinfo=JST)
+        full_tokyo = [
+            {"name": "OLG 新宿", "women": 34, "men": 20, "women_diff": 9, "men_diff": 1, "usual_w_diff": 10, "is_open_now": True},
+            {"name": "JIS SHINJUKU", "women": 30, "men": 18, "women_diff": 8, "men_diff": 1, "usual_w_diff": 9, "is_open_now": True},
+            {"name": "OLG 渋谷本店", "women": 36, "men": 14, "women_diff": 2, "men_diff": 1, "is_open_now": True},
+        ]
+        with mock.patch("moat_intelligence.get_city_weather_map", return_value={}):
+            batch_res = moat_intelligence.enrich_stores_with_moat_signals([dict(x) for x in full_tokyo], now_jst=t_21)
+            single_res = moat_intelligence.enrich_stores_with_moat_signals([dict(full_tokyo[0])], now_jst=t_21, context_stores=full_tokyo)
+        self.assertEqual(single_res[0]["forecast_60m"]["pred_60m_wpct"], batch_res[0]["forecast_60m"]["pred_60m_wpct"])
+        self.assertEqual(single_res[0]["forecast_60m"]["arena_signal_label"], batch_res[0]["forecast_60m"]["arena_signal_label"])
+        self.assertTrue(len(single_res[0]["forecast_60m"]["arena_signal_label"]) > 0)
+
+    def test_seo_store_names_arena_surge_and_brand_phase_fallbacks(self):
+        """SEO store names trigger arena surge detection, and unmapped ag/YATAKOI/XIX branches resolve to their own brand priors."""
+        t_21 = datetime.datetime(2026, 10, 30, 21, 0, tzinfo=JST)
+        seo_stores = [
+            {"name": "オリエンタルラウンジ 新宿", "women": 35, "men": 18, "women_diff": 9, "usual_w_diff": 10},
+            {"name": "JIS（ジス）新宿", "women": 28, "men": 16, "women_diff": 8, "usual_w_diff": 9},
+        ]
+        arena_map = moat_intelligence.detect_arena_event_surges(seo_stores, now_jst=t_21)
+        self.assertIn("オリエンタルラウンジ 新宿", arena_map)
+        self.assertIn("OLG 新宿", arena_map)
+
+        # Unmapped branch resolution & brand phase defaults
+        self.assertEqual(moat_intelligence._resolve_internal_store_key("ag（アグ）横浜"), "OLG ag横浜")
+        self.assertEqual(moat_intelligence._brand_phase_default("OLG ag横浜"), moat_intelligence._V3_BRAND_PHASE_DEFAULTS["AG"])
+        self.assertEqual(moat_intelligence._resolve_internal_store_key("ヤタコイ 新宿"), "YATAKOI 新宿")
+        self.assertEqual(moat_intelligence._brand_phase_default("YATAKOI 新宿"), moat_intelligence._V3_BRAND_PHASE_DEFAULTS["YATA"])
+        self.assertEqual(moat_intelligence._brand_phase_default("XIX SHINJUKU"), moat_intelligence._V3_BRAND_PHASE_DEFAULTS["XIX"])
+
+    def test_synthetic_seed_taint_guard_overdue_ghost_filter_and_cold_usual_pair(self):
+        """Synthetic SEO seed batches are rejected from live recording, overdue resolution strips PDT ghosts, and cold usual_pair warms."""
+        # 1) Synthetic SEO seed batch must NOT record into forecast_accuracy_logs
+        with mock.patch("moat_intelligence.get_city_weather_map", return_value={}):
+            res_seed = local_db.record_and_resolve_forecasts(
+                [
+                    {"name": "オリエンタルラウンジ 渋谷本店", "women": 45, "men": 30},
+                    {"name": "JIS SHINJUKU", "women": 25, "men": 20},
+                    {"name": "ag渋谷", "women": 18, "men": 15},
+                ],
+                "2026-10-30 21:00:00",
+            )
+        self.assertEqual(res_seed, {"resolved": 0, "recorded": 0})
+        cnt_fc = local_db._fetch_all_rows("SELECT COUNT(*) FROM forecast_accuracy_logs")[0][0]
+        self.assertEqual(cnt_fc, 0)
+
+        # 2) Overdue resolution strips multi-store PDT ghost at 21:00:00 and resolves against genuine 21:05:00 batch
+        d_wed = "2026-10-28"
+        stores_20 = [
+            "OLG 渋谷本店", "OLG 新宿", "OLG 恵比寿", "OLG 上野", "OLG 錦糸町",
+            "OLG 横浜", "OLG 大宮", "OLG 柏", "OLG 町田", "OLG 大阪駅前",
+            "OLG 心斎橋", "OLG 難波", "OLG 京都", "OLG 神戸", "OLG 名古屋 栄",
+            "OLG 福岡", "OLG 札幌", "JIS SHINJUKU", "JIS UMEDA", "ALFA HIROSHIMA",
+        ]
+        with mock.patch("moat_intelligence.get_city_weather_map", return_value={}):
+            local_db.insert_logs([{"name": "OLG 渋谷本店", "women": 28, "men": 20}], f"{d_wed} 20:00:00")
+            # Insert a prime-time Stage-1 PDT ghost at 21:00:00 (19 stores 0:0, only OLG 渋谷本店 2:1 -> tot_all < 100) + real 21:05:00 batch
+            ov_logs = []
+            for s in stores_20:
+                ov_logs.append({"ts": f"{d_wed} 21:00:00", "name": s, "women": (4 if s == "OLG 渋谷本店" else 0), "men": (16 if s == "OLG 渋谷本店" else 0)})
+                ov_logs.append({"ts": f"{d_wed} 21:05:00", "name": s, "women": (30 if s == "OLG 渋谷本店" else 14), "men": (20 if s == "OLG 渋谷本店" else 10)})
+            local_db.insert_logs_with_ts(ov_logs)
+            res_ov = local_db.resolve_due_forecasts_only([{"name": "OLG 渋谷本店", "women": 22, "men": 22}], f"{d_wed} 22:00:00")
+            self.assertEqual(res_ov["resolved"], 1)
+
+        row_ov = local_db._fetch_all_rows(
+            "SELECT resolved_at, actual_women, actual_men FROM forecast_accuracy_logs WHERE predicted_at = ?",
+            (f"{d_wed} 20:00:00",),
+        )[0]
+        self.assertEqual(tuple(row_ov), (f"{d_wed} 21:05:00", 30, 20))
+
+        # 3) Cold get_cached_store_usual_pair auto-warms _benchmark_base_cache and resolves SEO store names
+        base_night = datetime.datetime.now(JST).replace(tzinfo=None, hour=21, minute=15, second=0, microsecond=0)
+        hist_u = []
+        for d_back in range(1, 7):
+            dt_base = base_night - datetime.timedelta(days=d_back)
+            hist_u.append({"ts": dt_base.strftime("%Y-%m-%d %H:%M:%S"), "name": "OLG 渋谷本店", "women": 32, "men": 20})
+            hist_u.append({"ts": (dt_base + datetime.timedelta(hours=1)).strftime("%Y-%m-%d %H:%M:%S"), "name": "OLG 渋谷本店", "women": 36, "men": 24})
+        local_db.insert_logs_with_ts(hist_u)
+        local_db.clear_store_7d_cache(clear_benchmarks=True)
+        # Without calling get_all_stores_live_benchmarks first, cold lookup + SEO name must still succeed!
+        up = local_db.get_cached_store_usual_pair("オリエンタルラウンジ 渋谷本店", base_night.replace(tzinfo=JST))
+        self.assertIsNotNone(up)
+        self.assertGreaterEqual(up[4], 5)
+
 
 if __name__ == "__main__":
     unittest.main()
+
+
 

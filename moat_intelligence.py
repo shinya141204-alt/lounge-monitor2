@@ -330,6 +330,7 @@ def get_city_weather_map(allow_blocking: bool = False) -> dict:
     with _weather_lock:
         cached = dict(_weather_state["cities"])
         age = now_mono - _weather_state["ts"]
+        fail_age = now_mono - _weather_state.get("fail_ts", -999.0)
         already_fetching = _weather_state["fetching"]
 
     if cached and age < _WEATHER_TTL_SEC:
@@ -342,27 +343,37 @@ def get_city_weather_map(allow_blocking: bool = False) -> dict:
                 with _weather_lock:
                     _weather_state["cities"] = fresh
                     _weather_state["ts"] = time.monotonic()
+                    _weather_state["fail_ts"] = -999.0
                 return fresh
+            with _weather_lock:
+                _weather_state["fail_ts"] = time.monotonic()
         except Exception as e:
+            with _weather_lock:
+                _weather_state["fail_ts"] = time.monotonic()
             logger.debug(f"[moat_intelligence] weather fetch skipped: {e}")
         return cached
 
-    # Non-blocking background refresh (skip during unit tests to avoid stray network threads)
-    if not already_fetching and os.environ.get("DISABLE_SCHEDULER") != "1":
+    # Non-blocking background refresh (skip during unit tests or within 60s failure cooldown)
+    if not already_fetching and fail_age >= 60.0 and os.environ.get("DISABLE_SCHEDULER") != "1":
         with _weather_lock:
             _weather_state["fetching"] = True
 
         def _bg():
+            ok = False
             try:
                 fresh = _fetch_open_meteo_all_cities(timeout_sec=3.5)
                 if fresh:
+                    ok = True
                     with _weather_lock:
                         _weather_state["cities"] = fresh
                         _weather_state["ts"] = time.monotonic()
+                        _weather_state["fail_ts"] = -999.0
             except Exception:
                 pass
             finally:
                 with _weather_lock:
+                    if not ok:
+                        _weather_state["fail_ts"] = time.monotonic()
                     _weather_state["fetching"] = False
 
         threading.Thread(target=_bg, daemon=True).start()
@@ -474,7 +485,20 @@ def detect_arena_event_surges(live_stores: list, now_jst: datetime.datetime = No
     except Exception:
         pass
 
-    store_map = {s.get("name"): s for s in (live_stores or []) if s.get("name")}
+    store_map = {}
+    raw_names_by_canon = {}
+    for s in (live_stores or []):
+        if not isinstance(s, dict):
+            continue
+        rname = (s.get("name") or "").strip()
+        if not rname:
+            continue
+        cname = _resolve_internal_store_key(rname) or rname
+        store_map[cname] = s
+        if rname != cname:
+            store_map[rname] = s
+            raw_names_by_canon.setdefault(cname, []).append(rname)
+
     signals_by_store = {}
     is_post_concert_window = 19 <= hr <= 22
 
@@ -503,13 +527,16 @@ def detect_arena_event_surges(live_stores: list, now_jst: datetime.datetime = No
                 if not st:
                     continue
                 if is_explicit or int(st.get("women") or 0) >= 12:
-                    signals_by_store[sname] = {
+                    sig_obj = {
                         "venue_id": vid,
                         "venue_name": vname,
                         "is_explicit_schedule": is_explicit,
                         "surge_women_delta": max_w_diff,
                         "label_short": f"🎸{vname.split('・')[0]}終演圏・女性流入中",
                     }
+                    signals_by_store[sname] = sig_obj
+                    for r_alias in raw_names_by_canon.get(sname, ()):
+                        signals_by_store[r_alias] = sig_obj
     return signals_by_store
 
 
@@ -524,7 +551,7 @@ def capture_external_context_snapshot(live_stores: list = None, allow_blocking: 
 
     city_arenas = {}
     for sname, sig in arena_signals.items():
-        ck = city_key_for_store(sname)
+        ck = city_key_for_store(_resolve_internal_store_key(sname) or sname)
         if ck:
             city_arenas.setdefault(ck, set()).add(sig["venue_id"])
 
@@ -644,10 +671,11 @@ def estimate_store_wait_and_pos(
     - 定額スタンディング店舗（ASOBIBAR / ヤタコイ）は自由回遊業態として席待ちなしを返す。
     - オリエンタルラウンジ・ag等の従量制着席店舗は、JIS実測待機モデル＋P99収容率からリアル待ち時間を推論。
     """
+    canon_name = _resolve_internal_store_key(store_name) or (store_name or "")
     women = max(0, int(women or 0))
     men = max(0, int(men or 0))
     total = women + men
-    p99_cap = max(35, int(STORE_P99_CAPACITY.get(store_name, 120)))
+    p99_cap = max(35, int(STORE_P99_CAPACITY.get(canon_name, 120)))
     # STORE_P99_CAPACITY は全時間帯（平日・早朝深夜含む）の99%点のため、金土ピーク時の実効物理収容枠は約1.18倍
     physical_cap = max(45, int(round(p99_cap * 1.18)))
     occ_pct = min(100, int(round((total / float(physical_cap)) * 100)))
@@ -655,7 +683,7 @@ def estimate_store_wait_and_pos(
     if not is_open_now and total == 0:
         return {
             "is_measured": False,
-            "is_standing_free": store_name in FLAT_STANDING_STORES,
+            "is_standing_free": canon_name in FLAT_STANDING_STORES,
             "occupancy_pct": 0,
             "est_men_wait_groups": 0,
             "est_men_wait_min": 0,
@@ -669,7 +697,7 @@ def estimate_store_wait_and_pos(
         }
 
     # --- Case A: 定額・スタンディング自由回遊型（ASOBIBAR 10店 / ヤタコイ梅田） ---
-    if store_name in FLAT_STANDING_STORES:
+    if canon_name in FLAT_STANDING_STORES:
         vip_cnt = int((pos_telemetry or {}).get("vip_guests") or 0)
         vip_note = f"・VIP稼働{vip_cnt}" if vip_cnt > 0 else ""
         if total == 0:
@@ -955,28 +983,28 @@ def estimate_store_wait_and_pos(
 
 
 # ==============================================================================
-# 5. 実測マルコフ状態空間モデル（v2.2）に基づく「60分後の男女比予測エンジン」
+# 5. 実測マルコフ状態空間＋都市内スピルオーバーモデル（v3.0）に基づく「60分後の男女比予測エンジン」
 # ==============================================================================
-FORECAST_MODEL_VERSION = "v2.2-statespace"
+FORECAST_MODEL_VERSION = "v3.0-statespace"
 
-# 時系列ホールドアウト検証ベンチマーク（学習 <=2026-10-15 12:00 / 未来未見テスト >2026-10-15 12:00, n=14,542 遷移ペアでの実測値）
+# 時系列ホールドアウト検証ベンチマーク（学習 <=2026-10-15 12:00 / 未来未見テスト >2026-10-15 12:00, n=15,331 クリーン遷移ペア t+60m>=4名 での実測値）
 HOLDOUT_BACKTEST_SUMMARY = {
-    "test_samples": 14542,
-    "v1_mae_wpct": 11.17,
-    "v1_rmse_wpct": 15.55,
-    "v1_within_5pt_pct": 37.2,
-    "v1_within_10pt_pct": 61.1,
-    "v1_brier_flip": 0.1845,
-    "naive_mae_wpct": 10.68,
-    "v2_mae_wpct": 7.91,
-    "v2_rmse_wpct": 10.89,
-    "v2_within_5pt_pct": 47.7,
-    "v2_within_10pt_pct": 74.0,
-    "v2_brier_flip": 0.1353,
-    "mae_reduction_pct": 29.2,
+    "test_samples": 15331,
+    "v1_mae_wpct": 10.64,
+    "v1_rmse_wpct": 14.47,
+    "v1_within_5pt_pct": 37.1,
+    "v1_within_10pt_pct": 61.5,
+    "v1_brier_flip": 0.1846,
+    "naive_mae_wpct": 9.87,
+    "v2_mae_wpct": 7.3,
+    "v2_rmse_wpct": 9.99,
+    "v2_within_5pt_pct": 50.8,
+    "v2_within_10pt_pct": 76.8,
+    "v2_brier_flip": 0.1377,
+    "mae_reduction_pct": 31.5,
 }
 
-# 旧v1モデル係数（リアルタイム精度監査で v1 vs v2.1 の改善幅を同一条件比較するために保持）
+# 旧v1モデル係数（リアルタイム精度監査で v1 vs v3.0 の改善幅を同一条件比較するために保持）
 _WEEKEND_DRIFT_BY_HOUR = {
     18: (12.0, 7.5, 6),
     19: (20.6, 13.5, 6),
@@ -1005,100 +1033,114 @@ _WEEKDAY_DRIFT_BY_HOUR = {
     4: (-1.5, -2.5, 10),
 }
 
-# v2.1 連続時刻ノット状態空間係数（各時台 h:30 を中心にリッジ正則化学習）
+# v3.0 連続時刻ノット状態空間係数（各時台 h:30 を中心に階層IRLS Huberロバスト正則化学習）
 # 特徴量(9次元): [early_factor*(p99/100), w, m, wd15, md15, mid_r*w, closing*w, closing*m, occ*(w+m)]
 _V2_KNOTS_W = {
-    (0, 17): (2.34399, 1.44222, 0.46245, 0.55623, -0.21589, 0.0109, 0.0, 0.0, -2.0551),
-    (0, 18): (2.57971, 1.49022, 0.67255, 0.6048, -0.31031, -0.08018, 0.0, 0.0, -2.44284),
-    (0, 19): (4.25965, 1.1873, 0.69845, 0.5764, 0.01246, 0.05096, 0.0, 0.0, -1.07291),
-    (0, 20): (6.65422, 0.98308, 0.7252, 0.45296, 0.13602, 0.20851, 0.0, 0.0, -0.58227),
-    (0, 21): (8.71981, 0.95528, 0.48948, 0.34536, 0.24108, 0.33915, 0.0, 0.0, -0.46635),
-    (0, 22): (1.52262, 0.90716, 0.12149, 0.30518, 0.46015, 0.47101, -0.72714, -0.48935, -0.27349),
-    (0, 23): (0.0, 0.49187, 0.41312, 0.15942, -0.0382, 0.62673, -0.48761, -0.30234, -0.08542),
-    (0, 0): (0.0, 0.63421, 0.28103, 0.23999, -0.00702, 0.27899, -0.62912, -0.32079, -0.01194),
-    (0, 1): (0.0, 0.64372, 0.17671, 0.3941, 0.10142, 0.09706, -0.53416, -0.17731, 0.01681),
-    (0, 2): (0.0, 0.58693, 0.11405, 0.07549, 0.04512, 0.04309, -0.43459, 0.05482, 0.05396),
-    (0, 3): (0.0, 0.50396, 0.10973, -0.02669, 0.01323, -0.12116, -0.46333, 0.08552, 0.14055),
-    (0, 4): (0.0, 0.41134, 0.12123, -0.10843, 0.04805, -0.13836, -0.31328, -0.08617, 0.22649),
-    (0, 5): (0.0, 0.32188, 0.10286, -0.14149, 0.0847, -0.03286, -0.18704, -0.10702, 0.14313),
-    (1, 17): (5.41426, 1.66463, 1.01242, 0.71046, -0.41115, -0.26776, 0.0, 0.0, -1.34711),
-    (1, 18): (7.71045, 1.54141, 0.77991, 0.61065, -0.12202, -0.2608, 0.0, 0.0, -0.99055),
-    (1, 19): (10.09483, 1.41759, 0.82012, 0.40396, 0.0529, -0.08348, 0.0, 0.0, -0.76075),
-    (1, 20): (12.85457, 1.33751, 0.82783, 0.10503, 0.05249, -0.0018, 0.0, 0.0, -0.62927),
-    (1, 21): (10.45512, 1.32702, 0.63528, 0.08066, 0.27509, 0.01779, 0.0, 0.0, -0.55006),
-    (1, 22): (1.27986, 1.15374, 0.35584, 0.17031, 0.46364, 0.19108, 0.0, 0.0, -0.33811),
-    (1, 23): (0.0, 0.82137, 0.47857, 0.01246, -0.00997, 0.32492, 0.0, 0.0, -0.21368),
-    (1, 0): (0.0, 0.82295, 0.32711, 0.15331, 0.09323, 0.15183, -0.58841, -0.62277, -0.12432),
-    (1, 1): (0.0, 0.62152, 0.11023, 0.32852, 0.11417, -0.01473, -0.07135, -0.52047, 0.0904),
-    (1, 2): (0.0, 0.5566, 0.05225, 0.06622, -0.04086, -0.0457, -0.07776, -0.35248, 0.13658),
-    (1, 3): (0.0, 0.30702, 0.14031, -0.00947, -0.09373, -0.05133, -0.55462, -0.14056, 0.25225),
-    (1, 4): (0.0, 0.0876, 0.2148, 0.02671, -0.14544, -0.03186, -0.2246, -0.41592, 0.3691),
-    (1, 5): (0.0, 0.02393, 0.29163, 0.10029, -0.0608, -0.00818, -0.06556, -0.45622, 0.25214),
+    (0, 17): (3.55825, 1.1877, 0.19558, 0.26875, -0.13596, 0.18655, 0.0, 0.0, 0.26932),
+    (0, 18): (3.59446, 1.21717, 0.26781, 0.46154, -0.00242, 0.12375, 0.0, 0.0, -0.13552),
+    (0, 19): (4.14828, 1.09731, 0.43389, 0.48948, 0.0677, 0.04066, 0.0, 0.0, -0.51149),
+    (0, 20): (6.75887, 0.98443, 0.56933, 0.26966, 0.10107, 0.19623, 0.0, 0.0, -0.43975),
+    (0, 21): (16.15014, 0.89654, 0.43092, 0.13849, 0.11578, 0.32705, 0.0, 0.0, -0.28081),
+    (0, 22): (19.67766, 0.8476, 0.14275, 0.16688, 0.22013, 0.48327, -0.24455, -0.21285, -0.17603),
+    (0, 23): (0.0, 0.58352, 0.31502, 0.10293, -0.03472, 0.67488, -0.46207, -0.21103, -0.08645),
+    (0, 0): (0.0, 0.69403, 0.20502, 0.2073, -0.00071, 0.34874, -0.44189, -0.31595, 0.00085),
+    (0, 1): (0.0, 0.66248, 0.09071, 0.19142, 0.0526, 0.17376, -0.17974, -0.36724, 0.06061),
+    (0, 2): (0.0, 0.59215, 0.0732, -0.00227, 0.00227, 0.07021, -0.06526, -0.25874, 0.10486),
+    (0, 3): (0.0, 0.54757, 0.08051, 0.04547, 0.00501, -0.19805, -0.26964, -0.07548, 0.16857),
+    (0, 4): (0.0, 0.34347, 0.22922, 0.38723, 0.12424, -0.1331, 0.28591, -0.44607, 0.07575),
+    (0, 5): (0.0, 0.24452, 0.22199, 0.31673, 0.27817, -0.18091, 0.51764, -0.47609, 0.02718),
+    (1, 17): (5.72656, 1.15875, 0.36274, 0.39128, -0.31634, 0.27332, 0.0, 0.0, 0.44432),
+    (1, 18): (5.3648, 1.40943, 0.37214, 0.45371, 0.03918, 0.1172, 0.0, 0.0, -0.3806),
+    (1, 19): (10.55376, 1.36772, 0.42103, 0.248, 0.13208, -0.00251, 0.0, 0.0, -0.45994),
+    (1, 20): (14.39107, 1.26526, 0.628, 0.09767, 0.06653, 0.09482, 0.0, 0.0, -0.43981),
+    (1, 21): (22.32926, 1.22147, 0.54212, 0.1196, 0.25023, 0.06086, 0.0, 0.0, -0.40087),
+    (1, 22): (13.94592, 1.12345, 0.23716, 0.23612, 0.54075, 0.19961, 0.0, 0.0, -0.24817),
+    (1, 23): (0.0, 0.80909, 0.34262, -0.03845, -0.06164, 0.4246, 0.0, 0.0, -0.1389),
+    (1, 0): (0.0, 0.80264, 0.20448, 0.12176, 0.02227, 0.19623, -0.11132, -0.11649, -0.05595),
+    (1, 1): (0.0, 0.61465, 0.06245, 0.1455, 0.0115, 0.00369, -0.2346, -0.11168, 0.10745),
+    (1, 2): (0.0, 0.58162, -0.00695, -0.0038, 0.00284, -0.05621, -0.41529, 0.27664, 0.14628),
+    (1, 3): (0.0, 0.47351, 0.03153, -0.03624, -0.02108, -0.07979, -0.14291, -0.4028, 0.19109),
+    (1, 4): (0.0, 0.17236, 0.30481, 0.39316, 0.00178, -0.06251, 0.71466, -0.92426, 0.1785),
+    (1, 5): (0.0, 0.14558, 0.27436, 0.46397, 0.2352, -0.09402, 0.56785, -0.47055, 0.09329),
 }
 
 _V2_KNOTS_M = {
-    (0, 17): (0.5345, 0.36889, 0.96879, 0.0198, 0.08135, -0.03205, 0.0, 0.0, -0.70421),
-    (0, 18): (0.23561, 0.46439, 1.13751, 0.01242, 0.02578, 0.02814, 0.0, 0.0, -1.15322),
-    (0, 19): (0.09991, 0.48022, 1.13746, -0.01027, 0.16726, 0.19732, 0.0, 0.0, -0.87378),
-    (0, 20): (0.84633, 0.41816, 1.04447, 0.0393, 0.17664, 0.22284, 0.0, 0.0, -0.52026),
-    (0, 21): (1.59991, 0.42741, 0.81532, 0.19863, 0.26971, 0.20716, 0.0, 0.0, -0.31013),
-    (0, 22): (0.55325, 0.45277, 0.4617, 0.22617, 0.43758, 0.31938, -0.74521, -0.61765, -0.10402),
-    (0, 23): (0.0, 0.22568, 0.55229, 0.08148, 0.02039, 0.42801, -0.37128, -0.49606, 0.06356),
-    (0, 0): (0.0, 0.21313, 0.55038, 0.13408, -0.05047, 0.16514, -0.28115, -0.64452, 0.1044),
-    (0, 1): (0.0, 0.16126, 0.48797, 0.35774, 0.04493, 0.04303, -0.11941, -0.58596, 0.14126),
-    (0, 2): (0.0, 0.09784, 0.41131, 0.12434, -0.00404, 0.05859, -0.07065, -0.4506, 0.18271),
-    (0, 3): (0.0, 0.05951, 0.37928, -0.01493, -0.12247, 0.00102, -0.06757, -0.33028, 0.18423),
-    (0, 4): (0.0, 0.0694, 0.32082, -0.05021, -0.08796, -0.0374, -0.04959, -0.31636, 0.21163),
-    (0, 5): (0.0, 0.10944, 0.20425, -0.08092, -0.04537, -0.02062, -0.05631, -0.21169, 0.1482),
-    (1, 17): (0.84593, 0.54663, 1.08878, 0.06351, -0.08404, -0.37316, 0.0, 0.0, -0.477),
-    (1, 18): (1.14921, 0.53753, 1.15312, 0.00724, -0.09342, -0.28279, 0.0, 0.0, -0.40356),
-    (1, 19): (0.70557, 0.5302, 1.34919, 0.02815, -0.13884, -0.02443, 0.0, 0.0, -0.36403),
-    (1, 20): (-1.50492, 0.61733, 1.32238, 0.0661, 0.00306, 0.04401, 0.0, 0.0, -0.44349),
-    (1, 21): (-0.59035, 0.68253, 1.092, 0.11926, 0.2143, 0.04003, 0.0, 0.0, -0.41211),
-    (1, 22): (0.51003, 0.68048, 0.80341, 0.20827, 0.36818, 0.10687, 0.0, 0.0, -0.29947),
-    (1, 23): (0.0, 0.46605, 0.79533, 0.07458, 0.11754, 0.17724, 0.0, 0.0, -0.18542),
-    (1, 0): (0.0, 0.31861, 0.75575, 0.10243, 0.05574, 0.09562, -0.40128, -0.42205, -0.0994),
-    (1, 1): (0.0, 0.18815, 0.5553, 0.39614, 0.07912, -0.03749, 0.46369, -0.86066, 0.04548),
-    (1, 2): (0.0, 0.11243, 0.45348, 0.10706, -0.07732, -0.06547, 0.41986, -0.73328, 0.09795),
-    (1, 3): (0.0, -0.05106, 0.50897, 0.03159, -0.18691, -0.03466, -0.17039, -0.444, 0.13989),
-    (1, 4): (0.0, -0.12988, 0.51934, 0.07713, -0.19687, -0.02328, 0.02109, -0.62983, 0.18448),
-    (1, 5): (0.0, -0.04662, 0.48906, 0.16222, -0.08237, -0.05775, 0.01566, -0.55504, 0.0585),
+    (0, 17): (0.39873, 0.31521, 1.04999, 0.08076, -0.04134, -0.38911, 0.0, 0.0, 0.05682),
+    (0, 18): (0.50847, 0.33257, 1.00933, 0.09475, 0.10282, -0.08572, 0.0, 0.0, -0.05612),
+    (0, 19): (0.44953, 0.35482, 1.06732, 0.05499, 0.06754, 0.08848, 0.0, 0.0, -0.30432),
+    (0, 20): (2.24947, 0.35345, 0.99265, 0.09574, 0.06851, 0.12084, 0.0, 0.0, -0.28241),
+    (0, 21): (7.0906, 0.41278, 0.76805, 0.13134, 0.11327, 0.16324, 0.0, 0.0, -0.22655),
+    (0, 22): (11.07286, 0.45557, 0.41991, 0.15717, 0.27139, 0.30942, -0.32735, -0.29968, -0.056),
+    (0, 23): (0.0, 0.27958, 0.46026, 0.08835, 0.01375, 0.47073, -0.51363, -0.36676, 0.08422),
+    (0, 0): (0.0, 0.21, 0.51366, 0.18975, -0.08034, 0.21637, -0.49242, -0.53567, 0.13295),
+    (0, 1): (0.0, 0.18336, 0.41965, 0.17211, 0.04711, 0.06883, -0.17862, -0.45958, 0.16596),
+    (0, 2): (0.0, 0.11648, 0.3899, 0.03068, -0.02984, 0.05735, 0.27461, -0.66, 0.18993),
+    (0, 3): (0.0, 0.05418, 0.43037, 0.09365, -0.01186, -0.0529, 0.09993, -0.42761, 0.18889),
+    (0, 4): (0.0, 0.0349, 0.41659, 0.24358, 0.1213, -0.03957, 0.29084, -0.44716, 0.09758),
+    (0, 5): (0.0, 0.07405, 0.31772, 0.22267, 0.25261, -0.18477, 0.35841, -0.294, 0.06743),
+    (1, 17): (0.64069, 0.49833, 1.26135, 0.00587, -0.0388, -0.54825, 0.0, 0.0, -0.62884),
+    (1, 18): (0.77634, 0.4775, 1.11367, 0.03369, 0.11011, -0.28733, 0.0, 0.0, -0.37585),
+    (1, 19): (1.028, 0.51918, 1.19032, -0.04195, 0.07199, -0.11137, 0.0, 0.0, -0.35686),
+    (1, 20): (-1.13246, 0.57195, 1.25144, 0.0515, -0.04447, 0.0996, 0.0, 0.0, -0.34867),
+    (1, 21): (0.11853, 0.67032, 1.00818, 0.16373, 0.1327, 0.05021, 0.0, 0.0, -0.33601),
+    (1, 22): (7.33003, 0.69994, 0.64373, 0.20536, 0.42286, 0.1471, 0.0, 0.0, -0.22621),
+    (1, 23): (0.0, 0.47706, 0.64882, 0.09082, 0.00796, 0.26052, 0.0, 0.0, -0.12009),
+    (1, 0): (0.0, 0.3269, 0.58518, 0.09991, -0.01919, 0.11694, -0.0958, -0.09914, -0.01549),
+    (1, 1): (0.0, 0.2105, 0.41198, 0.18462, -0.01165, 0.00264, 0.00501, 0.08535, 0.10732),
+    (1, 2): (0.0, 0.15096, 0.36436, -0.02229, -0.02634, -0.02852, -0.25246, 0.41083, 0.10849),
+    (1, 3): (0.0, 0.03886, 0.38576, 0.0285, -0.05961, -0.02261, 0.26293, -0.73678, 0.15365),
+    (1, 4): (0.0, -0.06435, 0.47224, 0.2902, 0.01428, 0.00314, 0.64664, -0.8508, 0.14876),
+    (1, 5): (0.0, 0.00593, 0.38455, 0.38802, 0.26963, -0.10376, 0.41416, -0.27889, 0.0923),
 }
 
-# 女性比率直接キャリブレーション係数
-# 特徴量(6次元): [1.0, cur_wp, (wd_c-md_c)*(100/max(16,tot)), mid_r*10, stab*(cur_wp-55), jackpot_buf]
+# 女性比率直接キャリブレーション係数（t+60m信頼度重み付きHuber IRLS推定・学習 <=2026-10-15 12:00）
+# 特徴量(9次元): [1.0, cur_wp, wd_c*inv_tot, md_c*inv_tot, mid_r*10, k_gain*(cur_wp-53), jackpot_buf, max(0,42-cur_wp), occ*10]
 _V2_KNOTS_WP = {
-    (0, 17): (32.86978, 0.49775, 0.0416, 0.30299, 0.17716, -0.13924),
-    (0, 18): (33.51383, 0.4856, 0.05231, -0.04997, 0.06148, -0.10227),
-    (0, 19): (36.12369, 0.42276, 0.08403, -0.50407, 0.02359, -0.0391),
-    (0, 20): (40.00738, 0.3262, 0.06954, -0.40545, -0.00187, 0.11608),
-    (0, 21): (40.96908, 0.26043, 0.00743, -0.12163, 0.09032, 0.11679),
-    (0, 22): (33.43485, 0.35504, -0.00413, 0.10766, -0.00478, 0.05279),
-    (0, 23): (26.56177, 0.48403, -0.01036, 0.3084, -0.2211, 0.17037),
-    (0, 0): (30.23789, 0.45729, -0.04384, 0.01672, 0.03806, -0.17979),
-    (0, 1): (34.30722, 0.39701, -0.05363, -0.23682, 0.20443, -0.25363),
-    (0, 2): (33.18626, 0.44355, -0.07142, -0.38854, 0.213, -0.32218),
-    (0, 3): (39.75985, 0.36524, -0.03591, -0.63679, 0.28737, -0.50893),
-    (0, 4): (42.07911, 0.33493, -0.03462, -0.63884, 0.25313, -0.55673),
-    (0, 5): (44.80472, 0.29217, -0.03163, -0.57963, 0.03243, -0.4209),
-    (1, 17): (54.88083, 0.25112, 0.0249, 0.67374, -0.40278, 0.14367),
-    (1, 18): (52.65061, 0.26518, 0.03115, 0.55593, -0.32473, 0.1645),
-    (1, 19): (43.90808, 0.32181, 0.05293, 0.10318, -0.23202, 0.21316),
-    (1, 20): (36.27466, 0.36198, 0.01566, -0.11996, -0.13419, 0.26586),
-    (1, 21): (34.15768, 0.33688, -0.04009, -0.08611, 0.08, 0.07532),
-    (1, 22): (39.95293, 0.20385, -0.0411, 0.15926, 0.23944, -0.06678),
-    (1, 23): (42.52641, 0.16503, -0.02004, 0.27913, 0.24686, -0.56318),
-    (1, 0): (47.69001, 0.10209, -0.02261, 0.02453, 0.42235, -0.68018),
-    (1, 1): (36.01555, 0.32912, -0.04359, -0.15851, 0.16513, -0.97816),
-    (1, 2): (30.82593, 0.46017, -0.04962, -0.25044, 0.10565, -1.43367),
-    (1, 3): (36.20453, 0.38556, -0.06274, -0.27449, 0.27063, 0.1356),
-    (1, 4): (34.68636, 0.40082, -0.051, -0.19909, 0.19967, 0.36763),
-    (1, 5): (28.90384, 0.45496, -0.07112, 0.19971, 0.11198, 0.65882),
+    (0, 17): (17.88582, 0.78394, 0.05406, 0.01819, 1.21829, -1.03347, 0.33615, 0.0551, -0.43799),
+    (0, 18): (26.23835, 0.6117, 0.03344, -0.01357, 0.40464, -0.30002, 0.07808, 0.62426, -0.87306),
+    (0, 19): (27.59606, 0.5577, 0.07246, -0.00482, -0.20294, -0.20104, 0.07912, 0.59234, -0.9077),
+    (0, 20): (40.97231, 0.28584, 0.02946, -0.02306, -0.01663, 0.09297, 0.18946, 0.28291, -0.40192),
+    (0, 21): (41.72796, 0.22765, -0.00159, -0.00943, 0.21184, 0.16335, 0.11426, 0.4957, -0.07902),
+    (0, 22): (33.65819, 0.3673, 0.00536, -0.02572, 0.27424, -0.10752, 0.14238, 0.03333, -0.48117),
+    (0, 23): (17.46503, 0.7137, -0.0029, -0.00577, 0.37244, -0.64785, 0.3997, 0.27955, -1.03041),
+    (0, 0): (20.45869, 0.66991, -0.01114, 0.0512, 0.24149, -0.31933, -0.32476, 0.61206, -0.75187),
+    (0, 1): (22.99874, 0.60782, -0.04674, 0.03486, 0.16404, -0.14632, -0.21881, 0.5289, -0.45454),
+    (0, 2): (22.23347, 0.61625, -0.08436, 0.04917, -0.03916, -0.02067, -0.36705, 0.43256, -0.0776),
+    (0, 3): (13.8676, 0.78239, -0.0638, -0.00222, -0.32606, -0.28074, -0.60556, 0.58054, 0.14595),
+    (0, 4): (13.61525, 0.77818, -0.0193, -0.02145, -0.20255, -0.53898, -0.28595, 0.24272, 0.04416),
+    (0, 5): (10.57156, 0.78642, -0.00039, 0.06072, 0.34897, -0.77578, 0.05142, 0.08995, -0.03958),
+    (1, 17): (25.93294, 0.65581, 0.08414, -0.03161, 1.47288, -0.91061, 0.26042, 0.48494, 0.15146),
+    (1, 18): (35.60689, 0.47527, 0.0447, -0.01484, 0.8771, -0.19852, 0.09083, 0.55994, -0.73182),
+    (1, 19): (35.46181, 0.44385, 0.04616, 0.04178, 0.41215, -0.16072, 0.17613, 0.60553, -0.77412),
+    (1, 20): (33.65306, 0.4185, 0.00876, 0.07508, -0.13852, -0.12401, 0.22057, 0.41589, -0.57871),
+    (1, 21): (31.77356, 0.40295, -0.0345, 0.06145, -0.1034, -0.09921, 0.13166, -0.03334, -0.20409),
+    (1, 22): (17.99451, 0.61988, -0.0169, 0.05862, 0.1175, -0.37771, 0.03313, -0.25061, -0.03881),
+    (1, 23): (13.78408, 0.72149, -0.06421, -0.01981, 0.34279, -0.52489, -0.49635, 0.0033, -0.17839),
+    (1, 0): (19.9552, 0.63576, -0.01461, 0.02009, 0.05909, -0.24073, -0.90092, 0.46024, -0.22357),
+    (1, 1): (15.77834, 0.70493, -0.0132, 0.01712, -0.11007, -0.32861, -0.93593, 0.63384, -0.06009),
+    (1, 2): (17.84641, 0.71651, -0.01845, 0.02586, -0.07856, -0.30327, -1.11782, 0.32247, -0.17753),
+    (1, 3): (19.14299, 0.68659, -0.058, 0.02959, -0.15342, -0.20888, 0.09926, 0.29101, 0.07764),
+    (1, 4): (13.71368, 0.76076, -0.05523, 0.01336, -0.18735, -0.46591, 0.04498, 0.41522, 0.17246),
+    (1, 5): (9.35456, 0.79897, -0.00836, 0.02971, 0.24634, -0.74127, 0.21959, 0.60392, 0.06106),
+}
+
+# v3.0 グローバル状態空間カルマン平滑化・同都市リアルタイムスピルオーバー・連続普段カーブ重み
+# [wp_wm-pwp, noise_rev30, mom30, lag60_diff, dw30_rate, dm30_rate, peer_gap, peer_regime, jis_pull, cont_usual_diff]
+_V3_STRUCT_WEIGHTS = (0.20641, 0.1412, 0.15277, 0.06584, -0.50641, 0.0267, 0.07018, 0.06774, 0.03387, 0.23724)
+
+# ブランド別フェーズ事前オフセット（未知店舗やサンプル少数店のEmpirical-Bayes収束先）
+_V3_BRAND_PHASE_DEFAULTS = {
+    "OLG": (-0.39, -0.18, -0.08),
+    "JIS": (1.73, -0.03, 0.9),
+    "AG": (1.15, -0.43, -1.28),
+    "YATA": (1.76, -0.35, -1.06),
+    "ASOBI": (0.0, 0.0, 0.0),
+    "XIX": (0.9, 2.6, 0.7),
 }
 
 # IRLS ロジスティック回帰による「男余り転落確率（60分後 女性比50%未満）」校正重み
 # [1.0, (50 - pred_wp)/10, (50 - cur_wp)/10, 1/sqrt(tot), is_male_now, jackpot_safe]
-_V2_FLIP_LOGISTIC_W = (-0.46813, 2.2327, -0.40703, 0.07081, 0.42114, -0.66526)
+_V2_FLIP_LOGISTIC_W = (-0.361, 2.43908, -0.29022, 0.00642, 0.2825, -0.34978)
 
 
 def _is_weekend_or_preholiday(now_jst: datetime.datetime) -> bool:
@@ -1173,122 +1215,273 @@ def _interp_v2_knot(tbl: dict, wk_key: int, now_jst: datetime.datetime) -> list:
     return [k0[j] * (1.0 - alpha) + k1[j] * alpha for j in range(len(k0))]
 
 
-# 店舗×夜間フェーズ（序盤17-21h / ピーク22-00h / 深夜01-06h）の階層Empirical-Bayes事前残差オフセット
-# 2026-10-01〜2026-10-15 12:00 の学習期間のみで推定（未来ホールドアウト期間のデータは一切不使用）
+# 店舗×夜間フェーズ（序盤17-21h / ピーク22-24h / 深夜01-06h）の階層Huber Empirical-Bayes事前残差オフセット
+# 2026-10-07〜2026-10-15 12:00 の全国マルチ店舗学習期間のみで推定（未来ホールドアウト期間のデータは一切不使用）
 _V2_STORE_PHASE_PRIORS = {
-    "ALFA HIROSHIMA": (1.55, 1.39, 3.25),
-    "CLOVERS HIROSHIMA": (1.41, 1.08, 1.17),
-    "JIS CHAYAMACHI": (3.54, 3.11, 4.5),
-    "JIS FUKUOKA": (0.6, -0.97, 0.73),
-    "JIS NAMBA": (1.74, 1.68, 3.06),
-    "JIS NISHISHINJUKU": (-0.06, -0.53, 0.51),
-    "JIS OMIYA": (2.72, 0.55, 4.18),
-    "JIS SAPPORO": (-0.84, -0.26, 1.94),
-    "JIS SHINJUKU": (0.77, -0.01, 2.2),
-    "JIS UMEDA": (2.31, 0.05, 1.81),
-    "OLG ag上野": (0.9, -1.74, 2.07),
-    "OLG ag仙台": (2.04, 1.16, 4.5),
-    "OLG ag名古屋": (-1.27, -3.02, -3.05),
-    "OLG ag広島": (-0.3, 0.79, 0.95),
-    "OLG ag梅田": (0.19, 1.42, 0.38),
-    "OLG ag沖縄": (-1.26, -1.73, -0.27),
-    "OLG ag渋谷": (1.53, -0.88, 1.63),
-    "OLG ag金沢": (-0.85, 0.22, -0.43),
-    "OLG 上野": (1.88, -0.21, 4.03),
-    "OLG 京都": (-0.55, -1.79, 1.1),
-    "OLG 名古屋 栄": (-1.46, 0.87, -0.04),
-    "OLG 名古屋 錦": (0.7, -0.82, 0.35),
-    "OLG 大分": (-1.59, -1.36, -0.54),
-    "OLG 大宮": (2.93, 1.63, 1.7),
-    "OLG 大阪駅前": (-1.46, -0.11, -0.52),
-    "OLG 天満": (-2.81, 0.69, -0.35),
-    "OLG 宇都宮": (-0.42, -2.74, 4.5),
-    "OLG 宮崎": (-0.38, -0.28, -1.15),
-    "OLG 小倉": (0.57, 2.43, 3.3),
-    "OLG 岡山": (2.88, 3.57, 2.76),
-    "OLG 心斎橋": (0.42, 1.14, -0.18),
-    "OLG 恵比寿": (-0.6, -1.63, -0.03),
-    "OLG 新宿": (4.2, 4.5, 3.71),
-    "OLG 柏": (-0.26, 1.01, 1.27),
-    "OLG 横浜": (-0.16, -1.36, 1.88),
-    "OLG 浜松": (-3.35, -0.4, 4.32),
-    "OLG 渋谷本店": (3.28, 0.54, -0.97),
-    "OLG 熊本": (0.73, 1.74, 1.58),
-    "OLG 町田": (0.48, 1.84, 2.25),
-    "OLG 神戸": (-1.29, -0.99, 0.78),
-    "OLG 福岡": (2.21, 0.65, 4.25),
-    "OLG 錦糸町": (0.39, -1.28, 3.27),
-    "OLG 長崎": (0.58, 0.06, 0.55),
-    "OLG 難波": (2.85, 1.88, 1.34),
-    "OLG 静岡": (-2.21, -0.42, 0.56),
-    "OLG 高崎": (4.5, 4.5, 4.5),
-    "OLG 鹿児島": (-0.26, 0.51, 4.5),
-    "XIX OKAYAMA": (3.78, 4.5, 4.29),
-    "YATAKOI UMEDA": (1.1, -1.19, -0.08),
+    "ALFA HIROSHIMA": (1.65, 0.96, 0.78),
+    "ASOBIBAR 名古屋 住吉": (0.0, 0.0, 0.0),
+    "ASOBIBAR 名古屋 栄": (0.0, 0.0, 0.0),
+    "ASOBIBAR 心斎橋": (0.0, 0.0, 0.0),
+    "ASOBIBAR 恵比寿": (0.0, 0.0, 0.0),
+    "ASOBIBAR 新宿": (0.0, 0.0, 0.0),
+    "ASOBIBAR 梅田": (0.0, 0.0, 0.0),
+    "ASOBIBAR 渋谷": (0.0, 0.0, 0.0),
+    "ASOBIBAR 神戸 三宮": (0.0, 0.0, 0.0),
+    "ASOBIBAR 福岡 天神": (0.0, 0.0, 0.0),
+    "ASOBIBAR 茶屋町": (0.0, 0.0, 0.0),
+    "CLOVERS HIROSHIMA": (0.74, 1.69, 0.11),
+    "JIS CHAYAMACHI": (5.04, 3.02, 2.36),
+    "JIS FUKUOKA": (1.31, -1.04, -0.28),
+    "JIS KUMAMOTO": (1.73, -0.03, 0.9),
+    "JIS MATSUYAMA": (1.73, -0.03, 0.9),
+    "JIS NAMBA": (2.53, 0.77, 1.71),
+    "JIS NISHISHINJUKU": (1.02, -0.08, -0.4),
+    "JIS OMIYA": (3.28, 0.45, 1.41),
+    "JIS SAPPORO": (-2.07, -1.5, 0.54),
+    "JIS SHINJUKU": (0.92, -0.08, 0.98),
+    "JIS UMEDA": (1.37, 0.11, 1.43),
+    "OLG ag上野": (1.46, -1.37, 0.26),
+    "OLG ag仙台": (3.0, 1.27, 2.88),
+    "OLG ag名古屋": (-0.34, -2.03, -4.09),
+    "OLG ag広島": (-0.6, 1.07, -1.47),
+    "OLG ag新宿": (1.15, -0.43, -1.28),
+    "OLG ag札幌": (1.15, -0.43, -1.28),
+    "OLG ag梅田": (2.42, 1.65, -1.58),
+    "OLG ag沖縄": (-0.8, -2.17, -1.16),
+    "OLG ag渋谷": (1.8, 0.26, -1.68),
+    "OLG ag福岡": (1.15, -0.43, -1.28),
+    "OLG ag金沢": (-0.27, -0.77, -1.43),
+    "OLG 上野": (1.79, -0.49, 1.38),
+    "OLG 京都": (-0.68, -1.2, -1.61),
+    "OLG 仙台": (-0.39, -0.18, -0.08),
+    "OLG 名古屋 栄": (1.67, 0.98, -0.76),
+    "OLG 名古屋 錦": (1.61, -0.8, -0.86),
+    "OLG 大分": (-1.46, -0.07, -1.25),
+    "OLG 大宮": (3.59, 0.87, 1.54),
+    "OLG 大阪駅前": (-0.83, 0.59, 0.29),
+    "OLG 天満": (-1.66, -0.47, 0.09),
+    "OLG 宇都宮": (-2.36, -4.19, -0.15),
+    "OLG 宮崎": (-0.27, -1.24, -0.76),
+    "OLG 小倉": (-0.28, 0.67, 2.29),
+    "OLG 岡山": (0.39, 1.49, 0.54),
+    "OLG 広島": (-0.39, -0.18, -0.08),
+    "OLG 心斎橋": (-0.26, 1.53, -0.73),
+    "OLG 恵比寿": (0.17, -2.04, -1.17),
+    "OLG 新宿": (3.19, 3.72, 0.57),
+    "OLG 札幌": (-0.39, -0.18, -0.08),
+    "OLG 柏": (-0.31, -1.17, 0.54),
+    "OLG 梅田": (-0.39, -0.18, -0.08),
+    "OLG 横浜": (0.44, -1.72, -0.38),
+    "OLG 沖縄": (-0.39, -0.18, -0.08),
+    "OLG 浜松": (-4.0, -1.82, 0.1),
+    "OLG 渋谷本店": (2.78, -0.03, -3.1),
+    "OLG 渋谷駅前": (-0.39, -0.18, -0.08),
+    "OLG 熊本": (-0.28, 0.78, -0.93),
+    "OLG 町田": (-0.1, 1.26, 0.33),
+    "OLG 神戸": (0.35, -2.55, -1.31),
+    "OLG 福岡": (1.22, -0.21, 2.27),
+    "OLG 茶屋町": (-0.39, -0.18, -0.08),
+    "OLG 金沢": (-0.39, -0.18, -0.08),
+    "OLG 錦糸町": (2.9, -2.9, -0.4),
+    "OLG 長崎": (-0.01, 0.15, -0.97),
+    "OLG 難波": (1.97, 2.55, 0.53),
+    "OLG 静岡": (-3.09, -1.4, -0.65),
+    "OLG 高崎": (0.43, 0.29, 1.5),
+    "OLG 鹿児島": (-1.64, -0.32, -0.25),
+    "XIX OKAYAMA": (1.49, 4.45, 1.24),
+    "YATAKOI UMEDA": (2.48, -0.49, -1.77),
 }
 
+_STORE_INTERNAL_KEY_MEMO = {}
 
-def _normalize_store_phase_prior_key(store_name: str) -> str:
-    """正式名称や別名表記から _V2_STORE_PHASE_PRIORS の内部キーへ解決する。"""
+
+def _resolve_internal_store_key(store_name: str) -> str:
+    """SEO表示名（例: 'オリエンタルラウンジ 渋谷本店', 'ag（アグ）梅田'）やスラッグをO(1)で内部正規キー（'OLG 渋谷本店' 等）へ解決する。"""
     if not store_name:
         return ""
     s = str(store_name).strip()
-    if s in _V2_STORE_PHASE_PRIORS:
-        return s
-    if s.startswith("オリエンタルラウンジ "):
-        candidate = f"OLG {s[len('オリエンタルラウンジ '):].strip()}"
-        if candidate in _V2_STORE_PHASE_PRIORS:
-            return candidate
-    elif s.startswith("ag "):
-        branch = s[len("ag "):].strip()
-        candidate = f"OLG AG {branch}"
-        if candidate in _V2_STORE_PHASE_PRIORS:
-            return candidate
-        candidate2 = f"OLG ag{branch}"
-        if candidate2 in _V2_STORE_PHASE_PRIORS:
-            return candidate2
-    if "ヤタコイ" in s or "YATAKOI" in s:
-        if "YATAKOI UMEDA" in _V2_STORE_PHASE_PRIORS:
-            return "YATAKOI UMEDA"
-    if "XIX" in s or "シックス" in s:
-        if "XIX OKAYAMA" in _V2_STORE_PHASE_PRIORS:
-            return "XIX OKAYAMA"
-    if "JIS" in s or "ジス" in s:
-        jis_mapping = {
-            "福岡": "JIS FUKUOKA",
-            "金沢": "JIS KANAZAWA",
-            "松山": "JIS MATSUYAMA",
-            "難波": "JIS NAMBA",
-            "大宮": "JIS OMIYA",
-            "札幌": "JIS SAPPORO",
-            "新宿": "JIS SHINJUKU",
-            "梅田": "JIS UMEDA",
-        }
-        for city, jis_key in jis_mapping.items():
-            if city in s and jis_key in _V2_STORE_PHASE_PRIORS:
-                return jis_key
-    return s
+    cached = _STORE_INTERNAL_KEY_MEMO.get(s)
+    if cached is not None:
+        return cached
+
+    resolved = s
+    if s in STORE_P99_CAPACITY or s in _V2_STORE_PHASE_PRIORS:
+        resolved = s
+    else:
+        try:
+            import store_master
+            internal = store_master.to_internal_store_name(s)
+            if internal and (internal in STORE_P99_CAPACITY or internal in _V2_STORE_PHASE_PRIORS or internal in getattr(store_master, "STORE_SLUGS", {})):
+                resolved = internal
+            else:
+                by_slug = store_master.store_by_slug(s)
+                if by_slug:
+                    resolved = by_slug
+        except Exception:
+            pass
+
+        if resolved == s:
+            if s.startswith("オリエンタルラウンジ"):
+                branch = s[len("オリエンタルラウンジ"):].strip()
+                resolved = f"OLG {branch}" if branch else "OLG"
+            elif s.startswith("ag（アグ）") or s.startswith("ag ") or (s.startswith("ag") and len(s) > 2 and not s[2].isascii()):
+                branch = s.replace("ag（アグ）", "")
+                if branch.startswith("ag "):
+                    branch = branch[3:]
+                elif branch.startswith("ag"):
+                    branch = branch[2:]
+                branch = branch.strip()
+                resolved = f"OLG ag{branch}" if branch else "OLG ag"
+            elif s.startswith("ASOBIBAR（アソビバー）") or s.startswith("アソビバー"):
+                branch = s.replace("ASOBIBAR（アソビバー）", "").replace("アソビバー", "").strip()
+                resolved = f"ASOBIBAR {branch}" if branch else "ASOBIBAR"
+            elif "ヤタコイ" in s or "YATAKOI" in s.upper():
+                if "梅田" in s or "UMEDA" in s.upper() or s in ("ヤタコイ", "YATAKOI", "yatakoi"):
+                    resolved = "YATAKOI UMEDA"
+                else:
+                    branch = s.replace("ヤタコイ", "").replace("YATAKOI", "").replace("yatakoi", "").strip()
+                    resolved = f"YATAKOI {branch}" if branch else "YATAKOI UMEDA"
+            elif "XIX" in s.upper() or "シックス" in s:
+                if "岡山" in s or "OKAYAMA" in s.upper() or s.upper() in ("XIX", "シックス"):
+                    resolved = "XIX OKAYAMA"
+                else:
+                    branch = s.replace("シックス", "").replace("XIX", "").replace("xix", "").strip()
+                    resolved = f"XIX {branch}" if branch else "XIX OKAYAMA"
+            elif "JIS" in s.upper() or "ジス" in s:
+                jis_mapping = {
+                    "西新宿": "JIS NISHISHINJUKU",
+                    "茶屋町": "JIS CHAYAMACHI",
+                    "福岡": "JIS FUKUOKA",
+                    "熊本": "JIS KUMAMOTO",
+                    "松山": "JIS MATSUYAMA",
+                    "難波": "JIS NAMBA",
+                    "大宮": "JIS OMIYA",
+                    "札幌": "JIS SAPPORO",
+                    "新宿": "JIS SHINJUKU",
+                    "梅田": "JIS UMEDA",
+                }
+                matched_jis = None
+                for city, jis_key in jis_mapping.items():
+                    if city in s:
+                        matched_jis = jis_key
+                        break
+                if matched_jis:
+                    resolved = matched_jis
+                else:
+                    branch = s.replace("JIS（ジス）", "").replace("ジス", "").replace("JIS", "").replace("jis", "").strip()
+                    resolved = f"JIS {branch}" if branch else "JIS"
+
+    if len(_STORE_INTERNAL_KEY_MEMO) > 512:
+        _STORE_INTERNAL_KEY_MEMO.clear()
+    _STORE_INTERNAL_KEY_MEMO[s] = resolved
+    return resolved
+
+
+def _normalize_store_phase_prior_key(store_name: str) -> str:
+    """後方互換エイリアス：内部正規キーへ解決する。"""
+    return _resolve_internal_store_key(store_name)
+
+
+def _brand_phase_default(canon_name: str) -> tuple:
+    if canon_name.startswith("JIS"):
+        return _V3_BRAND_PHASE_DEFAULTS["JIS"]
+    if canon_name.startswith("OLG ag"):
+        return _V3_BRAND_PHASE_DEFAULTS["AG"]
+    if canon_name.startswith("ASOBIBAR"):
+        return _V3_BRAND_PHASE_DEFAULTS["ASOBI"]
+    if canon_name.startswith("YATAKOI"):
+        return _V3_BRAND_PHASE_DEFAULTS["YATA"]
+    if canon_name.startswith("XIX"):
+        return _V3_BRAND_PHASE_DEFAULTS["XIX"]
+    return _V3_BRAND_PHASE_DEFAULTS["OLG"]
 
 
 def _interp_store_phase_prior(store_name: str, now_jst: datetime.datetime) -> float:
     """店舗固有フェーズ事前オフセットを連続時刻 fhr 上で滑らかに線形補間し、正時の不連続ジャンプを防ぐ。"""
-    norm_key = _normalize_store_phase_prior_key(store_name)
-    tup = _V2_STORE_PHASE_PRIORS.get(norm_key)
-    if not tup:
-        return 0.0
+    norm_key = _resolve_internal_store_key(store_name)
+    tup = _V2_STORE_PHASE_PRIORS.get(norm_key) or _brand_phase_default(norm_key)
     p0, p1, p2 = tup
     fhr = _night_fractional_hour(now_jst)
-    if fhr <= 19.5:
+    if fhr <= 20.5:
         return p0
-    if fhr < 22.5:
-        alpha = (fhr - 19.5) / 3.0
+    if fhr < 22.0:
+        alpha = (fhr - 20.5) / 1.5
         return p0 * (1.0 - alpha) + p1 * alpha
-    if fhr <= 24.0:
+    if fhr <= 23.5:
         return p1
-    if fhr < 26.5:
-        alpha = (fhr - 24.0) / 2.5
+    if fhr < 25.0:
+        alpha = (fhr - 23.5) / 1.5
         return p1 * (1.0 - alpha) + p2 * alpha
     return p2
+
+
+def build_city_peer_context(stores_or_map) -> dict:
+    """
+    全店舗スナップショット（list[dict] または {store_name: (w, m)}）から、
+    同一都市内の他店舗リアルタイム合計（自分自身を除く）を O(N) インメモリで構築する。
+    """
+    if not stores_or_map:
+        return {}
+
+    entries = []
+    if isinstance(stores_or_map, dict):
+        for raw_name, pair in stores_or_map.items():
+            if not raw_name or not pair:
+                continue
+            cname = _resolve_internal_store_key(raw_name)
+            w = max(0, int(pair[0] or 0))
+            m = max(0, int(pair[1] or 0))
+            entries.append((str(raw_name), cname, w, m, True))
+    else:
+        for it in stores_or_map:
+            if not isinstance(it, dict):
+                continue
+            raw_name = (it.get("name") or it.get("store_name") or "").strip()
+            if not raw_name:
+                continue
+            cname = _resolve_internal_store_key(raw_name)
+            w = max(0, int(it.get("women") or 0))
+            m = max(0, int(it.get("men") or 0))
+            is_op = bool(it.get("is_open_now", True))
+            entries.append((raw_name, cname, w, m, is_op))
+
+    city_totals = {}
+    seen_canon = set()
+    for _, cname, w, m, is_op in entries:
+        if cname in seen_canon:
+            continue
+        seen_canon.add(cname)
+        tot = w + m
+        if not is_op or tot < 4:
+            continue
+        ck = city_key_for_store(cname)
+        if not ck or ck == "seoul":
+            continue
+        agg = city_totals.get(ck)
+        if agg is None:
+            city_totals[ck] = [w, m, 1]
+        else:
+            agg[0] += w
+            agg[1] += m
+            agg[2] += 1
+
+    peer_map = {}
+    for raw_name, cname, w, m, is_op in entries:
+        ck = city_key_for_store(cname)
+        agg = city_totals.get(ck)
+        if not agg:
+            continue
+        tot = w + m
+        contrib = (is_op and tot >= 4)
+        pw = agg[0] - (w if contrib else 0)
+        pm = agg[1] - (m if contrib else 0)
+        pn = agg[2] - (1 if contrib else 0)
+        if pn >= 1 and (pw + pm) >= 15:
+            ctx = {"peer_women": pw, "peer_men": pm, "peer_stores": pn}
+            peer_map[cname] = ctx
+            if raw_name != cname:
+                peer_map[raw_name] = ctx
+    return peer_map
 
 
 def _predict_store_60m_v1_legacy(
@@ -1304,6 +1497,7 @@ def _predict_store_60m_v1_legacy(
 ) -> dict:
     """旧v1予測ロジック（精度比較ベンチマーク監査用に保持）。"""
     now_jst = _normalize_jst(now_jst)
+    canon_name = _resolve_internal_store_key(store_name)
     women = max(0, int(women or 0))
     men = max(0, int(men or 0))
     total = women + men
@@ -1315,9 +1509,9 @@ def _predict_store_60m_v1_legacy(
     is_wknd = _is_weekend_or_preholiday(now_jst)
     drift_tbl = _WEEKEND_DRIFT_BY_HOUR if is_wknd else _WEEKDAY_DRIFT_BY_HOUR
     base_dw, base_dm, _ = drift_tbl.get(hr, (0.0, 0.0, 12))
-    p99_cap = max(40, int(STORE_P99_CAPACITY.get(store_name, 120)))
+    p99_cap = max(40, int(STORE_P99_CAPACITY.get(canon_name, 120)))
     scale = max(0.38, min(1.45, p99_cap / 165.0))
-    mid_ret = int(STORE_MIDNIGHT_RETENTION.get(store_name, 85))
+    mid_ret = int(STORE_MIDNIGHT_RETENTION.get(canon_name, 85))
     dw = base_dw * scale
     dm = base_dm * scale
     if hr in (22, 23):
@@ -1342,9 +1536,9 @@ def _predict_store_60m_v1_legacy(
         dw -= 4.5
     elif cur_wpct <= 40 and men >= 15:
         dm = max(dm, -2.0)
-    ck = city_key_for_store(store_name)
+    ck = city_key_for_store(canon_name)
     city_w = (weather_map or {}).get(ck) if ck else None
-    if bool(city_w and city_w.get("is_rainy") and store_name in UNDERGROUND_DIRECT_STORES):
+    if bool(city_w and city_w.get("is_rainy") and canon_name in UNDERGROUND_DIRECT_STORES):
         dw += 3.2 * scale
         dm -= 1.2 * scale
     if arena_signal and 19 <= hr <= 22:
@@ -1371,14 +1565,20 @@ def predict_store_60m_dynamics(
     weather_map: dict = None,
     arena_signal: dict = None,
     apply_online_bias: bool = True,
+    lag_context: dict = None,
+    peer_context: dict = None,
+    usual_pair_override: tuple = None,
 ) -> dict:
     """
-    状態空間マルコフ遷移モデル（v2.2）に基づき、当該店舗の「60分後の予測女性比・予測男女数・男余り転落リスク・アラートバッジ」を返す。
-    1) 連続時刻ノット補間（h:30基準）により正時の階段状ジャンプを解消
-    2) 男女クロス結合（現在の女性数→60分後男性流入、稼働率飽和、閉店前ハザード減衰）を反映
-    3) 階層Empirical-Bayes店舗×フェーズ事前オフセット＋店舗別30日普段カーブ縮小＋直近残差のオンライン自己補正を統合
+    状態空間カルマン平滑化＋同都市スピルオーバーモデル（v3.0）に基づき、当該店舗の
+    「60分後の予測女性比・予測男女数・男余り転落リスク・アラートバッジ」を返す。
+    1) 連続時刻ノット補間（h:30基準・階層Huberロバスト推定）により正時の階段状ジャンプと外れ値過適合を排除
+    2) 多段ラグ（t-30m / t-60m）カルマン状態アンカーで一時的な離席・会計ノイズを平滑化
+    3) 同一都市内の他店舗リアルタイム女性比（city peer spillover）から当夜のエリア需給と店舗間移動を反映
+    4) 階層Empirical-Bayes店舗×フェーズ事前分布＋連続補間30日普段カーブ縮小＋オンライン残差自己補正を統合
     """
     now_jst = _normalize_jst(now_jst)
+    canon_name = _resolve_internal_store_key(store_name)
     women = max(0, int(women or 0))
     men = max(0, int(men or 0))
     total = women + men
@@ -1398,17 +1598,18 @@ def predict_store_60m_dynamics(
             "reason_short": "",
         }
 
-    cur_wp_float = (women / float(total)) * 100.0
+    tot_f = float(total)
+    cur_wp_float = (women / tot_f) * 100.0
     cur_wpct = int(round(cur_wp_float))
     hr = now_jst.hour
     is_wknd = _is_weekend_or_preholiday(now_jst)
     wk_key = 1 if is_wknd else 0
 
-    p99_cap = max(40, int(STORE_P99_CAPACITY.get(store_name, 120)))
+    p99_cap = max(36, int(STORE_P99_CAPACITY.get(canon_name, 120)))
     p99_f = float(p99_cap)
     scale = max(0.38, min(1.45, p99_f / 165.0))
-    mid_ret = int(STORE_MIDNIGHT_RETENTION.get(store_name, 85))
-    mid_r = (float(mid_ret) - 85.0) / 100.0
+    mid_ret = int(STORE_MIDNIGHT_RETENTION.get(canon_name, 88))
+    mid_r = (float(mid_ret) - 90.0) / 100.0
 
     try:
         w_d15 = int(women_diff or 0) if str(women_diff).strip() not in ('', 'None') else 0
@@ -1418,6 +1619,24 @@ def predict_store_60m_dynamics(
         m_d15 = int(men_diff or 0) if str(men_diff).strip() not in ('', 'None') else 0
     except (ValueError, TypeError):
         m_d15 = 0
+
+    # 単体呼び出し時も非ブロッキングRAMリングバッファから t-15m/t-30m/t-60m ラグを補完
+    if lag_context is None and canon_name:
+        try:
+            import local_db
+            lag_context = local_db.get_cached_store_recent_lags(canon_name, now_jst)
+        except Exception:
+            lag_context = None
+
+    if isinstance(lag_context, dict) and w_d15 == 0 and m_d15 == 0:
+        l15 = lag_context.get("lag_15m")
+        if isinstance(l15, (tuple, list)) and len(l15) >= 2:
+            try:
+                w_d15 = women - max(0, int(l15[0] or 0))
+                m_d15 = men - max(0, int(l15[1] or 0))
+            except (TypeError, ValueError):
+                pass
+
     wd_c = max(-16.0, min(18.0, float(w_d15)))
     md_c = max(-16.0, min(18.0, float(m_d15)))
 
@@ -1429,9 +1648,9 @@ def predict_store_60m_dynamics(
     else:
         ef = max(0.0, min(1.0, (21.5 - fhr) / 4.0))
 
-    mtc = _mins_until_close(store_name, now_jst)
+    mtc = _mins_until_close(canon_name, now_jst)
     closing = max(0.0, min(1.5, (90.0 - float(mtc)) / 60.0)) if mtc < 90 else 0.0
-    occ = min(1.2, float(total) / p99_f)
+    occ = min(1.2, tot_f / p99_f)
 
     feat_wm = (
         ef * (p99_f / 100.0),
@@ -1442,19 +1661,23 @@ def predict_store_60m_dynamics(
         mid_r * float(women),
         closing * float(women),
         closing * float(men),
-        occ * float(total),
+        occ * tot_f,
     )
 
-    inv_tot = 100.0 / max(16.0, float(total))
-    stab = min(1.0, max(0.0, (float(total) - 12.0) / 40.0))
+    inv_tot = 100.0 / max(16.0, tot_f)
+    k_gain = tot_f / (tot_f + 22.0)
     j_buf = (max(0.0, cur_wp_float - 66.0) * min(1.0, float(women) / 24.0)) if women >= 16 else 0.0
+    m_reb = max(0.0, 42.0 - cur_wp_float)
     feat_wp = (
         1.0,
         cur_wp_float,
-        (wd_c - md_c) * inv_tot,
+        wd_c * inv_tot,
+        md_c * inv_tot,
         mid_r * 10.0,
-        stab * (cur_wp_float - 55.0),
+        k_gain * (cur_wp_float - 53.0),
         j_buf,
+        m_reb,
+        occ * 10.0,
     )
 
     kw = _interp_v2_knot(_V2_KNOTS_W, wk_key, now_jst)
@@ -1474,15 +1697,10 @@ def predict_store_60m_dynamics(
         except Exception:
             pass
 
-    # 2) 「極端な女余り（男性不在）見切り退店」非線形補正
-    if women >= 12 and men <= 2:
-        pw_raw -= 3.5
-        pwp_dir -= 3.0
-
-    # 3) 雨天×地下街・駅直結ブースト ＆ ドーム・アリーナ終演後流入ブースト
-    ck = city_key_for_store(store_name)
+    # 2) 雨天×地下街・駅直結ブースト ＆ ドーム・アリーナ終演後流入ブースト
+    ck = city_key_for_store(canon_name)
     city_w = (weather_map or {}).get(ck) if ck else None
-    is_rain_shelter = bool(city_w and city_w.get("is_rainy") and store_name in UNDERGROUND_DIRECT_STORES)
+    is_rain_shelter = bool(city_w and city_w.get("is_rainy") and canon_name in UNDERGROUND_DIRECT_STORES)
     if is_rain_shelter:
         pw_raw += 2.4 * scale
         pm_raw -= 0.8 * scale
@@ -1492,26 +1710,16 @@ def predict_store_60m_dynamics(
         pw_raw += 2.8 * scale
         pwp_dir += 1.5
 
-    # 4) 店舗別30日普段カーブ（t → t+60m）への非ブロッキング縮小推定
-    if mtc >= 65 and store_name:
+    # 3) 店舗別30日連続補間普段カーブ（t → t+60m）の取得（O(1) RAM）
+    usual_pair = usual_pair_override
+    if usual_pair is None and mtc >= 65 and canon_name:
         try:
             import local_db
-            usual_pair = local_db.get_cached_store_usual_pair(store_name, now_jst)
-            if usual_pair:
-                uw_t, um_t, uw_60, um_60, cnt_60 = usual_pair
-                if cnt_60 >= 6 and (uw_60 + um_60) >= 8.0:
-                    usual_wp_60 = (uw_60 / (uw_60 + um_60)) * 100.0
-                    # 現在の普段乖離を65%維持しつつ、60分後の店舗固有定常バランスへ16%縮小
-                    cur_anom = 0.0
-                    if (uw_t + um_t) >= 8.0:
-                        cur_anom = cur_wp_float - ((uw_t / (uw_t + um_t)) * 100.0)
-                    emp_target_wp = max(15.0, min(85.0, usual_wp_60 + 0.55 * cur_anom))
-                    shrink_w = min(0.16, 0.16 * (cnt_60 / (cnt_60 + 12.0)))
-                    pwp_dir = (1.0 - shrink_w) * pwp_dir + shrink_w * emp_target_wp
+            usual_pair = local_db.get_cached_store_usual_pair(canon_name, now_jst)
         except Exception:
-            pass
+            usual_pair = None
 
-    # 5) 閉店直前ハザード減衰（公式閉店45分前以内は退店加速を厳密反映）
+    # 4) 閉店直前ハザード減衰（公式閉店45分前以内は退店加速を厳密反映）
     if mtc <= 15:
         pw_raw *= 0.25
         pm_raw *= 0.25
@@ -1520,24 +1728,126 @@ def predict_store_60m_dynamics(
         pw_raw = min(pw_raw, float(women) * fac)
         pm_raw = min(pm_raw, float(men) * fac)
 
-    pw = max(0.5, min(p99_f * 0.75, pw_raw))
-    pm = max(0.5, min(p99_f * 0.75, pm_raw))
-    wp_from_wm = (pw / (pw + pm)) * 100.0
-    store_prior_adj = _interp_store_phase_prior(store_name, now_jst)
-    wp_blend = max(8.0, min(92.0, 0.72 * pwp_dir + 0.28 * wp_from_wm + store_prior_adj))
+    cap_f = p99_f * 0.75
+    pw = max(0.5, min(cap_f, pw_raw))
+    pm = max(0.5, min(cap_f, pm_raw))
 
-    # 6) 蓄積された「予測 vs 60分後実測」残差ログからのオンラインEmpirical-Bayes自己補正
+    # 5) 普段カーブによる男女カウントのEmpirical-Bayes補正（wp_from_wm 算出前に反映して整合化）
+    usual_diff = 0.0
+    if mtc >= 65 and isinstance(usual_pair, (tuple, list)) and len(usual_pair) >= 5:
+        try:
+            uw_t = max(0.0, float(usual_pair[0] or 0.0))
+            um_t = max(0.0, float(usual_pair[1] or 0.0))
+            uw_60 = max(0.0, float(usual_pair[2] or 0.0))
+            um_60 = max(0.0, float(usual_pair[3] or 0.0))
+            cnt_60 = max(0.0, float(usual_pair[4] or 0.0))
+            ut1 = uw_60 + um_60
+            if ut1 >= 6.0 and cnt_60 >= 5.0:
+                uwp1 = (uw_60 / ut1) * 100.0
+                cur_anom = 0.0
+                if (uw_t + um_t) >= 6.0:
+                    cur_anom = cur_wp_float - ((uw_t / (uw_t + um_t)) * 100.0)
+                emp_tgt = max(15.0, min(85.0, uwp1 + 0.45 * cur_anom))
+                urel = (cnt_60 / (cnt_60 + 12.0)) * (1.0 - 0.35 * (tot_f / (tot_f + 30.0)))
+                usual_diff = urel * max(-28.0, min(28.0, emp_tgt - cur_wp_float))
+            if (uw_t + um_t) >= 5.0 and ut1 >= 4.0 and cnt_60 >= 5.0:
+                u_w = min(0.16, 0.20 * (cnt_60 / (cnt_60 + 12.0)))
+                pw = max(0.5, min(cap_f, (1.0 - u_w) * pw + u_w * max(0.5, women + 0.70 * (uw_60 - uw_t) + 0.30 * (uw_60 - women))))
+                pm = max(0.5, min(cap_f, (1.0 - u_w) * pm + u_w * max(0.5, men + 0.70 * (um_60 - um_t) + 0.30 * (um_60 - men))))
+        except (TypeError, ValueError):
+            usual_diff = 0.0
+
+    wp_from_wm = (pw / (pw + pm)) * 100.0
+    store_prior_adj = _interp_store_phase_prior(canon_name, now_jst) * (1.0 - 0.22 * k_gain)
+
+    # 6) v3.0 状態空間カルマン分離ラグ（ノイズ回帰 vs 大規模店モメンタム）・同都市ピアスピルオーバー統合層
+    noise_rev30 = 0.0
+    mom30 = 0.0
+    dw30_rate = 0.0
+    dm30_rate = 0.0
+    lag60_diff = 0.0
+    if isinstance(lag_context, dict):
+        l30 = lag_context.get("lag_30m")
+        if isinstance(l30, (tuple, list)) and len(l30) >= 2:
+            try:
+                w30 = max(0, int(l30[0] or 0))
+                m30 = max(0, int(l30[1] or 0))
+                t30 = w30 + m30
+                if t30 >= 6:
+                    wp30 = (w30 / float(t30)) * 100.0
+                    d30 = max(-30.0, min(30.0, wp30 - cur_wp_float))
+                    rel30 = t30 / (t30 + 18.0)
+                    noise_rev30 = (1.0 - k_gain) * rel30 * d30
+                    mom30 = k_gain * rel30 * (-d30)
+                    dw30_rate = max(-30.0, min(30.0, float(women - w30))) / (tot_f + 12.0)
+                    dm30_rate = max(-30.0, min(30.0, float(men - m30))) / (tot_f + 12.0)
+            except (TypeError, ValueError):
+                pass
+        l60 = lag_context.get("lag_60m")
+        if isinstance(l60, (tuple, list)) and len(l60) >= 2:
+            try:
+                w60_p = max(0, int(l60[0] or 0))
+                m60_p = max(0, int(l60[1] or 0))
+                t60_p = w60_p + m60_p
+                if t60_p >= 6:
+                    wp60_p = (w60_p / float(t60_p)) * 100.0
+                    rel60 = t60_p / (t60_p + 20.0)
+                    lag60_diff = rel60 * max(-32.0, min(32.0, wp60_p - cur_wp_float))
+            except (TypeError, ValueError):
+                pass
+
+    peer_gap = 0.0
+    peer_regime = 0.0
+    if isinstance(peer_context, dict):
+        try:
+            pw_c = max(0, int(peer_context.get("peer_women") or 0))
+            pm_c = max(0, int(peer_context.get("peer_men") or 0))
+            pn_c = int(peer_context.get("peer_stores") or 0)
+            ptot = pw_c + pm_c
+            if ptot >= 15 and pn_c >= 1:
+                peer_wp = (pw_c / float(ptot)) * 100.0
+                peer_rel = ptot / (ptot + 60.0)
+                peer_gap = peer_rel * max(-30.0, min(30.0, peer_wp - cur_wp_float))
+                peer_regime = peer_rel * max(-20.0, min(20.0, peer_wp - 53.0))
+        except (TypeError, ValueError):
+            peer_gap = 0.0
+            peer_regime = 0.0
+
+    jis_pull = (cur_wp_float - 54.0) if canon_name.startswith("JIS") else 0.0
+
+    sf = (
+        wp_from_wm - pwp_dir,
+        noise_rev30,
+        mom30,
+        lag60_diff,
+        dw30_rate,
+        dm30_rate,
+        peer_gap,
+        peer_regime,
+        jis_pull,
+        usual_diff,
+    )
+    wp_b = pwp_dir + store_prior_adj + sum(a * x for a, x in zip(_V3_STRUCT_WEIGHTS, sf))
+    pred_tot_f = pw + pm
+    if women > 0 and men > 0 and pred_tot_f < 10.0:
+        wp_b = 52.0 + (pred_tot_f / (pred_tot_f + 1.6)) * (wp_b - 52.0)
+
+    wp_blend = max(8.0, min(92.0, wp_b))
+
+    # 7) 蓄積された「予測 vs 60分後実測」残差ログからのオンラインEmpirical-Bayes自己補正
     online_bias_adj = 0.0
-    if apply_online_bias and store_name:
+    if apply_online_bias and canon_name:
         try:
             import local_db
-            online_bias_adj = float(local_db.get_cached_forecast_residual_adjustment(store_name, hr) or 0.0)
+            online_bias_adj = float(local_db.get_cached_forecast_residual_adjustment(canon_name, hr) or 0.0)
+            if online_bias_adj == 0.0 and store_name != canon_name:
+                online_bias_adj = float(local_db.get_cached_forecast_residual_adjustment(store_name, hr) or 0.0)
             if online_bias_adj != 0.0:
                 wp_blend = max(8.0, min(92.0, wp_blend + online_bias_adj))
         except Exception:
             online_bias_adj = 0.0
 
-    cap_side = int(p99_f * 0.75)
+    cap_side = int(cap_f)
     tot_int = max(2, min(cap_side * 2, int(round(max(2.0, pw + pm)))))
     raw_w = int(round(tot_int * (wp_blend / 100.0)))
     if men == 0 and wp_blend >= 75.0:
@@ -1553,7 +1863,7 @@ def predict_store_60m_dynamics(
     delta_pt = pred_wpct - cur_wpct
 
     # 男余り転落リスク（60分後に女性比50%未満になる校正済み確率%）の算出
-    inv_sqrt_n = 1.0 / math.sqrt(max(6.0, float(total)))
+    inv_sqrt_n = 1.0 / math.sqrt(max(6.0, tot_f))
     is_m_now = 1.0 if cur_wp_float < 50.0 else 0.0
     j_safe = 1.0 if (women >= 18 and cur_wp_float >= 68.0) else 0.0
     rush_z = 0.35 * max(0.0, float(m_d15 - w_d15) / 5.0) if m_d15 > w_d15 else 0.0
@@ -1642,41 +1952,65 @@ def predict_store_60m_dynamics(
     }
 
 
-def enrich_stores_with_moat_signals(stores: list, now_jst: datetime.datetime = None, allow_weather_blocking: bool = False) -> list:
+def enrich_stores_with_moat_signals(
+    stores: list,
+    now_jst: datetime.datetime = None,
+    allow_weather_blocking: bool = False,
+    context_stores: list = None,
+) -> list:
     """
     店舗リスト（ranking または full_data）に対して一括で：
       1) JIS POS実測データからのオンライン学習キャリブレーション
       2) Open-Meteo 都市別気象キャッシュ参照（非ブロッキング）
       3) ドーム・アリーナ終演流入シグナル検知
-      4) 全店舗の「リアル待ち時間推論（wait_info）」＆「60分後男女比予測バッジ（forecast_60m）」＋予測精度実績の付与
+      4) 同都市リアルタイム他店舗需給コンテキスト（peer_context）＆非ブロッキング多段ラグ（lag_context）のO(N)構築
+      5) 全店舗の「リアル待ち時間推論（wait_info）」＆「60分後男女比予測バッジ（forecast_60m）」＋予測精度実績の付与
     を実行して返す（全63店舗合計で約0.5ms以内の超高速インメモリ処理）。
     """
     if not stores:
         return stores
     now_jst = _normalize_jst(now_jst)
-    calibrate_from_jis_pos(stores)
+    ctx_source = context_stores if context_stores is not None else stores
+    calibrate_from_jis_pos(ctx_source)
     weather_map = get_city_weather_map(allow_blocking=allow_weather_blocking)
-    arena_map = detect_arena_event_surges(stores, now_jst=now_jst)
+    arena_map = detect_arena_event_surges(ctx_source, now_jst=now_jst)
+    peer_map = build_city_peer_context(ctx_source)
 
     acc_map = {}
+    lags_map = {}
     try:
         import local_db
         acc_map = local_db.get_cached_store_accuracy_map() or {}
+        lags_map = local_db.get_cached_recent_lags_map(now_jst) or {}
     except Exception:
         acc_map = {}
+        lags_map = {}
 
     for s in stores:
         sname = s.get("name") or ""
+        canon_name = _resolve_internal_store_key(sname)
         w = int(s.get("women") or 0)
         m = int(s.get("men") or 0)
-        is_open = bool(s.get("is_open_now", True))
+        if "is_open_now" in s and s.get("is_open_now") is not None:
+            is_open = bool(s.get("is_open_now"))
+        else:
+            try:
+                import store_hours
+                is_open = bool(
+                    store_hours.get_business_hours_status(
+                        canon_name or sname, total_guests=w + m, now_jst=now_jst
+                    ).get("is_open_now", True)
+                )
+            except Exception:
+                is_open = True
+            s["is_open_now"] = is_open
         w_diff = int(s.get("women_diff") or 0)
         m_diff = int(s.get("men_diff") or 0)
         uw_diff = s.get("usual_w_diff")
         pos_tel = s.get("pos_telemetry")
 
         wait_info = estimate_store_wait_and_pos(
-            store_name=sname,
+            store_name=canon_name or sname,
             women=w,
             men=m,
             is_open_now=is_open,
@@ -1694,14 +2028,16 @@ def enrich_stores_with_moat_signals(stores: list, now_jst: datetime.datetime = N
             usual_w_diff=uw_diff,
             now_jst=now_jst,
             weather_map=weather_map,
-            arena_signal=arena_map.get(sname),
+            arena_signal=arena_map.get(sname) or arena_map.get(canon_name),
+            lag_context=lags_map.get(canon_name) if canon_name in lags_map else {},
+            peer_context=peer_map.get(canon_name) or peer_map.get(sname),
         )
-        st_acc = acc_map.get(sname)
+        st_acc = acc_map.get(canon_name) or acc_map.get(sname)
         if st_acc:
             fc60["accuracy"] = st_acc
         s["wait_estimate"] = wait_info
         s["forecast_60m"] = fc60
-        ck = city_key_for_store(sname)
+        ck = city_key_for_store(canon_name or sname)
         if ck and ck in weather_map:
             cw = weather_map[ck]
             s["weather_brief"] = {

@@ -85,6 +85,10 @@ _forecast_cache_computing = False
 _forecast_cache_lock = threading.Lock()
 _forecast_backfill_in_flight = False
 _forecast_backfill_lock = threading.Lock()
+_recent_trajectory_ring = {}
+_recent_trajectory_warmed_at = {}
+_recent_trajectory_lock = threading.Lock()
+_recent_lags_warming = set()
 
 
 def clear_store_7d_cache(store_name: str = None, clear_benchmarks: bool = False):
@@ -97,12 +101,18 @@ def clear_store_7d_cache(store_name: str = None, clear_benchmarks: bool = False)
         _forecast_acc_report_cache.clear()
         _forecast_store_acc_cache.clear()
         _forecast_residual_bias_cache.clear()
+        with _recent_trajectory_lock:
+            _recent_trajectory_ring.clear()
+            _recent_trajectory_warmed_at.clear()
     if clear_benchmarks:
         _live_benchmarks_cache.clear()
         _benchmark_base_cache.clear()
         _forecast_acc_report_cache.clear()
         _forecast_store_acc_cache.clear()
         _forecast_residual_bias_cache.clear()
+        with _recent_trajectory_lock:
+            _recent_trajectory_ring.clear()
+            _recent_trajectory_warmed_at.clear()
 
 
 def refresh_live_benchmarks_async():
@@ -285,7 +295,7 @@ def init_db():
                             predicted_at TEXT NOT NULL,
                             target_at TEXT NOT NULL,
                             store_name TEXT NOT NULL,
-                            model_version TEXT NOT NULL DEFAULT 'v2.2-statespace',
+                            model_version TEXT NOT NULL DEFAULT 'v3.0-statespace',
                             start_women INTEGER NOT NULL,
                             start_men INTEGER NOT NULL,
                             start_wpct INTEGER NOT NULL,
@@ -390,7 +400,7 @@ def init_db():
                     predicted_at TEXT NOT NULL,
                     target_at TEXT NOT NULL,
                     store_name TEXT NOT NULL,
-                    model_version TEXT NOT NULL DEFAULT 'v2.2-statespace',
+                    model_version TEXT NOT NULL DEFAULT 'v3.0-statespace',
                     start_women INTEGER NOT NULL,
                     start_men INTEGER NOT NULL,
                     start_wpct INTEGER NOT NULL,
@@ -464,6 +474,7 @@ def insert_logs(items, timestamp_str):
                 _store_7d_cache.clear()
             else:
                 clear_store_7d_cache()
+            _record_snapshot_to_trajectory_ring(items, timestamp_str)
             _save_moat_aux_logs(items, timestamp_str)
             try:
                 record_and_resolve_forecasts(items, timestamp_str)
@@ -499,6 +510,7 @@ def insert_logs(items, timestamp_str):
             return 0
         finally:
             conn.close()
+    _record_snapshot_to_trajectory_ring(items, timestamp_str)
     _save_moat_aux_logs(items, timestamp_str)
     try:
         record_and_resolve_forecasts(items, timestamp_str)
@@ -1531,8 +1543,190 @@ def get_store_7day_analytics(store_name: str) -> dict:
     return result
 
 
+def _is_synthetic_seed_alias(store_name: str) -> bool:
+    """Return True for SEO/display test-seed store aliases never emitted by live scrapers."""
+    s = (store_name or "").strip()
+    if not s:
+        return False
+    if (
+        s.startswith("オリエンタルラウンジ")
+        or "（アグ）" in s
+        or "（アソビバー）" in s
+        or "（ジス）" in s
+        or s.startswith("ag ")
+        or s.startswith("ヤタコイ")
+    ):
+        return True
+    if s.startswith("ag") and len(s) > 2 and not s[2].isascii():
+        return True
+    return False
+
+
+def _is_ghost_multistore_batch(dt: datetime.datetime, smap: dict) -> bool:
+    """Detect timezone-shifted (PDT -16h) ghost batches in multi-store (>=15 stores) snapshots."""
+    if len(smap) < 15 or dt is None:
+        return False
+    h = dt.hour
+    tot_all = 0
+    n_open = 0
+    n_w_only = 0
+    for w, m in smap.values():
+        t = w + m
+        tot_all += t
+        if t > 0:
+            n_open += 1
+            if w >= 2 and m == 0:
+                n_w_only += 1
+
+    if 8 <= h <= 16 and tot_all > 60:
+        return True
+    if h == 7 and tot_all > 120:
+        return True
+    if h == 17 and n_open == 1 and tot_all >= 25:
+        return True
+    if h == 18 and dt.minute >= 8 and (n_open <= 3 or tot_all < 20):
+        return True
+    if h == 18 and dt.minute < 8 and n_open == 1 and tot_all >= 25:
+        return True
+    if (19 <= h <= 23 or 0 <= h <= 2) and (tot_all < 100 or n_open <= 6):
+        return True
+    if 2 <= h <= 7:
+        if n_open >= 10 and n_w_only >= max(6, int(n_open * 0.45)):
+            return True
+        try:
+            import moat_intelligence
+            severe_viol = 0
+            mild_viol = 0
+            for s, (w, m) in smap.items():
+                t = w + m
+                if t >= 2:
+                    mtc = moat_intelligence._mins_until_close(s, dt)
+                    if mtc <= -90 and t >= 6:
+                        severe_viol += 1
+                    if mtc <= -45:
+                        mild_viol += 1
+            if severe_viol >= 2 or mild_viol >= max(5, int(len(smap) * 0.20)):
+                return True
+        except Exception:
+            pass
+    return False
+
+
+def _bray_curtis_multistore(map_a: dict, map_b: dict):
+    common = [s for s in map_a if s in map_b]
+    if len(common) < 15:
+        return None
+    denom = 0
+    num = 0
+    for s in common:
+        wa, ma = map_a[s]
+        wb, mb = map_b[s]
+        denom += (wa + ma) + (wb + mb)
+        num += abs(wa - wb) + abs(ma - mb)
+    if denom < 120:
+        return None
+    return num / float(denom)
+
+
+def _extract_clean_snapshot_batches(
+    raw_rows: list,
+    valid_domestic: set = None,
+    check_taint: bool = False,
+    exclude_korea: bool = True,
+) -> list:
+    """
+    Group ascending `(timestamp, store_name, women, men)` rows into strict <=2.0s scrape batches
+    and surgically remove synthetic seed taints and PDT (-16h) interleaved ghost batches.
+    """
+    if not raw_rows:
+        return []
+
+    batches = []
+    cur_dt = None
+    cur_ts = None
+    cur_map = {}
+    cur_tainted = False
+    last_ts_key = None
+    last_parsed_dt = None
+
+    for r in raw_rows:
+        ts_raw = str(r[0] or "")[:19]
+        if len(ts_raw) < 19:
+            continue
+        if ts_raw == last_ts_key:
+            dt = last_parsed_dt
+        else:
+            dt = _parse_jst_ts(ts_raw)
+            last_ts_key = ts_raw
+            last_parsed_dt = dt
+        if dt is None:
+            continue
+
+        if cur_dt is None or (dt - cur_dt).total_seconds() > 2.0:
+            if cur_map and not cur_tainted:
+                batches.append((cur_dt, cur_ts, cur_map))
+            cur_dt = dt
+            cur_ts = ts_raw
+            cur_map = {}
+            cur_tainted = False
+
+        sname_r = str(r[1] or "").strip()
+        if not sname_r:
+            continue
+        if _is_synthetic_seed_alias(sname_r):
+            cur_tainted = True
+            continue
+        if exclude_korea and _is_korea_store_name(sname_r):
+            continue
+        if check_taint and valid_domestic and sname_r not in valid_domestic:
+            cur_tainted = True
+            continue
+        cur_map[sname_r] = (max(0, int(r[2] or 0)), max(0, int(r[3] or 0)))
+
+    if cur_map and not cur_tainted:
+        batches.append((cur_dt, cur_ts, cur_map))
+
+    stage1 = [b for b in batches if not _is_ghost_multistore_batch(b[0], b[2])]
+    if len(stage1) <= 1:
+        return stage1
+
+    clean_batches = []
+    n_s1 = len(stage1)
+    for idx, (dt, ts_s, smap) in enumerate(stage1):
+        drop = False
+        if len(smap) >= 15 and clean_batches:
+            prev_multi = None
+            for back_i in range(len(clean_batches) - 1, -1, -1):
+                if len(clean_batches[back_i][2]) >= 15:
+                    prev_multi = clean_batches[back_i]
+                    break
+            if prev_multi is not None:
+                gap_prev = (dt - prev_multi[0]).total_seconds()
+                if 0.0 < gap_prev <= 2400.0:
+                    bc_prev = _bray_curtis_multistore(smap, prev_multi[2])
+                    if bc_prev is not None and bc_prev > 0.30:
+                        checked_fwd = 0
+                        for fwd_i in range(idx + 1, n_s1):
+                            if len(stage1[fwd_i][2]) < 15:
+                                continue
+                            fwd_multi = stage1[fwd_i]
+                            if (fwd_multi[0] - prev_multi[0]).total_seconds() > 3000.0:
+                                break
+                            checked_fwd += 1
+                            bc_pn = _bray_curtis_multistore(fwd_multi[2], prev_multi[2])
+                            bc_nf = _bray_curtis_multistore(smap, fwd_multi[2])
+                            if bc_pn is not None and bc_pn <= 0.26 and (bc_nf is None or bc_nf > 0.28):
+                                drop = True
+                                break
+                            if checked_fwd >= 6:
+                                break
+        if not drop:
+            clean_batches.append((dt, ts_s, smap))
+    return clean_batches
+
+
 def _compute_benchmark_base_from_sqlite(cutoff_str: str) -> dict:
-    """Scans the last 30 days of monitor_logs once and returns hour/weekday base accumulators for all stores."""
+    """Scans the last 30 days of monitor_logs once (with ghost-batch filtering) and returns hour/weekday base accumulators."""
     from collections import defaultdict
     by_wd_hour = defaultdict(lambda: defaultdict(lambda: [0.0, 0.0, 0]))
     by_hour = defaultdict(lambda: defaultdict(lambda: [0.0, 0.0, 0]))
@@ -1543,36 +1737,35 @@ def _compute_benchmark_base_from_sqlite(cutoff_str: str) -> dict:
     stores_seen = set()
     _date_memo = {}
 
+    raw_rows = []
     if _db_available():
         try:
-            grouped_rows = _fetch_all_rows(
+            raw_rows = _fetch_all_rows(
                 """
-                SELECT
-                    store_name,
-                    substr(timestamp, 1, 10) AS d_str,
-                    CAST(substr(timestamp, 12, 2) AS INTEGER) AS h,
-                    SUM(women) AS sum_w,
-                    SUM(men) AS sum_m,
-                    COUNT(*) AS cnt
+                SELECT timestamp, store_name, women, men
                 FROM monitor_logs
-                WHERE timestamp >= ? AND (women > 0 OR men > 0)
-                GROUP BY store_name, d_str, h
+                WHERE timestamp >= ?
+                ORDER BY timestamp ASC
                 """,
                 (cutoff_str,),
             )
         except Exception as e:
             print(f"[local_db] get_all_stores_live_benchmarks error: {e}", file=sys.stderr)
-            grouped_rows = []
-    else:
-        grouped_rows = []
+            raw_rows = []
 
-    for r in grouped_rows:
-        sname = r[0]
-        d_str = r[1]
-        h = r[2]
-        sum_w = float(r[3] or 0.0)
-        sum_m = float(r[4] or 0.0)
-        cnt = int(r[5] or 0)
+    clean_batches = _extract_clean_snapshot_batches(raw_rows, check_taint=False, exclude_korea=False)
+    grouped_acc = defaultdict(lambda: [0.0, 0.0, 0])
+    for dt, ts_s, smap in clean_batches:
+        d_str = ts_s[:10]
+        h = dt.hour
+        for sname, (w, m) in smap.items():
+            if w > 0 or m > 0:
+                acc = grouped_acc[(sname, d_str, h)]
+                acc[0] += float(w)
+                acc[1] += float(m)
+                acc[2] += 1
+
+    for (sname, d_str, h), (sum_w, sum_m, cnt) in grouped_acc.items():
         if not sname or not d_str or len(d_str) < 10 or cnt <= 0:
             continue
 
@@ -2049,7 +2242,7 @@ def _ensure_forecast_schema() -> bool:
                             predicted_at TEXT NOT NULL,
                             target_at TEXT NOT NULL,
                             store_name TEXT NOT NULL,
-                            model_version TEXT NOT NULL DEFAULT 'v2.2-statespace',
+                            model_version TEXT NOT NULL DEFAULT 'v3.0-statespace',
                             start_women INTEGER NOT NULL,
                             start_men INTEGER NOT NULL,
                             start_wpct INTEGER NOT NULL,
@@ -2091,7 +2284,7 @@ def _ensure_forecast_schema() -> bool:
                     predicted_at TEXT NOT NULL,
                     target_at TEXT NOT NULL,
                     store_name TEXT NOT NULL,
-                    model_version TEXT NOT NULL DEFAULT 'v2.2-statespace',
+                    model_version TEXT NOT NULL DEFAULT 'v3.0-statespace',
                     start_women INTEGER NOT NULL,
                     start_men INTEGER NOT NULL,
                     start_wpct INTEGER NOT NULL,
@@ -2135,40 +2328,339 @@ def _invalidate_forecast_caches():
     _forecast_residual_bias_cache.pop(db_k, None)
 
 
+def _to_naive_jst(dt: datetime.datetime = None) -> datetime.datetime:
+    if dt is None:
+        return datetime.datetime.now(_JST_TZ).replace(tzinfo=None)
+    if getattr(dt, "tzinfo", None) is not None:
+        return dt.astimezone(_JST_TZ).replace(tzinfo=None)
+    return dt
+
+
+def _record_snapshot_to_trajectory_ring(items: list, timestamp_str: str):
+    """Append a fresh live snapshot into the bounded in-memory trajectory ring buffer for O(1) lag lookups."""
+    if not items or not timestamp_str:
+        return
+    ts_dt = _parse_jst_ts(timestamp_str)
+    if ts_dt is None:
+        return
+    dt_naive = _to_naive_jst(ts_dt)
+
+    f_times = [
+        float(it.get("fetched_at") or 0.0)
+        for it in items
+        if isinstance(it, dict) and "fetched_at" in it and float(it.get("fetched_at") or 0.0) > 0.0
+    ]
+    max_fetched = max(f_times) if f_times else 0.0
+
+    smap = {}
+    for it in items:
+        if not isinstance(it, dict):
+            continue
+        sname_check = str(it.get("name") or "").strip()
+        if _is_synthetic_seed_alias(sname_check):
+            return
+        if "fetched_at" in it:
+            fat = float(it.get("fetched_at") or 0.0)
+            if fat <= 0.0 or (max_fetched > 0.0 and (max_fetched - fat) > 180.0):
+                continue
+        sname = sname_check
+        if not sname or _is_korea_store_name(sname):
+            continue
+        smap[sname] = (max(0, int(it.get("women") or 0)), max(0, int(it.get("men") or 0)))
+
+    if not smap or _is_ghost_multistore_batch(ts_dt, smap):
+        return
+
+    db_k = _active_db_key()
+    with _recent_trajectory_lock:
+        ring = list(_recent_trajectory_ring.get(db_k) or ())
+        if ring and len(smap) >= 15:
+            # Retroactively evict any interleaved off-trajectory spike when `smap` reconnects to an earlier multi-store anchor
+            anchor_idx = None
+            for a_i in range(len(ring) - 1, -1, -1):
+                a_dt, a_map = ring[a_i]
+                if len(a_map) < 15:
+                    continue
+                gap_ac = (dt_naive - a_dt).total_seconds()
+                if gap_ac <= 2.0:
+                    continue
+                if gap_ac > 3000.0:
+                    break
+                bc_ac = _bray_curtis_multistore(smap, a_map)
+                if bc_ac is not None and bc_ac <= 0.26:
+                    anchor_idx = a_i
+                    break
+            if anchor_idx is not None and anchor_idx < len(ring) - 1:
+                a_dt, a_map = ring[anchor_idx]
+                kept = ring[:anchor_idx + 1]
+                for b_dt, b_map in ring[anchor_idx + 1:]:
+                    if len(b_map) >= 15 and b_dt < dt_naive:
+                        bc_ab = _bray_curtis_multistore(b_map, a_map)
+                        bc_bc = _bray_curtis_multistore(b_map, smap)
+                        if bc_ab is not None and bc_ab > 0.30 and (bc_bc is None or bc_bc > 0.28):
+                            continue
+                    kept.append((b_dt, b_map))
+                ring = kept
+        merged = False
+        for idx, (b_dt, b_map) in enumerate(ring):
+            if abs((dt_naive - b_dt).total_seconds()) <= 2.0:
+                updated_map = dict(b_map)
+                updated_map.update(smap)
+                ring[idx] = (b_dt, updated_map)
+                merged = True
+                break
+        if not merged:
+            ring.append((dt_naive, smap))
+            ring.sort(key=lambda x: x[0])
+        if len(ring) > 28:
+            ring = ring[-28:]
+        _recent_trajectory_ring[db_k] = ring
+
+
+def _warm_trajectory_ring_from_db(target_dt_naive: datetime.datetime):
+    """Populate `_recent_trajectory_ring` from the last 85 minutes of `monitor_logs` (cleaned of ghost batches)."""
+    if not _db_available():
+        return
+    db_k = _active_db_key()
+    db_cnt = int(get_db_stats().get("count") or 0)
+    if db_cnt <= 0:
+        with _recent_trajectory_lock:
+            _recent_trajectory_warmed_at[db_k] = (time.monotonic(), 0, target_dt_naive)
+        return
+
+    w_lo = (target_dt_naive - datetime.timedelta(minutes=85)).strftime("%Y-%m-%d %H:%M:%S")
+    w_hi = target_dt_naive.strftime("%Y-%m-%d %H:%M:%S")
+    try:
+        raw_rows = _fetch_all_rows(
+            """
+            SELECT timestamp, store_name, women, men
+            FROM monitor_logs
+            WHERE timestamp >= ? AND timestamp <= ?
+            ORDER BY timestamp ASC
+            """,
+            (w_lo, w_hi),
+        )
+    except Exception:
+        raw_rows = []
+
+    clean_batches = _extract_clean_snapshot_batches(raw_rows, check_taint=False, exclude_korea=True)
+    db_entries = [(_to_naive_jst(b[0]), b[2]) for b in clean_batches]
+
+    with _recent_trajectory_lock:
+        ring = list(_recent_trajectory_ring.get(db_k) or ())
+        for e_dt, e_map in db_entries:
+            merged = False
+            for idx, (b_dt, b_map) in enumerate(ring):
+                if abs((e_dt - b_dt).total_seconds()) <= 2.0:
+                    comb = dict(e_map)
+                    comb.update(b_map)
+                    ring[idx] = (b_dt, comb)
+                    merged = True
+                    break
+            if not merged:
+                ring.append((e_dt, e_map))
+        ring.sort(key=lambda x: x[0])
+        if len(ring) > 28:
+            ring = ring[-28:]
+        _recent_trajectory_ring[db_k] = ring
+        _recent_trajectory_warmed_at[db_k] = (time.monotonic(), db_cnt, target_dt_naive)
+
+
+def _extract_lags_from_ring_entries(ring_entries: list, target_dt_naive: datetime.datetime) -> dict:
+    if not ring_entries:
+        return {}
+    b15, err15 = None, 999.0
+    b30, err30 = None, 999.0
+    b60, err60 = None, 999.0
+    for b_dt, b_map in ring_entries:
+        dm = (target_dt_naive - b_dt).total_seconds() / 60.0
+        if 8.0 <= dm <= 23.0:
+            e = abs(dm - 15.0)
+            if e < err15:
+                err15, b15 = e, b_map
+        elif 23.0 < dm <= 42.0:
+            e = abs(dm - 30.0)
+            if e < err30:
+                err30, b30 = e, b_map
+        elif 48.0 <= dm <= 75.0:
+            e = abs(dm - 60.0)
+            if e < err60:
+                err60, b60 = e, b_map
+
+    if b15 is None and b30 is None and b60 is None:
+        return {}
+
+    stores = set()
+    if b15:
+        stores.update(b15.keys())
+    if b30:
+        stores.update(b30.keys())
+    if b60:
+        stores.update(b60.keys())
+
+    out = {}
+    for s in stores:
+        d = {}
+        if b15 and s in b15:
+            d["lag_15m"] = b15[s]
+        if b30 and s in b30:
+            d["lag_30m"] = b30[s]
+        if b60 and s in b60:
+            d["lag_60m"] = b60[s]
+        if d:
+            out[s] = d
+    return out
+
+
+def get_cached_recent_lags_map(now_jst: datetime.datetime = None, allow_db_warm: bool = False) -> dict:
+    """Return `{store_name: {'lag_15m': (w,m), 'lag_30m': (w,m), 'lag_60m': (w,m)}}` from RAM ring buffer."""
+    target_dt = _to_naive_jst(now_jst)
+    db_k = _active_db_key()
+    with _recent_trajectory_lock:
+        snap = list(_recent_trajectory_ring.get(db_k) or ())
+        warm_meta = _recent_trajectory_warmed_at.get(db_k)
+        is_warming = db_k in _recent_lags_warming
+
+    has_window = any(8.0 <= (target_dt - b_dt).total_seconds() / 60.0 <= 75.0 for b_dt, _ in snap)
+    if not has_window and not is_warming:
+        now_mono = time.monotonic()
+        if (
+            not allow_db_warm
+            and warm_meta is not None
+            and warm_meta[1] >= 2500
+            and abs((target_dt - warm_meta[2]).total_seconds()) < 300.0
+            and (now_mono - warm_meta[0]) < 120.0
+        ):
+            return _extract_lags_from_ring_entries(snap, target_dt)
+        if not _db_available():
+            return {}
+        db_cnt = int(get_db_stats().get("count") or 0)
+        already_checked = (
+            warm_meta is not None
+            and warm_meta[1] == db_cnt
+            and abs((target_dt - warm_meta[2]).total_seconds()) < 300.0
+            and (now_mono - warm_meta[0]) < 120.0
+        )
+        if db_cnt > 0 and not already_checked:
+            if allow_db_warm or (db_cnt < 2500 and not _sync_in_progress):
+                _warm_trajectory_ring_from_db(target_dt)
+                with _recent_trajectory_lock:
+                    snap = list(_recent_trajectory_ring.get(db_k) or ())
+            else:
+                warm_key = db_k
+                spawn = False
+                with _recent_trajectory_lock:
+                    if warm_key not in _recent_lags_warming:
+                        _recent_lags_warming.add(warm_key)
+                        spawn = True
+                if spawn:
+                    def _bg_warm():
+                        try:
+                            _warm_trajectory_ring_from_db(target_dt)
+                        except Exception:
+                            pass
+                        finally:
+                            with _recent_trajectory_lock:
+                                _recent_lags_warming.discard(warm_key)
+                    threading.Thread(target=_bg_warm, daemon=True).start()
+
+    return _extract_lags_from_ring_entries(snap, target_dt)
+
+
+def get_cached_store_recent_lags(store_name: str, now_jst: datetime.datetime = None):
+    """Non-blocking single-store lookup into `get_cached_recent_lags_map`."""
+    if not store_name:
+        return None
+    lags_map = get_cached_recent_lags_map(now_jst=now_jst, allow_db_warm=False)
+    if store_name in lags_map:
+        return lags_map[store_name]
+    try:
+        import moat_intelligence
+        canon = moat_intelligence._resolve_internal_store_key(store_name)
+        if canon and canon in lags_map:
+            return lags_map[canon]
+    except Exception:
+        pass
+    return None
+
+
+def _interp_usual_from_maps(by_wh: dict, by_h: dict, dt_naive: datetime.datetime):
+    """Continuously interpolate `(usual_w, usual_m, eff_cnt)` around hour midpoints (`HH:30`)."""
+    h_a = dt_naive.hour
+    wd_a = ((dt_naive - datetime.timedelta(days=1)).date() if h_a <= 6 else dt_naive.date()).weekday()
+    s_a = by_wh.get((wd_a, h_a))
+    if not s_a or s_a[2] < 3:
+        s_a = by_h.get(h_a)
+    if not s_a or s_a[2] <= 0:
+        return None
+    uw_a = s_a[0] / s_a[2]
+    um_a = s_a[1] / s_a[2]
+    c_a = float(s_a[2])
+
+    mins = dt_naive.minute + (dt_naive.second / 60.0)
+    if mins < 30.0:
+        dt_b = dt_naive - datetime.timedelta(hours=1)
+        alpha = (30.0 - mins) / 60.0
+    else:
+        dt_b = dt_naive + datetime.timedelta(hours=1)
+        alpha = (mins - 30.0) / 60.0
+
+    h_b = dt_b.hour
+    wd_b = ((dt_b - datetime.timedelta(days=1)).date() if h_b <= 6 else dt_b.date()).weekday()
+    s_b = by_wh.get((wd_b, h_b))
+    if not s_b or s_b[2] < 3:
+        s_b = by_h.get(h_b)
+    if s_b and s_b[2] >= 3:
+        uw_b = s_b[0] / s_b[2]
+        um_b = s_b[1] / s_b[2]
+        c_b = float(s_b[2])
+        return (
+            (1.0 - alpha) * uw_a + alpha * uw_b,
+            (1.0 - alpha) * um_a + alpha * um_b,
+            (1.0 - alpha) * c_a + alpha * c_b,
+        )
+    return (uw_a, um_a, c_a)
+
+
 def get_cached_store_usual_pair(store_name: str, now_jst: datetime.datetime):
-    """Non-blocking O(1) RAM lookup of a store's 30-day usual (w_t, m_t, w_t60, m_t60, cnt_t60) from `_benchmark_base_cache`."""
+    """Non-blocking O(1) RAM lookup of continuously-interpolated 30-day usual `(w_t, m_t, w_t60, m_t60, cnt_t60)`."""
     if not store_name or now_jst is None:
         return None
-    base_entry = _benchmark_base_cache.get(_active_db_key())
+    db_k = _active_db_key()
+    base_entry = _benchmark_base_cache.get(db_k)
+    now_naive = _to_naive_jst(now_jst)
+    if base_entry is None or (time.monotonic() - base_entry[0]) >= _BENCHMARK_BASE_TTL:
+        if not _live_benchmarks_computing and _db_available():
+            try:
+                get_all_stores_live_benchmarks(now_jst=now_naive, allow_blocking=False)
+            except Exception:
+                pass
+            base_entry = _benchmark_base_cache.get(db_k)
     if not base_entry:
         return None
     base_data = base_entry[2]
-    if not base_data or store_name not in base_data.get("stores_seen", ()):
+    if not base_data:
+        return None
+    stores_seen = base_data.get("stores_seen", ())
+    lookup_name = store_name
+    if lookup_name not in stores_seen:
+        try:
+            import moat_intelligence
+            lookup_name = moat_intelligence._resolve_internal_store_key(store_name)
+        except Exception:
+            pass
+    if not lookup_name or lookup_name not in stores_seen:
         return None
 
-    t60 = now_jst + datetime.timedelta(minutes=60)
-    h0 = now_jst.hour
-    wd0 = ((now_jst - datetime.timedelta(days=1)).date() if h0 <= 6 else now_jst.date()).weekday()
-    h1 = t60.hour
-    wd1 = ((t60 - datetime.timedelta(days=1)).date() if h1 <= 6 else t60.date()).weekday()
+    by_wh = base_data["by_wd_hour"].get(lookup_name, {})
+    by_h = base_data["by_hour"].get(lookup_name, {})
 
-    by_wh = base_data["by_wd_hour"].get(store_name, {})
-    by_h = base_data["by_hour"].get(store_name, {})
-
-    s0 = by_wh.get((wd0, h0))
-    if not s0 or s0[2] < 3:
-        s0 = by_h.get(h0)
-    s1 = by_wh.get((wd1, h1))
-    if not s1 or s1[2] < 3:
-        s1 = by_h.get(h1)
-
-    if not s1 or s1[2] < 3:
+    p0 = _interp_usual_from_maps(by_wh, by_h, now_naive)
+    p1 = _interp_usual_from_maps(by_wh, by_h, now_naive + datetime.timedelta(minutes=60))
+    if not p1 or p1[2] < 3.0:
         return None
-    uw0 = (s0[0] / s0[2]) if (s0 and s0[2] > 0) else 0.0
-    um0 = (s0[1] / s0[2]) if (s0 and s0[2] > 0) else 0.0
-    uw1 = s1[0] / s1[2]
-    um1 = s1[1] / s1[2]
-    return (uw0, um0, uw1, um1, int(s1[2]))
+    uw0, um0 = (p0[0], p0[1]) if p0 else (0.0, 0.0)
+    return (uw0, um0, p1[0], p1[1], int(round(p1[2])))
 
 
 def _compute_resolution_tuple(row_id: int, pred_w: int, pred_m: int, pred_wp: int, v1_pred_wp, act_w: int, act_m: int, resolved_ts: str):
@@ -2224,17 +2716,30 @@ def record_and_resolve_forecasts(items: list, timestamp_str: str, resolve_only: 
 
     fresh_items = []
     live_map = {}
+    live_smap = {}
     for it in (items or []):
         if not isinstance(it, dict):
             continue
+        sname_raw = (it.get("name") or "").strip()
+        if _is_synthetic_seed_alias(sname_raw):
+            return {"resolved": 0, "recorded": 0}
         if "fetched_at" in it:
             fat = float(it.get("fetched_at") or 0.0)
             if fat <= 0.0 or (max_fetched > 0.0 and (max_fetched - fat) > 180.0):
                 continue
-        sname = (it.get("name") or "").strip()
-        if sname:
-            live_map[sname] = (max(0, int(it.get("women") or 0)), max(0, int(it.get("men") or 0)), it)
+        if sname_raw:
+            w_it = max(0, int(it.get("women") or 0))
+            m_it = max(0, int(it.get("men") or 0))
+            live_map[sname_raw] = (w_it, m_it, it)
+            if not _is_korea_store_name(sname_raw):
+                live_smap[sname_raw] = (w_it, m_it)
             fresh_items.append(it)
+
+    if len(live_smap) >= 15 and _is_ghost_multistore_batch(ts_dt, live_smap):
+        live_map = {}
+        fresh_items = []
+
+    valid_domestic = _get_valid_domestic_canonical_stores()
 
     # --- Step A: Resolve due pending forecasts (allow at most 90s early clock jitter so 5m ticks never resolve at 54m) ---
     upper_due_str = (ts_dt + datetime.timedelta(seconds=90)).strftime("%Y-%m-%d %H:%M:%S")
@@ -2254,6 +2759,7 @@ def record_and_resolve_forecasts(items: list, timestamp_str: str, resolve_only: 
 
     updates = []
     stale_delete_ids = []
+    overdue_pending = []
     for r in pending_due:
         row_id = int(r[0])
         tgt_str = str(r[1])
@@ -2272,35 +2778,57 @@ def record_and_resolve_forecasts(items: list, timestamp_str: str, resolve_only: 
             aw, am, _ = live_map[sname]
             updates.append(_compute_resolution_tuple(row_id, pred_w, pred_m, pred_wp, v1_wp, aw, am, ts_norm))
         elif diff_min > 25.0:
-            w_lo = (tgt_dt - datetime.timedelta(minutes=15)).strftime("%Y-%m-%d %H:%M:%S")
-            w_hi = (tgt_dt + datetime.timedelta(minutes=15)).strftime("%Y-%m-%d %H:%M:%S")
+            overdue_pending.append((row_id, tgt_dt, sname, pred_w, pred_m, pred_wp, v1_wp, diff_min))
+
+    if overdue_pending:
+        clusters = []
+        cur_cluster = []
+        for ov in overdue_pending:
+            if not cur_cluster or (ov[1] - cur_cluster[-1][1]).total_seconds() <= 5400.0:
+                cur_cluster.append(ov)
+            else:
+                clusters.append(cur_cluster)
+                cur_cluster = [ov]
+        if cur_cluster:
+            clusters.append(cur_cluster)
+
+        for cl in clusters:
+            w_lo = (cl[0][1] - datetime.timedelta(minutes=35)).strftime("%Y-%m-%d %H:%M:%S")
+            w_hi = (cl[-1][1] + datetime.timedelta(minutes=35)).strftime("%Y-%m-%d %H:%M:%S")
             try:
-                cand_rows = _fetch_all_rows(
+                raw_ov_rows = _fetch_all_rows(
                     """
-                    SELECT timestamp, women, men
+                    SELECT timestamp, store_name, women, men
                     FROM monitor_logs
-                    WHERE store_name = ? AND timestamp >= ? AND timestamp <= ?
+                    WHERE timestamp >= ? AND timestamp <= ?
                     ORDER BY timestamp ASC
                     """,
-                    (sname, w_lo, w_hi),
+                    (w_lo, w_hi),
                 )
             except Exception:
-                cand_rows = []
-            best_c = None
-            best_gap = 999999.0
-            for cr in cand_rows:
-                cdt = _parse_jst_ts(cr[0])
-                if cdt is not None:
-                    g = abs((cdt - tgt_dt).total_seconds())
-                    if g < best_gap:
+                raw_ov_rows = []
+            clean_ov_batches = _extract_clean_snapshot_batches(
+                raw_ov_rows,
+                valid_domestic=valid_domestic,
+                check_taint=True,
+                exclude_korea=True,
+            )
+            for row_id, tgt_dt, sname, pred_w, pred_m, pred_wp, v1_wp, diff_min in cl:
+                best_match = None
+                best_gap = 900.001
+                for b_dt, b_ts, b_map in clean_ov_batches:
+                    if sname not in b_map:
+                        continue
+                    g = abs((b_dt - tgt_dt).total_seconds())
+                    if g <= 900.0 and g < best_gap:
                         best_gap = g
-                        best_c = cr
-            if best_c is not None:
-                updates.append(_compute_resolution_tuple(
-                    row_id, pred_w, pred_m, pred_wp, v1_wp, int(best_c[1] or 0), int(best_c[2] or 0), str(best_c[0])[:19]
-                ))
-            elif diff_min > 180.0:
-                stale_delete_ids.append(row_id)
+                        best_match = (b_ts, b_map[sname][0], b_map[sname][1])
+                if best_match is not None:
+                    updates.append(_compute_resolution_tuple(
+                        row_id, pred_w, pred_m, pred_wp, v1_wp, best_match[1], best_match[2], best_match[0]
+                    ))
+                elif diff_min > 180.0:
+                    stale_delete_ids.append(row_id)
 
     resolved_cnt = 0
     if updates or stale_delete_ids:
@@ -2378,8 +2906,6 @@ def record_and_resolve_forecasts(items: list, timestamp_str: str, resolve_only: 
     import moat_intelligence
     import store_hours
 
-    valid_domestic = _get_valid_domestic_canonical_stores()
-
     dup_lo = (ts_dt - datetime.timedelta(minutes=5)).strftime("%Y-%m-%d %H:%M:%S")
     dup_hi = (ts_dt + datetime.timedelta(minutes=5)).strftime("%Y-%m-%d %H:%M:%S")
     try:
@@ -2393,9 +2919,16 @@ def record_and_resolve_forecasts(items: list, timestamp_str: str, resolve_only: 
     except Exception:
         recent_existing = set()
 
-    # Check if we need 15-min diffs when `fresh_items` didn't carry `women_diff`/`men_diff`
+    lags_map = get_cached_recent_lags_map(ts_dt, allow_db_warm=True)
+    peer_map = moat_intelligence.build_city_peer_context(fresh_items)
+
+    # Fallback 15-min DB lookup only if `fresh_items` lacked `women_diff` AND `lags_map` had no `lag_15m`
     need_db_diff = any(
-        ("women_diff" not in it and (int(it.get("women") or 0) + int(it.get("men") or 0)) >= 6)
+        (
+            "women_diff" not in it
+            and (int(it.get("women") or 0) + int(it.get("men") or 0)) >= 6
+            and "lag_15m" not in (lags_map.get((it.get("name") or "").strip()) or {})
+        )
         for it in fresh_items
     )
     prev15_map = {}
@@ -2415,6 +2948,7 @@ def record_and_resolve_forecasts(items: list, timestamp_str: str, resolve_only: 
     weather_map = moat_intelligence.get_city_weather_map(allow_blocking=False)
     arena_map = moat_intelligence.detect_arena_event_surges(fresh_items, now_jst=ts_dt)
     target_str = (ts_dt + datetime.timedelta(minutes=60)).strftime("%Y-%m-%d %H:%M:%S")
+    is_full_batch = len(fresh_items) >= 15
 
     to_insert = []
     for item in fresh_items:
@@ -2428,13 +2962,21 @@ def record_and_resolve_forecasts(items: list, timestamp_str: str, resolve_only: 
         tot = w + m
         if tot < 6:
             continue
+        if is_full_batch and 8 <= ts_dt.hour <= 17:
+            bh_sched = store_hours.get_business_hours_status(sname, now_jst=ts_dt, total_guests=0)
+            if not bh_sched.get("scheduled_open", True):
+                continue
         bh = store_hours.get_business_hours_status(sname, now_jst=ts_dt, total_guests=tot)
         if not bh.get("is_open_now", True):
             continue
 
+        st_lags = lags_map.get(sname) or {}
         if "women_diff" in item:
             wd = int(item.get("women_diff") or 0)
             md = int(item.get("men_diff") or 0)
+        elif "lag_15m" in st_lags:
+            wd = w - int(st_lags["lag_15m"][0])
+            md = m - int(st_lags["lag_15m"][1])
         elif sname in prev15_map:
             wd = w - prev15_map[sname][0]
             md = m - prev15_map[sname][1]
@@ -2453,6 +2995,8 @@ def record_and_resolve_forecasts(items: list, timestamp_str: str, resolve_only: 
             weather_map=weather_map,
             arena_signal=arena_map.get(sname),
             apply_online_bias=True,
+            lag_context=st_lags,
+            peer_context=peer_map.get(sname),
         )
         if fc.get("pred_60m_wpct") is None:
             continue
@@ -2544,8 +3088,8 @@ def backfill_forecast_accuracy_from_history(
     _already_claimed: bool = False,
 ) -> dict:
     """
-    Causally backfill resolved 60-minute predictions from historical `monitor_logs` so accuracy reports
-    and online store calibration are populated immediately on existing databases without waiting 60 minutes.
+    Causally backfill resolved 60-minute predictions from historical `monitor_logs` (cleaned of PDT ghost batches)
+    so accuracy reports and online store calibration reflect the active model immediately without future leakage.
     """
     global _forecast_backfill_in_flight
 
@@ -2561,16 +3105,22 @@ def backfill_forecast_accuracy_from_history(
             acquired_flight = True
 
     try:
+        import moat_intelligence
+        import store_hours
+        from collections import defaultdict
+
+        cur_ver = moat_intelligence.FORECAST_MODEL_VERSION
         try:
-            cnt_rows = _fetch_all_rows("SELECT COUNT(*) FROM forecast_accuracy_logs WHERE resolved_at IS NOT NULL")
+            cnt_rows = _fetch_all_rows(
+                "SELECT COUNT(*) FROM forecast_accuracy_logs WHERE resolved_at IS NOT NULL AND model_version = ?",
+                (cur_ver,),
+            )
             existing_resolved = int(cnt_rows[0][0] or 0) if cnt_rows else 0
         except Exception:
             existing_resolved = 0
 
         if not force and existing_resolved >= min_existing:
             return {"inserted": 0, "skipped": True, "existing_resolved": existing_resolved}
-
-        import moat_intelligence
 
         valid_domestic = _get_valid_domestic_canonical_stores()
         now_jst = datetime.datetime.now(_JST_TZ).replace(tzinfo=None)
@@ -2592,68 +3142,22 @@ def backfill_forecast_accuracy_from_history(
         if len(raw_rows) < 10:
             return {"inserted": 0, "skipped": True, "existing_resolved": existing_resolved}
 
-        # Group into snapshot batches (within 90s), discarding synthetic batches tainted by non-canonical seed store names
-        batches = []
-        cur_dt = None
-        cur_ts = None
-        cur_map = {}
-        cur_tainted = False
-        for r in raw_rows:
-            dt = _parse_jst_ts(r[0])
-            if dt is None:
-                continue
-            if cur_dt is None or (dt - cur_dt).total_seconds() > 90.0:
-                if cur_map and not cur_tainted:
-                    batches.append((cur_dt, cur_ts, cur_map))
-                cur_dt = dt
-                cur_ts = dt.strftime("%Y-%m-%d %H:%M:%S")
-                cur_map = {}
-                cur_tainted = False
-            sname_r = str(r[1] or "").strip()
-            if not sname_r or _is_korea_store_name(sname_r):
-                continue
-            if valid_domestic and sname_r not in valid_domestic:
-                cur_tainted = True
-                continue
-            cur_map[sname_r] = (max(0, int(r[2] or 0)), max(0, int(r[3] or 0)))
-        if cur_map and not cur_tainted:
-            batches.append((cur_dt, cur_ts, cur_map))
-
-        # Filter out rogue interleaved legacy batches when multi-store snapshots are present
-        stage1 = []
-        for dt, ts_s, smap in batches:
-            if len(smap) >= 20:
-                tot_all = sum(w + m for w, m in smap.values())
-                if 8 <= dt.hour <= 16 and tot_all > 60:
-                    continue
-                if (20 <= dt.hour <= 23 or 0 <= dt.hour <= 2) and tot_all < 80:
-                    continue
-            stage1.append((dt, ts_s, smap))
-
-        clean_batches = []
-        for idx, (dt, ts_s, smap) in enumerate(stage1):
-            if len(smap) >= 20 and 0 < idx < len(stage1) - 1:
-                p_dt, _, p_map = stage1[idx - 1]
-                n_dt, _, n_map = stage1[idx + 1]
-                if (n_dt - p_dt).total_seconds() <= 2100.0:
-                    common = [s for s in smap if s in p_map and s in n_map]
-                    if len(common) >= 20:
-                        d_prev = sum(abs((smap[s][0] + smap[s][1]) - (p_map[s][0] + p_map[s][1])) for s in common) / len(common)
-                        d_next = sum(abs((smap[s][0] + smap[s][1]) - (n_map[s][0] + n_map[s][1])) for s in common) / len(common)
-                        d_pn = sum(abs((n_map[s][0] + n_map[s][1]) - (p_map[s][0] + p_map[s][1])) for s in common) / len(common)
-                        if d_prev > 16.0 and d_next > 16.0 and d_pn < 12.0:
-                            continue
-            clean_batches.append((dt, ts_s, smap))
-
+        clean_batches = _extract_clean_snapshot_batches(
+            raw_rows,
+            valid_domestic=valid_domestic,
+            check_taint=True,
+            exclude_korea=True,
+        )
         n_b = len(clean_batches)
         if n_b < 2:
             return {"inserted": 0, "skipped": True, "existing_resolved": existing_resolved}
 
-        # Walk backwards from newest batch (~25m spacing) up to `max_rows` resolved records
-        backfill_rows = []
+        # Select newest-first (~25m spacing) batch pairs up to `max_rows`, then evaluate causally forward
+        selected_pairs = []
+        planned_rows = 0
         last_sampled_dt = None
         for i in range(n_b - 2, -1, -1):
-            dt, ts_s, smap = clean_batches[i]
+            dt, _, smap = clean_batches[i]
             if last_sampled_dt is not None and (last_sampled_dt - dt).total_seconds() < 1400.0 and n_b > 30:
                 continue
             best_k = None
@@ -2670,27 +3174,95 @@ def backfill_forecast_accuracy_from_history(
                     best_k = k
             if best_k is None:
                 continue
+            smap60 = clean_batches[best_k][2]
+            valid_cnt = sum(1 for s, (w, m) in smap.items() if (w + m) >= 6 and s in smap60)
+            if valid_cnt <= 0:
+                continue
+            selected_pairs.append((i, best_k))
+            last_sampled_dt = dt
+            planned_rows += valid_cnt
+            if planned_rows >= max_rows:
+                break
 
-            p15 = None
+        if not selected_pairs:
+            return {"inserted": 0, "skipped": False, "existing_resolved": existing_resolved}
+
+        selected_pairs.reverse()
+        cum_wh = defaultdict(lambda: defaultdict(lambda: [0.0, 0.0, 0]))
+        cum_h = defaultdict(lambda: defaultdict(lambda: [0.0, 0.0, 0]))
+        hist_ptr = 0
+        backfill_rows = []
+
+        for i, best_k in selected_pairs:
+            dt, ts_s, smap = clean_batches[i]
+            # Strictly causal usual curve: accumulate only past shifts (>=12h prior to `dt`)
+            while hist_ptr < i and (dt - clean_batches[hist_ptr][0]).total_seconds() >= 43200.0:
+                h_dt, _, h_map = clean_batches[hist_ptr]
+                h_naive = _to_naive_jst(h_dt)
+                hh = h_naive.hour
+                h_wd = ((h_naive - datetime.timedelta(days=1)).date() if hh <= 6 else h_naive.date()).weekday()
+                for hs, (hw, hm) in h_map.items():
+                    if hw > 0 or hm > 0:
+                        b_wh = cum_wh[hs][(h_wd, hh)]
+                        b_wh[0] += float(hw)
+                        b_wh[1] += float(hm)
+                        b_wh[2] += 1
+                        b_h = cum_h[hs][hh]
+                        b_h[0] += float(hw)
+                        b_h[1] += float(hm)
+                        b_h[2] += 1
+                hist_ptr += 1
+
+            p15, e15 = None, 999.0
+            p30, e30 = None, 999.0
+            p60, e60 = None, 999.0
             for k in range(i - 1, -1, -1):
                 dm = (dt - clean_batches[k][0]).total_seconds() / 60.0
-                if 8.0 <= dm <= 23.0:
-                    p15 = clean_batches[k][2]
+                if dm > 76.0:
                     break
-                if dm > 25.0:
-                    break
+                if 8.0 <= dm <= 23.0 and abs(dm - 15.0) < e15:
+                    e15, p15 = abs(dm - 15.0), clean_batches[k][2]
+                elif 23.0 < dm <= 42.0 and abs(dm - 30.0) < e30:
+                    e30, p30 = abs(dm - 30.0), clean_batches[k][2]
+                elif 48.0 <= dm <= 75.0 and abs(dm - 60.0) < e60:
+                    e60, p60 = abs(dm - 60.0), clean_batches[k][2]
 
-            res_dt, res_ts_s, smap60 = clean_batches[best_k]
-            tgt_s = (dt + datetime.timedelta(minutes=60)).strftime("%Y-%m-%d %H:%M:%S")
-            added_in_batch = 0
+            peer_map = moat_intelligence.build_city_peer_context(smap)
+            dt_naive = _to_naive_jst(dt)
+            dt60_naive = dt_naive + datetime.timedelta(minutes=60)
+            _, res_ts_s, smap60 = clean_batches[best_k]
+            tgt_s = dt60_naive.strftime("%Y-%m-%d %H:%M:%S")
+            is_full_smap = len(smap) >= 15
 
             for sname, (w, m) in smap.items():
                 tot = w + m
                 if tot < 6 or sname not in smap60:
                     continue
+                if is_full_smap and 8 <= dt_naive.hour <= 17:
+                    bh_sched = store_hours.get_business_hours_status(
+                        sname, total_guests=0, now_jst=dt_naive.replace(tzinfo=store_hours.JST)
+                    )
+                    if not bh_sched.get("scheduled_open", True):
+                        continue
                 w60, m60 = smap60[sname]
                 wd15 = (w - p15[sname][0]) if (p15 and sname in p15) else 0
                 md15 = (m - p15[sname][1]) if (p15 and sname in p15) else 0
+
+                lag_ctx = {}
+                if p15 and sname in p15:
+                    lag_ctx["lag_15m"] = p15[sname]
+                if p30 and sname in p30:
+                    lag_ctx["lag_30m"] = p30[sname]
+                if p60 and sname in p60:
+                    lag_ctx["lag_60m"] = p60[sname]
+
+                causal_usual = ()
+                if sname in cum_h:
+                    u0 = _interp_usual_from_maps(cum_wh[sname], cum_h[sname], dt_naive)
+                    u1 = _interp_usual_from_maps(cum_wh[sname], cum_h[sname], dt60_naive)
+                    if u1 and u1[2] >= 3.0:
+                        uw0, um0 = (u0[0], u0[1]) if u0 else (0.0, 0.0)
+                        causal_usual = (uw0, um0, u1[0], u1[1], int(round(u1[2])))
 
                 fc = moat_intelligence.predict_store_60m_dynamics(
                     store_name=sname,
@@ -2703,6 +3275,9 @@ def backfill_forecast_accuracy_from_history(
                     weather_map={},
                     arena_signal=None,
                     apply_online_bias=False,
+                    lag_context=lag_ctx,
+                    peer_context=peer_map.get(sname),
+                    usual_pair_override=causal_usual,
                 )
                 if fc.get("pred_60m_wpct") is None:
                     continue
@@ -2728,7 +3303,7 @@ def backfill_forecast_accuracy_from_history(
                     ts_s,
                     tgt_s,
                     sname,
-                    moat_intelligence.FORECAST_MODEL_VERSION,
+                    cur_ver,
                     w,
                     m,
                     start_wp,
@@ -2748,22 +3323,23 @@ def backfill_forecast_accuracy_from_history(
                     res_tup[7],
                     res_tup[8],
                 ))
-                added_in_batch += 1
-                if len(backfill_rows) >= max_rows:
-                    break
 
-            if added_in_batch > 0:
-                last_sampled_dt = dt
-            if len(backfill_rows) >= max_rows:
-                break
+        if len(backfill_rows) > max_rows:
+            backfill_rows = backfill_rows[-max_rows:]
 
         if not backfill_rows:
             return {"inserted": 0, "skipped": False, "existing_resolved": existing_resolved}
 
-        backfill_rows.reverse()
         inserted_total = 0
         if _is_pg():
             try:
+                with turbo_store.pg_connection() as conn:
+                    with conn.cursor() as cur:
+                        cur.execute(
+                            "DELETE FROM forecast_accuracy_logs WHERE resolved_at IS NOT NULL AND model_version != %s",
+                            (cur_ver,),
+                        )
+                    conn.commit()
                 inserted_total = turbo_store.execute_pg_values_batch(
                     """
                     INSERT INTO forecast_accuracy_logs (
@@ -2783,6 +3359,20 @@ def backfill_forecast_accuracy_from_history(
             except Exception as err:
                 print(f"[local_db] PG backfill_forecast_accuracy error: {err}", file=sys.stderr)
         else:
+            with _db_lock:
+                conn = get_connection()
+                try:
+                    cur = conn.cursor()
+                    cur.execute(
+                        "DELETE FROM forecast_accuracy_logs WHERE resolved_at IS NOT NULL AND model_version != ?",
+                        (cur_ver,),
+                    )
+                    conn.commit()
+                except Exception as err:
+                    print(f"[local_db] SQLite legacy forecast cleanup warning: {err}", file=sys.stderr)
+                finally:
+                    conn.close()
+
             chunk_sz = 500
             for off in range(0, len(backfill_rows), chunk_sz):
                 sub = backfill_rows[off:off + chunk_sz]
@@ -2848,10 +3438,12 @@ def trigger_forecast_backfill_async(days: int = 21, min_existing: int = 80, max_
 
 
 def _refresh_forecast_caches_from_db(days: int = 21):
-    """Build per-store accuracy badge map and Empirical-Bayes online residual adjustment cache from `forecast_accuracy_logs`."""
+    """Build per-store accuracy badge map and damped Empirical-Bayes online residual adjustment cache."""
     if not _db_available() or not _ensure_forecast_schema():
         return {}, {}
 
+    import moat_intelligence
+    cur_ver = moat_intelligence.FORECAST_MODEL_VERSION
     db_k = _active_db_key()
     now_jst = datetime.datetime.now(_JST_TZ).replace(tzinfo=None)
     cutoff_str = (now_jst - datetime.timedelta(days=max(3, int(days)))).strftime("%Y-%m-%d %H:%M:%S")
@@ -2859,7 +3451,8 @@ def _refresh_forecast_caches_from_db(days: int = 21):
     try:
         rows = _fetch_all_rows(
             """
-            SELECT store_name, predicted_at, pred_wpct, actual_wpct, error_wpct_pt, abs_error_wpct_pt, actual_women, actual_men
+            SELECT store_name, predicted_at, pred_wpct, actual_wpct, error_wpct_pt, abs_error_wpct_pt,
+                   actual_women, actual_men, model_version
             FROM forecast_accuracy_logs
             WHERE resolved_at IS NOT NULL
               AND actual_wpct IS NOT NULL
@@ -2872,8 +3465,10 @@ def _refresh_forecast_caches_from_db(days: int = 21):
         rows = []
 
     from collections import defaultdict
-    slot_err = defaultdict(lambda: [0.0, 0])   # (sname, hr) -> [sum_signed_err, n]
     store_acc = defaultdict(lambda: [0.0, 0.0, 0, 0, None])  # sname -> [sum_abs, sum_signed, within10, n, latest_dict]
+    bias_store_err = defaultdict(lambda: [0.0, 0.0])         # sname -> [weighted_sum_signed, eff_n]
+    bias_slot_err = defaultdict(lambda: [0.0, 0.0])          # (sname, hr) -> [weighted_sum_signed, eff_n]
+    seen_bias_dh = set()
 
     for r in rows:
         sname = str(r[0] or "")
@@ -2884,7 +3479,8 @@ def _refresh_forecast_caches_from_db(days: int = 21):
         abs_pt = float(r[5] or 0.0)
         aw = int(r[6] or 0)
         am = int(r[7] or 0)
-        if not sname or (aw + am) < 4:
+        row_ver = str(r[8] or "") if len(r) > 8 else ""
+        if not sname or (aw + am) < 4 or row_ver != cur_ver:
             continue
 
         try:
@@ -2906,10 +3502,17 @@ def _refresh_forecast_caches_from_db(days: int = 21):
                 "error_pt": int(round(err_pt)),
             }
 
+        # Online bias correction uses ONLY active model_version residuals and discounts intra-hour burst duplicates
+        dh_key = (sname, pred_at[:10], hr)
+        w_obs = 1.0 if dh_key not in seen_bias_dh else 0.55
+        seen_bias_dh.add(dh_key)
+        bs = bias_store_err[sname]
+        bs[0] += w_obs * err_pt
+        bs[1] += w_obs
         if hr >= 0:
-            sl = slot_err[(sname, hr)]
-            sl[0] += err_pt
-            sl[1] += 1
+            sl = bias_slot_err[(sname, hr)]
+            sl[0] += w_obs * err_pt
+            sl[1] += w_obs
 
     bias_map = {}
     acc_map = {}
@@ -2922,22 +3525,24 @@ def _refresh_forecast_caches_from_db(days: int = 21):
                 "bias_wpct": round(sum_sig / n_st, 1),
                 "latest": latest_d,
             }
-        if n_st >= 5:
-            store_mean_err = sum_sig / float(n_st)
-            store_shrunk = store_mean_err * (n_st / (n_st + 25.0))
+
+    for sname, (w_sum_sig, eff_n_st) in bias_store_err.items():
+        if eff_n_st >= 5.0:
+            store_mean_err = w_sum_sig / eff_n_st
+            store_shrunk = store_mean_err * (eff_n_st / (eff_n_st + 20.0))
             bias_map[(sname, None)] = round(max(-4.5, min(4.5, -0.55 * store_shrunk)), 2)
 
-    for (sname, hr), (sum_sl, n_sl) in slot_err.items():
-        st = store_acc.get(sname)
-        n_st = st[3] if st else 0
-        if n_st < 5:
+    for (sname, hr), (w_sum_sl, eff_n_sl) in bias_slot_err.items():
+        st_b = bias_store_err.get(sname)
+        if not st_b or st_b[1] < 5.0 or eff_n_sl <= 0.0:
             continue
-        store_mean_err = st[1] / float(n_st)
-        store_shrunk = store_mean_err * (n_st / (n_st + 25.0))
-        slot_mean_err = sum_sl / float(n_sl)
-        slot_shrunk = slot_mean_err * (n_sl / (n_sl + 14.0))
+        eff_n_st = st_b[1]
+        store_mean_err = st_b[0] / eff_n_st
+        store_shrunk = store_mean_err * (eff_n_st / (eff_n_st + 20.0))
+        slot_mean_err = w_sum_sl / eff_n_sl
+        slot_shrunk = slot_mean_err * (eff_n_sl / (eff_n_sl + 10.0))
         comb_err = 0.65 * slot_shrunk + 0.35 * store_shrunk
-        bias_map[(sname, hr)] = round(max(-5.0, min(5.0, -0.55 * comb_err)), 2)
+        bias_map[(sname, hr)] = round(max(-4.5, min(4.5, -0.55 * comb_err)), 2)
 
     now_mono = time.monotonic()
     _forecast_residual_bias_cache[db_k] = (now_mono, bias_map)
@@ -2967,17 +3572,18 @@ def refresh_forecast_caches_async(days: int = 21):
 
 def get_cached_forecast_residual_adjustment(store_name: str, hour: int) -> float:
     """Return damped Empirical-Bayes residual adjustment (in wpct points) for `(store_name, hour)` without blocking."""
-    if not store_name or not _db_available():
+    if not store_name:
         return 0.0
     db_k = _active_db_key()
-    now_mono = time.monotonic()
     cached = _forecast_residual_bias_cache.get(db_k)
     if cached is not None:
-        if now_mono - cached[0] >= _FORECAST_RESIDUAL_TTL:
+        if time.monotonic() - cached[0] >= _FORECAST_RESIDUAL_TTL and not _forecast_cache_computing:
             refresh_forecast_caches_async()
         bmap = cached[1]
         return float(bmap.get((store_name, int(hour)), bmap.get((store_name, None), 0.0)))
 
+    if _forecast_cache_computing or not _db_available():
+        return 0.0
     db_cnt = int(get_db_stats().get("count") or 0)
     if db_cnt < 2500 and not _sync_in_progress:
         bmap, _ = _refresh_forecast_caches_from_db()
@@ -2988,16 +3594,15 @@ def get_cached_forecast_residual_adjustment(store_name: str, hour: int) -> float
 
 def get_cached_store_accuracy_map() -> dict:
     """Return cached per-store 60m forecast accuracy track records without blocking HTTP requests."""
-    if not _db_available():
-        return {}
     db_k = _active_db_key()
-    now_mono = time.monotonic()
     cached = _forecast_store_acc_cache.get(db_k)
     if cached is not None:
-        if now_mono - cached[0] >= _FORECAST_STORE_ACC_TTL:
+        if time.monotonic() - cached[0] >= _FORECAST_STORE_ACC_TTL and not _forecast_cache_computing:
             refresh_forecast_caches_async()
         return cached[1]
 
+    if _forecast_cache_computing or not _db_available():
+        return {}
     db_cnt = int(get_db_stats().get("count") or 0)
     if db_cnt < 2500 and not _sync_in_progress:
         _, amap = _refresh_forecast_caches_from_db()
@@ -3015,7 +3620,7 @@ def get_forecast_accuracy_report(
 ) -> dict:
     """
     Aggregate 60-minute forecast vs. actual verification metrics, hourly/alert/store breakdowns,
-    v1 vs. v2.2 live error reduction, recent resolved timeline, and pending live forecast queue.
+    v1 vs. v3.0 live error reduction, recent resolved timeline, and pending live forecast queue.
     """
     import moat_intelligence
     import store_master
@@ -3074,6 +3679,7 @@ def get_forecast_accuracy_report(
 
     now_jst = datetime.datetime.now(_JST_TZ).replace(tzinfo=None)
     cutoff_str = (now_jst - datetime.timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
+    cur_ver = moat_intelligence.FORECAST_MODEL_VERSION
 
     try:
         if store_filter:
@@ -3085,7 +3691,7 @@ def get_forecast_accuracy_report(
                        flip_risk_pct, alert_code,
                        actual_women, actual_men, actual_wpct,
                        error_wpct_pt, abs_error_wpct_pt, v1_abs_error_wpct_pt,
-                       error_women, error_men
+                       error_women, error_men, model_version
                 FROM forecast_accuracy_logs
                 WHERE resolved_at IS NOT NULL AND predicted_at >= ? AND store_name = ?
                 ORDER BY predicted_at DESC
@@ -3121,7 +3727,7 @@ def get_forecast_accuracy_report(
                        flip_risk_pct, alert_code,
                        actual_women, actual_men, actual_wpct,
                        error_wpct_pt, abs_error_wpct_pt, v1_abs_error_wpct_pt,
-                       error_women, error_men
+                       error_women, error_men, model_version
                 FROM forecast_accuracy_logs
                 WHERE resolved_at IS NOT NULL AND predicted_at >= ?
                 ORDER BY predicted_at DESC
@@ -3148,6 +3754,8 @@ def get_forecast_accuracy_report(
                 """,
                 (cutoff_str,),
             )
+        if res_rows and any(str(r[21] or "") == cur_ver for r in res_rows):
+            res_rows = [r for r in res_rows if str(r[21] or "") == cur_ver]
         exact_pending_count = int(pend_cnt_rows[0][0] or 0) if pend_cnt_rows else len(pend_rows)
     except Exception as err:
         print(f"[local_db] get_forecast_accuracy_report query error: {err}", file=sys.stderr)

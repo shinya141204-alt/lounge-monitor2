@@ -552,9 +552,16 @@ class GoogleSheetsFiveColumnSchemaE2ETests(unittest.TestCase):
             {"name": "ag渋谷", "men": 15, "women": 18, "source": "OLG"},
         ]
 
-        with patch.object(logger, "get_client", return_value=MagicMock()):
-            with patch.object(logger, "open_spreadsheet", return_value=mock_sh):
-                logger.log_data(sample_data)
+        import tempfile
+        import local_db
+
+        with tempfile.TemporaryDirectory(prefix="e2e_log_") as tmp_dir:
+            tmp_db = os.path.join(tmp_dir, "test_e2e.db")
+            with patch.object(local_db, "DB_PATH", tmp_db):
+                local_db.init_db()
+                with patch.object(logger, "get_client", return_value=MagicMock()):
+                    with patch.object(logger, "open_spreadsheet", return_value=mock_sh):
+                        logger.log_data(sample_data)
 
         self.assertTrue(len(captured_appends) > 0, "append_rows が呼び出されませんでした")
 
