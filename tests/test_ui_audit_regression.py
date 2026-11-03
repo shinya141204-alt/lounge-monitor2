@@ -105,13 +105,13 @@ class UiAuditRegressionTests(unittest.TestCase):
     # ------------------------------------------------------------------
     def test_cache_busting_sync_across_templates_and_service_worker(self):
         """全テンプレートと static/sw.js のアセットバージョンが完全同期し、immutable ヘッダが正しく付与されること"""
-        expected_calm = "/static/calm.css?v=28"
+        expected_calm = "/static/calm.css?v=29"
         expected_portal = "/static/portal.css?v=14"
         expected_app_js = "/static/app.js?v=20261103_1"
         expected_aff_js = "/static/affiliate_config.js?v=13"
         expected_style = "/static/style.css?v=20261030_6"
-        expected_sw_url = "/sw.js?v=82"
-        expected_cache_name = "aiseki-navi-v82"
+        expected_sw_url = "/sw.js?v=83"
+        expected_cache_name = "aiseki-navi-v83"
 
         templates_dir = os.path.join(PROJECT_ROOT, "templates")
         calm_seen = 0
@@ -1449,6 +1449,124 @@ class UiAuditRegressionTests(unittest.TestCase):
                             for nb in nb_state:
                                 self.assertTrue(nb["rate"], f"Empty nearby slot rate for {nb['name']} on {slot_key}")
                                 self.assertEqual(nb["unitHidden"], nb["isFlat"])
+
+                        ctx.close()
+                finally:
+                    browser.close()
+
+    # ------------------------------------------------------------------
+    # 10. Hero pill link (.columns-hero-pill-link) & zero unstyled/purple UA links
+    # ------------------------------------------------------------------
+    def test_columns_hero_pill_link_and_zero_unstyled_ua_links(self):
+        """/columns の .columns-hero-pill-link（:visited 含む）および全公開テンプレートのリンククラスが未定義青・紫にならないこと"""
+        static_dir = os.path.join(PROJECT_ROOT, "static")
+        templates_dir = os.path.join(PROJECT_ROOT, "templates")
+
+        with open(os.path.join(static_dir, "calm.css"), "r", encoding="utf-8") as fp:
+            calm_css = fp.read()
+        self.assertIn("body:not(.theme-light):not(.staff-mode) .columns-hero-pill-link,", calm_css)
+        self.assertIn("body:not(.theme-light):not(.staff-mode) .columns-hero-pill-link:visited", calm_css)
+        self.assertIn("body.theme-light:not(.staff-mode) .columns-hero-pill-link,", calm_css)
+        self.assertIn("body.theme-light:not(.staff-mode) .columns-hero-pill-link:visited", calm_css)
+
+        # Static audit: every static class-equipped <a> in public templates must have at least one defined CSS class
+        css_chunks = []
+        for fn in sorted(os.listdir(static_dir)):
+            if fn.endswith(".css"):
+                with open(os.path.join(static_dir, fn), "r", encoding="utf-8") as fp_css:
+                    css_chunks.append(fp_css.read())
+        all_css = "\n".join(css_chunks)
+        undefined_anchor_classes = []
+        for fn in sorted(os.listdir(templates_dir)):
+            if not fn.endswith(".html") or fn.startswith("staff"):
+                continue
+            with open(os.path.join(templates_dir, fn), "r", encoding="utf-8") as fp_tpl:
+                raw = fp_tpl.read()
+            local_styles = "\n".join(re.findall(r"<style[^>]*>(.*?)</style>", raw, re.S))
+            combined_css = all_css + "\n" + local_styles
+            for m in re.finditer(r"<a\b([^>]*)>", raw, re.S):
+                attrs = m.group(1)
+                if "style=" in attrs and "color" in attrs:
+                    continue
+                cm = re.search(r"class=[\"\']([^\"\']+)[\"\']", attrs)
+                if cm and "{{" not in cm.group(1) and "{%" not in cm.group(1):
+                    classes = cm.group(1).split()
+                    if classes and not any(("." + c) in combined_css for c in classes):
+                        undefined_anchor_classes.append(f"{fn}: {classes}")
+        self.assertEqual(undefined_anchor_classes, [], f"Undefined <a> classes found: {undefined_anchor_classes}")
+
+        try:
+            from playwright.sync_api import sync_playwright
+        except ImportError:
+            self.skipTest("playwright is not installed in this Python environment")
+
+        base = "http://aiseki.local"
+
+        def attach_router(ctx, client):
+            def handle(route):
+                req = route.request
+                u = urlparse(req.url)
+                if u.netloc != "aiseki.local":
+                    route.abort()
+                    return
+                path_qs = u.path + (("?" + u.query) if u.query else "")
+                headers = {k: v for k, v in req.headers.items() if k.lower() not in ("host", "content-length", "cookie")}
+                resp = client.open(path_qs, method=req.method.upper(), headers=headers, data=req.post_data_buffer, follow_redirects=True)
+                resp_headers = {k: v for k, v in resp.headers.items() if k.lower() not in ("content-encoding", "transfer-encoding", "content-length")}
+                route.fulfill(status=resp.status_code, headers=resp_headers, body=resp.get_data())
+                resp.close()
+            ctx.route("**/*", handle)
+
+        with patch.object(app_module, "trigger_background_fetch_if_needed", lambda *a, **kw: None):
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=True)
+                try:
+                    for vw, vh in ((1280, 900), (390, 844)):
+                        ctx = browser.new_context(viewport={"width": vw, "height": vh}, service_workers="block")
+                        attach_router(ctx, self.client)
+                        page = ctx.new_page()
+
+                        # Visit /guide first so /guide is in visited history (:visited active)
+                        page.goto(base + "/guide", wait_until="domcontentloaded")
+                        page.goto(base + "/columns", wait_until="domcontentloaded")
+                        page.add_style_tag(content="*, *::before, *::after { transition: none !important; animation: none !important; }")
+
+                        for theme_mode, expected_rgb in (("dark", "rgb(244, 244, 245)"), ("light", "rgb(24, 24, 27)")):
+                            if theme_mode == "light":
+                                page.evaluate("document.body.classList.add('theme-light')")
+                            else:
+                                page.evaluate("document.body.classList.remove('theme-light')")
+
+                            info = page.evaluate("""() => {
+                                const el = document.querySelector('.columns-hero-pill-link');
+                                if (!el) return null;
+                                const cs = getComputedStyle(el);
+                                const rect = el.getBoundingClientRect();
+                                const badLinks = [];
+                                for (const a of document.querySelectorAll('a[href]')) {
+                                    const acs = getComputedStyle(a);
+                                    if (acs.color === 'rgb(0, 0, 238)' || acs.color === 'rgb(85, 26, 139)') {
+                                        badLinks.push({href: a.getAttribute('href'), cls: a.className, color: acs.color});
+                                    }
+                                }
+                                return {
+                                    color: cs.color,
+                                    bg: cs.backgroundColor,
+                                    textDecorationLine: cs.textDecorationLine,
+                                    height: rect.height,
+                                    rightOverflow: Math.max(0, Math.round(rect.right - window.innerWidth)),
+                                    docOverflowX: Math.max(0, document.documentElement.scrollWidth - window.innerWidth),
+                                    badLinks
+                                };
+                            }""")
+                            self.assertIsNotNone(info)
+                            self.assertEqual(info["color"], expected_rgb, f"Unexpected color in {theme_mode} ({vw}px): {info}")
+                            self.assertNotIn(info["bg"], ("rgba(0, 0, 0, 0)", "transparent"), f"Missing pill surface in {theme_mode}: {info}")
+                            self.assertEqual(info["textDecorationLine"], "none")
+                            self.assertGreaterEqual(info["height"], 38, f"Tap target too small at {vw}px: {info['height']}")
+                            self.assertEqual(info["rightOverflow"], 0, f"Pill overflows viewport at {vw}px: {info}")
+                            self.assertEqual(info["docOverflowX"], 0, f"Document horizontal overflow at {vw}px: {info}")
+                            self.assertEqual(info["badLinks"], [], f"Unstyled UA blue/purple links on /columns: {info['badLinks']}")
 
                         ctx.close()
                 finally:
