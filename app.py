@@ -7,7 +7,6 @@ import atexit
 import datetime
 import threading
 import logger
-import statistics
 import os
 import sys
 import json
@@ -67,6 +66,8 @@ app.secret_key = _load_secure_config('SECRET_KEY', 'aiseki-navi-staff-monitor-se
 app.permanent_session_lifetime = datetime.timedelta(days=90)
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+if os.environ.get('FLY_APP_NAME') or os.environ.get('ENABLE_HTTPS'):
+    app.config['SESSION_COOKIE_SECURE'] = True
 STAFF_PASSCODE = _load_secure_config('STAFF_PASSCODE', '5555')
 MASTER_PASSCODE = _load_secure_config('MASTER_PASSCODE', '2918')
 ADMIN_API_SECRET = _load_secure_config('ADMIN_API_SECRET', 'lounge2026')
@@ -626,13 +627,16 @@ def get_store_analysis(store_name):
         return jsonify({'error': 'Store not found'}), 404
 
     import store_master
+    internal_name = store_master.to_internal_store_name(clean_name)
     master_map = store_master.load()
-    if clean_name not in master_map:
+    if internal_name not in master_map:
         with data_lock:
             live_names = {s.get('name') for s in (latest_data.get('full_data') or [])}
-        cached_proc = (analysis_cache.get('processed_per_store') or {}).get(clean_name)
-        if clean_name not in live_names and cached_proc is None:
+        cached_proc = (analysis_cache.get('processed_per_store') or {}).get(internal_name)
+        if internal_name not in live_names and cached_proc is None:
             return jsonify({'error': 'Store not found'}), 404
+    clean_name = internal_name
+
 
     import store_analysis
     raw_entry = (analysis_cache.get('raw_data_by_store') or {}).get(clean_name)
@@ -1244,7 +1248,16 @@ def _enrich_for_ssr(stores):
         moat_intelligence.enrich_stores_with_moat_signals(enriched, allow_weather_blocking=False)
     except Exception:
         pass
+    import store_master
+    for item in enriched:
+        raw_n = item.get('name', '')
+        s_seo = store_master.seo_name(raw_n)
+        item['seo_name'] = s_seo
+        item['name'] = s_seo
+        if 'slug' not in item or not item['slug']:
+            item['slug'] = store_master.slug_of(raw_n)
     return enriched
+
 
 
 def get_initial_status_payload():
@@ -3173,6 +3186,16 @@ def get_status():
     except Exception:
         pass
 
+    import store_master
+    for item in enriched_ranking:
+        raw_n = item.get('name', '')
+        s_seo = store_master.seo_name(raw_n)
+        item['seo_name'] = s_seo
+        item['name'] = s_seo
+        if 'slug' not in item or not item['slug']:
+            item['slug'] = store_master.slug_of(raw_n)
+
+
     raw_bytes = json.dumps({
         'timestamp': last_u,
         'ranking': enriched_ranking,
@@ -3292,30 +3315,45 @@ def get_events():
     """Returns active events and promotions for lounge stores."""
     try:
         import events
+        import store_master
+
+        def _clean_evs(ev_list):
+            out = []
+            for ev in (ev_list or []):
+                item = dict(ev)
+                if item.get('brand') == 'OLG':
+                    item['brand'] = 'オリエンタルラウンジ'
+                if 'target_stores' in item and isinstance(item['target_stores'], list):
+                    item['target_stores'] = [store_master.seo_name(s) for s in item['target_stores']]
+                out.append(item)
+            return out
+
         store = request.args.get('store', '').strip()
+        internal_store = store_master.to_internal_store_name(store) if store else ''
         force = (request.args.get('refresh', '').lower() == 'true') and is_master_authorized()
         if not force:
             ev_upd = events._events_memory_cache.get('updated_at')
             ev_cnt = len(events._events_memory_cache.get('events') or [])
             if ev_cnt > 0:
                 return _cached_json_response(
-                    ('events', store, ev_upd, ev_cnt),
+                    ('events', internal_store, ev_upd, ev_cnt),
                     lambda: (
-                        (lambda evs: {'status': 'success', 'count': len(evs), 'events': evs})(
-                            events.get_events_for_store(store, allow_blocking=False) if store else events.fetch_all_events(force_refresh=False, allow_blocking=False)
+                        (lambda evs: {'status': 'success', 'count': len(evs), 'events': _clean_evs(evs)})(
+                            events.get_events_for_store(internal_store, allow_blocking=False) if internal_store else events.fetch_all_events(force_refresh=False, allow_blocking=False)
                         ),
                         200,
                     ),
                     ttl_sec=60.0,
                 )
-        if store:
-            evs = events.get_events_for_store(store, allow_blocking=force)
+        if internal_store:
+            evs = events.get_events_for_store(internal_store, allow_blocking=force)
         else:
             evs = events.fetch_all_events(force_refresh=force, allow_blocking=force)
+        cleaned = _clean_evs(evs)
         return jsonify({
             'status': 'success',
-            'count': len(evs),
-            'events': evs
+            'count': len(cleaned),
+            'events': cleaned
         })
     except Exception as e:
         return jsonify({'status': 'error', 'error': str(e)}), 500
@@ -3323,20 +3361,25 @@ def get_events():
 @app.route('/api/votes/<path:store_name>')
 def get_store_votes(store_name):
     """Returns user crowd votes in the last 4 hours for a specific store."""
-    counts = local_db.get_recent_votes(store_name=store_name, hours=4)
-    return jsonify({'status': 'success', 'store_name': store_name, 'votes': counts})
+    import store_master
+    internal_name = store_master.to_internal_store_name(store_name)
+    counts = local_db.get_recent_votes(store_name=internal_name, hours=4)
+    disp_name = store_master.seo_name(internal_name) if internal_name else store_name
+    return jsonify({'status': 'success', 'store_name': disp_name, 'votes': counts})
 
 @app.route('/api/vote', methods=['POST'])
 def post_store_vote():
     """Submits a one-tap live crowd vote from a user."""
     import hashlib
+    import store_master
     payload = request.get_json(silent=True) or {}
-    store_name = str(payload.get('store_name', '')).strip()
+    raw_store = str(payload.get('store_name', '')).strip()
     vote_type = str(payload.get('vote_type', '')).strip()
-    if not store_name or vote_type not in ('smooth', 'waiting', 'lively'):
+    if not raw_store or vote_type not in ('smooth', 'waiting', 'lively'):
         return jsonify({'status': 'error', 'error': 'Invalid parameters'}), 400
-    if len(store_name) > 60:
+    if len(raw_store) > 80:
         return jsonify({'status': 'error', 'error': 'Invalid store'}), 400
+    store_name = store_master.to_internal_store_name(raw_store)
     # Only accept votes for stores that actually exist in the current ranking (prevents junk rows)
     with data_lock:
         known_names = {s.get('name') for s in latest_data.get('full_data', [])}
@@ -3370,7 +3413,7 @@ def post_store_vote():
     return jsonify({
         'status': 'success' if ok else 'duplicate',
         'reason': reason,
-        'store_name': store_name,
+        'store_name': store_master.seo_name(store_name),
         'votes': counts
     })
 

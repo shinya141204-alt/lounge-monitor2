@@ -7,7 +7,6 @@ Now supports deep per-store crawler for JIS individual store pages and Oriental 
 import os
 import re
 import json
-import time
 import logging
 import threading
 import requests
@@ -15,9 +14,10 @@ from bs4 import BeautifulSoup
 from datetime import datetime, timezone, timedelta
 from urllib.parse import urljoin
 from concurrent.futures import ThreadPoolExecutor
+import store_master
 
 try:
-    import lxml  # noqa: F401
+    __import__('lxml')
     _BS_PARSER = 'lxml'
 except ImportError:
     _BS_PARSER = 'html.parser'
@@ -507,8 +507,8 @@ def _parse_oriental_roundup_article(article_url: str, date_str: str):
 
                 sub_events.append({
                     'id': ev_id,
-                    'brand': 'OLG',
-                    'brand_label': 'オリエンタル / ag',
+                    'brand': 'オリエンタルラウンジ',
+                    'brand_label': 'オリエンタルラウンジ / ag',
                     'title': full_title,
                     'url': article_url,
                     'banner_url': '',
@@ -517,7 +517,7 @@ def _parse_oriental_roundup_article(article_url: str, date_str: str):
                     'date_str': date_str or '開催中',
                     'tag': tag_label,
                     'tag_cls': tag_cls,
-                    'target_stores': target_areas,
+                    'target_stores': [store_master.seo_name(s) for s in target_areas],
                     'target_label': f'{store_header}限定',
                     'created_at': datetime.now().strftime('%Y-%m-%d')
                 })
@@ -534,6 +534,11 @@ def _store_matches_area(store_name: str, area_keyword: str) -> bool:
 
     if not clean_store or not clean_kw:
         return False
+
+    int_store = store_master.to_internal_store_name(store_name)
+    int_kw = store_master.to_internal_store_name(area_keyword)
+    if int_store and int_kw and int_store == int_kw:
+        return True
 
     # 0. Canonical full store name exact match (e.g. 'OLG 新宿', 'OLG ag渋谷', 'OLG 名古屋 栄', 'JIS SHINJUKU')
     if clean_kw.startswith('OLG') or clean_kw.startswith('JIS') or clean_kw.startswith('ALFA') or clean_kw.startswith('CLOVERS') or clean_kw.startswith('XIX') or clean_kw.startswith('YATAKOI'):
@@ -668,8 +673,8 @@ def crawl_oriental_events():
 
                 events.append({
                     'id': event_id,
-                    'brand': 'OLG',
-                    'brand_label': 'オリエンタル / ag',
+                    'brand': 'オリエンタルラウンジ',
+                    'brand_label': 'オリエンタルラウンジ / ag',
                     'title': title,
                     'url': link,
                     'banner_url': '',
@@ -678,7 +683,7 @@ def crawl_oriental_events():
                     'date_str': date_str,
                     'tag': tag_label,
                     'tag_cls': tag_cls,
-                    'target_stores': target_stores,
+                    'target_stores': [store_master.seo_name(s) for s in target_stores],
                     'target_label': target_label,
                     'created_at': datetime.now().strftime('%Y-%m-%d')
                 })
@@ -722,8 +727,8 @@ def crawl_oriental_events():
 
                 events.append({
                     'id': event_id,
-                    'brand': 'OLG',
-                    'brand_label': 'オリエンタル / ag',
+                    'brand': 'オリエンタルラウンジ',
+                    'brand_label': 'オリエンタルラウンジ / ag',
                     'title': title,
                     'url': link,
                     'banner_url': '',
@@ -732,7 +737,7 @@ def crawl_oriental_events():
                     'date_str': mark,
                     'tag': tag_label,
                     'tag_cls': tag_cls,
-                    'target_stores': target_stores,
+                    'target_stores': [store_master.seo_name(s) for s in target_stores],
                     'target_label': target_label,
                     'created_at': datetime.now().strftime('%Y-%m-%d')
                 })
@@ -1172,7 +1177,7 @@ def _crawl_and_save_events():
 
     # Protect against transient DNS/timeout wiping out 150+ cached OLG/JIS events with only static regional items
     if not olg_events:
-        olg_events = [e for e in existing_events if e.get('brand') == 'OLG']
+        olg_events = [e for e in existing_events if e.get('brand') in ('OLG', 'オリエンタルラウンジ')]
     jis_combined = jis_store_events + jis_global_events
     if not jis_combined:
         jis_combined = [e for e in existing_events if e.get('brand') == 'JIS']
@@ -1227,20 +1232,23 @@ def _ensure_regional_events(events_list: list) -> list:
 
     sanitized = []
     for ev in events_list:
+        ev = dict(ev)
         title = ev.get('title', '')
-        if ev.get('brand') == 'OLG':
+        if ev.get('brand') in ('OLG', 'オリエンタルラウンジ'):
+            ev['brand'] = 'オリエンタルラウンジ'
             if _is_non_campaign_notice(title):
                 continue
             ts = ev.get('target_stores') or []
-            if not ts or '17店舗' in title or any(not str(x).startswith('OLG ') for x in ts):
+            if not ts or '17店舗' in title:
                 new_ts, new_lbl = extract_olg_target_stores(title)
                 if new_ts:
-                    ev = dict(ev)
-                    ev['target_stores'] = new_ts
+                    ev['target_stores'] = [store_master.seo_name(s) for s in new_ts]
                     ev['target_label'] = new_lbl
                 elif not ts:
-                    ev = dict(ev)
+                    ev['target_stores'] = []
                     ev['target_label'] = new_lbl
+            else:
+                ev['target_stores'] = [store_master.seo_name(s) for s in ts]
         sanitized.append(ev)
 
     if any(e.get('brand') in ('ALFA', 'CLOVERS', 'XIX') for e in sanitized):
@@ -1328,7 +1336,7 @@ def get_events_for_store(
 
     clean_name = store_name.upper()
     is_jis = 'JIS' in clean_name
-    is_olg = 'OLG' in clean_name or 'ORIENTAL' in clean_name or 'AG' in clean_name
+    is_olg = 'OLG' in clean_name or 'ORIENTAL' in clean_name or 'AG' in clean_name or 'オリエンタル' in store_name
 
     for ev in all_events:
         t = ev.get('title', '')
@@ -1348,7 +1356,7 @@ def get_events_for_store(
                     global_matched.append(ev)
             elif any(_store_matches_area(store_name, area) for area in target_stores):
                 matched.append(ev)
-        elif is_olg and ev_brand == 'OLG':
+        elif is_olg and ev_brand in ('OLG', 'オリエンタルラウンジ'):
             target_stores = ev.get('target_stores', [])
             if not target_stores and ('17店舗' in t or '【' in t):
                 inferred_ts, inferred_lbl = extract_olg_target_stores(t)

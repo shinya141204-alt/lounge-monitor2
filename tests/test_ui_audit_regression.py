@@ -802,7 +802,7 @@ class UiAuditRegressionTests(unittest.TestCase):
                     self.assertEqual(cm_pc_initial["row2BorderBottom"], "1px")
 
                     # Clicking 2nd card on PC updates right inspector without opening #analysis-modal
-                    page.click('#ranking-list .ranking-item[data-store="OLG ag渋谷"]')
+                    page.click('#ranking-list .ranking-item[data-store="ag（アグ）渋谷"]')
                     page.wait_for_timeout(120)
                     cm_pc_switched = page.evaluate("""() => ({
                         inspTitle: document.querySelector('#pc-store-inspector .cmi-title')?.innerText || '',
@@ -810,7 +810,7 @@ class UiAuditRegressionTests(unittest.TestCase):
                         selectedStore: document.querySelector('#ranking-list .ranking-item.is-inspector-selected')?.getAttribute('data-store') || '',
                         modalHidden: document.getElementById('analysis-modal').classList.contains('hidden')
                     })""")
-                    self.assertEqual(cm_pc_switched["selectedStore"], "OLG ag渋谷")
+                    self.assertEqual(cm_pc_switched["selectedStore"], "ag（アグ）渋谷")
                     self.assertIn("ag", cm_pc_switched["inspTitle"])
                     self.assertIn("渋谷", cm_pc_switched["inspTitle"])
                     self.assertNotRegex(cm_pc_switched["inspText"], r"\bOLG\b|\bORIENTAL\b|\bYATAKOI\b")
@@ -879,7 +879,7 @@ class UiAuditRegressionTests(unittest.TestCase):
                         page.evaluate("closeReportModal()")
 
                         # #analysis-modal live expansion (.moat-modal-card, .moat-weather-chip.is-rainy, .moat-acc-track, .second-venue-card)
-                        page.evaluate("openModal('OLG 新宿')")
+                        page.evaluate("openModal('オリエンタルラウンジ 新宿')")
                         page.wait_for_timeout(180)
                         modal_state = page.evaluate("""() => {
                             const m = document.getElementById('analysis-modal');
@@ -1164,7 +1164,7 @@ class UiAuditRegressionTests(unittest.TestCase):
                     self.assertEqual(mpage.evaluate("getComputedStyle(document.getElementById('pc-store-inspector')).display"), "none")
 
                     # Mobile card tap opens #analysis-modal as Clean Minimal bottom sheet (24px top radius)
-                    mpage.click('#ranking-list .ranking-item[data-store="OLG 新宿"]')
+                    mpage.click('#ranking-list .ranking-item[data-store="オリエンタルラウンジ 新宿"]')
                     mpage.wait_for_timeout(120)
                     sheet_state = mpage.evaluate("""() => {
                         const m = document.getElementById('analysis-modal');

@@ -285,7 +285,7 @@ def init_db():
                             predicted_at TEXT NOT NULL,
                             target_at TEXT NOT NULL,
                             store_name TEXT NOT NULL,
-                            model_version TEXT NOT NULL DEFAULT 'v2.1-statespace',
+                            model_version TEXT NOT NULL DEFAULT 'v2.2-statespace',
                             start_women INTEGER NOT NULL,
                             start_men INTEGER NOT NULL,
                             start_wpct INTEGER NOT NULL,
@@ -390,7 +390,7 @@ def init_db():
                     predicted_at TEXT NOT NULL,
                     target_at TEXT NOT NULL,
                     store_name TEXT NOT NULL,
-                    model_version TEXT NOT NULL DEFAULT 'v2.1-statespace',
+                    model_version TEXT NOT NULL DEFAULT 'v2.2-statespace',
                     start_women INTEGER NOT NULL,
                     start_men INTEGER NOT NULL,
                     start_wpct INTEGER NOT NULL,
@@ -1940,6 +1940,10 @@ def _format_brand_safe_store_name(raw_name: str) -> str:
         return "オリエンタルラウンジ " + s[4:].strip()
     if s == "OLG":
         return "オリエンタルラウンジ"
+    if s.startswith("YATAKOI "):
+        return "ヤタコイ " + s[8:].strip()
+    if s == "YATAKOI":
+        return "ヤタコイ"
     return s
 
 

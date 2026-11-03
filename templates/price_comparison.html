@@ -551,7 +551,7 @@
                 <div class="apple-compare-grid">
                     {% for st in cl.stores %}
                     <article class="apple-compare-col{% if st.is_best_in_cluster %} best-row{% endif %}"
-                             data-live-store="{{ st.name }}"
+                             data-live-store="{{ st.seo_name }}"
                              data-seo-name="{{ st.seo_name }}"
                              data-slug="{{ st.slug }}"
                              data-wait-str="{{ st.wait_fee_str }}"
@@ -672,7 +672,7 @@
             <div class="verify-grid">
                 {% for st in data.verified_event_stores %}
                 <div class="verify-card"
-                     data-verify-store="{{ st.name }}"
+                     data-verify-store="{{ st.seo_name }}"
                      data-wait-str="{{ st.wait_fee_str }}"
                      data-wait-yen="{{ st.wait_10m_yen }}"
                      data-est-wknd="{{ st.est_60m_weekend }}"

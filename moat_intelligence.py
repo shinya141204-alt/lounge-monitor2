@@ -1228,9 +1228,52 @@ _V2_STORE_PHASE_PRIORS = {
 }
 
 
+def _normalize_store_phase_prior_key(store_name: str) -> str:
+    """正式名称や別名表記から _V2_STORE_PHASE_PRIORS の内部キーへ解決する。"""
+    if not store_name:
+        return ""
+    s = str(store_name).strip()
+    if s in _V2_STORE_PHASE_PRIORS:
+        return s
+    if s.startswith("オリエンタルラウンジ "):
+        candidate = f"OLG {s[len('オリエンタルラウンジ '):].strip()}"
+        if candidate in _V2_STORE_PHASE_PRIORS:
+            return candidate
+    elif s.startswith("ag "):
+        branch = s[len("ag "):].strip()
+        candidate = f"OLG AG {branch}"
+        if candidate in _V2_STORE_PHASE_PRIORS:
+            return candidate
+        candidate2 = f"OLG ag{branch}"
+        if candidate2 in _V2_STORE_PHASE_PRIORS:
+            return candidate2
+    if "ヤタコイ" in s or "YATAKOI" in s:
+        if "YATAKOI UMEDA" in _V2_STORE_PHASE_PRIORS:
+            return "YATAKOI UMEDA"
+    if "XIX" in s or "シックス" in s:
+        if "XIX OKAYAMA" in _V2_STORE_PHASE_PRIORS:
+            return "XIX OKAYAMA"
+    if "JIS" in s or "ジス" in s:
+        jis_mapping = {
+            "福岡": "JIS FUKUOKA",
+            "金沢": "JIS KANAZAWA",
+            "松山": "JIS MATSUYAMA",
+            "難波": "JIS NAMBA",
+            "大宮": "JIS OMIYA",
+            "札幌": "JIS SAPPORO",
+            "新宿": "JIS SHINJUKU",
+            "梅田": "JIS UMEDA",
+        }
+        for city, jis_key in jis_mapping.items():
+            if city in s and jis_key in _V2_STORE_PHASE_PRIORS:
+                return jis_key
+    return s
+
+
 def _interp_store_phase_prior(store_name: str, now_jst: datetime.datetime) -> float:
     """店舗固有フェーズ事前オフセットを連続時刻 fhr 上で滑らかに線形補間し、正時の不連続ジャンプを防ぐ。"""
-    tup = _V2_STORE_PHASE_PRIORS.get(store_name)
+    norm_key = _normalize_store_phase_prior_key(store_name)
+    tup = _V2_STORE_PHASE_PRIORS.get(norm_key)
     if not tup:
         return 0.0
     p0, p1, p2 = tup

@@ -10,6 +10,10 @@ from unittest import mock
 _TMP_DIR = tempfile.mkdtemp(prefix="aiseki_fc_test_")
 os.environ.setdefault("LOCAL_DB_PATH", os.path.join(_TMP_DIR, "boot_test.db"))
 os.environ.setdefault("DISABLE_SCHEDULER", "1")
+os.environ.setdefault('SECRET_KEY', 'test-secret-key-12345')
+os.environ.setdefault('STAFF_PASSCODE', '5555')
+os.environ.setdefault('MASTER_PASSCODE', '2918')
+os.environ.setdefault('ADMIN_API_SECRET', 'lounge2026')
 
 import app as app_module
 import local_db

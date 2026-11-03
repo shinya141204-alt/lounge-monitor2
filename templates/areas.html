@@ -699,7 +699,7 @@
                 {% set tot = s.women + s.men %}
                 {% set wpct = ((s.women / tot) * 100)|round|int if tot > 0 else 50 %}
                 <a href="/store/{{ s.slug or (s.name | store_slug) }}" style="text-decoration: none; color: inherit; display: block;">
-                <div class="live-store-card" data-store-name="{{ s.name }}">
+                <div class="live-store-card" data-store-name="{{ s.seo_name or (s.name | seo_store_name) }}">
                     <div class="live-store-name">
                         <span>{{ s.seo_name or (s.name | seo_store_name) }}</span>
                         <span style="font-size: 0.74rem; color: var(--accent-text); font-weight: 600;">{% if tot > 0 %}女性比 {{ wpct }}%{% elif s.is_open_now %}営業中（0 : 0）{% else %}営業時間外{% endif %}</span>
@@ -861,7 +861,7 @@
                 {% set tot = s.women + s.men %}
                 {% set wpct = ((s.women / tot) * 100)|round|int if tot > 0 else 50 %}
                 <a href="/store/{{ s.slug or (s.name | store_slug) }}" style="text-decoration: none; color: inherit; display: block;">
-                <div class="live-store-card" data-store-name="{{ s.name }}">
+                <div class="live-store-card" data-store-name="{{ s.seo_name or (s.name | seo_store_name) }}">
                     <div class="live-store-name">
                         <span>{{ s.seo_name or (s.name | seo_store_name) }}</span>
                         <span style="font-size: 0.74rem; color: var(--accent-text); font-weight: 600;">{% if tot > 0 %}女性比 {{ wpct }}%{% elif s.is_open_now %}営業中（0 : 0）{% else %}営業時間外{% endif %}</span>

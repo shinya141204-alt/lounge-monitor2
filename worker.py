@@ -10,9 +10,7 @@ Responsibilities isolated from HTTP Gunicorn `web` workers:
 import logging
 import os
 import signal
-import sys
 import threading
-import time
 
 # Force worker role and prevent `app.py` from auto-starting its legacy embedded scheduler on import
 os.environ.setdefault("APP_ROLE", "worker")
@@ -116,21 +114,6 @@ def _threads_daily_job():
         logger.error(f"[worker] Scheduled Threads post failed: {err}")
 
 
-def _ig_carousel_job(slot_lbl="21:45"):
-    try:
-        import sns_editorial
-        if not sns_editorial.should_fire_scheduled_slot_now("instagram", slot_lbl):
-            return
-        import instagram_poster
-        with app_module.data_lock:
-            cur_stores = list(app_module.latest_data.get("full_data") or [])
-            is_seed = bool(app_module.latest_data.get("is_seed"))
-        if not is_seed:
-            instagram_poster.execute_scheduled_instagram_post(cur_stores, mode="carousel", slot_label=slot_lbl)
-    except Exception as err:
-        logger.error(f"[worker] Scheduled Instagram carousel post failed: {err}")
-
-
 def _threads_ladies_job():
     try:
         import sns_editorial
@@ -144,21 +127,6 @@ def _threads_ladies_job():
             threads_poster.execute_scheduled_ladies_threads_post(cur_stores, slot_label="19:30")
     except Exception as err:
         logger.error(f"[worker] Scheduled Threads ladies post failed: {err}")
-
-
-def _ig_ladies_job():
-    try:
-        import sns_editorial
-        if not sns_editorial.should_fire_scheduled_slot_now("ig_ladies", "19:45"):
-            return
-        import instagram_poster
-        with app_module.data_lock:
-            cur_stores = list(app_module.latest_data.get("full_data") or [])
-            is_seed = bool(app_module.latest_data.get("is_seed"))
-        if cur_stores and not is_seed:
-            instagram_poster.execute_scheduled_ladies_instagram_post(cur_stores, slot_label="19:45")
-    except Exception as err:
-        logger.error(f"[worker] Scheduled Instagram ladies post failed: {err}")
 
 
 def _ig_reel_scheduled_job(slot_lbl="21:15"):
@@ -276,24 +244,6 @@ def _daily_token_and_db_maintenance_job():
         local_db.prune_old_logs(monitor_days=60, vote_days=14)
     except Exception as err:
         logger.warning(f"[worker] Daily DB prune warning: {err}")
-
-
-def _prewarm_slot_job(slot_label: str = None, include_column: bool = False):
-    try:
-        slots = (slot_label,) if slot_label else None
-        res = app_module.precompute_editorial_and_media_bundle(
-            channels=("x", "threads"),
-            slot_labels=slots,
-            include_column=include_column,
-            include_pdca=False,
-            include_ig_slides=False,
-        )
-        logger.info(
-            f"[worker] Precomputed editorial bundle (slot={slot_label or 'auto'}): "
-            f"warmed={res.get('editorial_warmed')}, ms={res.get('elapsed_ms')}"
-        )
-    except Exception as err:
-        logger.warning(f"[worker] Precompute bundle warning: {err}")
 
 
 def build_worker_scheduler() -> BackgroundScheduler:

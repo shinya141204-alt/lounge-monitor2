@@ -173,7 +173,7 @@ def get_store_anchor(store_name: str) -> str:
 
     # ブランド名の正式展開（ブランドルール遵守）
     clean_name = s.replace("OLG", "").replace("ag", "").strip()
-    if s.startswith("OLG") or "オリエンタル" in s:
+    if s.startswith("OLG") or "オリエンタルラウンジ" in s:
         brand = "オリエンタルラウンジ"
     elif s.startswith("ag"):
         brand = "ag"

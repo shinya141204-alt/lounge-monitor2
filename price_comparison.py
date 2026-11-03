@@ -143,7 +143,7 @@ BRAND_PRICE_SPECS = {
     },
     "ヤタコイ": {
         "brand_code": "ヤタコイ",
-        "brand_label": "ヤタコイ（YATAKOI）",
+        "brand_label": "ヤタコイ",
         "brand_slug": "",
         "charge_yen": 0,
         "charge_str": "平日0円 / 金土祝前日500円",

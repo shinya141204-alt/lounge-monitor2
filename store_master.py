@@ -250,3 +250,49 @@ def brand_key_of(store_name: str) -> str:
     if store_name.startswith("ASOBIBAR "):
         return "asobibar"
     return "other"
+
+
+def to_internal_store_name(name_or_slug: str) -> str:
+    """正式名称（'オリエンタルラウンジ 渋谷本店'）、スラッグ、内部キーのいずれからでも内部店舗キー（'OLG 渋谷本店'）を逆引き解決する。"""
+    if not name_or_slug:
+        return ""
+    name_clean = str(name_or_slug).strip()
+    master = load()
+    if name_clean in master:
+        return name_clean
+    from_slug = store_by_slug(name_clean)
+    if from_slug:
+        return from_slug
+    for internal_key in master.keys():
+        if seo_name(internal_key) == name_clean:
+            return internal_key
+    if name_clean.startswith("オリエンタルラウンジ "):
+        cand = "OLG " + name_clean[len("オリエンタルラウンジ "):]
+        if cand in master:
+            return cand
+    if name_clean.startswith("ag（アグ）"):
+        cand = "OLG ag" + name_clean[len("ag（アグ）"):]
+        if cand in master:
+            return cand
+    if name_clean.startswith("JIS（ジス）"):
+        cand = "JIS " + name_clean[len("JIS（ジス）"):].strip()
+        if cand in master:
+            return cand
+    if name_clean.startswith("ASOBIBAR（アソビバー）"):
+        cand = "ASOBIBAR " + name_clean[len("ASOBIBAR（アソビバー）"):].strip()
+        if cand in master:
+            return cand
+    if name_clean.startswith("ヤタコイ"):
+        if "YATAKOI UMEDA" in master:
+            return "YATAKOI UMEDA"
+    if name_clean.startswith("相席CLOVERS"):
+        if "CLOVERS HIROSHIMA" in master:
+            return "CLOVERS HIROSHIMA"
+    if name_clean.startswith("相席ラウンジALFA"):
+        if "ALFA HIROSHIMA" in master:
+            return "ALFA HIROSHIMA"
+    if name_clean.startswith("相席ラウンジXIX"):
+        if "XIX OKAYAMA" in master:
+            return "XIX OKAYAMA"
+    return name_clean
+

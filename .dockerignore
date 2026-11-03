@@ -22,3 +22,7 @@ google_credentials.json
 data/
 tests/
 scripts/legacy/
+benchmark_*_result.json
+BENCHMARK_REPORT.md
+TEST_*.md
+Procfile

@@ -4172,8 +4172,8 @@
             let filtered = window.allEvents;
             if (filterCategory === 'JIS') {
                 filtered = window.allEvents.filter(ev => ev.brand === 'JIS');
-            } else if (filterCategory === 'OLG') {
-                filtered = window.allEvents.filter(ev => ev.brand === 'OLG');
+            } else if (filterCategory === 'ORIENTAL' || filterCategory === 'OLG') {
+                filtered = window.allEvents.filter(ev => ev.brand === 'オリエンタルラウンジ' || ev.brand === 'OLG');
             } else if (filterCategory === 'DISCOUNT') {
                 filtered = window.allEvents.filter(ev => ev.tag === '割引・特典');
             } else if (filterCategory === 'WOMEN') {

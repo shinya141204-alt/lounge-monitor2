@@ -488,7 +488,7 @@
             <span>{{ store.seo_name }}</span>
         </nav>
 
-        <article class="live-hero-card" data-hero-store="{{ store.name }}" data-hero-seo="{{ store.seo_name }}" data-hours-spec='{{ store.hours_spec | tojson }}'>
+        <article class="live-hero-card" data-hero-store="{{ store.seo_name }}" data-hero-seo="{{ store.seo_name }}" data-hours-spec='{{ store.hours_spec | tojson }}'>
             <div class="badge-row">
                 <span class="area-badge">{{ store.area_label }}</span>
                 <span class="area-badge">{{ store.brand_label }}</span>
@@ -698,7 +698,7 @@
             <div class="apple-compare-grid">
                 {% for st in nearby_comparison.stores %}
                 <article class="apple-compare-col{% if st.is_current_store %} is-current-row{% elif st.is_best_in_cluster %} is-best-row{% endif %}"
-                         data-nearby-comp-row="{{ st.name }}"
+                         data-nearby-comp-row="{{ st.seo_name }}"
                          data-is-current="{{ '1' if st.is_current_store else '0' }}"
                          data-wait-str="{{ st.wait_fee_str }}"
                          data-wait-yen="{{ st.wait_10m_yen }}"
@@ -803,7 +803,7 @@
             </p>
             <div class="nearby-grid">
                 {% for ns in nearby_stores %}
-                <a href="/store/{{ ns.slug }}" class="nearby-item" data-nearby-card="{{ ns.name }}" data-hours-spec='{{ ns.hours_spec | tojson }}'>
+                <a href="/store/{{ ns.slug }}" class="nearby-item" data-nearby-card="{{ ns.seo_name }}" data-hours-spec='{{ ns.hours_spec | tojson }}'>
                     <div style="display:flex; justify-content:space-between; align-items:center;">
                         <strong style="color: var(--text-main); font-size:0.91rem;">{{ ns.seo_name }}</strong>
                         <span data-nearby-wpct style="font-size:0.74rem; color: var(--accent-text); font-weight:600;">{% if (ns.women + ns.men) > 0 %}女性比 {{ ns.wpct }}%{% elif ns.is_open_now %}営業中（0 : 0）{% else %}営業時間外{% endif %}</span>
@@ -1482,8 +1482,8 @@
             let currentVenues = [];
             let currentTips = [];
 
-            const storeName = {{ (store.name or store.seo_name or '') | tojson }};
-            const storeAnchor = {{ (store.map_anchor or (store.brand_label ~ store.name ~ ' ' ~ store.area_label)) | tojson }};
+            const storeName = {{ (store.seo_name or store.name or '') | tojson }};
+            const storeAnchor = {{ (store.map_anchor or (store.brand_label ~ ' ' ~ store.seo_name ~ ' ' ~ store.area_label)) | tojson }};
 
             function escapeHtml(str) {
                 return String(str || '')
@@ -1519,7 +1519,7 @@
             }
 
             function createFallbackVenues(sName, sAnchor) {
-                const clean = String(sName || '').replace('OLG', '').replace('ag', '').trim();
+                const clean = String(sName || '').replace(/^(?:オリエンタルラウンジ|ag（アグ）|JIS（ジス）|ASOBIBAR（アソビバー）|ヤタコイ|相席CLOVERS|相席ラウンジALFA|相席ラウンジXIX)\s*/i, '').trim();
                 return [
                     {
                         name: `${clean}周辺の夜カフェ・スイーツ`,

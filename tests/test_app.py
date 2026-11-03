@@ -28,6 +28,10 @@ os.environ['JOB_STATE_DIR'] = os.path.join(_TMP, 'state')
 os.environ['APP_LOG_PATH'] = os.path.join(_TMP, 'app.log')
 os.environ['LATEST_STATUS_SNAPSHOT_FILE'] = os.path.join(_TMP, 'latest_status_cache.json')
 os.environ.pop('ALERT_WEBHOOK_URL', None)
+os.environ.setdefault('SECRET_KEY', 'test-secret-key-12345')
+os.environ.setdefault('STAFF_PASSCODE', '5555')
+os.environ.setdefault('MASTER_PASSCODE', '2918')
+os.environ.setdefault('ADMIN_API_SECRET', 'lounge2026')
 
 import app as app_module  # noqa: E402
 import local_db  # noqa: E402
@@ -125,8 +129,9 @@ class PageRouteTests(unittest.TestCase):
 
     def test_area_page_tokyo_east_contains_kinshicho_and_nagoya_does_not(self):
         r = self.client.get('/area/tokyo-east')
-        self.assertIn('OLG 錦糸町'.encode('utf-8'), r.data)
+        self.assertTrue('オリエンタルラウンジ 錦糸町'.encode('utf-8') in r.data or 'OLG 錦糸町'.encode('utf-8') in r.data)
         r = self.client.get('/area/nagoya')
+        self.assertNotIn('オリエンタルラウンジ 錦糸町'.encode('utf-8'), r.data)
         self.assertNotIn('OLG 錦糸町'.encode('utf-8'), r.data)
 
     def test_ads_txt_and_adsense_tag_on_public_only(self):
@@ -478,7 +483,7 @@ class MomentumTests(unittest.TestCase):
         r_status = client.get('/api/status')
         self.assertEqual(r_status.status_code, 200)
         st_json = r_status.get_json()
-        ebisu_item = next((x for x in st_json['ranking'] if x['name'] == 'OLG 恵比寿'), None)
+        ebisu_item = next((x for x in st_json['ranking'] if x['name'] in ('オリエンタルラウンジ 恵比寿', 'OLG 恵比寿')), None)
         self.assertIsNotNone(ebisu_item)
         self.assertIn('core_time_short', ebisu_item)
         self.assertIn('midnight_retention_pct', ebisu_item)
@@ -1610,14 +1615,17 @@ class FullAuditRegressionTests(unittest.TestCase):
         r_cs = self.client.get('/area/chugoku-shikoku')
         self.assertEqual(r_cs.status_code, 200)
         cs_html = r_cs.data.decode('utf-8')
-        self.assertIn('OLG 岡山', cs_html)
-        self.assertIn('OLG ag広島', cs_html)
-        self.assertIn('JIS MATSUYAMA', cs_html)
+        self.assertTrue('オリエンタルラウンジ 岡山' in cs_html or 'OLG 岡山' in cs_html)
+        self.assertTrue('ag（アグ）広島' in cs_html or 'OLG ag広島' in cs_html)
+        self.assertTrue(any(x in cs_html for x in ('JIS（ジス）松山', 'JIS 松山', 'JIS MATSUYAMA')))
 
         r_ht = self.client.get('/area/hokkaido-tohoku')
         self.assertEqual(r_ht.status_code, 200)
         ht_html = r_ht.data.decode('utf-8')
+        self.assertNotIn('オリエンタルラウンジ 岡山', ht_html)
         self.assertNotIn('OLG 岡山', ht_html)
+        self.assertNotIn('JIS（ジス）松山', ht_html)
+        self.assertNotIn('JIS 松山', ht_html)
         self.assertNotIn('JIS MATSUYAMA', ht_html)
 
         # 5. Independent brands must not have brand_slug='oriental-lounge' in price_comparison
@@ -1861,7 +1869,7 @@ class FullAuditRegressionTests(unittest.TestCase):
             pub_master_html = r_pub_with_master.data.decode('utf-8')
             self.assertIn('<h1>相席ナビ</h1>', pub_master_html)
             self.assertNotIn('<h1>相席ナビ マスター管理</h1>', pub_master_html)
-            self.assertIn('data-store="OLG 新宿"', pub_master_html)
+            self.assertTrue('data-store="オリエンタルラウンジ 新宿"' in pub_master_html or 'data-store="OLG 新宿"' in pub_master_html)
             self.assertIn('window.__SSR_PINNED_HYDRATED', pub_master_html)
             self.assertLess(pub_master_html.index('id="ranking-list"'), pub_master_html.index('id="analysis-modal"'))
             with self.client.session_transaction() as s:
@@ -2556,7 +2564,7 @@ class AutonomousPdcaEngineTests(unittest.TestCase):
             self.assertIsNotNone(scheduled_articles.get_article_by_slug(auto_slug))
 
 
-class OrientalColdStartResilienceTests(unittest.TestCase):
+class OrientalLoungeColdStartResilienceTests(unittest.TestCase):
     """Ensure Oriental Lounge / ag stores NEVER vanish from ranking when cold-start scrape times out."""
 
     def test_cold_start_partial_scrape_preserves_all_53_stores_and_fast_retries(self):
@@ -3873,12 +3881,13 @@ class TurboArchitectureTests(unittest.TestCase):
             self.assertEqual(r_status.status_code, 200)
             st_json = r_status.get_json()
             self.assertEqual(st_json['status'], 'success')
-            self.assertEqual(st_json['ranking'][0]['name'], 'OLG 新宿')
+            self.assertIn(st_json['ranking'][0]['name'], ('オリエンタルラウンジ 新宿', 'OLG 新宿'))
             self.assertEqual(st_json['ranking'][0]['women'], 58)
 
             r_home = self.client.get('/')
             self.assertEqual(r_home.status_code, 200)
-            self.assertIn('data-store="OLG 新宿"', r_home.get_data(as_text=True))
+            r_home_text = r_home.get_data(as_text=True)
+            self.assertTrue('data-store="オリエンタルラウンジ 新宿"' in r_home_text or 'data-store="OLG 新宿"' in r_home_text)
 
             with self.client.session_transaction() as sess:
                 sess['is_staff'] = True
@@ -4691,7 +4700,7 @@ class MoatIntelligenceAndAsobibarTests(unittest.TestCase):
         r_status = self.client.get('/api/status')
         self.assertEqual(r_status.status_code, 200)
         st_payload = r_status.get_json()
-        asobi_item = next((x for x in st_payload['ranking'] if x['name'] == 'ASOBIBAR 新宿'), None)
+        asobi_item = next((x for x in st_payload['ranking'] if x['name'] in ('ASOBIBAR（アソビバー）新宿', 'ASOBIBAR 新宿')), None)
         self.assertIsNotNone(asobi_item)
         self.assertIn('wait_estimate', asobi_item)
         self.assertIn('forecast_60m', asobi_item)
@@ -4781,12 +4790,15 @@ class MoatIntelligenceAndAsobibarTests(unittest.TestCase):
             {'name': 'OLG 渋谷本店', 'women': 30, 'men': 16, 'region': 'Kanto'},
         ])
         by_name = {x['name']: x for x in enriched_dup}
-        self.assertTrue(by_name['OLG 新宿']['ssr_is_dup'])
-        self.assertEqual(by_name['OLG 新宿']['ssr_brand'], 'オリエンタルラウンジ')
-        self.assertEqual(by_name['OLG 新宿']['ssr_disp'], '新宿')
-        self.assertTrue(by_name['OLG 名古屋 栄']['ssr_is_dup'])
-        self.assertEqual(by_name['OLG 名古屋 栄']['ssr_disp'], '名古屋 栄')
-        self.assertFalse(by_name['OLG 渋谷本店']['ssr_is_dup'])
+        shinjuku_target = by_name.get('オリエンタルラウンジ 新宿') or by_name.get('OLG 新宿')
+        self.assertTrue(shinjuku_target['ssr_is_dup'])
+        self.assertEqual(shinjuku_target['ssr_brand'], 'オリエンタルラウンジ')
+        self.assertEqual(shinjuku_target['ssr_disp'], '新宿')
+        nagoya_target = by_name.get('オリエンタルラウンジ 名古屋 栄') or by_name.get('OLG 名古屋 栄')
+        self.assertTrue(nagoya_target['ssr_is_dup'])
+        self.assertEqual(nagoya_target['ssr_disp'], '名古屋 栄')
+        shibuya_target = by_name.get('オリエンタルラウンジ 渋谷本店') or by_name.get('OLG 渋谷本店')
+        self.assertFalse(shibuya_target['ssr_is_dup'])
 
         with open(os.path.join(ROOT, 'static', 'style.css'), encoding='utf-8') as f:
             style_css = f.read()

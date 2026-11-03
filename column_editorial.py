@@ -25,7 +25,6 @@ import datetime
 import logging
 import threading
 import collections
-import requests
 
 import job_state
 import store_master

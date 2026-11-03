@@ -613,7 +613,7 @@
                                 {% set ssr_human_copy = '現在女性が' ~ ssr_w_num ~ '名・男性が' ~ ssr_m_num ~ '名入店中です' %}
                             {% endif %}
                             {% set is_bento_hero = (not is_staff) and loop.first and (s.ssr_rank == 1) %}
-                            <div class="ranking-item{% if loop.first %} is-inspector-selected{% endif %}{% if is_bento_hero %} bento-hero-card{% endif %}{% if s.ssr_rank == 1 %} rank-1{% elif s.ssr_rank == 2 %} rank-2{% elif s.ssr_rank == 3 %} rank-3{% endif %}{% if ssr_pulsing %} live-pulse-card{% endif %}" data-store="{{ s.name }}" style="cursor: pointer;" onclick="if(window.handleStoreCardClick)handleStoreCardClick({{ s.name | tojson | forceescape }});else if(window.openModal)openModal({{ s.name | tojson | forceescape }})">
+                            <div class="ranking-item{% if loop.first %} is-inspector-selected{% endif %}{% if is_bento_hero %} bento-hero-card{% endif %}{% if s.ssr_rank == 1 %} rank-1{% elif s.ssr_rank == 2 %} rank-2{% elif s.ssr_rank == 3 %} rank-3{% endif %}{% if ssr_pulsing %} live-pulse-card{% endif %}" data-store="{{ s.seo_name or (s.name | seo_store_name) }}" style="cursor: pointer;" onclick="if(window.handleStoreCardClick)handleStoreCardClick({{ (s.seo_name or (s.name | seo_store_name)) | tojson | forceescape }});else if(window.openModal)openModal({{ (s.seo_name or (s.name | seo_store_name)) | tojson | forceescape }})">
                                 <div class="bento-kicker-row">
                                     <span class="bento-kicker-label">TONIGHT'S #1 PICK</span>
                                     <span class="bento-verdict-pill {{ 'is-wait' if ((ssr_w_num == 0 and ssr_m_num == 0) or ssr_wait_m > 0) else 'is-ok' }}">{% if ssr_w_num == 0 and ssr_m_num == 0 %}準備中{% elif ssr_wait_m > 0 %}男性待機目安 {{ ssr_wait_m }}分{% elif ssr_w_num >= ssr_m_num %}即入店圏{% else %}待ちなし案内中{% endif %}</span>
@@ -1002,7 +1002,7 @@
                         <h3>リアルタイム人数・混雑状況 対応ブランド＆全国エリア一覧</h3>
                         <p class="seo-dir-text">
                             <strong>【対応ブランド】</strong>
-                            オリエンタルラウンジ（ORIENTAL LOUNGE） / ag（アグ） / JIS（ジス） / ASOBIBAR（アソビバー） / XIX（シックス） / ALFA（アルファ） / ヤタコイ（YATAKOI） / CLOVERS（クローバーズ）
+                            オリエンタルラウンジ（ORIENTAL LOUNGE） / ag（アグ） / JIS（ジス） / ASOBIBAR（アソビバー） / XIX（シックス） / ALFA（アルファ） / ヤタコイ / CLOVERS（クローバーズ）
                         </p>
                         <p class="seo-dir-text">
                             <strong>【対応エリア（全国63店舗：国内61店舗＋韓国2店舗）】</strong>
@@ -1833,11 +1833,7 @@
             var shareUrl = 'https://aiseki-navi.com';
 
             function getBrandTitle(s) {
-                var name = s.name || '';
-                if (name.indexOf('オリエンタルラウンジ') === -1 && name.indexOf('OLG') !== -1) {
-                    name = name.replace(/OLG\s*/g, 'オリエンタルラウンジ ');
-                }
-                return name;
+                return (s && (s.seo_name || s.name)) || '';
             }
 
             if (preset === 'second_venue') {
@@ -1967,7 +1963,7 @@
                 <button class="events-tab-btn active" data-filter="ALL" onclick="filterEventsModal('ALL', this)">全店舗</button>
                 <button class="events-tab-btn" data-filter="WOMEN" onclick="filterEventsModal('WOMEN', this)">女性限定</button>
                 <button class="events-tab-btn" data-filter="DISCOUNT" onclick="filterEventsModal('DISCOUNT', this)">特典・割引のみ</button>
-                <button class="events-tab-btn" data-filter="OLG" onclick="filterEventsModal('OLG', this)">オリエンタルラウンジ / ag</button>
+                <button class="events-tab-btn" data-filter="ORIENTAL" onclick="filterEventsModal('ORIENTAL', this)">オリエンタルラウンジ / ag</button>
                 <button class="events-tab-btn" data-filter="JIS" onclick="filterEventsModal('JIS', this)">JIS各店限定</button>
             </div>
             <div id="all-events-container" class="events-modal-list">

@@ -6,7 +6,6 @@ from concurrent.futures import ThreadPoolExecutor, wait as futures_wait
 import json
 import logging
 import re
-import sys
 import threading
 import socket
 import os
@@ -15,7 +14,7 @@ import urllib3
 import requests.packages.urllib3.util.connection as urllib3_cn
 
 try:
-    import lxml  # noqa: F401
+    __import__('lxml')
     _BS_PARSER = 'lxml'
 except ImportError:
     _BS_PARSER = 'html.parser'
@@ -339,10 +338,10 @@ def get_oriental_data():
                 _olg_cache['stale_reason'] = f"{last_err} (ag-only={len(ag_live)})"
             return ag_live
 
-    logging.error(f"Error fetching Oriental data: {last_err}")
+    logging.error(f"Error fetching オリエンタルラウンジ data: {last_err}")
     with _olg_cache_lock:
         if _olg_cache.get('data'):
-            logging.error(f"Using cached OLG data from {_olg_cache.get('last_success')}")
+            logging.error(f"Using cached オリエンタルラウンジ data from {_olg_cache.get('last_success')}")
             _olg_cache['served_stale'] = True
             _olg_cache['stale_reason'] = str(last_err)
             return list(_olg_cache['data'])
