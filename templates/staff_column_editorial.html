@@ -7,80 +7,85 @@
     <title>コラム・note編集部（4役合議・予約公開ボード）｜相席ナビ</title>
     <style>
         :root {
-            --bg: #0f1014;
-            --surface: #16171c;
-            --surface-2: #1d1f26;
-            --input-bg: #0b0c0f;
+            --bg: #111113;
+            --surface: #18181b;
+            --surface-2: #232329;
+            --input-bg: #111113;
             --subtle-bg: rgba(255, 255, 255, 0.03);
-            --chip-bg: rgba(255, 255, 255, 0.05);
+            --chip-bg: rgba(255, 255, 255, 0.06);
             --border: rgba(255, 255, 255, 0.08);
             --border-strong: rgba(255, 255, 255, 0.16);
-            --text: #f1efe9;
-            --sub: #c2bdb3;
-            --gold: #c8a46e;
-            --gold-soft: rgba(200, 164, 110, 0.16);
-            --gold-ink: #f5e6cc;
-            --muted-warm: #d8cdb8;
-            --green: #7bc49f;
-            --green-soft: rgba(123, 196, 159, 0.16);
-            --green-ink: #d3f3e2;
-            --blue: #93b1c9;
-            --blue-soft: rgba(147, 177, 201, 0.16);
-            --blue-ink: #cde2f5;
+            --text: #f4f4f5;
+            --sub: #c4c4cc;
+            --gold: #f4f4f5;
+            --gold-soft: rgba(244, 244, 245, 0.09);
+            --gold-ink: #f4f4f5;
+            --active-bg: #f4f4f5;
+            --active-ink: #111113;
+            --muted-warm: #d4d4d8;
+            --green: #6ee7b7;
+            --green-soft: rgba(110, 231, 183, 0.14);
+            --green-ink: #d1fae5;
+            --blue: #7dd3fc;
+            --blue-soft: rgba(125, 211, 252, 0.14);
+            --blue-ink: #e0f2fe;
             --link-ink: #7dd3fc;
-            --rose: #d8a1aa;
-            --rose-soft: rgba(216, 161, 170, 0.16);
-            --rose-ink: #f6d5dc;
-            --amber: #d9b36c;
-            --amber-soft: rgba(217, 179, 108, 0.15);
-            --amber-ink: #f6e2b8;
-            --red: #f87171;
-            --err-ink: #ffd6d6;
-            --purple: #c084fc;
-            --purple-soft: rgba(168, 85, 247, 0.16);
-            --purple-ink: #ebd9ff;
-            --teal: #41c9b4;
-            --teal-soft: rgba(65, 201, 180, 0.18);
-            --teal-ink: #d1fae5;
+            --rose: #f48fb1;
+            --rose-soft: rgba(244, 143, 177, 0.14);
+            --rose-ink: #fce4ec;
+            --amber: #fcd34d;
+            --amber-soft: rgba(252, 211, 77, 0.14);
+            --amber-ink: #fef3c7;
+            --red: #fca5a5;
+            --err-ink: #fecaca;
+            --purple: #d8b4fe;
+            --purple-soft: rgba(216, 180, 254, 0.14);
+            --purple-ink: #f3e8ff;
+            --teal: #5eead4;
+            --teal-soft: rgba(94, 234, 212, 0.14);
+            --teal-ink: #ccfbf1;
         }
         body.theme-light {
-            --bg: #f4f2ed;
-            --surface: #faf9f6;
-            --surface-2: #edeae3;
+            --bg: #f6f6f7;
+            --surface: #ffffff;
+            --surface-2: #ededf0;
             --input-bg: #ffffff;
-            --subtle-bg: rgba(28, 27, 24, 0.04);
-            --chip-bg: rgba(28, 27, 24, 0.055);
-            --border: rgba(28, 27, 24, 0.12);
-            --border-strong: rgba(28, 27, 24, 0.22);
-            --text: #1f1e1b;
-            --sub: #4d4840;
-            --gold: #6b4d1d;
-            --gold-soft: rgba(125, 91, 36, 0.12);
-            --gold-ink: #5c4014;
-            --muted-warm: #584c3b;
-            --green: #17593b;
-            --green-soft: rgba(30, 107, 71, 0.11);
-            --green-ink: #17593a;
-            --blue: #2c5270;
-            --blue-soft: rgba(61, 98, 130, 0.11);
-            --blue-ink: #2b4d6b;
-            --link-ink: #2b5478;
-            --rose: #8c3343;
-            --rose-soft: rgba(168, 72, 88, 0.11);
-            --rose-ink: #8c3343;
-            --amber: #75450c;
-            --amber-soft: rgba(143, 88, 20, 0.11);
-            --amber-ink: #75450c;
-            --red: #8f2424;
-            --err-ink: #8f2424;
-            --purple: #6b3fa0;
-            --purple-soft: rgba(107, 63, 160, 0.10);
-            --purple-ink: #532d82;
-            --teal: #156759;
-            --teal-soft: rgba(21, 103, 89, 0.11);
-            --teal-ink: #125448;
+            --subtle-bg: rgba(24, 24, 27, 0.04);
+            --chip-bg: rgba(24, 24, 27, 0.06);
+            --border: rgba(24, 24, 27, 0.10);
+            --border-strong: rgba(24, 24, 27, 0.20);
+            --text: #18181b;
+            --sub: #3f3f46;
+            --gold: #18181b;
+            --gold-soft: rgba(24, 24, 27, 0.06);
+            --gold-ink: #18181b;
+            --active-bg: #18181b;
+            --active-ink: #ffffff;
+            --muted-warm: #3f3f46;
+            --green: #064e3b;
+            --green-soft: rgba(6, 95, 70, 0.09);
+            --green-ink: #064e3b;
+            --blue: #075985;
+            --blue-soft: rgba(3, 105, 161, 0.09);
+            --blue-ink: #0c4a6e;
+            --link-ink: #075985;
+            --rose: #831843;
+            --rose-soft: rgba(157, 23, 77, 0.09);
+            --rose-ink: #831843;
+            --amber: #78350f;
+            --amber-soft: rgba(146, 64, 14, 0.10);
+            --amber-ink: #78350f;
+            --red: #991b1b;
+            --err-ink: #7f1d1d;
+            --purple: #581c87;
+            --purple-soft: rgba(107, 33, 168, 0.09);
+            --purple-ink: #4c1d95;
+            --teal: #115e59;
+            --teal-soft: rgba(15, 118, 110, 0.09);
+            --teal-ink: #134e4a;
         }
         * { box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
         html, body {
             overflow-x: hidden;
             max-width: 100%;
@@ -93,24 +98,11 @@
             line-height: 1.62;
         }
         .wrap {
-            max-width: 1180px;
+            max-width: 1160px;
             margin: 0 auto;
-            padding: max(18px, env(safe-area-inset-top)) 16px 80px;
+            padding: max(16px, env(safe-area-inset-top)) 16px 80px;
         }
-        .top-nav {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-bottom: 14px;
-        }
-        .top-links {
-            display: flex;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
+        [id] { scroll-margin-top: 96px; }
         a.back-btn, button.back-btn, .pill-btn {
             display: inline-flex;
             align-items: center;
@@ -126,7 +118,7 @@
             cursor: pointer;
             font-family: inherit;
         }
-        a.back-btn:hover, button.back-btn:hover, .pill-btn:hover { border-color: var(--gold); }
+        a.back-btn:hover, button.back-btn:hover, .pill-btn:hover { background: var(--surface-2); }
         .channel-bar {
             display: flex;
             align-items: center;
@@ -137,7 +129,7 @@
             padding: 10px 14px;
             background: var(--surface);
             border: 1px solid var(--border);
-            border-radius: 12px;
+            border-radius: 14px;
         }
         .tab-group {
             display: flex;
@@ -151,14 +143,15 @@
             padding: 6px 13px;
             border: 1px solid var(--border-strong);
             border-radius: 999px;
-            font-size: 0.8rem;
-            font-weight: 700;
-            background: var(--bg);
+            font-size: 0.78rem;
+            font-weight: 600;
+            background: var(--input-bg);
         }
         .tab-group a.active {
-            background: var(--gold-soft);
-            border-color: var(--gold);
-            color: var(--gold-ink);
+            background: var(--active-bg);
+            border-color: var(--active-bg);
+            color: var(--active-ink);
+            font-weight: 700;
         }
         .header-card {
             background: var(--surface);
@@ -181,15 +174,15 @@
             .article-headline-box h3 { font-size: 0.96rem; line-height: 1.45; }
         }
         .note-export-panel {
-            background: linear-gradient(135deg, rgba(65, 201, 180, 0.10) 0%, rgba(22, 24, 30, 0.98) 65%);
-            border: 1px solid rgba(65, 201, 180, 0.45);
+            background: var(--surface);
+            border: 1px solid var(--border-strong);
             border-radius: 15px;
             padding: 16px 18px;
             margin-bottom: 18px;
         }
         body.theme-light .note-export-panel {
-            background: linear-gradient(135deg, rgba(21, 103, 89, 0.08) 0%, #faf9f6 70%);
-            border-color: rgba(21, 103, 89, 0.34);
+            background: var(--surface);
+            border-color: var(--border-strong);
         }
         .note-export-grid {
             display: grid;
@@ -699,28 +692,20 @@
         }
     </script>
     <div class="wrap">
-        <div class="top-nav">
-            <a href="/staff" class="back-btn">← マスター管理画面へ戻る</a>
-            <div class="top-links">
-                <a href="/columns" target="_blank" rel="noopener" class="back-btn">📚 公開コラム一覧（社内プレビュー付）を開く ↗</a>
-                <button type="button" class="pill-btn" onclick="toggleStaffTheme()" id="staff-theme-toggle-btn">☀️/🌙 表示切替</button>
-            </div>
-        </div>
+        {% set master_active_tab = 'column' %}
+        {% include '_master_nav.html' %}
 
-        <div class="channel-bar">
-            <div class="tab-group" aria-label="編集部切替">
-                <a href="/staff/sns-editorial?channel=x&tone={{ editorial.tone_mode }}">𝕏 X（旧Twitter）編集部</a>
-                <a href="/staff/sns-editorial?channel=threads&tone={{ editorial.tone_mode }}">🧵 Threads（スレッズ）編集部</a>
-                <a href="/staff/sns-editorial?channel=instagram&tone={{ editorial.tone_mode }}">📸 Instagram（インスタ）編集部</a>
-                <a href="/staff/sns-editorial?channel=tiktok&tone={{ editorial.tone_mode }}">🎵 TikTok（縦型ショート）編集部</a>
-                <a href="/staff/column-editorial?tone={{ editorial.tone_mode }}" class="active">📖 コラム・note編集部</a>
-                <a href="/staff/pdca">🧭 PDCA参謀本部</a>
-            </div>
-        </div>
+        <nav class="master-section-jumpbar" aria-label="コラム編集部セクション移動">
+            <span class="master-jump-label">セクション移動</span>
+            <a href="#note-export-panel" class="master-jump-chip">note貼付用出力</a>
+            <a href="#column-tone-step" class="master-jump-chip">トーン・テーマ設定</a>
+            <a href="#candidates-container" class="master-jump-chip">執筆候補・予約公開</a>
+            <a href="#column-audit-section" class="master-jump-chip">全{{ editorial.existing_audit.total_columns }}本 品質監査</a>
+        </nav>
 
         <div class="header-card">
-            <h1>📖 相席ナビ「コラム・note編集部」4役合議・長考執筆＆予約公開ボード（マスター専用）</h1>
-            <p>SNS編集部と共通の4役体制で、ご都合主義の綺麗事やAI特有の教科書感を排除した本音コラム（現場リアル会話 <code>.dialogue-box</code> 3箇所＋実測データ比較表＋FAQ）・note原稿・X新着2連スレッドを一括作成。採用案はワンクリックでサイトへ予約公開または即時公開できます。</p>
+            <h1>コラム・note編集部｜4役合議・長考執筆＆予約公開ボード</h1>
+            <p>ご都合主義の綺麗事やAI特有の教科書感を排除した本音コラム（現場リアル会話 <code>.dialogue-box</code> 3箇所＋実測データ比較表＋FAQ）・note原稿・X新着2連スレッドを一括作成。採用案はワンクリックでサイトへ予約公開または即時公開できます。</p>
         </div>
 
         <!-- Existing & Scheduled Column -> note.com Ready-to-Paste Exporter -->
@@ -802,7 +787,7 @@
         </div>
 
         <!-- Writing Tone & Perspective Selector -->
-        <div class="theme-panel" style="border-color:var(--rose);">
+        <div class="theme-panel" id="column-tone-step" style="border-color:var(--rose);">
             <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:9px;">
                 <div style="font-size:0.84rem; font-weight:800; color:var(--rose-ink);">
                     🌶️💄 Step 0：執筆トーン＆視点モード切替（現在：{{ editorial.tone_mode_label }}）
@@ -1034,7 +1019,7 @@
         </div>
 
         <!-- Audit Table of ALL Existing + Scheduled Columns -->
-        <h2 class="section-h2">
+        <h2 class="section-h2" id="column-audit-section">
             <span>🛡️ 全コラム「鬼デスク品質・人間味＆ブランド呼称」監査一覧（全 {{ editorial.existing_audit.total_columns }} 本）</span>
             <span style="font-size:0.8rem; color:var(--sub);">
                 会話ボックス導入済: <strong>{{ editorial.existing_audit.with_dialogue_count }}/{{ editorial.existing_audit.total_columns }}本</strong> ｜

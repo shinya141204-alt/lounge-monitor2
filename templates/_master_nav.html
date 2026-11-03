@@ -1,0 +1,238 @@
+<style>
+    :root {
+        --mn-bg: rgba(17, 17, 19, 0.88);
+        --mn-surface: #18181b;
+        --mn-surface-2: #232329;
+        --mn-border: rgba(255, 255, 255, 0.08);
+        --mn-border-strong: rgba(255, 255, 255, 0.16);
+        --mn-text: #f4f4f5;
+        --mn-sub: #c4c4cc;
+        --mn-active-bg: #f4f4f5;
+        --mn-active-ink: #111113;
+        --mn-badge-bg: rgba(244, 244, 245, 0.10);
+    }
+    body.theme-light {
+        --mn-bg: rgba(246, 246, 247, 0.92);
+        --mn-surface: #ffffff;
+        --mn-surface-2: #ededf0;
+        --mn-border: rgba(24, 24, 27, 0.10);
+        --mn-border-strong: rgba(24, 24, 27, 0.20);
+        --mn-text: #18181b;
+        --mn-sub: #3f3f46;
+        --mn-active-bg: #18181b;
+        --mn-active-ink: #ffffff;
+        --mn-badge-bg: rgba(24, 24, 27, 0.07);
+    }
+    .master-global-dock {
+        position: sticky;
+        top: 8px;
+        z-index: 90;
+        background: var(--mn-bg);
+        -webkit-backdrop-filter: blur(16px);
+        backdrop-filter: blur(16px);
+        border: 1px solid var(--mn-border-strong);
+        border-radius: 16px;
+        padding: 10px 14px;
+        margin-bottom: 16px;
+        box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
+    }
+    body.theme-light .master-global-dock {
+        box-shadow: 0 4px 18px rgba(24, 24, 27, 0.06);
+    }
+    .master-dock-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        flex-wrap: wrap;
+        padding-bottom: 9px;
+        margin-bottom: 9px;
+        border-bottom: 1px solid var(--mn-border);
+    }
+    .master-brand-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        text-decoration: none;
+        color: var(--mn-text);
+        font-weight: 800;
+        font-size: 0.92rem;
+        letter-spacing: -0.01em;
+    }
+    .master-brand-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 0.66rem;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        background: var(--mn-badge-bg);
+        border: 1px solid var(--mn-border-strong);
+        color: var(--mn-text);
+    }
+    .master-dock-actions {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+    .master-util-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 5px 11px;
+        border-radius: 999px;
+        border: 1px solid var(--mn-border-strong);
+        background: var(--mn-surface);
+        color: var(--mn-text);
+        font-size: 0.76rem;
+        font-weight: 600;
+        font-family: inherit;
+        text-decoration: none;
+        cursor: pointer;
+        line-height: 1.3;
+        white-space: nowrap;
+        transition: background-color 0.15s ease, border-color 0.15s ease;
+    }
+    .master-util-btn:hover {
+        background: var(--mn-surface-2);
+    }
+    .master-util-btn.primary {
+        background: var(--mn-active-bg);
+        border-color: var(--mn-active-bg);
+        color: var(--mn-active-ink);
+        font-weight: 700;
+    }
+    .master-util-btn.primary:hover {
+        opacity: 0.9;
+    }
+    .master-global-tabs {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        max-width: 100%;
+        padding-bottom: 1px;
+    }
+    .master-global-tabs::-webkit-scrollbar {
+        display: none;
+    }
+    .master-tab-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 6px 12px;
+        border-radius: 999px;
+        border: 1px solid transparent;
+        background: transparent;
+        color: var(--mn-sub);
+        text-decoration: none;
+        font-size: 0.8rem;
+        font-weight: 600;
+        white-space: nowrap;
+        flex-shrink: 0;
+        transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    }
+    .master-tab-link:hover {
+        background: var(--mn-surface-2);
+        color: var(--mn-text);
+    }
+    .master-tab-link.active {
+        background: var(--mn-active-bg);
+        border-color: var(--mn-active-bg);
+        color: var(--mn-active-ink);
+        font-weight: 700;
+    }
+    .master-section-jumpbar {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        max-width: 100%;
+        margin-bottom: 16px;
+        padding: 2px 0;
+    }
+    .master-section-jumpbar::-webkit-scrollbar {
+        display: none;
+    }
+    .master-jump-label {
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: var(--mn-sub);
+        white-space: nowrap;
+        flex-shrink: 0;
+        margin-right: 2px;
+    }
+    .master-jump-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 5px 11px;
+        border-radius: 999px;
+        border: 1px solid var(--mn-border-strong);
+        background: var(--mn-surface);
+        color: var(--mn-text);
+        text-decoration: none;
+        font-size: 0.75rem;
+        font-weight: 600;
+        white-space: nowrap;
+        flex-shrink: 0;
+        transition: background-color 0.15s ease;
+    }
+    .master-jump-chip:hover {
+        background: var(--mn-surface-2);
+    }
+    @media (max-width: 640px) {
+        .master-global-dock {
+            position: static;
+            padding: 9px 11px;
+            border-radius: 14px;
+        }
+        .master-dock-top {
+            gap: 8px;
+        }
+        .master-util-btn {
+            padding: 5px 9px;
+            font-size: 0.73rem;
+        }
+        .master-tab-link {
+            padding: 6px 10px;
+            font-size: 0.77rem;
+        }
+    }
+</style>
+<header class="master-global-dock" role="navigation" aria-label="マスター管理ナビゲーション">
+    <div class="master-dock-top">
+        <a href="/staff" class="master-brand-link">
+            <span>相席ナビ</span>
+            <span class="master-brand-badge">MASTER</span>
+        </a>
+        <div class="master-dock-actions top-links">
+            {% if master_active_tab == 'analytics' %}
+            <a class="master-util-btn primary" href="/staff/analytics?days={{ days }}&flush=1">最新カウント反映</a>
+            <a class="master-util-btn" href="/staff/analytics?days={{ days }}&format=json">JSON</a>
+            {% elif master_active_tab == 'pdca' %}
+            <a class="master-util-btn" href="/staff/pdca?days={{ days }}&format=json">JSON出力</a>
+            {% elif master_active_tab == 'column' %}
+            <a class="master-util-btn" href="/columns" target="_blank" rel="noopener">公開コラム一覧 ↗</a>
+            {% elif master_active_tab == 'sns' and channel == 'instagram' %}
+            <a class="master-util-btn" href="/staff/sns-kit">週末画像キット ↗</a>
+            {% endif %}
+            <a class="master-util-btn" href="/" target="_blank" rel="noopener">公開サイト ↗</a>
+            <button type="button" class="master-util-btn" onclick="toggleStaffTheme()" id="staff-theme-toggle-btn">ライト / ダーク</button>
+        </div>
+    </div>
+    <nav class="master-global-tabs" aria-label="管理画面の切り替え">
+        <a href="/staff" class="master-tab-link{% if master_active_tab == 'monitor' %} active{% endif %}">店舗モニター</a>
+        <a href="/staff/analytics" class="master-tab-link{% if master_active_tab == 'analytics' %} active{% endif %}">アクセス・収益・広告</a>
+        <a href="/staff/pdca" class="master-tab-link{% if master_active_tab == 'pdca' %} active{% endif %}">PDCA参謀</a>
+        <a href="/staff/sns-editorial" class="master-tab-link{% if master_active_tab == 'sns' %} active{% endif %}">SNS編集部</a>
+        <a href="/staff/column-editorial" class="master-tab-link{% if master_active_tab == 'column' %} active{% endif %}">コラム・note編集部</a>
+        <a href="/staff/sns-kit" class="master-tab-link{% if master_active_tab == 'sns_kit' %} active{% endif %}">週末画像キット</a>
+    </nav>
+</header>

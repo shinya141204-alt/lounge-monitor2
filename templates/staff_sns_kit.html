@@ -7,52 +7,52 @@
     <title>Instagram・Threads用「週末予報画像」自動生成キット（スタッフ専用）｜相席ナビ</title>
     <style>
         :root {
-            --bg: #0f1014;
-            --surface: #16171c;
-            --surface-2: #1d1f26;
-            --input-bg: #0b0c0f;
+            --bg: #111113;
+            --surface: #18181b;
+            --surface-2: #232329;
+            --input-bg: #111113;
             --border: rgba(255, 255, 255, 0.08);
             --border-strong: rgba(255, 255, 255, 0.16);
-            --text: #f1efe9;
-            --sub: #c2bdb3;
-            --gold: #c8a46e;
-            --gold-soft: rgba(200, 164, 110, 0.15);
-            --gold-border: rgba(200, 164, 110, 0.45);
-            --gold-ink: #f5e6cc;
-            --btn-primary-ink: #0f1014;
-            --rose: #d8a1aa;
-            --blue: #93b1c9;
-            --blue-soft: rgba(147, 177, 201, 0.16);
-            --blue-border: rgba(147, 177, 201, 0.42);
-            --blue-ink: #cde2f5;
-            --green: #7bc49f;
-            --toast-ink: #0f1014;
-            --amber: #d9b36c;
-            --red: #f87171;
+            --text: #f4f4f5;
+            --sub: #c4c4cc;
+            --gold: #f4f4f5;
+            --gold-soft: rgba(244, 244, 245, 0.09);
+            --gold-border: rgba(244, 244, 245, 0.28);
+            --gold-ink: #f4f4f5;
+            --btn-primary-ink: #111113;
+            --rose: #f48fb1;
+            --blue: #7dd3fc;
+            --blue-soft: rgba(125, 211, 252, 0.14);
+            --blue-border: rgba(125, 211, 252, 0.36);
+            --blue-ink: #e0f2fe;
+            --green: #6ee7b7;
+            --toast-ink: #111113;
+            --amber: #fcd34d;
+            --red: #fca5a5;
         }
         body.theme-light {
-            --bg: #f4f2ed;
-            --surface: #faf9f6;
-            --surface-2: #edeae3;
+            --bg: #f6f6f7;
+            --surface: #ffffff;
+            --surface-2: #ededf0;
             --input-bg: #ffffff;
-            --border: rgba(28, 27, 24, 0.12);
-            --border-strong: rgba(28, 27, 24, 0.22);
-            --text: #1f1e1b;
-            --sub: #4d4840;
-            --gold: #6b4d1d;
-            --gold-soft: rgba(125, 91, 36, 0.12);
-            --gold-border: rgba(125, 91, 36, 0.38);
-            --gold-ink: #664919;
+            --border: rgba(24, 24, 27, 0.10);
+            --border-strong: rgba(24, 24, 27, 0.20);
+            --text: #18181b;
+            --sub: #3f3f46;
+            --gold: #18181b;
+            --gold-soft: rgba(24, 24, 27, 0.06);
+            --gold-border: rgba(24, 24, 27, 0.24);
+            --gold-ink: #18181b;
             --btn-primary-ink: #ffffff;
-            --rose: #8c3343;
-            --blue: #2c5270;
-            --blue-soft: rgba(61, 98, 130, 0.11);
-            --blue-border: rgba(61, 98, 130, 0.38);
-            --blue-ink: #2b4d6b;
-            --green: #17593b;
+            --rose: #831843;
+            --blue: #075985;
+            --blue-soft: rgba(3, 105, 161, 0.09);
+            --blue-border: rgba(3, 105, 161, 0.32);
+            --blue-ink: #0c4a6e;
+            --green: #064e3b;
             --toast-ink: #ffffff;
-            --amber: #75450c;
-            --red: #8f2424;
+            --amber: #78350f;
+            --red: #991b1b;
         }
         * { box-sizing: border-box; }
         html, body {
@@ -67,48 +67,16 @@
             line-height: 1.6;
         }
         .wrap {
-            max-width: 1180px;
+            max-width: 1160px;
             margin: 0 auto;
-            padding: 20px 16px 80px;
-        }
-        .top-bar {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-bottom: 18px;
-        }
-        .top-links {
-            display: flex;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-        .back-btn, .pill-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            color: var(--text);
-            text-decoration: none;
-            font-size: 0.84rem;
-            font-weight: 700;
-            padding: 8px 15px;
-            border-radius: 999px;
-            background: var(--surface);
-            border: 1px solid var(--border-strong);
-            cursor: pointer;
-            font-family: inherit;
-        }
-        .back-btn:hover, .pill-btn:hover {
-            border-color: var(--gold);
+            padding: 16px 16px 80px;
         }
         .hero-box {
-            background: linear-gradient(135deg, var(--gold-soft), var(--surface));
-            border: 1px solid var(--gold-border);
-            border-radius: 18px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
             padding: 20px 22px;
-            margin-bottom: 24px;
+            margin-bottom: 22px;
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -309,18 +277,14 @@
         }
     </script>
     <div class="wrap">
-        <div class="top-bar">
-            <a href="/staff" class="back-btn">← 社内業務モニターへ戻る</a>
-            <div class="top-links">
-                <span style="font-size:0.8rem; color:var(--sub);">対象週末：{{ ctx.weekend_label }} ｜ 集計時刻：{{ ctx.generated_at }}</span>
-                <button type="button" class="pill-btn" onclick="toggleStaffTheme()" id="staff-theme-toggle-btn">☀️/🌙 表示切替</button>
-            </div>
-        </div>
+        {% set master_active_tab = 'sns_kit' %}
+        {% include '_master_nav.html' %}
 
         <div class="hero-box">
             <div>
-                <h1>📸 Instagram / Threads「週末狙い目予報」ワンクリック生成</h1>
-                <p>蓄積データベースから最新の<strong>4:5縦長カルーセル画像（1080×1350px・全5枚）</strong>と投稿文を自動生成しました。<br>スマホの場合は画像を長押しで「写真に保存」、PCの場合はZIP一括ダウンロード、またはAPI設定済みなら「今すぐ自動投稿」が可能です。</p>
+                <h1>Instagram / Threads「週末狙い目予報」画像キット</h1>
+                <p style="margin-bottom:6px; font-size:0.78rem; color:var(--sub);">対象週末：{{ ctx.weekend_label }} ｜ 集計時刻：{{ ctx.generated_at }}</p>
+                <p>蓄積データベースから最新の<strong>4:5縦長カルーセル画像（1080×1350px・全5枚）</strong>と投稿文を自動生成しました。<br>スマホは画像を長押し保存、PCはZIP一括ダウンロード、またはAPI設定済みなら即時投稿が可能です。</p>
             </div>
             <div style="display:flex; flex-wrap:wrap; gap:10px; max-width:100%;">
                 <button type="button" class="zip-btn" onclick="triggerDirectSnsPost('ig')">📸 Instagramへ5枚組を今すぐ投稿</button>

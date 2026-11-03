@@ -282,6 +282,7 @@ def redirect_to_custom_domain():
 _scheduler_started = False
 _scheduler_lock = threading.Lock()
 _web_boot_initialized = False
+_web_analytics_flusher_started = False
 
 
 def get_app_role() -> str:
@@ -294,6 +295,37 @@ def is_web_only_role() -> bool:
     return get_app_role() == 'web'
 
 
+def _flush_web_analytics_on_exit():
+    try:
+        import analytics
+        analytics.flush(force_sheets=True)
+    except Exception as err:
+        logging.warning(f"Web analytics exit flush warning: {err}")
+
+
+def _start_web_analytics_flusher():
+    """Start lightweight per-worker analytics flusher in APP_ROLE=web (60s Postgres sync + 10m Sheets append + atexit)."""
+    global _web_analytics_flusher_started
+    if _web_analytics_flusher_started:
+        return False
+    _web_analytics_flusher_started = True
+    atexit.register(_flush_web_analytics_on_exit)
+
+    def _web_analytics_loop():
+        tick = 0
+        while True:
+            time.sleep(60)
+            tick += 1
+            try:
+                import analytics
+                analytics.flush(force_sheets=(tick % 10 == 0))
+            except Exception as err:
+                logging.warning(f"Web analytics periodic flush warning: {err}")
+
+    threading.Thread(target=_web_analytics_loop, name="web-analytics-flusher", daemon=True).start()
+    return True
+
+
 def _ensure_scheduler_started_async():
     global _scheduler_started, _web_boot_initialized
     if is_web_only_role():
@@ -301,6 +333,8 @@ def _ensure_scheduler_started_async():
             with _scheduler_lock:
                 if not _web_boot_initialized:
                     _web_boot_initialized = True
+                    if os.environ.get('DISABLE_SCHEDULER') != '1':
+                        _start_web_analytics_flusher()
                     def _init_web_only():
                         try:
                             local_db.init_db()
@@ -1959,10 +1993,10 @@ def staff_analytics():
     flushed_rows = 0
     if force_flush:
         try:
-            flushed_rows = analytics.flush()
+            flushed_rows = analytics.flush(force_sheets=True)
         except Exception:
             pass
-    data = analytics.summary(days=days, allow_blocking=(is_json_req or force_flush))
+    data = analytics.summary(days=days, allow_blocking=True)
     if is_json_req:
         return jsonify(data)
     aff_status = affiliate_manager.get_affiliate_slots_status(analytics_data=data, allow_blocking=False)

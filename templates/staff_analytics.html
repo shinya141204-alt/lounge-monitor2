@@ -7,76 +7,83 @@
     <title>アクセス集計ダッシュボード（スタッフ専用）｜相席ナビ</title>
     <style>
         :root {
-            --bg: #0f1014;
-            --surface: #16171c;
-            --surface-2: #1d1f26;
-            --card-inner: #0f1014;
-            --input-bg: #16171c;
+            --bg: #111113;
+            --surface: #18181b;
+            --surface-2: #232329;
+            --card-inner: #131316;
+            --input-bg: #111113;
             --chip-bg: rgba(255, 255, 255, 0.06);
             --track-bg: rgba(255, 255, 255, 0.06);
             --border: rgba(255, 255, 255, 0.08);
-            --border-strong: rgba(255, 255, 255, 0.15);
-            --text: #f1efe9;
-            --sub: #c2bdb3;
-            --gold: #c8a46e;
-            --gold-soft: rgba(200, 164, 110, 0.15);
-            --gold-border: rgba(200, 164, 110, 0.45);
-            --gold-ink: #f5e6cc;
-            --rose: #d8a1aa;
-            --rose-soft: rgba(216, 161, 170, 0.16);
-            --rose-border: rgba(216, 161, 170, 0.42);
-            --rose-ink: #f6dce2;
-            --blue: #93b1c9;
-            --blue-soft: rgba(147, 177, 201, 0.16);
-            --blue-border: rgba(147, 177, 201, 0.38);
-            --blue-ink: #cde2f5;
-            --green: #7bc49f;
-            --green-soft: rgba(123, 196, 159, 0.16);
-            --green-border: rgba(123, 196, 159, 0.40);
-            --green-ink: #d3f3e2;
-            --amber: #f59e0b;
-            --amber-soft: rgba(245, 158, 11, 0.14);
-            --amber-border: rgba(245, 158, 11, 0.45);
-            --amber-ink: #fde68a;
-            --red: #f87171;
-            --err-ink: #fca5a5;
+            --border-strong: rgba(255, 255, 255, 0.16);
+            --text: #f4f4f5;
+            --sub: #c4c4cc;
+            --gold: #f4f4f5;
+            --gold-soft: rgba(244, 244, 245, 0.09);
+            --gold-border: rgba(244, 244, 245, 0.28);
+            --gold-ink: #f4f4f5;
+            --active-bg: #f4f4f5;
+            --active-ink: #111113;
+            --rose: #f48fb1;
+            --rose-soft: rgba(244, 143, 177, 0.14);
+            --rose-border: rgba(244, 143, 177, 0.38);
+            --rose-ink: #fce4ec;
+            --blue: #7dd3fc;
+            --blue-soft: rgba(125, 211, 252, 0.14);
+            --blue-border: rgba(125, 211, 252, 0.36);
+            --blue-ink: #e0f2fe;
+            --green: #6ee7b7;
+            --green-soft: rgba(110, 231, 183, 0.14);
+            --green-border: rgba(110, 231, 183, 0.38);
+            --green-ink: #d1fae5;
+            --amber: #fcd34d;
+            --amber-soft: rgba(252, 211, 77, 0.14);
+            --amber-border: rgba(252, 211, 77, 0.42);
+            --amber-ink: #fef3c7;
+            --red: #fca5a5;
+            --err-ink: #fecaca;
         }
         body.theme-light {
-            --bg: #f4f2ed;
-            --surface: #faf9f6;
-            --surface-2: #edeae3;
-            --card-inner: #ffffff;
+            --bg: #f6f6f7;
+            --surface: #ffffff;
+            --surface-2: #ededf0;
+            --card-inner: #f8f8fa;
             --input-bg: #ffffff;
-            --chip-bg: rgba(28, 27, 24, 0.06);
-            --track-bg: rgba(28, 27, 24, 0.08);
-            --border: rgba(28, 27, 24, 0.12);
-            --border-strong: rgba(28, 27, 24, 0.22);
-            --text: #1f1e1b;
-            --sub: #4d4840;
-            --gold: #6b4d1d;
-            --gold-soft: rgba(125, 91, 36, 0.12);
-            --gold-border: rgba(125, 91, 36, 0.38);
-            --gold-ink: #664919;
-            --rose: #8c3343;
-            --rose-soft: rgba(168, 72, 88, 0.11);
-            --rose-border: rgba(168, 72, 88, 0.35);
-            --rose-ink: #8c3343;
-            --blue: #2c5270;
-            --blue-soft: rgba(61, 98, 130, 0.11);
-            --blue-border: rgba(61, 98, 130, 0.35);
-            --blue-ink: #2b4d6b;
-            --green: #17593b;
-            --green-soft: rgba(30, 107, 71, 0.11);
-            --green-border: rgba(30, 107, 71, 0.35);
-            --green-ink: #17593a;
-            --amber: #75450c;
-            --amber-soft: rgba(143, 88, 20, 0.11);
-            --amber-border: rgba(143, 88, 20, 0.38);
-            --amber-ink: #75450c;
-            --red: #8f2424;
-            --err-ink: #8f2424;
+            --chip-bg: rgba(24, 24, 27, 0.06);
+            --track-bg: rgba(24, 24, 27, 0.07);
+            --border: rgba(24, 24, 27, 0.10);
+            --border-strong: rgba(24, 24, 27, 0.20);
+            --text: #18181b;
+            --sub: #3f3f46;
+            --gold: #18181b;
+            --gold-soft: rgba(24, 24, 27, 0.06);
+            --gold-border: rgba(24, 24, 27, 0.24);
+            --gold-ink: #18181b;
+            --active-bg: #18181b;
+            --active-ink: #ffffff;
+            --rose: #831843;
+            --rose-soft: rgba(157, 23, 77, 0.09);
+            --rose-border: rgba(157, 23, 77, 0.32);
+            --rose-ink: #831843;
+            --blue: #075985;
+            --blue-soft: rgba(3, 105, 161, 0.09);
+            --blue-border: rgba(3, 105, 161, 0.32);
+            --blue-ink: #0c4a6e;
+            --green: #064e3b;
+            --green-soft: rgba(6, 95, 70, 0.09);
+            --green-border: rgba(6, 95, 70, 0.32);
+            --green-ink: #064e3b;
+            --amber: #78350f;
+            --amber-soft: rgba(146, 64, 14, 0.10);
+            --amber-border: rgba(146, 64, 14, 0.34);
+            --amber-ink: #78350f;
+            --red: #991b1b;
+            --err-ink: #7f1d1d;
         }
         * { box-sizing: border-box; }
+        html {
+            scroll-behavior: smooth;
+        }
         html, body {
             overflow-x: hidden;
             max-width: 100%;
@@ -89,18 +96,12 @@
             line-height: 1.55;
         }
         .wrap {
-            max-width: 1120px;
+            max-width: 1160px;
             margin: 0 auto;
-            padding: 20px 16px 70px;
+            padding: 16px 16px 76px;
         }
-        /* Top Bar */
-        .top-nav {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-bottom: 14px;
+        [id] {
+            scroll-margin-top: 96px;
         }
         a.back-btn, button.back-btn, .pill-btn {
             display: inline-flex;
@@ -108,7 +109,7 @@
             gap: 6px;
             color: var(--text);
             text-decoration: none;
-            font-size: 0.84rem;
+            font-size: 0.82rem;
             font-weight: 600;
             padding: 7px 14px;
             border-radius: 999px;
@@ -117,36 +118,16 @@
             cursor: pointer;
             font-family: inherit;
         }
-        a.back-btn:hover, button.back-btn:hover, .pill-btn:hover { border-color: var(--gold); }
-        .top-actions, .top-links {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-        .flush-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            color: var(--gold-ink);
-            text-decoration: none;
-            font-size: 0.8rem;
-            font-weight: 700;
-            padding: 7px 13px;
-            border-radius: 999px;
-            background: var(--surface-2);
-            border: 1px solid var(--gold-border);
-        }
-        .flush-btn:hover { background: var(--gold-soft); }
+        a.back-btn:hover, button.back-btn:hover, .pill-btn:hover { background: var(--surface-2); }
 
         .toast-notice {
             margin-bottom: 14px;
             padding: 10px 14px;
-            border-radius: 10px;
+            border-radius: 12px;
             background: var(--green-soft);
             border: 1px solid var(--green-border);
             color: var(--green-ink);
-            font-size: 0.83rem;
+            font-size: 0.82rem;
             font-weight: 600;
         }
 
@@ -154,9 +135,9 @@
         .header-card {
             background: var(--surface);
             border: 1px solid var(--border);
-            border-radius: 14px;
+            border-radius: 16px;
             padding: 18px 20px;
-            margin-bottom: 18px;
+            margin-bottom: 12px;
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -164,9 +145,10 @@
             gap: 14px;
         }
         .header-title h1 {
-            font-size: 1.28rem;
+            font-size: 1.24rem;
+            font-weight: 800;
             margin: 0 0 4px;
-            letter-spacing: 0.02em;
+            letter-spacing: -0.01em;
         }
         .header-title .sub {
             color: var(--sub);
@@ -174,25 +156,31 @@
             margin: 0;
         }
         .range-tabs {
-            display: flex;
+            display: inline-flex;
             align-items: center;
-            gap: 6px;
+            gap: 4px;
             flex-wrap: wrap;
+            padding: 4px;
+            border-radius: 999px;
+            background: var(--card-inner);
+            border: 1px solid var(--border);
         }
         .range-tabs a {
             color: var(--sub);
             text-decoration: none;
             padding: 6px 13px;
-            border: 1px solid var(--border-strong);
             border-radius: 999px;
-            font-size: 0.8rem;
-            font-weight: 700;
-            background: var(--input-bg);
+            font-size: 0.78rem;
+            font-weight: 600;
+            transition: background-color 0.15s ease, color 0.15s ease;
+        }
+        .range-tabs a:hover {
+            color: var(--text);
         }
         .range-tabs a.active {
-            background: var(--gold-soft);
-            border-color: var(--gold);
-            color: var(--gold-ink);
+            background: var(--active-bg);
+            color: var(--active-ink);
+            font-weight: 700;
         }
 
         /* Funnel + Revenue Overview Row */
@@ -389,51 +377,153 @@
         .bar-fill.blue { background: var(--blue); }
         .bar-fill.green { background: var(--green); }
 
-        /* Daily Visual Chart */
+        /* Daily Visual Chart (Fixed-Height Track for Exact Proportional Pixel Bars) */
+        .daily-summary-pills {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .daily-stat-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: var(--card-inner);
+            border: 1px solid var(--border);
+            font-size: 0.73rem;
+            color: var(--sub);
+            font-variant-numeric: tabular-nums;
+        }
+        .daily-stat-pill strong {
+            color: var(--text);
+            font-weight: 700;
+        }
         .daily-chart-bars {
             display: flex;
             align-items: flex-end;
             gap: 8px;
-            height: 130px;
-            padding: 16px 8px 6px;
+            padding: 14px 8px 8px;
             border-bottom: 1px solid var(--border);
             margin-bottom: 14px;
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
         }
         .day-col {
-            flex: 1;
-            min-width: 42px;
+            flex: 1 0 46px;
+            min-width: 46px;
             display: flex;
             flex-direction: column;
             align-items: center;
-            height: 100%;
-            justify-content: flex-end;
+        }
+        .daily-chart-bars.is-dense {
+            gap: 5px;
+        }
+        .daily-chart-bars.is-dense .day-col {
+            flex: 1 0 32px;
+            min-width: 32px;
         }
         .day-col-val {
-            font-size: 0.68rem;
-            color: var(--sub);
+            font-size: 0.69rem;
+            font-weight: 700;
+            color: var(--text);
             font-variant-numeric: tabular-nums;
-            margin-bottom: 4px;
+            line-height: 1.2;
+            margin-bottom: 6px;
+        }
+        .day-col.is-zero .day-col-val {
+            color: var(--sub);
+            font-weight: 500;
+        }
+        .day-col-track {
+            width: 100%;
+            height: 96px;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            position: relative;
+        }
+        .day-col-track::before {
+            content: "";
+            position: absolute;
+            width: 24px;
+            max-width: 76%;
+            inset: 0 auto 0 auto;
+            background: var(--track-bg);
+            border-radius: 6px 6px 2px 2px;
+            opacity: 0.55;
+            pointer-events: none;
+        }
+        .daily-chart-bars.is-dense .day-col-track::before {
+            width: 15px;
         }
         .day-col-bar {
+            position: relative;
+            z-index: 1;
             width: 24px;
+            max-width: 76%;
             background: var(--blue);
-            border-radius: 5px 5px 0 0;
-            min-height: 4px;
+            border-radius: 6px 6px 2px 2px;
+            transition: height 0.2s ease;
         }
-        .day-col.is-today .day-col-bar {
-            background: var(--gold);
+        .daily-chart-bars.is-dense .day-col-bar {
+            width: 15px;
+        }
+        .day-col.is-fri-sat:not(.is-zero) .day-col-bar {
+            background: var(--rose);
+        }
+        .day-col.is-today:not(.is-zero) .day-col-bar {
+            background: var(--active-bg);
+        }
+        .day-col.is-zero .day-col-bar {
+            height: 2px !important;
+            background: var(--border-strong);
+            border-radius: 999px;
         }
         .day-col-date {
-            font-size: 0.7rem;
+            font-size: 0.69rem;
             color: var(--sub);
-            margin-top: 6px;
+            margin-top: 7px;
             white-space: nowrap;
+            text-align: center;
+            line-height: 1.25;
+            font-variant-numeric: tabular-nums;
         }
-        .day-col.is-today .day-col-date {
-            color: var(--gold);
+        .day-col-wd {
+            display: block;
+            font-size: 0.63rem;
+            color: var(--sub);
+        }
+        .day-col.is-fri-sat .day-col-wd {
+            color: var(--rose);
+            font-weight: 700;
+        }
+        .day-col.is-today .day-col-date,
+        .day-col.is-today .day-col-wd {
+            color: var(--text);
             font-weight: 800;
+        }
+        .wd-badge {
+            display: inline-block;
+            font-size: 0.68rem;
+            font-weight: 700;
+            padding: 1px 6px;
+            border-radius: 5px;
+            margin-left: 5px;
+            background: var(--chip-bg);
+            color: var(--sub);
+        }
+        .wd-badge.fri-sat {
+            background: var(--rose-soft);
+            color: var(--rose-ink);
+            border: 1px solid var(--rose-border);
+        }
+        .daily-table tfoot td {
+            background: var(--card-inner);
+            font-weight: 700;
+            border-top: 1px solid var(--border-strong);
+            border-bottom: none;
         }
 
         /* Daily Table */
@@ -733,28 +823,21 @@
     }
 </script>
 <div class="wrap">
-    <div class="top-nav">
-        <a class="back-btn" href="/staff">← 社内業務モニターへ戻る</a>
-        <div class="top-actions top-links">
-            <a class="flush-btn" href="/staff/pdca">🧭 自律PDCA作戦参謀ボードへ →</a>
-            <a class="flush-btn" href="/staff/analytics?days={{ days }}&flush=1">🔄 いまの最新カウントを即時集計</a>
-            <a class="back-btn" href="/staff/analytics?days={{ days }}&format=json" style="font-size:0.75rem;">JSON出力</a>
-            <button type="button" class="pill-btn" onclick="toggleStaffTheme()" id="staff-theme-toggle-btn">☀️/🌙 表示切替</button>
-        </div>
-    </div>
+    {% set master_active_tab = 'analytics' %}
+    {% include '_master_nav.html' %}
 
     {% if flushed %}
     <div class="toast-notice">
-        ✅ メモリ内の最新アクセスデータを Google Sheets へ保存し、最新の数値に更新しました。
+        メモリ内の最新アクセスデータを PostgreSQL と Google Sheets へ保存し、最新の数値に更新しました。
     </div>
     {% endif %}
 
     <div class="header-card">
         <div class="header-title">
-            <h1>📊 相席ナビ アクセス＆収益アクション集計</h1>
-            <p class="sub">対象期間：直近{{ days }}日間（{{ data.since }} 〜 {{ data.today }}）｜ボット・検索クローラーを除外した純粋なユーザー行動</p>
+            <h1>アクセス＆収益アクション集計</h1>
+            <p class="sub">対象期間：直近{{ days }}日間（{{ data.since }} 〜 {{ data.today }}）｜ボット・検索クローラー・社内閲覧を除外した純粋なユーザー行動</p>
         </div>
-        <div class="range-tabs">
+        <div class="range-tabs" role="group" aria-label="集計期間の切り替え">
             <a href="?days=1" class="{% if days == 1 %}active{% endif %}">今日 (1日)</a>
             <a href="?days=7" class="{% if days == 7 %}active{% endif %}">直近7日</a>
             <a href="?days=30" class="{% if days == 30 %}active{% endif %}">直近30日</a>
@@ -762,11 +845,27 @@
         </div>
     </div>
 
+    <nav class="master-section-jumpbar" aria-label="ページ内セクション移動">
+        <span class="master-jump-label">セクション移動</span>
+        <a href="#sec-overview" class="master-jump-chip">概要・ファネル</a>
+        <a href="#sec-daily" class="master-jump-chip">日別アクセス推移</a>
+        <a href="#sec-breakdown" class="master-jump-chip">人気ページ・店舗・送客</a>
+        {% if aff_status %}
+        <a href="#affiliate-slot-manager" class="master-jump-chip">アフィリエイト全{{ aff_status.slots|length }}枠管理</a>
+        {% endif %}
+        {% if retention_status %}
+        <a href="#sheets-retention-manager" class="master-jump-chip">Sheets容量ガード</a>
+        {% endif %}
+        {% if forecast_accuracy %}
+        <a href="#forecast-accuracy-audit" class="master-jump-chip">60分後予測AI精度</a>
+        {% endif %}
+    </nav>
+
     {% set f = data.funnel %}
     {% set rev = data.revenue %}
 
     <!-- 3-Step Funnel + Estimated Revenue Overview -->
-    <div class="overview-grid">
+    <div class="overview-grid" id="sec-overview">
         <div class="funnel-card">
             <span class="step-badge step-1">STEP 1｜サイトの集客力</span>
             <div class="funnel-label">👀 総ページ閲覧数（PV）</div>
@@ -838,20 +937,33 @@
     </div>
 
     <!-- Daily Trend Chart & Table -->
-    <div class="panel" style="margin-bottom: 22px;">
+    {% set peak_day = (data.daily_series | sort(attribute='pv', reverse=true) | first) if data.daily_series else none %}
+    {% set avg_daily_pv = ((f.pv_total / (data.daily_series | length)) | round(1)) if data.daily_series else 0 %}
+    <div class="panel" id="sec-daily" style="margin-bottom: 22px;">
         <h2>
-            <span>📅 日別アクセス・アクション推移</span>
-            <span style="font-size: 0.75rem; color: var(--sub); font-weight: 500;">棒グラフ＝1日あたりのページ閲覧数(PV)</span>
+            <span>日別アクセス・アクション推移（連続{{ data.daily_series | length }}日間）</span>
+            <div class="daily-summary-pills">
+                <span class="daily-stat-pill">期間合計 <strong>{{ "{:,}".format(f.pv_total) }} PV</strong></span>
+                <span class="daily-stat-pill">1日平均 <strong>{{ avg_daily_pv }} PV</strong></span>
+                {% if peak_day and peak_day.pv > 0 %}
+                <span class="daily-stat-pill">ピーク <strong>{{ peak_day.short_date }}({{ peak_day.weekday_ja }}) {{ "{:,}".format(peak_day.pv) }} PV</strong></span>
+                {% endif %}
+            </div>
         </h2>
-        <p class="panel-sub">週末（金・土）やSNS・note投稿日のアクセス増加がひと目でわかります。</p>
+        <p class="panel-sub">記録0件の日も含めた連続カレンダー表示。ピーク曜日（金・土）はローズ、本日はソリッド強調で描画されます。</p>
 
         {% if data.daily_series %}
-        <div class="daily-chart-bars">
+        <div class="daily-chart-bars{% if data.daily_series | length > 14 %} is-dense{% endif %}">
             {% for d in data.daily_series %}
-            <div class="day-col {% if d.is_today %}is-today{% endif %}">
+            <div class="day-col{% if d.is_today %} is-today{% endif %}{% if d.is_fri_sat %} is-fri-sat{% endif %}{% if d.pv == 0 %} is-zero{% endif %}" data-date="{{ d.date }}" data-pv="{{ d.pv }}">
                 <span class="day-col-val">{{ d.pv }}</span>
-                <div class="day-col-bar" style="height: {{ d.pv_bar_pct }}%;" title="{{ d.date }}: {{ d.pv }} PV"></div>
-                <span class="day-col-date">{{ d.short_date }}{% if d.is_today %}(今日){% endif %}</span>
+                <div class="day-col-track">
+                    <div class="day-col-bar" style="height: {{ d.pv_bar_pct }}%;" title="{{ d.date }}（{{ d.weekday_ja }}）: {{ d.pv }} PV"></div>
+                </div>
+                <span class="day-col-date">
+                    {{ d.short_date }}
+                    <span class="day-col-wd">{% if d.is_today %}今日{% else %}{{ d.weekday_ja }}{% endif %}</span>
+                </span>
             </div>
             {% endfor %}
         </div>
@@ -861,11 +973,11 @@
             <thead>
                 <tr>
                     <th>日付</th>
-                    <th class="n">👀 ページ閲覧(PV)</th>
-                    <th class="n">🏪 店舗グラフ表示</th>
-                    <th class="n">💰 広告クリック</th>
-                    <th class="n">🍸 2軒目マップ</th>
-                    <th class="n">📣 SNS・公式・共有</th>
+                    <th class="n">ページ閲覧 (PV)</th>
+                    <th class="n">店舗グラフ表示</th>
+                    <th class="n">広告クリック</th>
+                    <th class="n">2軒目マップ</th>
+                    <th class="n">SNS・公式・共有</th>
                 </tr>
             </thead>
             <tbody>
@@ -873,16 +985,29 @@
                 <tr>
                     <td>
                         <strong>{{ d.date }}</strong>
-                        {% if d.is_today %}<span class="day-tag">今日</span>{% elif d.is_yesterday %}<span class="day-tag" style="background:var(--surface-2); color:var(--sub); border-color:var(--border-strong);">昨日</span>{% endif %}
+                        {% if d.weekday_ja %}
+                        <span class="wd-badge{% if d.is_fri_sat %} fri-sat{% endif %}">{{ d.weekday_ja }}</span>
+                        {% endif %}
+                        {% if d.is_today %}<span class="day-tag">今日</span>{% elif d.is_yesterday %}<span class="day-tag" style="background:var(--surface-2); color:var(--sub); border:1px solid var(--border-strong);">昨日</span>{% endif %}
                     </td>
-                    <td class="n"><strong>{{ d.pv }}</strong></td>
-                    <td class="n">{{ d.store_open }}</td>
-                    <td class="n" style="color: var(--gold); font-weight: 700;">{{ d.affiliate }}</td>
-                    <td class="n">{{ d.map }}</td>
-                    <td class="n">{{ d.sns_official }}</td>
+                    <td class="n"><strong>{{ "{:,}".format(d.pv) }}</strong></td>
+                    <td class="n">{{ "{:,}".format(d.store_open) }}</td>
+                    <td class="n" style="color: var(--gold); font-weight: 700;">{{ "{:,}".format(d.affiliate) }}</td>
+                    <td class="n">{{ "{:,}".format(d.map) }}</td>
+                    <td class="n">{{ "{:,}".format(d.sns_official) }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
+            <tfoot>
+                <tr>
+                    <td>直近{{ data.daily_series | length }}日間 合計（平均 {{ avg_daily_pv }} PV/日）</td>
+                    <td class="n">{{ "{:,}".format(f.pv_total) }}</td>
+                    <td class="n">{{ "{:,}".format(f.store_open_total) }}</td>
+                    <td class="n">{{ "{:,}".format(f.aff_total) }}</td>
+                    <td class="n">{{ "{:,}".format(f.map_total) }}</td>
+                    <td class="n">{{ "{:,}".format(f.official_total + f.sns_total + f.share_total) }}</td>
+                </tr>
+            </tfoot>
         </table>
         </div>
         {% else %}
@@ -891,7 +1016,7 @@
     </div>
 
     <!-- 2-Column Visual Breakdown Panels -->
-    <div class="panel-grid">
+    <div class="panel-grid" id="sec-breakdown">
         <!-- 1. Popular Pages & Articles -->
         <div class="panel">
             <h2>📄 よく読まれているページ・コラム記事</h2>

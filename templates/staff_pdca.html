@@ -8,62 +8,67 @@
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
     <style>
         :root {
-            --bg: #0f1014;
-            --surface: #16181d;
-            --surface-2: #1d2027;
-            --inner-card: #0f1014;
+            --bg: #111113;
+            --surface: #18181b;
+            --surface-2: #232329;
+            --inner-card: #131316;
             --track-bg: rgba(255, 255, 255, 0.06);
             --border: rgba(255, 255, 255, 0.08);
             --border-strong: rgba(255, 255, 255, 0.16);
-            --text: #eceef2;
-            --sub: #c2bdb3;
-            --gold: #c8a46e;
-            --gold-soft: rgba(200, 164, 110, 0.14);
-            --gold-ink: #f5e6cc;
-            --green: #7bc49f;
-            --green-soft: rgba(123, 196, 159, 0.14);
-            --green-ink: #d3f3e2;
-            --rose: #d8a1aa;
-            --rose-soft: rgba(216, 161, 170, 0.14);
-            --rose-ink: #f6d5dc;
-            --blue: #93b1c9;
-            --blue-soft: rgba(147, 177, 201, 0.14);
-            --blue-ink: #dcebf7;
-            --amber: #d9b36c;
-            --red: #f87171;
-            --purple: #c084fc;
-            --purple-soft: rgba(192, 132, 252, 0.14);
+            --text: #f4f4f5;
+            --sub: #c4c4cc;
+            --gold: #f4f4f5;
+            --gold-soft: rgba(244, 244, 245, 0.09);
+            --gold-ink: #f4f4f5;
+            --active-bg: #f4f4f5;
+            --active-ink: #111113;
+            --green: #6ee7b7;
+            --green-soft: rgba(110, 231, 183, 0.14);
+            --green-ink: #d1fae5;
+            --rose: #f48fb1;
+            --rose-soft: rgba(244, 143, 177, 0.14);
+            --rose-ink: #fce4ec;
+            --blue: #7dd3fc;
+            --blue-soft: rgba(125, 211, 252, 0.14);
+            --blue-ink: #e0f2fe;
+            --amber: #fcd34d;
+            --red: #fca5a5;
+            --purple: #d8b4fe;
+            --purple-soft: rgba(216, 180, 254, 0.14);
             --purple-ink: #f3e8ff;
         }
         body.theme-light {
-            --bg: #f4f2ed;
-            --surface: #faf9f6;
-            --surface-2: #edeae3;
-            --inner-card: #ffffff;
-            --track-bg: rgba(28, 27, 24, 0.09);
-            --border: rgba(28, 27, 24, 0.12);
-            --border-strong: rgba(28, 27, 24, 0.22);
-            --text: #1f1e1b;
-            --sub: #4d4840;
-            --gold: #6b4d1d;
-            --gold-soft: rgba(125, 91, 36, 0.12);
-            --gold-ink: #664919;
-            --green: #17593b;
-            --green-soft: rgba(30, 107, 71, 0.11);
-            --green-ink: #17593a;
-            --rose: #8c3343;
-            --rose-soft: rgba(168, 72, 88, 0.11);
-            --rose-ink: #8c3343;
-            --blue: #2c5270;
-            --blue-soft: rgba(61, 98, 130, 0.11);
-            --blue-ink: #2b4d6b;
-            --amber: #75450c;
-            --red: #8f2424;
-            --purple: #6b3fa0;
-            --purple-soft: rgba(107, 63, 160, 0.10);
-            --purple-ink: #532d82;
+            --bg: #f6f6f7;
+            --surface: #ffffff;
+            --surface-2: #ededf0;
+            --inner-card: #f8f8fa;
+            --track-bg: rgba(24, 24, 27, 0.08);
+            --border: rgba(24, 24, 27, 0.10);
+            --border-strong: rgba(24, 24, 27, 0.20);
+            --text: #18181b;
+            --sub: #3f3f46;
+            --gold: #18181b;
+            --gold-soft: rgba(24, 24, 27, 0.06);
+            --gold-ink: #18181b;
+            --active-bg: #18181b;
+            --active-ink: #ffffff;
+            --green: #064e3b;
+            --green-soft: rgba(6, 95, 70, 0.09);
+            --green-ink: #064e3b;
+            --rose: #831843;
+            --rose-soft: rgba(157, 23, 77, 0.09);
+            --rose-ink: #831843;
+            --blue: #075985;
+            --blue-soft: rgba(3, 105, 161, 0.09);
+            --blue-ink: #0c4a6e;
+            --amber: #78350f;
+            --red: #991b1b;
+            --purple: #581c87;
+            --purple-soft: rgba(107, 33, 168, 0.09);
+            --purple-ink: #4c1d95;
         }
         * { box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
         html, body {
             overflow-x: hidden;
             max-width: 100%;
@@ -76,31 +81,18 @@
             line-height: 1.62;
         }
         .wrap {
-            max-width: 1180px;
+            max-width: 1160px;
             margin: 0 auto;
-            padding: 20px 16px 68px;
+            padding: 16px 16px 68px;
         }
-        .top-nav {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-bottom: 14px;
-        }
-        .top-links {
-            display: flex;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
+        [id] { scroll-margin-top: 96px; }
         .back-btn, .pill-btn {
             display: inline-flex;
             align-items: center;
             gap: 6px;
             color: var(--text);
             text-decoration: none;
-            font-size: 0.84rem;
+            font-size: 0.82rem;
             font-weight: 600;
             padding: 7px 14px;
             border-radius: 999px;
@@ -109,18 +101,18 @@
             cursor: pointer;
             font-family: inherit;
         }
-        .back-btn:hover, .pill-btn:hover { border-color: var(--gold); }
+        .back-btn:hover, .pill-btn:hover { background: var(--surface-2); }
         .channel-bar {
             display: flex;
             align-items: center;
             justify-content: space-between;
             flex-wrap: wrap;
             gap: 10px;
-            margin-bottom: 16px;
+            margin-bottom: 14px;
             background: var(--surface);
             border: 1px solid var(--border);
             border-radius: 14px;
-            padding: 12px 16px;
+            padding: 10px 14px;
         }
         .tab-group {
             display: flex;
@@ -134,14 +126,15 @@
             padding: 6px 13px;
             border: 1px solid var(--border-strong);
             border-radius: 999px;
-            font-size: 0.8rem;
-            font-weight: 700;
-            background: var(--bg);
+            font-size: 0.78rem;
+            font-weight: 600;
+            background: var(--inner-card);
         }
         .tab-group a.active {
-            background: var(--gold-soft);
-            border-color: var(--gold);
-            color: var(--gold-ink);
+            background: var(--active-bg);
+            border-color: var(--active-bg);
+            color: var(--active-ink);
+            font-weight: 700;
         }
         .hero-grid {
             display: grid;
@@ -220,10 +213,10 @@
         .bar-fill {
             height: 100%;
             border-radius: 999px;
-            background: linear-gradient(90deg, #b89158, #dfbe89);
+            background: var(--text);
         }
         body.theme-light .bar-fill {
-            background: linear-gradient(90deg, #9a7332, #7d5b24);
+            background: var(--text);
         }
         .control-card {
             display: flex;
@@ -297,29 +290,31 @@
             cursor: pointer;
             width: 100%;
             padding: 11px 16px;
-            border-radius: 10px;
-            border: 1px solid var(--gold);
-            background: linear-gradient(135deg, rgba(200, 164, 110, 0.26), rgba(200, 164, 110, 0.12));
-            color: var(--gold-ink);
-            font-size: 0.86rem;
-            font-weight: 800;
+            border-radius: 999px;
+            border: 1px solid var(--active-bg);
+            background: var(--active-bg);
+            color: var(--active-ink);
+            font-size: 0.85rem;
+            font-weight: 700;
+            font-family: inherit;
         }
         body.theme-light .run-btn {
-            background: linear-gradient(135deg, rgba(125, 91, 36, 0.16), rgba(125, 91, 36, 0.08));
+            background: var(--active-bg);
+            color: var(--active-ink);
         }
-        .run-btn:hover { opacity: 0.92; }
+        .run-btn:hover { opacity: 0.9; }
         .run-btn:disabled { opacity: 0.55; cursor: wait; }
 
         .briefing-card {
-            background: linear-gradient(135deg, rgba(168, 85, 247, 0.11) 0%, rgba(22, 24, 29, 0.97) 68%);
-            border: 1px solid rgba(168, 85, 247, 0.36);
+            background: var(--surface);
+            border: 1px solid var(--border-strong);
             border-radius: 15px;
             padding: 16px 20px;
             margin-bottom: 18px;
         }
         body.theme-light .briefing-card {
-            background: linear-gradient(135deg, rgba(107, 63, 160, 0.08) 0%, #faf9f6 70%);
-            border-color: rgba(107, 63, 160, 0.28);
+            background: var(--surface);
+            border-color: var(--border-strong);
         }
         .briefing-head {
             display: flex;
@@ -513,15 +508,15 @@
             background: linear-gradient(135deg, rgba(125, 91, 36, 0.14), rgba(107, 63, 160, 0.12));
         }
         .growth-section {
-            background: linear-gradient(145deg, rgba(200, 164, 110, 0.09) 0%, rgba(22, 24, 29, 0.98) 65%);
-            border: 1px solid rgba(200, 164, 110, 0.36);
+            background: var(--surface);
+            border: 1px solid var(--border-strong);
             border-radius: 15px;
             padding: 18px 20px;
             margin-bottom: 18px;
         }
         body.theme-light .growth-section {
-            background: linear-gradient(145deg, rgba(125, 91, 36, 0.08) 0%, #faf9f6 70%);
-            border-color: rgba(125, 91, 36, 0.32);
+            background: var(--surface);
+            border-color: var(--border-strong);
         }
         .growth-grid {
             display: grid;
@@ -679,23 +674,12 @@
     {% set sns_eff = d.sns_channel_efficiency or (pdca.sns_channel_efficiency if pdca is defined else {}) or {} %}
     {% set growth_actions = d.weekly_growth_actions or (pdca.weekly_growth_actions if pdca is defined else []) or [] %}
     <div class="wrap">
-        <div class="top-nav">
-            <a href="/staff" class="back-btn">← マスター管理画面へ戻る</a>
-            <div class="top-links">
-                <a href="/staff/analytics?days={{ days }}" class="back-btn">📊 アクセス・収益詳細集計へ →</a>
-                <a href="/staff/pdca?days={{ days }}&format=json" class="back-btn" style="font-size:0.76rem;">JSON診断出力</a>
-                <button type="button" class="pill-btn" onclick="toggleStaffTheme()" id="staff-theme-toggle-btn">☀️/🌙 表示切替</button>
-            </div>
-        </div>
+        {% set master_active_tab = 'pdca' %}
+        {% include '_master_nav.html' %}
 
         <div class="channel-bar">
-            <div class="tab-group" aria-label="編集部ナビ">
-                <a href="/staff/sns-editorial?channel=x">𝕏 X編集部</a>
-                <a href="/staff/sns-editorial?channel=threads">🧵 Threads編集部</a>
-                <a href="/staff/sns-editorial?channel=instagram">📸 Instagram編集部</a>
-                <a href="/staff/sns-editorial?channel=tiktok">🎵 TikTok編集部</a>
-                <a href="/staff/column-editorial">📖 コラム・note編集部</a>
-                <a href="/staff/pdca" class="active">🧭 PDCA参謀本部</a>
+            <div style="font-size:0.82rem; font-weight:700; color:var(--text);">
+                診断集計期間（現在：直近{{ days }}日間）
             </div>
             <div class="tab-group" aria-label="診断期間切替">
                 <a href="/staff/pdca?days=7" class="{{ 'active' if days == 7 else '' }}">直近7日</a>
@@ -704,10 +688,18 @@
             </div>
         </div>
 
+        <nav class="master-section-jumpbar" aria-label="PDCAセクション移動">
+            <span class="master-jump-label">セクション移動</span>
+            <a href="#pdca-hero" class="master-jump-chip">総合スコア＆自律制御</a>
+            <a href="#pdca-wins-issues" class="master-jump-chip">勝ち筋・課題診断</a>
+            <a href="#pdca-directives" class="master-jump-chip">自動編成指令</a>
+            <a href="#pdca-monetization" class="master-jump-chip">案件別CTR・機会損失</a>
+        </nav>
+
         <div id="pdca-toast" class="toast-msg"></div>
 
         <!-- Hero: Overall Health + Autonomous Switches -->
-        <div class="hero-grid">
+        <div class="hero-grid" id="pdca-hero">
             <div class="card">
                 <h1>🧭 自律PDCA作戦参謀・グロース統括ボード</h1>
                 <p class="lead">サイトPV・記事別アフィリエイトCTR・SNS <code>?s=</code> 流入コホート・現場店舗の需要ギャップを横断分析し、SNS編集部とコラム編集部へ自動で次の一手をフィードバックします。</p>
@@ -827,7 +819,7 @@
         </div>
 
         <!-- Wins vs Issues -->
-        <div class="two-col">
+        <div class="two-col" id="pdca-wins-issues">
             <div class="card diag-card">
                 <h2>🟢 いま上手くいっていること（勝ち筋・伸ばす領域）</h2>
                 {% for w in (d.wins or []) %}
@@ -853,7 +845,7 @@
         </div>
 
         <!-- Active Closed-Loop Directives -->
-        <div class="directives-panel">
+        <div class="directives-panel" id="pdca-directives">
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
                 <h2 style="font-size:1rem; margin:0;">🔄 現在アクティブな自動編成指令（Check → Act/Plan 自動配線）</h2>
                 <span style="font-size:0.76rem; color:var(--sub);">最終更新：{{ act.updated_at or '未実行（初回自動セット済）' }}</span>
@@ -897,7 +889,7 @@
         </div>
 
         <!-- 💰 Offer Breakdown & 🔍 Monetization Gaps -->
-        <div class="two-col">
+        <div class="two-col" id="pdca-monetization">
             <!-- 💰 Affiliate Offer Category Breakdown -->
             <div class="card">
                 <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:6px;">

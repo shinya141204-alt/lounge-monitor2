@@ -105,13 +105,13 @@ class UiAuditRegressionTests(unittest.TestCase):
     # ------------------------------------------------------------------
     def test_cache_busting_sync_across_templates_and_service_worker(self):
         """全テンプレートと static/sw.js のアセットバージョンが完全同期し、immutable ヘッダが正しく付与されること"""
-        expected_calm = "/static/calm.css?v=29"
+        expected_calm = "/static/calm.css?v=30"
         expected_portal = "/static/portal.css?v=14"
         expected_app_js = "/static/app.js?v=20261103_1"
         expected_aff_js = "/static/affiliate_config.js?v=13"
         expected_style = "/static/style.css?v=20261030_6"
-        expected_sw_url = "/sw.js?v=83"
-        expected_cache_name = "aiseki-navi-v83"
+        expected_sw_url = "/sw.js?v=84"
+        expected_cache_name = "aiseki-navi-v84"
 
         templates_dir = os.path.join(PROJECT_ROOT, "templates")
         calm_seen = 0
@@ -1571,6 +1571,159 @@ class UiAuditRegressionTests(unittest.TestCase):
                         ctx.close()
                 finally:
                     browser.close()
+
+    # ------------------------------------------------------------------
+    # 13. Daily analytics persistence, contiguous calendar & proportional bar heights + Master UI
+    # ------------------------------------------------------------------
+    def test_analytics_web_flusher_contiguous_days_and_proportional_bars(self):
+        """APP_ROLE=web 2段階フラッシュ・連続カレンダー日生成・棒グラフ実ピクセル比例高さ・マスター共通ナビを検証"""
+        import datetime
+        from urllib.parse import urlsplit
+        import analytics
+        import sheets_store
+        import turbo_store
+
+        analytics.reset_for_tests()
+        try:
+            # 1) Verify two-tier flush: force_sheets=False writes to Postgres immediately and defers Sheets until force_sheets=True
+            pg_batches = []
+            sheet_batches = []
+
+            def fake_pg_batch(items):
+                pg_batches.append(dict(items))
+                return True
+
+            def fake_sheet_append(title, header, rows):
+                sheet_batches.append(list(rows))
+                return True
+
+            with patch.object(turbo_store, "is_postgres_active", return_value=True), \
+                 patch.object(turbo_store, "analytics_add_batch", side_effect=fake_pg_batch), \
+                 patch.object(sheets_store, "append_rows", side_effect=fake_sheet_append):
+                analytics.track("page_view", "/")
+                analytics.track("page_view", "/")
+                flushed_pg = analytics.flush(force_sheets=False)
+                self.assertEqual(flushed_pg, 1)
+                self.assertEqual(len(pg_batches), 1)
+                self.assertEqual(len(sheet_batches), 0, "force_sheets=False must not hit Google Sheets API")
+
+                analytics.track("page_view", "/columns")
+                app_module._flush_web_analytics_on_exit()
+                self.assertEqual(len(pg_batches), 2)
+                self.assertEqual(len(sheet_batches), 1, "Exit/10m flush must flush accumulated retry + new items to Sheets")
+                total_sheet_count = sum(int(r[3]) for r in sheet_batches[0])
+                self.assertEqual(total_sheet_count, 3)
+
+            # 2) Verify contiguous 7-day calendar series & accurate proportional bar heights in real Chromium
+            analytics.reset_for_tests()
+            jst = datetime.timezone(datetime.timedelta(hours=9))
+            today_dt = datetime.datetime.now(jst).date()
+            d_6ago = (today_dt - datetime.timedelta(days=6)).strftime("%Y-%m-%d")
+            d_3ago = (today_dt - datetime.timedelta(days=3)).strftime("%Y-%m-%d")
+            d_today = today_dt.strftime("%Y-%m-%d")
+
+            mock_rows = [
+                [d_6ago, "page_view", "/", "100"],
+                [d_3ago, "page_view", "/", "50"],
+                [d_today, "page_view", "/", "25"],
+                [d_today, "affiliate_click", "orbis @ /grooming", "2"],
+            ]
+
+            with patch.object(sheets_store, "read_rows", side_effect=lambda *a, **kw: mock_rows):
+                s7 = analytics.summary(days=7, allow_blocking=True)
+                self.assertEqual(len(s7["daily_series"]), 7, "7-day summary must contain all 7 contiguous calendar days")
+                zero_days = [d for d in s7["daily_series"] if d["pv"] == 0]
+                self.assertEqual(len(zero_days), 4, "Missing days must be filled with 0 PV entries")
+                self.assertEqual(s7["revenue"]["pace_denom_days"], 7, "Monthly pace denominator must span full 7 days since earliest record")
+
+                try:
+                    from playwright.sync_api import sync_playwright
+                except ImportError:
+                    self.skipTest("playwright is not installed")
+
+                base = "http://aiseki.local"
+
+                def attach_master_router(context):
+                    def handle_route(route):
+                        req = route.request
+                        u = urlsplit(req.url)
+                        if u.netloc != "aiseki.local":
+                            route.abort()
+                            return
+                        path_qs = u.path + (f"?{u.query}" if u.query else "")
+                        with self.client.session_transaction() as sess:
+                            sess["is_staff"] = True
+                            sess["is_master"] = True
+                        resp = self.client.open(path_qs, method=req.method, headers={"User-Agent": "Mozilla/5.0"})
+                        headers = {k.lower(): v for k, v in resp.headers.items() if k.lower() not in ("transfer-encoding", "content-encoding", "content-length")}
+                        route.fulfill(status=resp.status_code, headers=headers, body=resp.get_data())
+                    context.route("**/*", handle_route)
+
+                with patch.object(app_module, "trigger_background_fetch_if_needed", lambda *a, **kw: None):
+                    with sync_playwright() as p:
+                        browser = p.chromium.launch(headless=True)
+                        try:
+                            for vw, vh in ((1280, 900), (390, 844)):
+                                ctx = browser.new_context(viewport={"width": vw, "height": vh}, service_workers="block")
+                                attach_master_router(ctx)
+                                page = ctx.new_page()
+                                page.goto(base + "/staff/analytics?days=7", wait_until="domcontentloaded")
+                                page.add_style_tag(content="*, *::before, *::after { transition: none !important; animation: none !important; }")
+
+                                for theme_mode in ("dark", "light"):
+                                    if theme_mode == "light":
+                                        page.evaluate("document.body.classList.add('theme-light')")
+                                    else:
+                                        page.evaluate("document.body.classList.remove('theme-light')")
+
+                                    chart_audit = page.evaluate("""() => {
+                                        const dock = document.querySelector('.master-global-dock');
+                                        const jumpbar = document.querySelector('.master-section-jumpbar');
+                                        const cols = Array.from(document.querySelectorAll('.daily-chart-bars .day-col')).map(c => {
+                                            const bar = c.querySelector('.day-col-bar');
+                                            return {
+                                                date: c.dataset.date,
+                                                pv: Number(c.dataset.pv || 0),
+                                                barHeight: bar ? bar.getBoundingClientRect().height : 0
+                                            };
+                                        });
+                                        return {
+                                            hasDock: !!dock,
+                                            hasJumpbar: !!jumpbar,
+                                            tabCount: document.querySelectorAll('.master-global-tabs .master-tab-link').length,
+                                            docOverflowX: Math.max(0, document.documentElement.scrollWidth - window.innerWidth),
+                                            cols
+                                        };
+                                    }""")
+                                    self.assertTrue(chart_audit["hasDock"])
+                                    self.assertTrue(chart_audit["hasJumpbar"])
+                                    self.assertEqual(chart_audit["tabCount"], 6)
+                                    self.assertEqual(chart_audit["docOverflowX"], 0, f"Overflow on /staff/analytics at {vw}px {theme_mode}")
+                                    self.assertEqual(len(chart_audit["cols"]), 7)
+
+                                    by_pv = {c["pv"]: c["barHeight"] for c in chart_audit["cols"]}
+                                    self.assertAlmostEqual(by_pv[100], 96.0, delta=1.5)
+                                    self.assertAlmostEqual(by_pv[50], 48.0, delta=1.5)
+                                    self.assertAlmostEqual(by_pv[25], 24.0, delta=1.5)
+                                    self.assertAlmostEqual(by_pv[0], 2.0, delta=1.0)
+                                    ratio_100_to_50 = by_pv[100] / max(1.0, by_pv[50])
+                                    self.assertAlmostEqual(ratio_100_to_50, 2.0, delta=0.06)
+
+                                # Also verify /staff master launcher layout & collapsible subpanels
+                                page.goto(base + "/staff", wait_until="domcontentloaded")
+                                staff_audit = page.evaluate("""() => {
+                                    return {
+                                        launcherCards: document.querySelectorAll('.master-launcher-card').length,
+                                        docOverflowX: Math.max(0, document.documentElement.scrollWidth - window.innerWidth),
+                                    };
+                                }""")
+                                self.assertEqual(staff_audit["launcherCards"], 6)
+                                self.assertEqual(staff_audit["docOverflowX"], 0, f"Overflow on /staff at {vw}px")
+                                ctx.close()
+                        finally:
+                            browser.close()
+        finally:
+            analytics.reset_for_tests()
 
 
 if __name__ == "__main__":

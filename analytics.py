@@ -82,12 +82,36 @@ def track(event, label=''):
     return True
 
 
-def flush():
-    """未送信分を PostgreSQL / Sheets に追記。失敗したら戻して次回再送。"""
+def flush(force_sheets=True):
+    """未送信分を PostgreSQL / Sheets に追記。
+    force_sheets=False の場合（Webワーカーの60秒周期フラッシュ）は PostgreSQL へ即時合算し、
+    Google Sheets へは次回 force_sheets=True（10分周期・手動フラッシュ・プロセス終了時）にまとめて追記する。
+    """
     cutoff_3d = (
         datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
         - datetime.timedelta(days=3)
     ).strftime('%Y-%m-%d')
+
+    if not force_sheets:
+        if not turbo_store.is_postgres_active():
+            return 0
+        with _lock:
+            for k in [k for k in _flushed.keys() if k[0] <= cutoff_3d]:
+                del _flushed[k]
+            new_items = list(_pending.items())
+            _pending.clear()
+        if not new_items:
+            return 0
+        pg_saved = turbo_store.analytics_add_batch(new_items)
+        with _lock:
+            if pg_saved:
+                for key, c in new_items:
+                    _sheets_retry[key] += c
+            else:
+                for key, c in new_items:
+                    _pending[key] += c
+        return len(new_items) if pg_saved else 0
+
     with _lock:
         for k in [k for k in _flushed.keys() if k[0] <= cutoff_3d]:
             del _flushed[k]
@@ -101,6 +125,8 @@ def flush():
     pg_saved = False
     if new_items:
         pg_saved = turbo_store.analytics_add_batch(new_items)
+    elif retry_items and turbo_store.is_postgres_active():
+        pg_saved = True
 
     merged_for_sheets = defaultdict(int)
     for k, c in retry_items:
@@ -385,19 +411,25 @@ def describe_label(event, raw_label):
     return {'title': label or '-', 'sub': '', 'href': ''}
 
 
+_WEEKDAY_JA = ('月', '火', '水', '木', '金', '土', '日')
+
+
 def summary(days=7, allow_blocking=True):
     """直近 days 日の集計: {'by_event': {...}, 'by_label': {...}, 'by_label_pretty': {...}, 'funnel': {...}, 'revenue': {...}, 'daily_series': [...]}"""
+    days = max(1, int(days or 7))
     now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
-    start = (now_jst - datetime.timedelta(days=days - 1)).strftime('%Y-%m-%d')
-    today_str = now_jst.strftime('%Y-%m-%d')
-    yesterday_str = (now_jst - datetime.timedelta(days=1)).strftime('%Y-%m-%d')
+    today_date = now_jst.date()
+    start_date = today_date - datetime.timedelta(days=days - 1)
+    start = start_date.strftime('%Y-%m-%d')
+    today_str = today_date.strftime('%Y-%m-%d')
+    yesterday_str = (today_date - datetime.timedelta(days=1)).strftime('%Y-%m-%d')
 
     totals = defaultdict(int)
     is_mocked_sheets = getattr(sheets_store.read_rows, '__module__', '') != 'sheets_store'
     fast_rows = None if is_mocked_sheets else turbo_store.analytics_query_since(start)
 
     if fast_rows is not None:
-        if not fast_rows and turbo_store.is_postgres_active() and not sheets_store.is_disabled():
+        if turbo_store.is_postgres_active() and not sheets_store.is_disabled():
             global _pg_seeded_from_sheets
             if not _pg_seeded_from_sheets:
                 _pg_seeded_from_sheets = True
@@ -449,6 +481,9 @@ def summary(days=7, allow_blocking=True):
             with _lock:
                 for k, c in _flushed.items():
                     totals[k] += c
+        with _lock:
+            for k, c in _sheets_retry.items():
+                totals[k] += c
     with _lock:
         for k, c in _pending.items():
             totals[k] += c
@@ -518,38 +553,66 @@ def summary(days=7, allow_blocking=True):
     est_adsense_yen = round(pv_total * 0.35)
     est_aff_yen = round(aff_total * 90)
     est_total_yen = est_adsense_yen + est_aff_yen
-    active_days_count = max(1, len(by_day))
-    est_monthly_pace_yen = round((est_total_yen / active_days_count) * 30)
+    if days <= 1 or not by_day:
+        pace_denom_days = max(1, days) if not by_day else 1
+    else:
+        try:
+            earliest_dt = datetime.date.fromisoformat(min(by_day.keys()))
+            span_since_earliest = max(1, (today_date - earliest_dt).days + 1)
+            pace_denom_days = max(1, min(days, span_since_earliest))
+        except ValueError:
+            pace_denom_days = max(1, len(by_day))
+    est_monthly_pace_yen = round((est_total_yen / pace_denom_days) * 30)
 
     revenue = {
         'est_adsense_yen': est_adsense_yen,
         'est_aff_yen': est_aff_yen,
         'est_total_yen': est_total_yen,
         'est_monthly_pace_yen': est_monthly_pace_yen,
+        'pace_denom_days': pace_denom_days,
     }
 
-    # Build daily series (newest first for table, chronological for chart)
-    sorted_days = sorted(by_day.keys())
+    # Build contiguous calendar daily series (chronological for chart, reversed in template for table)
+    calendar_day_set = {
+        (start_date + datetime.timedelta(days=offset)).strftime('%Y-%m-%d')
+        for offset in range(days)
+    }
+    for recorded_d in by_day.keys():
+        if start <= recorded_d <= today_str:
+            calendar_day_set.add(recorded_d)
+    sorted_days = sorted(calendar_day_set)
     max_day_pv = max([by_day[d].get('page_view', 0) for d in sorted_days], default=1) or 1
     daily_series = []
     for d in sorted_days:
-        evs = by_day[d]
+        evs = by_day.get(d, {})
         dpv = evs.get('page_view', 0)
         dopen = evs.get('store_open', 0)
         daff = evs.get('affiliate_click', 0)
         dmap = evs.get('map_cafe', 0) + evs.get('map_bar', 0)
         dsns = evs.get('sns_click', 0) + evs.get('official_click', 0) + evs.get('share', 0)
+        try:
+            wd_idx = datetime.date.fromisoformat(d).weekday()
+            weekday_ja = _WEEKDAY_JA[wd_idx]
+            is_fri_sat = wd_idx in (4, 5)
+            is_weekend = wd_idx in (5, 6)
+        except ValueError:
+            weekday_ja = ''
+            is_fri_sat = False
+            is_weekend = False
         daily_series.append({
             'date': d,
             'short_date': d[5:].replace('-', '/'),
+            'weekday_ja': weekday_ja,
             'is_today': d == today_str,
             'is_yesterday': d == yesterday_str,
+            'is_fri_sat': is_fri_sat,
+            'is_weekend': is_weekend,
             'pv': dpv,
             'store_open': dopen,
             'affiliate': daff,
             'map': dmap,
             'sns_official': dsns,
-            'pv_bar_pct': max(4, round((dpv / max_day_pv) * 100)) if dpv > 0 else 0,
+            'pv_bar_pct': max(3.0, round((dpv / max_day_pv) * 100, 1)) if dpv > 0 else 0,
         })
 
     return {
