@@ -35,7 +35,7 @@
 | M2 | デッドコード・不要ファイル整理 | worker.py, 未使用インポート, app.log, flask.log, benchmark_*_result.json, data/history.db, Procfile, .dockerignore | none | DONE |
 | M3 | 潜在課題解消・セキュリティ・予測エンジン改善 | app.py, moat_intelligence.py, local_db.py, test_app.py | none | DONE |
 | M4 | 全体単体テストおよびリグレッション検証 | tests/ 配下の全テスト実行・検証 | M1, M2, M3 | DONE |
-| M5 | GitHub push & Fly.io 本番デプロイ・稼働確認 | git commit, git push origin main, flyctl deploy, https://aiseki-navi.com 疎通確認 | M4 | IN_PROGRESS |
+| M5 | GitHub push & Fly.io 本番デプロイ・稼働確認 | git commit, git push origin main, flyctl deploy, https://aiseki-navi.com 疎通確認 | M4 | DONE |
 
 ## Code Layout
 - `app.py`: Webアプリケーション、ルーティング、セッション
