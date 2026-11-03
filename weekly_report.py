@@ -288,9 +288,11 @@ def _compute_weekly_report(now_utc: datetime.datetime):
                 max_avg_h = avg_h
                 peak_hour = f"{h}:00"
 
-        brand = data['brand'] or 'OTHER'
+        import store_master
+        brand_raw = data['brand'] or 'OTHER'
+        brand = 'オリエンタルラウンジ' if brand_raw == 'OLG' else brand_raw
         store_entry = {
-            'name': name,
+            'name': store_master.seo_name(name),
             'brand': brand,
             'avg_women': round(avg_w, 1),
             'avg_men': round(avg_m, 1),
@@ -309,7 +311,10 @@ def _compute_weekly_report(now_utc: datetime.datetime):
     for brand, bt in report['by_brand'].items():
         bt['total_avg_women'] = round(bt['total_avg_women'], 1)
         bt['total_avg_men'] = round(bt['total_avg_men'], 1)
-        bt['store_count'] = len(brand_totals[brand]['stores'])
+        raw_b_stores = brand_totals.get(brand, {}).get('stores', set())
+        if not raw_b_stores and brand == 'オリエンタルラウンジ':
+            raw_b_stores = brand_totals.get('OLG', {}).get('stores', set())
+        bt['store_count'] = len(raw_b_stores)
 
     report['stores'].sort(key=lambda x: x['avg_women'], reverse=True)
 

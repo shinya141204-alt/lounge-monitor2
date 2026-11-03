@@ -323,8 +323,9 @@ def compute_store_analysis_payload(store_name, analysis_cache, cache_duration=36
     else:
         midnight_label_short = "終電前型"
 
+    import store_master
     result = {
-        "store_name": store_name,
+        "store_name": store_master.seo_name(store_name),
         "hourly": hourly_result,
         "hourly_men": hourly_men_result,
         "weekday": weekday_result,

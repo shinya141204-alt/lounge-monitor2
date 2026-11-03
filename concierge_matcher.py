@@ -950,6 +950,15 @@ def diagnose_tonight_plan(
     area_summary = _build_area_summary(evaluated, audience=aud)
     smart_action = _build_smart_action_card(aud, tim, area_summary, primary)
 
+    import store_master
+    if primary and "raw_name" in primary:
+        primary["raw_name"] = store_master.seo_name(primary["raw_name"])
+    if backup and "raw_name" in backup:
+        backup["raw_name"] = store_master.seo_name(backup["raw_name"])
+    for cand in other_candidates:
+        if "raw_name" in cand:
+            cand["raw_name"] = store_master.seo_name(cand["raw_name"])
+
     return {
         "ok": True,
         "area_key": area_key,

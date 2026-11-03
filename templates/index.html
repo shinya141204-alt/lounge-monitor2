@@ -134,7 +134,7 @@
 
     <link rel="stylesheet" href="/static/style.css?v=20261030_6" fetchpriority="high">
     <link rel="stylesheet" href="/static/calm.css?v=28" fetchpriority="high">
-    <link rel="preload" href="/static/app.js?v=20261102_2" as="script">
+    <link rel="preload" href="/static/app.js?v=20261103_1" as="script">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- Non-render-blocking web font (avoids waiting on Google Fonts at PWA cold launch) -->
@@ -1963,7 +1963,7 @@
                 <button class="events-tab-btn active" data-filter="ALL" onclick="filterEventsModal('ALL', this)">全店舗</button>
                 <button class="events-tab-btn" data-filter="WOMEN" onclick="filterEventsModal('WOMEN', this)">女性限定</button>
                 <button class="events-tab-btn" data-filter="DISCOUNT" onclick="filterEventsModal('DISCOUNT', this)">特典・割引のみ</button>
-                <button class="events-tab-btn" data-filter="ORIENTAL" onclick="filterEventsModal('ORIENTAL', this)">オリエンタルラウンジ / ag</button>
+                <button class="events-tab-btn" data-filter="ORIENTAL_LOUNGE" onclick="filterEventsModal('ORIENTAL_LOUNGE', this)">オリエンタルラウンジ / ag</button>
                 <button class="events-tab-btn" data-filter="JIS" onclick="filterEventsModal('JIS', this)">JIS各店限定</button>
             </div>
             <div id="all-events-container" class="events-modal-list">
@@ -2327,7 +2327,7 @@
         window.INITIAL_STATUS_DATA = {{ initial_status | tojson }};
     </script>
     {% endif %}
-    <script src="/static/app.js?v=20261102_2" defer></script>
+    <script src="/static/app.js?v=20261103_1" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
@@ -2343,7 +2343,7 @@
                 }
                 if (window.__swRegistered) return;
                 window.__swRegistered = true;
-                navigator.serviceWorker.register('/sw.js?v=81', { updateViaCache: 'none' })
+                navigator.serviceWorker.register('/sw.js?v=82', { updateViaCache: 'none' })
                     .then(function(reg) {
                         reg.update();
                         document.addEventListener('visibilitychange', function() {

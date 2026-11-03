@@ -3018,6 +3018,7 @@ def get_forecast_accuracy_report(
     v1 vs. v2.2 live error reduction, recent resolved timeline, and pending live forecast queue.
     """
     import moat_intelligence
+    import store_master
 
     days = max(1, min(60, int(days or 21)))
     limit_recent = max(5, min(100, int(limit_recent or 30)))
@@ -3257,7 +3258,7 @@ def get_forecast_accuracy_report(
                     "predicted_mdhm": pred_at[5:16].replace("-", "/") if len(pred_at) >= 16 else pred_at,
                     "target_hm": tgt_at[11:16] if len(tgt_at) >= 16 else tgt_at,
                     "resolved_at": res_at,
-                    "store_name": sname,
+                    "store_name": store_master.seo_name(sname),
                     "store_slug": _linkable_store_slug(sname),
                     "display_name": _format_brand_safe_store_name(sname),
                     "start_women": sw,
@@ -3354,7 +3355,7 @@ def get_forecast_accuracy_report(
         if cnt < 2 and not store_filter:
             continue
         by_store.append({
-            "store_name": sname,
+            "store_name": store_master.seo_name(sname),
             "store_slug": _linkable_store_slug(sname),
             "display_name": _format_brand_safe_store_name(sname),
             "count": cnt,
@@ -3379,7 +3380,7 @@ def get_forecast_accuracy_report(
             "predicted_hm": p_at[11:16] if len(p_at) >= 16 else p_at,
             "target_at": t_at,
             "target_hm": t_at[11:16] if len(t_at) >= 16 else t_at,
-            "store_name": sn,
+            "store_name": store_master.seo_name(sn),
             "store_slug": _linkable_store_slug(sn),
             "display_name": _format_brand_safe_store_name(sn),
             "start_women": int(pr[3] or 0),
@@ -3397,7 +3398,7 @@ def get_forecast_accuracy_report(
     for (sn, hr_k), adj_v in bias_map_now.items():
         if hr_k is None and abs(adj_v) >= 0.4:
             bias_adjustments.append({
-                "store_name": sn,
+                "store_name": store_master.seo_name(sn),
                 "store_slug": _linkable_store_slug(sn),
                 "display_name": _format_brand_safe_store_name(sn),
                 "online_adj_pt": adj_v,

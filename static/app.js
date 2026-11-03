@@ -4172,8 +4172,8 @@
             let filtered = window.allEvents;
             if (filterCategory === 'JIS') {
                 filtered = window.allEvents.filter(ev => ev.brand === 'JIS');
-            } else if (filterCategory === 'ORIENTAL' || filterCategory === 'OLG') {
-                filtered = window.allEvents.filter(ev => ev.brand === 'オリエンタルラウンジ' || ev.brand === 'OLG');
+            } else if (filterCategory === 'ORIENTAL_LOUNGE' || filterCategory === 'オリエンタルラウンジ') {
+                filtered = window.allEvents.filter(ev => ev.brand === 'オリエンタルラウンジ');
             } else if (filterCategory === 'DISCOUNT') {
                 filtered = window.allEvents.filter(ev => ev.tag === '割引・特典');
             } else if (filterCategory === 'WOMEN') {
@@ -4212,7 +4212,7 @@
                                 <div class="event-item-meta">
                                     <span class="event-pill-tag ${escapeHtml(ev.tag_cls || 'tag-event')}">${escapeHtml(ev.tag || 'イベント')}</span>
                                     ${genderBadge}
-                                    <span class="brand-badge ${ev.brand === 'OLG' ? 'brand-olg' : 'brand-jis'}" style="font-size:0.68rem; padding:1px 5px;">${escapeHtml(ev.brand === 'OLG' ? 'オリエンタルラウンジ' : ev.brand)}</span>
+                                    <span class="brand-badge ${ev.brand === 'OLG' || ev.brand === 'オリエンタルラウンジ' ? 'brand-olg' : 'brand-jis'}" style="font-size:0.68rem; padding:1px 5px;">${escapeHtml(ev.brand === 'OLG' ? 'オリエンタルラウンジ' : ev.brand)}</span>
                                     <span class="event-store-label">${escapeHtml(ev.target_label || '全店')}</span>
                                     <span style="color:var(--text-secondary); font-size:0.72rem;">${escapeHtml(ev.date_str || '')}</span>
                                 </div>

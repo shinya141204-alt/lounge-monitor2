@@ -582,12 +582,12 @@ class TestForecastV2AndAccuracyTracking(unittest.TestCase):
                 f"{d_str} 22:00:00",
             )
 
-        # Query by brand-safe display name AND by URL slug -> both resolve to canonical 'OLG 渋谷本店'
+        # Query by brand-safe display name AND by URL slug -> both resolve to canonical brand-safe 'オリエンタルラウンジ 渋谷本店'
         for q in ("オリエンタルラウンジ 渋谷本店", "oriental-lounge-shibuya-honten", "OLG 渋谷本店"):
             resp = self.client.get(f"/api/forecast-accuracy?days=7&store={q}")
             self.assertEqual(resp.status_code, 200)
             js = resp.get_json()
-            self.assertEqual(js["store_filter"], "OLG 渋谷本店")
+            self.assertEqual(js["store_filter"], "オリエンタルラウンジ 渋谷本店")
             self.assertEqual(js["summary"]["resolved_count"], 1)
 
         # Insert 65 pending rows across distinct timestamps -> pending_count must equal 66 (1 at 22:00 + 65), not capped at 60/40

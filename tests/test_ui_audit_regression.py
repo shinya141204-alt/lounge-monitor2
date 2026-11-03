@@ -107,11 +107,11 @@ class UiAuditRegressionTests(unittest.TestCase):
         """全テンプレートと static/sw.js のアセットバージョンが完全同期し、immutable ヘッダが正しく付与されること"""
         expected_calm = "/static/calm.css?v=28"
         expected_portal = "/static/portal.css?v=14"
-        expected_app_js = "/static/app.js?v=20261102_2"
+        expected_app_js = "/static/app.js?v=20261103_1"
         expected_aff_js = "/static/affiliate_config.js?v=13"
         expected_style = "/static/style.css?v=20261030_6"
-        expected_sw_url = "/sw.js?v=81"
-        expected_cache_name = "aiseki-navi-v81"
+        expected_sw_url = "/sw.js?v=82"
+        expected_cache_name = "aiseki-navi-v82"
 
         templates_dir = os.path.join(PROJECT_ROOT, "templates")
         calm_seen = 0

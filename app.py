@@ -642,21 +642,24 @@ def get_store_analysis(store_name):
     raw_entry = (analysis_cache.get('raw_data_by_store') or {}).get(clean_name)
     proc_entry = (analysis_cache.get('processed_per_store') or {}).get(clean_name)
     raw_ts = raw_entry.get('last_fetched') if isinstance(raw_entry, dict) else None
+    def _safe_analysis_call():
+        p, code = store_analysis.compute_store_analysis_payload(
+            clean_name,
+            analysis_cache=analysis_cache,
+            cache_duration=ANALYSIS_CACHE_DURATION,
+        )
+        if isinstance(p, dict) and 'store_name' in p:
+            p = dict(p)
+            p['store_name'] = store_master.seo_name(internal_name)
+        return p, code
+
     if proc_entry is not None and raw_ts is not None:
         return _cached_json_response(
             ('analysis', local_db.DB_PATH, clean_name, id(proc_entry), raw_ts),
-            lambda: store_analysis.compute_store_analysis_payload(
-                clean_name,
-                analysis_cache=analysis_cache,
-                cache_duration=ANALYSIS_CACHE_DURATION,
-            ),
+            _safe_analysis_call,
             ttl_sec=60.0,
         )
-    payload, status_code = store_analysis.compute_store_analysis_payload(
-        clean_name,
-        analysis_cache=analysis_cache,
-        cache_duration=ANALYSIS_CACHE_DURATION,
-    )
+    payload, status_code = _safe_analysis_call()
     if status_code == 200:
         new_proc = (analysis_cache.get('processed_per_store') or {}).get(clean_name)
         new_raw = (analysis_cache.get('raw_data_by_store') or {}).get(clean_name)
@@ -3298,13 +3301,38 @@ def get_thread_status():
 def get_weekly_report():
     try:
         import weekly_report
+        import store_master
         report = weekly_report.generate_weekly_report()
         if "error" in report:
             return jsonify({"status": "error", "error": report["error"]}), 500
+
+        def _clean_report(rep):
+            if not isinstance(rep, dict):
+                return rep
+            rep_clean = dict(rep)
+            for k in ('stores', 'anaba_stores'):
+                new_list = []
+                for s in rep_clean.get(k, []):
+                    item = dict(s)
+                    if item.get('brand') == 'OLG':
+                        item['brand'] = 'オリエンタルラウンジ'
+                    if 'name' in item:
+                        item['name'] = store_master.seo_name(item['name'])
+                    new_list.append(item)
+                rep_clean[k] = new_list
+            if 'by_brand' in rep_clean and isinstance(rep_clean['by_brand'], dict):
+                cleaned_bb = {}
+                for b_name, b_data in rep_clean['by_brand'].items():
+                    safe_b = 'オリエンタルラウンジ' if b_name == 'OLG' else b_name
+                    cleaned_bb[safe_b] = b_data
+                rep_clean['by_brand'] = cleaned_bb
+            return rep_clean
+
+        safe_rep = _clean_report(report)
         lf = weekly_report._report_cache.get('last_fetched')
         return _cached_json_response(
             ('weekly_report', local_db.DB_PATH, lf, id(report)),
-            lambda: ({"status": "success", "data": report}, 200),
+            lambda: ({"status": "success", "data": safe_rep}, 200),
             ttl_sec=60.0,
         )
     except Exception as e:
@@ -4373,6 +4401,7 @@ def api_forecast_accuracy():
     store_q = (request.args.get('store') or '').strip() or None
     limit_q = max(5, min(100, request.args.get('limit', 30, type=int)))
     try:
+        import store_master
         rep = local_db.get_forecast_accuracy_report(
             days=days,
             store_name=store_q,
@@ -4382,7 +4411,35 @@ def api_forecast_accuracy():
         )
         if not app.testing and store_q is None and rep.get('summary', {}).get('resolved_count', 0) == 0:
             local_db.trigger_forecast_backfill_async(days=21, min_existing=80, max_rows=4500)
-        return jsonify({'ok': True, **rep})
+
+        def _clean_forecast_rep(d):
+            if not isinstance(d, dict):
+                return d
+            out = dict(d)
+            if 'store_filter' in out and out['store_filter']:
+                out['store_filter'] = store_master.seo_name(out['store_filter'])
+            for list_key in ('by_store', 'recent_resolved', 'pending_forecasts', 'bias_adjustments'):
+                if list_key in out and isinstance(out[list_key], list):
+                    new_l = []
+                    for it in out[list_key]:
+                        if isinstance(it, dict):
+                            it_copy = dict(it)
+                            if 'store_name' in it_copy:
+                                it_copy['store_name'] = store_master.seo_name(it_copy['store_name'])
+                            new_l.append(it_copy)
+                        else:
+                            new_l.append(it)
+                    out[list_key] = new_l
+            if 'summary' in out and isinstance(out['summary'], dict):
+                s_copy = dict(out['summary'])
+                for sk in ('top_underperforming', 'top_overperforming', 'best_store', 'worst_store'):
+                    if sk in s_copy and s_copy[sk]:
+                        s_copy[sk] = store_master.seo_name(str(s_copy[sk]))
+                out['summary'] = s_copy
+            return out
+
+        clean_rep = _clean_forecast_rep(rep)
+        return jsonify({'ok': True, **clean_rep})
     except Exception as err:
         return jsonify({'ok': False, 'error': str(err)}), 500
 
@@ -4577,6 +4634,7 @@ def api_concierge():
     cache_key = ('api_concierge', area, audience, timing, party_size, vibe, last_upd)
 
     def _build_concierge_dict():
+        import store_master
         with data_lock:
             stores = [dict(s) for s in (latest_data.get('full_data') or [])]
             cur_last_upd = latest_data.get('last_updated') or ''
@@ -4588,6 +4646,21 @@ def api_concierge():
             party_size=party_size,
             vibe=vibe,
         )
+        def _sanitize_cand(c):
+            if isinstance(c, dict):
+                c_copy = dict(c)
+                if 'raw_name' in c_copy:
+                    c_copy['raw_name'] = store_master.seo_name(c_copy['raw_name'])
+                return c_copy
+            return c
+
+        if 'primary' in res and res['primary']:
+            res['primary'] = _sanitize_cand(res['primary'])
+        if 'backup' in res and res['backup']:
+            res['backup'] = _sanitize_cand(res['backup'])
+        if 'other_candidates' in res and isinstance(res['other_candidates'], list):
+            res['other_candidates'] = [_sanitize_cand(c) for c in res['other_candidates']]
+
         res['last_updated'] = cur_last_upd
         return res, 200
 

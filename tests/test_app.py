@@ -1761,7 +1761,7 @@ class FullAuditRegressionTests(unittest.TestCase):
         sw_resp = self.client.get('/sw.js')
         try:
             sw_txt = sw_resp.data.decode('utf-8')
-            self.assertIn("CACHE_NAME = 'aiseki-navi-v81'", sw_txt)
+            self.assertIn("CACHE_NAME = 'aiseki-navi-v82'", sw_txt)
             self.assertIn("event.waitUntil", sw_txt)
         finally:
             sw_resp.close()
@@ -2820,7 +2820,7 @@ class PerformanceNonBlockingRegressionTests(unittest.TestCase):
                      patch.object(logger.http_session, 'get', side_effect=AssertionError('Must not call gviz synchronously while syncing!')):
                     payload, code = store_analysis.compute_store_analysis_payload('OLG 新宿', cache_box, cache_duration=900)
                 self.assertEqual(code, 200)
-                self.assertEqual(payload['store_name'], 'OLG 新宿')
+                self.assertEqual(payload['store_name'], 'オリエンタルラウンジ 新宿')
                 self.assertTrue(mock_async_bf.called)
 
                 # 2. When SQLite is completely empty, fallback gviz query MUST include a 30-day date lower bound (A >= '...')
@@ -4410,8 +4410,8 @@ class AIUltraGrowthSuiteTests(unittest.TestCase):
         app_module.clear_fast_http_caches()
         home_html = self.client.get('/').data.decode('utf-8')
         self.assertIn('calm.css?v=28', home_html)
-        self.assertIn('app.js?v=20261102_2', home_html)
-        self.assertIn('/sw.js?v=81', home_html)
+        self.assertIn('app.js?v=20261103_1', home_html)
+        self.assertIn('/sw.js?v=82', home_html)
 
         # 2. TikTok 9:16 Safe-Zone Reel Templates & Captions (zero bare 'オリエンタル' or 'OLG')
         sample_stores = [
