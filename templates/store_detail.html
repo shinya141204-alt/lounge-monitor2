@@ -65,6 +65,26 @@
             }
           }
         ]
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": ["LocalBusiness", "BarOrPub"],
+        "name": "{{ store.seo_name }}",
+        "description": "{{ store.seo_name }}のリアルタイム男女人数・男女比・混雑状況・待ち時間推移",
+        "url": "https://aiseki-navi.com/store/{{ store.slug }}",
+        "priceRange": "男性 2,640円〜 / 女性 無料",
+        "openingHoursSpecification": {{ store.opening_hours_specification | tojson }},
+        "address": {
+          "@type": "PostalAddress",
+          "addressCountry": "JP",
+          "addressRegion": "{{ store.area_label }}"
+        }{% if store.official_url %},
+        "sameAs": "{{ store.official_url }}"{% endif %}{% if store.lat and store.lng %},
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": {{ store.lat }},
+          "longitude": {{ store.lng }}
+        }{% endif %}
       }
     ]
     </script>

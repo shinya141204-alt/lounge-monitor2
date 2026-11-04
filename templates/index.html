@@ -134,7 +134,7 @@
 
     <link rel="stylesheet" href="/static/style.css?v=20261030_6" fetchpriority="high">
     <link rel="stylesheet" href="/static/calm.css?v=31" fetchpriority="high">
-    <link rel="preload" href="/static/app.js?v=20261104_1" as="script">
+    <link rel="preload" href="/static/app.js?v=20261104_2" as="script">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- Non-render-blocking web font (avoids waiting on Google Fonts at PWA cold launch) -->
@@ -2358,7 +2358,7 @@
         window.INITIAL_STATUS_DATA = {{ initial_status | tojson }};
     </script>
     {% endif %}
-    <script src="/static/app.js?v=20261104_1" defer></script>
+    <script src="/static/app.js?v=20261104_2" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
@@ -2374,7 +2374,7 @@
                 }
                 if (window.__swRegistered) return;
                 window.__swRegistered = true;
-                navigator.serviceWorker.register('/sw.js?v=85', { updateViaCache: 'none' })
+                navigator.serviceWorker.register('/sw.js?v=86', { updateViaCache: 'none' })
                     .then(function(reg) {
                         reg.update();
                         document.addEventListener('visibilitychange', function() {

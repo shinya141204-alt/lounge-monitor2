@@ -213,4 +213,64 @@ def get_business_hours_status(store_name: str, now_jst: datetime.datetime = None
         "hours_label": spec["label"],
         "today_hours_label": today_hours_label,
         "schedule_spec": spec,
+        "opening_hours_specification": spec_to_opening_hours_specification(spec),
     }
+
+
+def spec_to_opening_hours_specification(spec: dict) -> list:
+    """Convert a schedule spec dict into Schema.org / Google compliant OpeningHoursSpecification list."""
+    cw = set(spec.get("cw") or [])
+
+    # Map weekday int (0=Monday .. 6=Sunday) to day name & spec key
+    weekday_definitions = [
+        (0, "Monday", "mt"),
+        (1, "Tuesday", "mt"),
+        (2, "Wednesday", "mt"),
+        (3, "Thursday", "mt"),
+        (4, "Friday", "fs"),
+        (5, "Saturday", "fs"),
+        (6, "Sunday", "sh"),
+    ]
+
+    def _fmt_time(h: int) -> str:
+        actual_h = (h - 24) if h >= 24 else h
+        return f"{actual_h:02d}:00"
+
+    grouped = {}  # (opens, closes) -> list of day names
+    for wd_idx, day_name, spec_key in weekday_definitions:
+        if wd_idx in cw:
+            continue  # 定休日は除外
+        span = spec.get(spec_key) or spec.get("mt") or (18, 29)
+        open_h, close_h = span[0], span[1]
+        opens_str = _fmt_time(open_h)
+        closes_str = _fmt_time(close_h)
+        time_key = (opens_str, closes_str)
+        if time_key not in grouped:
+            grouped[time_key] = []
+        grouped[time_key].append(day_name)
+
+    spec_list = []
+    for (opens_str, closes_str), days in grouped.items():
+        spec_list.append({
+            "@type": "OpeningHoursSpecification",
+            "dayOfWeek": days,
+            "opens": opens_str,
+            "closes": closes_str,
+        })
+
+    if not spec_list:
+        spec_list.append({
+            "@type": "OpeningHoursSpecification",
+            "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+            "opens": "18:00",
+            "closes": "05:00",
+        })
+
+    return spec_list
+
+
+def get_store_opening_hours_specification(store_name: str) -> list:
+    """Generate Schema.org OpeningHoursSpecification list for store_name."""
+    spec = get_store_schedule_spec(store_name)
+    return spec_to_opening_hours_specification(spec)
+

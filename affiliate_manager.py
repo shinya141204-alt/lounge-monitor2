@@ -93,8 +93,8 @@ AFFILIATE_SLOTS = [
         "title": "【女性完全無料】顔写真非公開・審査制で週1回ハイスペック男性と1対1カフェデート",
         "placement": "/for-women 女性特設ガイド / トップ『💄女性目線モード』おすすめモーダル",
         "recommended_asp_examples": "バチェラーデート（女性無料登録案件） / 東カレデート / ゴージャス 等",
-        "env_keys": ["AFFILIATE_URL_WOMEN_DATING", "AFFILIATE_URL_DATING_BACHELOR", "AFFILIATE_URL_DATING"],
-        "default_url": "https://px.a8.net/svt/ejp?a8mat=4BEK9C+21TRSI+5SFC+61RI9",
+        "env_keys": ["AFFILIATE_URL_WOMEN_DATING"],
+        "default_url": "https://www.bachelorapp.net/",
     },
     {
         "slot_id": "women_beauty_clinic",
@@ -106,7 +106,7 @@ AFFILIATE_SLOTS = [
         "placement": "/for-women 女性特設ガイド / トップ『💄女性目線モード』おすすめモーダル",
         "recommended_asp_examples": "湘南美容クリニック（美肌/医療脱毛） / エミナルクリニック / 品川美容外科 等",
         "env_keys": ["AFFILIATE_URL_WOMEN_BEAUTY_CLINIC", "AFFILIATE_URL_WOMEN_CLINIC"],
-        "default_url": "https://px.a8.net/svt/ejp?a8mat=4BEL1F+61B8KY+328C+2HCB1D",
+        "default_url": "https://www.s-b-c.net/",
     },
     {
         "slot_id": "women_cosme_salon",

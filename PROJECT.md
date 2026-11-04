@@ -1,56 +1,49 @@
-# Project: 相席ナビ（AISEKI NAVI）全システム精査・不具合改修・不要コード整理
+# Project: 相席ナビ（AISEKI NAVI）全システム現状評価・収益化監査および緊急改善
 
 ## Architecture
 - **Web本体**: Flask, Gunicorn, RESTful API (`app.py`)
 - **ワーカー/スケジューラ**: APScheduler, バックグラウンドプロセス (`worker.py`)
-- **スクレイピング/監視**: 7系統の店舗データスクレイパー、DoHフォールバック (`monitor.py`)
+- **スクレイピング/監視**: 7系統53店舗データスクレイパー、DoHフォールバック (`monitor.py`, `health.py`)
 - **予測エンジン**: 状態空間混雑予測・リアルタイム待ち時間推論 (`moat_intelligence.py`, `store_analysis.py`)
-- **データ基盤**: SQLite WALモード (`local_db.py`, `lounge_data.db`)
-- **UI/フロントエンド**: HTML/Jinja2テンプレート (`templates/`), CSS (`static/calm.css`, `portal.css`), PWA ServiceWorker (`static/sw.js`)
+- **データ基盤**: Fly Postgres + Upstash Redis, SQLite WALモード (`local_db.py`, `turbo_store.py`)
+- **UI/フロントエンド**: HTML/Jinja2テンプレート (`templates/`), CSS (`static/calm.css`, `portal.css`), PWA ServiceWorker (`static/sw.js`), JS (`static/app.js`, `static/affiliate_config.js`)
+- **アフィリエイト/収益化**: `affiliate_manager.py`, `pdca_engine.py`, `/link/<item_id>`
 - **インフラ/デプロイ**: Fly.io (`fly.toml`, `Dockerfile`), GitHub (`main` ブランチ)
 
 ## Feature Inventory
-| # | Feature / Issue | Description | Milestone | Source |
-|---|-----------------|-------------|-----------|--------|
-| 1 | ブランド表記是正 (events.py / events_cache.json) | `'brand_label': 'オリエンタル / ag'` を `'オリエンタルラウンジ / ag'` に是正 | M1 | Survey 1, 2 |
-| 2 | ブランド表記是正 (price_comparison.py) | `"brand_label": "ヤタコイ（YATAKOI）"` を `"ヤタコイ"` に是正 | M1 | Survey 1, 3 |
-| 3 | ブランド表記是正 (portal_guides.py / index.html) | `ヤタコイ（YATAKOI）` を `ヤタコイ` に是正 | M1 | Survey 1 |
-| 4 | ブランド表記是正 (health.py / second_venues.py) | ログ・コメント・条件判定内の単体『オリエンタル』を『オリエンタルラウンジ』に是正 | M1 | Survey 1 |
-| 5 | ブランド表記是正 (monitor.py / local_db.py / test_app.py) | ログ・フォールバック正規化・テストクラス名の単体表記（Oriental/OLG/YATAKOI）を是正 | M1 | Survey 3 |
-| 6 | デッドコード削除 (worker.py) | 未登録・未呼び出しの3関数（_ig_carousel_job, _ig_ladies_job, _prewarm_slot_job）を削除 | M2 | Survey 2 |
-| 7 | 未使用インポート削除 | app.py, column_editorial.py, monitor.py, worker.py, events.py の未使用 import 文を削除 | M2 | Survey 1 |
-| 8 | 不要ファイル・ログ・一時ファイル削除 | app.log, flask.log, benchmark_*_result.json, data/history.db, Procfile の削除 | M2 | Survey 3 |
-| 9 | .dockerignore 更新 | 不要ファイルをビルド対象外に設定 | M2 | Survey 3 |
-| 10 | セキュリティ強化 (app.py) | Fly.io 本番環境での SESSION_COOKIE_SECURE 付与 | M3 | Survey 1 |
-| 11 | 予測エンジン改善 (moat_intelligence.py) | _V2_STORE_PHASE_PRIORS 参照時の正式店舗名エイリアス解決を追加 | M3 | Survey 3 |
-| 12 | DBモデルバージョン整合 (local_db.py) | テーブル定義 DEFAULT 値を最新 v2.2-statespace に更新 | M3 | Survey 3 |
-| 13 | テスト環境変数WARNING抑止 (test_app.py) | テスト起動時の SECURITY NOTICE 警告を解消 | M3 | Survey 3 |
-| 14 | 全体単体テスト検証 | 全247件テストのパス、リグレッションゼロの検証 | M4 | Survey 1, 2, 3 |
-| 15 | 本番反映・デプロイ・稼働確認 | GitHub main コミット・プッシュ、Fly.io デプロイ、本番動作確認 | M5 | ORIGINAL_REQUEST |
+| # | Issue / Improvement | Description | Milestone | Source |
+|---|---------------------|-------------|-----------|--------|
+| 1 | 総合評価・収益化改善レポート作成 | UI/UX、SEO・集客、収益化導線、運用体制の現状分析とロードマップ（REPORT_MONETIZATION_AUDIT.md） | M1 | Survey UI, SEO, Monetization |
+| 2 | 料金比較キャッシュキー動的化 | `price_comparison_page`（`app.py:4600`）のキャッシュキーを `f"price_comp_{selected_area}"` に修正 | M2 | Survey SEO |
+| 3 | アフィリエイト転送URLのクロール遮断 | `robots.txt` に `Disallow: /link/` 追加、`/link/<id>` に `X-Robots-Tag: noindex, nofollow` 付与 | M2 | Survey SEO |
+| 4 | 女性向けアフィリエイトURLミスマッチ是正 | `affiliate_manager.py` / `app.py` の女性向けスロットデフォルトURLを男性用から正常な女性向け/公式へ分離 | M2 | Survey Monetization |
+| 5 | grooming.html の景表法PR表記＆A8計測ピクセル追加 | 身だしなみガイド各カードへのPRバッジ・注記明記およびA8.net `0.gif` 計測用 `<img>` 設置 | M2 | Survey Monetization |
+| 6 | トップ画面おすすめモーダルの景表法PR表記明記 | `static/app.js` の `renderGuideModal()` 内カードにPRバッジを追加 | M2 | Survey Monetization |
+| 7 | 店舗詳細ページの LocalBusiness 構造化データ追加 | `templates/store_detail.html` に `LocalBusiness` / `BarOrPub` `openingHoursSpecification` JSON-LD を追加 | M2 | Survey SEO, Challenger 2 |
+| 8 | キャッシュバスティング同期更新 | `static/app.js` 変更に伴う `static/sw.js`、テンプレート、回帰テストのバージョン番号同期 | M2 | 制約事項 R4 |
+| 9 | 単体テストスイートおよびUI監査実行 | 全テスト（261件）および `audit_anti_ai_ui.py` の全通過確認 | M3 | 要件 R5 |
+| 10 | Gitコミット・プッシュ・Fly.io本番デプロイ・稼働確認 | GitHub main 反映、Fly.io 本番デプロイ、`https://aiseki-navi.com` 正常稼働確認 | M4 | 要件 R5 |
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| M1 | ブランド表記規約の完全是正 | events.py, price_comparison.py, portal_guides.py, index.html, health.py, second_venues.py, monitor.py, local_db.py, test_app.py, data/events_cache.json | none | DONE |
-| M2 | デッドコード・不要ファイル整理 | worker.py, 未使用インポート, app.log, flask.log, benchmark_*_result.json, data/history.db, Procfile, .dockerignore | none | DONE |
-| M3 | 潜在課題解消・セキュリティ・予測エンジン改善 | app.py, moat_intelligence.py, local_db.py, test_app.py | none | DONE |
-| M4 | 全体単体テストおよびリグレッション検証 | tests/ 配下の全テスト実行・検証 | M1, M2, M3 | DONE |
-| M5 | GitHub push & Fly.io 本番デプロイ・稼働確認 | git commit, git push origin main, flyctl deploy, https://aiseki-navi.com 疎通確認 | M4 | DONE |
+| M1 | 総合評価・収益化改善提案レポートの作成 | `REPORT_MONETIZATION_AUDIT.md` | none | DONE |
+| M2 | 即時対応可能な緊急改善の実装・改修 | `app.py`, `affiliate_manager.py`, `templates/grooming.html`, `templates/store_detail.html`, `static/app.js`, `static/sw.js`, `store_hours.py` 等 | M1 | DONE |
+| M3 | 単体テストスイート・UI監査・規約検証 | `tests/` 全261テスト、`audit_anti_ai_ui.py`、Challenger実証テスト | M2 | DONE |
+| M4 | GitHub push & Fly.io 本番デプロイ・稼働確認 | `git commit`, `git push origin main`, `flyctl deploy`, `https://aiseki-navi.com` 疎通確認 | M3 | IN_PROGRESS |
 
 ## Code Layout
-- `app.py`: Webアプリケーション、ルーティング、セッション
-- `worker.py`: バックグラウンドワーカー
-- `monitor.py`: スクレイピング監視
-- `events.py`: イベントクローラー・データ整形
-- `price_comparison.py`: 料金比較データロジック
-- `portal_guides.py`: ポータルガイドFAQ・コンテンツ
-- `moat_intelligence.py`: 混雑予測・推論エンジン
-- `local_db.py`: SQLite DBアクセス・テーブル定義
-- `templates/`: HTMLテンプレート
-- `static/`: CSS/JS/アセット
-- `tests/`: 単体テストスイート
+- `app.py`: Webアプリケーション、ルーティング、キャッシュ、リダイレクト
+- `affiliate_manager.py`: アフィリエイト設定・リンク管理
+- `store_hours.py`: 営業時間スケジュール、`OpeningHoursSpecification` 生成ロジック
+- `templates/grooming.html`: 身だしなみ・事前準備ガイド（景表法PR表記・A8ピクセル）
+- `templates/store_detail.html`: 店舗詳細ページ・`LocalBusiness` 構造化データ
+- `static/app.js`: クライアントUI制御・モーダル描画（PRバッジ）
+- `static/sw.js`: ServiceWorkerキャッシュ（v86）
+- `REPORT_MONETIZATION_AUDIT.md`: 総合評価および収益化改善ロードマップ報告書
+- `tests/test_emergency_improvements.py`: 緊急改善回帰テストスイート
 
 ## Interface Contracts
-- **ブランド表記規約**: 公開UI・API・ログにおいて単体『オリエンタル』『OLG』『ORIENTAL』『YATAKOI』『オリラジ』を禁止し、正式名称『オリエンタルラウンジ』『ヤタコイ』を出力。
+- **ブランド表記規約**: 単体の『オリエンタル』『OLG』『ORIENTAL』『YATAKOI』『オリラジ』を禁止し、正式名称『オリエンタルラウンジ』『ヤタコイ』を使用。
 - **CSS制約**: 未定義 `var(--...)` の使用禁止、`static/calm.css` の `html` に `overflow` 系禁止。
-- **静的ファイル**: 今回はCSS/JSアセットは変更しないため、既存キャッシュバスティング番号（`?v=`）および `static/sw.js` バージョンを維持。
+- **静的アセット**: JS/CSSを変更した場合は、全テンプレート、`static/sw.js`、テストコードのキャッシュバスティング番号（`?v=`）を漏れなく同期更新。

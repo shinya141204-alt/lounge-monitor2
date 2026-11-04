@@ -2779,6 +2779,7 @@
                     return `
                         <div class="guide-app-card ${item.featured ? 'card-featured' : ''} category-${item.category}">
                             <div class="guide-app-header-row">
+                                <span class="guide-app-badge pr-badge" style="background:rgba(200,164,110,0.2);color:var(--accent-gold);font-weight:800;border:1px solid rgba(200,164,110,0.35);">PR</span>
                                 <span class="guide-app-badge">${escapeHtml(item.badge || 'おすすめ')}</span>
                                 <span class="guide-category-tag">${escapeHtml(item.tag || '')}</span>
                             </div>

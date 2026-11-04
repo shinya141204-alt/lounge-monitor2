@@ -1831,11 +1831,11 @@ AFFILIATE_REDIRECTS = {
     'dating_instant': os.environ.get('AFFILIATE_URL_DATING_INSTANT') or os.environ.get('AFFILIATE_URL_DATING') or 'https://px.a8.net/svt/ejp?a8mat=4BEK9C+21TRSI+5SFC+61RI9',
     'dating_bachelor': os.environ.get('AFFILIATE_URL_DATING_BACHELOR') or os.environ.get('AFFILIATE_URL_DATING') or 'https://px.a8.net/svt/ejp?a8mat=4BEK9C+21TRSI+5SFC+61RI9',
     'dating_casual': os.environ.get('AFFILIATE_URL_DATING_CASUAL') or os.environ.get('AFFILIATE_URL_DATING') or 'https://px.a8.net/svt/ejp?a8mat=4BEK9C+21TRSI+5SFC+61RI9',
-    'women_dating_bachelor': os.environ.get('AFFILIATE_URL_WOMEN_DATING') or os.environ.get('AFFILIATE_URL_DATING_BACHELOR') or 'https://px.a8.net/svt/ejp?a8mat=4BEK9C+21TRSI+5SFC+61RI9',
-    'women_dating': os.environ.get('AFFILIATE_URL_WOMEN_DATING') or os.environ.get('AFFILIATE_URL_DATING_BACHELOR') or 'https://px.a8.net/svt/ejp?a8mat=4BEK9C+21TRSI+5SFC+61RI9',
-    'women_beauty_clinic': os.environ.get('AFFILIATE_URL_WOMEN_CLINIC') or 'https://px.a8.net/svt/ejp?a8mat=4BEL1F+61B8KY+328C+2HCB1D',
-    'women_clinic': os.environ.get('AFFILIATE_URL_WOMEN_CLINIC') or 'https://px.a8.net/svt/ejp?a8mat=4BEL1F+61B8KY+328C+2HCB1D',
-    'women_hair_removal': os.environ.get('AFFILIATE_URL_WOMEN_CLINIC') or 'https://px.a8.net/svt/ejp?a8mat=4BEL1F+61B8KY+328C+2HCB1D',
+    'women_dating_bachelor': os.environ.get('AFFILIATE_URL_WOMEN_DATING') or 'https://www.bachelorapp.net/',
+    'women_dating': os.environ.get('AFFILIATE_URL_WOMEN_DATING') or 'https://www.bachelorapp.net/',
+    'women_beauty_clinic': os.environ.get('AFFILIATE_URL_WOMEN_CLINIC') or os.environ.get('AFFILIATE_URL_WOMEN_BEAUTY_CLINIC') or 'https://www.s-b-c.net/',
+    'women_clinic': os.environ.get('AFFILIATE_URL_WOMEN_CLINIC') or os.environ.get('AFFILIATE_URL_WOMEN_BEAUTY_CLINIC') or 'https://www.s-b-c.net/',
+    'women_hair_removal': os.environ.get('AFFILIATE_URL_WOMEN_CLINIC') or os.environ.get('AFFILIATE_URL_WOMEN_BEAUTY_CLINIC') or 'https://www.s-b-c.net/',
     'women_cosme_salon': os.environ.get('AFFILIATE_URL_WOMEN_COSME') or 'https://px.a8.net/svt/ejp?a8mat=4BERA3+6J68QA+5GZ4+5YZ75',
     'women_cosme': os.environ.get('AFFILIATE_URL_WOMEN_COSME') or 'https://px.a8.net/svt/ejp?a8mat=4BERA3+6J68QA+5GZ4+5YZ75',
     'women_skincare': os.environ.get('AFFILIATE_URL_WOMEN_COSME') or 'https://px.a8.net/svt/ejp?a8mat=4BERA3+6J68QA+5GZ4+5YZ75',
@@ -1868,7 +1868,9 @@ def affiliate_redirect(item_id):
                     analytics.track('sns_inflow', f"cv:{inflow_tag}")
         except Exception:
             pass
-    return redirect(target_url, code=302)
+    resp = redirect(target_url, code=302)
+    resp.headers['X-Robots-Tag'] = 'noindex, nofollow'
+    return resp
 
 # --- First-party analytics (no personal data) ---
 import urllib.parse as urllib_parse
@@ -3529,6 +3531,7 @@ def robots_txt():
         "Disallow: /api/trigger-\n"
         "Disallow: /api/sns-jobs\n"
         "Disallow: /staff\n"
+        "Disallow: /link/\n"
         "\n"
         "# AI Search & LLM Grounding Crawlers (Explicitly Welcomed)\n"
         f"{bot_blocks}"
@@ -4186,6 +4189,10 @@ def store_detail_page(store_slug):
             'today_hours_label': hours_info['today_hours_label'],
             'hours_label': hours_info['hours_label'],
             'hours_spec': hours_info['schedule_spec'],
+            'opening_hours_specification': hours_info.get('opening_hours_specification') or store_hours.get_store_opening_hours_specification(sname),
+            'lat': info.get('lat'),
+            'lng': info.get('lng'),
+            'map_anchor': map_anchor,
             'pos_telemetry': s_live.get('pos_telemetry'),
         }
         try:
@@ -4580,15 +4587,16 @@ def price_comparison_page():
     import price_comparison
     restore_latest_data_if_empty()
     trigger_background_fetch_if_needed()
+    req_area = (request.args.get('area') or 'shinjuku').strip().lower()
+    valid_ids = {c['id'] for c in price_comparison.COMPARISON_CLUSTERS}
+    selected_area = req_area if req_area in valid_ids else 'shinjuku'
+
     def _render():
         with data_lock:
             live_stores = list(latest_data.get('full_data') or [])
             last_updated = latest_data.get('last_updated') or '--:--'
 
         data = price_comparison.build_area_comparison_clusters(live_stores=live_stores)
-        valid_ids = {c['id'] for c in data['clusters']}
-        req_area = (request.args.get('area') or 'shinjuku').strip().lower()
-        selected_area = req_area if req_area in valid_ids else 'shinjuku'
 
         return render_template(
             'price_comparison.html',
@@ -4597,7 +4605,7 @@ def price_comparison_page():
             last_updated=last_updated,
             is_staff=bool(session.get('is_staff')),
         )
-    return _get_cached_html_or_render('price_comp', _render)
+    return _get_cached_html_or_render(f"price_comp_{selected_area}", _render)
 
 @app.route('/for-women')
 def for_women_guide():
