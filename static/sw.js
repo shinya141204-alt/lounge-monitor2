@@ -1,5 +1,5 @@
-// Supersedes aiseki-navi-v47..v86 (purged automatically on activate)
-const CACHE_NAME = 'aiseki-navi-v87';
+// Supersedes aiseki-navi-v47..v87 (purged automatically on activate)
+const CACHE_NAME = 'aiseki-navi-v88';
 const SHELL_KEY = '/';
 const LIVE_FRESH_TTL_MS = 45000;
 const PREFETCH_DEDUP_MS = 25000;
@@ -34,7 +34,7 @@ const CORE_ASSETS = [
   '/static/portal.css?v=14',
   '/static/app.js?v=20261104_3',
   '/static/affiliate_config.js?v=14',
-  '/static/manifest.json?v=2'
+  '/static/manifest.json?v=3'
 ];
 const CORE_ASSET_SET = new Set(CORE_ASSETS);
 const OPTIONAL_EXTERNAL_ASSETS = [

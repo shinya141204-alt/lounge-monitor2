@@ -28,11 +28,23 @@ description: >-
 
 ---
 
-## Step 2: 16:9 専用アイキャッチ画像の自動生成＆最適化保存
-1. `invoke_subagent`（`TypeName: "image-generator"`）を呼び出し、記事タイトル・サブタイトルの日本語タイポグラフィを美しく入れた **16:9（1280x720）ラグジュアリー×データ分析風アイキャッチ画像** をアーティファクトディレクトリに生成する。
-2. 生成された画像を Pillow で読み込み、以下の2形式で保存する：
-   * `/Users/kuwanoshinya/.gemini/相席業務改善/相席モニター/static/eyecatch-<slug>.jpg`（RGB, quality=86）
-   * `/Users/kuwanoshinya/.gemini/相席業務改善/相席モニター/static/eyecatch-<slug>.webp`（WEBP, quality=84）
+## Step 2: 16:9 専用アイキャッチ画像（クリーンミニマル実測図解カード）の自動生成＆保存
+1. ネオン・発光夜景・カクテルグラス・金枠明朝体・AI生成画像の文字化けを排し、サイト全体のブランドトーン（`#121215` マットブラック × オフホワイト `#f4f4f5` × ミュートローズ `#e29aa8` × ソフトスレート `#8ab4f8`）と統一された **16:9（1280×720）ミニマル実測図解カード** を Playwright レンダラーで直接生成する：
+   ```bash
+   python3 /Users/kuwanoshinya/.gemini/相席業務改善/相席モニター/.agents/skills/article/scripts/render_editorial_eyecatch.py \
+     --slug "<slug>" \
+     --cat "<英語カテゴリ表記（例: DATA STUDY / AREA STRATEGY）>" \
+     --sample "LOG n = <検証件数>" \
+     --title "<22〜28文字以内の1行メインタイトル>" \
+     --sub "<サブコピー（1行）>" \
+     --k1-kicker "<指標1見出し>" --k1-head "<項目1>" --k1-val "<数値1>" --k1-unit "<単位1>" --k1-desc "<補足1>" \
+     --k2-kicker "<指標2見出し>" --k2-head "<項目2>" --k2-val "<数値2>" --k2-unit "<単位2>" --k2-desc "<補足2>" \
+     --k3-kicker "<指標3見出し>" --k3-head "<項目3>" --k3-val "<数値3>" --k3-unit "<単位3>" --k3-desc "<補足3>"
+   ```
+   （よりテーマ固有の波形チャート・スペクトラム図を使う場合は [`render_editorial_eyecatch.py`](file:///Users/kuwanoshinya/.gemini/相席業務改善/相席モニター/.agents/skills/article/scripts/render_editorial_eyecatch.py) の `build_all_asset_specs()` に定義を追加してもよい）
+2. 以下の2形式が出力されたことを `read_file` で視覚確認し、文字の折り返し崩れや見切れがゼロであることを確かめる：
+   * `/Users/kuwanoshinya/.gemini/相席業務改善/相席モニター/static/eyecatch-<slug>.jpg`
+   * `/Users/kuwanoshinya/.gemini/相席業務改善/相席モニター/static/eyecatch-<slug>.webp`
 
 ---
 
@@ -49,11 +61,12 @@ description: >-
 2. **メタタグ＆OGP＆LLMO**：
    * `<link rel="canonical" href="https://aiseki-navi.com/guide/<slug>">`
    * `<link rel="alternate" type="text/markdown" href="https://aiseki-navi.com/llms.txt" title="相席ナビ AI要約ドキュメント (llms.txt)">`
-   * `<meta property="og:image" content="https://aiseki-navi.com/static/eyecatch-<slug>.jpg">`
+   * `<meta property="og:image" content="https://aiseki-navi.com/static/eyecatch-<slug>.jpg?v=3">`
    * `<meta name="twitter:card" content="summary_large_image">`
 3. **JSON-LD 構造化データ**：`Article`（`SpeakableSpecification` 付） + `BreadcrumbList` + `FAQPage`
 4. **ナビゲーション・共通CSS・フッター**：
-   * `<link rel="stylesheet" href="/static/style.css?v=20261030_6">`, `<link rel="stylesheet" href="/static/portal.css?v=11">`, `<link rel="stylesheet" href="/static/calm.css?v=25">`（既存ページと完全一致のクエリ文字列）を読み込み、未定義 `var(--...)` や見出し絵文字・派手ネオングラデを一切使わないこと（ライトモード `body.theme-light` でのコントラスト崩れも確認すること）
+   * `<link rel="manifest" href="/static/manifest.json?v=3">`, `<link rel="icon" type="image/png" href="/static/icon-192.png?v=3">`, `<link rel="apple-touch-icon" href="/static/icon.png?v=3">`, `<meta name="theme-color" content="#111113">`
+   * `<link rel="stylesheet" href="/static/style.css?v=20261030_6">`, `<link rel="stylesheet" href="/static/portal.css?v=14">`, `<link rel="stylesheet" href="/static/calm.css?v=32">`（既存ページと完全一致のクエリ文字列）を読み込み、未定義 `var(--...)` や見出し絵文字・派手ネオングラデを一切使わないこと（ライトモード `body.theme-light` でのコントラスト崩れも確認すること）
    * 上部に `{% set nav_active = 'columns' %}` と `{% include '_portal_nav.html' %}`
    * 下部に `{% include '_portal_footer.html' %}`
    * スタッフ非表示ガード `{% if not is_staff and not session.get('is_staff') %}`（予約記事なら `and not is_scheduled_preview` も追加）で AdSense タグを囲むこと
