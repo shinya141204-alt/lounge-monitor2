@@ -1772,7 +1772,7 @@ class FullAuditRegressionTests(unittest.TestCase):
         sw_resp = self.client.get('/sw.js')
         try:
             sw_txt = sw_resp.data.decode('utf-8')
-            self.assertIn("CACHE_NAME = 'aiseki-navi-v90'", sw_txt)
+            self.assertIn("CACHE_NAME = 'aiseki-navi-v91'", sw_txt)
             self.assertIn("event.waitUntil", sw_txt)
         finally:
             sw_resp.close()
@@ -1823,6 +1823,8 @@ class FullAuditRegressionTests(unittest.TestCase):
             aff_txt = af.read()
         self.assertIn('afterRank: 4', aff_txt)
         self.assertIn("slotKey: 'rank4_context'", aff_txt)
+        self.assertIn('afterRank: 10', aff_txt)
+        self.assertIn("slotKey: 'rank10_context'", aff_txt)
         with app_module.data_lock:
             saved_full = list(app_module.latest_data.get('full_data') or [])
             saved_upd = app_module.latest_data.get('last_updated')
@@ -4700,8 +4702,8 @@ class AIUltraGrowthSuiteTests(unittest.TestCase):
         app_module.clear_fast_http_caches()
         home_html = self.client.get('/').data.decode('utf-8')
         self.assertIn('calm.css?v=33', home_html)
-        self.assertIn('app.js?v=20261105_1', home_html)
-        self.assertIn('/sw.js?v=90', home_html)
+        self.assertIn('app.js?v=20261105_2', home_html)
+        self.assertIn('/sw.js?v=91', home_html)
 
         # 2. TikTok 9:16 Safe-Zone Reel Templates & Captions (zero bare 'オリエンタル' or 'OLG')
         sample_stores = [

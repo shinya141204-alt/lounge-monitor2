@@ -107,11 +107,11 @@ class UiAuditRegressionTests(unittest.TestCase):
         """全テンプレートと static/sw.js のアセットバージョンが完全同期し、immutable ヘッダが正しく付与されること"""
         expected_calm = "/static/calm.css?v=33"
         expected_portal = "/static/portal.css?v=14"
-        expected_app_js = "/static/app.js?v=20261105_1"
-        expected_aff_js = "/static/affiliate_config.js?v=15"
+        expected_app_js = "/static/app.js?v=20261105_2"
+        expected_aff_js = "/static/affiliate_config.js?v=16"
         expected_style = "/static/style.css?v=20261030_6"
-        expected_sw_url = "/sw.js?v=90"
-        expected_cache_name = "aiseki-navi-v90"
+        expected_sw_url = "/sw.js?v=91"
+        expected_cache_name = "aiseki-navi-v91"
 
         templates_dir = os.path.join(PROJECT_ROOT, "templates")
         calm_seen = 0
@@ -2060,6 +2060,106 @@ class UiAuditRegressionTests(unittest.TestCase):
                         return d;
                     }""")
                     self.assertEqual(staff_disp, "none", "Contextual promo row must hide in staff-mode")
+
+                    # Verify 10th-rank hybrid second slot (rank10_context): SSR 2-slot placement on >=10 stores + all 6 time/audience modes
+                    twelve_stores = five_stores + [
+                        {"name": "OLG 町田", "source": "oriental", "region": "Kanto", "women": 17, "men": 8, "total": 25, "women_diff": 0, "men_diff": 0},
+                        {"name": "OLG 横浜", "source": "oriental", "region": "Kanto", "women": 16, "men": 8, "total": 24, "women_diff": 0, "men_diff": 0},
+                        {"name": "JIS 新宿", "source": "jis", "region": "Kanto", "women": 15, "men": 7, "total": 22, "women_diff": 0, "men_diff": 0},
+                        {"name": "OLG 上野", "source": "oriental", "region": "Kanto", "women": 14, "men": 7, "total": 21, "women_diff": 0, "men_diff": 0},
+                        {"name": "JIS 大宮", "source": "jis", "region": "Kanto", "women": 13, "men": 6, "total": 19, "women_diff": 0, "men_diff": 0},
+                        {"name": "OLG 名古屋栄", "source": "oriental", "region": "Chubu", "women": 12, "men": 6, "total": 18, "women_diff": 0, "men_diff": 0},
+                        {"name": "OLG 福岡", "source": "oriental", "region": "Kyushu", "women": 11, "men": 5, "total": 16, "women_diff": 0, "men_diff": 0},
+                    ]
+                    with app_module.data_lock:
+                        app_module.latest_data.clear()
+                        app_module.latest_data.update({
+                            "last_updated": "2026-11-04 21:00:00",
+                            "is_seed": False,
+                            "full_data": copy.deepcopy(twelve_stores),
+                        })
+                    app_module.clear_fast_http_caches()
+
+                    page.goto(base + "/", wait_until="domcontentloaded")
+                    page.wait_for_selector('#ranking-list [data-context-slot="rank10_context"]')
+                    second_slot_info = page.evaluate("""async () => {
+                        const children = Array.from(document.getElementById('ranking-list').children);
+                        const prNodes = Array.from(document.querySelectorAll('#ranking-list .context-lead-row.pr-card-item'));
+                        const slot1 = prNodes[0];
+                        const slot2 = prNodes[1];
+                        const cfg2 = AFFILIATE_MASTER.infeedSlots[1];
+                        const sample = [{ women: 20, men: 10 }, { women: 18, men: 9 }];
+                        const origTs = window.lastData && window.lastData.timestamp;
+
+                        if (window.lastData) window.lastData.timestamp = '2026-11-04 21:15:00';
+                        const mNight = window.resolveInfeedContext(cfg2, sample);
+                        if (window.lastData) window.lastData.timestamp = '2026-11-04 19:20:00';
+                        const mToast = window.resolveInfeedContext(cfg2, sample);
+                        if (window.lastData) window.lastData.timestamp = '2026-11-04 18:10:00';
+                        const mSkin = window.resolveInfeedContext(cfg2, sample);
+                        if (window.lastData) window.lastData.timestamp = '2026-11-04 14:00:00';
+                        const mDay = window.resolveInfeedContext(cfg2, sample);
+
+                        setAudienceMode('women');
+                        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+                        if (window.lastData) window.lastData.timestamp = '2026-11-04 20:30:00';
+                        const wVenue = window.resolveInfeedContext(cfg2, sample);
+                        if (window.lastData) window.lastData.timestamp = '2026-11-04 23:30:00';
+                        const wLate = window.resolveInfeedContext(cfg2, sample);
+
+                        setAudienceMode('men');
+                        if (window.lastData && origTs) window.lastData.timestamp = origTs;
+                        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+                        return {
+                            prCount: prNodes.length,
+                            slot1Key: slot1 ? slot1.getAttribute('data-context-slot') : '',
+                            slot2Key: slot2 ? slot2.getAttribute('data-context-slot') : '',
+                            slot1Idx: slot1 ? children.indexOf(slot1) : -1,
+                            slot2Idx: slot2 ? children.indexOf(slot2) : -1,
+                            slot2GridCol: slot2 ? getComputedStyle(slot2).gridColumn : '',
+                            mNight: [mNight.mode, mNight.item.url],
+                            mToast: [mToast.mode, mToast.item.url],
+                            mSkin: [mSkin.mode, mSkin.item.url],
+                            mDay: [mDay.mode, mDay.item.url],
+                            wVenue: [wVenue.mode, wVenue.item.url],
+                            wLate: [wLate.mode, wLate.item.url],
+                        };
+                    }""")
+                    self.assertEqual(second_slot_info["prCount"], 2)
+                    self.assertEqual(second_slot_info["slot1Key"], "rank4_context")
+                    self.assertEqual(second_slot_info["slot2Key"], "rank10_context")
+                    self.assertEqual(second_slot_info["slot1Idx"], 4)
+                    self.assertEqual(second_slot_info["slot2Idx"], 11)
+                    self.assertEqual(second_slot_info["mNight"], ["night_second_venue", "/link/second_venue_reservation"])
+                    self.assertEqual(second_slot_info["mToast"], ["evening_toast_care", "/link/night_care_supplement"])
+                    self.assertEqual(second_slot_info["mSkin"], ["evening_skincare", "/link/mens_skincare_clinic"])
+                    self.assertEqual(second_slot_info["mDay"], ["daytime_styleup", "/link/spu_styleup"])
+                    self.assertEqual(second_slot_info["wVenue"], ["women_venue_reserve", "/link/women_second_venue"])
+                    self.assertEqual(second_slot_info["wLate"], ["women_late_care", "/link/women_cosme_salon"])
+
+                    for is_light in (False, True):
+                        page.evaluate(f"document.body.classList.toggle('theme-light', {str(is_light).lower()})")
+                        colors2 = page.evaluate("""() => {
+                            const slot = document.querySelector('#ranking-list [data-context-slot="rank10_context"]');
+                            const slotBg = getComputedStyle(slot).backgroundColor;
+                            const cta = slot.querySelector('.pr-context-cta');
+                            return {
+                                slotBg,
+                                titleFg: getComputedStyle(slot.querySelector('.pr-context-title')).color,
+                                kickerFg: getComputedStyle(slot.querySelector('.pr-context-kicker')).color,
+                                subFg: getComputedStyle(slot.querySelector('.pr-context-sub')).color,
+                                subLinkFg: getComputedStyle(slot.querySelector('.pr-editorial-sublink')).color,
+                                ctaBg: getComputedStyle(cta).backgroundColor,
+                                ctaFg: getComputedStyle(cta).color,
+                            };
+                        }""")
+                        bg2 = _parse_hex_or_rgba(colors2["slotBg"])
+                        for key in ("titleFg", "kickerFg", "subFg", "subLinkFg"):
+                            cr2 = _contrast_ratio(_parse_hex_or_rgba(colors2[key]), bg2)
+                            self.assertGreaterEqual(cr2, 5.5, f"rank10_context {key} contrast {cr2:.2f} < 5.5 (light={is_light})")
+                        cta_cr2 = _contrast_ratio(_parse_hex_or_rgba(colors2["ctaFg"]), _parse_hex_or_rgba(colors2["ctaBg"]))
+                        self.assertGreaterEqual(cta_cr2, 5.5, f"rank10_context CTA contrast {cta_cr2:.2f} < 5.5 (light={is_light})")
 
                     # Verify both new killer articles in dark & light mode
                     for art_route in ("/guide/lounge-vs-screened-date", "/guide/dress-code-cleanliness"):

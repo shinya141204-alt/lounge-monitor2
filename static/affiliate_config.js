@@ -325,16 +325,29 @@ const AFFILIATE_MASTER = {
         }
     ],
 
-    // 4位直下の文脈連動インフィード導線（時間帯・上位店の混雑状況・男女モードに応じて自動出し分け）
+    // 4位直下＆10位直下の文脈連動インフィード導線（時間帯・混雑状況・男女モードに応じてジャンル分離で自動出し分け）
     infeedSlots: [
         {
             afterRank: 4,
             slotKey: 'rank4_context',
+            slotTheme: 'match_primary',
             contextual: true,
             itemId: 'dating_bachelor',
             crowdedItemId: 'dating_instant',
             daytimeItemId: 'mens_hair_removal',
             womenItemId: 'women_dating_bachelor'
+        },
+        {
+            afterRank: 10,
+            slotKey: 'rank10_context',
+            slotTheme: 'venue_care_hybrid',
+            contextual: true,
+            itemId: 'second_venue_reservation',
+            eveningPrepItemId: 'night_care_supplement',
+            eveningSkincareItemId: 'mens_skincare_clinic',
+            daytimeItemId: 'spu_styleup',
+            womenItemId: 'women_second_venue',
+            womenLateItemId: 'women_cosme_salon'
         }
     ]
 };

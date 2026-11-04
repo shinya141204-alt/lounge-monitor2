@@ -488,10 +488,10 @@ def _prescribe_page_funnel_upgrade(path: str, grooming_rate_low: bool = False) -
 
     if p == "/" or p.startswith(("/area/", "/areas", "/oriental-lounge", "/ag", "/jis", "/asobibar", "/concierge")):
         return {
-            "recommended_funnel": "ランキング4位直下の時間帯連動枠（rank4_context）＋ 2軒目一休予約＆おすすめモーダル最適化",
-            "recommended_links": ["/link/dating_bachelor", "/link/dating_instant", "/link/second_venue_reservation"],
-            "placement_position": "トップ4位直下の文脈連動インフィード枠（昼:身だしなみ／夜:1対1／混雑:即時合流／女性:無料1対1）および店舗モーダル下部",
-            "action_proposal": "人数確認だけで離脱する層を受け止めるため、ランキング4位直下の文脈連動枠（rank4_context）と店舗詳細モーダル内の『一休.comレストラン2軒目予約（/link/second_venue_reservation）』のコピー・CTR推移を重点監視してください。",
+            "recommended_funnel": "4位・10位直下の時間帯連動インフィード2枠（rank4_context / rank10_context）＋ 2軒目一休予約最適化",
+            "recommended_links": ["/link/dating_bachelor", "/link/second_venue_reservation", "/link/dating_instant"],
+            "placement_position": "トップ4位直下（出会い・1対1軸）＆ 10位直下（夜:一休2軒目予約／夕方:乾杯・肌ケア／昼:私服SPU）および店舗モーダル下部",
+            "action_proposal": "人数確認だけで離脱する層を2段階で受け止めるため、4位直下の出会い系文脈枠（rank4_context）と10位直下の2軒目予約・身だしなみハイブリッド枠（rank10_context）のCTR推移を重点監視してください。",
         }
 
     return {

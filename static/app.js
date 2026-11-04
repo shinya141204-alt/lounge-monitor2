@@ -1290,8 +1290,14 @@
                     _renderedFromSSR = getStatusAgeSec(window.INITIAL_STATUS_DATA) < 20;
                     const rankingListEl = document.getElementById('ranking-list');
                     const hasInfeedAds = !IS_STAFF_SESSION && !document.body.classList.contains('staff-mode') && typeof AFFILIATE_MASTER !== 'undefined' && AFFILIATE_MASTER && AFFILIATE_MASTER.enabled && Array.isArray(AFFILIATE_MASTER.infeedSlots) && AFFILIATE_MASTER.infeedSlots.length > 0;
-                    const ssrHasInfeedSlot = Boolean(rankingListEl && rankingListEl.querySelector('.pr-card-item'));
-                    const infeedSsrAligned = (!hasInfeedAds && !ssrHasInfeedSlot) || (hasInfeedAds && (ssrHasInfeedSlot || window.INITIAL_STATUS_DATA.ranking.length < 4));
+                    const ssrPrNodes = rankingListEl ? rankingListEl.querySelectorAll('.pr-card-item') : [];
+                    const rankLen = rankingListEl
+                        ? rankingListEl.querySelectorAll('.ranking-item[data-store]').length
+                        : (Array.isArray(window.INITIAL_STATUS_DATA.ranking) ? window.INITIAL_STATUS_DATA.ranking.length : 0);
+                    const expectedSsrPrCount = hasInfeedAds
+                        ? AFFILIATE_MASTER.infeedSlots.filter(s => rankLen >= Number(s.afterRank || 0)).length
+                        : 0;
+                    const infeedSsrAligned = ssrPrNodes.length === expectedSsrPrCount;
                     const staffEventsMismatch = IS_STAFF && shouldShowEvents();
                     const pinnedAlreadyHydrated = (pinnedStores.length === 0) || Boolean(window.__SSR_PINNED_HYDRATED);
                     const canHydrateSsrZeroDom = (
@@ -1309,11 +1315,14 @@
                         _lastRenderedSignature = _computeUiSignature(window.INITIAL_STATUS_DATA);
                         _lastAnimatedTimestamp = window.INITIAL_STATUS_DATA.timestamp || '';
                         _syncPrevStoreCounts(window.INITIAL_STATUS_DATA.ranking);
-                        if (hasInfeedAds && ssrHasInfeedSlot && typeof patchInfeedPrElement === 'function') {
-                            const ssrSlotEl = rankingListEl.querySelector('.pr-card-item');
-                            if (ssrSlotEl && AFFILIATE_MASTER.infeedSlots[0]) {
-                                patchInfeedPrElement(ssrSlotEl, AFFILIATE_MASTER.infeedSlots[0], window.INITIAL_STATUS_DATA.ranking);
-                            }
+                        if (hasInfeedAds && ssrPrNodes.length > 0 && typeof patchInfeedPrElement === 'function') {
+                            const eligibleSlots = AFFILIATE_MASTER.infeedSlots.filter(s => rankLen >= Number(s.afterRank || 0));
+                            ssrPrNodes.forEach((ssrSlotEl, sIdx) => {
+                                const slotCfg = eligibleSlots[sIdx] || AFFILIATE_MASTER.infeedSlots[sIdx];
+                                if (slotCfg) {
+                                    patchInfeedPrElement(ssrSlotEl, slotCfg, window.INITIAL_STATUS_DATA.ranking);
+                                }
+                            });
                         }
                         const lastUpdateEl = document.getElementById('last-update');
                         if (lastUpdateEl && window.INITIAL_STATUS_DATA.timestamp) {
@@ -2449,8 +2458,9 @@
                 });
                 if (infeedActive) {
                     const prNodes = rankingList.querySelectorAll('.pr-card-item');
+                    const eligibleSlots = AFFILIATE_MASTER.infeedSlots.filter(s => otherItems.length >= Number(s.afterRank || 0));
                     prNodes.forEach((prNode, sIdx) => {
-                        const slotCfg = AFFILIATE_MASTER.infeedSlots[sIdx] || AFFILIATE_MASTER.infeedSlots[0];
+                        const slotCfg = eligibleSlots[sIdx] || AFFILIATE_MASTER.infeedSlots[sIdx] || AFFILIATE_MASTER.infeedSlots[0];
                         if (slotCfg) patchInfeedPrElement(prNode, slotCfg, otherItems);
                     });
                 }
@@ -2542,6 +2552,98 @@
             const avgWPct = (sumW + sumM) > 0 ? Math.round((sumW / (sumW + sumM)) * 100) : 55;
             const jstHour = _getContextJstHour();
             const isNightHours = (jstHour >= 18 || jstHour <= 4);
+            const isHybridSecondSlot = Boolean(
+                slotConfig && (slotConfig.slotTheme === 'venue_care_hybrid' || slotConfig.slotKey === 'rank10_context')
+            );
+
+            if (isHybridSecondSlot) {
+                if (isWomenMode) {
+                    if (jstHour >= 23 || jstHour <= 4) {
+                        const item = findWomen((slotConfig && slotConfig.womenLateItemId) || 'women_cosme_salon');
+                        if (!item) return null;
+                        return {
+                            mode: 'women_late_care',
+                            item,
+                            kicker: '夜遊び帰りの髪・肌リセット',
+                            title: '空調の効いた店内帰りも翌朝まとまる「サロン品質ナイトヘア＆肌ケア」',
+                            sub: '帰宅後シンプルなステップでツヤ髪・うるおい肌をキープ。公式オンライン限定枠',
+                            cta: '公式ショップを見る ›',
+                            editorialHref: '/guide/dress-code-cleanliness',
+                            editorialLabel: 'ラウンジの間接照明で映える清潔感・ケア基準を見る ›'
+                        };
+                    }
+                    const item = findWomen((slotConfig && slotConfig.womenItemId) || 'women_second_venue');
+                    if (!item) return null;
+                    return {
+                        mode: 'women_venue_reserve',
+                        item,
+                        kicker: '女子会ディナー・ホテルラウンジ予約',
+                        title: '相席前の0次会カフェ・ご褒美女子会に「一休.comレストラン」',
+                        sub: '乾杯スパークリング付きやアフタヌーンティーなどWEB限定プランを空席検索',
+                        cta: '人気プランを見る ›',
+                        editorialHref: '/for-women',
+                        editorialLabel: '女性向け完全無料ガイド・待ちゼロ活用術を見る ›'
+                    };
+                }
+
+                if (jstHour >= 20 || jstHour <= 4) {
+                    const item = findMen((slotConfig && slotConfig.itemId) || 'second_venue_reservation');
+                    if (!item) return null;
+                    return {
+                        mode: 'night_second_venue',
+                        item,
+                        kicker: '2軒目バー・後日デートの席確保に',
+                        title: '着席45分後の2軒目・次回ディナーで迷わない「一休.comレストラン」',
+                        sub: '週末の満席歩き回りを回避。駅近の隠れ家バー・厳選ダイニングをスマホで空席予約',
+                        cta: '空席・プランを見る ›',
+                        editorialHref: '/guide/second-venue',
+                        editorialLabel: '着席45分で自然に2軒目へ誘うフレーズ・立ち回り ›'
+                    };
+                }
+
+                if (jstHour >= 19) {
+                    const item = findMen((slotConfig && slotConfig.eveningPrepItemId) || 'night_care_supplement');
+                    if (!item) return null;
+                    return {
+                        mode: 'evening_toast_care',
+                        item,
+                        kicker: '飲み放題・2軒目を楽しむ夜の準備',
+                        title: '翌朝も軽やかに動きたい夜の「乾杯サポート・ナイトケアサプリ」',
+                        sub: '乾杯前後にサッと取り入れやすい携帯設計。仕事帰りの相席や急な2軒目のお供に',
+                        cta: '公式サイトを見る ›',
+                        editorialHref: '/guide/second-venue',
+                        editorialLabel: '飲み放題ペース配分・2軒目移動のスマートな立ち回り ›'
+                    };
+                }
+
+                if (jstHour >= 17) {
+                    const item = findMen((slotConfig && slotConfig.eveningSkincareItemId) || 'mens_skincare_clinic');
+                    if (!item) return null;
+                    return {
+                        mode: 'evening_skincare',
+                        item,
+                        kicker: '仕事帰りの皮脂テカリ・乾燥ケア',
+                        title: '70cmソファ席に入る前に整える「ORBIS Mr.（オルビス ミスター）」',
+                        sub: '夕方のおでこ・鼻まわりのテカリを抑えて清潔感をキープ。初回限定トライアルあり',
+                        cta: '初回セット詳細 ›',
+                        editorialHref: '/guide/first-10-minutes',
+                        editorialLabel: '最初の10分で席替えされない距離70cmの印象法則 ›'
+                    };
+                }
+
+                const item = findMen((slotConfig && slotConfig.daytimeItemId) || 'spu_styleup');
+                if (!item) return null;
+                return {
+                    mode: 'daytime_styleup',
+                    item,
+                    kicker: '相席で浮かない大人私服・身だしなみ',
+                    title: '週末のラウンジ選びと一緒に整える「SPU スタイルアップ便」',
+                    sub: 'スタイリスト監修の清潔感ある大人カジュアル一式が毎月届くコーデ定期便',
+                    cta: '今月のコーデを見る ›',
+                    editorialHref: '/guide/dress-code-cleanliness',
+                    editorialLabel: 'ブランド別NG服装早見表・70cm清潔感チェック ›'
+                };
+            }
 
             if (isWomenMode) {
                 const item = findWomen((slotConfig && slotConfig.womenItemId) || 'women_dating_bachelor');
@@ -2615,12 +2717,14 @@
             if (!wrapper) return null;
             const ctx = resolveInfeedContext(slotConfig || {}, topStoreItems);
             if (!ctx || !ctx.item) return null;
+            const targetSlotKey = (slotConfig && slotConfig.slotKey) || 'rank4_context';
+            const prevSlotKey = wrapper.getAttribute('data-context-slot') || '';
             const prevMode = wrapper.getAttribute('data-context-mode') || '';
             const prevHref = wrapper.getAttribute('data-context-href') || '';
-            if (prevMode === ctx.mode && prevHref === ctx.item.url && wrapper.querySelector('.pr-context-main')) {
+            if (prevSlotKey === targetSlotKey && prevMode === ctx.mode && prevHref === ctx.item.url && wrapper.querySelector('.pr-context-main')) {
                 return wrapper;
             }
-            wrapper.setAttribute('data-context-slot', (slotConfig && slotConfig.slotKey) || 'rank4_context');
+            wrapper.setAttribute('data-context-slot', targetSlotKey);
             wrapper.setAttribute('data-context-mode', ctx.mode);
             wrapper.setAttribute('data-context-href', ctx.item.url);
 

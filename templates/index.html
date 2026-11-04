@@ -134,7 +134,7 @@
 
     <link rel="stylesheet" href="/static/style.css?v=20261030_6" fetchpriority="high">
     <link rel="stylesheet" href="/static/calm.css?v=33" fetchpriority="high">
-    <link rel="preload" href="/static/app.js?v=20261105_1" as="script">
+    <link rel="preload" href="/static/app.js?v=20261105_2" as="script">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- Non-render-blocking web font (avoids waiting on Google Fonts at PWA cold launch) -->
@@ -149,7 +149,7 @@
     </script>
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
-    <script src="/static/affiliate_config.js?v=15" defer></script>
+    <script src="/static/affiliate_config.js?v=16" defer></script>
     {% endif %}
 </head>
 
@@ -753,6 +753,25 @@
                                 </div>
                             </aside>
                             {% endif %}
+                            {% if not is_staff and not session.get('is_staff') and loop.index == 10 and (initial_status.ranking|length) >= 10 %}
+                            <aside class="context-lead-row pr-card-item" data-context-slot="rank10_context" data-context-mode="night_second_venue" data-context-href="/link/second_venue_reservation" aria-label="プロモーションおよび2軒目ガイド">
+                                <a class="pr-context-main" href="/link/second_venue_reservation?from=/" target="_blank" rel="noopener sponsored">
+                                    <div class="pr-context-body">
+                                        <div class="pr-context-meta">
+                                            <span class="pr-disclosure-pill">PR</span>
+                                            <span class="pr-context-kicker">2軒目バー・後日デートの席確保に</span>
+                                        </div>
+                                        <div class="pr-context-title">着席45分後の2軒目・次回ディナーで迷わない「一休.comレストラン」</div>
+                                        <div class="pr-context-sub">週末の満席歩き回りを回避。駅近の隠れ家バー・厳選ダイニングをスマホで空席予約</div>
+                                    </div>
+                                    <span class="pr-context-cta">空席・プランを見る ›</span>
+                                </a>
+                                <div class="pr-context-foot">
+                                    <a class="pr-editorial-sublink" href="/guide/second-venue">着席45分で自然に2軒目へ誘うフレーズ・立ち回り ›</a>
+                                </div>
+                                <img class="pr-tracking-pixel" src="https://www15.a8.net/0.gif?a8mat=4BGDZ4+9R9ROY+1OK+NVP2P" width="1" height="1" alt="" loading="lazy" aria-hidden="true">
+                            </aside>
+                            {% endif %}
                             {% endfor %}
                             {% endif %}
                         </div>
@@ -833,6 +852,19 @@
                                                 var rb = newFirst.querySelector('.rank-badge');
                                                 if (!rb || rb.textContent.trim() !== '-') {
                                                     newFirst.classList.add('bento-hero-card');
+                                                }
+                                            }
+                                            var prCards = rList.querySelectorAll('.pr-card-item');
+                                            if (prCards.length > 0) {
+                                                var remCards = rList.querySelectorAll('.ranking-item[data-store]');
+                                                var slotRanks = [4, 10];
+                                                for (var pi = 0; pi < prCards.length; pi++) {
+                                                    var afterR = slotRanks[pi] || 0;
+                                                    if (afterR > 0 && remCards.length >= afterR) {
+                                                        remCards[afterR - 1].insertAdjacentElement('afterend', prCards[pi]);
+                                                    } else if (prCards[pi].parentNode) {
+                                                        prCards[pi].parentNode.removeChild(prCards[pi]);
+                                                    }
                                                 }
                                             }
                                             pCont.classList.remove('hidden');
@@ -2468,7 +2500,7 @@
         window.INITIAL_STATUS_DATA = {{ initial_status | tojson }};
     </script>
     {% endif %}
-    <script src="/static/app.js?v=20261105_1" defer></script>
+    <script src="/static/app.js?v=20261105_2" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
@@ -2484,7 +2516,7 @@
                 }
                 if (window.__swRegistered) return;
                 window.__swRegistered = true;
-                navigator.serviceWorker.register('/sw.js?v=90', { updateViaCache: 'none' })
+                navigator.serviceWorker.register('/sw.js?v=91', { updateViaCache: 'none' })
                     .then(function(reg) {
                         reg.update();
                         document.addEventListener('visibilitychange', function() {
