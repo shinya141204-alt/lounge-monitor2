@@ -307,10 +307,20 @@ TIPS_LIST = [
         "「相席ラウンジって20代前半ばかりでアラサーは浮く？」と迷う男性、実はagとオリエンタルラウンジやJISでは客層が全く別物🍸\n"
         "学生街を避けて平日の20時に行くと、落ち着いた同世代のOLさんと一番自然に会話が弾むよ。"
     ),
+    (
+        "友達と2人でワイワイ乾杯したい金曜20時台は相席ラウンジが圧倒的に早いけど、1対1でじっくり話す方が得意な人は週末の審査制カフェデートと使い分ける方がずっと自然体でうまくいく☕️\n"
+        "自分の得意な土俵を2つ持っておくのが一番余裕が出る。"
+    ),
+    (
+        "「ラウンジは暗いから夕方のヒゲやテカリも目立たないでしょ」って油断しがちだけど、実はテーブル真上のスポット照明×距離70cmは昼間以上に陰影が出る🪞\n"
+        "エレベーターに乗る前、洗面所でテカリを押さえて襟元を整える3分だけで印象がまるで違う。"
+    ),
 ]
 
 
 _FALLBACK_COLUMNS = [
+    ("相席ラウンジ vs 審査制1対1デート徹底比較｜実測ログで見る使い分け境界線", "/guide/lounge-vs-screened-date"),
+    ("相席ラウンジの服装・清潔感チェック完全ガイド｜NGドレスコードと70cm照明対策", "/guide/dress-code-cleanliness"),
     ("相席ラウンジは30代でも浮かない？｜店舗選びと客層データの境界線", "/guide/thirties-lounge-guide"),
     ("20時と深夜0時で「主役」は入れ替わる｜5大ブランドの時間波形と男女逆転の店選び", "/guide/brand-waveform-asymmetry"),
     ("相席ラウンジの席替え完全攻略｜言えない男と察する女の心理学", "/guide/table-change-protocol"),
@@ -417,6 +427,10 @@ def _column_for_tip_index(idx: int) -> tuple:
         if scheduled_articles.is_published("thirties-lounge-guide"):
             return ("相席ラウンジは30代でも浮かない？｜店舗選びと客層データの境界線", "/guide/thirties-lounge-guide")
         return ("相席ラウンジ実践コラム・攻略記事一覧", "/columns")
+    if idx == 69:
+        return ("相席ラウンジ vs 審査制1対1デート徹底比較｜実測ログで見る使い分け境界線", "/guide/lounge-vs-screened-date")
+    if idx == 70:
+        return ("相席ラウンジの服装・清潔感チェック完全ガイド｜NGドレスコードと70cm照明対策", "/guide/dress-code-cleanliness")
     return ("相席ラウンジ実践コラム・攻略記事一覧", "/columns")
 
 
@@ -663,6 +677,8 @@ HUMAN_OBSERVATION_SEEDS = (
     {"key": "asobibar_standing_escape", "lens": "しっかり座る相席に少し疲れた2軒目や終電後に、ASOBIBARのような回遊スタイルで1杯だけ気楽に話す身軽さ", "related_path": "/guide/brand-waveform-asymmetry"},
     {"key": "yatakoi_ag_midnight_ladies", "lens": "早い時間は女子会ムードだったagやヤタコイが、深夜0時を回ると2軒目男性が増えて女子組が待ちゼロ即乾杯になる逆転リズム", "related_path": "/guide/brand-waveform-asymmetry"},
     {"key": "jis_early_vs_1am_monster", "lens": "19時台の静かな早割タイムと、深夜1時でも100人規模で熱気があるJISの二面性", "related_path": "/guide/brand-waveform-asymmetry"},
+    {"key": "lounge_pair_vs_1on1_cafe", "lens": "友人ペアで今から乾杯する相席ラウンジのライブ感と、1人で週末に60分だけ話す1対1カフェデートの心地よい使い分け", "related_path": "/guide/lounge-vs-screened-date"},
+    {"key": "spotlight_70cm_dress_code", "lens": "暗い店内でも真上の暖色スポット照明×70cm距離で意外と目に入る口元・靴先と、ブランドごとの浮かない私服バランス", "related_path": "/guide/dress-code-cleanliness"},
 )
 
 

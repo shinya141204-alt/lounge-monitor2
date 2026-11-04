@@ -74,6 +74,8 @@ RESERVED_STATIC_SLUGS = {
     "osaka-kita-vs-minami",
     "crowd-rush-paradox",
     "brand-waveform-asymmetry",
+    "lounge-vs-screened-date",
+    "dress-code-cleanliness",
 }
 
 COLUMN_AI_CLICHES = (
@@ -439,6 +441,8 @@ THEME_ARCHETYPES = {
 }
 
 EXISTING_STATIC_COLUMNS = [
+    {"slug": "lounge-vs-screened-date", "path": "/guide/lounge-vs-screened-date", "template": "guide_lounge_vs_screened_date.html", "title": "相席ラウンジ vs 審査制1対1デート徹底比較｜「複数人のライブ感」か「メッセージ不要の1対1」か、実測ログで見る使い分け境界線"},
+    {"slug": "dress-code-cleanliness", "path": "/guide/dress-code-cleanliness", "template": "guide_dress_code_cleanliness.html", "title": "相席ラウンジの服装・清潔感チェック完全ガイド｜ブランド別NGドレスコードと「70cmソファ席の間接照明」で損しない身だしなみ"},
     {"slug": "brand-waveform-asymmetry", "path": "/guide/brand-waveform-asymmetry", "template": "guide_brand_waveform_asymmetry.html", "title": "同じ街でも20時と深夜0時で「主役」は入れ替わる｜実測ログが映す5大ブランドの時間波形と、男女で真逆になる店選び"},
     {"slug": "crowd-rush-paradox", "path": "/guide/crowd-rush-paradox", "template": "guide_crowd_rush_paradox.html", "title": "金曜22時の「女性比60%」を見て向かうと3割が男余りに逆転する｜98万件ログが暴いた『群衆殺到パラドックス』と70%安全圏"},
     {"slug": "for-women", "path": "/for-women", "template": "for_women.html", "title": "「受付で30分放置…」をゼロにする女子のための相席ラウンジ完全ガイド｜待ち0店舗の見分け方＆席替え・退店術"},

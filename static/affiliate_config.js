@@ -6,8 +6,8 @@
  */
 
 const AFFILIATE_MASTER = {
-    // 商業サイトでの有効化フラグ（社内モード時は自動的に無効）
-    enabled: !(typeof window !== 'undefined' && window.APP_CONFIG && window.APP_CONFIG.isStaff) && (typeof IS_STAFF !== 'undefined' ? !IS_STAFF : true),
+    // 商業サイトでの有効化フラグ（社内モード・スタッフログイン時は自動的に無効）
+    enabled: !(typeof window !== 'undefined' && window.APP_CONFIG && (window.APP_CONFIG.isStaff || window.APP_CONFIG.isStaffSession)) && (typeof IS_STAFF !== 'undefined' ? !IS_STAFF : true),
 
     // カテゴリ定義
     categories: [
@@ -197,6 +197,10 @@ const AFFILIATE_MASTER = {
             tag: '審査制ハイクラスデート',
             name: '【1対1で落ち着いて話したい日に】日程を入れるだけで週1回デートが決まる審査制アプリ',
             shortTitle: '女性完全無料・審査制カフェデート',
+            infeedTag: '女性完全無料',
+            infeedSub: '顔出し・メッセージ往復なし',
+            infeedTitle: '審査制1対1カフェデート（日程登録のみ）',
+            infeedCta: '女性無料の詳細 ›',
             target: '複数人の賑やかな相席より1対1のカフェやバーで落ち着いて話したい方・身バレせずにハイスペック層と出会いたい方',
             desc: '相席ラウンジで「今日はちょっと席のテンションが合わなかったかも…」という日の選択肢として女性人気が高い2段階審査制アプリ。顔写真の一般公開がなく、いいね送りや面倒なメッセージ往復もゼロでAIが週末のカフェデートをセッティングしてくれます。',
             points: [
@@ -267,6 +271,16 @@ const AFFILIATE_MASTER = {
         }
     ],
 
-    // ランキング一覧は純粋なリアルタイム店舗データのみを表示（インフィード広告割り込みなし）
-    infeedSlots: []
+    // 4位直下の文脈連動インフィード導線（時間帯・上位店の混雑状況・男女モードに応じて自動出し分け）
+    infeedSlots: [
+        {
+            afterRank: 4,
+            slotKey: 'rank4_context',
+            contextual: true,
+            itemId: 'dating_bachelor',
+            crowdedItemId: 'dating_instant',
+            daytimeItemId: 'mens_hair_removal',
+            womenItemId: 'women_dating_bachelor'
+        }
+    ]
 };

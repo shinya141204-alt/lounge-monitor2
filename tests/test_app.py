@@ -430,6 +430,9 @@ class AnalyticsTests(unittest.TestCase):
             '/guide/price-event-comparison',
             '/guide/last-train-cliff',
             '/guide/crowd-rush-paradox',
+            '/guide/brand-waveform-asymmetry',
+            '/guide/lounge-vs-screened-date',
+            '/guide/dress-code-cleanliness',
         ]
         for path in routes:
             with self.subTest(path=path):
@@ -1150,12 +1153,15 @@ class GrowthFeaturesTests(unittest.TestCase):
             '/guide/price-event-comparison',
             '/guide/last-train-cliff',
             '/guide/crowd-rush-paradox',
+            '/guide/brand-waveform-asymmetry',
+            '/guide/lounge-vs-screened-date',
+            '/guide/dress-code-cleanliness',
         ]
         for p in public_paths:
             r = self.client.get(p)
             self.assertEqual(r.status_code, 200, f"Public path {p} returned {r.status_code}")
             body = r.data.decode('utf-8')
-            self.assertIn('/static/calm.css?v=31', body, f"{p} missing /static/calm.css?v=31")
+            self.assertIn('/static/calm.css?v=32', body, f"{p} missing /static/calm.css?v=32")
             if '/static/style.css' in body:
                 self.assertRegex(body, r'/static/style\.css\?v=20261030_\d+', f"{p} missing versioned /static/style.css")
             self.assertIn('公式ホームページ', body, f"{p} missing official website verification notice")
@@ -1168,7 +1174,7 @@ class GrowthFeaturesTests(unittest.TestCase):
                 sr = self.client.get(sp)
                 self.assertEqual(sr.status_code, 200, f"Scheduled path {sp} returned {sr.status_code}")
                 sbody = sr.data.decode('utf-8')
-                self.assertIn('/static/calm.css?v=31', sbody, f"{sp} missing /static/calm.css?v=31")
+                self.assertIn('/static/calm.css?v=32', sbody, f"{sp} missing /static/calm.css?v=32")
                 if '/static/style.css' in sbody:
                     self.assertRegex(sbody, r'/static/style\.css\?v=20261030_\d+', f"{sp} missing versioned /static/style.css")
                 self.assertIn('公式ホームページ', sbody, f"{sp} missing official website verification notice")
@@ -1766,7 +1772,7 @@ class FullAuditRegressionTests(unittest.TestCase):
         sw_resp = self.client.get('/sw.js')
         try:
             sw_txt = sw_resp.data.decode('utf-8')
-            self.assertIn("CACHE_NAME = 'aiseki-navi-v86'", sw_txt)
+            self.assertIn("CACHE_NAME = 'aiseki-navi-v87'", sw_txt)
             self.assertIn("event.waitUntil", sw_txt)
         finally:
             sw_resp.close()
@@ -1815,7 +1821,8 @@ class FullAuditRegressionTests(unittest.TestCase):
 
         with open(os.path.join(ROOT, 'static', 'affiliate_config.js'), 'r', encoding='utf-8') as af:
             aff_txt = af.read()
-        self.assertIn('infeedSlots: []', aff_txt)
+        self.assertIn('afterRank: 4', aff_txt)
+        self.assertIn("slotKey: 'rank4_context'", aff_txt)
         with app_module.data_lock:
             saved_full = list(app_module.latest_data.get('full_data') or [])
             saved_upd = app_module.latest_data.get('last_updated')
@@ -4232,16 +4239,16 @@ class AIUltraGrowthSuiteTests(unittest.TestCase):
         home_html = self.client.get('/').data.decode('utf-8')
         self.assertIn('class="concierge-quick-banner"', home_html)
         self.assertIn('href="/concierge"', home_html)
-        self.assertIn('calm.css?v=31', home_html)
+        self.assertIn('calm.css?v=32', home_html)
 
-        # 3. Subpages & columns include one-tap theme toggle button (.portal-theme-toggle-btn or #for-women-theme-btn) and calm.css?v=31
+        # 3. Subpages & columns include one-tap theme toggle button (.portal-theme-toggle-btn or #for-women-theme-btn) and calm.css?v=32
         for pub_route in ('/concierge', '/areas', '/columns', '/price-comparison', '/for-women', '/stats', '/grooming', '/privacy', '/guide/shinjuku'):
             r_sub = self.client.get(pub_route)
             self.assertEqual(r_sub.status_code, 200, msg=f"{pub_route} failed")
             sub_html = r_sub.data.decode('utf-8')
             expected_btn = 'for-women-theme-btn' if pub_route == '/for-women' else 'portal-theme-toggle-btn'
             self.assertIn(expected_btn, sub_html, msg=f"Missing theme toggle on {pub_route}")
-            self.assertIn('calm.css?v=31', sub_html, msg=f"Outdated calm.css on {pub_route}")
+            self.assertIn('calm.css?v=32', sub_html, msg=f"Outdated calm.css on {pub_route}")
 
         # 4. Staff & Master dashboards support light mode, theme toggle, and fixed reel video player
         with self.client.session_transaction() as s:
@@ -4423,9 +4430,9 @@ class AIUltraGrowthSuiteTests(unittest.TestCase):
 
         app_module.clear_fast_http_caches()
         home_html = self.client.get('/').data.decode('utf-8')
-        self.assertIn('calm.css?v=31', home_html)
-        self.assertIn('app.js?v=20261104_2', home_html)
-        self.assertIn('/sw.js?v=86', home_html)
+        self.assertIn('calm.css?v=32', home_html)
+        self.assertIn('app.js?v=20261104_3', home_html)
+        self.assertIn('/sw.js?v=87', home_html)
 
         # 2. TikTok 9:16 Safe-Zone Reel Templates & Captions (zero bare 'オリエンタル' or 'OLG')
         sample_stores = [

@@ -3770,6 +3770,8 @@ def _build_llms_txt_documents() -> tuple:
 - [全ブランド料金システム・待機料・イベント比較ボード (/price-comparison)](https://aiseki-navi.com/price-comparison): 4時間帯別料金シミュレーションと開催中イベント
 - [全国相席ラウンジ統計データ白書 (/stats)](https://aiseki-navi.com/stats): 曜日別・時間帯別の平均男女人数と混雑ピーク統計
 - [データ考察コラム一覧 (/columns)](https://aiseki-navi.com/columns): 行動経済学・実測ログに基づく全コラム一覧
+- [相席ラウンジ vs 審査制1対1デート徹底比較 (/guide/lounge-vs-screened-date)](https://aiseki-navi.com/guide/lounge-vs-screened-date): 96,607回の実測ログに基づく時間帯別の相席ラウンジ効率と、メッセージ不要の1対1デート・恋活アプリの男女別使い分け基準
+- [相席ラウンジの服装・清潔感チェック完全ガイド (/guide/dress-code-cleanliness)](https://aiseki-navi.com/guide/dress-code-cleanliness): 5大ブランドの入店NGドレスコード一覧と、70cmソファ席・2700K間接照明の下で損しない身だしなみ設計
 - [5大ブランドの時間波形と男女で真逆になる店選びデータ検証 (/guide/brand-waveform-asymmetry)](https://aiseki-navi.com/guide/brand-waveform-asymmetry): オリエンタルラウンジ・ag・JIS・ヤタコイ・ASOBIBARの時間帯クロスオーバーと男女の本音非対称を解明
 - [金土22時の群衆殺到パラドックスと70%バッファの法則 (/guide/crowd-rush-paradox)](https://aiseki-navi.com/guide/crowd-rush-paradox): 金土22時発で29.8%が男余りへ転落する逆転現象と回避プロトコル
 - [相席ラウンジ初心者向け完全ガイド (/guide)](https://aiseki-navi.com/guide)
@@ -4410,6 +4412,18 @@ def sitemap_xml():
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
+  <url>
+    <loc>https://aiseki-navi.com/guide/lounge-vs-screened-date</loc>
+    <lastmod>{today}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://aiseki-navi.com/guide/dress-code-cleanliness</loc>
+    <lastmod>{today}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
 {scheduled_urls}{area_urls}
 {store_urls}
   <url>
@@ -4814,6 +4828,18 @@ def guide_crowd_rush_paradox():
 def guide_brand_waveform_asymmetry():
     """Editorial data study on 5-brand hourly crowd waveforms (20:00-01:00 crossover) and male/female asymmetric venue fit."""
     return _get_cached_html_or_render('guide_brand_waveform_asymmetry', lambda: render_template('guide_brand_waveform_asymmetry.html'))
+
+
+@app.route('/guide/lounge-vs-screened-date')
+def guide_lounge_vs_screened_date():
+    """Editorial data comparison between multi-person lounges and 1-on-1 screened dating apps across time slots and budgets."""
+    return _get_cached_html_or_render('guide_lounge_vs_screened_date', lambda: render_template('guide_lounge_vs_screened_date.html'))
+
+
+@app.route('/guide/dress-code-cleanliness')
+def guide_dress_code_cleanliness():
+    """Editorial practical guide on 5-brand dress codes and 70cm sofa spotlight cleanliness checks."""
+    return _get_cached_html_or_render('guide_dress_code_cleanliness', lambda: render_template('guide_dress_code_cleanliness.html'))
 
 
 def _render_scheduled_guide(slug: str):

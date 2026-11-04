@@ -1289,11 +1289,13 @@
                     // Only skip the first /api/status call when the embedded data is very fresh (< 20s).
                     _renderedFromSSR = getStatusAgeSec(window.INITIAL_STATUS_DATA) < 20;
                     const rankingListEl = document.getElementById('ranking-list');
-                    const hasInfeedAds = !IS_STAFF_SESSION && typeof AFFILIATE_MASTER !== 'undefined' && AFFILIATE_MASTER && AFFILIATE_MASTER.enabled && Array.isArray(AFFILIATE_MASTER.infeedSlots) && AFFILIATE_MASTER.infeedSlots.length > 0;
+                    const hasInfeedAds = !IS_STAFF_SESSION && !document.body.classList.contains('staff-mode') && typeof AFFILIATE_MASTER !== 'undefined' && AFFILIATE_MASTER && AFFILIATE_MASTER.enabled && Array.isArray(AFFILIATE_MASTER.infeedSlots) && AFFILIATE_MASTER.infeedSlots.length > 0;
+                    const ssrHasInfeedSlot = Boolean(rankingListEl && rankingListEl.querySelector('.pr-card-item'));
+                    const infeedSsrAligned = (!hasInfeedAds && !ssrHasInfeedSlot) || (hasInfeedAds && (ssrHasInfeedSlot || window.INITIAL_STATUS_DATA.ranking.length < 4));
                     const staffEventsMismatch = IS_STAFF && shouldShowEvents();
                     const pinnedAlreadyHydrated = (pinnedStores.length === 0) || Boolean(window.__SSR_PINNED_HYDRATED);
                     const canHydrateSsrZeroDom = (
-                        !hasInfeedAds &&
+                        infeedSsrAligned &&
                         !staffEventsMismatch &&
                         pinnedAlreadyHydrated &&
                         currentAudience === 'men' &&
@@ -1307,6 +1309,12 @@
                         _lastRenderedSignature = _computeUiSignature(window.INITIAL_STATUS_DATA);
                         _lastAnimatedTimestamp = window.INITIAL_STATUS_DATA.timestamp || '';
                         _syncPrevStoreCounts(window.INITIAL_STATUS_DATA.ranking);
+                        if (hasInfeedAds && ssrHasInfeedSlot && typeof patchInfeedPrElement === 'function') {
+                            const ssrSlotEl = rankingListEl.querySelector('.pr-card-item');
+                            if (ssrSlotEl && AFFILIATE_MASTER.infeedSlots[0]) {
+                                patchInfeedPrElement(ssrSlotEl, AFFILIATE_MASTER.infeedSlots[0], window.INITIAL_STATUS_DATA.ranking);
+                            }
+                        }
                         const lastUpdateEl = document.getElementById('last-update');
                         if (lastUpdateEl && window.INITIAL_STATUS_DATA.timestamp) {
                             lastUpdateEl.textContent = window.INITIAL_STATUS_DATA.timestamp.split(' ')[1] || '--:--';
@@ -2407,7 +2415,8 @@
                 pinnedContainer.classList.add('hidden');
             }
 
-            const infeedActive = !IS_STAFF_SESSION && typeof AFFILIATE_MASTER !== 'undefined' && AFFILIATE_MASTER && AFFILIATE_MASTER.enabled && Array.isArray(AFFILIATE_MASTER.infeedSlots);
+            const isStaffView = Boolean(IS_STAFF_SESSION || document.body.classList.contains('staff-mode'));
+            const infeedActive = !isStaffView && typeof AFFILIATE_MASTER !== 'undefined' && AFFILIATE_MASTER && AFFILIATE_MASTER.enabled && Array.isArray(AFFILIATE_MASTER.infeedSlots);
             const expectedPrCount = infeedActive
                 ? otherItems.reduce((acc, _it, idx) => acc + (AFFILIATE_MASTER.infeedSlots.some(s => s.afterRank === idx + 1) ? 1 : 0), 0)
                 : 0;
@@ -2438,6 +2447,13 @@
                 otherItems.forEach((item, idx) => {
                     renderStore(item.store, item.rank, null, false, item.rank, item.isDup, idx === 0);
                 });
+                if (infeedActive) {
+                    const prNodes = rankingList.querySelectorAll('.pr-card-item');
+                    prNodes.forEach((prNode, sIdx) => {
+                        const slotCfg = AFFILIATE_MASTER.infeedSlots[sIdx] || AFFILIATE_MASTER.infeedSlots[0];
+                        if (slotCfg) patchInfeedPrElement(prNode, slotCfg, otherItems);
+                    });
+                }
             } else {
                 const rankingFrag = document.createDocumentFragment();
                 otherItems.forEach((item, idx) => {
@@ -2447,7 +2463,7 @@
                         const currentRank = idx + 1;
                         const slot = AFFILIATE_MASTER.infeedSlots.find(s => s.afterRank === currentRank);
                         if (slot) {
-                            const prEl = createInfeedPrElement(slot);
+                            const prEl = createInfeedPrElement(slot, otherItems);
                             if (prEl) rankingFrag.appendChild(prEl);
                         }
                     }
@@ -2492,52 +2508,158 @@
             };
         }
 
-        function createInfeedPrElement(slotConfig) {
-            if (IS_STAFF_SESSION) return null;
+        function _getContextJstHour() {
+            try {
+                const ts = window.lastData && window.lastData.timestamp ? String(window.lastData.timestamp) : '';
+                const m = ts.match(/\b(\d{2}):\d{2}/);
+                if (m) return parseInt(m[1], 10);
+            } catch (e) {}
+            const now = new Date();
+            const jst = new Date(now.getTime() + (now.getTimezoneOffset() + 540) * 60000);
+            return jst.getHours();
+        }
+
+        function resolveInfeedContext(slotConfig, topStoreItems) {
             const master = getAffiliateMaster();
-            if (!master.enabled) return null;
+            const isWomenMode = (currentAudience === 'women') || document.body.classList.contains('audience-women');
+            const menItems = Array.isArray(master.items) ? master.items : [];
+            const womenItems = Array.isArray(master.womenItems) ? master.womenItems : [];
+            const findMen = (id) => menItems.find(i => i.id === id) || menItems[0] || null;
+            const findWomen = (id) => womenItems.find(i => i.id === id) || womenItems[0] || null;
 
-            const item = (master.items || []).find(i => i.id === slotConfig.itemId) || (master.items || [])[0];
-            if (!item) return null;
+            const top4 = (Array.isArray(topStoreItems) ? topStoreItems : [])
+                .slice(0, 4)
+                .map(entry => (entry && entry.store ? entry.store : entry))
+                .filter(Boolean);
+            const activeStores = top4.filter(s => ((Number(s.women) || 0) + (Number(s.men) || 0)) >= 6);
+            const maleHeavyCount = activeStores.filter(s => (Number(s.men) || 0) > (Number(s.women) || 0)).length;
+            const maxMenWait = top4.reduce((mx, s) => {
+                const wMin = Number(s && s.wait_estimate && s.wait_estimate.est_men_wait_min) || 0;
+                return wMin > mx ? wMin : mx;
+            }, 0);
+            const sumW = activeStores.reduce((acc, s) => acc + (Number(s.women) || 0), 0);
+            const sumM = activeStores.reduce((acc, s) => acc + (Number(s.men) || 0), 0);
+            const avgWPct = (sumW + sumM) > 0 ? Math.round((sumW / (sumW + sumM)) * 100) : 55;
+            const jstHour = _getContextJstHour();
+            const isNightHours = (jstHour >= 18 || jstHour <= 4);
 
-            const wrapper = document.createElement('a');
-            wrapper.className = `ranking-item pr-card-item ${slotConfig.highlight ? 'pr-card-highlight' : ''}`;
-            wrapper.href = item.url;
-            const isExtLink = item.url && (item.url.startsWith('http') || item.url.startsWith('/link/'));
-            if (isExtLink) {
-                wrapper.target = '_blank';
-                wrapper.rel = 'noopener noreferrer sponsored';
-            } else {
-                wrapper.onclick = (e) => {
-                    e.preventDefault();
-                    openGuideModal(item.category);
+            if (isWomenMode) {
+                const item = findWomen((slotConfig && slotConfig.womenItemId) || 'women_dating_bachelor');
+                if (!item) return null;
+                return {
+                    mode: 'women_1on1',
+                    item,
+                    kicker: '1対1・女性完全無料',
+                    title: '複数人の相席より落ち着いて話したい日は「審査制1対1カフェデート」',
+                    sub: '顔写真公開・メッセージ往復なし。希望日時を入れるだけで週末カフェデートを調整',
+                    cta: item.infeedCta || '女性無料の詳細 ›',
+                    editorialHref: '/guide/lounge-vs-screened-date',
+                    editorialLabel: '相席ラウンジと審査制デートの違いを比較 ›'
                 };
             }
 
-            const title = item.infeedTitle || item.shortTitle || item.name;
-            const tag = item.infeedTag || slotConfig.tagText || item.tag || 'PR';
-            const sub = item.infeedSub || slotConfig.subText || item.badge || 'おすすめ';
-            const cta = item.infeedCta || '詳細 ›';
-            const badge = slotConfig.badgeText || 'PR';
+            if (activeStores.length >= 2 && (maleHeavyCount >= 2 || maxMenWait >= 20 || avgWPct < 46)) {
+                const item = findMen((slotConfig && slotConfig.crowdedItemId) || 'dating_instant');
+                if (!item) return null;
+                return {
+                    mode: 'crowded_wait',
+                    item,
+                    kicker: '上位店が男性先行・混雑気味の夜に',
+                    title: '入店待ちを避けたい夜は「近くで今日飲める恋活アプリ」も併用',
+                    sub: '待機時間を無駄にせず、同エリアで今から合流できる相手をスマホで検索',
+                    cta: '無料で探す ›',
+                    editorialHref: '/guide/lounge-vs-screened-date',
+                    editorialLabel: '相席とマッチングアプリの使い分け比較 ›'
+                };
+            }
+
+            if (!isNightHours && activeStores.length < 2) {
+                const item = findMen((slotConfig && slotConfig.daytimeItemId) || 'mens_hair_removal');
+                if (!item) return null;
+                return {
+                    mode: 'daytime_prep',
+                    item,
+                    kicker: '来店前の身だしなみ・清潔感ケア',
+                    title: '70cmソファ席の間接照明で差がつく「夕方の口元・清潔感ケア」',
+                    sub: '仕事帰りそのまま立ち寄ってもヒゲ剃り跡や肌荒れが気にならない初回プラン',
+                    cta: '初回プラン詳細 ›',
+                    editorialHref: '/guide/dress-code-cleanliness',
+                    editorialLabel: 'ブランド別NG服装・70cm清潔感チェックを見る ›'
+                };
+            }
+
+            const item = findMen((slotConfig && slotConfig.itemId) || 'dating_bachelor');
+            if (!item) return null;
+            return {
+                mode: 'evening_1on1',
+                item,
+                kicker: '2対2より1対1で話したい日の選択肢',
+                title: 'メッセージ不要で週1回デートが決まる「審査制1対1カフェデート」',
+                sub: '希望日時を入れるだけでAIが相手を調整。落ち着いたカフェやバーで1対1対話',
+                cta: '公式詳細 ›',
+                editorialHref: '/guide/lounge-vs-screened-date',
+                editorialLabel: '相席ラウンジ vs 審査制1対1デート徹底比較 ›'
+            };
+        }
+        window.resolveInfeedContext = resolveInfeedContext;
+
+        function patchInfeedPrElement(wrapper, slotConfig, topStoreItems) {
+            if (!wrapper) return null;
+            const ctx = resolveInfeedContext(slotConfig || {}, topStoreItems);
+            if (!ctx || !ctx.item) return null;
+            const prevMode = wrapper.getAttribute('data-context-mode') || '';
+            const prevHref = wrapper.getAttribute('data-context-href') || '';
+            if (prevMode === ctx.mode && prevHref === ctx.item.url && wrapper.querySelector('.pr-context-main')) {
+                return wrapper;
+            }
+            wrapper.setAttribute('data-context-slot', (slotConfig && slotConfig.slotKey) || 'rank4_context');
+            wrapper.setAttribute('data-context-mode', ctx.mode);
+            wrapper.setAttribute('data-context-href', ctx.item.url);
+
+            const isExtLink = Boolean(ctx.item.url && (ctx.item.url.startsWith('http') || ctx.item.url.startsWith('/link/')));
+            const targetAttrs = isExtLink ? ' target="_blank" rel="noopener noreferrer sponsored"' : '';
+            const pixelHtml = ctx.item.trackingImg
+                ? `<img class="pr-tracking-pixel" src="${escapeHtml(ctx.item.trackingImg)}" width="1" height="1" alt="" loading="lazy" aria-hidden="true">`
+                : '';
 
             wrapper.innerHTML = `
-                <div class="rank-badge pr-badge-box">${escapeHtml(badge)}</div>
-                <div class="store-info">
-                    <div class="store-meta-row">
-                        <span class="brand-badge pr-tag-pill">${escapeHtml(tag)}</span>
-                        <span class="area-tag pr-sub-pill">${escapeHtml(sub)}</span>
+                <a class="pr-context-main" href="${escapeHtml(ctx.item.url)}"${targetAttrs}>
+                    <div class="pr-context-body">
+                        <div class="pr-context-meta">
+                            <span class="pr-disclosure-pill">PR</span>
+                            <span class="pr-context-kicker">${escapeHtml(ctx.kicker)}</span>
+                        </div>
+                        <div class="pr-context-title">${escapeHtml(ctx.title)}</div>
+                        <div class="pr-context-sub">${escapeHtml(ctx.sub)}</div>
                     </div>
-                    <h3 class="store-name pr-title">${escapeHtml(title)}</h3>
+                    <span class="pr-context-cta">${escapeHtml(ctx.cta)}</span>
+                </a>
+                <div class="pr-context-foot">
+                    <a class="pr-editorial-sublink" href="${escapeHtml(ctx.editorialHref)}">${escapeHtml(ctx.editorialLabel)}</a>
                 </div>
-                <div class="pr-cta-box">
-                    <span class="pr-cta-btn">${escapeHtml(cta)}</span>
-                </div>
-                <div class="occupancy-bar pr-occupancy-bar">
-                    <div class="bar-fill-ladies" style="width: 70%"></div>
-                    <div class="bar-fill-men" style="width: 30%"></div>
-                </div>
+                ${pixelHtml}
             `;
+            if (!isExtLink) {
+                const mainLink = wrapper.querySelector('.pr-context-main');
+                if (mainLink) {
+                    mainLink.onclick = (e) => {
+                        e.preventDefault();
+                        openGuideModal(ctx.item.category);
+                    };
+                }
+            }
             return wrapper;
+        }
+
+        function createInfeedPrElement(slotConfig, topStoreItems) {
+            if (IS_STAFF_SESSION || document.body.classList.contains('staff-mode')) return null;
+            const master = getAffiliateMaster();
+            if (!master.enabled) return null;
+
+            const wrapper = document.createElement('aside');
+            wrapper.className = 'context-lead-row pr-card-item';
+            wrapper.setAttribute('aria-label', 'プロモーションおよび比較ガイド');
+            return patchInfeedPrElement(wrapper, slotConfig, topStoreItems);
         }
 
         function renderModalPrSlot(storeName) {

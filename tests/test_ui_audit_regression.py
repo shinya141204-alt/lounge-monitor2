@@ -105,13 +105,13 @@ class UiAuditRegressionTests(unittest.TestCase):
     # ------------------------------------------------------------------
     def test_cache_busting_sync_across_templates_and_service_worker(self):
         """全テンプレートと static/sw.js のアセットバージョンが完全同期し、immutable ヘッダが正しく付与されること"""
-        expected_calm = "/static/calm.css?v=31"
+        expected_calm = "/static/calm.css?v=32"
         expected_portal = "/static/portal.css?v=14"
-        expected_app_js = "/static/app.js?v=20261104_2"
-        expected_aff_js = "/static/affiliate_config.js?v=13"
+        expected_app_js = "/static/app.js?v=20261104_3"
+        expected_aff_js = "/static/affiliate_config.js?v=14"
         expected_style = "/static/style.css?v=20261030_6"
-        expected_sw_url = "/sw.js?v=86"
-        expected_cache_name = "aiseki-navi-v86"
+        expected_sw_url = "/sw.js?v=87"
+        expected_cache_name = "aiseki-navi-v87"
 
         templates_dir = os.path.join(PROJECT_ROOT, "templates")
         calm_seen = 0
@@ -438,6 +438,8 @@ class UiAuditRegressionTests(unittest.TestCase):
             "/guide/brand-comparison",
             "/guide/crowd-rush-paradox",
             "/guide/brand-waveform-asymmetry",
+            "/guide/lounge-vs-screened-date",
+            "/guide/dress-code-cleanliness",
         ]
 
         app_module.clear_fast_http_caches()
@@ -1217,7 +1219,16 @@ class UiAuditRegressionTests(unittest.TestCase):
                     self.assertGreaterEqual(mpage.locator("#ranking-list .ranking-item").count(), 2)
 
                     # 6. Sitewide Option A (Apple Editorial & Weather Bento) verification on Mobile 390px & PC 1280px
-                    for sub_route in ("/concierge", "/store/oriental-lounge-shinjuku", "/columns", "/for-women", "/price-comparison", "/guide/brand-waveform-asymmetry"):
+                    for sub_route in (
+                        "/concierge",
+                        "/store/oriental-lounge-shinjuku",
+                        "/columns",
+                        "/for-women",
+                        "/price-comparison",
+                        "/guide/brand-waveform-asymmetry",
+                        "/guide/lounge-vs-screened-date",
+                        "/guide/dress-code-cleanliness",
+                    ):
                         mpage.goto(base + sub_route, wait_until="domcontentloaded")
                         mpage.add_style_tag(content="*, *::before, *::after { transition: none !important; animation: none !important; }")
                         mob_sub = mpage.evaluate("""() => {
@@ -1886,6 +1897,187 @@ class UiAuditRegressionTests(unittest.TestCase):
                     self.assertFalse(settled["hasDeltaUp1"], "Left-edge soft glow must extinguish after ~0.9s")
                     self.assertEqual(settled["finalText"], "17")
                     self.assertAlmostEqual(live_snap["widthDuring"], settled["widthAfter"], delta=0.8)
+                    ctx.close()
+                finally:
+                    browser.close()
+
+    def test_playwright_contextual_rank4_infeed_and_new_articles_contrast(self):
+        """Playwright 実ブラウザで 4位直下の文脈連動インフィード導線（4パターン出し分け・スタッフ非表示・WCAG AA）と新キラー記事2本のコントラストを検証"""
+        from urllib.parse import urlsplit
+        try:
+            from playwright.sync_api import sync_playwright
+        except ImportError:
+            self.skipTest("playwright is not installed in this Python environment")
+
+        five_stores = [
+            {"name": "OLG 新宿", "source": "oriental", "region": "Kanto", "women": 32, "men": 14, "total": 46, "women_diff": 2, "men_diff": 0},
+            {"name": "OLG 渋谷本店", "source": "oriental", "region": "Kanto", "women": 28, "men": 12, "total": 40, "women_diff": 1, "men_diff": 0},
+            {"name": "JIS 梅田", "source": "jis", "region": "Kinki", "women": 26, "men": 11, "total": 37, "women_diff": 0, "men_diff": 1},
+            {"name": "OLG 恵比寿", "source": "oriental", "region": "Kanto", "women": 22, "men": 10, "total": 32, "women_diff": 0, "men_diff": 0},
+            {"name": "OLG ag渋谷", "source": "oriental", "region": "Kanto", "women": 18, "men": 9, "total": 27, "women_diff": 0, "men_diff": 0},
+        ]
+        with app_module.data_lock:
+            app_module.latest_data.clear()
+            app_module.latest_data.update({
+                "last_updated": "2026-11-04 20:45:00",
+                "is_seed": False,
+                "full_data": copy.deepcopy(five_stores),
+            })
+        app_module.clear_fast_http_caches()
+
+        base = "http://aiseki.local"
+
+        def attach_public_router(context):
+            def handle_route(route):
+                u = urlsplit(route.request.url)
+                if u.netloc != "aiseki.local":
+                    route.abort()
+                    return
+                path_qs = u.path + (f"?{u.query}" if u.query else "")
+                resp = self.client.open(path_qs, method=route.request.method, headers={"User-Agent": "Mozilla/5.0"})
+                headers = {k.lower(): v for k, v in resp.headers.items() if k.lower() not in ("transfer-encoding", "content-encoding", "content-length")}
+                route.fulfill(status=resp.status_code, headers=headers, body=resp.get_data())
+            context.route("**/*", handle_route)
+
+        with patch.object(app_module, "trigger_background_fetch_if_needed", lambda *a, **kw: None):
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=True)
+                try:
+                    ctx = browser.new_context(viewport={"width": 1280, "height": 900}, service_workers="block")
+                    attach_public_router(ctx)
+                    page = ctx.new_page()
+                    page.goto(base + "/", wait_until="domcontentloaded")
+                    page.wait_for_selector("#ranking-list .ranking-item")
+
+                    slot_info = page.evaluate("""() => {
+                        const children = Array.from(document.getElementById('ranking-list').children);
+                        const prNodes = document.querySelectorAll('#ranking-list .context-lead-row.pr-card-item');
+                        const slot = prNodes[0];
+                        const mainLink = slot ? slot.querySelector('.pr-context-main') : null;
+                        const subLink = slot ? slot.querySelector('.pr-editorial-sublink') : null;
+                        const pill = slot ? slot.querySelector('.pr-disclosure-pill') : null;
+                        return {
+                            prCount: prNodes.length,
+                            slotIndexInList: slot ? children.indexOf(slot) : -1,
+                            hasRankingItemClass: slot ? slot.classList.contains('ranking-item') : true,
+                            hasFakeBar: slot ? !!slot.querySelector('.pr-occupancy-bar') : true,
+                            pillText: pill ? pill.textContent.trim() : '',
+                            relAttr: mainLink ? (mainLink.getAttribute('rel') || '') : '',
+                            subHref: subLink ? (subLink.getAttribute('href') || '') : '',
+                        };
+                    }""")
+                    self.assertEqual(slot_info["prCount"], 1, "Exactly one contextual slot must appear")
+                    self.assertEqual(slot_info["slotIndexInList"], 4, "Slot must appear immediately after 4th store (index 4)")
+                    self.assertFalse(slot_info["hasRankingItemClass"], "Must not collide with .ranking-item store selectors")
+                    self.assertFalse(slot_info["hasFakeBar"], "Must not render legacy fake gender ratio bar")
+                    self.assertEqual(slot_info["pillText"], "PR")
+                    self.assertIn("sponsored", slot_info["relAttr"])
+                    self.assertTrue(slot_info["subHref"].startswith("/guide/"))
+
+                    # Verify all 4 contextual modes via window.resolveInfeedContext + live DOM switching
+                    modes = page.evaluate("""async () => {
+                        const cfg = AFFILIATE_MASTER.infeedSlots[0];
+                        const origTs = window.lastData && window.lastData.timestamp;
+                        if (window.lastData) window.lastData.timestamp = '2026-11-04 20:30:00';
+                        const evening = window.resolveInfeedContext(cfg, [
+                            { women: 30, men: 12 }, { women: 26, men: 10 }, { women: 24, men: 10 }, { women: 20, men: 9 }
+                        ]);
+                        const crowded = window.resolveInfeedContext(cfg, [
+                            { women: 15, men: 28 }, { women: 14, men: 25 }, { women: 20, men: 12 }, { women: 18, men: 10 }
+                        ]);
+                        if (window.lastData) window.lastData.timestamp = '2026-11-04 14:30:00';
+                        const daytime = window.resolveInfeedContext(cfg, [
+                            { women: 4, men: 2 }, { women: 3, men: 1 }, { women: 2, men: 1 }, { women: 0, men: 0 }
+                        ]);
+                        if (window.lastData && origTs) window.lastData.timestamp = origTs;
+                        setAudienceMode('women');
+                        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+                        const womenDomMode = document.querySelector('#ranking-list .context-lead-row.pr-card-item')?.getAttribute('data-context-mode');
+                        const womenDomHref = document.querySelector('#ranking-list .context-lead-row.pr-card-item')?.getAttribute('data-context-href');
+                        setAudienceMode('men');
+                        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+                        return {
+                            eveningMode: evening.mode,
+                            eveningHref: evening.item.url,
+                            crowdedMode: crowded.mode,
+                            crowdedHref: crowded.item.url,
+                            daytimeMode: daytime.mode,
+                            daytimeHref: daytime.item.url,
+                            womenDomMode,
+                            womenDomHref,
+                        };
+                    }""")
+                    self.assertEqual(modes["eveningMode"], "evening_1on1")
+                    self.assertEqual(modes["eveningHref"], "/link/dating_bachelor")
+                    self.assertEqual(modes["crowdedMode"], "crowded_wait")
+                    self.assertEqual(modes["crowdedHref"], "/link/dating_instant")
+                    self.assertEqual(modes["daytimeMode"], "daytime_prep")
+                    self.assertEqual(modes["daytimeHref"], "/link/mens_hair_removal")
+                    self.assertEqual(modes["womenDomMode"], "women_1on1")
+                    self.assertEqual(modes["womenDomHref"], "/link/women_dating_bachelor")
+
+                    # Contrast check on contextual card (dark & light) + staff-mode hide check
+                    for is_light in (False, True):
+                        page.evaluate(f"document.body.classList.toggle('theme-light', {str(is_light).lower()})")
+                        colors = page.evaluate("""() => {
+                            const slot = document.querySelector('#ranking-list .context-lead-row.pr-card-item');
+                            const slotBg = getComputedStyle(slot).backgroundColor;
+                            const cta = slot.querySelector('.pr-context-cta');
+                            const ctaBg = getComputedStyle(cta).backgroundColor;
+                            return {
+                                slotBg,
+                                titleFg: getComputedStyle(slot.querySelector('.pr-context-title')).color,
+                                kickerFg: getComputedStyle(slot.querySelector('.pr-context-kicker')).color,
+                                subFg: getComputedStyle(slot.querySelector('.pr-context-sub')).color,
+                                subLinkFg: getComputedStyle(slot.querySelector('.pr-editorial-sublink')).color,
+                                ctaBg,
+                                ctaFg: getComputedStyle(cta).color,
+                            };
+                        }""")
+                        bg_rgb = _parse_hex_or_rgba(colors["slotBg"])
+                        for key in ("titleFg", "kickerFg", "subFg", "subLinkFg"):
+                            cr = _contrast_ratio(_parse_hex_or_rgba(colors[key]), bg_rgb)
+                            self.assertGreaterEqual(cr, 5.5, f"Contextual card {key} contrast {cr:.2f} < 5.5 (light={is_light})")
+                        cta_cr = _contrast_ratio(_parse_hex_or_rgba(colors["ctaFg"]), _parse_hex_or_rgba(colors["ctaBg"]))
+                        self.assertGreaterEqual(cta_cr, 5.5, f"Contextual CTA contrast {cta_cr:.2f} < 5.5 (light={is_light})")
+
+                    staff_disp = page.evaluate("""() => {
+                        document.body.classList.add('staff-mode');
+                        const d = getComputedStyle(document.querySelector('#ranking-list .context-lead-row.pr-card-item')).display;
+                        document.body.classList.remove('staff-mode');
+                        return d;
+                    }""")
+                    self.assertEqual(staff_disp, "none", "Contextual promo row must hide in staff-mode")
+
+                    # Verify both new killer articles in dark & light mode
+                    for art_route in ("/guide/lounge-vs-screened-date", "/guide/dress-code-cleanliness"):
+                        page.goto(base + art_route, wait_until="domcontentloaded")
+                        for is_light in (False, True):
+                            page.evaluate(f"document.body.classList.toggle('theme-light', {str(is_light).lower()})")
+                            art_colors = page.evaluate("""() => {
+                                const bodyBg = getComputedStyle(document.body).backgroundColor;
+                                const h1Fg = getComputedStyle(document.querySelector('.article-title')).color;
+                                const pFg = getComputedStyle(document.querySelector('.article-body p')).color;
+                                const faqCard = document.querySelector('.faq-card');
+                                const faqBg = faqCard ? getComputedStyle(faqCard).backgroundColor : bodyBg;
+                                const faqQFg = getComputedStyle(document.querySelector('.faq-q')).color;
+                                const faqAFg = getComputedStyle(document.querySelector('.faq-a')).color;
+                                return {
+                                    overflowX: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+                                    bodyBg, h1Fg, pFg, faqBg, faqQFg, faqAFg
+                                };
+                            }""")
+                            self.assertLessEqual(art_colors["overflowX"], 0, f"Overflow on {art_route}")
+                            b_rgb = _parse_hex_or_rgba(art_colors["bodyBg"])
+                            self.assertGreaterEqual(_contrast_ratio(_parse_hex_or_rgba(art_colors["h1Fg"]), b_rgb), 7.0)
+                            self.assertGreaterEqual(_contrast_ratio(_parse_hex_or_rgba(art_colors["pFg"]), b_rgb), 5.5)
+                            f_rgb = _parse_hex_or_rgba(art_colors["faqBg"])
+                            if len(f_rgb) == 4 and f_rgb[3] < 0.99:
+                                alpha = f_rgb[3]
+                                f_rgb = tuple(int(round(f_rgb[i] * alpha + b_rgb[i] * (1 - alpha))) for i in range(3)) + (1.0,)
+                            self.assertGreaterEqual(_contrast_ratio(_parse_hex_or_rgba(art_colors["faqQFg"]), f_rgb), 7.0)
+                            self.assertGreaterEqual(_contrast_ratio(_parse_hex_or_rgba(art_colors["faqAFg"]), f_rgb), 5.5)
+
                     ctx.close()
                 finally:
                     browser.close()

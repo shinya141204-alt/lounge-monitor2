@@ -527,6 +527,30 @@ def build_pinned_tweet_thread(app_url: str = "") -> tuple:
 
 COLUMN_PROMO_LIST = [
     {
+        "slug": "lounge-vs-screened-date",
+        "path": "/guide/lounge-vs-screened-date",
+        "eyecatch": "/static/eyecatch-lounge-vs-screened-date.jpg",
+        "title": "相席ラウンジ vs 審査制1対1デート徹底比較｜実測ログで見る使い分け境界線",
+        "main_text": (
+            "金曜20時台に友達と2人で行く相席ラウンジ（平均女性比70.6%）と、1人で週末60分だけ話す審査制1対1カフェデート。\n\n"
+            "実は9.6万回のログと料金を並べると、時間帯と性格で「勝てる土俵」がきれいに分かれます📊\n\n"
+            "使い分けの境界線はリプ欄👇\n"
+            "#相席ナビ #相席ラウンジ"
+        ),
+    },
+    {
+        "slug": "dress-code-cleanliness",
+        "path": "/guide/dress-code-cleanliness",
+        "eyecatch": "/static/eyecatch-dress-code-cleanliness.jpg",
+        "title": "相席ラウンジの服装・清潔感チェック完全ガイド｜NGドレスコードと70cmソファ席の間接照明",
+        "main_text": (
+            "「スニーカーやパーカーでも入れる？」「暗い店内なら夕方のヒゲやテカリも隠れる？」\n\n"
+            "実はテーブル真上の暖色ピンスポット照明×距離70cmは昼のオフィス以上に陰影が出ます🪞\n"
+            "5ブランドの服装基準と入店3分前チェックはリプ欄👇\n"
+            "#相席ナビ #相席ラウンジ"
+        ),
+    },
+    {
         "slug": "brand-waveform-asymmetry",
         "path": "/guide/brand-waveform-asymmetry",
         "eyecatch": "/static/eyecatch-brand-waveform-asymmetry.jpg",

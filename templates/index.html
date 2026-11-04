@@ -133,8 +133,8 @@
     <meta name="apple-mobile-web-app-title" content="相席ナビ">
 
     <link rel="stylesheet" href="/static/style.css?v=20261030_6" fetchpriority="high">
-    <link rel="stylesheet" href="/static/calm.css?v=31" fetchpriority="high">
-    <link rel="preload" href="/static/app.js?v=20261104_2" as="script">
+    <link rel="stylesheet" href="/static/calm.css?v=32" fetchpriority="high">
+    <link rel="preload" href="/static/app.js?v=20261104_3" as="script">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- Non-render-blocking web font (avoids waiting on Google Fonts at PWA cold launch) -->
@@ -149,7 +149,7 @@
     </script>
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
-    <script src="/static/affiliate_config.js?v=13" defer></script>
+    <script src="/static/affiliate_config.js?v=14" defer></script>
     {% endif %}
 </head>
 
@@ -735,6 +735,24 @@
                                     <div class="bar-fill-men" style="width: {{ s.ssr_men_pct }}%"></div>
                                 </div>
                             </div>
+                            {% if not is_staff and not session.get('is_staff') and loop.index == 4 and (initial_status.ranking|length) >= 4 %}
+                            <aside class="context-lead-row pr-card-item" data-context-slot="rank4_context" data-context-mode="evening_1on1" data-context-href="/link/dating_bachelor" aria-label="プロモーションおよび比較ガイド">
+                                <a class="pr-context-main" href="/link/dating_bachelor" target="_blank" rel="noopener noreferrer sponsored">
+                                    <div class="pr-context-body">
+                                        <div class="pr-context-meta">
+                                            <span class="pr-disclosure-pill">PR</span>
+                                            <span class="pr-context-kicker">2対2より1対1で話したい日の選択肢</span>
+                                        </div>
+                                        <div class="pr-context-title">メッセージ不要で週1回デートが決まる「審査制1対1カフェデート」</div>
+                                        <div class="pr-context-sub">希望日時を入れるだけでAIが相手を調整。落ち着いたカフェやバーで1対1対話</div>
+                                    </div>
+                                    <span class="pr-context-cta">公式詳細 ›</span>
+                                </a>
+                                <div class="pr-context-foot">
+                                    <a class="pr-editorial-sublink" href="/guide/lounge-vs-screened-date">相席ラウンジ vs 審査制1対1デート徹底比較 ›</a>
+                                </div>
+                            </aside>
+                            {% endif %}
                             {% endfor %}
                             {% endif %}
                         </div>
@@ -880,6 +898,36 @@
                     </div>
 
                     <div class="portal-featured-articles">
+                        <a href="/guide/lounge-vs-screened-date" class="portal-article-card">
+                            <div class="portal-article-thumb">
+                                <picture>
+                                    <source srcset="/static/eyecatch-lounge-vs-screened-date.webp" type="image/webp">
+                                    <img src="/static/eyecatch-lounge-vs-screened-date.jpg" alt="相席ラウンジ vs 審査制1対1デート徹底比較——実測ログで見る使い分け境界線" loading="lazy">
+                                </picture>
+                                <span class="portal-article-badge">新着・9.6万回検証</span>
+                            </div>
+                            <div class="portal-article-body">
+                                <h3>相席ラウンジ vs 審査制1対1デート徹底比較｜「複数人のライブ感」か「メッセージ不要の1対1」か、実測ログで見る境界線</h3>
+                                <p>20時台の女性比70.6%即着席ゾーンと、23時以降の男性先行逆転帯。友人ペアのライブ感と1対1カフェデートの向き不向きを比較。</p>
+                                <span class="portal-article-more">記事を読む ›</span>
+                            </div>
+                        </a>
+
+                        <a href="/guide/dress-code-cleanliness" class="portal-article-card">
+                            <div class="portal-article-thumb">
+                                <picture>
+                                    <source srcset="/static/eyecatch-dress-code-cleanliness.webp" type="image/webp">
+                                    <img src="/static/eyecatch-dress-code-cleanliness.jpg" alt="相席ラウンジの服装・清潔感チェック完全ガイド——NGドレスコードと70cmソファ席の間接照明" loading="lazy">
+                                </picture>
+                                <span class="portal-article-badge">新着・服装＆清潔感</span>
+                            </div>
+                            <div class="portal-article-body">
+                                <h3>相席ラウンジの服装・清潔感チェック完全ガイド｜ブランド別NGドレスコードと「70cmソファ席の間接照明」で損しない身だしなみ</h3>
+                                <p>5大ブランドの入店NG基準一覧と、暖色スポット照明×70cm近距離ソファ席で差がつく仕事帰り3分リセット術。</p>
+                                <span class="portal-article-more">記事を読む ›</span>
+                            </div>
+                        </a>
+
                         <a href="/guide/crowd-rush-paradox" class="portal-article-card">
                             <div class="portal-article-thumb">
                                 <picture>
@@ -1135,8 +1183,11 @@
                 <div class="sitemap-col">
                     <h4>コラム・特集記事</h4>
                     <ul>
-                        <li><a href="/columns">コラム・記事一覧（全{{ 15 + (published_scheduled|length if published_scheduled else 0) }}本）</a></li>
+                        <li><a href="/columns">コラム・記事一覧（全{{ 18 + (published_scheduled|length if published_scheduled else 0) }}本）</a></li>
                         <li><a href="/for-women">女子向け裏ガイド＆待ちゼロ店舗ボード</a></li>
+                        <li><a href="/guide/lounge-vs-screened-date">相席ラウンジ vs 審査制1対1デート比較</a></li>
+                        <li><a href="/guide/dress-code-cleanliness">服装・NGドレスコード＆清潔感チェック</a></li>
+                        <li><a href="/guide/brand-waveform-asymmetry">5大ブランドの時間波形＆男女逆転検証</a></li>
                         <li><a href="/guide/crowd-rush-paradox">金土22時の群衆殺到パラドックス</a></li>
                         {% for item in published_scheduled or [] %}
                         <li><a href="{{ item.path }}">{{ item.short_title }}</a></li>
@@ -1496,6 +1547,50 @@
                         </div>
                     </a>
                     {% endfor %}
+
+                    <!-- Article NEW: Lounge vs Screened 1-on-1 Date -->
+                    <a href="/guide/lounge-vs-screened-date" class="article-card-item highlight-card">
+                        <div class="article-card-thumb">
+                            <picture>
+                                <source srcset="/static/eyecatch-lounge-vs-screened-date.webp" type="image/webp">
+                                <img src="/static/eyecatch-lounge-vs-screened-date.jpg" alt="相席ラウンジ vs 審査制1対1デート徹底比較" width="640" height="360" decoding="async" loading="lazy">
+                            </picture>
+                            <span class="article-card-badge">新着比較検証</span>
+                        </div>
+                        <div class="article-card-info">
+                            <div class="article-card-meta">
+                                <span class="article-tag">2対2 vs 1対1デート</span>
+                                <span class="article-read-time">約7分で読める</span>
+                            </div>
+                            <h3 class="article-card-title">相席ラウンジ vs 審査制1対1デート徹底比較｜「複数人のライブ感」か「メッセージ不要の1対1」か、実測ログで見る使い分け境界線</h3>
+                            <p class="article-card-desc">20時台の女性比70.6%ゾーンと深夜の男性先行帯をもとに、ペア参戦と1対1カフェデートの損得を比較。</p>
+                            <div class="article-card-footer">
+                                <span class="article-read-btn">比較記事を読む ›</span>
+                            </div>
+                        </div>
+                    </a>
+
+                    <!-- Article NEW: Dress Code & Cleanliness -->
+                    <a href="/guide/dress-code-cleanliness" class="article-card-item">
+                        <div class="article-card-thumb">
+                            <picture>
+                                <source srcset="/static/eyecatch-dress-code-cleanliness.webp" type="image/webp">
+                                <img src="/static/eyecatch-dress-code-cleanliness.jpg" alt="相席ラウンジの服装・清潔感チェック完全ガイド" width="640" height="360" decoding="async" loading="lazy">
+                            </picture>
+                            <span class="article-card-badge">服装・清潔感</span>
+                        </div>
+                        <div class="article-card-info">
+                            <div class="article-card-meta">
+                                <span class="article-tag">5大ブランドNG基準</span>
+                                <span class="article-read-time">約6分で読める</span>
+                            </div>
+                            <h3 class="article-card-title">相席ラウンジの服装・清潔感チェック完全ガイド｜ブランド別NGドレスコードと「70cmソファ席の間接照明」で損しない身だしなみ</h3>
+                            <p class="article-card-desc">スニーカー・パーカーの可否ラインと、天井ピンスポット照明×70cm近距離で差がつく仕事帰り3分ケア。</p>
+                            <div class="article-card-footer">
+                                <span class="article-read-btn">ガイドを読む ›</span>
+                            </div>
+                        </div>
+                    </a>
 
                     <!-- Article NEW: Friday/Saturday 22:00 Crowd-Rush Paradox -->
                     <a href="/guide/crowd-rush-paradox" class="article-card-item highlight-card">
@@ -2358,7 +2453,7 @@
         window.INITIAL_STATUS_DATA = {{ initial_status | tojson }};
     </script>
     {% endif %}
-    <script src="/static/app.js?v=20261104_2" defer></script>
+    <script src="/static/app.js?v=20261104_3" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
@@ -2374,7 +2469,7 @@
                 }
                 if (window.__swRegistered) return;
                 window.__swRegistered = true;
-                navigator.serviceWorker.register('/sw.js?v=86', { updateViaCache: 'none' })
+                navigator.serviceWorker.register('/sw.js?v=87', { updateViaCache: 'none' })
                     .then(function(reg) {
                         reg.update();
                         document.addEventListener('visibilitychange', function() {

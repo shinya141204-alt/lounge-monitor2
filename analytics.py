@@ -188,6 +188,8 @@ _PAGE_TITLES = {
     '/guide/thirties-lounge-guide': '📖 相席ラウンジは30代・アラサーでも浮かない？｜店舗選びと客層データの境界線',
     '/guide/crowd-rush-paradox': '📖 金土22時の群衆殺到パラドックスと女性比70%安全バッファ検証',
     '/guide/brand-waveform-asymmetry': '📖 5大ブランドの時間波形と男女で真逆になる店選びデータ検証',
+    '/guide/lounge-vs-screened-date': '📖 相席ラウンジ vs 審査制1対1デート徹底比較（実測ログ・使い分け境界線）',
+    '/guide/dress-code-cleanliness': '📖 相席ラウンジの服装・清潔感チェック完全ガイド（ブランド別NG・70cm照明対策）',
     '/for-women': '💄 女子のための相席ラウンジ完全ガイド＆待ちゼロ店舗ボード',
     '/privacy': '⚖️ 運営者情報・プライバシーポリシー',
 }
