@@ -453,7 +453,11 @@ class MomentumTests(unittest.TestCase):
     def test_snapshot_around_and_ssr_momentum(self):
         now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
         ts_15m_ago = (now_jst - datetime.timedelta(minutes=15)).strftime('%Y-%m-%d %H:%M:%S')
+        ts_7d_ago = (now_jst - datetime.timedelta(days=7)).replace(minute=10, second=0).strftime('%Y-%m-%d %H:%M:%S')
+        ts_14d_ago = (now_jst - datetime.timedelta(days=14)).replace(minute=10, second=0).strftime('%Y-%m-%d %H:%M:%S')
         local_db.insert_logs_with_ts([
+            {'ts': ts_7d_ago, 'name': 'OLG 恵比寿', 'men': 18, 'women': 35, 'source': 'oriental'},
+            {'ts': ts_14d_ago, 'name': 'OLG 恵比寿', 'men': 22, 'women': 39, 'source': 'oriental'},
             {'ts': ts_15m_ago, 'name': 'OLG 恵比寿', 'men': 20, 'women': 40, 'source': 'oriental'},
             {'ts': ts_15m_ago, 'name': 'OLG 新宿', 'men': 30, 'women': 50, 'source': 'oriental'},
         ])
@@ -1151,7 +1155,7 @@ class GrowthFeaturesTests(unittest.TestCase):
             r = self.client.get(p)
             self.assertEqual(r.status_code, 200, f"Public path {p} returned {r.status_code}")
             body = r.data.decode('utf-8')
-            self.assertIn('/static/calm.css?v=30', body, f"{p} missing /static/calm.css?v=30")
+            self.assertIn('/static/calm.css?v=31', body, f"{p} missing /static/calm.css?v=31")
             if '/static/style.css' in body:
                 self.assertRegex(body, r'/static/style\.css\?v=20261030_\d+', f"{p} missing versioned /static/style.css")
             self.assertIn('公式ホームページ', body, f"{p} missing official website verification notice")
@@ -1164,7 +1168,7 @@ class GrowthFeaturesTests(unittest.TestCase):
                 sr = self.client.get(sp)
                 self.assertEqual(sr.status_code, 200, f"Scheduled path {sp} returned {sr.status_code}")
                 sbody = sr.data.decode('utf-8')
-                self.assertIn('/static/calm.css?v=30', sbody, f"{sp} missing /static/calm.css?v=30")
+                self.assertIn('/static/calm.css?v=31', sbody, f"{sp} missing /static/calm.css?v=31")
                 if '/static/style.css' in sbody:
                     self.assertRegex(sbody, r'/static/style\.css\?v=20261030_\d+', f"{sp} missing versioned /static/style.css")
                 self.assertIn('公式ホームページ', sbody, f"{sp} missing official website verification notice")
@@ -1762,7 +1766,7 @@ class FullAuditRegressionTests(unittest.TestCase):
         sw_resp = self.client.get('/sw.js')
         try:
             sw_txt = sw_resp.data.decode('utf-8')
-            self.assertIn("CACHE_NAME = 'aiseki-navi-v84'", sw_txt)
+            self.assertIn("CACHE_NAME = 'aiseki-navi-v85'", sw_txt)
             self.assertIn("event.waitUntil", sw_txt)
         finally:
             sw_resp.close()
@@ -4228,16 +4232,16 @@ class AIUltraGrowthSuiteTests(unittest.TestCase):
         home_html = self.client.get('/').data.decode('utf-8')
         self.assertIn('class="concierge-quick-banner"', home_html)
         self.assertIn('href="/concierge"', home_html)
-        self.assertIn('calm.css?v=30', home_html)
+        self.assertIn('calm.css?v=31', home_html)
 
-        # 3. Subpages & columns include one-tap theme toggle button (.portal-theme-toggle-btn or #for-women-theme-btn) and calm.css?v=30
+        # 3. Subpages & columns include one-tap theme toggle button (.portal-theme-toggle-btn or #for-women-theme-btn) and calm.css?v=31
         for pub_route in ('/concierge', '/areas', '/columns', '/price-comparison', '/for-women', '/stats', '/grooming', '/privacy', '/guide/shinjuku'):
             r_sub = self.client.get(pub_route)
             self.assertEqual(r_sub.status_code, 200, msg=f"{pub_route} failed")
             sub_html = r_sub.data.decode('utf-8')
             expected_btn = 'for-women-theme-btn' if pub_route == '/for-women' else 'portal-theme-toggle-btn'
             self.assertIn(expected_btn, sub_html, msg=f"Missing theme toggle on {pub_route}")
-            self.assertIn('calm.css?v=30', sub_html, msg=f"Outdated calm.css on {pub_route}")
+            self.assertIn('calm.css?v=31', sub_html, msg=f"Outdated calm.css on {pub_route}")
 
         # 4. Staff & Master dashboards support light mode, theme toggle, and fixed reel video player
         with self.client.session_transaction() as s:
@@ -4382,37 +4386,46 @@ class AIUltraGrowthSuiteTests(unittest.TestCase):
 
         ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-        # 1. Design Option A: CSS keyframes, light-mode & reduced-motion guards, JS ticker helpers, and SSR cache busters
+        # 1. Hybrid Motion (Plan A: Per-Digit Odometer Roll + Plan C: 0.9s One-Shot Left-Edge Glow) & cache busters
         with open(os.path.join(ROOT, 'static', 'calm.css'), 'r', encoding='utf-8') as f_css:
             calm_css = f_css.read()
         for css_token in (
             '@keyframes calmLiveDotBreath',
-            '@keyframes calmTickerRollUp',
-            '.ranking-item.live-pulse-card',
-            '.momentum-tag.is-pulsing',
-            '.live-delta-ticker',
-            'body.theme-light .live-delta-ticker',
+            '@keyframes calmOdoRollUp',
+            '@keyframes calmOdoRollDown',
+            '@keyframes calmEdgeOneShot',
+            '.odo-wrap',
+            '.odo-track.is-up',
+            '.ranking-item.card-delta-up::after',
+            'body.theme-light .ranking-item.card-delta-up::after',
             'prefers-reduced-motion: reduce',
         ):
             self.assertIn(css_token, calm_css)
+        for retired_css in (
+            '@keyframes calmCardDeltaSheen',
+            '.live-delta-ticker',
+        ):
+            self.assertNotIn(retired_css, calm_css)
 
         with open(os.path.join(ROOT, 'static', 'app.js'), 'r', encoding='utf-8') as f_js:
             app_js = f_js.read()
         for js_token in (
             '_prevStoreCounts',
+            '_animateOdometerCount',
+            '_setStaticCountText',
             '_triggerCountTicker',
-            '_showLiveDeltaPill',
             '_syncPrevStoreCounts',
-            'live-pulse-card',
-            'is-pulsing',
+            'card-delta-up',
+            'diff-soft-glow',
         ):
             self.assertIn(js_token, app_js)
+        self.assertNotIn('_showLiveDeltaPill', app_js)
 
         app_module.clear_fast_http_caches()
         home_html = self.client.get('/').data.decode('utf-8')
-        self.assertIn('calm.css?v=30', home_html)
-        self.assertIn('app.js?v=20261103_1', home_html)
-        self.assertIn('/sw.js?v=84', home_html)
+        self.assertIn('calm.css?v=31', home_html)
+        self.assertIn('app.js?v=20261104_1', home_html)
+        self.assertIn('/sw.js?v=85', home_html)
 
         # 2. TikTok 9:16 Safe-Zone Reel Templates & Captions (zero bare 'オリエンタル' or 'OLG')
         sample_stores = [

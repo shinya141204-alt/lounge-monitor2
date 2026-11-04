@@ -1114,11 +1114,97 @@
         const _prevStoreCounts = new Map();
         let _lastAnimatedTimestamp = '';
         let _allowDeltaTickerThisPass = false;
-        let _didInitialLiveIntro = false;
-        let _liveIntroRemaining = 8;
+
+        function _prefersReducedMotion() {
+            try {
+                return Boolean(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+            } catch (e) {
+                return false;
+            }
+        }
+
+        function _setStaticCountText(el, val) {
+            if (!el) return;
+            const nextStr = String(val);
+            if (el._odoTimer) {
+                clearTimeout(el._odoTimer);
+                el._odoTimer = null;
+            }
+            if (el._odoActive || el.textContent !== nextStr) {
+                el._odoActive = false;
+                el.textContent = nextStr;
+            }
+        }
+
+        function _animateOdometerCount(el, prevVal, nextVal) {
+            if (!el) return;
+            const pNum = Number(prevVal);
+            const nNum = Number(nextVal);
+            const nextStr = String(nextVal);
+            if (!Number.isFinite(pNum) || !Number.isFinite(nNum) || pNum === nNum || _prefersReducedMotion()) {
+                _setStaticCountText(el, nextVal);
+                return;
+            }
+            if (el._odoTimer) {
+                clearTimeout(el._odoTimer);
+                el._odoTimer = null;
+            }
+
+            const prevStr = String(pNum);
+            const dirUp = nNum > pNum;
+            const targetLen = nextStr.length;
+            const pAligned = prevStr.length >= targetLen
+                ? prevStr.slice(prevStr.length - targetLen)
+                : prevStr.padStart(targetLen, ' ');
+
+            const wrap = document.createElement('span');
+            wrap.className = 'odo-wrap';
+
+            for (let i = 0; i < targetLen; i++) {
+                const pCh = pAligned[i];
+                const nCh = nextStr[i];
+                const col = document.createElement('span');
+                col.className = 'odo-col';
+
+                if (pCh === nCh) {
+                    col.textContent = nCh;
+                } else {
+                    const track = document.createElement('span');
+                    track.className = dirUp ? 'odo-track is-up' : 'odo-track is-down';
+                    const topSpan = document.createElement('span');
+                    const botSpan = document.createElement('span');
+                    if (dirUp) {
+                        topSpan.className = pCh === ' ' ? 'odo-digit is-ghost' : 'odo-digit';
+                        topSpan.setAttribute('aria-hidden', 'true');
+                        topSpan.textContent = pCh === ' ' ? '0' : pCh;
+                        botSpan.className = 'odo-digit';
+                        botSpan.textContent = nCh;
+                    } else {
+                        topSpan.className = 'odo-digit';
+                        topSpan.textContent = nCh;
+                        botSpan.className = pCh === ' ' ? 'odo-digit is-ghost' : 'odo-digit';
+                        botSpan.setAttribute('aria-hidden', 'true');
+                        botSpan.textContent = pCh === ' ' ? '0' : pCh;
+                    }
+                    track.appendChild(topSpan);
+                    track.appendChild(botSpan);
+                    col.appendChild(track);
+                }
+                wrap.appendChild(col);
+            }
+
+            el._odoActive = true;
+            el.replaceChildren(wrap);
+            el._odoTimer = setTimeout(() => {
+                el._odoTimer = null;
+                el._odoActive = false;
+                el.textContent = nextStr;
+            }, 450);
+        }
+        window._animateOdometerCount = _animateOdometerCount;
 
         function _triggerCountTicker(el, cls, durationMs = 520) {
-            if (!el || !el.classList) return;
+            if (!el || !el.classList || _prefersReducedMotion()) return;
             const timerKey = `_tkTimer_${cls}`;
             if (el[timerKey]) {
                 clearTimeout(el[timerKey]);
@@ -1133,23 +1219,6 @@
                 el.classList.remove(cls);
                 el[timerKey] = null;
             }, durationMs);
-        }
-
-        function _showLiveDeltaPill(numRowEl, delta) {
-            if (!numRowEl || !delta) return;
-            let pill = numRowEl.querySelector('.live-delta-ticker');
-            if (!pill) {
-                pill = document.createElement('span');
-                pill.className = 'live-delta-ticker';
-                numRowEl.appendChild(pill);
-            }
-            if (pill._hideTimer) clearTimeout(pill._hideTimer);
-            pill.classList.remove('is-up', 'is-down');
-            pill.classList.add(delta > 0 ? 'is-up' : 'is-down');
-            pill.textContent = delta > 0 ? `▲+${delta}` : `▼${delta}`;
-            pill._hideTimer = setTimeout(() => {
-                if (pill.parentNode) pill.parentNode.removeChild(pill);
-            }, 3800);
         }
 
         function _syncPrevStoreCounts(stores) {
@@ -1238,21 +1307,6 @@
                         _lastRenderedSignature = _computeUiSignature(window.INITIAL_STATUS_DATA);
                         _lastAnimatedTimestamp = window.INITIAL_STATUS_DATA.timestamp || '';
                         _syncPrevStoreCounts(window.INITIAL_STATUS_DATA.ranking);
-                        if (!_didInitialLiveIntro) {
-                            _didInitialLiveIntro = true;
-                            try {
-                                const ssrPulseCards = rankingListEl.querySelectorAll('.ranking-item.live-pulse-card');
-                                const maxIntro = Math.min(ssrPulseCards.length, _liveIntroRemaining);
-                                for (let pi = 0; pi < maxIntro; pi++) {
-                                    const refs = _cacheCardRefs(ssrPulseCards[pi]);
-                                    if (refs.ladiesCountEl) _triggerCountTicker(refs.ladiesCountEl, 'ticker-roll-up', 500);
-                                    if (refs.ladiesDiffEl && !refs.ladiesDiffEl.classList.contains('hidden')) {
-                                        _triggerCountTicker(refs.ladiesDiffEl, 'ticker-bump', 520);
-                                    }
-                                }
-                                _liveIntroRemaining = Math.max(0, _liveIntroRemaining - maxIntro);
-                            } catch (e) {}
-                        }
                         const lastUpdateEl = document.getElementById('last-update');
                         if (lastUpdateEl && window.INITIAL_STATUS_DATA.timestamp) {
                             lastUpdateEl.textContent = window.INITIAL_STATUS_DATA.timestamp.split(' ')[1] || '--:--';
@@ -1894,9 +1948,25 @@
             const ladiesCount = store.women || 0;
             const menCount = store.men || 0;
             const totalCount = ladiesCount + menCount;
+            const prevCounts = storeKey ? _prevStoreCounts.get(storeKey) : null;
+            const canAnimateDelta = Boolean(prevCounts && _allowDeltaTickerThisPass);
+            const dW = prevCounts ? (ladiesCount - prevCounts.women) : 0;
+            const dM = prevCounts ? (menCount - prevCounts.men) : 0;
 
-            if (refs.ladiesCountEl) refs.ladiesCountEl.textContent = ladiesCount;
-            if (refs.menCountEl) refs.menCountEl.textContent = menCount;
+            if (refs.ladiesCountEl) {
+                if (canAnimateDelta && dW !== 0) {
+                    _animateOdometerCount(refs.ladiesCountEl, prevCounts.women, ladiesCount);
+                } else {
+                    _setStaticCountText(refs.ladiesCountEl, ladiesCount);
+                }
+            }
+            if (refs.menCountEl) {
+                if (canAnimateDelta && dM !== 0) {
+                    _animateOdometerCount(refs.menCountEl, prevCounts.men, menCount);
+                } else {
+                    _setStaticCountText(refs.menCountEl, menCount);
+                }
+            }
 
             const ladiesDiffEl = refs.ladiesDiffEl;
             if (ladiesDiffEl) {
@@ -1966,7 +2036,19 @@
 
             const isWomenBentoView = (!IS_STAFF && currentAudience === 'women');
             if (refs.bentoRatioNum) {
-                refs.bentoRatioNum.textContent = isWomenBentoView ? menPct : ladiesPct;
+                const targetRatioPct = isWomenBentoView ? menPct : ladiesPct;
+                if (canAnimateDelta && (dW !== 0 || dM !== 0) && item.classList.contains('bento-hero-card')) {
+                    const prevTotal = prevCounts.women + prevCounts.men;
+                    const prevLadiesPct = prevTotal > 0 ? Math.round((prevCounts.women / prevTotal) * 100) : 0;
+                    const prevRatioPct = isWomenBentoView ? (prevTotal > 0 ? (100 - prevLadiesPct) : 0) : prevLadiesPct;
+                    if (prevRatioPct !== targetRatioPct) {
+                        _animateOdometerCount(refs.bentoRatioNum, prevRatioPct, targetRatioPct);
+                    } else {
+                        _setStaticCountText(refs.bentoRatioNum, targetRatioPct);
+                    }
+                } else {
+                    _setStaticCountText(refs.bentoRatioNum, targetRatioPct);
+                }
             }
             if (refs.bentoRatioCaption) {
                 refs.bentoRatioCaption.textContent = isWomenBentoView ? '男性比' : '女性比';
@@ -2013,45 +2095,23 @@
                 refs.bentoVerdictPill.classList.toggle('is-wait', !vOk);
             }
 
-            // Live Pulse & Count Ticker (Design Plan A)
+            // Hybrid Motion (Plan A: Per-Digit Odometer + Plan C: 0.9s Left-Edge Soft One-Shot)
             const isWomenAudience = (!IS_STAFF && currentAudience === 'women');
-            const isLivePulsing = isWomenAudience
-                ? (mDiff >= 2 || Boolean(ladiesEval && ladiesEval.cls === 'ladies-vip' && mDiff >= 1))
-                : (wDiff >= 2 || (wDiff >= 1 && ladiesCount >= 12 && totalCount > 0 && (ladiesCount / totalCount) >= 0.55));
-            item.classList.toggle('live-pulse-card', isLivePulsing);
-            if (momTag) {
-                const pulseMom = !momTag.classList.contains('hidden') && (isLivePulsing || (isWomenAudience ? mDiff >= 2 : wDiff >= 2));
-                momTag.classList.toggle('is-pulsing', pulseMom);
-            }
-
-            const prevCounts = storeKey ? _prevStoreCounts.get(storeKey) : null;
-            if (prevCounts && _allowDeltaTickerThisPass) {
-                const dW = ladiesCount - prevCounts.women;
-                const dM = menCount - prevCounts.men;
-                if (dW !== 0 && refs.ladiesCountEl) {
-                    _triggerCountTicker(refs.ladiesCountEl, dW > 0 ? 'ticker-roll-up' : 'ticker-roll-down', dW > 0 ? 500 : 420);
-                    _showLiveDeltaPill(refs.ladiesCountEl.parentElement, dW);
-                    if (dW > 0 && ladiesDiffEl && !ladiesDiffEl.classList.contains('hidden')) {
-                        _triggerCountTicker(ladiesDiffEl, 'ticker-bump', 520);
+            if (canAnimateDelta) {
+                if (dW > 0 && ladiesDiffEl && !ladiesDiffEl.classList.contains('hidden')) {
+                    _triggerCountTicker(ladiesDiffEl, 'diff-soft-glow', 760);
+                }
+                if (dM > 0 && menDiffEl && !menDiffEl.classList.contains('hidden')) {
+                    _triggerCountTicker(menDiffEl, 'diff-soft-glow', 760);
+                }
+                if (IS_STAFF) {
+                    if (dW > 0) {
+                        _triggerCountTicker(item, 'card-delta-up', 950);
+                    } else if (dM > 0) {
+                        _triggerCountTicker(item, 'card-delta-up-men', 950);
                     }
-                }
-                if (dM !== 0 && refs.menCountEl) {
-                    _triggerCountTicker(refs.menCountEl, dM > 0 ? 'ticker-roll-up' : 'ticker-roll-down', dM > 0 ? 500 : 420);
-                    _showLiveDeltaPill(refs.menCountEl.parentElement, dM);
-                    if (dM > 0 && menDiffEl && !menDiffEl.classList.contains('hidden')) {
-                        _triggerCountTicker(menDiffEl, 'ticker-bump', 520);
-                    }
-                }
-                if ((isWomenAudience && dM > 0) || (!isWomenAudience && dW > 0)) {
-                    _triggerCountTicker(item, 'card-delta-up', 1200);
-                }
-            } else if (!_didInitialLiveIntro && _liveIntroRemaining > 0 && isLivePulsing) {
-                _liveIntroRemaining--;
-                const primaryCountEl = isWomenAudience ? refs.menCountEl : refs.ladiesCountEl;
-                const primaryDiffEl = isWomenAudience ? menDiffEl : ladiesDiffEl;
-                if (primaryCountEl) _triggerCountTicker(primaryCountEl, 'ticker-roll-up', 500);
-                if (primaryDiffEl && !primaryDiffEl.classList.contains('hidden')) {
-                    _triggerCountTicker(primaryDiffEl, 'ticker-bump', 520);
+                } else if ((isWomenAudience && dM > 0) || (!isWomenAudience && dW > 0)) {
+                    _triggerCountTicker(item, 'card-delta-up', 950);
                 }
             }
 
@@ -2302,7 +2362,6 @@
                 _syncPrevStoreCounts(stores);
                 if (data.timestamp) _lastAnimatedTimestamp = data.timestamp;
                 _allowDeltaTickerThisPass = false;
-                _didInitialLiveIntro = true;
                 return;
             }
 
@@ -2403,7 +2462,6 @@
             _syncPrevStoreCounts(stores);
             if (data.timestamp) _lastAnimatedTimestamp = data.timestamp;
             _allowDeltaTickerThisPass = false;
-            _didInitialLiveIntro = true;
             syncPcInspector(filteredStores);
             if (typeof currentModalStoreName !== 'undefined' && currentModalStoreName) {
                 const openMdl = document.getElementById('analysis-modal');
@@ -3317,6 +3375,8 @@
             </svg>`;
         }
 
+        let _prevInspectorSnapshot = { storeName: '', w: 0, m: 0, ts: '' };
+
         function syncPcInspector(visibleStores) {
             const inspector = document.getElementById('pc-store-inspector');
             if (!inspector || IS_STAFF) return;
@@ -3478,11 +3538,11 @@
                             <div class="cmi-counts-pair">
                                 <div>
                                     <div class="cmi-count-lbl">女性</div>
-                                    <div class="cmi-count-val is-w">${w}<span class="cmi-count-unit">名</span></div>
+                                    <div class="cmi-count-val is-w"><span class="cmi-num">${w}</span><span class="cmi-count-unit">名</span></div>
                                 </div>
                                 <div>
                                     <div class="cmi-count-lbl">男性</div>
-                                    <div class="cmi-count-val is-m">${m}<span class="cmi-count-unit">名</span></div>
+                                    <div class="cmi-count-val is-m"><span class="cmi-num">${m}</span><span class="cmi-count-unit">名</span></div>
                                 </div>
                             </div>
                             <div style="text-align:right;">
@@ -3509,6 +3569,22 @@
                     <button type="button" class="cmi-secondary-btn">詳しい曜日・時間帯グラフ＆2軒目を見る</button>
                 </div>
             `;
+
+            const curTs = (window.lastData && window.lastData.timestamp) || '';
+            if (
+                _prevInspectorSnapshot.storeName === target.name &&
+                _prevInspectorSnapshot.ts &&
+                curTs &&
+                curTs !== _prevInspectorSnapshot.ts
+            ) {
+                if (w !== _prevInspectorSnapshot.w) {
+                    _animateOdometerCount(inspector.querySelector('.cmi-count-val.is-w .cmi-num'), _prevInspectorSnapshot.w, w);
+                }
+                if (m !== _prevInspectorSnapshot.m) {
+                    _animateOdometerCount(inspector.querySelector('.cmi-count-val.is-m .cmi-num'), _prevInspectorSnapshot.m, m);
+                }
+            }
+            _prevInspectorSnapshot = { storeName: target.name, w, m, ts: curTs };
 
             const hopBtn = inspector.querySelector('.cmi-hop-btn');
             if (hopBtn && altStore) {

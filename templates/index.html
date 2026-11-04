@@ -133,8 +133,8 @@
     <meta name="apple-mobile-web-app-title" content="相席ナビ">
 
     <link rel="stylesheet" href="/static/style.css?v=20261030_6" fetchpriority="high">
-    <link rel="stylesheet" href="/static/calm.css?v=30" fetchpriority="high">
-    <link rel="preload" href="/static/app.js?v=20261103_1" as="script">
+    <link rel="stylesheet" href="/static/calm.css?v=31" fetchpriority="high">
+    <link rel="preload" href="/static/app.js?v=20261104_1" as="script">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- Non-render-blocking web font (avoids waiting on Google Fonts at PWA cold launch) -->
@@ -629,7 +629,6 @@
                         <div id="ranking-list" class="ranking-list">
                             {% if initial_status and initial_status.ranking %}
                             {% for s in initial_status.ranking %}
-                            {% set ssr_pulsing = (s.women_diff or 0) >= 2 or ((s.women_diff or 0) >= 1 and (s.women or 0) >= 12 and (s.ssr_ladies_pct or 0) >= 55) %}
                             {% set ssr_w_num = (s.women or 0) %}
                             {% set ssr_m_num = (s.men or 0) %}
                             {% set ssr_wait_m = (s.wait_estimate.est_wait_men_min if s.wait_estimate else 0) or 0 %}
@@ -645,7 +644,7 @@
                                 {% set ssr_human_copy = '現在女性が' ~ ssr_w_num ~ '名・男性が' ~ ssr_m_num ~ '名入店中です' %}
                             {% endif %}
                             {% set is_bento_hero = (not is_staff) and loop.first and (s.ssr_rank == 1) %}
-                            <div class="ranking-item{% if loop.first %} is-inspector-selected{% endif %}{% if is_bento_hero %} bento-hero-card{% endif %}{% if s.ssr_rank == 1 %} rank-1{% elif s.ssr_rank == 2 %} rank-2{% elif s.ssr_rank == 3 %} rank-3{% endif %}{% if ssr_pulsing %} live-pulse-card{% endif %}" data-store="{{ s.seo_name or (s.name | seo_store_name) }}" style="cursor: pointer;" onclick="if(window.handleStoreCardClick)handleStoreCardClick({{ (s.seo_name or (s.name | seo_store_name)) | tojson | forceescape }});else if(window.openModal)openModal({{ (s.seo_name or (s.name | seo_store_name)) | tojson | forceescape }})">
+                            <div class="ranking-item{% if loop.first %} is-inspector-selected{% endif %}{% if is_bento_hero %} bento-hero-card{% endif %}{% if s.ssr_rank == 1 %} rank-1{% elif s.ssr_rank == 2 %} rank-2{% elif s.ssr_rank == 3 %} rank-3{% endif %}" data-store="{{ s.seo_name or (s.name | seo_store_name) }}" style="cursor: pointer;" onclick="if(window.handleStoreCardClick)handleStoreCardClick({{ (s.seo_name or (s.name | seo_store_name)) | tojson | forceescape }});else if(window.openModal)openModal({{ (s.seo_name or (s.name | seo_store_name)) | tojson | forceescape }})">
                                 <div class="bento-kicker-row">
                                     <span class="bento-kicker-label">TONIGHT'S #1 PICK</span>
                                     <span class="bento-verdict-pill {{ 'is-wait' if ((ssr_w_num == 0 and ssr_m_num == 0) or ssr_wait_m > 0) else 'is-ok' }}">{% if ssr_w_num == 0 and ssr_m_num == 0 %}準備中{% elif ssr_wait_m > 0 %}男性待機目安 {{ ssr_wait_m }}分{% elif ssr_w_num >= ssr_m_num %}即入店圏{% else %}待ちなし案内中{% endif %}</span>
@@ -656,7 +655,7 @@
                                         <span class="brand-badge {{ s.ssr_brand_cls }}">{{ s.ssr_brand }}</span>
                                         <span class="distance-tag hidden"></span>
                                         {% if (s.women_diff or 0) >= 1 %}
-                                        <span class="momentum-tag{% if ssr_pulsing %} is-pulsing{% endif %}" title="直近約15分で女性が+{{ s.women_diff }}名増えています">↗ +{{ s.women_diff }}名</span>
+                                        <span class="momentum-tag" title="直近約15分で女性が+{{ s.women_diff }}名増えています">↗ +{{ s.women_diff }}名</span>
                                         {% elif s.votes and (s.votes.smooth or 0) > 0 and (s.votes.smooth or 0) >= (s.votes.waiting or 0) %}
                                         <span class="momentum-tag" title="直近の現場レポートで「待ちなしで入れた」が報告されています">即入店</span>
                                         {% else %}
@@ -2359,7 +2358,7 @@
         window.INITIAL_STATUS_DATA = {{ initial_status | tojson }};
     </script>
     {% endif %}
-    <script src="/static/app.js?v=20261103_1" defer></script>
+    <script src="/static/app.js?v=20261104_1" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
@@ -2375,7 +2374,7 @@
                 }
                 if (window.__swRegistered) return;
                 window.__swRegistered = true;
-                navigator.serviceWorker.register('/sw.js?v=84', { updateViaCache: 'none' })
+                navigator.serviceWorker.register('/sw.js?v=85', { updateViaCache: 'none' })
                     .then(function(reg) {
                         reg.update();
                         document.addEventListener('visibilitychange', function() {

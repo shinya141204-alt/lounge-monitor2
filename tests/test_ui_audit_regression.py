@@ -105,13 +105,13 @@ class UiAuditRegressionTests(unittest.TestCase):
     # ------------------------------------------------------------------
     def test_cache_busting_sync_across_templates_and_service_worker(self):
         """全テンプレートと static/sw.js のアセットバージョンが完全同期し、immutable ヘッダが正しく付与されること"""
-        expected_calm = "/static/calm.css?v=30"
+        expected_calm = "/static/calm.css?v=31"
         expected_portal = "/static/portal.css?v=14"
-        expected_app_js = "/static/app.js?v=20261103_1"
+        expected_app_js = "/static/app.js?v=20261104_1"
         expected_aff_js = "/static/affiliate_config.js?v=13"
         expected_style = "/static/style.css?v=20261030_6"
-        expected_sw_url = "/sw.js?v=84"
-        expected_cache_name = "aiseki-navi-v84"
+        expected_sw_url = "/sw.js?v=85"
+        expected_cache_name = "aiseki-navi-v85"
 
         templates_dir = os.path.join(PROJECT_ROOT, "templates")
         calm_seen = 0
@@ -1724,6 +1724,171 @@ class UiAuditRegressionTests(unittest.TestCase):
                             browser.close()
         finally:
             analytics.reset_for_tests()
+
+    def test_hybrid_odometer_and_oneshot_edge_motion_in_chromium(self):
+        """人数増加時に変化した桁のみが縦ロールし（横ズレ0px）、左端が0.9秒だけ1回ソフト点灯して消灯すること"""
+        from urllib.parse import urlsplit
+        try:
+            from playwright.sync_api import sync_playwright
+        except ImportError:
+            self.skipTest("playwright is not installed")
+
+        with app_module.data_lock:
+            app_module.latest_data.clear()
+            app_module.latest_data.update({
+                "last_updated": "2026-11-04 21:00:00",
+                "is_seed": False,
+                "full_data": [
+                    {
+                        "name": "渋谷本店",
+                        "source": "ORIENTAL",
+                        "region": "Kanto",
+                        "women": 14,
+                        "men": 10,
+                        "total": 24,
+                        "women_diff": 1,
+                        "men_diff": 0,
+                    },
+                    {
+                        "name": "ag渋谷",
+                        "source": "AG",
+                        "region": "Kanto",
+                        "women": 9,
+                        "men": 8,
+                        "total": 17,
+                        "women_diff": 0,
+                        "men_diff": 0,
+                    },
+                ],
+            })
+        app_module.clear_fast_http_caches()
+
+        base = "http://aiseki.local"
+
+        def attach_public_router(context):
+            def handle_route(route):
+                req = route.request
+                u = urlsplit(req.url)
+                if u.netloc != "aiseki.local":
+                    route.abort()
+                    return
+                path_qs = u.path + (f"?{u.query}" if u.query else "")
+                resp = self.client.open(path_qs, method=req.method, headers={"User-Agent": "Mozilla/5.0"})
+                headers = {k.lower(): v for k, v in resp.headers.items() if k.lower() not in ("transfer-encoding", "content-encoding", "content-length")}
+                route.fulfill(status=resp.status_code, headers=headers, body=resp.get_data())
+            context.route("**/*", handle_route)
+
+        with patch.object(app_module, "trigger_background_fetch_if_needed", lambda *a, **kw: None):
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=True)
+                try:
+                    ctx = browser.new_context(
+                        viewport={"width": 1280, "height": 900},
+                        service_workers="block",
+                        reduced_motion="no-preference",
+                    )
+                    attach_public_router(ctx)
+                    page = ctx.new_page()
+                    page.goto(base + "/", wait_until="domcontentloaded")
+                    page.wait_for_selector("#ranking-list .ranking-item")
+
+                    init_state = page.evaluate("""() => {
+                        return {
+                            odoCount: document.querySelectorAll('.odo-wrap').length,
+                            deltaUpCount: document.querySelectorAll('.ranking-item.card-delta-up').length,
+                            legacyPillCount: document.querySelectorAll('.live-delta-ticker').length
+                        };
+                    }""")
+                    self.assertEqual(init_state["odoCount"], 0, "Initial load must not bounce numbers")
+                    self.assertEqual(init_state["deltaUpCount"], 0)
+                    self.assertEqual(init_state["legacyPillCount"], 0)
+
+                    with app_module.data_lock:
+                        app_module.latest_data.clear()
+                        app_module.latest_data.update({
+                            "last_updated": "2026-11-04 21:01:00",
+                            "is_seed": False,
+                            "full_data": [
+                                {
+                                    "name": "渋谷本店",
+                                    "source": "ORIENTAL",
+                                    "region": "Kanto",
+                                    "women": 17,
+                                    "men": 10,
+                                    "total": 27,
+                                    "women_diff": 3,
+                                    "men_diff": 0,
+                                },
+                                {
+                                    "name": "ag渋谷",
+                                    "source": "AG",
+                                    "region": "Kanto",
+                                    "women": 12,
+                                    "men": 8,
+                                    "total": 20,
+                                    "women_diff": 3,
+                                    "men_diff": 0,
+                                },
+                            ],
+                        })
+                    app_module.clear_fast_http_caches()
+
+                    live_snap = page.evaluate("""async () => {
+                        const beforeTxt = document.querySelector('#ranking-list .ranking-item:not(.pr-card-item) .stat.ladies .count')?.textContent;
+                        const beforeTs = window.lastData && window.lastData.timestamp;
+                        const fetchOk = await fetchData();
+                        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+                        const storeCards = document.querySelectorAll('#ranking-list .ranking-item:not(.pr-card-item)');
+                        const card1 = storeCards[0];
+                        const countEl1 = card1.querySelector('.stat.ladies .count');
+                        const cols1 = Array.from(countEl1.querySelectorAll('.odo-col'));
+                        const card2 = storeCards[1];
+                        const cols2 = Array.from(card2.querySelectorAll('.stat.ladies .count .odo-col'));
+                        return {
+                            beforeTxt,
+                            beforeTs,
+                            fetchOk,
+                            afterTxt: countEl1.textContent,
+                            afterTs: window.lastData && window.lastData.timestamp,
+                            reduced: _prefersReducedMotion(),
+                            hasDeltaUp1: card1.classList.contains('card-delta-up'),
+                            hasDeltaUp2: card2.classList.contains('card-delta-up'),
+                            legacyPillCount: document.querySelectorAll('.live-delta-ticker').length,
+                            col0HasTrack: cols1[0] ? !!cols1[0].querySelector('.odo-track') : null,
+                            col0Text: cols1[0] ? cols1[0].textContent : null,
+                            col1HasUpTrack: cols1[1] ? !!cols1[1].querySelector('.odo-track.is-up') : null,
+                            carryGhostTop: cols2[0] ? !!cols2[0].querySelector('.odo-digit.is-ghost') : null,
+                            widthDuring: countEl1.getBoundingClientRect().width,
+                            inspectorHasOdo: !!document.querySelector('#pc-store-inspector .cmi-count-val.is-w .odo-wrap')
+                        };
+                    }""")
+                    self.assertTrue(live_snap["hasDeltaUp1"], msg=f"live_snap={live_snap}")
+                    self.assertTrue(live_snap["hasDeltaUp2"])
+                    self.assertEqual(live_snap["legacyPillCount"], 0)
+                    self.assertFalse(live_snap["col0HasTrack"], "Unchanged tens digit '1' must remain completely static")
+                    self.assertEqual(live_snap["col0Text"], "1")
+                    self.assertTrue(live_snap["col1HasUpTrack"], "Changed ones digit '4 -> 7' must roll up")
+                    self.assertTrue(live_snap["carryGhostTop"], "Carry '9 -> 12' must use invisible ghost slot for new tens digit")
+                    self.assertTrue(live_snap["inspectorHasOdo"], "PC right inspector must synchronize odometer roll")
+
+                    page.wait_for_timeout(1050)
+                    settled = page.evaluate("""() => {
+                        const card1 = document.querySelector('#ranking-list .ranking-item');
+                        const countEl1 = card1.querySelector('.stat.ladies .count');
+                        return {
+                            odoCount: document.querySelectorAll('.odo-wrap').length,
+                            hasDeltaUp1: card1.classList.contains('card-delta-up'),
+                            finalText: countEl1.textContent,
+                            widthAfter: countEl1.getBoundingClientRect().width
+                        };
+                    }""")
+                    self.assertEqual(settled["odoCount"], 0, "Odometer DOM must cleanly revert to plain text after roll")
+                    self.assertFalse(settled["hasDeltaUp1"], "Left-edge soft glow must extinguish after ~0.9s")
+                    self.assertEqual(settled["finalText"], "17")
+                    self.assertAlmostEqual(live_snap["widthDuring"], settled["widthAfter"], delta=0.8)
+                    ctx.close()
+                finally:
+                    browser.close()
 
 
 if __name__ == "__main__":

@@ -454,7 +454,7 @@
             }
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=30">
+    <link rel="stylesheet" href="/static/calm.css?v=31">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -1184,6 +1184,53 @@
             }
 
             let isSyncing = false;
+            let _prevHeroLive = { ts: '', w: null, m: null, wpct: null };
+            function _rollHeroDigits(el, prevVal, nextVal) {
+                if (!el || prevVal === null || prevVal === nextVal) return;
+                try {
+                    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+                } catch (e) {}
+                const prevStr = String(prevVal);
+                const nextStr = String(nextVal);
+                const dirUp = nextVal > prevVal;
+                const targetLen = nextStr.length;
+                const pAligned = prevStr.length >= targetLen ? prevStr.slice(prevStr.length - targetLen) : prevStr.padStart(targetLen, ' ');
+                const wrap = document.createElement('span');
+                wrap.className = 'odo-wrap';
+                for (let i = 0; i < targetLen; i++) {
+                    const pCh = pAligned[i];
+                    const nCh = nextStr[i];
+                    const col = document.createElement('span');
+                    col.className = 'odo-col';
+                    if (pCh === nCh) {
+                        col.textContent = nCh;
+                    } else {
+                        const track = document.createElement('span');
+                        track.className = dirUp ? 'odo-track is-up' : 'odo-track is-down';
+                        const sTop = document.createElement('span');
+                        const sBot = document.createElement('span');
+                        if (dirUp) {
+                            sTop.className = pCh === ' ' ? 'odo-digit is-ghost' : 'odo-digit';
+                            sTop.setAttribute('aria-hidden', 'true');
+                            sTop.textContent = pCh === ' ' ? '0' : pCh;
+                            sBot.className = 'odo-digit';
+                            sBot.textContent = nCh;
+                        } else {
+                            sTop.className = 'odo-digit';
+                            sTop.textContent = nCh;
+                            sBot.className = pCh === ' ' ? 'odo-digit is-ghost' : 'odo-digit';
+                            sBot.setAttribute('aria-hidden', 'true');
+                            sBot.textContent = pCh === ' ' ? '0' : pCh;
+                        }
+                        track.appendChild(sTop);
+                        track.appendChild(sBot);
+                        col.appendChild(track);
+                    }
+                    wrap.appendChild(col);
+                }
+                el.replaceChildren(wrap);
+                setTimeout(() => { el.textContent = nextStr; }, 450);
+            }
             async function syncStoreDetail() {
                 if (isSyncing) return;
                 isSyncing = true;
@@ -1228,6 +1275,7 @@
                             else badgeEl.textContent = '男性先行・近隣店舗との比較推奨';
                         }
 
+                        const canRollHero = Boolean(_prevHeroLive.ts && payload.timestamp && payload.timestamp !== _prevHeroLive.ts && tot > 0);
                         const slotLabel = live.usual_slot_label || '普段同時間帯';
                         const uWDiff = live.usual_w_diff;
                         const uMDiff = live.usual_m_diff;
@@ -1237,7 +1285,10 @@
                                 const diff15Html = wDiff > 0 ? '<div style="font-size:0.75rem; color: var(--women); margin-top:2px; font-weight:600;">直近15分 ↗ +' + wDiff + '名</div>' : '';
                                 const uSignW = uWDiff > 0 ? ('+' + uWDiff + '名') : (uWDiff < 0 ? (uWDiff + '名') : '±0名');
                                 const usualWHtml = (uWDiff !== null && uWDiff !== undefined) ? ('<div style="font-size:0.71rem; color: var(--text-sub); margin-top:2px; font-weight:600;">普段の' + slotLabel + '比 ' + uSignW + '（平均' + live.usual_women + '名）</div>') : '';
-                                wEl.innerHTML = w + '<span style="font-size:0.95rem;">名</span>' + diff15Html + usualWHtml;
+                                wEl.innerHTML = '<span class="hero-odo-w" style="display:inline-block; line-height:1;">' + w + '</span><span style="font-size:0.95rem;">名</span>' + diff15Html + usualWHtml;
+                                if (canRollHero && _prevHeroLive.w !== null && _prevHeroLive.w !== w) {
+                                    _rollHeroDigits(wEl.querySelector('.hero-odo-w'), _prevHeroLive.w, w);
+                                }
                             } else if (heroHours.isOpenNow) {
                                 wEl.innerHTML = '0<span style="font-size:0.95rem;">名</span><div style="font-size:0.73rem; color: var(--accent-text); margin-top:2px; font-weight:600;">営業中（0 : 0）</div>';
                             } else {
@@ -1250,7 +1301,10 @@
                                 const diff15MHtml = mDiff > 0 ? '<div style="font-size:0.75rem; color: var(--men); margin-top:2px; font-weight:600;">直近15分 ↗ +' + mDiff + '名</div>' : '';
                                 const uSignM = uMDiff > 0 ? ('+' + uMDiff + '名') : (uMDiff < 0 ? (uMDiff + '名') : '±0名');
                                 const usualMHtml = (uMDiff !== null && uMDiff !== undefined) ? ('<div style="font-size:0.71rem; color: var(--text-sub); margin-top:2px; font-weight:600;">普段の' + slotLabel + '比 ' + uSignM + '（平均' + live.usual_men + '名）</div>') : '';
-                                mEl.innerHTML = m + '<span style="font-size:0.95rem;">名</span>' + diff15MHtml + usualMHtml;
+                                mEl.innerHTML = '<span class="hero-odo-m" style="display:inline-block; line-height:1;">' + m + '</span><span style="font-size:0.95rem;">名</span>' + diff15MHtml + usualMHtml;
+                                if (canRollHero && _prevHeroLive.m !== null && _prevHeroLive.m !== m) {
+                                    _rollHeroDigits(mEl.querySelector('.hero-odo-m'), _prevHeroLive.m, m);
+                                }
                             } else if (heroHours.isOpenNow) {
                                 mEl.innerHTML = '0<span style="font-size:0.95rem;">名</span><div style="font-size:0.73rem; color: var(--text-sub); margin-top:2px; font-weight:500;">本日 ' + heroHours.todayHoursLabel + '</div>';
                             } else {
@@ -1260,7 +1314,17 @@
                         const rEl = document.getElementById('hero-wpct-num');
                         if (rEl) {
                             const coreSub = (live.core_time_short && live.midnight_retention_pct) ? ('<div style="font-size:0.71rem; color: var(--text-sub); margin-top:2px; font-weight:600;">狙い目 ' + live.core_time_short + ' ｜ 終電後 ' + live.midnight_retention_pct + '%</div>') : '';
-                            rEl.innerHTML = (tot > 0 ? wpct : '--') + '<span style="font-size:0.95rem;">%</span>' + coreSub;
+                            if (tot > 0) {
+                                rEl.innerHTML = '<span class="hero-odo-r" style="display:inline-block; line-height:1;">' + wpct + '</span><span style="font-size:0.95rem;">%</span>' + coreSub;
+                                if (canRollHero && _prevHeroLive.wpct !== null && _prevHeroLive.wpct !== wpct) {
+                                    _rollHeroDigits(rEl.querySelector('.hero-odo-r'), _prevHeroLive.wpct, wpct);
+                                }
+                            } else {
+                                rEl.innerHTML = '--<span style="font-size:0.95rem;">%</span>' + coreSub;
+                            }
+                        }
+                        if (payload.timestamp) {
+                            _prevHeroLive = { ts: payload.timestamp, w: tot > 0 ? w : null, m: tot > 0 ? m : null, wpct: tot > 0 ? wpct : null };
                         }
                         const fillEl = document.getElementById('hero-ratio-fill');
                         if (fillEl) fillEl.style.width = (tot > 0 ? wpct : 50) + '%';
