@@ -12,6 +12,7 @@ const AFFILIATE_MASTER = {
     // カテゴリ定義
     categories: [
         { id: 'all', name: 'すべて', icon: '' },
+        { id: 'venue', name: '2軒目・ディナー予約', icon: '', highlight: true },
         { id: 'beauty', name: 'ヒゲ脱毛・スキンケア', icon: '', highlight: true },
         { id: 'night', name: '乾杯・翌朝ケア', icon: '', highlight: true },
         { id: 'dating', name: '恋活・近くの出会い', icon: '', highlight: true },
@@ -101,6 +102,34 @@ const AFFILIATE_MASTER = {
         },
 
         // ==========================================
+        // 1.8 2軒目バー・後日ディナー予約（一休.comレストラン）
+        // ==========================================
+        {
+            id: 'second_venue_reservation',
+            category: 'venue',
+            featured: true,
+            badge: '2軒目バー・後日デートに',
+            tag: 'レストラン・バー予約',
+            name: '席を確実に押さえたい夜・後日デートに「一休.comレストラン」',
+            shortTitle: '一休.comレストラン（2軒目・ディナー予約）',
+            infeedTag: 'お店予約',
+            infeedSub: '2軒目バー・後日デートの席確保に',
+            infeedTitle: '一休.comレストラン（厳選バー・ディナー予約）',
+            infeedCta: '空席を見る ›',
+            target: '相席後にそのまま入れる落ち着いた2軒目バーを探したい方、連絡先交換後の次回ディナーで失敗したくない方',
+            desc: '週末の繁華街は飛び込みだと2軒目が満席で歩き回ってしまいがちです。「一休.comレストラン」なら駅近くの隠れ家バーやホテルラウンジ、後日デートに使いやすい落ち着いたダイニングの空席をスマホからスマートに予約できます。',
+            points: [
+                '厳選された大人のバー・ラウンジ・レストランだけを掲載し店選びで外しにくい',
+                '当日の直前空席チェックから、連絡先交換後の次回ディナー予約まで対応',
+                'WEB予約限定のワンドリンク付き・コース優待プランも豊富'
+            ],
+            cta: '一休.comレストランで空席・プランを見る ›',
+            bannerImg: 'https://www29.a8.net/svt/bgt?aid=261105088590&wid=001&eno=01&mid=s00000000218004011000&mc=1',
+            trackingImg: 'https://www15.a8.net/0.gif?a8mat=4BGDZ4+9R9ROY+1OK+NVP2P',
+            url: '/link/second_venue_reservation'
+        },
+
+        // ==========================================
         // 2. 恋活・マッチングアプリ（タイプ別比較枠：Circuit X / Rentracks 対応）
         // ==========================================
         {
@@ -183,6 +212,7 @@ const AFFILIATE_MASTER = {
     // ==========================================
     womenCategories: [
         { id: 'all', name: 'すべて', icon: '' },
+        { id: 'w_venue', name: '女子会・ラウンジ予約', icon: '', highlight: true },
         { id: 'w_dating', name: '審査制・1対1カフェデート', icon: '', highlight: true },
         { id: 'w_clinic', name: '美肌クリニック・医療脱毛', icon: '', highlight: true },
         { id: 'w_cosme', name: '夜ケア・翌朝サポート', icon: '' }
@@ -268,6 +298,30 @@ const AFFILIATE_MASTER = {
             bannerImg: 'https://www20.a8.net/svt/bgt?aid=261021943470&wid=001&eno=01&mid=s00000016208001007000&mc=1',
             trackingImg: 'https://www19.a8.net/0.gif?a8mat=4BELTJ+7RTR3M+3H28+5ZU29',
             url: '/link/women_night_supplement'
+        },
+        {
+            id: 'women_second_venue',
+            category: 'w_venue',
+            featured: true,
+            badge: '女子会・ご褒美ディナーに',
+            tag: 'ホテルラウンジ・レストラン予約',
+            name: '相席前の0次会カフェ・ご褒美女子会に「一休.comレストラン」',
+            shortTitle: '一休.comレストラン（女子会・ラウンジ予約）',
+            infeedTag: 'ラウンジ予約',
+            infeedSub: '女子会ディナー・アフタヌーンティーに',
+            infeedTitle: '一休.comレストラン（厳選ラウンジ・女子会）',
+            infeedCta: 'プランを見る ›',
+            target: '友達との女子会ディナーやアフタヌーンティー、落ち着いたホテルラウンジをお得に予約したい方',
+            desc: '「今日は相席の前に少しおしゃれなお店で乾杯したい」「週末は友達とゆっくりご褒美ディナーに行きたい」という日に便利な一休.comレストラン。雰囲気の良いホテルラウンジやビストロの限定プランを写真付きで比較・WEB予約できます。',
+            points: [
+                'ホテルラウンジ・夜カフェ・人気ビストロなど写真映えと居心地を兼ね備えた厳選店',
+                '乾杯スパークリング付きや時間無制限などWEB限定の女子会プランが充実',
+                '1対1の次回デートのお店リクエスト先を探すのにも便利'
+            ],
+            cta: '一休.comレストランで人気プランを見る ›',
+            bannerImg: 'https://www29.a8.net/svt/bgt?aid=261105088590&wid=001&eno=01&mid=s00000000218004011000&mc=1',
+            trackingImg: 'https://www15.a8.net/0.gif?a8mat=4BGDZ4+9R9ROY+1OK+NVP2P',
+            url: '/link/women_second_venue'
         }
     ],
 

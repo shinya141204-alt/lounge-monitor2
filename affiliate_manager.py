@@ -22,7 +22,7 @@ AFFILIATE_OVERRIDES_STATE_KEY = "aff_slot_overrides"
 _lock = threading.Lock()
 _mem_overrides = None  # dict[slot_id, {"url": str, "memo": str, "updated_at": str}]
 
-# Canonical 9 affiliate slots (5 men's slots + 3 women's slots + 1 unisex night-care slot) aligned with site UI & reader intent
+# Canonical 10 affiliate slots (5 men's slots + 3 women's slots + 2 unisex slots) aligned with site UI & reader intent
 AFFILIATE_SLOTS = [
     {
         "slot_id": "dating_instant",
@@ -131,6 +131,18 @@ AFFILIATE_SLOTS = [
         "recommended_asp_examples": "乾杯サポート・ナイトケアサプリ（オルニチン・ウコン・酵素・ビタミン系案件）",
         "env_keys": ["AFFILIATE_URL_NIGHT_SUPPLEMENT", "AFFILIATE_URL_SUPPLEMENT"],
         "default_url": "https://px.a8.net/svt/ejp?a8mat=4BELTJ+7RTR3M+3H28+5ZU29",
+    },
+    {
+        "slot_id": "second_venue_reservation",
+        "audience": "common",
+        "audience_label": "🥂 男女共通",
+        "aliases": ["ikyu_restaurant", "ikyu", "second_venue", "women_second_venue"],
+        "category_label": "🍽️ 2軒目バー・大人ディナー予約枠（一休.comレストラン）",
+        "title": "相席後の2軒目バー・後日デート・女子会ディナー予約（一休.comレストラン）",
+        "placement": "全店舗2軒目セクション / /grooming 事前準備ガイド / /for-women 女性特設ガイド / トップおすすめモーダル（男女両方）",
+        "recommended_asp_examples": "一休.comレストラン / OZmall / 食べログ 等のネット予約案件",
+        "env_keys": ["AFFILIATE_URL_SECOND_VENUE", "AFFILIATE_URL_IKYU"],
+        "default_url": "https://px.a8.net/svt/ejp?a8mat=4BGDZ4+9R9ROY+1OK+NVP2P",
     },
 ]
 

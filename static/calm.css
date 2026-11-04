@@ -8319,6 +8319,150 @@ body.theme-light .context-lead-row .pr-editorial-sublink {
     }
 }
 
+/* ---------- 2軒目セクション連動 予約導線バー（一休.comレストラン） ---------- */
+.second-venue-reserve-bar {
+    position: relative;
+    margin-top: 12px;
+    padding: 11px 13px;
+    border-radius: 10px;
+    background: #1a1a1e;
+    border: 1px solid var(--calm-border-strong);
+}
+
+body.theme-light .second-venue-reserve-bar {
+    background: #ffffff;
+    border-color: var(--calm-light-border-strong);
+}
+
+.second-venue-reserve-link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    text-decoration: none !important;
+    color: inherit;
+    min-height: 42px;
+}
+
+.second-venue-reserve-body {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.second-venue-reserve-meta {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    flex-wrap: wrap;
+    margin-bottom: 3px;
+}
+
+.second-venue-pr-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    line-height: 1.35;
+    background: #232329;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: #e4e4e7;
+    flex-shrink: 0;
+}
+
+body.theme-light .second-venue-pr-pill {
+    background: #f4f4f5;
+    border-color: #d4d4d8;
+    color: #27272a;
+}
+
+.second-venue-reserve-kicker {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #b4b4be;
+    line-height: 1.35;
+}
+
+body.theme-light .second-venue-reserve-kicker {
+    color: #52525b;
+}
+
+.second-venue-reserve-title {
+    font-size: 0.82rem;
+    font-weight: 700;
+    line-height: 1.42;
+    color: #f4f4f5;
+    letter-spacing: -0.01em;
+}
+
+body.theme-light .second-venue-reserve-title {
+    color: #18181b;
+}
+
+.second-venue-reserve-cta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 36px;
+    padding: 0 13px;
+    border-radius: 999px;
+    background: #27272f;
+    border: 1px solid rgba(244, 244, 245, 0.24);
+    color: #f4f4f5;
+    font-size: 0.75rem;
+    font-weight: 700;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: border-color 0.15s ease;
+}
+
+body.theme-light .second-venue-reserve-cta {
+    background: #18181b;
+    border-color: #18181b;
+    color: #ffffff;
+}
+
+@media (hover: hover) {
+    body:not(.theme-light) .second-venue-reserve-bar:hover {
+        border-color: rgba(244, 244, 245, 0.28);
+    }
+    body:not(.theme-light) .second-venue-reserve-link:hover .second-venue-reserve-cta {
+        background: #32323c;
+        border-color: rgba(244, 244, 245, 0.4);
+    }
+    body.theme-light .second-venue-reserve-bar:hover {
+        border-color: #a1a1aa;
+    }
+    body.theme-light .second-venue-reserve-link:hover .second-venue-reserve-cta {
+        background: #27272a;
+    }
+}
+
+.second-venue-tracking-pixel {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+    border: 0;
+}
+
+@media (max-width: 560px) {
+    .second-venue-reserve-link {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 9px;
+    }
+    .second-venue-reserve-cta {
+        width: 100%;
+        min-height: 38px;
+    }
+}
+
+
 
 
 

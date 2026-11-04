@@ -1161,7 +1161,7 @@ class GrowthFeaturesTests(unittest.TestCase):
             r = self.client.get(p)
             self.assertEqual(r.status_code, 200, f"Public path {p} returned {r.status_code}")
             body = r.data.decode('utf-8')
-            self.assertIn('/static/calm.css?v=32', body, f"{p} missing /static/calm.css?v=32")
+            self.assertIn('/static/calm.css?v=33', body, f"{p} missing /static/calm.css?v=33")
             if '/static/style.css' in body:
                 self.assertRegex(body, r'/static/style\.css\?v=20261030_\d+', f"{p} missing versioned /static/style.css")
             self.assertIn('公式ホームページ', body, f"{p} missing official website verification notice")
@@ -1174,7 +1174,7 @@ class GrowthFeaturesTests(unittest.TestCase):
                 sr = self.client.get(sp)
                 self.assertEqual(sr.status_code, 200, f"Scheduled path {sp} returned {sr.status_code}")
                 sbody = sr.data.decode('utf-8')
-                self.assertIn('/static/calm.css?v=32', sbody, f"{sp} missing /static/calm.css?v=32")
+                self.assertIn('/static/calm.css?v=33', sbody, f"{sp} missing /static/calm.css?v=33")
                 if '/static/style.css' in sbody:
                     self.assertRegex(sbody, r'/static/style\.css\?v=20261030_\d+', f"{sp} missing versioned /static/style.css")
                 self.assertIn('公式ホームページ', sbody, f"{sp} missing official website verification notice")
@@ -1772,7 +1772,7 @@ class FullAuditRegressionTests(unittest.TestCase):
         sw_resp = self.client.get('/sw.js')
         try:
             sw_txt = sw_resp.data.decode('utf-8')
-            self.assertIn("CACHE_NAME = 'aiseki-navi-v88'", sw_txt)
+            self.assertIn("CACHE_NAME = 'aiseki-navi-v89'", sw_txt)
             self.assertIn("event.waitUntil", sw_txt)
         finally:
             sw_resp.close()
@@ -3247,12 +3247,12 @@ class WomenFeaturesACDETests(unittest.TestCase):
         import affiliate_manager
 
         st = affiliate_manager.get_affiliate_slots_status(allow_blocking=True)
-        self.assertEqual(st['total_slots'], 9)
+        self.assertEqual(st['total_slots'], 10)
         slot_ids = {s['slot_id'] for s in st['slots']}
-        self.assertTrue({'women_dating_bachelor', 'women_beauty_clinic', 'women_cosme_salon', 'night_care_supplement'}.issubset(slot_ids))
+        self.assertTrue({'women_dating_bachelor', 'women_beauty_clinic', 'women_cosme_salon', 'night_care_supplement', 'second_venue_reservation'}.issubset(slot_ids))
 
-        # Public redirect check for all 3 women canonical slots + alias + night supplement
-        for sid in ('women_dating_bachelor', 'women_beauty_clinic', 'women_cosme_salon', 'women_dating', 'night_care_supplement', 'women_night_supplement', 'hangover_supplement'):
+        # Public redirect check for all 3 women canonical slots + alias + night supplement + second venue (Ikyu)
+        for sid in ('women_dating_bachelor', 'women_beauty_clinic', 'women_cosme_salon', 'women_dating', 'night_care_supplement', 'women_night_supplement', 'hangover_supplement', 'second_venue_reservation', 'women_second_venue', 'ikyu_restaurant'):
             resp = self.client.get(f'/link/{sid}', headers={'User-Agent': 'Mozilla/5.0 Test'})
             self.assertEqual(resp.status_code, 302, sid)
         cosme_resp = self.client.get('/link/women_cosme_salon', headers={'User-Agent': 'Mozilla/5.0 Test'})
@@ -3261,29 +3261,42 @@ class WomenFeaturesACDETests(unittest.TestCase):
         self.assertEqual('https://px.a8.net/svt/ejp?a8mat=4BELTJ+7RTR3M+3H28+5ZU29', supp_resp.headers.get('Location', ''))
         wsupp_resp = self.client.get('/link/women_night_supplement', headers={'User-Agent': 'Mozilla/5.0 Test'})
         self.assertEqual('https://px.a8.net/svt/ejp?a8mat=4BELTJ+7RTR3M+3H28+5ZU29', wsupp_resp.headers.get('Location', ''))
+        ikyu_resp = self.client.get('/link/second_venue_reservation', headers={'User-Agent': 'Mozilla/5.0 Test'})
+        self.assertEqual('https://px.a8.net/svt/ejp?a8mat=4BGDZ4+9R9ROY+1OK+NVP2P', ikyu_resp.headers.get('Location', ''))
+        wikyu_resp = self.client.get('/link/women_second_venue', headers={'User-Agent': 'Mozilla/5.0 Test'})
+        self.assertEqual('https://px.a8.net/svt/ejp?a8mat=4BGDZ4+9R9ROY+1OK+NVP2P', wikyu_resp.headers.get('Location', ''))
 
-        # Verify /grooming renders night_care_supplement & tracking pixel for public visitors and hides for staff
+        # Verify /grooming renders night_care_supplement & second_venue_reservation & tracking pixels for public visitors and hides for staff
         app_module.clear_fast_http_caches()
         grooming_pub = self.client.get('/grooming').data.decode('utf-8')
         self.assertIn('/link/night_care_supplement', grooming_pub)
         self.assertIn('https://www19.a8.net/0.gif?a8mat=4BELTJ+7RTR3M+3H28+5ZU29', grooming_pub)
+        self.assertIn('/link/second_venue_reservation', grooming_pub)
+        self.assertIn('https://www15.a8.net/0.gif?a8mat=4BGDZ4+9R9ROY+1OK+NVP2P', grooming_pub)
         with self.client.session_transaction() as sess_st:
             sess_st['is_staff'] = True
         grooming_staff = self.client.get('/grooming').data.decode('utf-8')
         self.assertNotIn('/link/night_care_supplement', grooming_staff)
+        self.assertNotIn('/link/second_venue_reservation', grooming_staff)
         with self.client.session_transaction() as sess_st:
             sess_st.clear()
 
-        # Verify affiliate_config.js and pdca_engine supplement category mapping
+        # Verify affiliate_config.js and pdca_engine supplement & second_venue category mapping
         with open(os.path.join(ROOT, 'static', 'affiliate_config.js'), 'r', encoding='utf-8') as af:
             aff_cfg = af.read()
         self.assertIn("id: 'night_care_supplement'", aff_cfg)
         self.assertIn("id: 'women_night_supplement'", aff_cfg)
+        self.assertIn("id: 'second_venue_reservation'", aff_cfg)
+        self.assertIn("id: 'women_second_venue'", aff_cfg)
         self.assertIn('mid=s00000016208001007000', aff_cfg)
         self.assertIn('a8mat=4BELTJ+7RTR3M+3H28+5ZU29', aff_cfg)
+        self.assertIn('mid=s00000000218004011000', aff_cfg)
+        self.assertIn('a8mat=4BGDZ4+9R9ROY+1OK+NVP2P', aff_cfg)
         import pdca_engine
         self.assertEqual(pdca_engine._classify_offer_category('night_care_supplement'), 'supplement')
         self.assertEqual(pdca_engine._classify_offer_category('women_night_supplement'), 'supplement')
+        self.assertEqual(pdca_engine._classify_offer_category('second_venue_reservation'), 'second_venue')
+        self.assertEqual(pdca_engine._classify_offer_category('women_second_venue'), 'second_venue')
 
         # Master live override for women_beauty_clinic
         with self.client.session_transaction() as sess:
@@ -4239,16 +4252,16 @@ class AIUltraGrowthSuiteTests(unittest.TestCase):
         home_html = self.client.get('/').data.decode('utf-8')
         self.assertIn('class="concierge-quick-banner"', home_html)
         self.assertIn('href="/concierge"', home_html)
-        self.assertIn('calm.css?v=32', home_html)
+        self.assertIn('calm.css?v=33', home_html)
 
-        # 3. Subpages & columns include one-tap theme toggle button (.portal-theme-toggle-btn or #for-women-theme-btn) and calm.css?v=32
+        # 3. Subpages & columns include one-tap theme toggle button (.portal-theme-toggle-btn or #for-women-theme-btn) and calm.css?v=33
         for pub_route in ('/concierge', '/areas', '/columns', '/price-comparison', '/for-women', '/stats', '/grooming', '/privacy', '/guide/shinjuku'):
             r_sub = self.client.get(pub_route)
             self.assertEqual(r_sub.status_code, 200, msg=f"{pub_route} failed")
             sub_html = r_sub.data.decode('utf-8')
             expected_btn = 'for-women-theme-btn' if pub_route == '/for-women' else 'portal-theme-toggle-btn'
             self.assertIn(expected_btn, sub_html, msg=f"Missing theme toggle on {pub_route}")
-            self.assertIn('calm.css?v=32', sub_html, msg=f"Outdated calm.css on {pub_route}")
+            self.assertIn('calm.css?v=33', sub_html, msg=f"Outdated calm.css on {pub_route}")
 
         # 4. Staff & Master dashboards support light mode, theme toggle, and fixed reel video player
         with self.client.session_transaction() as s:
@@ -4430,9 +4443,9 @@ class AIUltraGrowthSuiteTests(unittest.TestCase):
 
         app_module.clear_fast_http_caches()
         home_html = self.client.get('/').data.decode('utf-8')
-        self.assertIn('calm.css?v=32', home_html)
+        self.assertIn('calm.css?v=33', home_html)
         self.assertIn('app.js?v=20261104_3', home_html)
-        self.assertIn('/sw.js?v=88', home_html)
+        self.assertIn('/sw.js?v=89', home_html)
 
         # 2. TikTok 9:16 Safe-Zone Reel Templates & Captions (zero bare 'オリエンタル' or 'OLG')
         sample_stores = [

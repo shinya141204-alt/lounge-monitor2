@@ -1844,6 +1844,11 @@ AFFILIATE_REDIRECTS = {
     'supplement': os.environ.get('AFFILIATE_URL_NIGHT_SUPPLEMENT') or os.environ.get('AFFILIATE_URL_SUPPLEMENT') or 'https://px.a8.net/svt/ejp?a8mat=4BELTJ+7RTR3M+3H28+5ZU29',
     'night_supplement': os.environ.get('AFFILIATE_URL_NIGHT_SUPPLEMENT') or os.environ.get('AFFILIATE_URL_SUPPLEMENT') or 'https://px.a8.net/svt/ejp?a8mat=4BELTJ+7RTR3M+3H28+5ZU29',
     'women_night_supplement': os.environ.get('AFFILIATE_URL_NIGHT_SUPPLEMENT') or os.environ.get('AFFILIATE_URL_SUPPLEMENT') or 'https://px.a8.net/svt/ejp?a8mat=4BELTJ+7RTR3M+3H28+5ZU29',
+    'second_venue_reservation': os.environ.get('AFFILIATE_URL_SECOND_VENUE') or os.environ.get('AFFILIATE_URL_IKYU') or 'https://px.a8.net/svt/ejp?a8mat=4BGDZ4+9R9ROY+1OK+NVP2P',
+    'ikyu_restaurant': os.environ.get('AFFILIATE_URL_SECOND_VENUE') or os.environ.get('AFFILIATE_URL_IKYU') or 'https://px.a8.net/svt/ejp?a8mat=4BGDZ4+9R9ROY+1OK+NVP2P',
+    'ikyu': os.environ.get('AFFILIATE_URL_SECOND_VENUE') or os.environ.get('AFFILIATE_URL_IKYU') or 'https://px.a8.net/svt/ejp?a8mat=4BGDZ4+9R9ROY+1OK+NVP2P',
+    'second_venue': os.environ.get('AFFILIATE_URL_SECOND_VENUE') or os.environ.get('AFFILIATE_URL_IKYU') or 'https://px.a8.net/svt/ejp?a8mat=4BGDZ4+9R9ROY+1OK+NVP2P',
+    'women_second_venue': os.environ.get('AFFILIATE_URL_SECOND_VENUE') or os.environ.get('AFFILIATE_URL_IKYU') or 'https://px.a8.net/svt/ejp?a8mat=4BGDZ4+9R9ROY+1OK+NVP2P',
 }
 
 @app.route('/link/<path:item_id>')

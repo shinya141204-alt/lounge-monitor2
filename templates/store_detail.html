@@ -474,7 +474,7 @@
             }
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=32">
+    <link rel="stylesheet" href="/static/calm.css?v=33">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -916,6 +916,21 @@
                     <a id="detail-map-yokocho-btn" href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer" class="second-quick-pill yokocho">🍻 横丁検索 ↗</a>
                 </div>
             </div>
+            {% if not is_staff and not session.get('is_staff') %}
+            <div class="second-venue-reserve-bar">
+                <a href="/link/second_venue_reservation" target="_blank" rel="noopener noreferrer sponsored" class="second-venue-reserve-link">
+                    <div class="second-venue-reserve-body">
+                        <div class="second-venue-reserve-meta">
+                            <span class="second-venue-pr-pill">PR</span>
+                            <span class="second-venue-reserve-kicker">2軒目バー・後日デートの席確保に</span>
+                        </div>
+                        <div class="second-venue-reserve-title">一休.comレストラン｜駅近の隠れ家バー・厳選ディナーを空席予約</div>
+                    </div>
+                    <span class="second-venue-reserve-cta">空席・プランを見る ›</span>
+                </a>
+                <img width="1" height="1" src="https://www15.a8.net/0.gif?a8mat=4BGDZ4+9R9ROY+1OK+NVP2P" alt="" class="second-venue-tracking-pixel">
+            </div>
+            {% endif %}
         </section>
 
         {% if not is_staff and not session.get('is_staff') %}

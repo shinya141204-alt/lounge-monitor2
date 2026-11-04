@@ -202,6 +202,17 @@ OFFER_CATEGORIES = [
         "default_priority": 3,
         "winning_pitch": "飲み放題・2軒目バーの乾杯前ルーティン＆『会話のきっかけになる個包装シェア術』として /grooming と /for-women で訴求すると男女双方から安定CVが出ます。",
     },
+    {
+        "category_key": "second_venue",
+        "pattern": "second_venue_reservation",
+        "label": "🍽️ 2軒目バー・ディナー予約（一休.comレストラン）",
+        "short_label": "2軒目・ディナー予約 (second_venue)",
+        "audience": "common",
+        "epc_yen": 95,
+        "primary_link": "/link/second_venue_reservation",
+        "default_priority": 3,
+        "winning_pitch": "着席40〜50分目の2軒目移動や連絡先交換後の次回デート店選び文脈で、全店舗2軒目セクション・/grooming・/for-women から送客すると高成約率が出ます。",
+    },
 ]
 _OFFER_META_BY_KEY = {c["category_key"]: c for c in OFFER_CATEGORIES}
 
@@ -213,6 +224,8 @@ def _classify_offer_category(raw_item_id: str) -> str:
         it = it.split(":", 1)[1].strip()
     if not it:
         return "dating"
+    if "second_venue" in it or "ikyu" in it or "restaurant" in it:
+        return "second_venue"
     if "supplement" in it or "hangover" in it:
         return "supplement"
     if it.startswith("women_") or it == "women":
