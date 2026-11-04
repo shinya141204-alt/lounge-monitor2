@@ -134,7 +134,7 @@
 
     <link rel="stylesheet" href="/static/style.css?v=20261030_6" fetchpriority="high">
     <link rel="stylesheet" href="/static/calm.css?v=33" fetchpriority="high">
-    <link rel="preload" href="/static/app.js?v=20261104_3" as="script">
+    <link rel="preload" href="/static/app.js?v=20261105_1" as="script">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- Non-render-blocking web font (avoids waiting on Google Fonts at PWA cold launch) -->
@@ -737,7 +737,7 @@
                             </div>
                             {% if not is_staff and not session.get('is_staff') and loop.index == 4 and (initial_status.ranking|length) >= 4 %}
                             <aside class="context-lead-row pr-card-item" data-context-slot="rank4_context" data-context-mode="evening_1on1" data-context-href="/link/dating_bachelor" aria-label="プロモーションおよび比較ガイド">
-                                <a class="pr-context-main" href="/link/dating_bachelor" target="_blank" rel="noopener noreferrer sponsored">
+                                <a class="pr-context-main" href="/link/dating_bachelor?from=/" target="_blank" rel="noopener sponsored">
                                     <div class="pr-context-body">
                                         <div class="pr-context-meta">
                                             <span class="pr-disclosure-pill">PR</span>
@@ -1400,7 +1400,7 @@
                 </div>
                 {% if not is_staff and not session.get('is_staff') %}
                 <div class="second-venue-reserve-bar">
-                    <a href="/link/second_venue_reservation" target="_blank" rel="noopener noreferrer sponsored" class="second-venue-reserve-link">
+                    <a href="/link/second_venue_reservation?from=/" target="_blank" rel="noopener sponsored" class="second-venue-reserve-link">
                         <div class="second-venue-reserve-body">
                             <div class="second-venue-reserve-meta">
                                 <span class="second-venue-pr-pill">PR</span>
@@ -2468,7 +2468,7 @@
         window.INITIAL_STATUS_DATA = {{ initial_status | tojson }};
     </script>
     {% endif %}
-    <script src="/static/app.js?v=20261104_3" defer></script>
+    <script src="/static/app.js?v=20261105_1" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
@@ -2484,7 +2484,7 @@
                 }
                 if (window.__swRegistered) return;
                 window.__swRegistered = true;
-                navigator.serviceWorker.register('/sw.js?v=89', { updateViaCache: 'none' })
+                navigator.serviceWorker.register('/sw.js?v=90', { updateViaCache: 'none' })
                     .then(function(reg) {
                         reg.update();
                         document.addEventListener('visibilitychange', function() {

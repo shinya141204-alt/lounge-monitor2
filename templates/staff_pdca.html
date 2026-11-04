@@ -202,6 +202,44 @@
             justify-content: space-between;
             margin-bottom: 4px;
             font-weight: 700;
+            font-variant-numeric: tabular-nums;
+        }
+        .kpi-strip {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        @media (max-width: 680px) {
+            .kpi-strip {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+        .kpi-cell {
+            background: var(--inner-card);
+            border: 1px solid var(--border);
+            border-radius: 9px;
+            padding: 8px 10px;
+            min-width: 0;
+        }
+        .kpi-label {
+            font-size: 0.71rem;
+            color: var(--sub);
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+        .kpi-val {
+            font-size: 1.02rem;
+            font-weight: 800;
+            color: var(--text);
+            line-height: 1.25;
+            font-variant-numeric: tabular-nums;
+        }
+        .kpi-sub {
+            font-size: 0.7rem;
+            color: var(--sub);
+            margin-top: 2px;
+            font-variant-numeric: tabular-nums;
         }
         .bar-track {
             width: 100%;
@@ -332,9 +370,9 @@
             border-radius: 999px;
             font-size: 0.75rem;
             font-weight: 700;
-            background: var(--purple-soft);
-            color: var(--purple-ink);
-            border: 1px solid var(--purple);
+            background: var(--surface-2);
+            color: var(--text);
+            border: 1px solid var(--border-strong);
         }
         .briefing-body {
             font-size: 0.88rem;
@@ -345,13 +383,28 @@
             cursor: pointer;
             padding: 5px 11px;
             border-radius: 8px;
-            border: 1px solid var(--purple);
-            background: var(--purple-soft);
-            color: var(--purple-ink);
+            border: 1px solid var(--border-strong);
+            background: var(--surface-2);
+            color: var(--text);
             font-size: 0.76rem;
             font-weight: 700;
             text-decoration: none;
+            font-family: inherit;
         }
+        .mini-btn:hover { background: var(--inner-card); }
+        .copy-mini-btn {
+            cursor: pointer;
+            padding: 3px 9px;
+            border-radius: 6px;
+            border: 1px solid var(--border-strong);
+            background: var(--surface-2);
+            color: var(--text);
+            font-size: 0.72rem;
+            font-weight: 700;
+            font-family: inherit;
+            white-space: nowrap;
+        }
+        .copy-mini-btn:hover { background: var(--inner-card); }
 
         .two-col {
             display: grid;
@@ -440,6 +493,7 @@
             color: var(--text);
             text-decoration: none;
             max-width: 100%;
+            font-variant-numeric: tabular-nums;
         }
         .chip.plus { background: var(--green-soft); border-color: var(--green); color: var(--green-ink); }
         .chip.minus { background: var(--rose-soft); border-color: var(--rose); color: var(--rose-ink); }
@@ -470,6 +524,7 @@
             border-collapse: collapse;
             font-size: 0.79rem;
             min-width: 640px;
+            font-variant-numeric: tabular-nums;
         }
         .pdca-table th, .pdca-table td {
             padding: 10px 12px;
@@ -480,6 +535,20 @@
             background: var(--surface-2);
             color: var(--sub);
             font-weight: 700;
+        }
+        .sleeping-details {
+            margin-top: 12px;
+            background: var(--inner-card);
+            border: 1px solid var(--border-strong);
+            border-radius: 11px;
+            padding: 10px 14px;
+        }
+        .sleeping-details summary {
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--text);
+            font-variant-numeric: tabular-nums;
         }
         .toast-msg {
             display: none;
@@ -499,13 +568,13 @@
             padding: 3px 10px;
             border-radius: 999px;
             font-size: 0.72rem;
-            font-weight: 800;
-            background: linear-gradient(135deg, rgba(200, 164, 110, 0.22), rgba(192, 132, 252, 0.2));
-            border: 1px solid var(--gold);
-            color: var(--gold-ink);
+            font-weight: 700;
+            background: var(--surface-2);
+            border: 1px solid var(--border-strong);
+            color: var(--sub);
         }
         body.theme-light .ultra-badge {
-            background: linear-gradient(135deg, rgba(125, 91, 36, 0.14), rgba(107, 63, 160, 0.12));
+            background: var(--surface-2);
         }
         .growth-section {
             background: var(--surface);
@@ -539,7 +608,7 @@
         }
         .growth-card.p1 { border-top: 3px solid var(--gold); }
         .growth-card.p2 { border-top: 3px solid var(--green); }
-        .growth-card.p3 { border-top: 3px solid var(--purple); }
+        .growth-card.p3 { border-top: 3px solid var(--blue); }
         .prio-pill {
             display: inline-block;
             padding: 2px 8px;
@@ -549,15 +618,17 @@
             background: var(--gold-soft);
             color: var(--gold-ink);
             border: 1px solid var(--gold);
+            font-variant-numeric: tabular-nums;
         }
         .growth-card.p2 .prio-pill { background: var(--green-soft); color: var(--green-ink); border-color: var(--green); }
-        .growth-card.p3 .prio-pill { background: var(--purple-soft); color: var(--purple-ink); border-color: var(--purple); }
+        .growth-card.p3 .prio-pill { background: var(--blue-soft); color: var(--blue-ink); border-color: var(--blue); }
         .offer-row {
             background: var(--inner-card);
             border: 1px solid var(--border);
             border-radius: 11px;
             padding: 12px 14px;
             margin-bottom: 10px;
+            font-variant-numeric: tabular-nums;
         }
         .offer-row:last-child { margin-bottom: 0; }
         .offer-top {
@@ -567,10 +638,11 @@
             flex-wrap: wrap;
             gap: 8px;
             margin-bottom: 7px;
+            font-variant-numeric: tabular-nums;
         }
         .offer-bar-track {
             width: 100%;
-            height: 9px;
+            height: 8px;
             background: var(--track-bg);
             border-radius: 999px;
             overflow: hidden;
@@ -579,8 +651,11 @@
         .offer-bar-fill {
             height: 100%;
             border-radius: 999px;
-            background: linear-gradient(90deg, var(--gold), var(--green));
+            background: var(--text);
             transition: width 0.3s ease;
+        }
+        .offer-bar-fill.sns-fill {
+            background: var(--blue);
         }
         .trend-pill {
             display: inline-block;
@@ -591,6 +666,7 @@
             background: var(--surface-2);
             border: 1px solid var(--border-strong);
             color: var(--sub);
+            font-variant-numeric: tabular-nums;
         }
         .trend-pill.up { background: var(--green-soft); border-color: var(--green); color: var(--green-ink); }
         .trend-pill.down { background: var(--rose-soft); border-color: var(--rose); color: var(--rose-ink); }
@@ -602,6 +678,7 @@
             border-radius: 11px;
             padding: 12px 14px;
             margin-bottom: 10px;
+            font-variant-numeric: tabular-nums;
         }
         .gap-card.critical { border-left-color: var(--red); }
         .gap-card.high { border-left-color: var(--rose); }
@@ -616,7 +693,7 @@
         }
         .reels-box {
             background: var(--inner-card);
-            border: 1px solid var(--purple);
+            border: 1px solid var(--border-strong);
             border-radius: 11px;
             padding: 12px 14px;
             margin-bottom: 10px;
@@ -690,41 +767,80 @@
 
         <nav class="master-section-jumpbar" aria-label="PDCAセクション移動">
             <span class="master-jump-label">セクション移動</span>
-            <a href="#pdca-hero" class="master-jump-chip">総合スコア＆自律制御</a>
+            <a href="#pdca-hero" class="master-jump-chip">総合スコア＆実測KPI</a>
+            <a href="#pdca-growth-actions" class="master-jump-chip">最優先アクションTOP3</a>
             <a href="#pdca-wins-issues" class="master-jump-chip">勝ち筋・課題診断</a>
             <a href="#pdca-directives" class="master-jump-chip">自動編成指令</a>
             <a href="#pdca-monetization" class="master-jump-chip">案件別CTR・機会損失</a>
+            <a href="#pdca-sns" class="master-jump-chip">SNS効率＆Reels企画</a>
+            <a href="#pdca-articles" class="master-jump-chip">記事別CTR・未露出在庫</a>
+            <a href="#pdca-history" class="master-jump-chip">実行ログ</a>
         </nav>
 
         <div id="pdca-toast" class="toast-msg"></div>
 
-        <!-- Hero: Overall Health + Autonomous Switches -->
+        <!-- Hero: Overall Health + Real KPI Strip + Autonomous Switches -->
         <div class="hero-grid" id="pdca-hero">
             <div class="card">
-                <h1>🧭 自律PDCA作戦参謀・グロース統括ボード</h1>
+                <h1>自律PDCA作戦参謀・グロース統括ボード</h1>
                 <p class="lead">サイトPV・記事別アフィリエイトCTR・SNS <code>?s=</code> 流入コホート・現場店舗の需要ギャップを横断分析し、SNS編集部とコラム編集部へ自動で次の一手をフィードバックします。</p>
                 <div class="score-box">
                     <div class="score-big">{{ d.overall_score }}<small> / 100点</small></div>
                     <div style="font-size:0.79rem; color:var(--sub);">
-                        <div><strong style="color:var(--text);">現在の最注目エリア：</strong>{{ d.demand_gap.top_hub.cluster_label }}（稼働女性 {{ d.demand_gap.top_hub.live_women }}名 / 男女比差 {{ d.demand_gap.top_hub.gap_pt }}pt）</div>
-                        <div><strong style="color:var(--text);">予約待機コラム在庫：</strong>{{ d.upcoming_count }}本 ｜ <strong style="color:var(--text);">対象期間：</strong>直近{{ days }}日間</div>
+                        <div>
+                            <strong style="color:var(--text);">現在の最注目エリア：</strong>{{ d.demand_gap.top_hub.cluster_label }}
+                            {% if d.demand_gap.top_hub.is_off_hours_benchmark %}
+                            （ピーク帯基準：女性平均 {{ d.demand_gap.top_hub.live_women }}名 / 男女比差 {{ d.demand_gap.top_hub.gap_pt }}pt）
+                            {% else %}
+                            （稼働女性 {{ d.demand_gap.top_hub.live_women }}名 / 男女比差 {{ d.demand_gap.top_hub.gap_pt }}pt）
+                            {% endif %}
+                        </div>
+                        <div>
+                            <strong style="color:var(--text);">予約待機コラム在庫：</strong>{{ d.upcoming_count }}本 ｜
+                            <strong style="color:var(--text);">未露出コラム：</strong>{{ d.sleeping_count|default(0) }}本 ｜
+                            <strong style="color:var(--text);">対象期間：</strong>直近{{ days }}日間
+                        </div>
+                    </div>
+                </div>
+                {% set fn = d.funnel if d.funnel is defined and d.funnel else {} %}
+                {% set rv = d.revenue if d.revenue is defined and d.revenue else {} %}
+                <div class="kpi-strip" aria-label="直近期間の実測KPIサマリー">
+                    <div class="kpi-cell">
+                        <div class="kpi-label">直近{{ days }}日 総PV</div>
+                        <div class="kpi-val">{{ '{:,}'.format(fn.pv_total|default(0)|int) }}</div>
+                        <div class="kpi-sub">下層・記事閲覧 {{ '{:,}'.format(fn.article_views|default(0)|int) }}回</div>
+                    </div>
+                    <div class="kpi-cell">
+                        <div class="kpi-label">広告クリック / 全体CTR</div>
+                        <div class="kpi-val">{{ fn.aff_total|default(0) }}件</div>
+                        <div class="kpi-sub">CTR {{ fn.aff_ctr_pct|default(0) }}%</div>
+                    </div>
+                    <div class="kpi-cell">
+                        <div class="kpi-label">SNS <code>?s=</code> 流入 / CV</div>
+                        <div class="kpi-val">{{ sns_eff.total_sns_visits|default(0) }}回</div>
+                        <div class="kpi-sub">24h以内CV {{ sns_eff.total_sns_conversions|default(0) }}件</div>
+                    </div>
+                    <div class="kpi-cell">
+                        <div class="kpi-label">月間期待収益ペース</div>
+                        <div class="kpi-val">¥{{ '{:,}'.format(rv.est_monthly_pace_yen|default(0)|int) }}</div>
+                        <div class="kpi-sub">期間累計 約¥{{ '{:,}'.format(rv.est_total_yen|default(0)|int) }}</div>
                     </div>
                 </div>
                 <div class="axis-grid">
                     <div class="axis-item">
-                        <div class="axis-top"><span>👀 集客・サイト回遊</span><span>{{ sb.traffic_engagement }}/25</span></div>
+                        <div class="axis-top"><span>集客・サイト回遊</span><span>{{ sb.traffic_engagement }}/25</span></div>
                         <div class="bar-track"><div class="bar-fill" style="width: {{ (sb.traffic_engagement / 25 * 100)|round|int }}%;"></div></div>
                     </div>
                     <div class="axis-item">
-                        <div class="axis-top"><span>💰 収益・広告CTR効率</span><span>{{ sb.monetization_efficiency }}/25</span></div>
+                        <div class="axis-top"><span>収益・広告CTR効率</span><span>{{ sb.monetization_efficiency }}/25</span></div>
                         <div class="bar-track"><div class="bar-fill" style="width: {{ (sb.monetization_efficiency / 25 * 100)|round|int }}%;"></div></div>
                     </div>
                     <div class="axis-item">
-                        <div class="axis-top"><span>📡 SNS流入・切り口多様性</span><span>{{ sb.sns_diversity_inflow }}/25</span></div>
+                        <div class="axis-top"><span>SNS流入・切り口多様性</span><span>{{ sb.sns_diversity_inflow }}/25</span></div>
                         <div class="bar-track"><div class="bar-fill" style="width: {{ (sb.sns_diversity_inflow / 25 * 100)|round|int }}%;"></div></div>
                     </div>
                     <div class="axis-item">
-                        <div class="axis-top"><span>📖 コラム品質・予約在庫</span><span>{{ sb.content_pipeline_health }}/25</span></div>
+                        <div class="axis-top"><span>コラム品質・予約在庫</span><span>{{ sb.content_pipeline_health }}/25</span></div>
                         <div class="bar-track"><div class="bar-fill" style="width: {{ (sb.content_pipeline_health / 25 * 100)|round|int }}%;"></div></div>
                     </div>
                 </div>
@@ -732,7 +848,7 @@
 
             <div class="card control-card">
                 <div>
-                    <div style="font-size:0.86rem; font-weight:800; color:var(--gold); margin-bottom:10px;">⚙️ 自律PDCAオートパイロット設定（毎日 17:35 / 03:35 自動実行）</div>
+                    <div style="font-size:0.86rem; font-weight:800; color:var(--gold); margin-bottom:10px;">自律PDCAオートパイロット設定（毎日 17:35 / 03:35 自動実行）</div>
                     <div class="toggle-row" style="margin-bottom:9px;">
                         <div>
                             <div class="toggle-title">① SNS切り口配分＆優先紹介コラムの自動最適化</div>
@@ -754,7 +870,7 @@
                         </label>
                     </div>
                 </div>
-                <button type="button" id="run-pdca-btn" class="run-btn" onclick="runPdcaNow()">⚡ いま最新データでPDCAサイクルを実行して編成指令を更新</button>
+                <button type="button" id="run-pdca-btn" class="run-btn" onclick="runPdcaNow()">いま最新データでPDCAサイクルを実行して編成指令を更新</button>
             </div>
         </div>
 
@@ -763,24 +879,24 @@
             <div class="briefing-head">
                 <span id="briefing-pill" class="ai-pill">
                     {% if pdca.briefing.is_ai %}
-                    🧠 作戦参謀長ブリーフィング（{{ pdca.briefing.model }}）
+                    作戦参謀長ブリーフィング（{{ pdca.briefing.model }}）
                     {% else %}
-                    🧭 作戦参謀ブリーフィング（実測データ総括｜AI参謀分析は右ボタンで実行）
+                    作戦参謀ブリーフィング（実測データ総括｜AI参謀分析は右ボタンで実行）
                     {% endif %}
                 </span>
-                <button type="button" class="mini-btn" onclick="refreshBriefing(true)">✨ AI参謀コメントを生成</button>
+                <button type="button" class="mini-btn" onclick="refreshBriefing(true)">AI参謀コメントを再生成</button>
             </div>
             <div id="briefing-text" class="briefing-body">{{ pdca.briefing.text }}</div>
         </div>
 
-        <!-- 🚀 Weekly Top 3 Growth Actions -->
-        <div class="growth-section">
+        <!-- Weekly Top 3 Growth Actions -->
+        <div class="growth-section" id="pdca-growth-actions">
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
                 <div>
-                    <h2 style="font-size:1.02rem; margin:0 0 3px;">🚀 今週の最優先グロース・アクションTOP3</h2>
+                    <h2 style="font-size:1.02rem; margin:0 0 3px;">今週の最優先グロース・アクションTOP3</h2>
                     <div style="font-size:0.78rem; color:var(--sub);">実測PV・案件CVR・現場男女比ギャップから算出した、今週マスター管理者が打つべき最もレバレッジの高い3大施策です。</div>
                 </div>
-                <span class="ultra-badge">✨ Google AI Ultra 収益＆成長インテリジェンス</span>
+                <span class="ultra-badge">収益＆成長インテリジェンス</span>
             </div>
             {% if growth_actions %}
             <div class="growth-grid">
@@ -790,7 +906,7 @@
                     <div>
                         <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; margin-bottom:8px;">
                             <span class="prio-pill">PRIORITY #{{ p_num }}</span>
-                            <span style="font-size:0.74rem; font-weight:700; color:var(--sub);">{{ ga.category_badge|default('📌 成長施策') }}</span>
+                            <span style="font-size:0.74rem; font-weight:700; color:var(--sub);">{{ ga.category_badge|default('成長施策') }}</span>
                         </div>
                         <div style="font-size:0.88rem; font-weight:800; color:var(--gold-ink); margin-bottom:7px; line-height:1.45;">{{ ga.title|default('') }}</div>
                         <div style="font-size:0.76rem; color:var(--sub); margin-bottom:7px;">
@@ -800,7 +916,7 @@
                             <strong style="color:var(--gold);">具体手順：</strong>{{ ga.how_to|default('') }}
                         </div>
                         {% if ga.expected_impact %}
-                        <div style="font-size:0.73rem; color:var(--green); font-weight:700;">📈 期待インパクト：{{ ga.expected_impact }}</div>
+                        <div style="font-size:0.73rem; color:var(--green); font-weight:700;">期待インパクト：{{ ga.expected_impact }}</div>
                         {% endif %}
                     </div>
                     {% if ga.cta_url %}
@@ -821,7 +937,7 @@
         <!-- Wins vs Issues -->
         <div class="two-col" id="pdca-wins-issues">
             <div class="card diag-card">
-                <h2>🟢 いま上手くいっていること（勝ち筋・伸ばす領域）</h2>
+                <h2>いま上手くいっていること（勝ち筋・伸ばす領域）</h2>
                 {% for w in (d.wins or []) %}
                 <div class="diag-item win">
                     <div class="diag-title">{{ w.title }}</div>
@@ -831,13 +947,13 @@
             </div>
 
             <div class="card diag-card">
-                <h2>🔴 いま上手くいっていないこと（課題＆システムの自動対処）</h2>
+                <h2>いま上手くいっていないこと（課題＆システムの自動対処）</h2>
                 {% for iss in (d.issues or []) %}
                 <div class="diag-item issue">
                     <div class="diag-title">{{ iss.title }}</div>
                     <div class="diag-detail">{{ iss.detail }}</div>
                     {% if iss.action_taken %}
-                    <div class="action-tag">⚡ 自動対処：{{ iss.action_taken }}</div>
+                    <div class="action-tag">自動対処：{{ iss.action_taken }}</div>
                     {% endif %}
                 </div>
                 {% endfor %}
@@ -845,19 +961,20 @@
         </div>
 
         <!-- Active Closed-Loop Directives -->
+        {% set st_labels = d.style_labels if d.style_labels is defined and d.style_labels else {} %}
         <div class="directives-panel" id="pdca-directives">
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-                <h2 style="font-size:1rem; margin:0;">🔄 現在アクティブな自動編成指令（Check → Act/Plan 自動配線）</h2>
+                <h2 style="font-size:1rem; margin:0;">現在アクティブな自動編成指令（Check → Act/Plan 自動配線）</h2>
                 <span style="font-size:0.76rem; color:var(--sub);">最終更新：{{ act.updated_at or '未実行（初回自動セット済）' }}</span>
             </div>
             <div class="directives-grid">
                 <div class="dir-box">
                     <h3>① SNS鬼デスク スコア自動補正</h3>
-                    <div class="chip-list">
+                    <div class="chip-list" id="dir-sns-boosts">
                         {% set boosts = act.sns_style_boosts or {} %}
                         {% if boosts %}
                             {% for st_k, pts in boosts.items() if pts != 0 %}
-                            <span class="chip {{ 'plus' if pts > 0 else 'minus' }}">{{ st_k }}：{{ '%+d'|format(pts) }}点</span>
+                            <span class="chip {{ 'plus' if pts > 0 else 'minus' }}">{{ st_labels.get(st_k, st_k) }}{% if st_labels.get(st_k) and st_labels.get(st_k) != st_k %}（{{ st_k }}）{% endif %}：{{ '%+d'|format(pts) }}点</span>
                             {% endfor %}
                         {% else %}
                             <span style="font-size:0.77rem; color:var(--sub);">自動補正OFFまたはフラット配分中</span>
@@ -868,7 +985,7 @@
 
                 <div class="dir-box">
                     <h3>② Xコラム枠 優先送客リスト</h3>
-                    <div class="chip-list">
+                    <div class="chip-list" id="dir-priority-cols">
                         {% for p in (act.priority_column_paths or []) %}
                         <a href="{{ p }}" target="_blank" class="chip">{{ p }} ↗</a>
                         {% else %}
@@ -882,21 +999,21 @@
                     <h3>③ コラム編集部への次回特命お題</h3>
                     <div style="font-size:0.82rem; font-weight:700; color:var(--gold-ink);">『{{ act.recommended_custom_topic or (d.proposed_directives.recommended_custom_topic if d.proposed_directives is defined else '') }}』</div>
                     <a class="cta-editorial-btn" href="/staff/column-editorial?theme={{ act.recommended_column_theme or 'area_hopping' }}&topic={{ (act.recommended_custom_topic or (d.proposed_directives.recommended_custom_topic if d.proposed_directives is defined else '')) | urlencode }}">
-                        📝 この特命お題をコラム編集部で開いてワンクリック予約する →
+                        この特命お題をコラム編集部で開いてワンクリック予約する →
                     </a>
                 </div>
             </div>
         </div>
 
-        <!-- 💰 Offer Breakdown & 🔍 Monetization Gaps -->
+        <!-- Offer Breakdown & Monetization Gaps -->
         <div class="two-col" id="pdca-monetization">
-            <!-- 💰 Affiliate Offer Category Breakdown -->
+            <!-- Affiliate Offer Category Breakdown -->
             <div class="card">
                 <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:6px;">
-                    <h2 style="font-size:0.98rem; margin:0;">💰 アフィリエイト案件別クリック内訳＆勝ち筋ランキング</h2>
+                    <h2 style="font-size:0.98rem; margin:0;">アフィリエイト案件別クリック内訳＆勝ち筋ランキング</h2>
                     <a href="/staff/analytics?days={{ days }}" style="font-size:0.75rem; color:var(--gold); text-decoration:none; font-weight:700;">案件URL管理 →</a>
                 </div>
-                <p class="lead" style="margin-bottom:12px;">5大案件カテゴリ（<code>spu</code> / <code>orbis</code> / <code>hair_removal</code> / <code>dating</code> / <code>women_*</code>）のクリックシェア・直近7日トレンド・勝ち訴求です。</p>
+                <p class="lead" style="margin-bottom:12px;">7大案件カテゴリ（<code>dating</code> / <code>orbis</code> / <code>hair_removal</code> / <code>spu</code> / <code>women_*</code> / <code>supplement</code> / <code>second_venue</code>）のクリックシェア・直近7日トレンド・勝ち訴求です。</p>
                 {% if offers %}
                     {% for ofr in offers %}
                     <div class="offer-row">
@@ -914,11 +1031,11 @@
                             <div class="offer-bar-fill" style="width: {{ ofr.bar_pct|default(0) }}%;"></div>
                         </div>
                         <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:6px; font-size:0.73rem; color:var(--sub); margin-bottom:4px;">
-                            <span>主発生元：{% if ofr.top_source_path and ofr.top_source_path != '-' %}<a href="{{ ofr.top_source_path }}" target="_blank" style="color:var(--blue); text-decoration:none;">{{ ofr.top_source_path }} ↗</a>{% else %}これから配置{% endif %}</span>
+                            <span>主発生元：{% if ofr.top_source_path and ofr.top_source_path.startswith('/') %}<a href="{{ ofr.top_source_path }}" target="_blank" style="color:var(--blue); text-decoration:none;">{{ ofr.top_source_path }} ↗</a>{% elif ofr.clicks|default(0) > 0 and ofr.top_source_title %}{{ ofr.top_source_title }}{% else %}これから配置{% endif %}</span>
                             <span>想定収益寄与：約 ¥{{ '{:,}'.format(ofr.est_revenue_yen|default(0)|int) }}</span>
                         </div>
                         {% if ofr.winning_pitch %}
-                        <div style="font-size:0.74rem; color:var(--green-ink);">💡 勝ち筋：{{ ofr.winning_pitch }}</div>
+                        <div style="font-size:0.74rem; color:var(--green-ink);">勝ち筋：{{ ofr.winning_pitch }}</div>
                         {% endif %}
                     </div>
                     {% endfor %}
@@ -929,10 +1046,10 @@
                 {% endif %}
             </div>
 
-            <!-- 🔍 High PV x Low CVR Monetization Gaps -->
+            <!-- High PV x Low CVR Monetization Gaps -->
             <div class="card">
-                <h2 style="font-size:0.98rem; margin:0 0 6px;">🔍 「高PV × 低CV」機会損失ページ検出＆導線チューニング提案</h2>
-                <p class="lead" style="margin-bottom:12px;">閲覧が多いのに広告遷移や <code>/grooming</code> 誘導が少ないページを自動特定し、「どの導線を・どの位置に足すべきか」を処方します。</p>
+                <h2 style="font-size:0.98rem; margin:0 0 6px;">「高PV × 低CV」機会損失ページ検出＆導線チューニング提案</h2>
+                <p class="lead" style="margin-bottom:12px;">閲覧が多いのに広告遷移や <code>/grooming</code>・<code>/for-women</code> 誘導が少ないページを自動特定し、「どの導線を・どの位置に足すべきか」を処方します。</p>
                 {% if gaps %}
                     {% for g in gaps %}
                     <div class="gap-card {{ g.severity|default('medium') }}">
@@ -941,10 +1058,10 @@
                                 <a href="{{ g.path|default('#') }}" target="_blank" style="color:var(--gold-ink); font-size:0.84rem; font-weight:800; text-decoration:none;">{{ g.title|default(g.path) }} ↗</a>
                                 <div style="font-size:0.72rem; color:var(--sub);"><code>{{ g.path|default('-') }}</code> ｜ 閲覧 <strong>{{ g.pv|default(0) }} PV</strong> ／ 広告 <strong>{{ g.aff_clicks|default(0) }}件</strong>（CVR {{ g.cvr_pct|default(0) }}% → 目標 {{ g.target_cvr_pct|default(2.5) }}%）</div>
                             </div>
-                            <span class="chip {{ 'minus' if g.severity in ('critical', 'high') else '' }}">{{ g.severity_badge|default('🔍 導線チェック') }}</span>
+                            <span class="chip {{ 'minus' if g.severity in ('critical', 'high') else '' }}">{{ g.severity_badge|default('導線チェック') }}</span>
                         </div>
                         <div class="gap-rx-box">
-                            <div style="font-weight:800; color:var(--gold-ink); margin-bottom:4px;">🛠️ 追加すべき導線：{{ g.recommended_funnel|default('') }}</div>
+                            <div style="font-weight:800; color:var(--gold-ink); margin-bottom:4px;">追加すべき導線：{{ g.recommended_funnel|default('') }}</div>
                             <div style="color:var(--sub); margin-bottom:5px;"><strong style="color:var(--text);">推奨設置箇所：</strong>{{ g.placement_position|default('') }}</div>
                             <div style="color:var(--text); margin-bottom:6px;">{{ g.action_proposal|default('') }}</div>
                             {% if g.recommended_links %}
@@ -965,11 +1082,14 @@
             </div>
         </div>
 
-        <!-- 📲 SNS Channel Efficiency & Reels Video Concepts -->
-        <div class="card" style="margin-bottom:18px;">
+        <!-- SNS Channel Efficiency & Reels Video Concepts -->
+        <div class="card" id="pdca-sns" style="margin-bottom:18px;">
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:6px;">
-                <h2 style="font-size:1rem; margin:0;">📲 SNSチャネル別 集客効率＆ショート動画（Reels）推奨ネタ</h2>
-                <a href="/staff/sns-kit" class="mini-btn" style="background:var(--gold-soft); border-color:var(--gold); color:var(--gold-ink);">🎨 SNSスライド素材キットへ →</a>
+                <h2 style="font-size:1rem; margin:0;">SNSチャネル別 集客効率＆ショート動画（Reels）推奨ネタ</h2>
+                <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                    <a href="/staff/sns-editorial?channel=instagram#reel-studio-section" class="mini-btn">9:16 ショート動画スタジオを開く →</a>
+                    <a href="/staff/sns-kit" class="mini-btn">静止画スライド素材キット →</a>
+                </div>
             </div>
             <p class="lead" style="margin-bottom:12px;">
                 {{ sns_eff.summary_insight|default('X / Threads / Instagram / Reels の ?s= 流入・CV効率を横断比較し、今一番伸びる投稿時間帯とショート動画企画を提示します。') }}
@@ -978,7 +1098,7 @@
             <div class="two-col" style="margin-bottom:0;">
                 <!-- Channel Efficiency Ranking -->
                 <div>
-                    <div style="font-size:0.84rem; font-weight:800; color:var(--gold); margin-bottom:8px;">📊 チャネル別サイト誘導効率ランキング（強化時間帯＆勝ち切り口）</div>
+                    <div style="font-size:0.84rem; font-weight:800; color:var(--gold); margin-bottom:8px;">チャネル別サイト誘導効率ランキング（強化時間帯＆勝ち切り口）</div>
                     {% set sns_channels = sns_eff.channels if sns_eff is mapping and sns_eff.channels is defined else [] %}
                     {% if sns_channels %}
                         {% for ch in sns_channels %}
@@ -994,10 +1114,10 @@
                                 </div>
                             </div>
                             <div class="offer-bar-track">
-                                <div class="offer-bar-fill" style="width: {{ ch.bar_pct|default(0) }}%; background: linear-gradient(90deg, var(--blue), var(--purple));"></div>
+                                <div class="offer-bar-fill sns-fill" style="width: {{ ch.bar_pct|default(0) }}%;"></div>
                             </div>
                             <div style="font-size:0.74rem; color:var(--text); margin-bottom:3px;">
-                                ⏰ <strong>強化時間帯：</strong>{{ ch.best_time_slot|default('-') }} ｜ 🎯 <strong>勝ち切り口：</strong>{{ ch.best_style_label|default('-') }}
+                                <strong>強化時間帯：</strong>{{ ch.best_time_slot|default('-') }} ｜ <strong>勝ち切り口：</strong>{{ ch.best_style_label|default('-') }}
                             </div>
                             {% if ch.tactic %}
                             <div style="font-size:0.73rem; color:var(--sub);">{{ ch.tactic }}</div>
@@ -1013,19 +1133,24 @@
 
                 <!-- Reels Recommended Short Video Ideas -->
                 <div>
-                    <div style="font-size:0.84rem; font-weight:800; color:var(--purple-ink); margin-bottom:8px;">🎬 ショート動画（Reels / Shorts）今週の推奨ネタ3選</div>
+                    <div style="font-size:0.84rem; font-weight:800; color:var(--text); margin-bottom:8px;">ショート動画（Reels / Shorts）今週の推奨ネタ3選</div>
                     {% set reels_list = sns_eff.reels_recommendations if sns_eff is mapping and sns_eff.reels_recommendations is defined else [] %}
                     {% if reels_list %}
                         {% for rl in reels_list %}
                         <div class="reels-box">
                             <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:5px;">
                                 <span class="ai-pill" style="padding:2px 9px; font-size:0.7rem;">ネタ案 #{{ rl.idea_no|default(loop.index) }}</span>
-                                <span style="font-size:0.72rem; color:var(--gold); font-weight:700;">⏰ 推奨投稿：{{ rl.best_post_time|default('金曜 21:30') }}</span>
+                                <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                                    <span style="font-size:0.72rem; color:var(--gold); font-weight:700;">推奨投稿：{{ rl.best_post_time|default('金曜 21:30') }}</span>
+                                    <button type="button" class="copy-mini-btn"
+                                        data-copy-text="【{{ rl.title|default('') }}】&#10;冒頭0-3秒: {{ rl.hook_0_3s|default('') }}&#10;構成: {{ rl.body_outline|default('') }}&#10;誘導導線: {{ rl.cta_route|default('?s=reel_gap') }}"
+                                        onclick="copyFromDataAttr(this)">構成をコピー</button>
+                                </div>
                             </div>
                             <div style="font-size:0.83rem; font-weight:800; color:var(--gold-ink); margin-bottom:5px;">{{ rl.title|default('') }}</div>
-                            <div style="font-size:0.75rem; color:var(--green-ink); margin-bottom:4px;"><strong>🎙️ 冒頭0〜3秒フック：</strong>{{ rl.hook_0_3s|default('') }}</div>
+                            <div style="font-size:0.75rem; color:var(--green-ink); margin-bottom:4px;"><strong>冒頭0〜3秒フック：</strong>{{ rl.hook_0_3s|default('') }}</div>
                             <div style="font-size:0.74rem; color:var(--sub); margin-bottom:5px;">{{ rl.body_outline|default('') }}</div>
-                            <div style="font-size:0.72rem; color:var(--blue); font-weight:700;">🔗 誘導導線：<code>{{ rl.cta_route|default('?s=reel_gap') }}</code></div>
+                            <div style="font-size:0.72rem; color:var(--blue); font-weight:700;">誘導導線：<code>{{ rl.cta_route|default('?s=reel_gap') }}</code></div>
                         </div>
                         {% endfor %}
                     {% else %}
@@ -1039,7 +1164,7 @@
 
         <!-- SNS ?s= Cohort Tracking Table -->
         <div class="card" style="margin-bottom:18px;">
-            <h2 style="font-size:0.98rem; margin:0 0 6px;">📡 SNS投稿枠・切り口別（<code>?s=</code>）サイト流入＆アフィリエイトCV成績</h2>
+            <h2 style="font-size:0.98rem; margin:0 0 6px;">SNS投稿枠・切り口別（<code>?s=</code>）サイト流入＆アフィリエイトCV成績</h2>
             <p class="lead" style="margin-bottom:10px;">X（20時/22時/0時・18時Tips・新着告知）およびThreads奇数日リンクに付与した識別子ごとの実測流入と24時間以内アフィリエイト遷移数です。</p>
             {% if d.inflow_cohorts %}
             <div class="table-wrap" style="margin-bottom:0;">
@@ -1074,9 +1199,10 @@
         </div>
 
         <!-- Article PV x Affiliate CTR Matrix -->
-        <div class="card" style="margin-bottom:18px;">
-            <h2 style="font-size:0.98rem; margin:0 0 6px;">📖 コラム記事別 PV × アフィリエイトクリック × CTR 成績表</h2>
-            <p class="lead" style="margin-bottom:10px;">どの記事が収益を生んでいるか（🏆高CV牽引）、どの記事が読まれているのに広告クリックされていないか（⚠️導線ロス）を自動判定します。</p>
+        {% set all_articles = d.article_perf_all if d.article_perf_all is defined and d.article_perf_all else (d.article_perf or []) %}
+        <div class="card" id="pdca-articles" style="margin-bottom:18px;">
+            <h2 style="font-size:0.98rem; margin:0 0 6px;">コラム記事別 PV × アフィリエイトクリック × CTR 成績表</h2>
+            <p class="lead" style="margin-bottom:10px;">どの記事が収益を生んでいるか（高CV牽引）、どの記事が読まれているのに広告クリックされていないか（導線ロス）、未露出の睡眠記事が何本あるかを一覧化します。</p>
             <div class="table-wrap" style="margin-bottom:0;">
                 <table class="pdca-table">
                     <thead>
@@ -1086,26 +1212,61 @@
                             <th>閲覧数（PV）</th>
                             <th>広告クリック</th>
                             <th>記事CTR</th>
+                            <th>SNS送客URL</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for a in d.article_perf %}
+                        {% for a in (d.article_perf or []) %}
                         <tr>
                             <td><a href="{{ a.path }}" target="_blank" style="color:var(--gold-ink); text-decoration:none; font-weight:700;">{{ a.title }} ↗</a><br><span style="font-size:0.72rem; color:var(--sub);">{{ a.path }}</span></td>
                             <td>{{ a.status_badge }}</td>
                             <td>{{ a.pv }}回</td>
                             <td><strong>{{ a.aff_clicks }}件</strong></td>
                             <td>{{ a.ctr_pct }}%</td>
+                            <td><button type="button" class="copy-mini-btn" data-copy-url="{{ a.path }}?s=x18_tip" onclick="copyPromoUrlAttr(this)">URLコピー</button></td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
+
+            {% if all_articles|length > (d.article_perf or [])|length %}
+            {% set rest_articles = all_articles[(d.article_perf or [])|length:] %}
+            <details class="sleeping-details">
+                <summary>全{{ all_articles|length }}本中 残り{{ rest_articles|length }}本のコラム成績・未露出在庫（睡眠記事 {{ d.sleeping_count|default(0) }}本）を表示</summary>
+                <div class="table-wrap" style="margin-top:10px; margin-bottom:0;">
+                    <table class="pdca-table">
+                        <thead>
+                            <tr>
+                                <th>コラム記事タイトル</th>
+                                <th>診断ステータス</th>
+                                <th>閲覧数（PV）</th>
+                                <th>広告クリック</th>
+                                <th>記事CTR</th>
+                                <th>SNS送客URL</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for a in rest_articles %}
+                            <tr>
+                                <td><a href="{{ a.path }}" target="_blank" style="color:var(--gold-ink); text-decoration:none; font-weight:700;">{{ a.title }} ↗</a><br><span style="font-size:0.72rem; color:var(--sub);">{{ a.path }}</span></td>
+                                <td>{{ a.status_badge }}</td>
+                                <td>{{ a.pv }}回</td>
+                                <td><strong>{{ a.aff_clicks }}件</strong></td>
+                                <td>{{ a.ctr_pct }}%</td>
+                                <td><button type="button" class="copy-mini-btn" data-copy-url="{{ a.path }}?s=x18_tip" onclick="copyPromoUrlAttr(this)">URLコピー</button></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </details>
+            {% endif %}
         </div>
 
         <!-- Recent Autonomous PDCA History -->
-        <div class="card">
-            <h2 style="font-size:0.96rem; margin:0 0 10px;">🕒 直近の自律PDCAサイクル実行ログ</h2>
+        <div class="card" id="pdca-history">
+            <h2 style="font-size:0.96rem; margin:0 0 10px;">直近の自律PDCAサイクル実行ログ</h2>
             {% if pdca.history %}
             <div class="table-wrap" style="margin-bottom:0;">
                 <table class="pdca-table">
@@ -1124,11 +1285,15 @@
                             <td>{{ h.timestamp }}</td>
                             <td><strong>{{ h.overall_score }}点</strong></td>
                             <td>{{ h.focus_hub }}</td>
-                            <td>{{ (h.boosted_styles or [])|join(', ') or '-' }}</td>
+                            <td>
+                                {% if h.boosted_styles %}
+                                    {% for st_k in h.boosted_styles %}{% set st_base = st_k.split('(', 1)[0] %}{% set st_delta = '(' ~ st_k.split('(', 1)[1] if '(' in st_k else '' %}{{ st_labels.get(st_base, st_base) }}{{ st_delta }}{% if not loop.last %}, {% endif %}{% endfor %}
+                                {% else %}-{% endif %}
+                            </td>
                             <td>
                                 {{ h.recommended_topic }}
                                 {% if h.auto_scheduled_slug %}
-                                <span class="chip plus">🤖 自動予約補充済: /guide/{{ h.auto_scheduled_slug }}</span>
+                                <span class="chip plus">自動予約補充済: /guide/{{ h.auto_scheduled_slug }}</span>
                                 {% endif %}
                             </td>
                         </tr>
@@ -1137,7 +1302,7 @@
                 </table>
             </div>
             {% else %}
-            <div style="font-size:0.8rem; color:var(--sub);">上の「⚡ いま最新データでPDCAサイクルを実行」ボタンを押すか、毎日17:35 / 03:35の自動実行で履歴が記録されます。</div>
+            <div style="font-size:0.8rem; color:var(--sub);">上の「いま最新データでPDCAサイクルを実行して編成指令を更新」ボタンを押すか、毎日17:35 / 03:35の自動実行で履歴が記録されます。</div>
             {% endif %}
         </div>
     </div>
@@ -1149,6 +1314,55 @@
 
         const CURRENT_DAYS = {{ days }};
         const PENDING_ASYNC_AI = {{ 'true' if pdca.briefing.pending_async else 'false' }};
+        const STYLE_LABELS = {{ st_labels | tojson }};
+
+        function syncDirectiveChips(act) {
+            const boostEl = document.getElementById('dir-sns-boosts');
+            if (boostEl) {
+                boostEl.textContent = '';
+                const boosts = (act && act.sns_style_boosts) || {};
+                const entries = Object.entries(boosts).filter(([, pts]) => Number(pts) !== 0);
+                if (entries.length > 0) {
+                    entries.forEach(([stK, pts]) => {
+                        const n = Number(pts);
+                        const chip = document.createElement('span');
+                        chip.className = 'chip ' + (n > 0 ? 'plus' : 'minus');
+                        const lbl = STYLE_LABELS[stK] || stK;
+                        const sign = n > 0 ? `+${n}` : `${n}`;
+                        chip.textContent = (lbl !== stK ? `${lbl}（${stK}）` : stK) + `：${sign}点`;
+                        boostEl.appendChild(chip);
+                    });
+                } else {
+                    const empty = document.createElement('span');
+                    empty.style.fontSize = '0.77rem';
+                    empty.style.color = 'var(--sub)';
+                    empty.textContent = '自動補正OFFまたはフラット配分中';
+                    boostEl.appendChild(empty);
+                }
+            }
+            const colEl = document.getElementById('dir-priority-cols');
+            if (colEl) {
+                colEl.textContent = '';
+                const paths = (act && Array.isArray(act.priority_column_paths)) ? act.priority_column_paths : [];
+                if (paths.length > 0) {
+                    paths.forEach((p) => {
+                        if (typeof p !== 'string' || !p.startsWith('/')) return;
+                        const a = document.createElement('a');
+                        a.href = p;
+                        a.target = '_blank';
+                        a.className = 'chip';
+                        a.textContent = `${p} ↗`;
+                        colEl.appendChild(a);
+                    });
+                } else {
+                    const empty = document.createElement('span');
+                    empty.style.fontSize = '0.77rem';
+                    empty.style.color = 'var(--sub)';
+                    empty.textContent = '通常ローテーション稼働中';
+                    colEl.appendChild(empty);
+                }
+            }
+        }
 
         async function fetchJsonSafe(url, opts, timeoutMs) {
             const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
@@ -1188,6 +1402,40 @@
             el.style.display = 'block';
         }
 
+        async function copyTextSafe(txt, doneLabel) {
+            if (!txt) return;
+            try {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    await navigator.clipboard.writeText(txt);
+                } else {
+                    const ta = document.createElement('textarea');
+                    ta.value = txt;
+                    ta.style.position = 'fixed';
+                    ta.style.opacity = '0';
+                    document.body.appendChild(ta);
+                    ta.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(ta);
+                }
+                showToast(doneLabel || 'クリップボードにコピーしました');
+            } catch (e) {
+                showToast('コピーに失敗しました: ' + txt);
+            }
+        }
+
+        function copyPromoUrlAttr(btn) {
+            const rel = btn && btn.getAttribute('data-copy-url');
+            if (!rel) return;
+            const fullUrl = window.location.origin + rel;
+            copyTextSafe(fullUrl, `SNS送客用URLをコピーしました: ${fullUrl}`);
+        }
+
+        function copyFromDataAttr(btn) {
+            const txt = btn && btn.getAttribute('data-copy-text');
+            if (!txt) return;
+            copyTextSafe(txt, 'ショート動画の構成メモ＆誘導URLをコピーしました');
+        }
+
         async function savePdcaSettings() {
             const snsEl = document.getElementById('toggle-auto-sns');
             const colEl = document.getElementById('toggle-auto-col');
@@ -1205,12 +1453,13 @@
                     })
                 }, 20000);
                 if (j && j.ok) {
-                    showToast(`✅ 自律PDCA設定を保存しました（SNS最適化: ${autoSns ? 'ON' : 'OFF'} ／ 在庫切れ自動コラム補充: ${autoCol ? 'ON' : 'OFF'}）`);
+                    syncDirectiveChips(j.active_directives || {});
+                    showToast(`自律PDCA設定を保存しました（SNS最適化: ${autoSns ? 'ON' : 'OFF'} ／ 在庫切れ自動コラム補充: ${autoCol ? 'ON' : 'OFF'}）`);
                 } else {
-                    showToast('⚠️ ' + ((j && j.error) || '設定保存に失敗しました'));
+                    showToast('設定保存エラー: ' + ((j && j.error) || '設定保存に失敗しました'));
                 }
             } catch (e) {
-                showToast('⚠️ 設定保存エラー: ' + ((e && e.message) || '通信エラーが発生しました'));
+                showToast('設定保存エラー: ' + ((e && e.message) || '通信エラーが発生しました'));
             } finally {
                 if (snsEl) snsEl.disabled = false;
                 if (colEl) colEl.disabled = false;
@@ -1221,7 +1470,7 @@
             const btn = document.getElementById('run-pdca-btn');
             if (!btn || btn.disabled) return;
             btn.disabled = true;
-            btn.textContent = '🧭 実測データを集計し、SNS＆コラム編集部への指令を更新中...';
+            btn.textContent = '実測データを集計し、SNS＆コラム編集部への指令を更新中...';
             let redirected = false;
             try {
                 const j = await fetchJsonSafe('/api/pdca/run', {
@@ -1234,13 +1483,13 @@
                     window.location.href = `/staff/pdca?days=${CURRENT_DAYS}`;
                     return;
                 }
-                showToast('⚠️ ' + ((j && j.error) || 'PDCAサイクル実行に失敗しました'));
+                showToast('PDCA実行エラー: ' + ((j && j.error) || 'PDCAサイクル実行に失敗しました'));
             } catch (e) {
-                showToast('⚠️ PDCA実行エラー: ' + ((e && e.message) || '通信エラーが発生しました'));
+                showToast('PDCA実行エラー: ' + ((e && e.message) || '通信エラーが発生しました'));
             } finally {
                 if (!redirected && btn) {
                     btn.disabled = false;
-                    btn.textContent = '⚡ いま最新データでPDCAサイクルを実行して編成指令を更新';
+                    btn.textContent = 'いま最新データでPDCAサイクルを実行して編成指令を更新';
                 }
             }
         }
@@ -1248,8 +1497,8 @@
         const PRIMARY_AI_LABEL = {{ ('Claude Opus' if (pdca.gemini_status and pdca.gemini_status.primary_provider == 'claude') else '上位AI') | tojson }};
         async function refreshBriefing(forceRefresh) {
             const pill = document.getElementById('briefing-pill');
-            if (pill) {
-                pill.textContent = `🧠 ${PRIMARY_AI_LABEL} 作戦参謀長が実測データを長考分析中...`;
+            if (pill && forceRefresh) {
+                pill.textContent = `${PRIMARY_AI_LABEL} 作戦参謀長が実測データを長考分析中...`;
             }
             let updatedPill = false;
             try {
@@ -1260,27 +1509,38 @@
                     if (txtEl) txtEl.textContent = j.briefing.text;
                     if (pill) {
                         pill.textContent = j.briefing.is_ai
-                            ? `🧠 作戦参謀長ブリーフィング（${j.briefing.model}）`
-                            : '🧭 作戦参謀ブリーフィング（実測データ総括）';
+                            ? `作戦参謀長ブリーフィング（${j.briefing.model}）`
+                            : '作戦参謀ブリーフィング（実測データ総括）';
                     }
                     updatedPill = true;
+                    return j.briefing;
                 }
             } catch (e) {
-                if (pill) {
-                    pill.textContent = '⚠️ AI長考分析の取得に失敗しました（' + ((e && e.message) || '通信エラー') + '｜実測総括を表示中）';
+                if (pill && forceRefresh) {
+                    pill.textContent = 'AI長考分析の取得に失敗しました（' + ((e && e.message) || '通信エラー') + '｜実測総括を表示中）';
                     updatedPill = true;
                 }
             } finally {
-                if (!updatedPill && pill) {
-                    pill.textContent = '🧭 作戦参謀ブリーフィング（実測データ総括）';
+                if (!updatedPill && pill && forceRefresh) {
+                    pill.textContent = '作戦参謀ブリーフィング（実測データ総括）';
                 }
             }
+            return null;
         }
 
         const INITIAL_PDCA_FORCE_AI = {{ 'true' if request.args.get('refresh_ai') == '1' else 'false' }};
         if (INITIAL_PDCA_FORCE_AI) {
             window.addEventListener('DOMContentLoaded', () => {
                 setTimeout(() => refreshBriefing(true), 180);
+            });
+        } else if (PENDING_ASYNC_AI) {
+            window.addEventListener('DOMContentLoaded', () => {
+                setTimeout(async () => {
+                    const b = await refreshBriefing(false);
+                    if (b && !b.is_ai && b.pending_async) {
+                        setTimeout(() => refreshBriefing(false), 4500);
+                    }
+                }, 2400);
             });
         }
     </script>

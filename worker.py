@@ -213,6 +213,7 @@ def _pdca_autonomous_job():
             days=14,
             apply_actions=True,
             use_ai=False,
+            use_ai_for_replenish=True,
             record_log=True,
         )
     except Exception as err:

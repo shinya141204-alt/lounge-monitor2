@@ -533,6 +533,7 @@ def _ensure_scheduler_started_async():
                         days=14,
                         apply_actions=True,
                         use_ai=False,
+                        use_ai_for_replenish=True,
                         record_log=True,
                     )
                 except Exception as err:
@@ -1813,10 +1814,20 @@ def guide_article():
     return _get_cached_html_or_render('guide_article', lambda: render_template('guide_article.html'))
 
 
+def _redirect_preserving_query(target_path: str, code: int = 301):
+    """Redirect to canonical internal path while preserving safe query parameters (such as SNS `?s=` attribution)."""
+    raw_qs = (request.query_string or b'').decode('utf-8', 'ignore').strip()
+    clean_qs = re.sub(r'[\r\n\x00]', '', raw_qs)[:240]
+    if clean_qs:
+        sep = '&' if '?' in target_path else '?'
+        return redirect(f"{target_path}{sep}{clean_qs}", code=code)
+    return redirect(target_path, code=code)
+
+
 @app.route('/guide/strategy')
 def guide_strategy_legacy_redirect():
     """301 Permanent redirect from legacy /guide/strategy to canonical /guide."""
-    return redirect('/guide', code=301)
+    return _redirect_preserving_query('/guide', code=301)
 
 
 AFFILIATE_REDIRECTS = {
@@ -1851,6 +1862,10 @@ AFFILIATE_REDIRECTS = {
     'women_second_venue': os.environ.get('AFFILIATE_URL_SECOND_VENUE') or os.environ.get('AFFILIATE_URL_IKYU') or 'https://px.a8.net/svt/ejp?a8mat=4BGDZ4+9R9ROY+1OK+NVP2P',
 }
 
+_BARE_INTERNAL_FROM_SLUGS = frozenset({
+    'concierge', 'grooming', 'for-women', 'guide', 'stats', 'columns', 'areas', 'price-comparison',
+})
+
 @app.route('/link/<path:item_id>')
 def affiliate_redirect(item_id):
     """Safe internal redirect shielding affiliate links from ad-blockers, with live runtime override resolution."""
@@ -1863,9 +1878,27 @@ def affiliate_redirect(item_id):
         try:
             import analytics
             parsed_ref = urllib_parse.urlparse(request.referrer or '')
-            ref_path = parsed_ref.path or '-'
+            raw_from = (request.args.get('from') or '').strip()
+            unquoted_from = urllib_parse.unquote(raw_from).strip()
+            if unquoted_from in _BARE_INTERNAL_FROM_SLUGS:
+                unquoted_from = '/' + unquoted_from
+            ref_path = ''
+            if unquoted_from.startswith('/') and not unquoted_from.startswith('//') and '\\' not in raw_from and '\\' not in unquoted_from:
+                parsed_from = urllib_parse.urlparse(unquoted_from)
+                clean_from = (parsed_from.path or '').strip()
+                if (
+                    not parsed_from.scheme
+                    and not parsed_from.netloc
+                    and '..' not in clean_from
+                    and re.fullmatch(r'/(?:[A-Za-z0-9_-]+(?:/[A-Za-z0-9_-]+)*/?)?', clean_from)
+                ):
+                    ref_path = clean_from[:80]
+            if not ref_path:
+                fallback_ref = re.sub(r'[\r\n\x00@\\]', '', (parsed_ref.path or '').strip())[:80]
+                ref_path = fallback_ref if (fallback_ref.startswith('/') and not fallback_ref.startswith('//')) else '-'
             analytics.track('affiliate_click', f"{clean_id} @ {ref_path}")
-            ref_s = (urllib_parse.parse_qs(parsed_ref.query).get('s') or [''])[0].strip()
+            explicit_s = (request.args.get('s') or '').strip()
+            ref_s = explicit_s or (urllib_parse.parse_qs(parsed_ref.query).get('s') or [''])[0].strip()
             raw_inflow = ref_s or (request.cookies.get('an_src') or '').strip()
             if raw_inflow:
                 inflow_tag = analytics.normalize_inflow_source(raw_inflow)
@@ -2870,7 +2903,7 @@ def staff_pdca():
     is_json_req = request.args.get('format') == 'json'
     with data_lock:
         live_s = list(latest_data.get('full_data') or [])
-    has_existing = bool(pdca_engine.get_active_directives(allow_blocking=False))
+    has_existing = bool(pdca_engine.get_active_directives(allow_blocking=True))
     if not has_existing and not is_json_req:
         def _seed_pdca_async(stores_snap):
             try:
@@ -2937,7 +2970,7 @@ def api_pdca_settings():
     return jsonify({
         'ok': True,
         'settings': updated,
-        'active_directives': pdca_engine.get_active_directives(allow_blocking=False),
+        'active_directives': pdca_engine.get_active_directives(allow_blocking=True),
     })
 
 
@@ -4072,7 +4105,7 @@ def store_detail_page(store_slug):
     import urllib.parse
     legacy_target = store_master.legacy_redirect_for_slug(store_slug)
     if legacy_target:
-        return redirect(legacy_target, code=301)
+        return _redirect_preserving_query(legacy_target, code=301)
 
     restore_latest_data_if_empty()
     trigger_background_fetch_if_needed()
@@ -4651,7 +4684,7 @@ def for_women_guide():
 @app.route('/ladies')
 def ladies_legacy_redirect():
     """301 Permanent redirect from short alias /ladies to canonical /for-women."""
-    return redirect('/for-women', code=301)
+    return _redirect_preserving_query('/for-women', code=301)
 
 
 @app.route('/concierge')
@@ -4767,7 +4800,7 @@ def guide_brand_comparison():
 @app.route('/guide/compare')
 def guide_compare_legacy_redirect():
     """301 Permanent redirect from legacy /guide/compare to canonical /guide/brand-comparison."""
-    return redirect('/guide/brand-comparison', code=301)
+    return _redirect_preserving_query('/guide/brand-comparison', code=301)
 
 
 @app.route('/guide/shinjuku')

@@ -918,7 +918,7 @@
             </div>
             {% if not is_staff and not session.get('is_staff') %}
             <div class="second-venue-reserve-bar">
-                <a href="/link/second_venue_reservation" target="_blank" rel="noopener noreferrer sponsored" class="second-venue-reserve-link">
+                <a href="/link/second_venue_reservation?from=/store/{{ store.slug }}" target="_blank" rel="noopener sponsored" class="second-venue-reserve-link">
                     <div class="second-venue-reserve-body">
                         <div class="second-venue-reserve-meta">
                             <span class="second-venue-pr-pill">PR</span>

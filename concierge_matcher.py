@@ -830,7 +830,7 @@ def _build_smart_action_card(audience: str, timing: str, area_summary: dict, pri
             "title": "角が立たない席替えフレーズ＆『審査制カフェデート』という選択肢",
             "body": "微妙な席に当たったときの自然な抜け方は『女子向け裏ガイド』をチェック。また、大人数の飲み会よりハイスペック男性と落ち着いて1対1でお茶したい週は、女性完全無料・顔写真非公開の審査制デートアプリを併用する女性が増えています。",
             "primary_label": "審査制・1対1デート（女性無料）を見る",
-            "primary_url": "/link/women_dating?from=concierge",
+            "primary_url": "/link/women_dating?from=/concierge",
             "secondary_label": "💄 女子向け裏ガイド＆席替え術を読む",
             "secondary_url": "/for-women",
         }
@@ -846,7 +846,7 @@ def _build_smart_action_card(audience: str, timing: str, area_summary: dict, pri
             "title": "ラウンジが空振りしやすい夜は『今日これから近くで飲めるアプリ』も併用",
             "body": "エリア全体で男性比率が高すぎるときや営業時間外に無理して単独待機料金（10分220〜330円）を払うより、近くで今夜これから合流できる恋活アプリを保険に持っておく方が圧倒的にコスパ良く出会えます。",
             "primary_label": "今日これから近くで飲めるアプリを見る",
-            "primary_url": "/link/dating_instant?from=concierge",
+            "primary_url": "/link/dating_instant?from=/concierge",
             "secondary_label": "👔 相席で好印象な服装・事前準備ガイド",
             "secondary_url": "/grooming",
         }
@@ -857,7 +857,7 @@ def _build_smart_action_card(audience: str, timing: str, area_summary: dict, pri
         "title": "最初の10分で席替えされない『夕方の皮脂テカリ＆清潔感ケア』",
         "body": "オリエンタルラウンジやJISの間接照明は、距離70cmのソファ席で顔まわりのテカリや乾燥が意外と目立ちます。入店前にサッと整えておくだけで1組目からの会話継続率が大きく変わります。",
         "primary_label": "メンズ清潔感スキンケア（初回セット）を見る",
-        "primary_url": "/link/orbis?from=concierge",
+        "primary_url": "/link/orbis?from=/concierge",
         "secondary_label": "👔 浮かない服装・身だしなみ特集を読む",
         "secondary_url": "/grooming",
     }

@@ -107,11 +107,11 @@ class UiAuditRegressionTests(unittest.TestCase):
         """全テンプレートと static/sw.js のアセットバージョンが完全同期し、immutable ヘッダが正しく付与されること"""
         expected_calm = "/static/calm.css?v=33"
         expected_portal = "/static/portal.css?v=14"
-        expected_app_js = "/static/app.js?v=20261104_3"
+        expected_app_js = "/static/app.js?v=20261105_1"
         expected_aff_js = "/static/affiliate_config.js?v=15"
         expected_style = "/static/style.css?v=20261030_6"
-        expected_sw_url = "/sw.js?v=89"
-        expected_cache_name = "aiseki-navi-v89"
+        expected_sw_url = "/sw.js?v=90"
+        expected_cache_name = "aiseki-navi-v90"
 
         templates_dir = os.path.join(PROJECT_ROOT, "templates")
         calm_seen = 0
@@ -717,8 +717,20 @@ class UiAuditRegressionTests(unittest.TestCase):
             }
         }
 
+        fake_weather_map = {
+            "tokyo": {
+                "city": "東京",
+                "is_rainy": True,
+                "precip_mm": 2.4,
+                "precip_prob": 80,
+                "temp_c": 16.5,
+                "label": "本降り（2.4mm）",
+            }
+        }
+
         with patch.object(app_module, "trigger_background_fetch_if_needed", lambda *a, **kw: None), \
              patch("local_db.get_cached_store_accuracy_map", return_value=fake_acc_map), \
+             patch("moat_intelligence.get_city_weather_map", return_value=fake_weather_map), \
              patch("weekly_report.generate_weekly_report", return_value=fake_weekly_report), \
              patch("logger.get_client", return_value=None):
             with sync_playwright() as p:

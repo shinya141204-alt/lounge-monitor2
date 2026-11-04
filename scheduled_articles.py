@@ -222,27 +222,27 @@ def is_published(slug_or_item, now_jst: datetime.datetime = None) -> bool:
     return now_jst >= parse_publish_at(item["publish_at"])
 
 
-def get_published_articles(now_jst: datetime.datetime = None) -> list:
+def get_published_articles(now_jst: datetime.datetime = None, allow_blocking: bool = False) -> list:
     """Return scheduled articles whose publish_at has arrived, sorted newest first."""
     now_jst = _coerce_naive_jst(now_jst)
-    published = [item for item in get_all_scheduled_articles(allow_blocking=False) if is_published(item, now_jst=now_jst)]
+    published = [item for item in get_all_scheduled_articles(allow_blocking=allow_blocking) if is_published(item, now_jst=now_jst)]
     published.sort(key=lambda x: x["publish_at"], reverse=True)
     return published
 
 
-def get_upcoming_articles(now_jst: datetime.datetime = None) -> list:
+def get_upcoming_articles(now_jst: datetime.datetime = None, allow_blocking: bool = False) -> list:
     """Return scheduled articles waiting for release, sorted soonest first."""
     now_jst = _coerce_naive_jst(now_jst)
-    upcoming = [item for item in get_all_scheduled_articles(allow_blocking=False) if not is_published(item, now_jst=now_jst)]
+    upcoming = [item for item in get_all_scheduled_articles(allow_blocking=allow_blocking) if not is_published(item, now_jst=now_jst)]
     upcoming.sort(key=lambda x: x["publish_at"])
     return upcoming
 
 
-def get_all_with_status(now_jst: datetime.datetime = None) -> list:
+def get_all_with_status(now_jst: datetime.datetime = None, allow_blocking: bool = False) -> list:
     """Return all scheduled articles with live `published` boolean flag for `/staff` dashboard."""
     now_jst = _coerce_naive_jst(now_jst)
     out = []
-    for item in sorted(get_all_scheduled_articles(allow_blocking=False), key=lambda x: x["publish_at"]):
+    for item in sorted(get_all_scheduled_articles(allow_blocking=allow_blocking), key=lambda x: x["publish_at"]):
         copy_item = dict(item)
         copy_item["published"] = is_published(item, now_jst=now_jst)
         out.append(copy_item)

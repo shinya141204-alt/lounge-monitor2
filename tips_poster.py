@@ -337,7 +337,7 @@ _FALLBACK_COLUMNS = [
     ("なぜ美容サロン激戦区の相席ラウンジは美人が多いのか？", "/guide/beauty-area-stage"),
     ("ダンスクラブ街×深夜2回転目の回遊法則", "/guide/club-area-midnight"),
     ("「男性先行」の店ほど女性が増える？女性は待たない新常識", "/guide/male-lead-mechanics"),
-    ("相席ラウンジ完全攻略ガイド（基本の立ち回り・お店選び）", "/guide/strategy"),
+    ("相席ラウンジ完全攻略ガイド（基本の立ち回り・お店選び）", "/guide"),
     ("全国60店舗超の曜日・時間帯別 統計データ白書", "/stats"),
     ("相席ラウンジ実践コラム・攻略記事一覧", "/columns"),
 ]
@@ -384,7 +384,7 @@ def _column_for_tip_index(idx: int) -> tuple:
     if idx == 49:
         return ("新宿エリア3店舗の使い分け・穴場ガイド", "/guide/shinjuku")
     if idx in (50, 51, 52):
-        return ("相席ラウンジ完全攻略ガイド（基本の立ち回り・お店選び）", "/guide/strategy")
+        return ("相席ラウンジ完全攻略ガイド（基本の立ち回り・お店選び）", "/guide")
     if idx in (53, 54, 55):
         return ("なぜ美容サロン激戦区の相席ラウンジは美人が多いのか？", "/guide/beauty-area-stage")
     if idx == 56:
@@ -471,7 +471,12 @@ def _title_for_column_path(col_path: str) -> str:
             return t
     try:
         import scheduled_articles
-        for item in scheduled_articles.get_published_articles():
+        if (col_path or "").startswith("/guide/"):
+            slug = col_path.split("/guide/", 1)[1].strip("/")
+            by_slug = scheduled_articles.get_article_by_slug(slug, allow_blocking=True)
+            if by_slug:
+                return by_slug.get("short_title") or by_slug.get("title") or "相席ラウンジ実践コラム"
+        for item in scheduled_articles.get_published_articles(allow_blocking=True):
             if item.get("path") == col_path:
                 return item.get("short_title") or item.get("title") or "相席ラウンジ実践コラム"
     except Exception:
@@ -661,7 +666,7 @@ HUMAN_OBSERVATION_SEEDS = (
     {"key": "weekday_wed_thu_calm", "lens": "週末のガヤガヤ感とは違う、水曜・木曜20時台の仕事終わり層の落ち着いた会話テンポ", "related_path": "/guide/weekday-strategy"},
     {"key": "salon_return_early_evening", "lens": "美容院やネイル帰りの早い時間帯（18時半〜20時）にふらっと立ち寄る女子組の空気", "related_path": "/guide/beauty-area-stage"},
     {"key": "local_business_trip_night", "lens": "札幌・仙台・福岡・広島など出張先の夜に、現地の美味しい店を聞く会話の弾みやすさ", "related_path": "/guide/local-vs-urban"},
-    {"key": "drink_pace_water_care", "lens": "お酒が強くない相手や2軒目組に、さらっとお水や温かいお茶を頼める気遣い", "related_path": "/guide/strategy"},
+    {"key": "drink_pace_water_care", "lens": "お酒が強くない相手や2軒目組に、さらっとお水や温かいお茶を頼める気遣い", "related_path": "/guide"},
     {"key": "resume_interview_trap", "lens": "初対面で休日や住んでる駅を一問一答で聞いてしまう『面接モード』から抜ける雑談感", "related_path": "/guide/first-10-minutes"},
     {"key": "instagram_vs_group_line", "lens": "会計前の社交辞令グループLINEより、話が盛り上がった瞬間のインスタ交換が自然に残る理由", "related_path": "/guide/second-venue"},
     {"key": "payday_vs_quiet_week", "lens": "給料日直後の混雑した週末と、月の半ばの落ち着いた平日の居心地の違い", "related_path": "/guide/rain-payday"},

@@ -219,6 +219,11 @@ _AFFILIATE_NAMES = {
     'supplement': '🥂 乾杯サポート・ナイトケアサプリ',
     'night_supplement': '🥂 乾杯サポート・ナイトケアサプリ',
     'women_night_supplement': '💄🥂 女性向け｜乾杯サポート・ナイトケアサプリ',
+    'second_venue_reservation': '🍽️ 一休.comレストラン（2軒目・ディナー予約枠）',
+    'ikyu_restaurant': '🍽️ 一休.comレストラン（2軒目・ディナー予約枠）',
+    'ikyu': '🍽️ 一休.comレストラン（2軒目・ディナー予約枠）',
+    'second_venue': '🍽️ 一休.comレストラン（2軒目・ディナー予約枠）',
+    'women_second_venue': '💄🍽️ 女性向け｜一休.comレストラン（女子会・アフタヌーンティー予約枠）',
 }
 
 _AREA_NAMES = {

@@ -1772,7 +1772,7 @@ class FullAuditRegressionTests(unittest.TestCase):
         sw_resp = self.client.get('/sw.js')
         try:
             sw_txt = sw_resp.data.decode('utf-8')
-            self.assertIn("CACHE_NAME = 'aiseki-navi-v89'", sw_txt)
+            self.assertIn("CACHE_NAME = 'aiseki-navi-v90'", sw_txt)
             self.assertIn("event.waitUntil", sw_txt)
         finally:
             sw_resp.close()
@@ -2506,6 +2506,7 @@ class AutonomousPdcaEngineTests(unittest.TestCase):
             self.assertEqual(r_board.status_code, 200)
             board_html = r_board.data.decode('utf-8')
             self.assertIn('自律PDCA作戦参謀・グロース統括ボード', board_html)
+            self.assertIn('24h以内CV 1件', board_html)
 
             with mock.patch('sns_editorial.get_gemini_api_key', return_value=''):
                 r_run = self.client.post('/api/pdca/run', json={'days': 14})
@@ -2574,6 +2575,261 @@ class AutonomousPdcaEngineTests(unittest.TestCase):
             self.assertTrue(auto_cycle['auto_published_result']['ok'])
             auto_slug = auto_cycle['auto_published_result']['slug']
             self.assertIsNotNone(scheduled_articles.get_article_by_slug(auto_slug))
+
+    def test_pdca_practicality_edge_cases_from_param_offhours_and_seven_offers(self):
+        import analytics
+        import pdca_engine
+
+        human_headers = {'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15'}
+
+        # 1. Verify public `/link/` anchors carry `?from=<route>` and omit `noreferrer`
+        for pub_path in ('/', '/grooming', '/for-women', '/store/oriental-lounge-shinjuku', '/guide/first-10-minutes'):
+            r_pub = self.client.get(pub_path, headers=human_headers)
+            self.assertEqual(r_pub.status_code, 200, msg=f"{pub_path} failed")
+            pub_html = r_pub.data.decode('utf-8')
+            self.assertNotIn('noreferrer sponsored', pub_html, msg=f"noreferrer still present on {pub_path}")
+            self.assertIn(f'?from={pub_path}', pub_html, msg=f"Missing ?from={pub_path} on {pub_path}")
+
+        # 2. Verify `/link/<id>?from=...` records exact page attribution even without Referer header,
+        #    while rejecting protocol-relative / external paths (`?from=//evil.example` -> `-`).
+        with mock.patch('sheets_store.read_rows', return_value=[]):
+            with analytics._lock:
+                analytics._pending.clear()
+            r_click = self.client.get('/link/women_second_venue?from=/for-women', headers=human_headers)
+            self.assertEqual(r_click.status_code, 302)
+            r_bad = self.client.get('/link/orbis?from=//evil.example/phish', headers=human_headers)
+            self.assertEqual(r_bad.status_code, 302)
+            with analytics._lock:
+                pending_labels = {(ev, lbl): cnt for (_d, ev, lbl), cnt in analytics._pending.items()}
+            self.assertEqual(pending_labels.get(('affiliate_click', 'women_second_venue @ /for-women')), 1)
+            self.assertEqual(pending_labels.get(('affiliate_click', 'orbis @ -')), 1)
+
+            desc_ikyu = analytics.describe_label('affiliate_click', 'women_second_venue @ /for-women')
+            self.assertIn('一休.comレストラン', desc_ikyu['title'])
+
+            # Simulate high-traffic x_rel (20 visits) alongside x22_hub_gap (3 visits) + high-PV zero-click articles
+            today_str = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).strftime('%Y-%m-%d')
+            mock_sheet_rows = [
+                [today_str, 'page_view', '/', '120'],
+                [today_str, 'page_view', '/guide/lounge-vs-screened-date', '24'],
+                [today_str, 'page_view', '/guide/second-venue', '19'],
+                [today_str, 'affiliate_click', 'dating_bachelor @ -', '6'],
+                [today_str, 'sns_inflow', 'x_rel', '20'],
+                [today_str, 'sns_inflow', 'x22_hub_gap', '3'],
+            ]
+            with analytics._lock:
+                analytics._pending.clear()
+                analytics._flushed.clear()
+                analytics._sheet_rows_cache['ts'] = 0.0
+                analytics._sheet_rows_cache['rows'] = None
+
+            with mock.patch('sheets_store.read_rows', return_value=mock_sheet_rows), \
+                 mock.patch('sns_editorial.get_gemini_api_key', return_value=''):
+                # 3. Off-hours / empty `live_stores=[]` must fall back to peak-hour benchmark (never 0 women / 0pt gap)
+                cycle = pdca_engine.run_pdca_cycle(
+                    live_stores=[],
+                    days=14,
+                    apply_actions=False,
+                    use_ai=False,
+                    record_log=False,
+                )
+
+            diag = cycle['diagnostics']
+            top_hub = diag['demand_gap']['top_hub']
+            self.assertTrue(top_hub.get('is_off_hours_benchmark'))
+            self.assertGreater(top_hub['live_women'], 0)
+            self.assertGreater(top_hub['gap_pt'], 0)
+
+            # 4. Zero-click articles must NOT be mislabeled as revenue winners when legacy `@ -` clicks exist
+            for w in diag['wins']:
+                self.assertNotIn('広告クリック 0件', w['detail'])
+                self.assertNotIn('広告クリック 0件', w['title'])
+            self.assertTrue(any('収益送客が稼働中' in w['title'] for w in diag['wins']))
+
+            # 5. All 7 offer categories exist (including `second_venue`) & legacy `@ -` clicks show migration note
+            offer_map = {o['category_key']: o for o in diag['offer_breakdown']}
+            self.assertEqual(len(offer_map), 7)
+            self.assertIn('second_venue', offer_map)
+            self.assertIn('ページ別計測へ移行中', offer_map['dating']['top_source_title'])
+
+            # 6. `x_rel` maps to `rel` and never prevents `hub_gap` from earning the top +4 boost
+            self.assertEqual(pdca_engine._classify_sns_tag('x_rel'), ('x', '19:00', 'rel'))
+            self.assertEqual(diag['proposed_directives']['sns_style_boosts'].get('hub_gap'), 4)
+
+            # 7. 2-step funnel prescriptions respect editorial rules across new killer guides & second_venue
+            rx_sv = pdca_engine._prescribe_page_funnel_upgrade('/guide/second-venue')
+            self.assertIn('second_venue_reservation', rx_sv['action_proposal'])
+            self.assertTrue(all(not lk.startswith('/link/') for lk in rx_sv['recommended_links']))
+            rx_lv = pdca_engine._prescribe_page_funnel_upgrade('/guide/lounge-vs-screened-date')
+            self.assertIn('/for-women', rx_lv['recommended_links'])
+            self.assertTrue(all(not lk.startswith('/link/') for lk in rx_lv['recommended_links']))
+            rx_dc = pdca_engine._prescribe_page_funnel_upgrade('/guide/dress-code-cleanliness', grooming_rate_low=True)
+            self.assertIn('/grooming', rx_dc['recommended_links'])
+            self.assertTrue(all(not lk.startswith('/link/') for lk in rx_dc['recommended_links']))
+            rx_home = pdca_engine._prescribe_page_funnel_upgrade('/')
+            self.assertIn('rank4_context', rx_home['recommended_funnel'])
+
+            # 8. Master `/staff/pdca` UI renders KPI strip, 7 categories, migration note, Reels studio link, and sleeping-articles drawer
+            with self.client.session_transaction() as sess:
+                sess['is_staff'] = True
+                sess['is_master'] = True
+            with mock.patch('sheets_store.read_rows', return_value=mock_sheet_rows):
+                r_ui = self.client.get('/staff/pdca?days=14')
+            self.assertEqual(r_ui.status_code, 200)
+            ui_html = r_ui.data.decode('utf-8')
+            for expected_snippet in (
+                '7大案件カテゴリ',
+                'ページ別計測へ移行中',
+                '/staff/sns-editorial?channel=instagram#reel-studio-section',
+                'class="sleeping-details"',
+                '#pdca-growth-actions',
+                '#pdca-sns',
+                '#pdca-articles',
+                '#pdca-history',
+            ):
+                self.assertIn(expected_snippet, ui_html)
+
+    def test_pdca_adversarial_cold_boot_cache_from_hardening_redirects_and_toggle_off(self):
+        import analytics
+        import column_editorial
+        import job_state
+        import pdca_engine
+        import scheduled_articles
+        import tips_poster
+
+        human_headers = {'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15'}
+        today_str = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).strftime('%Y-%m-%d')
+
+        # 1. Cold-boot non-blocking miss must NEVER poison `_directives_mem_cache` for blocking callers
+        persisted_dir = {
+            'updated_at': '2026-11-05 08:00:00',
+            'sns_style_boosts': {'hub_gap': 4},
+            'priority_column_paths': ['/guide/first-10-minutes'],
+            'recommended_column_theme': 'area_hopping',
+            'recommended_custom_topic': '新宿エリアの2軒目導線検証',
+            'focus_hub_label': '新宿・歌舞伎町',
+            'bottleneck_paths': [],
+        }
+        persisted_raw = json.dumps(persisted_dir, ensure_ascii=False)
+        pdca_engine.reset_pdca_cache_for_tests()
+        orig_loaded = job_state._sheets_loaded
+        job_state._sheets_loaded = False
+
+        def _fake_cold_get_value(prefix, allow_blocking=True, default=None):
+            if prefix == pdca_engine.PDCA_DIRECTIVES_KEY:
+                return persisted_raw if allow_blocking else None
+            return None
+
+        try:
+            with mock.patch.object(job_state, 'get_value', side_effect=_fake_cold_get_value):
+                non_blocking_res = pdca_engine.get_active_directives(allow_blocking=False)
+                self.assertEqual(non_blocking_res, {})
+                blocking_res = pdca_engine.get_active_directives(allow_blocking=True)
+                self.assertEqual(blocking_res.get('sns_style_boosts', {}).get('hub_gap'), 4)
+        finally:
+            job_state._sheets_loaded = orig_loaded
+            pdca_engine.reset_pdca_cache_for_tests()
+
+        # 2. `/concierge` uses `?from=/concierge`, bare `concierge` normalizes safely, and backslash/`@` payloads are rejected
+        r_conc = self.client.get('/concierge', headers=human_headers)
+        self.assertEqual(r_conc.status_code, 200)
+        self.assertIn('?from=/concierge', r_conc.data.decode('utf-8'))
+
+        with mock.patch('sheets_store.read_rows', return_value=[]):
+            with analytics._lock:
+                analytics._pending.clear()
+            self.client.get('/link/orbis?from=/concierge', headers=human_headers)
+            self.client.get('/link/dating_instant?from=concierge', headers=human_headers)
+            self.client.get('/link/orbis?from=/\\evil.example', headers=human_headers)
+            self.client.get('/link/orbis?from=/%5Cevil.example', headers=human_headers)
+            self.client.get('/link/orbis?from=/guide/foo@bar', headers=human_headers)
+            with analytics._lock:
+                pending_labels = {(ev, lbl): cnt for (_d, ev, lbl), cnt in analytics._pending.items()}
+            self.assertEqual(pending_labels.get(('affiliate_click', 'orbis @ /concierge')), 1)
+            self.assertEqual(pending_labels.get(('affiliate_click', 'dating_instant @ /concierge')), 1)
+            self.assertEqual(pending_labels.get(('affiliate_click', 'orbis @ -')), 3)
+
+            # 3. Canonical `/guide` in `tips_poster` + 301 legacy redirects preserve `?s=` inflow & `an_src` cookie
+            self.assertEqual(tips_poster._column_for_tip_index(50)[1], '/guide')
+            with analytics._lock:
+                analytics._pending.clear()
+            r_redir_g = self.client.get('/guide/strategy?s=x18_tip', headers=human_headers, follow_redirects=True)
+            self.assertEqual(r_redir_g.status_code, 200)
+            r_redir_l = self.client.get('/ladies?s=th20_ladies', headers=human_headers, follow_redirects=True)
+            self.assertEqual(r_redir_l.status_code, 200)
+            with analytics._lock:
+                inflow_pending = {(ev, lbl): cnt for (_d, ev, lbl), cnt in analytics._pending.items()}
+            self.assertEqual(inflow_pending.get(('sns_inflow', 'x18_tip @ /guide')), 1)
+            self.assertEqual(inflow_pending.get(('sns_inflow', 'th20_ladies @ /for-women')), 1)
+            self.assertIn('an_src=th20_ladies', '\n'.join(r_redir_l.headers.getlist('Set-Cookie')))
+
+        # 4. `auto_optimize_sns=False` is enforced immediately after `run_pdca_cycle(apply_actions=True)`,
+        #    hero revenue reconciles category EPC, history renders Japanese style names, and `use_ai_for_replenish` decouples cleanly
+        mock_rows = [
+            [today_str, 'page_view', '/', '100'],
+            [today_str, 'page_view', '/grooming', '30'],
+            [today_str, 'affiliate_click', 'hair_removal @ /grooming', '10'],
+            [today_str, 'sns_inflow', 'x22_hub_gap', '5'],
+        ]
+        with analytics._lock:
+            analytics._pending.clear()
+            analytics._flushed.clear()
+            analytics._sheet_rows_cache['ts'] = 0.0
+            analytics._sheet_rows_cache['rows'] = None
+
+        with mock.patch('sheets_store.read_rows', return_value=mock_rows), \
+             mock.patch('sns_editorial.get_gemini_api_key', return_value=''):
+            pdca_engine.update_pdca_settings(auto_optimize_sns=False, auto_replenish_columns=False)
+            res_off = pdca_engine.run_pdca_cycle(
+                live_stores=app_module.latest_data['full_data'],
+                days=14,
+                apply_actions=True,
+                use_ai=False,
+                record_log=True,
+            )
+            self.assertEqual(res_off['active_directives'].get('sns_style_boosts'), {})
+            self.assertEqual(res_off['active_directives'].get('priority_column_paths'), [])
+            self.assertEqual(pdca_engine.get_active_directives(allow_blocking=False).get('sns_style_boosts'), {})
+            self.assertEqual(res_off['history'][0]['boosted_styles'], [])
+
+            # Reconciled revenue: 10 hair_removal clicks * 160 EPC = 1,600 yen affiliate + AdSense >= 1,600 yen total
+            offer_sum = sum(o['est_revenue_yen'] for o in res_off['offer_breakdown'])
+            self.assertEqual(offer_sum, 1600)
+            self.assertEqual(res_off['diagnostics']['revenue']['est_aff_yen'], 1600)
+            self.assertGreaterEqual(res_off['diagnostics']['revenue']['est_total_yen'], 1600)
+
+            # Re-enable `auto_optimize_sns=True` + verify history table renders Japanese style label (`街別ギャップ・ハシゴ型(+4)`)
+            pdca_engine.update_pdca_settings(auto_optimize_sns=True, auto_replenish_columns=True)
+            future_naive = datetime.datetime(2026, 11, 25, 12, 0, 0)
+            seen_replenish_ai = []
+            orig_col_pipe = column_editorial.run_column_editorial_pipeline
+
+            def _spy_col_pipe(*args, **kwargs):
+                seen_replenish_ai.append(kwargs.get('use_ai'))
+                return orig_col_pipe(*args, **{**kwargs, 'use_ai': False})
+
+            with mock.patch.object(scheduled_articles, 'now_jst_naive', return_value=future_naive), \
+                 mock.patch.object(column_editorial, 'run_column_editorial_pipeline', side_effect=_spy_col_pipe):
+                res_on = pdca_engine.run_pdca_cycle(
+                    live_stores=app_module.latest_data['full_data'],
+                    days=14,
+                    apply_actions=True,
+                    use_ai=False,
+                    use_ai_for_replenish=True,
+                    record_log=True,
+                )
+            self.assertFalse(res_on['briefing']['is_ai'])
+            self.assertEqual(seen_replenish_ai, [True])
+
+            with self.client.session_transaction() as sess:
+                sess['is_staff'] = True
+                sess['is_master'] = True
+            r_board = self.client.get('/staff/pdca?days=14')
+            self.assertEqual(r_board.status_code, 200)
+            board_html = r_board.data.decode('utf-8')
+            self.assertIn('街別ギャップ・ハシゴ型(+4)', board_html)
+            self.assertNotIn('>hub_gap(+4)<', board_html)
+            pdca_engine.update_pdca_settings(auto_optimize_sns=True, auto_replenish_columns=False)
 
 
 class OrientalLoungeColdStartResilienceTests(unittest.TestCase):
@@ -4444,8 +4700,8 @@ class AIUltraGrowthSuiteTests(unittest.TestCase):
         app_module.clear_fast_http_caches()
         home_html = self.client.get('/').data.decode('utf-8')
         self.assertIn('calm.css?v=33', home_html)
-        self.assertIn('app.js?v=20261104_3', home_html)
-        self.assertIn('/sw.js?v=89', home_html)
+        self.assertIn('app.js?v=20261105_1', home_html)
+        self.assertIn('/sw.js?v=90', home_html)
 
         # 2. TikTok 9:16 Safe-Zone Reel Templates & Captions (zero bare 'オリエンタル' or 'OLG')
         sample_stores = [

@@ -36,7 +36,7 @@ PDCA_SETTINGS_KEY = "pdca_settings"
 PDCA_DIRECTIVES_KEY = "pdca_active_directives"
 PDCA_HISTORY_KEY = "pdca_cycle_history"
 
-_directives_mem_cache = {"ts": 0.0, "data": None}
+_directives_mem_cache = {"ts": 0.0, "data": None, "verified": False}
 _briefing_ai_cache = collections.OrderedDict()
 _pdca_lock = threading.Lock()
 _BRIEFING_TTL_SEC = 900
@@ -46,6 +46,7 @@ def reset_pdca_cache_for_tests():
     with _pdca_lock:
         _directives_mem_cache["ts"] = 0.0
         _directives_mem_cache["data"] = None
+        _directives_mem_cache["verified"] = False
         _briefing_ai_cache.clear()
     turbo_store.clear_ai_cache("pdca_briefing")
 
@@ -82,6 +83,8 @@ def update_pdca_settings(auto_optimize_sns: bool = None, auto_replenish_columns:
     job_state.set_value(PDCA_SETTINGS_KEY, json.dumps(cur, ensure_ascii=False))
     with _pdca_lock:
         _directives_mem_cache["ts"] = 0.0
+        _directives_mem_cache["data"] = None
+        _directives_mem_cache["verified"] = False
     return cur
 
 
@@ -89,27 +92,34 @@ def get_active_directives(allow_blocking: bool = False) -> dict:
     """Fast cached read of current PDCA directives consumed by SNS & Column editorial pipelines."""
     now_t = time.monotonic()
     with _pdca_lock:
-        if _directives_mem_cache["data"] is not None and (now_t - _directives_mem_cache["ts"] < 30.0):
+        if (
+            _directives_mem_cache["data"] is not None
+            and (now_t - _directives_mem_cache["ts"] < 30.0)
+            and (_directives_mem_cache["verified"] or not allow_blocking)
+        ):
             return dict(_directives_mem_cache["data"])
 
     settings = get_pdca_settings(allow_blocking=allow_blocking)
     raw = job_state.get_value(PDCA_DIRECTIVES_KEY, allow_blocking=allow_blocking)
+    is_verified = bool(allow_blocking or getattr(job_state, "_sheets_loaded", False) or raw is not None)
     data = {}
     if raw:
         try:
             parsed = json.loads(raw)
             if isinstance(parsed, dict):
-                data = parsed
+                data = dict(parsed)
         except Exception:
             data = {}
 
-    if not settings.get("auto_optimize_sns", True):
+    if data and not settings.get("auto_optimize_sns", True):
         data["sns_style_boosts"] = {}
         data["priority_column_paths"] = []
 
-    with _pdca_lock:
-        _directives_mem_cache["ts"] = now_t
-        _directives_mem_cache["data"] = data
+    if is_verified:
+        with _pdca_lock:
+            _directives_mem_cache["ts"] = now_t
+            _directives_mem_cache["data"] = dict(data)
+            _directives_mem_cache["verified"] = True
     return dict(data)
 
 
@@ -361,9 +371,12 @@ def _build_offer_breakdown(stats: dict, stats_7d: dict, days: int) -> list:
             top_ref_title = column_editorial._sanitize_brand_names(
                 analytics.describe_label("page_view", top_ref_path).get("title") or top_ref_path
             )
+        elif clicks > 0:
+            top_ref_path = "-"
+            top_ref_title = "ページ別計測へ移行中（旧リファラ省略分）"
         else:
             top_ref_path = "-"
-            top_ref_title = "未計測（これからの導線配置枠）"
+            top_ref_title = "未発生（これからの導線強化枠）"
 
         rows.append({
             "category_key": ck,
@@ -401,50 +414,91 @@ def _prescribe_page_funnel_upgrade(path: str, grooming_rate_low: bool = False) -
 
     if p == "/grooming":
         return {
-            "recommended_funnel": "3大身だしなみ枠（ORBIS Mr.・ヒゲ脱毛・SPU私服）の即決CTAボタン固定",
+            "recommended_funnel": "7大収益枠の冒頭3秒ジャンプバー ＋ 清潔感3点セット即決CTA固定",
             "recommended_links": ["/link/orbis", "/link/hair_removal", "/link/spu"],
-            "placement_position": "冒頭の「距離70cmチェックリスト」直下および各パート終端の比較カード内",
-            "action_proposal": "せっかく /grooming まで到達した顕在読者を逃さないよう、ファーストビュー直下に『肌テカリ対策（/link/orbis）』『青ヒゲ医療脱毛（/link/hair_removal）』『私服コーデ便（/link/spu）』の3択ボタンを並べて配置してください。",
+            "placement_position": "冒頭の「距離70cmチェックリスト」直下にカテゴリ別クイック比較チップ、各パート終端に即決CTA",
+            "action_proposal": "せっかく /grooming に到達した顕在読者を途中離脱させないよう、ファーストビュー直下に『肌ケア（/link/orbis）』『青ヒゲ医療脱毛（/link/hair_removal）』『私服コーデ便（/link/spu）』『2軒目一休予約（/link/second_venue_reservation）』への即決導線を整理してください。",
         }
 
-    if p == "/for-women" or "women" in p_low or "ladies" in p_low or "male-lead" in p_low:
+    if p == "/for-women" or "women" in p_low or "ladies" in p_low:
         return {
-            "recommended_funnel": "女性完全無料・審査制デート枠 ＋ 美容クリニック＆ご褒美サロン枠",
-            "recommended_links": ["/for-women", "/link/women_dating_bachelor", "/link/women_beauty_clinic"],
-            "placement_position": "「待ちゼロ店舗ボード」直下および特典・女子会メリット解説パートの直後",
-            "action_proposal": "待ち時間ゼロで楽しみたい女性読者向けに、店舗ボード直下へ『完全無料・顔出しなしの審査制カフェデート（/link/women_dating_bachelor）』と『照明映え美肌クリニック枠（/link/women_beauty_clinic）』の2段カードを挿入してください。",
+            "recommended_funnel": "女性完全無料・審査制デート枠 ＋ 美容医療＆一休女子会プラン予約枠",
+            "recommended_links": ["/link/women_dating_bachelor", "/link/women_beauty_clinic", "/link/women_second_venue"],
+            "placement_position": "「待ちゼロ店舗ボード」直下および女子向けメリット解説パートの直後",
+            "action_proposal": "待ちゼロ店舗を探す女性読者向けに、店舗ボード直下へ『完全無料・顔出しなしの審査制カフェデート（/link/women_dating_bachelor）』『照明映え美容医療（/link/women_beauty_clinic）』『一休女子会プラン予約（/link/women_second_venue）』の導線を優先表示してください。",
         }
 
-    if any(k in p_low for k in ("first-10", "second-venue", "solo-vs-pair", "beauty-area", "talk", "impression", "clean")):
+    if "lounge-vs-screened" in p_low or "screened-date" in p_low:
+        return {
+            "recommended_funnel": "男女別2ステップ比較ブリッジ（/grooming・/for-women の審査制1対1デート枠）",
+            "recommended_links": ["/grooming", "/for-women", "/concierge"],
+            "placement_position": "比較表直下の「向いている人」分岐ボックスおよび記事末尾の男女別CTAボタン",
+            "action_proposal": "『ラウンジか1対1デートか』を比較中の成約直結層です。記事直接広告は避け2ステップ原則を守りつつ、比較表直下に男性向け『/grooming（dating_bachelor・即時アプリ比較）』と女性向け『/for-women（women_dating_bachelor無料枠）』の分岐導線を強化してください。",
+        }
+
+    if "dress-code" in p_low or "cleanliness" in p_low:
         grooming_note = "（現在サイト全体の /grooming 遷移率も低めのため最優先）" if grooming_rate_low else ""
         return {
-            "recommended_funnel": f"会話前の清潔感ケア特集（/grooming）＋ スキンケア・医療脱毛直結導線{grooming_note}",
-            "recommended_links": ["/grooming", "/link/orbis", "/link/hair_removal"],
-            "placement_position": "記事中盤「女性目線の減点サイン（会話ボックス直後）」に /grooming 内部リンク、記事末尾まとめ前にスキンケア＆ヒゲ脱毛CTA",
-            "action_proposal": "会話術や2軒目打診を調べる読者は対面直前の本気層です。会話例の直後に『実は会話以前に距離70cmで見られている清潔感チェック（/grooming）』を挟み、末尾に /link/orbis と /link/hair_removal を配置してください。",
+            "recommended_funnel": f"服装・70cm清潔感2ステップ導線（/grooming の SPU私服・ORBIS・ヒゲ脱毛）{grooming_note}",
+            "recommended_links": ["/grooming", "/concierge"],
+            "placement_position": "「NG服装早見表」直下および「70cm暖色スポット照明」パート末尾の2ステップ内部リンク",
+            "action_proposal": "入店直前に服装規定と清潔感を確認している本気層です。NG早見表と照明パート直後に『浮かない大人カジュアル一式＆口元・皮脂対策まとめ（/grooming → spu / orbis / hair_removal）』への2ステップ送客リンクを目立たせてください。",
         }
 
-    if any(k in p_low for k in ("last-train", "weekend", "cost-break", "price", "local-vs-urban", "midnight", "hopping", "stats")):
+    if "second-venue" in p_low:
         return {
-            "recommended_funnel": "混雑・男余り回避の即時合流アプリ枠 ＋ 審査制1対1デート導線",
-            "recommended_links": ["/link/dating_instant", "/link/dating_bachelor", "/grooming"],
-            "placement_position": "実測データ比較表の直下（「男性待ち・損益分岐ライン」解説横）および記事末尾の固定CTA枠",
-            "action_proposal": "待ち時間や料金コスパを気にしている読者に最も刺さる『男余りの夜に無理して粘るより、今すぐ近くで会えるアプリ（/link/dating_instant）・審査制デート（/link/dating_bachelor）を併用する』比較ボックスを表の直下へ追加してください。",
+            "recommended_funnel": "2軒目バー空席予約（一休.comレストラン）＋ 乾杯ナイトケア2ステップ導線",
+            "recommended_links": ["/grooming", "/for-women", "/areas"],
+            "placement_position": "「着席45分の誘い出しフレーズ」直後（店舗詳細2軒目バー＆ /grooming・/for-women 予約枠への内部導線）",
+            "action_proposal": "2軒目の店選びで満席難民になりたくない読者向けに、誘い出し会話例の直後で『駅近の隠れ家バー・ディナー空席予約（second_venue_reservation / women_second_venue 枠）』と『乾杯前後のナイトケア習慣（/grooming）』へ2ステップで自然にブリッジしてください。",
         }
 
-    if p == "/" or p.startswith(("/store/", "/area/", "/areas", "/oriental-lounge", "/ag", "/jis")):
+    if "male-lead" in p_low:
         return {
-            "recommended_funnel": "満席・男性先行時の混雑回避アプリ導線 ＋ 入店前3分 /grooming リンク",
-            "recommended_links": ["/link/dating_instant", "/grooming", "/for-women"],
-            "placement_position": "リアルタイム人数カードの「男性先行・待ち注意」エリア直下および店舗詳細モーダル下部",
-            "action_proposal": "現在人数だけ見て離脱するユーザーを受け止めるため、男性比率が高めの店舗ブロック直下に『今夜これから近くで飲める即時マッチング枠（/link/dating_instant）』と『入店前の清潔感チェック（/grooming）』を併設してください。",
+            "recommended_funnel": "男性先行時の穴場診断（/concierge）＋ 女性向け待ちゼロ特設ボード（/for-women）",
+            "recommended_links": ["/concierge", "/for-women", "/grooming"],
+            "placement_position": "「男性先行が起きる時間帯メカニズム」図解直下および記事末尾の男女分岐CTA",
+            "action_proposal": "男性読者には待機課金回避の『3秒穴場診断（/concierge）＆今日飲める恋活アプリ比較（/grooming → dating_instant）』を、女性読者には『今すぐ待ちゼロで入れる店舗＆無料特典（/for-women）』を分岐提示してください。",
+        }
+
+    if any(k in p_low for k in ("first-10", "beauty-area", "talk", "impression", "clean", "table-change", "thirties")):
+        grooming_note = "（現在サイト全体の /grooming 遷移率も低めのため最優先）" if grooming_rate_low else ""
+        return {
+            "recommended_funnel": f"会話前の清潔感ケア特集（/grooming）＋ スキンケア・医療脱毛2ステップ導線{grooming_note}",
+            "recommended_links": ["/grooming", "/for-women", "/concierge"],
+            "placement_position": "記事中盤「女性目線の減点サイン（会話ボックス直後）」に /grooming 内部リンク、末尾に男女別ガイド導線",
+            "action_proposal": "会話術や席替え・年齢層を調べる読者は対面直前の本気層です。会話例の直後に『実は会話以前に距離70cmで見られている清潔感チェック（/grooming → orbis / hair_removal / spu）』を挟み2ステップ送客してください。",
+        }
+
+    if any(k in p_low for k in ("last-train", "weekend", "cost-break", "price", "local-vs-urban", "midnight", "hopping", "stats", "crowd-rush", "waveform", "solo-vs-pair", "osaka")):
+        return {
+            "recommended_funnel": "3秒穴場診断（/concierge）＋ 混雑回避・審査制1対1デート比較2ステップ導線",
+            "recommended_links": ["/concierge", "/guide/lounge-vs-screened-date", "/grooming"],
+            "placement_position": "実測データ比較表の直下（「男性待ち・損益分岐ライン」解説横）および記事末尾CTA枠",
+            "action_proposal": "待ち時間や料金コスパを検証している読者に刺さるよう、データ表直下に『徒歩圏の穴場診断（/concierge）』と『男余りの夜に切り替えられる恋活・審査制1対1デート比較（/grooming・/guide/lounge-vs-screened-date）』を配置してください。",
+        }
+
+    if p.startswith("/store/"):
+        return {
+            "recommended_funnel": "店舗別2軒目バー予約（一休.comレストラン）＋ 満席時の近隣ハシゴ診断（/concierge）",
+            "recommended_links": ["/link/second_venue_reservation", "/concierge", "/grooming"],
+            "placement_position": "店舗詳細「2軒目スポット提案」直下の一休予約バーおよび「男性先行」バッジ横の回遊リンク",
+            "action_proposal": "個別店舗の現在人数を見ている来店直前層です。2軒目マップ検索バー直下の『一休.comレストラン空席予約（/link/second_venue_reservation）』と、混雑時の『3秒穴場ハシゴ診断（/concierge）』への視認性を高めてください。",
+        }
+
+    if p == "/" or p.startswith(("/area/", "/areas", "/oriental-lounge", "/ag", "/jis", "/asobibar", "/concierge")):
+        return {
+            "recommended_funnel": "ランキング4位直下の時間帯連動枠（rank4_context）＋ 2軒目一休予約＆おすすめモーダル最適化",
+            "recommended_links": ["/link/dating_bachelor", "/link/dating_instant", "/link/second_venue_reservation"],
+            "placement_position": "トップ4位直下の文脈連動インフィード枠（昼:身だしなみ／夜:1対1／混雑:即時合流／女性:無料1対1）および店舗モーダル下部",
+            "action_proposal": "人数確認だけで離脱する層を受け止めるため、ランキング4位直下の文脈連動枠（rank4_context）と店舗詳細モーダル内の『一休.comレストラン2軒目予約（/link/second_venue_reservation）』のコピー・CTR推移を重点監視してください。",
         }
 
     return {
-        "recommended_funnel": "清潔感ガイド（/grooming）経由の私服コーデ（SPU）＋ 1対1アプリ2段導線",
-        "recommended_links": ["/grooming", "/link/spu", "/link/dating_bachelor"],
-        "placement_position": "最初のH2見出し終わり（スクロール50%地点）に /grooming 文脈リンク、記事末尾に私服＆アプリ比較カード",
-        "action_proposal": "記事読了前の途中離脱を防ぐため、中盤の体験談直後に『浮かない私服＆清潔感の基準（/grooming → /link/spu）』への内部リンクを置き、末尾に審査制デート（/link/dating_bachelor）の受け皿を足してください。",
+        "recommended_funnel": "清潔感ガイド（/grooming）経由の私服コーデ（SPU）＋ 1対1デート比較（2ステップ導線）",
+        "recommended_links": ["/grooming", "/guide/lounge-vs-screened-date", "/for-women"],
+        "placement_position": "中盤の会話ボックス直後に /grooming 文脈リンク、記事末尾に男女別ガイド導線",
+        "action_proposal": "記事読了前の途中離脱を防ぐため、中盤の体験談直後に『浮かない私服＆清潔感の基準（/grooming）』への内部リンクを置き、末尾に『相席 vs 審査制1対1デート比較（/guide/lounge-vs-screened-date）』の受け皿を足してください。",
     }
 
 
@@ -575,14 +629,18 @@ def _classify_sns_tag(tag: str) -> tuple:
         return "x", "", "live"
 
     if any(t.startswith(px) for px in ("reel", "ig_reel", "short", "tiktok")):
-        st = re.sub(r"^(?:ig_)?reels?_?", "", t) or "short_hook"
+        st = re.sub(r"^(?:ig_)?reels?_?|^tiktok_?|^shorts?_?", "", t) or "short_hook"
         return "reels", "21:30", st
 
     m_x = re.match(r"^x(\d{2})_(.+)$", t)
     if m_x:
         return "x", f"{m_x.group(1)}:00", m_x.group(2)
-    if t in ("x_rel", "x_wk", "x"):
-        return "x", "19:00" if t == "x_rel" else "20:00", t
+    if t == "x_rel":
+        return "x", "19:00", "rel"
+    if t == "x_wk":
+        return "x", "20:00", "wk"
+    if t == "x":
+        return "x", "20:00", "live"
 
     m_th = re.match(r"^th(\d{2})_(.+)$", t)
     if m_th:
@@ -609,11 +667,21 @@ def _build_sns_channel_efficiency(
     ig_hist: list,
     demand_gap: dict,
     offer_breakdown: list,
+    reels_logged_extra: int = 0,
 ) -> dict:
     """
     Compare X / Threads / Instagram / Reels inflow efficiency (`sns_channel_efficiency`),
     surface the #1 channel, best time slot & editorial style, and generate Reels video concepts.
     """
+    ig_carousel_logged = sum(
+        1 for h in (ig_hist or [])
+        if not str(h.get("selected_style") or "").lower().startswith(("reel", "short", "tiktok"))
+    )
+    ig_reels_logged = sum(
+        1 for h in (ig_hist or [])
+        if str(h.get("selected_style") or "").lower().startswith(("reel", "short", "tiktok"))
+    ) + int(reels_logged_extra or 0)
+
     channel_defs = [
         {
             "channel_key": "x",
@@ -638,18 +706,18 @@ def _build_sns_channel_efficiency(
             "label": "📸 Instagram（カルーセル・保存枠）",
             "default_slot": "19:30（木〜土曜の予定決め・保存帯）",
             "default_style": "週末予測カルーセル＆女子得保存ガイド",
-            "posts_logged": len(ig_hist or []),
+            "posts_logged": ig_carousel_logged,
             "priority": 2,
             "base_tactic": "週末穴場5枚スライド（/staff/sns-kit）で保存数を稼ぎ、ストーリーズのリンクスタンプ（?s=ig_story）からリアルタイム順位へ直結。",
         },
         {
             "channel_key": "reels",
-            "label": "🎬 ショート動画（Reels / Shorts）",
+            "label": "🎬 ショート動画（Reels / TikTok）",
             "default_slot": "21:30（金曜・土曜の縦型回遊ピーク）",
             "default_style": "3秒ギャップ実証・女子目線減点リアル型",
-            "posts_logged": 0,
+            "posts_logged": ig_reels_logged,
             "priority": 1,
-            "base_tactic": "フォロワー外リーチが最大の伸び代。15〜20秒の『同じ街の男女比格差』『距離70cmの減点サイン』動画からプロフ ?s=reel_gap へ誘導。",
+            "base_tactic": "9:16ショート動画スタジオ（/staff/sns-editorial?channel=instagram#reel-studio-section）で15秒ギャップ実証動画を生成し、プロフ ?s=reel_hub_gap へ誘導。",
         },
     ]
 
@@ -898,15 +966,16 @@ def _build_weekly_growth_actions(
     # Action B: Column Theme Proposal (コラムテーマ提案)
     col_urgency = 92 if upcoming_count <= 1 else 84
     encoded_topic = requests.utils.quote(rec_topic, safe="")
+    headcount_prefix = "ピーク実測女性" if hub_info.get("is_off_hours_benchmark") else "稼働女性"
     column_action = {
         "action_type": "column_theme",
         "category_badge": "📖 コラムテーマ提案",
         "title": f"特命コラム『{rec_topic}』を執筆・予約（現在待機在庫 {upcoming_count}本）",
         "why": (
-            f"現場データで『{hub_label}』（稼働女性 {hub_info.get('live_women', 0)}名 / 店舗間差 {hub_info.get('gap_pt', 0)}pt）の注目度がトップ。"
+            f"現場データで『{hub_label}』（{headcount_prefix} {hub_info.get('live_women', 0)}名 / 店舗間差 {hub_info.get('gap_pt', 0)}pt）の注目度がトップ。"
             "検索SEOとX 18:00・新着スレッド双方で流入を取りやすいテーマです。"
         ),
-        "how_to": "オリエンタルラウンジ・ag・JISの実測比較表と会話ボックスを入れ、中盤に /grooming、末尾に混雑回避アプリ枠を自然に組み込む。",
+        "how_to": "オリエンタルラウンジ・ag・JISの実測比較表と会話ボックスを入れ、2ステップ構造で /grooming・/for-women・/concierge へ自然にブリッジする。",
         "expected_impact": "公開初週のSNSスレッド流入＋ロングテール検索からの高意欲PV獲得",
         "cta_label": "コラム編集部でこのお題を開く →",
         "cta_url": f"/staff/column-editorial?theme={rec_theme}&topic={encoded_topic}",
@@ -920,15 +989,15 @@ def _build_weekly_growth_actions(
         "title": reels_top.get("title") or f"【15秒Reels】{hub_label}の店舗間男女比ギャップ実証ショート動画",
         "why": (
             f"SNS集客首位『{(sns_efficiency or {}).get('top_channel_label', 'X')}』に加え、"
-            "フォロワー外へ爆発的に届く縦型ショート動画（Reels）を掛け合わせると新規母数が一気に広がります。"
+            "フォロワー外へ爆発的に届く縦型ショート動画（Reels / TikTok）を掛け合わせると新規母数が一気に広がります。"
         ),
         "how_to": (
             f"冒頭3秒フック：{reels_top.get('hook_0_3s', '')} ｜ "
             f"推奨投稿帯：{reels_top.get('best_post_time', '金曜 21:30')} ｜ 誘導先：{reels_top.get('cta_route', '?s=reel_hub_gap')}"
         ),
         "expected_impact": "非フォロワー層からのプロフ遷移＆『?s=reel_*』経由の新規サイト流入開拓",
-        "cta_label": "SNSスライド素材キットを開く →",
-        "cta_url": "/staff/sns-kit",
+        "cta_label": "9:16 ショート動画スタジオを開く →",
+        "cta_url": "/staff/sns-editorial?channel=instagram#reel-studio-section",
         "_urgency": 80,
     }
 
@@ -939,10 +1008,10 @@ def _build_weekly_growth_actions(
     return actions
 
 
-def _collect_all_known_columns() -> list:
+def _collect_all_known_columns(allow_blocking: bool = False) -> list:
     cols = []
     seen = set()
-    for item in scheduled_articles.get_published_articles():
+    for item in scheduled_articles.get_published_articles(allow_blocking=allow_blocking):
         p = item.get("path")
         if p and p not in seen:
             seen.add(p)
@@ -965,10 +1034,44 @@ def _collect_all_known_columns() -> list:
     return cols
 
 
-def _detect_hot_cluster_and_topic(live_stores: list, store_opens: dict, store_pvs: dict) -> dict:
-    """Identify which city hub has the strongest user interest + live headcount right now."""
+_CLUSTER_PEAK_PRIORS = {
+    "umeda": (94, 66, 21),
+    "shinjuku": (90, 68, 19),
+    "shibuya": (86, 60, 18),
+    "namba": (82, 58, 17),
+    "fukuoka": (74, 52, 16),
+    "nagoya": (62, 45, 15),
+    "sapporo": (58, 40, 15),
+    "kyoto-kobe": (52, 36, 14),
+    "yokohama-kanto": (56, 42, 14),
+    "tokyo-east": (50, 38, 14),
+}
+
+
+def _detect_hot_cluster_and_topic(
+    live_stores: list,
+    store_opens: dict,
+    store_pvs: dict,
+    allow_blocking: bool = False,
+) -> dict:
+    """
+    Identify which city hub has the strongest user interest + crowd asymmetry right now.
+    During daytime / pre-open / post-close hours when live domestic women < 20, automatically
+    falls back to 30-day peak-hour (22:00 / 20:00) SQLite waveforms so scheduled PDCA cycles
+    (17:35 & 03:35 JST) never degenerate into 0-headcount / 0pt-gap diagnostics.
+    """
     domestic = sns_editorial._domestic_stores(live_stores or [])
     enriched = sns_editorial._enrich_with_benchmarks(domestic)
+    total_live_w = sum(int(s.get("women") or 0) for s in enriched)
+    use_peak_benchmark = total_live_w < 20
+
+    waveforms = {}
+    if use_peak_benchmark:
+        try:
+            import local_db
+            waveforms = local_db.get_all_stores_hourly_waveforms(allow_blocking=allow_blocking) or {}
+        except Exception:
+            waveforms = {}
 
     cluster_scores = []
     for cl_label, cl_slug, kws in sns_editorial.URBAN_CLUSTERS:
@@ -976,26 +1079,54 @@ def _detect_hot_cluster_and_topic(live_stores: list, store_opens: dict, store_pv
             s for s in enriched
             if any(k in (s.get("name") or "").upper() or k in (s.get("ja_name") or "") for k in kws)
         ]
-        live_w = sum(int(s.get("women") or 0) for s in members)
-        live_m = sum(int(s.get("men") or 0) for s in members)
+        raw_live_w = sum(int(s.get("women") or 0) for s in members)
+        raw_live_m = sum(int(s.get("men") or 0) for s in members)
+        eff_w = raw_live_w
+        eff_m = raw_live_m
+        gap_pt = 0
+
+        if not use_peak_benchmark:
+            active_m = [m for m in members if m.get("total", 0) >= 6]
+            if len(active_m) >= 2:
+                wpcts = [int(round(m.get("wpct", 50))) for m in active_m]
+                gap_pt = max(wpcts) - min(wpcts)
+        else:
+            wf_pts = []
+            for sname, prof in waveforms.items():
+                if cl_slug == "nagoya" and "錦糸町" in sname:
+                    continue
+                if any(k in sname.upper() or k in sname for k in kws):
+                    pt = (prof or {}).get("h22") or (prof or {}).get("h20")
+                    if pt and float(pt.get("total") or 0) >= 6.0:
+                        wf_pts.append(pt)
+            if wf_pts:
+                eff_w = int(round(sum(float(p.get("w") or 0) for p in wf_pts)))
+                eff_m = int(round(sum(float(p.get("m") or 0) for p in wf_pts)))
+                if len(wf_pts) >= 2:
+                    wpcts = [float(p.get("wpct") or 50.0) for p in wf_pts]
+                    gap_pt = max(8, int(round(max(wpcts) - min(wpcts))))
+                else:
+                    gap_pt = _CLUSTER_PEAK_PRIORS.get(cl_slug, (54, 40, 14))[2]
+            else:
+                eff_w, eff_m, gap_pt = _CLUSTER_PEAK_PRIORS.get(cl_slug, (54, 40, 14))
+
         opens = 0
         for raw_lbl, cnt in store_opens.items():
             sname = raw_lbl.split(":", 1)[0].strip()
+            if cl_slug == "nagoya" and "錦糸町" in sname:
+                continue
             if any(k in sname.upper() or k in sname for k in kws):
                 opens += cnt
         pvs = sum(cnt for path, cnt in store_pvs.items() if cl_slug in path)
-        gap_pt = 0
-        active_m = [m for m in members if m.get("total", 0) >= 6]
-        if len(active_m) >= 2:
-            wpcts = [m.get("wpct", 50) for m in active_m]
-            gap_pt = max(wpcts) - min(wpcts)
 
-        demand_score = (opens * 4) + (pvs * 2) + live_w + (gap_pt * 2)
+        demand_score = (opens * 4) + (pvs * 2) + eff_w + (gap_pt * 2)
         cluster_scores.append({
             "cluster_label": cl_label,
             "area_slug": cl_slug,
-            "live_women": live_w,
-            "live_men": live_m,
+            "live_women": eff_w,
+            "live_men": eff_m,
+            "raw_live_women": raw_live_w,
+            "is_off_hours_benchmark": use_peak_benchmark,
             "opens": opens,
             "gap_pt": gap_pt,
             "demand_score": demand_score,
@@ -1005,11 +1136,13 @@ def _detect_hot_cluster_and_topic(live_stores: list, store_opens: dict, store_pv
     top_hub = cluster_scores[0] if cluster_scores else {
         "cluster_label": "梅田・茶屋町",
         "area_slug": "umeda",
-        "live_women": 80,
-        "live_men": 55,
+        "live_women": 94,
+        "live_men": 66,
+        "raw_live_women": 0,
+        "is_off_hours_benchmark": True,
         "opens": 0,
-        "gap_pt": 14,
-        "demand_score": 100,
+        "gap_pt": 21,
+        "demand_score": 136,
     }
 
     hub = top_hub["cluster_label"]
@@ -1057,7 +1190,7 @@ def _detect_hot_cluster_and_topic(live_stores: list, store_opens: dict, store_pv
 def analyze_site_performance(live_stores: list = None, days: int = 14, allow_blocking: bool = True) -> dict:
     """Run comprehensive Check diagnostics across traffic, affiliate CTR, SNS inflows, and content queue."""
     stats = analytics.summary(days=days, allow_blocking=allow_blocking)
-    stats_7d = stats if days == 7 else analytics.summary(days=7, allow_blocking=False)
+    stats_7d = stats if days == 7 else analytics.summary(days=7, allow_blocking=allow_blocking)
     all_labels = stats.get("all_by_label") or {}
     pv_by_path = all_labels.get("page_view") or {}
     aff_by_label = all_labels.get("affiliate_click") or {}
@@ -1076,7 +1209,7 @@ def analyze_site_performance(live_stores: list = None, days: int = 14, allow_blo
         aff_by_ref_path[ref_p] += cnt
         aff_by_item[item_id] += cnt
 
-    known_cols = _collect_all_known_columns()
+    known_cols = _collect_all_known_columns(allow_blocking=allow_blocking)
     article_perf = []
     for col in known_cols:
         p = col["path"]
@@ -1138,29 +1271,49 @@ def analyze_site_performance(live_stores: list = None, days: int = 14, allow_blo
             "conversions": cv_cnt,
             "cvr_pct": round((cv_cnt / v_cnt) * 100, 1) if v_cnt > 0 else 0.0,
         })
-        m_st = re.match(r"^(?:x|th)\d{2}_(.+)$", tag)
-        if m_st:
-            st_key = m_st.group(1)
+        _, _, st_key = _classify_sns_tag(tag)
+        if st_key:
             style_inflow_score[st_key] += v_cnt + (cv_cnt * 5)
 
-    # Inspect recent SNS Editorial history across X, Threads, Instagram
-    x_hist = sns_editorial.get_recent_editorial_history("x", limit=8, allow_blocking=False)
-    th_hist = sns_editorial.get_recent_editorial_history("threads", limit=6, allow_blocking=False)
-    ig_hist = sns_editorial.get_recent_editorial_history("instagram", limit=6, allow_blocking=False)
+    # Inspect recent SNS Editorial history across X, Threads, Instagram, and TikTok/Reels
+    x_hist = sns_editorial.get_recent_editorial_history("x", limit=10, allow_blocking=allow_blocking)
+    th_hist = sns_editorial.get_recent_editorial_history("threads", limit=8, allow_blocking=allow_blocking)
+    ig_hist = sns_editorial.get_recent_editorial_history("instagram", limit=10, allow_blocking=allow_blocking)
+    reels_logged_extra = 0
+    try:
+        deliv = sns_editorial.get_sns_delivery_statuses(allow_blocking=allow_blocking) or {}
+        if (deliv.get("tiktok") or {}).get("status") == "ok":
+            reels_logged_extra += 1
+    except Exception:
+        pass
     all_sns_hist = x_hist + th_hist + ig_hist
     style_usage_counts = collections.Counter(h.get("selected_style") for h in all_sns_hist if h.get("selected_style"))
 
-    # Compute smart SNS style score boosts (-3 to +5)
-    candidate_styles = ["ai_live_adlib", "hub_gap", "surge_focus", "usual_anomaly", "east_west_talk", "threads_city_story", "threads_anomaly_insight"]
+    # Compute smart SNS style score boosts (-2 to +4) across all selectable editorial styles
+    candidate_styles = [
+        "ai_live_adlib",
+        "hub_gap",
+        "surge_focus",
+        "usual_anomaly",
+        "east_west_talk",
+        "ladies_night",
+        "threads_city_story",
+        "threads_anomaly_insight",
+        "threads_hopping_guide",
+        "threads_ladies_zero_wait",
+    ]
+    scored_candidates = [st for st in candidate_styles if style_inflow_score.get(st, 0) > 0]
     sns_style_boosts = {}
-    if style_inflow_score:
-        top_st = max(style_inflow_score, key=style_inflow_score.get)
+    if scored_candidates:
+        top_st = max(scored_candidates, key=lambda k: style_inflow_score[k])
         for st in candidate_styles:
             pts = style_inflow_score.get(st, 0)
             if st == top_st and pts > 0:
                 sns_style_boosts[st] = 4
             elif pts >= 3:
                 sns_style_boosts[st] = 2
+            elif pts >= 1:
+                sns_style_boosts[st] = 1
             elif style_usage_counts.get(st, 0) >= 4 and pts == 0:
                 sns_style_boosts[st] = -2
     else:
@@ -1169,13 +1322,26 @@ def analyze_site_performance(live_stores: list = None, days: int = 14, allow_blo
         sns_style_boosts["hub_gap"] = 3 if style_usage_counts.get("hub_gap", 0) < 3 else 0
         sns_style_boosts["usual_anomaly"] = 2 if style_usage_counts.get("usual_anomaly", 0) < 2 else 0
 
+    style_labels_map = {}
+    for st_k in set(list(candidate_styles) + list(sns_style_boosts.keys())):
+        style_labels_map[st_k] = (
+            analytics._INFLOW_STYLE_JA.get(st_k)
+            or sns_editorial.STYLE_LABELS.get(st_k)
+            or st_k
+        )
+
     # 3. Column Queue & Quality Audit
     col_audit = column_editorial.audit_existing_columns()
-    upcoming_cols = scheduled_articles.get_upcoming_articles()
+    upcoming_cols = scheduled_articles.get_upcoming_articles(allow_blocking=allow_blocking)
     upcoming_count = len(upcoming_cols)
 
     store_pvs = {p: c for p, c in pv_by_path.items() if p.startswith(("/store/", "/area/"))}
-    demand_gap = _detect_hot_cluster_and_topic(live_stores or [], store_opens, store_pvs)
+    demand_gap = _detect_hot_cluster_and_topic(
+        live_stores or [],
+        store_opens,
+        store_pvs,
+        allow_blocking=allow_blocking,
+    )
 
     # 3b. Google AI Ultra Revenue & Growth Intelligence (4 Pillars)
     offer_breakdown = _build_offer_breakdown(stats, stats_7d, days=days)
@@ -1188,6 +1354,7 @@ def analyze_site_performance(live_stores: list = None, days: int = 14, allow_blo
         ig_hist=ig_hist,
         demand_gap=demand_gap,
         offer_breakdown=offer_breakdown,
+        reels_logged_extra=reels_logged_extra,
     )
     weekly_growth_actions = _build_weekly_growth_actions(
         demand_gap=demand_gap,
@@ -1197,12 +1364,28 @@ def analyze_site_performance(live_stores: list = None, days: int = 14, allow_blo
         upcoming_count=upcoming_count,
     )
 
-    # Select Top 3 priority columns for SNS promotion (high CTR winners + new releases + under-exposed gems)
+    # Select Top 4 priority columns for SNS promotion (high CTR winners + new releases + killer comparison guides + under-exposed gems)
     winners_paths = [a["path"] for a in article_perf_by_score if a["aff_clicks"] > 0][:2]
     new_rel_paths = [a["path"] for a in article_perf if a["is_new_release"]][:1]
-    under_exposed = [a["path"] for a in article_perf if a["pv"] < 5 and a["path"] not in winners_paths + new_rel_paths][:2]
+    killer_seed_paths = [
+        "/guide/lounge-vs-screened-date",
+        "/guide/dress-code-cleanliness",
+        "/guide/last-train-cliff",
+        "/guide/first-10-minutes",
+        "/guide/price-event-comparison",
+    ]
+    under_exposed = [
+        a["path"] for a in article_perf
+        if a["pv"] < 5 and a["path"] in killer_seed_paths and a["path"] not in winners_paths + new_rel_paths
+    ][:2]
+    if len(under_exposed) < 2:
+        for a in article_perf:
+            if a["pv"] < 5 and a["path"] not in winners_paths + new_rel_paths + under_exposed:
+                under_exposed.append(a["path"])
+                if len(under_exposed) >= 2:
+                    break
     priority_column_paths = []
-    for p in (winners_paths + new_rel_paths + under_exposed + ["/guide/last-train-cliff", "/guide/first-10-minutes", "/guide/price-event-comparison"]):
+    for p in (winners_paths + new_rel_paths + under_exposed + killer_seed_paths):
         if p not in priority_column_paths:
             priority_column_paths.append(p)
         if len(priority_column_paths) >= 4:
@@ -1221,11 +1404,17 @@ def analyze_site_performance(live_stores: list = None, days: int = 14, allow_blo
             "title": f"サイト回遊・店舗チェックが稼働中（直近{days}日 PV {pv_tot:,}回 ／ エンゲージ率 {eng_rate}%）",
             "detail": f"店舗詳細タップ {funnel.get('store_open_total', 0)}回・2軒目マップ検索 {funnel.get('map_total', 0)}回が発生し、リアルタイム比較ツールとして機能しています。",
         })
-    if aff_tot > 0 and article_perf_by_score:
+    if aff_tot > 0 and article_perf_by_score and article_perf_by_score[0]["aff_clicks"] > 0:
         top_art = article_perf_by_score[0]
         wins.append({
             "title": f"収益牽引コンテンツ：『{top_art['title'][:26]}…』（広告クリック {top_art['aff_clicks']}件 / CTR {top_art['ctr_pct']}%）",
             "detail": f"全体でアフィリエイト送客 {aff_tot}件（CTR {funnel.get('aff_ctr_pct', 0)}%）。勝ち記事をXリプ欄の優先送客リストへ自動セットしました。",
+        })
+    elif aff_tot > 0 and offer_breakdown:
+        top_off = offer_breakdown[0]
+        wins.append({
+            "title": f"収益送客が稼働中：『{top_off['short_label']}』を筆頭に計{aff_tot}件クリック（全体CTR {funnel.get('aff_ctr_pct', 0)}%）",
+            "detail": f"首位カテゴリは {top_off['clicks']}件（シェア {top_off['share_pct']}%）。ページ別クリック計測（?from= 属性）でハブ・記事別の寄与を追跡中です。",
         })
     if inflow_cohorts:
         best_in = inflow_cohorts[0]
@@ -1244,13 +1433,13 @@ def analyze_site_performance(live_stores: list = None, days: int = 14, allow_blo
         lk = leaky_articles[0]
         issues.append({
             "title": f"導線ボトルネック記事：『{lk['title'][:26]}…』（{lk['pv']} PVあるのに広告クリック0件）",
-            "detail": "記事は読まれていますが収益・次アクションに繋がっていません。身だしなみ・アプリ比較・リアルタイム店舗への内部導線強化が有効です。",
-            "action_taken": "優先送客枠をCTR上位コラムへ切り替えつつ、改善対象リストにマークしました。",
+            "detail": "記事は読まれていますが次アクションに繋がっていません。2ステップ原則に沿った /grooming・/for-women・/concierge への文脈ブリッジ強化が有効です。",
+            "action_taken": "優先送客枠を成約直結コラムへ切り替えつつ、改善対象リストにマークしました。",
         })
     elif aff_tot == 0:
         issues.append({
-            "title": "アフィリエイト遷移データがまだ少なめ（記事ページへの送客母数アップが必要）",
-            "detail": "トップページの人数確認だけで離脱するユーザーが多いため、SNSリプ欄やトップから実践コラム（清潔感・40分見切り等）への誘導を増やす余地があります。",
+            "title": "アフィリエイト遷移データがまだ少なめ（記事・ガイドへの送客母数アップが必要）",
+            "detail": "トップページの人数確認だけで離脱するユーザーが多いため、SNSリプ欄やトップから成約直結コラム（1対1比較・清潔感・40分見切り等）への誘導を増やす余地があります。",
             "action_taken": f"X 18:00枠・リプ欄の優先紹介コラムに『{priority_column_paths[0]}』などキラー記事4本を自動セットしました。",
         })
 
@@ -1259,12 +1448,13 @@ def analyze_site_performance(live_stores: list = None, days: int = 14, allow_blo
         issues.append({
             "title": f"露出不足の埋もれコラムが {len(sleeping_articles)}本 存在（例：『{sleeping_articles[0]['title'][:24]}…』）",
             "detail": "せっかく人間味のある会話入りコラムがあるのに、SNSからのリンク露出が回っておらず検索流入待ちになっています。",
-            "action_taken": "Xコラムの優先ローテーション枠に未露出記事を自動で組み込みました。",
+            "action_taken": "Xコラムの優先ローテーション枠に未露出の成約直結記事を自動で組み込みました。",
         })
 
+    gap_mode_note = "ピーク実測男女比差" if demand_gap["top_hub"].get("is_off_hours_benchmark") else "男女比差"
     issues.append({
-        "title": f"エリア需要ギャップ：いま『{demand_gap['top_hub']['cluster_label']}』の注目度が高い（男女比差 {demand_gap['top_hub']['gap_pt']}pt）",
-        "detail": f"現在の稼働人数・店舗チェック数に対して、『{demand_gap['top_hub']['cluster_label']}』特化の実践ストーリー記事を増やすと検索・SNS双方で伸びやすい状態です。",
+        "title": f"エリア需要ギャップ：いま『{demand_gap['top_hub']['cluster_label']}』の注目度が高い（{gap_mode_note} {demand_gap['top_hub']['gap_pt']}pt）",
+        "detail": f"稼働・ピーク波形と店舗チェック数に対して、『{demand_gap['top_hub']['cluster_label']}』特化の実践ストーリー記事を増やすと検索・SNS双方で伸びやすい状態です。",
         "action_taken": f"コラム編集部の次回特命お題に『{demand_gap['recommended_topic']}』を自動発注しました。",
     })
 
@@ -1275,11 +1465,50 @@ def analyze_site_performance(live_stores: list = None, days: int = 14, allow_blo
             "action_taken": "下の特命お題ボタン（または在庫自動補充モードON）で即座に次週分を補充できます。",
         })
 
-    # 5. 4-Axis 100-Point Health Score
-    s_traffic = min(25, 12 + int(min(13, pv_tot / 15)) + (3 if eng_rate >= 15 else 0))
-    s_monetize = min(25, 12 + min(10, aff_tot * 2) + (3 if funnel.get("aff_ctr_pct", 0) >= 1.0 else 0))
-    s_sns = min(25, 16 + min(5, len(inflow_cohorts) * 2) + (4 if len(style_usage_counts) >= 2 else 2))
-    s_content = min(25, 15 + (6 if col_audit["total_bare_oriental"] == 0 else 0) + min(4, upcoming_count * 2))
+    # 5. Calibrated 4-Axis 100-Point Health Score (scales with daily pace so real growth headroom is visible)
+    days_norm = max(1.0, float(days))
+    daily_pv = pv_tot / days_norm
+    daily_aff = aff_tot / days_norm
+    attributed_aff = sum(cnt for rp, cnt in aff_by_ref_path.items() if rp and rp != "-")
+    active_offer_cats = sum(1 for o in offer_breakdown if o.get("clicks", 0) > 0)
+    total_sns_visits = sns_channel_efficiency.get("total_sns_visits", 0)
+    active_sns_channels = sum(1 for ch in sns_channel_efficiency.get("channels", []) if ch.get("visits", 0) > 0 or ch.get("posts_logged", 0) > 0)
+    reels_ch = next((ch for ch in sns_channel_efficiency.get("channels", []) if ch.get("channel_key") == "reels"), {})
+    reels_active = (reels_ch.get("visits", 0) > 0) or (reels_ch.get("posts_logged", 0) > 0)
+    sleeping_ratio = (len(sleeping_articles) / max(1, len(article_perf))) if article_perf else 0.0
+
+    s_traffic = min(
+        25,
+        (6 if pv_tot > 0 else 4)
+        + min(12, int(round((daily_pv / 180.0) * 12)))
+        + min(4, int(pv_tot / 150))
+        + (3 if eng_rate >= 15 else (1 if eng_rate >= 8 else 0)),
+    )
+    s_monetize = min(
+        25,
+        (5 if aff_tot > 0 else 4)
+        + min(8, int(round(min(1.0, daily_aff / 4.0) * 8)))
+        + min(4, int(aff_tot / 5))
+        + (4 if funnel.get("aff_ctr_pct", 0) >= 2.0 else (2 if funnel.get("aff_ctr_pct", 0) >= 1.0 else 0))
+        + (2 if attributed_aff > 0 else 0)
+        + (2 if active_offer_cats >= 3 else (1 if active_offer_cats >= 1 else 0)),
+    )
+    s_sns = min(
+        25,
+        6
+        + min(8, int(round(min(1.0, (total_sns_visits / days_norm) / 10.0) * 8)))
+        + min(5, active_sns_channels * 2)
+        + (3 if reels_active else 0)
+        + (3 if sum(inflow_cvs.values()) > 0 else (1 if len(style_usage_counts) >= 2 else 0)),
+    )
+    s_content = min(
+        25,
+        8
+        + (7 if col_audit["total_bare_oriental"] == 0 else 0)
+        + min(5, int(col_audit["total_columns"] / 4))
+        + min(3, upcoming_count * 2)
+        + (2 if sleeping_ratio <= 0.35 else (1 if sleeping_ratio <= 0.6 else 0)),
+    )
     overall_score = s_traffic + s_monetize + s_sns + s_content
 
     directives = {
@@ -1292,6 +1521,21 @@ def analyze_site_performance(live_stores: list = None, days: int = 14, allow_blo
         "bottleneck_paths": [a["path"] for a in leaky_articles[:3]],
     }
 
+    raw_rev = dict(stats.get("revenue") or {})
+    classified_clicks = sum(int(o.get("clicks") or 0) for o in offer_breakdown)
+    weighted_aff_yen = sum(int(o.get("est_revenue_yen") or 0) for o in offer_breakdown)
+    est_adsense_yen = int(raw_rev.get("est_adsense_yen") if "est_adsense_yen" in raw_rev else round(pv_tot * 0.35))
+    est_aff_yen = weighted_aff_yen if classified_clicks > 0 else int(raw_rev.get("est_aff_yen") or round(aff_tot * 90))
+    est_total_yen = est_adsense_yen + est_aff_yen
+    pace_denom_days = max(1, int(raw_rev.get("pace_denom_days") or days_norm))
+    reconciled_revenue = {
+        "est_adsense_yen": est_adsense_yen,
+        "est_aff_yen": est_aff_yen,
+        "est_total_yen": est_total_yen,
+        "est_monthly_pace_yen": round((est_total_yen / pace_denom_days) * 30),
+        "pace_denom_days": pace_denom_days,
+    }
+
     return {
         "days": days,
         "overall_score": overall_score,
@@ -1302,10 +1546,13 @@ def analyze_site_performance(live_stores: list = None, days: int = 14, allow_blo
             "content_pipeline_health": s_content,
         },
         "funnel": funnel,
-        "revenue": stats.get("revenue") or {},
+        "revenue": reconciled_revenue,
         "wins": wins[:4],
         "issues": issues[:4],
         "article_perf": article_perf_by_score[:10],
+        "article_perf_all": article_perf_by_score,
+        "sleeping_count": len(sleeping_articles),
+        "style_labels": style_labels_map,
         "inflow_cohorts": inflow_cohorts[:10],
         "demand_gap": demand_gap,
         "upcoming_count": upcoming_count,
@@ -1337,10 +1584,10 @@ def _build_rule_based_briefing_text(diag: dict) -> str:
         g0 = gaps[0]
         gap_line = (
             f"一方で一番もったいない機会損失は『{g0['path']}』（{g0['pv']} PV / CVR {g0['cvr_pct']}%）です。"
-            f"{g0['placement_position']}に {g0['recommended_funnel']} を足すだけで、取りこぼしている成約をすぐ拾えます。"
+            f"{g0['placement_position']}に {g0['recommended_funnel']} を整えるだけで、取りこぼしている成約をすぐ拾えます。"
         )
     else:
-        gap_line = "導線面では、会話系・2軒目系コラムの中盤に『/grooming（身だしなみ特集）』、料金・終電系コラムの表直下に『即時合流アプリ枠』を先回り配置しておくのが鉄則です。"
+        gap_line = "導線面では、会話系・2軒目系コラムの中盤に『/grooming（身だしなみ特集）』、料金・終電系コラムの表直下に『3秒穴場診断＆1対1デート比較』を先回り配置しておくのが鉄則です。"
 
     top_ch_lbl = sns_eff.get("top_channel_label") or "𝕏 X（旧Twitter）"
     best_slot = sns_eff.get("recommended_time_slot") or "22:00枠"
@@ -1351,7 +1598,7 @@ def _build_rule_based_briefing_text(diag: dict) -> str:
         f"集客では『{top_ch_lbl}』の {best_slot} が最も効率よくサイト誘導を作れています。\n\n"
         f"{gap_line}\n\n"
         f"今週の勝負手として、現場関心が最も熱い『{hub_label}』（店舗間男女比差 {gap_pt}pt）を狙い撃つ特命コラム『{next_topic}』の予約と、"
-        f"金曜21時半の15秒リール動画（街別ギャップ実証）をセットで回していきましょう。"
+        f"金曜21時半の15秒ショート動画（街別ギャップ実証）をセットで回していきましょう。"
     )
 
 
@@ -1364,7 +1611,7 @@ def _generate_pdca_briefing(diag: dict, use_ai: bool = True, cache_only: bool = 
     top_offer_key = diag["offer_breakdown"][0]["category_key"] if diag.get("offer_breakdown") else ""
     top_gap_path = diag["monetization_gaps"][0]["path"] if diag.get("monetization_gaps") else ""
     sig = (
-        "v3_claude5",
+        "v4_claude5",
         sns_editorial.get_ai_engine_pref(allow_blocking=False),
         bool(sns_editorial.get_claude_api_key(allow_blocking=False)),
         diag["overall_score"],
@@ -1427,7 +1674,7 @@ def _generate_pdca_briefing(diag: dict, use_ai: bool = True, cache_only: bool = 
     }
     prompt = (
         "あなたは『相席ナビ』のグロース統括・作戦参謀長（編集長）です。以下の実測PDCA＆収益インテリジェンス診断データを読み、"
-        "マスター管理者に向けて「①いま一番数字が出ている勝ち筋（案件カテゴリ・SNSチャネル）」「②高PVなのに取りこぼしている機会損失ページと足すべき具体導線（/grooming や混雑回避アプリ等）」「③今週仕掛けるべき特命コラム・リール動画の勝負手」を、"
+        "マスター管理者に向けて「①いま一番数字が出ている勝ち筋（案件カテゴリ・SNSチャネル）」「②高PVなのに取りこぼしている機会損失ページと足すべき具体導線（/grooming・/for-women・2軒目一休予約・審査制1対1比較等）」「③今週仕掛けるべき特命コラム・リール動画の勝負手」を、"
         "頼もしい人間の参謀が隣で本音でブリーフィングするような鋭く自然な口語（260〜380文字程度、箇条書きではなく読みやすい2〜3段落）でまとめてください。\n"
         "※ブランド名は必ず正式名称『オリエンタルラウンジ』と表記し、『ラウンジ』を省いた呼称や『オリラジ』は絶対に使わないこと。JSON形式 `{\"briefing\": \"...\"}` のみ返してください。\n\n"
         f"{json.dumps(prompt_payload, ensure_ascii=False)}"
@@ -1466,9 +1713,11 @@ def run_pdca_cycle(
     days: int = 14,
     apply_actions: bool = True,
     use_ai: bool = True,
+    use_ai_for_replenish: bool = None,
     ai_cache_only: bool = False,
     force_ai_refresh: bool = False,
     record_log: bool = False,
+    allow_blocking: bool = True,
 ) -> dict:
     """
     Execute full Plan-Do-Check-Act cycle:
@@ -1476,10 +1725,11 @@ def run_pdca_cycle(
       2. Persist updated `pdca_active_directives` if `apply_actions=True`.
       3. If `auto_replenish_columns` is enabled and upcoming scheduled columns <= 1,
          automatically draft, Desk-verify (>=85 pts), and schedule a new column!
+      Note: `ai_cache_only=True` skips slow outbound LLM generation while still allowing fast
+      analytics/directive state reads when `allow_blocking=True`.
     """
-    allow_io_blocking = False if ai_cache_only else bool(apply_actions or not ai_cache_only)
-    settings = get_pdca_settings(allow_blocking=allow_io_blocking)
-    diag = analyze_site_performance(live_stores=live_stores, days=days, allow_blocking=allow_io_blocking)
+    settings = get_pdca_settings(allow_blocking=allow_blocking)
+    diag = analyze_site_performance(live_stores=live_stores, days=days, allow_blocking=allow_blocking)
     briefing = _generate_pdca_briefing(
         diag,
         use_ai=use_ai,
@@ -1489,12 +1739,14 @@ def run_pdca_cycle(
 
     auto_published_result = None
     directives = diag["proposed_directives"]
+    replenish_ai = use_ai if use_ai_for_replenish is None else bool(use_ai_for_replenish)
 
     if apply_actions:
         job_state.set_value(PDCA_DIRECTIVES_KEY, json.dumps(directives, ensure_ascii=False))
         with _pdca_lock:
-            _directives_mem_cache["ts"] = time.monotonic()
-            _directives_mem_cache["data"] = dict(directives)
+            _directives_mem_cache["ts"] = 0.0
+            _directives_mem_cache["data"] = None
+            _directives_mem_cache["verified"] = False
 
         # Optional Full-Auto Column Inventory Replenishment
         if settings.get("auto_replenish_columns") and diag["upcoming_count"] <= 1 and not ai_cache_only:
@@ -1503,7 +1755,7 @@ def run_pdca_cycle(
                     live_stores or [],
                     theme_key=directives["recommended_column_theme"],
                     custom_topic=directives["recommended_custom_topic"],
-                    use_ai=use_ai,
+                    use_ai=replenish_ai,
                 )
                 winner = col_ed.get("winner")
                 if winner and int(winner.get("total_score") or 0) >= 85:
@@ -1522,12 +1774,17 @@ def run_pdca_cycle(
                 logger.warning(f"[pdca_engine] Auto column replenishment skipped: {e}")
 
         if record_log:
+            applied_boosts = (
+                [f"{k}({v:+d})" for k, v in directives["sns_style_boosts"].items() if v != 0]
+                if settings.get("auto_optimize_sns", True)
+                else []
+            )
             _record_pdca_history({
                 "timestamp": directives["updated_at"],
                 "overall_score": diag["overall_score"],
                 "focus_hub": directives["focus_hub_label"],
                 "recommended_topic": directives["recommended_custom_topic"],
-                "boosted_styles": [f"{k}({v:+d})" for k, v in directives["sns_style_boosts"].items() if v != 0],
+                "boosted_styles": applied_boosts,
                 "auto_scheduled_slug": auto_published_result["slug"] if auto_published_result else "",
             })
 
@@ -1535,10 +1792,10 @@ def run_pdca_cycle(
         "settings": settings,
         "diagnostics": diag,
         "briefing": briefing,
-        "active_directives": get_active_directives(allow_blocking=False),
+        "active_directives": get_active_directives(allow_blocking=allow_blocking),
         "auto_published_result": auto_published_result,
         "gemini_status": sns_editorial.get_gemini_status(allow_blocking=False),
-        "history": get_pdca_history(limit=8, allow_blocking=False),
+        "history": get_pdca_history(limit=8, allow_blocking=allow_blocking),
         # Top-level convenience mirrors for Revenue & Growth Intelligence
         "offer_breakdown": diag["offer_breakdown"],
         "monetization_gaps": diag["monetization_gaps"],

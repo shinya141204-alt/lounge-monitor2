@@ -2603,6 +2603,14 @@
         }
         window.resolveInfeedContext = resolveInfeedContext;
 
+        function buildTrackedAffiliateUrl(rawUrl) {
+            if (!rawUrl || !rawUrl.startsWith('/link/')) return rawUrl || '';
+            if (rawUrl.includes('from=')) return rawUrl;
+            const curPath = (window.location && window.location.pathname) || '/';
+            const sep = rawUrl.includes('?') ? '&' : '?';
+            return `${rawUrl}${sep}from=${encodeURIComponent(curPath)}`;
+        }
+
         function patchInfeedPrElement(wrapper, slotConfig, topStoreItems) {
             if (!wrapper) return null;
             const ctx = resolveInfeedContext(slotConfig || {}, topStoreItems);
@@ -2617,13 +2625,14 @@
             wrapper.setAttribute('data-context-href', ctx.item.url);
 
             const isExtLink = Boolean(ctx.item.url && (ctx.item.url.startsWith('http') || ctx.item.url.startsWith('/link/')));
-            const targetAttrs = isExtLink ? ' target="_blank" rel="noopener noreferrer sponsored"' : '';
+            const trackedHref = buildTrackedAffiliateUrl(ctx.item.url);
+            const targetAttrs = isExtLink ? ' target="_blank" rel="noopener sponsored"' : '';
             const pixelHtml = ctx.item.trackingImg
                 ? `<img class="pr-tracking-pixel" src="${escapeHtml(ctx.item.trackingImg)}" width="1" height="1" alt="" loading="lazy" aria-hidden="true">`
                 : '';
 
             wrapper.innerHTML = `
-                <a class="pr-context-main" href="${escapeHtml(ctx.item.url)}"${targetAttrs}>
+                <a class="pr-context-main" href="${escapeHtml(trackedHref)}"${targetAttrs}>
                     <div class="pr-context-body">
                         <div class="pr-context-meta">
                             <span class="pr-disclosure-pill">PR</span>
@@ -2892,6 +2901,7 @@
 
                 listEl.innerHTML = filteredItems.map(item => {
                     const isExt = item.url && (item.url.startsWith('http') || item.url.startsWith('/link/'));
+                    const trackedHref = buildTrackedAffiliateUrl(item.url);
                     const pointsHtml = (item.points && item.points.length > 0) ? `
                         <ul class="guide-points-list">
                             ${item.points.map(p => `<li><span class="check-icon">✓</span> ${escapeHtml(p)}</li>`).join('')}
@@ -2913,7 +2923,7 @@
                                     ${pointsHtml}
                                 </div>
                                 <div class="guide-app-cta-wrap">
-                                    <a href="${escapeHtml(item.url)}" ${isExt ? 'target="_blank" rel="noopener noreferrer sponsored"' : `onclick="event.preventDefault(); showRefreshToast('アフィリエイトURL設定完了後に公式ページへ遷移します')"`} class="guide-app-cta">
+                                    <a href="${escapeHtml(trackedHref)}" ${isExt ? 'target="_blank" rel="noopener sponsored"' : `onclick="event.preventDefault(); showRefreshToast('アフィリエイトURL設定完了後に公式ページへ遷移します')"`} class="guide-app-cta">
                                         ${escapeHtml(item.cta || '詳細・キャンペーンを見る ›')}
                                     </a>
                                     ${item.trackingImg ? `<img border="0" width="1" height="1" src="${escapeHtml(item.trackingImg)}" alt="" style="display:none;">` : ''}
