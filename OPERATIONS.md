@@ -8,9 +8,10 @@
 | `ALERT_FAIL_THRESHOLD` | 何回連続で失敗したら「停止」として通知するか（1回＝営業時間中は約1分） | `5` |
 | `ALERT_COOLDOWN_MIN` | 同じ通知を再送しない時間（分） | `60` |
 | `LOCAL_DB_PATH` | SQLite の保存先。Render の Persistent Disk を使う場合は `/var/data/lounge_data.db` など | プロジェクト直下 |
-| `STAFF_PASSCODE` | 現場スタッフ用ログインパスコード（`/staff` で現場データのみ閲覧可・AdSense非表示） | `5555` |
-| `MASTER_PASSCODE` | マスター（オーナー）用ログインパスコード（データ監査・アクセス解析・SNSキット・予約キュー等全機能） | `2918` |
-| `ADMIN_API_SECRET` | 管理・強制トリガーAPI用のシークレットトークン（本番では変更推奨） | `lounge2026` |
+| `SECRET_KEY` | セッションCookieの署名鍵（**本番は必須**。未設定だと起動ごとにランダム値になり全員ログアウトされる） | ローカル開発用の仮値のみ |
+| `STAFF_PASSCODE` | 現場スタッフ用ログインパスコード（`/staff` で現場データのみ閲覧可・AdSense非表示） | **本番は必須**（未設定だとログイン不可）。値は Fly secrets にのみ保存し、リポジトリには書かない |
+| `MASTER_PASSCODE` | マスター（オーナー）用ログインパスコード（データ監査・アクセス解析・SNSキット・予約キュー等全機能） | 同上 |
+| `ADMIN_API_SECRET` | 管理・強制トリガーAPI用のシークレットトークン（`X-Admin-Secret` ヘッダーで送信） | 同上 |
 | `VOTE_LIMIT_PER_VOTER` / `VOTE_LIMIT_PER_IP` | 現場投票のレート制限（10分あたり） | `8` / `40` |
 | `DISABLE_SCHEDULER` / `DISABLE_SHEETS` | テスト用。`1` でバックグラウンド処理と Sheets 連携を止める | 未設定 |
 

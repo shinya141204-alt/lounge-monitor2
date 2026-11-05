@@ -71,6 +71,68 @@ class TestEmergencyImprovements(unittest.TestCase):
         self.assertIn('Disallow: /link/\n', txt)
         self.assertIn('Disallow: /staff\n', txt)
 
+    def test_robots_txt_ai_bot_groups_also_block_link_and_private_api(self):
+        """AIクローラー専用グループにも /link/ と管理APIの除外が入っていること（グループは個別指定が優先されるため）"""
+        txt = self.client.get('/robots.txt').data.decode('utf-8')
+        groups = [g for g in txt.split('\n\n') if g.startswith('User-agent: ') and not g.startswith('User-agent: *')]
+        self.assertGreaterEqual(len(groups), 10)
+        for g in groups:
+            self.assertIn('Disallow: /link/', g, g.splitlines()[0])
+            self.assertIn('Disallow: /api/trigger-', g, g.splitlines()[0])
+            self.assertIn('Disallow: /staff', g, g.splitlines()[0])
+        self.assertNotIn('Disallow: /api/llms-facts.json', txt)
+
+    def test_ai_user_agents_are_not_counted_as_human_clicks(self):
+        """ChatGPT-User 等の 'bot' を含まないAIフェッチャーもボット判定されること"""
+        uas = [
+            'Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; ChatGPT-User/1.0; +https://openai.com/bot',
+            'Mozilla/5.0 (compatible; Perplexity-User/1.0)',
+            'Mozilla/5.0 (compatible; Claude-User/1.0)',
+            'meta-externalfetcher/1.1',
+        ]
+        for ua in uas:
+            with self.app.test_request_context('/link/orbis', headers={'User-Agent': ua}):
+                self.assertTrue(app_module._is_bot_request(), ua)
+        human = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1'
+        with self.app.test_request_context('/link/orbis', headers={'User-Agent': human}):
+            self.assertFalse(app_module._is_bot_request())
+
+    def test_query_passcode_login_is_disabled(self):
+        """?passcode= のURLログインは廃止され、セッションが付与されないこと"""
+        resp = self.client.get(f'/staff?passcode={app_module.MASTER_PASSCODE}')
+        self.assertIn(resp.status_code, (301, 302))
+        with self.client.session_transaction() as s:
+            self.assertFalse(s.get('is_staff'))
+            self.assertFalse(s.get('is_master'))
+
+    def test_admin_secret_accepted_via_header(self):
+        """管理トークンは X-Admin-Secret ヘッダーでも認証できること"""
+        with self.app.test_request_context('/api/x', headers={'X-Admin-Secret': app_module.ADMIN_API_SECRET}):
+            self.assertTrue(app_module.is_master_authorized())
+        with self.app.test_request_context('/api/x', headers={'X-Admin-Secret': 'wrong-value'}):
+            self.assertFalse(app_module.is_master_authorized())
+
+    def test_baseline_security_headers(self):
+        """公開ページに nosniff / X-Frame-Options / Referrer-Policy が付き、HTTPS時のみHSTSが付くこと"""
+        resp = self.client.get('/privacy')
+        self.assertEqual(resp.headers.get('X-Content-Type-Options'), 'nosniff')
+        self.assertEqual(resp.headers.get('X-Frame-Options'), 'SAMEORIGIN')
+        self.assertEqual(resp.headers.get('Referrer-Policy'), 'strict-origin-when-cross-origin')
+        self.assertIsNone(resp.headers.get('Strict-Transport-Security'))
+        resp_https = self.client.get('/privacy', base_url='https://aiseki-navi.com')
+        self.assertIn('max-age=', resp_https.headers.get('Strict-Transport-Security', ''))
+
+    def test_production_never_uses_public_default_credentials(self):
+        """本番（FLY_APP_NAMEあり）で未設定の機密値は公開済みの既定値ではなくランダム値になること"""
+        from unittest.mock import patch
+        with patch.dict(os.environ, {'FLY_APP_NAME': 'aiseki-navi-tokyo'}, clear=False):
+            os.environ.pop('MASTER_PASSCODE_TEST_UNSET', None)
+            v1 = app_module._load_secure_config('MASTER_PASSCODE_TEST_UNSET', '2918')
+            v2 = app_module._load_secure_config('MASTER_PASSCODE_TEST_UNSET', '2918')
+        self.assertNotEqual(v1, '2918')
+        self.assertNotEqual(v1, v2)
+        self.assertGreaterEqual(len(v1), 40)
+
     # ------------------------------------------------------------------
     # 3. /link/<item_id> の X-Robots-Tag ヘッダー付与テスト
     # ------------------------------------------------------------------

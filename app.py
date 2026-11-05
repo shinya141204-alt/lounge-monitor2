@@ -52,12 +52,20 @@ def _load_secure_config(env_key: str, fallback_value: str, is_sensitive: bool = 
 
     if is_sensitive:
         is_fly_prod = bool(os.environ.get('FLY_APP_NAME'))
-        log_level = logging.WARNING if not is_fly_prod else logging.ERROR
-        logging.log(
-            log_level,
+        if is_fly_prod:
+            # Never fall back to the publicly-known default values in production.
+            # An unguessable random value keeps the app running while effectively
+            # disabling the corresponding login / token until the secret is configured.
+            import secrets as _secrets
+            logging.error(
+                f"[SECURITY] Environment variable '{env_key}' is not set in production. "
+                f"Using a random one-time value instead of the default (login/token disabled). "
+                f"Configure it via `flyctl secrets set {env_key}=...`."
+            )
+            return _secrets.token_urlsafe(48)
+        logging.warning(
             f"[SECURITY NOTICE] Environment variable '{env_key}' is not set. "
-            f"Using default fallback value. In production environments (e.g. Fly.io), "
-            f"ensure '{env_key}' is explicitly configured via secrets."
+            f"Using default fallback value (local development only)."
         )
     return fallback_value
 
@@ -118,11 +126,16 @@ def inject_auth_flags():
     }
 
 
+def _get_admin_secret_from_request() -> str:
+    """Prefer the `X-Admin-Secret` header (not written to access logs); `?secret=` kept for compatibility."""
+    return (request.headers.get('X-Admin-Secret') or request.args.get('secret') or '').strip()
+
+
 def is_admin_authorized():
     """Verify administrative permission either via authenticated staff/master session or secret token."""
     if session.get('is_staff') or session.get('is_master'):
         return True
-    secret = request.args.get('secret', '').strip()
+    secret = _get_admin_secret_from_request()
     if secret and hmac.compare_digest(secret, ADMIN_API_SECRET):
         return True
     return False
@@ -132,7 +145,7 @@ def is_master_authorized():
     """Verify master/owner permission via master session or secret token."""
     if session.get('is_master'):
         return True
-    secret = request.args.get('secret', '').strip()
+    secret = _get_admin_secret_from_request()
     if secret and hmac.compare_digest(secret, ADMIN_API_SECRET):
         return True
     return False
@@ -210,6 +223,12 @@ def compress_response(response):
     """Set cache headers and automatically gzip-compress JSON/HTML/CSS/JS/XML/SVG responses."""
     is_staff_sess = bool(session.get('is_staff') or session.get('is_master'))
 
+    # 0. Baseline security headers (HSTS only when served over HTTPS behind Fly's proxy)
+    response.headers.setdefault('X-Content-Type-Options', 'nosniff')
+    response.headers.setdefault('X-Frame-Options', 'SAMEORIGIN')
+    response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
+    if request.is_secure:
+        response.headers.setdefault('Strict-Transport-Security', 'max-age=31536000')
     # 1. Unified Cache-Control headers (ISSUE-01 / F5.2)
     if request.path.startswith('/static/') and response.status_code == 200:
         if request.args.get('v'):
@@ -1913,7 +1932,13 @@ def affiliate_redirect(item_id):
 # --- First-party analytics (no personal data) ---
 import urllib.parse as urllib_parse
 
-_BOT_MARKERS = ('bot', 'spider', 'crawl', 'slurp', 'facebookexternalhit', 'preview', 'headless', 'python-requests', 'curl')
+_BOT_MARKERS = (
+    'bot', 'spider', 'crawl', 'slurp', 'facebookexternalhit', 'preview', 'headless', 'python-requests', 'curl',
+    # AI assistants / fetchers whose UA does not contain "bot" (would otherwise count as human affiliate clicks)
+    'chatgpt-user', 'perplexity-user', 'claude-user', 'claude-web', 'anthropic-ai', 'mistralai-user',
+    'meta-externalfetcher', 'meta-externalagent', 'cohere-ai', 'google-extended', 'applebot-extended',
+    'bytespider', 'gptbot', 'oai-searchbot', 'python-httpx', 'aiohttp', 'go-http-client', 'wget', 'scrapy',
+)
 _TRACKED_PAGE_PREFIXES = ('/guide', '/columns', '/areas', '/area/', '/concierge', '/grooming', '/for-women', '/stats', '/price-comparison', '/oriental-lounge', '/ag', '/jis', '/asobibar', '/store/')
 _LIVE_NO_CACHE_PREFIXES = ('/price-comparison', '/for-women', '/concierge', '/store/', '/areas', '/area/', '/oriental-lounge', '/ag', '/jis', '/asobibar')
 
@@ -2114,7 +2139,7 @@ def api_sheets_retention():
 
 @app.route('/staff', methods=['GET', 'POST'])
 def staff_monitor():
-    """Internal staff dashboard (5555 = field data only, 2918 = master full management)."""
+    """Internal staff dashboard (staff passcode = field data only, master passcode = full management)."""
     error = None
     client_ip = (request.remote_addr or '0.0.0.0').strip()
 
@@ -2138,26 +2163,10 @@ def staff_monitor():
             _record_login_failure(client_ip)
             error = 'パスコードが正しくありません'
 
-    # Allow one-touch login via query param ?passcode=5555 or ?passcode=2918 (rate-limited as well)
-    query_passcode = request.args.get('passcode', '').strip()
-    if query_passcode:
-        if _is_login_rate_limited(client_ip):
-            return render_template('staff_login.html', error='試行回数が上限に達しました。5分ほど待ってから再度お試しください'), 429
-        if hmac.compare_digest(query_passcode, MASTER_PASSCODE):
-            _clear_login_failures(client_ip)
-            session['is_staff'] = True
-            session['is_master'] = True
-            session.permanent = True
-            return redirect(url_for('staff_monitor'))
-        elif hmac.compare_digest(query_passcode, STAFF_PASSCODE):
-            _clear_login_failures(client_ip)
-            session['is_staff'] = True
-            session['is_master'] = False
-            session.permanent = True
-            return redirect(url_for('staff_monitor'))
-        else:
-            _record_login_failure(client_ip)
-            error = 'パスコードが正しくありません'
+    # URL-query passcode login (?passcode=...) was removed: passcodes in URLs leak into
+    # access logs, browser history and shared links. Use the POST form only.
+    if request.args.get('passcode'):
+        return redirect(url_for('staff_monitor'))
 
     # Allow explicit role switch (?switch=1) to re-enter passcode
     if request.args.get('switch') == '1':
@@ -3555,8 +3564,19 @@ def robots_txt():
         "MistralAI-User",
         "cohere-ai",
     )
+    # Crawlers only obey the most specific matching group, so private paths and the
+    # affiliate redirect (/link/) must be repeated inside every AI-bot group as well.
     bot_blocks = "".join(
-        f"User-agent: {bot}\nAllow: /\nDisallow: /staff\n\n"
+        f"User-agent: {bot}\n"
+        "Allow: /\n"
+        "Disallow: /staff\n"
+        "Disallow: /link/\n"
+        "Disallow: /api/trigger-\n"
+        "Disallow: /api/sns-jobs\n"
+        "Disallow: /api/data-audit\n"
+        "Disallow: /api/logs\n"
+        "Disallow: /api/track\n"
+        "\n"
         for bot in ai_bots
     )
     content = (

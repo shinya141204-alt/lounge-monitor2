@@ -8,7 +8,7 @@ with a 4-role virtual editorial team:
   3. Writer (執筆・下書き係): Generates 4 distinct human-voiced draft candidates tailored to each platform's algorithm and character rules.
   4. Evaluator / Desk (鬼デスク・評価係): Scores all 4 candidates out of 100 across 4 axes (Human Tone, Anti-Duplication, Data Accuracy/Specificity, Platform Format Hygiene), attaches red-pen critiques, and selects the #1 winner.
 
-All proposals, scores, and critiques are exposed exclusively to Master (`2918`) on `/staff/sns-editorial`.
+All proposals, scores, and critiques are exposed exclusively to the Master role on `/staff/sns-editorial`.
 """
 
 import os
