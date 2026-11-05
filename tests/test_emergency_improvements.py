@@ -249,19 +249,19 @@ class TestEmergencyImprovements(unittest.TestCase):
     # 8. キャッシュバスティング同期テスト
     # ------------------------------------------------------------------
     def test_cache_busting_sync_app_js_v2_and_sw_v86(self):
-        """app.js?v=20261105_3 と sw.js?v=92, CACHE_NAME aiseki-navi-v92 が同期していること"""
+        """app.js?v=20261105_3 と sw.js?v=93, CACHE_NAME aiseki-navi-v93 が同期していること"""
         home_resp = self.client.get('/')
         self.assertEqual(home_resp.status_code, 200)
         home_html = home_resp.data.decode('utf-8')
         home_resp.close()
         self.assertIn('/static/app.js?v=20261105_3', home_html)
-        self.assertIn('/sw.js?v=92', home_html)
+        self.assertIn('/sw.js?v=93', home_html)
 
         sw_resp = self.client.get('/sw.js')
         self.assertEqual(sw_resp.status_code, 200)
         sw_txt = sw_resp.data.decode('utf-8')
         sw_resp.close()
-        self.assertIn("CACHE_NAME = 'aiseki-navi-v92'", sw_txt)
+        self.assertIn("CACHE_NAME = 'aiseki-navi-v93'", sw_txt)
         self.assertIn("'/static/app.js?v=20261105_3'", sw_txt)
 
     def test_store_hours_opening_hours_specification(self):
@@ -318,6 +318,120 @@ class TestEmergencyImprovements(unittest.TestCase):
 
         for bp_name in ('portal_bp', 'seo_feeds_bp', 'staff_bp', 'sns_jobs_bp'):
             self.assertIn(bp_name, self.app.blueprints, f"Missing blueprint: {bp_name}")
+
+    # ------------------------------------------------------------------
+    # 10. Claude Opus 5.5 厳格監査の指摘修正に対する回帰テスト群
+    # ------------------------------------------------------------------
+    def test_claude_audit_query_secret_rejected_header_only(self):
+        """?secret= クエリでの管理認証が完全に廃止され、X-Admin-Secret ヘッダーのみ有効であること"""
+        with self.app.test_request_context(f'/api/debug_ps?secret={app_module.ADMIN_API_SECRET}'):
+            self.assertFalse(app_module.is_master_authorized())
+            self.assertFalse(app_module.is_admin_authorized())
+        with self.app.test_request_context('/api/debug_ps', headers={'X-Admin-Secret': app_module.ADMIN_API_SECRET}):
+            self.assertTrue(app_module.is_master_authorized())
+
+    def test_claude_audit_trigger_csrf_blocks_get_and_cross_origin_post(self):
+        """マスターセッションでも GET /api/trigger-* は 405、Cross-Origin POST は 403 で遮断されること"""
+        with self.client.session_transaction() as sess:
+            sess['is_staff'] = True
+            sess['is_master'] = True
+            sess['auth_gen'] = app_module._compute_session_auth_gen(True)
+        # GET link navigation CSRF blocked with 405
+        self.assertEqual(self.client.get('/api/trigger-x-post?force=1').status_code, 405)
+        # Cross-origin POST form CSRF blocked with 403
+        self.assertEqual(
+            self.client.post('/api/trigger-x-post?force=1', headers={'Origin': 'https://evil.example.com'}).status_code,
+            403,
+        )
+        self.assertEqual(
+            self.client.post('/api/trigger-x-post?force=1', headers={'Sec-Fetch-Site': 'cross-site'}).status_code,
+            403,
+        )
+
+    def test_claude_audit_ogp_live_random_s_param_hits_slot_cache(self):
+        """/ogp/live.png?s=<乱数> を連打しても Pillow 再描画が走らず正規化スロットキャッシュにヒットすること"""
+        from unittest.mock import patch
+        import ogp_generator
+        with app_module._ogp_bytes_cache_lock:
+            app_module._ogp_bytes_cache.clear()
+        calls = []
+
+        def _fake_png(stores, s_param='', now_jst=None):
+            calls.append(s_param)
+            return b'\x89PNG\r\n\x1a\nFAKE_OGP_PNG'
+
+        with patch.object(ogp_generator, 'generate_live_ogp_png', side_effect=_fake_png):
+            r1 = self.client.get('/ogp/live.png?s=random_attack_001')
+            r2 = self.client.get('/ogp/live.png?s=random_attack_002')
+            r3 = self.client.get('/ogp/live.png?s=random_attack_003')
+        self.assertEqual(r1.status_code, 200)
+        self.assertEqual(r2.status_code, 200)
+        self.assertEqual(r3.status_code, 200)
+        self.assertEqual(len(calls), 1, f"Expected 1 Pillow render across random ?s= params, got {len(calls)}")
+
+    def test_claude_audit_session_24h_and_passcode_rotation_revokes_cookie(self):
+        """セッション寿命が24時間であり、パスコード変更時に既存ログインセッションが即時失効すること"""
+        import datetime
+        from unittest.mock import patch
+        self.assertEqual(app_module.app.permanent_session_lifetime, datetime.timedelta(hours=24))
+
+        r_login = self.client.post('/staff', data={'passcode': app_module.MASTER_PASSCODE})
+        self.assertEqual(r_login.status_code, 302)
+        self.assertEqual(self.client.get('/api/debug_ps').status_code, 200)
+
+        # Rotate MASTER_PASSCODE -> existing cookie is immediately revoked on next request
+        with patch.object(app_module, 'MASTER_PASSCODE', '9999_rotated_new'):
+            self.assertEqual(self.client.get('/api/debug_ps').status_code, 401)
+
+    def test_claude_audit_shared_bus_rate_limit_and_distributed_lock(self):
+        """turbo_store の共有レート制限と分散 cron ロックが全ワーカー共通で機能すること"""
+        import turbo_store
+        turbo_store.enable_memory_bus_for_tests(True)
+        try:
+            for _ in range(3):
+                self.assertTrue(turbo_store.check_sliding_rate_limit('test_ns', '198.51.100.7', limit=3, window_sec=60))
+            self.assertFalse(turbo_store.check_sliding_rate_limit('test_ns', '198.51.100.7', limit=3, window_sec=60))
+
+            self.assertTrue(turbo_store.acquire_distributed_lock('cron:test_slot', ttl_sec=30))
+            self.assertFalse(turbo_store.acquire_distributed_lock('cron:test_slot', ttl_sec=30))
+        finally:
+            turbo_store.reset_for_tests()
+
+    def test_claude_audit_dockerfile_non_root_and_sw_503_and_stale_cap(self):
+        """Dockerfile が非root USER で実行され、sw.js がオフライン 503 と 10分キャッシュ上限を持つこと"""
+        df_path = os.path.join(PROJECT_ROOT, 'Dockerfile')
+        with open(df_path, 'r', encoding='utf-8') as f:
+            df_txt = f.read()
+        self.assertIn('USER appuser', df_txt)
+        self.assertNotIn('|| true', df_txt)
+
+        sw_path = os.path.join(PROJECT_ROOT, 'static', 'sw.js')
+        with open(sw_path, 'r', encoding='utf-8') as f:
+            sw_txt = f.read()
+        self.assertIn('status: 503', sw_txt)
+        self.assertIn('LIVE_MAX_STALE_MS = 600000', sw_txt)
+
+    def test_claude_audit_seo_eeat_store_detail_and_security_headers(self):
+        """CSP / Permissions-Policy / HSTS includeSubDomains、about の sameAs、store_detail の固定title・FAQPage撤去・main要素を検証"""
+        r_about = self.client.get('/about', base_url='https://aiseki-navi.com')
+        self.assertEqual(r_about.status_code, 200)
+        self.assertIn('includeSubDomains', r_about.headers.get('Strict-Transport-Security', ''))
+        self.assertIn("frame-ancestors 'self'", r_about.headers.get('Content-Security-Policy', ''))
+        self.assertIn('camera=()', r_about.headers.get('Permissions-Policy', ''))
+        about_html = r_about.data.decode('utf-8')
+        self.assertIn('<main>', about_html)
+        self.assertIn('"sameAs"', about_html)
+        self.assertIn('JIS（ジス）', about_html)
+        self.assertIn('ASOBIBAR（アソビバー）', about_html)
+
+        app_module.clear_fast_http_caches()
+        r_store = self.client.get('/store/oriental-lounge-shinjuku')
+        self.assertEqual(r_store.status_code, 200)
+        st_html = r_store.data.decode('utf-8')
+        self.assertIn('<main>', st_html)
+        self.assertNotIn('"@type": "FAQPage"', st_html)
+        soup = BeautifulSoup(st_html, 'html.parser')
+        self.assertNotIn('現在：女性', soup.title.string or '')
 
 
 if __name__ == '__main__':

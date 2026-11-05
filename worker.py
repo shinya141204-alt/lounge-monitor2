@@ -1,7 +1,7 @@
 """Dedicated Background Engine (`APP_ROLE=worker`) for Aiseki Navi (Plan Take).
 
 Responsibilities isolated from HTTP Gunicorn `web` workers:
-  1. Every-minute scraping of all 53 stores + PostgreSQL persistence + `<0.5ms` Redis live snapshot broadcast
+  1. Every-minute scraping of all 63 stores + PostgreSQL persistence + `<0.5ms` Redis live snapshot broadcast
   2. Continuous async SNS job queue consumer (`claim_next_sns_job` -> `execute_sns_job_payload`)
   3. Pre-scheduled AI editorial & 5-slide IG carousel precomputation (8 minutes before every SNS slot + every 30m)
   4. All scheduled X / Threads / Instagram / Note / Bonus / Autonomous PDCA / Meta 60-day token maintenance jobs
@@ -46,6 +46,8 @@ def _flush_analytics_safe():
 
 
 def _x_scheduled_job(slot_lbl="20:00"):
+    if not turbo_store.acquire_distributed_lock(f"cron:x:{slot_lbl}", ttl_sec=55):
+        return
     try:
         import sns_editorial
         if not sns_editorial.should_fire_scheduled_slot_now("x", slot_lbl):
@@ -62,6 +64,8 @@ def _x_scheduled_job(slot_lbl="20:00"):
 
 
 def _x_weekly_sun_job():
+    if not turbo_store.acquire_distributed_lock("cron:x_weekly", ttl_sec=90):
+        return
     try:
         import sns_editorial
         if not sns_editorial.should_fire_scheduled_slot_now("x_weekly", "19:00"):
@@ -72,6 +76,8 @@ def _x_weekly_sun_job():
 
 
 def _tip_18_job():
+    if not turbo_store.acquire_distributed_lock("cron:x_tip:1800", ttl_sec=55):
+        return
     try:
         import sns_editorial
         if not sns_editorial.should_fire_scheduled_slot_now("x_tip", "18:00"):
@@ -87,6 +93,8 @@ def _tip_18_job():
 
 
 def _note_check_job():
+    if not turbo_store.acquire_distributed_lock("cron:note_check", ttl_sec=120):
+        return
     try:
         import note_poster
         note_poster.check_and_post_new_note()
@@ -95,6 +103,8 @@ def _note_check_job():
 
 
 def _threads_daily_job():
+    if not turbo_store.acquire_distributed_lock("cron:threads:2200", ttl_sec=55):
+        return
     try:
         import sns_editorial
         if not sns_editorial.should_fire_scheduled_slot_now("threads", "22:00"):
@@ -115,6 +125,8 @@ def _threads_daily_job():
 
 
 def _threads_ladies_job():
+    if not turbo_store.acquire_distributed_lock("cron:threads_ladies:1930", ttl_sec=55):
+        return
     try:
         import sns_editorial
         if not sns_editorial.should_fire_scheduled_slot_now("threads_ladies", "19:30"):
@@ -131,6 +143,8 @@ def _threads_ladies_job():
 
 def _ig_reel_scheduled_job(slot_lbl="21:15"):
     """Scheduled Wed/Thu/Fri/Sat Reel post (4-template auto rotation + human jitter + Feed grid protection)."""
+    if not turbo_store.acquire_distributed_lock(f"cron:ig_reel:{slot_lbl}", ttl_sec=120):
+        return
     try:
         import sns_editorial
         if not sns_editorial.should_fire_scheduled_slot_now("ig_reel", slot_lbl):
@@ -154,6 +168,8 @@ def _ig_reel_scheduled_job(slot_lbl="21:15"):
 
 def _tiktok_inbox_scheduled_job(slot_lbl="20:35"):
     """Scheduled Wed/Fri/Sat Phase 2 TikTok Inbox push (zero overhead when token or toggle is off)."""
+    if not turbo_store.acquire_distributed_lock(f"cron:tiktok:{slot_lbl}", ttl_sec=120):
+        return
     try:
         import tiktok_poster
         if not tiktok_poster.is_tiktok_auto_schedule_enabled(allow_blocking=False):
@@ -192,6 +208,8 @@ def _scheduled_articles_release_job():
 
 
 def _bonus_alert_check_job():
+    if not turbo_store.acquire_distributed_lock("cron:bonus_alert", ttl_sec=55):
+        return
     try:
         import bonus_alert
         with app_module.data_lock:
@@ -204,6 +222,8 @@ def _bonus_alert_check_job():
 
 
 def _pdca_autonomous_job():
+    if not turbo_store.acquire_distributed_lock("cron:pdca_cycle", ttl_sec=180):
+        return
     try:
         import pdca_engine
         with app_module.data_lock:

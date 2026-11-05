@@ -329,11 +329,18 @@ def store_detail_page(store_slug):
         except Exception as e:
             logging.warning(f"[store_insight] {sname}: {e}")
 
+        has_sufficient_store_data = bool(
+            tot > 0
+            or store_insight
+            or (store_analytics and int(store_analytics.get('max_7d_women') or 0) > 0)
+        )
+
         return render_template(
             'store_detail.html',
             store=store_obj,
             store_analytics=store_analytics,
             store_insight=store_insight,
+            has_sufficient_store_data=has_sufficient_store_data,
             area_info=area_info,
             area_slug=area_slug,
             nearby_stores=nearby_stores,
@@ -715,8 +722,8 @@ def contact_page():
     if errors:
         return _render_contact_page(form_values=data, errors=errors, status=400)
 
-    client_ip = (request.remote_addr or '0.0.0.0').strip()
-    if not contact_form.check_rate_limit(client_ip):
+    client_ip = core.get_client_ip()
+    if not contact_form.check_rate_limit(client_ip, category=data.get('category', '')):
         return _render_contact_page(
             form_values=data,
             errors=['短時間に送信が集中しています。10分ほど時間をおいてから再度お試しください。'],

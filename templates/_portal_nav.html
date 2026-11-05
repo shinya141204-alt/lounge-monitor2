@@ -6,6 +6,7 @@
 (function(){
     try {
         if (!document.body.classList.contains('audience-women') && localStorage.getItem('olg_view_theme') === 'light') {
+            document.documentElement.classList.add('theme-light');
             document.body.classList.add('theme-light');
         }
     } catch (e) {}
@@ -18,6 +19,7 @@
     };
     window.__togglePortalTheme = function() {
         var isLight = document.body.classList.toggle('theme-light');
+        document.documentElement.classList.toggle('theme-light', isLight);
         try {
             localStorage.setItem('olg_view_theme', isLight ? 'light' : 'default');
             if (document.body.classList.contains('audience-women')) {

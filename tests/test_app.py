@@ -714,14 +714,16 @@ class SeoAndXMediaUpgradeTests(unittest.TestCase):
                 self.assertNotIn('女性0名', html)
                 self.assertNotIn('男性0名', html)
                 self.assertNotIn('比率0%', html)
-                self.assertIn('直近最高：女性48名', html)
+                self.assertNotIn('現在：女性', html.split('</title>')[0])
+                self.assertIn('直近7日間の最高女性数は48名', html)
                 self.assertIn('62%', html)
                 ld_blocks = re.findall(r'<script type="application/ld\+json">\s*(.*?)\s*</script>', html, re.S)
                 self.assertGreaterEqual(len(ld_blocks), 1)
                 for block in ld_blocks:
-                    json.loads(block)
+                    parsed_ld = json.loads(block)
+                    self.assertNotIn('FAQPage', json.dumps(parsed_ld, ensure_ascii=False))
 
-            # 2) Live business hours (35 women, 22 men) -> shows live counts accurately
+            # 2) Live business hours (35 women, 22 men) -> shows live counts in meta description while keeping <title> evergreen
             with app_module.data_lock:
                 app_module.latest_data['full_data'] = [
                     {'name': 'OLG 新宿', 'women': 35, 'men': 22, 'total': 57, 'region': 'Kanto'}
@@ -729,7 +731,8 @@ class SeoAndXMediaUpgradeTests(unittest.TestCase):
             with mock.patch('local_db.get_store_7day_analytics', return_value=fake_7d):
                 resp_live = self.client.get(f'/store/{slug}')
                 html_live = resp_live.data.decode('utf-8')
-                self.assertIn('現在：女性35名／男性22名', html_live)
+                self.assertNotIn('現在：女性35名', html_live.split('</title>')[0])
+                self.assertIn('ただいま女性35名・男性22名', html_live)
                 for block in re.findall(r'<script type="application/ld\+json">\s*(.*?)\s*</script>', html_live, re.S):
                     json.loads(block)
         finally:
@@ -1772,7 +1775,7 @@ class FullAuditRegressionTests(unittest.TestCase):
         sw_resp = self.client.get('/sw.js')
         try:
             sw_txt = sw_resp.data.decode('utf-8')
-            self.assertIn("CACHE_NAME = 'aiseki-navi-v92'", sw_txt)
+            self.assertIn("CACHE_NAME = 'aiseki-navi-v93'", sw_txt)
             self.assertIn("event.waitUntil", sw_txt)
         finally:
             sw_resp.close()
@@ -3641,7 +3644,8 @@ class WomenFeaturesACDETests(unittest.TestCase):
             sess['is_staff'] = True
             sess['is_master'] = True
         with mock.patch('threads_poster.execute_scheduled_ladies_threads_post', return_value={'status': 'success', 'id': 'ok1'}):
-            ep_resp = self.client.get('/api/trigger-ladies-sns?channel=threads&force=1')
+            self.assertEqual(self.client.get('/api/trigger-ladies-sns?channel=threads&force=1').status_code, 405)
+            ep_resp = self.client.post('/api/trigger-ladies-sns?channel=threads&force=1')
             self.assertEqual(ep_resp.status_code, 200)
             self.assertEqual(ep_resp.get_json()['status'], 'success')
 
@@ -4300,7 +4304,7 @@ class TurboArchitectureTests(unittest.TestCase):
         r_bad = self.client.post('/api/sns-jobs/enqueue', json={'job_type': 'unknown_type'})
         self.assertEqual(r_bad.status_code, 400)
 
-        r_enq = self.client.get('/api/trigger-x-post?slot=22:00&force=1&async=1&worker_only=1')
+        r_enq = self.client.post('/api/trigger-x-post?slot=22:00&force=1&async=1&worker_only=1')
         self.assertEqual(r_enq.status_code, 202)
         enq_json = r_enq.get_json()
         self.assertTrue(enq_json['queued'])
@@ -4703,7 +4707,7 @@ class AIUltraGrowthSuiteTests(unittest.TestCase):
         home_html = self.client.get('/').data.decode('utf-8')
         self.assertIn('calm.css?v=33', home_html)
         self.assertIn('app.js?v=20261105_3', home_html)
-        self.assertIn('/sw.js?v=92', home_html)
+        self.assertIn('/sw.js?v=93', home_html)
 
         # 2. TikTok 9:16 Safe-Zone Reel Templates & Captions (zero bare 'オリエンタル' or 'OLG')
         sample_stores = [

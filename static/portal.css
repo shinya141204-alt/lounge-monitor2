@@ -5,6 +5,13 @@
    - 各ページでは /static/style.css より後、ページ内 <style> より前に読み込むこと
    ========================================================================== */
 
+/* ---- ライトテーマ初期描画同期（FOUC防止） ---- */
+html.theme-light,
+html.theme-light body {
+    background-color: #f6f6f7;
+    color: #18181b;
+}
+
 /* ---- ポータル共通ラッパー＆トップヘッダー（スマホ横はみ出し防止・雑誌マストヘッド二重罫線＆フォリオ） ---- */
 .portal-wrap,
 .article-container,

@@ -23,9 +23,11 @@ from logging.handlers import RotatingFileHandler
 # Set up logging with automatic size rotation (max 5MB, keep 2 backups) to prevent disk overflow
 # (absolute path so the app also works when started from another working directory, e.g. tests)
 log_file_path = os.environ.get('APP_LOG_PATH') or os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.log')
-file_handler = RotatingFileHandler(log_file_path, maxBytes=5 * 1024 * 1024, backupCount=2, encoding='utf-8')
-file_handler.setLevel(logging.INFO)
-file_handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(name)s: %(message)s'))
+_is_fly_multiworker_web = bool(
+    os.environ.get('FLY_APP_NAME')
+    and not os.environ.get('APP_LOG_PATH')
+    and (os.environ.get('APP_ROLE') or '').strip().lower() == 'web'
+)
 
 console = logging.StreamHandler()
 console.setLevel(logging.INFO)
@@ -35,15 +37,21 @@ root_logger = logging.getLogger('')
 root_logger.setLevel(logging.INFO)
 # Clear any default handlers to avoid duplicates
 root_logger.handlers.clear()
-root_logger.addHandler(file_handler)
+if not _is_fly_multiworker_web:
+    file_handler = RotatingFileHandler(log_file_path, maxBytes=5 * 1024 * 1024, backupCount=2, encoding='utf-8')
+    file_handler.setLevel(logging.INFO)
+    file_handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(name)s: %(message)s'))
+    root_logger.addHandler(file_handler)
 root_logger.addHandler(console)
 
 import gzip
+import hashlib
 import hmac
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 app = Flask(__name__)
-app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+# x_host=0: Fly.io does not rewrite X-Forwarded-Host, so trusting x_host=1 would let clients spoof request.host / url_root
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=0)
 def _load_secure_config(env_key: str, fallback_value: str, is_sensitive: bool = True) -> str:
     """Load configuration with fallback safety, value sanitization, and security warning logging."""
     val = os.environ.get(env_key)
@@ -71,7 +79,7 @@ def _load_secure_config(env_key: str, fallback_value: str, is_sensitive: bool = 
 
 
 app.secret_key = _load_secure_config('SECRET_KEY', 'aiseki-navi-staff-monitor-secret-key-2026')
-app.permanent_session_lifetime = datetime.timedelta(days=90)
+app.permanent_session_lifetime = datetime.timedelta(hours=24)
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 if os.environ.get('FLY_APP_NAME') or os.environ.get('ENABLE_HTTPS'):
@@ -86,7 +94,40 @@ LOGIN_MAX_ATTEMPTS = 8
 LOGIN_WINDOW_SEC = 300
 
 
+def get_client_ip() -> str:
+    """Resolve true client IP: prefer Fly.io's edge-verified `Fly-Client-IP` in production, else `request.remote_addr`."""
+    if os.environ.get('FLY_APP_NAME'):
+        fly_ip = (request.headers.get('Fly-Client-IP') or '').strip()
+        if fly_ip:
+            return fly_ip[:64]
+    return (request.remote_addr or '0.0.0.0').strip()[:64]
+
+
+def _compute_session_auth_gen(is_master: bool) -> str:
+    """Compute a non-reversible HMAC generation fingerprint so rotating STAFF_PASSCODE / MASTER_PASSCODE revokes active cookies."""
+    role = 'master' if is_master else 'staff'
+    active_code = MASTER_PASSCODE if is_master else STAFF_PASSCODE
+    msg = f'auth_gen:{role}:{active_code}'.encode('utf-8')
+    return hmac.new(str(app.secret_key).encode('utf-8'), msg, hashlib.sha256).hexdigest()[:20]
+
+
+@app.before_request
+def enforce_session_passcode_generation():
+    """Revoke staff/master sessions immediately if passcodes were rotated or if a legacy 90d cookie lacks `auth_gen` in production."""
+    if not (session.get('is_staff') or session.get('is_master')):
+        return
+    tok = session.get('auth_gen')
+    is_m = bool(session.get('is_master'))
+    if tok:
+        if not hmac.compare_digest(str(tok), _compute_session_auth_gen(is_m)):
+            session.clear()
+    elif os.environ.get('FLY_APP_NAME'):
+        session.clear()
+
+
 def _is_login_rate_limited(ip_addr: str) -> bool:
+    if turbo_store.is_shared_bus_active():
+        return turbo_store.get_rate_limit_count('staff_login', ip_addr, LOGIN_WINDOW_SEC) >= LOGIN_MAX_ATTEMPTS
     now_t = time.time()
     with _login_failures_lock:
         recent = [t for t in _login_failures.get(ip_addr, []) if now_t - t < LOGIN_WINDOW_SEC]
@@ -98,6 +139,9 @@ def _is_login_rate_limited(ip_addr: str) -> bool:
 
 
 def _record_login_failure(ip_addr: str) -> None:
+    if turbo_store.is_shared_bus_active():
+        turbo_store.record_rate_limit_hit('staff_login', ip_addr, LOGIN_WINDOW_SEC)
+        return
     now_t = time.time()
     with _login_failures_lock:
         if len(_login_failures) > 512:
@@ -113,6 +157,8 @@ def _record_login_failure(ip_addr: str) -> None:
 
 
 def _clear_login_failures(ip_addr: str) -> None:
+    if turbo_store.is_shared_bus_active():
+        turbo_store.clear_rate_limit('staff_login', ip_addr)
     with _login_failures_lock:
         _login_failures.pop(ip_addr, None)
 
@@ -127,8 +173,8 @@ def inject_auth_flags():
 
 
 def _get_admin_secret_from_request() -> str:
-    """Prefer the `X-Admin-Secret` header (not written to access logs); `?secret=` kept for compatibility."""
-    return (request.headers.get('X-Admin-Secret') or request.args.get('secret') or '').strip()
+    """Accept `X-Admin-Secret` header only (query `?secret=` removed so secrets never leak into access logs or history)."""
+    return (request.headers.get('X-Admin-Secret') or '').strip()
 
 
 def is_admin_authorized():
@@ -227,8 +273,10 @@ def compress_response(response):
     response.headers.setdefault('X-Content-Type-Options', 'nosniff')
     response.headers.setdefault('X-Frame-Options', 'SAMEORIGIN')
     response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
+    response.headers.setdefault('Permissions-Policy', 'camera=(), microphone=(), geolocation=(self), payment=()')
+    response.headers.setdefault('Content-Security-Policy', "base-uri 'self'; object-src 'none'; frame-ancestors 'self'")
     if request.is_secure:
-        response.headers.setdefault('Strict-Transport-Security', 'max-age=31536000')
+        response.headers.setdefault('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
     # 1. Unified Cache-Control headers (ISSUE-01 / F5.2)
     if request.path.startswith('/static/') and response.status_code == 200:
         if request.args.get('v'):
@@ -1990,12 +2038,18 @@ def track_page_views(response):
 
 @app.route('/api/track', methods=['POST'])
 def track_event():
-    """Receives navigator.sendBeacon events from the frontend (event + short label only)."""
+    """Receives navigator.sendBeacon events from the frontend (event + short label only, per-IP rate-limited)."""
     if _is_bot_request() or session.get('is_staff'):
         return ('', 204)
+    client_ip = get_client_ip()
+    if not turbo_store.check_sliding_rate_limit('api_track', client_ip, limit=60, window_sec=60):
+        return ('', 204)
     payload = request.get_json(silent=True, force=True) or {}
+    ev_name = re.sub(r'[^A-Za-z0-9_.:-]', '', str(payload.get('event', '')).strip())[:30]
+    if not ev_name:
+        return ('', 204)
     import analytics
-    analytics.track(str(payload.get('event', ''))[:30], str(payload.get('label', ''))[:80])
+    analytics.track(ev_name, str(payload.get('label', '')).strip()[:80])
     return ('', 204)
 
 
@@ -2003,7 +2057,7 @@ def track_event():
 def staff_monitor():
     """Internal staff dashboard (staff passcode = field data only, master passcode = full management)."""
     error = None
-    client_ip = (request.remote_addr or '0.0.0.0').strip()
+    client_ip = get_client_ip()
 
     if request.method == 'POST':
         if _is_login_rate_limited(client_ip):
@@ -2013,12 +2067,14 @@ def staff_monitor():
             _clear_login_failures(client_ip)
             session['is_staff'] = True
             session['is_master'] = True
+            session['auth_gen'] = _compute_session_auth_gen(True)
             session.permanent = True
             return redirect(url_for('staff_monitor'))
         elif entered and hmac.compare_digest(entered, STAFF_PASSCODE):
             _clear_login_failures(client_ip)
             session['is_staff'] = True
             session['is_master'] = False
+            session['auth_gen'] = _compute_session_auth_gen(False)
             session.permanent = True
             return redirect(url_for('staff_monitor'))
         else:
@@ -2298,6 +2354,11 @@ def view_logs():
             f.seek(max(0, size - 200 * 1024), os.SEEK_SET)
             content = f.read().decode('utf-8', errors='replace')
         return Response(content, mimetype='text/plain; charset=utf-8')
+    if _is_fly_multiworker_web:
+        return Response(
+            "Production web workers stream logs directly to stdout (use `flyctl logs -a aiseki-navi-tokyo`).\n",
+            mimetype='text/plain; charset=utf-8',
+        )
     return "No logs found.", 404
 
 @app.route('/api/thread_status')
@@ -2431,10 +2492,11 @@ def post_store_vote():
     if known_names and store_name not in known_names:
         return jsonify({'status': 'error', 'error': 'Unknown store'}), 400
 
-    client_ip = (request.remote_addr or '0.0.0.0').strip()
-    ip_hash = hashlib.sha256(f"{client_ip}_aiseki_salt".encode('utf-8')).hexdigest()[:16]
+    client_ip = get_client_ip()
+    sec_bytes = str(app.secret_key).encode('utf-8')
+    ip_hash = hmac.new(sec_bytes, f"vote_ip:{client_ip}".encode('utf-8'), hashlib.sha256).hexdigest()[:16]
     raw_voter = str(payload.get('voter_id', '')).strip()[:64]
-    voter_hash = hashlib.sha256(f"v_{raw_voter}_aiseki_salt".encode('utf-8')).hexdigest()[:16] if raw_voter else ''
+    voter_hash = hmac.new(sec_bytes, f"vote_id:{raw_voter}".encode('utf-8'), hashlib.sha256).hexdigest()[:16] if raw_voter else ''
 
     ok, reason = local_db.add_crowd_vote(store_name, vote_type, ip_hash, voter_id=voter_hash)
     if ok:

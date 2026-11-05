@@ -4,13 +4,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% if store.total > 0 %}{{ store.seo_name }}のリアルタイム人数・男女比・混雑状況（現在：女性{{ store.women }}名／男性{{ store.men }}名）｜相席ナビ{% elif store_analytics and store_analytics.max_7d_women > 0 %}{{ store.seo_name }}のリアルタイム人数・男女比・待ち時間（直近最高：女性{{ store_analytics.max_7d_women }}名）｜相席ナビ{% else %}{{ store.seo_name }}のリアルタイム人数・男女比・待ち時間・狙い目時間｜相席ナビ{% endif %}</title>
-    <meta name="description" content="{% if store.total > 0 %}{{ store.seo_name }}（{{ store.area_label }}）の現在のリアルタイム男女人数・男女比・待ち時間傾向を毎分自動更新！ただいま女性{{ store.women }}名・男性{{ store.men }}名（女性比率{{ store.wpct }}%）。入店前の混雑チェックや近隣店舗とのハシゴ比較に。{% elif store_analytics and store_analytics.max_7d_women > 0 %}{{ store.seo_name }}（{{ store.area_label }}）のリアルタイム男女人数・男女比・待ち時間傾向を毎分自動更新！直近7日間の最高女性数は{{ store_analytics.max_7d_women }}名、狙い目は{{ store_analytics.best_slot_name }}（平均女性比{{ store_analytics.best_slot_pct }}%）。入店前の混雑チェックや近隣店舗とのハシゴ比較に。{% else %}{{ store.seo_name }}（{{ store.area_label }}）のリアルタイム男女人数・男女比・待ち時間傾向を毎分自動更新！曜日・時間帯別の混雑傾向や近隣ラウンジとのハシゴ比較が入店前に3秒でわかります。{% endif %}">
+    <title>{{ store.seo_name }}のリアルタイム人数・男女比・待ち時間・混雑傾向｜相席ナビ</title>
+    <meta name="description" content="{% if store.total > 0 %}{{ store.seo_name }}（{{ store.area_label }}）の現在のリアルタイム男女人数・男女比・待ち時間傾向を毎分自動更新。ただいま女性{{ store.women }}名・男性{{ store.men }}名（女性比率{{ store.wpct }}%）。入店前の混雑チェックや近隣店舗とのハシゴ比較に。{% elif store_analytics and store_analytics.max_7d_women > 0 %}{{ store.seo_name }}（{{ store.area_label }}）のリアルタイム男女人数・男女比・待ち時間傾向を毎分自動更新。直近7日間の最高女性数は{{ store_analytics.max_7d_women }}名、狙い目は{{ store_analytics.best_slot_name }}（平均女性比{{ store_analytics.best_slot_pct }}%）。入店前の混雑チェックや近隣店舗とのハシゴ比較に。{% else %}{{ store.seo_name }}（{{ store.area_label }}）のリアルタイム男女人数・男女比・待ち時間傾向を毎分自動更新。曜日・時間帯別の混雑傾向や近隣ラウンジとの比較が入店前に確認できます。{% endif %}">
     <meta name="keywords" content="{{ store.seo_name }},{{ store.seo_name }} 人数,{{ store.seo_name }} 男女比,{{ store.seo_name }} 混雑,{{ store.seo_name }} 待ち時間,{{ store.brand_label }},相席ラウンジ,相席ナビ">
     <link rel="canonical" href="https://aiseki-navi.com/store/{{ store.slug }}">
+    {% if has_sufficient_store_data %}
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+    {% else %}
+    <meta name="robots" content="noindex, follow">
+    {% endif %}
 
-    <meta property="og:title" content="{% if store.total > 0 %}{{ store.seo_name }}のリアルタイム人数・男女比（現在：女性{{ store.women }}名／男性{{ store.men }}名）｜相席ナビ{% elif store_analytics and store_analytics.max_7d_women > 0 %}{{ store.seo_name }}のリアルタイム人数・男女比（直近最高：女性{{ store_analytics.max_7d_women }}名）｜相席ナビ{% else %}{{ store.seo_name }}のリアルタイム人数・男女比・混雑状況｜相席ナビ{% endif %}">
+    <meta property="og:title" content="{{ store.seo_name }}のリアルタイム人数・男女比・混雑状況｜相席ナビ">
     <meta property="og:description" content="{% if store.total > 0 %}{{ store.seo_name }}の現在人数は女性{{ store.women }}名・男性{{ store.men }}名（女性比{{ store.wpct }}%）。周辺の相席ラウンジとの人数比較もひと目で確認できます。{% elif store_analytics and store_analytics.max_7d_women > 0 %}{{ store.seo_name }}のリアルタイム男女人数・男女比を毎分更新（直近ピーク女性{{ store_analytics.max_7d_women }}名・狙い目平均女性比{{ store_analytics.best_slot_pct }}%）。周辺の相席ラウンジとのハシゴ比較もひと目で確認できます。{% else %}{{ store.seo_name }}のリアルタイム男女人数・男女比・待ち時間傾向を毎分自動更新。周辺の相席ラウンジとの人数比較もひと目で確認できます。{% endif %}">
     <meta property="og:type" content="article">
     <meta property="og:url" content="https://aiseki-navi.com/store/{{ store.slug }}">
@@ -33,57 +37,35 @@
           {
             "@type": "ListItem",
             "position": 2,
-            "name": "{% if store.brand_slug %}{{ store.brand_label }}全店の人数一覧{% else %}全国エリア一覧{% endif %}",
-            "item": "https://aiseki-navi.com/{% if store.brand_slug %}{{ store.brand_slug }}{% else %}areas{% endif %}"
+            "name": {{ ((store.brand_label ~ '全店の人数一覧') if store.brand_slug else '全国エリア一覧') | tojson }},
+            "item": {{ ('https://aiseki-navi.com/' ~ (store.brand_slug if store.brand_slug else 'areas')) | tojson }}
           },
           {
             "@type": "ListItem",
             "position": 3,
-            "name": "{{ store.seo_name }}のリアルタイム人数・男女比",
-            "item": "https://aiseki-navi.com/store/{{ store.slug }}"
-          }
-        ]
-      },
-      {
-        "@context": "https://schema.org",
-        "@type": "FAQPage",
-        "mainEntity": [
-          {
-            "@type": "Question",
-            "name": "{{ store.seo_name }}の現在の男女人数・混雑状況は？",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "{% if store.total > 0 %}{{ last_updated }}現在、{{ store.seo_name }}の店内人数は女性{{ store.women }}名・男性{{ store.men }}名（合計{{ store.total }}名・女性比率{{ store.wpct }}%）です。相席ナビで毎分リアルタイム更新しています。{% elif store_analytics and store_analytics.max_7d_women > 0 %}{% if store.is_open_now %}現在は営業中（現在 0 : 0・本日 {{ store.today_hours_label }}）です。{% else %}現在は営業時間外（公式営業時間：{{ store.hours_label }}）です。{% endif %}{{ store.seo_name }}の直近7日間のピーク時は女性最大{{ store_analytics.max_7d_women }}名、一番入りやすい狙い目は{{ store_analytics.best_slot_name }}（過去平均女性比{{ store_analytics.best_slot_pct }}%）です。営業中は相席ナビで毎分リアルタイム更新します。{% else %}{% if store.is_open_now %}現在は営業中（現在 0 : 0・本日 {{ store.today_hours_label }}）です。{% else %}現在は営業時間外（公式営業時間：{{ store.hours_label }}）です。{% endif %}{{ store.seo_name }}の女性人数・男性人数・女性比率を相席ナビで毎分リアルタイム更新します。{% endif %}"
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "{{ store.seo_name }}が混雑しているときのハシゴ先・穴場時間は？",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "{{ area_info.best_time if area_info else '週末の21時〜23時は男性の入店待ちが発生しやすいため、20時前後の早めの時間帯に入店するか、同エリア内の別店舗と男女比を比較して女性比率が高い店舗へ移動するのがおすすめです。' }}"
-            }
+            "name": {{ (store.seo_name ~ 'のリアルタイム人数・男女比') | tojson }},
+            "item": {{ ('https://aiseki-navi.com/store/' ~ store.slug) | tojson }}
           }
         ]
       },
       {
         "@context": "https://schema.org",
         "@type": ["LocalBusiness", "BarOrPub"],
-        "name": "{{ store.seo_name }}",
-        "description": "{{ store.seo_name }}のリアルタイム男女人数・男女比・混雑状況・待ち時間推移",
-        "url": "https://aiseki-navi.com/store/{{ store.slug }}",
+        "name": {{ store.seo_name | tojson }},
+        "description": {{ (store.seo_name ~ 'のリアルタイム男女人数・男女比・混雑状況・待ち時間推移') | tojson }},
+        "url": {{ ('https://aiseki-navi.com/store/' ~ store.slug) | tojson }},
         "priceRange": "男性 2,640円〜 / 女性 無料",
         "openingHoursSpecification": {{ store.opening_hours_specification | tojson }},
         "address": {
           "@type": "PostalAddress",
           "addressCountry": "JP",
-          "addressRegion": "{{ store.area_label }}"
+          "addressRegion": {{ store.area_label | tojson }}
         }{% if store.official_url %},
-        "sameAs": "{{ store.official_url }}"{% endif %}{% if store.lat and store.lng %},
+        "sameAs": {{ store.official_url | tojson }}{% endif %}{% if store.lat and store.lng %},
         "geo": {
           "@type": "GeoCoordinates",
-          "latitude": {{ store.lat }},
-          "longitude": {{ store.lng }}
+          "latitude": {{ store.lat | tojson }},
+          "longitude": {{ store.lng | tojson }}
         }{% endif %}
       }
     ]
@@ -92,6 +74,7 @@
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
     <link rel="stylesheet" href="/static/portal.css?v=14">
+    <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
     <link rel="stylesheet" href="/static/style.css?v=20261030_6">
     <style>
         :root {
@@ -520,6 +503,7 @@
             <span>{{ store.seo_name }}</span>
         </nav>
 
+        <main>
         <article class="live-hero-card" data-hero-store="{{ store.seo_name }}" data-hero-seo="{{ store.seo_name }}" data-hours-spec='{{ store.hours_spec | tojson }}'>
             <div class="badge-row">
                 <span class="area-badge">{{ store.area_label }}</span>
@@ -1042,6 +1026,7 @@
             </div>
         </section>
         {% endif %}
+        </main>
 
         {% include '_portal_footer.html' %}
     </div>

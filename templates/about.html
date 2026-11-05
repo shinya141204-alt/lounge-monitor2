@@ -9,6 +9,7 @@
     <link rel="canonical" href="https://aiseki-navi.com/about">
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="stylesheet" href="/static/portal.css?v=14">
+    <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -17,7 +18,27 @@
       "url": "https://aiseki-navi.com/about",
       "inLanguage": "ja",
       "isPartOf": {"@type": "WebSite", "name": "相席ナビ", "url": "https://aiseki-navi.com/"},
-      "publisher": {"@type": "Organization", "name": "相席ナビ編集部", "url": "https://aiseki-navi.com/"}
+      "publisher": {
+        "@type": "Organization",
+        "name": "相席ナビ編集部",
+        "url": "https://aiseki-navi.com/",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://aiseki-navi.com/static/icon-512.png"
+        },
+        "contactPoint": {
+          "@type": "ContactPoint",
+          "contactType": "customer support",
+          "url": "https://aiseki-navi.com/contact",
+          "availableLanguage": ["Japanese"]
+        },
+        "sameAs": [
+          "https://x.com/aiseki_navi",
+          "https://www.instagram.com/aiseki_navi1",
+          "https://www.threads.net/@aiseki_navi1",
+          "https://note.com/aiseki_navi"
+        ]
+      }
     }
     </script>
     <style>
@@ -68,23 +89,25 @@
         {% set nav_active = none %}
         {% include '_portal_nav.html' %}
 
+        <main>
         <article class="content-box">
             <h1>相席ナビについて</h1>
-            <p>相席ナビ（AISEKI NAVI）は、全国の相席ラウンジ・相席バーが公式サイトで公開している「現在の男女人数」を定期的に記録し、混雑の傾向や男女比の推移を見やすく整理している非公式の情報サイトです。来店前に「いまどの店が入りやすいか」「何時ごろ・何曜日に混みやすいか」を判断する材料を、実際の記録にもとづいて提供することを目的にしています。</p>
+            <p>相席ナビ（AISEKI NAVI）は、全国63店舗（国内61店舗＋韓国2店舗）の相席ラウンジ・相席バーが公式サイトで公開している「現在の男女人数」を定期的に記録し、混雑の傾向や男女比の推移を見やすく整理している非公式の統計・情報サイトです。来店前に「いまどの店が入りやすいか」「何時ごろ・何曜日に混みやすいか」を判断する材料を、実際の記録にもとづいて提供することを目的にしています。</p>
 
-            <h2>運営者情報</h2>
+            <h2>運営者情報・編集体制</h2>
             <table class="about-table">
                 <tbody>
                     <tr><th>サイト名</th><td>相席ナビ（AISEKI NAVI）</td></tr>
                     <tr><th>URL</th><td><a class="about-link" href="https://aiseki-navi.com/">https://aiseki-navi.com/</a></td></tr>
-                    <tr><th>運営</th><td>相席ナビ編集部</td></tr>
-                    <tr><th>お問い合わせ</th><td><a class="about-link" href="/contact">お問い合わせフォーム</a>（掲載内容の訂正・削除のご依頼、取材・提携のご相談など）</td></tr>
-                    <tr><th>公式SNS</th><td><a class="about-link" href="https://x.com/aiseki_navi" target="_blank" rel="noopener noreferrer">X（@aiseki_navi）</a> ／ <a class="about-link" href="https://note.com/aiseki_navi" target="_blank" rel="noopener noreferrer">note</a></td></tr>
+                    <tr><th>運営・編集主体</th><td>相席ナビ編集部（運営責任者：相席ナビ運営代表 S.Kuwano ／ データ集計・検証担当：相席ナビ編集部 データ分析班）</td></tr>
+                    <tr><th>運営背景・専門性</th><td>飲食・ラウンジ店舗の現場オペレーション経験と Python / PostgreSQL による時系列データ基盤を組み合わせ、全国63店舗・累計98万件以上の公開人数ログを継続観測・検証しています。すべての記事・統計白書は同一の編集部基準で執筆・校閲しています。</td></tr>
+                    <tr><th>お問い合わせ・訂正窓口</th><td><a class="about-link" href="/contact">お問い合わせフォーム</a>（掲載内容の誤り訂正、店舗関係者様からの掲載変更・削除依頼は最優先で確認・対応いたします）</td></tr>
+                    <tr><th>公式SNS</th><td><a class="about-link" href="https://x.com/aiseki_navi" target="_blank" rel="noopener noreferrer">X（@aiseki_navi）</a> ／ <a class="about-link" href="https://www.instagram.com/aiseki_navi1" target="_blank" rel="noopener noreferrer">Instagram</a> ／ <a class="about-link" href="https://www.threads.net/@aiseki_navi1" target="_blank" rel="noopener noreferrer">Threads</a> ／ <a class="about-link" href="https://note.com/aiseki_navi" target="_blank" rel="noopener noreferrer">note</a></td></tr>
                 </tbody>
             </table>
 
             <h2>非公式サイトであることについて</h2>
-            <p>相席ナビは、掲載している各店舗・各ブランド（オリエンタルラウンジ、ag、JIS、ASOBIBAR ほか）およびその運営会社とは一切関係のない、独立した非公式サイトです。店舗から対価を受け取って順位や評価を操作することはありません。店舗名・ブランド名は各社の商標であり、店舗を識別して公式サイトへ案内する目的でのみ使用しています。当サイトの内容について、各店舗へ直接お問い合わせすることはご遠慮ください。</p>
+            <p>相席ナビは、掲載している各店舗・各ブランド（オリエンタルラウンジ、ag（アグ）、JIS（ジス）、ASOBIBAR（アソビバー）、ヤタコイ ほか）およびその運営会社とは一切関係のない、独立した非公式サイトです。店舗から対価を受け取って順位や評価を操作することはありません。店舗名・ブランド名は各社の商標であり、店舗を識別して公式サイトへ案内する目的でのみ使用しています。当サイトの内容について、各店舗へ直接お問い合わせすることはご遠慮ください。</p>
 
             <h2>データの取得方法</h2>
             <ul>
@@ -127,6 +150,7 @@
                 <li><a class="about-link" href="/columns">コラム一覧</a></li>
             </ul>
         </article>
+        </main>
 
         {% include '_portal_footer.html' %}
     </div>

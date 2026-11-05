@@ -9,6 +9,7 @@
     <link rel="canonical" href="https://aiseki-navi.com/contact">
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="stylesheet" href="/static/portal.css?v=14">
+    <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
     <style>
         * { box-sizing: border-box; }
         body {
@@ -96,6 +97,7 @@
         {% set nav_active = none %}
         {% include '_portal_nav.html' %}
 
+        <main>
         <article class="content-box">
             <h1>お問い合わせ</h1>
             <p>相席ナビ編集部へのご連絡は、下記のフォームからお送りください。内容を確認のうえ、必要に応じて記入いただいたメールアドレス宛てにご返信します。返信までに数日いただく場合があります。</p>
@@ -149,6 +151,7 @@
                 <button type="submit" class="contact-submit">送信する</button>
             </form>
         </article>
+        </main>
 
         {% include '_portal_footer.html' %}
     </div>

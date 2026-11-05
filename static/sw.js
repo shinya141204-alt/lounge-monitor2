@@ -1,7 +1,8 @@
-// Supersedes aiseki-navi-v47..v90 (purged automatically on activate)
-const CACHE_NAME = 'aiseki-navi-v92';
+// Supersedes aiseki-navi-v47..v92 (purged automatically on activate)
+const CACHE_NAME = 'aiseki-navi-v93';
 const SHELL_KEY = '/';
 const LIVE_FRESH_TTL_MS = 45000;
+const LIVE_MAX_STALE_MS = 600000; // Never serve live headcount HTML older than 10 minutes
 const PREFETCH_DEDUP_MS = 25000;
 const EDITORIAL_MAX_AGE_MS = 1200000;
 const MAX_DYNAMIC_CACHE_ENTRIES = 65;
@@ -222,10 +223,12 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Always fetch fresh data for API calls (never cache live rankings)
+  // Always fetch fresh data for API calls (never cache live rankings; return HTTP 503 when offline so clients never misread failure as 200 OK)
   if (reqUrl.pathname.startsWith('/api/')) {
     event.respondWith(
-      fetch(event.request).catch(() => new Response(JSON.stringify({ error: "Offline" }), {
+      fetch(event.request).catch(() => new Response(JSON.stringify({ error: "Offline", status: "offline" }), {
+        status: 503,
+        statusText: 'Service Unavailable',
         headers: { 'Content-Type': 'application/json' }
       }))
     );
@@ -301,13 +304,15 @@ self.addEventListener('fetch', (event) => {
         try {
           return await Promise.race([networkPromise, timeout(isLiveSsr ? 1800 : 1200)]);
         } catch (e) {
-          if (!hasTrackingParam && cachedFresh) return cachedFresh;
+          const cachedAge = cachedFresh ? getCachedAgeMs(cachedFresh) : Infinity;
+          const canUseCachedOnTimeout = !hasTrackingParam && cachedFresh && (!isLiveSsr || cachedAge < LIVE_MAX_STALE_MS);
+          if (canUseCachedOnTimeout) return cachedFresh;
           try {
             return await networkPromise;
           } catch (e2) {
-            if (cachedFresh) return cachedFresh;
+            if (cachedFresh && (!isLiveSsr || cachedAge < LIVE_MAX_STALE_MS)) return cachedFresh;
             const fallback = await caches.match(reqUrl.pathname === '/' ? SHELL_KEY : reqUrl.pathname);
-            if (fallback) return fallback;
+            if (fallback && (!isLiveSsr || getCachedAgeMs(fallback) < LIVE_MAX_STALE_MS)) return fallback;
             throw e2;
           }
         }

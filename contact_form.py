@@ -39,8 +39,9 @@ TOKEN_MAX_AGE_SEC = 2 * 3600   # 2時間でトークン失効
 
 IP_LIMIT = 3                   # 同一IPから10分間に3件まで
 IP_WINDOW_SEC = 600
-GLOBAL_LIMIT = 30              # サイト全体で1時間に30件まで
+GLOBAL_LIMIT = 150             # サイト全体で1時間に150件まで（削除・訂正依頼は全体上限の対象外）
 GLOBAL_WINDOW_SEC = 3600
+PRIORITY_CATEGORIES = ('removal', 'correction')
 
 _EMAIL_RE = re.compile(r'^[^@\s<>"]+@[^@\s<>"]+\.[^@\s<>"]+$')
 _CTRL_RE = re.compile(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]')
@@ -91,8 +92,24 @@ def is_same_origin(origin: str, referer: str, host: str) -> bool:
     return True
 
 
-def check_rate_limit(ip_addr: str, now: float = None) -> bool:
-    """送信可能なら True を返し、送信を記録する。上限超過なら False。"""
+def check_rate_limit(ip_addr: str, now: float = None, category: str = '') -> bool:
+    """送信可能なら True を返し、送信を記録する。上限超過なら False（Redis稼働時は全ワーカー横断）。"""
+    import turbo_store
+    is_priority = (category or '').strip() in PRIORITY_CATEGORIES
+    if now is None and turbo_store.is_shared_bus_active():
+        if turbo_store.get_rate_limit_count('contact_ip', ip_addr, IP_WINDOW_SEC) >= IP_LIMIT:
+            return False
+        if not is_priority and turbo_store.get_rate_limit_count('contact_global', 'all', GLOBAL_WINDOW_SEC) >= GLOBAL_LIMIT:
+            return False
+        ip_cnt = turbo_store.record_rate_limit_hit('contact_ip', ip_addr, IP_WINDOW_SEC)
+        if ip_cnt > IP_LIMIT:
+            return False
+        if not is_priority:
+            gl_cnt = turbo_store.record_rate_limit_hit('contact_global', 'all', GLOBAL_WINDOW_SEC)
+            if gl_cnt > GLOBAL_LIMIT:
+                return False
+        return True
+
     now = now if now is not None else time.time()
     with _rl_lock:
         while _global_hits and now - _global_hits[0] >= GLOBAL_WINDOW_SEC:
@@ -100,10 +117,11 @@ def check_rate_limit(ip_addr: str, now: float = None) -> bool:
         hits = _ip_hits[ip_addr]
         while hits and now - hits[0] >= IP_WINDOW_SEC:
             hits.popleft()
-        if len(hits) >= IP_LIMIT or len(_global_hits) >= GLOBAL_LIMIT:
+        if len(hits) >= IP_LIMIT or (not is_priority and len(_global_hits) >= GLOBAL_LIMIT):
             return False
         hits.append(now)
-        _global_hits.append(now)
+        if not is_priority:
+            _global_hits.append(now)
         if len(_ip_hits) > 2048:
             for k in [k for k, v in _ip_hits.items() if not v or now - v[-1] >= IP_WINDOW_SEC]:
                 _ip_hits.pop(k, None)
@@ -111,6 +129,12 @@ def check_rate_limit(ip_addr: str, now: float = None) -> bool:
 
 
 def reset_rate_limits_for_tests():
+    try:
+        import turbo_store
+        turbo_store.clear_rate_limit('contact_ip')
+        turbo_store.clear_rate_limit('contact_global')
+    except Exception:
+        pass
     with _rl_lock:
         _ip_hits.clear()
         _global_hits.clear()

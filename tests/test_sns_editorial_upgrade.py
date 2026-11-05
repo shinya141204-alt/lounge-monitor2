@@ -1511,10 +1511,15 @@ class SnsEditorialUpgradeTests(unittest.TestCase):
             self.assertIn("attachment;", r_dl.headers.get("Content-Disposition", ""))
             self.assertEqual(r_dl.data, sample_mp4)
 
-            # 6) Safari continuation Range on ?refresh=1 must NOT force_refresh on byte offset > 0
+            # 6) Unauthenticated ?refresh=1 must NEVER trigger force_refresh (DoS protection);
+            #    Master-authenticated ?refresh=1 refreshes on byte 0 and skips force_refresh on continuation Range > 0
             render_calls.clear()
-            client.get("/ogp/reel/live_top5.mp4?refresh=1", headers={"Range": "bytes=0-1"})
-            client.get("/ogp/reel/live_top5.mp4?refresh=1", headers={"Range": "bytes=64-127"})
+            client.get("/ogp/reel/live_top5.mp4?refresh=1")
+            self.assertEqual(render_calls, [("live_top5", False)])
+            render_calls.clear()
+            adm_hdr = {"X-Admin-Secret": app_module.ADMIN_API_SECRET}
+            client.get("/ogp/reel/live_top5.mp4?refresh=1", headers={**adm_hdr, "Range": "bytes=0-1"})
+            client.get("/ogp/reel/live_top5.mp4?refresh=1", headers={**adm_hdr, "Range": "bytes=64-127"})
             self.assertEqual(render_calls, [("live_top5", True), ("live_top5", False)])
 
         # 7) Pinned ?s=<ts_code> slot serves byte-identical MP4 without calling render_reel_mp4_bytes
@@ -1772,8 +1777,10 @@ class SnsEditorialUpgradeTests(unittest.TestCase):
                 return slot_sample
 
             with mock.patch("reel_generator.render_reel_mp4_bytes", side_effect=_fake_render_once):
-                r_c1 = client.get("/ogp/reel/live_top5.mp4?s=miss_20261107_2118", headers={"Range": "bytes=0-31"})
-                r_c2 = client.get("/ogp/reel/live_top5.mp4?s=miss_20261107_2118", headers={"Range": "bytes=32-95"})
+                auth_range_1 = {"Range": "bytes=0-31", "X-Admin-Secret": app_mod.ADMIN_API_SECRET}
+                auth_range_2 = {"Range": "bytes=32-95", "X-Admin-Secret": app_mod.ADMIN_API_SECRET}
+                r_c1 = client.get("/ogp/reel/live_top5.mp4?s=miss_20261107_2118", headers=auth_range_1)
+                r_c2 = client.get("/ogp/reel/live_top5.mp4?s=miss_20261107_2118", headers=auth_range_2)
                 self.assertEqual(r_c1.status_code, 206)
                 self.assertEqual(r_c2.status_code, 206)
                 self.assertEqual(r_c1.data + r_c2.data, slot_sample[:96])
@@ -1827,11 +1834,12 @@ class SnsEditorialUpgradeTests(unittest.TestCase):
             self.assertEqual(r_if_mismatch.status_code, 200)
             self.assertEqual(r_if_mismatch.data, sample_mp4)
 
-            # 4) Safari ?refresh=1&t=<ts> sequence (0-1 probe -> -64 suffix EOF probe -> 0-127 chunk) encodes ONLY ONCE
+            # 4) Safari ?refresh=1&t=<ts> sequence (0-1 probe -> -64 suffix EOF probe -> 0-127 chunk) encodes ONLY ONCE for authorized master preview
             render_calls.clear()
-            r_p1 = client.get("/ogp/reel/live_top5.mp4?refresh=1&t=1761888123", headers={"Range": "bytes=0-1"})
-            r_p2 = client.get("/ogp/reel/live_top5.mp4?refresh=1&t=1761888123", headers={"Range": "bytes=-64"})
-            r_p3 = client.get("/ogp/reel/live_top5.mp4?refresh=1&t=1761888123", headers={"Range": "bytes=0-127"})
+            adm_hdr = {"X-Admin-Secret": app_mod.ADMIN_API_SECRET}
+            r_p1 = client.get("/ogp/reel/live_top5.mp4?refresh=1&t=1761888123", headers={**adm_hdr, "Range": "bytes=0-1"})
+            r_p2 = client.get("/ogp/reel/live_top5.mp4?refresh=1&t=1761888123", headers={**adm_hdr, "Range": "bytes=-64"})
+            r_p3 = client.get("/ogp/reel/live_top5.mp4?refresh=1&t=1761888123", headers={**adm_hdr, "Range": "bytes=0-127"})
             self.assertEqual(r_p1.status_code, 206)
             self.assertEqual(r_p2.status_code, 206)
             self.assertEqual(r_p2.data, sample_mp4[-64:])

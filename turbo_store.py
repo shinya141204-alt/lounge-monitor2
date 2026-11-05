@@ -3,7 +3,7 @@ turbo_store.py - Plan Take (竹) High-Speed Shared Bus, Pre-Compute Cache & Asyn
 
 Provides sub-millisecond cross-process coordination between `APP_ROLE=web` (Gunicorn workers)
 and `APP_ROLE=worker` (`worker.py`) in the Tokyo (`nrt`) deployment:
-  1. Live 53-store headcount & scraper health snapshot (`aiseki:live_snapshot`) via Upstash Redis (`REDIS_URL`).
+  1. Live 63-store headcount & scraper health snapshot (`aiseki:live_snapshot`) via Upstash Redis (`REDIS_URL`).
   2. Shared AI Pre-Compute Cache (`aiseki:ai:<namespace>:<hash>`) so drafts generated ahead of schedule
      by `worker.py` are served in <0.5ms across all web workers.
   3. Pre-rendered SNS Media Blob Cache (`aiseki:media:<key>`) for 1080x1350 Instagram carousel PNG/JPEG
@@ -84,6 +84,8 @@ _mem_state_keys = collections.OrderedDict()
 _mem_state_kv = {}
 _mem_state_kv_ts = {}
 _mem_analytics = collections.defaultdict(int)  # (date_jst, event, label) -> count
+_mem_rate_limits = collections.defaultdict(list)  # (namespace, key) -> [epoch_ts, ...]
+_mem_dist_locks = {}  # lock_name -> expire_epoch
 
 
 def _now_jst_str() -> str:
@@ -114,6 +116,8 @@ def reset_for_tests():
         _mem_state_kv.clear()
         _mem_state_kv_ts.clear()
         _mem_analytics.clear()
+        _mem_rate_limits.clear()
+        _mem_dist_locks.clear()
     with _l1_snap_lock:
         _l1_snap_cache["mono"] = 0.0
         _l1_snap_cache["data"] = None
@@ -1086,3 +1090,109 @@ def analytics_query_since(start_date_str: str) -> list:
         except Exception as err:
             logger.warning(f"[turbo_store] analytics_query_since pg error: {err}")
     return None
+
+
+# =====================================================================
+# 6. Cross-Process Rate Limiting (`INCR` + `EXPIRE`) & Distributed Cron Locks (`SET NX EX`)
+# =====================================================================
+def _rl_redis_key(namespace: str, subject: str) -> str:
+    safe_ns = (namespace or "default").strip()[:32]
+    safe_sub = hashlib.sha256((subject or "anon").encode("utf-8")).hexdigest()[:24]
+    return f"{KEY_PREFIX}:rl:{safe_ns}:{safe_sub}"
+
+
+def get_rate_limit_count(namespace: str, subject: str, window_sec: int, now: float = None) -> int:
+    """Return current hit count across all workers (Redis when available, else test/local memory)."""
+    rc = None if (_mem_bus_enabled or now is not None) else get_redis_client()
+    if rc is not None:
+        try:
+            raw = rc.get(_rl_redis_key(namespace, subject))
+            return int(raw) if raw is not None else 0
+        except Exception as err:
+            logger.warning(f"[turbo_store] get_rate_limit_count redis error: {err}")
+    now_t = now if now is not None else time.time()
+    mk = (namespace, subject)
+    with _mem_lock:
+        recent = [t for t in _mem_rate_limits.get(mk, []) if now_t - t < window_sec]
+        if recent:
+            _mem_rate_limits[mk] = recent
+        else:
+            _mem_rate_limits.pop(mk, None)
+        return len(recent)
+
+
+def record_rate_limit_hit(namespace: str, subject: str, window_sec: int, now: float = None) -> int:
+    """Atomically record 1 hit with TTL `window_sec` across all workers and return updated count."""
+    rc = None if (_mem_bus_enabled or now is not None) else get_redis_client()
+    if rc is not None:
+        rkey = _rl_redis_key(namespace, subject)
+        try:
+            pipe = rc.pipeline()
+            pipe.incr(rkey)
+            pipe.ttl(rkey)
+            cnt, ttl_rem = pipe.execute()
+            if int(cnt) == 1 or int(ttl_rem or -1) < 0:
+                rc.expire(rkey, max(1, int(window_sec)))
+            return int(cnt)
+        except Exception as err:
+            logger.warning(f"[turbo_store] record_rate_limit_hit redis error: {err}")
+    now_t = now if now is not None else time.time()
+    mk = (namespace, subject)
+    with _mem_lock:
+        if len(_mem_rate_limits) > 2048:
+            stale = [k for k, ts_l in _mem_rate_limits.items() if not ts_l or (now_t - ts_l[-1] >= window_sec)]
+            for k in stale:
+                _mem_rate_limits.pop(k, None)
+        recent = [t for t in _mem_rate_limits.get(mk, []) if now_t - t < window_sec]
+        recent.append(now_t)
+        _mem_rate_limits[mk] = recent
+        return len(recent)
+
+
+def clear_rate_limit(namespace: str, subject: str = None) -> None:
+    """Clear rate-limit counter for a specific subject (or entire namespace when `subject is None`)."""
+    rc = None if _mem_bus_enabled else get_redis_client()
+    if rc is not None and subject is not None:
+        try:
+            rc.delete(_rl_redis_key(namespace, subject))
+        except Exception:
+            pass
+    with _mem_lock:
+        if subject is None:
+            for k in [k for k in _mem_rate_limits.keys() if k[0] == namespace]:
+                _mem_rate_limits.pop(k, None)
+        else:
+            _mem_rate_limits.pop((namespace, subject), None)
+
+
+def check_sliding_rate_limit(namespace: str, subject: str, limit: int, window_sec: int, now: float = None) -> bool:
+    """Return True and record hit when under `limit`, or False without extending lock when >= `limit`."""
+    cur = get_rate_limit_count(namespace, subject, window_sec, now=now)
+    if cur >= limit:
+        return False
+    new_cnt = record_rate_limit_hit(namespace, subject, window_sec, now=now)
+    return new_cnt <= limit
+
+
+def acquire_distributed_lock(lock_name: str, ttl_sec: int = 55) -> bool:
+    """Acquire a short-lived cross-machine mutex (`SET key tok NX EX ttl`) so rolling-deploy duplicate workers never double-fire cron jobs."""
+    safe_name = (lock_name or "job").strip()[:80]
+    rc = None if _mem_bus_enabled else get_redis_client()
+    if rc is not None:
+        lkey = f"{KEY_PREFIX}:lock:{safe_name}"
+        try:
+            acquired = rc.set(lkey, secrets.token_hex(8).encode("utf-8"), nx=True, ex=max(1, int(ttl_sec)))
+            return bool(acquired)
+        except Exception as err:
+            logger.warning(f"[turbo_store] acquire_distributed_lock redis error ({safe_name}): {err}")
+            return True
+    if _mem_bus_enabled:
+        now_t = time.time()
+        with _mem_lock:
+            exp = _mem_dist_locks.get(safe_name, 0.0)
+            if exp > now_t:
+                return False
+            _mem_dist_locks[safe_name] = now_t + max(1, int(ttl_sec))
+            return True
+    return True
+

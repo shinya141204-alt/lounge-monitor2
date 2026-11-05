@@ -1,6 +1,7 @@
 """SEO, crawler directives, and LLM/RAG feed endpoints (`robots.txt`, `sitemap.xml`, `llms.txt`, `ads.txt`)."""
 
 import datetime
+import os
 
 from flask import Blueprint, Response, jsonify
 
@@ -501,12 +502,43 @@ def ads_txt():
     return Response(content, mimetype='text/plain')
 
 
+def _template_lastmod(template_name: str, fallback: str = '2026-11-04') -> str:
+    """Return real JST modification date of a static template so Googlebot trusts sitemap `<lastmod>`."""
+    try:
+        tpl_path = os.path.join(core.app.root_path, 'templates', template_name)
+        mtime = os.path.getmtime(tpl_path)
+        jst = datetime.timezone(datetime.timedelta(hours=9))
+        return datetime.datetime.fromtimestamp(mtime, tz=jst).strftime('%Y-%m-%d')
+    except Exception:
+        return fallback
+
+
 @seo_feeds_bp.route('/sitemap.xml')
 def sitemap_xml():
     import store_master
     today = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).strftime('%Y-%m-%d')
     pub_items = core.scheduled_articles.get_published_articles()
-    smap_key = (today, tuple(it.get('slug') for it in pub_items))
+    lm_guide = _template_lastmod('guide_article.html', '2026-11-04')
+    lm_weekday = _template_lastmod('guide_weekday.html', '2026-11-01')
+    lm_brand_cmp = _template_lastmod('guide_brand_comparison.html', '2026-11-02')
+    lm_shinjuku = _template_lastmod('guide_shinjuku.html', '2026-10-28')
+    lm_solo = _template_lastmod('guide_solo_pair.html', '2026-10-28')
+    lm_second = _template_lastmod('guide_second_venue.html', '2026-10-28')
+    lm_first10 = _template_lastmod('guide_first_10min.html', '2026-10-28')
+    lm_club = _template_lastmod('guide_club_midnight.html', '2026-11-01')
+    lm_weekend = _template_lastmod('guide_weekend.html', '2026-11-02')
+    lm_beauty = _template_lastmod('guide_beauty_stage.html', '2026-11-02')
+    lm_male_lead = _template_lastmod('guide_male_lead.html', '2026-11-03')
+    lm_price_ev = _template_lastmod('guide_price_event_comparison.html', '2026-11-03')
+    lm_last_train = _template_lastmod('guide_last_train_cliff.html', '2026-11-03')
+    lm_crowd_rush = _template_lastmod('guide_crowd_rush_paradox.html', '2026-11-03')
+    lm_waveform = _template_lastmod('guide_brand_waveform_asymmetry.html', '2026-11-04')
+    lm_screened = _template_lastmod('guide_lounge_vs_screened_date.html', '2026-11-04')
+    lm_dress = _template_lastmod('guide_dress_code_cleanliness.html', '2026-11-04')
+    lm_privacy = _template_lastmod('privacy.html', '2026-10-30')
+    lm_about = _template_lastmod('about.html', '2026-11-04')
+    lm_contact = _template_lastmod('contact.html', '2026-11-04')
+    smap_key = (today, tuple(it.get('slug') for it in pub_items), lm_guide, lm_about, lm_dress)
     smap_cache = core._sitemap_xml_cache
     with core._aux_doc_cache_lock:
         if smap_cache['key'] == smap_key and smap_cache['xml'] is not None:
@@ -592,103 +624,103 @@ def sitemap_xml():
   </url>
   <url>
     <loc>https://aiseki-navi.com/guide</loc>
-    <lastmod>{today}</lastmod>
+    <lastmod>{lm_guide}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://aiseki-navi.com/guide/weekday-strategy</loc>
-    <lastmod>{today}</lastmod>
+    <lastmod>{lm_weekday}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.85</priority>
   </url>
   <url>
     <loc>https://aiseki-navi.com/guide/brand-comparison</loc>
-    <lastmod>{today}</lastmod>
+    <lastmod>{lm_brand_cmp}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.85</priority>
   </url>
   <url>
     <loc>https://aiseki-navi.com/guide/shinjuku</loc>
-    <lastmod>{today}</lastmod>
+    <lastmod>{lm_shinjuku}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.85</priority>
   </url>
   <url>
     <loc>https://aiseki-navi.com/guide/solo-vs-pair</loc>
-    <lastmod>{today}</lastmod>
+    <lastmod>{lm_solo}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://aiseki-navi.com/guide/second-venue</loc>
-    <lastmod>{today}</lastmod>
+    <lastmod>{lm_second}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://aiseki-navi.com/guide/first-10-minutes</loc>
-    <lastmod>{today}</lastmod>
+    <lastmod>{lm_first10}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://aiseki-navi.com/guide/club-area-midnight</loc>
-    <lastmod>{today}</lastmod>
+    <lastmod>{lm_club}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.85</priority>
   </url>
   <url>
     <loc>https://aiseki-navi.com/guide/weekend-strategy</loc>
-    <lastmod>{today}</lastmod>
+    <lastmod>{lm_weekend}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.85</priority>
   </url>
   <url>
     <loc>https://aiseki-navi.com/guide/beauty-area-stage</loc>
-    <lastmod>{today}</lastmod>
+    <lastmod>{lm_beauty}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.85</priority>
   </url>
   <url>
     <loc>https://aiseki-navi.com/guide/male-lead-mechanics</loc>
-    <lastmod>{today}</lastmod>
+    <lastmod>{lm_male_lead}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.85</priority>
   </url>
   <url>
     <loc>https://aiseki-navi.com/guide/price-event-comparison</loc>
-    <lastmod>{today}</lastmod>
+    <lastmod>{lm_price_ev}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://aiseki-navi.com/guide/last-train-cliff</loc>
-    <lastmod>{today}</lastmod>
+    <lastmod>{lm_last_train}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://aiseki-navi.com/guide/crowd-rush-paradox</loc>
-    <lastmod>{today}</lastmod>
+    <lastmod>{lm_crowd_rush}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://aiseki-navi.com/guide/brand-waveform-asymmetry</loc>
-    <lastmod>{today}</lastmod>
+    <lastmod>{lm_waveform}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://aiseki-navi.com/guide/lounge-vs-screened-date</loc>
-    <lastmod>{today}</lastmod>
+    <lastmod>{lm_screened}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://aiseki-navi.com/guide/dress-code-cleanliness</loc>
-    <lastmod>{today}</lastmod>
+    <lastmod>{lm_dress}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
@@ -696,19 +728,19 @@ def sitemap_xml():
 {store_urls}
   <url>
     <loc>https://aiseki-navi.com/privacy</loc>
-    <lastmod>{today}</lastmod>
+    <lastmod>{lm_privacy}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://aiseki-navi.com/about</loc>
-    <lastmod>{today}</lastmod>
+    <lastmod>{lm_about}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://aiseki-navi.com/contact</loc>
-    <lastmod>{today}</lastmod>
+    <lastmod>{lm_contact}</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.4</priority>
   </url>

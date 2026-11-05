@@ -396,9 +396,14 @@
             t.style.display = 'block';
             try {
                 var url = target === 'ig' ? '/api/trigger-ig-post?mode=carousel&force=1' : '/api/trigger-threads-post?slot=22:00&force=1';
-                var data = await fetchJsonSafe(url, { headers: { 'Accept': 'application/json' } }, 45000);
-                if (data && data.status === 'success') {
-                    t.textContent = (target === 'ig' ? '✅ Instagramへの自動投稿が完了しました！' : '✅ Threadsへの自動投稿が完了しました！');
+                var data = await fetchJsonSafe(url, {
+                    method: 'POST',
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+                }, 45000);
+                if (data && (data.status === 'success' || data.queued)) {
+                    t.textContent = data.queued
+                        ? '✅ バックグラウンド投稿キューに投入しました（約10〜20秒で自動配信されます）'
+                        : (target === 'ig' ? '✅ Instagramへの自動投稿が完了しました！' : '✅ Threadsへの自動投稿が完了しました！');
                 } else {
                     t.textContent = '⚠️ ' + ((data && (data.reason || data.detail || data.error)) || '設定を確認してください');
                 }

@@ -19,7 +19,13 @@ COPY requirements.txt /app/requirements.txt
 RUN pip install --upgrade pip && pip install -r /app/requirements.txt
 
 COPY . /app
-RUN mkdir -p /app/data && chmod +x /app/scripts/*.sh /app/scripts/*.py || true
+RUN groupadd --system appgroup \
+    && useradd --system --gid appgroup --create-home --home-dir /home/appuser --shell /usr/sbin/nologin appuser \
+    && mkdir -p /app/data \
+    && if [ -d /app/scripts ]; then find /app/scripts -maxdepth 1 \( -name '*.sh' -o -name '*.py' \) -exec chmod +x {} +; fi \
+    && chown -R appuser:appgroup /app /home/appuser
+
+USER appuser
 
 EXPOSE 8080
 

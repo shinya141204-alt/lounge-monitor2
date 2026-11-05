@@ -16,17 +16,20 @@ sns_jobs_bp = Blueprint('sns_jobs_bp', __name__)
 
 @sns_jobs_bp.route('/ogp/live.png')
 def dynamic_live_ogp_image():
-    """Dynamically render a 1200x630 live TOP3 ranking OGP card image (memoized in RAM)."""
+    """Dynamically render a 1200x630 live TOP3 ranking OGP card image (memoized in RAM by normalized slot)."""
+    import ogp_generator
     core.restore_latest_data_if_empty()
     core.trigger_background_fetch_if_needed()
     s_param = (request.args.get('s') or '').strip()[:40]
     now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
+    resolved_slot = ogp_generator.resolve_slot_from_param(s_param, now_jst=now_jst)
     bucket_10m = f"{now_jst.strftime('%Y%m%d%H')}_{(now_jst.minute // 10) * 10:02d}"
     with core.data_lock:
         stores = list(core.latest_data.get('full_data') or [])
         last_u = core.latest_data.get('last_updated')
         is_s = bool(core.latest_data.get('is_seed'))
-    ogp_key = ('live', s_param, bucket_10m, core._live_data_signature(stores, last_u, is_s))
+    # Key by resolved_slot (3 fixed slots) rather than raw `s` query param so random `?s=<uuid>` cannot bust cache
+    ogp_key = ('live', resolved_slot, bucket_10m, core._live_data_signature(stores, last_u, is_s))
     now_mono = time.monotonic()
     ogp_cache = core._ogp_bytes_cache
     with core._ogp_bytes_cache_lock:
@@ -37,8 +40,7 @@ def dynamic_live_ogp_image():
             resp.headers['Cache-Control'] = 'public, max-age=300'
             return resp
     try:
-        import ogp_generator
-        png_bytes = ogp_generator.generate_live_ogp_png(stores, s_param=s_param)
+        png_bytes = ogp_generator.generate_live_ogp_png(stores, s_param=resolved_slot, now_jst=now_jst)
         with core._ogp_bytes_cache_lock:
             ogp_cache[ogp_key] = (now_mono, png_bytes)
             ogp_cache.move_to_end(ogp_key)
@@ -124,10 +126,13 @@ def public_reel_mp4(reel_type):
             or bool(request.headers.get('If-Range'))
         )
     )
-    wants_refresh = (request.args.get('refresh') == '1')
+    # Security guard: only Master-authorized requests can force ffmpeg re-render (`?refresh=1`) or write new Redis/disk slots.
+    # Unauthenticated visitors (and Meta Graph API crawlers) can only read pre-pinned slots (`?s=<ts_code>`) or cached default MP4.
+    can_mutate_reel = core.is_master_authorized()
+    wants_refresh = can_mutate_reel and (request.args.get('refresh') == '1')
     preview_tok = re.sub(r'[^A-Za-z0-9_.-]', '', (request.args.get('t') or '').strip())[:32]
     force_refresh = wants_refresh and not is_cont_range
-    slot_token = (request.args.get('s') or '').strip()
+    slot_token = re.sub(r'[^A-Za-z0-9_.-]', '', (request.args.get('s') or '').strip())[:32]
     with core.data_lock:
         live_s = list(core.latest_data.get('full_data') or [])
     try:
@@ -140,10 +145,11 @@ def public_reel_mp4(reel_type):
             mp4_bytes = reel_generator.get_pinned_reel_mp4_slot(rt, slot_token)
         if not mp4_bytes:
             mp4_bytes = reel_generator.render_reel_mp4_bytes(live_s, reel_type=rt, force_refresh=force_refresh)
-            if wants_refresh and preview_tok and preview_tok != 'init':
-                reel_generator.pin_shared_reel_mp4_slot(rt, f"prev_{preview_tok}", mp4_bytes, ttl_sec=300)
-            if slot_token:
-                reel_generator.pin_shared_reel_mp4_slot(rt, slot_token, mp4_bytes)
+            if can_mutate_reel:
+                if wants_refresh and preview_tok and preview_tok != 'init':
+                    reel_generator.pin_shared_reel_mp4_slot(rt, f"prev_{preview_tok}", mp4_bytes, ttl_sec=300)
+                if slot_token:
+                    reel_generator.pin_shared_reel_mp4_slot(rt, slot_token, mp4_bytes)
         headers = {
             'Cache-Control': 'public, max-age=300',
             'Accept-Ranges': 'bytes',
@@ -177,15 +183,32 @@ def public_reel_mp4(reel_type):
 
 @sns_jobs_bp.route('/ogp/reel/<reel_type>.jpg')
 def public_reel_preview_jpg(reel_type):
-    """Pure-Pillow 720x1280 9:16 JPEG poster frame for `<video poster=...>` and instant preview."""
+    """Pure-Pillow 720x1280 9:16 JPEG poster frame for `<video poster=...>` and instant preview (memoized 60s)."""
     import reel_generator
     core.restore_latest_data_if_empty()
     core.trigger_background_fetch_if_needed()
     rt = reel_generator.normalize_reel_type(reel_type)
+    can_refresh = core.is_master_authorized() and (request.args.get('refresh') == '1')
     with core.data_lock:
         live_s = list(core.latest_data.get('full_data') or [])
+        last_u = core.latest_data.get('last_updated')
+        is_s = bool(core.latest_data.get('is_seed'))
+    jpg_key = ('reel_jpg', rt, core._live_data_signature(live_s, last_u, is_s))
+    now_mono = time.monotonic()
+    ogp_cache = core._ogp_bytes_cache
+    if not can_refresh:
+        with core._ogp_bytes_cache_lock:
+            hit = ogp_cache.get(jpg_key)
+            if hit is not None and (now_mono - hit[0] < 60.0):
+                ogp_cache.move_to_end(jpg_key)
+                return Response(hit[1], mimetype='image/jpeg', headers={'Cache-Control': 'public, max-age=120'})
     try:
         jpg_bytes = reel_generator.render_reel_preview_frame_jpeg(live_s, reel_type=rt, sec=6.0)
+        with core._ogp_bytes_cache_lock:
+            ogp_cache[jpg_key] = (now_mono, jpg_bytes)
+            ogp_cache.move_to_end(jpg_key)
+            while len(ogp_cache) > core._OGP_BYTES_CACHE_MAX:
+                ogp_cache.popitem(last=False)
         return Response(jpg_bytes, mimetype='image/jpeg', headers={'Cache-Control': 'public, max-age=120'})
     except Exception as e:
         logging.error(f"Public Reel preview JPEG failed ({rt}): {e}")
@@ -540,8 +563,35 @@ def _enqueue_sns_job_and_maybe_dispatch(job_type: str, params: dict = None, work
     return job
 
 
+def _require_master_post_csrf():
+    """Enforce Master auth + POST method + Same-Origin CSRF guard on all side-effecting SNS trigger routes."""
+    if not core.is_master_authorized():
+        return jsonify({'error': 'Unauthorized'}), 401
+    if request.method != 'POST':
+        resp = jsonify({'error': 'Method Not Allowed: use POST to trigger SNS actions'}), 405
+        return resp
+    # Machine-to-machine requests with X-Admin-Secret header are inherently CSRF-immune
+    if (request.headers.get('X-Admin-Secret') or '').strip():
+        return None
+    sec_fetch = (request.headers.get('Sec-Fetch-Site') or '').strip().lower()
+    if sec_fetch and sec_fetch not in ('same-origin', 'none'):
+        return jsonify({'error': 'Cross-site request blocked'}), 403
+    import contact_form
+    if not contact_form.is_same_origin(
+        request.headers.get('Origin'),
+        request.headers.get('Referer'),
+        request.host,
+    ):
+        return jsonify({'error': 'Origin mismatch'}), 403
+    return None
+
+
 def _maybe_enqueue_async_sns_trigger(job_type: str, params: dict = None):
-    if request.args.get('async') != '1':
+    # Default to async background queue on production `APP_ROLE=web` (with Redis) unless `?sync=1` is requested,
+    # preventing 60s Gunicorn timeouts from causing partial/duplicate SNS posts.
+    dedicated_redis_web = core.is_web_only_role() and (core.turbo_store.get_redis_client() is not None)
+    wants_async = (request.args.get('async') == '1') or (dedicated_redis_web and request.args.get('sync') != '1')
+    if not wants_async:
         return None
     worker_only = request.args.get('worker_only') == '1'
     job = core._enqueue_sns_job_and_maybe_dispatch(job_type, params=params, worker_only=worker_only)
@@ -558,8 +608,9 @@ def _maybe_enqueue_async_sns_trigger(job_type: str, params: dict = None):
 @sns_jobs_bp.route('/api/sns-jobs/enqueue', methods=['POST'])
 def api_sns_jobs_enqueue():
     """Master-only endpoint to enqueue an SNS post or prewarm bundle onto the background worker in <1ms."""
-    if not core.is_master_authorized():
-        return jsonify({'error': 'Unauthorized'}), 401
+    guard_err = _require_master_post_csrf()
+    if guard_err is not None:
+        return guard_err
     payload = request.get_json(silent=True, force=True) or {}
     job_type = str(payload.get('job_type') or '').strip().lower()
     if job_type not in core.SUPPORTED_SNS_JOB_TYPES:
@@ -599,9 +650,10 @@ def api_sns_jobs_list():
 
 @sns_jobs_bp.route('/api/trigger-prewarm', methods=['GET', 'POST'])
 def trigger_prewarm_endpoint():
-    """Master-only endpoint to precompute AI editorial drafts on demand."""
-    if not core.is_master_authorized():
-        return jsonify({'error': 'Unauthorized'}), 401
+    """Master-only endpoint to precompute AI editorial drafts on demand (POST required)."""
+    guard_err = _require_master_post_csrf()
+    if guard_err is not None:
+        return guard_err
     include_col = request.args.get('column', '0') == '1'
     include_pdca = request.args.get('pdca', '0') == '1'
     include_ig = request.args.get('ig_slides', '0') == '1'
@@ -615,11 +667,12 @@ def trigger_prewarm_endpoint():
     return jsonify(res)
 
 
-@sns_jobs_bp.route('/api/trigger-x-post')
+@sns_jobs_bp.route('/api/trigger-x-post', methods=['GET', 'POST'])
 def trigger_x_post_endpoint():
-    """Endpoint to test or externally trigger X auto-posting (master only)."""
-    if not core.is_master_authorized():
-        return jsonify({'error': 'Unauthorized'}), 401
+    """Endpoint to test or externally trigger X auto-posting (master POST only)."""
+    guard_err = _require_master_post_csrf()
+    if guard_err is not None:
+        return guard_err
     slot = request.args.get('slot', '20:00')
     force = request.args.get('force', '0') == '1'
     queued_resp = _maybe_enqueue_async_sns_trigger('x_post', {'slot': slot, 'force': force})
@@ -629,11 +682,12 @@ def trigger_x_post_endpoint():
     return jsonify(res)
 
 
-@sns_jobs_bp.route('/api/trigger-x-tip')
+@sns_jobs_bp.route('/api/trigger-x-tip', methods=['GET', 'POST'])
 def trigger_x_tip_endpoint():
-    """Endpoint to test or externally trigger X human-like tips posting (master only)."""
-    if not core.is_master_authorized():
-        return jsonify({'error': 'Unauthorized'}), 401
+    """Endpoint to test or externally trigger X human-like tips posting (master POST only)."""
+    guard_err = _require_master_post_csrf()
+    if guard_err is not None:
+        return guard_err
     slot = request.args.get('slot', '12:00')
     force = request.args.get('force', '0') == '1'
     idx = request.args.get('idx', type=int)
@@ -645,11 +699,12 @@ def trigger_x_tip_endpoint():
     return jsonify(res)
 
 
-@sns_jobs_bp.route('/api/trigger-note-share')
+@sns_jobs_bp.route('/api/trigger-note-share', methods=['GET', 'POST'])
 def trigger_note_share_endpoint():
-    """Endpoint to test or externally trigger note promotion posting (master only)."""
-    if not core.is_master_authorized():
-        return jsonify({'error': 'Unauthorized'}), 401
+    """Endpoint to test or externally trigger note promotion posting (master POST only)."""
+    guard_err = _require_master_post_csrf()
+    if guard_err is not None:
+        return guard_err
     force = request.args.get('force', '0') == '1'
     idx = request.args.get('idx', 0, type=int)
     queued_resp = _maybe_enqueue_async_sns_trigger('note_share', {'force': force, 'idx': idx})
@@ -660,11 +715,12 @@ def trigger_note_share_endpoint():
     return jsonify(res)
 
 
-@sns_jobs_bp.route('/api/trigger-x-pinned')
+@sns_jobs_bp.route('/api/trigger-x-pinned', methods=['GET', 'POST'])
 def trigger_x_pinned_endpoint():
-    """Endpoint to post the 2-post Pinned Tweet thread (master only)."""
-    if not core.is_master_authorized():
-        return jsonify({'error': 'Unauthorized'}), 401
+    """Endpoint to post the 2-post Pinned Tweet thread (master POST only)."""
+    guard_err = _require_master_post_csrf()
+    if guard_err is not None:
+        return guard_err
     queued_resp = _maybe_enqueue_async_sns_trigger('x_pinned', {})
     if queued_resp is not None:
         return queued_resp
@@ -676,11 +732,12 @@ def trigger_x_pinned_endpoint():
     return jsonify(res)
 
 
-@sns_jobs_bp.route('/api/trigger-x-column')
+@sns_jobs_bp.route('/api/trigger-x-column', methods=['GET', 'POST'])
 def trigger_x_column_endpoint():
-    """Endpoint to post a 2-post Column Promotion thread (master only)."""
-    if not core.is_master_authorized():
-        return jsonify({'error': 'Unauthorized'}), 401
+    """Endpoint to post a 2-post Column Promotion thread (master POST only)."""
+    guard_err = _require_master_post_csrf()
+    if guard_err is not None:
+        return guard_err
     idx = request.args.get('idx', 0, type=int)
     queued_resp = _maybe_enqueue_async_sns_trigger('x_column', {'idx': idx})
     if queued_resp is not None:
@@ -700,11 +757,12 @@ def trigger_x_column_endpoint():
     return jsonify(res)
 
 
-@sns_jobs_bp.route('/api/trigger-x-weekly')
+@sns_jobs_bp.route('/api/trigger-x-weekly', methods=['GET', 'POST'])
 def trigger_x_weekly_endpoint():
-    """Endpoint to test or externally trigger the Weekly Summary X post (master only)."""
-    if not core.is_master_authorized():
-        return jsonify({'error': 'Unauthorized'}), 401
+    """Endpoint to test or externally trigger the Weekly Summary X post (master POST only)."""
+    guard_err = _require_master_post_csrf()
+    if guard_err is not None:
+        return guard_err
     force = request.args.get('force', '0') == '1'
     queued_resp = _maybe_enqueue_async_sns_trigger('x_weekly', {'force': force})
     if queued_resp is not None:
@@ -713,11 +771,12 @@ def trigger_x_weekly_endpoint():
     return jsonify(res)
 
 
-@sns_jobs_bp.route('/api/trigger-x-bonus')
+@sns_jobs_bp.route('/api/trigger-x-bonus', methods=['GET', 'POST'])
 def trigger_x_bonus_endpoint():
-    """Endpoint to test or externally trigger the Bonus-Time Guerrilla Alert X post (master only)."""
-    if not core.is_master_authorized():
-        return jsonify({'error': 'Unauthorized'}), 401
+    """Endpoint to test or externally trigger the Bonus-Time Guerrilla Alert X post (master POST only)."""
+    guard_err = _require_master_post_csrf()
+    if guard_err is not None:
+        return guard_err
     force = request.args.get('force', '0') == '1'
     queued_resp = _maybe_enqueue_async_sns_trigger('x_bonus', {'force': force})
     if queued_resp is not None:
@@ -729,11 +788,12 @@ def trigger_x_bonus_endpoint():
     return jsonify(res)
 
 
-@sns_jobs_bp.route('/api/trigger-threads-post')
+@sns_jobs_bp.route('/api/trigger-threads-post', methods=['GET', 'POST'])
 def trigger_threads_post_endpoint():
-    """Endpoint to test or externally trigger Meta Threads auto-post (master only)."""
-    if not core.is_master_authorized():
-        return jsonify({'error': 'Unauthorized'}), 401
+    """Endpoint to test or externally trigger Meta Threads auto-post (master POST only)."""
+    guard_err = _require_master_post_csrf()
+    if guard_err is not None:
+        return guard_err
     slot = request.args.get('slot', '20:00')
     force = request.args.get('force', '0') == '1'
     queued_resp = _maybe_enqueue_async_sns_trigger('threads_post', {'slot': slot, 'force': force})
@@ -746,11 +806,12 @@ def trigger_threads_post_endpoint():
     return jsonify(res)
 
 
-@sns_jobs_bp.route('/api/trigger-ig-post')
+@sns_jobs_bp.route('/api/trigger-ig-post', methods=['GET', 'POST'])
 def trigger_ig_post_endpoint():
-    """Endpoint to test or externally trigger Meta Instagram Graph API auto-post (master only)."""
-    if not core.is_master_authorized():
-        return jsonify({'error': 'Unauthorized'}), 401
+    """Endpoint to test or externally trigger Meta Instagram Graph API auto-post (master POST only)."""
+    guard_err = _require_master_post_csrf()
+    if guard_err is not None:
+        return guard_err
     mode = request.args.get('mode', 'carousel')
     slot = request.args.get('slot', '22:00')
     force = request.args.get('force', '0') == '1'
@@ -764,11 +825,12 @@ def trigger_ig_post_endpoint():
     return jsonify(res)
 
 
-@sns_jobs_bp.route('/api/trigger-ladies-sns')
+@sns_jobs_bp.route('/api/trigger-ladies-sns', methods=['GET', 'POST'])
 def trigger_ladies_sns_endpoint():
-    """Endpoint to test or externally trigger Plan E Women-Perspective Zero-Wait & Perks SNS alerts (master only)."""
-    if not core.is_master_authorized():
-        return jsonify({'error': 'Unauthorized'}), 401
+    """Endpoint to test or externally trigger Plan E Women-Perspective Zero-Wait & Perks SNS alerts (master POST only)."""
+    guard_err = _require_master_post_csrf()
+    if guard_err is not None:
+        return guard_err
     channel = (request.args.get('channel') or 'threads').strip().lower()
     force = request.args.get('force', '0') == '1'
     slot_arg = request.args.get('slot') or ('19:45' if channel in ('ig', 'instagram') else '19:30')
