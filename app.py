@@ -4294,6 +4294,9 @@ def store_detail_page(store_slug):
                 area_label=(area_info or {}).get('short_name') or store_obj['area_label'],
                 area_store_names=area_peer_names,
                 seo_name_fn=store_master.seo_name,
+                nearest=_nearest_stores_with_km(
+                    sname, [n for n in store_master.load().keys() if 'ソウル' not in n], 3
+                ),
             )
         except Exception as e:
             logging.warning(f"[store_insight] {sname}: {e}")
@@ -4319,13 +4322,18 @@ STORE_PAGE_COMPARE_LIMIT = 4
 
 def _nearest_store_names(sname, candidates, limit):
     """Order candidate store names by straight-line distance from `sname` (store_master lat/lng)."""
+    return [n for n, _ in _nearest_stores_with_km(sname, candidates, limit)]
+
+
+def _nearest_stores_with_km(sname, candidates, limit):
+    """Return [(store_name, km_or_None), ...] ordered by straight-line distance from `sname`."""
     import math
     import store_master
     base = store_master.get(sname) or {}
     blat, blng = base.get('lat'), base.get('lng')
     cands = [c for c in candidates if c and c != sname]
     if blat is None or blng is None:
-        return cands[:limit]
+        return [(c, None) for c in cands[:limit]]
 
     def _dist(name):
         meta = store_master.get(name) or {}
@@ -4337,11 +4345,12 @@ def _nearest_store_names(sname, candidates, limit):
         a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
         return 6371.0 * 2 * math.asin(math.sqrt(min(1.0, a)))
 
-    return sorted(cands, key=_dist)[:limit]
+    scored = sorted(((c, _dist(c)) for c in cands), key=lambda t: t[1])
+    return [(c, (None if d == float('inf') else d)) for c, d in scored[:limit]]
 
 
 def _trim_nearby_comparison(sname, comparison, limit):
-    """Keep the current store, the cluster's recommended store and the nearest rivals (max `limit` columns).
+    """Keep the current store and its nearest rivals (max `limit` columns).
     The full cluster board stays available on /price-comparison."""
     if not comparison or not comparison.get('stores'):
         return comparison
@@ -4349,9 +4358,7 @@ def _trim_nearby_comparison(sname, comparison, limit):
     if len(stores) <= limit:
         return comparison
     by_name = {st.get('name') or st.get('store_name'): st for st in stores}
-    current = [st for st in stores if st.get('is_current_store')]
-    best = [st for st in stores if st.get('is_best_in_cluster') and not st.get('is_current_store')]
-    keep = current + best
+    keep = [st for st in stores if st.get('is_current_store')]
     rest_names = [n for n, st in by_name.items() if n and st not in keep]
     for n in _nearest_store_names(sname, rest_names, len(rest_names)):
         if len(keep) >= limit:

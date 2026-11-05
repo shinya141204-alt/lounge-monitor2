@@ -266,7 +266,7 @@ def _area_comparison(store_name: str, stats: dict, area_store_names, area_label:
 
 
 def build_store_insight(store_name: str, seo_name: str, area_label: str = '', area_store_names=None,
-                        seo_name_fn=None, stats_fn=None) -> dict:
+                        seo_name_fn=None, stats_fn=None, nearest=None) -> dict:
     """Build the narrative block for /store/<slug>. Returns None when data is insufficient."""
     stats_fn = stats_fn or get_store_stats_cached
     seo_name_fn = seo_name_fn or (lambda n: n)
@@ -294,7 +294,8 @@ def build_store_insight(store_name: str, seo_name: str, area_label: str = '', ar
                 txt += f"最も少ない{worst['label']}日でも平均{worst['avg_peak_w']}名あり、曜日による差は{gap}名と小さめです。"
         if best.get('typical_peak_hour') is not None:
             txt += f"{best['label']}日のピークは{_fmt_hour(best['typical_peak_hour'])}台に来ることが多くなっています。"
-        sections.append({'heading': '曜日による違い', 'text': txt})
+        sections.append({'heading': '曜日による違い', 'text': txt,
+                         'score': min(3.0, best['avg_peak_w'] / max(worst['avg_peak_w'], 0.5) - 1.0) / 1.5})
 
     # --- 2. 時間帯の傾向 ---
     ph, rh = st.get('peak_hour'), st.get('ramp_hour')
@@ -324,7 +325,8 @@ def build_store_insight(store_name: str, seo_name: str, area_label: str = '', ar
                 txt += f"男性の平均人数が最も多いのは{_fmt_hour(mph)}台で、女性より{abs(lag)}時間早く男性のピークが来ます。"
         if la and la['hour'] != ph['hour']:
             txt += f"女性が平均1名以上記録されている最後の時間帯は{_fmt_hour(la['hour'])}台です。"
-        sections.append({'heading': '時間帯による違い', 'text': txt})
+        sections.append({'heading': '時間帯による違い', 'text': txt,
+                         'score': abs(_biz_hour_index(ph['hour']) - _biz_hour_index(22)) / 2.0})
 
     # --- 3. 終電後 ---
     ret = st.get('retention_pct')
@@ -341,7 +343,7 @@ def build_store_insight(store_name: str, seo_name: str, area_label: str = '', ar
         late = st.get('late_retention_pct')
         if late is not None:
             txt += f"さらに翌2〜3時台では{late}%まで{'下がります' if late < ret else '維持されています'}。"
-        sections.append({'heading': '終電後に女性がどれだけ残るか', 'text': txt})
+        sections.append({'heading': '終電後に女性がどれだけ残るか', 'text': txt, 'score': abs(ret - 85) / 30.0})
 
     # --- 4. 平日と週末 ---
     we, wk = st.get('weekend_avg_peak_w'), st.get('weekday_avg_peak_w')
@@ -359,7 +361,7 @@ def build_store_insight(store_name: str, seo_name: str, area_label: str = '', ar
                 txt += f"21〜23時台の女性比率は週末{wcw}%・平日{wdw}%で、{'週末' if wcw > wdw else '平日'}のほうが女性の割合が高くなっています。"
             else:
                 txt += f"21〜23時台の女性比率は週末{wcw}%・平日{wdw}%とほぼ同じです。"
-        sections.append({'heading': '平日と週末の差', 'text': txt})
+        sections.append({'heading': '平日と週末の差', 'text': txt, 'score': abs(we / max(wk, 0.5) - 1.8) / 0.6})
 
     # --- 5. 男性先行・規模感 ---
     mfr = st.get('men_first_rate')
@@ -378,7 +380,7 @@ def build_store_insight(store_name: str, seo_name: str, area_label: str = '', ar
             txt += '最も混んだ夜は、' + '、'.join(
                 f"{t['label']} {t['hm']}頃（女性{t['w']}名・男性{t['m']}名）" for t in tops
             ) + 'です。'
-        sections.append({'heading': '男女のバランスと店の規模', 'text': txt})
+        sections.append({'heading': '男女のバランスと店の規模', 'text': txt, 'score': abs(mfr - 25) / 20.0})
 
     # --- 6. 同エリア比較 ---
     if area_store_names:
@@ -402,10 +404,35 @@ def build_store_insight(store_name: str, seo_name: str, area_label: str = '', ar
             amc = cmp_.get('area_median_core_wpct')
             if amc is not None and st.get('wpct_core') is not None:
                 txt += f"21〜22時台の女性比率は{st['wpct_core']}%（エリア中央値{amc}%）です。"
-            sections.append({'heading': f"{cmp_['area_label'] or '同じエリア'}の他店との比較", 'text': txt})
+            sections.append({'heading': f"{cmp_['area_label'] or '同じエリア'}の他店との比較", 'text': txt,
+                             'score': 1.5 if cmp_['rank_by_peak'] in (1, cmp_['n_stores']) else 0.5})
+
+    # --- 7. 最寄り店舗との比較（直線距離） ---
+    near_parts = []
+    for n, km in (nearest or []):
+        ost = stats_fn(n)
+        if not ost:
+            continue
+        dist = (f"約{round(km * 1000 / 50) * 50}m" if km < 1 else f"約{round(km, 1)}km") if km is not None else '近隣'
+        part = f"{seo_name_fn(n)}（直線{dist}）は最大女性数の平均{ost['avg_peak_w']}名"
+        diff = round(ost['avg_peak_w'] - st['avg_peak_w'], 1)
+        part += f"で{s}より{abs(diff)}名{'多く' if diff > 0 else '少なく'}" if abs(diff) >= 0.5 else "で同程度"
+        o_ph = ost.get('peak_hour')
+        if o_ph:
+            part += f"、ピークは{_fmt_hour(o_ph['hour'])}台"
+        if ost.get('retention_pct') is not None:
+            part += f"、終電後の残存率は{ost['retention_pct']}%"
+        near_parts.append(part + 'です。')
+    if near_parts:
+        txt = ''.join(near_parts)
+        if ph:
+            txt += f"{s}自身のピークは{_fmt_hour(ph['hour'])}台なので、時間帯がずれる店舗を組み合わせると、混む時間を避けて移動しやすくなります。"
+        sections.append({'heading': '最寄りの店舗との比較', 'text': txt, 'score': 0.8})
 
     if len(sections) < 2:
         return None
+    # その店舗で平均から最も外れている（＝特徴的な）指標から順に並べる
+    sections.sort(key=lambda sec: -sec.get('score', 0))
 
     weekday_rows = [r for r in st['weekday_table']]
     hourly_rows = [

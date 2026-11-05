@@ -599,7 +599,7 @@
                         {% endif %}
                         {% else %}
                         <div class="moat-detail-main">現在少人数（6名以上で自動予測）</div>
-                        <p class="moat-detail-sub">店内の男女合計が6名以上に達すると、98万件の実測データから60分後の男女比と男余り逆転確率を算出します。 <a href="/stats#forecast-accuracy" style="color:var(--accent-text); text-decoration:underline;">答え合わせ検証ログ ›</a></p>
+                        <p class="moat-detail-sub">男女合計が6名以上になると表示します。 <a href="/stats#forecast-accuracy" style="color:var(--accent-text); text-decoration:underline;">答え合わせ検証ログ ›</a></p>
                         {% endif %}
                     </div>
                     <div class="moat-detail-card">
@@ -647,7 +647,7 @@
                 <span style="font-size:0.72rem; color: var(--text-sub); background: var(--card-elevated); border: 1px solid var(--border-subtle); padding: 3px 11px; border-radius: 999px; font-weight: 600;">一次データ集計</span>
             </div>
             <p style="margin: 0 0 14px; font-size: 0.85rem; color: var(--text-sub);">
-                相席ナビが蓄積している<strong style="color: var(--text-main);">{{ store.seo_name }}</strong>の時系列人数ログから算出した、待ち時間を減らして相席しやすい狙い目傾向です。
+                直近10日間の<strong style="color: var(--text-main);">{{ store.seo_name }}</strong>の記録から算出しています。
             </p>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px;">
                 <div class="stat-subcard">
@@ -765,7 +765,7 @@
                 </table>
             </div>
             {% endif %}
-            <p class="store-insight-note">0時〜6時台の記録は前日の営業日として集計しています。男女とも0名の記録は除外し、女性比率は男女合計6名以上の記録のみで計算しています。記録が少ない項目は表示していません。集計方法の詳細は<a href="/about" style="color: var(--accent-text);">相席ナビについて</a>をご覧ください。</p>
+            <p class="store-insight-note">集計方法は<a href="/about" style="color: var(--accent-text);">相席ナビについて</a>に記載しています（0〜6時台は前日扱い、0名の記録は除外、女性比率は男女合計6名以上で計算）。</p>
         </section>
         {% endif %}
 
@@ -776,7 +776,7 @@
                 <a href="/price-comparison?area={{ nearby_comparison.cluster_id }}" style="font-size:0.78rem; color: var(--accent-text); text-decoration:none; font-weight:600;">全国エリア比較ボードへ ›</a>
             </div>
             <p style="margin: 0 0 12px; font-size: 0.84rem; color: var(--text-sub);">
-                同じエリア内の競合店舗と<strong style="color: var(--text-main);">「単独（待機）料金」「時間帯別の相席10分単価」「1名入店の可否」「開催中イベント」「いまの男女人数」</strong>を並列で比較できます。※最新条件は各公式サイトでご確認ください。{% if nearby_comparison.total_cluster_stores %}ここでは距離の近い店舗とエリア推奨店だけを表示しています（全{{ nearby_comparison.total_cluster_stores }}店舗は<a href="/price-comparison?area={{ nearby_comparison.cluster_id }}" style="color: var(--accent-text);">比較ボード</a>で確認できます）。{% endif %}
+                距離の近い店舗と、料金・1名入店の可否・開催中の企画・現在の人数を並べています（最新条件は各公式サイトでご確認ください）。{% if nearby_comparison.total_cluster_stores %}全{{ nearby_comparison.total_cluster_stores }}店舗は<a href="/price-comparison?area={{ nearby_comparison.cluster_id }}" style="color: var(--accent-text);">比較ボード</a>で確認できます。{% endif %}
             </p>
 
             <div class="apple-compare-toolbar" aria-label="比較時間帯の切り替え">
@@ -893,7 +893,7 @@
         <section class="section-card">
             <h2>徒歩圏内・同エリア店舗のリアルタイム人数比較（ハシゴ候補）</h2>
             <p style="margin: 0; font-size: 0.85rem; color: var(--text-sub);">
-                {{ store.seo_name }}と同じエリアにある相席ラウンジの現在人数です。1店舗目で男性待ちが発生している場合は、女性数・女性比率が安定している近隣店舗へ移動するだけで待ち時間を短縮できます。
+                {{ store.seo_name }}から近い順に、同じエリアの店舗の現在人数を表示しています。
             </p>
             <div class="nearby-grid">
                 {% for ns in nearby_stores %}
@@ -1455,7 +1455,7 @@
                                             accLine +
                                             '</div>';
                                     } else {
-                                        fcHtml = '<div class="moat-detail-card"><div class="moat-detail-eyebrow"><span>60分後のAI男女比予測</span></div><div class="moat-detail-main">現在少人数（6名以上で自動予測）</div><p class="moat-detail-sub">店内の男女合計が6名以上に達すると、98万件の実測データから60分後の男女比と男余り逆転確率を算出します。 <a href="/stats#forecast-accuracy" style="color:var(--accent-text); text-decoration:underline;">答え合わせ検証ログ ›</a></p></div>';
+                                        fcHtml = '<div class="moat-detail-card"><div class="moat-detail-eyebrow"><span>60分後のAI男女比予測</span></div><div class="moat-detail-main">現在少人数（6名以上で自動予測）</div><p class="moat-detail-sub">男女合計が6名以上になると表示します。 <a href="/stats#forecast-accuracy" style="color:var(--accent-text); text-decoration:underline;">答え合わせ検証ログ ›</a></p></div>';
                                     }
                                     let srcTxt = 'JIS実測学習AI推論';
                                     if (we && we.is_standing_free) srcTxt = '自由回遊スタンディング';

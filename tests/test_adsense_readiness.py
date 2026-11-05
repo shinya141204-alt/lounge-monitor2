@@ -223,7 +223,7 @@ class StoreInsightTests(unittest.TestCase):
             html = client.get('/store/asobibar-shibuya').data.decode('utf-8')
         self.assertNotIn('記録データから見る傾向', html)
 
-    def test_nearby_comparison_trimmed_but_keeps_current_and_best(self):
+    def test_nearby_comparison_trimmed_to_current_and_nearest(self):
         comp = {'stores': [
             {'name': 'OLG 福岡', 'is_current_store': False, 'is_best_in_cluster': False},
             {'name': 'JIS FUKUOKA', 'is_current_store': False, 'is_best_in_cluster': False},
@@ -236,8 +236,21 @@ class StoreInsightTests(unittest.TestCase):
         names = [s['name'] for s in out['stores']]
         self.assertEqual(len(names), 4)
         self.assertEqual(names[0], 'OLG 長崎')
-        self.assertIn('OLG 鹿児島', names)
+        expected = app_module._nearest_store_names('OLG 長崎', ['OLG 福岡', 'JIS FUKUOKA', 'OLG 鹿児島', 'OLG 熊本', 'OLG 小倉'], 3)
+        self.assertEqual(names[1:], expected)
         self.assertEqual(out['total_cluster_stores'], 6)
+
+    def test_nearest_section_mentions_distance_and_neighbor(self):
+        data = {
+            'A': store_insights.compute_store_stats('A', rows=_synthetic_rows('A', base_w=10)),
+            'B': store_insights.compute_store_stats('B', rows=_synthetic_rows('B', base_w=20)),
+        }
+        ins = store_insights.build_store_insight('A', 'A店', nearest=[('B', 0.34)], stats_fn=data.get,
+                                                 seo_name_fn=lambda n: n + '店')
+        near = [s for s in ins['sections'] if s['heading'] == '最寄りの店舗との比較']
+        self.assertEqual(len(near), 1)
+        self.assertIn('B店（直線約350m）', near[0]['text'])
+        self.assertIn('多く', near[0]['text'])
 
 
 if __name__ == '__main__':

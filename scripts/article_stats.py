@@ -94,6 +94,8 @@ def store_names(start_ts):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--days', type=int, default=56)
+    ap.add_argument('--min-days-store', type=int, default=14,
+                    help='店舗別ランキング・二山判定に含める最低営業日数（記録が短い店舗のぶれを除く）')
     ap.add_argument('--out', default='')
     args = ap.parse_args()
     now = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
@@ -211,7 +213,7 @@ def main():
             trough = min(prof[23], prof[0])
             second = max(prof[1], prof[2], prof.get(3, 0))
             two_peak = trough < first * 0.95 and second >= trough * 1.05
-        if len(rets) >= 4:
+        if len(rets) >= 4 and len(rets) >= args.min_days_store:
             store_ret.append({
                 'store': n, 'club_area': n in CLUB_AREA_STORES, 'days': len(rets),
                 'retention_pct': _r(statistics.median(rets), 0),
