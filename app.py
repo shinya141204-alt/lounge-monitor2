@@ -244,7 +244,10 @@ def compress_response(response):
             response.headers['X-Staff-View'] = '1'
         response.headers['Cache-Control'] = 'private, no-cache, no-store, must-revalidate'
         response.headers['Pragma'] = 'no-cache'
-    elif response.content_type and 'text/html' in response.content_type and response.status_code == 200:
+    elif (
+        response.content_type and 'text/html' in response.content_type and response.status_code == 200
+        and 'no-store' not in (response.headers.get('Cache-Control') or '')
+    ):
         if (
             os.environ.get('ENABLE_PUBLIC_EDGE_CACHE') == '1'
             and request.method == 'GET'
@@ -4207,7 +4210,10 @@ def store_detail_page(store_slug):
 
         nearby_stores = []
         if area_slug:
-            for other_s in get_stores_for_area(area_slug, raw_stores):
+            area_live = [o for o in get_stores_for_area(area_slug, raw_stores) if o.get('name') and o.get('name') != sname]
+            nearest_names = _nearest_store_names(sname, [o.get('name') for o in area_live], STORE_PAGE_NEARBY_LIMIT)
+            area_live.sort(key=lambda o: nearest_names.index(o.get('name')) if o.get('name') in nearest_names else 999)
+            for other_s in area_live[:STORE_PAGE_NEARBY_LIMIT]:
                 oname = other_s.get('name')
                 if oname and oname != sname:
                     ow = int(other_s.get('women', 0))
@@ -4271,20 +4277,90 @@ def store_detail_page(store_slug):
         try:
             import price_comparison
             nearby_comparison = price_comparison.get_nearby_comparison_for_store(sname, live_stores=raw_stores)
+            nearby_comparison = _trim_nearby_comparison(sname, nearby_comparison, STORE_PAGE_COMPARE_LIMIT)
         except Exception:
             pass
+
+        store_insight = None
+        try:
+            import store_insights
+            area_peer_names = [
+                n for n, meta in store_master.load().items()
+                if area_slug and (meta or {}).get('area_slug') == area_slug
+            ]
+            store_insight = store_insights.build_store_insight(
+                sname,
+                store_master.seo_name(sname),
+                area_label=(area_info or {}).get('short_name') or store_obj['area_label'],
+                area_store_names=area_peer_names,
+                seo_name_fn=store_master.seo_name,
+            )
+        except Exception as e:
+            logging.warning(f"[store_insight] {sname}: {e}")
 
         return render_template(
             'store_detail.html',
             store=store_obj,
             store_analytics=store_analytics,
+            store_insight=store_insight,
             area_info=area_info,
+            area_slug=area_slug,
             nearby_stores=nearby_stores,
             nearby_comparison=nearby_comparison,
             jp_holidays=sorted(store_hours.JP_HOLIDAYS),
             last_updated=last_updated
         )
     return _get_cached_html_or_render(('store', store_slug), _render)
+
+
+STORE_PAGE_NEARBY_LIMIT = 6
+STORE_PAGE_COMPARE_LIMIT = 4
+
+
+def _nearest_store_names(sname, candidates, limit):
+    """Order candidate store names by straight-line distance from `sname` (store_master lat/lng)."""
+    import math
+    import store_master
+    base = store_master.get(sname) or {}
+    blat, blng = base.get('lat'), base.get('lng')
+    cands = [c for c in candidates if c and c != sname]
+    if blat is None or blng is None:
+        return cands[:limit]
+
+    def _dist(name):
+        meta = store_master.get(name) or {}
+        lat, lng = meta.get('lat'), meta.get('lng')
+        if lat is None or lng is None:
+            return float('inf')
+        p1, p2 = math.radians(blat), math.radians(lat)
+        dp, dl = p2 - p1, math.radians(lng - blng)
+        a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+        return 6371.0 * 2 * math.asin(math.sqrt(min(1.0, a)))
+
+    return sorted(cands, key=_dist)[:limit]
+
+
+def _trim_nearby_comparison(sname, comparison, limit):
+    """Keep the current store, the cluster's recommended store and the nearest rivals (max `limit` columns).
+    The full cluster board stays available on /price-comparison."""
+    if not comparison or not comparison.get('stores'):
+        return comparison
+    stores = list(comparison['stores'])
+    if len(stores) <= limit:
+        return comparison
+    by_name = {st.get('name') or st.get('store_name'): st for st in stores}
+    current = [st for st in stores if st.get('is_current_store')]
+    best = [st for st in stores if st.get('is_best_in_cluster') and not st.get('is_current_store')]
+    keep = current + best
+    rest_names = [n for n, st in by_name.items() if n and st not in keep]
+    for n in _nearest_store_names(sname, rest_names, len(rest_names)):
+        if len(keep) >= limit:
+            break
+        keep.append(by_name[n])
+    trimmed = dict(comparison)
+    trimmed['stores'] = keep[:limit]
+    trimmed['total_cluster_stores'] = len(stores)
+    return trimmed
 
 @app.route('/sitemap.xml')
 def sitemap_xml():
@@ -4373,12 +4449,6 @@ def sitemap_xml():
     <lastmod>{today}</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://aiseki-navi.com/grooming</loc>
-    <lastmod>{today}</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.85</priority>
   </url>
   <url>
     <loc>https://aiseki-navi.com/guide</loc>
@@ -4489,6 +4559,18 @@ def sitemap_xml():
     <lastmod>{today}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://aiseki-navi.com/about</loc>
+    <lastmod>{today}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://aiseki-navi.com/contact</loc>
+    <lastmod>{today}</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.4</priority>
   </url>
 </urlset>"""
     with _aux_doc_cache_lock:
@@ -4805,6 +4887,74 @@ def grooming_guide():
 def privacy_page():
     """Dedicated legal, privacy policy, and operator information page."""
     return _get_cached_html_or_render('privacy', lambda: render_template('privacy.html'))
+
+
+@app.route('/about')
+def about_page():
+    """Operator information, data collection method, update frequency and editorial policy."""
+    return _get_cached_html_or_render('about', lambda: render_template('about.html'))
+
+
+def _render_contact_page(form_values=None, errors=None, sent=False, status=200):
+    import contact_form
+    html = render_template(
+        'contact.html',
+        csrf_token=contact_form.issue_token(app.secret_key),
+        categories=contact_form.CATEGORIES,
+        form_values=form_values or {},
+        errors=errors or [],
+        sent=sent,
+        max_message_len=contact_form.MAX_MESSAGE_LEN,
+        max_name_len=contact_form.MAX_NAME_LEN,
+        max_email_len=contact_form.MAX_EMAIL_LEN,
+    )
+    resp = make_response(html, status)
+    resp.headers['Cache-Control'] = 'private, no-store'
+    return resp
+
+
+@app.route('/contact', methods=['GET', 'POST'])
+def contact_page():
+    """Contact form (stateless HMAC CSRF token, honeypot, rate limit, length limits; stored via Sheets + webhook)."""
+    import contact_form
+    if request.method == 'GET':
+        return _render_contact_page(sent=request.args.get('sent') == '1')
+
+    if (request.content_length or 0) > contact_form.MAX_REQUEST_BYTES:
+        return _render_contact_page(errors=['送信内容が大きすぎます。'], status=413)
+    if not contact_form.is_same_origin(request.headers.get('Origin'), request.headers.get('Referer'), request.host):
+        return _render_contact_page(errors=['不正な送信元です。ページを再読み込みしてから送信してください。'], status=400)
+
+    form = request.form
+    token_err = contact_form.verify_token(app.secret_key, form.get('csrf_token'))
+    data, errors = contact_form.validate(form)
+    if token_err == 'too_fast':
+        token_err = 'invalid'
+    if token_err:
+        return _render_contact_page(
+            form_values=data,
+            errors=['フォームの有効期限が切れました。お手数ですが内容を確認して再度送信してください。'],
+            status=400,
+        )
+    # Honeypot: bots fill the hidden field. Pretend success without storing anything.
+    if (form.get('website') or '').strip():
+        return redirect('/contact?sent=1', code=303)
+    if errors:
+        return _render_contact_page(form_values=data, errors=errors, status=400)
+
+    client_ip = (request.remote_addr or '0.0.0.0').strip()
+    if not contact_form.check_rate_limit(client_ip):
+        return _render_contact_page(
+            form_values=data,
+            errors=['短時間に送信が集中しています。10分ほど時間をおいてから再度お試しください。'],
+            status=429,
+        )
+    contact_form.store_inquiry(
+        data,
+        contact_form.hash_ip(app.secret_key, client_ip),
+        user_agent=request.headers.get('User-Agent', ''),
+    )
+    return redirect('/contact?sent=1', code=303)
 
 @app.route('/guide/weekday-strategy')
 def guide_weekday_strategy():

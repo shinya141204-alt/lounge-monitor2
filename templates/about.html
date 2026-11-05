@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>相席ナビについて（運営者情報・データの取得方法・掲載方針）｜相席ナビ</title>
+    <meta name="description" content="相席ナビ（AISEKI NAVI）の運営者情報、店舗人数データの取得方法と更新頻度、統計の算出方法、掲載方針、広告とアフィリエイトの扱い、各店舗・運営会社とは無関係の非公式サービスである旨をまとめています。">
+    <link rel="canonical" href="https://aiseki-navi.com/about">
+    <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
+    <link rel="stylesheet" href="/static/portal.css?v=14">
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "AboutPage",
+      "name": "相席ナビについて",
+      "url": "https://aiseki-navi.com/about",
+      "inLanguage": "ja",
+      "isPartOf": {"@type": "WebSite", "name": "相席ナビ", "url": "https://aiseki-navi.com/"},
+      "publisher": {"@type": "Organization", "name": "相席ナビ編集部", "url": "https://aiseki-navi.com/"}
+    }
+    </script>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #111113;
+            color: #f4f4f5;
+            font-family: Outfit, -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", Meiryo, sans-serif;
+            line-height: 1.85;
+        }
+        body.theme-light { background-color: #f6f6f7; color: #18181b; }
+        .portal-wrap { max-width: 820px; margin: 0 auto; padding: 20px 18px 80px; }
+        .portal-top-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 14px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            margin-bottom: 14px;
+        }
+        .portal-brand-link { text-decoration: none; display: flex; align-items: baseline; gap: 10px; }
+        .portal-brand-title { font-size: 1.45rem; font-weight: 800; color: inherit; margin: 0; }
+        .content-box { border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 14px; padding: 28px 24px; }
+        .content-box h1 { font-size: 1.4rem; margin: 0 0 18px; }
+        .content-box h2 { font-size: 1.08rem; margin: 30px 0 10px; }
+        .content-box p, .content-box li { font-size: 0.92rem; color: #b4b4be; }
+        body.theme-light .content-box p, body.theme-light .content-box li { color: #52525b; }
+        .content-box ul { padding-left: 1.2em; margin: 0 0 14px; }
+        .about-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; margin: 6px 0 16px; font-variant-numeric: tabular-nums; }
+        .about-table th, .about-table td { text-align: left; padding: 9px 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); vertical-align: top; }
+        body.theme-light .about-table th, body.theme-light .about-table td { border-bottom-color: #e4e4e7; }
+        .about-table th { width: 32%; font-weight: 600; white-space: nowrap; }
+        .about-link { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+    </style>
+    <link rel="stylesheet" href="/static/calm.css?v=33">
+</head>
+
+<body>
+    <div class="portal-wrap">
+        <div class="portal-top-header">
+            <a href="/" class="portal-brand-link">
+                <span class="portal-brand-title">相席ナビ</span>
+            </a>
+        </div>
+
+        {% set nav_active = none %}
+        {% include '_portal_nav.html' %}
+
+        <article class="content-box">
+            <h1>相席ナビについて</h1>
+            <p>相席ナビ（AISEKI NAVI）は、全国の相席ラウンジ・相席バーが公式サイトで公開している「現在の男女人数」を定期的に記録し、混雑の傾向や男女比の推移を見やすく整理している非公式の情報サイトです。来店前に「いまどの店が入りやすいか」「何時ごろ・何曜日に混みやすいか」を判断する材料を、実際の記録にもとづいて提供することを目的にしています。</p>
+
+            <h2>運営者情報</h2>
+            <table class="about-table">
+                <tbody>
+                    <tr><th>サイト名</th><td>相席ナビ（AISEKI NAVI）</td></tr>
+                    <tr><th>URL</th><td><a class="about-link" href="https://aiseki-navi.com/">https://aiseki-navi.com/</a></td></tr>
+                    <tr><th>運営</th><td>相席ナビ編集部</td></tr>
+                    <tr><th>お問い合わせ</th><td><a class="about-link" href="/contact">お問い合わせフォーム</a>（掲載内容の訂正・削除のご依頼、取材・提携のご相談など）</td></tr>
+                    <tr><th>公式SNS</th><td><a class="about-link" href="https://x.com/aiseki_navi" target="_blank" rel="noopener noreferrer">X（@aiseki_navi）</a> ／ <a class="about-link" href="https://note.com/aiseki_navi" target="_blank" rel="noopener noreferrer">note</a></td></tr>
+                </tbody>
+            </table>
+
+            <h2>非公式サイトであることについて</h2>
+            <p>相席ナビは、掲載している各店舗・各ブランド（オリエンタルラウンジ、ag、JIS、ASOBIBAR ほか）およびその運営会社とは一切関係のない、独立した非公式サイトです。店舗から対価を受け取って順位や評価を操作することはありません。店舗名・ブランド名は各社の商標であり、店舗を識別して公式サイトへ案内する目的でのみ使用しています。当サイトの内容について、各店舗へ直接お問い合わせすることはご遠慮ください。</p>
+
+            <h2>データの取得方法</h2>
+            <ul>
+                <li>各ブランドの公式サイト・公式ページで一般公開されている「現在の男性人数・女性人数」の表示を、サーバーから自動で読み取って記録しています。ログインが必要な情報や非公開の情報は取得していません。</li>
+                <li>記録するのは「日時・店舗名・男性人数・女性人数」のみです。来店者個人に関する情報は扱っていません。</li>
+                <li>公式サイトの表示が一時的に取得できない場合や、明らかに不自然な値（全店舗が同時に同じ値になる等）が混入した場合は、統計の計算から除外しています。</li>
+                <li>料金・営業時間・入店条件・イベント情報は、各店舗の公式サイトで公開されている内容をもとに編集部が整理しています。変更を見つけ次第更新していますが、反映までに時間がかかる場合があります。</li>
+            </ul>
+
+            <h2>更新頻度</h2>
+            <table class="about-table">
+                <tbody>
+                    <tr><th>現在人数（夜間 17時〜翌7時）</th><td>約1分ごとに取得・表示を更新</td></tr>
+                    <tr><th>現在人数（日中 7時〜17時）</th><td>多くの店舗が営業時間外のため約10分ごと</td></tr>
+                    <tr><th>曜日・時間帯ごとの傾向</th><td>直近30日間の記録から定期的に再計算</td></tr>
+                    <tr><th>店舗ページの分析文</th><td>直近4週間の記録から自動生成（記録が少ない店舗では表示しません）</td></tr>
+                    <tr><th>コラム記事</th><td>公開時点の記録をもとに執筆し、算出方法を記事内に明記</td></tr>
+                </tbody>
+            </table>
+
+            <h2>統計・予測値の考え方</h2>
+            <p>「女性比率」は女性人数を男女合計で割った値です。合計人数が少ない時間帯は比率が大きくぶれるため、傾向の集計では男女合計が一定人数（原則6名）以上の記録だけを使っています。0時〜6時台の記録は前日の営業日として扱います。「60分後の予測」は過去の同じ曜日・時間帯の記録と直近の増減から計算した目安であり、実際の来店状況を保証するものではありません。予測と実績の差は<a class="about-link" href="/stats">統計データ白書</a>で公開しています。</p>
+
+            <h2>掲載方針</h2>
+            <ul>
+                <li>数値は当サイトが記録した実データから算出し、推測で補った数値を実測のように見せることはしません。データが足りない店舗・時間帯では、その旨を表示します。</li>
+                <li>特定の店舗を過度に持ち上げたり、根拠のない比較をしたりしないよう、ランキングの並び順は現在人数・男女比・直近の増減といった記録データから機械的に決めています。</li>
+                <li>記事・コラムでは、出会いや飲酒に関する過度な表現、他の利用者を不快にさせる行為を勧める表現を使いません。20歳未満の方の飲酒はできません。</li>
+                <li>掲載内容に誤りがある場合や、店舗関係者の方から掲載内容の訂正・削除のご依頼があった場合は、<a class="about-link" href="/contact">お問い合わせフォーム</a>から連絡いただければ確認のうえ対応します。</li>
+            </ul>
+
+            <h2>広告・アフィリエイトについて</h2>
+            <p>サーバー費用などの運営費をまかなうため、Google AdSense などの広告配信サービスと、アフィリエイトプログラム（成果報酬型広告）を利用しています。広告枠には「PR」「広告」と表示し、記事本文やランキングの内容とは区別しています。広告の有無によって店舗の順位や評価を変えることはありません。Cookie の扱いを含む詳細は<a class="about-link" href="/privacy">プライバシーポリシー</a>をご覧ください。</p>
+
+            <h2>関連ページ</h2>
+            <ul>
+                <li><a class="about-link" href="/privacy">プライバシーポリシー・免責事項</a></li>
+                <li><a class="about-link" href="/contact">お問い合わせ</a></li>
+                <li><a class="about-link" href="/stats">統計データ白書（予測精度・集計方法）</a></li>
+                <li><a class="about-link" href="/columns">コラム一覧</a></li>
+            </ul>
+        </article>
+
+        {% include '_portal_footer.html' %}
+    </div>
+</body>
+
+</html>

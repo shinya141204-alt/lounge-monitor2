@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>お問い合わせ｜相席ナビ</title>
+    <meta name="description" content="相席ナビ（AISEKI NAVI）へのお問い合わせフォーム。掲載内容の誤りの訂正、店舗関係者からの掲載に関するご依頼、サイトの不具合のご報告、取材・提携のご相談を受け付けています。">
+    <link rel="canonical" href="https://aiseki-navi.com/contact">
+    <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
+    <link rel="stylesheet" href="/static/portal.css?v=14">
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #111113;
+            color: #f4f4f5;
+            font-family: Outfit, -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", Meiryo, sans-serif;
+            line-height: 1.85;
+        }
+        body.theme-light { background-color: #f6f6f7; color: #18181b; }
+        .portal-wrap { max-width: 820px; margin: 0 auto; padding: 20px 18px 80px; }
+        .portal-top-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 14px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            margin-bottom: 14px;
+        }
+        .portal-brand-link { text-decoration: none; display: flex; align-items: baseline; gap: 10px; }
+        .portal-brand-title { font-size: 1.45rem; font-weight: 800; color: inherit; margin: 0; }
+        .content-box { border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 14px; padding: 28px 24px; }
+        .content-box h1 { font-size: 1.4rem; margin: 0 0 14px; }
+        .content-box h2 { font-size: 1.04rem; margin: 26px 0 8px; }
+        .content-box p, .content-box li { font-size: 0.92rem; color: #b4b4be; }
+        body.theme-light .content-box p, body.theme-light .content-box li { color: #52525b; }
+        .contact-form { display: grid; gap: 16px; margin-top: 18px; }
+        .contact-field label { display: block; font-size: 0.88rem; font-weight: 600; margin-bottom: 6px; }
+        .contact-field .field-note { font-size: 0.78rem; color: #b4b4be; font-weight: 400; margin-left: 6px; }
+        body.theme-light .contact-field .field-note { color: #52525b; }
+        .contact-field input, .contact-field select, .contact-field textarea {
+            width: 100%;
+            min-height: 44px;
+            padding: 10px 12px;
+            font: inherit;
+            font-size: 16px;
+            color: #f4f4f5;
+            background: #1a1a1e;
+            border: 1px solid #3f3f46;
+            border-radius: 10px;
+        }
+        body.theme-light .contact-field input, body.theme-light .contact-field select, body.theme-light .contact-field textarea {
+            color: #18181b; background: #ffffff; border-color: #d4d4d8;
+        }
+        .contact-field textarea { min-height: 180px; resize: vertical; line-height: 1.7; }
+        .contact-field input:focus-visible, .contact-field select:focus-visible, .contact-field textarea:focus-visible {
+            outline: 2px solid #f4f4f5; outline-offset: 2px;
+        }
+        body.theme-light .contact-field input:focus-visible, body.theme-light .contact-field select:focus-visible, body.theme-light .contact-field textarea:focus-visible {
+            outline-color: #18181b;
+        }
+        .contact-hp { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+        .contact-submit {
+            justify-self: start;
+            min-height: 44px;
+            padding: 10px 28px;
+            border: 0;
+            border-radius: 999px;
+            font: inherit;
+            font-weight: 700;
+            cursor: pointer;
+            background: #f4f4f5;
+            color: #111113;
+        }
+        body.theme-light .contact-submit { background: #18181b; color: #ffffff; }
+        .contact-status { border: 1px solid #3f3f46; border-radius: 10px; padding: 12px 14px; margin: 0 0 16px; font-size: 0.9rem; }
+        body.theme-light .contact-status { border-color: #d4d4d8; }
+        .contact-status ul { margin: 0; padding-left: 1.2em; }
+        .contact-counter { font-size: 0.78rem; color: #b4b4be; text-align: right; font-variant-numeric: tabular-nums; margin-top: 4px; }
+        body.theme-light .contact-counter { color: #52525b; }
+        .about-link { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+    </style>
+    <link rel="stylesheet" href="/static/calm.css?v=33">
+</head>
+
+<body>
+    <div class="portal-wrap">
+        <div class="portal-top-header">
+            <a href="/" class="portal-brand-link">
+                <span class="portal-brand-title">相席ナビ</span>
+            </a>
+        </div>
+
+        {% set nav_active = none %}
+        {% include '_portal_nav.html' %}
+
+        <article class="content-box">
+            <h1>お問い合わせ</h1>
+            <p>相席ナビ編集部へのご連絡は、下記のフォームからお送りください。内容を確認のうえ、必要に応じて記入いただいたメールアドレス宛てにご返信します。返信までに数日いただく場合があります。</p>
+            <p>当サイトは各店舗・運営会社とは関係のない非公式サイトです。<strong>店舗のご予約・料金・忘れ物などのお問い合わせには対応できません。</strong>各店舗の公式サイトへ直接お問い合わせください。運営者情報・データの取得方法は<a class="about-link" href="/about">相席ナビについて</a>をご覧ください。</p>
+
+            {% if sent %}
+            <div class="contact-status" role="status">お問い合わせを受け付けました。ご連絡ありがとうございました。</div>
+            {% endif %}
+            {% if errors %}
+            <div class="contact-status" role="alert">
+                <ul>
+                    {% for err in errors %}<li>{{ err }}</li>{% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            <form class="contact-form" method="post" action="/contact" novalidate>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <div class="contact-hp" aria-hidden="true">
+                    <label for="contact-website">ウェブサイト（入力しないでください）</label>
+                    <input id="contact-website" type="text" name="website" tabindex="-1" autocomplete="off">
+                </div>
+
+                <div class="contact-field">
+                    <label for="contact-category">お問い合わせの種類</label>
+                    <select id="contact-category" name="category" required>
+                        <option value="">選択してください</option>
+                        {% for value, label in categories %}
+                        <option value="{{ value }}"{% if form_values.get('category') == value %} selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="contact-field">
+                    <label for="contact-name">お名前<span class="field-note">任意・{{ max_name_len }}文字まで</span></label>
+                    <input id="contact-name" type="text" name="name" maxlength="{{ max_name_len }}" autocomplete="name" value="{{ form_values.get('name', '') }}">
+                </div>
+
+                <div class="contact-field">
+                    <label for="contact-email">メールアドレス<span class="field-note">返信を希望する場合のみ</span></label>
+                    <input id="contact-email" type="email" name="email" maxlength="{{ max_email_len }}" autocomplete="email" inputmode="email" value="{{ form_values.get('email', '') }}">
+                </div>
+
+                <div class="contact-field">
+                    <label for="contact-message">お問い合わせ内容<span class="field-note">10〜{{ max_message_len }}文字</span></label>
+                    <textarea id="contact-message" name="message" required minlength="10" maxlength="{{ max_message_len }}" aria-describedby="contact-counter">{{ form_values.get('message', '') }}</textarea>
+                    <div class="contact-counter" id="contact-counter" aria-live="polite"></div>
+                </div>
+
+                <p style="margin:0; font-size:0.82rem;">送信内容は、お問い合わせへの対応と記録のためにのみ利用します。詳しくは<a class="about-link" href="/privacy">プライバシーポリシー</a>をご覧ください。</p>
+                <button type="submit" class="contact-submit">送信する</button>
+            </form>
+        </article>
+
+        {% include '_portal_footer.html' %}
+    </div>
+    <script>
+        (function () {
+            var ta = document.getElementById('contact-message');
+            var counter = document.getElementById('contact-counter');
+            if (!ta || !counter) return;
+            var max = {{ max_message_len }};
+            function update() { counter.textContent = ta.value.length + ' / ' + max; }
+            ta.addEventListener('input', update);
+            update();
+        })();
+    </script>
+</body>
+
+</html>

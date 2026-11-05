@@ -473,6 +473,14 @@
                 font-size: 1.32rem;
             }
         }
+        .store-insight-meta { margin: 0 0 12px; font-size: 0.78rem; color: var(--text-sub); font-variant-numeric: tabular-nums; }
+        .store-insight-h3 { margin: 18px 0 6px; font-size: 0.94rem; color: var(--text-main); }
+        .store-insight-p { margin: 0; font-size: 0.87rem; line-height: 1.85; color: var(--text-sub); font-variant-numeric: tabular-nums; }
+        .store-insight-table { width: 100%; font-variant-numeric: tabular-nums; }
+        .store-insight-table td { white-space: nowrap; }
+        .store-insight-note { margin: 12px 0 0; font-size: 0.76rem; color: var(--text-sub); line-height: 1.7; }
+        .store-related-links { display: flex; flex-wrap: wrap; gap: 8px; }
+        .store-related-links .btn-secondary { min-height: 40px; font-size: 0.82rem; }
     </style>
     <link rel="stylesheet" href="/static/calm.css?v=33">
     {% if not is_staff and not session.get('is_staff') %}
@@ -627,12 +635,12 @@
         <aside class="official-notice-box" aria-label="ご利用上の注意事項" style="margin-bottom: 20px;">
             <span class="official-notice-title">料金・イベント情報および人数評価に関するご注意</span>
             <div>
-                ・掲載している料金・営業時間・入店条件・イベント開催有無は公開情報をもとに集計していますが、特別営業期間の設定や急な内容変更・終了がある場合がございます。ご来店の際は必ず<a href="{{ store.official_url }}" target="_blank" rel="noopener noreferrer" style="color: var(--accent-text);">各店舗の公式ホームページ・公式アプリ</a>にて最新情報をご確認ください。<br>
-                ・少人数時（女性10名未満）は女性比率が高くても次の席替え相手が限られる場合があるため、当サイトでは<strong>女性10名以上（約5組以上）</strong>を推奨評価の対象基準としています。また、公式ホームページ上の営業時間内に入店人数が0名の店舗は「営業時間外」ではなく<strong>「0 : 0」（営業中）</strong>と表記します。
+                ・料金・営業時間・入店条件・イベントは公開情報をもとに整理しています。変更される場合があるため、来店前に<a href="{{ store.official_url }}" target="_blank" rel="noopener noreferrer" style="color: var(--accent-text);">公式サイト</a>でご確認ください。<br>
+                ・推奨評価は<strong>女性10名以上</strong>の店舗が対象です。営業時間内に0名の店舗は<strong>「0 : 0」（営業中）</strong>と表記します。
             </div>
         </aside>
 
-        {% if store_analytics %}
+        {% if store_analytics and store_analytics.has_history %}
         <section class="section-card">
             <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
                 <h2 style="margin:0;">{{ store.seo_name }}の独自データ分析・狙い目判定</h2>
@@ -695,6 +703,72 @@
         </section>
         {% endif %}
 
+        {% if store_insight %}
+        <section class="section-card store-insight" aria-labelledby="store-insight-title">
+            <h2 id="store-insight-title" style="margin:0 0 6px;">{{ store.seo_name }}の記録データから見る傾向</h2>
+            <p class="store-insight-meta">集計期間 {{ store_insight.period_start }}〜{{ store_insight.period_end }}（{{ store_insight.n_days }}営業日・{{ store_insight.n_rows }}件の人数記録）</p>
+            {% for sec in store_insight.sections %}
+            <h3 class="store-insight-h3">{{ sec.heading }}</h3>
+            <p class="store-insight-p">{{ sec.text }}</p>
+            {% endfor %}
+            {% if store_insight.weekday_rows %}
+            <h3 class="store-insight-h3">曜日別の記録（営業日ごとの最大女性数）</h3>
+            <div class="stats-table-wrap">
+                <table class="store-comp-table store-insight-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">曜日</th>
+                            <th scope="col">記録日数</th>
+                            <th scope="col">平均</th>
+                            <th scope="col">最多</th>
+                            <th scope="col">ピーク時間帯</th>
+                            <th scope="col">21〜23時の女性比</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in store_insight.weekday_rows %}
+                        <tr>
+                            <td>{{ r.label }}</td>
+                            <td>{{ r.days }}日</td>
+                            <td>{{ r.avg_peak_w }}名</td>
+                            <td>{{ r.max_peak_w }}名</td>
+                            <td>{{ r.typical_peak_label }}</td>
+                            <td>{% if r.core_wpct is not none %}{{ r.core_wpct }}%{% else %}―{% endif %}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+            {% if store_insight.hourly_rows %}
+            <h3 class="store-insight-h3">時間帯別の平均人数</h3>
+            <div class="stats-table-wrap">
+                <table class="store-comp-table store-insight-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">時間帯</th>
+                            <th scope="col">女性</th>
+                            <th scope="col">男性</th>
+                            <th scope="col">女性比</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in store_insight.hourly_rows %}
+                        <tr>
+                            <td>{{ r.label }}</td>
+                            <td>{{ r.avg_w }}名</td>
+                            <td>{{ r.avg_m }}名</td>
+                            <td>{% if r.wpct is not none %}{{ r.wpct }}%{% else %}―{% endif %}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+            <p class="store-insight-note">0時〜6時台の記録は前日の営業日として集計しています。男女とも0名の記録は除外し、女性比率は男女合計6名以上の記録のみで計算しています。記録が少ない項目は表示していません。集計方法の詳細は<a href="/about" style="color: var(--accent-text);">相席ナビについて</a>をご覧ください。</p>
+        </section>
+        {% endif %}
+
         {% if nearby_comparison and nearby_comparison.stores %}
         <section class="section-card apple-open-section">
             <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
@@ -702,7 +776,7 @@
                 <a href="/price-comparison?area={{ nearby_comparison.cluster_id }}" style="font-size:0.78rem; color: var(--accent-text); text-decoration:none; font-weight:600;">全国エリア比較ボードへ ›</a>
             </div>
             <p style="margin: 0 0 12px; font-size: 0.84rem; color: var(--text-sub);">
-                同じエリア内の競合店舗と<strong style="color: var(--text-main);">「単独（待機）料金」「時間帯別の相席10分単価」「1名入店の可否」「開催中イベント」「いまの男女人数」</strong>を並列で比較できます。※最新条件は各公式サイトでご確認ください。
+                同じエリア内の競合店舗と<strong style="color: var(--text-main);">「単独（待機）料金」「時間帯別の相席10分単価」「1名入店の可否」「開催中イベント」「いまの男女人数」</strong>を並列で比較できます。※最新条件は各公式サイトでご確認ください。{% if nearby_comparison.total_cluster_stores %}ここでは距離の近い店舗とエリア推奨店だけを表示しています（全{{ nearby_comparison.total_cluster_stores }}店舗は<a href="/price-comparison?area={{ nearby_comparison.cluster_id }}" style="color: var(--accent-text);">比較ボード</a>で確認できます）。{% endif %}
             </p>
 
             <div class="apple-compare-toolbar" aria-label="比較時間帯の切り替え">
@@ -840,26 +914,16 @@
                 </a>
                 {% endfor %}
             </div>
+            {% if area_slug and area_info %}
+            <p style="margin: 10px 0 0; font-size: 0.82rem;"><a href="/area/{{ area_slug }}" style="color: var(--accent-text); text-decoration: none; font-weight: 600;">{{ area_info.short_name }}エリアの全店舗の人数を見る ›</a></p>
+            {% endif %}
         </section>
         {% endif %}
 
         {% if area_info %}
         <section class="section-card">
-            <h2>{{ store.seo_name }}（{{ area_info.short_name }}エリア）の立ち回り＆2軒目ガイド</h2>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; margin-top: 12px;">
-                <div class="stat-subcard">
-                    <h3 style="margin: 0 0 6px; font-size: 0.89rem; color: var(--accent-text);">客層とエリアの特徴</h3>
-                    <p style="margin: 0; font-size: 0.83rem; color: var(--text-sub);">{{ area_info.atmosphere }}</p>
-                </div>
-                <div class="stat-subcard">
-                    <h3 style="margin: 0 0 6px; font-size: 0.89rem; color: var(--accent-text);">狙い目の曜日・時間帯</h3>
-                    <p style="margin: 0; font-size: 0.83rem; color: var(--text-sub);">{{ area_info.best_time }}</p>
-                </div>
-                <div class="stat-subcard">
-                    <h3 style="margin: 0 0 6px; font-size: 0.89rem; color: var(--accent-text);">2軒目に誘いやすい周辺スポット</h3>
-                    <p style="margin: 0; font-size: 0.83rem; color: var(--text-sub);">{{ area_info.second_spot }}</p>
-                </div>
-            </div>
+            <h2>{{ area_info.short_name }}エリアの客層・狙い目・2軒目スポット</h2>
+            <p style="margin: 0; font-size: 0.85rem; color: var(--text-sub);">{{ area_info.short_name }}エリア全体の客層の特徴、混みやすい曜日・時間帯、2軒目に向く周辺スポットは<a href="/area/{{ area_slug }}" style="color: var(--accent-text);">エリアガイド</a>にまとめています。{% if store_insight %}{{ store.seo_name }}だけの記録にもとづく傾向は、上の「記録データから見る傾向」をご覧ください。{% endif %}</p>
         </section>
         {% endif %}
 
@@ -870,20 +934,10 @@
                 <a href="/guide/second-venue" style="color: var(--accent-text); font-size: 0.82rem; text-decoration: none; font-weight: 600;">2軒目の誘い方コラム ›</a>
             </div>
             <p style="margin: 0 0 12px; font-size: 0.83rem; color: var(--text-sub); line-height: 1.55;">
-                話題が出尽くす前・会話のピーク時（着席40〜50分目／23:10前）にスムーズに移動できる、徒歩圏内の厳選夜カフェ・隠れ家バー・シーシャ・横丁です。Google公式無料マップリンクからワンタップでルートを確認できます。
+                {{ store.seo_name }}から歩いて行ける夜カフェ・バー・シーシャを、Googleマップのルート付きで表示します。
             </p>
 
-            <!-- Timing Badge -->
-            <div class="second-venue-timing-badge" style="margin-bottom: 12px;" onclick="toggleDetailTimingRules()">
-                <span class="timing-badge-tag">ベストタイミング</span>
-                <span class="timing-badge-text">着席40〜50分後 / 23:10前（ピークで切り出すのが鉄則）</span>
-                <span class="timing-toggle-arrow" id="detail-timing-arrow">▾ 理由を見る</span>
-            </div>
-            <div id="detail-timing-details" class="second-venue-timing-details hidden" style="margin-bottom: 14px;">
-                <div class="timing-rule-item"><span class="rule-title">40〜50分ルール:</span> 話題が出尽くす前、会話が一番盛り上がっているピーク時に切り出すのが鉄則。</div>
-                <div class="timing-rule-item"><span class="rule-title">23:10終電前ルール:</span> 終電（23:30前後）の20分前までに2軒目へ入店するか、無理せず解散して後日デートを確約。</div>
-                <div class="timing-rule-item"><span class="rule-title">2杯目半分ルール:</span> 2杯目ドリンクが半分空いた時が声かけ・退店準備の合図。</div>
-            </div>
+            <!-- Timing rules live on /guide/second-venue (kept off store pages to avoid duplicated boilerplate) -->
 
             <!-- Category Tabs -->
             <div class="second-venue-tabs" id="detail-second-venue-tabs">
@@ -935,35 +989,11 @@
 
         {% if not is_staff and not session.get('is_staff') %}
         <section class="section-card" aria-label="来店前の関連データと立ち回りガイド">
-            <h2 style="margin:0 0 10px;">{{ store.seo_name }}へ行く前に役立つ関連データ・コラム</h2>
-            <p style="margin: 0 0 14px; font-size: 0.84rem; color: var(--text-sub);">
-                近隣店舗との料金・イベント比較や、入店後の会話・2軒目へのスマートな繋げ方をデータと実例でまとめています。
-            </p>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px;">
-                <div class="stat-subcard" style="display:flex; flex-direction:column; justify-content:space-between; gap:10px;">
-                    <div>
-                        <div style="font-size: 0.72rem; color: var(--accent-text); font-weight: 700;">料金・開催中フェア比較</div>
-                        <div style="font-size: 0.9rem; font-weight: 700; color: var(--text-main); margin: 4px 0;">近隣ライバル店の料金＆現在人数ボード</div>
-                        <p style="margin: 0; font-size: 0.79rem; color: var(--text-sub); line-height: 1.55;">単独待機料金・時間帯別の60分目安・1名入店ルールと現在の男女比を一覧で見比べられます。</p>
-                    </div>
-                    <a href="/price-comparison" class="btn-secondary" style="justify-content:center; font-size:0.8rem; padding:7px 14px;">料金・イベント比較を見る ›</a>
-                </div>
-                <div class="stat-subcard" style="display:flex; flex-direction:column; justify-content:space-between; gap:10px;">
-                    <div>
-                        <div style="font-size: 0.72rem; color: var(--accent-text); font-weight: 700;">45分〜60分目の立ち回り</div>
-                        <div style="font-size: 0.9rem; font-weight: 700; color: var(--text-main); margin: 4px 0;">2軒目へ自然に誘うタイミングと店選び</div>
-                        <p style="margin: 0; font-size: 0.79rem; color: var(--text-sub); line-height: 1.55;">同じ席で長居するより会話が弾んだタイミングで声をかけるコツと、断られにくい提案方法を解説。</p>
-                    </div>
-                    <a href="/guide/second-venue" class="btn-secondary" style="justify-content:center; font-size:0.8rem; padding:7px 14px;">2軒目の誘い方コラム ›</a>
-                </div>
-                <div class="stat-subcard" style="display:flex; flex-direction:column; justify-content:space-between; gap:10px;">
-                    <div>
-                        <div style="font-size: 0.72rem; color: var(--accent-text); font-weight: 700;">ドレスコード・持ち物</div>
-                        <div style="font-size: 0.9rem; font-weight: 700; color: var(--text-main); margin: 4px 0;">必須の身分証・浮かない服装と事前準備</div>
-                        <p style="margin: 0; font-size: 0.79rem; color: var(--text-sub); line-height: 1.55;">入店時に必要な公的身分証の注意点や、仕事帰り・休日に好印象なスマートカジュアルの基本まとめ。</p>
-                    </div>
-                    <a href="/grooming" class="btn-secondary" style="justify-content:center; font-size:0.8rem; padding:7px 14px;">服装・事前準備ガイド ›</a>
-                </div>
+            <h2 style="margin:0 0 10px;">{{ store.seo_name }}へ行く前に役立つ関連ページ</h2>
+            <div class="store-related-links">
+                <a href="/price-comparison" class="btn-secondary">料金・イベント比較を見る ›</a>
+                <a href="/guide/second-venue" class="btn-secondary">2軒目の誘い方コラム ›</a>
+                <a href="/grooming" class="btn-secondary">服装・事前準備ガイド ›</a>
             </div>
         </section>
         {% endif %}
