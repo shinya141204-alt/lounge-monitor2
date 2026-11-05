@@ -134,7 +134,7 @@
 
     <link rel="stylesheet" href="/static/style.css?v=20261030_6" fetchpriority="high">
     <link rel="stylesheet" href="/static/calm.css?v=33" fetchpriority="high">
-    <link rel="preload" href="/static/app.js?v=20261105_2" as="script">
+    <link rel="preload" href="/static/app.js?v=20261105_3" as="script">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- Non-render-blocking web font (avoids waiting on Google Fonts at PWA cold launch) -->
@@ -628,7 +628,9 @@
 
                         <div id="ranking-list" class="ranking-list">
                             {% if initial_status and initial_status.ranking %}
-                            {% for s in initial_status.ranking %}
+                            {# Only the first SSR_RANK_LIMIT cards are server-rendered; the rest are appended by app.js from INITIAL_STATUS_DATA (all stores stay crawlable via the footer store list). #}
+                            {% set ssr_rank_limit = 20 %}
+                            {% for s in initial_status.ranking[:ssr_rank_limit] %}
                             {% set ssr_w_num = (s.women or 0) %}
                             {% set ssr_m_num = (s.men or 0) %}
                             {% set ssr_wait_m = (s.wait_estimate.est_wait_men_min if s.wait_estimate else 0) or 0 %}
@@ -826,6 +828,8 @@
                             if (pinnedRaw) {
                                 var pinned = JSON.parse(pinnedRaw);
                                 if (Array.isArray(pinned) && pinned.length > 0) {
+                                    // Stores ranked below the SSR limit are rendered later by app.js
+                                    var deferredNames = {{ ((initial_status.ranking[20:] | map(attribute='name') | list) if (initial_status and initial_status.ranking) else []) | tojson }};
                                     var pinSet = Object.create(null);
                                     for (var i = 0; i < pinned.length; i++) pinSet[pinned[i]] = true;
                                     var rList = document.getElementById('ranking-list');
@@ -833,6 +837,7 @@
                                     var pCont = document.getElementById('pinned-list-container');
                                     if (rList && pList && pCont) {
                                         var cards = rList.querySelectorAll('.ranking-item[data-store]');
+                                        var cardH = cards.length > 0 ? cards[cards.length - 1].offsetHeight : 0;
                                         var moved = 0;
                                         for (var j = 0; j < cards.length; j++) {
                                             var c = cards[j];
@@ -844,6 +849,18 @@
                                                 if (pb) pb.classList.add('active');
                                                 pList.appendChild(c);
                                                 moved++;
+                                            }
+                                        }
+                                        // Reserve space for pinned stores outside the SSR range (app.js fills them in) to avoid layout shift
+                                        var missing = 0;
+                                        for (var di = 0; di < deferredNames.length; di++) {
+                                            if (pinSet[deferredNames[di]]) {
+                                                var ph = document.createElement('div');
+                                                ph.className = 'ranking-item pinned-item pin-placeholder';
+                                                ph.setAttribute('aria-hidden', 'true');
+                                                if (cardH > 0) ph.style.minHeight = cardH + 'px';
+                                                pList.appendChild(ph);
+                                                missing++;
                                             }
                                         }
                                         if (moved > 0) {
@@ -867,7 +884,11 @@
                                                     }
                                                 }
                                             }
+                                        }
+                                        if (moved > 0 || missing > 0) {
                                             pCont.classList.remove('hidden');
+                                        }
+                                        if (moved > 0 && missing === 0) {
                                             window.__SSR_PINNED_HYDRATED = true;
                                         }
                                     }
@@ -1261,7 +1282,7 @@
                 </summary>
                 <div class="footer-store-grid">
                     {% for s in initial_status.ranking %}
-                    <a href="/store/{{ s.name | store_slug }}" class="footer-store-link">
+                    <a href="/store/{{ s.slug or (s.name | store_slug) }}" class="footer-store-link">
                         <span>{{ s.name | seo_store_name }}</span>
                         <span class="footer-store-count">{% if (s.women or 0) + (s.men or 0) > 0 %}女性{{ s.women }}・男性{{ s.men }}{% elif s.is_open_now %}0 : 0（営業中）{% else %}店舗詳細 ›{% endif %}</span>
                     </a>
@@ -2499,10 +2520,10 @@
 
     {% if initial_status %}
     <script>
-        window.INITIAL_STATUS_DATA = {{ initial_status | tojson }};
+        window.INITIAL_STATUS_DATA = {{ (initial_status_client or initial_status) | tojson }};
     </script>
     {% endif %}
-    <script src="/static/app.js?v=20261105_2" defer></script>
+    <script src="/static/app.js?v=20261105_3" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
@@ -2518,7 +2539,7 @@
                 }
                 if (window.__swRegistered) return;
                 window.__swRegistered = true;
-                navigator.serviceWorker.register('/sw.js?v=91', { updateViaCache: 'none' })
+                navigator.serviceWorker.register('/sw.js?v=92', { updateViaCache: 'none' })
                     .then(function(reg) {
                         reg.update();
                         document.addEventListener('visibilitychange', function() {

@@ -1749,15 +1749,48 @@ def index():
             og_meta = ogp_generator.get_ogp_meta_for_slot(s_param, now_jst=now_jst)
         except Exception:
             pass
+        initial_status = get_initial_status_payload()
         return render_template(
             'index.html',
             is_staff=False,
-            initial_status=get_initial_status_payload(),
+            initial_status=initial_status,
+            initial_status_client=_client_status_payload(initial_status),
             og_meta=og_meta,
             og_image_url=og_image_url,
             published_scheduled=scheduled_articles.get_published_articles(),
         )
     return _get_cached_html_or_render('index_pub', _render)
+
+
+# Fields only used by the server-side card template (or by nothing on the client). They are dropped from
+# the `window.INITIAL_STATUS_DATA` copy embedded in the top page to keep the HTML small.
+_CLIENT_STATUS_DROP_KEYS = (
+    'ssr_title', 'ssr_brand', 'ssr_brand_cls', 'ssr_disp', 'ssr_is_dup', 'ssr_ladies_pct', 'ssr_men_pct',
+    'seo_name', 'fetched_at', 'pos_telemetry',
+)
+_CLIENT_STATUS_DROP_NESTED = {
+    'forecast_60m': ('model_version',),
+    'wait_estimate': ('instant_match_prob_pct',),
+}
+
+
+def _client_status_payload(status):
+    if not isinstance(status, dict) or not isinstance(status.get('ranking'), list):
+        return status
+    slim = dict(status)
+    ranking = []
+    for st in status['ranking']:
+        if not isinstance(st, dict):
+            ranking.append(st)
+            continue
+        item = {k: v for k, v in st.items() if k not in _CLIENT_STATUS_DROP_KEYS}
+        for parent, keys in _CLIENT_STATUS_DROP_NESTED.items():
+            sub = item.get(parent)
+            if isinstance(sub, dict):
+                item[parent] = {k: v for k, v in sub.items() if k not in keys}
+        ranking.append(item)
+    slim['ranking'] = ranking
+    return slim
 
 @app.route('/ogp/live.png')
 def dynamic_live_ogp_image():

@@ -1278,6 +1278,38 @@
             } catch (e) {}
         })();
 
+        // The server renders only the top ranks (SSR_RANK_LIMIT in index.html). Append the remaining stores
+        // from the embedded payload right after hydration so the full ranking stays available without
+        // shipping ~400KB of card HTML. New cards go to the end of the list (below the fold → no layout shift).
+        function appendDeferredSsrStores(data) {
+            const rankingListEl = document.getElementById('ranking-list');
+            if (!rankingListEl || !data || !Array.isArray(data.ranking)) return 0;
+            const present = new Set();
+            document.querySelectorAll('#ranking-list .ranking-item[data-store], #pinned-list .ranking-item[data-store]').forEach(el => {
+                present.add(el.getAttribute('data-store'));
+            });
+            const missing = [];
+            data.ranking.forEach((s, idx) => {
+                if (s && s.name && !present.has(s.name) && !pinnedStores.includes(s.name)) missing.push({ store: s, idx });
+            });
+            if (missing.length === 0) return 0;
+            const cleanNameCounts = {};
+            data.ranking.forEach(s => {
+                const bInfo = detectBrandInfo(s);
+                const key = bInfo.cleanName || s.name;
+                cleanNameCounts[key] = (cleanNameCounts[key] || 0) + 1;
+            });
+            const frag = document.createDocumentFragment();
+            missing.forEach(({ store, idx }) => {
+                const bInfo = detectBrandInfo(store);
+                const key = bInfo.cleanName || store.name;
+                const globalIdx = (typeof store.ssr_rank === 'number' && store.ssr_rank > 0) ? store.ssr_rank - 1 : idx;
+                renderStore(store, idx, frag, false, globalIdx, (cleanNameCounts[key] || 0) > 1, false);
+            });
+            rankingListEl.appendChild(frag);
+            return missing.length;
+        }
+
         // Instant Load: Render server-embedded INITIAL_STATUS_DATA (0ms, zero network roundtrip) or localStorage cache
         function restoreCachedStatus() {
             try {
@@ -1328,6 +1360,7 @@
                         if (lastUpdateEl && window.INITIAL_STATUS_DATA.timestamp) {
                             lastUpdateEl.textContent = window.INITIAL_STATUS_DATA.timestamp.split(' ')[1] || '--:--';
                         }
+                        appendDeferredSsrStores(window.INITIAL_STATUS_DATA);
                         Promise.resolve().then(() => {
                             if (typeof syncPcInspector === 'function') {
                                 syncPcInspector(window.INITIAL_STATUS_DATA.ranking);
@@ -1373,6 +1406,7 @@
                     if (!rankingListEl || rankingListEl.children.length === 0) {
                         updateUI(window.INITIAL_STATUS_DATA);
                     } else {
+                        appendDeferredSsrStores(window.INITIAL_STATUS_DATA);
                         Promise.resolve().then(() => {
                             if (typeof syncPcInspector === 'function') {
                                 syncPcInspector(window.INITIAL_STATUS_DATA.ranking);
