@@ -57,22 +57,34 @@ description: >-
      - **軸2（男女それぞれの『本音の非対称』フラット観察）**：男女どちらの味方にも偏らないフラットな観察者として、「男性にとっての余裕店＝女性には受付待ちリスク」「男性先行帯＝女性組には待ちゼロ即乾杯」という双方の図星と本音を対等に描く。
      - **軸3（同じ街のブランド別カルチャー・時間帯相性）**：オリエンタルラウンジ・ag・JIS・ヤタコイ・ASOBIBARを優劣ではなく「年齢感・ノリ・強い時間帯の相性」として具体的に踏み込む。
    * 記事内に **`<div class="dialogue-box">...</div>` を使った男女双方の自然な会話・心の声を2〜4箇所** 織り込むこと。
-   * **ブランド呼称ルール厳守**：単体の『オリエンタル』（例: `オリエンタル新宿`）、内部コード `OLG`、英語表記 `YATAKOI`、旧略称 `オリラジ` は一切使用禁止。必ず正式名称 **『オリエンタルラウンジ』**・**『ヤタコイ』** を使用すること。
+   * **誇張・煽り表現の禁止**：「徹底解説」「完全攻略」「完全ガイド」「間違いなし」「必見」「3秒で」等のAI量産っぽい煽り語は使わず、実測ログにもとづく落ち着いた検証トーンで書くこと。
+   * **ブランド呼称＆本文初出カナ併記ルール厳守**：単体の『オリエンタル』（例: `オリエンタル新宿`）、内部コード `OLG`、英語表記 `YATAKOI`、旧略称 `オリラジ` は一切使用禁止。必ず正式名称 **『オリエンタルラウンジ』**・**『ヤタコイ』** を使用し、本文初出時は **『ag（アグ）』**・**『JIS（ジス）』**・**『ASOBIBAR（アソビバー）』** とカナ併記すること。
+   * **著者クレジット統一**：画面上の著者表記は `執筆・検証：<a href="/about">くわもん（相席ナビ編集長）</a>` とし、JSON-LD `Article.author` は `{"@type": "Person", "name": "くわもん", "jobTitle": "相席ナビ編集長", "url": "https://aiseki-navi.com/about"}`（`datePublished` / `dateModified` 必須）に統一する（本名ローマ字や店舗勤務経験は絶対に記載しない）。
 2. **メタタグ＆OGP＆LLMO**：
    * `<link rel="canonical" href="https://aiseki-navi.com/guide/<slug>">`
    * `<link rel="alternate" type="text/markdown" href="https://aiseki-navi.com/llms.txt" title="相席ナビ AI要約ドキュメント (llms.txt)">`
    * `<meta property="og:image" content="https://aiseki-navi.com/static/eyecatch-<slug>.jpg?v=3">`
    * `<meta name="twitter:card" content="summary_large_image">`
-3. **JSON-LD 構造化データ**：`Article`（`SpeakableSpecification` 付） + `BreadcrumbList` + `FAQPage`
-4. **ナビゲーション・共通CSS・フッター**：
+3. **JSON-LD 構造化データ**：`Article`（`SpeakableSpecification`・`author: くわもん`・`datePublished`・`dateModified` 付） + `BreadcrumbList` + `FAQPage`
+4. **ナビゲーション・共通CSS・ライトモード暗転防止・`<main>`・フッター**：
    * `<link rel="manifest" href="/static/manifest.json?v=3">`, `<link rel="icon" type="image/png" href="/static/icon-192.png?v=3">`, `<link rel="apple-touch-icon" href="/static/icon.png?v=3">`, `<meta name="theme-color" content="#111113">`
-   * `<link rel="stylesheet" href="/static/style.css?v=20261030_6">`, `<link rel="stylesheet" href="/static/portal.css?v=14">`, `<link rel="stylesheet" href="/static/calm.css?v=33">`（既存ページと完全一致のクエリ文字列）を読み込み、未定義 `var(--...)` や見出し絵文字・派手ネオングラデを一切使わないこと（ライトモード `body.theme-light` でのコントラスト崩れも確認すること）
-   * 上部に `{% set nav_active = 'columns' %}` と `{% include '_portal_nav.html' %}`
-   * 下部に `{% include '_portal_footer.html' %}`
+   * `<link rel="stylesheet" href="/static/style.css?v=20261030_6">`, `<link rel="stylesheet" href="/static/portal.css?v=14">`, `<link rel="stylesheet" href="/static/calm.css?v=33">`（既存ページと完全一致のクエリ文字列）を読み込み、`<head>` に `<script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script><style>html.theme-light{background-color:#f6f6f7;}</style>`、`<body>` 直後に `<script>try{if(localStorage.getItem('olg_view_theme')==='light')document.body.classList.add('theme-light');}catch(e){}</script>` を入れること
+   * 上部に `{% set nav_active = 'columns' %}` と `{% include '_portal_nav.html' %}`、主コンテンツ全体を `<main> ... </main>` で囲み、下部に `{% include '_portal_footer.html' %}`
    * スタッフ非表示ガード `{% if not is_staff and not session.get('is_staff') %}`（予約記事なら `and not is_scheduled_preview` も追加）で AdSense タグを囲むこと
 5. **店舗個別ページ・統計白書・関連コラムへの内部リンク（サイト内回遊の最大化）**：
    * 記事内の店舗リンクは必ず [`store_master.py`](file:///Users/kuwanoshinya/.gemini/相席業務改善/相席モニター/store_master.py) の `STORE_SLUGS` に定義された正しいスラッグ（例: `/store/oriental-lounge-shinjuku`, `/store/jis-umeda`, `/store/ag-shibuya`）を使用する。
    * **【重要】記事内には外部アフィリエイト広告カード（`/link/...`）を直接貼らないこと。** まずは独自のデータ考察メディアとしての信頼性・権威性とサイト内PV（`/` リアルタイムランキング、`/stats` 統計白書、`/store/...` 店舗ページへの回遊）を最優先する。身だしなみに触れる場合は、内部ページ `/grooming` または `/guide/first-10-minutes` への自然なテキストリンク1本のみにとどめる（2ステップ構造）。
+
+---
+
+## Step 3.5: Claude Opus 5.5 辛口デスク自動推敲ゲート（脱AI仕上げ）
+作成したコラムHTMLと書き下ろし note エッセイ原稿に対し、デプロイ前に必ず Claude Opus 5.5（読み取り専用 `--mode article`）のデスク校閲を通し、指摘された不自然な比喩・誇張語・会話の硬さを Antigravity の `edit_file` で磨き上げる：
+```bash
+python3 /Users/kuwanoshinya/.gemini/相席業務改善/相席モニター/.agents/skills/claude-review/scripts/run_claude_review.py \
+  --mode article \
+  --files templates/guide_<slug_underscored>.html \
+  --prompt "編集長くわもんの語り口として自然か、AIっぽい煽り語や会話の不自然さがないか辛口添削して"
+```
 
 ---
 
@@ -109,4 +121,4 @@ description: >-
 1. 生成した **16:9 アイキャッチ画像のプレビュー**
 2. 公開された **サイト内コラムURL（`https://aiseki-navi.com/guide/<slug>`）**
 3. **【そのままコピペ用】note専用・独立書き下ろしエッセイ原稿（タイトル・ハッシュタグ・本文Markdown）**
-   * **※Web記事のコピペ転載は厳禁！** Web版が「検索読者向けの構造化データリファレンス（番号付き見出し・比較表・FAQ）」であるのに対し、note版は「編集長の一人称による人間観察・行動経済学エッセイ（番号なし `## ` 見出し・`> ` 引用・1,700〜2,500文字）」として完全に別原稿で書き分けること（または `column_editorial.export_column_for_note('<slug>', mode='essay')` を活用すること）。
+   * **※Web記事のコピペ転載は厳禁！** Web版が「検索読者向けの構造化データリファレンス（番号付き見出し・比較表・FAQ）」であるのに対し、note版は「編集長・くわもんの一人称による人間観察・データ考察エッセイ（番号なし `## ` 見出し・`> ` 引用・1,700〜2,500文字）」として完全に別原稿で書き分けること（または `column_editorial.export_column_for_note('<slug>', mode='essay')` を活用し、Claude Opus 5.5 で脱AI推敲すること）。

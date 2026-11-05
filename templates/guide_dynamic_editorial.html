@@ -4,6 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
+    <style>html.theme-light{background-color:#f6f6f7;}</style>
     <meta name="google-site-verification" content="9kZaSJbaCuvn8QpGErUwI59w7Lf4N8ILhb_nWqDHI2s">
     <title>{{ scheduled_item.title }}｜相席ナビ</title>
     <meta name="description" content="{{ scheduled_item.desc }}">
@@ -41,13 +43,14 @@
         "datePublished": {{ (scheduled_item.publish_iso or (scheduled_item.lastmod ~ "T19:00:00+09:00")) | tojson }},
         "dateModified": {{ (scheduled_item.publish_iso or (scheduled_item.lastmod ~ "T19:00:00+09:00")) | tojson }},
         "author": {
-          "@type": "Organization",
-          "name": "相席ナビ 編集部・データ分析チーム",
-          "url": "https://aiseki-navi.com/"
+          "@type": "Person",
+          "name": "くわもん",
+          "jobTitle": "相席ナビ編集長",
+          "url": "https://aiseki-navi.com/about"
         },
         "publisher": {
           "@type": "Organization",
-          "name": "相席ナビ",
+          "name": "相席ナビ編集部",
           "logo": {
             "@type": "ImageObject",
             "url": "https://aiseki-navi.com/static/icon.png"
@@ -335,6 +338,7 @@
 </head>
 
 <body>
+    <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.body.classList.add('theme-light');}catch(e){}</script>
     <div class="article-container">
         {% if is_scheduled_preview and scheduled_item %}
         <div class="preview-banner">
@@ -345,6 +349,7 @@
         {% set nav_active = 'columns' %}
         {% include '_portal_nav.html' %}
 
+        <main>
         <nav class="breadcrumb" aria-label="パンくずリスト">
             <a href="/">ホーム</a><span>›</span>
             <a href="/columns">コラム一覧</a><span>›</span>
@@ -357,7 +362,7 @@
             <div class="article-meta-line">
                 <span>🗓️ 公開・更新日：{{ scheduled_item.lastmod }}</span>
                 <span>⏱️ {{ scheduled_item.read_time }}</span>
-                <span>✍️ 相席ナビ 編集部</span>
+                <span>執筆・検証：<a href="/about" style="color:inherit;text-decoration:underline;text-underline-offset:3px;">くわもん（相席ナビ編集長）</a></span>
             </div>
         </header>
 
@@ -373,7 +378,7 @@
 
             {% if scheduled_item.mechanism_thesis %}
             <div class="mechanism-thesis-box">
-                <div class="mechanism-thesis-label">🧠 編集部の構造考察・行動経済学レンズ</div>
+                <div class="mechanism-thesis-label">編集部の見立て</div>
                 <div>{{ scheduled_item.mechanism_thesis }}</div>
             </div>
             {% endif %}
@@ -401,7 +406,7 @@
 
                 {% if sec.mechanism_note %}
                 <div class="mechanism-note-box">
-                    <strong>🔎 構造メカニズム解説：</strong>{{ sec.mechanism_note }}
+                    <strong>背景にある理由：</strong>{{ sec.mechanism_note }}
                 </div>
                 {% endif %}
 
@@ -473,9 +478,9 @@
             {% endif %}
 
             <div class="cta-box">
-                <div style="font-size:1.05rem;font-weight:800;color:#fff;">📊 全国53店舗の「いま現在の男女人数」をリアルタイム確認！</div>
+                <div style="font-size:1.05rem;font-weight:800;color:#fff;">全国63店舗の現在の男女人数を確認する</div>
                 <p style="font-size:0.85rem;color:#cbd5e1;margin:8px 0 0 0;">
-                    入店前の10秒チェックで男性待ちを回避。オリエンタルラウンジ・ag・JISの現在人数と過去7日間のピーク時間を毎分更新しています。
+                    入店前に確認しておくと、男性待ちを避けやすくなります。オリエンタルラウンジ・ag（アグ）・JIS（ジス）の現在人数と過去7日間のピーク時間を毎分更新しています。
                 </p>
                 <a href="/" class="cta-btn">全国リアルタイム人数ランキングを見る →</a>
                 <div style="margin-top:14px;font-size:0.8rem;">
@@ -485,6 +490,7 @@
                 </div>
             </div>
         </article>
+        </main>
 
         {% include '_portal_footer.html' %}
     </div>

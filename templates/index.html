@@ -51,7 +51,7 @@
         "applicationCategory": "LifestyleApplication",
         "operatingSystem": "All",
         "isAccessibleForFree": true,
-        "description": "日本全国の主要相席ラウンジ・相席バー全63店舗（オリエンタルラウンジ・ag［アグ］・JIS［ジス］・ASOBIBAR［アソビバー］他）のリアルタイム男女人数・男女比率・60分後AI男女比予測・リアル待ち時間推論・曜日×時間帯別の混雑統計・料金システム比較を24時間無料公開する一次データポータルサイト。"
+        "description": "日本全国の主要相席ラウンジ・相席バー全63店舗（オリエンタルラウンジ・ag［アグ］・JIS［ジス］・ASOBIBAR［アソビバー］他）のリアルタイム男女人数・男女比率・過去ログ統計にもとづく60分後男女比予測・推定待ち時間・曜日×時間帯別の混雑統計・料金システム比較を24時間無料公開する一次データポータルサイト。"
       },
       {
         "@context": "https://schema.org",
@@ -70,8 +70,23 @@
         "keywords": ["相席ラウンジ リアルタイム", "オリエンタルラウンジ 人数", "ag アグ 男女比", "JIS 相席", "ASOBIBAR 人数", "相席ナビ"],
         "creator": {
           "@type": "Organization",
-          "name": "相席ナビ運営事務局",
-          "url": "https://aiseki-navi.com/"
+          "name": "相席ナビ編集部",
+          "url": "https://aiseki-navi.com/",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://aiseki-navi.com/static/icon-512.png"
+          },
+          "founder": {
+            "@type": "Person",
+            "name": "くわもん",
+            "jobTitle": "相席ナビ編集長"
+          },
+          "sameAs": [
+            "https://x.com/aiseki_navi",
+            "https://www.instagram.com/aiseki_navi1",
+            "https://www.threads.net/@aiseki_navi1",
+            "https://note.com/aiseki_navi"
+          ]
         }
       },
       {
@@ -151,6 +166,8 @@
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script src="/static/affiliate_config.js?v=16" defer></script>
     {% endif %}
+    <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
+    <style>html.theme-light{background-color:#f6f6f7;}</style>
 </head>
 
 <body class="{% if is_staff %}staff-mode{% endif %}">
@@ -192,6 +209,7 @@
             var _t = localStorage.getItem('olg_view_theme') || (localStorage.getItem('olg_compact_view') === 'true' ? 'list' : 'default');
             if (_t === 'list') document.body.classList.add('compact-mode', 'theme-list');
             else if (_t === 'light') document.body.classList.add('theme-light');
+            document.documentElement.classList.toggle('theme-light', _t === 'light');
         } catch (e) {}
     </script>
     <!-- Refresh Toast Notification -->
@@ -1021,7 +1039,7 @@
                             </div>
                             <div class="portal-article-body">
                                 <h3>男性先行・男性比率が高いお店ほど女性が急増するって本当？「女性は待たない」新常識</h3>
-                                <p>全国53店舗・6.4万件のログが証明！20時台に男性先行の店舗は22時台の女性ピークが約4.5倍に伸びるメカニズム。</p>
+                                <p>全国63店舗・6.4万件のログ検証。20時台に男性先行の店舗は22時台の女性ピークが約4.5倍に伸びるメカニズム。</p>
                                 <span class="portal-article-more">記事を読む ›</span>
                             </div>
                         </a>
@@ -1515,8 +1533,8 @@
                 <p>
                     <strong>サイト名：</strong>相席ナビ (AISEKI NAVI)<br>
                     <strong>サイトURL：</strong><a href="https://aiseki-navi.com" class="legal-inline-link">https://aiseki-navi.com</a><br>
-                    <strong>運営元：</strong>相席ナビ運営事務局<br>
-                    <strong>お問い合わせ：</strong>掲載内容や著作権に関するご相談、広告掲載・提携のご相談は、サイト内の各お問い合わせ窓口または公式SNSよりご連絡ください。
+                    <strong>運営元：</strong>相席ナビ編集部（編集長：くわもん）<br>
+                    <strong>お問い合わせ：</strong>掲載内容や著作権に関するご相談、広告掲載・提携のご相談は、<a href="/contact" class="legal-inline-link">お問い合わせフォーム</a>または公式SNSよりご連絡ください。
                 </p>
             </div>
             <button class="modal-bottom-close-btn" onclick="closeLegalModal()">✕ 閉じる</button>
@@ -1695,11 +1713,11 @@
                         </div>
                         <div class="article-card-info">
                             <div class="article-card-meta">
-                                <span class="article-tag">全51店舗・4時間帯料金</span>
+                                <span class="article-tag">国内61店舗・4時間帯料金</span>
                                 <span class="article-read-time">約6分で読める</span>
                             </div>
                             <h3 class="article-card-title">「店舗別料金・イベント・現在人数」比較ボードの活用ガイド｜待機料金・4時間帯単価・最低人数10名の見方</h3>
-                            <p class="article-card-desc">10分220〜330円の待機料金、4時間帯別の相席単価、1名入店可否、開催中イベント、女性10名以上基準の見方を徹底解説。</p>
+                            <p class="article-card-desc">10分220〜330円の待機料金、4時間帯別の相席単価、1名入店可否、開催中イベント、女性10名以上基準の見方を整理。</p>
                             <div class="article-card-footer">
                                 <span class="article-read-btn">記事を読む ›</span>
                             </div>
@@ -1721,7 +1739,7 @@
                                 <span class="article-read-time">約6分で読める</span>
                             </div>
                             <h3 class="article-card-title">男性先行・男性比率が高いお店ほど女性が急増するって本当？「女性は待たない」新常識</h3>
-                            <p class="article-card-desc">全国53店舗・6.4万件のログが証明！20時台に男性先行の店舗は22時台の女性ピークが約4.5倍に伸びる理由を解説。</p>
+                            <p class="article-card-desc">全国63店舗・6.4万件のログ検証。20時台に男性先行の店舗は22時台の女性ピークが約4.5倍に伸びる理由を解説。</p>
                             <div class="article-card-footer">
                                 <span class="article-read-btn">検証記事を読む ›</span>
                             </div>

@@ -273,14 +273,17 @@
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
          crossorigin="anonymous"></script>
     {% endif %}
+    <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
+    <style>html.theme-light{background-color:#f6f6f7;}</style>
 </head>
 
 <body>
+    <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.body.classList.add('theme-light');}catch(e){}</script>
     <div class="portal-wrap">
         <div class="portal-top-header">
             <a href="/" class="portal-brand-link">
                 <span class="portal-brand-title">相席ナビ</span>
-                <span class="portal-brand-sub">全国ラウンジのリアルタイム人数＆攻略メディア</span>
+                <span class="portal-brand-sub">全国ラウンジのリアルタイム人数＆統計メディア</span>
             </a>
             <span style="font-size: 0.77rem; color: var(--text-sub);">最終更新: {{ last_updated }}</span>
         </div>
@@ -288,6 +291,7 @@
         {% set nav_active = 'ranking' %}
         {% include '_portal_nav.html' %}
 
+        <main>
         <div class="brand-tabs">
             <a href="/oriental-lounge" class="brand-tab {% if brand.slug == 'oriental-lounge' %}active{% endif %}">オリエンタルラウンジ全店</a>
             <a href="/ag" class="brand-tab {% if brand.slug == 'ag' %}active{% endif %}">ag（アグ）全店</a>
@@ -351,10 +355,11 @@
             <p>{{ brand.strategy_text_2 }}</p>
             <div style="margin-top: 14px; display: flex; flex-wrap: wrap; gap: 14px;">
                 <a href="/price-comparison" style="color: var(--accent-text); font-size: 0.84rem; font-weight: 600; text-decoration: none;">店舗別の4時間帯料金・単独料金・イベント比較を見る ›</a>
-                <a href="/guide/brand-comparison" style="color: var(--accent-text); font-size: 0.84rem; font-weight: 600; text-decoration: none;">3大ブランドの徹底比較コラムを見る ›</a>
+                <a href="/guide/brand-comparison" style="color: var(--accent-text); font-size: 0.84rem; font-weight: 600; text-decoration: none;">3大ブランドの比較コラムを見る ›</a>
                 <a href="/guide/weekday-strategy" style="color: var(--accent-text); font-size: 0.84rem; font-weight: 600; text-decoration: none;">曜日・時間帯別の穴場データを見る ›</a>
             </div>
         </section>
+        </main>
 
         {% include '_portal_footer.html' %}
     </div>

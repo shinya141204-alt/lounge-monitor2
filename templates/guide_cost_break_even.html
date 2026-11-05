@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="google-site-verification" content="9kZaSJbaCuvn8QpGErUwI59w7Lf4N8ILhb_nWqDHI2s">
     <title>微妙な席で90分粘る vs 40分で見切る｜男性の滞在時間とトータル料金・コスパの「損益分岐点」シミュレーション｜相席ナビ</title>
-    <meta name="description" content="10分単位で課金される相席ラウンジで男性が一番損をする「惰性の90分滞在」と、最もコスパが高くなる「40分見切りルール」を徹底シミュレーション。新宿・梅田・渋谷の同一時刻ログから判明した徒歩5分圏内の男女比ギャップ（最大17.5pt差）も公開。">
+    <meta name="description" content="10分単位で課金される相席ラウンジで男性が損をしやすい「惰性の90分滞在」と、費用対効果が高くなる「40分見切りルール」を料金表から試算。新宿・梅田・渋谷の同一時刻ログから判明した徒歩5分圏内の男女比ギャップ（最大17.5pt差）も公開。">
     <meta name="keywords" content="相席ラウンジ 料金,オリエンタルラウンジ 料金 男性,JIS 料金,ag 料金,相席ラウンジ コスパ,相席ラウンジ チェンジ タイミング,相席ナビ">
     <link rel="canonical" href="https://aiseki-navi.com/guide/cost-break-even">
     {% if is_scheduled_preview %}
@@ -16,8 +16,8 @@
     {% endif %}
 
     <!-- OGP / SNS Card Settings -->
-    <meta property="og:title" content="90分粘る vs 40分で見切る｜相席ラウンジ料金と勝率の「損益分岐点」｜相席ナビ">
-    <meta property="og:description" content="10分課金システムで一番損をするのは「惰性の延長」。実測データで見る徒歩圏内の男女比ギャップと、40分見切りルールの期待値計算！">
+    <meta property="og:title" content="90分粘る vs 40分で見切る｜相席ラウンジ料金と滞在時間の「損益分岐点」｜相席ナビ">
+    <meta property="og:description" content="10分課金システムで損をしやすい「惰性の延長」。実測データで見る徒歩圏内の男女比ギャップと、40分見切りルールの試算。">
     <meta property="og:type" content="article">
     <meta property="og:url" content="https://aiseki-navi.com/guide/cost-break-even">
     <meta property="og:site_name" content="相席ナビ">
@@ -25,7 +25,7 @@
     <meta property="og:image" content="https://aiseki-navi.com/static/eyecatch-cost-break-even.jpg?v=3">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="90分粘る vs 40分で見切る｜相席コスパの「損益分岐点」シミュレーション">
-    <meta name="twitter:description" content="惰性で1店舗に9,000円払う人と、40分で見切って2軒目・別店舗で勝つ人の決定的な差をデータ解説。">
+    <meta name="twitter:description" content="惰性で1店舗に9,000円払うケースと、40分で見切って2軒目・別店舗へ移るケースの出費差を料金データで比較。">
     <meta name="twitter:image" content="https://aiseki-navi.com/static/eyecatch-cost-break-even.jpg?v=3">
 
     <!-- Structured Data (Article + BreadcrumbList + FAQPage) -->
@@ -37,21 +37,22 @@
         "headline": "微妙な席で90分粘る vs 40分で見切る｜男性の滞在時間とトータル料金・コスパの「損益分岐点」シミュレーション",
         "image": ["https://aiseki-navi.com/static/eyecatch-cost-break-even.jpg"],
         "datePublished": "2026-11-01T19:00:00+09:00",
-        "dateModified": "2026-11-01T19:00:00+09:00",
+        "dateModified": "2026-11-05T12:00:00+09:00",
         "author": {
-          "@type": "Organization",
-          "name": "相席ナビ データ分析チーム",
-          "url": "https://aiseki-navi.com/"
+          "@type": "Person",
+          "name": "くわもん",
+          "jobTitle": "相席ナビ編集長",
+          "url": "https://aiseki-navi.com/about"
         },
         "publisher": {
           "@type": "Organization",
-          "name": "相席ナビ",
+          "name": "相席ナビ編集部",
           "logo": {
             "@type": "ImageObject",
-            "url": "https://aiseki-navi.com/static/icon.png"
+            "url": "https://aiseki-navi.com/static/icon-512.png"
           }
         },
-        "description": "相席ラウンジの10分課金モデルと全国主要エリアの同一時刻・店舗間男女比ギャップ（9.6万件ログ）から算出した、男性の最適滞在時間と損益分岐点レポート。"
+        "description": "相席ラウンジの10分課金モデルと全国主要エリアの同一時刻・店舗間男女比ギャップ（9.6万件ログ）から算出した、男性の滞在時間と損益分岐点レポート。"
       },
       {
         "@context": "https://schema.org",
@@ -93,6 +94,8 @@
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
     <link rel="stylesheet" href="/static/style.css?v=20261030_6" media="print" onload="this.media='all'">
     <noscript><link rel="stylesheet" href="/static/style.css?v=20261030_6"></noscript>
+    <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
+    <style>html.theme-light{background-color:#f6f6f7;}</style>
     <link rel="stylesheet" href="/static/portal.css?v=14">
     <style>
         body {
@@ -251,6 +254,7 @@
 </head>
 
 <body>
+    <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.body.classList.add('theme-light');}catch(e){}</script>
     <div class="article-container">
         {% if is_scheduled_preview and scheduled_item %}
         <div class="preview-banner">
@@ -261,6 +265,7 @@
         {% set nav_active = 'columns' %}
         {% include '_portal_nav.html' %}
 
+        <main>
         <nav class="breadcrumb" aria-label="Breadcrumb">
             <a href="/">ホーム</a><span>›</span>
             <a href="/columns">コラム・攻略一覧</a><span>›</span>
@@ -268,9 +273,9 @@
         </nav>
 
         <header class="article-header">
-            <span class="article-cat-tag">💰 滞在時間×料金コスパ検証</span>
+            <span class="article-cat-tag">滞在時間×料金コスパ検証</span>
             <h1 class="article-title">微妙な席で90分粘る vs 40分で見切る｜男性の滞在時間とトータル料金・コスパの「損益分岐点」シミュレーション</h1>
-            <p style="font-size:0.8rem;color:#94a3b8;margin:0;">公開日：2026年11月1日 ｜ 執筆：相席ナビ データ分析チーム</p>
+            <p style="font-size:0.8rem;color:#94a3b8;margin:0;">公開日：2026年11月1日 ｜ 執筆・検証：<a href="/about" style="color:inherit;text-decoration:underline;text-underline-offset:3px;">くわもん（相席ナビ編集長）</a></p>
         </header>
 
         <figure class="article-eyecatch">
@@ -282,8 +287,8 @@
 
         <div class="article-body">
             <p>
-                決して悪い子たちではないんです。愛想もいいし、こちらが質問を振ればちゃんと笑顔で返してくれる。<br>
-                でも、決定的に会話のテンポが噛み合わないまま、気まずい沈黙を埋めるようにハイボールをおかわりし続け、気を使って席替え（チェンジ）も言い出せないまま気づけば100分が経過していた——。
+                決して悪い相手ではないんです。愛想もいいし、こちらが質問を振れば笑顔で返してくれる。<br>
+                でも、会話のテンポが噛み合わないまま沈黙を埋めるようにハイボールをおかわりし続け、気を使って席替え（チェンジ）も言い出せないまま気づけば100分が経過していた——。
             </p>
             <p>
                 結局「そろそろ終電なんで！」と駅で解散し、改札の前で1人9,800円のレシートを見つめながら相方と顔を見合わせたときの、あのなんとも言えない脱力感。
@@ -291,21 +296,21 @@
 
             <div class="dialogue-box">
                 「……なあ、後半の1時間、お互い気疲れしてただけだったな」<br>
-                「間違いない。いい子たちだったけど、あのまま粘っても2軒目行く空気じゃなかったし、2人で2万あったら普通に旨い焼き鳥3軒ハシゴできたわ……」
+                「ほんとそれ。いい子たちだったけど、あのまま粘っても2軒目行く空気じゃなかったし、2人で2万あったら普通に旨い焼き鳥3軒ハシゴできたわ……」
             </div>
 
             <p>
-                相席ラウンジ（<a href="/oriental-lounge" style="color:#38bdf8;">オリエンタルラウンジ</a>・<a href="/ag" style="color:#38bdf8;">ag</a>・<a href="/jis" style="color:#38bdf8;">JIS</a>など）に通い始めた頃、僕らも何度もこの失敗をやらかしました。<br>
-                満足度が下がる一番の原因は、お店の料金システムではなく、<strong>「せっかく座ったから元を取りたい」という心理（サンクコスト）に引っ張られて、撤退・移行ラインを決めないままダラダラ居座ってしまうこと</strong>にあります。<br>
-                10分単位のタイムチャージ制におけるリアルな出費と、『相席ナビ』が記録した9.6万件のログにおける同一エリア内の男女比ギャップを突き合わせると、<strong>一番お財布に優しくて、しかも2軒目成功率まで跳ね上がる「40分〜50分ルール」</strong>がくっきりと見えてきます。
+                相席ラウンジ（<a href="/oriental-lounge" style="color:#38bdf8;">オリエンタルラウンジ</a>・<a href="/ag" style="color:#38bdf8;">ag（アグ）</a>・<a href="/jis" style="color:#38bdf8;">JIS（ジス）</a>など）に行き始めた頃、こうした失敗はよく起きがちです。<br>
+                満足度が下がる大きな原因は、お店の料金システムではなく、<strong>「せっかく座ったから元を取りたい」という気持ちに引っ張られて、切り上げる目安を決めないまま居座ってしまうこと</strong>にあります。<br>
+                10分単位のタイムチャージ制における出費と、『相席ナビ』が記録した9.6万件のログにおける同一エリア内の男女比ギャップを突き合わせると、<strong>出費を抑えつつ2軒目にもつなげやすい「40分〜50分ルール」</strong>が見えてきます。
             </p>
 
             <div class="highlight-box">
-                <strong style="color:#fbbf24;font-size:0.98rem;">💡 シミュレーションで見えた3つの鉄則</strong>
+                <strong style="color:#fbbf24;font-size:0.98rem;">シミュレーションで見えた3つの目安</strong>
                 <ul style="margin:10px 0 0 0;padding-left:20px;">
-                    <li><strong>損益分岐点は「40分〜50分」にある</strong>：盛り上がっている席でも間延びする前に「45分で2軒目バー」へ出た方が、1人あたりの総額が<strong>約3,000円安くなり成功率も上がる</strong>。</li>
-                    <li><strong>微妙な席での「惰性延長30分」＝2軒目1回分の損失</strong>：10分約700〜900円の相席料金を30分ダラダラ伸ばすだけで約2,500円が消える（サンクコストの罠）。</li>
-                    <li><strong>徒歩5分で世界が変わる</strong>：同じ21〜23時でも、新宿3店舗で<strong>平均17.5pt</strong>、梅田5店舗で<strong>平均15.2pt</strong>の女性比率差が同時に発生している。</li>
+                    <li><strong>損益分岐点は「40分〜50分」にある</strong>：盛り上がっている席でも間延びする前に「45分で2軒目バー」へ出た方が、1人あたりの総額が<strong>約3,000円安くなり次にもつながりやすい</strong>。</li>
+                    <li><strong>微妙な席での「惰性延長30分」＝2軒目1回分の出費</strong>：10分約700〜900円の相席料金を30分なんとなく伸ばすだけで約2,500円が消える（「元を取りたい」が一番高くつく）。</li>
+                    <li><strong>徒歩5分で男女比は大きく変わる</strong>：同じ21〜23時でも、新宿3店舗で<strong>平均17.5pt</strong>、梅田5店舗で<strong>平均15.2pt</strong>の女性比率差が同時に発生している。</li>
                 </ul>
             </div>
 
@@ -348,11 +353,11 @@
             </div>
 
             <p>
-                この表を計算してみて僕ら自身が一番ハッとしたのが、<strong>パターンA（1店舗で粘り続けたケース）より、パターンB（45分で2軒目へ移動したケース）の方が、トータルで一緒に飲む時間は同じ105分なのに、1人あたりの出費が約3,000円以上も安くなる</strong>ことです。<br>
-                相席ラウンジは「出会って最初の45分間のコスパ」は最強なのですが、すでに意気投合した相手と同じボックス席に居続けると「10分ごとに約800円の場所代」を課金し続ける計算になります。話が弾んだら、話題が尽きる前の45〜50分あたりで近くの夜カフェやバーへ出た方が、お財布にも二人の距離感にも圧倒的にプラスです（誘い方の具体例は<a href="/guide/second-venue" style="color:#38bdf8;">2軒目への自然な誘い方ガイド</a>参照）。
+                この表を試算してわかるのが、<strong>パターンA（1店舗で粘り続けたケース）より、パターンB（45分で2軒目へ移動したケース）の方が、トータルで一緒に飲む時間は同じ105分なのに、1人あたりの出費が約3,000円以上安くなる</strong>ことです。<br>
+                相席ラウンジは「出会って最初の45分間のコスパ」はいいのですが、すでに意気投合した相手と同じボックス席に居続けると「10分ごとに約800円の場所代」を課金し続ける計算になります。話が弾んだら、話題が尽きる前の45〜50分あたりで近くの夜カフェやバーへ出た方が、出費面でも距離感でもプラスになります（誘い方の具体例は<a href="/guide/second-venue" style="color:#38bdf8;">2軒目への自然な誘い方ガイド</a>参照）。
             </p>
 
-            <h2>2. 実測データが証明！「徒歩5分圏内」で起きている男女比の激しい格差</h2>
+            <h2>2. 「徒歩5分圏内」の店舗間で男女比はどれくらい違うか</h2>
             <p>
                 もう一つ、現場でありがちなのが「入ったお店が男だらけで、チェンジしたくても次の女の子がいない」という詰みパターンです。
             </p>
@@ -405,36 +410,36 @@
                 <a href="/area/shinjuku" style="color:#f472b6;">新宿エリア</a>（<a href="/store/oriental-lounge-shinjuku" style="color:#f472b6;">オリエンタルラウンジ新宿</a>・<a href="/store/jis-shinjuku" style="color:#f472b6;">JIS新宿</a>・<a href="/store/jis-nishishinjuku" style="color:#f472b6;">JIS西新宿</a>の3店舗）でも、同じ瞬間に女性比率が平均17.5ポイント（A店は女性比42%で男余りなのに、B店は女性比60%で女余り）も開いています。「せっかく入ったから」と1店舗に固執するのがいかに損か、この数字がすべて物語っています。
             </p>
 
-            <h2>3. 残酷な答え合わせ：「いい人ぶった90分延長」は女子側にとっても苦行だった</h2>
+            <h2>3. 「気を使った90分延長」は、女性側にとってもつらい時間だった</h2>
             <p>
-                ここで少し辛口な現実をお伝えします。微妙な空気の席で男性側が「30分でチェンジしたら失礼かな…」と気を使って延長しているとき、<strong>実は向かいに座っている女性2人組も、化粧室でまったく同じことをLINEし合っています。</strong>
+                あわせて知っておきたいのが、噛み合わない空気の席で男性側が「30分でチェンジしたら失礼かな…」と気を使って延長しているとき、<strong>向かいに座っている女性2人組も、化粧室で同じように切り上げるタイミングを探っていることが多い</strong>という点です。
             </p>
 
             <div class="dialogue-box">
-                <strong>💄 同時刻・女子トイレの鏡の前でのリアルな会話</strong><br>
+                <strong>同時刻・女子トイレの鏡の前での会話</strong><br>
                 「ねえ、悪い人たちじゃないんだけど、仕事の真面目な話ばっかりで正直ちょっと眠くなってきちゃった…」<br>
                 「わかる（笑） でも向こうが延長してくれてるから自分たちからは『出ます』って言いづらいし、次のドリンク飲み干したら『明日早いんで』って切り上げよっか」
             </div>
 
             <p>
-                そう、誰ひとり幸せになっていないのに、男性側だけが10分800円のチャージを払い続け、女性側も貴重な週末の夜を気遣い笑いで消費している——これが「惰性90分滞在」の正体です。<br>
-                だからこそ常連ペアほど、着席35分時点で一度だけ冷静に温度感をすり合わせています。
+                お互いに気疲れしているのに、男性側は10分800円のチャージを払い続け、女性側も貴重な週末の夜を気遣い笑いで消費してしまう——これが「惰性90分滞在」の実態です。<br>
+                そのため慣れているペアほど、着席35分時点で一度だけ冷静に温度感をすり合わせています。
             </p>
 
             <div class="dialogue-box">
-                <strong>[21:42 相方LINE]</strong> トイレついでに連絡！ 悪い子じゃないけど、ぶっちゃけ向こうのスマホずっと表向きだし温度感ちょい微妙じゃない？<br>
-                <strong>[21:43 自分LINE]</strong> 完全に同意（笑） お互い気疲れする前に40分で爽やかにお礼言って切り上げて、いま女性比62%になってる徒歩4分のオリエンタルラウンジへ移動しよ！
+                <strong>[21:42 相方LINE]</strong> トイレついでに連絡！ 悪い子じゃないけど、向こうのスマホずっと表向きだし温度感ちょい微妙じゃない？<br>
+                <strong>[21:43 自分LINE]</strong> それな（笑） 気疲れする前に40分でお礼言って切り上げよ。歩いて4分のオリエンタルラウンジがいま女性比62%だからそっち行こう
             </div>
 
             <div class="highlight-box">
-                <h3 style="margin:0 0 8px 0;color:#f8fafc;">STEP 1：エレベーターに乗る前に「男女比」と「15分増減（↗）」を見る</h3>
+                <h3 style="margin:0 0 8px 0;color:#f8fafc;">STEP 1：お店に向かう前に「男女比」と「15分増減（↗）」を見る</h3>
                 <p style="margin:0 0 14px 0;">
-                    看板の知名度だけで飛び込まず、必ず直前にリアルタイム人数をチェックします。男性過多で女性の増加トレンド（↗）も止まっている店舗は最初からパスするだけで、受付待ちで消耗する負けパターンをゼロにできます。
+                    看板の知名度だけで入らず、直前にリアルタイム人数を確認します。男性過多で女性の増加トレンド（↗）も止まっている店舗を避けるだけで、受付待ちで消耗するパターンを減らせます。
                 </p>
-                <h3 style="margin:0 0 8px 0;color:#f8fafc;">STEP 2：着席から「35分〜45分」でシビアにジャッジする</h3>
+                <h3 style="margin:0 0 8px 0;color:#f8fafc;">STEP 2：着席から「35分〜45分」で判断する</h3>
                 <p style="margin:0;">
-                    ・<strong>相手からも質問が返ってきて会話が弾んでいる場合</strong>：店内で満腹になる前に、<strong>45分〜50分時点</strong>で「30分だけ夜カフェか静かなバー寄らない？」と短時間提案で外へ連れ出す。<br>
-                    ・<strong>一問一答でスマホが気になり始めている場合</strong>：いい人ぶって課金を積み増さず、「明日朝イチで予定があって今日は1時間だけって決めてたんだ、乾杯できて楽しかった！」と明るくお礼を伝えてリセットするのが、男女双方にとって一番スマートな大人のマナーです。
+                    ・<strong>相手からも質問が返ってきて会話が弾んでいる場合</strong>：店内で満腹になる前に、<strong>45分〜50分時点</strong>で「30分だけ夜カフェか静かなバー寄らない？」と短時間提案で外へ誘う。<br>
+                    ・<strong>一問一答でスマホが気になり始めている場合</strong>：気を使って課金を積み増さず、「明日朝イチで予定があって今日は1時間だけって決めてたんだ、乾杯できて楽しかった！」と明るくお礼を伝えて切り上げるのが、男女双方にとって負担の少ないマナーです。
                 </p>
             </div>
 
@@ -445,18 +450,19 @@
             {% endif %}
 
             <div class="cta-box">
-                <div style="font-size:1.05rem;font-weight:800;color:#fff;">📊 徒歩5分圏内の「いま一番入りやすい店舗」を3秒で比較！</div>
+                <div style="font-size:1.05rem;font-weight:800;color:#fff;">徒歩5分圏内の「いま入りやすい店舗」をまとめて比較</div>
                 <p style="font-size:0.85rem;color:#cbd5e1;margin:8px 0 0 0;">
-                    新宿・渋谷・梅田・栄・大宮・福岡など全国53店舗の男女人数・女性比率・直近15分の増減をリアルタイム表示中。
+                    新宿・渋谷・梅田・栄・大宮・福岡など全国63店舗の男女人数・女性比率・直近15分の増減をリアルタイム表示中。
                 </p>
                 <a href="/" class="cta-btn">リアルタイム人数ランキングを見る →</a>
                 <div style="margin-top:14px;font-size:0.8rem;">
-                    <a href="/guide/second-venue" style="color:#38bdf8;text-decoration:none;margin-right:12px;">🍸 断られない2軒目の誘い方</a>
-                    <a href="/guide/brand-comparison" style="color:#38bdf8;text-decoration:none;margin-right:12px;">🏢 3大ブランドの料金・客層比較</a>
-                    <a href="/stats" style="color:#38bdf8;text-decoration:none;">📈 全国統計データ白書</a>
+                    <a href="/guide/second-venue" style="color:#38bdf8;text-decoration:none;margin-right:12px;">2軒目への自然な誘い方</a>
+                    <a href="/guide/brand-comparison" style="color:#38bdf8;text-decoration:none;margin-right:12px;">3大ブランドの料金・客層比較</a>
+                    <a href="/stats" style="color:#38bdf8;text-decoration:none;">全国統計データ白書</a>
                 </div>
             </div>
         </div>
+        </main>
 
         {% include '_portal_footer.html' %}
     </div>

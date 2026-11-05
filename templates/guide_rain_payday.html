@@ -4,9 +4,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
+    <style>html.theme-light{background-color:#f6f6f7;}</style>
     <meta name="google-site-verification" content="9kZaSJbaCuvn8QpGErUwI59w7Lf4N8ILhb_nWqDHI2s">
-    <title>雨の日・給料日前後・連休中日で男女比はどう崩れる？9.6万件ログで見つけた「ライバルが減る隠れ穴場日」｜相席ナビ</title>
-    <meta name="description" content="全国9.6万件の相席ラウンジ入店ログをカレンダー・天候条件で徹底分析！実は25日の給料日直後（女性比54.7%）より「15〜24日の給料日前（女性比62.1%）」の方が+7.4ptも入りやすい事実や、雨の日の地下直結店舗・3連休中日の狙い目法則を公開。">
+    <title>雨の日・給料日前後・連休中日で男女比はどう変わる？9.6万件ログで見たカレンダー・天候別の傾向｜相席ナビ</title>
+    <meta name="description" content="全国9.6万件の相席ラウンジ入店ログをカレンダー・天候条件で分けて集計しました。25日の給料日直後（54.7%）より15〜24日の給料日前（62.1%）の方が7.4pt高いという結果や、雨の日の地下直結店舗、3連休中日の傾向をまとめています。">
     <meta name="keywords" content="相席ラウンジ 雨の日,相席ラウンジ 穴場 曜日,相席ラウンジ 祝日 日曜,オリエンタルラウンジ 混雑 予想,JIS 混雑,相席ナビ">
     <link rel="canonical" href="https://aiseki-navi.com/guide/rain-payday">
     {% if is_scheduled_preview %}
@@ -16,16 +18,16 @@
     {% endif %}
 
     <!-- OGP / SNS Card Settings -->
-    <meta property="og:title" content="雨の日・給料日前・連休中日｜データが証明する「ライバルが減る隠れ穴場日」｜相席ナビ">
-    <meta property="og:description" content="実は25日の給料日直後より「15〜24日の給料日前」の方が女性比率が+7.4pt高い！地下直結店舗が雨の日に強い理由とカレンダー別の狙い目法則。">
+    <meta property="og:title" content="雨の日・給料日前・連休中日｜9.6万件ログで見たカレンダー・天候別の男女比｜相席ナビ">
+    <meta property="og:description" content="25日の給料日直後より「15〜24日の給料日前」の方が女性比率が+7.4pt高い。地下直結店舗が雨の日に強い理由とカレンダー別の傾向。">
     <meta property="og:type" content="article">
     <meta property="og:url" content="https://aiseki-navi.com/guide/rain-payday">
     <meta property="og:site_name" content="相席ナビ">
     <meta property="og:locale" content="ja_JP">
     <meta property="og:image" content="https://aiseki-navi.com/static/eyecatch-rain-payday.jpg?v=3">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="雨の日・給料日前・連休中日｜ライバルが減る「隠れ穴場日」データ検証">
-    <meta name="twitter:description" content="9.6万件のログが証明！給料日前週（15〜24日）に女性比率が62.1%へ跳ね上がる理由と、雨の日に勝てる駅・地下直結ラウンジ一覧。">
+    <meta name="twitter:title" content="雨の日・給料日前・連休中日｜9.6万件ログで見たカレンダー・天候別の男女比">
+    <meta name="twitter:description" content="9.6万件のログから、給料日前の週（15〜24日）に女性比率が62.1%になる理由と、雨の日に行きやすい駅直結・地下直結ラウンジをまとめました。">
     <meta name="twitter:image" content="https://aiseki-navi.com/static/eyecatch-rain-payday.jpg?v=3">
 
     <!-- Structured Data (Article + BreadcrumbList + FAQPage) -->
@@ -34,18 +36,19 @@
       {
         "@context": "https://schema.org",
         "@type": "Article",
-        "headline": "雨の日・給料日前後・連休中日で男女比はどう崩れる？9.6万件ログで見つけた「ライバルが減る隠れ穴場日」",
+        "headline": "雨の日・給料日前後・連休中日で男女比はどう変わる？9.6万件ログで見たカレンダー・天候別の傾向",
         "image": ["https://aiseki-navi.com/static/eyecatch-rain-payday.jpg"],
         "datePublished": "2026-11-05T19:00:00+09:00",
         "dateModified": "2026-11-05T19:00:00+09:00",
         "author": {
-          "@type": "Organization",
-          "name": "相席ナビ データ分析チーム",
-          "url": "https://aiseki-navi.com/"
+          "@type": "Person",
+          "name": "くわもん",
+          "jobTitle": "相席ナビ編集長",
+          "url": "https://aiseki-navi.com/about"
         },
         "publisher": {
           "@type": "Organization",
-          "name": "相席ナビ",
+          "name": "相席ナビ編集部",
           "logo": {
             "@type": "ImageObject",
             "url": "https://aiseki-navi.com/static/icon.png"
@@ -71,7 +74,7 @@
             "name": "雨の日の夜に相席ラウンジへ行くと女性は少ないですか？",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "路面を長く歩く店舗では客足が落ち着きますが、地下街や駅ビルからほぼ濡れずに直結している店舗（新宿サブナード隣接、梅田・大阪駅前地下街直結、福岡天神駅近く、札幌すすきの駅直結など）では、予定を変更して雨宿り兼ねて入店する女性が多い一方、外出を億劫がる男性が減るため、普段より女性比率が高くなりやすい穴場になります。"
+              "text": "路面を長く歩く店舗では客足が落ち着きますが、地下街や駅ビルからほぼ濡れずに直結している店舗（新宿サブナード隣接、梅田・大阪駅前地下街直結、福岡天神駅近く、札幌すすきの駅直結など）では、予定を変更して雨宿り兼ねて入店する女性がいる一方、外出を控える男性が増えるため、普段より女性比率が高くなりやすい傾向があります。"
             }
           },
           {
@@ -79,7 +82,7 @@
             "name": "月の中で一番女性比率が高く入りやすい時期はいつですか？",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "相席ナビの9.6万件ログ集計では、毎月15日〜24日（給料日前の週）のコアタイム平均女性比率が62.1%と最も高く、25日〜月末（給料日直後の54.7%）と比べて7.4ポイントも女性優位になることが確認されています。"
+              "text": "相席ナビの9.6万件ログ集計では、毎月15日〜24日（給料日前の週）のコアタイム平均女性比率が62.1%と最も高く、25日〜月末（給料日直後の54.7%）と比べて7.4ポイント高い結果でした。"
             }
           }
         ]
@@ -251,6 +254,7 @@
 </head>
 
 <body>
+    <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.body.classList.add('theme-light');}catch(e){}</script>
     <div class="article-container">
         {% if is_scheduled_preview and scheduled_item %}
         <div class="preview-banner">
@@ -261,54 +265,55 @@
         {% set nav_active = 'columns' %}
         {% include '_portal_nav.html' %}
 
+        <main>
         <nav class="breadcrumb" aria-label="Breadcrumb">
             <a href="/">ホーム</a><span>›</span>
-            <a href="/columns">コラム・攻略一覧</a><span>›</span>
+            <a href="/columns">コラム一覧</a><span>›</span>
             <span>雨の日・給料日前後・連休中日の客足データ検証</span>
         </nav>
 
         <header class="article-header">
-            <span class="article-cat-tag">☔ 天候・カレンダー別 9.6万件データ検証</span>
-            <h1 class="article-title">雨の日・給料日前後・連休中日で男女比はどう崩れる？9.6万件ログで見つけた「ライバルが減る隠れ穴場日」</h1>
-            <p style="font-size:0.8rem;color:#94a3b8;margin:0;">公開日：2026年11月5日 ｜ 執筆：相席ナビ データ分析チーム</p>
+            <span class="article-cat-tag">天候・カレンダー別 9.6万件データ検証</span>
+            <h1 class="article-title">雨の日・給料日前後・連休中日で男女比はどう変わる？9.6万件ログで見たカレンダー・天候別の傾向</h1>
+            <p style="font-size:0.8rem;color:#94a3b8;margin:0;">公開日：2026年11月5日 ｜ 執筆・検証：<a href="/about" style="color:inherit;text-decoration:underline;text-underline-offset:3px;">くわもん（相席ナビ編集長）</a></p>
         </header>
 
         <figure class="article-eyecatch">
             <picture>
                 <source srcset="/static/eyecatch-rain-payday.webp?v=3" type="image/webp">
-                <img src="/static/eyecatch-rain-payday.jpg?v=3" alt="雨の日・給料日前・連休中日 ライバルが減る隠れ穴場日" width="1280" height="720" loading="eager">
+                <img src="/static/eyecatch-rain-payday.jpg?v=3" alt="雨の日・給料日前・連休中日 カレンダー・天候別の男女比検証" width="1280" height="720" loading="eager">
             </picture>
         </figure>
 
         <div class="article-body">
             <p>
-                25日の給料日直後の金曜日。「今夜は懐も暖かいし、パーッと行くか！」と同僚と意気揚々とエレベーターを上がったら、扉が開いた瞬間に受付前から階段までスーツ姿の男性ペアがズラッと並んでいて、「現在男性は60分待ちとなっております」と申し訳なさそうに告げられた夜——。<br>
-                ところがその翌月、給料日前の20日前後で、しかも夕方から本降りの雨が降っていた木曜の夜。新宿サブナードの地下道を抜けて傘もささずにビルへ入ったら、待機ゼロで即ソファ席へ通されたばかりか、店内のあちこちに華やかな女性グループが座っていました。
+                月末の週末に同僚と人気店のエレベーターを上がったら、受付前のソファも通路も順番待ちの男性客で埋まっていて、「現在男性は60分待ちとなっております」と告げられた夜がありました。<br>
+                ところがその翌月、給料日前の20日前後で、夕方から本降りの雨が降っていた木曜の夜。新宿サブナードの地下道を抜けて傘もささずにビルへ入ったら、待機なしでソファ席へ通され、店内の女性グループの席がほとんど埋まっていました。
             </p>
 
             <div class="dialogue-box">
-                「今日ほんとは駅からちょっと歩くイタリアン予約してたんですけど、せっかく巻いた髪が湿気で終わるの嫌すぎてキャンセルしちゃって（笑）」<br>
-                「サブナードから直結で濡れずに入れるから、雨宿りついでにこっちで飲もう〜って直行してきたんです！」
+                「ほんとはイタリアン予約してたんだけど、駅から歩くし髪やばくなるからキャンセルしちゃって（笑）」<br>
+                「ここなら地下から来れるし、じゃあもうここでいっかって」
             </div>
 
             <p>
-                乾杯した女性2人組のこの一言を聞いた瞬間、「そういうことか！」と思わず膝を打ちました。<br>
-                実は僕らも最初は「給料日後で晴れている日の方が女の子も多くて盛り上がるのでは？」と逆を想像していたのですが、女性は完全無料なので給料日前でも関係なく遊びに来る一方、<strong>男性ライバルの数だけは「お財布の残高」と「外に出る億劫さ（雨や翌日の仕事）」にダイレクトに反応してガクッと減る</strong>のです。<br>
-                『相席ナビ』に蓄積された国内店舗ログ（9.6万件超）を日付・曜日・立地ごとに分解してみたところ、男性ライバルだけがスッと消えて女性優位になる「3つの隠れボーナスタイミング」がはっきりと浮かび上がってきました。
+                乾杯した女性2人組のこの話を聞いて、なるほどと思いました。<br>
+                最初は「給料日後で晴れている日の方が女性も多くて入りやすいのでは」と想像していたのですが、女性は無料の店が多いため給料日前でも変わらず来店しやすい一方、<strong>男性客の動きや月末の外出予定の重なり方によって男女のバランスが変わります</strong>。<br>
+                『相席ナビ』に蓄積された国内店舗ログ（9.6万件超）を日付・曜日・立地ごとに分けて集計したところ、女性比率が上がりやすい3つの傾向が見えてきました。
             </p>
 
             <div class="highlight-box">
-                <strong style="color:#f472b6;font-size:0.98rem;">💡 カレンダー＆天候分析で見えた3つの穴場法則</strong>
+                <strong style="color:#f472b6;font-size:0.98rem;">カレンダー・天候別に見た3つの傾向</strong>
                 <ul style="margin:10px 0 0 0;padding-left:20px;">
-                    <li><strong>「給料日前（毎月15〜24日）」は最強のブルーオーシャン</strong>：コア帯の平均女性比率は<strong>62.1%</strong>に達し、25日の給料日直後（54.7%）より<strong>+7.4ポイントも女性優位</strong>になる。</li>
-                    <li><strong>雨の夜は「地下街・駅直結店舗」の一人勝ち</strong>：路面店の客足が鈍る一方、濡れずに入れる地下直結店に女性が集中し、2軒目移動の成功率も跳ね上がる。</li>
-                    <li><strong>日曜（特に3連休の中日・祝前日）は金曜並みの集客で土曜より入りやすい</strong>：コア帯平均女性<strong>35.9名・女性比59.7%</strong>と、土曜（男性過多になりやすい58.1%）より好バランス。</li>
+                    <li><strong>「給料日前（毎月15〜24日）」は女性比率が月内で最も高い</strong>：コア帯の平均女性比率は<strong>62.1%</strong>で、25日の給料日直後（54.7%）より<strong>+7.4ポイント高い</strong>。</li>
+                    <li><strong>雨の夜は「地下街・駅直結店舗」が強い</strong>：路面店の客足が鈍る一方、濡れずに入れる地下直結店に女性が集まりやすい。</li>
+                    <li><strong>日曜（特に3連休の中日・祝前日）は金曜に近い人数で土曜より入りやすい</strong>：コア帯平均女性<strong>35.9名・女性比59.7%</strong>と、土曜（58.1%）より落ち着いたバランス。</li>
                 </ul>
             </div>
 
-            <h2>1. 【実測データ】給料日直後（25日〜）より「給料日前（15〜24日）」を狙うべき理由</h2>
+            <h2>1. 【実測データ】給料日直後（25日〜）と給料日前（15〜24日）の男女比</h2>
             <p>
-                国内店舗のコアタイム（20:00〜23:59）の入店ログを、「月初（1〜10日）」「月中・給料日前（15〜24日）」「給料日後・月末（25〜31日）」の3期間に分けて並べてみると、男性側の正直すぎる懐事情がそのまま数字に出ています。
+                国内店舗のコアタイム（20:00〜23:59）の入店ログを、「月初（1〜10日）」「月中・給料日前（15〜24日）」「給料日後・月末（25〜31日）」の3期間に分けて並べたのが以下の表です。
             </p>
 
             <div class="data-table-wrap">
@@ -319,26 +324,26 @@
                             <th>コア帯 女性平均</th>
                             <th>コア帯 男性平均</th>
                             <th>平均女性比率</th>
-                            <th>立ち回り判定</th>
+                            <th>傾向</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr>
-                            <td><strong>📅 月初（1日〜10日）</strong></td>
+                            <td><strong>月初（1日〜10日）</strong></td>
                             <td>31.9名</td>
                             <td>23.2名</td>
                             <td>60.3%</td>
                             <td>◯ バランス良好</td>
                         </tr>
                         <tr>
-                            <td><strong>💎 給料日前（15日〜24日）</strong></td>
+                            <td><strong>給料日前（15日〜24日）</strong></td>
                             <td><strong>30.0名</strong></td>
                             <td><strong>20.2名（減少）</strong></td>
-                            <td><strong style="color:#4ade80;">62.1%（最高！）</strong></td>
-                            <td><strong style="color:#4ade80;">◎ 最強の狙い目期間</strong></td>
+                            <td><strong style="color:#4ade80;">62.1%（3期間で最高）</strong></td>
+                            <td><strong style="color:#4ade80;">◎ 女性比率が最も高い</strong></td>
                         </tr>
                         <tr>
-                            <td><strong>🔥 給料日後・月末（25日〜31日）</strong></td>
+                            <td><strong>給料日後・月末（25日〜31日）</strong></td>
                             <td>21.4名</td>
                             <td>18.7名</td>
                             <td><strong style="color:#fbbf24;">54.7%（-7.4pt）</strong></td>
@@ -349,24 +354,24 @@
             </div>
 
             <p>
-                多くの会社の給料日である「25日」を過ぎた最初の週末は、街中の男性が同じように「今夜は飲みに行こうぜ！」と繰り出すため、女性比率は<strong>54.7%</strong>まで落ち込み、人気店ではエレベーター前まで男性の待機列ができやすくなります。<br>
-                反対に<strong>毎月15日〜24日の約10日間</strong>は、「今週は給料日前だから家でおとなしくしとこう」と男性ライバルが勝手に減って平均20.2名になるのに、女性の数（平均30.0名）は月初とほぼ変わらないままキープされます。その結果、<strong>平均女性比率62.1%という圧倒的な売り手市場（待たずに座れて席替えも余裕な状態）</strong>が毎月きっちり訪れているのです。
+                表を見ると、<strong>25日〜月末の期間</strong>は男性も平均18.7名と少ないものの、月末の予定や給料日後の外食へ分散するためか女性が<strong>21.4名</strong>まで減るため、女性比率は<strong>54.7%</strong>に下がります。<br>
+                反対に<strong>毎月15日〜24日の約10日間</strong>は、「今週は給料日前だから控えよう」と男性が月初（23.2名）から平均20.2名へ減るのに、女性の数（平均30.0名）は月初とほぼ変わらない水準を保っています。その結果、<strong>3期間で最も高い平均女性比率62.1%</strong>になっています。
             </p>
 
-            <h2>2. 雨の夜に「地下街・駅直結ラウンジ」が穴場化するメカニズム</h2>
+            <h2>2. 雨の夜に「地下街・駅直結ラウンジ」が入りやすくなる理由</h2>
             <p>
-                夕方18時すぎに窓の外で雨が降っていると、「今日は雨だし、どうせ女の子も少ないだろう」と真っ直ぐ帰ってしまう男性は本当に多いです。でも、地下街で繋がっているターミナル駅の店舗ログを見ると、まったく逆の現象が起きています。
+                夕方18時すぎに窓の外で雨が降っていると、「今日は雨だし、女性も少ないだろう」と真っ直ぐ帰ってしまう男性は少なくないはずです。ただ、地下街で繋がっているターミナル駅の店舗を見ると、違う動きが出ています。
             </p>
-            <h3>なぜ雨の日の「地下直結店」は女性が減らないのか？</h3>
+            <h3>なぜ雨の日の「地下直結店」は女性が減りにくいのか？</h3>
             <p>
-                雨の夜に一番ダメージを受けるのは、せっかくセットした前髪や巻き髪、お気に入りのパンプスや裾を濡らしたくない女性の「屋外移動」です。だからこそ雨の日ほど、駅から傘をさして5分以上歩く路面居酒屋や食べ歩き予定を取りやめて、<strong>新宿サブナード・梅田のホワイティやディアモール・天神地下街・さっぽろ地下街ポールタウンなどからほぼ濡れずにエレベーターで直行できる大型ラウンジ</strong>へ予定を切り替える女性ペアが急増します。
+                雨の夜に負担が大きいのは、セットした前髪や巻き髪、パンプスや服の裾を濡らしたくない女性の「屋外移動」です。そのため雨の日ほど、駅から傘をさして5分以上歩く路面居酒屋の予定を取りやめて、<strong>新宿サブナード・梅田のホワイティやディアモール・天神地下街・さっぽろ地下街ポールタウンなどからほぼ濡れずにエレベーターで直行できるオリエンタルラウンジやJIS（ジス）の大型店舗</strong>へ予定を切り替える女性ペアが増えると考えられます。
             </p>
 
             <div class="data-table-wrap">
                 <table class="data-table">
                     <thead>
                         <tr>
-                            <th>雨天に強い駅近・地下直結クラスの代表店舗</th>
+                            <th>雨天も移動しやすい駅近・地下直結の代表店舗</th>
                             <th>コア帯 女性平均</th>
                             <th>過去最大女性数</th>
                             <th>コア帯 平均女性比</th>
@@ -406,24 +411,26 @@
                     </tbody>
                 </table>
             </div>
+            <p style="font-size:0.8rem;color:#94a3b8;margin:-6px 0 18px;">
+                ※上表の数値は通年のコア帯（20:00〜23:59）平均であり、雨天日のみの限定集計ではありません。
+            </p>
 
             <p>
-                ただし、雨の夜に絶対やってはいけないNG行動があります。それは<strong>「盛り上がって外に出たあと、傘をささせて路面店のバーまで5分歩かせること」</strong>です。女性目線では、湿気で前髪がうねり、ヒールや裾が濡れるだけで一気に帰宅モードへ引き戻されます。
+                雨の夜に避けたいことは、<strong>「盛り上がって外に出たあと、傘をささせて路面店のバーまで5分歩かせること」</strong>です。湿気で前髪がうねり、ヒールや裾が濡れると一気に帰宅モードになってしまいます。地下でつながっている店に誘う場合は、たとえばこんな感じです。
             </p>
 
             <div class="dialogue-box">
-                <strong>💄 雨の夜のスマートな2軒目打診（地下直結ルート限定）</strong><br>
-                「外まだ本降りみたいだね。傘さして歩くの前髪も靴も大変だろうし、このビルから地下道だけで濡れずに行けるカフェバーでコーヒー1杯だけ飲んで帰らない？」<br>
-                「地下だけで行けるんですか？ 外歩くなら帰ろうと思ってたけど、濡れないなら30分だけ寄っていこっか！」
+                「外まだ降ってるね。地下通って行けるバーあるんだけど、1杯だけ寄ってかない？」<br>
+                「外出なくていいなら行こうかな。30分だけね」
             </div>
 
             <p>
-                「濡れずに移動できる」という具体的な気遣いがあるだけで、晴れの夜よりもむしろ「それなら寄っていこうかな」のハードルがぐっと下がります。逆に25日の給料日直後の週末に、受付で40分待たされてイライラした顔で乾杯するくらいなら、みんなが家で様子見している<strong>「15〜24日の給料日前×少し天気が崩れた夜の地下直結店」</strong>を淡々と狙う方が、お財布にも勝率にも何倍も優しい選択です。
+                「濡れずに移動できる」という気遣いがあると、「それなら寄っていこうかな」のハードルが下がります。月末の混む週末に受付で長く待つくらいなら、<strong>「15〜24日の給料日前×少し天気が崩れた夜の地下直結店」</strong>を選ぶ方が、財布の負担も少なく、入りやすい選び方です。
             </p>
 
-            <h2>3. 「3連休の中日（日曜夜）」が土曜夜より狙い目なデータ根拠</h2>
+            <h2>3. 日曜（特に3連休の中日）が土曜夜より入りやすいデータ根拠</h2>
             <p>
-                最後に、カレンダーを見るうえでぜひ覚えておいてほしいのが曜日別の実測データ（20:00〜23:59）です。
+                最後に、カレンダーを見るうえで押さえておきたいのが曜日別の実測データ（20:00〜23:59）です。
             </p>
             <ul>
                 <li><strong>土曜日</strong>：平均女性 52.3名 ／ 平均男性 40.4名（平均女性比 <strong>58.1%</strong>・人気店は男性待ちが発生）</li>
@@ -432,26 +439,27 @@
             </ul>
 
             <div class="dialogue-box">
-                「土曜日はどこも混みすぎてて疲れちゃうから、3連休の日曜夜に出てきたんです。明日も休みだから気持ち的にめっちゃラクで（笑）」
+                「土曜はどこも混んでるし、明日も休みだから今日にしたんです。気持ち的にラクで（笑）」
             </div>
 
             <p>
-                まさにこの女性の言葉通り、<strong>月曜が祝日の「3連休の中日（日曜夜）」</strong>は、翌日休みの開放感から金曜夜（平均女性38.5名）に迫る数の女性が集まるのに、前日の土曜夜で体力と予算を使い果たした男性陣が減ってくれます。<strong>週末の華やかさと平日の落ち着きをいいとこ取りできる、年に数回のご褒美デー</strong>としてぜひマークしておいてください。
+                この言葉の通り、<strong>日曜、特に月曜が祝日の3連休の中日</strong>は、翌日休みの開放感から金曜夜（平均女性38.5名）に近い数の女性が集まる一方、前日の土曜夜に出かけた男性が減ります。年に数回の日なので、カレンダーで確認しておく価値があります。
             </p>
 
             <div class="cta-box">
-                <div style="font-size:1.05rem;font-weight:800;color:#fff;">📊 今日の天気・カレンダーで「いま女性が多い店」をチェック！</div>
+                <div style="font-size:1.05rem;font-weight:800;color:#fff;">今日の天気・カレンダーで「いま女性が多い店」を確認する</div>
                 <p style="font-size:0.85rem;color:#cbd5e1;margin:8px 0 0 0;">
-                    雨の夜でも賑わっている地下直結店や、給料日前の高女子率ラウンジをリアルタイム人数ランキングですぐに探せます。
+                    雨の夜でも賑わっている地下直結店や、給料日前の女性比率が高いラウンジをリアルタイム人数ランキングですぐに探せます。
                 </p>
                 <a href="/" class="cta-btn">リアルタイム人数ランキングを見る →</a>
                 <div style="margin-top:14px;font-size:0.8rem;">
-                    <a href="/guide/weekday-strategy" style="color:#38bdf8;text-decoration:none;margin-right:12px;">📅 水曜・木曜の平日穴場データ</a>
-                    <a href="/guide/weekend-strategy" style="color:#38bdf8;text-decoration:none;margin-right:12px;">🔥 金曜・土曜ピーク攻略</a>
-                    <a href="/stats" style="color:#38bdf8;text-decoration:none;">📈 全国統計データ白書</a>
+                    <a href="/guide/weekday-strategy" style="color:#38bdf8;text-decoration:none;margin-right:12px;">水曜・木曜の平日データ</a>
+                    <a href="/guide/weekend-strategy" style="color:#38bdf8;text-decoration:none;margin-right:12px;">金曜・土曜の混雑傾向</a>
+                    <a href="/stats" style="color:#38bdf8;text-decoration:none;">全国統計データ白書</a>
                 </div>
             </div>
         </div>
+        </main>
 
         {% include '_portal_footer.html' %}
     </div>

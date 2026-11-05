@@ -5,13 +5,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>全国相席ラウンジ統計データ白書｜週間ピーク人数ランキング＆ブランド別集計｜相席ナビ</title>
-    <meta name="description" content="相席ナビが独自集計した全国53店舗（国内51店舗＋韓国2店舗）の相席ラウンジ統計データ白書。直近7日間の店舗別ピーク女性人数ランキング、平均ピーク時間帯、ブランド別の集客シェアを公開しています。">
+    <meta name="description" content="相席ナビ編集部（編集長：くわもん）が独自集計した全国63店舗（国内61店舗＋韓国2店舗）の相席ラウンジ統計データ白書。直近7日間の店舗別ピーク女性人数ランキング、平均ピーク時間帯、ブランド別の集客シェアを公開しています。">
     <link rel="canonical" href="https://aiseki-navi.com/stats">
     <link rel="alternate" type="text/markdown" href="https://aiseki-navi.com/llms.txt" title="相席ナビ AI要約ドキュメント (llms.txt)">
     <link rel="alternate" type="application/json" href="https://aiseki-navi.com/api/llms-facts.json" title="相席ナビ AIグラウンディング構造化JSON (llms-facts.json)">
 
     <meta property="og:title" content="全国相席ラウンジ統計データ白書＆週間ピークランキング｜相席ナビ">
-    <meta property="og:description" content="全国53店舗（国内51店舗）の過去ログから算出した店舗別ピーク人数・平均ピーク時間帯・ブランド別シェアの独自統計レポート。">
+    <meta property="og:description" content="全国63店舗（国内61店舗＋韓国2店舗）の過去ログから算出した店舗別ピーク人数・平均ピーク時間帯・ブランド別シェアの独自統計レポート。">
     <meta property="og:type" content="article">
     <meta property="og:url" content="https://aiseki-navi.com/stats">
     <meta property="og:image" content="https://aiseki-navi.com/ogp/weekly.png?w={{ (report.period or 'latest')|urlencode if report else 'latest' }}">
@@ -25,14 +25,15 @@
         "@context": "https://schema.org",
         "@type": "Dataset",
         "name": "全国相席ラウンジ リアルタイム男女人数・男女比・曜日別混雑統計データ白書",
-        "description": "オリエンタルラウンジ・ag（アグ）・JIS・ASOBIBARなど全国63店舗の相席ラウンジ・相席バーにおける曜日別・時間帯別の平均来店人数、ピーク時刻、男女比率を継続計測した一次統計データセット。",
+        "description": "オリエンタルラウンジ・ag（アグ）・JIS（ジス）・ASOBIBAR（アソビバー）など全国63店舗の相席ラウンジ・相席バーにおける曜日別・時間帯別の平均来店人数、ピーク時刻、男女比率を継続計測した一次統計データセット。",
         "url": "https://aiseki-navi.com/stats",
         "license": "https://creativecommons.org/licenses/by/4.0/",
         "isAccessibleForFree": true,
         "creator": {
           "@type": "Organization",
-          "name": "相席ナビ (AISEKI NAVI)",
-          "url": "https://aiseki-navi.com/"
+          "name": "相席ナビ編集部",
+          "url": "https://aiseki-navi.com/",
+          "founder": { "@type": "Person", "name": "くわもん", "jobTitle": "相席ナビ編集長" }
         },
         "keywords": ["相席ラウンジ 統計", "オリエンタルラウンジ 男女比", "JIS 人数 データ", "ag アグ 混雑", "相席ラウンジ 曜日別"]
       },
@@ -265,9 +266,12 @@
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
          crossorigin="anonymous"></script>
     {% endif %}
+    <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
+    <style>html.theme-light{background-color:#f6f6f7;}</style>
 </head>
 
 <body>
+    <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.body.classList.add('theme-light');}catch(e){}</script>
     <div class="portal-wrap">
         <div class="portal-top-header">
             <a href="/" class="portal-brand-link">
@@ -279,6 +283,7 @@
         {% set nav_active = 'stats' %}
         {% include '_portal_nav.html' %}
 
+        <main>
         <section class="hero-box">
             <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
                 <span class="badge" style="margin-bottom:0;">ORIGINAL DATA WHITEPAPER</span>
@@ -286,7 +291,7 @@
             </div>
             <h1>全国相席ラウンジ 統計データ白書＆週間ピークランキング</h1>
             <p style="margin: 0; font-size: 0.9rem; color: var(--text-sub);">
-                『相席ナビ』が独自計測・蓄積している全国53店舗の時系列ログから、<strong style="color: var(--text-main);">曜日別・時間帯別の平均男女比、直近7日間の店舗別ピーク人数、高女子率の穴場店舗</strong>を算出した一次統計レポートです。
+                『相席ナビ』編集部（監修：<a href="/about" style="color:inherit;text-decoration:underline;text-underline-offset:3px;">くわもん</a>）が独自計測・蓄積している全国63店舗（国内61店舗＋韓国2店舗）の時系列ログから、<strong style="color: var(--text-main);">曜日別・時間帯別の平均男女比、直近7日間の店舗別ピーク人数、高女子率の穴場店舗</strong>を算出した一次統計レポートです。
                 {% if report and report.period %}（直近集計期間：{{ report.period }}）{% endif %}
             </p>
         </section>
@@ -615,6 +620,7 @@
                 全店舗のリアルタイム順位・曜日別グラフを見る ›
             </a>
         </div>
+        </main>
 
         {% include '_portal_footer.html' %}
     </div>

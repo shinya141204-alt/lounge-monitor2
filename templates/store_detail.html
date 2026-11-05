@@ -475,14 +475,16 @@
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
          crossorigin="anonymous"></script>
     {% endif %}
+    <style>html.theme-light{background-color:#f6f6f7;}</style>
 </head>
 
 <body>
+    <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.body.classList.add('theme-light');}catch(e){}</script>
     <div class="portal-wrap">
         <div class="portal-top-header">
             <a href="/" class="portal-brand-link">
                 <span class="portal-brand-title">相席ナビ</span>
-                <span class="portal-brand-sub">全国ラウンジのリアルタイム人数＆攻略メディア</span>
+                <span class="portal-brand-sub">全国ラウンジのリアルタイム人数＆統計メディア</span>
             </a>
             <span style="font-size: 0.77rem; color: var(--text-sub);">最終更新: <span id="store-live-updated" style="color: var(--text-main); font-weight: 600;">{{ last_updated }}</span> <span style="color: #8fb89d; font-weight: 600;">● 自動更新中</span></span>
         </div>

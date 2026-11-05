@@ -14,11 +14,11 @@
         {% endfor %}
     {% endif %}
     {% if active_cluster_ns.item %}
-    <title>{{ active_cluster_ns.item.tab_label }}の相席ラウンジ料金・男性割引イベント徹底比較｜近隣店コスパ検証 | 相席ナビ</title>
-    <meta name="description" content="{{ active_cluster_ns.item.title }}（{{ active_cluster_ns.item.desc }}）単独待機料金・4時間帯別の相席10分単価・1名入店可否・開催中イベント・現在のリアルタイム男女人数を横並び徹底比較。">
+    <title>{{ active_cluster_ns.item.tab_label }}の相席ラウンジ料金・男性割引イベント比較｜近隣店コスパ検証 | 相席ナビ</title>
+    <meta name="description" content="{{ active_cluster_ns.item.title }}（{{ active_cluster_ns.item.desc }}）単独待機料金・4時間帯別の相席10分単価・1名入店可否・開催中イベント・現在のリアルタイム男女人数を横並び比較。">
     {% else %}
-    <title>相席ラウンジ料金・男性割引イベント徹底比較｜新宿・渋谷・梅田・栄・天神の近隣店コスパ検証 | 相席ナビ</title>
-    <meta name="description" content="オリエンタルラウンジ・ag（アグ）・JIS（ジス）・ASOBIBAR・地域ラウンジ国内全{{ data.all_domestic_stores|length }}店舗の男性料金（単独待機料金・時間帯別の相席10分単価・60分総額目安・1名入店可否）と、現在開催中の男性割引・女性集客イベント、今のリアルタイム男女人数をエリア別に徹底比較。">
+    <title>相席ラウンジ料金・男性割引イベント比較｜新宿・渋谷・梅田・栄・天神の近隣店コスパ検証 | 相席ナビ</title>
+    <meta name="description" content="オリエンタルラウンジ・ag（アグ）・JIS（ジス）・ASOBIBAR（アソビバー）・地域ラウンジ国内全{{ data.all_domestic_stores|length }}店舗の男性料金（単独待機料金・時間帯別の相席10分単価・60分総額目安・1名入店可否）と、現在開催中の男性割引・女性集客イベント、今のリアルタイム男女人数をエリア別に比較。">
     {% endif %}
     <meta name="keywords" content="相席ラウンジ 料金 比較,オリエンタルラウンジ 料金,オリエンタルラウンジ 待機料金,JIS 料金,ag 料金,相席ラウンジ 男性 割引,相席ラウンジ イベント,新宿 相席 料金,梅田 相席 料金">
     <meta name="robots" content="index, follow">
@@ -431,14 +431,17 @@
         }
     </style>
     <link rel="stylesheet" href="/static/calm.css?v=33">
+    <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
+    <style>html.theme-light{background-color:#f6f6f7;}</style>
 </head>
 
 <body>
+    <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.body.classList.add('theme-light');}catch(e){}</script>
     <div class="wrap">
         <div class="portal-top-header">
             <a href="/" class="portal-brand-link">
                 <span class="portal-brand-title">相席ナビ</span>
-                <span class="portal-brand-sub">全国ラウンジの今わかる人数ランキング＆攻略メディア</span>
+                <span class="portal-brand-sub">全国ラウンジのリアルタイム人数＆統計メディア</span>
             </a>
             <span style="font-size: 0.78rem; color: var(--text-sub);">
                 最終更新: <span id="live-updated-at">{{ last_updated }}</span>
@@ -449,6 +452,7 @@
         {% set nav_active = 'price_comparison' %}
         {% include '_portal_nav.html' %}
 
+        <main>
         <nav class="breadcrumb" aria-label="パンくずリスト">
             <a href="/">相席ナビ TOP</a> › <span>店舗別料金・開催中イベント比較</span>
         </nav>
@@ -911,6 +915,7 @@
             </a>
         </aside>
         {% endif %}
+        </main>
 
         {% include '_portal_footer.html' %}
     </div>

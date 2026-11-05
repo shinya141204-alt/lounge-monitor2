@@ -11,15 +11,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>今夜どこ行く？相席ラウンジ3秒穴場＆徒歩ハシゴ診断（全国63店舗リアルタイム対応）｜相席ナビ</title>
-    <meta name="description" content="新宿・渋谷・恵比寿・梅田・難波・名古屋・福岡・札幌・仙台・広島など全国63店舗の現在男女人数と過去ログ統計から、今夜もっとも出会いやすい本命店と徒歩ハシゴ第2候補を3秒で無料診断。男性目線（男余り回避）・女性目線（受付待ち0分）・ソロ参戦にも対応。">
+    <title>今夜どこ行く？相席ラウンジ 穴場＆徒歩ハシゴ診断（全国63店舗リアルタイム対応）｜相席ナビ</title>
+    <meta name="description" content="新宿・渋谷・恵比寿・梅田・難波・名古屋・福岡・札幌・仙台・広島など全国63店舗（オリエンタルラウンジ・ag（アグ）・JIS（ジス）・ASOBIBAR（アソビバー）他）の現在男女人数と過去ログ統計から、いま入りやすい第1候補と徒歩ハシゴ第2候補を診断。男性目線（男余り回避）・女性目線（受付待ちゼロ）・ソロ参戦にも対応。">
     <meta name="keywords" content="相席ラウンジ 診断,オリエンタルラウンジ 穴場,JIS 相席 待ち時間,ag 相席 男女比,相席ラウンジ ハシゴ,相席ラウンジ 一人,相席ナビ">
     <link rel="canonical" href="https://aiseki-navi.com/concierge">
     <link rel="alternate" type="text/markdown" href="https://aiseki-navi.com/llms.txt" title="相席ナビ AI要約ドキュメント (llms.txt)">
     <link rel="alternate" type="application/json" href="https://aiseki-navi.com/api/llms-facts.json" title="相席ナビ AIグラウンディング構造化JSON (llms-facts.json)">
 
-    <meta property="og:title" content="今夜どこ行く？相席ラウンジ3秒穴場＆徒歩ハシゴ診断｜相席ナビ">
-    <meta property="og:description" content="現在リアルタイム男女数×過去統計×徒歩距離から、今夜の本命ラウンジとハシゴ保険店を0.1秒で判定！">
+    <meta property="og:title" content="今夜どこ行く？相席ラウンジ 穴場＆徒歩ハシゴ診断｜相席ナビ">
+    <meta property="og:description" content="現在リアルタイム男女数×過去統計×徒歩距離から、いま入りやすい第1候補と徒歩ハシゴ第2候補を算出。">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://aiseki-navi.com/concierge">
     <meta property="og:image" content="https://aiseki-navi.com/ogp/live.png">
@@ -692,14 +692,17 @@
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
          crossorigin="anonymous"></script>
     {% endif %}
+    <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
+    <style>html.theme-light{background-color:#f6f6f7;}</style>
 </head>
 
 <body>
+    <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.body.classList.add('theme-light');}catch(e){}</script>
     <div class="portal-wrap">
         <div class="portal-top-header">
             <a href="/" class="portal-brand-link">
                 <span class="portal-brand-title">相席ナビ</span>
-                <span class="portal-brand-sub">全国ラウンジのリアルタイム人数＆攻略メディア</span>
+                <span class="portal-brand-sub">全国ラウンジのリアルタイム人数＆統計メディア</span>
             </a>
             <span style="font-size: 0.76rem; color: var(--text-sub);">判定時刻: <span id="concierge-updated-at">{{ last_updated | default(res.generated_at, true) }}</span></span>
         </div>
@@ -707,11 +710,12 @@
         {% set nav_active = 'concierge' %}
         {% include '_portal_nav.html' %}
 
-        <!-- Interactive 3-Second Concierge Console -->
+        <main>
+        <!-- Interactive Concierge Console -->
         <section class="concierge-console" aria-label="診断条件の選択">
             <div class="concierge-kicker">REALTIME × HISTORICAL LOGS × WALKING DISTANCE</div>
-            <h1>今夜どこ行く？3秒穴場＆徒歩ハシゴ診断</h1>
-            <p class="concierge-lead">全国主要店舗の現在男女比・過去ログの終電後定着率・店舗間の徒歩距離から、「いま入るべき第1候補」と「空振り時の徒歩ハシゴ第2候補」を0.1秒で算出します。</p>
+            <h1>今夜どこ行く？穴場＆徒歩ハシゴ診断</h1>
+            <p class="concierge-lead">全国63店舗の現在男女比・過去ログの終電後定着率・店舗間の徒歩距離から、「いま入りやすい第1候補」と「混雑時の徒歩ハシゴ第2候補」を算出します。</p>
 
             <div class="ctrl-group">
                 <span class="ctrl-label">1. どちらの目線で探す？</span>
@@ -920,6 +924,7 @@
                 <p>週末21時〜22時半に女性比率が70%近い店舗へ行くと、女性でも受付で20〜40分待つケースがあります。「女性目線」を選んで現在男性が先行している店舗へ向かうと、待ち時間ゼロで広いソファ席へ案内されやすくなります。</p>
             </details>
         </section>
+        </main>
 
         {% include '_portal_footer.html' %}
     </div>

@@ -4,8 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>コラム・攻略記事一覧｜相席ナビ（オリエンタルラウンジ・JIS・ag比較＆時間帯データ）</title>
-    <meta name="description" content="相席ナビ公式のコラム・ガイド記事一覧。オリエンタルラウンジ・JIS・agの3大ブランド比較や、水曜・木曜20時〜22時が相席しやすい理由、お店選びと身だしなみの基本まで実際の混雑データをもとに解説しています。">
+    <title>コラム・検証記事一覧｜相席ナビ（オリエンタルラウンジ・JIS（ジス）・ag（アグ）・ASOBIBAR（アソビバー）比較＆時間帯データ）</title>
+    <meta name="description" content="相席ナビ編集部（編集長：くわもん）による実測データ検証コラム一覧。オリエンタルラウンジ・JIS（ジス）・ag（アグ）・ASOBIBAR（アソビバー）のブランド別比較や、水曜・木曜20時〜22時が相席しやすい理由、お店選びと身だしなみの基本まで実際の混雑ログをもとに整理しています。">
     <link rel="canonical" href="https://aiseki-navi.com/columns">
     <link rel="alternate" type="text/markdown" href="https://aiseki-navi.com/llms.txt" title="相席ナビ AI要約ドキュメント (llms.txt)">
     <link rel="alternate" type="application/json" href="https://aiseki-navi.com/api/llms-facts.json" title="相席ナビ AIグラウンディング構造化JSON (llms-facts.json)">
@@ -248,24 +248,28 @@
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
          crossorigin="anonymous"></script>
     {% endif %}
+    <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
+    <style>html.theme-light{background-color:#f6f6f7;}</style>
 </head>
 
 <body>
+    <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.body.classList.add('theme-light');}catch(e){}</script>
     <div class="portal-wrap">
         <div class="portal-top-header">
             <a href="/" class="portal-brand-link">
                 <span class="portal-brand-title">相席ナビ</span>
-                <span class="portal-brand-sub">全国ラウンジのリアルタイム人数＆攻略メディア</span>
+                <span class="portal-brand-sub">全国ラウンジのリアルタイム人数＆統計メディア</span>
             </a>
         </div>
 
         {% set nav_active = 'columns' %}
         {% include '_portal_nav.html' %}
 
+        <main>
         <section class="page-hero">
             <span class="page-hero-badge">EDITORIAL COLUMNS</span>
             <h1>相席ラウンジのお店選び・時間帯・立ち回りコラム一覧</h1>
-            <p>「23時半に入ったら急に帰られた」「金土の夜に40分待たされた」——現場で誰もが一度はぶつかるリアルな失敗や空気感を、全国98万件超の混雑ログと常連目線で紐解いた実践コラム集です。</p>
+            <p>「23時半に入ったら急に帰られた」「金土の夜に40分待たされた」——現場で誰もが一度はぶつかる失敗や空気感を、全国63店舗・98万件超の混雑ログをもとに編集長・くわもんが検証したコラム集です。</p>
             <div style="margin-top: 14px;">
                 <a href="/guide" class="columns-hero-pill-link">
                     初めての方へ：相席ラウンジ初心者向け完全ガイド（料金・身分証・服装・ブランド早見表） ›
@@ -460,10 +464,10 @@
                 <div class="article-card-body">
                     <div class="article-tag-row">
                         <span class="article-tag tag-hot">新機能ガイド</span>
-                        <span class="article-tag tag-data">全51店舗・4時間帯料金</span>
+                        <span class="article-tag tag-data">国内61店舗・4時間帯料金</span>
                     </div>
                     <h2>「店舗別料金・イベント・現在人数」比較ボードの活用ガイド｜待機料金・4時間帯単価・最低人数10名の見方</h2>
-                    <p>10分220〜330円の単独待機料金、4時間帯別の相席単価、1名入店可否、開催中イベント、そしてなぜ比率だけでなく「女性10名以上（約5組）」の線引きが必要なのかを徹底解説。</p>
+                    <p>10分220〜330円の単独待機料金、4時間帯別の相席単価、1名入店可否、開催中イベント、そしてなぜ比率だけでなく「女性10名以上（約5組）」の線引きが必要なのかを実例で整理。</p>
                     <span class="article-read-more">この記事を読む ›</span>
                 </div>
             </a>
@@ -696,6 +700,7 @@
             </a>
             {% endfor %}
         </div>
+        </main>
 
         {% include '_portal_footer.html' %}
     </div>

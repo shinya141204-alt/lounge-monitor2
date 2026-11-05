@@ -5,10 +5,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     {% if selected_area %}
-    <title>{{ selected_area.info.name }}の相席ラウンジ現在人数・徒歩ハシゴ＆終電攻略ガイド｜相席ナビ</title>
-    <meta name="description" content="{{ selected_area.info.name }}の相席ラウンジ（オリエンタルラウンジ・JIS・ag等）のリアルタイム男女人数・混雑状況に加え、徒歩ハシゴ黄金ルート・終電後の2回転目・ソロ入店可否まで徹底解説。{{ selected_area.info.lead }}">
+    <title>{{ selected_area.info.name }}の相席ラウンジ現在人数・徒歩ハシゴ＆終電ガイド｜相席ナビ</title>
+    <meta name="description" content="{{ selected_area.info.name }}の相席ラウンジ（オリエンタルラウンジ・JIS（ジス）・ag（アグ）・ASOBIBAR（アソビバー）等）のリアルタイム男女人数・混雑状況に加え、徒歩ハシゴルート・終電後の2回転目・ソロ入店可否まで実測ログをもとに解説。{{ selected_area.info.lead }}">
     <link rel="canonical" href="https://aiseki-navi.com/area/{{ selected_area.slug }}">
-    <meta property="og:title" content="{{ selected_area.info.name }}の相席ラウンジ現在人数・徒歩ハシゴ＆終電攻略ガイド｜相席ナビ">
+    <meta property="og:title" content="{{ selected_area.info.name }}の相席ラウンジ現在人数・徒歩ハシゴ＆終電ガイド｜相席ナビ">
     <meta property="og:description" content="{{ selected_area.info.name }}の相席ラウンジ現在人数・徒歩ハシゴ黄金ルート・1人参戦ルールまとめ。{{ selected_area.info.lead }}">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://aiseki-navi.com/area/{{ selected_area.slug }}">
@@ -606,14 +606,17 @@
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
          crossorigin="anonymous"></script>
     {% endif %}
+    <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
+    <style>html.theme-light{background-color:#f6f6f7;}</style>
 </head>
 
 <body>
+    <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.body.classList.add('theme-light');}catch(e){}</script>
     <div class="portal-wrap">
         <div class="portal-top-header">
             <a href="/" class="portal-brand-link">
                 <span class="portal-brand-title">相席ナビ</span>
-                <span class="portal-brand-sub">全国ラウンジのリアルタイム人数＆攻略メディア</span>
+                <span class="portal-brand-sub">全国ラウンジのリアルタイム人数＆統計メディア</span>
             </a>
             <span style="font-size: 0.77rem; color: var(--text-sub);">最終更新: {{ last_updated }}</span>
         </div>
@@ -621,6 +624,7 @@
         {% set nav_active = 'areas' %}
         {% include '_portal_nav.html' %}
 
+        <main>
         <!-- Area Selector Bar (Primary Regions + Pinpoint Cities) -->
         <nav class="area-pills-group" aria-label="エリア選択ナビゲーション">
             <div class="area-pills-bar">
@@ -905,6 +909,7 @@
         </section>
         {% endfor %}
         {% endif %}
+        </main>
 
         {% include '_portal_footer.html' %}
     </div>

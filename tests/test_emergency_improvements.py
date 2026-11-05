@@ -421,7 +421,7 @@ class TestEmergencyImprovements(unittest.TestCase):
         about_html = r_about.data.decode('utf-8')
         self.assertIn('<main>', about_html)
         self.assertIn('"sameAs"', about_html)
-        self.assertIn('編集長：ミナト', about_html)
+        self.assertIn('編集長：くわもん', about_html)
         self.assertNotIn('Kuwano', about_html)
         self.assertIn('JIS（ジス）', about_html)
         self.assertIn('ASOBIBAR（アソビバー）', about_html)

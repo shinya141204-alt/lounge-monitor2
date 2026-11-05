@@ -145,7 +145,7 @@ class M4PerformanceOptimizationTests(unittest.TestCase):
         r_html = self.client.get('/concierge?area=shinjuku&audience=men')
         self.assertEqual(r_html.status_code, 200)
         html_txt = r_html.data.decode('utf-8')
-        self.assertIn('3秒穴場＆ハシゴ診断', html_txt)
+        self.assertIn('穴場＆徒歩ハシゴ診断', html_txt)
 
         # Subsequent HTML call should hit cache
         r_html_cached = self.client.get('/concierge?area=shinjuku&audience=men')
