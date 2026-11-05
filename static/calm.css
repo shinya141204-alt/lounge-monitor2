@@ -197,13 +197,13 @@ body.theme-light .momentum-tag {
 body.theme-light .stat.ladies .stat-diff {
     background: rgba(158, 63, 80, 0.08) !important;
     border-color: rgba(158, 63, 80, 0.3) !important;
-    color: var(--calm-light-women) !important;
+    color: #9f1239 !important;
 }
 
 body.theme-light .stat.men .stat-diff {
     background: rgba(51, 89, 122, 0.08) !important;
     border-color: rgba(51, 89, 122, 0.3) !important;
-    color: var(--calm-light-men) !important;
+    color: #1e40af !important;
 }
 
 /* ---------- 4. ボタン類：グラデーション＋発光 → 落ち着いた面＋細い線 ---------- */

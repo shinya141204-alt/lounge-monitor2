@@ -495,7 +495,7 @@
             margin: 0;
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=33">
+    <link rel="stylesheet" href="/static/calm.css?v=34">
     <script>try{var _mw=localStorage.getItem('aiseki_women_manual_theme');if(_mw!=='default'&&_mw!=='list')document.documentElement.classList.add('theme-light');}catch(e){}</script>
 </head>
 
@@ -801,6 +801,9 @@
             </p>
         </footer>
     </div>
+    {% if not is_staff and not session.get('is_staff') %}
+    <script defer src="/static/cta_tracker.js?v=1"></script>
+    {% endif %}
 </body>
 
 </html>

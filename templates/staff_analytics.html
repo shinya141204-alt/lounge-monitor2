@@ -1054,7 +1054,8 @@
     <div class="mini-kpi-grid">
         <div class="mini-kpi"><div class="k">👀 ページ閲覧 (PV)</div><div class="v">{{ f.pv_total }}</div></div>
         <div class="mini-kpi"><div class="k">🏪 店舗カードをタップ</div><div class="v">{{ f.store_open_total }}</div></div>
-        <div class="mini-kpi"><div class="k">💰 アフィリエイトクリック</div><div class="v" style="color: var(--gold);">{{ f.aff_total }}</div></div>
+        <div class="mini-kpi"><div class="k">👁️ PR枠表示 (Imp)</div><div class="v">{{ f.aff_impressions_total or 0 }}</div></div>
+        <div class="mini-kpi"><div class="k">💰 アフィリエイトクリック</div><div class="v" style="color: var(--gold);">{{ f.aff_total }}{% if (f.aff_impressions_total or 0) > 0 %} <span style="font-size:0.72rem;font-weight:600;color:var(--sub);">({{ f.aff_slot_ctr_pct }}%)</span>{% endif %}</div></div>
         <div class="mini-kpi"><div class="k">☕ 2軒目：夜カフェ検索</div><div class="v">{{ data.by_event.get('map_cafe', 0) }}</div></div>
         <div class="mini-kpi"><div class="k">🍸 2軒目：バー検索</div><div class="v">{{ data.by_event.get('map_bar', 0) }}</div></div>
         <div class="mini-kpi"><div class="k">🌐 店舗公式サイトへ遷移</div><div class="v">{{ f.official_total }}</div></div>
@@ -1216,11 +1217,36 @@
             {% endif %}
         </div>
 
-        <!-- 3. Affiliate Clicks Breakdown -->
+        <!-- 3. Affiliate Clicks & Surface CTR Breakdown -->
         <div class="panel">
-            <h2>💰 アフィリエイト広告クリック内訳</h2>
-            <p class="panel-sub">どの案件が、どの記事・画面からクリックされたか</p>
+            <h2>💰 アフィリエイト広告クリック＆表示CTR内訳</h2>
+            <p class="panel-sub">どの案件が、どの記事・画面で表示・クリックされたか</p>
             {% set aff_rows = data.by_label_pretty.get('affiliate_click', []) %}
+            {% set ctr_rows = data.get('cta_surface_ctr', []) %}
+            {% if ctr_rows %}
+            <div style="margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--border);">
+                <div style="font-size: 0.76rem; font-weight: 700; color: var(--sub); margin-bottom: 6px;">📊 枠×掲載面別の表示回数・クリック率（Viewport実測）</div>
+                <div class="bar-list">
+                    {% for cr in ctr_rows[:8] %}
+                    <div class="bar-item">
+                        <div class="bar-item-top">
+                            <div>
+                                <span class="bar-item-title">{{ cr.title }}</span>
+                                <span class="bar-item-sub">{{ cr.surface_label }}</span>
+                            </div>
+                            <div class="bar-item-nums">
+                                <span class="bar-item-share">表示 {{ cr.impressions }}回</span>
+                                <span class="bar-item-count" style="color: var(--gold); margin-left: 6px;">{{ cr.clicks }} click</span>
+                                {% if cr.impressions > 0 %}
+                                <span class="bar-item-share">(CTR {{ cr.ctr_pct }}%)</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
             {% if aff_rows %}
             <div class="bar-list">
                 {% for r in aff_rows %}
@@ -1359,17 +1385,21 @@
             </div>
         </div>
 
-        <div id="aff-dup-banner" class="dup-banner {% if aff_status.has_duplicates %}warn{% else %}ok{% endif %}">
-            {% if aff_status.has_duplicates %}
-            ⚠️ <strong>同一ターゲット内の遷移先URL重複（カニバリ）を検知中：</strong>現在 <strong>{{ aff_status.duplicate_slot_count }}枠</strong> で同一のASPリンクが共有されています。『🍻 即時合流・定番恋活アプリ枠』や女性向け各枠に別ASPリンクを入力して保存すると、読者ニーズ別にCVを取りこぼさなくなります。
+        <div id="aff-dup-banner" class="dup-banner {% if aff_status.has_duplicates or aff_status.has_unmonetized %}warn{% else %}ok{% endif %}">
+            {% if aff_status.has_duplicates or aff_status.has_unmonetized %}
+            ⚠️ <strong>収益取りこぼし要因を検知中：</strong>
+            {% if aff_status.has_duplicates %}同一ASPリンクの重複が <strong>{{ aff_status.duplicate_slot_count }}枠</strong>{% endif %}
+            {% if aff_status.has_duplicates and aff_status.has_unmonetized %} ／ {% endif %}
+            {% if aff_status.has_unmonetized %}報酬タグなしの公式直URLが <strong>{{ aff_status.unmonetized_slot_count }}枠</strong>{% endif %}
+            あります。該当枠にASP発行リンクを入力して保存すると0秒で即時反映されます。
             {% else %}
-            ✅ <strong>全{{ aff_status.slots|length }}枠の遷移先URLが正常に分離されています：</strong>男性向け・女性向け・男女共通それぞれの導線ごとに独立した案件へ送客中です。
+            ✅ <strong>全{{ aff_status.slots|length }}枠すべてASP計測URLで正常に分離されています：</strong>男性向け・女性向け・男女共通それぞれの導線ごとに独立した案件へ送客中です。
             {% endif %}
         </div>
 
         <div class="aff-slots-list">
             {% for slot in aff_status.slots %}
-            <div class="aff-slot-card {% if slot.is_duplicate_url %}is-dup{% endif %}" id="aff-card-{{ slot.slot_id }}" data-slot-id="{{ slot.slot_id }}">
+            <div class="aff-slot-card {% if slot.is_duplicate_url or slot.is_unmonetized_url %}is-dup{% endif %}" id="aff-card-{{ slot.slot_id }}" data-slot-id="{{ slot.slot_id }}">
                 <div class="aff-slot-top">
                     <div>
                         <div class="aff-slot-name">
@@ -1381,10 +1411,14 @@
                         <div class="aff-slot-meta">推奨案件例：{{ slot.recommended_asp_examples }}</div>
                     </div>
                     <div class="aff-badges">
-                        <span class="ops-pill gold">期間内 {{ slot.clicks }} click</span>
+                        <span class="ops-pill">表示 {{ slot.impressions or 0 }}回</span>
+                        <span class="ops-pill gold">期間内 {{ slot.clicks }} click{% if (slot.impressions or 0) > 0 %}（CTR {{ slot.ctr_pct }}%）{% endif %}</span>
                         <span class="ops-pill" id="aff-src-{{ slot.slot_id }}">{{ slot.source_label }}</span>
                         <span class="ops-pill warn" id="aff-dup-{{ slot.slot_id }}" {% if not slot.is_duplicate_url %}style="display:none;"{% endif %}>
                             ⚠️ 同一URL重複中
+                        </span>
+                        <span class="ops-pill warn" id="aff-unmon-{{ slot.slot_id }}" {% if not slot.is_unmonetized_url %}style="display:none;"{% endif %}>
+                            ⚠️ タグなし直URL（報酬0円）
                         </span>
                     </div>
                 </div>
@@ -1765,12 +1799,15 @@ async function saveAffiliateSlot(slotId, resetToDefault) {
         if (res.aff_status && Array.isArray(res.aff_status.slots)) {
             const banner = document.getElementById('aff-dup-banner');
             if (banner) {
-                if (res.aff_status.has_duplicates) {
+                if (res.aff_status.has_duplicates || res.aff_status.has_unmonetized) {
                     banner.className = 'dup-banner warn';
-                    banner.innerHTML = '⚠️ <strong>遷移先URLの重複（カニバリ）を検知中：</strong>現在 <strong>' + Number(res.aff_status.duplicate_slot_count || 0) + '枠</strong> で同一のASPリンクが共有されています。『🍻 即時合流・定番恋活アプリ枠』に別ASPリンクを設定すると成約率が向上します。';
+                    const parts = [];
+                    if (res.aff_status.has_duplicates) parts.push('同一ASPリンクの重複が <strong>' + Number(res.aff_status.duplicate_slot_count || 0) + '枠</strong>');
+                    if (res.aff_status.has_unmonetized) parts.push('報酬タグなしの公式直URLが <strong>' + Number(res.aff_status.unmonetized_slot_count || 0) + '枠</strong>');
+                    banner.innerHTML = '⚠️ <strong>収益取りこぼし要因を検知中：</strong>' + parts.join(' ／ ') + ' あります。該当枠にASP発行リンクを入力して保存すると0秒で即時反映されます。';
                 } else {
                     banner.className = 'dup-banner ok';
-                    banner.innerHTML = '✅ <strong>男女別全' + Number(res.aff_status.slots.length || 0) + '枠の遷移先URLが正常に分離されています：</strong>各ユーザー導線ごとに独立した案件へ送客中です。';
+                    banner.innerHTML = '✅ <strong>全' + Number(res.aff_status.slots.length || 0) + '枠すべてASP計測URLで正常に分離されています：</strong>各ユーザー導線ごとに独立した案件へ送客中です。';
                 }
             }
             for (const s of res.aff_status.slots) {
@@ -1778,12 +1815,14 @@ async function saveAffiliateSlot(slotId, resetToDefault) {
                 const mEl = document.getElementById('aff-memo-' + s.slot_id);
                 const srcEl = document.getElementById('aff-src-' + s.slot_id);
                 const dupEl = document.getElementById('aff-dup-' + s.slot_id);
+                const unmonEl = document.getElementById('aff-unmon-' + s.slot_id);
                 const cEl = document.getElementById('aff-card-' + s.slot_id);
                 if (uEl && s.slot_id === slotId) uEl.value = s.active_url || '';
                 if (mEl && s.slot_id === slotId) mEl.value = s.memo || '';
                 if (srcEl) srcEl.textContent = s.source_label || '';
                 if (dupEl) dupEl.style.display = s.is_duplicate_url ? 'inline-flex' : 'none';
-                if (cEl) cEl.classList.toggle('is-dup', !!s.is_duplicate_url);
+                if (unmonEl) unmonEl.style.display = s.is_unmonetized_url ? 'inline-flex' : 'none';
+                if (cEl) cEl.classList.toggle('is-dup', !!(s.is_duplicate_url || s.is_unmonetized_url));
             }
         }
     } catch (e) {

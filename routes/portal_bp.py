@@ -364,18 +364,32 @@ def store_detail_page(store_slug):
             or (store_analytics and int(store_analytics.get('max_7d_women') or 0) > 0)
         )
 
+        store_smart_cta = None
+        if 'ソウル' not in sname:
+            try:
+                import affiliate_manager
+                store_smart_cta = affiliate_manager.build_store_smart_cta(
+                    store_obj,
+                    nearby_stores=nearby_stores,
+                    area_slug=area_slug,
+                )
+            except Exception as e:
+                logging.warning(f"[store_smart_cta] {sname}: {e}")
+
         return render_template(
             'store_detail.html',
             store=store_obj,
             store_analytics=store_analytics,
             store_insight=store_insight,
             has_sufficient_store_data=has_sufficient_store_data,
+            store_smart_cta=store_smart_cta,
             area_info=area_info,
             area_slug=area_slug,
             nearby_stores=nearby_stores,
             nearby_comparison=nearby_comparison,
             jp_holidays=sorted(store_hours.JP_HOLIDAYS),
             last_updated=last_updated,
+            is_staff=bool(session.get('is_staff')),
         )
     return core._get_cached_html_or_render(('store', store_slug), _render)
 

@@ -20,16 +20,17 @@ SHEET_TITLE = 'Analytics Daily'
 HEADER = ['date_jst', 'event', 'label', 'count']
 
 ALLOWED_EVENTS = {
-    'page_view',        # 記事・ポータルページの閲覧（サーバー側で記録）
-    'affiliate_click',  # /link/<id> 経由のアフィリエイトクリック（サーバー側で記録）
-    'store_open',       # 店舗詳細モーダルを開いた
-    'map_cafe',         # 2軒目: 夜カフェのマップ検索
-    'map_bar',          # 2軒目: バー・バルのマップ検索
-    'official_click',   # 公式サイトへのリンク
-    'sns_click',        # X/Threads/note への導線
-    'share',            # LINE/X 共有・コピー
-    'vote',             # 現場投票
-    'sns_inflow',       # ?s= 識別子付きのSNS投稿からのサイト流入・CV追跡
+    'page_view',             # 記事・ポータルページの閲覧（サーバー側で記録）
+    'affiliate_click',       # /link/<id> 経由のアフィリエイトクリック（サーバー側で記録）
+    'affiliate_impression',  # 画面内（IntersectionObserver）に表示されたPR枠インプレッション
+    'store_open',            # 店舗詳細モーダルを開いた
+    'map_cafe',              # 2軒目: 夜カフェのマップ検索
+    'map_bar',               # 2軒目: バー・バルのマップ検索
+    'official_click',        # 公式サイトへのリンク
+    'sns_click',             # X/Threads/note への導線
+    'share',                 # LINE/X 共有・コピー
+    'vote',                  # 現場投票
+    'sns_inflow',            # ?s= 識別子付きのSNS投稿からのサイト流入・CV追跡
 }
 
 _lock = threading.Lock()
@@ -73,10 +74,72 @@ def _today():
     return datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).strftime('%Y-%m-%d')
 
 
+_CTA_SURFACE_LABELS = {
+    '/': 'トップページ（ランキング・おすすめモーダル）',
+    '/store/*': '店舗詳細ページ（リアルタイム状況連動CTA・2軒目枠）',
+    '/concierge': '3秒穴場＆徒歩ハシゴ診断（スマートアクション枠）',
+    '/grooming': '入店前の身だしなみ・清潔感ガイド',
+    '/for-women': '女性向けリアルタイム待ちゼロ店＆無料デート特設',
+    '/price-comparison': '全店料金・開催中イベント比較ボード',
+    '/area/*': 'エリア別ポータルページ',
+    '/guide/*': 'データ考察コラム・攻略ガイド',
+    '/brand/*': 'ブランド別全店リアルタイム一覧',
+    '/other': 'その他ページ',
+}
+
+
+def normalize_cta_surface(raw_path: str) -> str:
+    """Group page paths into bounded surface buckets so impression rows stay compact in Google Sheets."""
+    p = str(raw_path or '').strip().split('?', 1)[0].split('#', 1)[0].strip()
+    if not p or p == '-':
+        return '/other'
+    if not p.startswith('/'):
+        p = '/' + p
+    if p == '/':
+        return '/'
+    if p == '/store/*' or p.startswith('/store/'):
+        return '/store/*'
+    if p in ('/concierge', '/grooming', '/for-women', '/price-comparison'):
+        return p
+    if p in ('/areas', '/area/*') or p.startswith('/area/'):
+        return '/area/*'
+    if p in ('/guide', '/columns', '/guide/*') or p.startswith('/guide/'):
+        return '/guide/*'
+    if p == '/brand/*' or p in ('/oriental-lounge', '/ag', '/jis', '/asobibar'):
+        return '/brand/*'
+    return '/other'
+
+
+def normalize_affiliate_impression_label(raw_label: str) -> str:
+    """Validate slot against affiliate_manager and normalize '<canonical_slot> @ <surface_bucket>'."""
+    raw = str(raw_label or '').strip()
+    if not raw:
+        return ''
+    if '@' in raw:
+        slot_part, path_part = [x.strip() for x in raw.split('@', 1)]
+    else:
+        slot_part, path_part = raw, '/'
+    try:
+        import affiliate_manager
+        cid = affiliate_manager.canonical_slot_id(slot_part)
+    except Exception:
+        cid = ''
+    if not cid:
+        return ''
+    surface = normalize_cta_surface(path_part)
+    return f"{cid} @ {surface}"
+
+
 def track(event, label=''):
     if event not in ALLOWED_EVENTS:
         return False
-    label = str(label or '')[:80]
+    if event == 'affiliate_impression':
+        norm_lbl = normalize_affiliate_impression_label(label)
+        if not norm_lbl:
+            return False
+        label = norm_lbl
+    else:
+        label = str(label or '')[:80]
     with _lock:
         _pending[(_today(), event, label)] += 1
     return True
@@ -359,7 +422,7 @@ def describe_label(event, raw_label):
             return {'title': f'🏪 店舗ページ：{slug}', 'sub': label, 'href': label}
         return {'title': label or '不明なページ', 'sub': '', 'href': label if label.startswith('/') else ''}
 
-    if event == 'affiliate_click':
+    if event in ('affiliate_click', 'affiliate_impression'):
         if '@' in label:
             item_id, ref_path = [p.strip() for p in label.split('@', 1)]
         else:
@@ -374,8 +437,9 @@ def describe_label(event, raw_label):
                     item_title = f"{item_title} ［{ov.get('memo').strip()}］"
         except Exception:
             pass
-        ref_title = _PAGE_TITLES.get(ref_path, ref_path)
-        return {'title': item_title, 'sub': f'クリック元: {ref_title}', 'href': ''}
+        ref_title = _CTA_SURFACE_LABELS.get(ref_path) or _PAGE_TITLES.get(ref_path, ref_path)
+        prefix = '表示面' if event == 'affiliate_impression' else 'クリック元'
+        return {'title': item_title, 'sub': f'{prefix}: {ref_title}', 'href': ''}
 
     if event in ('store_open', 'map_cafe', 'map_bar', 'official_click', 'vote'):
         sname = label.split(':', 1)[0].strip() if ':' in label else label
@@ -530,6 +594,7 @@ def summary(days=7, allow_blocking=True):
     pv_total = by_event.get('page_view', 0)
     store_open_total = by_event.get('store_open', 0)
     aff_total = by_event.get('affiliate_click', 0)
+    aff_impressions_total = by_event.get('affiliate_impression', 0)
     map_total = by_event.get('map_cafe', 0) + by_event.get('map_bar', 0)
     official_total = by_event.get('official_click', 0)
     sns_total = by_event.get('sns_click', 0)
@@ -548,13 +613,57 @@ def summary(days=7, allow_blocking=True):
         'action_total': action_total,
         'action_rate_pct': round((action_total / pv_total) * 100, 1) if pv_total > 0 else 0.0,
         'aff_total': aff_total,
+        'aff_impressions_total': aff_impressions_total,
         'aff_ctr_pct': round((aff_total / pv_total) * 100, 2) if pv_total > 0 else 0.0,
+        'aff_slot_ctr_pct': round((aff_total / aff_impressions_total) * 100, 2) if aff_impressions_total > 0 else 0.0,
         'map_total': map_total,
         'official_total': official_total,
         'sns_total': sns_total,
         'share_total': share_total,
         'vote_total': vote_total,
     }
+
+    # Build Slot x Surface CTR breakdown joining `affiliate_impression` and `affiliate_click`
+    surface_imp = defaultdict(int)
+    surface_clk = defaultdict(int)
+    try:
+        import affiliate_manager as _am_ctr
+    except Exception:
+        _am_ctr = None
+
+    for raw_lbl, cnt in by_label.get('affiliate_impression', {}).items():
+        if '@' in raw_lbl:
+            s_part, p_part = [x.strip() for x in raw_lbl.split('@', 1)]
+        else:
+            s_part, p_part = raw_lbl.strip(), '/other'
+        cid = _am_ctr.canonical_slot_id(s_part) if _am_ctr else s_part.lower()
+        if cid:
+            surface_imp[(cid, normalize_cta_surface(p_part))] += int(cnt or 0)
+
+    for raw_lbl, cnt in by_label.get('affiliate_click', {}).items():
+        if '@' in raw_lbl:
+            s_part, p_part = [x.strip() for x in raw_lbl.split('@', 1)]
+        else:
+            s_part, p_part = raw_lbl.strip(), '/other'
+        cid = _am_ctr.canonical_slot_id(s_part) if _am_ctr else s_part.lower()
+        if cid:
+            surface_clk[(cid, normalize_cta_surface(p_part))] += int(cnt or 0)
+
+    cta_surface_ctr = []
+    all_pairs = set(surface_imp.keys()) | set(surface_clk.keys())
+    for cid, surf in sorted(all_pairs, key=lambda k: (-surface_clk[k], -surface_imp[k], k[0], k[1]))[:15]:
+        imp_c = surface_imp[(cid, surf)]
+        clk_c = surface_clk[(cid, surf)]
+        desc = describe_label('affiliate_impression', f"{cid} @ {surf}")
+        cta_surface_ctr.append({
+            'slot_id': cid,
+            'surface': surf,
+            'surface_label': _CTA_SURFACE_LABELS.get(surf, surf),
+            'title': desc['title'],
+            'impressions': imp_c,
+            'clicks': clk_c,
+            'ctr_pct': round((clk_c / imp_c) * 100, 2) if imp_c > 0 else 0.0,
+        })
 
     # Estimated revenue simulation (AdSense RPM ~350 yen / 1,000 PV, Affiliate ~90 yen expected value per click = 3% CVR * 3,000 yen)
     est_adsense_yen = round(pv_total * 0.35)
@@ -634,6 +743,7 @@ def summary(days=7, allow_blocking=True):
         'daily_series': daily_series,
         'funnel': funnel,
         'revenue': revenue,
+        'cta_surface_ctr': cta_surface_ctr,
     }
 
 

@@ -468,8 +468,10 @@
         .store-daily-more { margin-top: 8px; }
         .store-daily-more > summary { cursor: pointer; min-height: 40px; display: flex; align-items: center; font-size: 0.84rem; font-weight: 600; color: var(--text-main); }
         .store-related-links .btn-secondary { min-height: 40px; font-size: 0.82rem; }
+        #store-smart-cta-card.context-lead-row.pr-card-item { margin: 0 0 20px !important; }
+        #store-smart-cta-card .pr-context-foot { flex-wrap: wrap; gap: 6px 16px; }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=33">
+    <link rel="stylesheet" href="/static/calm.css?v=34">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -621,6 +623,36 @@
                 {% endif %}
             </div>
         </article>
+
+        {% if store_smart_cta and not is_staff and not session.get('is_staff') %}
+        <aside id="store-smart-cta-card"
+               class="context-lead-row pr-card-item"
+               data-context-slot="store_hero_context"
+               data-context-mode="{{ store_smart_cta.mode }}"
+               data-store-slug="{{ store.slug }}"
+               data-store-seo="{{ store.seo_name }}"
+               data-area-slug="{{ area_slug or '' }}"
+               data-solo-restricted="{{ '1' if store_smart_cta.is_solo_restricted else '0' }}"
+               data-active-pixels='{{ store_smart_cta.active_pixels | tojson }}'
+               aria-label="店舗状況に応じたおすすめサービスと関連ガイド">
+            <a id="store-smart-cta-link" class="pr-context-main" href="{{ store_smart_cta.href }}" target="_blank" rel="noopener sponsored">
+                <div class="pr-context-body">
+                    <div class="pr-context-meta">
+                        <span class="pr-disclosure-pill">PR</span>
+                        <span id="store-smart-cta-kicker" class="pr-context-kicker">{{ store_smart_cta.kicker }}</span>
+                    </div>
+                    <div id="store-smart-cta-title" class="pr-context-title">{{ store_smart_cta.title }}</div>
+                    <div id="store-smart-cta-sub" class="pr-context-sub">{{ store_smart_cta.sub }}</div>
+                </div>
+                <span id="store-smart-cta-btn" class="pr-context-cta">{{ store_smart_cta.cta_label }}</span>
+            </a>
+            <div class="pr-context-foot">
+                <a id="store-smart-cta-sublink" class="pr-editorial-sublink" href="{{ store_smart_cta.sublink_href }}">{{ store_smart_cta.sublink_label }}</a>
+                <a class="pr-editorial-sublink" href="{{ store_smart_cta.women_sublink_href }}">{{ store_smart_cta.women_sublink_label }}</a>
+            </div>
+            <img id="store-smart-cta-pixel" class="pr-tracking-pixel"{% if store_smart_cta.tracking_pixel %} src="{{ store_smart_cta.tracking_pixel }}"{% else %} style="display:none;"{% endif %} width="1" height="1" alt="" loading="lazy" aria-hidden="true">
+        </aside>
+        {% endif %}
 
         <aside class="official-notice-box" aria-label="ご利用上の注意事項" style="margin-bottom: 20px;">
             <span class="official-notice-title">料金・イベント情報および人数評価に関するご注意</span>
@@ -1603,6 +1635,131 @@
                             if (mEl) { mEl.className = ''; mEl.style.cssText = 'color: var(--text-sub); font-size:0.76rem; font-weight:500;'; mEl.textContent = ''; }
                         }
                     });
+
+                    {% if not is_staff and not session.get('is_staff') %}
+                    const smartCard = document.getElementById('store-smart-cta-card');
+                    if (smartCard && heroCard) {
+                        const sname = heroCard.dataset.heroStore || '';
+                        const seoName = smartCard.dataset.storeSeo || heroCard.dataset.heroSeo || sname;
+                        const slug = smartCard.dataset.storeSlug || '';
+                        const areaSlug = smartCard.dataset.areaSlug || '';
+                        const isSoloRestricted = smartCard.dataset.soloRestricted === '1';
+                        let activePixels = {};
+                        try { activePixels = JSON.parse(smartCard.dataset.activePixels || '{}') || {}; } catch (e) {}
+                        const live = liveMap[sname] || {};
+                        const w = parseInt(live.women || 0, 10) || 0;
+                        const m = parseInt(live.men || 0, 10) || 0;
+                        const tot = w + m;
+                        const hInfo = evalHoursSpec(heroCard.dataset.hoursSpec, sname, tot);
+                        const we = live.wait_estimate || null;
+                        const estWaitGroups = we ? (parseInt(we.est_men_wait_groups || 0, 10) || 0) : 0;
+
+                        let bestFemaleAlt = null;
+                        let bestOpenAlt = null;
+                        document.querySelectorAll('[data-nearby-card]').forEach(card => {
+                            const nName = card.dataset.nearbyCard || '';
+                            const nHref = card.getAttribute('href') || '';
+                            const nLive = liveMap[nName] || {};
+                            const nw = parseInt(nLive.women || 0, 10) || 0;
+                            const nm = parseInt(nLive.men || 0, 10) || 0;
+                            if (!nHref) return;
+                            if (nw >= 6 && nw >= nm) {
+                                if (!bestFemaleAlt || (nw - nm) > (bestFemaleAlt.w - bestFemaleAlt.m) || ((nw - nm) === (bestFemaleAlt.w - bestFemaleAlt.m) && nw > bestFemaleAlt.w)) {
+                                    bestFemaleAlt = { name: nName, href: nHref, w: nw, m: nm };
+                                }
+                            }
+                            if (nw >= 6 && (!bestOpenAlt || nw > bestOpenAlt.w)) {
+                                bestOpenAlt = { name: nName, href: nHref, w: nw, m: nm };
+                            }
+                        });
+
+                        const jstNow = new Date(Date.now() + 9 * 3600 * 1000);
+                        const jstH = jstNow.getUTCHours();
+                        const jstM = jstNow.getUTCMinutes();
+                        const isLateNight = (jstH > 22) || (jstH === 22 && jstM >= 30) || (jstH < 5);
+                        const fromPath = slug ? ('/store/' + slug) : '/areas';
+
+                        let mode = 'prime_grooming';
+                        let slotId = 'mens_skincare_clinic';
+                        let kicker = '現在 女性' + w + '名で好条件｜入店前の清潔感チェック';
+                        let title = 'ソファ席70cmで好印象をキープする「ORBIS Mr.（オルビス ミスター）」';
+                        let sub = '女性が先行しておりスムーズに相席しやすい時間帯です。照明を落とした近距離のソファ席では夕方のテカリ・乾燥が目に入りやすいため事前のケアが有効です。';
+                        let ctaLabel = '初回限定セット・公式を見る ›';
+                        let subHref = '/grooming';
+                        let subLbl = '入店前の服装・身だしなみチェックリスト ›';
+
+                        if (tot >= 6 && (m > w || estWaitGroups > 0)) {
+                            mode = 'men_glut';
+                            slotId = 'dating_instant';
+                            kicker = (m > w) ? ('現在 男性+' + Math.max(1, m - w) + '名の男性先行｜待機回避の選択肢') : '現在 受付待機リスクあり｜時間ロス回避の選択肢';
+                            title = '待機課金の列に並ぶ前に｜近くで今日これから飲める恋活アプリを併用';
+                            sub = '男性先行の時間帯は受付待ちや単独待機料金が発生しやすくなります。近隣で今日これから合流できる恋活アプリを入れておくと、混んでいる夜も予定を無駄にせず動けます。';
+                            ctaLabel = '近くで今日飲めるアプリを見る ›';
+                            if (bestFemaleAlt) {
+                                subHref = bestFemaleAlt.href;
+                                subLbl = '近隣の女性優位店：' + bestFemaleAlt.name + '（女' + bestFemaleAlt.w + ' : 男' + bestFemaleAlt.m + '） ›';
+                            } else {
+                                subHref = areaSlug ? ('/concierge?area=' + encodeURIComponent(areaSlug)) : '/concierge';
+                                subLbl = '近隣の穴場・徒歩ハシゴ3秒診断を見る ›';
+                            }
+                        } else if (!hInfo.isOpenNow || tot < 6 || w < 6) {
+                            mode = 'off_or_low';
+                            slotId = 'dating_bachelor';
+                            title = 'メッセージ不要で週1回デートが決まる「審査制1対1カフェデート」';
+                            ctaLabel = '審査制1対1デートの公式詳細 ›';
+                            if (isSoloRestricted) {
+                                kicker = '男性1名利用・営業時間外の選択肢';
+                                sub = seoName + 'は男性2名以上での入店が基本です。1人で動きたい日や営業時間外は、希望日時を入れるだけでAIが1対1デートを調整する審査制アプリも選択肢になります。';
+                            } else if (!hInfo.isOpenNow) {
+                                kicker = '営業時間外・事前予定づくりの選択肢';
+                                sub = '営業時間外のうちに次の予定を組むなら、事前のメッセージ往復なしでカフェやバーでの1対1デートが決まる審査制アプリも便利です。';
+                            } else {
+                                kicker = '少人数時間帯・1対1で会いたい日の選択肢';
+                                sub = '立ち上がり前の少人数時間帯や、複数人の相席より最初から1対1で落ち着いて話したい日に選ばれている審査制デートアプリです。';
+                            }
+                            if (bestOpenAlt) {
+                                subHref = bestOpenAlt.href;
+                                subLbl = '周辺で稼働中の店舗：' + bestOpenAlt.name + '（女' + bestOpenAlt.w + ' : 男' + bestOpenAlt.m + '） ›';
+                            } else {
+                                subHref = '/guide/lounge-vs-screened-date';
+                                subLbl = '相席ラウンジ vs 審査制1対1デート徹底比較 ›';
+                            }
+                        } else if (isLateNight) {
+                            mode = 'late_second_venue';
+                            slotId = 'second_venue_reservation';
+                            kicker = '現在 女性' + w + '名で稼働中｜2軒目バー・後日デートの席確保に';
+                            title = '着席45分後の2軒目・次回ディナーで迷わない「一休.comレストラン」';
+                            sub = '夜間・週末の繁華街は飛び込みだと2軒目が満席になりがちです。駅近くの隠れ家バーや連絡先交換後の次回ディナーをスマホで空席予約できます。';
+                            ctaLabel = '空席・プランを見る ›';
+                            subHref = '#store-second-venue-section';
+                            subLbl = seoName + 'から歩ける2軒目マップ・誘い方を見る ›';
+                        }
+
+                        smartCard.dataset.contextMode = mode;
+                        const linkEl = document.getElementById('store-smart-cta-link');
+                        const kickEl = document.getElementById('store-smart-cta-kicker');
+                        const titEl = document.getElementById('store-smart-cta-title');
+                        const subEl = document.getElementById('store-smart-cta-sub');
+                        const btnEl = document.getElementById('store-smart-cta-btn');
+                        const slEl = document.getElementById('store-smart-cta-sublink');
+                        const pxEl = document.getElementById('store-smart-cta-pixel');
+                        if (linkEl) linkEl.href = '/link/' + slotId + '?from=' + fromPath;
+                        if (kickEl) kickEl.textContent = kicker;
+                        if (titEl) titEl.textContent = title;
+                        if (subEl) subEl.textContent = sub;
+                        if (btnEl) btnEl.textContent = ctaLabel;
+                        if (slEl) { slEl.href = subHref; slEl.textContent = subLbl; }
+                        if (pxEl) {
+                            const pxSrc = activePixels[slotId] || '';
+                            if (pxSrc) {
+                                if (pxEl.getAttribute('src') !== pxSrc) pxEl.src = pxSrc;
+                                pxEl.style.display = '';
+                            } else {
+                                pxEl.style.display = 'none';
+                            }
+                        }
+                    }
+                    {% endif %}
                 } catch (e) {
                     // Ignore transient network errors
                 } finally {
@@ -1890,6 +2047,9 @@
             });
         })();
     </script>
+    {% if not is_staff and not session.get('is_staff') %}
+    <script defer src="/static/cta_tracker.js?v=1"></script>
+    {% endif %}
 </body>
 
 </html>

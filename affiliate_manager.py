@@ -31,7 +31,7 @@ AFFILIATE_SLOTS = [
         "aliases": ["dating", "dating_casual"],
         "category_label": "🍻 即時合流・定番恋活アプリ枠",
         "title": "今日これから・近くで飲める恋活アプリ（満席・男余り時の受け皿）",
-        "placement": "トップPR枠 / コラム記事末尾（「近くで今日飲めるアプリ」） / 身だしなみガイド①",
+        "placement": "店舗詳細（男性先行時） / トップPR枠 / コンシェルジュ / 身だしなみガイド①",
         "recommended_asp_examples": "タップル / ペアーズ / Dine（ダイン） / with 等の即時マッチング系案件",
         "env_keys": ["AFFILIATE_URL_DATING_INSTANT", "AFFILIATE_URL_DATING_CASUAL", "AFFILIATE_URL_DATING"],
         "default_url": "https://px.a8.net/svt/ejp?a8mat=4BEK9C+21TRSI+5SFC+61RI9",
@@ -43,7 +43,7 @@ AFFILIATE_SLOTS = [
         "aliases": [],
         "category_label": "🥂 審査制・1対1カフェデート枠",
         "title": "メッセージ不要・週1回デートが決まる審査制アプリ（バチェラーデート等）",
-        "placement": "おすすめツールモーダル / 身だしなみガイド②（1対1・メッセージ不要訴求）",
+        "placement": "トップ4位下PR枠 / 店舗詳細（営業時間外・少人数・ソロ制限時） / 身だしなみガイド②",
         "recommended_asp_examples": "バチェラーデート / 東カレデート 等の審査制・ハイクラス系案件",
         "env_keys": ["AFFILIATE_URL_DATING_BACHELOR", "AFFILIATE_URL_DATING"],
         "default_url": "https://px.a8.net/svt/ejp?a8mat=4BEK9C+21TRSI+5SFC+61RI9",
@@ -67,7 +67,7 @@ AFFILIATE_SLOTS = [
         "aliases": ["orbis"],
         "category_label": "🧴 メンズスキンケア枠",
         "title": "夕方のテカリ・乾燥ケア（ORBIS Mr. トライアルセット等）",
-        "placement": "最初の10分・美容エリアコラム / 身だしなみガイド / おすすめモーダル",
+        "placement": "店舗詳細（女性優位時） / コンシェルジュ / 身だしなみガイド / おすすめモーダル",
         "recommended_asp_examples": "ORBIS Mr.（オルビス ミスター） / バルクオム 初回トライアル等",
         "env_keys": ["AFFILIATE_URL_ORBIS"],
         "default_url": "https://px.a8.net/svt/ejp?a8mat=4BEL1F+67V08I+1USQ+2Z90WX",
@@ -153,10 +153,206 @@ for _s in AFFILIATE_SLOTS:
     for _al in _s["aliases"]:
         _ALIAS_TO_CANONICAL[_al] = _s["slot_id"]
 
+KNOWN_ASP_HOST_MARKERS = (
+    "a8.net",
+    "accesstrade.net",
+    "valuecommerce.com",
+    "afi-b.com",
+    "afb.ne.jp",
+    "rentracks.jp",
+    "moshimo.com",
+    "felmat.net",
+    "tcs-asp.net",
+    "linksynergy.com",
+    "j-a-net.jp",
+    "circuit-x",
+    "infotop.jp",
+    "fam-ad.com",
+    "ad-nex.com",
+    "smart-c.jp",
+    "zucks.net",
+)
+
+SLOT_TRACKING_PIXELS = {
+    "dating_instant": "https://www15.a8.net/0.gif?a8mat=4BEK9C+21TRSI+5SFC+61RI9",
+    "mens_hair_removal": "https://www17.a8.net/0.gif?a8mat=4BEL1F+61B8KY+328C+2HCB1D",
+    "mens_skincare_clinic": "https://www18.a8.net/0.gif?a8mat=4BEL1F+67V08I+1USQ+2Z90WX",
+    "women_cosme_salon": "https://www10.a8.net/0.gif?a8mat=4BERA3+6J68QA+5GZ4+5YZ75",
+    "night_care_supplement": "https://www19.a8.net/0.gif?a8mat=4BELTJ+7RTR3M+3H28+5ZU29",
+    "second_venue_reservation": "https://www15.a8.net/0.gif?a8mat=4BGDZ4+9R9ROY+1OK+NVP2P",
+}
+
+_MEN_SOLO_RESTRICTED_NAMES = frozenset({
+    "OLG 恵比寿",
+    "OLG 渋谷本店",
+    "OLG ag渋谷",
+    "OLG 新宿",
+    "JIS SHINJUKU",
+    "OLG ag上野",
+    "OLG 大阪駅前",
+    "OLG 名古屋 錦",
+    "OLG ag名古屋",
+})
+
 
 def canonical_slot_id(item_id: str) -> str:
     clean = (item_id or "").strip().lower()
     return _ALIAS_TO_CANONICAL.get(clean, "")
+
+
+def is_asp_tracking_url(raw_url: str) -> bool:
+    """Return True if raw_url points to a known affiliate tracking host (or explicit tracking query)."""
+    u = (raw_url or "").strip().lower()
+    if not u:
+        return False
+    try:
+        host = (urllib.parse.urlparse(u).netloc or "").lower()
+    except Exception:
+        host = ""
+    if any(marker in host for marker in KNOWN_ASP_HOST_MARKERS):
+        return True
+    if any(k in u for k in ("a8mat=", "aff_id=", "click_id=", "rk=0100")):
+        return True
+    return False
+
+
+def build_store_smart_cta(
+    store_obj: dict,
+    nearby_stores: list = None,
+    area_slug: str = None,
+    now_jst=None,
+) -> dict:
+    """
+    Build the context-aware Smart CTA card placed immediately below the live crowd hero on `/store/<slug>`.
+    Adapts to 4 real-time visitor states:
+      1. `men_glut`: Men outnumber women (`total >= 6` and `men > women`) or wait groups > 0 -> `dating_instant` + nearby female-lead store
+      2. `off_or_low`: Closed or low headcount (`women < 6` / `total < 6`) -> `dating_bachelor` (1-on-1 screened date, noting solo rule if applicable)
+      3. `late_second_venue`: 22:30-04:59 JST with good female ratio -> `second_venue_reservation` (Ikyu Restaurant)
+      4. `prime_grooming`: Before 22:30 JST with good female ratio -> `mens_skincare_clinic` + `/grooming`
+    """
+    import datetime as _dt
+
+    JST = _dt.timezone(_dt.timedelta(hours=9))
+    if now_jst is None:
+        now_jst = _dt.datetime.now(JST)
+    elif getattr(now_jst, "tzinfo", None) is None:
+        now_jst = now_jst.replace(tzinfo=JST)
+    else:
+        now_jst = now_jst.astimezone(JST)
+
+    sname = str((store_obj or {}).get("name") or "")
+    seo_name = str((store_obj or {}).get("seo_name") or sname or "当店")
+    slug = str((store_obj or {}).get("slug") or "").strip()
+    women = int((store_obj or {}).get("women") or 0)
+    men = int((store_obj or {}).get("men") or 0)
+    tot = women + men
+    is_open_now = bool((store_obj or {}).get("is_open_now"))
+    we = (store_obj or {}).get("wait_estimate") or {}
+    est_wait_groups = int((we.get("est_men_wait_groups") if isinstance(we, dict) else 0) or 0)
+    is_solo_restricted = sname in _MEN_SOLO_RESTRICTED_NAMES
+
+    nearby_list = [ns for ns in (nearby_stores or []) if isinstance(ns, dict) and ns.get("slug")]
+    best_female_alt = None
+    best_open_alt = None
+    for ns in nearby_list:
+        ow = int(ns.get("women") or 0)
+        om = int(ns.get("men") or 0)
+        if ow >= 6 and ow >= om:
+            if best_female_alt is None or (ow - om, ow) > (
+                int(best_female_alt.get("women") or 0) - int(best_female_alt.get("men") or 0),
+                int(best_female_alt.get("women") or 0),
+            ):
+                best_female_alt = ns
+        if ow >= 6:
+            if best_open_alt is None or ow > int(best_open_alt.get("women") or 0):
+                best_open_alt = ns
+
+    from_param = f"/store/{slug}" if slug else "/areas"
+    is_late_night = (now_jst.hour > 22) or (now_jst.hour == 22 and now_jst.minute >= 30) or (now_jst.hour < 5)
+
+    if tot >= 6 and (men > women or est_wait_groups > 0):
+        slot_id = "dating_instant"
+        mode = "men_glut"
+        diff_m = max(1, men - women)
+        kicker = (
+            f"現在 男性+{diff_m}名の男性先行｜待機回避の選択肢"
+            if men > women
+            else "現在 受付待機リスクあり｜時間ロス回避の選択肢"
+        )
+        title = "待機課金の列に並ぶ前に｜近くで今日これから飲める恋活アプリを併用"
+        sub = "男性先行の時間帯は受付待ちや単独待機料金が発生しやすくなります。近隣で今日これから合流できる恋活アプリを入れておくと、混んでいる夜も予定を無駄にせず動けます。"
+        cta_label = "近くで今日飲めるアプリを見る ›"
+        if best_female_alt:
+            sublink_href = f"/store/{best_female_alt['slug']}"
+            sublink_label = f"近隣の女性優位店：{best_female_alt['seo_name']}（女{best_female_alt['women']} : 男{best_female_alt['men']}） ›"
+        elif area_slug:
+            sublink_href = f"/concierge?area={area_slug}"
+            sublink_label = "近隣の穴場・徒歩ハシゴ3秒診断を見る ›"
+        else:
+            sublink_href = "/concierge"
+            sublink_label = "近隣の穴場・徒歩ハシゴ3秒診断を見る ›"
+    elif (not is_open_now) or tot < 6 or women < 6:
+        slot_id = "dating_bachelor"
+        mode = "off_or_low"
+        if is_solo_restricted:
+            kicker = "男性1名利用・営業時間外の選択肢"
+            sub = f"{seo_name}は男性2名以上での入店が基本です。1人で動きたい日や営業時間外は、希望日時を入れるだけでAIが1対1デートを調整する審査制アプリも選択肢になります。"
+        elif not is_open_now:
+            kicker = "営業時間外・事前予定づくりの選択肢"
+            sub = "営業時間外のうちに次の予定を組むなら、事前のメッセージ往復なしでカフェやバーでの1対1デートが決まる審査制アプリも便利です。"
+        else:
+            kicker = "少人数時間帯・1対1で会いたい日の選択肢"
+            sub = "立ち上がり前の少人数時間帯や、複数人の相席より最初から1対1で落ち着いて話したい日に選ばれている審査制デートアプリです。"
+        title = "メッセージ不要で週1回デートが決まる「審査制1対1カフェデート」"
+        cta_label = "審査制1対1デートの公式詳細 ›"
+        if best_open_alt:
+            sublink_href = f"/store/{best_open_alt['slug']}"
+            sublink_label = f"周辺で稼働中の店舗：{best_open_alt['seo_name']}（女{best_open_alt['women']} : 男{best_open_alt['men']}） ›"
+        else:
+            sublink_href = "/guide/lounge-vs-screened-date"
+            sublink_label = "相席ラウンジ vs 審査制1対1デート徹底比較 ›"
+    elif is_late_night:
+        slot_id = "second_venue_reservation"
+        mode = "late_second_venue"
+        kicker = f"現在 女性{women}名で稼働中｜2軒目バー・後日デートの席確保に"
+        title = "着席45分後の2軒目・次回ディナーで迷わない「一休.comレストラン」"
+        sub = "夜間・週末の繁華街は飛び込みだと2軒目が満席になりがちです。駅近くの隠れ家バーや連絡先交換後の次回ディナーをスマホで空席予約できます。"
+        cta_label = "空席・プランを見る ›"
+        sublink_href = "#store-second-venue-section"
+        sublink_label = f"{seo_name}から歩ける2軒目マップ・誘い方を見る ›"
+    else:
+        slot_id = "mens_skincare_clinic"
+        mode = "prime_grooming"
+        kicker = f"現在 女性{women}名で好条件｜入店前の清潔感チェック"
+        title = "ソファ席70cmで好印象をキープする「ORBIS Mr.（オルビス ミスター）」"
+        sub = "女性が先行しておりスムーズに相席しやすい時間帯です。照明を落とした近距離のソファ席では夕方のテカリ・乾燥が目に入りやすいため事前のケアが有効です。"
+        cta_label = "初回限定セット・公式を見る ›"
+        sublink_href = "/grooming"
+        sublink_label = "入店前の服装・身だしなみチェックリスト ›"
+
+    href = f"/link/{slot_id}?from={from_param}"
+    active_pixels = {}
+    for _sid, _px in SLOT_TRACKING_PIXELS.items():
+        if resolve_affiliate_url(_sid, allow_blocking=False) == ((_SLOT_BY_ID.get(_sid) or {}).get("default_url") or ""):
+            active_pixels[_sid] = _px
+    tracking_pixel = active_pixels.get(slot_id, "")
+
+    return {
+        "mode": mode,
+        "slot_id": slot_id,
+        "is_solo_restricted": is_solo_restricted,
+        "kicker": kicker,
+        "title": title,
+        "sub": sub,
+        "cta_label": cta_label,
+        "href": href,
+        "tracking_pixel": tracking_pixel,
+        "active_pixels": active_pixels,
+        "sublink_href": sublink_href,
+        "sublink_label": sublink_label,
+        "women_sublink_href": "/for-women",
+        "women_sublink_label": "女性ペア向け・待ちゼロ店＆無料デート特設 ›",
+    }
 
 
 def validate_destination_url(raw_url: str) -> tuple:
@@ -293,21 +489,34 @@ def set_affiliate_slot_override(slot_id: str, target_url: str, memo: str = "") -
 def get_affiliate_slots_status(analytics_data: dict = None, allow_blocking: bool = False) -> dict:
     """
     Build complete status table for `/staff/analytics`:
-      - Current resolved URL, source badge, memo, and period click count (summing aliases)
+      - Current resolved URL, source badge, memo, period impressions / clicks / CTR (summing aliases)
       - Automatic detection when two distinct slots share the exact same URL (cannibalization alert)
+      - Automatic detection when a slot resolves to a non-ASP direct brand URL (0-yen fallback alert)
     """
     overrides = _load_overrides(allow_blocking=allow_blocking)
 
-    # Aggregate clicks per canonical slot from `analytics.summary()` raw `by_label['affiliate_click']`
+    # Aggregate clicks & impressions per canonical slot from `analytics.summary()` (`all_by_label` preferred)
     slot_clicks = {s["slot_id"]: 0 for s in AFFILIATE_SLOTS}
+    slot_impressions = {s["slot_id"]: 0 for s in AFFILIATE_SLOTS}
     if isinstance(analytics_data, dict):
-        raw_aff_pairs = (analytics_data.get("by_label") or {}).get("affiliate_click") or []
+        all_labels = analytics_data.get("all_by_label") or {}
+        by_label = analytics_data.get("by_label") or {}
+
+        raw_aff_pairs = all_labels.get("affiliate_click") or by_label.get("affiliate_click") or []
         pair_iter = raw_aff_pairs.items() if isinstance(raw_aff_pairs, dict) else raw_aff_pairs
         for raw_lbl, cnt in pair_iter:
             item_part = str(raw_lbl).split("@", 1)[0].strip().lower()
             cid = canonical_slot_id(item_part)
             if cid in slot_clicks:
                 slot_clicks[cid] += int(cnt or 0)
+
+        raw_imp_pairs = all_labels.get("affiliate_impression") or by_label.get("affiliate_impression") or []
+        imp_iter = raw_imp_pairs.items() if isinstance(raw_imp_pairs, dict) else raw_imp_pairs
+        for raw_lbl, cnt in imp_iter:
+            item_part = str(raw_lbl).split("@", 1)[0].strip().lower()
+            cid = canonical_slot_id(item_part)
+            if cid in slot_impressions:
+                slot_impressions[cid] += int(cnt or 0)
 
     resolved_map = {s["slot_id"]: _resolve_slot_info(s, overrides) for s in AFFILIATE_SLOTS}
     # Group duplicate detection by (audience, url) so men's vs women's funnels don't trigger false cross-gender alerts,
@@ -321,6 +530,9 @@ def get_affiliate_slots_status(analytics_data: dict = None, allow_blocking: bool
 
     slots_out = []
     duplicate_pair_count = 0
+    unmonetized_slot_count = 0
+    total_clicks = 0
+    total_impressions = 0
     for s in AFFILIATE_SLOTS:
         sid = s["slot_id"]
         aud = s.get("audience") or "men"
@@ -329,6 +541,14 @@ def get_affiliate_slots_status(analytics_data: dict = None, allow_blocking: bool
         is_dup = len(shared_with) > 0
         if is_dup:
             duplicate_pair_count += 1
+        is_unmonetized = not is_asp_tracking_url(rinfo["url"])
+        if is_unmonetized:
+            unmonetized_slot_count += 1
+        clk = slot_clicks.get(sid, 0)
+        imp = slot_impressions.get(sid, 0)
+        total_clicks += clk
+        total_impressions += imp
+        ctr_pct = round((clk / imp) * 100, 2) if imp > 0 else 0.0
         shared_labels = [_SLOT_BY_ID[o]["category_label"] for o in shared_with]
         slots_out.append({
             "slot_id": sid,
@@ -347,8 +567,11 @@ def get_affiliate_slots_status(analytics_data: dict = None, allow_blocking: bool
             "source_label": rinfo["source_label"],
             "memo": rinfo["memo"],
             "updated_at": rinfo["updated_at"],
-            "clicks": slot_clicks.get(sid, 0),
+            "clicks": clk,
+            "impressions": imp,
+            "ctr_pct": ctr_pct,
             "is_duplicate_url": is_dup,
+            "is_unmonetized_url": is_unmonetized,
             "shared_with_labels": shared_labels,
         })
 
@@ -357,4 +580,9 @@ def get_affiliate_slots_status(analytics_data: dict = None, allow_blocking: bool
         "total_slots": len(slots_out),
         "has_duplicates": duplicate_pair_count > 0,
         "duplicate_slot_count": duplicate_pair_count,
+        "has_unmonetized": unmonetized_slot_count > 0,
+        "unmonetized_slot_count": unmonetized_slot_count,
+        "total_clicks": total_clicks,
+        "total_impressions": total_impressions,
+        "overall_ctr_pct": round((total_clicks / total_impressions) * 100, 2) if total_impressions > 0 else 0.0,
     }

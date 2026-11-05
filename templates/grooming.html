@@ -194,7 +194,7 @@
             color: #1f1e1b;
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=33">
+    <link rel="stylesheet" href="/static/calm.css?v=34">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -397,6 +397,9 @@
 
         {% include '_portal_footer.html' %}
     </div>
+    {% if not is_staff and not session.get('is_staff') %}
+    <script defer src="/static/cta_tracker.js?v=1"></script>
+    {% endif %}
 </body>
 
 </html>
