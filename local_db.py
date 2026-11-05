@@ -226,6 +226,38 @@ def _get_read_connection():
 
 
 
+def _migrate_forecast_columns(conn, cur):
+    """Idempotently add unadjusted baseline & online-bias columns without taking exclusive locks when already present."""
+    try:
+        cur.execute("SELECT raw_pred_wpct, online_bias_adj FROM forecast_accuracy_logs LIMIT 0")
+        return
+    except Exception:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+    for col_ddl in (
+        "ALTER TABLE forecast_accuracy_logs ADD COLUMN raw_pred_wpct INTEGER",
+        "ALTER TABLE forecast_accuracy_logs ADD COLUMN online_bias_adj REAL DEFAULT 0.0",
+    ):
+        try:
+            if _is_pg():
+                try:
+                    cur.execute("SET LOCAL lock_timeout = '2s'")
+                except Exception:
+                    try:
+                        conn.rollback()
+                    except Exception:
+                        pass
+            cur.execute(col_ddl)
+            conn.commit()
+        except Exception:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+
+
 def init_db():
     """Initializes tables and indexes on PostgreSQL (`DATABASE_URL`) or SQLite WAL (`DB_PATH`)."""
     if _is_pg():
@@ -314,13 +346,16 @@ def init_db():
                             v1_abs_error_wpct_pt INTEGER,
                             error_women INTEGER,
                             error_men INTEGER,
+                            raw_pred_wpct INTEGER,
+                            online_bias_adj REAL DEFAULT 0.0,
                             UNIQUE(predicted_at, store_name)
                         );
                     """)
                     cur.execute("CREATE INDEX IF NOT EXISTS idx_fc_acc_pending ON forecast_accuracy_logs(resolved_at, target_at);")
                     cur.execute("CREATE INDEX IF NOT EXISTS idx_fc_acc_store_pred ON forecast_accuracy_logs(store_name, predicted_at);")
                     cur.execute("CREATE INDEX IF NOT EXISTS idx_fc_acc_resolved_pred ON forecast_accuracy_logs(predicted_at, resolved_at);")
-                conn.commit()
+                    conn.commit()
+                    _migrate_forecast_columns(conn, cur)
             turbo_store.init_postgres_aux_schema()
             _forecast_schema_ready.add(_active_db_key())
             _db_stats_cache.clear()
@@ -419,6 +454,8 @@ def init_db():
                     v1_abs_error_wpct_pt INTEGER,
                     error_women INTEGER,
                     error_men INTEGER,
+                    raw_pred_wpct INTEGER,
+                    online_bias_adj REAL DEFAULT 0.0,
                     UNIQUE(predicted_at, store_name)
                 );
             """)
@@ -426,6 +463,7 @@ def init_db():
             cur.execute("CREATE INDEX IF NOT EXISTS idx_fc_acc_store_pred ON forecast_accuracy_logs(store_name, predicted_at);")
             cur.execute("CREATE INDEX IF NOT EXISTS idx_fc_acc_resolved_pred ON forecast_accuracy_logs(predicted_at, resolved_at);")
             conn.commit()
+            _migrate_forecast_columns(conn, cur)
             _forecast_schema_ready.add(_active_db_key())
             _db_stats_cache.clear()
             print("[local_db] SQLite database initialized successfully (WAL mode enabled).")
@@ -2171,11 +2209,14 @@ def _get_valid_domestic_canonical_stores() -> set:
 
 
 def _linkable_store_slug(store_name: str) -> str:
-    """Return `/store/<slug>` slug only when it resolves to an active store or 301 legacy redirect (never 404)."""
+    """Return `/store/<slug>` slug only when it resolves to a visible active store or 301 legacy redirect (never 404/410)."""
     if not store_name:
         return ""
     try:
+        import ops_governance
         import store_master
+        if ops_governance.is_store_hidden(store_name):
+            return ""
         slug = store_master.slug_of(store_name)
         if not slug:
             return ""
@@ -2261,13 +2302,16 @@ def _ensure_forecast_schema() -> bool:
                             v1_abs_error_wpct_pt INTEGER,
                             error_women INTEGER,
                             error_men INTEGER,
+                            raw_pred_wpct INTEGER,
+                            online_bias_adj REAL DEFAULT 0.0,
                             UNIQUE(predicted_at, store_name)
                         );
                     """)
                     cur.execute("CREATE INDEX IF NOT EXISTS idx_fc_acc_pending ON forecast_accuracy_logs(resolved_at, target_at);")
                     cur.execute("CREATE INDEX IF NOT EXISTS idx_fc_acc_store_pred ON forecast_accuracy_logs(store_name, predicted_at);")
                     cur.execute("CREATE INDEX IF NOT EXISTS idx_fc_acc_resolved_pred ON forecast_accuracy_logs(predicted_at, resolved_at);")
-                conn.commit()
+                    conn.commit()
+                    _migrate_forecast_columns(conn, cur)
             _forecast_schema_ready.add(db_k)
             return True
         except Exception as err:
@@ -2303,6 +2347,8 @@ def _ensure_forecast_schema() -> bool:
                     v1_abs_error_wpct_pt INTEGER,
                     error_women INTEGER,
                     error_men INTEGER,
+                    raw_pred_wpct INTEGER,
+                    online_bias_adj REAL DEFAULT 0.0,
                     UNIQUE(predicted_at, store_name)
                 );
             """)
@@ -2310,6 +2356,7 @@ def _ensure_forecast_schema() -> bool:
             cur.execute("CREATE INDEX IF NOT EXISTS idx_fc_acc_store_pred ON forecast_accuracy_logs(store_name, predicted_at);")
             cur.execute("CREATE INDEX IF NOT EXISTS idx_fc_acc_resolved_pred ON forecast_accuracy_logs(predicted_at, resolved_at);")
             conn.commit()
+            _migrate_forecast_columns(conn, cur)
             _forecast_schema_ready.add(db_k)
             return True
         except Exception as err:
@@ -2970,14 +3017,15 @@ def record_and_resolve_forecasts(items: list, timestamp_str: str, resolve_only: 
         if not bh.get("is_open_now", True):
             continue
 
-        st_lags = lags_map.get(sname) or {}
+        canon_s = moat_intelligence._resolve_internal_store_key(sname)
+        st_lags = lags_map.get(canon_s) or lags_map.get(sname) or {}
         if "women_diff" in item:
             wd = int(item.get("women_diff") or 0)
             md = int(item.get("men_diff") or 0)
-        elif "lag_15m" in st_lags:
+        elif "lag_15m" in st_lags and (int(st_lags["lag_15m"][0]) + int(st_lags["lag_15m"][1])) >= 2:
             wd = w - int(st_lags["lag_15m"][0])
             md = m - int(st_lags["lag_15m"][1])
-        elif sname in prev15_map:
+        elif sname in prev15_map and (prev15_map[sname][0] + prev15_map[sname][1]) >= 2:
             wd = w - prev15_map[sname][0]
             md = m - prev15_map[sname][1]
         else:
@@ -2993,10 +3041,10 @@ def record_and_resolve_forecasts(items: list, timestamp_str: str, resolve_only: 
             usual_w_diff=item.get("usual_w_diff"),
             now_jst=ts_dt,
             weather_map=weather_map,
-            arena_signal=arena_map.get(sname),
+            arena_signal=arena_map.get(sname) or arena_map.get(canon_s),
             apply_online_bias=True,
             lag_context=st_lags,
-            peer_context=peer_map.get(sname),
+            peer_context=peer_map.get(canon_s) or peer_map.get(sname),
         )
         if fc.get("pred_60m_wpct") is None:
             continue
@@ -3009,9 +3057,12 @@ def record_and_resolve_forecasts(items: list, timestamp_str: str, resolve_only: 
             men_diff=md,
             now_jst=ts_dt,
             weather_map=weather_map,
-            arena_signal=arena_map.get(sname),
+            arena_signal=arena_map.get(sname) or arena_map.get(canon_s),
         )
         start_wp = int(round((w / float(tot)) * 100.0))
+        pred_wp_val = int(fc["pred_60m_wpct"])
+        raw_wp_val = int(fc["raw_pred_60m_wpct"]) if fc.get("raw_pred_60m_wpct") is not None else pred_wp_val
+        bias_adj_val = float(fc.get("online_bias_adj_pt") or 0.0)
         to_insert.append((
             ts_norm,
             target_str,
@@ -3022,10 +3073,12 @@ def record_and_resolve_forecasts(items: list, timestamp_str: str, resolve_only: 
             start_wp,
             int(fc["pred_60m_women"]),
             int(fc["pred_60m_men"]),
-            int(fc["pred_60m_wpct"]),
+            pred_wp_val,
             int(v1_fc["pred_60m_wpct"]) if v1_fc.get("pred_60m_wpct") is not None else None,
             int(fc.get("flip_risk_pct") or 0),
             str(fc.get("alert_code") or "steady"),
+            raw_wp_val,
+            bias_adj_val,
         ))
 
     recorded_cnt = 0
@@ -3038,7 +3091,8 @@ def record_and_resolve_forecasts(items: list, timestamp_str: str, resolve_only: 
                         predicted_at, target_at, store_name, model_version,
                         start_women, start_men, start_wpct,
                         pred_women, pred_men, pred_wpct, v1_pred_wpct,
-                        flip_risk_pct, alert_code
+                        flip_risk_pct, alert_code,
+                        raw_pred_wpct, online_bias_adj
                     ) VALUES %s
                     ON CONFLICT (predicted_at, store_name) DO NOTHING
                     """,
@@ -3058,8 +3112,9 @@ def record_and_resolve_forecasts(items: list, timestamp_str: str, resolve_only: 
                             predicted_at, target_at, store_name, model_version,
                             start_women, start_men, start_wpct,
                             pred_women, pred_men, pred_wpct, v1_pred_wpct,
-                            flip_risk_pct, alert_code
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            flip_risk_pct, alert_code,
+                            raw_pred_wpct, online_bias_adj
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """,
                         to_insert,
                     )
@@ -3296,6 +3351,7 @@ def backfill_forecast_accuracy_from_history(
                 pred_w = int(fc["pred_60m_women"])
                 pred_m = int(fc["pred_60m_men"])
                 pred_wp = int(fc["pred_60m_wpct"])
+                raw_wp = int(fc["raw_pred_60m_wpct"]) if fc.get("raw_pred_60m_wpct") is not None else pred_wp
                 v1_wp = int(v1_fc["pred_60m_wpct"]) if v1_fc.get("pred_60m_wpct") is not None else None
                 res_tup = _compute_resolution_tuple(0, pred_w, pred_m, pred_wp, v1_wp, w60, m60, res_ts_s)
 
@@ -3322,6 +3378,8 @@ def backfill_forecast_accuracy_from_history(
                     res_tup[6],
                     res_tup[7],
                     res_tup[8],
+                    raw_wp,
+                    0.0,
                 ))
 
         if len(backfill_rows) > max_rows:
@@ -3349,7 +3407,8 @@ def backfill_forecast_accuracy_from_history(
                         flip_risk_pct, alert_code,
                         resolved_at, actual_women, actual_men, actual_wpct,
                         error_wpct_pt, abs_error_wpct_pt, v1_abs_error_wpct_pt,
-                        error_women, error_men
+                        error_women, error_men,
+                        raw_pred_wpct, online_bias_adj
                     ) VALUES %s
                     ON CONFLICT (predicted_at, store_name) DO NOTHING
                     """,
@@ -3389,8 +3448,9 @@ def backfill_forecast_accuracy_from_history(
                                 flip_risk_pct, alert_code,
                                 resolved_at, actual_women, actual_men, actual_wpct,
                                 error_wpct_pt, abs_error_wpct_pt, v1_abs_error_wpct_pt,
-                                error_women, error_men
-                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                error_women, error_men,
+                                raw_pred_wpct, online_bias_adj
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                             """,
                             sub,
                         )
@@ -3452,7 +3512,7 @@ def _refresh_forecast_caches_from_db(days: int = 21):
         rows = _fetch_all_rows(
             """
             SELECT store_name, predicted_at, pred_wpct, actual_wpct, error_wpct_pt, abs_error_wpct_pt,
-                   actual_women, actual_men, model_version
+                   actual_women, actual_men, model_version, raw_pred_wpct, online_bias_adj
             FROM forecast_accuracy_logs
             WHERE resolved_at IS NOT NULL
               AND actual_wpct IS NOT NULL
@@ -3466,9 +3526,9 @@ def _refresh_forecast_caches_from_db(days: int = 21):
 
     from collections import defaultdict
     store_acc = defaultdict(lambda: [0.0, 0.0, 0, 0, None])  # sname -> [sum_abs, sum_signed, within10, n, latest_dict]
-    bias_store_err = defaultdict(lambda: [0.0, 0.0])         # sname -> [weighted_sum_signed, eff_n]
-    bias_slot_err = defaultdict(lambda: [0.0, 0.0])          # (sname, hr) -> [weighted_sum_signed, eff_n]
-    seen_bias_dh = set()
+    bias_store_err = defaultdict(lambda: [0.0, 0.0])         # sname -> [weighted_sum_base_signed, eff_n]
+    bias_slot_err = defaultdict(lambda: [0.0, 0.0])          # (sname, hr) -> [weighted_sum_base_signed, eff_n]
+    dh_burst_counts = defaultdict(int)                       # (sname, date_str, hr) -> intra-hour burst index k
 
     for r in rows:
         sname = str(r[0] or "")
@@ -3502,16 +3562,40 @@ def _refresh_forecast_caches_from_db(days: int = 21):
                 "error_pt": int(round(err_pt)),
             }
 
-        # Online bias correction uses ONLY active model_version residuals and discounts intra-hour burst duplicates
+        # Unadjusted base model residual eliminates feedback double-counting & oscillation:
+        # base_err = raw_pred_wpct - actual_wpct (pre-migration NULL rows are damped by 0.65 to prevent transient over-correction)
+        raw_wp_col = r[9] if len(r) > 9 else None
+        applied_adj_col = float(r[10] or 0.0) if (len(r) > 10 and r[10] is not None) else 0.0
+        if raw_wp_col is not None:
+            base_err_pt = float(int(raw_wp_col) - act_wp)
+        else:
+            base_err_pt = (err_pt - applied_adj_col) * 0.65
+
+        # Geometric intra-hour burst discount (latest row in each date-hour gets k=0 -> 1.0, older intra-hour ticks get 0.5**k; sum < 2.0)
         dh_key = (sname, pred_at[:10], hr)
-        w_obs = 1.0 if dh_key not in seen_bias_dh else 0.55
-        seen_bias_dh.add(dh_key)
+        k_burst = dh_burst_counts[dh_key]
+        dh_burst_counts[dh_key] = k_burst + 1
+        w_burst = 0.5 ** min(8, k_burst)
+
+        age_days = 0.0
+        if len(pred_at) >= 16:
+            try:
+                p_dt = datetime.datetime(
+                    int(pred_at[0:4]), int(pred_at[5:7]), int(pred_at[8:10]),
+                    int(pred_at[11:13]), int(pred_at[14:16]),
+                )
+                age_days = max(0.0, (now_jst - p_dt).total_seconds() / 86400.0)
+            except Exception:
+                age_days = 0.0
+        w_decay = 0.5 ** (age_days / 7.0)
+        w_obs = w_burst * w_decay
+
         bs = bias_store_err[sname]
-        bs[0] += w_obs * err_pt
+        bs[0] += w_obs * base_err_pt
         bs[1] += w_obs
         if hr >= 0:
             sl = bias_slot_err[(sname, hr)]
-            sl[0] += w_obs * err_pt
+            sl[0] += w_obs * base_err_pt
             sl[1] += w_obs
 
     bias_map = {}
@@ -3526,23 +3610,24 @@ def _refresh_forecast_caches_from_db(days: int = 21):
                 "latest": latest_d,
             }
 
+    # Require eff_n_st >= 2.6 so any single-hour burst (< 2.0) can NEVER trigger store bias alone
     for sname, (w_sum_sig, eff_n_st) in bias_store_err.items():
-        if eff_n_st >= 5.0:
+        if eff_n_st >= 2.6:
             store_mean_err = w_sum_sig / eff_n_st
-            store_shrunk = store_mean_err * (eff_n_st / (eff_n_st + 20.0))
-            bias_map[(sname, None)] = round(max(-4.5, min(4.5, -0.55 * store_shrunk)), 2)
+            store_shrunk = store_mean_err * (eff_n_st / (eff_n_st + 8.0))
+            bias_map[(sname, None)] = round(max(-5.0, min(5.0, -0.85 * store_shrunk)), 2)
 
     for (sname, hr), (w_sum_sl, eff_n_sl) in bias_slot_err.items():
         st_b = bias_store_err.get(sname)
-        if not st_b or st_b[1] < 5.0 or eff_n_sl <= 0.0:
+        if not st_b or st_b[1] < 2.6 or eff_n_sl <= 0.0:
             continue
         eff_n_st = st_b[1]
         store_mean_err = st_b[0] / eff_n_st
-        store_shrunk = store_mean_err * (eff_n_st / (eff_n_st + 20.0))
+        store_shrunk = store_mean_err * (eff_n_st / (eff_n_st + 8.0))
         slot_mean_err = w_sum_sl / eff_n_sl
-        slot_shrunk = slot_mean_err * (eff_n_sl / (eff_n_sl + 10.0))
-        comb_err = 0.65 * slot_shrunk + 0.35 * store_shrunk
-        bias_map[(sname, hr)] = round(max(-4.5, min(4.5, -0.55 * comb_err)), 2)
+        slot_shrunk = slot_mean_err * (eff_n_sl / (eff_n_sl + 4.5))
+        comb_err = 0.60 * slot_shrunk + 0.40 * store_shrunk
+        bias_map[(sname, hr)] = round(max(-5.0, min(5.0, -0.85 * comb_err)), 2)
 
     now_mono = time.monotonic()
     _forecast_residual_bias_cache[db_k] = (now_mono, bias_map)
@@ -3630,7 +3715,13 @@ def get_forecast_accuracy_report(
     raw_store = (store_name or "").strip()
     store_filter = resolve_canonical_store_name(raw_store) if raw_store else None
     db_k = _active_db_key()
-    cache_key = (db_k, days, store_filter, limit_recent)
+    gov_sig = None
+    try:
+        import ops_governance
+        gov_sig = (tuple(sorted(ops_governance.get_hidden_brands())), tuple(sorted(ops_governance.get_hidden_stores())))
+    except Exception:
+        pass
+    cache_key = (db_k, days, store_filter, limit_recent, gov_sig)
     now_mono = time.monotonic()
 
     cached = _forecast_acc_report_cache.get(cache_key)
@@ -3647,6 +3738,8 @@ def get_forecast_accuracy_report(
         "holdout_backtest": dict(moat_intelligence.HOLDOUT_BACKTEST_SUMMARY),
         "summary": {
             "resolved_count": 0,
+            "total_resolved_rows": 0,
+            "closing_censored_count": 0,
             "pending_count": 0,
             "mae_wpct": None,
             "rmse_wpct": None,
@@ -3659,7 +3752,13 @@ def get_forecast_accuracy_report(
             "v1_mae_wpct": None,
             "mae_improvement_pt": None,
             "mae_reduction_pct": None,
+            "flip_brier_score": None,
+            "flip_log_loss": None,
+            "flip_alert_precision_pct": None,
+            "flip_alert_recall_pct": None,
+            "actual_male_glut_rate_pct": None,
         },
+        "flip_calibration_bins": [],
         "by_alert": [],
         "by_hour": [],
         "by_store": [],
@@ -3773,6 +3872,15 @@ def get_forecast_accuracy_report(
     m_abs_list = []
     dir_hits = 0
     dir_tot = 0
+    closing_censored_count = 0
+
+    flip_brier_sum = 0.0
+    flip_logloss_sum = 0.0
+    flip_tp = 0
+    flip_fp = 0
+    flip_fn = 0
+    flip_pos_total = 0
+    calib_bins_raw = [[0, 0.0, 0.0] for _ in range(5)]  # 0-19, 20-39, 40-59, 60-79, 80-100: [n, sum_pred_pct, sum_y]
 
     alert_acc = defaultdict(lambda: [0, 0.0, 0, 0.0, 0.0, 0.0])  # [n, sum_abs, w10, sum_pred, sum_act, sum_sig]
     hour_acc = defaultdict(lambda: [0, 0.0, 0.0, 0, 0, 0.0])      # [n, sum_abs, sum_v1_abs, n_v1, w10, sum_sig]
@@ -3809,6 +3917,26 @@ def get_forecast_accuracy_report(
             if v1_abs is not None:
                 v1_abs_list.append(float(v1_abs))
                 paired_v2_abs_list.append(float(abs_wp))
+
+            # Male-glut flip (<50% wpct) proper scoring rules & reliability calibration
+            y_flip = 1.0 if awp < 50 else 0.0
+            p_flip = max(0.01, min(0.99, float(flip_r) / 100.0))
+            flip_brier_sum += (p_flip - y_flip) ** 2
+            flip_logloss_sum += -(y_flip * math.log(p_flip) + (1.0 - y_flip) * math.log(1.0 - p_flip))
+            if y_flip > 0.5:
+                flip_pos_total += 1
+            if flip_r >= 50:
+                if y_flip > 0.5:
+                    flip_tp += 1
+                else:
+                    flip_fp += 1
+            elif y_flip > 0.5:
+                flip_fn += 1
+            b_idx = min(4, max(0, int(flip_r) // 20))
+            cb = calib_bins_raw[b_idx]
+            cb[0] += 1
+            cb[1] += float(flip_r)
+            cb[2] += y_flip
 
             pred_chg = pwp - swp
             act_chg = awp - swp
@@ -3886,6 +4014,8 @@ def get_forecast_accuracy_report(
                     "alert_label": _ALERT_LABELS_JA.get(acode, acode),
                     "grade": grade,
                 })
+        else:
+            closing_censored_count += 1
 
     n_valid = len(wp_abs_list)
     if n_valid > 0:
@@ -3894,6 +4024,11 @@ def get_forecast_accuracy_report(
         bias_wp = round(sum(wp_sig_list) / n_valid, 2)
         w5_pct = round(sum(1 for e in wp_abs_list if e <= 5.0) / n_valid * 100.0, 1)
         w10_pct = round(sum(1 for e in wp_abs_list if e <= 10.0) / n_valid * 100.0, 1)
+        flip_brier = round(flip_brier_sum / n_valid, 4)
+        flip_ll = round(flip_logloss_sum / n_valid, 4)
+        flip_prec = round((flip_tp / float(flip_tp + flip_fp)) * 100.0, 1) if (flip_tp + flip_fp) > 0 else None
+        flip_rec = round((flip_tp / float(flip_tp + flip_fn)) * 100.0, 1) if (flip_tp + flip_fn) > 0 else None
+        act_mglut_pct = round((flip_pos_total / float(n_valid)) * 100.0, 1)
         if v1_abs_list:
             v1_raw = sum(v1_abs_list) / len(v1_abs_list)
             v2_paired_raw = sum(paired_v2_abs_list) / len(paired_v2_abs_list)
@@ -3904,10 +4039,24 @@ def get_forecast_accuracy_report(
             v1_mae = imp_pt = red_pct = None
     else:
         mae_wp = rmse_wp = bias_wp = w5_pct = w10_pct = v1_mae = imp_pt = red_pct = None
+        flip_brier = flip_ll = flip_prec = flip_rec = act_mglut_pct = None
+
+    bin_labels = ("0〜19%", "20〜39%", "40〜59%", "60〜79%", "80〜100%")
+    flip_calibration_bins = []
+    for idx, lbl in enumerate(bin_labels):
+        bn, b_sum_p, b_sum_y = calib_bins_raw[idx]
+        if bn > 0:
+            flip_calibration_bins.append({
+                "range_label": lbl,
+                "count": bn,
+                "avg_pred_risk_pct": round(b_sum_p / bn, 1),
+                "actual_flip_rate_pct": round((b_sum_y / bn) * 100.0, 1),
+            })
 
     summary = {
         "resolved_count": n_valid,
         "total_resolved_rows": len(res_rows),
+        "closing_censored_count": closing_censored_count,
         "pending_count": exact_pending_count,
         "mae_wpct": mae_wp,
         "rmse_wpct": rmse_wp,
@@ -3920,6 +4069,11 @@ def get_forecast_accuracy_report(
         "v1_mae_wpct": v1_mae,
         "mae_improvement_pt": imp_pt,
         "mae_reduction_pct": red_pct,
+        "flip_brier_score": flip_brier,
+        "flip_log_loss": flip_ll,
+        "flip_alert_precision_pct": flip_prec,
+        "flip_alert_recall_pct": flip_rec,
+        "actual_male_glut_rate_pct": act_mglut_pct,
     }
 
     by_alert = []
@@ -4020,6 +4174,7 @@ def get_forecast_accuracy_report(
         "store_filter_display": _format_brand_safe_store_name(store_filter) if store_filter else None,
         "holdout_backtest": dict(moat_intelligence.HOLDOUT_BACKTEST_SUMMARY),
         "summary": summary,
+        "flip_calibration_bins": flip_calibration_bins,
         "by_alert": by_alert,
         "by_hour": by_hour,
         "by_store": by_store,

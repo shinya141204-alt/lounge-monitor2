@@ -989,6 +989,8 @@ FORECAST_MODEL_VERSION = "v3.0-statespace"
 
 # 時系列ホールドアウト検証ベンチマーク（学習 <=2026-10-15 12:00 / 未来未見テスト >2026-10-15 12:00, n=15,331 クリーン遷移ペア t+60m>=4名 での実測値）
 HOLDOUT_BACKTEST_SUMMARY = {
+    "benchmark_model": "v2.0-holdout-baseline",
+    "benchmark_note": "2026-10-15以降の未見15,331遷移ペア（t+60m>=4名）における固定ホールドアウト検証値。本番v3.0のリアルタイム実績は summary 側の実測集計を優先表示。",
     "test_samples": 15331,
     "v1_mae_wpct": 10.64,
     "v1_rmse_wpct": 14.47,
@@ -1143,15 +1145,20 @@ _V3_BRAND_PHASE_DEFAULTS = {
 _V2_FLIP_LOGISTIC_W = (-0.361, 2.43908, -0.29022, 0.00642, 0.2825, -0.34978)
 
 
+def _business_date(now_jst: datetime.datetime) -> datetime.date:
+    """全店舗の早朝シフト終盤（最大翌7:00閉店＋余韻）と夕方開店（最短17:00）を跨がない朝9時境界の営業日を返す。"""
+    return (now_jst - datetime.timedelta(days=1)).date() if now_jst.hour < 9 else now_jst.date()
+
+
 def _is_weekend_or_preholiday(now_jst: datetime.datetime) -> bool:
-    """営業日基準（朝7時切替）で金・土・祝前日かどうかを判定する。"""
-    biz_dt = now_jst - datetime.timedelta(days=1) if now_jst.hour < 7 else now_jst
-    wd = biz_dt.weekday()  # Mon=0 .. Fri=4, Sat=5, Sun=6
+    """営業日基準（朝9時切替）で金・土・祝前日かどうかを判定する。"""
+    biz_date = _business_date(now_jst)
+    wd = biz_date.weekday()  # Mon=0 .. Fri=4, Sat=5, Sun=6
     if wd in (4, 5):
         return True
     try:
         import store_hours
-        next_iso = (biz_dt.date() + datetime.timedelta(days=1)).isoformat()
+        next_iso = (biz_date + datetime.timedelta(days=1)).isoformat()
         if next_iso in getattr(store_hours, "JP_HOLIDAYS", set()):
             return True
     except Exception:
@@ -1159,33 +1166,88 @@ def _is_weekend_or_preholiday(now_jst: datetime.datetime) -> bool:
     return False
 
 
-def _mins_until_close(store_name: str, now_jst: datetime.datetime) -> int:
-    """公式営業時間（store_hours.py）に基づき、当営業シフトの閉店時刻までの残り分数を返す。"""
+def _store_shift_bounds_minutes(store_name: str, now_jst: datetime.datetime) -> tuple:
+    """公式営業時間（store_hours.py）に基づき (open_m, close_m, cur_m) を分単位（深夜は24h+表記）で返す。"""
+    cur_m = ((24 + now_jst.hour) if now_jst.hour < 9 else now_jst.hour) * 60 + now_jst.minute
     try:
         import store_hours
-        spec = store_hours.get_store_schedule_spec(store_name)
-        is_korea = ("ソウル" in (store_name or "")) or ("カンナム" in (store_name or "")) or ("ホンデ" in (store_name or ""))
-        if now_jst.hour < 12:
-            biz_date = (now_jst - datetime.timedelta(days=1)).date()
-            cur_m = (24 + now_jst.hour) * 60 + now_jst.minute
-        else:
-            biz_date = now_jst.date()
-            cur_m = now_jst.hour * 60 + now_jst.minute
+        canon = _resolve_internal_store_key(store_name) or store_name
+        spec = store_hours.get_store_schedule_spec(canon)
+        is_korea = ("ソウル" in (canon or "")) or ("カンナム" in (canon or "")) or ("ホンデ" in (canon or ""))
+        biz_date = _business_date(now_jst)
         wd = biz_date.weekday()
         next_iso = (biz_date + datetime.timedelta(days=1)).isoformat()
         biz_iso = biz_date.isoformat()
         is_pre = (not is_korea) and (next_iso in store_hours.JP_HOLIDAYS)
         is_hol = (not is_korea) and (biz_iso in store_hours.JP_HOLIDAYS)
         if is_pre or wd in (4, 5):
-            _, close_h = spec["fs"]
+            open_h, close_h = spec["fs"]
         elif wd == 6 or is_hol:
-            _, close_h = spec["sh"]
+            open_h, close_h = spec["sh"]
         else:
-            _, close_h = spec["mt"]
-        return int(close_h * 60 - cur_m)
+            open_h, close_h = spec["mt"]
+        return int(open_h * 60), int(close_h * 60), int(cur_m)
     except Exception:
-        cur_m = ((24 + now_jst.hour) if now_jst.hour < 12 else now_jst.hour) * 60 + now_jst.minute
-        return int(29 * 60 - cur_m)
+        return 18 * 60, 29 * 60, int(cur_m)
+
+
+def _mins_until_close(store_name: str, now_jst: datetime.datetime) -> int:
+    """公式営業時間（store_hours.py）に基づき、当営業シフトの閉店時刻までの残り分数を返す。"""
+    _, close_m, cur_m = _store_shift_bounds_minutes(store_name, now_jst)
+    return int(close_m - cur_m)
+
+
+def _mins_since_open(store_name: str, now_jst: datetime.datetime) -> int:
+    """公式営業時間（store_hours.py）に基づき、当営業シフトの開店時刻からの経過分数を返す。"""
+    open_m, _, cur_m = _store_shift_bounds_minutes(store_name, now_jst)
+    return int(cur_m - open_m)
+
+
+def _calendar_demand_adjustment(now_jst: datetime.datetime) -> tuple:
+    """
+    給料日直後（25〜27日）・月末最終金曜の二次会男性流入効果、および連休中日の深夜女性維持効果を
+    連続時刻 fhr 上の滑らかな微調整量 (dw_base, dm_base, dwp_pt) として返す。
+    """
+    biz_date = _business_date(now_jst)
+    fhr = _night_fractional_hour(now_jst)
+    day = biz_date.day
+    wd = biz_date.weekday()
+
+    next_month_check = biz_date + datetime.timedelta(days=7)
+    is_last_friday = (wd == 4 and next_month_check.month != biz_date.month)
+    is_payday_window = (25 <= day <= 27) or is_last_friday
+
+    is_multi_holiday_mid = False
+    try:
+        import store_hours
+        hols = getattr(store_hours, "JP_HOLIDAYS", set())
+        today_off = (wd in (5, 6)) or (biz_date.isoformat() in hols)
+        tom_date = biz_date + datetime.timedelta(days=1)
+        tom_off = (tom_date.weekday() in (5, 6)) or (tom_date.isoformat() in hols)
+        if today_off and tom_off:
+            is_multi_holiday_mid = True
+    except Exception:
+        is_multi_holiday_mid = False
+
+    dw_adj = 0.0
+    dm_adj = 0.0
+    dwp_adj = 0.0
+
+    # 給料日直後・月末金曜の 20:00〜24:30 は二次会男性流入がやや強まりやすい
+    if is_payday_window and 19.5 < fhr < 25.0:
+        # 22.25h を中心とした滑らかな三角窓 (0.0 .. 1.0)
+        w_pay = max(0.0, 1.0 - abs(fhr - 22.25) / 2.75)
+        dm_adj += 1.2 * w_pay
+        dw_adj += 0.3 * w_pay
+        dwp_adj -= 0.75 * w_pay
+
+    # 連休中日の 22:00〜26:30 は終電帰宅の崖が緩やかで女性滞在が持続しやすい
+    if is_multi_holiday_mid and 21.5 < fhr < 26.5:
+        w_hol = max(0.0, 1.0 - abs(fhr - 24.0) / 2.5)
+        dw_adj += 1.1 * w_hol
+        dwp_adj += 0.65 * w_hol
+
+    return dw_adj, dm_adj, dwp_adj
 
 
 def _night_fractional_hour(now_jst: datetime.datetime) -> float:
@@ -1587,6 +1649,7 @@ def predict_store_60m_dynamics(
         return {
             "model_version": FORECAST_MODEL_VERSION,
             "pred_60m_wpct": None,
+            "raw_pred_60m_wpct": None,
             "pred_60m_women": women,
             "pred_60m_men": men,
             "pred_delta_pt": 0,
@@ -1595,6 +1658,7 @@ def predict_store_60m_dynamics(
             "badge_men": "",
             "badge_women": "",
             "badge_tone": "neutral",
+            "online_bias_adj_pt": 0.0,
             "reason_short": "",
         }
 
@@ -1610,6 +1674,10 @@ def predict_store_60m_dynamics(
     scale = max(0.38, min(1.45, p99_f / 165.0))
     mid_ret = int(STORE_MIDNIGHT_RETENTION.get(canon_name, 88))
     mid_r = (float(mid_ret) - 90.0) / 100.0
+
+    open_m, close_m, cur_m = _store_shift_bounds_minutes(canon_name, now_jst)
+    mtc = int(close_m - cur_m)
+    mso = int(cur_m - open_m)
 
     try:
         w_d15 = int(women_diff or 0) if str(women_diff).strip() not in ('', 'None') else 0
@@ -1628,12 +1696,24 @@ def predict_store_60m_dynamics(
         except Exception:
             lag_context = None
 
+    # 開店直後に閉店中 0:0 からの立ち上がり差分がそのまま入っている場合はモメンタム二重計上を防ぐ
+    if -15 <= mso <= 30 and w_d15 == women and m_d15 == men:
+        w_d15 = int(round(w_d15 * 0.25))
+        m_d15 = int(round(m_d15 * 0.25))
+
     if isinstance(lag_context, dict) and w_d15 == 0 and m_d15 == 0:
         l15 = lag_context.get("lag_15m")
         if isinstance(l15, (tuple, list)) and len(l15) >= 2:
             try:
-                w_d15 = women - max(0, int(l15[0] or 0))
-                m_d15 = men - max(0, int(l15[1] or 0))
+                lw15 = max(0, int(l15[0] or 0))
+                lm15 = max(0, int(l15[1] or 0))
+                # 15分前が閉店・空室(0:0)からの営業開始ジャンプは急増モメンタムとして外挿しない
+                if (lw15 + lm15) >= 2:
+                    w_d15 = women - lw15
+                    m_d15 = men - lm15
+                    if -15 <= mso <= 25 and (lw15 + lm15) <= 4:
+                        w_d15 = int(round(w_d15 * 0.4))
+                        m_d15 = int(round(m_d15 * 0.4))
             except (TypeError, ValueError):
                 pass
 
@@ -1648,7 +1728,6 @@ def predict_store_60m_dynamics(
     else:
         ef = max(0.0, min(1.0, (21.5 - fhr) / 4.0))
 
-    mtc = _mins_until_close(canon_name, now_jst)
     closing = max(0.0, min(1.5, (90.0 - float(mtc)) / 60.0)) if mtc < 90 else 0.0
     occ = min(1.2, tot_f / p99_f)
 
@@ -1710,6 +1789,13 @@ def predict_store_60m_dynamics(
         pw_raw += 2.8 * scale
         pwp_dir += 1.5
 
+    # 2b) カレンダー外生需要微調整（給料日・月末金曜二次会／連休中日の深夜維持）
+    cal_dw, cal_dm, cal_dwp = _calendar_demand_adjustment(now_jst)
+    if cal_dw or cal_dm or cal_dwp:
+        pw_raw += cal_dw * scale
+        pm_raw += cal_dm * scale
+        pwp_dir += cal_dwp
+
     # 3) 店舗別30日連続補間普段カーブ（t → t+60m）の取得（O(1) RAM）
     usual_pair = usual_pair_override
     if usual_pair is None and mtc >= 65 and canon_name:
@@ -1719,14 +1805,11 @@ def predict_store_60m_dynamics(
         except Exception:
             usual_pair = None
 
-    # 4) 閉店直前ハザード減衰（公式閉店45分前以内は退店加速を厳密反映）
-    if mtc <= 15:
-        pw_raw *= 0.25
-        pm_raw *= 0.25
-    elif mtc <= 45:
-        fac = 0.35 + 0.65 * ((float(mtc) - 15.0) / 30.0)
-        pw_raw = min(pw_raw, float(women) * fac)
-        pm_raw = min(pm_raw, float(men) * fac)
+    # 4) 閉店直前ハザード上限（mtc=45 で fac=1.0 となる境界連続リニア減衰キャップ）
+    if mtc <= 45:
+        fac = max(0.22, min(1.0, float(max(0, mtc)) / 45.0))
+        pw_raw = min(pw_raw, max(0.5, float(women) * fac))
+        pm_raw = min(pm_raw, max(0.5, float(men) * fac))
 
     cap_f = p99_f * 0.75
     pw = max(0.5, min(cap_f, pw_raw))
@@ -1833,8 +1916,9 @@ def predict_store_60m_dynamics(
         wp_b = 52.0 + (pred_tot_f / (pred_tot_f + 1.6)) * (wp_b - 52.0)
 
     wp_blend = max(8.0, min(92.0, wp_b))
+    raw_pred_wpct = int(round(wp_blend))
 
-    # 7) 蓄積された「予測 vs 60分後実測」残差ログからのオンラインEmpirical-Bayes自己補正
+    # 7) 蓄積された「未補正ベース予測 vs 60分後実測」残差ログからのオンラインEmpirical-Bayes自己補正
     online_bias_adj = 0.0
     if apply_online_bias and canon_name:
         try:
@@ -1863,13 +1947,15 @@ def predict_store_60m_dynamics(
     delta_pt = pred_wpct - cur_wpct
 
     # 男余り転落リスク（60分後に女性比50%未満になる校正済み確率%）の算出
+    # 予測総人数 pred_tot_f の二項標本分散＋過程ノイズを考慮してSNRを正規化（少人数での過信防止・上限1.0で大規模店の校正維持）
     inv_sqrt_n = 1.0 / math.sqrt(max(6.0, tot_f))
     is_m_now = 1.0 if cur_wp_float < 50.0 else 0.0
     j_safe = 1.0 if (women >= 18 and cur_wp_float >= 68.0) else 0.0
-    rush_z = 0.35 * max(0.0, float(m_d15 - w_d15) / 5.0) if m_d15 > w_d15 else 0.0
+    snr_scale = min(1.0, 10.3 / math.sqrt((2500.0 / (max(4.0, pred_tot_f) + 6.0)) + 52.0))
+    rush_z = max(-0.35, min(0.55, 0.25 * float(m_d15 - w_d15) / max(4.0, math.sqrt(max(6.0, pred_tot_f)))))
     z_flip = (
         _V2_FLIP_LOGISTIC_W[0]
-        + _V2_FLIP_LOGISTIC_W[1] * ((50.0 - wp_blend) / 10.0)
+        + _V2_FLIP_LOGISTIC_W[1] * snr_scale * ((50.0 - wp_blend) / 10.0)
         + _V2_FLIP_LOGISTIC_W[2] * ((50.0 - cur_wp_float) / 10.0)
         + _V2_FLIP_LOGISTIC_W[3] * inv_sqrt_n
         + _V2_FLIP_LOGISTIC_W[4] * is_m_now
@@ -1929,7 +2015,10 @@ def predict_store_60m_dynamics(
         badge_men = f"🔮60分後 {pred_wpct}%予測" if total >= 14 else ""
         badge_women = "🟢1時間後も待ち少なめ" if men >= women - 2 and total >= 12 else ""
         badge_tone = "safe" if pred_wpct >= 56 and women >= 12 else "neutral"
-        reason = f"直近の流入ペースと時間帯波形から、60分後は女性約{pred_w}名・男性約{pred_m}名（女性比{pred_wpct}%前後）で推移する見込みです。"
+        if 0 <= mtc <= 40:
+            reason = f"公式閉店時刻が近いためこれから退店が進む時間帯です（残存見込み：女性約{pred_w}名・男性約{pred_m}名／女性比{pred_wpct}%前後）。"
+        else:
+            reason = f"直近の流入ペースと時間帯波形から、60分後は女性約{pred_w}名・男性約{pred_m}名（女性比{pred_wpct}%前後）で推移する見込みです。"
 
     if arena_signal and alert_code in ("steady", "jackpot_hold", "rain_shelter_boost"):
         reason = f"【{arena_signal['label_short']}】" + reason
@@ -1937,6 +2026,7 @@ def predict_store_60m_dynamics(
     return {
         "model_version": FORECAST_MODEL_VERSION,
         "pred_60m_wpct": pred_wpct,
+        "raw_pred_60m_wpct": raw_pred_wpct,
         "pred_60m_women": pred_w,
         "pred_60m_men": pred_m,
         "pred_delta_pt": delta_pt,
@@ -2029,7 +2119,7 @@ def enrich_stores_with_moat_signals(
             now_jst=now_jst,
             weather_map=weather_map,
             arena_signal=arena_map.get(sname) or arena_map.get(canon_name),
-            lag_context=lags_map.get(canon_name) if canon_name in lags_map else {},
+            lag_context=lags_map.get(canon_name) or lags_map.get(sname) or {},
             peer_context=peer_map.get(canon_name) or peer_map.get(sname),
         )
         st_acc = acc_map.get(canon_name) or acc_map.get(sname)

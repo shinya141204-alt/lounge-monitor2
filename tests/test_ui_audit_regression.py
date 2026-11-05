@@ -105,13 +105,13 @@ class UiAuditRegressionTests(unittest.TestCase):
     # ------------------------------------------------------------------
     def test_cache_busting_sync_across_templates_and_service_worker(self):
         """全テンプレートと static/sw.js のアセットバージョンが完全同期し、immutable ヘッダが正しく付与されること"""
-        expected_calm = "/static/calm.css?v=34"
+        expected_calm = "/static/calm.css?v=35"
         expected_portal = "/static/portal.css?v=14"
         expected_app_js = "/static/app.js?v=20261105_3"
         expected_aff_js = "/static/affiliate_config.js?v=16"
         expected_style = "/static/style.css?v=20261030_6"
-        expected_sw_url = "/sw.js?v=94"
-        expected_cache_name = "aiseki-navi-v94"
+        expected_sw_url = "/sw.js?v=95"
+        expected_cache_name = "aiseki-navi-v95"
 
         templates_dir = os.path.join(PROJECT_ROOT, "templates")
         calm_seen = 0
@@ -2193,6 +2193,43 @@ class UiAuditRegressionTests(unittest.TestCase):
                     ctx.close()
                 finally:
                     browser.close()
+
+    def test_design_bugfixes_grid_span_nth_child_women_light_and_cta_tap(self):
+        """デザイン監査5項目（PRカード全幅・ゼブラ縞nth-child(of)・for_womenライト配色・640px折返し・タップ高40px）の回帰テスト"""
+        calm_path = os.path.join(PROJECT_ROOT, "static", "calm.css")
+        with open(calm_path, "r", encoding="utf-8") as fp:
+            calm_txt = fp.read()
+
+        # 1) Zebra stripe ignores <aside> PR cards via :nth-child(even of .ranking-item) with @supports fallback for legacy WebViews
+        self.assertIn(":nth-child(even of .ranking-item)", calm_txt)
+        self.assertIn("@supports not selector(:nth-child(1 of .ranking-item))", calm_txt)
+        outside_supports = re.sub(
+            r"@supports\s+not\s+selector\(:nth-child\(1\s+of\s+\.ranking-item\)\)\s*\{(?:[^{}]|\{[^{}]*\})*\}",
+            "",
+            calm_txt,
+            flags=re.S,
+        )
+        self.assertNotIn("#ranking-list > .ranking-item:nth-child(even) {", outside_supports)
+
+        # 2) Context PR card spans full 2-column grid even in PC list/compact mode
+        self.assertIn("body:not(.staff-mode) #ranking-list > .context-lead-row {\n    grid-column: 1 / -1 !important;", calm_txt)
+
+        # 3) /for-women light mode preserves rose-linen editorial palette with WCAG AA+ contrast
+        self.assertIn("body.theme-light.audience-women:not(.staff-mode)", calm_txt)
+        self.assertIn("--bg-page: #f2eaeb;", calm_txt)
+        self.assertGreaterEqual(_contrast_ratio(_parse_hex_or_rgba("#221b1d"), _parse_hex_or_rgba("#f2eaeb")), 11.0)
+        self.assertGreaterEqual(_contrast_ratio(_parse_hex_or_rgba("#544146"), _parse_hex_or_rgba("#f2eaeb")), 6.0)
+        self.assertGreaterEqual(_contrast_ratio(_parse_hex_or_rgba("#88354b"), _parse_hex_or_rgba("#ffffff")), 5.5)
+
+        # 4 & 5) 640px responsive stacking and >=40px sublink tap target
+        self.assertIn("@media (max-width: 640px)", calm_txt)
+        self.assertIn(".context-lead-row .pr-editorial-sublink {\n        min-height: 40px;", calm_txt)
+
+        sd_path = os.path.join(PROJECT_ROOT, "templates", "store_detail.html")
+        with open(sd_path, "r", encoding="utf-8") as fp:
+            sd_txt = fp.read()
+        self.assertIn("@media (max-width: 640px)", sd_txt)
+        self.assertIn("#store-smart-cta-card .pr-context-foot { flex-direction: column;", sd_txt)
 
 
 if __name__ == "__main__":

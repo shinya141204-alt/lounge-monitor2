@@ -260,7 +260,7 @@
             color: #9f1239;
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=34">
+    <link rel="stylesheet" href="/static/calm.css?v=35">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -369,9 +369,10 @@
                 </thead>
                 <tbody>
                     {% for s in report.anaba_stores %}
+                    {% set st_slug = s.name | store_linkable_slug %}
                     <tr>
                         <td style="font-weight: 700; color: var(--accent-text);">#{{ loop.index }}</td>
-                        <td style="font-weight: 600; color: var(--text-main);"><a href="/store/{{ s.name | store_slug }}" style="color: var(--text-main); text-decoration: none;">{{ s.name | seo_store_name }}</a></td>
+                        <td style="font-weight: 600; color: var(--text-main);">{% if st_slug %}<a href="/store/{{ st_slug }}" style="color: var(--text-main); text-decoration: none;">{{ s.name | seo_store_name }}</a>{% else %}{{ s.name | seo_store_name }}{% endif %}</td>
                         <td style="color: var(--accent-text); font-weight: 700;">{{ s.avg_wpct }}%</td>
                         <td class="w-num">{{ s.avg_women }}名</td>
                         <td class="m-num">{{ s.avg_men }}名</td>
@@ -415,9 +416,10 @@
                 </thead>
                 <tbody>
                     {% for s in report.stores[:30] %}
+                    {% set st_slug = s.name | store_linkable_slug %}
                     <tr>
                         <td style="font-weight: 700; color: var(--text-sub);">#{{ loop.index }}</td>
-                        <td style="font-weight: 600; color: var(--text-main);"><a href="/store/{{ s.name | store_slug }}" style="color: var(--text-main); text-decoration: none;">{{ s.name | seo_store_name }}</a></td>
+                        <td style="font-weight: 600; color: var(--text-main);">{% if st_slug %}<a href="/store/{{ st_slug }}" style="color: var(--text-main); text-decoration: none;">{{ s.name | seo_store_name }}</a>{% else %}{{ s.name | seo_store_name }}{% endif %}</td>
                         <td class="w-num">{{ s.avg_women }}名</td>
                         <td class="m-num">{{ s.avg_men }}名</td>
                         <td style="color: var(--accent-text); font-weight: 700;">最大 {{ s.max_women }}名</td>
@@ -446,9 +448,10 @@
                     {% for s in live_stores[:20] %}
                     {% set tot = s.women + s.men %}
                     {% set pct = ((s.women / tot) * 100)|round|int if tot > 0 else 0 %}
+                    {% set st_slug = s.name | store_linkable_slug %}
                     <tr>
                         <td style="font-weight: 700; color: var(--text-sub);">#{{ loop.index }}</td>
-                        <td style="font-weight: 600; color: var(--text-main);"><a href="/store/{{ s.name | store_slug }}" style="color: var(--text-main); text-decoration: none;">{{ s.name | seo_store_name }}</a></td>
+                        <td style="font-weight: 600; color: var(--text-main);">{% if st_slug %}<a href="/store/{{ st_slug }}" style="color: var(--text-main); text-decoration: none;">{{ s.name | seo_store_name }}</a>{% else %}{{ s.name | seo_store_name }}{% endif %}</td>
                         <td class="w-num">{{ s.women }}名</td>
                         <td class="m-num">{{ s.men }}名</td>
                         <td style="color: var(--accent-text); font-weight: 600;">{{ pct }}%</td>
@@ -476,26 +479,26 @@
                     <div class="fc-acc-kpi-label">女性比の平均予測ズレ（MAE）</div>
                     <div class="fc-acc-kpi-val">±{{ fcs.mae_wpct if fcs.mae_wpct is not none else fch.v2_mae_wpct }}pt</div>
                     <div class="fc-acc-kpi-sub">
-                        {% if fcs.mae_women is not none %}人数平均ズレ: 女±{{ fcs.mae_women }}名 / 男±{{ fcs.mae_men }}名{% else %}ホールドアウト検証 {{ "{:,}".format(fch.test_samples or 14542) }}件基準{% endif %}
+                        {% if fcs.mae_women is not none %}人数平均ズレ: 女±{{ fcs.mae_women }}名 / 男±{{ fcs.mae_men }}名{% else %}初期ホールドアウト検証 {{ "{:,}".format(fch.test_samples or 15331) }}件基準{% endif %}
                     </div>
                 </div>
                 <div class="fc-acc-kpi-card">
                     <div class="fc-acc-kpi-label">±10pt以内 実用的中率</div>
                     <div class="fc-acc-kpi-val">{{ fcs.within_10pt_pct if fcs.within_10pt_pct is not none else fch.v2_within_10pt_pct }}%</div>
-                    <div class="fc-acc-kpi-sub">±5ptピタリ的中率: {{ fcs.within_5pt_pct if fcs.within_5pt_pct is not none else fch.v2_within_5pt_pct }}%</div>
+                    <div class="fc-acc-kpi-sub">±5pt的中: {{ fcs.within_5pt_pct if fcs.within_5pt_pct is not none else fch.v2_within_5pt_pct }}%{% if fcs.flip_brier_score is not none %} ／ 転落Brier {{ "%.3f"|format(fcs.flip_brier_score) }}{% endif %}</div>
                 </div>
                 <div class="fc-acc-kpi-card">
                     {% set red_val = fcs.mae_reduction_pct if fcs.mae_reduction_pct is not none else fch.mae_reduction_pct %}
                     <div class="fc-acc-kpi-label">旧モデル(v1)からの誤差改善</div>
                     <div class="fc-acc-kpi-val">{% if red_val is not none and red_val >= 0 %}-{{ red_val }}%{% elif red_val is not none %}+{{ (-red_val)|round(1) }}%{% else %}-{% endif %}</div>
                     <div class="fc-acc-kpi-sub">
-                        旧v1誤差 ±{{ fcs.v1_mae_wpct if fcs.v1_mae_wpct is not none else fch.v1_mae_wpct }}pt → 状態空間{{ (forecast_accuracy.model_version or 'v3.0').split('-')[0] }}で大幅改善
+                        旧v1誤差 ±{{ fcs.v1_mae_wpct if fcs.v1_mae_wpct is not none else fch.v1_mae_wpct }}pt → 状態空間{{ (forecast_accuracy.model_version or 'v3.0').split('-')[0] }}で改善
                     </div>
                 </div>
                 <div class="fc-acc-kpi-card">
                     <div class="fc-acc-kpi-label">答え合わせ完了ログ数</div>
                     <div class="fc-acc-kpi-val">{{ "{:,}".format(fcs.resolved_count or 0) }}件</div>
-                    <div class="fc-acc-kpi-sub">現在60分後の実測照合待ち: {{ fcs.pending_count or 0 }}件</div>
+                    <div class="fc-acc-kpi-sub">照合待ち: {{ fcs.pending_count or 0 }}件{% if fcs.closing_censored_count %}（閉店退店除外 {{ fcs.closing_censored_count }}件）{% endif %}</div>
                 </div>
             </div>
 

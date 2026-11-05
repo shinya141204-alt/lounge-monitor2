@@ -194,16 +194,88 @@ def seo_name(store_name: str) -> str:
     return s
 
 
+_seo_reverse_cache = {"master_id": None, "map": {}}
+
+
+def _get_seo_reverse_map(master: dict) -> dict:
+    m_id = id(master)
+    if _seo_reverse_cache["master_id"] == m_id and _seo_reverse_cache["map"]:
+        return _seo_reverse_cache["map"]
+    rev = {}
+    all_keys = list(master.keys()) + [k for k in STORE_SLUGS.keys() if k not in master]
+    for internal_key in all_keys:
+        sn = seo_name(internal_key)
+        if sn and sn not in rev:
+            rev[sn] = internal_key
+    _seo_reverse_cache["master_id"] = m_id
+    _seo_reverse_cache["map"] = rev
+    return rev
+
+
+def _resolve_alias_without_slug_lookup(name_str: str) -> str:
+    """SEO正式名称や表記ゆれ（'ag（アグ）上野', 'ag 上野', 'JIS（ジス）新宿' 等）を内部キーへO(1)逆引きする（再帰なし）。"""
+    if not name_str:
+        return ""
+    s_clean = str(name_str).strip()
+    if s_clean in STORE_SLUGS:
+        return s_clean
+    master = load()
+    if s_clean in master:
+        return s_clean
+    rev_map = _get_seo_reverse_map(master)
+    if s_clean in rev_map:
+        return rev_map[s_clean]
+    m_ag = re.match(r"^(?:ag（アグ）|OLG\s+ag|ORIENTAL\s+ag|ag)(?:\s+|(?=[^a-zA-Z0-9])|$)(.*)$", s_clean, flags=re.IGNORECASE)
+    if m_ag and m_ag.group(1).strip():
+        cand = "OLG ag" + m_ag.group(1).strip()
+        if cand in master or cand in STORE_SLUGS:
+            return cand
+    if s_clean.startswith("オリエンタルラウンジ"):
+        branch = s_clean[len("オリエンタルラウンジ"):].strip()
+        cand = f"OLG {branch}"
+        if cand in master or cand in STORE_SLUGS:
+            return cand
+    if s_clean.startswith("JIS（ジス）"):
+        branch = s_clean[len("JIS（ジス）"):].strip()
+        cand = f"JIS {branch}"
+        if cand in master or cand in STORE_SLUGS:
+            return cand
+    if s_clean.startswith("ASOBIBAR（アソビバー）") or s_clean.startswith("アソビバー"):
+        branch = s_clean.replace("ASOBIBAR（アソビバー）", "").replace("アソビバー", "").strip()
+        cand = f"ASOBIBAR {branch}"
+        if cand in master or cand in STORE_SLUGS:
+            return cand
+    if s_clean in ("ヤタコイ", "YATAKOI") or (s_clean.startswith("ヤタコイ") and ("梅田" in s_clean or "UMEDA" in s_clean.upper())):
+        if not master or "YATAKOI UMEDA" in master:
+            return "YATAKOI UMEDA"
+    if s_clean in ("相席CLOVERS", "CLOVERS") or (s_clean.startswith("相席CLOVERS") and ("広島" in s_clean or "HIROSHIMA" in s_clean.upper())):
+        if not master or "CLOVERS HIROSHIMA" in master:
+            return "CLOVERS HIROSHIMA"
+    if s_clean in ("相席ラウンジALFA", "ALFA") or (s_clean.startswith("相席ラウンジALFA") and ("広島" in s_clean or "HIROSHIMA" in s_clean.upper())):
+        if not master or "ALFA HIROSHIMA" in master:
+            return "ALFA HIROSHIMA"
+    if s_clean in ("相席ラウンジXIX", "XIX") or (s_clean.startswith("相席ラウンジXIX") and ("岡山" in s_clean or "OKAYAMA" in s_clean.upper())):
+        if not master or "XIX OKAYAMA" in master:
+            return "XIX OKAYAMA"
+    return s_clean
+
+
 def slug_of(store_name: str) -> str:
-    """店舗名からSEO用URLスラッグ（例: oriental-lounge-shinjuku）を返す。"""
+    """店舗名（内部キー・SEO正式名称・各種エイリアス）からSEO用URLスラッグ（例: oriental-lounge-shinjuku）を返す。"""
     if not store_name:
         return ""
-    if store_name in STORE_SLUGS:
-        return STORE_SLUGS[store_name]
+    s_raw = str(store_name).strip()
+    if s_raw in STORE_SLUGS:
+        return STORE_SLUGS[s_raw]
+    if s_raw in _SLUG_TO_STORE or s_raw in LEGACY_SLUG_REDIRECTS:
+        return s_raw
+    resolved = _resolve_alias_without_slug_lookup(s_raw)
+    if resolved in STORE_SLUGS:
+        return STORE_SLUGS[resolved]
     # 動的フォールバック
-    s = store_name.strip().lower()
+    s = s_raw.lower()
     s = re.sub(r'[^a-z0-9\u3040-\u30ff\u4e00-\u9faf]+', '-', s).strip('-')
-    return s or urllib.parse.quote(store_name)
+    return s or urllib.parse.quote(s_raw)
 
 
 def store_by_slug(slug: str, live_stores=None) -> str:
@@ -263,36 +335,5 @@ def to_internal_store_name(name_or_slug: str) -> str:
     from_slug = store_by_slug(name_clean)
     if from_slug:
         return from_slug
-    for internal_key in master.keys():
-        if seo_name(internal_key) == name_clean:
-            return internal_key
-    if name_clean.startswith("オリエンタルラウンジ "):
-        cand = "OLG " + name_clean[len("オリエンタルラウンジ "):]
-        if cand in master:
-            return cand
-    if name_clean.startswith("ag（アグ）"):
-        cand = "OLG ag" + name_clean[len("ag（アグ）"):]
-        if cand in master:
-            return cand
-    if name_clean.startswith("JIS（ジス）"):
-        cand = "JIS " + name_clean[len("JIS（ジス）"):].strip()
-        if cand in master:
-            return cand
-    if name_clean.startswith("ASOBIBAR（アソビバー）"):
-        cand = "ASOBIBAR " + name_clean[len("ASOBIBAR（アソビバー）"):].strip()
-        if cand in master:
-            return cand
-    if name_clean in ("ヤタコイ", "YATAKOI") or (name_clean.startswith("ヤタコイ") and ("梅田" in name_clean or "UMEDA" in name_clean.upper())):
-        if "YATAKOI UMEDA" in master:
-            return "YATAKOI UMEDA"
-    if name_clean in ("相席CLOVERS", "CLOVERS") or (name_clean.startswith("相席CLOVERS") and ("広島" in name_clean or "HIROSHIMA" in name_clean.upper())):
-        if "CLOVERS HIROSHIMA" in master:
-            return "CLOVERS HIROSHIMA"
-    if name_clean in ("相席ラウンジALFA", "ALFA") or (name_clean.startswith("相席ラウンジALFA") and ("広島" in name_clean or "HIROSHIMA" in name_clean.upper())):
-        if "ALFA HIROSHIMA" in master:
-            return "ALFA HIROSHIMA"
-    if name_clean in ("相席ラウンジXIX", "XIX") or (name_clean.startswith("相席ラウンジXIX") and ("岡山" in name_clean or "OKAYAMA" in name_clean.upper())):
-        if "XIX OKAYAMA" in master:
-            return "XIX OKAYAMA"
-    return name_clean
+    return _resolve_alias_without_slug_lookup(name_clean)
 

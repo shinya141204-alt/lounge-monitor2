@@ -492,16 +492,28 @@ def stats_whitepaper():
     fc_sig = (fc_acc.get('summary', {}).get('resolved_count', 0), fc_acc.get('summary', {}).get('pending_count', 0)) if isinstance(fc_acc, dict) else (0, 0)
 
     def _render():
+        import ops_governance
         report_data = None
         try:
             res = weekly_report.generate_weekly_report()
             if res and 'error' not in res:
-                report_data = res
+                report_data = dict(res)
+                if isinstance(report_data.get('anaba_stores'), list):
+                    report_data['anaba_stores'] = [
+                        s for s in report_data['anaba_stores']
+                        if not ops_governance.is_store_hidden((s or {}).get('name', ''))
+                    ]
+                if isinstance(report_data.get('stores'), list):
+                    report_data['stores'] = [
+                        s for s in report_data['stores']
+                        if not ops_governance.is_store_hidden((s or {}).get('name', ''))
+                    ]
         except Exception:
             report_data = None
         with core.data_lock:
-            live_stores = list(core.latest_data.get('full_data') or [])
+            raw_live = list(core.latest_data.get('full_data') or [])
             last_updated = core.latest_data.get('last_updated') or '--:--'
+        live_stores = ops_governance.filter_visible_stores(raw_live)
         return render_template(
             'stats_report.html',
             report=report_data,
@@ -521,9 +533,11 @@ def area_portal(area_slug=None):
     core.trigger_background_fetch_if_needed()
 
     def _render():
+        import ops_governance
         with core.data_lock:
-            stores = list(core.latest_data.get('full_data') or [])
+            raw_stores = list(core.latest_data.get('full_data') or [])
             last_updated = core.latest_data.get('last_updated') or '--:--'
+        stores = ops_governance.filter_visible_stores(raw_stores)
 
         area_summaries = []
         for slug, info in AREA_GUIDES.items():
@@ -566,9 +580,11 @@ def price_comparison_page():
     selected_area = req_area if req_area in valid_ids else 'shinjuku'
 
     def _render():
+        import ops_governance
         with core.data_lock:
-            live_stores = list(core.latest_data.get('full_data') or [])
+            raw_live = list(core.latest_data.get('full_data') or [])
             last_updated = core.latest_data.get('last_updated') or '--:--'
+        live_stores = ops_governance.filter_visible_stores(raw_live)
 
         data = price_comparison.build_area_comparison_clusters(live_stores=live_stores)
 
@@ -590,9 +606,11 @@ def for_women_guide():
     core.trigger_background_fetch_if_needed()
 
     def _render():
+        import ops_governance
         with core.data_lock:
-            live_stores = list(core.latest_data.get('full_data') or [])
+            raw_live = list(core.latest_data.get('full_data') or [])
             last_updated = core.latest_data.get('last_updated') or '--:--'
+        live_stores = ops_governance.filter_visible_stores(raw_live)
         board = ladies_guide.build_ladies_live_board(live_stores=live_stores)
         return render_template(
             'for_women.html',
@@ -625,9 +643,11 @@ def concierge_page():
     cache_extra = f"concierge_{area}_{audience}_{timing}_{party_size}_{vibe}"
 
     def _render():
+        import ops_governance
         with core.data_lock:
-            stores = [dict(s) for s in (core.latest_data.get('full_data') or [])]
+            raw_stores = list(core.latest_data.get('full_data') or [])
             last_upd = core.latest_data.get('last_updated') or '--:--'
+        stores = [dict(s) for s in ops_governance.filter_visible_stores(raw_stores)]
         res = concierge_matcher.diagnose_tonight_plan(
             stores,
             area=area,
@@ -651,6 +671,7 @@ def concierge_page():
 def api_concierge():
     """Ultra-fast (<5ms) JSON endpoint for interactive 3-second lounge & hopping diagnosis (cached 30s)."""
     import concierge_matcher
+    import ops_governance
     core.restore_latest_data_if_empty()
     core.trigger_background_fetch_if_needed()
 
@@ -663,13 +684,15 @@ def api_concierge():
     with core.data_lock:
         last_upd = core.latest_data.get('last_updated') or ''
 
-    cache_key = ('api_concierge', area, audience, timing, party_size, vibe, last_upd)
+    gov_sig = (tuple(sorted(ops_governance.get_hidden_brands())), tuple(sorted(ops_governance.get_hidden_stores())))
+    cache_key = ('api_concierge', area, audience, timing, party_size, vibe, last_upd, gov_sig)
 
     def _build_concierge_dict():
         import store_master
         with core.data_lock:
-            stores = [dict(s) for s in (core.latest_data.get('full_data') or [])]
+            raw_stores = list(core.latest_data.get('full_data') or [])
             cur_last_upd = core.latest_data.get('last_updated') or ''
+        stores = [dict(s) for s in ops_governance.filter_visible_stores(raw_stores)]
         res = concierge_matcher.diagnose_tonight_plan(
             stores,
             area=area,

@@ -470,8 +470,11 @@
         .store-related-links .btn-secondary { min-height: 40px; font-size: 0.82rem; }
         #store-smart-cta-card.context-lead-row.pr-card-item { margin: 0 0 20px !important; }
         #store-smart-cta-card .pr-context-foot { flex-wrap: wrap; gap: 6px 16px; }
+        @media (max-width: 640px) {
+            #store-smart-cta-card .pr-context-foot { flex-direction: column; align-items: flex-start; gap: 2px; }
+        }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=34">
+    <link rel="stylesheet" href="/static/calm.css?v=35">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"

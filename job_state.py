@@ -48,6 +48,7 @@ _sheets_loaded = False
 _turbo_loaded = False
 _last_turbo_sync_mono = 0.0
 _last_sheet_try = 0.0
+_cache_epoch = 0
 
 
 def _now_str():
@@ -216,22 +217,29 @@ def _seed_turbo_from_memory():
         turbo_store.state_set_kv(str(pfx), stored_v, kv_ts_snap.get(pfx, ''), now_s)
 
 
-def _sync_sheets_worker():
+def _sync_sheets_worker(expected_epoch=None):
     """`_lock` を保持せずに Google Sheets から読み込み、完了時のみ短時間ロックしてマージする。"""
     global _keys, _sheets_loaded, _last_sheet_try
     import time
     if _sheets_loaded or sheets_store.is_disabled():
         return
+    if expected_epoch is not None and expected_epoch != _cache_epoch:
+        return
     with _sheets_sync_lock:
-        if _sheets_loaded or sheets_store.is_disabled():
-            return
         now_t = time.time()
-        if now_t - _last_sheet_try <= 300:
-            return
-        _last_sheet_try = now_t
+        with _lock:
+            if _sheets_loaded or sheets_store.is_disabled():
+                return
+            if expected_epoch is not None and expected_epoch != _cache_epoch:
+                return
+            if now_t - _last_sheet_try <= 300:
+                return
+            _last_sheet_try = now_t
         rows = sheets_store.read_rows_or_none(SHEET_TITLE, HEADER)
         if rows is not None:
             with _lock:
+                if sheets_store.is_disabled() or (expected_epoch is not None and expected_epoch != _cache_epoch):
+                    return
                 _ensure_local_loaded_locked()
                 for row in rows:
                     if row and row[0]:
@@ -254,12 +262,13 @@ def _ensure_loaded(allow_blocking: bool = True):
         already_synced = _sheets_loaded or sheets_store.is_disabled()
         should_try = (not already_synced) and (time.time() - _last_sheet_try > 300)
         fast_backend_ready = _turbo_loaded and (turbo_store.is_postgres_active() or turbo_store.get_redis_client() is not None)
+        cur_epoch = _cache_epoch
     if should_try:
         # When Postgres/Redis is active, never block request threads waiting for Google Sheets
         if allow_blocking and not fast_backend_ready:
-            _sync_sheets_worker()
+            _sync_sheets_worker(cur_epoch)
         else:
-            threading.Thread(target=_sync_sheets_worker, daemon=True).start()
+            threading.Thread(target=_sync_sheets_worker, args=(cur_epoch,), daemon=True).start()
 
 
 def is_storage_healthy() -> bool:
@@ -364,8 +373,9 @@ def set_value(prefix, val):
 
 
 def reset_cache_for_tests():
-    global _keys, _kv, _kv_ts, _local_loaded, _sheets_loaded, _turbo_loaded, _last_turbo_sync_mono, _last_sheet_try
+    global _keys, _kv, _kv_ts, _local_loaded, _sheets_loaded, _turbo_loaded, _last_turbo_sync_mono, _last_sheet_try, _cache_epoch
     with _lock:
+        _cache_epoch += 1
         _keys = None
         _kv = None
         _kv_ts = None

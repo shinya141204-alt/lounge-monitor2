@@ -6,9 +6,11 @@ import time
 import unittest
 from unittest import mock
 
-# Ensure test DB isolation before importing app/local_db
+# Ensure test DB & Sheets isolation before importing app/local_db
 _TMP_DIR = tempfile.mkdtemp(prefix="aiseki_fc_test_")
 os.environ.setdefault("LOCAL_DB_PATH", os.path.join(_TMP_DIR, "boot_test.db"))
+os.environ.setdefault("JOB_STATE_DIR", os.path.join(_TMP_DIR, "job_state"))
+os.environ.setdefault("DISABLE_SHEETS", "1")
 os.environ.setdefault("DISABLE_SCHEDULER", "1")
 os.environ.setdefault('SECRET_KEY', 'test-secret-key-12345')
 os.environ.setdefault('STAFF_PASSCODE', '5555')
@@ -557,12 +559,20 @@ class TestForecastV2AndAccuracyTracking(unittest.TestCase):
 
         app_module.clear_fast_http_caches()
         html_stats = self.client.get("/stats").data.decode("utf-8")
-        # Extract all /store/<slug> links rendered on /stats and verify none 404
+        # Extract all /store/<slug> links rendered on /stats and verify none 404/410
         hrefs = sorted(set(re.findall(r'href="(/store/[^"#?]+)"', html_stats)))
         self.assertGreaterEqual(len(hrefs), 1)
         for href in hrefs:
             r_link = self.client.get(href)
             self.assertIn(r_link.status_code, (200, 301, 302), f"Broken store link {href} returned {r_link.status_code}")
+
+        # Even if a store is temporarily hidden (410 Gone), /stats must never emit a broken 410 link to it
+        with mock.patch("ops_governance.get_hidden_stores", return_value={"OLG 新宿", "JIS SHINJUKU"}):
+            app_module.clear_fast_http_caches()
+            html_hidden = self.client.get("/stats").data.decode("utf-8")
+            hidden_hrefs = set(re.findall(r'href="(/store/[^"#?]+)"', html_hidden))
+            self.assertNotIn("/store/oriental-lounge-shinjuku", hidden_hrefs)
+            self.assertNotIn("/store/jis-shinjuku", hidden_hrefs)
 
         # Verify Light Mode high-contrast overrides are present on /stats
         self.assertIn("body.theme-light .fc-err-pill.good", html_stats)
@@ -1091,6 +1101,142 @@ class TestForecastV2AndAccuracyTracking(unittest.TestCase):
         up = local_db.get_cached_store_usual_pair("オリエンタルラウンジ 渋谷本店", base_night.replace(tzinfo=JST))
         self.assertIsNotNone(up)
         self.assertGreaterEqual(up[4], 5)
+
+    def test_v31_unbiased_residual_feedback_opening_mask_and_brier_metrics(self):
+        """Online calibration uses unadjusted raw_pred_wpct (zero double-counting), masks 0:0 opening jumps, and reports Brier/calibration."""
+        import store_master
+
+        # 0) SEO alias slug resolution never produces broken Japanese slugs like 'ag-アグ-上野'
+        self.assertEqual(store_master.slug_of("ag（アグ）上野"), "ag-ueno")
+        self.assertEqual(store_master.slug_of("JIS（ジス）新宿"), "jis-shinjuku")
+        self.assertEqual(store_master.slug_of("オリエンタルラウンジ 渋谷本店"), "oriental-lounge-shibuya-honten")
+
+        # 1) Unbiased feedback equivalence: rows recorded WITH online_bias_adj=-3.0 (pred=59, raw=62, actual=52, err=+7)
+        #    must yield the EXACT SAME residual adjustment as unadjusted rows (pred=62, raw=62, actual=52, err=+10)!
+        now_dt = datetime.datetime.now(JST).replace(tzinfo=None, minute=10, second=0, microsecond=0)
+        d1 = (now_dt - datetime.timedelta(days=1)).replace(hour=21)
+        d2 = (now_dt - datetime.timedelta(days=2)).replace(hour=22)
+
+        conn = local_db.get_connection()
+        try:
+            cur = conn.cursor()
+            for idx, b_dt in enumerate((d1, d2)):
+                for k in range(3):
+                    p_ts = (b_dt + datetime.timedelta(minutes=15 * k)).strftime("%Y-%m-%d %H:%M:%S")
+                    t_ts = (b_dt + datetime.timedelta(minutes=60 + 15 * k)).strftime("%Y-%m-%d %H:%M:%S")
+                    # Store A: unadjusted rows (raw=62, pred=62, actual=52, err=10, bias=0.0)
+                    cur.execute(
+                        """
+                        INSERT INTO forecast_accuracy_logs (
+                            predicted_at, target_at, store_name, model_version,
+                            start_women, start_men, start_wpct, pred_women, pred_men, pred_wpct, flip_risk_pct,
+                            resolved_at, actual_women, actual_men, actual_wpct, error_wpct_pt, abs_error_wpct_pt,
+                            raw_pred_wpct, online_bias_adj
+                        ) VALUES (?, ?, 'OLG 心斎橋', ?, 24, 16, 60, 26, 16, 62, 18, ?, 21, 19, 52, 10, 10, 62, 0.0)
+                        """,
+                        (p_ts, t_ts, moat_intelligence.FORECAST_MODEL_VERSION, t_ts),
+                    )
+                    # Store B: already bias-corrected rows (raw=62, pred=59, actual=52, err=7, bias=-3.0)
+                    cur.execute(
+                        """
+                        INSERT INTO forecast_accuracy_logs (
+                            predicted_at, target_at, store_name, model_version,
+                            start_women, start_men, start_wpct, pred_women, pred_men, pred_wpct, flip_risk_pct,
+                            resolved_at, actual_women, actual_men, actual_wpct, error_wpct_pt, abs_error_wpct_pt,
+                            raw_pred_wpct, online_bias_adj
+                        ) VALUES (?, ?, 'OLG 難波', ?, 24, 16, 60, 25, 17, 59, 20, ?, 21, 19, 52, 7, 7, 62, -3.0)
+                        """,
+                        (p_ts, t_ts, moat_intelligence.FORECAST_MODEL_VERSION, t_ts),
+                    )
+            # Single-hour 12-row burst on OLG 岡山 must stay strictly < 2.0 effective samples -> 0.0 adjustment
+            for k in range(12):
+                p_ts = d1.replace(minute=k * 4).strftime("%Y-%m-%d %H:%M:%S")
+                t_ts = (d1.replace(minute=k * 4) + datetime.timedelta(minutes=60)).strftime("%Y-%m-%d %H:%M:%S")
+                cur.execute(
+                    """
+                    INSERT INTO forecast_accuracy_logs (
+                        predicted_at, target_at, store_name, model_version,
+                        start_women, start_men, start_wpct, pred_women, pred_men, pred_wpct, flip_risk_pct,
+                        resolved_at, actual_women, actual_men, actual_wpct, error_wpct_pt, abs_error_wpct_pt,
+                        raw_pred_wpct, online_bias_adj
+                    ) VALUES (?, ?, 'OLG 岡山', ?, 20, 15, 57, 24, 14, 63, 72, ?, 14, 21, 40, 23, 23, 63, 0.0)
+                    """,
+                    (p_ts, t_ts, moat_intelligence.FORECAST_MODEL_VERSION, t_ts),
+                )
+            # Censored closing row (<4 guests at t+60m) + male-glut flip rows for Brier/precision/recall verification
+            c_ts = d1.replace(hour=0, minute=30).strftime("%Y-%m-%d %H:%M:%S")
+            cur.execute(
+                """
+                INSERT INTO forecast_accuracy_logs (
+                    predicted_at, target_at, store_name, model_version,
+                    start_women, start_men, start_wpct, pred_women, pred_men, pred_wpct, flip_risk_pct,
+                    resolved_at, actual_women, actual_men, actual_wpct, error_wpct_pt, abs_error_wpct_pt
+                ) VALUES (?, ?, 'OLG 上野', ?, 12, 10, 55, 6, 5, 55, 35, ?, 1, 1, NULL, NULL, NULL)
+                """,
+                (c_ts, c_ts, moat_intelligence.FORECAST_MODEL_VERSION, c_ts),
+            )
+            m_ts = d1.replace(hour=23, minute=10).strftime("%Y-%m-%d %H:%M:%S")
+            cur.execute(
+                """
+                INSERT INTO forecast_accuracy_logs (
+                    predicted_at, target_at, store_name, model_version,
+                    start_women, start_men, start_wpct, pred_women, pred_men, pred_wpct, flip_risk_pct,
+                    resolved_at, actual_women, actual_men, actual_wpct, error_wpct_pt, abs_error_wpct_pt
+                ) VALUES (?, ?, 'OLG 神戸', ?, 14, 18, 44, 13, 19, 41, 78, ?, 12, 20, 38, 3, 3)
+                """,
+                (m_ts, m_ts, moat_intelligence.FORECAST_MODEL_VERSION, m_ts),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+        local_db._invalidate_forecast_caches()
+        adj_unadj = local_db.get_cached_forecast_residual_adjustment("OLG 心斎橋", 21)
+        adj_already = local_db.get_cached_forecast_residual_adjustment("OLG 難波", 21)
+        self.assertLess(adj_unadj, -1.5)
+        self.assertEqual(adj_unadj, adj_already, "Feedback loop must learn from unadjusted raw_pred_wpct without decay!")
+        self.assertEqual(local_db.get_cached_forecast_residual_adjustment("OLG 岡山", 21), 0.0)
+
+        # 2) Opening 0:0 jump mask: at 18:10 (10m after 18:00 open), lag_15m=(0, 0) must NOT extrapolate +16/+10 momentum
+        t_open = datetime.datetime(2026, 10, 28, 18, 10, tzinfo=JST)
+        fc_open_clean = moat_intelligence.predict_store_60m_dynamics(
+            "OLG 渋谷本店", 16, 10, True, 0, 0, now_jst=t_open, weather_map={},
+            apply_online_bias=False, lag_context={}, usual_pair_override=(),
+        )
+        fc_open_zero_lag = moat_intelligence.predict_store_60m_dynamics(
+            "OLG 渋谷本店", 16, 10, True, 0, 0, now_jst=t_open, weather_map={},
+            apply_online_bias=False, lag_context={"lag_15m": (0, 0)}, usual_pair_override=(),
+        )
+        self.assertEqual(fc_open_zero_lag["pred_60m_women"], fc_open_clean["pred_60m_women"])
+        self.assertEqual(fc_open_zero_lag["pred_60m_wpct"], fc_open_clean["pred_60m_wpct"])
+
+        # 3) Smooth closing cap across mtc=46 -> 45 -> 44 AND mtc=16 -> 14 (zero cliff at mtc=45 or mtc=15) & honest pre-close guidance
+        t_mtc46 = datetime.datetime(2026, 10, 29, 0, 14, tzinfo=JST)  # OLG 上野 closes 01:00 -> mtc=46
+        t_mtc45 = datetime.datetime(2026, 10, 29, 0, 15, tzinfo=JST)  # mtc=45
+        t_mtc44 = datetime.datetime(2026, 10, 29, 0, 16, tzinfo=JST)  # mtc=44
+        fc_46 = moat_intelligence.predict_store_60m_dynamics("OLG 上野", 18, 14, True, 0, 0, now_jst=t_mtc46, weather_map={}, apply_online_bias=False, lag_context={}, usual_pair_override=())
+        fc_45 = moat_intelligence.predict_store_60m_dynamics("OLG 上野", 18, 14, True, 0, 0, now_jst=t_mtc45, weather_map={}, apply_online_bias=False, lag_context={}, usual_pair_override=())
+        fc_44 = moat_intelligence.predict_store_60m_dynamics("OLG 上野", 18, 14, True, 0, 0, now_jst=t_mtc44, weather_map={}, apply_online_bias=False, lag_context={}, usual_pair_override=())
+        self.assertLessEqual(abs(fc_46["pred_60m_women"] - fc_45["pred_60m_women"]), 1)
+        self.assertLessEqual(abs(fc_45["pred_60m_women"] - fc_44["pred_60m_women"]), 1)
+
+        t_mtc16 = datetime.datetime(2026, 10, 29, 0, 44, tzinfo=JST)  # OLG 上野 closes 01:00 -> mtc=16
+        t_mtc14 = datetime.datetime(2026, 10, 29, 0, 46, tzinfo=JST)  # mtc=14
+        fc_16 = moat_intelligence.predict_store_60m_dynamics("OLG 上野", 18, 14, True, 0, 0, now_jst=t_mtc16, weather_map={}, apply_online_bias=False, lag_context={}, usual_pair_override=())
+        fc_14 = moat_intelligence.predict_store_60m_dynamics("OLG 上野", 18, 14, True, 0, 0, now_jst=t_mtc14, weather_map={}, apply_online_bias=False, lag_context={}, usual_pair_override=())
+        self.assertLessEqual(abs(fc_16["pred_60m_women"] - fc_14["pred_60m_women"]), 2)
+        self.assertIn("閉店時刻が近い", fc_14["reason_short"])
+
+        # 4) Brier score, precision/recall, calibration bins, and closing_censored_count in report
+        rep = local_db.get_forecast_accuracy_report(days=7)
+        s = rep["summary"]
+        self.assertEqual(s["closing_censored_count"], 1)
+        self.assertIsNotNone(s["flip_brier_score"])
+        self.assertGreaterEqual(s["flip_brier_score"], 0.0)
+        self.assertLess(s["flip_brier_score"], 0.25)
+        self.assertEqual(s["flip_alert_precision_pct"], 100.0)
+        self.assertEqual(s["flip_alert_recall_pct"], 100.0)
+        self.assertGreaterEqual(len(rep["flip_calibration_bins"]), 2)
 
 
 if __name__ == "__main__":

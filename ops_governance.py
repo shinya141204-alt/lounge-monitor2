@@ -166,6 +166,16 @@ def filter_visible_stores(stores: list) -> list:
     return visible
 
 
+def _purge_http_caches():
+    import sys
+    app_mod = sys.modules.get("app")
+    if app_mod is not None and hasattr(app_mod, "clear_fast_http_caches"):
+        try:
+            app_mod.clear_fast_http_caches()
+        except Exception:
+            pass
+
+
 def set_brand_hidden(brand_key: str, hidden: bool) -> dict:
     bkey = (brand_key or "").strip().lower()
     if bkey not in VALID_BRAND_KEYS:
@@ -180,6 +190,7 @@ def set_brand_hidden(brand_key: str, hidden: bool) -> dict:
     else:
         cur.discard(bkey)
     job_state.set_value("ops:hidden_brands", json.dumps(sorted(cur), ensure_ascii=False))
+    _purge_http_caches()
     return {"ok": True, "brand_key": bkey, "hidden": bool(hidden), "hidden_brands": sorted(get_hidden_brands())}
 
 
@@ -198,6 +209,7 @@ def set_store_hidden(store_name_or_slug: str, hidden: bool) -> dict:
     else:
         cur.discard(canon)
     job_state.set_value("ops:hidden_stores", json.dumps(sorted(cur), ensure_ascii=False))
+    _purge_http_caches()
     return {
         "ok": True,
         "store_name": canon,

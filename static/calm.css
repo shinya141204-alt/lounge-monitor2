@@ -3506,8 +3506,8 @@ body.compact-mode:not(.theme-light) #ranking-list > .ranking-item {
     border-color: var(--calm-border) !important;
 }
 
-body.theme-list:not(.theme-light) #ranking-list > .ranking-item:nth-child(even),
-body.compact-mode:not(.theme-light) #ranking-list > .ranking-item:nth-child(even) {
+body.theme-list:not(.theme-light) #ranking-list > .ranking-item:nth-child(even of .ranking-item),
+body.compact-mode:not(.theme-light) #ranking-list > .ranking-item:nth-child(even of .ranking-item) {
     background: #1a1d26 !important;
 }
 
@@ -3518,9 +3518,21 @@ body.compact-mode.theme-light #ranking-list > .ranking-item {
     color: var(--calm-light-text) !important;
 }
 
-body.theme-list.theme-light #ranking-list > .ranking-item:nth-child(even),
-body.compact-mode.theme-light #ranking-list > .ranking-item:nth-child(even) {
+body.theme-list.theme-light #ranking-list > .ranking-item:nth-child(even of .ranking-item),
+body.compact-mode.theme-light #ranking-list > .ranking-item:nth-child(even of .ranking-item) {
     background: #f6f3eb !important;
+}
+
+@supports not selector(:nth-child(1 of .ranking-item)) {
+    body.theme-list:not(.theme-light) #ranking-list > .ranking-item:nth-child(even),
+    body.compact-mode:not(.theme-light) #ranking-list > .ranking-item:nth-child(even) {
+        background: #1a1d26 !important;
+    }
+
+    body.theme-list.theme-light #ranking-list > .ranking-item:nth-child(even),
+    body.compact-mode.theme-light #ranking-list > .ranking-item:nth-child(even) {
+        background: #f6f3eb !important;
+    }
 }
 
 /* --- 22-C. モーダル内 PR枠・比較バナー・記事メタ情報の背景同化修正 --- */
@@ -5691,8 +5703,19 @@ body:not(.staff-mode):not(.theme-list):not(.compact-mode) #pinned-list {
     gap: 0 !important;
 }
 
+body:not(.staff-mode) #ranking-list > .empty-filter-state,
+body:not(.staff-mode) #ranking-list > .pr-card-item,
+body:not(.staff-mode) #ranking-list > .context-lead-row {
+    grid-column: 1 / -1 !important;
+}
+
 body:not(.staff-mode):not(.theme-list):not(.compact-mode) #ranking-list > .pr-card-item {
     margin: 10px 0;
+}
+
+body.theme-list:not(.staff-mode) #ranking-list > .context-lead-row.pr-card-item,
+body.compact-mode:not(.staff-mode) #ranking-list > .context-lead-row.pr-card-item {
+    margin: 8px 10px !important;
 }
 
 body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item .store-name {
@@ -6041,9 +6064,9 @@ body.staff-mode .cm-human-line {
         min-width: 0;
     }
 
-    body:not(.staff-mode):not(.theme-list):not(.compact-mode) #ranking-list > .empty-filter-state,
-    body:not(.staff-mode):not(.theme-list):not(.compact-mode) #ranking-list > .pr-card-item {
-        grid-column: 1 / -1;
+    body:not(.staff-mode) #ranking-list > .empty-filter-state,
+    body:not(.staff-mode) #ranking-list > .pr-card-item {
+        grid-column: 1 / -1 !important;
     }
 
     body:not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item.bento-hero-card.is-inspector-selected {
@@ -6490,6 +6513,28 @@ body.theme-light:not(.staff-mode) {
     --border-gold: rgba(24, 24, 27, 0.18);
     --women: #be123c;
     --men: #1d4ed8;
+}
+
+body.theme-light.audience-women:not(.staff-mode) {
+    --bg-dark: #f2eaeb;
+    --bg-page: #f2eaeb;
+    --card-bg: #ffffff;
+    --card-bg-2: #e8dcde;
+    --card-elevated: #f7f1f2;
+    --card-sub-bg: #efe5e7;
+    --text-main: #221b1d;
+    --text-sub: #544146;
+    --accent: #88354b;
+    --accent-gold: #88354b;
+    --accent-text: #88354b;
+    --accent-soft: rgba(136, 53, 75, 0.12);
+    --gold-tint: rgba(136, 53, 75, 0.08);
+    --border-subtle: rgba(120, 62, 78, 0.16);
+    --border-outline: rgba(120, 62, 78, 0.28);
+    --border-strong: rgba(120, 62, 78, 0.28);
+    --border-gold: rgba(136, 53, 75, 0.34);
+    --women: #9a3950;
+    --men: #2b5478;
 }
 
 /* --- 26-B. Apple Global Ribbon（全ページ共通1行クリーンナビ）＆ トップヘッダー引き算 --- */
@@ -8304,7 +8349,7 @@ body.theme-light .context-lead-row .pr-editorial-sublink {
     border: 0;
 }
 
-@media (max-width: 560px) {
+@media (max-width: 640px) {
     .context-lead-row.pr-card-item {
         padding: 12px 13px 10px !important;
     }
@@ -8316,6 +8361,15 @@ body.theme-light .context-lead-row .pr-editorial-sublink {
     .context-lead-row .pr-context-cta {
         width: 100%;
         min-height: 40px;
+    }
+    .context-lead-row .pr-context-foot {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 2px;
+    }
+    .context-lead-row .pr-editorial-sublink {
+        min-height: 40px;
+        width: 100%;
     }
 }
 

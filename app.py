@@ -1988,6 +1988,10 @@ def _jinja_store_slug(name):
     import store_master
     return store_master.slug_of(name)
 
+@app.template_filter('store_linkable_slug')
+def _jinja_store_linkable_slug(name):
+    return local_db._linkable_store_slug(name)
+
 @app.template_filter('brand_ja')
 def _jinja_brand_ja(val):
     if val is None:

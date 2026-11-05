@@ -148,7 +148,7 @@
     <meta name="apple-mobile-web-app-title" content="相席ナビ">
 
     <link rel="stylesheet" href="/static/style.css?v=20261030_6" fetchpriority="high">
-    <link rel="stylesheet" href="/static/calm.css?v=34" fetchpriority="high">
+    <link rel="stylesheet" href="/static/calm.css?v=35" fetchpriority="high">
     <link rel="preload" href="/static/app.js?v=20261105_3" as="script">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2557,7 +2557,7 @@
                 }
                 if (window.__swRegistered) return;
                 window.__swRegistered = true;
-                navigator.serviceWorker.register('/sw.js?v=94', { updateViaCache: 'none' })
+                navigator.serviceWorker.register('/sw.js?v=95', { updateViaCache: 'none' })
                     .then(function(reg) {
                         reg.update();
                         document.addEventListener('visibilitychange', function() {
