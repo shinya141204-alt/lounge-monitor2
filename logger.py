@@ -1,6 +1,6 @@
 import gspread
-from oauth2client.service_account import ServiceAccountCredentials
-import httplib2
+from google.oauth2.service_account import Credentials as ServiceAccountCredentials
+from google.auth.transport.requests import Request as GoogleAuthRequest
 import socket
 import datetime
 import time
@@ -36,6 +36,20 @@ _cached_spreadsheet_client_id = None
 
 # Shared HTTP session for connection pooling (Keep-Alive to docs.google.com)
 http_session = requests.Session()
+
+
+class _BoundedGoogleAuthRequest(GoogleAuthRequest):
+    """Enforces an 8-second HTTP timeout on OAuth2 token refresh calls."""
+
+    def __call__(self, url, method='GET', body=None, headers=None, timeout=8, **kwargs):
+        eff_timeout = 8 if timeout is None else min(float(timeout), 8.0)
+        return super().__call__(url, method=method, body=body, headers=headers, timeout=eff_timeout, **kwargs)
+
+
+_GOOGLE_SCOPES = (
+    'https://spreadsheets.google.com/feeds',
+    'https://www.googleapis.com/auth/drive',
+)
 
 
 def _find_creds_path():
@@ -78,15 +92,15 @@ def get_client():
         return None
 
     try:
-        scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-        new_creds = ServiceAccountCredentials.from_json_keyfile_name(creds_path, scope)
+        new_creds = ServiceAccountCredentials.from_service_account_file(
+            creds_path,
+            scopes=list(_GOOGLE_SCOPES),
+        )
+        new_creds.refresh(_BoundedGoogleAuthRequest(session=http_session))
         new_client = gspread.authorize(new_creds)
         if hasattr(new_client, 'set_timeout'):
             new_client.set_timeout(10)
-        new_token = getattr(new_creds, 'access_token', None)
-        if not new_token:
-            token_info = new_creds.get_access_token(httplib2.Http(timeout=8))
-            new_token = token_info.access_token
+        new_token = getattr(new_creds, 'token', None)
         with _auth_lock:
             _cached_creds = new_creds
             _cached_client = new_client
@@ -110,10 +124,11 @@ def get_access_token():
 
     if creds_ref is not None:
         try:
-            token_info = creds_ref.get_access_token(httplib2.Http(timeout=8))
-            if token_info and token_info.access_token:
+            creds_ref.refresh(_BoundedGoogleAuthRequest(session=http_session))
+            refreshed_token = getattr(creds_ref, 'token', None)
+            if refreshed_token:
                 with _auth_lock:
-                    _cached_token = token_info.access_token
+                    _cached_token = refreshed_token
                     _token_expiry = time.time() + 3000
                     return _cached_token
         except Exception:

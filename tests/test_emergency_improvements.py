@@ -284,6 +284,41 @@ class TestEmergencyImprovements(unittest.TestCase):
         self.assertIn('Monday', all_days)
         self.assertIn('Friday', all_days)
 
+    # ------------------------------------------------------------------
+    # 9. Phase C 技術的負債解消（Gunicorn 23 / google-auth / Blueprint分割）
+    # ------------------------------------------------------------------
+    def test_phase_c_dependencies_and_oauth2client_removal(self):
+        """requirements.txt が gunicorn>=23・google-auth へ更新され、本番コードから oauth2client が撤廃されていること"""
+        req_path = os.path.join(PROJECT_ROOT, 'requirements.txt')
+        with open(req_path, 'r', encoding='utf-8') as f:
+            req_txt = f.read()
+        self.assertIn('gunicorn>=23', req_txt)
+        self.assertIn('google-auth', req_txt)
+        self.assertNotIn('oauth2client', req_txt)
+
+        offending = []
+        for root_dir, dirs, files in os.walk(PROJECT_ROOT):
+            dirs[:] = [d for d in dirs if d not in ('.git', '__pycache__', 'venv', '.venv', 'tests', '.agents')]
+            for fn in files:
+                if not fn.endswith('.py'):
+                    continue
+                fp = os.path.join(root_dir, fn)
+                with open(fp, 'r', encoding='utf-8') as pf:
+                    src = pf.read()
+                if 'oauth2client' in src:
+                    offending.append(os.path.relpath(fp, PROJECT_ROOT))
+        self.assertEqual(offending, [], f"oauth2client still referenced in: {offending}")
+
+    def test_phase_c_app_py_slimmed_and_blueprints_registered(self):
+        """app.py が 2,800行以下に分割され、4つのドメイン Blueprint が登録されていること"""
+        app_path = os.path.join(PROJECT_ROOT, 'app.py')
+        with open(app_path, 'r', encoding='utf-8') as f:
+            line_count = sum(1 for _ in f)
+        self.assertLessEqual(line_count, 2800, f"Expected app.py <= 2800 lines, got {line_count}")
+
+        for bp_name in ('portal_bp', 'seo_feeds_bp', 'staff_bp', 'sns_jobs_bp'):
+            self.assertIn(bp_name, self.app.blueprints, f"Missing blueprint: {bp_name}")
+
 
 if __name__ == '__main__':
     unittest.main()
