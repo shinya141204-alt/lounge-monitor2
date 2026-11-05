@@ -240,6 +240,18 @@ class StoreInsightTests(unittest.TestCase):
         self.assertEqual(names[1:], expected)
         self.assertEqual(out['total_cluster_stores'], 6)
 
+    def test_daily_rows_leave_missing_days_blank(self):
+        rows = [r for r in _synthetic_rows('A', days=21) if not r['ts'].startswith('2026-10-05')
+                and not r['ts'].startswith('2026-10-06 0')]
+        st = store_insights.compute_store_stats('A', rows=rows)
+        by_label = {d['label']: d for d in st['daily_rows']}
+        self.assertFalse(by_label['10/5(月)']['has_data'])
+        self.assertNotIn('peak_w', by_label['10/5(月)'])
+        self.assertTrue(by_label['10/6(火)']['has_data'])
+        ins = store_insights.build_store_insight('A', 'A店', stats_fn=lambda n: st)
+        self.assertEqual(len(ins['daily_recent']), 14)
+        self.assertEqual(len(ins['daily_recent']) + len(ins['daily_older']), len(st['daily_rows']))
+
     def test_nearest_section_mentions_distance_and_neighbor(self):
         data = {
             'A': store_insights.compute_store_stats('A', rows=_synthetic_rows('A', base_w=10)),

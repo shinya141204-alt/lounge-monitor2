@@ -167,6 +167,23 @@ def compute_store_stats(store_name: str, days: int = DEFAULT_DAYS, rows=None) ->
 
     best_day = max(day_peaks, key=lambda p: p['peak_w'])
     all_dates = sorted(valid_days.keys())
+    peak_by_date = {p['date']: p for p in day_peaks}
+    daily_rows = []
+    d_cur = all_dates[-1]
+    while d_cur >= all_dates[0]:
+        p = peak_by_date.get(d_cur)
+        label = f"{d_cur.month}/{d_cur.day}({WEEKDAYS_JA[d_cur.weekday()]})"
+        if p:
+            core = [o[4] / (o[4] + o[5]) * 100 for o in valid_days[d_cur]
+                    if 21 <= o[2] <= 23 and o[4] + o[5] >= MIN_RATIO_TOTAL]
+            daily_rows.append({
+                'label': label, 'has_data': True, 'peak_w': p['peak_w'], 'peak_m': p['peak_m'],
+                'peak_hm': ('翌' + p['peak_hm']) if p['peak_hour'] <= 6 else p['peak_hm'],
+                'core_wpct': round(_mean(core)) if len(core) >= 3 else None,
+            })
+        else:
+            daily_rows.append({'label': label, 'has_data': False})
+        d_cur -= datetime.timedelta(days=1)
     return {
         'store_name': store_name,
         'n_rows': len(obs),
@@ -197,6 +214,7 @@ def compute_store_stats(store_name: str, days: int = DEFAULT_DAYS, rows=None) ->
         'wpct_lasttrain': _band_wpct((23, 0)),
         'wpct_late': _band_wpct((1, 2, 3)),
         'men_first_rate': men_first_rate,
+        'daily_rows': daily_rows,
         'top_nights': [
             {
                 'label': f"{p['date'].month}/{p['date'].day}({WEEKDAYS_JA[p['wd']]})",
@@ -444,6 +462,8 @@ def build_store_insight(store_name: str, seo_name: str, area_label: str = '', ar
         'sections': sections,
         'weekday_rows': weekday_rows,
         'hourly_rows': hourly_rows,
+        'daily_recent': st['daily_rows'][:14],
+        'daily_older': st['daily_rows'][14:],
         'n_rows': st['n_rows'],
         'n_days': st['n_days'],
         'period_start': st['period_start'],

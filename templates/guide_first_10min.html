@@ -172,6 +172,22 @@
             font-size: 0.88rem;
             margin-top: 8px;
         }
+        .data-table-wrap { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 14px 0 20px; }
+        .data-table { width: 100%; border-collapse: collapse; font-size: 0.84rem; line-height: 1.5; font-variant-numeric: tabular-nums; color: #e4e4e7; }
+        .data-table th, .data-table td { padding: 8px 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); text-align: left; vertical-align: top; }
+        .data-table th { font-weight: 700; color: #f4f4f5; font-size: 0.76rem; }
+        .data-table td:first-child { white-space: nowrap; }
+        body.theme-light .data-table { color: #27272a; }
+        body.theme-light .data-table th { color: #18181b; }
+        body.theme-light .data-table th, body.theme-light .data-table td { border-bottom-color: #e4e4e7; }
+        .method-note { border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px; padding: 14px 16px; margin: 24px 0; }
+        .method-note h3 { margin: 0 0 6px; font-size: 0.95rem; }
+        .method-note p { font-size: 0.82rem !important; margin: 0 !important; }
+        body.theme-light .method-note { border-color: #d4d4d8; }
+        @media (max-width: 480px) {
+            .data-table { font-size: 0.76rem; }
+            .data-table th, .data-table td { padding: 7px 4px; }
+        }
     </style>
     <link rel="stylesheet" href="/static/calm.css?v=33">
     {% if not is_staff and not session.get('is_staff') %}
@@ -215,6 +231,7 @@
                     <li><a href="#s2">ハイブランドのロゴより「くたびれていない普通」が一番信頼される</a></li>
                     <li><a href="#s3">乾杯15分のシビアな現実：「面接官モード」と「スマホ表置きサイン」</a></li>
                     <li><a href="#s4">タブレット注文や店員さんへの態度で差がつくポイント</a></li>
+                    <li><a href="#s5">記録データで見る「最初の10分」：その間に店内はどれだけ動いているか</a></li>
                 </ol>
             </div>
 
@@ -286,6 +303,64 @@
             <p>
                 さらに、ドリンクを運んできてくれたスタッフさんに目を見て<strong>「ありがとうございます」</strong>と軽く一言添える。こういう何気ない余裕と丁寧さがあるテーブルは、45分後の連絡先交換や<a href="/guide/second-venue" style="color:#38bdf8;">2軒目への誘い</a>が本当に驚くほどスムーズになります。これからお店へ向かう方は、ぜひ『相席ナビ』でいま女性が多く集まっている店舗をチェックしてから出かけてみてください！
             </p>
+
+            <h2 id="s5">5. 記録データで見る「最初の10分」：その間に店内はどれだけ動いているか</h2>
+            <p>
+                最後に、相席ナビが記録している人数データから「10分」という時間の重みを確かめてみます。対象は<strong>2026年9月28日〜11月4日の38営業日</strong>、59店舗の人数記録です。同じ店舗の記録を約10分間隔（中央値10.0分）でペアにして、その間に男女の人数がどう変わったかを時間帯ごとに数えました（男女合計6名以上の時点のみ）。
+            </p>
+            <div class="data-table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr><th scope="col">時間帯</th><th scope="col">10分で2人以上動いた割合</th><th scope="col">女性が増えた／減った</th><th scope="col">女性が男性以上いた割合</th><th scope="col">男性1人あたりの女性数（中央値）</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>20時台</td><td>71%</td><td>48%／14%</td><td>95%</td><td>2.38人</td></tr>
+                        <tr><td>21〜22時台</td><td>77%</td><td>40%／25%</td><td>86%</td><td>1.48人</td></tr>
+                        <tr><td>23時台</td><td>79%</td><td>23%／46%</td><td>64%</td><td>1.08人</td></tr>
+                        <tr><td>0〜1時台</td><td>74%</td><td>27%／33%</td><td>61%</td><td>1.04人</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>10分あれば、7〜8割の確率で店内の人数が2人以上動く</h3>
+            <p>
+                どの時間帯でも、10分後には男女どちらかの人数が2人以上変わっている記録が7〜8割を占めていました（ペア数：20時台11,146組、21〜22時台22,025組、23時台10,931組、0〜1時台20,192組）。あなたが最初の10分間を目の前のテーブルで過ごしているあいだにも、店内では新しいグループの到着や退店が続いているということです。最初の数分で空気を温められないと、その間にほかの席やほかの店へ人が流れていく、というのは感覚だけの話ではありません。
+            </p>
+
+            <h3>20時台は「これから増える」、23時台は「これから減る」</h3>
+            <p>
+                20時台は、10分後に女性が増えていた記録が48%、減っていた記録が14%で、店に入ってくる人のほうが圧倒的に多い時間です。男性1人あたりの女性数も中央値で2.38人と余裕があり、最初の会話が多少ぎこちなくても、次の出会いの機会が十分に残っています。
+            </p>
+            <p>
+                一方、23時台になると女性が減っていた記録が46%に上り、増えていた記録（23%）の2倍になります。終電に向けて帰る人が多い時間帯で、<strong>いま同じテーブルにいる相手と話せるのは、この10分が最初で最後かもしれない</strong>という状況です。この時間に入るなら、本文の「1軒目トーク」でスムーズに会話を始め、タブレットを渡して相手が頼みやすい雰囲気を早めに作っておくことが、いつも以上に効いてきます。
+            </p>
+
+            <h3>深夜は男女がほぼ1対1。だからこそ「最初の印象」で選ばれる</h3>
+            <p>
+                女性が男性以上いた記録の割合は、20時台の95%から0〜1時台には61%まで下がり、男性1人あたりの女性数も1.04人とほぼ同数になります。女性側から見れば、深夜ほど「どのテーブルで飲むか」を選べる立場にあるということです。清潔感や、質問攻めにしない話し方といった本文のポイントは、時間が遅くなるほど結果に表れやすいと考えられます。
+            </p>
+
+            <h3>時間帯別：最初の10分の使い方</h3>
+            <ul>
+                <li><strong>20時台に入ったとき</strong>：女性が男性の2倍以上いて、10分ごとに女性が増えている時間です。焦って話題を詰め込まず、「ここ来る前に何か食べた？」のような軽い話題で、相手のペースに合わせて会話を始めましょう。この時間の印象がよければ、その後の席替えでも話しかけやすくなります。</li>
+                <li><strong>21〜22時台に入ったとき</strong>：店内の人数が最も大きく動く時間で、10分間で2人以上動いた記録が77%ありました。席に着いたら早めにタブレットを相手へ渡し、注文を通して「落ち着いて話せる状態」を先に作ると、周りのにぎやかさに会話が流されにくくなります。</li>
+                <li><strong>23時台に入ったとき</strong>：女性が帰り始める時間です。終電の時間を自然に聞いておき（「今日って何時くらいまで大丈夫そう？」）、相手の予定に合わせて話題の深さを調整すると、無理に引き止める印象を与えません。</li>
+                <li><strong>0時以降に入ったとき</strong>：男女がほぼ同数になり、女性が席を選びやすい時間です。テンションで押すより、疲れていないか・何か食べたいかを気づかう一言のほうが好印象につながります（深夜帯の傾向は<a href="/guide/club-area-midnight" style="color:#38bdf8;">クラブ街と深夜のデータ</a>でも紹介しています）。</li>
+            </ul>
+
+            <h3>この数字の読み方と限界</h3>
+            <p>
+                ここで使っているのは店内の「合計人数」の変化で、誰が誰と同じテーブルにいるか、席替えが何回あったかは記録していません。人数が変わらなくても入れ替わりが起きている場合もあれば、店によって席替えの仕組みも異なります。それでも、「入店直後の10分のあいだにも店の状況は大きく動く」「遅い時間ほど女性に選ばれる側になる」という2点は、時間帯を問わずはっきり表れていました。
+            </p>
+
+            <aside class="method-note" aria-label="集計方法">
+                <h3>集計方法</h3>
+                <p>
+                    データ：相席ナビが記録している各店舗の公式サイト公開人数（日時・店舗・男性人数・女性人数）。期間は2026年9月28日〜11月4日（38営業日）、記録100件以上の59店舗（韓国店舗は除外）。<br>
+                    ルール：男女とも0名の記録は除外。各記録から8〜12分後の同じ店舗の記録をペアにし、男女合計6名以上の時点のみで変化を集計。「2人以上動いた」は男女どちらかの増減が2人以上のもの。<br>
+                    再現：リポジトリ内の <code>scripts/article_stats.py --days 56</code> の first10 セクションで同じ数値を出力できます（2026年11月5日集計）。
+                </p>
+            </aside>
 
             {% if not is_staff and not session.get('is_staff') %}
             <div class="editorial-ref-note">

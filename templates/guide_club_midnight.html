@@ -6,14 +6,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="google-site-verification" content="9kZaSJbaCuvn8QpGErUwI59w7Lf4N8ILhb_nWqDHI2s">
     <title>なぜ梅田・渋谷・新宿の相席ラウンジは深夜0時を過ぎても女性が減らないのか？データで見えた「ダンスクラブ×相席」深夜2回転目の法則｜相席ナビ</title>
-    <meta name="description" content="全国53店舗の相席ラウンジのリアルタイム人数データを追跡して判明した「大型ダンスクラブがある街は深夜0時過ぎから第2波が来る」回遊法則を徹底解説。大阪梅田・心斎橋・渋谷・新宿・名古屋栄・福岡天神・札幌すすきのの深夜攻略ガイド。">
+    <meta name="description" content="大型ダンスクラブがある街の相席ラウンジは深夜に強いのか。59店舗の人数記録で、終電後の残存率と「二山型」の波形をクラブ街とそれ以外で比較。大阪梅田・心斎橋・渋谷・新宿・名古屋栄・福岡天神・札幌すすきのの深夜攻略ガイド。">
     <meta name="keywords" content="相席ラウンジ 深夜,オリエンタルラウンジ 深夜,JIS 梅田 深夜,ag 渋谷 深夜,新宿 相席 終電後,クラブ 相席ラウンジ,相席ナビ">
     <link rel="canonical" href="https://aiseki-navi.com/guide/club-area-midnight">
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
 
     <!-- OGP / SNS Card Settings -->
     <meta property="og:title" content="なぜ梅田・渋谷・新宿は深夜0時過ぎても女性が減らない？「ダンスクラブ×相席」深夜2回転目の法則｜相席ナビ">
-    <meta property="og:description" content="終電後に一気に過疎る街と、深夜1時から再び女性が急増する街の決定的な違いを全国53店舗データから解説！">
+    <meta property="og:description" content="クラブ街の相席ラウンジは深夜に強いのか。59店舗の記録で、終電後の残存率と二山型の波形を検証しました。">
     <meta property="og:type" content="article">
     <meta property="og:url" content="https://aiseki-navi.com/guide/club-area-midnight">
     <meta property="og:site_name" content="相席ナビ">
@@ -33,7 +33,7 @@
         "headline": "なぜ梅田・渋谷・新宿の相席ラウンジは深夜0時を過ぎても女性が減らないのか？データで見えた「ダンスクラブ×相席」深夜2回転目の法則",
         "image": ["https://aiseki-navi.com/static/eyecatch-club-midnight.jpg"],
         "datePublished": "2026-10-24T01:00:00+09:00",
-        "dateModified": "2026-10-24T09:00:00+09:00",
+        "dateModified": "2026-11-05T12:00:00+09:00",
         "author": {
           "@type": "Organization",
           "name": "相席ナビ データ分析チーム",
@@ -47,7 +47,7 @@
             "url": "https://aiseki-navi.com/static/icon.png"
           }
         },
-        "description": "全国53店舗の相席ラウンジ時系列データを分析して判明した、大型ナイトクラブ密集エリア特有の「深夜0時以降の第2波（2回転目）」のメカニズムと立ち回りガイド。"
+        "description": "大型ナイトクラブ密集エリアの相席ラウンジで起きる深夜の第2波について、59店舗の人数記録で終電後の残存率と二山型の波形を検証した立ち回りガイド。"
       },
       {
         "@context": "https://schema.org",
@@ -192,6 +192,21 @@
             color: #e5c878;
             font-weight: 700;
         }
+        .data-table-wrap { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 14px 0 20px; }
+        .data-table { width: 100%; border-collapse: collapse; font-size: 0.84rem; line-height: 1.5; font-variant-numeric: tabular-nums; color: #e4e4e7; }
+        .data-table th, .data-table td { padding: 8px 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); text-align: left; vertical-align: top; }
+        .data-table th { font-weight: 700; color: #f4f4f5; font-size: 0.78rem; }
+        body.theme-light .data-table { color: #27272a; }
+        body.theme-light .data-table th { color: #18181b; }
+        body.theme-light .data-table th, body.theme-light .data-table td { border-bottom-color: #e4e4e7; }
+        .method-note { border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px; padding: 14px 16px; margin: 24px 0; }
+        .method-note h3 { margin: 0 0 6px; font-size: 0.95rem; }
+        .method-note p { font-size: 0.82rem !important; margin: 0 !important; }
+        body.theme-light .method-note { border-color: #d4d4d8; }
+        @media (max-width: 480px) {
+            .data-table { font-size: 0.78rem; }
+            .data-table th, .data-table td { padding: 7px 5px; }
+        }
     </style>
     <link rel="stylesheet" href="/static/calm.css?v=33">
     {% if not is_staff and not session.get('is_staff') %}
@@ -223,7 +238,7 @@
             </div>
             <p class="article-lead">
                 深夜1時10分。梅田・東通りや渋谷・道玄坂、新宿・歌舞伎町の路地を歩いていると、終電はとっくに終わったはずなのに、重低音が漏れ聞こえる大型クラブの方向から、ヒールを少し引きずりながら歩いてくる華やかな女性2人組がそのまま相席ラウンジのエレベーターへ吸い込まれていく場面によく出くわします。<br>
-                全国53店舗のリアルタイム人数を24時間追いかけていてわかった、<strong>「深夜0時半からもう一度女性が急増する街」の正体</strong>をお話しします。
+                相席ナビが記録している人数データと現場の様子から、<strong>「深夜0時半からもう一度女性が増える街」の正体</strong>をお話しします。後半では、59店舗の記録でどこまで裏付けられるかも検証しました。
             </p>
         </header>
 
@@ -240,7 +255,7 @@
             </div>
 
             <p>
-                毎日53店舗の時系列グラフを眺めていると、大型ダンスクラブが徒歩3〜5分圏内にある街だけは、<strong>1晩に2回のピーク（綺麗な二山型の波形）</strong>が描かれる理由が手に取るように分かります。
+                時系列グラフを眺めていると、大型ダンスクラブが徒歩3〜5分圏内にある街では、<strong>1晩に2回のピーク（二山型の波形）</strong>が描かれる日が目立ちます。
             </p>
 
             <div class="article-highlight-box">
@@ -263,9 +278,9 @@
                 こんなふうに21時台は「これからクラブへ繰り出す0次会女子」、そして深夜1時台は「クラブから抜け出してきた休憩女子」が入れ替わりで入ってくるため、朝方まで女性の波が途切れません。
             </p>
 
-            <h2>2. データで実証！「クラブ×相席」の回遊が起きている7大エリア</h2>
+            <h2>2. 「クラブ×相席」の回遊が起きやすい7大エリア</h2>
             <p>
-                実際に『相席ナビ』の深夜帯（0:00〜3:00）ランキングでいつも上位に顔を出す店舗を地図に落としてみると、見事なまでに有名ナイトクラブと目と鼻の先に並んでいます。
+                『相席ナビ』の深夜帯（0:00〜3:00）によく名前が挙がる店舗を地図に落としてみると、有名ナイトクラブの近くに並んでいることがわかります。実際にどこまで数字に表れているかは、後半の「記録データで検証」で確かめます。
             </p>
 
             <div style="overflow-x: auto;">
@@ -321,7 +336,7 @@
             <h3>① 24時過ぎの「↗ +数字（直近15分の伸び）」を待ってから入る</h3>
             <p>
                 終電前後の23:30〜24:15頃は、どのお店もいったん終電組のお会計でバタつきます。そこで焦って飛び込まず、クラブ街の店舗で<strong>24:30〜25:30頃に再び「女性 ↗ +12」のような第2波シグナル</strong>が灯るのを画面で確認してから入店してみてください。<br>
-                サラリーマン層の男性ライバルが終電で引いたあとなので、21時台のような長い入店待ちもなく、<strong>すんなり座れてノリの良い女性と乾杯できる確率がぐっと上がります</strong>。
+                ただし記録を見ると、金・土の0時台は全店舗の記録の57%で男性のほうが多く、<strong>終電で男性客が大きく減るわけではありません</strong>（<a href="/guide/weekend-strategy" style="color:#f472b6;">週末の時間帯別データ</a>）。第2波のサインが出ている店でも、入る前に男女の人数を確かめてから向かうのが確実です。
             </p>
 
             <h3>② ハイテンションで押すより「労い（ねぎらい）の一言」が効く</h3>
@@ -337,6 +352,96 @@
             <p>
                 爆音とナンパの喧騒に少し疲れて「落ち着ける場所」を求めて来ているからこそ、トーンを落とした優しい気遣いが一番心に響きます。終電を逃した金曜・土曜の夜は、ぜひこの「クラブ街の深夜第2波」を味方につけてみてください。
             </p>
+
+            <h2>4. 記録データで検証：クラブ街の店舗は本当に深夜に強いのか</h2>
+            <p>
+                ここまでは現場でよく見かける光景をもとに書いてきました。では、相席ナビが記録している人数データで確かめると、どこまで言えるのでしょうか。<strong>2026年9月28日〜11月4日の38営業日</strong>について、記録が14営業日以上ある49店舗を、上の表に挙げたクラブ街の店舗（20店舗）とそれ以外（29店舗）に分けて比べました。
+            </p>
+
+            <h3>4-1. 「終電後に女性が残る割合」は、クラブ街かどうかでほとんど変わらない</h3>
+            <p>
+                各店舗について、営業日ごとに「21〜22時台の平均女性数」に対する「0〜1時台の平均女性数」の割合（終電後の残存率）を計算し、その中央値を店舗の値としました。100%なら終電後も21〜22時台と同じ人数が残っていること、100%を超えれば終電後のほうが多いことを意味します。
+            </p>
+            <div class="data-table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr><th scope="col">店舗グループ</th><th scope="col">終電後の残存率（全曜日）</th><th scope="col">金・土のみ</th><th scope="col">翌2〜3時台まで残る割合</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>クラブ街の店舗（20）</td><td>94%</td><td>107%</td><td>64%</td></tr>
+                        <tr><td>それ以外の店舗（29）</td><td>88%</td><td>109%</td><td>54%</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <p>
+                全曜日で見るとクラブ街の店舗は94%、それ以外は88%で、差は6ポイントほどです。金・土に限ると両者とも100%を超え（107%と109%）、<strong>週末の0〜1時台に女性が減らないのは、クラブ街に限らずほとんどの店舗に共通する傾向</strong>でした。違いがはっきり出たのは翌2〜3時台で、クラブ街の店舗は21〜22時台の64%が残っているのに対し、それ以外は54%です。クラブ街の強みは「0時台」よりも、さらに遅い「2時以降まで人が残ること」にあると言えそうです。
+            </p>
+
+            <h3>4-2. 「二山型」の波形はクラブ街に集中していた</h3>
+            <p>
+                次に、金・土の1時間ごとの平均女性数を店舗ごとに並べ、「21〜22時台に最初の山があり、23〜0時台にいったん5%以上減って、翌1〜3時台に再び5%以上増える」形を二山型として数えました。
+            </p>
+            <ul style="font-size:0.93rem; line-height:1.9;">
+                <li>クラブ街の店舗：<strong>20店舗中7店舗（35%）</strong>が二山型（オリエンタルラウンジ 新宿・JIS 新宿・オリエンタルラウンジ 恵比寿・ag 梅田・オリエンタルラウンジ 心斎橋・オリエンタルラウンジ 難波・ag 名古屋）</li>
+                <li>それ以外の店舗：<strong>29店舗中2店舗（7%）</strong>（JIS 大宮・ag 上野）</li>
+            </ul>
+            <p>
+                二山型の店舗の割合はクラブ街で約5倍でした。本文で紹介した「終電でいったん減り、深夜にもう一度増える」という動きは、すべてのクラブ街の店舗で起きているわけではないものの、起きている店舗の多くはクラブ街にある、というのが記録から読み取れる姿です。
+            </p>
+
+            <h3>4-3. 同じクラブ街でも、店舗ごとの差は大きい</h3>
+            <p>
+                店舗別に見ると、終電後の残存率が高かったのはJIS 福岡（138%）やオリエンタルラウンジ 心斎橋（127%、二山型）でした。一方で、同じ梅田・茶屋町エリアでもJIS 茶屋町は35%、ヤタコイ茶屋町は32%と、終電の前に女性の多くが帰る店舗もあります。新宿のJIS 西新宿は全曜日で22%と低いものの、金・土に限ると55%まで上がりました。
+            </p>
+            <p>
+                また、残存率が最も高かったのはクラブ街ではない店舗でした。ag 金沢（151%）、ag 沖縄（148%）、オリエンタルラウンジ 宇都宮（144%）、オリエンタルラウンジ 宮崎（140%）などです。これらの街は終電の時刻や移動手段が大都市と異なるため、深夜まで滞在する人が多い可能性がありますが、記録だけでは理由までは断定できません。
+            </p>
+
+            <div class="data-table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr><th scope="col">店舗</th><th scope="col">クラブ街</th><th scope="col">残存率（全曜日）</th><th scope="col">金・土のみ</th><th scope="col">翌2〜3時台</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>ag 金沢</td><td>―</td><td>151%</td><td>180%</td><td>91%</td></tr>
+                        <tr><td>ag 沖縄</td><td>―</td><td>148%</td><td>157%</td><td>112%</td></tr>
+                        <tr><td>オリエンタルラウンジ 宇都宮</td><td>―</td><td>144%</td><td>177%</td><td>92%</td></tr>
+                        <tr><td>オリエンタルラウンジ 宮崎</td><td>―</td><td>140%</td><td>141%</td><td>97%</td></tr>
+                        <tr><td>JIS 福岡</td><td>○</td><td>138%</td><td>114%</td><td>93%</td></tr>
+                        <tr><td>CLOVERS 広島</td><td>―</td><td>129%</td><td>130%</td><td>99%</td></tr>
+                        <tr><td>オリエンタルラウンジ 心斎橋</td><td>○</td><td>127%</td><td>132%</td><td>96%</td></tr>
+                        <tr><td>オリエンタルラウンジ 熊本</td><td>―</td><td>127%</td><td>130%</td><td>74%</td></tr>
+                        <tr><td>JIS 茶屋町</td><td>○</td><td>35%</td><td>64%</td><td>19%</td></tr>
+                        <tr><td>オリエンタルラウンジ 上野</td><td>―</td><td>34%</td><td>47%</td><td>30%</td></tr>
+                        <tr><td>ヤタコイ茶屋町</td><td>○</td><td>32%</td><td>37%</td><td>21%</td></tr>
+                        <tr><td>オリエンタルラウンジ 錦糸町</td><td>―</td><td>28%</td><td>34%</td><td>22%</td></tr>
+                        <tr><td>JIS 西新宿</td><td>○</td><td>22%</td><td>55%</td><td>51%</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <p style="font-size:0.84rem;">表は残存率の上位8店舗と下位5店舗（記録14営業日以上の49店舗中）。</p>
+
+            <h3>4-4. 深夜帯に向かう前のチェックポイント</h3>
+            <ul style="font-size:0.93rem; line-height:1.9;">
+                <li><strong>0〜1時台に入るなら</strong>：週末はクラブ街以外でも女性数が21〜22時台と同じ水準に保たれているので、エリアより「いま男女どちらが多いか」を優先して選びます。</li>
+                <li><strong>2時以降まで飲むつもりなら</strong>：翌2〜3時台まで人が残る割合はクラブ街の店舗が10ポイントほど高いため、心斎橋・新宿・恵比寿などの二山型の店舗が候補になります。</li>
+                <li><strong>梅田・茶屋町で深夜に移るなら</strong>：同じエリアでも残存率が30%台の店舗があります。終電前に入った店が深夜に閑散としてきたら、残存率の高い近くの店舗へ移るのも一つの方法です。</li>
+                <li><strong>地方の店舗</strong>：金沢・沖縄・宇都宮・宮崎などは終電後のほうが女性が多い日が多く、深夜の選択肢として見落とされがちです。</li>
+            </ul>
+
+            <h3>4-5. まとめ：深夜に狙うなら「エリア」より「店舗の記録」を見る</h3>
+            <p>
+                記録から言えるのは、①週末の0〜1時台に女性が減らないのは多くの店舗に共通している、②翌2時以降まで人が残る店舗や、深夜にもう一度増える二山型の店舗はクラブ街に多い、③ただし同じエリアでも店舗による差が大きい、の3点です。深夜帯に入る店を選ぶときは、「クラブ街だから大丈夫」と決めつけず、各店舗のページにある「終電後に女性がどれだけ残るか」の数字や、直近の日別ピークを確認してから向かうのがおすすめです。
+            </p>
+
+            <aside class="method-note" aria-label="集計方法">
+                <h3>集計方法</h3>
+                <p>
+                    データ：相席ナビが記録している各店舗の公式サイト公開人数（日時・店舗・男性人数・女性人数）。期間は2026年9月28日〜11月4日（38営業日）。店舗別の比較は、21〜22時台の平均女性数が3名以上ある営業日が14日以上ある店舗のみ（韓国店舗は除外）。<br>
+                    ルール：男女とも0名の記録は除外。0時〜6時台は前日の営業日として扱う。残存率は営業日ごとの「0〜1時台の平均女性数÷21〜22時台の平均女性数」の中央値。二山型は金・土の時間別平均女性数で判定。クラブ街の店舗は本文の表に挙げた20店舗。<br>
+                    再現：リポジトリ内の <code>scripts/article_stats.py --days 56 --min-days-store 14</code> で同じ数値を出力できます（2026年11月5日集計）。
+                </p>
+            </aside>
 
             <div style="text-align: center; margin: 36px 0;">
                 <a href="/" class="cta-btn" style="display: inline-flex; align-items: center; gap: 8px; padding: 14px 30px; border-radius: 999px; text-decoration: none; font-weight: 800; font-size: 0.96rem;">

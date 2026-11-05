@@ -27,12 +27,16 @@ DEFAULT_SLUGS = [
 ]
 
 
-def visible_text(raw_html: str) -> str:
+def visible_text(raw_html: str, strip_chrome: bool = False) -> str:
     body = raw_html
     m = re.search(r'<body[^>]*>(.*)</body>', raw_html, re.S | re.I)
     if m:
         body = m.group(1)
     body = re.sub(r'<(script|style|noscript|svg|template)\b.*?</\1>', ' ', body, flags=re.S | re.I)
+    if strip_chrome:
+        # サイト共通のナビゲーション・フッターを除いた「本文」だけで比較する
+        body = re.sub(r'<(nav|footer)\b.*?</\1>', ' ', body, flags=re.S | re.I)
+        body = re.sub(r'<div class="portal-top-header".*?</div>\s*</div>', ' ', body, flags=re.S | re.I)
     body = re.sub(r'<[^>]+>', ' ', body)
     body = html.unescape(body)
     return re.sub(r'\s+', ' ', body).strip()
@@ -69,10 +73,11 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--prod', action='store_true')
     ap.add_argument('--slugs', default='')
+    ap.add_argument('--strip-chrome', action='store_true', help='共通ナビ・フッターを除いて測る')
     args = ap.parse_args()
     slugs = [x for x in args.slugs.split(',') if x] or DEFAULT_SLUGS
     pages = fetch_prod(slugs) if args.prod else fetch_local(slugs)
-    texts = {s: visible_text(h) for s, h in pages.items()}
+    texts = {s: visible_text(h, strip_chrome=args.strip_chrome) for s, h in pages.items()}
     for s, t in texts.items():
         print(f'{s}: {len(t)} chars')
     ratios = []

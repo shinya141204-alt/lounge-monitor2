@@ -480,6 +480,10 @@
         .store-insight-table td { white-space: nowrap; }
         .store-insight-note { margin: 12px 0 0; font-size: 0.76rem; color: var(--text-sub); line-height: 1.7; }
         .store-related-links { display: flex; flex-wrap: wrap; gap: 8px; }
+        .store-daily-table th, .store-daily-table td { padding: 6px 6px; font-size: 0.8rem; }
+        .store-daily-table th { white-space: normal; line-height: 1.35; }
+        .store-daily-more { margin-top: 8px; }
+        .store-daily-more > summary { cursor: pointer; min-height: 40px; display: flex; align-items: center; font-size: 0.84rem; font-weight: 600; color: var(--text-main); }
         .store-related-links .btn-secondary { min-height: 40px; font-size: 0.82rem; }
     </style>
     <link rel="stylesheet" href="/static/calm.css?v=33">
@@ -673,7 +677,7 @@
                 </div>
             </div>
 
-            {% if store_analytics.daily_logs %}
+            {% if store_analytics.daily_logs and not store_insight %}
             <h3 style="margin: 20px 0 10px; font-size: 0.94rem; color: var(--text-main);">直近の日別ピーク実績ログ（最高女性人数・ピーク時刻）</h3>
             <div class="stats-table-wrap">
                 <table class="store-comp-table" style="width: 100%;">
@@ -764,6 +768,47 @@
                     </tbody>
                 </table>
             </div>
+            {% endif %}
+            {% if store_insight.daily_recent %}
+            {% macro daily_peak_table(rows) %}
+            <div class="stats-table-wrap">
+                <table class="store-comp-table store-insight-table store-daily-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">営業日</th>
+                            <th scope="col">最大女性</th>
+                            <th scope="col">その時の男性</th>
+                            <th scope="col">時刻</th>
+                            <th scope="col">21〜23時女性比</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for d in rows %}
+                        <tr>
+                            <td>{{ d.label }}</td>
+                            {% if d.has_data %}
+                            <td>{{ d.peak_w }}名</td>
+                            <td>{{ d.peak_m }}名</td>
+                            <td>{{ d.peak_hm }}</td>
+                            <td>{% if d.core_wpct is not none %}{{ d.core_wpct }}%{% endif %}</td>
+                            {% else %}
+                            <td></td><td></td><td></td><td></td>
+                            {% endif %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endmacro %}
+            <h3 class="store-insight-h3">日別の最大女性数（直近{{ store_insight.daily_recent|length }}日）</h3>
+            {{ daily_peak_table(store_insight.daily_recent) }}
+            {% if store_insight.daily_older %}
+            <details class="store-daily-more">
+                <summary>それ以前の{{ store_insight.daily_older|length }}日分を見る</summary>
+                {{ daily_peak_table(store_insight.daily_older) }}
+            </details>
+            {% endif %}
+            <p class="store-insight-note">記録が取れなかった日は空欄にしています。</p>
             {% endif %}
             <p class="store-insight-note">集計方法は<a href="/about" style="color: var(--accent-text);">相席ナビについて</a>に記載しています（0〜6時台は前日扱い、0名の記録は除外、女性比率は男女合計6名以上で計算）。</p>
         </section>
