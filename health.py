@@ -49,18 +49,29 @@ def _now_str():
     return datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).strftime('%Y-%m-%d %H:%M:%S')
 
 
-def send_alert(key, message):
+def _resolve_webhook_url() -> str:
+    try:
+        import ops_governance
+        eff = ops_governance.get_effective_webhook_url()
+        if eff:
+            return eff
+    except Exception:
+        pass
+    return os.environ.get('ALERT_WEBHOOK_URL', '').strip()
+
+
+def send_alert(key, message, bypass_cooldown: bool = False):
     """クールダウン付きで通知。送信（またはログ記録）したら True。"""
     now = time.time()
     with _lock:
-        if now - _last_sent.get(key, 0) < COOLDOWN_SEC:
+        if not bypass_cooldown and (now - _last_sent.get(key, 0) < COOLDOWN_SEC):
             return False
         _last_sent[key] = now
         _sent_log.append({'key': key, 'message': message, 'at': _now_str()})
         del _sent_log[:-50]
 
     logging.warning(f"[ALERT] {message}")
-    url = os.environ.get('ALERT_WEBHOOK_URL', '').strip()
+    url = _resolve_webhook_url()
     if url:
         def _post():
             try:
@@ -72,6 +83,26 @@ def send_alert(key, message):
                 logging.error(f"[health] webhook failed: {e}")
         threading.Thread(target=_post, daemon=True).start()
     return True
+
+
+def send_test_webhook() -> dict:
+    """管理画面から同期テスト通知を送信し、HTTP応答を検証する。"""
+    url = _resolve_webhook_url()
+    if not url:
+        return {'ok': False, 'error': '通知用Webhook URLが登録されていません。'}
+    try:
+        text = f"【相席ナビ監視】テスト通知です（{_now_str()} JST）。お問い合わせ・削除依頼・取得異常が発生した際にこのチャンネルへ即時通知されます。"
+        r = requests.post(
+            url,
+            data=json.dumps({'content': text, 'text': text}),
+            headers={'Content-Type': 'application/json'},
+            timeout=8,
+        )
+        if 200 <= r.status_code < 300:
+            return {'ok': True, 'message': f'テスト通知の送信に成功しました（HTTP {r.status_code}）。'}
+        return {'ok': False, 'error': f'送信先サーバーがエラーを返しました（HTTP {r.status_code}）。'}
+    except Exception as e:
+        return {'ok': False, 'error': f'送信エラー: {e}'}
 
 
 def record_fetch(results_by_name, errors, all_sources):

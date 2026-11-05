@@ -85,8 +85,21 @@ def brand_asobibar():
 
 
 def _render_brand_page(brand_slug):
+    import ops_governance
     import store_hours
     import store_master
+    if ops_governance.is_brand_hidden(brand_slug):
+        resp = make_response(
+            render_template(
+                'error.html',
+                code=410,
+                title='このページの掲載は終了しました',
+                message='運営方針に基づき、対象ブランドの掲載を取り下げています。',
+            ),
+            410,
+        )
+        resp.headers['X-Robots-Tag'] = 'noindex, nofollow'
+        return resp
     core.restore_latest_data_if_empty()
     core.trigger_background_fetch_if_needed()
     brand = BRAND_GUIDES.get(brand_slug)
@@ -95,12 +108,15 @@ def _render_brand_page(brand_slug):
 
     def _render():
         with core.data_lock:
-            raw_stores = list(core.latest_data.get('full_data') or [])
+            raw_stores = ops_governance.filter_visible_stores(list(core.latest_data.get('full_data') or []))
             last_updated = core.latest_data.get('last_updated') or '--:--'
 
         master = store_master.load()
         live_map = {s.get('name'): s for s in raw_stores}
-        all_names = list(dict.fromkeys(list(live_map.keys()) + list(master.keys())))
+        all_names = [
+            n for n in dict.fromkeys(list(live_map.keys()) + list(master.keys()))
+            if not ops_governance.is_store_hidden(n)
+        ]
 
         matched = []
         for sname in all_names:
@@ -151,6 +167,7 @@ def _render_brand_page(brand_slug):
 
 @portal_bp.route('/store/<store_slug>')
 def store_detail_page(store_slug):
+    import ops_governance
     import store_hours
     import store_master
     legacy_target = store_master.legacy_redirect_for_slug(store_slug)
@@ -160,12 +177,24 @@ def store_detail_page(store_slug):
     core.restore_latest_data_if_empty()
     core.trigger_background_fetch_if_needed()
     with core.data_lock:
-        raw_stores = list(core.latest_data.get('full_data') or [])
+        raw_stores = ops_governance.filter_visible_stores(list(core.latest_data.get('full_data') or []))
         last_updated = core.latest_data.get('last_updated') or '--:--'
 
     sname = store_master.store_by_slug(store_slug, live_stores=raw_stores)
     if not sname:
         abort(404)
+    if ops_governance.is_store_hidden(sname):
+        resp = make_response(
+            render_template(
+                'error.html',
+                code=410,
+                title='この店舗ページの掲載は終了しました',
+                message='運営方針に基づき、当該店舗の掲載を取り下げています。',
+            ),
+            410,
+        )
+        resp.headers['X-Robots-Tag'] = 'noindex, nofollow'
+        return resp
 
     def _render():
         store_analytics = None

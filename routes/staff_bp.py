@@ -182,6 +182,8 @@ def staff_analytics():
         )
     except Exception:
         forecast_accuracy = None
+    import ops_governance
+    ops_gov = ops_governance.get_governance_dashboard_state()
     return render_template(
         'staff_analytics.html',
         data=data,
@@ -191,7 +193,86 @@ def staff_analytics():
         aff_status=aff_status,
         retention_status=retention_status,
         forecast_accuracy=forecast_accuracy,
+        ops_gov=ops_gov,
     )
+
+
+def _check_master_api_csrf():
+    if not core.is_master_authorized():
+        return jsonify({'ok': False, 'error': 'マスター権限が必要です'}), 401
+    if request.method == 'POST' and not (request.headers.get('X-Admin-Secret') or '').strip():
+        sec_fetch = (request.headers.get('Sec-Fetch-Site') or '').strip().lower()
+        if sec_fetch and sec_fetch not in ('same-origin', 'none'):
+            return jsonify({'ok': False, 'error': '不正なリクエスト元です'}), 403
+        import contact_form
+        if not contact_form.is_same_origin(request.headers.get('Origin'), request.headers.get('Referer'), request.host):
+            return jsonify({'ok': False, 'error': 'オリジンが一致しません'}), 403
+    return None
+
+
+@staff_bp.route('/api/ops/governance', methods=['GET', 'POST'])
+def api_ops_governance():
+    """Master-only API for emergency store/brand opt-out, inquiry inbox, staff force-logout/passcode, and webhook."""
+    guard = _check_master_api_csrf()
+    if guard is not None:
+        return guard
+    import ops_governance
+    if request.method == 'GET':
+        return jsonify({'ok': True, 'ops_gov': ops_governance.get_governance_dashboard_state()})
+
+    payload = request.get_json(silent=True, force=True) or {}
+    action = str(payload.get('action') or '').strip()
+
+    if action == 'toggle_brand':
+        res = ops_governance.set_brand_hidden(str(payload.get('brand_key') or ''), bool(payload.get('hidden')))
+        if not res.get('ok'):
+            return jsonify(res), 400
+        core.clear_fast_http_caches()
+        return jsonify({**res, 'ops_gov': ops_governance.get_governance_dashboard_state()})
+
+    if action == 'toggle_store':
+        res = ops_governance.set_store_hidden(str(payload.get('store_name') or ''), bool(payload.get('hidden')))
+        if not res.get('ok'):
+            return jsonify(res), 400
+        core.clear_fast_http_caches()
+        return jsonify({**res, 'ops_gov': ops_governance.get_governance_dashboard_state()})
+
+    if action == 'resolve_inquiry':
+        res = ops_governance.set_inquiry_resolved(str(payload.get('inquiry_id') or ''), bool(payload.get('resolved', True)))
+        if not res.get('ok'):
+            return jsonify(res), 400
+        return jsonify({**res, 'ops_gov': ops_governance.get_governance_dashboard_state()})
+
+    if action == 'force_logout_staff':
+        res = ops_governance.force_logout_all_staff()
+        return jsonify({
+            **res,
+            'message': '全一般スタッフ端末のログインセッションを即時失効しました（マスターログインは維持されます）。',
+            'ops_gov': ops_governance.get_governance_dashboard_state(),
+        })
+
+    if action == 'update_staff_passcode':
+        res = ops_governance.update_staff_passcode(
+            new_passcode=str(payload.get('passcode') or ''),
+            reset_to_env=bool(payload.get('reset_to_env', False)),
+        )
+        if not res.get('ok'):
+            return jsonify(res), 400
+        return jsonify({**res, 'ops_gov': ops_governance.get_governance_dashboard_state()})
+
+    if action == 'set_webhook':
+        res = ops_governance.set_webhook_url(str(payload.get('url') or ''))
+        if not res.get('ok'):
+            return jsonify(res), 400
+        return jsonify({**res, 'ops_gov': ops_governance.get_governance_dashboard_state()})
+
+    if action == 'test_webhook':
+        import health
+        res = health.send_test_webhook()
+        status_code = 200 if res.get('ok') else 400
+        return jsonify({**res, 'ops_gov': ops_governance.get_governance_dashboard_state()}), status_code
+
+    return jsonify({'ok': False, 'error': f'未対応の操作です: {action}'}), 400
 
 
 @staff_bp.route('/api/affiliate/config', methods=['GET', 'POST'])

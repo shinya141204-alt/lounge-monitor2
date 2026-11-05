@@ -538,7 +538,18 @@ def sitemap_xml():
     lm_privacy = _template_lastmod('privacy.html', '2026-10-30')
     lm_about = _template_lastmod('about.html', '2026-11-04')
     lm_contact = _template_lastmod('contact.html', '2026-11-04')
-    smap_key = (today, tuple(it.get('slug') for it in pub_items), lm_guide, lm_about, lm_dress)
+    import ops_governance
+    hidden_brands = ops_governance.get_hidden_brands()
+    hidden_stores = ops_governance.get_hidden_stores()
+    smap_key = (
+        today,
+        tuple(it.get('slug') for it in pub_items),
+        lm_guide,
+        lm_about,
+        lm_dress,
+        tuple(sorted(hidden_brands)),
+        tuple(sorted(hidden_stores)),
+    )
     smap_cache = core._sitemap_xml_cache
     with core._aux_doc_cache_lock:
         if smap_cache['key'] == smap_key and smap_cache['xml'] is not None:
@@ -549,7 +560,7 @@ def sitemap_xml():
     <lastmod>{today}</lastmod>
     <changefreq>hourly</changefreq>
     <priority>0.95</priority>
-  </url>""" for bslug in BRAND_GUIDES.keys()
+  </url>""" for bslug in BRAND_GUIDES.keys() if bslug not in hidden_brands
     ])
     area_urls = "\n".join([
         f"""  <url>
@@ -560,7 +571,11 @@ def sitemap_xml():
   </url>""" for slug in AREA_GUIDES.keys()
     ])
     master_stores = store_master.load()
-    store_slugs = [store_master.slug_of(sname) for sname in master_stores.keys()]
+    store_slugs = [
+        store_master.slug_of(sname)
+        for sname in master_stores.keys()
+        if not ops_governance.is_store_hidden(sname)
+    ]
     store_urls = "\n".join([
         f"""  <url>
     <loc>https://aiseki-navi.com/store/{sslug}</loc>

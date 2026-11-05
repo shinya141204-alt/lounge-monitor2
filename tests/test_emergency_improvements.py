@@ -369,11 +369,11 @@ class TestEmergencyImprovements(unittest.TestCase):
         self.assertEqual(r3.status_code, 200)
         self.assertEqual(len(calls), 1, f"Expected 1 Pillow render across random ?s= params, got {len(calls)}")
 
-    def test_claude_audit_session_24h_and_passcode_rotation_revokes_cookie(self):
-        """セッション寿命が24時間であり、パスコード変更時に既存ログインセッションが即時失効すること"""
+    def test_claude_audit_session_7d_and_passcode_rotation_revokes_cookie(self):
+        """セッション寿命が7日間であり、パスコード変更時に既存ログインセッションが即時失効すること"""
         import datetime
         from unittest.mock import patch
-        self.assertEqual(app_module.app.permanent_session_lifetime, datetime.timedelta(hours=24))
+        self.assertEqual(app_module.app.permanent_session_lifetime, datetime.timedelta(days=7))
 
         r_login = self.client.post('/staff', data={'passcode': app_module.MASTER_PASSCODE})
         self.assertEqual(r_login.status_code, 302)
@@ -421,6 +421,8 @@ class TestEmergencyImprovements(unittest.TestCase):
         about_html = r_about.data.decode('utf-8')
         self.assertIn('<main>', about_html)
         self.assertIn('"sameAs"', about_html)
+        self.assertIn('編集長：ミナト', about_html)
+        self.assertNotIn('Kuwano', about_html)
         self.assertIn('JIS（ジス）', about_html)
         self.assertIn('ASOBIBAR（アソビバー）', about_html)
 
@@ -432,6 +434,116 @@ class TestEmergencyImprovements(unittest.TestCase):
         self.assertNotIn('"@type": "FAQPage"', st_html)
         soup = BeautifulSoup(st_html, 'html.parser')
         self.assertNotIn('現在：女性', soup.title.string or '')
+
+    def test_owner_ops_governance_suite(self):
+        """オーナー運用4項目（24h対応方針、店舗/ブランド即時非表示スイッチ、スタッフ強制ログアウト＆パスコード変更、受信箱＆SSRF防止Webhook）の総合検証"""
+        import tempfile
+        from unittest.mock import patch
+        import contact_form
+        import job_state
+        import ops_governance
+
+        with tempfile.TemporaryDirectory() as tmp_js_dir, \
+             patch.dict(os.environ, {'JOB_STATE_DIR': tmp_js_dir, 'DISABLE_SHEETS': '1'}, clear=False):
+            job_state.reset_cache_for_tests()
+            try:
+                adm_hdr = {'X-Admin-Secret': app_module.ADMIN_API_SECRET}
+
+                # 1. お問い合わせ（削除依頼）受信箱の記録・未読カウント・既読化
+                contact_form.store_inquiry(
+                    {
+                        'category': 'removal',
+                        'name': 'テスト店舗担当者',
+                        'email': 'rep@example.com',
+                        'message': '自店舗の掲載一時見直しをお願いいたします。',
+                    },
+                    ip_hash='abcdef0123456789',
+                )
+                unread = ops_governance.get_unread_counts(force=True)
+                self.assertEqual(unread['unread_total'], 1)
+                self.assertEqual(unread['unread_priority'], 1)
+                inqs = ops_governance.list_inquiries()
+                self.assertTrue(inqs[0]['is_priority'])
+                inq_id = inqs[0]['id']
+
+                r_res = self.client.post(
+                    '/api/ops/governance',
+                    json={'action': 'resolve_inquiry', 'inquiry_id': inq_id, 'resolved': True},
+                    headers=adm_hdr,
+                )
+                self.assertEqual(r_res.status_code, 200)
+                self.assertEqual(ops_governance.get_unread_counts(force=True)['unread_total'], 0)
+
+                # 2. 店舗・ブランド緊急非表示スイッチ（410 Gone + noindex + sitemap.xml + /api/status 除外）
+                r_hide_s = self.client.post(
+                    '/api/ops/governance',
+                    json={'action': 'toggle_store', 'store_name': 'JIS SHINJUKU', 'hidden': True},
+                    headers=adm_hdr,
+                )
+                self.assertEqual(r_hide_s.status_code, 200)
+                r_st_410 = self.client.get('/store/jis-shinjuku')
+                self.assertEqual(r_st_410.status_code, 410)
+                self.assertEqual(r_st_410.headers.get('X-Robots-Tag'), 'noindex, nofollow')
+                self.assertNotIn('/store/jis-shinjuku', self.client.get('/sitemap.xml').data.decode('utf-8'))
+
+                r_hide_b = self.client.post(
+                    '/api/ops/governance',
+                    json={'action': 'toggle_brand', 'brand_key': 'asobibar', 'hidden': True},
+                    headers=adm_hdr,
+                )
+                self.assertEqual(r_hide_b.status_code, 200)
+                self.assertEqual(self.client.get('/asobibar').status_code, 410)
+                self.assertNotIn('https://aiseki-navi.com/asobibar</loc>', self.client.get('/sitemap.xml').data.decode('utf-8'))
+
+                # 公開再開で 200 OK に復帰すること
+                self.client.post('/api/ops/governance', json={'action': 'toggle_store', 'store_name': 'JIS SHINJUKU', 'hidden': False}, headers=adm_hdr)
+                self.client.post('/api/ops/governance', json={'action': 'toggle_brand', 'brand_key': 'asobibar', 'hidden': False}, headers=adm_hdr)
+                self.assertEqual(self.client.get('/store/jis-shinjuku').status_code, 200)
+                self.assertEqual(self.client.get('/asobibar').status_code, 200)
+
+                # 3. 一般スタッフ端末の一括強制ログアウト ＆ パスコード変更（マスター端末は維持）
+                staff_client = self.app.test_client()
+                master_client = self.app.test_client()
+                self.assertEqual(staff_client.post('/staff', data={'passcode': app_module.STAFF_PASSCODE}).status_code, 302)
+                self.assertEqual(master_client.post('/staff', data={'passcode': app_module.MASTER_PASSCODE}).status_code, 302)
+                self.assertNotIn('認証してモニターを開く', staff_client.get('/staff').data.decode('utf-8'))
+
+                # 強制ログアウト実行 -> 一般スタッフは未認証ログイン画面へ戻り、マスターは維持
+                r_fl = master_client.post(
+                    '/api/ops/governance',
+                    json={'action': 'force_logout_staff'},
+                    headers={'Origin': 'http://localhost'},
+                )
+                self.assertEqual(r_fl.status_code, 200)
+                self.assertIn('認証してモニターを開く', staff_client.get('/staff').data.decode('utf-8'))
+                self.assertEqual(master_client.get('/staff/analytics').status_code, 200)
+
+                # スマホから一般スタッフ用パスコードを変更 -> 旧コード拒否・新コード有効
+                r_pw = master_client.post(
+                    '/api/ops/governance',
+                    json={'action': 'update_staff_passcode', 'passcode': '8899new'},
+                    headers={'Origin': 'http://localhost'},
+                )
+                self.assertEqual(r_pw.status_code, 200)
+                self.assertEqual(staff_client.post('/staff', data={'passcode': app_module.STAFF_PASSCODE}).status_code, 200)  # login error page
+                self.assertEqual(staff_client.post('/staff', data={'passcode': '8899new'}).status_code, 302)
+                master_client.post('/api/ops/governance', json={'action': 'update_staff_passcode', 'reset_to_env': True}, headers=adm_hdr)
+
+                # 4. Webhook URL の SSRF 防御と登録・マスク表示
+                for bad_url in ('http://example.com/hook', 'https://localhost/hook', 'https://127.0.0.1/hook', 'https://169.254.169.254/latest'):
+                    r_bad = self.client.post('/api/ops/governance', json={'action': 'set_webhook', 'url': bad_url}, headers=adm_hdr)
+                    self.assertEqual(r_bad.status_code, 400, f"Expected SSRF rejection for {bad_url}")
+
+                r_ok_wh = self.client.post(
+                    '/api/ops/governance',
+                    json={'action': 'set_webhook', 'url': 'https://discord.com/api/webhooks/123456/abcdef999999'},
+                    headers=adm_hdr,
+                )
+                self.assertEqual(r_ok_wh.status_code, 200)
+                self.assertIn('discord.com', r_ok_wh.get_json()['masked_url'])
+                self.assertNotIn('abcdef', r_ok_wh.get_json()['masked_url'])
+            finally:
+                job_state.reset_cache_for_tests()
 
 
 if __name__ == '__main__':

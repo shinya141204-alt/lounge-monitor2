@@ -24,8 +24,9 @@ def dynamic_live_ogp_image():
     now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
     resolved_slot = ogp_generator.resolve_slot_from_param(s_param, now_jst=now_jst)
     bucket_10m = f"{now_jst.strftime('%Y%m%d%H')}_{(now_jst.minute // 10) * 10:02d}"
+    import ops_governance
     with core.data_lock:
-        stores = list(core.latest_data.get('full_data') or [])
+        stores = ops_governance.filter_visible_stores(list(core.latest_data.get('full_data') or []))
         last_u = core.latest_data.get('last_updated')
         is_s = bool(core.latest_data.get('is_seed'))
     # Key by resolved_slot (3 fixed slots) rather than raw `s` query param so random `?s=<uuid>` cannot bust cache
@@ -133,8 +134,9 @@ def public_reel_mp4(reel_type):
     preview_tok = re.sub(r'[^A-Za-z0-9_.-]', '', (request.args.get('t') or '').strip())[:32]
     force_refresh = wants_refresh and not is_cont_range
     slot_token = re.sub(r'[^A-Za-z0-9_.-]', '', (request.args.get('s') or '').strip())[:32]
+    import ops_governance
     with core.data_lock:
-        live_s = list(core.latest_data.get('full_data') or [])
+        live_s = ops_governance.filter_visible_stores(list(core.latest_data.get('full_data') or []))
     try:
         mp4_bytes = None
         if wants_refresh and preview_tok and preview_tok != 'init':
@@ -189,8 +191,9 @@ def public_reel_preview_jpg(reel_type):
     core.trigger_background_fetch_if_needed()
     rt = reel_generator.normalize_reel_type(reel_type)
     can_refresh = core.is_master_authorized() and (request.args.get('refresh') == '1')
+    import ops_governance
     with core.data_lock:
-        live_s = list(core.latest_data.get('full_data') or [])
+        live_s = ops_governance.filter_visible_stores(list(core.latest_data.get('full_data') or []))
         last_u = core.latest_data.get('last_updated')
         is_s = bool(core.latest_data.get('is_seed'))
     jpg_key = ('reel_jpg', rt, core._live_data_signature(live_s, last_u, is_s))
@@ -247,8 +250,9 @@ def precompute_editorial_and_media_bundle(
     import sns_editorial
     started_m = time.monotonic()
     core.restore_latest_data_if_empty()
+    import ops_governance
     with core.data_lock:
-        live_s = list(core.latest_data.get('full_data') or [])
+        live_s = ops_governance.filter_visible_stores(list(core.latest_data.get('full_data') or []))
         is_seed = bool(core.latest_data.get('is_seed'))
 
     summary = {

@@ -79,7 +79,7 @@ def _load_secure_config(env_key: str, fallback_value: str, is_sensitive: bool = 
 
 
 app.secret_key = _load_secure_config('SECRET_KEY', 'aiseki-navi-staff-monitor-secret-key-2026')
-app.permanent_session_lifetime = datetime.timedelta(hours=24)
+app.permanent_session_lifetime = datetime.timedelta(days=7)
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 if os.environ.get('FLY_APP_NAME') or os.environ.get('ENABLE_HTTPS'):
@@ -104,10 +104,14 @@ def get_client_ip() -> str:
 
 
 def _compute_session_auth_gen(is_master: bool) -> str:
-    """Compute a non-reversible HMAC generation fingerprint so rotating STAFF_PASSCODE / MASTER_PASSCODE revokes active cookies."""
-    role = 'master' if is_master else 'staff'
-    active_code = MASTER_PASSCODE if is_master else STAFF_PASSCODE
-    msg = f'auth_gen:{role}:{active_code}'.encode('utf-8')
+    """Compute a non-reversible HMAC generation fingerprint so rotating passcodes or tapping Force-Logout revokes active cookies."""
+    import ops_governance
+    if is_master:
+        msg = f'auth_gen:master:{MASTER_PASSCODE}'.encode('utf-8')
+    else:
+        eff_staff = ops_governance.get_effective_staff_passcode(STAFF_PASSCODE)
+        epoch = ops_governance.get_staff_session_epoch()
+        msg = f'auth_gen:staff:{eff_staff}:{epoch}'.encode('utf-8')
     return hmac.new(str(app.secret_key).encode('utf-8'), msg, hashlib.sha256).hexdigest()[:20]
 
 
@@ -165,10 +169,20 @@ def _clear_login_failures(ip_addr: str) -> None:
 
 @app.context_processor
 def inject_auth_flags():
-    """Automatically inject staff/master session flags into every template (hides AdSense on all pages for staff/master)."""
+    """Automatically inject staff/master session flags (and unread inquiry badge for master) into every template."""
+    is_m = bool(session.get('is_master'))
+    unread = {'unread_total': 0, 'unread_priority': 0}
+    if is_m:
+        try:
+            import ops_governance
+            unread = ops_governance.get_unread_counts()
+        except Exception:
+            pass
     return {
         'is_staff': bool(session.get('is_staff')),
-        'is_master': bool(session.get('is_master')),
+        'is_master': is_m,
+        'ops_unread_total': unread.get('unread_total', 0),
+        'ops_unread_priority': unread.get('unread_priority', 0),
     }
 
 
@@ -797,7 +811,8 @@ def sync_latest_data_from_shared_bus(force_l1: bool = False) -> bool:
     snap = turbo_store.get_live_snapshot(bypass_l1=force_l1)
     if not snap or not isinstance(snap.get('full_data'), list) or not snap['full_data']:
         return False
-    snap_stores = snap['full_data']
+    import ops_governance
+    snap_stores = ops_governance.filter_visible_stores(snap['full_data'])
     snap_updated = snap.get('last_updated')
     snap_seed = bool(snap.get('is_seed'))
     if isinstance(snap.get('source_health'), dict) and snap['source_health']:
@@ -1140,7 +1155,13 @@ def _runtime_env_probe():
         ev_sig = (id(_ev.fetch_all_events), id(_ev.get_events_for_store))
     except Exception:
         pass
-    return (sh_sig, ev_sig, db_sig, wr_sig)
+    gov_sig = None
+    try:
+        import ops_governance as _og
+        gov_sig = (tuple(sorted(_og.get_hidden_brands())), tuple(sorted(_og.get_hidden_stores())))
+    except Exception:
+        pass
+    return (sh_sig, ev_sig, db_sig, wr_sig, gov_sig)
 
 
 def _is_static_editorial_route(path: str) -> bool:
@@ -1375,13 +1396,14 @@ def get_initial_status_payload():
     bucket_15m = f"{now_jst.strftime('%Y%m%d%H')}_{(now_jst.minute // 15) * 15:02d}"
     _, ev_upd = _get_cached_events_nonblocking()
     env_probe = _runtime_env_probe()
+    import ops_governance
     with data_lock:
         full_d = latest_data.get('full_data')
         if not full_d:
             return None
         last_u = latest_data.get('last_updated')
         is_s = bool(latest_data.get('is_seed'))
-        raw_copy = list(full_d)
+        raw_copy = ops_governance.filter_visible_stores(list(full_d))
         c_key = (_live_data_signature(raw_copy, last_u, is_s), bucket_15m, ev_upd, env_probe)
 
     with _ssr_payload_cache_lock:
@@ -1710,7 +1732,8 @@ def update_job(force=False, _claimed=False):
                     s['fetched_at'] = now_epoch
                     merged_map[sname] = s
 
-                merged_data = list(merged_map.values())
+                import ops_governance
+                merged_data = ops_governance.filter_visible_stores(list(merged_map.values()))
                 sorted_data = sorted(merged_data, key=lambda x: (x.get('region') != 'Korea', x['women'], x['men']), reverse=True)
                 top_store = sorted_data[0] if sorted_data else None
 
@@ -2062,6 +2085,8 @@ def staff_monitor():
     if request.method == 'POST':
         if _is_login_rate_limited(client_ip):
             return render_template('staff_login.html', error='試行回数が上限に達しました。5分ほど待ってから再度お試しください'), 429
+        import ops_governance
+        eff_staff_passcode = ops_governance.get_effective_staff_passcode(STAFF_PASSCODE)
         entered = request.form.get('passcode', '').strip()
         if entered and hmac.compare_digest(entered, MASTER_PASSCODE):
             _clear_login_failures(client_ip)
@@ -2070,7 +2095,7 @@ def staff_monitor():
             session['auth_gen'] = _compute_session_auth_gen(True)
             session.permanent = True
             return redirect(url_for('staff_monitor'))
-        elif entered and hmac.compare_digest(entered, STAFF_PASSCODE):
+        elif entered and hmac.compare_digest(entered, eff_staff_passcode):
             _clear_login_failures(client_ip)
             session['is_staff'] = True
             session['is_master'] = False
@@ -2210,6 +2235,7 @@ def get_status():
         _sh_sig = (id(store_hours.get_business_hours_status), _hp.get('is_open_now'), _hp.get('today_hours_label'))
     except Exception:
         _sh_sig = None
+    import ops_governance
     with data_lock:
         full_d = latest_data.get('full_data')
         if not full_d:
@@ -2220,7 +2246,7 @@ def get_status():
             })
         last_u = latest_data.get('last_updated')
         is_s = bool(latest_data.get('is_seed'))
-        raw_copy = list(full_d)
+        raw_copy = ops_governance.filter_visible_stores(list(full_d))
         c_key = (_live_data_signature(raw_copy, last_u, is_s), now_bucket, _sh_sig)
 
     inm = (request.headers.get('If-None-Match') or '').strip()

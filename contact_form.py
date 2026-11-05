@@ -178,11 +178,13 @@ def hash_ip(secret: str, ip_addr: str) -> str:
 
 
 def store_inquiry(data: dict, ip_hash: str, user_agent: str = '') -> dict:
-    """既存の永続化（Sheets）と通知（Webhook）へ渡す。戻り値は保存経路の記録。"""
+    """既存の永続化（Sheets ＋ 管理画面受信箱）と通知（Webhook）へ渡す。戻り値は保存経路の記録。"""
     received_at = _jst_now().strftime('%Y-%m-%d %H:%M:%S')
+    cat_label = CATEGORY_LABELS.get(data['category'], data['category'])
+    is_prio = data.get('category') in PRIORITY_CATEGORIES
     row = [
         received_at,
-        CATEGORY_LABELS.get(data['category'], data['category']),
+        cat_label,
         data['name'],
         data['email'],
         data['message'],
@@ -190,6 +192,13 @@ def store_inquiry(data: dict, ip_hash: str, user_agent: str = '') -> dict:
         (user_agent or '')[:160],
     ]
     routes = {'sheets': False, 'webhook': False}
+    inbox_saved = False
+    try:
+        import ops_governance
+        ops_governance.record_inquiry(data, received_at=received_at, ip_hash=ip_hash, category_label=cat_label)
+        inbox_saved = True
+    except Exception as e:
+        logging.error(f'[contact] inbox record failed: {e}')
     try:
         import sheets_store
         if not sheets_store.is_disabled():
@@ -199,12 +208,14 @@ def store_inquiry(data: dict, ip_hash: str, user_agent: str = '') -> dict:
         logging.error(f'[contact] sheets append failed: {e}')
     try:
         import health
-        preview = data['message'].replace('\n', ' ')[:120]
+        preview = data['message'].replace('\n', ' ')[:140]
+        prefix = '【至急・削除/訂正依頼】' if is_prio else ''
         routes['webhook'] = bool(health.send_alert(
-            f'contact:{received_at}:{ip_hash}',
-            f"お問い合わせを受信しました（{row[1]}）{' 返信先あり' if data['email'] else ''}：{preview}",
+            f"contact:{received_at}:{ip_hash}",
+            f"{prefix}お問い合わせを受信しました（{cat_label}）{' 返信先あり' if data['email'] else ''}：{preview}",
+            bypass_cooldown=is_prio,
         ))
     except Exception as e:
         logging.error(f'[contact] webhook notify failed: {e}')
-    logging.info(f"[contact] inquiry received category={data['category']} len={len(data['message'])} routes={routes}")
+    logging.info(f"[contact] inquiry received category={data['category']} len={len(data['message'])} routes={routes} inbox={inbox_saved}")
     return routes

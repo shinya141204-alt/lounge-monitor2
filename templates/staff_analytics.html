@@ -800,6 +800,126 @@
             overflow-wrap: anywhere;
             word-break: break-word;
         }
+        .gov-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+            gap: 14px;
+            margin-top: 12px;
+        }
+        .gov-box {
+            background: var(--card-inner);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px 15px;
+            min-width: 0;
+        }
+        .gov-box h3 {
+            margin: 0 0 6px;
+            font-size: 0.92rem;
+            font-weight: 800;
+        }
+        .gov-sub {
+            margin: 0 0 10px;
+            font-size: 0.75rem;
+            color: var(--sub);
+        }
+        .inq-item {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 11px 12px;
+            margin-bottom: 8px;
+        }
+        .inq-item.is-prio {
+            border-color: var(--red);
+            background: var(--rose-soft);
+        }
+        .inq-item.is-resolved {
+            opacity: 0.62;
+            background: var(--card-inner);
+            border-color: var(--border);
+        }
+        .inq-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 5px;
+            font-size: 0.74rem;
+        }
+        .inq-cat-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 0.69rem;
+            font-weight: 800;
+            border: 1px solid var(--border-strong);
+            background: var(--chip-bg);
+            color: var(--text);
+        }
+        .inq-cat-badge.prio {
+            background: #dc2626;
+            border-color: #dc2626;
+            color: #ffffff;
+        }
+        .inq-body {
+            font-size: 0.8rem;
+            white-space: pre-wrap;
+            word-break: break-word;
+            margin: 6px 0;
+            color: var(--text);
+        }
+        .brand-toggle-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 7px;
+            margin-bottom: 12px;
+        }
+        .toggle-chip {
+            cursor: pointer;
+            padding: 6px 11px;
+            border-radius: 9px;
+            border: 1px solid var(--border-strong);
+            background: var(--surface);
+            color: var(--text);
+            font-size: 0.76rem;
+            font-weight: 700;
+            font-family: inherit;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .toggle-chip.is-hidden {
+            border-color: var(--red);
+            background: var(--rose-soft);
+            color: var(--rose-ink);
+        }
+        .store-toggle-list {
+            max-height: 230px;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+            border-radius: 9px;
+            background: var(--surface);
+            padding: 6px;
+        }
+        .store-toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 6px 8px;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.77rem;
+        }
+        .store-toggle-row:last-child {
+            border-bottom: none;
+        }
+        .ops-btn.danger {
+            border-color: var(--red);
+            background: var(--rose-soft);
+            color: var(--rose-ink);
+        }
     </style>
 </head>
 <body>
@@ -859,7 +979,15 @@
         {% if forecast_accuracy %}
         <a href="#forecast-accuracy-audit" class="master-jump-chip">60分後予測AI精度</a>
         {% endif %}
+        <a href="#ops-governance-hub" class="master-jump-chip">運営・削除スイッチ・認証・通知</a>
     </nav>
+
+    {% if ops_gov and ops_gov.unread_priority > 0 %}
+    <div class="toast-notice" style="background:var(--rose-soft);border-color:var(--red);color:var(--rose-ink);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+        <span>未対応の「掲載見直し・削除依頼／訂正連絡」が {{ ops_gov.unread_priority }} 件届いています。</span>
+        <a href="#ops-governance-hub" class="ops-btn danger">今すぐ内容を確認する</a>
+    </div>
+    {% endif %}
 
     {% set f = data.funnel %}
     {% set rev = data.revenue %}
@@ -1417,6 +1545,138 @@
         {% endif %}
     </div>
     {% endif %}
+
+    {% if ops_gov is defined and ops_gov %}
+    <section class="panel" id="ops-governance-hub" style="margin-top:20px;">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+            <div>
+                <h2 style="margin:0 0 4px;font-size:1.05rem;font-weight:800;">運営・法務・セキュリティ管理（オーナー専用）</h2>
+                <p style="margin:0;font-size:0.77rem;color:var(--sub);">スマホからワンタップで「お問い合わせ確認」「特定店舗・ブランドの即時非表示」「退職時スタッフ強制ログアウト・パスコード変更」「障害通知Webhook設定」を完結できます。</p>
+            </div>
+            <span class="ws-chip" id="gov-hidden-summary">
+                現在非表示: <strong>{{ ops_gov.effective_hidden_store_count }}</strong> 店舗（ブランド指定 {{ ops_gov.hidden_brand_count }} 件 ／ 個別指定 {{ ops_gov.hidden_store_count }} 件）
+            </span>
+        </div>
+
+        <div class="gov-grid">
+            <!-- 1. お問い合わせ受信ボックス -->
+            <div class="gov-box" style="grid-column: 1 / -1;">
+                <h3>1. お問い合わせ受信ボックス（未対応: <span id="gov-unread-count">{{ ops_gov.unread_total }}</span>件）</h3>
+                <p class="gov-sub"><code>/contact</code> から届いた連絡を最新50件表示します。店舗・ブランド関係者からの削除・訂正依頼は赤枠で最優先表示されます。</p>
+                <div id="gov-inquiries-list">
+                    {% if ops_gov.inquiries %}
+                        {% for inq in ops_gov.inquiries[:15] %}
+                        <div class="inq-item{% if inq.is_priority and not inq.resolved %} is-prio{% endif %}{% if inq.resolved %} is-resolved{% endif %}" id="inq-row-{{ inq.id }}">
+                            <div class="inq-head">
+                                <div>
+                                    <span class="inq-cat-badge{% if inq.is_priority and not inq.resolved %} prio{% endif %}">{{ inq.category_label }}</span>
+                                    <strong style="margin-left:6px;">{{ inq.name or '匿名' }}</strong>
+                                    {% if inq.email %}
+                                    <a href="mailto:{{ inq.email }}" style="color:var(--blue);margin-left:6px;text-decoration:underline;">{{ inq.email }}</a>
+                                    {% endif %}
+                                </div>
+                                <div style="display:flex;align-items:center;gap:8px;">
+                                    <span style="color:var(--sub);font-variant-numeric:tabular-nums;">{{ inq.received_at }}</span>
+                                    <button type="button" class="ops-btn secondary" onclick="toggleInquiryResolved('{{ inq.id }}', {{ 'false' if inq.resolved else 'true' }})">
+                                        {{ '未対応に戻す' if inq.resolved else '対応済みにする' }}
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="inq-body">{{ inq.message }}</div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div style="padding:12px;border-radius:8px;background:var(--surface);border:1px solid var(--border);font-size:0.78rem;color:var(--sub);">
+                            現在届いているお問い合わせはありません。新着があるとここに即時表示されます。
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- 2. 店舗・ブランド緊急非表示スイッチ -->
+            <div class="gov-box" style="grid-column: 1 / -1;">
+                <h3>2. 店舗・ブランド緊急非表示スイッチ（即時反映）</h3>
+                <p class="gov-sub">ON（非表示）に切り替えた瞬間、トップ画面・店舗詳細（<code>410 Gone / noindex</code>）・<code>sitemap.xml</code>・X / Instagram / Threads 自動投稿から一斉に除外されます。</p>
+                <div style="font-size:0.75rem;font-weight:700;margin-bottom:6px;">ブランド単位で一括切替</div>
+                <div class="brand-toggle-grid" id="gov-brand-toggles">
+                    {% for b in ops_gov.brands %}
+                    <button type="button"
+                            class="toggle-chip{% if b.is_hidden %} is-hidden{% endif %}"
+                            onclick="toggleBrandVisibility('{{ b.key }}', {{ 'false' if b.is_hidden else 'true' }}, '{{ b.label }}')">
+                        <span>{{ b.label }}（{{ b.store_count }}店）</span>
+                        <span>{{ '非表示中 → 再開' if b.is_hidden else '公開中' }}</span>
+                    </button>
+                    {% endfor %}
+                </div>
+
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin:10px 0 6px;">
+                    <span style="font-size:0.75rem;font-weight:700;">店舗単位で個別切替（全{{ ops_gov.stores|length }}店舗）</span>
+                    <input type="search" id="gov-store-filter" class="ops-input" style="max-width:260px;padding:6px 10px;" placeholder="店舗名・エリアで絞り込み..." oninput="filterGovStores(this.value)">
+                </div>
+                <div class="store-toggle-list" id="gov-store-list">
+                    {% for st in ops_gov.stores %}
+                    <div class="store-toggle-row" data-search="{{ (st.seo_name ~ ' ' ~ st.area_label ~ ' ' ~ st.name)|lower }}">
+                        <div>
+                            <strong>{{ st.seo_name }}</strong>
+                            <span style="color:var(--sub);margin-left:6px;font-size:0.72rem;">{{ st.area_label }}</span>
+                            {% if st.is_effective_hidden and not st.is_direct_hidden %}
+                            <span style="color:var(--amber);margin-left:6px;font-size:0.7rem;">（ブランド一括非表示中）</span>
+                            {% endif %}
+                        </div>
+                        <button type="button"
+                                class="ops-btn {% if st.is_direct_hidden %}danger{% else %}secondary{% endif %}"
+                                onclick="toggleStoreVisibility('{{ st.name }}', {{ 'false' if st.is_direct_hidden else 'true' }}, '{{ st.seo_name }}')">
+                            {{ '個別非表示中（解除）' if st.is_direct_hidden else '非表示にする' }}
+                        </button>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="ops-msg" id="gov-vis-msg"></div>
+            </div>
+
+            <!-- 3. スタッフ認証・退職時強制ログアウト -->
+            <div class="gov-box">
+                <h3>3. スタッフ用パスコード・退職時セキュリティ</h3>
+                <p class="gov-sub">ログイン有効期限：7日間。スタッフ退職・異動時は下のボタンで全スタッフ端末を即時ログアウト、または新しいパスコードへ変更できます（マスター端末はログアウトされません）。</p>
+                <div style="margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+                    <span class="ws-chip" id="gov-passcode-state">
+                        現在の設定: <strong>{{ '管理画面で変更済み' if ops_gov.has_custom_staff_passcode else '環境変数（初期設定）' }}</strong>
+                        {% if ops_gov.last_staff_force_logout_at %}｜最終一括失効: {{ ops_gov.last_staff_force_logout_at }}{% endif %}
+                    </span>
+                    <button type="button" class="ops-btn danger" onclick="forceLogoutAllStaff()">全スタッフ端末を即時強制ログアウト</button>
+                </div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+                    <input type="password" id="gov-new-staff-passcode" class="ops-input" style="flex:1 1 160px;" placeholder="新しい一般スタッフ用パスコード（4〜32文字）" autocomplete="new-password">
+                    <button type="button" class="ops-btn" onclick="saveStaffPasscode(false)">パスコード変更＆強制ログアウト</button>
+                    {% if ops_gov.has_custom_staff_passcode %}
+                    <button type="button" class="ops-btn secondary" onclick="saveStaffPasscode(true)">初期値に戻す</button>
+                    {% endif %}
+                </div>
+                <div class="ops-msg" id="gov-auth-msg"></div>
+            </div>
+
+            <!-- 4. 障害・お問い合わせ即時通知 Webhook -->
+            <div class="gov-box">
+                <h3>4. 障害・削除依頼の即時通知 Webhook</h3>
+                <p class="gov-sub">Discord または Slack の Incoming Webhook URL（<code>https://...</code>）を登録すると、お問い合わせ受信（削除依頼は即時・クールダウンなし）やデータ取得異常をスマホへプッシュ通知します。</p>
+                <div style="margin-bottom:8px;">
+                    <span class="ws-chip" id="gov-webhook-state">
+                        通知先状態: <strong>{{ ('登録済み（' ~ ops_gov.webhook_masked ~ '）') if ops_gov.webhook_configured else '未登録（管理画面受信箱とスプレッドシートのみ）' }}</strong>
+                    </span>
+                </div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+                    <input type="url" id="gov-webhook-url" class="ops-input" style="flex:1 1 200px;" placeholder="https://discord.com/api/webhooks/... または Slack URL">
+                    <button type="button" class="ops-btn" onclick="saveGovWebhook(false)">保存</button>
+                    <button type="button" class="ops-btn secondary" onclick="testGovWebhook()">テスト通知</button>
+                    {% if ops_gov.webhook_from_ui %}
+                    <button type="button" class="ops-btn secondary" onclick="saveGovWebhook(true)">解除</button>
+                    {% endif %}
+                </div>
+                <div class="ops-msg" id="gov-webhook-msg"></div>
+            </div>
+        </div>
+    </section>
+    {% endif %}
 </div>
 
 <script>
@@ -1606,6 +1866,107 @@ async function runSheetsRetention(dryRun) {
         if (btnDry) btnDry.disabled = false;
         if (btnExec) btnExec.disabled = false;
     }
+}
+
+function filterGovStores(query) {
+    const q = String(query || '').trim().toLowerCase();
+    const rows = document.querySelectorAll('#gov-store-list .store-toggle-row');
+    rows.forEach(row => {
+        const hay = row.getAttribute('data-search') || '';
+        row.style.display = (!q || hay.indexOf(q) !== -1) ? 'flex' : 'none';
+    });
+}
+
+function _showGovMsg(elId, text, isErr) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    el.style.display = 'block';
+    el.style.color = isErr ? 'var(--err-ink)' : 'var(--green-ink)';
+    el.textContent = text;
+}
+
+async function callGovApi(payload, msgElId) {
+    try {
+        const res = await fetchJsonSafe('/api/ops/governance', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+            body: JSON.stringify(payload),
+        }, 20000);
+        if (msgElId && res.message) {
+            _showGovMsg(msgElId, res.message, false);
+        }
+        return res;
+    } catch (err) {
+        if (msgElId) {
+            _showGovMsg(msgElId, (err && err.message) || '通信エラーが発生しました', true);
+        }
+        return null;
+    }
+}
+
+async function toggleBrandVisibility(brandKey, hideFlag, label) {
+    const verb = hideFlag ? '非表示（サイト・sitemap・SNS投稿から除外）' : '公開再開';
+    if (!window.confirm(`ブランド「${label}」を${verb}にしますか？`)) return;
+    const res = await callGovApi({action: 'toggle_brand', brand_key: brandKey, hidden: !!hideFlag}, 'gov-vis-msg');
+    if (res && res.ok) window.location.reload();
+}
+
+async function toggleStoreVisibility(storeName, hideFlag, seoName) {
+    const verb = hideFlag ? '非表示（サイト・店舗ページ・SNS投稿から除外）' : '公開再開';
+    if (!window.confirm(`店舗「${seoName}」を${verb}にしますか？`)) return;
+    const res = await callGovApi({action: 'toggle_store', store_name: storeName, hidden: !!hideFlag}, 'gov-vis-msg');
+    if (res && res.ok) window.location.reload();
+}
+
+async function toggleInquiryResolved(inquiryId, resolvedFlag) {
+    const res = await callGovApi({action: 'resolve_inquiry', inquiry_id: inquiryId, resolved: !!resolvedFlag}, null);
+    if (res && res.ok) window.location.reload();
+}
+
+async function forceLogoutAllStaff() {
+    if (!window.confirm('現在ログイン中のすべての一般スタッフ端末を即時ログアウトさせますか？（あなたのマスターログインは維持されます）')) return;
+    const res = await callGovApi({action: 'force_logout_staff'}, 'gov-auth-msg');
+    if (res && res.ok) {
+        setTimeout(() => window.location.reload(), 700);
+    }
+}
+
+async function saveStaffPasscode(resetToEnv) {
+    const input = document.getElementById('gov-new-staff-passcode');
+    const val = input ? (input.value || '').trim() : '';
+    if (resetToEnv) {
+        if (!window.confirm('一般スタッフ用パスコードを環境変数の初期設定に戻し、全スタッフ端末をログアウトさせますか？')) return;
+    } else {
+        if (val.length < 4) {
+            _showGovMsg('gov-auth-msg', '新しいパスコードは4文字以上で入力してください。', true);
+            return;
+        }
+        if (!window.confirm('一般スタッフ用パスコードを変更し、既存の全スタッフ端末を即時ログアウトさせますか？')) return;
+    }
+    const res = await callGovApi({action: 'update_staff_passcode', passcode: val, reset_to_env: !!resetToEnv}, 'gov-auth-msg');
+    if (res && res.ok) {
+        if (input) input.value = '';
+        setTimeout(() => window.location.reload(), 800);
+    }
+}
+
+async function saveGovWebhook(clearFlag) {
+    const input = document.getElementById('gov-webhook-url');
+    const url = clearFlag ? '' : (input ? (input.value || '').trim() : '');
+    if (!clearFlag && !url) {
+        _showGovMsg('gov-webhook-msg', 'https:// で始まる Webhook URL を入力してください。', true);
+        return;
+    }
+    const res = await callGovApi({action: 'set_webhook', url: url}, 'gov-webhook-msg');
+    if (res && res.ok) {
+        if (input) input.value = '';
+        setTimeout(() => window.location.reload(), 700);
+    }
+}
+
+async function testGovWebhook() {
+    _showGovMsg('gov-webhook-msg', 'テスト通知を送信中...', false);
+    await callGovApi({action: 'test_webhook'}, 'gov-webhook-msg');
 }
 </script>
 </body>

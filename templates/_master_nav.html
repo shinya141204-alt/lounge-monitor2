@@ -146,6 +146,16 @@
         color: var(--mn-active-ink);
         font-weight: 700;
     }
+    .master-util-btn.has-prio-alert {
+        border-color: rgba(248, 113, 113, 0.55);
+        background: rgba(239, 68, 68, 0.16);
+        color: #fecaca;
+    }
+    body.theme-light .master-util-btn.has-prio-alert {
+        border-color: rgba(185, 28, 28, 0.40);
+        background: rgba(220, 38, 38, 0.10);
+        color: #991b1b;
+    }
     .master-section-jumpbar {
         display: flex;
         align-items: center;
@@ -223,6 +233,12 @@
             {% elif master_active_tab == 'sns' and channel == 'instagram' %}
             <a class="master-util-btn" href="/staff/sns-kit">週末画像キット ↗</a>
             {% endif %}
+            <a class="master-util-btn{% if (ops_unread_priority or 0) > 0 %} has-prio-alert{% endif %}" href="/staff/analytics#ops-governance-hub">
+                運営管理
+                {% if (ops_unread_total or 0) > 0 %}
+                <span style="display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 5px;border-radius:999px;font-size:0.66rem;font-weight:800;background:{% if (ops_unread_priority or 0) > 0 %}#dc2626{% else %}var(--mn-active-bg){% endif %};color:{% if (ops_unread_priority or 0) > 0 %}#ffffff{% else %}var(--mn-active-ink){% endif %};">{{ ops_unread_total }}</span>
+                {% endif %}
+            </a>
             <a class="master-util-btn" href="/" target="_blank" rel="noopener">公開サイト ↗</a>
             <button type="button" class="master-util-btn" onclick="toggleStaffTheme()" id="staff-theme-toggle-btn">ライト / ダーク</button>
         </div>
