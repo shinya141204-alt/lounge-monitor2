@@ -1020,7 +1020,7 @@
         <div class="header-card" id="sns-delivery-health" style="padding:14px 18px; border-color:var(--green);">
             <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
                 <div style="font-size:0.86rem; font-weight:800;">
-                    📡 自動投稿ステータス＆トークン疎通モニター（IGリール毎日21:15自動1本化・カルーセル＆空打ちAI停止・投稿時のみOpus稼働）
+                    📡 自動投稿ステータス＆トークン疎通モニター（IGリール毎日20:00＋活況夜22:50自動2本化・カルーセル＆空打ちAI停止・投稿時のみOpus稼働）
                 </div>
                 <div style="display:flex; gap:8px; flex-wrap:wrap;">
                     {% if channel == 'tiktok' %}
@@ -1210,9 +1210,9 @@
                     <p class="reel-studio-sub">全国リアルタイム人数から 9:16 縦型ショート動画（H.264 + 音声トラック付きMP4・約11.5秒）を自動合成。Instagram Reels への1クリック直接公開、または MP4 保存で TikTok / YouTube Shorts へそのまま投稿できます。</p>
                 </div>
                 <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-end;">
-                    <label class="reel-auto-box" for="reel-auto-schedule-toggle" title="毎日21:15枠（人間ゆらぎ付）で1日1本・4テンプレ自動ローテーション投稿します（カルーセル＆木曜静止画フィードの自動投稿は停止済）">
+                    <label class="reel-auto-box" for="reel-auto-schedule-toggle" title="毎日20:00枠（1軒目探し）＋活況夜22:50枠（2軒目・終電前・リールタブ専用）の1日最大2本・5テンプレ自動ローテーション投稿します">
                         <span id="reel-auto-schedule-label">
-                            🔄 毎日21:15の自動リール定期投稿（1日1本・4型ローテ）：<strong id="reel-auto-state-text" style="color:{{ 'var(--green)' if _reel_init_auto else 'var(--sub)' }};">{{ 'ON（稼働中）' if _reel_init_auto else 'OFF（手動のみ）' }}</strong>
+                            🔄 毎日20:00＋活況夜22:50の自動リール投稿（最大2本・5型ローテ）：<strong id="reel-auto-state-text" style="color:{{ 'var(--green)' if _reel_init_auto else 'var(--sub)' }};">{{ 'ON（稼働中）' if _reel_init_auto else 'OFF（手動のみ）' }}</strong>
                         </span>
                         <span class="reel-switch">
                             <input type="checkbox" id="reel-auto-schedule-toggle" {{ 'checked' if _reel_init_auto else '' }} onchange="saveReelAutoSchedule(this.checked)">

@@ -523,7 +523,7 @@ def _ensure_scheduler_started_async():
                     logging.error(f"Scheduled Threads post failed: {err}")
             scheduler.add_job(func=_threads_daily_job, trigger="cron", hour=13, minute="5,9,13,17,21,26,32", jitter=75, executor="sns_ai")
             # Plan E: Women-perspective 'Tonight's Zero-Wait & Ladies Perks' alerts on Threads (Wed/Fri/Sat 19:30 JST)
-            # Note: IG Carousel (Fri 18:45 / Tue,Sun 21:45) and IG Ladies single-image feed (Thu 19:45) are disabled in favor of 1x daily IG Reel (21:15 JST).
+            # Note: IG Carousel and IG Ladies single-image feed are disabled in favor of Plan B IG Reels (daily 20:00 + active-night 22:50 JST).
             def _threads_ladies_job():
                 try:
                     import sns_editorial
@@ -538,7 +538,7 @@ def _ensure_scheduler_started_async():
                 except Exception as err:
                     logging.error(f"Scheduled Threads ladies post failed: {err}")
             scheduler.add_job(func=_threads_ladies_job, trigger="cron", day_of_week="wed,fri,sat", hour=10, minute="31,35,39,44,49", jitter=60, executor="sns_ai")
-            def _ig_reel_scheduled_job(slot_lbl="21:15"):
+            def _ig_reel_scheduled_job(slot_lbl="20:00"):
                 try:
                     import sns_editorial
                     if not sns_editorial.should_fire_scheduled_slot_now("ig_reel", slot_lbl):
@@ -553,7 +553,18 @@ def _ensure_scheduler_started_async():
                         instagram_poster.publish_live_reel_to_instagram(cur_stores, reel_type="auto", slot_label=slot_lbl, force=False)
                 except Exception as err:
                     logging.error(f"Scheduled Instagram Reel post failed: {err}")
-            scheduler.add_job(func=_ig_reel_scheduled_job, trigger="cron", hour=12, minute="18,24,30,36,42,48,54", jitter=50, args=["21:15"], executor="sns_ai")
+            from apscheduler.triggers.combining import OrTrigger
+            from apscheduler.triggers.cron import CronTrigger
+            scheduler.add_job(func=_ig_reel_scheduled_job, trigger="cron", hour=11, minute="4,10,16,22,28,34,40", jitter=50, args=["20:00"], executor="sns_ai")
+            scheduler.add_job(
+                func=_ig_reel_scheduled_job,
+                trigger=OrTrigger([
+                    CronTrigger(hour=13, minute="54", jitter=45, timezone="UTC"),
+                    CronTrigger(hour=14, minute="0,6,12,18,24,30", jitter=50, timezone="UTC"),
+                ]),
+                args=["22:50"],
+                executor="sns_ai",
+            )
             def _tiktok_inbox_job(slot_lbl="20:35"):
                 try:
                     import tiktok_poster

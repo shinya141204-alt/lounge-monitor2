@@ -4357,7 +4357,8 @@ class TurboArchitectureTests(unittest.TestCase):
             'x_post_2000',
             'x_post_2200',
             'threads_daily_2200',
-            'ig_reel_2115',
+            'ig_reel_2000',
+            'ig_reel_2250',
             'daily_token_db_maint',
         ):
             self.assertIn(expected_id, job_ids)
@@ -4371,6 +4372,7 @@ class TurboArchitectureTests(unittest.TestCase):
             'ig_fri_1845',
             'ig_tuesun_2145',
             'ig_ladies_1945',
+            'ig_reel_2115',
         ):
             self.assertNotIn(retired_id, job_ids)
 

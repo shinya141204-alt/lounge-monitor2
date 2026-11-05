@@ -707,19 +707,23 @@ class SnsEditorialUpgradeTests(unittest.TestCase):
         import instagram_poster
         import job_state
         import reel_generator
+        import reel_generator
         import worker as worker_module
 
         sched = worker_module.build_worker_scheduler()
         jobs_by_id = {j.id: j for j in sched.get_jobs()}
-        self.assertIn("ig_reel_2115", jobs_by_id)
+        self.assertIn("ig_reel_2000", jobs_by_id)
+        self.assertIn("ig_reel_2250", jobs_by_id)
         self.assertIn("tiktok_inbox_2035", jobs_by_id)
-        for retired_ig in ("ig_fri_1845", "ig_tuesun_2145", "ig_ladies_1945"):
+        for retired_ig in ("ig_fri_1845", "ig_tuesun_2145", "ig_ladies_1945", "ig_reel_2115"):
             self.assertNotIn(retired_ig, jobs_by_id)
-        reel_trig_str = str(jobs_by_id["ig_reel_2115"].trigger)
-        self.assertIn("hour='12'", reel_trig_str)
-        self.assertNotIn("day_of_week='wed,thu,fri,sat'", reel_trig_str)
+        reel_2000_trig_str = str(jobs_by_id["ig_reel_2000"].trigger)
+        reel_2250_trig_str = str(jobs_by_id["ig_reel_2250"].trigger)
+        self.assertIn("hour='11'", reel_2000_trig_str)
+        self.assertIn("hour='13'", reel_2250_trig_str)
+        self.assertIn("hour='14'", reel_2250_trig_str)
         pacing_info = sns_editorial.get_sns_human_pacing_summary()
-        self.assertEqual(pacing_info["ig_reels_weekly"], 7)
+        self.assertEqual(pacing_info["ig_reels_weekly"], 14)
 
         bare_oriental_re = re.compile(r"オリエンタル(?!ラウンジ)")
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -771,6 +775,7 @@ class SnsEditorialUpgradeTests(unittest.TestCase):
         import tempfile
         import instagram_poster
         import job_state
+        import reel_generator
 
         stores = [
             {"name": "OLG 新宿", "women": 32, "men": 14, "region": "Kanto"},
@@ -825,17 +830,61 @@ class SnsEditorialUpgradeTests(unittest.TestCase):
                     self.assertFalse(reel_calls[-1]["share_to_feed"])
 
                 # 3) Error path: failed Meta API call must NOT mark slot done so retry tick can recover
-                sat_dt = datetime.datetime(2026, 11, 7, 21, 30, tzinfo=sns_editorial.JST)
+                sat_dt = datetime.datetime(2026, 11, 7, 20, 15, tzinfo=sns_editorial.JST)
                 with (
                     mock.patch("instagram_poster.refresh_ig_token_if_needed"),
                     mock.patch("reel_generator.render_reel_mp4_bytes", return_value=b"FAKE_MP4"),
                     mock.patch("instagram_poster.post_reel_to_instagram", return_value={"status": "error", "detail": "HTTP 500"}),
                 ):
                     r_err = instagram_poster.publish_live_reel_to_instagram(
-                        stores, reel_type="auto", slot_label="21:15", force=False, now_jst=sat_dt
+                        stores, reel_type="auto", slot_label="20:00", force=False, now_jst=sat_dt
                     )
                     self.assertEqual(r_err["status"], "error")
-                    self.assertFalse(job_state.is_done("ig_reel_slot:2026-11-07_21:15"))
+                    self.assertFalse(job_state.is_done("ig_reel_slot:2026-11-07_20:00"))
+
+                # 4) Plan B 2x/day flow: 20:00 1st Reel (share_to_feed=True) + 22:50 2nd Reel
+                #    - Quiet night at 22:50 skips automatically to protect reach
+                #    - Active night at 22:50 fires with share_to_feed=False and distinct template + visual + Ken Burns
+                sun_2000 = datetime.datetime(2026, 11, 8, 20, 12, tzinfo=sns_editorial.JST)
+                sun_2250 = datetime.datetime(2026, 11, 8, 22, 58, tzinfo=sns_editorial.JST)
+                quiet_late_stores = [
+                    {"name": "OLG 新宿", "women": 14, "men": 11, "region": "Kanto", "area": "新宿"},
+                    {"name": "JIS UMEDA", "women": 9, "men": 8, "region": "Kinki", "area": "梅田"},
+                ]
+                active_late_stores = [
+                    {"name": "OLG 新宿", "women": 32, "men": 20, "region": "Kanto", "area": "新宿"},
+                    {"name": "JIS SHINJUKU", "women": 10, "men": 26, "region": "Kanto", "area": "新宿"},
+                    {"name": "OLG 梅田", "women": 24, "men": 18, "region": "Kinki", "area": "梅田"},
+                ]
+                with (
+                    mock.patch("instagram_poster.refresh_ig_token_if_needed"),
+                    mock.patch("reel_generator.render_reel_mp4_bytes", return_value=b"FAKE_MP4"),
+                    mock.patch("instagram_poster.post_reel_to_instagram", side_effect=_fake_post_reel),
+                ):
+                    r_sun_1 = instagram_poster.publish_live_reel_to_instagram(
+                        active_late_stores, reel_type="auto", slot_label="20:00", force=False, now_jst=sun_2000
+                    )
+                    self.assertEqual(r_sun_1["status"], "success")
+                    self.assertTrue(r_sun_1["share_to_feed"])
+
+                    r_sun_quiet = instagram_poster.publish_live_reel_to_instagram(
+                        quiet_late_stores, reel_type="auto", slot_label="22:50", force=False, now_jst=sun_2250
+                    )
+                    self.assertEqual(r_sun_quiet["status"], "skipped")
+                    self.assertIn("quiet late-night", r_sun_quiet["reason"].lower())
+
+                    r_sun_2 = instagram_poster.publish_live_reel_to_instagram(
+                        active_late_stores, reel_type="auto", slot_label="22:50", force=False, now_jst=sun_2250
+                    )
+                    self.assertEqual(r_sun_2["status"], "success")
+                    self.assertFalse(r_sun_2["share_to_feed"])
+                    self.assertNotEqual(r_sun_1["reel_type"], r_sun_2["reel_type"])
+                    bg1 = reel_generator.list_available_backgrounds(r_sun_1["reel_type"], now_jst=sun_2000)
+                    bg2 = reel_generator.list_available_backgrounds(r_sun_2["reel_type"], now_jst=sun_2250)
+                    vis1 = bg1["active_file"] or f"procedural:{bg1['bg_variant']}"
+                    vis2 = bg2["active_file"] or f"procedural:{bg2['bg_variant']}"
+                    self.assertNotEqual(vis1, vis2)
+                    self.assertNotEqual(bg1["ken_burns_mode"], bg2["ken_burns_mode"])
 
     def test_all_sns_antibot_pacing_rest_slots_and_live_surge_override(self):
         """Verify natural weekday rest slots on X/Threads and live surge override when total women >= 140/120."""
@@ -1206,10 +1255,11 @@ class SnsEditorialUpgradeTests(unittest.TestCase):
         self.assertEqual(captured_init_payload.get("thumb_offset"), "1200")
         self.assertEqual(captured_init_payload.get("share_to_feed"), "false")
 
-        # Verify worker.py ig_reel_2115 cron includes minute 54 so a 19:57 Thursday Feed + 95m cooldown still fires at 21:54
+        # Verify worker.py Plan B IG Reel crons cover full jitter + retry windows for both 20:00 and 22:50 slots
         with open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "worker.py"), "r", encoding="utf-8") as fh:
             worker_src = fh.read()
-        self.assertIn('minute="18,24,30,36,42,48,54"', worker_src)
+        self.assertIn('minute="4,10,16,22,28,34,40"', worker_src)
+        self.assertIn('minute="0,6,12,18,24,30"', worker_src)
 
     def test_staff_reel_and_tiktok_async_publish_no_nameerror(self):
         """Verify /api/staff/sns-reel/publish?async=1 and /api/staff/tiktok/publish-inbox?async=1 enqueue without NameError."""
@@ -1445,7 +1495,7 @@ class SnsEditorialUpgradeTests(unittest.TestCase):
             self.assertEqual(resp.status_code, 200)
             html = resp.get_data(as_text=True)
             self.assertIn('id="sns-pacing-summary-box"', html)
-            self.assertIn("毎日21:15枠（1日1本", html)
+            self.assertIn("毎日20:00枠＋活況夜22:50枠", html)
             self.assertIn("水・金・土（週3回", html)
             self.assertIn("最低48分間隔", html)
             self.assertIn("週6日稼働", html)

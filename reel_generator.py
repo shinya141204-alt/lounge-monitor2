@@ -59,8 +59,8 @@ _TEMPLATE_BG_OFFSET = {
     "ladies_zero_wait": 1,
     "area_battle": 2,
     "tiktok_gap_shock": 3,
-    "tiktok_ladies_real": 1,
-    "tiktok_midnight_cliff": 2,
+    "tiktok_ladies_real": 2,
+    "tiktok_midnight_cliff": 1,
 }
 _KEN_BURNS_MODES = (
     "zoom_in_up",
@@ -779,6 +779,7 @@ def build_reel_context(
 
 REEL_RECENT_TYPES_KEY = "reel_recent_types"
 TK_RECENT_TYPES_KEY = "tiktok_recent_types"
+REEL_LAST_POST_META_KEY = "reel_last_post_meta"
 
 
 def _coerce_jst(dt: datetime.datetime = None) -> datetime.datetime:
@@ -806,8 +807,29 @@ def get_recent_reel_types(platform: str = "instagram", limit: int = 4) -> list:
     return []
 
 
-def record_recent_reel_type(reel_type: str, platform: str = "instagram") -> None:
-    """Persist published template key so consecutive scheduled videos never repeat the same layout."""
+def get_last_reel_post_meta(platform: str = "instagram") -> dict:
+    """Return metadata (`{'rt': str, 'biz_date': 'YYYY-MM-DD'}`) of the last scheduled Reel."""
+    if platform != "instagram":
+        return {}
+    try:
+        import job_state
+        import json
+        raw = job_state.get_value(REEL_LAST_POST_META_KEY, allow_blocking=False)
+        if raw:
+            parsed = json.loads(raw)
+            if isinstance(parsed, dict):
+                return parsed
+    except Exception:
+        pass
+    return {}
+
+
+def record_recent_reel_type(
+    reel_type: str,
+    platform: str = "instagram",
+    now_jst: datetime.datetime = None,
+) -> None:
+    """Persist published template key (and business-date meta) so consecutive scheduled videos never repeat layout or background."""
     rt = normalize_reel_type(reel_type)
     try:
         import job_state
@@ -816,6 +838,13 @@ def record_recent_reel_type(reel_type: str, platform: str = "instagram") -> None
         cur = get_recent_reel_types(platform=platform, limit=6)
         chron = [rt] + cur[:5]
         job_state.set_value(key, json.dumps(chron[:6], ensure_ascii=False))
+        if platform == "instagram":
+            eff_dt = _coerce_jst(now_jst)
+            biz_date = (eff_dt - datetime.timedelta(hours=7)).strftime("%Y-%m-%d")
+            job_state.set_value(
+                REEL_LAST_POST_META_KEY,
+                json.dumps({"rt": rt, "biz_date": biz_date}, ensure_ascii=False),
+            )
     except Exception as e:
         logger.debug(f"record_recent_reel_type skipped: {e}")
 
@@ -827,11 +856,13 @@ def select_scheduled_reel_type(
     platform: str = "instagram",
 ) -> str:
     """
-    Intelligently rotate Reel/TikTok templates based on live crowd shape, day of week, and recent history
-    so scheduled vertical videos never repeat the same visual template back-to-back.
+    Intelligently rotate Reel/TikTok templates based on live crowd shape, time of night, day of week,
+    and recent history so scheduled vertical videos (including 2x/day 20:00 + 22:50 IG Reels)
+    never repeat the same visual template, background image, or Ken Burns camera drift back-to-back.
     """
     now_jst = _coerce_jst(now_jst)
     biz_dt = now_jst - datetime.timedelta(hours=7)
+    biz_date_str = biz_dt.strftime("%Y-%m-%d")
     wd = biz_dt.weekday()  # 0=Mon .. 6=Sun
     recent = list(recent_types) if recent_types is not None else get_recent_reel_types(platform=platform, limit=4)
     last_1 = recent[0] if len(recent) >= 1 else ""
@@ -866,12 +897,17 @@ def select_scheduled_reel_type(
                 return cand
         return preferred[0]
 
-    # Instagram Reels (daily 21:15, 1x/day): rotate across 4 distinct visual templates across all 7 days
-    # - Wednesday with strong male-lead stores: prioritize `ladies_zero_wait`
-    # - Thursday: favor `area_battle` / `tiktok_gap_shock` so mid-week themes alternate naturally
-    # - High intra-station gap (>=16pt): prioritize `tiktok_gap_shock` or `area_battle`
-    # - Other nights: deterministic daily rotation across all 4 templates with strict non-repeat guards
-    if wd == 2 and len(ladies_cands) >= 2:
+    # Instagram Reels (2x/day Plan B: daily 20:00 1st-venue slot + active-night 22:50 2nd-venue/midnight slot)
+    # Rotate across 5 distinct visual templates (unlocking `tiktok_midnight_cliff` for the 22:50 late-night slot)
+    is_late_ig_slot = (now_jst.hour >= 22 or now_jst.hour <= 3)
+    if is_late_ig_slot:
+        late_order = ["tiktok_midnight_cliff", "area_battle", "tiktok_gap_shock", "live_top5", "ladies_zero_wait"]
+        rot = biz_dt.toordinal() % 3  # alternate lead between midnight_cliff, area_battle, gap_shock across nights
+        head = late_order[:3]
+        ranked = head[rot:] + head[:rot] + late_order[3:]
+        if len(ladies_cands) < 2 and "ladies_zero_wait" in ranked:
+            ranked = [x for x in ranked if x != "ladies_zero_wait"] + ["ladies_zero_wait"]
+    elif wd == 2 and len(ladies_cands) >= 2:
         ranked = ["ladies_zero_wait", "area_battle", "live_top5", "tiktok_gap_shock"]
     elif wd == 3:
         ranked = ["area_battle", "tiktok_gap_shock", "live_top5", "ladies_zero_wait"]
@@ -884,11 +920,26 @@ def select_scheduled_reel_type(
         if len(ladies_cands) < 2 and "ladies_zero_wait" in ranked:
             ranked = [x for x in ranked if x != "ladies_zero_wait"] + ["ladies_zero_wait"]
 
-    if not has_real_hub_gap and "tiktok_gap_shock" in ranked:
-        ranked = [x for x in ranked if x != "tiktok_gap_shock"] + ["tiktok_gap_shock"]
+    if not has_real_hub_gap and "tiktok_gap_shock" in ranked and len(ranked) > 1:
+        ranked = [x for x in ranked if x != "tiktok_gap_shock"]
 
-    # Strictly avoid immediate repeat (`last_1`), avoid `last_2` when possible, AND avoid back-to-back background/Ken Burns collision
-    prev_bg = list_available_backgrounds(last_1, now_jst=now_jst - datetime.timedelta(days=1)) if last_1 else None
+    # Determine exact business date of `last_1` so both same-day 20:00->22:50 AND cross-day transitions avoid visual/Ken-Burns collision
+    prev_ref_dt = None
+    if last_1:
+        last_meta = get_last_reel_post_meta("instagram") if recent_types is None else {}
+        meta_bdate = str(last_meta.get("biz_date") or "").strip()
+        if meta_bdate == biz_date_str:
+            prev_ref_dt = now_jst
+        elif meta_bdate:
+            try:
+                y_i, m_i, d_i = (int(p) for p in meta_bdate.split("-"))
+                prev_ref_dt = datetime.datetime(y_i, m_i, d_i, 20, 15, tzinfo=JST)
+            except Exception:
+                prev_ref_dt = now_jst - datetime.timedelta(days=1)
+        else:
+            prev_ref_dt = now_jst if is_late_ig_slot else (now_jst - datetime.timedelta(days=1))
+
+    prev_bg = list_available_backgrounds(last_1, now_jst=prev_ref_dt) if (last_1 and prev_ref_dt) else None
     prev_vis = (prev_bg["active_file"] or f"procedural:{prev_bg['bg_variant']}") if prev_bg else None
     prev_kb = prev_bg["ken_burns_mode"] if prev_bg else None
 
@@ -1559,9 +1610,9 @@ class _ReelSceneRenderer:
             lo_pct = gp0["crowded_store"]["wpct"] if gp0 else 36
             has_hub_gap = bool(self.ctx.get("has_same_hub_gap", True))
             kicker = (
-                f"TIKTOK LIVE GAP  |  {self.ctx['weekday_ja']}曜夜・同駅比較"
+                f"LIVE RATIO GAP  |  {self.ctx['weekday_ja']}曜夜・同駅比較"
                 if has_hub_gap
-                else f"TIKTOK LIVE GAP  |  {self.ctx['weekday_ja']}曜夜・店舗比較"
+                else f"LIVE RATIO GAP  |  {self.ctx['weekday_ja']}曜夜・店舗比較"
             )
             lines = [
                 ("同じ駅・徒歩4分なのに" if has_hub_gap else "同じ夜の時間帯なのに", (255, 255, 255, 255)),

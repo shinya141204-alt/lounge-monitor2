@@ -983,6 +983,57 @@ def post_reel_to_instagram(
         return {"status": "error", "ok": False, "detail": str(e)}
 
 
+def _is_late_night_reel_slot(slot_label: str) -> bool:
+    """Return True when `slot_label` represents the 2nd daily late-night Reel slot (e.g. `22:50`, `22:30`..`03:59`)."""
+    s = (slot_label or "").strip()
+    m = re.match(r"^(\d{1,2}):(\d{2})$", s)
+    if not m:
+        return False
+    hh = int(m.group(1))
+    mm = int(m.group(2))
+    mins = hh * 60 + mm
+    return mins >= (22 * 60 + 30) or mins < (4 * 60)
+
+
+def evaluate_late_night_reel_gate(stores: list, now_jst: datetime.datetime = None) -> tuple:
+    """
+    Plan B smart activity gate for the 2nd daily Reel slot (`22:50` JST):
+    Fires ONLY on active nights so quiet Mon/Tue late nights never dilute average Reel watch/save metrics.
+    Qualifies when ANY of the following holds across domestic live stores:
+      1. `total_women >= 45` (strong nationwide female turnout)
+      2. `total_people >= 90` and `total_women >= 25` (strong 2nd-venue rush)
+      3. `same_hub_gap_pt >= 18` and `total_women >= 25` (sharp intra-station ratio gap worth saving)
+    """
+    import reel_generator
+
+    dom = threads_poster._filter_domestic_stores(stores or [])
+    total_women = sum(int(s.get("women") or 0) for s in dom)
+    total_men = sum(int(s.get("men") or 0) for s in dom)
+    total_people = total_women + total_men
+
+    ctx = reel_generator.build_reel_context(stores or [], reel_type="live_top5", now_jst=now_jst)
+    gap_pairs = ctx.get("gap_pairs") or []
+    same_hub_gap_pt = max(
+        (
+            int(gp.get("gap_pt") or 0)
+            for gp in gap_pairs
+            if gp.get("is_same_hub", " vs " not in str(gp.get("hub_label") or ""))
+        ),
+        default=0,
+    )
+
+    if total_women >= 45:
+        return True, f"active_women({total_women}>=45)"
+    if total_people >= 90 and total_women >= 25:
+        return True, f"active_total({total_people}>=90,women={total_women})"
+    if same_hub_gap_pt >= 18 and total_women >= 25:
+        return True, f"active_hub_gap({same_hub_gap_pt}pt>=18pt,women={total_women})"
+    return (
+        False,
+        f"Quiet late-night skipped to protect Reel reach (women={total_women}, total={total_people}, hub_gap={same_hub_gap_pt}pt)",
+    )
+
+
 def publish_live_reel_to_instagram(
     stores: list,
     reel_type: str = "live_top5",
@@ -996,8 +1047,9 @@ def publish_live_reel_to_instagram(
     """
     Warm-generate the live 9:16 MP4 Reel in-process, publish via Meta Instagram Graph API
     using `{SITE_URL}/ogp/reel/{reel_type}.mp4?s={ts_code}`, and record delivery status.
-    Supports `reel_type="auto"` (4-template rotation), slot-level deduplication, IG 95m cooldown,
-    and automatic `share_to_feed=False` switching when a Feed/Carousel already posted to the grid today.
+    Supports `reel_type="auto"` (5-template rotation across 20:00 + 22:50 Plan B slots),
+    slot-level deduplication, IG 95m cooldown, late-night activity gating, and automatic
+    `share_to_feed=False` switching when a Feed/Reel post already published to the profile grid today.
     """
     if not _ig_post_lock.acquire(blocking=False):
         return {"status": "skipped", "ok": False, "skipped": True, "reason": "already_running"}
@@ -1020,6 +1072,11 @@ def publish_live_reel_to_instagram(
             if in_cd:
                 logging.info(f"Deferring scheduled IG Reel ({slot_label}): {cd_reason}")
                 return {"status": "skipped", "ok": False, "reason": cd_reason}
+            if _is_late_night_reel_slot(slot_label):
+                gate_ok, gate_reason = evaluate_late_night_reel_gate(stores, now_jst=now_jst)
+                if not gate_ok:
+                    logging.info(f"Skipping late-night IG Reel ({slot_label}): {gate_reason}")
+                    return {"status": "skipped", "ok": False, "reason": gate_reason}
 
         if (reel_type or "").strip().lower() == "auto":
             rt = reel_generator.select_scheduled_reel_type(stores, now_jst=now_jst, platform="instagram")
@@ -1125,7 +1182,7 @@ def publish_live_reel_to_instagram(
             pass
 
         if res.get("status") == "success":
-            reel_generator.record_recent_reel_type(rt, platform="instagram")
+            reel_generator.record_recent_reel_type(rt, platform="instagram", now_jst=now_jst)
             if not force:
                 job_state.mark_done(dedup_key)
                 job_state.mark_done(slot_dedup_key)

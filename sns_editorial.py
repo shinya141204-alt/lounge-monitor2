@@ -657,7 +657,7 @@ HUMAN_JITTER_WINDOWS = {
     "threads_ladies": (1, 14), # 19:31 .. 19:44
     "instagram": (1, 12),      # 18:46 .. 18:57 / 21:46 .. 21:57
     "ig_ladies": (1, 12),      # 19:46 .. 19:57
-    "ig_reel": (3, 28),        # 21:18 .. 21:43 (natural vertical video post timing)
+    "ig_reel": (3, 28),        # 20:03..20:28 (1st slot) & 22:53..23:18 (2nd active-night slot)
     "tiktok": (4, 20),         # 20:39 .. 20:55 Inbox draft timing (100% covered by 11:39,45,51,57 UTC cron)
 }
 
@@ -899,8 +899,8 @@ def pick_rotated_hashtag_line(
 def get_sns_human_pacing_summary(now_jst: datetime.datetime = None) -> dict:
     """Return human-readable summary of anti-bot pacing & Reel schedule for `/staff/sns-editorial`."""
     return {
-        "ig_reels_weekly": 7,
-        "ig_reels_days_ja": "毎日21:15枠（1日1本・4テンプレ＆背景ローテ・1.2秒カバー固定・カルーセル自動投稿停止）",
+        "ig_reels_weekly": 14,
+        "ig_reels_days_ja": "毎日20:00枠＋活況夜22:50枠（1日最大2本・深夜第2便は活況自動判定＆リールタブ専用・5テンプレ＆背景非重複ローテ）",
         "x_cadence_ja": "最低48分間隔＋日次上限（月〜木4件・金〜日5件／主戦場枠リザーブ付）＋月/日休養ゆらぎ＋単独ポスト混在",
         "threads_cadence_ja": "週6日稼働（週1自然休養）＋最低90分間隔＋URL添付1/3以下＋画像1/3混在",
         "tiktok_cadence_ja": "水・金・土（週3回・20:39〜20:55人間ゆらぎ・3テンプレ自動ローテInbox送信）",

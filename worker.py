@@ -20,6 +20,8 @@ os.environ["DISABLE_SCHEDULER"] = "1"
 
 from apscheduler.executors.pool import ThreadPoolExecutor as APSThreadPoolExecutor
 from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.combining import OrTrigger
+from apscheduler.triggers.cron import CronTrigger
 
 import app as app_module
 # Mark app legacy scheduler as started to prevent any subsequent trigger
@@ -141,8 +143,8 @@ def _threads_ladies_job():
         logger.error(f"[worker] Scheduled Threads ladies post failed: {err}")
 
 
-def _ig_reel_scheduled_job(slot_lbl="21:15"):
-    """Scheduled Wed/Thu/Fri/Sat Reel post (4-template auto rotation + human jitter + Feed grid protection)."""
+def _ig_reel_scheduled_job(slot_lbl="20:00"):
+    """Scheduled Plan B 2x/day IG Reel post (daily 20:00 + active-night 22:50, 5-template rotation + grid protection)."""
     if not turbo_store.acquire_distributed_lock(f"cron:ig_reel:{slot_lbl}", ttl_sec=120):
         return
     try:
@@ -292,9 +294,9 @@ def build_worker_scheduler() -> BackgroundScheduler:
         hours=2,
     )
 
-    # 2. Scheduled X / Threads / Instagram Reel (daily 21:15) / Note / Bonus / PDCA / Maintenance jobs
+    # 2. Scheduled X / Threads / Instagram Reel (Plan B: daily 20:00 + active-night 22:50) / Note / Bonus / PDCA / Maintenance jobs
     #    Note: Unconditional background AI prewarm jobs (`prewarm_rolling_30m` etc.) and IG Carousel/Feed cron jobs
-    #    are intentionally disabled so Claude Opus runs ONLY on actual live post dispatches (~3-4x/day).
+    #    are intentionally disabled so Claude Opus runs ONLY on actual live post dispatches.
     scheduler.add_job(id="x_post_2000", func=_x_scheduled_job, trigger="cron", hour=11, minute="2,6,10,14,18,22,27", jitter=75, args=["20:00"], executor="sns_ai")
     scheduler.add_job(id="x_post_2200", func=_x_scheduled_job, trigger="cron", hour=13, minute="2,6,10,14,18,22,27", jitter=75, args=["22:00"], executor="sns_ai")
     scheduler.add_job(id="x_post_0000", func=_x_scheduled_job, trigger="cron", day_of_week="fri,sat", hour=15, minute="2,6,10,14,18,22,27", jitter=75, args=["00:00"], executor="sns_ai")
@@ -303,7 +305,17 @@ def build_worker_scheduler() -> BackgroundScheduler:
     scheduler.add_job(id="note_rss_check", func=_note_check_job, trigger="cron", hour="3,6", minute=20, jitter=240, executor="sns_ai")
     scheduler.add_job(id="threads_daily_2200", func=_threads_daily_job, trigger="cron", hour=13, minute="5,9,13,17,21,26,32", jitter=75, executor="sns_ai")
     scheduler.add_job(id="threads_ladies_1930", func=_threads_ladies_job, trigger="cron", day_of_week="wed,fri,sat", hour=10, minute="31,35,39,44,49", jitter=60, executor="sns_ai")
-    scheduler.add_job(id="ig_reel_2115", func=_ig_reel_scheduled_job, trigger="cron", hour=12, minute="18,24,30,36,42,48,54", jitter=50, args=["21:15"], executor="sns_ai")
+    scheduler.add_job(id="ig_reel_2000", func=_ig_reel_scheduled_job, trigger="cron", hour=11, minute="4,10,16,22,28,34,40", jitter=50, args=["20:00"], executor="sns_ai")
+    scheduler.add_job(
+        id="ig_reel_2250",
+        func=_ig_reel_scheduled_job,
+        trigger=OrTrigger([
+            CronTrigger(hour=13, minute="54", jitter=45, timezone="UTC"),
+            CronTrigger(hour=14, minute="0,6,12,18,24,30", jitter=50, timezone="UTC"),
+        ]),
+        args=["22:50"],
+        executor="sns_ai",
+    )
     scheduler.add_job(id="tiktok_inbox_2035", func=_tiktok_inbox_scheduled_job, trigger="cron", day_of_week="wed,fri,sat", hour=11, minute="39,45,51,57", jitter=50, args=["20:35"], executor="sns_ai")
     scheduler.add_job(id="events_crawl", func=_crawl_events_job, trigger="cron", hour="1,8,20", minute=0)
     scheduler.add_job(id="scheduled_articles_15m", func=_scheduled_articles_release_job, trigger="interval", minutes=15, executor="sns_ai")
