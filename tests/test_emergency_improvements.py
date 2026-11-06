@@ -15,6 +15,7 @@ tests/test_emergency_improvements.py - Phase 2 緊急改善項目の網羅的単
 import json
 import os
 import unittest
+from unittest import mock
 import urllib.parse
 from bs4 import BeautifulSoup
 
@@ -544,6 +545,78 @@ class TestEmergencyImprovements(unittest.TestCase):
                 self.assertNotIn('abcdef', r_ok_wh.get_json()['masked_url'])
             finally:
                 job_state.reset_cache_for_tests()
+
+    # ------------------------------------------------------------------
+    # 9. テスト汚染ハードロック ＆ クローラー機械スキャン遮断の回帰テスト
+    # ------------------------------------------------------------------
+    def test_sheets_store_hard_locks_live_sheets_during_unittest_even_without_env(self):
+        """DISABLE_SHEETS 未設定でも unittest 実行中は実 Google Sheets への接続が物理遮断されること"""
+        import logger as gs_logger
+        import sheets_store
+
+        old_dis = os.environ.pop('DISABLE_SHEETS', None)
+        old_allow = os.environ.pop('ALLOW_LIVE_SHEETS_IN_TESTS', None)
+        try:
+            self.assertFalse(sheets_store.is_disabled())
+            self.assertTrue(sheets_store._is_test_runtime())
+            with mock.patch.object(gs_logger, 'get_client') as mock_get_client:
+                ws = sheets_store.get_worksheet('Analytics Daily', ['date', 'event', 'label', 'count'])
+                self.assertIsNone(ws)
+                mock_get_client.assert_not_called()
+        finally:
+            if old_dis is not None:
+                os.environ['DISABLE_SHEETS'] = old_dis
+            else:
+                os.environ['DISABLE_SHEETS'] = '1'
+            if old_allow is not None:
+                os.environ['ALLOW_LIVE_SHEETS_IN_TESTS'] = old_allow
+
+    def test_ad_seo_and_headless_crawlers_blocked_from_link_and_analytics(self):
+        """Mediapartners-Google / AdsBot / GoogleOther / Lighthouse / HTTPクライアントがボット判定＆robots遮断されること"""
+        txt = self.client.get('/robots.txt').data.decode('utf-8')
+        for bot_name in ('Mediapartners-Google', 'AdsBot-Google', 'GoogleOther', 'Google-InspectionTool', 'SemrushBot', 'AhrefsBot'):
+            self.assertIn(f'User-agent: {bot_name}\n', txt)
+
+        crawler_uas = [
+            'Mediapartners-Google',
+            'AdsBot-Google (+http://www.google.com/adsbot.html)',
+            'Mozilla/5.0 (Linux; Android 6.0.1; Nexus 5X Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36 (compatible; GoogleOther)',
+            'Mozilla/5.0 (compatible; Google-InspectionTool/1.0;)',
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Chrome-Lighthouse',
+            'axios/1.7.7',
+            'undici',
+        ]
+        for ua in crawler_uas:
+            with self.app.test_request_context('/link/orbis', headers={'User-Agent': ua}):
+                self.assertTrue(app_module._is_bot_request(), ua)
+
+    def test_affiliate_redirect_blocks_prefetch_and_ip_burst_scanning_without_breaking_redirect(self):
+        """プリフェッチや同一IPからの機械的バースト巡回でも302遷移は維持しつつ affiliate_click 水増しだけを遮断すること"""
+        import analytics
+        import sheets_store
+
+        human_ua = (
+            'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) '
+            'AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1'
+        )
+        analytics.reset_for_tests()
+        try:
+            with mock.patch.object(sheets_store, 'read_rows', return_value=[]):
+                # 1) プリフェッチは 302 を返すがカウントしない
+                r_pre = self.client.get(
+                    '/link/orbis?from=/grooming',
+                    headers={'User-Agent': human_ua, 'Sec-Purpose': 'prefetch'},
+                )
+                self.assertEqual(r_pre.status_code, 302)
+                self.assertEqual(analytics.summary(days=1)['by_event'].get('affiliate_click', 0), 0)
+
+                # 2) 同一IPから連続10枠スキャンしても 302 は全て成功し、計測は上限6件で打ち止めになる
+                for _ in range(10):
+                    r_clk = self.client.get('/link/orbis?from=/grooming', headers={'User-Agent': human_ua})
+                    self.assertEqual(r_clk.status_code, 302)
+                self.assertEqual(analytics.summary(days=1)['by_event'].get('affiliate_click', 0), 6)
+        finally:
+            analytics.reset_for_tests()
 
 
 if __name__ == '__main__':

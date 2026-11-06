@@ -25,6 +25,11 @@ def robots_txt():
         "Claude-User",
         "anthropic-ai",
         "Google-Extended",
+        "GoogleOther",
+        "Google-InspectionTool",
+        "Mediapartners-Google",
+        "AdsBot-Google",
+        "AdsBot-Google-Mobile",
         "Applebot-Extended",
         "Meta-ExternalAgent",
         "Meta-ExternalFetcher",
@@ -33,6 +38,9 @@ def robots_txt():
         "YouBot",
         "MistralAI-User",
         "cohere-ai",
+        "SemrushBot",
+        "AhrefsBot",
+        "PetalBot",
     )
     # Crawlers only obey the most specific matching group, so private paths and the
     # affiliate redirect (/link/) must be repeated inside every AI-bot group as well.

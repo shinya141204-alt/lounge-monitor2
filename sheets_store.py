@@ -22,9 +22,16 @@ def is_disabled():
     return os.environ.get('DISABLE_SHEETS', '') == '1'
 
 
+def _is_test_runtime() -> bool:
+    """unittest / pytest 実行中は本番 Google Sheets への実通信をハードロック遮断する。"""
+    if os.environ.get('ALLOW_LIVE_SHEETS_IN_TESTS', '') == '1':
+        return False
+    return ('unittest' in sys.modules) or ('pytest' in sys.modules)
+
+
 def get_worksheet(title, header):
     """指定タイトルのワークシートを取得（なければヘッダー付きで作成）。失敗時は None。"""
-    if is_disabled():
+    if is_disabled() or _is_test_runtime():
         return None
     with _ws_lock:
         cached = _ws_cache.get(title)
@@ -78,7 +85,7 @@ def append_rows(title, header, rows):
 
 def append_rows_async(title, header, rows):
     """リクエスト処理をブロックしないようにバックグラウンドで追記（一時失敗時は1秒・3秒待機で最大3回リトライ）。"""
-    if not rows or is_disabled():
+    if not rows or is_disabled() or _is_test_runtime():
         return
 
     def _worker():

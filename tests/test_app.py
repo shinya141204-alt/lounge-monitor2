@@ -2448,17 +2448,14 @@ class AutonomousPdcaEngineTests(unittest.TestCase):
             ).strftime('%Y-%m-%d %H:%M:%S')
         app_module._last_fetch_epoch = 9999999999.0
         app_module.clear_fast_http_caches()
+        analytics.reset_for_tests()
         self.client = app_module.app.test_client()
 
     def tearDown(self):
         import analytics
         import column_editorial
         import pdca_engine
-        with analytics._lock:
-            analytics._pending.clear()
-            analytics._flushed.clear()
-            analytics._sheet_rows_cache['ts'] = 0.0
-            analytics._sheet_rows_cache['rows'] = None
+        analytics.reset_for_tests()
         column_editorial.clear_column_ai_cache()
         pdca_engine.reset_pdca_cache_for_tests()
         shutil.rmtree(os.environ['JOB_STATE_DIR'], ignore_errors=True)

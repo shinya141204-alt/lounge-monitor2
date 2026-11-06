@@ -829,3 +829,7 @@ def reset_for_tests():
         _sheet_rows_cache['ts'] = 0.0
         _sheet_rows_cache['rows'] = None
         _pg_seeded_from_sheets = False
+    try:
+        turbo_store.clear_rate_limit('aff_clk_human')
+    except Exception:
+        pass

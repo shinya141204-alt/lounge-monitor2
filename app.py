@@ -1929,7 +1929,20 @@ def affiliate_redirect(item_id):
     target_url = affiliate_manager.resolve_affiliate_url(clean_id, allow_blocking=False) or AFFILIATE_REDIRECTS.get(clean_id)
     if not target_url:
         return redirect(url_for('index'))
-    if not _is_bot_request() and not session.get('is_staff') and request.args.get('staff_test') != '1':
+    if (
+        request.method == 'GET'
+        and not _is_bot_request()
+        and not _is_prefetch_request()
+        and not session.get('is_staff')
+        and not session.get('is_master')
+        and request.args.get('staff_test') != '1'
+        and turbo_store.check_sliding_rate_limit(
+            'aff_clk_human',
+            f"{get_client_ip()}|{(request.headers.get('User-Agent') or '')[:80]}",
+            limit=6,
+            window_sec=600,
+        )
+    ):
         try:
             import analytics
             parsed_ref = urllib_parse.urlparse(request.referrer or '')
@@ -1970,10 +1983,15 @@ import urllib.parse as urllib_parse
 
 _BOT_MARKERS = (
     'bot', 'spider', 'crawl', 'slurp', 'facebookexternalhit', 'preview', 'headless', 'python-requests', 'curl',
-    # AI assistants / fetchers whose UA does not contain "bot" (would otherwise count as human affiliate clicks)
+    # AI assistants / fetchers & ad/SEO/headless scanners whose UA does not always contain "bot"
     'chatgpt-user', 'perplexity-user', 'claude-user', 'claude-web', 'anthropic-ai', 'mistralai-user',
     'meta-externalfetcher', 'meta-externalagent', 'cohere-ai', 'google-extended', 'applebot-extended',
+    'mediapartners-google', 'adsbot', 'apis-google', 'feedfetcher-google', 'google-read-aloud',
+    'google-inspectiontool', 'googleother', 'storebot-google',
+    'lighthouse', 'chrome-lighthouse', 'phantomjs', 'playwright', 'puppeteer', 'selenium',
+    'semrush', 'ahrefs', 'petal', 'censys', 'zgrab',
     'bytespider', 'gptbot', 'oai-searchbot', 'python-httpx', 'aiohttp', 'go-http-client', 'wget', 'scrapy',
+    'axios', 'node-fetch', 'undici', 'okhttp', 'libwww-perl', 'java/',
 )
 _TRACKED_PAGE_PREFIXES = ('/guide', '/columns', '/areas', '/area/', '/concierge', '/grooming', '/for-women', '/stats', '/price-comparison', '/oriental-lounge', '/ag', '/jis', '/asobibar', '/store/')
 _LIVE_NO_CACHE_PREFIXES = ('/price-comparison', '/for-women', '/concierge', '/store/', '/areas', '/area/', '/oriental-lounge', '/ag', '/jis', '/asobibar')
