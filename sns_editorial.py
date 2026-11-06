@@ -43,7 +43,7 @@ DEFAULT_GEMINI_MODELS = (
     "gemini-3.5-flash-lite",
 )
 
-# Anthropic Claude Opus & Sonnet models (dynamically supplemented via /v1/models when key is set)
+# Anthropic Claude Opus & Sonnet models for daily SNS (dynamically supplemented via /v1/models when key is set)
 DEFAULT_CLAUDE_MODELS = (
     "claude-opus-5-5",
     "claude-sonnet-5-5",
@@ -52,6 +52,12 @@ DEFAULT_CLAUDE_MODELS = (
     "claude-opus-4-8",
     "claude-sonnet-4-6",
     "claude-haiku-5-5",
+)
+
+# Flagship 1M-context Claude Fable models reserved for deep strategy, long-form columns, and flagship note essays
+DEFAULT_CLAUDE_FABLE_MODELS = (
+    "claude-fable-5-1",
+    "claude-fable-5",
 )
 
 # Words/phrases that betray AI-generated or promotional copywriting (or overused hooks) — strictly penalized by Desk
@@ -4137,7 +4143,7 @@ def _is_requests_get_mocked() -> bool:
 
 def _claude_version_key(model_id: str) -> tuple:
     low = (model_id or "").lower()
-    m = re.search(r"claude-(?:opus|sonnet|haiku)-(\d+)(?:-(\d+))?", low)
+    m = re.search(r"claude-(?:fable|opus|sonnet|haiku)-(\d+)(?:-(\d+))?", low)
     if m:
         maj = int(m.group(1))
         mnr = int(m.group(2)) if m.group(2) and len(m.group(2)) <= 2 else 0
@@ -4145,15 +4151,22 @@ def _claude_version_key(model_id: str) -> tuple:
     return (0, 0, 0)
 
 
-def _discover_claude_models(api_key: str, timeout: float = 4.0) -> list:
+def _discover_claude_models(api_key: str, timeout: float = 4.0, include_fable: bool = False) -> list:
     """
-    Dynamically query Anthropic `/v1/models` (cached 6h) and rank newest Claude Opus -> Sonnet -> Haiku models.
+    Dynamically query Anthropic `/v1/models` (cached 6h) and rank newest Claude models.
+    Daily SNS calls (`include_fable=False`) rank Opus -> Sonnet -> Haiku to prevent routine Fable cost spikes;
+    strategic/flagship calls (`include_fable=True`) rank Fable -> Opus -> Sonnet when available.
     """
     if not api_key:
         return []
+    fallback_list = (
+        list(DEFAULT_CLAUDE_FABLE_MODELS[:1]) + list(DEFAULT_CLAUDE_MODELS)
+        if include_fable
+        else list(DEFAULT_CLAUDE_MODELS)
+    )
     if _is_requests_post_mocked() and not _is_requests_get_mocked():
-        return list(DEFAULT_CLAUDE_MODELS)
-    sig = f"claude_v2_opus:{api_key[:10]}"
+        return fallback_list
+    sig = f"claude_v2_{'fable' if include_fable else 'opus'}:{api_key[:10]}"
     now_t = time.time()
     cached = _model_discovery_cache.get(sig)
     if cached and (now_t - cached["ts"] < _DISCOVERY_TTL_SEC) and cached.get("models"):
@@ -4169,8 +4182,9 @@ def _discover_claude_models(api_key: str, timeout: float = 4.0) -> list:
             timeout=max(0.8, min(4.5, float(timeout))),
         )
         if r.status_code != 200:
-            return list(DEFAULT_CLAUDE_MODELS)
+            return fallback_list
         items = (r.json() or {}).get("data") or []
+        fables = []
         opuses = []
         sonnets = []
         haikus = []
@@ -4179,21 +4193,27 @@ def _discover_claude_models(api_key: str, timeout: float = 4.0) -> list:
             low = mid.lower()
             if not mid or "claude" not in low:
                 continue
-            if "opus" in low:
+            if "fable" in low:
+                fables.append(mid)
+            elif "opus" in low:
                 opuses.append(mid)
             elif "sonnet" in low:
                 sonnets.append(mid)
             elif "haiku" in low:
                 haikus.append(mid)
+        fables.sort(key=_claude_version_key, reverse=True)
         opuses.sort(key=_claude_version_key, reverse=True)
         sonnets.sort(key=_claude_version_key, reverse=True)
         haikus.sort(key=_claude_version_key, reverse=True)
-        ranked = (opuses[:2] + sonnets[:2] + haikus[:1]) or list(DEFAULT_CLAUDE_MODELS)
+        if include_fable:
+            ranked = (fables[:2] + opuses[:2] + sonnets[:1]) or fallback_list
+        else:
+            ranked = (opuses[:2] + sonnets[:2] + haikus[:1]) or list(DEFAULT_CLAUDE_MODELS)
         _model_discovery_cache[sig] = {"ts": now_t, "models": ranked}
         return list(ranked)
     except Exception:
         pass
-    return list(DEFAULT_CLAUDE_MODELS)
+    return fallback_list
 
 
 def _parse_ai_json_object(raw_text: str):
@@ -4299,10 +4319,12 @@ def call_editorial_ai_json(
     allow_blocking: bool = True,
     now_jst: datetime.datetime = None,
     prefer_fast: bool = False,
+    prefer_fable: bool = False,
 ) -> tuple:
     """
-    Unified Dual-Engine AI JSON caller supporting BOTH Anthropic Claude (Opus / Sonnet) and Upgraded Google Gemini (Pro / Flash).
+    Unified Dual-Engine AI JSON caller supporting BOTH Anthropic Claude (Fable / Opus / Sonnet) and Upgraded Google Gemini (Pro / Flash).
     Automatically routes based on configured keys and `get_ai_engine_pref()`, with instant failover across providers/models.
+    `prefer_fable=True` promotes 1M-context `claude-fable-5-1` (effort=high) for flagship strategy & long-form columns while keeping daily SNS on Opus/Sonnet.
     Returns `(parsed_dict_or_None, model_label_str, last_error_str)`.
     """
     now_jst = now_jst or datetime.datetime.now(JST)
@@ -4345,8 +4367,13 @@ def call_editorial_ai_json(
         has_later_provider = (p_idx < len(providers) - 1)
 
         if prov == "claude":
+            use_fable_tier = bool(prefer_fable and not prefer_fast)
             preferred_c = (os.environ.get("CLAUDE_MODEL") or "").strip()
-            discovered_c = _discover_claude_models(c_key, timeout=min(3.2, max(1.0, deadline - time.monotonic() - 2.0)))
+            discovered_c = _discover_claude_models(
+                c_key,
+                timeout=min(3.2, max(1.0, deadline - time.monotonic() - 2.0)),
+                include_fable=use_fable_tier,
+            )
             c_models = []
             if preferred_c:
                 c_models.append(preferred_c)
@@ -4355,12 +4382,30 @@ def call_editorial_ai_json(
                 saved_r
                 and saved_r[0] == "claude"
                 and saved_r[1] not in c_models
-                and (prefer_fast or "opus" in saved_r[1].lower())
+                and (
+                    prefer_fast
+                    or "opus" in saved_r[1].lower()
+                    or (use_fable_tier and "fable" in saved_r[1].lower())
+                )
             ):
                 c_models.append(saved_r[1])
-            for m in (discovered_c or DEFAULT_CLAUDE_MODELS):
+            default_pool = (
+                list(DEFAULT_CLAUDE_FABLE_MODELS[:1]) + list(DEFAULT_CLAUDE_MODELS)
+                if use_fable_tier
+                else list(DEFAULT_CLAUDE_MODELS)
+            )
+            for m in (discovered_c or default_pool):
                 if m not in c_models:
                     c_models.append(m)
+
+            if not is_mocked_post and _unhealthy_models:
+                now_mono_c = time.monotonic()
+                for k_um, exp_um in list(_unhealthy_models.items()):
+                    if now_mono_c >= exp_um:
+                        _unhealthy_models.pop(k_um, None)
+                healthy_c = [m for m in c_models if m not in _unhealthy_models]
+                if healthy_c:
+                    c_models = healthy_c + [m for m in c_models if m in _unhealthy_models]
 
             if prefer_fast:
                 # Fast / 2nd-pass polish mode: prefer top Sonnet #1 (distinct editor persona) + Haiku #2 safety net
@@ -4370,6 +4415,12 @@ def call_editorial_ai_json(
                     top_fast = next((m for m in c_models if "sonnet" in m.lower()), c_models[0])
                 fast_haiku = next((m for m in c_models if "haiku" in m.lower() and m != top_fast), None)
                 c_trial = [top_fast, fast_haiku] if fast_haiku else [top_fast]
+            elif use_fable_tier and not preferred_c:
+                # Strategic / Flagship Column mode: lead with Claude Fable 5.1 (#1), backed immediately by Claude Opus (#2)
+                top_fable = next((m for m in c_models if "fable" in m.lower() and m not in _unhealthy_models), None)
+                top_opus = next((m for m in c_models if "opus" in m.lower()), None)
+                top_sonnet = next((m for m in c_models if "sonnet" in m.lower()), None)
+                c_trial = [m for m in (top_fable, top_opus, top_sonnet) if m][:2] or c_models[:2]
             else:
                 # Primary creative mode: lead with flagship Claude Opus (#1), with top Sonnet (#2) as instant fallback
                 if preferred_c:
@@ -4410,7 +4461,8 @@ def call_editorial_ai_json(
                 if _claude_supports_temperature(cm):
                     c_body["temperature"] = min(1.0, max(0.1, float(temperature)))
                 else:
-                    c_body["output_config"] = {"effort": "low" if prefer_fast else "medium"}
+                    eff_lvl = "low" if prefer_fast else ("high" if "fable" in cm.lower() else "medium")
+                    c_body["output_config"] = {"effort": eff_lvl}
 
                 try:
                     resp = requests.post(
@@ -4442,6 +4494,8 @@ def call_editorial_ai_json(
                         last_err = f"Claude HTTP {resp.status_code} ({cm}): {(resp.text or '')[:130]}"
                         claude_fail_note = last_err
                         logger.warning(f"[editorial_ai] {last_err}")
+                        if not is_mocked_post and resp.status_code in (403, 404, 529):
+                            _mark_model_unhealthy(cm)
                         if _last_gemini_meta.get("working_route") == ("claude", cm):
                             _last_gemini_meta["working_route"] = None
                         continue

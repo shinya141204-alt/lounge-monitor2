@@ -68,7 +68,7 @@ description: >-
 3. **JSON-LD 構造化データ**：`Article`（`SpeakableSpecification`・`author: くわもん`・`datePublished`・`dateModified` 付） + `BreadcrumbList` + `FAQPage`
 4. **ナビゲーション・共通CSS・ライトモード暗転防止・`<main>`・フッター**：
    * `<link rel="manifest" href="/static/manifest.json?v=3">`, `<link rel="icon" type="image/png" href="/static/icon-192.png?v=3">`, `<link rel="apple-touch-icon" href="/static/icon.png?v=3">`, `<meta name="theme-color" content="#111113">`
-   * `<link rel="stylesheet" href="/static/style.css?v=20261030_6">`, `<link rel="stylesheet" href="/static/portal.css?v=14">`, `<link rel="stylesheet" href="/static/calm.css?v=33">`（既存ページと完全一致のクエリ文字列）を読み込み、`<head>` に `<script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script><style>html.theme-light{background-color:#f6f6f7;}</style>`、`<body>` 直後に `<script>try{if(localStorage.getItem('olg_view_theme')==='light')document.body.classList.add('theme-light');}catch(e){}</script>` を入れること
+   * `<link rel="stylesheet" href="/static/style.css?v=20261030_6">`, `<link rel="stylesheet" href="/static/portal.css?v=14">`, `<link rel="stylesheet" href="/static/calm.css?v=35">`（既存ページと完全一致のクエリ文字列）を読み込み、`<head>` に `<script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script><style>html.theme-light{background-color:#f6f6f7;}</style>`、`<body>` 直後に `<script>try{if(localStorage.getItem('olg_view_theme')==='light')document.body.classList.add('theme-light');}catch(e){}</script>` を入れること
    * 上部に `{% set nav_active = 'columns' %}` と `{% include '_portal_nav.html' %}`、主コンテンツ全体を `<main> ... </main>` で囲み、下部に `{% include '_portal_footer.html' %}`
    * スタッフ非表示ガード `{% if not is_staff and not session.get('is_staff') %}`（予約記事なら `and not is_scheduled_preview` も追加）で AdSense タグを囲むこと
 5. **店舗個別ページ・統計白書・関連コラムへの内部リンク（サイト内回遊の最大化）**：
@@ -77,14 +77,22 @@ description: >-
 
 ---
 
-## Step 3.5: Claude Opus 5.5 辛口デスク自動推敲ゲート（脱AI仕上げ）
-作成したコラムHTMLと書き下ろし note エッセイ原稿に対し、デプロイ前に必ず Claude Opus 5.5（読み取り専用 `--mode article`）のデスク校閲を通し、指摘された不自然な比喩・誇張語・会話の硬さを Antigravity の `edit_file` で磨き上げる：
-```bash
-python3 /Users/kuwanoshinya/.gemini/相席業務改善/相席モニター/.agents/skills/claude-review/scripts/run_claude_review.py \
-  --mode article \
-  --files templates/guide_<slug_underscored>.html \
-  --prompt "編集長くわもんの語り口として自然か、AIっぽい煽り語や会話の不自然さがないか辛口添削して"
-```
+## Step 3.5: Claude Fable 5.1 / Opus 5.5 辛口デスク自動推敲ゲート（構成＆脱AIの徹底推敲）
+作成したコラムHTMLと書き下ろし note エッセイ原稿に対し、デプロイ前に必ず読み取り専用デスク校閲を通し、指摘された構成の甘さ・AI優等生構文・誇張語・会話の硬さを Antigravity の `edit_file` で磨き上げる：
+* **看板コラム・ピラー比較記事・note 勝負記事（デフォルト推奨）** → 最上位モデル **Claude Fable 5.1（`--mode flagship`）** で構成骨格から1文単位の生身改稿案まで徹底推敲する：
+  ```bash
+  python3 /Users/kuwanoshinya/.gemini/相席業務改善/相席モニター/.agents/skills/claude-review/scripts/run_claude_review.py \
+    --mode flagship \
+    --files templates/guide_<slug_underscored>.html \
+    --prompt "編集長くわもんの語り口として自然か、冒頭15秒の引き・3軸因果構成・AI優等生構文の排除・男女会話の体温を徹底推敲し、コピペ置換できる改稿案を出して"
+  ```
+* **軽量・速報系の通常記事（スピード優先時）** → `claude-opus-5-5`（`--mode article`）を使用する：
+  ```bash
+  python3 /Users/kuwanoshinya/.gemini/相席業務改善/相席モニター/.agents/skills/claude-review/scripts/run_claude_review.py \
+    --mode article \
+    --files templates/guide_<slug_underscored>.html \
+    --prompt "編集長くわもんの語り口として自然か、AIっぽい煽り語や会話の不自然さがないか辛口添削して"
+  ```
 
 ---
 
@@ -121,4 +129,4 @@ python3 /Users/kuwanoshinya/.gemini/相席業務改善/相席モニター/.agent
 1. 生成した **16:9 アイキャッチ画像のプレビュー**
 2. 公開された **サイト内コラムURL（`https://aiseki-navi.com/guide/<slug>`）**
 3. **【そのままコピペ用】note専用・独立書き下ろしエッセイ原稿（タイトル・ハッシュタグ・本文Markdown）**
-   * **※Web記事のコピペ転載は厳禁！** Web版が「検索読者向けの構造化データリファレンス（番号付き見出し・比較表・FAQ）」であるのに対し、note版は「編集長・くわもんの一人称による人間観察・データ考察エッセイ（番号なし `## ` 見出し・`> ` 引用・1,700〜2,500文字）」として完全に別原稿で書き分けること（または `column_editorial.export_column_for_note('<slug>', mode='essay')` を活用し、Claude Opus 5.5 で脱AI推敲すること）。
+   * **※Web記事のコピペ転載は厳禁！** Web版が「検索読者向けの構造化データリファレンス（番号付き見出し・比較表・FAQ）」であるのに対し、note版は「編集長・くわもんの一人称による人間観察・データ考察エッセイ（番号なし `## ` 見出し・`> ` 引用・1,700〜2,500文字）」として完全に別原稿で書き分けること（または `column_editorial.export_column_for_note('<slug>', mode='essay')` を活用し、勝負記事は Claude Fable 5.1 `--mode flagship`、定例記事は Opus 5.5 `--mode article` で脱AI推敲すること）。

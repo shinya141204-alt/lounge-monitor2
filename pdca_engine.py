@@ -1685,9 +1685,10 @@ def _generate_pdca_briefing(diag: dict, use_ai: bool = True, cache_only: bool = 
             prompt=prompt,
             max_output_tokens=2000,
             thinking_budget=1024,
-            total_deadline_sec=36.0,
-            per_call_timeout_sec=24.0,
+            total_deadline_sec=46.0,
+            per_call_timeout_sec=32.0,
             allow_blocking=True,
+            prefer_fable=True,
         )
         if parsed and parsed.get("briefing"):
             b_txt = column_editorial._sanitize_brand_names((parsed.get("briefing") or "").strip())

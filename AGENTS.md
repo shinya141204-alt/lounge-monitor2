@@ -59,10 +59,14 @@ git push origin main
 /Users/kuwanoshinya/.fly/bin/flyctl deploy . --config fly.toml --remote-only -a aiseki-navi-tokyo --ha=false
 ```
 
-## 7. 専用スキル一覧（`.agents/skills/`）
+## 7. 専用スキル一覧（`.agents/skills/`）＆ Claude Fable 5.1 運用基準
 詳細なワークフローは各スキルの `SKILL.md` を参照すること：
-- `.agents/skills/article/SKILL.md`: 新規データ考察コラム＋16:9図解アイキャッチ＋note独立エッセイ一気通貫生成
+- `.agents/skills/article/SKILL.md`: 新規データ考察コラム＋16:9図解アイキャッチ＋note独立エッセイ一気通貫生成（勝負記事は Fable 5.1 で徹底推敲）
 - `.agents/skills/editorial-ui-ux/SKILL.md`: クリーン・ミニマル UI/UX 改修＆自動回帰監査
 - `.agents/skills/affiliate/SKILL.md`: アフィリエイト案件登録・薬機法監査
 - `.agents/skills/store-audit/SKILL.md`: 全ブランドの店舗マスタ・営業時間・料金ドリフト点検
-- `.agents/skills/claude-review/SKILL.md`: Antigravity × Claude Code クロスレビュー・文章推敲連携
+- `.agents/skills/claude-review/SKILL.md`: Antigravity × Claude Code 連携（日常レビューは `claude-opus-5-5`、以下の **切り札3領域** は 100万トークン対応の最上位モデル **`claude-fable-5-1`** を自動使用）
+  1. **`--mode strategy`**: 収益化・SEO・導線設計の「全体戦略」
+  2. **`--mode audit`**: 複雑な数理ロジック・大型改修の「最終バグ・セキュリティ監査」
+  3. **`--mode flagship`**: 看板コラム・note 勝負記事の「構成＆脱AIの徹底推敲」
+  - レート使用量確認: `python3 .agents/skills/claude-review/scripts/run_claude_review.py --usage`

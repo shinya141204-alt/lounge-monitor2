@@ -2033,10 +2033,11 @@ def _generate_gemini_column_candidate(
         max_output_tokens=6800,
         thinking_budget=2048,
         temperature=0.84,
-        total_deadline_sec=78.0,
-        per_call_timeout_sec=54.0,
+        total_deadline_sec=92.0,
+        per_call_timeout_sec=64.0,
         allow_blocking=True,
         now_jst=now_jst,
+        prefer_fable=True,
     )
     if not isinstance(parsed, dict) or not parsed.get("title") or not parsed.get("sections"):
         return None
