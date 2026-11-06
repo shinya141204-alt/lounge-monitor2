@@ -37,6 +37,7 @@ ALLOWED_EVENTS = {
 _lock = threading.Lock()
 _pending = defaultdict(int)   # (date, event, label) -> count（未フラッシュ分）
 _sheets_retry = defaultdict(int)  # Postgres保存済み・Sheetsのみ再送待ち分
+_pg_retry = defaultdict(int)      # Sheets保存済み・Postgresのみ再送待ち分
 _flushed = defaultdict(int)   # 起動後に送信済みの分（Sheets読込失敗時の表示用）
 _SHEET_ROWS_CACHE_TTL = 900.0
 _sheet_rows_cache = {'ts': 0.0, 'rows': None}
@@ -207,33 +208,53 @@ def flush(force_sheets=True):
         with _lock:
             for k in [k for k in _flushed.keys() if k[0] <= cutoff_3d]:
                 del _flushed[k]
+            for k in [k for k in _sheets_retry.keys() if k[0] <= cutoff_3d]:
+                del _sheets_retry[k]
             new_items = list(_pending.items())
             _pending.clear()
-        if not new_items:
+            pg_retry_items = list(_pg_retry.items())
+            _pg_retry.clear()
+        if not new_items and not pg_retry_items:
             return 0
-        pg_saved = turbo_store.analytics_add_batch(new_items)
+        combined_pg = defaultdict(int)
+        for k, c in pg_retry_items:
+            combined_pg[k] += c
+        for k, c in new_items:
+            combined_pg[k] += c
+        pg_saved = turbo_store.analytics_add_batch(list(combined_pg.items()))
         with _lock:
             if pg_saved:
                 for key, c in new_items:
                     _sheets_retry[key] += c
             else:
+                for key, c in pg_retry_items:
+                    _pg_retry[key] += c
                 for key, c in new_items:
                     _pending[key] += c
-        return len(new_items) if pg_saved else 0
+        return len(combined_pg) if pg_saved else 0
 
     with _lock:
         for k in [k for k in _flushed.keys() if k[0] <= cutoff_3d]:
             del _flushed[k]
+        for k in [k for k in _sheets_retry.keys() if k[0] <= cutoff_3d]:
+            del _sheets_retry[k]
         new_items = list(_pending.items())
         _pending.clear()
         retry_items = list(_sheets_retry.items())
         _sheets_retry.clear()
-    if not new_items and not retry_items:
+        pg_retry_items = list(_pg_retry.items())
+        _pg_retry.clear()
+    if not new_items and not retry_items and not pg_retry_items:
         return 0
 
     pg_saved = False
-    if new_items:
-        pg_saved = turbo_store.analytics_add_batch(new_items)
+    if new_items or pg_retry_items:
+        combined_pg = defaultdict(int)
+        for k, c in pg_retry_items:
+            combined_pg[k] += c
+        for k, c in new_items:
+            combined_pg[k] += c
+        pg_saved = turbo_store.analytics_add_batch(list(combined_pg.items()))
     elif retry_items and turbo_store.is_postgres_active():
         pg_saved = True
 
@@ -244,20 +265,37 @@ def flush(force_sheets=True):
         merged_for_sheets[k] += c
 
     rows = [[d, e, l, c] for (d, e, l), c in merged_for_sheets.items()]
-    ok = sheets_store.append_rows(SHEET_TITLE, HEADER, rows)
+    ok = sheets_store.append_rows(SHEET_TITLE, HEADER, rows) if rows else True
     with _lock:
         if ok:
             for key, c in merged_for_sheets.items():
                 if key[0] > cutoff_3d:
                     _flushed[key] += c
+            if _sheet_rows_cache['rows'] is not None and rows:
+                _sheet_rows_cache['rows'] = list(_sheet_rows_cache['rows']) + [[d, e, l, str(c)] for d, e, l, c in rows]
             _sheet_rows_cache['ts'] = 0.0
-        elif pg_saved:
-            # Already persisted safely in PostgreSQL/turbo_store; only retry Google Sheets mirror next tick
-            for key, c in merged_for_sheets.items():
-                _sheets_retry[key] += c
+            if not pg_saved and turbo_store.is_postgres_active():
+                for key, c in pg_retry_items:
+                    if key[0] > cutoff_3d:
+                        _pg_retry[key] += c
+                for key, c in new_items:
+                    if key[0] > cutoff_3d:
+                        _pg_retry[key] += c
         else:
-            for key, c in merged_for_sheets.items():
-                _pending[key] += c
+            for key, c in retry_items:
+                if key[0] > cutoff_3d:
+                    _sheets_retry[key] += c
+            if pg_saved:
+                # Already persisted safely in PostgreSQL/turbo_store; only retry Google Sheets mirror next tick
+                for key, c in new_items:
+                    if key[0] > cutoff_3d:
+                        _sheets_retry[key] += c
+            else:
+                for key, c in pg_retry_items:
+                    if key[0] > cutoff_3d:
+                        _pg_retry[key] += c
+                for key, c in new_items:
+                    _pending[key] += c
     if not ok and not pg_saved:
         logging.warning('[analytics] flush failed; will retry')
     return len(rows) if (ok or pg_saved) else 0
@@ -638,7 +676,7 @@ def summary(days=7, allow_blocking=True):
     by_label_sorted = {e: sorted(v.items(), key=lambda x: -x[1])[:15] for e, v in by_label.items()}
     by_label_pretty = {}
     for e, items in by_label_sorted.items():
-        max_c = items[0][1] if items else 1
+        max_c = max(1, items[0][1]) if items else 1
         ev_tot = max(1, by_event.get(e, 1))
         pretty_list = []
         for raw_lbl, cnt in items:
@@ -675,19 +713,26 @@ def summary(days=7, allow_blocking=True):
             if src_p:
                 cushion_by_source[src_p] += int(cnt or 0)
 
+    imp_days = {d for (d, e, _l), c in totals.items() if e == 'affiliate_impression' and c > 0 and d >= start}
+    aff_clicks_measurable = sum(
+        c for (d, e, _l), c in totals.items()
+        if e == 'affiliate_click' and d >= start and d in imp_days
+    )
+
     funnel = {
         'pv_total': pv_total,
         'article_views': article_views,
         'store_open_total': store_open_total,
         'engagement_total': engagement_total,
-        'engagement_rate_pct': round((engagement_total / pv_total) * 100, 1) if pv_total > 0 else 0.0,
+        'engagement_rate_pct': min(100.0, round((engagement_total / pv_total) * 100, 1)) if pv_total > 0 else 0.0,
         'action_total': action_total,
         'action_rate_pct': round((action_total / pv_total) * 100, 1) if pv_total > 0 else 0.0,
         'aff_total': aff_total,
         'aff_impressions_total': aff_impressions_total,
+        'aff_clicks_measurable': aff_clicks_measurable,
         'cushion_clicks_total': cushion_clicks_total,
         'aff_ctr_pct': round((aff_total / pv_total) * 100, 2) if pv_total > 0 else 0.0,
-        'aff_slot_ctr_pct': round((aff_total / aff_impressions_total) * 100, 2) if aff_impressions_total > 0 else 0.0,
+        'aff_slot_ctr_pct': min(100.0, round((aff_clicks_measurable / aff_impressions_total) * 100, 2)) if aff_impressions_total > 0 else 0.0,
         'map_total': map_total,
         'official_total': official_total,
         'sns_total': sns_total,
@@ -734,7 +779,7 @@ def summary(days=7, allow_blocking=True):
             'title': desc['title'],
             'impressions': imp_c,
             'clicks': clk_c,
-            'ctr_pct': round((clk_c / imp_c) * 100, 2) if imp_c > 0 else 0.0,
+            'ctr_pct': min(100.0, round((clk_c / imp_c) * 100, 2)) if imp_c > 0 else 0.0,
         })
 
     # Estimated revenue simulation (AdSense RPM ~350 yen / 1,000 PV, Affiliate ~90 yen expected value per click = 3% CVR * 3,000 yen)
@@ -825,11 +870,15 @@ def reset_for_tests():
     with _lock:
         _pending.clear()
         _sheets_retry.clear()
+        _pg_retry.clear()
         _flushed.clear()
         _sheet_rows_cache['ts'] = 0.0
         _sheet_rows_cache['rows'] = None
         _pg_seeded_from_sheets = False
     try:
         turbo_store.clear_rate_limit('aff_clk_human')
+        turbo_store.clear_rate_limit('aff_clk_ip')
+        turbo_store.clear_rate_limit('api_track')
+        turbo_store.clear_rate_limit('api_track_ip')
     except Exception:
         pass

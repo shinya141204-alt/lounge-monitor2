@@ -602,19 +602,43 @@ class TestEmergencyImprovements(unittest.TestCase):
         analytics.reset_for_tests()
         try:
             with mock.patch.object(sheets_store, 'read_rows', return_value=[]):
-                # 1) プリフェッチは 302 を返すがカウントしない
+                # 1) プリフェッチや既知ボットは ASP へ転送せず内部クッションへ逃がし、カウントもしない（staff_test=1 は確認用にASP URLを返す）
                 r_pre = self.client.get(
                     '/link/orbis?from=/grooming',
                     headers={'User-Agent': human_ua, 'Sec-Purpose': 'prefetch'},
                 )
                 self.assertEqual(r_pre.status_code, 302)
+                self.assertEqual(r_pre.headers.get('Location'), '/grooming')
+                r_bot = self.client.get(
+                    '/link/women_cosme_salon?from=/for-women',
+                    headers={'User-Agent': 'Bytespider/1.0'},
+                )
+                self.assertEqual(r_bot.status_code, 302)
+                self.assertEqual(r_bot.headers.get('Location'), '/for-women')
+                r_probe = self.client.get(
+                    '/link/orbis?staff_test=1',
+                    headers={'User-Agent': 'curl/8.7.1'},
+                )
+                self.assertEqual(r_probe.status_code, 302)
+                self.assertIn('px.a8.net', r_probe.headers.get('Location', ''))
                 self.assertEqual(analytics.summary(days=1)['by_event'].get('affiliate_click', 0), 0)
 
-                # 2) 同一IPから連続10枠スキャンしても 302 は全て成功し、計測は上限6件で打ち止めになる
-                for _ in range(10):
+                # 2) /api/track へのサーバー専用イベント（affiliate_click / page_view / sns_inflow）偽装POSTは拒否される
+                for spoof_ev in ('affiliate_click', 'page_view', 'sns_inflow'):
+                    r_sp = self.client.post(
+                        '/api/track',
+                        json={'event': spoof_ev, 'label': 'orbis @ /grooming'},
+                        headers={'User-Agent': human_ua},
+                    )
+                    self.assertEqual(r_sp.status_code, 204)
+                self.assertEqual(analytics.summary(days=1)['by_event'].get('affiliate_click', 0), 0)
+                self.assertEqual(analytics.summary(days=1)['by_event'].get('page_view', 0), 0)
+
+                # 3) 同一IP+UAから連続14枠スキャンしても 302 は全て成功し、計測は上限10件で打ち止めになる
+                for _ in range(14):
                     r_clk = self.client.get('/link/orbis?from=/grooming', headers={'User-Agent': human_ua})
                     self.assertEqual(r_clk.status_code, 302)
-                self.assertEqual(analytics.summary(days=1)['by_event'].get('affiliate_click', 0), 6)
+                self.assertEqual(analytics.summary(days=1)['by_event'].get('affiliate_click', 0), 10)
         finally:
             analytics.reset_for_tests()
 

@@ -704,7 +704,7 @@ def get_affiliate_slots_status(analytics_data: dict = None, allow_blocking: bool
         imp = slot_impressions.get(sid, 0)
         total_clicks += clk
         total_impressions += imp
-        ctr_pct = round((clk / imp) * 100, 2) if imp > 0 else 0.0
+        ctr_pct = min(100.0, round((clk / imp) * 100, 2)) if imp > 0 else 0.0
         shared_labels = [_SLOT_BY_ID[o]["category_label"] for o in shared_with]
         slots_out.append({
             "slot_id": sid,
@@ -740,5 +740,5 @@ def get_affiliate_slots_status(analytics_data: dict = None, allow_blocking: bool
         "unmonetized_slot_count": unmonetized_slot_count,
         "total_clicks": total_clicks,
         "total_impressions": total_impressions,
-        "overall_ctr_pct": round((total_clicks / total_impressions) * 100, 2) if total_impressions > 0 else 0.0,
+        "overall_ctr_pct": min(100.0, round((total_clicks / total_impressions) * 100, 2)) if total_impressions > 0 else 0.0,
     }

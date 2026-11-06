@@ -1097,12 +1097,14 @@ def _detect_hot_cluster_and_topic(
         eff_w = raw_live_w
         eff_m = raw_live_m
         gap_pt = 0
+        has_measured_gap = False
 
         if not use_peak_benchmark:
             active_m = [m for m in members if m.get("total", 0) >= 6]
             if len(active_m) >= 2:
                 wpcts = [int(round(m.get("wpct", 50))) for m in active_m]
                 gap_pt = max(wpcts) - min(wpcts)
+                has_measured_gap = True
         else:
             wf_pts = []
             for sname, prof in waveforms.items():
@@ -1118,6 +1120,7 @@ def _detect_hot_cluster_and_topic(
                 if len(wf_pts) >= 2:
                     wpcts = [float(p.get("wpct") or 50.0) for p in wf_pts]
                     gap_pt = max(8, int(round(max(wpcts) - min(wpcts))))
+                    has_measured_gap = True
                 else:
                     gap_pt = _CLUSTER_PEAK_PRIORS.get(cl_slug, (54, 40, 14))[2]
             else:
@@ -1142,6 +1145,7 @@ def _detect_hot_cluster_and_topic(
             "is_off_hours_benchmark": use_peak_benchmark,
             "opens": opens,
             "gap_pt": gap_pt,
+            "has_measured_gap": has_measured_gap,
             "demand_score": demand_score,
         })
 
@@ -1155,6 +1159,7 @@ def _detect_hot_cluster_and_topic(
         "is_off_hours_benchmark": True,
         "opens": 0,
         "gap_pt": 21,
+        "has_measured_gap": False,
         "demand_score": 136,
     }
 
@@ -1168,7 +1173,10 @@ def _detect_hot_cluster_and_topic(
     # Rotate across all 8 deep-mechanism themes based on live gap, day-of-week, hour, and gender balance
     if top_hub["gap_pt"] >= 18:
         rec_theme = "area_hopping"
-        rec_topic = f"{hub}の店舗間男女比ギャップ（最大{top_hub['gap_pt']}pt差）を生む群集心理と徒歩5分アービトラージ基準"
+        if top_hub.get("has_measured_gap"):
+            rec_topic = f"{hub}の店舗間男女比ギャップ（最大{top_hub['gap_pt']}pt差）を生む群集心理と徒歩5分アービトラージ基準"
+        else:
+            rec_topic = f"{hub}の店舗間男女比ギャップを生む群集心理と徒歩5分アービトラージ基準"
     elif hr >= 23 or hr <= 4:
         rec_theme = "midnight_wave"
         rec_topic = f"{hub}で終電後に客層コホートが入れ替わる「深夜第2波」の構造と2軒目ラウンジ選別法"
@@ -1458,7 +1466,10 @@ def analyze_site_performance(live_stores: list = None, days: int = 14, allow_blo
     })
 
     # Bottlenecks / Issues
-    leaky_articles = [a for a in article_perf if a["pv"] >= 10 and a["aff_clicks"] == 0]
+    leaky_articles = [
+        a for a in article_perf
+        if a["pv"] >= 10 and a["aff_clicks"] == 0 and a.get("cushion_clicks", 0) == 0
+    ]
     if leaky_articles:
         lk = leaky_articles[0]
         issues.append({

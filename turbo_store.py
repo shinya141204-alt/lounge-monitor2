@@ -26,6 +26,7 @@ import json
 import logging
 import os
 import secrets
+import sys
 import threading
 import time
 
@@ -126,15 +127,34 @@ def reset_for_tests():
 # =====================================================================
 # Connection Management: Upstash Redis (`REDIS_URL`) & PostgreSQL (`DATABASE_URL`)
 # =====================================================================
+def _live_backends_blocked() -> bool:
+    """Block live Redis/PostgreSQL network I/O during unittest/pytest unless explicitly opted in."""
+    if os.environ.get("ALLOW_LIVE_DB_IN_TESTS", "") == "1":
+        return False
+    return ("unittest" in sys.modules) or ("pytest" in sys.modules)
+
+
 def get_redis_url() -> str:
+    if _live_backends_blocked():
+        return ""
     return (os.environ.get("REDIS_URL") or "").strip()
 
 
 def get_database_url() -> str:
+    if _live_backends_blocked():
+        return ""
     raw = (os.environ.get("DATABASE_URL") or "").strip()
     if raw.startswith("postgres://"):
         return "postgresql://" + raw[len("postgres://"):]
     return raw
+
+
+def _mark_redis_failed(err) -> None:
+    global _redis_client, _redis_failed_at
+    with _redis_lock:
+        _redis_client = None
+        _redis_failed_at = time.monotonic()
+    logger.warning(f"[turbo_store] Redis marked unavailable for 15s ({err}); falling back safely.")
 
 
 def get_redis_client():
@@ -145,14 +165,14 @@ def get_redis_client():
         return None
     now_m = time.monotonic()
     with _redis_lock:
-        if _redis_client is not None and _redis_url_cached == url:
-            return _redis_client
         if _redis_failed_at > 0.0 and (now_m - _redis_failed_at < 15.0) and _redis_url_cached == url:
             return None
+        if _redis_client is not None and _redis_url_cached == url:
+            return _redis_client
         try:
             kwargs = {
                 "socket_connect_timeout": 3.0,
-                "socket_timeout": 20.0,
+                "socket_timeout": 5.0,
                 "health_check_interval": 30,
                 "decode_responses": False,
             }
@@ -186,43 +206,61 @@ def is_postgres_active() -> bool:
     return bool(url and url.startswith("postgresql://") and _psycopg2 is not None)
 
 
+def _mark_pg_failed(err) -> None:
+    global _pg_conn_pool, _pg_failed_at, _pg_schema_ready
+    with _pg_lock:
+        old_pool = _pg_conn_pool
+        _pg_conn_pool = None
+        _pg_schema_ready = False
+        _pg_failed_at = time.monotonic()
+    if old_pool is not None:
+        try:
+            old_pool.closeall()
+        except Exception:
+            pass
+    logger.warning(f"[turbo_store] PostgreSQL marked unavailable for 15s ({err}).")
+
+
 def _get_pg_pool():
     global _pg_conn_pool, _pg_url_cached, _pg_failed_at, _pg_schema_ready
     url = get_database_url()
     if not url or not url.startswith("postgresql://") or _psycopg2 is None or _pg_pool is None:
         return None
     now_m = time.monotonic()
+    old_pool_to_close = None
     with _pg_lock:
-        if _pg_conn_pool is not None and _pg_url_cached == url:
-            return _pg_conn_pool
         if _pg_failed_at > 0.0 and (now_m - _pg_failed_at < 15.0) and _pg_url_cached == url:
             return None
+        if _pg_conn_pool is not None and _pg_url_cached == url:
+            return _pg_conn_pool
         if _pg_conn_pool is not None:
-            try:
-                _pg_conn_pool.closeall()
-            except Exception:
-                pass
+            old_pool_to_close = _pg_conn_pool
             _pg_conn_pool = None
             _pg_schema_ready = False
+        _pg_url_cached = url
+        # Provisional backoff prevents concurrent threads from piling onto psycopg2.connect
+        _pg_failed_at = now_m
+    if old_pool_to_close is not None:
         try:
-            max_conns = max(4, min(20, int(os.environ.get("PG_POOL_MAX", "10"))))
-            pool_obj = _pg_pool.ThreadedConnectionPool(
-                minconn=1,
-                maxconn=max_conns,
-                dsn=url,
-                connect_timeout=4,
-            )
-            _pg_conn_pool = pool_obj
-            _pg_url_cached = url
-            _pg_failed_at = 0.0
-            logger.info("[turbo_store] PostgreSQL connection pool initialized.")
-            return _pg_conn_pool
-        except Exception as err:
-            _pg_conn_pool = None
-            _pg_url_cached = url
-            _pg_failed_at = now_m
-            logger.warning(f"[turbo_store] PostgreSQL pool unavailable ({err}).")
-            return None
+            old_pool_to_close.closeall()
+        except Exception:
+            pass
+    try:
+        max_conns = max(4, min(20, int(os.environ.get("PG_POOL_MAX", "10"))))
+        pool_obj = _pg_pool.ThreadedConnectionPool(
+            minconn=1,
+            maxconn=max_conns,
+            dsn=url,
+            connect_timeout=3,
+        )
+    except Exception as err:
+        logger.warning(f"[turbo_store] PostgreSQL pool unavailable ({err}).")
+        return None
+    with _pg_lock:
+        _pg_conn_pool = pool_obj
+        _pg_failed_at = 0.0
+    logger.info("[turbo_store] PostgreSQL connection pool initialized.")
+    return pool_obj
 
 
 @contextlib.contextmanager
@@ -231,22 +269,29 @@ def pg_connection():
     pool_obj = _get_pg_pool()
     if pool_obj is None:
         raise RuntimeError("PostgreSQL pool is not configured")
-    conn = pool_obj.getconn()
-    broken = False
     try:
+        conn = pool_obj.getconn()
         if getattr(conn, "closed", 0):
             pool_obj.putconn(conn, close=True)
             conn = pool_obj.getconn()
+    except Exception as err:
+        _mark_pg_failed(err)
+        raise RuntimeError(f"PostgreSQL unavailable: {err}")
+    broken = False
+    try:
         yield conn
     except Exception as err:
         broken = bool(getattr(conn, "closed", 0)) or isinstance(
             err, (_psycopg2.OperationalError, _psycopg2.InterfaceError)
         )
-        if not broken:
+        if broken:
+            _mark_pg_failed(err)
+        else:
             try:
                 conn.rollback()
             except Exception:
                 broken = True
+                _mark_pg_failed(err)
         raise
     finally:
         try:
@@ -1167,6 +1212,10 @@ def clear_rate_limit(namespace: str, subject: str = None) -> None:
 
 def check_sliding_rate_limit(namespace: str, subject: str, limit: int, window_sec: int, now: float = None) -> bool:
     """Return True and record hit when under `limit`, or False without extending lock when >= `limit`."""
+    rc = None if (_mem_bus_enabled or now is not None) else get_redis_client()
+    if rc is not None:
+        new_cnt = record_rate_limit_hit(namespace, subject, window_sec, now=None)
+        return new_cnt <= limit
     cur = get_rate_limit_count(namespace, subject, window_sec, now=now)
     if cur >= limit:
         return False

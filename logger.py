@@ -81,6 +81,12 @@ def _find_creds_path():
 def get_client():
     """Authenticates and returns a cached gspread client without holding _auth_lock across network I/O."""
     global _cached_creds, _cached_client, _cached_token, _token_expiry
+    try:
+        import sheets_store
+        if sheets_store.is_disabled() or sheets_store._is_test_runtime():
+            return None
+    except Exception:
+        pass
     now = time.time()
     with _auth_lock:
         if _cached_client and _cached_creds and now < _token_expiry:

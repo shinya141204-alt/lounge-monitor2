@@ -191,24 +191,31 @@ def _get_admin_secret_from_request() -> str:
     return (request.headers.get('X-Admin-Secret') or '').strip()
 
 
+def _secret_header_ok() -> bool:
+    secret = _get_admin_secret_from_request()
+    if not secret:
+        return False
+    ip = get_client_ip()
+    if _is_login_rate_limited(ip):
+        return False
+    if hmac.compare_digest(secret, ADMIN_API_SECRET):
+        return True
+    _record_login_failure(ip)
+    return False
+
+
 def is_admin_authorized():
     """Verify administrative permission either via authenticated staff/master session or secret token."""
     if session.get('is_staff') or session.get('is_master'):
         return True
-    secret = _get_admin_secret_from_request()
-    if secret and hmac.compare_digest(secret, ADMIN_API_SECRET):
-        return True
-    return False
+    return _secret_header_ok()
 
 
 def is_master_authorized():
     """Verify master/owner permission via master session or secret token."""
     if session.get('is_master'):
         return True
-    secret = _get_admin_secret_from_request()
-    if secret and hmac.compare_digest(secret, ADMIN_API_SECRET):
-        return True
-    return False
+    return _secret_header_ok()
 
 
 def _is_json_request() -> bool:
@@ -1929,17 +1936,25 @@ def affiliate_redirect(item_id):
     target_url = affiliate_manager.resolve_affiliate_url(clean_id, allow_blocking=False) or AFFILIATE_REDIRECTS.get(clean_id)
     if not target_url:
         return redirect(url_for('index'))
+    is_staff_probe = (
+        request.args.get('staff_test') == '1'
+        or bool(session.get('is_staff') or session.get('is_master'))
+    )
+    if not is_staff_probe and (_is_bot_request() or _is_prefetch_request()):
+        hub = '/for-women' if clean_id.startswith('women_') else '/grooming'
+        resp_bot = redirect(hub, code=302)
+        resp_bot.headers['X-Robots-Tag'] = 'noindex, nofollow'
+        resp_bot.headers['Cache-Control'] = 'private, no-store'
+        return resp_bot
+    client_ip = get_client_ip()
     if (
         request.method == 'GET'
-        and not _is_bot_request()
-        and not _is_prefetch_request()
-        and not session.get('is_staff')
-        and not session.get('is_master')
-        and request.args.get('staff_test') != '1'
+        and not is_staff_probe
+        and turbo_store.check_sliding_rate_limit('aff_clk_ip', client_ip, limit=30, window_sec=600)
         and turbo_store.check_sliding_rate_limit(
             'aff_clk_human',
-            f"{get_client_ip()}|{(request.headers.get('User-Agent') or '')[:80]}",
-            limit=6,
+            f"{client_ip}|{(request.headers.get('User-Agent') or '')[:80]}",
+            limit=10,
             window_sec=600,
         )
     ):
@@ -1962,7 +1977,14 @@ def affiliate_redirect(item_id):
                 ):
                     ref_path = clean_from[:80]
             if not ref_path:
-                fallback_ref = re.sub(r'[\r\n\x00@\\]', '', (parsed_ref.path or '').strip())[:80]
+                ref_host = (parsed_ref.hostname or '').lower()
+                req_host = (request.host or '').split(':', 1)[0].lower()
+                same_host = (
+                    (not parsed_ref.netloc)
+                    or (ref_host == req_host)
+                    or (ref_host in ('aiseki-navi.com', 'www.aiseki-navi.com', 'aiseki-navi-tokyo.fly.dev'))
+                )
+                fallback_ref = re.sub(r'[\r\n\x00@\\]', '', (parsed_ref.path or '').strip())[:80] if same_host else ''
                 ref_path = fallback_ref if (fallback_ref.startswith('/') and not fallback_ref.startswith('//')) else '-'
             analytics.track('affiliate_click', f"{clean_id} @ {ref_path}")
             explicit_s = (request.args.get('s') or '').strip()
@@ -2087,22 +2109,41 @@ def track_page_views(response):
                 inflow_tag = analytics.normalize_inflow_source(raw_s)
                 if inflow_tag:
                     analytics.track('sns_inflow', f"{inflow_tag} @ {request.path}")
-                    response.set_cookie('an_src', inflow_tag, max_age=86400, path='/', samesite='Lax')
+                    response.set_cookie(
+                        'an_src',
+                        inflow_tag,
+                        max_age=86400,
+                        path='/',
+                        samesite='Lax',
+                        secure=bool(request.is_secure),
+                        httponly=True,
+                    )
     except Exception:
         pass
     return response
 
+
+_BEACON_ALLOWED_EVENTS = frozenset({
+    'affiliate_impression', 'cushion_click', 'store_open', 'map_cafe', 'map_bar',
+    'official_click', 'sns_click', 'share', 'vote',
+})
+
+
 @app.route('/api/track', methods=['POST'])
 def track_event():
-    """Receives navigator.sendBeacon events from the frontend (event + short label only, per-IP rate-limited)."""
-    if _is_bot_request() or session.get('is_staff'):
+    """Receives navigator.sendBeacon events from the frontend (client-safe events only, rate-limited)."""
+    if _is_bot_request() or session.get('is_staff') or session.get('is_master'):
         return ('', 204)
     client_ip = get_client_ip()
-    if not turbo_store.check_sliding_rate_limit('api_track', client_ip, limit=60, window_sec=60):
+    ua_key = f"{client_ip}|{(request.headers.get('User-Agent') or '')[:80]}"
+    if (
+        not turbo_store.check_sliding_rate_limit('api_track_ip', client_ip, limit=300, window_sec=60)
+        or not turbo_store.check_sliding_rate_limit('api_track', ua_key, limit=120, window_sec=60)
+    ):
         return ('', 204)
     payload = request.get_json(silent=True, force=True) or {}
     ev_name = re.sub(r'[^A-Za-z0-9_.:-]', '', str(payload.get('event', '')).strip())[:30]
-    if not ev_name:
+    if ev_name not in _BEACON_ALLOWED_EVENTS:
         return ('', 204)
     import analytics
     analytics.track(ev_name, str(payload.get('label', '')).strip()[:96])
