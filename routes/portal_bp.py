@@ -655,13 +655,15 @@ def stats_monthly_csv():
                 continue
             writer.writerow(r)
         csv_body = buf.getvalue()
+        ttl_offset = 0.0 if rows else (_MONTHLY_CSV_TTL - 5.0)
         with _MONTHLY_CSV_LOCK:
             if len(_MONTHLY_CSV_CACHE) >= 12:
                 _MONTHLY_CSV_CACHE.clear()
-            _MONTHLY_CSV_CACHE[cache_key] = (now_m, csv_body)
+            _MONTHLY_CSV_CACHE[cache_key] = (now_m - ttl_offset, csv_body)
 
+    has_data_rows = csv_body.count('\n') >= 2
     resp = Response(csv_body, mimetype='text/csv; charset=utf-8')
-    resp.headers['Cache-Control'] = 'public, max-age=900'
+    resp.headers['Cache-Control'] = 'public, max-age=900' if has_data_rows else 'no-cache, max-age=0'
     resp.headers['Content-Disposition'] = 'inline; filename="aiseki_navi_monthly_store_stats.csv"'
     resp.headers['Access-Control-Allow-Origin'] = '*'
     resp.headers['X-Content-Type-Options'] = 'nosniff'
