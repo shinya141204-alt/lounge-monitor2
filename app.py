@@ -1864,6 +1864,7 @@ def index():
             is_staff=False,
             initial_status=initial_status,
             initial_status_client=_client_status_payload(initial_status),
+            deferred_card_pool=_build_deferred_card_pool(initial_status, is_staff=False),
             og_meta=og_meta,
             og_image_url=og_image_url,
             published_scheduled=scheduled_articles.get_published_articles(),
@@ -1882,35 +1883,11 @@ def index():
     return _get_cached_html_or_render(cache_sig, _render)
 
 
-# Fields only used by the server-side card template (or by nothing on the client). They are dropped from
-# the `window.INITIAL_STATUS_DATA` copy embedded in the top page to keep the HTML small.
-_CLIENT_STATUS_DROP_KEYS = (
-    'ssr_title', 'ssr_brand', 'ssr_brand_cls', 'ssr_disp', 'ssr_is_dup', 'ssr_ladies_pct', 'ssr_men_pct',
-    'seo_name', 'fetched_at', 'pos_telemetry',
+from ssr_payload import (
+    CLIENT_STATUS_DROP_KEYS as _CLIENT_STATUS_DROP_KEYS,
+    build_deferred_card_pool as _build_deferred_card_pool,
+    client_status_payload as _client_status_payload,
 )
-_CLIENT_STATUS_DROP_NESTED = {
-    'forecast_60m': ('model_version',),
-    'wait_estimate': ('instant_match_prob_pct',),
-}
-
-
-def _client_status_payload(status):
-    if not isinstance(status, dict) or not isinstance(status.get('ranking'), list):
-        return status
-    slim = dict(status)
-    ranking = []
-    for st in status['ranking']:
-        if not isinstance(st, dict):
-            ranking.append(st)
-            continue
-        item = {k: v for k, v in st.items() if k not in _CLIENT_STATUS_DROP_KEYS}
-        for parent, keys in _CLIENT_STATUS_DROP_NESTED.items():
-            sub = item.get(parent)
-            if isinstance(sub, dict):
-                item[parent] = {k: v for k, v in sub.items() if k not in keys}
-        ranking.append(item)
-    slim['ranking'] = ranking
-    return slim
 
 
 def _redirect_preserving_query(target_path: str, code: int = 301):
@@ -2260,11 +2237,14 @@ def staff_monitor():
                             _staff_editorial_preview_cache['data'] = editorial_preview
                 except Exception:
                     editorial_preview = None
+            staff_init_status = get_initial_status_payload()
             return render_template(
                 'index.html',
                 is_staff=True,
                 is_master=is_master,
-                initial_status=get_initial_status_payload(),
+                initial_status=staff_init_status,
+                initial_status_client=_client_status_payload(staff_init_status),
+                deferred_card_pool=_build_deferred_card_pool(staff_init_status, is_staff=True),
                 published_scheduled=scheduled_articles.get_published_articles(),
                 scheduled_queue=sched_queue,
                 data_audit_report=audit_report,

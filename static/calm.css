@@ -1313,12 +1313,7 @@ body.theme-light .sns-compact-pill:hover {
 }
 
 /* ---------- 13. スマホ ファーストビュー圧縮 ＆ 表示崩れ完全防止 ＆ レンダリング高速化 ---------- */
-/* Offscreen layout skipping for 53-store grid & below-the-fold editorial blocks */
-body:not(.theme-list) #ranking-list > .ranking-item:nth-child(n+16) {
-    content-visibility: auto;
-    contain-intrinsic-size: auto 68px;
-}
-
+/* Offscreen layout skipping for below-the-fold editorial blocks (never apply content-visibility to individual .ranking-item cards, which can flash an unpainted dark surface frame on scroll-restored reloads) */
 .seo-guide-section,
 .portal-footer-sitemap,
 .app-footer {

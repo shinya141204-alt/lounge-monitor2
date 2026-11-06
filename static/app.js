@@ -1313,13 +1313,15 @@
         // Instant Load: Render server-embedded INITIAL_STATUS_DATA (0ms, zero network roundtrip) or localStorage cache
         function restoreCachedStatus() {
             try {
+                const legacyPlaceholders = document.querySelectorAll('#pinned-list .pin-placeholder');
+                if (legacyPlaceholders.length > 0) {
+                    legacyPlaceholders.forEach(el => el.remove());
+                    window.__SSR_PINNED_HYDRATED = false;
+                }
                 // 1. If SSR data is live (not a cold-start 0-count seed), hydrate or render it immediately in 0ms
                 if (window.INITIAL_STATUS_DATA && Array.isArray(window.INITIAL_STATUS_DATA.ranking) && window.INITIAL_STATUS_DATA.ranking.length > 0 && !window.INITIAL_STATUS_DATA.is_seed) {
                     window.lastData = window.INITIAL_STATUS_DATA;
                     isInitialLoad = false;
-                    // The HTML may come from the Service Worker app-shell cache (instant PWA launch).
-                    // Only skip the first /api/status call when the embedded data is very fresh (< 20s).
-                    _renderedFromSSR = getStatusAgeSec(window.INITIAL_STATUS_DATA) < 20;
                     const rankingListEl = document.getElementById('ranking-list');
                     const hasInfeedAds = !IS_STAFF_SESSION && !document.body.classList.contains('staff-mode') && typeof AFFILIATE_MASTER !== 'undefined' && AFFILIATE_MASTER && AFFILIATE_MASTER.enabled && Array.isArray(AFFILIATE_MASTER.infeedSlots) && AFFILIATE_MASTER.infeedSlots.length > 0;
                     const ssrPrNodes = rankingListEl ? rankingListEl.querySelectorAll('.pr-card-item') : [];
@@ -1369,6 +1371,9 @@
                     } else {
                         updateUI(window.INITIAL_STATUS_DATA);
                     }
+                    // The HTML may come from the Service Worker app-shell cache (instant PWA launch).
+                    // Only skip the first /api/status call after hydration/render succeeded and embedded data is fresh (< 20s).
+                    _renderedFromSSR = getStatusAgeSec(window.INITIAL_STATUS_DATA) < 20;
                     const loadingEl = document.getElementById('loading');
                     const contentEl = document.getElementById('content');
                     const errEl = document.getElementById('error-message');
@@ -1403,7 +1408,8 @@
                     window.lastData = window.INITIAL_STATUS_DATA;
                     isInitialLoad = false;
                     const rankingListEl = document.getElementById('ranking-list');
-                    if (!rankingListEl || rankingListEl.children.length === 0) {
+                    const pinnedAlreadyHydrated = (pinnedStores.length === 0) || Boolean(window.__SSR_PINNED_HYDRATED);
+                    if (!rankingListEl || rankingListEl.children.length === 0 || !pinnedAlreadyHydrated) {
                         updateUI(window.INITIAL_STATUS_DATA);
                     } else {
                         appendDeferredSsrStores(window.INITIAL_STATUS_DATA);
@@ -1418,11 +1424,11 @@
                     if (loadingEl) loadingEl.classList.add('hidden');
                     if (contentEl) contentEl.classList.remove('hidden');
                 }
-            } catch (e) {}
+            } catch (e) {
+                _renderedFromSSR = false;
+                console.error('restoreCachedStatus failed:', e);
+            }
         }
-
-        // Execute immediately (app.js is loaded with defer at end of body, so DOM is ready)
-        restoreCachedStatus();
 
         let _lastStatusEtag = '';
 
@@ -3600,33 +3606,6 @@
             document.getElementById('error-message').classList.remove('hidden');
         }
 
-        // Initial fetch (if already rendered from fresh server-embedded data, skip redundant initial /api/status roundtrip)
-        if (!_renderedFromSSR) {
-            fetchData();
-        }
-
-        // Poll every 30 seconds while tab is visible (pause background polling to save battery & server CPU)
-        setInterval(() => {
-            if (document.visibilityState !== 'hidden') {
-                fetchData();
-            }
-        }, 30000);
-
-        // PWA / mobile: timers are frozen while the app is in the background.
-        // Refresh immediately when the user returns if the shown data is older than 30s.
-        document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible' && getStatusAgeSec(window.lastData) > 30) {
-                fetchData();
-            }
-        });
-
-        // Instant bfcache back-navigation silent data refresh
-        window.addEventListener('pageshow', (e) => {
-            if (e.persisted && getStatusAgeSec(window.lastData) > 15) {
-                fetchData();
-            }
-        });
-
         // --- Clean Minimal Human Copy & PC Split Inspector (Plan A) ---
         var selectedInspectorStore = '';
         var lastInspectorVisibleStores = [];
@@ -5758,6 +5737,36 @@
             const modal = document.getElementById('pwa-guide-modal');
             if (modal) modal.classList.add('hidden');
         }
+
+        // Hydrate SSR / cached status AFTER all top-level const/let declarations (avoids TDZ ReferenceError in detectBrandInfo/syncPcInspector)
+        restoreCachedStatus();
+
+        // Initial fetch (if already rendered from fresh server-embedded data, skip redundant initial /api/status roundtrip)
+        if (!_renderedFromSSR) {
+            fetchData();
+        }
+
+        // Poll every 30 seconds while tab is visible (pause background polling to save battery & server CPU)
+        setInterval(() => {
+            if (document.visibilityState !== 'hidden') {
+                fetchData();
+            }
+        }, 30000);
+
+        // PWA / mobile: timers are frozen while the app is in the background.
+        // Refresh immediately when the user returns if the shown data is older than 30s.
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && getStatusAgeSec(window.lastData) > 30) {
+                fetchData();
+            }
+        });
+
+        // Instant bfcache back-navigation silent data refresh
+        window.addEventListener('pageshow', (e) => {
+            if (e.persisted && getStatusAgeSec(window.lastData) > 15) {
+                fetchData();
+            }
+        });
 
         // Initialize PWA banner check shortly after page load
         setTimeout(checkPwaBannerVisibility, 2000);

@@ -148,8 +148,8 @@
     <meta name="apple-mobile-web-app-title" content="相席ナビ">
 
     <link rel="stylesheet" href="/static/style.css?v=20261030_6" fetchpriority="high">
-    <link rel="stylesheet" href="/static/calm.css?v=35" fetchpriority="high">
-    <link rel="preload" href="/static/app.js?v=20261106_2" as="script">
+    <link rel="stylesheet" href="/static/calm.css?v=36" fetchpriority="high">
+    <link rel="preload" href="/static/app.js?v=20261107_1" as="script">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- Non-render-blocking web font (avoids waiting on Google Fonts at PWA cold launch) -->
@@ -695,6 +695,74 @@
                 </div>
                 {% endif %}
 
+                <!-- Template for ranking item (placed before #pinned-list so deferred pinned stores render real cards on first paint with zero empty black boxes) -->
+                <template id="ranking-item-template">
+                    <div class="ranking-item">
+                        <div class="bento-kicker-row">
+                            <span class="bento-kicker-label">TONIGHT'S #1 PICK</span>
+                            <span class="bento-verdict-pill is-ok">即入店圏</span>
+                        </div>
+                        <div class="rank-badge">01</div>
+                        <div class="store-info">
+                            <div class="store-meta-row">
+                                <span class="brand-badge">オリエンタルラウンジ</span>
+                                <span class="distance-tag hidden"></span>
+                                <span class="momentum-tag hidden"></span>
+                                <span class="area-tag">東京</span>
+                            </div>
+                            <h3 class="store-name">Store Name</h3>
+                            <p class="cm-human-line hidden"></p>
+                            <div class="store-micro-metrics hidden"></div>
+                            <div class="moat-signals-row hidden"></div>
+                        </div>
+                        <!-- Card Actions -->
+                        <div class="card-actions">
+                            <button class="pin-btn" aria-label="お気に入り" title="お気に入り固定">
+                                <svg class="star-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                    stroke-linecap="round" stroke-linejoin="round">
+                                    <polygon
+                                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2">
+                                    </polygon>
+                                </svg>
+                            </button>
+                            <button class="analysis-btn" aria-label="詳細分析" title="曜日・時間帯別の詳細分析">
+                                <svg class="chart-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="18" y1="20" x2="18" y2="10"></line>
+                                    <line x1="12" y1="20" x2="12" y2="4"></line>
+                                    <line x1="6" y1="20" x2="6" y2="14"></line>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="stats-group">
+                            <div class="bento-ratio-hero">
+                                <div class="bento-ratio-main"><span class="bento-ratio-num">0</span><span class="bento-ratio-unit">%</span></div>
+                                <span class="bento-ratio-caption">女性比</span>
+                            </div>
+                            <div class="stat ladies">
+                                <div class="stat-num-row">
+                                    <span class="count">0</span>
+                                    <span class="stat-diff hidden"></span>
+                                </div>
+                                <span class="label">LADIES</span>
+                                <span class="stat-usual hidden"></span>
+                            </div>
+                            <div class="stat men">
+                                <div class="stat-num-row">
+                                    <span class="count">0</span>
+                                    <span class="stat-diff hidden"></span>
+                                </div>
+                                <span class="label">MEN</span>
+                                <span class="stat-usual hidden"></span>
+                            </div>
+                        </div>
+                        <!-- Gender ratio visual bar -->
+                        <div class="occupancy-bar">
+                            <div class="bar-fill-ladies"></div>
+                            <div class="bar-fill-men"></div>
+                        </div>
+                    </div>
+                </template>
+
                 <div class="cm-pc-split-layout">
                     <div class="cm-pc-left-col">
                         <!-- Pinned Stores Section -->
@@ -913,21 +981,181 @@
                 </div>
                 <script>
                     (function () {
+                        function buildDeferredPinnedCard(tpl, d) {
+                            var frag = tpl.content.cloneNode(true);
+                            var item = frag.querySelector('.ranking-item');
+                            if (!item) return null;
+                            item.className = 'ranking-item pinned-item';
+                            item.setAttribute('data-store', d.n);
+                            item.style.cursor = 'pointer';
+                            item.onclick = function () {
+                                if (window.handleStoreCardClick) window.handleStoreCardClick(d.n);
+                                else if (window.openModal) window.openModal(d.n);
+                            };
+                            var rb = item.querySelector('.rank-badge');
+                            if (rb) rb.textContent = d.rk || '-';
+                            var bb = item.querySelector('.brand-badge');
+                            if (bb) {
+                                bb.className = 'brand-badge' + (d.bc ? ' ' + d.bc : '');
+                                bb.textContent = d.br || '';
+                            }
+                            var mt = item.querySelector('.momentum-tag');
+                            if (mt) {
+                                if (d.mt) {
+                                    mt.classList.remove('hidden');
+                                    mt.textContent = d.mt;
+                                    mt.title = d.mtt || '';
+                                } else {
+                                    mt.classList.add('hidden');
+                                }
+                            }
+                            var ar = item.querySelector('.area-tag');
+                            if (ar) {
+                                if (d.ar) {
+                                    ar.classList.remove('hidden');
+                                    ar.textContent = d.ar;
+                                } else {
+                                    ar.classList.add('hidden');
+                                    ar.textContent = '';
+                                }
+                            }
+                            var sn = item.querySelector('.store-name');
+                            if (sn) {
+                                sn.textContent = '';
+                                if (d.dup) {
+                                    var pfx = document.createElement('span');
+                                    pfx.className = 'store-brand-prefix';
+                                    pfx.textContent = (d.br || '') + ' ';
+                                    sn.appendChild(pfx);
+                                    var brn = document.createElement('span');
+                                    brn.className = 'store-branch-name';
+                                    brn.textContent = d.dp || '';
+                                    sn.appendChild(brn);
+                                } else {
+                                    var ttl = document.createElement('span');
+                                    ttl.className = 'store-branch-name';
+                                    ttl.textContent = d.ti || d.n;
+                                    sn.appendChild(ttl);
+                                }
+                                if (d.eb) {
+                                    var evb = document.createElement('span');
+                                    evb.className = 'event-tag-badge';
+                                    evb.textContent = d.eb;
+                                    if (d.et) evb.title = d.et;
+                                    sn.appendChild(evb);
+                                }
+                            }
+                            var hl = item.querySelector('.cm-human-line');
+                            if (hl) {
+                                if (d.hl) {
+                                    hl.classList.remove('hidden');
+                                    hl.textContent = d.hl;
+                                } else {
+                                    hl.classList.add('hidden');
+                                }
+                            }
+                            var mc = item.querySelector('.store-micro-metrics');
+                            if (mc && d.ct && d.mr) {
+                                mc.classList.remove('hidden');
+                                mc.textContent = '';
+                                mc.appendChild(document.createTextNode('狙い目 ' + d.ct + ' '));
+                                var sep = document.createElement('span');
+                                sep.className = 'micro-sep';
+                                sep.textContent = '｜';
+                                mc.appendChild(sep);
+                                mc.appendChild(document.createTextNode(' 終電後 ' + d.mr + '%（' + (d.ml || '深夜安定') + '）'));
+                            }
+                            var mrEl = item.querySelector('.moat-signals-row');
+                            if (mrEl && (d.wb || d.fb)) {
+                                mrEl.textContent = '';
+                                if (d.wb) {
+                                    var wp = document.createElement('span');
+                                    wp.className = 'moat-pill tone-' + (d.wt || 'neutral');
+                                    if (d.wti) wp.title = d.wti;
+                                    wp.textContent = d.wb;
+                                    mrEl.appendChild(wp);
+                                }
+                                if (d.fb) {
+                                    var fp = document.createElement('span');
+                                    fp.className = 'moat-pill tone-' + (d.ft || 'neutral');
+                                    if (d.fti) fp.title = d.fti;
+                                    fp.textContent = d.fb;
+                                    mrEl.appendChild(fp);
+                                }
+                                mrEl.classList.remove('hidden');
+                            }
+                            var pb = item.querySelector('.pin-btn');
+                            if (pb) {
+                                pb.classList.add('active');
+                                pb.onclick = function (ev) {
+                                    ev.stopPropagation();
+                                    if (window.togglePin) window.togglePin(d.n);
+                                };
+                            }
+                            var ab = item.querySelector('.analysis-btn');
+                            if (ab) {
+                                ab.onclick = function (ev) {
+                                    ev.stopPropagation();
+                                    if (window.openModal) window.openModal(d.n);
+                                };
+                            }
+                            var wNum = Number(d.w || 0);
+                            var mNum = Number(d.m || 0);
+                            var brNum = item.querySelector('.bento-ratio-num');
+                            if (brNum) brNum.textContent = String((wNum + mNum) > 0 ? (d.wp || 0) : 0);
+                            var lc = item.querySelector('.stat.ladies .count');
+                            if (lc) lc.textContent = String(wNum);
+                            var ld = item.querySelector('.stat.ladies .stat-diff');
+                            if (ld && d.wd > 0) {
+                                ld.classList.remove('hidden');
+                                ld.textContent = '+' + d.wd;
+                                ld.title = '直近約15分で女性+' + d.wd + '名';
+                            }
+                            var lu = item.querySelector('.stat.ladies .stat-usual');
+                            if (lu && d.uwd !== undefined && d.uwd !== null && (wNum + mNum) > 0) {
+                                lu.classList.remove('hidden');
+                                if (d.uwd > 0) lu.classList.add('is-up');
+                                else if (d.uwd < 0) lu.classList.add('is-down');
+                                lu.textContent = '平比' + (d.uwd > 0 ? '+' + d.uwd : (d.uwd < 0 ? d.uwd : '±0'));
+                                lu.title = '普段の' + (d.usl || '') + '平均(' + (d.uw !== undefined && d.uw !== null ? d.uw : 0) + '名)との差';
+                            }
+                            var mcNum = item.querySelector('.stat.men .count');
+                            if (mcNum) mcNum.textContent = String(mNum);
+                            var md = item.querySelector('.stat.men .stat-diff');
+                            if (md && d.md > 0) {
+                                md.classList.remove('hidden');
+                                md.textContent = '+' + d.md;
+                                md.title = '直近約15分で男性+' + d.md + '名';
+                            }
+                            var mu = item.querySelector('.stat.men .stat-usual');
+                            if (mu && d.umd !== undefined && d.umd !== null && (wNum + mNum) > 0) {
+                                mu.classList.remove('hidden');
+                                if (d.umd > 0) mu.classList.add('is-up');
+                                else if (d.umd < 0) mu.classList.add('is-down');
+                                mu.textContent = '平比' + (d.umd > 0 ? '+' + d.umd : (d.umd < 0 ? d.umd : '±0'));
+                                mu.title = '普段の' + (d.usl || '') + '平均(' + (d.um !== undefined && d.um !== null ? d.um : 0) + '名)との差';
+                            }
+                            var lb = item.querySelector('.bar-fill-ladies');
+                            if (lb) lb.style.width = (d.wp || 0) + '%';
+                            var mb = item.querySelector('.bar-fill-men');
+                            if (mb) mb.style.width = (d.mp || 0) + '%';
+                            return item;
+                        }
                         try {
                             var pinnedRaw = localStorage.getItem('olg_pinned_stores');
                             if (pinnedRaw) {
                                 var pinned = JSON.parse(pinnedRaw);
                                 if (Array.isArray(pinned) && pinned.length > 0) {
-                                    // Stores ranked below the SSR limit are rendered later by app.js
-                                    var deferredNames = {{ ((initial_status.ranking[20:] | map(attribute='name') | list) if (initial_status and initial_status.ranking) else []) | tojson }};
+                                    // Render pinned stores ranked below SSR_RANK_LIMIT immediately as real data cards (zero black placeholder boxes)
+                                    var deferredPool = {{ (deferred_card_pool if deferred_card_pool is defined else []) | tojson }};
                                     var pinSet = Object.create(null);
                                     for (var i = 0; i < pinned.length; i++) pinSet[pinned[i]] = true;
                                     var rList = document.getElementById('ranking-list');
                                     var pList = document.getElementById('pinned-list');
                                     var pCont = document.getElementById('pinned-list-container');
+                                    var tpl = document.getElementById('ranking-item-template');
                                     if (rList && pList && pCont) {
                                         var cards = rList.querySelectorAll('.ranking-item[data-store]');
-                                        var cardH = cards.length > 0 ? cards[cards.length - 1].offsetHeight : 0;
                                         var moved = 0;
                                         for (var j = 0; j < cards.length; j++) {
                                             var c = cards[j];
@@ -941,16 +1169,18 @@
                                                 moved++;
                                             }
                                         }
-                                        // Reserve space for pinned stores outside the SSR range (app.js fills them in) to avoid layout shift
-                                        var missing = 0;
-                                        for (var di = 0; di < deferredNames.length; di++) {
-                                            if (pinSet[deferredNames[di]]) {
-                                                var ph = document.createElement('div');
-                                                ph.className = 'ranking-item pinned-item pin-placeholder';
-                                                ph.setAttribute('aria-hidden', 'true');
-                                                if (cardH > 0) ph.style.minHeight = cardH + 'px';
-                                                pList.appendChild(ph);
-                                                missing++;
+                                        var hydratedDeferred = 0;
+                                        var unhydratedDeferred = 0;
+                                        for (var di = 0; di < deferredPool.length; di++) {
+                                            var dItem = deferredPool[di];
+                                            if (dItem && dItem.n && pinSet[dItem.n]) {
+                                                var built = tpl ? buildDeferredPinnedCard(tpl, dItem) : null;
+                                                if (built) {
+                                                    pList.appendChild(built);
+                                                    hydratedDeferred++;
+                                                } else {
+                                                    unhydratedDeferred++;
+                                                }
                                             }
                                         }
                                         if (moved > 0) {
@@ -975,10 +1205,10 @@
                                                 }
                                             }
                                         }
-                                        if (moved > 0 || missing > 0) {
+                                        if (moved + hydratedDeferred > 0) {
                                             pCont.classList.remove('hidden');
                                         }
-                                        if (moved > 0 && missing === 0) {
+                                        if ((moved + hydratedDeferred > 0) && unhydratedDeferred === 0) {
                                             window.__SSR_PINNED_HYDRATED = true;
                                         }
                                     }
@@ -2553,80 +2783,12 @@
     </div>
     <!-- End Menu Modal -->
 
-    <!-- Template for ranking item -->
-    <template id="ranking-item-template">
-        <div class="ranking-item">
-            <div class="bento-kicker-row">
-                <span class="bento-kicker-label">TONIGHT'S #1 PICK</span>
-                <span class="bento-verdict-pill is-ok">即入店圏</span>
-            </div>
-            <div class="rank-badge">01</div>
-            <div class="store-info">
-                <div class="store-meta-row">
-                    <span class="brand-badge">オリエンタルラウンジ</span>
-                    <span class="distance-tag hidden"></span>
-                    <span class="momentum-tag hidden"></span>
-                    <span class="area-tag">東京</span>
-                </div>
-                <h3 class="store-name">Store Name</h3>
-                <p class="cm-human-line hidden"></p>
-                <div class="store-micro-metrics hidden"></div>
-                <div class="moat-signals-row hidden"></div>
-            </div>
-            <!-- Card Actions -->
-            <div class="card-actions">
-                <button class="pin-btn" aria-label="お気に入り" title="お気に入り固定">
-                    <svg class="star-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round">
-                        <polygon
-                            points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2">
-                        </polygon>
-                    </svg>
-                </button>
-                <button class="analysis-btn" aria-label="詳細分析" title="曜日・時間帯別の詳細分析">
-                    <svg class="chart-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="18" y1="20" x2="18" y2="10"></line>
-                        <line x1="12" y1="20" x2="12" y2="4"></line>
-                        <line x1="6" y1="20" x2="6" y2="14"></line>
-                    </svg>
-                </button>
-            </div>
-            <div class="stats-group">
-                <div class="bento-ratio-hero">
-                    <div class="bento-ratio-main"><span class="bento-ratio-num">0</span><span class="bento-ratio-unit">%</span></div>
-                    <span class="bento-ratio-caption">女性比</span>
-                </div>
-                <div class="stat ladies">
-                    <div class="stat-num-row">
-                        <span class="count">0</span>
-                        <span class="stat-diff hidden"></span>
-                    </div>
-                    <span class="label">LADIES</span>
-                    <span class="stat-usual hidden"></span>
-                </div>
-                <div class="stat men">
-                    <div class="stat-num-row">
-                        <span class="count">0</span>
-                        <span class="stat-diff hidden"></span>
-                    </div>
-                    <span class="label">MEN</span>
-                    <span class="stat-usual hidden"></span>
-                </div>
-            </div>
-            <!-- Gender ratio visual bar -->
-            <div class="occupancy-bar">
-                <div class="bar-fill-ladies"></div>
-                <div class="bar-fill-men"></div>
-            </div>
-        </div>
-    </template>
-
     {% if initial_status %}
     <script>
         window.INITIAL_STATUS_DATA = {{ (initial_status_client or initial_status) | tojson }};
     </script>
     {% endif %}
-    <script src="/static/app.js?v=20261106_2" defer></script>
+    <script src="/static/app.js?v=20261107_1" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
@@ -2642,7 +2804,7 @@
                 }
                 if (window.__swRegistered) return;
                 window.__swRegistered = true;
-                navigator.serviceWorker.register('/sw.js?v=98', { updateViaCache: 'none' })
+                navigator.serviceWorker.register('/sw.js?v=99', { updateViaCache: 'none' })
                     .then(function(reg) {
                         reg.update();
                         document.addEventListener('visibilitychange', function() {
