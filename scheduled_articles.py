@@ -161,6 +161,31 @@ SCHEDULED_ARTICLES = [
             "#相席ラウンジ #相席ナビ"
         ),
     },
+    {
+        "slug": "sunday-lounge-strategy",
+        "path": "/guide/sunday-lounge-strategy",
+        "template": "guide_sunday_lounge_strategy.html",
+        "publish_at": "2026-11-07 19:00:00",
+        "publish_at_ja": "2026年11月7日(土) 19:00",
+        "lastmod": "2026-11-07",
+        "eyecatch_jpg": "/static/eyecatch-sunday-lounge-strategy.jpg",
+        "eyecatch_webp": "/static/eyecatch-sunday-lounge-strategy.webp",
+        "badge": "日曜日・客層データ",
+        "read_time": "約6分で読める",
+        "tag_primary": ("tag-pink", "28.6万件ログ実測"),
+        "tag_secondary": ("tag-cyan", "サンデーサク飲み検証"),
+        "title": "日曜日の相席ラウンジは行くべきか？｜21時半を境に入れ替わる会社員と月曜休み組の実測データ",
+        "short_title": "日曜日の相席ラウンジの狙い目と客層データ",
+        "desc": "日曜日の相席ラウンジは土曜の約半分の人数ながら女性比率は61.2%と高水準。18:30〜21:00の女性先行サク飲み帯と21時半の客層入れ替わり、そして深夜に合流する月曜休み組（美容・アパレル・看護・シフト制）のリアルを28.6万件ログで解明。",
+        "x_title": "日曜日の相席ラウンジは行くべきか？｜21時半の撤退急落と、月曜休みの隠れ狙い目",
+        "x_main_text": (
+            "日曜夜の相席ラウンジは土曜の3割の人数だけど、女性比率は61.2%と高い。\n\n"
+            "ただ「21時半」に翌朝仕事のOLが一斉に帰るため、金土の感覚で遅く入ると男性余りに。\n\n"
+            "18時台サク飲みか、22時以降の月曜休み組（美容・アパレル）狙いかの二択。\n\n"
+            "データはリプ欄へ。\n"
+            "#相席ラウンジ #相席ナビ"
+        ),
+    },
 ]
 
 

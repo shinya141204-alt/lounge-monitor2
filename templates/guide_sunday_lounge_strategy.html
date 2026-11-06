@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
+    <style>html.theme-light{background-color:#f6f6f7;}</style>
+    <meta name="google-site-verification" content="9kZaSJbaCuvn8QpGErUwI59w7Lf4N8ILhb_nWqDHI2s">
+    <title>日曜日の相席ラウンジは行くべきか？｜21時半を境に入れ替わる会社員と月曜休み組の実測データ｜相席ナビ</title>
+    <meta name="description" content="「明日仕事だけど日曜の相席ラウンジってどうなの？」全国28.6万件の実測ログから、日曜特有の「18:30〜21:00サク飲み帯」と「21時半の客層入れ替わり」、そして深夜に残る月曜休み組（美容・アパレル・看護・シフト制）のリアルな客足を検証。">
+    <meta name="keywords" content="相席ラウンジ 日曜日,オリエンタルラウンジ 日曜,相席ラウンジ 日曜 混雑,JIS 日曜,相席ナビ">
+    <link rel="canonical" href="https://aiseki-navi.com/guide/sunday-lounge-strategy">
+    {% if is_scheduled_preview %}
+    <meta name="robots" content="noindex, nofollow">
+    {% else %}
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+    {% endif %}
+
+    <!-- OGP / SNS Card Settings -->
+    <meta property="og:title" content="日曜日の相席ラウンジは行くべきか？｜21時半の撤退急落と、月曜休みの隠れ狙い目｜相席ナビ">
+    <meta property="og:description" content="日曜日は金土と全く違う動きを見せる。18:30〜21:00の女性先行サク飲み帯と、21時半の客層入れ替わり。そして深夜に合流する月曜休み組のリアルを28.6万件ログで解明。">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://aiseki-navi.com/guide/sunday-lounge-strategy">
+    <meta property="og:site_name" content="相席ナビ">
+    <meta property="og:locale" content="ja_JP">
+    <meta property="og:image" content="https://aiseki-navi.com/static/eyecatch-sunday-lounge-strategy.jpg?v=3">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="日曜日の相席ラウンジは行くべきか？｜21時半の撤退急落と、月曜休みの隠れ狙い目">
+    <meta name="twitter:description" content="日曜夜は土曜の約半分の人数ながら女性比率は61.2%と高水準。21時半に会社員が帰り、月曜休みの人が入ってくる二極化データをまとめました。">
+    <meta name="twitter:image" content="https://aiseki-navi.com/static/eyecatch-sunday-lounge-strategy.jpg?v=3">
+
+    <!-- Structured Data (Article + BreadcrumbList + FAQPage) -->
+    <script type="application/ld+json">
+    [
+      {
+        "@context": "https://schema.org",
+        "@type": "Article",
+        "headline": "日曜日の相席ラウンジは行くべきか？｜21時半を境に入れ替わる会社員と月曜休み組の実測データ",
+        "image": ["https://aiseki-navi.com/static/eyecatch-sunday-lounge-strategy.jpg"],
+        "datePublished": "2026-11-07T19:00:00+09:00",
+        "dateModified": "2026-11-07T19:00:00+09:00",
+        "author": {
+          "@type": "Person",
+          "name": "くわもん",
+          "jobTitle": "相席ナビ編集長",
+          "url": "https://aiseki-navi.com/about"
+        },
+        "publisher": {
+          "@type": "Organization",
+          "name": "相席ナビ編集部",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://aiseki-navi.com/static/icon.png"
+          }
+        },
+        "description": "全国28.6万件の相席ラウンジ時系列ログから、日曜日特有の入店波形（18:30〜21:00の女性先行サク飲み帯と21時半の客層入れ替わり）、会社員と月曜休み組（美容・アパレル・看護・シフト制）の二極化を解剖したデータ検証レポート。"
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {"@type": "ListItem", "position": 1, "name": "ホーム", "item": "https://aiseki-navi.com/"},
+          {"@type": "ListItem", "position": 2, "name": "コラム一覧", "item": "https://aiseki-navi.com/columns"},
+          {"@type": "ListItem", "position": 3, "name": "日曜日の相席ラウンジ客層・時間帯検証", "item": "https://aiseki-navi.com/guide/sunday-lounge-strategy"}
+        ]
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "日曜日の相席ラウンジは何時頃に行くのが一番おすすめですか？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "最も落ち着いて話せるのは「18:30〜20:30」の早めの時間帯です。翌日仕事の会社員がサクッと食事を兼ねて先行入店しており、待ち時間ゼロかつ女性比率が65〜70%前後の穏やかな空気で過ごせます。"
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "日曜日の夜遅く（22時以降）に行くとどんな人がいますか？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "日曜21時半以降は会社員が帰宅し始めますが、22時以降に残る・または新規入店してくるのは「月曜定休の美容師やアパレル関係」「シフト勤務で平日休みの人たち」が中心になります。翌日休みなのですぐに解散するプレッシャーがなく、ゆっくり会話が弾みやすい特徴があります。"
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "女性にとって日曜日の相席ラウンジのメリットは何ですか？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "金曜・土曜のような男性待ちの混雑やガツガツしたノリがなく、仕事帰りの落ち着いた男性と静かに会話を楽しめる点です。また、21時半前にサクッと解散しやすい空気があるため、翌朝の出勤にも響きにくいのが大きな利点です。"
+            }
+          }
+        ]
+      }
+    ]
+    </script>
+
+    <link rel="manifest" href="/static/manifest.json?v=3">
+    <meta name="theme-color" content="#111113">
+    <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
+    <link rel="apple-touch-icon" href="/static/icon.png?v=3">
+    <link rel="stylesheet" href="/static/style.css?v=20261030_6" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="/static/style.css?v=20261030_6"></noscript>
+    <link rel="stylesheet" href="/static/portal.css?v=15">
+    <style>
+        body {
+            display: block !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background-color: #0a0a0f !important;
+            color: #ffffff !important;
+            overflow-x: hidden !important;
+        }
+        .article-container {
+            max-width: 820px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 24px 16px 80px 16px;
+            box-sizing: border-box;
+        }
+        .preview-banner {
+            background: rgba(245, 158, 11, 0.16);
+            border: 1px solid rgba(245, 158, 11, 0.5);
+            color: #fde68a;
+            padding: 12px 16px;
+            border-radius: 12px;
+            margin-bottom: 18px;
+            font-size: 0.85rem;
+            font-weight: 700;
+        }
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.78rem;
+            color: #94a3b8;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        .breadcrumb a { color: #38bdf8; text-decoration: none; }
+        .article-header {
+            margin-bottom: 28px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .article-cat-tag {
+            background: rgba(200, 164, 110, 0.22); border: 1px solid rgba(200, 164, 110, 0.45);
+            color: #fff;
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 99px;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+        .article-title {
+            font-size: 1.55rem;
+            font-weight: 800;
+            line-height: 1.45;
+            color: #f8fafc;
+            margin: 0 0 12px 0;
+        }
+        .article-eyecatch {
+            width: 100%;
+            border-radius: 14px;
+            overflow: hidden;
+            margin: 16px 0 28px 0;
+            border: 1px solid rgba(255,255,255,0.12);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.45);
+        }
+        .article-eyecatch img { width: 100%; height: auto; display: block; }
+        .article-body h2 {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: #f8fafc;
+            margin: 36px 0 14px 0;
+            padding: 10px 14px;
+            background: rgba(236, 72, 153, 0.12);
+            border-left: 4px solid #ec4899;
+            border-radius: 0 8px 8px 0;
+        }
+        .article-body h3 {
+            font-size: 1.06rem;
+            font-weight: 700;
+            color: #f472b6;
+            margin: 24px 0 10px 0;
+        }
+        .article-body p, .article-body li {
+            font-size: 0.94rem;
+            line-height: 1.85;
+            color: #cbd5e1;
+        }
+        .dialogue-box {
+            background: rgba(255, 255, 255, 0.03);
+            border-left: 3px solid rgba(200, 164, 110, 0.55);
+            border-radius: 0 10px 10px 0;
+            padding: 14px 18px;
+            margin: 18px 0;
+            font-size: 0.92rem;
+            line-height: 1.8;
+            color: #e2e8f0;
+        }
+        .highlight-box {
+            background: rgba(15, 23, 42, 0.78);
+            border: 1px solid rgba(236, 72, 153, 0.3);
+            border-radius: 12px;
+            padding: 18px;
+            margin: 20px 0;
+        }
+        .data-table-wrap {
+            overflow-x: auto;
+            margin: 18px 0;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            min-width: 560px;
+        }
+        .data-table th, .data-table td {
+            padding: 12px 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            text-align: left;
+        }
+        .data-table th {
+            background: rgba(255,255,255,0.05);
+            color: #94a3b8;
+            font-weight: 700;
+        }
+        .cta-box {
+            margin-top: 36px;
+            padding: 24px 20px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, rgba(236,72,153,0.18), rgba(99,102,241,0.18));
+            border: 1px solid rgba(236,72,153,0.35);
+            text-align: center;
+        }
+        .cta-btn {
+            display: inline-block;
+            margin-top: 12px;
+            padding: 12px 26px;
+            border-radius: 99px;
+            background: rgba(200, 164, 110, 0.22); border: 1px solid rgba(200, 164, 110, 0.45);
+            color: #fff;
+            font-weight: 800;
+            text-decoration: none;
+            font-size: 0.92rem;
+        }
+    </style>
+    <link rel="stylesheet" href="/static/calm.css?v=35">
+    {% if not is_staff and not session.get('is_staff') and not is_scheduled_preview %}
+    <meta name="google-adsense-account" content="ca-pub-3043764334238627">
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
+         crossorigin="anonymous"></script>
+    {% endif %}
+</head>
+
+<body>
+    <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.body.classList.add('theme-light');}catch(e){}</script>
+    <div class="article-container">
+        {% if is_scheduled_preview and scheduled_item %}
+        <div class="preview-banner">
+            🗓️ 【社内限定プレビュー（Google検索非公開）】この記事は <strong>{{ scheduled_item.publish_at_ja }}</strong> に自動で一般公開＆X告知されます。
+        </div>
+        {% endif %}
+
+        {% set nav_active = 'columns' %}
+        {% include '_portal_nav.html' %}
+
+        <main>
+        <nav class="breadcrumb" aria-label="Breadcrumb">
+            <a href="/">ホーム</a><span>›</span>
+            <a href="/columns">コラム一覧</a><span>›</span>
+            <span>日曜日の相席ラウンジ客層・時間帯検証</span>
+        </nav>
+
+        <header class="article-header">
+            <span class="article-cat-tag">曜日別データ 28.6万件ログ実測検証</span>
+            <h1 class="article-title">日曜日の相席ラウンジは行くべきか？｜21時半を境に入れ替わる会社員と月曜休み組の実測データ</h1>
+            <p style="font-size:0.8rem;color:#94a3b8;margin:0;">公開日：2026年11月7日 ｜ 執筆・検証：<a href="/about" style="color:inherit;text-decoration:underline;text-underline-offset:3px;">くわもん（相席ナビ編集長）</a></p>
+        </header>
+
+        <figure class="article-eyecatch">
+            <picture>
+                <source srcset="/static/eyecatch-sunday-lounge-strategy.webp?v=3" type="image/webp">
+                <img src="/static/eyecatch-sunday-lounge-strategy.jpg?v=3" alt="日曜日の相席ラウンジは行くべきか？ 21時半の撤退急落と月曜休みの隠れ狙い目" width="1280" height="720" loading="eager">
+            </picture>
+        </figure>
+
+        <div class="article-body">
+            <p>
+                日曜の相席ラウンジは、21時半を境に店内の空気と客の顔ぶれが入れ替わります。<br>
+                19時台は、明日の会議を気にしながらパスタをつつく会社員。22時を過ぎると、「月曜が休みなんです」と話す人たちが入ってくる。<br>
+                同じ店、同じ日曜なのに、入る時間で別の店になります。全国28.6万件のログを曜日別に並べ直すと、その境目が数字にも現れていました。
+            </p>
+
+            <div class="dialogue-box">
+                「明日朝イチで会議なんだよね」<br>
+                「わかる。21時には出ようね」
+            </div>
+
+            <p>
+                フロアで見かけるこうしたやり取りは、日曜夜のリアルな空気をよく表しています。<br>
+                金曜や土曜のように「終電まで飲んで2軒目へ」という空気ではなく、男女ともに翌朝の予定を見据えた<strong>「18:30〜21:00のサク飲み」</strong>が中心です。<br>
+                ところが、この時間帯の特性を知らないまま土曜と同じ感覚で入店すると、予想外の空気の違いに戸惑うことになります。ログの推移から、日曜日特有の波と客層の二極化を整理します。
+            </p>
+
+            <div class="highlight-box">
+                <strong style="color:#f472b6;font-size:0.98rem;">28.6万件のログから分かった3つのこと</strong>
+                <ul style="margin:10px 0 0 0;padding-left:20px;">
+                    <li><strong>日曜の総来店数は土曜の約半分だが、女性比率は「61.2%」と高水準</strong>：男性の来店数が落ち着くため、混雑に巻き込まれにくく穏やかな雰囲気。</li>
+                    <li><strong>「21時半の入れ替わり」で会社員が帰途につき、フロアの空気が変わる</strong>：翌朝出勤の予定がある男女が21時過ぎに順次席を立ち、客層のターンオーバーが発生する。</li>
+                    <li><strong>22時以降に残る・入店するのは「月曜休みの人たち」</strong>：美容師やアパレル関係、シフト勤務など翌日が平休日組が中心となり、話のテンポも変わる。</li>
+                </ul>
+            </div>
+
+            <h2>1. 【実測データ】土曜日と日曜日で異なる時間帯別人数カーブ</h2>
+            <p>
+                相席ナビのデータベース（国内61店舗・直近28.6万件ログ）から、土曜日と日曜日の時間帯別（18時〜翌2時）の平均人数と女性比率を比較しました。
+            </p>
+
+            <div class="data-table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>時間帯</th>
+                            <th>土曜 女性平均</th>
+                            <th>土曜 男性平均</th>
+                            <th>日曜 女性平均</th>
+                            <th>日曜 男性平均</th>
+                            <th>日曜 女性比率</th>
+                            <th>日曜の店内状況</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>18:00〜19:00</strong></td>
+                            <td>5.2名</td>
+                            <td>1.8名</td>
+                            <td>3.7名</td>
+                            <td>1.5名</td>
+                            <td><strong style="color:#4ade80;">71.1%</strong></td>
+                            <td>女性先行スタート。店内は静かで穏やか</td>
+                        </tr>
+                        <tr>
+                            <td><strong>19:00〜20:00</strong></td>
+                            <td>17.9名</td>
+                            <td>7.2名</td>
+                            <td>10.6名</td>
+                            <td>4.4名</td>
+                            <td><strong style="color:#4ade80;">70.7%</strong></td>
+                            <td>仕事帰りの食事を兼ねた入店が増える帯</td>
+                        </tr>
+                        <tr>
+                            <td><strong>20:00〜21:00</strong></td>
+                            <td>33.5名</td>
+                            <td>17.4名</td>
+                            <td>19.2名</td>
+                            <td>9.4名</td>
+                            <td><strong style="color:#4ade80;">67.1%</strong></td>
+                            <td>会社員の相席が最も成立しやすいコア帯</td>
+                        </tr>
+                        <tr>
+                            <td><strong>21:00〜22:00</strong></td>
+                            <td>48.7名</td>
+                            <td>32.3名</td>
+                            <td>24.7名</td>
+                            <td>15.6名</td>
+                            <td><strong>61.3%</strong></td>
+                            <td>21:30前後に会社員が退店し、客層が交代</td>
+                        </tr>
+                        <tr>
+                            <td><strong>22:00〜23:00</strong></td>
+                            <td>59.6名</td>
+                            <td>48.8名</td>
+                            <td>26.9名</td>
+                            <td>20.8名</td>
+                            <td>56.4%</td>
+                            <td>翌日休みの人たち（美容・シフト勤務等）が合流</td>
+                        </tr>
+                        <tr>
+                            <td><strong>23:00〜24:00</strong></td>
+                            <td>58.2名</td>
+                            <td>54.6名</td>
+                            <td>26.0名</td>
+                            <td>22.4名</td>
+                            <td>53.7%</td>
+                            <td>終電前の解散。残るのは翌日休み組</td>
+                        </tr>
+                        <tr>
+                            <td><strong>翌0:00〜02:00</strong></td>
+                            <td>50.5名</td>
+                            <td>49.6名</td>
+                            <td>24.8名</td>
+                            <td>22.0名</td>
+                            <td>53.0%</td>
+                            <td>土曜の約半数。落ち着いたバー空間に</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p>
+                数字を追うと、土曜日と日曜日で明確な違いが見て取れます。<br>
+                土曜日は22時〜24時に女性約60名・男性約50名が集中し、人気店では店外に男性の待ち列ができますが、<strong>日曜日のフロア人数は土曜の半分程度</strong>で推移します。<br>
+                特に19時〜21時は男性の来店が落ち着いているため、女性比率は67〜71%と高く、待たずにすぐ案内されやすいのが日曜日ならではの特徴です。
+            </p>
+
+            <h2>2. 21時半に起きる「客層の入れ替わり」とお互いの心理</h2>
+            <p>
+                日曜日で最も意識したい時間帯が、<strong>「21時20分〜21時40分」</strong>です。<br>
+                19時台から入店していた会社員が、時計を見てそろそろ帰ろうと席を立ち始める頃合いです。
+            </p>
+
+            <div class="dialogue-box">
+                男性：「次、どうする？……って言いたいけど、明日月曜か」<br>
+                女性：「それ。9時から全体朝礼なんだよね」<br>
+                男性：「俺も。じゃあ今日はここまでにしよっか」<br>
+                女性：「助かる〜。日曜の21時半って、ちょうどいいよね」
+            </div>
+
+            <p>
+                金曜・土曜であれば「21時半」はまだまだ夜の入り口ですが、日曜日に働く社会人にとっては「翌朝に響かないための引き際ライン」です。<br>
+                この時間帯で大事になるのは、<strong>お互いの翌日の予定を尊重すること</strong>です。
+            </p>
+
+            <p>
+                <strong>やりがちな失敗</strong>は、金土の感覚のまま「まだ早いしもう1軒行こう」と無理に引き止めてしまうことです。相手に「明日の仕事を分かってくれない人だな」と負担感を与えてしまいます。<br>
+                一方、<strong>うまくいく引き際</strong>は、21時過ぎに「明日早いよね？楽しかったからLINEだけ交換して、また平日にゆっくりご飯行こう」と切り上げることです。互いに無理のない時間で解散できると、次の約束にも繋がりやすくなります。
+            </p>
+
+            <h2>3. 22時以降の店内に残る「月曜休み」の人たち</h2>
+            <p>
+                会社員が帰途についた後の22時以降、店内はどうなっているのでしょうか。<br>
+                日曜夜の遅い時間は静まり返ると思われがちですが、実測ログを見ると、22時〜翌1時でも女性平均24〜27名、男性20〜22名が滞在しています。
+            </p>
+
+            <div class="dialogue-box">
+                「月曜がお店の定休日だから、今夜が私たちの金曜日なんです」<br>
+                「明日休みなら、時間を気にせずゆっくり飲めるね」
+            </div>
+
+            <p>
+                店内で話した印象や取材の範囲では、この時間帯に合流してくる人たちの多くは、<strong>月曜定休の美容師やアパレル関係、シフト制で平日休みの医療従事者</strong>などです。<br>
+                世間が「明日は仕事だから寝よう」としている夜に、彼女たち・彼らにとっては「今週の仕事が終わった解放感の時間」が始まっています。<br>
+                この時間帯の相席には、週末とは一味違う良さがあります。
+            </p>
+
+            <p>
+                会社員のような「21時半のリミット」がなく、時間を気にせずじっくり話せること。そしてお互いに休みが合えば、混雑する週末ではなく平日の落ち着いた時間帯に次回の食事の予定を合わせやすいことです。
+            </p>
+
+            <h2>4. 女性にとっての日曜ラウンジ：待ち時間ゼロと落ち着いた客層</h2>
+            <p>
+                日曜日をおすすめできるのは男性だけではありません。<strong>女性にとっても、日曜日の18:30〜21:00は非常に使い勝手のいい時間帯</strong>です。
+            </p>
+            <ul>
+                <li><strong>受付での待ち時間がほぼゼロ</strong>：金土に起きがちな「女性同士の待ち」がなく、スムーズに席へ通されます。</li>
+                <li><strong>落ち着いた社会人男性と話しやすい</strong>：泥酔した大人数グループが少なく、翌日仕事がある落ち着いた男性が多いため、安心して会話を楽しめます。</li>
+                <li><strong>21時台に気兼ねなく解散できる</strong>：相手の男性も翌朝仕事があることが多いため、「明日早いので」と言えば角を立てずにスムーズに退店できます。</li>
+            </ul>
+            <p>
+                待ち時間なしで今夜入れる店舗の状況は、<a href="/for-women" style="color:#f472b6;text-decoration:underline;">女性向け特設ガイド＆LIVE待ちゼロ店舗ボード</a>でも確認できます。
+            </p>
+
+            <h2>5. 【店舗別】日曜日におすすめのラウンジデータ</h2>
+            <p>
+                全国の主要店舗の中から、日曜日の女性比率が高く、落ち着いて過ごしやすい店舗の実測データをピックアップしました。
+            </p>
+
+            <div class="data-table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>店舗名</th>
+                            <th>日曜平均 女子率</th>
+                            <th>日曜コア帯 平均女性数</th>
+                            <th>主な客層と特徴</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong><a href="/store/oriental-lounge-ueno" style="color:#f472b6;">オリエンタルラウンジ 上野</a></strong></td>
+                            <td><strong style="color:#4ade80;">73.5%</strong></td>
+                            <td>37.5名</td>
+                            <td>落ち着いた社会人女性多数。フードの注文率が高く早飲み向き</td>
+                        </tr>
+                        <tr>
+                            <td><strong><a href="/store/oriental-lounge-shibuya-honten" style="color:#f472b6;">オリエンタルラウンジ 渋谷本店</a></strong></td>
+                            <td><strong style="color:#4ade80;">70.0%</strong></td>
+                            <td>26.0名</td>
+                            <td>表参道・渋谷のアパレルや美容師が日曜遅めに集まる傾向</td>
+                        </tr>
+                        <tr>
+                            <td><strong><a href="/store/oriental-lounge-omiya" style="color:#f472b6;">オリエンタルラウンジ 大宮</a></strong></td>
+                            <td><strong style="color:#4ade80;">69.3%</strong></td>
+                            <td>22.5名</td>
+                            <td>地元OLの早飲み利用が多く、19時〜21時は待ち時間ゼロ</td>
+                        </tr>
+                        <tr>
+                            <td><strong><a href="/store/oriental-lounge-shinjuku" style="color:#f472b6;">オリエンタルラウンジ 新宿</a></strong></td>
+                            <td><strong style="color:#4ade80;">68.0%</strong></td>
+                            <td>30.0名</td>
+                            <td>会社員の早飲みから遅い時間のシフト職まで幅広い客層</td>
+                        </tr>
+                        <tr>
+                            <td><strong><a href="/store/jis-shinjuku" style="color:#f472b6;">JIS（ジス）新宿</a></strong></td>
+                            <td><strong style="color:#4ade80;">67.8%</strong></td>
+                            <td>77.5名（※大型店）</td>
+                            <td>広いフロアと豊富なBARメニュー。日曜深夜も安定した人数</td>
+                        </tr>
+                        <tr>
+                            <td><strong><a href="/store/ag-shibuya" style="color:#f472b6;">ag（アグ）渋谷</a></strong></td>
+                            <td>64.2%</td>
+                            <td>66.0名</td>
+                            <td>20代中心。翌日の予定を控えた層が多く21時台の引きが早め</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>ブランドごとの日曜日の選び方</h3>
+            <p>
+                ブランドごとに見ると、料理のしっかりした<strong>『オリエンタルラウンジ』</strong>は、日曜18:30〜21:00にディナーを兼ねて訪れる社会人グループとの相性が良好です。<br>
+                一方、広々としたラウンジバーの空間を持つ<strong>『JIS（ジス）』</strong>は、22時以降に月曜休みの人たちがゆったりカクテルを傾けながら語り合うのに向いています。<br>
+                20代前半が中心の<strong>『ag（アグ）』</strong>は、翌日の大学の講義や新社会人勤務を気にする層が多いため、21時台前半には客足が落ち着く傾向がよりはっきり出ます。
+            </p>
+
+            <h2>6. まとめ：日曜日に合わせた2つの行動パターン</h2>
+            <p>
+                日曜日の相席ラウンジは、「金土の混雑を避けて落ち着いて話したい」という人にとって、無理のないペースで過ごせる穴場の日です。<br>
+                自分のライフスタイルに合わせて、以下の2つの時間帯を使い分けるのがおすすめです。
+            </p>
+
+            <div class="highlight-box">
+                <strong style="color:#38bdf8;font-size:0.98rem;">パターンA：会社員同士の「早めに入ってサクッと解散（18:30〜20:45）」</strong>
+                <p style="margin:8px 0 0 0;font-size:0.9rem;">
+                    18:30〜19:00に入店し、食事とお酒を楽しみながらリラックスして会話。21:15には「明日早いよね？」とお互い無理のないタイミングでスマートに解散する。互いの負担にならず、次の連絡に繋がりやすい王道の過ごし方です。
+                </p>
+            </div>
+
+            <div class="highlight-box">
+                <strong style="color:#a855f7;font-size:0.98rem;">パターンB：月曜休み組との「遅めスタート（22:00〜24:30）」</strong>
+                <p style="margin:8px 0 0 0;font-size:0.9rem;">
+                    混雑が引いた22時以降に入店。「明日お休みですか？」という会話から、美容やアパレルなどのライフスタイルトークへ。翌日休みの相手と時間を気にせずじっくり話せる、日曜夜ならではの時間帯です。
+                </p>
+            </div>
+
+            <p>
+                行く前には、休日の身だしなみとして清潔感を整えておくことも大切です。至近距離のソファ席で好印象を残すポイントは<a href="/guide/first-10-minutes" style="color:#f472b6;text-decoration:underline;">最初の10分の会話と清潔感ガイド</a>でも解説しています。<br>
+                日曜日の夜に出かける前に、リアルタイムの混雑状況をぜひチェックしてみてください。
+            </p>
+
+            <div class="cta-box">
+                <div style="font-size:1.05rem;font-weight:800;color:#fff;">今夜の「リアルタイム待ちゼロ店舗」を確認する</div>
+                <p style="font-size:0.85rem;color:#cbd5e1;margin:8px 0 0 0;">
+                    全国61店舗のリアルタイム混雑人数と男女比をライブ更新中。日曜日の穴場ラウンジがすぐに見つかります。
+                </p>
+                <a href="/" class="cta-btn">リアルタイム人数ランキングを見る →</a>
+                <div style="margin-top:14px;font-size:0.8rem;">
+                    <a href="/stats" style="color:#38bdf8;text-decoration:none;margin-right:12px;">全国統計データ白書</a>
+                    <a href="/guide/weekday-strategy" style="color:#38bdf8;text-decoration:none;margin-right:12px;">水曜・木曜の平日データ</a>
+                    <a href="/guide/weekend-strategy" style="color:#38bdf8;text-decoration:none;">金曜・土曜の混雑傾向</a>
+                </div>
+            </div>
+        </div>
+        </main>
+
+        {% include '_portal_footer.html' %}
+    </div>
+</body>
+
+</html>

@@ -984,6 +984,12 @@ def guide_thirties_lounge_guide():
     return _render_scheduled_guide('thirties-lounge-guide')
 
 
+@portal_bp.route('/guide/sunday-lounge-strategy')
+def guide_sunday_lounge_strategy():
+    """Scheduled editorial data study on Sunday crowd drop-off at 21:30 and Monday-off salon/apparel demographics."""
+    return _render_scheduled_guide('sunday-lounge-strategy')
+
+
 @portal_bp.route('/guide/<slug>')
 def guide_dynamic_scheduled(slug):
     """Dynamic route serving scheduled or live columns published from the Column Editorial Room."""

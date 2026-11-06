@@ -315,10 +315,15 @@ TIPS_LIST = [
         "暗いからヒゲやテカリは目立たない、と思いがちだが、テーブル真上のスポット照明と70cmの距離は昼間より陰影が出る。\n"
         "エレベーターに乗る前、洗面所でテカリを押さえて襟元を整える。その3分で印象はまるで変わる。"
     ),
+    (
+        "日曜の相席ラウンジで一番避けたいのは、21時過ぎに金土のノリで二次会へ引っ張ること。\n"
+        "翌朝9時出勤の女性にとって21時半は防衛ライン。21時15分に「明日早いよね？楽しかったからまた行こ」と男側から引ける人が次回に繋がります。"
+    ),
 ]
 
 
 _FALLBACK_COLUMNS = [
+    ("日曜日の相席ラウンジは行くべきか？｜21時半の撤退急落と、月曜休みの隠れ狙い目", "/guide/sunday-lounge-strategy"),
     ("相席ラウンジと審査制1対1デートの使い分け｜実測ログで見る境界線", "/guide/lounge-vs-screened-date"),
     ("相席ラウンジの服装と清潔感チェック｜避けたいドレスコードと70cm照明対策", "/guide/dress-code-cleanliness"),
     ("相席ラウンジは30代でも浮かない？｜店舗選びと客層データから見る境界線", "/guide/thirties-lounge-guide"),
@@ -431,6 +436,11 @@ def _column_for_tip_index(idx: int) -> tuple:
         return ("相席ラウンジと審査制1対1デートの使い分け｜実測ログで見る境界線", "/guide/lounge-vs-screened-date")
     if idx == 70:
         return ("相席ラウンジの服装と清潔感チェック｜避けたいドレスコードと70cm照明対策", "/guide/dress-code-cleanliness")
+    if idx == 71:
+        import scheduled_articles
+        if scheduled_articles.is_published("sunday-lounge-strategy"):
+            return ("日曜日の相席ラウンジは行くべきか？｜21時半の撤退急落と、月曜休みの隠れ狙い目", "/guide/sunday-lounge-strategy")
+        return ("相席ラウンジ実践コラム・記事一覧", "/columns")
     return ("相席ラウンジ実践コラム・記事一覧", "/columns")
 
 
