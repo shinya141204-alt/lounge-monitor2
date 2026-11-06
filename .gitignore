@@ -20,5 +20,7 @@ google_credentials.json
 *.db-shm
 *.log
 data/
-.agents/
+.agents/reports/
+.agents/teamwork/
+.agents/skills/*/logs/
 benchmark_*_result.json

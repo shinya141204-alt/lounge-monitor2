@@ -169,8 +169,10 @@ def seo_name(store_name: str) -> str:
             return f"ASOBIBAR（アソビバー）{disp}"
         return f"{brand} {disp}".strip()
 
-    # マスタ未登録時のフォールバック変換（大文字小文字・全角空白・単体ブランド名にも対応）
+    # マスタ未登録時のフォールバック変換（大文字小文字・全角空白・単体ブランド名にも対応・2重変換防止で冪等化）
     s = store_name.strip()
+    if s.startswith(("オリエンタルラウンジ", "ag（アグ）", "JIS（ジス）", "ASOBIBAR（アソビバー）", "ヤタコイ", "相席ラウンジXIX", "相席CLOVERS", "相席ラウンジALFA")):
+        return s
     m_ag = re.match(r"^(?:OLG\s+ag|ORIENTAL\s+ag|ag)(?:\s+|(?=[^a-zA-Z0-9])|$)(.*)$", s, flags=re.IGNORECASE)
     if m_ag:
         rest = m_ag.group(1).strip()

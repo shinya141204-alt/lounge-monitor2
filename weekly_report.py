@@ -1,5 +1,6 @@
 import datetime
 from collections import defaultdict
+import os
 import statistics
 import json
 import threading
@@ -65,9 +66,12 @@ def generate_weekly_report():
 def _compute_weekly_report(now_utc: datetime.datetime):
     global _report_cache, _report_cache_db_path
 
-    # Define the 7-day period in JST (excluding today to get full past 7 days)
+    # Define the 7-day period in JST (excluding the ongoing business day to get full past 7 completed business days)
     now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
-    end_date = now_jst.replace(hour=6, minute=59, second=59, microsecond=0)
+    if now_jst.hour <= 6:
+        end_date = (now_jst - datetime.timedelta(days=1)).replace(hour=6, minute=59, second=59, microsecond=0)
+    else:
+        end_date = now_jst.replace(hour=6, minute=59, second=59, microsecond=0)
     start_date = (end_date - datetime.timedelta(days=7)).replace(hour=18, minute=0, second=0)
     start_ts_str = start_date.strftime("%Y-%m-%d %H:%M:%S")
 
@@ -84,10 +88,13 @@ def _compute_weekly_report(now_utc: datetime.datetime):
         print(f"[Weekly Report] SQLite read error: {dbe}", file=sys.stderr)
 
     # 2. Fallback: Query Google Sheets via gviz API if local SQLite doesn't have enough multi-day data
-    if not items:
-        import os
-        if os.environ.get("DISABLE_SHEETS") == "1":
+    if not items and os.environ.get("DISABLE_SHEETS") == "1":
+        if len(sqlite_items) >= 20:
+            items = sqlite_items
+        else:
             return {"error": "Google Sheets Disabled"}
+
+    if not items:
         import logger
         access_token = logger.get_access_token()
         spreadsheet_id = logger.get_spreadsheet_id()

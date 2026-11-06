@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
-run_claude_review.py - Antigravity から Claude Code (`claude -p`) を安全に読み取り専用で呼び出す連携ラッパー
+run_claude_review.py - Antigravity から Claude Code (`claude -p`) を安全・高速に読み取り専用で呼び出す連携ラッパー v2.0
 
-特徴:
-- `--permission-mode plan` により、Claude Code 側での勝手なファイル書き換え・コマンド破壊を防止（競合ゼロ保証）
-- 日常の高速レビュー (`claude-opus-5-5`) と、切り札の 100万トークン最上位モデル (`claude-fable-5-1`) のハイブリッド運用に対応
-- 切り札 Fable 5.1 専用モードを 3大領域すべてに完備:
-  1. `strategy` : 収益化・SEO・導線設計の「全体戦略」
-  2. `audit`    : 複雑な数理ロジック・大型改修の「最終バグ・セキュリティ監査」
-  3. `flagship` : 看板コラム・note 勝負記事の「構成＆脱AIの徹底推敲」
-- `--usage` で現在の Claude Max 5時間枠 / 7日間枠の残り使用可能量（%）と次回リセット時刻（JST）を即座に確認可能
+主な特徴:
+- `--permission-mode plan` により、Claude Code 側での勝手なファイル書き換え・コマンド破壊を完全防止
+- 対象ファイル自動インライン添付（Fable 最大 120,000 文字 / Opus 最大 40,000 文字）＋ `stdin` 投入により、
+  Read ツール往復によるタイムアウトと macOS `ARG_MAX` 上限エラーを解消（`--fast-no-tools` でツール往復ゼロ推論にも対応）
+- 日常レビュー (`claude-opus-5-5`) と切り札 100万トークン最上位モデル (`claude-fable-5-1`) のハイブリッド運用:
+  1. `strategy`       : 収益化・SEO・データモート引用獲得・導線設計の「全体戦略」
+  2. `audit`          : 複雑な数理ロジック・Fly PG 512MB OOM安全性・大型改修の「最終バグ・セキュリティ監査」
+  3. `flagship`       : 看板コラム・note 勝負記事の「構成＆脱AIの徹底推敲」
+  4. `consult --fable`: スキル策定・自由テーマの深層アーキテクチャ相談（`strategy` へ強制変換せず維持）
+- レビュー結果を `.agents/skills/claude-review/logs/`（Git除外）へ自動アーカイブし、所要秒・コスト要約を表示
 """
 
 import argparse
@@ -20,9 +23,11 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
+LOG_DIR = Path(__file__).resolve().parents[1] / "logs"
 JST = datetime.timezone(datetime.timedelta(hours=9))
 
 CANDIDATE_CLAUDE_PATHS = [
@@ -48,8 +53,8 @@ MODEL_ALIASES = {
     "claude-haiku": "claude-haiku-5-5",
 }
 
-FABLE_NATIVE_MODES = {"strategy", "audit", "flagship", "article-fable"}
-ALL_MODES = ("code", "article", "consult", "strategy", "audit", "flagship", "article-fable")
+FABLE_NATIVE_MODES = {"strategy", "audit", "flagship", "architect", "article-fable"}
+ALL_MODES = ("code", "article", "consult", "strategy", "audit", "flagship", "architect", "article-fable")
 
 
 def find_claude_bin() -> str | None:
@@ -76,11 +81,24 @@ def is_fable_model(model_name: str) -> bool:
     return "fable" in (model_name or "").lower()
 
 
-def resolve_effective_mode(mode: str, model_name: str, force_fable: bool) -> str:
-    """Promote standard modes (`code`/`article`/`consult`) to deep Fable presets when Fable is selected."""
+def resolve_effective_mode(
+    mode: str,
+    model_name: str | bool = "",
+    force_fable: bool = False,
+    *,
+    no_promote: bool = False,
+) -> str:
+    """Promote standard modes (`code`/`article`/`consult`) to deep Fable presets when Fable is selected,
+    preserving full backward compatibility with `(mode, model_name, force_fable)` callers.
+    Use `--mode architect` or `--no-promote` for general Fable 5.1 architecture/skill consultations."""
+    if isinstance(model_name, bool):
+        force_fable = model_name
+        model_name = ""
     if mode == "article-fable":
         return "flagship"
-    if force_fable or is_fable_model(model_name):
+    if no_promote or mode == "architect":
+        return mode
+    if force_fable or is_fable_model(str(model_name)):
         if mode == "code":
             return "audit"
         if mode == "article":
@@ -91,7 +109,6 @@ def resolve_effective_mode(mode: str, model_name: str, force_fable: bool) -> str
 
 
 def _inspect_cached_catalog() -> dict[str, dict]:
-    """Read local Claude model catalog cache (if present) without exposing any credentials."""
     catalog_dir = Path.home() / ".claude" / "cache" / "model-catalog"
     found: dict[str, dict] = {}
     if not catalog_dir.is_dir():
@@ -178,7 +195,7 @@ def run_doctor() -> int:
     except Exception:
         pass
 
-    print("ℹ️ 初回ログインがまだの場合は、ターミナルで一度だけ `claude`（または `~/.local/bin/claude auth login`）を実行してブラウザ認証を完了してください。")
+    print("ℹ️ 初回ログインがまだの場合は、ターミナルで一度だけ `claude`（または `~/.local/bin/claude auth login`）を実行してください。")
     return 0
 
 
@@ -192,7 +209,6 @@ def run_usage_check() -> int:
     cmd = [
         claude_bin,
         "-p",
-        "OK",
         "--model",
         "claude-haiku-5-5",
         "--tools",
@@ -209,6 +225,7 @@ def run_usage_check() -> int:
     try:
         proc = subprocess.run(
             cmd,
+            input="OK",
             cwd=str(REPO_ROOT),
             env=env,
             capture_output=True,
@@ -274,25 +291,95 @@ def _print_rate_line(title: str, info: dict) -> None:
         print(f"  - {title}: {status_ja}{reset_str}")
 
 
-def build_prompt(effective_mode: str, user_prompt: str, files: list[str], use_git_diff: bool, deep_context: bool) -> str:
+def _inline_files(files: list[str], max_total_chars: int) -> tuple[str, list[str]]:
+    """Bundle target files directly into prompt text to eliminate slow multi-turn Read roundtrips."""
+    if not files or max_total_chars <= 0:
+        return "", []
+    blocks = []
+    omitted = []
+    used = 0
+    ext_lang = {
+        ".py": "python",
+        ".js": "javascript",
+        ".html": "html",
+        ".css": "css",
+        ".md": "markdown",
+        ".json": "json",
+        ".toml": "toml",
+    }
+    for rel in files:
+        fpath = (REPO_ROOT / rel) if not os.path.isabs(rel) else Path(rel)
+        if not fpath.is_file():
+            omitted.append(f"{rel} (missing)")
+            continue
+        try:
+            content = fpath.read_text(encoding="utf-8", errors="replace")
+        except Exception:
+            omitted.append(f"{rel} (read error)")
+            continue
+        remaining = max_total_chars - used
+        if remaining <= 800:
+            omitted.append(rel)
+            continue
+        truncated_note = ""
+        if len(content) > remaining:
+            content = content[:remaining]
+            truncated_note = f"\n... (truncated at {remaining:,} chars; use Read tool only if tail lines are required)"
+        lang = ext_lang.get(fpath.suffix.lower(), "")
+        blocks.append(f"### FILE: `{rel}`\n````{lang}\n{content}{truncated_note}\n````")
+        used += len(content)
+    if not blocks:
+        return "", omitted
+    return "\n\n【インライン添付ファイル本文（再Read不要）】\n" + "\n\n".join(blocks) + "\n", omitted
+
+
+def build_prompt(
+    effective_mode: str,
+    user_prompt: str,
+    files: list[str],
+    use_git_diff: bool,
+    deep_context: bool,
+    *,
+    diff_base: str = "",
+    inline_files: bool = True,
+    fast_no_tools: bool = False,
+) -> str:
     file_hint = ""
+    inlined_bundle = ""
     if files:
         joined = ", ".join(files)
-        file_hint = f"\n対象ファイル: {joined}\n（必ず Read / Grep ツールで対象ファイルの実コード・周辺呼び出し元および CLAUDE.md を直接確認した上で回答してください）\n"
+        if inline_files:
+            budget = 120000 if deep_context else 40000
+            inlined_bundle, omitted = _inline_files(files, budget)
+            if fast_no_tools:
+                file_hint = f"\n対象ファイル: {joined}\n（ファイル全文は下記にインライン添付済みです。添付内容のみを根拠に直接回答してください）\n"
+            elif omitted:
+                file_hint = (
+                    f"\n対象ファイル: {joined}\n"
+                    f"（大半は下記にインライン添付済みです。未添付/省略分 [{', '.join(omitted)}] または外部呼び出し元の確認が必要な場合のみ最小限の Read/Grep を使用してください）\n"
+                )
+            else:
+                file_hint = (
+                    f"\n対象ファイル: {joined}\n"
+                    "（対象ファイル全文は下記にインライン添付済みのため再Readは不要です。周辺モジュールの呼び出し元確認が必要な場合のみ最小限の Read/Grep を使用してください）\n"
+                )
+        else:
+            file_hint = f"\n対象ファイル: {joined}\n（Read / Grep ツールで対象ファイルの実コードおよび AGENTS.md を確認した上で回答してください）\n"
 
     diff_snippet = ""
-    if use_git_diff:
+    if use_git_diff or diff_base:
         max_diff_chars = 80000 if deep_context else 24000
+        git_cmd = ["git", "diff", diff_base] if diff_base else ["git", "diff", "HEAD"]
         try:
             diff_proc = subprocess.run(
-                ["git", "diff", "HEAD"],
+                git_cmd,
                 capture_output=True,
                 text=True,
                 cwd=str(REPO_ROOT),
                 timeout=12,
             )
             raw_diff = (diff_proc.stdout or "").strip()
-            if not raw_diff:
+            if not raw_diff and not diff_base:
                 diff_proc = subprocess.run(
                     ["git", "show", "--stat", "--patch", "-n", "1", "HEAD"],
                     capture_output=True,
@@ -311,96 +398,94 @@ def build_prompt(effective_mode: str, user_prompt: str, files: list[str], use_gi
     if effective_mode == "strategy":
         base = (
             "あなたは『相席ナビ (https://aiseki-navi.com)』のチーフ・グロース＆マネタイズ戦略アーキテクトです。\n"
-            "100万トークンの長大コンテキストを活かし、ファイルを一切編集せず、必要に応じて `CLAUDE.md`、`affiliate_manager.py`、`static/affiliate_config.js`、`pdca_engine.py`、`routes/portal_bp.py`、および関連テンプレート群を横断的に読み解き、**収益化・SEO・導線設計の全体戦略** を日本語で構造提案してください：\n"
-            "1. **ファネル全体のボトルネック診断**: 『検索/SNS流入 → リアルタイム状況・データコラム閲覧 → 2ステップ内部クッション（/grooming・/for-women・店舗詳細等） → /link/<id> 成果送客』の流れで、現在もっとも機会損失が大きい離脱ポイントの特定（根拠ファイル・行番号付き）\n"
-            "2. **SEO・LLMO・情報設計の全体最適化**: 検索意図クラスター（エリア×時間帯、ブランド比較、料金・ドレスコード、2軒目・審査制デート比較等）に対する不足ピラー、内部リンクの孤立・カニバリ解消、構造化データ強化策\n"
-            "3. **押し売り感ゼロで CVR を引き上げる導線設計**: リアルタイム人数を見に来た男女それぞれの心理モード（入店前・滞在中・退店2軒目・別日の真剣出会い検討）に自然に寄り添うマイクロコピーと配置改善（CLAUDE.md の『コラム本文への /link/ 直貼り禁止・2ステップ原則』を厳守すること）\n"
-            "4. **優先実行ロードマップ**: 【すぐ実装すべき高インパクト3手】と【中長期で競合が模倣できないデータ堀（Moat）施策】を、期待効果×実装コストとともに具体的に提示\n"
+            "ファイルを一切編集せず、`AGENTS.md` の規約（推測値ゼロ、コラム/一次統計への `/link/` 直貼り禁止、CC BY 4.0 一次統計インフラ活用）を踏まえ、**収益化・SEO・データモート引用獲得・導線設計の全体戦略** を日本語で構造提案してください：\n"
+            "1. **ファネル＆データモート活用診断**: 『検索/SNS/被リンク流入 → リアルタイム状況・データコラム・一次統計（`/stats/monthly.csv`, `/stats/year-end-2026`）閲覧 → 2ステップ内部クッション（`/grooming`・`/for-women`・店舗詳細等） → `/link/<id>` 成果送客』における最大ボトルネック特定\n"
+            "2. **SEO・LLMO・自然被リンク獲得戦略**: 90日予測精度・1h永久ロールアップ・6大ドーム相関・別業態横断比較を活かした検索クラスター補強と引用獲得策\n"
+            "3. **押し売り感ゼロで CVR を引き上げる導線設計**: 男女それぞれの心理モード（入店前・滞在中・2軒目・別日の真剣出会い検討）に寄り添うマイクロコピーと配置改善\n"
+            "4. **優先実行ロードマップ**: 【すぐ実装すべき高インパクト3手】と【中長期のデータ堀強化策】を期待効果×実装コストとともに提示\n"
         )
     elif effective_mode == "audit":
         base = (
             "あなたは『相席ナビ (https://aiseki-navi.com)』のプリンシパル数理アルゴリズム＆セキュリティ最終監査官です。\n"
-            "ファイルを一切編集せず、対象コードおよび関連モジュールを深く読み込み、**複雑な数理ロジック・大型改修の最終バグ・セキュリティ監査** を辛口かつ具体的に日本語で行ってください：\n"
-            "1. **数理・統計ロジック＆境界条件の厳密検証**: ゼロ除算、サンプル希少時の過剰適合・外れ値発散、ベイズ平滑化・時間減衰・クリップ境界、タイムゾーン（JST/UTC）混在、深夜営業の日跨ぎ（0:00〜5:00）境界条件、丸め誤差や NaN/None 伝播の有無\n"
-            "2. **多層データストア・並行処理の整合性**: PostgreSQL / SQLite WAL / Redis / Google Sheets 間のキャッシュ不整合、スレッドロック順序（デッドロック・競合状態）、SQL方言差、単体テスト実行時の本番データ汚染リスク\n"
-            "3. **セキュリティ・認証・計測汚染リスク**: 管理API認可漏れ、XSS/CSRF/SSRF/オープンリダイレクト、シークレット露出、`/link/<id>` のボット・自己クリック汚染ガード、`sw.js` / `app.js` / `index.html` のキャッシュバスティング3点同期漏れ\n"
-            "4. **重大度別の具体的修正パッチ案**: 発見した懸念を `[Critical / High / Medium / Low]` に分類し、ファイル名・行番号・再現条件・そのまま適用できる修正コード案を提示（問題なければ『重大な懸念なし』と明記）\n"
+            "ファイルを一切編集せず、対象コードを深く精査し、**複雑な数理ロジック・大型改修の最終バグ・セキュリティ監査** を辛口かつ具体的に日本語で行ってください：\n"
+            "1. **数理・統計ロジック＆境界条件の厳密検証**: ゼロ除算、サンプル希少時の発散、未算出時のダミー固定値混入、JST/UTC混在、深夜営業の日跨ぎ（0:00〜5:00）境界条件、丸め誤差や None 伝播の有無\n"
+            "2. **多層DB・Fly Postgres 512MB OOM安全性**: 全期間一括 `SELECT *` によるOOMリスク（最大7日連続日付バッチ分割の遵守）、PG/SQLite方言差、ロック競合、空データの長時間キャッシュ混入、テスト時の `DISABLE_SHEETS=1` 汚染防止\n"
+            "3. **セキュリティ・プライバシー・計測非汚染・キャッシュ完全同期**: 管理API認可、XSS/CSRF/SSRF、14日投票匿名化＆IPレート制限、本番アクセス時の `?staff_test=1` 非汚染、`sw.js` / `index.html` / `_nav_loader.html` / 全テンプレート / 回帰テストのキャッシュバスティング完全同期漏れ\n"
+            "4. **重大度別の具体的修正パッチ案**: 発見した懸念を `[Critical / High / Medium / Low]` に分類し、ファイル名・行番号・再現条件・修正コード案を提示（問題なければ『重大な懸念なし』と明記）\n"
         )
     elif effective_mode == "flagship":
         base = (
             "あなたは『相席ナビ (https://aiseki-navi.com)』の統括編集デスク（雑誌編集長クラスの構成＆脱AI文体ディレクター）です。\n"
-            "ファイルを一切編集せず、対象の看板コラムHTMLおよび/または note 勝負記事原稿（さらに必要に応じて既存コラム群との重複有無）を精読し、**構成＆脱AIの徹底推敲** を日本語で行ってください：\n"
-            "1. **企画骨格＆冒頭15秒の引き込み診断**: 最初の3行で読者が『まさに自分の夜の体験だ』と引き込まれる導入か。既存記事の手垢導入（エレベーターが開いた瞬間〜等の使い回し）になっていないか。『①60〜120分の時間波形ドラマ × ②男女双方の本音の非対称 × ③街・ブランド別カルチャー相性』の3軸×4層因果が立体的に噛み合っているか、構成の組み替え案を含めて評価\n"
-            "2. **徹底的な脱AI・手垢表現の摘出と生身の改稿案**: AI特有の優等生構文（『〜ため、』『〜傾向にあり』『〜と言えるでしょう』『〜という構図』）、量産煽り語（『徹底解説』『完全攻略』『完全ガイド』『間違いなし』『最適解』『必見』『3秒で』）、硬い学術語（『サンクコスト』『二面市場』等）、同じ語尾の連続を1文単位で摘出し、**そのままコピペ置換できる生身の大人（編集長くわもん）の書き換え文案** をすべて提示\n"
-            "3. **Web版とnote版の役割分離＆会話の体温**: Web版が検索読者向けの明快なデータ検証リファレンスとして機能しつつ、note版がマニュアル臭ゼロの一人称エッセイとして独立しているか。`.dialogue-box` の男女の会話がリアルな20〜30代の息遣い（甘すぎるファンタジーや説教臭さゼロ）になっているか添削\n"
-            "4. **ブランド正式名称・著者クレジット・導線規約の完全検閲**: 単体『オリエンタル』・『OLG』・『YATAKOI』・『オリラジ』が0件か、本文初出で『ag（アグ）』『JIS（ジス）』『ASOBIBAR（アソビバー）』とカナ併記されているか、著者表記が『くわもん（相席ナビ編集長）』に統一され個人本名や店舗勤務経歴が混入していないか、コラム本文に `/link/` 直貼りが無いかを厳密チェック\n"
+            "ファイルを一切編集せず、対象の看板コラムHTMLおよび/または note 勝負記事原稿を精読し、**構成＆脱AIの徹底推敲** を日本語で行ってください：\n"
+            "1. **企画骨格＆冒頭15秒の引き込み診断**: 最初の3行で読者が引き込まれるか。手垢導入の使い回しがないか。『①60〜120分の時間波形ドラマ × ②男女双方の本音の非対称 × ③街・ブランド別カルチャー相性』の立体構成評価\n"
+            "2. **徹底的な脱AI・手垢表現の摘出と生身の改稿案**: AI優等生構文（『〜ため、』『〜傾向にあり』『〜と言えるでしょう』）、量産煽り語（『徹底解説』『完全攻略』『完全ガイド』『間違いなし』『必見』『3秒で』）、硬い学術語を1文単位で摘出し、**そのままコピペ置換できる編集長くわもんの書き換え文案** を提示\n"
+            "3. **Web版とnote版の役割分離＆会話の体温**: `.dialogue-box` の男女会話がリアルな20〜30代の息遣いになっているか添削\n"
+            "4. **ブランド正式名称・著者クレジット・導線規約の完全検閲**: 単体『オリエンタル』・『OLG』・『YATAKOI』・『オリラジ』が0件か、初出『ag（アグ）』『JIS（ジス）』『ASOBIBAR（アソビバー）』併記、著者『くわもん（相席ナビ編集長）』統一、本文への `/link/` 直貼りゼロを厳密チェック\n"
         )
     elif effective_mode == "code":
         base = (
             "あなたは『相席ナビ (aiseki-navi.com)』のシニアセキュリティ＆アーキテクチャ監査官です。\n"
             "ファイルを直接編集せず、以下の観点で辛口かつ具体的なコードレビューを日本語で行ってください：\n"
-            "1. 重大なバグ・例外握りつぶし・エッジケース漏れ\n"
-            "2. セキュリティ・認証・計測汚染リスク（/link/ 汚染、機密露出、XSS/CSRF 等）\n"
-            "3. パフォーマンス・キャッシュ整合性（sw.js / app.js 同期、N+1、ロック競合）\n"
+            "1. 重大なバグ・例外握りつぶし・エッジケース漏れ・OOMリスク\n"
+            "2. セキュリティ・認証・計測汚染リスク（`?staff_test=1` 漏れ、`/link/` 汚染、XSS/CSRF 等）\n"
+            "3. キャッシュ完全同期（`sw.js` / `index.html` / `_nav_loader.html` / 全テンプレート）とロック競合\n"
             "4. そのまま適用できる具体的な改善案（問題なければ『重大な懸念なし』と明記）\n"
         )
     elif effective_mode == "article":
         base = (
             "あなたは『相席ナビ』の辛口デスク編集者です。\n"
             "対象コラムまたは note 原稿を読み、ファイルを書き換えずに以下の観点で日本語で添削してください：\n"
-            "1. AIっぽい手垢表現・煽り語（「徹底解説」「完全攻略」「完全ガイド」「間違いなし」「3秒で」等）・硬い学術用語（「サンクコスト」「二面市場」等）・同じ構文の繰り返し箇所の指摘と自然な書き換え案\n"
-            "2. ブランド正式名称＆初出カナ併記ルール確認（単体『オリエンタル』・『OLG』・『YATAKOI』・『オリラジ』が0件か、本文初出で『ag（アグ）』『JIS（ジス）』『ASOBIBAR（アソビバー）』と併記されているか）\n"
-            "3. 著者クレジット確認（『くわもん（相席ナビ編集長）』に統一され、個人本名ローマ字や店舗勤務経歴が混入していないか）\n"
-            "4. 男女どちらか一方に偏りすぎていないか（フラットな人間観察と自然な `.dialogue-box` 会話になっているか）\n"
-            "5. 読者が最初の15秒で引き込まれる導入改善案\n"
+            "1. AIっぽい手垢表現・煽り語（「徹底解説」「完全攻略」「完全ガイド」「間違いなし」「3秒で」等）の指摘と自然な書き換え案\n"
+            "2. ブランド正式名称＆初出カナ併記ルール確認（単体『オリエンタル』・『OLG』・『YATAKOI』・『オリラジ』0件、初出カナ併記）\n"
+            "3. 著者クレジット確認（『くわもん（相席ナビ編集長）』統一、本名・現場勤務経歴ゼロ）と直 `/link/` ゼロ確認\n"
+            "4. 男女フラットな人間観察と自然な `.dialogue-box` 会話、冒頭15秒の導入改善案\n"
         )
     else:
         base = (
-            "あなたは『相席ナビ (aiseki-navi.com)』の技術・グロース戦略アドバイザーです。\n"
-            "CLAUDE.md の前提を踏まえ、ファイルを編集せずに別視点のセカンドオピニオンを日本語で簡潔に提示してください。\n"
+            "あなたは『相席ナビ (https://aiseki-navi.com)』のプリンシパル技術・AIハーネス＆グロース設計アドバイザーです。\n"
+            "`AGENTS.md` の規約を踏まえ、ファイルを編集せずに構造的・実践的な設計提案またはセカンドオピニオンを日本語で提示してください。\n"
         )
 
     extra = f"\n【追加指示・重点論点】\n{user_prompt}\n" if user_prompt else ""
-    return f"{base}{file_hint}{extra}{diff_snippet}"
+    return f"{base}{file_hint}{extra}{diff_snippet}{inlined_bundle}"
+
+
+def _save_review_log(mode: str, model: str, text: str) -> Path | None:
+    try:
+        LOG_DIR.mkdir(parents=True, exist_ok=True)
+        ts = datetime.datetime.now(JST).strftime("%Y%m%d_%H%M%S")
+        safe_mode = "".join(c for c in mode if c.isalnum() or c in ("-", "_")) or "review"
+        out_path = LOG_DIR / f"{ts}_{safe_mode}.md"
+        header = f"<!-- model={model} mode={mode} created_at={ts} JST -->\n\n"
+        out_path.write_text(header + text + "\n", encoding="utf-8")
+        return out_path
+    except Exception:
+        return None
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Run read-only Claude Code review / Fable 5.1 deep strategy, audit, and flagship editorial polish"
+        description="Run read-only Claude Code review / Fable 5.1 deep strategy, audit, flagship polish, and consult"
     )
     parser.add_argument("--doctor", action="store_true", help="Check Claude Code installation, Fable availability, and auth status")
     parser.add_argument("--usage", action="store_true", help="Check live 5h / 7d Claude rate-limit remaining percentage")
     parser.add_argument(
         "--mode",
         choices=ALL_MODES,
-        default="code",
-        help=(
-            "Review preset mode: "
-            "daily Opus modes = code | article | consult; "
-            "flagship Fable 5.1 modes = strategy (全体戦略) | audit (数理・最終バグ監査) | flagship (看板コラム・note徹底推敲)"
-        ),
+        default=None,
+        help="Preset mode: code | article | consult | strategy | audit | flagship",
     )
-    parser.add_argument("--fable", action="store_true", help="Shortcut to run with Claude Fable 5.1 (`claude-fable-5-1`) and deep preset")
-    parser.add_argument("--files", nargs="*", default=[], help="Target file paths relative to repo root")
+    parser.add_argument("--fable", action="store_true", help="Run with Claude Fable 5.1 (`claude-fable-5-1`); promotes code->audit and article->flagship")
+    parser.add_argument("--no-promote", action="store_true", help="Keep exact `--mode` even when `--fable` is set")
+    parser.add_argument("--files", nargs="*", default=[], help="Target file paths relative to repo root (auto-inlined)")
+    parser.add_argument("--no-inline", action="store_true", help="Do not inline `--files` contents; let Claude Read them via tool calls")
+    parser.add_argument("--fast-no-tools", action="store_true", help="Disable all Claude tool calls (`--tools ''`) for ultra-fast single-turn inference on inlined files")
     parser.add_argument("--git-diff", action="store_true", help="Include current git diff (or latest commit diff)")
+    parser.add_argument("--diff-base", default="", help="Include `git diff <ref>` against a specific commit/branch")
     parser.add_argument("--prompt", default="", help="Custom focus or question for Claude Code")
-    parser.add_argument(
-        "--model",
-        default=None,
-        help="Claude model or alias (`fable`, `fable-1m`, `opus`, `sonnet`, `haiku`, or full ID). Auto-selects Fable 5.1 for strategy/audit/flagship, Opus 5.5 otherwise.",
-    )
-    parser.add_argument(
-        "--effort",
-        choices=["low", "medium", "high", "xhigh", "max"],
-        default=None,
-        help="Reasoning effort level (defaults to `high` for Fable 5.1 modes)",
-    )
-    parser.add_argument(
-        "--timeout",
-        type=int,
-        default=None,
-        help="Timeout seconds (auto-defaults to 420s for Fable 5.1, 180s for Opus/Sonnet)",
-    )
+    parser.add_argument("--model", default=None, help="Claude model or alias (`fable`, `fable-1m`, `opus`, `sonnet`, `haiku`)")
+    parser.add_argument("--effort", choices=["low", "medium", "high", "xhigh", "max"], default=None, help="Reasoning effort level")
+    parser.add_argument("--timeout", type=int, default=None, help="Timeout seconds (auto-scaled by model and prompt size)")
     args = parser.parse_args()
 
     if args.doctor:
@@ -416,31 +501,45 @@ def main() -> int:
         )
         return 2
 
-    selected_model = resolve_model(args.model, args.mode, args.fable)
+    raw_mode = args.mode
+    if not raw_mode:
+        raw_mode = "code" if (args.files or args.git_diff or args.diff_base) else "consult"
+
+    selected_model = resolve_model(args.model, raw_mode, args.fable)
     use_fable = is_fable_model(selected_model)
-    effective_mode = resolve_effective_mode(args.mode, selected_model, args.fable)
-    timeout_sec = args.timeout if args.timeout is not None else (420 if use_fable else 180)
+    effective_mode = resolve_effective_mode(raw_mode, selected_model, args.fable, no_promote=args.no_promote)
     effort_level = args.effort or ("high" if use_fable else None)
 
     full_prompt = build_prompt(
-        effective_mode=effective_mode,
-        user_prompt=args.prompt,
-        files=args.files,
-        use_git_diff=args.git_diff,
-        deep_context=use_fable,
+        effective_mode,
+        args.prompt,
+        args.files,
+        args.git_diff,
+        use_fable,
+        diff_base=args.diff_base,
+        inline_files=not args.no_inline,
+        fast_no_tools=args.fast_no_tools,
     )
+
+    if args.timeout is not None:
+        timeout_sec = args.timeout
+    else:
+        base_t = 420 if use_fable else 180
+        extra_t = (len(full_prompt) // 50000) * 60
+        timeout_sec = min(900, base_t + extra_t)
 
     cmd = [
         claude_bin,
         "-p",
-        full_prompt,
         "--permission-mode",
         "plan",
         "--model",
         selected_model,
         "--output-format",
-        "text",
+        "json",
     ]
+    if args.fast_no_tools:
+        cmd.extend(["--tools", ""])
     if effort_level:
         cmd.extend(["--effort", effort_level])
     if use_fable:
@@ -453,13 +552,18 @@ def main() -> int:
 
     print(
         f"[claude-review] model={selected_model} mode={effective_mode}"
-        f"{f' effort={effort_level}' if effort_level else ''} timeout={timeout_sec}s (read-only plan mode)",
+        f"{f' effort={effort_level}' if effort_level else ''}"
+        f" inline={'off' if args.no_inline else 'on'}"
+        f"{' tools=none' if args.fast_no_tools else ''}"
+        f" prompt_chars={len(full_prompt):,} timeout={timeout_sec}s",
         file=sys.stderr,
     )
 
+    t0 = time.monotonic()
     try:
         proc = subprocess.run(
             cmd,
+            input=full_prompt,
             cwd=str(REPO_ROOT),
             env=env,
             capture_output=True,
@@ -468,29 +572,50 @@ def main() -> int:
         )
     except subprocess.TimeoutExpired:
         print(
-            f"⚠️ Claude Code ({selected_model}) の応答が {timeout_sec} 秒でタイムアウトしました。`--timeout 600` を指定するか対象ファイルを絞って再実行してください。",
+            f"⚠️ Claude Code ({selected_model}) の応答が {timeout_sec} 秒でタイムアウトしました。"
+            " 添付ファイルのみで完結する場合は `--fast-no-tools` を付けるか、`--timeout 900` を指定してください。",
             file=sys.stderr,
         )
         return 3
+    elapsed = round(time.monotonic() - t0, 1)
 
-    stdout = (proc.stdout or "").strip()
-    stderr = (proc.stderr or "").strip()
+    stdout_raw = (proc.stdout or "").strip()
+    stderr_raw = (proc.stderr or "").strip()
 
     if proc.returncode != 0:
-        combined = f"{stdout}\n{stderr}".strip()
-        if any(k in combined.lower() for k in ("login", "auth", "not logged in", "api key", "unauthorized")):
+        combined = f"{stdout_raw}\n{stderr_raw}".strip()
+        lower_c = combined.lower()
+        if any(p in lower_c for p in ("not logged in", "please run `claude auth login`", "claude auth login", "unauthorized", "invalid api key")):
             print(
-                "⚠️ Claude Code の初回ログインが未完了です。\n"
-                "Mac のターミナルで以下のコマンドを1回だけ実行し、ブラウザ画面でログインを完了してください：\n\n"
-                f"  {claude_bin} auth login\n"
-                "（またはターミナルで `claude` と打って起動してもログインできます）",
+                "⚠️ Claude Code のログイン認証が必要です。ターミナルで以下を実行してください：\n"
+                f"  {claude_bin} auth login",
                 file=sys.stderr,
             )
             return 4
         print(f"⚠️ Claude Code 実行エラー (exit={proc.returncode}, model={selected_model}):\n{combined}", file=sys.stderr)
         return proc.returncode
 
-    print(stdout)
+    result_text = stdout_raw
+    meta_parts = [f"elapsed={elapsed}s"]
+    if stdout_raw.startswith("{"):
+        try:
+            payload = json.loads(stdout_raw)
+            if isinstance(payload, dict) and "result" in payload:
+                result_text = str(payload.get("result") or "").strip()
+                cost = payload.get("total_cost_usd")
+                turns = payload.get("num_turns")
+                if turns is not None:
+                    meta_parts.append(f"turns={turns}")
+                if isinstance(cost, (int, float)):
+                    meta_parts.append(f"est_cost_usd={cost:.4f}")
+        except Exception:
+            pass
+
+    saved_path = _save_review_log(effective_mode, selected_model, result_text)
+    if saved_path:
+        meta_parts.append(f"saved={saved_path.relative_to(REPO_ROOT)}")
+    print(f"[claude-review] done ({', '.join(meta_parts)})", file=sys.stderr)
+    print(result_text)
     return 0
 
 
