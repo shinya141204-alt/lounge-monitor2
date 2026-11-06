@@ -264,9 +264,15 @@ def _daily_token_and_db_maintenance_job():
     except Exception as err:
         logger.warning(f"[worker] Daily Meta/TikTok token auto-refresh check warning: {err}")
     try:
-        local_db.prune_old_logs(monitor_days=60, vote_days=14)
+        import arena_calendar
+        arena_calendar.get_arena_schedule_events(allow_blocking=True, force_refresh=True)
     except Exception as err:
-        logger.warning(f"[worker] Daily DB prune warning: {err}")
+        logger.warning(f"[worker] Daily arena calendar refresh warning: {err}")
+    try:
+        local_db.rollup_store_hourly_stats(days_back=4)
+        local_db.prune_old_logs(monitor_days=90, vote_days=14)
+    except Exception as err:
+        logger.warning(f"[worker] Daily DB rollup/prune warning: {err}")
 
 
 def build_worker_scheduler() -> BackgroundScheduler:
@@ -370,6 +376,7 @@ def _worker_staggered_warmup(stop_event: threading.Event):
             import affiliate_manager as _afm
             import analytics as _an
             import archive_data as _ard
+            import arena_calendar as _ac
             import job_state as _js
             import sns_editorial as _se
             _js.all_keys()
@@ -377,6 +384,8 @@ def _worker_staggered_warmup(stop_event: threading.Event):
             _ard.get_retention_status(allow_blocking=True)
             _an._refresh_sheet_rows_async()
             _se.fetch_live_weather_context(allow_blocking=True)
+            _ac.get_arena_schedule_events(allow_blocking=True)
+            local_db.rollup_store_hourly_stats(days_back=3)
         except Exception as warm_err:
             logger.warning(f"[worker] State/token warmup warning: {warm_err}")
 

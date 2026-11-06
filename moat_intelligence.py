@@ -464,13 +464,16 @@ def _normalize_jst(dt: datetime.datetime = None) -> datetime.datetime:
 
 def detect_arena_event_surges(live_stores: list, now_jst: datetime.datetime = None) -> dict:
     """
-    ライブ終演後ゴールデンタイム（19:00〜22:50）において、ドーム・アリーナ周辺店舗で
-    普段の同曜日・同時間帯平均を大きく上回る女性急増（usual_w_diff >= 10 または 15分比+6以上）が
-    発生しているハブを自動検知し、{store_name: event_signal_dict} を返す。
-    また job_state / 環境変数 `ARENA_ACTIVE_VENUES` に明示登録された会場があれば優先付与する。
+    全国10大ドーム・アリーナの「公式公開スケジュール（事前予告）」と「ライブ終演後の実測女性急増（事後検証）」を統合検知する：
+      1) `arena_calendar.get_arena_events_for_date`（またはDB `arena_schedule_events`）に当日公演がある場合：
+         - 開演前〜公演中（14:00〜終演1時間前未満）：`phase="pre_announce"`（終演後の流入見込みを事前予告）
+         - 終演ゴールデン帯（終演1時間前〜終演2時間後）：実測急増があれば `phase="verified_surge"`、なければ `phase="post_window"`
+      2) スケジュール未登録会場でも、19:00〜22:50に普段比急増（`usual_w_diff >= 10` または 15分比 `+6` 以上）が
+         発生しているハブは従来通り自動検知し、`{store_name: event_signal_dict}` を返す。
     """
     now_jst = _normalize_jst(now_jst)
     hr = now_jst.hour
+    date_str = now_jst.strftime("%Y-%m-%d")
     explicit_venues = set(
         v.strip() for v in (os.environ.get("ARENA_ACTIVE_VENUES") or "").split(",") if v.strip()
     )
@@ -479,11 +482,19 @@ def detect_arena_event_surges(live_stores: list, now_jst: datetime.datetime = No
         raw_ev = job_state.get_value("moat:arena_events_today", allow_blocking=False)
         if raw_ev:
             data_ev = json.loads(raw_ev)
-            if isinstance(data_ev, dict) and data_ev.get("date") == now_jst.strftime("%Y-%m-%d"):
+            if isinstance(data_ev, dict) and data_ev.get("date") == date_str:
                 for vid in data_ev.get("venues") or []:
                     explicit_venues.add(str(vid))
     except Exception:
         pass
+
+    scheduled_by_venue = {}
+    try:
+        import arena_calendar
+        b_date = _business_date(now_jst)
+        scheduled_by_venue = arena_calendar.get_arena_events_for_date(b_date, allow_blocking=False) or {}
+    except Exception:
+        scheduled_by_venue = {}
 
     store_map = {}
     raw_names_by_canon = {}
@@ -506,6 +517,7 @@ def detect_arena_event_surges(live_stores: list, now_jst: datetime.datetime = No
         vid = hub["venue_id"]
         vname = hub["venue_name"]
         is_explicit = vid in explicit_venues
+        sched_list = scheduled_by_venue.get(vid) or []
 
         hub_usual_surges = 0
         max_w_diff = 0
@@ -521,19 +533,67 @@ def detect_arena_event_surges(live_stores: list, now_jst: datetime.datetime = No
                 max_w_diff = max(max_w_diff, int(uw_diff or w_diff_15))
 
         needed = 1 if len(hub["stores"]) <= 2 else 2
-        if is_explicit or (is_post_concert_window and hub_usual_surges >= needed):
+        sig_template = None
+
+        if sched_list:
+            ev0 = sched_list[0]
+            ev_title = str(ev0.get("event_title") or "").strip()
+            est_end = int(ev0.get("est_end_hour") or 21)
+            v_short = str(ev0.get("venue_name") or vname.split("・")[0]).strip()
+            win_start = max(18, est_end - 1)
+            win_end_ext = est_end + 2
+            eff_hr = hr + 24 if hr <= 1 else hr
+            if 14 <= eff_hr < win_start:
+                sig_template = {
+                    "venue_id": vid,
+                    "venue_name": vname,
+                    "is_explicit_schedule": True,
+                    "phase": "pre_announce",
+                    "is_surge_now": False,
+                    "event_title": ev_title,
+                    "est_end_hour": est_end,
+                    "surge_women_delta": max_w_diff,
+                    "label_short": f"🏟️今夜 {v_short}公演（{est_end}時頃終演見込み）",
+                }
+            elif win_start <= eff_hr <= win_end_ext:
+                verified = hub_usual_surges >= needed
+                sig_template = {
+                    "venue_id": vid,
+                    "venue_name": vname,
+                    "is_explicit_schedule": True,
+                    "phase": "verified_surge" if verified else "post_window",
+                    "is_surge_now": True,
+                    "event_title": ev_title,
+                    "est_end_hour": est_end,
+                    "surge_women_delta": max_w_diff,
+                    "label_short": (
+                        f"🎸{v_short}終演・女性流入中(+{max_w_diff}名)"
+                        if (verified and max_w_diff > 0)
+                        else f"🎸{v_short}終演圏・女性流入警戒"
+                    ),
+                }
+
+        if sig_template is None and (is_explicit or (is_post_concert_window and hub_usual_surges >= needed)):
+            sig_template = {
+                "venue_id": vid,
+                "venue_name": vname,
+                "is_explicit_schedule": is_explicit,
+                "phase": "verified_surge" if hub_usual_surges >= needed else "post_window",
+                "is_surge_now": True,
+                "event_title": "",
+                "est_end_hour": 21,
+                "surge_women_delta": max_w_diff,
+                "label_short": f"🎸{vname.split('・')[0]}終演圏・女性流入中",
+            }
+
+        if sig_template is not None:
+            allow_low_headcount = bool(sig_template.get("is_explicit_schedule"))
             for sname in hub["stores"]:
                 st = store_map.get(sname)
                 if not st:
                     continue
-                if is_explicit or int(st.get("women") or 0) >= 12:
-                    sig_obj = {
-                        "venue_id": vid,
-                        "venue_name": vname,
-                        "is_explicit_schedule": is_explicit,
-                        "surge_women_delta": max_w_diff,
-                        "label_short": f"🎸{vname.split('・')[0]}終演圏・女性流入中",
-                    }
+                if allow_low_headcount or int(st.get("women") or 0) >= 12:
+                    sig_obj = dict(sig_template)
                     signals_by_store[sname] = sig_obj
                     for r_alias in raw_names_by_canon.get(sname, ()):
                         signals_by_store[r_alias] = sig_obj
@@ -542,15 +602,23 @@ def detect_arena_event_surges(live_stores: list, now_jst: datetime.datetime = No
 
 def capture_external_context_snapshot(live_stores: list = None, allow_blocking: bool = True, now_jst: datetime.datetime = None) -> list:
     """
-    10分刻みのDB保存・Moat Telemetryシート追記用に、全国10都市の現在気象＋イベント流入検知結果の
-    リスト `[{city_key, temp_c, precip_mm, weather_code, wind_kmh, is_rainy, active_arenas_json}, ...]` を返す。
+    10分刻みのDB保存・Moat Telemetryシート追記用に、全国10都市の現在気象＋イベント流入検知結果＋主要JR路線遅延状態の
+    リスト `[{city_key, temp_c, precip_mm, weather_code, wind_kmh, is_rainy, active_arenas_json, transit_disrupted, transit_lines_json}, ...]` を返す。
     """
     now_jst = _normalize_jst(now_jst)
     weather_map = get_city_weather_map(allow_blocking=allow_blocking)
     arena_signals = detect_arena_event_surges(live_stores or [], now_jst=now_jst)
+    transit_map = {}
+    try:
+        import arena_calendar
+        transit_map = arena_calendar.get_city_transit_status(allow_blocking=False) or {}
+    except Exception:
+        transit_map = {}
 
     city_arenas = {}
     for sname, sig in arena_signals.items():
+        if not sig.get("is_surge_now", True):
+            continue
         ck = city_key_for_store(_resolve_internal_store_key(sname) or sname)
         if ck:
             city_arenas.setdefault(ck, set()).add(sig["venue_id"])
@@ -561,6 +629,8 @@ def capture_external_context_snapshot(live_stores: list = None, allow_blocking: 
         if not w:
             continue
         arenas_list = sorted(city_arenas.get(ck) or [])
+        tr_info = transit_map.get(ck) or {}
+        delayed_lines = tr_info.get("delayed_lines") or []
         rows.append({
             "city_key": ck,
             "city_label": w["city_label"],
@@ -571,6 +641,8 @@ def capture_external_context_snapshot(live_stores: list = None, allow_blocking: 
             "condition_ja": w["condition_ja"],
             "is_rainy": 1 if w["is_rainy"] else 0,
             "active_arenas_json": json.dumps(arenas_list, ensure_ascii=False),
+            "transit_disrupted": 1 if tr_info.get("disrupted") else 0,
+            "transit_lines_json": json.dumps(delayed_lines, ensure_ascii=False),
         })
     return rows
 
@@ -1603,7 +1675,7 @@ def _predict_store_60m_v1_legacy(
     if bool(city_w and city_w.get("is_rainy") and canon_name in UNDERGROUND_DIRECT_STORES):
         dw += 3.2 * scale
         dm -= 1.2 * scale
-    if arena_signal and 19 <= hr <= 22:
+    if arena_signal and arena_signal.get("is_surge_now", True) and 19 <= hr <= 22:
         dw += 3.5 * scale
     pred_w = max(1, min(int(p99_cap * 0.72), int(round(women + dw))))
     pred_m = max(1, min(int(p99_cap * 0.72), int(round(men + dm))))
@@ -1785,7 +1857,7 @@ def predict_store_60m_dynamics(
         pm_raw -= 0.8 * scale
         pwp_dir += 1.4 if (m_d15 < w_d15 + 4) else 0.6
 
-    if arena_signal and 19 <= hr <= 22:
+    if arena_signal and arena_signal.get("is_surge_now", True) and 19 <= hr <= 22:
         pw_raw += 2.8 * scale
         pwp_dir += 1.5
 
@@ -2037,6 +2109,8 @@ def predict_store_60m_dynamics(
         "badge_tone": badge_tone,
         "is_rain_shelter": is_rain_shelter,
         "arena_signal_label": arena_signal.get("label_short", "") if arena_signal else "",
+        "arena_phase": arena_signal.get("phase", "") if arena_signal else "",
+        "arena_event_title": arena_signal.get("event_title", "") if arena_signal else "",
         "online_bias_adj_pt": round(online_bias_adj, 1),
         "reason_short": reason,
     }

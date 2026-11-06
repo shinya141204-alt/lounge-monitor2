@@ -75,6 +75,10 @@ _DB_STATS_TTL = 120.0
 _store_backfill_in_flight = set()
 _store_backfill_lock = threading.Lock()
 _forecast_schema_ready = set()
+_moat_rollup_schema_ready = set()
+_moat_coverage_cache = {}
+_watch_intents_lock = threading.Lock()
+_memory_watch_intents = []
 _forecast_acc_report_cache = {}
 _FORECAST_REPORT_TTL = 180.0
 _forecast_store_acc_cache = {}
@@ -93,6 +97,7 @@ _recent_lags_warming = set()
 
 def clear_store_7d_cache(store_name: str = None, clear_benchmarks: bool = False):
     _db_stats_cache.clear()
+    _moat_coverage_cache.clear()
     db_k = _active_db_key()
     if store_name:
         _store_7d_cache.pop((db_k, store_name), None)
@@ -113,6 +118,24 @@ def clear_store_7d_cache(store_name: str = None, clear_benchmarks: bool = False)
         with _recent_trajectory_lock:
             _recent_trajectory_ring.clear()
             _recent_trajectory_warmed_at.clear()
+
+
+def reset_caches_for_tests():
+    """Reset in-memory caches, schema-ready memo sets, and thread-local SQLite read handles for isolated unit tests."""
+    clear_store_7d_cache(clear_benchmarks=True)
+    _forecast_schema_ready.clear()
+    _moat_rollup_schema_ready.clear()
+    with _watch_intents_lock:
+        _memory_watch_intents.clear()
+    conn = getattr(_read_tls, 'conn', None)
+    if conn is not None:
+        try:
+            conn.close()
+        except Exception:
+            pass
+        _read_tls.conn = None
+        _read_tls.db_path = None
+        _read_tls.db_inode = None
 
 
 def refresh_live_benchmarks_async():
@@ -258,6 +281,201 @@ def _migrate_forecast_columns(conn, cur):
                 pass
 
 
+def _migrate_crowd_votes_columns(conn, cur):
+    """Idempotently add optional `wait_minutes` column to `crowd_votes`."""
+    try:
+        cur.execute("SELECT wait_minutes FROM crowd_votes LIMIT 0")
+        return
+    except Exception:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+    try:
+        if _is_pg():
+            try:
+                cur.execute("SET LOCAL lock_timeout = '2s'")
+            except Exception:
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
+        cur.execute("ALTER TABLE crowd_votes ADD COLUMN wait_minutes INTEGER")
+        conn.commit()
+    except Exception:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+
+
+def _migrate_external_context_columns(conn, cur):
+    """Idempotently add JR transit disruption columns to `external_context_logs`."""
+    try:
+        cur.execute("SELECT transit_disrupted, transit_lines_json FROM external_context_logs LIMIT 0")
+        return
+    except Exception:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+    for col_ddl in (
+        "ALTER TABLE external_context_logs ADD COLUMN transit_disrupted INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE external_context_logs ADD COLUMN transit_lines_json TEXT",
+    ):
+        try:
+            if _is_pg():
+                try:
+                    cur.execute("SET LOCAL lock_timeout = '2s'")
+                except Exception:
+                    try:
+                        conn.rollback()
+                    except Exception:
+                        pass
+            cur.execute(col_ddl)
+            conn.commit()
+        except Exception:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+
+
+def _create_moat_rollup_tables_on_cursor(cur, is_pg: bool):
+    """Create permanent hourly rollups, day context, event history, official arena schedule, and watch intent tables."""
+    real_t = "DOUBLE PRECISION" if is_pg else "REAL"
+    watch_pk = "id BIGSERIAL PRIMARY KEY" if is_pg else "id INTEGER PRIMARY KEY AUTOINCREMENT"
+    cur.execute(f"""
+        CREATE TABLE IF NOT EXISTS store_hourly_rollups (
+            date_jst TEXT NOT NULL,
+            hour_jst INTEGER NOT NULL,
+            business_date TEXT NOT NULL,
+            store_name TEXT NOT NULL,
+            sample_count INTEGER NOT NULL DEFAULT 0,
+            avg_women {real_t} NOT NULL DEFAULT 0.0,
+            max_women INTEGER NOT NULL DEFAULT 0,
+            avg_men {real_t} NOT NULL DEFAULT 0.0,
+            max_men INTEGER NOT NULL DEFAULT 0,
+            avg_wpct {real_t} NOT NULL DEFAULT 0.0,
+            avg_men_waiting_groups {real_t},
+            max_men_waiting_groups INTEGER,
+            avg_men_waiting_guests {real_t},
+            avg_matched_groups {real_t},
+            avg_vip_guests {real_t},
+            precip_mm_max {real_t},
+            temp_c_avg {real_t},
+            is_rainy INTEGER NOT NULL DEFAULT 0,
+            transit_disrupted INTEGER NOT NULL DEFAULT 0,
+            arena_event_active INTEGER NOT NULL DEFAULT 0,
+            campaign_count INTEGER NOT NULL DEFAULT 0,
+            fc_resolved_count INTEGER NOT NULL DEFAULT 0,
+            fc_mae_wpct {real_t},
+            votes_smooth INTEGER NOT NULL DEFAULT 0,
+            votes_waiting INTEGER NOT NULL DEFAULT 0,
+            votes_lively INTEGER NOT NULL DEFAULT 0,
+            avg_reported_wait_min {real_t},
+            PRIMARY KEY (date_jst, hour_jst, store_name)
+        );
+    """)
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_rollup_store_bdate ON store_hourly_rollups(store_name, business_date);")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_rollup_bdate_hour ON store_hourly_rollups(business_date, hour_jst);")
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS day_context_logs (
+            date_jst TEXT PRIMARY KEY,
+            dow INTEGER NOT NULL,
+            is_holiday INTEGER NOT NULL DEFAULT 0,
+            is_pre_holiday INTEGER NOT NULL DEFAULT 0,
+            holiday_streak_pos TEXT NOT NULL DEFAULT 'weekday',
+            is_payday_window INTEGER NOT NULL DEFAULT 0,
+            is_bonus_window INTEGER NOT NULL DEFAULT 0,
+            season_tag TEXT NOT NULL DEFAULT 'regular',
+            tags_json TEXT
+        );
+    """)
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_day_ctx_season ON day_context_logs(season_tag, date_jst);")
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS store_event_history (
+            event_key TEXT PRIMARY KEY,
+            brand TEXT NOT NULL,
+            store_scope TEXT NOT NULL,
+            target_label TEXT,
+            event_category TEXT NOT NULL,
+            title TEXT NOT NULL,
+            source_url TEXT,
+            first_seen_date TEXT NOT NULL,
+            last_seen_date TEXT NOT NULL,
+            days_seen INTEGER NOT NULL DEFAULT 1,
+            raw_json TEXT
+        );
+    """)
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_ev_hist_dates ON store_event_history(last_seen_date, first_seen_date);")
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS arena_schedule_events (
+            event_date TEXT NOT NULL,
+            venue_id TEXT NOT NULL,
+            venue_name TEXT NOT NULL,
+            city_key TEXT NOT NULL,
+            event_title TEXT NOT NULL,
+            open_time TEXT,
+            start_time TEXT,
+            est_end_hour INTEGER NOT NULL DEFAULT 21,
+            source_url TEXT,
+            updated_at TEXT NOT NULL,
+            PRIMARY KEY (event_date, venue_id, event_title)
+        );
+    """)
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_arena_sched_date ON arena_schedule_events(event_date, city_key);")
+    cur.execute(f"""
+        CREATE TABLE IF NOT EXISTS store_watch_intents (
+            {watch_pk},
+            timestamp TEXT NOT NULL,
+            store_name TEXT NOT NULL,
+            target_cond TEXT NOT NULL,
+            ip_hash TEXT
+        );
+    """)
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_watch_intents_store_ts ON store_watch_intents(store_name, timestamp);")
+
+
+def _ensure_moat_rollup_schema() -> bool:
+    """Ensure permanent moat rollup & first-party tables/columns exist on the active DB (memoized per DB key)."""
+    db_k = _active_db_key()
+    if db_k in _moat_rollup_schema_ready:
+        if _is_pg() or os.path.exists(DB_PATH):
+            return True
+        _moat_rollup_schema_ready.discard(db_k)
+
+    if _is_pg():
+        try:
+            with turbo_store.pg_connection() as conn:
+                with conn.cursor() as cur:
+                    _create_moat_rollup_tables_on_cursor(cur, is_pg=True)
+                    conn.commit()
+                    _migrate_crowd_votes_columns(conn, cur)
+                    _migrate_external_context_columns(conn, cur)
+            _moat_rollup_schema_ready.add(db_k)
+            return True
+        except Exception as err:
+            print(f"[local_db] _ensure_moat_rollup_schema PG warning: {err}", file=sys.stderr)
+            return False
+
+    with _db_lock:
+        conn = get_connection()
+        try:
+            cur = conn.cursor()
+            _create_moat_rollup_tables_on_cursor(cur, is_pg=False)
+            conn.commit()
+            _migrate_crowd_votes_columns(conn, cur)
+            _migrate_external_context_columns(conn, cur)
+            _moat_rollup_schema_ready.add(db_k)
+            return True
+        except Exception as err:
+            print(f"[local_db] _ensure_moat_rollup_schema SQLite warning: {err}", file=sys.stderr)
+            return False
+        finally:
+            conn.close()
+
+
 def init_db():
     """Initializes tables and indexes on PostgreSQL (`DATABASE_URL`) or SQLite WAL (`DB_PATH`)."""
     if _is_pg():
@@ -283,7 +501,8 @@ def init_db():
                             timestamp TEXT NOT NULL,
                             store_name TEXT NOT NULL,
                             vote_type TEXT NOT NULL,
-                            ip_hash TEXT
+                            ip_hash TEXT,
+                            wait_minutes INTEGER
                         );
                     """)
                     cur.execute("CREATE INDEX IF NOT EXISTS idx_votes_store_ts ON crowd_votes(store_name, timestamp);")
@@ -317,6 +536,8 @@ def init_db():
                             wind_kmh DOUBLE PRECISION,
                             is_rainy INTEGER NOT NULL DEFAULT 0,
                             active_arenas_json TEXT,
+                            transit_disrupted INTEGER NOT NULL DEFAULT 0,
+                            transit_lines_json TEXT,
                             UNIQUE(timestamp, city_key)
                         );
                     """)
@@ -354,10 +575,14 @@ def init_db():
                     cur.execute("CREATE INDEX IF NOT EXISTS idx_fc_acc_pending ON forecast_accuracy_logs(resolved_at, target_at);")
                     cur.execute("CREATE INDEX IF NOT EXISTS idx_fc_acc_store_pred ON forecast_accuracy_logs(store_name, predicted_at);")
                     cur.execute("CREATE INDEX IF NOT EXISTS idx_fc_acc_resolved_pred ON forecast_accuracy_logs(predicted_at, resolved_at);")
+                    _create_moat_rollup_tables_on_cursor(cur, is_pg=True)
                     conn.commit()
                     _migrate_forecast_columns(conn, cur)
+                    _migrate_crowd_votes_columns(conn, cur)
+                    _migrate_external_context_columns(conn, cur)
             turbo_store.init_postgres_aux_schema()
             _forecast_schema_ready.add(_active_db_key())
+            _moat_rollup_schema_ready.add(_active_db_key())
             _db_stats_cache.clear()
             print("[local_db] PostgreSQL database initialized successfully.")
             return
@@ -391,7 +616,8 @@ def init_db():
                     timestamp TEXT NOT NULL,
                     store_name TEXT NOT NULL,
                     vote_type TEXT NOT NULL,
-                    ip_hash TEXT
+                    ip_hash TEXT,
+                    wait_minutes INTEGER
                 );
             """)
             cur.execute("CREATE INDEX IF NOT EXISTS idx_votes_store_ts ON crowd_votes(store_name, timestamp);")
@@ -425,6 +651,8 @@ def init_db():
                     wind_kmh REAL,
                     is_rainy INTEGER NOT NULL DEFAULT 0,
                     active_arenas_json TEXT,
+                    transit_disrupted INTEGER NOT NULL DEFAULT 0,
+                    transit_lines_json TEXT,
                     UNIQUE(timestamp, city_key)
                 );
             """)
@@ -462,9 +690,13 @@ def init_db():
             cur.execute("CREATE INDEX IF NOT EXISTS idx_fc_acc_pending ON forecast_accuracy_logs(resolved_at, target_at);")
             cur.execute("CREATE INDEX IF NOT EXISTS idx_fc_acc_store_pred ON forecast_accuracy_logs(store_name, predicted_at);")
             cur.execute("CREATE INDEX IF NOT EXISTS idx_fc_acc_resolved_pred ON forecast_accuracy_logs(predicted_at, resolved_at);")
+            _create_moat_rollup_tables_on_cursor(cur, is_pg=False)
             conn.commit()
             _migrate_forecast_columns(conn, cur)
+            _migrate_crowd_votes_columns(conn, cur)
+            _migrate_external_context_columns(conn, cur)
             _forecast_schema_ready.add(_active_db_key())
+            _moat_rollup_schema_ready.add(_active_db_key())
             _db_stats_cache.clear()
             print("[local_db] SQLite database initialized successfully (WAL mode enabled).")
         except Exception as e:
@@ -602,12 +834,16 @@ def _save_moat_aux_logs(items, timestamp_str):
                 float(c.get('wind_kmh', 0.0) or 0.0),
                 int(c.get('is_rainy', 0) or 0),
                 str(c.get('active_arenas_json', '[]')),
+                int(c.get('transit_disrupted', 0) or 0),
+                str(c.get('transit_lines_json', '[]')),
             ))
     except Exception:
         ext_rows = []
 
     if not pos_rows and not ext_rows:
         return
+
+    _ensure_moat_rollup_schema()
 
     if _is_pg():
         try:
@@ -630,7 +866,8 @@ def _save_moat_aux_logs(items, timestamp_str):
                     """
                     INSERT INTO external_context_logs (
                         timestamp, city_key, temp_c, precip_mm,
-                        weather_code, wind_kmh, is_rainy, active_arenas_json
+                        weather_code, wind_kmh, is_rainy, active_arenas_json,
+                        transit_disrupted, transit_lines_json
                     ) VALUES %s
                     ON CONFLICT (timestamp, city_key) DO NOTHING
                     """,
@@ -662,8 +899,9 @@ def _save_moat_aux_logs(items, timestamp_str):
                     """
                     INSERT OR IGNORE INTO external_context_logs (
                         timestamp, city_key, temp_c, precip_mm,
-                        weather_code, wind_kmh, is_rainy, active_arenas_json
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        weather_code, wind_kmh, is_rainy, active_arenas_json,
+                        transit_disrupted, transit_lines_json
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     ext_rows,
                 )
@@ -1155,53 +1393,89 @@ VOTE_LIMIT_PER_VOTER = int(os.environ.get('VOTE_LIMIT_PER_VOTER', '8'))
 VOTE_LIMIT_PER_IP = int(os.environ.get('VOTE_LIMIT_PER_IP', '40'))  # 携帯回線のIP共有を考慮して緩め
 
 
-def add_crowd_vote(store_name, vote_type, ip_hash="", voter_id=""):
+def _normalize_wait_minutes(wait_minutes):
+    if wait_minutes is None or wait_minutes == "":
+        return None
+    try:
+        val = int(wait_minutes)
+        if 0 <= val <= 120:
+            return val
+    except (TypeError, ValueError):
+        pass
+    return None
+
+
+def add_crowd_vote(store_name, vote_type, ip_hash="", voter_id="", wait_minutes=None):
     """
-    Adds a live user crowd report vote.
+    Adds a live user crowd report vote (with optional `wait_minutes` first-party wait report).
     - 重複判定: 端末ID（voter_id）があればそれを優先、なければIPハッシュで「同じ店舗・同じ種類は30分に1回」
+      （ただし投票直後に任意の待ち分数サブピルをタップした場合は、票数を増やさず `wait_minutes` のみ更新）
     - レート制限: 端末ごと10分8票、IPごと10分40票（同一回線を複数人が使う携帯回線を考慮）
-    - 永続化: SQLite に加え Google Sheets 'Crowd Votes' に追記（再デプロイで消えないように）
+    - 永続化: PostgreSQL/SQLite（14日経過後はIPハッシュを匿名化して永久保持）＋ Google Sheets 'Crowd Votes'
     """
     if vote_type not in ('smooth', 'waiting', 'lively'):
         return False, "invalid_type"
 
+    wait_val = _normalize_wait_minutes(wait_minutes)
     now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
     now_str = now_jst.strftime("%Y-%m-%d %H:%M:%S")
     cutoff_30m = (now_jst - datetime.timedelta(minutes=30)).strftime("%Y-%m-%d %H:%M:%S")
     cutoff_10m = (now_jst - datetime.timedelta(minutes=10)).strftime("%Y-%m-%d %H:%M:%S")
     identity = voter_id or ip_hash
 
+    updated_wait_only = False
     with _votes_lock:
         recent_by_voter = 0
         recent_by_ip = 0
+        matched_vote = None
         for v in _memory_votes:
             v_identity = v.get('voter_id') or v['ip_hash']
-            if (
-                v['store_name'] == store_name
-                and v['vote_type'] == vote_type
-                and v_identity == identity
-                and v['timestamp'] >= cutoff_30m
-            ):
-                return False, "already_voted"
             if v['timestamp'] >= cutoff_10m:
                 if v_identity == identity:
                     recent_by_voter += 1
                 if ip_hash and v['ip_hash'] == ip_hash:
                     recent_by_ip += 1
-        if recent_by_voter >= VOTE_LIMIT_PER_VOTER or recent_by_ip >= VOTE_LIMIT_PER_IP:
-            return False, "rate_limited"
-        _memory_votes.append({
-            'timestamp': now_str,
-            'store_name': store_name,
-            'vote_type': vote_type,
-            'ip_hash': ip_hash,
-            'voter_id': voter_id,
-        })
-        # Prune memory votes older than 6 hours
-        cutoff_6h = (now_jst - datetime.timedelta(hours=6)).strftime("%Y-%m-%d %H:%M:%S")
-        _memory_votes[:] = [v for v in _memory_votes if v['timestamp'] >= cutoff_6h]
+            if (
+                matched_vote is None
+                and v['store_name'] == store_name
+                and v['vote_type'] == vote_type
+                and v_identity == identity
+                and v['timestamp'] >= cutoff_30m
+            ):
+                matched_vote = v
 
-    _insert_vote_row(now_str, store_name, vote_type, identity)
+        if matched_vote is not None:
+            if wait_val is not None and matched_vote.get('wait_minutes') != wait_val:
+                wait_updates = int(matched_vote.get('wait_updates') or 0)
+                if wait_updates >= 3 or recent_by_voter > VOTE_LIMIT_PER_VOTER or recent_by_ip >= VOTE_LIMIT_PER_IP:
+                    return False, "rate_limited"
+                matched_vote['wait_minutes'] = wait_val
+                matched_vote['wait_updates'] = wait_updates + 1
+                updated_wait_only = True
+            else:
+                return False, "already_voted"
+        else:
+            if recent_by_voter >= VOTE_LIMIT_PER_VOTER or recent_by_ip >= VOTE_LIMIT_PER_IP:
+                return False, "rate_limited"
+            _memory_votes.append({
+                'timestamp': now_str,
+                'store_name': store_name,
+                'vote_type': vote_type,
+                'ip_hash': ip_hash,
+                'voter_id': voter_id,
+                'wait_minutes': wait_val,
+                'wait_updates': 0,
+            })
+            # Prune memory votes older than 6 hours
+            cutoff_6h = (now_jst - datetime.timedelta(hours=6)).strftime("%Y-%m-%d %H:%M:%S")
+            _memory_votes[:] = [v for v in _memory_votes if v['timestamp'] >= cutoff_6h]
+
+    if updated_wait_only:
+        _update_recent_vote_wait_minutes(store_name, vote_type, identity, cutoff_30m, wait_val)
+        clear_store_7d_cache(store_name)
+        return True, "updated_wait"
+
+    _insert_vote_row(now_str, store_name, vote_type, identity, wait_val)
     clear_store_7d_cache(store_name)
 
     try:
@@ -1213,17 +1487,61 @@ def add_crowd_vote(store_name, vote_type, ip_hash="", voter_id=""):
     return True, "ok"
 
 
-def _insert_vote_row(ts, store_name, vote_type, identity):
+def _update_recent_vote_wait_minutes(store_name, vote_type, identity, cutoff_30m, wait_val):
+    _ensure_moat_rollup_schema()
     try:
         if _is_pg():
             with turbo_store.pg_connection() as conn:
                 with conn.cursor() as cur:
                     cur.execute(
                         """
-                        INSERT INTO crowd_votes (timestamp, store_name, vote_type, ip_hash)
-                        VALUES (%s, %s, %s, %s)
+                        UPDATE crowd_votes
+                        SET wait_minutes = %s
+                        WHERE id = (
+                            SELECT id FROM crowd_votes
+                            WHERE store_name = %s AND vote_type = %s AND ip_hash = %s AND timestamp >= %s
+                            ORDER BY timestamp DESC LIMIT 1
+                        )
                         """,
-                        (ts, store_name, vote_type, identity),
+                        (wait_val, store_name, vote_type, identity, cutoff_30m),
+                    )
+                conn.commit()
+            return
+        with _db_lock:
+            conn = get_connection()
+            try:
+                cur = conn.cursor()
+                cur.execute(
+                    """
+                    UPDATE crowd_votes
+                    SET wait_minutes = ?
+                    WHERE id = (
+                        SELECT id FROM crowd_votes
+                        WHERE store_name = ? AND vote_type = ? AND ip_hash = ? AND timestamp >= ?
+                        ORDER BY timestamp DESC LIMIT 1
+                    )
+                    """,
+                    (wait_val, store_name, vote_type, identity, cutoff_30m),
+                )
+                conn.commit()
+            finally:
+                conn.close()
+    except Exception:
+        pass
+
+
+def _insert_vote_row(ts, store_name, vote_type, identity, wait_minutes=None):
+    _ensure_moat_rollup_schema()
+    try:
+        if _is_pg():
+            with turbo_store.pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """
+                        INSERT INTO crowd_votes (timestamp, store_name, vote_type, ip_hash, wait_minutes)
+                        VALUES (%s, %s, %s, %s, %s)
+                        """,
+                        (ts, store_name, vote_type, identity, wait_minutes),
                     )
                 conn.commit()
             return
@@ -1232,9 +1550,9 @@ def _insert_vote_row(ts, store_name, vote_type, identity):
             try:
                 cur = conn.cursor()
                 cur.execute("""
-                    INSERT INTO crowd_votes (timestamp, store_name, vote_type, ip_hash)
-                    VALUES (?, ?, ?, ?)
-                """, (ts, store_name, vote_type, identity))
+                    INSERT INTO crowd_votes (timestamp, store_name, vote_type, ip_hash, wait_minutes)
+                    VALUES (?, ?, ?, ?, ?)
+                """, (ts, store_name, vote_type, identity, wait_minutes))
                 conn.commit()
             finally:
                 conn.close()
@@ -1318,25 +1636,592 @@ def restore_votes_from_sheets(hours=24):
     return restored
 
 
-def prune_old_logs(monitor_days: int = 60, vote_days: int = 14) -> dict:
-    """Prune expired PostgreSQL/SQLite monitor_logs and crowd_votes rows during daily off-hours maintenance."""
+def _business_date_for_ymd_hour(date_str: str, hour_jst: int) -> str:
+    if hour_jst <= 6:
+        try:
+            d_obj = datetime.date.fromisoformat(date_str[:10]) - datetime.timedelta(days=1)
+            return d_obj.strftime("%Y-%m-%d")
+        except Exception:
+            return date_str[:10]
+    return date_str[:10]
+
+
+def _contiguous_date_ranges(sorted_dates: list) -> list:
+    """Split sorted YYYY-MM-DD strings into contiguous `(start_ymd, end_ymd)` intervals so sparse rollups never scan intervening months."""
+    ranges = []
+    start = None
+    prev = None
+    for ds in sorted_dates:
+        try:
+            d = datetime.date.fromisoformat(str(ds)[:10])
+        except ValueError:
+            continue
+        if prev is not None and (d - prev).days == 1:
+            prev = d
+            continue
+        if start is not None:
+            ranges.append((start.isoformat(), prev.isoformat()))
+        start = prev = d
+    if start is not None:
+        ranges.append((start.isoformat(), prev.isoformat()))
+    return ranges
+
+
+def _fetch_rows_by_date_ranges(sql_qmark: str, sorted_dates: list, date_only: bool = False) -> list:
+    """Execute `sql_qmark` per contiguous date interval instead of a single wide `min_ts..max_ts` scan."""
+    out = []
+    for d0, d1 in _contiguous_date_ranges(sorted_dates):
+        params = (d0, d1) if date_only else (f"{d0} 00:00:00", f"{d1} 23:59:59")
+        out.extend(_fetch_all_rows(sql_qmark, params))
+    return out
+
+
+def rollup_store_hourly_stats(target_dates=None, days_back: int = 3) -> dict:
+    """
+    Permanently roll up 10-minute `monitor_logs`, `store_pos_telemetry_logs`, `external_context_logs`,
+    `forecast_accuracy_logs`, `crowd_votes`, `arena_schedule_events`, and `store_event_history`
+    into 1-hour `store_hourly_rollups` + `day_context_logs` so raw log pruning NEVER loses long-term moat history.
+    """
+    if not _db_available() or not _ensure_moat_rollup_schema():
+        return {"ok": False, "upserted_rollups": 0, "upserted_days": 0}
+
+    now_jst = datetime.datetime.now(_JST_TZ).replace(tzinfo=None)
+    date_set = set()
+    if target_dates:
+        for d in target_dates:
+            ds = str(d or "").strip()[:10]
+            if len(ds) == 10 and ds[4] == "-" and ds[7] == "-":
+                date_set.add(ds)
+    else:
+        for off in range(max(1, int(days_back))):
+            date_set.add((now_jst.date() - datetime.timedelta(days=off)).strftime("%Y-%m-%d"))
+
+    if not date_set:
+        return {"ok": True, "upserted_rollups": 0, "upserted_days": 0}
+
+    sorted_dates = sorted(date_set)
+    target_date_lookup = set(sorted_dates)
+
+    # Also include business dates (previous day for 00:00-06:59) in day_context_logs
+    ctx_dates = set(sorted_dates)
+    for ds in sorted_dates:
+        try:
+            prev_d = (datetime.date.fromisoformat(ds) - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+            ctx_dates.add(prev_d)
+        except Exception:
+            pass
+
+    try:
+        import arena_calendar
+        import moat_intelligence
+        day_ctx_rows = []
+        for ds in sorted(ctx_dates):
+            c = arena_calendar.classify_day_context(ds)
+            day_ctx_rows.append((
+                c["date_jst"],
+                int(c["dow"]),
+                int(c["is_holiday"]),
+                int(c["is_pre_holiday"]),
+                str(c["holiday_streak_pos"]),
+                int(c["is_payday_window"]),
+                int(c["is_bonus_window"]),
+                str(c["season_tag"]),
+                str(c["tags_json"]),
+            ))
+
+        mon_rows = _fetch_rows_by_date_ranges(
+            """
+            SELECT timestamp, store_name, women, men
+            FROM monitor_logs
+            WHERE timestamp >= ? AND timestamp <= ?
+            """,
+            sorted_dates,
+        )
+        pos_rows = _fetch_rows_by_date_ranges(
+            """
+            SELECT timestamp, store_name, men_waiting_groups, men_waiting_guests, matched_groups, vip_guests
+            FROM store_pos_telemetry_logs
+            WHERE timestamp >= ? AND timestamp <= ?
+            """,
+            sorted_dates,
+        )
+        ext_rows = _fetch_rows_by_date_ranges(
+            """
+            SELECT timestamp, city_key, precip_mm, temp_c, is_rainy, active_arenas_json,
+                   COALESCE(transit_disrupted, 0)
+            FROM external_context_logs
+            WHERE timestamp >= ? AND timestamp <= ?
+            """,
+            sorted_dates,
+        )
+        fc_rows = _fetch_rows_by_date_ranges(
+            """
+            SELECT predicted_at, store_name, abs_error_wpct_pt
+            FROM forecast_accuracy_logs
+            WHERE resolved_at IS NOT NULL AND abs_error_wpct_pt IS NOT NULL
+              AND predicted_at >= ? AND predicted_at <= ?
+            """,
+            sorted_dates,
+        )
+        vote_rows = _fetch_rows_by_date_ranges(
+            """
+            SELECT timestamp, store_name, vote_type, wait_minutes
+            FROM crowd_votes
+            WHERE timestamp >= ? AND timestamp <= ?
+            """,
+            sorted_dates,
+        )
+        arena_sched_rows = _fetch_rows_by_date_ranges(
+            """
+            SELECT event_date, venue_id, est_end_hour
+            FROM arena_schedule_events
+            WHERE event_date >= ? AND event_date <= ?
+            """,
+            sorted_dates,
+            date_only=True,
+        )
+        ev_hist_rows = []
+        for d0, d1 in _contiguous_date_ranges(sorted_dates):
+            ev_hist_rows.extend(_fetch_all_rows(
+                """
+                SELECT brand, store_scope, first_seen_date, last_seen_date
+                FROM store_event_history
+                WHERE last_seen_date >= ? AND first_seen_date <= ?
+                """,
+                (d0, d1),
+            ))
+
+        from collections import defaultdict
+        buckets = defaultdict(lambda: [0, 0.0, 0, 0.0, 0, 0.0, 0])  # [n, sum_w, max_w, sum_m, max_m, sum_wp, wp_n]
+        for ts_s, sname, w, m in mon_rows:
+            ts_s = str(ts_s or "")
+            sname = str(sname or "").strip()
+            if len(ts_s) < 13 or not sname or _is_korea_store_name(sname) or _is_synthetic_seed_alias(sname):
+                continue
+            ds = ts_s[:10]
+            if ds not in target_date_lookup:
+                continue
+            try:
+                hr = int(ts_s[11:13])
+            except Exception:
+                continue
+            wv = max(0, int(w or 0))
+            mv = max(0, int(m or 0))
+            b = buckets[(ds, hr, sname)]
+            b[0] += 1
+            b[1] += wv
+            if wv > b[2]:
+                b[2] = wv
+            b[3] += mv
+            if mv > b[4]:
+                b[4] = mv
+            if (wv + mv) >= 4:
+                b[5] += (wv / float(wv + mv)) * 100.0
+                b[6] += 1
+
+        pos_agg = defaultdict(lambda: [0, 0.0, 0, 0.0, 0.0, 0.0])  # [n, sum_mwg, max_mwg, sum_mwp, sum_mg, sum_vip]
+        for ts_s, sname, mwg, mwp, mg, vip in pos_rows:
+            ts_s = str(ts_s or "")
+            sname = str(sname or "").strip()
+            if len(ts_s) < 13 or not sname or mwg is None:
+                continue
+            ds = ts_s[:10]
+            if ds not in target_date_lookup:
+                continue
+            try:
+                hr = int(ts_s[11:13])
+            except Exception:
+                continue
+            p = pos_agg[(ds, hr, sname)]
+            mwg_i = int(mwg)
+            p[0] += 1
+            p[1] += mwg_i
+            if mwg_i > p[2]:
+                p[2] = mwg_i
+            p[3] += int(mwp or 0)
+            p[4] += int(mg or 0)
+            p[5] += int(vip or 0)
+
+        ext_agg = defaultdict(lambda: [0, 0.0, 0.0, 0, 0, set(), 0, 0])  # (ds, hr, ck) -> [n, max_prec, sum_temp, rainy, transit, arenas_set, temp_n, prec_n]
+        for ts_s, ck, prec, tc, rainy, ar_json, tr_dis in ext_rows:
+            ts_s = str(ts_s or "")
+            ck = str(ck or "").strip()
+            if len(ts_s) < 13 or not ck:
+                continue
+            ds = ts_s[:10]
+            if ds not in target_date_lookup:
+                continue
+            try:
+                hr = int(ts_s[11:13])
+            except Exception:
+                continue
+            e = ext_agg[(ds, hr, ck)]
+            e[0] += 1
+            if prec is not None:
+                pr_f = float(prec)
+                if pr_f > e[1]:
+                    e[1] = pr_f
+                e[7] += 1
+            if tc is not None:
+                e[2] += float(tc)
+                e[6] += 1
+            if int(rainy or 0) > 0:
+                e[3] = 1
+            if int(tr_dis or 0) > 0:
+                e[4] = 1
+            if ar_json and ar_json not in ("[]", ""):
+                try:
+                    for vid in json.loads(ar_json):
+                        if vid:
+                            e[5].add(str(vid))
+                except Exception:
+                    pass
+
+        sched_arena_slots = defaultdict(set)  # (ds, vid) -> set of active end hours
+        for ev_d, vid, est_h in arena_sched_rows:
+            eh = int(est_h or 21)
+            for h_cand in (eh - 1, eh, eh + 1):
+                if 0 <= h_cand <= 23:
+                    sched_arena_slots[(str(ev_d), str(vid))].add(h_cand)
+
+        fc_agg = defaultdict(lambda: [0, 0.0])
+        for p_at, sname, abs_e in fc_rows:
+            p_at = str(p_at or "")
+            if len(p_at) < 13:
+                continue
+            ds = p_at[:10]
+            if ds not in target_date_lookup:
+                continue
+            try:
+                hr = int(p_at[11:13])
+            except Exception:
+                continue
+            fa = fc_agg[(ds, hr, str(sname or "").strip())]
+            fa[0] += 1
+            fa[1] += float(abs_e or 0.0)
+
+        vt_agg = defaultdict(lambda: [0, 0, 0, 0.0, 0])  # [sm, wt, lv, sum_wait, n_wait]
+        for ts_s, sname, vtype, wmin in vote_rows:
+            ts_s = str(ts_s or "")
+            if len(ts_s) < 13:
+                continue
+            ds = ts_s[:10]
+            if ds not in target_date_lookup:
+                continue
+            try:
+                hr = int(ts_s[11:13])
+            except Exception:
+                continue
+            va = vt_agg[(ds, hr, str(sname or "").strip())]
+            if vtype == "smooth":
+                va[0] += 1
+            elif vtype == "waiting":
+                va[1] += 1
+            elif vtype == "lively":
+                va[2] += 1
+            if wmin is not None:
+                va[3] += float(wmin)
+                va[4] += 1
+
+        def _store_brand_family(sname: str) -> str:
+            if sname.startswith("OLG ag"):
+                return "ag"
+            if sname.startswith("OLG "):
+                return "olg"
+            if sname.startswith("JIS "):
+                return "jis"
+            if sname.startswith("ASOBIBAR"):
+                return "asobibar"
+            if sname.startswith("YATAKOI"):
+                return "yatakoi"
+            return "other"
+
+        def _campaign_count_for(sname: str, bdate: str) -> int:
+            if not ev_hist_rows:
+                return 0
+            cnt = 0
+            fam = _store_brand_family(sname)
+            seen_ev = set()
+            for br, scope, f_d, l_d in ev_hist_rows:
+                if not (str(f_d) <= bdate <= str(l_d)):
+                    continue
+                ev_sig = (str(br), str(scope), str(f_d))
+                if ev_sig in seen_ev:
+                    continue
+                sc = str(scope or "")
+                br_s = str(br or "")
+                matched = False
+                if sc == sname:
+                    matched = True
+                elif sc == "ALL":
+                    if fam == "jis" and "JIS" in br_s.upper():
+                        matched = True
+                    elif fam == "ag" and br_s.lower() in ("ag", "ag（アグ）"):
+                        matched = True
+                    elif fam == "olg" and br_s in ("オリエンタルラウンジ", "OLG"):
+                        matched = True
+                    elif fam == "asobibar" and "ASOBIBAR" in br_s.upper():
+                        matched = True
+                    elif fam == "yatakoi" and ("ヤタコイ" in br_s or "YATAKOI" in br_s.upper()):
+                        matched = True
+                elif sc and sname in sc.split(","):
+                    matched = True
+                if matched:
+                    seen_ev.add(ev_sig)
+                    cnt += 1
+            return cnt
+
+        rollup_rows = []
+        for (ds, hr, sname), b in buckets.items():
+            n_s = b[0]
+            if n_s <= 0:
+                continue
+            bdate = _business_date_for_ymd_hour(ds, hr)
+            avg_w = round(b[1] / n_s, 2)
+            avg_m = round(b[3] / n_s, 2)
+            avg_wp = round(b[5] / b[6], 2) if b[6] > 0 else 0.0
+
+            p = pos_agg.get((ds, hr, sname))
+            avg_mwg = round(p[1] / p[0], 2) if p and p[0] > 0 else None
+            max_mwg = int(p[2]) if p and p[0] > 0 else None
+            avg_mwp = round(p[3] / p[0], 2) if p and p[0] > 0 else None
+            avg_mg = round(p[4] / p[0], 2) if p and p[0] > 0 else None
+            avg_vip = round(p[5] / p[0], 2) if p and p[0] > 0 else None
+
+            ck = moat_intelligence.city_key_for_store(sname)
+            e = ext_agg.get((ds, hr, ck)) if ck else None
+            prec_max = round(e[1], 2) if e and e[7] > 0 else None
+            temp_avg = round(e[2] / e[6], 2) if e and e[6] > 0 else None
+            is_rain = int(e[3]) if e else 0
+            tr_dis = int(e[4]) if e else 0
+
+            hub = moat_intelligence._STORE_TO_ARENA.get(sname)
+            arena_act = 0
+            if hub:
+                vid = hub["venue_id"]
+                if (e and vid in e[5]) or (hr in sched_arena_slots.get((ds, vid), set())):
+                    arena_act = 1
+
+            camp_cnt = _campaign_count_for(sname, bdate)
+            fa = fc_agg.get((ds, hr, sname))
+            fc_n = int(fa[0]) if fa else 0
+            fc_mae = round(fa[1] / fa[0], 2) if fa and fa[0] > 0 else None
+
+            va = vt_agg.get((ds, hr, sname))
+            v_sm = int(va[0]) if va else 0
+            v_wt = int(va[1]) if va else 0
+            v_lv = int(va[2]) if va else 0
+            avg_rep_w = round(va[3] / va[4], 1) if va and va[4] > 0 else None
+
+            rollup_rows.append((
+                ds, hr, bdate, sname, n_s,
+                avg_w, int(b[2]), avg_m, int(b[4]), avg_wp,
+                avg_mwg, max_mwg, avg_mwp, avg_mg, avg_vip,
+                prec_max, temp_avg, is_rain, tr_dis, arena_act,
+                camp_cnt, fc_n, fc_mae, v_sm, v_wt, v_lv, avg_rep_w,
+            ))
+
+        if _is_pg():
+            with turbo_store.pg_connection() as conn:
+                with conn.cursor() as cur:
+                    for dr in day_ctx_rows:
+                        cur.execute(
+                            """
+                            INSERT INTO day_context_logs (
+                                date_jst, dow, is_holiday, is_pre_holiday, holiday_streak_pos,
+                                is_payday_window, is_bonus_window, season_tag, tags_json
+                            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            ON CONFLICT (date_jst) DO UPDATE SET
+                                dow = EXCLUDED.dow,
+                                is_holiday = EXCLUDED.is_holiday,
+                                is_pre_holiday = EXCLUDED.is_pre_holiday,
+                                holiday_streak_pos = EXCLUDED.holiday_streak_pos,
+                                is_payday_window = EXCLUDED.is_payday_window,
+                                is_bonus_window = EXCLUDED.is_bonus_window,
+                                season_tag = EXCLUDED.season_tag,
+                                tags_json = EXCLUDED.tags_json
+                            """,
+                            dr,
+                        )
+                conn.commit()
+            if rollup_rows:
+                turbo_store.execute_pg_values_batch(
+                    """
+                    INSERT INTO store_hourly_rollups (
+                        date_jst, hour_jst, business_date, store_name, sample_count,
+                        avg_women, max_women, avg_men, max_men, avg_wpct,
+                        avg_men_waiting_groups, max_men_waiting_groups, avg_men_waiting_guests,
+                        avg_matched_groups, avg_vip_guests,
+                        precip_mm_max, temp_c_avg, is_rainy, transit_disrupted, arena_event_active,
+                        campaign_count, fc_resolved_count, fc_mae_wpct,
+                        votes_smooth, votes_waiting, votes_lively, avg_reported_wait_min
+                    ) VALUES %s
+                    ON CONFLICT (date_jst, hour_jst, store_name) DO UPDATE SET
+                        business_date = EXCLUDED.business_date,
+                        sample_count = EXCLUDED.sample_count,
+                        avg_women = EXCLUDED.avg_women,
+                        max_women = EXCLUDED.max_women,
+                        avg_men = EXCLUDED.avg_men,
+                        max_men = EXCLUDED.max_men,
+                        avg_wpct = EXCLUDED.avg_wpct,
+                        avg_men_waiting_groups = COALESCE(EXCLUDED.avg_men_waiting_groups, store_hourly_rollups.avg_men_waiting_groups),
+                        max_men_waiting_groups = COALESCE(EXCLUDED.max_men_waiting_groups, store_hourly_rollups.max_men_waiting_groups),
+                        avg_men_waiting_guests = COALESCE(EXCLUDED.avg_men_waiting_guests, store_hourly_rollups.avg_men_waiting_guests),
+                        avg_matched_groups = COALESCE(EXCLUDED.avg_matched_groups, store_hourly_rollups.avg_matched_groups),
+                        avg_vip_guests = COALESCE(EXCLUDED.avg_vip_guests, store_hourly_rollups.avg_vip_guests),
+                        precip_mm_max = COALESCE(EXCLUDED.precip_mm_max, store_hourly_rollups.precip_mm_max),
+                        temp_c_avg = COALESCE(EXCLUDED.temp_c_avg, store_hourly_rollups.temp_c_avg),
+                        is_rainy = GREATEST(EXCLUDED.is_rainy, store_hourly_rollups.is_rainy),
+                        transit_disrupted = GREATEST(EXCLUDED.transit_disrupted, store_hourly_rollups.transit_disrupted),
+                        arena_event_active = GREATEST(EXCLUDED.arena_event_active, store_hourly_rollups.arena_event_active),
+                        campaign_count = GREATEST(EXCLUDED.campaign_count, store_hourly_rollups.campaign_count),
+                        fc_resolved_count = GREATEST(EXCLUDED.fc_resolved_count, store_hourly_rollups.fc_resolved_count),
+                        fc_mae_wpct = COALESCE(EXCLUDED.fc_mae_wpct, store_hourly_rollups.fc_mae_wpct),
+                        votes_smooth = GREATEST(EXCLUDED.votes_smooth, store_hourly_rollups.votes_smooth),
+                        votes_waiting = GREATEST(EXCLUDED.votes_waiting, store_hourly_rollups.votes_waiting),
+                        votes_lively = GREATEST(EXCLUDED.votes_lively, store_hourly_rollups.votes_lively),
+                        avg_reported_wait_min = COALESCE(EXCLUDED.avg_reported_wait_min, store_hourly_rollups.avg_reported_wait_min)
+                    """,
+                    rollup_rows,
+                    page_size=400,
+                )
+        else:
+            with _db_lock:
+                conn = get_connection()
+                try:
+                    cur = conn.cursor()
+                    cur.executemany(
+                        """
+                        INSERT INTO day_context_logs (
+                            date_jst, dow, is_holiday, is_pre_holiday, holiday_streak_pos,
+                            is_payday_window, is_bonus_window, season_tag, tags_json
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ON CONFLICT (date_jst) DO UPDATE SET
+                            dow = excluded.dow,
+                            is_holiday = excluded.is_holiday,
+                            is_pre_holiday = excluded.is_pre_holiday,
+                            holiday_streak_pos = excluded.holiday_streak_pos,
+                            is_payday_window = excluded.is_payday_window,
+                            is_bonus_window = excluded.is_bonus_window,
+                            season_tag = excluded.season_tag,
+                            tags_json = excluded.tags_json
+                        """,
+                        day_ctx_rows,
+                    )
+                    if rollup_rows:
+                        cur.executemany(
+                            """
+                            INSERT INTO store_hourly_rollups (
+                                date_jst, hour_jst, business_date, store_name, sample_count,
+                                avg_women, max_women, avg_men, max_men, avg_wpct,
+                                avg_men_waiting_groups, max_men_waiting_groups, avg_men_waiting_guests,
+                                avg_matched_groups, avg_vip_guests,
+                                precip_mm_max, temp_c_avg, is_rainy, transit_disrupted, arena_event_active,
+                                campaign_count, fc_resolved_count, fc_mae_wpct,
+                                votes_smooth, votes_waiting, votes_lively, avg_reported_wait_min
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            ON CONFLICT (date_jst, hour_jst, store_name) DO UPDATE SET
+                                business_date = excluded.business_date,
+                                sample_count = excluded.sample_count,
+                                avg_women = excluded.avg_women,
+                                max_women = excluded.max_women,
+                                avg_men = excluded.avg_men,
+                                max_men = excluded.max_men,
+                                avg_wpct = excluded.avg_wpct,
+                                avg_men_waiting_groups = COALESCE(excluded.avg_men_waiting_groups, store_hourly_rollups.avg_men_waiting_groups),
+                                max_men_waiting_groups = COALESCE(excluded.max_men_waiting_groups, store_hourly_rollups.max_men_waiting_groups),
+                                avg_men_waiting_guests = COALESCE(excluded.avg_men_waiting_guests, store_hourly_rollups.avg_men_waiting_guests),
+                                avg_matched_groups = COALESCE(excluded.avg_matched_groups, store_hourly_rollups.avg_matched_groups),
+                                avg_vip_guests = COALESCE(excluded.avg_vip_guests, store_hourly_rollups.avg_vip_guests),
+                                precip_mm_max = COALESCE(excluded.precip_mm_max, store_hourly_rollups.precip_mm_max),
+                                temp_c_avg = COALESCE(excluded.temp_c_avg, store_hourly_rollups.temp_c_avg),
+                                is_rainy = MAX(excluded.is_rainy, store_hourly_rollups.is_rainy),
+                                transit_disrupted = MAX(excluded.transit_disrupted, store_hourly_rollups.transit_disrupted),
+                                arena_event_active = MAX(excluded.arena_event_active, store_hourly_rollups.arena_event_active),
+                                campaign_count = MAX(excluded.campaign_count, store_hourly_rollups.campaign_count),
+                                fc_resolved_count = MAX(excluded.fc_resolved_count, store_hourly_rollups.fc_resolved_count),
+                                fc_mae_wpct = COALESCE(excluded.fc_mae_wpct, store_hourly_rollups.fc_mae_wpct),
+                                votes_smooth = MAX(excluded.votes_smooth, store_hourly_rollups.votes_smooth),
+                                votes_waiting = MAX(excluded.votes_waiting, store_hourly_rollups.votes_waiting),
+                                votes_lively = MAX(excluded.votes_lively, store_hourly_rollups.votes_lively),
+                                avg_reported_wait_min = COALESCE(excluded.avg_reported_wait_min, store_hourly_rollups.avg_reported_wait_min)
+                            """,
+                            rollup_rows,
+                        )
+                    conn.commit()
+                finally:
+                    conn.close()
+        _moat_coverage_cache.clear()
+        return {"ok": True, "upserted_rollups": len(rollup_rows), "upserted_days": len(day_ctx_rows)}
+    except Exception as err:
+        print(f"[local_db] rollup_store_hourly_stats error: {err}", file=sys.stderr)
+        return {"ok": False, "upserted_rollups": 0, "upserted_days": 0, "error": str(err)}
+
+
+def prune_old_logs(monitor_days: int = 90, vote_days: int = 14) -> dict:
+    """
+    Safely maintain raw 10-min tables while guaranteeing ZERO permanent data loss:
+    1. Raw `monitor_logs`, POS, weather, and forecast logs are retained for `monitor_days` (default 90 days).
+    2. Before deleting ANY raw rows older than `monitor_days`, all expiring dates (plus recent 3 days)
+       are permanently rolled up into `store_hourly_rollups` and `day_context_logs`. If rollup fails, deletion is aborted.
+    3. `crowd_votes` and `store_watch_intents` are NEVER physically deleted — rows older than `vote_days`
+       simply have `ip_hash` cleared (`''`) for privacy while preserving 100% of first-party vote & wait statistics.
+    """
+    _ensure_moat_rollup_schema()
     now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
-    mon_cutoff = (now_jst - datetime.timedelta(days=max(31, int(monitor_days)))).strftime("%Y-%m-%d %H:%M:%S")
+    cutoff_date = now_jst.date() - datetime.timedelta(days=max(31, int(monitor_days)))
+    mon_cutoff = cutoff_date.strftime("%Y-%m-%d") + " 00:00:00"
     vote_cutoff = (now_jst - datetime.timedelta(days=max(2, int(vote_days)))).strftime("%Y-%m-%d %H:%M:%S")
+
+    # Step 1: Identify expiring raw dates (bounded to 7 days/run to guarantee low memory) + recent 3 days and roll up BEFORE pruning
+    rollup_ok = True
+    rolled_up_count = 0
+    delete_before = mon_cutoff
+    try:
+        expiring_date_rows = _fetch_all_rows(
+            "SELECT DISTINCT SUBSTR(timestamp, 1, 10) FROM monitor_logs WHERE timestamp < ?",
+            (mon_cutoff,),
+        )
+        expiring_dates = sorted({str(r[0]) for r in expiring_date_rows if r and r[0]})[:7]
+        if expiring_dates:
+            last_rolled_next = datetime.date.fromisoformat(expiring_dates[-1]) + datetime.timedelta(days=1)
+            delete_before = min(mon_cutoff, last_rolled_next.strftime("%Y-%m-%d") + " 00:00:00")
+        dates_to_rollup = set(expiring_dates)
+        for off in range(3):
+            dates_to_rollup.add((now_jst.date() - datetime.timedelta(days=off)).strftime("%Y-%m-%d"))
+        if dates_to_rollup:
+            r_res = rollup_store_hourly_stats(target_dates=sorted(dates_to_rollup))
+            rollup_ok = bool(r_res.get("ok", False))
+            rolled_up_count = int(r_res.get("upserted_rollups") or 0)
+    except Exception as err:
+        print(f"[local_db] pre-prune rollup failed, aborting raw log deletion: {err}", file=sys.stderr)
+        rollup_ok = False
+
     deleted_mon = 0
-    deleted_votes = 0
+    anonymized_votes = 0
     try:
         if _is_pg():
             with turbo_store.pg_connection() as conn:
                 with conn.cursor() as cur:
-                    cur.execute("DELETE FROM monitor_logs WHERE timestamp < %s", (mon_cutoff,))
-                    deleted_mon = max(0, cur.rowcount or 0)
-                    cur.execute("DELETE FROM crowd_votes WHERE timestamp < %s", (vote_cutoff,))
-                    deleted_votes = max(0, cur.rowcount or 0)
+                    if rollup_ok:
+                        cur.execute("DELETE FROM monitor_logs WHERE timestamp < %s", (delete_before,))
+                        deleted_mon = max(0, cur.rowcount or 0)
+                        try:
+                            cur.execute("DELETE FROM store_pos_telemetry_logs WHERE timestamp < %s", (delete_before,))
+                            cur.execute("DELETE FROM external_context_logs WHERE timestamp < %s", (delete_before,))
+                            cur.execute("DELETE FROM forecast_accuracy_logs WHERE predicted_at < %s", (delete_before,))
+                        except Exception:
+                            pass
+                    cur.execute(
+                        "UPDATE crowd_votes SET ip_hash = '' WHERE timestamp < %s AND ip_hash IS NOT NULL AND ip_hash != ''",
+                        (vote_cutoff,),
+                    )
+                    anonymized_votes = max(0, cur.rowcount or 0)
                     try:
-                        cur.execute("DELETE FROM store_pos_telemetry_logs WHERE timestamp < %s", (mon_cutoff,))
-                        cur.execute("DELETE FROM external_context_logs WHERE timestamp < %s", (mon_cutoff,))
-                        cur.execute("DELETE FROM forecast_accuracy_logs WHERE predicted_at < %s", (mon_cutoff,))
+                        cur.execute(
+                            "UPDATE store_watch_intents SET ip_hash = '' WHERE timestamp < %s AND ip_hash IS NOT NULL AND ip_hash != ''",
+                            (vote_cutoff,),
+                        )
                     except Exception:
                         pass
                 conn.commit()
@@ -1345,48 +2230,81 @@ def prune_old_logs(monitor_days: int = 60, vote_days: int = 14) -> dict:
                 conn = get_connection()
                 try:
                     cur = conn.cursor()
-                    cur.execute("DELETE FROM monitor_logs WHERE timestamp < ?", (mon_cutoff,))
-                    deleted_mon = max(0, cur.rowcount or 0)
-                    cur.execute("DELETE FROM crowd_votes WHERE timestamp < ?", (vote_cutoff,))
-                    deleted_votes = max(0, cur.rowcount or 0)
+                    if rollup_ok:
+                        cur.execute("DELETE FROM monitor_logs WHERE timestamp < ?", (delete_before,))
+                        deleted_mon = max(0, cur.rowcount or 0)
+                        try:
+                            cur.execute("DELETE FROM store_pos_telemetry_logs WHERE timestamp < ?", (delete_before,))
+                            cur.execute("DELETE FROM external_context_logs WHERE timestamp < ?", (delete_before,))
+                            cur.execute("DELETE FROM forecast_accuracy_logs WHERE predicted_at < ?", (delete_before,))
+                        except Exception:
+                            pass
+                    cur.execute(
+                        "UPDATE crowd_votes SET ip_hash = '' WHERE timestamp < ? AND ip_hash IS NOT NULL AND ip_hash != ''",
+                        (vote_cutoff,),
+                    )
+                    anonymized_votes = max(0, cur.rowcount or 0)
                     try:
-                        cur.execute("DELETE FROM store_pos_telemetry_logs WHERE timestamp < ?", (mon_cutoff,))
-                        cur.execute("DELETE FROM external_context_logs WHERE timestamp < ?", (mon_cutoff,))
-                        cur.execute("DELETE FROM forecast_accuracy_logs WHERE predicted_at < ?", (mon_cutoff,))
+                        cur.execute(
+                            "UPDATE store_watch_intents SET ip_hash = '' WHERE timestamp < ? AND ip_hash IS NOT NULL AND ip_hash != ''",
+                            (vote_cutoff,),
+                        )
                     except Exception:
                         pass
                     conn.commit()
                 finally:
                     conn.close()
-        if deleted_mon > 0 or deleted_votes > 0:
+        if deleted_mon > 0:
             clear_store_7d_cache(clear_benchmarks=True)
     except Exception as err:
         print(f"[local_db] prune_old_logs error: {err}", file=sys.stderr)
-    return {'deleted_monitor_logs': deleted_mon, 'deleted_crowd_votes': deleted_votes}
+    return {
+        'deleted_monitor_logs': deleted_mon,
+        'deleted_crowd_votes': 0,
+        'anonymized_crowd_votes': anonymized_votes,
+        'rolled_up_hours': rolled_up_count,
+        'rollup_ok': rollup_ok,
+    }
+
 
 def get_recent_votes(store_name=None, hours=4):
-    """Returns aggregated vote counts in the last `hours` hours."""
+    """Returns aggregated vote counts and optional first-party wait-time average in the last `hours` hours."""
+    _ensure_moat_rollup_schema()
     now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
     cutoff_str = (now_jst - datetime.timedelta(hours=hours)).strftime("%Y-%m-%d %H:%M:%S")
 
     counts_by_store = {}
+    wait_acc = {}  # sname -> [sum_wait, cnt_wait]
+
+    def _default_vote_dict():
+        return {
+            'smooth': 0,
+            'waiting': 0,
+            'lively': 0,
+            'reported_wait_avg': None,
+            'reported_wait_samples': 0,
+        }
 
     def _ensure(sname):
         if sname not in counts_by_store:
-            counts_by_store[sname] = {'smooth': 0, 'waiting': 0, 'lively': 0}
+            counts_by_store[sname] = _default_vote_dict()
 
     used_db = False
     try:
         if store_name:
             rows = _fetch_all_rows("""
-                SELECT store_name, vote_type, COUNT(*) as cnt
+                SELECT store_name, vote_type, COUNT(*) as cnt,
+                       SUM(CASE WHEN wait_minutes IS NOT NULL THEN wait_minutes ELSE 0 END) as w_sum,
+                       COUNT(wait_minutes) as w_cnt
                 FROM crowd_votes
                 WHERE store_name = ? AND timestamp >= ?
                 GROUP BY store_name, vote_type
             """, (store_name, cutoff_str))
         else:
             rows = _fetch_all_rows("""
-                SELECT store_name, vote_type, COUNT(*) as cnt
+                SELECT store_name, vote_type, COUNT(*) as cnt,
+                       SUM(CASE WHEN wait_minutes IS NOT NULL THEN wait_minutes ELSE 0 END) as w_sum,
+                       COUNT(wait_minutes) as w_cnt
                 FROM crowd_votes
                 WHERE timestamp >= ?
                 GROUP BY store_name, vote_type
@@ -1395,8 +2313,13 @@ def get_recent_votes(store_name=None, hours=4):
             sname = r[0]
             vtype = r[1]
             _ensure(sname)
-            if vtype in counts_by_store[sname]:
-                counts_by_store[sname][vtype] = int(r[2])
+            if vtype in ('smooth', 'waiting', 'lively'):
+                counts_by_store[sname][vtype] = int(r[2] or 0)
+            w_cnt = int(r[4] or 0) if len(r) > 4 else 0
+            if w_cnt > 0:
+                wa = wait_acc.setdefault(sname, [0.0, 0])
+                wa[0] += float(r[3] or 0.0)
+                wa[1] += w_cnt
         used_db = True
     except Exception:
         pass
@@ -1408,12 +2331,737 @@ def get_recent_votes(store_name=None, hours=4):
                     sname = v['store_name']
                     _ensure(sname)
                     vtype = v['vote_type']
-                    if vtype in counts_by_store[sname]:
+                    if vtype in ('smooth', 'waiting', 'lively'):
                         counts_by_store[sname][vtype] += 1
+                    if v.get('wait_minutes') is not None:
+                        wa = wait_acc.setdefault(sname, [0.0, 0])
+                        wa[0] += float(v['wait_minutes'])
+                        wa[1] += 1
+
+    for sname, (w_sum, w_cnt) in wait_acc.items():
+        if w_cnt > 0 and sname in counts_by_store:
+            counts_by_store[sname]['reported_wait_avg'] = round(w_sum / w_cnt, 1)
+            counts_by_store[sname]['reported_wait_samples'] = int(w_cnt)
 
     if store_name:
-        return counts_by_store.get(store_name, {'smooth': 0, 'waiting': 0, 'lively': 0})
+        return counts_by_store.get(store_name, _default_vote_dict())
     return counts_by_store
+
+
+def _classify_event_moat_category(title: str, gender: str = "") -> str:
+    t = str(title or "")
+    if any(k in t for k in ("クリスマス", "Xmas", "X'mas", "忘年会", "年末", "カウントダウン", "新年", "ハロウィン", "バレンタイン")):
+        return "seasonal_party"
+    if gender == "men" or any(k in t for k in ("男性", "半額", "早割", "定額", "プラン", "飲み放題")):
+        return "mens_discount"
+    if gender == "women" or any(k in t for k in ("女性", "女子", "ギフト", "プレゼント", "コスメ", "スイーツ", "美容", "マイル", "キャッシュバック")):
+        return "ladies_perk"
+    if any(k in t for k in ("フェア", "フード", "グルメ", "北海道", "韓国", "肉", "寿司", "いちご")):
+        return "food_fair"
+    return "other"
+
+
+def upsert_store_event_history(events_list: list, date_jst: str = None) -> int:
+    """
+    Persist daily event/campaign observations into `store_event_history` so campaign start/end dates
+    and seasonal elasticity are permanently retained instead of overwritten in `events_cache.json`.
+    """
+    if not events_list or not _db_available() or not _ensure_moat_rollup_schema():
+        return 0
+    import hashlib
+    import re
+    if not date_jst:
+        date_jst = datetime.datetime.now(_JST_TZ).strftime("%Y-%m-%d")
+    date_jst = str(date_jst)[:10]
+
+    rows = []
+    seen_keys = set()
+    for ev in events_list:
+        if not isinstance(ev, dict):
+            continue
+        title = str(ev.get("title") or "").strip()
+        if not title:
+            continue
+        brand_raw = str(ev.get("brand") or "").strip()
+        if brand_raw == "OLG":
+            brand = "オリエンタルラウンジ"
+        elif brand_raw == "YATAKOI":
+            brand = "ヤタコイ"
+        else:
+            brand = brand_raw or "その他"
+
+        sname = str(ev.get("store_name") or "").strip()
+        t_stores = ev.get("target_stores") or []
+        if sname:
+            canon = resolve_canonical_store_name(sname) or sname
+            scope = canon
+        elif t_stores:
+            resolved_ts = [resolve_canonical_store_name(x) or str(x) for x in t_stores if x]
+            scope = ",".join(sorted(set(resolved_ts)))[:240]
+        else:
+            scope = "ALL"
+
+        norm_title = re.sub(r"\s+", "", title)
+        ev_key = hashlib.sha1(f"{brand}|{scope}|{norm_title}".encode("utf-8")).hexdigest()[:24]
+        if ev_key in seen_keys:
+            continue
+        seen_keys.add(ev_key)
+        cat = _classify_event_moat_category(title, str(ev.get("gender") or ""))
+        rows.append((
+            ev_key,
+            brand,
+            scope,
+            str(ev.get("target_label") or "")[:80],
+            cat,
+            title[:160],
+            str(ev.get("url") or "")[:300],
+            date_jst,
+            date_jst,
+            1,
+            json.dumps(ev, ensure_ascii=False),
+        ))
+
+    if not rows:
+        return 0
+
+    try:
+        if _is_pg():
+            with turbo_store.pg_connection() as conn:
+                with conn.cursor() as cur:
+                    for r in rows:
+                        cur.execute(
+                            """
+                            INSERT INTO store_event_history (
+                                event_key, brand, store_scope, target_label, event_category,
+                                title, source_url, first_seen_date, last_seen_date, days_seen, raw_json
+                            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            ON CONFLICT (event_key) DO UPDATE SET
+                                first_seen_date = LEAST(store_event_history.first_seen_date, EXCLUDED.first_seen_date),
+                                days_seen = CASE
+                                    WHEN store_event_history.last_seen_date < EXCLUDED.last_seen_date
+                                    THEN store_event_history.days_seen + 1
+                                    ELSE store_event_history.days_seen
+                                END,
+                                last_seen_date = GREATEST(store_event_history.last_seen_date, EXCLUDED.last_seen_date),
+                                source_url = COALESCE(NULLIF(EXCLUDED.source_url, ''), store_event_history.source_url),
+                                raw_json = EXCLUDED.raw_json
+                            """,
+                            r,
+                        )
+                conn.commit()
+        else:
+            with _db_lock:
+                conn = get_connection()
+                try:
+                    cur = conn.cursor()
+                    cur.executemany(
+                        """
+                        INSERT INTO store_event_history (
+                            event_key, brand, store_scope, target_label, event_category,
+                            title, source_url, first_seen_date, last_seen_date, days_seen, raw_json
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ON CONFLICT (event_key) DO UPDATE SET
+                            first_seen_date = MIN(store_event_history.first_seen_date, excluded.first_seen_date),
+                            days_seen = CASE
+                                WHEN store_event_history.last_seen_date < excluded.last_seen_date
+                                THEN store_event_history.days_seen + 1
+                                ELSE store_event_history.days_seen
+                            END,
+                            last_seen_date = MAX(store_event_history.last_seen_date, excluded.last_seen_date),
+                            source_url = COALESCE(NULLIF(excluded.source_url, ''), store_event_history.source_url),
+                            raw_json = excluded.raw_json
+                        """,
+                        rows,
+                    )
+                    conn.commit()
+                finally:
+                    conn.close()
+        _moat_coverage_cache.clear()
+        return len(rows)
+    except Exception as err:
+        print(f"[local_db] upsert_store_event_history error: {err}", file=sys.stderr)
+        return 0
+
+
+def get_event_history_summary(days: int = 90) -> dict:
+    """Return archived campaign/event breakdown and recent observations from `store_event_history`."""
+    if not _db_available() or not _ensure_moat_rollup_schema():
+        return {"total_archived": 0, "by_category": {}, "recent_events": [], "seasonal_events": []}
+    cutoff_d = (datetime.datetime.now(_JST_TZ).date() - datetime.timedelta(days=max(7, int(days)))).strftime("%Y-%m-%d")
+    try:
+        rows = _fetch_all_rows(
+            """
+            SELECT brand, store_scope, target_label, event_category, title, source_url,
+                   first_seen_date, last_seen_date, days_seen
+            FROM store_event_history
+            WHERE last_seen_date >= ?
+            ORDER BY last_seen_date DESC, days_seen DESC
+            LIMIT 200
+            """,
+            (cutoff_d,),
+        )
+    except Exception:
+        rows = []
+
+    import store_master
+    by_cat = {"ladies_perk": 0, "mens_discount": 0, "seasonal_party": 0, "food_fair": 0, "other": 0}
+    recent_list = []
+    seasonal_list = []
+    for r in rows:
+        br = str(r[0] or "")
+        if br == "OLG":
+            br = "オリエンタルラウンジ"
+        elif br == "JIS":
+            br = "JIS（ジス）"
+        cat = str(r[3] or "other")
+        by_cat[cat] = by_cat.get(cat, 0) + 1
+        scope_raw = str(r[1] or "")
+        if scope_raw == "ALL":
+            scope_disp = str(r[2] or "ブランド共通")
+        elif "," in scope_raw:
+            parts = [store_master.seo_name(p) for p in scope_raw.split(",") if p]
+            scope_disp = f"{parts[0]} ほか計{len(parts)}店" if len(parts) > 1 else (parts[0] if parts else "")
+        else:
+            scope_disp = store_master.seo_name(scope_raw)
+        item = {
+            "brand": br,
+            "scope_display": scope_disp,
+            "category": cat,
+            "title": str(r[4] or ""),
+            "url": str(r[5] or ""),
+            "first_seen_date": str(r[6] or ""),
+            "last_seen_date": str(r[7] or ""),
+            "days_seen": int(r[8] or 1),
+        }
+        if len(recent_list) < 25:
+            recent_list.append(item)
+        if cat == "seasonal_party" and len(seasonal_list) < 20:
+            seasonal_list.append(item)
+
+    return {
+        "total_archived": len(rows),
+        "by_category": by_cat,
+        "recent_events": recent_list,
+        "seasonal_events": seasonal_list,
+    }
+
+
+def upsert_arena_schedule_events(events_list: list) -> int:
+    """Persist official public dome/arena event schedule rows into `arena_schedule_events`."""
+    if not events_list or not _db_available() or not _ensure_moat_rollup_schema():
+        return 0
+    now_str = datetime.datetime.now(_JST_TZ).strftime("%Y-%m-%d %H:%M:%S")
+    rows = []
+    seen = set()
+    for ev in events_list:
+        if not isinstance(ev, dict):
+            continue
+        ed = str(ev.get("event_date") or "").strip()[:10]
+        vid = str(ev.get("venue_id") or "").strip()
+        title = str(ev.get("event_title") or "").strip()[:120]
+        if not ed or not vid or not title or (ed, vid, title) in seen:
+            continue
+        seen.add((ed, vid, title))
+        rows.append((
+            ed,
+            vid,
+            str(ev.get("venue_name") or "")[:80],
+            str(ev.get("city_key") or "")[:32],
+            title,
+            str(ev.get("open_time") or "")[:16],
+            str(ev.get("start_time") or "")[:16],
+            int(ev.get("est_end_hour") or 21),
+            str(ev.get("source_url") or "")[:300],
+            now_str,
+        ))
+    if not rows:
+        return 0
+    try:
+        if _is_pg():
+            turbo_store.execute_pg_values_batch(
+                """
+                INSERT INTO arena_schedule_events (
+                    event_date, venue_id, venue_name, city_key, event_title,
+                    open_time, start_time, est_end_hour, source_url, updated_at
+                ) VALUES %s
+                ON CONFLICT (event_date, venue_id, event_title) DO UPDATE SET
+                    open_time = EXCLUDED.open_time,
+                    start_time = EXCLUDED.start_time,
+                    est_end_hour = EXCLUDED.est_end_hour,
+                    updated_at = EXCLUDED.updated_at
+                """,
+                rows,
+                page_size=300,
+            )
+        else:
+            with _db_lock:
+                conn = get_connection()
+                try:
+                    cur = conn.cursor()
+                    cur.executemany(
+                        """
+                        INSERT INTO arena_schedule_events (
+                            event_date, venue_id, venue_name, city_key, event_title,
+                            open_time, start_time, est_end_hour, source_url, updated_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ON CONFLICT (event_date, venue_id, event_title) DO UPDATE SET
+                            open_time = excluded.open_time,
+                            start_time = excluded.start_time,
+                            est_end_hour = excluded.est_end_hour,
+                            updated_at = excluded.updated_at
+                        """,
+                        rows,
+                    )
+                    conn.commit()
+                finally:
+                    conn.close()
+        _moat_coverage_cache.clear()
+        return len(rows)
+    except Exception as err:
+        print(f"[local_db] upsert_arena_schedule_events error: {err}", file=sys.stderr)
+        return 0
+
+
+def get_upcoming_arena_events(days_ahead: int = 60, from_date: str = None, limit: int = 80) -> list:
+    """Return upcoming official dome/arena events from DB (falling back to cached `arena_calendar` if DB is empty)."""
+    if not from_date:
+        from_date = datetime.datetime.now(_JST_TZ).strftime("%Y-%m-%d")
+    from_date = str(from_date)[:10]
+    try:
+        end_date = (datetime.date.fromisoformat(from_date) + datetime.timedelta(days=max(1, int(days_ahead)))).strftime("%Y-%m-%d")
+    except Exception:
+        end_date = "2027-01-31"
+
+    out = []
+    if _db_available() and _ensure_moat_rollup_schema():
+        try:
+            rows = _fetch_all_rows(
+                """
+                SELECT event_date, venue_id, venue_name, city_key, event_title,
+                       open_time, start_time, est_end_hour, source_url
+                FROM arena_schedule_events
+                WHERE event_date >= ? AND event_date <= ?
+                ORDER BY event_date ASC, venue_id ASC
+                LIMIT ?
+                """,
+                (from_date, end_date, int(limit)),
+            )
+            for r in rows:
+                out.append({
+                    "event_date": str(r[0]),
+                    "venue_id": str(r[1]),
+                    "venue_name": str(r[2]),
+                    "city_key": str(r[3]),
+                    "event_title": str(r[4]),
+                    "open_time": str(r[5] or ""),
+                    "start_time": str(r[6] or ""),
+                    "est_end_hour": int(r[7] or 21),
+                    "source_url": str(r[8] or ""),
+                })
+        except Exception:
+            out = []
+
+    if not out:
+        try:
+            import arena_calendar
+            for ev in arena_calendar.get_arena_schedule_events(allow_blocking=False):
+                ed = str(ev.get("event_date") or "")
+                if from_date <= ed <= end_date:
+                    out.append(dict(ev))
+                    if len(out) >= limit:
+                        break
+        except Exception:
+            pass
+    return out
+
+
+def add_watch_intent(store_name: str, target_cond: str = "female_55", ip_hash: str = "", voter_id: str = "") -> tuple:
+    """
+    Record an anonymous first-party latent entry-intent signal when a user arms an in-page condition watch
+    (e.g. `female_55`: 女性比率55%以上になったら通知, `zero_wait`: 男性待ち解消で通知, `evening_peak`: 今夜の狙い目監視).
+    Rate-limiting (`20/10m`) is strictly enforced per pure `ip_hash` so rotating `voter_id` cannot bypass it.
+    """
+    if target_cond not in ("female_55", "zero_wait", "evening_peak"):
+        return False, "invalid_cond"
+    canon = resolve_canonical_store_name(store_name) or str(store_name or "").strip()
+    if not canon:
+        return False, "invalid_store"
+
+    _ensure_moat_rollup_schema()
+    now_jst = datetime.datetime.now(_JST_TZ).replace(tzinfo=None)
+    now_str = now_jst.strftime("%Y-%m-%d %H:%M:%S")
+    cutoff_15m = (now_jst - datetime.timedelta(minutes=15)).strftime("%Y-%m-%d %H:%M:%S")
+    cutoff_10m = (now_jst - datetime.timedelta(minutes=10)).strftime("%Y-%m-%d %H:%M:%S")
+    cutoff_6h = (now_jst - datetime.timedelta(hours=6)).strftime("%Y-%m-%d %H:%M:%S")
+    identity = voter_id or ip_hash
+
+    with _watch_intents_lock:
+        ip_cnt_10m = 0
+        already = False
+        for item in _memory_watch_intents:
+            if ip_hash and item.get("ip_hash") == ip_hash and item["timestamp"] >= cutoff_10m:
+                ip_cnt_10m += 1
+            if (
+                identity
+                and item.get("identity") == identity
+                and item["store_name"] == canon
+                and item["target_cond"] == target_cond
+                and item["timestamp"] >= cutoff_15m
+            ):
+                already = True
+        if ip_cnt_10m >= 20:
+            return False, "rate_limited"
+        if already:
+            return False, "already_watching"
+        _memory_watch_intents.append({
+            "timestamp": now_str,
+            "store_name": canon,
+            "target_cond": target_cond,
+            "ip_hash": ip_hash,
+            "identity": identity,
+        })
+        _memory_watch_intents[:] = [w for w in _memory_watch_intents if w["timestamp"] >= cutoff_6h]
+
+    try:
+        if _is_pg():
+            with turbo_store.pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "INSERT INTO store_watch_intents (timestamp, store_name, target_cond, ip_hash) VALUES (%s, %s, %s, %s)",
+                        (now_str, canon, target_cond, identity),
+                    )
+                conn.commit()
+        else:
+            with _db_lock:
+                conn = get_connection()
+                try:
+                    cur = conn.cursor()
+                    cur.execute(
+                        "INSERT INTO store_watch_intents (timestamp, store_name, target_cond, ip_hash) VALUES (?, ?, ?, ?)",
+                        (now_str, canon, target_cond, identity),
+                    )
+                    conn.commit()
+                finally:
+                    conn.close()
+        _moat_coverage_cache.clear()
+    except Exception:
+        pass
+    return True, "ok"
+
+
+def get_watch_intent_counts(store_name: str = None, hours: int = 6) -> dict:
+    """Return unique active latent watcher counts (`COUNT(DISTINCT ...)`) in the last `hours` hours."""
+    _ensure_moat_rollup_schema()
+    now_jst = datetime.datetime.now(_JST_TZ).replace(tzinfo=None)
+    cutoff_str = (now_jst - datetime.timedelta(hours=max(1, int(hours)))).strftime("%Y-%m-%d %H:%M:%S")
+    canon = resolve_canonical_store_name(store_name) if store_name else None
+    try:
+        if canon:
+            rows = _fetch_all_rows(
+                "SELECT COUNT(DISTINCT CASE WHEN ip_hash != '' THEN ip_hash ELSE CAST(id AS TEXT) END) "
+                "FROM store_watch_intents WHERE store_name = ? AND timestamp >= ?",
+                (canon, cutoff_str),
+            )
+            return {"store_name": canon, "watching_count": int(rows[0][0] or 0) if rows else 0}
+        rows = _fetch_all_rows(
+            "SELECT store_name, COUNT(DISTINCT CASE WHEN ip_hash != '' THEN ip_hash ELSE CAST(id AS TEXT) END) "
+            "FROM store_watch_intents WHERE timestamp >= ? GROUP BY store_name",
+            (cutoff_str,),
+        )
+        return {str(r[0]): int(r[1] or 0) for r in rows}
+    except Exception:
+        return {"store_name": canon, "watching_count": 0} if canon else {}
+
+
+def get_moat_coverage_summary() -> dict:
+    """Return cached high-level counts of Aiseki Navi's proprietary multi-layer dataset."""
+    db_k = _active_db_key()
+    now_m = time.monotonic()
+    cached = _moat_coverage_cache.get(db_k)
+    if cached and (now_m - cached[0]) < 90.0:
+        return dict(cached[1])
+
+    out = {
+        "raw_snapshots": 0,
+        "min_timestamp": None,
+        "max_timestamp": None,
+        "rolled_up_hours": 0,
+        "pos_telemetry_rows": 0,
+        "weather_context_rows": 0,
+        "event_history_count": 0,
+        "arena_events_count": 0,
+        "crowd_votes_total": 0,
+        "watch_intents_total": 0,
+        "raw_retention_days": 90,
+    }
+    if not _db_available():
+        return out
+
+    _ensure_moat_rollup_schema()
+    db_st = get_db_stats()
+    out["raw_snapshots"] = int(db_st.get("count") or 0)
+    out["min_timestamp"] = db_st.get("min_timestamp")
+    out["max_timestamp"] = db_st.get("max_timestamp")
+    try:
+        rows = _fetch_all_rows(
+            "SELECT "
+            "(SELECT COUNT(*) FROM store_hourly_rollups), "
+            "(SELECT COUNT(*) FROM store_pos_telemetry_logs), "
+            "(SELECT COUNT(*) FROM external_context_logs), "
+            "(SELECT COUNT(*) FROM store_event_history), "
+            "(SELECT COUNT(*) FROM arena_schedule_events), "
+            "(SELECT COUNT(*) FROM crowd_votes), "
+            "(SELECT COUNT(*) FROM store_watch_intents)"
+        )
+        if rows and rows[0]:
+            r = rows[0]
+            out["rolled_up_hours"] = int(r[0] or 0)
+            out["pos_telemetry_rows"] = int(r[1] or 0)
+            out["weather_context_rows"] = int(r[2] or 0)
+            out["event_history_count"] = int(r[3] or 0)
+            out["arena_events_count"] = int(r[4] or 0)
+            out["crowd_votes_total"] = int(r[5] or 0)
+            out["watch_intents_total"] = int(r[6] or 0)
+    except Exception:
+        pass
+
+    _moat_coverage_cache[db_k] = (now_m, dict(out))
+    return out
+
+
+def get_monthly_store_stats_rows(days: int = 30) -> list:
+    """
+    Build clean CC BY 4.0 primary statistical rows per domestic store over the past `days` days
+    for `/stats/monthly.csv` and LLM/researcher citation. Strictly uses `store_master.seo_name`
+    so standalone 'オリエンタル' or 'OLG' never appears.
+    """
+    import store_master
+    now_jst = datetime.datetime.now(_JST_TZ).replace(tzinfo=None)
+    cutoff_ts = (now_jst - datetime.timedelta(days=max(7, int(days)))).strftime("%Y-%m-%d %H:%M:%S")
+    master = store_master.load() or {}
+    valid_domestic = _get_valid_domestic_canonical_stores()
+
+    agg = {}
+    if _db_available():
+        try:
+            rows = _fetch_all_rows(
+                """
+                SELECT store_name,
+                       COUNT(*) AS samples,
+                       AVG(women) AS avg_w,
+                       MAX(women) AS max_w,
+                       AVG(men) AS avg_m,
+                       MAX(men) AS max_m,
+                       AVG(CASE WHEN (women + men) >= 4 THEN (women * 100.0) / (women + men) ELSE NULL END) AS avg_wpct
+                FROM monitor_logs
+                WHERE timestamp >= ? AND (women > 0 OR men > 0)
+                GROUP BY store_name
+                """,
+                (cutoff_ts,),
+            )
+            for r in rows:
+                sn = str(r[0] or "").strip()
+                if not sn or _is_korea_store_name(sn) or _is_synthetic_seed_alias(sn):
+                    continue
+                if valid_domestic and sn not in valid_domestic:
+                    continue
+                agg[sn] = {
+                    "samples": int(r[1] or 0),
+                    "avg_women": round(float(r[2] or 0.0), 1),
+                    "max_women": int(r[3] or 0),
+                    "avg_men": round(float(r[4] or 0.0), 1),
+                    "max_men": int(r[5] or 0),
+                    "avg_wpct": round(float(r[6]), 1) if r[6] is not None else None,
+                }
+        except Exception:
+            agg = {}
+
+    brand_ja_map = {
+        "olg": "オリエンタルラウンジ",
+        "oriental": "オリエンタルラウンジ",
+        "ag": "ag（アグ）",
+        "jis": "JIS（ジス）",
+        "asobibar": "ASOBIBAR（アソビバー）",
+        "yatakoi": "ヤタコイ",
+        "alfa": "ALFA（アルファ）",
+        "clovers": "CLOVERS（クローバーズ）",
+        "xix": "XIX（キックス）",
+    }
+
+    result = []
+    for sname in sorted(agg.keys()):
+        st = agg[sname]
+        if st["samples"] < 3:
+            continue
+        info = master.get(sname) or {}
+        br_code = str(info.get("brand") or "").lower()
+        br_label = brand_ja_map.get(br_code)
+        if not br_label:
+            if sname.startswith("OLG ag"):
+                br_label = "ag（アグ）"
+            elif sname.startswith("OLG "):
+                br_label = "オリエンタルラウンジ"
+            elif sname.startswith("JIS "):
+                br_label = "JIS（ジス）"
+            elif sname.startswith("ASOBIBAR"):
+                br_label = "ASOBIBAR（アソビバー）"
+            elif sname.startswith("YATAKOI"):
+                br_label = "ヤタコイ"
+            else:
+                br_label = "相席ラウンジ"
+        slug = _linkable_store_slug(sname)
+        seo_nm = store_master.seo_name(sname)
+        result.append({
+            "store_slug": slug,
+            "store_name": seo_nm,
+            "brand_name": br_label,
+            "area_label": str(info.get("area_label") or ""),
+            "window_days": int(days),
+            "sample_count": st["samples"],
+            "avg_women": st["avg_women"],
+            "peak_women": st["max_women"],
+            "avg_men": st["avg_men"],
+            "peak_men": st["max_men"],
+            "avg_female_ratio_pct": st["avg_wpct"] if st["avg_wpct"] is not None else "",
+            "store_url": f"https://aiseki-navi.com/store/{slug}" if slug else "https://aiseki-navi.com/stats",
+        })
+    result.sort(key=lambda x: (-x["peak_women"], -x["sample_count"]))
+    return result
+
+
+def get_year_end_whitepaper_data() -> dict:
+    """
+    Assemble strictly factual, zero-fabrication primary statistics for `/stats/year-end-2026`:
+    - Actual observed weekday vs. Friday/Saturday pre-holiday crowd & female-ratio comparison from `monitor_logs`
+    - Upcoming Nov-Dec 2026 official dome/arena concerts that trigger terminal lounge post-show inflows
+    - Archived seasonal/discount campaigns from `store_event_history`
+    - Deterministic 2026 year-end calendar phases (`classify_day_context`) with honest 'observed vs. upcoming' status
+    """
+    import arena_calendar
+    import moat_intelligence
+    import store_master
+
+    now_jst = datetime.datetime.now(_JST_TZ).replace(tzinfo=None)
+    today_str = now_jst.strftime("%Y-%m-%d")
+    cutoff_30d = (now_jst - datetime.timedelta(days=30)).strftime("%Y-%m-%d %H:%M:%S")
+
+    # 1) Observed pre-holiday (Fri/Sat/pre-holiday) vs regular weekday evening metrics (20:00-23:59)
+    wd_stats = {
+        "pre_holiday": {"samples": 0, "sum_w": 0.0, "sum_m": 0.0, "sum_wp": 0.0, "wp_n": 0},
+        "weekday": {"samples": 0, "sum_w": 0.0, "sum_m": 0.0, "sum_wp": 0.0, "wp_n": 0},
+    }
+    store_peaks = {}
+    if _db_available():
+        try:
+            rows = _fetch_all_rows(
+                """
+                SELECT SUBSTR(timestamp, 1, 10) AS d_str,
+                       CAST(SUBSTR(timestamp, 12, 2) AS INTEGER) AS hr,
+                       store_name, women, men
+                FROM monitor_logs
+                WHERE timestamp >= ? AND (women + men) >= 6
+                """,
+                (cutoff_30d,),
+            )
+            day_pre_memo = {}
+            for r in rows:
+                ds = str(r[0] or "")
+                hr = int(r[1] or 0)
+                sn = str(r[2] or "").strip()
+                if not ds or not sn or _is_korea_store_name(sn) or _is_synthetic_seed_alias(sn):
+                    continue
+                wv = max(0, int(r[3] or 0))
+                mv = max(0, int(r[4] or 0))
+                if 20 <= hr <= 23:
+                    memo = day_pre_memo.get(ds)
+                    if memo is None:
+                        ctx = arena_calendar.classify_day_context(ds)
+                        memo = (
+                            bool(ctx.get("is_pre_holiday")),
+                            int(ctx.get("dow", 0)) == 6 or bool(ctx.get("is_holiday")),
+                        )
+                        day_pre_memo[ds] = memo
+                    is_pre, is_rest_day = memo
+                    # Exclude non-pre-holiday Sundays/holidays so 'weekday' strictly represents Mon-Thu worknights
+                    if is_pre or not is_rest_day:
+                        bucket = wd_stats["pre_holiday" if is_pre else "weekday"]
+                        bucket["samples"] += 1
+                        bucket["sum_w"] += wv
+                        bucket["sum_m"] += mv
+                        bucket["sum_wp"] += (wv / float(wv + mv)) * 100.0
+                        bucket["wp_n"] += 1
+                prev_pk = store_peaks.get(sn)
+                if prev_pk is None or (wv + mv) > prev_pk["total"]:
+                    store_peaks[sn] = {"women": wv, "men": mv, "total": wv + mv, "date": ds}
+        except Exception:
+            pass
+
+    def _fmt_bucket(b):
+        if b["samples"] < 5:
+            return {"samples": b["samples"], "avg_women": None, "avg_men": None, "avg_wpct": None}
+        return {
+            "samples": b["samples"],
+            "avg_women": round(b["sum_w"] / b["samples"], 1),
+            "avg_men": round(b["sum_m"] / b["samples"], 1),
+            "avg_wpct": round(b["sum_wp"] / b["wp_n"], 1) if b["wp_n"] > 0 else None,
+        }
+
+    top_peak_stores = []
+    for sn, pk in sorted(store_peaks.items(), key=lambda kv: kv[1]["total"], reverse=True)[:10]:
+        slug = _linkable_store_slug(sn)
+        top_peak_stores.append({
+            "store_name": store_master.seo_name(sn),
+            "store_slug": slug,
+            "women": pk["women"],
+            "men": pk["men"],
+            "total": pk["total"],
+            "date": pk["date"],
+        })
+
+    # 2) Upcoming year-end dome/arena concerts (Nov-Dec 2026) mapped to affected terminal lounge hubs
+    hub_by_vid = {h["venue_id"]: h for h in moat_intelligence.MAJOR_ARENA_HUBS}
+    upcoming_arenas = get_upcoming_arena_events(days_ahead=60, from_date=today_str, limit=60)
+    enriched_arenas = []
+    for ev in upcoming_arenas:
+        hub = hub_by_vid.get(ev.get("venue_id"))
+        hub_stores = [store_master.seo_name(s) for s in (hub["stores"][:3] if hub else [])]
+        enriched_arenas.append({
+            **ev,
+            "nearby_stores": hub_stores,
+        })
+
+    # 3) 2026 Year-End key calendar milestones (with honest observed vs upcoming status)
+    milestones = [
+        ("2026-11-20", "11月下旬・忘年会シーズン序盤（金曜＋給料日前後）", "bounenkai_early"),
+        ("2026-12-04", "12月第1金曜・忘年会ピーク突入", "bounenkai_peak"),
+        ("2026-12-11", "12月第2金曜・冬季賞与支給窓×二次会最繁忙帯", "bounenkai_peak"),
+        ("2026-12-18", "12月第3金曜・年間最大級の二次会流入ピーク", "bounenkai_peak"),
+        ("2026-12-24", "クリスマスイブ（木曜・1対1志向とペア回遊の二極化）", "christmas_eve"),
+        ("2026-12-25", "クリスマス当日（金曜・給料日窓重なり）", "christmas"),
+        ("2026-12-28", "仕事納めピーク〜年末連休突入", "work_year_end"),
+        ("2026-12-31", "大晦日・カウントダウン深夜営業帯", "new_year_eve"),
+    ]
+    milestone_rows = []
+    for m_date, label_ja, s_tag in milestones:
+        c = arena_calendar.classify_day_context(m_date)
+        milestone_rows.append({
+            "date_jst": m_date,
+            "label_ja": label_ja,
+            "season_tag": s_tag,
+            "is_payday_window": bool(c.get("is_payday_window")),
+            "is_bonus_window": bool(c.get("is_bonus_window")),
+            "status": "実測集計済み" if m_date < today_str else ("本日リアルタイム計測中" if m_date == today_str else "到来後に実測値を自動追記"),
+        })
+
+    return {
+        "generated_date": today_str,
+        "pre_holiday_20_23": _fmt_bucket(wd_stats["pre_holiday"]),
+        "weekday_20_23": _fmt_bucket(wd_stats["weekday"]),
+        "top_peak_stores": top_peak_stores,
+        "upcoming_arena_events": enriched_arenas[:24],
+        "milestones": milestone_rows,
+        "moat_coverage": get_moat_coverage_summary(),
+    }
 
 
 def get_store_7day_analytics(store_name: str) -> dict:
@@ -3710,7 +5358,7 @@ def get_forecast_accuracy_report(
     import moat_intelligence
     import store_master
 
-    days = max(1, min(60, int(days or 21)))
+    days = max(1, min(120, int(days or 21)))
     limit_recent = max(5, min(100, int(limit_recent or 30)))
     raw_store = (store_name or "").strip()
     store_filter = resolve_canonical_store_name(raw_store) if raw_store else None

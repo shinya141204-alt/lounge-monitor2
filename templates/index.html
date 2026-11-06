@@ -149,7 +149,7 @@
 
     <link rel="stylesheet" href="/static/style.css?v=20261030_6" fetchpriority="high">
     <link rel="stylesheet" href="/static/calm.css?v=35" fetchpriority="high">
-    <link rel="preload" href="/static/app.js?v=20261106_1" as="script">
+    <link rel="preload" href="/static/app.js?v=20261106_2" as="script">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- Non-render-blocking web font (avoids waiting on Google Fonts at PWA cold launch) -->
@@ -1455,6 +1455,15 @@
                         <span id="vote-count-lively" class="vote-num">0</span>
                     </button>
                 </div>
+                <div id="modal-vote-wait-row" style="margin-top: 9px; padding-top: 8px; border-top: 1px solid rgba(148, 163, 184, 0.2); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px;">
+                    <span style="font-size: 0.74rem; color: var(--text-secondary); font-weight: 600;">受付待ち実測（任意）：</span>
+                    <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                        <button type="button" class="vote-pill-btn" data-wait-min="0" onclick="submitCrowdWaitMinutes(0)" style="min-width: auto; flex: 0 1 auto; min-height: 38px; padding: 6px 11px; justify-content: center; font-size: 0.74rem;">待ち0分</button>
+                        <button type="button" class="vote-pill-btn" data-wait-min="15" onclick="submitCrowdWaitMinutes(15)" style="min-width: auto; flex: 0 1 auto; min-height: 38px; padding: 6px 11px; justify-content: center; font-size: 0.74rem;">約15分</button>
+                        <button type="button" class="vote-pill-btn" data-wait-min="30" onclick="submitCrowdWaitMinutes(30)" style="min-width: auto; flex: 0 1 auto; min-height: 38px; padding: 6px 11px; justify-content: center; font-size: 0.74rem;">30分+</button>
+                    </div>
+                </div>
+                <div id="modal-vote-wait-summary" style="font-size: 0.74rem; color: var(--text-secondary); margin-top: 6px; font-variant-numeric: tabular-nums; display: none;"></div>
                 <div id="modal-vote-feedback" class="modal-vote-feedback hidden"></div>
             </div>
 
@@ -2617,7 +2626,7 @@
         window.INITIAL_STATUS_DATA = {{ (initial_status_client or initial_status) | tojson }};
     </script>
     {% endif %}
-    <script src="/static/app.js?v=20261106_1" defer></script>
+    <script src="/static/app.js?v=20261106_2" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
@@ -2633,7 +2642,7 @@
                 }
                 if (window.__swRegistered) return;
                 window.__swRegistered = true;
-                navigator.serviceWorker.register('/sw.js?v=97', { updateViaCache: 'none' })
+                navigator.serviceWorker.register('/sw.js?v=98', { updateViaCache: 'none' })
                     .then(function(reg) {
                         reg.update();
                         document.addEventListener('visibilitychange', function() {

@@ -29,13 +29,28 @@
         "url": "https://aiseki-navi.com/stats",
         "license": "https://creativecommons.org/licenses/by/4.0/",
         "isAccessibleForFree": true,
+        "measurementTechnique": "1分間隔の公式公開来店人数スナップショット自動計測、JIS公式POS待機組数連携、気象庁アメダス・6大ドーム公式日程突合、60分後ホールドアウト予測検証（過去90日間生ログ＋1時間粒度ロールアップ永久蓄積）",
+        "distribution": [
+          {
+            "@type": "DataDownload",
+            "name": "全国相席ラウンジ 店舗別30日間一次統計CSV (CC BY 4.0)",
+            "encodingFormat": "text/csv",
+            "contentUrl": "https://aiseki-navi.com/stats/monthly.csv"
+          },
+          {
+            "@type": "DataDownload",
+            "name": "相席ナビ AIグラウンディング構造化JSONフィード",
+            "encodingFormat": "application/json",
+            "contentUrl": "https://aiseki-navi.com/api/llms-facts.json"
+          }
+        ],
         "creator": {
           "@type": "Organization",
           "name": "相席ナビ編集部",
           "url": "https://aiseki-navi.com/",
           "founder": { "@type": "Person", "name": "くわもん", "jobTitle": "相席ナビ編集長" }
         },
-        "keywords": ["相席ラウンジ 統計", "オリエンタルラウンジ 男女比", "JIS 人数 データ", "ag アグ 混雑", "相席ラウンジ 曜日別"]
+        "keywords": ["相席ラウンジ 統計", "オリエンタルラウンジ 男女比", "JIS 人数 データ", "ag アグ 混雑", "相席ラウンジ 曜日別", "相席ラウンジ オープンデータ CSV"]
       },
       {
         "@context": "https://schema.org",
@@ -291,9 +306,14 @@
             </div>
             <h1>全国相席ラウンジ 統計データ白書＆週間ピークランキング</h1>
             <p style="margin: 0; font-size: 0.9rem; color: var(--text-sub);">
-                『相席ナビ』編集部（監修：<a href="/about" style="color:inherit;text-decoration:underline;text-underline-offset:3px;">くわもん</a>）が独自計測・蓄積している全国63店舗（国内61店舗＋韓国2店舗）の時系列ログから、<strong style="color: var(--text-main);">曜日別・時間帯別の平均男女比、直近7日間の店舗別ピーク人数、高女子率の穴場店舗</strong>を算出した一次統計レポートです。
+                『相席ナビ』編集部（監修：<a href="/about" style="color:inherit;text-decoration:underline;text-underline-offset:3px;">くわもん（相席ナビ編集長）</a>）が独自計測・蓄積している全国63店舗（国内61店舗＋韓国2店舗）の時系列ログから、<strong style="color: var(--text-main);">曜日別・時間帯別の平均男女比、直近7日間の店舗別ピーク人数、高女子率の穴場店舗、過去{{ forecast_days or 90 }}日間のAI予測精度トラックレコード</strong>を算出した一次統計レポートです。
                 {% if report and report.period %}（直近集計期間：{{ report.period }}）{% endif %}
             </p>
+            <div style="margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border-subtle); display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; font-size: 0.8rem;">
+                <a href="/stats/year-end-2026" style="display: inline-flex; align-items: center; min-height: 38px; padding: 6px 14px; border-radius: 999px; background: rgba(200, 164, 110, 0.14); border: 1px solid rgba(200, 164, 110, 0.42); color: var(--accent-text); font-weight: 700; text-decoration: none;">2026年 忘年会・年末年始＆ドーム終演連動データ白書 ›</a>
+                <a href="/stats/monthly.csv" style="display: inline-flex; align-items: center; min-height: 38px; padding: 6px 14px; border-radius: 999px; border: 1px solid var(--border-subtle); color: var(--text-main); font-weight: 600; text-decoration: none;">店舗別30日統計CSVダウンロード（CC BY 4.0）</a>
+                <a href="#forecast-accuracy" style="display: inline-flex; align-items: center; min-height: 38px; padding: 6px 12px; color: var(--text-sub); font-weight: 600; text-decoration: underline;">過去{{ forecast_days or 90 }}日間の予測検証ログへ ↓</a>
+            </div>
         </section>
 
         {% if report and report.weekday_summary %}
@@ -467,8 +487,8 @@
         {% set fch = forecast_accuracy.holdout_backtest or {} %}
         <section id="forecast-accuracy" style="scroll-margin-top: 24px; margin-top: 34px;">
             <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-                <h2 style="margin: 0;">60分後AI推移予測の「答え合わせ」＆予測ズレ検証ログ</h2>
-                <span class="badge" style="margin-bottom:0;">Model {{ forecast_accuracy.model_version }} ｜ 自動記録・60分後照合</span>
+                <h2 style="margin: 0;">60分後AI推移予測の「答え合わせ」＆予測ズレ検証ログ（過去{{ forecast_days or 90 }}日間）</h2>
+                <span class="badge" style="margin-bottom:0;">Model {{ forecast_accuracy.model_version }} ｜ 過去{{ forecast_days or 90 }}日間・60分後照合</span>
             </div>
             <p style="font-size: 0.85rem; color: var(--text-sub); margin: 8px 0 14px;">
                 各店舗で出した「60分後の予測女性比・男女人数」をデータベースへ自動記録し、実際に60分が経過した時点のリアル人数と突き合わせて<strong style="color: var(--text-main);">予測と実測のズレ（誤差pt）</strong>を継続検証しています。さらに店舗・時間帯ごとの直近誤差を学習して次回予測を自己補正します。
@@ -611,12 +631,15 @@
         {% include '_surface_smart_cta.html' %}
 
         <section class="hero-box" style="margin-top: 32px; border-color: var(--border-subtle);">
-            <h2 style="margin: 0 0 10px; font-size: 1.04rem; border: none; padding-left: 0; color: var(--accent-text);">本統計データの引用・メディア掲載について（引用フリー）</h2>
+            <h2 style="margin: 0 0 10px; font-size: 1.04rem; border: none; padding-left: 0; color: var(--accent-text);">データ収集・検証方法論 ＆ メディア・AI引用ガイドライン（CC BY 4.0）</h2>
+            <p style="margin: 0 0 10px; font-size: 0.84rem; color: var(--text-sub);">
+                <strong style="color: var(--text-main);">計測・保存プロトコル：</strong>全国対象店舗の公開来店人数を1分間隔で自動計測し、生ログを90日間保持した上で1時間粒度ロールアップ統計（平均・最大人数・サンプル数・気象・大型公演・交通遅延コンテキスト）へ永久アーカイブしています（{% if moat_coverage and moat_coverage.raw_snapshots %}現在の直近生ログ保持 {{ "{:,}".format(moat_coverage.raw_snapshots) }}件{% if moat_coverage.rolled_up_hours %} ／ 1時間ロールアップ {{ "{:,}".format(moat_coverage.rolled_up_hours) }}枠{% endif %}{% else %}毎分自動蓄積中{% endif %}）。60分後予測の精度検証では、閉店間際の退店一斉処理による右側打ち切りバイアスを除外して実測照合を行っています。
+            </p>
             <p style="margin: 0 0 12px; font-size: 0.85rem; color: var(--text-sub);">
-                本ページの統計データ・ランキングは、個人ブログ・SNS・Webメディア・動画・AI検索等で<strong style="color: var(--text-main);">事前の許諾なくご自由に引用・転載いただけます</strong>。引用の際は、下記の通り出典元リンクの明記をお願いいたします。
+                本ページの統計データおよび <a href="/stats/monthly.csv" style="color: var(--accent-text);">店舗別30日間一次統計CSV（/stats/monthly.csv）</a> は、クリエイティブ・コモンズ表示 4.0 国際（CC BY 4.0）の下、個人ブログ・SNS・報道記事・研究・AI検索等で<strong style="color: var(--text-main);">事前の許諾なくご自由に引用・転載いただけます</strong>。引用時は下記の出典表記をご利用ください。
             </p>
             <div class="stats-citation-box">
-                出典：<a href="https://aiseki-navi.com/stats" style="color: var(--accent-text);">相席ナビ「全国相席ラウンジ統計データ白書」 (https://aiseki-navi.com/stats)</a>
+                出典：相席ナビ編集部（監修：くわもん（相席ナビ編集長））「<a href="https://aiseki-navi.com/stats" style="color: var(--accent-text);">全国相席ラウンジ統計データ白書</a>」（https://aiseki-navi.com/stats ／ CC BY 4.0）
             </div>
         </section>
 

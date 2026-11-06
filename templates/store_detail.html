@@ -718,6 +718,82 @@
         </script>
         {% endif %}
 
+        {% if 'ソウル' not in store.name %}
+        <section id="store-first-party-signals" class="section-card" aria-label="現場状況レポートと入店条件ウォッチ" style="padding: 18px 20px;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 20px;">
+                <div>
+                    <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px;">
+                        <h2 style="margin: 0; font-size: 0.96rem;">現場ワンタップ状況レポート</h2>
+                        <span style="font-size: 0.72rem; color: var(--text-sub);">直近4時間</span>
+                    </div>
+                    <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                        <button type="button" class="vote-pill-btn smooth" onclick="submitDetailVote('smooth')" style="min-height: 40px; min-width: 112px;">
+                            <span>待ちなしで入れた</span>
+                            <span id="detail-vote-smooth" class="vote-num" style="font-variant-numeric: tabular-nums;">{{ (store_votes.smooth if store_votes is defined and store_votes else 0) }}</span>
+                        </button>
+                        <button type="button" class="vote-pill-btn waiting" onclick="submitDetailVote('waiting')" style="min-height: 40px; min-width: 112px;">
+                            <span>男性待ちあり</span>
+                            <span id="detail-vote-waiting" class="vote-num" style="font-variant-numeric: tabular-nums;">{{ (store_votes.waiting if store_votes is defined and store_votes else 0) }}</span>
+                        </button>
+                        <button type="button" class="vote-pill-btn lively" onclick="submitDetailVote('lively')" style="min-height: 40px; min-width: 112px;">
+                            <span>盛り上がってる</span>
+                            <span id="detail-vote-lively" class="vote-num" style="font-variant-numeric: tabular-nums;">{{ (store_votes.lively if store_votes is defined and store_votes else 0) }}</span>
+                        </button>
+                    </div>
+                    <div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border-subtle); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px;">
+                        <span style="font-size: 0.74rem; color: var(--text-sub); font-weight: 600;">受付待ち実測（任意）：</span>
+                        <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                            <button type="button" class="vote-pill-btn" onclick="submitDetailWaitMinutes(0)" style="min-width: auto; flex: 0 1 auto; min-height: 38px; padding: 6px 11px; justify-content: center; font-size: 0.74rem;">待ち0分</button>
+                            <button type="button" class="vote-pill-btn" onclick="submitDetailWaitMinutes(15)" style="min-width: auto; flex: 0 1 auto; min-height: 38px; padding: 6px 11px; justify-content: center; font-size: 0.74rem;">約15分</button>
+                            <button type="button" class="vote-pill-btn" onclick="submitDetailWaitMinutes(30)" style="min-width: auto; flex: 0 1 auto; min-height: 38px; padding: 6px 11px; justify-content: center; font-size: 0.74rem;">30分+</button>
+                        </div>
+                    </div>
+                    {% set init_wait_n = (store_votes.reported_wait_samples if store_votes is defined and store_votes else 0) | int %}
+                    <div id="detail-vote-wait-summary" style="font-size: 0.74rem; color: var(--text-sub); margin-top: 6px; font-variant-numeric: tabular-nums;{% if init_wait_n <= 0 or store_votes.reported_wait_avg is none %} display: none;{% endif %}">
+                        {% if init_wait_n > 0 and store_votes.reported_wait_avg is not none %}直近4時間の現場待ち実測：平均 約{{ '%.0f'|format(store_votes.reported_wait_avg) }}分（{{ init_wait_n }}件の共有）{% endif %}
+                    </div>
+                    <div id="detail-vote-feedback" role="status" aria-live="polite" style="font-size: 0.75rem; font-weight: 600; color: var(--accent-text); margin-top: 6px; display: none;"></div>
+                </div>
+
+                <div style="border-left: 1px solid var(--border-subtle); padding-left: 18px;" class="detail-watch-col">
+                    <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px;">
+                        <h2 style="margin: 0; font-size: 0.96rem;">狙い目条件ウォッチ</h2>
+                        {% set init_watch_n = (watch_counts.watching_count if watch_counts is defined and watch_counts else 0) | int %}
+                        <span id="detail-watch-count-badge" style="font-size: 0.72rem; color: var(--text-sub); font-variant-numeric: tabular-nums;{% if init_watch_n <= 0 %} display: none;{% endif %}">現在 {{ init_watch_n }}名が監視中</span>
+                    </div>
+                    <p style="margin: 0 0 9px; font-size: 0.77rem; color: var(--text-sub); line-height: 1.5;">
+                        このページを開いている間、毎分の自動同期で希望条件への到達をチェックします。
+                    </p>
+                    <div style="display: flex; flex-wrap: wrap; gap: 7px;">
+                        <button type="button" class="vote-pill-btn" data-watch-cond="female_55" aria-pressed="false" onclick="armStoreWatchIntent('female_55')" style="min-width: auto; flex: 1 1 130px; min-height: 40px; justify-content: center; font-size: 0.75rem;">女性比55%以上で通知</button>
+                        <button type="button" class="vote-pill-btn" data-watch-cond="zero_wait" aria-pressed="false" onclick="armStoreWatchIntent('zero_wait')" style="min-width: auto; flex: 1 1 130px; min-height: 40px; justify-content: center; font-size: 0.75rem;">女性優位・待ち緩和で通知</button>
+                        <button type="button" class="vote-pill-btn" data-watch-cond="evening_peak" aria-pressed="false" onclick="armStoreWatchIntent('evening_peak')" style="min-width: auto; flex: 1 1 130px; min-height: 40px; justify-content: center; font-size: 0.75rem;">女性14名以上で通知</button>
+                    </div>
+                    <div id="detail-watch-status" role="status" aria-live="polite" style="font-size: 0.76rem; font-weight: 600; color: var(--accent-text); margin-top: 8px; display: none;"></div>
+                </div>
+            </div>
+        </section>
+        <style>
+            @media (max-width: 680px) {
+                #store-first-party-signals .detail-watch-col {
+                    border-left: none !important;
+                    padding-left: 0 !important;
+                    border-top: 1px solid var(--border-subtle);
+                    padding-top: 14px;
+                }
+            }
+            #store-first-party-signals [data-watch-cond][aria-pressed="true"] {
+                border-color: var(--accent-gold);
+                color: var(--accent-text);
+            }
+            body.theme-light #store-first-party-signals [data-watch-cond][aria-pressed="true"] {
+                background: #18181b;
+                color: #ffffff;
+                border-color: #18181b;
+            }
+        </style>
+        {% endif %}
+
         <aside class="official-notice-box" aria-label="ご利用上の注意事項" style="margin-bottom: 20px;">
             <span class="official-notice-title">料金・イベント情報および人数評価に関するご注意</span>
             <div>
@@ -1599,6 +1675,9 @@
                                 moatPanel.style.display = 'none';
                             }
                         }
+                        if (typeof window.__onStoreDetailLiveSync === 'function') {
+                            window.__onStoreDetailLiveSync(live, w, m, wpct);
+                        }
                     }
 
                     const slotInfo = getJstSlotInfo();
@@ -2125,6 +2204,190 @@
                 renderCards('all');
                 renderTips(currentTips);
             });
+        })();
+
+        (function initStoreFirstPartyInteractions() {
+            const storeCanonical = {{ (store.name or '') | tojson }};
+            const storeSlug = {{ (store.slug or '') | tojson }};
+            if (!storeCanonical || storeCanonical.indexOf('ソウル') !== -1) return;
+
+            let lastDetailVoteType = null;
+            let activeWatchCond = null;
+            const watchStorageKey = 'aiseki_watch_' + storeSlug;
+
+            function getDeviceVoterId() {
+                try {
+                    let id = localStorage.getItem('aiseki_voter_id');
+                    if (!id) {
+                        id = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : (Date.now().toString(36) + Math.random().toString(36).slice(2));
+                        localStorage.setItem('aiseki_voter_id', id);
+                    }
+                    return id;
+                } catch (e) {
+                    return '';
+                }
+            }
+
+            function syncDetailVoteUI(votes) {
+                if (!votes) return;
+                const sEl = document.getElementById('detail-vote-smooth');
+                const wEl = document.getElementById('detail-vote-waiting');
+                const lEl = document.getElementById('detail-vote-lively');
+                const sumEl = document.getElementById('detail-vote-wait-summary');
+                if (sEl) sEl.textContent = votes.smooth || 0;
+                if (wEl) wEl.textContent = votes.waiting || 0;
+                if (lEl) lEl.textContent = votes.lively || 0;
+                if (sumEl) {
+                    const n = parseInt(votes.reported_wait_samples || 0, 10) || 0;
+                    const avg = votes.reported_wait_avg;
+                    if (n > 0 && avg !== null && avg !== undefined) {
+                        sumEl.style.display = 'block';
+                        sumEl.textContent = '直近4時間の現場待ち実測：平均 約' + Math.round(Number(avg)) + '分（' + n + '件の共有）';
+                    } else {
+                        sumEl.style.display = 'none';
+                        sumEl.textContent = '';
+                    }
+                }
+            }
+
+            window.submitDetailVote = async function(voteType, optionalWaitMin) {
+                lastDetailVoteType = voteType;
+                const fbEl = document.getElementById('detail-vote-feedback');
+                const bodyObj = {
+                    store_name: storeCanonical,
+                    vote_type: voteType,
+                    voter_id: getDeviceVoterId()
+                };
+                if (optionalWaitMin !== undefined && optionalWaitMin !== null) {
+                    bodyObj.wait_minutes = optionalWaitMin;
+                }
+                try {
+                    const res = await fetch('/api/vote', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(bodyObj)
+                    });
+                    const d = await res.json();
+                    if (d && d.votes) syncDetailVoteUI(d.votes);
+                    if (fbEl) {
+                        fbEl.style.display = 'block';
+                        if (d.status === 'duplicate' && d.reason === 'rate_limited') {
+                            fbEl.textContent = '短時間に多くの共有があったため、少し時間をおいてお試しください';
+                        } else if (d.reason === 'updated_wait') {
+                            fbEl.textContent = '✓ 受付待ち時間の目安を記録しました。ありがとうございます';
+                        } else if (d.status === 'duplicate') {
+                            fbEl.textContent = '✓ 先ほど共有済みです（ご協力ありがとうございます）';
+                        } else {
+                            fbEl.textContent = '✓ 現場状況を共有しました。ありがとうございます';
+                        }
+                    }
+                } catch (e) {
+                    if (fbEl) {
+                        fbEl.style.display = 'block';
+                        fbEl.textContent = '通信エラーが発生しました';
+                    }
+                }
+            };
+
+            window.submitDetailWaitMinutes = function(waitMin) {
+                const vType = lastDetailVoteType || (waitMin === 0 ? 'smooth' : 'waiting');
+                return window.submitDetailVote(vType, waitMin);
+            };
+
+            function condLabel(cond) {
+                if (cond === 'female_55') return '女性比55%以上（女性10名以上）';
+                if (cond === 'zero_wait') return '女性優位・待ち緩和（女性10名以上かつ女性>=男性）';
+                if (cond === 'evening_peak') return '女性14名以上の安定回転';
+                return '';
+            }
+
+            function evaluateWatchCondition(cond, w, m, wpct) {
+                if (!cond) return false;
+                if (cond === 'female_55') return w >= 10 && wpct >= 55;
+                if (cond === 'zero_wait') return w >= 10 && w >= m;
+                if (cond === 'evening_peak') return w >= 14;
+                return false;
+            }
+
+            function updateWatchButtonsUI(cond) {
+                document.querySelectorAll('#store-first-party-signals [data-watch-cond]').forEach(btn => {
+                    const pressed = Boolean(cond && btn.getAttribute('data-watch-cond') === cond);
+                    btn.setAttribute('aria-pressed', pressed ? 'true' : 'false');
+                });
+            }
+
+            function refreshWatchStatusBanner(w, m, wpct) {
+                const stEl = document.getElementById('detail-watch-status');
+                if (!stEl) return;
+                if (!activeWatchCond) {
+                    stEl.style.display = 'none';
+                    stEl.textContent = '';
+                    return;
+                }
+                stEl.style.display = 'block';
+                if (evaluateWatchCondition(activeWatchCond, w, m, wpct)) {
+                    stEl.textContent = '✓ 条件到達：現在 女性' + w + '名 : 男性' + m + '名（女性比' + wpct + '%）で入店好機です';
+                } else {
+                    stEl.textContent = '監視中：' + condLabel(activeWatchCond) + ' になり次第この欄でお知らせします';
+                }
+            }
+
+            window.armStoreWatchIntent = async function(cond) {
+                if (activeWatchCond === cond) {
+                    activeWatchCond = null;
+                    try { localStorage.removeItem(watchStorageKey); } catch (e) {}
+                    updateWatchButtonsUI(null);
+                    refreshWatchStatusBanner(0, 0, 0);
+                    return;
+                }
+                activeWatchCond = cond;
+                try {
+                    localStorage.setItem(watchStorageKey, JSON.stringify({ cond: cond, ts: Date.now() }));
+                } catch (e) {}
+                updateWatchButtonsUI(cond);
+                refreshWatchStatusBanner({{ store.women | int }}, {{ store.men | int }}, {{ store.wpct | int }});
+
+                try {
+                    const res = await fetch('/api/watch-intent', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            store_name: storeCanonical,
+                            target_cond: cond,
+                            voter_id: getDeviceVoterId()
+                        })
+                    });
+                    const d = await res.json();
+                    const cntBadge = document.getElementById('detail-watch-count-badge');
+                    if (cntBadge && d && typeof d.watching_count === 'number' && d.watching_count > 0) {
+                        cntBadge.style.display = '';
+                        cntBadge.textContent = '現在 ' + d.watching_count + '名が監視中';
+                    }
+                } catch (e) {}
+            };
+
+            window.__onStoreDetailLiveSync = function(live, w, m, wpct) {
+                if (live && live.votes) {
+                    syncDetailVoteUI(live.votes);
+                }
+                if (activeWatchCond) {
+                    refreshWatchStatusBanner(w, m, wpct);
+                }
+            };
+
+            try {
+                const rawSaved = localStorage.getItem(watchStorageKey);
+                if (rawSaved) {
+                    const parsed = JSON.parse(rawSaved);
+                    if (parsed && parsed.cond && (Date.now() - Number(parsed.ts || 0) < 6 * 3600 * 1000)) {
+                        activeWatchCond = parsed.cond;
+                        updateWatchButtonsUI(activeWatchCond);
+                        refreshWatchStatusBanner({{ store.women | int }}, {{ store.men | int }}, {{ store.wpct | int }});
+                    } else {
+                        localStorage.removeItem(watchStorageKey);
+                    }
+                }
+            } catch (e) {}
         })();
     </script>
 </body>

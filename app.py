@@ -664,9 +664,15 @@ def _ensure_scheduler_started_async():
                 except Exception as err:
                     logging.warning(f"Daily Meta/TikTok token auto-refresh check warning: {err}")
                 try:
-                    local_db.prune_old_logs(monitor_days=60, vote_days=14)
+                    import arena_calendar
+                    arena_calendar.get_arena_schedule_events(allow_blocking=True, force_refresh=True)
                 except Exception as err:
-                    logging.warning(f"Daily SQLite prune warning: {err}")
+                    logging.warning(f"Daily arena schedule refresh warning: {err}")
+                try:
+                    local_db.rollup_store_hourly_stats(days_back=4)
+                    local_db.prune_old_logs(monitor_days=90, vote_days=14)
+                except Exception as err:
+                    logging.warning(f"Daily SQLite rollup/prune warning: {err}")
             # Run daily at 06:35 JST (21:35 UTC) so Meta/TikTok tokens renew even on quiet weekdays and SQLite stays lean
             scheduler.add_job(func=_daily_token_and_db_maintenance_job, trigger="cron", hour=21, minute=35, jitter=120, executor="sns_ai")
             scheduler.start()
@@ -1067,6 +1073,12 @@ def clear_fast_http_caches(clear_editorial: bool = True):
         _llms_txt_cache['short'] = None
         _llms_txt_cache['full'] = None
         _llms_txt_cache['facts'] = None
+    if clear_editorial:
+        try:
+            from routes import portal_bp as _pb_mod
+            _pb_mod.clear_monthly_csv_cache()
+        except Exception:
+            pass
         if clear_editorial:
             _sitemap_xml_cache['key'] = None
             _sitemap_xml_cache['xml'] = None
@@ -2617,11 +2629,28 @@ def post_store_vote():
     raw_voter = str(payload.get('voter_id', '')).strip()[:64]
     voter_hash = hmac.new(sec_bytes, f"vote_id:{raw_voter}".encode('utf-8'), hashlib.sha256).hexdigest()[:16] if raw_voter else ''
 
-    ok, reason = local_db.add_crowd_vote(store_name, vote_type, ip_hash, voter_id=voter_hash)
+    raw_wait = payload.get('wait_minutes')
+    wait_minutes = None
+    if raw_wait is not None and raw_wait != '':
+        try:
+            w_int = int(raw_wait)
+            if w_int in (0, 15, 30, 45):
+                wait_minutes = w_int
+        except (TypeError, ValueError):
+            wait_minutes = None
+
+    ok, reason = local_db.add_crowd_vote(
+        store_name, vote_type, ip_hash, voter_id=voter_hash, wait_minutes=wait_minutes
+    )
     if ok:
         try:
             import analytics
-            analytics.track('vote', f"{store_name}:{vote_type}")
+            if reason == 'updated_wait':
+                analytics.track('vote_wait', f"{store_name}:{wait_minutes}m")
+            else:
+                analytics.track('vote', f"{store_name}:{vote_type}")
+                if wait_minutes is not None:
+                    analytics.track('vote_wait', f"{store_name}:{wait_minutes}m")
         except Exception:
             pass
     counts = local_db.get_recent_votes(store_name=store_name, hours=4)
@@ -2641,6 +2670,63 @@ def post_store_vote():
         'reason': reason,
         'store_name': store_master.seo_name(store_name),
         'votes': counts
+    })
+
+
+@app.route('/api/watch-intent', methods=['POST'])
+def post_watch_intent():
+    """Records an anonymous first-party condition-watch intent from a user on /store/<slug>."""
+    import hashlib
+    import store_master
+    payload = request.get_json(silent=True) or {}
+    raw_store = str(payload.get('store_name', '')).strip()
+    target_cond = str(payload.get('target_cond', 'female_55')).strip()
+    if not raw_store or target_cond not in ('female_55', 'zero_wait', 'evening_peak'):
+        return jsonify({'status': 'error', 'error': 'Invalid parameters'}), 400
+    if len(raw_store) > 80:
+        return jsonify({'status': 'error', 'error': 'Invalid store'}), 400
+
+    store_name = store_master.to_internal_store_name(raw_store)
+    with data_lock:
+        known_names = {s.get('name') for s in latest_data.get('full_data', [])}
+    if known_names:
+        if store_name not in known_names:
+            return jsonify({'status': 'error', 'error': 'Unknown store'}), 400
+    elif not store_master.get(store_name):
+        return jsonify({'status': 'error', 'error': 'Unknown store'}), 400
+
+    client_ip = get_client_ip()
+    sec_bytes = str(app.secret_key).encode('utf-8')
+    raw_voter = str(payload.get('voter_id', '')).strip()[:64]
+    ip_hash = hmac.new(sec_bytes, f"watch_ip:{client_ip}".encode('utf-8'), hashlib.sha256).hexdigest()[:16]
+    voter_hash = (
+        hmac.new(sec_bytes, f"watch_id:{client_ip}:{raw_voter}".encode('utf-8'), hashlib.sha256).hexdigest()[:16]
+        if raw_voter else ''
+    )
+
+    ok, reason = local_db.add_watch_intent(
+        store_name, target_cond=target_cond, ip_hash=ip_hash, voter_id=voter_hash
+    )
+    if reason == 'rate_limited':
+        return jsonify({
+            'status': 'rate_limited',
+            'reason': 'rate_limited',
+            'store_name': store_master.seo_name(store_name),
+            'target_cond': target_cond,
+        }), 429
+    if ok:
+        try:
+            import analytics
+            analytics.track('watch_intent', f"{store_name}:{target_cond}")
+        except Exception:
+            pass
+    watch_info = local_db.get_watch_intent_counts(store_name=store_name, hours=6)
+    return jsonify({
+        'status': 'success' if ok else 'duplicate',
+        'reason': reason,
+        'store_name': store_master.seo_name(store_name),
+        'target_cond': target_cond,
+        'watching_count': int(watch_info.get('watching_count', 0)),
     })
 
 

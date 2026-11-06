@@ -4418,17 +4418,32 @@
         window.toggleSecondTimingDetails = toggleSecondTimingDetails;
         window.copySecondVenueText = copySecondVenueText;
 
+        let lastModalVoteType = null;
+
         function updateVoteNumbersUI(votes) {
             const v = votes || { smooth: 0, waiting: 0, lively: 0 };
             const sEl = document.getElementById('vote-count-smooth');
             const wEl = document.getElementById('vote-count-waiting');
             const lEl = document.getElementById('vote-count-lively');
+            const waitSumEl = document.getElementById('modal-vote-wait-summary');
             if (sEl) sEl.textContent = v.smooth || 0;
             if (wEl) wEl.textContent = v.waiting || 0;
             if (lEl) lEl.textContent = v.lively || 0;
+            if (waitSumEl) {
+                const samples = parseInt(v.reported_wait_samples || 0, 10) || 0;
+                const avgVal = v.reported_wait_avg;
+                if (samples > 0 && avgVal !== null && avgVal !== undefined) {
+                    waitSumEl.style.display = 'block';
+                    waitSumEl.textContent = '直近4時間の現場待ち実測：平均 約' + Math.round(Number(avgVal)) + '分（' + samples + '件の共有）';
+                } else {
+                    waitSumEl.style.display = 'none';
+                    waitSumEl.textContent = '';
+                }
+            }
         }
 
         function renderModalCrowdVotes(storeName) {
+            lastModalVoteType = null;
             const feedbackEl = document.getElementById('modal-vote-feedback');
             if (feedbackEl) feedbackEl.classList.add('hidden');
 
@@ -4456,18 +4471,23 @@
             }
         }
 
-        async function submitCrowdVote(voteType) {
+        async function submitCrowdVote(voteType, optionalWaitMinutes) {
             if (!currentModalStoreName) return;
+            lastModalVoteType = voteType;
             const feedbackEl = document.getElementById('modal-vote-feedback');
+            const reqPayload = {
+                store_name: currentModalStoreName,
+                vote_type: voteType,
+                voter_id: getVoterId()
+            };
+            if (optionalWaitMinutes !== undefined && optionalWaitMinutes !== null) {
+                reqPayload.wait_minutes = optionalWaitMinutes;
+            }
             try {
                 const res = await fetch('/api/vote', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        store_name: currentModalStoreName,
-                        vote_type: voteType,
-                        voter_id: getVoterId()
-                    })
+                    body: JSON.stringify(reqPayload)
                 });
                 const d = await res.json();
                 if (d && d.votes) {
@@ -4481,6 +4501,8 @@
                     feedbackEl.classList.remove('hidden');
                     if (d.status === 'duplicate' && d.reason === 'rate_limited') {
                         feedbackEl.textContent = '短時間に多くの投票があったため、少し時間をおいてお試しください';
+                    } else if (d.reason === 'updated_wait') {
+                        feedbackEl.textContent = '✓ 受付待ち時間の目安を記録しました。ありがとうございます';
                     } else if (d.status === 'duplicate') {
                         feedbackEl.textContent = '✓ 先ほど投票済みです（ご協力ありがとうございます）';
                     } else {
@@ -4494,7 +4516,13 @@
                 }
             }
         }
+
+        function submitCrowdWaitMinutes(waitMin) {
+            const chosenType = lastModalVoteType || (waitMin === 0 ? 'smooth' : 'waiting');
+            return submitCrowdVote(chosenType, waitMin);
+        }
         window.submitCrowdVote = submitCrowdVote;
+        window.submitCrowdWaitMinutes = submitCrowdWaitMinutes;
 
         // Render events relevant to the current store inside analysis modal
         function renderModalEvents(storeName) {

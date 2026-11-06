@@ -1197,6 +1197,12 @@ def _crawl_and_save_events():
                 json.dump(_events_memory_cache, f, ensure_ascii=False, indent=2)
         except Exception as e:
             logger.warning(f"Failed to save events cache to disk: {e}")
+        try:
+            import local_db
+            if hasattr(local_db, 'upsert_store_event_history'):
+                local_db.upsert_store_event_history(all_events, date_jst=now_jst.strftime('%Y-%m-%d'))
+        except Exception as e:
+            logger.debug(f"Event history DB upsert skipped: {e}")
         return all_events
     return existing_events
 
@@ -1278,6 +1284,15 @@ def fetch_all_events(force_refresh: bool = False, allow_blocking: bool = True):
                 if disk_data.get('events'):
                     disk_data['events'] = _ensure_regional_events(disk_data['events'])
                     _events_memory_cache = disk_data
+                    if os.environ.get("DISABLE_SCHEDULER") != "1" and os.environ.get("DISABLE_SHEETS") != "1":
+                        try:
+                            import local_db
+                            if hasattr(local_db, 'upsert_store_event_history'):
+                                disk_date = str(disk_data.get('updated_at') or '')[:10]
+                                if len(disk_date) == 10 and disk_date[4] == '-' and disk_date[7] == '-':
+                                    local_db.upsert_store_event_history(disk_data['events'], date_jst=disk_date)
+                        except Exception:
+                            pass
         except Exception as e:
             logger.warning(f"Failed to read events cache from disk: {e}")
 

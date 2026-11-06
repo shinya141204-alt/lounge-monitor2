@@ -79,6 +79,14 @@
             "@type": "Answer",
             "text": "オリエンタルラウンジの都心大型5店舗（恵比寿・渋谷本店・新宿・大阪駅前・名古屋錦）と、agの渋谷・上野・名古屋店、週末のag仙台店は「男性2名以上必須（1名入店不可）」、JIS新宿店も2名以上推奨です。それ以外のオリエンタルラウンジ24店舗・ag各店・JIS 9店舗はシングルチャージ（+1,100円）で、ASOBIBAR・地場ブランド各店も男性1名から入店可能です。当ページの全店舗一覧表で国内全{{ data.all_domestic_stores|length }}店舗の1名入店ルールを確認できます。"
           }
+        },
+        {
+          "@type": "Question",
+          "name": "相席ラウンジと、相席屋・THE SINGLE（1対1専門）・パブリックスタンドの違いは何ですか？",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "オリエンタルラウンジ・ag（アグ）・JIS（ジス）などの相席ラウンジは、ソファ席へスタッフが案内する10分従量制（単独待機220円〜330円/10分）で、当サイトで現在の男女人数を毎分確認できます。一方、相席屋は食べ飲み放題付きのカジュアル居酒屋型、THE SINGLEや1on1 for Singlesは男性1名専用の20分1対1交代制（相席成立時のみ課金・待機料金なし）、パブリックスタンドやASOBIBAR（アソビバー）は時間課金なしで店内を自由に回遊するスタンディング・チケット制です。同行人数（1名か2名以上か）や滞在スタイルに合わせて使い分けるのが効果的です。"
+          }
         }
       ]
     }
@@ -904,6 +912,60 @@
                 {% endfor %}
             </div>
         </section>
+
+        <!-- Section 5: Adjacent Format System Reference (Public Web Specs Only) -->
+        {% if data.adjacent_formats %}
+        <section id="adjacent-format-comparison" class="section-card apple-open-section">
+            <h2 class="section-title">相席ラウンジと他業態（相席屋・1対1専門・スタンディングバー）のシステム比較リファレンス</h2>
+            <p class="section-lead">
+                同行人数（1名か2名以上か）や「スタッフ自動案内 vs 20分1対1交代 vs 自由回遊」の違いを、各公式サイトの公開仕様ベースで整理しています。当サイトでリアルタイム人数を計測していない業態は、各公式アプリ・公式サイトにてご確認ください。
+            </p>
+            <div class="comp-table-wrap">
+                <table class="comp-table" style="min-width: 680px;">
+                    <thead>
+                        <tr>
+                            <th scope="col">業態区分・主なブランド</th>
+                            <th scope="col">案内形式・予約要否</th>
+                            <th scope="col">男性1名可否</th>
+                            <th scope="col">料金体系・待機課金</th>
+                            <th scope="col">リアルタイム人数公開</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for fmt in data.adjacent_formats %}
+                        <tr{% if fmt.is_monitored %} class="best-row"{% endif %}>
+                            <td>
+                                <div style="font-weight: 700; color: var(--text-main);">{{ fmt.format_label }}</div>
+                                <div style="font-size: 0.76rem; color: var(--text-sub); margin-top: 2px;">{{ fmt.brand_examples }}</div>
+                            </td>
+                            <td>
+                                <div>{{ fmt.seating_style }}</div>
+                                <div style="font-size: 0.76rem; color: var(--text-sub); margin-top: 2px;">{{ fmt.reservation_rule }}</div>
+                            </td>
+                            <td>{{ fmt.solo_entry }}</td>
+                            <td>
+                                <div>{{ fmt.pricing_model }}</div>
+                                <div style="font-size: 0.75rem; color: var(--text-sub); margin-top: 2px;">向いている場面：{{ fmt.best_for }}</div>
+                            </td>
+                            <td>
+                                <div style="font-weight: 600;">{{ fmt.live_headcount_public }}</div>
+                                {% if not fmt.is_monitored and fmt.official_url %}
+                                <div style="margin-top: 4px;">
+                                    <a href="{{ fmt.official_url }}" target="_blank" rel="noopener noreferrer" class="official-ext-link">公式サイト ↗</a>
+                                </div>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div style="margin-top: 12px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; font-size: 0.79rem; color: var(--text-sub);">
+                <span>※各ブランドのシステム・年齢制限・店舗別料金は変更される場合があります。来店前に各公式サイトをご確認ください。</span>
+                <a href="/guide/lounge-vs-screened-date" style="color: var(--accent-text); font-weight: 600; text-decoration: none;">相席ラウンジと審査制デート・1対1業態の使い分け考察を読む ›</a>
+            </div>
+        </section>
+        {% endif %}
 
         {% if not is_staff and not session.get('is_staff') %}
         <aside class="section-card" aria-label="入店前の身だしなみ・満席対策ガイド" style="padding: 18px 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; border-color: var(--border-subtle);">

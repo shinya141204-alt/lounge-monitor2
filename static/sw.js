@@ -1,5 +1,5 @@
-// Supersedes aiseki-navi-v47..v95 (purged automatically on activate)
-const CACHE_NAME = 'aiseki-navi-v97';
+// Supersedes aiseki-navi-v47..v97 (purged automatically on activate)
+const CACHE_NAME = 'aiseki-navi-v98';
 const SHELL_KEY = '/';
 const LIVE_FRESH_TTL_MS = 45000;
 const LIVE_MAX_STALE_MS = 600000; // Never serve live headcount HTML older than 10 minutes
@@ -18,6 +18,7 @@ const LIVE_SSR_EXACT = new Set([
   '/for-women',
   '/areas',
   '/stats',
+  '/stats/year-end-2026',
   '/columns',
   '/oriental-lounge',
   '/ag',
@@ -33,7 +34,7 @@ const CORE_ASSETS = [
   '/static/style.css?v=20261030_6',
   '/static/calm.css?v=35',
   '/static/portal.css?v=15',
-  '/static/app.js?v=20261106_1',
+  '/static/app.js?v=20261106_2',
   '/static/affiliate_config.js?v=17',
   '/static/manifest.json?v=3'
 ];
@@ -218,7 +219,8 @@ self.addEventListener('fetch', (event) => {
     reqUrl.pathname === '/robots.txt' ||
     reqUrl.pathname === '/sitemap.xml' ||
     reqUrl.pathname === '/llms.txt' ||
-    reqUrl.pathname === '/llms-full.txt'
+    reqUrl.pathname === '/llms-full.txt' ||
+    reqUrl.pathname === '/stats/monthly.csv'
   ) {
     return;
   }

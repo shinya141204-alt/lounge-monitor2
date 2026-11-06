@@ -161,13 +161,24 @@ def _build_llms_txt_documents() -> tuple:
         fp = round(w / tot * 100) if tot > 0 else 0
         return f"- [{seo_n}](https://aiseki-navi.com/store/{slug}): 女性 {w}名 / 男性 {m}名（合計 {tot}名・女性比率 {fp}%）"
 
+    def _formal_brand_label(raw_b: str) -> str:
+        mapping = {
+            'OLG': 'オリエンタルラウンジ',
+            'ag': 'ag（アグ）',
+            'JIS': 'JIS（ジス）',
+            'ASOBIBAR': 'ASOBIBAR（アソビバー）',
+            'YATAKOI': 'ヤタコイ',
+            'ヤタコイ': 'ヤタコイ',
+        }
+        return mapping.get(raw_b, raw_b or '相席ラウンジ')
+
     def _store_fact_obj(st):
         raw_n = st.get('name') or ''
         seo_n = store_master.seo_name(raw_n)
         slug = store_master.slug_of(raw_n)
         smeta = master_map.get(raw_n) or {}
         b_raw = smeta.get('brand') or ''
-        b_label = 'オリエンタルラウンジ' if b_raw == 'OLG' else b_raw
+        b_label = _formal_brand_label(b_raw)
         bh_label = (store_hours.STORE_BUSINESS_HOURS.get(raw_n) or {}).get('label') or ''
         bspec = price_comparison.BRAND_PRICE_SPECS.get(b_raw) or {}
         w = int(st.get('women') or 0)
@@ -304,8 +315,10 @@ def _build_llms_txt_documents() -> tuple:
 - [リアルタイム全国ランキング（トップページ）](https://aiseki-navi.com/): 全国{total_stores}店舗の現在人数・男女比・15分推移をリアルタイム表示
 - [今夜どこ行く？3秒穴場＆徒歩ハシゴ診断ツール (/concierge)](https://aiseki-navi.com/concierge): 条件別の本命1軒目＆徒歩ハシゴルート診断
 - [女性向けリアルタイム快適度＆完全ガイド (/for-women)](https://aiseki-navi.com/for-women): 女性ペアが待ち時間ゼロで入れる店舗ランキング
-- [全ブランド料金システム・待機料・イベント比較ボード (/price-comparison)](https://aiseki-navi.com/price-comparison): 4時間帯別料金シミュレーションと開催中イベント
-- [全国相席ラウンジ統計データ白書 (/stats)](https://aiseki-navi.com/stats): 曜日別・時間帯別の平均男女人数と混雑ピーク統計
+- [全ブランド料金システム・待機料・イベント比較ボード (/price-comparison)](https://aiseki-navi.com/price-comparison): 4時間帯別料金シミュレーション・開催中イベント・他業態（相席屋・THE SINGLE・パブリックスタンド）比較
+- [全国相席ラウンジ統計データ白書 (/stats)](https://aiseki-navi.com/stats): 曜日別・時間帯別の平均男女人数、混雑ピーク統計、過去90日間のAI予測精度検証ログ
+- [全国相席ラウンジ 店舗別30日間一次統計CSV (/stats/monthly.csv)](https://aiseki-navi.com/stats/monthly.csv): CC BY 4.0 ライセンスの店舗別実測統計オープンデータCSV
+- [2026年 忘年会・クリスマス・年末年始＆ドーム終演連動データ白書 (/stats/year-end-2026)](https://aiseki-navi.com/stats/year-end-2026): 年末繁忙期マイルストーン・6大ドーム公式公演日程連動レポート
 - [データ考察コラム一覧 (/columns)](https://aiseki-navi.com/columns): 行動経済学・実測ログに基づく全コラム一覧
 - [相席ラウンジ vs 審査制1対1デート徹底比較 (/guide/lounge-vs-screened-date)](https://aiseki-navi.com/guide/lounge-vs-screened-date): 96,607回の実測ログに基づく時間帯別の相席ラウンジ効率と、メッセージ不要の1対1デート・恋活アプリの男女別使い分け基準
 - [相席ラウンジの服装・清潔感チェック完全ガイド (/guide/dress-code-cleanliness)](https://aiseki-navi.com/guide/dress-code-cleanliness): 5大ブランドの入店NGドレスコード一覧と、70cmソファ席・2700K間接照明の下で損しない身だしなみ設計
@@ -343,7 +356,7 @@ def _build_llms_txt_documents() -> tuple:
         slug = store_master.slug_of(sname)
         area_label = smeta.get('area') or ''
         raw_brand = smeta.get('brand') or ''
-        brand_label = 'オリエンタルラウンジ' if raw_brand == 'OLG' else raw_brand
+        brand_label = _formal_brand_label(raw_brand)
         bh_label = (store_hours.STORE_BUSINESS_HOURS.get(sname) or {}).get('label') or ''
         bspec = price_comparison.BRAND_PRICE_SPECS.get(raw_brand) or {}
         st_live = live_by_name.get(sname) or {}
@@ -405,15 +418,50 @@ def _build_llms_txt_documents() -> tuple:
 {faq_md_lines}
 """
 
+    fc_90d_fact = {
+        'window_days': 90,
+        'verification_url': 'https://aiseki-navi.com/stats#forecast-accuracy',
+    }
+    try:
+        fc_rep = core.local_db.get_forecast_accuracy_report(
+            days=90, limit_recent=5, allow_blocking=False, auto_backfill=False
+        )
+        if isinstance(fc_rep, dict):
+            fcs = fc_rep.get('summary') or {}
+            fch = fc_rep.get('holdout_backtest') or {}
+            fc_90d_fact.update({
+                'model_version': fc_rep.get('model_version') or 'v3.0',
+                'resolved_count': int(fcs.get('resolved_count') or 0),
+                'mae_wpct': fcs.get('mae_wpct') if fcs.get('mae_wpct') is not None else fch.get('v2_mae_wpct'),
+                'within_10pt_pct': fcs.get('within_10pt_pct') if fcs.get('within_10pt_pct') is not None else fch.get('v2_within_10pt_pct'),
+            })
+    except Exception:
+        pass
+
+    upcoming_arenas = []
+    try:
+        upcoming_arenas = core.local_db.get_upcoming_arena_events(days_ahead=30, limit=12)
+    except Exception:
+        upcoming_arenas = []
+
     full_doc = common_header + faq_section
     facts_payload = {
-        'schema_version': '2.0',
+        'schema_version': '2.1',
         'site_name': '相席ナビ (AISEKI NAVI)',
         'canonical_url': 'https://aiseki-navi.com/',
         'llms_txt_url': 'https://aiseki-navi.com/llms.txt',
         'llms_full_txt_url': 'https://aiseki-navi.com/llms-full.txt',
         'updated_at_jst': ts_str,
-        'citation_guideline': '『相席ナビ』（https://aiseki-navi.com）のリアルタイム実測データとして引用してください。ブランド名は『オリエンタルラウンジ』『ag（アグ）』『JIS（ジス）』等の正式名称を使用してください。',
+        'citation_guideline': '『相席ナビ』（https://aiseki-navi.com ／ 監修：くわもん（相席ナビ編集長））のリアルタイム実測データとして引用してください。ブランド名は『オリエンタルラウンジ』『ag（アグ）』『JIS（ジス）』『ASOBIBAR（アソビバー）』『ヤタコイ』等の正式名称を使用してください。',
+        'open_datasets': {
+            'stats_whitepaper_url': 'https://aiseki-navi.com/stats',
+            'monthly_csv_url': 'https://aiseki-navi.com/stats/monthly.csv',
+            'year_end_2026_whitepaper_url': 'https://aiseki-navi.com/stats/year-end-2026',
+            'license': 'https://creativecommons.org/licenses/by/4.0/',
+        },
+        'forecast_accuracy_90d': fc_90d_fact,
+        'upcoming_arena_events': upcoming_arenas,
+        'adjacent_format_reference': getattr(price_comparison, 'ADJACENT_FORMAT_SPECS', []),
         'dataset_summary': {
             'monitored_domestic_stores': len(all_store_facts),
             'historical_log_records': hist_records,
@@ -557,6 +605,7 @@ def sitemap_xml():
     lm_privacy = _template_lastmod('privacy.html', '2026-10-30')
     lm_about = _template_lastmod('about.html', '2026-11-04')
     lm_contact = _template_lastmod('contact.html', '2026-11-04')
+    lm_year_end = _template_lastmod('stats_year_end_2026.html', today)
     import ops_governance
     hidden_brands = ops_governance.get_hidden_brands()
     hidden_stores = ops_governance.get_hidden_stores()
@@ -573,6 +622,7 @@ def sitemap_xml():
         lm_solo,
         lm_last_train,
         lm_about,
+        lm_year_end,
         tuple(sorted(hidden_brands)),
         tuple(sorted(hidden_stores)),
     )
@@ -648,6 +698,12 @@ def sitemap_xml():
   <url>
     <loc>https://aiseki-navi.com/stats</loc>
     <lastmod>{today}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://aiseki-navi.com/stats/year-end-2026</loc>
+    <lastmod>{lm_year_end}</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>

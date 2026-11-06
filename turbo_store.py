@@ -383,12 +383,126 @@ def init_postgres_aux_schema() -> bool:
                         wind_kmh DOUBLE PRECISION,
                         is_rainy INTEGER NOT NULL DEFAULT 0,
                         active_arenas_json TEXT,
+                        transit_disrupted INTEGER NOT NULL DEFAULT 0,
+                        transit_lines_json TEXT,
                         UNIQUE(timestamp, city_key)
                     );
                     """
                 )
                 cur.execute(
                     "CREATE INDEX IF NOT EXISTS idx_ext_ctx_city_ts ON external_context_logs(city_key, timestamp);"
+                )
+                cur.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS store_hourly_rollups (
+                        date_jst TEXT NOT NULL,
+                        hour_jst INTEGER NOT NULL,
+                        business_date TEXT NOT NULL,
+                        store_name TEXT NOT NULL,
+                        sample_count INTEGER NOT NULL DEFAULT 0,
+                        avg_women DOUBLE PRECISION NOT NULL DEFAULT 0.0,
+                        max_women INTEGER NOT NULL DEFAULT 0,
+                        avg_men DOUBLE PRECISION NOT NULL DEFAULT 0.0,
+                        max_men INTEGER NOT NULL DEFAULT 0,
+                        avg_wpct DOUBLE PRECISION NOT NULL DEFAULT 0.0,
+                        avg_men_waiting_groups DOUBLE PRECISION,
+                        max_men_waiting_groups INTEGER,
+                        avg_men_waiting_guests DOUBLE PRECISION,
+                        avg_matched_groups DOUBLE PRECISION,
+                        avg_vip_guests DOUBLE PRECISION,
+                        precip_mm_max DOUBLE PRECISION,
+                        temp_c_avg DOUBLE PRECISION,
+                        is_rainy INTEGER NOT NULL DEFAULT 0,
+                        transit_disrupted INTEGER NOT NULL DEFAULT 0,
+                        arena_event_active INTEGER NOT NULL DEFAULT 0,
+                        campaign_count INTEGER NOT NULL DEFAULT 0,
+                        fc_resolved_count INTEGER NOT NULL DEFAULT 0,
+                        fc_mae_wpct DOUBLE PRECISION,
+                        votes_smooth INTEGER NOT NULL DEFAULT 0,
+                        votes_waiting INTEGER NOT NULL DEFAULT 0,
+                        votes_lively INTEGER NOT NULL DEFAULT 0,
+                        avg_reported_wait_min DOUBLE PRECISION,
+                        PRIMARY KEY (date_jst, hour_jst, store_name)
+                    );
+                    """
+                )
+                cur.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_rollup_store_bdate ON store_hourly_rollups(store_name, business_date);"
+                )
+                cur.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_rollup_bdate_hour ON store_hourly_rollups(business_date, hour_jst);"
+                )
+                cur.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS day_context_logs (
+                        date_jst TEXT PRIMARY KEY,
+                        dow INTEGER NOT NULL,
+                        is_holiday INTEGER NOT NULL DEFAULT 0,
+                        is_pre_holiday INTEGER NOT NULL DEFAULT 0,
+                        holiday_streak_pos TEXT NOT NULL DEFAULT 'weekday',
+                        is_payday_window INTEGER NOT NULL DEFAULT 0,
+                        is_bonus_window INTEGER NOT NULL DEFAULT 0,
+                        season_tag TEXT NOT NULL DEFAULT 'regular',
+                        tags_json TEXT
+                    );
+                    """
+                )
+                cur.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_day_ctx_season ON day_context_logs(season_tag, date_jst);"
+                )
+                cur.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS store_event_history (
+                        event_key TEXT PRIMARY KEY,
+                        brand TEXT NOT NULL,
+                        store_scope TEXT NOT NULL,
+                        target_label TEXT,
+                        event_category TEXT NOT NULL,
+                        title TEXT NOT NULL,
+                        source_url TEXT,
+                        first_seen_date TEXT NOT NULL,
+                        last_seen_date TEXT NOT NULL,
+                        days_seen INTEGER NOT NULL DEFAULT 1,
+                        raw_json TEXT
+                    );
+                    """
+                )
+                cur.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_ev_hist_dates ON store_event_history(last_seen_date, first_seen_date);"
+                )
+                cur.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS arena_schedule_events (
+                        event_date TEXT NOT NULL,
+                        venue_id TEXT NOT NULL,
+                        venue_name TEXT NOT NULL,
+                        city_key TEXT NOT NULL,
+                        event_title TEXT NOT NULL,
+                        open_time TEXT,
+                        start_time TEXT,
+                        est_end_hour INTEGER NOT NULL DEFAULT 21,
+                        source_url TEXT,
+                        updated_at TEXT NOT NULL,
+                        PRIMARY KEY (event_date, venue_id, event_title)
+                    );
+                    """
+                )
+                cur.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_arena_sched_date ON arena_schedule_events(event_date, city_key);"
+                )
+                cur.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS store_watch_intents (
+                        id BIGSERIAL PRIMARY KEY,
+                        timestamp TEXT NOT NULL,
+                        store_name TEXT NOT NULL,
+                        target_cond TEXT NOT NULL,
+                        ip_hash TEXT
+                    );
+                    """
+                )
+                cur.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_watch_intents_store_ts ON store_watch_intents(store_name, timestamp);"
                 )
             conn.commit()
         _pg_schema_ready = True

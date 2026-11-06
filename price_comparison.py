@@ -253,6 +253,63 @@ BRAND_PRICE_SPECS = {
     },
 }
 
+# Public official specification reference for adjacent / unmonitored formats
+# (Compiled strictly from each brand's public official website; no unofficial API scraping)
+ADJACENT_FORMAT_SPECS = [
+    {
+        "format_id": "aiseki_lounge",
+        "format_label": "相席ラウンジ（ソファ席案内型）",
+        "brand_examples": "オリエンタルラウンジ・ag（アグ）・JIS（ジス）・地場ラウンジ",
+        "seating_style": "ソファ席グループ相席（スタッフ自動案内・席替え対応）",
+        "reservation_rule": "予約不要・当日ウォークイン中心（VIP個室等は予約可）",
+        "solo_entry": "店舗別（都心大型5店等は男性2名以上必須／他店は+1,100円で1名可）",
+        "pricing_model": "男性10分従量制（相席275円〜1,500円／単独待機220円〜330円・飲み放題込）・女性0円",
+        "live_headcount_public": "公式Web一般公開あり（相席ナビで毎分自動計測・60分後予測対応）",
+        "best_for": "店内の実人数と男女比を事前に確認し、待ち時間を抑えて座りたい夜",
+        "official_url": "/",
+        "is_monitored": True,
+    },
+    {
+        "format_id": "aisekiya_izakaya",
+        "format_label": "カジュアル居酒屋型相席",
+        "brand_examples": "相席屋（AISEKIYA）",
+        "seating_style": "テーブル席グループ相席（食べ飲み放題・居酒屋スタイル）",
+        "reservation_rule": "予約不要・当日来店中心（公式アプリ受付あり）",
+        "solo_entry": "原則2名以上推奨（店舗・営業状況により異なる場合あり）",
+        "pricing_model": "男性10分従量制または時間制パック（店舗・曜日別・食べ飲み放題込）・女性0円",
+        "live_headcount_public": "Web一般公開なし（店頭または公式アプリにて確認）",
+        "best_for": "1軒目から食事もしっかり取りつつ、居酒屋感覚で賑やかに飲みたい2人組",
+        "official_url": "https://aiseki-ya.com/",
+        "is_monitored": False,
+    },
+    {
+        "format_id": "one_on_one_lounge",
+        "format_label": "1対1専門・会員制相席ラウンジ",
+        "brand_examples": "THE SINGLE（ザ・シングル）・1on1 for Singles",
+        "seating_style": "完全1対1個室・ブース席（20分交代制・アプリ連絡先交換）",
+        "reservation_rule": "公式アプリ会員登録・事前または直前予約推奨",
+        "solo_entry": "男性1名（ソロ）専用（2名以上での同席相席不可）",
+        "pricing_model": "男性20分1回ごとの定額制（1対1成立時のみ課金・単独待機課金なし）・女性0円",
+        "live_headcount_public": "Web一般公開なし（会員アプリ内での予約枠・案内管理）",
+        "best_for": "友人と予定を合わせず1人で来店し、20分単位で着実に1対1会話したい日",
+        "official_url": "https://single-aiseki.com/",
+        "is_monitored": False,
+    },
+    {
+        "format_id": "standing_switch_bar",
+        "format_label": "スタンディング・アミューズメントバー",
+        "brand_examples": "パブリックスタンド（PUBLIC STAND）・ASOBIBAR（アソビバー）",
+        "seating_style": "スタンディング自由回遊・セルフ声かけ制（自動席案内なし）",
+        "reservation_rule": "予約不要・出入り自由（スタンプ／カラーバンド制）",
+        "solo_entry": "全店1名（ソロ）入店OK",
+        "pricing_model": "時間無制限飲み放題の定額入場制またはチケット制（10分従量・待機課金なし）",
+        "live_headcount_public": "ASOBIBARは公開あり（当サイト計測中）／パブリックスタンドはWeb人数公開なし",
+        "best_for": "10分課金を気にせず長時間滞在し、自分のペースで声かけやゲームを楽しみたい夜",
+        "official_url": "https://www.public-stand.com/",
+        "is_monitored": False,
+    },
+]
+
 # Per-store official price specifications for all 51 domestic stores across all 4 time slots:
 #   slot_18_20: Open ~ 20:00 (10-min aiseki rate: weekday / Fri-Sat-Hol)
 #   slot_20_22: 20:00 ~ 22:00 (10-min aiseki rate: weekday / Fri-Sat-Hol)
@@ -1917,6 +1974,7 @@ def build_area_comparison_clusters(live_stores: list = None, now_jst: datetime.d
             BRAND_PRICE_SPECS["JIS"],
             BRAND_PRICE_SPECS["ASOBIBAR"],
         ],
+        "adjacent_formats": ADJACENT_FORMAT_SPECS,
         "all_domestic_stores": all_domestic_profiles,
         "current_slot": current_slot_info,
         "min_women_eval": MIN_WOMEN_FOR_RATIO_EVAL,
