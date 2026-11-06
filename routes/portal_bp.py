@@ -166,6 +166,14 @@ def _render_brand_page(brand_slug):
         total_w = sum(x['women'] for x in matched)
         total_m = sum(x['men'] for x in matched)
         import affiliate_manager
+        import price_comparison
+        brand_code_map = {
+            'oriental-lounge': 'OLG',
+            'ag': 'ag',
+            'jis': 'JIS',
+            'asobibar': 'ASOBIBAR',
+        }
+        brand_spec = price_comparison.BRAND_PRICE_SPECS.get(brand_code_map.get(brand_slug, ''))
         surface_smart_cta = affiliate_manager.build_surface_smart_cta(
             matched,
             source_path=f"/{brand_slug}",
@@ -176,6 +184,7 @@ def _render_brand_page(brand_slug):
         return render_template(
             'brand_page.html',
             brand=brand,
+            brand_spec=brand_spec,
             stores=matched,
             store_count=len(matched),
             total_women=total_w,
@@ -418,6 +427,47 @@ def store_detail_page(store_slug):
             except Exception:
                 pass
 
+        related_guides = []
+        if brand_slug:
+            related_guides.append({
+                'href': f'/{brand_slug}',
+                'title': f'{brand_label}全店の現在人数・料金早見一覧',
+            })
+        if area_slug == 'shinjuku' or '新宿' in sname:
+            related_guides.append({
+                'href': '/guide/shinjuku',
+                'title': '新宿の相席ラウンジ3店舗データ比較｜東口2店と西新宿の使い分け',
+            })
+        elif area_slug in ('osaka', 'umeda', 'namba'):
+            try:
+                _osaka_item = core.scheduled_articles.get_article_by_slug('osaka-kita-vs-minami')
+                if _osaka_item and core.scheduled_articles.is_published(_osaka_item):
+                    related_guides.append({
+                        'href': '/guide/osaka-kita-vs-minami',
+                        'title': '大阪キタ（梅田）vsミナミ（難波・心斎橋）実測データ徹底比較',
+                    })
+            except Exception:
+                pass
+        related_guides.extend([
+            {
+                'href': '/guide/brand-comparison',
+                'title': 'オリエンタルラウンジ・ag（アグ）・JIS（ジス）徹底比較ガイド',
+            },
+            {
+                'href': '/guide/solo-vs-pair',
+                'title': '男性1人（ソロ）入店vs2人組の料金・相席率データ検証',
+            },
+            {
+                'href': '/guide/dress-code-cleanliness',
+                'title': '服装規定（ドレスコード）と距離70cmの清潔感チェック',
+            },
+            {
+                'href': '/guide/lounge-vs-screened-date',
+                'title': '相席ラウンジvs審査制1対1デート 時間帯・予算別の期待値比較',
+            },
+        ])
+        related_guides = related_guides[:5]
+
         return render_template(
             'store_detail.html',
             store=store_obj,
@@ -431,6 +481,7 @@ def store_detail_page(store_slug):
             area_slug=area_slug,
             nearby_stores=nearby_stores,
             nearby_comparison=nearby_comparison,
+            related_guides=related_guides,
             jp_holidays=sorted(store_hours.JP_HOLIDAYS),
             last_updated=last_updated,
             is_staff=bool(session.get('is_staff')),

@@ -77,6 +77,7 @@ def _compute_weekly_report(now_utc: datetime.datetime):
 
     items = []
     sqlite_items = []
+    should_cache_report = True
 
     # 1. Fast Path: Read from local SQLite database in milliseconds
     try:
@@ -89,10 +90,28 @@ def _compute_weekly_report(now_utc: datetime.datetime):
 
     # 2. Fallback: Query Google Sheets via gviz API if local SQLite doesn't have enough multi-day data
     if not items and os.environ.get("DISABLE_SHEETS") == "1":
-        if len(sqlite_items) >= 20:
+        if sqlite_items:
             items = sqlite_items
+            should_cache_report = len(sqlite_items) >= 20
         else:
-            return {"error": "Google Sheets Disabled"}
+            # Cold-start / offline-test fallback from in-memory live snapshot (uncached so real history replaces immediately)
+            should_cache_report = False
+            try:
+                import app as _app_mod
+                snap_ts = (end_date - datetime.timedelta(hours=8)).strftime("%Y-%m-%d 21:00:00")
+                with _app_mod.data_lock:
+                    live_rows = list(_app_mod.latest_data.get("full_data") or [])
+                for st in live_rows:
+                    if isinstance(st, dict) and st.get("name"):
+                        items.append({
+                            "ts": snap_ts,
+                            "name": str(st.get("name")),
+                            "men": int(st.get("men") or 0),
+                            "women": int(st.get("women") or 0),
+                            "source": str(st.get("source") or ""),
+                        })
+            except Exception:
+                pass
 
     if not items:
         import logger
@@ -158,7 +177,7 @@ def _compute_weekly_report(now_utc: datetime.datetime):
                 else:
                     return {"error": f"Failed to fetch data: {str(e)}"}
 
-    if not items:
+    if not items and os.environ.get("DISABLE_SHEETS") != "1":
         return {"error": "No data found for the last 7 days"}
 
     store_data = defaultdict(lambda: {
@@ -382,7 +401,8 @@ def _compute_weekly_report(now_utc: datetime.datetime):
             'description': s_desc,
         })
 
-    _report_cache['data'] = report
-    _report_cache['last_fetched'] = datetime.datetime.now()
-    _report_cache_db_path = local_db.DB_PATH
+    if should_cache_report:
+        _report_cache['data'] = report
+        _report_cache['last_fetched'] = datetime.datetime.now()
+        _report_cache_db_path = local_db.DB_PATH
     return report

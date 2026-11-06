@@ -378,6 +378,7 @@ def _build_offer_breakdown(stats: dict, stats_7d: dict, days: int) -> list:
             top_ref_path = "-"
             top_ref_title = "未発生（これからの導線強化枠）"
 
+        confirmed_epc = round(meta["epc_yen"] * 0.30)
         rows.append({
             "category_key": ck,
             "category": meta["pattern"],
@@ -393,6 +394,10 @@ def _build_offer_breakdown(stats: dict, stats_7d: dict, days: int) -> list:
             "trend_7d_label": trend_label,
             "est_epc_yen": meta["epc_yen"],
             "est_revenue_yen": clicks * meta["epc_yen"],
+            "confirmed_epc_yen": confirmed_epc,
+            "est_confirmed_revenue_yen": clicks * confirmed_epc,
+            "epc_sample_status": "sample_sufficient" if total_clicks >= 500 else "accumulating",
+            "epc_basis": "assumed_fixed",
             "top_source_path": top_ref_path,
             "top_source_title": top_ref_title,
             "recommended_link": meta["primary_link"],

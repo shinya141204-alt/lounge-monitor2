@@ -473,6 +473,10 @@ def describe_inflow_tag(tag: str) -> str:
         return "𝕏 X 新着コラム解禁スレッド"
     if t == 'x_wk':
         return "𝕏 X 日曜・週間データ白書スレッド"
+    if t == 'push_watch':
+        return "🔔 条件ウォッチWebプッシュ通知（リピート再訪）"
+    if t == 'line_bot':
+        return "💬 公式LINE自動応答Bot（リピート再訪）"
     if t.startswith('ig'):
         return f"📸 Instagram（{t}）"
     return f"📥 外部SNS流入（{t}）"
@@ -784,10 +788,15 @@ def summary(days=7, allow_blocking=True):
             'ctr_pct': min(100.0, round((clk_c / imp_c) * 100, 2)) if imp_c > 0 else 0.0,
         })
 
-    # Estimated revenue simulation (AdSense RPM ~350 yen / 1,000 PV, Affiliate ~90 yen expected value per click = 3% CVR * 3,000 yen)
+    # Estimated revenue simulation:
+    #   - Gross expected value (`est_aff_yen`): ~90 yen/click (occurrence basis across high-ticket trials & apps)
+    #   - Net confirmed value (`est_confirmed_aff_yen`): ~30 yen/click conservative industry median after approval rate
     est_adsense_yen = round(pv_total * 0.35)
     est_aff_yen = round(aff_total * 90)
+    est_confirmed_epc_yen = 30
+    est_confirmed_aff_yen = round(aff_total * est_confirmed_epc_yen)
     est_total_yen = est_adsense_yen + est_aff_yen
+    est_confirmed_total_yen = est_adsense_yen + est_confirmed_aff_yen
     if days <= 1 or not by_day:
         pace_denom_days = max(1, days) if not by_day else 1
     else:
@@ -798,12 +807,20 @@ def summary(days=7, allow_blocking=True):
         except ValueError:
             pace_denom_days = max(1, len(by_day))
     est_monthly_pace_yen = round((est_total_yen / pace_denom_days) * 30)
+    est_confirmed_monthly_pace_yen = round((est_confirmed_total_yen / pace_denom_days) * 30)
 
     revenue = {
         'est_adsense_yen': est_adsense_yen,
         'est_aff_yen': est_aff_yen,
         'est_total_yen': est_total_yen,
         'est_monthly_pace_yen': est_monthly_pace_yen,
+        'est_confirmed_epc_yen': est_confirmed_epc_yen,
+        'est_confirmed_aff_yen': est_confirmed_aff_yen,
+        'est_confirmed_total_yen': est_confirmed_total_yen,
+        'est_confirmed_monthly_pace_yen': est_confirmed_monthly_pace_yen,
+        'epc_sample_status': 'sample_sufficient' if aff_total >= 500 else 'accumulating',
+        'epc_basis': 'assumed_fixed',
+        'epc_note': '発生期待EPC 90円/click・承認考慮後の実勢確定EPC目安 25〜35円/click（基準30円）',
         'pace_denom_days': pace_denom_days,
     }
 
@@ -882,5 +899,7 @@ def reset_for_tests():
         turbo_store.clear_rate_limit('aff_clk_ip')
         turbo_store.clear_rate_limit('api_track')
         turbo_store.clear_rate_limit('api_track_ip')
+        turbo_store.clear_rate_limit('push_sub_ip')
+        turbo_store.clear_rate_limit('push_unsub_ip')
     except Exception:
         pass

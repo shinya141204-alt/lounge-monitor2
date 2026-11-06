@@ -103,9 +103,9 @@ def _build_release_markdown(payload: dict) -> str:
     arenas = payload.get("upcoming_arena_events") or []
 
     lines = [
-        f"# 【{month} 一次統計レポート】全国相席ラウンジ・相席バー 実測混雑＆男女比データ白書（直近{days}日集計）",
+        f"# 【{month} 一次統計レポート】全国相席ラウンジ統計データ白書（直近{days}日集計）",
         "",
-        f"- **調査主体**: 相席ナビ編集部（編集長：くわもん）",
+        f"- **調査主体**: 相席ナビ編集部（監修：くわもん（相席ナビ編集長））",
         f"- **集計基準時刻**: {as_of}",
         f"- **集計対象**: 国内主要ブランド（オリエンタルラウンジ、ag（アグ）、JIS（ジス）、ASOBIBAR（アソビバー）、ヤタコイ ほか）実測有効 {store_cnt} 店舗",
         f"- **総観測サンプル数**: {total_samples:,} スナップショット" if total_samples else "- **総観測サンプル数**: 集計中",
@@ -114,25 +114,33 @@ def _build_release_markdown(payload: dict) -> str:
         "",
         "---",
         "",
-        f"## 1. 直近{days}日間の女性最大入店数（ピーク盛り上がり）上位店舗",
+        f"## 1. 直近{days}日間の女性最大入店数（ピーク観測値）上位店舗",
         "",
     ]
+    has_spike_outlier = False
     if top_peak:
         lines.append("| 順位 | 店舗名 | エリア | 女性ピーク人数 | 女性平均人数 | 男性平均人数 | 平均女性比率 | 観測件数 |")
         lines.append("| :--- | :--- | :--- | ---: | ---: | ---: | ---: | ---: |")
         for idx, s in enumerate(top_peak[:10], 1):
             wpct = f"{s['avg_female_ratio_pct']:.1f}%" if s.get("avg_female_ratio_pct") is not None else "-"
-            aw = f"{s['avg_women']:.1f}名" if s.get("avg_women") is not None else "-"
+            aw_val = s.get("avg_women")
+            pw_val = s.get("peak_women")
+            is_spike = bool(aw_val and pw_val and aw_val > 0 and pw_val >= aw_val * 8 and (s.get("sample_count") or 0) < 1000)
+            if is_spike:
+                has_spike_outlier = True
+            aw = f"{aw_val:.1f}名" if aw_val is not None else "-"
             am = f"{s['avg_men']:.1f}名" if s.get("avg_men") is not None else "-"
-            pw = f"{s['peak_women']}名" if s.get("peak_women") is not None else "-"
+            pw = f"{pw_val}名（※）" if (pw_val is not None and is_spike) else (f"{pw_val}名" if pw_val is not None else "-")
             lines.append(
                 f"| {idx} | [{s['store_name']}]({s['store_url']}) | {s.get('area_label') or '-'} | "
                 f"{pw} | {aw} | {am} | {wpct} | {s.get('sample_count', 0):,} |"
             )
+        if has_spike_outlier:
+            lines.extend(["", "※ピーク値が期間平均の8倍以上かつ観測件数1,000件未満の店舗は単発イベント・一時観測値を含むため参考値として併記しています。"])
     else:
         lines.append("現在、対象期間の実測スナップショットを集計中です。")
 
-    lines.extend(["", "## 2. 平均女性比率が安定している注目店舗（平均女性10名以上対象）", ""])
+    lines.extend(["", "## 2. 平均女性比率が高い注目店舗（平均女性10名以上対象）", ""])
     if top_ratio:
         for idx, s in enumerate(top_ratio[:5], 1):
             lines.append(
@@ -160,7 +168,9 @@ def _build_release_markdown(payload: dict) -> str:
             vname = ev.get("venue_name") or ev.get("venue") or ""
             title = ev.get("title") or ev.get("event_title") or ""
             area = ev.get("impact_area") or ev.get("nearest_area") or ""
-            lines.append(f"- **{edate}**｜{vname}：『{title}』{f'（周辺注目エリア: {area}）' if area else ''}")
+            src_u = ev.get("source_url") or ""
+            src_part = f"（出典: {src_u}）" if src_u else ""
+            lines.append(f"- **{edate}**｜{vname}：『{title}』{f'（周辺注目エリア: {area}）' if area else ''}{src_part}")
 
     lines.extend([
         "",
@@ -180,19 +190,19 @@ def _build_citation_kit(payload: dict) -> str:
     days = payload["window_days"]
     store_cnt = payload["domestic_store_count"]
     total_samples = payload["total_samples"]
-    top1 = (payload.get("top_peak_women_stores") or [None])[0]
-    top1_title = top1["store_name"] if top1 else "全国主要店舗"
-    top1_val = str(top1["peak_women"]) if (top1 and top1.get("peak_women") is not None) else "-"
+    top_r = (payload.get("top_female_ratio_stores") or [None])[0]
+    top_r_title = top_r["store_name"] if top_r else "全国主要店舗"
+    top_r_val = f"{top_r['avg_female_ratio_pct']:.1f}" if (top_r and top_r.get("avg_female_ratio_pct") is not None) else "-"
 
     return f"""# {month} 一次統計 引用キット（CC BY 4.0）
 
 ## 1. 1行クレジット表記（SNS・YouTube概要欄・note用）
-出典：相席ナビ編集部「全国相席ラウンジ実測混雑データ白書（{month}・国内{store_cnt}店舗集計）」 https://aiseki-navi.com/stats
+出典：相席ナビ編集部「全国相席ラウンジ統計データ白書（{month}・国内{store_cnt}店舗集計）」 https://aiseki-navi.com/stats （CC BY 4.0）
 
 ## 2. Markdown 引用スニペット（ブログ・note・Qiita・Zenn用）
 ```markdown
-> 出典：[相席ナビ編集部「全国相席ラウンジ・相席バー実測統計データ（直近{days}日・n={total_samples:,}）」](https://aiseki-navi.com/stats)（CC BY 4.0）
-> - 生データCSV：https://aiseki-navi.com/stats/monthly.csv?days={days}
+> 出典：[相席ナビ編集部「全国相席ラウンジ統計データ白書（直近{days}日・n={total_samples:,}）」](https://aiseki-navi.com/stats)（CC BY 4.0）
+> - 一次統計CSV：https://aiseki-navi.com/stats/monthly.csv?days={days}
 > - 年末統計白書：https://aiseki-navi.com/stats/year-end-2026
 ```
 
@@ -200,20 +210,20 @@ def _build_citation_kit(payload: dict) -> str:
 ```html
 <blockquote cite="https://aiseki-navi.com/stats">
   <p>全国{store_cnt}店舗のリアルタイム入店数・男女比・60分後予測データを継続観測（直近{days}日間・総観測 n={total_samples:,}）。</p>
-  <footer>出典：<a href="https://aiseki-navi.com/stats" rel="noopener">相席ナビ編集部（AISEKI NAVI 一次統計データ白書）</a> ／ ライセンス：<a href="https://creativecommons.org/licenses/by/4.0/" rel="license noopener">CC BY 4.0</a></footer>
+  <footer>出典：<a href="https://aiseki-navi.com/stats" rel="noopener">相席ナビ編集部「全国相席ラウンジ統計データ白書」</a> ／ ライセンス：<a href="https://creativecommons.org/licenses/by/4.0/" rel="license noopener">CC BY 4.0</a></footer>
 </blockquote>
 ```
 
-## 4. 16:9 図解アイキャッチ生成コマンド例
+## 4. 編集部用：16:9 図解アイキャッチ生成メモ（※外部配布時は除外）
 ```bash
 python3 .agents/skills/article/scripts/render_editorial_eyecatch.py \\
   --slug "data-release-{month}" \\
   --cat "MONTHLY STATS" \\
   --sample "LOG n = {total_samples:,}" \\
-  --title "{month} 全国相席ラウンジ実測統計白書" \\
-  --sub "国内{store_cnt}店舗のピーク人数・男女比率・ドーム終演相関レポート" \\
-  --k1-kicker "MONITORED" --k1-head "集計対象店舗" --k1-val "{store_cnt}" --k1-unit "店" --k1-desc "国内主要ブランド横断" \\
-  --k2-kicker "PEAK TOP" --k2-head "{top1_title}" --k2-val "{top1_val}" --k2-unit "名" --k2-desc "直近{days}日 女性最大入店" \\
+  --title "{month} 全国相席ラウンジ統計データ白書" \\
+  --sub "国内{store_cnt}店舗のピーク人数・男女比率・60分後予測検証レポート" \\
+  --k1-kicker "MONITORED" --k1-head "国内実測有効店舗" --k1-val "{store_cnt}" --k1-unit "店" --k1-desc "主要ブランド横断集計" \\
+  --k2-kicker "TOP RATIO" --k2-head "{top_r_title}" --k2-val "{top_r_val}" --k2-unit "%" --k2-desc "直近{days}日 平均女性比率1位" \\
   --k3-kicker "OPEN DATA" --k3-head "CC BY 4.0" --k3-val "CSV" --k3-unit "公開" --k3-desc "/stats/monthly.csv"
 ```
 """

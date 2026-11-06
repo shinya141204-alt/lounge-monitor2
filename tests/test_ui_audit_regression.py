@@ -110,8 +110,8 @@ class UiAuditRegressionTests(unittest.TestCase):
         expected_app_js = "/static/app.js?v=20261107_1"
         expected_aff_js = "/static/affiliate_config.js?v=17"
         expected_style = "/static/style.css?v=20261030_6"
-        expected_sw_url = "/sw.js?v=99"
-        expected_cache_name = "aiseki-navi-v99"
+        expected_sw_url = "/sw.js?v=100"
+        expected_cache_name = "aiseki-navi-v100"
 
         templates_dir = os.path.join(PROJECT_ROOT, "templates")
         calm_seen = 0
@@ -158,7 +158,7 @@ class UiAuditRegressionTests(unittest.TestCase):
         self.assertEqual(app_js_seen, 2)  # preload + defer script in index.html
         self.assertEqual(aff_js_seen, 1)  # defer script in index.html
         self.assertGreaterEqual(style_seen, 34)
-        self.assertEqual(sw_reg_seen, 2)  # index.html + _nav_loader.html
+        self.assertEqual(sw_reg_seen, 3)  # index.html + _nav_loader.html + store_detail.html
 
         sw_path = os.path.join(PROJECT_ROOT, "static", "sw.js")
         with open(sw_path, "r", encoding="utf-8") as fp:

@@ -52,12 +52,20 @@
           },
           {
             "@type": "Question",
-            "name": "{{ brand.name }}で男性の待ち時間を避けて相席するコツは？",
+            "name": {{ (brand.name ~ "で男性の待ち時間を避けて相席するコツは？") | tojson }},
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "{{ brand.faq_tip }}"
+              "text": {{ brand.faq_tip | tojson }}
             }
-          }
+          }{% if brand_spec %},
+          {
+            "@type": "Question",
+            "name": {{ (brand.name ~ "の料金システム・男性1人（ソロ）入店可否・女性料金は？") | tojson }},
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": {{ (brand.name ~ "の男性料金はチャージ「" ~ brand_spec.charge_str ~ "」、相席時は平日「" ~ brand_spec.weekday_10m_str ~ "」・週末「" ~ brand_spec.weekend_10m_str ~ "」、待機時は「" ~ brand_spec.wait_fee_str ~ "」が目安です。男性1名（ソロ）入店規定は「" ~ brand_spec.solo_rule ~ "」となっており、女性は「" ~ brand_spec.default_women_perk ~ "」で利用できます（来店前に各店公式案内もご確認ください）。") | tojson }}
+            }
+          }{% endif %}
         ]
       }
     ]
@@ -296,6 +304,7 @@
             <a href="/oriental-lounge" class="brand-tab {% if brand.slug == 'oriental-lounge' %}active{% endif %}">オリエンタルラウンジ全店</a>
             <a href="/ag" class="brand-tab {% if brand.slug == 'ag' %}active{% endif %}">ag（アグ）全店</a>
             <a href="/jis" class="brand-tab {% if brand.slug == 'jis' %}active{% endif %}">JIS（ジス）全店</a>
+            <a href="/asobibar" class="brand-tab {% if brand.slug == 'asobibar' %}active{% endif %}">ASOBIBAR（アソビバー）全店</a>
             <a href="/" class="brand-tab">全国総合ランキングへ戻る</a>
         </div>
 
@@ -351,14 +360,56 @@
 
         {% include '_surface_smart_cta.html' %}
 
+        {% if brand_spec %}
+        <section class="guide-box" aria-label="{{ brand.name }}の料金システム・対象年齢・1人入店規定">
+            <h2>{{ brand.name }} 料金システム・対象年齢・1人入店ルール早見表</h2>
+            <div style="overflow-x: auto; margin-top: 10px;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 0.84rem; font-variant-numeric: tabular-nums;">
+                    <tbody>
+                        <tr style="border-bottom: 1px solid var(--border-subtle);">
+                            <th scope="row" style="text-align: left; padding: 9px 10px; width: 32%; color: var(--text-sub); font-weight: 600;">主な年齢層・雰囲気</th>
+                            <td style="padding: 9px 10px; color: var(--text-main); font-weight: 600;">{{ brand_spec.age_range }} ｜ {{ brand_spec.vibe_short }}</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid var(--border-subtle);">
+                            <th scope="row" style="text-align: left; padding: 9px 10px; color: var(--text-sub); font-weight: 600;">男性テーブルチャージ</th>
+                            <td style="padding: 9px 10px; color: var(--text-main);">{{ brand_spec.charge_str }}</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid var(--border-subtle);">
+                            <th scope="row" style="text-align: left; padding: 9px 10px; color: var(--text-sub); font-weight: 600;">男性 平日料金目安</th>
+                            <td style="padding: 9px 10px; color: var(--text-main);">{{ brand_spec.weekday_10m_str }}（60分目安：{{ brand_spec.est_60m_weekday_label }}）</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid var(--border-subtle);">
+                            <th scope="row" style="text-align: left; padding: 9px 10px; color: var(--text-sub); font-weight: 600;">男性 週末料金目安</th>
+                            <td style="padding: 9px 10px; color: var(--text-main);">{{ brand_spec.weekend_10m_str }}（60分目安：{{ brand_spec.est_60m_weekend_label }}）</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid var(--border-subtle);">
+                            <th scope="row" style="text-align: left; padding: 9px 10px; color: var(--text-sub); font-weight: 600;">男性 単独（待機）料金</th>
+                            <td style="padding: 9px 10px; color: var(--text-main);">{{ brand_spec.wait_fee_str }}</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid var(--border-subtle);">
+                            <th scope="row" style="text-align: left; padding: 9px 10px; color: var(--text-sub); font-weight: 600;">男性1人（ソロ）入店</th>
+                            <td style="padding: 9px 10px; color: var(--text-main); font-weight: 600;">{{ brand_spec.solo_rule }}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row" style="text-align: left; padding: 9px 10px; color: var(--text-sub); font-weight: 600;">女性料金・特典</th>
+                            <td style="padding: 9px 10px; color: var(--women); font-weight: 600;">{{ brand_spec.default_women_perk }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+        {% endif %}
+
         <section class="guide-box">
             <h2>{{ brand.name }}の客層・年齢層と「待ち時間」を回避する立ち回り</h2>
             <p>{{ brand.strategy_text_1 }}</p>
             <p>{{ brand.strategy_text_2 }}</p>
             <div style="margin-top: 14px; display: flex; flex-wrap: wrap; gap: 14px;">
                 <a href="/price-comparison" style="color: var(--accent-text); font-size: 0.84rem; font-weight: 600; text-decoration: none;">店舗別の4時間帯料金・単独料金・イベント比較を見る ›</a>
-                <a href="/guide/brand-comparison" style="color: var(--accent-text); font-size: 0.84rem; font-weight: 600; text-decoration: none;">3大ブランドの比較コラムを見る ›</a>
-                <a href="/guide/weekday-strategy" style="color: var(--accent-text); font-size: 0.84rem; font-weight: 600; text-decoration: none;">曜日・時間帯別の穴場データを見る ›</a>
+                <a href="/guide/brand-comparison" style="color: var(--accent-text); font-size: 0.84rem; font-weight: 600; text-decoration: none;">主要ブランドの徹底比較コラム ›</a>
+                <a href="/guide/solo-vs-pair" style="color: var(--accent-text); font-size: 0.84rem; font-weight: 600; text-decoration: none;">男性1人入店vs2人組データ検証 ›</a>
+                <a href="/guide/dress-code-cleanliness" style="color: var(--accent-text); font-size: 0.84rem; font-weight: 600; text-decoration: none;">服装規定・清潔感チェック ›</a>
+                <a href="/guide/weekday-strategy" style="color: var(--accent-text); font-size: 0.84rem; font-weight: 600; text-decoration: none;">曜日・時間帯別の穴場データ ›</a>
             </div>
         </section>
         </main>

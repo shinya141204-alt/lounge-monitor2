@@ -435,6 +435,22 @@ def _create_moat_rollup_tables_on_cursor(cur, is_pg: bool):
         );
     """)
     cur.execute("CREATE INDEX IF NOT EXISTS idx_watch_intents_store_ts ON store_watch_intents(store_name, timestamp);")
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS web_push_subscriptions (
+            endpoint_hash TEXT PRIMARY KEY,
+            endpoint TEXT NOT NULL,
+            p256dh TEXT NOT NULL,
+            auth TEXT NOT NULL,
+            store_name TEXT NOT NULL,
+            target_cond TEXT NOT NULL,
+            ip_hash TEXT,
+            created_at TEXT NOT NULL,
+            expires_at TEXT NOT NULL,
+            last_notified_at TEXT
+        );
+    """)
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_web_push_store_exp ON web_push_subscriptions(store_name, expires_at);")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_web_push_endpoint ON web_push_subscriptions(endpoint);")
 
 
 def _ensure_moat_rollup_schema() -> bool:
@@ -2222,6 +2238,14 @@ def prune_old_logs(monitor_days: int = 90, vote_days: int = 14) -> dict:
                             "UPDATE store_watch_intents SET ip_hash = '' WHERE timestamp < %s AND ip_hash IS NOT NULL AND ip_hash != ''",
                             (vote_cutoff,),
                         )
+                        cur.execute(
+                            "DELETE FROM web_push_subscriptions WHERE expires_at < %s",
+                            (now_jst.strftime("%Y-%m-%d %H:%M:%S"),),
+                        )
+                        cur.execute(
+                            "UPDATE web_push_subscriptions SET ip_hash = '' WHERE created_at < %s AND ip_hash IS NOT NULL AND ip_hash != ''",
+                            (vote_cutoff,),
+                        )
                     except Exception:
                         pass
                 conn.commit()
@@ -2247,6 +2271,14 @@ def prune_old_logs(monitor_days: int = 90, vote_days: int = 14) -> dict:
                     try:
                         cur.execute(
                             "UPDATE store_watch_intents SET ip_hash = '' WHERE timestamp < ? AND ip_hash IS NOT NULL AND ip_hash != ''",
+                            (vote_cutoff,),
+                        )
+                        cur.execute(
+                            "DELETE FROM web_push_subscriptions WHERE expires_at < ?",
+                            (now_jst.strftime("%Y-%m-%d %H:%M:%S"),),
+                        )
+                        cur.execute(
+                            "UPDATE web_push_subscriptions SET ip_hash = '' WHERE created_at < ? AND ip_hash IS NOT NULL AND ip_hash != ''",
                             (vote_cutoff,),
                         )
                     except Exception:
@@ -2771,6 +2803,282 @@ def get_watch_intent_counts(store_name: str = None, hours: int = 6) -> dict:
         return {str(r[0]): int(r[1] or 0) for r in rows}
     except Exception:
         return {"store_name": canon, "watching_count": 0} if canon else {}
+
+
+def _push_sub_hash(endpoint: str, store_name: str) -> str:
+    import hashlib
+    return hashlib.sha256(f"{endpoint}|{store_name}".encode("utf-8")).hexdigest()
+
+
+def upsert_web_push_subscription(
+    endpoint: str,
+    p256dh: str,
+    auth: str,
+    store_name: str,
+    target_cond: str = "female_55",
+    ip_hash: str = "",
+    ttl_days: int = 30,
+    max_per_endpoint: int = 5,
+    record_watch_intent: bool = False,
+) -> tuple[bool, str]:
+    """Persist or update a browser Web Push subscription for a store condition watch."""
+    _ensure_moat_rollup_schema()
+    canon = resolve_canonical_store_name(store_name) if store_name else ""
+    if not endpoint or not p256dh or not auth or not canon:
+        return False, "invalid_params"
+    if target_cond not in ("female_55", "zero_wait", "evening_peak"):
+        return False, "invalid_cond"
+
+    now_jst = datetime.datetime.now(_JST_TZ).replace(tzinfo=None)
+    now_str = now_jst.strftime("%Y-%m-%d %H:%M:%S")
+    exp_str = (now_jst + datetime.timedelta(days=max(1, min(90, int(ttl_days))))).strftime("%Y-%m-%d %H:%M:%S")
+    ep_hash = _push_sub_hash(endpoint, canon)
+    clean_ip = str(ip_hash or "")[:64]
+
+    try:
+        existing_rows = _fetch_all_rows(
+            "SELECT store_name, endpoint_hash FROM web_push_subscriptions WHERE endpoint = ? AND expires_at >= ?",
+            (endpoint, now_str),
+        )
+        existing_stores = {str(r[0]): str(r[1]) for r in existing_rows}
+        is_new_store_sub = canon not in existing_stores
+        if is_new_store_sub and len(existing_stores) >= max_per_endpoint:
+            # Evict oldest active store subscription for this endpoint so user never hits an unexpected wall
+            oldest_rows = _fetch_all_rows(
+                "SELECT endpoint_hash FROM web_push_subscriptions WHERE endpoint = ? AND expires_at >= ? ORDER BY created_at ASC LIMIT 1",
+                (endpoint, now_str),
+            )
+            if oldest_rows:
+                old_h = str(oldest_rows[0][0])
+                if _is_pg():
+                    with turbo_store.pg_connection() as conn:
+                        with conn.cursor() as cur:
+                            cur.execute("DELETE FROM web_push_subscriptions WHERE endpoint_hash = %s", (old_h,))
+                        conn.commit()
+                else:
+                    with _db_lock:
+                        conn = get_connection()
+                        try:
+                            conn.execute("DELETE FROM web_push_subscriptions WHERE endpoint_hash = ?", (old_h,))
+                            conn.commit()
+                        finally:
+                            conn.close()
+
+        if _is_pg():
+            with turbo_store.pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """
+                        INSERT INTO web_push_subscriptions
+                            (endpoint_hash, endpoint, p256dh, auth, store_name, target_cond, ip_hash, created_at, expires_at, last_notified_at)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, NULL)
+                        ON CONFLICT (endpoint_hash) DO UPDATE SET
+                            p256dh = EXCLUDED.p256dh,
+                            auth = EXCLUDED.auth,
+                            target_cond = EXCLUDED.target_cond,
+                            expires_at = EXCLUDED.expires_at
+                        """,
+                        (ep_hash, endpoint, p256dh, auth, canon, target_cond, clean_ip, now_str, exp_str),
+                    )
+                conn.commit()
+        else:
+            with _db_lock:
+                conn = get_connection()
+                try:
+                    conn.execute(
+                        """
+                        INSERT INTO web_push_subscriptions
+                            (endpoint_hash, endpoint, p256dh, auth, store_name, target_cond, ip_hash, created_at, expires_at, last_notified_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
+                        ON CONFLICT(endpoint_hash) DO UPDATE SET
+                            p256dh = excluded.p256dh,
+                            auth = excluded.auth,
+                            target_cond = excluded.target_cond,
+                            expires_at = excluded.expires_at
+                        """,
+                        (ep_hash, endpoint, p256dh, auth, canon, target_cond, clean_ip, now_str, exp_str),
+                    )
+                    conn.commit()
+                finally:
+                    conn.close()
+        if record_watch_intent and is_new_store_sub:
+            try:
+                add_watch_intent(canon, target_cond=target_cond, ip_hash=clean_ip)
+            except Exception:
+                pass
+        return True, ep_hash
+    except Exception as err:
+        print(f"[local_db] upsert_web_push_subscription error: {err}", file=sys.stderr)
+        return False, "db_error"
+
+
+def delete_web_push_subscription(endpoint: str, store_name: str = None) -> int:
+    """Remove a browser Web Push subscription (single store or all stores for `endpoint`)."""
+    _ensure_moat_rollup_schema()
+    if not endpoint:
+        return 0
+    canon = resolve_canonical_store_name(store_name) if store_name else None
+    try:
+        if _is_pg():
+            with turbo_store.pg_connection() as conn:
+                with conn.cursor() as cur:
+                    if canon:
+                        cur.execute(
+                            "DELETE FROM web_push_subscriptions WHERE endpoint_hash = %s",
+                            (_push_sub_hash(endpoint, canon),),
+                        )
+                    else:
+                        cur.execute("DELETE FROM web_push_subscriptions WHERE endpoint = %s", (endpoint,))
+                    removed = max(0, cur.rowcount or 0)
+                conn.commit()
+                return removed
+        with _db_lock:
+            conn = get_connection()
+            try:
+                cur = conn.cursor()
+                if canon:
+                    cur.execute(
+                        "DELETE FROM web_push_subscriptions WHERE endpoint_hash = ?",
+                        (_push_sub_hash(endpoint, canon),),
+                    )
+                else:
+                    cur.execute("DELETE FROM web_push_subscriptions WHERE endpoint = ?", (endpoint,))
+                removed = max(0, cur.rowcount or 0)
+                conn.commit()
+                return removed
+            finally:
+                conn.close()
+    except Exception:
+        return 0
+
+
+def get_active_web_push_subscriptions(
+    limit: int = 300,
+    cooldown_cutoff_str: str = None,
+    now_str: str = None,
+) -> list[dict]:
+    """Return bounded active Web Push subscriptions (`expires_at >= now`), oldest-unnotified first."""
+    _ensure_moat_rollup_schema()
+    active_now = now_str or datetime.datetime.now(_JST_TZ).replace(tzinfo=None).strftime("%Y-%m-%d %H:%M:%S")
+    lim = max(1, min(1000, int(limit or 300)))
+    try:
+        if cooldown_cutoff_str:
+            rows = _fetch_all_rows(
+                "SELECT endpoint_hash, endpoint, p256dh, auth, store_name, target_cond, last_notified_at "
+                "FROM web_push_subscriptions "
+                "WHERE expires_at >= ? AND (last_notified_at IS NULL OR last_notified_at = '' OR last_notified_at < ?) "
+                "ORDER BY COALESCE(last_notified_at, '') ASC, created_at ASC LIMIT ?",
+                (active_now, str(cooldown_cutoff_str), lim),
+            )
+        else:
+            rows = _fetch_all_rows(
+                "SELECT endpoint_hash, endpoint, p256dh, auth, store_name, target_cond, last_notified_at "
+                "FROM web_push_subscriptions "
+                "WHERE expires_at >= ? "
+                "ORDER BY COALESCE(last_notified_at, '') ASC, created_at ASC LIMIT ?",
+                (active_now, lim),
+            )
+        return [
+            {
+                "endpoint_hash": str(r[0]),
+                "endpoint": str(r[1]),
+                "p256dh": str(r[2]),
+                "auth": str(r[3]),
+                "store_name": str(r[4]),
+                "target_cond": str(r[5]),
+                "last_notified_at": str(r[6]) if r[6] else "",
+            }
+            for r in rows
+        ]
+    except Exception:
+        return []
+
+
+def mark_web_push_notified(endpoint_hashes: list[str], notified_at_str: str = None) -> int:
+    """Update `last_notified_at` for dispatched subscriptions in safe chunks to enforce cooldown."""
+    if not endpoint_hashes:
+        return 0
+    _ensure_moat_rollup_schema()
+    ts_str = notified_at_str or datetime.datetime.now(_JST_TZ).replace(tzinfo=None).strftime("%Y-%m-%d %H:%M:%S")
+    hashes = list(dict.fromkeys(str(h) for h in endpoint_hashes if h))[:1000]
+    if not hashes:
+        return 0
+    total_cnt = 0
+    try:
+        if _is_pg():
+            with turbo_store.pg_connection() as conn:
+                with conn.cursor() as cur:
+                    for idx in range(0, len(hashes), 200):
+                        chunk = hashes[idx : idx + 200]
+                        placeholders = ",".join(["%s"] * len(chunk))
+                        cur.execute(
+                            f"UPDATE web_push_subscriptions SET last_notified_at = %s WHERE endpoint_hash IN ({placeholders})",
+                            tuple([ts_str] + chunk),
+                        )
+                        total_cnt += max(0, cur.rowcount or 0)
+                conn.commit()
+                return total_cnt
+        with _db_lock:
+            conn = get_connection()
+            try:
+                cur = conn.cursor()
+                for idx in range(0, len(hashes), 200):
+                    chunk = hashes[idx : idx + 200]
+                    placeholders = ",".join(["?"] * len(chunk))
+                    cur.execute(
+                        f"UPDATE web_push_subscriptions SET last_notified_at = ? WHERE endpoint_hash IN ({placeholders})",
+                        tuple([ts_str] + chunk),
+                    )
+                    total_cnt += max(0, cur.rowcount or 0)
+                conn.commit()
+                return total_cnt
+            finally:
+                conn.close()
+    except Exception:
+        return total_cnt
+
+
+def purge_dead_web_push_endpoints(endpoints: list[str]) -> int:
+    """Delete dead/unsubscribed endpoints (HTTP 404 / 410 Gone from Push service) in safe chunks."""
+    if not endpoints:
+        return 0
+    _ensure_moat_rollup_schema()
+    eps = list(dict.fromkeys(str(e) for e in endpoints if e))[:1000]
+    if not eps:
+        return 0
+    total_cnt = 0
+    try:
+        if _is_pg():
+            with turbo_store.pg_connection() as conn:
+                with conn.cursor() as cur:
+                    for idx in range(0, len(eps), 200):
+                        chunk = eps[idx : idx + 200]
+                        placeholders = ",".join(["%s"] * len(chunk))
+                        cur.execute(
+                            f"DELETE FROM web_push_subscriptions WHERE endpoint IN ({placeholders})",
+                            tuple(chunk),
+                        )
+                        total_cnt += max(0, cur.rowcount or 0)
+                conn.commit()
+                return total_cnt
+        with _db_lock:
+            conn = get_connection()
+            try:
+                cur = conn.cursor()
+                for idx in range(0, len(eps), 200):
+                    chunk = eps[idx : idx + 200]
+                    placeholders = ",".join(["?"] * len(chunk))
+                    cur.execute(
+                        f"DELETE FROM web_push_subscriptions WHERE endpoint IN ({placeholders})",
+                        tuple(chunk),
+                    )
+                    total_cnt += max(0, cur.rowcount or 0)
+                conn.commit()
+                return total_cnt
+            finally:
+                conn.close()
+    except Exception:
+        return total_cnt
 
 
 def get_moat_coverage_summary() -> dict:

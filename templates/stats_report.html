@@ -641,6 +641,45 @@
             <div class="stats-citation-box">
                 出典：相席ナビ編集部（監修：くわもん（相席ナビ編集長））「<a href="https://aiseki-navi.com/stats" style="color: var(--accent-text);">全国相席ラウンジ統計データ白書</a>」（https://aiseki-navi.com/stats ／ CC BY 4.0）
             </div>
+            <div style="margin-top: 14px; display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px;">
+                <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-subtle); border-radius: 10px; padding: 11px 13px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px;">
+                        <strong style="font-size: 0.78rem; color: var(--text-main);">1行クレジット（SNS・note用）</strong>
+                        <button type="button" data-copy-cite="plain" onclick="copyCitationSnippet('plain', this)" style="min-height: 36px; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border-subtle); background: transparent; color: var(--accent-text); font-size: 0.74rem; font-weight: 600; cursor: pointer;">コピー</button>
+                    </div>
+                    <code id="cite-snippet-plain" style="display: block; font-size: 0.73rem; color: var(--text-sub); line-height: 1.45; word-break: break-all;">出典：相席ナビ編集部「全国相席ラウンジ統計データ白書」 https://aiseki-navi.com/stats （CC BY 4.0）</code>
+                </div>
+                <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-subtle); border-radius: 10px; padding: 11px 13px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px;">
+                        <strong style="font-size: 0.78rem; color: var(--text-main);">Markdown形式（ブログ・Zenn用）</strong>
+                        <button type="button" data-copy-cite="md" onclick="copyCitationSnippet('md', this)" style="min-height: 36px; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border-subtle); background: transparent; color: var(--accent-text); font-size: 0.74rem; font-weight: 600; cursor: pointer;">コピー</button>
+                    </div>
+                    <code id="cite-snippet-md" style="display: block; font-size: 0.73rem; color: var(--text-sub); line-height: 1.45; word-break: break-all;">&gt; 出典：[相席ナビ編集部「全国相席ラウンジ統計データ白書」](https://aiseki-navi.com/stats)（CC BY 4.0）</code>
+                </div>
+                <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-subtle); border-radius: 10px; padding: 11px 13px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px;">
+                        <strong style="font-size: 0.78rem; color: var(--text-main);">HTML埋め込み（Webメディア用）</strong>
+                        <button type="button" data-copy-cite="html" onclick="copyCitationSnippet('html', this)" style="min-height: 36px; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border-subtle); background: transparent; color: var(--accent-text); font-size: 0.74rem; font-weight: 600; cursor: pointer;">コピー</button>
+                    </div>
+                    <code id="cite-snippet-html" style="display: block; font-size: 0.73rem; color: var(--text-sub); line-height: 1.45; word-break: break-all;">&lt;blockquote cite="https://aiseki-navi.com/stats"&gt;出典：&lt;a href="https://aiseki-navi.com/stats" rel="noopener"&gt;相席ナビ編集部「全国相席ラウンジ統計データ白書」&lt;/a&gt;（CC BY 4.0）&lt;/blockquote&gt;</code>
+                </div>
+            </div>
+            <script>
+                function copyCitationSnippet(kind, btnEl) {
+                    var el = document.getElementById('cite-snippet-' + kind);
+                    if (!el) return;
+                    var txt = el.textContent || '';
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(txt).then(function() {
+                            if (btnEl) {
+                                var orig = btnEl.textContent;
+                                btnEl.textContent = 'コピー完了';
+                                setTimeout(function() { btnEl.textContent = orig; }, 1800);
+                            }
+                        }).catch(function() {});
+                    }
+                }
+            </script>
         </section>
 
         <div style="text-align: center; margin-top: 26px;">

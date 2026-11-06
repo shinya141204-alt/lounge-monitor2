@@ -770,6 +770,10 @@
                         <button type="button" class="vote-pill-btn" data-watch-cond="evening_peak" aria-pressed="false" onclick="armStoreWatchIntent('evening_peak')" style="min-width: auto; flex: 1 1 130px; min-height: 40px; justify-content: center; font-size: 0.75rem;">女性14名以上で通知</button>
                     </div>
                     <div id="detail-watch-status" role="status" aria-live="polite" style="font-size: 0.76rem; font-weight: 600; color: var(--accent-text); margin-top: 8px; display: none;"></div>
+                    <div style="margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--border-subtle);">
+                        <button type="button" id="detail-bg-push-btn" class="vote-pill-btn" aria-pressed="false" onclick="toggleBackgroundPushWatch()" style="width: 100%; min-height: 40px; justify-content: center; font-size: 0.76rem; font-weight: 600;">画面を閉じてもブラウザ通知で受け取る（無料）</button>
+                        <p id="detail-bg-push-note" role="status" aria-live="polite" style="margin: 6px 0 0; font-size: 0.73rem; color: var(--text-sub); line-height: 1.45;">会員登録不要・完全0円。選択した条件に達した時だけスマホやPCへ通知します（1タップで解除可）。</p>
+                    </div>
                 </div>
             </div>
         </section>
@@ -782,11 +786,13 @@
                     padding-top: 14px;
                 }
             }
-            #store-first-party-signals [data-watch-cond][aria-pressed="true"] {
+            #store-first-party-signals [data-watch-cond][aria-pressed="true"],
+            #store-first-party-signals #detail-bg-push-btn[aria-pressed="true"] {
                 border-color: var(--accent-gold);
                 color: var(--accent-text);
             }
-            body.theme-light #store-first-party-signals [data-watch-cond][aria-pressed="true"] {
+            body.theme-light #store-first-party-signals [data-watch-cond][aria-pressed="true"],
+            body.theme-light #store-first-party-signals #detail-bg-push-btn[aria-pressed="true"] {
                 background: #18181b;
                 color: #ffffff;
                 border-color: #18181b;
@@ -1198,6 +1204,19 @@
                 <a href="/guide/second-venue" class="btn-secondary">2軒目の誘い方コラム ›</a>
                 <a href="/grooming" class="btn-secondary">服装・事前準備ガイド ›</a>
             </div>
+            {% if related_guides %}
+            <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-subtle);">
+                <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-sub); margin-bottom: 8px;">実測データ検証・ブランド＆エリア比較ガイド</div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 8px;">
+                    {% for rg in related_guides %}
+                    <a href="{{ rg.href }}" style="display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 12px; border-radius: 9px; border: 1px solid var(--border-subtle); color: var(--text-main); text-decoration: none; font-size: 0.81rem; font-weight: 600; line-height: 1.4;">
+                        <span>{{ rg.title }}</span>
+                        <span style="color: var(--accent-text); flex-shrink: 0;">›</span>
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
         </section>
         {% endif %}
         </main>
@@ -2332,6 +2351,10 @@
                 }
             }
 
+            const bgPushStoreSlug = {{ store.slug | tojson }};
+            const bgPushStorageKey = 'olg_bg_push_v1:' + bgPushStoreSlug;
+            let bgPushSubscribed = false;
+
             window.armStoreWatchIntent = async function(cond) {
                 if (activeWatchCond === cond) {
                     activeWatchCond = null;
@@ -2364,7 +2387,149 @@
                         cntBadge.textContent = '現在 ' + d.watching_count + '名が監視中';
                     }
                 } catch (e) {}
+                if (bgPushSubscribed) {
+                    try { await syncBackgroundPushSubscription(cond); } catch (e) {}
+                }
             };
+
+            function urlBase64ToUint8Array(base64String) {
+                const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+                const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+                const rawData = window.atob(base64);
+                const outputArray = new Uint8Array(rawData.length);
+                for (let i = 0; i < rawData.length; ++i) {
+                    outputArray[i] = rawData.charCodeAt(i);
+                }
+                return outputArray;
+            }
+
+            function renderBgPushState(isSub, noteText) {
+                bgPushSubscribed = Boolean(isSub);
+                const btn = document.getElementById('detail-bg-push-btn');
+                const note = document.getElementById('detail-bg-push-note');
+                if (btn) {
+                    btn.setAttribute('aria-pressed', bgPushSubscribed ? 'true' : 'false');
+                    btn.textContent = bgPushSubscribed
+                        ? 'ブラウザ通知を受け取り中（タップで解除）'
+                        : '画面を閉じてもブラウザ通知で受け取る（無料）';
+                }
+                if (note && noteText) {
+                    note.textContent = noteText;
+                }
+            }
+
+            async function syncBackgroundPushSubscription(condToUse) {
+                if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false;
+                const reg = await navigator.serviceWorker.register('/sw.js?v=100', { updateViaCache: 'none' });
+                await navigator.serviceWorker.ready;
+                let sub = await reg.pushManager.getSubscription();
+                if (!sub) {
+                    const keyRes = await fetch('/api/push/vapid-public-key');
+                    const keyJson = await keyRes.json();
+                    const pubKey = keyJson && (keyJson.public_key || keyJson.publicKey);
+                    if (!pubKey) throw new Error('missing_vapid');
+                    sub = await reg.pushManager.subscribe({
+                        userVisibleOnly: true,
+                        applicationServerKey: urlBase64ToUint8Array(pubKey)
+                    });
+                }
+                const subJson = sub.toJSON();
+                const targetCond = condToUse || activeWatchCond || 'female_55';
+                const saveRes = await fetch('/api/push/subscribe', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        store_name: storeCanonical,
+                        store_slug: bgPushStoreSlug,
+                        target_cond: targetCond,
+                        subscription: subJson
+                    })
+                });
+                const saveData = await saveRes.json();
+                if (!saveRes.ok || !saveData || (!saveData.ok && saveData.status !== 'success')) {
+                    throw new Error((saveData && saveData.error) || 'subscribe_failed');
+                }
+                try {
+                    localStorage.setItem(bgPushStorageKey, JSON.stringify({ cond: targetCond, ts: Date.now() }));
+                } catch (e) {}
+                return true;
+            }
+
+            window.toggleBackgroundPushWatch = async function() {
+                const btn = document.getElementById('detail-bg-push-btn');
+                if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+                    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent || '');
+                    renderBgPushState(
+                        false,
+                        isIOS
+                            ? 'iPhone・iPadはブラウザの共有メニューから「ホーム画面に追加」して開くと無料プッシュ通知が利用できます。'
+                            : 'お使いのブラウザはプッシュ通知に対応していません。このページを開いたまま自動同期をご利用ください。'
+                    );
+                    return;
+                }
+
+                if (btn) btn.disabled = true;
+                try {
+                    if (bgPushSubscribed) {
+                        const reg = await navigator.serviceWorker.getRegistration();
+                        const sub = reg ? await reg.pushManager.getSubscription() : null;
+                        if (sub) {
+                            const sj = sub.toJSON();
+                            try {
+                                await fetch('/api/push/unsubscribe', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ endpoint: sj.endpoint, store_slug: bgPushStoreSlug })
+                                });
+                            } catch (e) {}
+                        }
+                        try { localStorage.removeItem(bgPushStorageKey); } catch (e) {}
+                        renderBgPushState(false, 'この店舗のブラウザ通知を解除しました。いつでも再設定できます。');
+                        return;
+                    }
+
+                    const perm = await Notification.requestPermission();
+                    if (perm !== 'granted') {
+                        renderBgPushState(false, 'ブラウザの通知許可がオフになっています。端末またはブラウザ設定で通知を許可してください。');
+                        return;
+                    }
+
+                    const chosenCond = activeWatchCond || 'female_55';
+                    if (!activeWatchCond) {
+                        activeWatchCond = chosenCond;
+                        try {
+                            localStorage.setItem(watchStorageKey, JSON.stringify({ cond: chosenCond, ts: Date.now() }));
+                        } catch (e) {}
+                        updateWatchButtonsUI(chosenCond);
+                        refreshWatchStatusBanner({{ store.women | int }}, {{ store.men | int }}, {{ store.wpct | int }});
+                    }
+                    await syncBackgroundPushSubscription(chosenCond);
+                    renderBgPushState(true, '設定完了：' + condLabel(chosenCond) + ' に達した際、画面を閉じていても通知でお知らせします（30日間有効）。');
+                } catch (err) {
+                    renderBgPushState(false, '通知の設定に失敗しました。通信環境をご確認のうえ再度お試しください。');
+                } finally {
+                    if (btn) btn.disabled = false;
+                }
+            };
+
+            (async function restoreBgPushState() {
+                try {
+                    const savedBg = localStorage.getItem(bgPushStorageKey);
+                    if (!savedBg || !('serviceWorker' in navigator) || !('PushManager' in window)) return;
+                    const parsedBg = JSON.parse(savedBg);
+                    if (!parsedBg || (Date.now() - Number(parsedBg.ts || 0) > 30 * 24 * 3600 * 1000)) {
+                        localStorage.removeItem(bgPushStorageKey);
+                        return;
+                    }
+                    const reg = await navigator.serviceWorker.getRegistration();
+                    const sub = reg ? await reg.pushManager.getSubscription() : null;
+                    if (sub && Notification.permission === 'granted') {
+                        renderBgPushState(true, '現在「' + condLabel(parsedBg.cond || activeWatchCond || 'female_55') + '」でブラウザ通知を待機中です。');
+                    } else {
+                        localStorage.removeItem(bgPushStorageKey);
+                    }
+                } catch (e) {}
+            })();
 
             window.__onStoreDetailLiveSync = function(live, w, m, wpct) {
                 if (live && live.votes) {

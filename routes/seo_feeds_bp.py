@@ -54,6 +54,8 @@ def robots_txt():
         "Disallow: /api/data-audit\n"
         "Disallow: /api/logs\n"
         "Disallow: /api/track\n"
+        "Disallow: /api/push/\n"
+        "Disallow: /api/line/\n"
         "\n"
         for bot in ai_bots
     )
@@ -66,6 +68,8 @@ def robots_txt():
         "Disallow: /api/data-audit\n"
         "Disallow: /api/trigger-\n"
         "Disallow: /api/sns-jobs\n"
+        "Disallow: /api/push/\n"
+        "Disallow: /api/line/\n"
         "Disallow: /staff\n"
         "Disallow: /link/\n"
         "\n"

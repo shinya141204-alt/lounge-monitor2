@@ -223,6 +223,23 @@ def _bonus_alert_check_job():
         logger.error(f"[worker] Bonus alert check failed: {err}")
 
 
+def _web_push_watch_job():
+    if not turbo_store.acquire_distributed_lock("cron:web_push_watch", ttl_sec=90):
+        return
+    try:
+        import ops_governance
+        import push_watch
+        with app_module.data_lock:
+            cur_stores = ops_governance.filter_visible_stores(list(app_module.latest_data.get("full_data") or []))
+            is_seed = bool(app_module.latest_data.get("is_seed"))
+        if cur_stores and not is_seed:
+            res = push_watch.dispatch_matching_watch_pushes(cur_stores)
+            if res.get("sent"):
+                logger.info(f"[worker] Web Push watch dispatched: {res}")
+    except Exception as err:
+        logger.error(f"[worker] Web Push watch dispatch failed: {err}")
+
+
 def _pdca_autonomous_job():
     if not turbo_store.acquire_distributed_lock("cron:pdca_cycle", ttl_sec=180):
         return
@@ -326,6 +343,7 @@ def build_worker_scheduler() -> BackgroundScheduler:
     scheduler.add_job(id="events_crawl", func=_crawl_events_job, trigger="cron", hour="1,8,20", minute=0)
     scheduler.add_job(id="scheduled_articles_15m", func=_scheduled_articles_release_job, trigger="interval", minutes=15, executor="sns_ai")
     scheduler.add_job(id="bonus_alert_10m", func=_bonus_alert_check_job, trigger="interval", minutes=10, executor="sns_ai")
+    scheduler.add_job(id="web_push_watch_2m", func=_web_push_watch_job, trigger="interval", minutes=2)
     scheduler.add_job(id="x_weekly_sun", func=_x_weekly_sun_job, trigger="cron", day_of_week="sun", hour=10, minute="2,7,12,18,24", jitter=75, executor="sns_ai")
     scheduler.add_job(id="pdca_cycle", func=_pdca_autonomous_job, trigger="cron", hour="8,18", minute=35, jitter=120, executor="sns_ai")
     scheduler.add_job(id="sheets_retention", func=_sheets_retention_job, trigger="cron", hour=21, minute=20, jitter=120)

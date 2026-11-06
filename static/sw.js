@@ -1,5 +1,5 @@
-// Supersedes aiseki-navi-v47..v98 (purged automatically on activate)
-const CACHE_NAME = 'aiseki-navi-v99';
+// Supersedes aiseki-navi-v47..v99 (purged automatically on activate)
+const CACHE_NAME = 'aiseki-navi-v100';
 const SHELL_KEY = '/';
 const LIVE_FRESH_TTL_MS = 45000;
 const LIVE_MAX_STALE_MS = 600000; // Never serve live headcount HTML older than 10 minutes
@@ -342,6 +342,73 @@ self.addEventListener('fetch', (event) => {
         return cachedResponse;
       }
       return fetchPromise.catch(() => Response.error());
+    })
+  );
+});
+
+// Web Push: Zero-cost background store condition-watch notifications
+self.addEventListener('push', (event) => {
+  let payload = {
+    title: '相席ナビ｜狙い目条件のお知らせ',
+    body: 'ウォッチ登録中の店舗が希望条件に到達しました。タップして現在の人数を確認できます。',
+    url: '/?s=push_watch',
+    tag: 'aiseki-watch-alert'
+  };
+  if (event.data) {
+    try {
+      const parsed = event.data.json();
+      if (parsed && typeof parsed === 'object') {
+        payload = Object.assign(payload, parsed);
+      }
+    } catch (e) {
+      try {
+        const rawText = event.data.text();
+        if (rawText) payload.body = rawText.slice(0, 180);
+      } catch (e2) {}
+    }
+  }
+  event.waitUntil(
+    self.registration.showNotification(String(payload.title || '相席ナビ'), {
+      body: String(payload.body || ''),
+      icon: '/static/icon-192.png?v=3',
+      badge: '/static/icon-192.png?v=3',
+      tag: String(payload.tag || 'aiseki-watch-alert'),
+      renotify: true,
+      data: { url: String(payload.url || '/?s=push_watch') }
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  let targetPath = '/?s=push_watch';
+  try {
+    const rawUrl = (event.notification.data && event.notification.data.url) || '/?s=push_watch';
+    const resolved = new URL(rawUrl, self.location.origin);
+    if (resolved.origin === self.location.origin) {
+      targetPath = resolved.pathname + resolved.search + resolved.hash;
+    }
+  } catch (e) {}
+
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      for (const client of windowClients) {
+        try {
+          const cu = new URL(client.url);
+          if (cu.origin === self.location.origin && 'focus' in client) {
+            if ('navigate' in client) {
+              return client.navigate(targetPath)
+                .then((c) => (c && 'focus' in c ? c.focus() : client.focus()))
+                .catch(() => (self.clients.openWindow ? self.clients.openWindow(targetPath) : client.focus()));
+            }
+            return client.focus();
+          }
+        } catch (e) {}
+      }
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(targetPath);
+      }
+      return Promise.resolve();
     })
   );
 });
