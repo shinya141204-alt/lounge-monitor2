@@ -152,6 +152,13 @@ def _render_brand_page(brand_slug):
                 item['rank_num'] = None
         total_w = sum(x['women'] for x in matched)
         total_m = sum(x['men'] for x in matched)
+        import affiliate_manager
+        surface_smart_cta = affiliate_manager.build_surface_smart_cta(
+            matched,
+            source_path=f"/{brand_slug}",
+            surface_label=f"{brand['name']}全店",
+            allow_blocking=False,
+        )
 
         return render_template(
             'brand_page.html',
@@ -161,8 +168,18 @@ def _render_brand_page(brand_slug):
             total_women=total_w,
             total_men=total_m,
             last_updated=last_updated,
+            surface_smart_cta=surface_smart_cta,
+            is_staff=bool(session.get('is_staff')),
         )
-    return core._get_cached_html_or_render(('brand', brand_slug), _render)
+    import affiliate_manager as _am_brand
+    brand_cache_sig = (
+        'brand',
+        brand_slug,
+        _am_brand.are_slots_sharing_url('dating_bachelor', 'dating_instant', allow_blocking=False),
+        _am_brand.is_slot_monetized('women_beauty_clinic', allow_blocking=False),
+        _am_brand.is_slot_monetized('women_dating_bachelor', allow_blocking=False),
+    )
+    return core._get_cached_html_or_render(brand_cache_sig, _render)
 
 
 @portal_bp.route('/store/<store_slug>')
@@ -520,14 +537,32 @@ def stats_whitepaper():
             raw_live = list(core.latest_data.get('full_data') or [])
             last_updated = core.latest_data.get('last_updated') or '--:--'
         live_stores = ops_governance.filter_visible_stores(raw_live)
+        import affiliate_manager
+        surface_smart_cta = affiliate_manager.build_surface_smart_cta(
+            live_stores,
+            source_path='/stats',
+            surface_label='全国主要店',
+            allow_blocking=False,
+        )
         return render_template(
             'stats_report.html',
             report=report_data,
             forecast_accuracy=fc_acc,
             live_stores=live_stores,
             last_updated=last_updated,
+            surface_smart_cta=surface_smart_cta,
+            is_staff=bool(session.get('is_staff')),
         )
-    return core._get_cached_html_or_render(('stats', rep_sig, fc_sig), _render)
+    import affiliate_manager as _am_stats
+    stats_cache_sig = (
+        'stats',
+        rep_sig,
+        fc_sig,
+        _am_stats.are_slots_sharing_url('dating_bachelor', 'dating_instant', allow_blocking=False),
+        _am_stats.is_slot_monetized('women_beauty_clinic', allow_blocking=False),
+        _am_stats.is_slot_monetized('women_dating_bachelor', allow_blocking=False),
+    )
+    return core._get_cached_html_or_render(stats_cache_sig, _render)
 
 
 @portal_bp.route('/areas')
@@ -593,15 +628,34 @@ def price_comparison_page():
         live_stores = ops_governance.filter_visible_stores(raw_live)
 
         data = price_comparison.build_area_comparison_clusters(live_stores=live_stores)
+        import affiliate_manager
+        sel_cluster = next((c for c in (data.get('clusters') or []) if c.get('id') == selected_area), None)
+        cluster_stores = (sel_cluster.get('stores') if isinstance(sel_cluster, dict) else None) or live_stores
+        cluster_label = (sel_cluster.get('label') if isinstance(sel_cluster, dict) else None) or '対象エリア'
+        surface_smart_cta = affiliate_manager.build_surface_smart_cta(
+            cluster_stores,
+            source_path='/price-comparison',
+            surface_label=cluster_label,
+            area_slug=selected_area,
+            allow_blocking=False,
+        )
 
         return render_template(
             'price_comparison.html',
             data=data,
             selected_area=selected_area,
             last_updated=last_updated,
+            surface_smart_cta=surface_smart_cta,
             is_staff=bool(session.get('is_staff')),
         )
-    return core._get_cached_html_or_render(f"price_comp_{selected_area}", _render)
+    import affiliate_manager as _am_pc
+    pc_cache_sig = (
+        f"price_comp_{selected_area}",
+        _am_pc.are_slots_sharing_url('dating_bachelor', 'dating_instant', allow_blocking=False),
+        _am_pc.is_slot_monetized('women_beauty_clinic', allow_blocking=False),
+        _am_pc.is_slot_monetized('women_dating_bachelor', allow_blocking=False),
+    )
+    return core._get_cached_html_or_render(pc_cache_sig, _render)
 
 
 @portal_bp.route('/for-women')
@@ -611,6 +665,8 @@ def for_women_guide():
     import ladies_guide
     core.restore_latest_data_if_empty()
     core.trigger_background_fetch_if_needed()
+    monetized_women_clinic = affiliate_manager.is_slot_monetized('women_beauty_clinic', allow_blocking=False)
+    monetized_women_dating = affiliate_manager.is_slot_monetized('women_dating_bachelor', allow_blocking=False)
 
     def _render():
         import ops_governance
@@ -624,14 +680,16 @@ def for_women_guide():
             'for_women.html',
             board=board,
             top_pr_cards=top_pr_cards,
+            monetized_women_clinic=monetized_women_clinic,
+            monetized_women_dating=monetized_women_dating,
             last_updated=last_updated,
             is_staff=bool(session.get('is_staff')),
         )
 
     cache_sig = (
         'for_women',
-        affiliate_manager.is_slot_monetized('women_beauty_clinic', allow_blocking=False),
-        affiliate_manager.is_slot_monetized('women_dating_bachelor', allow_blocking=False),
+        monetized_women_clinic,
+        monetized_women_dating,
     )
     return core._get_cached_html_or_render(cache_sig, _render)
 

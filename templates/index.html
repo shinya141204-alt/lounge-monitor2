@@ -149,7 +149,7 @@
 
     <link rel="stylesheet" href="/static/style.css?v=20261030_6" fetchpriority="high">
     <link rel="stylesheet" href="/static/calm.css?v=35" fetchpriority="high">
-    <link rel="preload" href="/static/app.js?v=20261105_3" as="script">
+    <link rel="preload" href="/static/app.js?v=20261106_1" as="script">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- Non-render-blocking web font (avoids waiting on Google Fonts at PWA cold launch) -->
@@ -159,15 +159,77 @@
         window.APP_CONFIG = {
             isStaff: {{ 'true' if is_staff else 'false' }},
             isMaster: {{ 'true' if (is_staff and is_master) else 'false' }},
-            isStaffSession: {{ 'true' if (is_staff or session.get('is_staff')) else 'false' }}
+            isStaffSession: {{ 'true' if (is_staff or session.get('is_staff')) else 'false' }},
+            hasSnsInflow: {{ 'true' if has_sns_inflow else 'false' }},
+            bachelorSharesInstant: {{ 'false' if (bachelor_shares_instant is defined and not bachelor_shares_instant) else 'true' }},
+            monetizedWomenDating: {{ 'true' if monetized_women_dating else 'false' }},
+            monetizedWomenClinic: {{ 'true' if monetized_women_clinic else 'false' }}
         };
     </script>
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
-    <script src="/static/affiliate_config.js?v=16" defer></script>
+    <script src="/static/affiliate_config.js?v=17" defer></script>
     {% endif %}
     <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
-    <style>html.theme-light{background-color:#f6f6f7;}</style>
+    <style>
+        html.theme-light{background-color:#f6f6f7;}
+        .modal-store-page-cta {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            width: 100%;
+            min-height: 42px;
+            margin: 0 0 10px;
+            padding: 9px 14px;
+            border-radius: 10px;
+            background: #232329;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            color: #f4f4f5;
+            font-size: 0.81rem;
+            font-weight: 700;
+            text-decoration: none;
+            box-sizing: border-box;
+        }
+        .modal-store-page-cta:hover {
+            background: #2b2b33;
+        }
+        body.theme-light .modal-store-page-cta {
+            background: #f4f4f5;
+            border-color: #d4d4d8;
+            color: #18181b;
+        }
+        body.theme-light .modal-store-page-cta:hover {
+            background: #e4e4e7;
+        }
+        .cmi-store-page-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            min-height: 40px;
+            padding: 8px 16px;
+            border-radius: 999px;
+            background: #232329;
+            color: #f4f4f5;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-decoration: none;
+            box-sizing: border-box;
+        }
+        .cmi-store-page-link:hover {
+            background: #2c2c34;
+        }
+        body.theme-light .cmi-store-page-link {
+            background: #f4f4f5;
+            color: #18181b;
+            border-color: #d4d4d8;
+        }
+        body.theme-light .cmi-store-page-link:hover {
+            background: #e4e4e7;
+        }
+    </style>
 </head>
 
 <body class="{% if is_staff %}staff-mode{% endif %}">
@@ -756,6 +818,7 @@
                                 </div>
                             </div>
                             {% if not is_staff and not session.get('is_staff') and loop.index == 4 and (initial_status.ranking|length) >= 4 %}
+                            {% set use_honest_1on1 = (bachelor_shares_instant is not defined) or bachelor_shares_instant %}
                             <aside class="context-lead-row pr-card-item" data-context-slot="rank4_context" data-context-mode="evening_1on1" data-context-href="/link/dating_bachelor" aria-label="プロモーションおよび比較ガイド">
                                 <a class="pr-context-main" href="/link/dating_bachelor?from=/" target="_blank" rel="noopener sponsored">
                                     <div class="pr-context-body">
@@ -763,13 +826,18 @@
                                             <span class="pr-disclosure-pill">PR</span>
                                             <span class="pr-context-kicker">2対2より1対1で話したい日の選択肢</span>
                                         </div>
+                                        {% if use_honest_1on1 %}
+                                        <div class="pr-context-title">相席より1対1で落ち着いて会いたい日の「定番恋活・デートアプリ」</div>
+                                        <div class="pr-context-sub">複数人の相席が合わない日や1名利用の夜に、近隣で1対1のカフェ・食事相手を探せる定番サービス</div>
+                                        {% else %}
                                         <div class="pr-context-title">メッセージ不要で週1回デートが決まる「審査制1対1カフェデート」</div>
                                         <div class="pr-context-sub">希望日時を入れるだけでAIが相手を調整。落ち着いたカフェやバーで1対1対話</div>
+                                        {% endif %}
                                     </div>
                                     <span class="pr-context-cta">公式詳細 ›</span>
                                 </a>
                                 <div class="pr-context-foot">
-                                    <a class="pr-editorial-sublink" href="/guide/lounge-vs-screened-date">相席ラウンジ vs 審査制1対1デート徹底比較 ›</a>
+                                    <a class="pr-editorial-sublink" href="/guide/lounge-vs-screened-date">相席ラウンジ vs 1対1デート徹底比較 ›</a>
                                 </div>
                             </aside>
                             {% endif %}
@@ -832,8 +900,12 @@
                                 </div>
                             </div>
                         </div>
+                        {% set top_slug = (top_s.name | store_linkable_slug) %}
                         <div class="cmi-actions">
                             <button type="button" class="cmi-primary-cta" onclick="if(window.openModal)openModal({{ top_s.name | tojson | forceescape }})">詳しい曜日・時間帯グラフ＆2軒目を見る</button>
+                            {% if top_slug %}
+                            <a href="/store/{{ top_slug }}" class="cmi-store-page-link" data-cushion="1">店舗詳細・料金・近隣比較ページへ ›</a>
+                            {% endif %}
                         </div>
                         {% endif %}
                     </aside>
@@ -1341,7 +1413,11 @@
             <!-- 60-Min AI Ratio Forecast & JIS-Calibrated Real Wait Inference Box -->
             <div id="modal-moat-forecast-box" class="modal-moat-box hidden"></div>
 
-            <!-- Modal Top Quick Share & Official Bar -->
+            <!-- Modal Store Detail Bridge + Top Quick Share & Official Bar -->
+            <a id="modal-store-detail-link" href="/areas" class="modal-store-page-cta hidden" data-cushion="1">
+                <span>この店舗の詳細ページ（料金・2軒目マップ・近隣比較）</span>
+                <span>開く ›</span>
+            </a>
             <div class="modal-top-share-actions">
                 <button class="share-pill-btn x-btn" onclick="shareStoreStatus('x')">𝕏 混雑＋特典をポスト</button>
                 <button class="share-pill-btn line-btn" onclick="shareStoreStatus('line')">LINE共有</button>
@@ -2541,7 +2617,7 @@
         window.INITIAL_STATUS_DATA = {{ (initial_status_client or initial_status) | tojson }};
     </script>
     {% endif %}
-    <script src="/static/app.js?v=20261105_3" defer></script>
+    <script src="/static/app.js?v=20261106_1" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
@@ -2557,7 +2633,7 @@
                 }
                 if (window.__swRegistered) return;
                 window.__swRegistered = true;
-                navigator.serviceWorker.register('/sw.js?v=96', { updateViaCache: 'none' })
+                navigator.serviceWorker.register('/sw.js?v=97', { updateViaCache: 'none' })
                     .then(function(reg) {
                         reg.update();
                         document.addEventListener('visibilitychange', function() {
@@ -2569,7 +2645,7 @@
         }
     </script>
     {% if not is_staff and not session.get('is_staff') %}
-    <script defer src="/static/cta_tracker.js?v=2"></script>
+    <script defer src="/static/cta_tracker.js?v=3"></script>
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
          crossorigin="anonymous"></script>
     {% endif %}

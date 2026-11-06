@@ -101,7 +101,7 @@ def normalize_cta_surface(raw_path: str) -> str:
         return '/'
     if p == '/store/*' or p.startswith('/store/'):
         return '/store/*'
-    if p in ('/concierge', '/grooming', '/for-women', '/price-comparison'):
+    if p in ('/concierge', '/grooming', '/for-women', '/price-comparison', '/stats'):
         return p
     if p in ('/areas', '/area/*') or p.startswith('/area/'):
         return '/area/*'
@@ -135,7 +135,8 @@ def normalize_affiliate_impression_label(raw_label: str) -> str:
 def normalize_cushion_click_label(raw_label: str) -> str:
     """
     Validate and normalize 2-step internal cushion transitions (`<target_hub[#anchor]> @ <source_path>`).
-    Only accepts `/grooming` and `/for-women` as targets and rejects self-page anchor jumps or external paths.
+    Accepts `/grooming`, `/for-women`, `/concierge`, `/price-comparison`, and `/store/<slug>` as targets,
+    and rejects self-page anchor jumps or external paths.
     """
     import re
     raw = str(raw_label or '').strip()
@@ -144,14 +145,15 @@ def normalize_cushion_click_label(raw_label: str) -> str:
     target_part, src_part = [x.strip() for x in raw.split('@', 1)]
     if not target_part or not src_part:
         return ''
-    # Parse target hub (`/grooming` or `/for-women`) + optional clean `#anchor`
     t_no_q = target_part.split('?', 1)[0].strip()
     if '#' in t_no_q:
         t_path, t_frag = t_no_q.split('#', 1)
     else:
         t_path, t_frag = t_no_q, ''
     t_path = t_path.rstrip('/') if t_path != '/' else '/'
-    if t_path not in ('/grooming', '/for-women'):
+    is_valid_hub = t_path in ('/grooming', '/for-women', '/concierge', '/price-comparison')
+    is_valid_store = bool(re.fullmatch(r'/store/[A-Za-z0-9_-]{1,64}', t_path))
+    if not (is_valid_hub or is_valid_store):
         return ''
     clean_frag = re.sub(r'[^a-zA-Z0-9_-]', '', t_frag)[:28]
 

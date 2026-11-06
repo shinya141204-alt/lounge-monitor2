@@ -70,7 +70,9 @@
             var u = new URL(raw, window.location.origin);
             if (u.origin !== window.location.origin) return '';
             var p = (u.pathname || '').replace(/\/+$/, '') || '/';
-            if (p !== '/grooming' && p !== '/for-women') return '';
+            var isHub = (p === '/grooming' || p === '/for-women' || p === '/concierge' || p === '/price-comparison');
+            var isStore = /^\/store\/[A-Za-z0-9_-]{1,64}$/.test(p);
+            if (!isHub && !isStore) return '';
             var curPath = ((window.location && window.location.pathname) || '/').replace(/\/+$/, '') || '/';
             if (curPath === p || curPath.indexOf('/staff') === 0) return '';
             var frag = (u.hash || '').replace(/^#/, '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 28);
@@ -90,20 +92,23 @@
         postTrackPayload('affiliate_impression', dedupKey);
     }
 
-    function isEditorialBridgeAnchor(anchor) {
+    function isEditorialBridgeAnchor(anchor, targetHub) {
         if (!anchor || typeof anchor.closest !== 'function') return false;
         if (anchor.hasAttribute('data-cushion')) return true;
         if (anchor.closest('nav, header, footer, .portal-nav, .portal-footer, .guide-footer, .audience-switch-bar')) return false;
-        return Boolean(anchor.closest('.editorial-bridge-box, .editorial-bridge-actions, .cta-row, .share-bar-row, .related-article-card, .pr-context-foot, .ladies-pr-section, article, main'));
+        if (targetHub && targetHub.indexOf('/store/') === 0) {
+            return Boolean(anchor.closest('.editorial-bridge-box, .editorial-bridge-actions, .pr-context-foot, .surface-smart-foot, article'));
+        }
+        return Boolean(anchor.closest('.editorial-bridge-box, .editorial-bridge-actions, .cta-row, .share-bar-row, .related-article-card, .pr-context-foot, .surface-smart-foot, .ladies-pr-section, article, main'));
     }
 
     function onDocumentClick(ev) {
         if (!ev || !ev.target || typeof ev.target.closest !== 'function') return;
         if (document.body && document.body.classList.contains('staff-mode')) return;
         var anchor = ev.target.closest('a[href]');
-        if (!anchor || !isEditorialBridgeAnchor(anchor)) return;
+        if (!anchor) return;
         var targetHub = extractCushionTarget(anchor.getAttribute('href') || '');
-        if (!targetHub) return;
+        if (!targetHub || !isEditorialBridgeAnchor(anchor, targetHub)) return;
         var srcPath = ((window.location && window.location.pathname) ? window.location.pathname : '/').slice(0, 48);
         var dedupKey = 'cushion:' + targetHub + ' @ ' + srcPath;
         if (seenKeys.has(dedupKey)) return;

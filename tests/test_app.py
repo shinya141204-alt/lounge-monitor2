@@ -877,7 +877,8 @@ class GrowthFeaturesTests(unittest.TestCase):
             self.assertIn('initLivePriceComparisonSync', html)
             self.assertNotIn('0円〜220円', html)
             self.assertNotIn('ロス0円', html)
-            self.assertNotIn('/link/', html)
+            self.assertIn('id="surface-smart-cta-card"', html)
+            self.assertIn('?from=/price-comparison', html)
             ld_blocks = re.findall(r'<script type="application/ld\+json">\s*(.*?)\s*</script>', html, re.S)
             self.assertGreaterEqual(len(ld_blocks), 2)
             for block in ld_blocks:
@@ -1775,7 +1776,7 @@ class FullAuditRegressionTests(unittest.TestCase):
         sw_resp = self.client.get('/sw.js')
         try:
             sw_txt = sw_resp.data.decode('utf-8')
-            self.assertIn("CACHE_NAME = 'aiseki-navi-v96'", sw_txt)
+            self.assertIn("CACHE_NAME = 'aiseki-navi-v97'", sw_txt)
             self.assertIn("event.waitUntil", sw_txt)
         finally:
             sw_resp.close()
@@ -2584,13 +2585,18 @@ class AutonomousPdcaEngineTests(unittest.TestCase):
 
         human_headers = {'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15'}
 
-        # 1. Verify public `/link/` anchors carry `?from=<route>` and omit `noreferrer`
-        for pub_path in ('/', '/grooming', '/for-women', '/store/oriental-lounge-shinjuku', '/guide/first-10-minutes'):
+        # 1. Verify public `/link/` anchors carry `?from=<route>` and omit `noreferrer`, while columns use pure 2-step bridges
+        for pub_path in ('/', '/grooming', '/for-women', '/store/oriental-lounge-shinjuku', '/price-comparison', '/stats', '/oriental-lounge'):
             r_pub = self.client.get(pub_path, headers=human_headers)
             self.assertEqual(r_pub.status_code, 200, msg=f"{pub_path} failed")
             pub_html = r_pub.data.decode('utf-8')
             self.assertNotIn('noreferrer sponsored', pub_html, msg=f"noreferrer still present on {pub_path}")
             self.assertIn(f'?from={pub_path}', pub_html, msg=f"Missing ?from={pub_path} on {pub_path}")
+        r_col = self.client.get('/guide/first-10-minutes', headers=human_headers)
+        self.assertEqual(r_col.status_code, 200)
+        col_html = r_col.data.decode('utf-8')
+        self.assertNotIn('/link/', col_html)
+        self.assertIn('data-cushion="1"', col_html)
 
         # 2. Verify `/link/<id>?from=...` records exact page attribution even without Referer header,
         #    while rejecting protocol-relative / external paths (`?from=//evil.example` -> `-`).
@@ -3171,13 +3177,17 @@ class AffiliateAndSheetsRetentionTests(unittest.TestCase):
         self.assertTrue(init_status['has_duplicates'])
         self.assertEqual(init_status['duplicate_slot_count'], 2)
 
-        # 2. Public column pages (and scheduled template post-publish) use normalized /link/dating_instant
+        # 2. Public column pages (and scheduled template post-publish) use pure 2-step bridges (`data-cushion="1"`), while `/grooming` exposes `/link/dating_instant`
+        grooming_html = self.client.get('/grooming').data.decode('utf-8')
+        self.assertIn('/link/dating_instant', grooming_html)
         for route_path in ('/guide/price-event-comparison', '/guide/male-lead-mechanics'):
             html = self.client.get(route_path).data.decode('utf-8')
-            self.assertIn('/link/dating_instant', html)
+            self.assertNotIn('/link/', html)
+            self.assertIn('data-cushion="1"', html)
         with mock.patch('scheduled_articles.is_published', return_value=True):
             html_sched = self.client.get('/guide/cost-break-even').data.decode('utf-8')
-            self.assertIn('/link/dating_instant', html_sched)
+            self.assertNotIn('/link/', html_sched)
+            self.assertIn('data-cushion="1"', html_sched)
 
         # 3. API rejects unauthenticated or non-master staff requests
         r_unauth = self.client.post('/api/affiliate/config', json={'slot_id': 'dating_instant', 'url': 'https://example.com/a'})
@@ -3478,8 +3488,10 @@ class WomenFeaturesACDETests(unittest.TestCase):
             self.assertTrue('オリエンタルラウンジ 新宿' in html or 'オリエンタルラウンジ新宿' in html)
             self.assertIn('🟢 女子待ち0・即案内圏', html)
             self.assertIn('"@type": "FAQPage"', html)
-            self.assertIn('/link/women_dating_bachelor', html)
-            self.assertIn('/link/women_beauty_clinic', html)
+            # 未収益化の0円直URL（women_dating_bachelor / women_beauty_clinic）は既定で出し分け遮断され、収益化済みの3枠が描画される
+            self.assertNotIn('/link/women_dating_bachelor', html)
+            self.assertNotIn('/link/women_beauty_clinic', html)
+            self.assertIn('/link/women_second_venue', html)
             self.assertIn('/link/women_cosme_salon', html)
             self.assertIn('/link/women_night_supplement', html)
             self.assertIn('a8mat=4BELTJ+7RTR3M+3H28+5ZU29', html)
@@ -4705,8 +4717,8 @@ class AIUltraGrowthSuiteTests(unittest.TestCase):
         app_module.clear_fast_http_caches()
         home_html = self.client.get('/').data.decode('utf-8')
         self.assertIn('calm.css?v=35', home_html)
-        self.assertIn('app.js?v=20261105_3', home_html)
-        self.assertIn('/sw.js?v=96', home_html)
+        self.assertIn('app.js?v=20261106_1', home_html)
+        self.assertIn('/sw.js?v=97', home_html)
 
         # 2. TikTok 9:16 Safe-Zone Reel Templates & Captions (zero bare 'オリエンタル' or 'OLG')
         sample_stores = [

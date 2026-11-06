@@ -636,6 +636,7 @@
                data-store-seo="{{ store.seo_name }}"
                data-area-slug="{{ area_slug or '' }}"
                data-solo-restricted="{{ '1' if store_smart_cta.is_solo_restricted else '0' }}"
+               data-bachelor-shares-instant="{{ '1' if store_smart_cta.bachelor_shares_instant else '0' }}"
                data-active-pixels='{{ store_smart_cta.active_pixels | tojson }}'
                data-women-variant='{{ store_smart_cta.women_variant | tojson }}'
                aria-label="店舗状況に応じたおすすめサービスと関連ガイド">
@@ -1768,24 +1769,40 @@
                         } else if (!hInfo.isOpenNow || tot < 6 || w < 6) {
                             mode = 'off_or_low';
                             slotId = 'dating_bachelor';
-                            title = 'メッセージ不要で週1回デートが決まる「審査制1対1カフェデート」';
-                            ctaLabel = '審査制1対1デートの公式詳細 ›';
-                            if (isSoloRestricted) {
-                                kicker = '男性1名利用・営業時間外の選択肢';
-                                sub = seoName + 'は男性2名以上での入店が基本です。1人で動きたい日や営業時間外は、希望日時を入れるだけでAIが1対1デートを調整する審査制アプリも選択肢になります。';
-                            } else if (!hInfo.isOpenNow) {
-                                kicker = '営業時間外・事前予定づくりの選択肢';
-                                sub = '営業時間外のうちに次の予定を組むなら、事前のメッセージ往復なしでカフェやバーでの1対1デートが決まる審査制アプリも便利です。';
+                            const sharesInstant = smartCard.getAttribute('data-bachelor-shares-instant') === '1';
+                            if (sharesInstant) {
+                                title = '相席より1対1で落ち着いて会いたい日の「定番恋活・デートアプリ」';
+                                ctaLabel = '1対1恋活・デートアプリの公式詳細 ›';
+                                if (isSoloRestricted) {
+                                    kicker = '男性1名利用・営業時間外の選択肢';
+                                    sub = seoName + 'は男性2名以上での入店が基本です。1人で動きたい日や営業時間外は、相方を探さず1対1でカフェや食事の予定を組める定番恋活・デートアプリも選択肢になります。';
+                                } else if (!hInfo.isOpenNow) {
+                                    kicker = '営業時間外・事前予定づくりの選択肢';
+                                    sub = '営業時間外のうちに次の予定を組むなら、近隣エリアで気の合う相手と1対1の食事・カフェをセッティングできる定番恋活アプリも便利です。';
+                                } else {
+                                    kicker = '少人数時間帯・1対1で会いたい日の選択肢';
+                                    sub = '立ち上がり前の少人数時間帯や、複数人の相席より最初から1対1で落ち着いて話したい日に選ばれている恋活・デートアプリです。';
+                                }
                             } else {
-                                kicker = '少人数時間帯・1対1で会いたい日の選択肢';
-                                sub = '立ち上がり前の少人数時間帯や、複数人の相席より最初から1対1で落ち着いて話したい日に選ばれている審査制デートアプリです。';
+                                title = 'メッセージ不要で週1回デートが決まる「審査制1対1カフェデート」';
+                                ctaLabel = '審査制1対1デートの公式詳細 ›';
+                                if (isSoloRestricted) {
+                                    kicker = '男性1名利用・営業時間外の選択肢';
+                                    sub = seoName + 'は男性2名以上での入店が基本です。1人で動きたい日や営業時間外は、希望日時を入れるだけでAIが1対1デートを調整する審査制アプリも選択肢になります。';
+                                } else if (!hInfo.isOpenNow) {
+                                    kicker = '営業時間外・事前予定づくりの選択肢';
+                                    sub = '営業時間外のうちに次の予定を組むなら、事前のメッセージ往復なしでカフェやバーでの1対1デートが決まる審査制アプリも便利です。';
+                                } else {
+                                    kicker = '少人数時間帯・1対1で会いたい日の選択肢';
+                                    sub = '立ち上がり前の少人数時間帯や、複数人の相席より最初から1対1で落ち着いて話したい日に選ばれている審査制デートアプリです。';
+                                }
                             }
                             if (bestOpenAlt) {
                                 subHref = bestOpenAlt.href;
                                 subLbl = '周辺で稼働中の店舗：' + bestOpenAlt.name + '（女' + bestOpenAlt.w + ' : 男' + bestOpenAlt.m + '） ›';
                             } else {
                                 subHref = '/guide/lounge-vs-screened-date';
-                                subLbl = '相席ラウンジ vs 審査制1対1デート徹底比較 ›';
+                                subLbl = '相席ラウンジ vs 1対1デート徹底比較 ›';
                             }
                         } else if (isLateNight) {
                             mode = 'late_second_venue';

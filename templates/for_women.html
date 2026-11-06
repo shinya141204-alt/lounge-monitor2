@@ -737,16 +737,17 @@
         </p>
 
         {% if not is_staff and not session.get('is_staff') %}
-        <!-- Plan D: Women-Specific Curated Self-Care & Screening App Slots -->
+        <!-- Plan D: Women-Specific Curated Self-Care & Venue Slots (0-yen unmonetized URLs gated automatically) -->
         <aside class="ladies-pr-section" id="clinic" aria-label="女性読者向けおすすめサービス">
             <div class="ladies-pr-head">
                 <span class="pr-kicker">PR</span>
-                <strong style="font-size:0.95rem;color:var(--rose-strong);">💄 ラウンジ派の女性に選ばれている「1対1デート＆自分磨き」特集</strong>
+                <strong style="font-size:0.95rem;color:var(--rose-strong);">ラウンジ派の女性に選ばれている「0次会カフェ＆ナイトケア」特集</strong>
             </div>
             <p style="font-size:0.82rem;color:var(--text-sub);margin:0;">
-                「大人数の相席より1対1のカフェで落ち着いて話したい日」や「近距離のソファ席でも自信が持てる肌メンテナンス」に便利な女性向けサービスを厳選しました。
+                合流前のカフェ・ご褒美女子会予約や、近距離ライトの席・飲み放題の翌朝に向けた女性向け定番サービスを厳選しました。
             </p>
             <div class="ladies-pr-grid">
+                {% if monetized_women_dating %}
                 <div class="ladies-pr-card">
                     <div>
                         <span class="pick-badge good">女性完全無料・顔出し不要</span>
@@ -755,6 +756,8 @@
                     </div>
                     <a href="/link/women_dating_bachelor?from=/for-women" target="_blank" rel="noopener sponsored" class="ladies-pr-link">【女性無料】公式詳細を見る ›</a>
                 </div>
+                {% endif %}
+                {% if monetized_women_clinic %}
                 <div class="ladies-pr-card">
                     <div>
                         <span class="pick-badge">近距離ライトでも映える肌へ</span>
@@ -763,6 +766,7 @@
                     </div>
                     <a href="/link/women_beauty_clinic?from=/for-women" target="_blank" rel="noopener sponsored" class="ladies-pr-link">初回キャンペーンを見る ›</a>
                 </div>
+                {% endif %}
                 <div class="ladies-pr-card">
                     <div>
                         <span class="pick-badge good">夜遊び帰りの髪・肌リセット</span>
@@ -829,7 +833,7 @@
         </footer>
     </div>
     {% if not is_staff and not session.get('is_staff') %}
-    <script defer src="/static/cta_tracker.js?v=2"></script>
+    <script defer src="/static/cta_tracker.js?v=3"></script>
     {% endif %}
 </body>
 

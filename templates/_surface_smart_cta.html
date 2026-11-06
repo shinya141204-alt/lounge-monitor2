@@ -1,0 +1,226 @@
+{% if surface_smart_cta and not is_staff and not session.get('is_staff') %}
+<style>
+    .surface-smart-cta {
+        margin: 18px 0 24px;
+        border-radius: 14px;
+        background: #1a1a1e;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        overflow: hidden;
+        font-variant-numeric: tabular-nums;
+    }
+    .surface-smart-main {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 16px 18px;
+        text-decoration: none;
+        color: #f4f4f5;
+    }
+    .surface-smart-main:hover {
+        background: rgba(255, 255, 255, 0.03);
+    }
+    .surface-smart-body {
+        flex: 1 1 260px;
+        min-width: 0;
+    }
+    .surface-smart-meta {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 5px;
+    }
+    .surface-smart-pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 7px;
+        border-radius: 4px;
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        background: #27272a;
+        color: #d4d4d8;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+    }
+    .surface-smart-kicker {
+        font-size: 0.76rem;
+        font-weight: 700;
+        color: #b4b4be;
+    }
+    .surface-smart-title {
+        font-size: 0.95rem;
+        font-weight: 800;
+        line-height: 1.45;
+        color: #f4f4f5;
+        margin-bottom: 4px;
+    }
+    .surface-smart-sub {
+        font-size: 0.81rem;
+        line-height: 1.58;
+        color: #b4b4be;
+    }
+    .surface-smart-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 40px;
+        padding: 9px 16px;
+        border-radius: 999px;
+        background: #f4f4f5;
+        color: #111113;
+        font-size: 0.82rem;
+        font-weight: 800;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+    .surface-smart-foot {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 8px 16px;
+        padding: 10px 18px;
+        background: #141417;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .surface-smart-sublink {
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: #d4d4d8;
+        text-decoration: none;
+        min-height: 32px;
+        display: inline-flex;
+        align-items: center;
+    }
+    .surface-smart-sublink:hover {
+        text-decoration: underline;
+    }
+    body.theme-light .surface-smart-cta {
+        background: #ffffff;
+        border-color: #d4d4d8;
+    }
+    body.theme-light .surface-smart-main {
+        color: #18181b;
+    }
+    body.theme-light .surface-smart-main:hover {
+        background: #f6f6f7;
+    }
+    body.theme-light .surface-smart-pill {
+        background: #f4f4f5;
+        color: #3f3f46;
+        border-color: #d4d4d8;
+    }
+    body.theme-light .surface-smart-kicker,
+    body.theme-light .surface-smart-sub {
+        color: #52525b;
+    }
+    body.theme-light .surface-smart-title {
+        color: #18181b;
+    }
+    body.theme-light .surface-smart-btn {
+        background: #18181b;
+        color: #ffffff;
+    }
+    body.theme-light .surface-smart-foot {
+        background: #f6f6f7;
+        border-top-color: #e4e4e7;
+    }
+    body.theme-light .surface-smart-sublink {
+        color: #27272a;
+    }
+    @media (max-width: 640px) {
+        .surface-smart-main {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 12px;
+            padding: 15px 16px;
+        }
+        .surface-smart-btn {
+            width: 100%;
+        }
+        .surface-smart-foot {
+            padding: 10px 16px;
+        }
+    }
+</style>
+<aside id="surface-smart-cta-card"
+       class="surface-smart-cta pr-card-item"
+       data-context-slot="surface_smart_context"
+       data-context-mode="{{ surface_smart_cta.mode }}"
+       data-women-variant='{{ surface_smart_cta.women_variant | tojson }}'
+       aria-label="現在の混雑・時間帯に応じたおすすめサービスと関連ガイド">
+    <a id="surface-smart-cta-link" class="surface-smart-main" href="{{ surface_smart_cta.href }}" target="_blank" rel="noopener sponsored">
+        <div class="surface-smart-body">
+            <div class="surface-smart-meta">
+                <span class="surface-smart-pill">PR</span>
+                <span id="surface-smart-cta-kicker" class="surface-smart-kicker">{{ surface_smart_cta.kicker }}</span>
+            </div>
+            <div id="surface-smart-cta-title" class="surface-smart-title">{{ surface_smart_cta.title }}</div>
+            <div id="surface-smart-cta-sub" class="surface-smart-sub">{{ surface_smart_cta.sub }}</div>
+        </div>
+        <span id="surface-smart-cta-btn" class="surface-smart-btn">{{ surface_smart_cta.cta_label }}</span>
+    </a>
+    <div class="surface-smart-foot">
+        <a id="surface-smart-cta-sublink" class="surface-smart-sublink" href="{{ surface_smart_cta.sublink_href }}" data-cushion="1">{{ surface_smart_cta.sublink_label }}</a>
+        <a id="surface-smart-cta-women-sublink" class="surface-smart-sublink" href="{{ surface_smart_cta.women_sublink_href }}" data-cushion="1">{{ surface_smart_cta.women_sublink_label }}</a>
+    </div>
+    <img id="surface-smart-cta-pixel" class="pr-tracking-pixel"{% if surface_smart_cta.tracking_pixel %} src="{{ surface_smart_cta.tracking_pixel }}"{% else %} style="display:none;"{% endif %} width="1" height="1" alt="" loading="lazy" aria-hidden="true">
+</aside>
+<script>
+(function () {
+    try {
+        var card = document.getElementById('surface-smart-cta-card');
+        if (!card) return;
+        var isWomen = false;
+        try {
+            if (localStorage.getItem('aiseki_audience_mode') === 'women') isWomen = true;
+        } catch (e) {}
+        try {
+            if (window.location && window.location.search && new URLSearchParams(window.location.search).get('mode') === 'women') {
+                isWomen = true;
+            }
+            if (!isWomen && document.referrer) {
+                var refU = new URL(document.referrer);
+                if (refU.origin === window.location.origin && refU.pathname.replace(/\/+$/, '') === '/for-women') {
+                    isWomen = true;
+                }
+            }
+        } catch (e) {}
+        if (!isWomen) return;
+        var raw = card.getAttribute('data-women-variant');
+        if (!raw) return;
+        var wv = JSON.parse(raw);
+        if (!wv || !wv.href) return;
+        var lk = document.getElementById('surface-smart-cta-link');
+        var kk = document.getElementById('surface-smart-cta-kicker');
+        var tt = document.getElementById('surface-smart-cta-title');
+        var sb = document.getElementById('surface-smart-cta-sub');
+        var bt = document.getElementById('surface-smart-cta-btn');
+        var sl = document.getElementById('surface-smart-cta-sublink');
+        var wsl = document.getElementById('surface-smart-cta-women-sublink');
+        var px = document.getElementById('surface-smart-cta-pixel');
+        if (lk) lk.href = wv.href;
+        if (kk && wv.kicker) kk.textContent = wv.kicker;
+        if (tt && wv.title) tt.textContent = wv.title;
+        if (sb && wv.sub) sb.textContent = wv.sub;
+        if (bt && wv.cta_label) bt.textContent = wv.cta_label;
+        if (sl && wv.sublink_href) {
+            sl.href = wv.sublink_href;
+            sl.textContent = wv.sublink_label || '';
+        }
+        if (wsl) wsl.style.display = 'none';
+        if (px) {
+            if (wv.tracking_pixel) {
+                px.src = wv.tracking_pixel;
+                px.style.display = '';
+            } else {
+                px.removeAttribute('src');
+                px.style.display = 'none';
+            }
+        }
+        card.setAttribute('data-context-mode', 'women_surface');
+    } catch (e) {}
+})();
+</script>
+{% endif %}

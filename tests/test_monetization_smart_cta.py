@@ -171,7 +171,7 @@ class MonetizationSmartCtaTests(unittest.TestCase):
         self.assertIn('data-context-mode="men_glut"', html)
         self.assertIn('data-women-variant=', html)
         self.assertIn(f'/link/dating_instant?from=/store/{shibuya_slug}', html)
-        self.assertIn('/static/cta_tracker.js?v=2', html)
+        self.assertIn('/static/cta_tracker.js?v=3', html)
 
         # /api/track でブラウザからのインプレッション送信が受理されること
         tr_resp = self.client.post(
@@ -191,7 +191,7 @@ class MonetizationSmartCtaTests(unittest.TestCase):
         self.assertEqual(resp_staff.status_code, 200)
         staff_html = resp_staff.get_data(as_text=True)
         self.assertNotIn('id="store-smart-cta-card"', staff_html)
-        self.assertNotIn('/static/cta_tracker.js?v=2', staff_html)
+        self.assertNotIn('/static/cta_tracker.js?v=3', staff_html)
 
     def test_women_variant_and_for_women_top_picks_auto_promotion(self):
         """未設定直URLの間は稼働中ASP枠が選ばれ、women_beauty_clinic にASPタグが登録された瞬間に自動昇格すること"""
@@ -306,6 +306,93 @@ class MonetizationSmartCtaTests(unittest.TestCase):
             c_html = c_resp.get_data(as_text=True)
             self.assertIn("editorial-bridge-box", c_html)
             self.assertNotIn("/link/", c_html, f"Unexpected direct /link/ found in {pure_col}")
+
+    def test_high_impact_three_moves_bridges_surfaces_and_zero_direct_guide_links(self):
+        """高インパクト3手（①トップ→/store/<slug>橋＋SNS夜着地＋正直コピー ②高意図3面スマートCTA ③女性0円遮断＋全コラム直/link/ゼロ＋拡張クッション計測）の統合検証"""
+        import glob
+        import os
+
+        now_str = datetime.datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
+        with app_module.data_lock:
+            app_module.latest_data["timestamp"] = now_str
+            app_module.latest_data["last_updated"] = now_str
+            app_module.latest_data["full_data"] = [
+                {"name": "OLG 渋谷本店", "women": 11, "men": 26, "total": 37, "region": "Kanto"},
+                {"name": "OLG 新宿", "women": 32, "men": 14, "total": 46, "region": "Kanto"},
+            ]
+        app_module.clear_fast_http_caches()
+
+        # 【手1】トップ `/` に `/store/<slug>` 橋と `#modal-store-detail-link` があり、?s= 着地で hasSnsInflow: true になること
+        home_def = self.client.get("/").get_data(as_text=True)
+        self.assertIn('id="modal-store-detail-link"', home_def)
+        self.assertIn('data-cushion="1"', home_def)
+        self.assertIn("hasSnsInflow: false", home_def)
+        self.assertIn("bachelorSharesInstant: true", home_def)
+        self.assertNotIn("日程調整だけで1対1が確定する審査制", home_def)
+
+        home_sns = self.client.get("/?s=x22_hub_gap", headers={"User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)"}).get_data(as_text=True)
+        self.assertIn("hasSnsInflow: true", home_sns)
+
+        # 【手2】高意図面（/price-comparison, /stats, 4ブランドページ）に `#surface-smart-cta-card` が描画され、スタッフ時は非表示になること
+        for surface_path in ("/price-comparison", "/stats", "/oriental-lounge", "/ag", "/jis", "/asobibar"):
+            r_surf = self.client.get(surface_path)
+            self.assertEqual(r_surf.status_code, 200, surface_path)
+            s_html = r_surf.get_data(as_text=True)
+            self.assertIn('id="surface-smart-cta-card"', s_html, surface_path)
+            self.assertIn(f"?from={surface_path}", s_html, surface_path)
+            self.assertIn('data-women-variant=', s_html, surface_path)
+
+        surf_glut = affiliate_manager.build_surface_smart_cta(
+            [
+                {"name": "OLG 渋谷本店", "women": 8, "men": 25, "is_open_now": True},
+                {"name": "JIS SHINJUKU", "women": 10, "men": 22, "is_open_now": True},
+            ],
+            source_path="/price-comparison",
+            surface_label="料金比較対象",
+            now_jst=datetime.datetime(2026, 11, 6, 21, 30, tzinfo=JST),
+            allow_blocking=False,
+        )
+        self.assertEqual(surf_glut["mode"], "men_glut")
+        self.assertEqual(surf_glut["href"], "/link/dating_instant?from=/price-comparison")
+
+        surf_late = affiliate_manager.build_surface_smart_cta(
+            [{"name": "OLG 新宿", "women": 30, "men": 14, "is_open_now": True}],
+            source_path="/stats",
+            surface_label="全国平均",
+            now_jst=datetime.datetime(2026, 11, 6, 23, 45, tzinfo=JST),
+            allow_blocking=False,
+        )
+        self.assertEqual(surf_late["mode"], "late_second_venue")
+        self.assertEqual(surf_late["href"], "/link/second_venue_reservation?from=/stats")
+
+        # スタッフログイン時は高意図面のスマートCTAが完全に非表示となること
+        with self.client.session_transaction() as sess:
+            sess["is_staff"] = True
+            sess["is_master"] = False
+            sess["auth_gen"] = app_module._compute_session_auth_gen(False)
+        for surface_path in ("/price-comparison", "/stats", "/oriental-lounge"):
+            staff_s = self.client.get(surface_path).get_data(as_text=True)
+            self.assertNotIn('id="surface-smart-cta-card"', staff_s, surface_path)
+        with self.client.session_transaction() as sess:
+            sess.clear()
+
+        # 【手3】全 `templates/guide_*.html` に直 `/link/` が 0件であること ＆ 拡張 `cushion_click` 計測の検証
+        guide_files = sorted(glob.glob(os.path.join(os.path.dirname(os.path.dirname(__file__)), "templates", "guide_*.html")))
+        self.assertTrue(len(guide_files) >= 15)
+        for gf in guide_files:
+            with open(gf, "r", encoding="utf-8") as fp:
+                g_txt = fp.read()
+            self.assertNotIn("/link/", g_txt, f"Direct /link/ leaked in {os.path.basename(gf)}")
+
+        with patch.object(analytics.sheets_store, "read_rows", return_value=[]), \
+             patch.object(analytics.turbo_store, "analytics_add_batch", return_value=False):
+            self.assertTrue(analytics.track("cushion_click", "/store/oriental-lounge-shinjuku @ /"))
+            self.assertTrue(analytics.track("cushion_click", "/concierge @ /guide/male-lead-mechanics"))
+            self.assertTrue(analytics.track("cushion_click", "/price-comparison @ /guide/price-event-comparison"))
+            # 自己ページ遷移やパストラバーサルは厳格に拒否
+            self.assertFalse(analytics.track("cushion_click", "/store/oriental-lounge-shinjuku @ /store/oriental-lounge-shinjuku"))
+            self.assertFalse(analytics.track("cushion_click", "/store/../staff @ /"))
+            self.assertEqual(analytics.normalize_cta_surface("/stats"), "/stats")
 
 
 if __name__ == "__main__":

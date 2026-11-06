@@ -1824,10 +1824,18 @@ def update_job(force=False, _claimed=False):
 
 @app.route('/')
 def index():
+    import affiliate_manager
     trigger_background_fetch_if_needed()
+    explicit_s = (request.args.get('s') or '').strip()
+    cookie_src = (request.cookies.get('an_src') or '').strip()
+    has_sns_inflow = bool(explicit_s or cookie_src)
+    bachelor_shares_instant = affiliate_manager.are_slots_sharing_url('dating_bachelor', 'dating_instant', allow_blocking=False)
+    monetized_women_dating = affiliate_manager.is_slot_monetized('women_dating_bachelor', allow_blocking=False)
+    monetized_women_clinic = affiliate_manager.is_slot_monetized('women_beauty_clinic', allow_blocking=False)
+
     def _render():
         now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
-        s_param = (request.args.get('s') or '').strip()
+        s_param = explicit_s
         if not s_param:
             bucket_min = (now_jst.minute // 15) * 15
             s_param = f"{now_jst.strftime('%Y%m%d_%H')}{bucket_min:02d}"
@@ -1847,8 +1855,19 @@ def index():
             og_meta=og_meta,
             og_image_url=og_image_url,
             published_scheduled=scheduled_articles.get_published_articles(),
+            has_sns_inflow=has_sns_inflow,
+            bachelor_shares_instant=bachelor_shares_instant,
+            monetized_women_dating=monetized_women_dating,
+            monetized_women_clinic=monetized_women_clinic,
         )
-    return _get_cached_html_or_render('index_pub', _render)
+    cache_sig = (
+        'index_pub',
+        has_sns_inflow,
+        bachelor_shares_instant,
+        monetized_women_dating,
+        monetized_women_clinic,
+    )
+    return _get_cached_html_or_render(cache_sig, _render)
 
 
 # Fields only used by the server-side card template (or by nothing on the client). They are dropped from

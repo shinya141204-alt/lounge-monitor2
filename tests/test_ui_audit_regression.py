@@ -107,11 +107,11 @@ class UiAuditRegressionTests(unittest.TestCase):
         """全テンプレートと static/sw.js のアセットバージョンが完全同期し、immutable ヘッダが正しく付与されること"""
         expected_calm = "/static/calm.css?v=35"
         expected_portal = "/static/portal.css?v=15"
-        expected_app_js = "/static/app.js?v=20261105_3"
-        expected_aff_js = "/static/affiliate_config.js?v=16"
+        expected_app_js = "/static/app.js?v=20261106_1"
+        expected_aff_js = "/static/affiliate_config.js?v=17"
         expected_style = "/static/style.css?v=20261030_6"
-        expected_sw_url = "/sw.js?v=96"
-        expected_cache_name = "aiseki-navi-v96"
+        expected_sw_url = "/sw.js?v=97"
+        expected_cache_name = "aiseki-navi-v97"
 
         templates_dir = os.path.join(PROJECT_ROOT, "templates")
         calm_seen = 0
@@ -1984,19 +1984,26 @@ class UiAuditRegressionTests(unittest.TestCase):
                     self.assertFalse(slot_info["hasFakeBar"], "Must not render legacy fake gender ratio bar")
                     self.assertEqual(slot_info["pillText"], "PR")
                     self.assertIn("sponsored", slot_info["relAttr"])
-                    self.assertTrue(slot_info["subHref"].startswith("/guide/"))
+                    self.assertTrue(slot_info["subHref"].startswith(("/guide/", "/concierge", "/for-women")))
 
-                    # Verify all 4 contextual modes via window.resolveInfeedContext + live DOM switching
+                    # Verify contextual modes via window.resolveInfeedContext + SNS night landing + live DOM switching
                     modes = page.evaluate("""async () => {
                         const cfg = AFFILIATE_MASTER.infeedSlots[0];
                         const origTs = window.lastData && window.lastData.timestamp;
+                        const origSns = window.APP_CONFIG && window.APP_CONFIG.hasSnsInflow;
                         if (window.lastData) window.lastData.timestamp = '2026-11-04 20:30:00';
+                        if (window.APP_CONFIG) window.APP_CONFIG.hasSnsInflow = false;
                         const evening = window.resolveInfeedContext(cfg, [
                             { women: 30, men: 12 }, { women: 26, men: 10 }, { women: 24, men: 10 }, { women: 20, men: 9 }
                         ]);
                         const crowded = window.resolveInfeedContext(cfg, [
                             { women: 15, men: 28 }, { women: 14, men: 25 }, { women: 20, men: 12 }, { women: 18, men: 10 }
                         ]);
+                        if (window.APP_CONFIG) window.APP_CONFIG.hasSnsInflow = true;
+                        const snsNight = window.resolveInfeedContext(cfg, [
+                            { women: 30, men: 12 }, { women: 26, men: 10 }, { women: 24, men: 10 }, { women: 20, men: 9 }
+                        ]);
+                        if (window.APP_CONFIG) window.APP_CONFIG.hasSnsInflow = origSns;
                         if (window.lastData) window.lastData.timestamp = '2026-11-04 14:30:00';
                         const daytime = window.resolveInfeedContext(cfg, [
                             { women: 4, men: 2 }, { women: 3, men: 1 }, { women: 2, men: 1 }, { women: 0, men: 0 }
@@ -2011,6 +2018,8 @@ class UiAuditRegressionTests(unittest.TestCase):
                         return {
                             eveningMode: evening.mode,
                             eveningHref: evening.item.url,
+                            snsNightMode: snsNight.mode,
+                            snsNightHref: snsNight.item.url,
                             crowdedMode: crowded.mode,
                             crowdedHref: crowded.item.url,
                             daytimeMode: daytime.mode,
@@ -2021,12 +2030,14 @@ class UiAuditRegressionTests(unittest.TestCase):
                     }""")
                     self.assertEqual(modes["eveningMode"], "evening_1on1")
                     self.assertEqual(modes["eveningHref"], "/link/dating_bachelor")
+                    self.assertEqual(modes["snsNightMode"], "sns_night_venue")
+                    self.assertEqual(modes["snsNightHref"], "/link/second_venue_reservation")
                     self.assertEqual(modes["crowdedMode"], "crowded_wait")
                     self.assertEqual(modes["crowdedHref"], "/link/dating_instant")
                     self.assertEqual(modes["daytimeMode"], "daytime_prep")
                     self.assertEqual(modes["daytimeHref"], "/link/mens_hair_removal")
-                    self.assertEqual(modes["womenDomMode"], "women_1on1")
-                    self.assertEqual(modes["womenDomHref"], "/link/women_dating_bachelor")
+                    self.assertIn(modes["womenDomMode"], ("women_0th_cafe", "women_late_care"))
+                    self.assertIn(modes["womenDomHref"], ("/link/women_second_venue", "/link/women_cosme_salon"))
 
                     # Contrast check on contextual card (dark & light) + staff-mode hide check
                     for is_light in (False, True):

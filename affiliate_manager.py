@@ -496,6 +496,7 @@ def build_store_smart_cta(
         "mode": mode,
         "slot_id": slot_id,
         "is_solo_restricted": is_solo_restricted,
+        "bachelor_shares_instant": bachelor_shares_instant,
         "kicker": kicker,
         "title": title,
         "sub": sub,
@@ -507,6 +508,154 @@ def build_store_smart_cta(
         "sublink_label": sublink_label,
         "women_sublink_href": "/for-women",
         "women_sublink_label": "女性ペア向け・待ちゼロ店＆無料デート特設 ›",
+        "women_variant": women_variant,
+    }
+
+
+def build_surface_smart_cta(
+    stores: list,
+    source_path: str,
+    surface_label: str = "対象店舗",
+    area_slug: str = "",
+    now_jst=None,
+    allow_blocking: bool = False,
+) -> dict:
+    """
+    Build a context-aware Smart CTA + 2-step editorial bridge card for high-intent tool/list surfaces
+    (`/price-comparison`, `/stats`, `/oriental-lounge`, `/ag`, `/jis`, `/asobibar`).
+    Adapts automatically to aggregate live ratio, JST time-of-day, URL-sharing honesty, and women audience mode.
+    """
+    import datetime as _dt
+
+    JST = _dt.timezone(_dt.timedelta(hours=9))
+    if now_jst is None:
+        now_jst = _dt.datetime.now(JST)
+    elif getattr(now_jst, "tzinfo", None) is None:
+        now_jst = now_jst.replace(tzinfo=JST)
+    else:
+        now_jst = now_jst.astimezone(JST)
+
+    clean_path = (source_path or "/").strip().split("?", 1)[0].rstrip("/") or "/"
+    valid_stores = [
+        s for s in (stores or [])
+        if isinstance(s, dict) and s.get("region") != "Korea" and "ソウル" not in str(s.get("name") or "")
+    ]
+    active_stores = [s for s in valid_stores if (int(s.get("women") or 0) + int(s.get("men") or 0)) >= 6]
+    sum_w = sum(int(s.get("women") or 0) for s in active_stores)
+    sum_m = sum(int(s.get("men") or 0) for s in active_stores)
+    male_heavy_cnt = sum(1 for s in active_stores if int(s.get("men") or 0) > int(s.get("women") or 0))
+
+    is_late_night = (now_jst.hour >= 22) or (now_jst.hour < 5)
+    is_evening_prep = 17 <= now_jst.hour < 22
+    bachelor_shares_instant = are_slots_sharing_url("dating_bachelor", "dating_instant", allow_blocking=allow_blocking)
+    concierge_href = f"/concierge?area={area_slug}" if area_slug else "/concierge"
+
+    if len(active_stores) >= 2 and (sum_m > sum_w or male_heavy_cnt >= max(2, len(active_stores) // 2)):
+        slot_id = "dating_instant"
+        mode = "men_glut"
+        kicker = f"現在 {surface_label}は男性先行傾向｜待機チャージ回避の選択肢"
+        title = "単独待機10分330円を重ねる前に｜近くで今日飲める恋活アプリを併用"
+        sub = "複数店舗で男性が先行している時間帯は、受付待ちや単独待機コストがかさみやすくなります。徒歩圏の穴場店へ回るか、同エリアで今から合流できる恋活アプリを予備に持っておくと無駄がありません。"
+        cta_label = "近くで今日飲めるアプリを見る ›"
+        sublink_href = concierge_href
+        sublink_label = "いま待ちなしで入れる徒歩圏の穴場3秒診断を見る ›"
+    elif len(active_stores) >= 1 and is_late_night:
+        slot_id = "second_venue_reservation"
+        mode = "late_second_venue"
+        kicker = f"現在 {surface_label}で女性{sum_w}名稼働中｜着席45分後の席確保に"
+        title = "2軒目バー・次回ディナーで迷わない「一休.comレストラン」空席検索"
+        sub = "22時以降の繁華街は飛び込みだと2軒目が満席になりがちです。相席で会話が弾んだあとにスマートに案内できる駅チカの隠れ家バー・厳選ダイニングをスマホで押さえられます。"
+        cta_label = "周辺の空席・プランを見る ›"
+        sublink_href = "/guide/second-venue"
+        sublink_label = "着席45分で自然に2軒目へ誘うフレーズ・立ち回り ›"
+    elif len(active_stores) >= 1 and is_evening_prep:
+        slot_id = "mens_skincare_clinic"
+        mode = "prime_grooming"
+        kicker = f"現在 {surface_label}で女性{sum_w}名｜入店前の清潔感＆服装確認"
+        title = "ソファ席70cmの間接照明で差がつく「夕方の皮脂テカリ・口元ケア」"
+        sub = "仕事帰りにそのまま入店する夜は、おでこ・鼻まわりの皮脂と口元の清潔感だけで最初の10分の会話継続率が変わります。日頃のベースケアには定番のORBIS Mr.も選ばれています。"
+        cta_label = "初回トライアル・公式詳細 ›"
+        sublink_href = "/grooming#sebum-care"
+        sublink_label = "ブランド別NG服装規定・入店3分前チェックリスト ›"
+    else:
+        slot_id = "dating_bachelor"
+        mode = "off_or_low"
+        if bachelor_shares_instant:
+            kicker = "営業時間外・1名利用や事前予定づくりの選択肢"
+            title = "相席の賑やかさより1対1で落ち着いて話したい週に「定番恋活アプリ」"
+            sub = "立ち上がり前の時間帯や相方と予定が合わない日は、単独チャージをかけずに近隣エリアで1対1のカフェ・食事相手を探せる定番アプリも効率的です。"
+            cta_label = "1対1恋活・デートアプリの公式詳細 ›"
+        else:
+            kicker = "営業時間外・1名利用や事前予定づくりの選択肢"
+            title = "メッセージ不要で週1回デートが決まる「審査制1対1カフェデート」"
+            sub = "立ち上がり前の時間帯や相方と予定が合わない日は、希望日時を入れるだけでAIが1対1のカフェ・バーデートを調整する審査制アプリも便利です。"
+            cta_label = "審査制1対1デートの公式詳細 ›"
+        sublink_href = "/grooming#backup-apps"
+        sublink_label = "入店前の準備アイテム＆満席時の代替サービス比較 ›"
+
+    active_pixels = {}
+    for _sid, _px in SLOT_TRACKING_PIXELS.items():
+        if resolve_affiliate_url(_sid, allow_blocking=allow_blocking) == ((_SLOT_BY_ID.get(_sid) or {}).get("default_url") or ""):
+            active_pixels[_sid] = _px
+
+    clinic_monetized = is_slot_monetized("women_beauty_clinic", allow_blocking=allow_blocking)
+    wdating_monetized = is_slot_monetized("women_dating_bachelor", allow_blocking=allow_blocking)
+
+    if clinic_monetized and not is_late_night:
+        w_link_id = "women_beauty_clinic"
+        w_canon = "women_beauty_clinic"
+        w_kicker = "女性向け｜間接照明70cmでも自信が持てる肌メンテナンス"
+        w_title = "ラウンジの暖色ライトでも映える「美容皮膚科・医療脱毛 初回体験」"
+        w_sub = "向かい合わせ70cmのソファ席でもうぶ毛や毛穴が気にならない水光肌へ。全国主要駅チカで通いやすい初回プランです。"
+        w_cta_label = "初回キャンペーンを見る ›"
+    elif wdating_monetized and len(active_stores) == 0:
+        w_link_id = "women_dating_bachelor"
+        w_canon = "women_dating_bachelor"
+        w_kicker = "女性向け｜1人で動きたい週末の選択肢"
+        w_title = "友達と予定を合わせず1対1でお茶できる「審査制カフェデート（女性無料）」"
+        w_sub = "顔写真非公開・メッセージ往復なしで、審査通過男性との週末カフェデートをセッティングできる女性無料サービスです。"
+        w_cta_label = "女性無料の公式詳細を見る ›"
+    elif is_late_night:
+        w_link_id = "women_cosme_salon"
+        w_canon = "women_cosme_salon"
+        w_kicker = "女性向け｜夜遊び帰りの髪・肌リセット"
+        w_title = "空調の効いた店内帰りも翌朝まとまる「サロン品質ナイトヘア＆肌ケア」"
+        w_sub = "お酒やスイーツを楽しんだ夜も、帰宅後シンプルなステップでツヤ髪とうるおい肌をキープできる人気サロンケアです。"
+        w_cta_label = "公式ショップで詳細を見る ›"
+    else:
+        w_link_id = "women_second_venue"
+        w_canon = "second_venue_reservation"
+        w_kicker = "女性向け｜合流前の0次会カフェ・女子会ディナー予約に"
+        w_title = "受付で待つより駅チカカフェで乾杯してから｜一休.comレストラン"
+        w_sub = "相席前の0次会カフェやアフタヌーンティー、友達とのご褒美女子会ディナーをWEB限定プランでスマートに空席確保できます。"
+        w_cta_label = "人気プラン・空席を見る ›"
+
+    women_variant = {
+        "slot_id": w_canon,
+        "kicker": w_kicker,
+        "title": w_title,
+        "sub": w_sub,
+        "cta_label": w_cta_label,
+        "href": f"/link/{w_link_id}?from={clean_path}",
+        "tracking_pixel": active_pixels.get(w_canon, ""),
+        "sublink_href": "/for-women#live-board",
+        "sublink_label": "いま女子待ちゼロで入れる全国LIVEボードを見る ›",
+    }
+
+    return {
+        "mode": mode,
+        "slot_id": slot_id,
+        "bachelor_shares_instant": bachelor_shares_instant,
+        "kicker": kicker,
+        "title": title,
+        "sub": sub,
+        "cta_label": cta_label,
+        "href": f"/link/{slot_id}?from={clean_path}",
+        "tracking_pixel": active_pixels.get(slot_id, ""),
+        "sublink_href": sublink_href,
+        "sublink_label": sublink_label,
+        "women_sublink_href": "/for-women#live-board",
+        "women_sublink_label": "女性向け・待ちゼロ店舗＆無料ガイド ›",
         "women_variant": women_variant,
     }
 

@@ -338,6 +338,7 @@ const AFFILIATE_MASTER = {
             womenItemId: 'women_dating_bachelor'
         },
         {
+            id: 'rank10_context',
             afterRank: 10,
             slotKey: 'rank10_context',
             slotTheme: 'venue_care_hybrid',
@@ -351,3 +352,52 @@ const AFFILIATE_MASTER = {
         }
     ]
 };
+
+// Runtime honesty & 0-yen leak prevention guard:
+// 1. When `dating_bachelor` currently shares the same ASP URL as `dating_instant`, align its copy honestly
+//    with standard 1-on-1 matching apps (automatically restores screened-date copy once a dedicated ASP tag is set).
+// 2. Gate unmonetized direct-brand women slots (`women_dating_bachelor`, `women_beauty_clinic`) from client modals
+//    and rank4 infeed cards until their ASP tags are configured.
+(function applyRuntimeAffiliateHonestyGuards() {
+    if (typeof window === 'undefined' || !AFFILIATE_MASTER) return;
+    var cfg = window.APP_CONFIG || {};
+    var sharesInstant = (cfg.bachelorSharesInstant !== false);
+    if (sharesInstant && Array.isArray(AFFILIATE_MASTER.items)) {
+        var bItem = AFFILIATE_MASTER.items.find(function (it) { return it && it.id === 'dating_bachelor'; });
+        if (bItem) {
+            bItem.badge = '1対1で落ち着いて話したい日に';
+            bItem.tag = '1対1恋活・カフェデート';
+            bItem.name = '【1対1カフェ・食事派】複数人の相席が合わない日に使える「定番恋活アプリ」';
+            bItem.shortTitle = '1対1恋活・デートアプリ';
+            bItem.infeedTag = '1対1恋活';
+            bItem.infeedSub = '複数人の相席より1対1で話したい日に';
+            bItem.infeedTitle = '相席より1対1で落ち着いて会える定番恋活アプリ';
+            bItem.target = '複数人の相席より1対1で落ち着いて話したい方、1名利用や営業時間外に予定を組みたい方';
+            bItem.desc = '「相席ラウンジの賑やかな空気も楽しいけれど、今日は最初から1対1で落ち着いたカフェや食事に行きたい」という日に便利な定番恋活アプリ。近隣エリアで趣味や雰囲気の合う相手を事前に探せます。';
+            bItem.points = [
+                '複数人の相席やシングルチャージを気にせず1対1で会える',
+                '事前に写真・プロフィール・趣味を見て気の合いそうな相手を探せる',
+                '20代〜30代前半の利用者が多く、週末のカフェ・食事デートにも定番'
+            ];
+            bItem.cta = '1対1恋活アプリの公式詳細を見る ›';
+        }
+    }
+    var allowWomenDating = Boolean(cfg.monetizedWomenDating);
+    var allowWomenClinic = Boolean(cfg.monetizedWomenClinic);
+    if (Array.isArray(AFFILIATE_MASTER.womenItems)) {
+        AFFILIATE_MASTER.womenItems = AFFILIATE_MASTER.womenItems.filter(function (it) {
+            if (!it) return false;
+            if (it.id === 'women_dating_bachelor' && !allowWomenDating) return false;
+            if (it.id === 'women_beauty_clinic' && !allowWomenClinic) return false;
+            return true;
+        });
+    }
+    if (Array.isArray(AFFILIATE_MASTER.womenCategories)) {
+        AFFILIATE_MASTER.womenCategories = AFFILIATE_MASTER.womenCategories.filter(function (cat) {
+            if (!cat) return false;
+            if (cat.id === 'w_dating' && !allowWomenDating) return false;
+            if (cat.id === 'w_clinic' && !allowWomenClinic) return false;
+            return true;
+        });
+    }
+})();

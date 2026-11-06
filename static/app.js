@@ -2563,6 +2563,15 @@
             return jst.getHours();
         }
 
+        function _hasSnsInflowContext() {
+            try {
+                if (window.APP_CONFIG && window.APP_CONFIG.hasSnsInflow) return true;
+                const qs = window.location && window.location.search ? new URLSearchParams(window.location.search) : null;
+                if (qs && (qs.get('s') || '').trim()) return true;
+            } catch (e) {}
+            return false;
+        }
+
         function resolveInfeedContext(slotConfig, topStoreItems) {
             const master = getAffiliateMaster();
             const isWomenMode = (currentAudience === 'women') || document.body.classList.contains('audience-women');
@@ -2570,6 +2579,9 @@
             const womenItems = Array.isArray(master.womenItems) ? master.womenItems : [];
             const findMen = (id) => menItems.find(i => i.id === id) || menItems[0] || null;
             const findWomen = (id) => womenItems.find(i => i.id === id) || womenItems[0] || null;
+            const appCfg = (typeof window !== 'undefined' && window.APP_CONFIG) ? window.APP_CONFIG : {};
+            const bachelorSharesInstant = (appCfg.bachelorSharesInstant !== false);
+            const allowWomenDating = Boolean(appCfg.monetizedWomenDating);
 
             const top4 = (Array.isArray(topStoreItems) ? topStoreItems : [])
                 .slice(0, 4)
@@ -2680,17 +2692,46 @@
             }
 
             if (isWomenMode) {
-                const item = findWomen((slotConfig && slotConfig.womenItemId) || 'women_dating_bachelor');
-                if (!item) return null;
+                if (allowWomenDating) {
+                    const item = findWomen((slotConfig && slotConfig.womenItemId) || 'women_dating_bachelor');
+                    if (item && item.id === 'women_dating_bachelor') {
+                        return {
+                            mode: 'women_1on1',
+                            item,
+                            kicker: '1対1・女性完全無料',
+                            title: '複数人の相席より落ち着いて話したい日は「審査制1対1カフェデート」',
+                            sub: '顔写真公開・メッセージ往復なし。希望日時を入れるだけで週末カフェデートを調整',
+                            cta: item.infeedCta || '女性無料の詳細 ›',
+                            editorialHref: '/guide/lounge-vs-screened-date',
+                            editorialLabel: '相席ラウンジと審査制デートの違いを比較 ›'
+                        };
+                    }
+                }
+                if (jstHour >= 23 || jstHour <= 4) {
+                    const lateItem = findWomen('women_cosme_salon');
+                    if (!lateItem) return null;
+                    return {
+                        mode: 'women_late_care',
+                        item: lateItem,
+                        kicker: '夜遊び帰りの髪・肌リセット',
+                        title: '空調の効いた店内帰りも翌朝まとまる「サロン品質ナイトヘア＆肌ケア」',
+                        sub: '帰宅後シンプルなステップでツヤ髪・うるおい肌をキープ。公式オンライン限定枠',
+                        cta: '公式ショップを見る ›',
+                        editorialHref: '/for-women#live-board',
+                        editorialLabel: 'いま女子待ちゼロで入れる全国LIVEボードを見る ›'
+                    };
+                }
+                const venueItem = findWomen('women_second_venue');
+                if (!venueItem) return null;
                 return {
-                    mode: 'women_1on1',
-                    item,
-                    kicker: '1対1・女性完全無料',
-                    title: '複数人の相席より落ち着いて話したい日は「審査制1対1カフェデート」',
-                    sub: '顔写真公開・メッセージ往復なし。希望日時を入れるだけで週末カフェデートを調整',
-                    cta: item.infeedCta || '女性無料の詳細 ›',
-                    editorialHref: '/guide/lounge-vs-screened-date',
-                    editorialLabel: '相席ラウンジと審査制デートの違いを比較 ›'
+                    mode: 'women_0th_cafe',
+                    item: venueItem,
+                    kicker: '合流前の0次会カフェ・女子会予約',
+                    title: '受付で待つより駅チカカフェで乾杯してから「一休.comレストラン」',
+                    sub: '相席前の0次会カフェやご褒美女子会ディナーをWEB限定プランでスマートに空席確保',
+                    cta: venueItem.infeedCta || '人気プランを見る ›',
+                    editorialHref: '/for-women#live-board',
+                    editorialLabel: '女性向け完全無料ガイド・待ちゼロ店舗一覧を見る ›'
                 };
             }
 
@@ -2704,9 +2745,25 @@
                     title: '入店待ちを避けたい夜は「近くで今日飲める恋活アプリ」も併用',
                     sub: '待機時間を無駄にせず、同エリアで今から合流できる相手をスマホで検索',
                     cta: '無料で探す ›',
-                    editorialHref: '/guide/lounge-vs-screened-date',
-                    editorialLabel: '相席とマッチングアプリの使い分け比較 ›'
+                    editorialHref: '/concierge',
+                    editorialLabel: '徒歩圏でいま待ちなしの穴場店3秒診断を見る ›'
                 };
+            }
+
+            if (isNightHours && _hasSnsInflowContext()) {
+                const venueItem = findMen('second_venue_reservation');
+                if (venueItem) {
+                    return {
+                        mode: 'sns_night_venue',
+                        item: venueItem,
+                        kicker: '今夜の着席45分後・2軒目の席確保に',
+                        title: '飛び込み満席で迷わないよう席だけ先に確認「一休.comレストラン」',
+                        sub: '相席で会話が弾んだあとにスマートに誘える駅近の隠れ家バー・夜カフェをスマホで空席検索',
+                        cta: '周辺の空席を見る ›',
+                        editorialHref: '/concierge',
+                        editorialLabel: '現在地エリアの穴場・徒歩ハシゴ3秒診断を見る ›'
+                    };
+                }
             }
 
             if (!isNightHours && activeStores.length < 2) {
@@ -2726,6 +2783,18 @@
 
             const item = findMen((slotConfig && slotConfig.itemId) || 'dating_bachelor');
             if (!item) return null;
+            if (bachelorSharesInstant) {
+                return {
+                    mode: 'evening_1on1',
+                    item,
+                    kicker: '2対2より1対1で話したい日の選択肢',
+                    title: '相席より1対1で落ち着いて会いたい日の「定番恋活・デートアプリ」',
+                    sub: '複数人の相席が合わない日や1名利用の夜に、近隣で1対1のカフェ・食事相手を探せる定番サービス',
+                    cta: '公式詳細 ›',
+                    editorialHref: '/guide/lounge-vs-screened-date',
+                    editorialLabel: '相席ラウンジ vs 1対1デート徹底比較 ›'
+                };
+            }
             return {
                 mode: 'evening_1on1',
                 item,
@@ -3837,6 +3906,9 @@
                 </div>
                 <div class="cmi-actions">
                     <a href="${escapeHtml(officialUrl)}" target="_blank" rel="noopener noreferrer" class="cmi-primary-cta">公式サイト・店舗詳細を確認する ↗</a>
+                    ${(target.region !== 'Korea' && String(target.name || '').indexOf('ソウル') === -1 && getStoreSlug(target.name))
+                        ? `<a href="/store/${escapeHtml(getStoreSlug(target.name))}" class="cmi-store-page-link" data-cushion="1">店舗詳細・料金・近隣比較ページへ ›</a>`
+                        : ''}
                     <button type="button" class="cmi-secondary-btn">詳しい曜日・時間帯グラフ＆2軒目を見る</button>
                 </div>
             `;
@@ -3946,6 +4018,16 @@
             if (officialLinkEl) officialLinkEl.href = officialUrl;
             const topOfficialLinkEl = document.getElementById('modal-top-official-link');
             if (topOfficialLinkEl) topOfficialLinkEl.href = officialUrl;
+            const modalStoreDetailEl = document.getElementById('modal-store-detail-link');
+            if (modalStoreDetailEl) {
+                const detailSlug = (String(storeName || '').indexOf('ソウル') === -1) ? getStoreSlug(storeName) : '';
+                if (detailSlug) {
+                    modalStoreDetailEl.href = '/store/' + encodeURIComponent(detailSlug);
+                    modalStoreDetailEl.classList.remove('hidden');
+                } else {
+                    modalStoreDetailEl.classList.add('hidden');
+                }
+            }
             renderModalPrSlot(storeName);
             renderModalMoatForecast(storeName);
             if (shouldShowEvents() && !_eventsFetched) {
