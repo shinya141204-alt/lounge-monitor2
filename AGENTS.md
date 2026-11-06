@@ -51,8 +51,8 @@ python3 .agents/skills/affiliate/scripts/parse_and_audit_affiliate.py --audit
 # 2. UIコントラスト・未定義CSS変数・スクロール安全性監査
 python3 .agents/skills/editorial-ui-ux/scripts/audit_anti_ai_ui.py
 
-# 3. 全単体テストスイート実行
-python3 -m unittest discover -s tests
+# 3. 全単体テストスイート実行（本番汚染防止フラグ付き）
+DISABLE_SHEETS=1 DISABLE_SCHEDULER=1 PYTHONPATH=. python3 -m unittest discover -s tests
 
 # 4. GitHub 反映 ＆ Fly.io 東京本番デプロイ
 git push origin main

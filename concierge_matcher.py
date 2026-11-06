@@ -824,15 +824,45 @@ def _build_smart_action_card(audience: str, timing: str, area_summary: dict, pri
     スタッフ非表示時にのみ描画する、ユーザー状況に寄り添った実用準備＆代替プラン導線メタ情報。
     """
     if audience == "women":
+        try:
+            import affiliate_manager as _am
+            wdating_monetized = _am.is_slot_monetized("women_dating_bachelor", allow_blocking=False)
+            wclinic_monetized = _am.is_slot_monetized("women_beauty_clinic", allow_blocking=False)
+        except Exception:
+            wdating_monetized = False
+            wclinic_monetized = False
+
+        if wdating_monetized:
+            return {
+                "mode": "women_comfort",
+                "kicker": "女性組の快適ラウンジ＆1対1デート活用メモ",
+                "title": "角が立たない席替えフレーズ＆『審査制カフェデート』という選択肢",
+                "body": "微妙な席に当たったときの自然な抜け方は『女性向け実践ガイド』をチェック。大人数の飲み会より落ち着いて1対1でお茶したい週は、女性無料・顔写真非公開の審査制デートアプリを併用する女性が増えています。",
+                "primary_label": "審査制・1対1デート（女性無料）を見る",
+                "primary_url": "/link/women_dating?from=/concierge",
+                "secondary_label": "女性向け待ちゼロ＆席替えガイドを読む",
+                "secondary_url": "/for-women#change-seat-manual",
+            }
+        if wclinic_monetized:
+            return {
+                "mode": "women_comfort",
+                "kicker": "女性組の快適ラウンジ＆自分磨きメモ",
+                "title": "間接照明70cmで映える美肌・医療脱毛と、角が立たない席替え術",
+                "body": "向かい合わせ70cmの暖色スポット照明でも自信が持てる駅チカ美容皮膚科・医療脱毛の初回プランと、微妙な席に当たったときのスマートな席替えフレーズをまとめています。",
+                "primary_label": "医療脱毛・美肌初回プランを見る",
+                "primary_url": "/link/women_beauty_clinic?from=/concierge",
+                "secondary_label": "女性向け待ちゼロ＆席替えガイドを読む",
+                "secondary_url": "/for-women#change-seat-manual",
+            }
         return {
             "mode": "women_comfort",
-            "kicker": "💄 女子組の快適ラウンジ＆1対1デート活用メモ",
-            "title": "角が立たない席替えフレーズ＆『審査制カフェデート』という選択肢",
-            "body": "微妙な席に当たったときの自然な抜け方は『女子向け裏ガイド』をチェック。また、大人数の飲み会よりハイスペック男性と落ち着いて1対1でお茶したい週は、女性完全無料・顔写真非公開の審査制デートアプリを併用する女性が増えています。",
-            "primary_label": "審査制・1対1デート（女性無料）を見る",
-            "primary_url": "/link/women_dating?from=/concierge",
-            "secondary_label": "💄 女子向け裏ガイド＆席替え術を読む",
-            "secondary_url": "/for-women",
+            "kicker": "女性組の0次会カフェ＆スマート席替えメモ",
+            "title": "合流前の駅チカ夜カフェ・女子会予約と、角が立たない席替えフレーズ",
+            "body": "相席前の0次会カフェやラウンジ帰りの女子会ディナーをWEB優待プランで確保したい夜は『一休.comレストラン』が便利。微妙な席に当たったときの自然な抜け方も事前チェックできます。",
+            "primary_label": "駅チカ夜カフェ・女子会プランを見る",
+            "primary_url": "/link/women_second_venue?from=/concierge",
+            "secondary_label": "女性向け待ちゼロ＆席替えガイドを読む",
+            "secondary_url": "/for-women#change-seat-manual",
         }
 
     is_off_or_tough = (
@@ -842,24 +872,24 @@ def _build_smart_action_card(audience: str, timing: str, area_summary: dict, pri
     if is_off_or_tough:
         return {
             "mode": "men_backup_app",
-            "kicker": "💡 男余り・営業時間外・待機課金のスマート回避策",
+            "kicker": "男余り・営業時間外・待機課金のスマート回避策",
             "title": "ラウンジが空振りしやすい夜は『今日これから近くで飲めるアプリ』も併用",
-            "body": "エリア全体で男性比率が高すぎるときや営業時間外に無理して単独待機料金（10分220〜330円）を払うより、近くで今夜これから合流できる恋活アプリを保険に持っておく方が圧倒的にコスパ良く出会えます。",
+            "body": "エリア全体で男性比率が高すぎるときや営業時間外に無理して単独待機料金（10分220〜330円）を払うより、近くで今夜これから合流できる恋活アプリを予備に持っておく方が時間ロスを防げます。",
             "primary_label": "今日これから近くで飲めるアプリを見る",
             "primary_url": "/link/dating_instant?from=/concierge",
-            "secondary_label": "👔 相席で好印象な服装・事前準備ガイド",
-            "secondary_url": "/grooming",
+            "secondary_label": "入店前の準備＆代替アプリ比較ガイド",
+            "secondary_url": "/grooming#backup-apps",
         }
 
     return {
         "mode": "men_grooming_prep",
-        "kicker": "✨ ソファ席70cmで差がつく入店5分前の最終準備",
-        "title": "最初の10分で席替えされない『夕方の皮脂テカリ＆清潔感ケア』",
-        "body": "オリエンタルラウンジやJISの間接照明は、距離70cmのソファ席で顔まわりのテカリや乾燥が意外と目立ちます。入店前にサッと整えておくだけで1組目からの会話継続率が大きく変わります。",
+        "kicker": "ソファ席70cmで差がつく入店前の最終準備",
+        "title": "最初の10分で好印象を残す『夕方の皮脂テカリ＆清潔感ケア』",
+        "body": "オリエンタルラウンジやJISの間接照明は、距離70cmのソファ席で顔まわりのテカリや乾燥が意外と目立ちます。入店前の3点チェックと日頃のベースケアで1組目からの会話継続率が変わります。",
         "primary_label": "メンズ清潔感スキンケア（初回セット）を見る",
         "primary_url": "/link/orbis?from=/concierge",
-        "secondary_label": "👔 浮かない服装・身だしなみ特集を読む",
-        "secondary_url": "/grooming",
+        "secondary_label": "入店前の身だしなみ・準備ガイドを読む",
+        "secondary_url": "/grooming#sebum-care",
     }
 
 

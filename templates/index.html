@@ -2557,7 +2557,7 @@
                 }
                 if (window.__swRegistered) return;
                 window.__swRegistered = true;
-                navigator.serviceWorker.register('/sw.js?v=95', { updateViaCache: 'none' })
+                navigator.serviceWorker.register('/sw.js?v=96', { updateViaCache: 'none' })
                     .then(function(reg) {
                         reg.update();
                         document.addEventListener('visibilitychange', function() {
@@ -2569,7 +2569,7 @@
         }
     </script>
     {% if not is_staff and not session.get('is_staff') %}
-    <script defer src="/static/cta_tracker.js?v=1"></script>
+    <script defer src="/static/cta_tracker.js?v=2"></script>
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
          crossorigin="anonymous"></script>
     {% endif %}

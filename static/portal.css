@@ -810,3 +810,184 @@ body.theme-light .apple-spec-fold-body {
 body.theme-light .apple-spec-footnote {
     color: #52525b;
 }
+
+/* Smooth offset for deep-linked section anchors (#backup-apps, #skin-beard, #clinic, etc.) */
+h2[id],
+h3[id],
+section[id],
+aside[id] {
+    scroll-margin-top: 84px;
+}
+
+/* 2-Step Editorial Intent Bridge Box (Zero `/link/` inside columns; clean neutral dark/light contrast) */
+.editorial-bridge-box {
+    margin: 22px 0 28px;
+    padding: 18px 20px;
+    border-radius: 12px;
+    background: #17181d;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+body.theme-light .editorial-bridge-box,
+html.theme-light .editorial-bridge-box {
+    background: #ffffff;
+    border-color: rgba(24, 24, 27, 0.16);
+}
+
+.editorial-bridge-kicker {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: #e4c896;
+    margin-bottom: 6px;
+}
+
+body.theme-light .editorial-bridge-kicker,
+html.theme-light .editorial-bridge-kicker {
+    color: #78531f;
+}
+
+.editorial-bridge-title {
+    margin: 0 0 6px;
+    font-size: 0.96rem;
+    font-weight: 700;
+    line-height: 1.45;
+    color: #f4f4f5;
+}
+
+body.theme-light .editorial-bridge-title,
+html.theme-light .editorial-bridge-title {
+    color: #18181b;
+}
+
+.editorial-bridge-desc {
+    margin: 0 0 14px;
+    font-size: 0.84rem;
+    line-height: 1.65;
+    color: #d4d4d8;
+}
+
+body.theme-light .editorial-bridge-desc,
+html.theme-light .editorial-bridge-desc {
+    color: #3f3f46;
+}
+
+.editorial-bridge-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+@media (max-width: 640px) {
+    .editorial-bridge-actions {
+        grid-template-columns: 1fr;
+    }
+}
+
+.editorial-bridge-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-height: 44px;
+    padding: 10px 14px;
+    border-radius: 9px;
+    font-size: 0.83rem;
+    font-weight: 700;
+    line-height: 1.35;
+    text-decoration: none;
+    transition: background-color 0.16s ease, border-color 0.16s ease;
+}
+
+.editorial-bridge-btn--men {
+    background: #22232b;
+    border: 1px solid rgba(228, 200, 150, 0.42);
+    color: #f4e3c1;
+}
+
+.editorial-bridge-btn--men:hover {
+    background: #2a2c36;
+    border-color: rgba(228, 200, 150, 0.65);
+}
+
+body.theme-light .editorial-bridge-btn--men,
+html.theme-light .editorial-bridge-btn--men {
+    background: #faf7f2;
+    border-color: rgba(120, 83, 31, 0.36);
+    color: #5c3d12;
+}
+
+body.theme-light .editorial-bridge-btn--men:hover,
+html.theme-light .editorial-bridge-btn--men:hover {
+    background: #f3ede2;
+}
+
+.editorial-bridge-btn--women {
+    background: #261c22;
+    border: 1px solid rgba(244, 168, 184, 0.42);
+    color: #fce7f3;
+}
+
+.editorial-bridge-btn--women:hover {
+    background: #31232b;
+    border-color: rgba(244, 168, 184, 0.65);
+}
+
+body.theme-light .editorial-bridge-btn--women,
+html.theme-light .editorial-bridge-btn--women {
+    background: #fdf2f8;
+    border-color: rgba(157, 23, 77, 0.3);
+    color: #831843;
+}
+
+body.theme-light .editorial-bridge-btn--women:hover,
+html.theme-light .editorial-bridge-btn--women:hover {
+    background: #fce7f3;
+}
+
+/* Audience switch banner on /grooming so female visitors immediately find /for-women */
+.audience-switch-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 4px 0 20px;
+    padding: 12px 16px;
+    border-radius: 10px;
+    background: #1c1820;
+    border: 1px solid rgba(244, 168, 184, 0.34);
+    font-size: 0.84rem;
+    line-height: 1.5;
+    color: #f4f4f5;
+}
+
+body.theme-light .audience-switch-bar,
+html.theme-light .audience-switch-bar {
+    background: #fdf2f8;
+    border-color: rgba(157, 23, 77, 0.26);
+    color: #18181b;
+}
+
+.audience-switch-bar a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 36px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: #2c1f28;
+    border: 1px solid rgba(244, 168, 184, 0.48);
+    color: #fce7f3;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+body.theme-light .audience-switch-bar a,
+html.theme-light .audience-switch-bar a {
+    background: #ffffff;
+    border-color: rgba(157, 23, 77, 0.35);
+    color: #831843;
+}

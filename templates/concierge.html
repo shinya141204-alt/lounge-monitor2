@@ -107,7 +107,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet"></noscript>
-    <link rel="stylesheet" href="/static/portal.css?v=14">
+    <link rel="stylesheet" href="/static/portal.css?v=15">
     <style>
         :root {
             --bg-dark: #0c0d10;
@@ -900,6 +900,8 @@
             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                 <button type="button" id="copy-plan-url-btn" class="c-pill" style="color: var(--accent-text); border-color: var(--border-gold);">この診断URLをコピー</button>
                 <a href="/price-comparison" class="btn-subtle-action">料金・開催中イベント比較</a>
+                <a href="/grooming" class="btn-subtle-action">入店前の準備・満席対策</a>
+                <a href="/for-women" class="btn-subtle-action">女性向け待ちゼロ特設</a>
                 <a href="{{ res.area_portal_url }}" class="btn-subtle-action" id="bottom-area-guide-link">エリア詳細ガイド</a>
             </div>
         </div>
@@ -1175,9 +1177,6 @@
         }
     })();
     </script>
-    {% if not is_staff and not session.get('is_staff') %}
-    <script defer src="/static/cta_tracker.js?v=1"></script>
-    {% endif %}
 </body>
 
 </html>

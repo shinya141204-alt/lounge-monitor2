@@ -23,6 +23,7 @@ ALLOWED_EVENTS = {
     'page_view',             # 記事・ポータルページの閲覧（サーバー側で記録）
     'affiliate_click',       # /link/<id> 経由のアフィリエイトクリック（サーバー側で記録）
     'affiliate_impression',  # 画面内（IntersectionObserver）に表示されたPR枠インプレッション
+    'cushion_click',         # コラム・診断等から2ステップ内部クッション（/grooming・/for-women）への遷移
     'store_open',            # 店舗詳細モーダルを開いた
     'map_cafe',              # 2軒目: 夜カフェのマップ検索
     'map_bar',               # 2軒目: バー・バルのマップ検索
@@ -130,11 +131,56 @@ def normalize_affiliate_impression_label(raw_label: str) -> str:
     return f"{cid} @ {surface}"
 
 
+def normalize_cushion_click_label(raw_label: str) -> str:
+    """
+    Validate and normalize 2-step internal cushion transitions (`<target_hub[#anchor]> @ <source_path>`).
+    Only accepts `/grooming` and `/for-women` as targets and rejects self-page anchor jumps or external paths.
+    """
+    import re
+    raw = str(raw_label or '').strip()
+    if not raw or '@' not in raw:
+        return ''
+    target_part, src_part = [x.strip() for x in raw.split('@', 1)]
+    if not target_part or not src_part:
+        return ''
+    # Parse target hub (`/grooming` or `/for-women`) + optional clean `#anchor`
+    t_no_q = target_part.split('?', 1)[0].strip()
+    if '#' in t_no_q:
+        t_path, t_frag = t_no_q.split('#', 1)
+    else:
+        t_path, t_frag = t_no_q, ''
+    t_path = t_path.rstrip('/') if t_path != '/' else '/'
+    if t_path not in ('/grooming', '/for-women'):
+        return ''
+    clean_frag = re.sub(r'[^a-zA-Z0-9_-]', '', t_frag)[:28]
+
+    # Parse and sanitize internal source path
+    s_clean = src_part.split('?', 1)[0].split('#', 1)[0].strip()
+    if not s_clean.startswith('/') or s_clean.startswith('//') or '..' in s_clean or '\\' in s_clean:
+        return ''
+    if not re.match(r'^/[A-Za-z0-9_/\-]*$', s_clean):
+        return ''
+    if len(s_clean) > 1:
+        s_clean = s_clean.rstrip('/')
+    s_clean = s_clean[:48]
+    # Exclude same-page anchor jumps
+    if s_clean == t_path or s_clean.startswith('/staff'):
+        return ''
+
+    norm_target = f"{t_path}#{clean_frag}" if clean_frag else t_path
+    return f"{norm_target} @ {s_clean}"
+
+
 def track(event, label=''):
     if event not in ALLOWED_EVENTS:
         return False
     if event == 'affiliate_impression':
         norm_lbl = normalize_affiliate_impression_label(label)
+        if not norm_lbl:
+            return False
+        label = norm_lbl
+    elif event == 'cushion_click':
+        norm_lbl = normalize_cushion_click_label(label)
         if not norm_lbl:
             return False
         label = norm_lbl
@@ -473,6 +519,22 @@ def describe_label(event, raw_label):
             'href': dest_path if dest_path.startswith('/') else '',
         }
 
+    if event == 'cushion_click':
+        if '@' in label:
+            tgt_part, src_path = [p.strip() for p in label.split('@', 1)]
+        else:
+            tgt_part, src_path = label.strip(), ''
+        tgt_base = tgt_part.split('#', 1)[0]
+        tgt_ja = '入店前準備ガイド (/grooming)' if tgt_base == '/grooming' else '女性向け特設ガイド (/for-women)'
+        if '#' in tgt_part:
+            tgt_ja = f"{tgt_ja} #{tgt_part.split('#', 1)[1]}"
+        src_title = _PAGE_TITLES.get(src_path) or src_path or '-'
+        return {
+            'title': f'🧭 クッション送客：{tgt_ja}',
+            'sub': f'遷移元: {src_title}',
+            'href': src_path if src_path.startswith('/') else '',
+        }
+
     if event == 'sns_click':
         return {'title': _SNS_NAMES.get(label.lower(), f'📣 {label}'), 'sub': 'SNS外部リンク', 'href': ''}
 
@@ -595,6 +657,7 @@ def summary(days=7, allow_blocking=True):
     store_open_total = by_event.get('store_open', 0)
     aff_total = by_event.get('affiliate_click', 0)
     aff_impressions_total = by_event.get('affiliate_impression', 0)
+    cushion_clicks_total = by_event.get('cushion_click', 0)
     map_total = by_event.get('map_cafe', 0) + by_event.get('map_bar', 0)
     official_total = by_event.get('official_click', 0)
     sns_total = by_event.get('sns_click', 0)
@@ -603,6 +666,13 @@ def summary(days=7, allow_blocking=True):
 
     engagement_total = store_open_total + article_views + vote_total
     action_total = aff_total + map_total + official_total + sns_total + share_total
+
+    cushion_by_source = defaultdict(int)
+    for raw_lbl, cnt in by_label.get('cushion_click', {}).items():
+        if '@' in raw_lbl:
+            _tgt_p, src_p = [x.strip() for x in raw_lbl.split('@', 1)]
+            if src_p:
+                cushion_by_source[src_p] += int(cnt or 0)
 
     funnel = {
         'pv_total': pv_total,
@@ -614,6 +684,7 @@ def summary(days=7, allow_blocking=True):
         'action_rate_pct': round((action_total / pv_total) * 100, 1) if pv_total > 0 else 0.0,
         'aff_total': aff_total,
         'aff_impressions_total': aff_impressions_total,
+        'cushion_clicks_total': cushion_clicks_total,
         'aff_ctr_pct': round((aff_total / pv_total) * 100, 2) if pv_total > 0 else 0.0,
         'aff_slot_ctr_pct': round((aff_total / aff_impressions_total) * 100, 2) if aff_impressions_total > 0 else 0.0,
         'map_total': map_total,
@@ -744,6 +815,7 @@ def summary(days=7, allow_blocking=True):
         'funnel': funnel,
         'revenue': revenue,
         'cta_surface_ctr': cta_surface_ctr,
+        'cushion_by_source': dict(cushion_by_source),
     }
 
 

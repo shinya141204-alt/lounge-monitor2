@@ -300,6 +300,7 @@ def api_affiliate_config():
     res = affiliate_manager.set_affiliate_slot_override(slot_id=slot_id, target_url=target_url, memo=memo)
     if not res.get('ok'):
         return jsonify(res), 400
+    core.clear_fast_http_caches()
 
     ana_data = analytics.summary(days=days, allow_blocking=False)
     status_now = affiliate_manager.get_affiliate_slots_status(analytics_data=ana_data, allow_blocking=False)

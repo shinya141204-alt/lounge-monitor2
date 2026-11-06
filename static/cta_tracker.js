@@ -1,9 +1,12 @@
 /**
- * cta_tracker.js - Lightweight, privacy-safe viewport impression tracker for `/link/<slot>` CTAs.
- * Fires once per `(slot_id, page_path)` when a CTA link becomes >=35% visible in the viewport.
+ * cta_tracker.js - Lightweight, privacy-safe viewport impression & 2-step cushion bridge tracker.
+ * 1) Fires `affiliate_impression` once per `(slot_id, page_path)` when a `/link/<slot>` CTA is >=35% visible.
+ * 2) Fires `cushion_click` when a visitor clicks a 2-step editorial bridge into `/grooming` or `/for-women`.
  */
 (function initAisekiCtaTracker() {
     if (typeof window === 'undefined' || typeof document === 'undefined') return;
+    if (window.__aisekiCtaTrackerInit) return;
+    window.__aisekiCtaTrackerInit = true;
     if (navigator.webdriver) return;
     try {
         if (window.IS_STAFF) return;
@@ -16,34 +19,12 @@
     var io = null;
     var scanScheduled = false;
 
-    function extractSlotId(href) {
-        if (!href) return '';
-        var raw = String(href).trim();
-        var pathPart = raw;
-        if (raw.indexOf('://') !== -1) {
-            try {
-                var u = new URL(raw, window.location.origin);
-                if (u.origin !== window.location.origin) return '';
-                pathPart = u.pathname || '';
-            } catch (e) {
-                return '';
-            }
-        }
-        var m = pathPart.match(/^\/link\/([A-Za-z0-9_-]+)/);
-        return m ? m[1].toLowerCase() : '';
-    }
-
-    function sendImpression(slotId) {
-        if (!slotId) return;
+    function postTrackPayload(eventName, labelStr) {
+        if (!eventName || !labelStr) return;
         if (document.body && document.body.classList.contains('staff-mode')) return;
-        var pathname = (window.location && window.location.pathname) ? window.location.pathname : '/';
-        var dedupKey = slotId + ' @ ' + pathname;
-        if (seenKeys.has(dedupKey)) return;
-        seenKeys.add(dedupKey);
-
         var bodyStr = JSON.stringify({
-            event: 'affiliate_impression',
-            label: dedupKey
+            event: eventName,
+            label: labelStr
         });
         try {
             if (navigator.sendBeacon) {
@@ -62,6 +43,72 @@
                 }).catch(function () {});
             }
         } catch (e) {}
+    }
+
+    function extractSlotId(href) {
+        if (!href) return '';
+        var raw = String(href).trim();
+        var pathPart = raw;
+        if (raw.indexOf('://') !== -1) {
+            try {
+                var u = new URL(raw, window.location.origin);
+                if (u.origin !== window.location.origin) return '';
+                pathPart = u.pathname || '';
+            } catch (e) {
+                return '';
+            }
+        }
+        var m = pathPart.match(/^\/link\/([A-Za-z0-9_-]+)/);
+        return m ? m[1].toLowerCase() : '';
+    }
+
+    function extractCushionTarget(href) {
+        if (!href) return '';
+        var raw = String(href).trim();
+        if (!raw || raw.charAt(0) === '#') return '';
+        try {
+            var u = new URL(raw, window.location.origin);
+            if (u.origin !== window.location.origin) return '';
+            var p = (u.pathname || '').replace(/\/+$/, '') || '/';
+            if (p !== '/grooming' && p !== '/for-women') return '';
+            var curPath = ((window.location && window.location.pathname) || '/').replace(/\/+$/, '') || '/';
+            if (curPath === p || curPath.indexOf('/staff') === 0) return '';
+            var frag = (u.hash || '').replace(/^#/, '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 28);
+            return frag ? (p + '#' + frag) : p;
+        } catch (e) {
+            return '';
+        }
+    }
+
+    function sendImpression(slotId) {
+        if (!slotId) return;
+        if (document.body && document.body.classList.contains('staff-mode')) return;
+        var pathname = (window.location && window.location.pathname) ? window.location.pathname : '/';
+        var dedupKey = slotId + ' @ ' + pathname;
+        if (seenKeys.has(dedupKey)) return;
+        seenKeys.add(dedupKey);
+        postTrackPayload('affiliate_impression', dedupKey);
+    }
+
+    function isEditorialBridgeAnchor(anchor) {
+        if (!anchor || typeof anchor.closest !== 'function') return false;
+        if (anchor.hasAttribute('data-cushion')) return true;
+        if (anchor.closest('nav, header, footer, .portal-nav, .portal-footer, .guide-footer, .audience-switch-bar')) return false;
+        return Boolean(anchor.closest('.editorial-bridge-box, .editorial-bridge-actions, .cta-row, .share-bar-row, .related-article-card, .pr-context-foot, .ladies-pr-section, article, main'));
+    }
+
+    function onDocumentClick(ev) {
+        if (!ev || !ev.target || typeof ev.target.closest !== 'function') return;
+        if (document.body && document.body.classList.contains('staff-mode')) return;
+        var anchor = ev.target.closest('a[href]');
+        if (!anchor || !isEditorialBridgeAnchor(anchor)) return;
+        var targetHub = extractCushionTarget(anchor.getAttribute('href') || '');
+        if (!targetHub) return;
+        var srcPath = ((window.location && window.location.pathname) ? window.location.pathname : '/').slice(0, 48);
+        var dedupKey = 'cushion:' + targetHub + ' @ ' + srcPath;
+        if (seenKeys.has(dedupKey)) return;
+        seenKeys.add(dedupKey);
+        postTrackPayload('cushion_click', targetHub + ' @ ' + srcPath);
     }
 
     function isElementRenderable(el) {
@@ -101,8 +148,9 @@
     }
 
     function boot() {
-        if (!('IntersectionObserver' in window)) return;
         if (document.body && document.body.classList.contains('staff-mode')) return;
+        document.addEventListener('click', onDocumentClick, { capture: true, passive: true });
+        if (!('IntersectionObserver' in window)) return;
 
         io = new IntersectionObserver(function (entries) {
             for (var i = 0; i < entries.length; i++) {

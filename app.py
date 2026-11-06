@@ -2087,7 +2087,7 @@ def track_event():
     if not ev_name:
         return ('', 204)
     import analytics
-    analytics.track(ev_name, str(payload.get('label', '')).strip()[:80])
+    analytics.track(ev_name, str(payload.get('label', '')).strip()[:96])
     return ('', 204)
 
 

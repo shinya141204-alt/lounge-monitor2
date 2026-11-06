@@ -391,7 +391,13 @@ def store_detail_page(store_slug):
             last_updated=last_updated,
             is_staff=bool(session.get('is_staff')),
         )
-    return core._get_cached_html_or_render(('store', store_slug), _render)
+    import affiliate_manager
+    store_mon_sig = (
+        affiliate_manager.is_slot_monetized('women_beauty_clinic', allow_blocking=False),
+        affiliate_manager.is_slot_monetized('women_dating', allow_blocking=False),
+        affiliate_manager.are_slots_sharing_url('dating_bachelor', 'dating_instant', allow_blocking=False),
+    )
+    return core._get_cached_html_or_render(('store', store_slug, store_mon_sig), _render)
 
 
 @portal_bp.route('/columns')
@@ -601,6 +607,7 @@ def price_comparison_page():
 @portal_bp.route('/for-women')
 def for_women_guide():
     """Dedicated SEO & real-time zero-wait lounge guide for female pairs (Plan C & D)."""
+    import affiliate_manager
     import ladies_guide
     core.restore_latest_data_if_empty()
     core.trigger_background_fetch_if_needed()
@@ -612,14 +619,21 @@ def for_women_guide():
             last_updated = core.latest_data.get('last_updated') or '--:--'
         live_stores = ops_governance.filter_visible_stores(raw_live)
         board = ladies_guide.build_ladies_live_board(live_stores=live_stores)
+        top_pr_cards = affiliate_manager.build_for_women_top_picks(allow_blocking=False)
         return render_template(
             'for_women.html',
             board=board,
+            top_pr_cards=top_pr_cards,
             last_updated=last_updated,
             is_staff=bool(session.get('is_staff')),
         )
 
-    return core._get_cached_html_or_render('for_women', _render)
+    cache_sig = (
+        'for_women',
+        affiliate_manager.is_slot_monetized('women_beauty_clinic', allow_blocking=False),
+        affiliate_manager.is_slot_monetized('women_dating_bachelor', allow_blocking=False),
+    )
+    return core._get_cached_html_or_render(cache_sig, _render)
 
 
 @portal_bp.route('/ladies')

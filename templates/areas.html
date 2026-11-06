@@ -92,11 +92,33 @@
       ]
     }
     </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "CollectionPage",
+      "name": "全国エリア別 相席ラウンジ現在人数・徒歩ハシゴ＆店舗ガイド一覧",
+      "url": "https://aiseki-navi.com/areas",
+      "description": "全国16エリア別の相席ラウンジリアルタイム人数と、徒歩ハシゴ・終電後の立ち回り・ソロ入店可否ガイド一覧。",
+      "mainEntity": {
+        "@type": "ItemList",
+        "itemListElement": [
+          {% for item in area_summaries %}
+          {
+            "@type": "ListItem",
+            "position": {{ loop.index }},
+            "name": {{ item.info.name | tojson }},
+            "url": "https://aiseki-navi.com/area/{{ item.slug }}"
+          }{% if not loop.last %},{% endif %}
+          {% endfor %}
+        ]
+      }
+    }
+    </script>
     {% endif %}
 
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
-    <link rel="stylesheet" href="/static/portal.css?v=14">
+    <link rel="stylesheet" href="/static/portal.css?v=15">
     <style>
         :root {
             --bg-dark: #0f1014;

@@ -169,8 +169,9 @@ class MonetizationSmartCtaTests(unittest.TestCase):
         html = resp.get_data(as_text=True)
         self.assertIn('id="store-smart-cta-card"', html)
         self.assertIn('data-context-mode="men_glut"', html)
+        self.assertIn('data-women-variant=', html)
         self.assertIn(f'/link/dating_instant?from=/store/{shibuya_slug}', html)
-        self.assertIn('/static/cta_tracker.js?v=1', html)
+        self.assertIn('/static/cta_tracker.js?v=2', html)
 
         # /api/track でブラウザからのインプレッション送信が受理されること
         tr_resp = self.client.post(
@@ -190,7 +191,121 @@ class MonetizationSmartCtaTests(unittest.TestCase):
         self.assertEqual(resp_staff.status_code, 200)
         staff_html = resp_staff.get_data(as_text=True)
         self.assertNotIn('id="store-smart-cta-card"', staff_html)
-        self.assertNotIn('/static/cta_tracker.js?v=1', staff_html)
+        self.assertNotIn('/static/cta_tracker.js?v=2', staff_html)
+
+    def test_women_variant_and_for_women_top_picks_auto_promotion(self):
+        """未設定直URLの間は稼働中ASP枠が選ばれ、women_beauty_clinic にASPタグが登録された瞬間に自動昇格すること"""
+        cta_default = affiliate_manager.build_store_smart_cta(
+            {
+                "name": "OLG 新宿",
+                "seo_name": "オリエンタルラウンジ 新宿",
+                "slug": "oriental-lounge-shinjuku",
+                "women": 10,
+                "men": 18,
+                "is_open_now": True,
+            },
+            now_jst=datetime.datetime(2026, 11, 6, 20, 30, tzinfo=JST),
+        )
+        wv_def = cta_default["women_variant"]
+        self.assertIn("/link/women_second_venue?from=/store/oriental-lounge-shinjuku", wv_def["href"])
+
+        top_def = affiliate_manager.build_for_women_top_picks(allow_blocking=False)
+        self.assertEqual(len(top_def), 2)
+        self.assertIn("/link/women_second_venue?from=/for-women", top_def[0]["href"])
+        self.assertIn("/link/women_cosme_salon?from=/for-women", top_def[1]["href"])
+
+        # レジーナ/リゼ等のASPタグが設定された状態をシミュレート
+        with patch.dict(affiliate_manager.os.environ, {"AFFILIATE_URL_WOMEN_BEAUTY_CLINIC": "https://px.a8.net/svt/ejp?a8mat=TEST+REGINA"}):
+            affiliate_manager.reset_cache_for_tests()
+            self.assertTrue(affiliate_manager.is_slot_monetized("women_beauty_clinic"))
+            top_promoted = affiliate_manager.build_for_women_top_picks(allow_blocking=False)
+            self.assertIn("/link/women_beauty_clinic?from=/for-women", top_promoted[1]["href"])
+
+            cta_promoted = affiliate_manager.build_store_smart_cta(
+                {
+                    "name": "OLG 新宿",
+                    "seo_name": "オリエンタルラウンジ 新宿",
+                    "slug": "oriental-lounge-shinjuku",
+                    "women": 10,
+                    "men": 18,
+                    "is_open_now": True,
+                },
+                now_jst=datetime.datetime(2026, 11, 6, 20, 30, tzinfo=JST),
+            )
+            self.assertIn("/link/women_beauty_clinic?from=/store/oriental-lounge-shinjuku", cta_promoted["women_variant"]["href"])
+
+    def test_cushion_click_tracking_and_pdca_bridge_recognition(self):
+        """2ステップ導線の cushion_click が厳密正規化され、自己アンカーや外部URLを拒否し、PDCAが8%超の記事を健全判定すること"""
+        import pdca_engine
+
+        with patch.object(analytics.sheets_store, "read_rows", return_value=[]), \
+             patch.object(analytics.turbo_store, "analytics_add_batch", return_value=False):
+            # 不正ターゲット・自己ページアンカー・外部パスは拒否
+            self.assertFalse(analytics.track("cushion_click", "https://evil.example @ /guide/brand-comparison"))
+            self.assertFalse(analytics.track("cushion_click", "/grooming#skin-beard @ /grooming"))
+            self.assertFalse(analytics.track("cushion_click", "/for-women#clinic @ /for-women"))
+            self.assertFalse(analytics.track("cushion_click", "/grooming @ //evil.example"))
+            self.assertFalse(analytics.track("cushion_click", "/grooming @ /staff/pdca"))
+
+            # 正規の2ステップ遷移はアンカー保持で記録される
+            self.assertTrue(analytics.track("cushion_click", "/grooming#backup-apps @ /guide/brand-comparison"))
+            self.assertTrue(analytics.track("cushion_click", "/for-women#live-board @ /guide/brand-comparison"))
+            self.assertTrue(analytics.track("cushion_click", "/grooming#sebum-care @ /guide/low-pv-sample"))
+            for _ in range(18):
+                analytics.track("page_view", "/guide/brand-comparison")
+            for _ in range(5):
+                analytics.track("page_view", "/guide/low-pv-sample")
+
+            data = analytics.summary(days=7)
+            self.assertEqual(data["funnel"]["cushion_clicks_total"], 3)
+            self.assertEqual(data["cushion_by_source"].get("/guide/brand-comparison"), 2)
+
+            # 18 PV (>=8 PV) 中 2件のクッション遷移（11.1% >= 8.0%）があればギャップ除外、5 PV (<8 PV) は除外しない
+            gaps = pdca_engine._detect_monetization_gaps(
+                {"/guide/brand-comparison": 18, "/guide/weekend-strategy": 15, "/guide/low-pv-sample": 5},
+                {},
+                [
+                    {"path": "/guide/brand-comparison", "title": "3大ブランド比較"},
+                    {"path": "/guide/weekend-strategy", "title": "週末攻略"},
+                    {"path": "/guide/low-pv-sample", "title": "少数PVサンプル"},
+                ],
+                cushion_by_ref_path=data["cushion_by_source"],
+            )
+            gap_paths = [g["path"] for g in gaps]
+            self.assertNotIn("/guide/brand-comparison", gap_paths)
+            self.assertIn("/guide/weekend-strategy", gap_paths)
+            self.assertIn("/guide/low-pv-sample", gap_paths)
+
+    def test_sitemap_lastmod_and_llms_facts_store_enrichment(self):
+        """sitemap.xml の実テンプレート参照修正と llms-facts.json の店舗別営業時間・料金・ソロ規定の返却検証"""
+        import importlib
+        _seo = importlib.import_module("routes.seo_feeds_bp")
+
+        smap_resp = self.client.get("/sitemap.xml")
+        self.assertEqual(smap_resp.status_code, 200)
+        smap_xml = smap_resp.get_data(as_text=True)
+        lm_cmp = _seo._template_lastmod("guide_comparison.html")
+        lm_pe = _seo._template_lastmod("guide_price_comparison.html")
+        self.assertIn(f"<loc>https://aiseki-navi.com/guide/brand-comparison</loc>\n    <lastmod>{lm_cmp}</lastmod>", smap_xml)
+        self.assertIn(f"<loc>https://aiseki-navi.com/guide/price-event-comparison</loc>\n    <lastmod>{lm_pe}</lastmod>", smap_xml)
+
+        facts_resp = self.client.get("/api/llms-facts.json")
+        self.assertEqual(facts_resp.status_code, 200)
+        facts = facts_resp.get_json()
+        self.assertTrue(len(facts.get("stores") or []) >= 50)
+        st0 = facts["stores"][0]
+        self.assertIn("business_hours", st0)
+        self.assertIn("male_rate_20_22_per_10m", st0)
+        self.assertIn("solo_entry_policy", st0)
+        self.assertTrue(bool(st0["business_hours"]))
+
+        # 純粋2ステップ記事に /link/ 直貼りが混入していないこと
+        for pure_col in ("/guide/brand-comparison", "/guide/lounge-vs-screened-date", "/guide/dress-code-cleanliness", "/guide/weekend-strategy", "/guide/shinjuku", "/guide/last-train-cliff"):
+            c_resp = self.client.get(pure_col)
+            self.assertEqual(c_resp.status_code, 200)
+            c_html = c_resp.get_data(as_text=True)
+            self.assertIn("editorial-bridge-box", c_html)
+            self.assertNotIn("/link/", c_html, f"Unexpected direct /link/ found in {pure_col}")
 
 
 if __name__ == "__main__":

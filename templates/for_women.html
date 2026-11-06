@@ -89,7 +89,7 @@
 
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
-    <link rel="stylesheet" href="/static/portal.css?v=14">
+    <link rel="stylesheet" href="/static/portal.css?v=15">
     <style>
         /* デフォルト（女性向けローズリネン地×純白カード紙面の高級サロン誌トーン） */
         :root {
@@ -555,7 +555,7 @@
         </section>
 
         <!-- LIVE Zero-Wait & Perks Store Board -->
-        <section class="live-board" aria-label="いま女子待ちゼロで入れるリアルタイム店舗ボード">
+        <section class="live-board" id="live-board" aria-label="いま女子待ちゼロで入れるリアルタイム店舗ボード">
             <div class="live-board-head">
                 <h2><span class="status-dot-live" aria-hidden="true"></span>いま「女子待ちゼロ・即案内されやすい」注目店舗</h2>
                 <span class="live-pill">リアルタイム計測（更新: {{ last_updated }}）</span>
@@ -589,6 +589,33 @@
                 </a>
             </div>
         </section>
+
+        {% if top_pr_cards and not is_staff and not session.get('is_staff') %}
+        <aside class="ladies-pr-section" aria-label="お出かけ前後のカフェ予約・美容ケア案内" style="margin: 18px 0 26px; padding: 18px 20px;">
+            <div class="ladies-pr-head" style="justify-content: space-between; flex-wrap: wrap;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <span class="pr-kicker">PR</span>
+                    <strong style="font-size:0.9rem;color:var(--rose-strong);">お出かけ前後の0次会カフェ＆近距離ライト対策メモ</strong>
+                </div>
+                <a href="#clinic" style="font-size:0.78rem;color:var(--text-sub);text-decoration:underline;text-underline-offset:3px;">1対1デート・美容医療一覧を見る ↓</a>
+            </div>
+            <div class="ladies-pr-grid" style="margin-top:10px;">
+                {% for qc in top_pr_cards %}
+                <div class="ladies-pr-card">
+                    <div>
+                        <span class="pick-badge good">{{ qc.badge }}</span>
+                        <h4>{{ qc.title }}</h4>
+                        <p>{{ qc.desc }}</p>
+                    </div>
+                    <a href="{{ qc.href }}" target="_blank" rel="noopener sponsored" class="ladies-pr-link">{{ qc.cta_label }}</a>
+                    {% if qc.tracking_pixel %}
+                    <img border="0" width="1" height="1" src="{{ qc.tracking_pixel }}" alt="" style="display:none;">
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </aside>
+        {% endif %}
 
         <h2 class="sec-h2">1. なぜ「女子に一番人気の店」へ直行すると損をするのか？</h2>
         <p>
@@ -711,7 +738,7 @@
 
         {% if not is_staff and not session.get('is_staff') %}
         <!-- Plan D: Women-Specific Curated Self-Care & Screening App Slots -->
-        <aside class="ladies-pr-section" aria-label="女性読者向けおすすめサービス">
+        <aside class="ladies-pr-section" id="clinic" aria-label="女性読者向けおすすめサービス">
             <div class="ladies-pr-head">
                 <span class="pr-kicker">PR</span>
                 <strong style="font-size:0.95rem;color:var(--rose-strong);">💄 ラウンジ派の女性に選ばれている「1対1デート＆自分磨き」特集</strong>
@@ -802,7 +829,7 @@
         </footer>
     </div>
     {% if not is_staff and not session.get('is_staff') %}
-    <script defer src="/static/cta_tracker.js?v=1"></script>
+    <script defer src="/static/cta_tracker.js?v=2"></script>
     {% endif %}
 </body>
 

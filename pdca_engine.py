@@ -502,11 +502,17 @@ def _prescribe_page_funnel_upgrade(path: str, grooming_rate_low: bool = False) -
     }
 
 
-def _detect_monetization_gaps(pv_by_path: dict, aff_by_ref_path: dict, known_cols: list) -> list:
+def _detect_monetization_gaps(
+    pv_by_path: dict,
+    aff_by_ref_path: dict,
+    known_cols: list,
+    cushion_by_ref_path: dict = None,
+) -> list:
     """
     Auto-detect "High PV × Low CVR" opportunity-loss pages (`monetization_gaps`) and prescribe
     which funnel (`/grooming`,混雑回避アプリ, 女性特典 etc.) to add at which exact position.
     """
+    cushion_map = cushion_by_ref_path or {}
     col_title_map = {c["path"]: c["title"] for c in (known_cols or [])}
     total_col_pv = sum(int(pv_by_path.get(c["path"], 0)) for c in (known_cols or []))
     grooming_pv = int(pv_by_path.get("/grooming", 0))
@@ -528,7 +534,9 @@ def _detect_monetization_gaps(pv_by_path: dict, aff_by_ref_path: dict, known_col
         if pv <= 0:
             continue
         aff = int(aff_by_ref_path.get(p, 0))
+        cush = int(cushion_map.get(p, 0))
         cvr_pct = round((aff / pv) * 100, 2)
+        bridge_rate_pct = round((cush / pv) * 100, 2)
 
         if p in ("/grooming", "/for-women"):
             target_cvr = 4.0
@@ -539,8 +547,10 @@ def _detect_monetization_gaps(pv_by_path: dict, aff_by_ref_path: dict, known_col
         else:
             target_cvr = 1.2
 
-        # Pages already converting near or above target CVR are winners, not gaps
+        # Pages already converting near or above target CVR (or columns with >=8 PV meeting >=8.0% 2-step cushion bridge rate) are winners, not gaps
         if aff > 0 and cvr_pct >= target_cvr * 0.8:
+            continue
+        if p.startswith("/guide") and pv >= 8 and cush > 0 and bridge_rate_pct >= 8.0:
             continue
 
         raw_title = col_title_map.get(p) or analytics.describe_label("page_view", p).get("title") or p
@@ -549,12 +559,13 @@ def _detect_monetization_gaps(pv_by_path: dict, aff_by_ref_path: dict, known_col
 
         est_missed = max(1, int(round(pv * (target_cvr / 100.0) - aff)))
         intent_weight = 1.45 if (p.startswith("/guide") or p in ("/price-comparison", "/for-women", "/grooming")) else 1.0
-        gap_score = round(pv * max(0.4, target_cvr - cvr_pct) * intent_weight, 2)
+        effective_pct = max(cvr_pct, round(bridge_rate_pct * 0.3, 2)) if p.startswith("/guide") else cvr_pct
+        gap_score = round(pv * max(0.4, target_cvr - effective_pct) * intent_weight, 2)
 
-        if pv >= 10 and aff == 0:
+        if pv >= 10 and aff == 0 and cush == 0:
             sev = "critical"
             sev_badge = "🔥 最優先（高PV・CVゼロ）"
-        elif pv >= 8 and cvr_pct < target_cvr * 0.5:
+        elif pv >= 8 and effective_pct < target_cvr * 0.5:
             sev = "high"
             sev_badge = "⚠️ 要改善（高PV・低CVR）"
         elif pv >= 3:
@@ -569,6 +580,8 @@ def _detect_monetization_gaps(pv_by_path: dict, aff_by_ref_path: dict, known_col
             "title": clean_title,
             "pv": pv,
             "aff_clicks": aff,
+            "cushion_clicks": cush,
+            "bridge_rate_pct": bridge_rate_pct,
             "cvr_pct": cvr_pct,
             "target_cvr_pct": target_cvr,
             "grooming_pv": grooming_pv,
@@ -1194,11 +1207,12 @@ def analyze_site_performance(live_stores: list = None, days: int = 14, allow_blo
     all_labels = stats.get("all_by_label") or {}
     pv_by_path = all_labels.get("page_view") or {}
     aff_by_label = all_labels.get("affiliate_click") or {}
+    cushion_by_label = all_labels.get("cushion_click") or {}
     inflow_by_label = all_labels.get("sns_inflow") or {}
     store_opens = all_labels.get("store_open") or {}
     funnel = stats.get("funnel") or {}
 
-    # 1. Cross-reference PV and Affiliate Clicks per page
+    # 1. Cross-reference PV, Cushion Bridge Clicks, and Affiliate Clicks per page
     aff_by_ref_path = collections.defaultdict(int)
     aff_by_item = collections.defaultdict(int)
     for raw_lbl, cnt in aff_by_label.items():
@@ -1209,18 +1223,27 @@ def analyze_site_performance(live_stores: list = None, days: int = 14, allow_blo
         aff_by_ref_path[ref_p] += cnt
         aff_by_item[item_id] += cnt
 
+    cushion_by_ref_path = collections.defaultdict(int)
+    for raw_lbl, cnt in cushion_by_label.items():
+        if "@" in raw_lbl:
+            _tgt_p, ref_p = [p.strip() for p in raw_lbl.split("@", 1)]
+            if ref_p:
+                cushion_by_ref_path[ref_p] += int(cnt or 0)
+
     known_cols = _collect_all_known_columns(allow_blocking=allow_blocking)
     article_perf = []
     for col in known_cols:
         p = col["path"]
         pvs = int(pv_by_path.get(p, 0))
         affs = int(aff_by_ref_path.get(p, 0))
+        cush_clks = int(cushion_by_ref_path.get(p, 0))
         ctr = round((affs / pvs) * 100, 2) if pvs > 0 else 0.0
-        if pvs >= 8 and ctr >= 2.0:
+        bridge_pct = round((cush_clks / pvs) * 100, 2) if pvs > 0 else 0.0
+        if pvs >= 8 and (ctr >= 2.0 or bridge_pct >= 8.0):
             badge = "🏆 高CV牽引"
         elif col.get("is_new_release") and pvs < 15:
             badge = "🌱 新着・露出強化枠"
-        elif pvs >= 15 and affs == 0:
+        elif pvs >= 15 and affs == 0 and cush_clks == 0:
             badge = "⚠️ 導線ロス（高PV・CV0）"
         elif pvs == 0:
             badge = "💤 SNS送客待ち"
@@ -1233,6 +1256,8 @@ def analyze_site_performance(live_stores: list = None, days: int = 14, allow_blo
             "is_new_release": col["is_new_release"],
             "pv": pvs,
             "aff_clicks": affs,
+            "cushion_clicks": cush_clks,
+            "bridge_rate_pct": bridge_pct,
             "ctr_pct": ctr,
             "status_badge": badge,
         })
@@ -1345,7 +1370,12 @@ def analyze_site_performance(live_stores: list = None, days: int = 14, allow_blo
 
     # 3b. Google AI Ultra Revenue & Growth Intelligence (4 Pillars)
     offer_breakdown = _build_offer_breakdown(stats, stats_7d, days=days)
-    monetization_gaps = _detect_monetization_gaps(pv_by_path, aff_by_ref_path, known_cols)
+    monetization_gaps = _detect_monetization_gaps(
+        pv_by_path,
+        aff_by_ref_path,
+        known_cols,
+        cushion_by_ref_path=cushion_by_ref_path,
+    )
     sns_channel_efficiency = _build_sns_channel_efficiency(
         stats=stats,
         inflow_cohorts=inflow_cohorts,

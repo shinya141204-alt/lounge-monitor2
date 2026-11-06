@@ -216,6 +216,62 @@ def is_asp_tracking_url(raw_url: str) -> bool:
     return False
 
 
+def is_slot_monetized(slot_id: str, allow_blocking: bool = False) -> bool:
+    """Return True when the resolved URL of `slot_id` points to a real ASP tracking endpoint (not a 0-yen direct URL)."""
+    return is_asp_tracking_url(resolve_affiliate_url(slot_id, allow_blocking=allow_blocking))
+
+
+def are_slots_sharing_url(slot_a: str, slot_b: str, allow_blocking: bool = False) -> bool:
+    """Return True when two slots currently resolve to the exact same destination URL."""
+    ua = resolve_affiliate_url(slot_a, allow_blocking=allow_blocking)
+    ub = resolve_affiliate_url(slot_b, allow_blocking=allow_blocking)
+    return bool(ua and ub and ua == ub)
+
+
+def build_for_women_top_picks(allow_blocking: bool = False) -> list:
+    """
+    Build the 2 compact high-intent offer cards placed immediately below the LIVE Zero-Wait Board on `/for-women`.
+    Prioritizes active ASP-monetized slots so clicks never leak to 0-yen direct brand URLs, while automatically
+    promoting `women_beauty_clinic` (Regina/Rize etc.) the moment its ASP tag is configured!
+    """
+    active_pixels = {}
+    for _sid, _px in SLOT_TRACKING_PIXELS.items():
+        if resolve_affiliate_url(_sid, allow_blocking=allow_blocking) == ((_SLOT_BY_ID.get(_sid) or {}).get("default_url") or ""):
+            active_pixels[_sid] = _px
+
+    cards = [
+        {
+            "badge": "0次会カフェ・女子会ディナーに",
+            "title": "駅チカ夜カフェ＆ダイニング限定プラン予約（一休.comレストラン）",
+            "desc": "合流前の0次会カフェや、ラウンジ帰りの女子会ディナーをWEB優待プランでスマートに空席確保。",
+            "cta_label": "人気プラン・空席を見る ›",
+            "href": "/link/women_second_venue?from=/for-women",
+            "tracking_pixel": active_pixels.get("second_venue_reservation", ""),
+        }
+    ]
+
+    if is_slot_monetized("women_beauty_clinic", allow_blocking=allow_blocking):
+        cards.append({
+            "badge": "近距離ライト70cmでも映える肌へ",
+            "title": "美容皮膚科・医療脱毛 初回カウンセリング＆体験プラン",
+            "desc": "向かい合わせの暖色スポット照明でもうぶ毛・毛穴が気にならない水光肌へ。全国駅チカ院の初回プラン。",
+            "cta_label": "初回キャンペーンを見る ›",
+            "href": "/link/women_beauty_clinic?from=/for-women",
+            "tracking_pixel": active_pixels.get("women_beauty_clinic", ""),
+        })
+    else:
+        cards.append({
+            "badge": "夜遊び帰りの髪・肌リセット",
+            "title": "サロン品質ヘア＆ナイトスキンケア 初回セット",
+            "desc": "空調の効いた店内でお酒やスイーツを楽しんだ夜も、帰宅後すぐツヤとうるおいを整える人気サロンケア。",
+            "cta_label": "公式ショップで詳細を見る ›",
+            "href": "/link/women_cosme_salon?from=/for-women",
+            "tracking_pixel": active_pixels.get("women_cosme_salon", ""),
+        })
+
+    return cards
+
+
 def build_store_smart_cta(
     store_obj: dict,
     nearby_stores: list = None,
@@ -224,9 +280,9 @@ def build_store_smart_cta(
 ) -> dict:
     """
     Build the context-aware Smart CTA card placed immediately below the live crowd hero on `/store/<slug>`.
-    Adapts to 4 real-time visitor states:
+    Adapts to 4 real-time visitor states (plus a `women_variant` payload for female-mode / `/for-women` visitors):
       1. `men_glut`: Men outnumber women (`total >= 6` and `men > women`) or wait groups > 0 -> `dating_instant` + nearby female-lead store
-      2. `off_or_low`: Closed or low headcount (`women < 6` / `total < 6`) -> `dating_bachelor` (1-on-1 screened date, noting solo rule if applicable)
+      2. `off_or_low`: Closed or low headcount (`women < 6` / `total < 6`) -> `dating_bachelor` (honest copy matching active LP)
       3. `late_second_venue`: 22:30-04:59 JST with good female ratio -> `second_venue_reservation` (Ikyu Restaurant)
       4. `prime_grooming`: Before 22:30 JST with good female ratio -> `mens_skincare_clinic` + `/grooming`
     """
@@ -254,7 +310,10 @@ def build_store_smart_cta(
     nearby_list = [ns for ns in (nearby_stores or []) if isinstance(ns, dict) and ns.get("slug")]
     best_female_alt = None
     best_open_alt = None
+    best_women_zero_wait_alt = None
     for ns in nearby_list:
+        if not ns.get("is_open_now", True):
+            continue
         ow = int(ns.get("women") or 0)
         om = int(ns.get("men") or 0)
         if ow >= 6 and ow >= om:
@@ -263,12 +322,19 @@ def build_store_smart_cta(
                 int(best_female_alt.get("women") or 0),
             ):
                 best_female_alt = ns
+        if om >= 5 and om >= ow:
+            if best_women_zero_wait_alt is None or (om - ow, om) > (
+                int(best_women_zero_wait_alt.get("men") or 0) - int(best_women_zero_wait_alt.get("women") or 0),
+                int(best_women_zero_wait_alt.get("men") or 0),
+            ):
+                best_women_zero_wait_alt = ns
         if ow >= 6:
             if best_open_alt is None or ow > int(best_open_alt.get("women") or 0):
                 best_open_alt = ns
 
     from_param = f"/store/{slug}" if slug else "/areas"
     is_late_night = (now_jst.hour > 22) or (now_jst.hour == 22 and now_jst.minute >= 30) or (now_jst.hour < 5)
+    bachelor_shares_instant = are_slots_sharing_url("dating_bachelor", "dating_instant", allow_blocking=False)
 
     if tot >= 6 and (men > women or est_wait_groups > 0):
         slot_id = "dating_instant"
@@ -294,23 +360,36 @@ def build_store_smart_cta(
     elif (not is_open_now) or tot < 6 or women < 6:
         slot_id = "dating_bachelor"
         mode = "off_or_low"
-        if is_solo_restricted:
-            kicker = "男性1名利用・営業時間外の選択肢"
-            sub = f"{seo_name}は男性2名以上での入店が基本です。1人で動きたい日や営業時間外は、希望日時を入れるだけでAIが1対1デートを調整する審査制アプリも選択肢になります。"
-        elif not is_open_now:
-            kicker = "営業時間外・事前予定づくりの選択肢"
-            sub = "営業時間外のうちに次の予定を組むなら、事前のメッセージ往復なしでカフェやバーでの1対1デートが決まる審査制アプリも便利です。"
+        if bachelor_shares_instant:
+            if is_solo_restricted:
+                kicker = "男性1名利用・営業時間外の選択肢"
+                sub = f"{seo_name}は男性2名以上での入店が基本です。1人で動きたい日や営業時間外は、相方を探さず1対1でカフェや食事の予定を組める定番恋活・デートアプリも選択肢になります。"
+            elif not is_open_now:
+                kicker = "営業時間外・事前予定づくりの選択肢"
+                sub = "営業時間外のうちに次の予定を組むなら、近隣エリアで気の合う相手と1対1の食事・カフェをセッティングできる定番恋活アプリも便利です。"
+            else:
+                kicker = "少人数時間帯・1対1で会いたい日の選択肢"
+                sub = "立ち上がり前の少人数時間帯や、複数人の相席より最初から1対1で落ち着いて話したい日に選ばれている恋活・デートアプリです。"
+            title = "相席より1対1で落ち着いて会いたい日の「定番恋活・デートアプリ」"
+            cta_label = "1対1恋活・デートアプリの公式詳細 ›"
         else:
-            kicker = "少人数時間帯・1対1で会いたい日の選択肢"
-            sub = "立ち上がり前の少人数時間帯や、複数人の相席より最初から1対1で落ち着いて話したい日に選ばれている審査制デートアプリです。"
-        title = "メッセージ不要で週1回デートが決まる「審査制1対1カフェデート」"
-        cta_label = "審査制1対1デートの公式詳細 ›"
+            if is_solo_restricted:
+                kicker = "男性1名利用・営業時間外の選択肢"
+                sub = f"{seo_name}は男性2名以上での入店が基本です。1人で動きたい日や営業時間外は、希望日時を入れるだけでAIが1対1デートを調整する審査制アプリも選択肢になります。"
+            elif not is_open_now:
+                kicker = "営業時間外・事前予定づくりの選択肢"
+                sub = "営業時間外のうちに次の予定を組むなら、事前のメッセージ往復なしでカフェやバーでの1対1デートが決まる審査制アプリも便利です。"
+            else:
+                kicker = "少人数時間帯・1対1で会いたい日の選択肢"
+                sub = "立ち上がり前の少人数時間帯や、複数人の相席より最初から1対1で落ち着いて話したい日に選ばれている審査制デートアプリです。"
+            title = "メッセージ不要で週1回デートが決まる「審査制1対1カフェデート」"
+            cta_label = "審査制1対1デートの公式詳細 ›"
         if best_open_alt:
             sublink_href = f"/store/{best_open_alt['slug']}"
             sublink_label = f"周辺で稼働中の店舗：{best_open_alt['seo_name']}（女{best_open_alt['women']} : 男{best_open_alt['men']}） ›"
         else:
             sublink_href = "/guide/lounge-vs-screened-date"
-            sublink_label = "相席ラウンジ vs 審査制1対1デート徹底比較 ›"
+            sublink_label = "相席ラウンジ vs 1対1デート徹底比較 ›"
     elif is_late_night:
         slot_id = "second_venue_reservation"
         mode = "late_second_venue"
@@ -323,12 +402,12 @@ def build_store_smart_cta(
     else:
         slot_id = "mens_skincare_clinic"
         mode = "prime_grooming"
-        kicker = f"現在 女性{women}名で好条件｜入店前の清潔感チェック"
-        title = "ソファ席70cmで好印象をキープする「ORBIS Mr.（オルビス ミスター）」"
-        sub = "女性が先行しておりスムーズに相席しやすい時間帯です。照明を落とした近距離のソファ席では夕方のテカリ・乾燥が目に入りやすいため事前のケアが有効です。"
-        cta_label = "初回限定セット・公式を見る ›"
+        kicker = f"現在 女性{women}名で好条件｜入店前の最終チェック＆清潔感ケア"
+        title = "ソファ席70cmで好印象をキープする「夕方の皮脂テカリ・乾燥ケア」"
+        sub = "女性が先行しておりスムーズに相席しやすい時間帯です。入店前に口元・夕方の皮脂・靴先を整えておくと最初の10分の会話が弾みやすくなります。日頃のベースケアには定番のORBIS Mr.も有効です。"
+        cta_label = "トライアルセット・公式詳細 ›"
         sublink_href = "/grooming"
-        sublink_label = "入店前の服装・身だしなみチェックリスト ›"
+        sublink_label = "入店3分前の服装・身だしなみチェックリスト ›"
 
     href = f"/link/{slot_id}?from={from_param}"
     active_pixels = {}
@@ -336,6 +415,82 @@ def build_store_smart_cta(
         if resolve_affiliate_url(_sid, allow_blocking=False) == ((_SLOT_BY_ID.get(_sid) or {}).get("default_url") or ""):
             active_pixels[_sid] = _px
     tracking_pixel = active_pixels.get(slot_id, "")
+
+    # Build female-visitor variant (`women_variant`) so `/for-women` referrals and `aiseki_audience_mode === 'women'`
+    # see relevant, monetized offers instead of men's skincare / men's waiting-fee copy!
+    clinic_monetized = is_slot_monetized("women_beauty_clinic", allow_blocking=False)
+    wdating_monetized = is_slot_monetized("women_dating_bachelor", allow_blocking=False)
+
+    if is_open_now and tot >= 6 and women > men + 6:
+        # Female-crowded store -> warn women about reception wait & offer nearby male-lead store + cafe/salon
+        w_link_id = "women_second_venue"
+        w_canon = "second_venue_reservation"
+        w_kicker = f"現在 女性{women}名で女子組集中｜受付待ち回避＆0次会カフェ"
+        w_title = "受付で待つ前に｜駅チカ夜カフェ・女子会ディナー空席確認（一休.comレストラン）"
+        w_sub = "女性比率が高すぎる時間帯は受付で20〜30分待つことがあります。近隣の男性先行店へ回るか、駅近くのカフェ・ダイニングでゆっくり乾杯してから動くのが快適です。"
+        w_cta_label = "周辺のカフェ・ディナー空席を見る ›"
+        if best_women_zero_wait_alt:
+            w_sublink_href = f"/store/{best_women_zero_wait_alt['slug']}"
+            w_sublink_label = f"近隣の女子待ちゼロ候補：{best_women_zero_wait_alt['seo_name']}（男{best_women_zero_wait_alt['men']} : 女{best_women_zero_wait_alt['women']}） ›"
+        else:
+            w_sublink_href = "/for-women#live-board"
+            w_sublink_label = "いま女子待ちゼロで入れる店舗ボードを見る ›"
+    elif (not is_open_now) or tot < 6:
+        if wdating_monetized:
+            w_link_id = "women_dating_bachelor"
+            w_canon = "women_dating_bachelor"
+            w_kicker = "女性向け｜営業時間外・1人で動きたい日の選択肢"
+            w_title = "友達と予定を合わせず1対1でお茶できる「審査制カフェデート（女性無料）」"
+            w_sub = "営業時間外やペアの予定が合わない週末は、顔写真非公開・メッセージ往復なしで審査通過男性と1対1カフェデートができる無料サービスも人気です。"
+            w_cta_label = "女性無料の公式詳細を見る ›"
+        elif clinic_monetized:
+            w_link_id = "women_beauty_clinic"
+            w_canon = "women_beauty_clinic"
+            w_kicker = "女性向け｜間接照明70cmでも自信が持てる肌メンテナンス"
+            w_title = "ラウンジの暖色ライトでも映える「美容皮膚科・医療脱毛 初回体験プラン」"
+            w_sub = "向かい合わせ70cmのソファ席でもうぶ毛や毛穴が気にならない水光肌へ。全国駅チカで仕事帰りにも通いやすい初回プランです。"
+            w_cta_label = "初回キャンペーンを見る ›"
+        else:
+            w_link_id = "women_cosme_salon"
+            w_canon = "women_cosme_salon"
+            w_kicker = "女性向け｜お出かけ前後のツヤ髪・ナイトスキンケア"
+            w_title = "間接照明70cmでも映える「サロン品質ヘア＆ナイトスキンケア」"
+            w_sub = "ラウンジや夜カフェの暖色スポット照明では、毛先のツヤと肌のうるおいが一番きれいに映えます。夜遊び帰りのリセットにも人気のサロンケアです。"
+            w_cta_label = "公式ショップで詳細を見る ›"
+        w_sublink_href = "/for-women#live-board"
+        w_sublink_label = "女子待ちゼロ店舗ボード＆席替えフレーズ集 ›"
+    elif clinic_monetized and not is_late_night:
+        w_link_id = "women_beauty_clinic"
+        w_canon = "women_beauty_clinic"
+        w_kicker = f"現在 男性{men}名・女子組が入りやすい時間帯｜自分磨きメモ"
+        w_title = "ソファ席70cmの間接照明でも映える「医療脱毛・美肌初回プラン」"
+        w_sub = "男性がしっかり入っており待ち時間少なく案内されやすい状況です。近距離ライトの席でも自信が持てる駅チカ医療脱毛・美肌ケアの初回プランもチェックできます。"
+        w_cta_label = "初回キャンペーンを見る ›"
+        w_sublink_href = "/for-women#change-seat-manual"
+        w_sublink_label = "角が立たない席替え＆スマート退店フレーズを見る ›"
+    else:
+        w_link_id = "women_second_venue"
+        w_canon = "second_venue_reservation"
+        w_kicker = f"現在 男性{men}名で稼働中｜0次会カフェ・女子会ディナー予約に"
+        w_title = "合流前のカフェ＆ご褒美女子会に「一休.comレストラン 限定プラン」"
+        w_sub = "男性客が入っておりスムーズに着席しやすい時間帯です。相席前の0次会カフェや、友達とのご褒美ディナー・アフタヌーンティー探しにも使えます。"
+        w_cta_label = "人気プラン・空席を見る ›"
+        w_sublink_href = "#store-second-venue-section"
+        w_sublink_label = f"{seo_name}周辺の夜カフェ・2軒目スポットを見る ›"
+
+    women_variant = {
+        "slot_id": w_canon,
+        "kicker": w_kicker,
+        "title": w_title,
+        "sub": w_sub,
+        "cta_label": w_cta_label,
+        "href": f"/link/{w_link_id}?from={from_param}",
+        "tracking_pixel": active_pixels.get(w_canon, ""),
+        "sublink_href": w_sublink_href,
+        "sublink_label": w_sublink_label,
+        "secondary_href": "/for-women",
+        "secondary_label": "女性向け待ちゼロ店＆席替えガイド ›",
+    }
 
     return {
         "mode": mode,
@@ -352,6 +507,7 @@ def build_store_smart_cta(
         "sublink_label": sublink_label,
         "women_sublink_href": "/for-women",
         "women_sublink_label": "女性ペア向け・待ちゼロ店＆無料デート特設 ›",
+        "women_variant": women_variant,
     }
 
 

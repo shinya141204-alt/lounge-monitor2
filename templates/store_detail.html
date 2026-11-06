@@ -73,7 +73,7 @@
 
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
-    <link rel="stylesheet" href="/static/portal.css?v=14">
+    <link rel="stylesheet" href="/static/portal.css?v=15">
     <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
     <link rel="stylesheet" href="/static/style.css?v=20261030_6">
     <style>
@@ -637,6 +637,7 @@
                data-area-slug="{{ area_slug or '' }}"
                data-solo-restricted="{{ '1' if store_smart_cta.is_solo_restricted else '0' }}"
                data-active-pixels='{{ store_smart_cta.active_pixels | tojson }}'
+               data-women-variant='{{ store_smart_cta.women_variant | tojson }}'
                aria-label="店舗状況に応じたおすすめサービスと関連ガイド">
             <a id="store-smart-cta-link" class="pr-context-main" href="{{ store_smart_cta.href }}" target="_blank" rel="noopener sponsored">
                 <div class="pr-context-body">
@@ -651,10 +652,69 @@
             </a>
             <div class="pr-context-foot">
                 <a id="store-smart-cta-sublink" class="pr-editorial-sublink" href="{{ store_smart_cta.sublink_href }}">{{ store_smart_cta.sublink_label }}</a>
-                <a class="pr-editorial-sublink" href="{{ store_smart_cta.women_sublink_href }}">{{ store_smart_cta.women_sublink_label }}</a>
+                <a id="store-smart-cta-women-sublink" class="pr-editorial-sublink" href="{{ store_smart_cta.women_sublink_href }}">{{ store_smart_cta.women_sublink_label }}</a>
             </div>
             <img id="store-smart-cta-pixel" class="pr-tracking-pixel"{% if store_smart_cta.tracking_pixel %} src="{{ store_smart_cta.tracking_pixel }}"{% else %} style="display:none;"{% endif %} width="1" height="1" alt="" loading="lazy" aria-hidden="true">
         </aside>
+        <script>
+        (function () {
+            try {
+                var card = document.getElementById('store-smart-cta-card');
+                if (!card) return;
+                var isWomenMode = false;
+                try {
+                    if (localStorage.getItem('aiseki_audience_mode') === 'women') isWomenMode = true;
+                } catch (e) {}
+                try {
+                    if (window.location && window.location.search && new URLSearchParams(window.location.search).get('mode') === 'women') {
+                        isWomenMode = true;
+                    }
+                    if (!isWomenMode && document.referrer) {
+                        var refUrl = new URL(document.referrer);
+                        if (refUrl.origin === window.location.origin && refUrl.pathname.replace(/\/+$/, '') === '/for-women') {
+                            isWomenMode = true;
+                        }
+                    }
+                } catch (e) {}
+                if (!isWomenMode) return;
+                var raw = card.getAttribute('data-women-variant');
+                if (!raw) return;
+                var wv = JSON.parse(raw);
+                if (!wv || !wv.href) return;
+                var lk = document.getElementById('store-smart-cta-link');
+                var kk = document.getElementById('store-smart-cta-kicker');
+                var tt = document.getElementById('store-smart-cta-title');
+                var sb = document.getElementById('store-smart-cta-sub');
+                var bt = document.getElementById('store-smart-cta-btn');
+                var sl = document.getElementById('store-smart-cta-sublink');
+                var wsl = document.getElementById('store-smart-cta-women-sublink');
+                var px = document.getElementById('store-smart-cta-pixel');
+                if (lk) lk.setAttribute('href', wv.href);
+                if (kk && wv.kicker) kk.textContent = wv.kicker;
+                if (tt && wv.title) tt.textContent = wv.title;
+                if (sb && wv.sub) sb.textContent = wv.sub;
+                if (bt && wv.cta_label) bt.textContent = wv.cta_label;
+                if (sl && wv.sublink_href) {
+                    sl.setAttribute('href', wv.sublink_href);
+                    if (wv.sublink_label) sl.textContent = wv.sublink_label;
+                }
+                if (wsl && wv.secondary_href) {
+                    wsl.setAttribute('href', wv.secondary_href);
+                    if (wv.secondary_label) wsl.textContent = wv.secondary_label;
+                }
+                if (px) {
+                    if (wv.tracking_pixel) {
+                        px.setAttribute('src', wv.tracking_pixel);
+                        px.style.display = '';
+                    } else {
+                        px.removeAttribute('src');
+                        px.style.display = 'none';
+                    }
+                }
+                card.setAttribute('data-context-mode', 'women_mode');
+            } catch (e) {}
+        })();
+        </script>
         {% endif %}
 
         <aside class="official-notice-box" aria-label="ご利用上の注意事項" style="margin-bottom: 20px;">
@@ -2051,7 +2111,7 @@
         })();
     </script>
     {% if not is_staff and not session.get('is_staff') %}
-    <script defer src="/static/cta_tracker.js?v=1"></script>
+    <script defer src="/static/cta_tracker.js?v=2"></script>
     {% endif %}
 </body>
 

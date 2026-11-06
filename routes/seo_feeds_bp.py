@@ -80,6 +80,7 @@ def _build_llms_txt_documents() -> tuple:
     """
     import column_editorial
     import price_comparison
+    import store_hours
     import store_master
     core.restore_latest_data_if_empty()
     with core.data_lock:
@@ -159,6 +160,8 @@ def _build_llms_txt_documents() -> tuple:
         smeta = master_map.get(raw_n) or {}
         b_raw = smeta.get('brand') or ''
         b_label = 'オリエンタルラウンジ' if b_raw == 'OLG' else b_raw
+        bh_label = (store_hours.STORE_BUSINESS_HOURS.get(raw_n) or {}).get('label') or ''
+        bspec = price_comparison.BRAND_PRICE_SPECS.get(b_raw) or {}
         w = int(st.get('women') or 0)
         m = int(st.get('men') or 0)
         tot = w + m
@@ -172,6 +175,9 @@ def _build_llms_txt_documents() -> tuple:
             'men': m,
             'total': tot,
             'female_ratio_pct': round(w / tot * 100, 1) if tot > 0 else 0.0,
+            'business_hours': bh_label,
+            'male_rate_20_22_per_10m': bspec.get('slot_20_22') or '',
+            'solo_entry_policy': bspec.get('solo_rule') or '',
         }
 
     top_lines = "\n".join(_fmt_store_line(s) for s in top_crowded) or "- 現在営業時間外または集計待機中です。リアルタイム画面 https://aiseki-navi.com/ をご参照ください。"
@@ -304,7 +310,7 @@ def _build_llms_txt_documents() -> tuple:
 - [1人（ソロ）入店 vs 2人ペア入店の実測比較 (/guide/solo-vs-pair)](https://aiseki-navi.com/guide/solo-vs-pair)
 - [最初の10分で決まる会話＆清潔感ルール (/guide/first-10-minutes)](https://aiseki-navi.com/guide/first-10-minutes)
 - [2軒目・アフター誘い出し成功ガイド (/guide/second-venue)](https://aiseki-navi.com/guide/second-venue)
-- [相席ラウンジ向けの服装・身だしなみガイド (/grooming)](https://aiseki-navi.com/grooming)
+- [相席ラウンジ入店前の準備アイテム＆代替サービス比較ガイド (/grooming)](https://aiseki-navi.com/grooming)
 {sched_lines}
 
 ## 7. エリア別リアルタイム人数＆地域ガイド一覧
@@ -330,6 +336,8 @@ def _build_llms_txt_documents() -> tuple:
         area_label = smeta.get('area') or ''
         raw_brand = smeta.get('brand') or ''
         brand_label = 'オリエンタルラウンジ' if raw_brand == 'OLG' else raw_brand
+        bh_label = (store_hours.STORE_BUSINESS_HOURS.get(sname) or {}).get('label') or ''
+        bspec = price_comparison.BRAND_PRICE_SPECS.get(raw_brand) or {}
         st_live = live_by_name.get(sname) or {}
         w = int(st_live.get('women') or 0)
         m = int(st_live.get('men') or 0)
@@ -348,6 +356,9 @@ def _build_llms_txt_documents() -> tuple:
             'men': m,
             'total': tot,
             'female_ratio_pct': fp,
+            'business_hours': bh_label,
+            'male_rate_20_22_per_10m': bspec.get('slot_20_22') or '',
+            'solo_entry_policy': bspec.get('solo_rule') or '',
         })
 
     faq_items = [
@@ -520,7 +531,7 @@ def sitemap_xml():
     pub_items = core.scheduled_articles.get_published_articles()
     lm_guide = _template_lastmod('guide_article.html', '2026-11-04')
     lm_weekday = _template_lastmod('guide_weekday.html', '2026-11-01')
-    lm_brand_cmp = _template_lastmod('guide_brand_comparison.html', '2026-11-02')
+    lm_brand_cmp = _template_lastmod('guide_comparison.html', '2026-11-02')
     lm_shinjuku = _template_lastmod('guide_shinjuku.html', '2026-10-28')
     lm_solo = _template_lastmod('guide_solo_pair.html', '2026-10-28')
     lm_second = _template_lastmod('guide_second_venue.html', '2026-10-28')
@@ -529,7 +540,7 @@ def sitemap_xml():
     lm_weekend = _template_lastmod('guide_weekend.html', '2026-11-02')
     lm_beauty = _template_lastmod('guide_beauty_stage.html', '2026-11-02')
     lm_male_lead = _template_lastmod('guide_male_lead.html', '2026-11-03')
-    lm_price_ev = _template_lastmod('guide_price_event_comparison.html', '2026-11-03')
+    lm_price_ev = _template_lastmod('guide_price_comparison.html', '2026-11-03')
     lm_last_train = _template_lastmod('guide_last_train_cliff.html', '2026-11-03')
     lm_crowd_rush = _template_lastmod('guide_crowd_rush_paradox.html', '2026-11-03')
     lm_waveform = _template_lastmod('guide_brand_waveform_asymmetry.html', '2026-11-04')
@@ -545,8 +556,15 @@ def sitemap_xml():
         today,
         tuple(it.get('slug') for it in pub_items),
         lm_guide,
-        lm_about,
+        lm_brand_cmp,
+        lm_price_ev,
+        lm_screened,
         lm_dress,
+        lm_weekend,
+        lm_shinjuku,
+        lm_solo,
+        lm_last_train,
+        lm_about,
         tuple(sorted(hidden_brands)),
         tuple(sorted(hidden_stores)),
     )

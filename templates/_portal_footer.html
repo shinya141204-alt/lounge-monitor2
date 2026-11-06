@@ -29,3 +29,6 @@
             <p class="portal-footer-disclaimer">※掲載している料金システム・入店条件・イベント開催有無等は変更や特別営業期間の設定がある場合がございます。ご来店の際は必ず各店舗の公式ホームページ・公式アプリにて最新情報をご確認ください。</p>
             <p>© 2026 相席ナビ (AISEKI NAVI) ｜ 公開データの非公式統計・情報ポータルサイト</p>
         </footer>
+        {% if not is_staff and not session.get('is_staff') and not is_scheduled_preview %}
+        <script defer src="/static/cta_tracker.js?v=2"></script>
+        {% endif %}
