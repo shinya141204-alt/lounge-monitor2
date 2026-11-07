@@ -568,6 +568,298 @@
             border: 1px dashed var(--border-strong);
         }
 
+        /* Hourly (00h-23h) Waveform & Golden-Time Section */
+        .hourly-head-row {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .hourly-head-row h2 {
+            margin: 0 0 4px;
+            font-size: 0.98rem;
+        }
+        .hourly-seg-tabs {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+            padding: 4px;
+            border-radius: 999px;
+            background: var(--card-inner);
+            border: 1px solid var(--border);
+        }
+        .hourly-seg-btn {
+            min-height: 38px;
+            padding: 6px 13px;
+            border-radius: 999px;
+            border: 1px solid transparent;
+            background: transparent;
+            color: var(--sub);
+            font-size: 0.78rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            font-variant-numeric: tabular-nums;
+            transition: background-color 0.15s ease, color 0.15s ease;
+        }
+        .hourly-seg-btn:hover {
+            color: var(--text);
+        }
+        .hourly-seg-btn.is-active {
+            background: var(--active-bg);
+            color: var(--active-ink);
+            font-weight: 700;
+        }
+        .hourly-seg-pane {
+            display: none;
+        }
+        .hourly-seg-pane.is-active {
+            display: block;
+        }
+        .hourly-golden-strip {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+        .hourly-golden-item {
+            background: var(--card-inner);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--border-strong);
+            border-radius: 10px;
+            padding: 10px 13px;
+            min-width: 0;
+            font-variant-numeric: tabular-nums;
+        }
+        .hourly-golden-item.accent-rose {
+            border-left-color: var(--rose);
+        }
+        .hourly-golden-k {
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: var(--sub);
+            margin-bottom: 4px;
+        }
+        .hourly-golden-v {
+            font-size: 0.83rem;
+            color: var(--text);
+            line-height: 1.5;
+        }
+        .hourly-zone-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 225px), 1fr));
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+        .hourly-zone-card {
+            background: var(--card-inner);
+            border: 1px solid var(--border);
+            border-radius: 11px;
+            padding: 11px 13px;
+            min-width: 0;
+            font-variant-numeric: tabular-nums;
+        }
+        .hourly-zone-top {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 6px;
+            margin-bottom: 4px;
+        }
+        .hourly-zone-name {
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: var(--text);
+        }
+        .hourly-zone-hours {
+            font-size: 0.7rem;
+            color: var(--sub);
+            white-space: nowrap;
+        }
+        .hourly-zone-pv {
+            display: flex;
+            align-items: baseline;
+            gap: 6px;
+            margin: 3px 0 6px;
+        }
+        .hourly-zone-pv strong {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: var(--text);
+            line-height: 1.15;
+        }
+        .hourly-zone-meta {
+            font-size: 0.72rem;
+            color: var(--sub);
+            border-top: 1px solid var(--border);
+            padding-top: 6px;
+            line-height: 1.5;
+        }
+        .hourly-zone-meta strong {
+            color: var(--text);
+        }
+        .hourly-chart-bars {
+            display: flex;
+            align-items: flex-end;
+            gap: 5px;
+            padding: 12px 6px 8px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 10px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .hour-col {
+            flex: 1 0 32px;
+            min-width: 32px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .hour-col-top {
+            min-height: 36px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 2px;
+            margin-bottom: 5px;
+        }
+        .hour-col-clk {
+            font-size: 0.67rem;
+            font-weight: 800;
+            line-height: 1.15;
+            padding: 1px 5px;
+            border-radius: 999px;
+            background: var(--rose-soft);
+            color: var(--rose-ink);
+            border: 1px solid var(--rose-border);
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+        }
+        .hour-col-val {
+            font-size: 0.68rem;
+            font-weight: 700;
+            color: var(--text);
+            font-variant-numeric: tabular-nums;
+            line-height: 1.15;
+        }
+        .hour-col.is-zero .hour-col-val {
+            color: var(--sub);
+            font-weight: 500;
+        }
+        .hour-col-track {
+            width: 100%;
+            height: 92px;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            position: relative;
+        }
+        .hour-col-track::before {
+            content: "";
+            position: absolute;
+            width: 16px;
+            max-width: 76%;
+            inset: 0 auto 0 auto;
+            background: var(--track-bg);
+            border-radius: 5px 5px 2px 2px;
+            opacity: 0.55;
+            pointer-events: none;
+        }
+        .hour-col-bar {
+            position: relative;
+            z-index: 1;
+            width: 16px;
+            max-width: 76%;
+            background: var(--blue);
+            border-radius: 5px 5px 2px 2px;
+            transition: height 0.2s ease;
+        }
+        .hour-col.has-click:not(.is-zero) .hour-col-bar {
+            background: var(--rose);
+        }
+        .hour-col.is-peak-pv:not(.is-zero) .hour-col-bar {
+            background: var(--active-bg);
+        }
+        .hour-col.is-zero .hour-col-bar {
+            height: 2px !important;
+            background: var(--border-strong);
+            border-radius: 999px;
+        }
+        .hour-col-lbl {
+            font-size: 0.68rem;
+            color: var(--sub);
+            margin-top: 6px;
+            white-space: nowrap;
+            text-align: center;
+            line-height: 1.2;
+            font-variant-numeric: tabular-nums;
+        }
+        .hour-col-now {
+            display: block;
+            font-size: 0.66rem;
+            color: var(--sub);
+        }
+        .hour-col.is-now .hour-col-lbl,
+        .hour-col.is-now .hour-col-now {
+            color: var(--text);
+            font-weight: 800;
+        }
+        .hourly-legend {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px 16px;
+            font-size: 0.72rem;
+            color: var(--sub);
+            margin-bottom: 12px;
+        }
+        .hourly-legend-dot {
+            display: inline-block;
+            width: 9px;
+            height: 9px;
+            border-radius: 3px;
+            margin-right: 5px;
+            vertical-align: -1px;
+        }
+        details.hourly-details {
+            margin-top: 6px;
+        }
+        summary.hourly-details-summary {
+            min-height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 8px 13px;
+            border-radius: 9px;
+            background: var(--card-inner);
+            border: 1px solid var(--border);
+            color: var(--text);
+            font-size: 0.79rem;
+            font-weight: 700;
+            cursor: pointer;
+            list-style: none;
+        }
+        summary.hourly-details-summary::-webkit-details-marker {
+            display: none;
+        }
+        summary.hourly-details-summary::after {
+            content: "展開 ▾";
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: var(--sub);
+        }
+        details.hourly-details[open] summary.hourly-details-summary {
+            margin-bottom: 10px;
+        }
+        details.hourly-details[open] summary.hourly-details-summary::after {
+            content: "閉じる ▴";
+        }
+
         /* Affiliate Slot Manager & Sheets Retention Ops Panels */
         .ops-section {
             background: var(--surface);
@@ -968,6 +1260,7 @@
         <span class="master-jump-label">セクション移動</span>
         <a href="#sec-overview" class="master-jump-chip">概要・ファネル</a>
         <a href="#sec-daily" class="master-jump-chip">日別アクセス推移</a>
+        <a href="#sec-hourly" class="master-jump-chip">時間帯別(24h)狙い目</a>
         <a href="#sec-breakdown" class="master-jump-chip">人気ページ・店舗・送客</a>
         {% if aff_status %}
         <a href="#affiliate-slot-manager" class="master-jump-chip">アフィリエイト全{{ aff_status.slots|length }}枠管理</a>
@@ -1141,6 +1434,185 @@
         {% else %}
         <div class="empty-box">まだ日別データがありません。</div>
         {% endif %}
+    </div>
+
+    <!-- Hourly (00h-23h) Waveform & Golden-Time Analysis -->
+    {% set hr = data.get('hourly') or {} %}
+    {% set hr_segs = hr.get('segments') or {} %}
+    <div class="panel" id="sec-hourly" style="margin-bottom: 22px;">
+        <div class="hourly-head-row">
+            <div>
+                <h2>時間帯別アクセス・収益アクション波形（00時〜23時）</h2>
+                <p class="panel-sub" style="margin-bottom:0;">
+                    どの時間帯にアクセスと広告クリックが集中しているかを24時間単位で可視化（金・土／日〜木は深夜00〜04時を前日営業夜として集計）。
+                    {% if hr.get('has_hourly_data') and hr.get('earliest_date') %}
+                    <span class="wd-badge" style="margin-left:4px;">時間帯ログ実測: {{ hr.get('recorded_days', 0) }}日分（{{ hr.get('earliest_date') }}〜）</span>
+                    {% endif %}
+                </p>
+            </div>
+            <div class="hourly-seg-tabs" role="group" aria-label="時間帯別集計の曜日区分切り替え">
+                <button type="button" class="hourly-seg-btn is-active" data-hseg="all" aria-pressed="true" onclick="switchHourlySeg('all')">全日</button>
+                <button type="button" class="hourly-seg-btn" data-hseg="fri_sat" aria-pressed="false" onclick="switchHourlySeg('fri_sat')">金・土（週末夜）</button>
+                <button type="button" class="hourly-seg-btn" data-hseg="sun_thu" aria-pressed="false" onclick="switchHourlySeg('sun_thu')">日〜木（平日夜）</button>
+            </div>
+        </div>
+
+        {% for seg_key in ['all', 'fri_sat', 'sun_thu'] %}
+        {% set seg = hr_segs.get(seg_key) or {} %}
+        <div class="hourly-seg-pane{% if seg_key == 'all' %} is-active{% endif %}" id="hourly-pane-{{ seg_key }}" data-hseg-pane="{{ seg_key }}">
+            {% if seg.get('pv_total', 0) > 0 or seg.get('action_total', 0) > 0 or seg.get('store_open_total', 0) > 0 %}
+            <div class="hourly-golden-strip">
+                <div class="hourly-golden-item">
+                    <div class="hourly-golden-k">{{ seg.label }}｜アクセス集中ゴールデンタイム TOP3</div>
+                    <div class="hourly-golden-v">
+                        {% if seg.peak_pv_hours %}
+                            {% for ph in seg.peak_pv_hours %}
+                            <span>{% if not loop.first %} ／ {% endif %}<strong>{{ loop.index }}位 {{ ph.hour_label }}</strong>（{{ "{:,}".format(ph.pv) }} PV・構成比{{ ph.pv_share_pct }}%・主力:{{ ph.lead_surface }}）</span>
+                            {% endfor %}
+                        {% else %}
+                            <span>PV記録なし</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="hourly-golden-item accent-rose">
+                    <div class="hourly-golden-k">{{ seg.label }}｜広告クリック・高CTR狙い目時間帯</div>
+                    <div class="hourly-golden-v">
+                        {% if seg.peak_click_hours %}
+                            {% for ch in seg.peak_click_hours %}
+                            <span>{% if not loop.first %} ／ {% endif %}<strong>{{ ch.hour_label }}: {{ ch.aff_click }} click</strong>［{{ ch.top_slot_title }}］</span>
+                            {% endfor %}
+                            {% if seg.best_ctr_hour %}
+                            <span style="display:block;font-size:0.74rem;color:var(--sub);margin-top:2px;">
+                                最高効率時間帯: <strong>{{ seg.best_ctr_hour.hour_label }}</strong>（{% if seg.best_ctr_hour.slot_ctr_pct is not none and seg.best_ctr_hour.aff_imp >= 3 %}枠CTR {{ seg.best_ctr_hour.slot_ctr_pct }}%{% elif seg.best_ctr_hour.pv_ctr_pct is not none %}対PV {{ seg.best_ctr_hour.pv_ctr_pct }}%{% else %}CTR -{% endif %}・{{ seg.best_ctr_hour.aff_click }} click / {{ seg.best_ctr_hour.pv }} PV）
+                            </span>
+                            {% endif %}
+                        {% else %}
+                            <span style="color:var(--sub);">この曜日区分の広告クリックはまだ 0 件です（PV上位時間帯での2ステップ導線露出が狙い目です）。</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="hourly-zone-grid">
+                {% for z in seg.zones %}
+                <div class="hourly-zone-card">
+                    <div class="hourly-zone-top">
+                        <span class="hourly-zone-name">{{ z.label }}</span>
+                        <span class="hourly-zone-hours">{{ z.hours_desc }}</span>
+                    </div>
+                    <div class="hourly-zone-pv">
+                        <strong>{{ "{:,}".format(z.pv) }}</strong>
+                        <span style="font-size:0.75rem;color:var(--sub);">PV（{{ z.pv_share_pct }}%）</span>
+                        {% if z.aff_click > 0 %}
+                        <span class="wd-badge fri-sat" style="margin-left:auto;">PR {{ z.aff_click }} click</span>
+                        {% endif %}
+                    </div>
+                    <div class="hourly-zone-meta">
+                        <div>店舗展開: <strong>{{ "{:,}".format(z.store_open) }}</strong> ／ クッション: <strong>{{ "{:,}".format(z.cushion_click) }}</strong></div>
+                        <div>枠表示: <strong>{{ "{:,}".format(z.aff_imp) }}</strong> ／ CTR: <strong>{% if z.slot_ctr_pct is not none %}{{ z.slot_ctr_pct }}%{% elif z.pv_ctr_pct is not none %}対PV {{ z.pv_ctr_pct }}%{% else %}-{% endif %}</strong></div>
+                        <div>主力閲覧: <strong>{{ z.lead_surface }}</strong>{% if z.aff_click > 0 %} ／ 主力枠: <strong>{{ z.top_slot_title }}</strong>{% endif %}</div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="hourly-chart-bars">
+                {% for h in seg.hours %}
+                <div class="hour-col{% if h.pv == 0 %} is-zero{% endif %}{% if h.aff_click > 0 %} has-click{% endif %}{% if h.is_peak_pv %} is-peak-pv{% endif %}{% if h.hour == hr.get('current_hour_jst') %} is-now{% endif %}"
+                     data-hour="{{ h.hour }}" data-pv="{{ h.pv }}" data-click="{{ h.aff_click }}">
+                    <div class="hour-col-top">
+                        {% if h.aff_click > 0 %}
+                        <span class="hour-col-clk" title="{{ h.hour_label }}: 広告 {{ h.aff_click }} click（{{ h.top_slot_title }}）">{{ h.aff_click }}c</span>
+                        {% endif %}
+                        <span class="hour-col-val">{{ h.pv }}</span>
+                    </div>
+                    <div class="hour-col-track">
+                        <div class="hour-col-bar" style="height: {{ h.pv_bar_pct }}%;"
+                             title="{{ h.time_range }}｜{{ h.pv }} PV / 店舗展開 {{ h.store_open }} / 広告 {{ h.aff_click }} click"></div>
+                    </div>
+                    <span class="hour-col-lbl">
+                        {{ h.hour_str }}
+                        {% if h.hour == hr.get('current_hour_jst') %}<span class="hour-col-now">現在</span>{% endif %}
+                    </span>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="hourly-legend">
+                <span><span class="hourly-legend-dot" style="background:var(--active-bg);border:1px solid var(--border-strong);"></span>最大PVピーク時間</span>
+                <span><span class="hourly-legend-dot" style="background:var(--rose);"></span>広告クリック発生時間（上段バッジはクリック数）</span>
+                <span><span class="hourly-legend-dot" style="background:var(--blue);"></span>通常アクセス時間</span>
+            </div>
+
+            <details class="hourly-details">
+                <summary class="hourly-details-summary">
+                    <span>{{ seg.label }}｜00時〜23時 フル明細テーブル（PV内訳・クッション・CTR・主力案件）</span>
+                </summary>
+                <div class="table-scroll-wrap">
+                    <table class="daily-table">
+                        <thead>
+                            <tr>
+                                <th>時間帯</th>
+                                <th class="n">総PV（構成比）</th>
+                                <th class="n">下層・記事PV</th>
+                                <th class="n">店舗展開</th>
+                                <th class="n">クッション遷移</th>
+                                <th class="n">PR表示</th>
+                                <th class="n">PRクリック（CTR）</th>
+                                <th>最多クリック枠 ／ 主力閲覧面</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for h in seg.hours %}
+                            <tr>
+                                <td>
+                                    <strong>{{ h.time_range }}</strong>
+                                    {% if h.is_peak_pv %}<span class="day-tag">最大PV</span>{% endif %}
+                                    {% if h.is_peak_click %}<span class="wd-badge fri-sat">最多Click</span>{% endif %}
+                                </td>
+                                <td class="n"><strong>{{ "{:,}".format(h.pv) }}</strong> <span style="color:var(--sub);font-size:0.72rem;">({{ h.pv_share_pct }}%)</span></td>
+                                <td class="n">{{ "{:,}".format(h.sub_pv) }}</td>
+                                <td class="n">{{ "{:,}".format(h.store_open) }}</td>
+                                <td class="n">{{ "{:,}".format(h.cushion_click) }}</td>
+                                <td class="n">{{ "{:,}".format(h.aff_imp) }}</td>
+                                <td class="n" style="font-weight:700;">
+                                    {{ "{:,}".format(h.aff_click) }}
+                                    {% if h.aff_click > 0 and (h.slot_ctr_pct is not none or h.pv_ctr_pct is not none) %}
+                                    <span style="color:var(--sub);font-weight:500;font-size:0.72rem;">({% if h.slot_ctr_pct is not none %}{{ h.slot_ctr_pct }}%{% elif h.pv_ctr_pct is not none %}対PV {{ h.pv_ctr_pct }}%{% endif %})</span>
+                                    {% endif %}
+                                </td>
+                                <td style="font-size:0.76rem;color:var(--sub);">
+                                    {% if h.aff_click > 0 %}<strong style="color:var(--text);">{{ h.top_slot_title }}</strong> ({{ h.top_slot_clicks }}) ／ {% endif %}{{ h.lead_surface }}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td>{{ seg.label }} 合計（収録 {{ seg.active_days_count }}{% if seg_key in ['fri_sat', 'sun_thu'] %}営業夜{% else %}日{% endif %}）</td>
+                                <td class="n">{{ "{:,}".format(seg.pv_total) }}</td>
+                                <td class="n">{{ "{:,}".format(seg.sub_pv_total) }}</td>
+                                <td class="n">{{ "{:,}".format(seg.store_open_total) }}</td>
+                                <td class="n">{{ "{:,}".format(seg.cushion_click_total) }}</td>
+                                <td class="n">{{ "{:,}".format(seg.aff_imp_total) }}</td>
+                                <td class="n">{{ "{:,}".format(seg.aff_click_total) }}{% if seg.slot_ctr_pct is not none %} ({{ seg.slot_ctr_pct }}%){% endif %}</td>
+                                <td>-</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </details>
+            {% else %}
+            <div class="empty-box">
+                {% if not hr.get('has_hourly_data') %}
+                時間帯別ログの収集を開始しました。ユーザーアクセスが発生すると、ここに 00時〜23時 の実測PV・広告クリック波形が自動描画されます（過去日次ログからの推測按分は行いません）。
+                {% else %}
+                選択中の曜日区分（{{ seg.label }}）には対象期間内の時間帯別データがまだありません。別の曜日タブまたは期間をご確認ください。
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
     </div>
 
     <!-- 2-Column Visual Breakdown Panels -->
@@ -1720,6 +2192,20 @@ if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
 const CURRENT_DAYS = {{ days }};
 const _affSavingSlots = Object.create(null);
 
+function switchHourlySeg(segKey) {
+    const btns = document.querySelectorAll('#sec-hourly .hourly-seg-btn');
+    btns.forEach(btn => {
+        const active = btn.getAttribute('data-hseg') === segKey;
+        btn.classList.toggle('is-active', active);
+        btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+    const panes = document.querySelectorAll('#sec-hourly .hourly-seg-pane');
+    panes.forEach(pane => {
+        const active = pane.getAttribute('data-hseg-pane') === segKey;
+        pane.classList.toggle('is-active', active);
+    });
+}
+
 function esc(str) {
     return String(str == null ? '' : str)
         .replace(/&/g, '&amp;')
@@ -1864,6 +2350,7 @@ async function runSheetsRetention(dryRun) {
         const det = res.details || {};
         const mainD = det.main_logs || {};
         const anaD = det.analytics_daily || {};
+        const anaHD = det.analytics_hourly || {};
         const voteD = det.crowd_votes || {};
         const jsD = det.job_state || {};
 
@@ -1895,6 +2382,7 @@ async function runSheetsRetention(dryRun) {
             ' 合計削減対象: ' + Number(res.total_deleted_rows || 0).toLocaleString() + '行' +
             '（生ログ圧縮: ' + Number(mainD.deleted_rows || 0).toLocaleString() + '行 → 日次サマリー +' + Number(mainD.summary_rows_added || 0).toLocaleString() + '行 / ' +
             'Analytics合算削減: ' + Number(anaD.deleted_rows || 0).toLocaleString() + '行 / ' +
+            '時間帯Analytics合算削減: ' + Number(anaHD.deleted_rows || 0).toLocaleString() + '行 / ' +
             '投票整理: ' + Number(voteD.deleted_rows || 0).toLocaleString() + '行 / ' +
             'JobState圧縮: ' + Number(jsD.deleted_rows || 0).toLocaleString() + '行）';
     } catch (e) {

@@ -19,9 +19,8 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
-# スケジューラ起動を抑止しつつ、Google Sheets ('Analytics Daily') 読み取りは有効化
+# スケジューラ起動を抑止（DISABLE_SHEETS 解除は CLI 実行時の main() でのみ行う）
 os.environ["DISABLE_SCHEDULER"] = "1"
-os.environ.pop("DISABLE_SHEETS", None)
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 if str(REPO_ROOT) not in sys.path:
@@ -94,6 +93,27 @@ def _load_analytics_totals(start_date_str: str) -> dict:
             lbl = analytics.normalize_store_event_label(ev, lbl)
         totals[(d_str, ev, lbl)] += cnt
     return totals
+
+
+def _load_hourly_totals(start_date_str: str, until_date_str: str) -> list:
+    """Google Sheets 'Analytics Hourly' から [start_date_str, until_date_str] の (date_jst, hour_jst, bucket, count) を取得"""
+    agg = defaultdict(int)
+    rows = sheets_store.read_hourly_rows(analytics.HOURLY_SHEET_TITLE, analytics.HOURLY_HEADER) or []
+    for r in rows:
+        if len(r) < 4:
+            continue
+        d_str = str(r[0] or "").strip()
+        b_str = str(r[2] or "").strip()
+        if not d_str or d_str < start_date_str or d_str > until_date_str or not b_str:
+            continue
+        try:
+            h_int = int(str(r[1] or "").strip())
+            cnt = int(float(str(r[3] or "0").replace(",", "").strip()))
+        except (TypeError, ValueError):
+            continue
+        if 0 <= h_int <= 23 and cnt > 0:
+            agg[(d_str, h_int, b_str)] += cnt
+    return [(d, h, b, c) for (d, h, b), c in agg.items()]
 
 
 def _day_metrics(totals: dict, date_str: str) -> dict:
@@ -341,6 +361,15 @@ def build_daily_report(target_date_str: str | None = None) -> dict:
             "day_count": cur["cushions"].get(lbl, 0),
         })
 
+    # 時間帯別（00〜23時）ゴールデンタイム分析（Analytics Hourly 実測値のみ）
+    hourly_entries_7d = _load_hourly_totals(days_7[0], days_7[-1])
+    hourly_imp_days = {d for (d, _h, b, c) in hourly_entries_7d if b == "aff_imp" and c > 0}
+    hourly_entries_day = [e for e in hourly_entries_7d if e[0] == t_str]
+    hourly_day_seg = analytics._build_hourly_segment("day", cur["date_label"], hourly_entries_day, hourly_imp_days)
+    hourly_7d_seg = analytics._build_hourly_segment("window_7d", "直近7日合算", hourly_entries_7d, hourly_imp_days)
+    has_day_hourly = bool(hourly_day_seg["pv_total"] > 0 or hourly_day_seg["action_total"] > 0)
+    has_7d_hourly = bool(hourly_7d_seg["pv_total"] > 0 or hourly_7d_seg["action_total"] > 0)
+
     # 自動インサイト生成（実数値根拠のみ）
     insights = []
     if wow["has_any_event"] and wow["pv"] > 0:
@@ -375,6 +404,23 @@ def build_daily_report(target_date_str: str | None = None) -> dict:
         )
     else:
         insights.append("対象日・直近7日ともにアフィリエイトクリックは 0 件です。人気記事から `/grooming`・`/for-women` への2ステップ導線強化が優先課題です。")
+
+    if has_day_hourly and hourly_day_seg["peak_pv_hours"]:
+        p_top = "・".join(
+            f"{h['hour_label']}（{h['pv']} PV / {h['pv_share_pct']}%）"
+            for h in hourly_day_seg["peak_pv_hours"][:3]
+        )
+        clk_note = ""
+        if hourly_7d_seg["peak_click_hours"]:
+            ch0 = hourly_7d_seg["peak_click_hours"][0]
+            clk_note = f" 直近7日の最多クリック時間帯は **{ch0['hour_label']}（{ch0['aff_click']} click・主力: {ch0['top_slot_title']}）** です。"
+        insights.append(f"時間帯別ゴールデンタイム（対象日実測）は **{p_top}** に集中しています。{clk_note}".strip())
+    elif has_7d_hourly and hourly_7d_seg["peak_pv_hours"]:
+        p_top7 = "・".join(
+            f"{h['hour_label']}（{h['pv']} PV）"
+            for h in hourly_7d_seg["peak_pv_hours"][:3]
+        )
+        insights.append(f"直近7日の時間帯別アクセス集中TOP3は **{p_top7}**（収録 {hourly_7d_seg['active_days_count']}日分）です。")
 
     return {
         "generated_at": now_jst.strftime("%Y-%m-%d %H:%M:%S JST"),
@@ -415,6 +461,26 @@ def build_daily_report(target_date_str: str | None = None) -> dict:
         "top_stores_7d": top_stores,
         "aff_breakdown": aff_breakdown,
         "top_cushions_7d": top_cushions_7d,
+        "hourly": {
+            "has_day_data": has_day_hourly,
+            "has_7d_data": has_7d_hourly,
+            "recorded_days_7d": hourly_7d_seg["active_days_count"],
+            "day": {
+                "pv_total": hourly_day_seg["pv_total"],
+                "aff_click_total": hourly_day_seg["aff_click_total"],
+                "peak_pv_hours": hourly_day_seg["peak_pv_hours"],
+                "peak_click_hours": hourly_day_seg["peak_click_hours"],
+                "zones": hourly_day_seg["zones"],
+            },
+            "window_7d": {
+                "pv_total": hourly_7d_seg["pv_total"],
+                "aff_click_total": hourly_7d_seg["aff_click_total"],
+                "peak_pv_hours": hourly_7d_seg["peak_pv_hours"],
+                "peak_click_hours": hourly_7d_seg["peak_click_hours"],
+                "best_ctr_hour": hourly_7d_seg["best_ctr_hour"],
+                "zones": hourly_7d_seg["zones"],
+            },
+        },
         "insights": insights,
     }
 
@@ -509,7 +575,44 @@ def format_markdown(rep: dict) -> str:
         lines.append(f"- **注目店舗TOP5（店舗ページPV＋詳細展開 7日計）**: {st_inline}")
         lines.append("")
 
-    lines.append("### 6. 自動分析インサイト・今日の注目ポイント")
+    hr = rep.get("hourly") or {}
+    lines.append("### 6. 時間帯別ゴールデンタイム分析（00〜23時）")
+    lines.append("")
+    if hr.get("has_7d_data") or hr.get("has_day_data"):
+        src_seg = hr["day"] if hr.get("has_day_data") else hr["window_7d"]
+        src_label = f"対象日（{rep['target_date_label']}）" if hr.get("has_day_data") else f"直近7日実測（収録{hr.get('recorded_days_7d', 0)}日分）"
+        if src_seg.get("peak_pv_hours"):
+            pv_peaks_str = " ／ ".join(
+                f"**{i}位 {h['hour_label']}** ({h['pv']:,} PV・{h['pv_share_pct']}%・主力:{h['lead_surface']})"
+                for i, h in enumerate(src_seg["peak_pv_hours"][:3], 1)
+            )
+            lines.append(f"- **{src_label} アクセス集中TOP3**: {pv_peaks_str}")
+        w7_hr = hr.get("window_7d") or {}
+        if w7_hr.get("peak_click_hours"):
+            clk_peaks_str = " ／ ".join(
+                f"**{h['hour_label']}** ({h['aff_click']} click・主力:{h['top_slot_title']})"
+                for h in w7_hr["peak_click_hours"][:3]
+            )
+            lines.append(f"- **直近7日 広告クリック上位時間帯**: {clk_peaks_str}")
+        lines.append("")
+        lines.append("| 時間帯ゾーン | 時間範囲 | 7日PV (構成比) | 店舗展開 | クッション遷移 | PRクリック (CTR) | 主力閲覧面 / 案件 |")
+        lines.append("| --- | --- | --- | --- | --- | --- | --- |")
+        for z in w7_hr.get("zones", []):
+            if z.get("slot_ctr_pct") is not None:
+                z_ctr = f"{z['slot_ctr_pct']:.2f}%"
+            elif z.get("pv_ctr_pct") is not None:
+                z_ctr = f"対PV {z['pv_ctr_pct']:.2f}%"
+            else:
+                z_ctr = "-"
+            z_lead = f"{z['lead_surface']}" + (f" / {z['top_slot_title']}" if z["aff_click"] > 0 else "")
+            lines.append(
+                f"| {z['label']} | `{z['hours_desc']}` | **{z['pv']:,}** ({z['pv_share_pct']}%) | {z['store_open']:,} | {z['cushion_click']:,} | **{z['aff_click']}** ({z_ctr}) | {z_lead} |"
+            )
+    else:
+        lines.append("- 時間帯別ログ（`Analytics Hourly`）: 収集稼働中（実測イベント蓄積後、ピーク時間帯TOP3および4時間帯ゾーン別CTRを自動出力します）")
+    lines.append("")
+
+    lines.append("### 7. 自動分析インサイト・今日の注目ポイント")
     lines.append("")
     for ins in rep["insights"]:
         lines.append(f"- {ins}")
@@ -518,6 +621,8 @@ def format_markdown(rep: dict) -> str:
 
 
 def main() -> int:
+    if os.environ.get("RESPECT_DISABLE_SHEETS") != "1":
+        os.environ.pop("DISABLE_SHEETS", None)
     parser = argparse.ArgumentParser(description="相席ナビ 日次PV・CTR分析レポート生成")
     parser.add_argument("--date", default="", help="対象日 YYYY-MM-DD（省略時はJST前日）")
     parser.add_argument("--format", choices=("markdown", "json"), default="markdown", help="標準出力形式")

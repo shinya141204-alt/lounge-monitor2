@@ -20,6 +20,10 @@ import turbo_store
 SHEET_TITLE = 'Analytics Daily'
 HEADER = ['date_jst', 'event', 'label', 'count']
 
+HOURLY_SHEET_TITLE = 'Analytics Hourly'
+HOURLY_HEADER = ['date_jst', 'hour_jst', 'bucket', 'count']
+_JST = datetime.timezone(datetime.timedelta(hours=9))
+
 ALLOWED_EVENTS = {
     'page_view',             # 記事・ポータルページの閲覧（サーバー側で記録）
     'affiliate_click',       # /link/<id> 経由のアフィリエイトクリック（サーバー側で記録）
@@ -44,6 +48,42 @@ _SHEET_ROWS_CACHE_TTL = 900.0
 _sheet_rows_cache = {'ts': 0.0, 'rows': None}
 _sheet_refresh_in_flight = False
 _pg_seeded_from_sheets = False
+
+_hourly_pending = defaultdict(int)       # (date_jst, hour_jst, bucket) -> count
+_hourly_sheets_retry = defaultdict(int)  # Postgres保存済み・Sheetsのみ再送待ち分
+_hourly_pg_retry = defaultdict(int)      # Sheets保存済み・Postgresのみ再送待ち分
+_hourly_flushed = defaultdict(int)       # 起動後に送信済みの分（Sheets読込失敗時の表示用）
+_hourly_sheet_rows_cache = {'ts': 0.0, 'rows': None}
+_hourly_sheet_refresh_in_flight = False
+_pg_hourly_seeded_from_sheets = False
+_pg_hourly_seed_in_flight = False
+
+
+def _refresh_hourly_sheet_rows_async():
+    """Refresh Analytics Hourly rows from Google Sheets in a background daemon thread (Stale-While-Revalidate)."""
+    global _hourly_sheet_refresh_in_flight
+    if sheets_store.is_disabled():
+        return
+    with _lock:
+        if _hourly_sheet_refresh_in_flight:
+            return
+        _hourly_sheet_refresh_in_flight = True
+
+    def _worker():
+        global _hourly_sheet_refresh_in_flight
+        try:
+            rows = sheets_store.read_hourly_rows_or_none(HOURLY_SHEET_TITLE, HOURLY_HEADER)
+            if rows is not None:
+                with _lock:
+                    _hourly_sheet_rows_cache['ts'] = time.monotonic()
+                    _hourly_sheet_rows_cache['rows'] = rows
+        except Exception as err:
+            logging.warning(f"[analytics] async hourly sheet refresh failed: {err}")
+        finally:
+            with _lock:
+                _hourly_sheet_refresh_in_flight = False
+
+    threading.Thread(target=_worker, daemon=True).start()
 
 
 def _refresh_sheet_rows_async():
@@ -219,7 +259,98 @@ def normalize_store_event_label(event: str, raw_label: str) -> str:
     return f"{canon}:{suffix}" if (event == 'vote' and suffix) else canon
 
 
-def track(event, label=''):
+_FALLBACK_AFF_ALIAS_MAP = {
+    'dating_instant': 'dating_instant',
+    'dating': 'dating_instant',
+    'dating_casual': 'dating_instant',
+    'dating_bachelor': 'dating_bachelor',
+    'mens_hair_removal': 'mens_hair_removal',
+    'hair_removal': 'mens_hair_removal',
+    'hair_removal_trial': 'mens_hair_removal',
+    'mens_skincare_clinic': 'mens_skincare_clinic',
+    'orbis': 'mens_skincare_clinic',
+    'spu_styleup': 'spu_styleup',
+    'spu': 'spu_styleup',
+    'women_dating_bachelor': 'women_dating_bachelor',
+    'women_dating': 'women_dating_bachelor',
+    'women_beauty_clinic': 'women_beauty_clinic',
+    'women_clinic': 'women_beauty_clinic',
+    'women_hair_removal': 'women_beauty_clinic',
+    'women_cosme_salon': 'women_cosme_salon',
+    'women_cosme': 'women_cosme_salon',
+    'women_skincare': 'women_cosme_salon',
+    'night_care_supplement': 'night_care_supplement',
+    'hangover_supplement': 'night_care_supplement',
+    'supplement': 'night_care_supplement',
+    'night_supplement': 'night_care_supplement',
+    'women_night_supplement': 'night_care_supplement',
+    'second_venue_reservation': 'second_venue_reservation',
+    'ikyu_restaurant': 'second_venue_reservation',
+    'ikyu': 'second_venue_reservation',
+    'second_venue': 'second_venue_reservation',
+    'women_second_venue': 'second_venue_reservation',
+}
+
+
+def classify_hourly_bucket(event: str, norm_label: str) -> str:
+    """
+    Map `(event, normalized_label)` into a strictly bounded bucket key for `Analytics Hourly`.
+    `page_view` is partitioned into 9 mutually exclusive buckets (`pv_*`) so their sum equals exact `pv_total`.
+    """
+    ev = str(event or '').strip()
+    lbl = str(norm_label or '').strip()
+    if ev == 'page_view':
+        p = lbl.split('?', 1)[0].split('#', 1)[0].strip() or '/'
+        if not p.startswith('/'):
+            p = '/' + p
+        if len(p) > 1:
+            p = p.rstrip('/')
+        if p == '/':
+            return 'pv_top'
+        if p.startswith('/store/'):
+            return 'pv_store'
+        if p in ('/columns', '/guide') or p.startswith('/guide/'):
+            return 'pv_guide'
+        if p == '/concierge':
+            return 'pv_concierge'
+        if p == '/for-women':
+            return 'pv_women'
+        if p == '/grooming':
+            return 'pv_grooming'
+        if p == '/price-comparison':
+            return 'pv_price'
+        if p == '/stats' or p.startswith('/stats/'):
+            return 'pv_stats'
+        return 'pv_other'
+    if ev == 'affiliate_click':
+        slot_part = lbl.split('@', 1)[0].strip() if '@' in lbl else lbl
+        cid = ''
+        try:
+            import affiliate_manager
+            cid = affiliate_manager.canonical_slot_id(slot_part)
+        except Exception:
+            cid = ''
+        if not cid:
+            cid = _FALLBACK_AFF_ALIAS_MAP.get(slot_part.lower(), '')
+        return f"aff_clk:{cid}" if cid else 'aff_clk:other'
+    if ev == 'affiliate_impression':
+        return 'aff_imp'
+    if ev == 'store_open':
+        return 'store_open'
+    if ev == 'cushion_click':
+        return 'cushion_click'
+    if ev == 'sns_inflow':
+        return 'sns_inflow'
+    if ev in ('map_cafe', 'map_bar'):
+        return 'map_search'
+    if ev in ('official_click', 'sns_click', 'share'):
+        return 'external_engage'
+    if ev == 'vote':
+        return 'vote'
+    return ''
+
+
+def track(event, label='', _now_jst=None):
     if event not in ALLOWED_EVENTS:
         return False
     if event == 'affiliate_impression':
@@ -236,9 +367,123 @@ def track(event, label=''):
         label = normalize_store_event_label(event, label)
     else:
         label = sanitize_generic_track_label(label)
+
+    if _now_jst is not None:
+        dt_jst = _now_jst.replace(tzinfo=_JST) if _now_jst.tzinfo is None else _now_jst.astimezone(_JST)
+    else:
+        dt_jst = datetime.datetime.now(_JST)
+    date_str = dt_jst.strftime('%Y-%m-%d')
+    hour_int = int(dt_jst.hour)
+
+    h_bucket = classify_hourly_bucket(event, label)
     with _lock:
-        _pending[(_today(), event, label)] += 1
+        _pending[(date_str, event, label)] += 1
+        if h_bucket:
+            _hourly_pending[(date_str, hour_int, h_bucket)] += 1
     return True
+
+
+def _flush_hourly(force_sheets: bool, cutoff_3d: str) -> None:
+    """Flush hourly bucket counters alongside daily counters without altering `flush()` return contract."""
+    if not force_sheets:
+        if not turbo_store.is_postgres_active():
+            return
+        with _lock:
+            for k in [k for k in _hourly_flushed.keys() if k[0] <= cutoff_3d]:
+                del _hourly_flushed[k]
+            for k in [k for k in _hourly_sheets_retry.keys() if k[0] <= cutoff_3d]:
+                del _hourly_sheets_retry[k]
+            h_new_items = list(_hourly_pending.items())
+            _hourly_pending.clear()
+            h_pg_retry_items = list(_hourly_pg_retry.items())
+            _hourly_pg_retry.clear()
+        if not h_new_items and not h_pg_retry_items:
+            return
+        h_combined_pg = defaultdict(int)
+        for k, c in h_pg_retry_items:
+            h_combined_pg[k] += c
+        for k, c in h_new_items:
+            h_combined_pg[k] += c
+        h_pg_saved = turbo_store.analytics_hourly_add_batch(list(h_combined_pg.items()))
+        with _lock:
+            if h_pg_saved:
+                for key, c in h_new_items:
+                    _hourly_sheets_retry[key] += c
+            else:
+                for key, c in h_pg_retry_items:
+                    _hourly_pg_retry[key] += c
+                for key, c in h_new_items:
+                    _hourly_pending[key] += c
+        return
+
+    with _lock:
+        for k in [k for k in _hourly_flushed.keys() if k[0] <= cutoff_3d]:
+            del _hourly_flushed[k]
+        for k in [k for k in _hourly_sheets_retry.keys() if k[0] <= cutoff_3d]:
+            del _hourly_sheets_retry[k]
+        h_new_items = list(_hourly_pending.items())
+        _hourly_pending.clear()
+        h_retry_items = list(_hourly_sheets_retry.items())
+        _hourly_sheets_retry.clear()
+        h_pg_retry_items = list(_hourly_pg_retry.items())
+        _hourly_pg_retry.clear()
+    if not h_new_items and not h_retry_items and not h_pg_retry_items:
+        return
+
+    h_pg_saved = False
+    if h_new_items or h_pg_retry_items:
+        h_combined_pg = defaultdict(int)
+        for k, c in h_pg_retry_items:
+            h_combined_pg[k] += c
+        for k, c in h_new_items:
+            h_combined_pg[k] += c
+        h_pg_saved = turbo_store.analytics_hourly_add_batch(list(h_combined_pg.items()))
+    elif h_retry_items and turbo_store.is_postgres_active():
+        h_pg_saved = True
+
+    h_merged_sheets = defaultdict(int)
+    for k, c in h_retry_items:
+        h_merged_sheets[k] += c
+    for k, c in h_new_items:
+        h_merged_sheets[k] += c
+
+    h_rows = [[d, int(h), b, c] for (d, h, b), c in h_merged_sheets.items()]
+    if h_rows and turbo_store.is_named_mutex_held('sheets_analytics_rewrite'):
+        h_ok = False
+    else:
+        h_ok = sheets_store.append_hourly_rows(HOURLY_SHEET_TITLE, HOURLY_HEADER, h_rows) if h_rows else True
+    with _lock:
+        if h_ok:
+            for key, c in h_merged_sheets.items():
+                if key[0] > cutoff_3d:
+                    _hourly_flushed[key] += c
+            if _hourly_sheet_rows_cache['rows'] is not None and h_rows:
+                _hourly_sheet_rows_cache['rows'] = (
+                    list(_hourly_sheet_rows_cache['rows'])
+                    + [[d, str(h), b, str(c)] for d, h, b, c in h_rows]
+                )
+            _hourly_sheet_rows_cache['ts'] = 0.0
+            if not h_pg_saved and turbo_store.is_postgres_active():
+                for key, c in h_pg_retry_items:
+                    if key[0] > cutoff_3d:
+                        _hourly_pg_retry[key] += c
+                for key, c in h_new_items:
+                    if key[0] > cutoff_3d:
+                        _hourly_pg_retry[key] += c
+        else:
+            for key, c in h_retry_items:
+                if key[0] > cutoff_3d:
+                    _hourly_sheets_retry[key] += c
+            if h_pg_saved:
+                for key, c in h_new_items:
+                    if key[0] > cutoff_3d:
+                        _hourly_sheets_retry[key] += c
+            else:
+                for key, c in h_pg_retry_items:
+                    if key[0] > cutoff_3d:
+                        _hourly_pg_retry[key] += c
+                for key, c in h_new_items:
+                    _hourly_pending[key] += c
 
 
 def flush(force_sheets=True):
@@ -250,6 +495,8 @@ def flush(force_sheets=True):
         datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
         - datetime.timedelta(days=3)
     ).strftime('%Y-%m-%d')
+
+    _flush_hourly(force_sheets=bool(force_sheets), cutoff_3d=cutoff_3d)
 
     if not force_sheets:
         if not turbo_store.is_postgres_active():
@@ -314,7 +561,10 @@ def flush(force_sheets=True):
         merged_for_sheets[k] += c
 
     rows = [[d, e, l, c] for (d, e, l), c in merged_for_sheets.items()]
-    ok = sheets_store.append_rows(SHEET_TITLE, HEADER, rows) if rows else True
+    if rows and turbo_store.is_named_mutex_held('sheets_analytics_rewrite'):
+        ok = False
+    else:
+        ok = sheets_store.append_rows(SHEET_TITLE, HEADER, rows) if rows else True
     with _lock:
         if ok:
             for key, c in merged_for_sheets.items():
@@ -656,6 +906,468 @@ def describe_label(event, raw_label):
 _WEEKDAY_JA = ('月', '火', '水', '木', '金', '土', '日')
 
 
+_HOURLY_PV_BUCKETS = (
+    'pv_top',
+    'pv_store',
+    'pv_guide',
+    'pv_concierge',
+    'pv_women',
+    'pv_grooming',
+    'pv_price',
+    'pv_stats',
+    'pv_other',
+)
+
+_HOURLY_PV_SURFACE_LABELS = {
+    'pv_top': 'トップランキング',
+    'pv_store': '店舗詳細ページ',
+    'pv_guide': '攻略・データコラム',
+    'pv_concierge': '3秒穴場診断',
+    'pv_women': '女性向け特設',
+    'pv_grooming': '身だしなみガイド',
+    'pv_price': '料金・イベント比較',
+    'pv_stats': '一次統計レポート',
+    'pv_other': 'エリア・ブランド・その他',
+}
+
+_CLEAN_AFF_SHORT_NAMES = {
+    'dating_instant': '即時合流・恋活アプリ',
+    'dating_bachelor': '審査制デート（バチェラー）',
+    'mens_hair_removal': 'メンズ医療脱毛',
+    'mens_skincare_clinic': 'ORBIS Mr.（スキンケア）',
+    'spu_styleup': 'SPU スタイルアップ便',
+    'women_dating_bachelor': '女性｜審査制デート',
+    'women_beauty_clinic': '女性｜美容医療・脱毛',
+    'women_cosme_salon': '女性｜コスメ・サロン',
+    'night_care_supplement': 'ナイトケアサプリ',
+    'second_venue_reservation': '一休.com（2軒目予約）',
+    'other': 'その他広告枠',
+}
+
+_HOURLY_ZONE_SPECS = (
+    ('day_prep', '昼・事前リサーチ帯', '12:00〜17:59', (12, 13, 14, 15, 16, 17)),
+    ('prime_first', '1軒目ゴールデン帯', '18:00〜21:59', (18, 19, 20, 21)),
+    ('late_hop', '終電前後・2軒目帯', '22:00〜01:59', (22, 23, 0, 1)),
+    ('deep_morning', '深夜第2波〜朝帯', '02:00〜11:59', (2, 3, 4, 5, 6, 7, 8, 9, 10, 11)),
+)
+
+
+def _short_slot_name(slot_id: str) -> str:
+    cid = str(slot_id or '').strip()
+    if not cid:
+        return '-'
+    try:
+        import affiliate_manager
+        canon = affiliate_manager.canonical_slot_id(cid)
+        if canon:
+            cid = canon
+    except Exception:
+        pass
+    base = _CLEAN_AFF_SHORT_NAMES.get(cid, cid)
+    try:
+        import affiliate_manager
+        ov = affiliate_manager._load_overrides(allow_blocking=False).get(cid)
+        if isinstance(ov, dict) and (ov.get('memo') or '').strip():
+            memo = ov.get('memo').strip()[:18]
+            return f"{base}（{memo}）"
+    except Exception:
+        pass
+    return base
+
+
+def _hour_zone_key(hour_int: int) -> str:
+    for z_key, _z_lbl, _z_desc, z_hours in _HOURLY_ZONE_SPECS:
+        if hour_int in z_hours:
+            return z_key
+    return 'deep_morning'
+
+
+def _business_night_date_str(date_str: str, hour_int: int) -> str:
+    """Return business session date string (`YYYY-MM-DD`), shifting 00:00-04:59 to the previous evening."""
+    try:
+        dt = datetime.date.fromisoformat(date_str)
+        if int(hour_int) < 5:
+            dt = dt - datetime.timedelta(days=1)
+        return dt.strftime('%Y-%m-%d')
+    except ValueError:
+        return date_str
+
+
+def _business_night_is_fri_sat(date_str: str, hour_int: int) -> bool:
+    """Treat 00:00-04:59 as the previous calendar evening's nightlife session (Fri/Sat nights include Sat/Sun 00-04h)."""
+    try:
+        dt = datetime.date.fromisoformat(_business_night_date_str(date_str, hour_int))
+        return dt.weekday() in (4, 5)
+    except ValueError:
+        return False
+
+
+def _load_hourly_totals_since(start_date_str: str, allow_blocking: bool = True) -> dict:
+    """Return `{(date_jst, hour_jst, bucket): count}` for `date_jst >= start_date_str`."""
+    global _pg_hourly_seeded_from_sheets, _pg_hourly_seed_in_flight
+    totals = defaultdict(int)
+    is_mocked_hourly_sheets = getattr(sheets_store.read_hourly_rows, '__module__', '') != 'sheets_store'
+    fast_rows = None if is_mocked_hourly_sheets else turbo_store.analytics_hourly_query_since(start_date_str)
+
+    if fast_rows is not None:
+        if turbo_store.is_postgres_active() and not sheets_store.is_disabled():
+            should_seed = False
+            with _lock:
+                if not _pg_hourly_seeded_from_sheets and not _pg_hourly_seed_in_flight and not _hourly_pg_retry:
+                    _pg_hourly_seed_in_flight = True
+                    should_seed = True
+            if should_seed:
+                def _seed_pg_hourly():
+                    global _pg_hourly_seeded_from_sheets, _pg_hourly_seed_in_flight
+                    try:
+                        hist_rows = sheets_store.read_hourly_rows_or_none(HOURLY_SHEET_TITLE, HOURLY_HEADER)
+                        if hist_rows is not None:
+                            if hist_rows:
+                                turbo_store.analytics_hourly_replace_from_sheets(hist_rows)
+                            with _lock:
+                                _pg_hourly_seeded_from_sheets = True
+                    except Exception:
+                        pass
+                    finally:
+                        with _lock:
+                            _pg_hourly_seed_in_flight = False
+
+                threading.Thread(target=_seed_pg_hourly, daemon=True).start()
+        for r in fast_rows:
+            if len(r) >= 4 and str(r[0]) >= start_date_str:
+                try:
+                    hi = int(r[1])
+                    ci = int(r[3])
+                except (TypeError, ValueError):
+                    continue
+                if 0 <= hi <= 23 and ci > 0 and r[2]:
+                    totals[(str(r[0]), hi, str(r[2]))] += ci
+        with _lock:
+            for k, c in _hourly_pg_retry.items():
+                if k[0] >= start_date_str:
+                    totals[k] += c
+    else:
+        if is_mocked_hourly_sheets:
+            sheet_rows = sheets_store.read_hourly_rows(HOURLY_SHEET_TITLE, HOURLY_HEADER)
+        elif sheets_store.is_disabled():
+            sheet_rows = []
+        else:
+            now_mono = time.monotonic()
+            with _lock:
+                cached_ts = _hourly_sheet_rows_cache['ts']
+                cached_rows = _hourly_sheet_rows_cache['rows']
+            if cached_rows is not None and cached_ts > 0.0 and (now_mono - cached_ts < _SHEET_ROWS_CACHE_TTL):
+                sheet_rows = cached_rows
+            elif cached_rows is not None and not allow_blocking:
+                _refresh_hourly_sheet_rows_async()
+                sheet_rows = cached_rows
+            elif not allow_blocking:
+                _refresh_hourly_sheet_rows_async()
+                sheet_rows = []
+            else:
+                fetched = sheets_store.read_hourly_rows_or_none(HOURLY_SHEET_TITLE, HOURLY_HEADER)
+                if fetched is not None:
+                    with _lock:
+                        _hourly_sheet_rows_cache['ts'] = time.monotonic()
+                        _hourly_sheet_rows_cache['rows'] = fetched
+                    sheet_rows = fetched
+                else:
+                    sheet_rows = []
+        if sheet_rows:
+            for r in sheet_rows:
+                if len(r) >= 4 and str(r[0]).strip() >= start_date_str:
+                    try:
+                        hi = int(str(r[1]).strip())
+                        ci = int(float(str(r[3] or '0').replace(',', '').strip()))
+                    except (TypeError, ValueError):
+                        continue
+                    b_str = str(r[2] or '').strip()
+                    if 0 <= hi <= 23 and ci > 0 and b_str:
+                        totals[(str(r[0]).strip(), hi, b_str)] += ci
+        else:
+            with _lock:
+                for k, c in _hourly_flushed.items():
+                    if k[0] >= start_date_str:
+                        totals[k] += c
+        with _lock:
+            for k, c in _hourly_sheets_retry.items():
+                if k[0] >= start_date_str:
+                    totals[k] += c
+
+    with _lock:
+        for k, c in _hourly_pending.items():
+            if k[0] >= start_date_str:
+                totals[k] += c
+    return totals
+
+
+def _build_hourly_segment(seg_key: str, seg_label: str, entries: list, imp_days_set: set) -> dict:
+    """Aggregate `[(date_jst, hour_jst, bucket, count), ...]` into a 24-hour waveform + 4 zones + golden hours."""
+    by_h = {h: defaultdict(int) for h in range(24)}
+    measurable_clk_by_h = defaultdict(int)
+    slot_clk_by_h = {h: defaultdict(int) for h in range(24)}
+    dates_seen = set()
+    biz_dates_seen = set()
+
+    for d_str, h_int, bucket, cnt in entries:
+        dates_seen.add(d_str)
+        biz_dates_seen.add(_business_night_date_str(d_str, h_int))
+        if bucket.startswith('aff_clk:'):
+            slot_id = bucket.split(':', 1)[1] or 'other'
+            by_h[h_int]['aff_click'] += cnt
+            slot_clk_by_h[h_int][slot_id] += cnt
+            if d_str in imp_days_set:
+                measurable_clk_by_h[h_int] += cnt
+        else:
+            by_h[h_int][bucket] += cnt
+
+    pv_by_h = {}
+    sub_pv_by_h = {}
+    for h in range(24):
+        hb = by_h[h]
+        pv_h = sum(hb.get(bk, 0) for bk in _HOURLY_PV_BUCKETS)
+        pv_by_h[h] = pv_h
+        sub_pv_by_h[h] = max(0, pv_h - hb.get('pv_top', 0))
+
+    pv_total = sum(pv_by_h.values())
+    sub_pv_total = sum(sub_pv_by_h.values())
+    store_open_total = sum(by_h[h].get('store_open', 0) for h in range(24))
+    cushion_total = sum(by_h[h].get('cushion_click', 0) for h in range(24))
+    aff_imp_total = sum(by_h[h].get('aff_imp', 0) for h in range(24))
+    aff_clk_total = sum(by_h[h].get('aff_click', 0) for h in range(24))
+    measurable_clk_total = sum(measurable_clk_by_h.values())
+    map_total = sum(by_h[h].get('map_search', 0) for h in range(24))
+    ext_total = sum(by_h[h].get('external_engage', 0) for h in range(24))
+    sns_inflow_total = sum(by_h[h].get('sns_inflow', 0) for h in range(24))
+    vote_total = sum(by_h[h].get('vote', 0) for h in range(24))
+    action_total = aff_clk_total + map_total + ext_total
+
+    max_h_pv = max(pv_by_h.values(), default=1) or 1
+    peak_pv_val = max(pv_by_h.values(), default=0)
+    peak_clk_val = max((by_h[h].get('aff_click', 0) for h in range(24)), default=0)
+
+    hours_list = []
+    for h in range(24):
+        hb = by_h[h]
+        pv_h = pv_by_h[h]
+        sub_h = sub_pv_by_h[h]
+        imp_h = hb.get('aff_imp', 0)
+        clk_h = hb.get('aff_click', 0)
+        m_clk_h = measurable_clk_by_h[h]
+        slots_h = slot_clk_by_h[h]
+        if slots_h:
+            top_sid, top_scnt = sorted(slots_h.items(), key=lambda kv: (-kv[1], kv[0]))[0]
+            top_stitle = _short_slot_name(top_sid)
+        else:
+            top_sid, top_scnt, top_stitle = '', 0, '-'
+
+        # Most viewed surface category in this hour
+        pv_cat_pairs = [(bk, hb.get(bk, 0)) for bk in _HOURLY_PV_BUCKETS if hb.get(bk, 0) > 0]
+        if pv_cat_pairs:
+            lead_bk = sorted(pv_cat_pairs, key=lambda kv: (-kv[1], kv[0]))[0][0]
+            lead_surface = _HOURLY_PV_SURFACE_LABELS.get(lead_bk, lead_bk)
+        else:
+            lead_surface = '-'
+
+        slot_ctr_h = min(100.0, round((m_clk_h / imp_h) * 100, 2)) if imp_h > 0 else None
+        pv_ctr_h = min(100.0, round((clk_h / pv_h) * 100, 2)) if pv_h > 0 else None
+
+        hours_list.append({
+            'hour': h,
+            'hour_str': f"{h:02d}",
+            'hour_label': f"{h:02d}時",
+            'time_range': f"{h:02d}:00-{h:02d}:59",
+            'zone_key': _hour_zone_key(h),
+            'pv': pv_h,
+            'pv_top': hb.get('pv_top', 0),
+            'sub_pv': sub_h,
+            'pv_guide': hb.get('pv_guide', 0),
+            'pv_store': hb.get('pv_store', 0),
+            'pv_concierge': hb.get('pv_concierge', 0),
+            'pv_women': hb.get('pv_women', 0),
+            'pv_grooming': hb.get('pv_grooming', 0),
+            'store_open': hb.get('store_open', 0),
+            'cushion_click': hb.get('cushion_click', 0),
+            'aff_imp': imp_h,
+            'aff_click': clk_h,
+            'map_search': hb.get('map_search', 0),
+            'external_engage': hb.get('external_engage', 0),
+            'sns_inflow': hb.get('sns_inflow', 0),
+            'vote': hb.get('vote', 0),
+            'pv_bar_pct': max(4.0, round((pv_h / max_h_pv) * 100, 1)) if pv_h > 0 else 0.0,
+            'pv_share_pct': round((pv_h / pv_total) * 100, 1) if pv_total > 0 else 0.0,
+            'slot_ctr_pct': slot_ctr_h,
+            'pv_ctr_pct': pv_ctr_h,
+            'top_slot_id': top_sid,
+            'top_slot_title': top_stitle,
+            'top_slot_clicks': top_scnt,
+            'lead_surface': lead_surface,
+            'is_peak_pv': bool(peak_pv_val > 0 and pv_h == peak_pv_val),
+            'is_peak_click': bool(peak_clk_val > 0 and clk_h == peak_clk_val),
+        })
+
+    zones_list = []
+    for z_key, z_label, z_desc, z_hours in _HOURLY_ZONE_SPECS:
+        z_pv = sum(pv_by_h[h] for h in z_hours)
+        z_sub = sum(sub_pv_by_h[h] for h in z_hours)
+        z_open = sum(by_h[h].get('store_open', 0) for h in z_hours)
+        z_cush = sum(by_h[h].get('cushion_click', 0) for h in z_hours)
+        z_imp = sum(by_h[h].get('aff_imp', 0) for h in z_hours)
+        z_clk = sum(by_h[h].get('aff_click', 0) for h in z_hours)
+        z_mclk = sum(measurable_clk_by_h[h] for h in z_hours)
+
+        z_slots = defaultdict(int)
+        z_pv_cats = defaultdict(int)
+        for h in z_hours:
+            for sid, scnt in slot_clk_by_h[h].items():
+                z_slots[sid] += scnt
+            for bk in _HOURLY_PV_BUCKETS:
+                if by_h[h].get(bk, 0) > 0:
+                    z_pv_cats[bk] += by_h[h][bk]
+
+        z_top_slot = _short_slot_name(sorted(z_slots.items(), key=lambda kv: (-kv[1], kv[0]))[0][0]) if z_slots else '-'
+        # Highlight highest subpage category if available, else overall lead category
+        non_top_cats = [(bk, c) for bk, c in z_pv_cats.items() if bk != 'pv_top' and c > 0]
+        if non_top_cats:
+            lead_bk = sorted(non_top_cats, key=lambda kv: (-kv[1], kv[0]))[0][0]
+            z_lead_surface = _HOURLY_PV_SURFACE_LABELS.get(lead_bk, lead_bk)
+        elif z_pv_cats:
+            lead_bk = sorted(z_pv_cats.items(), key=lambda kv: (-kv[1], kv[0]))[0][0]
+            z_lead_surface = _HOURLY_PV_SURFACE_LABELS.get(lead_bk, lead_bk)
+        else:
+            z_lead_surface = '-'
+
+        zones_list.append({
+            'key': z_key,
+            'label': z_label,
+            'hours_desc': z_desc,
+            'pv': z_pv,
+            'pv_share_pct': round((z_pv / pv_total) * 100, 1) if pv_total > 0 else 0.0,
+            'sub_pv': z_sub,
+            'store_open': z_open,
+            'cushion_click': z_cush,
+            'aff_imp': z_imp,
+            'aff_click': z_clk,
+            'click_share_pct': round((z_clk / aff_clk_total) * 100, 1) if aff_clk_total > 0 else 0.0,
+            'slot_ctr_pct': min(100.0, round((z_mclk / z_imp) * 100, 2)) if z_imp > 0 else None,
+            'pv_ctr_pct': min(100.0, round((z_clk / z_pv) * 100, 2)) if z_pv > 0 else None,
+            'top_slot_title': z_top_slot,
+            'lead_surface': z_lead_surface,
+        })
+
+    peak_pv_hours = sorted(
+        [h_obj for h_obj in hours_list if h_obj['pv'] > 0],
+        key=lambda x: (-x['pv'], -x['aff_click'], x['hour']),
+    )[:3]
+    peak_click_hours = sorted(
+        [h_obj for h_obj in hours_list if h_obj['aff_click'] > 0],
+        key=lambda x: (-x['aff_click'], -(x['pv_ctr_pct'] if x['pv_ctr_pct'] is not None else -1.0), -x['pv'], x['hour']),
+    )[:3]
+
+    # Minimum sample threshold (imp >= 3 or pv >= 5) prevents noisy 1-PV / 1-click 100% outliers
+    ctr_candidates = [
+        h_obj for h_obj in hours_list
+        if h_obj['aff_click'] >= 1 and (h_obj['aff_imp'] >= 3 or h_obj['pv'] >= 5)
+    ]
+    best_ctr_hour = None
+    if ctr_candidates:
+        best_ctr_hour = sorted(
+            ctr_candidates,
+            key=lambda x: (
+                -(x['slot_ctr_pct'] if (x['slot_ctr_pct'] is not None and x['aff_imp'] >= 3) else (x['pv_ctr_pct'] or 0.0)),
+                -x['aff_click'],
+                -x['pv'],
+                x['hour'],
+            ),
+        )[0]
+
+    active_count = len(biz_dates_seen) if seg_key in ('fri_sat', 'sun_thu') else len(dates_seen)
+    return {
+        'key': seg_key,
+        'label': seg_label,
+        'active_days_count': active_count,
+        'pv_total': pv_total,
+        'sub_pv_total': sub_pv_total,
+        'store_open_total': store_open_total,
+        'cushion_click_total': cushion_total,
+        'aff_imp_total': aff_imp_total,
+        'aff_click_total': aff_clk_total,
+        'map_total': map_total,
+        'external_engage_total': ext_total,
+        'sns_inflow_total': sns_inflow_total,
+        'vote_total': vote_total,
+        'action_total': action_total,
+        'slot_ctr_pct': min(100.0, round((measurable_clk_total / aff_imp_total) * 100, 2)) if aff_imp_total > 0 else None,
+        'pv_ctr_pct': min(100.0, round((aff_clk_total / pv_total) * 100, 2)) if pv_total > 0 else None,
+        'hours': hours_list,
+        'zones': zones_list,
+        'peak_pv_hours': peak_pv_hours,
+        'peak_click_hours': peak_click_hours,
+        'best_ctr_hour': best_ctr_hour,
+    }
+
+
+def hourly_summary(days=7, allow_blocking=True, _now_jst=None):
+    """直近 days 日の時間帯別（00〜23時）アクセス＆収益アクション波形集計（全日 / 日〜木 / 金・土）。"""
+    days = max(1, int(days or 7))
+    now_jst = _now_jst if _now_jst is not None else datetime.datetime.now(_JST)
+    today_date = now_jst.date()
+    start_date = today_date - datetime.timedelta(days=days - 1)
+    start_str = start_date.strftime('%Y-%m-%d')
+    today_str = today_date.strftime('%Y-%m-%d')
+
+    totals = _load_hourly_totals_since(start_str, allow_blocking=allow_blocking)
+    imp_days_set = {
+        d_str for (d_str, _h, b_str), cnt in totals.items()
+        if b_str == 'aff_imp' and cnt > 0 and d_str >= start_str
+    }
+
+    all_entries = []
+    fri_sat_entries = []
+    sun_thu_entries = []
+    recorded_dates = set()
+
+    for (d_str, h_int, b_str), cnt in totals.items():
+        if d_str < start_str or cnt <= 0 or not (0 <= int(h_int) <= 23):
+            continue
+        recorded_dates.add(d_str)
+        item = (d_str, int(h_int), b_str, int(cnt))
+        all_entries.append(item)
+        if _business_night_is_fri_sat(d_str, int(h_int)):
+            fri_sat_entries.append(item)
+        else:
+            sun_thu_entries.append(item)
+
+    seg_all = _build_hourly_segment('all', '全日（月〜日）', all_entries, imp_days_set)
+    seg_sun_thu = _build_hourly_segment('sun_thu', '日〜木（平日・日曜夜）', sun_thu_entries, imp_days_set)
+    seg_fri_sat = _build_hourly_segment('fri_sat', '金・土（週末ピーク夜）', fri_sat_entries, imp_days_set)
+
+    has_hourly_data = bool(
+        seg_all['pv_total'] > 0
+        or seg_all['action_total'] > 0
+        or seg_all['store_open_total'] > 0
+        or seg_all['cushion_click_total'] > 0
+    )
+    earliest_date = min(recorded_dates) if recorded_dates else ''
+    latest_date = max(recorded_dates) if recorded_dates else ''
+
+    return {
+        'days': days,
+        'since': start_str,
+        'today': today_str,
+        'current_hour_jst': int(now_jst.hour),
+        'has_hourly_data': has_hourly_data,
+        'recorded_days': len(recorded_dates),
+        'earliest_date': earliest_date,
+        'latest_date': latest_date,
+        'segments': {
+            'all': seg_all,
+            'sun_thu': seg_sun_thu,
+            'fri_sat': seg_fri_sat,
+        },
+    }
+
+
 def summary(days=7, allow_blocking=True):
     """直近 days 日の集計: {'by_event': {...}, 'by_label': {...}, 'by_label_pretty': {...}, 'funnel': {...}, 'revenue': {...}, 'daily_series': [...]}"""
     days = max(1, int(days or 7))
@@ -961,11 +1673,12 @@ def summary(days=7, allow_blocking=True):
         'revenue': revenue,
         'cta_surface_ctr': cta_surface_ctr,
         'cushion_by_source': dict(cushion_by_source),
+        'hourly': hourly_summary(days=days, allow_blocking=allow_blocking, _now_jst=now_jst),
     }
 
 
 def reset_for_tests():
-    global _pg_seeded_from_sheets
+    global _pg_seeded_from_sheets, _pg_hourly_seeded_from_sheets, _pg_hourly_seed_in_flight
     with _lock:
         _pending.clear()
         _sheets_retry.clear()
@@ -974,6 +1687,14 @@ def reset_for_tests():
         _sheet_rows_cache['ts'] = 0.0
         _sheet_rows_cache['rows'] = None
         _pg_seeded_from_sheets = False
+        _hourly_pending.clear()
+        _hourly_sheets_retry.clear()
+        _hourly_pg_retry.clear()
+        _hourly_flushed.clear()
+        _hourly_sheet_rows_cache['ts'] = 0.0
+        _hourly_sheet_rows_cache['rows'] = None
+        _pg_hourly_seeded_from_sheets = False
+        _pg_hourly_seed_in_flight = False
     try:
         turbo_store.clear_rate_limit('aff_clk_human')
         turbo_store.clear_rate_limit('aff_clk_ip')

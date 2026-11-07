@@ -66,8 +66,19 @@ def get_worksheet(title, header):
         return None
 
 
-def append_rows(title, header, rows):
-    """行を追記。成功で True。"""
+def _strip_sheet_headers(values, header):
+    """ヘッダー行が先頭以外にズレ込んだ場合でも先頭データ行を欠落させずに除外する。"""
+    if not values:
+        return []
+    hdr = list(header) if header else []
+    if hdr and values[0] == hdr:
+        return [r for r in values[1:] if r != hdr]
+    if hdr:
+        return [r for r in values if r != hdr]
+    return values[1:]
+
+
+def _append_ws_rows(title, header, rows):
     if not rows:
         return True
     ws = get_worksheet(title, header)
@@ -81,6 +92,25 @@ def append_rows(title, header, rows):
         with _ws_lock:
             _ws_cache.pop(title, None)
         return False
+
+
+def _read_ws_rows_or_none(title, header):
+    ws = get_worksheet(title, header)
+    if ws is None:
+        return None
+    try:
+        values = ws.get_all_values()
+        return _strip_sheet_headers(values, header)
+    except Exception as e:
+        print(f"[sheets_store] read '{title}' failed: {e}", file=sys.stderr)
+        with _ws_lock:
+            _ws_cache.pop(title, None)
+        return None
+
+
+def append_rows(title, header, rows):
+    """行を追記。成功で True。"""
+    return _append_ws_rows(title, header, rows)
 
 
 def append_rows_async(title, header, rows):
@@ -105,20 +135,26 @@ def append_rows_async(title, header, rows):
 
 def read_rows_or_none(title, header):
     """ヘッダー行を除く全行を list[list[str]] で返す。未接続・エラー時は None を返す。"""
-    ws = get_worksheet(title, header)
-    if ws is None:
-        return None
-    try:
-        values = ws.get_all_values()
-        return values[1:] if values else []
-    except Exception as e:
-        print(f"[sheets_store] read '{title}' failed: {e}", file=sys.stderr)
-        with _ws_lock:
-            _ws_cache.pop(title, None)
-        return None
+    return _read_ws_rows_or_none(title, header)
 
 
 def read_rows(title, header):
     """ヘッダー行を除く全行を list[list[str]] で返す。失敗時は []。"""
     rows = read_rows_or_none(title, header)
+    return [] if rows is None else rows
+
+
+def append_hourly_rows(title, header, rows):
+    """時間帯別集計シート（'Analytics Hourly'）へ行を追記。成功で True。"""
+    return _append_ws_rows(title, header, rows)
+
+
+def read_hourly_rows_or_none(title, header):
+    """時間帯別集計シートのヘッダー行を除く全行を list[list[str]] で返す。未接続・エラー時は None。"""
+    return _read_ws_rows_or_none(title, header)
+
+
+def read_hourly_rows(title, header):
+    """時間帯別集計シートのヘッダー行を除く全行を list[list[str]] で返す。失敗時は []。"""
+    rows = read_hourly_rows_or_none(title, header)
     return [] if rows is None else rows

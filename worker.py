@@ -289,6 +289,7 @@ def _daily_token_and_db_maintenance_job():
     try:
         local_db.rollup_store_hourly_stats(days_back=4)
         local_db.prune_old_logs(monitor_days=90, vote_days=14)
+        turbo_store.prune_old_analytics_hourly(keep_days=90)
     except Exception as err:
         logger.warning(f"[worker] Daily DB rollup/prune warning: {err}")
 

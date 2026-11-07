@@ -256,5 +256,263 @@ class TestOvernightAuditFixes(unittest.TestCase):
         self.assertIn("栄周辺の現在人数", txt_sakae)
 
 
+class HourlyAnalyticsTests(unittest.TestCase):
+    """Verify hybrid 2-tier hourly analytics (00h-23h), business-night Fri/Sat split, Sheets compaction & UI/report."""
+
+    def setUp(self):
+        analytics.reset_for_tests()
+        analytics.turbo_store.reset_for_tests()
+
+    def tearDown(self):
+        analytics.reset_for_tests()
+        analytics.turbo_store.reset_for_tests()
+
+    def test_hourly_buckets_midnight_atomicity_and_business_night_split(self):
+        # 2026-11-06 is Friday, 2026-11-07 is Saturday, 2026-11-08 is Sunday
+        fri_01 = datetime.datetime(2026, 11, 6, 1, 15, tzinfo=JST)   # Thursday late-night -> sun_thu
+        sat_21 = datetime.datetime(2026, 11, 7, 21, 59, 59, tzinfo=JST)  # Saturday prime -> fri_sat
+        sun_00 = datetime.datetime(2026, 11, 8, 0, 0, 1, tzinfo=JST)     # Saturday late-night -> fri_sat
+        sun_15 = datetime.datetime(2026, 11, 8, 15, 30, tzinfo=JST)      # Sunday daytime -> sun_thu
+
+        analytics.track("page_view", "/guide/weekend-strategy", _now_jst=fri_01)
+        for _ in range(6):
+            analytics.track("page_view", "/", _now_jst=sat_21)
+        analytics.track("page_view", "/store/oriental-lounge-shinjuku", _now_jst=sat_21)
+        analytics.track("affiliate_impression", "dating_instant @ /store/oriental-lounge-shinjuku", _now_jst=sat_21)
+        analytics.track("affiliate_impression", "dating_instant @ /store/oriental-lounge-shinjuku", _now_jst=sat_21)
+        analytics.track("affiliate_impression", "dating_instant @ /store/oriental-lounge-shinjuku", _now_jst=sat_21)
+        analytics.track("affiliate_click", "dating_instant @ /store/oriental-lounge-shinjuku", _now_jst=sat_21)
+        analytics.track("page_view", "/concierge", _now_jst=sun_00)
+        analytics.track("cushion_click", "/grooming @ /guide/weekend-strategy", _now_jst=sun_15)
+        analytics.track("page_view", "/for-women", _now_jst=sun_15)
+
+        hr = analytics.hourly_summary(days=7, allow_blocking=False, _now_jst=sun_15)
+        self.assertTrue(hr["has_hourly_data"])
+        seg_all = hr["segments"]["all"]
+        seg_fs = hr["segments"]["fri_sat"]
+        seg_st = hr["segments"]["sun_thu"]
+
+        # Exact partition identity: fri_sat + sun_thu == all for every hour 0..23
+        self.assertEqual(seg_all["pv_total"], 10)
+        self.assertEqual(seg_fs["pv_total"] + seg_st["pv_total"], seg_all["pv_total"])
+        for h_idx in range(24):
+            self.assertEqual(
+                seg_fs["hours"][h_idx]["pv"] + seg_st["hours"][h_idx]["pv"],
+                seg_all["hours"][h_idx]["pv"],
+            )
+
+        # Sunday 00:00:01 belongs to Saturday business night (fri_sat), Friday 01:15 belongs to Thursday night (sun_thu)
+        self.assertEqual(seg_fs["hours"][0]["pv"], 1)
+        self.assertEqual(seg_st["hours"][0]["pv"], 0)
+        self.assertEqual(seg_st["hours"][1]["pv"], 1)
+        self.assertEqual(seg_fs["hours"][1]["pv"], 0)
+
+        # M3: Saturday 21:59 + Sunday 00:00 belong to the single Saturday business night (1 active business night)
+        self.assertEqual(seg_fs["active_days_count"], 1)
+        self.assertEqual(seg_st["active_days_count"], 2)  # Thursday night + Sunday daytime
+
+        # Peak hour & affiliate slot attribution at 21h
+        self.assertEqual(seg_all["peak_pv_hours"][0]["hour"], 21)
+        self.assertEqual(seg_all["peak_pv_hours"][0]["pv"], 7)
+        self.assertEqual(seg_all["hours"][21]["aff_click"], 1)
+        self.assertEqual(seg_all["hours"][21]["top_slot_id"], "dating_instant")
+        self.assertAlmostEqual(seg_all["hours"][21]["slot_ctr_pct"], 33.33, places=2)
+
+        # Zone sum equals total PV
+        self.assertEqual(sum(z["pv"] for z in seg_all["zones"]), seg_all["pv_total"])
+
+    def test_hourly_two_tier_flush_and_sheets_compaction(self):
+        import app as app_module
+        import archive_data
+
+        now_dt = datetime.datetime.now(JST).replace(hour=22, minute=10, second=0, microsecond=0)
+        pg_hourly_batches = []
+        sheet_hourly_batches = []
+
+        def fake_pg_hourly(items):
+            pg_hourly_batches.append(list(items))
+            return True
+
+        def fake_sheet_hourly(title, header, rows):
+            sheet_hourly_batches.append((title, list(header), list(rows)))
+            return True
+
+        with mock.patch.object(analytics.turbo_store, "is_postgres_active", return_value=True), \
+             mock.patch.object(analytics.turbo_store, "analytics_add_batch", return_value=True), \
+             mock.patch.object(analytics.turbo_store, "analytics_hourly_add_batch", side_effect=fake_pg_hourly), \
+             mock.patch.object(analytics.sheets_store, "append_rows", return_value=True), \
+             mock.patch.object(analytics.sheets_store, "append_hourly_rows", side_effect=fake_sheet_hourly):
+            analytics.track("page_view", "/", _now_jst=now_dt)
+            analytics.track("affiliate_click", "orbis @ /grooming", _now_jst=now_dt)
+            analytics.flush(force_sheets=False)
+            self.assertEqual(len(pg_hourly_batches), 1)
+            self.assertEqual(len(sheet_hourly_batches), 0)
+
+            analytics.track("page_view", "/", _now_jst=now_dt)
+            analytics.flush(force_sheets=True)
+            self.assertEqual(len(pg_hourly_batches), 2)
+            self.assertEqual(len(sheet_hourly_batches), 1)
+            self.assertEqual(sheet_hourly_batches[0][0], analytics.HOURLY_SHEET_TITLE)
+            bucket_counts = {r[2]: int(r[3]) for r in sheet_hourly_batches[0][2]}
+            self.assertEqual(bucket_counts.get("pv_top"), 2)
+            self.assertEqual(bucket_counts.get("aff_clk:mens_skincare_clinic"), 1)
+
+        # Verify _compact_analytics_hourly_sheet merges past-day rows and drops >90d expired rows
+        today_s = now_dt.strftime("%Y-%m-%d")
+        past_s = (now_dt - datetime.timedelta(days=2)).strftime("%Y-%m-%d")
+        expired_s = (now_dt - datetime.timedelta(days=95)).strftime("%Y-%m-%d")
+
+        class _FakeHourlyWS:
+            def __init__(self, rows):
+                self._rows = [list(r) for r in rows]
+
+            def get_all_values(self):
+                return [list(r) for r in self._rows]
+
+            def clear(self):
+                self._rows = []
+
+            def append_rows(self, rows, value_input_option="RAW"):
+                self._rows.extend([list(r) for r in rows])
+
+        class _FakeSS:
+            def __init__(self, ws):
+                self._ws = ws
+
+            def worksheet(self, name):
+                if name == analytics.HOURLY_SHEET_TITLE:
+                    return self._ws
+                raise KeyError(name)
+
+        ws = _FakeHourlyWS([
+            analytics.HOURLY_HEADER,
+            [expired_s, "21", "pv_top", "15"],
+            [past_s, "22", "pv_top", "10"],
+            [past_s, "22", "pv_top", "14"],
+            [today_s, "22", "pv_top", "5"],
+        ])
+        comp = archive_data._compact_analytics_hourly_sheet(_FakeSS(ws), hourly_days=90, dry_run=False)
+        self.assertEqual(comp["rows_before"], 4)
+        self.assertEqual(comp["rows_after"], 2)
+        self.assertEqual(comp["deleted_rows"], 2)
+        self.assertEqual(ws.get_all_values()[1], [past_s, "22", "pv_top", "24"])
+
+        # Verify /staff/analytics renders #sec-hourly cleanly
+        app_module.app.config["TESTING"] = True
+        client = app_module.app.test_client()
+        with client.session_transaction() as sess:
+            sess["is_staff"] = True
+            sess["is_master"] = True
+        analytics.track("page_view", "/guide/weekend-strategy", _now_jst=now_dt)
+        resp = client.get("/staff/analytics?days=7")
+        self.assertEqual(resp.status_code, 200)
+        html = resp.get_data(as_text=True)
+        self.assertIn('id="sec-hourly"', html)
+        self.assertIn("時間帯別アクセス・収益アクション波形", html)
+        self.assertIn('data-hseg="fri_sat"', html)
+
+        # Verify daily_pv_report integrates Analytics Hourly golden-time section without stripping DISABLE_SHEETS on import (M1)
+        prev_disable_sheets = os.environ.get("DISABLE_SHEETS")
+        os.environ["DISABLE_SHEETS"] = "1"
+        try:
+            import importlib.util
+            spec = importlib.util.spec_from_file_location(
+                "daily_pv_report",
+                os.path.join(os.path.dirname(os.path.dirname(__file__)), ".agents", "skills", "growth-pdca", "scripts", "daily_pv_report.py"),
+            )
+            dpr_mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(dpr_mod)
+            self.assertEqual(os.environ.get("DISABLE_SHEETS"), "1")
+        finally:
+            if prev_disable_sheets is None:
+                os.environ.pop("DISABLE_SHEETS", None)
+            else:
+                os.environ["DISABLE_SHEETS"] = prev_disable_sheets
+
+        mock_daily = [[past_s, "page_view", "/", "20"], [past_s, "affiliate_click", "orbis @ /grooming", "2"]]
+        mock_hourly = [
+            [past_s, "21", "pv_top", "12"],
+            [past_s, "21", "aff_imp", "10"],
+            [past_s, "21", "aff_clk:mens_skincare_clinic", "2"],
+            [past_s, "22", "pv_guide", "8"],
+            # M5: late click in a 0-PV zone (03:00) must yield pv_ctr_pct=None and format cleanly without TypeError
+            [past_s, "3", "aff_clk:mens_skincare_clinic", "1"],
+        ]
+        with mock.patch.object(analytics.sheets_store, "read_rows", return_value=mock_daily), \
+             mock.patch.object(analytics.sheets_store, "read_hourly_rows", return_value=mock_hourly):
+            rep = dpr_mod.build_daily_report(past_s)
+            md = dpr_mod.format_markdown(rep)
+            self.assertTrue(rep["hourly"]["has_day_data"])
+            self.assertEqual(rep["hourly"]["day"]["peak_pv_hours"][0]["hour"], 21)
+            late_zone = next(z for z in rep["hourly"]["day"]["zones"] if z["key"] == "deep_morning")
+            self.assertIsNone(late_zone["pv_ctr_pct"])
+            self.assertIn("### 6. 時間帯別ゴールデンタイム分析（00〜23時）", md)
+            self.assertIn("ORBIS Mr.（スキンケア）", md)
+            self.assertNotIn("対PV None%", md)
+            self.assertIn("**1** (-)", md)
+
+    def test_hourly_rewrite_mutex_deferral_and_displaced_header_guard(self):
+        """H1/M5 regression: rewrite mutex defers Sheets append safely; displaced headers never drop row 0; 0-PV click renders cleanly."""
+        import app as app_module
+
+        now_dt = datetime.datetime(2026, 11, 7, 23, 15, tzinfo=JST)
+        late_clk_dt = datetime.datetime(2026, 11, 7, 3, 5, tzinfo=JST)
+        sheet_calls = []
+
+        def fake_append_hourly(title, header, rows):
+            sheet_calls.append(list(rows))
+            return True
+
+        # Acquire rewrite mutex -> flush(force_sheets=True) must defer Sheets append into retry queue
+        token = analytics.turbo_store.acquire_named_mutex("sheets_analytics_rewrite", ttl_sec=60)
+        self.assertTrue(token)
+        try:
+            with mock.patch.object(analytics.turbo_store, "is_postgres_active", return_value=False), \
+                 mock.patch.object(analytics.sheets_store, "append_rows", return_value=True), \
+                 mock.patch.object(analytics.sheets_store, "append_hourly_rows", side_effect=fake_append_hourly):
+                analytics.track("page_view", "/", _now_jst=now_dt)
+                analytics.track("affiliate_click", "orbis @ /grooming", _now_jst=late_clk_dt)  # 0 PV at 03h, 1 click
+                analytics.flush(force_sheets=True)
+                self.assertEqual(len(sheet_calls), 0)  # Deferred while rewrite lock is held
+        finally:
+            analytics.turbo_store.release_named_mutex("sheets_analytics_rewrite")
+
+        # Once mutex is released, next flush(force_sheets=True) writes all deferred rows without loss
+        with mock.patch.object(analytics.turbo_store, "is_postgres_active", return_value=False), \
+             mock.patch.object(analytics.sheets_store, "append_rows", return_value=True), \
+             mock.patch.object(analytics.sheets_store, "append_hourly_rows", side_effect=fake_append_hourly):
+            analytics.flush(force_sheets=True)
+            self.assertEqual(len(sheet_calls), 1)
+            flushed_buckets = {r[2]: int(r[3]) for r in sheet_calls[0]}
+            self.assertEqual(flushed_buckets.get("pv_top"), 1)
+            self.assertEqual(flushed_buckets.get("aff_clk:mens_skincare_clinic"), 1)
+
+        # Displaced header guard: if row 0 is data and row 1 is header, row 0 must NOT be dropped
+        displaced = [
+            ["2026-11-06", "21", "pv_top", "9"],
+            analytics.HOURLY_HEADER,
+            ["2026-11-06", "22", "pv_guide", "4"],
+        ]
+        cleaned = analytics.sheets_store._strip_sheet_headers(displaced, analytics.HOURLY_HEADER)
+        self.assertEqual(len(cleaned), 2)
+        self.assertEqual(cleaned[0], ["2026-11-06", "21", "pv_top", "9"])
+        self.assertEqual(cleaned[1], ["2026-11-06", "22", "pv_guide", "4"])
+
+        # Render /staff/analytics when hour 03 has 0 PV & 1 click -> no TypeError, no '対PV None%' or '対PV 0.0%'
+        app_module.app.config["TESTING"] = True
+        client = app_module.app.test_client()
+        with client.session_transaction() as sess:
+            sess["is_staff"] = True
+            sess["is_master"] = True
+        analytics.track("affiliate_click", "orbis @ /grooming", _now_jst=late_clk_dt)
+        resp = client.get("/staff/analytics?days=7")
+        self.assertEqual(resp.status_code, 200)
+        html = resp.get_data(as_text=True)
+        self.assertNotIn("対PV None%", html)
+        self.assertNotIn("(対PV 0.0%)", html)
+        self.assertIn("CTR: <strong>-</strong>", html)
+        self.assertIn("営業夜", html)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -85,6 +85,7 @@ _mem_state_keys = collections.OrderedDict()
 _mem_state_kv = {}
 _mem_state_kv_ts = {}
 _mem_analytics = collections.defaultdict(int)  # (date_jst, event, label) -> count
+_mem_analytics_hourly = collections.defaultdict(int)  # (date_jst, hour_jst, bucket) -> count
 _mem_rate_limits = collections.defaultdict(list)  # (namespace, key) -> [epoch_ts, ...]
 _mem_dist_locks = {}  # lock_name -> expire_epoch
 
@@ -117,6 +118,7 @@ def reset_for_tests():
         _mem_state_kv.clear()
         _mem_state_kv_ts.clear()
         _mem_analytics.clear()
+        _mem_analytics_hourly.clear()
         _mem_rate_limits.clear()
         _mem_dist_locks.clear()
     with _l1_snap_lock:
@@ -348,6 +350,20 @@ def init_postgres_aux_schema() -> bool:
                 )
                 cur.execute(
                     "CREATE INDEX IF NOT EXISTS idx_analytics_daily_date ON analytics_daily(date_jst);"
+                )
+                cur.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS analytics_hourly (
+                        date_jst TEXT NOT NULL,
+                        hour_jst SMALLINT NOT NULL CHECK (hour_jst >= 0 AND hour_jst <= 23),
+                        bucket TEXT NOT NULL,
+                        count BIGINT NOT NULL DEFAULT 0,
+                        PRIMARY KEY (date_jst, hour_jst, bucket)
+                    );
+                    """
+                )
+                cur.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_analytics_hourly_date ON analytics_hourly(date_jst);"
                 )
                 cur.execute(
                     """
@@ -1251,6 +1267,148 @@ def analytics_query_since(start_date_str: str) -> list:
     return None
 
 
+def analytics_hourly_add_batch(items: list) -> bool:
+    """
+    Atomically increment `analytics_hourly` counters in PostgreSQL / test bus.
+    `items`: list of `((date_jst, hour_jst, bucket), count)`
+    """
+    if not items:
+        return True
+    wrote = False
+
+    if _mem_bus_enabled:
+        with _mem_lock:
+            for (d, h, b), c in items:
+                try:
+                    hi = int(h)
+                    ci = int(c)
+                except (TypeError, ValueError):
+                    continue
+                if 0 <= hi <= 23 and ci > 0 and d and b:
+                    _mem_analytics_hourly[(str(d), hi, str(b))] += ci
+        wrote = True
+
+    if is_postgres_active() and init_postgres_aux_schema():
+        try:
+            rows = []
+            for (d, h, b), c in items:
+                try:
+                    hi = int(h)
+                    ci = int(c)
+                except (TypeError, ValueError):
+                    continue
+                if 0 <= hi <= 23 and ci > 0 and d and b:
+                    rows.append((str(d), hi, str(b), ci))
+            if rows:
+                execute_pg_values_batch(
+                    """
+                    INSERT INTO analytics_hourly (date_jst, hour_jst, bucket, count)
+                    VALUES %s
+                    ON CONFLICT (date_jst, hour_jst, bucket)
+                    DO UPDATE SET count = analytics_hourly.count + EXCLUDED.count;
+                    """,
+                    rows,
+                )
+            wrote = True
+        except Exception as err:
+            logger.warning(f"[turbo_store] analytics_hourly_add_batch pg error: {err}")
+
+    return wrote
+
+
+def analytics_hourly_replace_from_sheets(rows: list) -> int:
+    """Seed `analytics_hourly` in PostgreSQL from historical Google Sheets rows (`[date_jst, hour_jst, bucket, count]`)."""
+    if not rows or not (is_postgres_active() and init_postgres_aux_schema()):
+        return 0
+    agg = collections.defaultdict(int)
+    for r in rows:
+        if len(r) >= 4 and r[0] and r[2]:
+            try:
+                hi = int(r[1])
+                ci = int(float(str(r[3] or "0").replace(",", "").strip()))
+            except (TypeError, ValueError):
+                continue
+            if 0 <= hi <= 23 and ci > 0:
+                agg[(str(r[0]).strip(), hi, str(r[2]).strip())] += ci
+    if not agg:
+        return 0
+    batch = [(d, h, b, cnt) for (d, h, b), cnt in agg.items() if cnt > 0]
+    with pg_connection() as conn:
+        with conn.cursor() as cur:
+            _pg_extras.execute_values(
+                cur,
+                """
+                INSERT INTO analytics_hourly (date_jst, hour_jst, bucket, count)
+                VALUES %s
+                ON CONFLICT (date_jst, hour_jst, bucket)
+                DO UPDATE SET count = GREATEST(analytics_hourly.count, EXCLUDED.count);
+                """,
+                batch,
+                page_size=500,
+            )
+        conn.commit()
+    return len(batch)
+
+
+def analytics_hourly_query_since(start_date_str: str) -> list:
+    """
+    Return `[[date_jst, hour_jst, bucket, count], ...]` from PostgreSQL or test bus in <2ms,
+    or `None` if PostgreSQL/test bus is not active.
+    """
+    if _mem_bus_enabled:
+        with _mem_lock:
+            return [
+                [d, int(h), b, int(cnt)]
+                for (d, h, b), cnt in _mem_analytics_hourly.items()
+                if d >= start_date_str
+            ]
+
+    if is_postgres_active() and init_postgres_aux_schema():
+        try:
+            with pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """
+                        SELECT date_jst, hour_jst, bucket, count
+                        FROM analytics_hourly
+                        WHERE date_jst >= %s;
+                        """,
+                        (start_date_str,),
+                    )
+                    rows = cur.fetchall()
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
+                return [[r[0], int(r[1]), r[2], int(r[3])] for r in rows]
+        except Exception as err:
+            logger.warning(f"[turbo_store] analytics_hourly_query_since pg error: {err}")
+    return None
+
+
+def prune_old_analytics_hourly(keep_days: int = 90) -> int:
+    """Delete `analytics_hourly` rows older than `keep_days` (default 90d, aligned with Sheets retention) to keep Fly Postgres 512MB compact."""
+    keep_days = max(30, int(keep_days or 90))
+    cutoff_str = (datetime.datetime.now(JST) - datetime.timedelta(days=keep_days)).strftime("%Y-%m-%d")
+    deleted = 0
+    if _mem_bus_enabled:
+        with _mem_lock:
+            stale_keys = [k for k in _mem_analytics_hourly.keys() if k[0] < cutoff_str]
+            for k in stale_keys:
+                del _mem_analytics_hourly[k]
+                deleted += 1
+    if is_postgres_active() and init_postgres_aux_schema():
+        try:
+            with pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("DELETE FROM analytics_hourly WHERE date_jst < %s;", (cutoff_str,))
+                    deleted = max(deleted, int(cur.rowcount or 0))
+                conn.commit()
+        except Exception as err:
+            logger.warning(f"[turbo_store] prune_old_analytics_hourly pg error: {err}")
+    return deleted
+
+
 # =====================================================================
 # 6. Cross-Process Rate Limiting (`INCR` + `EXPIRE`) & Distributed Cron Locks (`SET NX EX`)
 # =====================================================================
@@ -1358,4 +1516,114 @@ def acquire_distributed_lock(lock_name: str, ttl_sec: int = 55) -> bool:
             _mem_dist_locks[safe_name] = now_t + max(1, int(ttl_sec))
             return True
     return True
+
+
+def acquire_named_mutex(lock_name: str, ttl_sec: int = 180) -> bool:
+    """Acquire an explicit releasable mutex across Redis, PostgreSQL (`job_state_kv`), and local threads."""
+    safe_name = (lock_name or "mutex").strip()[:72]
+    ttl = max(1, int(ttl_sec))
+    now_t = time.time()
+    exp_t = now_t + ttl
+
+    rc = None if _mem_bus_enabled else get_redis_client()
+    if rc is not None:
+        lkey = f"{KEY_PREFIX}:mutex:{safe_name}"
+        try:
+            acquired = bool(rc.set(lkey, b"1", nx=True, ex=ttl))
+            if acquired:
+                with _mem_lock:
+                    _mem_dist_locks[f"mutex:{safe_name}"] = exp_t
+            return acquired
+        except Exception as err:
+            logger.warning(f"[turbo_store] acquire_named_mutex redis error ({safe_name}): {err}")
+
+    if not _mem_bus_enabled and is_postgres_active() and init_postgres_aux_schema():
+        pg_key = f"dlock:{safe_name}"
+        try:
+            with pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """
+                        INSERT INTO job_state_kv (prefix, val, ts_jst, updated_at_jst)
+                        VALUES (%s, %s, %s, %s)
+                        ON CONFLICT (prefix) DO UPDATE
+                            SET val = EXCLUDED.val,
+                                ts_jst = EXCLUDED.ts_jst,
+                                updated_at_jst = EXCLUDED.updated_at_jst
+                        WHERE (CASE WHEN job_state_kv.val ~ '^[0-9]+(\\.[0-9]+)?$' THEN job_state_kv.val::DOUBLE PRECISION ELSE 0 END) <= %s
+                        RETURNING prefix;
+                        """,
+                        (pg_key, f"{exp_t:.3f}", _now_jst_str(), _now_jst_str(), now_t),
+                    )
+                    got = cur.fetchone() is not None
+                conn.commit()
+            if got:
+                with _mem_lock:
+                    _mem_dist_locks[f"mutex:{safe_name}"] = exp_t
+            return got
+        except Exception as err:
+            logger.warning(f"[turbo_store] acquire_named_mutex pg error ({safe_name}): {err}")
+
+    with _mem_lock:
+        cur_exp = _mem_dist_locks.get(f"mutex:{safe_name}", 0.0)
+        if cur_exp > now_t:
+            return False
+        _mem_dist_locks[f"mutex:{safe_name}"] = exp_t
+        return True
+
+
+def is_named_mutex_held(lock_name: str) -> bool:
+    """Return True if `lock_name` is currently held by a writer (e.g. Google Sheets compaction in progress)."""
+    safe_name = (lock_name or "mutex").strip()[:72]
+    now_t = time.time()
+    with _mem_lock:
+        if _mem_dist_locks.get(f"mutex:{safe_name}", 0.0) > now_t:
+            return True
+
+    rc = None if _mem_bus_enabled else get_redis_client()
+    if rc is not None:
+        try:
+            return bool(rc.exists(f"{KEY_PREFIX}:mutex:{safe_name}"))
+        except Exception:
+            pass
+
+    if not _mem_bus_enabled and is_postgres_active() and init_postgres_aux_schema():
+        pg_key = f"dlock:{safe_name}"
+        try:
+            with pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT val FROM job_state_kv WHERE prefix = %s;", (pg_key,))
+                    row = cur.fetchone()
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
+                if row and row[0]:
+                    return float(row[0]) > now_t
+        except Exception:
+            pass
+    return False
+
+
+def release_named_mutex(lock_name: str) -> None:
+    """Release mutex acquired via `acquire_named_mutex`."""
+    safe_name = (lock_name or "mutex").strip()[:72]
+    with _mem_lock:
+        _mem_dist_locks.pop(f"mutex:{safe_name}", None)
+
+    rc = None if _mem_bus_enabled else get_redis_client()
+    if rc is not None:
+        try:
+            rc.delete(f"{KEY_PREFIX}:mutex:{safe_name}")
+        except Exception:
+            pass
+
+    if not _mem_bus_enabled and is_postgres_active() and init_postgres_aux_schema():
+        try:
+            with pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("DELETE FROM job_state_kv WHERE prefix = %s;", (f"dlock:{safe_name}",))
+                conn.commit()
+        except Exception:
+            pass
 

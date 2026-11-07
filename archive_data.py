@@ -30,6 +30,7 @@ import logger
 
 RETENTION_DAYS = 35
 ANALYTICS_RETENTION_DAYS = 120
+ANALYTICS_HOURLY_RETENTION_DAYS = 90
 VOTES_RETENTION_DAYS = 14
 JOB_STATE_COMPACT_THRESHOLD = 600
 MAX_DELETE_ROWS_PER_RUN = 25000
@@ -259,68 +260,163 @@ def _rotate_main_sheet(spreadsheet, retention_days: int, max_delete_rows: int, d
     }
 
 
+SHEETS_ANALYTICS_REWRITE_MUTEX = "sheets_analytics_rewrite"
+
+
 def _compact_analytics_sheet(spreadsheet, analytics_days: int, dry_run: bool) -> dict:
     import analytics
+    import sheets_store
+    import turbo_store
     try:
         ws = spreadsheet.worksheet(analytics.SHEET_TITLE)
     except Exception:
         return {"rows_before": 0, "rows_after": 0, "deleted_rows": 0}
 
-    vals = ws.get_all_values()
-    if len(vals) <= 1:
+    locked = False
+    if not dry_run:
+        locked = turbo_store.acquire_named_mutex(SHEETS_ANALYTICS_REWRITE_MUTEX, ttl_sec=180)
+        if not locked:
+            return {"rows_before": 0, "rows_after": 0, "deleted_rows": 0, "skipped_locked": True}
+
+    try:
+        vals = ws.get_all_values()
+        data_rows = sheets_store._strip_sheet_headers(vals, analytics.HEADER)
+        if not data_rows:
+            return {"rows_before": 0, "rows_after": 0, "deleted_rows": 0}
+
+        rows_before = len(data_rows)
+        now_jst = datetime.datetime.now(JST)
+        today_str = now_jst.strftime("%Y-%m-%d")
+        cutoff_str = (now_jst - datetime.timedelta(days=analytics_days)).strftime("%Y-%m-%d")
+
+        compacted_past = defaultdict(int)
+        today_rows = []
+        expired_count = 0
+
+        for r in data_rows:
+            if len(r) < 4:
+                continue
+            d_str = str(r[0]).strip()
+            if not d_str or d_str == analytics.HEADER[0]:
+                continue
+            if d_str < cutoff_str:
+                expired_count += 1
+                continue
+            if d_str >= today_str:
+                today_rows.append([r[0], r[1], r[2], r[3]])
+                continue
+            try:
+                compacted_past[(d_str, str(r[1]), str(r[2]))] += int(r[3])
+            except ValueError:
+                continue
+
+        merged_rows = [
+            [d, e, l, str(c)]
+            for (d, e, l), c in sorted(compacted_past.items())
+        ] + today_rows
+        rows_after = len(merged_rows)
+        saved_rows = max(0, rows_before - rows_after)
+
+        # Rewrite only when meaningful reduction is achieved (avoids unnecessary API churn)
+        should_rewrite = (expired_count > 0) or (saved_rows >= 80 and saved_rows >= rows_before * 0.15)
+        if should_rewrite and not dry_run:
+            payload = [analytics.HEADER] + merged_rows
+            ws.clear()
+            for idx in range(0, len(payload), 2000):
+                ws.append_rows(payload[idx:idx + 2000], value_input_option="RAW")
+            with analytics._lock:
+                analytics._sheet_rows_cache["ts"] = time.monotonic()
+                analytics._sheet_rows_cache["rows"] = merged_rows
+            return {"rows_before": rows_before, "rows_after": rows_after, "deleted_rows": saved_rows}
+
+        return {
+            "rows_before": rows_before,
+            "rows_after": rows_after if should_rewrite else rows_before,
+            "deleted_rows": saved_rows if should_rewrite else 0,
+        }
+    finally:
+        if locked:
+            turbo_store.release_named_mutex(SHEETS_ANALYTICS_REWRITE_MUTEX)
+
+
+def _compact_analytics_hourly_sheet(spreadsheet, hourly_days: int, dry_run: bool) -> dict:
+    """Compact past-day 10m flushes in 'Analytics Hourly' into 1 row per (date_jst, hour_jst, bucket) & trim >90d."""
+    import analytics
+    import sheets_store
+    import turbo_store
+    try:
+        ws = spreadsheet.worksheet(analytics.HOURLY_SHEET_TITLE)
+    except Exception:
         return {"rows_before": 0, "rows_after": 0, "deleted_rows": 0}
 
-    data_rows = vals[1:]
-    rows_before = len(data_rows)
-    now_jst = datetime.datetime.now(JST)
-    today_str = now_jst.strftime("%Y-%m-%d")
-    cutoff_str = (now_jst - datetime.timedelta(days=analytics_days)).strftime("%Y-%m-%d")
+    locked = False
+    if not dry_run:
+        locked = turbo_store.acquire_named_mutex(SHEETS_ANALYTICS_REWRITE_MUTEX, ttl_sec=180)
+        if not locked:
+            return {"rows_before": 0, "rows_after": 0, "deleted_rows": 0, "skipped_locked": True}
 
-    compacted_past = defaultdict(int)
-    today_rows = []
-    expired_count = 0
+    try:
+        vals = ws.get_all_values()
+        data_rows = sheets_store._strip_sheet_headers(vals, analytics.HOURLY_HEADER)
+        if not data_rows:
+            return {"rows_before": 0, "rows_after": 0, "deleted_rows": 0}
 
-    for r in data_rows:
-        if len(r) < 4:
-            continue
-        d_str = str(r[0]).strip()
-        if not d_str:
-            continue
-        if d_str < cutoff_str:
-            expired_count += 1
-            continue
-        if d_str >= today_str:
-            today_rows.append([r[0], r[1], r[2], r[3]])
-            continue
-        try:
-            compacted_past[(d_str, str(r[1]), str(r[2]))] += int(r[3])
-        except ValueError:
-            continue
+        rows_before = len(data_rows)
+        now_jst = datetime.datetime.now(JST)
+        today_str = now_jst.strftime("%Y-%m-%d")
+        cutoff_str = (now_jst - datetime.timedelta(days=hourly_days)).strftime("%Y-%m-%d")
 
-    merged_rows = [
-        [d, e, l, str(c)]
-        for (d, e, l), c in sorted(compacted_past.items())
-    ] + today_rows
-    rows_after = len(merged_rows)
-    saved_rows = max(0, rows_before - rows_after)
+        compacted_past = defaultdict(int)
+        today_rows = []
+        expired_count = 0
 
-    # Rewrite only when meaningful reduction is achieved (avoids unnecessary API churn)
-    should_rewrite = (expired_count > 0) or (saved_rows >= 80 and saved_rows >= rows_before * 0.15)
-    if should_rewrite and not dry_run:
-        payload = [analytics.HEADER] + merged_rows
-        ws.clear()
-        for idx in range(0, len(payload), 2000):
-            ws.append_rows(payload[idx:idx + 2000], value_input_option="RAW")
-        with analytics._lock:
-            analytics._sheet_rows_cache["ts"] = time.monotonic()
-            analytics._sheet_rows_cache["rows"] = merged_rows
-        return {"rows_before": rows_before, "rows_after": rows_after, "deleted_rows": saved_rows}
+        for r in data_rows:
+            if len(r) < 4:
+                continue
+            d_str = str(r[0]).strip()
+            if not d_str or d_str == analytics.HOURLY_HEADER[0]:
+                continue
+            if d_str < cutoff_str:
+                expired_count += 1
+                continue
+            if d_str >= today_str:
+                today_rows.append([r[0], r[1], r[2], r[3]])
+                continue
+            try:
+                h_int = int(str(r[1]).strip())
+                cnt = int(float(str(r[3] or "0").replace(",", "").strip()))
+            except (TypeError, ValueError):
+                continue
+            b_str = str(r[2] or "").strip()
+            if 0 <= h_int <= 23 and cnt > 0 and b_str:
+                compacted_past[(d_str, h_int, b_str)] += cnt
 
-    return {
-        "rows_before": rows_before,
-        "rows_after": rows_after if should_rewrite else rows_before,
-        "deleted_rows": saved_rows if should_rewrite else 0,
-    }
+        merged_rows = [
+            [d, str(h), b, str(c)]
+            for (d, h, b), c in sorted(compacted_past.items())
+        ] + today_rows
+        rows_after = len(merged_rows)
+        saved_rows = max(0, rows_before - rows_after)
+
+        should_rewrite = (expired_count > 0) or (saved_rows >= 80 and saved_rows >= rows_before * 0.15)
+        if should_rewrite and not dry_run:
+            payload = [analytics.HOURLY_HEADER] + merged_rows
+            ws.clear()
+            for idx in range(0, len(payload), 2000):
+                ws.append_rows(payload[idx:idx + 2000], value_input_option="RAW")
+            with analytics._lock:
+                analytics._hourly_sheet_rows_cache["ts"] = time.monotonic()
+                analytics._hourly_sheet_rows_cache["rows"] = merged_rows
+            return {"rows_before": rows_before, "rows_after": rows_after, "deleted_rows": saved_rows}
+
+        return {
+            "rows_before": rows_before,
+            "rows_after": rows_after if should_rewrite else rows_before,
+            "deleted_rows": saved_rows if should_rewrite else 0,
+        }
+    finally:
+        if locked:
+            turbo_store.release_named_mutex(SHEETS_ANALYTICS_REWRITE_MUTEX)
 
 
 def _trim_votes_sheet(spreadsheet, votes_days: int, dry_run: bool) -> dict:
@@ -417,6 +513,11 @@ def run_full_sheets_retention(
 
         main_res = _rotate_main_sheet(spreadsheet, retention_days=retention_days, max_delete_rows=max_delete_rows, dry_run=dry_run)
         ana_res = _compact_analytics_sheet(spreadsheet, analytics_days=analytics_days, dry_run=dry_run)
+        ana_hourly_res = _compact_analytics_hourly_sheet(
+            spreadsheet,
+            hourly_days=min(analytics_days, ANALYTICS_HOURLY_RETENTION_DAYS),
+            dry_run=dry_run,
+        )
         vote_res = _trim_votes_sheet(spreadsheet, votes_days=votes_days, dry_run=dry_run)
         js_res = _compact_job_state_sheet(spreadsheet, dry_run=dry_run)
 
@@ -424,6 +525,7 @@ def run_full_sheets_retention(
         total_deleted_rows = (
             int(main_res.get("deleted_rows", 0))
             + int(ana_res.get("deleted_rows", 0))
+            + int(ana_hourly_res.get("deleted_rows", 0))
             + int(vote_res.get("deleted_rows", 0))
             + int(js_res.get("deleted_rows", 0))
         )
@@ -442,6 +544,7 @@ def run_full_sheets_retention(
             "details": {
                 "main_logs": main_res,
                 "analytics_daily": ana_res,
+                "analytics_hourly": ana_hourly_res,
                 "crowd_votes": vote_res,
                 "job_state": js_res,
             },
