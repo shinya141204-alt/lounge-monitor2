@@ -1,18 +1,20 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-run_claude_review.py - Antigravity から Claude Code (`claude -p`) を安全・高速に読み取り専用で呼び出す連携ラッパー v2.0
+run_claude_review.py - Antigravity から Claude Code (`claude -p`) を安全・高速に呼び出す連携ラッパー v2.1
 
 主な特徴:
-- `--permission-mode plan` により、Claude Code 側での勝手なファイル書き換え・コマンド破壊を完全防止
-- 対象ファイル自動インライン添付（Fable 最大 120,000 文字 / Opus 最大 40,000 文字）＋ `stdin` 投入により、
+- 既定は `--permission-mode plan`（完全読み取り専用）で、勝手なファイル書き換え・コマンド破壊を完全防止
+- `--allow-edit` 指定時のみ `--permission-mode acceptEdits` ＋ `--tools Read,Edit,Write,Glob,Grep` を有効化し、
+  `Bash` / `WebFetch` や `.env`・認証鍵・`fly.toml` への変更を物理遮断した安全な「ファイル編集限定モード」で直接書き込みを実行
+- 対象ファイル自動インライン添付（読み取り専用時：Fable 最大 120,000 文字 / Opus 最大 40,000 文字）＋ `stdin` 投入により、
   Read ツール往復によるタイムアウトと macOS `ARG_MAX` 上限エラーを解消（`--fast-no-tools` でツール往復ゼロ推論にも対応）
 - 日常レビュー (`claude-opus-5-5`) と切り札 100万トークン最上位モデル (`claude-fable-5-1`) のハイブリッド運用:
   1. `strategy`       : 収益化・SEO・データモート引用獲得・導線設計の「全体戦略」
   2. `audit`          : 複雑な数理ロジック・Fly PG 512MB OOM安全性・大型改修の「最終バグ・セキュリティ監査」
-  3. `flagship`       : 看板コラム・note 勝負記事の「構成＆脱AIの徹底推敲」
+  3. `flagship`       : 看板コラム・note 勝負記事の「構成＆脱AIの徹底推敲（`--allow-edit` で直接改稿保存も可）」
   4. `consult --fable`: スキル策定・自由テーマの深層アーキテクチャ相談（`strategy` へ強制変換せず維持）
-- レビュー結果を `.agents/skills/claude-review/logs/`（Git除外）へ自動アーカイブし、所要秒・コスト要約を表示
+- レビュー・編集結果を `.agents/skills/claude-review/logs/`（Git除外）へ自動アーカイブし、所要秒・コスト・変更ファイルを要約表示
 """
 
 import argparse
@@ -55,6 +57,12 @@ MODEL_ALIASES = {
 
 FABLE_NATIVE_MODES = {"strategy", "audit", "flagship", "architect", "article-fable"}
 ALL_MODES = ("code", "article", "consult", "strategy", "audit", "flagship", "architect", "article-fable")
+SAFE_EDIT_TOOLS = "Read,Edit,Write,Glob,Grep"
+EDIT_DISALLOWED_SPECS = (
+    "Bash,WebFetch,Edit(.env),Write(.env),Edit(.env.*),Write(.env.*),"
+    "Edit(*credentials*),Write(*credentials*),Edit(*secret*),Write(*secret*),"
+    "Edit(fly.toml),Write(fly.toml)"
+)
 
 
 def find_claude_bin() -> str | None:
@@ -343,12 +351,19 @@ def build_prompt(
     diff_base: str = "",
     inline_files: bool = True,
     fast_no_tools: bool = False,
+    allow_edit: bool = False,
 ) -> str:
     file_hint = ""
     inlined_bundle = ""
     if files:
         joined = ", ".join(files)
-        if inline_files:
+        if allow_edit:
+            file_hint = (
+                f"\n編集対象ファイル: {joined}\n"
+                "（必ず最初に `Read` ツールで対象ファイルの最新内容を読み込んでから、`Edit` / `Write` ツールで直接書き換えて保存してください。"
+                " 指定された対象ファイル以外の無関係なファイルや `.env`・認証情報・`fly.toml` は絶対に編集しないでください）\n"
+            )
+        elif inline_files:
             budget = 120000 if deep_context else 40000
             inlined_bundle, omitted = _inline_files(files, budget)
             if fast_no_tools:
@@ -365,6 +380,11 @@ def build_prompt(
                 )
         else:
             file_hint = f"\n対象ファイル: {joined}\n（Read / Grep ツールで対象ファイルの実コードおよび AGENTS.md を確認した上で回答してください）\n"
+    elif allow_edit:
+        file_hint = (
+            "\n（必ず最初に `Read` ツールで編集対象ファイルおよび `AGENTS.md` を確認してから、`Edit` / `Write` ツールで直接変更を保存してください。"
+            " `.env`・認証情報・`fly.toml` および指示外の無関係なファイルは絶対に編集しないでください）\n"
+        )
 
     diff_snippet = ""
     if use_git_diff or diff_base:
@@ -396,67 +416,207 @@ def build_prompt(
             pass
 
     if effective_mode == "strategy":
+        action_clause = (
+            "必要に応じて指定ドキュメントへ `Edit` / `Write` で構造化保存しつつ、`AGENTS.md` の規約（推測値ゼロ、コラム/一次統計への `/link/` 直貼り禁止、CC BY 4.0 一次統計インフラ活用）を踏まえ、**収益化・SEO・データモート引用獲得・導線設計の全体戦略** を日本語で構造提案してください：\n"
+            if allow_edit
+            else "ファイルを一切編集せず、`AGENTS.md` の規約（推測値ゼロ、コラム/一次統計への `/link/` 直貼り禁止、CC BY 4.0 一次統計インフラ活用）を踏まえ、**収益化・SEO・データモート引用獲得・導線設計の全体戦略** を日本語で構造提案してください：\n"
+        )
         base = (
             "あなたは『相席ナビ (https://aiseki-navi.com)』のチーフ・グロース＆マネタイズ戦略アーキテクトです。\n"
-            "ファイルを一切編集せず、`AGENTS.md` の規約（推測値ゼロ、コラム/一次統計への `/link/` 直貼り禁止、CC BY 4.0 一次統計インフラ活用）を踏まえ、**収益化・SEO・データモート引用獲得・導線設計の全体戦略** を日本語で構造提案してください：\n"
-            "1. **ファネル＆データモート活用診断**: 『検索/SNS/被リンク流入 → リアルタイム状況・データコラム・一次統計（`/stats/monthly.csv`, `/stats/year-end-2026`）閲覧 → 2ステップ内部クッション（`/grooming`・`/for-women`・店舗詳細等） → `/link/<id>` 成果送客』における最大ボトルネック特定\n"
+            + action_clause
+            + "1. **ファネル＆データモート活用診断**: 『検索/SNS/被リンク流入 → リアルタイム状況・データコラム・一次統計（`/stats/monthly.csv`, `/stats/year-end-2026`）閲覧 → 2ステップ内部クッション（`/grooming`・`/for-women`・店舗詳細等） → `/link/<id>` 成果送客』における最大ボトルネック特定\n"
             "2. **SEO・LLMO・自然被リンク獲得戦略**: 90日予測精度・1h永久ロールアップ・6大ドーム相関・別業態横断比較を活かした検索クラスター補強と引用獲得策\n"
             "3. **押し売り感ゼロで CVR を引き上げる導線設計**: 男女それぞれの心理モード（入店前・滞在中・2軒目・別日の真剣出会い検討）に寄り添うマイクロコピーと配置改善\n"
             "4. **優先実行ロードマップ**: 【すぐ実装すべき高インパクト3手】と【中長期のデータ堀強化策】を期待効果×実装コストとともに提示\n"
         )
     elif effective_mode == "audit":
+        action_clause = (
+            "対象コードを精査し、発見した明確な不具合や安全上の懸念を指定ファイルへ `Read` → `Edit` で直接修正保存した上で、**複雑な数理ロジック・大型改修の最終バグ・セキュリティ監査と修正報告** を日本語で行ってください（`Bash` 実行は無効化されているため、テスト実行要否は報告に含めてください）：\n"
+            if allow_edit
+            else "ファイルを一切編集せず、対象コードを深く精査し、**複雑な数理ロジック・大型改修の最終バグ・セキュリティ監査** を辛口かつ具体的に日本語で行ってください：\n"
+        )
         base = (
             "あなたは『相席ナビ (https://aiseki-navi.com)』のプリンシパル数理アルゴリズム＆セキュリティ最終監査官です。\n"
-            "ファイルを一切編集せず、対象コードを深く精査し、**複雑な数理ロジック・大型改修の最終バグ・セキュリティ監査** を辛口かつ具体的に日本語で行ってください：\n"
-            "1. **数理・統計ロジック＆境界条件の厳密検証**: ゼロ除算、サンプル希少時の発散、未算出時のダミー固定値混入、JST/UTC混在、深夜営業の日跨ぎ（0:00〜5:00）境界条件、丸め誤差や None 伝播の有無\n"
+            + action_clause
+            + "1. **数理・統計ロジック＆境界条件の厳密検証**: ゼロ除算、サンプル希少時の発散、未算出時のダミー固定値混入、JST/UTC混在、深夜営業の日跨ぎ（0:00〜5:00）境界条件、丸め誤差や None 伝播の有無\n"
             "2. **多層DB・Fly Postgres 512MB OOM安全性**: 全期間一括 `SELECT *` によるOOMリスク（最大7日連続日付バッチ分割の遵守）、PG/SQLite方言差、ロック競合、空データの長時間キャッシュ混入、テスト時の `DISABLE_SHEETS=1` 汚染防止\n"
             "3. **セキュリティ・プライバシー・計測非汚染・キャッシュ完全同期**: 管理API認可、XSS/CSRF/SSRF、14日投票匿名化＆IPレート制限、本番アクセス時の `?staff_test=1` 非汚染、`sw.js` / `index.html` / `_nav_loader.html` / 全テンプレート / 回帰テストのキャッシュバスティング完全同期漏れ\n"
-            "4. **重大度別の具体的修正パッチ案**: 発見した懸念を `[Critical / High / Medium / Low]` に分類し、ファイル名・行番号・再現条件・修正コード案を提示（問題なければ『重大な懸念なし』と明記）\n"
+            "4. **重大度別の報告**: 発見・修正した箇所を `[Critical / High / Medium / Low]` に分類し、ファイル名・行番号・変更内容を明記（問題なければ『重大な懸念なし』と明記）\n"
         )
     elif effective_mode == "flagship":
+        action_clause = (
+            "対象の看板コラムHTMLおよび/または note 勝負記事原稿を `Read` で精読し、`Edit` / `Write` ツールで **構成＆脱AIの徹底推敲をファイルへ直接反映・保存** した上で、変更要約を日本語で報告してください（実測数値の改ざんや推測値の創作は絶対禁止）：\n"
+            if allow_edit
+            else "ファイルを一切編集せず、対象の看板コラムHTMLおよび/または note 勝負記事原稿を精読し、**構成＆脱AIの徹底推敲** を日本語で行ってください：\n"
+        )
         base = (
             "あなたは『相席ナビ (https://aiseki-navi.com)』の統括編集デスク（雑誌編集長クラスの構成＆脱AI文体ディレクター）です。\n"
-            "ファイルを一切編集せず、対象の看板コラムHTMLおよび/または note 勝負記事原稿を精読し、**構成＆脱AIの徹底推敲** を日本語で行ってください：\n"
-            "1. **企画骨格＆冒頭15秒の引き込み診断**: 最初の3行で読者が引き込まれるか。手垢導入の使い回しがないか。『①60〜120分の時間波形ドラマ × ②男女双方の本音の非対称 × ③街・ブランド別カルチャー相性』の立体構成評価\n"
-            "2. **徹底的な脱AI・手垢表現の摘出と生身の改稿案**: AI優等生構文（『〜ため、』『〜傾向にあり』『〜と言えるでしょう』）、量産煽り語（『徹底解説』『完全攻略』『完全ガイド』『間違いなし』『必見』『3秒で』）、硬い学術語を1文単位で摘出し、**そのままコピペ置換できる編集長くわもんの書き換え文案** を提示\n"
-            "3. **Web版とnote版の役割分離＆会話の体温**: `.dialogue-box` の男女会話がリアルな20〜30代の息遣いになっているか添削\n"
+            + action_clause
+            + "1. **企画骨格＆冒頭15秒の引き込み診断**: 最初の3行で読者が引き込まれるか。手垢導入の使い回しがないか。『①60〜120分の時間波形ドラマ × ②男女双方の本音の非対称 × ③街・ブランド別カルチャー相性』の立体構成評価\n"
+            "2. **徹底的な脱AI・手垢表現の摘出と生身の改稿**: AI優等生構文（『〜ため、』『〜傾向にあり』『〜と言えるでしょう』）、量産煽り語（『徹底解説』『完全攻略』『完全ガイド』『間違いなし』『必見』『3秒で』）、硬い学術語を排除し、編集長くわもんの生身の文体へ磨き上げる\n"
+            "3. **Web版とnote版の役割分離＆会話の体温**: `.dialogue-box` の男女会話がリアルな20〜30代の息遣いになっているか磨く\n"
             "4. **ブランド正式名称・著者クレジット・導線規約の完全検閲**: 単体『オリエンタル』・『OLG』・『YATAKOI』・『オリラジ』が0件か、初出『ag（アグ）』『JIS（ジス）』『ASOBIBAR（アソビバー）』併記、著者『くわもん（相席ナビ編集長）』統一、本文への `/link/` 直貼りゼロを厳密チェック\n"
         )
     elif effective_mode == "code":
+        action_clause = (
+            "対象ファイルを `Read` で確認した上で、`Edit` / `Write` ツールで直接修正・実装を保存し、以下の観点に基づく変更内容を日本語で簡潔に報告してください：\n"
+            if allow_edit
+            else "ファイルを直接編集せず、以下の観点で辛口かつ具体的なコードレビューを日本語で行ってください：\n"
+        )
         base = (
             "あなたは『相席ナビ (aiseki-navi.com)』のシニアセキュリティ＆アーキテクチャ監査官です。\n"
-            "ファイルを直接編集せず、以下の観点で辛口かつ具体的なコードレビューを日本語で行ってください：\n"
-            "1. 重大なバグ・例外握りつぶし・エッジケース漏れ・OOMリスク\n"
+            + action_clause
+            + "1. 重大なバグ・例外握りつぶし・エッジケース漏れ・OOMリスク\n"
             "2. セキュリティ・認証・計測汚染リスク（`?staff_test=1` 漏れ、`/link/` 汚染、XSS/CSRF 等）\n"
             "3. キャッシュ完全同期（`sw.js` / `index.html` / `_nav_loader.html` / 全テンプレート）とロック競合\n"
-            "4. そのまま適用できる具体的な改善案（問題なければ『重大な懸念なし』と明記）\n"
+            "4. 適用した改善点または具体的な改善案（問題なければ『重大な懸念なし』と明記）\n"
         )
     elif effective_mode == "article":
+        action_clause = (
+            "対象コラムまたは note 原稿を `Read` で読み、`Edit` / `Write` ツールで以下の観点に沿って直接推敲・書き換え保存した上で、変更点を日本語で報告してください（実測数値は絶対に変えないこと）：\n"
+            if allow_edit
+            else "対象コラムまたは note 原稿を読み、ファイルを書き換えずに以下の観点で日本語で添削してください：\n"
+        )
         base = (
             "あなたは『相席ナビ』の辛口デスク編集者です。\n"
-            "対象コラムまたは note 原稿を読み、ファイルを書き換えずに以下の観点で日本語で添削してください：\n"
-            "1. AIっぽい手垢表現・煽り語（「徹底解説」「完全攻略」「完全ガイド」「間違いなし」「3秒で」等）の指摘と自然な書き換え案\n"
+            + action_clause
+            + "1. AIっぽい手垢表現・煽り語（「徹底解説」「完全攻略」「完全ガイド」「間違いなし」「3秒で」等）の排除と自然な文体への書き換え\n"
             "2. ブランド正式名称＆初出カナ併記ルール確認（単体『オリエンタル』・『OLG』・『YATAKOI』・『オリラジ』0件、初出カナ併記）\n"
             "3. 著者クレジット確認（『くわもん（相席ナビ編集長）』統一、本名・現場勤務経歴ゼロ）と直 `/link/` ゼロ確認\n"
-            "4. 男女フラットな人間観察と自然な `.dialogue-box` 会話、冒頭15秒の導入改善案\n"
+            "4. 男女フラットな人間観察と自然な `.dialogue-box` 会話、冒頭15秒の導入改善\n"
         )
     else:
+        action_clause = (
+            "`AGENTS.md` の規約を踏まえ、指示された対象ファイルを `Read` → `Edit` / `Write` で直接編集・作成した上で、実施内容を日本語で簡潔に報告してください。\n"
+            if allow_edit
+            else "`AGENTS.md` の規約を踏まえ、ファイルを編集せずに構造的・実践的な設計提案またはセカンドオピニオンを日本語で提示してください。\n"
+        )
         base = (
             "あなたは『相席ナビ (https://aiseki-navi.com)』のプリンシパル技術・AIハーネス＆グロース設計アドバイザーです。\n"
-            "`AGENTS.md` の規約を踏まえ、ファイルを編集せずに構造的・実践的な設計提案またはセカンドオピニオンを日本語で提示してください。\n"
+            + action_clause
         )
 
     extra = f"\n【追加指示・重点論点】\n{user_prompt}\n" if user_prompt else ""
     return f"{base}{file_hint}{extra}{diff_snippet}{inlined_bundle}"
 
 
-def _save_review_log(mode: str, model: str, text: str) -> Path | None:
+def _resolve_extra_edit_dirs(files: list[str]) -> list[str]:
+    """Return external parent directories when `--allow-edit` targets explicit files outside `REPO_ROOT`."""
+    repo_resolved = REPO_ROOT.resolve()
+    dirs: list[str] = []
+    for raw in files or []:
+        if not raw:
+            continue
+        p = Path(raw).expanduser().resolve() if os.path.isabs(raw) or str(raw).startswith("~") else (REPO_ROOT / raw).resolve()
+        try:
+            p.relative_to(repo_resolved)
+        except ValueError:
+            parent_str = str(p.parent)
+            if parent_str not in dirs and p.parent.is_dir():
+                dirs.append(parent_str)
+    return dirs
+
+
+def build_claude_command(
+    claude_bin: str,
+    selected_model: str,
+    *,
+    allow_edit: bool = False,
+    fast_no_tools: bool = False,
+    effort_level: str | None = None,
+    use_fable: bool = False,
+    extra_dirs: list[str] | None = None,
+) -> list[str]:
+    """Construct safe `claude -p` CLI arguments for either read-only (`plan`) or file-edit (`acceptEdits`) execution."""
+    cmd = [
+        claude_bin,
+        "-p",
+        "--permission-mode",
+        "acceptEdits" if allow_edit else "plan",
+        "--permission-prompts",
+        "none",
+    ]
+    if allow_edit:
+        cmd.extend(["--tools", SAFE_EDIT_TOOLS])
+        cmd.extend(["--disallowedTools", EDIT_DISALLOWED_SPECS])
+        for d in extra_dirs or []:
+            if d:
+                cmd.extend(["--add-dir", str(d)])
+    elif fast_no_tools:
+        cmd.extend(["--tools", ""])
+    if effort_level:
+        cmd.extend(["--effort", effort_level])
+    if use_fable:
+        cmd.extend(["--fallback-model", "claude-opus-5-5"])
+    cmd.extend([
+        "--model",
+        selected_model,
+        "--output-format",
+        "json",
+    ])
+    return cmd
+
+
+def _git_porcelain_snapshot(extra_files: list[str] | None = None) -> dict[str, tuple[str, float]]:
+    """Capture `(status_code, mtime)` per path so post-edit reporting detects both repo and explicit external file edits."""
+    snap: dict[str, tuple[str, float]] = {}
+    try:
+        res = subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=str(REPO_ROOT),
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        for line in (res.stdout or "").splitlines():
+            if len(line) < 4:
+                continue
+            status_code = line[:2]
+            rel_path = line[3:].strip().strip('"')
+            if " -> " in rel_path:
+                rel_path = rel_path.split(" -> ", 1)[1].strip()
+            fpath = REPO_ROOT / rel_path
+            mtime = fpath.stat().st_mtime if fpath.exists() else 0.0
+            snap[rel_path] = (status_code, mtime)
+    except Exception:
+        pass
+    for raw in extra_files or []:
+        if not raw:
+            continue
+        p = Path(raw).expanduser() if (os.path.isabs(raw) or str(raw).startswith("~")) else (REPO_ROOT / raw)
+        if p.exists():
+            snap.setdefault(str(raw), ("EX", p.stat().st_mtime))
+    return snap
+
+
+def _detect_touched_repo_files(
+    before: dict[str, tuple[str, float]],
+    after: dict[str, tuple[str, float]],
+) -> list[str]:
+    touched: list[str] = []
+    for rel_path, after_meta in sorted(after.items()):
+        if rel_path not in before or before[rel_path] != after_meta:
+            touched.append(rel_path)
+    return touched
+
+
+def _save_review_log(
+    mode: str,
+    model: str,
+    text: str,
+    *,
+    allow_edit: bool = False,
+    touched_files: list[str] | None = None,
+) -> Path | None:
     try:
         LOG_DIR.mkdir(parents=True, exist_ok=True)
         ts = datetime.datetime.now(JST).strftime("%Y%m%d_%H%M%S")
         safe_mode = "".join(c for c in mode if c.isalnum() or c in ("-", "_")) or "review"
-        out_path = LOG_DIR / f"{ts}_{safe_mode}.md"
-        header = f"<!-- model={model} mode={mode} created_at={ts} JST -->\n\n"
+        suffix = f"{safe_mode}_edit" if allow_edit else safe_mode
+        out_path = LOG_DIR / f"{ts}_{suffix}.md"
+        perm_tag = "acceptEdits" if allow_edit else "plan"
+        touched_tag = f" touched={','.join(touched_files)}" if touched_files else ""
+        header = f"<!-- model={model} mode={mode} permission={perm_tag}{touched_tag} created_at={ts} JST -->\n\n"
         out_path.write_text(header + text + "\n", encoding="utf-8")
         return out_path
     except Exception:
@@ -465,7 +625,7 @@ def _save_review_log(mode: str, model: str, text: str) -> Path | None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Run read-only Claude Code review / Fable 5.1 deep strategy, audit, flagship polish, and consult"
+        description="Run Claude Code review (`plan` read-only by default, or safe file-only `--allow-edit`)"
     )
     parser.add_argument("--doctor", action="store_true", help="Check Claude Code installation, Fable availability, and auth status")
     parser.add_argument("--usage", action="store_true", help="Check live 5h / 7d Claude rate-limit remaining percentage")
@@ -473,11 +633,16 @@ def main() -> int:
         "--mode",
         choices=ALL_MODES,
         default=None,
-        help="Preset mode: code | article | consult | strategy | audit | flagship",
+        help="Preset mode: code | article | consult | strategy | audit | flagship | architect",
     )
     parser.add_argument("--fable", action="store_true", help="Run with Claude Fable 5.1 (`claude-fable-5-1`); promotes code->audit and article->flagship")
     parser.add_argument("--no-promote", action="store_true", help="Keep exact `--mode` even when `--fable` is set")
-    parser.add_argument("--files", nargs="*", default=[], help="Target file paths relative to repo root (auto-inlined)")
+    parser.add_argument(
+        "--allow-edit",
+        action="store_true",
+        help="Allow Claude to directly Edit/Write files (`--permission-mode acceptEdits`, Bash/WebFetch/.env/fly.toml blocked)",
+    )
+    parser.add_argument("--files", nargs="*", default=[], help="Target file paths relative to repo root (auto-inlined in read-only mode)")
     parser.add_argument("--no-inline", action="store_true", help="Do not inline `--files` contents; let Claude Read them via tool calls")
     parser.add_argument("--fast-no-tools", action="store_true", help="Disable all Claude tool calls (`--tools ''`) for ultra-fast single-turn inference on inlined files")
     parser.add_argument("--git-diff", action="store_true", help="Include current git diff (or latest commit diff)")
@@ -501,6 +666,17 @@ def main() -> int:
         )
         return 2
 
+    effective_fast_no_tools = bool(args.fast_no_tools)
+    if args.allow_edit and effective_fast_no_tools:
+        print(
+            "[claude-review] notice: `--allow-edit` 指定のため `--fast-no-tools` を解除し、ファイル編集ツール (Read,Edit,Write,Glob,Grep) を有効化します。",
+            file=sys.stderr,
+        )
+        effective_fast_no_tools = False
+
+    # When `--allow-edit` is active, Claude's `Edit` tool requires `Read` first; avoid duplicate prompt inlining.
+    effective_inline = (not args.no_inline) and (not args.allow_edit)
+
     raw_mode = args.mode
     if not raw_mode:
         raw_mode = "code" if (args.files or args.git_diff or args.diff_base) else "consult"
@@ -517,48 +693,47 @@ def main() -> int:
         args.git_diff,
         use_fable,
         diff_base=args.diff_base,
-        inline_files=not args.no_inline,
-        fast_no_tools=args.fast_no_tools,
+        inline_files=effective_inline,
+        fast_no_tools=effective_fast_no_tools,
+        allow_edit=args.allow_edit,
     )
 
     if args.timeout is not None:
         timeout_sec = args.timeout
     else:
-        base_t = 420 if use_fable else 180
+        base_t = 480 if (use_fable and args.allow_edit) else (420 if use_fable else (240 if args.allow_edit else 180))
         extra_t = (len(full_prompt) // 50000) * 60
         timeout_sec = min(900, base_t + extra_t)
 
-    cmd = [
+    extra_dirs = _resolve_extra_edit_dirs(args.files) if args.allow_edit else []
+    cmd = build_claude_command(
         claude_bin,
-        "-p",
-        "--permission-mode",
-        "plan",
-        "--model",
         selected_model,
-        "--output-format",
-        "json",
-    ]
-    if args.fast_no_tools:
-        cmd.extend(["--tools", ""])
-    if effort_level:
-        cmd.extend(["--effort", effort_level])
-    if use_fable:
-        cmd.extend(["--fallback-model", "claude-opus-5-5"])
+        allow_edit=args.allow_edit,
+        fast_no_tools=effective_fast_no_tools,
+        effort_level=effort_level,
+        use_fable=use_fable,
+        extra_dirs=extra_dirs,
+    )
 
     env = os.environ.copy()
     local_bin = str(Path.home() / ".local" / "bin")
     if local_bin not in env.get("PATH", ""):
         env["PATH"] = f"{local_bin}:{env.get('PATH', '')}"
+    env.setdefault("DISABLE_SHEETS", "1")
+    env.setdefault("DISABLE_SCHEDULER", "1")
 
     print(
         f"[claude-review] model={selected_model} mode={effective_mode}"
+        f" perm={'acceptEdits' if args.allow_edit else 'plan'}"
         f"{f' effort={effort_level}' if effort_level else ''}"
-        f" inline={'off' if args.no_inline else 'on'}"
-        f"{' tools=none' if args.fast_no_tools else ''}"
+        f" inline={'on' if effective_inline else 'off'}"
+        f"{' tools=edit-safe' if args.allow_edit else (' tools=none' if effective_fast_no_tools else '')}"
         f" prompt_chars={len(full_prompt):,} timeout={timeout_sec}s",
         file=sys.stderr,
     )
 
+    git_before = _git_porcelain_snapshot(args.files) if args.allow_edit else {}
     t0 = time.monotonic()
     try:
         proc = subprocess.run(
@@ -595,6 +770,11 @@ def main() -> int:
         print(f"⚠️ Claude Code 実行エラー (exit={proc.returncode}, model={selected_model}):\n{combined}", file=sys.stderr)
         return proc.returncode
 
+    touched_files: list[str] = []
+    if args.allow_edit:
+        git_after = _git_porcelain_snapshot(args.files)
+        touched_files = _detect_touched_repo_files(git_before, git_after)
+
     result_text = stdout_raw
     meta_parts = [f"elapsed={elapsed}s"]
     if stdout_raw.startswith("{"):
@@ -604,14 +784,26 @@ def main() -> int:
                 result_text = str(payload.get("result") or "").strip()
                 cost = payload.get("total_cost_usd")
                 turns = payload.get("num_turns")
+                denials = payload.get("permission_denials")
                 if turns is not None:
                     meta_parts.append(f"turns={turns}")
                 if isinstance(cost, (int, float)):
                     meta_parts.append(f"est_cost_usd={cost:.4f}")
+                if isinstance(denials, list) and denials:
+                    meta_parts.append(f"permission_denials={len(denials)}")
         except Exception:
             pass
 
-    saved_path = _save_review_log(effective_mode, selected_model, result_text)
+    if args.allow_edit:
+        meta_parts.append(f"edited={','.join(touched_files) if touched_files else 'none'}")
+
+    saved_path = _save_review_log(
+        effective_mode,
+        selected_model,
+        result_text,
+        allow_edit=args.allow_edit,
+        touched_files=touched_files,
+    )
     if saved_path:
         meta_parts.append(f"saved={saved_path.relative_to(REPO_ROOT)}")
     print(f"[claude-review] done ({', '.join(meta_parts)})", file=sys.stderr)

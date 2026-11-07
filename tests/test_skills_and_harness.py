@@ -94,6 +94,38 @@ class SkillsAndHarnessTests(unittest.TestCase):
         self.assertIn("### FILE: `AGENTS.md`", bundle)
         self.assertEqual(omitted, [])
 
+        # Default read-only command (`--permission-mode plan`)
+        cmd_ro = cr.build_claude_command("/usr/local/bin/claude", "claude-fable-5-1", allow_edit=False, fast_no_tools=True, effort_level="high", use_fable=True)
+        self.assertIn("plan", cmd_ro)
+        self.assertNotIn("acceptEdits", cmd_ro)
+        self.assertIn("--tools", cmd_ro)
+        self.assertEqual(cmd_ro[cmd_ro.index("--tools") + 1], "")
+
+        # Safe file-edit command (`--allow-edit` -> `acceptEdits`, `Bash`/`.env`/`fly.toml` hard-blocked)
+        cmd_ed = cr.build_claude_command("/usr/local/bin/claude", "claude-fable-5-1", allow_edit=True, effort_level="high", use_fable=True, extra_dirs=["/tmp"])
+        self.assertEqual(cmd_ed[cmd_ed.index("--permission-mode") + 1], "acceptEdits")
+        self.assertEqual(cmd_ed[cmd_ed.index("--permission-prompts") + 1], "none")
+        self.assertEqual(cmd_ed[cmd_ed.index("--tools") + 1], "Read,Edit,Write,Glob,Grep")
+        disallowed = cmd_ed[cmd_ed.index("--disallowedTools") + 1]
+        self.assertIn("Bash", disallowed)
+        self.assertIn("Edit(.env)", disallowed)
+        self.assertIn("Edit(fly.toml)", disallowed)
+        self.assertIn("/tmp", cmd_ed)
+
+        # Prompt switches from read-only ("編集せず") to direct-edit ("Edit / Write") when allow_edit=True
+        p_ro = cr.build_prompt("flagship", "テスト", ["templates/index.html"], False, True, inline_files=False, allow_edit=False)
+        p_ed = cr.build_prompt("flagship", "テスト", ["templates/index.html"], False, True, inline_files=False, allow_edit=True)
+        self.assertIn("ファイルを一切編集せず", p_ro)
+        self.assertNotIn("ファイルを一切編集せず", p_ed)
+        self.assertIn("`Edit` / `Write`", p_ed)
+
+        # Post-edit git snapshot diff detector
+        touched = cr._detect_touched_repo_files(
+            {"a.py": (" M", 100.0)},
+            {"a.py": (" M", 100.0), "b.html": (" M", 200.0), "new.md": ("??", 300.0)},
+        )
+        self.assertEqual(touched, ["b.html", "new.md"])
+
     def test_store_audit_enforces_staff_test_and_audit_ua(self):
         sa = _load_script_module(".agents/skills/store-audit/scripts/run_full_store_audit.py", "sa_mod")
         safe_u = sa._ensure_staff_test_url("https://aiseki-navi.com/api/status")

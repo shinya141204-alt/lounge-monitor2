@@ -1,14 +1,14 @@
 ---
 name: claude-review
 description: >-
-  相席ナビ（https://aiseki-navi.com）専用の「Antigravity × Claude Code（Opus 5.5 ＆ 最上位 Fable 5.1）」クロスレビュー・全体戦略・数理セキュリティ監査・看板コラム脱AI推敲・アーキテクチャ相談スキル。
-  ユーザーが `/claude-review` と入力したときや、「Claudeにも見せて」「Claudeでレビューして」「Fableで見て」「全体戦略を練って」「最終監査して」「勝負記事を徹底推敲して」「Claudeの使用量は？」と依頼したときに必ず有効化する。
-  対象ファイルの自動インラインバンドル＆`stdin`高速投入に対応し、日常レビューは高速な `claude-opus-5-5`、①全体戦略（`strategy`）・②最終バグ＆セキュリティ監査（`audit`）・③看板コラム＆note徹底推敲（`flagship`）・④自由テーマ深層設計（`consult --fable`）は100万トークン対応の最上位モデル `claude-fable-5-1` を読み取り専用（`--permission-mode plan`）で自動呼び出し、競合ゼロで Antigravity 側へ統合反映する。
+  相席ナビ（https://aiseki-navi.com）専用の「Antigravity × Claude Code（Opus 5.5 ＆ 最上位 Fable 5.1）」クロスレビュー・全体戦略・数理セキュリティ監査・看板コラム脱AI推敲・アーキテクチャ相談・安全直接編集スキル。
+  ユーザーが `/claude-review` と入力したときや、「Claudeにも見せて」「Claudeでレビューして」「Claudeに書き換えさせて」「Fableで見て」「全体戦略を練って」「最終監査して」「勝負記事を徹底推敲して」「Claudeの使用量は？」と依頼したときに必ず有効化する。
+  既定は読み取り専用（`--permission-mode plan`）で安全に監査し、直接書き込みが必要な場合は `--allow-edit`（`acceptEdits`＋ファイル編集限定・`Bash`/`.env`/`fly.toml` 物理遮断）で Claude に対象ファイルを直接編集させ、Antigravity 側で統合テスト・デプロイを行う。
 ---
 
 # `/claude-review` Antigravity × Claude Code（Opus 5.5 × Fable 5.1）連携ワークフロー
 
-メインの実装・データ集計・テスト・デプロイは **Antigravity** が担い、別モデル視点でのコード監査・文章推敲・グロース全体戦略・設計壁打ちを **Claude Code**（読み取り専用モード `--permission-mode plan`）に担当させるハイブリッド連携スキルです。
+メインの実装・データ集計・テスト・デプロイは **Antigravity** が担い、別モデル視点でのコード監査・文章推敲・グロース全体戦略・設計壁打ちを **Claude Code**（既定：読み取り専用 `--permission-mode plan` ／ 明示指定時：ファイル編集限定 `--allow-edit`）に担当させるハイブリッド連携スキルです。
 
 ## モデル使い分け原則（Opus 5.5 vs 最上位 Fable 5.1）
 | 区分 | 使用モデル | モード指定 | 対象タスク（自動適用基準） |
@@ -65,10 +65,17 @@ python3 /Users/kuwanoshinya/.gemini/相席業務改善/相席モニター/.agent
   --mode architect --fast-no-tools \
   --files AGENTS.md \
   --prompt "次期アップデートに向けた設計案を整理して"
+
+# ⑤ 直接書き込みモード（`--allow-edit`: コラム改稿や対象ファイルの直接修正を Claude 自身に保存させる場合）
+# ※ `Read,Edit,Write,Glob,Grep` のみ解禁し、`Bash` / `WebFetch` / `.env` / `fly.toml` 変更は物理遮断されます。
+python3 /Users/kuwanoshinya/.gemini/相席業務改善/相席モニター/.agents/skills/claude-review/scripts/run_claude_review.py \
+  --mode flagship --allow-edit \
+  --files templates/guide_lounge_vs_screened_date.html \
+  --prompt "AIっぽい接続詞や煽り語を生身の編集長文体へ直接書き換えて保存して（実測数値は変更禁止）"
 ```
 
 ---
 
-## Step 3: 指摘の取捨選択と Antigravity 側での統合反映
-1. Claude（Fable 5.1 / Opus 5.5）から返ってきた分析・監査・改稿案のうち、相席ナビの実データ・設計原則に合致する本質的な指摘だけを **Antigravity が吟味して選別** する。
-2. 修正を反映する場合は Antigravity の `edit_file` で安全に適用し、標準の単体テスト・アフィリエイト監査・UI監査を通してから、ユーザーへ **「Fable / Opus の主な指摘」と「反映した改善点」** を分かりやすく日本語で報告する。
+## Step 3: 指摘の取捨選択・`--allow-edit` 差分の検証・Antigravity 側での統合反映
+1. **読み取り専用モード（既定）の場合**: Claude（Fable 5.1 / Opus 5.5）から返ってきた分析・監査・改稿案のうち、相席ナビの実データ・設計原則に合致する本質的な指摘を **Antigravity が選別** し、`edit_file` で安全に適用する。
+2. **`--allow-edit`（直接書き込みモード）の場合**: Claude 実行完了後、必ず `git diff` で変更差分（数値改変ゼロ・ブランド表記・キャッシュクエリ整合）を Antigravity が検閲し、`run_ops_sentinel.py --pre-deploy` で全監査・単体テストを通してから報告・デプロイする。
