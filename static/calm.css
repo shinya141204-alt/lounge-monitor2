@@ -8511,7 +8511,106 @@ body.theme-light .second-venue-reserve-cta {
     }
 }
 
+/* ==========================================================================
+   Plan A: 脱OS絵文字・極小フラット6pxステータスドット ＆ 単色1.6px SVGアイコン
+   ========================================================================== */
+body {
+    font-variant-emoji: text;
+}
 
+.momentum-tag {
+    gap: 3px;
+}
 
+.ui-svg-ne,
+.moat-svg {
+    display: inline-block;
+    width: 11px;
+    height: 11px;
+    flex-shrink: 0;
+    vertical-align: -1px;
+}
 
+.moat-svg {
+    opacity: 0.85;
+}
+
+.moat-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    flex-shrink: 0;
+    background-color: #a1a1aa;
+}
+
+.moat-pill.tone-safe .moat-dot,
+.moat-pill.tone-good .moat-dot,
+.momentum-tag.ladies-vip .moat-dot,
+.pick-badge:not(.good) .moat-dot {
+    background-color: #4ade80;
+}
+
+.moat-pill.tone-warn .moat-dot,
+.momentum-tag.ladies-warn .moat-dot {
+    background-color: #facc15;
+}
+
+.moat-pill.tone-danger .moat-dot {
+    background-color: #fb7185;
+}
+
+.moat-pill.tone-rain .moat-dot,
+.moat-weather-chip.is-rainy .moat-dot {
+    background-color: #38bdf8;
+}
+
+.moat-pill.tone-standing .moat-dot {
+    background-color: #d6b88d;
+}
+
+.momentum-tag.ladies-good .moat-dot,
+.pick-badge.good .moat-dot {
+    background-color: #f4a8b8;
+}
+
+body.theme-light .moat-dot {
+    background-color: #71717a;
+}
+
+body.theme-light .moat-pill.tone-safe .moat-dot,
+body.theme-light .moat-pill.tone-good .moat-dot,
+body.theme-light .momentum-tag.ladies-vip .moat-dot,
+body.theme-light .pick-badge:not(.good) .moat-dot {
+    background-color: #16a34a;
+}
+
+body.theme-light .moat-pill.tone-warn .moat-dot,
+body.theme-light .momentum-tag.ladies-warn .moat-dot {
+    background-color: #d97706;
+}
+
+body.theme-light .moat-pill.tone-danger .moat-dot {
+    background-color: #e11d48;
+}
+
+body.theme-light .moat-pill.tone-rain .moat-dot,
+body.theme-light .moat-weather-chip.is-rainy .moat-dot {
+    background-color: #0284c7;
+}
+
+body.theme-light .moat-pill.tone-standing .moat-dot {
+    background-color: #8c6b3f;
+}
+
+body.theme-light .momentum-tag.ladies-good .moat-dot,
+body.theme-light .pick-badge.good .moat-dot {
+    background-color: #be123c;
+}
+
+.moat-modal-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
 

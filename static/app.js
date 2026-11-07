@@ -918,6 +918,17 @@
             }
         })();
 
+        const UI_SVG_ARROW_NE = '<svg class="ui-svg-ne" width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9L9 3M9 3H4.5M9 3V7.5"/></svg>';
+        const UI_SVG_TREND_UP = '<svg class="moat-svg" width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="1 8.5 4.2 5.3 6.8 7 11 2.8"/></svg>';
+        const UI_SVG_TREND_DOWN = '<svg class="moat-svg" width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="1 3.5 4.5 7 7 5 11 9"/></svg>';
+
+        function stripBadgeEmojiPrefix(raw) {
+            return String(raw || '')
+                .replace(/^[\u{1F300}-\u{1FAFF}\u2600-\u27BF\u2197\u2198\uFE0E\uFE0F\s]+/gu, '')
+                .replace(/^推定:\s*/, '')
+                .trim();
+        }
+
         function evaluateLadiesStoreJs(store) {
             const w = Math.max(0, Number(store && store.women) || 0);
             const m = Math.max(0, Number(store && store.men) || 0);
@@ -944,13 +955,13 @@
             const voteBonus = (votes.smooth > 0 && votes.smooth >= (votes.waiting || 0)) ? 15 : 0;
             const wpct = Math.round((w / tot) * 100);
             const mpct = 100 - wpct;
-            const evSuffix = hasEv ? ` <span class="micro-sep">｜</span> 🎁 ${escapeHtml((evTitle || '店舗限定イベント開催中').slice(0, 26))}` : '';
+            const evSuffix = hasEv ? ` <span class="micro-sep">｜</span> 特典: ${escapeHtml((evTitle || '店舗限定イベント開催中').slice(0, 26))}` : '';
 
             if (m >= 4 && m >= w) {
                 const lead = m - w;
                 return {
                     score: 300 + Math.min(45, lead * 2.5) + Math.min(55, m * 1.5) + evBonus + voteBonus,
-                    badge: '🟢 女子待ち0・即案内圏',
+                    badge: '女子待ち0・即案内圏',
                     cls: 'ladies-vip',
                     title: `男性${m}名が先行中（男性比${mpct}%）・受付待ちほぼゼロで即案内されやすい状態`,
                     micro: `男性${m}名先行（男性比${mpct}%）・待ちほぼゼロ圏${evSuffix}`
@@ -959,7 +970,7 @@
             if (m >= 4 && wpct <= 62) {
                 return {
                     score: 215 + Math.min(45, m * 1.4) - Math.max(0, (w - m) * 1.2) + evBonus + voteBonus,
-                    badge: '✨ スムーズ相席圏',
+                    badge: 'スムーズ相席圏',
                     cls: 'ladies-good',
                     title: `男女バランス良好（男性${m}名・女性${w}名）・席替えも自然に回りやすい状態`,
                     micro: `好バランス（男性${m}名・女性${w}名）・席替え回転◎${evSuffix}`
@@ -968,7 +979,7 @@
             if (m >= 1 && m < 4 && w <= 6) {
                 return {
                     score: 150 + m * 8 + evBonus + voteBonus,
-                    badge: '☕ ゆったり2軒目向き',
+                    badge: 'ゆったり2軒目向き',
                     cls: 'ladies-good',
                     title: '落ち着いた人数帯・友達とカフェ感覚でゆっくり話したい夜向き',
                     micro: `落ち着いた人数帯・夜カフェ感覚で話しやすい${evSuffix}`
@@ -977,7 +988,7 @@
             if (m === 0 && w > 0) {
                 return {
                     score: 15 + evBonus * 0.5,
-                    badge: '⏳ 男性来店待ち',
+                    badge: '男性来店待ち',
                     cls: 'ladies-warn',
                     title: `現在女性${w}名のみ・相席スタートまで少し待つ可能性あり`,
                     micro: `現在女性${w}名のみ・近隣の男性先行店も比較推奨${evSuffix}`
@@ -986,7 +997,7 @@
             const surplus = Math.max(0, w - m);
             return {
                 score: Math.max(25, 110 - surplus * 1.6) + evBonus * 0.6,
-                badge: '⚠️ 女子多め・待ち注意',
+                badge: '女子多め・待ち注意',
                 cls: 'ladies-warn',
                 title: `女性比率${wpct}%で女子組が集中中・近隣の男性先行店へ回る方がスムーズ`,
                 micro: `女性比${wpct}%で女子集中・近隣の男性先行店が快適${evSuffix}`
@@ -1895,11 +1906,11 @@
                 if (ladiesEval && ladiesEval.badge) {
                     momTag.classList.remove('hidden');
                     if (ladiesEval.cls) momTag.classList.add(ladiesEval.cls);
-                    momTag.textContent = ladiesEval.badge;
+                    momTag.innerHTML = `<span class="moat-dot" aria-hidden="true"></span>${escapeHtml(stripBadgeEmojiPrefix(ladiesEval.badge))}`;
                     momTag.title = ladiesEval.title || '';
                 } else if (wDiff >= 1) {
                     momTag.classList.remove('hidden');
-                    momTag.textContent = `↗ +${wDiff}名`;
+                    momTag.innerHTML = `${UI_SVG_ARROW_NE}+${wDiff}名`;
                     momTag.title = `直近約15分で女性が+${wDiff}名増えています`;
                 } else if (votes.smooth > 0 && votes.smooth >= (votes.waiting || 0)) {
                     momTag.classList.remove('hidden');
@@ -1981,18 +1992,22 @@
                 const hasActiveGuests = ((store.women || 0) + (store.men || 0)) > 0 || Boolean(we && Number(we.est_men_wait_groups || 0) > 0);
                 const wBadge = (we && hasActiveGuests) ? (isWomenView ? we.wait_badge_women : we.wait_badge_men) : '';
                 const fBadge = fc ? (isWomenView ? fc.badge_women : fc.badge_men) : '';
-                if (wBadge || fBadge) {
+                const cleanWBadge = stripBadgeEmojiPrefix(wBadge);
+                const cleanFBadge = stripBadgeEmojiPrefix(fBadge);
+                if (cleanWBadge || cleanFBadge) {
                     const pills = [];
-                    if (wBadge) {
+                    if (cleanWBadge) {
                         const rawWTone = isWomenView ? (we.wait_tone_women || we.wait_tone) : we.wait_tone;
                         const wTone = escapeHtml(rawWTone || 'neutral');
                         const wTitle = escapeHtml(we.pos_summary_short || '');
-                        pills.push(`<span class="moat-pill tone-${wTone}" title="${wTitle}">${escapeHtml(wBadge)}</span>`);
+                        pills.push(`<span class="moat-pill tone-${wTone}" title="${wTitle}"><span class="moat-dot" aria-hidden="true"></span>${escapeHtml(cleanWBadge)}</span>`);
                     }
-                    if (fBadge) {
+                    if (cleanFBadge) {
                         const fTone = escapeHtml(fc.badge_tone || 'neutral');
                         const fTitle = escapeHtml(fc.reason_short || '');
-                        pills.push(`<span class="moat-pill tone-${fTone}" title="${fTitle}">${escapeHtml(fBadge)}</span>`);
+                        const isCautionTrend = Boolean(fc && (fc.alert_code === 'crowd_rush_warn' || fc.alert_code === 'last_train_cliff' || fc.alert_code === 'male_glut_lock' || Number(fc.pred_delta_pt || 0) <= -5));
+                        const fSvg = isCautionTrend ? UI_SVG_TREND_DOWN : UI_SVG_TREND_UP;
+                        pills.push(`<span class="moat-pill tone-${fTone}" title="${fTitle}">${fSvg}${escapeHtml(cleanFBadge)}</span>`);
                     }
                     moatRowEl.innerHTML = pills.join('');
                     moatRowEl.classList.remove('hidden');
@@ -2923,9 +2938,8 @@
             const isWomenView = !IS_STAFF && currentAudience === 'women';
             let weatherHtml = '';
             if (wb && wb.city) {
-                const wIcon = wb.is_rainy ? '☔' : '🌤️';
                 const tempTxt = (wb.temp_c !== null && wb.temp_c !== undefined) ? ` ${Number(wb.temp_c).toFixed(1)}℃` : '';
-                weatherHtml = `<span class="moat-weather-chip${wb.is_rainy ? ' is-rainy' : ''}">${wIcon} ${escapeHtml(wb.city)} ${escapeHtml(wb.condition || '')}${escapeHtml(tempTxt)}</span>`;
+                weatherHtml = `<span class="moat-weather-chip${wb.is_rainy ? ' is-rainy' : ''}"><span class="moat-dot" aria-hidden="true"></span>${escapeHtml(wb.city)} ${escapeHtml(wb.condition || '')}${escapeHtml(tempTxt)}</span>`;
             }
 
             let fcCardHtml = '';
@@ -2933,9 +2947,11 @@
                 const fTone = escapeHtml(fc.badge_tone || 'neutral');
                 const dPt = Number(fc.pred_delta_pt || 0);
                 const dLabel = dPt > 0 ? `+${dPt}pt` : `${dPt}pt`;
+                const cleanFcWomen = stripBadgeEmojiPrefix(fc.badge_women || '1時間後もスムーズ案内圏');
+                const cleanFcMen = stripBadgeEmojiPrefix(fc.badge_men || '');
                 const subHeadline = isWomenView
-                    ? escapeHtml(fc.badge_women || '🟢 1時間後もスムーズ案内圏')
-                    : `男余り逆転リスク <strong>${Number(fc.flip_risk_pct || 0)}%</strong>${fc.badge_men ? ' ｜ ' + escapeHtml(fc.badge_men) : ''}`;
+                    ? escapeHtml(cleanFcWomen)
+                    : `男余り逆転リスク <strong>${Number(fc.flip_risk_pct || 0)}%</strong>${cleanFcMen ? ' ｜ ' + escapeHtml(cleanFcMen) : ''}`;
                 const acc = fc.accuracy || null;
                 let accHtml = '';
                 if (acc && Number(acc.resolved_count || 0) >= 3) {
@@ -2946,14 +2962,14 @@
                         const epStr = ep > 0 ? `+${ep}pt` : (ep < 0 ? `${ep}pt` : '±0pt');
                         latTxt = `<br>直近答え合わせ（${escapeHtml(lat.predicted_hm || '')}発）：予測<strong>${Number(lat.pred_wpct)}%</strong> → 60分後実測<strong>${Number(lat.actual_wpct)}%</strong>（ズレ ${escapeHtml(epStr)}）`;
                     }
-                    accHtml = `<div class="moat-acc-track">🎯 当店の予測実績（直近${Number(acc.resolved_count)}回検証）：平均ズレ <strong>±${Number(acc.mae_wpct).toFixed(1)}pt</strong> ｜ ±10pt的中 <strong>${Number(acc.within_10pt_pct).toFixed(0)}%</strong>${latTxt}</div>`;
+                    accHtml = `<div class="moat-acc-track">当店の予測実績（直近${Number(acc.resolved_count)}回検証）：平均ズレ <strong>±${Number(acc.mae_wpct).toFixed(1)}pt</strong> ｜ ±10pt的中 <strong>${Number(acc.within_10pt_pct).toFixed(0)}%</strong>${latTxt}</div>`;
                 }
                 const showParadoxLink = !IS_STAFF && (fc.alert_code === 'crowd_rush_warn' || fc.alert_code === 'jackpot_hold' || fc.alert_code === 'male_glut_lock');
                 const paradoxLinkHtml = showParadoxLink
-                    ? `<a href="/guide/crowd-rush-paradox" class="moat-modal-link">📊 なぜ22時台は到着時に逆転しやすいのか？（98万件検証） ›</a>`
+                    ? `<a href="/guide/crowd-rush-paradox" class="moat-modal-link">なぜ22時台は到着時に逆転しやすいのか？（98万件検証） ›</a>`
                     : '';
                 const accLinkHtml = !IS_STAFF
-                    ? `<a href="/stats#forecast-accuracy" class="moat-modal-link">📈 全店舗の「60分後予測 vs 実際の結果」答え合わせログを見る ›</a>`
+                    ? `<a href="/stats#forecast-accuracy" class="moat-modal-link">全店舗の「60分後予測 vs 実際の結果」答え合わせログを見る ›</a>`
                     : '';
                 fcCardHtml = `
                     <div class="moat-modal-card tone-${fTone}">
@@ -2978,7 +2994,7 @@
                         <div class="moat-card-eyebrow"><span>60分後のAI推移予測</span></div>
                         <div class="moat-card-primary">現在少人数（合計${totNow}名）</div>
                         <p class="moat-card-desc">店内の男女合計が6名以上に達すると、98万件の実測遷移データから60分後の男女比・逆転確率を自動予測します。</p>
-                        ${!IS_STAFF ? '<a href="/stats#forecast-accuracy" class="moat-modal-link">📈 全店舗の「60分後予測 vs 実測」答え合わせログを見る ›</a>' : ''}
+                        ${!IS_STAFF ? '<a href="/stats#forecast-accuracy" class="moat-modal-link">全店舗の「60分後予測 vs 実測」答え合わせログを見る ›</a>' : ''}
                     </div>
                 `;
             }
@@ -2996,7 +3012,7 @@
                     srcLabel = 'JIS公式POS実測';
                     srcCls = 'is-measured';
                 }
-                const mainBadge = isWomenView ? (we.wait_badge_women || '待ち時間情報なし') : (we.wait_badge_men || '待ち時間情報なし');
+                const mainBadge = stripBadgeEmojiPrefix(isWomenView ? (we.wait_badge_women || '待ち時間情報なし') : (we.wait_badge_men || '待ち時間情報なし'));
                 waitCardHtml = `
                     <div class="moat-modal-card tone-${wTone}">
                         <div class="moat-card-eyebrow">
@@ -3011,7 +3027,7 @@
 
             box.innerHTML = `
                 <div class="moat-modal-head">
-                    <span class="moat-modal-title">🔮 60分後AI予測 ＆ リアル待ち時間解析</span>
+                    <span class="moat-modal-title"><span class="status-dot-live" aria-hidden="true"></span>60分後AI推移予測 ＆ リアル待ち時間解析</span>
                     ${weatherHtml}
                 </div>
                 <div class="moat-modal-grid">
@@ -3884,7 +3900,7 @@
                     ${hopHtml}
                 </div>
                 <div class="cmi-actions">
-                    <a href="${escapeHtml(officialUrl)}" target="_blank" rel="noopener noreferrer" class="cmi-primary-cta">公式サイト・店舗詳細を確認する ↗</a>
+                    <a href="${escapeHtml(officialUrl)}" target="_blank" rel="noopener noreferrer" class="cmi-primary-cta">公式サイト・店舗詳細を確認する ${UI_SVG_ARROW_NE}</a>
                     ${(target.region !== 'Korea' && String(target.name || '').indexOf('ソウル') === -1 && getStoreSlug(target.name))
                         ? `<a href="/store/${escapeHtml(getStoreSlug(target.name))}" class="cmi-store-page-link" data-cushion="1">店舗詳細・料金・近隣比較ページへ ›</a>`
                         : ''}
@@ -4180,16 +4196,16 @@
             const fullStoreHeading = (cleanName && cleanName !== brandLabel) ? `${brandLabel} ${cleanName}` : brandLabel;
 
             if (headingEl) {
-                headingEl.textContent = `🥂 ${fullStoreHeading} 近くの2軒目＆切り出しTips`;
+                headingEl.textContent = `${fullStoreHeading} 近くの2軒目＆切り出しTips`;
             }
 
             // Quick footer map search links update
             if (cafeBtn) {
-                cafeBtn.textContent = '☕ 夜カフェ検索 ↗';
+                cafeBtn.innerHTML = `夜カフェ検索 ${UI_SVG_ARROW_NE}`;
                 cafeBtn.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(storeAnchor + ' 近く 夜カフェ スイーツ カフェバー')}`;
             }
             if (barBtn) {
-                barBtn.textContent = '🍸 バー検索 ↗';
+                barBtn.innerHTML = `バー検索 ${UI_SVG_ARROW_NE}`;
                 barBtn.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(storeAnchor + ' 近く 隠れ家バー ワインバル ダイニングバー')}`;
             }
             if (shishaBtn) {
@@ -4242,29 +4258,27 @@
                 const lineShareText = `【2軒目候補】${v.name}（${v.category_label || ''}・徒歩${v.walk_minutes || 3}分）\n${mapUrl}`;
                 const lineShareUrl = `https://line.me/R/msg/text/?${encodeURIComponent(lineShareText)}`;
                 const featuresHtml = (v.features || []).map(f => `<span class="venue-tag">#${escapeHtml(f)}</span>`).join('');
-                const catIcon = v.category === 'cafe' ? '☕' : v.category === 'bar' ? '🍸' : v.category === 'shisha' ? '🎯' : '🍻';
-
                 return `
                     <div class="second-venue-card" data-category="${escapeHtml(v.category)}">
                         <div class="second-venue-card-header">
                             <div class="second-venue-badges">
-                                <span class="venue-category-badge ${escapeHtml(v.category)}">${catIcon} ${escapeHtml(v.category_label || '')}</span>
-                                <span class="venue-walk-badge">🚶 徒歩${escapeHtml(String(v.walk_minutes || '3'))}分</span>
+                                <span class="venue-category-badge ${escapeHtml(v.category)}">${escapeHtml(v.category_label || '')}</span>
+                                <span class="venue-walk-badge">徒歩${escapeHtml(String(v.walk_minutes || '3'))}分</span>
                             </div>
-                            <span class="venue-budget-pill">💰 ${escapeHtml(v.budget || '')}</span>
+                            <span class="venue-budget-pill">${escapeHtml(v.budget || '')}</span>
                         </div>
                         <h4 class="second-venue-name">${escapeHtml(v.name)}</h4>
                         <p class="second-venue-comment">${escapeHtml(v.comment || '')}</p>
                         ${featuresHtml ? `<div class="second-venue-tags">${featuresHtml}</div>` : ''}
                         <div class="second-venue-card-actions">
                             <a href="${mapUrl}" target="_blank" rel="noopener noreferrer" class="venue-action-btn map-btn">
-                                🗺️ マップ ↗
+                                マップ ${UI_SVG_ARROW_NE}
                             </a>
                             <button type="button" class="venue-action-btn copy-btn" onclick="copySecondVenueText('${escapeJsString(v.name)}', this, '店名をコピーしました')">
-                                📋 店名コピー
+                                店名コピー
                             </button>
                             <a href="${lineShareUrl}" target="_blank" rel="noopener noreferrer" class="venue-action-btn line-btn">
-                                💬 LINE共有
+                                LINE共有
                             </a>
                         </div>
                     </div>
@@ -4582,7 +4596,7 @@
                             </div>
                             <a href="${escapeHtml(ev.url)}" target="_blank" rel="noopener noreferrer" class="event-cta-btn" onclick="event.stopPropagation();">
                                 <span>公式詳細</span>
-                                <span>↗</span>
+                                ${UI_SVG_ARROW_NE}
                             </a>
                         </div>
                     </div>
@@ -4655,7 +4669,7 @@
                             </div>
                             <a href="${escapeHtml(ev.url)}" target="_blank" rel="noopener noreferrer" class="event-cta-btn" onclick="event.stopPropagation();">
                                 <span>公式詳細</span>
-                                <span>↗</span>
+                                ${UI_SVG_ARROW_NE}
                             </a>
                         </div>
                     </div>
@@ -5128,7 +5142,7 @@
                 const parts = [];
                 if (wDiff15 > 0) parts.push(`女性+${wDiff15}名`);
                 if (mDiff15 > 0) parts.push(`男性+${mDiff15}名`);
-                momentumBadge = `<span class="diff-badge hot">直近15分: ↗ ${parts.join(' / ')}</span>`;
+                momentumBadge = `<span class="diff-badge hot">直近15分: ${UI_SVG_ARROW_NE} ${parts.join(' / ')}</span>`;
             }
 
             let diffBadgeW = '';
@@ -5159,7 +5173,7 @@
                 const diffW = +(liveStore.women - avgW).toFixed(1);
                 if (avgW > 0 || liveStore.women > 0) {
                     const clsW = diffW >= 5 ? 'hot' : (diffW > 0 ? 'up' : (diffW < 0 ? 'down' : 'neutral'));
-                    const signW = diffW > 0 ? `+${diffW}名 ↗` : (diffW < 0 ? `${diffW}名` : '並み');
+                    const signW = diffW > 0 ? `+${diffW}名 ${UI_SVG_ARROW_NE}` : (diffW < 0 ? `${diffW}名` : '並み');
                     diffBadgeW = `<span class="diff-badge ${clsW}">女性: 普段の${slotLabel}(${avgW}名)比 ${signW}</span>`;
                 }
 

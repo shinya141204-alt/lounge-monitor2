@@ -5551,7 +5551,7 @@ body.compact-mode .moat-signals-row {
 .moat-pill {
     display: inline-flex;
     align-items: center;
-    gap: 3px;
+    gap: 4.5px;
     font-size: 0.68rem;
     font-weight: 600;
     line-height: 1.25;
@@ -5566,7 +5566,8 @@ body.compact-mode .moat-signals-row {
     text-overflow: ellipsis;
 }
 
-.moat-pill.tone-safe {
+.moat-pill.tone-safe,
+.moat-pill.tone-good {
     background: rgba(74, 222, 128, 0.09);
     border-color: rgba(74, 222, 128, 0.34);
     color: #bbf7d0;
@@ -5768,7 +5769,8 @@ body.theme-light .moat-pill {
     color: #3f3b36;
 }
 
-body.theme-light .moat-pill.tone-safe {
+body.theme-light .moat-pill.tone-safe,
+body.theme-light .moat-pill.tone-good {
     background: rgba(21, 128, 61, 0.09);
     border-color: rgba(21, 128, 61, 0.36);
     color: #166534;

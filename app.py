@@ -2055,6 +2055,18 @@ def _jinja_brand_ja(val):
     return s
 
 
+_BADGE_EMOJI_PREFIX_RE = re.compile(r'^[\U0001F300-\U0001FAFF\u2600-\u27BF\u2197\u2198\uFE0E\uFE0F\s]+')
+
+
+@app.template_filter('clean_badge')
+def _jinja_clean_badge(val):
+    if val is None:
+        return ''
+    s = _BADGE_EMOJI_PREFIX_RE.sub('', str(val))
+    s = re.sub(r'^推定:\s*', '', s)
+    return s.strip()
+
+
 @app.template_filter('merge_brand_stats')
 def _jinja_merge_brand_stats(by_brand):
     if not isinstance(by_brand, dict):

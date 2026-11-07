@@ -65,7 +65,7 @@ def evaluate_ladies_store_status(
         return {
             "score": round(score, 1),
             "tier": "zero_wait_vip",
-            "badge": "🟢 女子待ち0・即案内圏",
+            "badge": "女子待ち0・即案内圏",
             "badge_cls": "vip",
             "note": f"男性{m}名が先行中（男性比{mpct}%）・受付待ちほぼゼロで即乾杯しやすい状態",
         }
@@ -75,7 +75,7 @@ def evaluate_ladies_store_status(
         return {
             "score": round(score, 1),
             "tier": "balanced_smooth",
-            "badge": "✨ スムーズ相席圏",
+            "badge": "スムーズ相席圏",
             "badge_cls": "good",
             "note": f"男女バランス良好（男性{m}名・女性{w}名）・席替えも自然に回りやすい状態",
         }
@@ -85,7 +85,7 @@ def evaluate_ladies_store_status(
         return {
             "score": round(score, 1),
             "tier": "calm_cafe",
-            "badge": "☕ ゆったり2軒目向き",
+            "badge": "ゆったり2軒目向き",
             "badge_cls": "calm",
             "note": "まだ落ち着いた人数帯・友達とカフェ感覚でゆっくり話したい夜向き",
         }
@@ -95,7 +95,7 @@ def evaluate_ladies_store_status(
         return {
             "score": round(score, 1),
             "tier": "female_only_waiting",
-            "badge": "⏳ 男性来店待ち",
+            "badge": "男性来店待ち",
             "badge_cls": "wait",
             "note": f"現在女性{w}名のみ・相席スタートまで少し待つ可能性あり",
         }
@@ -106,7 +106,7 @@ def evaluate_ladies_store_status(
     return {
         "score": round(score, 1),
         "tier": "female_crowded",
-        "badge": "⚠️ 女子多め・待ち注意",
+        "badge": "女子多め・待ち注意",
         "badge_cls": "warn",
         "note": f"女性比率{wpct}%で女子組が集中中・近隣の男性先行店へ回る方がスムーズ",
     }
@@ -187,7 +187,7 @@ def build_ladies_live_board(live_stores: list, all_events: list = None) -> dict:
             "men_pct": round((m / tot) * 100) if tot > 0 else 0,
             "women_pct": round((w / tot) * 100) if tot > 0 else 0,
             "has_event": bool(matched_evs),
-            "event_badge": ("🎁 特典開催中" if has_disc else "✨ 限定フェア中") if matched_evs else "",
+            "event_badge": ("特典開催中" if has_disc else "限定フェア中") if matched_evs else "",
             "event_title": ev_title,
             **eval_info,
         })

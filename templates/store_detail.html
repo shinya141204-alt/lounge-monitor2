@@ -75,7 +75,7 @@
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
     <link rel="stylesheet" href="/static/portal.css?v=15">
     <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
-    <link rel="stylesheet" href="/static/style.css?v=20261030_6">
+    <link rel="stylesheet" href="/static/style.css?v=20261108_1">
     <style>
         :root {
             --bg-dark: #0f1014;
@@ -474,7 +474,7 @@
             #store-smart-cta-card .pr-context-foot { flex-direction: column; align-items: flex-start; gap: 2px; }
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=36">
+    <link rel="stylesheet" href="/static/calm.css?v=37">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -524,11 +524,11 @@
             <div class="big-counts-grid">
                 <div class="count-box">
                     <div class="count-label">現在の女性人数</div>
-                    <div class="count-num w-color" id="hero-women-num">{% if store.total > 0 %}{{ store.women }}<span style="font-size:0.95rem;">名</span>{% if (store.women_diff or 0) > 0 %}<div style="font-size:0.75rem; color: var(--women); margin-top:2px; font-weight:600;">直近15分 ↗ +{{ store.women_diff }}名</div>{% endif %}{% if store.usual_w_diff is not none %}<div style="font-size:0.71rem; color: var(--text-sub); margin-top:2px; font-weight:600;">普段の{{ store.usual_slot_label }}比 {% if store.usual_w_diff > 0 %}+{{ store.usual_w_diff }}名{% elif store.usual_w_diff < 0 %}{{ store.usual_w_diff }}名{% else %}±0名{% endif %}（平均{{ store.usual_women }}名）</div>{% endif %}{% elif store.is_open_now %}0<span style="font-size:0.95rem;">名</span><div style="font-size:0.73rem; color: var(--accent-text); margin-top:2px; font-weight:600;">営業中（0 : 0）</div>{% else %}--<span style="font-size:0.82rem; color: var(--text-sub); font-weight:500;">（時間外）</span>{% endif %}</div>
+                    <div class="count-num w-color" id="hero-women-num">{% if store.total > 0 %}{{ store.women }}<span style="font-size:0.95rem;">名</span>{% if (store.women_diff or 0) > 0 %}<div style="font-size:0.75rem; color: var(--women); margin-top:2px; font-weight:600;">直近15分 <svg class="ui-svg-ne" width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9L9 3M9 3H4.5M9 3V7.5"/></svg> +{{ store.women_diff }}名</div>{% endif %}{% if store.usual_w_diff is not none %}<div style="font-size:0.71rem; color: var(--text-sub); margin-top:2px; font-weight:600;">普段の{{ store.usual_slot_label }}比 {% if store.usual_w_diff > 0 %}+{{ store.usual_w_diff }}名{% elif store.usual_w_diff < 0 %}{{ store.usual_w_diff }}名{% else %}±0名{% endif %}（平均{{ store.usual_women }}名）</div>{% endif %}{% elif store.is_open_now %}0<span style="font-size:0.95rem;">名</span><div style="font-size:0.73rem; color: var(--accent-text); margin-top:2px; font-weight:600;">営業中（0 : 0）</div>{% else %}--<span style="font-size:0.82rem; color: var(--text-sub); font-weight:500;">（時間外）</span>{% endif %}</div>
                 </div>
                 <div class="count-box">
                     <div class="count-label">現在の男性人数</div>
-                    <div class="count-num m-color" id="hero-men-num">{% if store.total > 0 %}{{ store.men }}<span style="font-size:0.95rem;">名</span>{% if (store.men_diff or 0) > 0 %}<div style="font-size:0.75rem; color: var(--men); margin-top:2px; font-weight:600;">直近15分 ↗ +{{ store.men_diff }}名</div>{% endif %}{% if store.usual_m_diff is not none %}<div style="font-size:0.71rem; color: var(--text-sub); margin-top:2px; font-weight:600;">普段の{{ store.usual_slot_label }}比 {% if store.usual_m_diff > 0 %}+{{ store.usual_m_diff }}名{% elif store.usual_m_diff < 0 %}{{ store.usual_m_diff }}名{% else %}±0名{% endif %}（平均{{ store.usual_men }}名）</div>{% endif %}{% elif store.is_open_now %}0<span style="font-size:0.95rem;">名</span><div style="font-size:0.73rem; color: var(--text-sub); margin-top:2px; font-weight:500;">本日 {{ store.today_hours_label }}</div>{% else %}--<span style="font-size:0.82rem; color: var(--text-sub); font-weight:500;">（時間外）</span>{% endif %}</div>
+                    <div class="count-num m-color" id="hero-men-num">{% if store.total > 0 %}{{ store.men }}<span style="font-size:0.95rem;">名</span>{% if (store.men_diff or 0) > 0 %}<div style="font-size:0.75rem; color: var(--men); margin-top:2px; font-weight:600;">直近15分 <svg class="ui-svg-ne" width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9L9 3M9 3H4.5M9 3V7.5"/></svg> +{{ store.men_diff }}名</div>{% endif %}{% if store.usual_m_diff is not none %}<div style="font-size:0.71rem; color: var(--text-sub); margin-top:2px; font-weight:600;">普段の{{ store.usual_slot_label }}比 {% if store.usual_m_diff > 0 %}+{{ store.usual_m_diff }}名{% elif store.usual_m_diff < 0 %}{{ store.usual_m_diff }}名{% else %}±0名{% endif %}（平均{{ store.usual_men }}名）</div>{% endif %}{% elif store.is_open_now %}0<span style="font-size:0.95rem;">名</span><div style="font-size:0.73rem; color: var(--text-sub); margin-top:2px; font-weight:500;">本日 {{ store.today_hours_label }}</div>{% else %}--<span style="font-size:0.82rem; color: var(--text-sub); font-weight:500;">（時間外）</span>{% endif %}</div>
                 </div>
                 <div class="count-box">
                     <div class="count-label">女性比率</div>
@@ -585,12 +585,12 @@
                         {% if fc.reason_short %}<p class="moat-detail-sub">{{ fc.reason_short }}{% if fc.alert_code in ['crowd_rush_warn', 'jackpot_hold', 'male_glut_lock'] %} <a href="/guide/crowd-rush-paradox" style="color:var(--accent-text); text-decoration:underline;">22時殺到パラドックス解説 ›</a>{% endif %}</p>{% endif %}
                         {% if fc.accuracy and (fc.accuracy.resolved_count or 0) >= 3 %}
                         <p class="moat-detail-sub" style="margin-top:5px; padding-top:5px; border-top:1px dashed var(--border-subtle);">
-                            🎯 当店予測実績（直近{{ fc.accuracy.resolved_count }}回検証）：平均ズレ <strong style="color:var(--accent-text);">±{{ '%.1f'|format(fc.accuracy.mae_wpct) }}pt</strong> ｜ ±10pt的中 <strong style="color:var(--accent-text);">{{ '%.0f'|format(fc.accuracy.within_10pt_pct) }}%</strong>
+                            当店予測実績（直近{{ fc.accuracy.resolved_count }}回検証）：平均ズレ <strong style="color:var(--accent-text);">±{{ '%.1f'|format(fc.accuracy.mae_wpct) }}pt</strong> ｜ ±10pt的中 <strong style="color:var(--accent-text);">{{ '%.0f'|format(fc.accuracy.within_10pt_pct) }}%</strong>
                             {% if fc.accuracy.latest %}（直近{{ fc.accuracy.latest.predicted_hm }}発: 予測{{ fc.accuracy.latest.pred_wpct }}%→実測{{ fc.accuracy.latest.actual_wpct }}%）{% endif %}
                             <a href="/stats#forecast-accuracy" style="color:var(--accent-text); text-decoration:underline; margin-left:4px;">答え合わせ一覧 ›</a>
                         </p>
                         {% else %}
-                        <p class="moat-detail-sub" style="margin-top:4px;"><a href="/stats#forecast-accuracy" style="color:var(--accent-text); text-decoration:underline;">📈 全店舗の60分後予測・答え合わせ検証ログを見る ›</a></p>
+                        <p class="moat-detail-sub" style="margin-top:4px;"><a href="/stats#forecast-accuracy" style="color:var(--accent-text); text-decoration:underline;">全店舗の60分後予測・答え合わせ検証ログを見る ›</a></p>
                         {% endif %}
                         {% else %}
                         <div class="moat-detail-main">現在少人数（6名以上で自動予測）</div>
@@ -602,7 +602,7 @@
                             <span>リアル待ち時間・稼働解析</span>
                             <span class="moat-detail-chip">{% if we and we.is_standing_free %}自由回遊スタンディング{% elif we and we.is_measured %}JIS公式POS実測{% else %}JIS実測学習AI推論{% endif %}</span>
                         </div>
-                        <div class="moat-detail-main">{{ we.wait_badge_men if we else '稼働データ集計中' }}</div>
+                        <div class="moat-detail-main">{{ (we.wait_badge_men | clean_badge) if we else '稼働データ集計中' }}</div>
                         {% if we and we.pos_summary_short %}<p class="moat-detail-sub">{{ we.pos_summary_short }}</p>{% endif %}
                     </div>
                 </div>
@@ -614,7 +614,7 @@
                 <a href="/price-comparison?area={{ nearby_comparison.cluster_id }}" class="btn-secondary">近隣ライバル店と料金・イベント比較</a>
                 {% endif %}
                 {% if store.official_url %}
-                <a href="{{ store.official_url }}" target="_blank" rel="noopener noreferrer" class="btn-secondary">公式サイトで最新情報を確認 ↗</a>
+                <a href="{{ store.official_url }}" target="_blank" rel="noopener noreferrer" class="btn-secondary">公式サイトで最新情報を確認 <svg class="ui-svg-ne" width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9L9 3M9 3H4.5M9 3V7.5"/></svg></a>
                 {% endif %}
                 {% if store.map_url %}
                 <a href="{{ store.map_url }}" target="_blank" rel="noopener noreferrer" class="btn-secondary">Googleマップで場所を確認</a>
@@ -1087,7 +1087,7 @@
                                 <div data-nearby-verdict-comment>{{ st.verdict_comment }}</div>
                                 <div style="margin-top: 5px;">営業時間：{{ st.hours_label }}<br>{{ st.age_range }} ｜ {{ st.vibe_short }}</div>
                                 <div style="margin-top: 5px;">
-                                    <a href="{{ st.official_url }}" target="_blank" rel="noopener noreferrer" class="official-ext-link">公式サイト ↗</a>
+                                    <a href="{{ st.official_url }}" target="_blank" rel="noopener noreferrer" class="official-ext-link">公式サイト <svg class="ui-svg-ne" width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9L9 3M9 3H4.5M9 3V7.5"/></svg></a>
                                 </div>
                             </div>
                         </details>
@@ -1173,10 +1173,10 @@
             <div class="second-venue-quick-footer" style="margin-top: 10px;">
                 <span class="quick-footer-label">その他の条件で周辺マップ検索（Google公式無料リンク）:</span>
                 <div class="quick-footer-links">
-                    <a id="detail-map-cafe-btn" href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer" class="second-quick-pill cafe">☕ 夜カフェ検索 ↗</a>
-                    <a id="detail-map-bar-btn" href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer" class="second-quick-pill bar">🍸 バー検索 ↗</a>
-                    <a id="detail-map-shisha-btn" href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer" class="second-quick-pill shisha">🎯 シーシャ検索 ↗</a>
-                    <a id="detail-map-yokocho-btn" href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer" class="second-quick-pill yokocho">🍻 横丁検索 ↗</a>
+                    <a id="detail-map-cafe-btn" href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer" class="second-quick-pill cafe">夜カフェ検索 <svg class="ui-svg-ne" width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9L9 3M9 3H4.5M9 3V7.5"/></svg></a>
+                    <a id="detail-map-bar-btn" href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer" class="second-quick-pill bar">バー検索 <svg class="ui-svg-ne" width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9L9 3M9 3H4.5M9 3V7.5"/></svg></a>
+                    <a id="detail-map-shisha-btn" href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer" class="second-quick-pill shisha">シーシャ検索 <svg class="ui-svg-ne" width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9L9 3M9 3H4.5M9 3V7.5"/></svg></a>
+                    <a id="detail-map-yokocho-btn" href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer" class="second-quick-pill yokocho">横丁検索 <svg class="ui-svg-ne" width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9L9 3M9 3H4.5M9 3V7.5"/></svg></a>
                 </div>
             </div>
             {% if not is_staff and not session.get('is_staff') %}
@@ -1567,10 +1567,11 @@
                         const slotLabel = live.usual_slot_label || '普段同時間帯';
                         const uWDiff = live.usual_w_diff;
                         const uMDiff = live.usual_m_diff;
+                        const detailSvgNe = '<svg class="ui-svg-ne" width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9L9 3M9 3H4.5M9 3V7.5"/></svg>';
                         const wEl = document.getElementById('hero-women-num');
                         if (wEl) {
                             if (tot > 0) {
-                                const diff15Html = wDiff > 0 ? '<div style="font-size:0.75rem; color: var(--women); margin-top:2px; font-weight:600;">直近15分 ↗ +' + wDiff + '名</div>' : '';
+                                const diff15Html = wDiff > 0 ? '<div style="font-size:0.75rem; color: var(--women); margin-top:2px; font-weight:600;">直近15分 ' + detailSvgNe + ' +' + wDiff + '名</div>' : '';
                                 const uSignW = uWDiff > 0 ? ('+' + uWDiff + '名') : (uWDiff < 0 ? (uWDiff + '名') : '±0名');
                                 const usualWHtml = (uWDiff !== null && uWDiff !== undefined) ? ('<div style="font-size:0.71rem; color: var(--text-sub); margin-top:2px; font-weight:600;">普段の' + slotLabel + '比 ' + uSignW + '（平均' + live.usual_women + '名）</div>') : '';
                                 wEl.innerHTML = '<span class="hero-odo-w" style="display:inline-block; line-height:1;">' + w + '</span><span style="font-size:0.95rem;">名</span>' + diff15Html + usualWHtml;
@@ -1586,7 +1587,7 @@
                         const mEl = document.getElementById('hero-men-num');
                         if (mEl) {
                             if (tot > 0) {
-                                const diff15MHtml = mDiff > 0 ? '<div style="font-size:0.75rem; color: var(--men); margin-top:2px; font-weight:600;">直近15分 ↗ +' + mDiff + '名</div>' : '';
+                                const diff15MHtml = mDiff > 0 ? '<div style="font-size:0.75rem; color: var(--men); margin-top:2px; font-weight:600;">直近15分 ' + detailSvgNe + ' +' + mDiff + '名</div>' : '';
                                 const uSignM = uMDiff > 0 ? ('+' + uMDiff + '名') : (uMDiff < 0 ? (uMDiff + '名') : '±0名');
                                 const usualMHtml = (uMDiff !== null && uMDiff !== undefined) ? ('<div style="font-size:0.71rem; color: var(--text-sub); margin-top:2px; font-weight:600;">普段の' + slotLabel + '比 ' + uSignM + '（平均' + live.usual_men + '名）</div>') : '';
                                 mEl.innerHTML = '<span class="hero-odo-m" style="display:inline-block; line-height:1;">' + m + '</span><span style="font-size:0.95rem;">名</span>' + diff15MHtml + usualMHtml;
@@ -1649,7 +1650,7 @@
                                     if (wb && wb.city) {
                                         wChip.style.display = '';
                                         const tStr = (wb.temp_c !== null && wb.temp_c !== undefined) ? (' ' + Number(wb.temp_c).toFixed(1) + '℃') : '';
-                                        wChip.textContent = (wb.is_rainy ? '☔ ' : '🌤️ ') + wb.city + ' ' + (wb.condition || '') + tStr;
+                                        wChip.textContent = wb.city + ' ' + (wb.condition || '') + tStr;
                                     } else {
                                         wChip.style.display = 'none';
                                     }
@@ -1663,13 +1664,13 @@
                                         const pLink = (fc.alert_code === 'crowd_rush_warn' || fc.alert_code === 'jackpot_hold' || fc.alert_code === 'male_glut_lock')
                                             ? ' <a href="/guide/crowd-rush-paradox" style="color:var(--accent-text); text-decoration:underline;">22時殺到パラドックス解説 ›</a>' : '';
                                         const acc = fc.accuracy || null;
-                                        let accLine = '<p class="moat-detail-sub" style="margin-top:4px;"><a href="/stats#forecast-accuracy" style="color:var(--accent-text); text-decoration:underline;">📈 全店舗の60分後予測・答え合わせ検証ログを見る ›</a></p>';
+                                        let accLine = '<p class="moat-detail-sub" style="margin-top:4px;"><a href="/stats#forecast-accuracy" style="color:var(--accent-text); text-decoration:underline;">全店舗の60分後予測・答え合わせ検証ログを見る ›</a></p>';
                                         if (acc && Number(acc.resolved_count || 0) >= 3) {
                                             const lat = acc.latest || null;
                                             const latPart = (lat && lat.pred_wpct !== undefined && lat.actual_wpct !== undefined)
                                                 ? ('（直近' + esc(lat.predicted_hm || '') + '発: 予測' + Number(lat.pred_wpct) + '%→実測' + Number(lat.actual_wpct) + '%）')
                                                 : '';
-                                            accLine = '<p class="moat-detail-sub" style="margin-top:5px; padding-top:5px; border-top:1px dashed var(--border-subtle);">🎯 当店予測実績（直近' + Number(acc.resolved_count) + '回検証）：平均ズレ <strong style="color:var(--accent-text);">±' + Number(acc.mae_wpct).toFixed(1) + 'pt</strong> ｜ ±10pt的中 <strong style="color:var(--accent-text);">' + Number(acc.within_10pt_pct).toFixed(0) + '%</strong>' + latPart + ' <a href="/stats#forecast-accuracy" style="color:var(--accent-text); text-decoration:underline; margin-left:4px;">答え合わせ一覧 ›</a></p>';
+                                            accLine = '<p class="moat-detail-sub" style="margin-top:5px; padding-top:5px; border-top:1px dashed var(--border-subtle);">当店予測実績（直近' + Number(acc.resolved_count) + '回検証）：平均ズレ <strong style="color:var(--accent-text);">±' + Number(acc.mae_wpct).toFixed(1) + 'pt</strong> ｜ ±10pt的中 <strong style="color:var(--accent-text);">' + Number(acc.within_10pt_pct).toFixed(0) + '%</strong>' + latPart + ' <a href="/stats#forecast-accuracy" style="color:var(--accent-text); text-decoration:underline; margin-left:4px;">答え合わせ一覧 ›</a></p>';
                                         }
                                         fcHtml = '<div class="moat-detail-card">' +
                                             '<div class="moat-detail-eyebrow"><span>60分後のAI男女比予測</span><span class="moat-detail-chip">' + esc(dpTxt) + '</span></div>' +
@@ -1683,9 +1684,10 @@
                                     let srcTxt = 'JIS実測学習AI推論';
                                     if (we && we.is_standing_free) srcTxt = '自由回遊スタンディング';
                                     else if (we && we.is_measured) srcTxt = 'JIS公式POS実測';
+                                    const rawWeBadge = String(we ? (we.wait_badge_men || '') : '稼働データ集計中').replace(/^[\u{1F300}-\u{1FAFF}\u2600-\u27BF\u2197\u2198\uFE0E\uFE0F\s]+/gu, '').replace(/^推定:\s*/, '');
                                     const weHtml = '<div class="moat-detail-card">' +
                                         '<div class="moat-detail-eyebrow"><span>リアル待ち時間・稼働解析</span><span class="moat-detail-chip">' + esc(srcTxt) + '</span></div>' +
-                                        '<div class="moat-detail-main">' + esc(we ? we.wait_badge_men : '稼働データ集計中') + '</div>' +
+                                        '<div class="moat-detail-main">' + esc(rawWeBadge || '稼働データ集計中') + '</div>' +
                                         (we && we.pos_summary_short ? '<p class="moat-detail-sub">' + esc(we.pos_summary_short) + '</p>' : '') +
                                         '</div>';
                                     mGrid.innerHTML = fcHtml + weHtml;
@@ -2092,22 +2094,20 @@
                     const lineText = `【2軒目候補】${v.name}（${v.category_label || ''}・徒歩${v.walk_minutes || 3}分）\n${mapUrl}`;
                     const lineUrl = `https://line.me/R/msg/text/?${encodeURIComponent(lineText)}`;
                     const featuresHtml = (v.features || []).map(f => `<span class="venue-tag">#${escapeHtml(f)}</span>`).join('');
-                    const catIcon = v.category === 'cafe' ? '☕' : v.category === 'bar' ? '🍸' : v.category === 'shisha' ? '🎯' : '🍻';
-
                     return `
                         <div class="second-venue-card" data-category="${escapeHtml(v.category)}">
                             <div class="second-venue-card-header">
                                 <div class="second-venue-badges">
-                                    <span class="venue-category-badge ${escapeHtml(v.category)}">${catIcon} ${escapeHtml(v.category_label || '')}</span>
-                                    <span class="venue-walk-badge">🚶 徒歩${escapeHtml(String(v.walk_minutes || '3'))}分</span>
+                                    <span class="venue-category-badge ${escapeHtml(v.category)}">${escapeHtml(v.category_label || '')}</span>
+                                    <span class="venue-walk-badge">徒歩${escapeHtml(String(v.walk_minutes || '3'))}分</span>
                                 </div>
-                                <span class="venue-budget-pill">💰 ${escapeHtml(v.budget || '')}</span>
+                                <span class="venue-budget-pill">${escapeHtml(v.budget || '')}</span>
                             </div>
                             <h4 class="second-venue-name">${escapeHtml(v.name)}</h4>
                             <p class="second-venue-comment">${escapeHtml(v.comment || '')}</p>
                             ${featuresHtml ? `<div class="second-venue-tags">${featuresHtml}</div>` : ''}
                             <div class="second-venue-card-actions">
-                                <a href="${mapUrl}" target="_blank" rel="noopener noreferrer" class="venue-action-btn map-btn">マップ ↗</a>
+                                <a href="${mapUrl}" target="_blank" rel="noopener noreferrer" class="venue-action-btn map-btn">マップ <svg class="ui-svg-ne" width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9L9 3M9 3H4.5M9 3V7.5"/></svg></a>
                                 <button type="button" class="venue-action-btn copy-btn" onclick="copyDetailText('${escapeJs(v.name)}', this, '店名をコピーしました')">店名コピー</button>
                                 <a href="${lineUrl}" target="_blank" rel="noopener noreferrer" class="venue-action-btn line-btn">LINE共有</a>
                             </div>
@@ -2420,7 +2420,7 @@
 
             async function syncBackgroundPushSubscription(condToUse) {
                 if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false;
-                const reg = await navigator.serviceWorker.register('/sw.js?v=100', { updateViaCache: 'none' });
+                const reg = await navigator.serviceWorker.register('/sw.js?v=101', { updateViaCache: 'none' });
                 await navigator.serviceWorker.ready;
                 let sub = await reg.pushManager.getSubscription();
                 if (!sub) {

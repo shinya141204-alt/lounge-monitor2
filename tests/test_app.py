@@ -481,7 +481,8 @@ class MomentumTests(unittest.TestCase):
         client = app_module.app.test_client()
         r = client.get('/')
         html = r.data.decode('utf-8')
-        self.assertIn('↗ +15名', html)
+        self.assertIn('class="ui-svg-ne"', html)
+        self.assertIn('+15名</span>', html)
         self.assertIn('+15</span>', html)
         self.assertIn('+8</span>', html)
         self.assertIn('狙い目 ', html)
@@ -1165,9 +1166,9 @@ class GrowthFeaturesTests(unittest.TestCase):
             r = self.client.get(p)
             self.assertEqual(r.status_code, 200, f"Public path {p} returned {r.status_code}")
             body = r.data.decode('utf-8')
-            self.assertIn('/static/calm.css?v=36', body, f"{p} missing /static/calm.css?v=36")
+            self.assertIn('/static/calm.css?v=37', body, f"{p} missing /static/calm.css?v=37")
             if '/static/style.css' in body:
-                self.assertRegex(body, r'/static/style\.css\?v=20261030_\d+', f"{p} missing versioned /static/style.css")
+                self.assertRegex(body, r'/static/style\.css\?v=2026\d+_\d+', f"{p} missing versioned /static/style.css")
             self.assertIn('公式ホームページ', body, f"{p} missing official website verification notice")
 
         # Also check scheduled preview templates via staff session
@@ -1178,9 +1179,9 @@ class GrowthFeaturesTests(unittest.TestCase):
                 sr = self.client.get(sp)
                 self.assertEqual(sr.status_code, 200, f"Scheduled path {sp} returned {sr.status_code}")
                 sbody = sr.data.decode('utf-8')
-                self.assertIn('/static/calm.css?v=36', sbody, f"{sp} missing /static/calm.css?v=36")
+                self.assertIn('/static/calm.css?v=37', sbody, f"{sp} missing /static/calm.css?v=37")
                 if '/static/style.css' in sbody:
-                    self.assertRegex(sbody, r'/static/style\.css\?v=20261030_\d+', f"{sp} missing versioned /static/style.css")
+                    self.assertRegex(sbody, r'/static/style\.css\?v=2026\d+_\d+', f"{sp} missing versioned /static/style.css")
                 self.assertIn('公式ホームページ', sbody, f"{sp} missing official website verification notice")
         finally:
             with self.client.session_transaction() as s:
@@ -1776,7 +1777,7 @@ class FullAuditRegressionTests(unittest.TestCase):
         sw_resp = self.client.get('/sw.js')
         try:
             sw_txt = sw_resp.data.decode('utf-8')
-            self.assertIn("CACHE_NAME = 'aiseki-navi-v100'", sw_txt)
+            self.assertIn("CACHE_NAME = 'aiseki-navi-v101'", sw_txt)
             self.assertIn("event.waitUntil", sw_txt)
         finally:
             sw_resp.close()
@@ -3486,7 +3487,7 @@ class WomenFeaturesACDETests(unittest.TestCase):
             self.assertIn('class="theme-light audience-women"', html)
             self.assertIn('toggleForWomenTheme()', html)
             self.assertTrue('オリエンタルラウンジ 新宿' in html or 'オリエンタルラウンジ新宿' in html)
-            self.assertIn('🟢 女子待ち0・即案内圏', html)
+            self.assertIn('<span class="moat-dot" aria-hidden="true"></span>女子待ち0・即案内圏', html)
             self.assertIn('"@type": "FAQPage"', html)
             # 未収益化の0円直URL（women_dating_bachelor / women_beauty_clinic）は既定で出し分け遮断され、収益化済みの3枠が描画される
             self.assertNotIn('/link/women_dating_bachelor', html)
@@ -4525,16 +4526,16 @@ class AIUltraGrowthSuiteTests(unittest.TestCase):
         home_html = self.client.get('/').data.decode('utf-8')
         self.assertIn('class="concierge-quick-banner"', home_html)
         self.assertIn('href="/concierge"', home_html)
-        self.assertIn('calm.css?v=36', home_html)
+        self.assertIn('calm.css?v=37', home_html)
 
-        # 3. Subpages & columns include one-tap theme toggle button (.portal-theme-toggle-btn or #for-women-theme-btn) and calm.css?v=35
+        # 3. Subpages & columns include one-tap theme toggle button (.portal-theme-toggle-btn or #for-women-theme-btn) and calm.css?v=37
         for pub_route in ('/concierge', '/areas', '/columns', '/price-comparison', '/for-women', '/stats', '/grooming', '/privacy', '/guide/shinjuku'):
             r_sub = self.client.get(pub_route)
             self.assertEqual(r_sub.status_code, 200, msg=f"{pub_route} failed")
             sub_html = r_sub.data.decode('utf-8')
             expected_btn = 'for-women-theme-btn' if pub_route == '/for-women' else 'portal-theme-toggle-btn'
             self.assertIn(expected_btn, sub_html, msg=f"Missing theme toggle on {pub_route}")
-            self.assertIn('calm.css?v=36', sub_html, msg=f"Outdated calm.css on {pub_route}")
+            self.assertIn('calm.css?v=37', sub_html, msg=f"Outdated calm.css on {pub_route}")
 
         # 4. Staff & Master dashboards support light mode, theme toggle, and fixed reel video player
         with self.client.session_transaction() as s:
@@ -4716,9 +4717,9 @@ class AIUltraGrowthSuiteTests(unittest.TestCase):
 
         app_module.clear_fast_http_caches()
         home_html = self.client.get('/').data.decode('utf-8')
-        self.assertIn('calm.css?v=36', home_html)
-        self.assertIn('app.js?v=20261107_1', home_html)
-        self.assertIn('/sw.js?v=100', home_html)
+        self.assertIn('calm.css?v=37', home_html)
+        self.assertIn('app.js?v=20261108_1', home_html)
+        self.assertIn('/sw.js?v=101', home_html)
 
         # 2. TikTok 9:16 Safe-Zone Reel Templates & Captions (zero bare 'オリエンタル' or 'OLG')
         sample_stores = [

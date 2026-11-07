@@ -147,9 +147,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="相席ナビ">
 
-    <link rel="stylesheet" href="/static/style.css?v=20261030_6" fetchpriority="high">
-    <link rel="stylesheet" href="/static/calm.css?v=36" fetchpriority="high">
-    <link rel="preload" href="/static/app.js?v=20261107_1" as="script">
+    <link rel="stylesheet" href="/static/style.css?v=20261108_1" fetchpriority="high">
+    <link rel="stylesheet" href="/static/calm.css?v=37" fetchpriority="high">
+    <link rel="preload" href="/static/app.js?v=20261108_1" as="script">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- Non-render-blocking web font (avoids waiting on Google Fonts at PWA cold launch) -->
@@ -805,7 +805,7 @@
                                         <span class="brand-badge {{ s.ssr_brand_cls }}">{{ s.ssr_brand }}</span>
                                         <span class="distance-tag hidden"></span>
                                         {% if (s.women_diff or 0) >= 1 %}
-                                        <span class="momentum-tag" title="直近約15分で女性が+{{ s.women_diff }}名増えています">↗ +{{ s.women_diff }}名</span>
+                                        <span class="momentum-tag" title="直近約15分で女性が+{{ s.women_diff }}名増えています"><svg class="ui-svg-ne" width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9L9 3M9 3H4.5M9 3V7.5"/></svg>+{{ s.women_diff }}名</span>
                                         {% elif s.votes and (s.votes.smooth or 0) > 0 and (s.votes.smooth or 0) >= (s.votes.waiting or 0) %}
                                         <span class="momentum-tag" title="直近の現場レポートで「待ちなしで入れた」が報告されています">即入店</span>
                                         {% else %}
@@ -821,11 +821,12 @@
                                     <p class="cm-human-line">{{ ssr_human_copy }}</p>
                                     <div class="store-micro-metrics{% if not (s.core_time_short and s.midnight_retention_pct) %} hidden{% endif %}">{% if s.core_time_short and s.midnight_retention_pct %}狙い目 {{ s.core_time_short }} <span class="micro-sep">｜</span> 終電後 {{ s.midnight_retention_pct }}%（{{ s.midnight_label_short }}）{% endif %}</div>
                                     {% set ssr_has_guest = ((s.women or 0) + (s.men or 0)) > 0 or (s.wait_estimate and (s.wait_estimate.est_men_wait_groups or 0) > 0) %}
-                                    {% set ssr_w_badge = (s.wait_estimate.wait_badge_men if (s.wait_estimate and ssr_has_guest) else '') %}
-                                    {% set ssr_f_badge = (s.forecast_60m.badge_men if s.forecast_60m else '') %}
+                                    {% set ssr_w_badge = ((s.wait_estimate.wait_badge_men | clean_badge) if (s.wait_estimate and ssr_has_guest) else '') %}
+                                    {% set ssr_f_badge = ((s.forecast_60m.badge_men | clean_badge) if s.forecast_60m else '') %}
+                                    {% set ssr_f_caution = (s.forecast_60m and (s.forecast_60m.alert_code in ['crowd_rush_warn', 'last_train_cliff', 'male_glut_lock'] or (s.forecast_60m.pred_delta_pt or 0) <= -5)) %}
                                     <div class="moat-signals-row{% if not (ssr_w_badge or ssr_f_badge) %} hidden{% endif %}">
-                                        {% if ssr_w_badge %}<span class="moat-pill tone-{{ s.wait_estimate.wait_tone or 'neutral' }}" title="{{ s.wait_estimate.pos_summary_short or '' }}">{{ ssr_w_badge }}</span>{% endif %}
-                                        {% if ssr_f_badge %}<span class="moat-pill tone-{{ s.forecast_60m.badge_tone or 'neutral' }}" title="{{ s.forecast_60m.reason_short or '' }}">{{ ssr_f_badge }}</span>{% endif %}
+                                        {% if ssr_w_badge %}<span class="moat-pill tone-{{ s.wait_estimate.wait_tone or 'neutral' }}" title="{{ s.wait_estimate.pos_summary_short or '' }}"><span class="moat-dot" aria-hidden="true"></span>{{ ssr_w_badge }}</span>{% endif %}
+                                        {% if ssr_f_badge %}<span class="moat-pill tone-{{ s.forecast_60m.badge_tone or 'neutral' }}" title="{{ s.forecast_60m.reason_short or '' }}">{% if ssr_f_caution %}<svg class="moat-svg" width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="1 3.5 4.5 7 7 5 11 9"/></svg>{% else %}<svg class="moat-svg" width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="1 8.5 4.2 5.3 6.8 7 11 2.8"/></svg>{% endif %}{{ ssr_f_badge }}</span>{% endif %}
                                     </div>
                                 </div>
                                 <div class="card-actions">
@@ -1220,7 +1221,7 @@
 
                 <!-- Momentum & Card Legend Bar (Placed below ranking list to keep first-view clean) -->
                 <div class="momentum-legend-bar" aria-label="表示指標の説明" style="margin-top: 12px;">
-                    <span class="momentum-legend-pill">「↗ +数字」＝15分比 ｜ 「実測/推定」＝待ち時間推論（JISは公式POS実測） ｜ 「🔮60分後」＝AI男女比予測</span>
+                    <span class="momentum-legend-pill">「+数字」＝15分比 ｜ 「丸ドット」＝待ち時間解析（JISは公式POS実測） ｜ 「60分後%」＝AI男女比予測</span>
                     <span class="momentum-legend-hint">終電後%＝21-22時比の深夜0-1時女性維持率 ｜ タップで詳細予測＆グラフ</span>
                 </div>
 
@@ -1417,8 +1418,8 @@
                             <a href="/price-comparison" class="editorial-inline-link">店舗別料金・イベント比較ボードを見る ›</a>
                         </article>
                         <article class="seo-guide-card">
-                            <h3>「↗ +数字」の15分トレンドを活用する</h3>
-                            <p>店舗カードに表示される<strong>「↗ +数字」は直近約15分間で増えた人数</strong>を示しています。現在の合計人数だけでなく、女性が増え始めているタイミング（上昇気流）の店舗を選ぶと、入店後の相席テンポが良くなりやすくなります。</p>
+                            <h3>「+数字」の15分トレンドを活用する</h3>
+                            <p>店舗カードに表示される<strong>「+数字」は直近約15分間で増えた人数</strong>を示しています。現在の合計人数だけでなく、女性が増え始めているタイミング（上昇気流）の店舗を選ぶと、入店後の相席テンポが良くなりやすくなります。</p>
                             <a href="/guide/male-lead-mechanics" class="editorial-inline-link">来店データで見る店舗選びの法則 ›</a>
                         </article>
                         <article class="seo-guide-card">
@@ -1652,7 +1653,7 @@
                 <button class="share-pill-btn x-btn" onclick="shareStoreStatus('x')">𝕏 混雑＋特典をポスト</button>
                 <button class="share-pill-btn line-btn" onclick="shareStoreStatus('line')">LINE共有</button>
                 <button class="share-pill-btn copy-btn" onclick="shareStoreStatus('copy')">コピー</button>
-                <a id="modal-top-official-link" href="https://oriental-lounge.com/" target="_blank" rel="noopener noreferrer" class="share-pill-btn official-btn">公式サイト ↗</a>
+                <a id="modal-top-official-link" href="https://oriental-lounge.com/" target="_blank" rel="noopener noreferrer" class="share-pill-btn official-btn">公式サイト <svg class="ui-svg-ne" width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9L9 3M9 3H4.5M9 3V7.5"/></svg></a>
             </div>
 
             <!-- Store Events & Campaign Section -->
@@ -1780,10 +1781,10 @@
                 <div class="second-venue-quick-footer">
                     <span class="quick-footer-label">その他の条件で周辺マップ検索（Google公式無料リンク）:</span>
                     <div class="quick-footer-links">
-                        <a id="modal-map-cafe-btn" href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer" class="second-quick-pill cafe">☕ 夜カフェ検索 ↗</a>
-                        <a id="modal-map-bar-btn" href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer" class="second-quick-pill bar">🍸 バー検索 ↗</a>
-                        <a id="modal-map-shisha-btn" href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer" class="second-quick-pill shisha">🎯 シーシャ検索 ↗</a>
-                        <a id="modal-map-yokocho-btn" href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer" class="second-quick-pill yokocho">🍻 横丁検索 ↗</a>
+                        <a id="modal-map-cafe-btn" href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer" class="second-quick-pill cafe">夜カフェ検索 <svg class="ui-svg-ne" width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9L9 3M9 3H4.5M9 3V7.5"/></svg></a>
+                        <a id="modal-map-bar-btn" href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer" class="second-quick-pill bar">バー検索 <svg class="ui-svg-ne" width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9L9 3M9 3H4.5M9 3V7.5"/></svg></a>
+                        <a id="modal-map-shisha-btn" href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer" class="second-quick-pill shisha">シーシャ検索 <svg class="ui-svg-ne" width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9L9 3M9 3H4.5M9 3V7.5"/></svg></a>
+                        <a id="modal-map-yokocho-btn" href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer" class="second-quick-pill yokocho">横丁検索 <svg class="ui-svg-ne" width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9L9 3M9 3H4.5M9 3V7.5"/></svg></a>
                     </div>
                 </div>
                 {% if not is_staff and not session.get('is_staff') %}
@@ -1810,7 +1811,7 @@
                     <button class="share-pill-btn line-btn" onclick="shareStoreStatus('line')">LINEで送る</button>
                     <button class="share-pill-btn x-btn" onclick="shareStoreStatus('x')">𝕏 ポスト</button>
                     <button class="share-pill-btn copy-btn" onclick="shareStoreStatus('copy')">コピー</button>
-                    <a id="modal-official-link" href="https://oriental-lounge.com/" target="_blank" rel="noopener noreferrer" class="share-pill-btn official-btn">公式サイト ↗</a>
+                    <a id="modal-official-link" href="https://oriental-lounge.com/" target="_blank" rel="noopener noreferrer" class="share-pill-btn official-btn">公式サイト <svg class="ui-svg-ne" width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9L9 3M9 3H4.5M9 3V7.5"/></svg></a>
                 </div>
             </div>
 
@@ -2298,7 +2299,7 @@
                             <h3 class="article-card-title">相席ナビ公式note ｜ 曜日ごとの傾向やちょっとしたコラム</h3>
                             <p class="article-card-desc">noteでも曜日ごとの混雑傾向や、お店選びの小話を更新しています。移動中などに気軽に読めるコラム集です。</p>
                             <div class="article-card-footer">
-                                <span class="article-read-btn note-btn-style">noteで開く ↗</span>
+                                <span class="article-read-btn note-btn-style">noteで開く <svg class="ui-svg-ne" width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9L9 3M9 3H4.5M9 3V7.5"/></svg></span>
                             </div>
                         </div>
                     </a>
@@ -2788,7 +2789,7 @@
         window.INITIAL_STATUS_DATA = {{ (initial_status_client or initial_status) | tojson }};
     </script>
     {% endif %}
-    <script src="/static/app.js?v=20261107_1" defer></script>
+    <script src="/static/app.js?v=20261108_1" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
@@ -2804,7 +2805,7 @@
                 }
                 if (window.__swRegistered) return;
                 window.__swRegistered = true;
-                navigator.serviceWorker.register('/sw.js?v=100', { updateViaCache: 'none' })
+                navigator.serviceWorker.register('/sw.js?v=101', { updateViaCache: 'none' })
                     .then(function(reg) {
                         reg.update();
                         document.addEventListener('visibilitychange', function() {

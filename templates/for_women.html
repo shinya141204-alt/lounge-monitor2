@@ -299,6 +299,9 @@
             margin-bottom: 5px;
         }
         .pick-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4.5px;
             font-size: 0.7rem;
             font-weight: 800;
             padding: 2px 8px;
@@ -495,7 +498,7 @@
             margin: 0;
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=36">
+    <link rel="stylesheet" href="/static/calm.css?v=37">
     <script>try{var _mw=localStorage.getItem('aiseki_women_manual_theme');if(_mw!=='default'&&_mw!=='list')document.documentElement.classList.add('theme-light');}catch(e){}</script>
 </head>
 
@@ -568,7 +571,7 @@
                 {% for p in board.zero_wait_picks[:6] %}
                 <a href="{{ p.href }}" class="live-pick-card">
                     <div class="pick-top">
-                        <span class="pick-badge {% if p.badge_cls != 'vip' %}good{% endif %}">{{ p.badge }}</span>
+                        <span class="pick-badge {% if p.badge_cls != 'vip' %}good{% endif %}"><span class="moat-dot" aria-hidden="true"></span>{{ p.badge | clean_badge }}</span>
                         <span class="pick-area">{{ p.area_label }}</span>
                     </div>
                     <div class="pick-name">{{ p.ja_name }}</div>

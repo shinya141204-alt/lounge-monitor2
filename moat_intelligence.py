@@ -553,7 +553,7 @@ def detect_arena_event_surges(live_stores: list, now_jst: datetime.datetime = No
                     "event_title": ev_title,
                     "est_end_hour": est_end,
                     "surge_women_delta": max_w_diff,
-                    "label_short": f"🏟️今夜 {v_short}公演（{est_end}時頃終演見込み）",
+                    "label_short": f"今夜 {v_short}公演（{est_end}時頃終演見込み）",
                 }
             elif win_start <= eff_hr <= win_end_ext:
                 verified = hub_usual_surges >= needed
@@ -567,9 +567,9 @@ def detect_arena_event_surges(live_stores: list, now_jst: datetime.datetime = No
                     "est_end_hour": est_end,
                     "surge_women_delta": max_w_diff,
                     "label_short": (
-                        f"🎸{v_short}終演・女性流入中(+{max_w_diff}名)"
+                        f"{v_short}終演 · 女性流入中(+{max_w_diff}名)"
                         if (verified and max_w_diff > 0)
-                        else f"🎸{v_short}終演圏・女性流入警戒"
+                        else f"{v_short}終演圏 · 女性流入警戒"
                     ),
                 }
 
@@ -583,7 +583,7 @@ def detect_arena_event_surges(live_stores: list, now_jst: datetime.datetime = No
                 "event_title": "",
                 "est_end_hour": 21,
                 "surge_women_delta": max_w_diff,
-                "label_short": f"🎸{vname.split('・')[0]}終演圏・女性流入中",
+                "label_short": f"{vname.split('・')[0]}終演圏 · 女性流入中",
             }
 
         if sig_template is not None:
@@ -773,14 +773,14 @@ def estimate_store_wait_and_pos(
         vip_cnt = int((pos_telemetry or {}).get("vip_guests") or 0)
         vip_note = f"・VIP稼働{vip_cnt}" if vip_cnt > 0 else ""
         if total == 0:
-            badge_m = "🥂自由回遊（空席）"
-            badge_w = "🥂自由回遊（入場無料）"
+            badge_m = "自由回遊（空席）"
+            badge_w = "自由回遊（入場無料）"
         elif women >= men:
-            badge_m = f"🥂自由回遊・女性優位{vip_note}"
-            badge_w = "🥂自由回遊・入場無料"
+            badge_m = f"自由回遊 · 女性優位{vip_note}"
+            badge_w = "自由回遊 · 入場無料"
         else:
-            badge_m = f"🥂自由回遊（席待ちなし{vip_note}）"
-            badge_w = "👑男性多数・即乾杯◎"
+            badge_m = f"自由回遊（席待ちなし{vip_note}）"
+            badge_w = "男性多数 · 即乾杯圏"
         return {
             "is_measured": bool(pos_telemetry),
             "is_standing_free": True,
@@ -831,33 +831,33 @@ def estimate_store_wait_and_pos(
             prob = 40
         else:
             if m_wait_grp == 0 and women >= max(4, men):
-                badge_m = f"🟢実測:男待ち0組（相席{matched_grp}卓）" if matched_grp > 0 else "🟢実測:男待ち0組（即相席圏）"
+                badge_m = f"実測:男待ち0組（相席{matched_grp}卓）" if matched_grp > 0 else "実測:男待ち0組 · 即相席圏"
                 tone = "safe"
                 prob = 94
             elif m_wait_grp == 0:
-                badge_m = "🟢実測:男待ち0組"
+                badge_m = "実測:男待ち0組"
                 tone = "safe" if women >= 6 else "neutral"
                 prob = 82 if women >= 6 else 55
             elif est_m_min <= 15:
-                badge_m = f"🟡実測:男待ち{m_wait_grp}組（約{est_m_min}分）"
+                badge_m = f"実測:男待ち{m_wait_grp}組（約{est_m_min}分）"
                 tone = "warn"
                 prob = 45
             else:
-                badge_m = f"🔴実測:男待ち{m_wait_grp}組（約{est_m_min}分）"
+                badge_m = f"実測:男待ち{m_wait_grp}組（約{est_m_min}分）"
                 tone = "danger"
                 prob = 18
 
             if w_wait_grp == 0:
                 if m_wait_grp > 0 or men >= women + 4:
-                    badge_w = "👑実測:女子待ち0組（即相席）"
+                    badge_w = "実測:女子待ち0組 · 即相席"
                 else:
-                    badge_w = "🟢実測:女待ち0組"
+                    badge_w = "実測:女待ち0組"
                 tone_w = "safe"
             elif est_w_min <= 15:
-                badge_w = f"🟡実測:女待ち{w_wait_grp}組（約{est_w_min}分）"
+                badge_w = f"実測:女待ち{w_wait_grp}組（約{est_w_min}分）"
                 tone_w = "warn"
             else:
-                badge_w = f"🔴実測:女待ち{w_wait_grp}組（約{est_w_min}分）"
+                badge_w = f"実測:女待ち{w_wait_grp}組（約{est_w_min}分）"
                 tone_w = "danger"
 
         pos_parts = [f"公式POS実測：相席成立 {matched_grp}組 / 男性待機 {m_wait_grp}組({m_wait_gst}名) / 女性待機 {w_wait_grp}組"]
@@ -924,34 +924,34 @@ def estimate_store_wait_and_pos(
         est_m_min = 0
         female_lead = women - men
         if women >= 8 and female_lead >= 3:
-            badge_m = "🟢推定:待ち約0分（即相席圏）"
+            badge_m = "待ち約0分 · 即相席圏"
             tone = "safe"
             prob = min(96, 82 + min(14, female_lead // 2 + 2))
             balance_note = f"女性+{female_lead}名優位・男性即案内圏"
         elif women >= 6:
             if occ_pct >= 92 or momentum_excess >= 6:
-                badge_m = "🟢推定:待ち約0〜5分（受付順）"
+                badge_m = "待ち約0〜5分 · 受付順"
                 tone = "safe"
                 prob = 78
                 balance_note = "女性優位〜同数（高稼働・受付順案内）"
             elif women >= 10:
-                badge_m = "🟢推定:待ち約0分（即相席圏）"
+                badge_m = "待ち約0分 · 即相席圏"
                 tone = "safe"
                 prob = 84
                 balance_note = "女性優位〜同数・即相席圏"
             else:
-                badge_m = "🟢推定:男待ち少（約0〜5分）"
+                badge_m = "男待ち少 · 約0〜5分"
                 tone = "safe"
                 prob = 75
                 balance_note = "女性優位〜同数・スムーズ案内圏"
         else:
             if female_lead >= 1 and women >= 3:
-                badge_m = "🟢推定:待ち約0分（少人数）"
+                badge_m = "待ち約0分 · 少人数"
                 tone = "safe"
                 prob = 68
                 balance_note = f"女性+{female_lead}名先行（少人数稼働）"
             else:
-                badge_m = "🟡少人数（相手組数に注意）"
+                badge_m = "少人数 · 相手組数に注意"
                 tone = "neutral"
                 prob = 48
                 balance_note = "立ち上がり少人数帯"
@@ -960,7 +960,7 @@ def estimate_store_wait_and_pos(
         est_m_groups = max(1, int(round(men / max(1.2, calib["avg_men_party_size"]))))
         est_m_min = max(10, min(45, int(round(est_m_groups * 7.5 / 5.0) * 5)))
         tone = "warn" if est_m_min <= 15 else "danger"
-        badge_m = f"{'🟡' if tone == 'warn' else '🔴'}推定:女性待ち（男約{est_m_groups}組）"
+        badge_m = f"女性待ち · 男約{est_m_groups}組"
         prob = 20
         balance_note = f"女性来店待ち（男性{men}名待機中）"
     else:
@@ -973,12 +973,12 @@ def estimate_store_wait_and_pos(
             est_m_groups = 0
             est_m_min = 0
             if occ_pct >= 90 or momentum_excess >= 6:
-                badge_m = "🟡推定:男女拮抗（約0〜10分）"
+                badge_m = "男女拮抗 · 約0〜10分"
                 tone = "neutral"
                 prob = 62
                 balance_note = "男女ほぼ同数（高稼働につき受付順）"
             else:
-                badge_m = "🟢推定:男女均衡（約0〜5分）"
+                badge_m = "男女均衡 · 約0〜5分"
                 tone = "safe"
                 prob = 70
                 balance_note = "男女ほぼ同数でスムーズ推移中"
@@ -996,7 +996,7 @@ def estimate_store_wait_and_pos(
 
             if est_m_groups == 0:
                 est_m_min = 0
-                badge_m = "🟢推定:男待ち少（約0〜5分）"
+                badge_m = "男待ち少 · 約0〜5分"
                 tone = "safe"
                 prob = 68
                 balance_note = f"男性+{male_excess}名（1組人数差の範囲内）"
@@ -1005,11 +1005,11 @@ def estimate_store_wait_and_pos(
                 est_m_min = int(round(est_m_groups * calib["minutes_per_wait_group"] * size_factor))
                 est_m_min = max(5, min(70, int(round(est_m_min / 5.0) * 5)))
                 if est_m_min <= 15:
-                    badge_m = f"🟡推定:男 約{est_m_min}分待ち（約{est_m_groups}組）"
+                    badge_m = f"男 約{est_m_min}分待ち（約{est_m_groups}組）"
                     tone = "warn"
                     prob = max(38, 58 - est_m_min)
                 else:
-                    badge_m = f"🔴推定:男 約{est_m_min}分待ち（約{est_m_groups}組）"
+                    badge_m = f"男 約{est_m_min}分待ち（約{est_m_groups}組）"
                     tone = "danger"
                     prob = max(10, 42 - est_m_min // 2)
                 balance_note = f"男性+{male_excess}名超過（待機 約{est_m_groups}組推計）"
@@ -1026,16 +1026,16 @@ def estimate_store_wait_and_pos(
         est_w_min = min(30, max(10, int(round((female_excess - 8) * 1.1 / 5.0) * 5)))
 
     if est_w_min >= 20:
-        badge_w = f"🔴推定:女余り（相席まで約{est_w_min}分）"
+        badge_w = f"女余り · 相席まで約{est_w_min}分"
         tone_w = "danger"
     elif est_w_min >= 10:
-        badge_w = f"🟡推定:女余り（相席まで約{est_w_min}分）"
+        badge_w = f"女余り · 相席まで約{est_w_min}分"
         tone_w = "warn"
     elif men >= women + 4 and men >= 8:
-        badge_w = "👑推定:女子待ち0分（即相席◎）"
+        badge_w = "女子待ち0分 · 即相席圏"
         tone_w = "safe"
     else:
-        badge_w = "🟢推定:女子待ち約0分"
+        badge_w = "女子待ち約0分"
         tone_w = "safe"
 
     return {
@@ -2163,8 +2163,8 @@ def predict_store_60m_dynamics(
     # --- アラート分類とユーザー向けバッジ生成 ---
     if cur_wpct <= 44 and men >= 12 and pred_wpct <= 48:
         alert_code = "male_glut_lock"
-        badge_men = f"⚠️60分後も男余り予測({pred_wpct}%)"
-        badge_women = "👑1時間後も女子待ち0分圏"
+        badge_men = f"60分後も男余り予測 ({pred_wpct}%)"
+        badge_women = "1時間後も女子待ち0分圏"
         badge_tone = "danger"
         if is_standing:
             reason = f"定額スタンディング業態では男女比の持続性が高く、60分後も女性比{pred_wpct}%前後で推移する見込みです（自由回遊可・近隣の女性優位店との比較も有効）。"
@@ -2180,38 +2180,38 @@ def predict_store_60m_dynamics(
         )
     ):
         alert_code = "crowd_rush_warn"
-        badge_men = f"⚡殺到注意・60分後{pred_wpct}%予測"
-        badge_women = "💄これから男性増・即相席圏"
+        badge_men = f"殺到注意 · 60分後 {pred_wpct}%"
+        badge_women = "これから男性増 · 即相席圏"
         badge_tone = "warn"
         reason = f"現在は女性優位（{cur_wpct}%）ですが、この時間帯は画面を見て向かう男性が集中しやすく、到着頃には女性比{pred_wpct}%前後へ低下する『群衆殺到リスク（逆転確率{flip_risk}%）』があります。"
     elif hr in (22, 23) and mid_ret <= 62 and delta_pt <= -5:
         alert_code = "last_train_cliff"
-        badge_men = f"🚃終電減注意・60分後{pred_wpct}%"
-        badge_women = "🟢落ち着いた会話狙い目"
+        badge_men = f"終電減注意 · 60分後 {pred_wpct}%"
+        badge_women = "落ち着いた会話狙い目"
         badge_tone = "warn"
         reason = f"終電前の帰宅波が出やすい1回転目中心店舗（深夜維持率{mid_ret}%）のため、23時台後半にかけて女性が減少する予測です。"
     elif is_rain_shelter and pred_wpct >= 55 and women >= 10 and flip_risk < 22:
         alert_code = "rain_shelter_boost"
-        badge_men = f"☔雨天駅直結◎ 60分後{pred_wpct}%"
-        badge_women = "☔駅直結・濡れずに来店可"
+        badge_men = f"雨天駅直結 · 60分後 {pred_wpct}%"
+        badge_women = "駅直結 · 濡れずに来店可"
         badge_tone = "rain"
         reason = f"現在{city_w.get('city_label', '')}エリアは{city_w.get('condition_ja', '雨')}のため、駅・地下街直結の本店舗に女性客が集中しやすく60分後も女性比{pred_wpct}%前後を維持する予測です。"
     elif women >= 18 and cur_wpct >= 68 and pred_wpct >= 58 and flip_risk <= 15:
         alert_code = "jackpot_hold"
-        badge_men = f"🛡️確変持続・60分後{pred_wpct}%予測"
-        badge_women = "⏳女性多数（相席待ち注意）"
+        badge_men = f"好調持続 · 60分後 {pred_wpct}%予測"
+        badge_women = "女性多数 · 相席待ち注意"
         badge_tone = "safe"
         reason = f"女性{women}名＆女性比{cur_wpct}%の『70%安全バッファ』に入っており、これから男性が増えても60分後に女性優位を維持する確率は{100 - flip_risk}%と極めて安定しています。"
     elif hr in (2, 3, 4) and women >= 10 and pred_wpct >= 54:
         alert_code = "first_train_rebound"
-        badge_men = f"🌅始発待ち女子優位({pred_wpct}%予測)"
-        badge_women = "🌙始発までゆったり滞在可"
+        badge_men = f"始発待ち女子優位 ({pred_wpct}%予測)"
+        badge_women = "始発までゆったり滞在可"
         badge_tone = "safe"
         reason = f"深夜2時以降は男性が先に退店し始発待ちの女性ペアが残るため、朝方まで女性比{pred_wpct}%前後の好バランスが続く予測です。"
     else:
         alert_code = "steady"
-        badge_men = f"🔮60分後 {pred_wpct}%予測" if total >= 14 else ""
-        badge_women = "🟢1時間後も待ち少なめ" if men >= women - 2 and total >= 12 else ""
+        badge_men = f"60分後 {pred_wpct}%予測" if total >= 14 else ""
+        badge_women = "1時間後も待ち少なめ" if men >= women - 2 and total >= 12 else ""
         badge_tone = "safe" if pred_wpct >= 56 and women >= 12 else "neutral"
         if 0 <= mtc <= 40:
             reason = f"公式閉店時刻が近いためこれから退店が進む時間帯です（残存見込み：女性約{pred_w}名・男性約{pred_m}名／女性比{pred_wpct}%前後）。"

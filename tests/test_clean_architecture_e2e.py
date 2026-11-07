@@ -79,8 +79,8 @@ class Tier1FeatureCoverageTests(unittest.TestCase):
         )
 
     def test_04_cache_busting_sync_across_templates_and_sw(self):
-        """F3.1: style.css のキャッシュバスティングバージョン（?v=20261030_6）が全テンプレートおよび static/sw.js 間で同期されていることを検証"""
-        expected_version = "20261030_6"
+        """F3.1: style.css のキャッシュバスティングバージョン（?v=20261108_1）が全テンプレートおよび static/sw.js 間で同期されていることを検証"""
+        expected_version = "20261108_1"
         tmpl_dir = os.path.join(REPO_ROOT, "templates")
         self.assertTrue(os.path.isdir(tmpl_dir), "templates directory must exist")
 

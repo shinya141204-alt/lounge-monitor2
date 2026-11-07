@@ -105,13 +105,13 @@ class UiAuditRegressionTests(unittest.TestCase):
     # ------------------------------------------------------------------
     def test_cache_busting_sync_across_templates_and_service_worker(self):
         """全テンプレートと static/sw.js のアセットバージョンが完全同期し、immutable ヘッダが正しく付与されること"""
-        expected_calm = "/static/calm.css?v=36"
+        expected_calm = "/static/calm.css?v=37"
         expected_portal = "/static/portal.css?v=15"
-        expected_app_js = "/static/app.js?v=20261107_1"
+        expected_app_js = "/static/app.js?v=20261108_1"
         expected_aff_js = "/static/affiliate_config.js?v=17"
-        expected_style = "/static/style.css?v=20261030_6"
-        expected_sw_url = "/sw.js?v=100"
-        expected_cache_name = "aiseki-navi-v100"
+        expected_style = "/static/style.css?v=20261108_1"
+        expected_sw_url = "/sw.js?v=101"
+        expected_cache_name = "aiseki-navi-v101"
 
         templates_dir = os.path.join(PROJECT_ROOT, "templates")
         calm_seen = 0
@@ -2241,6 +2241,82 @@ class UiAuditRegressionTests(unittest.TestCase):
             sd_txt = fp.read()
         self.assertIn("@media (max-width: 640px)", sd_txt)
         self.assertIn("#store-smart-cta-card .pr-context-foot { flex-direction: column;", sd_txt)
+
+    def test_plan_a_badge_emoji_free_svg_and_flat_dot(self):
+        """Plan A: 店舗カードの絵文字（↗️・🟢・🟡・🔴・🔮・⚡等）を完全撤廃し、単色11px SVGと6pxステータスドットに統一"""
+        import moat_intelligence
+        import ladies_guide
+
+        forbidden_emojis = ("🟢", "🟡", "🔴", "👑", "🥂", "🔮", "⚡", "🚃", "🛡️", "🌅", "💄", "⏳", "⚠️", "✨", "☕")
+
+        # 1) moat_intelligence wait & 60m forecast badges must never emit OS emojis or redundant '推定:' prefix
+        for store_case in (
+            ("オリエンタルラウンジ 大分", 22, 16, 4),
+            ("オリエンタルラウンジ 新宿", 14, 38, 0),
+            ("ASOBIBAR 梅田", 18, 20, 2),
+            ("JIS 新宿", 24, 24, 3),
+        ):
+            name, w, m, w_diff = store_case
+            wait_info = moat_intelligence.estimate_store_wait_and_pos(name, w, m)
+            fc_info = moat_intelligence.predict_store_60m_dynamics(name, w, m, women_diff=w_diff, men_diff=1)
+            for txt in (
+                wait_info.get("wait_badge_men", ""),
+                wait_info.get("wait_badge_women", ""),
+                fc_info.get("badge_men", ""),
+                fc_info.get("badge_women", ""),
+            ):
+                for em in forbidden_emojis:
+                    self.assertNotIn(em, txt, f"OS emoji {em!r} leaked in badge: {txt!r}")
+                self.assertNotIn("推定:", txt, f"Redundant '推定:' leaked in badge: {txt!r}")
+
+        # 2) ladies_guide UI store evaluation badges must be emoji-free
+        for w, m in ((0, 0), (5, 16), (12, 12), (2, 2), (24, 10)):
+            ev = ladies_guide.evaluate_ladies_store_status(w, m, has_event=True)
+            for em in forbidden_emojis:
+                self.assertNotIn(em, ev["badge"], f"OS emoji {em!r} leaked in ladies badge: {ev['badge']!r}")
+
+        # 3) CSS & JS & SSR HTML render monochrome SVG (.ui-svg-ne / .moat-svg) and 6px .moat-dot without raw '↗' in cards
+        with open(os.path.join(PROJECT_ROOT, "static", "calm.css"), "r", encoding="utf-8") as fp:
+            calm_txt = fp.read()
+        self.assertIn("font-variant-emoji: text;", calm_txt)
+        self.assertIn(".ui-svg-ne", calm_txt)
+        self.assertIn(".moat-dot", calm_txt)
+        self.assertIn(".moat-svg", calm_txt)
+
+        with open(os.path.join(PROJECT_ROOT, "static", "app.js"), "r", encoding="utf-8") as fp:
+            js_txt = fp.read()
+        self.assertIn("UI_SVG_ARROW_NE", js_txt)
+        self.assertIn("UI_SVG_TREND_UP", js_txt)
+        self.assertIn("stripBadgeEmojiPrefix", js_txt)
+        self.assertNotIn("↗ +", js_txt)
+
+        mock_stores = [
+            {
+                "name": "オリエンタルラウンジ 大分",
+                "source": "oriental",
+                "women": 24,
+                "men": 16,
+                "total": 40,
+                "women_diff": 2,
+                "men_diff": 0,
+                "region": "Kyushu",
+                "is_open_now": True,
+                "timestamp": "2026-11-08 21:00:00",
+            }
+        ]
+        with app_module.data_lock:
+            app_module.latest_data["status"] = "success"
+            app_module.latest_data["full_data"] = mock_stores
+            app_module.latest_data["top5"] = mock_stores
+            app_module.latest_data["_is_cold_start_seed"] = False
+        app_module.clear_fast_http_caches()
+        home_html = self.client.get("/").data.decode("utf-8")
+        self.assertIn('class="ui-svg-ne"', home_html)
+        self.assertIn('class="moat-dot"', home_html)
+        self.assertIn('class="moat-svg"', home_html)
+        self.assertNotIn("↗ +", home_html)
+        for em in ("🟢", "🔮"):
+            self.assertNotIn(em, home_html)
 
 
 if __name__ == "__main__":
