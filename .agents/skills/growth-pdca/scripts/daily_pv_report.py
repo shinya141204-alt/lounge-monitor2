@@ -532,10 +532,14 @@ def main() -> int:
     out_json = Path(args.save_json) if args.save_json else (reports_dir / "daily_pv_latest.json")
     out_json.write_text(json.dumps(rep, ensure_ascii=False, indent=2), encoding="utf-8")
 
+    md_text = format_markdown(rep)
+    out_md = reports_dir / f"daily_pv_{rep['target_date']}.md"
+    out_md.write_text(md_text, encoding="utf-8")
+
     if args.format == "json":
         print(json.dumps(rep, ensure_ascii=False, indent=2))
     else:
-        print(format_markdown(rep))
+        print(md_text)
     return 0
 
 
