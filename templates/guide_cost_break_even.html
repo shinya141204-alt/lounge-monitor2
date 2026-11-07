@@ -72,7 +72,7 @@
             "name": "相席ラウンジの男性1人あたりの平均予算・最適な滞在時間はどのくらいですか？",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "主要ラウンジの相席時料金は10分あたり約600円〜900円前後（飲み放題込み）のため、60分相席すると1人あたり約4,000円〜6,000円前後が目安となります。最も費用対効果が高いのは「相性が良ければ45〜50分で2軒目のカフェやバーへ移動し、噛み合わなければ30〜40分で席替えまたは近隣の高女子率店舗へ切り替える」立ち回りです。"
+              "text": "主要ラウンジの相席時料金は10分あたり約600円〜900円前後（飲み放題込み）で、60分相席すると1人あたり約4,000円〜6,000円前後が目安となります。最も費用対効果が高いのは「相性が良ければ45〜50分で2軒目のカフェやバーへ移動し、噛み合わなければ30〜40分で席替えまたは近隣の高女子率店舗へ切り替える」立ち回りです。"
             }
           },
           {
@@ -444,9 +444,15 @@
             </div>
 
             {% if not is_staff and not session.get('is_staff') and not is_scheduled_preview %}
-            <div class="editorial-ref-note editorial-bridge-box">
-                関連ガイド：近隣店がすべて男性先行の夜に待機コストを抑える代替アプリの選び方は<a href="/grooming#backup-apps" data-cushion="1">満席・男性待ち時の予備カード比較</a>、徒歩圏の穴場店を即座に探すなら<a href="/concierge" data-cushion="1">今夜の穴場・徒歩ハシゴ3秒診断</a>もあわせて活用できます。
-            </div>
+            <aside class="editorial-bridge-box" aria-label="滞在コスト最適化と男女別の立ち回りガイド">
+                <span class="editorial-bridge-kicker">SMART EXIT &amp; BACKUP PLAN</span>
+                <p class="editorial-bridge-title">「40分で見切る」を迷わず実行するための事前準備カード</p>
+                <p class="editorial-bridge-desc">各店の<a href="/price-comparison" data-cushion="1">時間帯別10分単価・単独待機料（220〜330円）一覧</a>を頭に入れておくほか、近隣店がどこも男性待ちの夜に切り替えられる恋活アプリや、女性側の角が立たない40分退店フレーズを手元に用意しておくと判断がぶれません。徒歩圏の乗り換え候補は<a href="/concierge" data-cushion="1">穴場・徒歩ハシゴ診断</a>でも確認できます。</p>
+                <div class="editorial-bridge-actions">
+                    <a href="/grooming#backup-apps" data-cushion="1" class="editorial-bridge-btn editorial-bridge-btn--men"><span>男性向け｜満席時の予備アプリ＆2軒目バー予約</span><span>›</span></a>
+                    <a href="/for-women#change-seat-manual" data-cushion="1" class="editorial-bridge-btn editorial-bridge-btn--women"><span>女性向け｜気まずくならない40分退店フレーズ</span><span>›</span></a>
+                </div>
+            </aside>
             {% endif %}
 
             <div class="cta-box">

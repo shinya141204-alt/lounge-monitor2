@@ -51,11 +51,12 @@ def _x_scheduled_job(slot_lbl="20:00"):
     if not turbo_store.acquire_distributed_lock(f"cron:x:{slot_lbl}", ttl_sec=55):
         return
     try:
+        import ops_governance
         import sns_editorial
         if not sns_editorial.should_fire_scheduled_slot_now("x", slot_lbl):
             return
         with app_module.data_lock:
-            cur_stores = list(app_module.latest_data.get("full_data") or [])
+            cur_stores = ops_governance.filter_visible_stores(list(app_module.latest_data.get("full_data") or []))
         skip_pace, pace_reason = sns_editorial.should_skip_slot_for_human_pacing("x", slot_lbl, stores=cur_stores)
         if skip_pace:
             logger.info(f"[worker] Skipping X {slot_lbl} for human pacing: {pace_reason}")
@@ -108,12 +109,13 @@ def _threads_daily_job():
     if not turbo_store.acquire_distributed_lock("cron:threads:2200", ttl_sec=55):
         return
     try:
+        import ops_governance
         import sns_editorial
         if not sns_editorial.should_fire_scheduled_slot_now("threads", "22:00"):
             return
         import threads_poster
         with app_module.data_lock:
-            cur_stores = list(app_module.latest_data.get("full_data") or [])
+            cur_stores = ops_governance.filter_visible_stores(list(app_module.latest_data.get("full_data") or []))
             is_seed = bool(app_module.latest_data.get("is_seed"))
         if cur_stores and not is_seed:
             skip_pace, pace_reason = sns_editorial.should_skip_slot_for_human_pacing("threads", "22:00", stores=cur_stores)
@@ -130,12 +132,13 @@ def _threads_ladies_job():
     if not turbo_store.acquire_distributed_lock("cron:threads_ladies:1930", ttl_sec=55):
         return
     try:
+        import ops_governance
         import sns_editorial
         if not sns_editorial.should_fire_scheduled_slot_now("threads_ladies", "19:30"):
             return
         import threads_poster
         with app_module.data_lock:
-            cur_stores = list(app_module.latest_data.get("full_data") or [])
+            cur_stores = ops_governance.filter_visible_stores(list(app_module.latest_data.get("full_data") or []))
             is_seed = bool(app_module.latest_data.get("is_seed"))
         if cur_stores and not is_seed:
             threads_poster.execute_scheduled_ladies_threads_post(cur_stores, slot_label="19:30")
@@ -148,6 +151,7 @@ def _ig_reel_scheduled_job(slot_lbl="20:00"):
     if not turbo_store.acquire_distributed_lock(f"cron:ig_reel:{slot_lbl}", ttl_sec=120):
         return
     try:
+        import ops_governance
         import sns_editorial
         if not sns_editorial.should_fire_scheduled_slot_now("ig_reel", slot_lbl):
             return
@@ -155,7 +159,7 @@ def _ig_reel_scheduled_job(slot_lbl="20:00"):
         if not instagram_poster.is_reel_auto_schedule_enabled(allow_blocking=False):
             return
         with app_module.data_lock:
-            cur_stores = list(app_module.latest_data.get("full_data") or [])
+            cur_stores = ops_governance.filter_visible_stores(list(app_module.latest_data.get("full_data") or []))
             is_seed = bool(app_module.latest_data.get("is_seed"))
         if cur_stores and not is_seed:
             instagram_poster.publish_live_reel_to_instagram(
@@ -173,6 +177,7 @@ def _tiktok_inbox_scheduled_job(slot_lbl="20:35"):
     if not turbo_store.acquire_distributed_lock(f"cron:tiktok:{slot_lbl}", ttl_sec=120):
         return
     try:
+        import ops_governance
         import tiktok_poster
         if not tiktok_poster.is_tiktok_auto_schedule_enabled(allow_blocking=False):
             return
@@ -182,7 +187,7 @@ def _tiktok_inbox_scheduled_job(slot_lbl="20:35"):
         if not sns_editorial.should_fire_scheduled_slot_now("tiktok", slot_lbl):
             return
         with app_module.data_lock:
-            cur_stores = list(app_module.latest_data.get("full_data") or [])
+            cur_stores = ops_governance.filter_visible_stores(list(app_module.latest_data.get("full_data") or []))
             is_seed = bool(app_module.latest_data.get("is_seed"))
         if cur_stores and not is_seed:
             tiktok_poster.execute_scheduled_tiktok_inbox_post(cur_stores, slot_label=slot_lbl, force=False)
@@ -214,8 +219,9 @@ def _bonus_alert_check_job():
         return
     try:
         import bonus_alert
+        import ops_governance
         with app_module.data_lock:
-            cur_stores = list(app_module.latest_data.get("full_data") or [])
+            cur_stores = ops_governance.filter_visible_stores(list(app_module.latest_data.get("full_data") or []))
             is_seed = bool(app_module.latest_data.get("is_seed"))
         if cur_stores and not is_seed:
             bonus_alert.check_and_post_bonus_alert(cur_stores)
@@ -245,9 +251,10 @@ def _pdca_autonomous_job():
     if not turbo_store.acquire_distributed_lock("cron:pdca_cycle", ttl_sec=180):
         return
     try:
+        import ops_governance
         import pdca_engine
         with app_module.data_lock:
-            cur_stores = list(app_module.latest_data.get("full_data") or [])
+            cur_stores = ops_governance.filter_visible_stores(list(app_module.latest_data.get("full_data") or []))
         pdca_engine.run_pdca_cycle(
             live_stores=cur_stores,
             days=14,

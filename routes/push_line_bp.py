@@ -5,7 +5,7 @@ import hmac
 import json
 import logging
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, session
 
 import local_db
 import push_watch
@@ -41,7 +41,10 @@ def api_push_subscribe():
     if not raw_store or len(raw_store) > 80 or target_cond not in ("female_55", "zero_wait", "evening_peak"):
         return jsonify({"ok": False, "status": "error", "error": "Invalid store or condition"}), 400
 
+    import ops_governance
     store_name = store_master.to_internal_store_name(raw_store)
+    if ops_governance.is_store_hidden(store_name):
+        return jsonify({"ok": False, "status": "error", "error": "Unknown store"}), 400
     with core.data_lock:
         known_names = {s.get("name") for s in (core.latest_data.get("full_data") or [])}
     if known_names:
@@ -66,6 +69,15 @@ def api_push_subscribe():
     sec_bytes = str(core.app.secret_key).encode("utf-8")
     ip_hash = hmac.new(sec_bytes, f"push_ip:{client_ip}".encode("utf-8"), hashlib.sha256).hexdigest()[:16]
 
+    is_measurement_exempt = (
+        request.args.get("staff_test") == "1"
+        or bool(payload.get("staff_test"))
+        or bool(session.get("is_staff"))
+        or bool(session.get("is_master"))
+        or core._is_bot_request()
+        or core._is_prefetch_request()
+    )
+
     ok, sub_id = local_db.upsert_web_push_subscription(
         endpoint=endpoint,
         p256dh=p256dh,
@@ -74,7 +86,7 @@ def api_push_subscribe():
         target_cond=target_cond,
         ip_hash=ip_hash,
         ttl_days=30,
-        record_watch_intent=True,
+        record_watch_intent=not is_measurement_exempt,
     )
     if not ok:
         return jsonify({"ok": False, "status": "error", "error": "Subscription persistence failed"}), 500
@@ -115,7 +127,10 @@ def api_line_webhook():
     if not push_watch.is_line_bot_configured():
         return jsonify({"status": "disabled", "message": "LINE credentials not configured"}), 503
 
-    raw_body = request.get_data(cache=False)
+    content_len = request.content_length
+    if content_len is not None and content_len > 65536:
+        return jsonify({"status": "error", "error": "Payload too large"}), 413
+    raw_body = request.stream.read(65537)
     if len(raw_body) > 65536:
         return jsonify({"status": "error", "error": "Payload too large"}), 413
 

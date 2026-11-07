@@ -13,6 +13,29 @@ from routes._bridge import core
 
 sns_jobs_bp = Blueprint('sns_jobs_bp', __name__)
 
+_INLINE_SNS_CONSUMER_MAX_HANG_SEC = 180.0
+
+
+def _is_cross_site_fetch() -> bool:
+    sec_fetch = (request.headers.get('Sec-Fetch-Site') or '').strip().lower()
+    return bool(sec_fetch and sec_fetch not in ('same-origin', 'none'))
+
+
+def _get_visible_live_stores() -> list:
+    import ops_governance
+    with core.data_lock:
+        raw_stores = list(core.latest_data.get('full_data') or [])
+    return ops_governance.filter_visible_stores(raw_stores)
+
+
+def _get_visible_latest_data_snapshot() -> dict:
+    import ops_governance
+    with core.data_lock:
+        snap = dict(core.latest_data or {})
+        raw_stores = list(snap.get('full_data') or [])
+    snap['full_data'] = ops_governance.filter_visible_stores(raw_stores)
+    return snap
+
 
 @sns_jobs_bp.route('/ogp/live.png')
 def dynamic_live_ogp_image():
@@ -129,7 +152,7 @@ def public_reel_mp4(reel_type):
     )
     # Security guard: only Master-authorized requests can force ffmpeg re-render (`?refresh=1`) or write new Redis/disk slots.
     # Unauthenticated visitors (and Meta Graph API crawlers) can only read pre-pinned slots (`?s=<ts_code>`) or cached default MP4.
-    can_mutate_reel = core.is_master_authorized()
+    can_mutate_reel = core.is_master_authorized() and (core._secret_header_ok() or not _is_cross_site_fetch())
     wants_refresh = can_mutate_reel and (request.args.get('refresh') == '1')
     preview_tok = re.sub(r'[^A-Za-z0-9_.-]', '', (request.args.get('t') or '').strip())[:32]
     force_refresh = wants_refresh and not is_cont_range
@@ -190,7 +213,11 @@ def public_reel_preview_jpg(reel_type):
     core.restore_latest_data_if_empty()
     core.trigger_background_fetch_if_needed()
     rt = reel_generator.normalize_reel_type(reel_type)
-    can_refresh = core.is_master_authorized() and (request.args.get('refresh') == '1')
+    can_refresh = (
+        core.is_master_authorized()
+        and (core._secret_header_ok() or not _is_cross_site_fetch())
+        and (request.args.get('refresh') == '1')
+    )
     import ops_governance
     with core.data_lock:
         live_s = ops_governance.filter_visible_stores(list(core.latest_data.get('full_data') or []))
@@ -224,13 +251,13 @@ def generate_sns_post_api():
     import sns_workflows
     post_type = request.args.get('type', 'all')
     base_url = request.url_root.rstrip('/')
-    return jsonify(sns_workflows.build_sns_post_payload(post_type, base_url, core.latest_data))
+    return jsonify(sns_workflows.build_sns_post_payload(post_type, base_url, _get_visible_latest_data_snapshot()))
 
 
 def run_scheduled_x_post(slot_label="20:00", force=False):
     """Execute scheduled X auto-post with duplicate prevention that survives restarts/redeploys."""
     import sns_workflows
-    return sns_workflows.execute_scheduled_x_post(core.latest_data, slot_label=slot_label, force=force)
+    return sns_workflows.execute_scheduled_x_post(_get_visible_latest_data_snapshot(), slot_label=slot_label, force=force)
 
 
 def run_scheduled_weekly_x_post(force=False):
@@ -396,12 +423,18 @@ def execute_sns_job_payload(job_type: str, params: dict = None) -> dict:
         import tips_poster
         slot = str(p.get('slot') or '12:00').strip()
         idx_raw = p.get('idx')
-        idx = int(idx_raw) if idx_raw is not None and str(idx_raw).strip() != '' else None
+        try:
+            idx = int(idx_raw) if idx_raw is not None and str(idx_raw).strip() != '' else None
+        except (TypeError, ValueError):
+            idx = None
         return tips_poster.run_scheduled_tip_post(slot_label=slot, force=force, tip_index=idx)
 
     if jtype == 'note_share':
         import note_poster
-        idx = int(p.get('idx') or 0)
+        try:
+            idx = int(p.get('idx') or 0)
+        except (TypeError, ValueError):
+            idx = 0
         return note_poster.check_and_post_new_note(force=force, article_index=idx)
 
     if jtype == 'x_pinned':
@@ -414,7 +447,10 @@ def execute_sns_job_payload(job_type: str, params: dict = None) -> dict:
 
     if jtype == 'x_column':
         import x_poster
-        idx = int(p.get('idx') or 0)
+        try:
+            idx = int(p.get('idx') or 0)
+        except (TypeError, ValueError):
+            idx = 0
         main_text, reply_text, item = x_poster.build_column_tweet_thread(col_index=idx)
         media_bytes, media_mime = x_poster.load_column_eyecatch_bytes(item)
         res = x_poster.post_to_x(
@@ -433,23 +469,20 @@ def execute_sns_job_payload(job_type: str, params: dict = None) -> dict:
 
     if jtype == 'x_bonus':
         import bonus_alert
-        with core.data_lock:
-            stores = list(core.latest_data.get('full_data') or [])
+        stores = _get_visible_live_stores()
         return bonus_alert.check_and_post_bonus_alert(stores, force=force)
 
     if jtype == 'threads_post':
         import threads_poster
         slot = str(p.get('slot') or '20:00').strip()
-        with core.data_lock:
-            stores = list(core.latest_data.get('full_data') or [])
+        stores = _get_visible_live_stores()
         return threads_poster.execute_scheduled_threads_post(stores, slot_label=slot, force=force)
 
     if jtype == 'ig_post':
         import instagram_poster
         mode = str(p.get('mode') or 'carousel').strip()
         slot = str(p.get('slot') or '22:00').strip()
-        with core.data_lock:
-            stores = list(core.latest_data.get('full_data') or [])
+        stores = _get_visible_live_stores()
         return instagram_poster.execute_scheduled_instagram_post(stores, mode=mode, slot_label=slot, force=force)
 
     if jtype == 'ig_reel':
@@ -459,8 +492,7 @@ def execute_sns_job_payload(job_type: str, params: dict = None) -> dict:
         cap = str(p.get('caption') or '').strip()
         share_feed = bool(p.get('share_to_feed', True))
         slot = str(p.get('slot') or 'manual_reel').strip()
-        with core.data_lock:
-            stores = list(core.latest_data.get('full_data') or [])
+        stores = _get_visible_live_stores()
         return instagram_poster.publish_live_reel_to_instagram(
             stores,
             reel_type=rt,
@@ -476,8 +508,7 @@ def execute_sns_job_payload(job_type: str, params: dict = None) -> dict:
         rt = reel_generator.normalize_reel_type(p.get('reel_type', 'tiktok_gap_shock'))
         cap = str(p.get('caption') or '').strip()
         slot = str(p.get('slot') or 'manual_tiktok').strip()
-        with core.data_lock:
-            stores = list(core.latest_data.get('full_data') or [])
+        stores = _get_visible_live_stores()
         return tiktok_poster.publish_live_reel_to_tiktok_inbox(
             stores,
             reel_type=rt,
@@ -488,8 +519,7 @@ def execute_sns_job_payload(job_type: str, params: dict = None) -> dict:
 
     if jtype == 'ladies_sns':
         channel = str(p.get('channel') or 'threads').strip().lower()
-        with core.data_lock:
-            stores = list(core.latest_data.get('full_data') or [])
+        stores = _get_visible_live_stores()
         if channel in ('ig', 'instagram'):
             import instagram_poster
             slot = str(p.get('slot') or '19:45').strip()
@@ -514,6 +544,8 @@ def execute_sns_job_payload(job_type: str, params: dict = None) -> dict:
 
 _inline_sns_consumer_lock = threading.Lock()
 _inline_sns_consumer_running = False
+_inline_sns_consumer_started_at = 0.0
+_inline_sns_consumer_thread = None
 
 
 def drain_sns_job_queue_once(timeout_sec: float = 0.05) -> dict:
@@ -539,24 +571,34 @@ def drain_sns_job_queue_once(timeout_sec: float = 0.05) -> dict:
 
 def _ensure_inline_sns_consumer_started():
     """Fallback background consumer when no external Redis-connected `worker.py` process is active."""
-    global _inline_sns_consumer_running
+    global _inline_sns_consumer_running, _inline_sns_consumer_started_at, _inline_sns_consumer_thread
+    now_mono = time.monotonic()
     with _inline_sns_consumer_lock:
         if _inline_sns_consumer_running:
-            return
+            alive = _inline_sns_consumer_thread is not None and _inline_sns_consumer_thread.is_alive()
+            hung = (_inline_sns_consumer_started_at > 0.0) and ((now_mono - _inline_sns_consumer_started_at) > _INLINE_SNS_CONSUMER_MAX_HANG_SEC)
+            if alive and not hung:
+                return
+            if hung:
+                logging.warning("[sns_jobs_bp] Inline SNS consumer exceeded 180s watchdog; spawning fresh consumer thread.")
         _inline_sns_consumer_running = True
+        _inline_sns_consumer_started_at = now_mono
 
-    def _runner():
-        global _inline_sns_consumer_running
-        try:
-            for _ in range(32):
-                done = core.drain_sns_job_queue_once(timeout_sec=0.05)
-                if done is None:
-                    break
-        finally:
-            with _inline_sns_consumer_lock:
-                _inline_sns_consumer_running = False
+        def _runner(my_started_at: float):
+            global _inline_sns_consumer_running
+            try:
+                for _ in range(32):
+                    done = core.drain_sns_job_queue_once(timeout_sec=0.05)
+                    if done is None:
+                        break
+            finally:
+                with _inline_sns_consumer_lock:
+                    if _inline_sns_consumer_started_at == my_started_at:
+                        _inline_sns_consumer_running = False
 
-    threading.Thread(target=_runner, daemon=True).start()
+        t = threading.Thread(target=_runner, args=(now_mono,), daemon=True)
+        _inline_sns_consumer_thread = t
+    t.start()
 
 
 def _enqueue_sns_job_and_maybe_dispatch(job_type: str, params: dict = None, worker_only: bool = False) -> dict:
@@ -574,8 +616,8 @@ def _require_master_post_csrf():
     if request.method != 'POST':
         resp = jsonify({'error': 'Method Not Allowed: use POST to trigger SNS actions'}), 405
         return resp
-    # Machine-to-machine requests with X-Admin-Secret header are inherently CSRF-immune
-    if (request.headers.get('X-Admin-Secret') or '').strip():
+    # Machine-to-machine requests with verified X-Admin-Secret header are inherently CSRF-immune
+    if core._secret_header_ok():
         return None
     sec_fetch = (request.headers.get('Sec-Fetch-Site') or '').strip().lower()
     if sec_fetch and sec_fetch not in ('same-origin', 'none'):
@@ -786,8 +828,7 @@ def trigger_x_bonus_endpoint():
     if queued_resp is not None:
         return queued_resp
     import bonus_alert
-    with core.data_lock:
-        stores = list(core.latest_data.get('full_data') or [])
+    stores = _get_visible_live_stores()
     res = bonus_alert.check_and_post_bonus_alert(stores, force=force)
     return jsonify(res)
 
@@ -804,8 +845,7 @@ def trigger_threads_post_endpoint():
     if queued_resp is not None:
         return queued_resp
     import threads_poster
-    with core.data_lock:
-        stores = list(core.latest_data.get('full_data') or [])
+    stores = _get_visible_live_stores()
     res = threads_poster.execute_scheduled_threads_post(stores, slot_label=slot, force=force)
     return jsonify(res)
 
@@ -823,8 +863,7 @@ def trigger_ig_post_endpoint():
     if queued_resp is not None:
         return queued_resp
     import instagram_poster
-    with core.data_lock:
-        stores = list(core.latest_data.get('full_data') or [])
+    stores = _get_visible_live_stores()
     res = instagram_poster.execute_scheduled_instagram_post(stores, mode=mode, slot_label=slot, force=force)
     return jsonify(res)
 
@@ -841,8 +880,7 @@ def trigger_ladies_sns_endpoint():
     queued_resp = _maybe_enqueue_async_sns_trigger('ladies_sns', {'channel': channel, 'slot': slot_arg, 'force': force})
     if queued_resp is not None:
         return queued_resp
-    with core.data_lock:
-        stores = list(core.latest_data.get('full_data') or [])
+    stores = _get_visible_live_stores()
     if channel in ('ig', 'instagram'):
         import instagram_poster
         res = instagram_poster.execute_scheduled_ladies_instagram_post(stores, slot_label=slot_arg, force=force)

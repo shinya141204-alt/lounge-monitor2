@@ -470,8 +470,35 @@
         .store-related-links .btn-secondary { min-height: 40px; font-size: 0.82rem; }
         #store-smart-cta-card.context-lead-row.pr-card-item { margin: 0 0 20px !important; }
         #store-smart-cta-card .pr-context-foot { flex-wrap: wrap; gap: 6px 16px; }
+        .store-dossier-card { font-variant-numeric: tabular-nums; }
+        .store-dossier-head { margin: 0 0 14px; }
+        .store-dossier-eyebrow { margin: 0 0 4px; font-size: 0.74rem; font-weight: 600; letter-spacing: 0.04em; color: #b4b4be; }
+        .store-dossier-card h2.store-dossier-title { margin: 0 0 8px; font-size: 1.04rem; line-height: 1.45; color: #f4f4f5; }
+        .store-dossier-catch { margin: 0; font-size: 0.9rem; font-weight: 700; line-height: 1.6; color: #f4f4f5; }
+        .store-dossier-block { padding: 14px 0; border-top: 1px solid rgba(255, 255, 255, 0.09); min-width: 0; }
+        .store-dossier-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; padding: 14px 0; border-top: 1px solid rgba(255, 255, 255, 0.09); min-width: 0; }
+        .store-dossier-col { min-width: 0; }
+        .store-dossier-subhead { margin: 0 0 6px; font-size: 0.84rem; font-weight: 700; line-height: 1.45; color: #f4f4f5; }
+        .store-dossier-subhead.is-men { color: #93c5fd; }
+        .store-dossier-subhead.is-women { color: #f4a8b8; }
+        .store-dossier-body { margin: 0; font-size: 0.86rem; line-height: 1.82; color: #d4d4dc; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+        .store-dossier-byline { margin: 0; padding-top: 12px; border-top: 1px solid rgba(255, 255, 255, 0.09); font-size: 0.75rem; line-height: 1.65; color: #b4b4be; font-variant-numeric: tabular-nums; }
+        body.theme-light .store-dossier-eyebrow,
+        body.theme-light .store-dossier-byline { color: #52525b; }
+        body.theme-light .store-dossier-card h2.store-dossier-title,
+        body.theme-light .store-dossier-catch,
+        body.theme-light .store-dossier-subhead { color: #18181b; }
+        body.theme-light .store-dossier-subhead.is-men { color: #1d4ed8; }
+        body.theme-light .store-dossier-subhead.is-women { color: #be123c; }
+        body.theme-light .store-dossier-body { color: #27272a; }
+        body.theme-light .store-dossier-block,
+        body.theme-light .store-dossier-columns,
+        body.theme-light .store-dossier-byline { border-top-color: rgba(24, 24, 27, 0.10); }
         @media (max-width: 640px) {
             #store-smart-cta-card .pr-context-foot { flex-direction: column; align-items: flex-start; gap: 2px; }
+            .store-dossier-columns { grid-template-columns: 1fr; gap: 0; padding: 0; border-top: none; }
+            .store-dossier-col { padding: 14px 0; border-top: 1px solid rgba(255, 255, 255, 0.09); }
+            body.theme-light .store-dossier-col { border-top-color: rgba(24, 24, 27, 0.10); }
         }
     </style>
     <link rel="stylesheet" href="/static/calm.css?v=37">
@@ -975,6 +1002,39 @@
             <p class="store-insight-note">記録が取れなかった日は空欄にしています。</p>
             {% endif %}
             <p class="store-insight-note">集計方法は<a href="/about" style="color: var(--accent-text);">相席ナビについて</a>に記載しています（0〜6時台は前日扱い、0名の記録は除外、女性比率は男女合計6名以上で計算）。</p>
+        </section>
+        {% endif %}
+
+        {% if store_dossier %}
+        <section class="section-card store-dossier-card" id="store-editorial-dossier" aria-labelledby="store-dossier-heading">
+            <div class="store-dossier-head">
+                <p class="store-dossier-eyebrow">編集長カルテ｜街の客層カラーと男女別の立ち回り</p>
+                <h2 id="store-dossier-heading" class="store-dossier-title">{{ store.seo_name }}の現地空気感・時間帯と立ち回りメモ</h2>
+                <p class="store-dossier-catch">{{ store_dossier.catch }}</p>
+            </div>
+
+            <div class="store-dossier-block">
+                <h3 class="store-dossier-subhead">街・立地と客層カラー</h3>
+                <p class="store-dossier-body">{{ store_dossier.street_vibe }}</p>
+            </div>
+
+            <div class="store-dossier-columns">
+                <div class="store-dossier-col">
+                    <h3 class="store-dossier-subhead is-men">男性の立ち回り・料金システムの使い所</h3>
+                    <p class="store-dossier-body">{{ store_dossier.mens_tactic }}</p>
+                </div>
+                <div class="store-dossier-col">
+                    <h3 class="store-dossier-subhead is-women">女性の居心地・1軒目/2軒目の使い分け</h3>
+                    <p class="store-dossier-body">{{ store_dossier.womens_tactic }}</p>
+                </div>
+            </div>
+
+            <div class="store-dossier-block">
+                <h3 class="store-dossier-subhead">近隣ライバル店との使い分け・2軒目動線</h3>
+                <p class="store-dossier-body">{{ store_dossier.hopping_note }}</p>
+            </div>
+
+            <p class="store-dossier-byline">編集責任：{{ store_dossier.editor_credit or 'くわもん（相席ナビ編集長）' }} ／ 料金・営業時間・入店規定は各公式案内および当サイト比較基準に基づきます</p>
         </section>
         {% endif %}
 

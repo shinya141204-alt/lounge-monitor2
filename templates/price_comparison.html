@@ -26,7 +26,7 @@
     <link rel="alternate" type="text/markdown" href="https://aiseki-navi.com/llms.txt" title="相席ナビ AI要約ドキュメント (llms.txt)">
     <link rel="alternate" type="application/json" href="https://aiseki-navi.com/api/llms-facts.json" title="相席ナビ AIグラウンディング構造化JSON (llms-facts.json)">
 
-    <meta property="og:title" content="{% if active_cluster_ns.item %}{{ active_cluster_ns.item.tab_label }}の相席ラウンジ料金・開催中イベント・現在人数比較｜相席ナビ{% else %}相席ラウンジ全{{ data.all_domestic_stores|length }}店舗の料金（待機・相席単価・1名可否）＆開催中イベント徹底比較{% endif %}">
+    <meta property="og:title" content="{% if active_cluster_ns.item %}{{ active_cluster_ns.item.tab_label }}の相席ラウンジ料金・開催中イベント・現在人数比較｜相席ナビ{% else %}相席ラウンジ全{{ data.all_domestic_stores|length }}店舗の料金（待機・相席単価・1名可否）＆開催中イベント横断比較{% endif %}">
     <meta property="og:description" content="{% if active_cluster_ns.item %}{{ active_cluster_ns.item.desc }} 単独待機料金・4時間帯別の相席単価・1名入店可否・今の男女人数を横並び検証。{% else %}オリエンタルラウンジ・ag・JIS各店の単独待機料金（220円〜330円/10分）、店舗ごと・時間帯ごとに異なる相席10分単価、開催中イベント、今の女性人数・比率を横並び検証。{% endif %}">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://aiseki-navi.com/price-comparison{% if active_cluster_ns.item %}?area={{ active_cluster_ns.item.id }}{% endif %}">
@@ -69,7 +69,7 @@
           "name": "オリエンタルラウンジやag（アグ）にも待機料金（単独時料金）はありますか？",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "はい、オリエンタルラウンジ・ag（アグ）・JIS（ジス）および広島・岡山の地場ラウンジ（ALFA・CLOVERS・XIX）では、相席していない単独時（待機・休憩中）に10分あたり220円または330円（税込・飲み放題込）の単独料金が発生します（梅田のヤタコイのみ定額デイパス制で時間内の追加待機課金なし）。また、相席時の10分料金も店舗や4つの時間帯（Open〜20時・20〜22時・22〜24時・24時〜Close）・曜日によって275円〜1,500円まで大きく異なるため、入店前に店舗ごとの単価と現在の女性人数・比率を確認するのが最も確実です。"
+            "text": "はい、オリエンタルラウンジ・ag（アグ）・JIS（ジス）および広島・岡山の地場ラウンジ（ALFA・CLOVERS・XIX）では、相席していない単独時（待機・休憩中）に10分あたり220円または330円（税込・飲み放題込）の単独料金が発生します（梅田のヤタコイのみ定額デイパス制で時間内の追加待機課金なし）。また、相席時の10分料金も店舗や4つの時間帯（Open〜20時・20〜22時・22〜24時・24時〜Close）・曜日によって275円〜1,500円まで大きく異なるので、入店前に店舗ごとの単価と現在の女性人数・比率を確認するのが最も確実です。"
           }
         },
         {
@@ -467,7 +467,7 @@
 
         <header class="hero-box">
             <span class="hero-kicker">店舗別の単独（待機）料金 × 4時間帯の相席単価 × 開催中イベント × リアルタイム人数</span>
-            <h1>相席ラウンジ全{{ data.all_domestic_stores|length }}店舗「店舗別料金（待機・相席単価・1名入店可否）＆開催中イベント」徹底比較ボード</h1>
+            <h1>相席ラウンジ全{{ data.all_domestic_stores|length }}店舗「店舗別料金（待機・相席単価・1名入店可否）＆開催中イベント」横断比較ボード</h1>
             <p>
                 <strong>オリエンタルラウンジ・ag（アグ）・JIS（ジス）・ASOBIBAR・地域ラウンジ</strong>を含む国内全{{ data.all_domestic_stores|length }}店舗について、<strong>単独（待機）料金（220円〜330円/10分 または 定額・チケット制）</strong>、<strong>4時間帯別の相席10分単価（275円〜1,500円）</strong>、<strong>男性1名入店の可否</strong>を並列で比較できます。行きたい街のタブを選ぶか、ページ下部の<a href="#all-stores-price-catalog" style="color: var(--accent); font-weight: 600; text-decoration: underline;">全{{ data.all_domestic_stores|length }}店舗の料金・待機単価マスタ一覧表</a>をご活用ください。
             </p>
@@ -481,7 +481,7 @@
             </div>
             <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border-subtle); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
                 <a href="/guide/price-event-comparison" style="color: var(--accent-text); font-size: 0.79rem; font-weight: 600; text-decoration: none;">
-                    📖 比較ボードの詳しい見方・活用ガイド（待機料金・4時間帯単価・最低人数10名の理由）を読む ›
+                    比較ボードの詳しい見方・活用ガイド（待機料金・4時間帯単価・最低人数10名の理由）を読む ›
                 </a>
                 <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
                     <span style="font-size: 0.74rem; color: var(--text-sub);">現在エリアの比較結果を共有：</span>
@@ -546,7 +546,7 @@
                             {% if cl.best_store %}
                             {{ cl.best_store.verdict_comment }}
                             {% elif cl.has_any_open %}
-                            公式営業時間内ですが、全店舗とも女性{{ data.min_women_eval }}名未満（少人数または 0 : 0 空席）のため、席替え（次の相席候補）の余地を考慮して推奨店舗の選出を保留しています。下の比較シートで各店の現在人数・単価・入店条件を比較してください。
+                            公式営業時間内ですが、全店舗とも女性{{ data.min_women_eval }}名未満（少人数または 0 : 0 空席）につき、席替え（次の相席候補）の余地を考慮して推奨店舗の選出を保留しています。下の比較シートで各店の現在人数・単価・入店条件を比較してください。
                             {% else %}
                             各店舗の公式オープン時刻後にリアルタイム男女人数と推奨判定が自動反映されます。事前の時間帯別料金・単独料金・入店条件の比較にご活用ください。
                             {% endif %}
@@ -970,13 +970,18 @@
         {% if not is_staff and not session.get('is_staff') %}
         <aside class="section-card" aria-label="入店前の身だしなみ・満席対策ガイド" style="padding: 18px 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; border-color: var(--border-subtle);">
             <div style="flex: 1 1 320px;">
-                <div style="font-size: 0.72rem; font-weight: 700; color: var(--text-sub); margin-bottom: 3px;">PRE-OUTING PREP & BACKUP GUIDE</div>
-                <div style="font-size: 0.94rem; font-weight: 700; color: var(--text-main);">距離が近いソファ席での清潔感ケア＆週末満席時の予備手段まとめ</div>
-                <div style="font-size: 0.8rem; color: var(--text-sub); margin-top: 2px;">仕事帰りの青ヒゲ・肌テカリ対策、浮かない私服選び、どのお店も男性待ちの夜に使える恋活アプリの活用法を解説しています。</div>
+                <div style="font-size: 0.72rem; font-weight: 700; color: var(--text-sub); margin-bottom: 3px;">PRE-OUTING PREP &amp; ZERO-WAIT GUIDE</div>
+                <div style="font-size: 0.94rem; font-weight: 700; color: var(--text-main);">向かう前の身だしなみチェックと、近隣がすべて待機中だった夜の切り替え方</div>
+                <div style="font-size: 0.8rem; color: var(--text-sub); margin-top: 2px;">仕事帰りの口元・皮脂テカリ対策や満席時の予備アプリ比較、女性ペアがいま待ちゼロで座れる店舗ボードを男女別に整理しています。</div>
             </div>
-            <a href="/grooming" data-cushion="1" class="btn-secondary" style="display: inline-flex; align-items: center; justify-content: center; text-align: center; gap: 6px; padding: 10px 16px; border-radius: 999px; background: var(--card-elevated); border: 1px solid var(--border-strong); color: var(--text-main); text-decoration: none; font-size: 0.83rem; font-weight: 700; max-width: 100%;">
-                相席ラウンジへ行く前の清潔感ケア＆満席時の予備アプリ特集を見る ›
-            </a>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                <a href="/grooming" data-cushion="1" class="btn-secondary" style="display: inline-flex; align-items: center; justify-content: center; text-align: center; gap: 6px; padding: 10px 16px; border-radius: 999px; background: var(--card-elevated); border: 1px solid var(--border-strong); color: var(--text-main); text-decoration: none; font-size: 0.83rem; font-weight: 700; max-width: 100%;">
+                    男性向け｜身だしなみ＆満席時の予備策 ›
+                </a>
+                <a href="/for-women" data-cushion="1" class="btn-secondary" style="display: inline-flex; align-items: center; justify-content: center; text-align: center; gap: 6px; padding: 10px 16px; border-radius: 999px; background: var(--card-elevated); border: 1px solid var(--border-strong); color: var(--text-main); text-decoration: none; font-size: 0.83rem; font-weight: 700; max-width: 100%;">
+                    女性向け｜待ちゼロ店舗＆席替えガイド ›
+                </a>
+            </div>
         </aside>
         {% endif %}
         </main>

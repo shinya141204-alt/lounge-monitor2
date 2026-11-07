@@ -17,6 +17,31 @@ _sns_slide_bytes_cache = OrderedDict()  # (slide_num, is_jpg, ctx_sig) -> (ts, b
 _sns_zip_bytes_cache = {'key': None, 'ts': 0.0, 'bytes': None}
 
 
+def _is_same_origin_get_action_allowed() -> bool:
+    """Allow expensive/side-effecting GET flags (`refresh_ai=1`, `flush=1`) only on same-origin or secret-authenticated requests."""
+    if core._secret_header_ok():
+        return True
+    sec_fetch = (request.headers.get('Sec-Fetch-Site') or '').strip().lower()
+    if sec_fetch and sec_fetch not in ('same-origin', 'none'):
+        return False
+    return True
+
+
+def _get_visible_live_stores() -> list:
+    import ops_governance
+    with core.data_lock:
+        raw_s = list(core.latest_data.get('full_data') or [])
+    return ops_governance.filter_visible_stores(raw_s)
+
+
+def _safe_clamped_days(raw_val, default: int = 14) -> int:
+    try:
+        parsed = int(raw_val) if raw_val is not None and str(raw_val).strip() != '' else default
+    except (TypeError, ValueError):
+        parsed = default
+    return max(1, min(90, parsed))
+
+
 def _sns_context_sig(ctx: dict) -> tuple:
     if not isinstance(ctx, dict):
         return ()
@@ -44,8 +69,7 @@ def _get_sns_kit_context(fast=False):
     import ig_carousel_generator
     import weekly_report
     now_t = time.time()
-    with core.data_lock:
-        live_s = list(core.latest_data.get('full_data') or [])
+    live_s = _get_visible_live_stores()
     live_top_sig = tuple((s.get('name'), int(s.get('women') or 0), int(s.get('men') or 0)) for s in live_s[:8])
     cache_key = (
         core.local_db.DB_PATH,
@@ -161,7 +185,7 @@ def staff_analytics():
     import archive_data
     days = max(1, min(90, request.args.get('days', 7, type=int)))
     is_json_req = request.args.get('format') == 'json'
-    force_flush = request.args.get('flush') == '1'
+    force_flush = (request.args.get('flush') == '1') and _is_same_origin_get_action_allowed()
     flushed_rows = 0
     if force_flush:
         try:
@@ -200,7 +224,7 @@ def staff_analytics():
 def _check_master_api_csrf():
     if not core.is_master_authorized():
         return jsonify({'ok': False, 'error': 'マスター権限が必要です'}), 401
-    if request.method == 'POST' and not (request.headers.get('X-Admin-Secret') or '').strip():
+    if request.method == 'POST' and not core._secret_header_ok():
         sec_fetch = (request.headers.get('Sec-Fetch-Site') or '').strip().lower()
         if sec_fetch and sec_fetch not in ('same-origin', 'none'):
             return jsonify({'ok': False, 'error': '不正なリクエスト元です'}), 403
@@ -278,8 +302,9 @@ def api_ops_governance():
 @staff_bp.route('/api/affiliate/config', methods=['GET', 'POST'])
 def api_affiliate_config():
     """Master-only API to inspect or live-update affiliate destination URLs without redeploying."""
-    if not core.is_master_authorized():
-        return jsonify({'ok': False, 'error': 'マスター権限が必要です'}), 401
+    guard = _check_master_api_csrf()
+    if guard is not None:
+        return guard
     import analytics
     import affiliate_manager
 
@@ -292,10 +317,12 @@ def api_affiliate_config():
         })
 
     payload = request.get_json(silent=True, force=True) or {}
+    if not isinstance(payload, dict):
+        return jsonify({'ok': False, 'error': '不正なJSONペイロードです'}), 400
     slot_id = str(payload.get('slot_id') or '').strip()
     target_url = str(payload.get('url') or '').strip()
     memo = str(payload.get('memo') or '').strip()
-    days = max(1, min(90, int(payload.get('days') or 7)))
+    days = _safe_clamped_days(payload.get('days'), default=7)
 
     res = affiliate_manager.set_affiliate_slot_override(slot_id=slot_id, target_url=target_url, memo=memo)
     if not res.get('ok'):
@@ -313,8 +340,9 @@ def api_affiliate_config():
 @staff_bp.route('/api/sheets/retention', methods=['GET', 'POST'])
 def api_sheets_retention():
     """Master-only API to inspect Google Sheets 10M-cell capacity or run compression/rotation immediately."""
-    if not core.is_master_authorized():
-        return jsonify({'ok': False, 'error': 'マスター権限が必要です'}), 401
+    guard = _check_master_api_csrf()
+    if guard is not None:
+        return guard
     import archive_data
 
     if request.method == 'GET':
@@ -362,10 +390,9 @@ def staff_sns_editorial():
     if slot_label not in ('20:00', '22:00', '00:00', '02:00'):
         slot_label = '22:00'
     tone_mode = (request.args.get('tone') or '').strip().lower() or None
-    with core.data_lock:
-        live_s = list(core.latest_data.get('full_data') or [])
+    live_s = _get_visible_live_stores()
     ig_ctx = core._get_sns_kit_context(fast=True) if channel == 'instagram' else None
-    force_ai = request.args.get('refresh_ai') == '1'
+    force_ai = (request.args.get('refresh_ai') == '1') and _is_same_origin_get_action_allowed()
     is_json_req = request.args.get('format') == 'json'
     editorial = sns_editorial.run_editorial_pipeline(
         live_s,
@@ -420,8 +447,7 @@ def api_staff_sns_reel_info():
     import tiktok_poster
     core.restore_latest_data_if_empty()
     reel_type = reel_generator.normalize_reel_type(request.args.get('reel_type', 'live_top5'))
-    with core.data_lock:
-        live_s = list(core.latest_data.get('full_data') or [])
+    live_s = _get_visible_live_stores()
     auto_on = instagram_poster.is_reel_auto_schedule_enabled(allow_blocking=False)
     tk_auto_on = tiktok_poster.is_tiktok_auto_schedule_enabled(allow_blocking=False)
     return jsonify(reel_generator.get_reel_studio_info(
@@ -435,8 +461,9 @@ def api_staff_sns_reel_info():
 @staff_bp.route('/api/staff/sns-reel/settings', methods=['POST'])
 def api_staff_sns_reel_settings():
     """Master-only endpoint to toggle scheduled Instagram Reels auto-posting."""
-    if not core.is_master_authorized():
-        return jsonify({'ok': False, 'error': 'Unauthorized'}), 401
+    guard = _check_master_api_csrf()
+    if guard is not None:
+        return guard
     import instagram_poster
     payload = request.get_json(silent=True) or {}
     enabled = bool(payload.get('auto_schedule_enabled'))
@@ -451,8 +478,9 @@ def api_staff_sns_reel_settings():
 @staff_bp.route('/api/staff/tiktok/settings', methods=['POST'])
 def api_staff_tiktok_settings():
     """Master-only endpoint to toggle scheduled Wed/Fri/Sat TikTok Inbox auto-delivery."""
-    if not core.is_master_authorized():
-        return jsonify({'ok': False, 'error': 'Unauthorized'}), 401
+    guard = _check_master_api_csrf()
+    if guard is not None:
+        return guard
     import tiktok_poster
     payload = request.get_json(silent=True) or {}
     enabled = bool(payload.get('auto_schedule_enabled'))
@@ -467,8 +495,9 @@ def api_staff_tiktok_settings():
 @staff_bp.route('/api/staff/sns-reel/publish', methods=['POST'])
 def api_staff_sns_reel_publish():
     """Master-only 1-click trigger to render and publish a 9:16 vertical Reel to Instagram."""
-    if not core.is_master_authorized():
-        return jsonify({'ok': False, 'error': 'Unauthorized'}), 401
+    guard = _check_master_api_csrf()
+    if guard is not None:
+        return guard
     import instagram_poster
     import reel_generator
     core.restore_latest_data_if_empty()
@@ -491,8 +520,7 @@ def api_staff_sns_reel_publish():
             'job_id': job_rec['job_id'],
             'poll_url': f"/api/sns-jobs/{job_rec['job_id']}",
         }), 202
-    with core.data_lock:
-        live_s = list(core.latest_data.get('full_data') or [])
+    live_s = _get_visible_live_stores()
     res = instagram_poster.publish_live_reel_to_instagram(
         live_s,
         reel_type=reel_type,
@@ -508,8 +536,9 @@ def api_staff_sns_reel_publish():
 @staff_bp.route('/api/staff/tiktok/publish-inbox', methods=['POST'])
 def api_staff_tiktok_publish_inbox():
     """Master-only 1-click trigger to render and push a 9:16 short video to the TikTok mobile app Inbox (or return Phase 1 ready info)."""
-    if not core.is_master_authorized():
-        return jsonify({'ok': False, 'error': 'Unauthorized'}), 401
+    guard = _check_master_api_csrf()
+    if guard is not None:
+        return guard
     import reel_generator
     import tiktok_poster
     core.restore_latest_data_if_empty()
@@ -530,8 +559,7 @@ def api_staff_tiktok_publish_inbox():
             'job_id': job_rec['job_id'],
             'poll_url': f"/api/sns-jobs/{job_rec['job_id']}",
         }), 202
-    with core.data_lock:
-        live_s = list(core.latest_data.get('full_data') or [])
+    live_s = _get_visible_live_stores()
     res = tiktok_poster.publish_live_reel_to_tiktok_inbox(
         live_s,
         reel_type=reel_type,
@@ -557,10 +585,9 @@ def api_sns_editorial():
         channel = 'x'
     slot_label = (request.args.get('slot') or '22:00').strip()
     tone_mode = (request.args.get('tone') or '').strip().lower() or None
-    force_ai = request.args.get('refresh_ai') == '1'
+    force_ai = (request.args.get('refresh_ai') == '1') and _is_same_origin_get_action_allowed()
     cache_only = (request.args.get('cache_only') == '1') and not force_ai
-    with core.data_lock:
-        live_s = list(core.latest_data.get('full_data') or [])
+    live_s = _get_visible_live_stores()
     ig_ctx = core._get_sns_kit_context(fast=True) if channel == 'instagram' else None
     return jsonify(sns_editorial.run_editorial_pipeline(
         live_s,
@@ -578,8 +605,9 @@ def api_sns_editorial():
 @staff_bp.route('/api/editorial/tone-mode', methods=['POST'])
 def api_editorial_tone_mode():
     """Master-only endpoint to persist the default writing tone & perspective across SNS and Column editorial rooms."""
-    if not core.is_master_authorized():
-        return jsonify({'error': 'Unauthorized'}), 401
+    guard = _check_master_api_csrf()
+    if guard is not None:
+        return guard
     import sns_editorial
     import column_editorial
     payload = request.get_json(silent=True) or {}
@@ -604,8 +632,9 @@ def api_editorial_tone_mode():
 @staff_bp.route('/api/sns-editorial/ai-config', methods=['POST'])
 def api_sns_editorial_gemini_key():
     """Master-only endpoint to securely store/clear Gemini & Claude API keys and switch AI engine preference."""
-    if not core.is_master_authorized():
-        return jsonify({'error': 'Unauthorized'}), 401
+    guard = _check_master_api_csrf()
+    if guard is not None:
+        return guard
     import sns_editorial
     payload = request.get_json(silent=True) or {}
     action = (payload.get('action') or 'save').strip().lower()
@@ -672,8 +701,9 @@ def api_sns_editorial_gemini_key():
 @staff_bp.route('/api/sns-editorial/platform-token', methods=['POST'])
 def api_sns_editorial_platform_token():
     """Master-only endpoint to verify, exchange (short->60d long-lived), save, or clear Threads / Instagram / TikTok tokens without redeploying."""
-    if not core.is_master_authorized():
-        return jsonify({'error': 'Unauthorized'}), 401
+    guard = _check_master_api_csrf()
+    if guard is not None:
+        return guard
     import sns_editorial
     import threads_poster
     import instagram_poster
@@ -762,10 +792,9 @@ def staff_column_editorial():
     custom_topic = (request.args.get('topic') or '').strip()
     tone_mode = (request.args.get('tone') or '').strip().lower() or None
     export_slug = (request.args.get('export') or '').strip()
-    force_ai = request.args.get('refresh_ai') == '1'
+    force_ai = (request.args.get('refresh_ai') == '1') and _is_same_origin_get_action_allowed()
     is_json_req = request.args.get('format') == 'json'
-    with core.data_lock:
-        live_s = list(core.latest_data.get('full_data') or [])
+    live_s = _get_visible_live_stores()
     editorial = column_editorial.run_column_editorial_pipeline(
         live_s,
         theme_key=theme_key,
@@ -796,10 +825,9 @@ def api_column_editorial():
     theme_key = (request.args.get('theme') or 'area_hopping').strip().lower()
     custom_topic = (request.args.get('topic') or '').strip()
     tone_mode = (request.args.get('tone') or '').strip().lower() or None
-    force_ai = request.args.get('refresh_ai') == '1'
+    force_ai = (request.args.get('refresh_ai') == '1') and _is_same_origin_get_action_allowed()
     cache_only = (request.args.get('cache_only') == '1') and not force_ai
-    with core.data_lock:
-        live_s = list(core.latest_data.get('full_data') or [])
+    live_s = _get_visible_live_stores()
     return jsonify(column_editorial.run_column_editorial_pipeline(
         live_stores=live_s,
         theme_key=theme_key,
@@ -814,8 +842,9 @@ def api_column_editorial():
 @staff_bp.route('/api/column-editorial/publish', methods=['POST'])
 def api_column_editorial_publish():
     """Master-only endpoint to schedule or immediately publish an editorial column to the live site."""
-    if not core.is_master_authorized():
-        return jsonify({'error': 'Unauthorized'}), 401
+    guard = _check_master_api_csrf()
+    if guard is not None:
+        return guard
     import column_editorial
     payload = request.get_json(silent=True) or {}
     candidate = payload.get('candidate') or {}
@@ -841,8 +870,9 @@ def api_column_editorial_publish():
 @staff_bp.route('/api/column-editorial/delete', methods=['POST'])
 def api_column_editorial_delete():
     """Master-only endpoint to delete a dynamically registered editorial column."""
-    if not core.is_master_authorized():
-        return jsonify({'error': 'Unauthorized'}), 401
+    guard = _check_master_api_csrf()
+    if guard is not None:
+        return guard
     import column_editorial
     payload = request.get_json(silent=True) or {}
     slug = (payload.get('slug') or '').strip()
@@ -877,10 +907,10 @@ def staff_pdca():
     core.trigger_background_fetch_if_needed()
     days = max(1, min(90, request.args.get('days', 14, type=int)))
     is_json_req = request.args.get('format') == 'json'
-    with core.data_lock:
-        live_s = list(core.latest_data.get('full_data') or [])
+    allow_get_side_effect = _is_same_origin_get_action_allowed()
+    live_s = _get_visible_live_stores()
     has_existing = bool(pdca_engine.get_active_directives(allow_blocking=True))
-    if not has_existing and not is_json_req:
+    if not has_existing and not is_json_req and allow_get_side_effect:
         def _seed_pdca_async(stores_snap):
             try:
                 if not pdca_engine.get_active_directives(allow_blocking=True):
@@ -897,10 +927,10 @@ def staff_pdca():
     pdca_data = pdca_engine.run_pdca_cycle(
         live_stores=live_s,
         days=days,
-        apply_actions=(not has_existing and is_json_req),
+        apply_actions=(not has_existing and is_json_req and allow_get_side_effect),
         use_ai=True,
-        ai_cache_only=(not is_json_req),
-        record_log=(not has_existing and is_json_req),
+        ai_cache_only=(not (is_json_req and allow_get_side_effect)),
+        record_log=(not has_existing and is_json_req and allow_get_side_effect),
     )
     if is_json_req:
         return jsonify(pdca_data)
@@ -915,10 +945,9 @@ def api_pdca():
     import pdca_engine
     core.restore_latest_data_if_empty()
     days = max(1, min(90, request.args.get('days', 14, type=int)))
-    force_ai = request.args.get('refresh_ai') == '1'
+    force_ai = (request.args.get('refresh_ai') == '1') and _is_same_origin_get_action_allowed()
     cache_only = (request.args.get('cache_only') == '1') and not force_ai
-    with core.data_lock:
-        live_s = list(core.latest_data.get('full_data') or [])
+    live_s = _get_visible_live_stores()
     return jsonify(pdca_engine.run_pdca_cycle(
         live_stores=live_s,
         days=days,
@@ -933,10 +962,13 @@ def api_pdca():
 @staff_bp.route('/api/pdca/settings', methods=['POST'])
 def api_pdca_settings():
     """Master-only endpoint to toggle autonomous SNS optimization and low-stock column auto-replenishment."""
-    if not core.is_master_authorized():
-        return jsonify({'error': 'Unauthorized'}), 401
+    guard = _check_master_api_csrf()
+    if guard is not None:
+        return guard
     import pdca_engine
     payload = request.get_json(silent=True) or {}
+    if not isinstance(payload, dict):
+        return jsonify({'ok': False, 'error': '不正なJSONペイロードです'}), 400
     auto_sns = payload.get('auto_optimize_sns') if 'auto_optimize_sns' in payload else None
     auto_col = payload.get('auto_replenish_columns') if 'auto_replenish_columns' in payload else None
     updated = pdca_engine.update_pdca_settings(
@@ -953,14 +985,16 @@ def api_pdca_settings():
 @staff_bp.route('/api/pdca/run', methods=['POST'])
 def api_pdca_run():
     """Master-only manual trigger to execute the full PDCA cycle immediately and update editorial directives."""
-    if not core.is_master_authorized():
-        return jsonify({'error': 'Unauthorized'}), 401
+    guard = _check_master_api_csrf()
+    if guard is not None:
+        return guard
     import pdca_engine
     core.restore_latest_data_if_empty()
     payload = request.get_json(silent=True) or {}
-    days = max(1, min(90, int(payload.get('days') or 14)))
-    with core.data_lock:
-        live_s = list(core.latest_data.get('full_data') or [])
+    if not isinstance(payload, dict):
+        return jsonify({'ok': False, 'error': '不正なJSONペイロードです'}), 400
+    days = _safe_clamped_days(payload.get('days'), default=14)
+    live_s = _get_visible_live_stores()
     res = pdca_engine.run_pdca_cycle(
         live_stores=live_s,
         days=days,

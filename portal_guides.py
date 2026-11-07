@@ -502,6 +502,28 @@ AREA_GUIDES = {
     },
 }
 
+AREA_PILLAR_GUIDES = {
+    'shinjuku': {'href': '/guide/shinjuku', 'title': '新宿3店舗（東口2店・西新宿）の実測データ比較を読む'},
+    'shibuya': {'href': '/guide/shibuya-ebisu-comparison', 'title': '渋谷・恵比寿5店舗の山手線1駅比較・実測コラムを読む'},
+    'tokyo-east': {'href': '/guide/ueno-kinshicho-machida', 'title': '上野・錦糸町・町田・柏 沿線5店舗の実測比較コラムを読む'},
+    'kanto': {'href': '/guide/yokohama-omiya-kanto', 'title': '横浜・大宮・宇都宮・高崎 関東5店舗の実測比較コラムを読む'},
+    'yokohama': {'href': '/guide/yokohama-omiya-kanto', 'title': '横浜・大宮・宇都宮・高崎 関東5店舗の実測比較コラムを読む'},
+    'omiya': {'href': '/guide/yokohama-omiya-kanto', 'title': '横浜・大宮・宇都宮・高崎 関東5店舗の実測比較コラムを読む'},
+    'osaka': {'href': '/guide/osaka-kita-vs-minami', 'title': '大阪キタ（梅田）vsミナミ（難波・心斎橋）実測比較を読む'},
+    'umeda': {'href': '/guide/osaka-kita-vs-minami', 'title': '大阪キタ（梅田）vsミナミ（難波・心斎橋）実測比較を読む'},
+    'namba': {'href': '/guide/osaka-kita-vs-minami', 'title': '大阪キタ（梅田）vsミナミ（難波・心斎橋）実測比較を読む'},
+    'nagoya': {'href': '/guide/nagoya-sakae-nishiki', 'title': '名古屋（栄・錦・住吉）5店舗の南北700m比較コラムを読む'},
+    'fukuoka': {'href': '/guide/fukuoka-tenjin-kyushu', 'title': '福岡天神・九州沖縄11店舗の3ブランド比較コラムを読む'},
+    'hokkaido-tohoku': {'href': '/guide/sapporo-sendai-north', 'title': '札幌すすきの・仙台国分町の時間波形と曜日ルール比較を読む'},
+    'sapporo': {'href': '/guide/sapporo-sendai-north', 'title': '札幌すすきの・仙台国分町の時間波形と曜日ルール比較を読む'},
+    'sendai': {'href': '/guide/sapporo-sendai-north', 'title': '札幌すすきの・仙台国分町の時間波形と曜日ルール比較を読む'},
+    'chugoku-shikoku': {'href': '/guide/hiroshima-okayama-matsuyama', 'title': '広島・岡山・松山6店舗の競合・料金システム比較を読む'},
+    'hiroshima': {'href': '/guide/hiroshima-okayama-matsuyama', 'title': '広島・岡山・松山6店舗の競合・料金システム比較を読む'},
+}
+for _aslug, _pillar in AREA_PILLAR_GUIDES.items():
+    if _aslug in AREA_GUIDES:
+        AREA_GUIDES[_aslug]['pillar_guide'] = _pillar
+
 BRAND_GUIDES = {
     'oriental-lounge': {
         'slug': 'oriental-lounge',

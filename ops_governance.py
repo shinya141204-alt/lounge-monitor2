@@ -10,6 +10,7 @@ import ipaddress
 import json
 import os
 import secrets
+import socket
 import threading
 import time
 import urllib.parse
@@ -31,6 +32,7 @@ VALID_BRAND_KEYS = {b["key"] for b in BRAND_OPTIONS}
 MAX_STORED_INQUIRIES = 50
 
 _mem_lock = threading.Lock()
+_gov_write_lock = threading.Lock()
 _unread_memo = {"mono": 0.0, "data": {"unread_total": 0, "unread_priority": 0}}
 
 
@@ -158,9 +160,10 @@ def filter_visible_stores(stores: list) -> list:
         sname = (s or {}).get("name") or ""
         if not sname:
             continue
-        if sname in hs:
+        canon = store_master.to_internal_store_name(sname) or sname
+        if canon in hs or sname in hs:
             continue
-        if ops_brand_key_of(sname) in hb:
+        if ops_brand_key_of(canon) in hb:
             continue
         visible.append(s)
     return visible
@@ -180,16 +183,17 @@ def set_brand_hidden(brand_key: str, hidden: bool) -> dict:
     bkey = (brand_key or "").strip().lower()
     if bkey not in VALID_BRAND_KEYS:
         return {"ok": False, "error": f"不明なブランド識別子です: {bkey}"}
-    cur = set(
-        str(x).strip().lower()
-        for x in _parse_json_list(job_state.get_value("ops:hidden_brands", allow_blocking=True))
-        if str(x).strip().lower() in VALID_BRAND_KEYS
-    )
-    if hidden:
-        cur.add(bkey)
-    else:
-        cur.discard(bkey)
-    job_state.set_value("ops:hidden_brands", json.dumps(sorted(cur), ensure_ascii=False))
+    with _gov_write_lock:
+        cur = set(
+            str(x).strip().lower()
+            for x in _parse_json_list(job_state.get_value("ops:hidden_brands", allow_blocking=True))
+            if str(x).strip().lower() in VALID_BRAND_KEYS
+        )
+        if hidden:
+            cur.add(bkey)
+        else:
+            cur.discard(bkey)
+        job_state.set_value("ops:hidden_brands", json.dumps(sorted(cur), ensure_ascii=False))
     _purge_http_caches()
     return {"ok": True, "brand_key": bkey, "hidden": bool(hidden), "hidden_brands": sorted(get_hidden_brands())}
 
@@ -199,16 +203,17 @@ def set_store_hidden(store_name_or_slug: str, hidden: bool) -> dict:
     master = store_master.load()
     if not canon or (master and canon not in master):
         return {"ok": False, "error": "該当する店舗が見つかりません"}
-    cur = set(
-        store_master.to_internal_store_name(str(x).strip())
-        for x in _parse_json_list(job_state.get_value("ops:hidden_stores", allow_blocking=True))
-        if str(x).strip()
-    )
-    if hidden:
-        cur.add(canon)
-    else:
-        cur.discard(canon)
-    job_state.set_value("ops:hidden_stores", json.dumps(sorted(cur), ensure_ascii=False))
+    with _gov_write_lock:
+        cur = set(
+            store_master.to_internal_store_name(str(x).strip())
+            for x in _parse_json_list(job_state.get_value("ops:hidden_stores", allow_blocking=True))
+            if str(x).strip()
+        )
+        if hidden:
+            cur.add(canon)
+        else:
+            cur.discard(canon)
+        job_state.set_value("ops:hidden_stores", json.dumps(sorted(cur), ensure_ascii=False))
     _purge_http_caches()
     return {
         "ok": True,
@@ -237,15 +242,16 @@ def get_staff_session_epoch() -> str:
 
 def force_logout_all_staff() -> dict:
     """一般スタッフの全ログインセッションを即時失効させる（マスターセッションは維持）。"""
-    prev_raw = str(job_state.get_value("ops:staff_session_epoch", allow_blocking=True) or "0").strip()
-    try:
-        next_num = int(prev_raw.split("_")[0]) + 1
-    except Exception:
-        next_num = 1
-    new_epoch = f"{next_num}_{secrets.token_hex(3)}"
-    now_s = _now_jst_str()
-    job_state.set_value("ops:staff_session_epoch", new_epoch)
-    job_state.set_value("ops:last_staff_force_logout_at", now_s)
+    with _gov_write_lock:
+        prev_raw = str(job_state.get_value("ops:staff_session_epoch", allow_blocking=True) or "0").strip()
+        try:
+            next_num = int(prev_raw.split("_")[0]) + 1
+        except Exception:
+            next_num = 1
+        new_epoch = f"{next_num}_{secrets.token_hex(3)}"
+        now_s = _now_jst_str()
+        job_state.set_value("ops:staff_session_epoch", new_epoch)
+        job_state.set_value("ops:last_staff_force_logout_at", now_s)
     return {"ok": True, "epoch": new_epoch, "revoked_at": now_s}
 
 
@@ -304,9 +310,10 @@ def record_inquiry(data: dict, received_at: str, ip_hash: str, category_label: s
         "resolved": False,
         "resolved_at": "",
     }
-    existing = list_inquiries(limit=MAX_STORED_INQUIRIES, allow_blocking=True)
-    updated = [entry] + existing[: MAX_STORED_INQUIRIES - 1]
-    job_state.set_value("ops:inquiries", json.dumps(updated, ensure_ascii=False))
+    with _gov_write_lock:
+        existing = list_inquiries(limit=MAX_STORED_INQUIRIES, allow_blocking=True)
+        updated = [entry] + existing[: MAX_STORED_INQUIRIES - 1]
+        job_state.set_value("ops:inquiries", json.dumps(updated, ensure_ascii=False))
     _invalidate_unread_memo()
     return entry
 
@@ -315,18 +322,19 @@ def set_inquiry_resolved(inquiry_id: str, resolved: bool = True) -> dict:
     target_id = (inquiry_id or "").strip()
     if not target_id:
         return {"ok": False, "error": "お問い合わせIDが指定されていません"}
-    items = list_inquiries(limit=MAX_STORED_INQUIRIES, allow_blocking=True)
-    found = False
-    now_s = _now_jst_str()
-    for it in items:
-        if it.get("id") == target_id:
-            it["resolved"] = bool(resolved)
-            it["resolved_at"] = now_s if resolved else ""
-            found = True
-            break
-    if not found:
-        return {"ok": False, "error": "該当するお問い合わせが見つかりません"}
-    job_state.set_value("ops:inquiries", json.dumps(items, ensure_ascii=False))
+    with _gov_write_lock:
+        items = list_inquiries(limit=MAX_STORED_INQUIRIES, allow_blocking=True)
+        found = False
+        now_s = _now_jst_str()
+        for it in items:
+            if it.get("id") == target_id:
+                it["resolved"] = bool(resolved)
+                it["resolved_at"] = now_s if resolved else ""
+                found = True
+                break
+        if not found:
+            return {"ok": False, "error": "該当するお問い合わせが見つかりません"}
+        job_state.set_value("ops:inquiries", json.dumps(items, ensure_ascii=False))
     _invalidate_unread_memo()
     return {"ok": True, "id": target_id, "resolved": bool(resolved), **get_unread_counts(force=True)}
 
@@ -360,16 +368,41 @@ def _validate_public_https_webhook(url: str) -> str:
     parsed = urllib.parse.urlparse(u)
     if parsed.scheme.lower() != "https":
         return "セキュリティ保護のため https:// で始まるURLのみ登録できます。"
-    host = (parsed.hostname or "").strip().lower()
-    if not host or host in ("localhost", "localhost.localdomain") or host.endswith((".local", ".internal")):
+    if parsed.username or parsed.password:
+        return "認証情報（ユーザー名・パスワード）を含むURLは登録できません。"
+    try:
+        port = parsed.port
+    except ValueError:
+        return "不正なポート番号が指定されています。"
+    if port not in (None, 443):
+        return "セキュリティ保護のため標準HTTPSポート（443）以外のURLは登録できません。"
+    host = (parsed.hostname or "").strip().lower().rstrip(".")
+    if not host or host in ("localhost", "localhost.localdomain") or host.endswith((".local", ".internal", ".localhost")):
         return "ローカルまたは内部ホスト宛てのURLは登録できません。"
     try:
         ip_obj = ipaddress.ip_address(host)
-        if ip_obj.is_private or ip_obj.is_loopback or ip_obj.is_link_local or ip_obj.is_reserved or ip_obj.is_multicast:
-            return "プライベートIPアドレス宛てのURLは登録できません。"
+        if not ip_obj.is_global:
+            return "プライベートIPアドレスまたは予約済みアドレス宛てのURLは登録できません。"
     except ValueError:
         if "." not in host:
             return "有効なドメイン名を含む https:// URLを指定してください。"
+        try:
+            addr_infos = socket.getaddrinfo(host, 443, type=socket.SOCK_STREAM)
+        except socket.gaierror:
+            addr_infos = []
+        except Exception:
+            addr_infos = []
+        for info in addr_infos:
+            sockaddr = info[4] if len(info) > 4 else ()
+            ip_str = sockaddr[0] if sockaddr else ""
+            if not ip_str:
+                continue
+            try:
+                resolved_ip = ipaddress.ip_address(ip_str.split("%", 1)[0])
+                if not resolved_ip.is_global:
+                    return "内部ネットワークまたはループバックへ解決されるホストは登録できません。"
+            except ValueError:
+                return "不正なIPアドレス解決結果を含むホストは登録できません。"
     return ""
 
 

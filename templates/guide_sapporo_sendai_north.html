@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="google-site-verification" content="9kZaSJbaCuvn8QpGErUwI59w7Lf4N8ILhb_nWqDHI2s">
+    <title>札幌すすきの・仙台国分町の相席ラウンジ比較｜1都市1大型店に集約されたJIS札幌・ag仙台の時間波形と曜日ルール｜相席ナビ</title>
+    <meta name="description" content="北海道・札幌すすきのの『JIS（ジス）札幌』と宮城・仙台国分町の『ag（アグ）仙台』を対象に、直近30日1,889回の実測スナップショットから時間帯別の男女比推移、終日均一vs週末据え置きの料金差、出張1人入店の曜日境界線（札幌は全日OK・仙台は平日限定）を検証します。">
+    <meta name="keywords" content="札幌 相席ラウンジ,すすきの JIS札幌 人数,仙台 相席ラウンジ,国分町 ag仙台,JIS札幌 料金 1人,ag仙台 1人 料金,札幌 仙台 出張 相席">
+    <link rel="canonical" href="https://aiseki-navi.com/guide/sapporo-sendai-north">
+    <link rel="alternate" type="text/markdown" href="https://aiseki-navi.com/llms.txt" title="相席ナビ AI要約ドキュメント (llms.txt)">
+    <link rel="alternate" type="text/markdown" href="https://aiseki-navi.com/llms-full.txt" title="相席ナビ 全店舗リアルタイムデータ・ブランド一覧 (llms-full.txt)">
+    <link rel="alternate" type="application/json" href="https://aiseki-navi.com/api/llms-facts.json" title="相席ナビ AIグラウンディング構造化JSON (llms-facts.json)">
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+
+    <!-- OGP / SNS Card Settings -->
+    <meta property="og:title" content="札幌すすきの・仙台国分町の相席ラウンジ比較｜JIS札幌・ag仙台の実測波形｜相席ナビ">
+    <meta property="og:description" content="徒歩ハシゴ先がない「1都市1メガ拠点」の札幌（JIS札幌・平均女性45.7名）と仙台（ag仙台・平均女性比66.4%）。時間帯別の男女比と出張ソロの曜日ルールを検証。">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://aiseki-navi.com/guide/sapporo-sendai-north">
+    <meta property="og:site_name" content="相席ナビ">
+    <meta property="og:locale" content="ja_JP">
+    <meta property="og:image" content="https://aiseki-navi.com/static/eyecatch-sapporo-sendai-north.jpg?v=3">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="札幌すすきの・仙台国分町の相席ラウンジ比較｜JIS札幌・ag仙台の実測データ">
+    <meta name="twitter:description" content="20時台の女性比80.1%から深夜1時の2回転目まで。北日本2大ランドマーク店の時間帯波形と料金・ソロ規定を1,889件のログで比較。">
+    <meta name="twitter:image" content="https://aiseki-navi.com/static/eyecatch-sapporo-sendai-north.jpg?v=3">
+
+    <!-- Structured Data (Article + BreadcrumbList + FAQPage) -->
+    <script type="application/ld+json">
+    [
+      {
+        "@context": "https://schema.org",
+        "@type": "Article",
+        "headline": "札幌すすきの・仙台国分町の相席ラウンジ比較｜1都市1大型店に集約されたJIS札幌・ag仙台の時間波形と曜日ルール",
+        "image": ["https://aiseki-navi.com/static/eyecatch-sapporo-sendai-north.jpg"],
+        "datePublished": "2026-11-08T06:00:00+09:00",
+        "dateModified": "2026-11-08T06:00:00+09:00",
+        "author": {"@type": "Person", "name": "くわもん", "jobTitle": "相席ナビ編集長", "url": "https://aiseki-navi.com/about"},
+        "publisher": {"@type": "Organization", "name": "相席ナビ編集部", "logo": {"@type": "ImageObject", "url": "https://aiseki-navi.com/static/icon-512.png"}},
+        "speakable": {
+          "@type": "SpeakableSpecification",
+          "cssSelector": [".article-title", ".highlight-box"]
+        },
+        "description": "北海道・札幌（JIS札幌）と宮城・仙台（ag仙台）の北日本2大拠点を対象に、直近30日1,889回のスナップショットと公式料金・入店規定から、1都市1大型店エリア特有の時間軸設計と出張ソロ利用の注意点を整理した検証レポート。"
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {"@type": "ListItem", "position": 1, "name": "ホーム", "item": "https://aiseki-navi.com/"},
+          {"@type": "ListItem", "position": 2, "name": "コラム一覧", "item": "https://aiseki-navi.com/columns"},
+          {"@type": "ListItem", "position": 3, "name": "札幌すすきの・仙台国分町の比較", "item": "https://aiseki-navi.com/guide/sapporo-sendai-north"}
+        ]
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "現在、札幌（すすきの）と仙台（国分町）でリアルタイム人数を確認できる相席ラウンジはどこですか？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "現在、札幌・すすきのエリアは『JIS（ジス）札幌』（19:00〜翌6:00営業）、仙台・国分町エリアは『ag（アグ）仙台』（18:00〜翌5:00営業）へとそれぞれ地域の相席需要が集約されています。かつて営業していた旧オリエンタルラウンジ札幌・ag札幌や旧オリエンタルラウンジ仙台は統合・再編済みのため、各都市ともこの大型1店舗を軸に予定を組むのが現実的です。"
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "札幌や仙台へ出張した際、男性1人（ソロ）でも入店できますか？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "札幌と仙台でルールが異なります。すすきのの『JIS（ジス）札幌』は平日・週末を問わず全曜日で男性1名入店に対応しています（シングルチャージ+1,100円、単独待機220円/10分）。一方、国分町の『ag（アグ）仙台』は月曜〜木曜の平日のみ男性1名入店が可能（シングルチャージ+1,100円）で、金曜・土曜・祝前日などの週末は男性2名以上が必須となります。"
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "JIS（ジス）札幌とag（アグ）仙台で、男性が待機になりにくい時間帯はいつですか？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "直近30日の実測ログでは、JIS札幌は20時台が平均女性41.2名：男性12.4名（女性比率80.1%・男性先行率0.0%）、21時台が女性56.9名：男性35.5名（男性先行率2.9%）と21時半前までの着席効率が非常に高くなっています。ag仙台は20時台（女性20.0名：男性6.5名）〜22時台（女性29.1名：男性18.3名、男性先行率3.3%）まで女性優位が長く続くのが特徴です。"
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "すすきのや国分町で、雨や雪の夜でも人は入っていますか？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "JIS札幌は地下鉄すすきの駅・地下街ポールタウン出口からすぐ、ag仙台も広瀬通駅や一番町アーケードからほぼ屋根伝いにアクセスできる立地にあるため、雨や降雪時でも来店数が大きく崩れにくい構造を持っています。外での店探しや呼び込みを避けたい女性ペアが早い時間から店内に滞留しやすいのも寒冷地拠点ならではの特徴です。"
+            }
+          }
+        ]
+      }
+    ]
+    </script>
+
+    <link rel="manifest" href="/static/manifest.json?v=3">
+    <meta name="theme-color" content="#111113">
+    <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
+    <link rel="apple-touch-icon" href="/static/icon.png?v=3">
+    <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
+    <style>html.theme-light{background-color:#f6f6f7;}</style>
+    <link rel="stylesheet" href="/static/style.css?v=20261108_1" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="/static/style.css?v=20261108_1"></noscript>
+    <link rel="stylesheet" href="/static/portal.css?v=15">
+    <style>
+        body {
+            display: block !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background-color: #111113 !important;
+            color: #f4f4f6 !important;
+            overflow-x: hidden !important;
+        }
+        .article-container {
+            max-width: 820px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 24px 16px 80px 16px;
+            box-sizing: border-box;
+        }
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.78rem;
+            color: #9ca3af;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        .breadcrumb a { color: #38bdf8; text-decoration: none; }
+        .article-header {
+            margin-bottom: 28px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .article-cat-tag {
+            background: rgba(200, 164, 110, 0.18);
+            border: 1px solid rgba(200, 164, 110, 0.42);
+            color: #f4f4f6;
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 99px;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+        .article-title {
+            font-size: 1.46rem;
+            font-weight: 800;
+            line-height: 1.46;
+            color: #f8fafc;
+            margin: 0 0 12px 0;
+        }
+        .article-meta-sub {
+            font-size: 0.8rem;
+            color: #9ca3af;
+            margin: 0;
+        }
+        .article-eyecatch {
+            width: 100%;
+            border-radius: 14px;
+            overflow: hidden;
+            margin: 16px 0 28px 0;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+        .article-eyecatch img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        .article-body h2 {
+            font-size: 1.18rem;
+            font-weight: 800;
+            color: #f8fafc;
+            margin: 38px 0 14px 0;
+            padding: 10px 14px;
+            background: rgba(200, 164, 110, 0.1);
+            border-left: 4px solid #c8a46e;
+            border-radius: 0 8px 8px 0;
+        }
+        .article-body h3 {
+            font-size: 1.04rem;
+            font-weight: 700;
+            color: #f1f5f9;
+            margin: 26px 0 10px 0;
+        }
+        .article-body p, .article-body li {
+            font-size: 0.94rem;
+            line-height: 1.85;
+            color: #d1d5db;
+        }
+        .article-body a {
+            color: #7dd3fc;
+            text-decoration: underline;
+            text-underline-offset: 3px;
+        }
+        .dialogue-box {
+            background: rgba(255, 255, 255, 0.035);
+            border-left: 3px solid rgba(200, 164, 110, 0.58);
+            border-radius: 0 10px 10px 0;
+            padding: 14px 18px;
+            margin: 18px 0;
+            font-size: 0.92rem;
+            line-height: 1.82;
+            color: #e5e7eb;
+        }
+        .highlight-box {
+            background: rgba(24, 24, 28, 0.88);
+            border: 1px solid rgba(200, 164, 110, 0.36);
+            border-radius: 12px;
+            padding: 18px;
+            margin: 20px 0;
+        }
+        .highlight-kicker {
+            display: block;
+            font-size: 0.95rem;
+            font-weight: 800;
+            color: #e7cfa1;
+            margin-bottom: 8px;
+        }
+        .data-table-wrap {
+            overflow-x: auto;
+            margin: 18px 0;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            min-width: 620px;
+            font-variant-numeric: tabular-nums;
+        }
+        .data-table th, .data-table td {
+            padding: 12px 14px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            text-align: left;
+            vertical-align: top;
+        }
+        .data-table th {
+            background: rgba(255, 255, 255, 0.05);
+            color: #cbd5e1;
+            font-weight: 700;
+        }
+        .tone-women {
+            color: #f472b6;
+            font-weight: 700;
+        }
+        .tone-men {
+            color: #60a5fa;
+            font-weight: 700;
+        }
+        .faq-card {
+            background: rgba(24, 24, 28, 0.72);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 16px 18px;
+            margin: 14px 0;
+        }
+        .faq-q {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #f8fafc;
+            margin: 0 0 8px 0;
+        }
+        .faq-a {
+            font-size: 0.9rem;
+            line-height: 1.8;
+            color: #d1d5db;
+            margin: 0;
+        }
+        .cta-box {
+            margin-top: 36px;
+            padding: 24px 20px;
+            border-radius: 16px;
+            background: rgba(24, 24, 28, 0.92);
+            border: 1px solid rgba(200, 164, 110, 0.42);
+            text-align: center;
+        }
+        .cta-btn {
+            display: inline-block;
+            margin-top: 12px;
+            padding: 12px 26px;
+            border-radius: 99px;
+            background: linear-gradient(135deg, #c8a46e, #a87f47);
+            color: #0b0d13 !important;
+            font-weight: 800;
+            text-decoration: none !important;
+            font-size: 0.92rem;
+        }
+        .cta-btn.cta-btn--secondary {
+            background: rgba(255, 255, 255, 0.08);
+            color: #f0ede8 !important;
+            border: 1px solid rgba(200, 164, 110, 0.52);
+        }
+        body.theme-light .highlight-kicker { color: #7a561c; }
+        body.theme-light .tone-women { color: #be185d; }
+        body.theme-light .tone-men { color: #1d4ed8; }
+        body.theme-light .faq-card {
+            background: #ffffff;
+            border-color: rgba(15, 23, 42, 0.12);
+        }
+        body.theme-light .faq-q { color: #111827; }
+        body.theme-light .faq-a { color: #374151; }
+    </style>
+    <link rel="stylesheet" href="/static/calm.css?v=37">
+    {% if not is_staff and not session.get('is_staff') %}
+    <meta name="google-adsense-account" content="ca-pub-3043764334238627">
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
+         crossorigin="anonymous"></script>
+    {% endif %}
+</head>
+
+<body>
+    <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.body.classList.add('theme-light');}catch(e){}</script>
+    <div class="article-container">
+        {% set nav_active = 'columns' %}
+        {% include '_portal_nav.html' %}
+
+        <main>
+        <nav class="breadcrumb" aria-label="Breadcrumb">
+            <a href="/">ホーム</a><span>›</span>
+            <a href="/columns">コラム一覧</a><span>›</span>
+            <span>札幌すすきの・仙台国分町の比較</span>
+        </nav>
+
+        <header class="article-header">
+            <span class="article-cat-tag">エリア実測比較・北海道東北</span>
+            <h1 class="article-title">札幌すすきの・仙台国分町の相席ラウンジ比較｜1都市1大型店に集約されたJIS札幌・ag仙台の時間波形と曜日ルール</h1>
+            <p class="article-meta-sub">公開日：2026年11月8日 ・ 更新日：2026年11月8日 ｜ 執筆・検証：<a href="/about" style="color:inherit;text-decoration:underline;text-underline-offset:3px;">くわもん（相席ナビ編集長）</a>（検証対象：札幌・仙台2店舗・直近30日スナップショット1,889回）</p>
+        </header>
+
+        <figure class="article-eyecatch">
+            <picture>
+                <source srcset="/static/eyecatch-sapporo-sendai-north.webp?v=3" type="image/webp">
+                <img src="/static/eyecatch-sapporo-sendai-north.jpg?v=3" alt="札幌すすきの・仙台国分町の相席ラウンジ比較 1都市1大型店に集約されたJIS札幌・ag仙台の時間帯波形と曜日別ルール" width="1280" height="720" loading="eager">
+            </picture>
+        </figure>
+
+        <div class="article-body">
+            <p>
+                コートの襟を立てる11月の札幌・すすきの交差点。さっぽろ地下街ポールタウンから地下鉄すすきの駅の出口を上がれば、外の冷気をほとんど浴びないまま目的のビルへ滑り込めます。同じく東北最大の歓楽街・仙台の国分町も、仙台駅からハピナ名掛丁〜中央通り〜一番町と続く長いアーケードの屋根伝いに歩けば、雨やみぞれの日でも傘をほとんど開かずにたどり着ける街です。<br>
+                しかし、新宿や梅田、あるいは福岡・天神の感覚のまま<a href="/area/hokkaido-tohoku">札幌・仙台エリア</a>へ向かうと、1つだけ決定的に勝手が違う点にぶつかります。<strong>「混んでいたから徒歩2分の別ブランドへハシゴして逃げる」という横移動のカードが存在しない</strong>ことです。
+            </p>
+            <p>
+                かつて札幌にあった旧オリエンタルラウンジ札幌・ag（アグ）札幌や、仙台にあった旧オリエンタルラウンジ仙台が再編・統合された結果、現在リアルタイム人数を公開して稼働している大型相席ラウンジは、北海道がすすきのの<strong><a href="/store/jis-sapporo">JIS（ジス）札幌</a></strong>、宮城・東北が国分町の<strong><a href="/store/ag-sendai">ag（アグ）仙台</a></strong>へと一極集中しています。<br>
+                1都市1メガ拠点という構造は、裏を返せば「街じゅうの相席ニーズが1つのフロアに集まる」という強みでもあります。本稿では、直近30日・<strong>1,889回の実測スナップショット</strong>（<a href="/stats">公開一次統計</a>準拠）と公式ルールから、ハシゴ先がない北の2大都市で外さないための「時間軸の選び方」と「出張ソロの曜日規定」を検証します。
+            </p>
+
+            <div class="highlight-box">
+                <span class="highlight-kicker">JIS（ジス）札幌・ag（アグ）仙台の実測ログから見えた3つの原則</span>
+                <ul style="margin:0;padding-left:18px;">
+                    <li><strong>札幌は全国屈指の大箱（30日平均女性45.7名）、仙台は高女性比率（平均66.4%）の一極集中型</strong>：<a href="/store/jis-sapporo">JIS札幌</a>はピーク女性139名・男性150名に達する北日本最大の拠点。<a href="/store/ag-sendai">ag仙台</a>も平均女性21.7名：男性12.4名と安定した女性優位を維持している。</li>
+                    <li><strong>横のハシゴができない分、「20〜21時台の先回り」か「深夜1時台の再逆転」を狙う</strong>：JIS札幌は20時台の女性比率<span class="tone-women">80.1%</span>（男性先行率0.0%）から23時台は男性先行率<span class="tone-men">49.5%</span>へ拮抗するが、深夜1時台には男性先行率が23.8%へ半減して第2波が立ち上がる。</li>
+                    <li><strong>出張1人（ソロ）入店は「札幌＝全曜日OK」「仙台＝月〜木の平日限定」で明暗が分かれる</strong>：金曜・土曜の仙台出張で1人でag仙台へ向かうと2名以上必須規定に引っかかるため、曜日と人数の事前確認が欠かせない。</li>
+                </ul>
+            </div>
+
+            <h2>1. 北日本2大ランドマーク店の基礎スペックと料金設計の違い</h2>
+            <p>
+                まずは現在の<a href="/area/sapporo">札幌・すすきのエリア</a>と<a href="/area/sendai">仙台・国分町エリア</a>を支える2店舗の30日実測値・営業時間・4時間帯単価を並べて確認しましょう（全国の他都市との比較は<a href="/price-comparison">店舗別4時間帯料金比較</a>に掲載しています）。
+            </p>
+
+            <div class="data-table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>比較項目</th>
+                            <th><a href="/store/jis-sapporo">JIS（ジス）札幌</a>（北海道・すすきの）</th>
+                            <th><a href="/store/ag-sendai">ag（アグ）仙台</a>（宮城・国分町）</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>営業時間</strong></td>
+                            <td><strong>19:00〜翌6:00</strong>（年中無休）</td>
+                            <td><strong>18:00〜翌5:00</strong>（年中無休）</td>
+                        </tr>
+                        <tr>
+                            <td><strong>30日平均人数<br>（最大人数）</strong></td>
+                            <td>女性 <strong>45.7名</strong> ： 男性 34.1名<br>（最大女性 <strong>139名</strong> / 最大男性 150名 / n=1,044）</td>
+                            <td>女性 <strong>21.7名</strong> ： 男性 12.4名<br>（最大女性 <strong>76名</strong> / 最大男性 64名 / n=845）</td>
+                        </tr>
+                        <tr>
+                            <td><strong>30日平均女性比率</strong></td>
+                            <td><span class="tone-women">63.3%</span>（90日平均 63.7%）</td>
+                            <td><span class="tone-women">66.4%</span>（90日平均 66.2%）</td>
+                        </tr>
+                        <tr>
+                            <td><strong>男性相席 10分単価<br>（平日）</strong></td>
+                            <td><strong>終日均一 660円 / 10分</strong><br>（19時〜翌6時まで変動なし）</td>
+                            <td>〜20時 <strong>550円</strong> ｜ 20〜22時 <strong>600円</strong><br>22〜24時 700円 ｜ 24時〜 770円</td>
+                        </tr>
+                        <tr>
+                            <td><strong>男性相席 10分単価<br>（金土・週末）</strong></td>
+                            <td><strong>終日均一 770円 / 10分</strong><br>（深夜割増なし）</td>
+                            <td>〜20時 700円 ｜ <strong>20〜24時 750円据え置き</strong><br>24時〜 990円</td>
+                        </tr>
+                        <tr>
+                            <td><strong>チャージ・単独待機</strong></td>
+                            <td>テーブルチャージ 550円<br>単独待機 <strong>220円 / 10分</strong></td>
+                            <td>チャージ 550円（公式アプリ会員0円）<br>単独待機 <strong>220円 / 10分</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>男性1名（ソロ）入店</strong></td>
+                            <td><strong>全曜日OK</strong>（シングルチャージ+1,100円）</td>
+                            <td><strong>月〜木の平日のみOK</strong>（+1,100円）<br><span class="tone-men">※金・土等の週末は2名以上必須</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p>
+                2店舗の料金テーブルを見比べると、それぞれの街の飲み歩き習慣に合わせた設計意図が見えてきます。<br>
+                <strong>JIS（ジス）札幌</strong>は、ジンギスカンや海鮮居酒屋での1次会を終えた22時以降・24時以降に入っても10分単価が1円も上がらない<strong>「終日フラット料金（平日660円・金土770円）」</strong>を採っています。対する<strong>ag（アグ）仙台</strong>は、平日の20時前なら550円・22時前なら600円と早割が効き、さらに週末も<strong>20時から24時までの4時間を750円/10分で据え置く</strong>（24時以降のみ990円）という「終電前のコア4時間」に照準を合わせた料金体系です。なお、単独待機料金は両店舗とも<strong>220円/10分</strong>（都心標準の330円より3割安い水準）に抑えられています。
+            </p>
+
+            <h2>2. 19時から深夜2時までの時間波形ドラマ：どこで混み、どこで再び空くのか</h2>
+            <p>
+                徒歩ハシゴ先がない街では、「いまエレベーターに乗るか、近くのバーで40分時間を潰してから入るか」の判断がそのまま着席までの待ち時間に直結します。稼働時間帯（店内合計4名以上）の1時間ごとの実測推移は次の通りです。
+            </p>
+
+            <div class="data-table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>時間帯</th>
+                            <th>JIS（ジス）札幌<br>平均女性 : 男性（女性比）</th>
+                            <th>JIS札幌<br>男性先行率</th>
+                            <th>ag（アグ）仙台<br>平均女性 : 男性（女性比）</th>
+                            <th>ag仙台<br>男性先行率</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>19時台</strong></td>
+                            <td>20.2名 : 2.3名（<span class="tone-women">92.3%</span>）</td>
+                            <td>0.0%</td>
+                            <td>11.0名 : 2.0名（<span class="tone-women">82.7%</span>）</td>
+                            <td>3.8%</td>
+                        </tr>
+                        <tr>
+                            <td><strong>20時台</strong></td>
+                            <td><strong>41.2名 : 12.4名</strong>（<span class="tone-women">80.1%</span>）</td>
+                            <td><strong>0.0%</strong></td>
+                            <td><strong>20.0名 : 6.5名</strong>（<span class="tone-women">74.1%</span>）</td>
+                            <td>5.8%</td>
+                        </tr>
+                        <tr>
+                            <td><strong>21時台</strong></td>
+                            <td><strong>56.9名 : 35.5名</strong>（<span class="tone-women">63.6%</span>）</td>
+                            <td>2.9%</td>
+                            <td><strong>28.6名 : 13.8名</strong>（<span class="tone-women">67.8%</span>）</td>
+                            <td><strong>1.0%</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>22時台</strong></td>
+                            <td>63.6名 : 54.4名（55.2%）</td>
+                            <td>19.6%</td>
+                            <td><strong>29.1名 : 18.3名</strong>（<span class="tone-women">62.2%</span>）</td>
+                            <td><strong>3.3%</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>23時台</strong></td>
+                            <td>62.3名 : 61.3名（52.0%）</td>
+                            <td><span class="tone-men">49.5%</span></td>
+                            <td>28.7名 : 22.9名（54.6%）</td>
+                            <td>21.8%</td>
+                        </tr>
+                        <tr>
+                            <td><strong>深夜0時台</strong></td>
+                            <td>55.0名 : 56.1名（50.3%）</td>
+                            <td><span class="tone-men">46.2%</span></td>
+                            <td>21.7名 : 18.7名（52.3%）</td>
+                            <td><span class="tone-men">36.1%</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>深夜1時台</strong></td>
+                            <td><strong>54.6名 : 51.1名</strong>（53.9%）</td>
+                            <td><strong>23.8%</strong></td>
+                            <td><strong>19.5名 : 13.4名</strong>（<span class="tone-women">61.9%</span>）</td>
+                            <td><strong>18.1%</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>深夜2時台</strong></td>
+                            <td>45.0名 : 41.3名（54.5%）</td>
+                            <td>22.0%</td>
+                            <td>14.4名 : 10.4名（<span class="tone-women">63.7%</span>）</td>
+                            <td>7.2%</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p>
+                1時間刻みの推移を追うと、すすきのと国分町でピークの質が異なることがわかります。
+            </p>
+            <ul>
+                <li><strong>JIS（ジス）札幌の「20時台の圧倒的余白」と「深夜1時のV字回復」</strong>：20時台にしてすでに平均女性41.2名が集まっている一方、男性はまだ12.4名しかおらず男性先行率は0.0%です。その後、1次会明けの男性がなだれ込む23時台〜0時台には60名対60名規模で拮抗し、約2回に1回（49.5%〜46.2%）は男性先行へ振れます。ところが札幌市営地下鉄の終電（23:45〜24:00頃）で郊外の男性組が引き上げたあと、中央区・豊平区などタクシー初乗り〜1,500円圏内に住む20代女性が残り続けるため、<strong>深夜1時台には男性先行率が23.8%まで半減しつつ50名超の女性が在席する「第2の狙い目」</strong>が生まれます。</li>
+                <li><strong>ag（アグ）仙台の「21時〜22時台の黄金バランス」</strong>：仙台はagブランド（本来はZ世代特化）でありながら東北唯一の系列大型店として機能しているため、学生・アパレル層から20代後半の社会人OL層まで幅広く集まります。目を引くのが<strong>21時台（男性先行率1.0%）〜22時台（男性先行率3.3%）の安定感</strong>で、22時台でも平均女性29.1名：男性18.3名とほとんど男性待機が発生していません。逆に23時半のJR仙石線・東北本線や地下鉄終電を過ぎた0時台は男性先行率36.1%へ上がるため、男性は22時半前、女性ペアは23時〜0時台に入ると待ち時間なく噛み合います。</li>
+            </ul>
+
+            <h2>3. すすきの「シメパフェ動線」と国分町「アーケード動線」：男女それぞれの本音</h2>
+            <p>
+                北日本の2都市では、相席したあとの「2軒目の誘い方」や「出張組と地元組の交わり方」にも独特のローカルルールがあります。
+            </p>
+
+            <div class="dialogue-box">
+                女性A（26歳・札幌勤務・看護師）：「すすきのは11月過ぎると外を歩き回るのが本当に寒いから、ポールタウンから上がってすぐの<a href="/store/jis-sapporo">JIS札幌</a>に20時くらいから入って、暖かい店内で飲むのが定番かな。あと札幌だと、男性から『もう1軒居酒屋行こう』って言われるより、『近くに並んでないシメパフェのお店あるんだけど行かない？』って誘われる方が断然ついていきやすい（笑）」<br>
+                女性B（25歳・札幌勤務・美容師）：「夜パフェなら甘いもの食べて23時半の南北線にも間に合うし、警戒心なく行けるもんね。逆に金土に友達と遅くから飲む日は、23時半過ぎにJISへ行くと男の子の方が多くて受付で待たされないからラク」
+            </div>
+
+            <div class="dialogue-box">
+                男性C（32歳・東京から札幌・仙台へ巡回出張）：「水曜の仙台泊で牛タン屋を出たあと、21時に1人で<a href="/store/ag-sendai">ag仙台</a>へ入ったら平日なのに女性が25人以上いてすぐ相席できたんだよね。その成功体験のまま翌月、金曜の夜にまた1人で受付へ行ったら『週末は男性2名様からなんです』って丁重に断られて立ち尽くした。札幌のJISは金曜でも土曜でも男1人で入れたから、完全に油断してたよ」<br>
+                男性D（29歳・仙台在住・IT）：「ag仙台は月〜木がソロ天国なんだよね。週末に仙台で動くなら、会社の同期と2人で20時半に入って、22時半頃に国分町のキャッチ通りを避けて一番町アーケードか稲荷小路の静かなイタリアンバルへ抜けるのが一番スマートだよ」
+            </div>
+
+            <div class="dialogue-box">
+                女性E（24歳・仙台勤務・メーカー事務）：「国分町って通りに出ると呼び込みが多いけど、広瀬通駅や一番町アーケードからすぐ入れるから女友達とも待ち合わせしやすいんだよね」<br>
+                女性F（27歳・仙台勤務・医療系）：「もともと仙台って『ag』って名前でも20代前半だけじゃなくてアラサーの社会人も普通に来てるよね。東北にここ1店舗しかない分、地元の人も新幹線で来てる出張の人も混ざってて話のネタが尽きないかな」
+            </div>
+
+            <p>
+                会話にも出た通り、<strong>金曜・土曜に仙台へ1人で出張している男性</strong>は、ag仙台が2名以上必須となるため着席型ラウンジには入れません（1人入店の全体ルールは<a href="/guide/solo-vs-pair">『1人（ソロ）入店 vs 2人ペア入店の実測比較』</a>参照）。その場合や、すすきので23時台にJIS札幌が男性先行になっている瞬間は、無理に店頭で粘るよりも<a href="/guide/lounge-vs-screened-date">1対1デート・近隣合流型の恋活アプリ</a>をサブカードとして切れるようにしておくと、せっかくの遠征・週末の夜が空振りで終わりません。
+            </p>
+
+            <aside class="editorial-bridge-box" aria-label="男女別の事前準備・代替サービス比較ガイド">
+                <span class="editorial-bridge-kicker">2-STEP PREPARATION GUIDE</span>
+                <p class="editorial-bridge-title">1店舗集中エリアの待機回避サブ手段と、冬の室内照明で映える清潔感準備</p>
+                <p class="editorial-bridge-desc">ハシゴ先がない街で満席・週末ソロ制限にぶつかった夜の代替アプリ比較と、コートを脱いだ瞬間の70cm席で見られる身だしなみチェックを男女別に整理しています。</p>
+                <div class="editorial-bridge-actions">
+                    <a href="/grooming#backup-apps" class="editorial-bridge-btn editorial-bridge-btn--men"><span>男性向け｜満席・週末ソロ時の代替アプリ＆準備</span><span>›</span></a>
+                    <a href="/for-women#clinic" class="editorial-bridge-btn editorial-bridge-btn--women"><span>女性向け｜待ちゼロ時間帯・無料1対1＆美容特集</span><span>›</span></a>
+                </div>
+            </aside>
+
+            <h2>4. 札幌・仙台で失敗しない時間帯・曜日別アクションプラン</h2>
+            <p>
+                最後に、北日本2拠点での立ち回りを状況別にまとめます。
+            </p>
+            <ol>
+                <li><strong>札幌（すすきの）で男性ペア・ソロが入る夜</strong> → 全曜日1名入店OK。最も着席効率が高いのは<strong>20:00〜21:30</strong>（女性比63.6%〜80.1%）。もし22:30〜24:00に到着して<a href="/store/jis-sapporo">JIS札幌のライブ人数</a>が男性先行になっていたら、終日均一料金の強みを活かして近くのオーセンティックバーで40分調整し、<strong>深夜0:30〜1:30の第2波</strong>で入り直すのが合理的です。</li>
+                <li><strong>仙台（国分町）で男性が入る夜</strong> → <strong>月〜木の平日なら1名（ソロ）でも2名でも20:00〜22:00</strong>がベスト（22時前なら10分550〜600円）。<strong>金・土・祝前日は必ず2名以上のペアを組み、20:00〜22:30の間</strong>（750円据え置き＆男性先行率1〜3%台）に入店しましょう。</li>
+                <li><strong>札幌・仙台で女性2人組が入る夜</strong> → 20時前後は女性先行になりやすいため、<a href="/area/hokkaido-tohoku">北海道・東北のリアルタイム一覧</a>で男性が15名以上入っていることを確認できる<strong>21:30〜翌0:30頃</strong>に向かうと、受付待ちなしでスムーズに案内されやすくなります。</li>
+            </ol>
+
+            <h2>よくある質問（FAQ）</h2>
+            <div class="faq-card">
+                <p class="faq-q">Q. 札幌にあったオリエンタルラウンジ札幌やag札幌、仙台のオリエンタルラウンジ仙台は今どうなっていますか？</p>
+                <p class="faq-a">店舗網の再編により、現在リアルタイム人数を公開して営業している拠点は札幌・すすきのエリアが『JIS（ジス）札幌』、仙台・国分町エリアが『ag（アグ）仙台』に集約されています。その分、各都市の来店客が1店舗に集中するため、平日・週末を問わず高い在席数を維持しています。</p>
+            </div>
+            <div class="faq-card">
+                <p class="faq-q">Q. JIS（ジス）札幌は深夜0時過ぎから入っても料金は上がりませんか？</p>
+                <p class="faq-a">上がりません。JIS札幌は19:00のオープンから翌6:00の閉店まで相席10分単価が変わらない終日均一制（平日660円・金土770円、単独待機220円/10分、テーブルチャージ550円）のため、1次会や2次会のあとからでも予算を読みやすいのが強みです。</p>
+            </div>
+            <div class="faq-card">
+                <p class="faq-q">Q. ag（アグ）仙台に金曜・土曜の夜に男性1人で入る方法はありますか？</p>
+                <p class="faq-a">公式ルール上、ag仙台の男性1名入店は月〜木の平日限定となっており、金・土・祝前日などの週末は男性2名以上での来店が必須です。週末に1人で仙台に滞在している夜は、同僚や知人と2人組を作るか、<a href="/grooming#backup-apps">1対1で会える恋活・デートアプリ</a>へ切り替えるのが現実的です。</p>
+            </div>
+            <div class="faq-card">
+                <p class="faq-q">Q. 冬場の札幌・仙台で服装（ドレスコード）で気をつける点はありますか？</p>
+                <p class="faq-a">防寒用のダウンジャケットやスノーブーツ自体で入店を断られることは基本的にありませんが（スウェット上下・作業着・ジャージ等はNG）、暖房の効いた店内ではコートを脱ぐため、インナーのニットやシャツの清潔感・シワ・サイズ感がそのまま第一印象になります。基準の詳細は<a href="/guide/dress-code-cleanliness">『相席ラウンジの服装・清潔感チェックガイド』</a>をご確認ください。</p>
+            </div>
+
+            {% if not is_staff and not session.get('is_staff') %}
+            <aside class="editorial-bridge-box" aria-label="札幌・仙台エリア入店前の料金比較と準備ガイド">
+                <span class="editorial-bridge-kicker">SAPPORO &amp; SENDAI PREP</span>
+                <p class="editorial-bridge-title">JIS（ジス）札幌・ag（アグ）仙台の曜日ルール確認と、コートを脱ぐ前の準備ガイド</p>
+                <p class="editorial-bridge-desc">終日均一単価や週末ペア必須条件は<a href="/price-comparison" data-cushion="1">料金・イベント比較ボード</a>で事前確認できます。暖房の効いた店内で差がつく身だしなみ確認や、女性ペア向けの待ちゼロ確認ボードはこちら。</p>
+                <div class="editorial-bridge-actions">
+                    <a href="/grooming#sebum-care" data-cushion="1" class="editorial-bridge-btn editorial-bridge-btn--men"><span>男性向け｜入店前の清潔感チェック＆週末ソロ対策</span><span>›</span></a>
+                    <a href="/for-women#live-board" data-cushion="1" class="editorial-bridge-btn editorial-bridge-btn--women"><span>女性向け｜札幌・仙台でいま待たずに座れるか確認</span><span>›</span></a>
+                </div>
+            </aside>
+            {% endif %}
+
+            <div class="cta-box">
+                <div class="cta-box-title" style="font-size:1.05rem;font-weight:800;">JIS（ジス）札幌・ag（アグ）仙台の現在人数と60分後予測をチェック</div>
+                <p class="cta-box-desc" style="font-size:0.86rem;margin:8px 0 4px;">向かう前に現在の男女バランスと推定待ち時間を確認して、1店舗集中エリアの空振りをゼロに。</p>
+                <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:12px;">
+                    <a href="/area/hokkaido-tohoku" class="cta-btn">札幌・仙台の現在人数を見る ›</a>
+                    <a href="/price-comparison" data-cushion="1" class="cta-btn cta-btn--secondary">4時間帯料金・ソロ条件を比較 ›</a>
+                    <a href="/concierge?area=sapporo_sendai" data-cushion="1" class="cta-btn cta-btn--secondary">時間帯別の立ち回り診断を使う ›</a>
+                </div>
+            </div>
+        </div>
+        </main>
+
+        {% include '_portal_footer.html' %}
+    </div>
+</body>
+
+</html>

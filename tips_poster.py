@@ -327,6 +327,13 @@ _FALLBACK_COLUMNS = [
     ("相席ラウンジと審査制1対1デートの使い分け｜実測ログで見る境界線", "/guide/lounge-vs-screened-date"),
     ("相席ラウンジの服装と清潔感チェック｜避けたいドレスコードと70cm照明対策", "/guide/dress-code-cleanliness"),
     ("相席ラウンジは30代でも浮かない？｜店舗選びと客層データから見る境界線", "/guide/thirties-lounge-guide"),
+    ("渋谷・恵比寿5店舗の年齢層・時間波形・1駅ハシゴ比較", "/guide/shibuya-ebisu-comparison"),
+    ("上野・錦糸町・町田・柏5店舗の沿線ターミナル比較", "/guide/ueno-kinshicho-machida"),
+    ("横浜・大宮・宇都宮・高崎5店舗の時間波形・料金比較", "/guide/yokohama-omiya-kanto"),
+    ("名古屋（栄・錦・住吉）5店舗の年齢層・ソロ境界比較", "/guide/nagoya-sakae-nishiki"),
+    ("福岡・天神と九州・沖縄11店舗のブランド使い分け", "/guide/fukuoka-tenjin-kyushu"),
+    ("広島・岡山・松山6店舗の3店競合と料金システム比較", "/guide/hiroshima-okayama-matsuyama"),
+    ("札幌すすきの・仙台国分町の時間波形と曜日ルール", "/guide/sapporo-sendai-north"),
     ("20時と深夜0時で「主役」は入れ替わる｜5大ブランドの時間波形と男女逆転の店選び", "/guide/brand-waveform-asymmetry"),
     ("相席ラウンジの席替えの頼み方｜言い出せない男性と察している女性の心理", "/guide/table-change-protocol"),
     ("金土22時の「女性比60%」が3割逆転する理由｜群衆殺到のパラドックス", "/guide/crowd-rush-paradox"),
@@ -694,6 +701,13 @@ HUMAN_OBSERVATION_SEEDS = (
     {"key": "jis_early_vs_1am_monster", "lens": "19時台の静かな早割タイムと、深夜1時でも100人規模で熱気があるJISの二面性", "related_path": "/guide/brand-waveform-asymmetry"},
     {"key": "lounge_pair_vs_1on1_cafe", "lens": "友人ペアで今から乾杯する相席ラウンジのライブ感と、1人で週末に60分だけ話す1対1カフェデートの心地よい使い分け", "related_path": "/guide/lounge-vs-screened-date"},
     {"key": "spotlight_70cm_dress_code", "lens": "暗い店内でも真上の暖色スポット照明×70cm距離で意外と目に入る口元・靴先と、ブランドごとの浮かない私服バランス", "related_path": "/guide/dress-code-cleanliness"},
+    {"key": "shibuya_vs_ebisu_one_stop", "lens": "渋谷が混雑ピークの金曜夜に、山手線で1駅3分の恵比寿へ移動しただけで急に会話のテンポが落ち着く温度差", "related_path": "/guide/shibuya-ebisu-comparison"},
+    {"key": "ueno_nakamachi_adjacent_pair", "lens": "上野・仲町通りで徒歩1分に並ぶオリエンタルラウンジとagを見比べて、その夜の年齢層に合う方へすっと入る身軽さ", "related_path": "/guide/ueno-kinshicho-machida"},
+    {"key": "omiya_yokohama_suburban_return", "lens": "都心の1次会から大宮や横浜へ戻ってきた22時過ぎに、地元組同士で終電を気にせず盛り上がる独特の安心感", "related_path": "/guide/yokohama-omiya-kanto"},
+    {"key": "nagoya_sakae_nishiki_700m", "lens": "名古屋の錦三丁目と住吉エリアで、わずか数百メートル歩くだけで客層の雰囲気も2軒目の誘いやすさも変わる街の構造", "related_path": "/guide/nagoya-sakae-nishiki"},
+    {"key": "tenjin_daimyo_compact_hop", "lens": "福岡・大名の徒歩2分圏内に3ブランドが揃っていて、屋台や夜カフェへの2軒目移動まで一連で完結する天神のコンパクトさ", "related_path": "/guide/fukuoka-tenjin-kyushu"},
+    {"key": "hiroshima_shintenchi_185m", "lens": "広島・新天地公園まわりの半径185mに3店舗が集まり、1軒目の混み具合を見てから2分で切り替えられる回りやすさ", "related_path": "/guide/hiroshima-okayama-matsuyama"},
+    {"key": "susukino_kokubuncho_winter_indoor", "lens": "札幌すすきのや仙台国分町の寒い夜に、1店舗へ熱気が集まるからこそ早い時間と0時過ぎでガラリと変わるフロアの表情", "related_path": "/guide/sapporo-sendai-north"},
 )
 
 

@@ -397,9 +397,13 @@ def store_detail_page(store_slug):
         except Exception as e:
             logging.warning(f"[store_insight] {sname}: {e}")
 
+        import store_dossiers
+        store_dossier = store_dossiers.get_store_dossier(sname)
+
         has_sufficient_store_data = bool(
             tot > 0
             or store_insight
+            or store_dossier
             or (store_analytics and int(store_analytics.get('max_7d_women') or 0) > 0)
         )
 
@@ -438,20 +442,55 @@ def store_detail_page(store_slug):
                 'href': '/guide/shinjuku',
                 'title': '新宿の相席ラウンジ3店舗データ比較｜東口2店と西新宿の使い分け',
             })
+        elif area_slug == 'shibuya':
+            related_guides.append({
+                'href': '/guide/shibuya-ebisu-comparison',
+                'title': '渋谷・恵比寿5店舗の時間波形と山手線1駅比較',
+            })
+        elif area_slug == 'tokyo-east':
+            related_guides.append({
+                'href': '/guide/ueno-kinshicho-machida',
+                'title': '上野・錦糸町・町田・柏 沿線5店舗の実測データ比較',
+            })
+        elif area_slug in ('kanto', 'yokohama', 'omiya'):
+            related_guides.append({
+                'href': '/guide/yokohama-omiya-kanto',
+                'title': '横浜・大宮・宇都宮・高崎 関東5店舗の時間波形・料金比較',
+            })
         elif area_slug in ('osaka', 'umeda', 'namba'):
             try:
                 _osaka_item = core.scheduled_articles.get_article_by_slug('osaka-kita-vs-minami')
                 if _osaka_item and core.scheduled_articles.is_published(_osaka_item):
                     related_guides.append({
                         'href': '/guide/osaka-kita-vs-minami',
-                        'title': '大阪キタ（梅田）vsミナミ（難波・心斎橋）実測データ徹底比較',
+                        'title': '大阪キタ（梅田）vsミナミ（難波・心斎橋）実測データ比較',
                     })
             except Exception:
                 pass
+        elif area_slug == 'nagoya':
+            related_guides.append({
+                'href': '/guide/nagoya-sakae-nishiki',
+                'title': '名古屋（栄・錦・住吉）5店舗の時間波形と料金比較',
+            })
+        elif area_slug == 'fukuoka':
+            related_guides.append({
+                'href': '/guide/fukuoka-tenjin-kyushu',
+                'title': '福岡・天神と九州・沖縄11店舗の3ブランド使い分け・実測比較',
+            })
+        elif area_slug in ('chugoku-shikoku', 'hiroshima'):
+            related_guides.append({
+                'href': '/guide/hiroshima-okayama-matsuyama',
+                'title': '広島・岡山・松山の6店舗比較｜新天地3店競合と料金構造',
+            })
+        elif area_slug in ('hokkaido-tohoku', 'sapporo', 'sendai'):
+            related_guides.append({
+                'href': '/guide/sapporo-sendai-north',
+                'title': '札幌すすきの・仙台国分町｜JIS札幌・ag仙台の時間波形と曜日ルール',
+            })
         related_guides.extend([
             {
                 'href': '/guide/brand-comparison',
-                'title': 'オリエンタルラウンジ・ag（アグ）・JIS（ジス）徹底比較ガイド',
+                'title': 'オリエンタルラウンジ・ag（アグ）・JIS（ジス）比較ガイド',
             },
             {
                 'href': '/guide/solo-vs-pair',
@@ -473,6 +512,7 @@ def store_detail_page(store_slug):
             store=store_obj,
             store_analytics=store_analytics,
             store_insight=store_insight,
+            store_dossier=store_dossier,
             has_sufficient_store_data=has_sufficient_store_data,
             store_smart_cta=store_smart_cta,
             store_votes=store_votes,
@@ -525,9 +565,10 @@ def columns_index():
 @portal_bp.route('/api/forecast-accuracy')
 def api_forecast_accuracy():
     """Public JSON report of 60-minute AI crowd forecast vs. actual outcome verification."""
-    days = max(1, min(120, request.args.get('days', 90, type=int)))
+    raw_days = max(1, min(120, request.args.get('days', 90, type=int) or 90))
+    days = min((7, 14, 21, 30, 60, 90, 120), key=lambda d: abs(d - raw_days))
     store_q = (request.args.get('store') or '').strip() or None
-    limit_q = max(5, min(100, request.args.get('limit', 30, type=int)))
+    limit_q = max(5, min(100, request.args.get('limit', 30, type=int) or 30))
     try:
         import store_master
         rep = core.local_db.get_forecast_accuracy_report(
@@ -897,18 +938,27 @@ def ladies_legacy_redirect():
     return core._redirect_preserving_query('/for-women', code=301)
 
 
+def _normalize_concierge_params(concierge_matcher):
+    area = concierge_matcher.normalize_concierge_area(request.args.get('area', 'shinjuku'))
+    raw_aud = (request.args.get('audience') or 'men').strip().lower()
+    audience = 'women' if raw_aud == 'women' else 'men'
+    raw_tim = (request.args.get('timing') or 'now').strip().lower()
+    timing = raw_tim if raw_tim in ('now', 'prime_21', 'late_23') else 'now'
+    raw_ps = (request.args.get('party_size') or 'pair').strip().lower()
+    party_size = raw_ps if raw_ps in ('solo', 'pair', 'group') else 'pair'
+    raw_vb = (request.args.get('vibe') or 'any').strip().lower()
+    vibe = raw_vb if raw_vb in ('any', 'lively', 'calm') else 'any'
+    return area, audience, timing, party_size, vibe
+
+
 @portal_bp.route('/concierge')
 def concierge_page():
-    """Interactive 3-second tonight's lounge & walking-distance hopping concierge (cached 60s)."""
+    """Interactive tonight's lounge & walking-distance hopping concierge (cached 60s)."""
     import concierge_matcher
     core.restore_latest_data_if_empty()
     core.trigger_background_fetch_if_needed()
 
-    area = request.args.get('area', 'shinjuku')
-    audience = request.args.get('audience', 'men')
-    timing = request.args.get('timing', 'now')
-    party_size = request.args.get('party_size', 'pair')
-    vibe = request.args.get('vibe', 'any')
+    area, audience, timing, party_size, vibe = _normalize_concierge_params(concierge_matcher)
     cache_extra = f"concierge_{area}_{audience}_{timing}_{party_size}_{vibe}"
 
     def _render():
@@ -938,17 +988,13 @@ def concierge_page():
 
 @portal_bp.route('/api/concierge')
 def api_concierge():
-    """Ultra-fast (<5ms) JSON endpoint for interactive 3-second lounge & hopping diagnosis (cached 30s)."""
+    """Ultra-fast (<5ms) JSON endpoint for interactive lounge & hopping diagnosis (cached 30s)."""
     import concierge_matcher
     import ops_governance
     core.restore_latest_data_if_empty()
     core.trigger_background_fetch_if_needed()
 
-    area = request.args.get('area', 'shinjuku')
-    audience = request.args.get('audience', 'men')
-    timing = request.args.get('timing', 'now')
-    party_size = request.args.get('party_size', 'pair')
-    vibe = request.args.get('vibe', 'any')
+    area, audience, timing, party_size, vibe = _normalize_concierge_params(concierge_matcher)
 
     with core.data_lock:
         last_upd = core.latest_data.get('last_updated') or ''
@@ -1184,6 +1230,48 @@ def guide_lounge_vs_screened_date():
 def guide_dress_code_cleanliness():
     """Editorial practical guide on 5-brand dress codes and 70cm sofa spotlight cleanliness checks."""
     return core._get_cached_html_or_render('guide_dress_code_cleanliness', lambda: render_template('guide_dress_code_cleanliness.html'))
+
+
+@portal_bp.route('/guide/shibuya-ebisu-comparison')
+def guide_shibuya_ebisu_comparison():
+    """Editorial area pillar comparing 5 Shibuya & Ebisu lounges/bars across waveforms, age demographics, and solo rules."""
+    return core._get_cached_html_or_render('guide_shibuya_ebisu_comparison', lambda: render_template('guide_shibuya_ebisu_comparison.html'))
+
+
+@portal_bp.route('/guide/ueno-kinshicho-machida')
+def guide_ueno_kinshicho_machida():
+    """Editorial area pillar comparing 5 East Tokyo & suburban terminal lounges (Ueno x2, Kinshicho, Machida, Kashiwa)."""
+    return core._get_cached_html_or_render('guide_ueno_kinshicho_machida', lambda: render_template('guide_ueno_kinshicho_machida.html'))
+
+
+@portal_bp.route('/guide/yokohama-omiya-kanto')
+def guide_yokohama_omiya_kanto():
+    """Editorial area pillar comparing 5 Greater Kanto mega-terminal lounges (Yokohama, Omiya x2, Utsunomiya, Takasaki)."""
+    return core._get_cached_html_or_render('guide_yokohama_omiya_kanto', lambda: render_template('guide_yokohama_omiya_kanto.html'))
+
+
+@portal_bp.route('/guide/nagoya-sakae-nishiki')
+def guide_nagoya_sakae_nishiki():
+    """Editorial area pillar comparing 5 Nagoya Sakae, Nishiki & Sumiyoshi lounges/bars along the 700m north-south axis."""
+    return core._get_cached_html_or_render('guide_nagoya_sakae_nishiki', lambda: render_template('guide_nagoya_sakae_nishiki.html'))
+
+
+@portal_bp.route('/guide/fukuoka-tenjin-kyushu')
+def guide_fukuoka_tenjin_kyushu():
+    """Editorial area pillar comparing all 11 Fukuoka Tenjin, Kyushu & Okinawa lounges across 3 brands and solo-entry rules."""
+    return core._get_cached_html_or_render('guide_fukuoka_tenjin_kyushu', lambda: render_template('guide_fukuoka_tenjin_kyushu.html'))
+
+
+@portal_bp.route('/guide/hiroshima-okayama-matsuyama')
+def guide_hiroshima_okayama_matsuyama():
+    """Editorial area pillar comparing 6 Chugoku & Shikoku lounges (Hiroshima 3-store 185m cluster, Okayama x2, Matsuyama)."""
+    return core._get_cached_html_or_render('guide_hiroshima_okayama_matsuyama', lambda: render_template('guide_hiroshima_okayama_matsuyama.html'))
+
+
+@portal_bp.route('/guide/sapporo-sendai-north')
+def guide_sapporo_sendai_north():
+    """Editorial area pillar comparing JIS Sapporo (Susukino) and ag Sendai (Kokubuncho) single-hub waveforms and solo rules."""
+    return core._get_cached_html_or_render('guide_sapporo_sendai_north', lambda: render_template('guide_sapporo_sendai_north.html'))
 
 
 def _render_scheduled_guide(slug: str):

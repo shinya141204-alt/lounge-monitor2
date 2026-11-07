@@ -548,8 +548,8 @@
 
             <h3>男性側のリアルな本音：10分単位のメーターがあるから「待ち時間と空回り」を避けたい</h3>
             <p>
-                男性側は10分ごとの相席チャージ（および単独待機チャージ）が発生するシステムの中にいます（店舗別の細かい時間帯単価は<a href="/price-comparison">全国料金・待機料・イベント比較ボード</a>で確認できます）。<br>
-                だからこそ、男性ペアにとっては<a href="/store/jis-shinjuku">JIS 新宿</a>の20時台（女性62.4名:男性13.6名・女性比83.6%）や<a href="/store/oriental-lounge-fukuoka">オリエンタルラウンジ 福岡</a>の20時台（86.6%）のように<strong>「女性の厚みがあり、受付で待たずにすぐ着席できる時間帯」</strong>が最も心に余裕を持てる環境になります。なお、金土の22時台に「余裕の少ない女性比60%前後」の店へ移動タイムラグ30分かけて向かうと1次会帰りの男性と鉢合わせしやすいため、22時以降は<a href="/guide/crowd-rush-paradox">『22時の群衆殺到パラドックスと70%安全バッファ』</a>の基準を併用するのが安全です。
+                男性側は10分ごとの相席チャージ（および単独待機チャージ）が発生するシステムの中にいます（店舗別の細かい時間帯単価は<a href="/price-comparison" data-cushion="1">全国料金・待機料・イベント比較ボード</a>で確認できます）。<br>
+                だからこそ、男性ペアにとっては<a href="/store/jis-shinjuku">JIS 新宿</a>の20時台（女性62.4名:男性13.6名・女性比83.6%）や<a href="/store/oriental-lounge-fukuoka">オリエンタルラウンジ 福岡</a>の20時台（86.6%）のように<strong>「女性の厚みがあり、受付で待たずにすぐ着席できる時間帯」</strong>が最も心に余裕を持てる環境になります。なお、金土の22時台に「余裕の少ない女性比60%前後」の店へ移動タイムラグ30分かけて向かうと1次会帰りの男性と鉢合わせしやすくなります。22時以降は<a href="/guide/crowd-rush-paradox">『22時の群衆殺到パラドックスと70%安全バッファ』</a>の基準もあわせて見ておくと安心です。
             </p>
 
             <h3>女性側のリアルな本音：無料でも「女余りの30分放置」が一番つらい</h3>
@@ -590,6 +590,18 @@
                 <p class="faq-q">Q. いま向かおうとしている店舗が「どの波形フェーズ」にあるかはどこで見られますか？</p>
                 <p class="faq-a">『相席ナビ』の<a href="/">トップページ</a>では全国60店舗超の現在人数・女性比率・60分後AI予測バッジを1分ごとに更新しており、各店舗をタップすると時間帯別の平均推移グラフもその場で確認できます。迷ったときは<a href="/concierge">穴場・徒歩ハシゴ診断</a>で性別・時間帯・人数を入れると条件に合う候補が表示されます。</p>
             </div>
+
+            {% if not is_staff and not session.get('is_staff') %}
+            <aside class="editorial-bridge-box" aria-label="時間帯波形に合わせた事前準備と男女別ボード">
+                <span class="editorial-bridge-kicker">WAVEFORM &amp; TIMING TOOLKIT</span>
+                <p class="editorial-bridge-title">時間波形が噛み合う店を選んだら、入店直前の「席での余裕」も整える</p>
+                <p class="editorial-bridge-desc">22時以降のピーク帯に備える満席時のサブ選択肢や距離70cmの清潔感リセット、女性ペアがいま男性先行で即着席できるリアルタイム店舗一覧、<a href="/price-comparison" data-cushion="1">4時間帯別の10分単価・待機料比較シート</a>をまとめています。</p>
+                <div class="editorial-bridge-actions">
+                    <a href="/grooming#sebum-care" data-cushion="1" class="editorial-bridge-btn editorial-bridge-btn--men"><span>男性向け｜仕事帰りの肌・口元リセット＆満席対策</span><span>›</span></a>
+                    <a href="/for-women#live-board" data-cushion="1" class="editorial-bridge-btn editorial-bridge-btn--women"><span>女性向け｜いま男性先行で待ちゼロの店舗ボード</span><span>›</span></a>
+                </div>
+            </aside>
+            {% endif %}
 
             <div class="cta-box">
                 <div class="cta-box-title" style="font-size:1.05rem;font-weight:800;">今夜これから行く街の「現在バランスと時間波形」を確認する</div>

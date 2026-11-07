@@ -462,22 +462,35 @@ def _evaluate_store_candidate(
     sched = h_status.get("schedule_spec") or {}
     close_h = (sched.get("fs" if is_weekend_like else "mt") or [18, 29])[1]
 
-    # ベンチマーク統計値（非ブロッキング取得・未計測時は堅牢な推定デフォルト）
+    # ベンチマーク統計値（非ブロッキング取得・未計測時に虚偽の「過去ログ実測」表記を行わない）
     usual_w = bm.get("usual_women")
     usual_slot_label = bm.get("usual_slot_label") or "普段の同時間帯"
     usual_w_diff = round(w - float(usual_w), 1) if (usual_w is not None and tot > 0) else None
 
-    club_kw = ("梅田", "茶屋町", "心斎橋", "難波", "渋谷", "新宿", "栄", "名古屋 錦", "名古屋錦", "福岡", "札幌", "UMEDA", "CHAYAMACHI", "NAMBA", "SHIBUYA", "SHINJUKU", "FUKUOKA", "SAPPORO")
-    is_club_zone = any(k in sname.upper() for k in club_kw)
-    mid_ret = bm.get("midnight_retention_pct")
-    if mid_ret is None:
-        mid_ret = 84 if is_club_zone else 58
-    else:
-        mid_ret = int(mid_ret)
+    raw_mid_ret = bm.get("midnight_retention_pct")
+    has_measured_mid = (
+        bool(bm.get("has_measured_midnight"))
+        if "has_measured_midnight" in bm
+        else (raw_mid_ret is not None and float(bm.get("midnight_avg_w") or 0.0) > 0.0)
+    )
+    mid_ret = int(raw_mid_ret) if raw_mid_ret is not None else None
+    score_mid_ret = int(raw_mid_ret) if has_measured_mid and raw_mid_ret is not None else 60
 
-    core_short = bm.get("core_time_short") or "20-22時"
-    core_wpct = int(bm.get("core_time_wpct") or 57)
-    peak_avg_w = float(bm.get("peak_band_avg_w") or (usual_w if usual_w else 16.0))
+    raw_core_short = bm.get("core_time_short")
+    raw_core_wpct = bm.get("core_time_wpct")
+    has_measured_core = (
+        bool(bm.get("has_measured_core"))
+        if "has_measured_core" in bm
+        else (raw_core_wpct is not None and bool(bm))
+    )
+    core_short = raw_core_short or "20-22時"
+    core_wpct = int(raw_core_wpct) if (has_measured_core and raw_core_wpct is not None) else None
+    score_core_wpct = core_wpct if core_wpct is not None else 50
+
+    raw_peak_w = bm.get("peak_band_avg_w")
+    has_measured_peak = (raw_peak_w is not None and float(raw_peak_w) > 0.0) or (usual_w is not None and float(usual_w) > 0.0)
+    peak_avg_w = float(raw_peak_w) if (raw_peak_w is not None and float(raw_peak_w) > 0.0) else (float(usual_w) if usual_w else None)
+    score_peak_w = peak_avg_w if peak_avg_w is not None else 0.0
 
     solo_allowed_men = _is_men_solo_allowed(sname, is_weekend_like)
     solo_rule_str = p_spec.get("solo_rule") or b_spec.get("solo_rule") or "店舗規定に準拠"
@@ -512,15 +525,15 @@ def _evaluate_store_candidate(
                 if m_diff > 0:
                     raw_score += min(5.0, m_diff * 1.1)
             else:
-                raw_score += min(14.0, peak_avg_w * 0.45)
+                raw_score += min(14.0, score_peak_w * 0.45)
         elif timing == "prime_21":
-            raw_score += min(14.0, m * 0.45) + min(14.0, peak_avg_w * 0.5)
+            raw_score += min(14.0, m * 0.45) + min(14.0, score_peak_w * 0.5)
             if tot >= 8 and female_pct >= 68:
                 raw_score -= 8.0
             elif tot >= 6 and m >= w:
                 raw_score += 8.0
         else:  # late_23
-            raw_score += (mid_ret - 60) * 0.32
+            raw_score += (score_mid_ret - 60) * 0.32
             if close_h <= 26:
                 raw_score -= 14.0
             else:
@@ -565,13 +578,13 @@ def _evaluate_store_candidate(
                 if usual_w_diff is not None and usual_w_diff >= 3:
                     raw_score += 4.5
             else:
-                raw_score += min(15.0, peak_avg_w * 0.55) + (core_wpct - 50) * 0.45
+                raw_score += min(15.0, score_peak_w * 0.55) + (score_core_wpct - 50) * 0.45
         elif timing == "prime_21":
             live_part = (min(16.0, w * 0.55) + ((female_pct - 50) * 0.45 if tot >= 6 else 0.0)) if tot > 0 else 6.0
-            hist_part = min(16.0, peak_avg_w * 0.55) + (core_wpct - 50) * 0.55
+            hist_part = min(16.0, score_peak_w * 0.55) + (score_core_wpct - 50) * 0.55
             raw_score += live_part * 0.45 + hist_part * 0.55 + 6.0
         else:  # late_23
-            raw_score += (mid_ret - 60) * 0.48
+            raw_score += (score_mid_ret - 60) * 0.48
             if close_h <= 26:
                 raw_score -= 16.0  # 翌1〜2時閉店は23時以降ハシゴに不向き
             elif close_h >= 30:
@@ -579,7 +592,7 @@ def _evaluate_store_candidate(
             if tot > 0:
                 raw_score += min(15.0, w * 0.5) + ((female_pct - 50) * 0.4 if tot >= 6 else 0.0)
             else:
-                raw_score += min(10.0, peak_avg_w * 0.35)
+                raw_score += min(10.0, score_peak_w * 0.35)
 
         # 男性人数条件（ソロ入店規定の厳密反映！）
         if party_size == "solo":
@@ -624,15 +637,21 @@ def _evaluate_store_candidate(
         elif tot > 0:
             headline = f"現在 男性{m}名・女性{w}名稼働中！フロア活気と快適度のバランスが良好"
             r1 = f"現在の店内稼働は計{tot}名（男性{m}名・女性{w}名／女性比{female_pct}%）。極端な女性過多による長時間待機の心配が少ない水準です。"
+        elif has_measured_peak and peak_avg_w is not None:
+            headline = f"本日 {today_hours} 営業｜女性完全無料＆快適度の高い定番人気ラウンジ"
+            r1 = f"現在は営業時間外または集計立ち上がり前（本日 {today_hours}）。過去ログ実測のピーク帯は平均女性{peak_avg_w:.0f}名規模で稼働しています。"
         else:
             headline = f"本日 {today_hours} 営業｜女性完全無料＆快適度の高い定番人気ラウンジ"
-            r1 = f"現在は営業時間外または集計立ち上がり前（本日 {today_hours}）。ピーク帯は平均女性{peak_avg_w:.0f}名規模で賑わう安定店舗です。"
+            r1 = f"現在は営業時間外または集計立ち上がり前（本日 {today_hours}）。時間帯別の検証ログを蓄積中です。"
         reasons.append(r1)
 
         if timing == "late_23":
-            reasons.append(f"23時以降の終電後定着率は{mid_ret}%（本日 {today_hours}）。2軒目・深夜帯からでも男性客が途切れにくく安心して楽しめます。")
+            if has_measured_mid and mid_ret is not None:
+                reasons.append(f"23時以降の終電後定着率は実測{mid_ret}%（本日 {today_hours}）。2軒目・深夜帯からでも男性客が途切れにくく安心して楽しめます。")
+            else:
+                reasons.append(f"本日は {today_hours} まで営業（終電後定着ログは現在蓄積中）。深夜帯はリアルタイム男女数を確認してからの来店が確実です。")
         else:
-            reasons.append(f"コアタイム（{core_short}）の稼働が安定しており、女性チャージ・飲み放題0円に加えて季節フードや限定特典も充実しています。")
+            reasons.append(f"女性チャージ・飲み放題0円に加えて季節フードや限定特典も充実しています（本日 {today_hours}）。")
 
         reasons.append(f"主な客層は{age_range}（{vibe_short}）。不快な席に当たった際もスタッフへ席替え相談がしやすい安心運営です。")
 
@@ -643,9 +662,15 @@ def _evaluate_store_candidate(
         elif tot > 0 and tot >= 6:
             headline = f"現在 女性{w}名・男性{m}名（女性比{female_pct}%）｜エリア内で最もバランス優位な第1候補"
         elif is_open:
-            headline = f"営業中（本日 {today_hours}）｜ピーク平均女性{peak_avg_w:.0f}名・コア帯女性比{core_wpct}%の実力店"
+            if has_measured_peak and peak_avg_w is not None and has_measured_core and core_wpct is not None:
+                headline = f"営業中（本日 {today_hours}）｜実測ピーク平均女性{peak_avg_w:.0f}名・コア帯女性比{core_wpct}%の実力店"
+            else:
+                headline = f"営業中（本日 {today_hours}）｜男性60分目安 {est_price_lbl} で使えるエリア有力候補"
         else:
-            headline = f"本日 {today_hours} 営業｜過去ログ分析でコア帯（{core_short}）女性比{core_wpct}%の本命店"
+            if has_measured_core and core_wpct is not None:
+                headline = f"本日 {today_hours} 営業｜過去ログ実測でコア帯（{core_short}）女性比{core_wpct}%の本命店"
+            else:
+                headline = f"本日 {today_hours} 営業｜条件と立地バランスに優れた今夜の有力候補"
 
         if tot > 0:
             diff_note = ""
@@ -657,20 +682,33 @@ def _evaluate_store_candidate(
             reasons.append(
                 f"現在 女性{w}名 : 男性{m}名（計{tot}名・女性比率{female_pct}%）{diff_note}。単独待機課金や男性入店待ちリスクを抑えやすい数値バランスです。"
             )
+        elif has_measured_peak and peak_avg_w is not None and has_measured_core and core_wpct is not None:
+            reasons.append(
+                f"過去ログ実測でピーク帯平均女性{peak_avg_w:.0f}名・コアタイム（{core_short}）平均女性比{core_wpct}%を記録している店舗です。"
+            )
         else:
             reasons.append(
-                f"過去30日ログ統計でピーク帯平均女性{peak_avg_w:.0f}名・コアタイム（{core_short}）平均女性比{core_wpct}%を記録している実績上位店です。"
+                f"現在は営業時間外または立ち上がり前です（本日 {today_hours}／時間帯別の過去ログ統計は検証データ蓄積中）。"
             )
 
         if party_size == "solo":
             if solo_allowed_men:
-                reasons.append(f"男性1名（ソロ）参戦に対応（{solo_rule_str}）。終電後定着率{mid_ret}%で1人でも合流・回転しやすい環境です。")
+                mid_note = f"終電後定着率{mid_ret}%で" if (has_measured_mid and mid_ret is not None) else ""
+                reasons.append(f"男性1名（ソロ）参戦に対応（{solo_rule_str}）。{mid_note}1人でも合流・回転しやすい環境です。")
             else:
                 reasons.append(f"※注意：公式規定は「{solo_rule_str}」です。1人で向かう場合は第2候補のソロ対応店もあわせてご確認ください。")
         elif timing == "late_23":
-            reasons.append(f"23時以降の終電後定着率は{mid_ret}%（本日 {today_hours}）。終電崖の後も2回転目の女性流入が期待できる深夜強い店舗です。")
+            if has_measured_mid and mid_ret is not None:
+                reasons.append(f"23時以降の終電後定着率は実測{mid_ret}%（本日 {today_hours}）。終電崖の後も2回転目の女性流入が期待できる店舗です。")
+            else:
+                reasons.append(f"本日は {today_hours} 営業（深夜維持率ログは蓄積中）。23時以降のリアルタイム男女比を見て向かうのが確実です。")
         else:
-            reasons.append(f"狙い目コアタイムは{core_short}（平均女性比{core_wpct}%・終電後定着率{mid_ret}%）。60分相席目安は{est_price_lbl}です。")
+            if has_measured_core and core_wpct is not None and has_measured_mid and mid_ret is not None:
+                reasons.append(f"狙い目コアタイムは{core_short}（実測平均女性比{core_wpct}%・終電後定着率{mid_ret}%）。60分相席目安は{est_price_lbl}です。")
+            elif has_measured_core and core_wpct is not None:
+                reasons.append(f"狙い目コアタイムは{core_short}（実測平均女性比{core_wpct}%）。男性60分相席目安は{est_price_lbl}です。")
+            else:
+                reasons.append(f"本日の営業時間は {today_hours}。男性60分相席目安は{est_price_lbl}です。")
 
         reasons.append(f"客層は{age_range}（{vibe_short}）。希望条件に最も噛み合うフロア空気感です。")
 
@@ -694,8 +732,11 @@ def _evaluate_store_candidate(
         "reasons": reasons[:3],
         "usual_w_diff": usual_w_diff,
         "usual_slot_label": usual_slot_label,
-        "midnight_retention_pct": mid_ret,
-        "core_time_short": core_short,
+        "midnight_retention_pct": mid_ret if mid_ret is not None else 0,
+        "has_measured_midnight": bool(has_measured_mid),
+        "has_measured_core": bool(has_measured_core),
+        "has_measured_benchmark": bool(has_measured_mid or has_measured_core or has_measured_peak),
+        "core_time_short": core_short if has_measured_core else "--",
         "solo_ok": solo_allowed_men,
         "solo_rule_short": solo_rule_str,
         "age_range": age_range,
@@ -942,9 +983,19 @@ def diagnose_tonight_plan(
     except Exception:
         benchmarks = {}
 
+    import ops_governance
+    import store_master
+    master_map = store_master.load() or {}
+
     portal_slug = area_cfg["portal_slug"]
+    visible_area_stores = [
+        sname
+        for sname in area_cfg["stores"]
+        if (not master_map or sname in master_map) and not ops_governance.is_store_hidden(sname)
+    ]
+
     evaluated = []
-    for sname in area_cfg["stores"]:
+    for sname in visible_area_stores:
         cand = _evaluate_store_candidate(
             sname=sname,
             live_entry=live_map.get(sname) or {},
@@ -961,11 +1012,45 @@ def diagnose_tonight_plan(
 
     evaluated.sort(key=lambda x: x["_raw_tiebreak"], reverse=True)
 
-    primary = dict(evaluated[0])
-    primary.pop("_raw_tiebreak", None)
-
-    rest = evaluated[1:]
-    backup = _select_backup_candidate(primary, rest, audience=aud, party_size=psize)
+    if evaluated:
+        primary = dict(evaluated[0])
+        primary.pop("_raw_tiebreak", None)
+        rest = evaluated[1:]
+        backup = _select_backup_candidate(primary, rest, audience=aud, party_size=psize)
+    else:
+        primary = {
+            "raw_name": "",
+            "display_name": "現在案内可能な対象店舗はありません",
+            "brand_label": "",
+            "slug": "",
+            "store_url": f"/area/{portal_slug}",
+            "area_url": f"/area/{portal_slug}",
+            "women": 0,
+            "men": 0,
+            "total": 0,
+            "female_pct": 50,
+            "women_diff": 0,
+            "men_diff": 0,
+            "is_open_now": False,
+            "today_hours_label": "--:--",
+            "score": 0,
+            "headline_reason": "このエリアの対象店舗は現在メンテナンスまたは表示調整中です。",
+            "reasons": ["他エリアを選択するか、全国リアルタイム一覧から営業中店舗をご確認ください。"],
+            "usual_w_diff": None,
+            "usual_slot_label": "普段の同時間帯",
+            "midnight_retention_pct": 0,
+            "has_measured_midnight": False,
+            "has_measured_core": False,
+            "has_measured_benchmark": False,
+            "core_time_short": "--",
+            "solo_ok": False,
+            "solo_rule_short": "",
+            "age_range": "",
+            "vibe_short": "",
+            "price_60m_label": "",
+        }
+        rest = []
+        backup = None
 
     other_candidates = []
     backup_raw = backup["raw_name"] if backup else None
@@ -980,13 +1065,12 @@ def diagnose_tonight_plan(
     area_summary = _build_area_summary(evaluated, audience=aud)
     smart_action = _build_smart_action_card(aud, tim, area_summary, primary)
 
-    import store_master
-    if primary and "raw_name" in primary:
+    if primary and primary.get("raw_name"):
         primary["raw_name"] = store_master.seo_name(primary["raw_name"])
-    if backup and "raw_name" in backup:
+    if backup and backup.get("raw_name"):
         backup["raw_name"] = store_master.seo_name(backup["raw_name"])
     for cand in other_candidates:
-        if "raw_name" in cand:
+        if cand.get("raw_name"):
             cand["raw_name"] = store_master.seo_name(cand["raw_name"])
 
     return {

@@ -277,6 +277,8 @@ def pg_connection():
             pool_obj.putconn(conn, close=True)
             conn = pool_obj.getconn()
     except Exception as err:
+        if _pg_pool is not None and isinstance(err, _pg_pool.PoolError):
+            raise RuntimeError(f"PostgreSQL pool exhausted: {err}")
         _mark_pg_failed(err)
         raise RuntimeError(f"PostgreSQL unavailable: {err}")
     broken = False
@@ -529,13 +531,18 @@ def init_postgres_aux_schema() -> bool:
 
 
 def execute_pg_values_batch(sql: str, rows: list, page_size: int = 500) -> int:
-    """Fast multi-row batch insert helper using `psycopg2.extras.execute_values`."""
+    """Fast multi-row batch insert helper using `psycopg2.extras.execute_values` (sums rowcount across pages)."""
     if not rows or not is_postgres_active():
         return 0
+    step = max(1, int(page_size or 500))
+    inserted = 0
     with pg_connection() as conn:
         with conn.cursor() as cur:
-            _pg_extras.execute_values(cur, sql, rows, page_size=page_size)
-            inserted = cur.rowcount if cur.rowcount and cur.rowcount > 0 else 0
+            for idx in range(0, len(rows), step):
+                chunk = rows[idx : idx + step]
+                _pg_extras.execute_values(cur, sql, chunk, page_size=step)
+                if cur.rowcount and cur.rowcount > 0:
+                    inserted += int(cur.rowcount)
         conn.commit()
     return inserted
 
@@ -1460,6 +1467,10 @@ def record_rate_limit_hit(namespace: str, subject: str, window_sec: int, now: fl
             stale = [k for k, ts_l in _mem_rate_limits.items() if not ts_l or (now_t - ts_l[-1] >= window_sec)]
             for k in stale:
                 _mem_rate_limits.pop(k, None)
+            if len(_mem_rate_limits) >= 4096:
+                overflow = len(_mem_rate_limits) - 4095
+                for old_k in list(_mem_rate_limits.keys())[:overflow]:
+                    _mem_rate_limits.pop(old_k, None)
         recent = [t for t in _mem_rate_limits.get(mk, []) if now_t - t < window_sec]
         recent.append(now_t)
         _mem_rate_limits[mk] = recent

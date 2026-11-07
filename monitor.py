@@ -1,7 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 import time
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from concurrent.futures import ThreadPoolExecutor, wait as futures_wait
 import json
 import logging
@@ -50,17 +50,48 @@ _ORIENTAL_HEADERS = {
     'Cookie': 'user_language=ja; first_visit_done=1',
 }
 
-# Cache for OLG data (fallback when connection fails)
+# Cache for OLG data (fallback when connection fails; bounded to max 20m to prevent frozen DB/forecast pollution)
+_JST = timezone(timedelta(hours=9))
+_OLG_STALE_MAX_SEC = 20 * 60
 _olg_cache = {
     'data': [],
     'last_success': None
 }
 _olg_cache_lock = threading.Lock()
 
+
+def _now_jst_naive() -> datetime:
+    return datetime.now(_JST).replace(tzinfo=None)
+
+
+def _fresh_stale_olg_items_unlocked() -> list:
+    """Return cached OLG items marked `stale=True` iff `last_success` is within `_OLG_STALE_MAX_SEC`."""
+    cached = _olg_cache.get('data') or []
+    if not cached:
+        return []
+    ls = _olg_cache.get('last_success')
+    if ls:
+        try:
+            ls_dt = datetime.strptime(str(ls)[:19], "%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            return []
+        age_jst = (_now_jst_naive() - ls_dt).total_seconds()
+        age_local = (datetime.now() - ls_dt).total_seconds()
+        # Handle both JST timestamps and legacy local-clock timestamps set by callers/tests
+        effective_age = age_jst if abs(age_jst) <= abs(age_local) else age_local
+        if effective_age > _OLG_STALE_MAX_SEC:
+            return []
+    else:
+        _olg_cache['last_success'] = _now_jst_naive().strftime("%Y-%m-%d %H:%M:%S")
+    return [{**s, 'stale': True} for s in cached]
+
+
 _http_tls = threading.local()
 _FETCHER_SESSIONS = {}
 _fetcher_session_lock = threading.Lock()
 _FETCH_EXECUTOR = ThreadPoolExecutor(max_workers=8, thread_name_prefix='scraper')
+_inflight_fetchers = {}
+_inflight_lock = threading.Lock()
 
 _doh_lock = threading.Lock()
 _doh_ip_cache = {'ips': [], 'expires_at': 0.0}
@@ -284,49 +315,55 @@ def _fetch_ag_official_fallback() -> list:
         return []
 
 
-def get_oriental_data():
+def get_oriental_data(deadline_mono: float = None):
     global _olg_cache
     with _olg_cache_lock:
         _olg_cache['served_stale'] = False
     is_mocked = getattr(requests.get, '__module__', '') != 'requests.api'
+    started_mono = time.monotonic()
+    eff_deadline = deadline_mono if deadline_mono is not None else (started_mono + 16.5)
     last_err = None
 
     for attempt in range(2):
+        if attempt > 0 and not is_mocked and (eff_deadline - time.monotonic()) < 4.5:
+            break
         try:
             if attempt > 0 and not is_mocked:
                 _reset_http_session('oriental')
                 time.sleep(0.4)
-            response = _get_http_session('oriental').get(ORIENTAL_URL, timeout=(4, 10), headers=_ORIENTAL_HEADERS)
+            read_to = max(2.5, min(8.0, eff_deadline - time.monotonic() - 1.0)) if not is_mocked else 10
+            response = _get_http_session('oriental').get(ORIENTAL_URL, timeout=(3.5, read_to), headers=_ORIENTAL_HEADERS)
             response.raise_for_status()
             store_data = _extract_oriental_stores_from_html(response.content)
             if store_data:
                 with _olg_cache_lock:
                     _olg_cache['data'] = list(store_data)
-                    _olg_cache['last_success'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    _olg_cache['last_success'] = _now_jst_naive().strftime("%Y-%m-%d %H:%M:%S")
                 return store_data
             preview = (response.content or b'')[:120].decode('utf-8', errors='replace').strip()
             last_err = f"no store elements found ({len(response.content)} bytes; preview={preview!r})"
         except Exception as e:
             last_err = str(e)
 
-    # Fallback 1: Bypass stale local VPC NS cache via RFC 8484 DoH + verified TLS SNI pool
-    if not is_mocked:
+    # Fallback 1: Bypass stale local VPC NS cache via RFC 8484 DoH + verified TLS SNI pool (only if budget remains)
+    if not is_mocked and (eff_deadline - time.monotonic()) >= 3.5:
         doh_stores, doh_err = _fetch_oriental_via_doh()
         if doh_stores:
             with _olg_cache_lock:
                 _olg_cache['data'] = list(doh_stores)
-                _olg_cache['last_success'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                _olg_cache['last_success'] = _now_jst_naive().strftime("%Y-%m-%d %H:%M:%S")
             return doh_stores
         last_err = f"{last_err} | DoH: {doh_err}"
 
-        # Fallback 2: Official ag-ree.jp live counts for the 8 ag stores if oriental-lounge.com itself is in maintenance
+    # Fallback 2: Official ag-ree.jp live counts for the 8 ag stores if oriental-lounge.com itself is in maintenance
+    if not is_mocked and (eff_deadline - time.monotonic()) >= 1.8:
         ag_live = _fetch_ag_official_fallback()
         if ag_live:
             ag_by_name = {s['name']: s for s in ag_live}
             with _olg_cache_lock:
-                cached_data = list(_olg_cache.get('data') or [])
-                if cached_data:
-                    merged = [ag_by_name.get(s['name'], s) for s in cached_data]
+                stale_olg = _fresh_stale_olg_items_unlocked()
+                if stale_olg:
+                    merged = [ag_by_name.get(s['name'], s) for s in stale_olg]
                     existing_names = {s['name'] for s in merged}
                     for ag_s in ag_live:
                         if ag_s['name'] not in existing_names:
@@ -340,11 +377,16 @@ def get_oriental_data():
 
     logging.error(f"Error fetching オリエンタルラウンジ data: {last_err}")
     with _olg_cache_lock:
-        if _olg_cache.get('data'):
-            logging.error(f"Using cached オリエンタルラウンジ data from {_olg_cache.get('last_success')}")
+        stale_items = _fresh_stale_olg_items_unlocked()
+        if stale_items:
+            logging.error(f"Using bounded stale オリエンタルラウンジ data from {_olg_cache.get('last_success')}")
             _olg_cache['served_stale'] = True
             _olg_cache['stale_reason'] = str(last_err)
-            return list(_olg_cache['data'])
+            return stale_items
+        if _olg_cache.get('data'):
+            logging.error(
+                f"Discarding expired オリエンタルラウンジ cache from {_olg_cache.get('last_success')} (> {_OLG_STALE_MAX_SEC}s)"
+            )
     return []
 
 
@@ -385,29 +427,33 @@ def get_jis_data():
     }
     try:
         data = json.loads(match.group(1))
+        if not isinstance(data, dict):
+            return []
         for store_key, store_info in data.items():
-            if 'shared' in store_info:
+            try:
+                if not isinstance(store_info, dict) or 'shared' not in store_info:
+                    continue
                 sh = store_info['shared'] or {}
-                men_count = int(sh.get('mens_customer_num', 0) or 0)
-                women_count = int(sh.get('ladys_customer_num', 0) or 0)
-                name = name_map.get(store_key, store_key.upper())
+                men_count = max(0, int(sh.get('mens_customer_num', 0) or 0))
+                women_count = max(0, int(sh.get('ladys_customer_num', 0) or 0))
+                name = name_map.get(store_key, str(store_key).upper())
                 pos_telemetry = {
                     'telemetry_type': 'jis_pos',
                     'men_total_guests': men_count,
                     'women_total_guests': women_count,
-                    'men_total_groups': int(sh.get('mens_group_num', 0) or 0),
-                    'women_total_groups': int(sh.get('ladys_group_num', 0) or 0),
-                    'matched_groups': int(sh.get('mens_share_num', 0) or 0),
-                    'women_matched_groups': int(sh.get('ladys_share_num', 0) or 0),
-                    'men_matched_guests': int(sh.get('mens_share_customer_num', 0) or 0),
-                    'women_matched_guests': int(sh.get('ladys_share_customer_num', 0) or 0),
-                    'men_waiting_groups': int(sh.get('mens_waiting_num', 0) or 0) + int(sh.get('mens_waiting_uncounted_num', 0) or 0),
-                    'men_waiting_guests': int(sh.get('mens_waiting_customer_num', 0) or 0) + int(sh.get('mens_waiting_uncounted_customer_num', 0) or 0),
-                    'women_waiting_groups': int(sh.get('ladys_waiting_num', 0) or 0) + int(sh.get('ladys_waiting_uncounted_num', 0) or 0),
-                    'women_waiting_guests': int(sh.get('ladys_waiting_customer_num', 0) or 0) + int(sh.get('ladys_waiting_uncounted_customer_num', 0) or 0),
-                    'standing_guests': int(sh.get('mens_st_customer_num', 0) or 0) + int(sh.get('ladys_st_customer_num', 0) or 0),
-                    'vip_guests': int(sh.get('vip_mens_customer_num', 0) or 0) + int(sh.get('vip_ladys_customer_num', 0) or 0),
-                    'ex_guests': int(sh.get('ex_mens_customer_num', 0) or 0) + int(sh.get('ex_ladys_customer_num', 0) or 0),
+                    'men_total_groups': max(0, int(sh.get('mens_group_num', 0) or 0)),
+                    'women_total_groups': max(0, int(sh.get('ladys_group_num', 0) or 0)),
+                    'matched_groups': max(0, int(sh.get('mens_share_num', 0) or 0)),
+                    'women_matched_groups': max(0, int(sh.get('ladys_share_num', 0) or 0)),
+                    'men_matched_guests': max(0, int(sh.get('mens_share_customer_num', 0) or 0)),
+                    'women_matched_guests': max(0, int(sh.get('ladys_share_customer_num', 0) or 0)),
+                    'men_waiting_groups': max(0, int(sh.get('mens_waiting_num', 0) or 0) + int(sh.get('mens_waiting_uncounted_num', 0) or 0)),
+                    'men_waiting_guests': max(0, int(sh.get('mens_waiting_customer_num', 0) or 0) + int(sh.get('mens_waiting_uncounted_customer_num', 0) or 0)),
+                    'women_waiting_groups': max(0, int(sh.get('ladys_waiting_num', 0) or 0) + int(sh.get('ladys_waiting_uncounted_num', 0) or 0)),
+                    'women_waiting_guests': max(0, int(sh.get('ladys_waiting_customer_num', 0) or 0) + int(sh.get('ladys_waiting_uncounted_customer_num', 0) or 0)),
+                    'standing_guests': max(0, int(sh.get('mens_st_customer_num', 0) or 0) + int(sh.get('ladys_st_customer_num', 0) or 0)),
+                    'vip_guests': max(0, int(sh.get('vip_mens_customer_num', 0) or 0) + int(sh.get('vip_ladys_customer_num', 0) or 0)),
+                    'ex_guests': max(0, int(sh.get('ex_mens_customer_num', 0) or 0) + int(sh.get('ex_ladys_customer_num', 0) or 0)),
                 }
                 store_data.append({
                     'name': f"JIS {name}",
@@ -416,6 +462,8 @@ def get_jis_data():
                     'source': 'jis',
                     'pos_telemetry': pos_telemetry,
                 })
+            except Exception as store_err:
+                logging.warning(f"Skipping malformed JIS store entry {store_key!r}: {store_err}")
     except json.JSONDecodeError as e:
         logging.error(f"Error parsing JIS JSON: {e}")
 
@@ -621,30 +669,55 @@ def get_all_data():
     local_errors = {}
     lock = threading.Lock()
 
+    cycle_deadline = time.monotonic() + 17.0
+
     def run_fetcher(fn):
         name = fn.__name__
         try:
-            res = fn()
-            with lock:
-                if res:
-                    results_by_name[name] = res
-                    logging.info(f"  ✓ {name}: {len(res)} stores")
-                else:
-                    local_errors[name] = "Returned empty"
-                    logging.error(f"  ✗ {name}: returned empty")
+            if fn is get_oriental_data:
+                res = fn(deadline_mono=cycle_deadline)
+            else:
+                res = fn()
+            return name, res, None
         except Exception as e:
-            with lock:
-                local_errors[name] = str(e)
             logging.error(f"  ✗ {name}: {e}")
+            return name, None, str(e)
 
-    # Submit all 6 scrapers to reusable pool (zero per-minute OS thread churn)
-    future_map = {_FETCH_EXECUTOR.submit(run_fetcher, fn): fn.__name__ for fn in fetchers}
-    done, not_done = futures_wait(future_map.keys(), timeout=18.0)
+    # Prevent thread-pool starvation: never submit a duplicate task if the previous cycle's fetcher is still hung
+    future_map = {}
+    with _inflight_lock:
+        for fn in fetchers:
+            fname = fn.__name__
+            prev_fut = _inflight_fetchers.get(fname)
+            if prev_fut is not None and not prev_fut.done():
+                logging.warning(f"  ⚠ {fname}: previous fetch still in-flight; skipping duplicate submit")
+                local_errors[fname] = "Previous fetch still in-flight"
+                continue
+            fut = _FETCH_EXECUTOR.submit(run_fetcher, fn)
+            _inflight_fetchers[fname] = fut
+            future_map[fut] = fname
+
+    done, not_done = futures_wait(future_map.keys(), timeout=18.0) if future_map else (set(), set())
+    for fut in done:
+        fname = future_map[fut]
+        try:
+            _, res, err_s = fut.result(timeout=0)
+            if err_s:
+                local_errors[fname] = err_s
+            elif res:
+                results_by_name[fname] = res
+                logging.info(f"  ✓ {fname}: {len(res)} stores")
+            else:
+                local_errors[fname] = "Returned empty"
+                logging.error(f"  ✗ {fname}: returned empty")
+        except Exception as e:
+            local_errors[fname] = str(e)
+            logging.error(f"  ✗ {fname}: {e}")
+
     if not_done:
         for fut in not_done:
             fname = future_map[fut]
-            with lock:
-                local_errors[fname] = "Hard timeout (>18s)"
+            local_errors[fname] = "Hard timeout (>18s)"
             logging.error(f"  ✗ {fname}: parallel timeout exceeded 18s!")
 
     data = []

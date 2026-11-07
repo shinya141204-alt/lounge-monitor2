@@ -748,6 +748,7 @@ def resolve_affiliate_url(item_id: str, allow_blocking: bool = False) -> str:
 
 def set_affiliate_slot_override(slot_id: str, target_url: str, memo: str = "") -> dict:
     """Save or reset (when target_url is empty) a destination URL override for a canonical slot."""
+    global _mem_overrides
     import datetime
     cid = canonical_slot_id(slot_id)
     if not cid:
@@ -756,10 +757,20 @@ def set_affiliate_slot_override(slot_id: str, target_url: str, memo: str = "") -
     if not ok_url:
         return {"ok": False, "error": cleaned_url_or_err}
 
+    if not job_state.is_storage_healthy():
+        return {
+            "ok": False,
+            "error": "永続ストレージの初期同期が完了していないため、一時的に保存をブロックしました。数秒後に再度お試しください。",
+        }
+
     cleaned_memo = str(memo or "").strip()[:80]
     now_str = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).strftime("%Y-%m-%d %H:%M")
 
-    overrides = _load_overrides(allow_blocking=True)
+    with _lock:
+        prior_mem = dict(_mem_overrides) if isinstance(_mem_overrides, dict) else {}
+    loaded = _load_overrides(allow_blocking=True)
+    overrides = dict(prior_mem)
+    overrides.update(loaded)
     if cleaned_url_or_err:
         overrides[cid] = {
             "url": cleaned_url_or_err,
@@ -773,7 +784,6 @@ def set_affiliate_slot_override(slot_id: str, target_url: str, memo: str = "") -
             overrides.pop(cid, None)
 
     with _lock:
-        global _mem_overrides
         _mem_overrides = dict(overrides)
     job_state.set_value(AFFILIATE_OVERRIDES_STATE_KEY, json.dumps(overrides, ensure_ascii=False))
 

@@ -749,13 +749,18 @@
 
             <div style="text-align: center; margin: 18px 0 26px; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
                 <a href="/concierge?area={{ c_area_key }}" class="area-cta-btn">
-                    {{ selected_area.info.short_name }}の3秒穴場＆ハシゴ診断 ›
+                    {{ selected_area.info.short_name }}の穴場＆ハシゴ診断 ›
+                </a>
+                {% if selected_area.info.pillar_guide %}
+                <a href="{{ selected_area.info.pillar_guide.href }}" class="area-pill" style="padding: 10px 18px; border-color: var(--border-gold);">
+                    {{ selected_area.info.pillar_guide.title }} ›
+                </a>
+                {% endif %}
+                <a href="/price-comparison" class="area-pill" style="padding: 10px 18px;">
+                    エリア別の料金・開催中イベント比較を見る ›
                 </a>
                 <a href="/" class="area-pill" style="padding: 10px 18px;">
                     トップ画面で曜日・時間帯別の詳細グラフを見る ›
-                </a>
-                <a href="/price-comparison" class="area-pill" style="padding: 10px 18px;">
-                    エリア別の料金・開催中イベント比較を見る ›
                 </a>
             </div>
 
@@ -921,9 +926,16 @@
             </div>
 
             <div style="margin-top: 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-                <a href="/concierge?area={{ item_c_area }}" style="color: var(--accent-text); font-size: 0.81rem; font-weight: 700; text-decoration: none;">
-                    {{ item.info.short_name }}で3秒穴場診断 ›
-                </a>
+                <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 14px;">
+                    <a href="/concierge?area={{ item_c_area }}" style="color: var(--accent-text); font-size: 0.81rem; font-weight: 700; text-decoration: none;">
+                        {{ item.info.short_name }}で穴場診断 ›
+                    </a>
+                    {% if item.info.pillar_guide %}
+                    <a href="{{ item.info.pillar_guide.href }}" style="color: var(--accent-text); font-size: 0.81rem; font-weight: 600; text-decoration: none;">
+                        {{ item.info.pillar_guide.title }} ›
+                    </a>
+                    {% endif %}
+                </div>
                 <a href="/area/{{ item.slug }}" style="color: var(--accent-text); font-size: 0.83rem; font-weight: 600; text-decoration: none;">
                     {{ item.info.short_name }}の全店舗・FAQ・詳細ガイドを見る ›
                 </a>

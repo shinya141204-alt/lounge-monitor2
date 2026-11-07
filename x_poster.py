@@ -527,6 +527,83 @@ def build_pinned_tweet_thread(app_url: str = "") -> tuple:
 
 COLUMN_PROMO_LIST = [
     {
+        "slug": "shibuya-ebisu-comparison",
+        "path": "/guide/shibuya-ebisu-comparison",
+        "eyecatch": "/static/eyecatch-shibuya-ebisu-comparison.jpg",
+        "title": "渋谷・恵比寿の相席ラウンジ・回遊バー5店舗比較｜山手線1駅で変わる年齢層・料金・時間波形",
+        "main_text": (
+            "渋谷で50分待ちだった夜、山手線で1駅3分の恵比寿へ移動したら待ち時間なしで案内された。\n\n"
+            "オリエンタルラウンジ・JIS・ASOBIBARがひしめく渋谷と、落ち着いた空気が保たれる恵比寿。5店舗の時間波形と料金差はリプ欄へ。\n"
+            "#相席ナビ #相席ラウンジ"
+        ),
+    },
+    {
+        "slug": "ueno-kinshicho-machida",
+        "path": "/guide/ueno-kinshicho-machida",
+        "eyecatch": "/static/eyecatch-ueno-kinshicho-machida.jpg",
+        "title": "上野・錦糸町・町田・柏の相席ラウンジ5店舗比較｜仲町通りの隣接2店と沿線ターミナルの実測検証",
+        "main_text": (
+            "新宿や渋谷まで出なくても、上野・錦糸町・町田・柏のターミナル駅には地元と沿線帰りが集まるラウンジがある。\n\n"
+            "上野・仲町通りで徒歩1分に並ぶオリエンタルラウンジとagの使い分けや、東東京・郊外5店舗の波形はリプ欄で。\n"
+            "#相席ナビ #相席ラウンジ"
+        ),
+    },
+    {
+        "slug": "yokohama-omiya-kanto",
+        "path": "/guide/yokohama-omiya-kanto",
+        "eyecatch": "/static/eyecatch-yokohama-omiya-kanto.jpg",
+        "title": "横浜・大宮・宇都宮・高崎の相席ラウンジ5店舗比較｜都心へ出ずに選ぶ時間波形・料金・ソロ入店",
+        "main_text": (
+            "金曜の夜、わざわざ都心まで出ずに横浜・大宮・宇都宮・高崎で飲むとき、終電前後の人の動きは都内とは少し違う。\n\n"
+            "大宮のオリエンタルラウンジとJISの年齢層の違いや、関東4都市5店舗の時間帯ごとの傾向はリプ欄にまとめました。\n"
+            "#相席ナビ #相席ラウンジ"
+        ),
+    },
+    {
+        "slug": "nagoya-sakae-nishiki",
+        "path": "/guide/nagoya-sakae-nishiki",
+        "eyecatch": "/static/eyecatch-nagoya-sakae-nishiki.jpg",
+        "title": "名古屋（栄・錦・住吉）の相席ラウンジ・回遊バー5店舗比較｜南北700mの年齢層・料金・ソロ境界",
+        "main_text": (
+            "名古屋の栄・錦・住吉エリアは、南北700m圏内にオリエンタルラウンジ2店舗・ag・JIS・ASOBIBARの5店舗が集まっている。\n\n"
+            "1人入店の可否や20時台と深夜0時以降の男女比の移り変わりを実測ログで比べました。リプ欄から読めます。\n"
+            "#相席ナビ #相席ラウンジ"
+        ),
+    },
+    {
+        "slug": "fukuoka-tenjin-kyushu",
+        "path": "/guide/fukuoka-tenjin-kyushu",
+        "eyecatch": "/static/eyecatch-fukuoka-tenjin-kyushu.jpg",
+        "title": "福岡・天神と九州・沖縄11店舗の相席ラウンジ比較｜大名徒歩2分の3ブランド使い分けと全店ソロ対応",
+        "main_text": (
+            "福岡・天神の大名エリアは、徒歩2分圏内にオリエンタルラウンジ・ag・JISの3ブランドが並び、終電後も2回転目が続く街。\n\n"
+            "熊本・鹿児島・宮崎・長崎・大分・沖縄を含めた九州・沖縄11店舗の時間波形と料金の違いはリプ欄へ。\n"
+            "#相席ナビ #相席ラウンジ"
+        ),
+    },
+    {
+        "slug": "hiroshima-okayama-matsuyama",
+        "path": "/guide/hiroshima-okayama-matsuyama",
+        "eyecatch": "/static/eyecatch-hiroshima-okayama-matsuyama.jpg",
+        "title": "広島・岡山・松山の相席ラウンジ6店舗比較｜新天地半径185mの3店競合と料金構造の実測検証",
+        "main_text": (
+            "広島の新天地・流川エリアは、半径185mの中にオリエンタルラウンジ・ag・JISの3店舗が集まる中四国屈指の密集地帯。\n\n"
+            "岡山・松山を含めた6店舗の男女比推移と、入店時間によって変わる料金システムの違いをリプ欄に整理しました。\n"
+            "#相席ナビ #相席ラウンジ"
+        ),
+    },
+    {
+        "slug": "sapporo-sendai-north",
+        "path": "/guide/sapporo-sendai-north",
+        "eyecatch": "/static/eyecatch-sapporo-sendai-north.jpg",
+        "title": "札幌すすきの・仙台国分町の相席ラウンジ比較｜JIS札幌・ag仙台の時間波形と曜日ルール",
+        "main_text": (
+            "札幌すすきののJISと、仙台国分町のag。どちらも街の1店舗に人が集まるぶん、早い時間と深夜0時過ぎで店内の空気が大きく変わる。\n\n"
+            "北日本2都市の実測ログから見えた狙い目の時間帯と、曜日ごとの入店ルールはリプ欄に書いています。\n"
+            "#相席ナビ #相席ラウンジ"
+        ),
+    },
+    {
         "slug": "lounge-vs-screened-date",
         "path": "/guide/lounge-vs-screened-date",
         "eyecatch": "/static/eyecatch-lounge-vs-screened-date.jpg",

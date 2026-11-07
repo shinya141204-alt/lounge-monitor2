@@ -230,59 +230,29 @@ def _is_json_request() -> bool:
     return False
 
 
+def _render_http_error(e, code: int, default_name: str, title: str, message: str):
+    if _is_json_request():
+        return jsonify({'status': 'error', 'error': getattr(e, 'name', None) or default_name, 'code': code}), code
+    return render_template('error.html', code=code, title=title, message=message), code
+
+
 @app.errorhandler(404)
 def handle_404_error(e):
     """Handle 404 Not Found error with JSON for API requests and friendly HTML for web pages."""
-    if _is_json_request():
-        error_name = getattr(e, 'name', None) or 'Not Found'
-        return jsonify({
-            'status': 'error',
-            'error': error_name,
-            'code': 404
-        }), 404
-    return render_template(
-        'error.html',
-        code=404,
-        title='ページが見つかりませんでした',
-        message='お探しのページは削除されたか、URLが変更された可能性があります。'
-    ), 404
+    return _render_http_error(e, 404, 'Not Found', 'ページが見つかりませんでした', 'お探しのページは削除されたか、URLが変更された可能性があります。')
 
 
 @app.errorhandler(500)
 def handle_500_error(e):
     """Handle 500 Internal Server Error with JSON for API requests and friendly HTML for web pages."""
     logging.exception(f"[HTTP 500] Internal Server Error on {request.path}: {e}")
-    if _is_json_request():
-        error_name = getattr(e, 'name', None) or 'Internal Server Error'
-        return jsonify({
-            'status': 'error',
-            'error': error_name,
-            'code': 500
-        }), 500
-    return render_template(
-        'error.html',
-        code=500,
-        title='システムエラーが発生しました',
-        message='一時的にサーバーで問題が発生しています。しばらく待ってから再度お試しください。'
-    ), 500
+    return _render_http_error(e, 500, 'Internal Server Error', 'システムエラーが発生しました', '一時的にサーバーで問題が発生しています。しばらく待ってから再度お試しください。')
 
 
 @app.errorhandler(400)
 def handle_400_error(e):
     """Handle 400 Bad Request error with JSON for API requests and friendly HTML for web pages."""
-    if _is_json_request():
-        error_name = getattr(e, 'name', None) or 'Bad Request'
-        return jsonify({
-            'status': 'error',
-            'error': error_name,
-            'code': 400
-        }), 400
-    return render_template(
-        'error.html',
-        code=400,
-        title='不正なリクエストです',
-        message='リクエストの形式が正しくありません。入力内容をご確認の上、再度お試しください。'
-    ), 400
+    return _render_http_error(e, 400, 'Bad Request', '不正なリクエストです', 'リクエストの形式が正しくありません。入力内容をご確認の上、再度お試しください。')
 
 
 @app.after_request
@@ -477,12 +447,16 @@ def _ensure_scheduler_started_async():
             # Human-paced anti-spam schedule with idempotent retry windows within each target hour:
             # First run posts with natural jitter; if a transient API/network hiccup occurs, the follow-up tick
             # within the same hour automatically retries (and exits in <0.1ms once `job_state.is_done` is True).
+            import bonus_alert, data_audit, events, instagram_poster, note_poster, ops_governance, pdca_engine, sns_editorial, threads_poster, tiktok_poster, tips_poster
+            from apscheduler.triggers.combining import OrTrigger
+            from apscheduler.triggers.cron import CronTrigger
+            def _visible_live_stores():
+                with data_lock:
+                    return ops_governance.filter_visible_stores(list(latest_data.get('full_data') or [])), bool(latest_data.get('is_seed'))
             def _x_sched_wrap(slot_lbl="20:00"):
-                import sns_editorial
                 if not sns_editorial.should_fire_scheduled_slot_now("x", slot_lbl):
                     return
-                with data_lock:
-                    cur_stores = list(latest_data.get('full_data') or [])
+                cur_stores, _ = _visible_live_stores()
                 skip_pace, pace_reason = sns_editorial.should_skip_slot_for_human_pacing("x", slot_lbl, stores=cur_stores)
                 if skip_pace:
                     logging.info(f"Skipping X {slot_lbl} for human pacing: {pace_reason}")
@@ -492,19 +466,16 @@ def _ensure_scheduler_started_async():
             scheduler.add_job(func=_x_sched_wrap, trigger="cron", hour=13, minute="2,6,10,14,18,22,27", jitter=75, args=["22:00"], executor="sns_ai")
             scheduler.add_job(func=_x_sched_wrap, trigger="cron", day_of_week="fri,sat", hour=15, minute="2,6,10,14,18,22,27", jitter=75, args=["00:00"], executor="sns_ai")
             def _tip_18():
-                import sns_editorial
                 if not sns_editorial.should_fire_scheduled_slot_now("x_tip", "18:00"):
                     return
                 skip_pace, pace_reason = sns_editorial.should_skip_slot_for_human_pacing("x_tip", "18:00")
                 if skip_pace:
                     logging.info(f"Skipping X tip 18:00 for human pacing: {pace_reason}")
                     return
-                import tips_poster
                 tips_poster.run_scheduled_tip_post(slot_label="18:00")
             scheduler.add_job(func=_tip_18, trigger="cron", hour=9, minute="2,6,10,14,18,23,28", jitter=75, executor="sns_ai")
             def _note_check_job():
                 try:
-                    import note_poster
                     note_poster.check_and_post_new_note()
                 except Exception as err:
                     logging.error(f"Scheduled note promotion check failed: {err}")
@@ -512,20 +483,15 @@ def _ensure_scheduler_started_async():
             scheduler.add_job(func=_note_check_job, trigger="cron", hour="3,6", minute=20, jitter=240, executor="sns_ai")
             def _threads_daily_job():
                 try:
-                    import sns_editorial
                     if not sns_editorial.should_fire_scheduled_slot_now("threads", "22:00"):
                         return
-                    import threads_poster
-                    with data_lock:
-                        cur_stores = list(latest_data.get('full_data') or [])
-                        is_seed = bool(latest_data.get('is_seed'))
+                    cur_stores, is_seed = _visible_live_stores()
                     if cur_stores and not is_seed:
                         skip_pace, pace_reason = sns_editorial.should_skip_slot_for_human_pacing("threads", "22:00", stores=cur_stores)
                         if skip_pace:
                             logging.info(f"Skipping Threads 22:00 for human pacing: {pace_reason}")
                             return
-                        img_url = threads_poster.select_scheduled_threads_image_url()
-                        threads_poster.execute_scheduled_threads_post(cur_stores, slot_label="22:00", image_url=img_url)
+                        threads_poster.execute_scheduled_threads_post(cur_stores, slot_label="22:00", image_url=threads_poster.select_scheduled_threads_image_url())
                 except Exception as err:
                     logging.error(f"Scheduled Threads post failed: {err}")
             scheduler.add_job(func=_threads_daily_job, trigger="cron", hour=13, minute="5,9,13,17,21,26,32", jitter=75, executor="sns_ai")
@@ -533,13 +499,9 @@ def _ensure_scheduler_started_async():
             # Note: IG Carousel and IG Ladies single-image feed are disabled in favor of Plan B IG Reels (daily 20:00 + active-night 22:50 JST).
             def _threads_ladies_job():
                 try:
-                    import sns_editorial
                     if not sns_editorial.should_fire_scheduled_slot_now("threads_ladies", "19:30"):
                         return
-                    import threads_poster
-                    with data_lock:
-                        cur_stores = list(latest_data.get('full_data') or [])
-                        is_seed = bool(latest_data.get('is_seed'))
+                    cur_stores, is_seed = _visible_live_stores()
                     if cur_stores and not is_seed:
                         threads_poster.execute_scheduled_ladies_threads_post(cur_stores, slot_label="19:30")
                 except Exception as err:
@@ -547,42 +509,20 @@ def _ensure_scheduler_started_async():
             scheduler.add_job(func=_threads_ladies_job, trigger="cron", day_of_week="wed,fri,sat", hour=10, minute="31,35,39,44,49", jitter=60, executor="sns_ai")
             def _ig_reel_scheduled_job(slot_lbl="20:00"):
                 try:
-                    import sns_editorial
-                    if not sns_editorial.should_fire_scheduled_slot_now("ig_reel", slot_lbl):
+                    if not sns_editorial.should_fire_scheduled_slot_now("ig_reel", slot_lbl) or not instagram_poster.is_reel_auto_schedule_enabled(allow_blocking=False):
                         return
-                    import instagram_poster
-                    if not instagram_poster.is_reel_auto_schedule_enabled(allow_blocking=False):
-                        return
-                    with data_lock:
-                        cur_stores = list(latest_data.get('full_data') or [])
-                        is_seed = bool(latest_data.get('is_seed'))
+                    cur_stores, is_seed = _visible_live_stores()
                     if cur_stores and not is_seed:
                         instagram_poster.publish_live_reel_to_instagram(cur_stores, reel_type="auto", slot_label=slot_lbl, force=False)
                 except Exception as err:
                     logging.error(f"Scheduled Instagram Reel post failed: {err}")
-            from apscheduler.triggers.combining import OrTrigger
-            from apscheduler.triggers.cron import CronTrigger
             scheduler.add_job(func=_ig_reel_scheduled_job, trigger="cron", hour=11, minute="4,10,16,22,28,34,40", jitter=50, args=["20:00"], executor="sns_ai")
-            scheduler.add_job(
-                func=_ig_reel_scheduled_job,
-                trigger=OrTrigger([
-                    CronTrigger(hour=13, minute="54", jitter=45, timezone="UTC"),
-                    CronTrigger(hour=14, minute="0,6,12,18,24,30", jitter=50, timezone="UTC"),
-                ]),
-                args=["22:50"],
-                executor="sns_ai",
-            )
+            scheduler.add_job(func=_ig_reel_scheduled_job, trigger=OrTrigger([CronTrigger(hour=13, minute="54", jitter=45, timezone="UTC"), CronTrigger(hour=14, minute="0,6,12,18,24,30", jitter=50, timezone="UTC")]), args=["22:50"], executor="sns_ai")
             def _tiktok_inbox_job(slot_lbl="20:35"):
                 try:
-                    import tiktok_poster
-                    if not tiktok_poster.is_tiktok_auto_schedule_enabled(allow_blocking=False) or not tiktok_poster.is_tiktok_token_configured():
+                    if not tiktok_poster.is_tiktok_auto_schedule_enabled(allow_blocking=False) or not tiktok_poster.is_tiktok_token_configured() or not sns_editorial.should_fire_scheduled_slot_now("tiktok", slot_lbl):
                         return
-                    import sns_editorial
-                    if not sns_editorial.should_fire_scheduled_slot_now("tiktok", slot_lbl):
-                        return
-                    with data_lock:
-                        cur_stores = list(latest_data.get('full_data') or [])
-                        is_seed = bool(latest_data.get('is_seed'))
+                    cur_stores, is_seed = _visible_live_stores()
                     if cur_stores and not is_seed:
                         tiktok_poster.execute_scheduled_tiktok_inbox_post(cur_stores, slot_label=slot_lbl, force=False)
                 except Exception as err:
@@ -590,8 +530,6 @@ def _ensure_scheduler_started_async():
             scheduler.add_job(func=_tiktok_inbox_job, trigger="cron", day_of_week="wed,fri,sat", hour=11, minute="39,45,51,57", jitter=50, args=["20:35"], executor="sns_ai")
             def _crawl_events_job():
                 try:
-                    import events
-                    import data_audit
                     evs = events.fetch_all_events(force_refresh=True)
                     with data_lock:
                         cur_stores = list(latest_data.get('full_data') or [])
@@ -607,10 +545,7 @@ def _ensure_scheduler_started_async():
             scheduler.add_job(func=_scheduled_articles_release_job, trigger="interval", minutes=15, executor="sns_ai")
             def _bonus_alert_check_job():
                 try:
-                    import bonus_alert
-                    with data_lock:
-                        cur_stores = list(latest_data.get('full_data') or [])
-                        is_seed = bool(latest_data.get('is_seed'))
+                    cur_stores, is_seed = _visible_live_stores()
                     if cur_stores and not is_seed:
                         bonus_alert.check_and_post_bonus_alert(cur_stores)
                 except Exception as err:
@@ -618,18 +553,14 @@ def _ensure_scheduler_started_async():
             scheduler.add_job(func=_bonus_alert_check_job, trigger="interval", minutes=10, executor="sns_ai")
             def _x_weekly_sun_fallback_job():
                 try:
-                    import sns_editorial
-                    if not sns_editorial.should_fire_scheduled_slot_now("x_weekly", "19:00"):
-                        return
-                    run_scheduled_weekly_x_post(force=False)
+                    if sns_editorial.should_fire_scheduled_slot_now("x_weekly", "19:00"):
+                        run_scheduled_weekly_x_post(force=False)
                 except Exception as err:
                     logging.error(f"Scheduled weekly X post failed: {err}")
             scheduler.add_job(func=_x_weekly_sun_fallback_job, trigger="cron", day_of_week="sun", hour=10, minute="2,7,12,18,24", jitter=75, executor="sns_ai")
             def _pdca_autonomous_job():
                 try:
-                    import pdca_engine
-                    with data_lock:
-                        cur_stores = list(latest_data.get('full_data') or [])
+                    cur_stores, _ = _visible_live_stores()
                     pdca_engine.run_pdca_cycle(
                         live_stores=cur_stores,
                         days=14,
@@ -769,8 +700,11 @@ def get_store_analysis(store_name):
     if not clean_name or len(clean_name) > 80 or any(ord(ch) < 32 for ch in clean_name):
         return jsonify({'error': 'Store not found'}), 404
 
+    import ops_governance
     import store_master
     internal_name = store_master.to_internal_store_name(clean_name)
+    if ops_governance.is_store_hidden(internal_name):
+        return jsonify({'error': 'Store not found'}), 404
     master_map = store_master.load()
     if internal_name not in master_map:
         with data_lock:
@@ -798,7 +732,7 @@ def get_store_analysis(store_name):
 
     if proc_entry is not None and raw_ts is not None:
         return _cached_json_response(
-            ('analysis', local_db.DB_PATH, clean_name, id(proc_entry), raw_ts),
+            ('analysis', local_db.DB_PATH, clean_name, raw_ts),
             _safe_analysis_call,
             ttl_sec=60.0,
         )
@@ -807,9 +741,9 @@ def get_store_analysis(store_name):
         new_proc = (analysis_cache.get('processed_per_store') or {}).get(clean_name)
         new_raw = (analysis_cache.get('raw_data_by_store') or {}).get(clean_name)
         new_ts = new_raw.get('last_fetched') if isinstance(new_raw, dict) else None
-        if new_proc is not None:
+        if new_proc is not None and new_ts is not None:
             return _cached_json_response(
-                ('analysis', local_db.DB_PATH, clean_name, id(new_proc), new_ts),
+                ('analysis', local_db.DB_PATH, clean_name, new_ts),
                 lambda: (payload, 200),
                 ttl_sec=60.0,
             )
@@ -1043,11 +977,22 @@ _CACHE_QUERY_ALLOWLIST = ('s', 'area', 'slot', 'channel', 'switch', 'days', 'for
 def _normalize_cache_query_args() -> tuple:
     if not request.args:
         return ()
-    return tuple(
-        (k, (request.args.get(k) or '')[:64])
-        for k in _CACHE_QUERY_ALLOWLIST
-        if k in request.args
-    )
+    out = []
+    for k in _CACHE_QUERY_ALLOWLIST:
+        if k not in request.args:
+            continue
+        raw_v = (request.args.get(k) or '').strip()
+        if k == 's':
+            if re.fullmatch(r'\d{8}_\d{4}', raw_v):
+                norm_v = raw_v
+            else:
+                import analytics
+                norm_v = analytics.normalize_inflow_source(raw_v)
+            if norm_v:
+                out.append(('s', norm_v))
+            continue
+        out.append((k, raw_v[:64]))
+    return tuple(out)
 
 
 def clear_fast_http_caches(clear_editorial: bool = True):
@@ -1306,6 +1251,8 @@ def _attach_store_benchmarks(item: dict, sname: str, w: int, m: int, benchmarks:
     item['core_time_wpct'] = None if is_korea else core_wpct
     item['midnight_retention_pct'] = None if is_korea else mid_pct
     item['midnight_label_short'] = None if is_korea else mid_label
+    item['has_measured_core'] = False if (is_korea or not bm) else bool(bm.get('has_measured_core'))
+    item['has_measured_midnight'] = False if (is_korea or not bm) else bool(bm.get('has_measured_midnight'))
 
 
 def _enrich_for_ssr(stores):
@@ -1838,9 +1785,12 @@ def update_job(force=False, _claimed=False):
 def index():
     import affiliate_manager
     trigger_background_fetch_if_needed()
-    explicit_s = (request.args.get('s') or '').strip()
-    cookie_src = (request.cookies.get('an_src') or '').strip()
-    has_sns_inflow = bool(explicit_s or cookie_src)
+    import analytics
+    raw_explicit_s = (request.args.get('s') or '').strip()
+    norm_explicit_s = analytics.normalize_inflow_source(raw_explicit_s)
+    explicit_s = raw_explicit_s if re.fullmatch(r'\d{8}_\d{4}', raw_explicit_s) else norm_explicit_s
+    cookie_src = analytics.normalize_inflow_source(request.cookies.get('an_src') or '')
+    has_sns_inflow = bool(norm_explicit_s or cookie_src)
     bachelor_shares_instant = affiliate_manager.are_slots_sharing_url('dating_bachelor', 'dating_instant', allow_blocking=False)
     monetized_women_dating = affiliate_manager.is_slot_monetized('women_dating_bachelor', allow_blocking=False)
     monetized_women_clinic = affiliate_manager.is_slot_monetized('women_beauty_clinic', allow_blocking=False)
@@ -1945,7 +1895,7 @@ def affiliate_redirect(item_id):
     if not target_url:
         return redirect(url_for('index'))
     is_staff_probe = (
-        request.args.get('staff_test') == '1'
+        (request.args.get('staff_test') or '').strip().lower() in ('1', 'true')
         or bool(session.get('is_staff') or session.get('is_master'))
     )
     if not is_staff_probe and (_is_bot_request() or _is_prefetch_request()):
@@ -2113,13 +2063,29 @@ def _is_prefetch_request():
     purp = f"{request.headers.get('Sec-Purpose', '')} {request.headers.get('Purpose', '')} {request.headers.get('X-Moz', '')}".lower()
     return 'prefetch' in purp or 'preview' in purp
 
+
+def _is_staff_test_request(include_referrer: bool = False) -> bool:
+    if (request.args.get('staff_test') or '').strip().lower() in ('1', 'true'):
+        return True
+    if include_referrer and request.referrer:
+        try:
+            ref_qs = urllib_parse.parse_qs(urllib_parse.urlparse(request.referrer).query)
+            if (ref_qs.get('staff_test') or [''])[0].strip().lower() in ('1', 'true'):
+                return True
+        except Exception:
+            pass
+    return False
+
+
 @app.after_request
 def track_page_views(response):
     try:
         if (request.method == 'GET' and response.status_code == 200
                 and (request.path == '/' or request.path.startswith(_TRACKED_PAGE_PREFIXES))
+                and not request.path.endswith('.csv')
                 and not session.get('is_staff')
                 and not session.get('is_master')
+                and not _is_staff_test_request()
                 and not _is_bot_request()
                 and not _is_prefetch_request()):
             import analytics
@@ -2152,7 +2118,12 @@ _BEACON_ALLOWED_EVENTS = frozenset({
 @app.route('/api/track', methods=['POST'])
 def track_event():
     """Receives navigator.sendBeacon events from the frontend (client-safe events only, rate-limited)."""
-    if _is_bot_request() or session.get('is_staff') or session.get('is_master'):
+    if (
+        _is_bot_request()
+        or _is_staff_test_request(include_referrer=True)
+        or session.get('is_staff')
+        or session.get('is_master')
+    ):
         return ('', 204)
     client_ip = get_client_ip()
     ua_key = f"{client_ip}|{(request.headers.get('User-Agent') or '')[:80]}"
@@ -2559,7 +2530,11 @@ def get_events():
 
         store = request.args.get('store', '').strip()
         internal_store = store_master.to_internal_store_name(store) if store else ''
-        force = (request.args.get('refresh', '').lower() == 'true') and is_master_authorized()
+        force = (
+            (request.args.get('refresh', '').lower() == 'true')
+            and is_master_authorized()
+            and (request.headers.get('Sec-Fetch-Site') or '').lower() != 'cross-site'
+        )
         if not force:
             ev_upd = events._events_memory_cache.get('updated_at')
             ev_cnt = len(events._events_memory_cache.get('events') or [])
@@ -2608,12 +2583,23 @@ def post_store_vote():
         return jsonify({'status': 'error', 'error': 'Invalid parameters'}), 400
     if len(raw_store) > 80:
         return jsonify({'status': 'error', 'error': 'Invalid store'}), 400
+    import ops_governance
     store_name = store_master.to_internal_store_name(raw_store)
+    if ops_governance.is_store_hidden(store_name):
+        return jsonify({'status': 'error', 'error': 'Unknown store'}), 400
     # Only accept votes for stores that actually exist in the current ranking (prevents junk rows)
     with data_lock:
         known_names = {s.get('name') for s in latest_data.get('full_data', [])}
     if known_names and store_name not in known_names:
         return jsonify({'status': 'error', 'error': 'Unknown store'}), 400
+    if _is_staff_test_request(include_referrer=True):
+        counts = local_db.get_recent_votes(store_name=store_name, hours=4)
+        return jsonify({
+            'status': 'success',
+            'reason': 'staff_test_noop',
+            'store_name': store_master.seo_name(store_name),
+            'votes': counts,
+        })
 
     client_ip = get_client_ip()
     sec_bytes = str(app.secret_key).encode('utf-8')
@@ -2678,7 +2664,10 @@ def post_watch_intent():
     if len(raw_store) > 80:
         return jsonify({'status': 'error', 'error': 'Invalid store'}), 400
 
+    import ops_governance
     store_name = store_master.to_internal_store_name(raw_store)
+    if ops_governance.is_store_hidden(store_name):
+        return jsonify({'status': 'error', 'error': 'Unknown store'}), 400
     with data_lock:
         known_names = {s.get('name') for s in latest_data.get('full_data', [])}
     if known_names:
@@ -2686,6 +2675,15 @@ def post_watch_intent():
             return jsonify({'status': 'error', 'error': 'Unknown store'}), 400
     elif not store_master.get(store_name):
         return jsonify({'status': 'error', 'error': 'Unknown store'}), 400
+    if _is_staff_test_request(include_referrer=True):
+        watch_info = local_db.get_watch_intent_counts(store_name=store_name, hours=6)
+        return jsonify({
+            'status': 'success',
+            'reason': 'staff_test_noop',
+            'store_name': store_master.seo_name(store_name),
+            'target_cond': target_cond,
+            'watching_count': int(watch_info.get('watching_count', 0)),
+        })
 
     client_ip = get_client_ip()
     sec_bytes = str(app.secret_key).encode('utf-8')

@@ -300,11 +300,14 @@ def _fetch_open_meteo_all_cities(timeout_sec: float = 3.5) -> dict:
         if idx >= len(items):
             break
         cur = (items[idx] or {}).get("current") or {}
-        temp_c = round(float(cur.get("temperature_2m") or 0.0), 1)
-        precip_mm = round(float(cur.get("precipitation") or 0.0), 2)
+        raw_temp = cur.get("temperature_2m")
+        raw_precip = cur.get("precipitation")
+        raw_wind = cur.get("wind_speed_10m")
+        temp_c = round(float(raw_temp), 1) if raw_temp is not None else None
+        precip_mm = round(float(raw_precip), 2) if raw_precip is not None else None
         wcode = int(cur.get("weather_code") or 0)
-        wind_kmh = round(float(cur.get("wind_speed_10m") or 0.0), 1)
-        label_ja, is_rainy = _weather_code_label(wcode, precip_mm)
+        wind_kmh = round(float(raw_wind), 1) if raw_wind is not None else None
+        label_ja, is_rainy = _weather_code_label(wcode, precip_mm if precip_mm is not None else 0.0)
         parsed[city_key] = {
             "city_key": city_key,
             "city_label": WEATHER_CITIES[city_key]["label"],
@@ -353,11 +356,20 @@ def get_city_weather_map(allow_blocking: bool = False) -> dict:
             logger.debug(f"[moat_intelligence] weather fetch skipped: {e}")
         return cached
 
-    # Non-blocking background refresh (skip during unit tests or within 60s failure cooldown)
+    # Non-blocking background refresh (atomic claim inside lock to prevent duplicate thread bursts)
+    should_spawn_bg = False
     if not already_fetching and fail_age >= 60.0 and os.environ.get("DISABLE_SCHEDULER") != "1":
         with _weather_lock:
-            _weather_state["fetching"] = True
+            now_m2 = time.monotonic()
+            if (
+                not _weather_state["fetching"]
+                and (now_m2 - _weather_state["ts"]) >= _WEATHER_TTL_SEC
+                and (now_m2 - _weather_state.get("fail_ts", -999.0)) >= 60.0
+            ):
+                _weather_state["fetching"] = True
+                should_spawn_bg = True
 
+    if should_spawn_bg:
         def _bg():
             ok = False
             try:
@@ -474,6 +486,7 @@ def detect_arena_event_surges(live_stores: list, now_jst: datetime.datetime = No
     now_jst = _normalize_jst(now_jst)
     hr = now_jst.hour
     date_str = now_jst.strftime("%Y-%m-%d")
+    b_date = _business_date(now_jst)
     explicit_venues = set(
         v.strip() for v in (os.environ.get("ARENA_ACTIVE_VENUES") or "").split(",") if v.strip()
     )
@@ -482,7 +495,7 @@ def detect_arena_event_surges(live_stores: list, now_jst: datetime.datetime = No
         raw_ev = job_state.get_value("moat:arena_events_today", allow_blocking=False)
         if raw_ev:
             data_ev = json.loads(raw_ev)
-            if isinstance(data_ev, dict) and data_ev.get("date") == date_str:
+            if isinstance(data_ev, dict) and data_ev.get("date") in (date_str, b_date):
                 for vid in data_ev.get("venues") or []:
                     explicit_venues.add(str(vid))
     except Exception:
@@ -491,7 +504,6 @@ def detect_arena_event_surges(live_stores: list, now_jst: datetime.datetime = No
     scheduled_by_venue = {}
     try:
         import arena_calendar
-        b_date = _business_date(now_jst)
         scheduled_by_venue = arena_calendar.get_arena_events_for_date(b_date, allow_blocking=False) or {}
     except Exception:
         scheduled_by_venue = {}
@@ -530,7 +542,8 @@ def detect_arena_event_surges(live_stores: list, now_jst: datetime.datetime = No
             w_diff_15 = int(st.get("women_diff") or 0)
             if w >= 16 and ((uw_diff is not None and uw_diff >= 10) or w_diff_15 >= 6):
                 hub_usual_surges += 1
-                max_w_diff = max(max_w_diff, int(uw_diff or w_diff_15))
+                uw_int = int(round(float(uw_diff))) if uw_diff is not None else 0
+                max_w_diff = max(max_w_diff, uw_int, w_diff_15)
 
         needed = 1 if len(hub["stores"]) <= 2 else 2
         sig_template = None
@@ -2279,8 +2292,14 @@ def enrich_stores_with_moat_signals(
     for s in stores:
         sname = s.get("name") or ""
         canon_name = _resolve_internal_store_key(sname)
-        w = int(s.get("women") or 0)
-        m = int(s.get("men") or 0)
+        try:
+            w = max(0, int(s.get("women") or 0))
+        except (TypeError, ValueError):
+            w = 0
+        try:
+            m = max(0, int(s.get("men") or 0))
+        except (TypeError, ValueError):
+            m = 0
         if "is_open_now" in s and s.get("is_open_now") is not None:
             is_open = bool(s.get("is_open_now"))
         else:
@@ -2294,8 +2313,14 @@ def enrich_stores_with_moat_signals(
             except Exception:
                 is_open = True
             s["is_open_now"] = is_open
-        w_diff = int(s.get("women_diff") or 0)
-        m_diff = int(s.get("men_diff") or 0)
+        try:
+            w_diff = int(s.get("women_diff") or 0)
+        except (TypeError, ValueError):
+            w_diff = 0
+        try:
+            m_diff = int(s.get("men_diff") or 0)
+        except (TypeError, ValueError):
+            m_diff = 0
         uw_diff = s.get("usual_w_diff")
         pos_tel = s.get("pos_telemetry")
 

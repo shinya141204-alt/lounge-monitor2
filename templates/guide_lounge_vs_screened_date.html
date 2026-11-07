@@ -332,11 +332,11 @@
 
         <div class="article-body">
             <p>
-                金曜20時40分、仕事終わりの同僚と焼き鳥屋を出たあとに「このまま近くのラウンジに顔を出すか」とスマホを開く夜と、水曜の昼休みに「今週末は誰かと落ち着いてお茶かワインでも飲みたいな」とカレンダーを眺める瞬間。<br>
-                同じ「新しい出会い」に見えても、この2つの場面で求めている体験はまったく別物です。ところが実際には、<strong>本当は1対1で静かに話したいタイプの人が週末23時の賑やかな2対2ボックス席に入って消耗したり、逆に「今夜これから乾杯したい」テンションの日にアプリの長いメッセージ往復で熱が冷めてしまったりするミスマッチ</strong>がよく起きています。
+                自動ドアの向こうに笑い声とグラスの音が広がる2対2のボックス席と、日曜15時の静かなホテルカフェで予約名だけを告げて向かい合う2人掛けのテーブル。<br>
+                同じ「新しい相手と話す時間」でも、この2つの席で求められる空気はまるで別物です。ところが実際には、<strong>本当は1対1で落ち着いて話したいタイプの人が週末23時の賑やかな4人席に入って気疲れしたり、逆に「今夜すぐ誰かと乾杯したい」気分の夜にアプリの長いメッセージ往復で熱が冷めてしまったりするすれ違い</strong>がしょっちゅう起きています。
             </p>
             <p>
-                この記事では、相席ナビが蓄積してきた全国63店舗・<strong>96,607回のリアルタイム人数スナップショット</strong>と料金構造をベースに、「相席ラウンジ」「審査制1対1デートアプリ」「即時合流型の恋活アプリ」のどこに損益と相性の境界線があるのかを男女双方の視点から整理します。
+                相席ナビが蓄積してきた全国63店舗・<strong>96,607回のリアルタイム人数スナップショット</strong>と料金構造を突き合わせると、「相席ラウンジ」「審査制1対1デートアプリ」「即時合流型の恋活アプリ」のどこに費用と相性の分かれ目があるのかが、男女それぞれの視点からはっきり見えてきます。
             </p>
 
             <div class="highlight-box">
@@ -453,7 +453,7 @@
                         </tr>
                         <tr>
                             <td><strong>男性の費用目安</strong></td>
-                            <td>10分600〜990円前後（90分滞在で約6,000〜9,500円・飲み放題込）※<a href="/price-comparison">店舗別料金表</a>参照</td>
+                            <td>10分600〜990円前後（90分滞在で約6,000〜9,500円・飲み放題込）※<a href="/price-comparison" data-cushion="1">店舗別料金表</a>参照</td>
                             <td>月額定額（月4回デート保証換算で1回あたり約2,500〜4,000円＋お茶代）</td>
                             <td>月額4,000円前後＋当日の飲食代</td>
                         </tr>
@@ -479,15 +479,17 @@
                 </table>
             </div>
 
+            {% if not is_staff and not session.get('is_staff') %}
             <aside class="editorial-bridge-box" aria-label="男女別の事前準備・代替サービス比較ガイド">
                 <span class="editorial-bridge-kicker">2-STEP PREPARATION GUIDE</span>
-                <p class="editorial-bridge-title">満席時のサブ選択肢と、1対1・ラウンジ共通の事前準備まとめ</p>
-                <p class="editorial-bridge-desc">週末ピークで店舗が待機発生中の夜に備える恋活・1対1デートアプリの比較と、向かい合わせ70cmの間接照明で好印象を残す準備アイテムを男女別に整理しています。</p>
+                <p class="editorial-bridge-title">満席の夜に切り替える1対1選択肢と、70cmの距離で効く直前準備</p>
+                <p class="editorial-bridge-desc">週末ピークで店舗が男性待機になっている夜に切り替えられる恋活・審査制1対1デートの比較と、向かい合わせの間接照明で損をしない身だしなみチェックを男女別に整理しています。</p>
                 <div class="editorial-bridge-actions">
-                    <a href="/grooming#backup-apps" class="editorial-bridge-btn editorial-bridge-btn--men"><span>男性向け｜満席時の代替アプリ・清潔感準備</span><span>›</span></a>
-                    <a href="/for-women#clinic" class="editorial-bridge-btn editorial-bridge-btn--women"><span>女性向け｜待ちゼロ店・無料1対1＆美容特集</span><span>›</span></a>
+                    <a href="/grooming#backup-apps" data-cushion="1" class="editorial-bridge-btn editorial-bridge-btn--men"><span>男性向け｜満席時の代替アプリ・清潔感準備</span><span>›</span></a>
+                    <a href="/for-women#clinic" data-cushion="1" class="editorial-bridge-btn editorial-bridge-btn--women"><span>女性向け｜待ちゼロ店・無料1対1＆美容特集</span><span>›</span></a>
                 </div>
             </aside>
+            {% endif %}
 
             <h2>3. 男女それぞれの「本音の非対称」：なぜ同じ人でも両方を使い分けるのか</h2>
             <p>
@@ -501,7 +503,7 @@
             </div>
             <p>
                 男性にとって相席ラウンジ最大の武器は「今すぐ・確実に・複数組の女性と直接会えるライブ感」ですが、一方で<strong>2対2のテーブルでは「相方とのチームワーク」や「10分単位の延長判断」</strong>が常に求められます（1人参戦のリアルな向き不向きは<a href="/guide/solo-vs-pair">『1人（ソロ）入店 vs 2人ペア入店の実測比較』</a>でも詳しく検証しています）。<br>
-                逆に審査制1対1デートは、「いいね送り」や「数日間のメッセージラリー」というアプリ特有の消耗を丸ごと省略しつつ、最初から1対1のテーブルが用意されるため、<strong>落ち着いたトーンで勝負したい20代後半〜30代男性や、金曜夜に相方の予定がつかなかった週の選択肢</strong>として合っています。
+                逆に審査制1対1デートは、「いいね送り」や「数日間のメッセージラリー」というアプリ特有の消耗を丸ごと省略しつつ、最初から1対1のテーブルが用意されているので、<strong>落ち着いたトーンで勝負したい20代後半〜30代男性や、金曜夜に相方の予定がつかなかった週の選択肢</strong>として合っています。
             </p>
 
             <h3>女性側のリアルな本音：「女子会の延長ならラウンジ、予定調整と身バレが面倒な週は審査制」</h3>
@@ -532,8 +534,8 @@
             </p>
             <ol>
                 <li><strong>現在19:30〜22:00で、友人ペアですぐ飲みに行ける</strong> → まずは<a href="/">リアルタイム人数ランキング</a>で女性比率60%超の店舗を確認して相席ラウンジへ直行するのが効率的です。</li>
-                <li><strong>現在22:30以降で、近隣の目当て店舗がすべて「男性先行・待機発生中」になっている</strong> → 無理に待機課金の列へ並ぶより、<a href="/concierge">近隣の穴場・徒歩ハシゴ診断</a>で近隣の別ブランドを探すか、近隣で今日飲める恋活アプリを併用して時間ロスを防ぎましょう。</li>
-                <li><strong>1人で動きたい／最初から1対1のカフェ・バーで落ち着いて話したい</strong> → 男性は<a href="/grooming">相席・デート前の身だしなみ＆1対1アプリ比較ガイド</a>、女性は<a href="/for-women">女性向けリアルタイム待ちゼロ店＆無料デート特設ガイド</a>で、自分のスタイルに合うサービスを1つだけスマホに準備しておくと週末の選択肢が広がります。</li>
+                <li><strong>現在22:30以降で、近隣の目当て店舗がすべて「男性先行・待機発生中」になっている</strong> → 無理に待機課金の列へ並ぶより、<a href="/concierge" data-cushion="1">近隣の穴場・徒歩ハシゴ診断</a>で近隣の別ブランドを探すか、近隣で今日飲める恋活アプリを併用して時間ロスを防ぎましょう。</li>
+                <li><strong>1人で動きたい／最初から1対1のカフェ・バーで落ち着いて話したい</strong> → 男性は<a href="/grooming" data-cushion="1">相席・デート前の身だしなみ＆1対1アプリ比較ガイド</a>、女性は<a href="/for-women" data-cushion="1">女性向けリアルタイム待ちゼロ店＆無料デート特設ガイド</a>で、自分のスタイルに合うサービスを1つだけスマホに準備しておくと週末の選択肢が広がります。</li>
             </ol>
 
             <h2>よくある質問（FAQ）</h2>
@@ -547,7 +549,7 @@
             </div>
             <div class="faq-card">
                 <p class="faq-q">Q. 1対1デートでも相席ラウンジでも、最初の印象で損しないために共通して大事なことは何ですか？</p>
-                <p class="faq-a">どちらの場も「テーブル越し70cm前後の距離で最初の数分間に清潔感が見られる」点は共通しています。入店NGになるドレスコード基準や、間接照明の下で意外と目立つ口元・肌・服のシワ対策については<a href="/guide/dress-code-cleanliness">『相席ラウンジの服装・清潔感チェックガイド』</a>で詳しく解説しています。</p>
+                <p class="faq-a">どちらの場も「テーブル越し70cm前後の距離で最初の数分間に清潔感が見られる」点は共通しています。入店NGになるドレスコード基準や、間接照明の下で意外と目立つ口元・肌・服のシワ対策については<a href="/guide/dress-code-cleanliness">『相席ラウンジの服装・清潔感チェックポイント』</a>で詳しく解説しています。</p>
             </div>
 
             <div class="cta-box">
@@ -555,8 +557,8 @@
                 <p class="cta-box-desc" style="font-size:0.86rem;margin:8px 0 4px;">全国60店舗超のリアルタイム男女人数ランキングと、男女別の事前準備・1対1サービス比較ガイドを公開中。</p>
                 <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:12px;">
                     <a href="/" class="cta-btn">全国リアルタイム人数ランキングを見る ›</a>
-                    <a href="/grooming#backup-apps" class="cta-btn cta-btn--secondary">男性向け｜準備＆代替アプリ比較 ›</a>
-                    <a href="/for-women#clinic" class="cta-btn cta-btn--secondary">女性向け｜待ちゼロ店＆無料1対1 ›</a>
+                    <a href="/grooming#backup-apps" data-cushion="1" class="cta-btn cta-btn--secondary">男性向け｜準備＆代替アプリ比較 ›</a>
+                    <a href="/for-women#clinic" data-cushion="1" class="cta-btn cta-btn--secondary">女性向け｜待ちゼロ店＆無料1対1 ›</a>
                 </div>
             </div>
         </div>

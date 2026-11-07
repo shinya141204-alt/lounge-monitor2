@@ -174,6 +174,13 @@ def get_or_create_vapid_keys(allow_blocking: bool = True) -> dict:
     if not is_test_isolated:
         if not allow_blocking:
             return dict(generated)
+        import turbo_store
+        pg_expected_down = bool(os.environ.get("DATABASE_URL")) and not turbo_store.is_postgres_active()
+        if not job_state.is_storage_healthy() or pg_expected_down:
+            logger.warning(
+                "[push_watch] Persistent storage temporarily unavailable; returning ephemeral VAPID keys without overwriting saved state."
+            )
+            return dict(generated)
         logger.error("[push_watch] VAPID keys auto-generated. Set VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY_PEM as Fly secrets.")
         try:
             job_state.set_value(VAPID_STATE_KEY, json.dumps(generated, ensure_ascii=False))

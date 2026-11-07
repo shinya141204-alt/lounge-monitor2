@@ -360,8 +360,8 @@
             <span class="article-cat-tag">{{ scheduled_item.badge }}</span>
             <h1 class="article-title">{{ scheduled_item.title }}</h1>
             <div class="article-meta-line">
-                <span>🗓️ 公開・更新日：{{ scheduled_item.lastmod }}</span>
-                <span>⏱️ {{ scheduled_item.read_time }}</span>
+                <span>公開・更新日：{{ scheduled_item.lastmod }}</span>
+                <span>読了目安：{{ scheduled_item.read_time }}</span>
                 <span>執筆・検証：<a href="/about" style="color:inherit;text-decoration:underline;text-underline-offset:3px;">くわもん（相席ナビ編集長）</a></span>
             </div>
         </header>
@@ -414,7 +414,7 @@
                 <div class="data-table-wrap">
                     {% if scheduled_item.data_table.caption %}
                     <div class="data-table-caption">
-                        📊 {{ scheduled_item.data_table.caption }}
+                        {{ scheduled_item.data_table.caption }}
                     </div>
                     {% endif %}
                     <table class="data-table">
@@ -452,14 +452,14 @@
                 {% if sec.store_links %}
                 <div class="store-chip-row">
                     {% for lk in sec.store_links %}
-                    <a href="{{ lk.href }}" class="store-chip-link">📍 {{ lk.label }} の現在人数・時間帯傾向を見る ›</a>
+                    <a href="{{ lk.href }}" class="store-chip-link">{{ lk.label }} の現在人数・時間帯傾向を見る ›</a>
                     {% endfor %}
                 </div>
                 {% endif %}
             {% endfor %}
 
             {% if scheduled_item.summary_points %}
-            <h2>まとめ：今夜から意識したいチェックポイント</h2>
+            <h2>今夜から意識したい店選びの目安</h2>
             <ul>
                 {% for pt in scheduled_item.summary_points %}
                 <li>{{ pt }}</li>
@@ -477,6 +477,18 @@
             {% endfor %}
             {% endif %}
 
+            {% if not is_staff and not session.get('is_staff') and not is_scheduled_preview %}
+            <aside class="editorial-bridge-box" aria-label="入店前の準備と男女別ガイド">
+                <span class="editorial-bridge-kicker">BEFORE YOU GO</span>
+                <p class="editorial-bridge-title">向かう前の5分で差がつく「席での清潔感」と「待ち時間ゼロの店選び」</p>
+                <p class="editorial-bridge-desc">距離70cmのソファ席で損しない身だしなみ・満席時の予備策や、女性ペアがいま待ち時間なしで案内される店舗ボード、<a href="/price-comparison" data-cushion="1">国内全店の待機料金・相席単価比較シート</a>を用途別にまとめています。</p>
+                <div class="editorial-bridge-actions">
+                    <a href="/grooming" data-cushion="1" class="editorial-bridge-btn editorial-bridge-btn--men"><span>男性向け｜入店前ケア＆満席時の予備策</span><span>›</span></a>
+                    <a href="/for-women" data-cushion="1" class="editorial-bridge-btn editorial-bridge-btn--women"><span>女性向け｜待ちゼロ店舗＆スマート席替え術</span><span>›</span></a>
+                </div>
+            </aside>
+            {% endif %}
+
             <div class="cta-box">
                 <div style="font-size:1.05rem;font-weight:800;color:#fff;">全国63店舗の現在の男女人数を確認する</div>
                 <p style="font-size:0.85rem;color:#cbd5e1;margin:8px 0 0 0;">
@@ -484,9 +496,9 @@
                 </p>
                 <a href="/" class="cta-btn">全国リアルタイム人数ランキングを見る →</a>
                 <div style="margin-top:14px;font-size:0.8rem;">
-                    <a href="/columns" style="color:#38bdf8;text-decoration:none;margin-right:12px;">📚 コラム一覧へ戻る</a>
-                    <a href="/price-comparison" style="color:#38bdf8;text-decoration:none;margin-right:12px;">💴 店舗別料金・イベント比較</a>
-                    <a href="/areas" style="color:#38bdf8;text-decoration:none;">📍 全国エリア別ガイド</a>
+                    <a href="/columns" style="color:#38bdf8;text-decoration:none;margin-right:12px;">コラム一覧へ戻る</a>
+                    <a href="/price-comparison" data-cushion="1" style="color:#38bdf8;text-decoration:none;margin-right:12px;">店舗別料金・イベント比較</a>
+                    <a href="/areas" style="color:#38bdf8;text-decoration:none;">全国エリア別ガイド</a>
                 </div>
             </div>
         </article>

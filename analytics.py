@@ -635,7 +635,14 @@ _PAGE_TITLES = {
     '/guide/crowd-rush-paradox': '📖 金土22時の群衆殺到パラドックスと女性比70%安全バッファ検証',
     '/guide/brand-waveform-asymmetry': '📖 5大ブランドの時間波形と男女で真逆になる店選びデータ検証',
     '/guide/lounge-vs-screened-date': '📖 相席ラウンジ vs 審査制1対1デート徹底比較（実測ログ・使い分け境界線）',
-    '/guide/dress-code-cleanliness': '📖 相席ラウンジの服装・清潔感チェック完全ガイド（ブランド別NG・70cm照明対策）',
+    '/guide/dress-code-cleanliness': '📖 相席ラウンジの服装・清潔感チェックガイド（ブランド別NG・70cm照明対策）',
+    '/guide/shibuya-ebisu-comparison': '📖 渋谷・恵比寿5店舗比較（山手線1駅で変わる年齢層・料金・時間波形）',
+    '/guide/ueno-kinshicho-machida': '📖 上野・錦糸町・町田・柏 沿線5店舗比較（隣接2店と沿線ターミナル検証）',
+    '/guide/yokohama-omiya-kanto': '📖 横浜・大宮・宇都宮・高崎 関東5店舗比較（時間波形・料金・ソロ対応）',
+    '/guide/nagoya-sakae-nishiki': '📖 名古屋（栄・錦・住吉）5店舗比較（南北700mの年齢層・料金・ソロ境界）',
+    '/guide/fukuoka-tenjin-kyushu': '📖 福岡天神・九州沖縄11店舗比較（大名3ブランド使い分け・全店ソロ対応）',
+    '/guide/hiroshima-okayama-matsuyama': '📖 広島・岡山・松山6店舗比較（新天地半径185m競合・料金システム検証）',
+    '/guide/sapporo-sendai-north': '📖 札幌すすきの・仙台国分町比較（JIS札幌・ag仙台の時間波形と曜日ルール）',
     '/guide/sunday-lounge-strategy': '📖 日曜日の相席ラウンジは行くべきか？｜21時半の撤退急落と、月曜休みの隠れ狙い目',
     '/for-women': '💄 女子のための相席ラウンジ完全ガイド＆待ちゼロ店舗ボード',
     '/privacy': '⚖️ 運営者情報・プライバシーポリシー',
@@ -729,6 +736,13 @@ _INFLOW_STYLE_JA = {
 }
 
 
+_VALID_INFLOW_RE_STR = (
+    r'^(?:(?:x|th|ig|tt|tk)\d{2}_[a-z0-9_\-]{1,32}'
+    r'|(?:x|th|ig|reel|tiktok|short|note|line|push)_[a-z0-9_\-]{1,32}'
+    r'|x|th|ig|note|line|push_watch|line_bot)$'
+)
+
+
 def normalize_inflow_source(raw_s: str) -> str:
     """
     Normalize `?s=` query parameter into a clean, date-independent cohort tag so PDCA can aggregate
@@ -737,6 +751,7 @@ def normalize_inflow_source(raw_s: str) -> str:
       - '20261028_2200'        -> 'x22_live'
       - 'th22_threads_city_story' -> 'th22_threads_city_story'
       - 'x18_tip'              -> 'x18_tip'
+    Rejects random non-cohort query strings ('') so bot fuzzing cannot explode Analytics Daily cardinality.
     """
     import re
     s = re.sub(r'[^a-zA-Z0-9_\-]', '', (raw_s or '').strip())[:48]
@@ -748,7 +763,10 @@ def normalize_inflow_source(raw_s: str) -> str:
         return f"x{m_leg.group(1)}_live"
     # Strip trailing _YYYYMMDD or _MMDD cache-buster suffix
     s = re.sub(r'_(\d{8}|\d{4})$', '', s)
-    return s[:40]
+    s_low = s.lower()[:40]
+    if not re.match(_VALID_INFLOW_RE_STR, s_low):
+        return ''
+    return s_low
 
 
 def describe_inflow_tag(tag: str) -> str:

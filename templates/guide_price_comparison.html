@@ -70,7 +70,7 @@
             "name": "なぜ女性比率が高くても「女性10名未満」の店舗は推奨から外れるのですか？",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "店内の人数が少ない状態（例：女性4名・男性2名＝女性比率67%）では、最初の1組と相席できたとしても、会話が合わなかった際や1組目が退店した後に「次に席替え（チェンジ）できる相席候補」が店内にいないリスクが高いためです。相席ナビでは約5組（女性10名以上）を比率評価・推奨選出の最低ライン、女性14名以上を安定回転ラインとして判定しています。"
+              "text": "店内の人数が少ない状態（例：女性4名・男性2名＝女性比率67%）では、最初の1組と相席できたとしても、会話が合わなかった際や1組目が退店した後に「次に席替え（チェンジ）できる相席候補」が店内にいないリスクが高くなるからです。相席ナビでは約5組（女性10名以上）を比率評価・推奨選出の最低ライン、女性14名以上を安定回転ラインとして判定しています。"
             }
           },
           {
@@ -309,12 +309,12 @@
             </div>
 
             <p>
-                こうした空振りを減らすために作ったのが、国内61店舗の<strong>①単独（待機）料金、②4つの時間帯別の相席10分単価、③1名（ソロ）入店可否、④店舗ごとの開催中イベント、⑤現在の男女人数・営業時間ステータス</strong>を1画面で横並び検証できる<a href="/price-comparison" style="font-weight:700;text-decoration:underline;">「店舗別料金・開催中イベント比較ボード（/price-comparison）」</a>です。<br>
-                この比較ボードの活用ガイドとして、入店前の30秒でチェックしておきたい4つのポイントと、推奨判定ロジックの裏側をお伝えします。
+                こうした空振りを減らすために作ったのが、国内61店舗の<strong>①単独（待機）料金、②4つの時間帯別の相席10分単価、③1名（ソロ）入店可否、④店舗ごとの開催中イベント、⑤現在の男女人数・営業時間ステータス</strong>を1画面で横並び検証できる<a href="/price-comparison" data-cushion="1" style="font-weight:700;text-decoration:underline;">「店舗別料金・開催中イベント比較ボード（/price-comparison）」</a>です。<br>
+                入店前の30秒で目を通しておきたい4つの見どころと、推奨判定ロジックの裏側をお伝えします。
             </p>
 
             <div class="highlight-box">
-                <strong style="font-size:0.96rem;">比較ボード（<a href="/price-comparison" style="text-decoration:underline;">/price-comparison</a>）で確認できる5つの項目</strong>
+                <strong style="font-size:0.96rem;">比較ボード（<a href="/price-comparison" data-cushion="1" style="text-decoration:underline;">/price-comparison</a>）で確認できる5つの項目</strong>
                 <ul style="margin:10px 0 0 0;padding-left:20px;">
                     <li><strong>単独（待機）料金の有無と金額</strong>：相席していない待機・休憩中にも10分220円または330円がかかる50店舗と、定額デイパス制（時間内の追加待機課金なし）の店舗を明確に区別。</li>
                     <li><strong>4時間帯別の相席10分単価</strong>：①Open〜20時、②20〜22時、③22〜24時、④24時〜Closeの4枠で、現在の時刻がどの料金枠に該当するかをリアルタイム表示。</li>
@@ -366,15 +366,17 @@
                 </table>
             </div>
 
+            {% if not is_staff and not session.get('is_staff') %}
             <aside class="editorial-bridge-box" aria-label="待機チャージ回避・女性限定特典ガイド">
-                <span class="editorial-bridge-kicker">COST & ZERO-WAIT GUIDE</span>
+                <span class="editorial-bridge-kicker">COST &amp; ZERO-WAIT GUIDE</span>
                 <p class="editorial-bridge-title">待機チャージを抑える事前準備と、女性ペア向けイベント・待ちゼロ一覧</p>
                 <p class="editorial-bridge-desc">週末ピーク帯で単独待機を重ねないための代替アプリ・2軒目予約と、女性が待ち時間ゼロ＆限定特典つきで入れるリアルタイム店舗ボードを確認できます。</p>
                 <div class="editorial-bridge-actions">
-                    <a href="/grooming#backup-apps" class="editorial-bridge-btn editorial-bridge-btn--men"><span>男性向け｜満席時の代替策＆身だしなみ準備</span><span>›</span></a>
-                    <a href="/for-women#live-board" class="editorial-bridge-btn editorial-bridge-btn--women"><span>女性向け｜待ちゼロ店舗＆開催中特典ボード</span><span>›</span></a>
+                    <a href="/grooming#backup-apps" data-cushion="1" class="editorial-bridge-btn editorial-bridge-btn--men"><span>男性向け｜満席時の代替策＆身だしなみ準備</span><span>›</span></a>
+                    <a href="/for-women#live-board" data-cushion="1" class="editorial-bridge-btn editorial-bridge-btn--women"><span>女性向け｜待ちゼロ店舗＆開催中特典ボード</span><span>›</span></a>
                 </div>
             </aside>
+            {% endif %}
 
             <h2>2. なぜ「女性比率」だけでなく「女性10名以上（約5組）」の線引きが必要なのか？</h2>
             <p>
@@ -388,7 +390,7 @@
 
             <p>
                 店内の母数が少なすぎると、最初のペアが30分で退店してしまった後や、テンポが合わずに席替え（チェンジ）したくなったときに「次の候補が実質ゼロ」になってしまいます。<br>
-                そこで相席ナビの<a href="/price-comparison" style="text-decoration:underline;">比較ボード</a>では、単なるパーセンテージだけでなく、常連の肌感覚に合わせて以下の2段階の母数基準を設けています。
+                そこで相席ナビの<a href="/price-comparison" data-cushion="1" style="text-decoration:underline;">比較ボード</a>では、単なるパーセンテージだけでなく、常連の肌感覚に合わせて以下の2段階の母数基準を設けています。
             </p>
             <ul>
                 <li><strong>比率評価・推奨選出の最低ライン：女性10名以上（約5組以上）</strong><br>
@@ -400,7 +402,7 @@
             <h2>3. 公式営業時間に基づく「0 : 0（営業中）」表記について</h2>
             <p>
                 開店直後（18:00〜19:30頃）や平日の早い時間帯など、お店はすでに開いているのに店内人数がまだ「女性0名・男性0名」の時間帯があります。<br>
-                以前「0人だと今日お休みなのか、もう開いているのか分からない」という声があったため、掲載全63店舗（国内61店舗＋韓国2店舗）の公式ホームページの営業時間（曜日別の開店・閉店時刻、金土・祝前日の深夜延長、水曜・月曜などの定休日）を照合し、<strong>営業時間内であれば「営業時間外」ではなく「0 : 0（営業中・空席）」とはっきり区別して表示</strong>するようにしています。
+                以前「0人だと今日お休みなのか、もう開いているのか分かりにくい」という声を受け、掲載全63店舗（国内61店舗＋韓国2店舗）の公式ホームページの営業時間（曜日別の開店・閉店時刻、金土・祝前日の深夜延長、水曜・月曜などの定休日）を照合し、<strong>営業時間内であれば「営業時間外」ではなく「0 : 0（営業中・空席）」とはっきり区別して表示</strong>するようにしています。
             </p>
 
             <h2>4. 開催中イベントの店舗照合と、公式ホームページ確認のお願い</h2>
@@ -414,7 +416,7 @@
 
             {% if not is_staff and not session.get('is_staff') %}
             <div class="editorial-ref-note editorial-bridge-box">
-                関連ガイド：近隣店がすべて少人数または男性待機ピークの夜に単独待機コストを抑える選択肢は<a href="/grooming#backup-apps" data-cushion="1">入店前準備＆満席時の予備アプリ比較ガイド</a>、女性ペアで待ちゼロ店舗を探す場合は<a href="/for-women#live-board" data-cushion="1">女性向けLIVE待ちゼロボード</a>で確認できます。
+                あわせて読みたい準備メモ：近隣店がどこも男性待機ピークだった夜に切り替えられる選択肢は<a href="/grooming#backup-apps" data-cushion="1">入店前準備＆満席時の予備アプリ比較ガイド</a>、女性ペアで受付待ちゼロの店を探すなら<a href="/for-women#live-board" data-cushion="1">女性向けLIVE待ちゼロボード</a>にまとめています。
             </div>
             {% endif %}
 
@@ -423,7 +425,7 @@
                 <p style="font-size:0.85rem;color:#9b978f;margin:8px 0 0 0;">
                     新宿・渋谷・梅田・難波・名古屋・福岡・広島・岡山・札幌・仙台など全国主要エリアをワンタップ切り替え＆毎分自動更新。
                 </p>
-                <a href="/price-comparison" class="cta-btn">店舗別料金・イベント比較ボードを開く →</a>
+                <a href="/price-comparison" data-cushion="1" class="cta-btn">店舗別料金・イベント比較ボードを開く →</a>
 
                 <div class="share-btn-row">
                     <a href="https://twitter.com/intent/tweet?text=%E7%9B%B8%E5%B8%AD%E3%83%A9%E3%82%A6%E3%83%B3%E3%82%B8%E5%85%A851%E5%BA%97%E8%88%97%E3%81%AE%E3%80%8C%E5%8D%98%E7%8B%AC%E5%BE%85%E6%A9%9F%E6%96%99%E9%87%91%E3%83%BB4%E6%99%82%E9%96%93%E5%B8%AF%E5%8D%98%E4%BE%A1%E3%83%BB1%E5%90%8D%E5%85%A5%E5%BA%97%E5%8F%AF%E5%90%A6%E3%83%BB%E9%96%8B%E5%82%AC%E4%B8%AD%E3%82%A4%E3%83%99%E3%83%B3%E3%83%88%E3%83%BB%E3%83%AA%E3%82%A2%E3%83%AB%E3%82%BF%E3%82%A4%E3%83%A0%E7%94%B7%E5%A5%B3%E4%BA%BA%E6%95%B0%E3%80%8D%E3%82%92%E4%B8%80%E6%8B%AC%E6%AF%94%E8%BC%83%E3%81%A7%E3%81%8D%E3%82%8B%E6%AF%94%E8%BC%83%E3%83%9C%E3%83%BC%E3%83%89%E3%81%A8%E6%B4%BB%E7%94%A8%E3%82%AC%E3%82%A4%E3%83%89%EF%BC%81%0A%23%E7%9B%B8%E5%B8%AD%E3%83%8A%E3%83%93%20%23%E3%82%AA%E3%83%AA%E3%82%A8%E3%83%B3%E3%82%BF%E3%83%AB%E3%83%A9%E3%82%A6%E3%83%B3%E3%82%B8%20%23JIS%20%23ag&url=https%3A%2F%2Faiseki-navi.com%2Fprice-comparison"

@@ -202,7 +202,19 @@ def _coerce_naive_jst(now_jst: datetime.datetime = None) -> datetime.datetime:
 
 
 def parse_publish_at(publish_at_str: str) -> datetime.datetime:
-    return datetime.datetime.strptime(publish_at_str, "%Y-%m-%d %H:%M:%S")
+    raw = str(publish_at_str or "").strip()
+    s = raw.replace("T", " ")
+    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%Y-%m-%d"):
+        try:
+            return datetime.datetime.strptime(s, fmt)
+        except ValueError:
+            continue
+    try:
+        dt = datetime.datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        return _coerce_naive_jst(dt)
+    except Exception:
+        logger.warning(f"[scheduled_articles] Invalid publish_at '{publish_at_str}'; failing closed.")
+        return datetime.datetime(9999, 12, 31, 23, 59, 59)
 
 
 def get_all_scheduled_articles(allow_blocking: bool = False) -> list:
@@ -288,8 +300,13 @@ def check_and_announce_newly_published(app_url: str = "", now_jst: datetime.date
     site_url = (app_url or os.environ.get("PUBLIC_SITE_URL") or "https://aiseki-navi.com").rstrip("/")
     results = []
 
+    if not job_state.is_storage_healthy():
+        reason = "Persistent job_state storage unhealthy; deferring column X release to prevent duplicate post"
+        logger.warning(f"[scheduled_articles] {reason}")
+        return [{"slug": "*", "result": {"status": "skipped", "reason": reason}}]
+
     for item in get_all_scheduled_articles(allow_blocking=True):
-        pub_dt = parse_publish_at(item["publish_at"])
+        pub_dt = parse_publish_at(item.get("publish_at", ""))
         if now_jst < pub_dt:
             continue
         # Safety window: only auto-announce within 72 hours of scheduled release
@@ -333,6 +350,15 @@ def check_and_announce_newly_published(app_url: str = "", now_jst: datetime.date
             logger.info(f"[scheduled_articles] Deferring X announcement for {item['slug']} ({b_reason})")
             results.append({"slug": item["slug"], "result": {"status": "skipped", "reason": b_reason}})
             break
+
+        try:
+            import turbo_store
+            if not turbo_store.acquire_distributed_lock(f"col_rel_x:{item['slug']}", ttl_sec=120):
+                reason = f"Distributed lock held by peer worker ({item['slug']})"
+                results.append({"slug": item["slug"], "result": {"status": "skipped", "reason": reason}})
+                continue
+        except Exception:
+            pass
 
         reply_text = (
             f"新しいコラムを書きました\n"

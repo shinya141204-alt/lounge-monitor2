@@ -329,8 +329,15 @@ def _build_llms_txt_documents() -> tuple:
 - [5大ブランドの時間波形と男女で真逆になる店選びデータ検証 (/guide/brand-waveform-asymmetry)](https://aiseki-navi.com/guide/brand-waveform-asymmetry): オリエンタルラウンジ・ag・JIS・ヤタコイ・ASOBIBARの時間帯クロスオーバーと男女の本音非対称を解明
 - [金土22時の群衆殺到パラドックスと70%バッファの法則 (/guide/crowd-rush-paradox)](https://aiseki-navi.com/guide/crowd-rush-paradox): 金土22時発で29.8%が男余りへ転落する逆転現象と回避プロトコル
 - [相席ラウンジ初心者向け完全ガイド (/guide)](https://aiseki-navi.com/guide)
-- [オリエンタルラウンジ・ag・JIS 徹底比較 (/guide/brand-comparison)](https://aiseki-navi.com/guide/brand-comparison)
+- [オリエンタルラウンジ・ag・JIS 比較ガイド (/guide/brand-comparison)](https://aiseki-navi.com/guide/brand-comparison)
 - [新宿エリア相席ラウンジ攻略 (/guide/shinjuku)](https://aiseki-navi.com/guide/shinjuku)
+- [渋谷・恵比寿5店舗の時間波形・山手線1駅比較 (/guide/shibuya-ebisu-comparison)](https://aiseki-navi.com/guide/shibuya-ebisu-comparison)
+- [上野・錦糸町・町田・柏 沿線5店舗の実測データ比較 (/guide/ueno-kinshicho-machida)](https://aiseki-navi.com/guide/ueno-kinshicho-machida)
+- [横浜・大宮・宇都宮・高崎 関東5店舗の時間波形・料金比較 (/guide/yokohama-omiya-kanto)](https://aiseki-navi.com/guide/yokohama-omiya-kanto)
+- [名古屋（栄・錦・住吉）5店舗の南北700m実測比較 (/guide/nagoya-sakae-nishiki)](https://aiseki-navi.com/guide/nagoya-sakae-nishiki)
+- [福岡天神・九州沖縄11店舗の3ブランド使い分け・実測比較 (/guide/fukuoka-tenjin-kyushu)](https://aiseki-navi.com/guide/fukuoka-tenjin-kyushu)
+- [広島・岡山・松山6店舗の競合・料金システム比較 (/guide/hiroshima-okayama-matsuyama)](https://aiseki-navi.com/guide/hiroshima-okayama-matsuyama)
+- [札幌すすきの・仙台国分町 JIS札幌・ag仙台の時間波形と曜日ルール (/guide/sapporo-sendai-north)](https://aiseki-navi.com/guide/sapporo-sendai-north)
 - [金曜・土曜ピークの待ち時間回避術 (/guide/weekend-strategy)](https://aiseki-navi.com/guide/weekend-strategy)
 - [1人（ソロ）入店 vs 2人ペア入店の実測比較 (/guide/solo-vs-pair)](https://aiseki-navi.com/guide/solo-vs-pair)
 - [最初の10分で決まる会話＆清潔感ルール (/guide/first-10-minutes)](https://aiseki-navi.com/guide/first-10-minutes)
@@ -606,6 +613,13 @@ def sitemap_xml():
     lm_waveform = _template_lastmod('guide_brand_waveform_asymmetry.html', '2026-11-04')
     lm_screened = _template_lastmod('guide_lounge_vs_screened_date.html', '2026-11-04')
     lm_dress = _template_lastmod('guide_dress_code_cleanliness.html', '2026-11-04')
+    lm_shibuya_ebisu = _template_lastmod('guide_shibuya_ebisu_comparison.html', '2026-11-08')
+    lm_ueno_east = _template_lastmod('guide_ueno_kinshicho_machida.html', '2026-11-08')
+    lm_yokohama_kanto = _template_lastmod('guide_yokohama_omiya_kanto.html', '2026-11-08')
+    lm_nagoya_sakae = _template_lastmod('guide_nagoya_sakae_nishiki.html', '2026-11-08')
+    lm_fukuoka_kyushu = _template_lastmod('guide_fukuoka_tenjin_kyushu.html', '2026-11-08')
+    lm_chugoku_shikoku = _template_lastmod('guide_hiroshima_okayama_matsuyama.html', '2026-11-08')
+    lm_sapporo_sendai = _template_lastmod('guide_sapporo_sendai_north.html', '2026-11-08')
     lm_privacy = _template_lastmod('privacy.html', '2026-10-30')
     lm_about = _template_lastmod('about.html', '2026-11-04')
     lm_contact = _template_lastmod('contact.html', '2026-11-04')
@@ -621,6 +635,13 @@ def sitemap_xml():
         lm_price_ev,
         lm_screened,
         lm_dress,
+        lm_shibuya_ebisu,
+        lm_ueno_east,
+        lm_yokohama_kanto,
+        lm_nagoya_sakae,
+        lm_fukuoka_kyushu,
+        lm_chugoku_shikoku,
+        lm_sapporo_sendai,
         lm_weekend,
         lm_shinjuku,
         lm_solo,
@@ -822,6 +843,48 @@ def sitemap_xml():
   <url>
     <loc>https://aiseki-navi.com/guide/dress-code-cleanliness</loc>
     <lastmod>{lm_dress}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://aiseki-navi.com/guide/shibuya-ebisu-comparison</loc>
+    <lastmod>{lm_shibuya_ebisu}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://aiseki-navi.com/guide/ueno-kinshicho-machida</loc>
+    <lastmod>{lm_ueno_east}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://aiseki-navi.com/guide/yokohama-omiya-kanto</loc>
+    <lastmod>{lm_yokohama_kanto}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://aiseki-navi.com/guide/nagoya-sakae-nishiki</loc>
+    <lastmod>{lm_nagoya_sakae}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://aiseki-navi.com/guide/fukuoka-tenjin-kyushu</loc>
+    <lastmod>{lm_fukuoka_kyushu}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://aiseki-navi.com/guide/hiroshima-okayama-matsuyama</loc>
+    <lastmod>{lm_chugoku_shikoku}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://aiseki-navi.com/guide/sapporo-sendai-north</loc>
+    <lastmod>{lm_sapporo_sendai}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
