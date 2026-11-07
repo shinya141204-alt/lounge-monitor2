@@ -16,6 +16,7 @@
   - `routes/seo_feeds_bp.py`: `/robots.txt`・`/sitemap.xml`・`/llms.txt`・`/llms-full.txt`・`/api/llms-facts.json`（`schema_version="2.1"`）・`/ads.txt`
   - `routes/staff_bp.py`: スタッフ・マスター管理APIおよび IG スライドキャッシュ
   - `routes/sns_jobs_bp.py`: 動的 OGP / リール動画配信、非同期 SNS ジョブキュー、全 `/api/trigger-*`
+  - `routes/push_line_bp.py` / `push_watch.py`: Web Push 条件ウォッチ購読（RFC 8292 VAPID ES256 + RFC 8291 `aes128gcm`）＆公式 LINE Messaging API 0円自動応答 Webhook
   - `routes/_bridge.py`: `sys.modules['app']` 動的プロキシ（既存テストの `mock.patch.object(app_module, ...)` 互換維持用）
 - **独自データモート・分析モジュール**:
   - `local_db.py` / `turbo_store.py`: 生ログ90日保持＋1時間粒度永久ロールアップ（`store_hourly_rollups`）、日次文脈（`day_context_logs`）、現地投票（`crowd_votes`）、条件ウォッチ（`store_watch_intents`）、60分後予測精度検証
@@ -36,7 +37,7 @@
 
 ## 4. セキュリティ・本番アクセス計測汚染防止ルール（厳守）
 1. **機密情報の保護**:
-   - `SECRET_KEY`・`STAFF_PASSCODE`・`MASTER_PASSCODE`・`ADMIN_API_SECRET` 等の実値をコード・Markdown・ログ・チャットに出力しないこと。
+   - `SECRET_KEY`・`STAFF_PASSCODE`・`MASTER_PASSCODE`・`ADMIN_API_SECRET`・`VAPID_PRIVATE_KEY_PEM`・`LINE_CHANNEL_SECRET`・`LINE_CHANNEL_ACCESS_TOKEN` 等の実値をコード・Markdown・ログ・チャットに出力しないこと。
    - `?passcode=` によるURLクエリログインは廃止済みのため復活させないこと（管理APIはセッションまたは `X-Admin-Secret` ヘッダーを使用）。
 2. **本番アクセス・アフィリエイト計測の自己汚染防止（全エンドポイント適用）**:
    - 本番 `https://aiseki-navi.com` の **すべてのURL**（`/link/<id>` だけでなく `/api/status`・`/api/llms-facts.json`・`/stats/*`・`/guide/*` 等すべて）へ疎通確認や監査スクリプトでアクセスする際は、**必ず `-A "curl/8.0"` 系の明示ボット/監査UA ＋ `?staff_test=1` を付与** すること。

@@ -711,7 +711,7 @@ class TestForecastV2AndAccuracyTracking(unittest.TestCase):
             fc_seo = moat_intelligence.predict_store_60m_dynamics(
                 seo_alias, 28, 20, True, 2, 3, now_jst=dt, weather_map={}, apply_online_bias=False, lag_context={}, usual_pair_override=()
             )
-            self.assertEqual(fc_raw["model_version"], "v3.0-statespace")
+            self.assertEqual(fc_raw["model_version"], "v3.1-statespace")
             self.assertEqual(fc_raw["pred_60m_wpct"], fc_seo["pred_60m_wpct"], f"Mismatch for {seo_alias}")
             self.assertEqual(fc_raw["pred_60m_women"], fc_seo["pred_60m_women"])
             self.assertEqual(fc_raw["pred_60m_men"], fc_seo["pred_60m_men"])
@@ -898,7 +898,7 @@ class TestForecastV2AndAccuracyTracking(unittest.TestCase):
         res_vers = local_db._fetch_all_rows(
             "SELECT DISTINCT model_version FROM forecast_accuracy_logs WHERE resolved_at IS NOT NULL"
         )
-        self.assertEqual([r[0] for r in res_vers], ["v3.0-statespace"])
+        self.assertEqual([r[0] for r in res_vers], ["v3.1-statespace"])
         pend_cnt = local_db._fetch_all_rows("SELECT COUNT(*) FROM forecast_accuracy_logs WHERE resolved_at IS NULL")[0][0]
         self.assertEqual(pend_cnt, 1)
 

@@ -7,6 +7,7 @@ analytics.py - 自前の軽量アクセス集計（個人情報なし）
 ・メモリ上で加算 → 10分ごとに Google Sheets 'Analytics Daily' へまとめて追記
 ・集計画面（/staff/analytics）は Sheets の値＋未送信分を合算して表示
 """
+import os
 import datetime
 import time
 import threading
@@ -101,8 +102,10 @@ def normalize_cta_surface(raw_path: str) -> str:
         return '/'
     if p == '/store/*' or p.startswith('/store/'):
         return '/store/*'
-    if p in ('/concierge', '/grooming', '/for-women', '/price-comparison', '/stats'):
+    if p in ('/concierge', '/grooming', '/for-women', '/price-comparison'):
         return p
+    if p == '/stats' or p.startswith('/stats/'):
+        return '/stats'
     if p in ('/areas', '/area/*') or p.startswith('/area/'):
         return '/area/*'
     if p in ('/guide', '/columns', '/guide/*') or p.startswith('/guide/'):
@@ -129,6 +132,9 @@ def normalize_affiliate_impression_label(raw_label: str) -> str:
     if not cid:
         return ''
     surface = normalize_cta_surface(path_part)
+    # AGENTS.md §9: primary statistics pages (/stats) never host affiliate slots
+    if surface == '/stats':
+        return ''
     return f"{cid} @ {surface}"
 
 
@@ -174,6 +180,45 @@ def normalize_cushion_click_label(raw_label: str) -> str:
     return f"{norm_target} @ {s_clean}"
 
 
+_STORE_TRACK_EVENTS = ('store_open', 'map_cafe', 'map_bar', 'official_click', 'vote')
+
+
+def sanitize_generic_track_label(raw_label: str) -> str:
+    """Strip control characters and neutralize spreadsheet formula injection prefixes (=, +, -, @)."""
+    s = str(raw_label or '').replace('\r', ' ').replace('\n', ' ').replace('\t', ' ').strip()[:80]
+    while s and s[0] in ('=', '+', '-', '@'):
+        if s == '-':
+            break
+        s = s[1:].lstrip()
+    return s
+
+
+def normalize_store_event_label(event: str, raw_label: str) -> str:
+    """Unify SEO display names / slugs (e.g. 'オリエンタルラウンジ 長崎') into canonical internal keys ('OLG 長崎')."""
+    s = sanitize_generic_track_label(raw_label)
+    if not s or event not in _STORE_TRACK_EVENTS:
+        return s
+    if event == 'vote' and ':' in s:
+        sname_raw, suffix = [p.strip() for p in s.split(':', 1)]
+    else:
+        sname_raw, suffix = s, ''
+    canon = sname_raw
+    try:
+        import store_master
+        master = store_master.load() or {}
+        if sname_raw not in master:
+            cand = store_master.to_internal_store_name(sname_raw)
+            if cand and cand in master:
+                canon = cand
+            else:
+                by_slug = store_master.store_by_slug(sname_raw)
+                if by_slug and by_slug in master:
+                    canon = by_slug
+    except Exception:
+        pass
+    return f"{canon}:{suffix}" if (event == 'vote' and suffix) else canon
+
+
 def track(event, label=''):
     if event not in ALLOWED_EVENTS:
         return False
@@ -187,8 +232,10 @@ def track(event, label=''):
         if not norm_lbl:
             return False
         label = norm_lbl
+    elif event in _STORE_TRACK_EVENTS:
+        label = normalize_store_event_label(event, label)
     else:
-        label = str(label or '')[:80]
+        label = sanitize_generic_track_label(label)
     with _lock:
         _pending[(_today(), event, label)] += 1
     return True
@@ -570,7 +617,24 @@ def describe_label(event, raw_label):
         else:
             tgt_part, src_path = label.strip(), ''
         tgt_base = tgt_part.split('#', 1)[0]
-        tgt_ja = '入店前準備ガイド (/grooming)' if tgt_base == '/grooming' else '女性向け特設ガイド (/for-women)'
+        _cushion_hub_titles = {
+            '/grooming': '入店前準備ガイド (/grooming)',
+            '/for-women': '女性向け特設ガイド (/for-women)',
+            '/concierge': '相席コンシェルジュ診断 (/concierge)',
+            '/price-comparison': '全店料金・イベント比較 (/price-comparison)',
+        }
+        if tgt_base in _cushion_hub_titles:
+            tgt_ja = _cushion_hub_titles[tgt_base]
+        elif tgt_base.startswith('/store/'):
+            slug = tgt_base[len('/store/'):].strip('/')
+            try:
+                import store_master
+                st_key = store_master.store_by_slug(slug)
+                tgt_ja = f"{store_master.seo_name(st_key)} ({tgt_base})" if st_key else (_PAGE_TITLES.get(tgt_base) or tgt_base)
+            except Exception:
+                tgt_ja = _PAGE_TITLES.get(tgt_base) or tgt_base
+        else:
+            tgt_ja = _PAGE_TITLES.get(tgt_base) or tgt_base or '-'
         if '#' in tgt_part:
             tgt_ja = f"{tgt_ja} #{tgt_part.split('#', 1)[1]}"
         src_title = _PAGE_TITLES.get(src_path) or src_path or '-'
@@ -673,10 +737,11 @@ def summary(days=7, allow_blocking=True):
     for (d, e, l), c in totals.items():
         if d < start:
             continue
+        norm_l = normalize_store_event_label(e, l) if e in _STORE_TRACK_EVENTS else l
         by_event[e] += c
-        by_label[e][l] += c
+        by_label[e][norm_l] += c
         by_day[d][e] += c
-        if e == 'page_view' and l and l != '/':
+        if e == 'page_view' and norm_l and norm_l != '/':
             article_views += c
 
     by_label_sorted = {e: sorted(v.items(), key=lambda x: -x[1])[:15] for e, v in by_label.items()}
@@ -760,21 +825,33 @@ def summary(days=7, allow_blocking=True):
         else:
             s_part, p_part = raw_lbl.strip(), '/other'
         cid = _am_ctr.canonical_slot_id(s_part) if _am_ctr else s_part.lower()
-        if cid:
-            surface_imp[(cid, normalize_cta_surface(p_part))] += int(cnt or 0)
+        surf = normalize_cta_surface(p_part)
+        if cid and surf != '/stats':
+            surface_imp[(cid, surf)] += int(cnt or 0)
 
-    for raw_lbl, cnt in by_label.get('affiliate_click', {}).items():
+    for (d, e, raw_lbl), cnt in totals.items():
+        if e != 'affiliate_click' or d < start:
+            continue
+        if imp_days and d not in imp_days:
+            continue
         if '@' in raw_lbl:
             s_part, p_part = [x.strip() for x in raw_lbl.split('@', 1)]
         else:
             s_part, p_part = raw_lbl.strip(), '/other'
         cid = _am_ctr.canonical_slot_id(s_part) if _am_ctr else s_part.lower()
-        if cid:
-            surface_clk[(cid, normalize_cta_surface(p_part))] += int(cnt or 0)
+        surf = normalize_cta_surface(p_part)
+        if cid and surf != '/stats':
+            surface_clk[(cid, surf)] += int(cnt or 0)
 
     cta_surface_ctr = []
-    all_pairs = set(surface_imp.keys()) | set(surface_clk.keys())
-    for cid, surf in sorted(all_pairs, key=lambda k: (-surface_clk[k], -surface_imp[k], k[0], k[1]))[:15]:
+    all_pairs = {
+        pair for pair in (set(surface_imp.keys()) | set(surface_clk.keys()))
+        if not (surface_imp[pair] == 0 and pair[1] == '/other')
+    }
+    for cid, surf in sorted(
+        all_pairs,
+        key=lambda k: (0 if surface_imp[k] > 0 else 1, -surface_clk[k], -surface_imp[k], k[0], k[1]),
+    )[:15]:
         imp_c = surface_imp[(cid, surf)]
         clk_c = surface_clk[(cid, surf)]
         desc = describe_label('affiliate_impression', f"{cid} @ {surf}")
@@ -789,9 +866,11 @@ def summary(days=7, allow_blocking=True):
         })
 
     # Estimated revenue simulation:
+    #   - AdSense (`est_adsense_yen`): counted ONLY when AdSense client/publisher ID is configured (zero phantom estimate per AGENTS.md §1)
     #   - Gross expected value (`est_aff_yen`): ~90 yen/click (occurrence basis across high-ticket trials & apps)
     #   - Net confirmed value (`est_confirmed_aff_yen`): ~30 yen/click conservative industry median after approval rate
-    est_adsense_yen = round(pv_total * 0.35)
+    adsense_enabled = bool((os.environ.get('ADSENSE_CLIENT_ID') or os.environ.get('ADSENSE_PUB_ID') or '').strip())
+    est_adsense_yen = round(pv_total * 0.35) if adsense_enabled else 0
     est_aff_yen = round(aff_total * 90)
     est_confirmed_epc_yen = 30
     est_confirmed_aff_yen = round(aff_total * est_confirmed_epc_yen)
@@ -810,6 +889,7 @@ def summary(days=7, allow_blocking=True):
     est_confirmed_monthly_pace_yen = round((est_confirmed_total_yen / pace_denom_days) * 30)
 
     revenue = {
+        'adsense_enabled': adsense_enabled,
         'est_adsense_yen': est_adsense_yen,
         'est_aff_yen': est_aff_yen,
         'est_total_yen': est_total_yen,

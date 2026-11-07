@@ -15,6 +15,8 @@ import hmac
 import json
 import logging
 import os
+import re
+import sys
 import threading
 import time
 import urllib.parse
@@ -148,7 +150,11 @@ def get_or_create_vapid_keys(allow_blocking: bool = True) -> dict:
             _cached_vapid_keys = pair
         return dict(pair)
 
-    is_test_isolated = os.environ.get("DISABLE_SHEETS") == "1"
+    is_test_isolated = (
+        os.environ.get("PUSH_TEST_ISOLATED") == "1"
+        or "unittest" in sys.modules
+        or "pytest" in sys.modules
+    )
     if not is_test_isolated:
         raw_saved = job_state.get_value(VAPID_STATE_KEY, allow_blocking=allow_blocking)
         if raw_saved:
@@ -331,6 +337,7 @@ def dispatch_matching_watch_pushes(
     stores_list: list[dict],
     cooldown_minutes: int = PUSH_COOLDOWN_MINUTES,
     now_jst: datetime.datetime = None,
+    last_updated: str = None,
 ) -> dict:
     """Evaluate active Web Push subscriptions against current live store data and send notifications."""
     global _cached_vapid_keys
@@ -340,6 +347,20 @@ def dispatch_matching_watch_pushes(
     now_dt = now_jst or datetime.datetime.now(JST).replace(tzinfo=None)
     if getattr(now_dt, "tzinfo", None) is not None:
         now_dt = now_dt.astimezone(JST).replace(tzinfo=None)
+
+    # Guard against stale scraper snapshots (>25m old full timestamp) firing false late-night alerts
+    if last_updated:
+        lu_s = str(last_updated).strip()
+        if len(lu_s) >= 16 and lu_s[4:5] in ("-", "/"):
+            for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%Y/%m/%d %H:%M:%S", "%Y/%m/%d %H:%M"):
+                try:
+                    lu_dt = datetime.datetime.strptime(lu_s[:19], fmt)
+                    if (now_dt - lu_dt).total_seconds() > 25 * 60:
+                        return {"checked": 0, "sent": 0, "purged": 0, "skipped_stale": True}
+                    break
+                except ValueError:
+                    continue
+
     now_str = now_dt.strftime("%Y-%m-%d %H:%M:%S")
     cooldown_cutoff = (now_dt - datetime.timedelta(minutes=max(15, int(cooldown_minutes)))).strftime(
         "%Y-%m-%d %H:%M:%S"
@@ -362,9 +383,10 @@ def dispatch_matching_watch_pushes(
     dead_endpoints = []
     sent_count = 0
     auth_fail = 0
+    cond_memo = {}
 
     for sub in subs:
-        last_ts = str(sub.get("last_notified_at") or "")
+        last_ts = str(sub.get("last_notified_at") or "").strip()[:19]
         if last_ts and last_ts >= cooldown_cutoff:
             continue
         sname = sub["store_name"]
@@ -372,7 +394,12 @@ def dispatch_matching_watch_pushes(
         if not st:
             continue
         cond = sub["target_cond"]
-        if not does_store_match_watch_condition(st, cond):
+        memo_key = (sname, cond)
+        matched = cond_memo.get(memo_key)
+        if matched is None:
+            matched = does_store_match_watch_condition(st, cond)
+            cond_memo[memo_key] = matched
+        if not matched:
             continue
 
         w = int(st.get("women") or 0)
@@ -498,10 +525,40 @@ def _format_formal_first_mention(seo_name: str, seen_brands: set) -> str:
     return name
 
 
+def _is_domestic_live_store(s: dict) -> bool:
+    if not isinstance(s, dict):
+        return False
+    if s.get("region") == "Korea":
+        return False
+    sname = str(s.get("name") or "").strip()
+    if not sname or "ソウル" in sname or "カンナム" in sname or "ホンデ" in sname:
+        return False
+    try:
+        canon = store_master.to_internal_store_name(sname) or sname
+        info = store_master.get(canon) or store_master.get(sname)
+        if isinstance(info, dict) and info.get("region") == "Korea":
+            return False
+    except Exception:
+        pass
+    return True
+
+
+def _line_area_query_matches(area_label: str, q: str) -> bool:
+    if len(area_label) == 1:
+        # 1文字地名（「栄」「柏」）が「繁栄」「松柏」等の一般熟語に誤反応するのを防ぐ
+        if q == area_label:
+            return True
+        for prefix in ("名古屋", "愛知", "千葉"):
+            if f"{prefix}{area_label}" in q or f"{prefix} {area_label}" in q or f"{prefix}・{area_label}" in q:
+                return True
+        return bool(re.search(rf"(?:^|[\s・/、,「『(（]){re.escape(area_label)}(?:$|[\s・/、,」』)）店駅周辺])", q))
+    return area_label in q
+
+
 def build_line_auto_reply_text(user_text: str, live_stores: list[dict], last_updated: str = "") -> str:
     """Compose a concise, high-utility live crowd summary for LINE Reply API (0-yen unlimited)."""
     q = (user_text or "").strip()
-    domestic = [s for s in (live_stores or []) if s.get("region") != "Korea"]
+    domestic = [s for s in (live_stores or []) if _is_domestic_live_store(s)]
     upd_note = f"（{last_updated} 更新）" if last_updated else ""
     seen_brands = set()
 
@@ -527,7 +584,7 @@ def build_line_auto_reply_text(user_text: str, live_stores: list[dict], last_upd
 
     # 2. Area-specific lookup
     for area_label, kw_tuple in _LINE_AREA_KEYWORDS:
-        if area_label in q:
+        if _line_area_query_matches(area_label, q):
             matched = []
             for s in domestic:
                 sname = str(s.get("name") or "")

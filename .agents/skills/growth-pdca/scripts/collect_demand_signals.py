@@ -137,7 +137,7 @@ def main() -> int:
     unmonetized_slots = [
         {
             "slot_id": s.get("slot_id"),
-            "label": s.get("label"),
+            "label": s.get("category_label") or s.get("title") or s.get("label"),
             "active_url": s.get("active_url"),
             "is_duplicate_url": bool(s.get("is_duplicate_url")),
             "is_unmonetized_url": bool(s.get("is_unmonetized_url")),
@@ -157,20 +157,30 @@ def main() -> int:
         for c in getattr(pdca_engine, "OFFER_CATEGORIES", [])
     ]
 
+    safe_watch_counts = {
+        (":".join(str(x) for x in k) if isinstance(k, tuple) else str(k)): v
+        for k, v in (watch_counts.items() if isinstance(watch_counts, dict) else [])
+    }
+
     signals = {
         "collected_at": now_jst.strftime("%Y-%m-%d %H:%M:%S JST"),
         "window_days": args.days,
         "live_stores_sampled": len(live_stores),
         "top_live_stores": [
             {
-                "seo_name": store_master.seo_name(s.get("name") or s.get("store_name") or ""),
+                "seo_name": store_master.seo_name(
+                    store_master.to_internal_store_name(s.get("slug") or s.get("name") or s.get("store_name") or "")
+                    or s.get("name")
+                    or s.get("store_name")
+                    or ""
+                ),
                 "women": s.get("women") or s.get("female") or 0,
                 "men": s.get("men") or s.get("male") or 0,
             }
             for s in live_stores[:10]
         ] if live_stores else None,
         "store_stats_top20": monthly_stats[:20],
-        "watch_intent_counts": watch_counts,
+        "watch_intent_counts": safe_watch_counts,
         "crowd_vote_stores_active": len(recent_votes) if isinstance(recent_votes, dict) else 0,
         "upcoming_arena_events": arena_upcoming,
         "guide_coverage": guide_cov,
@@ -186,7 +196,7 @@ def main() -> int:
 
     dated_path = reports_dir / f"signals_{now_jst.strftime('%Y%m%d')}.json"
     latest_path = Path(args.out) if args.out else (reports_dir / "signals_latest.json")
-    encoded = json.dumps(signals, ensure_ascii=False, indent=2) + "\n"
+    encoded = json.dumps(signals, ensure_ascii=False, indent=2, default=str) + "\n"
     dated_path.write_text(encoded, encoding="utf-8")
     latest_path.write_text(encoded, encoding="utf-8")
 

@@ -13,6 +13,7 @@ data_audit.py - 店舗マスタ・営業時間・料金テーブル・ライブ�
    - `events.py` が取得した公式ニュース・お知らせタイトルに「料金改定」「営業時間変更」「システム変更」「閉店」「リニューアル」等の重要キーワードが含まれている場合、管理画面で即座に確認できるようピックアップする。
 """
 
+import copy
 import datetime
 import threading
 import store_master
@@ -54,11 +55,49 @@ _STATIC_AUDIT_TTL = 300.0
 _static_audit_cache = {"key": None, "ts": 0.0, "data": None}
 
 
-def run_data_audit(live_stores=None, all_events=None, now_jst=None, send_alerts=False):
+def _parse_jst_timestamp(ts_str, fallback_tz=JST):
+    if not ts_str:
+        return None
+    s = str(ts_str).strip()
+    if not s:
+        return None
+    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%Y/%m/%d %H:%M:%S", "%Y/%m/%d %H:%M"):
+        try:
+            return datetime.datetime.strptime(s[:19], fmt).replace(tzinfo=fallback_tz)
+        except ValueError:
+            continue
+    try:
+        dt = datetime.datetime.fromisoformat(s.replace("Z", "+00:00"))
+        return dt.astimezone(fallback_tz) if dt.tzinfo else dt.replace(tzinfo=fallback_tz)
+    except Exception:
+        return None
+
+
+def _resolve_live_store_master_name(item: dict, master_names: set) -> str:
+    """ライブ配列要素（内部キーまたは /api/status の seo_name / slug）を店舗マスタ内部キーへ解決する。"""
+    raw_name = (item.get("name") or "").strip()
+    if raw_name in master_names:
+        return raw_name
+    slug_hint = (item.get("slug") or "").strip()
+    if slug_hint:
+        by_slug = store_master.store_by_slug(slug_hint)
+        if by_slug and by_slug in master_names:
+            return by_slug
+    if raw_name:
+        internal = store_master.to_internal_store_name(raw_name)
+        if internal and internal in master_names:
+            return internal
+        by_raw_slug = store_master.store_by_slug(raw_name)
+        if by_raw_slug and by_raw_slug in master_names:
+            return by_raw_slug
+    return raw_name
+
+
+def run_data_audit(live_stores=None, all_events=None, now_jst=None, send_alerts=False, live_updated_at=None):
     """全店舗のマスタ整合性・営業時間ズレ・公式改定アナウンスを一括点検し、レポート辞書を返す。"""
     global _latest_audit_report
     import time as _time
-    use_fast_cache = (not send_alerts) and (all_events is None) and (now_jst is None)
+    use_fast_cache = (not send_alerts) and (all_events is None) and (now_jst is None) and (live_updated_at is None)
     now_jst = now_jst or datetime.datetime.now(JST)
     if now_jst.tzinfo is None:
         now_jst = now_jst.replace(tzinfo=JST)
@@ -75,7 +114,7 @@ def run_data_audit(live_stores=None, all_events=None, now_jst=None, send_alerts=
         c_key = (live_sig, ev_upd, op_cnt, now_jst.strftime("%Y-%m-%d %H:%M"))
         with _audit_lock:
             if _audit_fast_cache["key"] == c_key and _audit_fast_cache["report"] is not None and (now_mono - _audit_fast_cache["ts"] < 60.0):
-                return _audit_fast_cache["report"]
+                return copy.deepcopy(_audit_fast_cache["report"])
 
     master = store_master.load()
     master_names = set(master.keys())
@@ -166,20 +205,30 @@ def run_data_audit(live_stores=None, all_events=None, now_jst=None, send_alerts=
     # ---------------------------------------------------------
     hours_drifts = []
     unknown_live_stores = []
+    stale_snapshot_skipped = False
+    if live_updated_at:
+        upd_dt = _parse_jst_timestamp(live_updated_at)
+        if upd_dt is not None and (now_jst - upd_dt).total_seconds() > 25 * 60:
+            stale_snapshot_skipped = True
+
     if live_stores:
         for item in live_stores:
-            sname = (item.get("name") or "").strip()
-            if not sname:
+            raw_name = (item.get("name") or "").strip()
+            if not raw_name:
                 continue
+            sname = _resolve_live_store_master_name(item, master_names)
             if sname not in master_names:
-                unknown_live_stores.append(sname)
+                unknown_live_stores.append(raw_name)
                 issues.append({
                     "type": "unknown_live_store",
                     "severity": "high",
-                    "store": sname,
-                    "seo_name": sname,
-                    "message": f"公式サイトから未登録の店舗名「{sname}」が検出されました（新店舗または名称変更の可能性）。",
+                    "store": raw_name,
+                    "seo_name": raw_name,
+                    "message": f"公式サイトから未登録の店舗名「{raw_name}」が検出されました（新店舗または名称変更の可能性）。",
                 })
+                continue
+
+            if stale_snapshot_skipped:
                 continue
 
             w = int(item.get("women") or 0)
@@ -298,12 +347,12 @@ def run_data_audit(live_stores=None, all_events=None, now_jst=None, send_alerts=
             _audit_fast_cache["key"] = c_key
             _audit_fast_cache["ts"] = now_mono
             _audit_fast_cache["report"] = report
-    return report
+    return copy.deepcopy(report)
 
 
 def get_latest_audit_report(live_stores=None):
     """キャッシュ済みの最新監査レポートを返す（未実行なら即座に生成）。"""
     with _audit_lock:
         if _latest_audit_report is not None and live_stores is None:
-            return _latest_audit_report
+            return copy.deepcopy(_latest_audit_report)
     return run_data_audit(live_stores=live_stores, send_alerts=False)

@@ -1055,9 +1055,9 @@ def estimate_store_wait_and_pos(
 
 
 # ==============================================================================
-# 5. 実測マルコフ状態空間＋都市内スピルオーバーモデル（v3.0）に基づく「60分後の男女比予測エンジン」
+# 5. 実測マルコフ状態空間＋都市内スピルオーバーモデル（v3.1）に基づく「60分後の男女比予測エンジン」
 # ==============================================================================
-FORECAST_MODEL_VERSION = "v3.0-statespace"
+FORECAST_MODEL_VERSION = "v3.1-statespace"
 
 # 時系列ホールドアウト検証ベンチマーク（学習 <=2026-10-15 12:00 / 未来未見テスト >2026-10-15 12:00, n=15,331 クリーン遷移ペア t+60m>=4名 での実測値）
 HOLDOUT_BACKTEST_SUMMARY = {
@@ -1549,10 +1549,36 @@ def _interp_store_phase_prior(store_name: str, now_jst: datetime.datetime) -> fl
     return p2
 
 
+_STANDING_BAR_MEMO = {}
+
+
+def _is_standing_bar_store(store_name: str) -> bool:
+    """定額スタンディングバー業態（ASOBIBAR等）かを store_master 属性優先＋正規キーで O(1) 判定する。"""
+    canon = _resolve_internal_store_key(store_name)
+    if not canon:
+        return False
+    cached = _STANDING_BAR_MEMO.get(canon)
+    if cached is not None:
+        return cached
+    is_st = canon.startswith("ASOBIBAR")
+    if not is_st:
+        try:
+            import store_master
+            info = store_master.get(canon)
+            if isinstance(info, dict) and str(info.get("brand") or "").upper() == "ASOBIBAR":
+                is_st = True
+        except Exception:
+            pass
+    if len(_STANDING_BAR_MEMO) > 256:
+        _STANDING_BAR_MEMO.clear()
+    _STANDING_BAR_MEMO[canon] = is_st
+    return is_st
+
+
 def build_city_peer_context(stores_or_map) -> dict:
     """
     全店舗スナップショット（list[dict] または {store_name: (w, m)}）から、
-    同一都市内の他店舗リアルタイム合計（自分自身を除く）を O(N) インメモリで構築する。
+    同一都市×同一業態（着席ラウンジ同士／スタンディングバー同士）の他店舗リアルタイム合計を O(N) で構築する。
     """
     if not stores_or_map:
         return {}
@@ -1565,7 +1591,7 @@ def build_city_peer_context(stores_or_map) -> dict:
             cname = _resolve_internal_store_key(raw_name)
             w = max(0, int(pair[0] or 0))
             m = max(0, int(pair[1] or 0))
-            entries.append((str(raw_name), cname, w, m, True))
+            entries.append((str(raw_name), cname, w, m, True, _is_standing_bar_store(cname)))
     else:
         for it in stores_or_map:
             if not isinstance(it, dict):
@@ -1577,11 +1603,11 @@ def build_city_peer_context(stores_or_map) -> dict:
             w = max(0, int(it.get("women") or 0))
             m = max(0, int(it.get("men") or 0))
             is_op = bool(it.get("is_open_now", True))
-            entries.append((raw_name, cname, w, m, is_op))
+            entries.append((raw_name, cname, w, m, is_op, _is_standing_bar_store(cname)))
 
     city_totals = {}
     seen_canon = set()
-    for _, cname, w, m, is_op in entries:
+    for _, cname, w, m, is_op, is_st in entries:
         if cname in seen_canon:
             continue
         seen_canon.add(cname)
@@ -1591,18 +1617,19 @@ def build_city_peer_context(stores_or_map) -> dict:
         ck = city_key_for_store(cname)
         if not ck or ck == "seoul":
             continue
-        agg = city_totals.get(ck)
+        bucket_key = (ck, is_st)
+        agg = city_totals.get(bucket_key)
         if agg is None:
-            city_totals[ck] = [w, m, 1]
+            city_totals[bucket_key] = [w, m, 1]
         else:
             agg[0] += w
             agg[1] += m
             agg[2] += 1
 
     peer_map = {}
-    for raw_name, cname, w, m, is_op in entries:
+    for raw_name, cname, w, m, is_op, is_st in entries:
         ck = city_key_for_store(cname)
-        agg = city_totals.get(ck)
+        agg = city_totals.get((ck, is_st))
         if not agg:
             continue
         tot = w + m
@@ -1802,73 +1829,11 @@ def predict_store_60m_dynamics(
 
     closing = max(0.0, min(1.5, (90.0 - float(mtc)) / 60.0)) if mtc < 90 else 0.0
     occ = min(1.2, tot_f / p99_f)
-
-    feat_wm = (
-        ef * (p99_f / 100.0),
-        float(women),
-        float(men),
-        wd_c,
-        md_c,
-        mid_r * float(women),
-        closing * float(women),
-        closing * float(men),
-        occ * tot_f,
-    )
-
-    inv_tot = 100.0 / max(16.0, tot_f)
-    k_gain = tot_f / (tot_f + 22.0)
-    j_buf = (max(0.0, cur_wp_float - 66.0) * min(1.0, float(women) / 24.0)) if women >= 16 else 0.0
-    m_reb = max(0.0, 42.0 - cur_wp_float)
-    feat_wp = (
-        1.0,
-        cur_wp_float,
-        wd_c * inv_tot,
-        md_c * inv_tot,
-        mid_r * 10.0,
-        k_gain * (cur_wp_float - 53.0),
-        j_buf,
-        m_reb,
-        occ * 10.0,
-    )
-
-    kw = _interp_v2_knot(_V2_KNOTS_W, wk_key, now_jst)
-    km = _interp_v2_knot(_V2_KNOTS_M, wk_key, now_jst)
-    kwp = _interp_v2_knot(_V2_KNOTS_WP, wk_key, now_jst)
-
-    pw_raw = sum(a * b for a, b in zip(kw, feat_wm))
-    pm_raw = sum(a * b for a, b in zip(km, feat_wm))
-    pwp_dir = sum(a * b for a, b in zip(kwp, feat_wp))
-
-    # 1) 普段比異常スパイクの平均回帰（usual_w_diff が与えられている場合、過剰上振れの減衰をわずかに織り込む）
-    if usual_w_diff is not None:
-        try:
-            uwd = float(usual_w_diff)
-            if abs(uwd) >= 10.0:
-                pwp_dir -= max(-2.2, min(2.2, uwd * 0.05))
-        except Exception:
-            pass
-
-    # 2) 雨天×地下街・駅直結ブースト ＆ ドーム・アリーナ終演後流入ブースト
+    is_standing = _is_standing_bar_store(canon_name)
     ck = city_key_for_store(canon_name)
     city_w = (weather_map or {}).get(ck) if ck else None
     is_rain_shelter = bool(city_w and city_w.get("is_rainy") and canon_name in UNDERGROUND_DIRECT_STORES)
-    if is_rain_shelter:
-        pw_raw += 2.4 * scale
-        pm_raw -= 0.8 * scale
-        pwp_dir += 1.4 if (m_d15 < w_d15 + 4) else 0.6
 
-    if arena_signal and arena_signal.get("is_surge_now", True) and 19 <= hr <= 22:
-        pw_raw += 2.8 * scale
-        pwp_dir += 1.5
-
-    # 2b) カレンダー外生需要微調整（給料日・月末金曜二次会／連休中日の深夜維持）
-    cal_dw, cal_dm, cal_dwp = _calendar_demand_adjustment(now_jst)
-    if cal_dw or cal_dm or cal_dwp:
-        pw_raw += cal_dw * scale
-        pm_raw += cal_dm * scale
-        pwp_dir += cal_dwp
-
-    # 3) 店舗別30日連続補間普段カーブ（t → t+60m）の取得（O(1) RAM）
     usual_pair = usual_pair_override
     if usual_pair is None and mtc >= 65 and canon_name:
         try:
@@ -1877,115 +1842,273 @@ def predict_store_60m_dynamics(
         except Exception:
             usual_pair = None
 
-    # 4) 閉店直前ハザード上限（mtc=45 で fac=1.0 となる境界連続リニア減衰キャップ）
-    if mtc <= 45:
-        fac = max(0.22, min(1.0, float(max(0, mtc)) / 45.0))
-        pw_raw = min(pw_raw, max(0.5, float(women) * fac))
-        pm_raw = min(pm_raw, max(0.5, float(men) * fac))
-
     cap_f = p99_f * 0.75
-    pw = max(0.5, min(cap_f, pw_raw))
-    pm = max(0.5, min(cap_f, pm_raw))
+    k_gain = tot_f / (tot_f + 22.0)
 
-    # 5) 普段カーブによる男女カウントのEmpirical-Bayes補正（wp_from_wm 算出前に反映して整合化）
-    usual_diff = 0.0
-    if mtc >= 65 and isinstance(usual_pair, (tuple, list)) and len(usual_pair) >= 5:
-        try:
-            uw_t = max(0.0, float(usual_pair[0] or 0.0))
-            um_t = max(0.0, float(usual_pair[1] or 0.0))
-            uw_60 = max(0.0, float(usual_pair[2] or 0.0))
-            um_60 = max(0.0, float(usual_pair[3] or 0.0))
-            cnt_60 = max(0.0, float(usual_pair[4] or 0.0))
-            ut1 = uw_60 + um_60
-            if ut1 >= 6.0 and cnt_60 >= 5.0:
-                uwp1 = (uw_60 / ut1) * 100.0
-                cur_anom = 0.0
-                if (uw_t + um_t) >= 6.0:
-                    cur_anom = cur_wp_float - ((uw_t / (uw_t + um_t)) * 100.0)
-                emp_tgt = max(15.0, min(85.0, uwp1 + 0.45 * cur_anom))
-                urel = (cnt_60 / (cnt_60 + 12.0)) * (1.0 - 0.35 * (tot_f / (tot_f + 30.0)))
-                usual_diff = urel * max(-28.0, min(28.0, emp_tgt - cur_wp_float))
-            if (uw_t + um_t) >= 5.0 and ut1 >= 4.0 and cnt_60 >= 5.0:
-                u_w = min(0.16, 0.20 * (cnt_60 / (cnt_60 + 12.0)))
-                pw = max(0.5, min(cap_f, (1.0 - u_w) * pw + u_w * max(0.5, women + 0.70 * (uw_60 - uw_t) + 0.30 * (uw_60 - women))))
-                pm = max(0.5, min(cap_f, (1.0 - u_w) * pm + u_w * max(0.5, men + 0.70 * (um_60 - um_t) + 0.30 * (um_60 - men))))
-        except (TypeError, ValueError):
-            usual_diff = 0.0
+    if is_standing:
+        # --- 定額スタンディングバー専用・強定常カルマン人数モデル（v3.1） ---
+        # 着席型ラウンジ特有の53%平均回帰（_V2_KNOTS_WP / m_reb）を適用せず、
+        # 男女別の滞在持続人数＋多段ラグ平滑化＋店舗固有30日普段カーブ＋Beta疑似カウント事前分布で予測する。
+        base_w = float(women)
+        base_m = float(men)
+        if isinstance(lag_context, dict):
+            l30 = lag_context.get("lag_30m")
+            if isinstance(l30, (tuple, list)) and len(l30) >= 2:
+                try:
+                    w30 = max(0, int(l30[0] or 0))
+                    m30 = max(0, int(l30[1] or 0))
+                    t30 = w30 + m30
+                    if t30 >= 6:
+                        w_lag30 = 0.16 * (t30 / (t30 + 18.0))
+                        base_w = (1.0 - w_lag30) * base_w + w_lag30 * float(w30)
+                        base_m = (1.0 - w_lag30) * base_m + w_lag30 * float(m30)
+                except (TypeError, ValueError):
+                    pass
+            l60 = lag_context.get("lag_60m")
+            if isinstance(l60, (tuple, list)) and len(l60) >= 2:
+                try:
+                    w60_p = max(0, int(l60[0] or 0))
+                    m60_p = max(0, int(l60[1] or 0))
+                    t60_p = w60_p + m60_p
+                    if t60_p >= 6:
+                        w_lag60 = 0.06 * (t60_p / (t60_p + 20.0))
+                        base_w = (1.0 - w_lag60) * base_w + w_lag60 * float(w60_p)
+                        base_m = (1.0 - w_lag60) * base_m + w_lag60 * float(m60_p)
+                except (TypeError, ValueError):
+                    pass
 
-    wp_from_wm = (pw / (pw + pm)) * 100.0
-    store_prior_adj = _interp_store_phase_prior(canon_name, now_jst) * (1.0 - 0.22 * k_gain)
+        ramp_fac = 1.0 + 0.14 * ef
+        if fhr >= 26.0:
+            ramp_fac *= max(0.82, 1.0 - 0.06 * (fhr - 26.0))
+        pw_raw = base_w * ramp_fac + 0.20 * wd_c
+        pm_raw = base_m * ramp_fac + 0.20 * md_c
 
-    # 6) v3.0 状態空間カルマン分離ラグ（ノイズ回帰 vs 大規模店モメンタム）・同都市ピアスピルオーバー統合層
-    noise_rev30 = 0.0
-    mom30 = 0.0
-    dw30_rate = 0.0
-    dm30_rate = 0.0
-    lag60_diff = 0.0
-    if isinstance(lag_context, dict):
-        l30 = lag_context.get("lag_30m")
-        if isinstance(l30, (tuple, list)) and len(l30) >= 2:
+        if is_rain_shelter:
+            pw_raw += 1.6 * scale
+            pm_raw -= 0.4 * scale
+        if arena_signal and arena_signal.get("is_surge_now", True) and 19 <= hr <= 22:
+            pw_raw += 2.0 * scale
+
+        cal_dw, cal_dm, _ = _calendar_demand_adjustment(now_jst)
+        if cal_dw or cal_dm:
+            pw_raw += 0.6 * cal_dw * scale
+            pm_raw += 0.6 * cal_dm * scale
+
+        if mtc <= 45:
+            fac = max(0.22, min(1.0, float(max(0, mtc)) / 45.0))
+            pw_raw = min(pw_raw, max(0.5, float(women) * fac))
+            pm_raw = min(pm_raw, max(0.5, float(men) * fac))
+
+        pw = max(0.5, min(cap_f, pw_raw))
+        pm = max(0.5, min(cap_f, pm_raw))
+
+        if mtc >= 65 and isinstance(usual_pair, (tuple, list)) and len(usual_pair) >= 5:
             try:
-                w30 = max(0, int(l30[0] or 0))
-                m30 = max(0, int(l30[1] or 0))
-                t30 = w30 + m30
-                if t30 >= 6:
-                    wp30 = (w30 / float(t30)) * 100.0
-                    d30 = max(-30.0, min(30.0, wp30 - cur_wp_float))
-                    rel30 = t30 / (t30 + 18.0)
-                    noise_rev30 = (1.0 - k_gain) * rel30 * d30
-                    mom30 = k_gain * rel30 * (-d30)
-                    dw30_rate = max(-30.0, min(30.0, float(women - w30))) / (tot_f + 12.0)
-                    dm30_rate = max(-30.0, min(30.0, float(men - m30))) / (tot_f + 12.0)
+                uw_t = max(0.0, float(usual_pair[0] or 0.0))
+                um_t = max(0.0, float(usual_pair[1] or 0.0))
+                uw_60 = max(0.0, float(usual_pair[2] or 0.0))
+                um_60 = max(0.0, float(usual_pair[3] or 0.0))
+                cnt_60 = max(0.0, float(usual_pair[4] or 0.0))
+                if (uw_t + um_t) >= 5.0 and (uw_60 + um_60) >= 4.0 and cnt_60 >= 5.0:
+                    u_w = min(0.22, 0.28 * (cnt_60 / (cnt_60 + 10.0)))
+                    tgt_w = max(0.5, float(women) + 0.75 * (uw_60 - uw_t) + 0.25 * (uw_60 - float(women)))
+                    tgt_m = max(0.5, float(men) + 0.75 * (um_60 - um_t) + 0.25 * (um_60 - float(men)))
+                    pw = max(0.5, min(cap_f, (1.0 - u_w) * pw + u_w * tgt_w))
+                    pm = max(0.5, min(cap_f, (1.0 - u_w) * pm + u_w * tgt_m))
             except (TypeError, ValueError):
                 pass
-        l60 = lag_context.get("lag_60m")
-        if isinstance(l60, (tuple, list)) and len(l60) >= 2:
+
+        # Beta(0.76, 1.14) 疑似カウント事前分布（事前平均40.0%・計1.9人分）で少人数時の極端値を抑えつつ持続比率を算出
+        pred_tot_f = pw + pm
+        wp_b = ((pw + 0.76) / (pred_tot_f + 1.90)) * 100.0
+
+        if isinstance(peer_context, dict):
             try:
-                w60_p = max(0, int(l60[0] or 0))
-                m60_p = max(0, int(l60[1] or 0))
-                t60_p = w60_p + m60_p
-                if t60_p >= 6:
-                    wp60_p = (w60_p / float(t60_p)) * 100.0
-                    rel60 = t60_p / (t60_p + 20.0)
-                    lag60_diff = rel60 * max(-32.0, min(32.0, wp60_p - cur_wp_float))
+                pw_c = max(0, int(peer_context.get("peer_women") or 0))
+                pm_c = max(0, int(peer_context.get("peer_men") or 0))
+                pn_c = int(peer_context.get("peer_stores") or 0)
+                ptot = pw_c + pm_c
+                if ptot >= 15 and pn_c >= 1:
+                    peer_wp = (pw_c / float(ptot)) * 100.0
+                    peer_rel = ptot / (ptot + 60.0)
+                    wp_b += 0.07 * peer_rel * max(-20.0, min(20.0, peer_wp - wp_b))
             except (TypeError, ValueError):
                 pass
+    else:
+        feat_wm = (
+            ef * (p99_f / 100.0),
+            float(women),
+            float(men),
+            wd_c,
+            md_c,
+            mid_r * float(women),
+            closing * float(women),
+            closing * float(men),
+            occ * tot_f,
+        )
 
-    peer_gap = 0.0
-    peer_regime = 0.0
-    if isinstance(peer_context, dict):
-        try:
-            pw_c = max(0, int(peer_context.get("peer_women") or 0))
-            pm_c = max(0, int(peer_context.get("peer_men") or 0))
-            pn_c = int(peer_context.get("peer_stores") or 0)
-            ptot = pw_c + pm_c
-            if ptot >= 15 and pn_c >= 1:
-                peer_wp = (pw_c / float(ptot)) * 100.0
-                peer_rel = ptot / (ptot + 60.0)
-                peer_gap = peer_rel * max(-30.0, min(30.0, peer_wp - cur_wp_float))
-                peer_regime = peer_rel * max(-20.0, min(20.0, peer_wp - 53.0))
-        except (TypeError, ValueError):
-            peer_gap = 0.0
-            peer_regime = 0.0
+        inv_tot = 100.0 / max(16.0, tot_f)
+        j_buf = (max(0.0, cur_wp_float - 66.0) * min(1.0, float(women) / 24.0)) if women >= 16 else 0.0
+        m_reb = max(0.0, 42.0 - cur_wp_float)
+        feat_wp = (
+            1.0,
+            cur_wp_float,
+            wd_c * inv_tot,
+            md_c * inv_tot,
+            mid_r * 10.0,
+            k_gain * (cur_wp_float - 53.0),
+            j_buf,
+            m_reb,
+            occ * 10.0,
+        )
 
-    jis_pull = (cur_wp_float - 54.0) if canon_name.startswith("JIS") else 0.0
+        kw = _interp_v2_knot(_V2_KNOTS_W, wk_key, now_jst)
+        km = _interp_v2_knot(_V2_KNOTS_M, wk_key, now_jst)
+        kwp = _interp_v2_knot(_V2_KNOTS_WP, wk_key, now_jst)
 
-    sf = (
-        wp_from_wm - pwp_dir,
-        noise_rev30,
-        mom30,
-        lag60_diff,
-        dw30_rate,
-        dm30_rate,
-        peer_gap,
-        peer_regime,
-        jis_pull,
-        usual_diff,
-    )
-    wp_b = pwp_dir + store_prior_adj + sum(a * x for a, x in zip(_V3_STRUCT_WEIGHTS, sf))
-    pred_tot_f = pw + pm
-    if women > 0 and men > 0 and pred_tot_f < 10.0:
-        wp_b = 52.0 + (pred_tot_f / (pred_tot_f + 1.6)) * (wp_b - 52.0)
+        pw_raw = sum(a * b for a, b in zip(kw, feat_wm))
+        pm_raw = sum(a * b for a, b in zip(km, feat_wm))
+        pwp_dir = sum(a * b for a, b in zip(kwp, feat_wp))
+
+        # 早朝 05:00 以降（fhr > 29.0）での 05時ノット定数下方シフト外挿を抑制し、現在比率へ滑らかにアンカー
+        if fhr > 29.0:
+            late_w = min(0.60, (fhr - 29.0) * 0.40)
+            pwp_dir = (1.0 - late_w) * pwp_dir + late_w * cur_wp_float
+
+        # 1) 普段比異常スパイクの平均回帰（usual_w_diff が与えられている場合、過剰上振れの減衰をわずかに織り込む）
+        if usual_w_diff is not None:
+            try:
+                uwd = float(usual_w_diff)
+                if abs(uwd) >= 10.0:
+                    pwp_dir -= max(-2.2, min(2.2, uwd * 0.05))
+            except Exception:
+                pass
+
+        # 2) 雨天×地下街・駅直結ブースト ＆ ドーム・アリーナ終演後流入ブースト
+        if is_rain_shelter:
+            pw_raw += 2.4 * scale
+            pm_raw -= 0.8 * scale
+            pwp_dir += 1.4 if (m_d15 < w_d15 + 4) else 0.6
+
+        if arena_signal and arena_signal.get("is_surge_now", True) and 19 <= hr <= 22:
+            pw_raw += 2.8 * scale
+            pwp_dir += 1.5
+
+        # 2b) カレンダー外生需要微調整（給料日・月末金曜二次会／連休中日の深夜維持）
+        cal_dw, cal_dm, cal_dwp = _calendar_demand_adjustment(now_jst)
+        if cal_dw or cal_dm or cal_dwp:
+            pw_raw += cal_dw * scale
+            pm_raw += cal_dm * scale
+            pwp_dir += cal_dwp
+
+        # 4) 閉店直前ハザード上限（mtc=45 で fac=1.0 となる境界連続リニア減衰キャップ）
+        if mtc <= 45:
+            fac = max(0.22, min(1.0, float(max(0, mtc)) / 45.0))
+            pw_raw = min(pw_raw, max(0.5, float(women) * fac))
+            pm_raw = min(pm_raw, max(0.5, float(men) * fac))
+
+        pw = max(0.5, min(cap_f, pw_raw))
+        pm = max(0.5, min(cap_f, pm_raw))
+
+        # 5) 普段カーブによる男女カウントのEmpirical-Bayes補正（wp_from_wm 算出前に反映して整合化）
+        usual_diff = 0.0
+        if mtc >= 65 and isinstance(usual_pair, (tuple, list)) and len(usual_pair) >= 5:
+            try:
+                uw_t = max(0.0, float(usual_pair[0] or 0.0))
+                um_t = max(0.0, float(usual_pair[1] or 0.0))
+                uw_60 = max(0.0, float(usual_pair[2] or 0.0))
+                um_60 = max(0.0, float(usual_pair[3] or 0.0))
+                cnt_60 = max(0.0, float(usual_pair[4] or 0.0))
+                ut1 = uw_60 + um_60
+                if ut1 >= 6.0 and cnt_60 >= 5.0:
+                    uwp1 = (uw_60 / ut1) * 100.0
+                    cur_anom = 0.0
+                    if (uw_t + um_t) >= 6.0:
+                        cur_anom = cur_wp_float - ((uw_t / (uw_t + um_t)) * 100.0)
+                    emp_tgt = max(15.0, min(85.0, uwp1 + 0.45 * cur_anom))
+                    urel = (cnt_60 / (cnt_60 + 12.0)) * (1.0 - 0.35 * (tot_f / (tot_f + 30.0)))
+                    usual_diff = urel * max(-28.0, min(28.0, emp_tgt - cur_wp_float))
+                if (uw_t + um_t) >= 5.0 and ut1 >= 4.0 and cnt_60 >= 5.0:
+                    u_w = min(0.16, 0.20 * (cnt_60 / (cnt_60 + 12.0)))
+                    pw = max(0.5, min(cap_f, (1.0 - u_w) * pw + u_w * max(0.5, women + 0.70 * (uw_60 - uw_t) + 0.30 * (uw_60 - women))))
+                    pm = max(0.5, min(cap_f, (1.0 - u_w) * pm + u_w * max(0.5, men + 0.70 * (um_60 - um_t) + 0.30 * (um_60 - men))))
+            except (TypeError, ValueError):
+                usual_diff = 0.0
+
+        wp_from_wm = (pw / (pw + pm)) * 100.0
+        store_prior_adj = _interp_store_phase_prior(canon_name, now_jst) * (1.0 - 0.22 * k_gain)
+
+        # 6) v3.1 状態空間カルマン分離ラグ（ノイズ回帰 vs 大規模店モメンタム）・同都市同業態ピアスピルオーバー統合層
+        noise_rev30 = 0.0
+        mom30 = 0.0
+        dw30_rate = 0.0
+        dm30_rate = 0.0
+        lag60_diff = 0.0
+        if isinstance(lag_context, dict):
+            l30 = lag_context.get("lag_30m")
+            if isinstance(l30, (tuple, list)) and len(l30) >= 2:
+                try:
+                    w30 = max(0, int(l30[0] or 0))
+                    m30 = max(0, int(l30[1] or 0))
+                    t30 = w30 + m30
+                    if t30 >= 6:
+                        wp30 = (w30 / float(t30)) * 100.0
+                        d30 = max(-30.0, min(30.0, wp30 - cur_wp_float))
+                        rel30 = t30 / (t30 + 18.0)
+                        noise_rev30 = (1.0 - k_gain) * rel30 * d30
+                        mom30 = k_gain * rel30 * (-d30)
+                        dw30_rate = max(-30.0, min(30.0, float(women - w30))) / (tot_f + 12.0)
+                        dm30_rate = max(-30.0, min(30.0, float(men - m30))) / (tot_f + 12.0)
+                except (TypeError, ValueError):
+                    pass
+            l60 = lag_context.get("lag_60m")
+            if isinstance(l60, (tuple, list)) and len(l60) >= 2:
+                try:
+                    w60_p = max(0, int(l60[0] or 0))
+                    m60_p = max(0, int(l60[1] or 0))
+                    t60_p = w60_p + m60_p
+                    if t60_p >= 6:
+                        wp60_p = (w60_p / float(t60_p)) * 100.0
+                        rel60 = t60_p / (t60_p + 20.0)
+                        lag60_diff = rel60 * max(-32.0, min(32.0, wp60_p - cur_wp_float))
+                except (TypeError, ValueError):
+                    pass
+
+        peer_gap = 0.0
+        peer_regime = 0.0
+        if isinstance(peer_context, dict):
+            try:
+                pw_c = max(0, int(peer_context.get("peer_women") or 0))
+                pm_c = max(0, int(peer_context.get("peer_men") or 0))
+                pn_c = int(peer_context.get("peer_stores") or 0)
+                ptot = pw_c + pm_c
+                if ptot >= 15 and pn_c >= 1:
+                    peer_wp = (pw_c / float(ptot)) * 100.0
+                    peer_rel = ptot / (ptot + 60.0)
+                    peer_gap = peer_rel * max(-30.0, min(30.0, peer_wp - cur_wp_float))
+                    peer_regime = peer_rel * max(-20.0, min(20.0, peer_wp - 53.0))
+            except (TypeError, ValueError):
+                peer_gap = 0.0
+                peer_regime = 0.0
+
+        jis_pull = (cur_wp_float - 54.0) if canon_name.startswith("JIS") else 0.0
+
+        sf = (
+            wp_from_wm - pwp_dir,
+            noise_rev30,
+            mom30,
+            lag60_diff,
+            dw30_rate,
+            dm30_rate,
+            peer_gap,
+            peer_regime,
+            jis_pull,
+            usual_diff,
+        )
+        wp_b = pwp_dir + store_prior_adj + sum(a * x for a, x in zip(_V3_STRUCT_WEIGHTS, sf))
+        pred_tot_f = pw + pm
+        if women > 0 and men > 0 and pred_tot_f < 10.0:
+            wp_b = 52.0 + (pred_tot_f / (pred_tot_f + 1.6)) * (wp_b - 52.0)
 
     wp_blend = max(8.0, min(92.0, wp_b))
     raw_pred_wpct = int(round(wp_blend))
@@ -2043,7 +2166,10 @@ def predict_store_60m_dynamics(
         badge_men = f"⚠️60分後も男余り予測({pred_wpct}%)"
         badge_women = "👑1時間後も女子待ち0分圏"
         badge_tone = "danger"
-        reason = f"実測データ上、男性先行が定着した店舗は60〜90分後も約57%が男余りを継続します（60分後予測：女性比{pred_wpct}%）。男性は近隣の女性優位店へのハシゴが安全です。"
+        if is_standing:
+            reason = f"定額スタンディング業態では男女比の持続性が高く、60分後も女性比{pred_wpct}%前後で推移する見込みです（自由回遊可・近隣の女性優位店との比較も有効）。"
+        else:
+            reason = f"実測データ上、男性先行が定着した店舗は60〜90分後も約57%が男余りを継続します（60分後予測：女性比{pred_wpct}%）。男性は近隣の女性優位店へのハシゴが安全です。"
     elif (
         cur_wpct >= 50
         and total >= 16

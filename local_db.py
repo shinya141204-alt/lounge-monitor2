@@ -564,7 +564,7 @@ def init_db():
                             predicted_at TEXT NOT NULL,
                             target_at TEXT NOT NULL,
                             store_name TEXT NOT NULL,
-                            model_version TEXT NOT NULL DEFAULT 'v3.0-statespace',
+                            model_version TEXT NOT NULL DEFAULT 'v3.1-statespace',
                             start_women INTEGER NOT NULL,
                             start_men INTEGER NOT NULL,
                             start_wpct INTEGER NOT NULL,
@@ -679,7 +679,7 @@ def init_db():
                     predicted_at TEXT NOT NULL,
                     target_at TEXT NOT NULL,
                     store_name TEXT NOT NULL,
-                    model_version TEXT NOT NULL DEFAULT 'v3.0-statespace',
+                    model_version TEXT NOT NULL DEFAULT 'v3.1-statespace',
                     start_women INTEGER NOT NULL,
                     start_men INTEGER NOT NULL,
                     start_wpct INTEGER NOT NULL,
@@ -4239,7 +4239,7 @@ def _ensure_forecast_schema() -> bool:
                             predicted_at TEXT NOT NULL,
                             target_at TEXT NOT NULL,
                             store_name TEXT NOT NULL,
-                            model_version TEXT NOT NULL DEFAULT 'v3.0-statespace',
+                            model_version TEXT NOT NULL DEFAULT 'v3.1-statespace',
                             start_women INTEGER NOT NULL,
                             start_men INTEGER NOT NULL,
                             start_wpct INTEGER NOT NULL,
@@ -4284,7 +4284,7 @@ def _ensure_forecast_schema() -> bool:
                     predicted_at TEXT NOT NULL,
                     target_at TEXT NOT NULL,
                     store_name TEXT NOT NULL,
-                    model_version TEXT NOT NULL DEFAULT 'v3.0-statespace',
+                    model_version TEXT NOT NULL DEFAULT 'v3.1-statespace',
                     start_women INTEGER NOT NULL,
                     start_men INTEGER NOT NULL,
                     start_wpct INTEGER NOT NULL,
@@ -4974,6 +4974,9 @@ def record_and_resolve_forecasts(items: list, timestamp_str: str, resolve_only: 
             continue
 
         canon_s = moat_intelligence._resolve_internal_store_key(sname)
+        # 本番フルバッチにおいて、60分先が公式閉店時刻を15分以上超過する閉店間際・延長残客帯（mtc < 45）は評価母集団から除外
+        if is_full_batch and moat_intelligence._mins_until_close(canon_s, ts_dt) < 45:
+            continue
         st_lags = lags_map.get(canon_s) or lags_map.get(sname) or {}
         if "women_diff" in item:
             wd = int(item.get("women_diff") or 0)
@@ -5255,6 +5258,8 @@ def backfill_forecast_accuracy_from_history(
                     )
                     if not bh_sched.get("scheduled_open", True):
                         continue
+                if is_full_smap and moat_intelligence._mins_until_close(sname, dt) < 45:
+                    continue
                 w60, m60 = smap60[sname]
                 wd15 = (w - p15[sname][0]) if (p15 and sname in p15) else 0
                 md15 = (m - p15[sname][1]) if (p15 and sname in p15) else 0
@@ -6045,7 +6050,7 @@ def get_forecast_accuracy_report(
             "bias_wpct": round(s_sig / cnt, 2),
         })
 
-    night_order = [18, 19, 20, 21, 22, 23, 0, 1, 2, 3, 4, 5]
+    night_order = [17, 18, 19, 20, 21, 22, 23, 0, 1, 2, 3, 4, 5, 6]
     by_hour = []
     for hr in night_order:
         if hr not in hour_acc:

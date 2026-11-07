@@ -232,8 +232,9 @@ def _web_push_watch_job():
         with app_module.data_lock:
             cur_stores = ops_governance.filter_visible_stores(list(app_module.latest_data.get("full_data") or []))
             is_seed = bool(app_module.latest_data.get("is_seed"))
+            last_upd = app_module.latest_data.get("last_updated")
         if cur_stores and not is_seed:
-            res = push_watch.dispatch_matching_watch_pushes(cur_stores)
+            res = push_watch.dispatch_matching_watch_pushes(cur_stores, last_updated=last_upd)
             if res.get("sent"):
                 logger.info(f"[worker] Web Push watch dispatched: {res}")
     except Exception as err:

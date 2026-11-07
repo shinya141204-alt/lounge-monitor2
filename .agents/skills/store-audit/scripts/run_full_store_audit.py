@@ -52,8 +52,10 @@ def fetch_production_live_stores(api_url: str = "https://aiseki-navi.com/api/sta
         payload = json.loads(raw_bytes.decode("utf-8"))
     if isinstance(payload, dict):
         stores = payload.get("ranking") or payload.get("stores") or payload.get("data") or []
-        return stores, payload.get("timestamp")
-    return [], None
+        if not stores:
+            raise RuntimeError("本番 /api/status から有効な店舗配列が返されませんでした（0店舗）")
+        return stores, (payload.get("last_updated") or payload.get("timestamp"))
+    raise RuntimeError("本番 /api/status の応答形式が不正です")
 
 
 def check_master_slugs_and_adjacent_specs() -> tuple[list[dict], list[str]]:
@@ -131,9 +133,10 @@ def detect_recurring_rollup_hours_drifts(days: int = 14) -> list[str]:
             try:
                 d_obj = datetime.date.fromisoformat(bdate)
                 probe_dt = datetime.datetime(d_obj.year, d_obj.month, d_obj.day, hr, 30, tzinfo=JST)
-                if hr < 6:
+                if hr <= 6:
                     probe_dt += datetime.timedelta(days=1)
-                if not store_hours.is_store_open(sname, now_jst=probe_dt):
+                sched = store_hours.get_business_hours_status(sname, now_jst=probe_dt, total_guests=0)
+                if not sched.get("is_open_now", True):
                     drift_days_by_store.setdefault(sname, set()).add(bdate)
                     sample_detail[sname] = f"{bdate} {hr:02d}時台 最大{tot}名"
             except Exception:
@@ -160,6 +163,8 @@ def main():
     import data_audit
 
     live_stores = None
+    live_ts = None
+    live_fetch_err = None
     all_events = None
     live_note = "オフライン静的監査（--live 指定で本番非汚染ライブドリフトも同時検査可能）"
     if args.live:
@@ -167,15 +172,24 @@ def main():
             live_stores, live_ts = fetch_production_live_stores()
             live_note = f"本番ライブデータ非汚染取得成功（{len(live_stores)}店舗 / 更新時刻: {live_ts or '-'}）"
         except Exception as exc:
-            live_note = f"本番ライブデータ取得スキップ（理由: {exc}）"
+            live_fetch_err = str(exc)
+            live_note = f"本番ライブデータ取得失敗（理由: {exc}）"
+            live_stores = None
         try:
             import events
             all_events = events.fetch_all_events(allow_blocking=True) or []
         except Exception:
             all_events = None
 
-    report = data_audit.run_data_audit(live_stores=live_stores, all_events=all_events, send_alerts=False)
+    report = data_audit.run_data_audit(
+        live_stores=live_stores,
+        all_events=all_events,
+        send_alerts=False,
+        live_updated_at=live_ts,
+    )
     extra_issues, extra_warnings = check_master_slugs_and_adjacent_specs()
+    if live_fetch_err:
+        extra_issues.append({"type": "live_fetch_failed", "message": f"本番ライブデータ取得失敗: {live_fetch_err}"})
     recurring_drifts = detect_recurring_rollup_hours_drifts(days=args.rollup_days)
 
     if extra_issues:
