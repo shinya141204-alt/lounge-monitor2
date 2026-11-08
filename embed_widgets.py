@@ -33,7 +33,10 @@ MIN_CELL_BUCKETS = {'all': 5, 'area': 3, 'store': 2}
 DEFAULT_DAYS = 90
 MIN_DAYS = 7
 MAX_DAYS = 90
+ALLOWED_DAYS = (7, 30, 90)
 CACHE_TTL_SEC = 900.0
+STALE_MAX_SEC = 3600.0
+DB_ERR_COOLDOWN_SEC = 10.0
 
 SITE_ORIGIN = 'https://aiseki-navi.com'
 EMBED_PAGE_URL = f'{SITE_ORIGIN}/embed/heatmap'
@@ -71,6 +74,7 @@ _CACHE_LOCK = threading.Lock()
 # 同時アクセス時に重い90日集計が並列多重実行され 512MB VM を圧迫しないよう、計算自体も直列化する
 _COMPUTE_LOCK = threading.Lock()
 _CACHE_MAX_ENTRIES = 8
+_DB_ERR_UNTIL = 0.0
 
 
 # ---------------------------------------------------------------------------
@@ -85,16 +89,20 @@ def normalize_theme(theme) -> str:
 
 
 def clamp_days(days) -> int:
+    """許容ウィンドウを ALLOWED_DAYS (7 / 30 / 90日) に丸め、任意 days 連打によるキャッシュ枯渇を防ぐ。"""
     try:
         d = int(days)
     except (TypeError, ValueError):
         return DEFAULT_DAYS
-    return max(MIN_DAYS, min(MAX_DAYS, d))
+    clamped = max(MIN_DAYS, min(MAX_DAYS, d))
+    return min(ALLOWED_DAYS, key=lambda cand: abs(cand - clamped))
 
 
 def clear_heatmap_cache() -> None:
+    global _DB_ERR_UNTIL
     with _CACHE_LOCK:
         _CACHE.clear()
+        _DB_ERR_UNTIL = 0.0
 
 
 def _hidden_sets() -> tuple:
@@ -266,6 +274,7 @@ def _merge_bucket(target: dict, key: tuple, n: float, w: float, m: float, wp_sum
 
 def _load_store_slot_aggregates(days: int) -> dict:
     """店舗別 77 スロット（曜日×時間）集計 `{canon: {(dow_idx, hour): [n_buckets, n_snap, sum_w, sum_m, n_ratio, sum_ratio]}}`。"""
+    global _DB_ERR_UNTIL
     import local_db
 
     days = clamp_days(days)
@@ -276,10 +285,15 @@ def _load_store_slot_aggregates(days: int) -> dict:
     w_to_s = w_to.isoformat()
     agg = _empty_aggregates(days, w_from_s, w_to_s)
 
+    if time.monotonic() < _DB_ERR_UNTIL:
+        return agg
+
     try:
         if not local_db._db_available():
+            _DB_ERR_UNTIL = time.monotonic() + DB_ERR_COOLDOWN_SEC
             return agg
     except Exception as err:
+        _DB_ERR_UNTIL = time.monotonic() + DB_ERR_COOLDOWN_SEC
         _log.warning('heatmap: db availability probe failed: %s', err)
         return agg
 
@@ -317,6 +331,7 @@ def _load_store_slot_aggregates(days: int) -> dict:
         (w_from + datetime.timedelta(days=i)).isoformat()
         for i in range((w_to - w_from).days + 2)
     ]
+    min_hc_int = int(MIN_RATIO_HEADCOUNT)
     sql_rollup = (
         "SELECT date_jst, hour_jst, business_date, store_name, sample_count, avg_women, avg_men, avg_wpct "
         "FROM store_hourly_rollups "
@@ -330,14 +345,48 @@ def _load_store_slot_aggregates(days: int) -> dict:
         "COUNT(*) AS snap_n, "
         "AVG(women) AS avg_w, "
         "AVG(men) AS avg_m, "
-        "SUM(CASE WHEN (women + men) >= 4 THEN (women * 100.0) / (women + men) ELSE 0.0 END) AS wp_sum, "
-        "SUM(CASE WHEN (women + men) >= 4 THEN 1 ELSE 0 END) AS wp_n "
+        f"SUM(CASE WHEN (women + men) >= {min_hc_int} THEN (women * 100.0) / (women + men) ELSE 0.0 END) AS wp_sum, "
+        f"SUM(CASE WHEN (women + men) >= {min_hc_int} THEN 1 ELSE 0 END) AS wp_n "
         "FROM monitor_logs "
         "WHERE timestamp >= ? AND timestamp <= ? "
         "AND women >= 0 AND men >= 0 "
         "AND (SUBSTR(timestamp, 12, 2) >= '18' OR SUBSTR(timestamp, 12, 2) <= '04') "
         "GROUP BY SUBSTR(timestamp, 1, 10), SUBSTR(timestamp, 12, 2), store_name"
     )
+
+    # インデックス境界 (MIN/MAX) で実データ存在区間を先に特定し、空DBや未蓄積期間の無駄な13チャンク走査を省く
+    roll_min_d = roll_max_d = None
+    if rollups_ok:
+        try:
+            rb = local_db._fetch_all_rows(
+                "SELECT MIN(date_jst), MAX(date_jst) FROM store_hourly_rollups "
+                "WHERE date_jst >= ? AND date_jst <= ?",
+                (query_dates[0], query_dates[-1]),
+            )
+            if rb and rb[0] and rb[0][0] and rb[0][1]:
+                roll_min_d = str(rb[0][0])[:10]
+                roll_max_d = str(rb[0][1])[:10]
+        except Exception as err:
+            _log.warning('heatmap: rollup bounds probe failed: %s', err)
+            roll_min_d, roll_max_d = query_dates[0], query_dates[-1]
+
+    raw_min_d = raw_max_d = None
+    try:
+        lb = local_db._fetch_all_rows(
+            "SELECT SUBSTR(MIN(timestamp), 1, 10), SUBSTR(MAX(timestamp), 1, 10) "
+            "FROM monitor_logs WHERE timestamp >= ? AND timestamp <= ?",
+            (f'{query_dates[0]} 00:00:00', f'{query_dates[-1]} 23:59:59'),
+        )
+        if lb and lb[0] and lb[0][0] and lb[0][1]:
+            raw_min_d = str(lb[0][0])[:10]
+            raw_max_d = str(lb[0][1])[:10]
+    except Exception as err:
+        _DB_ERR_UNTIL = time.monotonic() + DB_ERR_COOLDOWN_SEC
+        _log.warning('heatmap: monitor_logs bounds probe failed: %s', err)
+        return agg
+
+    if not roll_min_d and not raw_min_d:
+        return agg
 
     stores = agg['stores']
     min_hc = float(MIN_RATIO_HEADCOUNT)
@@ -390,9 +439,13 @@ def _load_store_slot_aggregates(days: int) -> dict:
             agg['rollup_buckets' if source == 'rollup' else 'raw_buckets'] += 1
 
     for d0, d1 in local_db._contiguous_date_ranges(query_dates, max_span_days=7):
+        has_roll = bool(rollups_ok and roll_min_d and roll_max_d and d1 >= roll_min_d and d0 <= roll_max_d)
+        has_raw = bool(raw_min_d and raw_max_d and d1 >= raw_min_d and d0 <= raw_max_d)
+        if not has_roll and not has_raw:
+            continue
         seen_buckets = set()
         rollup_buckets = {}
-        if rollups_ok:
+        if has_roll:
             try:
                 rows = local_db._fetch_all_rows(sql_rollup, (d0, d1))
             except Exception as err:
@@ -426,38 +479,40 @@ def _load_store_slot_aggregates(days: int) -> dict:
         _fold(rollup_buckets, 'rollup')
         del rollup_buckets
 
-        raw_buckets = {}
-        try:
-            for chunk in local_db._iter_ts_window_in_7d_chunks(sql_raw, f'{d0} 00:00:00', f'{d1} 23:59:59'):
-                for r in chunk:
-                    try:
-                        d_jst = str(r[0] or '')[:10]
-                        hr = int(str(r[1] or '').strip())
-                    except (TypeError, ValueError):
-                        continue
-                    if hr not in _HOUR_SET or not d_jst:
-                        continue
-                    canon = _canon(r[2])
-                    if not canon:
-                        continue
-                    key = (d_jst, hr, canon)
-                    if key in seen_buckets:
-                        continue
-                    try:
-                        sn = float(r[3] or 0)
-                        aw = float(r[4] or 0.0)
-                        am = float(r[5] or 0.0)
-                        wps = float(r[6] or 0.0)
-                        wpn = float(r[7] or 0)
-                    except (TypeError, ValueError):
-                        continue
-                    if sn <= 0:
-                        continue
-                    _merge_bucket(raw_buckets, key, sn, aw, am, wps, wpn)
-        except Exception as err:
-            _log.warning('heatmap: monitor_logs chunk %s..%s failed: %s', d0, d1, err)
-        _fold(raw_buckets, 'raw')
-        del raw_buckets, seen_buckets
+        if has_raw:
+            raw_buckets = {}
+            try:
+                for chunk in local_db._iter_ts_window_in_7d_chunks(sql_raw, f'{d0} 00:00:00', f'{d1} 23:59:59'):
+                    for r in chunk:
+                        try:
+                            d_jst = str(r[0] or '')[:10]
+                            hr = int(str(r[1] or '').strip())
+                        except (TypeError, ValueError):
+                            continue
+                        if hr not in _HOUR_SET or not d_jst:
+                            continue
+                        canon = _canon(r[2])
+                        if not canon:
+                            continue
+                        key = (d_jst, hr, canon)
+                        if key in seen_buckets:
+                            continue
+                        try:
+                            sn = float(r[3] or 0)
+                            aw = float(r[4] or 0.0)
+                            am = float(r[5] or 0.0)
+                            wps = float(r[6] or 0.0)
+                            wpn = float(r[7] or 0)
+                        except (TypeError, ValueError):
+                            continue
+                        if sn <= 0:
+                            continue
+                        _merge_bucket(raw_buckets, key, sn, aw, am, wps, wpn)
+            except Exception as err:
+                _log.warning('heatmap: monitor_logs chunk %s..%s failed: %s', d0, d1, err)
+            _fold(raw_buckets, 'raw')
+            del raw_buckets
+        del seen_buckets
 
     agg['generated_at_jst'] = datetime.datetime.now(_JST).strftime('%Y-%m-%d %H:%M:%S')
     return agg
@@ -474,27 +529,54 @@ def _get_aggregates(days: int) -> dict:
         db_key = None
     cache_key = (db_key, days, (tuple(sorted(hb)), tuple(sorted(hs))))
 
-    def _hit():
+    def _inspect():
         with _CACHE_LOCK:
             ent = _CACHE.get(cache_key)
-            if ent and (time.monotonic() - ent[0]) < CACHE_TTL_SEC:
-                return ent[1]
-        return None
+            if ent:
+                age = time.monotonic() - ent[0]
+                if age < CACHE_TTL_SEC:
+                    return ent[1], None
+                if age < STALE_MAX_SEC:
+                    return None, ent[1]
+        return None, None
 
-    data = _hit()
-    if data is not None:
-        return data
+    fresh, stale = _inspect()
+    if fresh is not None:
+        return fresh
+
+    # Stale-While-Revalidate: 期限切れ直後に別スレッドが再計算中なら、ロック待ちせず既存実データを即返す
+    if stale is not None:
+        if not _COMPUTE_LOCK.acquire(blocking=False):
+            return stale
+        try:
+            fresh2, _ = _inspect()
+            if fresh2 is not None:
+                return fresh2
+            data = _load_store_slot_aggregates(days)
+            if data.get('total_buckets', 0) > 0:
+                with _CACHE_LOCK:
+                    if len(_CACHE) >= _CACHE_MAX_ENTRIES and cache_key not in _CACHE:
+                        _CACHE.clear()
+                    _CACHE[cache_key] = (time.monotonic(), data)
+                return data
+            return stale
+        finally:
+            _COMPUTE_LOCK.release()
+
     with _COMPUTE_LOCK:
-        data = _hit()
-        if data is not None:
-            return data
+        fresh2, stale2 = _inspect()
+        if fresh2 is not None:
+            return fresh2
         data = _load_store_slot_aggregates(days)
         # 空データ（DB一時障害・蓄積前）は絶対にキャッシュしない
         if data.get('total_buckets', 0) > 0:
             with _CACHE_LOCK:
-                if len(_CACHE) >= _CACHE_MAX_ENTRIES:
+                if len(_CACHE) >= _CACHE_MAX_ENTRIES and cache_key not in _CACHE:
                     _CACHE.clear()
                 _CACHE[cache_key] = (time.monotonic(), data)
+            return data
+        if stale2 is not None:
+            return stale2
     return data
 
 
@@ -598,15 +680,13 @@ def _build_cells(agg: dict, raw_stores: list, min_b: int) -> list:
                 'women_ratio_pct': None,
             }
             if nb >= min_b:
-                aw = sw / nb
-                am = sm / nb
-                cell['avg_women'] = round(aw, 1)
-                cell['avg_men'] = round(am, 1)
-                cell['avg_total'] = round(aw + am, 1)
+                w_r = round(sw / nb, 1)
+                m_r = round(sm / nb, 1)
+                cell['avg_women'] = w_r
+                cell['avg_men'] = m_r
+                cell['avg_total'] = round(w_r + m_r, 1)
                 cell['women_ratio_pct'] = round(sr / nr, 1) if nr >= min_b else None
                 cell['status'] = 'ok'
-                if cell['women_ratio_pct'] is None and cell['avg_total'] is None:
-                    cell['status'] = 'insufficient'
             cells.append(cell)
     return cells
 
@@ -648,6 +728,8 @@ def get_heatmap_payload(scope='all', store=None, days=DEFAULT_DAYS, metric='rati
     total_snapshots = sum(c['n_snapshots'] for c in cells)
     ok_cells = sum(1 for c in cells if c['status'] == 'ok')
     scope_q = {'store': sc['store_slug']} if sc['type'] == 'store' else {'scope': sc['key']}
+    if days != DEFAULT_DAYS:
+        scope_q['days'] = days
 
     payload = {
         'schema': 'aiseki-navi.embed-heatmap/1',
@@ -717,6 +799,8 @@ def build_embed_snippets(payload: dict, theme='dark', metric='ratio') -> dict:
         q = {'store': sc.get('store_slug') or '', 'metric': metric, 'theme': theme}
     else:
         q = {'scope': sc.get('key') or 'all', 'metric': metric, 'theme': theme}
+    if days != DEFAULT_DAYS:
+        q['days'] = days
     iframe_src = f'{EMBED_PAGE_URL}?{urllib.parse.urlencode(q)}'
     esc = lambda s: _html.escape(str(s), quote=True)  # noqa: E731
 

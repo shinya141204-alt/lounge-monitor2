@@ -946,9 +946,31 @@ def _heatmap_query_params():
     return scope, store, metric, theme, days
 
 
+def _is_embed_rate_limited() -> bool:
+    if core._is_staff_test_request():
+        return False
+    try:
+        return not core.turbo_store.check_sliding_rate_limit('embed_heatmap_ip', core.get_client_ip(), limit=120, window_sec=60)
+    except Exception:
+        return False
+
+
+def _apply_embed_cache_control(resp, has_data: bool) -> None:
+    if session.get('is_staff') or session.get('is_master') or 'Set-Cookie' in resp.headers:
+        resp.headers['Cache-Control'] = 'private, no-cache, max-age=0'
+    else:
+        resp.headers['Cache-Control'] = 'public, max-age=900' if has_data else 'no-cache, max-age=0'
+
+
 @portal_bp.route('/embed/heatmap')
 def embed_heatmap():
     """CC BY 4.0 曜日×時間帯別 実測男女比ヒートマップ（外部 iframe 埋め込み＆単体公開ページ）。"""
+    if _is_embed_rate_limited():
+        resp = make_response('Too Many Requests', 429)
+        resp.headers['Content-Security-Policy'] = "base-uri 'self'; object-src 'none'; frame-ancestors *"
+        resp.headers['Cache-Control'] = 'no-store'
+        resp.headers['Retry-After'] = '60'
+        return resp
     import embed_widgets
     scope, store, metric, theme, days = _heatmap_query_params()
     try:
@@ -959,7 +981,7 @@ def embed_heatmap():
     # Set before app.after_request `setdefault` so third-party sites may frame this page (CSP L2
     # frame-ancestors supersedes the default X-Frame-Options: SAMEORIGIN in all modern browsers).
     resp.headers['Content-Security-Policy'] = "base-uri 'self'; object-src 'none'; frame-ancestors *"
-    resp.headers['Cache-Control'] = 'public, max-age=900' if payload['meta']['total_buckets'] > 0 else 'no-cache, max-age=0'
+    _apply_embed_cache_control(resp, payload['meta']['total_buckets'] > 0)
     resp.headers['Link'] = _CC_BY_LINK_HEADER
     return resp
 
@@ -967,6 +989,14 @@ def embed_heatmap():
 @portal_bp.route('/api/embed/heatmap.json')
 def api_embed_heatmap_json():
     """CORS-open CC BY 4.0 JSON for the weekday x hour heatmap (no affiliate links, no internal store keys)."""
+    if _is_embed_rate_limited():
+        resp = jsonify({'error': 'rate_limited'})
+        resp.status_code = 429
+        resp.headers['Access-Control-Allow-Origin'] = '*'
+        resp.headers['Cache-Control'] = 'no-store'
+        resp.headers['Retry-After'] = '60'
+        resp.headers['X-Content-Type-Options'] = 'nosniff'
+        return resp
     import embed_widgets
     scope, store, metric, theme, days = _heatmap_query_params()
     try:
@@ -980,7 +1010,7 @@ def api_embed_heatmap_json():
         return resp
     resp = jsonify(payload)
     resp.headers['Access-Control-Allow-Origin'] = '*'
-    resp.headers['Cache-Control'] = 'public, max-age=900' if payload['meta']['total_buckets'] > 0 else 'no-cache, max-age=0'
+    _apply_embed_cache_control(resp, payload['meta']['total_buckets'] > 0)
     resp.headers['X-Content-Type-Options'] = 'nosniff'
     resp.headers['Link'] = _CC_BY_LINK_HEADER
     return resp

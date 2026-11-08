@@ -292,6 +292,7 @@ def compress_response(response):
         response.headers['Pragma'] = 'no-cache'
     elif (
         response.content_type and 'text/html' in response.content_type and response.status_code == 200
+        and not request.path.startswith('/embed/')
         and 'no-store' not in (response.headers.get('Cache-Control') or '')
     ):
         if (

@@ -280,11 +280,10 @@ def run_usage_check() -> int:
         print("⚠️ 使用量チェックがタイムアウトしました。", file=sys.stderr)
         return 3
 
-    if proc.returncode != 0:
+    rate_events = _extract_rate_windows(proc.stdout or "")
+    if proc.returncode != 0 and not rate_events:
         print(f"⚠️ 使用量チェック失敗 (exit={proc.returncode}): {(proc.stderr or proc.stdout or '').strip()}", file=sys.stderr)
         return proc.returncode
-
-    rate_events = _extract_rate_windows(proc.stdout or "")
 
     if not rate_events:
         print("ℹ️ レートリミットイベントが返却されませんでした（現在十分に余裕があります）。")

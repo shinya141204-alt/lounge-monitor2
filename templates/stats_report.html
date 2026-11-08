@@ -779,7 +779,7 @@
                             <tr>
                                 <th scope="row">{{ d[1] }}</th>
                                 {%- for h in hm_hours %}
-                                {%- set ci = row_i * 11 + loop.index0 %}
+                                {%- set ci = row_i * (hm_hours | length) + loop.index0 %}
                                 {%- set c = hm.cells[ci] if hm_ok else none %}
                                 <td data-i="{{ ci }}" data-rb="{{ c.ratio_band if c else 'na' }}" data-hb="{{ c.headcount_band if c else 'na' }}" data-wm="{{ '1' if (c and c.women_majority) else '0' }}" tabindex="{{ '0' if ci == 0 else '-1' }}">
                                     {%- if c and c.women_ratio_pct is not none -%}

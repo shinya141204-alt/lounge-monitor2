@@ -480,6 +480,102 @@ class TestHeatmapHttpAndSnippets(_HeatmapDbTestBase):
         self.assertEqual(od["embed_heatmap_json_api_url"], "https://aiseki-navi.com/api/embed/heatmap.json?scope=all")
         self.assertNotIn("/link/", body)
 
+    def test_days_snapping_prevents_cache_churn_and_propagates_non_default_days(self):
+        """任意の days 入力は {7, 30, 90} に丸められ、連番 days によるキャッシュ破棄が起きない。"""
+        for raw_in, expected in ((1, 7), (7, 7), (14, 7), (25, 30), (30, 30), (50, 30), (65, 90), (999, 90), ("bad", 90)):
+            self.assertEqual(embed_widgets.clamp_days(raw_in), expected)
+
+        self._insert_logs([(f"{_recent_weekday(4, 0).isoformat()} 22:00:00", STORE, 12, 10)])
+        self._fresh()
+
+        with mock.patch.object(
+            embed_widgets, "_load_store_slot_aggregates", wraps=embed_widgets._load_store_slot_aggregates
+        ) as spy:
+            for d in range(7, 18):
+                embed_widgets.get_heatmap_payload(scope="all", days=d)
+        self.assertEqual(spy.call_count, 1, "arbitrary days=7..17 must collapse onto the single 7-day cache entry")
+
+        p30 = embed_widgets.get_heatmap_payload(scope="all", days=30)
+        self.assertIn("days=30", p30["urls"]["embed"])
+        self.assertIn("days=30", p30["urls"]["json"])
+        self.assertIn("days=30", p30["embed"]["iframe_src"])
+
+        p90 = embed_widgets.get_heatmap_payload(scope="all", days=90)
+        self.assertNotIn("days=", p90["urls"]["embed"])
+        self.assertNotIn("days=", p90["urls"]["json"])
+
+    def test_stale_while_revalidate_serves_stale_when_compute_lock_is_held(self):
+        """TTL 失効直後に別スレッドが再計算ロック保持中でも、後続スレッドはブロックせず既存実データを返す。"""
+        self._insert_logs([(f"{_recent_weekday(4, 0).isoformat()} 22:00:00", STORE, 12, 10)])
+        self._fresh()
+        first = embed_widgets.get_heatmap_payload(scope="all")
+        self.assertEqual(first["meta"]["total_buckets"], 1)
+
+        with embed_widgets._CACHE_LOCK:
+            for k, (ts, data) in list(embed_widgets._CACHE.items()):
+                embed_widgets._CACHE[k] = (ts - embed_widgets.CACHE_TTL_SEC - 5.0, data)
+
+        acquired = embed_widgets._COMPUTE_LOCK.acquire(blocking=False)
+        self.assertTrue(acquired)
+        try:
+            with mock.patch.object(embed_widgets, "_load_store_slot_aggregates") as spy:
+                stale_resp = embed_widgets.get_heatmap_payload(scope="all")
+            self.assertEqual(spy.call_count, 0)
+            self.assertEqual(stale_resp["meta"]["total_buckets"], 1)
+        finally:
+            embed_widgets._COMPUTE_LOCK.release()
+
+    def test_embed_html_preserves_public_cache_control_and_never_pollutes_human_pv(self):
+        """/embed/heatmap はデータ存在時に public キャッシュを維持し、スタッフ時は private 降格、人間PVも汚染しない。"""
+        self._insert_logs([(f"{_recent_weekday(4, 0).isoformat()} 22:00:00", STORE, 12, 10)])
+        self._fresh()
+
+        ua_headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/130.0"}
+        with mock.patch.object(analytics, "track") as track_spy:
+            resp = self.client.get("/embed/heatmap?scope=all", headers=ua_headers)
+            try:
+                self.assertEqual(resp.status_code, 200)
+                self.assertEqual(resp.headers.get("Cache-Control"), "public, max-age=900")
+                self.assertIsNone(resp.headers.get("X-Frame-Options"))
+                self.assertIn("frame-ancestors *", resp.headers.get("Content-Security-Policy", ""))
+            finally:
+                resp.close()
+        track_spy.assert_not_called()
+
+        non_embed = self.client.get("/about?staff_test=1")
+        try:
+            self.assertEqual(non_embed.headers.get("X-Frame-Options"), "SAMEORIGIN")
+            self.assertIn("frame-ancestors 'self'", non_embed.headers.get("Content-Security-Policy", ""))
+        finally:
+            non_embed.close()
+
+        with self.client.session_transaction() as sess:
+            sess["is_staff"] = True
+        staff_resp = self.client.get("/embed/heatmap?scope=all&staff_test=1")
+        try:
+            self.assertNotIn("public", staff_resp.headers.get("Cache-Control", ""))
+        finally:
+            staff_resp.close()
+
+    def test_embed_endpoints_enforce_ip_rate_limit(self):
+        """非 staff_test リクエストで IP スライディングレート制限超過時は 429 + Retry-After を返す。"""
+        with mock.patch.object(turbo_store, "check_sliding_rate_limit", return_value=False):
+            r_html = self.client.get("/embed/heatmap?scope=all")
+            try:
+                self.assertEqual(r_html.status_code, 429)
+                self.assertEqual(r_html.headers.get("Retry-After"), "60")
+                self.assertEqual(r_html.headers.get("Cache-Control"), "no-store")
+            finally:
+                r_html.close()
+
+            r_json = self.client.get("/api/embed/heatmap.json?scope=all")
+            try:
+                self.assertEqual(r_json.status_code, 429)
+                self.assertEqual(r_json.headers.get("Retry-After"), "60")
+                self.assertEqual(r_json.headers.get("Access-Control-Allow-Origin"), "*")
+            finally:
+                r_json.close()
+
 
 class TestStatsTemplateStaticAudit(unittest.TestCase):
     def setUp(self):
