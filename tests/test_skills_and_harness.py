@@ -126,6 +126,19 @@ class SkillsAndHarnessTests(unittest.TestCase):
         )
         self.assertEqual(touched, ["b.html", "new.md"])
 
+        # Claude v2.1+ unifiedWindows rate-limit extraction
+        sample_stream = (
+            '{"type":"rate_limit_event","rate_limit_info":{"status":"allowed","resetsAt":1794144600,'
+            '"rateLimitType":"five_hour","unifiedWindows":{'
+            '"five_hour":{"utilization":0,"resetsAt":1794144600,"status":"allowed"},'
+            '"seven_day":{"utilization":0.22,"resetsAt":1794204000,"status":"allowed"}'
+            '}}}'
+        )
+        windows = cr._extract_rate_windows(sample_stream)
+        self.assertEqual(windows["five_hour"]["utilization"], 0)
+        self.assertEqual(windows["seven_day"]["utilization"], 0.22)
+        self.assertEqual(windows["seven_day"]["resetsAt"], 1794204000)
+
     def test_store_audit_enforces_staff_test_and_audit_ua(self):
         sa = _load_script_module(".agents/skills/store-audit/scripts/run_full_store_audit.py", "sa_mod")
         safe_u = sa._ensure_staff_test_url("https://aiseki-navi.com/api/status")

@@ -207,6 +207,42 @@ def run_doctor() -> int:
     return 0
 
 
+def _extract_rate_windows(stdout_text: str) -> dict[str, dict]:
+    """Extract rate-limit windows from Claude stream-json output (supports v2.1+ unifiedWindows & legacy flat events)."""
+    rate_events: dict[str, dict] = {}
+    for line in (stdout_text or "").splitlines():
+        line = line.strip()
+        if not line.startswith("{"):
+            continue
+        try:
+            ev = json.loads(line)
+        except Exception:
+            continue
+        if ev.get("type") != "rate_limit_event":
+            continue
+        info = ev.get("rate_limit_info") or {}
+        unified = info.get("unifiedWindows")
+        if isinstance(unified, dict):
+            for win_key, win_info in unified.items():
+                if not isinstance(win_info, dict):
+                    continue
+                merged = dict(win_info)
+                merged.setdefault("status", info.get("status") or "allowed")
+                if merged.get("resetsAt") is None and info.get("resetsAt") is not None:
+                    merged["resetsAt"] = info.get("resetsAt")
+                k = str(win_key)
+                prev = rate_events.get(k)
+                if prev is None or merged.get("utilization") is not None or prev.get("utilization") is None:
+                    rate_events[k] = merged
+
+        rl_type = str(info.get("rateLimitType") or "").strip()
+        if rl_type:
+            prev = rate_events.get(rl_type)
+            if prev is None or (prev.get("utilization") is None and info.get("utilization") is not None):
+                rate_events[rl_type] = info
+    return rate_events
+
+
 def run_usage_check() -> int:
     """Query live Claude rate-limit utilization via a minimal Haiku stream-json probe."""
     claude_bin = find_claude_bin()
@@ -248,19 +284,7 @@ def run_usage_check() -> int:
         print(f"⚠️ 使用量チェック失敗 (exit={proc.returncode}): {(proc.stderr or proc.stdout or '').strip()}", file=sys.stderr)
         return proc.returncode
 
-    rate_events: dict[str, dict] = {}
-    for line in (proc.stdout or "").splitlines():
-        line = line.strip()
-        if not line.startswith("{"):
-            continue
-        try:
-            ev = json.loads(line)
-        except Exception:
-            continue
-        if ev.get("type") == "rate_limit_event":
-            info = ev.get("rate_limit_info") or {}
-            rl_type = str(info.get("rateLimitType") or "unknown")
-            rate_events[rl_type] = info
+    rate_events = _extract_rate_windows(proc.stdout or "")
 
     if not rate_events:
         print("ℹ️ レートリミットイベントが返却されませんでした（現在十分に余裕があります）。")
