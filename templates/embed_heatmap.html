@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+{%- set sc = heatmap.scope -%}
+{%- set meta = heatmap.meta -%}
+{%- set is_all = sc.type == 'all' -%}
+{%- set scope_label = sc.label -%}
+{%- set page_url = 'https://aiseki-navi.com/embed/heatmap' -%}
+{%- if is_all -%}
+  {%- set page_title = '曜日×時間帯別 相席ラウンジ実測男女比ヒートマップ埋め込みウィジェット｜相席ナビ' -%}
+  {%- set page_desc = '全国の相席ラウンジで計測した曜日×時間帯別（18時〜翌4時）の平均女性比率と平均来店人数を、過去' ~ meta.days ~ '日の実測ログから集計したCC BY 4.0ヒートマップ。ブログやメディアへiframeで埋め込み、出典リンク付きで引用できます。' -%}
+{%- else -%}
+  {%- set page_title = scope_label ~ ' 曜日×時間帯別 相席ラウンジ実測男女比ヒートマップ｜相席ナビ' -%}
+  {%- set page_desc = scope_label ~ 'の相席ラウンジで計測した曜日×時間帯別（18時〜翌4時）の平均女性比率と平均来店人数を、過去' ~ meta.days ~ '日の実測ログから集計したCC BY 4.0ヒートマップ。iframeで埋め込み、出典リンク付きで引用できます。' -%}
+{%- endif -%}
+{%- set top_ratio = heatmap.peaks.ratio_top[0] if heatmap.peaks.ratio_top else None -%}
+{%- set top_head = heatmap.peaks.headcount_top[0] if heatmap.peaks.headcount_top else None -%}
+{%- if top_ratio -%}
+  {%- set default_ratio_msg = '女性比率が最も高い時間帯：' ~ top_ratio.dow_label ~ '曜 ' ~ top_ratio.hour_label ~ ' ' ~ ('%.1f'|format(top_ratio.women_ratio_pct)) ~ '%（実測時間枠 n=' ~ top_ratio.n_ratio ~ '）' -%}
+{%- else -%}
+  {%- set default_ratio_msg = scope_label ~ 'の女性比率データは検証ログ蓄積中です（サンプル不足のセルは推測値を表示しません）。' -%}
+{%- endif -%}
+{%- if top_head -%}
+  {%- set default_head_msg = '平均来店人数が最も多い時間帯：' ~ top_head.dow_label ~ '曜 ' ~ top_head.hour_label ~ ' 平均' ~ ('%.1f'|format(top_head.avg_total)) ~ '名（実測時間枠 n=' ~ top_head.n_buckets ~ '）' -%}
+{%- else -%}
+  {%- set default_head_msg = scope_label ~ 'の来店人数データは検証ログ蓄積中です（サンプル不足のセルは推測値を表示しません）。' -%}
+{%- endif -%}
+{%- set hc_t = heatmap.bands.headcount.thresholds -%}
+<html lang="ja" data-theme="{{ theme }}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ page_title }}</title>
+    <meta name="description" content="{{ page_desc }}">
+    <meta name="robots" content="index, follow, max-image-preview:large">
+    <link rel="canonical" href="{{ page_url }}">
+    <link rel="license" href="https://creativecommons.org/licenses/by/4.0/">
+{% include '_head_llmo.html' %}
+    <meta property="og:title" content="{{ page_title }}">
+    <meta property="og:description" content="{{ page_desc }}">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ page_url }}">
+    <meta property="og:image" content="https://aiseki-navi.com/ogp/weekly.png">
+    <meta property="og:site_name" content="相席ナビ">
+    <meta property="og:locale" content="ja_JP">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ page_title }}">
+    <meta name="twitter:description" content="{{ page_desc }}">
+    <meta name="twitter:image" content="https://aiseki-navi.com/ogp/weekly.png">
+    {%- set ld_dataset = {
+        '@context': 'https://schema.org',
+        '@type': 'Dataset',
+        'name': '相席ラウンジ 曜日×時間帯別 実測男女比・来店人数ヒートマップ（' ~ scope_label ~ '）',
+        'description': page_desc,
+        'url': page_url,
+        'license': 'https://creativecommons.org/licenses/by/4.0/',
+        'isAccessibleForFree': True,
+        'inLanguage': 'ja',
+        'creator': {'@type': 'Organization', 'name': '相席ナビ編集部', 'url': 'https://aiseki-navi.com/'},
+        'temporalCoverage': (meta.window_from ~ '/' ~ meta.window_to) if meta.window_from and meta.window_to else None,
+        'spatialCoverage': {'@type': 'Place', 'name': '日本・' ~ scope_label},
+        'variableMeasured': ['平均女性比率（%）', '平均女性人数（名）', '平均男性人数（名）', '平均来店人数（名）', '実測時間枠サンプル数'],
+        'measurementTechnique': '1分間隔の在店人数スナップショットを営業日×1時間×店舗の時間枠に集約',
+        'distribution': [{
+            '@type': 'DataDownload',
+            'encodingFormat': 'application/json',
+            'contentUrl': heatmap.urls.json
+        }]
+    } -%}
+    {%- set ld_breadcrumb = {
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        'itemListElement': [
+            {'@type': 'ListItem', 'position': 1, 'name': '相席ナビ', 'item': 'https://aiseki-navi.com/'},
+            {'@type': 'ListItem', 'position': 2, 'name': '統計データ', 'item': 'https://aiseki-navi.com/stats'},
+            {'@type': 'ListItem', 'position': 3, 'name': '曜日×時間帯別ヒートマップ', 'item': page_url}
+        ]
+    } -%}
+    <script type="application/ld+json">{{ ld_dataset|tojson }}</script>
+    <script type="application/ld+json">{{ ld_breadcrumb|tojson }}</script>
+    <style>
+        :root {
+            color-scheme: dark;
+            --hm-bg: #111113;
+            --hm-surface: #18181b;
+            --hm-text: #f4f1ec;
+            --hm-sub: #b5b0a7;
+            --hm-border: #2e2f36;
+            --hm-link: #dfc496;
+            --hm-focus: #f4f1ec;
+            --hm-tab-bg: #1b1c22;
+            --hm-tab-text: #c9c4bb;
+            --hm-tab-on-bg: #f4f1ec;
+            --hm-tab-on-text: #111113;
+            --hm-tip-bg: #f4f1ec;
+            --hm-tip-text: #111113;
+            --r1-bg: #93b1c9; --r1-fg: #10161c;
+            --r2-bg: #3f5668; --r2-fg: #f4f1ec;
+            --r3-bg: #2a2c34; --r3-fg: #f4f1ec;
+            --r4-bg: #7c5a63; --r4-fg: #f4f1ec;
+            --r5-bg: #d8a1aa; --r5-fg: #1a1216;
+            --h1-bg: #1b1c22; --h1-fg: #a8a49c;
+            --h2-bg: #3a3225; --h2-fg: #f4f1ec;
+            --h3-bg: #5c492d; --h3-fg: #f4f1ec;
+            --h4-bg: #b89760; --h4-fg: #16120c;
+            --h5-bg: #dfc496; --h5-fg: #16120c;
+            --na-bg: #1b1c22; --na-fg: #9a968e; --na-border: #4a4b53;
+        }
+        :root[data-theme="light"] {
+            color-scheme: light;
+            --hm-bg: #f6f6f7;
+            --hm-surface: #ffffff;
+            --hm-text: #1c1c21;
+            --hm-sub: #4b4b55;
+            --hm-border: #d4d4d8;
+            --hm-link: #6b4a1a;
+            --hm-focus: #1c1c21;
+            --hm-tab-bg: #ececef;
+            --hm-tab-text: #3f3f46;
+            --hm-tab-on-bg: #1c1c21;
+            --hm-tab-on-text: #ffffff;
+            --hm-tip-bg: #1c1c21;
+            --hm-tip-text: #ffffff;
+            --r1-bg: #4f6f8a; --r1-fg: #ffffff;
+            --r2-bg: #c5d6e4; --r2-fg: #1f2933;
+            --r3-bg: #e9e9ec; --r3-fg: #3f3f46;
+            --r4-bg: #ecc9cf; --r4-fg: #5a1d2b;
+            --r5-bg: #9b4a5c; --r5-fg: #ffffff;
+            --h1-bg: #f0f0f2; --h1-fg: #3f3f46;
+            --h2-bg: #e6d9bf; --h2-fg: #2b2415;
+            --h3-bg: #dcc69e; --h3-fg: #241d10;
+            --h4-bg: #755528; --h4-fg: #ffffff;
+            --h5-bg: #523b1a; --h5-fg: #ffffff;
+            --na-bg: #f0f0f2; --na-fg: #5f5e66; --na-border: #a1a1aa;
+        }
+        *, *::before, *::after { box-sizing: border-box; }
+        body {
+            margin: 0;
+            padding: 12px 12px 10px;
+            background: var(--hm-bg);
+            color: var(--hm-text);
+            font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", sans-serif;
+            font-size: 13px;
+            line-height: 1.5;
+            -webkit-text-size-adjust: 100%;
+        }
+        a { color: var(--hm-link); text-underline-offset: 2px; }
+        a:focus-visible, button:focus-visible, [tabindex]:focus-visible {
+            outline: 2px solid var(--hm-focus);
+            outline-offset: 2px;
+        }
+        .sr-only {
+            position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+            overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+        }
+        .hm-head {
+            display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+            gap: 8px 12px; margin-bottom: 8px;
+        }
+        .hm-title { margin: 0; font-size: 15px; font-weight: 700; line-height: 1.4; text-wrap: balance; }
+        .hm-sub { margin: 2px 0 0; color: var(--hm-sub); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+        .hm-tabs { display: inline-flex; gap: 2px; padding: 2px; border-radius: 8px; background: var(--hm-tab-bg); }
+        .hm-tab {
+            appearance: none; border: 0; margin: 0; cursor: pointer;
+            min-height: 32px; padding: 4px 12px; border-radius: 6px;
+            background: transparent; color: var(--hm-tab-text);
+            font: inherit; font-size: 12.5px; font-weight: 600;
+        }
+        .hm-tab[aria-selected="true"] { background: var(--hm-tab-on-bg); color: var(--hm-tab-on-text); }
+        .hm-scroll {
+            overflow-x: auto; overscroll-behavior-x: contain;
+            border: 1px solid var(--hm-border); border-radius: 10px; background: var(--hm-surface);
+        }
+        table { border-collapse: separate; border-spacing: 2px; width: 100%; min-width: 640px; }
+        caption { text-align: start; }
+        th {
+            font-weight: 600; font-size: 11.5px; color: var(--hm-sub);
+            padding: 4px 2px; white-space: nowrap; font-variant-numeric: tabular-nums;
+        }
+        thead th { text-align: center; }
+        th[scope="row"] {
+            position: sticky; inset-inline-start: 0; z-index: 1;
+            background: var(--hm-surface); color: var(--hm-text);
+            padding-inline: 8px; text-align: center; min-width: 32px;
+        }
+        td {
+            height: 34px; min-width: 50px; padding: 0 2px;
+            text-align: center; border-radius: 5px; cursor: default;
+            font-size: 12.5px; font-weight: 600;
+            font-variant-numeric: tabular-nums;
+            border: 1px solid transparent;
+        }
+        td .v-h, .hm[data-metric="headcount"] td .v-r { display: none; }
+        .hm[data-metric="headcount"] td .v-h { display: inline; }
+        .hm[data-metric="ratio"] td[data-rb="r1"] { background: var(--r1-bg); color: var(--r1-fg); }
+        .hm[data-metric="ratio"] td[data-rb="r2"] { background: var(--r2-bg); color: var(--r2-fg); }
+        .hm[data-metric="ratio"] td[data-rb="r3"] { background: var(--r3-bg); color: var(--r3-fg); }
+        .hm[data-metric="ratio"] td[data-rb="r4"] { background: var(--r4-bg); color: var(--r4-fg); }
+        .hm[data-metric="ratio"] td[data-rb="r5"] { background: var(--r5-bg); color: var(--r5-fg); }
+        .hm[data-metric="ratio"] td[data-wm="1"] { box-shadow: inset 0 3px 0 currentColor; }
+        .hm[data-metric="headcount"] td[data-hb="h1"] { background: var(--h1-bg); color: var(--h1-fg); }
+        .hm[data-metric="headcount"] td[data-hb="h2"] { background: var(--h2-bg); color: var(--h2-fg); }
+        .hm[data-metric="headcount"] td[data-hb="h3"] { background: var(--h3-bg); color: var(--h3-fg); }
+        .hm[data-metric="headcount"] td[data-hb="h4"] { background: var(--h4-bg); color: var(--h4-fg); }
+        .hm[data-metric="headcount"] td[data-hb="h5"] { background: var(--h5-bg); color: var(--h5-fg); }
+        .hm[data-metric="ratio"] td[data-rb="na"],
+        .hm[data-metric="headcount"] td[data-hb="na"] {
+            background: var(--na-bg); color: var(--na-fg);
+            border: 1px dashed var(--na-border); font-weight: 400;
+        }
+        td.is-active { outline: 2px solid var(--hm-focus); outline-offset: 1px; }
+        .hm-legend {
+            display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px;
+            margin: 8px 0 0; padding: 0; list-style: none;
+            font-size: 11px; color: var(--hm-sub); font-variant-numeric: tabular-nums;
+        }
+        .hm-legend li { display: inline-flex; align-items: center; gap: 4px; }
+        .hm-legend .sw { width: 14px; height: 10px; border-radius: 3px; display: inline-block; }
+        .hm-legend--h, .hm[data-metric="headcount"] .hm-legend--r { display: none; }
+        .hm[data-metric="headcount"] .hm-legend--h { display: flex; }
+        .sw-r1 { background: var(--r1-bg); } .sw-r2 { background: var(--r2-bg); } .sw-r3 { background: var(--r3-bg); border: 1px solid var(--hm-border); }
+        .sw-r4 { background: var(--r4-bg); } .sw-r5 { background: var(--r5-bg); }
+        .sw-h1 { background: var(--h1-bg); border: 1px solid var(--hm-border); } .sw-h2 { background: var(--h2-bg); } .sw-h3 { background: var(--h3-bg); }
+        .sw-h4 { background: var(--h4-bg); } .sw-h5 { background: var(--h5-bg); }
+        .sw-na { background: var(--na-bg); border: 1px dashed var(--na-border); }
+        .hm-status {
+            margin: 8px 0 0; min-height: 20px; font-size: 12px;
+            color: var(--hm-text); font-variant-numeric: tabular-nums;
+        }
+        .hm-tip {
+            position: fixed; z-index: 10; max-width: 280px; pointer-events: none;
+            padding: 6px 9px; border-radius: 7px;
+            background: var(--hm-tip-bg); color: var(--hm-tip-text);
+            font-size: 12px; line-height: 1.5; font-variant-numeric: tabular-nums;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
+        }
+        .hm-tip[hidden] { display: none; }
+        .hm-foot {
+            margin: 8px 0 0; padding-top: 6px; border-top: 1px solid var(--hm-border);
+            font-size: 11px; color: var(--hm-sub); line-height: 1.6; font-variant-numeric: tabular-nums;
+        }
+        .hm-foot p { margin: 0; }
+        @media (prefers-reduced-motion: no-preference) {
+            .hm-tab { transition: background-color 0.15s ease, color 0.15s ease; }
+        }
+    </style>
+</head>
+<body>
+<main class="hm" id="hm" data-metric="{{ metric }}">
+    <header class="hm-head">
+        <div>
+            <h1 class="hm-title">{{ scope_label }} 曜日×時間帯別 実測ヒートマップ</h1>
+            <p class="hm-sub">過去{{ meta.days }}日の実測（{{ meta.window_from }}〜{{ meta.window_to }}・営業日基準）／ 対象{{ sc.store_count }}店舗 ／ 実測時間枠 {{ '{:,}'.format(meta.total_buckets) }}件</p>
+        </div>
+        <div class="hm-tabs" role="tablist" aria-label="表示する指標">
+            <button type="button" class="hm-tab" role="tab" id="hm-tab-ratio" data-metric="ratio" aria-controls="hm-region"
+                aria-selected="{{ 'true' if metric == 'ratio' else 'false' }}" tabindex="{{ '0' if metric == 'ratio' else '-1' }}">平均女性比率（%）</button>
+            <button type="button" class="hm-tab" role="tab" id="hm-tab-headcount" data-metric="headcount" aria-controls="hm-region"
+                aria-selected="{{ 'true' if metric == 'headcount' else 'false' }}" tabindex="{{ '0' if metric == 'headcount' else '-1' }}">平均来店人数</button>
+        </div>
+    </header>
+
+    <div class="hm-scroll" id="hm-region" tabindex="0" role="region" aria-label="曜日×時間帯別ヒートマップ表">
+        <table id="hm-table">
+            <caption class="sr-only">{{ scope_label }}の曜日（行）×時間帯（列）別の平均女性比率（%）と1店舗あたり平均来店人数（名）。サンプル不足のセルは「—」（計測蓄積中）。</caption>
+            <thead>
+                <tr>
+                    <th scope="col"><span class="sr-only">曜日</span></th>
+                    {%- for h in heatmap.axes.hours %}
+                    <th scope="col">{{ h.label }}</th>
+                    {%- endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {%- for d in heatmap.axes.dows %}
+                {%- set row_i = loop.index0 %}
+                <tr>
+                    <th scope="row">{{ d.label }}</th>
+                    {%- for h in heatmap.axes.hours %}
+                    {%- set ci = row_i * (heatmap.axes.hours|length) + loop.index0 %}
+                    {%- set c = heatmap.cells[ci] %}
+                    <td data-i="{{ ci }}" data-rb="{{ c.ratio_band }}" data-hb="{{ c.headcount_band }}" data-wm="{{ '1' if c.women_majority else '0' }}" tabindex="{{ '0' if ci == 0 else '-1' }}">
+                        {%- if c.women_ratio_pct is not none -%}
+                        <span class="v v-r">{{ '%.1f'|format(c.women_ratio_pct) }}{% if c.women_majority %}<span class="sr-only">（女性多数）</span>{% endif %}</span>
+                        {%- else -%}
+                        <span class="v v-r" aria-hidden="true">—</span><span class="v v-r sr-only">計測蓄積中</span>
+                        {%- endif -%}
+                        {%- if c.avg_total is not none -%}
+                        <span class="v v-h">{{ '%.1f'|format(c.avg_total) }}</span>
+                        {%- else -%}
+                        <span class="v v-h" aria-hidden="true">—</span><span class="v v-h sr-only">計測蓄積中</span>
+                        {%- endif -%}
+                    </td>
+                    {%- endfor %}
+                </tr>
+                {%- endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <ul class="hm-legend hm-legend--r" aria-label="平均女性比率の凡例">
+        <li><span class="sw sw-r1" aria-hidden="true"></span>42%未満</li>
+        <li><span class="sw sw-r2" aria-hidden="true"></span>42〜48%</li>
+        <li><span class="sw sw-r3" aria-hidden="true"></span>48〜52%</li>
+        <li><span class="sw sw-r4" aria-hidden="true"></span>52〜58%</li>
+        <li><span class="sw sw-r5" aria-hidden="true"></span>58%以上</li>
+        <li><span class="sw sw-na" aria-hidden="true"></span>— 計測蓄積中</li>
+        <li>上端の線＝女性50%以上</li>
+    </ul>
+    <ul class="hm-legend hm-legend--h" aria-label="平均来店人数の凡例">
+        <li><span class="sw sw-h1" aria-hidden="true"></span>{{ '%.1f'|format(hc_t[0]) }}名以下</li>
+        <li><span class="sw sw-h2" aria-hidden="true"></span>〜{{ '%.1f'|format(hc_t[1]) }}名</li>
+        <li><span class="sw sw-h3" aria-hidden="true"></span>〜{{ '%.1f'|format(hc_t[2]) }}名</li>
+        <li><span class="sw sw-h4" aria-hidden="true"></span>〜{{ '%.1f'|format(hc_t[3]) }}名</li>
+        <li><span class="sw sw-h5" aria-hidden="true"></span>{{ '%.1f'|format(hc_t[3]) }}名超</li>
+        <li><span class="sw sw-na" aria-hidden="true"></span>— 計測蓄積中</li>
+        <li>1店舗・1時間枠あたりの男女合計</li>
+    </ul>
+
+    <p class="hm-status" id="hm-status" aria-live="polite"
+       data-default-ratio="{{ default_ratio_msg }}" data-default-headcount="{{ default_head_msg }}">{{ default_head_msg if metric == 'headcount' else default_ratio_msg }}</p>
+
+    <div class="hm-tip" id="hm-tip" role="tooltip" hidden></div>
+
+    <footer class="hm-foot">
+        <p>出典: 相席ナビ編集部（https://aiseki-navi.com/stats） / CC BY 4.0 ｜ 計測対象期間: {{ meta.window_from }}〜{{ meta.window_to }}（0〜4時は前日の営業日に集計・最低{{ meta.min_cell_buckets }}時間枠未満は非表示）</p>
+        <p><a href="https://aiseki-navi.com/stats#heatmap" target="_top" rel="noopener">相席ナビ 曜日×時間帯別リアルタイム統計</a>{% if sc.type == 'store' and sc.store_slug %} ／ <a href="https://aiseki-navi.com/store/{{ sc.store_slug }}" target="_top" rel="noopener">{{ sc.store_name }}の実測データ</a>{% endif %} ／ <a href="https://creativecommons.org/licenses/by/4.0/deed.ja" target="_top" rel="noopener license">CC BY 4.0</a></p>
+    </footer>
+</main>
+<script type="application/json" id="hm-data">{{ heatmap.cells|tojson }}</script>
+<script>
+(function () {
+    'use strict';
+    var root = document.getElementById('hm');
+    var table = document.getElementById('hm-table');
+    var tip = document.getElementById('hm-tip');
+    var status = document.getElementById('hm-status');
+    var tabs = Array.prototype.slice.call(document.querySelectorAll('.hm-tab'));
+    var cells;
+    try { cells = JSON.parse(document.getElementById('hm-data').textContent || '[]'); } catch (e) { cells = []; }
+    var NCOL = {{ heatmap.axes.hours|length }};
+    var NROW = {{ heatmap.axes.dows|length }};
+    var MIN_B = {{ meta.min_cell_buckets|int }};
+    var tds = Array.prototype.slice.call(table.querySelectorAll('td[data-i]'));
+    var activeTd = null;
+    var inFrame = window.parent && window.parent !== window;
+
+    function fmt(v) { return (typeof v === 'number') ? v.toFixed(1) : '—'; }
+    function num(v) { return (typeof v === 'number') ? v.toLocaleString('ja-JP') : '0'; }
+
+    function describe(c) {
+        if (!c) { return ''; }
+        var head = c.dow_label + '曜 ' + c.hour_label;
+        if (c.status !== 'ok') {
+            return head + '｜計測蓄積中（実測時間枠 n=' + c.n_buckets + '・表示には' + MIN_B + '枠以上が必要）';
+        }
+        var ratio = (c.women_ratio_pct === null) ? '女性比率 計測蓄積中' : ('平均女性比率 ' + fmt(c.women_ratio_pct) + '%');
+        return head + '｜' + ratio + '｜平均 女性' + fmt(c.avg_women) + '名 / 男性' + fmt(c.avg_men) + '名（計' + fmt(c.avg_total) + '名）｜実測時間枠 n=' + c.n_buckets + '（累計計測 ' + num(c.n_snapshots) + '回）';
+    }
+
+    function notifyHeight() {
+        if (!inFrame) { return; }
+        try {
+            window.parent.postMessage({ type: 'aiseki-heatmap:resize', height: document.documentElement.scrollHeight }, '*');
+        } catch (e) { /* cross-origin parent unavailable */ }
+    }
+
+    function defaultStatus() {
+        var m = root.getAttribute('data-metric');
+        status.textContent = status.getAttribute(m === 'headcount' ? 'data-default-headcount' : 'data-default-ratio') || '';
+    }
+
+    function hideTip() {
+        tip.hidden = true;
+        if (activeTd) {
+            activeTd.classList.remove('is-active');
+            activeTd.removeAttribute('aria-describedby');
+        }
+        activeTd = null;
+    }
+
+    function showTip(td) {
+        var c = cells[parseInt(td.getAttribute('data-i'), 10)];
+        if (!c) { return; }
+        if (activeTd && activeTd !== td) {
+            activeTd.classList.remove('is-active');
+            activeTd.removeAttribute('aria-describedby');
+        }
+        activeTd = td;
+        td.classList.add('is-active');
+        var text = describe(c);
+        tip.textContent = text;
+        status.textContent = text;
+        tip.hidden = false;
+        td.setAttribute('aria-describedby', 'hm-tip');
+        var r = td.getBoundingClientRect();
+        var tw = tip.offsetWidth;
+        var th = tip.offsetHeight;
+        var vw = document.documentElement.clientWidth;
+        var left = Math.min(Math.max(6, r.left + r.width / 2 - tw / 2), Math.max(6, vw - tw - 6));
+        var top = r.top - th - 6;
+        if (top < 4) { top = r.bottom + 6; }
+        tip.style.left = left + 'px';
+        tip.style.top = top + 'px';
+    }
+
+    function setRoving(td) {
+        tds.forEach(function (el) { el.tabIndex = -1; });
+        td.tabIndex = 0;
+    }
+
+    function setMetric(m, focusTab) {
+        if (m !== 'ratio' && m !== 'headcount') { return; }
+        root.setAttribute('data-metric', m);
+        tabs.forEach(function (t) {
+            var on = t.getAttribute('data-metric') === m;
+            t.setAttribute('aria-selected', on ? 'true' : 'false');
+            t.tabIndex = on ? 0 : -1;
+            if (on && focusTab) { t.focus(); }
+        });
+        if (activeTd) { showTip(activeTd); } else { defaultStatus(); }
+        notifyHeight();
+    }
+
+    tabs.forEach(function (t, idx) {
+        t.addEventListener('click', function () { setMetric(t.getAttribute('data-metric'), false); });
+        t.addEventListener('keydown', function (ev) {
+            var next = null;
+            if (ev.key === 'ArrowRight') { next = tabs[(idx + 1) % tabs.length]; }
+            else if (ev.key === 'ArrowLeft') { next = tabs[(idx - 1 + tabs.length) % tabs.length]; }
+            else if (ev.key === 'Home') { next = tabs[0]; }
+            else if (ev.key === 'End') { next = tabs[tabs.length - 1]; }
+            if (next) {
+                ev.preventDefault();
+                setMetric(next.getAttribute('data-metric'), true);
+            }
+        });
+    });
+
+    tds.forEach(function (td) {
+        td.addEventListener('mouseenter', function () { showTip(td); });
+        td.addEventListener('focus', function () { setRoving(td); showTip(td); });
+        td.addEventListener('click', function () { setRoving(td); showTip(td); });
+        td.addEventListener('keydown', function (ev) {
+            var i = parseInt(td.getAttribute('data-i'), 10);
+            var row = Math.floor(i / NCOL);
+            var col = i % NCOL;
+            var target = -1;
+            if (ev.key === 'ArrowRight' && col < NCOL - 1) { target = i + 1; }
+            else if (ev.key === 'ArrowLeft' && col > 0) { target = i - 1; }
+            else if (ev.key === 'ArrowDown' && row < NROW - 1) { target = i + NCOL; }
+            else if (ev.key === 'ArrowUp' && row > 0) { target = i - NCOL; }
+            else if (ev.key === 'Escape') { hideTip(); defaultStatus(); return; }
+            if (target < 0) { return; }
+            var nextTd = tds[target];
+            if (!nextTd) { return; }
+            ev.preventDefault();
+            nextTd.focus();
+            if (nextTd.scrollIntoView) { nextTd.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }
+        });
+    });
+
+    table.addEventListener('mouseleave', function () {
+        if (!table.contains(document.activeElement)) { hideTip(); defaultStatus(); }
+    });
+    document.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Escape' && !tip.hidden) { hideTip(); defaultStatus(); }
+    });
+    document.addEventListener('click', function (ev) {
+        if (!tip.hidden && !table.contains(ev.target)) { hideTip(); defaultStatus(); }
+    });
+    document.getElementById('hm-region').addEventListener('scroll', function () {
+        if (activeTd && !tip.hidden) { showTip(activeTd); }
+    }, { passive: true });
+
+    window.addEventListener('message', function (ev) {
+        var d = ev && ev.data;
+        if (!d || typeof d !== 'object' || d.type !== 'aiseki-heatmap:set-theme') { return; }
+        if (d.theme !== 'light' && d.theme !== 'dark') { return; }
+        document.documentElement.setAttribute('data-theme', d.theme);
+        notifyHeight();
+    });
+
+    if (inFrame) {
+        if (typeof ResizeObserver === 'function') {
+            new ResizeObserver(function () { notifyHeight(); }).observe(document.body);
+        }
+        window.addEventListener('load', notifyHeight);
+        notifyHeight();
+    }
+})();
+</script>
+</body>
+</html>

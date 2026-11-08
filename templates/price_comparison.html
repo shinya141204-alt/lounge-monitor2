@@ -36,7 +36,7 @@
 
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
-    <link rel="stylesheet" href="/static/portal.css?v=16">
+    <link rel="stylesheet" href="/static/portal.css?v=17">
 
     <script type="application/ld+json">
     {
@@ -437,14 +437,16 @@
             margin-right: 4px;
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=40">
-    <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
+    <link rel="stylesheet" href="/static/calm.css?v=41">
+    <meta name="color-scheme" content="dark light">
+    <script blocking="render">try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
     <style>html.theme-light{background-color:#f6f6f7;}</style>
+    <link rel="expect" href="#portal-shell" blocking="render">
 </head>
 
 <body>
     <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.body.classList.add('theme-light');}catch(e){}</script>
-    <div class="wrap">
+    <div id="portal-shell" class="wrap">
         <div class="portal-top-header">
             <a href="/" class="portal-brand-link">
                 <span class="portal-brand-title">相席ナビ</span>
@@ -466,7 +468,7 @@
 
         <header class="hero-box">
             <span class="hero-kicker">店舗別の単独（待機）料金 × 4時間帯の相席単価 × 開催中イベント × リアルタイム人数</span>
-            <h1>相席ラウンジ全{{ data.all_domestic_stores|length }}店舗「店舗別料金（待機・相席単価・1名入店可否）＆開催中イベント」横断比較ボード</h1>
+            <h1>相席ラウンジ全{{ data.all_domestic_stores|length }}店舗「店舗別料金（待機・<span style="display:inline-block;">相席単価</span>・<span style="display:inline-block;">1名入店可否</span>）＆開催中イベント」横断比較ボード</h1>
             <p>
                 <strong>オリエンタルラウンジ・ag（アグ）・JIS（ジス）・ASOBIBAR・地域ラウンジ</strong>を含む国内全{{ data.all_domestic_stores|length }}店舗について、<strong>単独（待機）料金（220円〜330円/10分 または 定額・チケット制）</strong>、<strong>4時間帯別の相席10分単価（275円〜1,500円）</strong>、<strong>男性1名入店の可否</strong>を並列で比較できます。行きたい街のタブを選ぶか、ページ下部の<a href="#all-stores-price-catalog" style="color: var(--accent); font-weight: 600; text-decoration: underline;">全{{ data.all_domestic_stores|length }}店舗の料金・待機単価マスタ一覧表</a>をご活用ください。
             </p>
@@ -794,7 +796,7 @@
         </section>
 
         <!-- Section 4: Complete Domestic Store Pricing Master Catalog (Apple Compare Spec Picker + Grid) -->
-        <section id="all-stores-price-catalog" class="section-card apple-open-section">
+        <section id="all-stores-price-catalog" class="section-card apple-open-section cv-defer-catalog">
             <h2 class="section-title">全国全{{ data.all_domestic_stores|length }}店舗の「4時間帯別相席料金・単独（待機）料金・1名入店可否」完全一覧表</h2>
             <p class="section-lead">
                 国内全{{ data.all_domestic_stores|length }}店舗について、任意の店舗を選んで横に並べる<strong>ピックアップ比較</strong>と、エリア検索・1名OK絞り込みに対応した<strong>並列スペック一覧</strong>で確認できます。※特別営業日や料金改定等がある場合は各店舗の公式ホームページが優先されます。
@@ -914,12 +916,14 @@
 
         <!-- Section 5: Adjacent Format System Reference (Public Web Specs Only) -->
         {% if data.adjacent_formats %}
-        <section id="adjacent-format-comparison" class="section-card apple-open-section">
+        <section id="adjacent-format-comparison" class="section-card apple-open-section cv-defer-section">
             <h2 class="section-title">相席ラウンジと他業態（相席屋・1対1専門・スタンディングバー）のシステム比較リファレンス</h2>
             <p class="section-lead">
                 同行人数（1名か2名以上か）や「スタッフ自動案内 vs 20分1対1交代 vs 自由回遊」の違いを、各公式サイトの公開仕様ベースで整理しています。当サイトでリアルタイム人数を計測していない業態は、各公式アプリ・公式サイトにてご確認ください。
             </p>
-            <div class="comp-table-wrap">
+            <div class="table-scroll-frame">
+            <div class="table-scroll-hint" aria-hidden="true">横にスクロールして比較できます →</div>
+            <div class="comp-table-wrap" tabindex="0" role="region" aria-label="相席ラウンジと他業態のシステム比較表">
                 <table class="comp-table" style="min-width: 680px;">
                     <thead>
                         <tr>
@@ -958,6 +962,7 @@
                         {% endfor %}
                     </tbody>
                 </table>
+            </div>
             </div>
             <div style="margin-top: 12px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; font-size: 0.79rem; color: var(--text-sub);">
                 <span>※各ブランドのシステム・年齢制限・店舗別料金は変更される場合があります。来店前に各公式サイトをご確認ください。</span>

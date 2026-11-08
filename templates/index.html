@@ -146,9 +146,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="相席ナビ">
 
-    <link rel="stylesheet" href="/static/style.css?v=20261108_3" fetchpriority="high">
-    <link rel="stylesheet" href="/static/calm.css?v=40" fetchpriority="high">
-    <link rel="preload" href="/static/app.js?v=20261108_3" as="script">
+    <link rel="stylesheet" href="/static/style.css?v=20261109_1" fetchpriority="high">
+    <link rel="stylesheet" href="/static/calm.css?v=41" fetchpriority="high">
+    <link rel="preload" href="/static/app.js?v=20261109_1" as="script">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- Non-render-blocking web font (avoids waiting on Google Fonts at PWA cold launch) -->
@@ -169,64 +169,107 @@
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script src="/static/affiliate_config.js?v=18" defer></script>
     {% endif %}
-    <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
+    <meta name="color-scheme" content="dark light">
+    <script blocking="render">try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
+    <link rel="expect" href="#app-shell" blocking="render">
     <style>
         html.theme-light{background-color:#f6f6f7;}
+        /* Fallback for the store-page CTA (calm.css holds the canonical solid inverted style) */
         .modal-store-page-cta {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 8px;
+            gap: 10px;
             width: 100%;
-            min-height: 42px;
-            margin: 0 0 10px;
-            padding: 9px 14px;
-            border-radius: 10px;
-            background: #232329;
-            border: 1px solid rgba(255, 255, 255, 0.16);
-            color: #f4f4f5;
-            font-size: 0.81rem;
+            min-height: 52px;
+            margin: 0 0 12px;
+            padding: 10px 14px;
+            border-radius: 12px;
+            background: #f4f4f5;
+            border: 1px solid #f4f4f5;
+            color: #111113;
             font-weight: 700;
             text-decoration: none;
             box-sizing: border-box;
         }
         .modal-store-page-cta:hover {
-            background: #2b2b33;
+            background: #e4e4e7;
+            border-color: #e4e4e7;
+        }
+        .modal-store-page-cta.hidden {
+            display: none;
+        }
+        .modal-store-cta-main {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0;
+        }
+        .modal-store-cta-title {
+            font-size: 0.86rem;
+            font-weight: 800;
+            line-height: 1.35;
+        }
+        .modal-store-cta-sub {
+            font-size: 0.72rem;
+            font-weight: 600;
+            line-height: 1.4;
+            color: #3f3f46;
+        }
+        .modal-store-cta-pill {
+            flex-shrink: 0;
+            padding: 5px 10px;
+            border-radius: 999px;
+            background: #111113;
+            color: #f4f4f5;
+            font-size: 0.74rem;
+            font-weight: 700;
+            white-space: nowrap;
         }
         body.theme-light .modal-store-page-cta {
-            background: #f4f4f5;
-            border-color: #d4d4d8;
-            color: #18181b;
+            background: #18181b;
+            border-color: #18181b;
+            color: #ffffff;
         }
         body.theme-light .modal-store-page-cta:hover {
-            background: #e4e4e7;
+            background: #27272a;
+            border-color: #27272a;
+        }
+        body.theme-light .modal-store-cta-sub {
+            color: #d4d4d8;
+        }
+        body.theme-light .modal-store-cta-pill {
+            background: #ffffff;
+            color: #18181b;
         }
         .cmi-store-page-link {
             display: inline-flex;
             align-items: center;
             justify-content: center;
             width: 100%;
-            min-height: 40px;
-            padding: 8px 16px;
+            min-height: 44px;
+            padding: 9px 16px;
             border-radius: 999px;
-            background: #232329;
-            color: #f4f4f5;
-            border: 1px solid rgba(255, 255, 255, 0.18);
-            font-size: 0.8rem;
+            background: #f4f4f5;
+            color: #111113;
+            border: 1px solid #f4f4f5;
+            font-size: 0.82rem;
             font-weight: 700;
             text-decoration: none;
             box-sizing: border-box;
         }
         .cmi-store-page-link:hover {
-            background: #2c2c34;
+            background: #e4e4e7;
+            border-color: #e4e4e7;
         }
         body.theme-light .cmi-store-page-link {
-            background: #f4f4f5;
-            color: #18181b;
-            border-color: #d4d4d8;
+            background: #18181b;
+            color: #ffffff;
+            border-color: #18181b;
         }
         body.theme-light .cmi-store-page-link:hover {
-            background: #e4e4e7;
+            background: #27272a;
+            border-color: #27272a;
         }
     </style>
 </head>
@@ -276,7 +319,7 @@
     <!-- Refresh Toast Notification -->
     <div id="refresh-toast" class="refresh-toast hidden">最新データに更新しました</div>
 
-    <div class="container">
+    <div id="app-shell" class="container">
         {% if not is_staff %}
         <!-- PWA Smart Install Banner -->
         <aside id="pwa-install-banner" class="pwa-install-banner hidden" role="region" aria-label="ホーム画面に追加のご案内">
@@ -697,7 +740,7 @@
                 <h2 class="sr-only">全国相席ラウンジ リアルタイム人数ランキング一覧</h2>
                 <!-- Template for ranking item (placed before #pinned-list so deferred pinned stores render real cards on first paint with zero empty black boxes) -->
                 <template id="ranking-item-template">
-                    <div class="ranking-item">
+                    <div class="ranking-item" tabindex="0">
                         <div class="bento-kicker-row">
                             <span class="bento-kicker-label">TONIGHT'S #1 PICK</span>
                             <span class="bento-verdict-pill is-ok">即入店圏</span>
@@ -794,7 +837,7 @@
                                 {% set ssr_human_copy = '現在女性が' ~ ssr_w_num ~ '名・男性が' ~ ssr_m_num ~ '名入店中です' %}
                             {% endif %}
                             {% set is_bento_hero = (not is_staff) and loop.first and (s.ssr_rank == 1) %}
-                            <div class="ranking-item{% if loop.first %} is-inspector-selected{% endif %}{% if is_bento_hero %} bento-hero-card{% endif %}{% if s.ssr_rank == 1 %} rank-1{% elif s.ssr_rank == 2 %} rank-2{% elif s.ssr_rank == 3 %} rank-3{% endif %}" data-store="{{ s.seo_name or (s.name | seo_store_name) }}" style="cursor: pointer;" onclick="if(window.handleStoreCardClick)handleStoreCardClick({{ (s.seo_name or (s.name | seo_store_name)) | tojson | forceescape }});else if(window.openModal)openModal({{ (s.seo_name or (s.name | seo_store_name)) | tojson | forceescape }})">
+                            <div class="ranking-item{% if loop.first %} is-inspector-selected{% endif %}{% if is_bento_hero %} bento-hero-card{% endif %}{% if s.ssr_rank == 1 %} rank-1{% elif s.ssr_rank == 2 %} rank-2{% elif s.ssr_rank == 3 %} rank-3{% endif %}" data-store="{{ s.seo_name or (s.name | seo_store_name) }}" tabindex="0" style="cursor: pointer;" onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();this.click();}" onclick="if(window.handleStoreCardClick)handleStoreCardClick({{ (s.seo_name or (s.name | seo_store_name)) | tojson | forceescape }});else if(window.openModal)openModal({{ (s.seo_name or (s.name | seo_store_name)) | tojson | forceescape }})">
                                 <div class="bento-kicker-row">
                                     <span class="bento-kicker-label">TONIGHT'S #1 PICK</span>
                                     <span class="bento-verdict-pill {{ 'is-wait' if ((ssr_w_num == 0 and ssr_m_num == 0) or ssr_wait_m > 0) else 'is-ok' }}">{% if ssr_w_num == 0 and ssr_m_num == 0 %}準備中{% elif ssr_wait_m > 0 %}男性待機目安 {{ ssr_wait_m }}分{% elif ssr_w_num >= ssr_m_num %}即入店圏{% else %}待ちなし案内中{% endif %}</span>
@@ -971,16 +1014,30 @@
                         </div>
                         {% set top_slug = (top_s.name | store_linkable_slug) %}
                         <div class="cmi-actions">
-                            <button type="button" class="cmi-primary-cta" onclick="if(window.openModal)openModal({{ top_s.name | tojson | forceescape }})">詳しい曜日・時間帯グラフ＆2軒目を見る</button>
                             {% if top_slug %}
-                            <a href="/store/{{ top_slug }}" class="cmi-store-page-link" data-cushion="1">店舗詳細・料金・近隣比較ページへ ›</a>
+                            <a href="/store/{{ top_slug }}" class="cmi-store-page-link" data-cushion="1">店舗専用ページ（料金・近隣比較・2軒目） ›</a>
                             {% endif %}
+                            <button type="button" class="cmi-secondary-btn" onclick="if(window.openModal)openModal({{ top_s.name | tojson | forceescape }})">詳しい曜日・時間帯グラフ＆2軒目を見る</button>
                         </div>
                         {% endif %}
                     </aside>
                     {% endif %}
                 </div>
                 <script>
+                    (function () {
+                        // Keyboard activation for JS-cloned .ranking-item cards (SSR cards carry their own inline onkeydown)
+                        if (!window.__rankingKeyNavBound) {
+                            window.__rankingKeyNavBound = true;
+                            document.addEventListener('keydown', function (ev) {
+                                if (ev.key !== 'Enter' && ev.key !== ' ') return;
+                                var el = ev.target;
+                                if (!el || !el.classList || !el.classList.contains('ranking-item')) return;
+                                if (el.hasAttribute('onkeydown')) return;
+                                ev.preventDefault();
+                                el.click();
+                            });
+                        }
+                    })();
                     (function () {
                         function buildDeferredPinnedCard(tpl, d) {
                             var frag = tpl.content.cloneNode(true);
@@ -1636,7 +1693,7 @@
     </div>
 
     <!-- Analysis Modal -->
-    <div id="analysis-modal" class="modal hidden">
+    <div id="analysis-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modal-store-name">
         <div class="modal-content">
             <div class="modal-header">
                 <h2 id="modal-store-name">Store Name</h2>
@@ -1651,8 +1708,11 @@
 
             <!-- Modal Store Detail Bridge + Top Quick Share & Official Bar -->
             <a id="modal-store-detail-link" href="/areas" class="modal-store-page-cta hidden" data-cushion="1">
-                <span>この店舗の詳細ページ（料金・2軒目マップ・近隣比較）</span>
-                <span>開く ›</span>
+                <span class="modal-store-cta-main">
+                    <span class="modal-store-cta-title">この店舗の専用ページ</span>
+                    <span class="modal-store-cta-sub">料金・近隣比較・2軒目マップ</span>
+                </span>
+                <span class="modal-store-cta-pill">詳細を見る ›</span>
             </a>
             <div class="modal-top-share-actions">
                 <button class="share-pill-btn x-btn" onclick="shareStoreStatus('x')">𝕏 混雑＋特典をポスト</button>
@@ -1830,10 +1890,10 @@
     <!-- End Analysis Modal -->
 
     <!-- Legal & Privacy Policy Modal -->
-    <div id="legal-modal" class="modal hidden">
+    <div id="legal-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="legal-modal-title">
         <div class="modal-content" style="max-width: 680px;">
             <div class="modal-header">
-                <h2>免責事項・プライバシーポリシー</h2>
+                <h2 id="legal-modal-title">免責事項・プライバシーポリシー</h2>
                 <button class="close-btn-pill" onclick="closeLegalModal()" aria-label="閉じる">✕ 閉じる</button>
             </div>
             <div class="legal-body">
@@ -1865,7 +1925,7 @@
 
     {% if not is_staff and not session.get('is_staff') %}
     <!-- Recommended Apps & Lounge Strategy Guide Modal -->
-    <div id="guide-modal" class="modal hidden">
+    <div id="guide-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="guide-modal-title">
         <div class="modal-content" style="max-width: 740px;">
             <div class="modal-header">
                 <h2 id="guide-modal-title">身だしなみ・おすすめサービス特集</h2>
@@ -1902,10 +1962,10 @@
 
     {% if not is_staff %}
     <!-- Editorial Articles Selector Modal -->
-    <div id="articles-modal" class="modal hidden">
+    <div id="articles-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="articles-modal-title">
         <div class="modal-content articles-modal-content">
             <div class="modal-header">
-                <h2>相席ナビ コラム・記事一覧</h2>
+                <h2 id="articles-modal-title">相席ナビ コラム・記事一覧</h2>
                 <button class="close-btn-pill" onclick="closeArticlesModal()" aria-label="閉じる">✕ 閉じる</button>
             </div>
             <div class="articles-modal-body">
@@ -2317,10 +2377,10 @@
     {% endif %}
 
     <!-- SNS Viral Post Generator Modal (Available for all users & staff) -->
-    <div id="sns-modal" class="modal hidden">
+    <div id="sns-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="sns-modal-title">
         <div class="modal-content" style="max-width: 640px;">
             <div class="modal-header">
-                <h2>SNS速報ポスト作成（集客・共有用）</h2>
+                <h2 id="sns-modal-title">SNS速報ポスト作成（集客・共有用）</h2>
                 <button class="close-btn-pill" onclick="closeSnsModal()" aria-label="閉じる">✕ 閉じる</button>
             </div>
             <div class="sns-modal-body">
@@ -2426,10 +2486,10 @@
     <!-- End SNS Modal -->
 
     <!-- Comparison Modal -->
-    <div id="comparison-modal" class="modal hidden">
+    <div id="comparison-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="comparison-modal-title">
         <div class="modal-content" style="max-width: 680px;">
             <div class="modal-header">
-                <h2>競合比較・系列別サマリー (Brand Comparison)</h2>
+                <h2 id="comparison-modal-title">競合比較・系列別サマリー (Brand Comparison)</h2>
                 <button class="close-btn-pill" onclick="closeComparisonModal()" aria-label="閉じる">✕ 閉じる</button>
             </div>
             <p style="text-align: center; color: var(--text-secondary); font-size: 0.8rem; margin-top: 0; margin-bottom: 12px;">
@@ -2452,10 +2512,10 @@
     <!-- End Comparison Modal -->
 
     <!-- Report Modal -->
-    <div id="report-modal" class="modal hidden">
+    <div id="report-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="report-modal-title">
         <div class="modal-content" style="max-width: 800px;">
             <div class="modal-header">
-                <h2>週間レポート (Weekly Report)</h2>
+                <h2 id="report-modal-title">週間レポート (Weekly Report)</h2>
                 <button class="close-btn-pill" onclick="closeReportModal()" aria-label="閉じる">✕ 閉じる</button>
             </div>
             <p id="report-period" style="text-align: center; color: var(--text-secondary); font-size: 0.8rem; margin-top: 0; margin-bottom: 15px;">
@@ -2470,10 +2530,10 @@
     <!-- End Report Modal -->
 
     <!-- Events List Modal -->
-    <div id="events-modal" class="modal hidden">
+    <div id="events-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="events-modal-title">
         <div class="modal-content" style="max-width: 640px;">
             <div class="modal-header">
-                <h2>最新イベント・キャンペーン速報</h2>
+                <h2 id="events-modal-title">最新イベント・キャンペーン速報</h2>
                 <button class="close-btn-pill" onclick="closeEventsModal()" aria-label="閉じる">✕ 閉じる</button>
             </div>
             <p style="text-align: center; color: var(--text-secondary); font-size: 0.8rem; margin-top: 0; margin-bottom: 10px;">
@@ -2510,10 +2570,10 @@
     <!-- End Events Modal -->
 
     <!-- Beginner / How to Use Modal -->
-    <div id="how-to-modal" class="modal hidden">
+    <div id="how-to-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="how-to-modal-title">
         <div class="modal-content" style="max-width: 600px;">
             <div class="modal-header">
-                <h2>初めての方へ：30秒でわかる使い方</h2>
+                <h2 id="how-to-modal-title">初めての方へ：30秒でわかる使い方</h2>
                 <button class="close-btn-pill" onclick="closeHowToModal(false)" aria-label="閉じる">✕ 閉じる</button>
             </div>
             <div class="how-to-modal-body">
@@ -2582,10 +2642,10 @@
     <!-- End How-to Modal -->
 
     <!-- PWA Install Guide Modal for iOS Safari -->
-    <div id="pwa-guide-modal" class="modal hidden">
+    <div id="pwa-guide-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="pwa-guide-modal-title">
         <div class="modal-content" style="max-width: 480px;">
             <div class="modal-header">
-                <h2>ホーム画面に追加する方法</h2>
+                <h2 id="pwa-guide-modal-title">ホーム画面に追加する方法</h2>
                 <button class="close-btn-pill" onclick="closePwaGuideModal()" aria-label="閉じる">✕ 閉じる</button>
             </div>
             <div class="pwa-guide-body">
@@ -2621,10 +2681,10 @@
     <!-- End PWA Guide Modal -->
 
     <!-- Mobile Navigation Drawer / Menu Modal -->
-    <div id="menu-modal" class="modal hidden">
+    <div id="menu-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="menu-modal-title">
         <div class="modal-content" style="max-width: 520px;">
             <div class="modal-header">
-                <h2>メニュー & 設定</h2>
+                <h2 id="menu-modal-title">メニュー & 設定</h2>
                 <button class="close-btn-pill" onclick="closeMenuModal()" aria-label="閉じる">✕ 閉じる</button>
             </div>
             <div class="menu-modal-body">
@@ -2794,7 +2854,7 @@
         window.INITIAL_STATUS_DATA = {{ (initial_status_client or initial_status) | tojson }};
     </script>
     {% endif %}
-    <script src="/static/app.js?v=20261108_3" defer></script>
+    <script src="/static/app.js?v=20261109_1" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
@@ -2810,7 +2870,7 @@
                 }
                 if (window.__swRegistered) return;
                 window.__swRegistered = true;
-                navigator.serviceWorker.register('/sw.js?v=105', { updateViaCache: 'none' })
+                navigator.serviceWorker.register('/sw.js?v=106', { updateViaCache: 'none' })
                     .then(function(reg) {
                         // Throttle SW update checks to once per 10 minutes (shared via sessionStorage across tab navigations)
                         var maybeUpdate = function() {

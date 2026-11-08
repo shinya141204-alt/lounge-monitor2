@@ -1,5 +1,5 @@
 // Service Worker — Supersedes aiseki-navi-v47 .. (all generations older than CACHE_NAME below; purged automatically on activate)
-const CACHE_NAME = 'aiseki-navi-v105';
+const CACHE_NAME = 'aiseki-navi-v106';
 const SHELL_KEY = '/';
 const LIVE_FRESH_TTL_MS = 45000;
 const LIVE_MAX_STALE_MS = 600000; // Never serve live headcount HTML older than 10 minutes
@@ -33,10 +33,10 @@ const LIVE_SSR_PREFIXES = [
   '/area/'
 ];
 const CORE_ASSETS = [
-  '/static/style.css?v=20261108_3',
-  '/static/calm.css?v=40',
-  '/static/portal.css?v=16',
-  '/static/app.js?v=20261108_3',
+  '/static/style.css?v=20261109_1',
+  '/static/calm.css?v=41',
+  '/static/portal.css?v=17',
+  '/static/app.js?v=20261109_1',
   '/static/affiliate_config.js?v=18',
   '/static/manifest.json?v=3'
 ];

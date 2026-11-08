@@ -81,11 +81,11 @@
     <meta name="theme-color" content="#111113">
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
-    <link rel="stylesheet" href="/static/style.css?v=20261108_3" media="print" onload="this.media='all'">
-    <noscript><link rel="stylesheet" href="/static/style.css?v=20261108_3"></noscript>
+    <link rel="stylesheet" href="/static/style.css?v=20261109_1" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="/static/style.css?v=20261109_1"></noscript>
     <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
     <style>html.theme-light{background-color:#f6f6f7;}</style>
-    <link rel="stylesheet" href="/static/portal.css?v=16">
+    <link rel="stylesheet" href="/static/portal.css?v=17">
     <style>
         body {
             display: block !important;
@@ -197,6 +197,7 @@
             border-collapse: collapse;
             font-size: 0.85rem;
             min-width: 560px;
+            font-variant-numeric: tabular-nums;
         }
         .club-table th, .club-table td {
             padding: 12px 14px;
@@ -256,7 +257,7 @@
             font-size: 0.92rem;
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=40">
+    <link rel="stylesheet" href="/static/calm.css?v=41">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -273,7 +274,7 @@
         <main>
         <nav class="breadcrumb" aria-label="Breadcrumb">
             <a href="/">ホーム</a><span>›</span>
-            <a href="/columns">コラム・攻略一覧</a><span>›</span>
+            <a href="/columns">コラム一覧</a><span>›</span>
             <span>美容サロン激戦区×相席ラウンジ「見せ場」の法則</span>
         </nav>
 
@@ -445,7 +446,7 @@
                 <div style="margin-top:14px;font-size:0.8rem;">
                     <a href="/grooming" data-cushion="1" style="color:#38bdf8;text-decoration:none;margin-right:12px;">身だしなみ・清潔感ガイド</a>
                     <a href="/guide/club-area-midnight" style="color:#38bdf8;text-decoration:none;margin-right:12px;">クラブ街×深夜2回転目の法則</a>
-                    <a href="/stats" style="color:#38bdf8;text-decoration:none;">全国統計データ白書</a>
+                    <a href="/stats#heatmap-widget" style="color:#38bdf8;text-decoration:none;">曜日・時間帯ヒートマップ</a>
                 </div>
             </div>
         </div>

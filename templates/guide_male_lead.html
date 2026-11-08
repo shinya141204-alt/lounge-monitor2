@@ -91,9 +91,9 @@
     <meta name="theme-color" content="#111113">
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
-    <link rel="stylesheet" href="/static/style.css?v=20261108_3" media="print" onload="this.media='all'">
-    <noscript><link rel="stylesheet" href="/static/style.css?v=20261108_3"></noscript>
-    <link rel="stylesheet" href="/static/portal.css?v=16">
+    <link rel="stylesheet" href="/static/style.css?v=20261109_1" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="/static/style.css?v=20261109_1"></noscript>
+    <link rel="stylesheet" href="/static/portal.css?v=17">
     <style>
         body {
             display: block !important;
@@ -225,6 +225,7 @@
             border-collapse: collapse;
             font-size: 0.85rem;
             min-width: 560px;
+            font-variant-numeric: tabular-nums;
         }
         .club-table th, .club-table td {
             padding: 12px 14px;
@@ -284,7 +285,7 @@
             font-size: 0.92rem;
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=40">
+    <link rel="stylesheet" href="/static/calm.css?v=41">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -301,7 +302,7 @@
         <main>
         <nav class="breadcrumb" aria-label="Breadcrumb">
             <a href="/">ホーム</a><span>›</span>
-            <a href="/columns">コラム・攻略一覧</a><span>›</span>
+            <a href="/columns">コラム一覧</a><span>›</span>
             <span>男性先行店舗と30分後の女性数の変化</span>
         </nav>
 
@@ -444,9 +445,9 @@
                 表面上の「女性余り」だけに釣られず、向かう前に確認しておきたい目印は次の2つです。
             </p>
             <ul>
-                <li><strong>【避けたい状態】「女性20名・男性0〜2名」で直近15分の女性増減が「↘ マイナス」の店</strong><br>
+                <li><strong>避けたい状態：「女性20名・男性0〜2名」で直近15分の女性増減が「↘ マイナス」の店</strong><br>
                 すでに女性たちが「男性が来ないから隣の店へ行こう」と退店し始めています。急いで向かっても着いた頃には人が減っていることが多いパターンです。</li>
-                <li><strong>【入りどき】「男性が10名以上いる（男性40〜55%）」かつ「女性 ↗ +数字（直近15分で女性が増え始めている）」店</strong><br>
+                <li><strong>入りどきの目安：「男性が10名以上いる（男性40〜55%）」かつ「女性 ↗ +数字（直近15分で女性が増え始めている）」店</strong><br>
                 すでにフロアが動いており、それを見て新しい女性ペアが入ってきている女性増加の途中です。このタイミングで入ると、<strong>待たされずにテンポよく相席しやすくなります。</strong></li>
             </ul>
 
@@ -454,7 +455,7 @@
             <p>
                 もうひとつ気をつけたいのが、女性が待たなくなった今は<strong>「相席した相手と合わないと感じたときの席替えや退店も速い」</strong>という点です。<br>
                 せっかくタイミングの良いお店に入れたのに、仕事終わりのヒゲや顔の皮脂テカリ、シワの寄った服のまま座ってしまうと、女性は20分ほどで「友達と合流する予定があって」と次のお店へ移ってしまいます。<br>
-                入店前に駅のトイレで軽く皮脂を押さえ、清潔感のある服装で座るだけでも相手の反応や滞在時間は変わってきます（具体的なチェック項目は<a href="/guide/first-10-minutes" style="color:#38bdf8;">最初の10分で意識したい会話と身だしなみ</a>や<a href="/grooming" data-cushion="1" style="color:#38bdf8;">入店前の身だしなみ準備まとめ</a>も参考にしてみてください）。
+                入店前に駅のトイレで軽く皮脂を押さえ、清潔感のある服装で座るだけでも相手の反応や滞在時間は変わってきます（着席直後の空気づくりは<a href="/guide/first-10-minutes" style="color:#38bdf8;">最初の10分の会話・距離感ガイド</a>、身だしなみの基準は<a href="/guide/dress-code-cleanliness" style="color:#38bdf8;">5ブランドのNGドレスコード・清潔感チェック</a>や<a href="/grooming" data-cushion="1" style="color:#38bdf8;">入店前の準備まとめ</a>も参考にしてみてください）。
             </p>
 
             {% if not is_staff and not session.get('is_staff') %}
@@ -478,7 +479,7 @@
                 <div style="margin-top:14px;font-size:0.8rem;">
                     <a href="/guide/weekend-strategy" style="color:#38bdf8;text-decoration:none;margin-right:12px;">金・土の混む時間帯とハシゴの考え方</a>
                     <a href="/guide/beauty-area-stage" style="color:#38bdf8;text-decoration:none;margin-right:12px;">美容街×19時サロン帰りの傾向</a>
-                    <a href="/stats" style="color:#38bdf8;text-decoration:none;">全国オープンデータ統計白書</a>
+                    <a href="/stats#heatmap-widget" style="color:#38bdf8;text-decoration:none;">曜日・時間帯ヒートマップ</a>
                 </div>
             </div>
         </div>

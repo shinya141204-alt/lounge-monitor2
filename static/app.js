@@ -133,13 +133,64 @@
             return jst.getUTCDay();
         }
 
+        const PUBLIC_NAME_SLUG_FALLBACK = {
+            'JIS（ジス）札幌': 'jis-sapporo',
+            'JIS（ジス）大宮': 'jis-omiya',
+            'JIS（ジス）新宿': 'jis-shinjuku',
+            'JIS（ジス）西新宿': 'jis-nishishinjuku',
+            'JIS（ジス）梅田': 'jis-umeda',
+            'JIS（ジス）難波': 'jis-namba',
+            'JIS（ジス）茶屋町': 'jis-chayamachi',
+            'JIS（ジス）福岡': 'jis-fukuoka',
+            'JIS（ジス）熊本': 'jis-kumamoto',
+            'JIS（ジス）松山': 'jis-matsuyama',
+            '相席ラウンジXIX 岡山': 'xix-okayama',
+            'ヤタコイ 梅田茶屋町': 'yatakoi-umeda',
+            '相席CLOVERS 広島': 'clovers-hiroshima',
+            '相席ラウンジALFA 広島': 'alfa-hiroshima'
+        };
+        function _toInternalMasterKey(name) {
+            const s = String(name || '').trim();
+            if (!s) return '';
+            if (s.indexOf('オリエンタルラウンジ ') === 0) return 'OLG ' + s.slice('オリエンタルラウンジ '.length);
+            if (s.indexOf('ag（アグ）') === 0) return 'OLG ag' + s.slice('ag（アグ）'.length);
+            if (s.indexOf('ASOBIBAR（アソビバー）') === 0) return 'ASOBIBAR ' + s.slice('ASOBIBAR（アソビバー）'.length);
+            return s;
+        }
         function getStoreMasterInfo(storeName) {
-            return (window.STORE_MASTER && window.STORE_MASTER[String(storeName || '').trim()]) || null;
+            const key = String(storeName || '').trim();
+            if (!key || !window.STORE_MASTER) return null;
+            const normKey = _toInternalMasterKey(key);
+            if (window.STORE_MASTER[key]) return window.STORE_MASTER[key];
+            if (window.STORE_MASTER[normKey]) return window.STORE_MASTER[normKey];
+            for (const k of Object.keys(window.STORE_MASTER)) {
+                const info = window.STORE_MASTER[k];
+                if (info && (info.seo_name === key || info.display_name === key)) return info;
+            }
+            return null;
         }
         function getStoreSlug(storeName) {
+            if (storeName && typeof storeName === 'object' && storeName.slug) {
+                return String(storeName.slug).trim();
+            }
             const key = String(storeName || '').trim();
             if (!key) return '';
-            return (storeMasterMap && storeMasterMap[key]?.slug) || STORE_SLUG_FALLBACK[key] || '';
+            if (window.lastData) {
+                const pools = [window.lastData.ranking, window.lastData.full_data];
+                for (const pool of pools) {
+                    if (!Array.isArray(pool)) continue;
+                    for (let i = 0; i < pool.length; i++) {
+                        const it = pool[i];
+                        if (it && it.slug && (it.name === key || it.seo_name === key)) {
+                            return String(it.slug).trim();
+                        }
+                    }
+                }
+            }
+            const mInfo = getStoreMasterInfo(key);
+            if (mInfo && mInfo.slug) return String(mInfo.slug).trim();
+            const normKey = _toInternalMasterKey(key);
+            return STORE_SLUG_FALLBACK[key] || STORE_SLUG_FALLBACK[normKey] || PUBLIC_NAME_SLUG_FALLBACK[key] || '';
         }
         (function loadStoreMaster() {
             const doFetchMaster = () => {
@@ -707,6 +758,8 @@
             } else if (themeName === 'light') {
                 document.body.classList.add('theme-light');
             }
+            // ルート要素にも同期し、color-scheme（ネイティブスクロールバー・フォーム部品）を即時追従させる
+            document.documentElement.classList.toggle('theme-light', themeName === 'light');
             document.querySelectorAll('.theme-pill-btn').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.theme === themeName);
             });
@@ -1922,6 +1975,15 @@
                 item.removeAttribute('onclick');
                 item.style.cursor = 'pointer';
                 item.onclick = () => handleStoreCardClick(store.name);
+                // キーボード操作対応：カード自身にフォーカスがあるときだけ Enter / Space で開く（内部ボタンの操作は妨げない）
+                item.setAttribute('tabindex', '0');
+                item.onkeydown = (e) => {
+                    if (e.target !== item) return;
+                    if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+                        e.preventDefault();
+                        handleStoreCardClick(store.name);
+                    }
+                };
                 if (pinBtn) {
                     pinBtn.removeAttribute('onclick');
                     pinBtn.onclick = (e) => {
@@ -3144,11 +3206,84 @@
             box.classList.remove('hidden');
         }
 
+        // ==========================================
+        // Modal A11y Helper（全11モーダル共通）
+        // - Invoker 記憶 → モーダル内へフォーカス移動 → 閉じたら元の要素へ復帰
+        // - 開いている間は背面 .container を inert 化（Tab 抜け・誤操作防止）
+        // - 背面ホイールスクロール遮断（html の overflow には一切触れない／全モーダル閉時は無介入）
+        // ※ var 宣言：スクリプト評価途中で open/close が呼ばれても TDZ にならないようにする
+        // ==========================================
+        var _lastModalInvoker = null;
+        var _modalWheelGuardBound = false;
+        var MODAL_FOCUSABLE_SELECTOR = 'a[href], button:not([disabled]), summary, select:not([disabled]), input:not([disabled]):not([type="hidden"]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+        function _anyModalOpen() {
+            return Boolean(document.querySelector('.modal:not(.hidden)'));
+        }
+
+        function _isFocusRestorable(el) {
+            if (!el || el === document.body || el === document.documentElement || typeof el.focus !== 'function') return false;
+            if (!el.isConnected) return false;
+            if (el.closest && el.closest('.modal')) return false;
+            try {
+                if (el.getClientRects().length === 0) return false;
+            } catch (e) {
+                return false;
+            }
+            return true;
+        }
+
+        function _bindModalWheelGuard() {
+            if (_modalWheelGuardBound) return;
+            _modalWheelGuardBound = true;
+            document.addEventListener('wheel', (e) => {
+                if (!_anyModalOpen()) return;
+                const t = e.target;
+                if (t && t.closest && t.closest('.modal-content')) return;
+                if (e.cancelable) e.preventDefault();
+            }, { passive: false, capture: true });
+        }
+
+        function activateModalA11y(modalId) {
+            try {
+                const modal = document.getElementById(modalId);
+                if (!modal || modal.classList.contains('hidden')) return;
+                const hasOtherOpen = Array.prototype.some.call(
+                    document.querySelectorAll('.modal:not(.hidden)'),
+                    (m) => m !== modal
+                );
+                const active = document.activeElement;
+                if (!hasOtherOpen && active && active !== document.body && !(active.closest && active.closest('.modal'))) {
+                    _lastModalInvoker = active;
+                }
+                const container = document.querySelector('.container');
+                if (container) container.inert = true;
+                _bindModalWheelGuard();
+                const focusTarget = modal.querySelector('.close-btn-pill') || modal.querySelector(MODAL_FOCUSABLE_SELECTOR);
+                if (focusTarget && typeof focusTarget.focus === 'function') {
+                    focusTarget.focus({ preventScroll: true });
+                }
+            } catch (e) {}
+        }
+
+        function deactivateModalA11y(modalId) {
+            try {
+                if (_anyModalOpen()) return;
+                const container = document.querySelector('.container');
+                if (container) container.inert = false;
+                if (document.body && document.body.style.overflow === 'hidden') document.body.style.overflow = '';
+                const invoker = _lastModalInvoker;
+                _lastModalInvoker = null;
+                if (_isFocusRestorable(invoker)) invoker.focus({ preventScroll: true });
+            } catch (e) {}
+        }
+
         function openGuideModal(initialCategory = 'all') {
             if (IS_STAFF_SESSION) return;
             currentGuideCategory = initialCategory;
             renderGuideModal();
             document.getElementById('guide-modal')?.classList.remove('hidden');
+            activateModalA11y('guide-modal');
         }
 
         function filterGuideCategory(catId) {
@@ -3272,6 +3407,7 @@
 
         function closeGuideModal() {
             document.getElementById('guide-modal')?.classList.add('hidden');
+            deactivateModalA11y('guide-modal');
         }
 
         // Mobile Menu / Drawer Modal
@@ -3280,6 +3416,7 @@
             if (modal) {
                 modal.classList.remove('hidden');
                 document.body.style.overflow = 'hidden';
+                activateModalA11y('menu-modal');
             }
         }
 
@@ -3287,8 +3424,9 @@
             const modal = document.getElementById('menu-modal');
             if (modal) {
                 modal.classList.add('hidden');
-                document.body.style.overflow = '';
+                if (!_anyModalOpen()) document.body.style.overflow = '';
             }
+            deactivateModalA11y('menu-modal');
         }
 
         // Editorial Articles Selector Modal
@@ -3297,6 +3435,7 @@
             if (modal) {
                 modal.classList.remove('hidden');
                 document.body.style.overflow = 'hidden';
+                activateModalA11y('articles-modal');
             }
         }
 
@@ -3304,8 +3443,9 @@
             const modal = document.getElementById('articles-modal');
             if (modal) {
                 modal.classList.add('hidden');
-                document.body.style.overflow = '';
+                if (!_anyModalOpen()) document.body.style.overflow = '';
             }
+            deactivateModalA11y('articles-modal');
         }
 
         // Beginner / How-To Guide Modal
@@ -3314,6 +3454,7 @@
             if (modal) {
                 modal.classList.remove('hidden');
                 document.body.style.overflow = 'hidden';
+                activateModalA11y('how-to-modal');
             }
         }
 
@@ -3321,8 +3462,9 @@
             const modal = document.getElementById('how-to-modal');
             if (modal) {
                 modal.classList.add('hidden');
-                document.body.style.overflow = '';
+                if (!_anyModalOpen()) document.body.style.overflow = '';
             }
+            deactivateModalA11y('how-to-modal');
             const cb = document.getElementById('how-to-dont-show-cb');
             if (fromUserAction || (cb && cb.checked)) {
                 try {
@@ -3482,10 +3624,12 @@
 
         function openLegalModal() {
             document.getElementById('legal-modal')?.classList.remove('hidden');
+            activateModalA11y('legal-modal');
         }
 
         function closeLegalModal() {
             document.getElementById('legal-modal')?.classList.add('hidden');
+            deactivateModalA11y('legal-modal');
         }
 
         // --- SNS Viral Post Generator Modal Logic ---
@@ -3699,10 +3843,12 @@
             }
             selectSnsPreset(defaultPreset);
             document.getElementById('sns-modal')?.classList.remove('hidden');
+            activateModalA11y('sns-modal');
         }
 
         function closeSnsModal() {
             document.getElementById('sns-modal')?.classList.add('hidden');
+            deactivateModalA11y('sns-modal');
         }
 
         async function postGeneratedSns(platform) {
@@ -3977,6 +4123,9 @@
             }
 
             const officialUrl = getOfficialBrandUrl(bInfo.code, target.name);
+            const detailSlug = (target.region !== 'Korea' && String(target.name || '').indexOf('ソウル') === -1)
+                ? (getStoreSlug(target.name) || '')
+                : '';
             const sparkSvg = (Array.isArray(curvePoints) && curvePoints.length >= 2)
                 ? _buildInspectorSparklineSvg(curvePoints, isLight)
                 : '<p class="cmi-curve-pending cmi-curve-val" style="margin:8px 0 0;">検証ログ蓄積中</p>';
@@ -4021,11 +4170,12 @@
                     ${hopHtml}
                 </div>
                 <div class="cmi-actions">
-                    <a href="${escapeHtml(officialUrl)}" target="_blank" rel="noopener noreferrer" class="cmi-primary-cta">公式サイト・店舗詳細を確認する ${UI_SVG_ARROW_NE}</a>
-                    ${(target.region !== 'Korea' && String(target.name || '').indexOf('ソウル') === -1 && getStoreSlug(target.name))
-                        ? `<a href="/store/${escapeHtml(getStoreSlug(target.name))}" class="cmi-store-page-link" data-cushion="1">店舗詳細・料金・近隣比較ページへ ›</a>`
-                        : ''}
+                    ${detailSlug
+                        ? `<a href="/store/${escapeHtml(detailSlug)}" class="cmi-store-page-link" data-cushion="1">店舗専用ページ（料金・近隣比較・2軒目） ›</a>
                     <button type="button" class="cmi-secondary-btn">詳しい曜日・時間帯グラフ＆2軒目を見る</button>
+                    <a href="${escapeHtml(officialUrl)}" target="_blank" rel="noopener noreferrer" class="cmi-primary-cta">公式サイトを確認する ${UI_SVG_ARROW_NE}</a>`
+                        : `<a href="${escapeHtml(officialUrl)}" target="_blank" rel="noopener noreferrer" class="cmi-primary-cta">公式サイト・店舗詳細を確認する ${UI_SVG_ARROW_NE}</a>
+                    <button type="button" class="cmi-secondary-btn">詳しい曜日・時間帯グラフ＆2軒目を見る</button>`}
                 </div>
             `;
 
@@ -4158,6 +4308,28 @@
                 const detailSlug = (String(storeName || '').indexOf('ソウル') === -1) ? getStoreSlug(storeName) : '';
                 if (detailSlug) {
                     modalStoreDetailEl.href = '/store/' + encodeURIComponent(detailSlug);
+                    // 主役CTAの2段構成（タイトル＋サブ／右端ピル）を保証（textContent 経由で XSS 安全）
+                    let ctaTitleEl = modalStoreDetailEl.querySelector('.modal-store-cta-title');
+                    let ctaSubEl = modalStoreDetailEl.querySelector('.modal-store-cta-sub');
+                    if (!ctaTitleEl) {
+                        modalStoreDetailEl.textContent = '';
+                        const mainEl = document.createElement('span');
+                        mainEl.className = 'modal-store-cta-main';
+                        ctaTitleEl = document.createElement('span');
+                        ctaTitleEl.className = 'modal-store-cta-title';
+                        ctaSubEl = document.createElement('span');
+                        ctaSubEl.className = 'modal-store-cta-sub';
+                        mainEl.appendChild(ctaTitleEl);
+                        mainEl.appendChild(ctaSubEl);
+                        const pillEl = document.createElement('span');
+                        pillEl.className = 'modal-store-cta-pill';
+                        pillEl.setAttribute('aria-hidden', 'true');
+                        pillEl.textContent = '詳細を見る ›';
+                        modalStoreDetailEl.appendChild(mainEl);
+                        modalStoreDetailEl.appendChild(pillEl);
+                    }
+                    ctaTitleEl.textContent = `${bInfo.fullDisplayTitle}`;
+                    if (ctaSubEl) ctaSubEl.textContent = '店舗専用ページ（料金・近隣比較・2軒目）';
                     modalStoreDetailEl.classList.remove('hidden');
                 } else {
                     modalStoreDetailEl.classList.add('hidden');
@@ -4175,6 +4347,7 @@
             renderModalSecondVenues(storeName, gen);
 
             modal.classList.remove('hidden');
+            activateModalA11y('analysis-modal');
             if (modalContent) modalContent.scrollTop = 0;
 
             // Check frontend cache first for instant (0ms) display
@@ -4220,7 +4393,8 @@
                 try { _modalAbort.abort(); } catch (e) {}
                 _modalAbort = null;
             }
-            document.getElementById('analysis-modal').classList.add('hidden');
+            document.getElementById('analysis-modal')?.classList.add('hidden');
+            deactivateModalA11y('analysis-modal');
             if (dailyChartInstance) { dailyChartInstance.destroy(); dailyChartInstance = null; }
             if (weekdayAnalysisChartInstance) { weekdayAnalysisChartInstance.destroy(); weekdayAnalysisChartInstance = null; }
             if (hourlyWeekdayChartInstance) { hourlyWeekdayChartInstance.destroy(); hourlyWeekdayChartInstance = null; }
@@ -4845,7 +5019,9 @@
         async function openEventsModal() {
             const modal = document.getElementById('events-modal');
             const container = document.getElementById('all-events-container');
+            if (!modal) return;
             modal.classList.remove('hidden');
+            activateModalA11y('events-modal');
 
             if (!window.allEvents || window.allEvents.length === 0) {
                 container.innerHTML = '<div style="text-align:center; padding:20px;"><div class="spinner" style="margin:0 auto 10px auto;"></div>最新イベント＆各店限定バナーを読み込み中...</div>';
@@ -4860,6 +5036,7 @@
 
         function closeEventsModal() {
             document.getElementById('events-modal')?.classList.add('hidden');
+            deactivateModalA11y('events-modal');
         }
 
         // Close on clicking background
@@ -4890,10 +5067,15 @@
         document.getElementById('menu-modal')?.addEventListener('click', (e) => {
             if (e.target.id === ('menu-modal')) closeMenuModal();
         });
+        document.getElementById('pwa-guide-modal')?.addEventListener('click', (e) => {
+            if (e.target.id === ('pwa-guide-modal')) closePwaGuideModal();
+        });
 
-        // Close any active modal with ESC key
+        // Close any active modal with ESC key（開いているモーダルがあるときのみ）
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
+                if (!_anyModalOpen()) return;
+                closePwaGuideModal();
                 closeModal();
                 closeComparisonModal();
                 closeLegalModal();
@@ -5034,7 +5216,9 @@
         async function openComparisonModal() {
             const modal = document.getElementById('comparison-modal');
             const summaryContainer = document.getElementById('comparison-brand-summary');
+            if (!modal) return;
             modal.classList.remove('hidden');
+            activateModalA11y('comparison-modal');
 
             if (summaryContainer) {
                 summaryContainer.innerHTML = '<div style="text-align:center; padding:15px; color:var(--text-secondary);"><div class="spinner" style="margin:0 auto 8px auto;"></div>系列データを集計中...</div>';
@@ -5175,6 +5359,7 @@
 
         function closeComparisonModal() {
             document.getElementById('comparison-modal')?.classList.add('hidden');
+            deactivateModalA11y('comparison-modal');
             if (comparisonChartInstance) { comparisonChartInstance.destroy(); comparisonChartInstance = null; }
         }
 
@@ -5183,8 +5368,10 @@
             const modal = document.getElementById('report-modal');
             const content = document.getElementById('report-content');
             const period = document.getElementById('report-period');
-            
+            if (!modal) return;
+
             modal.classList.remove('hidden');
+            activateModalA11y('report-modal');
             content.innerHTML = '<div class="spinner"></div>';
             period.textContent = '集計中...';
 
@@ -5274,6 +5461,7 @@
 
         function closeReportModal() {
             document.getElementById('report-modal')?.classList.add('hidden');
+            deactivateModalA11y('report-modal');
         }
 
         document.getElementById('report-modal')?.addEventListener('click', (e) => {
@@ -5933,12 +6121,16 @@
 
         function openPwaGuideModal() {
             const modal = document.getElementById('pwa-guide-modal');
-            if (modal) modal.classList.remove('hidden');
+            if (modal) {
+                modal.classList.remove('hidden');
+                activateModalA11y('pwa-guide-modal');
+            }
         }
 
         function closePwaGuideModal() {
             const modal = document.getElementById('pwa-guide-modal');
             if (modal) modal.classList.add('hidden');
+            deactivateModalA11y('pwa-guide-modal');
         }
 
         // Hydrate SSR / cached status AFTER all top-level const/let declarations (avoids TDZ ReferenceError in detectBrandInfo/syncPcInspector)
@@ -5981,6 +6173,9 @@
             if (persisted) {
                 document.querySelectorAll('.modal:not(.hidden)').forEach(m => m.classList.add('hidden'));
                 if (document.body) document.body.style.overflow = '';
+                const bfContainer = document.querySelector('.container');
+                if (bfContainer) bfContainer.inert = false;
+                _lastModalInvoker = null;
                 if (_modalAbort) {
                     try { _modalAbort.abort(); } catch (err) {}
                     _modalAbort = null;

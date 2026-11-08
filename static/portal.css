@@ -503,9 +503,21 @@ body.theme-light .apple-seg-btn.active {
     color: #f4f4f5;
     font-family: inherit;
     font-size: 0.81rem;
-    outline: none;
     min-width: 0;
     width: min(100%, 260px);
+}
+
+.apple-spec-search:focus:not(:focus-visible) {
+    outline: none;
+}
+
+.apple-spec-search:focus-visible {
+    outline: 2px solid #f4f4f5;
+    outline-offset: 2px;
+}
+
+body.theme-light .apple-spec-search:focus-visible {
+    outline-color: #18181b;
 }
 
 .apple-spec-search::placeholder {
@@ -1017,4 +1029,258 @@ body.theme-light [style*="color: #9ca3af"],
 body.theme-light [style*="color:#94a3b8"],
 body.theme-light [style*="color: #94a3b8"] {
     color: #52525b !important;
+}
+
+/* ==========================================================================
+   2026-11 Web 標準モダン化（portal.css 側）
+   - 本ファイルは :root にカスタムプロパティを持たないため、色はすべてハードコードのニュートラル値
+   ========================================================================== */
+
+/* ---- Cross-document View Transitions ---- */
+@view-transition {
+    navigation: auto;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+    animation-duration: 0.16s;
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+#aiseki-nav-progress,
+#aiseki-nav-pill,
+#aiseki-reading-progress {
+    view-transition-name: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    @view-transition {
+        navigation: none;
+    }
+}
+
+/* ---- キーボードフォーカスリング ---- */
+:where(a, button, summary, select, input, textarea, [tabindex]:not([tabindex="-1"])):focus-visible {
+    outline: 2px solid #f4f4f5;
+    outline-offset: 2px;
+}
+
+html.theme-light :where(a, button, summary, select, input, textarea, [tabindex]:not([tabindex="-1"])):focus-visible,
+body.theme-light :where(a, button, summary, select, input, textarea, [tabindex]:not([tabindex="-1"])):focus-visible {
+    outline-color: #18181b;
+}
+
+@media (forced-colors: active) {
+    :where(a, button, summary, select, input, textarea, [tabindex]:not([tabindex="-1"])):focus-visible,
+    html.theme-light :where(a, button, summary, select, input, textarea, [tabindex]:not([tabindex="-1"])):focus-visible,
+    body.theme-light :where(a, button, summary, select, input, textarea, [tabindex]:not([tabindex="-1"])):focus-visible,
+    .apple-spec-search:focus-visible,
+    body.theme-light .apple-spec-search:focus-visible {
+        outline: 2px solid Highlight;
+        outline-offset: 2px;
+    }
+}
+
+/* ---- レスポンシブ比較表：横スクロール端フェード・補助ラベル・スティッキー見出し＆先頭列 ---- */
+.table-scroll-frame {
+    position: relative;
+    max-width: 100%;
+}
+
+.comp-table-wrap,
+.stats-table-wrap {
+    overscroll-behavior-x: contain;
+}
+
+@supports (container-type: scroll-state) {
+    .comp-table-wrap,
+    .stats-table-wrap {
+        container-type: scroll-state;
+    }
+}
+
+.table-scroll-frame[data-scroll-right="1"]::after,
+.table-scroll-frame[data-scroll-left="1"]::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 24px;
+    pointer-events: none;
+    z-index: 4;
+}
+
+.table-scroll-frame[data-scroll-right="1"]::after {
+    right: 0;
+    background: linear-gradient(to left, rgba(17, 17, 19, 0.88), transparent);
+}
+
+.table-scroll-frame[data-scroll-left="1"]::before {
+    left: 0;
+    background: linear-gradient(to right, rgba(17, 17, 19, 0.88), transparent);
+}
+
+body.theme-light .table-scroll-frame[data-scroll-right="1"]::after {
+    background: linear-gradient(to left, rgba(246, 246, 247, 0.92), transparent);
+}
+
+body.theme-light .table-scroll-frame[data-scroll-left="1"]::before {
+    background: linear-gradient(to right, rgba(246, 246, 247, 0.92), transparent);
+}
+
+.table-scroll-hint {
+    display: none;
+}
+
+.table-scroll-frame[data-overflowing="1"] .table-scroll-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: #b4b4be;
+}
+
+body.theme-light .table-scroll-frame[data-overflowing="1"] .table-scroll-hint {
+    color: #52525b;
+}
+
+body:not(.staff-mode) .comp-table thead th,
+body:not(.staff-mode) .store-comp-table thead th {
+    position: sticky;
+    top: 0;
+    inset-block-start: 0;
+    z-index: 2;
+}
+
+body:not(.theme-light):not(.staff-mode) .comp-table thead th,
+body:not(.theme-light):not(.staff-mode) .store-comp-table thead th {
+    background: #1a1a1e !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .apple-open-section .comp-table thead th,
+body:not(.theme-light):not(.staff-mode) .apple-open-section .store-comp-table thead th {
+    background: #111113 !important;
+}
+
+body.theme-light:not(.staff-mode) .comp-table thead th,
+body.theme-light:not(.staff-mode) .store-comp-table thead th {
+    background: #ffffff !important;
+}
+
+body.theme-light:not(.staff-mode) .apple-open-section .comp-table thead th,
+body.theme-light:not(.staff-mode) .apple-open-section .store-comp-table thead th {
+    background: #f6f6f7 !important;
+}
+
+@media (max-width: 760px) {
+    body:not(.staff-mode) .comp-table thead th:first-child,
+    body:not(.staff-mode) .comp-table tbody th:first-child,
+    body:not(.staff-mode) .comp-table tbody td:first-child {
+        position: sticky;
+        left: 0;
+        inset-inline-start: 0;
+        z-index: 1;
+        min-width: 128px;
+        max-width: 164px;
+    }
+
+    body:not(.staff-mode) .comp-table thead th:first-child {
+        z-index: 3;
+    }
+
+    body:not(.theme-light):not(.staff-mode) .comp-table thead th:first-child,
+    body:not(.theme-light):not(.staff-mode) .comp-table tbody th:first-child,
+    body:not(.theme-light):not(.staff-mode) .comp-table tbody td:first-child {
+        background: #1a1a1e !important;
+        box-shadow: 1px 0 0 rgba(255, 255, 255, 0.12);
+    }
+
+    body:not(.theme-light):not(.staff-mode) .apple-open-section .comp-table thead th:first-child,
+    body:not(.theme-light):not(.staff-mode) .apple-open-section .comp-table tbody th:first-child,
+    body:not(.theme-light):not(.staff-mode) .apple-open-section .comp-table tbody td:first-child {
+        background: #111113 !important;
+    }
+
+    body.theme-light:not(.staff-mode) .comp-table thead th:first-child,
+    body.theme-light:not(.staff-mode) .comp-table tbody th:first-child,
+    body.theme-light:not(.staff-mode) .comp-table tbody td:first-child {
+        background: #ffffff !important;
+        box-shadow: 1px 0 0 rgba(24, 24, 27, 0.10);
+    }
+
+    body.theme-light:not(.staff-mode) .apple-open-section .comp-table thead th:first-child,
+    body.theme-light:not(.staff-mode) .apple-open-section .comp-table tbody th:first-child,
+    body.theme-light:not(.staff-mode) .apple-open-section .comp-table tbody td:first-child {
+        background: #f6f6f7 !important;
+    }
+
+    body:not(.theme-light):not(.staff-mode) .comp-table tbody tr.best-row th:first-child,
+    body:not(.theme-light):not(.staff-mode) .comp-table tbody tr.best-row td:first-child {
+        background: #232122 !important;
+    }
+
+    body:not(.theme-light):not(.staff-mode) .apple-open-section .comp-table tbody tr.best-row th:first-child,
+    body:not(.theme-light):not(.staff-mode) .apple-open-section .comp-table tbody tr.best-row td:first-child {
+        background: #1a1817 !important;
+    }
+
+    body.theme-light:not(.staff-mode) .comp-table tbody tr.best-row th:first-child,
+    body.theme-light:not(.staff-mode) .comp-table tbody tr.best-row td:first-child {
+        background: #fcfaf7 !important;
+    }
+
+    body.theme-light:not(.staff-mode) .apple-open-section .comp-table tbody tr.best-row th:first-child,
+    body.theme-light:not(.staff-mode) .apple-open-section .comp-table tbody tr.best-row td:first-child {
+        background: #f4f2ef !important;
+    }
+}
+
+/* ---- モバイル横スクロールリボン右端フェード ＆ 日本語見出しの自然な文節改行 ---- */
+@media (max-width: 859px) {
+    .portal-global-nav-row > .portal-global-nav {
+        padding-right: 18px !important;
+        -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 22px), transparent 100%);
+        mask-image: linear-gradient(to right, #000 calc(100% - 22px), transparent 100%);
+    }
+}
+
+body:not(.staff-mode) h1,
+body:not(.staff-mode) h2,
+body:not(.staff-mode) .page-title,
+body:not(.staff-mode) .store-hero-title {
+    word-break: auto-phrase;
+    overflow-wrap: anywhere;
+}
+
+/* ---- below-the-fold 長大セクションの描画遅延（contain-intrinsic-size とペアで CLS 防止） ---- */
+.cv-defer-section {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 560px;
+}
+
+.cv-defer-catalog {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 1600px;
+}
+
+#catalog-spec-grid > .apple-compare-col:nth-child(n+10) {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 340px;
+}
+
+body:not(.staff-mode) .seo-portal-section {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 920px;
+}
+
+.areas-page-list > .area-section-card:nth-of-type(n+3) {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 540px;
+}
+
+#columns-articles-grid > .article-card:nth-child(n+7) {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 360px;
 }

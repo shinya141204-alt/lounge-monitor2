@@ -1,4 +1,5 @@
 :root {
+    color-scheme: dark;
     --bg-color: #0f1014;
     --card-bg: #16171c;
     --card-hover: #1b1c22;
@@ -11,6 +12,12 @@
     --accent-bronze: #a7825c;
     --accent-red: #d8a1aa;
     --font-main: 'Outfit', sans-serif;
+}
+
+/* ライト/ダーク切替時にネイティブスクロールバー・フォーム部品の配色も追従させる（portal.css / calm.css と整合） */
+html.theme-light,
+body.theme-light {
+    color-scheme: light;
 }
 
 body {
@@ -530,9 +537,21 @@ h1 {
 }
 
 #search-input:focus {
-    outline: none;
     border-color: var(--accent-gold);
     background: rgba(255, 255, 255, 0.1);
+}
+
+#search-input:focus:not(:focus-visible) {
+    outline: none;
+}
+
+#search-input:focus-visible {
+    outline: 2px solid #f4f4f5;
+    outline-offset: 2px;
+}
+
+body.theme-light #search-input:focus-visible {
+    outline-color: #18181b;
 }
 
 .sort-controls {
@@ -885,10 +904,40 @@ body.theme-light .filter-btn-city {
     justify-content: center;
     padding: 12px;
     box-sizing: border-box;
+    overscroll-behavior: contain;
 }
 
 .modal.hidden {
     display: none;
+}
+
+/* 開くときのみ GPU 合成プロパティ（opacity / transform）でフェードイン。閉じるときは .hidden で即 display: none */
+.modal:not(.hidden) {
+    opacity: 1;
+    transition: opacity 0.16s ease-out;
+}
+
+.modal:not(.hidden) .modal-content {
+    transition: opacity 0.18s cubic-bezier(0.22, 1, 0.36, 1), transform 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@starting-style {
+    .modal:not(.hidden) {
+        opacity: 0;
+    }
+
+    .modal:not(.hidden) .modal-content {
+        opacity: 0;
+        transform: translateY(8px) scale(0.985);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .modal:not(.hidden),
+    .modal:not(.hidden) .modal-content {
+        transition: none !important;
+        transform: none !important;
+    }
 }
 
 .modal-content {
@@ -899,6 +948,7 @@ body.theme-light .filter-btn-city {
     max-width: 640px;
     max-height: 86vh;
     overflow-y: auto;
+    overscroll-behavior: contain;
     border: 1px solid rgba(255, 255, 255, 0.14);
     position: relative;
     box-shadow: 0 12px 35px rgba(0, 0, 0, 0.65);

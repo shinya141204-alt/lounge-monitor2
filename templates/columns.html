@@ -49,7 +49,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet"></noscript>
 
-    <link rel="stylesheet" href="/static/portal.css?v=16">
+    <link rel="stylesheet" href="/static/portal.css?v=17">
     <style>
         :root {
             --bg-dark: #0c0d10;
@@ -265,19 +265,21 @@
         }
         .area-mini-name { font-size: 0.86rem; font-weight: 600; }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=40">
+    <link rel="stylesheet" href="/static/calm.css?v=41">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
          crossorigin="anonymous"></script>
     {% endif %}
-    <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
+    <meta name="color-scheme" content="dark light">
+    <script blocking="render">try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
     <style>html.theme-light{background-color:#f6f6f7;}</style>
+    <link rel="expect" href="#portal-shell" blocking="render">
 </head>
 
 <body>
     <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.body.classList.add('theme-light');}catch(e){}</script>
-    <div class="portal-wrap">
+    <div id="portal-shell" class="portal-wrap">
         <div class="portal-top-header">
             <a href="/" class="portal-brand-link">
                 <span class="portal-brand-title">相席ナビ</span>
@@ -847,7 +849,8 @@
             </a>
         </div>
 
-        <h2 class="sec-title">エリア別の混雑傾向＆店舗ガイド</h2>
+        <section id="columns-area-directory" class="columns-area-directory cv-defer-section" aria-labelledby="columns-area-directory-title">
+        <h2 id="columns-area-directory-title" class="sec-title">エリア別の混雑傾向＆店舗ガイド</h2>
         <p style="font-size: 0.86rem; color: var(--text-sub); margin: -8px 0 16px;">各エリアの現在のリアルタイム人数と、街ごとの店舗の使い分け・2軒目スポットを見られます。</p>
         <div class="area-mini-grid">
             {% for slug, info in area_guides.items() %}
@@ -859,6 +862,7 @@
             </a>
             {% endfor %}
         </div>
+        </section>
         </main>
 
         {% include '_portal_footer.html' %}

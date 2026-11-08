@@ -74,9 +74,10 @@
 
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
-    <link rel="stylesheet" href="/static/portal.css?v=16">
-    <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
-    <link rel="stylesheet" href="/static/style.css?v=20261108_3">
+    <link rel="stylesheet" href="/static/portal.css?v=17">
+    <meta name="color-scheme" content="dark light">
+    <script blocking="render">try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
+    <link rel="stylesheet" href="/static/style.css?v=20261109_1">
     <style>
         :root {
             --bg-dark: #0f1014;
@@ -533,18 +534,19 @@
             body.theme-light .store-dossier-col { border-top-color: rgba(24, 24, 27, 0.10); }
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=40">
+    <link rel="stylesheet" href="/static/calm.css?v=41">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
          crossorigin="anonymous"></script>
     {% endif %}
     <style>html.theme-light{background-color:#f6f6f7;}</style>
+    <link rel="expect" href="#portal-shell" blocking="render">
 </head>
 
 <body>
     <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.body.classList.add('theme-light');}catch(e){}</script>
-    <div class="portal-wrap">
+    <div id="portal-shell" class="portal-wrap">
         <div class="portal-top-header">
             <a href="/" class="portal-brand-link">
                 <span class="portal-brand-title">相席ナビ</span>
@@ -578,7 +580,7 @@
                 <span class="hero-hours-meta">営業時間 {{ store.hours_label }}</span>
             </div>
 
-            <h1>{{ store.seo_name }}のリアルタイム人数・男女比・混雑状況</h1>
+            <h1><span style="word-break: keep-all;">{{ store.seo_name }}</span>のリアルタイム人数・男女比・混雑状況</h1>
 
             <div class="big-counts-grid">
                 <div class="count-box">
@@ -903,15 +905,16 @@
 
             {% if store_analytics.daily_logs and not store_insight %}
             <h3 style="margin: 20px 0 10px; font-size: 0.94rem; color: var(--text-main);">直近の日別ピーク実績ログ（最高女性人数・ピーク時刻）</h3>
-            <div class="stats-table-wrap">
+            <div class="table-scroll-frame">
+            <div class="stats-table-wrap" tabindex="0" role="region" aria-label="直近の日別ピーク実績ログテーブル">
                 <table class="store-comp-table" style="width: 100%;">
                     <thead>
                         <tr>
-                            <th>営業日</th>
-                            <th>最高女性</th>
-                            <th>ピーク男性</th>
-                            <th>到達時刻</th>
-                            <th>平均女性比</th>
+                            <th scope="col">営業日</th>
+                            <th scope="col">最高女性</th>
+                            <th scope="col">ピーク男性</th>
+                            <th scope="col">到達時刻</th>
+                            <th scope="col">平均女性比</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -927,6 +930,7 @@
                     </tbody>
                 </table>
             </div>
+            </div>
             {% endif %}
         </section>
         {% endif %}
@@ -941,7 +945,8 @@
             {% endfor %}
             {% if store_insight.weekday_rows %}
             <h3 class="store-insight-h3">曜日別の記録（営業日ごとの最大女性数）</h3>
-            <div class="stats-table-wrap">
+            <div class="table-scroll-frame">
+            <div class="stats-table-wrap" tabindex="0" role="region" aria-label="曜日別の記録テーブル">
                 <table class="store-comp-table store-insight-table">
                     <thead>
                         <tr>
@@ -967,10 +972,12 @@
                     </tbody>
                 </table>
             </div>
+            </div>
             {% endif %}
             {% if store_insight.hourly_rows %}
             <h3 class="store-insight-h3">時間帯別の平均人数</h3>
-            <div class="stats-table-wrap">
+            <div class="table-scroll-frame">
+            <div class="stats-table-wrap" tabindex="0" role="region" aria-label="時間帯別の平均人数テーブル">
                 <table class="store-comp-table store-insight-table">
                     <thead>
                         <tr>
@@ -992,10 +999,12 @@
                     </tbody>
                 </table>
             </div>
+            </div>
             {% endif %}
             {% if store_insight.daily_recent %}
             {% macro daily_peak_table(rows) %}
-            <div class="stats-table-wrap">
+            <div class="table-scroll-frame">
+            <div class="stats-table-wrap" tabindex="0" role="region" aria-label="日別の最大女性数テーブル">
                 <table class="store-comp-table store-insight-table store-daily-table">
                     <thead>
                         <tr>
@@ -1023,6 +1032,7 @@
                     </tbody>
                 </table>
             </div>
+            </div>
             {% endmacro %}
             <h3 class="store-insight-h3">日別の最大女性数（直近{{ store_insight.daily_recent|length }}日）</h3>
             {{ daily_peak_table(store_insight.daily_recent) }}
@@ -1039,7 +1049,7 @@
         {% endif %}
 
         {% if store_dossier %}
-        <section class="section-card store-dossier-card" id="store-editorial-dossier" aria-labelledby="store-dossier-heading">
+        <section class="section-card store-dossier-card cv-defer-section" id="store-editorial-dossier" aria-labelledby="store-dossier-heading">
             <div class="store-dossier-head">
                 <p class="store-dossier-eyebrow">編集長カルテ｜街の客層カラーと男女別の立ち回り</p>
                 <h2 id="store-dossier-heading" class="store-dossier-title">{{ store.seo_name }}の現地空気感・時間帯と立ち回りメモ</h2>
@@ -1230,7 +1240,7 @@
         {% endif %}
 
         <!-- 2nd Venue Guide & Recommended Spots Section -->
-        <section class="section-card" id="store-second-venue-section">
+        <section class="section-card cv-defer-section" id="store-second-venue-section">
             <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 6px;">
                 <h2 style="margin: 0; font-size: 1.15rem;">{{ store.seo_name }} 近くの厳選2軒目＆切り出しTips</h2>
                 <a href="/guide/second-venue" style="color: var(--accent-text); font-size: 0.82rem; text-decoration: none; font-weight: 600;">2軒目の誘い方コラム ›</a>
@@ -2573,7 +2583,7 @@
 
             async function syncBackgroundPushSubscription(condToUse) {
                 if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false;
-                const reg = await navigator.serviceWorker.register('/sw.js?v=105', { updateViaCache: 'none' });
+                const reg = await navigator.serviceWorker.register('/sw.js?v=106', { updateViaCache: 'none' });
                 await navigator.serviceWorker.ready;
                 let sub = await reg.pushManager.getSubscription();
                 if (!sub) {

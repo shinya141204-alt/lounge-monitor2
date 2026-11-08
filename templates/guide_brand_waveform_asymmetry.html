@@ -101,11 +101,11 @@
     <meta name="theme-color" content="#111113">
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
-    <link rel="stylesheet" href="/static/style.css?v=20261108_3" media="print" onload="this.media='all'">
-    <noscript><link rel="stylesheet" href="/static/style.css?v=20261108_3"></noscript>
+    <link rel="stylesheet" href="/static/style.css?v=20261109_1" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="/static/style.css?v=20261109_1"></noscript>
     <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
     <style>html.theme-light{background-color:#f6f6f7;}</style>
-    <link rel="stylesheet" href="/static/portal.css?v=16">
+    <link rel="stylesheet" href="/static/portal.css?v=17">
     <style>
         body {
             display: block !important;
@@ -308,7 +308,7 @@
         body.theme-light .faq-q { color: #111827; }
         body.theme-light .faq-a { color: #374151; }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=40">
+    <link rel="stylesheet" href="/static/calm.css?v=41">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -325,7 +325,7 @@
         <main>
         <nav class="breadcrumb" aria-label="Breadcrumb">
             <a href="/">ホーム</a><span>›</span>
-            <a href="/columns">コラム・攻略一覧</a><span>›</span>
+            <a href="/columns">コラム一覧</a><span>›</span>
             <span>5大ブランドの時間波形と男女非対称の店選び</span>
         </nav>
 
@@ -355,7 +355,7 @@
 
             <p>
                 同じ街、同じ夜、同じ1つの数字を見ているのに、<strong>時間帯が変わればブランドの表情が入れ替わり、さらに男性側と女性側で「心地よいと感じる店の条件」が逆になる</strong>。<br>
-                今回のレポートでは、『相席ナビ』が1分ごとに蓄積してきた全国60店舗超の時系列データから、<strong>オリエンタルラウンジ・ag（アグ）・JIS（ジス）・ヤタコイ・ASOBIBAR（アソビバー）</strong>の5大ブランドが描く「時間波形の違い」と、男女双方の本音のズレをフラットに検証します。
+                『相席ナビ』が1分ごとに蓄積してきた全国60店舗超の時系列データから、<strong>オリエンタルラウンジ・ag（アグ）・JIS（ジス）・ヤタコイ・ASOBIBAR（アソビバー）</strong>の5大ブランドが描く「時間波形の違い」と、男女双方の本音のズレを検証しました（3大ブランドの内装や基本料金システムから先に知りたい方は<a href="/guide/brand-comparison">オリエンタルラウンジ・JIS・agの基本比較ガイド</a>もあわせてどうぞ）。
             </p>
 
             <div class="highlight-box">
@@ -609,6 +609,7 @@
                 <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:12px;">
                     <a href="/" class="cta-btn">全国リアルタイム人数ランキングを見る ›</a>
                     <a href="/concierge" class="cta-btn cta-btn--secondary">男女・時間帯別の店舗診断を使う ›</a>
+                    <a href="/stats#heatmap-widget" class="cta-btn cta-btn--secondary">曜日・時間帯ヒートマップを見る ›</a>
                 </div>
             </div>
         </div>

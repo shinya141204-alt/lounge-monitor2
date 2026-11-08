@@ -95,9 +95,9 @@
     <meta name="theme-color" content="#111113">
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
-    <link rel="stylesheet" href="/static/style.css?v=20261108_3" media="print" onload="this.media='all'">
-    <noscript><link rel="stylesheet" href="/static/style.css?v=20261108_3"></noscript>
-    <link rel="stylesheet" href="/static/portal.css?v=16">
+    <link rel="stylesheet" href="/static/style.css?v=20261109_1" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="/static/style.css?v=20261109_1"></noscript>
+    <link rel="stylesheet" href="/static/portal.css?v=17">
     <style>
         body {
             display: block !important;
@@ -215,6 +215,7 @@
             border-collapse: collapse;
             font-size: 0.85rem;
             min-width: 560px;
+            font-variant-numeric: tabular-nums;
         }
         .data-table th, .data-table td {
             padding: 12px 14px;
@@ -246,7 +247,7 @@
             font-size: 0.92rem;
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=40">
+    <link rel="stylesheet" href="/static/calm.css?v=41">
     {% if not is_staff and not session.get('is_staff') and not is_scheduled_preview %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -259,7 +260,7 @@
     <div class="article-container">
         {% if is_scheduled_preview and scheduled_item %}
         <div class="preview-banner">
-            🗓️ 【社内限定プレビュー（Google検索非公開）】この記事は <strong>{{ scheduled_item.publish_at_ja }}</strong> に自動で一般公開＆X告知されます。
+            【社内限定プレビュー（Google検索非公開）】この記事は <strong>{{ scheduled_item.publish_at_ja }}</strong> に自動で一般公開＆X告知されます。
         </div>
         {% endif %}
 
@@ -312,7 +313,7 @@
                 </ul>
             </div>
 
-            <h2>1. 【実測データ】給料日直後（25日〜）と給料日前（15〜24日）の男女比</h2>
+            <h2>1. 給料日直後（25日〜）と給料日前（15〜24日）で逆転する男女比</h2>
             <p>
                 国内店舗のコアタイム（20:00〜23:59）の入店ログを、「月初（1〜10日）」「月中・給料日前（15〜24日）」「給料日後・月末（25〜31日）」の3期間に分けて並べたのが以下の表です。
             </p>
@@ -444,7 +445,7 @@
             </div>
 
             <p>
-                この言葉の通り、<strong>日曜、特に月曜が祝日の3連休の中日</strong>は、翌日休みの開放感から金曜夜（平均女性38.5名）に近い数の女性が集まる一方、前日の土曜夜に出かけた男性が減ります。年に数回しかない日なので、カレンダーに印をつけておく価値があります。
+                この言葉の通り、<strong>日曜、特に月曜が祝日の3連休の中日</strong>は、翌日休みの開放感から金曜夜（平均女性38.5名）に近い数の女性が集まる一方、前日の土曜夜に出かけた男性が減ります。年に数回しかない日なので、カレンダーに印をつけておく価値があります（日曜特有の21時半前後の客層交代については<a href="/guide/sunday-lounge-strategy" style="color:#38bdf8;text-decoration:underline;">日曜日の時間帯別客足データ</a>でも詳しく検証しています）。
             </p>
 
             {% if not is_staff and not session.get('is_staff') %}
@@ -468,7 +469,7 @@
                 <div style="margin-top:14px;font-size:0.8rem;">
                     <a href="/guide/weekday-strategy" style="color:#38bdf8;text-decoration:none;margin-right:12px;">水曜・木曜の平日データ</a>
                     <a href="/guide/weekend-strategy" style="color:#38bdf8;text-decoration:none;margin-right:12px;">金曜・土曜の混雑傾向</a>
-                    <a href="/stats" style="color:#38bdf8;text-decoration:none;">全国統計データ白書</a>
+                    <a href="/stats#heatmap-widget" style="color:#38bdf8;text-decoration:none;">曜日・時間帯ヒートマップ</a>
                 </div>
             </div>
         </div>

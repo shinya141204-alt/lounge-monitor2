@@ -119,7 +119,7 @@
 
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
-    <link rel="stylesheet" href="/static/portal.css?v=16">
+    <link rel="stylesheet" href="/static/portal.css?v=17">
     <style>
         :root {
             --bg-dark: #0f1014;
@@ -623,19 +623,21 @@
             .concierge-gold-btn { width: 100%; }
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=40">
+    <link rel="stylesheet" href="/static/calm.css?v=41">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
          crossorigin="anonymous"></script>
     {% endif %}
-    <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
+    <meta name="color-scheme" content="dark light">
+    <script blocking="render">try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
     <style>html.theme-light{background-color:#f6f6f7;}</style>
+    <link rel="expect" href="#portal-shell" blocking="render">
 </head>
 
 <body>
     <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.body.classList.add('theme-light');}catch(e){}</script>
-    <div class="portal-wrap">
+    <div id="portal-shell" class="portal-wrap">
         <div class="portal-top-header">
             <a href="/" class="portal-brand-link">
                 <span class="portal-brand-title">相席ナビ</span>
@@ -856,9 +858,10 @@
         </section>
 
         <!-- Primary 9 Regional Sections -->
+        <div class="areas-page-list">
         {% for item in area_summaries if not item.info.parent_area %}
         {% set item_c_area = item.info.concierge_area | default(item.slug) %}
-        <section class="area-section-card">
+        <section class="area-section-card{% if loop.index >= 3 %} cv-defer-section{% endif %}">
             <div class="area-header-row">
                 <div class="area-title-group">
                     <h2>
@@ -943,6 +946,7 @@
             </div>
         </section>
         {% endfor %}
+        </div>
         {% endif %}
         </main>
 

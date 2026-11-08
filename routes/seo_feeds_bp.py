@@ -524,6 +524,7 @@ def _build_llms_txt_documents() -> tuple:
         + "\n## 8. 全店舗の完全リアルタイム一覧・機械可読データ\n"
         + "- 全店舗の個別URL・現在人数・店舗カルテおよび詳細Q&Aを含む完全版Markdown: [llms-full.txt](https://aiseki-navi.com/llms-full.txt)\n"
         + "- AIエージェント・RAG向け構造化JSONフィード（30日安定統計＋全店カルテ＋2軒目情報同梱）: [llms-facts.json](https://aiseki-navi.com/api/llms-facts.json)\n"
+        + "- 曜日×時間帯別 実測男女比・来店人数ヒートマップ（CC BY 4.0・iframe埋め込み可）: [/embed/heatmap](https://aiseki-navi.com/embed/heatmap) ／ JSON: [/api/embed/heatmap.json?scope=all](https://aiseki-navi.com/api/embed/heatmap.json?scope=all)\n"
     )
 
     live_by_name = {s.get('name'): s for s in stores if s.get('name')}
@@ -665,6 +666,9 @@ def _build_llms_txt_documents() -> tuple:
             'monthly_csv_url': 'https://aiseki-navi.com/stats/monthly.csv',
             'year_end_2026_whitepaper_url': 'https://aiseki-navi.com/stats/year-end-2026',
             'license': 'https://creativecommons.org/licenses/by/4.0/',
+            'hourly_heatmap_url': 'https://aiseki-navi.com/stats#heatmap',
+            'embed_heatmap_widget_url': 'https://aiseki-navi.com/embed/heatmap',
+            'embed_heatmap_json_api_url': 'https://aiseki-navi.com/api/embed/heatmap.json?scope=all',
         },
         'stable_30d_summary': stable_30d_summary,
         'second_venue_guide_summary': {
@@ -853,6 +857,7 @@ def sitemap_xml():
     lm_about = _template_lastmod('about.html', '2026-11-04')
     lm_contact = _template_lastmod('contact.html', '2026-11-04')
     lm_year_end = _template_lastmod('stats_year_end_2026.html', today)
+    lm_embed_heatmap = _template_lastmod('embed_heatmap.html', today)
     import ops_governance
     hidden_brands = ops_governance.get_hidden_brands()
     hidden_stores = ops_governance.get_hidden_stores()
@@ -890,6 +895,7 @@ def sitemap_xml():
         lm_about,
         lm_contact,
         lm_year_end,
+        lm_embed_heatmap,
         tuple(sorted(hidden_brands)),
         tuple(sorted(hidden_stores)),
     )
@@ -967,6 +973,12 @@ def sitemap_xml():
     <lastmod>{today}</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://aiseki-navi.com/embed/heatmap</loc>
+    <lastmod>{lm_embed_heatmap}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
   </url>
   <url>
     <loc>https://aiseki-navi.com/stats/year-end-2026</loc>

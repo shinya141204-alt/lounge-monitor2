@@ -83,9 +83,9 @@
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
     <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
     <style>html.theme-light{background-color:#f6f6f7;}</style>
-    <link rel="stylesheet" href="/static/style.css?v=20261108_3" media="print" onload="this.media='all'">
-    <noscript><link rel="stylesheet" href="/static/style.css?v=20261108_3"></noscript>
-    <link rel="stylesheet" href="/static/portal.css?v=16">
+    <link rel="stylesheet" href="/static/style.css?v=20261109_1" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="/static/style.css?v=20261109_1"></noscript>
+    <link rel="stylesheet" href="/static/portal.css?v=17">
     <style>
         body {
             display: block !important;
@@ -203,6 +203,7 @@
             border-collapse: collapse;
             font-size: 0.85rem;
             min-width: 560px;
+            font-variant-numeric: tabular-nums;
         }
         .data-table th, .data-table td {
             padding: 12px 14px;
@@ -234,7 +235,7 @@
             font-size: 0.92rem;
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=40">
+    <link rel="stylesheet" href="/static/calm.css?v=41">
     {% if not is_staff and not session.get('is_staff') and not is_scheduled_preview %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -247,7 +248,7 @@
     <div class="article-container">
         {% if is_scheduled_preview and scheduled_item %}
         <div class="preview-banner">
-            🗓️ 【社内限定プレビュー（Google検索非公開）】この記事は <strong>{{ scheduled_item.publish_at_ja }}</strong> に自動で一般公開＆X告知されます。
+            【社内限定プレビュー（Google検索非公開）】この記事は <strong>{{ scheduled_item.publish_at_ja }}</strong> に自動で一般公開＆X告知されます。
         </div>
         {% endif %}
 
@@ -264,7 +265,7 @@
         <header class="article-header">
             <span class="article-cat-tag">着席型51店舗・9.6万件ログ比較</span>
             <h1 class="article-title">地方店と都心大型店で客層・ピークはどう違う？地方店は深夜0〜2時に女性が121%へ増える</h1>
-            <p style="font-size:0.8rem;color:#94a3b8;margin:0;">公開日：2026年10月28日 ・ 更新日：2026年11月5日 ｜ 執筆・検証：<a href="/about" style="color:inherit;text-decoration:underline;text-underline-offset:3px;">くわもん（相席ナビ編集長）</a></p>
+            <p style="font-size:0.8rem;color:#94a3b8;margin:0;">公開日：2026年10月28日 ・ 更新日：2026年11月9日 ｜ 執筆・検証：<a href="/about" style="color:inherit;text-decoration:underline;text-underline-offset:3px;">くわもん（相席ナビ編集長）</a></p>
         </header>
 
         <figure class="article-eyecatch">
@@ -320,14 +321,14 @@
                     </thead>
                     <tbody>
                         <tr>
-                            <td><strong>🏙️ 都心・複数店舗エリア（33店）</strong></td>
+                            <td><strong>都心・複数店舗エリア（33店）</strong></td>
                             <td>38.3名</td>
                             <td>33.7名</td>
                             <td>84.5%（終電で減少）</td>
                             <td>64.0%</td>
                         </tr>
                         <tr>
-                            <td><strong>🏮 地方・1店舗独占エリア（18店）</strong></td>
+                            <td><strong>地方・1店舗独占エリア（18店）</strong></td>
                             <td>15.1名</td>
                             <td><strong style="color:#f472b6;">17.8名</strong></td>
                             <td><strong style="color:#4ade80;">121.1%（深夜に増加）</strong></td>
@@ -484,9 +485,9 @@
                 </p>
                 <a href="/" class="cta-btn">全国リアルタイム人数ランキングを見る →</a>
                 <div style="margin-top:14px;font-size:0.8rem;">
-                    <a href="/areas" style="color:#38bdf8;text-decoration:none;margin-right:12px;">📍 全国エリア別ガイド</a>
-                    <a href="/guide/solo-vs-pair" style="color:#38bdf8;text-decoration:none;margin-right:12px;">👤 1人（ソロ）参戦の立ち回り</a>
-                    <a href="/stats" style="color:#38bdf8;text-decoration:none;">📈 全国統計データ白書</a>
+                    <a href="/areas" style="color:#38bdf8;text-decoration:none;margin-right:12px;">全国エリア別ガイド</a>
+                    <a href="/guide/solo-vs-pair" style="color:#38bdf8;text-decoration:none;margin-right:12px;">1人（ソロ）参戦の立ち回り</a>
+                    <a href="/stats#heatmap-widget" style="color:#38bdf8;text-decoration:none;">時間帯別ヒートマップ統計</a>
                 </div>
             </div>
         </div>

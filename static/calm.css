@@ -83,10 +83,33 @@
     -webkit-backdrop-filter: none !important;
 }
 
+/* Cross-document View Transitions（同一オリジンのページ遷移を 0.16s のクロスフェードで接続） */
+@view-transition {
+    navigation: auto;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+    animation-duration: 0.16s;
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* 遷移インジケーター類はスナップショットに残像を残さない */
+#aiseki-nav-progress,
+#aiseki-nav-pill,
+#aiseki-reading-progress {
+    view-transition-name: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
+    @view-transition {
+        navigation: none;
+    }
+
     *, *::before, *::after {
-        animation-duration: 0.01ms !important;
-        transition-duration: 0.01ms !important;
+        animation-duration: 0s !important;
+        transition-duration: 0s !important;
+        scroll-behavior: auto !important;
     }
 }
 
@@ -3422,6 +3445,9 @@ body:not(.theme-light) #search-input::placeholder {
 body:not(.theme-light) #search-input:focus {
     border-color: var(--calm-accent) !important;
     box-shadow: 0 0 0 2px rgba(200, 164, 110, 0.22) !important;
+}
+
+body:not(.theme-light) #search-input:focus:not(:focus-visible) {
     outline: none !important;
 }
 
@@ -3444,6 +3470,9 @@ body.theme-light #search-input::placeholder {
 body.theme-light #search-input:focus {
     border-color: var(--calm-light-accent) !important;
     box-shadow: 0 0 0 2px rgba(110, 79, 35, 0.18) !important;
+}
+
+body.theme-light #search-input:focus:not(:focus-visible) {
     outline: none !important;
 }
 
@@ -4789,18 +4818,21 @@ body:not(.staff-mode) .header-menu-btn {
 /* --- 24-C. スティッキーモーダルヘッダー裏透け防止 ＆ 全ルート・全モーダル WCAG AA（>=4.5:1）完全保証 --- */
 body:not(.theme-light) .modal-header {
     background: var(--calm-bg) !important;
+    box-shadow: 0 -24px 0 0 var(--calm-bg) !important;
     border-bottom: 1px solid var(--calm-border-strong) !important;
     z-index: 30 !important;
 }
 
 body.theme-light .modal-header {
     background: var(--calm-light-bg) !important;
+    box-shadow: 0 -24px 0 0 var(--calm-light-bg) !important;
     border-bottom: 1px solid var(--calm-light-border-strong) !important;
     z-index: 30 !important;
 }
 
 body.theme-light.audience-women .modal-header {
     background: #f2eaeb !important;
+    box-shadow: 0 -24px 0 0 #f2eaeb !important;
     border-bottom-color: rgba(152, 56, 73, 0.22) !important;
 }
 
@@ -8727,5 +8759,390 @@ body.theme-light:not(.staff-mode) .venue-action-btn.reserve-btn {
     white-space: nowrap !important;
 }
 
+/* ==========================================================================
+   2026-11 Web 標準モダン化：フォーカスリング・モーダル操作性・店舗ページ導線・比較表・描画最適化
+   - var() 参照は本ファイル先頭 :root 定義済みトークンのみ（未定義変数ゼロ）
+   ========================================================================== */
 
+/* --- M1. キーボードフォーカスリングの標準化（マウス操作時は出さない） --- */
+:where(a, button, summary, select, input, textarea, [tabindex]:not([tabindex="-1"])):focus-visible {
+    outline: 2px solid #f4f4f5;
+    outline-offset: 2px;
+}
 
+html.theme-light :where(a, button, summary, select, input, textarea, [tabindex]:not([tabindex="-1"])):focus-visible,
+body.theme-light :where(a, button, summary, select, input, textarea, [tabindex]:not([tabindex="-1"])):focus-visible {
+    outline-color: #18181b;
+}
+
+body:not(.theme-light) #search-input:focus-visible {
+    outline: 2px solid #f4f4f5 !important;
+    outline-offset: 2px;
+}
+
+body.theme-light #search-input:focus-visible {
+    outline: 2px solid #18181b !important;
+    outline-offset: 2px;
+}
+
+@media (forced-colors: active) {
+    :where(a, button, summary, select, input, textarea, [tabindex]:not([tabindex="-1"])):focus-visible,
+    html.theme-light :where(a, button, summary, select, input, textarea, [tabindex]:not([tabindex="-1"])):focus-visible,
+    body.theme-light :where(a, button, summary, select, input, textarea, [tabindex]:not([tabindex="-1"])):focus-visible,
+    body:not(.theme-light) #search-input:focus-visible,
+    body.theme-light #search-input:focus-visible {
+        outline: 2px solid Highlight !important;
+        outline-offset: 2px;
+    }
+}
+
+/* --- M2. モーダル：スクロール連鎖防止 ＆ スマホボトムシートのせり上がり --- */
+.modal,
+.modal-content {
+    overscroll-behavior: contain;
+}
+
+@media (max-width: 768px) {
+    #analysis-modal:not(.hidden) .modal-content {
+        transition: opacity 0.18s cubic-bezier(0.22, 1, 0.36, 1), transform 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    @starting-style {
+        #analysis-modal:not(.hidden) .modal-content {
+            opacity: 0;
+            transform: translateY(22px);
+        }
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .modal:not(.hidden),
+    .modal:not(.hidden) .modal-content,
+    #analysis-modal:not(.hidden) .modal-content {
+        transition: none !important;
+        transform: none !important;
+    }
+}
+
+/* --- M3. モーダル内「店舗専用ページ」主役ソリッドCTA（index.html インライン style を上書き） --- */
+body:not(.theme-light) .modal-store-page-cta,
+body.theme-light .modal-store-page-cta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    width: 100%;
+    min-height: 48px;
+    padding: 10px 14px;
+    margin: 0 0 12px;
+    border-radius: 14px;
+    text-decoration: none;
+    box-sizing: border-box;
+    transition: opacity 0.15s ease;
+}
+
+body:not(.theme-light) .modal-store-page-cta {
+    background: var(--cm-cta-bg) !important;
+    color: var(--cm-cta-text) !important;
+    border: 1px solid var(--cm-cta-bg) !important;
+}
+
+body.theme-light .modal-store-page-cta {
+    background: var(--calm-light-accent) !important;
+    color: #ffffff !important;
+    border: 1px solid var(--calm-light-accent) !important;
+}
+
+body:not(.theme-light) .modal-store-page-cta:hover,
+body.theme-light .modal-store-page-cta:hover {
+    opacity: 0.9;
+}
+
+.modal-store-page-cta.hidden,
+body:not(.theme-light) .modal-store-page-cta.hidden,
+body.theme-light .modal-store-page-cta.hidden {
+    display: none !important;
+}
+
+.modal-store-cta-main {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    text-align: left;
+}
+
+.modal-store-cta-title {
+    font-size: 0.85rem;
+    font-weight: 800;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+}
+
+.modal-store-cta-sub {
+    font-size: 0.72rem;
+    font-weight: 600;
+    opacity: 0.78;
+    margin-top: 2px;
+}
+
+.modal-store-cta-pill {
+    padding: 5px 10px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 800;
+    white-space: nowrap;
+    flex-shrink: 0;
+    background: rgba(17, 17, 19, 0.10);
+    color: #111113;
+}
+
+body.theme-light .modal-store-cta-pill {
+    background: rgba(255, 255, 255, 0.16);
+    color: #ffffff;
+}
+
+/* --- M4. PC右詳細パネル：店舗専用ページ＝主役、公式サイト＝セカンダリへ階層整理 --- */
+body:not(.theme-light) .cmi-store-page-link,
+body.theme-light .cmi-store-page-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    min-height: 44px;
+    padding: 10px 18px;
+    border-radius: 999px;
+    font-size: 0.84rem;
+    font-weight: 800;
+    text-decoration: none;
+    box-sizing: border-box;
+    transition: opacity 0.15s ease;
+}
+
+body:not(.theme-light) .cmi-store-page-link {
+    background: var(--cm-cta-bg) !important;
+    color: var(--cm-cta-text) !important;
+    border: 1px solid var(--cm-cta-bg) !important;
+}
+
+body.theme-light .cmi-store-page-link {
+    background: var(--calm-light-accent) !important;
+    color: #ffffff !important;
+    border: 1px solid var(--calm-light-accent) !important;
+}
+
+body:not(.theme-light) .cmi-store-page-link:hover,
+body.theme-light .cmi-store-page-link:hover {
+    opacity: 0.9;
+}
+
+body:not(.theme-light) .cmi-actions:has(.cmi-store-page-link) .cmi-primary-cta {
+    background: var(--calm-surface-2) !important;
+    color: var(--calm-text) !important;
+    border: 1px solid var(--calm-border-strong) !important;
+}
+
+body.theme-light .cmi-actions:has(.cmi-store-page-link) .cmi-primary-cta {
+    background: var(--calm-light-surface-2) !important;
+    color: var(--calm-light-text) !important;
+    border: 1px solid var(--calm-light-border-strong) !important;
+}
+
+/* --- M5. レスポンシブ比較表：横スクロール端フェード・補助ラベル・スティッキー見出し＆先頭列 --- */
+.table-scroll-frame {
+    position: relative;
+    max-width: 100%;
+}
+
+.comp-table-wrap,
+.stats-table-wrap {
+    overscroll-behavior-x: contain;
+}
+
+@supports (container-type: scroll-state) {
+    .comp-table-wrap,
+    .stats-table-wrap {
+        container-type: scroll-state;
+    }
+}
+
+/* data 属性ベースのフェードは scroll-state 非対応の Safari / Firefox でも機能させるため @supports 外で定義 */
+.table-scroll-frame[data-scroll-right="1"]::after,
+.table-scroll-frame[data-scroll-left="1"]::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 24px;
+    pointer-events: none;
+    z-index: 4;
+}
+
+.table-scroll-frame[data-scroll-right="1"]::after {
+    right: 0;
+    background: linear-gradient(to left, rgba(17, 17, 19, 0.88), transparent);
+}
+
+.table-scroll-frame[data-scroll-left="1"]::before {
+    left: 0;
+    background: linear-gradient(to right, rgba(17, 17, 19, 0.88), transparent);
+}
+
+body.theme-light .table-scroll-frame[data-scroll-right="1"]::after {
+    background: linear-gradient(to left, rgba(246, 246, 247, 0.92), transparent);
+}
+
+body.theme-light .table-scroll-frame[data-scroll-left="1"]::before {
+    background: linear-gradient(to right, rgba(246, 246, 247, 0.92), transparent);
+}
+
+.table-scroll-hint {
+    display: none;
+}
+
+.table-scroll-frame[data-overflowing="1"] .table-scroll-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: #b4b4be;
+}
+
+body.theme-light .table-scroll-frame[data-overflowing="1"] .table-scroll-hint {
+    color: #52525b;
+}
+
+body:not(.staff-mode) .comp-table thead th,
+body:not(.staff-mode) .store-comp-table thead th {
+    position: sticky;
+    top: 0;
+    inset-block-start: 0;
+    z-index: 2;
+}
+
+body:not(.theme-light):not(.staff-mode) .comp-table thead th,
+body:not(.theme-light):not(.staff-mode) .store-comp-table thead th {
+    background: var(--calm-surface) !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .apple-open-section .comp-table thead th,
+body:not(.theme-light):not(.staff-mode) .apple-open-section .store-comp-table thead th {
+    background: var(--calm-bg) !important;
+}
+
+body.theme-light:not(.staff-mode) .comp-table thead th,
+body.theme-light:not(.staff-mode) .store-comp-table thead th {
+    background: #ffffff !important;
+}
+
+body.theme-light:not(.staff-mode) .apple-open-section .comp-table thead th,
+body.theme-light:not(.staff-mode) .apple-open-section .store-comp-table thead th {
+    background: var(--calm-light-bg) !important;
+}
+
+@media (max-width: 760px) {
+    body:not(.staff-mode) .comp-table thead th:first-child,
+    body:not(.staff-mode) .comp-table tbody th:first-child,
+    body:not(.staff-mode) .comp-table tbody td:first-child {
+        position: sticky;
+        left: 0;
+        inset-inline-start: 0;
+        z-index: 1;
+        min-width: 128px;
+        max-width: 164px;
+    }
+
+    body:not(.staff-mode) .comp-table thead th:first-child {
+        z-index: 3;
+    }
+
+    body:not(.theme-light):not(.staff-mode) .comp-table thead th:first-child,
+    body:not(.theme-light):not(.staff-mode) .comp-table tbody th:first-child,
+    body:not(.theme-light):not(.staff-mode) .comp-table tbody td:first-child {
+        background: #1a1a1e !important;
+        box-shadow: 1px 0 0 rgba(255, 255, 255, 0.12);
+    }
+
+    body:not(.theme-light):not(.staff-mode) .apple-open-section .comp-table thead th:first-child,
+    body:not(.theme-light):not(.staff-mode) .apple-open-section .comp-table tbody th:first-child,
+    body:not(.theme-light):not(.staff-mode) .apple-open-section .comp-table tbody td:first-child {
+        background: #111113 !important;
+    }
+
+    body.theme-light:not(.staff-mode) .comp-table thead th:first-child,
+    body.theme-light:not(.staff-mode) .comp-table tbody th:first-child,
+    body.theme-light:not(.staff-mode) .comp-table tbody td:first-child {
+        background: #ffffff !important;
+        box-shadow: 1px 0 0 rgba(24, 24, 27, 0.10);
+    }
+
+    body.theme-light:not(.staff-mode) .apple-open-section .comp-table thead th:first-child,
+    body.theme-light:not(.staff-mode) .apple-open-section .comp-table tbody th:first-child,
+    body.theme-light:not(.staff-mode) .apple-open-section .comp-table tbody td:first-child {
+        background: #f6f6f7 !important;
+    }
+
+    body:not(.theme-light):not(.staff-mode) .comp-table tbody tr.best-row th:first-child,
+    body:not(.theme-light):not(.staff-mode) .comp-table tbody tr.best-row td:first-child {
+        background: #232122 !important;
+    }
+
+    body:not(.theme-light):not(.staff-mode) .apple-open-section .comp-table tbody tr.best-row th:first-child,
+    body:not(.theme-light):not(.staff-mode) .apple-open-section .comp-table tbody tr.best-row td:first-child {
+        background: #1a1817 !important;
+    }
+
+    body.theme-light:not(.staff-mode) .comp-table tbody tr.best-row th:first-child,
+    body.theme-light:not(.staff-mode) .comp-table tbody tr.best-row td:first-child {
+        background: #fcfaf7 !important;
+    }
+
+    body.theme-light:not(.staff-mode) .apple-open-section .comp-table tbody tr.best-row th:first-child,
+    body.theme-light:not(.staff-mode) .apple-open-section .comp-table tbody tr.best-row td:first-child {
+        background: #f4f2ef !important;
+    }
+}
+
+/* 日本語コピー・リンクの1〜2文字孤立改行・語中分割を抑止 */
+.moat-modal-link,
+.card-human-copy,
+.cmi-store-name,
+.cmi-human-copy,
+body:not(.staff-mode) h1,
+body:not(.staff-mode) h2 {
+    word-break: auto-phrase;
+    overflow-wrap: anywhere;
+}
+
+/* --- M6. below-the-fold 長大セクションの描画遅延（必ず contain-intrinsic-size とペアで CLS を防止） --- */
+.cv-defer-section {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 560px;
+}
+
+.cv-defer-catalog {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 1600px;
+}
+
+#catalog-spec-grid > .apple-compare-col:nth-child(n+10) {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 340px;
+}
+
+body:not(.staff-mode) .seo-portal-section {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 920px;
+}
+
+.areas-page-list > .area-section-card:nth-of-type(n+3) {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 540px;
+}
+
+#columns-articles-grid > .article-card:nth-child(n+7) {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 360px;
+}

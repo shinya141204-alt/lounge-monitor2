@@ -266,10 +266,13 @@ def compress_response(response):
 
     # 0. Baseline security headers (HSTS only when served over HTTPS behind Fly's proxy)
     response.headers.setdefault('X-Content-Type-Options', 'nosniff')
-    response.headers.setdefault('X-Frame-Options', 'SAMEORIGIN')
+    if not request.path.startswith('/embed/'):
+        response.headers.setdefault('X-Frame-Options', 'SAMEORIGIN')
+        response.headers.setdefault('Content-Security-Policy', "base-uri 'self'; object-src 'none'; frame-ancestors 'self'")
+    else:
+        response.headers.setdefault('Content-Security-Policy', "base-uri 'self'; object-src 'none'; frame-ancestors *")
     response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
     response.headers.setdefault('Permissions-Policy', 'camera=(), microphone=(), geolocation=(self), payment=()')
-    response.headers.setdefault('Content-Security-Policy', "base-uri 'self'; object-src 'none'; frame-ancestors 'self'")
     if request.is_secure:
         response.headers.setdefault('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
     # 1. Unified Cache-Control headers (ISSUE-01 / F5.2)

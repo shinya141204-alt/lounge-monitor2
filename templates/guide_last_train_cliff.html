@@ -81,9 +81,9 @@
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
     <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
     <style>html.theme-light{background-color:#f6f6f7;}</style>
-    <link rel="stylesheet" href="/static/style.css?v=20261108_3" media="print" onload="this.media='all'">
-    <noscript><link rel="stylesheet" href="/static/style.css?v=20261108_3"></noscript>
-    <link rel="stylesheet" href="/static/portal.css?v=16">
+    <link rel="stylesheet" href="/static/style.css?v=20261109_1" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="/static/style.css?v=20261109_1"></noscript>
+    <link rel="stylesheet" href="/static/portal.css?v=17">
     <style>
         body {
             display: block !important;
@@ -214,6 +214,7 @@
             border-collapse: collapse;
             font-size: 0.85rem;
             min-width: 540px;
+            font-variant-numeric: tabular-nums;
         }
         .club-table th, .club-table td {
             padding: 11px 13px;
@@ -246,7 +247,7 @@
             font-size: 0.92rem;
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=40">
+    <link rel="stylesheet" href="/static/calm.css?v=41">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -458,11 +459,11 @@
 
             <div class="highlight-box">
                 <ul style="margin:0;padding-left:20px;">
-                    <li><strong>【20〜21時台（1軒目）】は若年層の「ag」の女性比が最も高い</strong><br>
+                    <li><strong>20〜21時台（1軒目）は若年層の「ag」の女性比が最も高い</strong><br>
                         ・<strong>ag（アグ）</strong>：平均女性比率 <strong>73.0%</strong><br>
                         ・<strong>オリエンタルラウンジ</strong>：平均女性比率 <strong>67.6%</strong>
                     </li>
-                    <li style="margin-top:10px;"><strong>【深夜0時以降（終電後）】は「オリエンタルラウンジ・JIS」が女性比で上回る</strong><br>
+                    <li style="margin-top:10px;"><strong>深夜0時以降（終電後）は「オリエンタルラウンジ・JIS」が女性比で上回る</strong><br>
                         ・<strong>ag（アグ）</strong>：深夜0時以降の女性比率 <strong>49.3%（男性がやや多い）</strong><br>
                         ・<strong>オリエンタルラウンジ</strong>：深夜0時以降の女性比率 <strong>51.9%（女性優位を維持）</strong><br>
                         ・<strong>JIS（ジス）</strong>：深夜1〜2時台の女性比率 <strong>52.7%〜53.7%（深夜も安定して女性優位）</strong>
@@ -527,7 +528,7 @@
                 <li><strong><a href="/store/jis-umeda" style="color:#f472b6;">JIS 梅田</a> ＆ <a href="/store/oriental-lounge-osaka-ekimae" style="color:#f472b6;">オリエンタルラウンジ 大阪駅前</a></strong>：終電後の0〜1時台になると、東通りの <strong>JIS梅田は維持率 120%（平均女性 100.1名！）</strong>、<strong>オリエンタルラウンジ大阪駅前は維持率 105%（平均女性 81.6名）</strong> と、終電前より女性が増える「深夜増加型」になります。</li>
             </ul>
 
-            <h2>5. おわりに：時計の針を見て「立つタイミング」を決める</h2>
+            <h2>5. 時計の針を見て「立つタイミング」を決める</h2>
             <p>
                 「ねえ、もう1軒だけ行く？」<br>
                 友達とそう言い合ったとき、ただ一番近くの店舗に飛び込むか、それとも時計の針を見てお店を選ぶかで、その夜の結末はまるで変わります。
@@ -551,7 +552,7 @@
                 <div style="margin-top:14px;font-size:0.8rem;">
                     <a href="/guide/club-area-midnight" style="color:#38bdf8;text-decoration:none;margin-right:12px;">クラブ街×深夜0時「第2波」の法則</a>
                     <a href="/guide/second-venue" style="color:#38bdf8;text-decoration:none;margin-right:12px;">45分〜60分で決める2軒目の誘い方</a>
-                    <a href="/stats" style="color:#38bdf8;text-decoration:none;">全国オープンデータ統計白書</a>
+                    <a href="/stats#heatmap-widget" style="color:#38bdf8;text-decoration:none;">曜日・時間帯ヒートマップ</a>
                 </div>
             </div>
         </div>

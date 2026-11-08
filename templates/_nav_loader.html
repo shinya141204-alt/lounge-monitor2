@@ -15,7 +15,21 @@
     var progAnim = null;
     var spinAnim = null;
     var safetyTimer = null;
+    var pillDelayTimer = null;
     var navInFlight = false;
+    var PILL_DELAY_MS = 180;
+
+    function prefersReducedMotion() {
+        try {
+            return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+        } catch (e) {
+            return false;
+        }
+    }
+
+    function clearPillDelay() {
+        if (pillDelayTimer) { clearTimeout(pillDelayTimer); pillDelayTimer = null; }
+    }
 
     // Never prefetch affiliate redirects, staff/API, OGP, machine-readable feeds or static binaries
     // (prefetching CSV/sitemap/llms would inflate primary-stats download metrics and waste bandwidth).
@@ -116,6 +130,7 @@
 
     function resetNavLoading() {
         navInFlight = false;
+        clearPillDelay();
         if (safetyTimer) { clearTimeout(safetyTimer); safetyTimer = null; }
         if (progAnim) { try { progAnim.cancel(); } catch (e) {} progAnim = null; }
         if (spinAnim) { try { spinAnim.cancel(); } catch (e) {} spinAnim = null; }
@@ -142,17 +157,27 @@
         var textEl = document.getElementById('aiseki-nav-pill-text');
         if (textEl) textEl.textContent = labelText || '読み込み中...';
         if (progEl) progEl.classList.add('is-active');
-        if (pillEl) pillEl.classList.add('is-active');
 
-        // Run animations on the GPU compositor thread so they keep spinning smoothly during iOS Safari / mobile navigation wait
-        if (spinEl && spinEl.animate) {
-            try {
-                if (spinAnim) spinAnim.cancel();
-                spinAnim = spinEl.animate(
-                    [{ transform: 'rotate(0deg)' }, { transform: 'rotate(360deg)' }],
-                    { duration: 550, iterations: Infinity }
-                );
-            } catch (e) {}
+        // Delay the centre pill: fast same-origin MPA navigations finish before 180ms,
+        // so the pill never gets captured into the cross-document View Transition snapshot.
+        clearPillDelay();
+        if (pillEl) {
+            pillDelayTimer = setTimeout(function() {
+                pillDelayTimer = null;
+                if (!navInFlight) return;
+                pillEl.classList.add('is-active');
+                // Run animations on the GPU compositor thread so they keep spinning smoothly during iOS Safari / mobile navigation wait
+                if (spinEl && spinEl.animate && !prefersReducedMotion()) {
+                    try {
+                        if (spinAnim) spinAnim.cancel();
+                        spinAnim = spinEl.animate(
+                            [{ transform: 'rotate(0deg)' }, { transform: 'rotate(360deg)' }],
+                            { duration: 550, iterations: Infinity }
+                        );
+                    } catch (e) {}
+                }
+                void pillEl.offsetWidth;
+            }, PILL_DELAY_MS);
         }
         if (progEl && progEl.animate) {
             try {
@@ -167,8 +192,8 @@
                 );
             } catch (e) {}
         }
-        // Force synchronous style flush so iOS Safari commits the layer immediately
-        if (pillEl) void pillEl.offsetWidth;
+        // Force synchronous style flush so iOS Safari commits the progress layer immediately
+        if (progEl) void progEl.offsetWidth;
         if (safetyTimer) clearTimeout(safetyTimer);
         safetyTimer = setTimeout(resetNavLoading, 3500);
     }
@@ -214,10 +239,77 @@
         updateBar();
     }
 
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initEditorialReadingProgress, { once: true });
-    } else {
+    function initTableScrollAffordance() {
+        var frames = document.querySelectorAll('.table-scroll-frame');
+        if (!frames.length) return;
+        var entries = [];
+        for (var i = 0; i < frames.length; i++) {
+            var frame = frames[i];
+            if (frame.__scrollAffordanceBound) continue;
+            var scroller = frame.querySelector('.comp-table-wrap, .stats-table-wrap');
+            if (!scroller) continue;
+            frame.__scrollAffordanceBound = true;
+            entries.push({ frame: frame, scroller: scroller });
+        }
+        if (!entries.length) return;
+
+        function update(entry) {
+            var scroller = entry.scroller;
+            var frame = entry.frame;
+            var overflowing = (scroller.scrollWidth - scroller.clientWidth) > 3;
+            frame.setAttribute('data-overflowing', overflowing ? '1' : '0');
+            frame.setAttribute('data-scroll-left', (overflowing && scroller.scrollLeft > 4) ? '1' : '0');
+            frame.setAttribute('data-scroll-right', (overflowing && (scroller.scrollLeft + scroller.clientWidth < scroller.scrollWidth - 4)) ? '1' : '0');
+        }
+        function bindEntry(entry) {
+            var ticking = false;
+            entry.schedule = function() {
+                if (ticking) return;
+                ticking = true;
+                var run = function() { ticking = false; update(entry); };
+                if (window.requestAnimationFrame) window.requestAnimationFrame(run); else run();
+            };
+            entry.scroller.addEventListener('scroll', entry.schedule, { passive: true });
+        }
+        var ro = null;
+        if (typeof window.ResizeObserver === 'function') {
+            try {
+                ro = new ResizeObserver(function(roEntries) {
+                    for (var r = 0; r < roEntries.length; r++) {
+                        var tgt = roEntries[r].target;
+                        for (var k = 0; k < entries.length; k++) {
+                            var sc = entries[k].scroller;
+                            if (sc === tgt || (sc.contains && sc.contains(tgt))) entries[k].schedule();
+                        }
+                    }
+                });
+            } catch (e) { ro = null; }
+        }
+        for (var j = 0; j < entries.length; j++) {
+            bindEntry(entries[j]);
+            if (ro) {
+                try {
+                    ro.observe(entries[j].scroller);
+                    var tbl = entries[j].scroller.querySelector('table');
+                    if (tbl) ro.observe(tbl);
+                } catch (e) {}
+            }
+            update(entries[j]);
+        }
+        window.addEventListener('resize', function() {
+            for (var m = 0; m < entries.length; m++) entries[m].schedule();
+        }, { passive: true });
+    }
+
+    function onDomReady() {
         initEditorialReadingProgress();
+        try { initTableScrollAffordance(); } catch (e) {}
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', onDomReady, { once: true });
+    } else {
+        onDomReady();
     }
 
     function onWarmInteraction(e) {
@@ -324,6 +416,11 @@
         resetNavLoading();
         unlockModalsAndBodyScroll();
     });
+    // Cross-document View Transitions: clear any pending pill before the new page is revealed
+    window.addEventListener('pagereveal', function() {
+        clearPillDelay();
+        resetNavLoading();
+    });
 
     // Ensure Service Worker v77 is registered on subpages too + warm primary tabs during idle
     window.addEventListener('load', function() {
@@ -336,7 +433,7 @@
                 } catch (e) {}
             } else if (!window.__swRegistered) {
                 window.__swRegistered = true;
-                navigator.serviceWorker.register('/sw.js?v=105', { updateViaCache: 'none' }).then(function(reg) {
+                navigator.serviceWorker.register('/sw.js?v=106', { updateViaCache: 'none' }).then(function(reg) {
                     // Throttle explicit SW update checks to once per 10 minutes per tab session
                     try {
                         var KEY = 'aiseki_sw_update_at';

@@ -777,6 +777,17 @@ def stats_whitepaper():
             surface_label='全国主要店',
             allow_blocking=False,
         )
+        import embed_widgets
+        try:
+            heatmap_initial = embed_widgets.get_heatmap_payload(scope='all', days=90, metric='ratio', theme='dark')
+        except Exception as err:
+            logging.getLogger(__name__).warning('stats heatmap payload failed: %s', err)
+            heatmap_initial = None
+        try:
+            heatmap_scopes = embed_widgets.list_heatmap_scopes()
+        except Exception as err:
+            logging.getLogger(__name__).warning('stats heatmap scopes failed: %s', err)
+            heatmap_scopes = []
         return render_template(
             'stats_report.html',
             report=report_data,
@@ -787,12 +798,22 @@ def stats_whitepaper():
             last_updated=last_updated,
             surface_smart_cta=surface_smart_cta,
             is_staff=bool(session.get('is_staff')),
+            heatmap_initial=heatmap_initial,
+            heatmap_scopes=heatmap_scopes,
         )
     import affiliate_manager as _am_stats
+    import embed_widgets as _ew_stats
+    # Memory-only probe (never touches DB): None until first compute, then total bucket count,
+    # so the /stats HTML cache re-renders once heatmap data appears or changes.
+    try:
+        heatmap_sig = _ew_stats.peek_cached_total_buckets(90)
+    except Exception:
+        heatmap_sig = None
     stats_cache_sig = (
         'stats',
         rep_sig,
         fc_sig,
+        heatmap_sig,
         _am_stats.are_slots_sharing_url('dating_bachelor', 'dating_instant', allow_blocking=False),
         _am_stats.is_slot_monetized('women_beauty_clinic', allow_blocking=False),
         _am_stats.is_slot_monetized('women_dating_bachelor', allow_blocking=False),
@@ -909,6 +930,60 @@ def stats_year_end_2026():
 
     is_staff = bool(session.get('is_staff'))
     return core._get_cached_html_or_render(('stats_year_end_2026', is_staff), _render)
+
+
+_CC_BY_LINK_HEADER = '<https://creativecommons.org/licenses/by/4.0/>; rel="license"'
+
+
+def _heatmap_query_params():
+    """Normalize embed heatmap query params (scope/store slugs are validated again inside embed_widgets)."""
+    import embed_widgets
+    scope = (request.args.get('scope') or 'all').strip()[:80] or 'all'
+    store = (request.args.get('store') or '').strip()[:80] or None
+    metric = embed_widgets.normalize_metric(request.args.get('metric'))
+    theme = embed_widgets.normalize_theme(request.args.get('theme'))
+    days = embed_widgets.clamp_days(request.args.get('days', embed_widgets.DEFAULT_DAYS, type=int))
+    return scope, store, metric, theme, days
+
+
+@portal_bp.route('/embed/heatmap')
+def embed_heatmap():
+    """CC BY 4.0 曜日×時間帯別 実測男女比ヒートマップ（外部 iframe 埋め込み＆単体公開ページ）。"""
+    import embed_widgets
+    scope, store, metric, theme, days = _heatmap_query_params()
+    try:
+        payload = embed_widgets.get_heatmap_payload(scope=scope, store=store, days=days, metric=metric, theme=theme)
+    except LookupError:
+        abort(404)
+    resp = make_response(render_template('embed_heatmap.html', heatmap=payload, metric=metric, theme=theme))
+    # Set before app.after_request `setdefault` so third-party sites may frame this page (CSP L2
+    # frame-ancestors supersedes the default X-Frame-Options: SAMEORIGIN in all modern browsers).
+    resp.headers['Content-Security-Policy'] = "base-uri 'self'; object-src 'none'; frame-ancestors *"
+    resp.headers['Cache-Control'] = 'public, max-age=900' if payload['meta']['total_buckets'] > 0 else 'no-cache, max-age=0'
+    resp.headers['Link'] = _CC_BY_LINK_HEADER
+    return resp
+
+
+@portal_bp.route('/api/embed/heatmap.json')
+def api_embed_heatmap_json():
+    """CORS-open CC BY 4.0 JSON for the weekday x hour heatmap (no affiliate links, no internal store keys)."""
+    import embed_widgets
+    scope, store, metric, theme, days = _heatmap_query_params()
+    try:
+        payload = embed_widgets.get_heatmap_payload(scope=scope, store=store, days=days, metric=metric, theme=theme)
+    except LookupError:
+        resp = jsonify({'error': 'unknown_scope_or_store'})
+        resp.status_code = 404
+        resp.headers['Access-Control-Allow-Origin'] = '*'
+        resp.headers['Cache-Control'] = 'no-cache, max-age=0'
+        resp.headers['X-Content-Type-Options'] = 'nosniff'
+        return resp
+    resp = jsonify(payload)
+    resp.headers['Access-Control-Allow-Origin'] = '*'
+    resp.headers['Cache-Control'] = 'public, max-age=900' if payload['meta']['total_buckets'] > 0 else 'no-cache, max-age=0'
+    resp.headers['X-Content-Type-Options'] = 'nosniff'
+    resp.headers['Link'] = _CC_BY_LINK_HEADER
+    return resp
 
 
 @portal_bp.route('/areas')

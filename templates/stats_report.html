@@ -41,6 +41,12 @@
             "name": "相席ナビ AIグラウンディング構造化JSONフィード",
             "encodingFormat": "application/json",
             "contentUrl": "https://aiseki-navi.com/api/llms-facts.json"
+          },
+          {
+            "@type": "DataDownload",
+            "name": "曜日×時間帯別 実測男女比・来店人数ヒートマップJSON（全国・過去90日 / CC BY 4.0）",
+            "encodingFormat": "application/json",
+            "contentUrl": "https://aiseki-navi.com/api/embed/heatmap.json?scope=all"
           }
         ],
         "creator": {
@@ -86,7 +92,7 @@
 
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
-    <link rel="stylesheet" href="/static/portal.css?v=16">
+    <link rel="stylesheet" href="/static/portal.css?v=17">
     <style>
         :root {
             --bg-dark: #0f1014;
@@ -442,8 +448,216 @@
         body.theme-light .sim-insight-val {
             color: #8c6a38;
         }
+
+        /* 曜日×時間帯別 実測ヒートマップ（embed_heatmap.html と同一の WCAG AA 5段階パレット） */
+        :root {
+            --hmx-surface: #16171c;
+            --hmx-surface-2: #1b1c22;
+            --hmx-text: #f4f1ec;
+            --hmx-sub: #b5b0a7;
+            --hmx-border: #2e2f36;
+            --hmx-link: #dfc496;
+            --hmx-focus: #f4f1ec;
+            --hmx-tab-bg: #1b1c22;
+            --hmx-tab-text: #c9c4bb;
+            --hmx-tab-on-bg: #f4f1ec;
+            --hmx-tab-on-text: #111113;
+            --hmx-tip-bg: #f4f1ec;
+            --hmx-tip-text: #111113;
+            --hmx-code-bg: #111216;
+            --hmx-r1-bg: #93b1c9; --hmx-r1-fg: #10161c;
+            --hmx-r2-bg: #3f5668; --hmx-r2-fg: #f4f1ec;
+            --hmx-r3-bg: #2a2c34; --hmx-r3-fg: #f4f1ec;
+            --hmx-r4-bg: #7c5a63; --hmx-r4-fg: #f4f1ec;
+            --hmx-r5-bg: #d8a1aa; --hmx-r5-fg: #1a1216;
+            --hmx-h1-bg: #1b1c22; --hmx-h1-fg: #a8a49c;
+            --hmx-h2-bg: #3a3225; --hmx-h2-fg: #f4f1ec;
+            --hmx-h3-bg: #5c492d; --hmx-h3-fg: #f4f1ec;
+            --hmx-h4-bg: #b89760; --hmx-h4-fg: #16120c;
+            --hmx-h5-bg: #dfc496; --hmx-h5-fg: #16120c;
+            --hmx-na-bg: #1b1c22; --hmx-na-fg: #9a968e; --hmx-na-border: #4a4b53;
+        }
+        html.theme-light,
+        body.theme-light {
+            --hmx-surface: #ffffff;
+            --hmx-surface-2: #f4f4f5;
+            --hmx-text: #1c1c21;
+            --hmx-sub: #4b4b55;
+            --hmx-border: #d4d4d8;
+            --hmx-link: #6b4a1a;
+            --hmx-focus: #1c1c21;
+            --hmx-tab-bg: #ececef;
+            --hmx-tab-text: #3f3f46;
+            --hmx-tab-on-bg: #1c1c21;
+            --hmx-tab-on-text: #ffffff;
+            --hmx-tip-bg: #1c1c21;
+            --hmx-tip-text: #ffffff;
+            --hmx-code-bg: #f8f8f9;
+            --hmx-r1-bg: #4f6f8a; --hmx-r1-fg: #ffffff;
+            --hmx-r2-bg: #c5d6e4; --hmx-r2-fg: #1f2933;
+            --hmx-r3-bg: #e9e9ec; --hmx-r3-fg: #3f3f46;
+            --hmx-r4-bg: #ecc9cf; --hmx-r4-fg: #5a1d2b;
+            --hmx-r5-bg: #9b4a5c; --hmx-r5-fg: #ffffff;
+            --hmx-h1-bg: #f0f0f2; --hmx-h1-fg: #3f3f46;
+            --hmx-h2-bg: #e6d9bf; --hmx-h2-fg: #2b2415;
+            --hmx-h3-bg: #dcc69e; --hmx-h3-fg: #241d10;
+            --hmx-h4-bg: #755528; --hmx-h4-fg: #ffffff;
+            --hmx-h5-bg: #523b1a; --hmx-h5-fg: #ffffff;
+            --hmx-na-bg: #f0f0f2; --hmx-na-fg: #5f5e66; --hmx-na-border: #a1a1aa;
+        }
+        .hmx-sr-only {
+            position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+            overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+        }
+        .hmx-box {
+            scroll-margin-top: 24px;
+            background: var(--hmx-surface);
+            color: var(--hmx-text);
+            border: 1px solid var(--hmx-border);
+            border-radius: 14px;
+            padding: 22px;
+            margin-bottom: 28px;
+        }
+        .hmx-box h2 { margin: 0 0 8px; }
+        .hmx-box h3 { margin: 22px 0 8px; font-size: 1rem; color: var(--hmx-text); }
+        .hmx-lead { margin: 0 0 12px; font-size: 0.85rem; color: var(--hmx-sub); line-height: 1.65; }
+        .hmx-box a { color: var(--hmx-link); text-underline-offset: 3px; }
+        .hmx-meta { display: flex; flex-wrap: wrap; gap: 6px 8px; margin: 0 0 14px; padding: 0; list-style: none; }
+        .hmx-meta li {
+            font-size: 0.74rem; font-weight: 600; color: var(--hmx-sub);
+            border: 1px solid var(--hmx-border); border-radius: 999px; padding: 3px 10px;
+            font-variant-numeric: tabular-nums;
+        }
+        .hmx-meta li strong { color: var(--hmx-text); font-weight: 700; }
+        .hmx-controls {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            gap: 12px; margin-bottom: 12px;
+        }
+        .hmx-field { display: flex; flex-direction: column; gap: 6px; }
+        .hmx-field label, .hmx-legend-title { font-size: 0.74rem; font-weight: 700; color: var(--hmx-sub); }
+        .hmx-select {
+            min-height: 40px; background: var(--hmx-surface-2); color: var(--hmx-text);
+            border: 1px solid var(--hmx-border); border-radius: 8px; padding: 8px 12px;
+            font: inherit; font-size: 0.84rem; font-weight: 600;
+        }
+        .hmx-tabbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+        .hmx-tabs { display: inline-flex; gap: 2px; padding: 2px; border-radius: 8px; background: var(--hmx-tab-bg); }
+        .hmx-tab {
+            appearance: none; border: 0; margin: 0; cursor: pointer;
+            min-height: 36px; padding: 6px 14px; border-radius: 6px;
+            background: transparent; color: var(--hmx-tab-text);
+            font: inherit; font-size: 0.82rem; font-weight: 600;
+        }
+        .hmx-tab[aria-selected="true"] { background: var(--hmx-tab-on-bg); color: var(--hmx-tab-on-text); }
+        .hmx-loading { font-size: 0.76rem; color: var(--hmx-sub); min-height: 1.2em; }
+        .hmx-box a:focus-visible, .hmx-box button:focus-visible, .hmx-box select:focus-visible,
+        .hmx-box textarea:focus-visible, .hmx-box [tabindex]:focus-visible, .hmx-box input:focus-visible {
+            outline: 2px solid var(--hmx-focus); outline-offset: 2px;
+        }
+        .hmx-scroll {
+            overflow-x: auto; overscroll-behavior-x: contain;
+            border: 1px solid var(--hmx-border); border-radius: 10px; background: var(--hmx-surface);
+        }
+        .hmx-table { border-collapse: separate; border-spacing: 2px; width: 100%; min-width: 660px; }
+        .hmx-table th, .hmx-table td { border-bottom: 0; }
+        .hmx-table th {
+            background: var(--hmx-surface); color: var(--hmx-sub);
+            font-weight: 600; font-size: 0.72rem; padding: 4px 2px;
+            white-space: nowrap; text-align: center; font-variant-numeric: tabular-nums;
+        }
+        .hmx-table th[scope="row"] {
+            position: sticky; inset-inline-start: 0; z-index: 1;
+            background: var(--hmx-surface); color: var(--hmx-text);
+            padding-inline: 8px; min-width: 34px;
+        }
+        .hmx-table td {
+            height: 36px; min-width: 52px; padding: 0 2px;
+            text-align: center; border-radius: 5px; cursor: default;
+            font-size: 0.8rem; font-weight: 600;
+            font-variant-numeric: tabular-nums;
+            border: 1px solid transparent;
+        }
+        .hmx-v-h, .hmx[data-metric="headcount"] .hmx-v-r { display: none; }
+        .hmx[data-metric="headcount"] .hmx-v-h { display: inline; }
+        .hmx[data-metric="ratio"] .hmx-table td[data-rb="r1"] { background: var(--hmx-r1-bg); color: var(--hmx-r1-fg); }
+        .hmx[data-metric="ratio"] .hmx-table td[data-rb="r2"] { background: var(--hmx-r2-bg); color: var(--hmx-r2-fg); }
+        .hmx[data-metric="ratio"] .hmx-table td[data-rb="r3"] { background: var(--hmx-r3-bg); color: var(--hmx-r3-fg); }
+        .hmx[data-metric="ratio"] .hmx-table td[data-rb="r4"] { background: var(--hmx-r4-bg); color: var(--hmx-r4-fg); }
+        .hmx[data-metric="ratio"] .hmx-table td[data-rb="r5"] { background: var(--hmx-r5-bg); color: var(--hmx-r5-fg); }
+        .hmx[data-metric="ratio"] .hmx-table td[data-wm="1"] { box-shadow: inset 0 3px 0 currentColor; }
+        .hmx[data-metric="headcount"] .hmx-table td[data-hb="h1"] { background: var(--hmx-h1-bg); color: var(--hmx-h1-fg); }
+        .hmx[data-metric="headcount"] .hmx-table td[data-hb="h2"] { background: var(--hmx-h2-bg); color: var(--hmx-h2-fg); }
+        .hmx[data-metric="headcount"] .hmx-table td[data-hb="h3"] { background: var(--hmx-h3-bg); color: var(--hmx-h3-fg); }
+        .hmx[data-metric="headcount"] .hmx-table td[data-hb="h4"] { background: var(--hmx-h4-bg); color: var(--hmx-h4-fg); }
+        .hmx[data-metric="headcount"] .hmx-table td[data-hb="h5"] { background: var(--hmx-h5-bg); color: var(--hmx-h5-fg); }
+        .hmx[data-metric="ratio"] .hmx-table td[data-rb="na"],
+        .hmx[data-metric="headcount"] .hmx-table td[data-hb="na"] {
+            background: var(--hmx-na-bg); color: var(--hmx-na-fg);
+            border: 1px dashed var(--hmx-na-border); font-weight: 400;
+        }
+        .hmx-table td.is-active { outline: 2px solid var(--hmx-focus); outline-offset: 1px; }
+        .hmx-legend {
+            display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px;
+            margin: 8px 0 0; padding: 0; list-style: none;
+            font-size: 0.72rem; color: var(--hmx-sub); font-variant-numeric: tabular-nums;
+        }
+        .hmx-legend li { display: inline-flex; align-items: center; gap: 4px; }
+        .hmx-sw { width: 14px; height: 10px; border-radius: 3px; display: inline-block; }
+        .hmx-legend--h, .hmx[data-metric="headcount"] .hmx-legend--r { display: none; }
+        .hmx[data-metric="headcount"] .hmx-legend--h { display: flex; }
+        .hmx-sw-r1 { background: var(--hmx-r1-bg); } .hmx-sw-r2 { background: var(--hmx-r2-bg); }
+        .hmx-sw-r3 { background: var(--hmx-r3-bg); border: 1px solid var(--hmx-border); }
+        .hmx-sw-r4 { background: var(--hmx-r4-bg); } .hmx-sw-r5 { background: var(--hmx-r5-bg); }
+        .hmx-sw-h1 { background: var(--hmx-h1-bg); border: 1px solid var(--hmx-border); } .hmx-sw-h2 { background: var(--hmx-h2-bg); }
+        .hmx-sw-h3 { background: var(--hmx-h3-bg); } .hmx-sw-h4 { background: var(--hmx-h4-bg); } .hmx-sw-h5 { background: var(--hmx-h5-bg); }
+        .hmx-sw-na { background: var(--hmx-na-bg); border: 1px dashed var(--hmx-na-border); }
+        .hmx-status {
+            margin: 10px 0 0; min-height: 2.6em; font-size: 0.8rem; line-height: 1.6;
+            color: var(--hmx-text); background: var(--hmx-surface-2);
+            border: 1px solid var(--hmx-border); border-radius: 8px; padding: 8px 12px;
+            font-variant-numeric: tabular-nums;
+        }
+        .hmx-tip {
+            position: fixed; z-index: 30; max-width: 300px; pointer-events: none;
+            padding: 7px 10px; border-radius: 7px;
+            background: var(--hmx-tip-bg); color: var(--hmx-tip-text);
+            font-size: 0.76rem; line-height: 1.55; font-variant-numeric: tabular-nums;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
+        }
+        .hmx-tip[hidden] { display: none; }
+        .hmx-builder { border-top: 1px solid var(--hmx-border); margin-top: 20px; padding-top: 4px; }
+        .hmx-theme-set { border: 0; margin: 0 0 12px; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+        .hmx-theme-set legend { padding: 0; margin-bottom: 6px; width: 100%; }
+        .hmx-theme-set label {
+            display: inline-flex; align-items: center; gap: 6px; min-height: 36px;
+            font-size: 0.82rem; font-weight: 600; color: var(--hmx-text); cursor: pointer;
+        }
+        .hmx-code-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+        .hmx-code-card { display: flex; flex-direction: column; gap: 6px; }
+        .hmx-code-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+        .hmx-code-head label { font-size: 0.8rem; font-weight: 700; color: var(--hmx-text); }
+        .hmx-code {
+            width: 100%; min-height: 150px; resize: vertical;
+            background: var(--hmx-code-bg); color: var(--hmx-text);
+            border: 1px solid var(--hmx-border); border-radius: 8px; padding: 10px 12px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 0.74rem; line-height: 1.55; font-variant-numeric: tabular-nums;
+        }
+        .hmx-copy {
+            min-height: 36px; padding: 6px 12px; border-radius: 6px; cursor: pointer;
+            border: 1px solid var(--hmx-border); background: var(--hmx-surface-2);
+            color: var(--hmx-text); font: inherit; font-size: 0.76rem; font-weight: 700;
+            white-space: nowrap; flex-shrink: 0;
+        }
+        .hmx-copy-status { font-size: 0.74rem; color: var(--hmx-sub); min-height: 1.2em; margin: 0; }
+        .hmx-links { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 12px 0 0; font-size: 0.8rem; }
+        .hmx-links a { display: inline-flex; align-items: center; min-height: 36px; font-weight: 600; }
+        .hmx-note { margin: 10px 0 0; font-size: 0.74rem; color: var(--hmx-sub); line-height: 1.6; }
+        @media (prefers-reduced-motion: no-preference) {
+            .hmx-tab { transition: background-color 0.15s ease, color 0.15s ease; }
+        }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=40">
+    <link rel="stylesheet" href="/static/calm.css?v=41">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -484,9 +698,580 @@
             <div style="margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border-subtle); display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; font-size: 0.8rem;">
                 <a href="/stats/year-end-2026" style="display: inline-flex; align-items: center; min-height: 38px; padding: 6px 14px; border-radius: 999px; background: rgba(200, 164, 110, 0.14); border: 1px solid rgba(200, 164, 110, 0.42); color: var(--accent-text); font-weight: 700; text-decoration: none;">2026年 忘年会・年末年始＆ドーム終演連動データ白書 ›</a>
                 <a href="/stats/monthly.csv" style="display: inline-flex; align-items: center; min-height: 38px; padding: 6px 14px; border-radius: 999px; border: 1px solid var(--border-subtle); color: var(--text-main); font-weight: 600; text-decoration: none;">店舗別30日統計CSVダウンロード（CC BY 4.0）</a>
+                <a href="#heatmap" style="display: inline-flex; align-items: center; min-height: 38px; padding: 6px 12px; color: var(--text-sub); font-weight: 600; text-decoration: underline;">曜日×時間帯別ヒートマップ＆埋め込み発行 ↓</a>
                 <a href="#forecast-accuracy" style="display: inline-flex; align-items: center; min-height: 38px; padding: 6px 12px; color: var(--text-sub); font-weight: 600; text-decoration: underline;">過去{{ forecast_days or 90 }}日間の予測検証ログへ ↓</a>
             </div>
         </section>
+
+        {#- 曜日×時間帯別 実測ヒートマップ（embed_widgets.get_heatmap_payload の SSR 初期値 + /api/embed/heatmap.json 非同期切替） -#}
+        {%- set hm = heatmap_initial -%}
+        {%- set hm_ok = (hm and hm.cells and (hm.cells | length) == 77 and hm.meta and hm.scope) and true or false -%}
+        {%- set hm_has_data = hm_ok and (hm.meta.total_buckets or 0) > 0 -%}
+        {%- set hm_hours = [[18, '18時'], [19, '19時'], [20, '20時'], [21, '21時'], [22, '22時'], [23, '23時'], [0, '24時'], [1, '翌1時'], [2, '翌2時'], [3, '翌3時'], [4, '翌4時']] -%}
+        {%- set hm_dows = [['mon', '月'], ['tue', '火'], ['wed', '水'], ['thu', '木'], ['fri', '金'], ['sat', '土'], ['sun', '日']] -%}
+        {%- set hc_t = hm.bands.headcount.thresholds if (hm_ok and hm.bands and hm.bands.headcount and (hm.bands.headcount.thresholds | length) == 4) else [10.0, 20.0, 35.0, 50.0] -%}
+        {%- set hm_top_ratio = hm.peaks.ratio_top[0] if (hm_has_data and hm.peaks and hm.peaks.ratio_top) else none -%}
+        <section id="heatmap" class="hmx-box hmx" data-metric="ratio" aria-labelledby="hmx-title">
+            <span id="heatmap-widget" style="display:block;height:0;overflow:hidden;" aria-hidden="true"></span>
+            <h2 id="hmx-title">曜日×時間帯別 実測男女比インタラクティブ・ヒートマップ</h2>
+            <p class="hmx-lead">
+                全国の相席ラウンジで1分間隔に計測した在店人数を「営業日×1時間×店舗」の実測時間枠に集約し、曜日（行）×時間帯（列・18時〜翌4時）ごとの平均女性比率と1店舗あたり平均来店人数を表示しています。0〜4時は前日の営業日として集計し（例：日曜深夜1時は日曜の翌1時セル）、サンプルが不足する枠は推測値を出さず「—（計測蓄積中）」と表示します。
+            </p>
+            <ul class="hmx-meta" aria-label="集計条件">
+                <li>対象 <strong id="hmx-meta-scope">{{ hm.scope.label if hm_ok else '全国' }}</strong></li>
+                <li>過去<strong id="hmx-meta-days">{{ hm.meta.days if hm_ok else 90 }}</strong>日・営業日基準</li>
+                <li>対象 <strong id="hmx-meta-stores">{% if hm_ok %}{{ hm.scope.store_count }}店舗{% else %}検証ログ蓄積中{% endif %}</strong></li>
+                <li>実測時間枠 <strong id="hmx-meta-buckets">{% if hm_has_data %}{{ "{:,}".format(hm.meta.total_buckets | int) }}件{% else %}検証ログ蓄積中{% endif %}</strong></li>
+                <li><a href="https://creativecommons.org/licenses/by/4.0/deed.ja" target="_blank" rel="license noopener">CC BY 4.0</a></li>
+            </ul>
+
+            <div class="hmx-controls">
+                <div class="hmx-field">
+                    <label for="hm-scope-select">表示対象（全国 ／ 主要エリア別）</label>
+                    <select id="hm-scope-select" class="hmx-select">
+                        {%- if heatmap_scopes %}
+                        {%- for s in heatmap_scopes %}
+                        <option value="{{ s.key }}"{% if s.key == 'all' %} selected{% endif %}>{{ s.label }}（{{ s.store_count }}店舗）</option>
+                        {%- endfor %}
+                        {%- else %}
+                        <option value="all" selected>全国</option>
+                        {%- endif %}
+                    </select>
+                </div>
+                <div class="hmx-field">
+                    <label for="hm-store-select">個別店舗を指定（任意）</label>
+                    <select id="hm-store-select" class="hmx-select">
+                        <option value="" selected>指定なし（エリア全体を集計）</option>
+                        {%- if hm_ok and hm.scope.type == 'all' %}
+                        {%- for st in hm.scope.stores %}
+                        {%- if st.slug %}
+                        <option value="{{ st.slug }}">{{ st.name }}</option>
+                        {%- endif %}
+                        {%- endfor %}
+                        {%- endif %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="hmx-tabbar">
+                <div class="hmx-tabs" role="tablist" aria-label="ヒートマップに表示する指標">
+                    <button type="button" class="hmx-tab" role="tab" id="hmx-tab-ratio" data-metric="ratio" aria-controls="hmx-panel" aria-selected="true" tabindex="0">平均女性比率（%）</button>
+                    <button type="button" class="hmx-tab" role="tab" id="hmx-tab-headcount" data-metric="headcount" aria-controls="hmx-panel" aria-selected="false" tabindex="-1">平均来店人数</button>
+                </div>
+                <p class="hmx-loading" id="hmx-loading" aria-live="polite"></p>
+            </div>
+
+            <div id="hmx-panel" role="tabpanel" aria-labelledby="hmx-tab-ratio">
+                <div class="hmx-scroll" id="hmx-region" tabindex="0" role="region" aria-label="曜日×時間帯別 実測ヒートマップ表">
+                    <table class="hmx-table" id="hmx-table">
+                        <caption class="hmx-sr-only">曜日（行）×時間帯（列）別の平均女性比率（%）と1店舗・1時間枠あたり平均来店人数（名）。サンプル不足のセルは「—」（計測蓄積中）。</caption>
+                        <thead>
+                            <tr>
+                                <th scope="col"><span class="hmx-sr-only">曜日</span></th>
+                                {%- for h in hm_hours %}
+                                <th scope="col">{{ h[1] }}</th>
+                                {%- endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {%- for d in hm_dows %}
+                            {%- set row_i = loop.index0 %}
+                            <tr>
+                                <th scope="row">{{ d[1] }}</th>
+                                {%- for h in hm_hours %}
+                                {%- set ci = row_i * 11 + loop.index0 %}
+                                {%- set c = hm.cells[ci] if hm_ok else none %}
+                                <td data-i="{{ ci }}" data-rb="{{ c.ratio_band if c else 'na' }}" data-hb="{{ c.headcount_band if c else 'na' }}" data-wm="{{ '1' if (c and c.women_majority) else '0' }}" tabindex="{{ '0' if ci == 0 else '-1' }}">
+                                    {%- if c and c.women_ratio_pct is not none -%}
+                                    <span class="hmx-v-r">{{ '%.1f' | format(c.women_ratio_pct) }}{% if c.women_majority %}<span class="hmx-sr-only">（女性多数）</span>{% endif %}</span>
+                                    {%- else -%}
+                                    <span class="hmx-v-r"><span aria-hidden="true">—</span><span class="hmx-sr-only">計測蓄積中</span></span>
+                                    {%- endif -%}
+                                    {%- if c and c.avg_total is not none -%}
+                                    <span class="hmx-v-h">{{ '%.1f' | format(c.avg_total) }}</span>
+                                    {%- else -%}
+                                    <span class="hmx-v-h"><span aria-hidden="true">—</span><span class="hmx-sr-only">計測蓄積中</span></span>
+                                    {%- endif -%}
+                                </td>
+                                {%- endfor %}
+                            </tr>
+                            {%- endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <ul class="hmx-legend hmx-legend--r" aria-label="平均女性比率の凡例">
+                <li><span class="hmx-sw hmx-sw-r1" aria-hidden="true"></span>42%未満</li>
+                <li><span class="hmx-sw hmx-sw-r2" aria-hidden="true"></span>42〜48%</li>
+                <li><span class="hmx-sw hmx-sw-r3" aria-hidden="true"></span>48〜52%</li>
+                <li><span class="hmx-sw hmx-sw-r4" aria-hidden="true"></span>52〜58%</li>
+                <li><span class="hmx-sw hmx-sw-r5" aria-hidden="true"></span>58%以上</li>
+                <li><span class="hmx-sw hmx-sw-na" aria-hidden="true"></span>— 計測蓄積中</li>
+                <li>上端の線＝女性50%以上</li>
+            </ul>
+            <ul class="hmx-legend hmx-legend--h" aria-label="平均来店人数の凡例">
+                <li><span class="hmx-sw hmx-sw-h1" aria-hidden="true"></span><span id="hmx-lg-h1">{{ '%.1f' | format(hc_t[0]) }}名以下</span></li>
+                <li><span class="hmx-sw hmx-sw-h2" aria-hidden="true"></span><span id="hmx-lg-h2">〜{{ '%.1f' | format(hc_t[1]) }}名</span></li>
+                <li><span class="hmx-sw hmx-sw-h3" aria-hidden="true"></span><span id="hmx-lg-h3">〜{{ '%.1f' | format(hc_t[2]) }}名</span></li>
+                <li><span class="hmx-sw hmx-sw-h4" aria-hidden="true"></span><span id="hmx-lg-h4">〜{{ '%.1f' | format(hc_t[3]) }}名</span></li>
+                <li><span class="hmx-sw hmx-sw-h5" aria-hidden="true"></span><span id="hmx-lg-h5">{{ '%.1f' | format(hc_t[3]) }}名超</span></li>
+                <li><span class="hmx-sw hmx-sw-na" aria-hidden="true"></span>— 計測蓄積中</li>
+                <li>1店舗・1時間枠あたりの男女合計</li>
+            </ul>
+
+            <p class="hmx-status" id="hmx-status" aria-live="polite">{% if hm_top_ratio %}女性比率が最も高い時間帯：{{ hm_top_ratio.dow_label }}曜 {{ hm_top_ratio.hour_label }} {{ '%.1f' | format(hm_top_ratio.women_ratio_pct) }}%（実測時間枠 n={{ hm_top_ratio.n_ratio }}）。セルにカーソルを合わせる・タップする・矢印キーで移動すると、サンプル件数と男女内訳を表示します。{% else %}{{ hm.scope.label if hm_ok else '全国' }}の曜日×時間帯別データは検証ログ蓄積中です（サンプル不足のセルは推測値を表示しません）。{% endif %}</p>
+            <div class="hmx-tip" id="hmx-tip" role="tooltip" hidden></div>
+
+            <div class="hmx-builder" id="embed-builder">
+                <h3>埋め込みウィジェット ＆ 出典コード発行ビルダー</h3>
+                <p class="hmx-lead">ブログ・Webメディア・比較サイトに、このヒートマップを出典リンク付きでそのまま掲載できます。上で選んだ表示対象（全国・エリア・店舗）と指標が発行コードに反映されます。</p>
+                <fieldset class="hmx-theme-set">
+                    <legend class="hmx-legend-title">埋め込みテーマ（掲載先の背景色に合わせて選択）</legend>
+                    <label><input type="radio" name="hmx-embed-theme" value="light" checked> ライト背景・白い記事用（theme=light）</label>
+                    <label><input type="radio" name="hmx-embed-theme" value="dark"> ダーク背景用（theme=dark）</label>
+                </fieldset>
+                <div class="hmx-code-grid">
+                    <div class="hmx-code-card">
+                        <div class="hmx-code-head">
+                            <label for="hmx-code-html">HTML埋め込みコード（iframe＋出典リンク）</label>
+                            <button type="button" class="hmx-copy" data-copy-target="hmx-code-html" data-copy-status="hmx-copy-status-html" data-copy-label="HTMLコードをコピー">HTMLコードをコピー</button>
+                        </div>
+                        <textarea id="hmx-code-html" class="hmx-code" readonly spellcheck="false" rows="7">{% if hm_ok and hm.embed and hm.embed.html %}{{ hm.embed.html | replace('theme=dark', 'theme=light') }}{% else %}検証ログ蓄積中のため、埋め込みコードはデータ取得後に発行されます。{% endif %}</textarea>
+                        <p class="hmx-copy-status" id="hmx-copy-status-html" aria-live="polite"></p>
+                    </div>
+                    <div class="hmx-code-card">
+                        <div class="hmx-code-head">
+                            <label for="hmx-code-md">Markdown引用コード（note・Zenn・はてなブログ用）</label>
+                            <button type="button" class="hmx-copy" data-copy-target="hmx-code-md" data-copy-status="hmx-copy-status-md" data-copy-label="Markdownをコピー">Markdownをコピー</button>
+                        </div>
+                        <textarea id="hmx-code-md" class="hmx-code" readonly spellcheck="false" rows="7">{% if hm_ok and hm.embed and hm.embed.markdown %}{{ hm.embed.markdown }}{% else %}検証ログ蓄積中のため、引用コードはデータ取得後に発行されます。{% endif %}</textarea>
+                        <p class="hmx-copy-status" id="hmx-copy-status-md" aria-live="polite"></p>
+                    </div>
+                </div>
+                <p class="hmx-links">
+                    <a id="hmx-preview-link" href="/embed/heatmap?scope=all&amp;metric=ratio&amp;theme=light" target="_blank" rel="noopener">埋め込みプレビューを別タブで確認（/embed/heatmap）</a>
+                    <a id="hmx-json-link" href="/api/embed/heatmap.json?scope=all" target="_blank" rel="noopener">JSON API（/api/embed/heatmap.json）</a>
+                </p>
+                <p class="hmx-note">本ヒートマップは CC BY 4.0 で公開しています。事前の許諾は不要ですが、iframe 直下の出典リンク（https://aiseki-navi.com/stats）は削除せずにご利用ください。サンプル不足の時間枠は推測値を表示せず「—」となります。</p>
+            </div>
+        </section>
+        <script type="application/json" id="hmx-initial">{{ heatmap_initial | tojson }}</script>
+        <script>
+        (function () {
+            'use strict';
+            var root = document.getElementById('heatmap');
+            var table = document.getElementById('hmx-table');
+            if (!root || !table) { return; }
+            var NCOL = 11;
+            var NROW = 7;
+            var API_PATH = '/api/embed/heatmap.json';
+            var SITE = 'https://aiseki-navi.com';
+            var CACHE_MAX = 24;
+
+            var initial = null;
+            try { initial = JSON.parse(document.getElementById('hmx-initial').textContent || 'null'); } catch (e) { initial = null; }
+
+            var scopeSel = document.getElementById('hm-scope-select');
+            var storeSel = document.getElementById('hm-store-select');
+            var tabs = Array.prototype.slice.call(root.querySelectorAll('.hmx-tab'));
+            var panel = document.getElementById('hmx-panel');
+            var region = document.getElementById('hmx-region');
+            var tds = Array.prototype.slice.call(table.querySelectorAll('td[data-i]'));
+            var tip = document.getElementById('hmx-tip');
+            var statusEl = document.getElementById('hmx-status');
+            var loadingEl = document.getElementById('hmx-loading');
+            var codeHtml = document.getElementById('hmx-code-html');
+            var codeMd = document.getElementById('hmx-code-md');
+            var previewLink = document.getElementById('hmx-preview-link');
+            var jsonLink = document.getElementById('hmx-json-link');
+            var themeRadios = Array.prototype.slice.call(root.querySelectorAll('input[name="hmx-embed-theme"]'));
+
+            var state = { scope: 'all', store: '', metric: 'ratio', theme: 'light' };
+            var cache = {};
+            var cacheCount = 0;
+            var current = null;
+            var activeTd = null;
+            var reqSeq = 0;
+
+            function isValidPayload(p) {
+                return !!(p && typeof p === 'object' && p.cells && p.cells.length === NROW * NCOL && p.meta && p.scope);
+            }
+            function fmt(v) { return (typeof v === 'number' && isFinite(v)) ? v.toFixed(1) : '—'; }
+            function num(v) { return (typeof v === 'number' && isFinite(v)) ? v.toLocaleString('ja-JP') : '0'; }
+            function keyOf(metric) {
+                return (state.store ? 'store:' + state.store : 'scope:' + state.scope) + '|' + (metric || state.metric);
+            }
+            function putCache(k, p) {
+                if (!cache[k]) {
+                    if (cacheCount >= CACHE_MAX) { cache = {}; cacheCount = 0; }
+                    cacheCount += 1;
+                }
+                cache[k] = p;
+            }
+            function hasOption(sel, val) {
+                if (!sel || !val) { return false; }
+                for (var i = 0; i < sel.options.length; i++) {
+                    if (sel.options[i].value === val) { return true; }
+                }
+                return false;
+            }
+            function toLocal(url, allowPrefix) {
+                var s = String(url || '');
+                if (s.indexOf(SITE + '/') === 0) { s = s.substring(SITE.length); }
+                return s.indexOf(allowPrefix) === 0 ? s : allowPrefix;
+            }
+            function withTheme(s) {
+                return String(s || '').replace(/theme=(?:dark|light)/g, 'theme=' + state.theme);
+            }
+            function setLoading(msg) { if (loadingEl) { loadingEl.textContent = msg || ''; } }
+
+            function describe(c, minB) {
+                if (!c) { return ''; }
+                var head = c.dow_label + '曜 ' + c.hour_label;
+                if (c.status !== 'ok') {
+                    return head + '｜計測蓄積中（実測時間枠 n=' + c.n_buckets + '・表示には' + minB + '枠以上が必要／累計計測 ' + num(c.n_snapshots) + '回）';
+                }
+                var ratio = (c.women_ratio_pct === null || c.women_ratio_pct === undefined)
+                    ? '平均女性比率 計測蓄積中（4名以上の時間枠が不足）'
+                    : '平均女性比率 ' + fmt(c.women_ratio_pct) + '%（比率算出枠 n=' + c.n_ratio + '）';
+                return head + '｜' + ratio + '｜平均 女性' + fmt(c.avg_women) + '名 / 男性' + fmt(c.avg_men) + '名（合計' + fmt(c.avg_total) + '名）｜実測時間枠 n=' + c.n_buckets + '（累計計測 ' + num(c.n_snapshots) + '回）';
+            }
+
+            function defaultStatusText() {
+                var p = current;
+                var label = (p && p.scope && p.scope.label) || '全国';
+                if (!p || !p.meta || !(p.meta.total_buckets > 0)) {
+                    return label + 'の曜日×時間帯別データは検証ログ蓄積中です（サンプル不足のセルは推測値を表示しません）。';
+                }
+                var peaks = p.peaks || {};
+                var hint = 'セルにカーソルを合わせる・タップする・矢印キーで移動すると、サンプル件数と男女内訳を表示します。';
+                if (state.metric === 'headcount') {
+                    var th = (peaks.headcount_top || [])[0];
+                    if (!th) { return label + 'の来店人数データは検証ログ蓄積中です（サンプル不足のセルは推測値を表示しません）。'; }
+                    return label + '・平均来店人数が最も多い時間帯：' + th.dow_label + '曜 ' + th.hour_label + ' 平均' + fmt(th.avg_total) + '名（実測時間枠 n=' + th.n_buckets + '）。' + hint;
+                }
+                var tr = (peaks.ratio_top || [])[0];
+                if (!tr) { return label + 'の女性比率データは検証ログ蓄積中です（サンプル不足のセルは推測値を表示しません）。'; }
+                return label + '・女性比率が最も高い時間帯：' + tr.dow_label + '曜 ' + tr.hour_label + ' ' + fmt(tr.women_ratio_pct) + '%（平均来店' + fmt(tr.avg_total) + '名・実測時間枠 n=' + tr.n_ratio + '）。' + hint;
+            }
+            function resetStatus() { statusEl.textContent = defaultStatusText(); }
+
+            function hideTip() {
+                tip.hidden = true;
+                if (activeTd) {
+                    activeTd.classList.remove('is-active');
+                    activeTd.removeAttribute('aria-describedby');
+                }
+                activeTd = null;
+            }
+            function positionTip(td) {
+                var r = td.getBoundingClientRect();
+                var tw = tip.offsetWidth;
+                var th = tip.offsetHeight;
+                var vw = document.documentElement.clientWidth;
+                var left = Math.min(Math.max(6, r.left + r.width / 2 - tw / 2), Math.max(6, vw - tw - 6));
+                var top = r.top - th - 6;
+                if (top < 4) { top = r.bottom + 6; }
+                tip.style.left = left + 'px';
+                tip.style.top = top + 'px';
+            }
+            function showTip(td) {
+                if (!current || !current.cells) { return; }
+                var c = current.cells[parseInt(td.getAttribute('data-i'), 10)];
+                if (!c) { return; }
+                if (activeTd && activeTd !== td) {
+                    activeTd.classList.remove('is-active');
+                    activeTd.removeAttribute('aria-describedby');
+                }
+                activeTd = td;
+                td.classList.add('is-active');
+                var text = describe(c, (current.meta && current.meta.min_cell_buckets) || 0);
+                tip.textContent = text;
+                statusEl.textContent = text;
+                tip.hidden = false;
+                td.setAttribute('aria-describedby', 'hmx-tip');
+                positionTip(td);
+            }
+
+            function valueSpan(cls, v, majority) {
+                var outer = document.createElement('span');
+                outer.className = cls;
+                if (typeof v === 'number' && isFinite(v)) {
+                    outer.textContent = v.toFixed(1);
+                    if (majority) {
+                        var sr = document.createElement('span');
+                        sr.className = 'hmx-sr-only';
+                        sr.textContent = '（女性多数）';
+                        outer.appendChild(sr);
+                    }
+                } else {
+                    var dash = document.createElement('span');
+                    dash.setAttribute('aria-hidden', 'true');
+                    dash.textContent = '—';
+                    var srNa = document.createElement('span');
+                    srNa.className = 'hmx-sr-only';
+                    srNa.textContent = '計測蓄積中';
+                    outer.appendChild(dash);
+                    outer.appendChild(srNa);
+                }
+                return outer;
+            }
+
+            function renderCells(p) {
+                tds.forEach(function (td) {
+                    var c = p.cells[parseInt(td.getAttribute('data-i'), 10)] || {};
+                    var rb = /^(r[1-5]|na)$/.test(c.ratio_band) ? c.ratio_band : 'na';
+                    var hb = /^(h[1-5]|na)$/.test(c.headcount_band) ? c.headcount_band : 'na';
+                    td.setAttribute('data-rb', rb);
+                    td.setAttribute('data-hb', hb);
+                    td.setAttribute('data-wm', c.women_majority ? '1' : '0');
+                    while (td.firstChild) { td.removeChild(td.firstChild); }
+                    td.appendChild(valueSpan('hmx-v-r', c.women_ratio_pct, !!c.women_majority));
+                    td.appendChild(valueSpan('hmx-v-h', c.avg_total, false));
+                });
+            }
+
+            function renderMeta(p) {
+                var meta = p.meta || {};
+                var sc = p.scope || {};
+                var hasData = meta.total_buckets > 0;
+                document.getElementById('hmx-meta-scope').textContent = sc.label || '全国';
+                document.getElementById('hmx-meta-days').textContent = String(meta.days || 90);
+                document.getElementById('hmx-meta-stores').textContent = (typeof sc.store_count === 'number') ? sc.store_count + '店舗' : '検証ログ蓄積中';
+                document.getElementById('hmx-meta-buckets').textContent = hasData ? num(meta.total_buckets) + '件' : '検証ログ蓄積中';
+                var t = (p.bands && p.bands.headcount && p.bands.headcount.thresholds) || [];
+                if (t.length === 4) {
+                    document.getElementById('hmx-lg-h1').textContent = fmt(t[0]) + '名以下';
+                    document.getElementById('hmx-lg-h2').textContent = '〜' + fmt(t[1]) + '名';
+                    document.getElementById('hmx-lg-h3').textContent = '〜' + fmt(t[2]) + '名';
+                    document.getElementById('hmx-lg-h4').textContent = '〜' + fmt(t[3]) + '名';
+                    document.getElementById('hmx-lg-h5').textContent = fmt(t[3]) + '名超';
+                }
+            }
+
+            function renderBuilder() {
+                var p = current;
+                var emb = p && p.embed;
+                if (!emb || !emb.html) { return; }
+                codeHtml.value = withTheme(emb.html);
+                codeMd.value = String(emb.markdown || '');
+                previewLink.href = withTheme(toLocal(emb.iframe_src, '/embed/heatmap'));
+                jsonLink.href = toLocal(p.urls && p.urls.json, '/api/embed/heatmap.json');
+            }
+
+            function apply(p) {
+                current = p;
+                hideTip();
+                renderCells(p);
+                renderMeta(p);
+                renderBuilder();
+                resetStatus();
+            }
+
+            function syncUrl() {
+                if (!window.history || !history.replaceState || typeof URL !== 'function') { return; }
+                try {
+                    var u = new URL(window.location.href);
+                    u.searchParams.delete('store');
+                    u.searchParams.delete('scope');
+                    u.searchParams.delete('metric');
+                    if (state.store) { u.searchParams.set('store', state.store); }
+                    else if (state.scope && state.scope !== 'all') { u.searchParams.set('scope', state.scope); }
+                    if (state.metric === 'headcount') { u.searchParams.set('metric', 'headcount'); }
+                    history.replaceState(history.state, '', u.pathname + u.search + u.hash);
+                } catch (e) { /* URL API unavailable */ }
+            }
+
+            function load() {
+                var k = keyOf();
+                var seq = ++reqSeq;
+                if (cache[k]) { apply(cache[k]); setLoading(''); return; }
+                if (typeof window.fetch !== 'function') {
+                    setLoading('このブラウザでは表示対象の切り替えに対応していません。');
+                    return;
+                }
+                var params = new URLSearchParams();
+                if (state.store) { params.set('store', state.store); } else { params.set('scope', state.scope || 'all'); }
+                params.set('metric', state.metric);
+                setLoading('集計データを取得しています…');
+                window.fetch(API_PATH + '?' + params.toString(), { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+                    .then(function (resp) {
+                        if (!resp.ok) { throw new Error('HTTP ' + resp.status); }
+                        return resp.json();
+                    })
+                    .then(function (p) {
+                        if (!isValidPayload(p)) { throw new Error('invalid payload'); }
+                        if (p.meta.total_buckets > 0) { putCache(k, p); }
+                        if (seq !== reqSeq) { return; }
+                        apply(p);
+                        setLoading('');
+                    })
+                    .catch(function () {
+                        if (seq !== reqSeq) { return; }
+                        setLoading('データを取得できませんでした。時間をおいて再度お試しください（表示中の内容は直前の条件のものです）。');
+                    });
+            }
+
+            function setMetric(m, focusTab) {
+                if (m !== 'ratio' && m !== 'headcount') { return; }
+                state.metric = m;
+                root.setAttribute('data-metric', m);
+                tabs.forEach(function (t) {
+                    var on = t.getAttribute('data-metric') === m;
+                    t.setAttribute('aria-selected', on ? 'true' : 'false');
+                    t.tabIndex = on ? 0 : -1;
+                    if (on) {
+                        panel.setAttribute('aria-labelledby', t.id);
+                        if (focusTab) { t.focus(); }
+                    }
+                });
+                if (activeTd) { showTip(activeTd); } else { resetStatus(); }
+            }
+
+            tabs.forEach(function (t, idx) {
+                t.addEventListener('click', function () { setMetric(t.getAttribute('data-metric'), false); syncUrl(); load(); });
+                t.addEventListener('keydown', function (ev) {
+                    var next = null;
+                    if (ev.key === 'ArrowRight') { next = tabs[(idx + 1) % tabs.length]; }
+                    else if (ev.key === 'ArrowLeft') { next = tabs[(idx - 1 + tabs.length) % tabs.length]; }
+                    else if (ev.key === 'Home') { next = tabs[0]; }
+                    else if (ev.key === 'End') { next = tabs[tabs.length - 1]; }
+                    if (next) {
+                        ev.preventDefault();
+                        setMetric(next.getAttribute('data-metric'), true);
+                        syncUrl();
+                        load();
+                    }
+                });
+            });
+
+            if (scopeSel) {
+                scopeSel.addEventListener('change', function () {
+                    state.scope = hasOption(scopeSel, scopeSel.value) ? scopeSel.value : 'all';
+                    state.store = '';
+                    if (storeSel) { storeSel.value = ''; }
+                    syncUrl();
+                    load();
+                });
+            }
+            if (storeSel) {
+                storeSel.addEventListener('change', function () {
+                    state.store = (storeSel.value && hasOption(storeSel, storeSel.value)) ? storeSel.value : '';
+                    syncUrl();
+                    load();
+                });
+            }
+            themeRadios.forEach(function (r) {
+                r.addEventListener('change', function () {
+                    if (r.checked && (r.value === 'light' || r.value === 'dark')) {
+                        state.theme = r.value;
+                        renderBuilder();
+                    }
+                });
+            });
+
+            function setRoving(td) {
+                tds.forEach(function (el) { el.tabIndex = -1; });
+                td.tabIndex = 0;
+            }
+            tds.forEach(function (td) {
+                td.addEventListener('mouseenter', function () { showTip(td); });
+                td.addEventListener('focus', function () { setRoving(td); showTip(td); });
+                td.addEventListener('click', function () { setRoving(td); showTip(td); });
+                td.addEventListener('keydown', function (ev) {
+                    var i = parseInt(td.getAttribute('data-i'), 10);
+                    var row = Math.floor(i / NCOL);
+                    var col = i % NCOL;
+                    var target = -1;
+                    if (ev.key === 'ArrowRight' && col < NCOL - 1) { target = i + 1; }
+                    else if (ev.key === 'ArrowLeft' && col > 0) { target = i - 1; }
+                    else if (ev.key === 'ArrowDown' && row < NROW - 1) { target = i + NCOL; }
+                    else if (ev.key === 'ArrowUp' && row > 0) { target = i - NCOL; }
+                    else if (ev.key === 'Home' && col > 0) { target = row * NCOL; }
+                    else if (ev.key === 'End' && col < NCOL - 1) { target = row * NCOL + NCOL - 1; }
+                    else if (ev.key === 'Escape') { hideTip(); resetStatus(); return; }
+                    if (target < 0) { return; }
+                    var nextTd = tds[target];
+                    if (!nextTd) { return; }
+                    ev.preventDefault();
+                    nextTd.focus();
+                    if (nextTd.scrollIntoView) { nextTd.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }
+                });
+            });
+            table.addEventListener('mouseleave', function () {
+                if (!table.contains(document.activeElement)) { hideTip(); resetStatus(); }
+            });
+            document.addEventListener('keydown', function (ev) {
+                if (ev.key === 'Escape' && !tip.hidden) { hideTip(); resetStatus(); }
+            });
+            document.addEventListener('click', function (ev) {
+                if (!tip.hidden && !table.contains(ev.target)) { hideTip(); resetStatus(); }
+            });
+            region.addEventListener('scroll', function () {
+                if (activeTd && !tip.hidden) { positionTip(activeTd); }
+            }, { passive: true });
+            window.addEventListener('scroll', function () {
+                if (activeTd && !tip.hidden) { positionTip(activeTd); }
+            }, { passive: true });
+
+            function copyFrom(btn) {
+                var ta = document.getElementById(btn.getAttribute('data-copy-target'));
+                var st = document.getElementById(btn.getAttribute('data-copy-status'));
+                var label = btn.getAttribute('data-copy-label') || btn.textContent;
+                if (!ta) { return; }
+                var txt = ta.value || '';
+                function done(ok) {
+                    if (ok) {
+                        btn.textContent = 'コピー完了';
+                        if (st) { st.textContent = 'クリップボードにコピーしました。'; }
+                        setTimeout(function () { btn.textContent = label; if (st) { st.textContent = ''; } }, 1800);
+                    } else if (st) {
+                        st.textContent = 'コピーできませんでした。コード欄を選択して手動でコピーしてください。';
+                    }
+                }
+                function fallback() {
+                    var ok = false;
+                    try { ta.focus(); ta.select(); ok = document.execCommand('copy'); } catch (e) { ok = false; }
+                    done(ok);
+                }
+                if (navigator.clipboard && navigator.clipboard.writeText && window.isSecureContext) {
+                    navigator.clipboard.writeText(txt).then(function () { done(true); }, fallback);
+                } else {
+                    fallback();
+                }
+            }
+            Array.prototype.slice.call(root.querySelectorAll('.hmx-copy')).forEach(function (btn) {
+                btn.addEventListener('click', function () { copyFrom(btn); });
+            });
+
+            // 初期化：SSR 初期値（全国・女性比率）をキャッシュへ投入し、URL の ?store= / ?scope= / ?metric= を安全に同期
+            if (isValidPayload(initial)) {
+                current = initial;
+                if (initial.scope.type === 'all' && initial.meta.total_buckets > 0) { putCache('scope:all|ratio', initial); }
+            }
+            var qs = null;
+            try { qs = new URLSearchParams(window.location.search); } catch (e) { qs = null; }
+            var qStore = qs ? String(qs.get('store') || '').trim().toLowerCase() : '';
+            var qScope = qs ? String(qs.get('scope') || '').trim().toLowerCase() : '';
+            var qMetric = qs ? String(qs.get('metric') || '').trim().toLowerCase() : '';
+            var needsLoad = !isValidPayload(initial);
+            if (qStore && hasOption(storeSel, qStore)) {
+                state.store = qStore;
+                storeSel.value = qStore;
+                needsLoad = true;
+            } else if (qScope && qScope !== 'all' && hasOption(scopeSel, qScope)) {
+                state.scope = qScope;
+                scopeSel.value = qScope;
+                needsLoad = true;
+            }
+            if (qMetric === 'headcount') {
+                setMetric('headcount', false);
+                needsLoad = true;
+            }
+            if (needsLoad) { load(); } else { renderBuilder(); resetStatus(); }
+        })();
+        </script>
 
         <!-- インタラクティブ統計シミュレーターUI (M3: R4) -->
         <section id="stats-simulator" class="sim-container" aria-label="全国相席ラウンジ 時間波形シミュレーター">
@@ -494,10 +1279,10 @@
                 <h2 class="sim-title" style="margin:0; border:none; padding:0;">
                     全国相席ラウンジ 時間波形シミュレーター
                 </h2>
-                <span class="badge" style="margin-bottom:0;">実測ロールアップ連動 ｜ 18:00〜翌05:00波形</span>
+                <span class="badge" style="margin-bottom:0;">参考波形モデル ｜ 18:00〜翌05:00傾向</span>
             </div>
             <p class="sim-desc">
-                過去90日間の1時間粒度ロールアップ一次統計をもとに、エリア・ブランド・曜日・天候ごとの女性比率推移と混雑ピーク時間波形を動的にシミュレーション比較できます（5大ブランドの詳しい時間帯クロスオーバー分析は<a href="/guide/brand-waveform-asymmetry" style="color:inherit;text-decoration:underline;text-underline-offset:3px;">『5大ブランドの時間波形検証コラム』</a>も参照）。
+                時間帯別の標準モデル波形をもとに、エリア・ブランド・曜日・天候ごとの推移イメージをシミュレーション比較できます（実測ログ集計値は上の「曜日×時間帯別 実測ヒートマップ」をご参照ください。5大ブランドの詳しい時間帯クロスオーバー分析は<a href="/guide/brand-waveform-asymmetry" style="color:inherit;text-decoration:underline;text-underline-offset:3px;">『5大ブランドの時間波形検証コラム』</a>も参照）。
             </p>
 
             <div class="sim-controls">

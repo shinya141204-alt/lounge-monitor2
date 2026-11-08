@@ -103,9 +103,9 @@
     <meta name="theme-color" content="#111113">
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
-    <link rel="stylesheet" href="/static/style.css?v=20261108_3" media="print" onload="this.media='all'">
-    <noscript><link rel="stylesheet" href="/static/style.css?v=20261108_3"></noscript>
-    <link rel="stylesheet" href="/static/portal.css?v=16">
+    <link rel="stylesheet" href="/static/style.css?v=20261109_1" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="/static/style.css?v=20261109_1"></noscript>
+    <link rel="stylesheet" href="/static/portal.css?v=17">
     <style>
         body {
             display: block !important;
@@ -247,6 +247,7 @@
             border-collapse: collapse;
             font-size: 0.86rem;
             min-width: 540px;
+            font-variant-numeric: tabular-nums;
         }
         .editorial-table th, .editorial-table td {
             padding: 12px 14px;
@@ -278,7 +279,7 @@
             font-size: 0.92rem;
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=40">
+    <link rel="stylesheet" href="/static/calm.css?v=41">
     {% if not is_staff and not session.get('is_staff') and not is_scheduled_preview %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -301,7 +302,7 @@
         <main>
         <nav class="breadcrumb" aria-label="Breadcrumb">
             <a href="/">ホーム</a><span>›</span>
-            <a href="/columns">コラム・攻略一覧</a><span>›</span>
+            <a href="/columns">コラム一覧</a><span>›</span>
             <span>30代・アラサーの相席ラウンジガイド</span>
         </nav>
 
@@ -346,7 +347,7 @@
                 ただ、国内主要店舗・27万6,751件の来店ログを並べてみると、印象とは別の輪郭が浮かんできます。相席ラウンジの居心地を決めているのは年齢ではなく、<strong>「どのブランドを選ぶか」と「何時に入るか」</strong>です。この2つで、同じ夜がまったく別の夜になります。
             </p>
 
-            <h2>第1章：27.6万件ログで見る年齢層｜ag（アグ）・オリエンタルラウンジ・JIS（ジス）で客層はこう違う</h2>
+            <h2>1. 27.6万件ログで見る年齢層｜ag（アグ）・オリエンタルラウンジ・JIS（ジス）で客層はこう違う</h2>
             <p>
                 「相席ラウンジは若者ばかり」というイメージが先行している一番の理由は、ag（アグ）・オリエンタルラウンジ・JIS（ジス）という性格の違うブランドを、ひと括りに「相席」と呼んでしまっていることです。
             </p>
@@ -407,14 +408,14 @@
             </div>
 
             <p>
-                たとえば、渋谷センター街や歌舞伎町の中心にある『<a href="/store/ag-shibuya" style="color:#c8a46e;text-decoration:none;">ag渋谷</a>』に32歳の男性が金曜深夜に入ると、周りは21歳の大学生グループが多く、会話のテンポも話題も合わずに疲れやすくなります。<br>
-                ところが、同じ渋谷でも落ち着いたエリアの『<a href="/store/oriental-lounge-shibuya-honten" style="color:#c8a46e;text-decoration:none;">オリエンタルラウンジ 渋谷本店</a>』や、恵比寿の『<a href="/store/oriental-lounge-ebisu" style="color:#c8a46e;text-decoration:none;">オリエンタルラウンジ 恵比寿</a>』、あるいは新宿東口の『<a href="/store/jis-shinjuku" style="color:#c8a46e;text-decoration:none;">JIS 新宿</a>』へ足を運べば、店内の空気はずいぶん変わります。
+                たとえば、渋谷・宇田川町や梅田・阪急東通りにある『<a href="/store/ag-shibuya" style="color:#c8a46e;text-decoration:none;">ag渋谷</a>』や『<a href="/store/ag-umeda" style="color:#c8a46e;text-decoration:none;">ag梅田</a>』に32歳の男性が金曜深夜に入ると、周りは21歳の大学生グループが多く、会話のテンポも話題も合わずに疲れやすくなります。<br>
+                ところが、同じ渋谷でも道玄坂の『<a href="/store/oriental-lounge-shibuya-honten" style="color:#c8a46e;text-decoration:none;">オリエンタルラウンジ 渋谷本店</a>』や、1駅隣の『<a href="/store/oriental-lounge-ebisu" style="color:#c8a46e;text-decoration:none;">オリエンタルラウンジ 恵比寿</a>』、あるいは新宿東口の『<a href="/store/jis-shinjuku" style="color:#c8a46e;text-decoration:none;">JIS 新宿</a>』・西口の『<a href="/store/jis-nishishinjuku" style="color:#c8a46e;text-decoration:none;">JIS 西新宿</a>』へ足を運べば、店内の空気はずいぶん変わります。
             </p>
             <p>
                 店内は程よい音量のBGMが流れ、ソファ席には仕事終わりの20代後半〜30代前半の女性たちが、グラスを傾けながらゆっくり過ごしています。
             </p>
 
-            <h2>第2章：男女それぞれのすれ違い｜年下ばかりを狙って会話が詰まる男性と、浮くのを気にするアラサー女性</h2>
+            <h2>2. 男女それぞれのすれ違い｜年下ばかりを狙って会話が詰まる男性と、浮くのを気にするアラサー女性</h2>
             <p>
                 現場を見ていると、30代男女が相席ラウンジで噛み合わなくなる場面には、男女で異なる思い込みがあります。
             </p>
@@ -467,7 +468,7 @@
                 つまり、落ち着いた態度と清潔感を持った30代男性は、むしろ歓迎されやすい相手といえます。
             </p>
 
-            <h2>第3章：時間帯の傾向｜平日20:00の『社会人コアタイム』と23:00以降の『2次会流入』</h2>
+            <h2>3. 時間帯の傾向｜平日20:00の「社会人コアタイム」と23:00以降の「2次会流入」</h2>
             <p>
                 店舗選びと同じくらい大きいのが「何時に入店するか」という時間帯の違いです。<br>
                 相席ナビの27.6万件ログから平日の時間帯別データを整理すると、時間帯によって客層の主役が入れ替わる様子が分かります。
@@ -516,7 +517,7 @@
                 アラサー世代が気疲れせずに過ごすコツはシンプルで、<strong>「2次会として深夜に行くのではなく、1軒目のディナー帯（20時前後）に入ること」</strong>に尽きます。
             </p>
 
-            <h2>第4章：30代・アラサーが過ごしやすい店舗リスト</h2>
+            <h2>4. 30代・アラサーが過ごしやすい店舗リスト</h2>
             <p>
                 具体的に全国のどの店舗が向いているのでしょうか。<br>
                 客層の落ち着きやフロアのゆとり、席間隔の広さから見て、30代でもなじみやすい店舗をピックアップしました。
@@ -539,11 +540,11 @@
             </div>
 
             <p>
-                向かう前には<a href="/" style="color:#c8a46e;font-weight:700;">相席ナビのリアルタイム人数ボード</a>で現在の男女比と女性在籍数を確認しておくと安心です。<br>
+                向かう前には<a href="/" style="color:#c8a46e;font-weight:700;">相席ナビのリアルタイム人数ボード</a>や<a href="/stats#heatmap-widget" style="color:#c8a46e;font-weight:700;">時間帯別ヒートマップ</a>で、現在の男女比と女性在籍数・ピークの波を確認しておくと安心です。<br>
                 女性在籍数が15名以上いれば、万が一最初の席と合わなかった場合でも席替えの余地があります。
             </p>
 
-            <h2>第5章：最初の10分で意識したい「大人の立ち回り」3つのこと</h2>
+            <h2>5. 最初の10分で意識したい「大人の立ち回り」3つのこと</h2>
             <p>
                 最後に、30代の男女が相席ラウンジで居心地よく過ごすうえで、頭に入れておきたい3つの振る舞いを整理しておきます。
             </p>
@@ -568,10 +569,10 @@
                 逆に会話が弾んだ場合は、店内で深酒するまで延長するより、「近くに静かに話せるワインバーがあるんだけど、軽く1杯だけどう？」と45分前後で声をかけるほうが、次につながりやすい自然な流れになります。
             </p>
 
-            <h2>まとめ：店舗と時間帯を選べば、30代でも落ち着いて楽しめる</h2>
+            <h2>6. 店舗と時間帯を選べば、30代でも背伸びせず楽しめる</h2>
             <p>
                 「相席ラウンジは若い子だけの場所」と思い込む必要はありません。<br>
-                学生ノリのカジュアル店を避け、<strong>『オリエンタルラウンジ』や『JIS』といった落ち着いたブランドを選び、平日の19:30〜21:30を目安に訪れる</strong>こと。<br>
+                学生ノリのカジュアル店を避け、<strong>『オリエンタルラウンジ』や『JIS（ジス）』といった落ち着いたブランドを選び、平日の19:30〜21:30を目安に訪れる</strong>こと。そして「そもそも複数人より1対1で落ち着いて食事したい夜」であれば、<a href="/guide/lounge-vs-screened-date" style="color:#c8a46e;font-weight:700;">相席ラウンジと審査制1対1デートの使い分け検証</a>にある通り別の選択肢へ切り替える柔軟さを持っておくこと。<br>
                 この2つを押さえるだけで、騒がしい飲み会やメッセージの往復に疲れた夜でも、同世代とゆっくり会話を楽しめます。
             </p>
             <p>

@@ -103,9 +103,9 @@
     <meta name="theme-color" content="#111113">
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
-    <link rel="stylesheet" href="/static/style.css?v=20261108_3" media="print" onload="this.media='all'">
-    <noscript><link rel="stylesheet" href="/static/style.css?v=20261108_3"></noscript>
-    <link rel="stylesheet" href="/static/portal.css?v=16">
+    <link rel="stylesheet" href="/static/style.css?v=20261109_1" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="/static/style.css?v=20261109_1"></noscript>
+    <link rel="stylesheet" href="/static/portal.css?v=17">
     <style>
         body {
             display: block !important;
@@ -223,6 +223,7 @@
             border-collapse: collapse;
             font-size: 0.85rem;
             min-width: 560px;
+            font-variant-numeric: tabular-nums;
         }
         .data-table th, .data-table td {
             padding: 12px 14px;
@@ -254,7 +255,7 @@
             font-size: 0.92rem;
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=40">
+    <link rel="stylesheet" href="/static/calm.css?v=41">
     {% if not is_staff and not session.get('is_staff') and not is_scheduled_preview %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -267,7 +268,7 @@
     <div class="article-container">
         {% if is_scheduled_preview and scheduled_item %}
         <div class="preview-banner">
-            🗓️ 【社内限定プレビュー（Google検索非公開）】この記事は <strong>{{ scheduled_item.publish_at_ja }}</strong> に自動で一般公開＆X告知されます。
+            【社内限定プレビュー（Google検索非公開）】この記事は <strong>{{ scheduled_item.publish_at_ja }}</strong> に自動で一般公開＆X告知されます。
         </div>
         {% endif %}
 
@@ -321,7 +322,7 @@
                 </ul>
             </div>
 
-            <h2>1. 【実測データ】土曜日と日曜日で異なる時間帯別人数カーブ</h2>
+            <h2>1. 土曜日と日曜日で異なる時間帯別の人数カーブ</h2>
             <p>
                 相席ナビのデータベース（国内61店舗・直近28.6万件ログ）から、土曜日と日曜日の時間帯別（18時〜翌2時）の平均人数と女性比率を比較しました。
             </p>
@@ -470,7 +471,7 @@
                 待ち時間なしで今夜入れる店舗の状況は、<a href="/for-women" style="color:#f472b6;text-decoration:underline;">女性向け特設ガイド＆LIVE待ちゼロ店舗ボード</a>でも確認できます。
             </p>
 
-            <h2>5. 【店舗別】日曜日におすすめのラウンジデータ</h2>
+            <h2>5. 日曜日に女性比率が安定しやすい主要6店舗の実測データ</h2>
             <p>
                 全国の主要店舗の中から、日曜日の女性比率が高く、落ち着いて過ごしやすい店舗の実測データをピックアップしました。
             </p>
@@ -533,7 +534,7 @@
                 20代前半が中心の<strong>『ag（アグ）』</strong>は、翌日の講義や新社会人の勤務を気にする層が多く、21時台前半には客足が落ち着く動きがよりはっきり出ます。
             </p>
 
-            <h2>6. まとめ：日曜日に合わせた2つの行動パターン</h2>
+            <h2>6. 日曜の夜を無理なく楽しむ2つの時間帯パターン</h2>
             <p>
                 日曜日の相席ラウンジは、「金土の混雑を避けて落ち着いて話したい」という人にとって、無理のないペースで過ごせる穴場の日です。<br>
                 自分のライフスタイルに合わせて、以下の2つの時間帯を使い分けるのがおすすめです。
@@ -554,8 +555,8 @@
             </div>
 
             <p>
-                出かける前に、休日モードの身だしなみを一段だけ整えておくのも忘れずに。至近距離のソファ席で好印象を残すコツは<a href="/guide/first-10-minutes" style="color:#f472b6;text-decoration:underline;">最初の10分の会話と清潔感ガイド</a>にまとめています。<br>
-                日曜の夜に家を出る前に、リアルタイムの混雑状況を一度見てから向かってみてください。
+                出かける前に、休日モードのラフすぎる服装（短パンやサンダル等）になっていないかだけ一度確認しておきましょう。受付で止められない基準は<a href="/guide/dress-code-cleanliness" style="color:#f472b6;text-decoration:underline;">5ブランドのNGドレスコード・清潔感チェック</a>、着席して乾杯した直後の空気のほぐし方は<a href="/guide/first-10-minutes" style="color:#f472b6;text-decoration:underline;">最初の10分の会話・距離感ガイド</a>にまとめています。<br>
+                日曜の夜に家を出る前に、リアルタイムの混雑状況や<a href="/stats#heatmap-widget" style="color:#38bdf8;text-decoration:underline;">曜日・時間帯別ヒートマップ</a>を一度見てから向かってみてください。
             </p>
 
             {% if not is_staff and not session.get('is_staff') %}
