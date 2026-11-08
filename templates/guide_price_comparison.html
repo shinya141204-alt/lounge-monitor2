@@ -11,6 +11,7 @@
     <meta name="description" content="相席ナビの「国内61店舗・料金＆開催中イベント横並び比較ボード」の見方と使い方を解説します。10分220〜330円の単独待機料金、4時間帯別の相席単価と1名入店可否、なぜ比率だけでなく「女性10名以上（約5組）」の線引きが必要なのか、営業時間内の0:0表記についても説明します。">
     <meta name="keywords" content="相席ラウンジ 料金 比較,オリエンタルラウンジ 待機料金,JIS 料金 時間帯,ag 料金 比較,相席ラウンジ 1人 入店,相席ナビ 使い方">
     <link rel="canonical" href="https://aiseki-navi.com/guide/price-event-comparison">
+    {% include '_head_llmo.html' %}
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
 
     <!-- OGP / SNS Card Settings -->
@@ -90,9 +91,9 @@
     <meta name="theme-color" content="#111113">
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
-    <link rel="stylesheet" href="/static/style.css?v=20261108_1" media="print" onload="this.media='all'">
-    <noscript><link rel="stylesheet" href="/static/style.css?v=20261108_1"></noscript>
-    <link rel="stylesheet" href="/static/portal.css?v=15">
+    <link rel="stylesheet" href="/static/style.css?v=20261108_2" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="/static/style.css?v=20261108_2"></noscript>
+    <link rel="stylesheet" href="/static/portal.css?v=16">
     <style>
         body {
             display: block;
@@ -248,7 +249,7 @@
             color: #f1e3cb;
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=37">
+    <link rel="stylesheet" href="/static/calm.css?v=39">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -285,7 +286,7 @@
         <figure style="margin: 0 0 26px 0; border-radius: 16px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.10); background: #16171c;">
             <picture>
                 <source srcset="/static/eyecatch-price-comparison.webp?v=3" type="image/webp">
-                <img src="/static/eyecatch-price-comparison.jpg?v=3" alt="国内61店舗の料金・開催中イベント・現在人数を横並びにした比較ボードの画面" style="width: 100%; height: auto; display: block;">
+                <img src="/static/eyecatch-price-comparison.jpg?v=3" alt="国内61店舗の料金・開催中イベント・現在人数を横並びにした比較ボードの画面" width="1280" height="720" fetchpriority="high" decoding="async" style="width: 100%; height: auto; display: block;">
             </picture>
         </figure>
 

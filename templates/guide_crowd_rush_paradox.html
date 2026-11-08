@@ -9,7 +9,7 @@
     <meta name="description" content="累計979,768件のリアルタイム入店ログを追跡検証。なぜ金土22時台に「女性比60%」の好条件店を見て出発すると、到着する60分後に29.8%（約3回に1回）が男余り待機列へ転落するのか？みんなが同じ画面を見て同じ店へ向かう構造と、逆転率わずか2.3%の「女性比70%安全バッファ」、男余りロック現象をデータで検証します。">
     <meta name="keywords" content="相席ラウンジ 22時 待ち時間,相席ラウンジ 男女比 逆転,オリエンタルラウンジ 混雑 予測,JIS 待ち時間,相席ナビ 60分後予測">
     <link rel="canonical" href="https://aiseki-navi.com/guide/crowd-rush-paradox">
-    <link rel="alternate" type="text/markdown" href="https://aiseki-navi.com/llms.txt" title="相席ナビ AI要約ドキュメント (llms.txt)">
+    {% include '_head_llmo.html' %}
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
 
     <!-- OGP / SNS Card Settings -->
@@ -101,11 +101,11 @@
     <meta name="theme-color" content="#111113">
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
-    <link rel="stylesheet" href="/static/style.css?v=20261108_1" media="print" onload="this.media='all'">
-    <noscript><link rel="stylesheet" href="/static/style.css?v=20261108_1"></noscript>
+    <link rel="stylesheet" href="/static/style.css?v=20261108_2" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="/static/style.css?v=20261108_2"></noscript>
     <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
     <style>html.theme-light{background-color:#f6f6f7;}</style>
-    <link rel="stylesheet" href="/static/portal.css?v=15">
+    <link rel="stylesheet" href="/static/portal.css?v=16">
     <style>
         body {
             display: block !important;
@@ -257,7 +257,7 @@
             border: 1px solid rgba(200, 164, 110, 0.52);
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=37">
+    <link rel="stylesheet" href="/static/calm.css?v=39">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"

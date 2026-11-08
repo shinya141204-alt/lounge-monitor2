@@ -7,6 +7,7 @@
    ========================================================================== */
 
 :root {
+    color-scheme: dark;
     --font-editorial: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
     --font-num: "Outfit", -apple-system, BlinkMacSystemFont, "SF Pro Display", "Hiragino Sans", sans-serif;
 
@@ -8354,7 +8355,9 @@ body.theme-light .context-lead-row .pr-editorial-sublink {
         gap: 10px;
     }
     .context-lead-row .pr-context-cta {
+        box-sizing: border-box;
         width: 100%;
+        max-width: 100%;
         min-height: 40px;
     }
     .context-lead-row .pr-context-foot {
@@ -8365,6 +8368,8 @@ body.theme-light .context-lead-row .pr-editorial-sublink {
     .context-lead-row .pr-editorial-sublink {
         min-height: 40px;
         width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
     }
 }
 
@@ -8613,4 +8618,99 @@ body.theme-light .pick-badge.good .moat-dot {
     align-items: center;
     gap: 6px;
 }
+
+/* ==========================================================================
+   2026-11 Full Review Remediation: Color-Scheme, Typography, Contrast & Tap Targets
+   ========================================================================== */
+html.theme-light,
+body.theme-light {
+    color-scheme: light;
+}
+
+h1,
+h2,
+h3 {
+    text-wrap: balance;
+}
+
+p,
+blockquote,
+li {
+    text-wrap: pretty;
+}
+
+/* トップページの Flex アイテム膨張によるモバイル 4px 横溢れ防止 */
+body:not(.staff-mode) .container,
+body:not(.staff-mode) .container > header {
+    min-width: 0;
+    max-width: 100%;
+}
+
+@media (max-width: 640px) {
+    body:not(.staff-mode) .container {
+        max-width: 100%;
+    }
+}
+
+/* ライトモード時の記事サブメタ・薄灰注釈テキストの WCAG AA (4.5:1+) 保証 */
+body.theme-light .article-meta-sub,
+body.theme-light .article-meta-sub a,
+body.theme-light .article-date,
+body.theme-light [style*="color:#9ca3af"],
+body.theme-light [style*="color: #9ca3af"],
+body.theme-light [style*="color:#94a3b8"],
+body.theme-light [style*="color: #94a3b8"] {
+    color: var(--calm-light-sub) !important;
+}
+
+/* 2軒目席予約CTAの高コントラスト反転ソリッドボタン保証 */
+body:not(.theme-light):not(.staff-mode) .venue-action-btn.reserve-btn {
+    background: var(--cm-cta-bg) !important;
+    color: var(--cm-cta-text) !important;
+    border: 1px solid var(--cm-cta-bg) !important;
+    font-weight: 700;
+}
+
+body.theme-light:not(.staff-mode) .venue-action-btn.reserve-btn {
+    background: var(--calm-light-accent) !important;
+    color: #ffffff !important;
+    border: 1px solid var(--calm-light-accent) !important;
+    font-weight: 700;
+}
+
+/* モバイル・タッチ端末での操作ボタン群タップ領域（min-block-size: 36px）確保 */
+@media (max-width: 768px) {
+    .portal-theme-toggle-btn,
+    .audience-pill-btn,
+    .sort-btn,
+    .filter-btn,
+    .second-tab-btn,
+    .second-quick-pill,
+    .tip-phrase-copy-btn,
+    .pwa-banner-close-btn,
+    .pwa-install-action-btn,
+    .cqb-cta,
+    .header-btn.labeled-btn,
+    .venue-action-btn,
+    .area-pill,
+    .col-cat-btn,
+    .btn-outline,
+    .btn-subtle-action,
+    .pin-btn,
+    .analysis-btn {
+        min-block-size: 36px;
+        min-height: 36px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .pwa-banner-close-btn,
+    .pin-btn,
+    .analysis-btn {
+        min-inline-size: 36px;
+        min-width: 36px;
+    }
+}
+
 

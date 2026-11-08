@@ -11,12 +11,14 @@
     <meta name="description" content="全国63店舗（国内61店舗＋韓国2店舗）の混雑データをもとに、水曜・木曜の20時〜22時に男性の待ち時間が少なく女性比率が高くなりやすい傾向と、仕事帰りに立ち寄るときのポイントをまとめました。">
     <meta name="keywords" content="相席ラウンジ 平日,オリエンタルラウンジ 平日,相席 穴場 時間帯,相席ラウンジ 水曜日,相席ラウンジ 木曜日,相席 待ち時間,相席ナビ">
     <link rel="canonical" href="https://aiseki-navi.com/guide/weekday-strategy">
+    {% include '_head_llmo.html' %}
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
 
     <!-- OGP / SNS Card Settings -->
     <meta property="og:title" content="週末より「水曜・木曜の20〜22時」が入りやすい理由｜混雑データで見る平日の狙い目｜相席ナビ">
     <meta property="og:description" content="金土の混雑を避けたい方へ。全国データで見る平日20時〜22時の男女比傾向と、仕事帰りに立ち寄る際のポイント。">
     <meta property="og:type" content="article">
+    <meta property="og:url" content="https://aiseki-navi.com/guide/weekday-strategy">
     <meta property="og:site_name" content="相席ナビ">
     <meta property="og:locale" content="ja_JP">
     <meta property="og:image" content="https://aiseki-navi.com/static/note-eyecatch-weekday.jpg?v=3">
@@ -90,10 +92,10 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet"></noscript>
-    <link rel="stylesheet" href="/static/style.css?v=20261108_1" media="print" onload="this.media='all'">
-    <noscript><link rel="stylesheet" href="/static/style.css?v=20261108_1"></noscript>
+    <link rel="stylesheet" href="/static/style.css?v=20261108_2" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="/static/style.css?v=20261108_2"></noscript>
 
-    <link rel="stylesheet" href="/static/portal.css?v=15">
+    <link rel="stylesheet" href="/static/portal.css?v=16">
     <style>
         body {
             display: block !important;
@@ -225,6 +227,7 @@
             margin-bottom: 36px;
         }
 
+        .article-toc h2,
         .article-toc h3 {
             font-size: 0.95rem;
             color: #38bdf8;
@@ -290,6 +293,7 @@
             margin: 24px 0;
         }
 
+        .article-highlight-box h3,
         .article-highlight-box h4 {
             margin: 0 0 8px 0;
             color: #38bdf8;
@@ -459,7 +463,7 @@
             border-color: rgba(56, 189, 248, 0.5);
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=37">
+    <link rel="stylesheet" href="/static/calm.css?v=39">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -518,7 +522,7 @@
 
         <!-- Table of Contents -->
         <div class="article-toc">
-            <h3>目次</h3>
+            <h2>目次</h2>
             <ol>
                 <li><a href="#section-1">1. 金曜・土曜の夜に起こりやすい3つのこと</a></li>
                 <li><a href="#section-2">2. データで見ても「水曜・木曜の20時」が入りやすい理由</a></li>
@@ -536,7 +540,7 @@
                 比べる相手は、金曜21時半の同じ店です。あの席で何が起きていたかを思い出すと、水曜の静けさの正体が見えてきます。
             </p>
             <div class="article-highlight-box">
-                <h4>週末のピーク時間にありがちな状況</h4>
+                <h3>週末のピーク時間にありがちな状況</h3>
                 <p style="margin: 0; color: #cbd5e1; font-size: 0.9rem; line-height: 1.7;">
                     ・<strong>男性の入店待ちが40分〜1時間以上になりやすい</strong>（待合スペースで待っている間に気力を消耗する）<br>
                     ・<strong>1軒目帰りの男性ペアが一気に押し寄せ、席替えがなかなか回らない</strong><br>
@@ -669,6 +673,18 @@
                     <h4 style="margin: 0 0 6px 0; font-size: 0.98rem; color: #fff; line-height: 1.4;">オリエンタルラウンジ・JIS・ag 3大ブランドの違い</h4>
                     <p style="margin: 0 0 12px 0; font-size: 0.82rem; color: #94a3b8; line-height: 1.5;">料金・年齢層・客層の違いと、その日の気分に合わせたお店選びのポイント。</p>
                     <a href="/guide/brand-comparison" class="cta-btn" style="display: inline-flex; align-items: center; gap: 4px; text-decoration: none; padding: 7px 16px; border-radius: 8px; font-size: 0.82rem; font-weight: 700;">3大ブランド比較を読む ›</a>
+                </div>
+                <div class="related-article-card" style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(200, 164, 110, 0.28); border-radius: 14px; padding: 18px;">
+                    <span class="article-cat-tag" style="display: inline-block; margin-bottom: 8px;">雨の日・給料日のデータ</span>
+                    <h4 style="margin: 0 0 6px 0; font-size: 0.98rem; color: #fff; line-height: 1.4;">雨の日・給料日・25日前後の人数変化データ</h4>
+                    <p style="margin: 0 0 12px 0; font-size: 0.82rem; color: #94a3b8; line-height: 1.5;">天候やカレンダー条件で男女比がどう動くかを、実測ログから検証しています。</p>
+                    <a href="/guide/rain-payday" class="cta-btn" style="display: inline-flex; align-items: center; gap: 4px; text-decoration: none; padding: 7px 16px; border-radius: 8px; font-size: 0.82rem; font-weight: 700;">雨・給料日データを読む ›</a>
+                </div>
+                <div class="related-article-card" style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(200, 164, 110, 0.28); border-radius: 14px; padding: 18px;">
+                    <span class="article-cat-tag" style="display: inline-block; margin-bottom: 8px;">日曜夜の時間帯データ</span>
+                    <h4 style="margin: 0 0 6px 0; font-size: 0.98rem; color: #fff; line-height: 1.4;">日曜19〜21時が穴場になる理由と立ち回り</h4>
+                    <p style="margin: 0 0 12px 0; font-size: 0.82rem; color: #94a3b8; line-height: 1.5;">連休中以外の通常日曜に見られる早い時間帯の女性比率傾向をまとめました。</p>
+                    <a href="/guide/sunday-lounge-strategy" class="cta-btn" style="display: inline-flex; align-items: center; gap: 4px; text-decoration: none; padding: 7px 16px; border-radius: 8px; font-size: 0.82rem; font-weight: 700;">日曜ガイドを読む ›</a>
                 </div>
             </div>
         </div>

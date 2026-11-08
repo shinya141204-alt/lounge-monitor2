@@ -4,9 +4,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {% include '_head_llmo.html' %}
     {% if selected_area %}
     <title>{{ selected_area.info.name }}の相席ラウンジ現在人数・徒歩ハシゴ＆終電ガイド｜相席ナビ</title>
-    <meta name="description" content="{{ selected_area.info.name }}の相席ラウンジ（オリエンタルラウンジ・JIS（ジス）・ag（アグ）・ASOBIBAR（アソビバー）等）のリアルタイム男女人数・混雑状況に加え、徒歩ハシゴルート・終電後の2回転目・ソロ入店可否まで実測ログをもとに解説。{{ selected_area.info.lead }}">
+    <meta name="description" content="{{ selected_area.info.name }}の相席ラウンジ・相席バーのリアルタイム男女人数・女性比率・徒歩ハシゴルート・終電後の混雑推移を実測ログで公開。{{ selected_area.info.lead | truncate(60, True, '…') }}">
     <link rel="canonical" href="https://aiseki-navi.com/area/{{ selected_area.slug }}">
     <meta property="og:title" content="{{ selected_area.info.name }}の相席ラウンジ現在人数・徒歩ハシゴ＆終電ガイド｜相席ナビ">
     <meta property="og:description" content="{{ selected_area.info.name }}の相席ラウンジ現在人数・徒歩ハシゴ黄金ルート・1人参戦ルールまとめ。{{ selected_area.info.lead }}">
@@ -118,7 +119,7 @@
 
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
-    <link rel="stylesheet" href="/static/portal.css?v=15">
+    <link rel="stylesheet" href="/static/portal.css?v=16">
     <style>
         :root {
             --bg-dark: #0f1014;
@@ -622,7 +623,7 @@
             .concierge-gold-btn { width: 100%; }
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=37">
+    <link rel="stylesheet" href="/static/calm.css?v=39">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"

@@ -11,12 +11,11 @@
     <meta name="description" content="{{ scheduled_item.desc }}">
     <meta name="keywords" content="{{ scheduled_item.keywords or '相席ラウンジ,オリエンタルラウンジ,ag,JIS,男女比,相席ナビ' }}">
     <link rel="canonical" href="https://aiseki-navi.com{{ scheduled_item.path }}">
+    {% include '_head_llmo.html' %}
     {% if is_scheduled_preview %}
     <meta name="robots" content="noindex, nofollow">
     {% else %}
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
-    <link rel="alternate" type="text/markdown" href="https://aiseki-navi.com/llms.txt" title="相席ナビ AI要約ドキュメント (llms.txt)">
-    <link rel="alternate" type="application/json" href="https://aiseki-navi.com/api/llms-facts.json" title="相席ナビ AIグラウンディング構造化JSON (llms-facts.json)">
     {% endif %}
 
     <!-- OGP / SNS Card Settings -->
@@ -94,9 +93,9 @@
     <meta name="theme-color" content="#111113">
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
-    <link rel="stylesheet" href="/static/style.css?v=20261108_1" media="print" onload="this.media='all'">
-    <noscript><link rel="stylesheet" href="/static/style.css?v=20261108_1"></noscript>
-    <link rel="stylesheet" href="/static/portal.css?v=15">
+    <link rel="stylesheet" href="/static/style.css?v=20261108_2" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="/static/style.css?v=20261108_2"></noscript>
+    <link rel="stylesheet" href="/static/portal.css?v=16">
     <style>
         body {
             display: block !important;
@@ -329,7 +328,7 @@
             font-size: 0.92rem;
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=37">
+    <link rel="stylesheet" href="/static/calm.css?v=39">
     {% if not is_staff and not session.get('is_staff') and not is_scheduled_preview %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"

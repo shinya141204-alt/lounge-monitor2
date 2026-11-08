@@ -13,9 +13,7 @@
     <meta name="description" content="オリエンタルラウンジ・ag（アグ）・JIS（ジス）・ASOBIBAR（アソビバー）など全国63店舗のリアルタイム男女人数・過去統計にもとづく60分後男女比予測・推定待ち時間を一覧比較できる「相席ナビ」。新宿・渋谷・梅田・名古屋・福岡など全店の現在人数と混雑傾向データを毎分自動更新中。">
     <meta name="keywords" content="オリエンタルラウンジ 人数,オリエンタルラウンジ 男女比,オリエンタルラウンジ 混雑,ag アグ 人数,JIS 人数,ASOBIBAR 人数,相席ラウンジ リアルタイム,相席ナビ">
     <link rel="canonical" href="https://aiseki-navi.com/">
-    <link rel="alternate" type="text/markdown" href="https://aiseki-navi.com/llms.txt" title="相席ナビ AI要約ドキュメント (llms.txt)">
-    <link rel="alternate" type="text/markdown" href="https://aiseki-navi.com/llms-full.txt" title="相席ナビ 全63店舗リアルタイムデータ＆完全ガイド (llms-full.txt)">
-    <link rel="alternate" type="application/json" href="https://aiseki-navi.com/api/llms-facts.json" title="相席ナビ AIグラウンディング構造化JSON (llms-facts.json)">
+    {% include '_head_llmo.html' %}
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
     {% endif %}
     <script>
@@ -29,6 +27,7 @@
     <meta property="og:title" content="{{ og_meta.title if og_meta else 'オリエンタルラウンジ・ag（アグ）・JIS リアルタイム人数・男女比ランキング｜相席ナビ' }}">
     <meta property="og:description" content="{{ og_meta.description if og_meta else 'いま盛り上がっているオリエンタルラウンジ・ag（アグ）・JIS全店の男女人数・比率・曜日別ピーク平均をリアルタイム可視化！' }}">
     <meta property="og:type" content="website">
+    <meta property="og:url" content="https://aiseki-navi.com/">
     <meta property="og:site_name" content="相席ナビ">
     <meta property="og:locale" content="ja_JP">
     <meta property="og:image" content="{{ og_image_url or 'https://aiseki-navi.com/ogp/live.png' }}">
@@ -106,7 +105,7 @@
             "name": "オリエンタルラウンジ、ag（アグ）、JIS（ジス）の違いは何ですか？",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "オリエンタルラウンジ（全国26店舗）は20代中盤〜30代向けの落ち着いた高級感ある王道相席ラウンジ、ag（アグ・全国9店舗）は20代前半〜25歳前後のZ世代中心で盛り上がりを重視した姉妹ラウンジ、JIS（ジス・全国18店舗）は札幌・大宮・新宿・梅田・松山・福岡など主要都市で高い集客力を誇り1人入店もしやすい大型相席バーです。"
+              "text": "オリエンタルラウンジ（全31店舗：国内29店舗＋韓国2店舗）は20代中盤〜30代向けの落ち着いた高級感ある王道相席ラウンジ、ag（アグ・国内8店舗）は20代前半〜25歳前後のZ世代中心で盛り上がりを重視した姉妹ラウンジ、JIS（ジス・国内10店舗）は札幌・大宮・新宿・梅田・難波・松山・福岡など主要都市で高い集客力を誇り1人入店もしやすい大型相席バーです。ほかにも立ち飲み回遊型のASOBIBAR（アソビバー・国内10店舗）などをリアルタイム比較できます。"
             }
           },
           {
@@ -147,9 +146,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="相席ナビ">
 
-    <link rel="stylesheet" href="/static/style.css?v=20261108_1" fetchpriority="high">
-    <link rel="stylesheet" href="/static/calm.css?v=37" fetchpriority="high">
-    <link rel="preload" href="/static/app.js?v=20261108_1" as="script">
+    <link rel="stylesheet" href="/static/style.css?v=20261108_2" fetchpriority="high">
+    <link rel="stylesheet" href="/static/calm.css?v=39" fetchpriority="high">
+    <link rel="preload" href="/static/app.js?v=20261108_2" as="script">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- Non-render-blocking web font (avoids waiting on Google Fonts at PWA cold launch) -->
@@ -578,7 +577,7 @@
                         </button>
                         {% endif %}
                         <button type="button" class="staff-action-pill staff-event-toggle-pill" id="staff-toggle-events-btn" onclick="toggleStaffEvents()" title="社内画面のイベントバッジ・特典表示をON/OFF切替">
-                            <span id="staff-toggle-events-icon">🔒</span>
+                            <span id="staff-toggle-events-icon" aria-hidden="true">●</span>
                             <span id="staff-toggle-events-label">イベント非表示: ON（業務集中モード）</span>
                         </button>
                     </div>
@@ -695,6 +694,7 @@
                 </div>
                 {% endif %}
 
+                <h2 class="sr-only">全国相席ラウンジ リアルタイム人数ランキング一覧</h2>
                 <!-- Template for ranking item (placed before #pinned-list so deferred pinned stores render real cards on first paint with zero empty black boxes) -->
                 <template id="ranking-item-template">
                     <div class="ranking-item">
@@ -889,7 +889,7 @@
                             {% if not is_staff and not session.get('is_staff') and loop.index == 4 and (initial_status.ranking|length) >= 4 %}
                             {% set use_honest_1on1 = (bachelor_shares_instant is not defined) or bachelor_shares_instant %}
                             <aside class="context-lead-row pr-card-item" data-context-slot="rank4_context" data-context-mode="evening_1on1" data-context-href="/link/dating_bachelor" aria-label="プロモーションおよび比較ガイド">
-                                <a class="pr-context-main" href="/link/dating_bachelor?from=/" target="_blank" rel="noopener sponsored">
+                                <a class="pr-context-main" href="/link/dating_bachelor?from=/" target="_blank" rel="nofollow sponsored noopener">
                                     <div class="pr-context-body">
                                         <div class="pr-context-meta">
                                             <span class="pr-disclosure-pill">PR</span>
@@ -912,7 +912,7 @@
                             {% endif %}
                             {% if not is_staff and not session.get('is_staff') and loop.index == 10 and (initial_status.ranking|length) >= 10 %}
                             <aside class="context-lead-row pr-card-item" data-context-slot="rank10_context" data-context-mode="night_second_venue" data-context-href="/link/second_venue_reservation" aria-label="プロモーションおよび2軒目ガイド">
-                                <a class="pr-context-main" href="/link/second_venue_reservation?from=/" target="_blank" rel="noopener sponsored">
+                                <a class="pr-context-main" href="/link/second_venue_reservation?from=/" target="_blank" rel="nofollow sponsored noopener">
                                     <div class="pr-context-body">
                                         <div class="pr-context-meta">
                                             <span class="pr-disclosure-pill">PR</span>
@@ -1276,7 +1276,7 @@
                             <div class="portal-article-thumb">
                                 <picture>
                                     <source srcset="/static/eyecatch-lounge-vs-screened-date.webp?v=3" type="image/webp">
-                                    <img src="/static/eyecatch-lounge-vs-screened-date.jpg?v=3" alt="相席ラウンジ vs 審査制1対1デート徹底比較——実測ログで見る使い分け境界線" loading="lazy">
+                                    <img src="/static/eyecatch-lounge-vs-screened-date.jpg?v=3" alt="相席ラウンジ vs 審査制1対1デート徹底比較——実測ログで見る使い分け境界線" width="1200" height="630" loading="lazy" decoding="async">
                                 </picture>
                                 <span class="portal-article-badge">新着・9.6万回検証</span>
                             </div>
@@ -1291,7 +1291,7 @@
                             <div class="portal-article-thumb">
                                 <picture>
                                     <source srcset="/static/eyecatch-dress-code-cleanliness.webp?v=3" type="image/webp">
-                                    <img src="/static/eyecatch-dress-code-cleanliness.jpg?v=3" alt="相席ラウンジの服装・清潔感チェック完全ガイド——NGドレスコードと70cmソファ席の間接照明" loading="lazy">
+                                    <img src="/static/eyecatch-dress-code-cleanliness.jpg?v=3" alt="相席ラウンジの服装・清潔感チェック完全ガイド——NGドレスコードと70cmソファ席の間接照明" width="1200" height="630" loading="lazy" decoding="async">
                                 </picture>
                                 <span class="portal-article-badge">新着・服装＆清潔感</span>
                             </div>
@@ -1306,7 +1306,7 @@
                             <div class="portal-article-thumb">
                                 <picture>
                                     <source srcset="/static/eyecatch-crowd-rush-paradox.webp?v=3" type="image/webp">
-                                    <img src="/static/eyecatch-crowd-rush-paradox.jpg?v=3" alt="金土22時に女性60%を見て向かうと約3回に1回は男余りに転落する——98万件ログが暴く群衆殺到パラドックス" loading="lazy">
+                                    <img src="/static/eyecatch-crowd-rush-paradox.jpg?v=3" alt="金土22時に女性60%を見て向かうと約3回に1回は男余りに転落する——98万件ログが暴く群衆殺到パラドックス" width="1200" height="630" loading="lazy" decoding="async">
                                 </picture>
                                 <span class="portal-article-badge">新着・98万件検証</span>
                             </div>
@@ -1321,7 +1321,7 @@
                             <div class="portal-article-thumb">
                                 <picture>
                                     <source srcset="/static/eyecatch-last-train-cliff.webp?v=3" type="image/webp">
-                                    <img src="/static/eyecatch-last-train-cliff.jpg?v=3" alt="23時20分、店内の空気が変わる——9.6万件のログが暴いた魔の40分間と街別ハシゴ法則" loading="lazy">
+                                    <img src="/static/eyecatch-last-train-cliff.jpg?v=3" alt="23時20分、店内の空気が変わる——9.6万件のログが暴いた魔の40分間と街別ハシゴ法則" width="1200" height="630" loading="lazy" decoding="async">
                                 </picture>
                                 <span class="portal-article-badge">新着データ検証</span>
                             </div>
@@ -1336,7 +1336,7 @@
                             <div class="portal-article-thumb">
                                 <picture>
                                     <source srcset="/static/eyecatch-male-lead.webp?v=3" type="image/webp">
-                                    <img src="/static/eyecatch-male-lead.jpg?v=3" alt="男性先行・男性比率が高いお店に女性が集まるデータ法則" loading="lazy">
+                                    <img src="/static/eyecatch-male-lead.jpg?v=3" alt="男性先行・男性比率が高いお店に女性が集まるデータ法則" width="1200" height="630" loading="lazy" decoding="async">
                                 </picture>
                                 <span class="portal-article-badge">最新データ検証</span>
                             </div>
@@ -1349,7 +1349,7 @@
 
                         <a href="/guide/brand-comparison" class="portal-article-card">
                             <div class="portal-article-thumb">
-                                <img src="/static/guide-brand-comparison.jpg?v=3" alt="オリエンタルラウンジ・JIS・ag 3大ブランドの違い" loading="lazy">
+                                <img src="/static/guide-brand-comparison.jpg?v=3" alt="オリエンタルラウンジ・JIS・ag 3大ブランドの違い" width="1200" height="630" loading="lazy" decoding="async">
                                 <span class="portal-article-badge">人気No.1</span>
                             </div>
                             <div class="portal-article-body">
@@ -1363,7 +1363,7 @@
                             <div class="portal-article-thumb">
                                 <picture>
                                     <source srcset="/static/note-eyecatch-weekday.webp?v=3" type="image/webp">
-                                    <img src="/static/note-eyecatch-weekday.jpg?v=3" alt="水曜・木曜20時〜22時の平日ラウンジ傾向" loading="lazy">
+                                    <img src="/static/note-eyecatch-weekday.jpg?v=3" alt="水曜・木曜20時〜22時の平日ラウンジ傾向" width="1200" height="630" loading="lazy" decoding="async">
                                 </picture>
                                 <span class="portal-article-badge cyan">データ分析</span>
                             </div>
@@ -1537,7 +1537,7 @@
             <!-- Portal Sitemap Grid inside Footer -->
             <div class="portal-footer-sitemap">
                 <div class="sitemap-col">
-                    <h4>ブランド別・エリア別人数</h4>
+                    <h3>ブランド別・エリア別人数</h3>
                     <ul>
                         <li><a href="/oriental-lounge">オリエンタルラウンジ全店人数</a></li>
                         <li><a href="/ag">ag（アグ）全店人数</a></li>
@@ -1555,7 +1555,7 @@
                     </ul>
                 </div>
                 <div class="sitemap-col">
-                    <h4>コラム・特集記事</h4>
+                    <h3>コラム・特集記事</h3>
                     <ul>
                         <li><a href="/columns">コラム・記事一覧（全{{ 18 + (published_scheduled|length if published_scheduled else 0) }}本）</a></li>
                         <li><a href="/for-women">女子向け裏ガイド＆待ちゼロ店舗ボード</a></li>
@@ -1582,11 +1582,12 @@
                     </ul>
                 </div>
                 <div class="sitemap-col">
-                    <h4>サイト情報・統計・規約</h4>
+                    <h3>サイト情報・統計・規約</h3>
                     <ul>
                         <li><a href="/">リアルタイム人数ランキング</a></li>
                         <li><a href="/price-comparison">店舗別料金・開催中イベント比較</a></li>
                         <li><a href="/stats">全国ラウンジ統計データ白書</a></li>
+                        <li><a href="/stats/year-end-2026">年末・ドーム公演連動 統計白書</a></li>
                         <li><button type="button" class="sitemap-text-btn" onclick="openHowToModal()">相席ナビの使い方</button></li>
                         <li><a href="/privacy">運営者情報・プライバシーポリシー</a></li>
                         <li><a href="/about">相席ナビについて（データの取得方法）</a></li>
@@ -1789,7 +1790,7 @@
                 </div>
                 {% if not is_staff and not session.get('is_staff') %}
                 <div class="second-venue-reserve-bar">
-                    <a href="/link/second_venue_reservation?from=/" target="_blank" rel="noopener sponsored" class="second-venue-reserve-link">
+                    <a href="/link/second_venue_reservation?from=/" target="_blank" rel="nofollow sponsored noopener" class="second-venue-reserve-link">
                         <div class="second-venue-reserve-body">
                             <div class="second-venue-reserve-meta">
                                 <span class="second-venue-pr-pill">PR</span>
@@ -1881,7 +1882,7 @@
                 </div>
 
                 <div class="guide-tips-box" id="guide-tips-box">
-                    <h4>お店選びと当日のちょっとしたコツ</h4>
+                    <h3>お店選びと当日のちょっとしたコツ</h3>
                     <ul>
                         <li><strong>① 行く前に「男女比バー」を見ておく：</strong> 女性の人数だけでなく、ピンク（女性）の割合が高い店舗を選ぶと、入ってから待たされずに座りやすくなります。</li>
                         <li><strong>② ソファ席は距離が近いので「清潔感」が大事：</strong> 照明は暗めですが、席の距離が近いぶん夕方のヒゲや肌のテカリは意外と目に入ります。事前に少し整えておくだけで安心感が変わります。</li>
@@ -2521,7 +2522,7 @@
                     <div class="how-to-step-card">
                         <div class="how-to-step-num">1</div>
                         <div class="how-to-step-content">
-                            <h4>行きたい「エリア」や「現在地順」を選ぶ</h4>
+                            <h3>行きたい「エリア」や「現在地順」を選ぶ</h3>
                             <p>上のボタンから「関東」「関西」などの地域を選ぶか、「現在地順」を押すと、いま近くにある店舗から順番に表示されます。</p>
                         </div>
                     </div>
@@ -2530,7 +2531,7 @@
                     <div class="how-to-step-card">
                         <div class="how-to-step-num">2</div>
                         <div class="how-to-step-content">
-                            <h4>「女性の人数」と「男女比バー」を見る</h4>
+                            <h3>「女性の人数」と「男女比バー」を見る</h3>
                             <p>カードの下にあるピンク（女性）と青（男性）のバーを見るだけで、どのお店が入りやすいかひと目でわかります。</p>
                         </div>
                     </div>
@@ -2539,7 +2540,7 @@
                     <div class="how-to-step-card">
                         <div class="how-to-step-num">3</div>
                         <div class="how-to-step-content">
-                            <h4>気になる店舗をタップして普段の傾向も確認</h4>
+                            <h3>気になる店舗をタップして普段の傾向も確認</h3>
                             <p>店舗カードを押すと<strong>「曜日・時間帯ごとの平均人数グラフ」</strong>や<strong>「開催中のイベント」</strong>も見られます。</p>
                         </div>
                     </div>
@@ -2789,7 +2790,7 @@
         window.INITIAL_STATUS_DATA = {{ (initial_status_client or initial_status) | tojson }};
     </script>
     {% endif %}
-    <script src="/static/app.js?v=20261108_1" defer></script>
+    <script src="/static/app.js?v=20261108_2" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
@@ -2805,7 +2806,7 @@
                 }
                 if (window.__swRegistered) return;
                 window.__swRegistered = true;
-                navigator.serviceWorker.register('/sw.js?v=101', { updateViaCache: 'none' })
+                navigator.serviceWorker.register('/sw.js?v=103', { updateViaCache: 'none' })
                     .then(function(reg) {
                         reg.update();
                         document.addEventListener('visibilitychange', function() {

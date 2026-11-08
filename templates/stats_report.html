@@ -7,8 +7,7 @@
     <title>全国相席ラウンジ統計データ白書｜週間ピーク人数ランキング＆ブランド別集計｜相席ナビ</title>
     <meta name="description" content="相席ナビ編集部（編集長：くわもん）が独自集計した全国63店舗（国内61店舗＋韓国2店舗）の相席ラウンジ統計データ白書。直近7日間の店舗別ピーク女性人数ランキング、平均ピーク時間帯、ブランド別の集客シェアを公開しています。">
     <link rel="canonical" href="https://aiseki-navi.com/stats">
-    <link rel="alternate" type="text/markdown" href="https://aiseki-navi.com/llms.txt" title="相席ナビ AI要約ドキュメント (llms.txt)">
-    <link rel="alternate" type="application/json" href="https://aiseki-navi.com/api/llms-facts.json" title="相席ナビ AIグラウンディング構造化JSON (llms-facts.json)">
+    {% include '_head_llmo.html' %}
 
     <meta property="og:title" content="全国相席ラウンジ統計データ白書＆週間ピークランキング｜相席ナビ">
     <meta property="og:description" content="全国63店舗（国内61店舗＋韓国2店舗）の過去ログから算出した店舗別ピーク人数・平均ピーク時間帯・ブランド別シェアの独自統計レポート。">
@@ -73,13 +72,21 @@
             }
           }
         ]
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {"@type": "ListItem", "position": 1, "name": "リアルタイム順位", "item": "https://aiseki-navi.com/"},
+          {"@type": "ListItem", "position": 2, "name": "全国ラウンジ統計データ白書", "item": "https://aiseki-navi.com/stats"}
+        ]
       }
     ]
     </script>
 
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
-    <link rel="stylesheet" href="/static/portal.css?v=15">
+    <link rel="stylesheet" href="/static/portal.css?v=16">
     <style>
         :root {
             --bg-dark: #0f1014;
@@ -436,7 +443,7 @@
             color: #8c6a38;
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=37">
+    <link rel="stylesheet" href="/static/calm.css?v=39">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -481,13 +488,12 @@
         <section id="stats-simulator" class="sim-container" aria-label="全国相席ラウンジ 時間波形シミュレーター">
             <div class="sim-header">
                 <h2 class="sim-title" style="margin:0; border:none; padding:0;">
-                    <span style="display:inline-block; font-size:1.15rem;" aria-hidden="true">📊</span>
                     全国相席ラウンジ 時間波形シミュレーター
                 </h2>
                 <span class="badge" style="margin-bottom:0;">実測ロールアップ連動 ｜ 18:00〜翌05:00波形</span>
             </div>
             <p class="sim-desc">
-                過去90日間の1時間粒度ロールアップ一次統計をもとに、エリア・ブランド・曜日・天候ごとの女性比率推移と混雑ピーク時間波形を動的にシミュレーション比較できます。
+                過去90日間の1時間粒度ロールアップ一次統計をもとに、エリア・ブランド・曜日・天候ごとの女性比率推移と混雑ピーク時間波形を動的にシミュレーション比較できます（5大ブランドの詳しい時間帯クロスオーバー分析は<a href="/guide/brand-waveform-asymmetry" style="color:inherit;text-decoration:underline;text-underline-offset:3px;">『5大ブランドの時間波形検証コラム』</a>も参照）。
             </p>
 
             <div class="sim-controls">

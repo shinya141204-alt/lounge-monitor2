@@ -15,8 +15,7 @@
     <meta name="description" content="新宿・渋谷・恵比寿・梅田・難波・名古屋・福岡・札幌・仙台・広島など全国63店舗（オリエンタルラウンジ・ag（アグ）・JIS（ジス）・ASOBIBAR（アソビバー）他）の現在男女人数と過去ログ統計から、いま入りやすい第1候補と徒歩ハシゴ第2候補を診断。男性目線（男余り回避）・女性目線（受付待ちゼロ）・ソロ参戦にも対応。">
     <meta name="keywords" content="相席ラウンジ 診断,オリエンタルラウンジ 穴場,JIS 相席 待ち時間,ag 相席 男女比,相席ラウンジ ハシゴ,相席ラウンジ 一人,相席ナビ">
     <link rel="canonical" href="https://aiseki-navi.com/concierge">
-    <link rel="alternate" type="text/markdown" href="https://aiseki-navi.com/llms.txt" title="相席ナビ AI要約ドキュメント (llms.txt)">
-    <link rel="alternate" type="application/json" href="https://aiseki-navi.com/api/llms-facts.json" title="相席ナビ AIグラウンディング構造化JSON (llms-facts.json)">
+    {% include '_head_llmo.html' %}
 
     <meta property="og:title" content="今夜どこ行く？相席ラウンジ 穴場＆徒歩ハシゴ診断｜相席ナビ">
     <meta property="og:description" content="現在リアルタイム男女数×過去統計×徒歩距離から、いま入りやすい第1候補と徒歩ハシゴ第2候補を算出。">
@@ -107,7 +106,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet"></noscript>
-    <link rel="stylesheet" href="/static/portal.css?v=15">
+    <link rel="stylesheet" href="/static/portal.css?v=16">
     <style>
         :root {
             --bg-dark: #0c0d10;
@@ -517,16 +516,18 @@
             align-items: center;
             justify-content: center;
             gap: 6px;
-            padding: 9px 15px;
+            min-height: 36px;
+            padding: 8px 14px;
             border-radius: 8px;
             background: var(--card-bg-2);
             border: 1px solid var(--border-gold);
             color: var(--accent-text);
+            font-family: inherit;
             font-size: 0.82rem;
             font-weight: 700;
             text-decoration: none;
             flex: 1;
-            min-width: 170px;
+            min-width: 140px;
             text-align: center;
         }
         .btn-gold-action:hover {
@@ -538,10 +539,13 @@
             justify-content: center;
             flex: 1 1 auto;
             gap: 5px;
+            min-height: 36px;
             padding: 8px 13px;
             border-radius: 8px;
+            background: var(--card-bg-2);
             border: 1px solid var(--border-subtle);
-            color: var(--text-sub);
+            color: var(--text-main);
+            font-family: inherit;
             font-size: 0.79rem;
             font-weight: 600;
             text-decoration: none;
@@ -692,7 +696,7 @@
             color: var(--text-sub);
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=37">
+    <link rel="stylesheet" href="/static/calm.css?v=39">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -885,13 +889,13 @@
 
                 <!-- Primary Store Real Curated Second Venues Grid -->
                 <div id="sv-curated-container" style="margin: 12px 0 14px;">
-                    <h3 style="font-size: 0.92rem; margin: 0 0 8px; color: var(--gold-dark, #926a1d); display: flex; align-items: center; gap: 6px;">
-                        <span>📍</span> <span id="sv-curated-title">本命（{{ p.display_name }}）出口からの鉄板2軒目ルート</span>
+                    <h3 style="font-size: 0.92rem; margin: 0 0 8px; color: var(--accent-text); display: flex; align-items: center; gap: 6px;">
+                        <span id="sv-curated-title">本命（{{ p.display_name }}）出口からの鉄板2軒目ルート</span>
                     </h3>
                     <div id="sv-curated-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px;">
                         {% if res.primary_second_venues %}
                             {% for sp in res.primary_second_venues %}
-                            <div class="concierge-sv-card" style="background: var(--bg-card, #fff); border: 1px solid var(--border-color, #e5e7eb); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; justify-content: space-between;">
+                            <div class="concierge-sv-card" style="background: var(--card-bg-2); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; justify-content: space-between;">
                                 <div>
                                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
                                         <span class="venue-category-badge {{ sp.category }}" style="font-size: 0.72rem; padding: 2px 6px; border-radius: 4px; font-weight: 600;">{{ sp.category_label }}</span>
@@ -899,15 +903,15 @@
                                     </div>
                                     <h4 style="margin: 0 0 4px; font-size: 0.95rem; font-weight: 700; color: var(--text-main);">{{ sp.name }}</h4>
                                     {% if sp.late_hours %}
-                                    <div style="font-size: 0.76rem; color: var(--text-sub); margin-bottom: 4px;">🕒 {{ sp.late_hours }}{% if sp.seating_vibe %} ・ {{ sp.seating_vibe }}{% endif %}</div>
+                                    <div style="font-size: 0.76rem; color: var(--text-sub); margin-bottom: 4px;">営業時間 {{ sp.late_hours }}{% if sp.seating_vibe %} ・ {{ sp.seating_vibe }}{% endif %}</div>
                                     {% endif %}
                                     <p style="margin: 0 0 8px; font-size: 0.8rem; color: var(--text-sub); line-height: 1.45;">{{ sp.comment }}</p>
                                 </div>
                                 <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px;">
-                                    <a href="{{ sp.map_url }}" target="_blank" rel="noopener noreferrer" class="btn-subtle-action" style="padding: 4px 8px; font-size: 0.78rem;">マップ <svg class="ui-svg-ne" width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9L9 3M9 3H4.5M9 3V7.5"/></svg></a>
-                                    <button type="button" class="btn-subtle-action copy-sv-btn" onclick="navigator.clipboard.writeText('{{ sp.name | e }}'); this.textContent='✓ コピー済'; var self=this; setTimeout(function(){ self.textContent='店名コピー'; }, 2000);" style="padding: 4px 8px; font-size: 0.78rem; cursor: pointer;">店名コピー</button>
+                                    <a href="{{ sp.map_url }}" target="_blank" rel="noopener noreferrer" class="btn-subtle-action" style="padding: 6px 10px; font-size: 0.78rem; flex: 0 1 auto;">マップ <svg class="ui-svg-ne" width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9L9 3M9 3H4.5M9 3V7.5"/></svg></a>
+                                    <button type="button" class="btn-subtle-action copy-sv-btn" onclick="navigator.clipboard.writeText('{{ sp.name | e }}'); this.textContent='✓ コピー済'; var self=this; setTimeout(function(){ self.textContent='店名コピー'; }, 2000);" style="padding: 6px 10px; font-size: 0.78rem; cursor: pointer; flex: 0 1 auto;">店名コピー</button>
                                     {% if not is_staff and not session.get('is_staff') %}
-                                    <a href="/link/second_venue_reservation?from=/concierge" target="_blank" rel="noopener sponsored" class="btn-gold-action" style="padding: 4px 8px; font-size: 0.78rem;">席予約 ›</a>
+                                    <a href="/link/second_venue_reservation?from=/concierge" target="_blank" rel="nofollow sponsored noopener" class="btn-gold-action" style="padding: 6px 10px; font-size: 0.78rem; min-width: 0; flex: 0 1 auto;">席予約 ›</a>
                                     {% endif %}
                                 </div>
                             </div>
@@ -1152,11 +1156,11 @@
                     if (curWrap) curWrap.style.display = '';
                     svCuratedGrid.innerHTML = curSpots.map(function(sp) {
                         var wLabel = sp.walk_minutes_label || ('徒歩' + (sp.walk_minutes || 3) + '分');
-                        var hoursHtml = sp.late_hours ? '<div style="font-size:0.76rem; color:var(--text-sub); margin-bottom:4px;">🕒 ' + escHtml(sp.late_hours) + (sp.seating_vibe ? ' ・ ' + escHtml(sp.seating_vibe) : '') + '</div>' : '';
+                        var hoursHtml = sp.late_hours ? '<div style="font-size:0.76rem; color:var(--text-sub); margin-bottom:4px;">営業時間 ' + escHtml(sp.late_hours) + (sp.seating_vibe ? ' ・ ' + escHtml(sp.seating_vibe) : '') + '</div>' : '';
                         var reserveBtn = IS_PUBLIC_VIEW
-                            ? '{% if not is_staff and not session.get("is_staff") %}<a href="/link/second_venue_reservation?from=/concierge" target="_blank" rel="noopener sponsored" class="btn-gold-action" style="padding:4px 8px; font-size:0.78rem;">席予約 ›</a>{% endif %}'
+                            ? '{% if not is_staff and not session.get("is_staff") %}<a href="/link/second_venue_reservation?from=/concierge" target="_blank" rel="nofollow sponsored noopener" class="btn-gold-action" style="padding:6px 10px; font-size:0.78rem; min-width:0; flex:0 1 auto;">席予約 ›</a>{% endif %}'
                             : '';
-                        return '<div class="concierge-sv-card" style="background:var(--bg-card,#fff); border:1px solid var(--border-color,#e5e7eb); border-radius:8px; padding:12px; display:flex; flex-direction:column; justify-content:space-between;">' +
+                        return '<div class="concierge-sv-card" style="background:var(--card-bg-2); border:1px solid var(--border-subtle); border-radius:8px; padding:12px; display:flex; flex-direction:column; justify-content:space-between;">' +
                             '<div>' +
                             '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">' +
                             '<span class="venue-category-badge ' + escHtml(sp.category) + '" style="font-size:0.72rem; padding:2px 6px; border-radius:4px; font-weight:600;">' + escHtml(sp.category_label || '') + '</span>' +
@@ -1167,8 +1171,8 @@
                             '<p style="margin:0 0 8px; font-size:0.8rem; color:var(--text-sub); line-height:1.45;">' + escHtml(sp.comment || '') + '</p>' +
                             '</div>' +
                             '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:6px;">' +
-                            '<a href="' + escHtml(sp.map_url || '#') + '" target="_blank" rel="noopener noreferrer" class="btn-subtle-action" style="padding:4px 8px; font-size:0.78rem;">マップ <svg class="ui-svg-ne" width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9L9 3M9 3H4.5M9 3V7.5"/></svg></a>' +
-                            '<button type="button" class="btn-subtle-action copy-sv-btn" onclick="navigator.clipboard.writeText(\'' + escHtml(sp.name || '') + '\'); this.textContent=\'✓ コピー済\'; var self=this; setTimeout(function(){ self.textContent=\'店名コピー\'; }, 2000);" style="padding:4px 8px; font-size:0.78rem; cursor:pointer;">店名コピー</button>' +
+                            '<a href="' + escHtml(sp.map_url || '#') + '" target="_blank" rel="noopener noreferrer" class="btn-subtle-action" style="padding:6px 10px; font-size:0.78rem; flex:0 1 auto;">マップ <svg class="ui-svg-ne" width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9L9 3M9 3H4.5M9 3V7.5"/></svg></a>' +
+                            '<button type="button" class="btn-subtle-action copy-sv-btn" onclick="navigator.clipboard.writeText(\'' + escHtml(sp.name || '') + '\'); this.textContent=\'✓ コピー済\'; var self=this; setTimeout(function(){ self.textContent=\'店名コピー\'; }, 2000);" style="padding:6px 10px; font-size:0.78rem; cursor:pointer; flex:0 1 auto;">店名コピー</button>' +
                             reserveBtn +
                             '</div>' +
                             '</div>';

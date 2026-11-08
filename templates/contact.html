@@ -4,13 +4,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>お問い合わせ｜相席ナビ</title>
+    <title>お問い合わせ（掲載情報の訂正・店舗関係者様窓口・取材依頼）｜相席ナビ</title>
     <meta name="description" content="相席ナビ（AISEKI NAVI）へのお問い合わせフォーム。掲載内容の誤りの訂正、店舗関係者からの掲載に関するご依頼、サイトの不具合のご報告、取材・提携のご相談を受け付けています。">
     <link rel="canonical" href="https://aiseki-navi.com/contact">
+    {% include '_head_llmo.html' %}
+    <meta property="og:title" content="お問い合わせ（掲載情報の訂正・店舗関係者様窓口・取材依頼）｜相席ナビ">
+    <meta property="og:description" content="相席ナビ（AISEKI NAVI）へのお問い合わせ窓口。掲載内容の訂正、店舗関係者様からのご依頼、取材・データ提供のご相談を受け付けています。">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://aiseki-navi.com/contact">
+    <meta property="og:site_name" content="相席ナビ">
+    <meta property="og:locale" content="ja_JP">
+    <meta property="og:image" content="https://aiseki-navi.com/ogp/live.png">
+    <meta name="twitter:card" content="summary_large_image">
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
-    <link rel="stylesheet" href="/static/portal.css?v=15">
+    <link rel="stylesheet" href="/static/portal.css?v=16">
     <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
     <style>html.theme-light{background-color:#f6f6f7;}</style>
+    <script type="application/ld+json">
+    [
+      {
+        "@context": "https://schema.org",
+        "@type": "ContactPage",
+        "name": "お問い合わせ｜相席ナビ",
+        "url": "https://aiseki-navi.com/contact",
+        "inLanguage": "ja",
+        "isPartOf": {"@type": "WebSite", "name": "相席ナビ", "url": "https://aiseki-navi.com/"},
+        "publisher": {
+          "@type": "Organization",
+          "@id": "https://aiseki-navi.com/#organization",
+          "name": "相席ナビ編集部",
+          "url": "https://aiseki-navi.com/",
+          "logo": {"@type": "ImageObject", "url": "https://aiseki-navi.com/static/icon-512.png"}
+        }
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {"@type": "ListItem", "position": 1, "name": "リアルタイム順位", "item": "https://aiseki-navi.com/"},
+          {"@type": "ListItem", "position": 2, "name": "お問い合わせ", "item": "https://aiseki-navi.com/contact"}
+        ]
+      }
+    ]
+    </script>
     <style>
         * { box-sizing: border-box; }
         body {
@@ -64,6 +100,7 @@
             outline-color: #18181b;
         }
         .contact-hp { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+        .contact-hp input { width: 1px; height: 1px; padding: 0; border: 0; opacity: 0; pointer-events: none; }
         .contact-submit {
             justify-self: start;
             min-height: 44px;
@@ -84,7 +121,7 @@
         body.theme-light .contact-counter { color: #52525b; }
         .about-link { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=37">
+    <link rel="stylesheet" href="/static/calm.css?v=39">
 </head>
 
 <body>

@@ -30,7 +30,7 @@ SCHEDULED_ARTICLES = [
         "eyecatch_webp": "/static/eyecatch-local-vs-urban.webp",
         "badge": "地方vs都心データ",
         "read_time": "約6分で読める",
-        "tag_primary": ("tag-cyan", "全国51店舗ログ比較"),
+        "tag_primary": ("tag-cyan", "都心33店×地方18店ログ比較"),
         "tag_secondary": ("tag-pink", "深夜0時の逆転現象"),
         "title": "地方店と都心の大型店、客層とピークはどう違うのか｜深夜0時に女性が121%へ増える地方の一極集中",
         "short_title": "地方店と都心大型店の客層・深夜ピーク比較",

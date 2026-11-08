@@ -5,9 +5,15 @@
    - 各ページでは /static/style.css より後、ページ内 <style> より前に読み込むこと
    ========================================================================== */
 
+:root {
+    color-scheme: dark;
+}
+
 /* ---- ライトテーマ初期描画同期（FOUC防止） ---- */
 html.theme-light,
-html.theme-light body {
+html.theme-light body,
+body.theme-light {
+    color-scheme: light;
     background-color: #f6f6f7;
     color: #18181b;
 }
@@ -82,6 +88,8 @@ html.theme-light body {
     cursor: pointer;
     font-family: inherit;
     flex-shrink: 0;
+    min-block-size: 36px;
+    min-height: 36px;
     padding: 6px 12px !important;
     font-size: 0.75rem !important;
     background: #18181c !important;
@@ -990,4 +998,23 @@ html.theme-light .audience-switch-bar a {
     background: #ffffff;
     border-color: rgba(157, 23, 77, 0.35);
     color: #831843;
+}
+
+/* ---- Modern Typography & Light-Mode Editorial Contrast ---- */
+h1, h2, h3 {
+    text-wrap: balance;
+}
+
+p, blockquote, li {
+    text-wrap: pretty;
+}
+
+body.theme-light .article-meta-sub,
+body.theme-light .article-meta-sub a,
+body.theme-light .article-date,
+body.theme-light [style*="color:#9ca3af"],
+body.theme-light [style*="color: #9ca3af"],
+body.theme-light [style*="color:#94a3b8"],
+body.theme-light [style*="color: #94a3b8"] {
+    color: #52525b !important;
 }

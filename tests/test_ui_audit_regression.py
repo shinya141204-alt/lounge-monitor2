@@ -105,13 +105,13 @@ class UiAuditRegressionTests(unittest.TestCase):
     # ------------------------------------------------------------------
     def test_cache_busting_sync_across_templates_and_service_worker(self):
         """全テンプレートと static/sw.js のアセットバージョンが完全同期し、immutable ヘッダが正しく付与されること"""
-        expected_calm = "/static/calm.css?v=37"
-        expected_portal = "/static/portal.css?v=15"
-        expected_app_js = "/static/app.js?v=20261108_1"
+        expected_calm = "/static/calm.css?v=39"
+        expected_portal = "/static/portal.css?v=16"
+        expected_app_js = "/static/app.js?v=20261108_2"
         expected_aff_js = "/static/affiliate_config.js?v=17"
-        expected_style = "/static/style.css?v=20261108_1"
-        expected_sw_url = "/sw.js?v=101"
-        expected_cache_name = "aiseki-navi-v101"
+        expected_style = "/static/style.css?v=20261108_2"
+        expected_sw_url = "/sw.js?v=103"
+        expected_cache_name = "aiseki-navi-v103"
 
         templates_dir = os.path.join(PROJECT_ROOT, "templates")
         calm_seen = 0

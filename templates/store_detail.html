@@ -8,6 +8,7 @@
     <meta name="description" content="{% if store.total > 0 %}{{ store.seo_name }}（{{ store.area_label }}）の現在のリアルタイム男女人数・男女比・待ち時間傾向を毎分自動更新。ただいま女性{{ store.women }}名・男性{{ store.men }}名（女性比率{{ store.wpct }}%）。入店前の混雑チェックや近隣店舗とのハシゴ比較に。{% elif store_analytics and store_analytics.max_7d_women > 0 %}{{ store.seo_name }}（{{ store.area_label }}）のリアルタイム男女人数・男女比・待ち時間傾向を毎分自動更新。直近7日間の最高女性数は{{ store_analytics.max_7d_women }}名、狙い目は{{ store_analytics.best_slot_name }}（平均女性比{{ store_analytics.best_slot_pct }}%）。入店前の混雑チェックや近隣店舗とのハシゴ比較に。{% else %}{{ store.seo_name }}（{{ store.area_label }}）のリアルタイム男女人数・男女比・待ち時間傾向を毎分自動更新。曜日・時間帯別の混雑傾向や近隣ラウンジとの比較が入店前に確認できます。{% endif %}">
     <meta name="keywords" content="{{ store.seo_name }},{{ store.seo_name }} 人数,{{ store.seo_name }} 男女比,{{ store.seo_name }} 混雑,{{ store.seo_name }} 待ち時間,{{ store.brand_label }},相席ラウンジ,相席ナビ">
     <link rel="canonical" href="https://aiseki-navi.com/store/{{ store.slug }}">
+    {% include '_head_llmo.html' %}
     {% if has_sufficient_store_data %}
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
     {% else %}
@@ -54,11 +55,11 @@
         "name": {{ store.seo_name | tojson }},
         "description": {{ (store.seo_name ~ 'のリアルタイム男女人数・男女比・混雑状況・待ち時間推移') | tojson }},
         "url": {{ ('https://aiseki-navi.com/store/' ~ store.slug) | tojson }},
-        "priceRange": "男性 2,640円〜 / 女性 無料",
+        "priceRange": {{ ("女性 無料 / 男性 時間制" if ('ソウル' in store.name) else "男性 2,640円〜 / 女性 無料") | tojson }},
         "openingHoursSpecification": {{ store.opening_hours_specification | tojson }},
         "address": {
           "@type": "PostalAddress",
-          "addressCountry": "JP",
+          "addressCountry": {{ ("KR" if ('ソウル' in store.name) else "JP") | tojson }},
           "addressRegion": {{ store.area_label | tojson }}
         }{% if store.official_url %},
         "sameAs": {{ store.official_url | tojson }}{% endif %}{% if store.lat and store.lng %},
@@ -73,9 +74,9 @@
 
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
-    <link rel="stylesheet" href="/static/portal.css?v=15">
+    <link rel="stylesheet" href="/static/portal.css?v=16">
     <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
-    <link rel="stylesheet" href="/static/style.css?v=20261108_1">
+    <link rel="stylesheet" href="/static/style.css?v=20261108_2">
     <style>
         :root {
             --bg-dark: #0f1014;
@@ -174,6 +175,35 @@
             background: rgba(255, 255, 255, 0.045);
             border: 1px solid var(--border-subtle);
             color: var(--text-sub);
+        }
+        .hero-hours-meta {
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--text-sub);
+            font-variant-numeric: tabular-nums;
+            padding: 2px 2px;
+        }
+        .venue-action-btn.reserve-btn {
+            background: #f4f4f5;
+            color: #111113;
+            border: 1px solid #f4f4f5;
+            font-weight: 700;
+            min-height: 36px;
+        }
+        .venue-action-btn.reserve-btn:hover {
+            background: #e4e4e7;
+            border-color: #e4e4e7;
+            color: #111113;
+        }
+        body.theme-light .venue-action-btn.reserve-btn {
+            background: #18181b;
+            color: #ffffff;
+            border-color: #18181b;
+        }
+        body.theme-light .venue-action-btn.reserve-btn:hover {
+            background: #27272a;
+            border-color: #27272a;
+            color: #ffffff;
         }
         .status-badge {
             font-size: 0.74rem;
@@ -503,7 +533,7 @@
             body.theme-light .store-dossier-col { border-top-color: rgba(24, 24, 27, 0.10); }
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=37">
+    <link rel="stylesheet" href="/static/calm.css?v=39">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -544,19 +574,19 @@
             <div class="badge-row">
                 <span class="area-badge">{{ store.area_label }}</span>
                 <span class="area-badge">{{ store.brand_label }}</span>
-                <span class="area-badge">営業時間：{{ store.hours_label }}</span>
                 <span class="status-badge" id="hero-status-badge">{{ store.crowd_comment }}</span>
+                <span class="hero-hours-meta">営業時間 {{ store.hours_label }}</span>
             </div>
 
             <h1>{{ store.seo_name }}のリアルタイム人数・男女比・混雑状況</h1>
 
             <div class="big-counts-grid">
                 <div class="count-box">
-                    <div class="count-label">現在の女性人数</div>
-                    <div class="count-num w-color" id="hero-women-num">{% if store.total > 0 %}{{ store.women }}<span style="font-size:0.95rem;">名</span>{% if (store.women_diff or 0) > 0 %}<div style="font-size:0.75rem; color: var(--women); margin-top:2px; font-weight:600;">直近15分 <svg class="ui-svg-ne" width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9L9 3M9 3H4.5M9 3V7.5"/></svg> +{{ store.women_diff }}名</div>{% endif %}{% if store.usual_w_diff is not none %}<div style="font-size:0.71rem; color: var(--text-sub); margin-top:2px; font-weight:600;">普段の{{ store.usual_slot_label }}比 {% if store.usual_w_diff > 0 %}+{{ store.usual_w_diff }}名{% elif store.usual_w_diff < 0 %}{{ store.usual_w_diff }}名{% else %}±0名{% endif %}（平均{{ store.usual_women }}名）</div>{% endif %}{% elif store.is_open_now %}0<span style="font-size:0.95rem;">名</span><div style="font-size:0.73rem; color: var(--accent-text); margin-top:2px; font-weight:600;">営業中（0 : 0）</div>{% else %}--<span style="font-size:0.82rem; color: var(--text-sub); font-weight:500;">（時間外）</span>{% endif %}</div>
+                    <div class="count-label">女性人数</div>
+                    <div class="count-num w-color" id="hero-women-num">{% if store.total > 0 %}{{ store.women }}<span style="font-size:0.95rem;">名</span>{% if (store.women_diff or 0) > 0 %}<div style="font-size:0.75rem; color: var(--women); margin-top:2px; font-weight:600;">直近15分 <svg class="ui-svg-ne" width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9L9 3M9 3H4.5M9 3V7.5"/></svg> +{{ store.women_diff }}名</div>{% endif %}{% if store.usual_w_diff is not none %}<div style="font-size:0.71rem; color: var(--text-sub); margin-top:2px; font-weight:600;">普段の{{ store.usual_slot_label }}比 {% if store.usual_w_diff > 0 %}+{{ store.usual_w_diff }}名{% elif store.usual_w_diff < 0 %}{{ store.usual_w_diff }}名{% else %}±0名{% endif %}（平均{{ store.usual_women }}名）</div>{% endif %}{% elif store.is_open_now %}0<span style="font-size:0.95rem;">名</span><div style="font-size:0.73rem; color: var(--accent-text); margin-top:2px; font-weight:600; white-space:nowrap;">営業中（0 : 0）</div>{% else %}--<span style="font-size:0.82rem; color: var(--text-sub); font-weight:500;">（時間外）</span>{% endif %}</div>
                 </div>
                 <div class="count-box">
-                    <div class="count-label">現在の男性人数</div>
+                    <div class="count-label">男性人数</div>
                     <div class="count-num m-color" id="hero-men-num">{% if store.total > 0 %}{{ store.men }}<span style="font-size:0.95rem;">名</span>{% if (store.men_diff or 0) > 0 %}<div style="font-size:0.75rem; color: var(--men); margin-top:2px; font-weight:600;">直近15分 <svg class="ui-svg-ne" width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9L9 3M9 3H4.5M9 3V7.5"/></svg> +{{ store.men_diff }}名</div>{% endif %}{% if store.usual_m_diff is not none %}<div style="font-size:0.71rem; color: var(--text-sub); margin-top:2px; font-weight:600;">普段の{{ store.usual_slot_label }}比 {% if store.usual_m_diff > 0 %}+{{ store.usual_m_diff }}名{% elif store.usual_m_diff < 0 %}{{ store.usual_m_diff }}名{% else %}±0名{% endif %}（平均{{ store.usual_men }}名）</div>{% endif %}{% elif store.is_open_now %}0<span style="font-size:0.95rem;">名</span><div style="font-size:0.73rem; color: var(--text-sub); margin-top:2px; font-weight:500;">本日 {{ store.today_hours_label }}</div>{% else %}--<span style="font-size:0.82rem; color: var(--text-sub); font-weight:500;">（時間外）</span>{% endif %}</div>
                 </div>
                 <div class="count-box">
@@ -669,7 +699,7 @@
                data-active-pixels='{{ store_smart_cta.active_pixels | tojson }}'
                data-women-variant='{{ store_smart_cta.women_variant | tojson }}'
                aria-label="店舗状況に応じたおすすめサービスと関連ガイド">
-            <a id="store-smart-cta-link" class="pr-context-main" href="{{ store_smart_cta.href }}" target="_blank" rel="noopener sponsored">
+            <a id="store-smart-cta-link" class="pr-context-main" href="{{ store_smart_cta.href }}" target="_blank" rel="nofollow sponsored noopener">
                 <div class="pr-context-body">
                     <div class="pr-context-meta">
                         <span class="pr-disclosure-pill">PR</span>
@@ -1231,8 +1261,8 @@
                             </div>
                             <span class="venue-budget-pill">{{ v.budget }}</span>
                         </div>
-                        <h4 class="second-venue-name">{{ v.name }}</h4>
-                        {% if v.late_hours %}<div class="second-venue-hours" style="font-size:0.78rem; color:var(--text-sub); margin-bottom:4px;">🕒 {{ v.late_hours }}{% if v.seating_vibe %} ・ {{ v.seating_vibe }}{% endif %}</div>{% endif %}
+                        <h3 class="second-venue-name">{{ v.name }}</h3>
+                        {% if v.late_hours %}<div class="second-venue-hours" style="font-size:0.78rem; color:var(--text-sub); margin-bottom:4px;">営業時間 {{ v.late_hours }}{% if v.seating_vibe %} ・ {{ v.seating_vibe }}{% endif %}</div>{% endif %}
                         <p class="second-venue-comment">{{ v.comment }}</p>
                         {% if v.features %}
                         <div class="second-venue-tags">
@@ -1246,7 +1276,7 @@
                             <button type="button" class="venue-action-btn copy-btn" onclick="copyDetailText('{{ v.name | e }}', this, '店名をコピーしました')">店名コピー</button>
                             <a href="{{ v.line_share_url }}" target="_blank" rel="noopener noreferrer" class="venue-action-btn line-btn">LINE共有</a>
                             {% if not is_staff and not session.get('is_staff') %}
-                            <a href="/link/second_venue_reservation?from=/store/{{ store.slug }}" target="_blank" rel="noopener sponsored" class="venue-action-btn reserve-btn" style="background: var(--bg-gold, #fbf7ee); color: var(--gold-dark, #926a1d); border-color: var(--border-gold, #dfc699); font-weight: 600;">席予約 ›</a>
+                            <a href="/link/second_venue_reservation?from=/store/{{ store.slug }}" target="_blank" rel="nofollow sponsored noopener" class="venue-action-btn reserve-btn">席予約 ›</a>
                             {% endif %}
                         </div>
                     </div>
@@ -1275,7 +1305,7 @@
             </div>
             {% if not is_staff and not session.get('is_staff') %}
             <div class="second-venue-reserve-bar">
-                <a href="/link/second_venue_reservation?from=/store/{{ store.slug }}" target="_blank" rel="noopener sponsored" class="second-venue-reserve-link">
+                <a href="/link/second_venue_reservation?from=/store/{{ store.slug }}" target="_blank" rel="nofollow sponsored noopener" class="second-venue-reserve-link">
                     <div class="second-venue-reserve-body">
                         <div class="second-venue-reserve-meta">
                             <span class="second-venue-pr-pill">PR</span>
@@ -1673,7 +1703,7 @@
                                     _rollHeroDigits(wEl.querySelector('.hero-odo-w'), _prevHeroLive.w, w);
                                 }
                             } else if (heroHours.isOpenNow) {
-                                wEl.innerHTML = '0<span style="font-size:0.95rem;">名</span><div style="font-size:0.73rem; color: var(--accent-text); margin-top:2px; font-weight:600;">営業中（0 : 0）</div>';
+                                wEl.innerHTML = '0<span style="font-size:0.95rem;">名</span><div style="font-size:0.73rem; color: var(--accent-text); margin-top:2px; font-weight:600; white-space:nowrap;">営業中（0 : 0）</div>';
                             } else {
                                 wEl.innerHTML = '--<span style="font-size:0.82rem; color: var(--text-sub); font-weight:500;">（時間外）</span>';
                             }
@@ -2191,9 +2221,9 @@
                     const lineText = `【2軒目候補】${v.name}（${v.category_label || ''}・徒歩${v.walk_minutes || 3}分）\n${mapUrl}`;
                     const lineUrl = `https://line.me/R/msg/text/?${encodeURIComponent(lineText)}`;
                     const featuresHtml = (v.features || []).map(f => `<span class="venue-tag">#${escapeHtml(f)}</span>`).join('');
-                    const hoursHtml = v.late_hours ? `<div class="second-venue-hours" style="font-size:0.78rem; color:var(--text-sub); margin-bottom:4px;">🕒 ${escapeHtml(v.late_hours)}${v.seating_vibe ? ' ・ ' + escapeHtml(v.seating_vibe) : ''}</div>` : '';
+                    const hoursHtml = v.late_hours ? `<div class="second-venue-hours" style="font-size:0.78rem; color:var(--text-sub); margin-bottom:4px;">営業時間 ${escapeHtml(v.late_hours)}${v.seating_vibe ? ' ・ ' + escapeHtml(v.seating_vibe) : ''}</div>` : '';
                     const reserveBtn = (!isStaffUser && storeSlug)
-                        ? `{% if not is_staff and not session.get("is_staff") %}<a href="/link/second_venue_reservation?from=/store/${encodeURIComponent(storeSlug)}" target="_blank" rel="noopener sponsored" class="venue-action-btn reserve-btn" style="background: var(--bg-gold, #fbf7ee); color: var(--gold-dark, #926a1d); border-color: var(--border-gold, #dfc699); font-weight: 600;">席予約 ›</a>{% endif %}`
+                        ? `{% if not is_staff and not session.get("is_staff") %}<a href="/link/second_venue_reservation?from=/store/${encodeURIComponent(storeSlug)}" target="_blank" rel="nofollow sponsored noopener" class="venue-action-btn reserve-btn">席予約 ›</a>{% endif %}`
                         : '';
                     return `
                         <div class="second-venue-card" data-category="${escapeHtml(v.category)}">
@@ -2204,7 +2234,7 @@
                                 </div>
                                 <span class="venue-budget-pill">${escapeHtml(v.budget || '')}</span>
                             </div>
-                            <h4 class="second-venue-name">${escapeHtml(v.name)}</h4>
+                            <h3 class="second-venue-name">${escapeHtml(v.name)}</h3>
                             ${hoursHtml}
                             <p class="second-venue-comment">${escapeHtml(v.comment || '')}</p>
                             ${featuresHtml ? `<div class="second-venue-tags">${featuresHtml}</div>` : ''}
@@ -2227,7 +2257,7 @@
                     <div class="second-tip-card">
                         <div class="second-tip-header">
                             <span class="second-tip-tag">${escapeHtml(t.tag || 'おすすめ')}</span>
-                            <h4 class="second-tip-situation">${escapeHtml(t.situation || '')}</h4>
+                            <h3 class="second-tip-situation">${escapeHtml(t.situation || '')}</h3>
                         </div>
                         <div class="second-tip-phrase-box">
                             <p class="second-tip-phrase">「${escapeHtml(t.phrase || '')}」</p>
@@ -2530,7 +2560,7 @@
 
             async function syncBackgroundPushSubscription(condToUse) {
                 if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false;
-                const reg = await navigator.serviceWorker.register('/sw.js?v=101', { updateViaCache: 'none' });
+                const reg = await navigator.serviceWorker.register('/sw.js?v=103', { updateViaCache: 'none' });
                 await navigator.serviceWorker.ready;
                 let sub = await reg.pushManager.getSubscription();
                 if (!sub) {

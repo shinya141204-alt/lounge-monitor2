@@ -4,11 +4,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
+    <style>html.theme-light{background-color:#f6f6f7;}</style>
     <meta name="google-site-verification" content="9kZaSJbaCuvn8QpGErUwI59w7Lf4N8ILhb_nWqDHI2s">
-    <title>「23時20分、店内の空気が変わる」——全国9.6万件の人数記録で見る、終電前に女性が減る40分間と、23時前後で入れ替わる街別の店選び｜相席ナビ</title>
+    <title>終電前に女性が減る「23時20分の終電崖」と0時30分の第2波｜9.6万件ログで見る街別の店選び｜相席ナビ</title>
     <meta name="description" content="全国55店舗・96,607件のリアルタイム人数ログを10分刻みで集計し、わずか20分で女性が16%減少する「23時20分の終電崖（クリフ）」と「0時30分の第2波」、さらに23時前後で女性比が入れ替わるag（アグ）・オリエンタルラウンジ・JIS（ジス）の街別（渋谷・新宿・名古屋・梅田）の店選びを実例とあわせて紹介します。">
     <meta name="keywords" content="相席ラウンジ 終電後,オリエンタルラウンジ 深夜,JIS 深夜,ag 相席 時間帯,相席ラウンジ 2軒目,相席ラウンジ 何時まで,相席ナビ">
     <link rel="canonical" href="https://aiseki-navi.com/guide/last-train-cliff">
+    {% include '_head_llmo.html' %}
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
 
     <!-- OGP / SNS Card Settings -->
@@ -78,9 +81,9 @@
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
     <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
     <style>html.theme-light{background-color:#f6f6f7;}</style>
-    <link rel="stylesheet" href="/static/style.css?v=20261108_1" media="print" onload="this.media='all'">
-    <noscript><link rel="stylesheet" href="/static/style.css?v=20261108_1"></noscript>
-    <link rel="stylesheet" href="/static/portal.css?v=15">
+    <link rel="stylesheet" href="/static/style.css?v=20261108_2" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="/static/style.css?v=20261108_2"></noscript>
+    <link rel="stylesheet" href="/static/portal.css?v=16">
     <style>
         body {
             display: block !important;
@@ -243,7 +246,7 @@
             font-size: 0.92rem;
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=37">
+    <link rel="stylesheet" href="/static/calm.css?v=39">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -273,7 +276,7 @@
         <figure class="article-eyecatch">
             <picture>
                 <source srcset="/static/eyecatch-last-train-cliff.webp?v=3" type="image/webp">
-                <img src="/static/eyecatch-last-train-cliff.jpg?v=3" alt="23時20分の終電崖と深夜0時半の第2波・街別の店選び" width="1280" height="720" loading="eager">
+                <img src="/static/eyecatch-last-train-cliff.jpg?v=3" alt="23時20分の終電崖と深夜0時半の第2波・街別の店選び" width="1280" height="720" fetchpriority="high" decoding="async">
             </picture>
         </figure>
 

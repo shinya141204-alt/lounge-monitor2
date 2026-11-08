@@ -9,6 +9,7 @@
     <meta name="description" content="初めて相席ラウンジ・相席バーに行く男女向けの基本ガイド。オリエンタルラウンジ・ag（アグ）・JIS（ジス）・ASOBIBAR（アソビバー）など全国63店舗の料金システム、必須の顔写真付き身分証、服装ドレスコード、98万件の実測データから見た待ち時間を抑えやすい時間帯・お店選びのポイントを解説します。">
     <meta name="keywords" content="相席ラウンジ 初心者,相席ラウンジ とは,相席ラウンジ 料金,相席ラウンジ 服装,相席ラウンジ 身分証,オリエンタルラウンジ 初めて,JIS 相席 初めて,ASOBIBAR 初めて">
     <link rel="canonical" href="https://aiseki-navi.com/guide">
+    {% include '_head_llmo.html' %}
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
 
     <!-- OGP / SNS Card Settings -->
@@ -113,12 +114,12 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet"></noscript>
-    <link rel="stylesheet" href="/static/style.css?v=20261108_1" media="print" onload="this.media='all'">
-    <noscript><link rel="stylesheet" href="/static/style.css?v=20261108_1"></noscript>
+    <link rel="stylesheet" href="/static/style.css?v=20261108_2" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="/static/style.css?v=20261108_2"></noscript>
 
     <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
     <style>html.theme-light{background-color:#f6f6f7;}</style>
-    <link rel="stylesheet" href="/static/portal.css?v=15">
+    <link rel="stylesheet" href="/static/portal.css?v=16">
     <style>
         body {
             display: block;
@@ -306,6 +307,7 @@
             margin: 20px 0 24px 0;
         }
 
+        .article-highlight-box h3,
         .article-highlight-box h4 {
             color: #f472b6;
             margin: 0 0 10px 0;
@@ -313,6 +315,10 @@
             display: flex;
             align-items: center;
             gap: 6px;
+            padding-left: 0;
+        }
+        .article-content .article-highlight-box h3::before {
+            display: none;
         }
 
         .article-highlight-box ul {
@@ -521,7 +527,7 @@
             border-color: rgba(236, 72, 153, 0.5);
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=37">
+    <link rel="stylesheet" href="/static/calm.css?v=39">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -539,7 +545,7 @@
         <main>
         <!-- Breadcrumb navigation -->
         <nav class="breadcrumb" aria-label="パンくずリスト">
-            <a href="/">🏠 相席ナビ TOP</a>
+            <a href="/">相席ナビ TOP</a>
             <span>›</span>
             <a href="/columns">コラム一覧</a>
             <span>›</span>
@@ -598,10 +604,10 @@
             </p>
 
             <div class="article-highlight-box">
-                <h4>相席ナビでできること（無料・登録不要）</h4>
+                <h3>相席ナビでできること（無料・登録不要）</h3>
                 <ul>
                     <li><strong>全国63店舗のリアルタイム人数ランキング：</strong>オリエンタルラウンジ、ag（アグ）、JIS（ジス）、ASOBIBAR（アソビバー）、ヤタコイ、XIX、ALFA、CLOVERSなど、全国63店舗（国内61店舗＋韓国2店舗）の現在人数と男女比を1分間隔で確認できます。</li>
-                    <li><strong>60分後AI男女比予測＆リアル待ち時間推論：</strong>「いま向かって着く頃にも女性優位が続くか（⚡殺到注意 / 🛡️確変持続）」や、JIS公式POS実測データから学習した予想待ち組数・分数がひと目でわかります。</li>
+                    <li><strong>60分後AI男女比予測＆リアル待ち時間推論：</strong>「いま向かって着く頃にも女性優位が続くか（殺到注意 / 確変持続）」や、JIS公式POS実測データから学習した予想待ち組数・分数がひと目でわかります。</li>
                     <li><strong>穴場診断＆料金比較ボード：</strong><a href="/concierge" style="text-decoration:underline;">コンシェルジュ診断</a>や<a href="/price-comparison" data-cushion="1" style="text-decoration:underline;">全店料金・1名入店可否比較ボード</a>で、予算や人数（ペア・ソロ）に合う店舗を絞り込めます。</li>
                 </ul>
             </div>
@@ -714,27 +720,27 @@
 
             <h2 id="section-faq">6. 初心者がよく迷うQ&amp;A（料金・保険証・1人入店・女性の待ち時間）</h2>
             <div class="article-highlight-box" style="margin-bottom: 16px;">
-                <h4>Q1. 女性は本当に無料ですか？ 女性でも待たされることはありますか？</h4>
+                <h3>Q1. 女性は本当に無料ですか？ 女性でも待たされることはありますか？</h3>
                 <p style="margin:0; font-size:0.89rem; color:#e2e8f0;">
                     はい、女性はチャージも飲み放題も無料（店舗によりフード・スイーツ特典あり）です。ただし女性ばかりが集中している「女余り店」に行くと、受付で20〜40分待つことがあります。女性ペアは<a href="/for-women" data-cushion="1" style="color:#f472b6;">女性向け穴場ランキング</a>で「男性が先行入店している店舗」を選ぶと待ち時間を抑えやすくなります。
                 </p>
             </div>
             <div class="article-highlight-box" style="margin-bottom: 16px;">
-                <h4>Q2. 男性の1晩あたりの予算目安はいくらくらいですか？</h4>
+                <h3>Q2. 男性の1晩あたりの予算目安はいくらくらいですか？</h3>
                 <p style="margin:0; font-size:0.89rem; color:#e2e8f0;">
                     着席型ラウンジ（オリエンタルラウンジ・ag（アグ）・JIS（ジス））に1時間〜1時間半滞在した場合、平日は約4,000〜6,500円、金土祝前日は約5,500〜8,500円前後が目安です（飲み放題込み・VIP席や有料フードを除く）。時間課金を気にせず飲みたい日は定額・チケット制の<a href="/asobibar" style="text-decoration:underline;">ASOBIBAR（アソビバー）</a>も選択肢に入ります（損益分岐の詳細は<a href="/guide/cost-break-even" style="text-decoration:underline;">料金損益分岐シミュレーション</a>へ）。
                 </p>
             </div>
             <div class="article-highlight-box" style="margin-bottom: 16px;">
-                <h4>Q3. 健康保険証や学生証だけで入店できますか？</h4>
+                <h3>Q3. 健康保険証や学生証だけで入店できますか？</h3>
                 <p style="margin:0; font-size:0.89rem; color:#e2e8f0;">
                     顔写真のない健康保険証単体やコピー・スマホ画像では入店できません。必ず<strong>運転免許証・マイナンバーカード・パスポート・在留カード等の公的顔写真付き身分証（原本）</strong>を全員分ご持参ください。
                 </p>
             </div>
             <div class="article-highlight-box" style="margin-bottom: 28px;">
-                <h4>Q4. 1人（ソロ）でも浮きませんか？ どこに行けば入れますか？</h4>
+                <h3>Q4. 1人（ソロ）でも浮きませんか？ どこに行けば入れますか？</h3>
                 <p style="margin:0; font-size:0.89rem; color:#e2e8f0;">
-                    平日の仕事帰りや週末2軒目で1人入店する男女は珍しくありません。JIS（新宿店を除く全店）やASOBIBAR全10店、オリエンタルラウンジの1名対応24店舗なら1名でも自然に馴染めます（詳しくは<a href="/guide/solo-vs-pair" style="text-decoration:underline;">1人入店 vs 2人ペア入店の実測比較</a>をご覧ください）。
+                    平日の仕事帰りや週末2軒目で1人入店する男女は珍しくありません。JIS（新宿店を除く全店）やASOBIBAR全10店、オリエンタルラウンジの1名対応24店舗なら1名でも自然に馴染めます（詳しくは<a href="/guide/solo-vs-pair" style="text-decoration:underline;">1人入店 vs 2人ペア入店の実測比較</a>や<a href="/guide/thirties-lounge-guide" style="text-decoration:underline;">30代の店選びガイド</a>をご覧ください）。
                 </p>
             </div>
 
@@ -775,6 +781,12 @@
                     <h4 style="margin: 0 0 6px 0; font-size: 0.98rem; line-height: 1.4;">オリエンタルラウンジ・JIS・ag 3大ブランドの違い</h4>
                     <p style="margin: 0 0 12px 0; font-size: 0.82rem; line-height: 1.5;">料金・年齢層・客層の違いと、その日の気分でどこに入るかの決め方。</p>
                     <a href="/guide/brand-comparison" class="cta-btn" style="display: inline-flex; align-items: center; gap: 4px; text-decoration: none; padding: 7px 16px; border-radius: 8px; font-size: 0.82rem; font-weight: 700;">3大ブランド比較を読む ›</a>
+                </div>
+                <div class="related-article-card">
+                    <span class="article-cat-tag" style="display: inline-block; margin-bottom: 8px;">着席後の立ち回り</span>
+                    <h4 style="margin: 0 0 6px 0; font-size: 0.98rem; line-height: 1.4;">男性が自然に会話を回し2軒目へ繋げる実践メカニクス</h4>
+                    <p style="margin: 0 0 12px 0; font-size: 0.82rem; line-height: 1.5;">乾杯から45分までの空気づくりと、席替え・二次会移行の判断基準。</p>
+                    <a href="/guide/male-lead-mechanics" class="cta-btn" style="display: inline-flex; align-items: center; gap: 4px; text-decoration: none; padding: 7px 16px; border-radius: 8px; font-size: 0.82rem; font-weight: 700;">会話ガイドを読む ›</a>
                 </div>
             </div>
         </article>

@@ -7,8 +7,7 @@
     <title>コラム・検証記事一覧｜相席ナビ（オリエンタルラウンジ・JIS（ジス）・ag（アグ）・ASOBIBAR（アソビバー）比較＆時間帯データ）</title>
     <meta name="description" content="相席ナビ編集部（編集長：くわもん）による実測データ検証コラム一覧。オリエンタルラウンジ・JIS（ジス）・ag（アグ）・ASOBIBAR（アソビバー）のブランド別比較や、水曜・木曜20時〜22時が相席しやすい理由、お店選びと身だしなみの基本まで実際の混雑ログをもとに整理しています。">
     <link rel="canonical" href="https://aiseki-navi.com/columns">
-    <link rel="alternate" type="text/markdown" href="https://aiseki-navi.com/llms.txt" title="相席ナビ AI要約ドキュメント (llms.txt)">
-    <link rel="alternate" type="application/json" href="https://aiseki-navi.com/api/llms-facts.json" title="相席ナビ AIグラウンディング構造化JSON (llms-facts.json)">
+    {% include '_head_llmo.html' %}
 
     <!-- OGP -->
     <meta property="og:title" content="コラム・攻略記事一覧｜相席ナビ">
@@ -19,18 +18,28 @@
     <meta property="og:site_name" content="相席ナビ">
     <meta name="twitter:card" content="summary_large_image">
     <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "CollectionPage",
-      "name": "相席ナビ 実測データ検証コラム・攻略記事一覧",
-      "url": "https://aiseki-navi.com/columns",
-      "description": "全国61店舗のリアルタイム混雑ログに基づく、オリエンタルラウンジ・ag（アグ）・JIS（ジス）・ASOBIBAR（アソビバー）の比較・時間帯別攻略・身だしなみ解説コラム一覧。",
-      "isPartOf": {
-        "@type": "WebSite",
-        "name": "相席ナビ (AISEKI NAVI)",
-        "url": "https://aiseki-navi.com/"
+    [
+      {
+        "@context": "https://schema.org",
+        "@type": "CollectionPage",
+        "name": "相席ナビ 実測データ検証コラム・攻略記事一覧",
+        "url": "https://aiseki-navi.com/columns",
+        "description": "全国61店舗のリアルタイム混雑ログに基づく、オリエンタルラウンジ・ag（アグ）・JIS（ジス）・ASOBIBAR（アソビバー）の比較・時間帯別攻略・身だしなみ解説コラム一覧。",
+        "isPartOf": {
+          "@type": "WebSite",
+          "name": "相席ナビ (AISEKI NAVI)",
+          "url": "https://aiseki-navi.com/"
+        }
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {"@type": "ListItem", "position": 1, "name": "リアルタイム順位", "item": "https://aiseki-navi.com/"},
+          {"@type": "ListItem", "position": 2, "name": "コラム・検証記事一覧", "item": "https://aiseki-navi.com/columns"}
+        ]
       }
-    }
+    ]
     </script>
 
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
@@ -40,7 +49,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet"></noscript>
 
-    <link rel="stylesheet" href="/static/portal.css?v=15">
+    <link rel="stylesheet" href="/static/portal.css?v=16">
     <style>
         :root {
             --bg-dark: #0c0d10;
@@ -256,7 +265,7 @@
         }
         .area-mini-name { font-size: 0.86rem; font-weight: 600; }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=37">
+    <link rel="stylesheet" href="/static/calm.css?v=39">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -284,9 +293,12 @@
             <span class="page-hero-badge">EDITORIAL COLUMNS</span>
             <h1>相席ラウンジのお店選び・時間帯・立ち回りコラム一覧</h1>
             <p>「23時半に入ったら急に帰られた」「金土の夜に40分待たされた」——現場で誰もが一度はぶつかる失敗や空気感を、全国63店舗・98万件超の混雑ログをもとに編集長・くわもんが検証したコラム集です。</p>
-            <div style="margin-top: 14px;">
+            <div style="margin-top: 14px; display: flex; flex-wrap: wrap; gap: 8px;">
                 <a href="/guide" class="columns-hero-pill-link">
                     初めての方へ：相席ラウンジ初心者向け完全ガイド（料金・身分証・服装・ブランド早見表） ›
+                </a>
+                <a href="/stats/year-end-2026" class="columns-hero-pill-link">
+                    一次統計：2026年 忘年会・年末年始＆ドーム連動データ白書 ›
                 </a>
             </div>
         </section>
@@ -338,7 +350,7 @@
                 <div class="article-thumb-wrap">
                     <picture>
                         <source srcset="/static/eyecatch-shibuya-ebisu-comparison.webp?v=3" type="image/webp">
-                        <img src="/static/eyecatch-shibuya-ebisu-comparison.jpg?v=3" alt="渋谷・恵比寿の相席ラウンジ・回遊バー5店舗比較｜山手線1駅で変わる年齢層・料金・時間波形の実測検証" loading="lazy">
+                        <img src="/static/eyecatch-shibuya-ebisu-comparison.jpg?v=3" alt="渋谷・恵比寿の相席ラウンジ・回遊バー5店舗比較｜山手線1駅で変わる年齢層・料金・時間波形の実測検証" width="1200" height="630" fetchpriority="high" decoding="async">
                     </picture>
                 </div>
                 <div class="article-card-body">
@@ -357,7 +369,7 @@
                 <div class="article-thumb-wrap">
                     <picture>
                         <source srcset="/static/eyecatch-ueno-kinshicho-machida.webp?v=3" type="image/webp">
-                        <img src="/static/eyecatch-ueno-kinshicho-machida.jpg?v=3" alt="上野・錦糸町・町田・柏の相席ラウンジ5店舗比較｜仲町通りの隣接2店と沿線ターミナルの実測データ検証" loading="lazy">
+                        <img src="/static/eyecatch-ueno-kinshicho-machida.jpg?v=3" alt="上野・錦糸町・町田・柏の相席ラウンジ5店舗比較｜仲町通りの隣接2店と沿線ターミナルの実測データ検証" width="1200" height="630" loading="lazy" decoding="async">
                     </picture>
                 </div>
                 <div class="article-card-body">
@@ -376,7 +388,7 @@
                 <div class="article-thumb-wrap">
                     <picture>
                         <source srcset="/static/eyecatch-yokohama-omiya-kanto.webp?v=3" type="image/webp">
-                        <img src="/static/eyecatch-yokohama-omiya-kanto.jpg?v=3" alt="横浜・大宮・宇都宮・高崎の相席ラウンジ5店舗比較｜都心へ出ずに選ぶ時間波形・料金・ソロ入店検証" loading="lazy">
+                        <img src="/static/eyecatch-yokohama-omiya-kanto.jpg?v=3" alt="横浜・大宮・宇都宮・高崎の相席ラウンジ5店舗比較｜都心へ出ずに選ぶ時間波形・料金・ソロ入店検証" width="1200" height="630" loading="lazy" decoding="async">
                     </picture>
                 </div>
                 <div class="article-card-body">
@@ -395,7 +407,7 @@
                 <div class="article-thumb-wrap">
                     <picture>
                         <source srcset="/static/eyecatch-nagoya-sakae-nishiki.webp?v=3" type="image/webp">
-                        <img src="/static/eyecatch-nagoya-sakae-nishiki.jpg?v=3" alt="名古屋（栄・錦・住吉）の相席ラウンジ・回遊バー5店舗比較｜南北700mの年齢層・料金・ソロ境界を実測検証" loading="lazy">
+                        <img src="/static/eyecatch-nagoya-sakae-nishiki.jpg?v=3" alt="名古屋（栄・錦・住吉）の相席ラウンジ・回遊バー5店舗比較｜南北700mの年齢層・料金・ソロ境界を実測検証" width="1200" height="630" loading="lazy" decoding="async">
                     </picture>
                 </div>
                 <div class="article-card-body">
@@ -414,7 +426,7 @@
                 <div class="article-thumb-wrap">
                     <picture>
                         <source srcset="/static/eyecatch-fukuoka-tenjin-kyushu.webp?v=3" type="image/webp">
-                        <img src="/static/eyecatch-fukuoka-tenjin-kyushu.jpg?v=3" alt="福岡・天神と九州・沖縄11店舗の相席ラウンジ比較｜大名徒歩2分の3ブランド使い分けと全店ソロ対応の実測データ" loading="lazy">
+                        <img src="/static/eyecatch-fukuoka-tenjin-kyushu.jpg?v=3" alt="福岡・天神と九州・沖縄11店舗の相席ラウンジ比較｜大名徒歩2分の3ブランド使い分けと全店ソロ対応の実測データ" width="1200" height="630" loading="lazy" decoding="async">
                     </picture>
                 </div>
                 <div class="article-card-body">
@@ -433,7 +445,7 @@
                 <div class="article-thumb-wrap">
                     <picture>
                         <source srcset="/static/eyecatch-hiroshima-okayama-matsuyama.webp?v=3" type="image/webp">
-                        <img src="/static/eyecatch-hiroshima-okayama-matsuyama.jpg?v=3" alt="広島・岡山・松山の相席ラウンジ6店舗比較｜新天地半径185mの3店競合と「入店単価固定・半額」の料金構造" loading="lazy">
+                        <img src="/static/eyecatch-hiroshima-okayama-matsuyama.jpg?v=3" alt="広島・岡山・松山の相席ラウンジ6店舗比較｜新天地半径185mの3店競合と「入店単価固定・半額」の料金構造" width="1200" height="630" loading="lazy" decoding="async">
                     </picture>
                 </div>
                 <div class="article-card-body">
@@ -452,7 +464,7 @@
                 <div class="article-thumb-wrap">
                     <picture>
                         <source srcset="/static/eyecatch-sapporo-sendai-north.webp?v=3" type="image/webp">
-                        <img src="/static/eyecatch-sapporo-sendai-north.jpg?v=3" alt="札幌すすきの・仙台国分町の相席ラウンジ比較｜1都市1大型店に集約されたJIS札幌・ag仙台の時間波形と曜日ルール" loading="lazy">
+                        <img src="/static/eyecatch-sapporo-sendai-north.jpg?v=3" alt="札幌すすきの・仙台国分町の相席ラウンジ比較｜1都市1大型店に集約されたJIS札幌・ag仙台の時間波形と曜日ルール" width="1200" height="630" loading="lazy" decoding="async">
                     </picture>
                 </div>
                 <div class="article-card-body">
@@ -471,7 +483,7 @@
                 <div class="article-thumb-wrap">
                     <picture>
                         <source srcset="/static/eyecatch-lounge-vs-screened-date.webp?v=3" type="image/webp">
-                        <img src="/static/eyecatch-lounge-vs-screened-date.jpg?v=3" alt="相席ラウンジ vs 審査制1対1デート徹底比較｜「複数人のライブ感」か「メッセージ不要の1対1」か、実測ログで見る使い分け境界線" loading="lazy">
+                        <img src="/static/eyecatch-lounge-vs-screened-date.jpg?v=3" alt="相席ラウンジ vs 審査制1対1デート徹底比較｜「複数人のライブ感」か「メッセージ不要の1対1」か、実測ログで見る使い分け境界線" width="1200" height="630" loading="lazy" decoding="async">
                     </picture>
                 </div>
                 <div class="article-card-body">
@@ -490,7 +502,7 @@
                 <div class="article-thumb-wrap">
                     <picture>
                         <source srcset="/static/eyecatch-dress-code-cleanliness.webp?v=3" type="image/webp">
-                        <img src="/static/eyecatch-dress-code-cleanliness.jpg?v=3" alt="相席ラウンジの服装・清潔感チェック完全ガイド｜ブランド別NGドレスコードと「70cmソファ席の間接照明」で損しない身だしなみ" loading="lazy">
+                        <img src="/static/eyecatch-dress-code-cleanliness.jpg?v=3" alt="相席ラウンジの服装・清潔感チェック完全ガイド｜ブランド別NGドレスコードと「70cmソファ席の間接照明」で損しない身だしなみ" width="1200" height="630" loading="lazy" decoding="async">
                     </picture>
                 </div>
                 <div class="article-card-body">
@@ -509,7 +521,7 @@
                 <div class="article-thumb-wrap">
                     <picture>
                         <source srcset="/static/eyecatch-brand-waveform-asymmetry.webp?v=3" type="image/webp">
-                        <img src="/static/eyecatch-brand-waveform-asymmetry.jpg?v=3" alt="20時は女性68%なのに深夜0時は逆転する理由｜5大ブランドの時間波形と男女で真逆になる店選びデータ検証" loading="lazy">
+                        <img src="/static/eyecatch-brand-waveform-asymmetry.jpg?v=3" alt="20時は女性68%なのに深夜0時は逆転する理由｜5大ブランドの時間波形と男女で真逆になる店選びデータ検証" width="1200" height="630" loading="lazy" decoding="async">
                     </picture>
                 </div>
                 <div class="article-card-body">
@@ -528,7 +540,7 @@
                 <div class="article-thumb-wrap">
                     <picture>
                         <source srcset="/static/eyecatch-crowd-rush-paradox.webp?v=3" type="image/webp">
-                        <img src="/static/eyecatch-crowd-rush-paradox.jpg?v=3" alt="金曜22時の「女性比60%」を見て向かうと3割が男余りに逆転する｜98万件ログが暴いた『群衆殺到パラドックス』と70%安全圏" loading="lazy">
+                        <img src="/static/eyecatch-crowd-rush-paradox.jpg?v=3" alt="金曜22時の「女性比60%」を見て向かうと3割が男余りに逆転する｜98万件ログが暴いた『群衆殺到パラドックス』と70%安全圏" width="1200" height="630" loading="lazy" decoding="async">
                     </picture>
                 </div>
                 <div class="article-card-body">
@@ -547,7 +559,7 @@
                 <div class="article-thumb-wrap">
                     <picture>
                         <source srcset="/static/eyecatch-beauty-stage.webp?v=3" type="image/webp">
-                        <img src="/static/eyecatch-beauty-stage.jpg?v=3" alt="女性2人組のための相席ラウンジ完全ガイド｜いま女子待ちゼロで入れる店舗ボード＆席替え裏マナー" loading="lazy">
+                        <img src="/static/eyecatch-beauty-stage.jpg?v=3" alt="女性2人組のための相席ラウンジ完全ガイド｜いま女子待ちゼロで入れる店舗ボード＆席替え裏マナー" width="1200" height="630" loading="lazy" decoding="async">
                     </picture>
                 </div>
                 <div class="article-card-body">
@@ -566,7 +578,7 @@
                 <div class="article-thumb-wrap">
                     <picture>
                         <source srcset="/static/eyecatch-last-train-cliff.webp?v=3" type="image/webp">
-                        <img src="/static/eyecatch-last-train-cliff.jpg?v=3" alt="「23時20分、店内の空気が変わる」——9.6万件のログが暴いた魔の40分間と23時を境に逆転する街別ハシゴ法則" loading="lazy">
+                        <img src="/static/eyecatch-last-train-cliff.jpg?v=3" alt="「23時20分、店内の空気が変わる」——9.6万件のログが暴いた魔の40分間と23時を境に逆転する街別ハシゴ法則" width="1200" height="630" loading="lazy" decoding="async">
                     </picture>
                 </div>
                 <div class="article-card-body">
@@ -585,7 +597,7 @@
                 <div class="article-thumb-wrap">
                     <picture>
                         <source srcset="{{ item.eyecatch_webp }}?v=3" type="image/webp">
-                        <img src="{{ item.eyecatch_jpg }}?v=3" alt="{{ item.title }}" loading="lazy">
+                        <img src="{{ item.eyecatch_jpg }}?v=3" alt="{{ item.title }}" width="1200" height="630" loading="lazy" decoding="async">
                     </picture>
                 </div>
                 <div class="article-card-body">
@@ -605,7 +617,7 @@
                 <div class="article-thumb-wrap">
                     <picture>
                         <source srcset="/static/eyecatch-price-comparison.webp?v=3" type="image/webp">
-                        <img src="/static/eyecatch-price-comparison.jpg?v=3" alt="相席ラウンジ「店舗別料金・イベント・現在人数」比較ボードの活用ガイド" loading="lazy">
+                        <img src="/static/eyecatch-price-comparison.jpg?v=3" alt="相席ラウンジ「店舗別料金・イベント・現在人数」比較ボードの活用ガイド" width="1200" height="630" loading="lazy" decoding="async">
                     </picture>
                 </div>
                 <div class="article-card-body">
@@ -624,7 +636,7 @@
                 <div class="article-thumb-wrap">
                     <picture>
                         <source srcset="/static/eyecatch-male-lead.webp?v=3" type="image/webp">
-                        <img src="/static/eyecatch-male-lead.jpg?v=3" alt="「男性先行」の店ほど女性が増える？データが証明する「女性は待たない」新常識" loading="lazy">
+                        <img src="/static/eyecatch-male-lead.jpg?v=3" alt="「男性先行」の店ほど女性が増える？データが証明する「女性は待たない」新常識" width="1200" height="630" loading="lazy" decoding="async">
                     </picture>
                 </div>
                 <div class="article-card-body">
@@ -643,7 +655,7 @@
                 <div class="article-thumb-wrap">
                     <picture>
                         <source srcset="/static/eyecatch-beauty-stage.webp?v=3" type="image/webp">
-                        <img src="/static/eyecatch-beauty-stage.jpg?v=3" alt="なぜ美容サロン激戦区の相席ラウンジは美人が多いのか？「今日ビジュいい日」の行動データ" loading="lazy">
+                        <img src="/static/eyecatch-beauty-stage.jpg?v=3" alt="なぜ美容サロン激戦区の相席ラウンジは美人が多いのか？「今日ビジュいい日」の行動データ" width="1200" height="630" loading="lazy" decoding="async">
                     </picture>
                 </div>
                 <div class="article-card-body">
@@ -662,7 +674,7 @@
                 <div class="article-thumb-wrap">
                     <picture>
                         <source srcset="/static/eyecatch-club-midnight.webp?v=3" type="image/webp">
-                        <img src="/static/eyecatch-club-midnight.jpg?v=3" alt="なぜ梅田・渋谷・新宿は深夜0時を過ぎても女性が減らないのか？ダンスクラブ×相席深夜2回転目の法則" loading="lazy">
+                        <img src="/static/eyecatch-club-midnight.jpg?v=3" alt="なぜ梅田・渋谷・新宿は深夜0時を過ぎても女性が減らないのか？ダンスクラブ×相席深夜2回転目の法則" width="1200" height="630" loading="lazy" decoding="async">
                     </picture>
                 </div>
                 <div class="article-card-body">
@@ -681,7 +693,7 @@
                 <div class="article-thumb-wrap">
                     <picture>
                         <source srcset="/static/eyecatch-weekend.webp?v=3" type="image/webp">
-                        <img src="/static/eyecatch-weekend.jpg?v=3" alt="金・土の相席ラウンジで男性待ち1時間を回避して勝つ方法" loading="lazy">
+                        <img src="/static/eyecatch-weekend.jpg?v=3" alt="金・土の相席ラウンジで男性待ち1時間を回避して勝つ方法" width="1200" height="630" loading="lazy" decoding="async">
                     </picture>
                 </div>
                 <div class="article-card-body">
@@ -698,7 +710,7 @@
             <!-- Article 1: Brand Comparison -->
             <a href="/guide/brand-comparison" class="article-card">
                 <div class="article-thumb-wrap">
-                    <img src="/static/guide-brand-comparison.jpg?v=3" alt="オリエンタルラウンジ・JIS・ag 3大ブランド比較" loading="lazy">
+                    <img src="/static/guide-brand-comparison.jpg?v=3" alt="オリエンタルラウンジ・JIS・ag 3大ブランド比較" width="1200" height="630" loading="lazy" decoding="async">
                 </div>
                 <div class="article-card-body">
                     <div class="article-tag-row">
@@ -716,7 +728,7 @@
                 <div class="article-thumb-wrap">
                     <picture>
                         <source srcset="/static/note-eyecatch-weekday.webp?v=3" type="image/webp">
-                        <img src="/static/note-eyecatch-weekday.jpg?v=3" alt="水曜・木曜20時〜22時の平日ラウンジ傾向" loading="lazy">
+                        <img src="/static/note-eyecatch-weekday.jpg?v=3" alt="水曜・木曜20時〜22時の平日ラウンジ傾向" width="1200" height="630" loading="lazy" decoding="async">
                     </picture>
                 </div>
                 <div class="article-card-body">
@@ -735,7 +747,7 @@
                 <div class="article-thumb-wrap">
                     <picture>
                         <source srcset="/static/note-eyecatch.webp?v=3" type="image/webp">
-                        <img src="/static/note-eyecatch.jpg?v=3" alt="相席ラウンジ基本の立ち回りガイド" loading="lazy">
+                        <img src="/static/note-eyecatch.jpg?v=3" alt="相席ラウンジ基本の立ち回りガイド" width="1200" height="630" loading="lazy" decoding="async">
                     </picture>
                 </div>
                 <div class="article-card-body">
@@ -753,7 +765,7 @@
                 <div class="article-thumb-wrap">
                     <picture>
                         <source srcset="/static/eyecatch-shinjuku.webp?v=3" type="image/webp">
-                        <img src="/static/eyecatch-shinjuku.jpg?v=3" alt="新宿の相席ラウンジ3店舗の使い分けガイド" loading="lazy">
+                        <img src="/static/eyecatch-shinjuku.jpg?v=3" alt="新宿の相席ラウンジ3店舗の使い分けガイド" width="1200" height="630" loading="lazy" decoding="async">
                     </picture>
                 </div>
                 <div class="article-card-body">
@@ -771,7 +783,7 @@
                 <div class="article-thumb-wrap">
                     <picture>
                         <source srcset="/static/eyecatch-solo-pair.webp?v=3" type="image/webp">
-                        <img src="/static/eyecatch-solo-pair.jpg?v=3" alt="1人（ソロ）と友達と2人組の比較ガイド" loading="lazy">
+                        <img src="/static/eyecatch-solo-pair.jpg?v=3" alt="1人（ソロ）と友達と2人組の比較ガイド" width="1200" height="630" loading="lazy" decoding="async">
                     </picture>
                 </div>
                 <div class="article-card-body">
@@ -789,7 +801,7 @@
                 <div class="article-thumb-wrap">
                     <picture>
                         <source srcset="/static/eyecatch-second-venue.webp?v=3" type="image/webp">
-                        <img src="/static/eyecatch-second-venue.jpg?v=3" alt="相席ラウンジから2軒目へ自然に誘うコツ" loading="lazy">
+                        <img src="/static/eyecatch-second-venue.jpg?v=3" alt="相席ラウンジから2軒目へ自然に誘うコツ" width="1200" height="630" loading="lazy" decoding="async">
                     </picture>
                 </div>
                 <div class="article-card-body">
@@ -807,7 +819,7 @@
                 <div class="article-thumb-wrap">
                     <picture>
                         <source srcset="/static/eyecatch-first-10min.webp?v=3" type="image/webp">
-                        <img src="/static/eyecatch-first-10min.jpg?v=3" alt="最初の10分の会話と清潔感ガイド" loading="lazy">
+                        <img src="/static/eyecatch-first-10min.jpg?v=3" alt="最初の10分の会話と清潔感ガイド" width="1200" height="630" loading="lazy" decoding="async">
                     </picture>
                 </div>
                 <div class="article-card-body">

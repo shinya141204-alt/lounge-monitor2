@@ -8,8 +8,7 @@
     <meta name="description" content="相席ラウンジへ行く女性2人組・ソロ女子向けの実測データガイド。いま受付待ちゼロ（男性先行）で即案内される全国63店舗リアルタイム一覧、オリエンタルラウンジ・ag（アグ）・JIS（ジス）・ASOBIBAR（アソビバー）の女性目線での客層・フード比較、浮かない服装、角が立たない席替え・退店フレーズを整理しています。">
     <meta name="keywords" content="オリエンタルラウンジ 女性 待ち時間,オリエンタルラウンジ 女性 服装,オリエンタルラウンジ 女性 一人,相席ラウンジ 女子 席替え,ag 相席 女性 年齢層,JIS 相席 女性 特典,相席ナビ">
     <link rel="canonical" href="https://aiseki-navi.com/for-women">
-    <link rel="alternate" type="text/markdown" href="https://aiseki-navi.com/llms.txt" title="相席ナビ AI要約ドキュメント (llms.txt)">
-    <link rel="alternate" type="application/json" href="https://aiseki-navi.com/api/llms-facts.json" title="相席ナビ AIグラウンディング構造化JSON (llms-facts.json)">
+    {% include '_head_llmo.html' %}
 
     <!-- OGP -->
     <meta property="og:title" content="相席ラウンジ女性向け裏ガイド＆いま待ちゼロで入れる店舗ボード｜相席ナビ">
@@ -83,13 +82,21 @@
             }
           }
         ]
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {"@type": "ListItem", "position": 1, "name": "リアルタイム順位", "item": "https://aiseki-navi.com/"},
+          {"@type": "ListItem", "position": 2, "name": "女性向け実践ガイド＆待ちゼロ店舗ボード", "item": "https://aiseki-navi.com/for-women"}
+        ]
       }
     ]
     </script>
 
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
-    <link rel="stylesheet" href="/static/portal.css?v=15">
+    <link rel="stylesheet" href="/static/portal.css?v=16">
     <style>
         /* デフォルト（女性向けローズリネン地×純白カード紙面の高級サロン誌トーン） */
         :root {
@@ -405,6 +412,7 @@
             border-radius: 12px;
             padding: 15px 16px;
         }
+        .rule-card h3,
         .rule-card h4 {
             margin: 0 0 6px;
             font-size: 0.92rem;
@@ -454,6 +462,7 @@
             flex-direction: column;
             justify-content: space-between;
         }
+        .ladies-pr-card h3,
         .ladies-pr-card h4 {
             font-size: 0.9rem;
             margin: 4px 0 6px;
@@ -498,7 +507,7 @@
             margin: 0;
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=37">
+    <link rel="stylesheet" href="/static/calm.css?v=39">
     <script>try{var _mw=localStorage.getItem('aiseki_women_manual_theme');if(_mw!=='default'&&_mw!=='list')document.documentElement.classList.add('theme-light');}catch(e){}</script>
 </head>
 
@@ -552,7 +561,7 @@
                 全国63店舗の男女人数データから見えてきた<strong>『待ち時間ゼロで奥のソファ席へ通されやすいお店の見分け方』</strong>と<strong>『角を立てずに席替え・退店する大人の一言』</strong>をまとめました。
             </p>
             <div class="hero-cta-row">
-                <a href="/?mode=women" class="btn-rose">トップ画面を「女性目線（待ち0・特典順）」で開く →</a>
+                <a href="/?mode=women" class="btn-rose">「女性目線（待ち0・特典順）」で全店を見る →</a>
                 <a href="#change-seat-manual" class="btn-outline">席替え・スマート退店フレーズを見る ↓</a>
             </div>
         </section>
@@ -580,7 +589,7 @@
                         <span style="font-size:0.75rem;color:var(--text-sub);">（男性比 {{ p.men_pct }}%）</span>
                     </div>
                     {% if p.event_title and not is_staff and not session.get('is_staff') %}
-                    <div class="pick-ev">🎁 {{ p.event_title }}</div>
+                    <div class="pick-ev">特典：{{ p.event_title }}</div>
                     {% endif %}
                 </a>
                 {% endfor %}
@@ -607,10 +616,10 @@
                 <div class="ladies-pr-card">
                     <div>
                         <span class="pick-badge good">{{ qc.badge }}</span>
-                        <h4>{{ qc.title }}</h4>
+                        <h3>{{ qc.title }}</h3>
                         <p>{{ qc.desc }}</p>
                     </div>
-                    <a href="{{ qc.href }}" target="_blank" rel="noopener sponsored" class="ladies-pr-link">{{ qc.cta_label }}</a>
+                    <a href="{{ qc.href }}" target="_blank" rel="nofollow sponsored noopener" class="ladies-pr-link">{{ qc.cta_label }}</a>
                     {% if qc.tracking_pixel %}
                     <img border="0" width="1" height="1" src="{{ qc.tracking_pixel }}" alt="" style="display:none;">
                     {% endif %}
@@ -625,7 +634,7 @@
             金曜・土曜の21時半や雨の日の駅直結ビルでは、20代の女性ペアが「とりあえず一番有名な店舗に行こう」と同じ店に集中します。すると店内では<strong>『女性36名・男性12名（女性比率75%）』</strong>のような極端な女余りが発生します。
         </p>
         <p>
-            この状態の店舗に女性が入ると何が起きるかというと、①受付で20〜40分待たされる、②案内されても最初は女性2人だけの待機席になる、③お店側も男性客の確保に追われて席替え（ローテーション）がほとんど回らなくなります。
+            この状態の店舗に女性が入ると何が起きるかというと、①受付で20〜40分待たされる、②案内されても最初は女性2人だけの待機席になる、③お店側も男性客の確保に追われて席替え（ローテーション）がほとんど回らなくなります（時系列ログに基づく詳しい検証は<a href="/guide/male-lead-mechanics" style="color:var(--rose-strong);font-weight:700;">『男性先行店ほど女性が集まるデータ法則』</a>を参照）。
         </p>
 
         <div class="dialogue-box">
@@ -703,15 +712,15 @@
         <h2 class="sec-h2">3. 浮かない＆大切に扱われる「服装・持ち物」のリアル境界線</h2>
         <div class="rule-cards">
             <div class="rule-card">
-                <h4>身分証の「原本」だけは合流時に確認</h4>
+                <h3>身分証の「原本」だけは合流時に確認</h3>
                 <p>運転免許証・マイナンバーカード・パスポート等の<strong>顔写真付き公的身分証</strong>が1人でも欠けると、どんなに空いていてもペアごと入店できません（写メ・期限切れ不可）。合流したら最初に確認を。</p>
             </div>
             <div class="rule-card">
-                <h4>気合いドレスより「きれいめ抜け感」</h4>
+                <h3>気合いドレスより「きれいめ抜け感」</h3>
                 <p>結婚式二次会のようなドレスアップより、仕事帰りのブラウス＋揺れスカートや、きれいめニット＋パンツの方が断然自然。逆にビーチサンダルやスウェット系は入口で止められます。</p>
             </div>
             <div class="rule-card">
-                <h4>雨の日は「地下直結店」が狙い目</h4>
+                <h3>雨の日は「地下直結店」が狙い目</h3>
                 <p>湿気で前髪や巻き髪が崩れる雨の夜は、地上を歩かずに済む駅地下・駅ビル直結店舗（新宿・梅田・札幌・栄など）に仕事帰りの落ち着いた男性が集まりやすく快適です。</p>
             </div>
         </div>
@@ -754,47 +763,47 @@
                 <div class="ladies-pr-card">
                     <div>
                         <span class="pick-badge good">女性完全無料・顔出し不要</span>
-                        <h4>審査制・週1カフェデートアプリ</h4>
+                        <h3>審査制・週1カフェデートアプリ</h3>
                         <p>友達と予定を合わせにくい週や、複数人のノリより1対1で落ち着いて話したい日に。顔写真の一般公開やメッセージ往復なしで、審査通過男性とのカフェデートが組めます。</p>
                     </div>
-                    <a href="/link/women_dating_bachelor?from=/for-women" target="_blank" rel="noopener sponsored" class="ladies-pr-link">【女性無料】公式詳細を見る ›</a>
+                    <a href="/link/women_dating_bachelor?from=/for-women" target="_blank" rel="nofollow sponsored noopener" class="ladies-pr-link">【女性無料】公式詳細を見る ›</a>
                 </div>
                 {% endif %}
                 {% if monetized_women_clinic %}
                 <div class="ladies-pr-card">
                     <div>
                         <span class="pick-badge">近距離ライトでも映える肌へ</span>
-                        <h4>美容皮膚科・医療脱毛 初回体験プラン</h4>
+                        <h3>美容皮膚科・医療脱毛 初回体験プラン</h3>
                         <p>頭上から暖色スポット照明が落ちる70cmのソファ席でも、自信を持って会話を楽しめる素肌づくりに。主要駅チカで仕事帰りにも立ち寄りやすい初回プランです。</p>
                     </div>
-                    <a href="/link/women_beauty_clinic?from=/for-women" target="_blank" rel="noopener sponsored" class="ladies-pr-link">初回キャンペーンを見る ›</a>
+                    <a href="/link/women_beauty_clinic?from=/for-women" target="_blank" rel="nofollow sponsored noopener" class="ladies-pr-link">初回キャンペーンを見る ›</a>
                 </div>
                 {% endif %}
                 <div class="ladies-pr-card">
                     <div>
                         <span class="pick-badge good">夜遊び帰りの髪・肌リセット</span>
-                        <h4>サロン品質ヘア＆ナイトスキンケア</h4>
+                        <h3>サロン品質ヘア＆ナイトスキンケア</h3>
                         <p>空調の効いたフロアでカクテルやスイーツを楽しんだ夜も、帰宅後のバスタイムで毛先のツヤとしっとり感を整えられるサロンケアシリーズ。</p>
                     </div>
-                    <a href="/link/women_cosme_salon?from=/for-women" target="_blank" rel="noopener sponsored" class="ladies-pr-link">公式ショップで詳細を見る ›</a>
+                    <a href="/link/women_cosme_salon?from=/for-women" target="_blank" rel="nofollow sponsored noopener" class="ladies-pr-link">公式ショップで詳細を見る ›</a>
                     <img border="0" width="1" height="1" src="https://www17.a8.net/0.gif?a8mat=4BERA3+6J68QA+5GZ4+5YZ75" alt="" style="display:none;">
                 </div>
                 <div class="ladies-pr-card">
                     <div>
                         <span class="pick-badge good">乾杯・カクテルを楽しむ夜に</span>
-                        <h4>乾杯サポート・ナイトケアサプリ</h4>
+                        <h3>乾杯サポート・ナイトケアサプリ</h3>
                         <p>ミニバッグのポケットにすっきり収まり、飲み放題でスパークリングやワインを楽しんだ翌朝も軽やかに動きたい日の定番ナイトケア習慣。</p>
                     </div>
-                    <a href="/link/women_night_supplement?from=/for-women" target="_blank" rel="noopener sponsored" class="ladies-pr-link">公式サイトで詳細を見る ›</a>
+                    <a href="/link/women_night_supplement?from=/for-women" target="_blank" rel="nofollow sponsored noopener" class="ladies-pr-link">公式サイトで詳細を見る ›</a>
                     <img border="0" width="1" height="1" src="https://www19.a8.net/0.gif?a8mat=4BELTJ+7RTR3M+3H28+5ZU29" alt="" style="display:none;">
                 </div>
                 <div class="ladies-pr-card">
                     <div>
                         <span class="pick-badge good">女子会ディナー・ホテルラウンジに</span>
-                        <h4>一休.comレストラン 限定プラン予約</h4>
+                        <h3>一休.comレストラン 限定プラン予約</h3>
                         <p>相席前の0次会カフェや休日のアフタヌーンティー、女友達とのご褒美ディナーをWEB限定の優待プランでスムーズに押さえられる予約サービス。</p>
                     </div>
-                    <a href="/link/women_second_venue?from=/for-women" target="_blank" rel="noopener sponsored" class="ladies-pr-link">人気プラン・空席を見る ›</a>
+                    <a href="/link/women_second_venue?from=/for-women" target="_blank" rel="nofollow sponsored noopener" class="ladies-pr-link">人気プラン・空席を見る ›</a>
                     <img border="0" width="1" height="1" src="https://www15.a8.net/0.gif?a8mat=4BGDZ4+9R9ROY+1OK+NVP2P" alt="" style="display:none;">
                 </div>
             </div>

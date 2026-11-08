@@ -7,45 +7,66 @@
     <title>相席ナビについて（運営者情報・データの取得方法・掲載方針）｜相席ナビ</title>
     <meta name="description" content="相席ナビ（AISEKI NAVI）の運営者情報、店舗人数データの取得方法と更新頻度、統計の算出方法、掲載方針、広告とアフィリエイトの扱い、各店舗・運営会社とは無関係の非公式サービスである旨をまとめています。">
     <link rel="canonical" href="https://aiseki-navi.com/about">
+    {% include '_head_llmo.html' %}
+    <meta property="og:title" content="相席ナビについて（運営者情報・データの取得方法・掲載方針）｜相席ナビ">
+    <meta property="og:description" content="相席ナビ（AISEKI NAVI）の運営者情報、店舗人数データの取得方法と更新頻度、CC BY 4.0一次統計の引用ガイドライン、掲載方針をまとめています。">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://aiseki-navi.com/about">
+    <meta property="og:site_name" content="相席ナビ">
+    <meta property="og:locale" content="ja_JP">
+    <meta property="og:image" content="https://aiseki-navi.com/ogp/live.png">
+    <meta name="twitter:card" content="summary_large_image">
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
-    <link rel="stylesheet" href="/static/portal.css?v=15">
+    <link rel="stylesheet" href="/static/portal.css?v=16">
     <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
     <style>html.theme-light{background-color:#f6f6f7;}</style>
     <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "AboutPage",
-      "name": "相席ナビについて",
-      "url": "https://aiseki-navi.com/about",
-      "inLanguage": "ja",
-      "isPartOf": {"@type": "WebSite", "name": "相席ナビ", "url": "https://aiseki-navi.com/"},
-      "publisher": {
-        "@type": "Organization",
-        "name": "相席ナビ編集部",
-        "url": "https://aiseki-navi.com/",
-        "logo": {
-          "@type": "ImageObject",
-          "url": "https://aiseki-navi.com/static/icon-512.png"
-        },
-        "contactPoint": {
-          "@type": "ContactPoint",
-          "contactType": "customer support",
-          "url": "https://aiseki-navi.com/contact",
-          "availableLanguage": ["Japanese"]
-        },
-        "founder": {
-          "@type": "Person",
-          "name": "くわもん",
-          "jobTitle": "相席ナビ編集長・データアナリスト"
-        },
-        "sameAs": [
-          "https://x.com/aiseki_navi",
-          "https://www.instagram.com/aiseki_navi1",
-          "https://www.threads.net/@aiseki_navi1",
-          "https://note.com/aiseki_navi"
+    [
+      {
+        "@context": "https://schema.org",
+        "@type": "AboutPage",
+        "name": "相席ナビについて",
+        "url": "https://aiseki-navi.com/about",
+        "inLanguage": "ja",
+        "isPartOf": {"@type": "WebSite", "name": "相席ナビ", "url": "https://aiseki-navi.com/"},
+        "publisher": {
+          "@type": "Organization",
+          "@id": "https://aiseki-navi.com/#organization",
+          "name": "相席ナビ編集部",
+          "url": "https://aiseki-navi.com/",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://aiseki-navi.com/static/icon-512.png"
+          },
+          "contactPoint": {
+            "@type": "ContactPoint",
+            "contactType": "customer support",
+            "url": "https://aiseki-navi.com/contact",
+            "availableLanguage": ["Japanese"]
+          },
+          "founder": {
+            "@type": "Person",
+            "@id": "https://aiseki-navi.com/#kuwamon",
+            "name": "くわもん",
+            "jobTitle": "相席ナビ編集長・データアナリスト"
+          },
+          "sameAs": [
+            "https://x.com/aiseki_navi",
+            "https://www.instagram.com/aiseki_navi1",
+            "https://www.threads.net/@aiseki_navi1",
+            "https://note.com/aiseki_navi"
+          ]
+        }
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {"@type": "ListItem", "position": 1, "name": "リアルタイム順位", "item": "https://aiseki-navi.com/"},
+          {"@type": "ListItem", "position": 2, "name": "相席ナビについて", "item": "https://aiseki-navi.com/about"}
         ]
       }
-    }
+    ]
     </script>
     <style>
         * { box-sizing: border-box; }
@@ -81,7 +102,7 @@
         .about-table th { width: 32%; font-weight: 600; white-space: nowrap; }
         .about-link { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=37">
+    <link rel="stylesheet" href="/static/calm.css?v=39">
 </head>
 
 <body>
@@ -99,7 +120,7 @@
         <main>
         <article class="content-box">
             <h1>相席ナビについて</h1>
-            <p>相席ナビ（AISEKI NAVI）は、全国63店舗（国内61店舗＋韓国2店舗）の相席ラウンジ・相席バーが公式サイトで公開している「現在の男女人数」を定期的に記録し、混雑の傾向や男女比の推移を見やすく整理している非公式の統計・情報サイトです。来店前に「いまどの店が入りやすいか」「何時ごろ・何曜日に混みやすいか」を判断する材料を、実際の記録にもとづいて提供することを目的にしています。</p>
+            <p>相席ナビ（AISEKI NAVI）は、{% if total_stores %}全{{ total_stores }}店舗（国内{{ domestic_stores }}店舗＋韓国{{ overseas_stores }}店舗）の{% else %}全国主要都市およびソウルの{% endif %}相席ラウンジ・相席バーが公式サイトで公開している「現在の男女人数」を定期的に記録し、混雑の傾向や男女比の推移を見やすく整理している非公式の統計・情報サイトです。来店前に「いまどの店が入りやすいか」「何時ごろ・何曜日に混みやすいか」を判断する材料を、実際の記録にもとづいて提供することを目的にしています。</p>
 
             <h2>運営者情報・編集体制</h2>
             <table class="about-table">
@@ -107,7 +128,7 @@
                     <tr><th>サイト名</th><td>相席ナビ（AISEKI NAVI）</td></tr>
                     <tr><th>URL</th><td><a class="about-link" href="https://aiseki-navi.com/">https://aiseki-navi.com/</a></td></tr>
                     <tr><th>運営・編集主体</th><td>相席ナビ編集部（編集長：くわもん ／ データ集計・検証担当：相席ナビ データ分析班）</td></tr>
-                    <tr><th>運営背景・専門性</th><td>Webエンジニアリングと Python / PostgreSQL による時系列データ分析を専門とし、全国63店舗・累計98万件以上の公開人数ログを継続観測・統計検証しています。すべてのコラム記事・統計データ白書は編集長およびデータ分析班の同一基準で執筆・校閲しています。</td></tr>
+                    <tr><th>運営背景・専門性</th><td>Webエンジニアリングと Python / PostgreSQL による時系列データ分析を専門とし、{% if total_stores %}全{{ total_stores }}店舗・{% endif %}{% if historical_rows and historical_rows >= 10000 %}累計{{ (historical_rows // 10000) }}万件以上{% elif historical_rows and historical_rows > 0 %}{{ "{:,}".format(historical_rows) }}件{% else %}1分間隔で継続蓄積中{% endif %}の公開人数ログを継続観測・統計検証しています。すべてのコラム記事・統計データ白書は編集長およびデータ分析班の同一基準で執筆・校閲しています。</td></tr>
                     <tr><th>お問い合わせ・訂正窓口</th><td><a class="about-link" href="/contact">お問い合わせフォーム</a>（掲載内容の誤り訂正、店舗関係者様からの掲載変更・削除依頼は最優先で確認・対応いたします）</td></tr>
                     <tr><th>公式SNS</th><td><a class="about-link" href="https://x.com/aiseki_navi" target="_blank" rel="noopener noreferrer">X（@aiseki_navi）</a> ／ <a class="about-link" href="https://www.instagram.com/aiseki_navi1" target="_blank" rel="noopener noreferrer">Instagram</a> ／ <a class="about-link" href="https://www.threads.net/@aiseki_navi1" target="_blank" rel="noopener noreferrer">Threads</a> ／ <a class="about-link" href="https://note.com/aiseki_navi" target="_blank" rel="noopener noreferrer">note</a></td></tr>
                 </tbody>
@@ -146,6 +167,13 @@
                 <li>掲載内容に誤りがある場合や、店舗・ブランドの運営関係者様から掲載内容の訂正・掲載見直し（非表示）のご依頼があった場合は、<a class="about-link" href="/contact">お問い合わせフォーム</a>からご連絡いただければ最優先で確認し、原則24時間以内に速やかに訂正または非表示対応を行います。</li>
             </ul>
 
+            <h2>一次統計データの引用・二次利用・取材窓口（CC BY 4.0）</h2>
+            <p>当サイトが公開している集計統計データ・グラフ・<a class="about-link" href="/stats">統計データ白書</a>・<a class="about-link" href="/stats/year-end-2026">年末・ドーム統計白書</a>・オープンデータ（<a class="about-link" href="/stats/monthly.csv">月次統計CSV</a> ／ <a class="about-link" href="/api/llms-facts.json">構造化ファクトJSON</a>）は、<strong>クリエイティブ・コモンズ 表示 4.0 国際（CC BY 4.0）ライセンス</strong>のもとで、報道・記事執筆・学術研究・AIアシスタントの出典参照に無償でご利用いただけます。</p>
+            <ul>
+                <li><strong>推奨クレジット表記例：</strong>出典：『相席ナビ（AISEKI NAVI）統計データ白書』（https://aiseki-navi.com/stats）</li>
+                <li><strong>メディア取材・データ提供のご相談：</strong>エリア別・曜日別の追加集計やコメント取材のご依頼は<a class="about-link" href="/contact">お問い合わせフォーム</a>よりご連絡ください。</li>
+            </ul>
+
             <h2>広告・アフィリエイトについて</h2>
             <p>サーバー費用などの運営費をまかなうため、Google AdSense などの広告配信サービスと、アフィリエイトプログラム（成果報酬型広告）を利用しています。広告枠には「PR」「広告」と表示し、記事本文やランキングの内容とは区別しています。広告の有無によって店舗の順位や評価を変えることはありません。Cookie の扱いを含む詳細は<a class="about-link" href="/privacy">プライバシーポリシー</a>をご覧ください。</p>
 
@@ -154,6 +182,7 @@
                 <li><a class="about-link" href="/privacy">プライバシーポリシー・免責事項</a></li>
                 <li><a class="about-link" href="/contact">お問い合わせ</a></li>
                 <li><a class="about-link" href="/stats">統計データ白書（予測精度・集計方法）</a></li>
+                <li><a class="about-link" href="/stats/year-end-2026">年末・ドーム公演相関 統計白書</a></li>
                 <li><a class="about-link" href="/columns">コラム一覧</a></li>
             </ul>
         </article>

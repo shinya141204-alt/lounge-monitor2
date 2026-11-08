@@ -2854,7 +2854,7 @@
 
             const isExtLink = Boolean(ctx.item.url && (ctx.item.url.startsWith('http') || ctx.item.url.startsWith('/link/')));
             const trackedHref = buildTrackedAffiliateUrl(ctx.item.url);
-            const targetAttrs = isExtLink ? ' target="_blank" rel="noopener sponsored"' : '';
+            const targetAttrs = isExtLink ? ' target="_blank" rel="nofollow sponsored noopener"' : '';
             const pixelHtml = ctx.item.trackingImg
                 ? `<img class="pr-tracking-pixel" src="${escapeHtml(ctx.item.trackingImg)}" width="1" height="1" alt="" loading="lazy" aria-hidden="true">`
                 : '';
@@ -3152,7 +3152,7 @@
                                     ${pointsHtml}
                                 </div>
                                 <div class="guide-app-cta-wrap">
-                                    <a href="${escapeHtml(trackedHref)}" ${isExt ? 'target="_blank" rel="noopener sponsored"' : `onclick="event.preventDefault(); showRefreshToast('アフィリエイトURL設定完了後に公式ページへ遷移します')"`} class="guide-app-cta">
+                                    <a href="${escapeHtml(trackedHref)}" ${isExt ? 'target="_blank" rel="nofollow sponsored noopener"' : `onclick="event.preventDefault(); showRefreshToast('アフィリエイトURL設定完了後に公式ページへ遷移します')"`} class="guide-app-cta">
                                         ${escapeHtml(item.cta || '詳細・キャンペーンを見る ›')}
                                     </a>
                                     ${item.trackingImg ? `<img border="0" width="1" height="1" src="${escapeHtml(item.trackingImg)}" alt="" style="display:none;">` : ''}
@@ -4267,7 +4267,7 @@
                             </div>
                             <span class="venue-budget-pill">${escapeHtml(v.budget || '')}</span>
                         </div>
-                        <h4 class="second-venue-name">${escapeHtml(v.name)}</h4>
+                        <h3 class="second-venue-name">${escapeHtml(v.name)}</h3>
                         <p class="second-venue-comment">${escapeHtml(v.comment || '')}</p>
                         ${featuresHtml ? `<div class="second-venue-tags">${featuresHtml}</div>` : ''}
                         <div class="second-venue-card-actions">
@@ -4301,15 +4301,15 @@
                 <div class="second-tip-card">
                     <div class="second-tip-header">
                         <span class="second-tip-tag">${escapeHtml(tip.tag || 'おすすめ')}</span>
-                        <h4 class="second-tip-situation">${escapeHtml(tip.situation || '')}</h4>
+                        <h3 class="second-tip-situation">${escapeHtml(tip.situation || '')}</h3>
                     </div>
                     <div class="second-tip-phrase-box">
                         <p class="second-tip-phrase">「${escapeHtml(tip.phrase || '')}」</p>
                         <button type="button" class="tip-phrase-copy-btn" onclick="copySecondVenueText('${escapeJsString(tip.phrase || '')}', this, 'フレーズをコピーしました')">
-                            📋 フレーズをコピー
+                            フレーズをコピー
                         </button>
                     </div>
-                    <p class="second-tip-point">💡 <strong>狙いと解説:</strong> ${escapeHtml(tip.point || '')}</p>
+                    <p class="second-tip-point"><strong>狙いと解説:</strong> ${escapeHtml(tip.point || '')}</p>
                 </div>
             `).join('');
 

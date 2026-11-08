@@ -9,6 +9,7 @@
     <title>新宿の相席ラウンジ3店舗はどう使い分ける？オリエンタルラウンジ・JIS東口・JIS西口の違い｜相席ナビ</title>
     <meta name="description" content="新宿エリアにある相席ラウンジ3店舗（オリエンタルラウンジ新宿、JIS新宿、JIS西新宿）の客層・年齢層・雰囲気の違いと、混雑時の回り方、2軒目に使いやすい周辺スポットをまとめました。">
     <link rel="canonical" href="https://aiseki-navi.com/guide/shinjuku">
+    {% include '_head_llmo.html' %}
 
     <meta property="og:title" content="新宿の相席ラウンジ3店舗はどう使い分ける？東口2店と西新宿の違い">
     <meta property="og:description" content="オリエンタルラウンジ新宿・JIS新宿・JIS西新宿の3店舗の特徴と、待ち時間を避けて相席するコツを解説。">
@@ -18,22 +19,35 @@
     <meta property="og:site_name" content="相席ナビ">
     <meta name="twitter:card" content="summary_large_image">
     <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "Article",
-      "headline": "新宿の相席ラウンジ3店舗はどう使い分ける？オリエンタルラウンジ・JIS（ジス）東口・西口の違い",
-      "image": ["https://aiseki-navi.com/static/eyecatch-shinjuku.jpg?v=3"],
-      "datePublished": "2026-10-20T18:00:00+09:00",
-      "dateModified": "2026-11-05T19:00:00+09:00",
-      "author": {"@type": "Person", "name": "くわもん", "jobTitle": "相席ナビ編集長", "url": "https://aiseki-navi.com/about"},
-      "publisher": {"@type": "Organization", "name": "相席ナビ編集部", "logo": {"@type": "ImageObject", "url": "https://aiseki-navi.com/static/icon-512.png"}},
-      "mainEntityOfPage": "https://aiseki-navi.com/guide/shinjuku"
-    }
+    [
+      {
+        "@context": "https://schema.org",
+        "@type": "Article",
+        "headline": "新宿の相席ラウンジ3店舗はどう使い分ける？オリエンタルラウンジ・JIS（ジス）東口・西口の違い",
+        "image": ["https://aiseki-navi.com/static/eyecatch-shinjuku.jpg?v=3"],
+        "datePublished": "2026-10-20T18:00:00+09:00",
+        "dateModified": "2026-11-05T19:00:00+09:00",
+        "author": {"@type": "Person", "name": "くわもん", "jobTitle": "相席ナビ編集長", "url": "https://aiseki-navi.com/about"},
+        "publisher": {"@type": "Organization", "name": "相席ナビ編集部", "logo": {"@type": "ImageObject", "url": "https://aiseki-navi.com/static/icon-512.png"}},
+        "mainEntityOfPage": "https://aiseki-navi.com/guide/shinjuku"
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {"@type": "ListItem", "position": 1, "name": "相席ナビ TOP", "item": "https://aiseki-navi.com/"},
+          {"@type": "ListItem", "position": 2, "name": "データ考察コラム一覧", "item": "https://aiseki-navi.com/columns"},
+          {"@type": "ListItem", "position": 3, "name": "新宿3店舗の使い分けガイド", "item": "https://aiseki-navi.com/guide/shinjuku"}
+        ]
+      }
+    ]
     </script>
 
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
-    <link rel="stylesheet" href="/static/portal.css?v=15">
+    <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
+    <style>html.theme-light{background-color:#f6f6f7;}</style>
+    <link rel="stylesheet" href="/static/portal.css?v=16">
     <style>
         :root {
             --bg-dark: #0a0a0f;
@@ -164,6 +178,7 @@
             border-radius: 14px;
             padding: 16px;
         }
+        .store-card h3,
         .store-card h4 {
             margin: 0 0 8px;
             font-size: 1rem;
@@ -208,6 +223,7 @@
             padding: 18px;
             margin: 20px 0;
         }
+        .aff-card h3,
         .aff-card h4 { margin: 4px 0 8px; color: #fff; font-size: 1rem; }
         .dialogue-box {
             background: rgba(255, 255, 255, 0.03);
@@ -225,7 +241,7 @@
             color: #1f1e1b;
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=37">
+    <link rel="stylesheet" href="/static/calm.css?v=39">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -281,17 +297,17 @@
             <div class="store-compare-grid">
                 <div class="store-card">
                     <div class="store-meta">20代半ば〜30代・大型旗艦店</div>
-                    <h4><a href="/store/oriental-lounge-shinjuku" style="color:#fff;text-decoration:none;">オリエンタルラウンジ 新宿 ›</a></h4>
+                    <h3><a href="/store/oriental-lounge-shinjuku" style="color:#fff;text-decoration:none;">オリエンタルラウンジ 新宿 ›</a></h3>
                     <p>靖国通り沿いにある旗艦店。週末は100名を超えることも珍しくない大型店舗で、丸の内・新宿勤務のOL層から看護師・美容系まで幅広い女性が集まります。</p>
                 </div>
                 <div class="store-card">
                     <div class="store-meta">本格BAR調・深夜も強い</div>
-                    <h4><a href="/store/jis-shinjuku" style="color:#fff;text-decoration:none;">JIS（ジス）新宿 ›</a></h4>
+                    <h3><a href="/store/jis-shinjuku" style="color:#fff;text-decoration:none;">JIS（ジス）新宿 ›</a></h3>
                     <p>歌舞伎町入口すぐの大型店。バーカウンターのある空間で、アパレル・美容職や深夜帯まで飲めるアクティブな女性が多く集まります。</p>
                 </div>
                 <div class="store-card">
                     <div class="store-meta">落ち着いた大人向け・西口側</div>
-                    <h4><a href="/store/jis-nishishinjuku" style="color:#fff;text-decoration:none;">JIS（ジス）西新宿 ›</a></h4>
+                    <h3><a href="/store/jis-nishishinjuku" style="color:#fff;text-decoration:none;">JIS（ジス）西新宿 ›</a></h3>
                     <p>新宿駅西口・南口側から歩いてすぐ。東口ほど騒がしくなく、仕事帰りのOLや落ち着いた20代後半〜30代とゆっくり話しやすい店舗です。</p>
                 </div>
             </div>
@@ -385,7 +401,7 @@
 
             <div class="aff-card">
                 <span class="cat-badge">新宿エリア横断比較</span>
-                <h4>新宿4店舗の単独待機料金・開催中フェア・現在人数を比較</h4>
+                <h3>新宿4店舗の単独待機料金・開催中フェア・現在人数を比較</h3>
                 <p style="font-size: 0.85rem; margin-bottom: 12px;">オリエンタルラウンジ新宿・ag（アグ）新宿・JIS新宿・JIS西新宿のリアルタイム男女比と60分目安料金を横並びで確認できます。</p>
                 <a href="/price-comparison?area=shinjuku" class="cta-btn" style="margin-top: 0; padding: 9px 20px; font-size: 0.84rem;" data-cushion="1">新宿4店舗の料金と人数を横並びで見る ›</a>
             </div>

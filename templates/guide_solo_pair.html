@@ -9,6 +9,7 @@
     <title>相席ラウンジは「1人（ソロ）」と「友達と2人」どっちがいい？立ち回りの違いとコツ｜相席ナビ</title>
     <meta name="description" content="相席ラウンジに1人（ソロ）で行くときと、友達と2人組で行くときのメリット・デメリット、向いている曜日・ブランド、そして2軒目に繋げやすい立ち回りの違いをわかりやすく解説します。">
     <link rel="canonical" href="https://aiseki-navi.com/guide/solo-vs-pair">
+    {% include '_head_llmo.html' %}
 
     <meta property="og:title" content="相席ラウンジは「1人（ソロ）」と「友達と2人」どっちがいい？">
     <meta property="og:description" content="1人で行く場合と2人で行く場合、それぞれの良さ、向いている時間帯・店舗選び、会話のコツをまとめました。">
@@ -18,22 +19,35 @@
     <meta property="og:site_name" content="相席ナビ">
     <meta name="twitter:card" content="summary_large_image">
     <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "Article",
-      "headline": "相席ラウンジは「1人（ソロ）」と「友達と2人」どっちがいい？立ち回りの違いとコツ",
-      "image": ["https://aiseki-navi.com/static/eyecatch-solo-pair.jpg?v=3"],
-      "datePublished": "2026-10-20T18:00:00+09:00",
-      "dateModified": "2026-11-05T19:00:00+09:00",
-      "author": {"@type": "Person", "name": "くわもん", "jobTitle": "相席ナビ編集長", "url": "https://aiseki-navi.com/about"},
-      "publisher": {"@type": "Organization", "name": "相席ナビ編集部", "logo": {"@type": "ImageObject", "url": "https://aiseki-navi.com/static/icon-512.png"}},
-      "mainEntityOfPage": "https://aiseki-navi.com/guide/solo-vs-pair"
-    }
+    [
+      {
+        "@context": "https://schema.org",
+        "@type": "Article",
+        "headline": "相席ラウンジは「1人（ソロ）」と「友達と2人」どっちがいい？立ち回りの違いとコツ",
+        "image": ["https://aiseki-navi.com/static/eyecatch-solo-pair.jpg?v=3"],
+        "datePublished": "2026-10-20T18:00:00+09:00",
+        "dateModified": "2026-11-05T19:00:00+09:00",
+        "author": {"@type": "Person", "name": "くわもん", "jobTitle": "相席ナビ編集長", "url": "https://aiseki-navi.com/about"},
+        "publisher": {"@type": "Organization", "name": "相席ナビ編集部", "logo": {"@type": "ImageObject", "url": "https://aiseki-navi.com/static/icon-512.png"}},
+        "mainEntityOfPage": "https://aiseki-navi.com/guide/solo-vs-pair"
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {"@type": "ListItem", "position": 1, "name": "相席ナビ TOP", "item": "https://aiseki-navi.com/"},
+          {"@type": "ListItem", "position": 2, "name": "データ考察コラム一覧", "item": "https://aiseki-navi.com/columns"},
+          {"@type": "ListItem", "position": 3, "name": "1人（ソロ）vs 友達と2人の立ち回り", "item": "https://aiseki-navi.com/guide/solo-vs-pair"}
+        ]
+      }
+    ]
     </script>
 
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
-    <link rel="stylesheet" href="/static/portal.css?v=15">
+    <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
+    <style>html.theme-light{background-color:#f6f6f7;}</style>
+    <link rel="stylesheet" href="/static/portal.css?v=16">
     <style>
         :root {
             --bg-dark: #0a0a0f;
@@ -163,6 +177,7 @@
             border-radius: 14px;
             padding: 18px;
         }
+        .c-card h3,
         .c-card h4 { margin: 0 0 10px; color: #fff; font-size: 1.02rem; }
         .c-card ul { margin: 0; padding-left: 18px; color: #cbd5e1; font-size: 0.85rem; }
         .c-card li { margin-bottom: 6px; }
@@ -203,7 +218,7 @@
             margin-top: 10px;
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=37">
+    <link rel="stylesheet" href="/static/calm.css?v=39">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -253,12 +268,12 @@
 
             <h2 id="s1">1. 実は増えている「1人（ソロ）来店」と「2人組来店」の比較</h2>
             <p>
-                エレベーター前で指が止まる本当の理由は、緊張というより「この店、1人で入れるんだっけ？」が曖昧なまま来てしまうからです。実は店舗ごとに1名入店ルールがはっきり分かれています。JIS（ジス）の多くの店舗（西新宿・大宮・梅田・茶屋町・難波・福岡・札幌・熊本・松山）や、オリエンタルラウンジの地方・準都心24店舗、ag（アグ）の一部店舗（梅田・金沢・広島・沖縄・平日仙台など）では<strong>男性1名（ソロ）での入店が可能</strong>です（シングルチャージ+1,100円等がかかる店舗あり）。逆に<strong>都心の大型人気店（オリエンタルラウンジ新宿・渋谷本店・恵比寿・大阪駅前・名古屋錦、ag渋谷・上野・名古屋など）は「男性2名以上必須（1名入店不可）」</strong>。出発前に<a href="/price-comparison" style="color:#38bdf8;font-weight:700;" data-cushion="1">全51店舗の料金・1名入店可否比較ボード</a>で対象店舗を見ておけば、受付で引き返す夜はなくなります。
+                エレベーター前で指が止まる本当の理由は、緊張というより「この店、1人で入れるんだっけ？」が曖昧なまま来てしまうからです。実は店舗ごとに1名入店ルールがはっきり分かれています。JIS（ジス）の多くの店舗（西新宿・大宮・梅田・茶屋町・難波・福岡・札幌・熊本・松山）や、オリエンタルラウンジの地方・準都心24店舗、ag（アグ）の一部店舗（梅田・金沢・広島・沖縄・平日仙台など）では<strong>男性1名（ソロ）での入店が可能</strong>です（シングルチャージ+1,100円等がかかる店舗あり）。逆に<strong>都心の大型人気店（オリエンタルラウンジ新宿・渋谷本店・恵比寿・大阪駅前・名古屋錦、ag渋谷・上野・名古屋など）は「男性2名以上必須（1名入店不可）」</strong>。出発前に<a href="/price-comparison" style="color:#38bdf8;font-weight:700;" data-cushion="1">国内61店舗の料金・1名入店可否比較ボード</a>で対象店舗を見ておけば、受付で引き返す夜はなくなります。
             </p>
 
             <div class="compare-cards">
                 <div class="c-card">
-                    <h4>1人（ソロ）で行く特徴</h4>
+                    <h3>1人（ソロ）で行く特徴</h3>
                     <ul>
                         <li><strong>動きやすさ：</strong>思い立ったときに仕事帰りでふらっと寄れる</li>
                         <li><strong>会話の深さ：</strong>1対1（または女性2人組と3人）で落ち着いて深い話ができる</li>
@@ -267,7 +282,7 @@
                     </ul>
                 </div>
                 <div class="c-card">
-                    <h4>友達と2人で行く特徴</h4>
+                    <h3>友達と2人で行く特徴</h3>
                     <ul>
                         <li><strong>盛り上がりやすさ：</strong>2対2のテーブルになりやすく、乾杯直後から賑やか</li>
                         <li><strong>安心感：</strong>会話が途切れても相方がフォローしてくれる</li>
@@ -364,7 +379,7 @@
                 <li><strong>金曜・土曜の夜</strong>にワイワイ楽しく飲みたいなら、<strong>友達と2人組で早めの時間（20時台）</strong>へ</li>
             </ul>
             <p>
-                その日の気分と『相席ナビ』のリアルタイム人数を見ながら、自分に合ったスタイルで楽しんでみてください。
+                その日の気分と『相席ナビ』のリアルタイム人数を見ながら、自分に合ったスタイルで楽しんでみてください（地方都市と都心大型店での1名入店環境の違いは<a href="/guide/local-vs-urban" style="color:#38bdf8;text-decoration:underline;">都心 vs 地方都市の実測比較コラム</a>にもまとめています）。
             </p>
         </article>
         </main>

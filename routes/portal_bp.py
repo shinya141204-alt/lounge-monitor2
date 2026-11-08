@@ -487,7 +487,38 @@ def store_detail_page(store_slug):
                 'href': '/guide/sapporo-sendai-north',
                 'title': '札幌すすきの・仙台国分町｜JIS札幌・ag仙台の時間波形と曜日ルール',
             })
+
+        _single_hub_keywords = (
+            '金沢', '静岡', '浜松', '新潟', '熊本', '鹿児島', '宮崎', '長崎', '大分',
+            '小倉', '沖縄', '松山', '岡山', '高崎', '宇都宮', '柏', '町田',
+        )
+        _adult_keywords = ('恵比寿', '銀座', '西新宿', '京都', '神戸', '大阪駅前', '梅田')
+        if any(k in sname for k in _single_hub_keywords):
+            try:
+                _loc_item = core.scheduled_articles.get_article_by_slug('local-vs-urban')
+                if _loc_item and core.scheduled_articles.is_published(_loc_item):
+                    related_guides.append({
+                        'href': '/guide/local-vs-urban',
+                        'title': '地方1店舗都市と都心大型店の違い｜深夜0時に女性が121%へ増える理由',
+                    })
+            except Exception:
+                pass
+        if any(k in sname for k in _adult_keywords):
+            try:
+                _th_item = core.scheduled_articles.get_article_by_slug('thirties-lounge-guide')
+                if _th_item and core.scheduled_articles.is_published(_th_item):
+                    related_guides.append({
+                        'href': '/guide/thirties-lounge-guide',
+                        'title': '30代・アラサーの相席ラウンジ店選び｜落ち着いて話せる店舗と時間帯',
+                    })
+            except Exception:
+                pass
+
         related_guides.extend([
+            {
+                'href': '/guide/brand-waveform-asymmetry',
+                'title': '5大ブランドの時間波形と男女で真逆になる最適店舗選択',
+            },
             {
                 'href': '/guide/brand-comparison',
                 'title': 'オリエンタルラウンジ・ag（アグ）・JIS（ジス）比較ガイド',
@@ -505,7 +536,7 @@ def store_detail_page(store_slug):
                 'title': '相席ラウンジvs審査制1対1デート 時間帯・予算別の期待値比較',
             },
         ])
-        related_guides = related_guides[:5]
+        related_guides = related_guides[:6]
 
         import second_venues
         store_second_venues = None
@@ -1049,7 +1080,12 @@ def api_concierge():
 @portal_bp.route('/grooming')
 def grooming_guide():
     """Dedicated editorial guide for men's grooming, fashion, and backup dating apps."""
-    return core._get_cached_html_or_render('grooming', lambda: render_template('grooming.html'))
+    raw_mode = (request.args.get('mode') or '').strip().lower()
+    mode = raw_mode if raw_mode in ('prep', 'waiting', 'second') else 'prep'
+    return core._get_cached_html_or_render(
+        ('grooming', mode),
+        lambda: render_template('grooming.html', active_mode=mode),
+    )
 
 
 @portal_bp.route('/privacy')
@@ -1061,7 +1097,26 @@ def privacy_page():
 @portal_bp.route('/about')
 def about_page():
     """Operator information, data collection method, update frequency and editorial policy."""
-    return core._get_cached_html_or_render('about', lambda: render_template('about.html'))
+    def _render_about():
+        import store_master
+        master_map = store_master.load() or {}
+        total_st = len(master_map)
+        dom_st = sum(1 for m in master_map.values() if (m or {}).get('region') != 'Korea')
+        kr_st = max(0, total_st - dom_st)
+        total_rows = 0
+        try:
+            db_stats = core.local_db.get_db_stats() or {}
+            total_rows = int(db_stats.get('count') or db_stats.get('total_rows') or 0)
+        except Exception:
+            total_rows = 0
+        return render_template(
+            'about.html',
+            total_stores=total_st,
+            domestic_stores=dom_st,
+            overseas_stores=kr_st,
+            historical_rows=total_rows,
+        )
+    return core._get_cached_html_or_render('about', _render_about)
 
 
 def _render_contact_page(form_values=None, errors=None, sent=False, status=200):

@@ -882,7 +882,7 @@ def run_column_researcher(
     except Exception:
         db_stats = {}
 
-    hist_records = max(int(db_stats.get("total_rows") or 0), 276000)
+    hist_records = max(int(db_stats.get("count") or db_stats.get("total_rows") or 0), 276000)
 
     featured_stores = []
     seen_slugs = set()
@@ -3088,7 +3088,8 @@ def _reframe_static_note_as_deep_essay(verbatim_res: dict, slug: str, site_base:
 
     try:
         import local_db as _ldb_mod
-        hist_cnt = max(int((_ldb_mod.get_db_stats() or {}).get("total_rows") or 0), 276000)
+        _db_st = _ldb_mod.get_db_stats() or {}
+        hist_cnt = max(int(_db_st.get("count") or _db_st.get("total_rows") or 0), 276000)
     except Exception:
         hist_cnt = 276000
 

@@ -55,6 +55,7 @@ body {
 .container {
     width: 100%;
     max-width: 95vw;
+    min-width: 0;
     /* Wider container */
     padding: 20px;
     box-sizing: border-box;
@@ -65,6 +66,8 @@ body {
 header {
     margin-bottom: 20px;
     position: relative;
+    min-width: 0;
+    max-width: 100%;
 }
 
 h1 {
@@ -1898,6 +1901,7 @@ canvas {
     padding: 12px 14px;
 }
 
+.guide-tips-box h3,
 .guide-tips-box h4 {
     margin: 0 0 8px 0;
     font-size: 0.82rem;
@@ -2726,6 +2730,7 @@ body.theme-light .guide-tips-box {
     border-color: #e2e8f0;
 }
 
+body.theme-light .guide-tips-box h3,
 body.theme-light .guide-tips-box h4 {
     color: #0f172a;
 }
@@ -4011,6 +4016,7 @@ body.theme-light .events-tab-btn.active {
     flex: 1;
 }
 
+.how-to-step-content h3,
 .how-to-step-content h4 {
     margin: 0 0 4px 0;
     font-size: 0.96rem;
@@ -4135,6 +4141,7 @@ body.theme-light .how-to-step-card:hover {
     background: #ffffff;
 }
 
+body.theme-light .how-to-step-content h3,
 body.theme-light .how-to-step-content h4 {
     color: #0f172a;
 }
@@ -4829,6 +4836,7 @@ body.theme-light .menu-sub-link:hover {
     border-radius: 14px;
 }
 
+.sitemap-col h3,
 .sitemap-col h4 {
     margin: 0 0 10px 0;
     font-size: 0.85rem;
@@ -4887,6 +4895,7 @@ body.theme-light .portal-footer-sitemap {
 
 body.theme-light .portal-article-body h3,
 body.theme-light .portal-area-header h3,
+body.theme-light .sitemap-col h3,
 body.theme-light .sitemap-col h4 {
     color: #0f172a;
 }
