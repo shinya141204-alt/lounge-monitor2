@@ -8713,4 +8713,19 @@ body.theme-light:not(.staff-mode) .venue-action-btn.reserve-btn {
     }
 }
 
+/* Hides content visually while preserving it in the accessibility tree and SEO DOM outline */
+.sr-only:where(:not(:focus-within, :active)),
+.visually-hidden:where(:not(:focus-within, :active)) {
+    position: absolute !important;
+    clip-path: inset(50%) !important;
+    overflow: hidden !important;
+    width: 1px !important;
+    height: 1px !important;
+    margin: -1px !important;
+    padding: 0 !important;
+    border: 0 !important;
+    white-space: nowrap !important;
+}
+
+
 

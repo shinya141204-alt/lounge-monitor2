@@ -533,7 +533,7 @@
             body.theme-light .store-dossier-col { border-top-color: rgba(24, 24, 27, 0.10); }
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=39">
+    <link rel="stylesheet" href="/static/calm.css?v=40">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -2560,7 +2560,7 @@
 
             async function syncBackgroundPushSubscription(condToUse) {
                 if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false;
-                const reg = await navigator.serviceWorker.register('/sw.js?v=103', { updateViaCache: 'none' });
+                const reg = await navigator.serviceWorker.register('/sw.js?v=104', { updateViaCache: 'none' });
                 await navigator.serviceWorker.ready;
                 let sub = await reg.pushManager.getSubscription();
                 if (!sub) {

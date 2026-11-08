@@ -391,6 +391,11 @@ class SeoLlmoDesignGoalAuditTests(unittest.TestCase):
         for hb in html_blocks:
             self.assertNotIn("overflow", hb, "calm.css bare html block must not set overflow")
 
+        # .sr-only / .visually-hidden utility must exist so semantic screen-reader headings never leak visually
+        self.assertIn(".sr-only:where(:not(:focus-within, :active))", calm_css)
+        self.assertIn("clip-path: inset(50%) !important;", calm_css)
+
+
 
 if __name__ == "__main__":
     unittest.main()
