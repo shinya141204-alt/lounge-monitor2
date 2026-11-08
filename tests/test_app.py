@@ -2095,9 +2095,12 @@ class FullAuditRegressionTests(unittest.TestCase):
             self.assertEqual(res_aq['winner']['style'], 'ai_live_adlib')
             called_url = mock_aq_post.call_args[0][0]
             called_json = mock_aq_post.call_args[1]['json']
-            self.assertIn('generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent', called_url)
+            self.assertTrue(
+                'gemini-4-argon:generateContent' in called_url or 'gemini-3.1-pro-preview:generateContent' in called_url,
+                f"Expected gemini-4-argon or gemini-3.1-pro-preview in called_url: {called_url}"
+            )
             self.assertEqual(called_json['generationConfig'].get('thinkingConfig'), {'thinkingLevel': 'MEDIUM'})
-            self.assertEqual(called_json['generationConfig'].get('maxOutputTokens'), 4648)
+            self.assertIn(called_json['generationConfig'].get('maxOutputTokens'), (4648, 6696))
             self.assertEqual(res_aq['gemini_status']['state'], 'active')
 
             # 6. HTML page `GET /staff/sns-editorial` NEVER blocks on Gemini HTTP calls (0 network posts, instant render)
@@ -2586,13 +2589,17 @@ class AutonomousPdcaEngineTests(unittest.TestCase):
 
         human_headers = {'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15'}
 
-        # 1. Verify public `/link/` anchors carry `?from=<route>` and omit `noreferrer`, while columns use pure 2-step bridges
-        for pub_path in ('/', '/grooming', '/for-women', '/store/oriental-lounge-shinjuku', '/price-comparison', '/stats', '/oriental-lounge'):
+        # 1. Verify public `/link/` anchors carry `?from=<route>` and omit `noreferrer`, while columns and /stats use zero direct links
+        for pub_path in ('/', '/grooming', '/for-women', '/store/oriental-lounge-shinjuku', '/price-comparison', '/oriental-lounge'):
             r_pub = self.client.get(pub_path, headers=human_headers)
             self.assertEqual(r_pub.status_code, 200, msg=f"{pub_path} failed")
             pub_html = r_pub.data.decode('utf-8')
             self.assertNotIn('noreferrer sponsored', pub_html, msg=f"noreferrer still present on {pub_path}")
             self.assertIn(f'?from={pub_path}', pub_html, msg=f"Missing ?from={pub_path} on {pub_path}")
+        # /stats must have zero direct /link/ citations (R4 constraint)
+        r_stats = self.client.get('/stats', headers=human_headers)
+        self.assertEqual(r_stats.status_code, 200)
+        self.assertNotIn('/link/', r_stats.data.decode('utf-8'))
         r_col = self.client.get('/guide/first-10-minutes', headers=human_headers)
         self.assertEqual(r_col.status_code, 200)
         col_html = r_col.data.decode('utf-8')

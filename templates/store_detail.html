@@ -89,6 +89,8 @@
             --accent-text: #dfc496;
             --border-subtle: rgba(255, 255, 255, 0.08);
             --border-gold: rgba(200, 164, 110, 0.34);
+            --bg-gold: rgba(200, 164, 110, 0.12);
+            --gold-dark: #dfc496;
         }
         * { box-sizing: border-box; }
         body {
@@ -1219,9 +1221,41 @@
 
             <!-- Spot Cards Container -->
             <div id="detail-second-venue-cards" class="second-venue-card-list">
+                {% if store_second_venues and store_second_venues.spots %}
+                    {% for v in store_second_venues.spots %}
+                    <div class="second-venue-card" data-category="{{ v.category }}">
+                        <div class="second-venue-card-header">
+                            <div class="second-venue-badges">
+                                <span class="venue-category-badge {{ v.category }}">{{ v.category_label }}</span>
+                                <span class="venue-walk-badge">{{ v.walk_minutes_label | default('徒歩' ~ (v.walk_minutes | default(3)) ~ '分') }}</span>
+                            </div>
+                            <span class="venue-budget-pill">{{ v.budget }}</span>
+                        </div>
+                        <h4 class="second-venue-name">{{ v.name }}</h4>
+                        {% if v.late_hours %}<div class="second-venue-hours" style="font-size:0.78rem; color:var(--text-sub); margin-bottom:4px;">🕒 {{ v.late_hours }}{% if v.seating_vibe %} ・ {{ v.seating_vibe }}{% endif %}</div>{% endif %}
+                        <p class="second-venue-comment">{{ v.comment }}</p>
+                        {% if v.features %}
+                        <div class="second-venue-tags">
+                            {% for f in v.features %}
+                            <span class="venue-tag">#{{ f }}</span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        <div class="second-venue-card-actions">
+                            <a href="{{ v.map_url }}" target="_blank" rel="noopener noreferrer" class="venue-action-btn map-btn">マップ <svg class="ui-svg-ne" width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9L9 3M9 3H4.5M9 3V7.5"/></svg></a>
+                            <button type="button" class="venue-action-btn copy-btn" onclick="copyDetailText('{{ v.name | e }}', this, '店名をコピーしました')">店名コピー</button>
+                            <a href="{{ v.line_share_url }}" target="_blank" rel="noopener noreferrer" class="venue-action-btn line-btn">LINE共有</a>
+                            {% if not is_staff and not session.get('is_staff') %}
+                            <a href="/link/second_venue_reservation?from=/store/{{ store.slug }}" target="_blank" rel="noopener sponsored" class="venue-action-btn reserve-btn" style="background: var(--bg-gold, #fbf7ee); color: var(--gold-dark, #926a1d); border-color: var(--border-gold, #dfc699); font-weight: 600;">席予約 ›</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
                 <div class="second-venue-card" style="padding: 16px; text-align: center; color: var(--text-sub);">
                     2軒目スポットデータを読み込み中...
                 </div>
+                {% endif %}
             </div>
 
             <!-- Situation Tips Container -->
@@ -2148,12 +2182,19 @@
                     return;
                 }
 
+                const isStaffUser = {{ ('true' if (is_staff or session.get('is_staff')) else 'false') }};
+                const storeSlug = {{ (store.slug or '') | tojson }};
+
                 container.innerHTML = filtered.map(v => {
                     const mapQuery = v.map_query || (v.name + ' 近く');
                     const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`;
                     const lineText = `【2軒目候補】${v.name}（${v.category_label || ''}・徒歩${v.walk_minutes || 3}分）\n${mapUrl}`;
                     const lineUrl = `https://line.me/R/msg/text/?${encodeURIComponent(lineText)}`;
                     const featuresHtml = (v.features || []).map(f => `<span class="venue-tag">#${escapeHtml(f)}</span>`).join('');
+                    const hoursHtml = v.late_hours ? `<div class="second-venue-hours" style="font-size:0.78rem; color:var(--text-sub); margin-bottom:4px;">🕒 ${escapeHtml(v.late_hours)}${v.seating_vibe ? ' ・ ' + escapeHtml(v.seating_vibe) : ''}</div>` : '';
+                    const reserveBtn = (!isStaffUser && storeSlug)
+                        ? `{% if not is_staff and not session.get("is_staff") %}<a href="/link/second_venue_reservation?from=/store/${encodeURIComponent(storeSlug)}" target="_blank" rel="noopener sponsored" class="venue-action-btn reserve-btn" style="background: var(--bg-gold, #fbf7ee); color: var(--gold-dark, #926a1d); border-color: var(--border-gold, #dfc699); font-weight: 600;">席予約 ›</a>{% endif %}`
+                        : '';
                     return `
                         <div class="second-venue-card" data-category="${escapeHtml(v.category)}">
                             <div class="second-venue-card-header">
@@ -2164,12 +2205,14 @@
                                 <span class="venue-budget-pill">${escapeHtml(v.budget || '')}</span>
                             </div>
                             <h4 class="second-venue-name">${escapeHtml(v.name)}</h4>
+                            ${hoursHtml}
                             <p class="second-venue-comment">${escapeHtml(v.comment || '')}</p>
                             ${featuresHtml ? `<div class="second-venue-tags">${featuresHtml}</div>` : ''}
                             <div class="second-venue-card-actions">
                                 <a href="${mapUrl}" target="_blank" rel="noopener noreferrer" class="venue-action-btn map-btn">マップ <svg class="ui-svg-ne" width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9L9 3M9 3H4.5M9 3V7.5"/></svg></a>
                                 <button type="button" class="venue-action-btn copy-btn" onclick="copyDetailText('${escapeJs(v.name)}', this, '店名をコピーしました')">店名コピー</button>
                                 <a href="${lineUrl}" target="_blank" rel="noopener noreferrer" class="venue-action-btn line-btn">LINE共有</a>
+                                ${reserveBtn}
                             </div>
                         </div>
                     `;
@@ -2260,14 +2303,22 @@
 
             // Init
             loadMaster().then(master => {
-                const areaKey = resolveAreaKey(storeName, storeAnchor);
+                const venuesByStore = master.venues_by_store || {};
                 const venuesByArea = master.venues_by_area || {};
+                const currentStoreSlug = {{ (store.slug or '') | tojson }};
                 currentTips = master.situation_tips || [];
 
-                if (areaKey && venuesByArea[areaKey] && venuesByArea[areaKey].length > 0) {
-                    currentVenues = venuesByArea[areaKey];
+                if (currentStoreSlug && venuesByStore[currentStoreSlug] && venuesByStore[currentStoreSlug].length > 0) {
+                    currentVenues = venuesByStore[currentStoreSlug];
+                } else if (storeName && venuesByStore[storeName] && venuesByStore[storeName].length > 0) {
+                    currentVenues = venuesByStore[storeName];
                 } else {
-                    currentVenues = createFallbackVenues(storeName, storeAnchor);
+                    const areaKey = resolveAreaKey(storeName, storeAnchor);
+                    if (areaKey && venuesByArea[areaKey] && venuesByArea[areaKey].length > 0) {
+                        currentVenues = venuesByArea[areaKey];
+                    } else {
+                        currentVenues = createFallbackVenues(storeName, storeAnchor);
+                    }
                 }
 
                 // Update Quick map search links
@@ -2280,7 +2331,6 @@
                 if (sBtn) sBtn.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(storeAnchor + ' 近く シーシャ カフェ ラウンジ')}`;
                 if (yBtn) yBtn.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(storeAnchor + ' 近く 横丁 大衆バル 居酒屋')}`;
 
-                renderCards('all');
                 renderTips(currentTips);
             });
         })();

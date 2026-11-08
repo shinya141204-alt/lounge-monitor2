@@ -191,6 +191,23 @@ CONCIERGE_AREAS = {
             "guide_url": "/guide/second-venue",
         },
     },
+    "seoul": {
+        "key": "seoul",
+        "label": "韓国・ソウル（江南・弘大）",
+        "short_label": "ソウル（江南・弘大）",
+        "portal_slug": "seoul",
+        "stores": [
+            "OLG ソウル カンナム",
+            "OLG ソウル ホンデ",
+        ],
+        "second_venue": {
+            "spot_title": "江南大路裏・24時間リゾート夜カフェ／弘大オウルマダンロ・隠れ家バー",
+            "spots": "江南（カンナム）なら新論峴駅・江南大路裏手の開放的な大型24時間夜カフェ『ab cafe』や本格アイリッシュパブ、弘大（ホンデ）ならオウルマダンロ沿いのオーセンティックバー『Rosetta』や洞窟風夜カフェが徒歩3〜4分で移動しやすく安心です。",
+            "invite_phrase": "「近くにバリ風の落ち着いた夜カフェ（静かなバー）があるから、少し寄っていかない？」",
+            "timing_advice": "ソウルは深夜・24時間営業のカフェやバーが充実しているため、無理にお酒を続けずカフェ文化を活かした誘い出しが自然です。",
+            "guide_url": "/guide/second-venue",
+        },
+    },
 }
 
 # エリアスラッグ（portal_guides 側等）から CONCIERGE_AREAS キーへの柔軟なエイリアス解決
@@ -241,10 +258,16 @@ _AREA_ALIASES = {
     "hiroshima": "hiroshima_okayama",
     "okayama": "hiroshima_okayama",
     "matsuyama": "hiroshima_okayama",
+    "seoul": "seoul",
+    "gangnam": "seoul",
+    "hongdae": "seoul",
+    "korea": "seoul",
 }
 
 # 個別店舗から最も粒度の細かいエリアガイドURL（/area/<slug>）を返すマップ
 _STORE_FINE_AREA_SLUG = {
+    "OLG ソウル カンナム": "seoul",
+    "OLG ソウル ホンデ": "seoul",
     "OLG 大阪駅前": "umeda",
     "OLG ag梅田": "umeda",
     "JIS UMEDA": "umeda",
@@ -1065,6 +1088,21 @@ def diagnose_tonight_plan(
     area_summary = _build_area_summary(evaluated, audience=aud)
     smart_action = _build_smart_action_card(aud, tim, area_summary, primary)
 
+    import second_venues
+    primary_second_venues = []
+    primary_store_raw = primary.get("raw_name") if primary else None
+    if primary_store_raw:
+        try:
+            sv_res = second_venues.get_second_venues_for_store(primary_store_raw)
+            if sv_res and sv_res.get("spots"):
+                primary_second_venues = sv_res["spots"]
+        except Exception:
+            pass
+
+    sv_tip = dict(area_cfg["second_venue"])
+    if primary_second_venues:
+        sv_tip["primary_spots"] = primary_second_venues
+
     if primary and primary.get("raw_name"):
         primary["raw_name"] = store_master.seo_name(primary["raw_name"])
     if backup and backup.get("raw_name"):
@@ -1087,7 +1125,8 @@ def diagnose_tonight_plan(
         "backup": backup,
         "other_candidates": other_candidates,
         "area_summary": area_summary,
-        "second_venue_tip": dict(area_cfg["second_venue"]),
+        "second_venue_tip": sv_tip,
+        "primary_second_venues": primary_second_venues,
         "smart_action_card": smart_action,
         "available_areas": [
             {

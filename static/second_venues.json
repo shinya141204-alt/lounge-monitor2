@@ -1,5 +1,5 @@
 {
-  "version": "2026-10-30",
+  "version": "2026-11-08",
   "venues_by_area": {
     "shibuya": [
       {
@@ -9,7 +9,11 @@
         "category_label": "夜カフェ",
         "walk_minutes": 3,
         "budget": "¥1,000〜¥2,000",
-        "features": ["ソファ席あり", "深夜2時まで営業", "落ち着いた照明"],
+        "features": [
+          "ソファ席あり",
+          "深夜2時まで営業",
+          "落ち着いた照明"
+        ],
         "map_query": "宇田川カフェ suite 渋谷",
         "comment": "オリエンタルラウンジ渋谷本店やag渋谷から徒歩3分。落ち着いた薄暗い照明とゆったりソファで自然と距離が縮まる定番。"
       },
@@ -20,7 +24,11 @@
         "category_label": "夜カフェ",
         "walk_minutes": 3,
         "budget": "¥1,800〜¥2,800",
-        "features": ["映えスイーツ", "カウンター席あり", "女子ウケ抜群"],
+        "features": [
+          "映えスイーツ",
+          "カウンター席あり",
+          "女子ウケ抜群"
+        ],
         "map_query": "夜パフェ専門店 パフェテリア ベル 渋谷 道玄坂",
         "comment": "「甘いもの食べに行かない？」で最も断られにくいシメパフェの名店。お酒の後の口直しに最適。"
       },
@@ -31,7 +39,11 @@
         "category_label": "バー・バル",
         "walk_minutes": 4,
         "budget": "¥2,500〜¥4,000",
-        "features": ["本格カクテル", "横並びカウンター", "落ち着いた大人の空間"],
+        "features": [
+          "本格カクテル",
+          "横並びカウンター",
+          "落ち着いた大人の空間"
+        ],
         "map_query": "Bar 石の華 渋谷 渋谷駅前",
         "comment": "賑やかなラウンジから静かな大人の空間へ。横並びのカウンターで2人の距離が自然に近づきます。"
       },
@@ -42,7 +54,11 @@
         "category_label": "シーシャ",
         "walk_minutes": 2,
         "budget": "¥2,000〜¥3,000",
-        "features": ["ソファ席完備", "持ち込みOK", "リラックス空間"],
+        "features": [
+          "ソファ席完備",
+          "持ち込みOK",
+          "リラックス空間"
+        ],
         "map_query": "C.STAND 渋谷センター街店 シーシャカフェ",
         "comment": "ゆったりソファでリラックスして話せるシーシャカフェ。お酒が強くない女性にも好評。"
       },
@@ -53,7 +69,11 @@
         "category_label": "横丁",
         "walk_minutes": 2,
         "budget": "¥2,000〜¥3,500",
-        "features": ["賑やかで活気あり", "はしご酒に最適", "カジュアル"],
+        "features": [
+          "賑やかで活気あり",
+          "はしご酒に最適",
+          "カジュアル"
+        ],
         "map_query": "渋谷肉横丁 渋谷ちとせ会館",
         "comment": "もう1杯カジュアルに盛り上がりたい時にぴったり。ワイワイした空気で打ち解けやすい。"
       }
@@ -66,7 +86,11 @@
         "category_label": "夜カフェ",
         "walk_minutes": 3,
         "budget": "¥1,200〜¥2,200",
-        "features": ["深夜営業", "落ち着いたソファ席", "隠れ家空間"],
+        "features": [
+          "深夜営業",
+          "落ち着いたソファ席",
+          "隠れ家空間"
+        ],
         "map_query": "cafe degrade 新宿",
         "comment": "歌舞伎町の喧騒から離れた隠れ家夜カフェ。落ち着いた照明でじっくり話せます。"
       },
@@ -77,7 +101,11 @@
         "category_label": "バー・バル",
         "walk_minutes": 4,
         "budget": "¥2,000〜¥3,500",
-        "features": ["季節の生フルーツカクテル", "カウンター席", "上質な雰囲気"],
+        "features": [
+          "季節の生フルーツカクテル",
+          "カウンター席",
+          "上質な雰囲気"
+        ],
         "map_query": "Bar cocktailante KARASU 新宿 歌舞伎町",
         "comment": "オリエンタルラウンジ新宿からすぐ。旬のフルーツカクテルが女性に大好評の上品なバー。"
       },
@@ -88,7 +116,11 @@
         "category_label": "シーシャ",
         "walk_minutes": 2,
         "budget": "¥2,000〜¥3,000",
-        "features": ["ソファ完備", "落ち着いた照明", "深夜営業"],
+        "features": [
+          "ソファ完備",
+          "落ち着いた照明",
+          "深夜営業"
+        ],
         "map_query": "チルイン 新宿歌舞伎町店",
         "comment": "歌舞伎町中心部でゆったり過ごせる人気シーシャ。席間が広く落ち着いて会話に集中できます。"
       },
@@ -99,7 +131,11 @@
         "category_label": "横丁",
         "walk_minutes": 4,
         "budget": "¥2,000〜¥4,000",
-        "features": ["レトロな街並み", "隠れ家バー", "距離が縮まる"],
+        "features": [
+          "レトロな街並み",
+          "隠れ家バー",
+          "距離が縮まる"
+        ],
         "map_query": "新宿ゴールデン街 新宿",
         "comment": "ノスタルジックな名所で肩を並べて飲めるスポット。カルチャー好きの相手に刺さる2軒目。"
       }
@@ -112,7 +148,11 @@
         "category_label": "夜カフェ",
         "walk_minutes": 2,
         "budget": "¥1,000〜¥2,000",
-        "features": ["駅近西口", "本格エスプレッソ", "洗練された内装"],
+        "features": [
+          "駅近西口",
+          "本格エスプレッソ",
+          "洗練された内装"
+        ],
         "map_query": "rew roll espresso bar 恵比寿",
         "comment": "オリエンタルラウンジ恵比寿から駅方向へ徒歩2分。スマートに夜カフェを楽しめる大人の空間。"
       },
@@ -123,7 +163,11 @@
         "category_label": "バー・バル",
         "walk_minutes": 3,
         "budget": "¥2,500〜¥4,500",
-        "features": ["恵比寿西口隠れ家", "カウンター席", "フルーツカクテル"],
+        "features": [
+          "恵比寿西口隠れ家",
+          "カウンター席",
+          "フルーツカクテル"
+        ],
         "map_query": "BAR FIVE G 恵比寿",
         "comment": "恵比寿らしい洗練されたオーセンティックバー。デート向きの落ち着いた雰囲気で好印象。"
       },
@@ -134,7 +178,11 @@
         "category_label": "横丁",
         "walk_minutes": 3,
         "budget": "¥2,500〜¥4,000",
-        "features": ["圧倒的な活気", "はしご酒", "ワイワイ楽しい"],
+        "features": [
+          "圧倒的な活気",
+          "はしご酒",
+          "ワイワイ楽しい"
+        ],
         "map_query": "恵比寿横丁 恵比寿",
         "comment": "恵比寿随一の賑やかスポット。相席ラウンジの熱気をそのままに楽しく飲みたいときに最適。"
       },
@@ -145,7 +193,11 @@
         "category_label": "シーシャ",
         "walk_minutes": 2,
         "budget": "¥2,000〜¥3,500",
-        "features": ["ラグジュアリー内装", "ペアシート", "深夜営業"],
+        "features": [
+          "ラグジュアリー内装",
+          "ペアシート",
+          "深夜営業"
+        ],
         "map_query": "C.STAND 恵比寿西口店",
         "comment": "西口すぐの落ち着いたシーシャ。座り心地の良いソファと照明で親密度が深まります。"
       }
@@ -158,7 +210,11 @@
         "category_label": "夜カフェ",
         "walk_minutes": 3,
         "budget": "¥1,500〜¥2,500",
-        "features": ["名物和栗モンブラン", "レトロモダン", "深夜営業カフェ"],
+        "features": [
+          "名物和栗モンブラン",
+          "レトロモダン",
+          "深夜営業カフェ"
+        ],
         "map_query": "銀座みゆき館 本店 銀座",
         "comment": "オリエンタルラウンジ銀座から徒歩3分。名物モンブランを口実に誘いやすい銀座の定番。"
       },
@@ -169,7 +225,11 @@
         "category_label": "バー・バル",
         "walk_minutes": 3,
         "budget": "¥3,000〜¥5,000",
-        "features": ["バーテンダー名店", "さくらカクテル", "大人のカウンター"],
+        "features": [
+          "バーテンダー名店",
+          "さくらカクテル",
+          "大人のカウンター"
+        ],
         "map_query": "BAR 保志 銀座",
         "comment": "世界一のカクテルを味わえる銀座屈指の名門バー。エスコートの質で差をつけたいときに。"
       },
@@ -180,7 +240,11 @@
         "category_label": "横丁",
         "walk_minutes": 4,
         "budget": "¥2,500〜¥4,000",
-        "features": ["ガード下レトロ", "産直食材", "気取らないバル"],
+        "features": [
+          "ガード下レトロ",
+          "産直食材",
+          "気取らないバル"
+        ],
         "map_query": "有楽町産直飲食街 有楽町 ガード下",
         "comment": "コリドー街から有楽町ガード下へ。肩肘張らずカジュアルに乾杯できる楽しい横丁街。"
       },
@@ -191,7 +255,11 @@
         "category_label": "シーシャ",
         "walk_minutes": 3,
         "budget": "¥2,500〜¥4,000",
-        "features": ["銀座の隠れ家", "上質ソファー", "落ち着いたチル空間"],
+        "features": [
+          "銀座の隠れ家",
+          "上質ソファー",
+          "落ち着いたチル空間"
+        ],
         "map_query": "黄昏シーシャ 銀座店",
         "comment": "銀座の夜を静かに締めくくる洗練空間。大人のリラックスした会話にぴったり。"
       }
@@ -204,7 +272,11 @@
         "category_label": "夜カフェ",
         "walk_minutes": 5,
         "budget": "¥1,200〜¥2,200",
-        "features": ["夜景が見えるテラス", "人気スイーツ", "お洒落空間"],
+        "features": [
+          "夜景が見えるテラス",
+          "人気スイーツ",
+          "お洒落空間"
+        ],
         "map_query": "Butter 横浜ベイクォーター",
         "comment": "横浜駅東口・ベイクォーターの水辺ロケーション。スイーツと夜風で心地よい2軒目。"
       },
@@ -215,7 +287,11 @@
         "category_label": "バー・バル",
         "walk_minutes": 4,
         "budget": "¥2,500〜¥4,500",
-        "features": ["西口隠れ家", "横並びカウンター", "豊富なウイスキー・カクテル"],
+        "features": [
+          "西口隠れ家",
+          "横並びカウンター",
+          "豊富なウイスキー・カクテル"
+        ],
         "map_query": "Bar SuperNova 横浜 西口",
         "comment": "オリエンタルラウンジ横浜から西口方面へ。喧騒を忘れさせる静かなバーでじっくり会話できます。"
       },
@@ -226,7 +302,11 @@
         "category_label": "シーシャ",
         "walk_minutes": 3,
         "budget": "¥2,000〜¥3,000",
-        "features": ["西口駅近", "ゆったりソファ", "深夜営業"],
+        "features": [
+          "西口駅近",
+          "ゆったりソファ",
+          "深夜営業"
+        ],
         "map_query": "C.STAND 横浜西口店",
         "comment": "横浜西口すぐ。座り心地の良いソファーでリラックスしながら親密に話せます。"
       },
@@ -237,7 +317,11 @@
         "category_label": "横丁",
         "walk_minutes": 3,
         "budget": "¥2,000〜¥3,500",
-        "features": ["飲み歩き横丁", "多彩なバル・居酒屋", "活気ある空間"],
+        "features": [
+          "飲み歩き横丁",
+          "多彩なバル・居酒屋",
+          "活気ある空間"
+        ],
         "map_query": "横浜西口一番街 横浜 西口",
         "comment": "個性豊かな飲食店が集う西口の人気横丁。カジュアルにハシゴしたいときに最適。"
       }
@@ -250,7 +334,11 @@
         "category_label": "夜カフェ",
         "walk_minutes": 3,
         "budget": "¥1,200〜¥2,200",
-        "features": ["本格クレープ", "アンティーク洋館", "女子ウケ抜群"],
+        "features": [
+          "本格クレープ",
+          "アンティーク洋館",
+          "女子ウケ抜群"
+        ],
         "map_query": "クレープリー アルション 難波",
         "comment": "オリエンタルラウンジ難波やJIS難波から徒歩3分。黄色い洋館で絶品クレープとお茶を楽しめる大人気スポット。"
       },
@@ -261,7 +349,11 @@
         "category_label": "バー・バル",
         "walk_minutes": 3,
         "budget": "¥2,000〜¥3,500",
-        "features": ["法善寺近く", "落ち着いた照明", "カウンターバー"],
+        "features": [
+          "法善寺近く",
+          "落ち着いた照明",
+          "カウンターバー"
+        ],
         "map_query": "BAR 堀川 道頓堀 難波",
         "comment": "道頓堀の喧騒を抜けた静かな隠れ家バー。落ち着いたトーンで距離を縮めたい時に。"
       },
@@ -272,7 +364,11 @@
         "category_label": "横丁",
         "walk_minutes": 2,
         "budget": "¥2,500〜¥4,500",
-        "features": ["石畳の風情", "浪花情緒", "大人の雰囲気"],
+        "features": [
+          "石畳の風情",
+          "浪花情緒",
+          "大人の雰囲気"
+        ],
         "map_query": "法善寺横丁 難波 道頓堀",
         "comment": "提灯と石畳が美しい難波の名所。雰囲気ある路地裏で大人の2軒目を演出できます。"
       },
@@ -283,7 +379,11 @@
         "category_label": "シーシャ",
         "walk_minutes": 3,
         "budget": "¥2,000〜¥3,000",
-        "features": ["居心地の良いソファ", "落ち着いた店内", "深夜営業"],
+        "features": [
+          "居心地の良いソファ",
+          "落ち着いた店内",
+          "深夜営業"
+        ],
         "map_query": "シーシャカフェ 煙人 難波",
         "comment": "千日前近くの隠れ家シーシャ。ソファーで肩を並べてくつろぎながら話せる安心空間。"
       }
@@ -296,7 +396,11 @@
         "category_label": "夜カフェ",
         "walk_minutes": 4,
         "budget": "¥1,200〜¥2,500",
-        "features": ["本格紅茶とスイーツ", "ヨーロッパ調", "上品な空間"],
+        "features": [
+          "本格紅茶とスイーツ",
+          "ヨーロッパ調",
+          "上品な空間"
+        ],
         "map_query": "サロン・ド・テ・プレジール 心斎橋",
         "comment": "オリエンタルラウンジ心斎橋から徒歩4分。落ち着いた店内でゆったり紅茶とスイーツを楽しめます。"
       },
@@ -307,7 +411,11 @@
         "category_label": "バー・バル",
         "walk_minutes": 3,
         "budget": "¥2,000〜¥3,500",
-        "features": ["周防町筋すぐ", "落ち着いたカウンター", "気さくなマスター"],
+        "features": [
+          "周防町筋すぐ",
+          "落ち着いたカウンター",
+          "気さくなマスター"
+        ],
         "map_query": "BAR K-SPOT 心斎橋",
         "comment": "心斎橋・周防町筋のすぐ近く。自然体で話せる居心地の良い隠れ家バー。"
       },
@@ -318,7 +426,11 @@
         "category_label": "シーシャ",
         "walk_minutes": 2,
         "budget": "¥2,000〜¥3,000",
-        "features": ["御堂筋すぐ", "ペアシート完備", "高級感ある内装"],
+        "features": [
+          "御堂筋すぐ",
+          "ペアシート完備",
+          "高級感ある内装"
+        ],
         "map_query": "C.STAND 心斎橋店",
         "comment": "御堂筋近くのラグジュアリーなシーシャカフェ。座り心地の良いソファでリラックス。"
       },
@@ -329,7 +441,11 @@
         "category_label": "横丁",
         "walk_minutes": 3,
         "budget": "¥2,000〜¥3,500",
-        "features": ["ネオン映え空間", "駅直結で雨の日も安心", "個性派バル集結"],
+        "features": [
+          "ネオン映え空間",
+          "駅直結で雨の日も安心",
+          "個性派バル集結"
+        ],
         "map_query": "心斎橋ネオン食堂街 心斎橋PARCO",
         "comment": "最新トレンドのネオ酒場街。雨天でも濡れずに移動でき、写真映えも抜群。"
       }
@@ -342,7 +458,11 @@
         "category_label": "夜カフェ",
         "walk_minutes": 4,
         "budget": "¥1,800〜¥2,800",
-        "features": ["映えシメパフェ", "お酒×スイーツ", "洗練された内装"],
+        "features": [
+          "映えシメパフェ",
+          "お酒×スイーツ",
+          "洗練された内装"
+        ],
         "map_query": "パフェテリア ラルゴ 堂山町 梅田",
         "comment": "オリエンタルラウンジ梅田やすすきの・茶屋町周辺から徒歩すぐ。お酒と楽しむシメパフェで盛り上がります。"
       },
@@ -353,7 +473,11 @@
         "category_label": "バー・バル",
         "walk_minutes": 5,
         "budget": "¥2,500〜¥4,500",
-        "features": ["北新地名門", "オーセンティックカウンター", "最高峰のカクテル"],
+        "features": [
+          "北新地名門",
+          "オーセンティックカウンター",
+          "最高峰のカクテル"
+        ],
         "map_query": "BAR BESO 北新地 梅田",
         "comment": "北新地屈指の名店。上質な大人のカウンターで、エスコートの洗練度をアピールできます。"
       },
@@ -364,7 +488,11 @@
         "category_label": "横丁",
         "walk_minutes": 3,
         "budget": "¥2,500〜¥4,000",
-        "features": ["古民家バル街", "おしゃれな路地裏", "はしご酒に最高"],
+        "features": [
+          "古民家バル街",
+          "おしゃれな路地裏",
+          "はしご酒に最高"
+        ],
         "map_query": "お初天神裏参道 梅田 曽根崎",
         "comment": "梅田の2軒目といえばここ。風情ある裏路地に上質な肉バルやワイン酒場が連なります。"
       },
@@ -375,7 +503,11 @@
         "category_label": "シーシャ",
         "walk_minutes": 2,
         "budget": "¥2,000〜¥3,000",
-        "features": ["東通りすぐ", "ソファ席完備", "深夜営業"],
+        "features": [
+          "東通りすぐ",
+          "ソファ席完備",
+          "深夜営業"
+        ],
         "map_query": "C.STAND 梅田東通り店",
         "comment": "東通り商店街すぐでアクセス抜群。広々としたソファー席で落ち着いて話せます。"
       }
@@ -388,7 +520,11 @@
         "category_label": "夜カフェ",
         "walk_minutes": 4,
         "budget": "¥1,200〜¥2,200",
-        "features": ["韓国風カフェ", "映えスイーツ", "落ち着いた店内"],
+        "features": [
+          "韓国風カフェ",
+          "映えスイーツ",
+          "落ち着いた店内"
+        ],
         "map_query": "カフェ スケッチ 栄 名古屋",
         "comment": "オリエンタルラウンジ栄や名古屋錦から徒歩圏内。女性人気の高い洗練された夜カフェ。"
       },
@@ -399,7 +535,11 @@
         "category_label": "バー・バル",
         "walk_minutes": 5,
         "budget": "¥2,500〜¥4,500",
-        "features": ["名古屋屈指の名バー", "フレッシュフルーツカクテル", "極上のホスピタリティ"],
+        "features": [
+          "名古屋屈指の名バー",
+          "フレッシュフルーツカクテル",
+          "極上のホスピタリティ"
+        ],
         "map_query": "BAR BARNS 栄 伏見 名古屋",
         "comment": "全国的な知名度を誇る名店。フルーツカクテルが絶品で、誰を連れて行っても喜ばれます。"
       },
@@ -410,7 +550,11 @@
         "category_label": "横丁",
         "walk_minutes": 3,
         "budget": "¥2,000〜¥3,500",
-        "features": ["錦通沿い", "ネオ横丁", "活気ある酒場"],
+        "features": [
+          "錦通沿い",
+          "ネオ横丁",
+          "活気ある酒場"
+        ],
         "map_query": "ほぼ栄駅一番街 のれん街 名古屋 錦",
         "comment": "錦通沿いにある人気横丁。賑やかな空気感でもう1軒軽く楽しみたいときに。"
       },
@@ -421,7 +565,11 @@
         "category_label": "シーシャ",
         "walk_minutes": 3,
         "budget": "¥2,000〜¥3,500",
-        "features": ["暖炉のある空間", "上質ソファ", "女子ウケ抜群"],
+        "features": [
+          "暖炉のある空間",
+          "上質ソファ",
+          "女子ウケ抜群"
+        ],
         "map_query": "musch 栄店 シーシャ 名古屋",
         "comment": "暖炉の炎と心地よいソファが贅沢なシーシャラウンジ。デート向きのムード満点。"
       }
@@ -434,7 +582,11 @@
         "category_label": "夜カフェ",
         "walk_minutes": 3,
         "budget": "¥1,200〜¥2,200",
-        "features": ["大名中心部", "深夜スイーツ", "ソファ席完備"],
+        "features": [
+          "大名中心部",
+          "深夜スイーツ",
+          "ソファ席完備"
+        ],
         "map_query": "夜カフェ 8# 天神 大名 福岡",
         "comment": "オリエンタルラウンジ福岡天神から徒歩3分。大名のおしゃれな雰囲気と美味しいスイーツが自慢。"
       },
@@ -445,7 +597,11 @@
         "category_label": "バー・バル",
         "walk_minutes": 4,
         "budget": "¥2,500〜¥4,500",
-        "features": ["大名の老舗バー", "本格カクテル", "大人のカウンター"],
+        "features": [
+          "大名の老舗バー",
+          "本格カクテル",
+          "大人のカウンター"
+        ],
         "map_query": "Bar Oscar 大名 福岡 天神",
         "comment": "福岡・大名を代表するオーセンティックバー。静かに落ち着いて会話を深めたい時に。"
       },
@@ -456,7 +612,11 @@
         "category_label": "横丁",
         "walk_minutes": 4,
         "budget": "¥1,800〜¥3,000",
-        "features": ["博多名物屋台", "密着カウンター", "一気に距離が縮まる"],
+        "features": [
+          "博多名物屋台",
+          "密着カウンター",
+          "一気に距離が縮まる"
+        ],
         "map_query": "天神屋台 渡辺通 福岡",
         "comment": "博多ならではの屋台体験。肩が触れ合う距離感で一気に親密になれる名物スポット。"
       },
@@ -467,7 +627,11 @@
         "category_label": "シーシャ",
         "walk_minutes": 2,
         "budget": "¥2,000〜¥3,000",
-        "features": ["西通り沿い", "ペアソファ", "朝まで営業"],
+        "features": [
+          "西通り沿い",
+          "ペアソファ",
+          "朝まで営業"
+        ],
         "map_query": "C.STAND 福岡天神西通り店",
         "comment": "西通り沿いでアクセス抜群。まったりとリラックスして会話を楽しめる空間。"
       }
@@ -480,7 +644,11 @@
         "category_label": "夜カフェ",
         "walk_minutes": 3,
         "budget": "¥1,800〜¥2,800",
-        "features": ["元祖シメパフェ", "芸術的パフェ", "女子ウケNo.1"],
+        "features": [
+          "元祖シメパフェ",
+          "芸術的パフェ",
+          "女子ウケNo.1"
+        ],
         "map_query": "夜パフェ専門店 パフェテリア ミル すすきの 札幌",
         "comment": "オリエンタルラウンジ札幌やすすきの駅から徒歩3分。札幌シメパフェの代名詞的存在で喜ばれること確実。"
       },
@@ -491,7 +659,11 @@
         "category_label": "バー・バル",
         "walk_minutes": 3,
         "budget": "¥2,500〜¥4,500",
-        "features": ["北海道産果実カクテル", "落ち着いたカウンター", "大人の隠れ家"],
+        "features": [
+          "北海道産果実カクテル",
+          "落ち着いたカウンター",
+          "大人の隠れ家"
+        ],
         "map_query": "The Bar nano gould すすきの 札幌",
         "comment": "北海道の旬の果実を活かした絶品カクテル。すすきのの喧騒を離れてしっとり飲めます。"
       },
@@ -502,7 +674,11 @@
         "category_label": "横丁",
         "walk_minutes": 4,
         "budget": "¥2,000〜¥3,500",
-        "features": ["地下飲食街", "昭和レトロ", "味わい深い隠れ家バー"],
+        "features": [
+          "地下飲食街",
+          "昭和レトロ",
+          "味わい深い隠れ家バー"
+        ],
         "map_query": "すすきのゼロ番地 札幌 すすきの",
         "comment": "すすきの最古の地下飲食店街。ディープで個性的な隠れ家バーが集う通好みのスポット。"
       },
@@ -513,7 +689,11 @@
         "category_label": "シーシャ",
         "walk_minutes": 2,
         "budget": "¥2,000〜¥3,000",
-        "features": ["すすきの交差点すぐ", "ゆったりソファ", "落ち着いた照明"],
+        "features": [
+          "すすきの交差点すぐ",
+          "ゆったりソファ",
+          "落ち着いた照明"
+        ],
         "map_query": "シーシャカフェ PukuPuku 札幌すすきの店",
         "comment": "交差点すぐの暖かな空間。寒い夜でもソファーで温まりながら会話を楽しめます。"
       }
@@ -562,5 +742,2565 @@
       "rule": "2杯目半分ルール",
       "desc": "相席ラウンジで注文した2杯目のドリンクが半分空いたタイミングが声かけの準備シグナル。お会計や退店準備も逆算してスムーズに動けます。"
     }
-  ]
+  ],
+  "venues_by_store": {
+    "oriental-lounge-shibuya-honten": [
+      {
+        "id": "shibuya-honten-bar-01",
+        "name": "Bar 石の華",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 4,
+        "late_hours": "翌2:00まで営業",
+        "seating_vibe": "横並びカウンター・落ち着いた大人の空間",
+        "budget": "¥2,500〜¥4,000",
+        "features": [
+          "本格カクテル",
+          "横並びカウンター",
+          "落ち着いた空間"
+        ],
+        "map_query": "Bar 石の華 渋谷",
+        "route_tip": "道玄坂出口からマークシティ方面へ徒歩4分。賑やかなラウンジから落ち着いた大人の会話へ自然に移行できます。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "賑やかなラウンジを出た後、上質なカクテルと横並びカウンターで自然と距離が近づく王道の大人のバー。"
+      },
+      {
+        "id": "shibuya-honten-cafe-01",
+        "name": "夜パフェ専門店 パフェテリア ベル 渋谷",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 2,
+        "late_hours": "翌1:00まで営業（金土翌2:00）",
+        "seating_vibe": "カウンター席・2名テーブル",
+        "budget": "¥1,800〜¥2,800",
+        "features": [
+          "映えスイーツ",
+          "カウンター席あり",
+          "女性人気抜群"
+        ],
+        "map_query": "夜パフェ専門店 パフェテリア ベル 渋谷 道玄坂",
+        "route_tip": "道玄坂を下ってすぐ徒歩2分。「甘いもの食べに行かない？」で最も断られにくいシメパフェ定番。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "お酒の後の口直しに最適。見た目も華やかなパフェで自然と会話が盛り上がります。"
+      },
+      {
+        "id": "shibuya-honten-cafe-02",
+        "name": "宇田川カフェ suite",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 3,
+        "late_hours": "翌2:00まで営業",
+        "seating_vibe": "ゆったりソファ席・アンティーク調の落ち着いた空間",
+        "budget": "¥1,000〜¥2,000",
+        "features": [
+          "ソファ席あり",
+          "深夜2時まで営業",
+          "落ち着いた照明"
+        ],
+        "map_query": "宇田川カフェ suite 渋谷",
+        "route_tip": "ちとせ会館を出て井の頭通り方面へ徒歩3分。落ち着いた薄暗い照明とゆったりソファで自然と距離が縮まります。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "ちとせ会館から徒歩3分。落ち着いた薄暗い照明とゆったりソファで自然と距離が縮まる定番。"
+      },
+      {
+        "id": "shibuya-honten-shisha-01",
+        "name": "C.STAND 渋谷センター街店",
+        "category": "shisha",
+        "category_label": "シーシャ",
+        "walk_minutes": 2,
+        "late_hours": "翌5:00まで営業",
+        "seating_vibe": "ボックスソファ席・リラックス空間",
+        "budget": "¥2,000〜¥3,000",
+        "features": [
+          "ソファ席完備",
+          "深夜5時まで営業",
+          "リラックス空間"
+        ],
+        "map_query": "C.STAND 渋谷センター街店",
+        "route_tip": "センター街を直進してすぐ徒歩2分。翌朝5時まで営業でゆったり会話を楽しめます。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "退店後にゆっくり語り合いたい時に最適。落ち着いたソファ席でリラックスして過ごせます。"
+      }
+    ],
+    "oriental-lounge-ebisu": [
+      {
+        "id": "ebisu-bar-01",
+        "name": "Bar Tram",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 2,
+        "late_hours": "翌3:00まで営業",
+        "seating_vibe": "アンティーク調カウンター・薄暗い間接照明",
+        "budget": "¥2,500〜¥4,000",
+        "features": [
+          "ハーブ・薬草酒カクテル",
+          "横並びカウンター",
+          "隠れ家"
+        ],
+        "map_query": "Bar Tram 恵比寿西",
+        "route_tip": "恵比寿駅西口方面へ徒歩2分。落ち着いたアンティーク空間でゆったりと語り合えます。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "恵比寿西口の裏路地に佇む隠れ家。こだわりの薬草酒カクテルと薄暗い照明で親密度が深まります。"
+      },
+      {
+        "id": "ebisu-bar-02",
+        "name": "Bar Trench",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 3,
+        "late_hours": "翌2:00まで営業",
+        "seating_vibe": "クラシックカウンター・洗練された大人のバー",
+        "budget": "¥3,000〜¥5,000",
+        "features": [
+          "世界のベストバー選出",
+          "クラフトカクテル",
+          "落ち着いた空間"
+        ],
+        "map_query": "Bar Trench 恵比寿西",
+        "route_tip": "西口から徒歩3分の静かな路地裏。海外のバーアワードにも選出される本格派。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "世界的な評価を受ける恵比寿屈指の名店。上質なカクテル体験で特別な2軒目デートを演出できます。"
+      }
+    ],
+    "ag-shibuya": [
+      {
+        "id": "ag-shibuya-cafe-01",
+        "name": "宇田川カフェ suite",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 2,
+        "late_hours": "翌2:00まで営業",
+        "seating_vibe": "ゆったりソファ席・アンティーク調の落ち着いた照明",
+        "budget": "¥1,200〜¥2,200",
+        "features": [
+          "ソファ席あり",
+          "深夜2時営業",
+          "落ち着いた照明"
+        ],
+        "map_query": "宇田川カフェ suite 渋谷 宇田川町",
+        "route_tip": "宇田川町のビル出口から徒歩2分。賑やかな井の頭通り裏の落ち着いたソファ夜カフェ。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "宇田川町の路地裏に佇むスイーツとコーヒーの名店。ゆったりしたソファでリラックスして会話できます。"
+      },
+      {
+        "id": "ag-shibuya-shisha-01",
+        "name": "C.STAND 渋谷センター街店",
+        "category": "shisha",
+        "category_label": "シーシャ",
+        "walk_minutes": 2,
+        "late_hours": "翌5:00まで営業",
+        "seating_vibe": "ゆったりソファ席・リラックス空間",
+        "budget": "¥2,000〜¥3,000",
+        "features": [
+          "ソファ席完備",
+          "持ち込みOK",
+          "深夜5時まで営業"
+        ],
+        "map_query": "C.STAND 渋谷センター街店",
+        "route_tip": "センター街方面へ徒歩2分。落ち着いた照明とソファでゆっくりくつろげる空間。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "お酒が強くない相手とも自然に過ごせるシーシャカフェ。朝までゆったり会話を楽しめます。"
+      }
+    ],
+    "asobibar-shibuya": [
+      {
+        "id": "asobibar-shibuya-cafe-01",
+        "name": "宇田川カフェ suite",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 2,
+        "late_hours": "翌2:00まで営業",
+        "seating_vibe": "ゆったりソファ席・落ち着いた照明",
+        "budget": "¥1,200〜¥2,200",
+        "features": [
+          "ソファ席あり",
+          "深夜スイーツ",
+          "落ち着いた空間"
+        ],
+        "map_query": "宇田川カフェ suite 渋谷 宇田川町",
+        "route_tip": "宇田川町交番近くへ徒歩2分。賑やかなアミューズメント後にホッと一息つける夜カフェ。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "ワイワイ盛り上がった後に「少し甘いもの食べて休もう」と誘いやすい定番夜カフェ。"
+      },
+      {
+        "id": "asobibar-shibuya-bar-01",
+        "name": "夜パフェ専門店 パフェテリア ベル 渋谷",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 3,
+        "late_hours": "翌1:00まで営業（金土翌2:00）",
+        "seating_vibe": "カウンター席・2名テーブル",
+        "budget": "¥1,800〜¥2,800",
+        "features": [
+          "映えスイーツ",
+          "カウンター席",
+          "女性人気"
+        ],
+        "map_query": "夜パフェ専門店 パフェテリア ベル 渋谷 道玄坂",
+        "route_tip": "道玄坂方面へ徒歩3分。大人のシメパフェで盛り上がりのピークを維持できます。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "お酒と甘いもののマリアージュが楽しめる人気店。カウンター席で横並びの会話が弾みます。"
+      }
+    ],
+    "asobibar-ebisu": [
+      {
+        "id": "asobibar-ebisu-bar-01",
+        "name": "Bar Tram",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 2,
+        "late_hours": "翌3:00まで営業",
+        "seating_vibe": "アンティーク調カウンター・落ち着いた大人の空間",
+        "budget": "¥2,500〜¥4,000",
+        "features": [
+          "本格カクテル",
+          "横並びカウンター",
+          "隠れ家"
+        ],
+        "map_query": "Bar Tram 恵比寿西",
+        "route_tip": "恵比寿西出口から徒歩2分。カジュアルなスタンディングから上質な大人のバーへスマートにエスコート。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "エキサイティングに楽しんだ後のクールダウンに最適。落ち着いた照明でじっくり話せます。"
+      },
+      {
+        "id": "asobibar-ebisu-bar-02",
+        "name": "Bar Trench",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 3,
+        "late_hours": "翌2:00まで営業",
+        "seating_vibe": "洗練されたクラシックカウンター",
+        "budget": "¥3,000〜¥5,000",
+        "features": [
+          "クラフトカクテル",
+          "落ち着いた空間",
+          "大人の隠れ家"
+        ],
+        "map_query": "Bar Trench 恵比寿西",
+        "route_tip": "恵比寿駅西口近くの路地裏へ徒歩3分。上質なカクテルで締めくくる贅沢な時間。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "落ち着いたカウンター席で本格的なカクテルを堪能できる恵比寿屈指のバー。"
+      }
+    ],
+    "oriental-lounge-shinjuku": [
+      {
+        "id": "shinjuku-bar-01",
+        "name": "BAR 猫添え",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 2,
+        "late_hours": "翌5:00まで営業",
+        "seating_vibe": "落ち着いた一枚板カウンター席",
+        "budget": "¥2,500〜¥4,000",
+        "features": [
+          "カウンター席",
+          "朝5時まで営業",
+          "隠れ家"
+        ],
+        "map_query": "BAR 猫添え 新宿 歌舞伎町",
+        "route_tip": "歌舞伎町のビルを出て区役所通り裏へ徒歩2分。都会の喧騒から隔絶された静謐なカウンターバー。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "賑やかなラウンジから落ち着いた大人のカウンターへ。横並びの席でゆったり会話を楽しめます。"
+      },
+      {
+        "id": "shinjuku-shisha-01",
+        "name": "C.STAND 新宿歌舞伎町店",
+        "category": "shisha",
+        "category_label": "シーシャ",
+        "walk_minutes": 2,
+        "late_hours": "翌5:00まで営業",
+        "seating_vibe": "ゆったりソファ席・リラックス空間",
+        "budget": "¥2,000〜¥3,000",
+        "features": [
+          "ソファ席",
+          "朝5時まで営業",
+          "リラックス"
+        ],
+        "map_query": "C.STAND 新宿歌舞伎町店",
+        "route_tip": "さくら通り方面へ徒歩2分。ゆったりしたソファでくつろげるシーシャカフェ。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "お酒が苦手な相手とも自然体で長居できる人気シーシャ。深夜の語り合いに最適です。"
+      }
+    ],
+    "jis-shinjuku": [
+      {
+        "id": "jis-shinjuku-bar-01",
+        "name": "BAR 猫添え",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 2,
+        "late_hours": "翌5:00まで営業",
+        "seating_vibe": "一枚板カウンター席・大人の隠れ家",
+        "budget": "¥2,500〜¥4,000",
+        "features": [
+          "本格カクテル",
+          "カウンター席",
+          "深夜営業"
+        ],
+        "map_query": "BAR 猫添え 新宿 歌舞伎町",
+        "route_tip": "JIS（ジス）新宿のビルを出て徒歩2分。静かなカウンター席でじっくり話せる名店。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "大箱のラウンジを出た後に立ち寄りたい静かな隠れ家バー。距離をグッと縮められます。"
+      },
+      {
+        "id": "jis-shinjuku-cafe-01",
+        "name": "夜パフェ専門店 モメトオイデ 新宿",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 3,
+        "late_hours": "翌1:00まで営業",
+        "seating_vibe": "カウンター席・洗練されたデザート空間",
+        "budget": "¥1,800〜¥2,800",
+        "features": [
+          "シメパフェ",
+          "カウンター席",
+          "映えスイーツ"
+        ],
+        "map_query": "夜パフェ専門店 モメトオイデ 新宿 歌舞伎町",
+        "route_tip": "靖国通り方面へ徒歩3分。「甘いもの食べて帰ろう」とスマートに誘い出せる鉄板スポット。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "大人の〆パフェ専門店。カウンター席でスイーツをシェアしながら自然な笑顔が引き出せます。"
+      }
+    ],
+    "jis-nishishinjuku": [
+      {
+        "id": "jis-nishi-bar-01",
+        "name": "BAR 保志 新宿",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 3,
+        "late_hours": "翌3:00まで営業",
+        "seating_vibe": "オーセンティックカウンター・世界大会優勝カクテル",
+        "budget": "¥3,000〜¥5,000",
+        "features": [
+          "本格カクテル",
+          "重厚カウンター",
+          "上質空間"
+        ],
+        "map_query": "BAR 保志 新宿 西新宿",
+        "route_tip": "西口ガード下から甲州街道方面へ徒歩3分。銀座の名店の流れを汲む本格派バー。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "世界最高峰の技術で作られるフルーツカクテル。大人の西新宿デートを締めくくる至高の1軒。"
+      },
+      {
+        "id": "jis-nishi-bar-02",
+        "name": "ワインバー MARU 西新宿",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 3,
+        "late_hours": "翌2:00まで営業",
+        "seating_vibe": "カウンター席・落ち着いたワイン空間",
+        "budget": "¥2,500〜¥4,500",
+        "features": [
+          "厳選ワイン",
+          "カウンター席あり",
+          "落ち着いた雰囲気"
+        ],
+        "map_query": "ワインバー MARU 西新宿",
+        "route_tip": "西新宿一丁目のオフィス街裏手を徒歩3分。グラスワインが豊富な大人のワインバー。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "美味しいワインと落ち着いた照明。駅近で終電を気にしながらもスマートに飲める名店。"
+      }
+    ],
+    "asobibar-shinjuku": [
+      {
+        "id": "asobibar-shinjuku-shisha-01",
+        "name": "C.STAND 新宿歌舞伎町店",
+        "category": "shisha",
+        "category_label": "シーシャ",
+        "walk_minutes": 1,
+        "late_hours": "翌5:00まで営業",
+        "seating_vibe": "ゆったりソファ席・リラックス空間",
+        "budget": "¥2,000〜¥3,000",
+        "features": [
+          "ソファ席",
+          "朝5時営業",
+          "リラックス"
+        ],
+        "map_query": "C.STAND 新宿歌舞伎町店",
+        "route_tip": "歌舞伎町のビルを出てすぐ徒歩1分。アクティブに楽しんだ後のまったりリラックスタイム。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "ダーツやゲームで盛り上がった後に、落ち着いたソファでゆっくり語り合える近場のオアシス。"
+      },
+      {
+        "id": "asobibar-shinjuku-bar-01",
+        "name": "BAR 猫添え",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 2,
+        "late_hours": "翌5:00まで営業",
+        "seating_vibe": "一枚板カウンター席・落ち着いた大人の空間",
+        "budget": "¥2,500〜¥4,000",
+        "features": [
+          "本格カクテル",
+          "カウンター席",
+          "隠れ家"
+        ],
+        "map_query": "BAR 猫添え 新宿 歌舞伎町",
+        "route_tip": "区役所通り裏へ徒歩2分。落ち着いた空間でじっくり二人の会話を楽しめます。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "騒がしい店内から一転して静かなカウンターへ。ギャップのあるエスコートで好印象を残せます。"
+      }
+    ],
+    "oriental-lounge-ueno": [
+      {
+        "id": "ueno-bar-01",
+        "name": "BAR COCKTAIL WORKS 上野",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 2,
+        "late_hours": "翌3:00まで営業",
+        "seating_vibe": "アールヌーボー調カウンター・大人の隠れ家",
+        "budget": "¥2,500〜¥4,000",
+        "features": [
+          "クラフトカクテル",
+          "カウンター席",
+          "アンティーク空間"
+        ],
+        "map_query": "BAR COCKTAIL WORKS 上野 仲町通り",
+        "route_tip": "仲町通り出口から徒歩2分。アールヌーボー調の上質な店内でこだわりのミクソロジーカクテルを堪能。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "仲町通りの喧騒を忘れさせる洗練空間。カウンターで季節のフルーツカクテルを楽しめます。"
+      },
+      {
+        "id": "ueno-bar-02",
+        "name": "BAR SERVICIA 上野",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 3,
+        "late_hours": "翌4:00まで営業",
+        "seating_vibe": "カウンター席・スタイリッシュビアバル",
+        "budget": "¥2,000〜¥3,500",
+        "features": [
+          "クラフトビール",
+          "カウンター席あり",
+          "朝4時まで営業"
+        ],
+        "map_query": "BAR SERVICIA 上野 湯島",
+        "route_tip": "湯島方面へ徒歩3分。深夜4時まで営業する大人の隠れ家ビアバル。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "もう1杯カジュアルに飲みたい時に。豊富なクラフトビールと落ち着いたカウンターが魅力。"
+      }
+    ],
+    "ag-ueno": [
+      {
+        "id": "ag-ueno-bar-01",
+        "name": "BAR COCKTAIL WORKS 上野",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 2,
+        "late_hours": "翌3:00まで営業",
+        "seating_vibe": "アールヌーボー調カウンター席",
+        "budget": "¥2,500〜¥4,000",
+        "features": [
+          "本格カクテル",
+          "カウンター席",
+          "落ち着いた照明"
+        ],
+        "map_query": "BAR COCKTAIL WORKS 上野 仲町通り",
+        "route_tip": "御徒町・仲町通り方面へ徒歩2分。洗練されたアンティーク空間でゆったり語り合えます。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "若い活気あるラウンジから落ち着いた大人のバーへ。横並びカウンターで自然と距離が近づきます。"
+      },
+      {
+        "id": "ag-ueno-shisha-01",
+        "name": "シーシャカフェ＆バー muse 上野店",
+        "category": "shisha",
+        "category_label": "シーシャ",
+        "walk_minutes": 3,
+        "late_hours": "翌5:00まで営業",
+        "seating_vibe": "緑に囲まれたソファ席・隠れ家カフェ空間",
+        "budget": "¥2,000〜¥3,000",
+        "features": [
+          "ソファ席",
+          "映えカフェ空間",
+          "深夜営業"
+        ],
+        "map_query": "シーシャカフェ muse 上野店",
+        "route_tip": "不忍口方面へ徒歩3分。緑豊かな森のような内装でリラックスできる夜カフェバー。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "木々と間接照明が心地よい癒やし空間。お酒が苦手な女性にも圧倒的人気です。"
+      }
+    ],
+    "oriental-lounge-kinshicho": [
+      {
+        "id": "kinshicho-bar-01",
+        "name": "BAR ライオン",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 2,
+        "late_hours": "翌3:00まで営業",
+        "seating_vibe": "暖炉のあるラグジュアリーカウンター席",
+        "budget": "¥2,500〜¥4,000",
+        "features": [
+          "暖炉完備",
+          "カウンター席",
+          "大人の隠れ家"
+        ],
+        "map_query": "BAR ライオン 錦糸町 南口",
+        "route_tip": "南口ピアきんしちょう方面へ徒歩2分。暖炉の炎が揺れるラグジュアリーな隠れ家バー。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "錦糸町とは思えない上質な非日常空間。暖炉の前で特別な2軒目時間を過ごせます。"
+      },
+      {
+        "id": "kinshicho-bar-02",
+        "name": "VALON TOKYO 錦糸町",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 1,
+        "late_hours": "23:30まで営業",
+        "seating_vibe": "スタイリッシュなワインバル・テーブル＆カウンター",
+        "budget": "¥2,000〜¥3,500",
+        "features": [
+          "ワイン充実",
+          "駅徒歩1分",
+          "おしゃれな空間"
+        ],
+        "map_query": "VALON TOKYO 錦糸町 南口",
+        "route_tip": "南口改札すぐ徒歩1分。終電ギリギリまでスマートに飲める駅近イタリアンバル。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "駅至近で帰りの心理的ハードルが低い名店。美味しいワインとタパスでサクッと乾杯できます。"
+      }
+    ],
+    "oriental-lounge-machida": [
+      {
+        "id": "machida-bar-01",
+        "name": "夜パフェBAR＆VIGO 町田駅前店",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 2,
+        "late_hours": "24:00まで営業",
+        "seating_vibe": "おしゃれなカウンター席・芸術的パフェ空間",
+        "budget": "¥1,800〜¥2,800",
+        "features": [
+          "夜パフェ",
+          "カウンター席あり",
+          "スイーツ＆バー"
+        ],
+        "map_query": "夜パフェBAR VIGO 町田駅前店 原町田",
+        "route_tip": "小田急町田駅・原町田大通り方面へ徒歩2分。美しいシメパフェとお酒を楽しめる人気店。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "女性を誘いやすいシメパフェバー。カウンター席でスイーツをシェアしながら盛り上がれます。"
+      },
+      {
+        "id": "machida-cafe-01",
+        "name": "The CAFE 町田",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 2,
+        "late_hours": "22:30まで営業",
+        "seating_vibe": "レトロモダン喫茶・落ち着いたカウンター＆テーブル",
+        "budget": "¥1,000〜¥2,000",
+        "features": [
+          "純喫茶モダン",
+          "カウンター席",
+          "落ち着いた照明"
+        ],
+        "map_query": "The CAFE 町田 原町田",
+        "route_tip": "原町田6丁目交差点すぐ徒歩2分。落ち着いた木目調空間で本格コーヒーやプリンを楽しめます。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "お酒の後にほっと一息つける喫茶カフェ。落ち着いた大人のトーンで会話が深まります。"
+      }
+    ],
+    "oriental-lounge-yokohama": [
+      {
+        "id": "yokohama-bar-01",
+        "name": "Bar シーガル 横浜西口",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 3,
+        "late_hours": "翌3:00まで営業",
+        "seating_vibe": "オーセンティックカウンター・落ち着いた大人の空間",
+        "budget": "¥2,500〜¥4,000",
+        "features": [
+          "老舗バー",
+          "カウンター席",
+          "本格カクテル"
+        ],
+        "map_query": "Bar シーガル 横浜 南幸",
+        "route_tip": "南幸のビル出口から西口繁華街の奥へ徒歩3分。横浜の夜を代表する正統派バー。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "相席ラウンジの賑やかさから一転、大人の横浜を感じさせる重厚なカウンターで語り合えます。"
+      },
+      {
+        "id": "yokohama-shisha-01",
+        "name": "C.STAND 横浜西口店",
+        "category": "shisha",
+        "category_label": "シーシャ",
+        "walk_minutes": 2,
+        "late_hours": "翌5:00まで営業",
+        "seating_vibe": "ゆったりソファ席・リラックス空間",
+        "budget": "¥2,000〜¥3,000",
+        "features": [
+          "ソファ席",
+          "朝5時まで営業",
+          "ゆったり会話"
+        ],
+        "map_query": "C.STAND 横浜西口店",
+        "route_tip": "南幸通り沿いへ徒歩2分。落ち着いた間接照明のソファでリラックス。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "時間を忘れて深く語り合いたい夜に。ゆったりしたソファで自然と距離が近づきます。"
+      }
+    ],
+    "oriental-lounge-omiya": [
+      {
+        "id": "omiya-cafe-01",
+        "name": "珈琲館 伯爵邸",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 3,
+        "late_hours": "24時間営業",
+        "seating_vibe": "昭和レトロ喫茶・ソファ＆カウンター・お酒あり",
+        "budget": "¥1,200〜¥2,500",
+        "features": [
+          "24時間営業",
+          "レトロ喫茶",
+          "お酒・パフェあり"
+        ],
+        "map_query": "珈琲館 伯爵邸 大宮東口",
+        "route_tip": "東口すずらん通りを抜けて徒歩3分。大宮名物・24時間営業の老舗レトロ喫茶。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "終電後でも安心の24時間営業。パフェやお酒、喫茶メニューが豊富で会話のネタに困りません。"
+      },
+      {
+        "id": "omiya-bar-01",
+        "name": "夜パフェBAR ＆VIGO 大宮店",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 3,
+        "late_hours": "23:00まで営業",
+        "seating_vibe": "シックなカウンター席・夜パフェ＆ワイン",
+        "budget": "¥1,800〜¥3,000",
+        "features": [
+          "夜パフェ",
+          "カウンター席",
+          "ワインカクテル"
+        ],
+        "map_query": "夜パフェBAR VIGO 大宮店",
+        "route_tip": "東口一番街方面へ徒歩3分。美しい夜パフェとワインをカウンターで楽しめる人気店。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "「美味しい夜パフェ食べに行かない？」でスムーズに移動できる女性人気ナンバーワンのバー。"
+      }
+    ],
+    "jis-omiya": [
+      {
+        "id": "jis-omiya-cafe-01",
+        "name": "珈琲館 伯爵邸",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 2,
+        "late_hours": "24時間営業",
+        "seating_vibe": "昭和レトロ喫茶・お酒＆パフェ",
+        "budget": "¥1,200〜¥2,500",
+        "features": [
+          "24時間営業",
+          "レトロ喫茶",
+          "会話が弾む"
+        ],
+        "map_query": "珈琲館 伯爵邸 大宮東口",
+        "route_tip": "大宮東口すぐ徒歩2分。24時間いつでも入れる安心のレトロ喫茶バー。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "JIS（ジス）大宮を出てすぐ立ち寄れる名店。深夜のコーヒーやお酒、名物パフェで盛り上がれます。"
+      },
+      {
+        "id": "jis-omiya-bar-01",
+        "name": "夜パフェBAR ＆VIGO 大宮店",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 2,
+        "late_hours": "23:00まで営業",
+        "seating_vibe": "シックなカウンター席・上質なデザート空間",
+        "budget": "¥1,800〜¥3,000",
+        "features": [
+          "シメパフェ",
+          "カウンター席",
+          "デート向き"
+        ],
+        "map_query": "夜パフェBAR VIGO 大宮店",
+        "route_tip": "東口一番街アーケードすぐ徒歩2分。大人のシメパフェで終電前のスマートな2軒目を演出。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "カウンター席で横並びになりながらスイーツとお酒を楽しめる鉄板の2軒目スポット。"
+      }
+    ],
+    "oriental-lounge-kashiwa": [
+      {
+        "id": "kashiwa-bar-01",
+        "name": "Bar TACT",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 4,
+        "late_hours": "翌4:00まで営業",
+        "seating_vibe": "座り心地抜群のカウンター席・自家製生チョコ",
+        "budget": "¥2,500〜¥4,000",
+        "features": [
+          "翌4時まで営業",
+          "本格カクテル",
+          "生チョコレート"
+        ],
+        "map_query": "Bar TACT 柏駅東口",
+        "route_tip": "柏駅東口商店街を徒歩4分。こだわりの椅子と自家製生チョコが自慢の本格バー。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "座り心地の良いカウンターで朝4時までゆったり。手作りの生チョコとお酒で自然と笑顔に。"
+      },
+      {
+        "id": "kashiwa-bar-02",
+        "name": "Outdoor Chill Dining WARMTH 柏",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 4,
+        "late_hours": "翌4:00まで営業",
+        "seating_vibe": "おしゃれなカウンター＆チル空間",
+        "budget": "¥2,000〜¥3,500",
+        "features": [
+          "翌4時営業",
+          "カウンター席あり",
+          "夜カフェ利用可"
+        ],
+        "map_query": "Outdoor Chill Dining WARMTH 柏",
+        "route_tip": "東口通り沿いへ徒歩4分。アウトドアチルをテーマにした開放感あるダイニングバー。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "カフェのような居心地の良さと美味しいお酒。深夜でもリラックスして語り合えます。"
+      }
+    ],
+    "oriental-lounge-utsunomiya": [
+      {
+        "id": "utsunomiya-cafe-01",
+        "name": "coffee × bar maru",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 2,
+        "late_hours": "翌1:00まで営業",
+        "seating_vibe": "落ち着いたカウンター席・スペシャルティコーヒー",
+        "budget": "¥1,500〜¥2,800",
+        "features": [
+          "夜パフェ",
+          "コーヒーカクテル",
+          "カウンター席"
+        ],
+        "map_query": "coffee bar maru 宇都宮 池上町",
+        "route_tip": "オリオン通りから池上町方面へ徒歩2分。夜パフェとこだわりのコーヒーカクテルが評判。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "カクテルだけでなく本格コーヒーや夜パフェも揃う。女性を最も誘いやすい宇都宮屈指の夜カフェ。"
+      },
+      {
+        "id": "utsunomiya-bar-01",
+        "name": "BAR ルシファー",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 2,
+        "late_hours": "翌3:00まで営業",
+        "seating_vibe": "大人の隠れ家カウンター・季節の生フルーツ",
+        "budget": "¥2,500〜¥4,000",
+        "features": [
+          "生フルーツカクテル",
+          "カウンター席",
+          "落ち着いた空間"
+        ],
+        "map_query": "BAR ルシファー 宇都宮 オリオン通り",
+        "route_tip": "オリオン通りから路地へ入ってすぐ徒歩2分。季節のフルーツを使った絶品カクテル。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "フレッシュフルーツカクテルで女性受け抜群。横並びのカウンターで静かに会話を楽しめます。"
+      }
+    ],
+    "oriental-lounge-takasaki": [
+      {
+        "id": "takasaki-cafe-01",
+        "name": "Sweets & Bar THE 4TH",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 4,
+        "late_hours": "23:00まで営業（金土）",
+        "seating_vibe": "シックなバーカウンター・本格スイーツペアリング",
+        "budget": "¥1,800〜¥3,000",
+        "features": [
+          "夜パフェ",
+          "スイーツとお酒",
+          "おしゃれ空間"
+        ],
+        "map_query": "Sweets Bar THE 4TH 高崎 連雀町",
+        "route_tip": "西口から連雀町方面へ徒歩4分。シックなカウンターで本格パフェとお酒を楽しめる名店。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "お酒とスイーツのマリアージュが楽しめる大人空間。終電前の2軒目デートに最適です。"
+      },
+      {
+        "id": "takasaki-bar-01",
+        "name": "BAR BARREL 高崎",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 3,
+        "late_hours": "翌3:00まで営業",
+        "seating_vibe": "重厚なオーセンティックカウンター席",
+        "budget": "¥2,500〜¥4,000",
+        "features": [
+          "本格バー",
+          "カウンター席",
+          "豊富なウイスキー"
+        ],
+        "map_query": "BAR BARREL 高崎 通町",
+        "route_tip": "高崎駅西口・通町方面へ徒歩3分。落ち着いた照明と豊富なウイスキーが揃う隠れ家。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "静かな空間でじっくり話したい夜に。マスターの丁寧なカクテルで大人の時間を演出できます。"
+      }
+    ],
+    "oriental-lounge-osaka-ekimae": [
+      {
+        "id": "osaka-ekimae-bar-01",
+        "name": "BAR 樽 梅田",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 2,
+        "late_hours": "翌2:00まで営業",
+        "seating_vibe": "重厚なウッドカウンター・老舗の落ち着き",
+        "budget": "¥2,500〜¥4,000",
+        "features": [
+          "老舗バー",
+          "カウンター席",
+          "本格カクテル"
+        ],
+        "map_query": "BAR 樽 梅田 曽根崎 お初天神",
+        "route_tip": "お初天神通りへ徒歩2分。半世紀以上の歴史を誇る落ち着いた大人のバー。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "梅田の喧騒から逃れて落ち着いた会話ができる名店。横並びカウンターで自然と距離が近づきます。"
+      },
+      {
+        "id": "osaka-ekimae-bar-02",
+        "name": "ワインと燻製バー 2nd Room 梅田",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 2,
+        "late_hours": "翌3:00まで営業",
+        "seating_vibe": "お初天神裏参道の隠れ家カウンター席",
+        "budget": "¥2,500〜¥3,800",
+        "features": [
+          "お初天神裏参道",
+          "カウンター席",
+          "ワインと燻製"
+        ],
+        "map_query": "ワインと燻製バー 2nd Room 梅田 お初天神裏参道",
+        "route_tip": "お初天神裏参道へ徒歩2分。活気ある路地裏に佇むおしゃれな燻製ワインバー。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "裏参道の雰囲気抜群なロケーション。自家製燻製とワインで会話のきっかけに困りません。"
+      }
+    ],
+    "ag-umeda": [
+      {
+        "id": "ag-umeda-cafe-01",
+        "name": "cafe & bar marble 梅田",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 2,
+        "late_hours": "翌2:00まで営業",
+        "seating_vibe": "落ち着いた間接照明・ソファ＆カウンター",
+        "budget": "¥1,200〜¥2,200",
+        "features": [
+          "夜カフェ",
+          "ソファ席あり",
+          "スイーツ充実"
+        ],
+        "map_query": "cafe bar marble 梅田 阪急東通り",
+        "route_tip": "阪急東通り商店街を抜けてすぐ徒歩2分。深夜でも絶品スイーツとコーヒーが楽しめる夜カフェ。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "東通りの喧騒を忘れてまったり話せる人気店。甘いスイーツとお酒で会話が弾みます。"
+      },
+      {
+        "id": "ag-umeda-shisha-01",
+        "name": "C.STAND 梅田東通り店",
+        "category": "shisha",
+        "category_label": "シーシャ",
+        "walk_minutes": 2,
+        "late_hours": "翌5:00まで営業",
+        "seating_vibe": "ゆったりソファ席・リラックス空間",
+        "budget": "¥2,000〜¥3,000",
+        "features": [
+          "ソファ席",
+          "朝5時まで営業",
+          "持ち込み自由"
+        ],
+        "map_query": "C.STAND 梅田東通り店",
+        "route_tip": "東通り沿いへ徒歩2分。広々としたソファでゆったり会話を楽しめるシーシャカフェ。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "お酒が強くない相手とも自然に過ごせるチルスポット。終電後も朝までゆっくり話せます。"
+      }
+    ],
+    "jis-umeda": [
+      {
+        "id": "jis-umeda-bar-01",
+        "name": "BAR 樽 梅田",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 2,
+        "late_hours": "翌2:00まで営業",
+        "seating_vibe": "重厚なウッドカウンター席",
+        "budget": "¥2,500〜¥4,000",
+        "features": [
+          "老舗バー",
+          "カウンター席",
+          "本格カクテル"
+        ],
+        "map_query": "BAR 樽 梅田 曽根崎 お初天神",
+        "route_tip": "お初天神通り出口から徒歩2分。落ち着いた空間でじっくり語り合えるオーセンティックバー。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "JIS（ジス）梅田の大型空間から静かなバーへ。横並びのカウンターで親密度が高まります。"
+      },
+      {
+        "id": "jis-umeda-bar-02",
+        "name": "ワインと燻製バー 2nd Room 梅田",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 2,
+        "late_hours": "翌3:00まで営業",
+        "seating_vibe": "お初天神裏参道のおしゃれカウンター",
+        "budget": "¥2,500〜¥3,800",
+        "features": [
+          "裏参道隠れ家",
+          "カウンター席",
+          "ワイン充実"
+        ],
+        "map_query": "ワインと燻製バー 2nd Room 梅田 お初天神裏参道",
+        "route_tip": "お初天神裏参道へ徒歩2分。デートに最適な大人の隠れ家ワインバー。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "活気ある路地裏から一歩入った落ち着き。ワイン片手に深い会話が楽しめます。"
+      }
+    ],
+    "jis-chayamachi": [
+      {
+        "id": "jis-chayamachi-cafe-01",
+        "name": "cafe & bar marble 茶屋町",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 2,
+        "late_hours": "翌2:00まで営業",
+        "seating_vibe": "スタイリッシュなソファ＆カウンター席",
+        "budget": "¥1,200〜¥2,200",
+        "features": [
+          "夜カフェ",
+          "ソファ席あり",
+          "スイーツ充実"
+        ],
+        "map_query": "cafe bar marble 梅田 茶屋町",
+        "route_tip": "茶屋町のロフト・NU茶屋町裏手へ徒歩2分。お洒落な店内でスイーツやカクテルを満喫。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "茶屋町らしい洗練された夜カフェ。落ち着いた照明で2人の距離が縮まります。"
+      },
+      {
+        "id": "jis-chayamachi-shisha-01",
+        "name": "C.STAND 梅田茶屋町店",
+        "category": "shisha",
+        "category_label": "シーシャ",
+        "walk_minutes": 2,
+        "late_hours": "翌5:00まで営業",
+        "seating_vibe": "ゆったりソファ席・リラックス空間",
+        "budget": "¥2,000〜¥3,000",
+        "features": [
+          "ソファ席完備",
+          "朝5時まで営業",
+          "リラックス空間"
+        ],
+        "map_query": "C.STAND 梅田茶屋町店",
+        "route_tip": "茶屋町のメインストリートから徒歩2分。開放感あるソファでまったりくつろげます。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "終電後も朝まで安心して過ごせるシーシャカフェ。ゆったりソファで会話が途切れません。"
+      }
+    ],
+    "yatakoi-umeda": [
+      {
+        "id": "yatakoi-cafe-01",
+        "name": "cafe & bar marble 茶屋町",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 2,
+        "late_hours": "翌2:00まで営業",
+        "seating_vibe": "シックな間接照明・ソファ＆カウンター",
+        "budget": "¥1,200〜¥2,200",
+        "features": [
+          "夜カフェ",
+          "ソファ席",
+          "落ち着いた空間"
+        ],
+        "map_query": "cafe bar marble 梅田 茶屋町",
+        "route_tip": "茶屋町の路地裏へ徒歩2分。屋台村の賑やかさから落ち着いたカフェ空間へスムーズに移動。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "屋台村で打ち解けた後に「静かなカフェで話そう」と誘いやすい定番夜カフェ。"
+      },
+      {
+        "id": "yatakoi-shisha-01",
+        "name": "C.STAND 梅田茶屋町店",
+        "category": "shisha",
+        "category_label": "シーシャ",
+        "walk_minutes": 1,
+        "late_hours": "翌5:00まで営業",
+        "seating_vibe": "ゆったりソファ席・朝5時まで営業",
+        "budget": "¥2,000〜¥3,000",
+        "features": [
+          "徒歩1分",
+          "ソファ席",
+          "深夜営業"
+        ],
+        "map_query": "C.STAND 梅田茶屋町店",
+        "route_tip": "ヤタコイのビルから目と鼻の先（徒歩1分）。すぐに座れる快適なソファ空間。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "移動時間ゼロで2軒目へ。疲れることなくスムーズに次の展開へエスコートできます。"
+      }
+    ],
+    "asobibar-umeda": [
+      {
+        "id": "asobibar-umeda-cafe-01",
+        "name": "cafe & bar marble 梅田",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 2,
+        "late_hours": "翌2:00まで営業",
+        "seating_vibe": "落ち着いた間接照明・ソファ＆カウンター",
+        "budget": "¥1,200〜¥2,200",
+        "features": [
+          "夜カフェ",
+          "スイーツ充実",
+          "落ち着いた空間"
+        ],
+        "map_query": "cafe bar marble 梅田 阪急東通り",
+        "route_tip": "東通り商店街を徒歩2分。ゲームやダーツで盛り上がった後のクールダウンに最適。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "テンション高く楽しんだ後に、落ち着いたソファでゆっくり本音を話せる夜カフェ。"
+      },
+      {
+        "id": "asobibar-umeda-shisha-01",
+        "name": "C.STAND 梅田東通り店",
+        "category": "shisha",
+        "category_label": "シーシャ",
+        "walk_minutes": 1,
+        "late_hours": "翌5:00まで営業",
+        "seating_vibe": "ゆったりソファ席・リラックス空間",
+        "budget": "¥2,000〜¥3,000",
+        "features": [
+          "徒歩1分",
+          "ソファ席",
+          "朝5時営業"
+        ],
+        "map_query": "C.STAND 梅田東通り店",
+        "route_tip": "東通り沿い徒歩1分。朝まで開いている安心のシーシャカフェ。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "スタンディングバーの疲れを癒やす快適なソファ席。自然と距離を縮められます。"
+      }
+    ],
+    "asobibar-chayamachi": [
+      {
+        "id": "asobibar-chayamachi-shisha-01",
+        "name": "C.STAND 梅田茶屋町店",
+        "category": "shisha",
+        "category_label": "シーシャ",
+        "walk_minutes": 1,
+        "late_hours": "翌5:00まで営業",
+        "seating_vibe": "ゆったりソファ席・朝5時まで営業",
+        "budget": "¥2,000〜¥3,000",
+        "features": [
+          "徒歩1分",
+          "ソファ席",
+          "朝まで営業"
+        ],
+        "map_query": "C.STAND 梅田茶屋町店",
+        "route_tip": "茶屋町出口すぐ徒歩1分。落ち着いた照明のソファ席へスムーズに合流。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "賑やかなバーから歩いてすぐのチル空間。朝までゆっくり語り合えます。"
+      },
+      {
+        "id": "asobibar-chayamachi-cafe-01",
+        "name": "cafe & bar marble 茶屋町",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 2,
+        "late_hours": "翌2:00まで営業",
+        "seating_vibe": "スタイリッシュなソファ＆カウンター席",
+        "budget": "¥1,200〜¥2,200",
+        "features": [
+          "夜カフェ",
+          "スイーツ充実",
+          "おしゃれ空間"
+        ],
+        "map_query": "cafe bar marble 梅田 茶屋町",
+        "route_tip": "茶屋町ロフト方面へ徒歩2分。スイーツとお酒を楽しめる大人の夜カフェ。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "甘いデザートと落ち着いた音楽でリラックス。好印象を残す締めくくりにぴったり。"
+      }
+    ],
+    "oriental-lounge-tenma": [
+      {
+        "id": "tenma-bar-01",
+        "name": "天満ワイン酒場 ぽんと",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 2,
+        "late_hours": "翌3:00まで営業",
+        "seating_vibe": "カウンター席・大人のワインバル",
+        "budget": "¥2,000〜¥3,500",
+        "features": [
+          "ワイン充実",
+          "カウンター席",
+          "天満駅徒歩2分"
+        ],
+        "map_query": "天満ワイン酒場 ぽんと 天満駅前",
+        "route_tip": "天満駅前出口から徒歩2分。提灯通りの喧騒から少し離れた落ち着いたワインバル。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "天満の活気を感じつつも落ち着いて話せるカウンター。グラスワインと小皿料理が豊富。"
+      },
+      {
+        "id": "tenma-cafe-01",
+        "name": "夜カフェ＆バー 天満 Base",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 3,
+        "late_hours": "翌2:00まで営業",
+        "seating_vibe": "隠れ家カウンター＆ソファ・デザート充実",
+        "budget": "¥1,500〜¥2,800",
+        "features": [
+          "夜カフェ",
+          "カウンター席あり",
+          "深夜スイーツ"
+        ],
+        "map_query": "天満 Base 夜カフェ 天満 池田町",
+        "route_tip": "池田町方面へ徒歩3分。大衆酒場の街・天満で深夜にスイーツを楽しめる隠れ家カフェ。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "お酒の後の一息に最適。「スイーツ食べに行こう」でスマートに誘い出せます。"
+      }
+    ],
+    "oriental-lounge-shinsaibashi": [
+      {
+        "id": "shinsaibashi-cafe-01",
+        "name": "夜パフェ専門店 パフェテリア パル 心斎橋",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 3,
+        "late_hours": "翌1:00まで営業（金土翌2:00）",
+        "seating_vibe": "カウンター席・洗練されたシメパフェ空間",
+        "budget": "¥1,800〜¥2,800",
+        "features": [
+          "シメパフェ",
+          "カウンター席あり",
+          "映えスイーツ"
+        ],
+        "map_query": "夜パフェ専門店 パフェテリア パル 心斎橋 東心斎橋",
+        "route_tip": "東心斎橋のビル出口から徒歩3分。「甘いもの食べに行かない？」で最も成功率の高いシメパフェ名店。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "お酒の後に最高の一杯。カウンター席で横並びになりながらスイーツをシェアできます。"
+      },
+      {
+        "id": "shinsaibashi-bar-01",
+        "name": "Bar Nayuta",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 3,
+        "late_hours": "翌3:00まで営業",
+        "seating_vibe": "隠し扉の奥の幻想的カウンターバー",
+        "budget": "¥2,500〜¥4,500",
+        "features": [
+          "隠し扉",
+          "本格カクテル",
+          "横並びカウンター"
+        ],
+        "map_query": "Bar Nayuta アメリカ村 心斎橋",
+        "route_tip": "アメ村三角公園近くへ徒歩3分。看板のない隠し扉を開けて入る幻想的なバー。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "扉を開けた瞬間に歓声が上がる隠れ家。相手に強い特別感を与えられる勝負バー。"
+      }
+    ],
+    "asobibar-shinsaibashi": [
+      {
+        "id": "asobibar-shinsaibashi-cafe-01",
+        "name": "夜パフェ専門店 パフェテリア パル 心斎橋",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 2,
+        "late_hours": "翌1:00まで営業（金土翌2:00）",
+        "seating_vibe": "カウンター席・シメパフェ空間",
+        "budget": "¥1,800〜¥2,800",
+        "features": [
+          "シメパフェ",
+          "カウンター席",
+          "女性人気"
+        ],
+        "map_query": "夜パフェ専門店 パフェテリア パル 心斎橋 東心斎橋",
+        "route_tip": "心斎橋筋から東心斎橋方面へ徒歩2分。アミューズメント後に落ち着いたデザートタイム。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "スタンディングで盛り上がった後のクールダウンに最適。絶品パフェで会話が盛り上がります。"
+      },
+      {
+        "id": "asobibar-shinsaibashi-bar-01",
+        "name": "Bar Nayuta",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 3,
+        "late_hours": "翌3:00まで営業",
+        "seating_vibe": "隠し扉・幻想的なカウンター席",
+        "budget": "¥2,500〜¥4,500",
+        "features": [
+          "隠れ家バー",
+          "本格カクテル",
+          "特別な空間"
+        ],
+        "map_query": "Bar Nayuta アメリカ村 心斎橋",
+        "route_tip": "アメ村方面へ徒歩3分。看板のない隠し扉を開ける驚きのエスコート。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "カジュアルなバーから一転して幻想的な大人の空間へ。ギャップで惹きつけられます。"
+      }
+    ],
+    "oriental-lounge-namba": [
+      {
+        "id": "namba-bar-01",
+        "name": "BAR サウス",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 2,
+        "late_hours": "翌3:00まで営業",
+        "seating_vibe": "宗右衛門町の落ち着いたカウンターバー",
+        "budget": "¥2,000〜¥3,500",
+        "features": [
+          "カウンター席",
+          "本格カクテル",
+          "宗右衛門町すぐ"
+        ],
+        "map_query": "BAR サウス 宗右衛門町 難波",
+        "route_tip": "道頓堀から宗右衛門町へ徒歩2分。歓楽街の路地裏に佇む落ち着いたバー。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "ミナミの喧騒から離れて2人でゆっくり話せる名店。マスターの気配りも心地よい空間。"
+      },
+      {
+        "id": "namba-shisha-01",
+        "name": "C.STAND 難波店",
+        "category": "shisha",
+        "category_label": "シーシャ",
+        "walk_minutes": 3,
+        "late_hours": "翌5:00まで営業",
+        "seating_vibe": "広々ソファ席・リラックス空間",
+        "budget": "¥2,000〜¥3,000",
+        "features": [
+          "ソファ席",
+          "朝5時まで営業",
+          "持ち込みOK"
+        ],
+        "map_query": "C.STAND 難波店 道頓堀",
+        "route_tip": "なんば駅方面へ徒歩3分。終電後も朝までゆっくりくつろげるソファ席。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "お酒が強くない相手ともまったり過ごせるチルスポット。横並びソファで自然と親密に。"
+      }
+    ],
+    "jis-namba": [
+      {
+        "id": "jis-namba-bar-01",
+        "name": "BAR サウス",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 1,
+        "late_hours": "翌3:00まで営業",
+        "seating_vibe": "宗右衛門町の落ち着いたカウンター席",
+        "budget": "¥2,000〜¥3,500",
+        "features": [
+          "徒歩1分",
+          "カウンター席",
+          "本格カクテル"
+        ],
+        "map_query": "BAR サウス 宗右衛門町 難波",
+        "route_tip": "JIS（ジス）難波のビルを出てすぐ宗右衛門町沿いへ徒歩1分。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "徒歩1分の至近距離。歩かせずにスマートに大人のカウンターバーへ案内できます。"
+      },
+      {
+        "id": "jis-namba-shisha-01",
+        "name": "C.STAND 難波店",
+        "category": "shisha",
+        "category_label": "シーシャ",
+        "walk_minutes": 2,
+        "late_hours": "翌5:00まで営業",
+        "seating_vibe": "広々ソファ席・朝5時まで営業",
+        "budget": "¥2,000〜¥3,000",
+        "features": [
+          "ソファ席",
+          "朝5時営業",
+          "リラックス"
+        ],
+        "map_query": "C.STAND 難波店 道頓堀",
+        "route_tip": "道頓堀方面へ徒歩2分。ゆったりしたソファで朝までくつろげます。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "大型ラウンジの熱気を冷ますリラックス空間。深い会話に最適なソファ席。"
+      }
+    ],
+    "oriental-lounge-kyoto": [
+      {
+        "id": "kyoto-bar-01",
+        "name": "BAR K6",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 4,
+        "late_hours": "翌2:00まで営業",
+        "seating_vibe": "木屋町の伝説的オーセンティックカウンター",
+        "budget": "¥3,000〜¥5,000",
+        "features": [
+          "老舗名店",
+          "カウンター席",
+          "本格カクテル"
+        ],
+        "map_query": "BAR K6 京都 木屋町",
+        "route_tip": "河原町出口から木屋町通を北へ徒歩4分。京都のバー文化を牽引する最高峰のバー。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "京都の夜を彩る憧れの名店。重厚なカウンターと最高の一杯で忘れられない夜に。"
+      },
+      {
+        "id": "kyoto-cafe-01",
+        "name": "cafe & bar 席 木屋町",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 2,
+        "late_hours": "翌2:00まで営業",
+        "seating_vibe": "高瀬川沿いの風情あるカフェバー",
+        "budget": "¥1,200〜¥2,500",
+        "features": [
+          "高瀬川沿い",
+          "カウンターあり",
+          "夜カフェ"
+        ],
+        "map_query": "cafe bar 席 京都 木屋町 高瀬川",
+        "route_tip": "高瀬川のせせらぎ沿いへ徒歩2分。京都らしい情緒ある夜カフェ＆バー。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "川沿いのロマンチックなロケーション。お酒も甘いものも楽しめる京都屈指の夜カフェ。"
+      }
+    ],
+    "oriental-lounge-kobe": [
+      {
+        "id": "kobe-bar-01",
+        "name": "BAR 槿（あさがお）",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 3,
+        "late_hours": "翌2:00まで営業",
+        "seating_vibe": "三宮の落ち着いた大人のカウンター席",
+        "budget": "¥2,500〜¥4,000",
+        "features": [
+          "本格カクテル",
+          "カウンター席",
+          "落ち着いた空間"
+        ],
+        "map_query": "BAR 槿 神戸 三宮",
+        "route_tip": "生田ロードから北野坂方面へ徒歩3分。神戸らしい上質な空気が流れるバー。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "神戸の洗練された夜を満喫できる名店。落ち着いたカウンターでじっくり話せます。"
+      },
+      {
+        "id": "kobe-cafe-01",
+        "name": "夜パフェ専門店 モメトオイデ 神戸三宮",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 2,
+        "late_hours": "24:00まで営業",
+        "seating_vibe": "カウンター席・シメパフェ空間",
+        "budget": "¥1,800〜¥2,800",
+        "features": [
+          "夜パフェ",
+          "カウンター席あり",
+          "映えスイーツ"
+        ],
+        "map_query": "夜パフェ専門店 モメトオイデ 神戸三宮 生田ロード",
+        "route_tip": "生田ロード沿いすぐ徒歩2分。三宮で大人気のシメパフェ専門店。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "お酒の後に最高のご褒美。カウンター席でパフェをシェアしながら笑顔が生まれます。"
+      }
+    ],
+    "asobibar-kobe-sannomiya": [
+      {
+        "id": "asobibar-kobe-cafe-01",
+        "name": "夜パフェ専門店 モメトオイデ 神戸三宮",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 2,
+        "late_hours": "24:00まで営業",
+        "seating_vibe": "カウンター席・シメパフェ空間",
+        "budget": "¥1,800〜¥2,800",
+        "features": [
+          "夜パフェ",
+          "カウンター席",
+          "女性人気"
+        ],
+        "map_query": "夜パフェ専門店 モメトオイデ 神戸三宮 生田ロード",
+        "route_tip": "生田ロード沿い徒歩2分。アミューズメント後に立ち寄りやすい絶品スイーツ。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "「パフェ食べに行かない？」の誘い文句が驚くほど通りやすい鉄板の2軒目。"
+      },
+      {
+        "id": "asobibar-kobe-bar-01",
+        "name": "BAR 槿（あさがお）",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 3,
+        "late_hours": "翌2:00まで営業",
+        "seating_vibe": "三宮の落ち着いたカウンター席",
+        "budget": "¥2,500〜¥4,000",
+        "features": [
+          "本格カクテル",
+          "カウンター席",
+          "隠れ家"
+        ],
+        "map_query": "BAR 槿 神戸 三宮",
+        "route_tip": "生田ロード裏手へ徒歩3分。カジュアルなバーから落ち着いた大人のバーへ。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "ギャップで惹きつけるスマートなエスコート。横並びのカウンターで親密度が高まります。"
+      }
+    ],
+    "oriental-lounge-nagoya-nishiki": [
+      {
+        "id": "nagoya-nishiki-bar-01",
+        "name": "BAR YLANG YLANG",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 2,
+        "late_hours": "翌3:00まで営業",
+        "seating_vibe": "錦三丁目の大人のオーセンティックカウンター",
+        "budget": "¥2,500〜¥4,500",
+        "features": [
+          "本格カクテル",
+          "カウンター席",
+          "落ち着いた大人の空間"
+        ],
+        "map_query": "BAR YLANG YLANG 名古屋 錦三丁目",
+        "route_tip": "錦三丁目のビル出口から徒歩2分。錦の喧騒を忘れさせる静謐なカウンターバー。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "洗練された大人の夜を演出。横並びのカウンターで特別な時間を過ごせます。"
+      },
+      {
+        "id": "nagoya-nishiki-shisha-01",
+        "name": "C.STAND 名古屋錦通り店",
+        "category": "shisha",
+        "category_label": "シーシャ",
+        "walk_minutes": 2,
+        "late_hours": "翌5:00まで営業",
+        "seating_vibe": "ゆったりソファ席・リラックス空間",
+        "budget": "¥2,000〜¥3,000",
+        "features": [
+          "ソファ席",
+          "朝5時まで営業",
+          "ゆったり会話"
+        ],
+        "map_query": "C.STAND 名古屋錦通り店 栄",
+        "route_tip": "錦通り沿いへ徒歩2分。落ち着いた間接照明のソファでリラックス。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "お酒が強くない相手とも朝までゆったり語り合える人気チルスポット。"
+      }
+    ],
+    "oriental-lounge-nagoya-sakae": [
+      {
+        "id": "nagoya-sakae-cafe-01",
+        "name": "夜パフェ専門店 モメトオイデ 栄",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 2,
+        "late_hours": "翌1:00まで営業",
+        "seating_vibe": "カウンター席・シメパフェ空間",
+        "budget": "¥1,800〜¥2,800",
+        "features": [
+          "夜パフェ",
+          "カウンター席あり",
+          "女性人気抜群"
+        ],
+        "map_query": "夜パフェ専門店 モメトオイデ 名古屋 栄三丁目",
+        "route_tip": "栄三丁目交差点近くへ徒歩2分。「甘いもの食べに行こう」でスムーズに誘い出せます。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "栄エリアで大人気のシメパフェ。カウンター席でスイーツをシェアしながら盛り上がれます。"
+      },
+      {
+        "id": "nagoya-sakae-bar-01",
+        "name": "BAR BARNS",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 4,
+        "late_hours": "24:00まで営業",
+        "seating_vibe": "日本屈指のオーセンティックカウンター席",
+        "budget": "¥3,000〜¥5,000",
+        "features": [
+          "全国屈指の名店",
+          "本格カクテル",
+          "静かな空間"
+        ],
+        "map_query": "BAR BARNS 名古屋 伏見 栄",
+        "route_tip": "伏見・広小路通方面へ徒歩4分。全国のバーファンが集う最高峰のバー。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "最高品質のカクテルとおもてなし。絶対に失敗したくない本命デートの2軒目に。"
+      }
+    ],
+    "ag-nagoya": [
+      {
+        "id": "ag-nagoya-cafe-01",
+        "name": "夜パフェ専門店 モメトオイデ 栄",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 3,
+        "late_hours": "翌1:00まで営業",
+        "seating_vibe": "カウンター席・映えスイーツ空間",
+        "budget": "¥1,800〜¥2,800",
+        "features": [
+          "シメパフェ",
+          "カウンター席",
+          "女性人気"
+        ],
+        "map_query": "夜パフェ専門店 モメトオイデ 名古屋 栄三丁目",
+        "route_tip": "住吉・プリンセス大通り裏へ徒歩3分。女性受け抜群のシメパフェ専門店。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "若い活気あるラウンジを出た後に最適。甘いパフェで自然と笑顔が生まれます。"
+      },
+      {
+        "id": "ag-nagoya-shisha-01",
+        "name": "C.STAND 名古屋錦通り店",
+        "category": "shisha",
+        "category_label": "シーシャ",
+        "walk_minutes": 3,
+        "late_hours": "翌5:00まで営業",
+        "seating_vibe": "ゆったりソファ席・朝5時まで営業",
+        "budget": "¥2,000〜¥3,000",
+        "features": [
+          "ソファ席",
+          "朝5時営業",
+          "リラックス"
+        ],
+        "map_query": "C.STAND 名古屋錦通り店 栄",
+        "route_tip": "錦通り方面へ徒歩3分。朝まで安心して過ごせる広々ソファ席。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "ゆったりソファで深く語り合える空間。終電後も落ち着いて過ごせます。"
+      }
+    ],
+    "asobibar-nagoya-sakae": [
+      {
+        "id": "asobibar-nagoya-sakae-bar-01",
+        "name": "BAR YLANG YLANG",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 2,
+        "late_hours": "翌3:00まで営業",
+        "seating_vibe": "落ち着いた大人のカウンター席",
+        "budget": "¥2,500〜¥4,500",
+        "features": [
+          "本格カクテル",
+          "カウンター席",
+          "大人の隠れ家"
+        ],
+        "map_query": "BAR YLANG YLANG 名古屋 錦三丁目",
+        "route_tip": "錦三丁目出口から徒歩2分。アミューズメント後に静かな大人のバーへ。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "盛り上がった後のクールダウンに。横並びのカウンターで親密度が高まります。"
+      },
+      {
+        "id": "asobibar-nagoya-sakae-shisha-01",
+        "name": "C.STAND 名古屋錦通り店",
+        "category": "shisha",
+        "category_label": "シーシャ",
+        "walk_minutes": 1,
+        "late_hours": "翌5:00まで営業",
+        "seating_vibe": "ゆったりソファ席・朝5時まで営業",
+        "budget": "¥2,000〜¥3,000",
+        "features": [
+          "徒歩1分",
+          "ソファ席",
+          "朝まで営業"
+        ],
+        "map_query": "C.STAND 名古屋錦通り店 栄",
+        "route_tip": "錦通り沿い徒歩1分。朝まで開いている安心のシーシャ空間。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "スタンディングの疲れを癒やすふかふかソファ。会話が自然に弾みます。"
+      }
+    ],
+    "asobibar-nagoya-sumiyoshi": [
+      {
+        "id": "asobibar-sumiyoshi-cafe-01",
+        "name": "夜パフェ専門店 モメトオイデ 栄",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 2,
+        "late_hours": "翌1:00まで営業",
+        "seating_vibe": "カウンター席・シメパフェ空間",
+        "budget": "¥1,800〜¥2,800",
+        "features": [
+          "夜パフェ",
+          "カウンター席",
+          "女性人気"
+        ],
+        "map_query": "夜パフェ専門店 モメトオイデ 名古屋 栄三丁目",
+        "route_tip": "住吉からプリンセス大通り方面へ徒歩2分。見た目も華やかな大人の夜パフェ。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "女性をスマートに誘い出せる鉄板スポット。カウンターでスイーツをシェアできます。"
+      },
+      {
+        "id": "asobibar-sumiyoshi-bar-01",
+        "name": "BAR BARNS",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 3,
+        "late_hours": "24:00まで営業",
+        "seating_vibe": "日本屈指のオーセンティックカウンター",
+        "budget": "¥3,000〜¥5,000",
+        "features": [
+          "全国屈指の名店",
+          "本格カクテル",
+          "静かな空間"
+        ],
+        "map_query": "BAR BARNS 名古屋 伏見 栄",
+        "route_tip": "伏見方面へ徒歩3分。最高峰のカクテルとおもてなし。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "カジュアルなバーから極上のオーセンティックバーへ。エスコート力の高さを印象づけられます。"
+      }
+    ],
+    "oriental-lounge-shizuoka": [
+      {
+        "id": "shizuoka-cafe-01",
+        "name": "the Light.",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 2,
+        "late_hours": "翌2:00まで営業",
+        "seating_vibe": "温かいライトに包まれた地下隠れ家・カウンター＆テーブル",
+        "budget": "¥1,500〜¥2,800",
+        "features": [
+          "夜カフェ営業",
+          "自家製スイーツ",
+          "カウンター席あり"
+        ],
+        "map_query": "the Light 静岡 両替町プラザビル",
+        "route_tip": "両替町通り沿い・両替町プラザビルB1Fへ徒歩2分。深夜2時まで夜カフェ営業する隠れ家。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "両替町の地下に佇む大人の夜カフェ。自家製デザートと美味しいお酒で会話が弾みます。"
+      },
+      {
+        "id": "shizuoka-bar-01",
+        "name": "Vintage Blue",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 2,
+        "late_hours": "翌3:00まで営業",
+        "seating_vibe": "大型水槽・アクアリウムカウンター＆カップルシート",
+        "budget": "¥2,500〜¥4,000",
+        "features": [
+          "水族館バー",
+          "カウンター席",
+          "幻想的な空間"
+        ],
+        "map_query": "Vintage Blue 静岡 両替町",
+        "route_tip": "両替町2丁目パレスビル7Fへ徒歩2分。熱帯魚が泳ぐ大型水槽に囲まれた幻想的空間。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "まるで夜空に浮かぶ水族館。幻想的なアクアリウムとカクテルでムード満点です。"
+      }
+    ],
+    "oriental-lounge-hamamatsu": [
+      {
+        "id": "hamamatsu-cafe-01",
+        "name": "夜パフェ BAR ＆VIGO 浜松店",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 2,
+        "late_hours": "翌4:00まで営業",
+        "seating_vibe": "雰囲気の良いカウンター席（約15席）・夜パフェ空間",
+        "budget": "¥1,800〜¥2,800",
+        "features": [
+          "翌4時営業",
+          "カウンター席15席",
+          "美しい夜パフェ"
+        ],
+        "map_query": "夜パフェ BAR VIGO 浜松 鍛冶町",
+        "route_tip": "鍛冶町・有楽街すぐ徒歩2分。朝4時まで開いているカウンター夜パフェバー。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "有楽街すぐのシメパフェ専門店。カウンター席でスイーツとお酒を朝まで楽しめます。"
+      },
+      {
+        "id": "hamamatsu-bar-01",
+        "name": "WILL COFFEE & BAR",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 3,
+        "late_hours": "24:00まで営業",
+        "seating_vibe": "レンガ調・ヴィンテージ家具の落ち着いた大人の隠れ家",
+        "budget": "¥1,200〜¥2,500",
+        "features": [
+          "自家焙煎コーヒー",
+          "ヴィンテージ空間",
+          "バー利用可"
+        ],
+        "map_query": "WILL COFFEE BAR 浜松 田町",
+        "route_tip": "田町方面へ徒歩3分。レンガ調のお洒落な空間で本格コーヒーとお酒を満喫。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "コーヒーマイスターが淹れる本格派。落ち着いたヴィンテージ空間でまったり語り合えます。"
+      }
+    ],
+    "ag-kanazawa": [
+      {
+        "id": "kanazawa-cafe-01",
+        "name": "夜カフェMott. 金沢片町店",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 2,
+        "late_hours": "翌1:00まで営業",
+        "seating_vibe": "カウンター席・元ホテルバーテンダーのドリンク＆パフェ",
+        "budget": "¥1,500〜¥2,800",
+        "features": [
+          "夜パフェ",
+          "カウンター席あり",
+          "スイーツ充実"
+        ],
+        "map_query": "夜カフェ Mott 金沢片町 アパ片町ビル",
+        "route_tip": "片町スクランブル交差点近くアパ片町ビル9Fへ徒歩2分。金沢を代表する夜パフェ専門店。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "元ホテルバーテンダーが手がける絶品ドリンクとパフェ。女性を誘いやすい片町の人気店。"
+      },
+      {
+        "id": "kanazawa-bar-01",
+        "name": "バー GRiFFiTH",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 2,
+        "late_hours": "翌3:00まで営業（金土翌5:00）",
+        "seating_vibe": "カウンター14席・片町の夜景が見える大人の老舗バー",
+        "budget": "¥2,500〜¥4,000",
+        "features": [
+          "老舗バー",
+          "カウンター14席",
+          "朝5時まで営業"
+        ],
+        "map_query": "バー GRiFFiTH 金沢 片町 ポニービル",
+        "route_tip": "片町1丁目ポニービル2Fへ徒歩2分。250種以上の洋酒と旬の果実カクテルが揃う老舗。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "片町の夜景を望むカウンターで大人の語らい。旬のフルーツカクテルが女性に大人気。"
+      }
+    ],
+    "ag-sendai": [
+      {
+        "id": "sendai-cafe-01",
+        "name": "ano.café",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 2,
+        "late_hours": "翌2:00まで営業",
+        "seating_vibe": "おしゃれなカウンター席・オリジナルカクテル＆スイーツ",
+        "budget": "¥1,500〜¥2,800",
+        "features": [
+          "夜カフェ",
+          "オリジナルカクテル",
+          "カウンター席"
+        ],
+        "map_query": "ano cafe 仙台 国分町 勾当台公園",
+        "route_tip": "国分町2丁目出口から勾当台公園方面へ徒歩2分。女性一人でも入りやすいお洒落カフェバー。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "カフェ感覚で立ち寄れる夜カフェ。こだわりのカクテルとスイーツでリラックスできます。"
+      },
+      {
+        "id": "sendai-bar-01",
+        "name": "cafe & bar ワタリドリ",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 3,
+        "late_hours": "翌1:00まで営業",
+        "seating_vibe": "カウンター＆テーブル・落ち着く大人のバル空間",
+        "budget": "¥2,000〜¥3,500",
+        "features": [
+          "カフェ＆バル",
+          "カウンター席あり",
+          "落ち着いた照明"
+        ],
+        "map_query": "cafe bar ワタリドリ 仙台 一番町",
+        "route_tip": "一番町4丁目方面へ徒歩3分。居心地の良さと美味しいお酒が両立する隠れ家バル。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "一番町の路地裏に佇む落ち着いた空間。カウンターでゆっくりお酒を楽しめます。"
+      }
+    ],
+    "ag-hiroshima": [
+      {
+        "id": "hiroshima-cafe-01",
+        "name": "Dining Bar snooze",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 2,
+        "late_hours": "翌2:00まで営業",
+        "seating_vibe": "落ち着いた照明・パフェ＆カウンター席",
+        "budget": "¥1,800〜¥3,000",
+        "features": [
+          "夜パフェ",
+          "カウンター席あり",
+          "落ち着いた空間"
+        ],
+        "map_query": "Dining Bar snooze 広島 流川",
+        "route_tip": "新天地から流川町方面へ徒歩2分。流川エリアでありながら静かな空気が漂う夜カフェ＆バー。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "こだわりパフェとお酒を楽しめる大人の隠れ家。カウンターでゆったり会話できます。"
+      },
+      {
+        "id": "hiroshima-shisha-01",
+        "name": "C.STAND 広島流川通り店",
+        "category": "shisha",
+        "category_label": "シーシャ",
+        "walk_minutes": 2,
+        "late_hours": "翌5:00まで営業",
+        "seating_vibe": "ゆったりソファ席・朝5時まで営業",
+        "budget": "¥2,000〜¥3,000",
+        "features": [
+          "ソファ席",
+          "朝5時まで営業",
+          "リラックス"
+        ],
+        "map_query": "C.STAND 広島流川通り店 流川町",
+        "route_tip": "流川通り沿いへ徒歩2分。深夜でも快適に過ごせる広々としたソファ席。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "お酒が強くない相手ともまったり過ごせる空間。横並びソファで自然と距離が近づきます。"
+      }
+    ],
+    "clovers-hiroshima": [
+      {
+        "id": "clovers-hiroshima-cafe-01",
+        "name": "Dining Bar snooze",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 2,
+        "late_hours": "翌2:00まで営業",
+        "seating_vibe": "パフェとお酒・落ち着いたカウンター席",
+        "budget": "¥1,800〜¥3,000",
+        "features": [
+          "夜パフェ",
+          "カウンター席",
+          "隠れ家"
+        ],
+        "map_query": "Dining Bar snooze 広島 流川",
+        "route_tip": "流川のビル出口からすぐ徒歩2分。落ち着いた照明の静かな夜カフェ空間。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "流川で「甘いもの食べに行こう」と自然に誘える名店。カウンターで会話が弾みます。"
+      },
+      {
+        "id": "clovers-hiroshima-shisha-01",
+        "name": "C.STAND 広島流川通り店",
+        "category": "shisha",
+        "category_label": "シーシャ",
+        "walk_minutes": 2,
+        "late_hours": "翌5:00まで営業",
+        "seating_vibe": "ゆったりソファ席・朝5時営業",
+        "budget": "¥2,000〜¥3,000",
+        "features": [
+          "ソファ席",
+          "朝5時営業",
+          "リラックス"
+        ],
+        "map_query": "C.STAND 広島流川通り店 流川町",
+        "route_tip": "流川通り沿いへ徒歩2分。朝まで安心して過ごせる快適ソファ。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "終電後もゆっくり話せるチルスポット。落ち着いた照明でリラックスできます。"
+      }
+    ],
+    "alfa-hiroshima": [
+      {
+        "id": "alfa-hiroshima-cafe-01",
+        "name": "Dining Bar snooze",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 2,
+        "late_hours": "翌2:00まで営業",
+        "seating_vibe": "落ち着いた照明・パフェ＆カウンター席",
+        "budget": "¥1,800〜¥3,000",
+        "features": [
+          "夜パフェ",
+          "カウンター席",
+          "大人の隠れ家"
+        ],
+        "map_query": "Dining Bar snooze 広島 流川",
+        "route_tip": "流川通り裏手へ徒歩2分。スイーツとお酒でしっとり過ごせる夜カフェ＆バー。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "落ち着いたカウンター席で二人の距離が近づく。パフェの見た目も華やかです。"
+      },
+      {
+        "id": "alfa-hiroshima-shisha-01",
+        "name": "C.STAND 広島流川通り店",
+        "category": "shisha",
+        "category_label": "シーシャ",
+        "walk_minutes": 2,
+        "late_hours": "翌5:00まで営業",
+        "seating_vibe": "ゆったりソファ席・朝5時まで営業",
+        "budget": "¥2,000〜¥3,000",
+        "features": [
+          "ソファ席",
+          "朝5時営業",
+          "リラックス空間"
+        ],
+        "map_query": "C.STAND 広島流川通り店 流川町",
+        "route_tip": "流川通り沿いへ徒歩2分。広々としたソファでゆったりくつろげます。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "時間を気にせず朝まで語り合える安心の空間。横並びソファで自然と親密に。"
+      }
+    ],
+    "oriental-lounge-okayama": [
+      {
+        "id": "okayama-bar-01",
+        "name": "Café & Bar TACSUM",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 3,
+        "late_hours": "翌2:00まで営業",
+        "seating_vibe": "ステンドグラス扉・贅沢で広いカウンター席",
+        "budget": "¥2,500〜¥4,000",
+        "features": [
+          "隠れ家バー",
+          "贅沢カウンター",
+          "イタリア空間"
+        ],
+        "map_query": "Café Bar TACSUM 岡山 平和町",
+        "route_tip": "本町から平和町方面へ徒歩3分。ステンドグラスの扉が目印の隠れ家カフェバー。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "イタリアの風情漂う上質な隠れ家。贅沢なカウンター席で落ち着いた時間を過ごせます。"
+      },
+      {
+        "id": "okayama-cafe-01",
+        "name": "喫茶ほんまち",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 2,
+        "late_hours": "24:00まで営業",
+        "seating_vibe": "落ち着いた夜喫茶・絶品パフェ＆コーヒー",
+        "budget": "¥1,000〜¥2,000",
+        "features": [
+          "夜パフェ",
+          "落ち着いた喫茶",
+          "女性人気"
+        ],
+        "map_query": "喫茶ほんまち 岡山 本町",
+        "route_tip": "本町通りすぐ徒歩2分。深夜24時まで営業している大人気の夜カフェ喫茶。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "美味しいパフェとコーヒーで口直し。「パフェ食べに行かない？」でスムーズに誘えます。"
+      }
+    ],
+    "xix-okayama": [
+      {
+        "id": "xix-okayama-bar-01",
+        "name": "Café & Bar TACSUM",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 3,
+        "late_hours": "翌2:00まで営業",
+        "seating_vibe": "ステンドグラス扉・広いカウンター席",
+        "budget": "¥2,500〜¥4,000",
+        "features": [
+          "隠れ家バー",
+          "カウンター席",
+          "イタリア空間"
+        ],
+        "map_query": "Café Bar TACSUM 岡山 平和町",
+        "route_tip": "平和町方面へ徒歩3分。ステンドグラス扉の奥に広がる落ち着いた大人のバー。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "ラウンジを出た後に立ち寄りたい上質な空間。カウンターでじっくり語り合えます。"
+      },
+      {
+        "id": "xix-okayama-cafe-01",
+        "name": "喫茶ほんまち",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 2,
+        "late_hours": "24:00まで営業",
+        "seating_vibe": "夜喫茶・絶品パフェ＆コーヒー",
+        "budget": "¥1,000〜¥2,000",
+        "features": [
+          "夜パフェ",
+          "駅近",
+          "女性人気"
+        ],
+        "map_query": "喫茶ほんまち 岡山 本町",
+        "route_tip": "本町通り沿い徒歩2分。深夜24時までパフェが楽しめる人気喫茶。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "終電前のスマートなエスコートに最適。落ち着いた空間で会話が弾みます。"
+      }
+    ],
+    "jis-matsuyama": [
+      {
+        "id": "matsuyama-bar-01",
+        "name": "バール・カフェ kobako 大街道店",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 2,
+        "late_hours": "翌2:00まで営業",
+        "seating_vibe": "間接照明・BARカウンター＆本格ドルチェ",
+        "budget": "¥2,000〜¥3,500",
+        "features": [
+          "イタリアンバール",
+          "BARカウンター",
+          "本格ドルチェ"
+        ],
+        "map_query": "バール カフェ kobako 松山 大街道 三番町",
+        "route_tip": "大街道アーケードから三番町方面へ徒歩2分。間接照明が心地よいイタリアンバール＆カフェ。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "おしゃれなBARカウンターと本格ドルチェ。お酒も甘いものも楽しめる松山屈指の名店。"
+      },
+      {
+        "id": "matsuyama-bar-02",
+        "name": "Bar Freedom",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 2,
+        "late_hours": "翌4:00まで営業",
+        "seating_vibe": "カウンター席・落ち着いた大人のバー空間",
+        "budget": "¥2,500〜¥4,000",
+        "features": [
+          "翌4時まで営業",
+          "カウンター席",
+          "本格カクテル"
+        ],
+        "map_query": "Bar Freedom 松山 二番町 森恵ビル",
+        "route_tip": "二番町森恵ビルへ徒歩2分。朝4時まで開いている使い勝手抜群のオーセンティックバー。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "落ち着いたカウンター席で朝までゆったり。横並びの会話で自然と距離が近づきます。"
+      }
+    ],
+    "oriental-lounge-fukuoka": [
+      {
+        "id": "fukuoka-bar-01",
+        "name": "Bar Oscar",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 3,
+        "late_hours": "翌2:00まで営業",
+        "seating_vibe": "福岡を代表する重厚なオーセンティックカウンター",
+        "budget": "¥3,000〜¥5,000",
+        "features": [
+          "日本屈指の名店",
+          "本格カクテル",
+          "重厚カウンター"
+        ],
+        "map_query": "Bar Oscar 福岡 大名",
+        "route_tip": "大名2丁目のビル出口から徒歩3分。全国のバーファンが憧れる福岡最高峰のオーセンティックバー。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "洗練されたカクテルとおもてなし。絶対に失敗したくない大人のデートに。"
+      },
+      {
+        "id": "fukuoka-cafe-01",
+        "name": "夜パフェ専門店 パフェテリア ベル 福岡",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 2,
+        "late_hours": "翌1:00まで営業（金土翌2:00）",
+        "seating_vibe": "カウンター席・大人のシメパフェ空間",
+        "budget": "¥1,800〜¥2,800",
+        "features": [
+          "シメパフェ",
+          "カウンター席",
+          "女性人気抜群"
+        ],
+        "map_query": "夜パフェ専門店 パフェテリア ベル 福岡 今泉",
+        "route_tip": "今泉・国体道路方面へ徒歩2分。「甘いもの食べに行かない？」でスムーズに誘える名店。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "お酒の後に最高のご褒美。カウンター席でパフェをシェアしながら盛り上がれます。"
+      }
+    ],
+    "jis-fukuoka": [
+      {
+        "id": "jis-fukuoka-bar-01",
+        "name": "Bar Oscar",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 2,
+        "late_hours": "翌2:00まで営業",
+        "seating_vibe": "重厚なオーセンティックカウンター席",
+        "budget": "¥3,000〜¥5,000",
+        "features": [
+          "最高峰のバー",
+          "カウンター席",
+          "本格カクテル"
+        ],
+        "map_query": "Bar Oscar 福岡 大名",
+        "route_tip": "大名エリアすぐ徒歩2分。日本屈指の技術で振るわれるカクテルを満喫。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "大型ラウンジから最高級のバーへ。ギャップのあるエスコートで特別な夜を演出。"
+      },
+      {
+        "id": "jis-fukuoka-cafe-01",
+        "name": "夜パフェ専門店 パフェテリア ベル 福岡",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 3,
+        "late_hours": "翌1:00まで営業（金土翌2:00）",
+        "seating_vibe": "カウンター席・シメパフェ空間",
+        "budget": "¥1,800〜¥2,800",
+        "features": [
+          "夜パフェ",
+          "カウンター席あり",
+          "映えスイーツ"
+        ],
+        "map_query": "夜パフェ専門店 パフェテリア ベル 福岡 今泉",
+        "route_tip": "今泉方面へ徒歩3分。女性受け抜群のシメパフェ専門店。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "カウンターでパフェを楽しみながら自然と笑顔に。終電前のスマートな2軒目。"
+      }
+    ],
+    "asobibar-fukuoka-tenjin": [
+      {
+        "id": "asobibar-fukuoka-cafe-01",
+        "name": "夜パフェ専門店 パフェテリア ベル 福岡",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 2,
+        "late_hours": "翌1:00まで営業（金土翌2:00）",
+        "seating_vibe": "カウンター席・シメパフェ空間",
+        "budget": "¥1,800〜¥2,800",
+        "features": [
+          "夜パフェ",
+          "カウンター席",
+          "女性人気"
+        ],
+        "map_query": "夜パフェ専門店 パフェテリア ベル 福岡 今泉",
+        "route_tip": "大名・今泉方面へ徒歩2分。アミューズメント後に立ち寄りたい定番スイーツ。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "賑やかに遊んだ後に「甘いもの食べよう」と誘いやすい鉄板ルート。"
+      },
+      {
+        "id": "asobibar-fukuoka-bar-01",
+        "name": "Bar Oscar",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 2,
+        "late_hours": "翌2:00まで営業",
+        "seating_vibe": "重厚なオーセンティックカウンター",
+        "budget": "¥3,000〜¥5,000",
+        "features": [
+          "最高峰バー",
+          "カウンター席",
+          "本格カクテル"
+        ],
+        "map_query": "Bar Oscar 福岡 大名",
+        "route_tip": "大名1丁目へ徒歩2分。落ち着いた大人の空間でじっくり語り合えます。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "カジュアルなバーから本格バーへの華麗なエスコート。横並びのカウンターで親密度UP。"
+      }
+    ],
+    "oriental-lounge-kokura": [
+      {
+        "id": "kokura-bar-01",
+        "name": "cafe＆bar secret 小倉",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 2,
+        "late_hours": "翌3:00まで営業",
+        "seating_vibe": "黒を基調としたシックなカウンター席・落ち着いた大人の空間",
+        "budget": "¥2,000〜¥3,500",
+        "features": [
+          "シックなカウンター",
+          "絶品スイーツあり",
+          "落ち着いた雰囲気"
+        ],
+        "map_query": "cafe bar secret 小倉 鍛冶町",
+        "route_tip": "鍛冶町1丁目出口から徒歩2分。黒を基調とした洗練空間でカクテルやスイーツを楽しめます。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "落ち着いたカウンター席でしっぽり語れる隠れ家。スイーツやカフェメニューも充実。"
+      },
+      {
+        "id": "kokura-cafe-01",
+        "name": "Cafe & Bar DAISY",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 3,
+        "late_hours": "翌3:00まで営業",
+        "seating_vibe": "モノトーンの韓国風おしゃれカウンター＆テーブル",
+        "budget": "¥1,500〜¥2,800",
+        "features": [
+          "深夜3時まで営業",
+          "映えスイーツ",
+          "おしゃれ空間"
+        ],
+        "map_query": "Cafe Bar DAISY 小倉 魚町 みかげ通り",
+        "route_tip": "魚町2丁目みかげ通り沿いへ徒歩3分。深夜3時まで本格スイーツとカクテルを堪能。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "モノトーンの映える店内。女性が喜ぶスイーツとお酒で会話が弾みます。"
+      }
+    ],
+    "oriental-lounge-nagasaki": [
+      {
+        "id": "nagasaki-bar-01",
+        "name": "Bar Le・Cinq",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 0,
+        "late_hours": "翌3:00まで営業",
+        "seating_vibe": "同ビル2F・上質なカウンター席・大人の隠れ家",
+        "budget": "¥2,000〜¥3,500",
+        "features": [
+          "同じビル2階",
+          "カウンター席",
+          "本格カクテル"
+        ],
+        "map_query": "Bar Le Cinq 長崎 銅座町 リンクス銅座ビル",
+        "route_tip": "オリエンタルラウンジ長崎と同じリンクス銅座ビルの2F（徒歩0分）。外に出ずにそのままエスコート可能。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "移動時間ゼロで2軒目へ。雨の日や終電間際でもストレスフリーに落ち着いたカウンターへ案内できます。"
+      },
+      {
+        "id": "nagasaki-bar-02",
+        "name": "bar nagata",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 2,
+        "late_hours": "翌4:00まで営業",
+        "seating_vibe": "一枚板カウンター席・100種以上のウイスキーと旬のカクテル",
+        "budget": "¥2,000〜¥3,500",
+        "features": [
+          "一枚板カウンター",
+          "朝4時まで営業",
+          "隠れ家バー"
+        ],
+        "map_query": "bar nagata 長崎 銅座町 思案橋",
+        "route_tip": "銅座町から思案橋方面へ徒歩2分。路地裏に佇む大人のオーセンティックバー。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "銅座町の喧騒を離れた上質空間。100種以上の銘酒と旬のカクテルでじっくり会話を楽しめます。"
+      }
+    ],
+    "oriental-lounge-oita": [
+      {
+        "id": "oita-bar-01",
+        "name": "Sugarstep&Bittersong",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 2,
+        "late_hours": "翌4:00まで営業",
+        "seating_vibe": "おしゃれなカウンター席・樽生ビールとスイーツ",
+        "budget": "¥1,800〜¥3,200",
+        "features": [
+          "朝4時まで営業",
+          "カウンター席あり",
+          "スイーツ＆バー"
+        ],
+        "map_query": "Sugarstep Bittersong 大分 都町 パイン88ビル",
+        "route_tip": "都町2丁目パイン88ビル5Fへ徒歩2分。深夜4時まで開いているお洒落なカフェバー。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "都町の中心で深夜遅くまでゆったり。カウンター席で美味しいお酒とスイーツを満喫できます。"
+      },
+      {
+        "id": "oita-bar-02",
+        "name": "Kitchen＋Bar きいす",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 2,
+        "late_hours": "翌1:00まで営業",
+        "seating_vibe": "アットホームなカウンター席・夜定食＆お酒",
+        "budget": "¥2,000〜¥3,500",
+        "features": [
+          "ジャングル公園近く",
+          "カウンター席",
+          "夜ご飯＆バー"
+        ],
+        "map_query": "Kitchen Bar きいす 大分 都町 KYUDAIビル",
+        "route_tip": "ジャングル公園近くKYUDAIビルへ徒歩2分。アットホームで料理も美味しいカフェバー。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "「少し小腹空かない？」と誘いやすい夜の食堂バー。温かい雰囲気で自然とリラックスできます。"
+      }
+    ],
+    "oriental-lounge-kumamoto": [
+      {
+        "id": "kumamoto-bar-01",
+        "name": "Bar タビビトノキ",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 2,
+        "late_hours": "翌2:00まで営業",
+        "seating_vibe": "地下隠れ家カウンター・数々の受賞歴を持つミクソロジー",
+        "budget": "¥2,500〜¥4,000",
+        "features": [
+          "ミクソロジーカクテル",
+          "カウンター席",
+          "大人の隠れ家"
+        ],
+        "map_query": "Bar タビビトノキ 熊本 下通",
+        "route_tip": "下通アーケードから三國屋横の階段を下りて地下へ徒歩2分。全国大会受賞歴多数の本格バー。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "下通の地下に佇む秘密の隠れ家。独創的なフルーツカクテルで特別な夜を演出できます。"
+      },
+      {
+        "id": "kumamoto-cafe-01",
+        "name": "サロン・ド・テ・シェタニ",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 3,
+        "late_hours": "24:00まで営業",
+        "seating_vibe": "ラグジュアリーな夜カフェ空間・本格ケーキ＆パフェ",
+        "budget": "¥1,500〜¥2,800",
+        "features": [
+          "シメパフェ",
+          "人気洋菓子店",
+          "シックな大人空間"
+        ],
+        "map_query": "サロンドテ シェタニ 熊本 銀座通り",
+        "route_tip": "下通から銀座通り沿いへ徒歩3分。人気洋菓子店が手がけるラグジュアリーな夜カフェ。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "ショーケースに並ぶ美しいケーキやパフェ。ワインやコーヒー片手に優雅な締めくくりを。"
+      }
+    ],
+    "jis-kumamoto": [
+      {
+        "id": "jis-kumamoto-bar-01",
+        "name": "Bar タビビトノキ",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 2,
+        "late_hours": "翌2:00まで営業",
+        "seating_vibe": "地下隠れ家カウンター席・本格ミクソロジー",
+        "budget": "¥2,500〜¥4,000",
+        "features": [
+          "本格カクテル",
+          "カウンター席",
+          "大人の空間"
+        ],
+        "map_query": "Bar タビビトノキ 熊本 下通",
+        "route_tip": "下通アーケードすぐ徒歩2分。静かな地下空間で極上のカクテルを堪能。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "JIS（ジス）熊本を出てすぐ立ち寄れる名店。横並びのカウンターで親密度が高まります。"
+      },
+      {
+        "id": "jis-kumamoto-cafe-01",
+        "name": "サロン・ド・テ・シェタニ",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 2,
+        "late_hours": "24:00まで営業",
+        "seating_vibe": "ラグジュアリー夜カフェ・ケーキ＆ワイン",
+        "budget": "¥1,500〜¥2,800",
+        "features": [
+          "夜パフェ",
+          "女性人気",
+          "銀座通りすぐ"
+        ],
+        "map_query": "サロンドテ シェタニ 熊本 銀座通り",
+        "route_tip": "銀座通り方面へ徒歩2分。終電前のおしゃれなシメパフェに最適。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "女性受け抜群のスイーツ空間。落ち着いた照明で会話が盛り上がります。"
+      }
+    ],
+    "oriental-lounge-miyazaki": [
+      {
+        "id": "miyazaki-bar-01",
+        "name": "underbar",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 2,
+        "late_hours": "翌4:00まで営業",
+        "seating_vibe": "スタイリッシュなカウンター＆ソファ・大窓開放感",
+        "budget": "¥2,000〜¥3,500",
+        "features": [
+          "朝4時まで営業",
+          "カウンター席あり",
+          "居心地抜群"
+        ],
+        "map_query": "underbar 宮崎 ニシタチ サンバレー通り",
+        "route_tip": "ニシタチ一番街サンバレー通りビル3Fへ徒歩2分。朝4時まで営業するスタイリッシュバー。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "大人の会話を楽しめる落ち着いたワンショットバー。カウンターやソファでゆったり話せます。"
+      },
+      {
+        "id": "miyazaki-cafe-01",
+        "name": "茶居珈",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 2,
+        "late_hours": "翌1:00まで営業",
+        "seating_vibe": "レトロな老舗喫茶・夜パフェ＆本格珈琲",
+        "budget": "¥1,000〜¥2,000",
+        "features": [
+          "夜パフェ",
+          "老舗喫茶",
+          "落ち着いた空間"
+        ],
+        "map_query": "茶居珈 宮崎 橘通西",
+        "route_tip": "橘通西エリアへ徒歩2分。深夜まで本格スイーツやパフェを楽しめるレトロ喫茶。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "ニシタチの締めくくり定番。甘い夜パフェで自然と笑顔が引き出せます。"
+      }
+    ],
+    "oriental-lounge-kagoshima": [
+      {
+        "id": "kagoshima-cafe-01",
+        "name": "天文館カフェ",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 2,
+        "late_hours": "翌1:00まで営業（金土翌3:00）",
+        "seating_vibe": "本棚の隠し扉・ムーディーなカウンター＆夜パフェ",
+        "budget": "¥1,800〜¥3,000",
+        "features": [
+          "本棚の隠し扉",
+          "おまかせパフェ",
+          "カウンター席"
+        ],
+        "map_query": "天文館カフェ 鹿児島 東千石町 ミッドランドアパート",
+        "route_tip": "東千石町ミッドランドアパート3Fへ徒歩2分。本棚の隠し扉を開ける驚きのエスコート。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "隠し扉の先にある秘密の隠れ家。相手の好みに合わせたおまかせパフェで会話が盛り上がります。"
+      },
+      {
+        "id": "kagoshima-bar-01",
+        "name": "BAR 立花",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 2,
+        "late_hours": "翌3:00まで営業",
+        "seating_vibe": "アロマ香る大人のカフェ＆バー・上質なカウンター席",
+        "budget": "¥2,000〜¥3,500",
+        "features": [
+          "アロマ香る空間",
+          "カウンター席",
+          "オリジナルカクテル"
+        ],
+        "map_query": "BAR 立花 鹿児島 天文館 ドンキホーテ横",
+        "route_tip": "電車通りドン・キホーテ横すぐ徒歩2分。アロマの心地よい香りに包まれた大人のバー。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "落ち着いたカウンター席で二人の距離が近づく。鹿児島ウイスキーやカクテルも充実。"
+      }
+    ],
+    "ag-okinawa": [
+      {
+        "id": "okinawa-shisha-01",
+        "name": "C.STAND 那覇松山店",
+        "category": "shisha",
+        "category_label": "シーシャ",
+        "walk_minutes": 2,
+        "late_hours": "翌7:00まで営業",
+        "seating_vibe": "ランプが灯る非日常カウンター＆ゆったりソファ",
+        "budget": "¥2,000〜¥3,000",
+        "features": [
+          "翌朝7時まで営業",
+          "ソファ席",
+          "カウンターあり"
+        ],
+        "map_query": "C.STAND 那覇松山店 シーシャカフェ",
+        "route_tip": "松山のビル出口から徒歩2分。朝7時まで開いている幻想的なランプの灯るカフェバー。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "南国の夜を朝まで語り明かせるチル空間。ゆったりしたソファでリラックスできます。"
+      },
+      {
+        "id": "okinawa-bar-01",
+        "name": "BLUE BOOKS cafe OKINAWA",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 4,
+        "late_hours": "23:00まで営業",
+        "seating_vibe": "本と音楽に囲まれた大人のカフェ＆ダイニングバー",
+        "budget": "¥2,000〜¥3,800",
+        "features": [
+          "BLUE NOTEプロデュース",
+          "洗練空間",
+          "落ち着いた音楽"
+        ],
+        "map_query": "BLUE BOOKS cafe OKINAWA 那覇 久茂地",
+        "route_tip": "松山から久茂地方面へ徒歩4分。ジャズの名門がプロデュースする大人の洗練カフェバー。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "上質な音楽と本に囲まれた空間。大人の落ち着いた会話を楽しみたい夜に。"
+      }
+    ],
+    "jis-sapporo": [
+      {
+        "id": "sapporo-cafe-01",
+        "name": "夜パフェ専門店 パフェテリア ミル",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 2,
+        "late_hours": "翌1:00まで営業（金土翌2:00）",
+        "seating_vibe": "カウンター席・札幌発祥の元祖シメパフェ空間",
+        "budget": "¥1,800〜¥2,800",
+        "features": [
+          "シメパフェ発祥",
+          "カウンター席あり",
+          "女性人気"
+        ],
+        "map_query": "夜パフェ専門店 パフェテリア ミル 札幌 すすきの",
+        "route_tip": "すすきの南4条西5丁目へ徒歩2分。札幌の夜カルチャーを牽引する名店。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "「札幌来たらシメパフェ行こう」と最も断られにくい定番。カウンターで笑顔がこぼれます。"
+      },
+      {
+        "id": "sapporo-bar-01",
+        "name": "BAR やなぎ",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 2,
+        "late_hours": "翌3:00まで営業",
+        "seating_vibe": "落ち着いたカウンター席・老舗の安心感",
+        "budget": "¥2,500〜¥4,000",
+        "features": [
+          "すすきの老舗",
+          "カウンター席",
+          "本格カクテル"
+        ],
+        "map_query": "BAR やなぎ 札幌 すすきの交差点",
+        "route_tip": "すすきの交差点すぐ徒歩2分。寒い夜でも地下や駅近で移動しやすい大人のバー。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "すすきのの寒さを忘れさせる温かいおもてなし。横並びのカウンターで距離が縮まります。"
+      }
+    ],
+    "oriental-lounge-seoul-gangnam": [
+      {
+        "id": "seoul-gangnam-cafe-01",
+        "name": "ab cafe（エイビーカフェ）江南店",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 4,
+        "late_hours": "24時間営業",
+        "seating_vibe": "バリ島リゾート風・ゆったりソファ席＆半個室風空間",
+        "budget": "₩8,000〜₩15,000",
+        "features": [
+          "24時間営業",
+          "バリ風リゾート空間",
+          "ゆったりソファ"
+        ],
+        "map_query": "ab cafe 江南店 ソウル",
+        "route_tip": "新論峴駅・江南大路裏手へ徒歩4分。深夜でも明るく開放的なバリ風リゾート空間。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "江南随一の大型夜カフェ。落ち着いた照明とゆったりソファで、お酒が苦手な相手とも自然体で話せます。"
+      },
+      {
+        "id": "seoul-gangnam-bar-01",
+        "name": "アイリッシュパブ DUBLIN（더블린）",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 3,
+        "late_hours": "翌3:00まで営業",
+        "seating_vibe": "カウンター席・落ち着いた木目調パブ空間",
+        "budget": "₩15,000〜₩25,000",
+        "features": [
+          "ギネス生ビール",
+          "ウイスキー・カクテル",
+          "海外パブ空間"
+        ],
+        "map_query": "DUBLIN 江南 新論峴 ソウル",
+        "route_tip": "江南大路沿いから路地へ入ってすぐ徒歩3分。落ち着いた木目調の本格アイリッシュパブ。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "賑やかな江南の夜に、もう1杯だけスマートに乾杯できる名店。カウンター席で自然と会話が弾みます。"
+      }
+    ],
+    "oriental-lounge-seoul-hongdae": [
+      {
+        "id": "seoul-hongdae-cafe-01",
+        "name": "w.oncoffee（더블유온커피）",
+        "category": "cafe",
+        "category_label": "夜カフェ",
+        "walk_minutes": 3,
+        "late_hours": "翌3:00まで営業",
+        "seating_vibe": "地下シックな洞窟風・ブラックトーンの落ち着いた大人空間",
+        "budget": "₩7,000〜₩14,000",
+        "features": [
+          "シックな大人空間",
+          "デザート充実",
+          "深夜カフェ"
+        ],
+        "map_query": "w.oncoffee 弘大 麻浦区 ソウル",
+        "route_tip": "弘大入口駅メインストリートから徒歩3分。バーのような落ち着いた照明の洞窟風カフェ。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "弘大の喧騒を抜け、静かにコーヒーやデザートを楽しめる夜カフェ。お酒の後の一息に最適です。"
+      },
+      {
+        "id": "seoul-hongdae-bar-01",
+        "name": "ロゼッタ（Rosetta / 로제타）",
+        "category": "bar",
+        "category_label": "バー・バル",
+        "walk_minutes": 3,
+        "late_hours": "翌5:00まで営業",
+        "seating_vibe": "カウンター席・落ち着いたオーセンティックバー空間",
+        "budget": "₩12,000〜₩22,000",
+        "features": [
+          "本格カクテル",
+          "朝5時まで営業",
+          "落ち着いた雰囲気"
+        ],
+        "map_query": "Rosetta 弘大 麻浦区 ソウル",
+        "route_tip": "オウルマダンロ沿いを徒歩3分。朝5時まで開くオーセンティックなカクテルバー。",
+        "reservation_slot": "second_venue_reservation",
+        "comment": "学生街の弘大エリアでも落ち着いた大人の時間を過ごせる隠れ家バー。横並びのカウンターでじっくり話せます。"
+      }
+    ]
+  }
 }

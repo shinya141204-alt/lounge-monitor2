@@ -333,14 +333,19 @@ class MonetizationSmartCtaTests(unittest.TestCase):
         home_sns = self.client.get("/?s=x22_hub_gap", headers={"User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)"}).get_data(as_text=True)
         self.assertIn("hasSnsInflow: true", home_sns)
 
-        # 【手2】高意図面（/price-comparison, /stats, 4ブランドページ）に `#surface-smart-cta-card` が描画され、スタッフ時は非表示になること
-        for surface_path in ("/price-comparison", "/stats", "/oriental-lounge", "/ag", "/jis", "/asobibar"):
+        # 【手2】高意図面（/price-comparison, 4ブランドページ）に `#surface-smart-cta-card` が描画され、スタッフ時は非表示になること（/stats は R4 により直/link/完全禁止）
+        for surface_path in ("/price-comparison", "/oriental-lounge", "/ag", "/jis", "/asobibar"):
             r_surf = self.client.get(surface_path)
             self.assertEqual(r_surf.status_code, 200, surface_path)
             s_html = r_surf.get_data(as_text=True)
             self.assertIn('id="surface-smart-cta-card"', s_html, surface_path)
             self.assertIn(f"?from={surface_path}", s_html, surface_path)
             self.assertIn('data-women-variant=', s_html, surface_path)
+
+        # /stats must strictly maintain zero direct /link/ citations
+        r_stats = self.client.get("/stats")
+        self.assertEqual(r_stats.status_code, 200)
+        self.assertNotIn("/link/", r_stats.get_data(as_text=True))
 
         surf_glut = affiliate_manager.build_surface_smart_cta(
             [

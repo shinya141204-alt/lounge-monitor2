@@ -14,8 +14,11 @@ second_venues.py - 2軒目案内（2nd Party Venue Guide）バックエンドユ
 
 import json
 import os
+import re
 import urllib.parse
 from typing import Dict, List, Any, Optional
+
+import store_master
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 VENUES_JSON_PATH = os.path.join(BASE_DIR, "static", "second_venues.json")
@@ -155,9 +158,12 @@ def get_area_key_for_store(store_name: str) -> Optional[str]:
     return None
 
 
-def get_store_anchor(store_name: str) -> str:
+def get_store_anchor(store_name: Optional[str]) -> str:
     """店舗名からマップ検索の基準地（anchor）文字列を生成する。"""
-    s = store_name.strip()
+    s = (store_name or "").strip()
+    if not s:
+        return "相席ラウンジ"
+
     sm = load_store_master()
     stores = sm.get("stores", {})
 
@@ -252,48 +258,113 @@ def build_fallback_spots(store_name: str, anchor: str) -> List[Dict[str, Any]]:
     ]
 
 
-def get_second_venues_for_store(store_name: str) -> Dict[str, Any]:
+def resolve_store_slug(store_name: Optional[str]) -> Optional[str]:
+    """店舗名、表示名、SEO名称から store_master の slug を解決する。"""
+    norm = (store_name or "").strip()
+    if not norm:
+        return None
+    # 1. 直接スラッグとして一致する場合
+    if norm in store_master.STORE_SLUGS.values():
+        return norm
+    # 2. STORE_SLUGS のキーとして一致する場合
+    if norm in store_master.STORE_SLUGS:
+        return store_master.STORE_SLUGS[norm]
+    # 3. 前後空白や表記ゆれの吸収
+    norm_compact = re.sub(r"[\s　\-_]+", "", norm).lower()
+    for k, slug in store_master.STORE_SLUGS.items():
+        k_compact = re.sub(r"[\s　\-_]+", "", k).lower()
+        slug_compact = re.sub(r"[\s　\-_]+", "", slug).lower()
+        seo_k = store_master.seo_name(k) if hasattr(store_master, "seo_name") else k
+        seo_compact = re.sub(r"[\s　\-_]+", "", seo_k).lower()
+        if (norm_compact == k_compact or norm_compact == slug_compact or norm_compact == seo_compact
+            or (len(norm_compact) >= 3 and norm_compact in k_compact)
+            or (len(k_compact) >= 3 and k_compact in norm_compact)
+            or (len(norm_compact) >= 3 and norm_compact in seo_compact)
+            or (len(seo_compact) >= 3 and seo_compact in norm_compact)):
+            return slug
+    return None
+
+
+def get_second_venues_for_store(store_name: Optional[str]) -> Dict[str, Any]:
     """
     店舗名から、2軒目のおすすめスポット、シチュエーションTips、タイミングルールを取得する。
-    未登録エリアの場合はスマートフォールバックを提供する。
+    1. venues_by_store（全63店舗実在スポット）から優先取得
+    2. 未登録時は venues_by_area を検索
+    3. それでもなければスマートフォールバック（動的クエリ生成）を返す。
     """
+    norm_name = (store_name or "").strip()
     master = load_second_venues_master()
+    venues_by_store = master.get("venues_by_store", {})
     venues_by_area = master.get("venues_by_area", {})
     situation_tips = master.get("situation_tips", [])
     timing_rules = master.get("timing_rules", [])
 
-    area_key = get_area_key_for_store(store_name)
-    anchor = get_store_anchor(store_name)
+    slug = resolve_store_slug(norm_name)
+    area_key = get_area_key_for_store(norm_name)
+    anchor = get_store_anchor(norm_name)
 
-    clean_name = store_name.replace("OLG", "").replace("ag", "").strip()
+    seo_name = store_master.seo_name(norm_name) if hasattr(store_master, "seo_name") and norm_name else norm_name
+    clean_name = norm_name.replace("OLG", "").replace("ag", "").strip() or "相席ラウンジ"
 
-    if area_key and area_key in venues_by_area:
+    spots: List[Dict[str, Any]] = []
+    is_fallback = False
+    is_store_curated = False
+    area_name = ""
+
+    # 1. venues_by_store から店舗固有の実在スポットを優先取得
+    if slug and slug in venues_by_store and venues_by_store[slug]:
+        spots = venues_by_store[slug]
+        is_fallback = False
+        is_store_curated = True
+        area_name = AREA_DISPLAY_NAMES.get(area_key, f"{clean_name}周辺") if area_key else f"{clean_name}周辺"
+    elif norm_name in venues_by_store and venues_by_store[norm_name]:
+        spots = venues_by_store[norm_name]
+        is_fallback = False
+        is_store_curated = True
+        area_name = AREA_DISPLAY_NAMES.get(area_key, f"{clean_name}周辺") if area_key else f"{clean_name}周辺"
+    elif seo_name in venues_by_store and venues_by_store[seo_name]:
+        spots = venues_by_store[seo_name]
+        is_fallback = False
+        is_store_curated = True
+        area_name = AREA_DISPLAY_NAMES.get(area_key, f"{clean_name}周辺") if area_key else f"{clean_name}周辺"
+    # 2. 既存のエリア別スポット
+    elif area_key and area_key in venues_by_area and venues_by_area[area_key]:
         spots = venues_by_area[area_key]
         area_name = AREA_DISPLAY_NAMES.get(area_key, area_key)
         is_fallback = False
+        is_store_curated = False
+    # 3. 未登録店舗向けスマートフォールバック
     else:
-        spots = build_fallback_spots(store_name, anchor)
+        spots = build_fallback_spots(norm_name, anchor)
         area_name = f"{clean_name}周辺"
         is_fallback = True
+        is_store_curated = False
 
-    # 各スポットに Google マップインテント URL を付与
+    # 各スポットに Google マップインテント URL、LINE共有URL、予約URLを付与
+    from_param = f"/store/{slug}" if slug else "/concierge"
     enriched_spots = []
     for sp in spots:
         sp_copy = dict(sp)
         map_q = sp_copy.get("map_query", f"{sp_copy.get('name', '')} {anchor}")
         sp_copy["map_url"] = get_google_maps_intent_url(map_q)
+        w_min = sp_copy.get("walk_minutes", 3)
+        sp_copy["walk_minutes_label"] = "同ビル内（徒歩0分）" if w_min == 0 else f"徒歩{w_min}分"
+        sp_copy["reservation_url"] = f"/link/second_venue_reservation?from={from_param}"
         sp_copy["line_share_url"] = get_line_share_url(
-            f"【2軒目候補】{sp_copy.get('name')}（{sp_copy.get('category_label', '')}・{sp_copy.get('walk_minutes', '')}分）\n{sp_copy['map_url']}"
+            f"【2軒目候補】{sp_copy.get('name')}（{sp_copy.get('category_label', '')}・{sp_copy['walk_minutes_label']}）\n{sp_copy['map_url']}"
         )
         enriched_spots.append(sp_copy)
 
     return {
-        "store_name": store_name,
+        "store_name": norm_name,
         "clean_name": clean_name,
+        "store_slug": slug,
+        "seo_name": seo_name,
         "area_key": area_key,
         "area_name": area_name,
         "anchor": anchor,
         "is_fallback": is_fallback,
+        "is_store_curated": is_store_curated,
         "spots": enriched_spots,
         "situation_tips": situation_tips,
         "timing_rules": timing_rules,

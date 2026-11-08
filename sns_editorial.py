@@ -34,8 +34,9 @@ GEMINI_KEY_STORAGE_PREFIX = "token:gemini_api_key"
 CLAUDE_KEY_STORAGE_PREFIX = "token:claude_api_key"
 AI_ENGINE_PREF_KEY = "editorial:ai_engine_pref"
 
-# Upgraded from Flash-Lite to Pro -> Standard Flash -> Lite emergency fallback
+# Upgraded to Gemini 4 Argon -> Pro -> Standard Flash -> Lite emergency fallback
 DEFAULT_GEMINI_MODELS = (
+    "gemini-4-argon",
     "gemini-3.1-pro-preview",
     "gemini-2.5-pro",
     "gemini-2.5-flash",
@@ -4048,6 +4049,7 @@ def _discover_ai_studio_models(api_key: str, timeout: float = 4.5) -> list:
         if r.status_code != 200:
             return []
         models = (r.json() or {}).get("models") or []
+        argon_cands = []
         pro_cands = []
         flash_cands = []
         lite_cands = []
@@ -4056,7 +4058,7 @@ def _discover_ai_studio_models(api_key: str, timeout: float = 4.5) -> list:
             "1.0", "1.5", "robotics", "computer-use", "omni", "live", "image",
             "dialog", "learnlm", "gemma", "bison", "thinking",
         )
-        ver_re = re.compile(r"^gemini-(\d+(?:\.\d+)?)-(pro|flash)(?:-[a-z0-9.-]+)?$")
+        ver_re = re.compile(r"^gemini-(\d+(?:\.\d+)?)-(argon|pro|flash)(?:-[a-z0-9.-]+)?$")
         for m in models:
             methods = m.get("supportedGenerationMethods") or []
             if "generateContent" not in methods:
@@ -4067,6 +4069,8 @@ def _discover_ai_studio_models(api_key: str, timeout: float = 4.5) -> list:
                 continue
             vm = ver_re.match(low)
             if not vm:
+                if "argon" in low:
+                    argon_cands.append((4.0, name))
                 continue
             try:
                 ver_num = float(vm.group(1))
@@ -4074,14 +4078,17 @@ def _discover_ai_studio_models(api_key: str, timeout: float = 4.5) -> list:
                 continue
             if ver_num < 2.5:
                 continue
-            if "pro" in low and "customtools" not in low:
+            kind = vm.group(2)
+            if kind == "argon" or "argon" in low:
+                argon_cands.append((ver_num, name))
+            elif "pro" in low and "customtools" not in low:
                 pro_cands.append((ver_num, name))
             elif "flash" in low and "lite" not in low and "8b" not in low:
                 flash_cands.append((ver_num, name))
             elif "flash" in low and "lite" in low:
                 lite_cands.append((ver_num, name))
 
-        # Pro: newest numeric version first (e.g. gemini-3.1-pro-preview > gemini-2.5-pro); non-exp first.
+        # Pro / Argon: newest numeric version first (e.g. gemini-4-argon, gemini-3.1-pro-preview > gemini-2.5-pro); non-exp first.
         def _pro_key(item):
             ver_num, nm = item
             low_nm = nm.lower()
@@ -4093,12 +4100,13 @@ def _discover_ai_studio_models(api_key: str, timeout: float = 4.5) -> list:
             low_nm = nm.lower()
             return (not ("exp" in low_nm), "preview" not in low_nm, ver_num, low_nm)
 
+        argon_sorted = [nm for _, nm in sorted(argon_cands, key=_pro_key, reverse=True)]
         pro_sorted = [nm for _, nm in sorted(pro_cands, key=_pro_key, reverse=True)]
         flash_sorted = [nm for _, nm in sorted(flash_cands, key=_flash_key, reverse=True)]
         lite_sorted = [nm for _, nm in sorted(lite_cands, key=_flash_key, reverse=True)]
 
         ranked = []
-        for lst, cap in ((pro_sorted, 2), (flash_sorted, 2), (lite_sorted, 1)):
+        for lst, cap in ((argon_sorted, 1), (pro_sorted, 2), (flash_sorted, 2), (lite_sorted, 1)):
             for item in lst[:cap]:
                 if item not in ranked:
                     ranked.append(item)
@@ -4275,7 +4283,16 @@ def _build_endpoint_request(
         "responseMimeType": "application/json",
     }
     low_m = (model_name or "").lower()
-    if low_m.startswith(("gemini-3.5", "gemini-2.5")) or low_m in (
+    if "argon" in low_m or low_m.startswith("gemini-4"):
+        if tb_req >= 2048:
+            th_level = "HIGH"
+        elif tb_req >= 1024:
+            th_level = "MEDIUM"
+        else:
+            th_level = "LOW"
+        gen_cfg["thinkingConfig"] = {"thinkingLevel": th_level}
+        gen_cfg["maxOutputTokens"] = max(4096, out_tokens + 4096)
+    elif low_m.startswith(("gemini-3.5", "gemini-2.5")) or low_m in (
         "gemini-flash-lite-latest",
         "gemini-flash-latest",
         "gemini-pro-latest",
@@ -4308,6 +4325,19 @@ def _build_endpoint_request(
     )
 
 
+class AiJsonTuple(tuple):
+    """3-element tuple (parsed_dict, model_name, error_str) that also supports dict-like .get() forwarding."""
+    def get(self, key, default=None):
+        parsed = self[0]
+        if isinstance(parsed, dict):
+            return parsed.get(key, default)
+        return default
+
+
+def _wrap_ai_res(parsed, model, err):
+    return AiJsonTuple((parsed, model, err))
+
+
 def call_editorial_ai_json(
     prompt: str,
     system_prompt: str = "",
@@ -4320,10 +4350,12 @@ def call_editorial_ai_json(
     now_jst: datetime.datetime = None,
     prefer_fast: bool = False,
     prefer_fable: bool = False,
+    prefer_argon: bool = False,
 ) -> tuple:
     """
-    Unified Dual-Engine AI JSON caller supporting BOTH Anthropic Claude (Fable / Opus / Sonnet) and Upgraded Google Gemini (Pro / Flash).
+    Unified Dual-Engine AI JSON caller supporting BOTH Anthropic Claude (Fable / Opus / Sonnet) and Upgraded Google Gemini (Argon / Pro / Flash).
     Automatically routes based on configured keys and `get_ai_engine_pref()`, with instant failover across providers/models.
+    `prefer_argon=True` prioritizes `gemini-4-argon` for deep reasoning, math analysis, and visual inspections.
     `prefer_fable=True` promotes 1M-context `claude-fable-5-1` (effort=high) for flagship strategy & long-form columns while keeping daily SNS on Opus/Sonnet.
     Returns `(parsed_dict_or_None, model_label_str, last_error_str)`.
     """
@@ -4515,7 +4547,7 @@ def call_editorial_ai_json(
                         _last_gemini_meta["last_model"] = cm
                         _last_gemini_meta["last_error"] = ""
                         _last_gemini_meta["last_ok_at"] = now_jst.strftime("%Y-%m-%d %H:%M:%S")
-                        return parsed, cm, ""
+                        return _wrap_ai_res(parsed, cm, "")
                     last_err = f"Claude JSON parse failed ({cm})"
                     claude_fail_note = last_err
                 except Exception as e:
@@ -4596,11 +4628,22 @@ def call_editorial_ai_json(
 
             if prefer_fast:
                 trial_models = list(g_models[:3])
+                if prefer_argon:
+                    top_argon = next((m for m in g_models if "argon" in m.lower()), None)
+                    if top_argon and top_argon in trial_models:
+                        trial_models.remove(top_argon)
+                        trial_models.insert(0, top_argon)
+                    elif top_argon:
+                        trial_models.insert(0, top_argon)
             else:
-                # Never stack two slow Pro models back-to-back in one request:
-                # Try #1 healthy Pro (with full timeout), then immediately GA Flash (`gemini-2.5-flash`), then Flash-Lite.
+                # Prioritize gemini-4-argon first for deep math/reasoning & research,
+                # then top healthy Pro (gemini-3.1-pro-preview / gemini-2.5-pro),
+                # then GA Flash (gemini-2.5-flash), then Flash-Lite emergency fallback.
                 trial_models = []
-                top_pro = next((m for m in g_models if "pro" in m.lower()), None)
+                top_argon = next((m for m in g_models if "argon" in m.lower()), None)
+                if top_argon and (top_argon not in _unhealthy_models or prefer_argon):
+                    trial_models.append(top_argon)
+                top_pro = next((m for m in g_models if "pro" in m.lower() and m not in trial_models), None)
                 if top_pro:
                     trial_models.append(top_pro)
                 ga_flash = next(
@@ -4615,6 +4658,10 @@ def call_editorial_ai_json(
                 lite_fb = next((m for m in g_models if "lite" in m.lower()), "gemini-2.5-flash-lite")
                 if lite_fb not in trial_models:
                     trial_models.append(lite_fb)
+                if prefer_argon and top_argon and trial_models and trial_models[0] != top_argon:
+                    if top_argon in trial_models:
+                        trial_models.remove(top_argon)
+                    trial_models.insert(0, top_argon)
 
             full_prompt = f"{sys_instr}\n\n{prompt}" if system_prompt else prompt
             for g_idx, gm in enumerate(trial_models):
@@ -4682,7 +4729,7 @@ def call_editorial_ai_json(
                             else ""
                         )
                         _last_gemini_meta["last_ok_at"] = now_jst.strftime("%Y-%m-%d %H:%M:%S")
-                        return parsed, gm, ""
+                        return _wrap_ai_res(parsed, gm, "")
                     last_err = f"Gemini JSON parse failed ({gm})"
                     if not is_mocked_post:
                         _mark_model_unhealthy(gm)
@@ -4696,7 +4743,7 @@ def call_editorial_ai_json(
 
     if last_err:
         _last_gemini_meta["last_error"] = last_err
-    return None, "", last_err
+    return _wrap_ai_res(None, "", last_err)
 
 
 _NIDOMI_REPLACEMENTS = (
@@ -4820,6 +4867,10 @@ def has_cached_ai_candidate(
     return False
 
 
+def _polished_res(text: str, model: str = "") -> tuple:
+    return (text, model)
+
+
 def polish_draft_to_human_voice(
     draft_text: str,
     channel: str = "x",
@@ -4829,6 +4880,7 @@ def polish_draft_to_human_voice(
     silent_tree: bool = False,
     recent_endings: list = None,
     force_polish: bool = False,
+    platform: str = None,
 ) -> tuple:
     """
     2nd-Pass Humanizer ('書いてから人間語に崩す' 赤ペン推敲パス):
@@ -4839,13 +4891,13 @@ def polish_draft_to_human_voice(
     """
     base_text = (draft_text or "").strip()
     if not base_text:
-        return "", ""
-    ch = (channel or "x").lower()
+        return _polished_res("", "")
+    ch = (channel or platform or "x").lower()
     if ch not in ("x", "threads", "instagram", "tiktok"):
-        return base_text, ""
+        return _polished_res(base_text, "")
     if not force_polish:
         if _is_requests_post_mocked() or not get_claude_api_key(allow_blocking=False):
-            return base_text, ""
+            return _polished_res(base_text, "")
         # Token-saving smart gate: skip 2nd-pass API call when Pass-1 (Claude Opus) already produced clean, natural prose
         # free of stiff conjunctions, preachy wrap-ups, and AI clichés.
         stiff_markers = (
@@ -4854,7 +4906,7 @@ def polish_draft_to_human_voice(
         )
         has_stiff_or_cliche = any(m in base_text for m in stiff_markers) or any(w in base_text for w in AI_CLICHE_WORDS)
         if not has_stiff_or_cliche:
-            return base_text, ""
+            return _polished_res(base_text, "")
 
     now_jst = now_jst or datetime.datetime.now(JST)
     detached_footer = ""
@@ -4925,48 +4977,48 @@ def polish_draft_to_human_voice(
             prefer_fast=True,
         )
         if not parsed_p:
-            return base_text, ""
+            return _polished_res(base_text, "")
         raw_pol = (parsed_p.get("polished_text") or parsed_p.get("main_text") or "").strip()
         if not raw_pol:
-            return base_text, ""
+            return _polished_res(base_text, "")
         pol_body = _postprocess_ai_main_text(raw_pol, channel=ch)
         if not pol_body:
-            return base_text, ""
+            return _polished_res(base_text, "")
         if ch == "x" and silent_tree:
             pol_body = re.sub(r"#\S+", "", pol_body).replace("👇", "").replace("リプ欄へ", "").replace("リプ欄", "").strip()
 
         # Lock 1: Exact preservation of every factual numeric token in the prose body
         if _extract_fact_nums(pol_body) != orig_digits:
-            return base_text, ""
+            return _polished_res(base_text, "")
 
         cand_full = f"{pol_body}\n\n{detached_footer}" if detached_footer else pol_body
         if any(w in cand_full for w in AI_CLICHE_WORDS):
-            return base_text, ""
+            return _polished_res(base_text, "")
 
         # Lock 2: Strict Desk Factual Verification against `research`
         if research is not None:
             ok_fact, _ = verify_ai_factual_numbers(cand_full, research, channel=ch)
             if not ok_fact:
-                return base_text, ""
+                return _polished_res(base_text, "")
 
         # Lock 3: Platform weight / character bounds
         if ch == "x":
             if "http://" in cand_full or "https://" in cand_full:
-                return base_text, ""
+                return _polished_res(base_text, "")
             wt = x_poster.compute_twitter_weight(cand_full)
             if not (84 <= wt <= 270):
-                return base_text, ""
+                return _polished_res(base_text, "")
         elif ch == "threads":
             if not (140 <= len(cand_full) <= 478):
-                return base_text, ""
+                return _polished_res(base_text, "")
         elif ch == "instagram":
             if not (200 <= len(cand_full) <= 680):
-                return base_text, ""
+                return _polished_res(base_text, "")
 
-        return cand_full, p_model
+        return _polished_res(cand_full, p_model)
     except Exception as e:
         logger.debug(f"2nd-pass humanizer skipped: {e}")
-        return base_text, ""
+        return _polished_res(base_text, "")
 
 
 def _generate_gemini_adlib_candidate(
@@ -5046,6 +5098,7 @@ def _generate_gemini_adlib_candidate(
         per_call_timeout_sec=30.0,
         allow_blocking=True,
         now_jst=now_jst,
+        prefer_argon=True,
     )
     if not parsed:
         return None

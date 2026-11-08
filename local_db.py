@@ -5623,10 +5623,28 @@ def _refresh_forecast_caches_from_db(days: int = 21):
         return {}, {}
 
     import moat_intelligence
+    import store_master
     cur_ver = moat_intelligence.FORECAST_MODEL_VERSION
     db_k = _active_db_key()
     now_jst = datetime.datetime.now(_JST_TZ).replace(tzinfo=None)
     cutoff_str = (now_jst - datetime.timedelta(days=max(3, int(days)))).strftime("%Y-%m-%d %H:%M:%S")
+
+    # 1. 過去days日間の降雨スロット (store_name, date_jst, hour_jst) をロード
+    rainy_slots = set()
+    try:
+        r_rows = _fetch_all_rows(
+            """
+            SELECT store_name, date_jst, hour_jst
+            FROM store_hourly_rollups
+            WHERE is_rainy = 1
+              AND date_jst >= ?
+            """,
+            (cutoff_str[:10],),
+        )
+        for rr in r_rows:
+            rainy_slots.add((str(rr[0] or ""), str(rr[1] or ""), int(rr[2] or 0)))
+    except Exception:
+        rainy_slots = set()
 
     try:
         rows = _fetch_all_rows(
@@ -5650,6 +5668,9 @@ def _refresh_forecast_caches_from_db(days: int = 21):
     store_acc = defaultdict(lambda: [0.0, 0.0, 0, 0, None])  # sname -> [sum_abs, sum_signed, within10, n, latest_dict]
     bias_store_err = defaultdict(lambda: [0.0, 0.0])         # sname -> [weighted_sum_base_signed, eff_n]
     bias_slot_err = defaultdict(lambda: [0.0, 0.0])          # (sname, hr) -> [weighted_sum_base_signed, eff_n]
+    bias_slot_rain_err = defaultdict(lambda: [0.0, 0.0])     # (sname, hr, is_rainy) -> [weighted_sum_base_signed, eff_n]
+    bias_brand_slot_rain_err = defaultdict(lambda: [0.0, 0.0]) # (bkey, hr, is_rainy) -> [weighted_sum_base_signed, eff_n]
+    bias_brand_slot_err = defaultdict(lambda: [0.0, 0.0])    # (bkey, hr) -> [weighted_sum_base_signed, eff_n]
     dh_burst_counts = defaultdict(int)                       # (sname, date_str, hr) -> intra-hour burst index k
 
     for r in rows:
@@ -5695,7 +5716,8 @@ def _refresh_forecast_caches_from_db(days: int = 21):
             base_err_pt = (err_pt - applied_adj_col) * 0.65
 
         # Geometric intra-hour burst discount (latest row in each date-hour gets k=0 -> 1.0, older intra-hour ticks get 0.5**k; sum < 2.0)
-        dh_key = (sname, pred_at[:10], hr)
+        date_str = pred_at[:10]
+        dh_key = (sname, date_str, hr)
         k_burst = dh_burst_counts[dh_key]
         dh_burst_counts[dh_key] = k_burst + 1
         w_burst = 0.5 ** min(8, k_burst)
@@ -5715,6 +5737,9 @@ def _refresh_forecast_caches_from_db(days: int = 21):
         if is_bf_row:
             w_obs *= 0.5
 
+        bkey = store_master.brand_key_of(sname) or "other"
+        is_rain = 1 if (sname, date_str, hr) in rainy_slots else 0
+
         bs = bias_store_err[sname]
         bs[0] += w_obs * base_err_pt
         bs[1] += w_obs
@@ -5722,6 +5747,18 @@ def _refresh_forecast_caches_from_db(days: int = 21):
             sl = bias_slot_err[(sname, hr)]
             sl[0] += w_obs * base_err_pt
             sl[1] += w_obs
+
+            slr = bias_slot_rain_err[(sname, hr, is_rain)]
+            slr[0] += w_obs * base_err_pt
+            slr[1] += w_obs
+
+            bsr = bias_brand_slot_rain_err[(bkey, hr, is_rain)]
+            bsr[0] += w_obs * base_err_pt
+            bsr[1] += w_obs
+
+            bsl = bias_brand_slot_err[(bkey, hr)]
+            bsl[0] += w_obs * base_err_pt
+            bsl[1] += w_obs
 
     bias_map = {}
     acc_map = {}
@@ -5735,13 +5772,38 @@ def _refresh_forecast_caches_from_db(days: int = 21):
                 "latest": latest_d,
             }
 
-    # Require eff_n_st >= 2.6 so any single-hour burst (< 2.0) can NEVER trigger store bias alone
+    # Level 2: 店舗全体スロット (Require eff_n_st >= 2.6 so single-hour burst can NEVER trigger store bias alone)
     for sname, (w_sum_sig, eff_n_st) in bias_store_err.items():
         if eff_n_st >= 2.6:
             store_mean_err = w_sum_sig / eff_n_st
             store_shrunk = store_mean_err * (eff_n_st / (eff_n_st + 8.0))
             bias_map[(sname, None)] = round(max(-5.0, min(5.0, -0.85 * store_shrunk)), 2)
 
+    # Level 1: ブランド層事前分布スロット (Brand Prior: oriental-lounge, ag, jis, asobibar の主要系列のみ)
+    _VALID_PRIOR_BRANDS = {"oriental-lounge", "ag", "jis", "asobibar"}
+    brand_shrunk_map = {}
+    for (bkey, hr, is_rain), (w_sum_br, eff_n_br) in bias_brand_slot_rain_err.items():
+        if bkey not in _VALID_PRIOR_BRANDS:
+            continue
+        if eff_n_br > 0.0:
+            b_mean = w_sum_br / eff_n_br
+            b_shrunk = b_mean * (eff_n_br / (eff_n_br + 8.0))
+            brand_shrunk_map[(bkey, hr, is_rain)] = (b_shrunk, eff_n_br)
+            if eff_n_br >= 3.0:
+                bias_map[('@brand', bkey, hr, is_rain)] = round(max(-5.0, min(5.0, -0.85 * 0.80 * b_shrunk)), 2)
+
+    brand_slot_shrunk_map = {}
+    for (bkey, hr), (w_sum_bsl, eff_n_bsl) in bias_brand_slot_err.items():
+        if bkey not in _VALID_PRIOR_BRANDS:
+            continue
+        if eff_n_bsl > 0.0:
+            bs_mean = w_sum_bsl / eff_n_bsl
+            bs_shrunk = bs_mean * (eff_n_bsl / (eff_n_bsl + 8.0))
+            brand_slot_shrunk_map[(bkey, hr)] = (bs_shrunk, eff_n_bsl)
+            if eff_n_bsl >= 3.0:
+                bias_map[('@brand', bkey, hr)] = round(max(-5.0, min(5.0, -0.85 * 0.80 * bs_shrunk)), 2)
+
+    # 天候不問の店舗×時間帯スロット (後方互換性)
     for (sname, hr), (w_sum_sl, eff_n_sl) in bias_slot_err.items():
         st_b = bias_store_err.get(sname)
         if not st_b or st_b[1] < 2.6 or eff_n_sl <= 0.0:
@@ -5753,6 +5815,34 @@ def _refresh_forecast_caches_from_db(days: int = 21):
         slot_shrunk = slot_mean_err * (eff_n_sl / (eff_n_sl + 4.5))
         comb_err = 0.60 * slot_shrunk + 0.40 * store_shrunk
         bias_map[(sname, hr)] = round(max(-5.0, min(5.0, -0.85 * comb_err)), 2)
+
+    # Level 3: 店舗×時間帯×雨天スロット (多次元階層Empirical-Bayes)
+    for (sname, hr, is_rain), (w_sum_slr, eff_n_slr) in bias_slot_rain_err.items():
+        bkey = store_master.brand_key_of(sname) or "other"
+        st_b = bias_store_err.get(sname)
+        eff_n_st = st_b[1] if st_b else 0.0
+        store_mean_err = (st_b[0] / eff_n_st) if (st_b and eff_n_st > 0) else 0.0
+        store_shrunk = store_mean_err * (eff_n_st / (eff_n_st + 8.0)) if eff_n_st >= 2.6 else 0.0
+
+        b_shrunk, eff_n_br = brand_shrunk_map.get((bkey, hr, is_rain), (0.0, 0.0))
+
+        if eff_n_slr > 0.0:
+            cell_mean_err = w_sum_slr / eff_n_slr
+            cell_shrunk = cell_mean_err * (eff_n_slr / (eff_n_slr + 4.5))
+        else:
+            cell_shrunk = 0.0
+
+        if eff_n_slr >= 3.0 and eff_n_st >= 2.6:
+            comb_err = 0.50 * cell_shrunk + 0.30 * store_shrunk + 0.20 * b_shrunk
+            bias_map[(sname, hr, is_rain)] = round(max(-5.0, min(5.0, -0.85 * comb_err)), 2)
+        elif eff_n_st >= 2.6:
+            sl_fallback = bias_map.get((sname, hr))
+            if sl_fallback is not None:
+                bias_map[(sname, hr, is_rain)] = sl_fallback
+            elif (sname, None) in bias_map:
+                bias_map[(sname, hr, is_rain)] = bias_map[(sname, None)]
+        elif eff_n_br >= 3.0:
+            bias_map[(sname, hr, is_rain)] = round(max(-5.0, min(5.0, -0.85 * 0.80 * b_shrunk)), 2)
 
     now_mono = time.monotonic()
     _forecast_residual_bias_cache[db_k] = (now_mono, bias_map)
@@ -5780,25 +5870,55 @@ def refresh_forecast_caches_async(days: int = 21):
     threading.Thread(target=_bg, daemon=True).start()
 
 
-def get_cached_forecast_residual_adjustment(store_name: str, hour: int) -> float:
-    """Return damped Empirical-Bayes residual adjustment (in wpct points) for `(store_name, hour)` without blocking."""
+def get_cached_forecast_residual_adjustment(store_name: str, hour: int, is_rainy: bool = None) -> float:
+    """Return damped Empirical-Bayes residual adjustment (in wpct points) for `(store_name, hour)` with hierarchical fallback."""
     if not store_name:
         return 0.0
     db_k = _active_db_key()
     cached = _forecast_residual_bias_cache.get(db_k)
+    bmap = None
     if cached is not None:
         if time.monotonic() - cached[0] >= _FORECAST_RESIDUAL_TTL and not _forecast_cache_computing:
             refresh_forecast_caches_async()
         bmap = cached[1]
-        return float(bmap.get((store_name, int(hour)), bmap.get((store_name, None), 0.0)))
+    elif not _forecast_cache_computing and _db_available():
+        db_cnt = int(get_db_stats().get("count") or 0)
+        if db_cnt < 2500 and not _sync_in_progress:
+            bmap, _ = _refresh_forecast_caches_from_db()
+        else:
+            refresh_forecast_caches_async()
 
-    if _forecast_cache_computing or not _db_available():
+    if not bmap:
         return 0.0
-    db_cnt = int(get_db_stats().get("count") or 0)
-    if db_cnt < 2500 and not _sync_in_progress:
-        bmap, _ = _refresh_forecast_caches_from_db()
-        return float(bmap.get((store_name, int(hour)), bmap.get((store_name, None), 0.0)))
-    refresh_forecast_caches_async()
+
+    hr = int(hour)
+    import store_master
+    bkey = store_master.brand_key_of(store_name) or "other"
+
+    if is_rainy is not None:
+        r = 1 if is_rainy else 0
+        # 1. 店舗固有×時間帯×雨天
+        if (store_name, hr, r) in bmap:
+            return float(bmap[(store_name, hr, r)])
+        # 2. 店舗固有×時間帯
+        if (store_name, hr) in bmap:
+            return float(bmap[(store_name, hr)])
+        # 3. 店舗全体
+        if (store_name, None) in bmap:
+            return float(bmap[(store_name, None)])
+        # 4. ブランド×時間帯×雨天
+        if ('@brand', bkey, hr, r) in bmap:
+            return float(bmap[('@brand', bkey, hr, r)])
+        # 5. ブランド×時間帯
+        if ('@brand', bkey, hr) in bmap:
+            return float(bmap[('@brand', bkey, hr)])
+        return 0.0
+
+    # is_rainy が None の場合は後方互換（店舗×時間帯 → 店舗全体 → 0.0）
+    if (store_name, hr) in bmap:
+        return float(bmap[(store_name, hr)])
+    if (store_name, None) in bmap:
+        return float(bmap[(store_name, None)])
     return 0.0
 
 
@@ -6315,8 +6435,9 @@ def get_forecast_accuracy_report(
         })
 
     bias_adjustments = []
-    for (sn, hr_k), adj_v in bias_map_now.items():
-        if hr_k is None and abs(adj_v) >= 0.4:
+    for k, adj_v in bias_map_now.items():
+        if isinstance(k, tuple) and len(k) == 2 and k[1] is None and abs(adj_v) >= 0.4:
+            sn = str(k[0] or "")
             if _ops_gov is not None and _ops_gov.is_store_hidden(sn):
                 continue
             bias_adjustments.append({

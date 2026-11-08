@@ -507,6 +507,13 @@ def store_detail_page(store_slug):
         ])
         related_guides = related_guides[:5]
 
+        import second_venues
+        store_second_venues = None
+        try:
+            store_second_venues = second_venues.get_second_venues_for_store(sname)
+        except Exception as e:
+            logging.warning(f"[second_venues] {sname}: {e}")
+
         return render_template(
             'store_detail.html',
             store=store_obj,
@@ -515,6 +522,7 @@ def store_detail_page(store_slug):
             store_dossier=store_dossier,
             has_sufficient_store_data=has_sufficient_store_data,
             store_smart_cta=store_smart_cta,
+            store_second_venues=store_second_venues,
             store_votes=store_votes,
             watch_counts=watch_counts,
             area_info=area_info,

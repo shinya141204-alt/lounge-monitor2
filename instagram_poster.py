@@ -1120,6 +1120,27 @@ def publish_live_reel_to_instagram(
             caption = reel_generator.build_reel_caption(stores, reel_type=rt, now_jst=now_jst)
 
         ts_code = now_jst.strftime("%Y%m%d_%H%M")
+
+        # Visual QA Gate (Gemini 4 Argon / Multimodal Inspection)
+        qa_result = None
+        try:
+            import visual_qa_gate
+            qa_rt, qa_result = visual_qa_gate.enforce_reel_visual_qa(
+                stores, reel_type=rt, now_jst=now_jst, timeout_sec=7.0
+            )
+            if qa_rt != rt:
+                logging.warning(
+                    f"[instagram_poster] Reel QA rejected '{rt}', auto-rerendering alternative template '{qa_rt}'"
+                )
+                rt = qa_rt
+                if not cleaned_custom:
+                    if not force:
+                        caption = reel_generator.build_ai_reel_caption(stores, reel_type=rt, now_jst=now_jst)
+                    else:
+                        caption = reel_generator.build_reel_caption(stores, reel_type=rt, now_jst=now_jst)
+        except Exception as qa_err:
+            logging.warning(f"[instagram_poster] Visual QA gate bypassed (fail-open): {qa_err}")
+
         try:
             mp4_bytes = reel_generator.render_reel_mp4_bytes(stores, reel_type=rt, now_jst=now_jst)
             if isinstance(mp4_bytes, (bytes, bytearray)) and len(mp4_bytes) > 1024:
@@ -1151,6 +1172,8 @@ def publish_live_reel_to_instagram(
         res["video_url"] = video_url
         res["reel_type"] = rt
         res["share_to_feed"] = effective_share_to_feed
+        if qa_result:
+            res["visual_qa"] = qa_result
         res.setdefault("ok", res.get("status") == "success")
 
         try:
@@ -1190,3 +1213,8 @@ def publish_live_reel_to_instagram(
         return res
     finally:
         _ig_post_lock.release()
+
+
+# Backward-compatible alias for scheduled reel posting
+auto_post_scheduled_reel = publish_live_reel_to_instagram
+

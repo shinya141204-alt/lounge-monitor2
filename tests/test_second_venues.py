@@ -90,8 +90,8 @@ class TestSecondVenues(unittest.TestCase):
             self.assertIn("https://line.me/R/msg/text/?", sp["line_share_url"])
 
     def test_get_second_venues_for_unregistered_store_fallback(self):
-        """未登録地方店舗（例: OLG 熊本、OLG 仙台）でスマートフォールバックが正常機能するか検証"""
-        res = second_venues.get_second_venues_for_store("OLG 熊本")
+        """未登録店舗でスマートフォールバックが正常機能するか検証"""
+        res = second_venues.get_second_venues_for_store("未登録テスト店舗")
         self.assertTrue(res["is_fallback"])
         self.assertEqual(len(res["spots"]), 4)
         categories = [sp["category"] for sp in res["spots"]]
@@ -99,7 +99,7 @@ class TestSecondVenues(unittest.TestCase):
         for sp in res["spots"]:
             self.assertTrue(sp.get("is_dynamic"))
             self.assertIn("https://www.google.com/maps/search/?api=1&query=", sp["map_url"])
-            self.assertIn("熊本", sp["name"])
+            self.assertIn("未登録テスト店舗", sp["name"])
 
     def test_brand_rule_compliance_in_master_and_code(self):
         """公開文言において単体の『オリエンタル』『OLG』『オリラジ』が存在しないことを検証"""

@@ -121,6 +121,9 @@
             --men: #98b7d0;
             --border-subtle: rgba(235, 232, 227, 0.15);
             --border-gold: rgba(200, 164, 110, 0.48);
+            --bg-card: #16181f;
+            --border-color: rgba(235, 232, 227, 0.15);
+            --gold-dark: #e3c898;
         }
         body.theme-light {
             --bg-dark: #eeebe2;
@@ -134,6 +137,9 @@
             --men: #2d5373;
             --border-subtle: rgba(28, 26, 23, 0.16);
             --border-gold: rgba(110, 79, 35, 0.48);
+            --bg-card: #ffffff;
+            --border-color: rgba(28, 26, 23, 0.16);
+            --gold-dark: #6e4f23;
         }
         * { box-sizing: border-box; }
         body {
@@ -876,6 +882,40 @@
                 <h2>相席後の2軒目おすすめスポット＆自然な誘い出しプラン</h2>
                 <p style="margin: 0 0 6px; font-size: 0.85rem; font-weight: 700; color: var(--text-main);" id="sv-title">狙い目エリア：{{ sv.spot_title }}</p>
                 <p style="margin: 0 0 10px; font-size: 0.83rem; color: var(--text-sub);" id="sv-spots">{{ sv.spots }}</p>
+
+                <!-- Primary Store Real Curated Second Venues Grid -->
+                <div id="sv-curated-container" style="margin: 12px 0 14px;">
+                    <h3 style="font-size: 0.92rem; margin: 0 0 8px; color: var(--gold-dark, #926a1d); display: flex; align-items: center; gap: 6px;">
+                        <span>📍</span> <span id="sv-curated-title">本命（{{ p.display_name }}）出口からの鉄板2軒目ルート</span>
+                    </h3>
+                    <div id="sv-curated-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px;">
+                        {% if res.primary_second_venues %}
+                            {% for sp in res.primary_second_venues %}
+                            <div class="concierge-sv-card" style="background: var(--bg-card, #fff); border: 1px solid var(--border-color, #e5e7eb); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; justify-content: space-between;">
+                                <div>
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                                        <span class="venue-category-badge {{ sp.category }}" style="font-size: 0.72rem; padding: 2px 6px; border-radius: 4px; font-weight: 600;">{{ sp.category_label }}</span>
+                                        <span style="font-size: 0.75rem; color: var(--accent-text); font-weight: 700;">{{ sp.walk_minutes_label | default('徒歩' ~ (sp.walk_minutes | default(3)) ~ '分') }}</span>
+                                    </div>
+                                    <h4 style="margin: 0 0 4px; font-size: 0.95rem; font-weight: 700; color: var(--text-main);">{{ sp.name }}</h4>
+                                    {% if sp.late_hours %}
+                                    <div style="font-size: 0.76rem; color: var(--text-sub); margin-bottom: 4px;">🕒 {{ sp.late_hours }}{% if sp.seating_vibe %} ・ {{ sp.seating_vibe }}{% endif %}</div>
+                                    {% endif %}
+                                    <p style="margin: 0 0 8px; font-size: 0.8rem; color: var(--text-sub); line-height: 1.45;">{{ sp.comment }}</p>
+                                </div>
+                                <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px;">
+                                    <a href="{{ sp.map_url }}" target="_blank" rel="noopener noreferrer" class="btn-subtle-action" style="padding: 4px 8px; font-size: 0.78rem;">マップ <svg class="ui-svg-ne" width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9L9 3M9 3H4.5M9 3V7.5"/></svg></a>
+                                    <button type="button" class="btn-subtle-action copy-sv-btn" onclick="navigator.clipboard.writeText('{{ sp.name | e }}'); this.textContent='✓ コピー済'; var self=this; setTimeout(function(){ self.textContent='店名コピー'; }, 2000);" style="padding: 4px 8px; font-size: 0.78rem; cursor: pointer;">店名コピー</button>
+                                    {% if not is_staff and not session.get('is_staff') %}
+                                    <a href="/link/second_venue_reservation?from=/concierge" target="_blank" rel="noopener sponsored" class="btn-gold-action" style="padding: 4px 8px; font-size: 0.78rem;">席予約 ›</a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+                </div>
+
                 <div class="invite-quote" id="sv-phrase">誘い方例：{{ sv.invite_phrase }}</div>
                 <p style="margin: 0; font-size: 0.79rem; color: var(--text-sub);" id="sv-timing">目安タイミング：{{ sv.timing_advice }} <a href="{{ sv.guide_url | default('/guide/second-venue') }}" class="editorial-inline-link" style="margin-left: 6px;">2軒目誘い出し完全ガイド ›</a></p>
             </section>
@@ -1094,6 +1134,46 @@
             if (svTiming) {
                 svTiming.innerHTML = '目安タイミング：' + escHtml(sv.timing_advice || '') +
                     ' <a href="' + escHtml(sv.guide_url || '/guide/second-venue') + '" class="editorial-inline-link" style="margin-left:6px;">2軒目誘い出し完全ガイド ›</a>';
+            }
+
+            var svCuratedGrid = document.getElementById('sv-curated-grid');
+            var svCuratedTitle = document.getElementById('sv-curated-title');
+            var curSpots = data.primary_second_venues || sv.primary_spots || [];
+            if (svCuratedTitle && p && p.display_name) {
+                svCuratedTitle.textContent = '本命（' + p.display_name + '）出口からの鉄板2軒目ルート';
+            }
+            if (svCuratedGrid) {
+                if (!curSpots || curSpots.length === 0) {
+                    svCuratedGrid.innerHTML = '';
+                    var curWrap = document.getElementById('sv-curated-container');
+                    if (curWrap) curWrap.style.display = 'none';
+                } else {
+                    var curWrap = document.getElementById('sv-curated-container');
+                    if (curWrap) curWrap.style.display = '';
+                    svCuratedGrid.innerHTML = curSpots.map(function(sp) {
+                        var wLabel = sp.walk_minutes_label || ('徒歩' + (sp.walk_minutes || 3) + '分');
+                        var hoursHtml = sp.late_hours ? '<div style="font-size:0.76rem; color:var(--text-sub); margin-bottom:4px;">🕒 ' + escHtml(sp.late_hours) + (sp.seating_vibe ? ' ・ ' + escHtml(sp.seating_vibe) : '') + '</div>' : '';
+                        var reserveBtn = IS_PUBLIC_VIEW
+                            ? '{% if not is_staff and not session.get("is_staff") %}<a href="/link/second_venue_reservation?from=/concierge" target="_blank" rel="noopener sponsored" class="btn-gold-action" style="padding:4px 8px; font-size:0.78rem;">席予約 ›</a>{% endif %}'
+                            : '';
+                        return '<div class="concierge-sv-card" style="background:var(--bg-card,#fff); border:1px solid var(--border-color,#e5e7eb); border-radius:8px; padding:12px; display:flex; flex-direction:column; justify-content:space-between;">' +
+                            '<div>' +
+                            '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">' +
+                            '<span class="venue-category-badge ' + escHtml(sp.category) + '" style="font-size:0.72rem; padding:2px 6px; border-radius:4px; font-weight:600;">' + escHtml(sp.category_label || '') + '</span>' +
+                            '<span style="font-size:0.75rem; color:var(--accent-text); font-weight:700;">' + escHtml(wLabel) + '</span>' +
+                            '</div>' +
+                            '<h4 style="margin:0 0 4px; font-size:0.95rem; font-weight:700; color:var(--text-main);">' + escHtml(sp.name) + '</h4>' +
+                            hoursHtml +
+                            '<p style="margin:0 0 8px; font-size:0.8rem; color:var(--text-sub); line-height:1.45;">' + escHtml(sp.comment || '') + '</p>' +
+                            '</div>' +
+                            '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:6px;">' +
+                            '<a href="' + escHtml(sp.map_url || '#') + '" target="_blank" rel="noopener noreferrer" class="btn-subtle-action" style="padding:4px 8px; font-size:0.78rem;">マップ <svg class="ui-svg-ne" width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9L9 3M9 3H4.5M9 3V7.5"/></svg></a>' +
+                            '<button type="button" class="btn-subtle-action copy-sv-btn" onclick="navigator.clipboard.writeText(\'' + escHtml(sp.name || '') + '\'); this.textContent=\'✓ コピー済\'; var self=this; setTimeout(function(){ self.textContent=\'店名コピー\'; }, 2000);" style="padding:4px 8px; font-size:0.78rem; cursor:pointer;">店名コピー</button>' +
+                            reserveBtn +
+                            '</div>' +
+                            '</div>';
+                    }).join('');
+                }
             }
 
             // Smart Action Card (Public View Only)

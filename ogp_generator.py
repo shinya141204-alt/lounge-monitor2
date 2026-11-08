@@ -1055,3 +1055,49 @@ def generate_bonus_alert_png(store: dict, mode: str = "female_lead", now_jst: da
     canvas.close()
     return out.getvalue()
 
+
+def inspect_ogp_visual_quality(
+    image_bytes: bytes,
+    image_type: str = "live_ogp",
+    timeout_sec: float = 6.0,
+) -> dict:
+    """
+    Run Gemini Multimodal Visual QA Gate on generated OGP image bytes.
+    Guaranteed Fail-Open (never raises exceptions, always returns a valid dictionary).
+    """
+    try:
+        import visual_qa_gate
+        return visual_qa_gate.inspect_image_visual_quality(
+            image_bytes, image_type=image_type, timeout_sec=timeout_sec
+        )
+    except Exception as e:
+        logger.warning(f"[ogp_generator] Visual QA gate check failed (fail-open): {e}")
+        return {
+            "pass": True,
+            "overall_score": 100,
+            "contrast_readability": 100,
+            "text_overflow": False,
+            "text_overlap": False,
+            "brand_compliance": True,
+            "issues": [],
+            "model_used": "fail_open",
+            "reason": f"qa_exception: {e}",
+            "latency_sec": 0.0,
+        }
+
+
+def generate_verified_live_ogp_png(
+    stores: list,
+    s_param: str = "",
+    now_jst: datetime.datetime = None,
+    timeout_sec: float = 6.0,
+) -> tuple:
+    """
+    Generate live OGP PNG and run pre-delivery visual inspection.
+    Returns `(png_bytes, qa_result_dict)`.
+    """
+    png_bytes = generate_live_ogp_png(stores, s_param=s_param, now_jst=now_jst)
+    qa_res = inspect_ogp_visual_quality(png_bytes, image_type="live_ogp", timeout_sec=timeout_sec)
+    return png_bytes, qa_res
+
+

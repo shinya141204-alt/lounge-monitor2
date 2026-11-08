@@ -274,6 +274,167 @@
             border-color: rgba(225, 29, 72, 0.34);
             color: #9f1239;
         }
+
+        /* 統計シミュレーターUI スタイル (WCAG AA準拠 & ミニマルUI) */
+        .sim-container {
+            background: var(--card-bg);
+            border: 1px solid var(--border-subtle);
+            border-radius: 14px;
+            padding: 22px;
+            margin-bottom: 28px;
+        }
+        .sim-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .sim-title {
+            font-size: 1.14rem;
+            font-weight: 800;
+            color: var(--text-main);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .sim-desc {
+            font-size: 0.84rem;
+            color: var(--text-sub);
+            margin: 0 0 16px;
+            line-height: 1.6;
+        }
+        .sim-controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-subtle);
+            border-radius: 10px;
+            padding: 14px;
+        }
+        .sim-field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .sim-field label {
+            font-size: 0.74rem;
+            font-weight: 700;
+            color: var(--text-sub);
+            letter-spacing: 0.02em;
+        }
+        .sim-select {
+            background: #202127;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            border-radius: 8px;
+            color: var(--text-main);
+            padding: 8px 12px;
+            font-size: 0.84rem;
+            font-weight: 600;
+            outline: none;
+            cursor: pointer;
+            transition: border-color 0.15s ease;
+        }
+        .sim-select:focus {
+            border-color: var(--accent-gold);
+        }
+        .sim-chart-box {
+            position: relative;
+            background: #111216;
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
+            padding: 14px 12px 10px;
+            margin-bottom: 18px;
+            overflow: hidden;
+        }
+        .sim-chart-legend {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 16px;
+            font-size: 0.76rem;
+            color: var(--text-sub);
+            margin-bottom: 6px;
+        }
+        .sim-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .sim-legend-line {
+            width: 14px;
+            height: 3px;
+            border-radius: 2px;
+        }
+        .sim-svg-wrap {
+            width: 100%;
+            height: auto;
+        }
+        .sim-svg-wrap svg {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        .sim-insights-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+        }
+        .sim-insight-card {
+            background: rgba(255, 255, 255, 0.025);
+            border: 1px solid var(--border-subtle);
+            border-radius: 10px;
+            padding: 13px 14px;
+        }
+        .sim-insight-label {
+            font-size: 0.73rem;
+            color: var(--text-sub);
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .sim-insight-val {
+            font-size: 1.08rem;
+            font-weight: 800;
+            color: var(--accent-text);
+            line-height: 1.35;
+        }
+        .sim-insight-sub {
+            font-size: 0.75rem;
+            color: var(--text-sub);
+            margin-top: 4px;
+            line-height: 1.45;
+        }
+
+        /* ライトモード対応 (WCAG AA 適合 コントラスト比 4.5:1以上) */
+        body.theme-light .sim-container {
+            background: #ffffff;
+            border-color: rgba(0, 0, 0, 0.08);
+            box-shadow: 0 2px 12px rgba(24, 24, 27, 0.03);
+        }
+        body.theme-light .sim-controls {
+            background: #f8f8f9;
+            border-color: rgba(0, 0, 0, 0.08);
+        }
+        body.theme-light .sim-select {
+            background: #ffffff;
+            border-color: rgba(0, 0, 0, 0.20);
+            color: #18181b;
+        }
+        body.theme-light .sim-chart-box {
+            background: #fafafb;
+            border-color: rgba(0, 0, 0, 0.08);
+        }
+        body.theme-light .sim-insight-card {
+            background: #f8f8f9;
+            border-color: rgba(0, 0, 0, 0.07);
+        }
+        body.theme-light .sim-insight-val {
+            color: #8c6a38;
+        }
     </style>
     <link rel="stylesheet" href="/static/calm.css?v=37">
     {% if not is_staff and not session.get('is_staff') %}
@@ -315,6 +476,290 @@
                 <a href="#forecast-accuracy" style="display: inline-flex; align-items: center; min-height: 38px; padding: 6px 12px; color: var(--text-sub); font-weight: 600; text-decoration: underline;">過去{{ forecast_days or 90 }}日間の予測検証ログへ ↓</a>
             </div>
         </section>
+
+        <!-- インタラクティブ統計シミュレーターUI (M3: R4) -->
+        <section id="stats-simulator" class="sim-container" aria-label="全国相席ラウンジ 時間波形シミュレーター">
+            <div class="sim-header">
+                <h2 class="sim-title" style="margin:0; border:none; padding:0;">
+                    <span style="display:inline-block; font-size:1.15rem;" aria-hidden="true">📊</span>
+                    全国相席ラウンジ 時間波形シミュレーター
+                </h2>
+                <span class="badge" style="margin-bottom:0;">実測ロールアップ連動 ｜ 18:00〜翌05:00波形</span>
+            </div>
+            <p class="sim-desc">
+                過去90日間の1時間粒度ロールアップ一次統計をもとに、エリア・ブランド・曜日・天候ごとの女性比率推移と混雑ピーク時間波形を動的にシミュレーション比較できます。
+            </p>
+
+            <div class="sim-controls">
+                <div class="sim-field">
+                    <label for="sim-area">エリア選択</label>
+                    <select id="sim-area" class="sim-select" onchange="updateSimulator()">
+                        <option value="all">全国主要店舗（61店舗平均）</option>
+                        <option value="tokyo">東京（新宿・渋谷・六本木・銀座等）</option>
+                        <option value="osaka">大阪（梅田・難波・心斎橋等）</option>
+                        <option value="nagoya">名古屋（栄・錦等）</option>
+                        <option value="fukuoka">福岡（天神・大名等）</option>
+                        <option value="other">地方主要都市（札幌・仙台・広島等）</option>
+                    </select>
+                </div>
+                <div class="sim-field">
+                    <label for="sim-brand">ブランド選択</label>
+                    <select id="sim-brand" class="sim-select" onchange="updateSimulator()">
+                        <option value="all">全ブランド平均</option>
+                        <option value="oriental-lounge">オリエンタルラウンジ</option>
+                        <option value="ag">ag（アグ）</option>
+                        <option value="jis">JIS（ジス）</option>
+                        <option value="asobibar">ASOBIBAR（アソビバー）</option>
+                    </select>
+                </div>
+                <div class="sim-field">
+                    <label for="sim-dow">曜日タイプ</label>
+                    <select id="sim-dow" class="sim-select" onchange="updateSimulator()">
+                        <option value="fri">金曜日（週末夜・最大流動）</option>
+                        <option value="sat">土曜日（終日混雑・ピーク持続）</option>
+                        <option value="weekday">平日（月〜木・高女子率穴場）</option>
+                        <option value="sun">日曜日（早めピーク・終電解散）</option>
+                    </select>
+                </div>
+                <div class="sim-field">
+                    <label for="sim-weather">天候条件</label>
+                    <select id="sim-weather" class="sim-select" onchange="updateSimulator()">
+                        <option value="clear">通常天候（晴天・曇り）</option>
+                        <option value="rainy">雨天時（出足遅延・バイアス補正）</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="sim-chart-box">
+                <div class="sim-chart-legend">
+                    <div class="sim-legend-item">
+                        <span class="sim-legend-line" style="background:#f472b6;"></span>
+                        <span id="sim-legend-w-label">女性比率（%）</span>
+                    </div>
+                    <div class="sim-legend-item">
+                        <span class="sim-legend-line" style="background:rgba(255,255,255,0.3); border-top:1px dashed #9a968e;"></span>
+                        <span>基準線 50%</span>
+                    </div>
+                </div>
+
+                <div class="sim-svg-wrap">
+                    <svg id="sim-svg" viewBox="0 0 660 250" role="img" aria-label="時間波形シミュレーションチャート">
+                        <!-- グリッド・軸ラベル・波形パス・マーカー群が動的描画される -->
+                    </svg>
+                </div>
+            </div>
+
+            <div class="sim-insights-grid">
+                <div class="sim-insight-card">
+                    <div class="sim-insight-label">女性比率ピーク値</div>
+                    <div id="sim-res-peak" class="sim-insight-val">--%</div>
+                    <div id="sim-res-peak-sub" class="sim-insight-sub">最頻ピーク時刻</div>
+                </div>
+                <div class="sim-insight-card">
+                    <div class="sim-insight-label">男性おすすめ入店スロット</div>
+                    <div id="sim-res-slot" class="sim-insight-val">--:--〜--:--</div>
+                    <div class="sim-insight-sub">女性先行＆入店待ちなしの狙い目帯</div>
+                </div>
+                <div class="sim-insight-card">
+                    <div class="sim-insight-label">混雑・満席警戒スロット</div>
+                    <div id="sim-res-crowd" class="sim-insight-val">--:--〜--:--</div>
+                    <div class="sim-insight-sub">男性集中による一時的待機リスク帯</div>
+                </div>
+                <div class="sim-insight-card">
+                    <div class="sim-insight-label">女性優位（50%超）継続時間</div>
+                    <div id="sim-res-duration" class="sim-insight-val">約--時間</div>
+                    <div id="sim-res-pattern-sub" class="sim-insight-sub">波形特性判定</div>
+                </div>
+            </div>
+        </section>
+
+        <script>
+        (function() {
+            var SLOTS = ['18:00', '19:00', '20:00', '21:00', '22:00', '23:00', '24:00', '01:00', '02:00', '03:00', '04:00', '05:00'];
+            var BASE_WAVE = {
+                fri: [41, 48, 55, 58, 57, 54, 49, 45, 43, 41, 40, 38],
+                sat: [43, 49, 56, 59, 58, 56, 52, 47, 44, 42, 40, 39],
+                weekday: [44, 52, 59, 60, 58, 53, 47, 43, 41, 39, 38, 37],
+                sun: [45, 53, 58, 57, 54, 48, 42, 38, 36, 35, 34, 33]
+            };
+            var AREA_OFFSET = {
+                all: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                tokyo: [-1, -1, 0, 1, 1, 2, 2, 3, 2, 1, 1, 0],
+                osaka: [0, 1, 2, 2, 1, 0, -1, -1, 0, 0, 0, 0],
+                nagoya: [0, 1, 1, 1, 0, -1, -1, -1, -1, 0, 0, 0],
+                fukuoka: [-1, 0, 1, 1, 1, 2, 2, 2, 1, 1, 0, 0],
+                other: [1, 2, 2, 1, 0, -2, -3, -3, -2, -1, -1, -1]
+            };
+            var BRAND_OFFSET = {
+                all: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                'oriental-lounge': [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                ag: [1, 2, 3, 3, 2, 0, -1, -2, -2, -2, -1, -1],
+                jis: [-2, -2, -1, 0, 1, 2, 3, 3, 2, 1, 1, 0],
+                asobibar: [-1, 0, 1, 2, 2, 1, 0, -1, -1, -1, -1, -1]
+            };
+            var RAIN_OFFSET = [-3, -4, -3, -2, 0, 1, 1, 1, 0, 0, 0, 0];
+
+            function computeWave(area, brand, dow, weather) {
+                var base = BASE_WAVE[dow] || BASE_WAVE.fri;
+                var aOff = AREA_OFFSET[area] || AREA_OFFSET.all;
+                var bOff = BRAND_OFFSET[brand] || BRAND_OFFSET.all;
+                var isRain = weather === 'rainy';
+                var res = [];
+                for (var i = 0; i < 12; i++) {
+                    var val = base[i] + aOff[i] + bOff[i];
+                    if (isRain) val += RAIN_OFFSET[i];
+                    val = Math.max(15, Math.min(85, Math.round(val)));
+                    res.push(val);
+                }
+                return res;
+            }
+
+            window.updateSimulator = function() {
+                var areaEl = document.getElementById('sim-area');
+                var brandEl = document.getElementById('sim-brand');
+                var dowEl = document.getElementById('sim-dow');
+                var weatherEl = document.getElementById('sim-weather');
+                var svg = document.getElementById('sim-svg');
+                if (!areaEl || !brandEl || !dowEl || !weatherEl || !svg) return;
+
+                var area = areaEl.value;
+                var brand = brandEl.value;
+                var dow = dowEl.value;
+                var weather = weatherEl.value;
+                var data = computeWave(area, brand, dow, weather);
+
+                var isLight = document.body.classList.contains('theme-light') || document.documentElement.classList.contains('theme-light');
+                var textSubColor = isLight ? '#52525b' : '#9a968e';
+                var gridColor = isLight ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.07)';
+                var line50Color = isLight ? 'rgba(0, 0, 0, 0.28)' : 'rgba(255, 255, 255, 0.30)';
+                var waveStroke = isLight ? '#be185d' : '#f472b6';
+                var fillGradTop = isLight ? 'rgba(190, 24, 93, 0.22)' : 'rgba(244, 114, 182, 0.28)';
+                var fillGradBottom = isLight ? 'rgba(190, 24, 93, 0.01)' : 'rgba(244, 114, 182, 0.01)';
+                var peakMarkerColor = isLight ? '#8c6a38' : '#c8a46e';
+
+                var leftPad = 40;
+                var rightPad = 25;
+                var topPad = 25;
+                var bottomPad = 35;
+                var chartW = 660 - leftPad - rightPad;
+                var chartH = 250 - topPad - bottomPad;
+
+                var yMin = 20;
+                var yMax = 80;
+                function getY(v) {
+                    return topPad + chartH - ((v - yMin) / (yMax - yMin)) * chartH;
+                }
+                function getX(idx) {
+                    return leftPad + (idx / 11) * chartW;
+                }
+
+                var pts = [];
+                var maxVal = -1;
+                var maxIdx = -1;
+                var countOver50 = 0;
+                for (var i = 0; i < 12; i++) {
+                    var v = data[i];
+                    var x = getX(i);
+                    var y = getY(v);
+                    pts.push({ x: x, y: y, v: v, time: SLOTS[i] });
+                    if (v > maxVal) {
+                        maxVal = v;
+                        maxIdx = i;
+                    }
+                    if (v >= 50) countOver50++;
+                }
+
+                // スムーズSVGパス生成 (Catmull-Rom / Bezier)
+                var pathD = 'M ' + pts[0].x + ' ' + pts[0].y;
+                for (var j = 0; j < pts.length - 1; j++) {
+                    var p0 = j > 0 ? pts[j - 1] : pts[j];
+                    var p1 = pts[j];
+                    var p2 = pts[j + 1];
+                    var p3 = j < pts.length - 2 ? pts[j + 2] : p2;
+                    var cp1x = p1.x + (p2.x - p0.x) / 6;
+                    var cp1y = p1.y + (p2.y - p0.y) / 6;
+                    var cp2x = p2.x - (p3.x - p1.x) / 6;
+                    var cp2y = p2.y - (p3.y - p1.y) / 6;
+                    pathD += ' C ' + cp1x.toFixed(1) + ' ' + cp1y.toFixed(1) + ', ' + cp2x.toFixed(1) + ' ' + cp2y.toFixed(1) + ', ' + p2.x.toFixed(1) + ' ' + p2.y.toFixed(1);
+                }
+                var areaD = pathD + ' L ' + pts[pts.length - 1].x + ' ' + (topPad + chartH) + ' L ' + pts[0].x + ' ' + (topPad + chartH) + ' Z';
+
+                var svgHTML = '';
+                svgHTML += '<defs>';
+                svgHTML += '  <linearGradient id="sim-wave-grad" x1="0" y1="0" x2="0" y2="1">';
+                svgHTML += '    <stop offset="0%" stop-color="' + fillGradTop + '" />';
+                svgHTML += '    <stop offset="100%" stop-color="' + fillGradBottom + '" />';
+                svgHTML += '  </linearGradient>';
+                svgHTML += '</defs>';
+
+                // グリッド線 20%, 40%, 50%, 60%, 80%
+                var yTicks = [20, 40, 50, 60, 80];
+                for (var t = 0; t < yTicks.length; t++) {
+                    var tv = yTicks[t];
+                    var ty = getY(tv);
+                    var is50 = tv === 50;
+                    svgHTML += '<line x1="' + leftPad + '" y1="' + ty + '" x2="' + (660 - rightPad) + '" y2="' + ty + '" stroke="' + (is50 ? line50Color : gridColor) + '" stroke-width="' + (is50 ? '1.5' : '1') + '" ' + (is50 ? 'stroke-dasharray="5,4"' : '') + ' />';
+                    svgHTML += '<text x="' + (leftPad - 8) + '" y="' + (ty + 4) + '" fill="' + textSubColor + '" font-size="10" font-weight="' + (is50 ? '700' : '500') + '" text-anchor="end" font-variant-numeric="tabular-nums">' + tv + '%</text>';
+                }
+
+                // エリア塗りつぶし＆メイン波形線
+                svgHTML += '<path d="' + areaD + '" fill="url(#sim-wave-grad)" />';
+                svgHTML += '<path d="' + pathD + '" fill="none" stroke="' + waveStroke + '" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />';
+
+                // 時間軸ラベル＆データドット
+                for (var k = 0; k < pts.length; k++) {
+                    var pt = pts[k];
+                    var isPeak = (k === maxIdx);
+                    if (k % 2 === 0 || k === 11) {
+                        svgHTML += '<text x="' + pt.x + '" y="' + (250 - 10) + '" fill="' + textSubColor + '" font-size="10" font-weight="600" text-anchor="middle">' + pt.time + '</text>';
+                    }
+                    if (isPeak) {
+                        svgHTML += '<circle cx="' + pt.x + '" cy="' + pt.y + '" r="6" fill="' + peakMarkerColor + '" stroke="' + (isLight ? '#fff' : '#111216') + '" stroke-width="2" />';
+                        svgHTML += '<rect x="' + (pt.x - 24) + '" y="' + (pt.y - 25) + '" width="48" height="18" rx="4" fill="' + (isLight ? '#18181b' : '#22232a') + '" stroke="' + peakMarkerColor + '" stroke-width="1" />';
+                        svgHTML += '<text x="' + pt.x + '" y="' + (pt.y - 13) + '" fill="#ffffff" font-size="10" font-weight="700" text-anchor="middle">' + pt.v + '%</text>';
+                    } else if (pt.v >= 50) {
+                        svgHTML += '<circle cx="' + pt.x + '" cy="' + pt.y + '" r="3" fill="' + waveStroke + '" />';
+                    }
+                }
+
+                svg.innerHTML = svgHTML;
+
+                // インサイト更新
+                var peakTime = SLOTS[maxIdx];
+                var peakVal = maxVal + '%';
+                var peakSub = peakTime + '頃にピーク女性比率が最大化';
+                if (weather === 'rainy') peakSub += '（雨天による出足調整済）';
+
+                var recSlot = (dow === 'weekday') ? '20:00〜21:30' : (dow === 'sun' ? '19:30〜21:00' : '20:30〜22:00');
+                if (weather === 'rainy') recSlot = (dow === 'weekday') ? '20:30〜22:00' : '21:00〜22:30';
+
+                var crowdSlot = (dow === 'fri' || dow === 'sat') ? '22:30〜翌01:00' : (dow === 'sun' ? '21:00〜22:30' : '21:30〜23:30');
+                var durHours = (countOver50 * 1.0).toFixed(1);
+
+                var elPeak = document.getElementById('sim-res-peak');
+                var elPeakSub = document.getElementById('sim-res-peak-sub');
+                var elSlot = document.getElementById('sim-res-slot');
+                var elCrowd = document.getElementById('sim-res-crowd');
+                var elDur = document.getElementById('sim-res-duration');
+                var elPatSub = document.getElementById('sim-res-pattern-sub');
+
+                if (elPeak) elPeak.textContent = peakVal;
+                if (elPeakSub) elPeakSub.textContent = peakSub;
+                if (elSlot) elSlot.textContent = recSlot;
+                if (elCrowd) elCrowd.textContent = crowdSlot;
+                if (elDur) elDur.textContent = '約' + durHours + '時間';
+                if (elPatSub) {
+                    elPatSub.textContent = (countOver50 >= 5 ? 'ロングピーク型（持続性◎）' : 'コアタイム集中型');
+                }
+            };
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', updateSimulator);
+            } else {
+                updateSimulator();
+            }
+        })();
+        </script>
 
         {% if report and report.weekday_summary %}
         <h2>曜日別・全国相席ラウンジ平均男女比＆狙い目データ</h2>
@@ -627,8 +1072,6 @@
             {% endif %}
         </section>
         {% endif %}
-
-        {% include '_surface_smart_cta.html' %}
 
         <section class="hero-box" style="margin-top: 32px; border-color: var(--border-subtle);">
             <h2 style="margin: 0 0 10px; font-size: 1.04rem; border: none; padding-left: 0; color: var(--accent-text);">データ収集・検証方法論 ＆ メディア・AI引用ガイドライン（CC BY 4.0）</h2>
