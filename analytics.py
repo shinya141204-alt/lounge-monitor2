@@ -36,8 +36,14 @@ ALLOWED_EVENTS = {
     'sns_click',             # X/Threads/note への導線
     'share',                 # LINE/X 共有・コピー
     'vote',                  # 現場投票
+    'vote_wait',             # 現場投票に付随する待ち時間申告（store:15m 形式）
+    'watch_intent',          # 条件ウォッチ登録（store:condition 形式）
     'sns_inflow',            # ?s= 識別子付きのSNS投稿からのサイト流入・CV追跡
 }
+
+# distinct (date, event, label) キー上限。超過時は新規ラベルを '__overflow__' に丸めてメモリ膨張を防ぐ
+_PENDING_MAX_KEYS = 5000
+_OVERFLOW_LABEL = '__overflow__'
 
 _lock = threading.Lock()
 _pending = defaultdict(int)   # (date, event, label) -> count（未フラッシュ分）
@@ -48,6 +54,7 @@ _SHEET_ROWS_CACHE_TTL = 900.0
 _sheet_rows_cache = {'ts': 0.0, 'rows': None}
 _sheet_refresh_in_flight = False
 _pg_seeded_from_sheets = False
+_pg_seed_in_flight = False
 
 _hourly_pending = defaultdict(int)       # (date_jst, hour_jst, bucket) -> count
 _hourly_sheets_retry = defaultdict(int)  # Postgres保存済み・Sheetsのみ再送待ち分
@@ -220,7 +227,8 @@ def normalize_cushion_click_label(raw_label: str) -> str:
     return f"{norm_target} @ {s_clean}"
 
 
-_STORE_TRACK_EVENTS = ('store_open', 'map_cafe', 'map_bar', 'official_click', 'vote')
+_STORE_TRACK_EVENTS = ('store_open', 'map_cafe', 'map_bar', 'official_click', 'vote', 'vote_wait', 'watch_intent')
+_STORE_SUFFIX_EVENTS = ('vote', 'vote_wait', 'watch_intent')
 
 
 def sanitize_generic_track_label(raw_label: str) -> str:
@@ -238,7 +246,7 @@ def normalize_store_event_label(event: str, raw_label: str) -> str:
     s = sanitize_generic_track_label(raw_label)
     if not s or event not in _STORE_TRACK_EVENTS:
         return s
-    if event == 'vote' and ':' in s:
+    if event in _STORE_SUFFIX_EVENTS and ':' in s:
         sname_raw, suffix = [p.strip() for p in s.split(':', 1)]
     else:
         sname_raw, suffix = s, ''
@@ -256,7 +264,7 @@ def normalize_store_event_label(event: str, raw_label: str) -> str:
                     canon = by_slug
     except Exception:
         pass
-    return f"{canon}:{suffix}" if (event == 'vote' and suffix) else canon
+    return f"{canon}:{suffix}" if (event in _STORE_SUFFIX_EVENTS and suffix) else canon
 
 
 _FALLBACK_AFF_ALIAS_MAP = {
@@ -347,6 +355,11 @@ def classify_hourly_bucket(event: str, norm_label: str) -> str:
         return 'external_engage'
     if ev == 'vote':
         return 'vote'
+    # 待ち時間申告は vote と同時送信されるため 'vote' に合算すると二重計上になる → 独立バケット
+    if ev == 'vote_wait':
+        return 'vote_wait'
+    if ev == 'watch_intent':
+        return 'watch_intent'
     return ''
 
 
@@ -377,7 +390,10 @@ def track(event, label='', _now_jst=None):
 
     h_bucket = classify_hourly_bucket(event, label)
     with _lock:
-        _pending[(date_str, event, label)] += 1
+        p_key = (date_str, event, label)
+        if p_key not in _pending and len(_pending) >= _PENDING_MAX_KEYS:
+            p_key = (date_str, event, _OVERFLOW_LABEL)
+        _pending[p_key] += 1
         if h_bucket:
             _hourly_pending[(date_str, hour_int, h_bucket)] += 1
     return True
@@ -847,9 +863,9 @@ def describe_label(event, raw_label):
         prefix = '表示面' if event == 'affiliate_impression' else 'クリック元'
         return {'title': item_title, 'sub': f'{prefix}: {ref_title}', 'href': ''}
 
-    if event in ('store_open', 'map_cafe', 'map_bar', 'official_click', 'vote'):
+    if event in _STORE_TRACK_EVENTS:
         sname = label.split(':', 1)[0].strip() if ':' in label else label
-        vtype = label.split(':', 1)[1].strip() if (event == 'vote' and ':' in label) else ''
+        vtype = label.split(':', 1)[1].strip() if (event in _STORE_SUFFIX_EVENTS and ':' in label) else ''
         vtype_ja = {'smooth': 'すぐ入れた', 'waiting': '少し待ち', 'lively': '大盛況'}.get(vtype, vtype)
         try:
             import store_master
@@ -1388,6 +1404,7 @@ def hourly_summary(days=7, allow_blocking=True, _now_jst=None):
 
 def summary(days=7, allow_blocking=True):
     """直近 days 日の集計: {'by_event': {...}, 'by_label': {...}, 'by_label_pretty': {...}, 'funnel': {...}, 'revenue': {...}, 'daily_series': [...]}"""
+    global _pg_seeded_from_sheets, _pg_seed_in_flight
     days = max(1, int(days or 7))
     now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
     today_date = now_jst.date()
@@ -1402,16 +1419,27 @@ def summary(days=7, allow_blocking=True):
 
     if fast_rows is not None:
         if turbo_store.is_postgres_active() and not sheets_store.is_disabled():
-            global _pg_seeded_from_sheets
-            if not _pg_seeded_from_sheets:
-                _pg_seeded_from_sheets = True
+            should_seed = False
+            with _lock:
+                if not _pg_seeded_from_sheets and not _pg_seed_in_flight and not _pg_retry:
+                    _pg_seed_in_flight = True
+                    should_seed = True
+            if should_seed:
                 def _seed_pg_analytics():
+                    global _pg_seeded_from_sheets, _pg_seed_in_flight
                     try:
                         hist_rows = sheets_store.read_rows_or_none(SHEET_TITLE, HEADER)
-                        if hist_rows:
-                            turbo_store.analytics_replace_from_sheets(hist_rows)
-                    except Exception:
-                        pass
+                        # Only mark seeded after a successful read (None = transient Sheets failure → retry later)
+                        if hist_rows is not None:
+                            if hist_rows:
+                                turbo_store.analytics_replace_from_sheets(hist_rows)
+                            with _lock:
+                                _pg_seeded_from_sheets = True
+                    except Exception as err:
+                        logging.warning(f"[analytics] PG seed from Sheets failed (will retry): {err}")
+                    finally:
+                        with _lock:
+                            _pg_seed_in_flight = False
                 threading.Thread(target=_seed_pg_analytics, daemon=True).start()
         for r in fast_rows:
             if len(r) >= 4 and r[0] >= start:
@@ -1696,8 +1724,9 @@ def summary(days=7, allow_blocking=True):
 
 
 def reset_for_tests():
-    global _pg_seeded_from_sheets, _pg_hourly_seeded_from_sheets, _pg_hourly_seed_in_flight
+    global _pg_seeded_from_sheets, _pg_hourly_seeded_from_sheets, _pg_hourly_seed_in_flight, _pg_seed_in_flight
     with _lock:
+        _pg_seed_in_flight = False
         _pending.clear()
         _sheets_retry.clear()
         _pg_retry.clear()

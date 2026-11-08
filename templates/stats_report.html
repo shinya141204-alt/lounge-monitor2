@@ -470,7 +470,11 @@
         <section class="hero-box">
             <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
                 <span class="badge" style="margin-bottom:0;">ORIGINAL DATA WHITEPAPER</span>
-                <span class="badge" style="margin-bottom:0; background:rgba(255,255,255,0.045); color:var(--text-sub); border-color:var(--border-subtle);">累計 {{ "{:,}".format(report.total_records_analyzed) if report and report.total_records_analyzed else "240,000" }}件以上の実測ログ集計</span>
+                {% if report and report.total_records_analyzed is number and report.total_records_analyzed > 0 %}
+                <span class="badge" style="margin-bottom:0; background:rgba(255,255,255,0.045); color:var(--text-sub); border-color:var(--border-subtle);">累計 {{ "{:,}".format(report.total_records_analyzed | int) }}件の実測ログ集計</span>
+                {% else %}
+                <span class="badge" style="margin-bottom:0; background:rgba(255,255,255,0.045); color:var(--text-sub); border-color:var(--border-subtle);">実測ログ集計（累計件数は検証ログ蓄積中）</span>
+                {% endif %}
             </div>
             <h1>全国相席ラウンジ 統計データ白書＆週間ピークランキング</h1>
             <p style="margin: 0; font-size: 0.9rem; color: var(--text-sub);">
@@ -785,9 +789,13 @@
                     {% for w in report.weekday_summary %}
                     <tr>
                         <td style="font-weight: 700; color: var(--text-main);">{{ w.weekday }}</td>
+                        {% if w.avg_wpct is number %}
                         <td style="font-weight: 700; color: {% if w.avg_wpct >= 55 %}var(--accent-text){% else %}var(--text-main){% endif %};">{{ w.avg_wpct }}%</td>
-                        <td class="w-num">{{ w.avg_women }}名</td>
-                        <td class="m-num">{{ w.avg_men }}名</td>
+                        {% else %}
+                        <td style="color: var(--text-sub); font-size: 0.82rem;">検証ログ蓄積中</td>
+                        {% endif %}
+                        <td class="w-num">{% if w.avg_women is number %}{{ w.avg_women }}名{% else %}—{% endif %}</td>
+                        <td class="m-num">{% if w.avg_men is number %}{{ w.avg_men }}名{% else %}—{% endif %}</td>
                         <td style="color: var(--text-sub); font-size: 0.82rem;">{{ w.note }}</td>
                     </tr>
                     {% endfor %}
@@ -814,7 +822,11 @@
                     <tr>
                         <td style="font-weight: 700; color: var(--accent-text); white-space: nowrap;">{{ ts.slot }}</td>
                         <td style="font-weight: 600; color: var(--text-main); white-space: nowrap;">{{ ts.title }}</td>
+                        {% if ts.avg_wpct is number %}
                         <td style="font-weight: 700; color: var(--women);">{{ ts.avg_wpct }}%</td>
+                        {% else %}
+                        <td style="color: var(--text-sub); font-size: 0.82rem;">検証ログ蓄積中</td>
+                        {% endif %}
                         <td style="color: var(--text-sub); font-size: 0.82rem;">{{ ts.description }}</td>
                     </tr>
                     {% endfor %}

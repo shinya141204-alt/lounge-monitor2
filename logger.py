@@ -277,8 +277,9 @@ def log_data(data):
                         timestamp_str,
                         'weather_event',
                         c.get('city_key', ''),
-                        c.get('temp_c', 0.0),
-                        c.get('precip_mm', 0.0),
+                        # Missing weather must stay blank (never a fabricated 0.0℃ / 0.0mm)
+                        '' if c.get('temp_c') is None else c.get('temp_c'),
+                        '' if c.get('precip_mm') is None else c.get('precip_mm'),
                         c.get('condition_ja', ''),
                         c.get('active_arenas_json', '[]'),
                     ])

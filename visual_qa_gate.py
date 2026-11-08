@@ -24,14 +24,49 @@ import reel_generator
 
 logger = logging.getLogger(__name__)
 
-# Template fallback cycle when QA rejects a reel format
+# Template fallback cycle when QA rejects a reel format.
+# Every key AND value must exist in `reel_generator.REEL_TEMPLATES` (no phantom templates).
 ALTERNATIVE_REEL_TEMPLATES = {
     "live_top5": "area_battle",
     "area_battle": "ladies_zero_wait",
     "ladies_zero_wait": "live_top5",
-    "closing_rush": "live_top5",
-    "ranking": "live_top5",
+    "tiktok_gap_shock": "tiktok_midnight_cliff",
+    "tiktok_ladies_real": "tiktok_gap_shock",
+    "tiktok_midnight_cliff": "tiktok_ladies_real",
 }
+ALTERNATIVE_REEL_TEMPLATES = {
+    k: v
+    for k, v in ALTERNATIVE_REEL_TEMPLATES.items()
+    if k in reel_generator.REEL_TEMPLATES and v in reel_generator.REEL_TEMPLATES
+}
+
+# Captured at import so monkeypatched single-frame renderers (tests / hotfixes) are still honored
+_ORIG_SINGLE_FRAME_RENDERER = getattr(reel_generator, "render_reel_preview_frame_jpeg", None)
+
+
+def _normalize_recommended_template(candidate, rt: str) -> str:
+    """Accept only real `REEL_TEMPLATES` keys from model output; anything else (null, '../evil') -> safe alternative."""
+    fallback = ALTERNATIVE_REEL_TEMPLATES.get(rt, "area_battle")
+    if not isinstance(candidate, str):
+        return fallback
+    cand = candidate.strip().lower()
+    if cand in reel_generator.REEL_TEMPLATES:
+        return cand
+    return fallback
+
+
+def _render_qa_frames(stores: list, rt: str, now_jst) -> Tuple[bytes, bytes]:
+    """Render hook (1.2s) + data (6.0s) frames, building the scene renderer only once when possible."""
+    single = getattr(reel_generator, "render_reel_preview_frame_jpeg", None)
+    multi = getattr(reel_generator, "render_reel_preview_frames_jpeg", None)
+    if multi is not None and single is _ORIG_SINGLE_FRAME_RENDERER:
+        frames = multi(stores, reel_type=rt, secs=(1.2, 6.0), now_jst=now_jst, quality=80) or []
+        if len(frames) >= 2:
+            return frames[0], frames[1]
+        return (frames[0] if frames else b""), b""
+    frame_hook = single(stores, reel_type=rt, sec=1.2, now_jst=now_jst, quality=80)
+    frame_data = single(stores, reel_type=rt, sec=6.0, now_jst=now_jst, quality=80)
+    return frame_hook, frame_data
 
 QA_MODELS_FALLBACK_CHAIN = (
     "gemini-4-argon",
@@ -114,12 +149,7 @@ def inspect_reel_visual_quality(
 
     # 1. Render preview frames at t=1.2s (Hook scene) and t=6.0s (Data scene) purely via Pillow
     try:
-        frame_hook = reel_generator.render_reel_preview_frame_jpeg(
-            stores, reel_type=rt, sec=1.2, now_jst=now_jst, quality=80
-        )
-        frame_data = reel_generator.render_reel_preview_frame_jpeg(
-            stores, reel_type=rt, sec=6.0, now_jst=now_jst, quality=80
-        )
+        frame_hook, frame_data = _render_qa_frames(stores, rt, now_jst)
     except Exception as e:
         logger.warning(f"[visual_qa] Frame extraction failed ({rt}): {e}")
         res = _safe_fail_open_result(f"frame_extract_error: {e}", recommended_template=rt)
@@ -206,7 +236,7 @@ def inspect_reel_visual_quality(
                     if parsed and isinstance(parsed, dict):
                         is_pass = bool(parsed.get("pass", True))
                         score = int(parsed.get("overall_score", 85) or 85)
-                        rec_template = parsed.get("recommended_template") or ALTERNATIVE_REEL_TEMPLATES.get(rt, "live_top5")
+                        rec_template = _normalize_recommended_template(parsed.get("recommended_template"), rt)
                         return {
                             "pass": is_pass,
                             "overall_score": score,
@@ -221,6 +251,12 @@ def inspect_reel_visual_quality(
                             "reason": "inspected",
                             "latency_sec": round(time.monotonic() - t0, 3),
                         }
+                    last_err = f"unparseable_response ({m_name})"
+                else:
+                    last_err = f"empty_candidates ({m_name})"
+            else:
+                last_err = f"HTTP {resp.status_code} ({m_name})"
+                logger.warning(f"[visual_qa] Gemini API returned HTTP {resp.status_code} ({m_name})")
         except requests.exceptions.Timeout:
             last_err = f"timeout ({m_name})"
             logger.warning(f"[visual_qa] Gemini API timeout ({m_name})")
@@ -360,9 +396,11 @@ def enforce_reel_visual_qa(
     if qa.get("pass", True):
         return orig_rt, qa
 
-    rec_template = qa.get("recommended_template")
-    if not rec_template or rec_template == orig_rt:
-        rec_template = ALTERNATIVE_REEL_TEMPLATES.get(orig_rt, "live_top5")
+    rec_template = _normalize_recommended_template(qa.get("recommended_template"), orig_rt)
+    if rec_template == orig_rt:
+        rec_template = ALTERNATIVE_REEL_TEMPLATES.get(orig_rt, "area_battle")
+        if rec_template == orig_rt:
+            rec_template = "live_top5" if orig_rt != "live_top5" else "area_battle"
 
     logger.warning(
         f"[visual_qa] Reel template {orig_rt} rejected by visual QA (score={qa.get('overall_score')}). "

@@ -174,7 +174,12 @@ def validate(form) -> tuple:
 
 
 def hash_ip(secret: str, ip_addr: str) -> str:
-    return hashlib.sha256(f'{secret}|{ip_addr}'.encode('utf-8')).hexdigest()[:16]
+    """標準 HMAC-SHA256 による IP 匿名化（`sha256(secret|ip)` 連結方式は長さ拡張・区切り曖昧性の懸念があるため廃止）。"""
+    return hmac.new(
+        str(secret or '').encode('utf-8'),
+        f'contact_ip:{ip_addr or ""}'.encode('utf-8'),
+        hashlib.sha256,
+    ).hexdigest()[:32]
 
 
 def store_inquiry(data: dict, ip_hash: str, user_agent: str = '') -> dict:

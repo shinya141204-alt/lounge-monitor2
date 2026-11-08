@@ -212,7 +212,20 @@ def _upload_mp4_to_tiktok_inbox(access_token: str, video_url: str, mp4_bytes: by
             timeout=20,
         )
         if r_pull.status_code == 200:
-            body = r_pull.json() or {}
+            try:
+                body = r_pull.json() or {}
+                if not isinstance(body, dict):
+                    raise ValueError("non-object JSON body")
+            except ValueError as parse_err:
+                # HTTP 200 means TikTok may have already accepted the pull job: never fall through to
+                # FILE_UPLOAD here, or the same video could land in the Inbox twice.
+                logging.warning(f"TikTok PULL_FROM_URL returned 200 with unparseable body: {parse_err}")
+                return {
+                    "status": "error",
+                    "ok": False,
+                    "method": "PULL_FROM_URL",
+                    "detail": f"TikTok PULL_FROM_URL HTTP 200 but response JSON was unparseable (FILE_UPLOAD skipped to avoid duplicate): {r_pull.text[:160]}",
+                }
             err_obj = body.get("error") or {}
             if err_obj.get("code") in (None, "", "ok"):
                 pub_id = str((body.get("data") or {}).get("publish_id") or "").strip()

@@ -22,8 +22,17 @@ import ig_carousel_generator
 import job_state
 import threads_poster
 
-IG_GRAPH_BASE = "https://graph.instagram.com/v21.0"
-FB_GRAPH_BASE = "https://graph.facebook.com/v21.0"
+def _resolve_graph_api_version() -> str:
+    """Graph API version (override via `IG_GRAPH_API_VERSION`, strictly `vNN.N` to avoid URL injection)."""
+    ver = (os.environ.get("IG_GRAPH_API_VERSION") or "").strip()
+    if re.fullmatch(r"v\d{1,3}\.\d{1,2}", ver):
+        return ver
+    return "v22.0"
+
+
+IG_GRAPH_API_VERSION = _resolve_graph_api_version()
+IG_GRAPH_BASE = f"https://graph.instagram.com/{IG_GRAPH_API_VERSION}"
+FB_GRAPH_BASE = f"https://graph.facebook.com/{IG_GRAPH_API_VERSION}"
 DEFAULT_IG_USER_ID = "17841410169754469"  # @aiseki_navi1 professional user_id
 SITE_URL = "https://aiseki-navi.com"
 REEL_AUTO_ENABLED_KEY = "reel_auto_schedule_enabled"
@@ -654,6 +663,13 @@ def execute_scheduled_instagram_post(stores: list, mode: str = "carousel", slot_
                 logging.warning(f"Failed to load weekly report for Instagram carousel: {e}")
                 rep = None
 
+            if not rep and not force:
+                dom_live = threads_poster._filter_domestic_stores(stores or [])
+                live_people = sum(int(s.get("women") or 0) + int(s.get("men") or 0) for s in dom_live)
+                if live_people <= 0:
+                    logging.info(f"Skipping Instagram carousel ({slot_label}): no weekly report and no live headcount.")
+                    return {"status": "skipped", "ok": False, "skipped": True, "reason": "No weekly report or live data (data_status=insufficient)"}
+
             ctx = ig_carousel_generator.build_forecast_context(report=rep, live_stores=stores, now_jst=now_jst)
             editorial_winner = None
             ed_session_record = None
@@ -1133,6 +1149,10 @@ def publish_live_reel_to_instagram(
                     f"[instagram_poster] Reel QA rejected '{rt}', auto-rerendering alternative template '{qa_rt}'"
                 )
                 rt = qa_rt
+                # Re-derive dedup key for the finally-published template so mark_done / is_done stay consistent
+                dedup_key = f"ig_post:{biz_date}_reel_{rt}_{slot_label}"
+                if not force and job_state.is_done(dedup_key):
+                    return {"status": "skipped", "ok": False, "reason": "Already posted Reel to Instagram for this slot", "reel_type": rt}
                 if not cleaned_custom:
                     if not force:
                         caption = reel_generator.build_ai_reel_caption(stores, reel_type=rt, now_jst=now_jst)

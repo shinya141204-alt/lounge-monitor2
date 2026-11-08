@@ -173,12 +173,33 @@
         scanLinks();
 
         if ('MutationObserver' in window && document.body) {
-            var mo = new MutationObserver(scheduleScan);
+            // Only rescan when anchors are added or an href actually changes.
+            // (class/style mutations from the 30s live refresh / odometer animations no longer trigger full rescans;
+            //  visibility is still re-checked per-entry in the IntersectionObserver callback.)
+            var mo = new MutationObserver(function (mutations) {
+                for (var i = 0; i < mutations.length; i++) {
+                    var mu = mutations[i];
+                    if (mu.type === 'attributes') {
+                        var t = mu.target;
+                        if (t && t.tagName === 'A') { scheduleScan(); return; }
+                        continue;
+                    }
+                    var added = mu.addedNodes;
+                    for (var j = 0; j < added.length; j++) {
+                        var n = added[j];
+                        if (n.nodeType !== 1) continue;
+                        if (n.tagName === 'A' || (n.querySelector && n.querySelector('a[href]'))) {
+                            scheduleScan();
+                            return;
+                        }
+                    }
+                }
+            });
             mo.observe(document.body, {
                 childList: true,
                 subtree: true,
                 attributes: true,
-                attributeFilter: ['href', 'class', 'style']
+                attributeFilter: ['href']
             });
         }
     }

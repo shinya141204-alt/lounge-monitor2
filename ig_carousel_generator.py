@@ -26,9 +26,23 @@ _PORTRAIT_BASE_MAX = 5
 _KINSOKU_LEADING = frozenset("。、．，・：；！？）」』】〉》〕％%")
 
 
+def _business_night_dt(now_jst: datetime.datetime) -> datetime.datetime:
+    """
+    Late-night 0:00-4:59 JST belongs to the previous business night (`now - 7h`), matching the
+    `-7h` business-day convention used by reel_generator / sns_editorial. 21:00 etc. are unchanged.
+    """
+    if now_jst is None:
+        now_jst = datetime.datetime.now(JST)
+    if now_jst.tzinfo is None:
+        now_jst = now_jst.replace(tzinfo=JST)
+    if 0 <= now_jst.hour < 5:
+        return now_jst - datetime.timedelta(hours=7)
+    return now_jst
+
+
 def _upcoming_weekend_dates(now_jst: datetime.datetime) -> tuple:
-    """Return (fri_date, sat_date, label_str) for the current or upcoming Fri/Sat."""
-    d = now_jst.date()
+    """Return (fri_date, sat_date, label_str) for the current or upcoming Fri/Sat (business-night based)."""
+    d = _business_night_dt(now_jst).date()
     wd = d.weekday()  # Mon=0 .. Fri=4, Sat=5, Sun=6
     if wd <= 4:
         fri = d + datetime.timedelta(days=(4 - wd))
@@ -49,9 +63,10 @@ def _resolve_day_theme(now_jst: datetime.datetime, weekend_label: str) -> dict:
       - Thu/Fri/Sat (3,4,5): Weekend Peak Forecast & Hopping Guide (Pink & Gold)
       - Sun (6): Weekly Nationwide Data Summary & Best Ratio Report (Purple & Gold)
     """
-    wd = now_jst.weekday()
+    biz_dt = _business_night_dt(now_jst)
+    wd = biz_dt.weekday()
     weekdays_ja = ["月", "火", "水", "木", "金", "土", "日"]
-    today_str = f"{now_jst.month}/{now_jst.day}({weekdays_ja[wd]})"
+    today_str = f"{biz_dt.month}/{biz_dt.day}({weekdays_ja[wd]})"
 
     if wd in (0, 1, 2):
         return {
@@ -61,7 +76,7 @@ def _resolve_day_theme(now_jst: datetime.datetime, weekend_label: str) -> dict:
             "h1_line1": "平日の相席",
             "h1_line2": "待ち時間ゼロで",
             "h1_line3": "飲める穴場TOP5",
-            "sub_line1": "平日は「男性待ち0分×女性比率58%超」の店舗が続出！",
+            "sub_line1": "平日は男性の受付待ちが短く、女性比率が高めの店舗も見つかりやすい！",
             "sub_line2": "仕事帰りに1軒目からスマートに乾杯できる攻略ガイド",
             "slide2_title": "平日夜でも盛り上がる大型店 TOP5",
             "slide2_sub": "平日20〜22時台でも女性来店数が安定して多い主力店舗",
@@ -137,7 +152,8 @@ def build_forecast_context(
             if s.get("region") != "Korea" and _is_domestic(s.get("name", ""))
         ]
         dom_live.sort(key=lambda x: (int(x.get("women") or 0), int(x.get("men") or 0)), reverse=True)
-        if dom_live:
+        live_total = sum(int(x.get("women") or 0) + int(x.get("men") or 0) for x in dom_live)
+        if dom_live and live_total > 0:
             is_live_fallback = True
             stores = []
             for s in dom_live:
@@ -164,22 +180,8 @@ def build_forecast_context(
             )
             anaba = solid_anaba + rest_anaba
 
-    if not stores:
-        fallback_seed = [
-            ("OLG 大阪駅前", 68, 48, 92, 58.6),
-            ("OLG 渋谷本店", 62, 46, 85, 57.4),
-            ("OLG 新宿", 58, 47, 82, 55.2),
-            ("JIS FUKUOKA", 54, 38, 76, 58.7),
-            ("JIS NAMBA", 49, 36, 70, 57.6),
-            ("OLG 恵比寿", 36, 23, 52, 61.0),
-            ("OLG 京都", 34, 21, 48, 61.8),
-            ("OLG 神戸", 31, 20, 44, 60.8),
-        ]
-        stores = [
-            {"name": n, "avg_women": aw, "avg_men": am, "max_women": mw, "avg_wpct": pct}
-            for (n, aw, am, mw, pct) in fallback_seed
-        ]
-        anaba = sorted(stores, key=lambda x: (x["avg_wpct"], x["avg_women"]), reverse=True)
+    # No weekly report and no live headcount -> honest "insufficient" context (never fabricated seed stores)
+    data_status = "ok" if stores else "insufficient"
 
     def _enrich(item: dict) -> dict:
         raw = item.get("name", "")
@@ -195,17 +197,20 @@ def build_forecast_context(
             "avg_women": int(round(float(item.get("avg_women") or 0))),
             "avg_men": int(round(float(item.get("avg_men") or 0))),
             "max_women": int(round(float(item.get("max_women") or 0))),
-            "avg_wpct": int(round(float(raw_wpct))) if raw_wpct is not None else 0,
+            "avg_wpct": int(round(float(raw_wpct))) if raw_wpct is not None else None,
         }
 
     top_volume = [_enrich(s) for s in stores[:5]]
-    top_anaba = [_enrich(s) for s in anaba[:5]]
+    # Anaba (ratio) ranking only includes stores with a measured ratio
+    top_anaba = [e for e in (_enrich(s) for s in anaba) if e["avg_wpct"] is not None][:5]
 
     return {
         "weekend_label": weekend_label,
         "generated_at": now_jst.strftime("%Y/%m/%d %H:%M"),
         "top_volume": top_volume,
         "top_anaba": top_anaba,
+        "top_stores": top_volume,
+        "data_status": data_status,
         "theme": theme,
         "is_live_fallback": is_live_fallback,
     }
@@ -383,6 +388,25 @@ def _draw_header_and_footer(draw: ImageDraw.ImageDraw, slide_num: int, total_sli
     draw.text((64, H - 64), foot_l, font=f_foot, fill=(148, 163, 184, 235))
 
 
+def _draw_insufficient_notice_card(draw, W: int, top_y: int = 268, accent=(56, 189, 248)) -> None:
+    """Clean off-hours notice card (no headcounts / ratios) used when no measured data exists."""
+    f_h = ogp_generator._get_font(44)
+    f_p = ogp_generator._get_font(27)
+    f_s = ogp_generator._get_font(24)
+    draw.rounded_rectangle(
+        (64, top_y, W - 64, top_y + 420),
+        radius=26,
+        fill=(20, 24, 38, 240),
+        outline=(accent[0], accent[1], accent[2], 190),
+        width=2,
+    )
+    draw.text((100, top_y + 48), "営業時間外・リアルタイム集計準備中", font=f_h, fill=(255, 255, 255, 255))
+    draw.text((100, top_y + 132), "18時以降、全国の現在人数と男女比を毎分自動集計します", font=f_p, fill=accent)
+    draw.text((100, top_y + 190), "実測ログが揃い次第、ランキングを掲載します", font=f_p, fill=(226, 232, 240, 245))
+    draw.text((100, top_y + 270), "日中は曜日・時間帯別の統計と料金比較を公開中", font=f_s, fill=(182, 194, 212, 240))
+    draw.text((100, top_y + 318), "相席ナビ / aiseki-navi.com", font=f_s, fill=(251, 191, 36, 255))
+
+
 def _render_slide_canvas(slide_num: int, ctx: dict = None) -> Image.Image:
     """Render slide 1..5 onto a 1080x1350 RGB PIL.Image canvas."""
     ctx = ctx or build_forecast_context()
@@ -466,6 +490,9 @@ def _render_slide_canvas(slide_num: int, ctx: dict = None) -> Image.Image:
         draw.text((64, 134), t1, font=f_title, fill=(255, 255, 255, 255))
         draw.text((64, 198), sub, font=f_sub, fill=(203, 213, 225, 235))
 
+        if not items:
+            _draw_insufficient_notice_card(draw, W, top_y=268, accent=accent)
+
         cy = 258
         card_h = 182
         rank_cols = [
@@ -492,10 +519,12 @@ def _render_slide_canvas(slide_num: int, ctx: dict = None) -> Image.Image:
 
             # Highlight pill top-right
             is_live_fb = bool(ctx.get("is_live_fallback"))
+            st_wpct = st.get("avg_wpct")
+            wpct_txt = f"女性比 {st_wpct}%" if st_wpct is not None else "女性比 集計中"
             if is_vol:
                 pill_txt = f"現在女性 {st['max_women']}名" if is_live_fb else f"最高女性 {st['max_women']}名"
             else:
-                pill_txt = f"女性比率 {st['avg_wpct']}%" if is_live_fb else f"平均女性比 {st['avg_wpct']}%"
+                pill_txt = f"女性比率 {st_wpct}%" if is_live_fb else f"平均女性比 {st_wpct}%"
             pw_px = int(draw.textlength(pill_txt, font=f_pill)) + 34
             px = W - 92 - pw_px
             pill_bg = (190, 24, 93, 235) if is_vol else (14, 116, 144, 235)
@@ -511,15 +540,16 @@ def _render_slide_canvas(slide_num: int, ctx: dict = None) -> Image.Image:
 
             # Stats + ratio bar
             if is_live_fb:
-                stat_l = f"現在人数：女性 {st['avg_women']}名  /  男性 {st['avg_men']}名（女性比 {st['avg_wpct']}%）"
+                stat_l = f"現在人数：女性 {st['avg_women']}名  /  男性 {st['avg_men']}名（{wpct_txt}）"
             else:
-                stat_l = f"女性ピーク平均 {st['avg_women']}名  /  男性平均 {st['avg_men']}名（女性比 {st['avg_wpct']}%）"
+                stat_l = f"女性ピーク平均 {st['avg_women']}名  /  男性平均 {st['avg_men']}名（{wpct_txt}）"
             draw.text((92, cy + 104), stat_l, font=f_stat, fill=(244, 114, 182, 255))
 
             bx, by_bar, bw_bar, bh_bar = 92, cy + 146, W - 184, 14
             draw.rounded_rectangle((bx, by_bar, bx + bw_bar, by_bar + bh_bar), radius=7, fill=(59, 130, 246, 220))
-            fill_w = max(16, min(bw_bar, int(bw_bar * (st["avg_wpct"] / 100.0))))
-            draw.rounded_rectangle((bx, by_bar, bx + fill_w, by_bar + bh_bar), radius=7, fill=(236, 72, 153, 255))
+            if st_wpct is not None:
+                fill_w = max(16, min(bw_bar, int(bw_bar * (st_wpct / 100.0))))
+                draw.rounded_rectangle((bx, by_bar, bx + fill_w, by_bar + bh_bar), radius=7, fill=(236, 72, 153, 255))
 
             cy += card_h + 16
 
@@ -580,7 +610,7 @@ def _render_slide_canvas(slide_num: int, ctx: dict = None) -> Image.Image:
                 (
                     "21:15 - 23:00",
                     "最大ピーク帯は「徒歩4分ハシゴ比較」が鉄則",
-                    "新宿・渋谷・梅田などは同じ時刻でも店舗間で女性比率が平均15%以上開きます。並ぶ前に近隣の別ブランドを比較しましょう。",
+                    "新宿・渋谷・梅田などは同じ時刻でも店舗間で女性比率に大きな差が出ることがあります。並ぶ前に近隣の別ブランドを比較しましょう。",
                     (251, 191, 36),
                 ),
                 (
@@ -696,11 +726,12 @@ def render_slide_jpeg(slide_num: int, ctx: dict = None, quality: int = 90) -> by
 def build_captions(ctx: dict = None) -> dict:
     """Generate ready-to-paste Instagram & Threads captions from the forecast context."""
     ctx = ctx or build_forecast_context()
-    v_top = ctx["top_volume"][:3]
-    a_top = ctx["top_anaba"][:3]
-    wk = ctx["weekend_label"]
+    v_top = (ctx.get("top_volume") or [])[:3]
+    a_top = [s for s in (ctx.get("top_anaba") or []) if s.get("avg_wpct") is not None][:3]
+    wk = ctx.get("weekend_label") or _upcoming_weekend_dates(datetime.datetime.now(JST))[2]
     theme = ctx.get("theme") or _resolve_day_theme(datetime.datetime.now(JST), wk)
     t_key = theme.get("theme_key", "weekend")
+    is_insufficient = (ctx.get("data_status") == "insufficient") or not v_top
 
     is_live_fb = bool(ctx.get("is_live_fallback"))
     v_metric_lbl = "現在女性" if is_live_fb else "最高女性"
@@ -713,7 +744,7 @@ def build_captions(ctx: dict = None) -> dict:
     a_lines = "\n".join(
         f"・{i+1}位：{s['seo_name']}（{a_metric_lbl}{s['avg_wpct']}%）"
         for i, s in enumerate(a_top)
-    )
+    ) or "・検証ログ蓄積中（女性比率の実測が揃い次第掲載）"
 
     if t_key == "weekday":
         headline = f"【{theme['date_badge']}｜平日夜の穴場＆高女性比率ガイド📊】"
@@ -743,6 +774,30 @@ def build_captions(ctx: dict = None) -> dict:
     except Exception:
         tag_line = "#相席ナビ #相席ラウンジ #オリエンタルラウンジ #ag #JIS #週末ディナー"
 
+    if is_insufficient:
+        # Honest caption without headcounts / ratios when no measured data exists
+        ig_caption = (
+            f"{headline}\n"
+            f"現在は営業時間外のため、リアルタイム集計を準備中です（検証ログ蓄積中）。\n\n"
+            f"18時以降は全国60店舗超（オリエンタルラウンジ / ag / JIS ほか）の現在人数と男女比を毎分自動更新します。\n"
+            f"時間帯別の立ち回りメモは4枚目にまとめています📌\n\n"
+            f"お店に向かう直前の「いま現在の男女人数・比率」と料金比較は、プロフィールのリンク（aiseki-navi.com）から無料でチェックできます🔍\n\n"
+            f"{tag_line}"
+        )
+        threads_1 = (
+            f"今は営業時間外なので、リアルタイム人数の集計は18時以降に再開します📊\n\n"
+            f"実測ログが揃い次第、狙い目店舗のデータを更新します。時間帯別の立ち回りメモは画像4枚目にどうぞ👇"
+        )
+        threads_2 = (
+            f"金土の21時半に何も見ないで相席ラウンジに向かうより、行く直前に近くの別店舗の男女比を見比べるのが一番ラクです。\n"
+            f"今週末（{wk}）の作戦会議用に保存しておいてください📌"
+        )
+        return {
+            "instagram_caption": ig_caption,
+            "threads_post_1": threads_1,
+            "threads_post_2": threads_2,
+        }
+
     ig_caption = (
         f"{headline}\n"
         f"お店選びで迷わないように、右上の「保存」をしておくと入店前にすぐ見返せます📌\n\n"
@@ -768,7 +823,7 @@ def build_captions(ctx: dict = None) -> dict:
 
     threads_2 = (
         f"金土の21時半に何も見ないで相席ラウンジ突撃して「男性待ち50分です」って言われるのが一番もったいない…😂\n\n"
-        f"同じ新宿や梅田でも、歩いて3分の別店舗を見たら女性比率60%超えで即座れることが8割以上あります。\n"
+        f"同じ新宿や梅田でも、歩いて3分の別店舗を見たら女性比率が高くてすぐ座れる、なんてことも普通にあります。\n"
         f"今週末（{wk}）の狙い目予測まとめ置いておきます📌"
     )
 

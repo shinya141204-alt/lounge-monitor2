@@ -274,9 +274,36 @@ def _compute_weekly_report(now_utc: datetime.datetime):
     period_start = (now_jst - datetime.timedelta(days=7)).strftime('%Y-%m-%d')
     period_end = (now_jst - datetime.timedelta(days=1)).strftime('%Y-%m-%d')
 
-    db_stats = local_db.get_db_stats()
-    raw_db_cnt = int(db_stats.get('count') or len(items))
-    cumulative_records = max(240000, 180000 + raw_db_cnt)
+    # H2: honest cumulative count (former `max(240000, 180000 + raw)` inflation removed).
+    # = raw `monitor_logs` rows + hourly-rollup samples ONLY for dates already pruned from raw logs
+    #   (rollups overlapping the raw 90-day window would otherwise double-count the same snapshots).
+    try:
+        db_stats = local_db.get_db_stats() or {}
+    except Exception:
+        db_stats = {}
+    try:
+        raw_db_cnt = int(db_stats.get('count') or len(items) or 0)
+    except (TypeError, ValueError):
+        raw_db_cnt = len(items)
+    rollup_cnt = 0
+    try:
+        if local_db._db_available():
+            r_rows = local_db._fetch_all_rows(
+                """
+                SELECT COALESCE(SUM(sample_count), 0)
+                FROM store_hourly_rollups
+                WHERE date_jst < COALESCE(
+                    (SELECT MIN(SUBSTR(timestamp, 1, 10)) FROM monitor_logs),
+                    '9999-12-31'
+                )
+                """
+            )
+            if r_rows and r_rows[0] and r_rows[0][0] is not None:
+                rollup_cnt = int(r_rows[0][0])
+    except Exception:
+        rollup_cnt = 0
+    cumulative_total = raw_db_cnt + rollup_cnt
+    cumulative_records = cumulative_total if cumulative_total > 0 else None
 
     report = {
         'period': f"{period_start} ~ {period_end}",
@@ -364,40 +391,37 @@ def _compute_weekly_report(now_utc: datetime.datetime):
     ]
     for idx, wd_label in enumerate(wd_names):
         wb = weekday_buckets.get(idx)
-        if wb and wb['pct']:
-            w_avg = round(_fmean(wb['w']), 1)
-            m_avg = round(_fmean(wb['m']), 1)
-            pct_avg = round(_fmean(wb['pct']), 1)
-        else:
-            # Fallback baseline if a specific weekday isn't in a partial DB window
-            default_pcts = [53.2, 54.5, 57.8, 56.9, 51.4, 50.8, 55.1]
-            default_w = [24.0, 26.5, 34.2, 36.8, 52.4, 58.6, 31.0]
-            default_m = [21.0, 22.0, 25.0, 28.0, 49.5, 56.5, 25.2]
-            w_avg = default_w[idx]
-            m_avg = default_m[idx]
-            pct_avg = default_pcts[idx]
+        # H2: no fabricated baseline for weekdays absent from the window -> None (検証ログ蓄積中).
+        has_wd = bool(wb and wb['pct'])
         report['weekday_summary'].append({
             'weekday': wd_label,
-            'avg_women': w_avg,
-            'avg_men': m_avg,
-            'avg_wpct': pct_avg,
+            'avg_women': round(_fmean(wb['w']), 1) if has_wd else None,
+            'avg_men': round(_fmean(wb['m']), 1) if has_wd else None,
+            'avg_wpct': round(_fmean(wb['pct']), 1) if has_wd else None,
+            'sample_count': len(wb['pct']) if has_wd else 0,
+            'has_measured': has_wd,
             'note': wd_notes[idx],
         })
 
     # Time-slot summary table
     slot_defs = [
-        ("19:00〜21:00", "早割・1軒目スタート帯", "仕事帰りの女性が先行入店し、男性待ちゼロで即相席しやすいゴールデンタイム", 56.8),
-        ("21:00〜23:00", "メインピーク帯（第1波）", "男女ともに店内人数が最大化。徒歩3分圏内の別ブランドと男女比比較が有効", 52.4),
-        ("23:00〜翌1:00", "終電前後・入れ替わり帯", "終電帰宅組と「クラブ・2軒目から合流する第2波」が交差する狙い目時間帯", 54.1),
-        ("翌1:00〜03:00", "深夜ボーナスタイム（第2波）", "梅田・渋谷・新宿・心斎橋・栄などのクラブ密集エリアで女性が再流入", 53.6),
+        ("19:00〜21:00", "早割・1軒目スタート帯", "仕事帰りの女性が先行入店し、男性待ちゼロで即相席しやすいゴールデンタイム"),
+        ("21:00〜23:00", "メインピーク帯（第1波）", "男女ともに店内人数が最大化。徒歩3分圏内の別ブランドと男女比比較が有効"),
+        ("23:00〜翌1:00", "終電前後・入れ替わり帯", "終電帰宅組と「クラブ・2軒目から合流する第2波」が交差する狙い目時間帯"),
+        ("翌1:00〜03:00", "深夜ボーナスタイム（第2波）", "梅田・渋谷・新宿・心斎橋・栄などのクラブ密集エリアで女性が再流入"),
     ]
-    for s_key, s_title, s_desc, fallback_pct in slot_defs:
+    for s_key, s_title, s_desc in slot_defs:
         sb = slot_buckets.get(s_key)
-        pct_val = round(_fmean(sb['pct']), 1) if (sb and sb['pct']) else fallback_pct
+        # H2: unmeasured slot -> None instead of a fixed pseudo-ratio.
+        has_slot = bool(sb and sb['pct'])
         report['timeslot_summary'].append({
             'slot': s_key,
             'title': s_title,
-            'avg_wpct': pct_val,
+            'avg_wpct': round(_fmean(sb['pct']), 1) if has_slot else None,
+            'avg_women': round(_fmean(sb['w']), 1) if has_slot else None,
+            'avg_men': round(_fmean(sb['m']), 1) if has_slot else None,
+            'sample_count': len(sb['pct']) if has_slot else 0,
+            'has_measured': has_slot,
             'description': s_desc,
         })
 

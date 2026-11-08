@@ -170,7 +170,10 @@ def build_bonus_alert_tweet_thread(
     w = int(store.get("women") or 0)
     m = int(store.get("men") or 0)
     tot = w + m
-    wpct = round((w / tot) * 100) if tot > 0 else 50
+    # No dummy 50%: ratio is unknown when nobody is counted, and the ratio text is omitted below
+    wpct = round((w / tot) * 100) if tot > 0 else None
+    ratio_paren = f"（女性比{wpct}%）" if wpct is not None else ""
+    ratio_hint = f"、必要なら女性比{wpct}%" if wpct is not None else ""
     t_str = now_jst.strftime("%H:%M")
 
     store_url = f"{site_url}/store/{slug}" if slug else f"{site_url}/"
@@ -211,7 +214,7 @@ def build_bonus_alert_tweet_thread(
                     f"{sns_editorial.HUMAN_INSIDER_VOICE_GUIDE}\n\n"
                     "【必須ルール】\n"
                     "1. 『🚨【速報】』のような業者見出し、『モニター見てたら』『バックヤードで』等の裏方アピール、URL（http...）は絶対に入れないこと。\n"
-                    f"2. 店舗名（『{ja_name}』）と実測値（女性{w}名・男性{m}名、必要なら女性比{wpct}%）を1人の狂いもなく正確に入れ、上から目線の講釈は書かないこと。\n"
+                    f"2. 店舗名（『{ja_name}』）と実測値（女性{w}名・男性{m}名{ratio_hint}）を1人の狂いもなく正確に入れ、上から目線の講釈は書かないこと。\n"
                     f"3. 直近使った文末語尾 {sns_editorial.json.dumps(banned_endings[:4], ensure_ascii=False)} の連続使用は避けること。\n"
                     f"4. {ending_rule}\n\n"
                     f"【検証済みファクト】\n{sns_editorial.json.dumps(facts, ensure_ascii=False)}\n\n"
@@ -260,9 +263,9 @@ def build_bonus_alert_tweet_thread(
             )
     else:
         female_lead_openers = (
-            f"{t_str}の「{ja_name}」、女性{w}名・男性{m}名（女性比{wpct}%）。",
-            f"{t_str}時点、「{ja_name}」が女性{w}名・男性{m}名（女性比{wpct}%）まで偏ってますね。",
-            f"いま「{ja_name}」が女性{w}名・男性{m}名（女性比{wpct}%）まで伸びてる（{t_str}時点）。",
+            f"{t_str}の「{ja_name}」、女性{w}名・男性{m}名{ratio_paren}。",
+            f"{t_str}時点、「{ja_name}」が女性{w}名・男性{m}名{ratio_paren}まで偏ってますね。",
+            f"いま「{ja_name}」が女性{w}名・男性{m}名{ratio_paren}まで伸びてる（{t_str}時点）。",
         )
         lead_line = female_lead_openers[(now_jst.day + now_jst.hour) % len(female_lead_openers)]
         if silent_tree:
@@ -285,7 +288,7 @@ def build_bonus_alert_tweet_thread(
             )
         else:
             main_text = (
-                f"{t_str}速報：「{ja_name}」が女性{w}名・男性{m}名（女性比{wpct}%）に到達📊\n\n"
+                f"{t_str}速報：「{ja_name}」が女性{w}名・男性{m}名{ratio_paren}に到達📊\n\n"
                 f"混雑前の推移はリプ欄へ👇\n"
                 f"#相席ナビ #相席ラウンジ"
             )

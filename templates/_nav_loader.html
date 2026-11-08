@@ -17,8 +17,25 @@
     var safetyTimer = null;
     var navInFlight = false;
 
+    // Never prefetch affiliate redirects, staff/API, OGP, machine-readable feeds or static binaries
+    // (prefetching CSV/sitemap/llms would inflate primary-stats download metrics and waste bandwidth).
+    var IGNORED_EXT_RE = /\.(csv|xml|txt|json|png|jpe?g|webp|gif|svg|mp4|webm|pdf|zip)$/i;
     function isIgnoredPath(pathname) {
-        return !pathname || pathname.indexOf(AFF_PFX) === 0 || pathname.indexOf('/staff') === 0 || pathname.indexOf('/api/') === 0 || pathname.indexOf('/ogp/') === 0;
+        if (!pathname) return true;
+        var p = String(pathname);
+        var qPos = p.indexOf('?');
+        var pathOnly = qPos >= 0 ? p.slice(0, qPos) : p;
+        return pathOnly.indexOf(AFF_PFX) === 0
+            || pathOnly.indexOf('/staff') === 0
+            || pathOnly.indexOf('/api/') === 0
+            || pathOnly.indexOf('/ogp/') === 0
+            || pathOnly.indexOf('/static/') === 0
+            || pathOnly === '/stats/monthly.csv'
+            || pathOnly.indexOf('/sitemap') === 0
+            || pathOnly.indexOf('/llms') === 0
+            || pathOnly === '/robots.txt'
+            || pathOnly === '/ads.txt'
+            || IGNORED_EXT_RE.test(pathOnly);
     }
 
     function canBackgroundPrefetch() {
@@ -204,16 +221,41 @@
     }
 
     function onWarmInteraction(e) {
-        if (IS_STAFF_VIEW) return;
+        if (!canBackgroundPrefetch()) return;
         var a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
         if (!a) return;
         var raw = a.getAttribute('href');
         if (raw && raw.charAt(0) === '/') prefetchUrl(raw);
     }
 
+    // Hover warm-up: only after 120ms dwell (cursor merely passing over links no longer triggers prefetch)
+    var hoverTimer = null;
+    var hoverAnchor = null;
+    function cancelHoverWarm() {
+        if (hoverTimer) { clearTimeout(hoverTimer); hoverTimer = null; }
+        hoverAnchor = null;
+    }
+    function onHoverWarm(e) {
+        var a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+        if (!a || a === hoverAnchor) return;
+        cancelHoverWarm();
+        hoverAnchor = a;
+        hoverTimer = setTimeout(function() {
+            hoverTimer = null;
+            if (hoverAnchor === a) onWarmInteraction({ target: a });
+        }, 120);
+    }
+    function onHoverOut(e) {
+        if (!hoverAnchor) return;
+        var to = e.relatedTarget;
+        if (to && hoverAnchor.contains && hoverAnchor.contains(to)) return;
+        cancelHoverWarm();
+    }
+
     document.addEventListener('pointerdown', onWarmInteraction, { passive: true });
     document.addEventListener('touchstart', onWarmInteraction, { passive: true });
-    document.addEventListener('mouseover', onWarmInteraction, { passive: true });
+    document.addEventListener('mouseover', onHoverWarm, { passive: true });
+    document.addEventListener('mouseout', onHoverOut, { passive: true });
 
     document.addEventListener('click', function(e) {
         if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
@@ -233,6 +275,8 @@
         }
         if (destUrl.origin !== window.location.origin) return;
         if (destUrl.pathname.indexOf(AFF_PFX) === 0) return;
+        // File downloads / feeds (CSV, XML, etc.): let the browser handle natively without a stuck nav spinner
+        if (IGNORED_EXT_RE.test(destUrl.pathname)) return;
 
         if (destUrl.pathname === window.location.pathname && destUrl.search === window.location.search) {
             if (destUrl.hash) return;
@@ -292,7 +336,18 @@
                 } catch (e) {}
             } else if (!window.__swRegistered) {
                 window.__swRegistered = true;
-                navigator.serviceWorker.register('/sw.js?v=104', { updateViaCache: 'none' }).catch(function() {});
+                navigator.serviceWorker.register('/sw.js?v=105', { updateViaCache: 'none' }).then(function(reg) {
+                    // Throttle explicit SW update checks to once per 10 minutes per tab session
+                    try {
+                        var KEY = 'aiseki_sw_update_at';
+                        var last = Number(sessionStorage.getItem(KEY) || 0);
+                        var nowTs = Date.now();
+                        if (reg && reg.update && (!last || nowTs - last > 600000)) {
+                            sessionStorage.setItem(KEY, String(nowTs));
+                            reg.update().catch(function() {});
+                        }
+                    } catch (e) {}
+                }).catch(function() {});
             }
         }
         if (canBackgroundPrefetch()) {

@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ store.seo_name }}のリアルタイム人数・男女比・待ち時間・混雑傾向｜相席ナビ</title>
-    <meta name="description" content="{% if store.total > 0 %}{{ store.seo_name }}（{{ store.area_label }}）の現在のリアルタイム男女人数・男女比・待ち時間傾向を毎分自動更新。ただいま女性{{ store.women }}名・男性{{ store.men }}名（女性比率{{ store.wpct }}%）。入店前の混雑チェックや近隣店舗とのハシゴ比較に。{% elif store_analytics and store_analytics.max_7d_women > 0 %}{{ store.seo_name }}（{{ store.area_label }}）のリアルタイム男女人数・男女比・待ち時間傾向を毎分自動更新。直近7日間の最高女性数は{{ store_analytics.max_7d_women }}名、狙い目は{{ store_analytics.best_slot_name }}（平均女性比{{ store_analytics.best_slot_pct }}%）。入店前の混雑チェックや近隣店舗とのハシゴ比較に。{% else %}{{ store.seo_name }}（{{ store.area_label }}）のリアルタイム男女人数・男女比・待ち時間傾向を毎分自動更新。曜日・時間帯別の混雑傾向や近隣ラウンジとの比較が入店前に確認できます。{% endif %}">
+    <meta name="description" content="{% if store.total > 0 %}{{ store.seo_name }}（{{ store.area_label }}）の現在のリアルタイム男女人数・男女比・待ち時間傾向を毎分自動更新。ただいま女性{{ store.women }}名・男性{{ store.men }}名（女性比率{{ store.wpct }}%）。入店前の混雑チェックや近隣店舗とのハシゴ比較に。{% elif store_analytics and store_analytics.max_7d_women > 0 %}{{ store.seo_name }}（{{ store.area_label }}）のリアルタイム男女人数・男女比・待ち時間傾向を毎分自動更新。直近7日間の最高女性数は{{ store_analytics.max_7d_women }}名{% if store_analytics.best_slot_name %}、狙い目は{{ store_analytics.best_slot_name }}{% if store_analytics.best_slot_pct is not none and store_analytics.best_slot_pct is number %}（平均女性比{{ store_analytics.best_slot_pct }}%）{% endif %}{% endif %}。入店前の混雑チェックや近隣店舗とのハシゴ比較に。{% else %}{{ store.seo_name }}（{{ store.area_label }}）のリアルタイム男女人数・男女比・待ち時間傾向を毎分自動更新。曜日・時間帯別の混雑傾向や近隣ラウンジとの比較が入店前に確認できます。{% endif %}">
     <meta name="keywords" content="{{ store.seo_name }},{{ store.seo_name }} 人数,{{ store.seo_name }} 男女比,{{ store.seo_name }} 混雑,{{ store.seo_name }} 待ち時間,{{ store.brand_label }},相席ラウンジ,相席ナビ">
     <link rel="canonical" href="https://aiseki-navi.com/store/{{ store.slug }}">
     {% include '_head_llmo.html' %}
@@ -16,7 +16,7 @@
     {% endif %}
 
     <meta property="og:title" content="{{ store.seo_name }}のリアルタイム人数・男女比・混雑状況｜相席ナビ">
-    <meta property="og:description" content="{% if store.total > 0 %}{{ store.seo_name }}の現在人数は女性{{ store.women }}名・男性{{ store.men }}名（女性比{{ store.wpct }}%）。周辺の相席ラウンジとの人数比較もひと目で確認できます。{% elif store_analytics and store_analytics.max_7d_women > 0 %}{{ store.seo_name }}のリアルタイム男女人数・男女比を毎分更新（直近ピーク女性{{ store_analytics.max_7d_women }}名・狙い目平均女性比{{ store_analytics.best_slot_pct }}%）。周辺の相席ラウンジとのハシゴ比較もひと目で確認できます。{% else %}{{ store.seo_name }}のリアルタイム男女人数・男女比・待ち時間傾向を毎分自動更新。周辺の相席ラウンジとの人数比較もひと目で確認できます。{% endif %}">
+    <meta property="og:description" content="{% if store.total > 0 %}{{ store.seo_name }}の現在人数は女性{{ store.women }}名・男性{{ store.men }}名（女性比{{ store.wpct }}%）。周辺の相席ラウンジとの人数比較もひと目で確認できます。{% elif store_analytics and store_analytics.max_7d_women > 0 %}{{ store.seo_name }}のリアルタイム男女人数・男女比を毎分更新（直近ピーク女性{{ store_analytics.max_7d_women }}名{% if store_analytics.best_slot_pct is not none and store_analytics.best_slot_pct is number %}・狙い目平均女性比{{ store_analytics.best_slot_pct }}%{% endif %}）。周辺の相席ラウンジとのハシゴ比較もひと目で確認できます。{% else %}{{ store.seo_name }}のリアルタイム男女人数・男女比・待ち時間傾向を毎分自動更新。周辺の相席ラウンジとの人数比較もひと目で確認できます。{% endif %}">
     <meta property="og:type" content="article">
     <meta property="og:url" content="https://aiseki-navi.com/store/{{ store.slug }}">
     <meta property="og:image" content="https://aiseki-navi.com/ogp/live.png">
@@ -76,7 +76,7 @@
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
     <link rel="stylesheet" href="/static/portal.css?v=16">
     <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
-    <link rel="stylesheet" href="/static/style.css?v=20261108_2">
+    <link rel="stylesheet" href="/static/style.css?v=20261108_3">
     <style>
         :root {
             --bg-dark: #0f1014;
@@ -591,7 +591,7 @@
                 </div>
                 <div class="count-box">
                     <div class="count-label">女性比率</div>
-                    <div class="count-num r-color" id="hero-wpct-num">{% if store.total > 0 %}{{ store.wpct }}<span style="font-size:0.95rem;">%</span>{% else %}--<span style="font-size:0.95rem;">%</span>{% endif %}{% if store.core_time_short and store.midnight_retention_pct %}<div style="font-size:0.71rem; color: var(--text-sub); margin-top:2px; font-weight:600;">狙い目 {{ store.core_time_short }} ｜ 終電後 {{ store.midnight_retention_pct }}%</div>{% endif %}</div>
+                    <div class="count-num r-color" id="hero-wpct-num">{% if store.total > 0 %}{{ store.wpct }}<span style="font-size:0.95rem;">%</span>{% else %}--<span style="font-size:0.95rem;">%</span>{% endif %}{% if store.core_time_short %}<div style="font-size:0.71rem; color: var(--text-sub); margin-top:2px; font-weight:600;">狙い目 {{ store.core_time_short }}{% if store.midnight_retention_pct is not none and store.midnight_retention_pct is number %} ｜ 終電後 {{ store.midnight_retention_pct }}%{% endif %}</div>{% endif %}</div>
                 </div>
             </div>
 
@@ -612,9 +612,9 @@
                 現在、男女同数でバランス良く推移している状態です。入店直前に最新の推移をご確認ください。
                 {% endif %}
                 {% elif store.is_open_now %}
-                現在の<strong style="color: var(--text-main);">{{ store.seo_name }}</strong>は公式営業時間内（本日 {{ store.today_hours_label }}）で、店内人数は<strong style="color: var(--text-main);"> 0 : 0（空席）</strong>です。{% if store_analytics and store_analytics.max_7d_women > 0 %}直近7日間の営業ピークでは<strong style="color: var(--text-main);">女性最大{{ store_analytics.max_7d_women }}名</strong>が来店しており、入りやすい狙い目は<strong style="color: var(--text-main);">{{ store_analytics.best_slot_name }}（平均女性比{{ store_analytics.best_slot_pct }}%）</strong>です。{% endif %}入店が発生し次第、毎分自動でリアルタイム反映します。
+                現在の<strong style="color: var(--text-main);">{{ store.seo_name }}</strong>は公式営業時間内（本日 {{ store.today_hours_label }}）で、店内人数は<strong style="color: var(--text-main);"> 0 : 0（空席）</strong>です。{% if store_analytics and store_analytics.max_7d_women > 0 %}直近7日間の営業ピークでは<strong style="color: var(--text-main);">女性最大{{ store_analytics.max_7d_women }}名</strong>が来店しており、入りやすい狙い目は<strong style="color: var(--text-main);">{{ store_analytics.best_slot_name }}{% if store_analytics.best_slot_pct is not none and store_analytics.best_slot_pct is number %}（平均女性比{{ store_analytics.best_slot_pct }}%）{% endif %}</strong>です。{% endif %}入店が発生し次第、毎分自動でリアルタイム反映します。
                 {% else %}
-                現在の<strong style="color: var(--text-main);">{{ store.seo_name }}</strong>は営業時間外（公式営業時間：{{ store.hours_label }}）です。{% if store_analytics and store_analytics.max_7d_women > 0 %}直近7日間の営業ピークでは<strong style="color: var(--text-main);">女性最大{{ store_analytics.max_7d_women }}名</strong>が来店しており、入りやすい狙い目は<strong style="color: var(--text-main);">{{ store_analytics.best_slot_name }}（平均女性比{{ store_analytics.best_slot_pct }}%）</strong>です。{% endif %}営業開始後は毎分自動でリアルタイム男女人数を更新します。
+                現在の<strong style="color: var(--text-main);">{{ store.seo_name }}</strong>は営業時間外（公式営業時間：{{ store.hours_label }}）です。{% if store_analytics and store_analytics.max_7d_women > 0 %}直近7日間の営業ピークでは<strong style="color: var(--text-main);">女性最大{{ store_analytics.max_7d_women }}名</strong>が来店しており、入りやすい狙い目は<strong style="color: var(--text-main);">{{ store_analytics.best_slot_name }}{% if store_analytics.best_slot_pct is not none and store_analytics.best_slot_pct is number %}（平均女性比{{ store_analytics.best_slot_pct }}%）{% endif %}</strong>です。{% endif %}営業開始後は毎分自動でリアルタイム男女人数を更新します。
                 {% endif %}
             </p>
 
@@ -880,22 +880,23 @@
                 <div class="stat-subcard">
                     <div style="font-size: 0.74rem; color: var(--accent-text); font-weight: 700;">一番入りやすい狙い目時間</div>
                     <div style="font-size: 0.96rem; font-weight: 700; color: var(--text-main); margin: 4px 0;">{{ store_analytics.best_slot_name }}</div>
-                    <div style="font-size: 0.79rem; color: var(--text-sub);">過去ログ平均女性比：<strong style="color: var(--women);">{{ store_analytics.best_slot_pct }}%</strong></div>
+                    <div style="font-size: 0.79rem; color: var(--text-sub);">過去ログ平均女性比：{% if store_analytics.best_slot_pct is not none and store_analytics.best_slot_pct is number %}<strong style="color: var(--women);">{{ store_analytics.best_slot_pct }}%</strong>{% else %}検証ログ蓄積中{% endif %}</div>
                 </div>
                 <div class="stat-subcard">
                     <div style="font-size: 0.74rem; color: var(--accent-text); font-weight: 700;">女性比率が高まりやすい曜日</div>
                     <div style="font-size: 0.96rem; font-weight: 700; color: var(--text-main); margin: 4px 0;">{{ store_analytics.best_wd_name }}の夜</div>
-                    <div style="font-size: 0.79rem; color: var(--text-sub);">コアタイム平均女性比：<strong style="color: var(--accent-text);">{{ store_analytics.best_wd_pct }}%</strong></div>
+                    <div style="font-size: 0.79rem; color: var(--text-sub);">コアタイム平均女性比：{% if store_analytics.best_wd_pct is not none and store_analytics.best_wd_pct is number %}<strong style="color: var(--accent-text);">{{ store_analytics.best_wd_pct }}%</strong>{% else %}検証ログ蓄積中{% endif %}</div>
                 </div>
                 <div class="stat-subcard">
                     <div style="font-size: 0.74rem; color: var(--accent-text); font-weight: 700;">終電後の残りやすさ指標（深夜維持率）</div>
-                    <div style="font-size: 0.96rem; font-weight: 700; color: var(--text-main); margin: 4px 0;">終電後維持率 <strong style="color: var(--accent-text);">{{ store_analytics.midnight_retention_pct or 75 }}%</strong>（{{ store_analytics.midnight_label_short or '深夜安定' }}）</div>
+                    {% set _sa_mid_pct = store_analytics.midnight_retention_pct if (store_analytics.midnight_retention_pct is not none and store_analytics.midnight_retention_pct is number) else none %}
+                    <div style="font-size: 0.96rem; font-weight: 700; color: var(--text-main); margin: 4px 0;">終電後維持率 {% if _sa_mid_pct is not none %}<strong style="color: var(--accent-text);">{{ _sa_mid_pct }}%</strong>{% if store_analytics.midnight_label_short %}（{{ store_analytics.midnight_label_short }}）{% endif %}{% else %}<span style="font-size: 0.85rem; color: var(--text-sub); font-weight: 600;">検証ログ蓄積中</span>{% endif %}</div>
                     {% if store_analytics.peak_band_avg_w and store_analytics.midnight_avg_w %}
-                    <div style="font-size: 0.78rem; color: var(--text-sub);">21〜22時平均 <strong style="color: var(--women);">{{ store_analytics.peak_band_avg_w }}名</strong> → 深夜0〜1時平均 <strong style="color: var(--women);">{{ store_analytics.midnight_avg_w }}名</strong>（{% if (store_analytics.midnight_retention_pct or 0) >= 95 %}深夜第2波あり{% elif (store_analytics.midnight_retention_pct or 0) >= 70 %}終電後も安定{% else %}1回転目中心{% endif %}）</div>
+                    <div style="font-size: 0.78rem; color: var(--text-sub);">21〜22時平均 <strong style="color: var(--women);">{{ store_analytics.peak_band_avg_w }}名</strong> → 深夜0〜1時平均 <strong style="color: var(--women);">{{ store_analytics.midnight_avg_w }}名</strong>{% if _sa_mid_pct is not none %}（{% if _sa_mid_pct >= 95 %}深夜第2波あり{% elif _sa_mid_pct >= 70 %}終電後も安定{% else %}1回転目中心{% endif %}）{% endif %}</div>
                     {% elif store_analytics.strong_midnight %}
                     <div style="font-size: 0.78rem; color: var(--text-sub);">周辺のバー・クラブからの回遊が多く、0時過ぎから再び女性が増えやすい店舗です（<a href="/guide/club-area-midnight" style="color: var(--accent-text);">詳細解説 ›</a>）</div>
-                    {% else %}
-                    <div style="font-size: 0.78rem; color: var(--text-sub);">終電前にピークを迎えるため、{{ store_analytics.core_time_short or '20-22時' }}の入店が最もスムーズです。</div>
+                    {% elif store_analytics.core_time_short %}
+                    <div style="font-size: 0.78rem; color: var(--text-sub);">終電前にピークを迎えるため、{{ store_analytics.core_time_short }}の入店が最もスムーズです。</div>
                     {% endif %}
                 </div>
             </div>
@@ -1353,12 +1354,7 @@
             const MIN_WOMEN_EVAL = 10;
             const MIN_WOMEN_TOP = 14;
             const JP_HOLIDAYS = new Set({{ (jp_holidays or []) | tojson }});
-
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.getRegistrations()
-                    .then(regs => regs.forEach(r => r.update()))
-                    .catch(() => {});
-            }
+            // (SW update checks are throttled centrally in _nav_loader.html; no per-page getRegistrations().update() storm)
 
             function fmtIsoDateUTC(dt) {
                 const y = dt.getUTCFullYear();
@@ -1596,6 +1592,9 @@
             }
 
             let isSyncing = false;
+            let _detailStatusEtag = '';
+            const esc = (v) => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            const numOrNull = (v) => (v !== null && v !== undefined && v !== '' && Number.isFinite(Number(v))) ? Number(v) : null;
             let _prevHeroLive = { ts: '', w: null, m: null, wpct: null };
             function _rollHeroDigits(el, prevVal, nextVal) {
                 if (!el || prevVal === null || prevVal === nextVal) return;
@@ -1647,9 +1646,15 @@
                 if (isSyncing) return;
                 isSyncing = true;
                 try {
-                    const res = await fetch('/api/status?t=' + Date.now(), { cache: 'no-store' });
+                    // Conditional GET (ETag) instead of ?t= cache-busting: unchanged data → 304 with no body / no re-render
+                    const reqInit = { cache: 'no-store' };
+                    if (_detailStatusEtag) reqInit.headers = { 'If-None-Match': _detailStatusEtag };
+                    const res = await fetch('/api/status', reqInit);
+                    if (res.status === 304) return;
                     if (!res.ok) return;
+                    const respEtag = res.headers ? res.headers.get('ETag') : '';
                     const payload = await res.json();
+                    if (respEtag && payload && !payload.is_seed && payload.status !== 'loading') _detailStatusEtag = respEtag;
                     if (!payload || !Array.isArray(payload.ranking) || payload.ranking.length === 0) return;
 
                     const liveMap = Object.create(null);
@@ -1688,16 +1693,19 @@
                         }
 
                         const canRollHero = Boolean(_prevHeroLive.ts && payload.timestamp && payload.timestamp !== _prevHeroLive.ts && tot > 0);
-                        const slotLabel = live.usual_slot_label || '普段同時間帯';
-                        const uWDiff = live.usual_w_diff;
-                        const uMDiff = live.usual_m_diff;
+                        const slotLabel = esc(live.usual_slot_label || '普段同時間帯');
+                        const uWDiff = numOrNull(live.usual_w_diff);
+                        const uMDiff = numOrNull(live.usual_m_diff);
+                        const usualWNum = numOrNull(live.usual_women);
+                        const usualMNum = numOrNull(live.usual_men);
+                        const todayHoursSafe = esc(heroHours.todayHoursLabel);
                         const detailSvgNe = '<svg class="ui-svg-ne" width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9L9 3M9 3H4.5M9 3V7.5"/></svg>';
                         const wEl = document.getElementById('hero-women-num');
                         if (wEl) {
                             if (tot > 0) {
                                 const diff15Html = wDiff > 0 ? '<div style="font-size:0.75rem; color: var(--women); margin-top:2px; font-weight:600;">直近15分 ' + detailSvgNe + ' +' + wDiff + '名</div>' : '';
                                 const uSignW = uWDiff > 0 ? ('+' + uWDiff + '名') : (uWDiff < 0 ? (uWDiff + '名') : '±0名');
-                                const usualWHtml = (uWDiff !== null && uWDiff !== undefined) ? ('<div style="font-size:0.71rem; color: var(--text-sub); margin-top:2px; font-weight:600;">普段の' + slotLabel + '比 ' + uSignW + '（平均' + live.usual_women + '名）</div>') : '';
+                                const usualWHtml = (uWDiff !== null && usualWNum !== null) ? ('<div style="font-size:0.71rem; color: var(--text-sub); margin-top:2px; font-weight:600;">普段の' + slotLabel + '比 ' + uSignW + '（平均' + usualWNum + '名）</div>') : '';
                                 wEl.innerHTML = '<span class="hero-odo-w" style="display:inline-block; line-height:1;">' + w + '</span><span style="font-size:0.95rem;">名</span>' + diff15Html + usualWHtml;
                                 if (canRollHero && _prevHeroLive.w !== null && _prevHeroLive.w !== w) {
                                     _rollHeroDigits(wEl.querySelector('.hero-odo-w'), _prevHeroLive.w, w);
@@ -1713,20 +1721,23 @@
                             if (tot > 0) {
                                 const diff15MHtml = mDiff > 0 ? '<div style="font-size:0.75rem; color: var(--men); margin-top:2px; font-weight:600;">直近15分 ' + detailSvgNe + ' +' + mDiff + '名</div>' : '';
                                 const uSignM = uMDiff > 0 ? ('+' + uMDiff + '名') : (uMDiff < 0 ? (uMDiff + '名') : '±0名');
-                                const usualMHtml = (uMDiff !== null && uMDiff !== undefined) ? ('<div style="font-size:0.71rem; color: var(--text-sub); margin-top:2px; font-weight:600;">普段の' + slotLabel + '比 ' + uSignM + '（平均' + live.usual_men + '名）</div>') : '';
+                                const usualMHtml = (uMDiff !== null && usualMNum !== null) ? ('<div style="font-size:0.71rem; color: var(--text-sub); margin-top:2px; font-weight:600;">普段の' + slotLabel + '比 ' + uSignM + '（平均' + usualMNum + '名）</div>') : '';
                                 mEl.innerHTML = '<span class="hero-odo-m" style="display:inline-block; line-height:1;">' + m + '</span><span style="font-size:0.95rem;">名</span>' + diff15MHtml + usualMHtml;
                                 if (canRollHero && _prevHeroLive.m !== null && _prevHeroLive.m !== m) {
                                     _rollHeroDigits(mEl.querySelector('.hero-odo-m'), _prevHeroLive.m, m);
                                 }
                             } else if (heroHours.isOpenNow) {
-                                mEl.innerHTML = '0<span style="font-size:0.95rem;">名</span><div style="font-size:0.73rem; color: var(--text-sub); margin-top:2px; font-weight:500;">本日 ' + heroHours.todayHoursLabel + '</div>';
+                                mEl.innerHTML = '0<span style="font-size:0.95rem;">名</span><div style="font-size:0.73rem; color: var(--text-sub); margin-top:2px; font-weight:500;">本日 ' + todayHoursSafe + '</div>';
                             } else {
                                 mEl.innerHTML = '--<span style="font-size:0.82rem; color: var(--text-sub); font-weight:500;">（時間外）</span>';
                             }
                         }
                         const rEl = document.getElementById('hero-wpct-num');
                         if (rEl) {
-                            const coreSub = (live.core_time_short && live.midnight_retention_pct) ? ('<div style="font-size:0.71rem; color: var(--text-sub); margin-top:2px; font-weight:600;">狙い目 ' + live.core_time_short + ' ｜ 終電後 ' + live.midnight_retention_pct + '%</div>') : '';
+                            const midPctLive = numOrNull(live.midnight_retention_pct);
+                            const coreSub = live.core_time_short
+                                ? ('<div style="font-size:0.71rem; color: var(--text-sub); margin-top:2px; font-weight:600;">狙い目 ' + esc(live.core_time_short) + (midPctLive !== null ? (' ｜ 終電後 ' + Math.round(midPctLive) + '%') : '') + '</div>')
+                                : '';
                             if (tot > 0) {
                                 rEl.innerHTML = '<span class="hero-odo-r" style="display:inline-block; line-height:1;">' + wpct + '</span><span style="font-size:0.95rem;">%</span>' + coreSub;
                                 if (canRollHero && _prevHeroLive.wpct !== null && _prevHeroLive.wpct !== wpct) {
@@ -1740,11 +1751,13 @@
                             _prevHeroLive = { ts: payload.timestamp, w: tot > 0 ? w : null, m: tot > 0 ? m : null, wpct: tot > 0 ? wpct : null };
                         }
                         const fillEl = document.getElementById('hero-ratio-fill');
-                        if (fillEl) fillEl.style.width = (tot > 0 ? wpct : 50) + '%';
+                        // 0:0 → 0% (no fabricated 50:50 bar)
+                        if (fillEl) fillEl.style.width = (tot > 0 ? wpct : 0) + '%';
 
                         const sumEl = document.getElementById('hero-live-summary');
                         if (sumEl) {
-                            const ts = payload.timestamp || '現在';
+                            const ts = esc(payload.timestamp || '現在');
+                            const seoNameSafe = esc(seoName);
                             if (tot > 0) {
                                 let tail = '現在、男女同数でバランス良く推移している状態です。';
                                 if (w < MIN_WOMEN_EVAL) {
@@ -1754,9 +1767,9 @@
                                 } else if (m > w) {
                                     tail = '現在、男性が女性より' + (m - w) + '名多い時間帯です。女性は待ち時間なしで相席しやすく、男性は下記「近隣ライバル店」の人数・比率も比較して選ぶのがおすすめです。';
                                 }
-                                sumEl.innerHTML = ts + '時点の<strong style="color: var(--text-main);">' + seoName + '</strong>の店内状況は、<strong style="color: var(--text-main);">女性' + w + '名・男性' + m + '名（合計' + tot + '名）</strong>です。 ' + tail;
+                                sumEl.innerHTML = ts + '時点の<strong style="color: var(--text-main);">' + seoNameSafe + '</strong>の店内状況は、<strong style="color: var(--text-main);">女性' + w + '名・男性' + m + '名（合計' + tot + '名）</strong>です。 ' + tail;
                             } else if (heroHours.isOpenNow) {
-                                sumEl.innerHTML = ts + '時点の<strong style="color: var(--text-main);">' + seoName + '</strong>は公式営業時間内（本日 ' + heroHours.todayHoursLabel + '）で、店内人数は<strong style="color: var(--text-main);"> 0 : 0（空席）</strong>です。入店が発生し次第、毎分自動でリアルタイム反映します。';
+                                sumEl.innerHTML = ts + '時点の<strong style="color: var(--text-main);">' + seoNameSafe + '</strong>は公式営業時間内（本日 ' + todayHoursSafe + '）で、店内人数は<strong style="color: var(--text-main);"> 0 : 0（空席）</strong>です。入店が発生し次第、毎分自動でリアルタイム反映します。';
                             }
                         }
 
@@ -2560,7 +2573,7 @@
 
             async function syncBackgroundPushSubscription(condToUse) {
                 if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false;
-                const reg = await navigator.serviceWorker.register('/sw.js?v=104', { updateViaCache: 'none' });
+                const reg = await navigator.serviceWorker.register('/sw.js?v=105', { updateViaCache: 'none' });
                 await navigator.serviceWorker.ready;
                 let sub = await reg.pushManager.getSubscription();
                 if (!sub) {

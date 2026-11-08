@@ -22,6 +22,28 @@ def format_size(bytes_size):
     else:
         return f"{bytes_size / (1024 * 1024):.2f} MB"
 
+def _save_as_jpeg(im, path, quality=85):
+    """JPEG cannot store alpha / palette: flatten RGBA/LA/P onto a dark background before saving."""
+    if im.mode in ('RGBA', 'LA') or (im.mode == 'P' and 'transparency' in im.info):
+        rgba = im.convert('RGBA')
+        bg = Image.new('RGB', rgba.size, (17, 17, 19))
+        bg.paste(rgba, mask=rgba.split()[-1])
+        rgba.close()
+        try:
+            bg.save(path, 'JPEG', quality=quality, optimize=True)
+        finally:
+            bg.close()
+        return
+    if im.mode != 'RGB':
+        rgb = im.convert('RGB')
+        try:
+            rgb.save(path, 'JPEG', quality=quality, optimize=True)
+        finally:
+            rgb.close()
+        return
+    im.save(path, 'JPEG', quality=quality, optimize=True)
+
+
 def optimize_single_eyecatch(image_path, base_name=None):
     """
     1枚のアイキャッチ画像から:
@@ -41,26 +63,37 @@ def optimize_single_eyecatch(image_path, base_name=None):
             base_name = base_name.replace('thumb-', '')
 
     orig_size = os.path.getsize(image_path)
-    im = Image.open(image_path)
-    if im.mode in ('RGBA', 'P') and not image_path.endswith('.png'):
-        im = im.convert('RGB')
-
-    # 1. 本文用 WebP (幅最大1280px)
-    im_full = im.copy()
-    if im_full.width > 1280:
-        im_full.thumbnail((1280, 720), Image.Resampling.LANCZOS)
     full_webp_path = os.path.join(STATIC_DIR, f"{base_name}.webp")
     full_jpg_path = os.path.join(STATIC_DIR, f"{base_name}.jpg")
-    im_full.save(full_webp_path, 'WEBP', quality=85)
-    im_full.save(full_jpg_path, 'JPEG', quality=85, optimize=True)
-
-    # 2. サムネイル用 WebP & JPG (幅最大640px)
-    im_thumb = im.copy()
-    im_thumb.thumbnail((640, 360), Image.Resampling.LANCZOS)
     thumb_webp_path = os.path.join(STATIC_DIR, f"thumb-{base_name}.webp")
     thumb_jpg_path = os.path.join(STATIC_DIR, f"thumb-{base_name}.jpg")
-    im_thumb.save(thumb_webp_path, 'WEBP', quality=82)
-    im_thumb.save(thumb_jpg_path, 'JPEG', quality=82, optimize=True)
+
+    # Fully load and close the source handle up-front (safe even when the output JPG overwrites the input path)
+    with Image.open(image_path) as src:
+        src.load()
+        im = src.copy()
+
+    try:
+        # 1. 本文用 WebP (幅最大1280px)
+        im_full = im.copy()
+        try:
+            if im_full.width > 1280:
+                im_full.thumbnail((1280, 720), Image.Resampling.LANCZOS)
+            im_full.save(full_webp_path, 'WEBP', quality=85)
+            _save_as_jpeg(im_full, full_jpg_path, quality=85)
+        finally:
+            im_full.close()
+
+        # 2. サムネイル用 WebP & JPG (幅最大640px)
+        im_thumb = im.copy()
+        try:
+            im_thumb.thumbnail((640, 360), Image.Resampling.LANCZOS)
+            im_thumb.save(thumb_webp_path, 'WEBP', quality=82)
+            _save_as_jpeg(im_thumb, thumb_jpg_path, quality=82)
+        finally:
+            im_thumb.close()
+    finally:
+        im.close()
 
     thumb_size = os.path.getsize(thumb_webp_path)
     saved_ratio = (1 - thumb_size / orig_size) * 100 if orig_size > 0 else 0
@@ -89,10 +122,15 @@ def optimize_all_static():
     # 2. Xヘッダーバナー
     x_header = os.path.join(STATIC_DIR, 'x-header.jpg')
     if os.path.exists(x_header):
-        im = Image.open(x_header)
-        webp_path = os.path.join(STATIC_DIR, 'x-header.webp')
-        im.save(webp_path, 'WEBP', quality=85)
-        im.save(x_header, 'JPEG', quality=85, optimize=True)
+        with Image.open(x_header) as src:
+            src.load()
+            im = src.copy()
+        try:
+            webp_path = os.path.join(STATIC_DIR, 'x-header.webp')
+            im.save(webp_path, 'WEBP', quality=85)
+            _save_as_jpeg(im, x_header, quality=85)
+        finally:
+            im.close()
         print(f"\n✨ [x-header] 最適化: WebP {format_size(os.path.getsize(webp_path))}, JPG {format_size(os.path.getsize(x_header))}")
 
     print("\n" + "=" * 60)

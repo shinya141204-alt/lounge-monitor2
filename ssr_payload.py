@@ -106,8 +106,10 @@ def build_deferred_card_pool(status, is_staff=False, start_idx=20):
         if mt:
             entry['mt'] = mt
             entry['mtt'] = mtt
-        if s.get('core_time_short') and s.get('midnight_retention_pct'):
+        # Only measured values are exposed (no fabricated core-time / midnight retention fallbacks)
+        if s.get('has_measured_core') and s.get('core_time_short'):
             entry['ct'] = s.get('core_time_short')
+        if s.get('has_measured_midnight') and s.get('midnight_retention_pct') is not None:
             entry['mr'] = s.get('midnight_retention_pct')
             entry['ml'] = s.get('midnight_label_short') or ''
         if w_badge:

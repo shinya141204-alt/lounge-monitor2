@@ -258,9 +258,23 @@ def _get_pg_pool():
     except Exception as err:
         logger.warning(f"[turbo_store] PostgreSQL pool unavailable ({err}).")
         return None
+    redundant_pool = None
     with _pg_lock:
-        _pg_conn_pool = pool_obj
-        _pg_failed_at = 0.0
+        if _pg_conn_pool is not None and _pg_url_cached == url:
+            # M8: another thread won the race and installed a pool for the same URL while we were
+            # connecting outside the lock. Keep theirs and close ours to avoid leaking PG connections.
+            redundant_pool = pool_obj
+            pool_obj = _pg_conn_pool
+        else:
+            _pg_conn_pool = pool_obj
+            _pg_url_cached = url
+            _pg_failed_at = 0.0
+    if redundant_pool is not None:
+        try:
+            redundant_pool.closeall()
+        except Exception:
+            pass
+        return pool_obj
     logger.info("[turbo_store] PostgreSQL connection pool initialized.")
     return pool_obj
 
@@ -1506,8 +1520,13 @@ def check_sliding_rate_limit(namespace: str, subject: str, limit: int, window_se
     return new_cnt <= limit
 
 
-def acquire_distributed_lock(lock_name: str, ttl_sec: int = 55) -> bool:
-    """Acquire a short-lived cross-machine mutex (`SET key tok NX EX ttl`) so rolling-deploy duplicate workers never double-fire cron jobs."""
+def acquire_distributed_lock(lock_name: str, ttl_sec: int = 55, fail_open: bool = True) -> bool:
+    """Acquire a short-lived cross-machine mutex (`SET key tok NX EX ttl`) so rolling-deploy duplicate workers never double-fire cron jobs.
+
+    `fail_open` (default True, backward compatible) decides the result when Redis errors: True keeps idempotent
+    jobs running during a Redis outage; pass False for non-idempotent jobs (e.g. external SNS posting) so a
+    Redis failure skips the run instead of risking a double-fire across machines.
+    """
     safe_name = (lock_name or "job").strip()[:80]
     rc = None if _mem_bus_enabled else get_redis_client()
     if rc is not None:
@@ -1517,7 +1536,7 @@ def acquire_distributed_lock(lock_name: str, ttl_sec: int = 55) -> bool:
             return bool(acquired)
         except Exception as err:
             logger.warning(f"[turbo_store] acquire_distributed_lock redis error ({safe_name}): {err}")
-            return True
+            return bool(fail_open)
     if _mem_bus_enabled:
         now_t = time.time()
         with _mem_lock:

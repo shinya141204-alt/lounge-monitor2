@@ -60,6 +60,21 @@ def _resolve_webhook_url() -> str:
     return os.environ.get('ALERT_WEBHOOK_URL', '').strip()
 
 
+def _revalidate_webhook_url(url: str) -> str:
+    """送信直前に SSRF 検証を再実行する（登録後の DNS リバインディング対策）。エラー文字列 or ''。"""
+    try:
+        import ops_governance
+        return ops_governance._validate_public_https_webhook(url)
+    except Exception as e:
+        return f'Webhook URL の検証に失敗しました: {type(e).__name__}'
+
+
+def _post_webhook(url: str, text: str):
+    # allow_redirects=False: 公開ホストから内部アドレスへの 30x リダイレクトによる SSRF を遮断
+    return requests.post(url, data=json.dumps({'content': text, 'text': text}),
+                         headers={'Content-Type': 'application/json'}, timeout=8, allow_redirects=False)
+
+
 def send_alert(key, message, bypass_cooldown: bool = False):
     """クールダウン付きで通知。送信（またはログ記録）したら True。"""
     now = time.time()
@@ -75,10 +90,13 @@ def send_alert(key, message, bypass_cooldown: bool = False):
     if url:
         def _post():
             try:
+                err = _revalidate_webhook_url(url)
+                if err:
+                    logging.error(f"[health] webhook blocked by SSRF re-validation: {err}")
+                    return
                 text = f"【相席ナビ監視】{message}"
                 # Discord は content、Slack は text を見る
-                requests.post(url, data=json.dumps({'content': text, 'text': text}),
-                              headers={'Content-Type': 'application/json'}, timeout=8)
+                _post_webhook(url, text)
             except Exception as e:
                 logging.error(f"[health] webhook failed: {e}")
         threading.Thread(target=_post, daemon=True).start()
@@ -90,14 +108,12 @@ def send_test_webhook() -> dict:
     url = _resolve_webhook_url()
     if not url:
         return {'ok': False, 'error': '通知用Webhook URLが登録されていません。'}
+    err = _revalidate_webhook_url(url)
+    if err:
+        return {'ok': False, 'error': err}
     try:
         text = f"【相席ナビ監視】テスト通知です（{_now_str()} JST）。お問い合わせ・削除依頼・取得異常が発生した際にこのチャンネルへ即時通知されます。"
-        r = requests.post(
-            url,
-            data=json.dumps({'content': text, 'text': text}),
-            headers={'Content-Type': 'application/json'},
-            timeout=8,
-        )
+        r = _post_webhook(url, text)
         if 200 <= r.status_code < 300:
             return {'ok': True, 'message': f'テスト通知の送信に成功しました（HTTP {r.status_code}）。'}
         return {'ok': False, 'error': f'送信先サーバーがエラーを返しました（HTTP {r.status_code}）。'}
@@ -164,11 +180,13 @@ def check_unknown_stores(names):
 
 
 def snapshot():
+    # 管理画面で登録した Webhook も反映（job_state 参照は _lock の外で行い、ロック保持中の I/O を避ける）
+    webhook_configured = bool(_resolve_webhook_url())
     with _lock:
         return {
             'sources': {k: dict(v) for k, v in _state.items()},
             'recent_alerts': list(_sent_log[-10:]),
-            'webhook_configured': bool(os.environ.get('ALERT_WEBHOOK_URL')),
+            'webhook_configured': webhook_configured,
         }
 
 

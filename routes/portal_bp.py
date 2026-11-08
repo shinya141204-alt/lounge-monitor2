@@ -22,6 +22,57 @@ _MONTHLY_CSV_CACHE = {}
 _MONTHLY_CSV_LOCK = threading.Lock()
 _MONTHLY_CSV_TTL = 900.0
 
+# Public-request forecast backfill debounce (15 min) so cold /stats or /api/forecast-accuracy
+# traffic cannot continuously re-spawn heavy history scans on the 512MB Fly Postgres VM.
+_last_public_backfill_mono = 0.0
+_PUBLIC_BACKFILL_DEBOUNCE_SEC = 900.0
+_public_backfill_lock = threading.Lock()
+
+
+def _maybe_trigger_public_backfill(rep) -> None:
+    """Trigger async forecast backfill from public traffic at most once per 15 minutes (never in testing)."""
+    global _last_public_backfill_mono
+    if core.app.testing or not isinstance(rep, dict):
+        return
+    try:
+        if int((rep.get('summary') or {}).get('resolved_count', 0) or 0) != 0:
+            return
+    except (TypeError, ValueError):
+        return
+    now_mono = time.monotonic()
+    with _public_backfill_lock:
+        if now_mono - _last_public_backfill_mono < _PUBLIC_BACKFILL_DEBOUNCE_SEC:
+            return
+        _last_public_backfill_mono = now_mono
+    try:
+        core.local_db.trigger_forecast_backfill_async(days=30, min_existing=80, max_rows=4500)
+    except Exception as err:
+        logging.getLogger(__name__).warning('public forecast backfill trigger failed: %s', err)
+
+
+def _gov_hidden_sets() -> tuple:
+    """Fetch governance hidden brand/store sets once (never raises)."""
+    try:
+        import ops_governance
+        return set(ops_governance.get_hidden_brands() or ()), set(ops_governance.get_hidden_stores() or ())
+    except Exception:
+        return set(), set()
+
+
+def _is_hidden_with(store_name: str, hb: set, hs: set) -> bool:
+    """Signature-independent hidden check using pre-fetched sets (avoids N× job_state reads in loops)."""
+    if not store_name or (not hb and not hs):
+        return False
+    try:
+        import ops_governance
+        import store_master
+        canon = store_master.to_internal_store_name(store_name) or store_name
+        if canon in hs or store_name in hs:
+            return True
+        return ops_governance.ops_brand_key_of(canon) in hb
+    except Exception:
+        return False
+
 
 def clear_monthly_csv_cache():
     with _MONTHLY_CSV_LOCK:
@@ -121,14 +172,16 @@ def _render_brand_page(brand_slug):
 
     def _render():
         with core.data_lock:
-            raw_stores = ops_governance.filter_visible_stores(list(core.latest_data.get('full_data') or []))
+            raw_copy = list(core.latest_data.get('full_data') or [])
             last_updated = core.latest_data.get('last_updated') or '--:--'
+        raw_stores = ops_governance.filter_visible_stores(raw_copy)
 
-        master = store_master.load()
+        master = store_master.load() or {}
         live_map = {s.get('name'): s for s in raw_stores}
+        hb, hs = _gov_hidden_sets()
         all_names = [
             n for n in dict.fromkeys(list(live_map.keys()) + list(master.keys()))
-            if not ops_governance.is_store_hidden(n)
+            if n and not _is_hidden_with(n, hb, hs)
         ]
 
         matched = []
@@ -216,8 +269,9 @@ def store_detail_page(store_slug):
     core.restore_latest_data_if_empty()
     core.trigger_background_fetch_if_needed()
     with core.data_lock:
-        raw_stores = ops_governance.filter_visible_stores(list(core.latest_data.get('full_data') or []))
+        raw_copy = list(core.latest_data.get('full_data') or [])
         last_updated = core.latest_data.get('last_updated') or '--:--'
+    raw_stores = ops_governance.filter_visible_stores(raw_copy)
 
     sname = store_master.store_by_slug(store_slug, live_stores=raw_stores)
     if not sname:
@@ -607,6 +661,8 @@ def api_forecast_accuracy():
     raw_days = max(1, min(120, request.args.get('days', 90, type=int) or 90))
     days = min((7, 14, 21, 30, 60, 90, 120), key=lambda d: abs(d - raw_days))
     store_q = (request.args.get('store') or '').strip() or None
+    if store_q is not None and (len(store_q) > 80 or any(ord(c) < 32 or ord(c) == 127 for c in store_q)):
+        return jsonify({'ok': False, 'error': 'Invalid store parameter'}), 400
     limit_q = max(5, min(100, request.args.get('limit', 30, type=int) or 30))
     try:
         import store_master
@@ -617,8 +673,8 @@ def api_forecast_accuracy():
             allow_blocking=True,
             auto_backfill=False,
         )
-        if not core.app.testing and store_q is None and rep.get('summary', {}).get('resolved_count', 0) == 0:
-            core.local_db.trigger_forecast_backfill_async(days=30, min_existing=80, max_rows=4500)
+        if store_q is None:
+            _maybe_trigger_public_backfill(rep)
 
         def _clean_forecast_rep(d):
             if not isinstance(d, dict):
@@ -649,7 +705,9 @@ def api_forecast_accuracy():
         clean_rep = _clean_forecast_rep(rep)
         return jsonify({'ok': True, **clean_rep})
     except Exception as err:
-        return jsonify({'ok': False, 'error': str(err)}), 500
+        # Never echo raw DB/driver exception text (schema, DSN fragments) to public clients.
+        logging.getLogger(__name__).exception('api_forecast_accuracy failed: %s', err)
+        return jsonify({'ok': False, 'error': 'Forecast accuracy report temporarily unavailable'}), 500
 
 
 @portal_bp.route('/stats')
@@ -661,21 +719,32 @@ def stats_whitepaper():
     fc_days = min((30, 60, 90), key=lambda d: abs(d - raw_fc_days))
     cached_rep = (getattr(weekly_report, '_report_cache', None) or {}).get('data')
     rep_sig = cached_rep.get('generated_at') if isinstance(cached_rep, dict) else None
+    # Signature probe is strictly non-blocking (memory cache only) so /stats cache hits never touch the DB.
     try:
-        fc_acc = core.local_db.get_forecast_accuracy_report(
+        fc_probe = core.local_db.get_forecast_accuracy_report(
             days=fc_days,
             limit_recent=20,
-            allow_blocking=True,
+            allow_blocking=False,
             auto_backfill=False,
         )
-        if not core.app.testing and fc_acc.get('summary', {}).get('resolved_count', 0) == 0:
-            core.local_db.trigger_forecast_backfill_async(days=30, min_existing=80, max_rows=4500)
     except Exception:
-        fc_acc = None
-    fc_sig = (fc_days, fc_acc.get('summary', {}).get('resolved_count', 0), fc_acc.get('summary', {}).get('pending_count', 0)) if isinstance(fc_acc, dict) else (fc_days, 0, 0)
+        fc_probe = None
+    fc_probe_summary = (fc_probe.get('summary') or {}) if isinstance(fc_probe, dict) else {}
+    fc_sig = (fc_days, fc_probe_summary.get('resolved_count', 0), fc_probe_summary.get('pending_count', 0))
 
     def _render():
         import ops_governance
+        try:
+            fc_acc = core.local_db.get_forecast_accuracy_report(
+                days=fc_days,
+                limit_recent=20,
+                allow_blocking=True,
+                auto_backfill=False,
+            )
+            _maybe_trigger_public_backfill(fc_acc)
+        except Exception:
+            fc_acc = None
+        hb, hs = _gov_hidden_sets()
         report_data = None
         try:
             res = weekly_report.generate_weekly_report()
@@ -684,12 +753,12 @@ def stats_whitepaper():
                 if isinstance(report_data.get('anaba_stores'), list):
                     report_data['anaba_stores'] = [
                         s for s in report_data['anaba_stores']
-                        if not ops_governance.is_store_hidden((s or {}).get('name', ''))
+                        if not _is_hidden_with((s or {}).get('name', ''), hb, hs)
                     ]
                 if isinstance(report_data.get('stores'), list):
                     report_data['stores'] = [
                         s for s in report_data['stores']
-                        if not ops_governance.is_store_hidden((s or {}).get('name', ''))
+                        if not _is_hidden_with((s or {}).get('name', ''), hb, hs)
                     ]
         except Exception:
             report_data = None

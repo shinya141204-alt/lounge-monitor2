@@ -4,6 +4,8 @@ import hashlib
 import hmac
 import json
 import logging
+import threading
+import time
 
 from flask import Blueprint, jsonify, request, session
 
@@ -17,10 +19,39 @@ logger = logging.getLogger(__name__)
 
 push_line_bp = Blueprint("push_line_bp", __name__)
 
+# 60s in-process memo of the (public, non-secret) VAPID application server key.
+# Only non-empty keys are memoized so a cold/unconfigured job_state never pins an empty value.
+_VAPID_PUB_MEMO_TTL_SEC = 60.0
+_vapid_pub_memo = {"mono": 0.0, "key": "", "db_key": None}
+_vapid_pub_memo_lock = threading.Lock()
+
+
+def _get_vapid_public_key_memoized() -> str:
+    now_m = time.monotonic()
+    try:
+        db_key = local_db._active_db_key()
+    except Exception:
+        db_key = None
+    with _vapid_pub_memo_lock:
+        memo_key = _vapid_pub_memo["key"]
+        if (
+            memo_key
+            and _vapid_pub_memo.get("db_key") == db_key
+            and (now_m - _vapid_pub_memo["mono"]) < _VAPID_PUB_MEMO_TTL_SEC
+        ):
+            return memo_key
+    pub_key = push_watch.get_vapid_public_key(allow_blocking=True)
+    if isinstance(pub_key, str) and pub_key:
+        with _vapid_pub_memo_lock:
+            _vapid_pub_memo["key"] = pub_key
+            _vapid_pub_memo["mono"] = now_m
+            _vapid_pub_memo["db_key"] = db_key
+    return pub_key
+
 
 @push_line_bp.route("/api/push/vapid-public-key", methods=["GET"])
 def api_push_vapid_public_key():
-    pub_key = push_watch.get_vapid_public_key(allow_blocking=True)
+    pub_key = _get_vapid_public_key_memoized()
     resp = jsonify({"ok": True, "status": "success", "public_key": pub_key, "publicKey": pub_key})
     resp.headers["Cache-Control"] = "private, no-store"
     return resp
@@ -150,8 +181,9 @@ def api_line_webhook():
     core.restore_latest_data_if_empty()
     import ops_governance
     with core.data_lock:
-        live_stores = ops_governance.filter_visible_stores(list(core.latest_data.get("full_data") or []))
+        raw_copy = list(core.latest_data.get("full_data") or [])
         last_updated = str(core.latest_data.get("last_updated") or "")
+    live_stores = ops_governance.filter_visible_stores(raw_copy)
 
     replied = 0
     for ev in events[:3]:

@@ -15,6 +15,7 @@ import time
 import local_db
 import scheduled_articles
 import turbo_store
+import request_guards
 import zlib
 from collections import defaultdict, OrderedDict
 
@@ -255,6 +256,9 @@ def handle_400_error(e):
     return _render_http_error(e, 400, 'Bad Request', '不正なリクエストです', 'リクエストの形式が正しくありません。入力内容をご確認の上、再度お試しください。')
 
 
+request_guards.register_request_guards(app, _render_http_error)
+
+
 @app.after_request
 def compress_response(response):
     """Set cache headers and automatically gzip-compress JSON/HTML/CSS/JS/XML/SVG responses."""
@@ -291,8 +295,10 @@ def compress_response(response):
             os.environ.get('ENABLE_PUBLIC_EDGE_CACHE') == '1'
             and request.method == 'GET'
             and 'Set-Cookie' not in response.headers
+            and not request.cookies.get('an_src')
         ):
             response.headers['Cache-Control'] = 'public, max-age=0, s-maxage=15, stale-while-revalidate=45'
+            response.vary.add('Cookie')
         else:
             # Allow browser back/forward cache (bfcache) for instant 0ms back-navigation while revalidating normal loads
             response.headers['Cache-Control'] = 'private, no-cache, must-revalidate, max-age=0'
@@ -452,7 +458,8 @@ def _ensure_scheduler_started_async():
             from apscheduler.triggers.cron import CronTrigger
             def _visible_live_stores():
                 with data_lock:
-                    return ops_governance.filter_visible_stores(list(latest_data.get('full_data') or [])), bool(latest_data.get('is_seed'))
+                    cur_copy, cur_seed = list(latest_data.get('full_data') or []), bool(latest_data.get('is_seed'))
+                return ops_governance.filter_visible_stores(cur_copy), cur_seed
             def _x_sched_wrap(slot_lbl="20:00"):
                 if not sns_editorial.should_fire_scheduled_slot_now("x", slot_lbl):
                     return
@@ -766,6 +773,8 @@ def sync_latest_data_from_shared_bus(force_l1: bool = False) -> bool:
     global _shared_source_health
     if not turbo_store.is_shared_bus_active():
         return False
+    if not force_l1 and request_guards.should_skip_duplicate_bus_sync(bool(latest_data.get('full_data'))):
+        return True
     snap = turbo_store.get_live_snapshot(bypass_l1=force_l1)
     if not snap or not isinstance(snap.get('full_data'), list) or not snap['full_data']:
         return False
@@ -789,6 +798,7 @@ def sync_latest_data_from_shared_bus(force_l1: bool = False) -> bool:
             changed = True
     if changed:
         clear_fast_http_caches(clear_editorial=False)
+    request_guards.mark_bus_synced_for_request()
     return True
 
 
@@ -858,9 +868,9 @@ def restore_latest_data_if_empty():
     except Exception:
         pass
 
-    # Fallback 2: Restore from latest SQLite logs if available (up to 7 days)
+    # Fallback 2: Restore from latest SQLite logs if available (staged 3h -> 24h -> 7d to avoid scanning 7 days every cold start)
     try:
-        snap = local_db.get_snapshot_around(0, 10080)
+        snap = request_guards.staged_snapshot_around(local_db)
         if snap and len(snap) >= 10:
             baseline_snap = local_db.get_snapshot_around(10, 25) or {}
             try:
@@ -1213,24 +1223,16 @@ def _attach_store_benchmarks(item: dict, sname: str, w: int, m: int, benchmarks:
     """Attach usual same-weekday/hour comparison and core-time / post-last-train retention fields."""
     bm = benchmarks.get(sname) if benchmarks else None
     is_korea = (item.get('region') == 'Korea') or ('カンナム' in sname) or ('ホンデ' in sname)
-    if bm:
-        usual_w = bm.get('usual_women')
-        usual_m = bm.get('usual_men')
-        slot_label = bm.get('usual_slot_label') or '普段同時間帯'
-        core_short = bm.get('core_time_short') or '20-22時'
-        core_wpct = bm.get('core_time_wpct') or 58
-        mid_pct = bm.get('midnight_retention_pct')
-        mid_label = bm.get('midnight_label_short')
-    else:
-        usual_w = None
-        usual_m = None
-        slot_label = '普段同時間帯'
-        core_short = '20-22時'
-        core_wpct = 58
-        club_kw = ("梅田", "茶屋町", "心斎橋", "難波", "渋谷", "新宿", "栄", "名古屋 錦", "名古屋錦", "福岡", "札幌", "熊本", "UMEDA", "CHAYAMACHI", "NAMBA", "SHIBUYA", "SHINJUKU", "FUKUOKA", "SAPPORO")
-        is_club = any(k in (sname or '').upper() for k in club_kw)
-        mid_pct = 82 if is_club else 60
-        mid_label = '深夜安定' if is_club else '終電前型'
+    # No fabricated fallbacks: unmeasured core-time / midnight retention stay None (never '20-22時' / 58 / 82 / 60)
+    usual_w = bm.get('usual_women') if bm else None
+    usual_m = bm.get('usual_men') if bm else None
+    slot_label = (bm.get('usual_slot_label') if bm else None) or '普段同時間帯'
+    has_core = bool(bm and bm.get('has_measured_core'))
+    has_mid = bool(bm and bm.get('has_measured_midnight'))
+    core_short = bm.get('core_time_short') if has_core else None
+    core_wpct = bm.get('core_time_wpct') if has_core else None
+    mid_pct = bm.get('midnight_retention_pct') if has_mid else None
+    mid_label = bm.get('midnight_label_short') if (has_mid and mid_pct is not None) else None
 
     tot = w + m
     if tot > 0 and usual_w is not None:
@@ -1380,8 +1382,9 @@ def get_initial_status_payload():
             return None
         last_u = latest_data.get('last_updated')
         is_s = bool(latest_data.get('is_seed'))
-        raw_copy = ops_governance.filter_visible_stores(list(full_d))
-        c_key = (_live_data_signature(raw_copy, last_u, is_s), bucket_15m, ev_upd, env_probe)
+        raw_copy = list(full_d)
+    raw_copy = ops_governance.filter_visible_stores(raw_copy)
+    c_key = (_live_data_signature(raw_copy, last_u, is_s), bucket_15m, ev_upd, env_probe)
 
     with _ssr_payload_cache_lock:
         if _ssr_payload_cache['key'] == c_key and _ssr_payload_cache['payload'] is not None:
@@ -1411,6 +1414,8 @@ def prewarm_ssr_and_status_caches():
         get_initial_status_payload()
     except Exception:
         pass
+    if get_app_role() == 'worker':  # worker serves no HTTP traffic: skip HTML/gzip warm-up CPU entirely
+        return
     if os.environ.get('DISABLE_SCHEDULER') == '1' or app.testing or _prewarm_in_progress:
         return
     now_mono = time.monotonic()
@@ -1497,7 +1502,7 @@ def refresh_momentum_from_db():
 
         # If server booted on an ephemeral container with 0:0 seed data, immediately promote to the latest Google Sheets snapshot
         if is_seed_now:
-            snap = local_db.get_snapshot_around(0, 10080)
+            snap = request_guards.staged_snapshot_around(local_db)
             if snap and len(snap) >= 10:
                 try:
                     votes_map = local_db.get_recent_votes(hours=4) or {}
@@ -1654,6 +1659,8 @@ def update_job(force=False, _claimed=False):
                 except Exception:
                     recent_db_snap = {}
             now_epoch = time.time()
+            import ops_governance  # resolve hidden sets OUTSIDE data_lock (job_state I/O never blocks web threads)
+            gov_hb, gov_hs = ops_governance.get_hidden_brands(), ops_governance.get_hidden_stores()
 
             with data_lock:
                 current_data = latest_data.get('full_data', [])
@@ -1709,8 +1716,7 @@ def update_job(force=False, _claimed=False):
                     s['fetched_at'] = now_epoch
                     merged_map[sname] = s
 
-                import ops_governance
-                merged_data = ops_governance.filter_visible_stores(list(merged_map.values()))
+                merged_data = ops_governance.filter_visible_stores(list(merged_map.values()), hb=gov_hb, hs=gov_hs)
                 sorted_data = sorted(merged_data, key=lambda x: (x.get('region') != 'Korea', x['women'], x['men']), reverse=True)
                 top_store = sorted_data[0] if sorted_data else None
 
@@ -1747,12 +1753,11 @@ def update_job(force=False, _claimed=False):
             total_guests = sum(d.get('men', 0) + d.get('women', 0) for d in data)
             is_off_hours = 7 <= jst_now.hour < 17
 
-            last_logged_str = latest_data.get('last_logged')
+            with data_lock:
+                last_logged = request_guards.parse_jst_ts(latest_data.get('last_logged'))
             is_logging_time = True
-            if last_logged_str:
-                last_logged = datetime.datetime.strptime(last_logged_str, "%Y-%m-%d %H:%M:%S")
-                if (jst_now - last_logged).total_seconds() < 600:
-                    is_logging_time = False
+            if last_logged is not None and (jst_now.replace(tzinfo=None) - last_logged).total_seconds() < 600:
+                is_logging_time = False
 
             if total_guests == 0:
                 print(f"Skipping logging: Total guest count is 0.")
@@ -2256,9 +2261,9 @@ def trigger_background_fetch_if_needed():
 
     is_stale = False
     if last_updated and has_data:
-        last_time = datetime.datetime.strptime(last_updated, "%Y-%m-%d %H:%M:%S")
+        last_time = request_guards.parse_jst_ts(last_updated)  # unparseable timestamp => treat as stale (never 500)
         current_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
-        if (current_jst - last_time).total_seconds() > fetch_interval_sec() + 30:
+        if last_time is None or (current_jst - last_time).total_seconds() > fetch_interval_sec() + 30:
             is_stale = True
 
     if not has_data or is_stale:
@@ -2314,8 +2319,9 @@ def get_status():
             })
         last_u = latest_data.get('last_updated')
         is_s = bool(latest_data.get('is_seed'))
-        raw_copy = ops_governance.filter_visible_stores(list(full_d))
-        c_key = (_live_data_signature(raw_copy, last_u, is_s), now_bucket, _sh_sig)
+        raw_copy = list(full_d)
+    raw_copy = ops_governance.filter_visible_stores(raw_copy)
+    c_key = (_live_data_signature(raw_copy, last_u, is_s), now_bucket, _sh_sig)
 
     inm = (request.headers.get('If-None-Match') or '').strip()
     with _status_json_cache_lock:
@@ -2402,8 +2408,8 @@ def health_check_deep():
         last_updated = latest_data.get('last_updated')
         store_count = len(latest_data.get('full_data') or [])
     age_sec = None
-    if last_updated:
-        last_time = datetime.datetime.strptime(last_updated, "%Y-%m-%d %H:%M:%S")
+    last_time = request_guards.parse_jst_ts(last_updated)
+    if last_time is not None:
         now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
         age_sec = int((now_jst - last_time).total_seconds())
     snap = health.snapshot()
@@ -2474,9 +2480,6 @@ def get_weekly_report():
     try:
         import weekly_report
         import store_master
-        report = weekly_report.generate_weekly_report()
-        if "error" in report:
-            return jsonify({"status": "error", "error": report["error"]}), 500
 
         def _clean_report(rep):
             if not isinstance(rep, dict):
@@ -2500,13 +2503,19 @@ def get_weekly_report():
                 rep_clean['by_brand'] = cleaned_bb
             return rep_clean
 
-        safe_rep = _clean_report(report)
+        def _build_weekly():
+            report = weekly_report.generate_weekly_report()
+            if not isinstance(report, dict) or "error" in report:
+                return {"status": "error", "error": (report or {}).get("error") if isinstance(report, dict) else "invalid_report"}, 500
+            return {"status": "success", "data": _clean_report(report)}, 200
+
+        # Cache key is decided BEFORE generation: a hit returns pre-gzipped bytes with zero report generation / cleanup copies
         lf = weekly_report._report_cache.get('last_fetched')
-        return _cached_json_response(
-            ('weekly_report', local_db.DB_PATH, lf, id(report)),
-            lambda: ({"status": "success", "data": safe_rep}, 200),
-            ttl_sec=60.0,
-        )
+        if lf is None:  # report not generated yet (or just invalidated): never cache under an anonymous key
+            payload, code = _build_weekly()
+            return jsonify(payload), code
+        gen_sig = id(getattr(weekly_report, 'generate_weekly_report', None))
+        return _cached_json_response(('weekly_report', local_db.DB_PATH, lf, gen_sig), _build_weekly, ttl_sec=60.0)
     except Exception as e:
         return jsonify({"status": "error", "error": str(e)}), 500
 
@@ -2566,7 +2575,12 @@ def get_events():
 def get_store_votes(store_name):
     """Returns user crowd votes in the last 4 hours for a specific store."""
     import store_master
+    import ops_governance
+    if not store_name or len(store_name) > 80 or any(ord(ch) < 32 for ch in store_name):
+        return jsonify({'status': 'error', 'error': 'Invalid store name'}), 400
     internal_name = store_master.to_internal_store_name(store_name)
+    if ops_governance.is_store_hidden(internal_name or store_name):
+        return jsonify({'status': 'error', 'error': 'Store not found'}), 404
     counts = local_db.get_recent_votes(store_name=internal_name, hours=4)
     disp_name = store_master.seo_name(internal_name) if internal_name else store_name
     return jsonify({'status': 'success', 'store_name': disp_name, 'votes': counts})

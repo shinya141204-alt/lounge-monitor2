@@ -805,12 +805,12 @@
                             <span class="hc-num-m" id="p-men">男性 {{ p.men }}名{% if (p.men_diff or 0) > 0 %} <small style="font-size:0.75rem;">(↗ +{{ p.men_diff }})</small>{% endif %}</span>
                         </div>
                         <div class="ratio-bar">
-                            <div class="ratio-fill-w" id="p-ratio-bar" style="width: {{ p.female_pct if p.total > 0 else 50 }}%;"></div>
+                            <div class="ratio-fill-w" id="p-ratio-bar" style="width: {{ p.female_pct if p.total > 0 else 0 }}%;"></div>
                         </div>
                         <div class="meta-specs-row" id="p-meta-tags">
                             <span class="spec-tag">本日 {{ p.today_hours_label }}</span>
-                            <span class="spec-tag">終電後定着率 {{ p.midnight_retention_pct }}%</span>
-                            <span class="spec-tag">コア帯 {{ p.core_time_short | default('20-22時') }}</span>
+                            {% if p.midnight_retention_pct is number %}<span class="spec-tag">終電後定着率 {{ p.midnight_retention_pct }}%</span>{% else %}<span class="spec-tag">終電後定着率 集計中</span>{% endif %}
+                            {% if p.core_time_short %}<span class="spec-tag">コア帯 {{ p.core_time_short }}</span>{% endif %}
                             {% if p.price_60m_label %}<span class="spec-tag">男性60分目安 {{ p.price_60m_label }}</span>{% endif %}
                         </div>
                     </div>
@@ -852,10 +852,10 @@
                             <span class="hc-num-m" id="b-men" style="font-size:0.95rem;">男性 {{ b_view.men }}名</span>
                         </div>
                         <div class="ratio-bar">
-                            <div class="ratio-fill-w" id="b-ratio-bar" style="width: {{ b_view.female_pct if b_view.total > 0 else 50 }}%;"></div>
+                            <div class="ratio-fill-w" id="b-ratio-bar" style="width: {{ b_view.female_pct if b_view.total > 0 else 0 }}%;"></div>
                         </div>
                         <div class="meta-specs-row" id="b-meta-tags">
-                            <span class="spec-tag">終電後定着 {{ b_view.midnight_retention_pct }}%</span>
+                            {% if b_view.midnight_retention_pct is number %}<span class="spec-tag">終電後定着 {{ b_view.midnight_retention_pct }}%</span>{% else %}<span class="spec-tag">終電後定着 集計中</span>{% endif %}
                             {% if b_view.solo_rule_short %}<span class="spec-tag">{{ b_view.solo_rule_short }}</span>{% endif %}
                         </div>
                     </div>
@@ -1050,13 +1050,17 @@
             }
             setText('p-fpct-label', renderStoreRatioLabel(p, true));
             var pBar = document.getElementById('p-ratio-bar');
-            if (pBar) pBar.style.width = (p.total > 0 ? p.female_pct : 50) + '%';
+            if (pBar) pBar.style.width = (p.total > 0 ? Number(p.female_pct) || 0 : 0) + '%';
 
+            // null/undefined = not yet measured → show "集計中" (never coerce to 0% or a default core time)
+            var isMeasuredNum = function(v) { return v !== null && v !== undefined && v !== '' && isFinite(Number(v)); };
             var pTags = document.getElementById('p-meta-tags');
             if (pTags) {
                 var tagsHtml = '<span class="spec-tag">本日 ' + escHtml(p.today_hours_label) + '</span>' +
-                    '<span class="spec-tag">終電後定着率 ' + Number(p.midnight_retention_pct || 0) + '%</span>' +
-                    '<span class="spec-tag">コア帯 ' + escHtml(p.core_time_short || '20-22時') + '</span>';
+                    (isMeasuredNum(p.midnight_retention_pct)
+                        ? '<span class="spec-tag">終電後定着率 ' + Number(p.midnight_retention_pct) + '%</span>'
+                        : '<span class="spec-tag">終電後定着率 集計中</span>') +
+                    (p.core_time_short ? '<span class="spec-tag">コア帯 ' + escHtml(p.core_time_short) + '</span>' : '');
                 if (p.price_60m_label) {
                     tagsHtml += '<span class="spec-tag">男性60分目安 ' + escHtml(p.price_60m_label) + '</span>';
                 }
@@ -1097,10 +1101,12 @@
                     setText('b-men', '男性 ' + Number(b.men || 0) + '名');
                     setText('b-fpct-label', renderStoreRatioLabel(b, false));
                     var bBar = document.getElementById('b-ratio-bar');
-                    if (bBar) bBar.style.width = (b.total > 0 ? b.female_pct : 50) + '%';
+                    if (bBar) bBar.style.width = (b.total > 0 ? Number(b.female_pct) || 0 : 0) + '%';
                     var bTags = document.getElementById('b-meta-tags');
                     if (bTags) {
-                        var bt = '<span class="spec-tag">終電後定着 ' + Number(b.midnight_retention_pct || 0) + '%</span>';
+                        var bt = isMeasuredNum(b.midnight_retention_pct)
+                            ? '<span class="spec-tag">終電後定着 ' + Number(b.midnight_retention_pct) + '%</span>'
+                            : '<span class="spec-tag">終電後定着 集計中</span>';
                         if (b.solo_rule_short) bt += '<span class="spec-tag">' + escHtml(b.solo_rule_short) + '</span>';
                         bTags.innerHTML = bt;
                     }

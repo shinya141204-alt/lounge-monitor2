@@ -7,7 +7,8 @@
 
 const AFFILIATE_MASTER = {
     // 商業サイトでの有効化フラグ（社内モード・スタッフログイン時は自動的に無効）
-    enabled: !(typeof window !== 'undefined' && window.APP_CONFIG && (window.APP_CONFIG.isStaff || window.APP_CONFIG.isStaffSession)) && (typeof IS_STAFF !== 'undefined' ? !IS_STAFF : true),
+    // (Staff state is resolved solely from window.APP_CONFIG; the legacy global IS_STAFF is not defined when this file loads.)
+    enabled: !(typeof window !== 'undefined' && window.APP_CONFIG && (window.APP_CONFIG.isStaff || window.APP_CONFIG.isStaffSession)),
 
     // カテゴリ定義
     categories: [

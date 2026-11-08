@@ -4,8 +4,21 @@ import re
 import datetime
 import threading
 import collections
+import logging
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 import x_poster
+
+logger = logging.getLogger(__name__)
+
+# Linux (Fly.io Debian/Ubuntu) Noto CJK fallbacks when the bundled font is missing
+LINUX_CJK_FONTS = (
+    "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
+    "/usr/share/fonts/noto-cjk/NotoSansCJK-Bold.ttc",
+    "/usr/share/fonts/opentype/noto/NotoSansCJKjp-Bold.otf",
+    "/usr/share/fonts/truetype/noto/NotoSansCJK-Bold.ttc",
+    "/usr/share/fonts/google-noto-cjk/NotoSansCJK-Bold.ttc",
+)
+_FONT_CACHE_MAX = 64
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 FONT_PATH = os.path.join(BASE_DIR, "static", "fonts", "ogp-jp-bold.otf")
@@ -134,7 +147,9 @@ def _get_font(size: int) -> ImageFont.FreeTypeFont:
     with _FONT_LOCK:
         if size in _FONT_CACHE:
             return _FONT_CACHE[size]
-        for path in (FONT_PATH, MAC_FONT_BOLD):
+        if len(_FONT_CACHE) >= _FONT_CACHE_MAX:
+            _FONT_CACHE.clear()
+        for path in (FONT_PATH, MAC_FONT_BOLD) + LINUX_CJK_FONTS:
             if os.path.exists(path):
                 try:
                     f = ImageFont.truetype(path, size)
@@ -142,6 +157,7 @@ def _get_font(size: int) -> ImageFont.FreeTypeFont:
                     return f
                 except Exception:
                     pass
+        logger.warning("[ogp_generator] No CJK font found; falling back to PIL default font (size=%s)", size)
         f = ImageFont.load_default()
         _FONT_CACHE[size] = f
         return f
@@ -503,7 +519,7 @@ def generate_live_ogp_png(stores: list, s_param: str = "", now_jst: datetime.dat
     if is_off_hours:
         draw.text(
             (lx + 22, tbox_y + 16),
-            f"◆ 国内{len(dom_stores) or 51}店舗 リアルタイム稼働モニター",
+            (f"◆ 国内{len(dom_stores)}店舗 リアルタイム稼働モニター" if dom_stores else "◆ 全国主要店舗 リアルタイム稼働モニター"),
             font=f_total_lbl,
             fill=(205, 212, 226, 255),
         )
@@ -518,7 +534,7 @@ def generate_live_ogp_png(stores: list, s_param: str = "", now_jst: datetime.dat
     else:
         draw.text(
             (lx + 22, tbox_y + 16),
-            f"◆ 全国{len(dom_stores) or 51}店舗 リアルタイム来店合計",
+            (f"◆ 全国{len(dom_stores)}店舗 リアルタイム来店合計" if dom_stores else "◆ 全国主要店舗 リアルタイム来店合計"),
             font=f_total_lbl,
             fill=(205, 212, 226, 255),
         )
@@ -629,11 +645,13 @@ def generate_live_ogp_png(stores: list, s_param: str = "", now_jst: datetime.dat
         cx = rx + 22
         cw = rw - 44
 
-        s = top3[idx] if idx < len(top3) else {"name": "---", "women": 0, "men": 0, "women_diff": 0}
+        is_placeholder = idx >= len(top3)
+        s = top3[idx] if not is_placeholder else {"name": "検証ログ蓄積中", "women": 0, "men": 0, "women_diff": 0}
         w = int(s.get("women") or 0)
         m = int(s.get("men") or 0)
         tot = w + m
-        w_pct = round((w / tot) * 100) if tot > 0 else 50
+        # No measured attendance -> no ratio (never render a fabricated 50%)
+        w_pct = round((w / tot) * 100) if tot > 0 else None
         w_diff = int(s.get("women_diff") or 0)
         ja_name = x_poster.format_ja_store_name(s.get("name", ""))
 
@@ -663,16 +681,19 @@ def generate_live_ogp_png(stores: list, s_param: str = "", now_jst: datetime.dat
         draw.text((cx + 37 - rw_txt // 2, cy + 21), r_str, font=f_rank_num, fill=r_fg)
 
         # Female Ratio Pill (Top Right of Card) — computed first so long store names auto-fit without overlap
-        pct_txt = f"女性比 {w_pct}%"
-        pw_txt = int(draw.textlength(pct_txt, font=f_pct_pill)) + 24
-        px = cx + cw - pw_txt - 18
-        pill_fill = (219, 39, 119, 240) if w_pct >= 50 else (51, 65, 85, 240)
-        draw.rounded_rectangle(
-            (px, cy + 18, px + pw_txt, cy + 52),
-            radius=9,
-            fill=pill_fill,
-        )
-        draw.text((px + 12, cy + 25), pct_txt, font=f_pct_pill, fill=(255, 255, 255, 255))
+        if w_pct is not None:
+            pct_txt = f"女性比 {w_pct}%"
+            pw_txt = int(draw.textlength(pct_txt, font=f_pct_pill)) + 24
+            px = cx + cw - pw_txt - 18
+            pill_fill = (219, 39, 119, 240) if w_pct >= 50 else (51, 65, 85, 240)
+            draw.rounded_rectangle(
+                (px, cy + 18, px + pw_txt, cy + 52),
+                radius=9,
+                fill=pill_fill,
+            )
+            draw.text((px + 12, cy + 25), pct_txt, font=f_pct_pill, fill=(255, 255, 255, 255))
+        else:
+            px = cx + cw - 18
 
         # Store Name (auto-shrink to fit cleanly before the right-hand ratio pill)
         max_name_w = max(140, px - (cx + 70) - 12)
@@ -697,8 +718,8 @@ def generate_live_ogp_png(stores: list, s_param: str = "", now_jst: datetime.dat
 
         # Counts Row (女性 XX名 / 男性 XX名)
         cnt_y = cy + 66
-        w_cnt_str = f"女性 {w}名"
-        m_cnt_str = f"男性 {m}名"
+        w_cnt_str = f"女性 {w}名" if not is_placeholder else "女性 --"
+        m_cnt_str = f"男性 {m}名" if not is_placeholder else "男性 --"
         draw.text((cx + 20, cnt_y), w_cnt_str, font=f_count, fill=(255, 115, 172, 255))
         m_str_w = int(draw.textlength(m_cnt_str, font=f_count))
         draw.text((cx + cw - m_str_w - 20, cnt_y), m_cnt_str, font=f_count, fill=(96, 185, 255, 255))
@@ -713,8 +734,8 @@ def generate_live_ogp_png(stores: list, s_param: str = "", now_jst: datetime.dat
             radius=7,
             fill=(56, 152, 236, 225),
         )
-        w_bar_w = max(14, min(bar_w, int(bar_w * (w_pct / 100.0))))
-        if tot > 0:
+        if tot > 0 and w_pct is not None:
+            w_bar_w = max(14, min(bar_w, int(bar_w * (w_pct / 100.0))))
             draw.rounded_rectangle(
                 (bar_x, bar_y, bar_x + w_bar_w, bar_y + bar_h),
                 radius=7,
@@ -812,9 +833,18 @@ def generate_weekly_ogp_png(report: dict = None) -> bytes:
     if anaba_stores:
         a1 = anaba_stores[0]
         a1_name = sanitize_font_text(x_poster.format_ja_store_name(a1.get("name", "")))
-        a1_pct = int(round(float(a1.get("avg_wpct") if a1.get("avg_wpct") is not None else 58)))
-        a1_w = int(round(float(a1.get("avg_women") if a1.get("avg_women") is not None else 30)))
-        suffix = f"（女性比 {a1_pct}% / 平均{a1_w}名）"
+        _parts = []
+        try:
+            if a1.get("avg_wpct") is not None:
+                _parts.append(f"女性比 {int(round(float(a1.get('avg_wpct'))))}%")
+        except (TypeError, ValueError):
+            pass
+        try:
+            if a1.get("avg_women") is not None:
+                _parts.append(f"平均{int(round(float(a1.get('avg_women'))))}名")
+        except (TypeError, ValueError):
+            pass
+        suffix = f"（{' / '.join(_parts)}）" if _parts else ""
         full_anaba = f"{a1_name}{suffix}"
         chosen_font = None
         chosen_sz = 23
@@ -834,7 +864,7 @@ def generate_weekly_ogp_png(report: dict = None) -> bytes:
         y_anaba = tbox_y + 48 + max(0, (23 - chosen_sz) // 2)
         draw.text((lx + 22, y_anaba), full_anaba, font=chosen_font, fill=(74, 222, 128, 255))
     else:
-        fb_txt, fb_font, fb_sz = fit_text_and_font(draw, "水・木 20:00〜22:00（全国平均女性比 57%）", max_anaba_w, 23, 15)
+        fb_txt, fb_font, fb_sz = fit_text_and_font(draw, "検証ログ蓄積中（7日分の実測が揃い次第掲載）", max_anaba_w, 23, 15)
         draw.text((lx + 22, tbox_y + 48 + max(0, (23 - fb_sz) // 2)), fb_txt, font=fb_font, fill=(74, 222, 128, 255))
 
     rx = 576
@@ -868,12 +898,13 @@ def generate_weekly_ogp_png(report: dict = None) -> bytes:
         cx = rx + 22
         cw = rw - 44
 
-        s = stores[idx] if idx < len(stores) else {"name": "---", "avg_women": 0, "avg_men": 0, "max_women": 0}
+        is_placeholder = idx >= len(stores)
+        s = stores[idx] if not is_placeholder else {"name": "検証ログ蓄積中", "avg_women": 0, "avg_men": 0, "max_women": 0}
         avg_w = float(s.get("avg_women") or 0)
         avg_m = float(s.get("avg_men") or 0)
         max_w = int(s.get("max_women") or 0)
         tot = avg_w + avg_m
-        w_pct = round((avg_w / tot) * 100) if tot > 0 else 52
+        w_pct = round((avg_w / tot) * 100) if tot > 0 else None
         ja_name = x_poster.format_ja_store_name(s.get("name", ""))
 
         is_first = (idx == 0)
@@ -893,19 +924,22 @@ def generate_weekly_ogp_png(report: dict = None) -> bytes:
         rw_txt = int(draw.textlength(r_str, font=f_rank_num))
         draw.text((cx + 37 - rw_txt // 2, cy + 21), r_str, font=f_rank_num, fill=r_fg)
 
-        pct_txt = f"週間最大 {max_w}名"
-        pw_txt = int(draw.textlength(pct_txt, font=f_pct_pill)) + 24
-        px = cx + cw - pw_txt - 18
-        draw.rounded_rectangle((px, cy + 18, px + pw_txt, cy + 52), radius=9, fill=(219, 39, 119, 235))
-        draw.text((px + 12, cy + 25), pct_txt, font=f_pct_pill, fill=(255, 255, 255, 255))
+        if not is_placeholder:
+            pct_txt = f"週間最大 {max_w}名"
+            pw_txt = int(draw.textlength(pct_txt, font=f_pct_pill)) + 24
+            px = cx + cw - pw_txt - 18
+            draw.rounded_rectangle((px, cy + 18, px + pw_txt, cy + 52), radius=9, fill=(219, 39, 119, 235))
+            draw.text((px + 12, cy + 25), pct_txt, font=f_pct_pill, fill=(255, 255, 255, 255))
+        else:
+            px = cx + cw - 18
 
         max_name_w = max(140, px - (cx + 70) - 12)
         fit_name, f_store_fit, store_sz = fit_text_and_font(draw, ja_name, max_name_w, 26, 16)
         draw.text((cx + 70, cy + 20 + max(0, (26 - store_sz) // 2)), fit_name, font=f_store_fit, fill=(255, 255, 255, 255))
 
         cnt_y = cy + 66
-        w_cnt_str = f"女性ピーク平均 {avg_w:.0f}名"
-        m_cnt_str = f"男性平均 {avg_m:.0f}名"
+        w_cnt_str = f"女性ピーク平均 {avg_w:.0f}名" if not is_placeholder else "女性ピーク平均 --"
+        m_cnt_str = f"男性平均 {avg_m:.0f}名" if not is_placeholder else "男性平均 --"
         draw.text((cx + 20, cnt_y), w_cnt_str, font=f_count, fill=(255, 115, 172, 255))
         m_str_w = int(draw.textlength(m_cnt_str, font=f_count))
         draw.text((cx + cw - m_str_w - 20, cnt_y), m_cnt_str, font=f_count, fill=(96, 185, 255, 255))
@@ -915,8 +949,8 @@ def generate_weekly_ogp_png(report: dict = None) -> bytes:
         bar_w = cw - 40
         bar_h = 14
         draw.rounded_rectangle((bar_x, bar_y, bar_x + bar_w, bar_y + bar_h), radius=7, fill=(56, 152, 236, 225))
-        w_bar_w = max(14, min(bar_w, int(bar_w * (w_pct / 100.0))))
-        if tot > 0:
+        if tot > 0 and w_pct is not None:
+            w_bar_w = max(14, min(bar_w, int(bar_w * (w_pct / 100.0))))
             draw.rounded_rectangle((bar_x, bar_y, bar_x + w_bar_w, bar_y + bar_h), radius=7, fill=(236, 72, 153, 255))
 
     out = io.BytesIO()

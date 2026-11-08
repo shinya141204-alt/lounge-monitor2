@@ -332,33 +332,65 @@ _OPERATIONAL_AUDIT_KEYWORDS = (
     '営業時間変更', '営業時間の変更', '定休日', '臨時休業', '閉店', '移転',
 )
 _recent_operational_notices = []
+_operational_notices_lock = threading.Lock()
+_OPERATIONAL_NOTICE_MAX_AGE_DAYS = 30
+
+
+def _notice_is_fresh(item: dict, now_jst: datetime) -> bool:
+    """Return True when a notice's seen_at is within 30 days. Legacy items without seen_at are kept
+    (they get stamped on next merge) so audit history is never silently lost on deploy."""
+    seen_at = str((item or {}).get('seen_at') or '')
+    if not seen_at:
+        return True
+    try:
+        seen_dt = datetime.strptime(seen_at[:19], '%Y-%m-%d %H:%M:%S').replace(tzinfo=_JST)
+    except Exception:
+        return True
+    return (now_jst - seen_dt) <= timedelta(days=_OPERATIONAL_NOTICE_MAX_AGE_DAYS)
 
 
 def _record_operational_notice(brand: str, title: str, url: str):
     """Preserve operational/hours/price notices for data_audit.py even when hidden from public campaign cards."""
     t = title or ''
     if any(k in t for k in _OPERATIONAL_AUDIT_KEYWORDS):
-        if not any(x.get('title') == t and x.get('url') == url for x in _recent_operational_notices):
-            _recent_operational_notices.append({
-                'brand': brand,
-                'title': t,
-                'url': url,
-            })
-            if len(_recent_operational_notices) > 100:
-                del _recent_operational_notices[:-100]
+        now_s = datetime.now(_JST).strftime('%Y-%m-%d %H:%M:%S')
+        with _operational_notices_lock:
+            for x in _recent_operational_notices:
+                if x.get('title') == t and x.get('url') == url:
+                    x['seen_at'] = now_s
+                    break
+            else:
+                _recent_operational_notices.append({
+                    'brand': brand,
+                    'title': t,
+                    'url': url,
+                    'seen_at': now_s,
+                })
+                if len(_recent_operational_notices) > 100:
+                    del _recent_operational_notices[:-100]
 
 
 def get_operational_notices() -> list:
-    """Return operational announcements (hours/price revisions, closures) captured during crawling."""
+    """Return operational announcements (hours/price revisions, closures) captured during crawling.
+    Deduplicated by (title, url) and limited to notices seen within the last 30 days."""
+    now_jst = datetime.now(_JST)
+    now_s = now_jst.strftime('%Y-%m-%d %H:%M:%S')
     cached = _events_memory_cache.get('operational_notices') or []
-    combined = list(_recent_operational_notices)
-    seen = {(x.get('title'), x.get('url')) for x in combined}
-    for item in cached:
+    with _operational_notices_lock:
+        recent = [dict(x) for x in _recent_operational_notices]
+    combined = []
+    seen = set()
+    for item in recent + [dict(x) for x in cached if isinstance(x, dict)]:
         key = (item.get('title'), item.get('url'))
-        if key not in seen:
-            seen.add(key)
-            combined.append(item)
-    return combined
+        if key in seen:
+            continue
+        if not _notice_is_fresh(item, now_jst):
+            continue
+        seen.add(key)
+        if not item.get('seen_at'):
+            item['seen_at'] = now_s
+        combined.append(item)
+    return combined[:200]
 
 
 def _is_non_campaign_notice(title: str) -> bool:
@@ -503,7 +535,10 @@ def _parse_oriental_roundup_article(article_url: str, date_str: str):
                 full_title = f'【{store_header}】{ev_name}'
                 tag_label, tag_cls = _classify_tag(full_title)
                 clean_header = re.sub(r'\s+', '', store_header)
-                ev_id = f"olg-roundup-{clean_header}-{idx}"
+                # Include article slug so multiple monthly roundups (e.g. Oct & Nov) never collide by ID
+                _slug_src = (article_url or '').split('?', 1)[0].split('#', 1)[0].rstrip('/')
+                article_slug = re.sub(r'[^0-9A-Za-z_-]', '', _slug_src.rsplit('/', 1)[-1])[:48] or 'roundup'
+                ev_id = f"olg-roundup-{article_slug}-{clean_header}-{idx}"
 
                 sub_events.append({
                     'id': ev_id,
@@ -519,7 +554,7 @@ def _parse_oriental_roundup_article(article_url: str, date_str: str):
                     'tag_cls': tag_cls,
                     'target_stores': [store_master.seo_name(s) for s in target_areas],
                     'target_label': f'{store_header}限定',
-                    'created_at': datetime.now().strftime('%Y-%m-%d')
+                    'created_at': datetime.now(_JST).strftime('%Y-%m-%d')
                 })
     except Exception as e:
         logger.warning(f"Failed to parse Oriental roundup article {article_url}: {e}")
@@ -685,7 +720,7 @@ def crawl_oriental_events():
                     'tag_cls': tag_cls,
                     'target_stores': [store_master.seo_name(s) for s in target_stores],
                     'target_label': target_label,
-                    'created_at': datetime.now().strftime('%Y-%m-%d')
+                    'created_at': datetime.now(_JST).strftime('%Y-%m-%d')
                 })
 
             # 2. Homepage branch-news-inner (fallback or featured)
@@ -739,7 +774,7 @@ def crawl_oriental_events():
                     'tag_cls': tag_cls,
                     'target_stores': [store_master.seo_name(s) for s in target_stores],
                     'target_label': target_label,
-                    'created_at': datetime.now().strftime('%Y-%m-%d')
+                    'created_at': datetime.now(_JST).strftime('%Y-%m-%d')
                 })
         except Exception as e:
             logger.error(f"Error crawling Oriental Lounge events from {url}: {e}")
@@ -851,7 +886,7 @@ def _crawl_single_jis_shop(shop_tuple):
                 'tag_cls': tag_cls,
                 'target_stores': [area],
                 'target_label': f'{store_name} 限定',
-                'created_at': datetime.now().strftime('%Y-%m-%d')
+                'created_at': datetime.now(_JST).strftime('%Y-%m-%d')
             })
     except Exception as e:
         logger.error(f"Error crawling JIS store {store_name}: {e}")
@@ -874,7 +909,7 @@ def crawl_jis_global_events():
     events = []
     try:
         url = 'https://jis.bar'
-        res = requests.get(url, headers=HEADERS, timeout=8)
+        res = _get_events_http().get(url, headers=HEADERS, timeout=8)
         if res.status_code != 200:
             return events
 
@@ -927,7 +962,7 @@ def crawl_jis_global_events():
                 'tag_cls': tag_cls,
                 'target_stores': target_stores,
                 'target_label': target_label,
-                'created_at': datetime.now().strftime('%Y-%m-%d')
+                'created_at': datetime.now(_JST).strftime('%Y-%m-%d')
             })
     except Exception as e:
         logger.error(f"Error crawling JIS global events: {e}")
@@ -938,7 +973,7 @@ def get_regional_curated_events() -> list:
     """ Baseline verified campaigns for Hiroshima (ALFA, CLOVERS, OLG/ag) & Okayama (XIX)
     so regional cross-brand comparison always has store-specific men's & women's events
     even before or between live crawls."""
-    today_s = datetime.now().strftime('%Y-%m-%d')
+    today_s = datetime.now(_JST).strftime('%Y-%m-%d')
     return [
         {
             'id': 'clovers-hiroshima-halfprice',
@@ -1101,7 +1136,7 @@ def crawl_regional_brand_events() -> list:
     ALFA Hiroshima (aiseki-hiroshima.com), and XIX Okayama (xix-thelounge.com),
     merged with verified baseline regional campaigns."""
     scraped = []
-    today_s = datetime.now().strftime('%Y-%m-%d')
+    today_s = datetime.now(_JST).strftime('%Y-%m-%d')
     targets = [
         ('CLOVERS', 'CLOVERS広島', 'CLOVERS HIROSHIMA', '広島', 'https://bar-clovers.com/'),
         ('ALFA', 'ALFA広島', 'ALFA HIROSHIMA', '広島', 'https://aiseki-hiroshima.com/'),
@@ -1109,7 +1144,7 @@ def crawl_regional_brand_events() -> list:
     ]
     for brand_code, brand_label, sname, area, url in targets:
         try:
-            res = requests.get(url, headers=HEADERS, timeout=5)
+            res = _get_events_http().get(url, headers=HEADERS, timeout=5)
             if res.status_code != 200:
                 continue
             soup = BeautifulSoup(res.text, 'html.parser')
@@ -1191,12 +1226,20 @@ def _crawl_and_save_events():
         }
         with _store_events_memo_lock:
             _store_events_memo.clear()
+        tmp_path = f"{CACHE_FILE}.{os.getpid()}.{threading.get_ident()}.tmp"
         try:
             os.makedirs(os.path.dirname(CACHE_FILE), exist_ok=True)
-            with open(CACHE_FILE, 'w', encoding='utf-8') as f:
+            # Atomic write: concurrent readers (web) never see a truncated JSON
+            with open(tmp_path, 'w', encoding='utf-8') as f:
                 json.dump(_events_memory_cache, f, ensure_ascii=False, indent=2)
+            os.replace(tmp_path, CACHE_FILE)
         except Exception as e:
             logger.warning(f"Failed to save events cache to disk: {e}")
+            try:
+                if os.path.exists(tmp_path):
+                    os.remove(tmp_path)
+            except Exception:
+                pass
         try:
             import local_db
             if hasattr(local_db, 'upsert_store_event_history'):
@@ -1284,15 +1327,23 @@ def fetch_all_events(force_refresh: bool = False, allow_blocking: bool = True):
                 if disk_data.get('events'):
                     disk_data['events'] = _ensure_regional_events(disk_data['events'])
                     _events_memory_cache = disk_data
+                    with _store_events_memo_lock:
+                        _store_events_memo.clear()
                     if os.environ.get("DISABLE_SCHEDULER") != "1" and os.environ.get("DISABLE_SHEETS") != "1":
-                        try:
-                            import local_db
-                            if hasattr(local_db, 'upsert_store_event_history'):
-                                disk_date = str(disk_data.get('updated_at') or '')[:10]
-                                if len(disk_date) == 10 and disk_date[4] == '-' and disk_date[7] == '-':
-                                    local_db.upsert_store_event_history(disk_data['events'], date_jst=disk_date)
-                        except Exception:
-                            pass
+                        disk_date = str(disk_data.get('updated_at') or '')[:10]
+                        if len(disk_date) == 10 and disk_date[4] == '-' and disk_date[7] == '-':
+                            _events_snapshot = list(disk_data['events'])
+
+                            def _bg_upsert_history(evs=_events_snapshot, d=disk_date):
+                                try:
+                                    import local_db
+                                    if hasattr(local_db, 'upsert_store_event_history'):
+                                        local_db.upsert_store_event_history(evs, date_jst=d)
+                                except Exception as e:
+                                    logger.debug(f"Event history DB upsert (disk warm) skipped: {e}")
+
+                            # Never block the first request thread (>50ms) on a DB write
+                            threading.Thread(target=_bg_upsert_history, daemon=True, name='events-history-warm').start()
         except Exception as e:
             logger.warning(f"Failed to read events cache from disk: {e}")
 
@@ -1306,14 +1357,19 @@ def fetch_all_events(force_refresh: bool = False, allow_blocking: bool = True):
         except Exception:
             pass
 
+    # Memory cache events are already sanitized at write time (crawl & disk load). Return a SHALLOW COPY so
+    # callers' sort()/append()/remove() can never corrupt the shared cache list. get_events_for_store still
+    # memo-hits: list equality short-circuits on element identity, so comparing the copy is cheap.
     if is_fresh and _events_memory_cache.get('events'):
-        _events_memory_cache['events'] = _ensure_regional_events(_events_memory_cache['events'])
-        return _events_memory_cache['events']
+        return list(_events_memory_cache['events'])
 
     # Non-blocking mode for web requests: return existing cache immediately & refresh in background
     if not allow_blocking and not force_refresh:
         _trigger_background_refresh()
-        return _ensure_regional_events(_events_memory_cache.get('events', []))
+        cached_events = _events_memory_cache.get('events')
+        if cached_events:
+            return list(cached_events)
+        return _ensure_regional_events([])
 
     return _crawl_and_save_events()
 
@@ -1329,23 +1385,46 @@ def get_events_for_store(
     if not all_events:
         return []
 
-    first_ev = all_events[0] if isinstance(all_events[0], dict) else {}
-    last_ev = all_events[-1] if isinstance(all_events[-1], dict) else {}
-    memo_key = (
-        id(all_events),
-        len(all_events),
-        first_ev.get('id'),
-        first_ev.get('title'),
-        last_ev.get('id'),
-        last_ev.get('title'),
-        store_name,
-        bool(store_only),
-    )
+    # Stable memo key (no id(): transient lists recycled ids and caused constant misses / false hits).
+    cache_events = _events_memory_cache.get('events')
+    if cache_events is not None and (
+        all_events is cache_events
+        or (len(all_events) == len(cache_events) and all_events == cache_events)
+    ):
+        memo_key = ('mem', _events_memory_cache.get('updated_at'), len(all_events), store_name, bool(store_only))
+    else:
+        # Externally supplied pool: cheap content fingerprint over (id, title, target_stores) of every event
+        try:
+            fp = hash(tuple(
+                (
+                    ev.get('id'), ev.get('title'), ev.get('brand'), ev.get('store_name'),
+                    ev.get('target_label'), tuple(ev.get('target_stores') or ()),
+                ) if isinstance(ev, dict) else repr(ev)
+                for ev in all_events
+            ))
+        except TypeError:
+            fp = None
+        if fp is None:
+            memo_key = None
+        else:
+            memo_key = ('ext', fp, len(all_events), store_name, bool(store_only))
+    if memo_key is None:
+        return _filter_events_for_store(all_events, store_name, store_only)
     with _store_events_memo_lock:
         hit = _store_events_memo.get(memo_key)
         if hit is not None:
             return list(hit)
 
+    result = _filter_events_for_store(all_events, store_name, store_only)
+    with _store_events_memo_lock:
+        if len(_store_events_memo) >= 512:
+            _store_events_memo.clear()
+        _store_events_memo[memo_key] = result
+    return list(result)
+
+
+def _filter_events_for_store(all_events: list, store_name: str, store_only: bool) -> list:
+    """Uncached store/event matching core used by get_events_for_store."""
     matched = []
     global_matched = []
 
@@ -1394,9 +1473,4 @@ def get_events_for_store(
         deduped_matched.append(ev)
 
     # Return store-specific events first, then brand-wide events
-    result = deduped_matched if store_only else (deduped_matched + global_matched)
-    with _store_events_memo_lock:
-        if len(_store_events_memo) >= 512:
-            _store_events_memo.clear()
-        _store_events_memo[memo_key] = result
-    return list(result)
+    return deduped_matched if store_only else (deduped_matched + global_matched)

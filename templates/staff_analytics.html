@@ -2078,7 +2078,7 @@
                                     <span class="inq-cat-badge{% if inq.is_priority and not inq.resolved %} prio{% endif %}">{{ inq.category_label }}</span>
                                     <strong style="margin-left:6px;">{{ inq.name or '匿名' }}</strong>
                                     {% if inq.email %}
-                                    <a href="mailto:{{ inq.email }}" style="color:var(--blue);margin-left:6px;text-decoration:underline;">{{ inq.email }}</a>
+                                    <span style="color:var(--sub);margin-left:6px;font-variant-numeric:tabular-nums;" title="マスク済みメールアドレス（送信不可）">{{ inq.email }}</span>
                                     {% endif %}
                                 </div>
                                 <div style="display:flex;align-items:center;gap:8px;">

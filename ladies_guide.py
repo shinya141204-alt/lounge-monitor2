@@ -133,6 +133,13 @@ def build_ladies_live_board(live_stores: list, all_events: list = None) -> dict:
     total_m = 0
     zero_wait_count = 0
 
+    # ループ外で1回だけマスタ・ヘルパーを解決（店舗数×毎回の load()/hasattr を省く）
+    try:
+        master_map = store_master.load() or {}
+    except Exception:
+        master_map = {}
+    area_label_fn = getattr(store_master, "area_label_of", None)
+
     for s in dom:
         sname = s.get("name") or ""
         w = max(0, int(s.get("women") or 0))
@@ -168,9 +175,14 @@ def build_ladies_live_board(live_stores: list, all_events: list = None) -> dict:
         ja_name = sns_editorial.natural_store_name(sname)
         casual_name = sns_editorial.casual_store_name(sname)
         slug = store_master.slug_of(sname)
-        area_label = store_master.area_label_of(sname) if hasattr(store_master, "area_label_of") else ""
+        area_label = ""
+        if area_label_fn is not None:
+            try:
+                area_label = area_label_fn(sname) or ""
+            except Exception:
+                area_label = ""
         if not area_label:
-            m_info = (store_master.load() or {}).get(sname) or {}
+            m_info = master_map.get(sname) or {}
             area_label = m_info.get("area_label") or ""
 
         tot = w + m
@@ -427,7 +439,7 @@ def build_instagram_ladies_caption(
     pick_lines = (
         "\n".join(f"・{p['ja_name']}（現在 男性{p['men']}名 / 女性{p['women']}名）" for p in picks)
         if picks
-        else "・新宿 / 渋谷 / 梅田 / 栄 / 福岡の大型店は20時台から男性先行でスムーズに入店しやすい傾向です"
+        else "・現在リアルタイム集計を更新中です。営業開始後に男性先行でスムーズに入りやすい店舗が表示されます"
     )
     ev_section = ""
     if ev_picks:

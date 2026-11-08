@@ -170,7 +170,7 @@ def seo_name(store_name: str) -> str:
         return f"{brand} {disp}".strip()
 
     # マスタ未登録時のフォールバック変換（大文字小文字・全角空白・単体ブランド名にも対応・2重変換防止で冪等化）
-    s = store_name.strip()
+    s = str(store_name or "").strip()
     if s.startswith(("オリエンタルラウンジ", "ag（アグ）", "JIS（ジス）", "ASOBIBAR（アソビバー）", "ヤタコイ", "相席ラウンジXIX", "相席CLOVERS", "相席ラウンジALFA")):
         return s
     m_ag = re.match(r"^(?:OLG\s+ag|ORIENTAL\s+ag|ag)(?:\s+|(?=[^a-zA-Z0-9])|$)(.*)$", s, flags=re.IGNORECASE)
@@ -284,7 +284,9 @@ def store_by_slug(slug: str, live_stores=None) -> str:
     """URLスラッグから現役稼働中の内部店舗名（例: 'OLG 新宿'）を逆引きする。閉店済み旧店舗は返さない。"""
     if not slug:
         return None
-    slug_clean = slug.strip()
+    slug_clean = str(slug or "").strip()
+    if not slug_clean:
+        return None
     master = load()
     live_names = {s.get("name", "") for s in (live_stores or []) if s.get("name")}
     if slug_clean in _SLUG_TO_STORE:
@@ -303,6 +305,9 @@ def store_by_slug(slug: str, live_stores=None) -> str:
 
 def brand_key_of(store_name: str) -> str:
     """店舗のブランド識別子（'oriental-lounge' / 'ag' / 'jis' / 'asobibar' / 'other'）を返す。"""
+    store_name = str(store_name or "").strip()
+    if not store_name:
+        return "other"
     info = get(store_name)
     if info:
         b = info.get("brand", "")

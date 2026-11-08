@@ -1,6 +1,7 @@
 """SEO, crawler directives, and LLM/RAG feed endpoints (`robots.txt`, `sitemap.xml`, `llms.txt`, `ads.txt`)."""
 
 import datetime
+import json
 import os
 
 from flask import Blueprint, Response, jsonify
@@ -9,6 +10,30 @@ from portal_guides import AREA_GUIDES, BRAND_GUIDES, get_stores_for_area
 from routes._bridge import core
 
 seo_feeds_bp = Blueprint('seo_feeds_bp', __name__)
+
+
+def _gov_hidden_sets() -> tuple:
+    """Fetch governance hidden brand/store sets once per request (never raises)."""
+    try:
+        import ops_governance
+        return set(ops_governance.get_hidden_brands() or ()), set(ops_governance.get_hidden_stores() or ())
+    except Exception:
+        return set(), set()
+
+
+def _is_hidden_with(store_name: str, hb: set, hs: set) -> bool:
+    """Signature-independent hidden check using pre-fetched sets (avoids N× job_state reads in loops)."""
+    if not store_name or (not hb and not hs):
+        return False
+    try:
+        import ops_governance
+        import store_master
+        canon = store_master.to_internal_store_name(store_name) or store_name
+        if canon in hs or store_name in hs:
+            return True
+        return ops_governance.ops_brand_key_of(canon) in hb
+    except Exception:
+        return False
 
 
 @seo_feeds_bp.route('/robots.txt')
@@ -89,8 +114,11 @@ def _get_stable_30d_summary_cached() -> dict:
         db_key = core.local_db._active_db_key()
     except Exception:
         db_key = None
+    hb, hs = _gov_hidden_sets()
+    gov_sig = (tuple(sorted(hb)), tuple(sorted(hs)))
+    cache_db_key = (db_key, gov_sig)
     cached = _STABLE_30D_SUMMARY_CACHE
-    if cached['data'] is not None and cached['db_key'] == db_key and (now_m - cached['ts']) < 900.0:
+    if cached['data'] is not None and cached['db_key'] == cache_db_key and (now_m - cached['ts']) < 900.0:
         return cached['data']
 
     rows = []
@@ -99,7 +127,26 @@ def _get_stable_30d_summary_cached() -> dict:
     except Exception:
         rows = []
 
-    valid_rows = [r for r in rows if int(r.get('sample_count') or 0) > 0]
+    def _row_hidden(r: dict) -> bool:
+        if not hb and not hs:
+            return False
+        names = [str(r.get('store_name') or '')]
+        slug = str(r.get('store_slug') or '')
+        if slug:
+            try:
+                import store_master
+                names.append(store_master.store_by_slug(slug) or '')
+            except Exception:
+                pass
+        return any(_is_hidden_with(n, hb, hs) for n in names if n)
+
+    def _safe_int(v) -> int:
+        try:
+            return int(v or 0)
+        except (TypeError, ValueError):
+            return 0
+
+    valid_rows = [r for r in rows if isinstance(r, dict) and _safe_int(r.get('sample_count')) > 0 and not _row_hidden(r)]
     total_samples = sum(int(r.get('sample_count') or 0) for r in valid_rows)
     top_avg_women = sorted(
         valid_rows,
@@ -132,7 +179,7 @@ def _get_stable_30d_summary_cached() -> dict:
     }
     if valid_rows:
         _STABLE_30D_SUMMARY_CACHE['ts'] = now_m
-        _STABLE_30D_SUMMARY_CACHE['db_key'] = db_key
+        _STABLE_30D_SUMMARY_CACHE['db_key'] = cache_db_key
         _STABLE_30D_SUMMARY_CACHE['data'] = summary
     return summary
 
@@ -155,6 +202,9 @@ def _build_llms_txt_documents() -> tuple:
         stores = list(core.latest_data.get('full_data') or [])
         last_u = core.latest_data.get('last_updated') or ''
         is_s = bool(core.latest_data.get('is_seed'))
+    hb, hs = _gov_hidden_sets()
+    if hb or hs:
+        stores = [s for s in stores if not _is_hidden_with((s or {}).get('name') or '', hb, hs)]
     pub_items = core.scheduled_articles.get_published_articles()
     hist_records = 0
     hist_data_status = 'insufficient'
@@ -171,6 +221,7 @@ def _build_llms_txt_documents() -> tuple:
         core._live_data_signature(stores, last_u, is_s),
         tuple(it.get('slug') for it in pub_items),
         hist_records,
+        (tuple(sorted(hb)), tuple(sorted(hs))),
     )
     llms_cache = core._llms_txt_cache
     with core._aux_doc_cache_lock:
@@ -183,6 +234,8 @@ def _build_llms_txt_documents() -> tuple:
             return llms_cache['short'], llms_cache['full'], llms_cache['facts']
 
     master_map = store_master.load() or {}
+    if hb or hs:
+        master_map = {k: v for k, v in master_map.items() if not _is_hidden_with(k, hb, hs)}
     total_stores = len(master_map)
     domestic_master_count = sum(1 for m in master_map.values() if (m or {}).get('region') != 'Korea')
     overseas_master_count = max(0, total_stores - domestic_master_count)
@@ -233,8 +286,8 @@ def _build_llms_txt_documents() -> tuple:
         w = int(st.get('women') or 0)
         m = int(st.get('men') or 0)
         tot = w + m
-        fp = round(w / tot * 100) if tot > 0 else 0
-        return f"- [{seo_n}](https://aiseki-navi.com/store/{slug}): 女性 {w}名 / 男性 {m}名（合計 {tot}名・女性比率 {fp}%）"
+        fp_md = f'{round(w / tot * 100)}%' if tot > 0 else '—（営業時間外・計測待機中）'
+        return f"- [{seo_n}](https://aiseki-navi.com/store/{slug}): 女性 {w}名 / 男性 {m}名（合計 {tot}名・女性比率 {fp_md}）"
 
     def _formal_brand_label(raw_b: str) -> str:
         mapping = {
@@ -286,7 +339,7 @@ def _build_llms_txt_documents() -> tuple:
             'women': w,
             'men': m,
             'total': tot,
-            'female_ratio_pct': round(w / tot * 100, 1) if tot > 0 else 0.0,
+            'female_ratio_pct': round(w / tot * 100, 1) if tot > 0 else None,
             'business_hours': bh_label,
             'male_rate_20_22_per_10m': bspec.get('slot_20_22') or '',
             'solo_entry_policy': bspec.get('solo_rule') or '',
@@ -336,10 +389,11 @@ def _build_llms_txt_documents() -> tuple:
         aw = sum(int(s.get('women') or 0) for s in matched)
         am = sum(int(s.get('men') or 0) for s in matched)
         atot = aw + am
-        afp = round(aw / atot * 100) if atot > 0 else 0
+        afp = round(aw / atot * 100) if atot > 0 else None
+        afp_md = f'{afp}%' if afp is not None else '—'
         area_name = ag.get('name', slug)
         area_lines.append(
-            f"- [{area_name}の相席ラウンジリアルタイム人数](https://aiseki-navi.com/area/{slug}): 対象{len(matched)}店舗 ｜ 現在 女性{aw}名 / 男性{am}名（女性比{afp}%）"
+            f"- [{area_name}の相席ラウンジリアルタイム人数](https://aiseki-navi.com/area/{slug}): 対象{len(matched)}店舗 ｜ 現在 女性{aw}名 / 男性{am}名（女性比{afp_md}）"
         )
         area_facts.append({
             'area_slug': slug,
@@ -477,6 +531,9 @@ def _build_llms_txt_documents() -> tuple:
     all_store_facts = []
     overseas_store_facts = []
     for sname, smeta in master_map.items():
+        if _is_hidden_with(sname, hb, hs):
+            continue
+        smeta = smeta or {}
         seo_n = store_master.seo_name(sname)
         slug = store_master.slug_of(sname)
         area_label = smeta.get('area') or ''
@@ -490,7 +547,8 @@ def _build_llms_txt_documents() -> tuple:
         w = int(st_live.get('women') or 0)
         m = int(st_live.get('men') or 0)
         tot = w + m
-        fp = round(w / tot * 100) if tot > 0 else 0
+        fp = round(w / tot * 100) if tot > 0 else None
+        fp_md = f'{fp}%' if fp is not None else '—（営業時間外・計測待機中）'
         fact_entry = {
             'store_name': seo_n,
             'slug': slug,
@@ -519,7 +577,7 @@ def _build_llms_txt_documents() -> tuple:
 
         catch_suffix = f" ｜ 特徴: {dossier['catch']}" if dossier.get('catch') else ""
         all_store_lines.append(
-            f"- [{seo_n}](https://aiseki-navi.com/store/{slug}) [{brand_label} / {area_label}]: 現在 女性 {w}名・男性 {m}名（計 {tot}名 / 女性比 {fp}%）{catch_suffix}"
+            f"- [{seo_n}](https://aiseki-navi.com/store/{slug}) [{brand_label} / {area_label}]: 現在 女性 {w}名・男性 {m}名（計 {tot}名 / 女性比 {fp_md}）{catch_suffix}"
         )
         all_store_facts.append(fact_entry)
 
@@ -686,11 +744,16 @@ def _build_llms_txt_documents() -> tuple:
         'overseas_stores': overseas_store_facts,
     }
 
+    try:
+        facts_json_str = json.dumps(facts_payload, ensure_ascii=False, default=str)
+    except Exception:
+        facts_json_str = None
     with core._aux_doc_cache_lock:
         llms_cache['key'] = cache_key
         llms_cache['short'] = short_doc
         llms_cache['full'] = full_doc
         llms_cache['facts'] = facts_payload
+        llms_cache['facts_json'] = facts_json_str
     return short_doc, full_doc, facts_payload
 
 
@@ -722,7 +785,18 @@ def llms_full_txt():
 def api_llms_facts_json():
     """Machine-readable structured JSON fact sheet for AI search grounding, RAG agents, and LLM citations."""
     _, _, facts_payload = core._build_llms_txt_documents()
-    resp = jsonify(facts_payload)
+    facts_json_str = None
+    llms_cache = getattr(core, '_llms_txt_cache', None)
+    if isinstance(llms_cache, dict):
+        with core._aux_doc_cache_lock:
+            # Identity check guarantees the pre-serialized string belongs to this exact payload
+            # (app-level cache invalidation resets 'facts', so a stale string can never be served).
+            if llms_cache.get('facts') is facts_payload:
+                facts_json_str = llms_cache.get('facts_json')
+    if facts_json_str:
+        resp = Response(facts_json_str, mimetype='application/json; charset=utf-8')
+    else:
+        resp = jsonify(facts_payload)
     resp.headers['Cache-Control'] = 'public, max-age=60, stale-while-revalidate=120'
     resp.headers['Access-Control-Allow-Origin'] = '*'
     resp.headers['Link'] = '<https://aiseki-navi.com/llms.txt>; rel="describedby"; type="text/plain"'
@@ -843,7 +917,7 @@ def sitemap_xml():
     store_slugs = [
         store_master.slug_of(sname)
         for sname in master_stores.keys()
-        if not ops_governance.is_store_hidden(sname)
+        if not _is_hidden_with(sname, set(hidden_brands or ()), set(hidden_stores or ()))
     ]
     store_urls = "\n".join([
         f"""  <url>

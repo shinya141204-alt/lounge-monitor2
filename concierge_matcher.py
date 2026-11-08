@@ -483,7 +483,23 @@ def _evaluate_store_candidate(
     is_open = bool(h_status.get("is_open_now"))
     today_hours = h_status.get("today_hours_label") or "18:00〜翌5:00"
     sched = h_status.get("schedule_spec") or {}
-    close_h = (sched.get("fs" if is_weekend_like else "mt") or [18, 29])[1]
+    # 閉店時刻は store_hours.get_business_hours_status と同じ営業日判定（12時前は前日扱い）で
+    # 金土・祝前日=fs／日祝=sh（存在すれば）／平日=mt を参照する
+    if is_weekend_like:
+        _close_key = "fs"
+    else:
+        try:
+            _nj = now_jst if now_jst.tzinfo else now_jst.replace(tzinfo=store_hours.JST)
+            _nj = _nj.astimezone(store_hours.JST)
+            _biz = (_nj - datetime.timedelta(days=1)).date() if _nj.hour < 12 else _nj.date()
+            _is_sun_hol = (_biz.weekday() == 6) or (_biz.isoformat() in store_hours.JP_HOLIDAYS)
+        except Exception:
+            _is_sun_hol = False
+        _close_key = "sh" if (_is_sun_hol and sched.get("sh")) else "mt"
+    try:
+        close_h = int((sched.get(_close_key) or sched.get("mt") or [18, 29])[1])
+    except (TypeError, ValueError, IndexError):
+        close_h = 29
 
     # ベンチマーク統計値（非ブロッキング取得・未計測時に虚偽の「過去ログ実測」表記を行わない）
     usual_w = bm.get("usual_women")
@@ -755,9 +771,10 @@ def _evaluate_store_candidate(
         "reasons": reasons[:3],
         "usual_w_diff": usual_w_diff,
         "usual_slot_label": usual_slot_label,
-        "midnight_retention_pct": mid_ret if mid_ret is not None else 0,
-        "has_measured_midnight": bool(has_measured_mid),
-        "has_measured_core": bool(has_measured_core),
+        # 未計測時は 0% と誤表示しないよう None を保持（表示側は has_measured_midnight で分岐すること）
+        "midnight_retention_pct": mid_ret if (has_measured_mid and mid_ret is not None) else None,
+        "has_measured_midnight": bool(has_measured_mid and mid_ret is not None),
+        "has_measured_core": bool(has_measured_core and core_short),
         "has_measured_benchmark": bool(has_measured_mid or has_measured_core or has_measured_peak),
         "core_time_short": core_short if has_measured_core else "--",
         "solo_ok": solo_allowed_men,
@@ -1061,7 +1078,7 @@ def diagnose_tonight_plan(
             "reasons": ["他エリアを選択するか、全国リアルタイム一覧から営業中店舗をご確認ください。"],
             "usual_w_diff": None,
             "usual_slot_label": "普段の同時間帯",
-            "midnight_retention_pct": 0,
+            "midnight_retention_pct": None,
             "has_measured_midnight": False,
             "has_measured_core": False,
             "has_measured_benchmark": False,

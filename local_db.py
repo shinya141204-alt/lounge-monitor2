@@ -93,6 +93,59 @@ _recent_trajectory_ring = {}
 _recent_trajectory_warmed_at = {}
 _recent_trajectory_lock = threading.Lock()
 _recent_lags_warming = set()
+# `/stats/monthly.csv` rows cache: key -> (mono, rows). Only non-empty results are stored (AGENTS.md §9).
+_monthly_stats_rows_cache = {}
+_MONTHLY_STATS_ROWS_TTL = 180.0
+_MONTHLY_STATS_ROWS_CACHE_MAX = 8
+_monthly_stats_rows_lock = threading.Lock()
+# `/stats/year-end-2026` whitepaper cache. Empty (0-sample) payloads are never stored (AGENTS.md §9).
+_whitepaper_cache = {"key": None, "mono": 0.0, "data": None}
+_WHITEPAPER_TTL = 1800.0
+_whitepaper_lock = threading.Lock()
+
+
+def clear_monthly_stats_rows_cache():
+    with _monthly_stats_rows_lock:
+        _monthly_stats_rows_cache.clear()
+
+
+def clear_whitepaper_cache():
+    with _whitepaper_lock:
+        _whitepaper_cache["key"] = None
+        _whitepaper_cache["mono"] = 0.0
+        _whitepaper_cache["data"] = None
+
+
+def _load_hidden_sets(ops_gov):
+    """Fetch hidden brand/store sets ONCE per request (each `is_store_hidden()` call re-reads job_state)."""
+    if ops_gov is None:
+        return frozenset(), frozenset()
+    try:
+        hb = frozenset(ops_gov.get_hidden_brands() or ())
+    except Exception:
+        hb = frozenset()
+    try:
+        hs = frozenset(ops_gov.get_hidden_stores() or ())
+    except Exception:
+        hs = frozenset()
+    return hb, hs
+
+
+def _is_hidden_with_sets(ops_gov, store_name: str, hb, hs) -> bool:
+    """Same semantics as `ops_governance.is_store_hidden()` but against pre-fetched hidden sets."""
+    if not store_name or ops_gov is None or (not hb and not hs):
+        return False
+    try:
+        import store_master as _sm
+        canon = _sm.to_internal_store_name(store_name) or store_name
+    except Exception:
+        canon = store_name
+    if canon in hs or store_name in hs:
+        return True
+    try:
+        return ops_gov.ops_brand_key_of(canon) in hb
+    except Exception:
+        return False
 
 
 def clear_store_7d_cache(store_name: str = None, clear_benchmarks: bool = False):
@@ -106,10 +159,14 @@ def clear_store_7d_cache(store_name: str = None, clear_benchmarks: bool = False)
         _forecast_acc_report_cache.clear()
         _forecast_store_acc_cache.clear()
         _forecast_residual_bias_cache.clear()
+        clear_monthly_stats_rows_cache()
+        clear_whitepaper_cache()
         with _recent_trajectory_lock:
             _recent_trajectory_ring.clear()
             _recent_trajectory_warmed_at.clear()
     if clear_benchmarks:
+        clear_monthly_stats_rows_cache()
+        clear_whitepaper_cache()
         _live_benchmarks_cache.clear()
         _benchmark_base_cache.clear()
         _forecast_acc_report_cache.clear()
@@ -1467,6 +1524,27 @@ def add_crowd_vote(store_name, vote_type, ip_hash="", voter_id="", wait_minutes=
     cutoff_10m = (now_jst - datetime.timedelta(minutes=10)).strftime("%Y-%m-%d %H:%M:%S")
     identity = voter_id or ip_hash
 
+    # M1: cross-worker 30-min duplicate guard. `_memory_votes` is process-local, so web workers/machines
+    # behind the load balancer could each accept the same (store, type, identity) vote. Look up the persisted
+    # row OUTSIDE `_votes_lock` (no DB I/O while holding the in-process lock) and consult it inside.
+    db_dup_row = None
+    if identity and _db_available():
+        try:
+            _ensure_moat_rollup_schema()
+            dup_rows = _fetch_all_rows(
+                """
+                SELECT id, timestamp, wait_minutes FROM crowd_votes
+                WHERE store_name = ? AND vote_type = ? AND ip_hash = ? AND timestamp >= ?
+                ORDER BY timestamp DESC
+                LIMIT 1
+                """,
+                (store_name, vote_type, identity, cutoff_30m),
+            )
+            if dup_rows:
+                db_dup_row = dup_rows[0]
+        except Exception:
+            db_dup_row = None
+
     updated_wait_only = False
     with _votes_lock:
         recent_by_voter = 0
@@ -1495,6 +1573,31 @@ def add_crowd_vote(store_name, vote_type, ip_hash="", voter_id="", wait_minutes=
                     return False, "rate_limited"
                 matched_vote['wait_minutes'] = wait_val
                 matched_vote['wait_updates'] = wait_updates + 1
+                updated_wait_only = True
+            else:
+                return False, "already_voted"
+        elif db_dup_row is not None:
+            # Persisted by another worker within 30 min: mirror into local memory so later checks stay O(1).
+            db_ts = str(db_dup_row[1] or now_str)[:19]
+            try:
+                db_wait = int(db_dup_row[2]) if db_dup_row[2] is not None else None
+            except (TypeError, ValueError):
+                db_wait = None
+            mirrored = {
+                'timestamp': db_ts,
+                'store_name': store_name,
+                'vote_type': vote_type,
+                'ip_hash': ip_hash,
+                'voter_id': voter_id,
+                'wait_minutes': db_wait,
+                'wait_updates': 0,
+            }
+            _memory_votes.append(mirrored)
+            if wait_val is not None and db_wait != wait_val:
+                if recent_by_voter > VOTE_LIMIT_PER_VOTER or recent_by_ip >= VOTE_LIMIT_PER_IP:
+                    return False, "rate_limited"
+                mirrored['wait_minutes'] = wait_val
+                mirrored['wait_updates'] = 1
                 updated_wait_only = True
             else:
                 return False, "already_voted"
@@ -1726,20 +1829,23 @@ def _fetch_rows_by_date_ranges(sql_qmark: str, sorted_dates: list, date_only: bo
     return out
 
 
-def _fetch_ts_window_in_7d_chunks(
+def _iter_ts_window_in_7d_chunks(
     sql_range_qmark: str,
     start_ts: str,
     end_ts: str = None,
     extra_params: tuple = (),
-) -> list:
-    """Read `[start_ts, end_ts]` in bounded <=7-day chunks to avoid large single-query wire buffers on 512MB VMs."""
+):
+    """
+    Generator variant of `_fetch_ts_window_in_7d_chunks`: yields one <=7-day chunk's row list at a time so
+    callers scanning wide windows can aggregate incrementally without holding all chunks in memory (512MB VM).
+    """
     s_dt = _parse_jst_ts(start_ts)
     e_dt = _parse_jst_ts(end_ts) if end_ts else datetime.datetime.now(_JST_TZ).replace(tzinfo=None)
     if s_dt is None or e_dt is None or e_dt < s_dt:
         hi = end_ts or "9999-12-31 23:59:59"
-        return _fetch_all_rows(sql_range_qmark, (start_ts, hi) + tuple(extra_params))
+        yield _fetch_all_rows(sql_range_qmark, (start_ts, hi) + tuple(extra_params))
+        return
 
-    out = []
     cur_lo = s_dt
     step = datetime.timedelta(days=7)
     one_sec = datetime.timedelta(seconds=1)
@@ -1747,8 +1853,20 @@ def _fetch_ts_window_in_7d_chunks(
         cur_hi = min(e_dt, cur_lo + step - one_sec)
         lo_s = cur_lo.strftime("%Y-%m-%d %H:%M:%S")
         hi_s = cur_hi.strftime("%Y-%m-%d %H:%M:%S")
-        out.extend(_fetch_all_rows(sql_range_qmark, (lo_s, hi_s) + tuple(extra_params)))
+        yield _fetch_all_rows(sql_range_qmark, (lo_s, hi_s) + tuple(extra_params))
         cur_lo = cur_hi + one_sec
+
+
+def _fetch_ts_window_in_7d_chunks(
+    sql_range_qmark: str,
+    start_ts: str,
+    end_ts: str = None,
+    extra_params: tuple = (),
+) -> list:
+    """Read `[start_ts, end_ts]` in bounded <=7-day chunks to avoid large single-query wire buffers on 512MB VMs."""
+    out = []
+    for chunk in _iter_ts_window_in_7d_chunks(sql_range_qmark, start_ts, end_ts, extra_params):
+        out.extend(chunk)
     return out
 
 
@@ -2012,40 +2130,60 @@ def rollup_store_hourly_stats(target_dates=None, days_back: int = 3) -> dict:
                 return "yatakoi"
             return "other"
 
+        def _families_for_all_scope_brand(br_s: str) -> set:
+            fams = set()
+            up = br_s.upper()
+            if "JIS" in up:
+                fams.add("jis")
+            if br_s.lower() in ("ag", "ag（アグ）"):
+                fams.add("ag")
+            if br_s in ("オリエンタルラウンジ", "OLG"):
+                fams.add("olg")
+            if "ASOBIBAR" in up:
+                fams.add("asobibar")
+            if "ヤタコイ" in br_s or "YATAKOI" in up:
+                fams.add("yatakoi")
+            return fams
+
+        # O(1) campaign lookup: build `(scope_store | ("ALL", family), business_date) -> {ev_sig}` once,
+        # instead of linearly scanning every event row for every (date, hour, store) bucket.
+        needed_bdates = set()
+        for (ds_k, hr_k, _sn_k) in buckets.keys():
+            needed_bdates.add(_business_date_for_ymd_hour(ds_k, hr_k))
+        campaign_index = defaultdict(set)
+        for br, scope, f_d, l_d in (ev_hist_rows or []):
+            sc = str(scope or "")
+            if not sc:
+                continue
+            f_s, l_s = str(f_d), str(l_d)
+            active_dates = [bd for bd in needed_bdates if f_s <= bd <= l_s]
+            if not active_dates:
+                continue
+            br_s = str(br or "")
+            ev_sig = (str(br), str(scope), str(f_d))
+            keys = set(sc.split(","))
+            keys.add(sc)
+            if sc == "ALL":
+                for fam_k in _families_for_all_scope_brand(br_s):
+                    keys.add(("ALL", fam_k))
+            for bd in active_dates:
+                for k in keys:
+                    campaign_index[(k, bd)].add(ev_sig)
+        campaign_memo = {}
+
         def _campaign_count_for(sname: str, bdate: str) -> int:
-            if not ev_hist_rows:
+            if not campaign_index:
                 return 0
-            cnt = 0
+            mk = (sname, bdate)
+            hit = campaign_memo.get(mk)
+            if hit is not None:
+                return hit
+            sigs = set(campaign_index.get((sname, bdate), ()))
             fam = _store_brand_family(sname)
-            seen_ev = set()
-            for br, scope, f_d, l_d in ev_hist_rows:
-                if not (str(f_d) <= bdate <= str(l_d)):
-                    continue
-                ev_sig = (str(br), str(scope), str(f_d))
-                if ev_sig in seen_ev:
-                    continue
-                sc = str(scope or "")
-                br_s = str(br or "")
-                matched = False
-                if sc == sname:
-                    matched = True
-                elif sc == "ALL":
-                    if fam == "jis" and "JIS" in br_s.upper():
-                        matched = True
-                    elif fam == "ag" and br_s.lower() in ("ag", "ag（アグ）"):
-                        matched = True
-                    elif fam == "olg" and br_s in ("オリエンタルラウンジ", "OLG"):
-                        matched = True
-                    elif fam == "asobibar" and "ASOBIBAR" in br_s.upper():
-                        matched = True
-                    elif fam == "yatakoi" and ("ヤタコイ" in br_s or "YATAKOI" in br_s.upper()):
-                        matched = True
-                elif sc and sname in sc.split(","):
-                    matched = True
-                if matched:
-                    seen_ev.add(ev_sig)
-                    cnt += 1
-            return cnt
+            if fam != "other":
+                sigs |= campaign_index.get((("ALL", fam), bdate), set())
+            campaign_memo[mk] = len(sigs)
+            return campaign_memo[mk]
 
         rollup_rows = []
         for (ds, hr, sname), b in buckets.items():
@@ -3220,6 +3358,18 @@ def get_monthly_store_stats_rows(days: int = 30) -> list:
     so standalone 'オリエンタル' or 'OLG' never appears.
     """
     import store_master
+    try:
+        import ops_governance as _ops_gov
+    except Exception:
+        _ops_gov = None
+    hb, hs = _load_hidden_sets(_ops_gov)
+    cache_key = (_active_db_key(), int(days), tuple(sorted(hb)), tuple(sorted(hs)))
+    now_mono = time.monotonic()
+    with _monthly_stats_rows_lock:
+        hit = _monthly_stats_rows_cache.get(cache_key)
+        if hit is not None and (now_mono - hit[0]) < _MONTHLY_STATS_ROWS_TTL:
+            return [dict(r) for r in hit[1]]
+
     now_jst = datetime.datetime.now(_JST_TZ).replace(tzinfo=None)
     cutoff_ts = (now_jst - datetime.timedelta(days=max(7, int(days)))).strftime("%Y-%m-%d %H:%M:%S")
     master = store_master.load() or {}
@@ -3243,17 +3393,13 @@ def get_monthly_store_stats_rows(days: int = 30) -> list:
                 """,
                 (cutoff_ts,),
             )
-            try:
-                import ops_governance as _ops_gov
-            except Exception:
-                _ops_gov = None
             for r in rows:
                 sn = str(r[0] or "").strip()
                 if not sn or _is_korea_store_name(sn) or _is_synthetic_seed_alias(sn):
                     continue
                 if valid_domestic and sn not in valid_domestic:
                     continue
-                if _ops_gov is not None and _ops_gov.is_store_hidden(sn):
+                if _is_hidden_with_sets(_ops_gov, sn, hb, hs):
                     continue
                 agg[sn] = {
                     "samples": int(r[1] or 0),
@@ -3316,6 +3462,12 @@ def get_monthly_store_stats_rows(days: int = 30) -> list:
             "store_url": f"https://aiseki-navi.com/store/{slug}" if slug else "https://aiseki-navi.com/stats",
         })
     result.sort(key=lambda x: (-x["peak_women"], -x["sample_count"]))
+    if result:
+        # Never cache empty results (transient DB failure must not pin an empty CSV; AGENTS.md §9).
+        with _monthly_stats_rows_lock:
+            if len(_monthly_stats_rows_cache) >= _MONTHLY_STATS_ROWS_CACHE_MAX:
+                _monthly_stats_rows_cache.clear()
+            _monthly_stats_rows_cache[cache_key] = (time.monotonic(), [dict(r) for r in result])
     return result
 
 
@@ -3331,9 +3483,27 @@ def get_year_end_whitepaper_data() -> dict:
     import moat_intelligence
     import store_master
 
+    import copy
+
     now_jst = datetime.datetime.now(_JST_TZ).replace(tzinfo=None)
     today_str = now_jst.strftime("%Y-%m-%d")
     cutoff_30d = (now_jst - datetime.timedelta(days=30)).strftime("%Y-%m-%d %H:%M:%S")
+
+    try:
+        import ops_governance as _ops_gov
+    except Exception:
+        _ops_gov = None
+    # Fetch hidden sets ONCE (per-row `is_store_hidden()` re-read job_state and dominated the 522ms profile).
+    hb, hs = _load_hidden_sets(_ops_gov)
+    cache_key = (_active_db_key(), today_str, tuple(sorted(hb)), tuple(sorted(hs)))
+    now_mono = time.monotonic()
+    with _whitepaper_lock:
+        if (
+            _whitepaper_cache["data"] is not None
+            and _whitepaper_cache["key"] == cache_key
+            and (now_mono - _whitepaper_cache["mono"]) < _WHITEPAPER_TTL
+        ):
+            return copy.deepcopy(_whitepaper_cache["data"])
 
     # 1) Observed pre-holiday (Fri/Sat/pre-holiday) vs regular weekday evening metrics (20:00-23:59)
     wd_stats = {
@@ -3341,36 +3511,52 @@ def get_year_end_whitepaper_data() -> dict:
         "weekday": {"samples": 0, "sum_w": 0.0, "sum_m": 0.0, "sum_wp": 0.0, "wp_n": 0},
     }
     store_peaks = {}
-    try:
-        import ops_governance as _ops_gov
-    except Exception:
-        _ops_gov = None
+    store_ok_memo = {}
+
+    def _store_ok(sn: str) -> bool:
+        ok = store_ok_memo.get(sn)
+        if ok is None:
+            ok = bool(sn) and not (
+                _is_korea_store_name(sn)
+                or _is_synthetic_seed_alias(sn)
+                or _is_hidden_with_sets(_ops_gov, sn, hb, hs)
+            )
+            store_ok_memo[sn] = ok
+        return ok
+
     if _db_available():
+        now_ts_str = now_jst.strftime("%Y-%m-%d %H:%M:%S")
+        # Negative counts are clamped to 0 exactly as the former per-row Python path did (`max(0, v)`).
+        w_cl = "(CASE WHEN women > 0 THEN women ELSE 0 END)"
+        m_cl = "(CASE WHEN men > 0 THEN men ELSE 0 END)"
         try:
-            now_ts_str = now_jst.strftime("%Y-%m-%d %H:%M:%S")
-            rows = _fetch_ts_window_in_7d_chunks(
-                """
+            # 1a) SQL-side (day, store) aggregation of 20-23h rows: mathematically identical sums/counts to the
+            #     former raw-row loop, but transfers ~days x stores tuples instead of hundreds of thousands.
+            day_pre_memo = {}
+            for chunk in _iter_ts_window_in_7d_chunks(
+                f"""
                 SELECT SUBSTR(timestamp, 1, 10) AS d_str,
-                       CAST(SUBSTR(timestamp, 12, 2) AS INTEGER) AS hr,
-                       store_name, women, men
+                       store_name,
+                       COUNT(*) AS n,
+                       SUM({w_cl}) AS sw,
+                       SUM({m_cl}) AS sm,
+                       SUM(({w_cl} * 100.0) / ({w_cl} + {m_cl})) AS swp
                 FROM monitor_logs
                 WHERE timestamp >= ? AND timestamp <= ? AND (women + men) >= 6
+                  AND CAST(SUBSTR(timestamp, 12, 2) AS INTEGER) BETWEEN 20 AND 23
+                GROUP BY SUBSTR(timestamp, 1, 10), store_name
                 """,
                 cutoff_30d,
                 now_ts_str,
-            )
-            day_pre_memo = {}
-            for r in rows:
-                ds = str(r[0] or "")
-                hr = int(r[1] or 0)
-                sn = str(r[2] or "").strip()
-                if not ds or not sn or _is_korea_store_name(sn) or _is_synthetic_seed_alias(sn):
-                    continue
-                if _ops_gov is not None and _ops_gov.is_store_hidden(sn):
-                    continue
-                wv = max(0, int(r[3] or 0))
-                mv = max(0, int(r[4] or 0))
-                if 20 <= hr <= 23:
+            ):
+                for r in chunk:
+                    ds = str(r[0] or "")
+                    sn = str(r[1] or "").strip()
+                    if not ds or not _store_ok(sn):
+                        continue
+                    n = int(r[2] or 0)
+                    if n <= 0:
+                        continue
                     memo = day_pre_memo.get(ds)
                     if memo is None:
                         ctx = arena_calendar.classify_day_context(ds)
@@ -3383,14 +3569,45 @@ def get_year_end_whitepaper_data() -> dict:
                     # Exclude non-pre-holiday Sundays/holidays so 'weekday' strictly represents Mon-Thu worknights
                     if is_pre or not is_rest_day:
                         bucket = wd_stats["pre_holiday" if is_pre else "weekday"]
-                        bucket["samples"] += 1
-                        bucket["sum_w"] += wv
-                        bucket["sum_m"] += mv
-                        bucket["sum_wp"] += (wv / float(wv + mv)) * 100.0
-                        bucket["wp_n"] += 1
-                prev_pk = store_peaks.get(sn)
-                if prev_pk is None or (wv + mv) > prev_pk["total"]:
-                    store_peaks[sn] = {"women": wv, "men": mv, "total": wv + mv, "date": ds}
+                        bucket["samples"] += n
+                        bucket["sum_w"] += float(r[3] or 0)
+                        bucket["sum_m"] += float(r[4] or 0)
+                        bucket["sum_wp"] += float(r[5] or 0)
+                        bucket["wp_n"] += n
+        except Exception:
+            pass
+        try:
+            # 1b) Per-store all-hours peak via window function: 1 row per store per <=7-day chunk.
+            #     Ties resolve to the earliest timestamp (earlier chunks win on equal totals below).
+            for chunk in _iter_ts_window_in_7d_chunks(
+                f"""
+                SELECT store_name, w_c, m_c, d_str FROM (
+                    SELECT store_name,
+                           {w_cl} AS w_c,
+                           {m_cl} AS m_c,
+                           SUBSTR(timestamp, 1, 10) AS d_str,
+                           ROW_NUMBER() OVER (
+                               PARTITION BY store_name
+                               ORDER BY ({w_cl} + {m_cl}) DESC, timestamp ASC
+                           ) AS rn
+                    FROM monitor_logs
+                    WHERE timestamp >= ? AND timestamp <= ? AND (women + men) >= 6
+                ) ranked
+                WHERE rn = 1
+                """,
+                cutoff_30d,
+                now_ts_str,
+            ):
+                for r in chunk:
+                    sn = str(r[0] or "").strip()
+                    ds = str(r[3] or "")
+                    if not ds or not _store_ok(sn):
+                        continue
+                    wv = int(r[1] or 0)
+                    mv = int(r[2] or 0)
+                    prev_pk = store_peaks.get(sn)
+                    if prev_pk is None or (wv + mv) > prev_pk["total"]:
+                        store_peaks[sn] = {"women": wv, "men": mv, "total": wv + mv, "date": ds}
         except Exception:
             pass
 
@@ -3424,7 +3641,7 @@ def get_year_end_whitepaper_data() -> dict:
         hub = hub_by_vid.get(ev.get("venue_id"))
         raw_hub_stores = [
             s for s in (hub["stores"] if hub else [])
-            if not (_ops_gov is not None and _ops_gov.is_store_hidden(s))
+            if not _is_hidden_with_sets(_ops_gov, s, hb, hs)
         ][:3]
         hub_stores = [store_master.seo_name(s) for s in raw_hub_stores]
         enriched_arenas.append({
@@ -3455,7 +3672,7 @@ def get_year_end_whitepaper_data() -> dict:
             "status": "実測集計済み" if m_date < today_str else ("本日リアルタイム計測中" if m_date == today_str else "到来後に実測値を自動追記"),
         })
 
-    return {
+    payload = {
         "generated_date": today_str,
         "pre_holiday_20_23": _fmt_bucket(wd_stats["pre_holiday"]),
         "weekday_20_23": _fmt_bucket(wd_stats["weekday"]),
@@ -3464,6 +3681,18 @@ def get_year_end_whitepaper_data() -> dict:
         "milestones": milestone_rows,
         "moat_coverage": get_moat_coverage_summary(),
     }
+    is_empty = (
+        wd_stats["pre_holiday"]["samples"] == 0
+        and wd_stats["weekday"]["samples"] == 0
+        and not top_peak_stores
+    )
+    if not is_empty:
+        # Empty state (DB outage / cold start) is never cached so the next request retries (AGENTS.md §9).
+        with _whitepaper_lock:
+            _whitepaper_cache["key"] = cache_key
+            _whitepaper_cache["mono"] = time.monotonic()
+            _whitepaper_cache["data"] = copy.deepcopy(payload)
+    return payload
 
 
 def get_store_7day_analytics(store_name: str) -> dict:
@@ -3584,16 +3813,17 @@ def get_store_7day_analytics(store_name: str) -> dict:
             "avg_wpct": avg_wpct,
         })
 
-    # Determine best time slot & weekday from actual data
-    best_slot_name = "20:00〜21:30（1軒目・早めの時間帯）"
-    best_slot_pct = 55
+    # Determine best time slot & weekday from actual data only (H1: no fabricated fallback values;
+    # unmeasured items stay None and `has_measured_slot` / `has_measured_weekday` tell renderers to hide them).
+    best_slot_name = None
+    best_slot_pct = None
     if slot_ratios:
         best_s = max(slot_ratios.items(), key=lambda kv: sum(kv[1]) / len(kv[1]))
         best_slot_name = best_s[0]
         best_slot_pct = round(sum(best_s[1]) / len(best_s[1]))
 
-    best_wd_name = "水曜・木曜"
-    best_wd_pct = 56
+    best_wd_name = None
+    best_wd_pct = None
     if wd_ratios:
         best_w = max(wd_ratios.items(), key=lambda kv: sum(kv[1]) / len(kv[1]))
         best_wd_name = f"{weekdays_ja[best_w[0]]}曜日"
@@ -3607,24 +3837,20 @@ def get_store_7day_analytics(store_name: str) -> dict:
 
     # Pull 30-day benchmark metrics (core time, midnight retention %, usual women/men)
     benchmarks = get_all_stores_live_benchmarks(allow_blocking=False).get(store_name, {})
-    midnight_retention_pct = benchmarks.get("midnight_retention_pct")
-    if midnight_retention_pct is None:
-        if avg_peak_w >= 2.0 and avg_mid_w > 0:
-            midnight_retention_pct = max(15, min(180, round((avg_mid_w / avg_peak_w) * 100)))
-        else:
-            midnight_retention_pct = 82 if is_club_area else 58
-    midnight_label_short = benchmarks.get("midnight_label_short") or (
-        "深夜増加型" if midnight_retention_pct >= 95 else ("深夜安定" if midnight_retention_pct >= 70 else "終電前型")
-    )
-    core_time_short = benchmarks.get("core_time_short") or "20-22時"
+    midnight_retention_pct = benchmarks.get("midnight_retention_pct") if benchmarks.get("has_measured_midnight") else None
+    if midnight_retention_pct is None and avg_peak_w >= 2.0 and len(midnight_women) >= 1:
+        midnight_retention_pct = max(15, min(180, round((avg_mid_w / avg_peak_w) * 100)))
+    midnight_label_short = None
+    if midnight_retention_pct is not None:
+        midnight_label_short = (benchmarks.get("midnight_label_short") if benchmarks.get("has_measured_midnight") else None) or (
+            "深夜増加型" if midnight_retention_pct >= 95 else ("深夜安定" if midnight_retention_pct >= 70 else "終電前型")
+        )
+    core_time_short = benchmarks.get("core_time_short") if benchmarks.get("has_measured_core") else None
 
     max_7d_w = max((d["peak_women"] for d in daily_logs), default=0)
     votes_24h = get_recent_votes(store_name=store_name, hours=24)
 
-    has_measured_midnight = bool(
-        benchmarks.get("has_measured_midnight")
-        or (avg_peak_w >= 2.0 and len(midnight_women) >= 1)
-    )
+    has_measured_midnight = midnight_retention_pct is not None
     result = {
         "has_history": len(daily_logs) > 0,
         "sample_count": len(rows),
@@ -3955,8 +4181,9 @@ def _compute_benchmark_base_from_sqlite(cutoff_str: str, end_str: str = None) ->
     static_per_store = {}
     for sname in stores_seen:
         b_map = band_stats[sname]
-        core_short = "20-22時"
-        core_wpct = 58
+        # H1: no fabricated fallback ("20-22時" / 58%). Unmeasured => None + has_measured_core=False.
+        core_short = None
+        core_wpct = None
         has_measured_core = False
         if b_map:
             max_band_w = max((v[0] / v[2] for v in b_map.values() if v[2] > 0), default=0.0)
@@ -3982,20 +4209,19 @@ def _compute_benchmark_base_from_sqlite(cutoff_str: str, end_str: str = None) ->
         m_sum_w, m_cnt = mid_00_01[sname]
         p_avg_w = (p_sum_w / p_cnt) if p_cnt >= 3 else 0.0
         m_avg_w = (m_sum_w / m_cnt) if m_cnt >= 3 else 0.0
-        is_club = any(k in sname.upper() for k in club_keywords)
         has_measured_midnight = bool(p_avg_w >= 2.0 and m_cnt >= 3)
 
+        # H1: unmeasured midnight retention stays None (former 82/58 club-area guesses removed).
+        ret_pct = None
+        mid_label = None
         if has_measured_midnight:
             ret_pct = max(15, min(180, round((m_avg_w / p_avg_w) * 100)))
-        else:
-            ret_pct = 82 if is_club else 58
-
-        if ret_pct >= 95:
-            mid_label = "深夜増加型"
-        elif ret_pct >= 70:
-            mid_label = "深夜安定"
-        else:
-            mid_label = "終電前型"
+            if ret_pct >= 95:
+                mid_label = "深夜増加型"
+            elif ret_pct >= 70:
+                mid_label = "深夜安定"
+            else:
+                mid_label = "終電前型"
 
         static_per_store[sname] = {
             "core_time_short": core_short,
@@ -5514,7 +5740,9 @@ def backfill_forecast_accuracy_from_history(
                 with turbo_store.pg_connection() as conn:
                     with conn.cursor() as cur:
                         cur.execute(
-                            "DELETE FROM forecast_accuracy_logs WHERE resolved_at IS NOT NULL AND model_version != %s",
+                            # M12: purge prior-version BACKFILL rows and pre-v3 PDT-tainted legacy rows; v3+ live-resolved history is permanent.
+                            "DELETE FROM forecast_accuracy_logs WHERE resolved_at IS NOT NULL AND model_version != %s"
+                            " AND (COALESCE(is_backfill, 0) = 1 OR model_version LIKE 'v1%%' OR model_version LIKE 'v2%%')",
                             (cur_ver,),
                         )
                     conn.commit()
@@ -5543,7 +5771,9 @@ def backfill_forecast_accuracy_from_history(
                 try:
                     cur = conn.cursor()
                     cur.execute(
-                        "DELETE FROM forecast_accuracy_logs WHERE resolved_at IS NOT NULL AND model_version != ?",
+                        # M12: purge prior-version BACKFILL rows and pre-v3 PDT-tainted legacy rows; v3+ live-resolved history is permanent.
+                        "DELETE FROM forecast_accuracy_logs WHERE resolved_at IS NOT NULL AND model_version != ?"
+                        " AND (COALESCE(is_backfill, 0) = 1 OR model_version LIKE 'v1%' OR model_version LIKE 'v2%')",
                         (cur_ver,),
                     )
                     conn.commit()

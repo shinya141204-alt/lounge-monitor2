@@ -767,9 +767,9 @@ class SeoAndXMediaUpgradeTests(unittest.TestCase):
             'X_ACCESS_TOKEN_SECRET': 'ts',
         }
         with mock.patch.dict(os.environ, env_vars):
-            # Case A: Upload succeeds -> media_ids attached to tweet payload
+            # Case A: Upload succeeds (v2 data.id or legacy media_id_string) -> media_ids attached to tweet payload
             upload_resp = mock.MagicMock(status_code=200)
-            upload_resp.json.return_value = {'media_id_string': '9988776655'}
+            upload_resp.json.return_value = {'data': {'id': '9988776655'}}
             tweet_resp = mock.MagicMock(status_code=201)
             tweet_resp.json.return_value = {'data': {'id': '111222'}}
 
@@ -778,7 +778,7 @@ class SeoAndXMediaUpgradeTests(unittest.TestCase):
                 self.assertEqual(res['status'], 'success')
                 self.assertEqual(res['media_id'], '9988776655')
                 self.assertEqual(m_post.call_count, 2)
-                self.assertIn('upload.twitter.com/1.1/media/upload.json', m_post.call_args_list[0][0][0])
+                self.assertIn('api.x.com/2/media/upload', m_post.call_args_list[0][0][0])
                 tweet_payload = m_post.call_args_list[1][1]['json']
                 self.assertEqual(tweet_payload['media'], {'media_ids': ['9988776655']})
 
@@ -1777,7 +1777,7 @@ class FullAuditRegressionTests(unittest.TestCase):
         sw_resp = self.client.get('/sw.js')
         try:
             sw_txt = sw_resp.data.decode('utf-8')
-            self.assertIn("CACHE_NAME = 'aiseki-navi-v104'", sw_txt)
+            self.assertIn("CACHE_NAME = 'aiseki-navi-v105'", sw_txt)
             self.assertIn("event.waitUntil", sw_txt)
         finally:
             sw_resp.close()
@@ -3713,14 +3713,19 @@ class WomenFeaturesACDETests(unittest.TestCase):
             self.assertNotIn('{{', res['full_markdown'])
 
         # 3. Verify dynamic column export & cleanup
-        ed = column_editorial.run_column_editorial_pipeline([], theme_key='female_real_voice', use_ai=False)
+        measured_stores = [
+            {'name': 'OLG 新宿', 'women': 32, 'men': 20, 'total': 52, 'region': 'Kanto'},
+            {'name': 'JIS 新宿', 'women': 24, 'men': 26, 'total': 50, 'region': 'Kanto'},
+            {'name': 'ag 渋谷', 'women': 28, 'men': 18, 'total': 46, 'region': 'Kanto'},
+        ]
+        ed = column_editorial.run_column_editorial_pipeline(measured_stores, theme_key='female_real_voice', use_ai=False)
         saved = column_editorial.save_editorial_column(
             candidate=ed['winner'],
             publish_mode='schedule',
             publish_at_str='2026-12-01 19:00',
             custom_slug='note-export-dyn-test',
         )
-        self.assertTrue(saved['ok'])
+        self.assertTrue(saved['ok'], f"Expected measured dynamic column save to succeed: {saved}")
         try:
             dyn_exp = column_editorial.export_column_for_note('note-export-dyn-test')
             self.assertTrue(dyn_exp['ok'])
@@ -4734,8 +4739,8 @@ class AIUltraGrowthSuiteTests(unittest.TestCase):
         app_module.clear_fast_http_caches()
         home_html = self.client.get('/').data.decode('utf-8')
         self.assertIn('calm.css?v=40', home_html)
-        self.assertIn('app.js?v=20261108_2', home_html)
-        self.assertIn('/sw.js?v=104', home_html)
+        self.assertIn('app.js?v=20261108_3', home_html)
+        self.assertIn('/sw.js?v=105', home_html)
 
         # 2. TikTok 9:16 Safe-Zone Reel Templates & Captions (zero bare 'オリエンタル' or 'OLG')
         sample_stores = [

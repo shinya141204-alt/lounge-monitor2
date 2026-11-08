@@ -103,7 +103,9 @@ STORE_P99_CAPACITY = {
     "ASOBIBAR 福岡 天神": 120,
 }
 
-# 終電後の深夜維持率（21-22時平均に対する0-1時女性維持率%）実測プロファイル
+# 終電後の深夜維持率（21-22時平均に対する0-1時女性維持率%）の初期事前分布（モデル内部用）。
+# 過去ログから算出した静的スナップショットであり、推論の事前値としてのみ使用する。
+# 公開UI・コラム・統計で「実測値」として直接表示しないこと（実測は store_hourly_rollups 由来の値を使う）。
 STORE_MIDNIGHT_RETENTION = {
     "OLG ag金沢": 151,
     "OLG ag沖縄": 148,
@@ -831,8 +833,11 @@ def estimate_store_wait_and_pos(
         est_m_min = int(round(m_wait_grp * calib["minutes_per_wait_group"] * size_factor))
         if m_wait_grp > 0:
             est_m_min = max(5, min(75, est_m_min))
-        elif total > 0 and women == 0 and men >= 2:
-            est_m_min = 15
+        else:
+            # POS実測で待ち0組のときは分数を捏造しない（実測バッジの純度維持）。
+            # 女性0名で男性のみ在店の状態はラベル側（女性来店待ち）で示す。
+            est_m_min = 0
+        awaiting_women_only = bool(total > 0 and women == 0 and men >= 2 and m_wait_grp == 0)
 
         est_w_min = max(5, min(60, int(round(w_wait_grp * 5.0 * size_factor)))) if w_wait_grp > 0 else 0
 
@@ -847,6 +852,10 @@ def estimate_store_wait_and_pos(
                 badge_m = f"実測:男待ち0組（相席{matched_grp}卓）" if matched_grp > 0 else "実測:男待ち0組 · 即相席圏"
                 tone = "safe"
                 prob = 94
+            elif awaiting_women_only:
+                badge_m = "実測:男待ち0組 · 女性来店待ち"
+                tone = "neutral"
+                prob = 30
             elif m_wait_grp == 0:
                 badge_m = "実測:男待ち0組"
                 tone = "safe" if women >= 6 else "neutral"
@@ -885,6 +894,8 @@ def estimate_store_wait_and_pos(
             "occupancy_pct": occ_pct,
             "est_men_wait_groups": m_wait_grp,
             "est_men_wait_min": est_m_min,
+            "est_men_wait_min_is_estimated": False,
+            "awaiting_women": awaiting_women_only,
             "est_women_wait_min": est_w_min,
             "matched_groups": matched_grp,
             "men_total_groups": m_grp,

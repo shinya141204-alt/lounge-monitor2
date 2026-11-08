@@ -1,10 +1,12 @@
-// Supersedes aiseki-navi-v47..v99 (purged automatically on activate)
-const CACHE_NAME = 'aiseki-navi-v104';
+// Service Worker — Supersedes aiseki-navi-v47 .. (all generations older than CACHE_NAME below; purged automatically on activate)
+const CACHE_NAME = 'aiseki-navi-v105';
 const SHELL_KEY = '/';
 const LIVE_FRESH_TTL_MS = 45000;
 const LIVE_MAX_STALE_MS = 600000; // Never serve live headcount HTML older than 10 minutes
 const PREFETCH_DEDUP_MS = 25000;
 const EDITORIAL_MAX_AGE_MS = 1200000;
+// Upper bound for serving cached non-live HTML when the network is merely slow (timeout path): 1 hour
+const NON_LIVE_TIMEOUT_MAX_AGE_MS = EDITORIAL_MAX_AGE_MS * 3;
 const MAX_DYNAMIC_CACHE_ENTRIES = 65;
 
 const FAST_NAV_PATHS = new Set([
@@ -31,11 +33,11 @@ const LIVE_SSR_PREFIXES = [
   '/area/'
 ];
 const CORE_ASSETS = [
-  '/static/style.css?v=20261108_2',
+  '/static/style.css?v=20261108_3',
   '/static/calm.css?v=40',
   '/static/portal.css?v=16',
-  '/static/app.js?v=20261108_2',
-  '/static/affiliate_config.js?v=17',
+  '/static/app.js?v=20261108_3',
+  '/static/affiliate_config.js?v=18',
   '/static/manifest.json?v=3'
 ];
 const CORE_ASSET_SET = new Set(CORE_ASSETS);
@@ -307,7 +309,10 @@ self.addEventListener('fetch', (event) => {
           return await Promise.race([networkPromise, timeout(isLiveSsr ? 1800 : 1200)]);
         } catch (e) {
           const cachedAge = cachedFresh ? getCachedAgeMs(cachedFresh) : Infinity;
-          const canUseCachedOnTimeout = !hasTrackingParam && cachedFresh && (!isLiveSsr || cachedAge < LIVE_MAX_STALE_MS);
+          // Live SSR: ≤10min stale; non-live: ≤1h stale (prevents indefinitely old HTML on slow networks).
+          // Older entries wait for the network; they remain an offline-only last resort below.
+          const timeoutMaxAge = isLiveSsr ? LIVE_MAX_STALE_MS : NON_LIVE_TIMEOUT_MAX_AGE_MS;
+          const canUseCachedOnTimeout = !hasTrackingParam && cachedFresh && cachedAge < timeoutMaxAge;
           if (canUseCachedOnTimeout) return cachedFresh;
           try {
             return await networkPromise;

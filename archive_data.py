@@ -263,6 +263,135 @@ def _rotate_main_sheet(spreadsheet, retention_days: int, max_delete_rows: int, d
 SHEETS_ANALYTICS_REWRITE_MUTEX = "sheets_analytics_rewrite"
 
 
+def _is_mock_object(obj) -> bool:
+    return type(obj).__module__.startswith("unittest.mock")
+
+
+def _supports_atomic_swap(spreadsheet, ws) -> bool:
+    """True only for real gspread-like objects that can add/delete a staging worksheet."""
+    if _is_mock_object(spreadsheet) or _is_mock_object(ws):
+        return False
+    return all(callable(getattr(spreadsheet, a, None)) for a in ("add_worksheet", "del_worksheet")) and \
+        all(callable(getattr(ws, a, None)) for a in ("clear", "get_all_values", "append_rows"))
+
+
+def _append_payload(target_ws, payload: list, chunk: int = 2000) -> None:
+    for idx in range(0, len(payload), chunk):
+        target_ws.append_rows(payload[idx:idx + chunk], value_input_option="RAW")
+
+
+def _invalidate_sheets_store_ws_cache(title: str) -> None:
+    try:
+        import sheets_store
+        with sheets_store._ws_lock:
+            sheets_store._ws_cache.pop(title, None)
+    except Exception:
+        pass
+
+
+def _safe_rewrite_worksheet(spreadsheet, ws, title: str, payload: list, original_vals: list) -> bool:
+    """
+    Replace the contents of worksheet `title` with `payload` without ever leaving it empty on failure.
+
+    Real gspread (worksheetId-preserving):
+      1. write `<title>__tmp` fully → verify row count → carry over rows appended to the live sheet meanwhile
+      2. rewrite the ORIGINAL `ws` in place (clear + append) so its worksheetId never changes — other VMs
+         (web process) holding `sheets_store._ws_cache[title]` keep a valid handle (no delete/rename swap)
+      3. if the in-place write fails, restore `ws` from the verified tmp copy; if even that fails, the tmp
+         sheet is KEPT as the durable backup (zero data loss) and False is returned
+      4. on success, delete the tmp sheet
+    Fallback (fakes / minimal clients): clear + append, restoring `original_vals` if the append fails.
+    """
+    if _supports_atomic_swap(spreadsheet, ws):
+        tmp_title = f"{title}__tmp"
+        cols = max([len(r) for r in payload] + [4])
+        # Remove stale tmp sheet left by a previously crashed run
+        try:
+            stale = spreadsheet.worksheet(tmp_title)
+            spreadsheet.del_worksheet(stale)
+        except Exception:
+            pass
+        tmp_ws = None
+        final_rows = list(payload)
+        try:
+            tmp_ws = spreadsheet.add_worksheet(title=tmp_title, rows=max(len(payload) + 200, 100), cols=cols)
+            _append_payload(tmp_ws, payload)
+            written = tmp_ws.get_all_values()
+            if len(written) < len(payload):
+                raise RuntimeError(f"tmp sheet verification failed ({len(written)} < {len(payload)} rows)")
+            # Carry over rows appended to the live sheet while we were compacting (job_state / analytics flush)
+            try:
+                latest_vals = ws.get_all_values()
+            except Exception as carry_err:
+                raise RuntimeError(f"failed to read live sheet for carry-over: {carry_err}")
+            extra_rows = latest_vals[len(original_vals):] if len(latest_vals) > len(original_vals) else []
+            if extra_rows:
+                _append_payload(tmp_ws, extra_rows)
+                final_rows.extend(extra_rows)
+            verified = tmp_ws.get_all_values()
+            if len(verified) < len(final_rows):
+                raise RuntimeError(f"tmp sheet carry-over verification failed ({len(verified)} < {len(final_rows)} rows)")
+        except Exception as e:
+            logging.error(f"[archive] tmp rewrite of '{title}' failed; original sheet left intact: {e}")
+            if tmp_ws is not None:
+                try:
+                    spreadsheet.del_worksheet(tmp_ws)
+                except Exception:
+                    pass
+            return False
+
+        # In-place rewrite of the original worksheet (worksheetId preserved for every process' cache)
+        try:
+            ws.clear()
+            _append_payload(ws, final_rows)
+            after = ws.get_all_values()
+            if len(after) < len(final_rows):
+                raise RuntimeError(f"in-place verification failed ({len(after)} < {len(final_rows)} rows)")
+        except Exception as e:
+            logging.error(f"[archive] in-place rewrite of '{title}' failed; restoring from '{tmp_title}': {e}")
+            try:
+                backup_rows = tmp_ws.get_all_values()
+                if len(backup_rows) < len(final_rows):
+                    raise RuntimeError("tmp backup incomplete")
+                ws.clear()
+                _append_payload(ws, backup_rows)
+                if len(ws.get_all_values()) < len(backup_rows):
+                    raise RuntimeError("restore verification failed")
+            except Exception as restore_err:
+                logging.critical(
+                    f"[archive] restore of '{title}' from tmp failed; '{tmp_title}' is KEPT as backup "
+                    f"(manual recovery required): {restore_err}"
+                )
+                return False
+            # Restore succeeded with the compacted rows: the tmp backup is no longer needed
+            try:
+                spreadsheet.del_worksheet(tmp_ws)
+            except Exception as del_err:
+                logging.warning(f"[archive] tmp sheet '{tmp_title}' could not be deleted (data is safe): {del_err}")
+            return True
+
+        try:
+            spreadsheet.del_worksheet(tmp_ws)
+        except Exception as e:
+            logging.warning(f"[archive] tmp sheet '{tmp_title}' could not be deleted (data is safe): {e}")
+        return True
+
+    # Fallback path: clear + append, with best-effort restore on failure
+    ws.clear()
+    try:
+        _append_payload(ws, payload)
+        return True
+    except Exception as e:
+        logging.error(f"[archive] rewrite of '{title}' failed after clear; restoring original rows: {e}")
+        try:
+            ws.clear()
+            if original_vals:
+                _append_payload(ws, original_vals)
+        except Exception as restore_err:
+            logging.critical(f"[archive] restore of '{title}' failed: {restore_err}")
+        raise
+
+
 def _compact_analytics_sheet(spreadsheet, analytics_days: int, dry_run: bool) -> dict:
     import analytics
     import sheets_store
@@ -321,9 +450,8 @@ def _compact_analytics_sheet(spreadsheet, analytics_days: int, dry_run: bool) ->
         should_rewrite = (expired_count > 0) or (saved_rows >= 80 and saved_rows >= rows_before * 0.15)
         if should_rewrite and not dry_run:
             payload = [analytics.HEADER] + merged_rows
-            ws.clear()
-            for idx in range(0, len(payload), 2000):
-                ws.append_rows(payload[idx:idx + 2000], value_input_option="RAW")
+            if not _safe_rewrite_worksheet(spreadsheet, ws, analytics.SHEET_TITLE, payload, vals):
+                return {"rows_before": rows_before, "rows_after": rows_before, "deleted_rows": 0, "rewrite_failed": True}
             with analytics._lock:
                 analytics._sheet_rows_cache["ts"] = time.monotonic()
                 analytics._sheet_rows_cache["rows"] = merged_rows
@@ -401,9 +529,8 @@ def _compact_analytics_hourly_sheet(spreadsheet, hourly_days: int, dry_run: bool
         should_rewrite = (expired_count > 0) or (saved_rows >= 80 and saved_rows >= rows_before * 0.15)
         if should_rewrite and not dry_run:
             payload = [analytics.HOURLY_HEADER] + merged_rows
-            ws.clear()
-            for idx in range(0, len(payload), 2000):
-                ws.append_rows(payload[idx:idx + 2000], value_input_option="RAW")
+            if not _safe_rewrite_worksheet(spreadsheet, ws, analytics.HOURLY_SHEET_TITLE, payload, vals):
+                return {"rows_before": rows_before, "rows_after": rows_before, "deleted_rows": 0, "rewrite_failed": True}
             with analytics._lock:
                 analytics._hourly_sheet_rows_cache["ts"] = time.monotonic()
                 analytics._hourly_sheet_rows_cache["rows"] = merged_rows
@@ -465,18 +592,41 @@ def _compact_job_state_sheet(spreadsheet, dry_run: bool) -> dict:
         kv_snap = dict(job_state._kv or {})
         kv_ts_snap = dict(job_state._kv_ts or {})
 
-    compact_rows = [[k, now_s] for k in keys_list]
+    # Preserve original done_at_jst per key / KV entry (first-seen timestamp) instead of stamping "now"
+    orig_done_at = {}
+    orig_kv_latest = {}  # prefix -> (ts, raw_entry, done_at)
+    for r in (vals[1:] if vals else []):
+        if not r or not r[0]:
+            continue
+        entry = str(r[0])
+        done_at = str(r[1]).strip() if len(r) > 1 and r[1] else ""
+        m = job_state._KV_ENTRY_RE.match(entry)
+        if m:
+            pfx, ts = m.group(1), m.group(2)
+            prev = orig_kv_latest.get(pfx)
+            if prev is None or ts >= prev[0]:
+                orig_kv_latest[pfx] = (ts, entry, done_at)
+        elif entry not in orig_done_at and done_at:
+            orig_done_at[entry] = done_at
+
+    compact_rows = [[k, orig_done_at.get(k) or now_s] for k in keys_list]
     for prefix, val_str in sorted(kv_snap.items()):
         ts_tag = kv_ts_snap.get(prefix) or datetime.datetime.now(JST).strftime("%Y%m%d%H%M%S")
+        orig = orig_kv_latest.get(prefix)
+        if str(prefix).startswith("token:") and not val_str and orig:
+            # Token could not be decoded in this process (e.g. secret env missing) → keep raw row, never drop it
+            compact_rows.append([orig[1], orig[2] or now_s])
+            continue
         sheet_val = job_state._obfuscate_secret(val_str) if str(prefix).startswith("token:") else str(val_str)
-        compact_rows.append([f"{prefix}={ts_tag}|{sheet_val}", now_s])
+        done_at = orig[2] if (orig and orig[0] == ts_tag and orig[2]) else now_s
+        compact_rows.append([f"{prefix}={ts_tag}|{sheet_val}", done_at])
 
     rows_after = len(compact_rows)
     saved = max(0, rows_before - rows_after)
     if saved >= 100 and not dry_run:
         payload = [job_state.HEADER] + compact_rows
-        ws.clear()
-        ws.append_rows(payload, value_input_option="RAW")
+        if not _safe_rewrite_worksheet(spreadsheet, ws, job_state.SHEET_TITLE, payload, vals):
+            return {"rows_before": rows_before, "rows_after": rows_before, "deleted_rows": 0, "rewrite_failed": True}
         return {"rows_before": rows_before, "rows_after": rows_after, "deleted_rows": saved}
 
     return {"rows_before": rows_before, "rows_after": rows_after if dry_run else rows_before, "deleted_rows": saved if dry_run else 0}

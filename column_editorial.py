@@ -590,6 +590,92 @@ def record_column_editorial_history(entry: dict):
     job_state.set_value(COLUMN_HISTORY_KEY, json.dumps(updated, ensure_ascii=False))
 
 
+_SAFE_EYECATCH_RE = re.compile(r"^/static/[A-Za-z0-9_\-./]+\.(?:jpg|jpeg|png|webp)$", re.IGNORECASE)
+
+
+def _safe_static_image_path(path_val, default: str) -> str:
+    """Accept only `/static/...` image paths without traversal (`..`, `//`, schemes, query strings)."""
+    p = str(path_val or "").strip()
+    if not p or ".." in p or "//" in p or "\\" in p:
+        return default
+    if not _SAFE_EYECATCH_RE.match(p):
+        return default
+    return p
+
+
+def _ret_pct(st: dict) -> str:
+    """Display measured midnight retention (`86%`) or an honest placeholder when not measured."""
+    v = (st or {}).get("midnight_retention_pct")
+    try:
+        if v is not None and int(v) > 0:
+            return f"{int(v)}%"
+    except (TypeError, ValueError):
+        pass
+    return "集計中"
+
+
+def _ret_value(st: dict):
+    """Measured midnight retention as a positive int, otherwise None (never 0 / 'None' / fixed fallback)."""
+    v = (st or {}).get("midnight_retention_pct")
+    try:
+        iv = int(v) if v is not None and not isinstance(v, bool) else None
+    except (TypeError, ValueError):
+        return None
+    return iv if (iv is not None and iv > 0) else None
+
+
+def _ret_paren(st: dict, label: str = "深夜維持", fallback: str = "（後半戦候補）") -> str:
+    """`（深夜維持86%）` when measured, otherwise a natural Japanese phrase without any `%`."""
+    v = _ret_value(st)
+    return f"（{label}{v}%）" if v is not None else fallback
+
+
+def _ret_prefix(st: dict, label: str = "深夜維持目安", fallback: str = "終電後も稼働が続く") -> str:
+    """Adjective phrase placed before a store name: `深夜維持目安86%の` or `終電後も稼働が続く`."""
+    v = _ret_value(st)
+    return f"{label}{v}%の" if v is not None else fallback
+
+
+def _ret_clause(st: dict, measured_tpl: str, fallback: str) -> str:
+    """Generic clause: `measured_tpl` must contain the `<v>` token; used only when retention is measured.
+    (`<v>` instead of `{v}` so the template can be written safely inside an outer f-string.)"""
+    v = _ret_value(st)
+    return measured_tpl.replace("<v>", str(v)) if v is not None else fallback
+
+
+_NONE_LEAK_RE = re.compile(r"None\s*[%％]|女性None|男性None|None名|Nonept")
+
+
+def _candidate_text_blob(candidate: dict) -> str:
+    """Flatten publishable candidate text (title/desc/X/sections/summary/faqs) for leak inspection."""
+    parts = [
+        str(candidate.get(k) or "")
+        for k in ("title", "short_title", "desc", "x_main_text", "x_title", "note_title", "note_markdown")
+    ]
+    for sec in (candidate.get("sections") or []):
+        if not isinstance(sec, dict):
+            continue
+        for k in ("heading", "mechanism_note", "highlight_title", "highlight_body"):
+            parts.append(str(sec.get(k) or ""))
+        for k in ("paragraphs", "dialogue", "after_paragraphs"):
+            parts.extend(str(p) for p in (sec.get(k) or []))
+    parts.extend(str(p) for p in (candidate.get("summary_points") or []))
+    for f in (candidate.get("faqs") or []):
+        if isinstance(f, dict):
+            parts.append(str(f.get("q") or ""))
+            parts.append(str(f.get("a") or ""))
+    return "\n".join(parts)
+
+
+def _hist_label(cnt) -> str:
+    """`累計12,345件` for a real measured log count, or empty string when unknown/0 (no inflated floor)."""
+    try:
+        c = int(cnt or 0)
+    except (TypeError, ValueError):
+        c = 0
+    return f"累計{c:,}件" if c > 0 else ""
+
+
 def save_editorial_column(
     candidate: dict,
     publish_mode: str = "schedule",
@@ -604,6 +690,17 @@ def save_editorial_column(
     """
     now_jst = now_jst or datetime.datetime.now(JST)
     now_naive = now_jst.astimezone(JST).replace(tzinfo=None) if now_jst.tzinfo else now_jst
+
+    if not isinstance(candidate, dict):
+        return {"ok": False, "error": "記事候補データの形式が正しくありません。"}
+    # Fact guard: never publish drafts built on illustrative/insufficient data or leaking `None%`
+    if str(candidate.get("data_status") or "").strip().lower() == "insufficient":
+        return {
+            "ok": False,
+            "error": "実測データ不足（data_status=insufficient）の候補は公開できません。検証ログ蓄積後に再生成してください。",
+        }
+    if _NONE_LEAK_RE.search(_candidate_text_blob(candidate)):
+        return {"ok": False, "error": "本文に未計測値（None%等）が含まれているため保存できません。再生成してください。"}
 
     raw_slug = custom_slug or candidate.get("slug") or "editorial-column"
     slug = _normalize_slug(raw_slug)
@@ -626,8 +723,12 @@ def save_editorial_column(
                 return {"ok": False, "error": "公開日時の形式が正しくありません（例: 2026-11-08 19:00）。"}
 
     preset = EYECATCH_PRESETS.get(eyecatch_key) or EYECATCH_PRESETS.get(candidate.get("eyecatch_key") or "")
-    eyecatch_jpg = preset["jpg"] if preset else (candidate.get("eyecatch_jpg") or "/static/eyecatch-last-train-cliff.jpg")
-    eyecatch_webp = preset["webp"] if preset else (candidate.get("eyecatch_webp") or "/static/eyecatch-last-train-cliff.webp")
+    eyecatch_jpg = preset["jpg"] if preset else _safe_static_image_path(
+        candidate.get("eyecatch_jpg"), "/static/eyecatch-last-train-cliff.jpg"
+    )
+    eyecatch_webp = preset["webp"] if preset else _safe_static_image_path(
+        candidate.get("eyecatch_webp"), "/static/eyecatch-last-train-cliff.webp"
+    )
 
     title = _sanitize_brand_names((candidate.get("title") or "").strip())
     short_title = _sanitize_brand_names((candidate.get("short_title") or title[:34]).strip())
@@ -786,8 +887,39 @@ def run_column_researcher(
     domestic = sns_editorial._domestic_stores(live_stores or [])
     enriched = sns_editorial._enrich_with_benchmarks(domestic)
 
-    # Fallback representative stores when unit tests or cold boot pass empty live_stores
+    data_basis = "live"
+    data_status = "ok"
+    if enriched and sum(int(s.get("total") or 0) for s in enriched) <= 0:
+        enriched = []  # all-zero live snapshot (off-hours) carries no measurement
+
+    # 1st fallback: real measured 30-day usual averages for this weekday/hour slot (local_db benchmarks)
     if not enriched:
+        try:
+            import local_db as _ldb_bm
+            bms = _ldb_bm.get_all_stores_live_benchmarks(now_jst=now_jst, allow_blocking=False) or {}
+        except Exception:
+            bms = {}
+        bm_seed = []
+        for bm_name, bm in bms.items():
+            if not isinstance(bm, dict) or not bm.get("has_measured_usual"):
+                continue
+            try:
+                uw = int(round(float(bm.get("usual_women") or 0)))
+                um = int(round(float(bm.get("usual_men") or 0)))
+            except (TypeError, ValueError):
+                continue
+            if uw + um > 0:
+                bm_seed.append({"name": bm_name, "women": uw, "men": um})
+        bm_seed = sns_editorial._domestic_stores(bm_seed)
+        if bm_seed:
+            enriched = sns_editorial._enrich_with_benchmarks(bm_seed)
+            data_basis = "historical_usual_average"
+
+    # Last resort (cold boot / unit tests with an empty DB): illustrative layout seed.
+    # Flagged `data_status="insufficient"` + `is_illustrative=True` so callers/UI never treat it as measured.
+    if not enriched:
+        data_basis = "illustrative_seed"
+        data_status = "insufficient"
         fallback_seed = [
             {"name": "OLG 新宿", "women": 46, "men": 28, "region": "Kanto"},
             {"name": "JIS SHINJUKU", "women": 31, "men": 34, "region": "Kanto"},
@@ -807,21 +939,19 @@ def run_column_researcher(
     for s in enriched:
         s["store_slug"] = _active_store_slug(s.get("name") or "")
         s["store_href"] = f"/store/{s['store_slug']}" if s["store_slug"] else "/areas"
-        if s.get("midnight_retention_pct") is None:
-            nm = s.get("name") or ""
-            if "ag" in nm or "熊本" in nm or "沖縄" in nm:
-                s["midnight_retention_pct"] = 96
-            elif "JIS" in nm:
-                s["midnight_retention_pct"] = 88
-            else:
-                s["midnight_retention_pct"] = 84
+        # Measured benchmark retention only; never assign brand-fixed placeholder percentages
+        if s.get("midnight_retention_pct") is not None:
+            try:
+                s["midnight_retention_pct"] = int(s["midnight_retention_pct"]) or None
+            except (TypeError, ValueError):
+                s["midnight_retention_pct"] = None
 
     active_stores = [s for s in enriched if s.get("total", 0) > 0] or enriched
     active_stores.sort(key=lambda x: (x.get("women", 0), x.get("wpct", 0)), reverse=True)
 
     total_w = sum(s.get("women", 0) for s in enriched)
     total_m = sum(s.get("men", 0) for s in enriched)
-    nat_wpct = round((total_w / (total_w + total_m)) * 100, 1) if (total_w + total_m) > 0 else 56.0
+    nat_wpct = round((total_w / (total_w + total_m)) * 100, 1) if (total_w + total_m) > 0 else None
 
     # Find widest intra-cluster gender-ratio gap
     cluster_gaps = []
@@ -882,7 +1012,11 @@ def run_column_researcher(
     except Exception:
         db_stats = {}
 
-    hist_records = max(int(db_stats.get("count") or db_stats.get("total_rows") or 0), 276000)
+    # Real measured row count only (no inflated lower bound); 0 -> count phrases are omitted downstream
+    try:
+        hist_records = max(0, int(db_stats.get("count") or db_stats.get("total_rows") or 0))
+    except (TypeError, ValueError):
+        hist_records = 0
 
     featured_stores = []
     seen_slugs = set()
@@ -910,7 +1044,7 @@ def run_column_researcher(
                 "men": st["men"],
                 "total": st["total"],
                 "wpct": st["wpct"],
-                "midnight_retention_pct": int(st.get("midnight_retention_pct") or 85),
+                "midnight_retention_pct": st.get("midnight_retention_pct"),
                 "store_slug": sl,
                 "store_href": st["store_href"],
                 "brand_key": st.get("brand_key") or b_prof["brand_key"],
@@ -946,7 +1080,7 @@ def run_column_researcher(
             if rev_examples
             else "22時以降に1次会帰りの男性グループが合流して比率が詰まる店舗と、"
         )
-        + f"『{s_hi.get('ja_name', '主要大型店')}』（深夜維持目安{s_hi.get('midnight_retention_pct', 88)}%）のように終電後も女性比率を保つ店舗に波形が分岐する。"
+        + f"『{s_hi.get('ja_name', '主要大型店')}』（深夜維持目安{_ret_pct(s_hi)}）のように終電後も女性比率を保つ店舗に波形が分岐する。"
     )
     brand_comp_parts = [
         f"『{fs['ja_name']}』［{fs['brand_label']}：{fs['brand_age_vibe']}］"
@@ -980,7 +1114,19 @@ def run_column_researcher(
     }
 
     findings = [
-        f"全国稼働データ：女性計 {total_w}名・男性計 {total_m}名（全国平均女性比 {nat_wpct}% ／ 累計実測 {hist_records:,}件超ベース）",
+        f"全国稼働データ：女性計 {total_w}名・男性計 {total_m}名"
+        + (
+            "（"
+            + " ／ ".join(
+                p for p in (
+                    f"全国平均女性比 {nat_wpct}%" if nat_wpct is not None else "",
+                    f"{_hist_label(hist_records)}の実測ベース" if hist_records > 0 else "",
+                ) if p
+            )
+            + "）"
+            if (nat_wpct is not None or hist_records > 0)
+            else "（検証ログ蓄積中）"
+        ),
     ]
     if top_gap:
         findings.append(
@@ -994,12 +1140,19 @@ def run_column_researcher(
     if midnight_leaders:
         m0 = midnight_leaders[0]
         findings.append(
-            f"終電後キープ力上位：『{m0['ja_name']}』（深夜維持目安 {m0.get('midnight_retention_pct')}%／現在 女性{m0['women']}名:男性{m0['men']}名）"
+            f"終電後キープ力上位：『{m0['ja_name']}』（深夜維持目安 {_ret_pct(m0)}／現在 女性{m0['women']}名:男性{m0['men']}名）"
         )
     findings.append(f"カレンダー文脈：{calendar_ctx['tag']}（{calendar_ctx['note']}）")
+    if data_basis == "historical_usual_average":
+        findings.insert(0, "データ基準：営業時間外のため、直近30日の同曜日・同時間帯の実測平均を使用")
+    elif data_basis == "illustrative_seed":
+        findings.insert(0, "データ基準：実測ログ不足のためレイアウト確認用のサンプル値（公開前に実測値で再生成が必要）")
 
     return {
         "timestamp": now_jst.strftime("%Y-%m-%d %H:%M:%S"),
+        "data_basis": data_basis,
+        "data_status": data_status,
+        "is_illustrative": data_basis == "illustrative_seed",
         "theme_key": theme_key if theme_key in COLUMN_THEMES else "area_hopping",
         "custom_topic": (custom_topic or "").strip()[:100],
         "national_women": total_w,
@@ -1136,13 +1289,27 @@ def _build_note_essay_from_candidate(
     note_title = _sanitize_brand_names(cand.get("note_title") or cand.get("title") or "")
     thesis = _sanitize_brand_names(cand.get("mechanism_thesis") or archetype["causal_thesis"])
     hook = _sanitize_brand_names(archetype["note_essay_hook"])
-    hist_cnt = int((research or {}).get("historical_log_count") or 276000)
-    nat_w = int((research or {}).get("national_women") or 420)
-    nat_m = int((research or {}).get("national_men") or 310)
-    nat_wpct = (research or {}).get("national_wpct") or 57.5
+    hist_cnt = int((research or {}).get("historical_log_count") or 0)
+    nat_w = int((research or {}).get("national_women") or 0)
+    nat_m = int((research or {}).get("national_men") or 0)
+    nat_wpct = (research or {}).get("national_wpct")
     stores = (research or {}).get("featured_stores") or []
-    s1 = stores[0] if stores else {"ja_name": "オリエンタルラウンジ新宿", "women": 45, "men": 27, "wpct": 62, "slot_22_24": "平日770円 / 金土990円"}
-    s2 = stores[1] if len(stores) > 1 else {"ja_name": "JIS新宿", "women": 30, "men": 33, "wpct": 48, "slot_22_24": "平日660円 / 金土880円"}
+    # Never invent store headcounts: reuse the measured stores we actually have
+    s1 = stores[0] if stores else None
+    s2 = stores[1] if len(stores) > 1 else s1
+    hist_phrase = f"（{_hist_label(hist_cnt)}超）" if hist_cnt > 0 else ""
+    if nat_w + nat_m > 0 and nat_wpct is not None:
+        nat_phrase = f"いまこの瞬間も全国で女性{nat_w}名・男性{nat_m}名（平均女性比{nat_wpct}%）が同じ夜を過ごしているのに、"
+    else:
+        nat_phrase = "同じ夜の同じ時間帯でも、"
+    if s1 and s2 and s1 is not s2:
+        store_contrast = (
+            f"たとえば同じ街の徒歩圏内でも、『{s1['ja_name']}』（女性{s1['women']}名・女性比{s1['wpct']}%）のように女性側に厚みがある空間と、"
+            f"『{s2['ja_name']}』（女性{s2['women']}名・女性比{s2['wpct']}%）のように男性側の熱量が勝っている空間が同時に並び立つ。"
+        )
+    else:
+        store_contrast = "たとえば同じ街の徒歩圏内でも、女性側に厚みがある空間と、男性側の熱量が勝っている空間が同時に並び立つ。"
+    slot_22_txt = (s1 or {}).get("slot_22_24") or "10分単位の料金"
 
     # Pick up to 2 short dialogue fragments as atmospheric quotes without duplicating Web paragraphs
     all_dialogues = [sec.get("dialogue") for sec in (cand.get("sections") or []) if sec.get("dialogue")]
@@ -1157,7 +1324,7 @@ def _build_note_essay_from_candidate(
         "",
         hook,
         "",
-        f"全国60店舗超のリアルタイム人数ログ（累計{hist_cnt:,}件超）を時間軸で追いかけていると、画面の向こう側にあるのは単なる『混雑グラフ』ではなく、仕事終わりに誰かと話したくて街へ出てきた人たちの期待と、ほんの少しのボタンの掛け違いだと気づかされる。いまこの瞬間も全国で女性{nat_w}名・男性{nat_m}名（平均女性比{nat_wpct}%）が同じ夜を過ごしているのに、あるテーブルでは自然に次の約束が決まり、すぐ隣のビルでは妙に噛み合わない沈黙が流れている。",
+        f"全国60店舗超のリアルタイム人数ログ{hist_phrase}を時間軸で追いかけていると、画面の向こう側にあるのは単なる『混雑グラフ』ではなく、仕事終わりに誰かと話したくて街へ出てきた人たちの期待と、ほんの少しのボタンの掛け違いだと気づかされる。{nat_phrase}あるテーブルでは自然に次の約束が決まり、すぐ隣のビルでは妙に噛み合わない沈黙が流れている。",
         "",
         "なぜ、どちらかが意地悪なわけでも、会話センスに決定的な差があるわけでもないのに、時間帯と選んだ扉ひとつでここまで居心地が変わってしまうのだろうか。",
         "",
@@ -1170,13 +1337,13 @@ def _build_note_essay_from_candidate(
         essay_lines.append(f"> {_sanitize_brand_names(dl)}")
     essay_lines.extend([
         "",
-        f"たとえば同じ街の徒歩圏内でも、『{s1['ja_name']}』（女性{s1['women']}名・女性比{s1['wpct']}%）のように女性側に厚みがある空間と、『{s2['ja_name']}』（女性{s2['women']}名・女性比{s2['wpct']}%）のように男性側の熱量が勝っている空間が同時に並び立つ。しかもその関係は固定されたものではなく、1軒目終わりの22時、終電前後の23時半、そして2軒目組が合流する深夜0時半を境に、驚くほど鮮やかに主役が入れ替わっていく。",
+        f"{store_contrast}しかもその関係は固定されたものではなく、1軒目終わりの22時、終電前後の23時半、そして2軒目組が合流する深夜0時半を境に、驚くほど鮮やかに主役が入れ替わっていく。",
         "",
         "## 男女それぞれの「図星」と、悪気のない期待値のズレ",
         "",
         f"もう一歩だけテーブルの近くへ寄ってみると、男女それぞれの本音の非対称が見えてくる。{thesis}",
         "",
-        f"男性側から見れば、10分ごとに料金が積み上がるシステム（たとえば22時台なら{s1.get('slot_22_24', '10分770円前後')}）のなかにいる以上、『なるべく待たずに座りたいし、座ったからにはちゃんと盛り上げたい』と肩に力が入るのはごく自然な心理だ。一方で女性側から見れば、料金こそかからないものの、限られた夜の時間を割いて足を運んでいるからこそ、女性ばかりが余って受付やソファで長く待たされる空間よりも、実は男性がしっかり入っていて『来てくれてありがとう』と即座に乾杯が始まる店のほうがずっと居心地がよかったりする。",
+        f"男性側から見れば、10分ごとに料金が積み上がるシステム（たとえば22時台なら{slot_22_txt}）のなかにいる以上、『なるべく待たずに座りたいし、座ったからにはちゃんと盛り上げたい』と肩に力が入るのはごく自然な心理だ。一方で女性側から見れば、料金こそかからないものの、限られた夜の時間を割いて足を運んでいるからこそ、女性ばかりが余って受付やソファで長く待たされる空間よりも、実は男性がしっかり入っていて『来てくれてありがとう』と即座に乾杯が始まる店のほうがずっと居心地がよかったりする。",
         "",
     ])
     for dl in q2[:2]:
@@ -1246,19 +1413,20 @@ def _render_candidate_preview_and_note(
 
 def _build_theme_tailored_table(theme_key: str, research: dict, stores_sample: list) -> dict:
     """Build a theme-specific analytical comparison matrix instead of an identical 4-col table on every article."""
-    hist_cnt = int(research.get("historical_log_count") or 276000)
+    hist_cnt = int(research.get("historical_log_count") or 0)
+    hist_cap = f"（{_hist_label(hist_cnt)}の実測ログ連動）" if hist_cnt > 0 else "（実測ログ連動）"
     if theme_key == "brand_waveform_fit":
         rows = [
             [
                 f"{st['ja_name']}（{st.get('brand_label') or '主要ブランド'}）",
                 f"女性 {st['women']}名 / 男性 {st['men']}名（{st['wpct']}%）",
-                st.get("waveform_archetype_ja") or f"深夜維持 {st['midnight_retention_pct']}%",
+                st.get("waveform_archetype_ja") or f"深夜維持 {_ret_pct(st)}",
                 st.get("brand_age_vibe") or "20代〜30代中心",
             ]
             for st in stores_sample
         ]
         return {
-            "caption": f"ブランド別・現在男女比×時間帯波形タイプ×客層スタイル比較（累計実測 {hist_cnt:,}件ログ連動）",
+            "caption": f"ブランド別・現在男女比×時間帯波形タイプ×客層スタイル比較{hist_cap}",
             "headers": ["店舗・ブランド", "現在人数（女性比）", "時間帯波形タイプ", "集まる年齢感・空間のノリ"],
             "rows": rows,
         }
@@ -1273,7 +1441,7 @@ def _build_theme_tailored_table(theme_key: str, research: dict, stores_sample: l
             for st in stores_sample
         ]
         return {
-            "caption": f"店舗別の現在比率×時間帯単価・待機課金マトリクス（累計実測 {hist_cnt:,}件ログ連動）",
+            "caption": f"店舗別の現在比率×時間帯単価・待機課金マトリクス{hist_cap}",
             "headers": ["店舗名", "現在バランス（女性比）", "20〜22時 相席単価/10分", "単独待機チャージ"],
             "rows": rows,
         }
@@ -1283,7 +1451,7 @@ def _build_theme_tailored_table(theme_key: str, research: dict, stores_sample: l
                 st["ja_name"],
                 f"女性 {st['women']}名 / 男性 {st['men']}名（{st['wpct']}%）",
                 st.get("solo_rule") or "店舗規定準拠",
-                f"終電後維持 {st['midnight_retention_pct']}%",
+                f"終電後維持 {_ret_pct(st)}",
             ]
             for st in stores_sample
         ]
@@ -1297,7 +1465,7 @@ def _build_theme_tailored_table(theme_key: str, research: dict, stores_sample: l
             st["ja_name"],
             f"女性 {st['women']}名 / 男性 {st['men']}名",
             f"{st['wpct']}%",
-            f"深夜維持 {st['midnight_retention_pct']}% ／ 22時台 {st.get('slot_22_24') or '平日770円〜'}",
+            f"深夜維持 {_ret_pct(st)} ／ 22時台 {st.get('slot_22_24') or '平日770円〜'}",
         ]
         for st in stores_sample
     ]
@@ -1320,23 +1488,58 @@ def _build_deterministic_candidates(
     theme_key = plan.get("theme_key") or research.get("theme_key") or "area_hopping"
     archetype = THEME_ARCHETYPES.get(theme_key, THEME_ARCHETYPES["area_hopping"])
     stores = research.get("featured_stores") or []
+    # Layout placeholders below are used ONLY when no measured store exists at all (research is then
+    # flagged data_status="insufficient"). With 1-2 measured stores we reuse them instead of inventing a 3rd.
     s1 = stores[0] if len(stores) > 0 else {
         "ja_name": "オリエンタルラウンジ新宿", "casual_name": "オリエンタルラウンジ新宿",
-        "women": 45, "men": 27, "wpct": 62, "midnight_retention_pct": 86,
+        "women": 45, "men": 27, "wpct": 62, "midnight_retention_pct": None,
         "slot_20_22": "平日660円 / 金土880円", "slot_22_24": "平日770円 / 金土990円",
         "wait_fee_str": "220円 / 10分", "solo_rule": "店舗混雑状況により案内",
         "store_href": "/store/oriental-lounge-shinjuku",
     }
-    s2 = stores[1] if len(stores) > 1 else {
-        "ja_name": "JIS新宿", "casual_name": "JIS新宿",
-        "women": 30, "men": 33, "wpct": 48, "midnight_retention_pct": 89,
-        "slot_20_22": "平日660円 / 金土770円", "slot_22_24": "平日660円 / 金土880円",
-        "wait_fee_str": "220円 / 10分", "solo_rule": "1名入店OK（ソロ歓迎）",
-        "store_href": "/store/jis-shinjuku",
-    }
-    s3 = stores[2] if len(stores) > 2 else {
+    # s2 must be a DIFFERENT store from s1 (never compare a store with itself).
+    # Priority: 2nd featured store -> distinct local leader -> layout placeholder (flags insufficient).
+    _s1_name = s1.get("ja_name")
+    s2 = next(
+        (
+            st for st in (list(stores[1:]) + list(research.get("local_leaders") or []))
+            if isinstance(st, dict) and st.get("ja_name") and st.get("ja_name") != _s1_name
+            and st.get("store_href")
+        ),
+        None,
+    )
+    uses_placeholder_store = not stores
+    if s2 is not None and "casual_name" not in s2:
+        # local_leaders rows carry only name/headcount/href: fill price/rule fields with neutral defaults
+        s2 = {
+            "casual_name": s2.get("ja_name"),
+            "midnight_retention_pct": None,
+            "slot_20_22": "平日660円 / 金土880円",
+            "slot_22_24": "平日770円 / 金土990円",
+            "wait_fee_str": "220円 / 10分（税込）",
+            "solo_rule": "店舗規定に準拠",
+            **s2,
+        }
+    if s2 is None:
+        uses_placeholder_store = True
+        _ph_jis = {
+            "ja_name": "JIS新宿", "casual_name": "JIS新宿",
+            "women": 30, "men": 33, "wpct": 48, "midnight_retention_pct": None,
+            "slot_20_22": "平日660円 / 金土770円", "slot_22_24": "平日660円 / 金土880円",
+            "wait_fee_str": "220円 / 10分", "solo_rule": "1名入店OK（ソロ歓迎）",
+            "store_href": "/store/jis-shinjuku",
+        }
+        _ph_ag = {
+            "ja_name": "ag渋谷", "casual_name": "ag渋谷",
+            "women": 42, "men": 24, "wpct": 64, "midnight_retention_pct": None,
+            "slot_20_22": "平日660円 / 金土880円", "slot_22_24": "平日770円 / 金土990円",
+            "wait_fee_str": "220円 / 10分", "solo_rule": "2名以上必須",
+            "store_href": "/store/ag-shibuya",
+        }
+        s2 = _ph_jis if _s1_name != _ph_jis["ja_name"] else _ph_ag
+    s3 = stores[2] if len(stores) > 2 else (stores[-1] if stores else None) or {
         "ja_name": "ag渋谷", "casual_name": "ag渋谷",
-        "women": 42, "men": 24, "wpct": 64, "midnight_retention_pct": 95,
+        "women": 42, "men": 24, "wpct": 64, "midnight_retention_pct": None,
         "slot_20_22": "平日660円 / 金土880円", "slot_22_24": "平日770円 / 金土990円",
         "wait_fee_str": "220円 / 10分", "solo_rule": "2名以上必須",
         "store_href": "/store/ag-shibuya",
@@ -1345,9 +1548,12 @@ def _build_deterministic_candidates(
     s_loc = local_list[0] if local_list else s3
     gap_info = research.get("top_gap")
     area_name = gap_info["cluster_label"] if gap_info else "都心主要エリア"
-    gap_pt = gap_info["gap_pt"] if gap_info else max(8, abs(s1["wpct"] - s2["wpct"]))
+    # Measured gap only (no artificial 8pt floor)
+    gap_pt = gap_info["gap_pt"] if gap_info else abs(int(s1.get("wpct") or 0) - int(s2.get("wpct") or 0))
     topic_focus = plan.get("custom_topic") or plan.get("theme_label")
-    hist_cnt = int(research.get("historical_log_count") or 276000)
+    hist_cnt = int(research.get("historical_log_count") or 0)
+    hist_lbl = _hist_label(hist_cnt)
+    hist_log_phrase = f"{hist_lbl}ログ" if hist_lbl else "実測ログ"
 
     common_table = _build_theme_tailored_table(theme_key, research, (stores[:4] or [s1, s2, s3]))
     store_links_1 = [{"label": s1["ja_name"], "href": s1["store_href"]}, {"label": s2["ja_name"], "href": s2["store_href"]}]
@@ -1402,18 +1608,18 @@ def _build_deterministic_candidates(
             "dl2": ["「さっき駅前のビル混んでそうだったから、落ち着いて飲めるこっちにしたんです」", "「僕たちもちょうど数字見て切り替えたところ。静かに話せて正解だったね」"],
             "mech2": archetype["causal_thesis"],
             "h3": "3. 同エリア2〜3店舗を「ポートフォリオ」として持つ移動判断基準",
-            "p3": [f"1店舗に固執せず、最初から『本命：{s1['ja_name']}／後半戦バックアップ：{s3['ja_name']}（深夜維持{s3['midnight_retention_pct']}%）』と2枚のカードを持って街に出るだけで、待機コストも精神的な焦りもゼロになります。"],
+            "p3": [f"1店舗に固執せず、最初から『本命：{s1['ja_name']}／後半戦バックアップ：{s3['ja_name']}{_ret_paren(s3, '深夜維持', '')}』と2枚のカードを持って街に出るだけで、待機コストも精神的な焦りもゼロになります。"],
             "dl3": ["「最初から余裕ある店に座れると、変にガツガツしなくて済むのが一番デカいよな」", "「うん、結果的に会話のテンポも自然になるから不思議だよ」"],
             "x_main": f"同じ{area_name}の半径300mなのに、『{s1['casual_name']}』（女性比{s1['wpct']}%）と近隣店で{gap_pt}ptも割れる夜📊\n\n男が「看板の知名度」で1店舗目に集中し、女子ペアが分散する二面市場のカラクリを書きました👇\n#相席ラウンジ #相席ナビ",
         },
         "midnight_wave": {
             "title": f"23時20分の終電後に何が起きているのか？深夜0時半から女性が再流入する「コホート交代」の法則",
             "short": "終電崖と深夜0時半・第2波の正体",
-            "desc": f"23時過ぎに一度引いた波が、なぜ0時半から『{s3['ja_name']}』（深夜維持目安{s3['midnight_retention_pct']}%）などで再び盛り上がるのか。鉄道ダイヤと客層属性の完全入れ替わりを検証します。",
+            "desc": f"23時過ぎに一度引いた波が、なぜ0時半から『{s3['ja_name']}』{_ret_paren(s3, '深夜維持目安')}などで再び盛り上がるのか。鉄道ダイヤと客層属性の完全入れ替わりを検証します。",
             "h1": "1. 23時25分、駅へ急ぐ人の波と逆行してラウンジへ入る人たち",
             "p1": [
                 "金曜23時20分。改札へ向かう会社員の早足な波を見送りながら「今から入ってももう残り物しかいないのでは？」と立ち止まる男性ペアは少なくありません。実際、23時15分〜23時55分の40分間は、終電を意識した第1波の女性客が一斉に退店する『魔の空白帯』にあたります。",
-                f"ところが日付が変わって0時25分を過ぎた瞬間、モニターの数字が再び上向きに跳ねる店舗が現れます。たとえば『{s3['ja_name']}』の終電後キープ目安は{s3['midnight_retention_pct']}%に達し、現在も女性{s3['women']}名・男性{s3['men']}名が稼働しています。",
+                f"ところが日付が変わって0時25分を過ぎた瞬間、モニターの数字が再び上向きに跳ねる店舗が現れます。たとえば『{s3['ja_name']}』{_ret_clause(s3, 'の終電後キープ目安は<v>%に達し', 'は終電後も稼働が続いており')}、現在も女性{s3['women']}名・男性{s3['men']}名が稼働しています。",
             ],
             "dl1": ["「23時半に見たときは一瞬減ってたのに、0時半過ぎたらまた新しい2人組が3連続で入ってきたな」", "「しかも終電時間を気にしない組だから、最初から腰を据えて飲んでる空気がある」"],
             "h2": "2. 【構造考察】残っているのではなく「客層コホート」が丸ごと入れ替わっている",
@@ -1423,10 +1629,10 @@ def _build_deterministic_candidates(
             "h3": "3. 後半戦は「テンションの高さ」ではなく「聞き役の包容力」が勝つ",
             "p3": [f"深夜帯の『{s3['ja_name']}』や『{s1['ja_name']}』では、無理に盛り上げるよりも仕事上がりの疲れをねぎらう落ち着いたトーンの卓が圧倒的に支持されます。23時台の空白帯だけは避け、0時15分以降に狙いを定めてみてください。"],
             "dl3": ["「この時間にガヤガヤ絡まれずにゆっくり飲める席、ほんと助かります」", "「うちも2軒目でゆっくり話したかったからちょうど良かったよ」"],
-            "x_main": f"23時20分の終電ラッシュで一度人が引いたあと、深夜0時半からもう一度女性が増え直す『{s3['casual_name']}』（深夜維持{s3['midnight_retention_pct']}%）の不思議🌙\n\n客層の属性が丸ごと入れ替わる「第2波」の構造を解剖しました👇\n#相席ラウンジ #相席ナビ",
+            "x_main": f"23時20分の終電ラッシュで一度人が引いたあと、深夜0時半からもう一度女性が増え直す『{s3['casual_name']}』{_ret_paren(s3, '深夜維持', '')}の不思議🌙\n\n客層の属性が丸ごと入れ替わる「第2波」の構造を解剖しました👇\n#相席ラウンジ #相席ナビ",
         },
         "weekday_anaba": {
-            "title": f"「金曜21時が一番出会える」という幻想——累計{hist_cnt:,}件ログが示す水木夜と雨天・駅直結店の逆説",
+            "title": f"「金曜21時が一番出会える」という幻想——{hist_log_phrase}が示す水木夜と雨天・駅直結店の逆説",
             "short": "平日水木×雨天の「高純度」穴場論",
             "desc": f"総人数が多い週末ピークほど会話が雑になりやすいのはなぜか。平日20時半や小雨の駅直結店（『{s1['ja_name']}』女性比{s1['wpct']}%など）で連絡先交換後の進展率が高まる構造を紐解きます。",
             "h1": "1. 水曜20時40分、傘をたたんで入った地下直結ビルの静かな熱気",
@@ -1544,7 +1750,7 @@ def _build_deterministic_candidates(
     sp = theme_specs.get(theme_key, theme_specs["area_hopping"])
     slug_a = plan["suggested_slug"]
     title_a = (
-        f"【構造検証】{plan['custom_topic']}——累計{hist_cnt:,}件ログと現場心理から紐解く勝率の法則"
+        f"【構造検証】{plan['custom_topic']}——{hist_log_phrase}と現場心理から紐解く勝率の法則"
         if plan.get("custom_topic")
         else sp["title"]
     )
@@ -1590,7 +1796,7 @@ def _build_deterministic_candidates(
                 "paragraphs": sp["p2"],
                 "dialogue": sp["dl2"],
                 "after_paragraphs": [
-                    f"この構造を理解しておくと、現場での見え方が一変します。『{s1['ja_name']}』のように現在女性優位で落ち着いて話せる店舗と、終電後キープ目安{s3['midnight_retention_pct']}%の『{s3['ja_name']}』のような後半戦特化店舗では、集まる人の動機そのものが異なるのです。"
+                    f"この構造を理解しておくと、現場での見え方が一変します。『{s1['ja_name']}』のように現在女性優位で落ち着いて話せる店舗と、{_ret_prefix(s3, '終電後キープ目安')}『{s3['ja_name']}』のような後半戦特化店舗では、集まる人の動機そのものが異なるのです。"
                 ],
                 "mechanism_note": sp["mech2"],
                 "highlight_title": "",
@@ -1613,7 +1819,7 @@ def _build_deterministic_candidates(
         "data_table": common_table,
         "summary_points": [
             f"現象の背後にある『{archetype['mechanism_lens']}』を理解し、知名度突撃やサンクコスト延長を回避する",
-            f"現在データでは『{s1['ja_name']}』（女性{s1['women']}名・女性比{s1['wpct']}%）と『{s3['ja_name']}』（深夜維持{s3['midnight_retention_pct']}%）の時間帯別使い分けが有効",
+            f"現在データでは『{s1['ja_name']}』（女性{s1['women']}名・女性比{s1['wpct']}%）と『{s3['ja_name']}』{_ret_paren(s3, '深夜維持')}の時間帯別使い分けが有効",
             "会話が最も温まったピークの瞬間に、相手の帰宅時間・負担に配慮した具体的な次の一手を添える",
         ],
         "faqs": [
@@ -1623,7 +1829,7 @@ def _build_deterministic_candidates(
             },
             {
                 "q": "遅い時間帯（23時以降）や1人参戦でも同じ考え方で使えますか？",
-                "a": f"23時20分の終電崖前後は一度客層が入れ替わるため、0時半以降は深夜維持目安{s3['midnight_retention_pct']}%の『{s3['ja_name']}』等を優先し、ソロの場合は『{s2['ja_name']}』（{s2.get('solo_rule')}）など1名対応店を選ぶのが合理的です。",
+                "a": f"23時20分の終電崖前後は一度客層が入れ替わるため、0時半以降は{_ret_prefix(s3)}『{s3['ja_name']}』等を優先し、ソロの場合は『{s2['ja_name']}』（{s2.get('solo_rule')}）など1名対応店を選ぶのが合理的です。",
             },
         ],
         "x_title": sp["short"],
@@ -1686,7 +1892,7 @@ def _build_deterministic_candidates(
                         f"「『{s3['casual_name']}』は遅い時間でも活気があるから2軒目からでも入りやすいね」",
                     ],
                     "after_paragraphs": [
-                        f"『{s3['ja_name']}』は終電後の維持目安が{s3['midnight_retention_pct']}%と高く、早い時間は『{s1['ja_name']}』、0時半以降なら『{s3['ja_name']}』と使い分けるのがスムーズです。",
+                        f"『{s3['ja_name']}』は{_ret_clause(s3, '終電後の維持目安が<v>%と高く', '終電後も稼働が続くため')}、早い時間は『{s1['ja_name']}』、0時半以降なら『{s3['ja_name']}』と使い分けるのがスムーズです。",
                     ],
                     "mechanism_note": research["deep_insights"]["cohort_shift_summary"],
                     "highlight_title": "",
@@ -1714,7 +1920,7 @@ def _build_deterministic_candidates(
             "data_table": common_table,
             "summary_points": [
                 f"全国平均女性比（{research['national_wpct']}%）より需給に余裕のある店舗を優先する",
-                f"23時以降は深夜維持目安{s3['midnight_retention_pct']}%の『{s3['ja_name']}』などを選ぶ",
+                f"23時以降は{_ret_prefix(s3)}『{s3['ja_name']}』などを選ぶ",
                 "2軒目の提案は「30分だけ」と出口時刻を区切って安心感を作る",
             ],
             "faqs": [
@@ -1839,8 +2045,22 @@ def _build_deterministic_candidates(
             "note_hashtags": "#相席ラウンジ #女子の本音 #オリエンタルラウンジ #相席ナビ #行動経済学",
         }
 
+    # Propagate measurement status so save_editorial_column can refuse illustrative/placeholder drafts
+    cand_status = (
+        "insufficient"
+        if (str(research.get("data_status") or "").lower() == "insufficient" or uses_placeholder_store)
+        else (research.get("data_status") or "ok")
+    )
+    for _c in (cand_a, cand_b):
+        _c["data_status"] = cand_status
+        if uses_placeholder_store:
+            _c["uses_placeholder_store"] = True
+
     rendered_a = _render_candidate_preview_and_note(cand_a, site_url=site_url, research=research, plan=plan)
     rendered_b = _render_candidate_preview_and_note(cand_b, site_url=site_url, research=research, plan=plan)
+    for _r in (rendered_a, rendered_b):
+        if isinstance(_r, dict):
+            _r["data_status"] = cand_status
     # In `female_real` mode or `female_real_voice` theme, place the Female Perspective draft first!
     if tm == "female_real" or plan.get("theme_key") == "female_real_voice":
         return [rendered_b, rendered_a]
@@ -2188,6 +2408,9 @@ def run_column_writer(
             tone_mode=tm,
         )
         if ai_cand:
+            if str(research.get("data_status") or "").lower() == "insufficient" and isinstance(ai_cand, dict):
+                ai_cand = dict(ai_cand)
+                ai_cand["data_status"] = "insufficient"
             return [ai_cand] + base_cands
     return base_cands
 
@@ -3089,9 +3312,11 @@ def _reframe_static_note_as_deep_essay(verbatim_res: dict, slug: str, site_base:
     try:
         import local_db as _ldb_mod
         _db_st = _ldb_mod.get_db_stats() or {}
-        hist_cnt = max(int(_db_st.get("count") or _db_st.get("total_rows") or 0), 276000)
+        hist_cnt = max(0, int(_db_st.get("count") or _db_st.get("total_rows") or 0))
     except Exception:
-        hist_cnt = 276000
+        hist_cnt = 0
+    hist_lbl_note = _hist_label(hist_cnt)
+    hist_log_note = f"{hist_lbl_note}を超える稼働ログ" if hist_lbl_note else "毎分の稼働ログ"
 
     base_title = verbatim_res.get("title") or ""
     short_core = base_title.split("｜")[0].split("——")[0].strip()
@@ -3102,7 +3327,7 @@ def _reframe_static_note_as_deep_essay(verbatim_res: dict, slug: str, site_base:
     parts = [
         lens["hook"],
         (
-            f"『相席ナビ』編集長のくわもんです。普段は全国63店舗のリアルタイム男女比サイトを運営しながら、累計{hist_cnt:,}件を超える稼働ログと夜の街の空気を記録し続けている。"
+            f"『相席ナビ』編集長のくわもんです。普段は全国63店舗のリアルタイム男女比サイトを運営しながら、{hist_log_note}と夜の街の空気を記録し続けている。"
             "Web版のガイド記事では検索から辿り着いた方向けに店舗比較表や実践ステップを整理しているが、このnoteでは少し視点を変えて、"
             f"『{short_core}』というテーマの奥にある人間の心理と、夜の街の見えない構造について書いてみたい。"
         ),

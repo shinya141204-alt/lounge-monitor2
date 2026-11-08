@@ -8,9 +8,20 @@ import secrets
 import urllib.parse
 import datetime
 import logging
+import re
 import requests
 
 logger = logging.getLogger(__name__)
+
+# X API v2 media upload endpoint (v1.1 `upload.twitter.com/1.1/media/upload.json` is deprecated)
+X_MEDIA_UPLOAD_URL = "https://api.x.com/2/media/upload"
+
+# URL patterns counted as 23 weight by X's t.co shortener (scheme URLs and bare domains like aiseki-navi.com/...)
+_TWITTER_URL_RE = re.compile(
+    r"https?://\S+"
+    r"|(?<![A-Za-z0-9_@./-])(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+"
+    r"(?:com|net|org|jp|io|co|me|app|dev|info|biz|tv|ly|link|site|xyz)\b(?:/[^\s]*)?"
+)
 
 # Japanese localization map for English store names so X posts look natural and searchable
 EN_TO_JA_MAP = {
@@ -104,11 +115,14 @@ def format_ja_store_name(raw_name: str) -> str:
 
 
 def compute_twitter_weight(text: str) -> int:
-    """Calculate Twitter-weighted character count (ASCII=1, East-Asian/Emoji=2, URL=23)."""
-    import re
-    url_pattern = r'https?://[^\s]+'
-    urls = re.findall(url_pattern, text)
-    clean_text = re.sub(url_pattern, '', text)
+    """Calculate Twitter-weighted character count (ASCII=1, East-Asian/Emoji=2, URL=23).
+
+    Both scheme URLs (`https://...`) and bare domains (`aiseki-navi.com/stats`) are auto-linked by X
+    and wrapped by t.co, so each counts as a flat 23 weight.
+    """
+    text = text or ""
+    urls = _TWITTER_URL_RE.findall(text)
+    clean_text = _TWITTER_URL_RE.sub('', text)
     weight = len(urls) * 23
     for ch in clean_text:
         weight += 1 if ord(ch) <= 127 else 2
@@ -826,14 +840,28 @@ def load_column_eyecatch_bytes(item: dict) -> tuple:
     """Load local eyecatch image bytes and MIME type for a column promo/scheduled item if present."""
     if not item:
         return None, "image/jpeg"
-    rel_path = (item.get("eyecatch") or item.get("eyecatch_jpg") or "").strip()
+    rel_path = str(item.get("eyecatch") or item.get("eyecatch_jpg") or "").strip()
     if not rel_path:
         return None, "image/jpeg"
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    abs_path = os.path.join(base_dir, rel_path.lstrip("/"))
+    static_root = os.path.realpath(os.path.join(base_dir, "static"))
+    abs_path = os.path.realpath(os.path.join(base_dir, rel_path.lstrip("/")))
+    # Path traversal guard: only image files physically under <repo>/static/ are allowed
+    if os.path.commonpath([static_root, abs_path]) != static_root:
+        logger.warning(f"Rejected column eyecatch outside static/: {rel_path!r}")
+        return None, "image/jpeg"
+    lower = abs_path.lower()
+    if not lower.endswith((".jpg", ".jpeg", ".png", ".webp")):
+        logger.warning(f"Rejected non-image column eyecatch: {rel_path!r}")
+        return None, "image/jpeg"
     if not os.path.isfile(abs_path):
         return None, "image/jpeg"
-    mime = "image/png" if abs_path.lower().endswith(".png") else "image/jpeg"
+    if lower.endswith(".png"):
+        mime = "image/png"
+    elif lower.endswith(".webp"):
+        mime = "image/webp"
+    else:
+        mime = "image/jpeg"
     try:
         with open(abs_path, "rb") as f:
             return f.read(), mime
@@ -862,7 +890,16 @@ def build_weekly_report_tweet_thread(report: dict, app_url: str = "", use_ai: bo
     now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
     report = report or {}
     stores = report.get("stores") or []
-    anaba_stores = report.get("anaba_stores") or []
+
+    def _measured_wpct(s):
+        try:
+            v = s.get("avg_wpct")
+            return None if v is None else int(round(float(v)))
+        except (TypeError, ValueError):
+            return None
+
+    # Exclude anaba candidates without a measured female ratio (never fabricate a fallback %)
+    anaba_stores = [a for a in (report.get("anaba_stores") or []) if _measured_wpct(a) is not None]
 
     week_key = now_jst.strftime("%Y%m%d")
     reply_text = (
@@ -887,7 +924,7 @@ def build_weekly_report_tweet_thread(report: dict, app_url: str = "", use_ai: bo
                     a1 = anaba_stores[0]
                     anaba_fact = {
                         "name": format_ja_store_name(a1.get("name", "")),
-                        "avg_wpct": int(round(float(a1.get("avg_wpct") or 56))),
+                        "avg_wpct": _measured_wpct(a1),
                     }
                 prompt = (
                     "あなたは全国60店舗超の相席ラウンジ人数を記録している『相席ナビ』の運営中の人です。\n"
@@ -929,7 +966,7 @@ def build_weekly_report_tweet_thread(report: dict, app_url: str = "", use_ai: bo
     if anaba_stores:
         a1 = anaba_stores[0]
         a1_name = format_ja_store_name(a1.get("name", ""))
-        a1_pct = int(round(float(a1.get("avg_wpct") or 56)))
+        a1_pct = _measured_wpct(a1)
         lines.append(f"・一番バランス良かった穴場：{a1_name}（女性比{a1_pct}%）")
 
     lines.extend([
@@ -946,17 +983,20 @@ def build_weekly_report_tweet_thread(report: dict, app_url: str = "", use_ai: bo
         main_text = "\n".join(lines)
     if compute_twitter_weight(main_text) > 274 and anaba_stores:
         a1_name = format_ja_store_name(anaba_stores[0].get("name", ""))
-        a1_pct = int(round(float(anaba_stores[0].get("avg_wpct") or 56)))
-        lines[3] = f"・穴場：{a1_name}（女性比{a1_pct}%）"
+        a1_pct = _measured_wpct(anaba_stores[0])
+        anaba_idx = next((i for i, ln in enumerate(lines) if ln.startswith("・一番バランス良かった穴場")), None)
+        if anaba_idx is not None:
+            lines[anaba_idx] = f"・穴場：{a1_name}（女性比{a1_pct}%）"
         main_text = "\n".join(lines)
     return main_text, reply_text
 
 
 def upload_media_to_x(media_bytes: bytes, mime_type: str = "image/png") -> str:
     """
-    Upload binary image bytes via X Media Upload API v1.1 (`POST https://upload.twitter.com/1.1/media/upload.json`).
-    Uses OAuth 1.0a multipart/form-data (RFC 5849 §3.4.1.3.1: body params excluded from signature base string).
-    Returns `media_id_string` on success, or `None` on failure so callers safely fall back to text-only tweets.
+    Upload binary image bytes via X API v2 Media Upload (`POST https://api.x.com/2/media/upload`).
+    Uses OAuth 1.0a multipart/form-data (RFC 5849 §3.4.1.3.1: multipart body params excluded from signature base string).
+    Returns the media id (v2 `data.id`, or legacy `media_id_string`) on success, or `None` on failure so callers
+    safely fall back to text-only tweets.
     """
     if not media_bytes:
         return None
@@ -968,19 +1008,32 @@ def upload_media_to_x(media_bytes: bytes, mime_type: str = "image/png") -> str:
     if not all([api_key, api_secret, access_token, access_secret]):
         return None
 
-    upload_url = "https://upload.twitter.com/1.1/media/upload.json"
+    upload_url = X_MEDIA_UPLOAD_URL
     auth_header = _build_oauth1_header("POST", upload_url, api_key, api_secret, access_token, access_secret)
-    ext = "png" if "png" in (mime_type or "").lower() else "jpg"
+    mt = (mime_type or "image/png").lower()
+    ext = "png" if "png" in mt else ("webp" if "webp" in mt else "jpg")
     try:
         resp = requests.post(
             upload_url,
             headers={"Authorization": auth_header},
-            files={"media": (f"card.{ext}", media_bytes, mime_type or "image/png")},
+            files={
+                "media": (f"card.{ext}", media_bytes, mime_type or "image/png"),
+                "media_category": (None, "tweet_image"),
+            },
             timeout=20,
         )
         if resp.status_code in (200, 201, 202):
-            data = resp.json() or {}
-            media_id = data.get("media_id_string") or (str(data["media_id"]) if data.get("media_id") else None)
+            try:
+                data = resp.json() or {}
+            except ValueError:
+                data = {}
+            if not isinstance(data, dict):
+                data = {}
+            media_id = (
+                (data.get("data") or {}).get("id")
+                or data.get("media_id_string")
+                or (str(data["media_id"]) if data.get("media_id") else None)
+            )
             if media_id:
                 logger.info(f"Uploaded media to X successfully: media_id={media_id}")
                 return str(media_id)

@@ -320,13 +320,16 @@ _LINUX_NOTO_FONTS = (
 )
 
 _MEM_MP4_CACHE = collections.OrderedDict()  # cache_key -> {"ts": float, "bytes": bytes, "reel_type": str}
-_MEM_MP4_MAX = 4
+_MEM_MP4_MAX = 3  # in-process RAM copies only (512MB VM); shared Redis/turbo_store + /tmp cache unchanged
 _MEM_CACHE_LOCK = threading.Lock()
 _RENDER_SINGLEFLIGHT_LOCK = threading.Lock()
 
 _BG_OVERSIZED_CACHE = collections.OrderedDict()
 _BG_CACHE_LOCK = threading.Lock()
-_VIGNETTE_CACHE = {}
+_BG_OVERSIZED_MAX = 4
+_VIGNETTE_CACHE = collections.OrderedDict()  # (rt, for_video_bg) -> 720x1280 RGBA (~3.7MB each)
+_VIGNETTE_MAX = 6
+_VIGNETTE_LOCK = threading.Lock()
 
 
 def enforce_brand_rule(text: str) -> str:
@@ -506,22 +509,14 @@ def _is_domestic_store(store: dict) -> bool:
     return not any(k in uname for k in _KOREA_KEYWORDS)
 
 
-def _fallback_seed_stores() -> list:
-    """Fallback domestic dataset used only when `stores` is empty or all stores have 0 headcount."""
-    seeds = [
-        {"name": "OLG 大阪駅前", "women": 58, "men": 41, "region": "Kansai"},
-        {"name": "OLG 渋谷本店", "women": 52, "men": 38, "region": "Kanto"},
-        {"name": "OLG 新宿", "women": 47, "men": 36, "region": "Kanto"},
-        {"name": "JIS FUKUOKA", "women": 44, "men": 30, "region": "Kyushu"},
-        {"name": "JIS NAMBA", "women": 39, "men": 29, "region": "Kansai"},
-        {"name": "OLG 恵比寿", "women": 32, "men": 19, "region": "Kanto"},
-        {"name": "OLG ag渋谷", "women": 28, "men": 34, "region": "Kanto"},
-        {"name": "JIS SHINJUKU", "women": 31, "men": 39, "region": "Kanto"},
-        {"name": "JIS UMEDA", "women": 34, "men": 42, "region": "Kansai"},
-        {"name": "OLG 名古屋 栄", "women": 29, "men": 35, "region": "Chubu"},
-        {"name": "OLG 京都", "women": 27, "men": 17, "region": "Kansai"},
-    ]
-    return seeds
+def _safe_int(v, default: int = 0) -> int:
+    try:
+        return int(v)
+    except (TypeError, ValueError):
+        try:
+            return int(float(v))
+        except (TypeError, ValueError):
+            return default
 
 
 def _enrich_store_entry(s: dict, preloaded_events: list = None) -> dict:
@@ -559,10 +554,16 @@ def _enrich_store_entry(s: dict, preloaded_events: list = None) -> dict:
         has_event=has_event,
     )
 
-    mid_ret = int(s.get("midnight_retention_pct") or 0)
+    # Measured midnight retention only; missing -> None (never synthesize from current headcount)
+    mid_ret = _safe_int(s.get("midnight_retention_pct"), 0) if s.get("midnight_retention_pct") is not None else 0
     if mid_ret <= 0:
-        mid_ret = min(94, max(64, 70 + min(22, tot // 4)))
-    mid_lbl = enforce_brand_rule(str(s.get("midnight_label_short") or ("深夜安定" if mid_ret >= 78 else "終電前推奨")))
+        mid_ret = None
+    if s.get("midnight_label_short"):
+        mid_lbl = enforce_brand_rule(str(s.get("midnight_label_short")))
+    elif mid_ret is not None:
+        mid_lbl = "深夜安定" if mid_ret >= 78 else "終電前推奨"
+    else:
+        mid_lbl = "深夜維持率 検証ログ蓄積中"
 
     return {
         "raw_name": raw_name,
@@ -585,28 +586,103 @@ def _enrich_store_entry(s: dict, preloaded_events: list = None) -> dict:
     }
 
 
+_REEL_CTX_MEMO = collections.OrderedDict()  # key -> (ts, ctx)
+_REEL_CTX_MEMO_LOCK = threading.Lock()
+_REEL_CTX_MEMO_TTL_SEC = 60.0
+_REEL_CTX_MEMO_MAX = 8
+
+
+def _reel_ctx_memo_key(dom_raw: list, rt: str, now_jst: datetime.datetime, is_fallback: bool) -> tuple:
+    sig = tuple(sorted(
+        (
+            str(s.get("name") or ""),
+            max(0, _safe_int(s.get("women"))),
+            max(0, _safe_int(s.get("men"))),
+            _safe_int(s.get("midnight_retention_pct"), 0) if s.get("midnight_retention_pct") is not None else -1,
+            str(s.get("midnight_label_short") or ""),
+            str(s.get("region") or ""),
+        )
+        for s in dom_raw
+    ))
+    return (sig, rt, now_jst.strftime("%Y%m%d%H%M"), bool(is_fallback))
+
+
 def build_reel_context(
     stores: list,
     reel_type: str = "live_top5",
     now_jst: datetime.datetime = None,
 ) -> dict:
-    """Build structured, verified domestic crowd context for all 3 Reel video templates."""
+    """
+    Build structured, verified domestic crowd context for all Reel video templates.
+
+    Short-lived (60s / max 8 entries) memo cache keyed by
+    `(store headcount signature, rt, minute, is_fallback)` so one posting flow that calls this
+    8-10 times (caption / AI caption / QA / renderer / scheduler) only computes it once.
+    """
     rt = normalize_reel_type(reel_type)
     now_jst = now_jst or datetime.datetime.now(JST)
     if now_jst.tzinfo is None:
         now_jst = now_jst.replace(tzinfo=JST)
 
+    dom_raw = [s for s in (stores or []) if _is_domestic_store(s)]
+    live_total_people = sum(max(0, _safe_int(s.get("women"))) + max(0, _safe_int(s.get("men"))) for s in dom_raw)
+    is_fallback = (not dom_raw) or live_total_people == 0
+
+    memo_key = _reel_ctx_memo_key(dom_raw, rt, now_jst, is_fallback)
+    now_ts = time.time()
+    with _REEL_CTX_MEMO_LOCK:
+        hit = _REEL_CTX_MEMO.get(memo_key)
+        if hit and (now_ts - hit[0]) <= _REEL_CTX_MEMO_TTL_SEC:
+            _REEL_CTX_MEMO.move_to_end(memo_key)
+            return dict(hit[1])
+
+    ctx = _build_reel_context_uncached(dom_raw, rt, now_jst, is_fallback)
+    with _REEL_CTX_MEMO_LOCK:
+        _REEL_CTX_MEMO.pop(memo_key, None)
+        _REEL_CTX_MEMO[memo_key] = (now_ts, ctx)
+        while len(_REEL_CTX_MEMO) > _REEL_CTX_MEMO_MAX:
+            _REEL_CTX_MEMO.popitem(last=False)
+    return dict(ctx)
+
+
+def _build_insufficient_reel_context(rt: str, now_jst: datetime.datetime, time_label: str, wd_str: str) -> dict:
+    """Honest empty context: no live measurements -> no headcounts, no ratios, no fabricated stores."""
+    return {
+        "reel_type": rt,
+        "now_jst": now_jst,
+        "time_label": time_label,
+        "weekday_ja": wd_str,
+        "is_fallback": True,
+        "data_status": "insufficient",
+        "stores": [],
+        "active_store_count": 0,
+        "total_store_count": 0,
+        "total_women": 0,
+        "total_men": 0,
+        "overall_wpct": None,
+        "top5_volume": [],
+        "anaba_pickups": [],
+        "area_battles": [],
+        "best_ratio_zone": None,
+        "ladies_top5": [],
+        "gap_pairs": [],
+        "has_same_hub_gap": False,
+        "midnight_top4": [],
+    }
+
+
+def _build_reel_context_uncached(
+    dom_raw: list,
+    rt: str,
+    now_jst: datetime.datetime,
+    is_fallback: bool,
+) -> dict:
     weekdays_ja = ["月", "火", "水", "木", "金", "土", "日"]
     wd_str = weekdays_ja[now_jst.weekday()]
     time_label = f"{now_jst.month}/{now_jst.day}({wd_str}) {now_jst.strftime('%H:%M')}"
 
-    dom_raw = [s for s in (stores or []) if _is_domestic_store(s)]
-    live_total_people = sum(max(0, int(s.get("women") or 0)) + max(0, int(s.get("men") or 0)) for s in dom_raw)
-
-    is_fallback = False
-    if not dom_raw or live_total_people == 0:
-        dom_raw = _fallback_seed_stores()
-        is_fallback = True
+    if is_fallback:
+        return _build_insufficient_reel_context(rt, now_jst, time_label, wd_str)
 
     try:
         cached_events = events.fetch_all_events(force_refresh=False, allow_blocking=False) or []
@@ -619,7 +695,7 @@ def build_reel_context(
     total_women = sum(s["women"] for s in active_stores)
     total_men = sum(s["men"] for s in active_stores)
     total_all = total_women + total_men
-    overall_wpct = int(round((total_women / total_all) * 100)) if total_all > 0 else 50
+    overall_wpct = int(round((total_women / total_all) * 100)) if total_all > 0 else None
 
     # 1. Live Top 5 by female headcount + high-ratio (>=55%) anaba pickups
     top5_volume = sorted(
@@ -652,7 +728,8 @@ def build_reel_context(
         zw = sum(s["women"] for s in matched)
         zm = sum(s["men"] for s in matched)
         ztot = zw + zm
-        zwpct = int(round((zw / ztot) * 100)) if ztot > 0 else 50
+        # Zone without measured people keeps 0 internally (sorting/bar) and is labelled "集計待ち" on display
+        zwpct = int(round((zw / ztot) * 100)) if ztot > 0 else 0
 
         active_m = [s for s in matched if s["total"] > 0] or matched
         best_st = None
@@ -682,7 +759,8 @@ def build_reel_context(
             key=lambda idx: (area_battles[idx]["women"], area_battles[idx]["wpct"]),
         )
         area_battles[leader_idx]["is_leader"] = True
-        best_ratio_zone = max(area_battles, key=lambda z: (z["wpct"], z["women"]))
+        measured_zones = [z for z in area_battles if z["total"] > 0]
+        best_ratio_zone = max(measured_zones, key=lambda z: (z["wpct"], z["women"])) if measured_zones else None
     else:
         best_ratio_zone = None
 
@@ -748,7 +826,7 @@ def build_reel_context(
         active_stores,
         key=lambda x: (
             1 if x["women"] >= 8 else 0,
-            x["midnight_retention_pct"],
+            x["midnight_retention_pct"] if x["midnight_retention_pct"] is not None else -1,
             x["wpct"],
             x["women"],
         ),
@@ -760,7 +838,9 @@ def build_reel_context(
         "now_jst": now_jst,
         "time_label": time_label,
         "weekday_ja": wd_str,
-        "is_fallback": is_fallback,
+        "is_fallback": False,
+        "data_status": "ok",
+        "stores": active_stores,
         "active_store_count": len(active_stores),
         "total_store_count": max(60, len(enriched)),
         "total_women": total_women,
@@ -1022,8 +1102,18 @@ def build_reel_caption(
     eff_dt = _coerce_jst(now_jst)
     biz_dt = eff_dt - datetime.timedelta(hours=7)
     seed_num = biz_dt.toordinal() + sum(ord(ch) for ch in rt)
-    mode_note = "（※直近ピーク実績ベース）" if ctx["is_fallback"] else f"（{t_lbl} 時点）"
+    mode_note = f"（{t_lbl} 時点）"
     tags_line = _pick_reel_tag_line(rt, seed_num, weekday=biz_dt.weekday())
+
+    if ctx.get("data_status") == "insufficient":
+        # Honest off-hours caption: no headcounts / ratios / fabricated stores
+        caption = (
+            f"現在は営業時間外のため、リアルタイム人数の検証ログを集計準備中です（{t_lbl} 時点）。\n\n"
+            "18時以降は全国の相席ラウンジ（オリエンタルラウンジ・ag・JIS ほか）の現在人数と男女比を毎分自動更新します。\n"
+            "日中は曜日・時間帯別の統計と料金比較をプロフィールのリンク『相席ナビ』（aiseki-navi.com）で公開中です🔍\n\n"
+            f"{tags_line}"
+        )
+        return enforce_brand_rule(caption)
 
     if rt == "area_battle":
         zones = ctx["area_battles"]
@@ -1034,9 +1124,12 @@ def build_reel_caption(
             bs = z.get("best_store")
             bs_txt = f"｜狙い目：{bs['casual_name']}（女{bs['women']}:男{bs['men']}）" if bs else ""
             crown = "👑" if z.get("is_leader") else "⚡"
-            z_lines.append(
-                f"{crown} {z['label']}：女性{z['women']}名 / 男性{z['men']}名（女性比{z['wpct']}%）{bs_txt}"
-            )
+            if z.get("total", 0) > 0:
+                z_lines.append(
+                    f"{crown} {z['label']}：女性{z['women']}名 / 男性{z['men']}名（女性比{z['wpct']}%）{bs_txt}"
+                )
+            else:
+                z_lines.append(f"{crown} {z['label']}：集計待ち")
         joined_z = "\n".join(z_lines)
         lead_name = leader["label"] if leader else "新宿エリア"
         ratio_name = ratio_win["label"] if ratio_win else "梅田エリア"
@@ -1151,7 +1244,11 @@ def build_reel_caption(
     if rt == "tiktok_midnight_cliff":
         m_top = ctx.get("midnight_top4") or ctx["top5_volume"][:4]
         m_lines = "\n".join(
-            f"🌙 {idx}位：{s['ja_name']}（女{s['women']}:男{s['men']}｜終電後維持 {s['midnight_retention_pct']}%）"
+            (
+                f"🌙 {idx}位：{s['ja_name']}（女{s['women']}:男{s['men']}｜終電後維持 {s['midnight_retention_pct']}%）"
+                if s.get("midnight_retention_pct") is not None
+                else f"🌙 {idx}位：{s['ja_name']}（女{s['women']}:男{s['men']}）"
+            )
             for idx, s in enumerate(m_top[:4], start=1)
         )
         openers = (
@@ -1258,11 +1355,15 @@ def build_ai_reel_caption(
                 allowed_nums.update({str(z.get("women", 0)), str(z.get("men", 0)), str(z.get("wpct", 0))})
         elif rt_eff == "tiktok_midnight_cliff" and (ctx.get("midnight_top4") or []):
             ms0 = ctx["midnight_top4"][0]
-            symbol_line = f"{ms0.get('ja_name', '')}（女性{ms0.get('women', 0)}名・男性{ms0.get('men', 0)}名・終電後維持{ms0.get('midnight_retention_pct', 0)}%）"
+            ms_ret = ms0.get("midnight_retention_pct")
+            ret_part = f"・終電後維持{ms_ret}%" if ms_ret is not None else ""
+            symbol_line = f"{ms0.get('ja_name', '')}（女性{ms0.get('women', 0)}名・男性{ms0.get('men', 0)}名{ret_part}）"
             allowed_nums.update({
                 str(ms0.get("women", 0)), str(ms0.get("men", 0)),
-                str(ms0.get("wpct", 0)), str(ms0.get("midnight_retention_pct", 0)),
+                str(ms0.get("wpct", 0)),
             })
+            if ms_ret is not None:
+                allowed_nums.add(str(ms_ret))
         else:
             top_s = (ctx.get("top5_volume") or [{}])[0]
             symbol_line = f"{top_s.get('ja_name', '')}（女性{top_s.get('women', 0)}名・男性{top_s.get('men', 0)}名・女性比{top_s.get('wpct', 0)}%）"
@@ -1484,12 +1585,10 @@ def _get_oversized_bg_canvas(reel_type: str, image_path: str = None, image_mtime
 
     with _BG_CACHE_LOCK:
         _BG_OVERSIZED_CACHE[cache_key] = built
-        while len(_BG_OVERSIZED_CACHE) > 8:
-            _, old_im = _BG_OVERSIZED_CACHE.popitem(last=False)
-            try:
-                old_im.close()
-            except Exception:
-                pass
+        while len(_BG_OVERSIZED_CACHE) > _BG_OVERSIZED_MAX:
+            # Do not close() evicted canvases: a concurrent renderer may still be reading them.
+            # Dropping the reference lets GC free the pixels once that render finishes.
+            _BG_OVERSIZED_CACHE.popitem(last=False)
     return built
 
 
@@ -1497,9 +1596,11 @@ def _get_vignette_overlay(reel_type: str, for_video_bg: bool = False) -> Image.I
     """Return cached 720x1280 RGBA dark gradient & edge vignette overlay."""
     rt = normalize_reel_type(reel_type)
     key = (rt, bool(for_video_bg))
-    cached = _VIGNETTE_CACHE.get(key)
-    if cached is not None:
-        return cached
+    with _VIGNETTE_LOCK:
+        cached = _VIGNETTE_CACHE.get(key)
+        if cached is not None:
+            _VIGNETTE_CACHE.move_to_end(key)
+            return cached
 
     W, H = REEL_WIDTH, REEL_HEIGHT
     theme = _REEL_THEMES[rt]
@@ -1521,7 +1622,11 @@ def _get_vignette_overlay(reel_type: str, for_video_bg: bool = False) -> Image.I
         ogp_generator._draw_radial_glow(vig, (130, 170), 390, theme["glow1"])
         ogp_generator._draw_radial_glow(vig, (590, 1080), 390, theme["glow2"])
 
-    _VIGNETTE_CACHE[key] = vig
+    with _VIGNETTE_LOCK:
+        _VIGNETTE_CACHE[key] = vig
+        _VIGNETTE_CACHE.move_to_end(key)
+        while len(_VIGNETTE_CACHE) > _VIGNETTE_MAX:
+            _VIGNETTE_CACHE.popitem(last=False)  # no close(): may be in use by a concurrent frame
     return vig
 
 
@@ -1544,12 +1649,74 @@ class _ReelSceneRenderer:
         self.safe_w = self.W - self.safe_left - self.safe_right_pad
         self.top_y = 96 if self.is_tiktok else 36
         self.prog_y = 1002 if self.is_tiktok else 1208
+        # No live measurements (off-hours / all-zero) -> render an honest notice frame, never fabricated headcounts
+        self.is_insufficient = (ctx.get("data_status") == "insufficient")
 
         self.chrome_base = self._build_chrome_sprite()
-        self.scene1_sprite = self._build_scene1_hook_sprite()
-        self.scene2_header = self._build_scene2_header_sprite()
-        self.scene2_cards = self._build_scene2_card_sprites()
-        self.scene3_sprite = self._build_scene3_cta_sprite()
+        if self.is_insufficient:
+            self.scene1_sprite = self._build_offhours_notice_sprite()
+            self.scene2_header = Image.new("RGBA", (self.W, 96), (0, 0, 0, 0))
+            self.scene2_cards = []
+            self.scene3_sprite = Image.new("RGBA", (self.W, self.H), (0, 0, 0, 0))
+        else:
+            self.scene1_sprite = self._build_scene1_hook_sprite()
+            self.scene2_header = self._build_scene2_header_sprite()
+            self.scene2_cards = self._build_scene2_card_sprites()
+            self.scene3_sprite = self._build_scene3_cta_sprite()
+
+    def _build_offhours_notice_sprite(self) -> Image.Image:
+        """Clean off-hours / insufficient-data notice (no headcounts, no ratios, no fabricated numbers)."""
+        W, H = self.W, self.H
+        sp = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        draw = ogp_generator.make_safe_draw(sp, "RGBA")
+        acc = self.theme["accent"]
+        acc2 = self.theme["accent2"]
+        lx = self.safe_left
+        sw = self.safe_w
+        rx_end = lx + sw
+
+        ky = 162 if self.is_tiktok else 178
+        kicker = f"OFF-HOURS  |  {self.ctx.get('weekday_ja', '')}曜・集計準備中"
+        f_kicker = _get_reel_font(19 if self.is_tiktok else 20)
+        kw = min(sw, int(draw.textlength(kicker, font=f_kicker)) + 36)
+        draw.rounded_rectangle((lx, ky, lx + kw, ky + 46), radius=14, fill=self.theme["badge_bg"], outline=acc, width=2)
+        draw.text((lx + 18, ky + 11), kicker, font=f_kicker, fill=(255, 255, 255, 255))
+
+        hy = 250 if self.is_tiktok else 280
+        max_h_sz = 50 if self.is_tiktok else 54
+        for txt, col in (("現在 営業時間外", (255, 255, 255, 255)), ("検証ログ集計準備中", acc)):
+            fit_t, fit_f, fit_sz = ogp_generator.fit_text_and_font(draw, txt, sw, max_h_sz, 30)
+            draw.text((lx, hy + max(0, (max_h_sz - fit_sz) // 2)), fit_t, font=fit_f, fill=col)
+            hy += 80
+
+        cy1 = hy + 30
+        cy2 = cy1 + 170
+        draw.rounded_rectangle(
+            (lx, cy1, rx_end, cy2),
+            radius=24,
+            fill=(16, 20, 34, 238),
+            outline=(acc2[0], acc2[1], acc2[2], 195),
+            width=2,
+        )
+        rows = (
+            ("18時以降 リアルタイム更新", acc2, 24),
+            ("営業時間中は全国の現在人数・男女比を毎分自動集計します", (226, 232, 240, 245), 18),
+            ("日中は曜日・時間帯別の統計と料金比較を公開中", (182, 194, 212, 240), 17),
+        )
+        ry = cy1 + 26
+        for txt, col, sz in rows:
+            r_fit, r_f, _ = ogp_generator.fit_text_and_font(draw, txt, sw - 48, sz, 13)
+            draw.text((lx + 24, ry), r_fit, font=r_f, fill=col)
+            ry += sz + 22
+
+        foot = "『相席ナビ』(aiseki-navi.com) で営業時間中のリアルタイム人数を無料公開"
+        f_fit, f_f, _ = ogp_generator.fit_text_and_font(draw, foot, sw - 36, 19, 13)
+        fw = int(draw.textlength(f_fit, font=f_f)) + 36
+        fx = lx + max(0, (sw - fw) // 2)
+        fy = cy2 + 40
+        draw.rounded_rectangle((fx, fy, fx + fw, fy + 50), radius=25, fill=(24, 28, 46, 234), outline=acc, width=2)
+        draw.text((fx + 18, fy + 14), f_fit, font=f_f, fill=acc)
+        return sp
 
     def _build_chrome_sprite(self) -> Image.Image:
         W, H = self.W, self.H
@@ -1569,7 +1736,11 @@ class _ReelSceneRenderer:
         draw.rounded_rectangle((lx, ty, lx + bw, ty + 38), radius=19, fill=(18, 22, 36, 232), outline=acc, width=2)
         draw.text((lx + 13, ty + 9), brand_txt, font=f_brand, fill=acc)
 
-        time_txt = f"LIVE {self.ctx['time_label']}"
+        time_txt = (
+            f"{self.ctx['time_label']} 集計準備中"
+            if self.ctx.get("data_status") == "insufficient"
+            else f"LIVE {self.ctx['time_label']}"
+        )
         tw = int(draw.textlength(time_txt, font=f_time)) + 38
         rx1 = rx_end - tw
         self.live_dot_cx = rx1 + 15
@@ -1606,8 +1777,8 @@ class _ReelSceneRenderer:
 
         if self.rt == "tiktok_gap_shock":
             gp0 = (self.ctx.get("gap_pairs") or [None])[0]
-            hi_pct = gp0["heaven_store"]["wpct"] if gp0 else 64
-            lo_pct = gp0["crowded_store"]["wpct"] if gp0 else 36
+            hi_pct = gp0["heaven_store"]["wpct"] if gp0 else None
+            lo_pct = gp0["crowded_store"]["wpct"] if gp0 else None
             has_hub_gap = bool(self.ctx.get("has_same_hub_gap", True))
             kicker = (
                 f"LIVE RATIO GAP  |  {self.ctx['weekday_ja']}曜夜・同駅比較"
@@ -1616,7 +1787,7 @@ class _ReelSceneRenderer:
             )
             lines = [
                 ("同じ駅・徒歩4分なのに" if has_hub_gap else "同じ夜の時間帯なのに", (255, 255, 255, 255)),
-                (f"女性比 {hi_pct}% vs {lo_pct}%", acc),
+                ((f"女性比 {hi_pct}% vs {lo_pct}%" if hi_pct is not None and lo_pct is not None else "男女比はお店ごとに別物"), acc),
                 ("ドア1枚で待ち時間激変！" if has_hub_gap else "店選びで待ち時間激変！", acc2),
             ]
             sub1 = "1店舗目の男性待ち行列に並ぶ前に3秒チェック！"
@@ -1700,11 +1871,7 @@ class _ReelSceneRenderer:
             outline=(acc2[0], acc2[1], acc2[2], 195),
             width=2,
         )
-        hdr_lbl = (
-            "直近ピーク実績・国内対象店舗サマリー"
-            if self.ctx["is_fallback"]
-            else f"現在集計中の国内ラウンジ合計（{self.ctx['active_store_count']}店舗）"
-        )
+        hdr_lbl = f"現在集計中の国内ラウンジ合計（{self.ctx['active_store_count']}店舗）"
         hl_fit, f_hl, _ = ogp_generator.fit_text_and_font(draw, hdr_lbl, sw - 48, 19, 14)
         draw.text((lx + 24, cy1 + 22), hl_fit, font=f_hl, fill=acc2)
 
@@ -1712,7 +1879,11 @@ class _ReelSceneRenderer:
         sm_fit, sm_font, _ = ogp_generator.fit_text_and_font(draw, stat_main, sw - 48, 38 if self.is_tiktok else 40, 24)
         draw.text((lx + 24, cy1 + 68), sm_fit, font=sm_font, fill=(255, 255, 255, 255))
 
-        ratio_note = f"国内全体 女性比率 {self.ctx['overall_wpct']}%  ｜  オリエンタルラウンジ・ag・JIS 全国60店舗超対応"
+        ratio_note = (
+            f"国内全体 女性比率 {self.ctx['overall_wpct']}%  ｜  オリエンタルラウンジ・ag・JIS 全国60店舗超対応"
+            if self.ctx.get("overall_wpct") is not None
+            else "オリエンタルラウンジ・ag・JIS 全国60店舗超対応"
+        )
         rn_fit, rn_font, _ = ogp_generator.fit_text_and_font(draw, ratio_note, sw - 48, 18, 14)
         draw.text((lx + 24, cy1 + 142), rn_fit, font=rn_font, fill=(182, 194, 212, 240))
 
@@ -1859,7 +2030,8 @@ class _ReelSceneRenderer:
                     width=3 if is_lead else 2,
                 )
 
-                pill_txt = f"NO.1 激戦区｜女性比 {z['wpct']}%" if is_lead else f"稼働 {z['store_count']}店｜女性比 {z['wpct']}%"
+                z_pct_txt = f"女性比 {z['wpct']}%" if z.get("total", 0) > 0 else "集計待ち"
+                pill_txt = f"NO.1 激戦区｜{z_pct_txt}" if is_lead else f"稼働 {z['store_count']}店｜{z_pct_txt}"
                 pw = int(draw.textlength(pill_txt, font=f_pill)) + 28
                 px = cw - 20 - pw
                 pill_fill = (168, 88, 14, 235) if is_lead else (14, 96, 134, 235)
@@ -1959,8 +2131,14 @@ class _ReelSceneRenderer:
                 pill_txt = "待ち0・即案内圏" if is_vip else "スムーズ相席圏"
                 pill_bg = (158, 72, 108, 238) if is_vip else (88, 52, 92, 235)
             elif self.rt == "tiktok_midnight_cliff":
-                pill_txt = f"深夜維持 {st['midnight_retention_pct']}%"
-                pill_bg = (146, 102, 28, 238) if st["midnight_retention_pct"] >= 78 else (14, 116, 144, 238)
+                mr = st.get("midnight_retention_pct")
+                if mr is not None:
+                    pill_txt = f"深夜維持 {mr}%"
+                    pill_bg = (146, 102, 28, 238) if mr >= 78 else (14, 116, 144, 238)
+                else:
+                    # No measured retention -> show the live ratio instead of a fabricated retention %
+                    pill_txt = f"女性比 {st['wpct']}%"
+                    pill_bg = (14, 116, 144, 238)
             else:
                 pill_txt = f"女性比 {st['wpct']}%"
                 pill_bg = (190, 24, 93, 238) if st["wpct"] >= 55 else (14, 116, 144, 238)
@@ -1991,7 +2169,7 @@ class _ReelSceneRenderer:
                 stat_col = (244, 198, 152, 255)
                 left_ratio = max(0.08, min(0.92, st["mpct"] / 100.0))
             else:
-                lbl_pfx = "実績目安" if self.ctx["is_fallback"] else "現在人数"
+                lbl_pfx = "現在人数"
                 stat_s = f"{lbl_pfx}：女性 {st['women']}名  /  男性 {st['men']}名（女性比 {st['wpct']}%）"
                 stat_col = (244, 114, 182, 255)
                 left_ratio = max(0.08, min(0.92, st["wpct"] / 100.0))
@@ -2053,7 +2231,7 @@ class _ReelSceneRenderer:
             sub = "23時20分の終電崖を越えても盛り上がる上位ラウンジ"
             pick_rows = [
                 (
-                    f"維持率 {s['midnight_retention_pct']}%",
+                    (f"維持率 {s['midnight_retention_pct']}%" if s.get("midnight_retention_pct") is not None else "深夜候補"),
                     s["ja_name"],
                     f"現在 女性 {s['women']}名 / 男性 {s['men']}名（{s['area_label']}）",
                 )
@@ -2070,7 +2248,7 @@ class _ReelSceneRenderer:
                     (
                         f"女性 {z['best_store']['women']}名 / 男性 {z['best_store']['men']}名（女性比 {z['best_store']['wpct']}%）"
                         if z.get("best_store")
-                        else f"エリア女性比 {z['wpct']}%"
+                        else (f"エリア女性比 {z['wpct']}%" if z.get("total", 0) > 0 else "エリア集計待ち")
                     ),
                 )
                 for z in zones[:3]
@@ -2194,6 +2372,16 @@ class _ReelSceneRenderer:
         acc = self.theme["accent"]
         py = self.prog_y
         draw.rounded_rectangle((lx, py, lx + prog_w, py + 6), radius=3, fill=(*acc, 245))
+
+        if getattr(self, "is_insufficient", False):
+            # Static honest notice for the whole clip (fade-in only)
+            n_alpha = _fade_window(t, 0.0, REEL_DURATION_SEC + 0.1, fade_in=0.38, fade_out=0.0)
+            if n_alpha > 0.01:
+                sp_n = _apply_opacity(self.scene1_sprite, n_alpha)
+                canvas.alpha_composite(sp_n)
+                if sp_n is not self.scene1_sprite:
+                    sp_n.close()
+            return
 
         s1_end = 2.04 if self.is_tiktok else 2.22
         s2_start = 1.98 if self.is_tiktok else 2.18
@@ -2350,7 +2538,29 @@ def render_reel_preview_frame_jpeg(
     Render a 720x1280 JPEG preview frame at `sec` (default 6.0s) purely with Pillow.
     Guaranteed to succeed 100% of the time even in environments without FFmpeg.
     """
+    frames = render_reel_preview_frames_jpeg(
+        stores,
+        reel_type=reel_type,
+        secs=(float(sec),),
+        now_jst=now_jst,
+        quality=quality,
+    )
+    return frames[0]
+
+
+def render_reel_preview_frames_jpeg(
+    stores: list,
+    reel_type: str = "live_top5",
+    secs=(1.2, 6.0),
+    now_jst: datetime.datetime = None,
+    quality: int = 88,
+) -> list:
+    """
+    Render multiple 720x1280 JPEG preview frames (one per entry in `secs`) while building
+    the `_ReelSceneRenderer` sprites only once (Visual QA gate needs 2 frames per inspection).
+    """
     rt = normalize_reel_type(reel_type)
+    sec_list = [float(s) for s in (secs or (6.0,))]
     ctx = build_reel_context(stores, reel_type=rt, now_jst=now_jst)
     bg_info = list_available_backgrounds(reel_type=rt, now_jst=now_jst)
     _, _, im_path, im_mtime = _resolve_bg_paths(bg_info)
@@ -2360,21 +2570,23 @@ def render_reel_preview_frame_jpeg(
         image_mtime=im_mtime,
         bg_variant=bg_info.get("bg_variant", 0),
     )
+    q = max(55, min(96, int(quality)))
+    kb_mode = bg_info.get("ken_burns_mode", "zoom_in_up")
 
+    out = []
     renderer = _ReelSceneRenderer(ctx)
     try:
-        rgb_frame = renderer.render_full_rgb_frame(
-            float(sec),
-            bg_oversized,
-            ken_burns_mode=bg_info.get("ken_burns_mode", "zoom_in_up"),
-        )
+        for s_val in sec_list:
+            rgb_frame = renderer.render_full_rgb_frame(s_val, bg_oversized, ken_burns_mode=kb_mode)
+            try:
+                buf = io.BytesIO()
+                rgb_frame.save(buf, format="JPEG", quality=q)
+                out.append(buf.getvalue())
+            finally:
+                rgb_frame.close()
     finally:
         renderer.close()
-
-    buf = io.BytesIO()
-    rgb_frame.save(buf, format="JPEG", quality=max(55, min(96, int(quality))))
-    rgb_frame.close()
-    return buf.getvalue()
+    return out
 
 
 def _compute_reel_cache_key(stores: list, rt: str, bg_info: dict, now_jst: datetime.datetime = None) -> str:
@@ -2421,7 +2633,7 @@ def _prune_tmp_reel_dir(now_ts: float):
 
 _PINNED_SLOT_LOCK = threading.Lock()
 _PINNED_SLOT_CACHE = collections.OrderedDict()
-_PINNED_SLOT_MAX = 6
+_PINNED_SLOT_MAX = 3  # RAM pin copies only; Redis/turbo_store pin is the source of truth
 
 
 def pin_shared_reel_mp4_slot(reel_type: str, slot_token: str, mp4_bytes: bytes, ttl_sec: int = None) -> bool:
@@ -2593,6 +2805,7 @@ def _encode_with_ffmpeg(
             out_mp4_path,
         ]
 
+    use_fg_only = bool(use_video_bg and bg_video_path and os.path.isfile(bg_video_path))
     with tempfile.TemporaryFile() as stderr_f:
         proc = subprocess.Popen(
             cmd,
@@ -2600,28 +2813,43 @@ def _encode_with_ffmpeg(
             stdout=subprocess.DEVNULL,
             stderr=stderr_f,
         )
+        finished_ok = False
         try:
-            for f_idx in range(REEL_TOTAL_FRAMES):
-                t_sec = f_idx / float(REEL_FPS)
-                if use_video_bg and bg_video_path and os.path.isfile(bg_video_path):
-                    fg = renderer.render_foreground_rgba(t_sec, include_video_vignette=True)
-                    raw_bytes = fg.tobytes()
-                    fg.close()
-                else:
-                    rgb = renderer.render_full_rgb_frame(t_sec, bg_oversized, ken_burns_mode=kb_mode)
-                    raw_bytes = rgb.tobytes()
-                    rgb.close()
-                proc.stdin.write(raw_bytes)
-        except BrokenPipeError:
-            pass
-        finally:
             try:
-                if proc.stdin:
-                    proc.stdin.close()
-            except Exception:
+                for f_idx in range(REEL_TOTAL_FRAMES):
+                    t_sec = f_idx / float(REEL_FPS)
+                    if use_fg_only:
+                        fg = renderer.render_foreground_rgba(t_sec, include_video_vignette=True)
+                        raw_bytes = fg.tobytes()
+                        fg.close()
+                    else:
+                        rgb = renderer.render_full_rgb_frame(t_sec, bg_oversized, ken_burns_mode=kb_mode)
+                        raw_bytes = rgb.tobytes()
+                        rgb.close()
+                    proc.stdin.write(raw_bytes)
+            except BrokenPipeError:
                 pass
+            finally:
+                try:
+                    if proc.stdin:
+                        proc.stdin.close()
+                except Exception:
+                    pass
 
-        ret = proc.wait(timeout=45)
+            ret = proc.wait(timeout=45)
+            finished_ok = True
+        finally:
+            # Any exception (render crash, TimeoutExpired, KeyboardInterrupt) -> never leave a zombie ffmpeg
+            if not finished_ok and proc.poll() is None:
+                try:
+                    proc.kill()
+                except Exception:
+                    pass
+                try:
+                    proc.wait(timeout=5)
+                except Exception:
+                    pass
+
         if ret != 0 or not os.path.isfile(out_mp4_path) or os.path.getsize(out_mp4_path) < 1024:
             stderr_f.seek(0)
             err_msg = stderr_f.read().decode("utf-8", errors="replace")[:400]
@@ -2686,6 +2914,8 @@ def render_reel_mp4_bytes(
                 mp4_data = shared_exact[0]
                 with _MEM_CACHE_LOCK:
                     _MEM_MP4_CACHE[cache_key] = {"ts": now_ts, "bytes": mp4_data, "reel_type": rt}
+                    while len(_MEM_MP4_CACHE) > _MEM_MP4_MAX:
+                        _MEM_MP4_CACHE.popitem(last=False)
                 return mp4_data
         except Exception:
             pass

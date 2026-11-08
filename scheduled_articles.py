@@ -256,14 +256,15 @@ def is_published(slug_or_item, now_jst: datetime.datetime = None) -> bool:
     item = slug_or_item if isinstance(slug_or_item, dict) else get_article_by_slug(str(slug_or_item))
     if not item:
         return True  # Non-scheduled legacy articles are already public
-    return now_jst >= parse_publish_at(item["publish_at"])
+    return now_jst >= parse_publish_at(item.get("publish_at"))
 
 
 def get_published_articles(now_jst: datetime.datetime = None, allow_blocking: bool = False) -> list:
     """Return scheduled articles whose publish_at has arrived, sorted newest first."""
     now_jst = _coerce_naive_jst(now_jst)
     published = [item for item in get_all_scheduled_articles(allow_blocking=allow_blocking) if is_published(item, now_jst=now_jst)]
-    published.sort(key=lambda x: x["publish_at"], reverse=True)
+    # Sort by parsed datetime (mixed "YYYY-MM-DD HH:MM" / ISO "T" / "+09:00" formats sort wrongly as strings)
+    published.sort(key=lambda x: parse_publish_at(x.get("publish_at")), reverse=True)
     return published
 
 
@@ -271,7 +272,7 @@ def get_upcoming_articles(now_jst: datetime.datetime = None, allow_blocking: boo
     """Return scheduled articles waiting for release, sorted soonest first."""
     now_jst = _coerce_naive_jst(now_jst)
     upcoming = [item for item in get_all_scheduled_articles(allow_blocking=allow_blocking) if not is_published(item, now_jst=now_jst)]
-    upcoming.sort(key=lambda x: x["publish_at"])
+    upcoming.sort(key=lambda x: parse_publish_at(x.get("publish_at")))
     return upcoming
 
 
@@ -279,7 +280,7 @@ def get_all_with_status(now_jst: datetime.datetime = None, allow_blocking: bool 
     """Return all scheduled articles with live `published` boolean flag for `/staff` dashboard."""
     now_jst = _coerce_naive_jst(now_jst)
     out = []
-    for item in sorted(get_all_scheduled_articles(allow_blocking=allow_blocking), key=lambda x: x["publish_at"]):
+    for item in sorted(get_all_scheduled_articles(allow_blocking=allow_blocking), key=lambda x: parse_publish_at(x.get("publish_at"))):
         copy_item = dict(item)
         copy_item["published"] = is_published(item, now_jst=now_jst)
         out.append(copy_item)

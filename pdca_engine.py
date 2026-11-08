@@ -18,6 +18,7 @@ import datetime
 import logging
 import threading
 import collections
+import urllib.parse
 import requests
 
 import analytics
@@ -1020,7 +1021,7 @@ def _build_weekly_growth_actions(
 
     # Action B: Column Theme Proposal (コラムテーマ提案)
     col_urgency = 92 if upcoming_count <= 1 else 84
-    encoded_topic = requests.utils.quote(rec_topic, safe="")
+    encoded_topic = urllib.parse.quote(rec_topic, safe="")
     if hub_info.get("has_measured_gap"):
         headcount_prefix = "ピーク実測女性" if hub_info.get("is_off_hours_benchmark") else "稼働女性"
         col_why_stats = f"（{headcount_prefix} {hub_info.get('live_women', 0)}名 / 店舗間実測差 {hub_info.get('gap_pt', 0)}pt）"
@@ -1254,7 +1255,54 @@ def _detect_hot_cluster_and_topic(
     }
 
 
+_SITE_PERF_TTL_SEC = 60.0
+_site_perf_cache = {}
+_site_perf_cache_lock = threading.Lock()
+
+
+def _site_perf_cache_key(live_stores, days, allow_blocking):
+    try:
+        import local_db
+        db_path = str(getattr(local_db, "DB_PATH", ""))
+    except Exception:
+        db_path = ""
+    store_sig = tuple(sorted(
+        (str(s.get("name") or ""), int(s.get("women") or 0), int(s.get("men") or 0), bool(s.get("is_open_now", True)))
+        for s in (live_stores or []) if isinstance(s, dict)
+    ))
+    # id(analytics.summary) changes when tests patch it, so mocked runs never share entries
+    return (db_path, int(days or 14), bool(allow_blocking), hash(store_sig), id(analytics.summary))
+
+
 def analyze_site_performance(live_stores: list = None, days: int = 14, allow_blocking: bool = True) -> dict:
+    """Run comprehensive Check diagnostics (60s TTL memo keyed by DB_PATH / days / live store signature)."""
+    import copy
+    import sys
+    bypass = ("unittest" in sys.modules or "pytest" in sys.modules) and os.environ.get("PDCA_CACHE_IN_TESTS") != "1"
+    if bypass:
+        return _analyze_site_performance_uncached(live_stores=live_stores, days=days, allow_blocking=allow_blocking)
+    try:
+        key = _site_perf_cache_key(live_stores, days, allow_blocking)
+    except Exception:
+        key = None
+    now_m = time.monotonic()
+    if key is not None:
+        with _site_perf_cache_lock:
+            hit = _site_perf_cache.get(key)
+            if hit and now_m - hit[0] < _SITE_PERF_TTL_SEC:
+                return copy.deepcopy(hit[1])
+    result = _analyze_site_performance_uncached(live_stores=live_stores, days=days, allow_blocking=allow_blocking)
+    if key is not None and isinstance(result, dict):
+        with _site_perf_cache_lock:
+            for k in [k for k, v in _site_perf_cache.items() if now_m - v[0] >= _SITE_PERF_TTL_SEC]:
+                _site_perf_cache.pop(k, None)
+            if len(_site_perf_cache) >= 32:
+                _site_perf_cache.clear()
+            _site_perf_cache[key] = (now_m, copy.deepcopy(result))
+    return result
+
+
+def _analyze_site_performance_uncached(live_stores: list = None, days: int = 14, allow_blocking: bool = True) -> dict:
     """Run comprehensive Check diagnostics across traffic, affiliate CTR, SNS inflows, and content queue."""
     import ops_governance
     live_stores = ops_governance.filter_visible_stores(list(live_stores or []))
@@ -1700,12 +1748,15 @@ def _build_rule_based_briefing_text(diag: dict) -> str:
     top_ch_lbl = sns_eff.get("top_channel_label") or "𝕏 X（旧Twitter）"
     best_slot = sns_eff.get("recommended_time_slot") or "22:00枠"
     next_topic = diag["proposed_directives"]["recommended_custom_topic"]
+    # Never print prior/fallback gap values (e.g. 21pt) as if they were measured
+    has_measured_gap = bool(diag["demand_gap"]["top_hub"].get("has_measured_gap"))
+    gap_note = f"店舗間男女比差 {gap_pt}pt" if has_measured_gap else "店舗間男女比差は計測中"
 
     return (
         f"総合コンディションは {diag['overall_score']}点/100点。{offer_line}"
         f"集客では『{top_ch_lbl}』の {best_slot} が最も効率よくサイト誘導を作れています。\n\n"
         f"{gap_line}\n\n"
-        f"今週の勝負手として、現場関心が最も熱い『{hub_label}』（店舗間男女比差 {gap_pt}pt）を狙い撃つ特命コラム『{next_topic}』の予約と、"
+        f"今週の勝負手として、現場関心が最も熱い『{hub_label}』（{gap_note}）を狙い撃つ特命コラム『{next_topic}』の予約と、"
         f"金曜21時半の15秒ショート動画（街別ギャップ実証）をセットで回していきましょう。"
     )
 

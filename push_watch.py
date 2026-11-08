@@ -204,6 +204,38 @@ def get_vapid_public_key(allow_blocking: bool = True) -> str:
     return get_or_create_vapid_keys(allow_blocking=allow_blocking)["public_key"]
 
 
+_pem_key_cache = {"digest": None, "key": None}
+_pem_key_lock = threading.Lock()
+_push_http_session = None
+_push_http_session_lock = threading.Lock()
+PUSH_FLUSH_EVERY = 20
+PUSH_RUN_BUDGET_SEC = 100.0
+
+
+def _load_private_key_cached(private_pem: str):
+    """Parse the VAPID PEM once per key (keyed by SHA-256 of the PEM; the PEM itself is never logged)."""
+    digest = hashlib.sha256(private_pem.encode("ascii")).hexdigest()
+    with _pem_key_lock:
+        if _pem_key_cache["digest"] == digest and _pem_key_cache["key"] is not None:
+            return _pem_key_cache["key"]
+    key = serialization.load_pem_private_key(private_pem.encode("ascii"), password=None)
+    with _pem_key_lock:
+        _pem_key_cache["digest"] = digest
+        _pem_key_cache["key"] = key
+    return key
+
+
+def _get_push_http():
+    """Shared Keep-Alive Session for push services; plain `requests` when `requests.post` is mocked in tests."""
+    global _push_http_session
+    if getattr(requests.post, "__module__", "") != "requests.api":
+        return requests
+    with _push_http_session_lock:
+        if _push_http_session is None:
+            _push_http_session = requests.Session()
+        return _push_http_session
+
+
 def build_vapid_authorization_header(
     endpoint: str,
     private_pem: str,
@@ -224,7 +256,7 @@ def build_vapid_authorization_header(
         ).encode("utf-8")
     )
     signing_input = f"{header_b64}.{claims_b64}".encode("ascii")
-    priv_key = serialization.load_pem_private_key(private_pem.encode("ascii"), password=None)
+    priv_key = _load_private_key_cached(private_pem)
     der_sig = priv_key.sign(signing_input, ec.ECDSA(hashes.SHA256()))
     r_int, s_int = decode_dss_signature(der_sig)
     raw_sig = r_int.to_bytes(32, "big") + s_int.to_bytes(32, "big")
@@ -291,7 +323,7 @@ def send_web_push_message(subscription: dict, payload_obj: dict, timeout_sec: fl
         "Urgency": "normal",
     }
     try:
-        resp = requests.post(
+        resp = _get_push_http().post(
             endpoint,
             data=encrypted_body,
             headers=headers,
@@ -386,62 +418,85 @@ def dispatch_matching_watch_pushes(
             store_map[canon] = s
             store_map[raw_n] = s
 
-    notified_hashes = []
+    notified_hashes = []   # pending (not yet persisted) successful sends
     dead_endpoints = []
     sent_count = 0
     auth_fail = 0
     cond_memo = {}
+    run_started = time.monotonic()
+    budget_exhausted = False
 
-    for sub in subs:
-        last_ts = str(sub.get("last_notified_at") or "").strip()[:19]
-        if last_ts and last_ts >= cooldown_cutoff:
-            continue
-        sname = sub["store_name"]
-        st = store_map.get(sname)
-        if not st:
-            continue
-        cond = sub["target_cond"]
-        memo_key = (sname, cond)
-        matched = cond_memo.get(memo_key)
-        if matched is None:
-            matched = does_store_match_watch_condition(st, cond)
-            cond_memo[memo_key] = matched
-        if not matched:
-            continue
+    def _flush_notified():
+        # Persist cooldown marks incrementally so a crash / timeout mid-run never re-sends to the same users
+        if not notified_hashes:
+            return
+        batch = list(notified_hashes)
+        try:
+            local_db.mark_web_push_notified(batch, notified_at_str=now_str)
+            del notified_hashes[:len(batch)]
+        except Exception as err:
+            logger.error(f"[push_watch] mark_web_push_notified failed for {len(batch)} subs: {err}")
 
-        w = int(st.get("women") or 0)
-        m = int(st.get("men") or 0)
-        tot = max(1, w + m)
-        wpct = round((w / tot) * 100)
-        seo_n = store_master.seo_name(sname)
-        slug = store_master.slug_of(sname)
-        cond_ja = CONDITION_LABELS_JA.get(cond, "希望条件")
-        target_url = f"/store/{slug}?s=push_watch" if slug else "/?s=push_watch"
-
-        payload = {
-            "title": f"{seo_n}｜{cond_ja}に到達",
-            "body": f"現在 女性{w}名 : 男性{m}名（女性比{wpct}%）。リアルタイム推移と近隣比較を確認できます。",
-            "url": target_url,
-            "tag": f"aiseki-watch-{slug or 'top'}",
-        }
-        ok, status_code = send_web_push_message(sub, payload)
-        if ok:
-            sent_count += 1
-            notified_hashes.append(sub["endpoint_hash"])
-        elif status_code in (404, 410):
-            dead_endpoints.append(sub["endpoint"])
-        elif status_code in (401, 403):
-            auth_fail += 1
-            if auth_fail >= 3:
-                logger.error("[push_watch] Repeated 401/403: VAPID key mismatch suspected; refreshing cache and aborting run")
-                with _vapid_lock:
-                    _cached_vapid_keys = None
+    try:
+        for sub in subs:
+            if time.monotonic() - run_started > PUSH_RUN_BUDGET_SEC:
+                budget_exhausted = True
+                logger.warning("[push_watch] run budget exceeded; remaining subscriptions deferred to next cycle")
                 break
+            last_ts = str(sub.get("last_notified_at") or "").strip()[:19]
+            if last_ts and last_ts >= cooldown_cutoff:
+                continue
+            sname = sub["store_name"]
+            st = store_map.get(sname)
+            if not st:
+                continue
+            cond = sub["target_cond"]
+            memo_key = (sname, cond)
+            matched = cond_memo.get(memo_key)
+            if matched is None:
+                matched = does_store_match_watch_condition(st, cond)
+                cond_memo[memo_key] = matched
+            if not matched:
+                continue
 
-    if notified_hashes:
-        local_db.mark_web_push_notified(notified_hashes, notified_at_str=now_str)
+            w = int(st.get("women") or 0)
+            m = int(st.get("men") or 0)
+            tot = max(1, w + m)
+            wpct = round((w / tot) * 100)
+            seo_n = store_master.seo_name(sname)
+            slug = store_master.slug_of(sname)
+            cond_ja = CONDITION_LABELS_JA.get(cond, "希望条件")
+            target_url = f"/store/{slug}?s=push_watch" if slug else "/?s=push_watch"
+
+            payload = {
+                "title": f"{seo_n}｜{cond_ja}に到達",
+                "body": f"現在 女性{w}名 : 男性{m}名（女性比{wpct}%）。リアルタイム推移と近隣比較を確認できます。",
+                "url": target_url,
+                "tag": f"aiseki-watch-{slug or 'top'}",
+            }
+            ok, status_code = send_web_push_message(sub, payload)
+            if ok:
+                sent_count += 1
+                notified_hashes.append(sub["endpoint_hash"])
+                if len(notified_hashes) >= PUSH_FLUSH_EVERY:
+                    _flush_notified()
+            elif status_code in (404, 410):
+                dead_endpoints.append(sub["endpoint"])
+            elif status_code in (401, 403):
+                auth_fail += 1
+                if auth_fail >= 3:
+                    logger.error("[push_watch] Repeated 401/403: VAPID key mismatch suspected; refreshing cache and aborting run")
+                    with _vapid_lock:
+                        _cached_vapid_keys = None
+                    break
+    finally:
+        _flush_notified()
+
     purged_count = local_db.purge_dead_web_push_endpoints(dead_endpoints) if dead_endpoints else 0
-    return {"checked": len(subs), "sent": sent_count, "purged": purged_count}
+    result = {"checked": len(subs), "sent": sent_count, "purged": purged_count}
+    if budget_exhausted:
+        result["budget_exhausted"] = True
+    return result
 
 
 # =====================================================================

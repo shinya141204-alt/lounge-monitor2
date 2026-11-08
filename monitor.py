@@ -168,9 +168,17 @@ def _extract_oriental_stores_from_html(raw_html: bytes) -> list:
     return store_data
 
 
-def _resolve_doh_ipv4(hostname: str) -> list:
+def _remaining(deadline_mono) -> float:
+    """Seconds left until deadline (inf when no deadline)."""
+    if deadline_mono is None:
+        return float('inf')
+    return deadline_mono - time.monotonic()
+
+
+def _resolve_doh_ipv4(hostname: str, deadline_mono: float = None) -> list:
     """Resolve authoritative IPv4 A records via RFC 8484 JSON DoH (Google & Cloudflare)
-    when the container's local VPC DNS resolver serves a stale NS cache during domain migration."""
+    when the container's local VPC DNS resolver serves a stale NS cache during domain migration.
+    Timeouts shrink with `deadline_mono` so the whole OLG fetch stays inside the 18s hard timeout."""
     now = time.monotonic()
     with _doh_lock:
         if _doh_ip_cache['ips'] and now < _doh_ip_cache['expires_at']:
@@ -183,11 +191,17 @@ def _resolve_doh_ipv4(hostname: str) -> list:
     sess = _get_http_session('doh')
     resolved_ips = []
     for endpoint in doh_endpoints:
+        left = _remaining(deadline_mono)
+        # Keep >=2.0s for the actual HTTPS fetch after resolution
+        if left < 3.0:
+            logging.warning(f"DoH lookup skipped ({left:.1f}s left before deadline)")
+            break
+        budget = min(5.0, left - 2.0)
         try:
             resp = sess.get(
                 endpoint,
                 headers={'Accept': 'application/dns-json', 'User-Agent': _HEADERS['User-Agent']},
-                timeout=(3, 5),
+                timeout=(min(3.0, budget), budget),
             )
             if resp.status_code != 200:
                 continue
@@ -209,10 +223,11 @@ def _resolve_doh_ipv4(hostname: str) -> list:
     return resolved_ips
 
 
-def _fetch_oriental_via_doh() -> tuple:
+def _fetch_oriental_via_doh(deadline_mono: float = None) -> tuple:
     """Fetch oriental-lounge.com directly from its authoritative IPv4 address with full TLS
-    certificate & SNI hostname verification (`CERT_REQUIRED` + `assert_hostname='oriental-lounge.com'`)."""
-    ips = _resolve_doh_ipv4('oriental-lounge.com')
+    certificate & SNI hostname verification (`CERT_REQUIRED` + `assert_hostname='oriental-lounge.com'`).
+    Each request timeout is clipped to the remaining `deadline_mono` budget."""
+    ips = _resolve_doh_ipv4('oriental-lounge.com', deadline_mono=deadline_mono)
     if not ips:
         return [], "DoH returned no A records"
 
@@ -223,6 +238,9 @@ def _fetch_oriental_via_doh() -> tuple:
         'Accept-Encoding': 'gzip',
     }
     for ip in ips:
+        if _remaining(deadline_mono) < 2.0:
+            last_doh_err = f"{last_doh_err} | deadline reached before trying {ip}"
+            break
         try:
             with _doh_lock:
                 pool = _doh_pools.get(ip)
@@ -242,7 +260,16 @@ def _fetch_oriental_via_doh() -> tuple:
             path = '/'
             resp = None
             for _ in range(3):
-                resp = pool.request('GET', path, headers=req_headers, redirect=False, decode_content=True)
+                left = _remaining(deadline_mono)
+                if left < 1.5:
+                    raise TimeoutError(f"deadline reached during DoH fetch ({left:.1f}s left)")
+                req_timeout = urllib3.Timeout(connect=min(4.0, left - 0.5), read=min(10.0, left - 0.5)) \
+                    if deadline_mono is not None else None
+                if req_timeout is not None:
+                    resp = pool.request('GET', path, headers=req_headers, redirect=False,
+                                        decode_content=True, timeout=req_timeout)
+                else:
+                    resp = pool.request('GET', path, headers=req_headers, redirect=False, decode_content=True)
                 if resp.status in (301, 302, 303, 307, 308):
                     loc = resp.headers.get('Location') or ''
                     if loc.startswith('https://oriental-lounge.com/'):
@@ -347,7 +374,7 @@ def get_oriental_data(deadline_mono: float = None):
 
     # Fallback 1: Bypass stale local VPC NS cache via RFC 8484 DoH + verified TLS SNI pool (only if budget remains)
     if not is_mocked and (eff_deadline - time.monotonic()) >= 3.5:
-        doh_stores, doh_err = _fetch_oriental_via_doh()
+        doh_stores, doh_err = _fetch_oriental_via_doh(deadline_mono=eff_deadline - 0.5)
         if doh_stores:
             with _olg_cache_lock:
                 _olg_cache['data'] = list(doh_stores)

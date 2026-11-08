@@ -49,18 +49,34 @@ _turbo_loaded = False
 _last_turbo_sync_mono = 0.0
 _last_sheet_try = 0.0
 _cache_epoch = 0
+_data_version = 0          # bumped whenever _keys membership / _kv values change
+_neg_cache = {}            # prefix -> (_cache_epoch, _data_version) for confirmed-missing prefixes
+_TURBO_SYNC_INTERVAL_S = 5.0
+_TURBO_SYNC_INTERVAL_TEST_S = 1.5
+_SHEETS_CELL_SAFE_LIMIT = 45000  # Google Sheets hard limit is 50,000 chars per cell
 
 
 def _now_str():
     return datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).strftime('%Y-%m-%d %H:%M:%S')
 
 
-def _derive_stream(nonce: bytes, length: int) -> bytes:
-    secret = (
-        os.environ.get('JOB_STATE_SECRET')
-        or os.environ.get('FLASK_SECRET_KEY')
-        or 'aiseki-navi-job-state-v1'
-    ).encode('utf-8')
+_LEGACY_OBF_SECRET = 'aiseki-navi-job-state-v1'
+
+
+def _candidate_secrets() -> list:
+    """Key priority: JOB_STATE_SECRET → SECRET_KEY → FLASK_SECRET_KEY → legacy literal (deduplicated)."""
+    out = []
+    for name in ('JOB_STATE_SECRET', 'SECRET_KEY', 'FLASK_SECRET_KEY'):
+        v = os.environ.get(name)
+        if v and v not in out:
+            out.append(v)
+    if _LEGACY_OBF_SECRET not in out:
+        out.append(_LEGACY_OBF_SECRET)
+    return out
+
+
+def _derive_stream(nonce: bytes, length: int, secret_str: str = None) -> bytes:
+    secret = (secret_str if secret_str is not None else _candidate_secrets()[0]).encode('utf-8')
     out = bytearray()
     counter = 0
     while len(out) < length:
@@ -81,24 +97,40 @@ def _obfuscate_secret(plain: str) -> str:
     return f"{_OBF_PREFIX}{encoded}"
 
 
+def _looks_like_plain_secret(s: str) -> bool:
+    """obf1 has no MAC; a wrong key yields random bytes. API tokens are printable text, so require that."""
+    return bool(s) and s.isprintable()
+
+
 def _deobfuscate_secret(stored: str) -> str:
     if not stored or not stored.startswith(_OBF_PREFIX):
         return stored
     try:
         blob = base64.urlsafe_b64decode(stored[len(_OBF_PREFIX):].encode('ascii'))
-        if len(blob) < 8:
-            return stored
-        nonce, xored = blob[:8], blob[8:]
-        mask = _derive_stream(nonce, len(xored))
-        return bytes(a ^ b for a, b in zip(xored, mask)).decode('utf-8')
     except Exception:
-        return stored
+        blob = b''
+    if len(blob) >= 9:
+        nonce, xored = blob[:8], blob[8:]
+        # Try current priority keys first, then the legacy literal (tokens saved before the key change)
+        for secret_str in _candidate_secrets():
+            try:
+                mask = _derive_stream(nonce, len(xored), secret_str)
+                plain = bytes(a ^ b for a, b in zip(xored, mask)).decode('utf-8')
+            except Exception:
+                continue
+            if _looks_like_plain_secret(plain):
+                return plain
+    # Never hand the raw "obf1:..." blob to API clients as if it were a token
+    import logging
+    logging.warning("[job_state] Failed to decode obfuscated token with any known key; treating as empty.")
+    return ''
 
 
 def _ingest_entry(entry: str):
     """Register a raw key or KV entry into ordered `_keys` / `_kv`."""
     if not entry:
         return
+    global _data_version
     m = _KV_ENTRY_RE.match(entry)
     if m:
         pfx, ts, raw_val = m.group(1), m.group(2), m.group(3)
@@ -107,9 +139,12 @@ def _ingest_entry(entry: str):
             _kv_ts[pfx] = ts
             val = _deobfuscate_secret(raw_val) if pfx.startswith('token:') else raw_val
             _kv[pfx] = val
+            _data_version += 1
         return
     if entry in _keys:
         del _keys[entry]
+    else:
+        _data_version += 1
     _keys[entry] = None
 
 
@@ -125,8 +160,9 @@ def _trimmed_history_list(keys_iter) -> list:
 
 def _ensure_local_loaded_locked():
     """`_lock` 保持中にローカルキャッシュを初期化する（ネットワーク通信なし・0.1ms未満）。"""
-    global _keys, _kv, _kv_ts, _local_loaded
+    global _keys, _kv, _kv_ts, _local_loaded, _data_version
     if _keys is None:
+        _data_version += 1
         _keys = {}
         _kv = {}
         _kv_ts = {}
@@ -167,6 +203,7 @@ def _ensure_local_loaded_locked():
                             eff_ts = explicit_ts or mtime_ts
                             if not eff_ts or eff_ts >= _kv_ts.get(ks, ''):
                                 _kv[ks] = _deobfuscate_secret(vs) if ks.startswith('token:') else vs
+                                _data_version += 1
                                 if eff_ts:
                                     _kv_ts[ks] = eff_ts
                 _local_loaded = True
@@ -177,10 +214,12 @@ def _ensure_local_loaded_locked():
 
 def _merge_turbo_snapshot_if_needed(force: bool = False):
     """Merge shared state from Redis / PostgreSQL / test bus so `web` and `worker` stay in sync (<1ms)."""
-    global _keys, _turbo_loaded, _last_turbo_sync_mono
+    global _keys, _turbo_loaded, _last_turbo_sync_mono, _data_version
     import time
     now_m = time.monotonic()
-    if not force and _turbo_loaded and (now_m - _last_turbo_sync_mono < 1.5):
+    # 5s in production (cuts Redis/PG round-trips per request); keep legacy 1.5s under DISABLE_SHEETS test runs
+    interval = _TURBO_SYNC_INTERVAL_TEST_S if os.environ.get('DISABLE_SHEETS') == '1' else _TURBO_SYNC_INTERVAL_S
+    if not force and _turbo_loaded and (now_m - _last_turbo_sync_mono < interval):
         return
     snap = turbo_store.state_load_snapshot()
     if snap is None:
@@ -193,7 +232,10 @@ def _merge_turbo_snapshot_if_needed(force: bool = False):
         for pfx, raw_v in (snap.get('kv') or {}).items():
             ts_s = str(kv_ts_map.get(pfx) or '')
             if not ts_s or ts_s >= _kv_ts.get(pfx, ''):
-                _kv[pfx] = _deobfuscate_secret(raw_v) if str(pfx).startswith('token:') else raw_v
+                new_v = _deobfuscate_secret(raw_v) if str(pfx).startswith('token:') else raw_v
+                if _kv.get(pfx) != new_v:
+                    _data_version += 1
+                _kv[pfx] = new_v
                 if ts_s:
                     _kv_ts[pfx] = ts_s
         _keys = {k: None for k in _trimmed_history_list(_keys.keys())}
@@ -345,7 +387,15 @@ def get_value(prefix, allow_blocking: bool = True, default=None):
         keys = _ensure_local_loaded_locked()
         if _kv is not None and prefix in _kv:
             return _kv[prefix]
+        # Negative cache: skip O(3000) linear scan for prefixes already confirmed missing at this data version
+        neg_stamp = (_cache_epoch, _data_version)
+        if _neg_cache.get(prefix) == neg_stamp:
+            return default
         matched = [k for k in keys if k.startswith(full_prefix)]
+        if not matched:
+            if len(_neg_cache) >= 512:
+                _neg_cache.clear()
+            _neg_cache[prefix] = neg_stamp
     if not matched:
         return default
     matched.sort()
@@ -360,15 +410,25 @@ def set_value(prefix, val):
     val_str = "" if val is None else str(val)
     ts = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).strftime('%Y%m%d%H%M%S')
     now_s = _now_str()
+    global _data_version
     _ensure_loaded(allow_blocking=False)
     with _lock:
         _ensure_local_loaded_locked()
         _kv[str(prefix)] = val_str
         _kv_ts[str(prefix)] = ts
+        _data_version += 1
         _save_local()
     sheet_val = _obfuscate_secret(val_str) if str(prefix).startswith('token:') else val_str
     turbo_store.state_set_kv(str(prefix), sheet_val, ts, now_s)
     entry = f"{prefix}={ts}|{sheet_val}"
+    if len(entry) > _SHEETS_CELL_SAFE_LIMIT:
+        # Google Sheets rejects cells >50,000 chars; PG/Redis/local JSON already hold the value
+        import logging
+        logging.warning(
+            f"[job_state] value for '{prefix}' is {len(entry)} chars (> {_SHEETS_CELL_SAFE_LIMIT}); "
+            "skipping Google Sheets backup append."
+        )
+        return
     sheets_store.append_rows_async(SHEET_TITLE, HEADER, [[entry, now_s]])
 
 
@@ -376,6 +436,7 @@ def reset_cache_for_tests():
     global _keys, _kv, _kv_ts, _local_loaded, _sheets_loaded, _turbo_loaded, _last_turbo_sync_mono, _last_sheet_try, _cache_epoch
     with _lock:
         _cache_epoch += 1
+        _neg_cache.clear()
         _keys = None
         _kv = None
         _kv_ts = None

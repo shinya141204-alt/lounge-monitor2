@@ -6,7 +6,7 @@ import re
 import threading
 import time
 
-from flask import Blueprint, Response, abort, jsonify, request, send_from_directory
+from flask import Blueprint, Response, abort, jsonify, request, send_from_directory, session
 from werkzeug.exceptions import HTTPException
 
 from routes._bridge import core
@@ -49,9 +49,10 @@ def dynamic_live_ogp_image():
     bucket_10m = f"{now_jst.strftime('%Y%m%d%H')}_{(now_jst.minute // 10) * 10:02d}"
     import ops_governance
     with core.data_lock:
-        stores = ops_governance.filter_visible_stores(list(core.latest_data.get('full_data') or []))
+        raw_copy = list(core.latest_data.get('full_data') or [])
         last_u = core.latest_data.get('last_updated')
         is_s = bool(core.latest_data.get('is_seed'))
+    stores = ops_governance.filter_visible_stores(raw_copy)
     # Key by resolved_slot (3 fixed slots) rather than raw `s` query param so random `?s=<uuid>` cannot bust cache
     ogp_key = ('live', resolved_slot, bucket_10m, core._live_data_signature(stores, last_u, is_s))
     now_mono = time.monotonic()
@@ -124,7 +125,10 @@ def public_ig_slide_png(slide_num):
     clamped = max(1, min(5, slide_num))
     is_jpg = request.path.endswith('.jpg')
     try:
-        ctx = core._get_sns_kit_context(fast=False)
+        # Public fetchers (Meta Graph API crawlers, anonymous visitors) must never trigger a full
+        # weekly-report regeneration; only master-authorized requests may take the slow path.
+        is_privileged = bool(core.is_master_authorized())
+        ctx = core._get_sns_kit_context(fast=not is_privileged)
         img_bytes = core._render_cached_ig_slide_bytes(clamped, is_jpg=is_jpg, ctx=ctx)
         resp = Response(img_bytes, mimetype='image/jpeg' if is_jpg else 'image/png')
         resp.headers['Cache-Control'] = 'public, max-age=300'
@@ -159,7 +163,8 @@ def public_reel_mp4(reel_type):
     slot_token = re.sub(r'[^A-Za-z0-9_.-]', '', (request.args.get('s') or '').strip())[:32]
     import ops_governance
     with core.data_lock:
-        live_s = ops_governance.filter_visible_stores(list(core.latest_data.get('full_data') or []))
+        raw_copy = list(core.latest_data.get('full_data') or [])
+    live_s = ops_governance.filter_visible_stores(raw_copy)
     try:
         mp4_bytes = None
         if wants_refresh and preview_tok and preview_tok != 'init':
@@ -169,6 +174,24 @@ def public_reel_mp4(reel_type):
         if not mp4_bytes and slot_token and not force_refresh:
             mp4_bytes = reel_generator.get_pinned_reel_mp4_slot(rt, slot_token)
         if not mp4_bytes:
+            # CPU DoS guard: anonymous callers may only enter the (potentially FFmpeg-bound) render path
+            # 12×/10min per IP. Range continuations of an already-started playback are exempt so normal
+            # <video> seeking is never broken; testing mode is exempt for Range/pin regression suites.
+            if (
+                not core.app.testing
+                and not is_cont_range
+                and not session.get('is_staff')
+                and not session.get('is_master')
+                and not core._secret_header_ok()
+            ):
+                if not core.turbo_store.check_sliding_rate_limit(
+                    'media_render_ip', core.get_client_ip(), limit=12, window_sec=600
+                ):
+                    resp_rl = jsonify({'ok': False, 'error': 'Media rendering temporarily throttled'})
+                    resp_rl.status_code = 503
+                    resp_rl.headers['Retry-After'] = '60'
+                    resp_rl.headers['Cache-Control'] = 'no-store'
+                    return resp_rl
             mp4_bytes = reel_generator.render_reel_mp4_bytes(live_s, reel_type=rt, force_refresh=force_refresh)
             if can_mutate_reel:
                 if wants_refresh and preview_tok and preview_tok != 'init':
@@ -220,9 +243,10 @@ def public_reel_preview_jpg(reel_type):
     )
     import ops_governance
     with core.data_lock:
-        live_s = ops_governance.filter_visible_stores(list(core.latest_data.get('full_data') or []))
+        raw_copy = list(core.latest_data.get('full_data') or [])
         last_u = core.latest_data.get('last_updated')
         is_s = bool(core.latest_data.get('is_seed'))
+    live_s = ops_governance.filter_visible_stores(raw_copy)
     jpg_key = ('reel_jpg', rt, core._live_data_signature(live_s, last_u, is_s))
     now_mono = time.monotonic()
     ogp_cache = core._ogp_bytes_cache
@@ -279,8 +303,9 @@ def precompute_editorial_and_media_bundle(
     core.restore_latest_data_if_empty()
     import ops_governance
     with core.data_lock:
-        live_s = ops_governance.filter_visible_stores(list(core.latest_data.get('full_data') or []))
+        raw_copy = list(core.latest_data.get('full_data') or [])
         is_seed = bool(core.latest_data.get('is_seed'))
+    live_s = ops_governance.filter_visible_stores(raw_copy)
 
     summary = {
         'ok': True,

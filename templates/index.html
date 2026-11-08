@@ -146,9 +146,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="相席ナビ">
 
-    <link rel="stylesheet" href="/static/style.css?v=20261108_2" fetchpriority="high">
+    <link rel="stylesheet" href="/static/style.css?v=20261108_3" fetchpriority="high">
     <link rel="stylesheet" href="/static/calm.css?v=40" fetchpriority="high">
-    <link rel="preload" href="/static/app.js?v=20261108_2" as="script">
+    <link rel="preload" href="/static/app.js?v=20261108_3" as="script">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- Non-render-blocking web font (avoids waiting on Google Fonts at PWA cold launch) -->
@@ -167,7 +167,7 @@
     </script>
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
-    <script src="/static/affiliate_config.js?v=17" defer></script>
+    <script src="/static/affiliate_config.js?v=18" defer></script>
     {% endif %}
     <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
     <style>
@@ -819,7 +819,7 @@
                                     </div>
                                     <h3 class="store-name">{% if s.ssr_is_dup %}<span class="store-brand-prefix">{{ s.ssr_brand }} </span><span class="store-branch-name">{{ s.ssr_disp }}</span>{% else %}<span class="store-branch-name">{{ s.ssr_title }}</span>{% endif %}{% if not is_staff and s.ssr_event_badge %}<span class="event-tag-badge" title="{{ s.ssr_event_title }}">{{ s.ssr_event_badge }}</span>{% endif %}</h3>
                                     <p class="cm-human-line">{{ ssr_human_copy }}</p>
-                                    <div class="store-micro-metrics{% if not (s.core_time_short and s.midnight_retention_pct) %} hidden{% endif %}">{% if s.core_time_short and s.midnight_retention_pct %}狙い目 {{ s.core_time_short }} <span class="micro-sep">｜</span> 終電後 {{ s.midnight_retention_pct }}%（{{ s.midnight_label_short }}）{% endif %}</div>
+                                    <div class="store-micro-metrics{% if not s.core_time_short %} hidden{% endif %}">{% if s.core_time_short %}狙い目 {{ s.core_time_short }}{% if s.midnight_retention_pct is number %} <span class="micro-sep">｜</span> 終電後 {{ s.midnight_retention_pct | round | int }}%{% if s.midnight_label_short %}（{{ s.midnight_label_short }}）{% endif %}{% endif %}{% endif %}</div>
                                     {% set ssr_has_guest = ((s.women or 0) + (s.men or 0)) > 0 or (s.wait_estimate and (s.wait_estimate.est_men_wait_groups or 0) > 0) %}
                                     {% set ssr_w_badge = ((s.wait_estimate.wait_badge_men | clean_badge) if (s.wait_estimate and ssr_has_guest) else '') %}
                                     {% set ssr_f_badge = ((s.forecast_60m.badge_men | clean_badge) if s.forecast_60m else '') %}
@@ -1056,15 +1056,19 @@
                                 }
                             }
                             var mc = item.querySelector('.store-micro-metrics');
-                            if (mc && d.ct && d.mr) {
+                            if (mc && d.ct) {
                                 mc.classList.remove('hidden');
                                 mc.textContent = '';
-                                mc.appendChild(document.createTextNode('狙い目 ' + d.ct + ' '));
-                                var sep = document.createElement('span');
-                                sep.className = 'micro-sep';
-                                sep.textContent = '｜';
-                                mc.appendChild(sep);
-                                mc.appendChild(document.createTextNode(' 終電後 ' + d.mr + '%（' + (d.ml || '深夜安定') + '）'));
+                                mc.appendChild(document.createTextNode('狙い目 ' + d.ct));
+                                // d.mr is only present when measured (ssr_payload); no fabricated label fallback
+                                if (d.mr !== null && d.mr !== undefined && isFinite(Number(d.mr))) {
+                                    mc.appendChild(document.createTextNode(' '));
+                                    var sep = document.createElement('span');
+                                    sep.className = 'micro-sep';
+                                    sep.textContent = '｜';
+                                    mc.appendChild(sep);
+                                    mc.appendChild(document.createTextNode(' 終電後 ' + Math.round(Number(d.mr)) + '%' + (d.ml ? '（' + d.ml + '）' : '')));
+                                }
                             }
                             var mrEl = item.querySelector('.moat-signals-row');
                             if (mrEl && (d.wb || d.fb)) {
@@ -2790,7 +2794,7 @@
         window.INITIAL_STATUS_DATA = {{ (initial_status_client or initial_status) | tojson }};
     </script>
     {% endif %}
-    <script src="/static/app.js?v=20261108_2" defer></script>
+    <script src="/static/app.js?v=20261108_3" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
@@ -2806,11 +2810,22 @@
                 }
                 if (window.__swRegistered) return;
                 window.__swRegistered = true;
-                navigator.serviceWorker.register('/sw.js?v=104', { updateViaCache: 'none' })
+                navigator.serviceWorker.register('/sw.js?v=105', { updateViaCache: 'none' })
                     .then(function(reg) {
-                        reg.update();
+                        // Throttle SW update checks to once per 10 minutes (shared via sessionStorage across tab navigations)
+                        var maybeUpdate = function() {
+                            try {
+                                var KEY = 'aiseki_sw_update_at';
+                                var last = Number(sessionStorage.getItem(KEY) || 0);
+                                var nowTs = Date.now();
+                                if (last && nowTs - last < 600000) return;
+                                sessionStorage.setItem(KEY, String(nowTs));
+                            } catch (e) {}
+                            if (reg && reg.update) reg.update().catch(function() {});
+                        };
+                        maybeUpdate();
                         document.addEventListener('visibilitychange', function() {
-                            if (document.visibilityState === 'visible') reg.update();
+                            if (document.visibilityState === 'visible') maybeUpdate();
                         });
                     })
                     .catch(function(error) { console.log('SW registration failed:', error); });
@@ -2818,7 +2833,7 @@
         }
     </script>
     {% if not is_staff and not session.get('is_staff') %}
-    <script defer src="/static/cta_tracker.js?v=3"></script>
+    <script defer src="/static/cta_tracker.js?v=4"></script>
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
          crossorigin="anonymous"></script>
     {% endif %}

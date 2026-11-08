@@ -1626,6 +1626,23 @@ def _describe_wmo_code(code: int, precip: float) -> tuple:
     return ("晴れ", False)
 
 
+_WEATHER_NEGATIVE_TTL_SEC = 180
+
+
+def _store_weather_negative_cache(reason: str):
+    """Cache an `available=False` result for 180s so outages don't spawn a fetch thread per request."""
+    _weather_cache["ts"] = time.time()
+    _weather_cache["data"] = {
+        "available": False,
+        "summary": "気象データ一時取得不可",
+        "adlib_hint": "",
+        "is_rainy": False,
+        "temps": [],
+        "negative": True,
+        "reason": reason,
+    }
+
+
 def _refresh_weather_sync():
     try:
         resp = requests.get(
@@ -1644,8 +1661,14 @@ def _refresh_weather_sync():
             if len(items) >= 2:
                 tk_cur = items[0].get("current") or {}
                 os_cur = items[1].get("current") or {}
-                tk_temp = int(round(float(tk_cur.get("temperature_2m", 18))))
-                os_temp = int(round(float(os_cur.get("temperature_2m", 19))))
+                tk_raw = tk_cur.get("temperature_2m")
+                os_raw = os_cur.get("temperature_2m")
+                if tk_raw is None or os_raw is None:
+                    # No fabricated fallback temperatures: treat as unavailable.
+                    _store_weather_negative_cache("temperature_missing")
+                    return None
+                tk_temp = int(round(float(tk_raw)))
+                os_temp = int(round(float(os_raw)))
                 tk_desc, tk_rain = _describe_wmo_code(
                     int(tk_cur.get("weather_code", 0)),
                     float(tk_cur.get("precipitation", 0.0)),
@@ -1680,8 +1703,12 @@ def _refresh_weather_sync():
                 _weather_cache["ts"] = time.time()
                 _weather_cache["data"] = result
                 return result
+            _store_weather_negative_cache("unexpected_payload")
+        else:
+            _store_weather_negative_cache(f"http_{resp.status_code}")
     except Exception as e:
         logger.debug(f"Open-Meteo weather fetch skipped: {e}")
+        _store_weather_negative_cache("exception")
     finally:
         _weather_cache["fetching"] = False
     return None
@@ -1695,8 +1722,10 @@ def fetch_live_weather_context(force_network: bool = False, allow_blocking: bool
     """
     now_t = time.time()
     cached_data = _weather_cache.get("data")
-    if not force_network and cached_data and (now_t - _weather_cache["ts"] < 1800):
-        return cached_data
+    if not force_network and cached_data:
+        ttl = _WEATHER_NEGATIVE_TTL_SEC if cached_data.get("negative") else 1800
+        if now_t - _weather_cache["ts"] < ttl:
+            return cached_data
 
     if os.environ.get("DISABLE_SCHEDULER") == "1" and not force_network:
         return {
@@ -3149,7 +3178,13 @@ def _write_tiktok_candidates(
     })
 
     # 4) tiktok_midnight_reverse: 23:20 Last-Train Cliff ("終電崖") & late-night survivors
-    mid_ret_val = int(focus.get("midnight_retention_pct") or 82)
+    _mid_ret_raw = focus.get("midnight_retention_pct")
+    try:
+        mid_ret_val = int(round(float(_mid_ret_raw))) if _mid_ret_raw is not None else None
+    except (TypeError, ValueError):
+        mid_ret_val = None
+    # No dummy fallback: omit the retention note entirely when not measured.
+    mid_ret_note = f"（維持率{mid_ret_val}%目安）" if mid_ret_val is not None else ""
     tt_tags_mid = pick_rotated_hashtag_line(
         "tiktok",
         "tiktok_midnight",
@@ -3170,7 +3205,7 @@ def _write_tiktok_candidates(
     script_mid = (
         f"🎬【動画テンプレ連動】🎵 終電崖×深夜穴場（tiktok_midnight_cliff / 11.5秒・UIセーフゾーン設計）\n"
         f"・0.0〜2.0秒（インサイトフック）：「23時20分の『終電崖』で人が消える店 vs 残る店」\n"
-        f"・2.0〜8.5秒（深夜強い店TOP4）：{focus['ja_name']}（維持率{mid_ret_val}%目安）ほか現在人数アニメーション\n"
+        f"・2.0〜8.5秒（深夜強い店TOP4）：{focus['ja_name']}{mid_ret_note}ほか現在人数アニメーション\n"
         f"・8.5〜11.5秒（保存CTA）：「2軒目・終電後の保険に保存📌『相席ナビ』で無料公開中」\n"
         f"🎵【推奨BGMムード】深夜ドライブ系チルシンセ / ナイトシティポップ"
     )
@@ -3476,7 +3511,11 @@ def verify_ai_factual_numbers(text: str, research: dict, channel: str = "x") -> 
 
     allowed_women = {10, int(research.get("total_women") or 0)}
     allowed_men = {0, int(research.get("total_men") or 0)}
-    allowed_pct = {15, 20, 25, 50, 55, 60}
+    # Generic % set limited to round reference values; 55/60 removed because they
+    # read as plausible live female ratios and would let hallucinated ratios slip through.
+    allowed_pct = {15, 20, 25, 50}
+    # Editorial threshold rules (e.g. 「女性比55%以上」) are allowed only as explicit thresholds.
+    threshold_pct = {50, 55, 60}
     allowed_diff = set()
     canon_facts = {}
     alias_to_canon = {}
@@ -3592,8 +3631,10 @@ def verify_ai_factual_numbers(text: str, research: dict, channel: str = "x") -> 
         if val not in allowed_men:
             bad.append(f"男性{val}")
 
-    for m_p in re.finditer(r"(?:女性比(?:率)?|平均女性比)\s*(\d+)\s*%", text):
+    for m_p in re.finditer(r"(?:女性比(?:率)?|平均女性比)\s*(\d+)\s*%\s*(以上|超)?", text):
         val = int(m_p.group(1))
+        if m_p.group(2) and val in threshold_pct:
+            continue
         if val not in allowed_pct:
             bad.append(f"女性比{val}%")
 

@@ -48,7 +48,7 @@ def _flush_analytics_safe():
 
 
 def _x_scheduled_job(slot_lbl="20:00"):
-    if not turbo_store.acquire_distributed_lock(f"cron:x:{slot_lbl}", ttl_sec=55):
+    if not turbo_store.acquire_distributed_lock(f"cron:x:{slot_lbl}", ttl_sec=55, fail_open=False):
         return
     try:
         import ops_governance
@@ -67,7 +67,7 @@ def _x_scheduled_job(slot_lbl="20:00"):
 
 
 def _x_weekly_sun_job():
-    if not turbo_store.acquire_distributed_lock("cron:x_weekly", ttl_sec=90):
+    if not turbo_store.acquire_distributed_lock("cron:x_weekly", ttl_sec=90, fail_open=False):
         return
     try:
         import sns_editorial
@@ -79,7 +79,7 @@ def _x_weekly_sun_job():
 
 
 def _tip_18_job():
-    if not turbo_store.acquire_distributed_lock("cron:x_tip:1800", ttl_sec=55):
+    if not turbo_store.acquire_distributed_lock("cron:x_tip:1800", ttl_sec=55, fail_open=False):
         return
     try:
         import sns_editorial
@@ -96,7 +96,7 @@ def _tip_18_job():
 
 
 def _note_check_job():
-    if not turbo_store.acquire_distributed_lock("cron:note_check", ttl_sec=120):
+    if not turbo_store.acquire_distributed_lock("cron:note_check", ttl_sec=120, fail_open=False):
         return
     try:
         import note_poster
@@ -106,7 +106,7 @@ def _note_check_job():
 
 
 def _threads_daily_job():
-    if not turbo_store.acquire_distributed_lock("cron:threads:2200", ttl_sec=55):
+    if not turbo_store.acquire_distributed_lock("cron:threads:2200", ttl_sec=55, fail_open=False):
         return
     try:
         import ops_governance
@@ -129,7 +129,7 @@ def _threads_daily_job():
 
 
 def _threads_ladies_job():
-    if not turbo_store.acquire_distributed_lock("cron:threads_ladies:1930", ttl_sec=55):
+    if not turbo_store.acquire_distributed_lock("cron:threads_ladies:1930", ttl_sec=55, fail_open=False):
         return
     try:
         import ops_governance
@@ -148,7 +148,7 @@ def _threads_ladies_job():
 
 def _ig_reel_scheduled_job(slot_lbl="20:00"):
     """Scheduled Plan B 2x/day IG Reel post (daily 20:00 + active-night 22:50, 5-template rotation + grid protection)."""
-    if not turbo_store.acquire_distributed_lock(f"cron:ig_reel:{slot_lbl}", ttl_sec=120):
+    if not turbo_store.acquire_distributed_lock(f"cron:ig_reel:{slot_lbl}", ttl_sec=120, fail_open=False):
         return
     try:
         import ops_governance
@@ -174,7 +174,7 @@ def _ig_reel_scheduled_job(slot_lbl="20:00"):
 
 def _tiktok_inbox_scheduled_job(slot_lbl="20:35"):
     """Scheduled Wed/Fri/Sat Phase 2 TikTok Inbox push (zero overhead when token or toggle is off)."""
-    if not turbo_store.acquire_distributed_lock(f"cron:tiktok:{slot_lbl}", ttl_sec=120):
+    if not turbo_store.acquire_distributed_lock(f"cron:tiktok:{slot_lbl}", ttl_sec=120, fail_open=False):
         return
     try:
         import ops_governance
@@ -196,6 +196,9 @@ def _tiktok_inbox_scheduled_job(slot_lbl="20:35"):
 
 
 def _crawl_events_job():
+    # Idempotent but heavy (60+ external pages): avoid duplicate crawls during rolling deploys (fail-open on Redis outage)
+    if not turbo_store.acquire_distributed_lock("cron:events_crawl", ttl_sec=900):
+        return
     try:
         import data_audit
         import events
@@ -215,7 +218,7 @@ def _scheduled_articles_release_job():
 
 
 def _bonus_alert_check_job():
-    if not turbo_store.acquire_distributed_lock("cron:bonus_alert", ttl_sec=55):
+    if not turbo_store.acquire_distributed_lock("cron:bonus_alert", ttl_sec=55, fail_open=False):
         return
     try:
         import bonus_alert
@@ -361,6 +364,48 @@ def build_worker_scheduler() -> BackgroundScheduler:
     return scheduler
 
 
+SNS_ORPHAN_RUNNING_MINUTES = 15
+
+
+def _rescue_orphaned_sns_jobs(max_age_minutes: int = SNS_ORPHAN_RUNNING_MINUTES) -> int:
+    """
+    On boot, mark SNS jobs stuck in `running` for >= 15 minutes (worker crashed / redeployed mid-run) as `failed`.
+    They are NOT re-executed automatically: SNS posting is non-idempotent and may already have been published,
+    so the operator re-triggers from the dashboard after checking the platform.
+    """
+    import datetime as _dt
+    jst = _dt.timezone(_dt.timedelta(hours=9))
+    now_naive = _dt.datetime.now(jst).replace(tzinfo=None)
+    rescued = 0
+    try:
+        jobs = turbo_store.list_recent_sns_jobs(limit=50) or []
+    except Exception as err:
+        logger.warning(f"[worker] orphan SNS job scan skipped: {err}")
+        return 0
+    for job in jobs:
+        if not isinstance(job, dict) or job.get("status") != "running":
+            continue
+        started = str(job.get("started_at") or job.get("created_at") or "")[:19]
+        try:
+            started_dt = _dt.datetime.strptime(started, "%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            continue
+        if (now_naive - started_dt).total_seconds() < max_age_minutes * 60:
+            continue
+        try:
+            turbo_store.complete_sns_job(
+                job.get("job_id"),
+                result=None,
+                error=f"orphaned: still running after {max_age_minutes}m at worker boot (not auto-retried; verify platform before re-trigger)",
+            )
+            rescued += 1
+        except Exception as err:
+            logger.warning(f"[worker] failed to finalize orphan SNS job {job.get('job_id')}: {err}")
+    if rescued:
+        logger.warning(f"[worker] Finalized {rescued} orphaned SNS job(s) stuck in running state.")
+    return rescued
+
+
 def _sns_queue_consumer_loop(stop_event: threading.Event):
     """Continuously drain `/api/sns-jobs` tasks enqueued from the master dashboard or `?async=1` triggers."""
     logger.info("[worker] Async SNS job queue consumer started.")
@@ -443,6 +488,7 @@ def run_worker():
     local_db.init_db()
     turbo_store.init_postgres_aux_schema()
     app_module.restore_latest_data_if_empty()
+    _rescue_orphaned_sns_jobs()
 
     # Priority #1: fetch live 53-store headcounts immediately and broadcast to Redis
     try:

@@ -6,6 +6,8 @@ ops_governance.py - オーナー運用ガバナンス（緊急非表示スイッ
 秘密情報（カスタムスタッフパスコード・Webhook URL）は `token:*` プレフィックスにより難読化保存されます。
 """
 import datetime
+import hashlib
+import hmac
 import ipaddress
 import json
 import os
@@ -29,15 +31,24 @@ BRAND_OPTIONS = [
     {"key": "alfa", "label": "相席ラウンジALFA"},
 ]
 VALID_BRAND_KEYS = {b["key"] for b in BRAND_OPTIONS}
-MAX_STORED_INQUIRIES = 50
+# Google Sheets 1セル 50,000文字上限を確実に下回るよう 30件 × 本文400字に制限
+MAX_STORED_INQUIRIES = 30
+MAX_INBOX_MESSAGE_CHARS = 400
+HIDDEN_MEMO_TTL_SEC = 2.0
 
 _mem_lock = threading.Lock()
 _gov_write_lock = threading.Lock()
 _unread_memo = {"mono": 0.0, "data": {"unread_total": 0, "unread_priority": 0}}
+_hidden_lock = threading.Lock()
+_hidden_memo = {"mono": 0.0, "key": None, "gen": 0, "hb": frozenset(), "hs": frozenset()}
+
+
+def _now_jst() -> datetime.datetime:
+    return datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
 
 
 def _now_jst_str() -> str:
-    return datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).strftime("%Y-%m-%d %H:%M:%S")
+    return _now_jst().strftime("%Y-%m-%d %H:%M:%S")
 
 
 def ops_brand_key_of(store_name: str) -> str:
@@ -93,10 +104,8 @@ def _parse_json_list(raw_val) -> list:
         return []
 
 
-def get_hidden_brands() -> set:
-    """非表示指定中のブランドキー集合（管理画面設定 ＋ 環境変数 `HIDDEN_BRANDS`）。"""
+def _compute_hidden_brands_uncached(env_raw: str) -> frozenset:
     out = set()
-    env_raw = (os.environ.get("HIDDEN_BRANDS") or "").strip()
     if env_raw:
         for tok in env_raw.split(","):
             t = tok.strip().lower()
@@ -107,13 +116,11 @@ def get_hidden_brands() -> set:
         t = str(tok or "").strip().lower()
         if t in VALID_BRAND_KEYS:
             out.add(t)
-    return out
+    return frozenset(out)
 
 
-def get_hidden_stores() -> set:
-    """非表示指定中の個別店舗キー集合（管理画面設定 ＋ 環境変数 `HIDDEN_STORES`）。"""
+def _compute_hidden_stores_uncached(env_raw: str) -> frozenset:
     out = set()
-    env_raw = (os.environ.get("HIDDEN_STORES") or "").strip()
     if env_raw:
         for tok in env_raw.split(","):
             canon = store_master.to_internal_store_name(tok.strip())
@@ -124,7 +131,59 @@ def get_hidden_stores() -> set:
         canon = store_master.to_internal_store_name(str(tok or "").strip())
         if canon:
             out.add(canon)
-    return out
+    return frozenset(out)
+
+
+def _hidden_memo_key() -> tuple:
+    """env 文字列・job_state のキャッシュ世代・JOB_STATE_DIR・get_value 実体（mock差し替え）をキーに含め、
+    単体テストで env / ストレージが動的に変わっても古い結果を返さない。"""
+    return (
+        (os.environ.get("HIDDEN_BRANDS") or "").strip(),
+        (os.environ.get("HIDDEN_STORES") or "").strip(),
+        getattr(job_state, "_cache_epoch", 0),
+        os.environ.get("JOB_STATE_DIR") or "",
+        id(getattr(job_state, "get_value", None)),
+        id(getattr(store_master, "to_internal_store_name", None)),
+    )
+
+
+def invalidate_governance_cache() -> None:
+    """非表示設定のメモリキャッシュを即時無効化する（設定変更時・テスト用）。"""
+    with _hidden_lock:
+        _hidden_memo["mono"] = 0.0
+        _hidden_memo["key"] = None
+        _hidden_memo["gen"] = _hidden_memo.get("gen", 0) + 1
+
+
+def _get_hidden_sets() -> tuple:
+    """(hidden_brands, hidden_stores) を 2.0秒 TTL でメモ化して返す（毎回の job_state スキャンを排除）。"""
+    key = _hidden_memo_key()
+    now_m = time.monotonic()
+    with _hidden_lock:
+        if (
+            _hidden_memo["mono"] > 0
+            and _hidden_memo["key"] == key
+            and (now_m - _hidden_memo["mono"]) < HIDDEN_MEMO_TTL_SEC
+        ):
+            return _hidden_memo["hb"], _hidden_memo["hs"]
+        gen_before = _hidden_memo.get("gen", 0)
+    hb = _compute_hidden_brands_uncached(key[0])
+    hs = _compute_hidden_stores_uncached(key[1])
+    with _hidden_lock:
+        # 計算中に無効化（設定変更）が入った場合は古い結果を保存しない
+        if _hidden_memo.get("gen", 0) == gen_before:
+            _hidden_memo.update({"mono": now_m, "key": key, "hb": hb, "hs": hs})
+    return hb, hs
+
+
+def get_hidden_brands() -> set:
+    """非表示指定中のブランドキー集合（管理画面設定 ＋ 環境変数 `HIDDEN_BRANDS`）。"""
+    return set(_get_hidden_sets()[0])
+
+
+def get_hidden_stores() -> set:
+    """非表示指定中の個別店舗キー集合（管理画面設定 ＋ 環境変数 `HIDDEN_STORES`）。"""
+    return set(_get_hidden_sets()[1])
 
 
 def is_brand_hidden(brand_slug: str) -> bool:
@@ -133,11 +192,14 @@ def is_brand_hidden(brand_slug: str) -> bool:
     return brand_slug.strip().lower() in get_hidden_brands()
 
 
-def is_store_hidden(store_name: str) -> bool:
+def is_store_hidden(store_name: str, hb=None, hs=None) -> bool:
+    """`hb` / `hs` を渡すとループ内でも O(1) 判定（省略時は内部メモから取得）。"""
     if not store_name:
         return False
-    hb = get_hidden_brands()
-    hs = get_hidden_stores()
+    if hb is None:
+        hb = get_hidden_brands()
+    if hs is None:
+        hs = get_hidden_stores()
     if not hb and not hs:
         return False
     canon = store_master.to_internal_store_name(store_name) or store_name
@@ -147,12 +209,14 @@ def is_store_hidden(store_name: str) -> bool:
     return bkey in hb
 
 
-def filter_visible_stores(stores: list) -> list:
+def filter_visible_stores(stores: list, hb=None, hs=None) -> list:
     """非表示ブランド・非表示店舗をリアルタイム一覧・SNS自動投稿対象から即時除外する。"""
     if not stores:
         return []
-    hb = get_hidden_brands()
-    hs = get_hidden_stores()
+    if hb is None:
+        hb = get_hidden_brands()
+    if hs is None:
+        hs = get_hidden_stores()
     if not hb and not hs:
         return list(stores)
     visible = []
@@ -194,6 +258,7 @@ def set_brand_hidden(brand_key: str, hidden: bool) -> dict:
         else:
             cur.discard(bkey)
         job_state.set_value("ops:hidden_brands", json.dumps(sorted(cur), ensure_ascii=False))
+        invalidate_governance_cache()
     _purge_http_caches()
     return {"ok": True, "brand_key": bkey, "hidden": bool(hidden), "hidden_brands": sorted(get_hidden_brands())}
 
@@ -214,6 +279,7 @@ def set_store_hidden(store_name_or_slug: str, hidden: bool) -> dict:
         else:
             cur.discard(canon)
         job_state.set_value("ops:hidden_stores", json.dumps(sorted(cur), ensure_ascii=False))
+        invalidate_governance_cache()
     _purge_http_caches()
     return {
         "ok": True,
@@ -293,25 +359,69 @@ def list_inquiries(limit: int = 50, allow_blocking: bool = False) -> list:
     return valid[: max(1, int(limit))]
 
 
+def mask_email(email: str) -> str:
+    """`alice@example.com` -> `a***@example.com`（受信箱・job_state には生メールを保持しない）。"""
+    e = (email or "").strip()
+    if not e:
+        return ""
+    if "@" not in e:
+        return "***"
+    local, _, domain = e.rpartition("@")
+    head = local[:1] if local else ""
+    return f"{head}***@{domain[:100]}"
+
+
+def _pii_hash_secret() -> bytes:
+    import sys
+    app_mod = sys.modules.get("app")
+    sk = getattr(getattr(app_mod, "app", None), "secret_key", None) if app_mod is not None else None
+    sk = sk or os.environ.get("SECRET_KEY") or "aiseki-navi-inquiry-pii"
+    return str(sk).encode("utf-8")
+
+
+def hash_email(email: str) -> str:
+    """同一送信者の重複判定用 HMAC-SHA256（復元不可）。"""
+    e = (email or "").strip().lower()
+    if not e:
+        return ""
+    return hmac.new(_pii_hash_secret(), f"inquiry_email:{e}".encode("utf-8"), hashlib.sha256).hexdigest()[:24]
+
+
+def _scrub_legacy_inquiry(it: dict) -> dict:
+    """旧形式（生メール・600字本文）の保存済みエントリを書き込み時にマスク・切り詰めする。"""
+    out = dict(it)
+    em = str(out.get("email") or "")
+    if em and "***" not in em:
+        out["email"] = mask_email(em)
+        out["email_hash"] = hash_email(em)
+        out["has_email"] = True
+    out["message"] = str(out.get("message") or "")[:MAX_INBOX_MESSAGE_CHARS]
+    return out
+
+
 def record_inquiry(data: dict, received_at: str, ip_hash: str, category_label: str = "") -> dict:
-    """新規お問い合わせを管理画面受信箱へ記録する（最新50件保持）。"""
+    """新規お問い合わせを管理画面受信箱へ記録する（最新30件・本文400字・メールはマスク＋HMACのみ保持）。
+    生メールアドレスは Google Sheets の `Contact Inquiries` 専用シート側にのみ保存される。"""
     cat = str((data or {}).get("category") or "other").strip()
     is_prio = cat in ("removal", "correction")
+    raw_email = str((data or {}).get("email") or "")[:120]
     entry = {
-        "id": f"inq_{datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d%H%M%S')}_{secrets.token_hex(3)}",
+        "id": f"inq_{_now_jst().strftime('%Y%m%d%H%M%S')}_{secrets.token_hex(3)}",
         "received_at": received_at or _now_jst_str(),
         "category": cat,
         "category_label": category_label or cat,
         "is_priority": is_prio,
         "name": str((data or {}).get("name") or "")[:60],
-        "email": str((data or {}).get("email") or "")[:120],
-        "message": str((data or {}).get("message") or "")[:600],
+        "email": mask_email(raw_email),
+        "email_hash": hash_email(raw_email),
+        "has_email": bool(raw_email.strip()),
+        "message": str((data or {}).get("message") or "")[:MAX_INBOX_MESSAGE_CHARS],
         "ip_hash": str(ip_hash or "")[:16],
         "resolved": False,
         "resolved_at": "",
     }
     with _gov_write_lock:
-        existing = list_inquiries(limit=MAX_STORED_INQUIRIES, allow_blocking=True)
+        existing = [_scrub_legacy_inquiry(it) for it in list_inquiries(limit=MAX_STORED_INQUIRIES, allow_blocking=True)]
         updated = [entry] + existing[: MAX_STORED_INQUIRIES - 1]
         job_state.set_value("ops:inquiries", json.dumps(updated, ensure_ascii=False))
     _invalidate_unread_memo()
@@ -386,12 +496,15 @@ def _validate_public_https_webhook(url: str) -> str:
     except ValueError:
         if "." not in host:
             return "有効なドメイン名を含む https:// URLを指定してください。"
+        # Fail-closed: 名前解決できないホストは登録・送信させない（DNS 一時障害を突いた検証すり抜け防止）
         try:
             addr_infos = socket.getaddrinfo(host, 443, type=socket.SOCK_STREAM)
         except socket.gaierror:
-            addr_infos = []
+            return "ホスト名を名前解決できませんでした。URLをご確認のうえ、時間をおいて再度お試しください。"
         except Exception:
-            addr_infos = []
+            return "ホスト名の検証中にエラーが発生しました。時間をおいて再度お試しください。"
+        if not addr_infos:
+            return "ホスト名を名前解決できませんでした。URLをご確認ください。"
         for info in addr_infos:
             sockaddr = info[4] if len(info) > 4 else ()
             ip_str = sockaddr[0] if sockaddr else ""

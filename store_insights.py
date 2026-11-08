@@ -26,6 +26,7 @@ MIN_BIZ_DAYS = 5
 MIN_RATIO_TOTAL = 6
 
 _CACHE_TTL_SEC = 3600
+_EMPTY_CACHE_TTL_SEC = 30
 _cache = {}
 _cache_lock = threading.Lock()
 
@@ -61,9 +62,15 @@ def compute_store_stats(store_name: str, days: int = DEFAULT_DAYS, rows=None) ->
         rows = local_db.get_store_history(store_name, days=days)
     obs = []
     for r in rows or []:
-        dt = _parse_ts(r.get('ts'))
+        ts_raw = r.get('ts')
+        dt = _parse_ts(ts_raw)
         if dt is None:
             continue
+        # 'YYYY-MM-DD HH:MM[...]' 文字列はスライスで HH:MM を取り出し、数万回の strftime を回避する
+        if isinstance(ts_raw, str) and len(ts_raw) >= 16 and ts_raw[13] == ':':
+            hm = ts_raw[11:16]
+        else:
+            hm = dt.strftime('%H:%M')
         try:
             w = int(r.get('women') or 0)
             m = int(r.get('men') or 0)
@@ -72,7 +79,7 @@ def compute_store_stats(store_name: str, days: int = DEFAULT_DAYS, rows=None) ->
         if w + m <= 0 or w < 0 or m < 0:
             continue
         biz_dt = dt - datetime.timedelta(days=1) if dt.hour <= 6 else dt
-        obs.append((biz_dt.date(), biz_dt.weekday(), dt.hour, dt.strftime('%H:%M'), w, m))
+        obs.append((biz_dt.date(), biz_dt.weekday(), dt.hour, hm, w, m))
 
     by_day = defaultdict(list)
     for o in obs:
@@ -232,18 +239,22 @@ def compute_store_stats(store_name: str, days: int = DEFAULT_DAYS, rows=None) ->
 
 
 def get_store_stats_cached(store_name: str, days: int = DEFAULT_DAYS):
+    import local_db
     now = time.monotonic()
-    key = (store_name, days)
+    # DB_PATH をキーに含め、テスト用一時DB・本番DB間でキャッシュが混線しないようにする
+    key = (getattr(local_db, 'DB_PATH', None), store_name, days)
     with _cache_lock:
         hit = _cache.get(key)
-        if hit and now - hit[0] < _CACHE_TTL_SEC:
+        if hit and now - hit[0] < hit[2]:
             return hit[1]
     try:
         stats = compute_store_stats(store_name, days=days)
     except Exception:
         stats = None
+    # データ不足・起動直後・DB一時障害（None）は長時間キャッシュしない（AGENTS.md §9）
+    ttl = _CACHE_TTL_SEC if stats is not None else _EMPTY_CACHE_TTL_SEC
     with _cache_lock:
-        _cache[key] = (now, stats)
+        _cache[key] = (now, stats, ttl)
         if len(_cache) > 256:
             for k, _ in sorted(_cache.items(), key=lambda kv: kv[1][0])[:64]:
                 _cache.pop(k, None)

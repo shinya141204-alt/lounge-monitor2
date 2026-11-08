@@ -63,10 +63,10 @@ def _extract_local_hourly_rollup_profile(days: int = 30) -> list[dict]:
         rows = local_db._fetch_all_rows(
             """
             SELECT hour_jst,
-                   SUM(samples) AS n,
+                   SUM(sample_count) AS n,
                    AVG(avg_women) AS w,
                    AVG(avg_men) AS m,
-                   AVG(avg_female_pct) AS wpct
+                   AVG(CASE WHEN avg_wpct > 0 THEN avg_wpct END) AS wpct
             FROM store_hourly_rollups
             WHERE business_date >= ?
             GROUP BY hour_jst
@@ -87,7 +87,9 @@ def _extract_local_hourly_rollup_profile(days: int = 30) -> list[dict]:
                 "avg_female_pct": round(float(r[4]), 1) if r[4] is not None else None,
             })
         return out
-    except Exception:
+    except Exception as e:
+        # 例外を握りつぶさず stderr に残す（列名不一致等で常に空になるバグの再発検知用）
+        print(f"[fetch_theme_stats] hourly rollup query failed: {type(e).__name__}: {e}", file=sys.stderr)
         return []
 
 

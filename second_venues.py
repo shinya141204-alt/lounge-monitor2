@@ -269,20 +269,38 @@ def resolve_store_slug(store_name: Optional[str]) -> Optional[str]:
     # 2. STORE_SLUGS のキーとして一致する場合
     if norm in store_master.STORE_SLUGS:
         return store_master.STORE_SLUGS[norm]
-    # 3. 前後空白や表記ゆれの吸収
+    # 3. store_master の正規エイリアス解決（正式名称・スラッグ・内部キー）を最優先
+    try:
+        internal = store_master.to_internal_store_name(norm)
+    except Exception:
+        internal = ""
+    if internal and internal in store_master.STORE_SLUGS:
+        return store_master.STORE_SLUGS[internal]
+
+    # 4. 前後空白や表記ゆれの吸収（まず完全一致のみ）
     norm_compact = re.sub(r"[\s　\-_]+", "", norm).lower()
+    compact_entries = []
     for k, slug in store_master.STORE_SLUGS.items():
         k_compact = re.sub(r"[\s　\-_]+", "", k).lower()
         slug_compact = re.sub(r"[\s　\-_]+", "", slug).lower()
         seo_k = store_master.seo_name(k) if hasattr(store_master, "seo_name") else k
-        seo_compact = re.sub(r"[\s　\-_]+", "", seo_k).lower()
-        if (norm_compact == k_compact or norm_compact == slug_compact or norm_compact == seo_compact
-            or (len(norm_compact) >= 3 and norm_compact in k_compact)
-            or (len(k_compact) >= 3 and k_compact in norm_compact)
-            or (len(norm_compact) >= 3 and norm_compact in seo_compact)
-            or (len(seo_compact) >= 3 and seo_compact in norm_compact)):
+        seo_compact = re.sub(r"[\s　\-_]+", "", seo_k or "").lower()
+        if norm_compact in (k_compact, slug_compact, seo_compact):
             return slug
-    return None
+        compact_entries.append((slug, k_compact, seo_compact))
+
+    # 5. 3文字以上の部分一致（誤マッチ防止のため、最も長く一致したキーを採用）
+    best_slug, best_len = None, 0
+    if len(norm_compact) >= 3:
+        for slug, k_compact, seo_compact in compact_entries:
+            for cand in (k_compact, seo_compact):
+                if len(cand) < 3:
+                    continue
+                if norm_compact in cand or cand in norm_compact:
+                    match_len = min(len(norm_compact), len(cand))
+                    if match_len > best_len:
+                        best_slug, best_len = slug, match_len
+    return best_slug
 
 
 def get_second_venues_for_store(store_name: Optional[str]) -> Dict[str, Any]:

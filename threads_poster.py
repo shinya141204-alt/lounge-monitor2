@@ -499,11 +499,12 @@ def _wait_for_threads_container_ready(
     return True, "timeout_proceed"
 
 
-def post_to_threads(text: str, image_url: str = None) -> dict:
+def post_to_threads(text: str, image_url: str = None, prewarmed: bool = False) -> dict:
     """
     Publish a text or image post to Meta Threads using the official 2-step Graph API:
       1. POST /{threads_user_id}/threads (media_type=TEXT or IMAGE, text=...)
       2. Poll container status when needed, then POST /{threads_user_id}/threads_publish (creation_id=...)
+    `prewarmed=True` skips the in-process image warm when the caller already warmed `image_url`.
     """
     access_token = _get_active_threads_token()
 
@@ -517,7 +518,7 @@ def post_to_threads(text: str, image_url: str = None) -> dict:
     pub_retry_wait = 0.05 if os.environ.get("DISABLE_SCHEDULER") == "1" else 2.5
 
     try:
-        if image_url:
+        if image_url and not prewarmed:
             _warm_threads_image_inprocess(image_url)
 
         create_url = f"{THREADS_API_BASE}/{user_id}/threads"
@@ -681,8 +682,9 @@ def execute_scheduled_threads_post(stores: list, slot_label: str = "20:00", forc
 
         if image_url:
             _warm_threads_image_inprocess(image_url, stores=stores)
-
-        res = post_to_threads(text, image_url=image_url)
+            res = post_to_threads(text, image_url=image_url, prewarmed=True)
+        else:
+            res = post_to_threads(text)
         try:
             import sns_editorial
             if res.get("status") == "success":

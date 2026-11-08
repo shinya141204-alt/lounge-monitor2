@@ -11,6 +11,7 @@ Sheets が使えない環境（認証ファイルなし・テスト時など）�
 """
 import os
 import sys
+import queue
 import threading
 import logging
 
@@ -88,7 +89,18 @@ def _append_ws_rows(title, header, rows):
         ws.append_rows(rows, value_input_option='RAW')
         return True
     except Exception as e:
-        logging.error(f"[sheets_store] append to '{title}' failed: {e}")
+        logging.warning(f"[sheets_store] append to '{title}' failed; refreshing worksheet handle and retrying once: {e}")
+        with _ws_lock:
+            _ws_cache.pop(title, None)
+    # Stale cached handle (e.g. worksheet recreated by another VM): re-fetch once and retry
+    ws = get_worksheet(title, header)
+    if ws is None:
+        return False
+    try:
+        ws.append_rows(rows, value_input_option='RAW')
+        return True
+    except Exception as e:
+        logging.error(f"[sheets_store] append to '{title}' failed after retry: {e}")
         with _ws_lock:
             _ws_cache.pop(title, None)
         return False
@@ -102,7 +114,17 @@ def _read_ws_rows_or_none(title, header):
         values = ws.get_all_values()
         return _strip_sheet_headers(values, header)
     except Exception as e:
-        print(f"[sheets_store] read '{title}' failed: {e}", file=sys.stderr)
+        print(f"[sheets_store] read '{title}' failed; refreshing worksheet handle and retrying once: {e}", file=sys.stderr)
+        with _ws_lock:
+            _ws_cache.pop(title, None)
+    ws = get_worksheet(title, header)
+    if ws is None:
+        return None
+    try:
+        values = ws.get_all_values()
+        return _strip_sheet_headers(values, header)
+    except Exception as e:
+        print(f"[sheets_store] read '{title}' failed after retry: {e}", file=sys.stderr)
         with _ws_lock:
             _ws_cache.pop(title, None)
         return None
@@ -113,24 +135,82 @@ def append_rows(title, header, rows):
     return _append_ws_rows(title, header, rows)
 
 
+_ASYNC_QUEUE_MAX = 2000
+_ASYNC_BATCH_MAX_ROWS = 500
+_async_queue = queue.Queue(maxsize=_ASYNC_QUEUE_MAX)
+_async_worker_lock = threading.Lock()
+_async_worker_thread = None
+
+
+def _append_with_retry(title, header, rows):
+    import time
+    retry_delays = (1.0, 3.0)
+    for attempt in range(3):
+        if is_disabled():
+            return
+        if append_rows(title, header, rows):
+            return
+        if attempt < len(retry_delays):
+            time.sleep(retry_delays[attempt])
+    logging.error(f"[sheets_store] append_rows_async failed after 3 attempts for '{title}' ({len(rows)} rows)")
+
+
+def _async_append_worker():
+    """単一デーモンワーカー: 同一 title の連続タスクを1回の append_rows にまとめて API 呼び出し数を削減する。"""
+    carry = None
+    while True:
+        task = carry if carry is not None else _async_queue.get()
+        carry = None
+        title, header, rows = task
+        batch = list(rows)
+        consumed = 1
+        try:
+            while len(batch) < _ASYNC_BATCH_MAX_ROWS:
+                try:
+                    nxt = _async_queue.get_nowait()
+                except queue.Empty:
+                    break
+                consumed += 1
+                if nxt[0] == title and list(nxt[1]) == list(header):
+                    batch.extend(nxt[2])
+                else:
+                    carry = nxt
+                    break
+            _append_with_retry(title, header, batch)
+        except Exception as e:
+            logging.error(f"[sheets_store] async append worker error for '{title}': {e}")
+        finally:
+            # carry was fetched via get() but is processed (and marked done) in the next iteration
+            for _ in range(consumed - (1 if carry is not None else 0)):
+                try:
+                    _async_queue.task_done()
+                except ValueError:
+                    break
+
+
+def _ensure_async_worker():
+    global _async_worker_thread
+    with _async_worker_lock:
+        if _async_worker_thread is None or not _async_worker_thread.is_alive():
+            _async_worker_thread = threading.Thread(
+                target=_async_append_worker, daemon=True, name='sheets-append-worker'
+            )
+            _async_worker_thread.start()
+
+
 def append_rows_async(title, header, rows):
-    """リクエスト処理をブロックしないようにバックグラウンドで追記（一時失敗時は1秒・3秒待機で最大3回リトライ）。"""
+    """リクエスト処理をブロックしないようにバックグラウンドで追記（一時失敗時は1秒・3秒待機で最大3回リトライ）。
+    呼び出しごとのスレッド生成は廃止し、上限2,000件のキュー＋単一ワーカーで直列・まとめ追記する。"""
     if not rows or is_disabled() or _is_test_runtime():
         return
-
-    def _worker():
-        import time
-        retry_delays = (1.0, 3.0)
-        for attempt in range(3):
-            if is_disabled():
-                return
-            if append_rows(title, header, rows):
-                return
-            if attempt < len(retry_delays):
-                time.sleep(retry_delays[attempt])
-        logging.error(f"[sheets_store] append_rows_async failed after 3 attempts for '{title}'")
-
-    threading.Thread(target=_worker, daemon=True).start()
+    _ensure_async_worker()
+    try:
+        _async_queue.put_nowait((title, list(header), [list(r) for r in rows]))
+    except queue.Full:
+        logging.error(
+            f"[sheets_store] async append queue full ({_ASYNC_QUEUE_MAX}); dropping {len(rows)} rows for '{title}' "
+            "(primary stores PG/Redis/local are unaffected)"
+        )
 
 
 def read_rows_or_none(title, header):

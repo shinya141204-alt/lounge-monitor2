@@ -1391,12 +1391,7 @@
                     if (loadingEl) loadingEl.classList.add('hidden');
                     if (contentEl) contentEl.classList.remove('hidden');
                     if (errEl) errEl.classList.add('hidden');
-                    try {
-                        localStorage.setItem('olg_cached_status', JSON.stringify({
-                            data: window.INITIAL_STATUS_DATA,
-                            savedAt: Date.now()
-                        }));
-                    } catch (e) {}
+                    scheduleStatusCacheWrite(window.INITIAL_STATUS_DATA);
                     return;
                 }
                 // 2. Check localStorage cache (up to 6 hours) so user sees last known counts instead of zeros on cold redeploy
@@ -1443,6 +1438,79 @@
 
         let _lastStatusEtag = '';
 
+        // ---- localStorage status cache: idle-time, de-duplicated writes (avoid 30s main-thread JSON.stringify blocks) ----
+        let _statusCachePending = null;
+        let _statusCacheScheduled = false;
+        let _statusCacheLastKey = '';
+        function _statusCacheKey(data) {
+            if (!data || typeof data !== 'object') return '';
+            const r = Array.isArray(data.ranking) ? data.ranking.length : 0;
+            return String(data.last_updated || data.updated_at || data.timestamp || '') + '|' + r + '|' + (_lastStatusEtag || '');
+        }
+        function _flushStatusCache() {
+            _statusCacheScheduled = false;
+            const data = _statusCachePending;
+            _statusCachePending = null;
+            if (!data || data.is_seed) return;
+            const key = _statusCacheKey(data);
+            if (key && key === _statusCacheLastKey) return;
+            try {
+                localStorage.setItem('olg_cached_status', JSON.stringify({ data: data, savedAt: Date.now() }));
+                _statusCacheLastKey = key;
+            } catch (e) {}
+        }
+        function scheduleStatusCacheWrite(data) {
+            if (!data || data.is_seed) return;
+            _statusCachePending = data;
+            if (_statusCacheScheduled) return;
+            _statusCacheScheduled = true;
+            if (typeof window.requestIdleCallback === 'function') {
+                window.requestIdleCallback(_flushStatusCache, { timeout: 4000 });
+            } else {
+                setTimeout(_flushStatusCache, 600);
+            }
+        }
+        // Flush pending cache before the page is frozen / discarded
+        window.addEventListener('pagehide', () => { if (_statusCacheScheduled) _flushStatusCache(); });
+
+        // ---- /api/status single-flight + unified exponential backoff retry ----
+        let _statusInFlight = null;
+        let _retryTimer = null;
+        let _retryDelay = 2500;
+        const _RETRY_BASE_MS = 2500;
+        const _RETRY_MAX_MS = 30000;
+        let _retryPendingWhileHidden = false;
+
+        function scheduleRetry(delay) {
+            if (_retryTimer) {
+                clearTimeout(_retryTimer);
+                _retryTimer = null;
+            }
+            if (document.visibilityState === 'hidden') {
+                // Defer until the tab becomes visible again (handled in visibilitychange listener)
+                _retryPendingWhileHidden = true;
+                return;
+            }
+            const wait = Math.max(500, Math.min(_RETRY_MAX_MS, Number(delay) || _RETRY_BASE_MS));
+            _retryTimer = setTimeout(() => {
+                _retryTimer = null;
+                fetchData();
+            }, wait);
+        }
+
+        function _bumpRetryDelay() {
+            _retryDelay = Math.min(_RETRY_MAX_MS, Math.round(_retryDelay * 1.8));
+        }
+
+        function _resetRetryState() {
+            _retryDelay = _RETRY_BASE_MS;
+            _retryPendingWhileHidden = false;
+            if (_retryTimer) {
+                clearTimeout(_retryTimer);
+                _retryTimer = null;
+            }
+        }
+
         async function fetchWithTimeout(url, timeoutMs = 15000, extraHeaders = null) {
             const controller = new AbortController();
             const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -1464,11 +1532,25 @@
             return;
         }
 
-        async function fetchData() {
+        function fetchData() {
+            // Single-flight: concurrent callers (interval / visibilitychange / pageshow / pull-to-refresh) share one request
+            if (_statusInFlight) return _statusInFlight;
+            if (_retryTimer) {
+                clearTimeout(_retryTimer);
+                _retryTimer = null;
+            }
+            _statusInFlight = _fetchDataOnce().finally(() => {
+                _statusInFlight = null;
+            });
+            return _statusInFlight;
+        }
+
+        async function _fetchDataOnce() {
             try {
                 const reqHeaders = (!isInitialLoad && _lastStatusEtag) ? { 'If-None-Match': _lastStatusEtag } : null;
                 const response = await fetchWithTimeout('/api/status', 15000, reqHeaders);
                 if (response.status === 304) {
+                    _resetRetryState();
                     return true;
                 }
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -1477,7 +1559,8 @@
                 const data = await response.json();
 
                 if (data.status === 'loading') {
-                    const loadingMsg = document.getElementById('loading').querySelector('p');
+                    const loadingRoot = document.getElementById('loading');
+                    const loadingMsg = loadingRoot ? loadingRoot.querySelector('p') : null;
                     if (loadingMsg) {
                         if (!window._loadRetryCount) window._loadRetryCount = 0;
                         window._loadRetryCount++;
@@ -1491,37 +1574,38 @@
                             loadingMsg.textContent = `接続に時間がかかっています${dots} 自動でリトライ中`;
                         }
                     }
-                    setTimeout(fetchData, 2500);
+                    // Server warming up: steady (non-escalating) cadence, single timer
+                    scheduleRetry(_RETRY_BASE_MS);
                     return false;
                 }
 
                 if (data.error || data.status !== 'success') {
                     const list = document.getElementById('ranking-list');
-                    if (list.children.length === 0) {
+                    if (!list || list.children.length === 0) {
                         showError();
                     }
                     return false;
                 }
 
-                // Never overwrite the UI with 0:0 cold-start seed data; retry quickly until real scrape finishes
+                // Never overwrite the UI with 0:0 cold-start seed data; retry until real scrape finishes (single timer, backoff)
                 if (data.is_seed) {
-                    setTimeout(fetchData, 1500);
+                    scheduleRetry(_retryDelay);
+                    _bumpRetryDelay();
                     return false;
                 }
 
                 isInitialLoad = false;
                 window.lastData = data;
-                try {
-                    localStorage.setItem('olg_cached_status', JSON.stringify({
-                        data: data,
-                        savedAt: Date.now()
-                    }));
-                } catch (e) {}
+                _resetRetryState();
+                scheduleStatusCacheWrite(data);
 
                 updateUI(data);
-                document.getElementById('loading').classList.add('hidden');
-                document.getElementById('content').classList.remove('hidden');
-                document.getElementById('error-message').classList.add('hidden');
+                const loadingDone = document.getElementById('loading');
+                const contentDone = document.getElementById('content');
+                const errorDone = document.getElementById('error-message');
+                if (loadingDone) loadingDone.classList.add('hidden');
+                if (contentDone) contentDone.classList.remove('hidden');
+                if (errorDone) errorDone.classList.add('hidden');
 
                 // Fetch events metadata once in background if events are enabled
                 if (shouldShowEvents() && !_eventsFetched) {
@@ -1532,11 +1616,13 @@
                 console.error("Fetch error:", e);
                 if (isInitialLoad) {
                     const loadingEl = document.getElementById('loading');
-                    const loadingMsg = loadingEl.querySelector('p');
+                    const loadingMsg = loadingEl ? loadingEl.querySelector('p') : null;
                     if (loadingMsg) {
                         loadingMsg.textContent = 'サーバー起動中... 再接続しています';
                     }
-                    setTimeout(fetchData, 2500);
+                    // Consecutive errors: exponential backoff up to 30s (prevents self-DDoS during outages)
+                    scheduleRetry(_retryDelay);
+                    _bumpRetryDelay();
                 } else {
                     console.warn("Background fetch failed, keeping existing data");
                 }
@@ -1800,6 +1886,21 @@
                 .replace(/'/g, '&#39;');
         }
 
+        // Allow only absolute http(s) URLs (or same-origin relative paths) from externally crawled data.
+        // Blocks javascript:/data:/vbscript: etc. Returns '' when unsafe.
+        function safeHttpUrl(u) {
+            if (u == null) return '';
+            const raw = String(u).trim();
+            if (!raw) return '';
+            try {
+                const parsed = new URL(raw, window.location.origin);
+                if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return '';
+                return parsed.href;
+            } catch (e) {
+                return '';
+            }
+        }
+
         function renderStore(store, index, container, isPinned = false, globalIndex = null, isDuplicateName = false, isBentoHero = false) {
             const storeKey = (store && store.name) ? store.name : '';
             let item = storeKey ? _cardDomPool.get(storeKey) : null;
@@ -1975,9 +2076,14 @@
                 if (ladiesEval && ladiesEval.micro) {
                     microEl.classList.remove('hidden');
                     microEl.innerHTML = ladiesEval.micro;
-                } else if (store.core_time_short && store.midnight_retention_pct) {
+                } else if (store.core_time_short && store.midnight_retention_pct != null && Number.isFinite(Number(store.midnight_retention_pct))) {
+                    // Only measured values; no fallback label/number fabrication
                     microEl.classList.remove('hidden');
-                    microEl.innerHTML = `狙い目 ${store.core_time_short} <span class="micro-sep">｜</span> 終電後 ${store.midnight_retention_pct}%（${store.midnight_label_short || '深夜安定'}）`;
+                    const midLabel = store.midnight_label_short ? `（${escapeHtml(String(store.midnight_label_short))}）` : '';
+                    microEl.innerHTML = `狙い目 ${escapeHtml(String(store.core_time_short))} <span class="micro-sep">｜</span> 終電後 ${Math.round(Number(store.midnight_retention_pct))}%${midLabel}`;
+                } else if (store.core_time_short) {
+                    microEl.classList.remove('hidden');
+                    microEl.textContent = `狙い目 ${String(store.core_time_short)}`;
                 } else {
                     microEl.classList.add('hidden');
                     microEl.textContent = '';
@@ -3754,8 +3860,9 @@
             const w = Math.max(0, Number(target.women || 0));
             const m = Math.max(0, Number(target.men || 0));
             const tot = w + m;
-            const wPct = tot > 0 ? Math.round((w / tot) * 100) : 50;
-            const mPct = tot > 0 ? (100 - wPct) : 50;
+            // 0:0 (closed / pre-open) → both bars 0% (no fake 50:50 split)
+            const wPct = tot > 0 ? Math.round((w / tot) * 100) : 0;
+            const mPct = tot > 0 ? (100 - wPct) : 0;
             const isWomenView = !IS_STAFF && currentAudience === 'women';
             const isLight = document.body.classList.contains('theme-light');
             const waitM = Number((target.wait_estimate && target.wait_estimate.est_wait_men_min) || 0);
@@ -3795,7 +3902,8 @@
             }
 
             const fc = target.forecast_60m || null;
-            const predW = (fc && typeof fc.pred_60m_women === 'number') ? Math.max(0, Math.round(fc.pred_60m_women)) : w;
+            const hasPred = Boolean(fc && typeof fc.pred_60m_women === 'number' && Number.isFinite(fc.pred_60m_women));
+            const predW = hasPred ? Math.max(0, Math.round(fc.pred_60m_women)) : null;
             const cached = clientAnalysisCache[target.name];
             let curvePoints = [];
             let curveLabel = '';
@@ -3811,18 +3919,29 @@
                 const maxIdx = curvePoints.indexOf(maxSlotVal);
                 const peakHour = slotHours[maxIdx >= 0 ? maxIdx : 3];
                 curveLabel = '同曜日の女性推移（19時〜翌1時）';
-                curveRight = maxSlotVal > 0 ? `ピーク目安 ${peakHour}時頃（約${Math.round(maxSlotVal)}名）` : `60分後予測 約${predW}名`;
+                if (maxSlotVal > 0) {
+                    curveRight = `ピーク目安 ${peakHour}時頃（約${Math.round(maxSlotVal)}名）`;
+                } else {
+                    curvePoints = [];
+                    curveRight = hasPred ? `60分後予測 約${predW}名` : '';
+                }
             } else {
-                const usualW = (typeof target.usual_women === 'number') ? Math.max(0, target.usual_women) : w;
-                const leadIn = Math.max(1, Math.round((usualW + w) * 0.42));
-                curvePoints = [leadIn, usualW, w, predW];
+                // Measured-only sparkline: requires both usual_women and pred_60m_women (no synthetic lead-in point)
+                const hasUsual = typeof target.usual_women === 'number' && Number.isFinite(target.usual_women);
                 curveLabel = 'いま〜60分後の女性人数見通し';
+                if (hasUsual && hasPred && tot > 0) {
+                    curvePoints = [Math.max(0, target.usual_women), w, predW];
+                } else {
+                    curvePoints = [];
+                }
                 if (tot === 0) {
                     curveRight = '営業開始後に予測を表示';
-                } else {
+                } else if (hasPred) {
                     const diff60 = predW - w;
                     const diffStr = diff60 > 0 ? `+${diff60}` : (diff60 < 0 ? `${diff60}` : '横ばい');
                     curveRight = `60分後予測 約${predW}名（${diffStr}）`;
+                } else {
+                    curveRight = '';
                 }
             }
 
@@ -3858,7 +3977,9 @@
             }
 
             const officialUrl = getOfficialBrandUrl(bInfo.code, target.name);
-            const sparkSvg = _buildInspectorSparklineSvg(curvePoints, isLight);
+            const sparkSvg = (Array.isArray(curvePoints) && curvePoints.length >= 2)
+                ? _buildInspectorSparklineSvg(curvePoints, isLight)
+                : '<p class="cmi-curve-pending cmi-curve-val" style="margin:8px 0 0;">検証ログ蓄積中</p>';
 
             inspector.innerHTML = `
                 <div>
@@ -3998,8 +4119,27 @@
         let visibleDateCount = 7;
         let currentData = null;
 
+        // Modal generation counter + AbortController: rapid A→B switching must never let stale A responses overwrite B
+        let _modalGen = 0;
+        let _modalAbort = null;
+
+        function _beginModalGeneration() {
+            if (_modalAbort) {
+                try { _modalAbort.abort(); } catch (e) {}
+            }
+            _modalAbort = (typeof AbortController === 'function') ? new AbortController() : null;
+            _modalGen += 1;
+            return _modalGen;
+        }
+
+        function _isModalGenCurrent(gen) {
+            return gen === _modalGen;
+        }
+
         async function openModal(storeName) {
             loadChartJs(); // Pre-trigger Chart.js download in parallel with data fetch
+            const gen = _beginModalGeneration();
+            const signal = _modalAbort ? _modalAbort.signal : undefined;
             currentModalStoreName = storeName;
             trackEvent('store_open', storeName);
             const modal = document.getElementById('analysis-modal');
@@ -4032,7 +4172,7 @@
             }
             renderModalEvents(storeName);
             renderModalCrowdVotes(storeName);
-            renderModalSecondVenues(storeName);
+            renderModalSecondVenues(storeName, gen);
 
             modal.classList.remove('hidden');
             if (modalContent) modalContent.scrollTop = 0;
@@ -4050,9 +4190,11 @@
             renderLiveComparisonBanner({ store_name: storeName });
 
             try {
-                const response = await fetch('/api/analysis/' + encodeURIComponent(storeName));
+                const response = await fetch('/api/analysis/' + encodeURIComponent(storeName), signal ? { signal } : undefined);
+                if (!_isModalGenCurrent(gen)) return;
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 const data = await response.json();
+                if (!_isModalGenCurrent(gen)) return;
 
                 if (data.error) {
                     title.textContent = "Error: " + data.error;
@@ -4065,12 +4207,19 @@
                 await renderCharts(data);
 
             } catch (e) {
+                if (!_isModalGenCurrent(gen) || (e && e.name === 'AbortError')) return;
                 console.error(e);
                 title.textContent = "データの取得に失敗しました";
             }
         }
 
         function closeModal() {
+            // Abort in-flight analysis fetch and invalidate pending async renders for the closed store
+            _beginModalGeneration();
+            if (_modalAbort) {
+                try { _modalAbort.abort(); } catch (e) {}
+                _modalAbort = null;
+            }
             document.getElementById('analysis-modal').classList.add('hidden');
             if (dailyChartInstance) { dailyChartInstance.destroy(); dailyChartInstance = null; }
             if (weekdayAnalysisChartInstance) { weekdayAnalysisChartInstance.destroy(); weekdayAnalysisChartInstance = null; }
@@ -4178,7 +4327,8 @@
             ];
         }
 
-        async function renderModalSecondVenues(storeName) {
+        async function renderModalSecondVenues(storeName, gen) {
+            const modalGen = (typeof gen === 'number') ? gen : _modalGen;
             const headingEl = document.getElementById('modal-second-venue-heading');
             const cafeBtn = document.getElementById('modal-map-cafe-btn');
             const barBtn = document.getElementById('modal-map-bar-btn');
@@ -4217,6 +4367,8 @@
 
             // Fetch master data
             const masterData = await fetchSecondVenuesMaster();
+            // Stale: user already switched/closed the modal while second_venues.json was loading
+            if (!_isModalGenCurrent(modalGen)) return;
             const venuesByArea = masterData.venues_by_area || {};
             currentModalSecondTips = masterData.situation_tips || [];
             currentModalSecondTimingRules = masterData.timing_rules || [];
@@ -4274,7 +4426,7 @@
                             <a href="${mapUrl}" target="_blank" rel="noopener noreferrer" class="venue-action-btn map-btn">
                                 マップ ${UI_SVG_ARROW_NE}
                             </a>
-                            <button type="button" class="venue-action-btn copy-btn" onclick="copySecondVenueText('${escapeJsString(v.name)}', this, '店名をコピーしました')">
+                            <button type="button" class="venue-action-btn copy-btn" data-copy-text="${escapeHtml(v.name || '')}" data-copy-msg="店名をコピーしました">
                                 店名コピー
                             </button>
                             <a href="${lineShareUrl}" target="_blank" rel="noopener noreferrer" class="venue-action-btn line-btn">
@@ -4305,7 +4457,7 @@
                     </div>
                     <div class="second-tip-phrase-box">
                         <p class="second-tip-phrase">「${escapeHtml(tip.phrase || '')}」</p>
-                        <button type="button" class="tip-phrase-copy-btn" onclick="copySecondVenueText('${escapeJsString(tip.phrase || '')}', this, 'フレーズをコピーしました')">
+                        <button type="button" class="tip-phrase-copy-btn" data-copy-text="${escapeHtml(tip.phrase || '')}" data-copy-msg="フレーズをコピーしました">
                             フレーズをコピー
                         </button>
                     </div>
@@ -4398,14 +4550,14 @@
             }
         }
 
-        function escapeJsString(str) {
-            return String(str || '')
-                .replace(/\\/g, '\\\\')
-                .replace(/'/g, "\\'")
-                .replace(/"/g, '\\"')
-                .replace(/\n/g, '\\n')
-                .replace(/\r/g, '\\r');
-        }
+        // Click delegation for copy buttons (replaces inline onclick + escapeJsString → no JS-string injection surface)
+        document.addEventListener('click', (e) => {
+            const btn = e.target && e.target.closest ? e.target.closest('[data-copy-text]') : null;
+            if (!btn) return;
+            if (!btn.closest('#modal-second-venue-list, #modal-second-tips-list')) return;
+            e.preventDefault();
+            copySecondVenueText(btn.getAttribute('data-copy-text') || '', btn, btn.getAttribute('data-copy-msg') || 'コピーしました');
+        });
 
         window.switchSecondVenueTab = switchSecondVenueTab;
         window.toggleSecondTimingDetails = toggleSecondTimingDetails;
@@ -4566,10 +4718,12 @@
             // Render ALL store events (no cut-off)
             sortedEvs.forEach(ev => {
                 let bannerHtml = '';
-                if (ev.banner_url) {
+                const safeBanner = safeHttpUrl(ev.banner_url);
+                const safeEvUrl = safeHttpUrl(ev.url);
+                if (safeBanner) {
                     bannerHtml = `
                         <div class="event-banner-wrap">
-                            <img src="${escapeHtml(ev.banner_url)}" alt="${escapeHtml(ev.title)}" class="event-banner-img" loading="lazy" decoding="async" onerror="this.closest('.event-item-card').classList.remove('has-banner'); this.parentElement.remove();">
+                            <img src="${escapeHtml(safeBanner)}" alt="${escapeHtml(ev.title)}" class="event-banner-img" loading="lazy" decoding="async" onerror="this.closest('.event-item-card').classList.remove('has-banner'); this.parentElement.remove();">
                         </div>
                     `;
                 }
@@ -4582,7 +4736,7 @@
                 }
 
                 html += `
-                    <div class="event-item-card ${ev.banner_url ? 'has-banner' : ''}">
+                    <div class="event-item-card ${safeBanner ? 'has-banner' : ''}">
                         ${bannerHtml}
                         <div class="event-item-main">
                             <div class="event-item-left">
@@ -4594,10 +4748,10 @@
                                     <span style="color:var(--text-secondary); font-size:0.72rem;">${escapeHtml(ev.date_str || '')}</span>
                                 </div>
                             </div>
-                            <a href="${escapeHtml(ev.url)}" target="_blank" rel="noopener noreferrer" class="event-cta-btn" onclick="event.stopPropagation();">
+                            ${safeEvUrl ? `<a href="${escapeHtml(safeEvUrl)}" target="_blank" rel="noopener noreferrer" class="event-cta-btn" onclick="event.stopPropagation();">
                                 <span>公式詳細</span>
                                 ${UI_SVG_ARROW_NE}
-                            </a>
+                            </a>` : ''}
                         </div>
                     </div>
                 `;
@@ -4638,10 +4792,12 @@
             let html = '';
             filtered.forEach(ev => {
                 let bannerHtml = '';
-                if (ev.banner_url) {
+                const safeBanner = safeHttpUrl(ev.banner_url);
+                const safeEvUrl = safeHttpUrl(ev.url);
+                if (safeBanner) {
                     bannerHtml = `
                         <div class="event-banner-wrap">
-                            <img src="${escapeHtml(ev.banner_url)}" alt="${escapeHtml(ev.title)}" class="event-banner-img" loading="lazy" decoding="async" onerror="this.closest('.event-item-card').classList.remove('has-banner'); this.parentElement.remove();">
+                            <img src="${escapeHtml(safeBanner)}" alt="${escapeHtml(ev.title)}" class="event-banner-img" loading="lazy" decoding="async" onerror="this.closest('.event-item-card').classList.remove('has-banner'); this.parentElement.remove();">
                         </div>
                     `;
                 }
@@ -4654,7 +4810,7 @@
                 }
 
                 html += `
-                    <div class="event-item-card ${ev.banner_url ? 'has-banner' : ''}">
+                    <div class="event-item-card ${safeBanner ? 'has-banner' : ''}">
                         ${bannerHtml}
                         <div class="event-item-main">
                             <div class="event-item-left">
@@ -4667,10 +4823,10 @@
                                     <span style="color:var(--text-secondary); font-size:0.72rem;">${escapeHtml(ev.date_str || '')}</span>
                                 </div>
                             </div>
-                            <a href="${escapeHtml(ev.url)}" target="_blank" rel="noopener noreferrer" class="event-cta-btn" onclick="event.stopPropagation();">
+                            ${safeEvUrl ? `<a href="${escapeHtml(safeEvUrl)}" target="_blank" rel="noopener noreferrer" class="event-cta-btn" onclick="event.stopPropagation();">
                                 <span>公式詳細</span>
                                 ${UI_SVG_ARROW_NE}
-                            </a>
+                            </a>` : ''}
                         </div>
                     </div>
                 `;
@@ -5130,6 +5286,7 @@
             const liveStore = (window.lastData && window.lastData.ranking)
                 ? window.lastData.ranking.find(s => s.name === storeName)
                 : null;
+            if (!banner) return;
             if (!liveStore) {
                 banner.classList.add('hidden');
                 return;
@@ -5169,6 +5326,9 @@
                     avgM = Number(liveStore.usual_men || 0);
                     slotLabel = liveStore.usual_slot_label || `${dayLabel}平均`;
                 }
+                avgW = Number(avgW) || 0;
+                avgM = Number(avgM) || 0;
+                slotLabel = escapeHtml(slotLabel);
 
                 const diffW = +(liveStore.women - avgW).toFixed(1);
                 if (avgW > 0 || liveStore.women > 0) {
@@ -5185,19 +5345,37 @@
                 }
             }
 
-            const coreShort = (data && data.core_time_short) || liveStore.core_time_short;
-            const coreWpct = (data && data.core_time_wpct) || liveStore.core_time_wpct;
-            const midPct = (data && data.midnight_retention_pct) || liveStore.midnight_retention_pct;
-            const midLabel = (data && data.midnight_label_short) || liveStore.midnight_label_short || '深夜安定';
+            // Measured values only — no '深夜安定' / fixed-percent fallbacks (null = not yet measured)
+            const pickNum = (a, b) => {
+                const v = (a != null && a !== '') ? a : b;
+                const n = Number(v);
+                return (v != null && v !== '' && Number.isFinite(n)) ? n : null;
+            };
+            const coreShort = (data && data.core_time_short) || liveStore.core_time_short || '';
+            const coreWpct = pickNum(data && data.core_time_wpct, liveStore.core_time_wpct);
+            const midPct = pickNum(data && data.midnight_retention_pct, liveStore.midnight_retention_pct);
+            const midLabel = (data && data.midnight_label_short) || liveStore.midnight_label_short || '';
             let metricsRow = '';
-            if (coreShort && midPct) {
-                const wpctPart = coreWpct ? `（平均女性比${coreWpct}%）` : '';
-                metricsRow = `<div class="live-banner-metrics"><span>狙い目コアタイム: <strong>${coreShort}</strong>${wpctPart}</span><span class="micro-sep">｜</span><span>終電後残りやすさ: <strong>${midPct}%（${midLabel}）</strong></span></div>`;
+            if (coreShort || midPct !== null) {
+                const parts = [];
+                if (coreShort) {
+                    const wpctPart = coreWpct !== null ? `（平均女性比${Math.round(coreWpct)}%）` : '';
+                    parts.push(`<span>狙い目コアタイム: <strong>${escapeHtml(coreShort)}</strong>${wpctPart}</span>`);
+                }
+                if (midPct !== null) {
+                    const midLabelPart = midLabel ? `（${escapeHtml(midLabel)}）` : '';
+                    parts.push(`<span>終電後残りやすさ: <strong>${Math.round(midPct)}%${midLabelPart}</strong></span>`);
+                } else {
+                    parts.push('<span>終電後残りやすさ: 検証ログ蓄積中</span>');
+                }
+                metricsRow = `<div class="live-banner-metrics">${parts.join('<span class="micro-sep">｜</span>')}</div>`;
             }
 
+            const liveW = Math.max(0, Number(liveStore.women) || 0);
+            const liveM = Math.max(0, Number(liveStore.men) || 0);
             banner.innerHTML = `
                 <div class="live-banner-counts">
-                    <span>現在: <strong class="ladies-text">女性 ${liveStore.women}名</strong> / <strong class="men-text">男性 ${liveStore.men}名</strong></span>
+                    <span>現在: <strong class="ladies-text">女性 ${liveW}名</strong> / <strong class="men-text">男性 ${liveM}名</strong></span>
                     ${momentumBadge}
                     ${diffBadgeW}
                     ${diffBadgeM}
@@ -5217,9 +5395,18 @@
                 console.error('Failed to load Chart.js:', err);
             }
 
+            // Stale guard: another store was opened (or modal closed) while Chart.js was loading
+            if (currentAnalysisData !== data) return;
+
             if (window.Chart) {
+                const nextFrame = () => new Promise(r => requestAnimationFrame(() => r()));
+                // Split heavy Chart instantiation across frames to keep modal-open INP low
+                await nextFrame();
+                if (currentAnalysisData !== data) return;
                 renderWeekdayChart(data);
 
+                await nextFrame();
+                if (currentAnalysisData !== data) return;
                 // Auto-select current JST business weekday for hourly chart
                 const dayKeys = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
                 selectHourlyWeekday(dayKeys[getJstBusinessDayIndex()]);
@@ -5375,8 +5562,10 @@
 
             const dates = new Set();
             (data.recent_trend || []).forEach(d => {
+                if (!d || typeof d.x !== 'string') return;
                 const dateStr = d.x.split(' ')[0];
-                dates.add(dateStr);
+                // Only accept YYYY-MM-DD (used in innerHTML / Date parsing below)
+                if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) dates.add(dateStr);
             });
 
             allDates = Array.from(dates).sort().reverse();
@@ -5400,7 +5589,7 @@
                 const btn = document.createElement('button');
                 btn.className = 'date-btn';
                 if (autoSelectFirst && idx === 0) btn.classList.add('active');
-                btn.innerHTML = `${parts[1]}/${parts[2]}<span class="day-name">${dayName}</span>`;
+                btn.innerHTML = `${escapeHtml(parts[1])}/${escapeHtml(parts[2])}<span class="day-name">${dayName}</span>`;
                 btn.onclick = (e) => showDailyChart(dateStr, currentData, e);
                 container.appendChild(btn);
             });
@@ -5761,23 +5950,23 @@
         }
 
         // Poll every 30 seconds while tab is visible (pause background polling to save battery & server CPU)
+        // (Skip while a retry chain is active — the retry timer owns the next request.)
         setInterval(() => {
-            if (document.visibilityState !== 'hidden') {
+            if (document.visibilityState !== 'hidden' && !_retryTimer) {
                 fetchData();
             }
         }, 30000);
 
         // PWA / mobile: timers are frozen while the app is in the background.
-        // Refresh immediately when the user returns if the shown data is older than 30s.
+        // Refresh immediately when the user returns if the shown data is older than 30s (or a retry was deferred while hidden).
         document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible' && getStatusAgeSec(window.lastData) > 30) {
+            if (document.visibilityState !== 'visible') return;
+            if (_retryPendingWhileHidden) {
+                _retryPendingWhileHidden = false;
                 fetchData();
+                return;
             }
-        });
-
-        // Instant bfcache back-navigation silent data refresh
-        window.addEventListener('pageshow', (e) => {
-            if (e.persisted && getStatusAgeSec(window.lastData) > 15) {
+            if (getStatusAgeSec(window.lastData) > 30) {
                 fetchData();
             }
         });
@@ -5785,10 +5974,20 @@
         // Initialize PWA banner check shortly after page load
         setTimeout(checkPwaBannerVisibility, 2000);
 
+        // Unified pageshow handler: bfcache restore cleanup (modals / nav spinners / scroll lock) + silent data refresh
         window.addEventListener('pageshow', (e) => {
-            if (e && e.persisted) {
+            const persisted = Boolean(e && e.persisted);
+            document.querySelectorAll('.nav-loading').forEach(el => el.classList.remove('nav-loading'));
+            if (persisted) {
                 document.querySelectorAll('.modal:not(.hidden)').forEach(m => m.classList.add('hidden'));
                 if (document.body) document.body.style.overflow = '';
+                if (_modalAbort) {
+                    try { _modalAbort.abort(); } catch (err) {}
+                    _modalAbort = null;
+                }
+                if (getStatusAgeSec(window.lastData) > 15) {
+                    fetchData();
+                }
             } else if (!document.querySelector('.modal:not(.hidden)') && document.body && document.body.style.overflow === 'hidden') {
                 document.body.style.overflow = '';
             }
@@ -5836,9 +6035,7 @@
                 a.classList.add('nav-loading');
             });
 
-            window.addEventListener('pageshow', () => {
-                document.querySelectorAll('.nav-loading').forEach(el => el.classList.remove('nav-loading'));
-            });
+            // .nav-loading cleanup on bfcache restore is handled by the unified pageshow listener above.
 
             // Warm up lightweight static editorial navigation tabs during idle time (skip /stats & live SSR pages)
             const warmTabs = () => {

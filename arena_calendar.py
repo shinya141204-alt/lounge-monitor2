@@ -267,6 +267,18 @@ def _clean_title(raw: str) -> str:
     return t[:110]
 
 
+def _resolve_event_year(mo: int, ref_year: int, ref_month: int) -> int:
+    """Resolve the calendar year for a month-only date relative to the fetch month.
+    Schedules list near-future events (plus a few just-past ones), so pick the year that puts
+    `mo` within [-5, +6] months of `ref_month` (Dec listed in Jan → previous year, Jan listed in Dec → next year)."""
+    delta = mo - ref_month
+    if delta < -5:
+        return ref_year + 1
+    if delta > 6:
+        return ref_year - 1
+    return ref_year
+
+
 def parse_tokyo_dome_html(html_bytes: bytes, ref_year: int, ref_month: int) -> list:
     """Parse Tokyo Dome official monthly schedule (`https://www.tokyo-dome.co.jp/dome/event/`)."""
     soup = BeautifulSoup(html_bytes, "html.parser")
@@ -277,7 +289,7 @@ def parse_tokyo_dome_html(html_bytes: bytes, ref_year: int, ref_month: int) -> l
         if not m_date:
             continue
         mo, dy = int(m_date.group(1)), int(m_date.group(2))
-        yr = ref_year + 1 if mo < ref_month - 1 else ref_year
+        yr = _resolve_event_year(mo, ref_year, ref_month)
         # Strip leading date + weekday
         rest = txt[m_date.end():].strip()
         rest = re.sub(r"^[（(][月火水木金土日・祝]+[)）]\s*", "", rest).strip()
@@ -353,17 +365,31 @@ def parse_osaka_jo_hall_html(html_bytes: bytes, ref_year: int, ref_month: int) -
     """Parse Osaka-Jo Hall official schedule (`https://www.osaka-johall.com/event/`)."""
     soup = BeautifulSoup(html_bytes, "html.parser")
     full_txt = soup.get_text(" ", strip=True)
-    m_ym = re.search(r"(202\d)\s*[/年.]\s*(\d{1,2})", full_txt)
+    m_ym = re.search(r"(202\d)\s*[/年.]\s*(\d{1,2})(?!\d)", full_txt)
     yr = int(m_ym.group(1)) if m_ym else ref_year
     mo = int(m_ym.group(2)) if m_ym else ref_month
+    # Guard against copyright years / unrelated dates: heading must be within ±2 months of fetch month
+    try:
+        months_apart = abs((yr * 12 + mo) - (ref_year * 12 + ref_month))
+    except Exception:
+        months_apart = 99
+    if not (1 <= mo <= 12) or months_apart > 2:
+        yr, mo = ref_year, ref_month
 
     out = []
+    prev_dy = 0
     for li in soup.select("li.event-detail"):
         txt = " ".join(li.get_text(" | ", strip=True).split())
         m_day = re.match(r"^(\d{1,2})\s*\|?\s*[（(][月火水木金土日・祝]+[)）]", txt)
         if not m_day:
             continue
         dy = int(m_day.group(1))
+        # Day sequence wrapped (e.g. 30 → 2): list continued into next month (rolls Dec → Jan)
+        if prev_dy and dy + 7 < prev_dy:
+            mo += 1
+            if mo > 12:
+                mo, yr = 1, yr + 1
+        prev_dy = dy
         name_el = li.select_one(".event-name, dt, h3, h4")
         if name_el:
             raw_title = " ".join(name_el.get_text(" ", strip=True).split())
@@ -541,22 +567,30 @@ def fetch_official_arena_schedules(now_jst: datetime.datetime = None, timeout_se
         now_jst = now_jst.astimezone(JST)
 
     yr, mo = now_jst.year, now_jst.month
+    next_yr, next_mo = (yr + 1, 1) if mo == 12 else (yr, mo + 1)
     ssa_url = f"https://www.saitama-arena.co.jp/schedule/{yr}/{mo:02d}/"
+    ssa_next_url = f"https://www.saitama-arena.co.jp/schedule/{next_yr}/{next_mo:02d}/"
+    # (name, venue_id, url, parser)
     sources = [
-        ("tokyo_dome", "https://www.tokyo-dome.co.jp/dome/event/", lambda b: parse_tokyo_dome_html(b, yr, mo)),
-        ("k_arena", "https://k-arena.com/schedule/", parse_k_arena_html),
-        ("osaka_jo", "https://www.osaka-johall.com/event/", lambda b: parse_osaka_jo_hall_html(b, yr, mo)),
-        ("kyocera", "https://www.kyoceradome-osaka.jp/schedule/", parse_kyocera_dome_html),
-        ("vantelin", "https://www.nagoya-dome.co.jp/enjoy/index.php", lambda b: parse_vantelin_dome_html(b, yr)),
-        ("ssa", ssa_url, lambda b: parse_ssa_html(b, ssa_url)),
+        ("tokyo_dome", "tokyo_dome_budokan", "https://www.tokyo-dome.co.jp/dome/event/", lambda b: parse_tokyo_dome_html(b, yr, mo)),
+        ("k_arena", "yokohama_arenas", "https://k-arena.com/schedule/", parse_k_arena_html),
+        ("osaka_jo", "osaka_jo_hall", "https://www.osaka-johall.com/event/", lambda b: parse_osaka_jo_hall_html(b, yr, mo)),
+        ("kyocera", "kyocera_dome_osaka", "https://www.kyoceradome-osaka.jp/schedule/", parse_kyocera_dome_html),
+        ("vantelin", "vantelin_dome_nagoya", "https://www.nagoya-dome.co.jp/enjoy/index.php", lambda b: parse_vantelin_dome_html(b, yr)),
+        ("ssa", "saitama_super_arena", ssa_url, lambda b: parse_ssa_html(b, ssa_url)),
     ]
+    # Month boundary: from the 20th onward also pull next month's SSA page so early-month events are known in advance
+    if now_jst.day >= 20:
+        sources.append(("ssa_next", "saitama_super_arena", ssa_next_url, lambda b: parse_ssa_html(b, ssa_next_url)))
 
+    fetched_at_jst = now_jst.strftime("%Y-%m-%d %H:%M:%S")
     collected = []
     seen = set()
+    succeeded_venues = set()
     sess = requests.Session()
     sess.headers.update({"User-Agent": _BOT_UA, "Accept-Language": "ja,en;q=0.8"})
     try:
-        for name, url, parser_fn in sources:
+        for name, venue_id, url, parser_fn in sources:
             try:
                 if not _is_robots_allowed(url, timeout_sec=3.5):
                     logger.info(f"[arena_calendar] Skipping {name} per robots.txt")
@@ -565,10 +599,13 @@ def fetch_official_arena_schedules(now_jst: datetime.datetime = None, timeout_se
                 if resp.status_code != 200 or not resp.content:
                     continue
                 parsed_rows = parser_fn(resp.content) or []
+                if parsed_rows:
+                    succeeded_venues.add(venue_id)
                 for row in parsed_rows:
                     dedup_key = (row["event_date"], row["venue_id"], row["event_title"])
                     if dedup_key not in seen:
                         seen.add(dedup_key)
+                        row["fetched_at_jst"] = fetched_at_jst
                         collected.append(row)
             except Exception as err:
                 logger.debug(f"[arena_calendar] {name} fetch warning: {err}")
@@ -578,23 +615,62 @@ def fetch_official_arena_schedules(now_jst: datetime.datetime = None, timeout_se
         except Exception:
             pass
 
+    # Venue-level merge: if a venue failed / returned 0 rows, keep its previously cached (still upcoming) records
+    if collected:
+        today_s = now_jst.strftime("%Y-%m-%d")
+        try:
+            with _arena_lock:
+                prev_events = list(_arena_state.get("events") or [])
+        except Exception:
+            prev_events = []
+        if not prev_events:
+            prev_events = _load_disk_arena_cache()
+        all_venues = {v for _, v, _, _ in sources}
+        carried = 0
+        for old in prev_events:
+            if not isinstance(old, dict):
+                continue
+            vid = old.get("venue_id")
+            if vid not in all_venues or vid in succeeded_venues:
+                continue
+            if str(old.get("event_date") or "") < today_s or not old.get("source_url"):
+                continue
+            dedup_key = (old.get("event_date"), vid, old.get("event_title"))
+            if dedup_key in seen:
+                continue
+            seen.add(dedup_key)
+            collected.append(dict(old))  # keeps original fetched_at_jst (or none for legacy rows)
+            carried += 1
+        if carried:
+            logger.info(f"[arena_calendar] Preserved {carried} cached rows for venues that failed this run")
+
     collected.sort(key=lambda x: (x["event_date"], x["venue_id"]))
     if collected:
+        tmp_path = f"{ARENA_CACHE_FILE}.{os.getpid()}.tmp"
         try:
             os.makedirs(CACHE_DIR, exist_ok=True)
             payload = {
                 "updated_at": now_jst.strftime("%Y-%m-%d %H:%M:%S"),
                 "events": collected,
             }
-            with open(ARENA_CACHE_FILE, "w", encoding="utf-8") as fp:
+            with open(tmp_path, "w", encoding="utf-8") as fp:
                 json.dump(payload, fp, ensure_ascii=False, indent=2)
+            os.replace(tmp_path, ARENA_CACHE_FILE)
         except Exception as err:
             logger.debug(f"[arena_calendar] Disk cache write warning: {err}")
+            try:
+                if os.path.exists(tmp_path):
+                    os.remove(tmp_path)
+            except Exception:
+                pass
 
         try:
             import local_db
             if hasattr(local_db, "upsert_arena_schedule_events"):
-                local_db.upsert_arena_schedule_events(collected)
+                # Only rows actually fetched this run (carried-over rows must not get a fresh fetch timestamp)
+                fresh_rows = [r for r in collected if r.get("fetched_at_jst") == fetched_at_jst]
+                if fresh_rows:
+                    local_db.upsert_arena_schedule_events(fresh_rows)
         except Exception as err:
             logger.debug(f"[arena_calendar] DB upsert warning: {err}")
 
