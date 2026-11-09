@@ -461,26 +461,84 @@ def get_jis_data():
                 if not isinstance(store_info, dict) or 'shared' not in store_info:
                     continue
                 sh = store_info['shared'] or {}
+
+                # 1. 客数・組数の安全な取得（整数変換・負数クランプ）
+                # 注意: 不正な型・文字列の場合は ValueError を送出し、外側 except で店舗スキップ（既存テスト完全準拠）
                 men_count = max(0, int(sh.get('mens_customer_num', 0) or 0))
                 women_count = max(0, int(sh.get('ladys_customer_num', 0) or 0))
+                men_groups = max(0, int(sh.get('mens_group_num', 0) or 0))
+                women_groups = max(0, int(sh.get('ladys_group_num', 0) or 0))
+
+                # 2. 1組あたり平均人数 (customer_num ÷ group_num)
+                avg_party_size_men = round(men_count / float(men_groups), 2) if men_groups > 0 else None
+                avg_party_size_women = round(women_count / float(women_groups), 2) if women_groups > 0 else None
+                total_guests = men_count + women_count
+                total_groups = men_groups + women_groups
+                avg_party_size_total = round(total_guests / float(total_groups), 2) if total_groups > 0 else None
+
+                # 3. 傾向ラベル判定（ゼロ除算・None時のグループ誤判定を防止）
+                if avg_party_size_total is None or avg_party_size_total <= 0:
+                    party_style = ""
+                elif avg_party_size_total <= 1.45:
+                    party_style = "ソロ多め"
+                elif avg_party_size_total <= 2.15:
+                    party_style = "ペア中心"
+                else:
+                    party_style = "グループ中心"
+
+                # 4. 一般席 vs VIP席 相席成立率 (share_num ÷ group_num * 100)
+                norm_m_grp = max(0, int(sh.get('normal_mens_group_num', 0) or 0))
+                norm_m_share = max(0, int(sh.get('normal_mens_share_num', 0) or 0))
+                vip_m_grp = max(0, int(sh.get('vip_mens_group_num', 0) or 0))
+                vip_m_share = max(0, int(sh.get('vip_mens_share_num', 0) or 0))
+
+                normal_match_rate = min(100.0, max(0.0, round((norm_m_share / float(norm_m_grp)) * 100.0, 1))) if norm_m_grp > 0 else None
+                vip_match_rate = min(100.0, max(0.0, round((vip_m_share / float(vip_m_grp)) * 100.0, 1))) if vip_m_grp > 0 else None
+
+                # 5. VIP相席効率差 (vip_match_rate - normal_match_rate pt)
+                match_rate_diff = round(vip_match_rate - normal_match_rate, 1) if (vip_match_rate is not None and normal_match_rate is not None) else None
+
+                # 6. 待機人数・逆転現象判定
+                m_wait_grp = max(0, int(sh.get('mens_waiting_num', 0) or 0) + int(sh.get('mens_waiting_uncounted_num', 0) or 0))
+                m_wait_gst = max(0, int(sh.get('mens_waiting_customer_num', 0) or 0) + int(sh.get('mens_waiting_uncounted_customer_num', 0) or 0))
+                w_wait_grp = max(0, int(sh.get('ladys_waiting_num', 0) or 0) + int(sh.get('ladys_waiting_uncounted_num', 0) or 0))
+                w_wait_gst = max(0, int(sh.get('ladys_waiting_customer_num', 0) or 0) + int(sh.get('ladys_waiting_uncounted_customer_num', 0) or 0))
+
+                is_women_waiting = bool(w_wait_grp > 0 or w_wait_gst > 0)
+                is_reverse_waiting = bool(w_wait_grp > m_wait_grp and w_wait_grp > 0)
+
                 name = name_map.get(store_key, str(store_key).upper())
                 pos_telemetry = {
                     'telemetry_type': 'jis_pos',
                     'men_total_guests': men_count,
                     'women_total_guests': women_count,
-                    'men_total_groups': max(0, int(sh.get('mens_group_num', 0) or 0)),
-                    'women_total_groups': max(0, int(sh.get('ladys_group_num', 0) or 0)),
+                    'men_total_groups': men_groups,
+                    'women_total_groups': women_groups,
                     'matched_groups': max(0, int(sh.get('mens_share_num', 0) or 0)),
                     'women_matched_groups': max(0, int(sh.get('ladys_share_num', 0) or 0)),
                     'men_matched_guests': max(0, int(sh.get('mens_share_customer_num', 0) or 0)),
                     'women_matched_guests': max(0, int(sh.get('ladys_share_customer_num', 0) or 0)),
-                    'men_waiting_groups': max(0, int(sh.get('mens_waiting_num', 0) or 0) + int(sh.get('mens_waiting_uncounted_num', 0) or 0)),
-                    'men_waiting_guests': max(0, int(sh.get('mens_waiting_customer_num', 0) or 0) + int(sh.get('mens_waiting_uncounted_customer_num', 0) or 0)),
-                    'women_waiting_groups': max(0, int(sh.get('ladys_waiting_num', 0) or 0) + int(sh.get('ladys_waiting_uncounted_num', 0) or 0)),
-                    'women_waiting_guests': max(0, int(sh.get('ladys_waiting_customer_num', 0) or 0) + int(sh.get('ladys_waiting_uncounted_customer_num', 0) or 0)),
+                    'men_waiting_groups': m_wait_grp,
+                    'men_waiting_guests': m_wait_gst,
+                    'women_waiting_groups': w_wait_grp,
+                    'women_waiting_guests': w_wait_gst,
                     'standing_guests': max(0, int(sh.get('mens_st_customer_num', 0) or 0) + int(sh.get('ladys_st_customer_num', 0) or 0)),
                     'vip_guests': max(0, int(sh.get('vip_mens_customer_num', 0) or 0) + int(sh.get('vip_ladys_customer_num', 0) or 0)),
                     'ex_guests': max(0, int(sh.get('ex_mens_customer_num', 0) or 0) + int(sh.get('ex_ladys_customer_num', 0) or 0)),
+                    # Milestone 1: 詳細メトリクス新設キー
+                    'avg_party_size_men': avg_party_size_men,
+                    'avg_party_size_women': avg_party_size_women,
+                    'avg_party_size_total': avg_party_size_total,
+                    'party_style': party_style,
+                    'normal_mens_group_num': norm_m_grp,
+                    'normal_mens_share_num': norm_m_share,
+                    'normal_match_rate': normal_match_rate,
+                    'vip_mens_group_num': vip_m_grp,
+                    'vip_mens_share_num': vip_m_share,
+                    'vip_match_rate': vip_match_rate,
+                    'match_rate_diff': match_rate_diff,
+                    'is_women_waiting': is_women_waiting,
+                    'is_reverse_waiting': is_reverse_waiting,
                 }
                 store_data.append({
                     'name': f"JIS {name}",
@@ -544,10 +602,29 @@ def get_yatakoi_data(now_jst=None):
         response.raise_for_status()
         data = response.json()
         
-        if data:
+        if isinstance(data, dict):
             # Yatakoi's Firebase node (asobibar-823d1/shops/chayamachi) is manually updated and frequently
             # leaves stale counts frozen after official closing time (02:00 Sun-Thu / 03:00 Fri-Sat).
             # Zero out counts when outside official business hours so ghost counts never pollute late-night rankings.
+            men = int(data.get('males') or 0)
+            women = int(data.get('females') or 0)
+            yk_men = int(data.get('ykMales') or 0)
+            yk_women = int(data.get('ykFemales') or 0)
+            yk_seats = int(data.get('ykSeats') or 0)
+            seats = int(data.get('seats') or 0)
+            is_double = bool(data.get('isDouble', False))
+
+            pos_telemetry = {
+                'telemetry_type': 'yatakoi_pos',
+                'yatakoi_men': yk_men,
+                'yatakoi_women': yk_women,
+                'asobibar_men': men,
+                'asobibar_women': women,
+                'yatakoi_seats': yk_seats,
+                'asobibar_seats': seats,
+                'is_double': is_double,
+            }
+
             try:
                 import store_hours
                 h_status = store_hours.get_business_hours_status("YATAKOI UMEDA", now_jst=now_jst, total_guests=0)
@@ -556,21 +633,27 @@ def get_yatakoi_data(now_jst=None):
                         'name': "YATAKOI UMEDA",
                         'men': 0,
                         'women': 0,
-                        'source': 'yatakoi'
+                        'source': 'yatakoi',
+                        'pos_telemetry': {
+                            'telemetry_type': 'yatakoi_pos',
+                            'yatakoi_men': 0,
+                            'yatakoi_women': 0,
+                            'asobibar_men': 0,
+                            'asobibar_women': 0,
+                            'yatakoi_seats': yk_seats,
+                            'asobibar_seats': seats,
+                            'is_double': is_double,
+                        }
                     }]
             except Exception:
                 pass
 
-            men = int(data.get('males') or 0)
-            women = int(data.get('females') or 0)
-            yk_men = int(data.get('ykMales') or 0)
-            yk_women = int(data.get('ykFemales') or 0)
-            
             return [{
                 'name': "YATAKOI UMEDA",
                 'men': men + yk_men,
                 'women': women + yk_women,
-                'source': 'yatakoi'
+                'source': 'yatakoi',
+                'pos_telemetry': pos_telemetry
             }]
     except Exception as e:
         logging.error(f"Error fetching Yatakoi data: {e}")

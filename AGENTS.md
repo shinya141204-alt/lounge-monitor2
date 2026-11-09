@@ -75,13 +75,13 @@ git push origin main
 python3 .agents/skills/ops-sentinel/scripts/run_ops_sentinel.py --live
 ```
 
-## 7. 専用スキル一覧（全8スキル）＆ Claude Fable 5.1 運用基準
+## 7. 専用スキル一覧（全8スキル）＆ Claude Fable 5.2 運用基準
 詳細なワークフローは各 `.agents/skills/<name>/SKILL.md` を参照すること：
 1. **`article` (`/article`)**: 90日モート＆本番 `llms-facts` 実測抽出 → 16:9図解アイキャッチ → 4層因果コラムHTML → Fable/Opus推敲 → note独立エッセイ生成
 2. **`editorial-ui-ux` (`/ui`)**: Mobbin実在UI参照 × クリーン・ミニマルUX改修 × 未定義CSS変数・キャッシュ完全同期・Playwright回帰監査
 3. **`affiliate` (`/affiliate`)**: ASPタグ解析・薬機法＆直 `/link/` 検閲・コード4箇所＋ガイド同期更新・非汚染リダイレクト確認
 4. **`store-audit` (`/store-audit`)**: 店舗マスタ・営業時間（14日ロールアップドリフト含む）・料金表・別業態比較定義の一括点検
-5. **`claude-review` (`/claude-review`)**: Antigravity × Claude Code 連携（ファイル自動インライン添付＆`stdin` 高速渡し対応。日常レビューは `claude-opus-5-5`、切り札4領域 ①`--mode strategy`［全体戦略］・②`--mode audit`［数理・最終セキュリティ監査］・③`--mode flagship`［看板コラム・note徹底推敲］・④`--mode architect`［汎用設計・ルール策定］は最上位 **`claude-fable-5-1`** を自動使用）
+5. **`claude-review` (`/claude-review`)**: Antigravity × Claude Code 連携（ファイル自動インライン添付＆`stdin` 高速渡し対応。日常レビューは `claude-opus-5-5`、切り札4領域 ①`--mode strategy`［全体戦略］・②`--mode audit`［数理・最終セキュリティ監査］・③`--mode flagship`［看板コラム・note徹底推敲］・④`--mode architect`［汎用設計・ルール策定］は最上位 **`claude-fable-5-2`** を自動使用）
 6. **`data-release` (`/data-release`)**: 月次・年末白書の一次統計リリース原稿＋CC BY 4.0 引用キット生成＋本番CSV/JSON整合性検証（被リンク獲得エンジン）
 7. **`growth-pdca` (`/growth-pdca`)**: ウォッチ登録条件・投票・アクセス回遊 × アフィリエイト枠別EPCを横断分析し、次週の必勝3手（記事・リライト・導線）を算出
 8. **`ops-sentinel` (`/ops-sentinel`)**: 本番エンドポイント非汚染プローブ・データモート欠損/14日匿名化検査・デプロイ前ワンコマンド品質ゲート

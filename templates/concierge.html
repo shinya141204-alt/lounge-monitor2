@@ -987,6 +987,45 @@
         var IS_PUBLIC_VIEW = {{ 'true' if (not is_staff and not session.get('is_staff')) else 'false' }};
         var activeController = null;
         var stageEl = document.getElementById('concierge-stage');
+        var lastSentIntent = '';
+
+        function trackHashigoIntent() {
+            try {
+                if (!IS_PUBLIC_VIEW) return;
+                if (window.IS_STAFF) return;
+                if (navigator.webdriver) return;
+                if (window.location && window.location.search && window.location.search.indexOf('staff_test=1') !== -1) return;
+                if (document.body && document.body.classList.contains('staff-mode')) return;
+
+                var currentArea = String(state.area || 'shinjuku').trim().toLowerCase();
+                var currentAudience = (state.audience === 'women') ? 'women' : 'men';
+                var currentPartySize = (state.party_size === 'solo' || state.party_size === 'group') ? state.party_size : 'pair';
+                var intentLabel = currentArea + ':' + currentAudience + ':' + currentPartySize;
+
+                if (lastSentIntent === intentLabel) return;
+                lastSentIntent = intentLabel;
+
+                var payloadStr = JSON.stringify({
+                    event: 'hashigo_intent',
+                    label: intentLabel
+                });
+
+                if (navigator.sendBeacon) {
+                    var blob = new Blob([payloadStr], { type: 'application/json' });
+                    if (navigator.sendBeacon('/api/track', blob)) return;
+                }
+
+                if (window.fetch) {
+                    window.fetch('/api/track', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: payloadStr,
+                        keepalive: true,
+                        credentials: 'same-origin'
+                    }).catch(function () {});
+                }
+            } catch (e) {}
+        }
 
         function escHtml(str) {
             var d = document.createElement('div');
@@ -1216,6 +1255,7 @@
         }
 
         function fetchConcierge() {
+            trackHashigoIntent();
             var qs = buildQuery();
             try {
                 window.history.replaceState(null, '', '/concierge?' + qs);
@@ -1265,6 +1305,8 @@
                 }
             });
         }
+        // 初期ロード時の先行需要インテント送信
+        trackHashigoIntent();
     })();
     </script>
 </body>

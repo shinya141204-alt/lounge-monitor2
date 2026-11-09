@@ -2162,7 +2162,10 @@
                 const fBadge = fc ? (isWomenView ? fc.badge_women : fc.badge_men) : '';
                 const cleanWBadge = stripBadgeEmojiPrefix(wBadge);
                 const cleanFBadge = stripBadgeEmojiPrefix(fBadge);
-                if (cleanWBadge || cleanFBadge) {
+                const tm = store.turnover_momentum || null;
+                const tmLabel = (tm && tm.score !== null && tm.label && tm.label !== '判定対象外') ? stripBadgeEmojiPrefix(tm.label) : '';
+                const wb = store.weather_brief || null;
+                if (cleanWBadge || cleanFBadge || tmLabel || (wb && wb.is_cold_surge)) {
                     const pills = [];
                     if (cleanWBadge) {
                         const rawWTone = isWomenView ? (we.wait_tone_women || we.wait_tone) : we.wait_tone;
@@ -2176,6 +2179,15 @@
                         const isCautionTrend = Boolean(fc && (fc.alert_code === 'crowd_rush_warn' || fc.alert_code === 'last_train_cliff' || fc.alert_code === 'male_glut_lock' || Number(fc.pred_delta_pt || 0) <= -5));
                         const fSvg = isCautionTrend ? UI_SVG_TREND_DOWN : UI_SVG_TREND_UP;
                         pills.push(`<span class="moat-pill tone-${fTone}" title="${fTitle}">${fSvg}${escapeHtml(cleanFBadge)}</span>`);
+                    }
+                    if (tmLabel) {
+                        const tmTone = escapeHtml(tm.tone || 'neutral');
+                        const tmTitle = escapeHtml(tm.desc || tm.reason || `席回転スピード: ${tm.score}点`);
+                        pills.push(`<span class="moat-pill tone-${tmTone}" title="${tmTitle}"><span class="moat-dot" aria-hidden="true"></span>${escapeHtml(tmLabel)}</span>`);
+                    }
+                    if (wb && wb.is_cold_surge) {
+                        const dC = Number(wb.temp_diff_c || 0).toFixed(1);
+                        pills.push(`<span class="moat-pill tone-rain" title="前日比${dC}℃急冷（屋内需要サージ警戒）"><span class="moat-dot" aria-hidden="true"></span>急冷サージ</span>`);
                     }
                     moatRowEl.innerHTML = pills.join('');
                     moatRowEl.classList.remove('hidden');

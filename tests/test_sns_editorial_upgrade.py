@@ -383,20 +383,20 @@ class SnsEditorialUpgradeTests(unittest.TestCase):
             self.assertEqual(err2, "")
             self.assertEqual(fast_model, "claude-sonnet-5-5")
 
-            # Strategic / Flagship Column pass (`prefer_fable=True`) routes to `claude-fable-5-1` with high effort
-            self.assertFalse(sns_editorial._claude_supports_temperature("claude-fable-5-1"))
-            self.assertGreater(sns_editorial._claude_version_key("claude-fable-5-1"), (5, 0, 0))
+            # Strategic / Flagship Column pass (`prefer_fable=True`) routes to `claude-fable-5-2` with high effort
+            self.assertFalse(sns_editorial._claude_supports_temperature("claude-fable-5-2"))
+            self.assertGreater(sns_editorial._claude_version_key("claude-fable-5-2"), (5, 0, 0))
             _, fable_model, err3 = sns_editorial.call_editorial_ai_json('{"hello": 3}', prefer_fable=True)
             self.assertEqual(err3, "")
-            self.assertEqual(fable_model, "claude-fable-5-1")
+            self.assertEqual(fable_model, "claude-fable-5-2")
             fable_json = mock_post.call_args[1]["json"]
             self.assertNotIn("temperature", fable_json)
             self.assertEqual(fable_json.get("output_config"), {"effort": "high"})
 
-            # Instant failover: if `claude-fable-5-1` returns 404 on a standard API key, fall back immediately to `claude-opus-5-5`
+            # Instant failover: if `claude-fable-5-2` returns 404 on a standard API key, fall back immediately to `claude-opus-5-5`
             not_found_resp = mock.MagicMock()
             not_found_resp.status_code = 404
-            not_found_resp.text = '{"type":"error","error":{"type":"not_found_error","message":"model: claude-fable-5-1"}}'
+            not_found_resp.text = '{"type":"error","error":{"type":"not_found_error","message":"model: claude-fable-5-2"}}'
             mock_post.side_effect = [not_found_resp, fake_resp]
             parsed_fb, fb_model, err_fb = sns_editorial.call_editorial_ai_json('{"hello": 4}', prefer_fable=True)
             self.assertEqual(err_fb, "")
@@ -404,7 +404,7 @@ class SnsEditorialUpgradeTests(unittest.TestCase):
             self.assertEqual(parsed_fb.get("main_text"), "テスト本文")
             mock_post.side_effect = None
 
-        # Verify `run_claude_review.py` CLI wrapper supports all 3 Fable 5.1 domains (`strategy`, `audit`, `flagship`)
+        # Verify `run_claude_review.py` CLI wrapper supports all 3 Fable 5.2 domains (`strategy`, `audit`, `flagship`)
         import importlib.util
         from pathlib import Path
         wrapper_path = Path(__file__).resolve().parents[1] / ".agents" / "skills" / "claude-review" / "scripts" / "run_claude_review.py"
@@ -412,14 +412,14 @@ class SnsEditorialUpgradeTests(unittest.TestCase):
         rcr = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(rcr)
         for f_mode in ("strategy", "audit", "flagship"):
-            self.assertEqual(rcr.resolve_model(None, f_mode, False), "claude-fable-5-1")
+            self.assertEqual(rcr.resolve_model(None, f_mode, False), "claude-fable-5-2")
             p_txt = rcr.build_prompt(f_mode, "テスト論点", ["app.py"], False, True)
             self.assertIn("テスト論点", p_txt)
         self.assertEqual(rcr.resolve_model(None, "code", False), "claude-opus-5-5")
-        self.assertEqual(rcr.resolve_model(None, "code", True), "claude-fable-5-1")
-        self.assertEqual(rcr.resolve_effective_mode("code", "claude-fable-5-1", True), "audit")
-        self.assertEqual(rcr.resolve_effective_mode("article", "claude-fable-5-1", True), "flagship")
-        self.assertEqual(rcr.resolve_effective_mode("consult", "claude-fable-5-1", True), "strategy")
+        self.assertEqual(rcr.resolve_model(None, "code", True), "claude-fable-5-2")
+        self.assertEqual(rcr.resolve_effective_mode("code", "claude-fable-5-2", True), "audit")
+        self.assertEqual(rcr.resolve_effective_mode("article", "claude-fable-5-2", True), "flagship")
+        self.assertEqual(rcr.resolve_effective_mode("consult", "claude-fable-5-2", True), "strategy")
 
         # Ensure SNS & Column prompts never request `thinking_memo` (avoids Claude 5.5 reasoning_extraction refusal)
         res = sns_editorial.run_researcher(self.sample_stores, channel="x")

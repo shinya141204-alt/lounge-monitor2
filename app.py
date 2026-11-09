@@ -2121,6 +2121,7 @@ def track_page_views(response):
 _BEACON_ALLOWED_EVENTS = frozenset({
     'affiliate_impression', 'cushion_click', 'store_open', 'map_cafe', 'map_bar',
     'official_click', 'sns_click', 'share', 'vote',
+    'hashigo_intent',
 })
 
 

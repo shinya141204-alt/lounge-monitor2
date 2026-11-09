@@ -26,6 +26,7 @@ import math
 import os
 import threading
 import time
+from typing import Any, Optional
 
 import requests
 
@@ -243,6 +244,8 @@ _weather_state = {
 
 def city_key_for_store(store_name: str) -> str:
     """店舗名から対応する気象観測都市キーを返す（韓国店舗は空文字）。"""
+    if not isinstance(store_name, str):
+        return "tokyo"
     s = (store_name or "").upper()
     if any(k in s for k in ("ソウル", "カンナム", "ホンデ", "SEOUL", "GANGNAM", "HONGDAE")):
         return ""
@@ -282,14 +285,103 @@ def _weather_code_label(wcode: int, precip_mm: float) -> tuple:
     return "晴れ", False
 
 
+def _safe_float(val, ndigits: int = 1, default=None):
+    """異常文字列・非有限浮動小数点数（Inf/NaN）・不正型を安全に除外して丸める。"""
+    if val is None:
+        return default
+    try:
+        f = float(val)
+        return round(f, ndigits) if math.isfinite(f) else default
+    except (TypeError, ValueError, OverflowError):
+        return default
+
+
+def _safe_int(val, default: int = 0, min_val: int = None, max_val: int = None) -> int:
+    """異常文字列・非有限浮動小数点数・多倍長整数・不正型を安全に整数化し、境界クランプする。"""
+    if val is None:
+        return default
+    try:
+        v = int(val)
+        if min_val is not None and v < min_val:
+            return min_val
+        if max_val is not None and v > max_val:
+            return max_val
+        return v
+    except (TypeError, ValueError, OverflowError):
+        return default
+
+
+def _safe_round_int(val: Any, default: int = 0, min_val: int = None, max_val: int = None) -> int:
+    """浮動小数点数を安全に四捨五入して整数へ変換（NaN/Inf/型異常時はdefaultへ安全フォールバック）。"""
+    f = _safe_float(val)
+    if f is None:
+        return default
+    try:
+        rounded = round(f)
+        return _safe_int(rounded, default=default, min_val=min_val, max_val=max_val)
+    except (TypeError, ValueError, OverflowError):
+        return default
+
+
+def _safe_dict(val: Any) -> dict:
+    """任意のオブジェクトを安全に dict 型として扱う（非辞書型は {} を返却）。"""
+    return val if isinstance(val, dict) else {}
+
+
+def get_store_weather_brief(store_name_or_city_key: str, weather_map: dict = None) -> dict:
+    """店舗名または都市キーに対応する weather_brief 辞書を安全に返す。欠損時・破損時はデフォルトへ完全フォールバック。"""
+    if not isinstance(store_name_or_city_key, str) or not store_name_or_city_key.strip():
+        ck = ""
+    else:
+        ck = city_key_for_store(store_name_or_city_key) if store_name_or_city_key not in WEATHER_CITIES else store_name_or_city_key
+    city_lbl = WEATHER_CITIES.get(ck, {}).get("label", "") if ck else ""
+    default_brief = {
+        "city": city_lbl,
+        "condition": "晴れ",
+        "temp_c": None,
+        "precip_mm": 0.0,
+        "is_rainy": False,
+        "temp_prev_c": None,
+        "temp_diff_c": None,
+        "temp_diff_from_yesterday": None,
+        "is_cold_surge": False,
+        "temp_surge_flag": False,
+        "temp_diff_label": "平年並み",
+        "temp_surge_badge": None,
+    }
+    if not isinstance(weather_map, dict) or not ck:
+        return default_brief
+
+    cw = weather_map.get(ck)
+    if not isinstance(cw, dict):
+        return default_brief
+
+    return {
+        "city": cw.get("city_label") or city_lbl,
+        "condition": cw.get("condition_ja", "晴れ"),
+        "temp_c": cw.get("temp_c"),
+        "precip_mm": cw.get("precip_mm", 0.0) if cw.get("precip_mm") is not None else 0.0,
+        "is_rainy": bool(cw.get("is_rainy", False)),
+        "temp_prev_c": cw.get("temp_prev_c"),
+        "temp_diff_c": cw.get("temp_diff_c"),
+        "temp_diff_from_yesterday": cw.get("temp_diff_from_yesterday"),
+        "is_cold_surge": bool(cw.get("is_cold_surge")),
+        "temp_surge_flag": bool(cw.get("temp_surge_flag")),
+        "temp_diff_label": cw.get("temp_diff_label", "平年並み"),
+        "temp_surge_badge": cw.get("temp_surge_badge"),
+    }
+
+
 def _fetch_open_meteo_all_cities(timeout_sec: float = 3.5) -> dict:
-    """Open-Meteo APIで全国10都市の現在気象を1リクエストで一括取得する。"""
+    """Open-Meteo APIで全国10都市の現在気象および前日気温を1リクエストで一括取得する（追加通信ゼロ）。"""
     lats = ",".join(str(WEATHER_CITIES[k]["lat"]) for k in _WEATHER_CITY_ORDER)
     lngs = ",".join(str(WEATHER_CITIES[k]["lng"]) for k in _WEATHER_CITY_ORDER)
     url = (
         "https://api.open-meteo.com/v1/forecast"
         f"?latitude={lats}&longitude={lngs}"
         "&current=temperature_2m,precipitation,weather_code,wind_speed_10m"
+        "&hourly=temperature_2m"
+        "&past_days=1"
         "&timezone=Asia%2FTokyo"
     )
     resp = requests.get(url, timeout=timeout_sec)
@@ -298,18 +390,87 @@ def _fetch_open_meteo_all_cities(timeout_sec: float = 3.5) -> dict:
     payload = resp.json()
     items = payload if isinstance(payload, list) else [payload]
     parsed = {}
+    now_jst = datetime.datetime.now(JST)
+    yesterday_str = (now_jst - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+
     for idx, city_key in enumerate(_WEATHER_CITY_ORDER):
         if idx >= len(items):
             break
-        cur = (items[idx] or {}).get("current") or {}
-        raw_temp = cur.get("temperature_2m")
-        raw_precip = cur.get("precipitation")
-        raw_wind = cur.get("wind_speed_10m")
-        temp_c = round(float(raw_temp), 1) if raw_temp is not None else None
-        precip_mm = round(float(raw_precip), 2) if raw_precip is not None else None
-        wcode = int(cur.get("weather_code") or 0)
-        wind_kmh = round(float(raw_wind), 1) if raw_wind is not None else None
+        c_item = items[idx] if isinstance(items[idx], dict) else {}
+        cur = c_item.get("current") if isinstance(c_item.get("current"), dict) else {}
+
+        # 脆弱性4 防御: 不正文字列・NaN/Inf・破損型の安全パース
+        temp_c = _safe_float(cur.get("temperature_2m"), 1)
+        precip_mm = _safe_float(cur.get("precipitation"), 2)
+        if precip_mm is not None and precip_mm < 0:
+            precip_mm = 0.0
+        wcode = _safe_int(cur.get("weather_code"), 0)
+        if not (0 <= wcode <= 99):
+            wcode = 0
+        wind_kmh = _safe_float(cur.get("wind_speed_10m"), 1)
+        if wind_kmh is not None and wind_kmh < 0:
+            wind_kmh = 0.0
+
         label_ja, is_rainy = _weather_code_label(wcode, precip_mm if precip_mm is not None else 0.0)
+
+        # 前日夜（20時〜23時平均または前日同時刻）の気温算出
+        hourly = c_item.get("hourly") if isinstance(c_item.get("hourly"), dict) else {}
+        h_times = hourly.get("time") if isinstance(hourly.get("time"), (list, tuple)) else []
+        h_temps = hourly.get("temperature_2m") if isinstance(hourly.get("temperature_2m"), (list, tuple)) else []
+        temp_prev_c = None
+        prev_night_temps = []
+        target_night_hours = {
+            f"{yesterday_str}T20:00", f"{yesterday_str}T21:00",
+            f"{yesterday_str}T22:00", f"{yesterday_str}T23:00"
+        }
+        for t_str, t_val in zip(h_times, h_temps):
+            if t_str in target_night_hours and t_val is not None:
+                v = _safe_float(t_val, 1)
+                if v is not None:
+                    prev_night_temps.append(v)
+
+        if prev_night_temps:
+            temp_prev_c = round(sum(prev_night_temps) / len(prev_night_temps), 1)
+        elif cur.get("time"):
+            # 前日同時刻（24時間前）フォールバック
+            try:
+                cur_dt = datetime.datetime.fromisoformat(str(cur["time"]))
+                prev_target_iso = (cur_dt - datetime.timedelta(days=1)).strftime("%Y-%m-%dT%H:00")
+                for t_str, t_val in zip(h_times, h_temps):
+                    if isinstance(t_str, str) and t_str.startswith(prev_target_iso) and t_val is not None:
+                        v = _safe_float(t_val, 1)
+                        if v is not None:
+                            temp_prev_c = v
+                            break
+            except Exception:
+                pass
+
+        # 前日比寒暖差（Δ℃）および急冷サージ判定（安全フォールバック保証）
+        temp_diff_c = None
+        is_cold_surge = False
+        temp_diff_label = "平年並み"
+        temp_surge_badge = None
+
+        if temp_c is not None and temp_prev_c is not None:
+            diff = _safe_float(temp_c - temp_prev_c, 1)
+            if diff is not None:
+                temp_diff_c = diff
+                is_cold_surge = bool(temp_diff_c <= -3.0)
+                if is_cold_surge:
+                    temp_diff_label = "急冷"
+                    temp_surge_badge = f"前日比 {temp_diff_c:+.1f}℃ 急冷"
+                elif temp_diff_c <= -2.0:
+                    temp_diff_label = "寒暖差大"
+                    temp_surge_badge = f"前日比 {temp_diff_c:+.1f}℃"
+                elif temp_diff_c >= 3.0:
+                    temp_diff_label = "温暖"
+                    temp_surge_badge = f"前日比 {temp_diff_c:+.1f}℃ 温暖"
+                elif temp_diff_c >= 2.0:
+                    temp_diff_label = "寒暖差大"
+                    temp_surge_badge = f"前日比 {temp_diff_c:+.1f}℃"
+                else:
+                    temp_diff_label = "平年並み"
+
         parsed[city_key] = {
             "city_key": city_key,
             "city_label": WEATHER_CITIES[city_key]["label"],
@@ -319,6 +480,13 @@ def _fetch_open_meteo_all_cities(timeout_sec: float = 3.5) -> dict:
             "wind_kmh": wind_kmh,
             "condition_ja": label_ja,
             "is_rainy": is_rainy,
+            "temp_prev_c": temp_prev_c,
+            "temp_diff_c": temp_diff_c,
+            "temp_diff_from_yesterday": temp_diff_c,
+            "is_cold_surge": is_cold_surge,
+            "temp_surge_flag": is_cold_surge,
+            "temp_diff_label": temp_diff_label,
+            "temp_surge_badge": temp_surge_badge,
         }
     return parsed
 
@@ -459,6 +627,67 @@ MAJOR_ARENA_HUBS = [
         "city_key": "sapporo",
         "stores": ["JIS SAPPORO"],
     },
+    # 明治神宮野球場（プロ野球ヤクルト・大学野球）
+    {
+        "venue_id": "meiji_jingu_stadium",
+        "venue_name": "明治神宮野球場",
+        "city_key": "tokyo",
+        "stores": [
+            "OLG 渋谷本店", "OLG ag渋谷", "ASOBIBAR 渋谷",
+            "OLG 新宿", "JIS SHINJUKU", "ASOBIBAR 新宿",
+            "OLG 恵比寿", "ASOBIBAR 恵比寿"
+        ],
+    },
+    # 阪神甲子園球場（プロ野球阪神・高校野球）
+    {
+        "venue_id": "hanshin_koshien_stadium",
+        "venue_name": "阪神甲子園球場",
+        "city_key": "osaka",
+        "stores": [
+            "OLG 大阪駅前", "JIS UMEDA", "JIS CHAYAMACHI", "OLG ag梅田",
+            "ASOBIBAR 梅田", "ASOBIBAR 茶屋町",
+            "OLG 神戸", "ASOBIBAR 神戸 三宮",
+            "OLG 難波", "JIS NAMBA"
+        ],
+    },
+    # 日産スタジアム（横浜国際総合競技場）
+    {
+        "venue_id": "nissan_stadium",
+        "venue_name": "日産スタジアム（横浜国際総合競技場）",
+        "city_key": "yokohama",
+        "stores": ["OLG 横浜"],
+    },
+    # 国立競技場（Jリーグ国立・サッカー日本代表戦）
+    {
+        "venue_id": "japan_national_stadium",
+        "venue_name": "国立競技場",
+        "city_key": "tokyo",
+        "stores": [
+            "OLG 新宿", "JIS SHINJUKU", "ASOBIBAR 新宿",
+            "OLG 渋谷本店", "OLG ag渋谷", "ASOBIBAR 渋谷",
+            "OLG 恵比寿"
+        ],
+    },
+    # 大型花火大会（なにわ淀川、隅田川）
+    {
+        "venue_id": "yodogawa_fireworks",
+        "venue_name": "なにわ淀川花火大会",
+        "city_key": "osaka",
+        "pattern_type": "fireworks",
+        "requires_schedule": True,
+        "stores": [
+            "OLG 大阪駅前", "JIS UMEDA", "JIS CHAYAMACHI", "OLG ag梅田",
+            "OLG 天満", "ASOBIBAR 梅田", "ASOBIBAR 茶屋町"
+        ],
+    },
+    {
+        "venue_id": "sumida_fireworks",
+        "venue_name": "隅田川花火大会",
+        "city_key": "tokyo",
+        "pattern_type": "fireworks",
+        "requires_schedule": True,
+        "stores": ["OLG 上野", "OLG ag上野", "OLG 錦糸町", "OLG 新宿"],
+    },
 ]
 
 _STORE_TO_ARENA = {}
@@ -512,10 +741,11 @@ def detect_arena_event_surges(live_stores: list, now_jst: datetime.datetime = No
 
     store_map = {}
     raw_names_by_canon = {}
-    for s in (live_stores or []):
+    stores_list = live_stores if isinstance(live_stores, (list, tuple, set)) else []
+    for s in stores_list:
         if not isinstance(s, dict):
             continue
-        rname = (s.get("name") or "").strip()
+        rname = str(s.get("name") or "").strip()
         if not rname:
             continue
         cname = _resolve_internal_store_key(rname) or rname
@@ -527,11 +757,12 @@ def detect_arena_event_surges(live_stores: list, now_jst: datetime.datetime = No
     signals_by_store = {}
     is_post_concert_window = 19 <= hr <= 22
 
+    sched_map = _safe_dict(scheduled_by_venue)
     for hub in MAJOR_ARENA_HUBS:
         vid = hub["venue_id"]
         vname = hub["venue_name"]
         is_explicit = vid in explicit_venues
-        sched_list = scheduled_by_venue.get(vid) or []
+        sched_list = sched_map.get(vid) if isinstance(sched_map.get(vid), list) else []
 
         hub_usual_surges = 0
         max_w_diff = 0
@@ -539,21 +770,26 @@ def detect_arena_event_surges(live_stores: list, now_jst: datetime.datetime = No
             st = store_map.get(sname)
             if not st:
                 continue
-            w = int(st.get("women") or 0)
-            uw_diff = st.get("usual_w_diff")
-            w_diff_15 = int(st.get("women_diff") or 0)
-            if w >= 16 and ((uw_diff is not None and uw_diff >= 10) or w_diff_15 >= 6):
+            w = _safe_int(st.get("women"), default=0, min_val=0, max_val=100000)
+            raw_uw = st.get("usual_w_diff")
+            uw_diff = _safe_float(raw_uw)
+            w_diff_15 = _safe_int(st.get("women_diff"), default=0, min_val=-100000, max_val=100000)
+
+            if w >= 16 and ((uw_diff is not None and uw_diff >= 10.0) or w_diff_15 >= 6):
                 hub_usual_surges += 1
-                uw_int = int(round(float(uw_diff))) if uw_diff is not None else 0
+                uw_int = _safe_round_int(uw_diff, default=0, min_val=0, max_val=100000) if uw_diff is not None else 0
                 max_w_diff = max(max_w_diff, uw_int, w_diff_15)
 
         needed = 1 if len(hub["stores"]) <= 2 else 2
         sig_template = None
 
         if sched_list:
-            ev0 = sched_list[0]
+            ev0 = sched_list[0] if isinstance(sched_list[0], dict) else {}
             ev_title = str(ev0.get("event_title") or "").strip()
-            est_end = int(ev0.get("est_end_hour") or 21)
+            try:
+                est_end = int(ev0.get("est_end_hour") or 21)
+            except (TypeError, ValueError, OverflowError):
+                est_end = 21
             v_short = str(ev0.get("venue_name") or vname.split("・")[0]).strip()
             win_start = max(18, est_end - 1)
             win_end_ext = est_end + 2
@@ -588,31 +824,75 @@ def detect_arena_event_surges(live_stores: list, now_jst: datetime.datetime = No
                     ),
                 }
 
-        if sig_template is None and (is_explicit or (is_post_concert_window and hub_usual_surges >= needed)):
-            sig_template = {
-                "venue_id": vid,
-                "venue_name": vname,
-                "is_explicit_schedule": is_explicit,
-                "phase": "verified_surge" if hub_usual_surges >= needed else "post_window",
-                "is_surge_now": True,
-                "event_title": "",
-                "est_end_hour": 21,
-                "surge_women_delta": max_w_diff,
-                "label_short": f"{vname.split('・')[0]}終演圏 · 女性流入中",
-            }
+        requires_schedule = bool(hub.get("requires_schedule")) or (
+            hub.get("pattern_type") in ("fireworks", "seasonal", "festival")
+            or "fireworks" in vid
+            or "花火" in vname
+        )
+
+        if sig_template is None:
+            if requires_schedule and not is_explicit:
+                pass  # 季節イベント・花火大会等は、公式スケジュールが存在しない日時の野良サージ発動を抑止
+            elif is_explicit or (is_post_concert_window and hub_usual_surges >= needed):
+                sig_template = {
+                    "venue_id": vid,
+                    "venue_name": vname,
+                    "is_explicit_schedule": is_explicit,
+                    "phase": "verified_surge" if hub_usual_surges >= needed else "post_window",
+                    "is_surge_now": True,
+                    "event_title": "",
+                    "est_end_hour": 21,
+                    "surge_women_delta": max_w_diff,
+                    "label_short": f"{vname.split('・')[0]}終演圏 · 女性流入中",
+                }
 
         if sig_template is not None:
             allow_low_headcount = bool(sig_template.get("is_explicit_schedule"))
+            _PHASE_PRIORITY = {"verified_surge": 3, "post_window": 2, "pre_announce": 1}
+            cur_prio = _PHASE_PRIORITY.get(sig_template.get("phase"), 0)
+
             for sname in hub["stores"]:
                 st = store_map.get(sname)
                 if not st:
                     continue
-                if allow_low_headcount or int(st.get("women") or 0) >= 12:
+                try:
+                    st_w = int(st.get("women") or 0)
+                except (TypeError, ValueError, OverflowError):
+                    st_w = 0
+
+                if allow_low_headcount or st_w >= 12:
+                    existing = signals_by_store.get(sname)
+                    if existing:
+                        ex_explicit = bool(existing.get("is_explicit_schedule"))
+                        cur_explicit = bool(sig_template.get("is_explicit_schedule"))
+
+                        # 1. 公式スケジュール登録ハブは、スケジュール未登録ハブ（野良サージ）で決して上書きされない
+                        if ex_explicit and not cur_explicit:
+                            continue
+
+                        # 2. 既存がスケジュール未登録で新規が公式スケジュールの場合は優先昇格（上書き許可）
+                        if not (not ex_explicit and cur_explicit):
+                            # 両者が同一スケジュール種別（両方 explicit または両方 unexplicit）の場合
+                            ex_prio = _PHASE_PRIORITY.get(existing.get("phase"), 0)
+                            if ex_prio > cur_prio:
+                                continue
+                            if ex_prio == cur_prio and not cur_explicit:
+                                ex_delta = int(existing.get("surge_women_delta") or 0)
+                                cur_delta = int(sig_template.get("surge_women_delta") or 0)
+                                # 未登録ハブ同士で流入急増数が同等以上の場合は既存を維持
+                                if ex_delta >= cur_delta:
+                                    continue
+
                     sig_obj = dict(sig_template)
                     signals_by_store[sname] = sig_obj
                     for r_alias in raw_names_by_canon.get(sname, ()):
                         signals_by_store[r_alias] = sig_obj
     return signals_by_store
+
+
+def detect_city_event_surge(live_stores: list, now_jst: datetime.datetime = None) -> dict:
+    """都市イベント（スタジアム・花火大会・アリーナ）の2次会サージ検知（detect_arena_event_surges への委譲）。"""
+    return detect_arena_event_surges(live_stores, now_jst=now_jst)
 
 
 def capture_external_context_snapshot(live_stores: list = None, allow_blocking: bool = True, now_jst: datetime.datetime = None) -> list:
@@ -631,30 +911,35 @@ def capture_external_context_snapshot(live_stores: list = None, allow_blocking: 
         transit_map = {}
 
     city_arenas = {}
-    for sname, sig in arena_signals.items():
-        if not sig.get("is_surge_now", True):
-            continue
-        ck = city_key_for_store(_resolve_internal_store_key(sname) or sname)
-        if ck:
-            city_arenas.setdefault(ck, set()).add(sig["venue_id"])
+    if isinstance(arena_signals, dict):
+        for sname, sig in arena_signals.items():
+            sig_d = _safe_dict(sig)
+            if not sig_d.get("is_surge_now", True):
+                continue
+            ck = city_key_for_store(_resolve_internal_store_key(sname) or sname)
+            vid = sig_d.get("venue_id")
+            if ck and vid:
+                city_arenas.setdefault(ck, set()).add(str(vid))
 
     rows = []
+    w_map = _safe_dict(weather_map)
+    tr_map = _safe_dict(transit_map)
     for ck in _WEATHER_CITY_ORDER:
-        w = weather_map.get(ck)
-        if not w:
+        w = w_map.get(ck)
+        if not isinstance(w, dict):
             continue
         arenas_list = sorted(city_arenas.get(ck) or [])
-        tr_info = transit_map.get(ck) or {}
+        tr_info = _safe_dict(tr_map.get(ck))
         delayed_lines = tr_info.get("delayed_lines") or []
         rows.append({
             "city_key": ck,
-            "city_label": w["city_label"],
-            "temp_c": w["temp_c"],
-            "precip_mm": w["precip_mm"],
-            "weather_code": w["weather_code"],
-            "wind_kmh": w["wind_kmh"],
-            "condition_ja": w["condition_ja"],
-            "is_rainy": 1 if w["is_rainy"] else 0,
+            "city_label": str(w.get("city_label") or ck),
+            "temp_c": _safe_float(w.get("temp_c"), ndigits=1, default=None),
+            "precip_mm": _safe_float(w.get("precip_mm"), ndigits=1, default=0.0),
+            "weather_code": _safe_int(w.get("weather_code"), default=None),
+            "wind_kmh": _safe_float(w.get("wind_kmh"), ndigits=1, default=None),
+            "condition_ja": str(w.get("condition_ja") or "晴れ"),
+            "is_rainy": 1 if w.get("is_rainy") else 0,
             "active_arenas_json": json.dumps(arenas_list, ensure_ascii=False),
             "transit_disrupted": 1 if tr_info.get("disrupted") else 0,
             "transit_lines_json": json.dumps(delayed_lines, ensure_ascii=False),
@@ -693,15 +978,18 @@ def calibrate_from_jis_pos(stores_data: list) -> dict:
     women_party_samples = []
     wait_ratio_samples = []
 
-    for s in stores_data:
+    stores_list = stores_data if isinstance(stores_data, (list, tuple, set)) else []
+    for s in stores_list:
+        if not isinstance(s, dict):
+            continue
         pos = s.get("pos_telemetry")
         if not isinstance(pos, dict) or pos.get("telemetry_type") != "jis_pos":
             continue
-        m_cust = int(pos.get("men_total_guests") or s.get("men") or 0)
-        w_cust = int(pos.get("women_total_guests") or s.get("women") or 0)
-        m_grp = int(pos.get("men_total_groups") or 0)
-        w_grp = int(pos.get("women_total_groups") or 0)
-        m_wait_grp = int(pos.get("men_waiting_groups") or 0)
+        m_cust = _safe_int(pos.get("men_total_guests") or s.get("men"), default=0, min_val=0, max_val=100000)
+        w_cust = _safe_int(pos.get("women_total_guests") or s.get("women"), default=0, min_val=0, max_val=100000)
+        m_grp = _safe_int(pos.get("men_total_groups"), default=0, min_val=0, max_val=10000)
+        w_grp = _safe_int(pos.get("women_total_groups"), default=0, min_val=0, max_val=10000)
+        m_wait_grp = _safe_int(pos.get("men_waiting_groups"), default=0, min_val=0, max_val=10000)
 
         if m_cust >= 4 and m_grp >= 2:
             men_party_samples.append(max(1.0, min(3.5, m_cust / float(m_grp))))
@@ -758,9 +1046,12 @@ def estimate_store_wait_and_pos(
     - 定額スタンディング店舗（ASOBIBAR / ヤタコイ）は自由回遊業態として席待ちなしを返す。
     - オリエンタルラウンジ・ag等の従量制着席店舗は、JIS実測待機モデル＋P99収容率からリアル待ち時間を推論。
     """
-    canon_name = _resolve_internal_store_key(store_name) or (store_name or "")
-    women = max(0, int(women or 0))
-    men = max(0, int(men or 0))
+    s_name = str(store_name or "").strip()
+    canon_name = _resolve_internal_store_key(s_name) or s_name
+    women = _safe_int(women, default=0, min_val=0, max_val=100000)
+    men = _safe_int(men, default=0, min_val=0, max_val=100000)
+    women_diff = _safe_int(women_diff, default=0, min_val=-100000, max_val=100000)
+    men_diff = _safe_int(men_diff, default=0, min_val=-100000, max_val=100000)
     total = women + men
     p99_cap = max(35, int(STORE_P99_CAPACITY.get(canon_name, 120)))
     # STORE_P99_CAPACITY は全時間帯（平日・早朝深夜含む）の99%点のため、金土ピーク時の実効物理収容枠は約1.18倍
@@ -785,7 +1076,8 @@ def estimate_store_wait_and_pos(
 
     # --- Case A: 定額・スタンディング自由回遊型（ASOBIBAR 10店 / ヤタコイ梅田） ---
     if canon_name in FLAT_STANDING_STORES:
-        vip_cnt = int((pos_telemetry or {}).get("vip_guests") or 0)
+        pos_d = _safe_dict(pos_telemetry)
+        vip_cnt = _safe_int(pos_d.get("vip_guests"), default=0, min_val=0, max_val=10000)
         vip_note = f"・VIP稼働{vip_cnt}" if vip_cnt > 0 else ""
         if total == 0:
             badge_m = "自由回遊（空席）"
@@ -797,7 +1089,7 @@ def estimate_store_wait_and_pos(
             badge_m = f"自由回遊（席待ちなし{vip_note}）"
             badge_w = "男性多数 · 即乾杯圏"
         return {
-            "is_measured": bool(pos_telemetry),
+            "is_measured": bool(isinstance(pos_telemetry, dict) and pos_telemetry),
             "is_standing_free": True,
             "occupancy_pct": occ_pct,
             "est_men_wait_groups": 0,
@@ -815,13 +1107,13 @@ def estimate_store_wait_and_pos(
 
     # --- Case B: JIS全10店（公式POSの実測待機・相席成立テレメトリあり） ---
     if isinstance(pos_telemetry, dict) and pos_telemetry.get("telemetry_type") == "jis_pos":
-        m_wait_grp = int(pos_telemetry.get("men_waiting_groups") or 0)
-        m_wait_gst = int(pos_telemetry.get("men_waiting_guests") or 0)
-        w_wait_grp = int(pos_telemetry.get("women_waiting_groups") or 0)
-        matched_grp = int(pos_telemetry.get("matched_groups") or 0)
-        m_grp = int(pos_telemetry.get("men_total_groups") or 0)
-        w_grp = int(pos_telemetry.get("women_total_groups") or 0)
-        vip_gst = int(pos_telemetry.get("vip_guests") or 0)
+        m_wait_grp = _safe_int(pos_telemetry.get("men_waiting_groups"), default=0, min_val=0, max_val=10000)
+        m_wait_gst = _safe_int(pos_telemetry.get("men_waiting_guests"), default=0, min_val=0, max_val=100000)
+        w_wait_grp = _safe_int(pos_telemetry.get("women_waiting_groups"), default=0, min_val=0, max_val=10000)
+        matched_grp = _safe_int(pos_telemetry.get("matched_groups"), default=0, min_val=0, max_val=10000)
+        m_grp = _safe_int(pos_telemetry.get("men_total_groups"), default=0, min_val=0, max_val=10000)
+        w_grp = _safe_int(pos_telemetry.get("women_total_groups"), default=0, min_val=0, max_val=10000)
+        vip_gst = _safe_int(pos_telemetry.get("vip_guests"), default=0, min_val=0, max_val=100000)
 
         avg_m_party = round(men / float(m_grp), 1) if m_grp > 0 and men > 0 else None
         party_style = ""
@@ -830,7 +1122,8 @@ def estimate_store_wait_and_pos(
 
         # 店舗規模が大きいほど1分あたりの席回転が速い（p99=240の大箱は1組あたり約5分、中型は約7.5分）
         size_factor = max(0.65, min(1.35, 160.0 / float(p99_cap)))
-        est_m_min = int(round(m_wait_grp * calib["minutes_per_wait_group"] * size_factor))
+        calib_m = _safe_float(_safe_dict(calib).get("minutes_per_wait_group"), default=5.0) or 5.0
+        est_m_min = _safe_round_int(m_wait_grp * calib_m * size_factor, default=0, min_val=0, max_val=120)
         if m_wait_grp > 0:
             est_m_min = max(5, min(75, est_m_min))
         else:
@@ -839,7 +1132,7 @@ def estimate_store_wait_and_pos(
             est_m_min = 0
         awaiting_women_only = bool(total > 0 and women == 0 and men >= 2 and m_wait_grp == 0)
 
-        est_w_min = max(5, min(60, int(round(w_wait_grp * 5.0 * size_factor)))) if w_wait_grp > 0 else 0
+        est_w_min = _safe_round_int(w_wait_grp * 5.0 * size_factor, default=0, min_val=0, max_val=60) if w_wait_grp > 0 else 0
 
         if total == 0:
             badge_m = "実測:待ち0組（空席）"
@@ -928,14 +1221,8 @@ def estimate_store_wait_and_pos(
         }
 
     male_excess = men - women
-    try:
-        _m_d = int(men_diff or 0) if str(men_diff).strip() not in ('', 'None') else 0
-    except (ValueError, TypeError):
-        _m_d = 0
-    try:
-        _w_d = int(women_diff or 0) if str(women_diff).strip() not in ('', 'None') else 0
-    except (ValueError, TypeError):
-        _w_d = 0
+    _m_d = _safe_int(men_diff, default=0, min_val=-100000, max_val=100000)
+    _w_d = _safe_int(women_diff, default=0, min_val=-100000, max_val=100000)
     momentum_excess = max(0, _m_d - _w_d)
     # 収容率は必ず [0.0, 1.0] にクランプ（ピーク夜に total > cap となっても待機組数が発散しないようにする）
     occ_ratio = min(1.0, total / float(physical_cap))
@@ -981,8 +1268,9 @@ def estimate_store_wait_and_pos(
                 balance_note = "立ち上がり少人数帯"
     elif women == 0:
         # 女性0名で男性のみ入店している状態
-        est_m_groups = max(1, int(round(men / max(1.2, calib["avg_men_party_size"]))))
-        est_m_min = max(10, min(45, int(round(est_m_groups * 7.5 / 5.0) * 5)))
+        calib_avg_m = _safe_float(_safe_dict(calib).get("avg_men_party_size"), default=1.82) or 1.82
+        est_m_groups = max(1, _safe_round_int(men / max(1.2, calib_avg_m), default=1, min_val=1))
+        est_m_min = max(10, min(45, _safe_round_int(est_m_groups * 7.5 / 5.0) * 5))
         tone = "warn" if est_m_min <= 15 else "danger"
         badge_m = f"女性待ち · 男約{est_m_groups}組"
         prob = 20
@@ -990,7 +1278,7 @@ def estimate_store_wait_and_pos(
     else:
         # 男性超過（men > women > 0）
         # 1組あたり平均人数差・VIP同席による自然な男性人数バッファ（女性数の約5%、1〜8名）
-        party_slack = min(8, max(1, int(round(women * 0.05))))
+        party_slack = min(8, max(1, _safe_round_int(women * 0.05, default=1, min_val=1, max_val=8)))
         eff_male_excess = max(0, male_excess - party_slack)
 
         if eff_male_excess == 0:
@@ -1007,7 +1295,8 @@ def estimate_store_wait_and_pos(
                 prob = 70
                 balance_note = "男女ほぼ同数でスムーズ推移中"
         else:
-            raw_wait_groups = eff_male_excess * calib["excess_to_wait_group_ratio"]
+            calib_ratio = _safe_float(_safe_dict(calib).get("excess_to_wait_group_ratio"), default=0.45) or 0.45
+            raw_wait_groups = eff_male_excess * calib_ratio
             high_thr = min(0.92, max(0.75, float(calib.get("high_occ_threshold", 0.85))))
             if occ_ratio > high_thr:
                 congestion_over = (occ_ratio - high_thr) / max(0.05, 1.0 - high_thr)
@@ -1015,8 +1304,9 @@ def estimate_store_wait_and_pos(
             if momentum_excess >= 6:
                 raw_wait_groups += min(1.2, (momentum_excess - 4) * 0.15)
 
-            max_phys_groups = max(1, int(math.ceil(male_excess / max(1.4, calib["avg_men_party_size"] * 0.88))))
-            est_m_groups = min(max_phys_groups, int(round(raw_wait_groups))) if raw_wait_groups >= 0.75 else 0
+            calib_avg_m = _safe_float(_safe_dict(calib).get("avg_men_party_size"), default=1.82) or 1.82
+            max_phys_groups = max(1, int(math.ceil(male_excess / max(1.4, calib_avg_m * 0.88))))
+            est_m_groups = min(max_phys_groups, _safe_round_int(raw_wait_groups, default=0, min_val=0, max_val=max_phys_groups)) if raw_wait_groups >= 0.75 else 0
 
             if est_m_groups == 0:
                 est_m_min = 0
@@ -1026,8 +1316,9 @@ def estimate_store_wait_and_pos(
                 balance_note = f"男性+{male_excess}名（1組人数差の範囲内）"
             else:
                 size_factor = max(0.68, min(1.25, 155.0 / float(p99_cap)))
-                est_m_min = int(round(est_m_groups * calib["minutes_per_wait_group"] * size_factor))
-                est_m_min = max(5, min(70, int(round(est_m_min / 5.0) * 5)))
+                calib_m = _safe_float(_safe_dict(calib).get("minutes_per_wait_group"), default=5.0) or 5.0
+                est_m_min = _safe_round_int(est_m_groups * calib_m * size_factor, default=0, min_val=0, max_val=120)
+                est_m_min = max(5, min(70, _safe_round_int(est_m_min / 5.0) * 5))
                 if est_m_min <= 15:
                     badge_m = f"男 約{est_m_min}分待ち（約{est_m_groups}組）"
                     tone = "warn"
@@ -1610,24 +1901,26 @@ def build_city_peer_context(stores_or_map) -> dict:
     entries = []
     if isinstance(stores_or_map, dict):
         for raw_name, pair in stores_or_map.items():
-            if not raw_name or not pair:
+            if not raw_name or not isinstance(pair, (tuple, list)) or len(pair) < 2:
                 continue
             cname = _resolve_internal_store_key(raw_name)
-            w = max(0, int(pair[0] or 0))
-            m = max(0, int(pair[1] or 0))
+            w = _safe_int(pair[0], default=0, min_val=0, max_val=100000)
+            m = _safe_int(pair[1], default=0, min_val=0, max_val=100000)
             entries.append((str(raw_name), cname, w, m, True, _is_standing_bar_store(cname)))
-    else:
+    elif isinstance(stores_or_map, (list, tuple, set)):
         for it in stores_or_map:
             if not isinstance(it, dict):
                 continue
-            raw_name = (it.get("name") or it.get("store_name") or "").strip()
+            raw_name = str(it.get("name") or it.get("store_name") or "").strip()
             if not raw_name:
                 continue
             cname = _resolve_internal_store_key(raw_name)
-            w = max(0, int(it.get("women") or 0))
-            m = max(0, int(it.get("men") or 0))
+            w = _safe_int(it.get("women"), default=0, min_val=0, max_val=100000)
+            m = _safe_int(it.get("men"), default=0, min_val=0, max_val=100000)
             is_op = bool(it.get("is_open_now", True))
             entries.append((raw_name, cname, w, m, is_op, _is_standing_bar_store(cname)))
+    else:
+        return {}
 
     city_totals = {}
     seen_canon = set()
@@ -1683,8 +1976,8 @@ def _predict_store_60m_v1_legacy(
     """旧v1予測ロジック（精度比較ベンチマーク監査用に保持）。"""
     now_jst = _normalize_jst(now_jst)
     canon_name = _resolve_internal_store_key(store_name)
-    women = max(0, int(women or 0))
-    men = max(0, int(men or 0))
+    women = _safe_int(women, default=0, min_val=0, max_val=100000)
+    men = _safe_int(men, default=0, min_val=0, max_val=100000)
     total = women + men
     if not is_open_now or total < 6:
         return {"pred_60m_wpct": None, "pred_60m_women": women, "pred_60m_men": men}
@@ -1704,14 +1997,8 @@ def _predict_store_60m_v1_legacy(
             dw -= (75 - mid_ret) * 0.14 * scale
         elif mid_ret >= 115:
             dw += (mid_ret - 105) * 0.10 * scale
-    try:
-        w_d15 = int(women_diff or 0) if str(women_diff).strip() not in ('', 'None') else 0
-    except (ValueError, TypeError):
-        w_d15 = 0
-    try:
-        m_d15 = int(men_diff or 0) if str(men_diff).strip() not in ('', 'None') else 0
-    except (ValueError, TypeError):
-        m_d15 = 0
+    w_d15 = _safe_int(women_diff, default=0, min_val=-100000, max_val=100000)
+    m_d15 = _safe_int(men_diff, default=0, min_val=-100000, max_val=100000)
     dw += max(-8.0, min(10.0, w_d15 * 0.85))
     dm += max(-8.0, min(12.0, m_d15 * 1.05))
     if women >= 20 and cur_wpct >= 70:
@@ -1722,19 +2009,207 @@ def _predict_store_60m_v1_legacy(
     elif cur_wpct <= 40 and men >= 15:
         dm = max(dm, -2.0)
     ck = city_key_for_store(canon_name)
-    city_w = (weather_map or {}).get(ck) if ck else None
-    if bool(city_w and city_w.get("is_rainy") and canon_name in UNDERGROUND_DIRECT_STORES):
+    city_w = _safe_dict(weather_map).get(ck) if (ck and isinstance(weather_map, dict)) else None
+    city_w_dict = _safe_dict(city_w)
+    if bool(city_w_dict.get("is_rainy") and canon_name in UNDERGROUND_DIRECT_STORES):
         dw += 3.2 * scale
         dm -= 1.2 * scale
-    if arena_signal and arena_signal.get("is_surge_now", True) and 19 <= hr <= 22:
+    if isinstance(arena_signal, dict) and bool(arena_signal.get("is_surge_now", True)) and 19 <= hr <= 22:
         dw += 3.5 * scale
-    pred_w = max(1, min(int(p99_cap * 0.72), int(round(women + dw))))
-    pred_m = max(1, min(int(p99_cap * 0.72), int(round(men + dm))))
+    pred_w = max(1, min(int(p99_cap * 0.72), _safe_round_int(women + dw, default=women, min_val=1)))
+    pred_m = max(1, min(int(p99_cap * 0.72), _safe_round_int(men + dm, default=men, min_val=1)))
     pred_tot = max(2, pred_w + pred_m)
     return {
-        "pred_60m_wpct": int(round((pred_w / float(pred_tot)) * 100)),
+        "pred_60m_wpct": _safe_round_int((pred_w / float(pred_tot)) * 100, default=50, min_val=0, max_val=100),
         "pred_60m_women": pred_w,
         "pred_60m_men": pred_m,
+    }
+
+
+def calculate_turnover_momentum_index(
+    store_name: str = "",
+    women: int = 0,
+    men: int = 0,
+    is_open_now: bool = True,
+    women_diff: int = 0,
+    men_diff: int = 0,
+    lag_context: dict = None,
+    pos_telemetry: dict = None,
+    p99_cap: int = 120,
+    now_jst: datetime.datetime = None,
+    store_id: str = None,
+    **kwargs,
+) -> dict:
+    """
+    時系列差分ボラティリティ＋多段ラグフラックス＋待ち消化速度＋P99規模正規化から
+    「今の席回転スピードモメンタム指数（10〜95）」を算出する。
+    """
+    canon_name = _resolve_internal_store_key(store_name or store_id or "")
+    women = _safe_int(women, default=0, min_val=0, max_val=100000)
+    men = _safe_int(men, default=0, min_val=0, max_val=100000)
+    total = women + men
+
+    # 1. 営業時間外および少人数ガード
+    if not is_open_now:
+        return {
+            "score": None,
+            "label": "判定対象外",
+            "tone": "neutral",
+            "pill_class": "moat-pill tone-neutral hidden",
+            "badge_class": "tone-neutral",
+            "reason": "営業時間外のため判定対象外",
+            "desc": "営業時間外のため判定対象外",
+            "volatility": 0.0,
+            "flux_rate": 0.0,
+            "wait_clear_speed": "対象外",
+            "turnover_momentum_index": None,
+            "turnover_label": "判定対象外",
+            "turnover_tone": "neutral",
+        }
+    if total < 6:
+        return {
+            "score": None,
+            "label": "判定対象外",
+            "tone": "neutral",
+            "pill_class": "moat-pill tone-neutral hidden",
+            "badge_class": "tone-neutral",
+            "reason": "客数が6名未満のため判定対象外",
+            "desc": "客数が6名未満のため判定対象外",
+            "volatility": 0.0,
+            "flux_rate": 0.0,
+            "wait_clear_speed": "対象外",
+            "turnover_momentum_index": None,
+            "turnover_label": "判定対象外",
+            "turnover_tone": "neutral",
+        }
+
+    has_explicit_now = now_jst is not None
+    now_jst = _normalize_jst(now_jst)
+    open_m, close_m, cur_m = _store_shift_bounds_minutes(canon_name, now_jst)
+    mtc = int(close_m - cur_m)
+    mso = int(cur_m - open_m)
+
+    # 2. 定額スタンディング業態（ASOBIBAR・ヤタコイ）の特例判定
+    c_upper = canon_name.upper()
+    if "ASOBIBAR" in c_upper or "YATAKOI" in c_upper or "ヤタコイ" in c_upper or "アソビバー" in c_upper:
+        w_d = _safe_int(women_diff, default=0, min_val=0, max_val=1000000)
+        m_d = _safe_int(men_diff, default=0, min_val=0, max_val=1000000)
+        tot_diff = min(1000000, w_d + m_d)
+        return {
+            "score": 85,
+            "label": "自由回遊（出入自由）",
+            "tone": "standing",
+            "pill_class": "moat-pill tone-standing",
+            "badge_class": "tone-standing",
+            "reason": "定額スタンディング業態のため自由回遊・高頻度に入退店が発生",
+            "desc": "定額スタンディング業態のため自由回遊・高頻度に入退店が発生",
+            "volatility": round(float(tot_diff), 1),
+            "flux_rate": 70.0,
+            "wait_clear_speed": "出入自由",
+            "turnover_momentum_index": 85,
+            "turnover_label": "自由回遊（出入自由）",
+            "turnover_tone": "standing",
+        }
+
+    # 3. 直近差分の取得とフォールバック
+    w_d15 = _safe_int(women_diff, default=0, min_val=-1000000, max_val=1000000)
+    m_d15 = _safe_int(men_diff, default=0, min_val=-1000000, max_val=1000000)
+
+    f15 = min(1000000, abs(w_d15) + abs(m_d15))
+    f30 = min(2000000.0, f15 * 1.8)
+
+    if isinstance(lag_context, dict) and lag_context:
+        l15 = lag_context.get("lag_15m")
+        if isinstance(l15, (tuple, list)) and len(l15) >= 2:
+            lw = _safe_int(l15[0], default=0, min_val=0, max_val=100000)
+            lm = _safe_int(l15[1], default=0, min_val=0, max_val=100000)
+            f15 = min(1000000, abs(women - lw) + abs(men - lm))
+        l30 = lag_context.get("lag_30m")
+        if isinstance(l30, (tuple, list)) and len(l30) >= 2:
+            lw30 = _safe_int(l30[0], default=0, min_val=0, max_val=100000)
+            lm30 = _safe_int(l30[1], default=0, min_val=0, max_val=100000)
+            f30 = min(2000000.0, abs(women - lw30) + abs(men - lm30))
+
+    # 開店初期ジャンプの抑制
+    if has_explicit_now and (-15 <= mso <= 30):
+        f15 = _safe_round_int(f15 * 0.35, default=0, min_val=0)
+        f30 = _safe_round_int(f30 * 0.35, default=0, min_val=0)
+
+    # 1時間換算フラックス量
+    f_hourly = f15 * 2.4 + max(0.0, f30 - f15) * 1.2
+    c_cap = _safe_int(p99_cap, default=120, min_val=35, max_val=10000)
+    r_flux = min(500.0, (f_hourly / float(c_cap)) * 100.0)
+
+    # 4. 待ち消化速度・POSテレメトリ補正
+    bonus = 0
+    wait_speed = "普通"
+
+    if isinstance(pos_telemetry, dict) and pos_telemetry:
+        is_reverse = bool(pos_telemetry.get("is_reverse_waiting"))
+        w_wait = _safe_int(pos_telemetry.get("women_waiting_groups"), default=0, min_val=0, max_val=10000)
+        m_wait = _safe_int(pos_telemetry.get("men_waiting_groups"), default=0, min_val=0, max_val=10000)
+        q_tot = w_wait + m_wait
+        if is_reverse:
+            bonus -= 12
+            wait_speed = "女性滞留・待ち逆転"
+        elif q_tot > 0:
+            if f15 >= 6:
+                bonus += 12
+                wait_speed = "良好"
+            elif f15 <= 2:
+                bonus -= 10
+                wait_speed = "停滞"
+    else:
+        # 一般店舗（客数比率とフラックスから判定）
+        occ = min(10.0, float(total) / float(c_cap))
+        if occ >= 0.85 and f15 <= 1:
+            bonus -= 15
+            wait_speed = "満席滞留"
+        elif f15 >= 8:
+            bonus += 8
+            wait_speed = "良好"
+
+    # 5. スコア計算
+    raw_score = 50.0 + (r_flux - 20.0) * 1.0 + bonus
+    is_closing = has_explicit_now and ((0 <= mtc <= 30) or (mtc <= 30 and mtc >= -60))
+
+    if is_closing:
+        score = min(60, _safe_round_int(raw_score, default=50, min_val=10, max_val=95))
+        reason = "閉店時刻が近いため一斉退店が進行中（席回転指数は終電抑制中）"
+    else:
+        score = _safe_round_int(raw_score, default=50, min_val=10, max_val=95)
+        if score >= 68:
+            reason = f"直近30分で活発な入退店（1h換算約{_safe_round_int(f_hourly, default=0, min_val=0, max_val=100000)}名）を検知。席の動きが非常にスピーディーです。"
+        elif score >= 45:
+            reason = "適度なペースで席の入れ替えが進行しています。"
+        else:
+            reason = "長時間の着席が多く席の動きは緩やかです。待ち時間の発生にご注意ください。"
+
+    # 6. トーンとラベル判定
+    if score >= 68:
+        label = "⚡️高回転"
+        tone = "fast"
+    elif score >= 45:
+        label = "🔄標準ペース"
+        tone = "normal"
+    else:
+        label = "☕️滞留ぎみ"
+        tone = "slow"
+
+    return {
+        "score": score,
+        "label": label,
+        "tone": tone,
+        "pill_class": f"moat-pill tone-{tone}",
+        "badge_class": f"tone-{tone}",
+        "reason": reason,
+        "desc": reason,
+        "volatility": _safe_float(f15, 1, 0.0),
+        "flux_rate": _safe_float(r_flux, 1, 0.0),
+        "wait_clear_speed": wait_speed,
+        "turnover_momentum_index": score,
+        "turnover_label": label,
+        "turnover_tone": tone,
     }
 
 
@@ -1753,6 +2228,7 @@ def predict_store_60m_dynamics(
     lag_context: dict = None,
     peer_context: dict = None,
     usual_pair_override: tuple = None,
+    lead_intent_heat: dict = None,
 ) -> dict:
     """
     状態空間カルマン平滑化＋同都市スピルオーバーモデル（v3.0）に基づき、当該店舗の
@@ -1764,8 +2240,8 @@ def predict_store_60m_dynamics(
     """
     now_jst = _normalize_jst(now_jst)
     canon_name = _resolve_internal_store_key(store_name)
-    women = max(0, int(women or 0))
-    men = max(0, int(men or 0))
+    women = _safe_int(women, default=0, min_val=0, max_val=100000)
+    men = _safe_int(men, default=0, min_val=0, max_val=100000)
     total = women + men
 
     if not is_open_now or total < 6:
@@ -1775,19 +2251,28 @@ def predict_store_60m_dynamics(
             "raw_pred_60m_wpct": None,
             "pred_60m_women": women,
             "pred_60m_men": men,
+            "pred_women": women,  # E2E test_12 必須互換キー補完
+            "pred_men": men,      # E2E test_12 必須互換キー補完
             "pred_delta_pt": 0,
             "flip_risk_pct": 0,
             "alert_code": "quiet",
             "badge_men": "",
             "badge_women": "",
             "badge_tone": "neutral",
+            "is_rain_shelter": False,
+            "arena_signal_label": "",
+            "arena_phase": "",
+            "arena_event_title": "",
+            "turnover_momentum": None,
             "online_bias_adj_pt": 0.0,
+            "lead_intent_bias_pt": 0.0,
+            "lead_intent_heat": lead_intent_heat if isinstance(lead_intent_heat, dict) else None,
             "reason_short": "",
         }
 
     tot_f = float(total)
     cur_wp_float = (women / tot_f) * 100.0
-    cur_wpct = int(round(cur_wp_float))
+    cur_wpct = _safe_round_int(cur_wp_float, default=50, min_val=0, max_val=100)
     hr = now_jst.hour
     is_wknd = _is_weekend_or_preholiday(now_jst)
     wk_key = 1 if is_wknd else 0
@@ -1802,14 +2287,8 @@ def predict_store_60m_dynamics(
     mtc = int(close_m - cur_m)
     mso = int(cur_m - open_m)
 
-    try:
-        w_d15 = int(women_diff or 0) if str(women_diff).strip() not in ('', 'None') else 0
-    except (ValueError, TypeError):
-        w_d15 = 0
-    try:
-        m_d15 = int(men_diff or 0) if str(men_diff).strip() not in ('', 'None') else 0
-    except (ValueError, TypeError):
-        m_d15 = 0
+    w_d15 = _safe_int(women_diff, default=0, min_val=-100000, max_val=100000)
+    m_d15 = _safe_int(men_diff, default=0, min_val=-100000, max_val=100000)
 
     # 単体呼び出し時も非ブロッキングRAMリングバッファから t-15m/t-30m/t-60m ラグを補完
     if lag_context is None and canon_name:
@@ -1821,15 +2300,15 @@ def predict_store_60m_dynamics(
 
     # 開店直後に閉店中 0:0 からの立ち上がり差分がそのまま入っている場合はモメンタム二重計上を防ぐ
     if -15 <= mso <= 30 and w_d15 == women and m_d15 == men:
-        w_d15 = int(round(w_d15 * 0.25))
-        m_d15 = int(round(m_d15 * 0.25))
+        w_d15 = _safe_round_int(w_d15 * 0.25, default=0)
+        m_d15 = _safe_round_int(m_d15 * 0.25, default=0)
 
     if isinstance(lag_context, dict) and w_d15 == 0 and m_d15 == 0:
         l15 = lag_context.get("lag_15m")
         if isinstance(l15, (tuple, list)) and len(l15) >= 2:
             try:
-                lw15 = max(0, int(l15[0] or 0))
-                lm15 = max(0, int(l15[1] or 0))
+                lw15 = _safe_int(l15[0], default=0, min_val=0, max_val=100000)
+                lm15 = _safe_int(l15[1], default=0, min_val=0, max_val=100000)
                 # 15分前が閉店・空室(0:0)からの営業開始ジャンプは急増モメンタムとして外挿しない
                 if (lw15 + lm15) >= 2:
                     w_d15 = women - lw15
@@ -1855,8 +2334,9 @@ def predict_store_60m_dynamics(
     occ = min(1.2, tot_f / p99_f)
     is_standing = _is_standing_bar_store(canon_name)
     ck = city_key_for_store(canon_name)
-    city_w = (weather_map or {}).get(ck) if ck else None
-    is_rain_shelter = bool(city_w and city_w.get("is_rainy") and canon_name in UNDERGROUND_DIRECT_STORES)
+    city_w = _safe_dict(weather_map).get(ck) if (ck and isinstance(weather_map, dict)) else None
+    city_w_dict = _safe_dict(city_w)
+    is_rain_shelter = bool(city_w_dict.get("is_rainy") and canon_name in UNDERGROUND_DIRECT_STORES)
 
     usual_pair = usual_pair_override
     if usual_pair is None and mtc >= 65 and canon_name:
@@ -1879,26 +2359,26 @@ def predict_store_60m_dynamics(
             l30 = lag_context.get("lag_30m")
             if isinstance(l30, (tuple, list)) and len(l30) >= 2:
                 try:
-                    w30 = max(0, int(l30[0] or 0))
-                    m30 = max(0, int(l30[1] or 0))
+                    w30 = _safe_int(l30[0], default=0, min_val=0, max_val=100000)
+                    m30 = _safe_int(l30[1], default=0, min_val=0, max_val=100000)
                     t30 = w30 + m30
                     if t30 >= 6:
                         w_lag30 = 0.16 * (t30 / (t30 + 18.0))
                         base_w = (1.0 - w_lag30) * base_w + w_lag30 * float(w30)
                         base_m = (1.0 - w_lag30) * base_m + w_lag30 * float(m30)
-                except (TypeError, ValueError):
+                except (TypeError, ValueError, OverflowError):
                     pass
             l60 = lag_context.get("lag_60m")
             if isinstance(l60, (tuple, list)) and len(l60) >= 2:
                 try:
-                    w60_p = max(0, int(l60[0] or 0))
-                    m60_p = max(0, int(l60[1] or 0))
+                    w60_p = _safe_int(l60[0], default=0, min_val=0, max_val=100000)
+                    m60_p = _safe_int(l60[1], default=0, min_val=0, max_val=100000)
                     t60_p = w60_p + m60_p
                     if t60_p >= 6:
                         w_lag60 = 0.06 * (t60_p / (t60_p + 20.0))
                         base_w = (1.0 - w_lag60) * base_w + w_lag60 * float(w60_p)
                         base_m = (1.0 - w_lag60) * base_m + w_lag60 * float(m60_p)
-                except (TypeError, ValueError):
+                except (TypeError, ValueError, OverflowError):
                     pass
 
         ramp_fac = 1.0 + 0.14 * ef
@@ -1910,7 +2390,7 @@ def predict_store_60m_dynamics(
         if is_rain_shelter:
             pw_raw += 1.6 * scale
             pm_raw -= 0.4 * scale
-        if arena_signal and arena_signal.get("is_surge_now", True) and 19 <= hr <= 22:
+        if isinstance(arena_signal, dict) and bool(arena_signal.get("is_surge_now", True)) and 19 <= hr <= 22:
             pw_raw += 2.0 * scale
 
         cal_dw, cal_dm, _ = _calendar_demand_adjustment(now_jst)
@@ -1928,18 +2408,18 @@ def predict_store_60m_dynamics(
 
         if mtc >= 65 and isinstance(usual_pair, (tuple, list)) and len(usual_pair) >= 5:
             try:
-                uw_t = max(0.0, float(usual_pair[0] or 0.0))
-                um_t = max(0.0, float(usual_pair[1] or 0.0))
-                uw_60 = max(0.0, float(usual_pair[2] or 0.0))
-                um_60 = max(0.0, float(usual_pair[3] or 0.0))
-                cnt_60 = max(0.0, float(usual_pair[4] or 0.0))
+                uw_t = max(0.0, _safe_float(usual_pair[0], default=0.0) or 0.0)
+                um_t = max(0.0, _safe_float(usual_pair[1], default=0.0) or 0.0)
+                uw_60 = max(0.0, _safe_float(usual_pair[2], default=0.0) or 0.0)
+                um_60 = max(0.0, _safe_float(usual_pair[3], default=0.0) or 0.0)
+                cnt_60 = max(0.0, _safe_float(usual_pair[4], default=0.0) or 0.0)
                 if (uw_t + um_t) >= 5.0 and (uw_60 + um_60) >= 4.0 and cnt_60 >= 5.0:
                     u_w = min(0.22, 0.28 * (cnt_60 / (cnt_60 + 10.0)))
                     tgt_w = max(0.5, float(women) + 0.75 * (uw_60 - uw_t) + 0.25 * (uw_60 - float(women)))
                     tgt_m = max(0.5, float(men) + 0.75 * (um_60 - um_t) + 0.25 * (um_60 - float(men)))
                     pw = max(0.5, min(cap_f, (1.0 - u_w) * pw + u_w * tgt_w))
                     pm = max(0.5, min(cap_f, (1.0 - u_w) * pm + u_w * tgt_m))
-            except (TypeError, ValueError):
+            except (TypeError, ValueError, OverflowError):
                 pass
 
         # Beta(0.76, 1.14) 疑似カウント事前分布（事前平均40.0%・計1.9人分）で少人数時の極端値を抑えつつ持続比率を算出
@@ -1948,15 +2428,15 @@ def predict_store_60m_dynamics(
 
         if isinstance(peer_context, dict):
             try:
-                pw_c = max(0, int(peer_context.get("peer_women") or 0))
-                pm_c = max(0, int(peer_context.get("peer_men") or 0))
-                pn_c = int(peer_context.get("peer_stores") or 0)
+                pw_c = _safe_int(peer_context.get("peer_women"), default=0, min_val=0, max_val=100000)
+                pm_c = _safe_int(peer_context.get("peer_men"), default=0, min_val=0, max_val=100000)
+                pn_c = _safe_int(peer_context.get("peer_stores"), default=0, min_val=0, max_val=1000)
                 ptot = pw_c + pm_c
                 if ptot >= 15 and pn_c >= 1:
                     peer_wp = (pw_c / float(ptot)) * 100.0
                     peer_rel = ptot / (ptot + 60.0)
                     wp_b += 0.07 * peer_rel * max(-20.0, min(20.0, peer_wp - wp_b))
-            except (TypeError, ValueError):
+            except (TypeError, ValueError, OverflowError):
                 pass
     else:
         feat_wm = (
@@ -2014,7 +2494,7 @@ def predict_store_60m_dynamics(
             pm_raw -= 0.8 * scale
             pwp_dir += 1.4 if (m_d15 < w_d15 + 4) else 0.6
 
-        if arena_signal and arena_signal.get("is_surge_now", True) and 19 <= hr <= 22:
+        if isinstance(arena_signal, dict) and bool(arena_signal.get("is_surge_now", True)) and 19 <= hr <= 22:
             pw_raw += 2.8 * scale
             pwp_dir += 1.5
 
@@ -2038,11 +2518,11 @@ def predict_store_60m_dynamics(
         usual_diff = 0.0
         if mtc >= 65 and isinstance(usual_pair, (tuple, list)) and len(usual_pair) >= 5:
             try:
-                uw_t = max(0.0, float(usual_pair[0] or 0.0))
-                um_t = max(0.0, float(usual_pair[1] or 0.0))
-                uw_60 = max(0.0, float(usual_pair[2] or 0.0))
-                um_60 = max(0.0, float(usual_pair[3] or 0.0))
-                cnt_60 = max(0.0, float(usual_pair[4] or 0.0))
+                uw_t = max(0.0, _safe_float(usual_pair[0], default=0.0) or 0.0)
+                um_t = max(0.0, _safe_float(usual_pair[1], default=0.0) or 0.0)
+                uw_60 = max(0.0, _safe_float(usual_pair[2], default=0.0) or 0.0)
+                um_60 = max(0.0, _safe_float(usual_pair[3], default=0.0) or 0.0)
+                cnt_60 = max(0.0, _safe_float(usual_pair[4], default=0.0) or 0.0)
                 ut1 = uw_60 + um_60
                 if ut1 >= 6.0 and cnt_60 >= 5.0:
                     uwp1 = (uw_60 / ut1) * 100.0
@@ -2056,7 +2536,7 @@ def predict_store_60m_dynamics(
                     u_w = min(0.16, 0.20 * (cnt_60 / (cnt_60 + 12.0)))
                     pw = max(0.5, min(cap_f, (1.0 - u_w) * pw + u_w * max(0.5, women + 0.70 * (uw_60 - uw_t) + 0.30 * (uw_60 - women))))
                     pm = max(0.5, min(cap_f, (1.0 - u_w) * pm + u_w * max(0.5, men + 0.70 * (um_60 - um_t) + 0.30 * (um_60 - men))))
-            except (TypeError, ValueError):
+            except (TypeError, ValueError, OverflowError):
                 usual_diff = 0.0
 
         wp_from_wm = (pw / (pw + pm)) * 100.0
@@ -2072,8 +2552,8 @@ def predict_store_60m_dynamics(
             l30 = lag_context.get("lag_30m")
             if isinstance(l30, (tuple, list)) and len(l30) >= 2:
                 try:
-                    w30 = max(0, int(l30[0] or 0))
-                    m30 = max(0, int(l30[1] or 0))
+                    w30 = _safe_int(l30[0], default=0, min_val=0, max_val=100000)
+                    m30 = _safe_int(l30[1], default=0, min_val=0, max_val=100000)
                     t30 = w30 + m30
                     if t30 >= 6:
                         wp30 = (w30 / float(t30)) * 100.0
@@ -2083,35 +2563,35 @@ def predict_store_60m_dynamics(
                         mom30 = k_gain * rel30 * (-d30)
                         dw30_rate = max(-30.0, min(30.0, float(women - w30))) / (tot_f + 12.0)
                         dm30_rate = max(-30.0, min(30.0, float(men - m30))) / (tot_f + 12.0)
-                except (TypeError, ValueError):
+                except (TypeError, ValueError, OverflowError):
                     pass
             l60 = lag_context.get("lag_60m")
             if isinstance(l60, (tuple, list)) and len(l60) >= 2:
                 try:
-                    w60_p = max(0, int(l60[0] or 0))
-                    m60_p = max(0, int(l60[1] or 0))
+                    w60_p = _safe_int(l60[0], default=0, min_val=0, max_val=100000)
+                    m60_p = _safe_int(l60[1], default=0, min_val=0, max_val=100000)
                     t60_p = w60_p + m60_p
                     if t60_p >= 6:
                         wp60_p = (w60_p / float(t60_p)) * 100.0
                         rel60 = t60_p / (t60_p + 20.0)
                         lag60_diff = rel60 * max(-32.0, min(32.0, wp60_p - cur_wp_float))
-                except (TypeError, ValueError):
+                except (TypeError, ValueError, OverflowError):
                     pass
 
         peer_gap = 0.0
         peer_regime = 0.0
         if isinstance(peer_context, dict):
             try:
-                pw_c = max(0, int(peer_context.get("peer_women") or 0))
-                pm_c = max(0, int(peer_context.get("peer_men") or 0))
-                pn_c = int(peer_context.get("peer_stores") or 0)
+                pw_c = _safe_int(peer_context.get("peer_women"), default=0, min_val=0, max_val=100000)
+                pm_c = _safe_int(peer_context.get("peer_men"), default=0, min_val=0, max_val=100000)
+                pn_c = _safe_int(peer_context.get("peer_stores"), default=0, min_val=0, max_val=1000)
                 ptot = pw_c + pm_c
                 if ptot >= 15 and pn_c >= 1:
                     peer_wp = (pw_c / float(ptot)) * 100.0
                     peer_rel = ptot / (ptot + 60.0)
                     peer_gap = peer_rel * max(-30.0, min(30.0, peer_wp - cur_wp_float))
                     peer_regime = peer_rel * max(-20.0, min(20.0, peer_wp - 53.0))
-            except (TypeError, ValueError):
+            except (TypeError, ValueError, OverflowError):
                 peer_gap = 0.0
                 peer_regime = 0.0
 
@@ -2135,7 +2615,7 @@ def predict_store_60m_dynamics(
             wp_b = 52.0 + (pred_tot_f / (pred_tot_f + 1.6)) * (wp_b - 52.0)
 
     wp_blend = max(8.0, min(92.0, wp_b))
-    raw_pred_wpct = int(round(wp_blend))
+    raw_pred_wpct = _safe_round_int(wp_blend, default=50, min_val=8, max_val=92)
 
     # 7) 蓄積された「未補正ベース予測 vs 60分後実測」残差ログからのオンラインEmpirical-Bayes自己補正
     online_bias_adj = 0.0
@@ -2150,9 +2630,22 @@ def predict_store_60m_dynamics(
         except Exception:
             online_bias_adj = 0.0
 
-    cap_side = int(cap_f)
-    tot_int = max(2, min(cap_side * 2, int(round(max(2.0, pw + pm)))))
-    raw_w = int(round(tot_int * (wp_blend / 100.0)))
+    # 7b) 先行需要インテント（3秒ハシゴ診断）からのリードインジケーター補正
+    lead_intent_bias_applied = 0.0
+    tot_intents = _safe_int(lead_intent_heat.get("total_intents") if isinstance(lead_intent_heat, dict) else 0, default=0, min_val=0, max_val=1000000)
+    if isinstance(lead_intent_heat, dict) and tot_intents >= 3:
+        sig_type = str(lead_intent_heat.get("lead_signal") or "normal")
+        bias_pt = _safe_float(lead_intent_heat.get("lead_bias_pt"), ndigits=2, default=0.0) or 0.0
+        if sig_type == "female_surge" or bias_pt > 0:
+            lead_intent_bias_applied = max(1.5, min(3.0, bias_pt if bias_pt > 0 else 2.0))
+            wp_blend = max(8.0, min(92.0, wp_blend + lead_intent_bias_applied))
+        elif sig_type == "male_surge" or bias_pt < 0:
+            lead_intent_bias_applied = min(-1.5, max(-3.0, bias_pt if bias_pt < 0 else -2.0))
+            wp_blend = max(8.0, min(92.0, wp_blend + lead_intent_bias_applied))
+
+    cap_side = _safe_int(cap_f, default=120, min_val=10)
+    tot_int = max(2, min(cap_side * 2, _safe_round_int(max(2.0, pw + pm), default=2, min_val=2, max_val=cap_side * 2)))
+    raw_w = _safe_round_int(tot_int * (wp_blend / 100.0), default=1, min_val=0, max_val=cap_side * 2)
     if men == 0 and wp_blend >= 75.0:
         pred_w = max(2, min(cap_side, max(raw_w, tot_int)))
         pred_m = 0
@@ -2162,7 +2655,7 @@ def predict_store_60m_dynamics(
     else:
         pred_w = max(1, min(cap_side, min(tot_int - 1, raw_w)))
         pred_m = max(1, min(cap_side, tot_int - pred_w))
-    pred_wpct = int(round(wp_blend))
+    pred_wpct = _safe_round_int(wp_blend, default=50, min_val=8, max_val=92)
     delta_pt = pred_wpct - cur_wpct
 
     # 男余り転落リスク（60分後に女性比50%未満になる校正済み確率%）の算出
@@ -2181,8 +2674,17 @@ def predict_store_60m_dynamics(
         + _V2_FLIP_LOGISTIC_W[5] * j_safe
         + rush_z
     )
+    if isinstance(lead_intent_heat, dict):
+        if lead_intent_heat.get("lead_signal") == "male_surge":
+            z_flip += 0.45  # 男余り転落リスク加算
+        elif lead_intent_heat.get("lead_signal") == "female_surge":
+            z_flip -= 0.35  # 男余り転落リスク抑制
     z_flip = max(-12.0, min(12.0, z_flip))
-    flip_risk = max(3, min(94, int(round(100.0 / (1.0 + math.exp(-z_flip))))))
+    try:
+        raw_flip = 100.0 / (1.0 + math.exp(-z_flip))
+    except (ArithmeticError, OverflowError, ValueError):
+        raw_flip = 50.0
+    flip_risk = _safe_round_int(raw_flip, default=50, min_val=3, max_val=94)
 
     # --- アラート分類とユーザー向けバッジ生成 ---
     if cur_wpct <= 44 and men >= 12 and pred_wpct <= 48:
@@ -2219,7 +2721,7 @@ def predict_store_60m_dynamics(
         badge_men = f"雨天駅直結 · 60分後 {pred_wpct}%"
         badge_women = "駅直結 · 濡れずに来店可"
         badge_tone = "rain"
-        reason = f"現在{city_w.get('city_label', '')}エリアは{city_w.get('condition_ja', '雨')}のため、駅・地下街直結の本店舗に女性客が集中しやすく60分後も女性比{pred_wpct}%前後を維持する予測です。"
+        reason = f"現在{city_w_dict.get('city_label', '')}エリアは{city_w_dict.get('condition_ja', '雨')}のため、駅・地下街直結の本店舗に女性客が集中しやすく60分後も女性比{pred_wpct}%前後を維持する予測です。"
     elif women >= 18 and cur_wpct >= 68 and pred_wpct >= 58 and flip_risk <= 15:
         alert_code = "jackpot_hold"
         badge_men = f"好調持続 · 60分後 {pred_wpct}%予測"
@@ -2242,8 +2744,10 @@ def predict_store_60m_dynamics(
         else:
             reason = f"直近の流入ペースと時間帯波形から、60分後は女性約{pred_w}名・男性約{pred_m}名（女性比{pred_wpct}%前後）で推移する見込みです。"
 
-    if arena_signal and alert_code in ("steady", "jackpot_hold", "rain_shelter_boost"):
-        reason = f"【{arena_signal['label_short']}】" + reason
+    if isinstance(arena_signal, dict) and alert_code in ("steady", "jackpot_hold", "rain_shelter_boost"):
+        lbl_short = str(arena_signal.get("label_short") or "").strip()
+        if lbl_short:
+            reason = f"【{lbl_short}】" + reason
 
     return {
         "model_version": FORECAST_MODEL_VERSION,
@@ -2251,6 +2755,8 @@ def predict_store_60m_dynamics(
         "raw_pred_60m_wpct": raw_pred_wpct,
         "pred_60m_women": pred_w,
         "pred_60m_men": pred_m,
+        "pred_women": pred_w,  # E2E test_12 必須互換キー
+        "pred_men": pred_m,    # E2E test_12 必須互換キー
         "pred_delta_pt": delta_pt,
         "flip_risk_pct": flip_risk,
         "alert_code": alert_code,
@@ -2258,11 +2764,156 @@ def predict_store_60m_dynamics(
         "badge_women": badge_women,
         "badge_tone": badge_tone,
         "is_rain_shelter": is_rain_shelter,
-        "arena_signal_label": arena_signal.get("label_short", "") if arena_signal else "",
-        "arena_phase": arena_signal.get("phase", "") if arena_signal else "",
-        "arena_event_title": arena_signal.get("event_title", "") if arena_signal else "",
+        "arena_signal_label": str(_safe_dict(arena_signal).get("label_short") or "") if isinstance(arena_signal, dict) else "",
+        "arena_phase": str(_safe_dict(arena_signal).get("phase") or "") if isinstance(arena_signal, dict) else "",
+        "arena_event_title": str(_safe_dict(arena_signal).get("event_title") or "") if isinstance(arena_signal, dict) else "",
+        "turnover_momentum": None,
         "online_bias_adj_pt": round(online_bias_adj, 1),
+        "lead_intent_bias_pt": round(lead_intent_bias_applied, 1),
+        "lead_intent_heat": lead_intent_heat if isinstance(lead_intent_heat, dict) else None,
         "reason_short": reason,
+    }
+
+
+def get_chayamachi_shift_analysis(
+    now_jst: datetime.datetime = None,
+    yatakoi_cust: int = 0,
+    asobibar_cust: int = 0,
+    yatakoi_seats: int = 70,
+    asobibar_seats: int = 10,
+    pos_telemetry: Optional[dict] = None,
+    **kwargs
+) -> dict:
+    """
+    梅田・茶屋町ビル内の「ASOBIBARフロア vs ヤタコイフロア」2フロア回遊シフト分析 (R4 / Feature 13)。
+    
+    同ビル内の着席相席ラウンジ（ヤタコイ）から自由回遊スタンディング（ASOBIBAR）への
+    時間帯別回遊ダイナミクスを数理モデリング（序盤ヤタコイ優位 → 深夜ASOBIBAR優位へのシフト推移）。
+    
+    ゼロ除算・欠損・型異常・負数・極端値をすべて防御し、ゼロ例外保証（Zero-Exception Guarantee）を提供する。
+    """
+    now_jst = _normalize_jst(now_jst)
+
+    # 0. 引数の安全な初期サニタイズ（型異常・文字列・負数・ゼロ除算の事前防御）
+    if yatakoi_cust is not None:
+        yatakoi_cust = _safe_int(yatakoi_cust, default=0, min_val=0, max_val=10000)
+    if asobibar_cust is not None:
+        asobibar_cust = _safe_int(asobibar_cust, default=0, min_val=0, max_val=10000)
+    yatakoi_seats = _safe_int(yatakoi_seats, default=70, min_val=1, max_val=10000)
+    asobibar_seats = _safe_int(asobibar_seats, default=10, min_val=1, max_val=10000)
+
+    # 1. pos_telemetry からの自動展開
+    if pos_telemetry and isinstance(pos_telemetry, dict):
+        yk_m = _safe_int(pos_telemetry.get("yatakoi_men"), default=0, min_val=0, max_val=10000)
+        yk_w = _safe_int(pos_telemetry.get("yatakoi_women"), default=0, min_val=0, max_val=10000)
+        as_m = _safe_int(pos_telemetry.get("asobibar_men"), default=0, min_val=0, max_val=10000)
+        as_w = _safe_int(pos_telemetry.get("asobibar_women"), default=0, min_val=0, max_val=10000)
+        if yatakoi_cust is None or (yatakoi_cust == 0 and (yk_m + yk_w > 0)):
+            yatakoi_cust = yk_m + yk_w
+        if asobibar_cust is None or (asobibar_cust == 0 and (as_m + as_w > 0)):
+            asobibar_cust = as_m + as_w
+        tel_y_seats = pos_telemetry.get("yatakoi_seats")
+        if tel_y_seats is None:
+            tel_y_seats = pos_telemetry.get("ykSeats")
+        if tel_y_seats is not None:
+            yatakoi_seats = _safe_int(tel_y_seats, default=70, min_val=1, max_val=10000)
+        elif not yatakoi_seats or yatakoi_seats <= 0:
+            yatakoi_seats = 70
+
+        tel_a_seats = pos_telemetry.get("asobibar_seats")
+        if tel_a_seats is None:
+            tel_a_seats = pos_telemetry.get("seats")
+        if tel_a_seats is not None:
+            asobibar_seats = _safe_int(tel_a_seats, default=10, min_val=1, max_val=10000)
+        elif not asobibar_seats or asobibar_seats <= 0:
+            asobibar_seats = 10
+
+    # 2. 安全な型キャストと境界クランプ (ゼロ除算防止)
+    y_cust = _safe_int(yatakoi_cust, default=0, min_val=0, max_val=10000)
+    a_cust = _safe_int(asobibar_cust, default=0, min_val=0, max_val=10000)
+    y_seats = _safe_int(yatakoi_seats, default=70, min_val=1, max_val=10000)
+    a_seats = _safe_int(asobibar_seats, default=10, min_val=1, max_val=10000)
+    total_cust = y_cust + a_cust
+
+    # 3. 占有率の算出 (ゼロ除算防御)
+    y_occ = round((float(y_cust) / float(y_seats)) * 100.0, 1)
+    a_occ = round((float(a_cust) / float(a_seats)) * 100.0, 1)
+
+    hour = now_jst.hour
+    is_open = (18 <= hour < 24) or (0 <= hour < 5)
+
+    # 4. 回遊フェーズ判定
+    if not is_open:
+        phase = "closed"
+        phase_label_ja = "営業時間外"
+        phase_tone = "zinc"
+        flow_direction = "idle"
+        flow_label_ja = "営業時間外（18:00オープン）"
+        advice = "営業開始後にリアルタイム回遊データを集計します。"
+        recommended_action = "18:00の営業開始をお待ちください"
+    elif 18 <= hour < 22:
+        phase = "yatakoi_dominant"
+        phase_label_ja = "ヤタコイ優位（1軒目・着席相席フェーズ）"
+        phase_tone = "emerald"
+        flow_direction = "yatakoi_inflow"
+        flow_label_ja = "1軒目着席：仕事・買い物帰りの女性先行来店中"
+        advice = "1軒目の時間帯は3Fヤタコイで相席成立が活発です。まずはヤタコイからのスタートが最もスムーズです。"
+        recommended_action = "まずはヤタコイ（着席相席）からのスタートが最もスムーズです"
+    elif 22 <= hour < 24:
+        phase = "transition"
+        phase_label_ja = "回遊シフト中（着席→スタンディング移行期）"
+        phase_tone = "amber"
+        flow_direction = "yatakoi_to_asobibar"
+        flow_label_ja = "フロア間回遊：ヤタコイからASOBIBARへのハシゴ進行中"
+        advice = "ヤタコイからASOBIBARへのフロア間回遊が始まります。両フロアともに活気があります。"
+        recommended_action = "ヤタコイで相席を楽しんだ後、同ビルASOBIBARへのスムーズなハシゴが可能です"
+    else:  # 0 <= hour < 5
+        phase = "asobibar_shift"
+        phase_label_ja = "深夜ASOBIBARバーシフトフェーズ"
+        phase_tone = "purple"
+        flow_direction = "asobibar_inflow"
+        flow_label_ja = "深夜ハシゴ：2軒目・終電後の自由回遊へ集中"
+        advice = "深夜は2F ASOBIBAR（スタンディングバー）が中心になります。メーター課金を気にせず楽しめます。"
+        recommended_action = "2軒目・終電後は10分課金のないASOBIBARへのハシゴが快適です"
+
+    # 5. 実測・推定シェアの算出
+    if total_cust > 0:
+        y_ratio = round((float(y_cust) / float(total_cust)) * 100.0, 1)
+        a_ratio = round((float(a_cust) / float(total_cust)) * 100.0, 1)
+    else:
+        if 18 <= hour < 22:
+            y_ratio, a_ratio = 80.0, 20.0
+        elif 22 <= hour < 24:
+            y_ratio, a_ratio = 50.0, 50.0
+        elif 0 <= hour < 5:
+            y_ratio, a_ratio = 20.0, 80.0
+        else:
+            y_ratio, a_ratio = 50.0, 50.0
+
+    return {
+        "phase": phase,
+        "phase_label": phase_label_ja,
+        "phase_label_ja": phase_label_ja,
+        "phase_tone": phase_tone,
+        "flow_direction": flow_direction,
+        "flow_label_ja": flow_label_ja,
+        "yatakoi_cust": y_cust,
+        "asobibar_cust": a_cust,
+        "total_cust": total_cust,
+        "yatakoi_seats": y_seats,
+        "asobibar_seats": a_seats,
+        "yatakoi_occ_pct": y_occ,
+        "asobibar_occ_pct": a_occ,
+        "yatakoi_ratio": round(y_ratio),
+        "asobibar_ratio": round(a_ratio),
+        "yatakoi_ratio_pct": y_ratio,
+        "asobibar_ratio_pct": a_ratio,
+        "shift_score": a_ratio,
+        "advice": advice,
+        "recommended_action": recommended_action,
+        "recommendation": recommended_action,
+        "description": advice,
+        "is_open_now": is_open,
     }
 
 
@@ -2300,17 +2951,15 @@ def enrich_stores_with_moat_signals(
         acc_map = {}
         lags_map = {}
 
+    lead_heat_cache = {}
+
     for s in stores:
-        sname = s.get("name") or ""
+        if not isinstance(s, dict):
+            continue
+        sname = str(s.get("name") or "").strip()
         canon_name = _resolve_internal_store_key(sname)
-        try:
-            w = max(0, int(s.get("women") or 0))
-        except (TypeError, ValueError):
-            w = 0
-        try:
-            m = max(0, int(s.get("men") or 0))
-        except (TypeError, ValueError):
-            m = 0
+        w = _safe_int(s.get("women"), default=0, min_val=0, max_val=100000)
+        m = _safe_int(s.get("men"), default=0, min_val=0, max_val=100000)
         if "is_open_now" in s and s.get("is_open_now") is not None:
             is_open = bool(s.get("is_open_now"))
         else:
@@ -2324,16 +2973,37 @@ def enrich_stores_with_moat_signals(
             except Exception:
                 is_open = True
             s["is_open_now"] = is_open
-        try:
-            w_diff = int(s.get("women_diff") or 0)
-        except (TypeError, ValueError):
-            w_diff = 0
-        try:
-            m_diff = int(s.get("men_diff") or 0)
-        except (TypeError, ValueError):
-            m_diff = 0
-        uw_diff = s.get("usual_w_diff")
+        w_diff = _safe_int(s.get("women_diff"), default=0, min_val=-100000, max_val=100000)
+        m_diff = _safe_int(s.get("men_diff"), default=0, min_val=-100000, max_val=100000)
+        uw_diff = _safe_float(s.get("usual_w_diff"))
+        s["women"] = w
+        s["men"] = m
+        s["women_diff"] = w_diff
+        s["men_diff"] = m_diff
+        if "usual_w_diff" in s:
+            s["usual_w_diff"] = uw_diff
+        if "usual_m_diff" in s:
+            s["usual_m_diff"] = _safe_float(s.get("usual_m_diff"))
         pos_tel = s.get("pos_telemetry")
+
+        st_area = None
+        try:
+            import concierge_matcher
+            st_area = concierge_matcher.normalize_concierge_area(canon_name or sname)
+        except Exception:
+            st_area = None
+
+        lead_heat = None
+        if st_area:
+            if st_area in lead_heat_cache:
+                lead_heat = lead_heat_cache[st_area]
+            else:
+                try:
+                    import analytics
+                    lead_heat = analytics.get_lead_demand_heat(area=st_area, hours=2)
+                except Exception:
+                    lead_heat = None
+                lead_heat_cache[st_area] = lead_heat
 
         wait_info = estimate_store_wait_and_pos(
             store_name=canon_name or sname,
@@ -2357,20 +3027,57 @@ def enrich_stores_with_moat_signals(
             arena_signal=arena_map.get(sname) or arena_map.get(canon_name),
             lag_context=lags_map.get(canon_name) or lags_map.get(sname) or {},
             peer_context=peer_map.get(canon_name) or peer_map.get(sname),
+            lead_intent_heat=lead_heat,
         )
         st_acc = acc_map.get(canon_name) or acc_map.get(sname)
         if st_acc:
             fc60["accuracy"] = st_acc
         s["wait_estimate"] = wait_info
         s["forecast_60m"] = fc60
-        ck = city_key_for_store(canon_name or sname)
-        if ck and ck in weather_map:
-            cw = weather_map[ck]
-            s["weather_brief"] = {
-                "city": cw["city_label"],
-                "condition": cw["condition_ja"],
-                "temp_c": cw["temp_c"],
-                "precip_mm": cw["precip_mm"],
-                "is_rainy": cw["is_rainy"],
-            }
+        s["lead_demand_heat"] = lead_heat
+
+        # F8: 席回転スピード（回転モメンタム指数）の付与
+        tm_info = calculate_turnover_momentum_index(
+            store_name=canon_name or sname,
+            women=w,
+            men=m,
+            is_open_now=is_open,
+            women_diff=w_diff,
+            men_diff=m_diff,
+            lag_context=lags_map.get(canon_name) or lags_map.get(sname) or {},
+            pos_telemetry=pos_tel,
+            p99_cap=max(35, int(STORE_P99_CAPACITY.get(canon_name, 120))),
+            now_jst=now_jst,
+        )
+        tm_d = _safe_dict(tm_info)
+        s["turnover_momentum"] = tm_info
+        s["turnover_momentum_index"] = tm_d.get("score")
+        s["turnover_label"] = tm_d.get("label")
+        s["turnover_tone"] = tm_d.get("tone")
+
+        # 気象ブリーフの安全付与（キャッシュ空時・破損時は安全デフォルトへ完全フォールバック）
+        s["weather_brief"] = get_store_weather_brief(canon_name or sname, weather_map)
+
+        # F13: 梅田・茶屋町 ASOBIBAR vs ヤタコイ 回遊シフト分析の付与
+        is_chayamachi = (
+            sname in ("YATAKOI UMEDA", "ASOBIBAR 茶屋町")
+            or canon_name in ("YATAKOI UMEDA", "ASOBIBAR 茶屋町")
+            or s.get("slug") in ("yatakoi-umeda", "asobibar-chayamachi")
+            or ("茶屋町" in (sname or "") and ("ASOBIBAR" in (sname or "") or "ヤタコイ" in (sname or "")))
+        )
+        if is_chayamachi:
+            ch_pos = pos_tel if (isinstance(pos_tel, dict) and pos_tel.get("telemetry_type") == "yatakoi_pos") else None
+            if not ch_pos and ctx_source:
+                for cs in ctx_source:
+                    if isinstance(cs, dict):
+                        cs_p = cs.get("pos_telemetry")
+                        if isinstance(cs_p, dict) and cs_p.get("telemetry_type") == "yatakoi_pos":
+                            ch_pos = cs_p
+                            break
+            if ch_pos and not pos_tel:
+                s["pos_telemetry"] = ch_pos
+            s["chayamachi_shift"] = get_chayamachi_shift_analysis(
+                now_jst=now_jst,
+                pos_telemetry=ch_pos,
+            )
     return stores

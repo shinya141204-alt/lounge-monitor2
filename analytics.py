@@ -12,7 +12,7 @@ import datetime
 import time
 import threading
 import logging
-from collections import defaultdict
+from collections import defaultdict, deque
 
 import sheets_store
 import turbo_store
@@ -39,6 +39,7 @@ ALLOWED_EVENTS = {
     'vote_wait',             # 現場投票に付随する待ち時間申告（store:15m 形式）
     'watch_intent',          # 条件ウォッチ登録（store:condition 形式）
     'sns_inflow',            # ?s= 識別子付きのSNS投稿からのサイト流入・CV追跡
+    'hashigo_intent',        # 3秒ハシゴ診断先行需要インテント（area:audience:party_size 形式）
 }
 
 # distinct (date, event, label) キー上限。超過時は新規ラベルを '__overflow__' に丸めてメモリ膨張を防ぐ
@@ -64,6 +65,8 @@ _hourly_sheet_rows_cache = {'ts': 0.0, 'rows': None}
 _hourly_sheet_refresh_in_flight = False
 _pg_hourly_seeded_from_sheets = False
 _pg_hourly_seed_in_flight = False
+
+_recent_hashigo_intents = deque(maxlen=2000)  # (timestamp, area, audience, party_size)
 
 
 def _refresh_hourly_sheet_rows_async():
@@ -227,6 +230,52 @@ def normalize_cushion_click_label(raw_label: str) -> str:
     return f"{norm_target} @ {s_clean}"
 
 
+def normalize_hashigo_intent_label(raw_label: str) -> str:
+    """
+    ハシゴ診断先行需要インテントラベル（area:audience:party_size）を安全に検証・正規化する。
+    個人情報・IPアドレス・端末IDは一切保持・保存せず、エリア・性別・人数組の3要素のみを抽出する。
+    """
+    import re
+    s = str(raw_label or '').replace('\r', ' ').replace('\n', ' ').replace('\t', ' ').strip()
+    if not s:
+        return ''
+    while s and s[0] in ('=', '+', '-', '@'):
+        s = s[1:].lstrip()
+    if not s:
+        return ''
+    s_clean = re.sub(r'[^a-zA-Z0-9_:-]', '', s)[:64]
+    parts = s_clean.split(':')
+    if not parts or not parts[0]:
+        return ''
+
+    raw_area = parts[0].strip().lower()
+    clean_area = re.sub(r'[^a-z0-9_]', '', raw_area)[:32]
+    norm_area = clean_area or 'other'
+    try:
+        import concierge_matcher
+        if norm_area in concierge_matcher.CONCIERGE_AREAS:
+            pass
+        elif norm_area in getattr(concierge_matcher, "_AREA_ALIASES", {}):
+            norm_area = concierge_matcher._AREA_ALIASES[norm_area]
+    except Exception:
+        pass
+    if not norm_area:
+        norm_area = 'other'
+
+    raw_aud = parts[1].strip().lower() if len(parts) > 1 else 'men'
+    norm_aud = 'women' if raw_aud == 'women' else 'men'
+
+    raw_ps = parts[2].strip().lower() if len(parts) > 2 else 'pair'
+    if raw_ps in ('solo', 'pair', 'group'):
+        norm_ps = raw_ps
+    elif raw_ps in ('trio', 'quad'):
+        norm_ps = 'group'
+    else:
+        norm_ps = 'pair'
+
+    return f"{norm_area}:{norm_aud}:{norm_ps}"
+
+
 _STORE_TRACK_EVENTS = ('store_open', 'map_cafe', 'map_bar', 'official_click', 'vote', 'vote_wait', 'watch_intent')
 _STORE_SUFFIX_EVENTS = ('vote', 'vote_wait', 'watch_intent')
 
@@ -360,6 +409,9 @@ def classify_hourly_bucket(event: str, norm_label: str) -> str:
         return 'vote_wait'
     if ev == 'watch_intent':
         return 'watch_intent'
+    if ev == 'hashigo_intent':
+        area_part = norm_label.split(':', 1)[0].strip() if ':' in norm_label else 'other'
+        return f"intent:{area_part}" if area_part else 'intent:other'
     return ''
 
 
@@ -373,6 +425,11 @@ def track(event, label='', _now_jst=None):
         label = norm_lbl
     elif event == 'cushion_click':
         norm_lbl = normalize_cushion_click_label(label)
+        if not norm_lbl:
+            return False
+        label = norm_lbl
+    elif event == 'hashigo_intent':
+        norm_lbl = normalize_hashigo_intent_label(label)
         if not norm_lbl:
             return False
         label = norm_lbl
@@ -396,6 +453,10 @@ def track(event, label='', _now_jst=None):
         _pending[p_key] += 1
         if h_bucket:
             _hourly_pending[(date_str, hour_int, h_bucket)] += 1
+        if event == 'hashigo_intent':
+            parts = label.split(':', 2)
+            if len(parts) == 3:
+                _recent_hashigo_intents.append((dt_jst.timestamp(), parts[0], parts[1], parts[2]))
     return True
 
 
@@ -1723,9 +1784,108 @@ def summary(days=7, allow_blocking=True):
     }
 
 
+def get_lead_demand_heat(area: str = None, hours: int = 2, _now_jst: datetime.datetime = None) -> dict:
+    """
+    直近 hours 時間（デフォルト2時間）におけるハシゴ診断の先行需要インテントを集計して返す。
+    インメモリ走査により 0ms で高速応答し、個人情報・IPアドレスは一切保持・保存・参照しない。
+    """
+    h_clamped = max(1, min(24, int(hours or 2)))
+    if _now_jst is not None:
+        dt_jst = _now_jst.replace(tzinfo=_JST) if _now_jst.tzinfo is None else _now_jst.astimezone(_JST)
+    else:
+        dt_jst = datetime.datetime.now(_JST)
+
+    cutoff_ts = dt_jst.timestamp() - (h_clamped * 3600.0)
+
+    norm_area = None
+    if area:
+        raw_a = str(area).strip().lower()
+        try:
+            import concierge_matcher
+            if raw_a in concierge_matcher.CONCIERGE_AREAS:
+                norm_area = raw_a
+            elif raw_a in getattr(concierge_matcher, "_AREA_ALIASES", {}):
+                norm_area = concierge_matcher._AREA_ALIASES[raw_a]
+            else:
+                norm_area = raw_a
+        except Exception:
+            norm_area = raw_a
+
+    total_intents = 0
+    by_audience = {"men": 0, "women": 0}
+    by_party_size = {"solo": 0, "pair": 0, "group": 0}
+
+    with _lock:
+        # 1) 高速インメモリリングバッファからの走査
+        for (ts, r_area, r_aud, r_ps) in _recent_hashigo_intents:
+            if ts >= cutoff_ts:
+                if norm_area is None or r_area == norm_area:
+                    total_intents += 1
+                    by_audience[r_aud] = by_audience.get(r_aud, 0) + 1
+                    by_party_size[r_ps] = by_party_size.get(r_ps, 0) + 1
+
+        # 2) バッファが空またはテスト等で _pending / _flushed に直接格納された場合のフォールバック走査
+        if total_intents == 0:
+            for (d_str, ev, lbl), count in list(_pending.items()) + list(_flushed.items()):
+                if ev == 'hashigo_intent' and lbl and lbl != _OVERFLOW_LABEL and ':' in lbl:
+                    parts = lbl.split(':', 2)
+                    if len(parts) == 3:
+                        p_area, p_aud, p_ps = parts
+                        if norm_area is None or p_area == norm_area:
+                            total_intents += count
+                            by_audience[p_aud] = by_audience.get(p_aud, 0) + count
+                            by_party_size[p_ps] = by_party_size.get(p_ps, 0) + count
+
+    if total_intents == 0:
+        return {
+            "area": area,
+            "hours": h_clamped,
+            "total_intents": 0,
+            "by_audience": {"men": 0, "women": 0},
+            "by_party_size": {"solo": 0, "pair": 0, "group": 0},
+            "area_intents": 0,
+            "women_ratio_pct": 50,
+            "lead_signal": "normal",
+            "lead_bias_pt": 0.0,
+        }
+
+    women_cnt = by_audience.get("women", 0)
+    women_ratio_pct = int(round((women_cnt / float(total_intents)) * 100.0))
+
+    lead_signal = "normal"
+    lead_bias_pt = 0.0
+
+    if total_intents >= 5:
+        if women_ratio_pct >= 60:
+            lead_signal = "female_surge"
+            lead_bias_pt = min(3.0, 1.5 + (women_ratio_pct - 60) * 0.075)
+        elif women_ratio_pct <= 30:
+            lead_signal = "male_surge"
+            lead_bias_pt = max(-3.0, -1.5 - (30 - women_ratio_pct) * 0.075)
+        elif total_intents >= 8:
+            lead_signal = "active"
+            lead_bias_pt = 0.0
+    elif total_intents >= 8:
+        lead_signal = "active"
+        lead_bias_pt = 0.0
+
+    return {
+        "area": area,
+        "hours": h_clamped,
+        "total_intents": total_intents,
+        "by_audience": by_audience,
+        "by_party_size": by_party_size,
+        "area_intents": total_intents,
+        "women_ratio_pct": women_ratio_pct,
+        "lead_signal": lead_signal,
+        "lead_bias_pt": round(lead_bias_pt, 1),
+    }
+
+
 def reset_for_tests():
     global _pg_seeded_from_sheets, _pg_hourly_seeded_from_sheets, _pg_hourly_seed_in_flight, _pg_seed_in_flight
     with _lock:
+        _recent_hashigo_intents.clear()
         _pg_seed_in_flight = False
         _pending.clear()
         _sheets_retry.clear()

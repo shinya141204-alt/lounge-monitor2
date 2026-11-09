@@ -405,6 +405,50 @@ def _migrate_external_context_columns(conn, cur):
                 pass
 
 
+def _migrate_jis_metrics_columns(conn, cur):
+    """Idempotently add JIS detailed telemetry columns to `store_hourly_rollups`."""
+    try:
+        cur.execute(
+            "SELECT avg_women_waiting_groups, max_women_waiting_groups, women_waiting_detected, "
+            "avg_party_size, avg_normal_match_rate, avg_vip_match_rate, avg_match_rate_diff "
+            "FROM store_hourly_rollups LIMIT 0"
+        )
+        return
+    except Exception:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+
+    real_t = "DOUBLE PRECISION" if _is_pg() else "REAL"
+    cols = [
+        f"ALTER TABLE store_hourly_rollups ADD COLUMN avg_women_waiting_groups {real_t}",
+        "ALTER TABLE store_hourly_rollups ADD COLUMN max_women_waiting_groups INTEGER",
+        "ALTER TABLE store_hourly_rollups ADD COLUMN women_waiting_detected INTEGER NOT NULL DEFAULT 0",
+        f"ALTER TABLE store_hourly_rollups ADD COLUMN avg_party_size {real_t}",
+        f"ALTER TABLE store_hourly_rollups ADD COLUMN avg_normal_match_rate {real_t}",
+        f"ALTER TABLE store_hourly_rollups ADD COLUMN avg_vip_match_rate {real_t}",
+        f"ALTER TABLE store_hourly_rollups ADD COLUMN avg_match_rate_diff {real_t}",
+    ]
+    for col_ddl in cols:
+        try:
+            if _is_pg():
+                try:
+                    cur.execute("SET LOCAL lock_timeout = '2s'")
+                except Exception:
+                    try:
+                        conn.rollback()
+                    except Exception:
+                        pass
+            cur.execute(col_ddl)
+            conn.commit()
+        except Exception:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+
+
 def _create_moat_rollup_tables_on_cursor(cur, is_pg: bool):
     """Create permanent hourly rollups, day context, event history, official arena schedule, and watch intent tables."""
     real_t = "DOUBLE PRECISION" if is_pg else "REAL"
@@ -438,6 +482,13 @@ def _create_moat_rollup_tables_on_cursor(cur, is_pg: bool):
             votes_waiting INTEGER NOT NULL DEFAULT 0,
             votes_lively INTEGER NOT NULL DEFAULT 0,
             avg_reported_wait_min {real_t},
+            avg_women_waiting_groups {real_t},
+            max_women_waiting_groups INTEGER,
+            women_waiting_detected INTEGER NOT NULL DEFAULT 0,
+            avg_party_size {real_t},
+            avg_normal_match_rate {real_t},
+            avg_vip_match_rate {real_t},
+            avg_match_rate_diff {real_t},
             PRIMARY KEY (date_jst, hour_jst, store_name)
         );
     """)
@@ -533,6 +584,7 @@ def _ensure_moat_rollup_schema() -> bool:
                     conn.commit()
                     _migrate_crowd_votes_columns(conn, cur)
                     _migrate_external_context_columns(conn, cur)
+                    _migrate_jis_metrics_columns(conn, cur)
             _moat_rollup_schema_ready.add(db_k)
             return True
         except Exception as err:
@@ -547,6 +599,7 @@ def _ensure_moat_rollup_schema() -> bool:
             conn.commit()
             _migrate_crowd_votes_columns(conn, cur)
             _migrate_external_context_columns(conn, cur)
+            _migrate_jis_metrics_columns(conn, cur)
             _moat_rollup_schema_ready.add(db_k)
             return True
         except Exception as err:
@@ -661,6 +714,7 @@ def init_db():
                     _migrate_forecast_columns(conn, cur)
                     _migrate_crowd_votes_columns(conn, cur)
                     _migrate_external_context_columns(conn, cur)
+                    _migrate_jis_metrics_columns(conn, cur)
             turbo_store.init_postgres_aux_schema()
             _forecast_schema_ready.add(_active_db_key())
             _moat_rollup_schema_ready.add(_active_db_key())
@@ -777,6 +831,7 @@ def init_db():
             _migrate_forecast_columns(conn, cur)
             _migrate_crowd_votes_columns(conn, cur)
             _migrate_external_context_columns(conn, cur)
+            _migrate_jis_metrics_columns(conn, cur)
             _forecast_schema_ready.add(_active_db_key())
             _moat_rollup_schema_ready.add(_active_db_key())
             _db_stats_cache.clear()
@@ -1933,7 +1988,8 @@ def rollup_store_hourly_stats(target_dates=None, days_back: int = 3) -> dict:
         )
         pos_rows = _fetch_rows_by_date_ranges(
             """
-            SELECT timestamp, store_name, men_waiting_groups, men_waiting_guests, matched_groups, vip_guests
+            SELECT timestamp, store_name, men_waiting_groups, men_waiting_guests, matched_groups, vip_guests,
+                   women_waiting_groups, raw_json
             FROM store_pos_telemetry_logs
             WHERE telemetry_type = 'jis_pos' AND timestamp >= ? AND timestamp <= ?
             """,
@@ -2013,8 +2069,26 @@ def rollup_store_hourly_stats(target_dates=None, days_back: int = 3) -> dict:
                 b[5] += (wv / float(wv + mv)) * 100.0
                 b[6] += 1
 
-        pos_agg = defaultdict(lambda: [0, 0.0, 0, 0.0, 0.0, 0.0])  # [n, sum_mwg, max_mwg, sum_mwp, sum_mg, sum_vip]
-        for ts_s, sname, mwg, mwp, mg, vip in pos_rows:
+        pos_agg = defaultdict(lambda: {
+            "n": 0,
+            "sum_mwg": 0.0,
+            "max_mwg": 0,
+            "sum_mwp": 0.0,
+            "sum_mg": 0.0,
+            "sum_vip": 0.0,
+            "sum_wwg": 0.0,
+            "max_wwg": 0,
+            "ww_detected": 0,
+            "sum_party_size": 0.0,
+            "n_party_size": 0,
+            "sum_norm_rate": 0.0,
+            "n_norm_rate": 0,
+            "sum_vip_rate": 0.0,
+            "n_vip_rate": 0,
+            "sum_diff_rate": 0.0,
+            "n_diff_rate": 0,
+        })
+        for ts_s, sname, mwg, mwp, mg, vip, wwg, raw_json in pos_rows:
             ts_s = str(ts_s or "")
             sname = str(sname or "").strip()
             if len(ts_s) < 13 or not sname or mwg is None:
@@ -2028,13 +2102,76 @@ def rollup_store_hourly_stats(target_dates=None, days_back: int = 3) -> dict:
                 continue
             p = pos_agg[(ds, hr, sname)]
             mwg_i = int(mwg)
-            p[0] += 1
-            p[1] += mwg_i
-            if mwg_i > p[2]:
-                p[2] = mwg_i
-            p[3] += int(mwp or 0)
-            p[4] += int(mg or 0)
-            p[5] += int(vip or 0)
+            p["n"] += 1
+            p["sum_mwg"] += mwg_i
+            if mwg_i > p["max_mwg"]:
+                p["max_mwg"] = mwg_i
+            p["sum_mwp"] += int(mwp or 0)
+            p["sum_mg"] += int(mg or 0)
+            p["sum_vip"] += int(vip or 0)
+
+            pos_dict = None
+            if raw_json:
+                try:
+                    pos_dict = json.loads(raw_json)
+                except Exception:
+                    pos_dict = None
+
+            wwg_i = int(wwg if wwg is not None else ((pos_dict.get('women_waiting_groups', 0) if pos_dict else 0) or 0))
+            p["sum_wwg"] += wwg_i
+            if wwg_i > p["max_wwg"]:
+                p["max_wwg"] = wwg_i
+
+            is_ww = False
+            if wwg_i > 0:
+                is_ww = True
+            if pos_dict:
+                if pos_dict.get('is_women_waiting') or pos_dict.get('is_reverse_waiting'):
+                    is_ww = True
+                if int(pos_dict.get('women_waiting_guests', 0) or 0) > 0:
+                    is_ww = True
+            if is_ww:
+                p["ww_detected"] = 1
+
+            if pos_dict:
+                ps = pos_dict.get('avg_party_size_total')
+                if ps is None:
+                    ps = pos_dict.get('avg_party_size')
+                if ps is None:
+                    tc = int(pos_dict.get('men_total_guests', 0) or 0) + int(pos_dict.get('women_total_guests', 0) or 0)
+                    tg = int(pos_dict.get('men_total_groups', 0) or 0) + int(pos_dict.get('women_total_groups', 0) or 0)
+                    if tg > 0:
+                        ps = tc / float(tg)
+                if ps is not None:
+                    p["sum_party_size"] += float(ps)
+                    p["n_party_size"] += 1
+
+                nmr = pos_dict.get('normal_match_rate')
+                if nmr is None:
+                    n_grp = int(pos_dict.get('normal_mens_group_num', 0) or 0)
+                    n_sh = int(pos_dict.get('normal_mens_share_num', 0) or 0)
+                    if n_grp > 0:
+                        nmr = (n_sh / float(n_grp)) * 100.0
+                if nmr is not None:
+                    p["sum_norm_rate"] += float(nmr)
+                    p["n_norm_rate"] += 1
+
+                vmr = pos_dict.get('vip_match_rate')
+                if vmr is None:
+                    v_grp = int(pos_dict.get('vip_mens_group_num', 0) or 0)
+                    v_sh = int(pos_dict.get('vip_mens_share_num', 0) or 0)
+                    if v_grp > 0:
+                        vmr = (v_sh / float(v_grp)) * 100.0
+                if vmr is not None:
+                    p["sum_vip_rate"] += float(vmr)
+                    p["n_vip_rate"] += 1
+
+                mrd = pos_dict.get('match_rate_diff')
+                if mrd is None and vmr is not None and nmr is not None:
+                    mrd = vmr - nmr
+                if mrd is not None:
+                    p["sum_diff_rate"] += float(mrd)
+                    p["n_diff_rate"] += 1
 
         ext_agg = defaultdict(lambda: [0, 0.0, 0.0, 0, 0, set(), 0, 0])  # (ds, hr, ck) -> [n, max_prec, sum_temp, rainy, transit, arenas_set, temp_n, prec_n]
         for ts_s, ck, prec, tc, rainy, ar_json, tr_dis in ext_rows:
@@ -2196,11 +2333,21 @@ def rollup_store_hourly_stats(target_dates=None, days_back: int = 3) -> dict:
             avg_wp = round(b[5] / b[6], 2) if b[6] > 0 else 0.0
 
             p = pos_agg.get((ds, hr, sname))
-            avg_mwg = round(p[1] / p[0], 2) if p and p[0] > 0 else None
-            max_mwg = int(p[2]) if p and p[0] > 0 else None
-            avg_mwp = round(p[3] / p[0], 2) if p and p[0] > 0 else None
-            avg_mg = round(p[4] / p[0], 2) if p and p[0] > 0 else None
-            avg_vip = round(p[5] / p[0], 2) if p and p[0] > 0 else None
+            avg_mwg = round(p["sum_mwg"] / p["n"], 2) if p and p["n"] > 0 else None
+            max_mwg = int(p["max_mwg"]) if p and p["n"] > 0 else None
+            avg_mwp = round(p["sum_mwp"] / p["n"], 2) if p and p["n"] > 0 else None
+            avg_mg = round(p["sum_mg"] / p["n"], 2) if p and p["n"] > 0 else None
+            avg_vip = round(p["sum_vip"] / p["n"], 2) if p and p["n"] > 0 else None
+
+            avg_wwg = round(p["sum_wwg"] / p["n"], 2) if p and p["n"] > 0 else None
+            max_wwg = int(p["max_wwg"]) if p and p["n"] > 0 else None
+            ww_detected = int(p["ww_detected"]) if p else 0
+            avg_party = round(p["sum_party_size"] / p["n_party_size"], 2) if p and p["n_party_size"] > 0 else None
+            avg_norm_rate = round(p["sum_norm_rate"] / p["n_norm_rate"], 1) if p and p["n_norm_rate"] > 0 else None
+            avg_vip_rate = round(p["sum_vip_rate"] / p["n_vip_rate"], 1) if p and p["n_vip_rate"] > 0 else None
+            avg_diff_rate = round(p["sum_diff_rate"] / p["n_diff_rate"], 1) if p and p["n_diff_rate"] > 0 else None
+            if avg_diff_rate is None and avg_vip_rate is not None and avg_norm_rate is not None:
+                avg_diff_rate = round(avg_vip_rate - avg_norm_rate, 1)
 
             ck = moat_intelligence.city_key_for_store(sname)
             e = ext_agg.get((ds, hr, ck)) if ck else None
@@ -2233,6 +2380,7 @@ def rollup_store_hourly_stats(target_dates=None, days_back: int = 3) -> dict:
                 avg_mwg, max_mwg, avg_mwp, avg_mg, avg_vip,
                 prec_max, temp_avg, is_rain, tr_dis, arena_act,
                 camp_cnt, fc_n, fc_mae, v_sm, v_wt, v_lv, avg_rep_w,
+                avg_wwg, max_wwg, ww_detected, avg_party, avg_norm_rate, avg_vip_rate, avg_diff_rate,
             ))
 
         if _is_pg():
@@ -2268,7 +2416,9 @@ def rollup_store_hourly_stats(target_dates=None, days_back: int = 3) -> dict:
                         avg_matched_groups, avg_vip_guests,
                         precip_mm_max, temp_c_avg, is_rainy, transit_disrupted, arena_event_active,
                         campaign_count, fc_resolved_count, fc_mae_wpct,
-                        votes_smooth, votes_waiting, votes_lively, avg_reported_wait_min
+                        votes_smooth, votes_waiting, votes_lively, avg_reported_wait_min,
+                        avg_women_waiting_groups, max_women_waiting_groups, women_waiting_detected,
+                        avg_party_size, avg_normal_match_rate, avg_vip_match_rate, avg_match_rate_diff
                     ) VALUES %s
                     ON CONFLICT (date_jst, hour_jst, store_name) DO UPDATE SET
                         business_date = EXCLUDED.business_date,
@@ -2294,7 +2444,14 @@ def rollup_store_hourly_stats(target_dates=None, days_back: int = 3) -> dict:
                         votes_smooth = GREATEST(EXCLUDED.votes_smooth, store_hourly_rollups.votes_smooth),
                         votes_waiting = GREATEST(EXCLUDED.votes_waiting, store_hourly_rollups.votes_waiting),
                         votes_lively = GREATEST(EXCLUDED.votes_lively, store_hourly_rollups.votes_lively),
-                        avg_reported_wait_min = COALESCE(EXCLUDED.avg_reported_wait_min, store_hourly_rollups.avg_reported_wait_min)
+                        avg_reported_wait_min = COALESCE(EXCLUDED.avg_reported_wait_min, store_hourly_rollups.avg_reported_wait_min),
+                        avg_women_waiting_groups = COALESCE(EXCLUDED.avg_women_waiting_groups, store_hourly_rollups.avg_women_waiting_groups),
+                        max_women_waiting_groups = COALESCE(EXCLUDED.max_women_waiting_groups, store_hourly_rollups.max_women_waiting_groups),
+                        women_waiting_detected = GREATEST(EXCLUDED.women_waiting_detected, store_hourly_rollups.women_waiting_detected),
+                        avg_party_size = COALESCE(EXCLUDED.avg_party_size, store_hourly_rollups.avg_party_size),
+                        avg_normal_match_rate = COALESCE(EXCLUDED.avg_normal_match_rate, store_hourly_rollups.avg_normal_match_rate),
+                        avg_vip_match_rate = COALESCE(EXCLUDED.avg_vip_match_rate, store_hourly_rollups.avg_vip_match_rate),
+                        avg_match_rate_diff = COALESCE(EXCLUDED.avg_match_rate_diff, store_hourly_rollups.avg_match_rate_diff)
                     """,
                     rollup_rows,
                     page_size=400,
@@ -2332,8 +2489,10 @@ def rollup_store_hourly_stats(target_dates=None, days_back: int = 3) -> dict:
                                 avg_matched_groups, avg_vip_guests,
                                 precip_mm_max, temp_c_avg, is_rainy, transit_disrupted, arena_event_active,
                                 campaign_count, fc_resolved_count, fc_mae_wpct,
-                                votes_smooth, votes_waiting, votes_lively, avg_reported_wait_min
-                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                votes_smooth, votes_waiting, votes_lively, avg_reported_wait_min,
+                                avg_women_waiting_groups, max_women_waiting_groups, women_waiting_detected,
+                                avg_party_size, avg_normal_match_rate, avg_vip_match_rate, avg_match_rate_diff
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                             ON CONFLICT (date_jst, hour_jst, store_name) DO UPDATE SET
                                 business_date = excluded.business_date,
                                 sample_count = excluded.sample_count,
@@ -2358,7 +2517,14 @@ def rollup_store_hourly_stats(target_dates=None, days_back: int = 3) -> dict:
                                 votes_smooth = MAX(excluded.votes_smooth, store_hourly_rollups.votes_smooth),
                                 votes_waiting = MAX(excluded.votes_waiting, store_hourly_rollups.votes_waiting),
                                 votes_lively = MAX(excluded.votes_lively, store_hourly_rollups.votes_lively),
-                                avg_reported_wait_min = COALESCE(excluded.avg_reported_wait_min, store_hourly_rollups.avg_reported_wait_min)
+                                avg_reported_wait_min = COALESCE(excluded.avg_reported_wait_min, store_hourly_rollups.avg_reported_wait_min),
+                                avg_women_waiting_groups = COALESCE(excluded.avg_women_waiting_groups, store_hourly_rollups.avg_women_waiting_groups),
+                                max_women_waiting_groups = COALESCE(excluded.max_women_waiting_groups, store_hourly_rollups.max_women_waiting_groups),
+                                women_waiting_detected = MAX(excluded.women_waiting_detected, store_hourly_rollups.women_waiting_detected),
+                                avg_party_size = COALESCE(excluded.avg_party_size, store_hourly_rollups.avg_party_size),
+                                avg_normal_match_rate = COALESCE(excluded.avg_normal_match_rate, store_hourly_rollups.avg_normal_match_rate),
+                                avg_vip_match_rate = COALESCE(excluded.avg_vip_match_rate, store_hourly_rollups.avg_vip_match_rate),
+                                avg_match_rate_diff = COALESCE(excluded.avg_match_rate_diff, store_hourly_rollups.avg_match_rate_diff)
                             """,
                             rollup_rows,
                         )

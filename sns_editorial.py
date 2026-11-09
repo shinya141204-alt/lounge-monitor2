@@ -57,6 +57,7 @@ DEFAULT_CLAUDE_MODELS = (
 
 # Flagship 1M-context Claude Fable models reserved for deep strategy, long-form columns, and flagship note essays
 DEFAULT_CLAUDE_FABLE_MODELS = (
+    "claude-fable-5-2",
     "claude-fable-5-1",
     "claude-fable-5",
 )
@@ -4397,7 +4398,7 @@ def call_editorial_ai_json(
     Unified Dual-Engine AI JSON caller supporting BOTH Anthropic Claude (Fable / Opus / Sonnet) and Upgraded Google Gemini (Argon / Pro / Flash).
     Automatically routes based on configured keys and `get_ai_engine_pref()`, with instant failover across providers/models.
     `prefer_argon=True` prioritizes `gemini-4-argon` for deep reasoning, math analysis, and visual inspections.
-    `prefer_fable=True` promotes 1M-context `claude-fable-5-1` (effort=high) for flagship strategy & long-form columns while keeping daily SNS on Opus/Sonnet.
+    `prefer_fable=True` promotes 1M-context `claude-fable-5-2` (effort=high) for flagship strategy & long-form columns while keeping daily SNS on Opus/Sonnet.
     Returns `(parsed_dict_or_None, model_label_str, last_error_str)`.
     """
     now_jst = now_jst or datetime.datetime.now(JST)
@@ -4489,7 +4490,7 @@ def call_editorial_ai_json(
                 fast_haiku = next((m for m in c_models if "haiku" in m.lower() and m != top_fast), None)
                 c_trial = [top_fast, fast_haiku] if fast_haiku else [top_fast]
             elif use_fable_tier and not preferred_c:
-                # Strategic / Flagship Column mode: lead with Claude Fable 5.1 (#1), backed immediately by Claude Opus (#2)
+                # Strategic / Flagship Column mode: lead with Claude Fable 5.2 (#1), backed immediately by Claude Opus (#2)
                 top_fable = next((m for m in c_models if "fable" in m.lower() and m not in _unhealthy_models), None)
                 top_opus = next((m for m in c_models if "opus" in m.lower()), None)
                 top_sonnet = next((m for m in c_models if "sonnet" in m.lower()), None)

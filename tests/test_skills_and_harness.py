@@ -84,25 +84,25 @@ class SkillsAndHarnessTests(unittest.TestCase):
 
     def test_claude_review_inline_bundle_and_mode_promotion_rules(self):
         cr = _load_script_module(".agents/skills/claude-review/scripts/run_claude_review.py", "cr_mod")
-        self.assertEqual(cr.resolve_effective_mode("architect", "claude-fable-5-1", True), "architect")
-        self.assertEqual(cr.resolve_effective_mode("consult", "claude-fable-5-1", True, no_promote=True), "consult")
-        self.assertEqual(cr.resolve_effective_mode("code", "claude-fable-5-1", True), "audit")
-        self.assertEqual(cr.resolve_effective_mode("article", "claude-fable-5-1", True), "flagship")
-        self.assertEqual(cr.resolve_effective_mode("code", "claude-fable-5-1", True, no_promote=True), "code")
+        self.assertEqual(cr.resolve_effective_mode("architect", "claude-fable-5-2", True), "architect")
+        self.assertEqual(cr.resolve_effective_mode("consult", "claude-fable-5-2", True, no_promote=True), "consult")
+        self.assertEqual(cr.resolve_effective_mode("code", "claude-fable-5-2", True), "audit")
+        self.assertEqual(cr.resolve_effective_mode("article", "claude-fable-5-2", True), "flagship")
+        self.assertEqual(cr.resolve_effective_mode("code", "claude-fable-5-2", True, no_promote=True), "code")
 
         bundle, omitted = cr._inline_files(["AGENTS.md"], max_total_chars=50000)
         self.assertIn("### FILE: `AGENTS.md`", bundle)
         self.assertEqual(omitted, [])
 
         # Default read-only command (`--permission-mode plan`)
-        cmd_ro = cr.build_claude_command("/usr/local/bin/claude", "claude-fable-5-1", allow_edit=False, fast_no_tools=True, effort_level="high", use_fable=True)
+        cmd_ro = cr.build_claude_command("/usr/local/bin/claude", "claude-fable-5-2", allow_edit=False, fast_no_tools=True, effort_level="high", use_fable=True)
         self.assertIn("plan", cmd_ro)
         self.assertNotIn("acceptEdits", cmd_ro)
         self.assertIn("--tools", cmd_ro)
         self.assertEqual(cmd_ro[cmd_ro.index("--tools") + 1], "")
 
         # Safe file-edit command (`--allow-edit` -> `acceptEdits`, `Bash`/`.env`/`fly.toml` hard-blocked)
-        cmd_ed = cr.build_claude_command("/usr/local/bin/claude", "claude-fable-5-1", allow_edit=True, effort_level="high", use_fable=True, extra_dirs=["/tmp"])
+        cmd_ed = cr.build_claude_command("/usr/local/bin/claude", "claude-fable-5-2", allow_edit=True, effort_level="high", use_fable=True, extra_dirs=["/tmp"])
         self.assertEqual(cmd_ed[cmd_ed.index("--permission-mode") + 1], "acceptEdits")
         self.assertEqual(cmd_ed[cmd_ed.index("--permission-prompts") + 1], "none")
         self.assertEqual(cmd_ed[cmd_ed.index("--tools") + 1], "Read,Edit,Write,Glob,Grep")

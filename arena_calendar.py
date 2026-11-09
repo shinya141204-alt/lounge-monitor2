@@ -772,6 +772,102 @@ def get_arena_schedule_events(allow_blocking: bool = False, force_refresh: bool 
     return cached
 
 
+# ==============================================================================
+# Static City Events Master (Pro Baseball Night Games, J-League, Fireworks)
+# External network communication: ZERO guarantee
+# ==============================================================================
+STATIC_CITY_EVENTS = [
+    {
+        "venue_id": "meiji_jingu_stadium",
+        "venue_name": "明治神宮野球場",
+        "city_key": "tokyo",
+        "pattern_type": "baseball_night",
+        "start_time": "18:00",
+        "est_end_hour": 21,
+        "events": [
+            {"event_date": "2026-04-10", "event_title": "プロ野球公式戦 ヤクルト vs 巨人（ナイター）", "est_end_hour": 21},
+            {"event_date": "2026-05-15", "event_title": "プロ野球公式戦 ヤクルト vs 阪神（ナイター）", "est_end_hour": 21},
+            {"event_date": "2026-06-12", "event_title": "プロ野球公式戦 ヤクルト vs DeNA（ナイター）", "est_end_hour": 21},
+            {"event_date": "2026-07-17", "event_title": "プロ野球公式戦 ヤクルト vs 中日（ナイター）", "est_end_hour": 21},
+            {"event_date": "2026-08-21", "event_title": "プロ野球公式戦 ヤクルト vs 広島（ナイター）", "est_end_hour": 21},
+            {"event_date": "2026-09-18", "event_title": "プロ野球公式戦 ヤクルト vs 巨人（ナイター）", "est_end_hour": 21},
+            {"event_date": "2026-11-10", "event_title": "明治神宮野球大会（ナイター決勝）", "est_end_hour": 21},
+        ],
+    },
+    {
+        "venue_id": "hanshin_koshien_stadium",
+        "venue_name": "阪神甲子園球場",
+        "city_key": "osaka",
+        "pattern_type": "baseball_night",
+        "start_time": "18:00",
+        "est_end_hour": 21,
+        "events": [
+            {"event_date": "2026-04-14", "event_title": "プロ野球公式戦 阪神 vs 巨人（ナイター）", "est_end_hour": 21},
+            {"event_date": "2026-05-08", "event_title": "プロ野球公式戦 阪神 vs 広島（ナイター）", "est_end_hour": 21},
+            {"event_date": "2026-06-19", "event_title": "プロ野球公式戦 阪神 vs DeNA（ナイター）", "est_end_hour": 21},
+            {"event_date": "2026-07-10", "event_title": "プロ野球公式戦 阪神 vs ヤクルト（ナイター）", "est_end_hour": 21},
+            {"event_date": "2026-08-28", "event_title": "プロ野球公式戦 阪神 vs 巨人（ナイター）", "est_end_hour": 21},
+            {"event_date": "2026-09-11", "event_title": "プロ野球公式戦 阪神 vs 中日（ナイター）", "est_end_hour": 21},
+            {"event_date": "2026-11-10", "event_title": "プロ野球 秋季特別試合（ナイター）", "est_end_hour": 21},
+        ],
+    },
+    {
+        "venue_id": "nissan_stadium",
+        "venue_name": "日産スタジアム（横浜国際総合競技場）",
+        "city_key": "yokohama",
+        "pattern_type": "stadium_match",
+        "start_time": "19:00",
+        "est_end_hour": 21,
+        "events": [
+            {"event_date": "2026-05-23", "event_title": "Jリーグ公式戦 横浜F・マリノス vs 川崎フロンターレ", "est_end_hour": 21},
+            {"event_date": "2026-06-06", "event_title": "サッカー国際親善マッチ 日本代表 vs 海外強豪", "est_end_hour": 21},
+            {"event_date": "2026-07-18", "event_title": "日産スタジアム 5万人サマースタジアムライブ", "est_end_hour": 21},
+            {"event_date": "2026-10-10", "event_title": "Jリーグ公式戦 横浜F・マリノス vs 浦和レッズ", "est_end_hour": 21},
+            {"event_date": "2026-11-10", "event_title": "サッカー国際強化マッチ（ナイター）", "est_end_hour": 21},
+        ],
+    },
+    {
+        "venue_id": "japan_national_stadium",
+        "venue_name": "国立競技場",
+        "city_key": "tokyo",
+        "pattern_type": "stadium_match",
+        "start_time": "19:00",
+        "est_end_hour": 21,
+        "events": [
+            {"event_date": "2026-05-02", "event_title": "Jリーグ 国立決戦スペシャルマッチ", "est_end_hour": 21},
+            {"event_date": "2026-06-11", "event_title": "FIFAワールドカップ アジア最終予選 日本代表戦", "est_end_hour": 21},
+            {"event_date": "2026-08-15", "event_title": "国立スタジアム サマーナイトフェス", "est_end_hour": 21},
+            {"event_date": "2026-10-24", "event_title": "ルヴァンカップ 決勝戦（ナイトゲーム）", "est_end_hour": 21},
+            {"event_date": "2026-11-10", "event_title": "サッカー日本代表 国際親善試合（ナイター）", "est_end_hour": 21},
+        ],
+    },
+    {
+        "venue_id": "yodogawa_fireworks",
+        "venue_name": "なにわ淀川花火大会",
+        "city_key": "osaka",
+        "pattern_type": "fireworks",
+        "start_time": "19:30",
+        "est_end_hour": 21,
+        "events": [
+            {"event_date": "2026-08-08", "event_title": "第38回 なにわ淀川花火大会", "est_end_hour": 21},
+            {"event_date": "2027-08-07", "event_title": "第39回 なにわ淀川花火大会", "est_end_hour": 21},
+        ],
+    },
+    {
+        "venue_id": "sumida_fireworks",
+        "venue_name": "隅田川花火大会",
+        "city_key": "tokyo",
+        "pattern_type": "fireworks",
+        "start_time": "19:00",
+        "est_end_hour": 21,
+        "events": [
+            {"event_date": "2026-07-25", "event_title": "第49回 隅田川花火大会", "est_end_hour": 21},
+            {"event_date": "2027-07-31", "event_title": "第50回 隅田川花火大会", "est_end_hour": 21},
+        ],
+    },
+]
+
+
 def get_arena_events_for_date(target_date=None, allow_blocking: bool = False) -> dict:
     """Return `{venue_id: [event_dict, ...]}` for `target_date` (defaults to today JST)."""
     if target_date is None:
@@ -790,7 +886,32 @@ def get_arena_events_for_date(target_date=None, allow_blocking: bool = False) ->
             vid = ev.get("venue_id") or ""
             if vid:
                 by_venue.setdefault(vid, []).append(ev)
+
+    # 静的都市イベントマスタ（神宮・甲子園・日産・国立・花火大会等）を外部通信ゼロでマージ
+    for v_info in STATIC_CITY_EVENTS:
+        vid = v_info.get("venue_id")
+        vname = v_info.get("venue_name")
+        ck = v_info.get("city_key")
+        def_end = v_info.get("est_end_hour", 21)
+        for ev in v_info.get("events", []):
+            if ev.get("event_date") == ds:
+                item = {
+                    "venue_id": vid,
+                    "venue_name": vname,
+                    "city_key": ck,
+                    "event_date": ds,
+                    "event_title": ev.get("event_title", ""),
+                    "est_end_hour": ev.get("est_end_hour", def_end),
+                    "is_static_master": True,
+                }
+                by_venue.setdefault(vid, []).append(item)
+
     return by_venue
+
+
+def get_active_arena_events(target_date=None, allow_blocking: bool = False) -> dict:
+    """get_arena_events_for_date の互換エイリアス。"""
+    return get_arena_events_for_date(target_date=target_date, allow_blocking=allow_blocking)
 
 
 # ==============================================================================

@@ -4,7 +4,7 @@ description: >-
   相席ナビ（https://aiseki-navi.com）専用の全自動データ考察コラム＆note独立エッセイ一気通貫生成スキル。
   ユーザーが `/article <テーマ>` と入力したときや、特定テーマのWebコラム＋note原稿作成を依頼したときに必ず有効化する。
   90日実測ログ・1h永久ロールアップ・6大ドーム日程・現地待ち分数・本番 `llms-facts.json` を自動抽出し、
-  16:9図解アイキャッチ生成、4層因果コラムHTML構築、Claude Fable 5.1 / Opus 5.5 脱AI推敲、
+  16:9図解アイキャッチ生成、4層因果コラムHTML構築、Claude Fable 5.2 / Opus 5.5 脱AI推敲、
   Blueprintルート・サイトマップ・X/Tips自動投稿登録、非汚染テスト＆本番デプロイ、note書き下ろし原稿出力まで完結させる。
 ---
 
@@ -77,9 +77,9 @@ description: >-
 
 ---
 
-## Step 3.5: Claude Fable 5.1 / Opus 5.5 辛口デスク自動推敲ゲート
+## Step 3.5: Claude Fable 5.2 / Opus 5.5 辛口デスク自動推敲ゲート
 デプロイ前に読み取り専用デスク校閲を通し（ファイルは自動インライン添付される）、指摘された構成の甘さ・AI優等生構文・会話の硬さを Antigravity の `edit_file` で磨き上げる：
-* **看板コラム・ピラー比較記事・note 勝負記事（デフォルト推奨）** → **`claude-fable-5-1`（`--mode flagship`）**：
+* **看板コラム・ピラー比較記事・note 勝負記事（デフォルト推奨）** → **`claude-fable-5-2`（`--mode flagship`）**：
   ```bash
   python3 /Users/kuwanoshinya/.gemini/相席業務改善/相席モニター/.agents/skills/claude-review/scripts/run_claude_review.py \
     --mode flagship \

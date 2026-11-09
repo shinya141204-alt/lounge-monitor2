@@ -9,7 +9,7 @@ run_claude_review.py - Antigravity から Claude Code (`claude -p`) を安全・
   `Bash` / `WebFetch` や `.env`・認証鍵・`fly.toml` への変更を物理遮断した安全な「ファイル編集限定モード」で直接書き込みを実行
 - 対象ファイル自動インライン添付（読み取り専用時：Fable 最大 120,000 文字 / Opus 最大 40,000 文字）＋ `stdin` 投入により、
   Read ツール往復によるタイムアウトと macOS `ARG_MAX` 上限エラーを解消（`--fast-no-tools` でツール往復ゼロ推論にも対応）
-- 日常レビュー (`claude-opus-5-5`) と切り札 100万トークン最上位モデル (`claude-fable-5-1`) のハイブリッド運用:
+- 日常レビュー (`claude-opus-5-5`) と切り札 100万トークン最上位モデル (`claude-fable-5-2`) のハイブリッド運用:
   1. `strategy`       : 収益化・SEO・データモート引用獲得・導線設計の「全体戦略」
   2. `audit`          : 複雑な数理ロジック・Fly PG 512MB OOM安全性・大型改修の「最終バグ・セキュリティ監査」
   3. `flagship`       : 看板コラム・note 勝負記事の「構成＆脱AIの徹底推敲（`--allow-edit` で直接改稿保存も可）」
@@ -40,10 +40,11 @@ CANDIDATE_CLAUDE_PATHS = [
 ]
 
 MODEL_ALIASES = {
-    "fable": "claude-fable-5-1",
+    "fable": "claude-fable-5-2",
+    "fable-5-2": "claude-fable-5-2",
     "fable-5-1": "claude-fable-5-1",
-    "claude-fable": "claude-fable-5-1",
-    "fable-1m": "claude-fable-5-1[1m]",
+    "claude-fable": "claude-fable-5-2",
+    "fable-1m": "claude-fable-5-2[1m]",
     "opus": "claude-opus-5-5",
     "opus-5-5": "claude-opus-5-5",
     "claude-opus": "claude-opus-5-5",
@@ -75,13 +76,13 @@ def find_claude_bin() -> str | None:
 def resolve_model(raw_model: str | None, mode: str, force_fable: bool) -> str:
     if force_fable:
         if raw_model and "1m" in raw_model.lower():
-            return "claude-fable-5-1[1m]"
-        return "claude-fable-5-1"
+            return "claude-fable-5-2[1m]"
+        return "claude-fable-5-2"
     if raw_model:
         cleaned = raw_model.strip()
         return MODEL_ALIASES.get(cleaned.lower(), cleaned)
     if mode in FABLE_NATIVE_MODES:
-        return "claude-fable-5-1"
+        return "claude-fable-5-2"
     return "claude-opus-5-5"
 
 
@@ -166,8 +167,9 @@ def run_doctor() -> int:
         return 1
 
     catalog = _inspect_cached_catalog()
-    if "claude-fable-5-1" in catalog:
-        fable_info = catalog["claude-fable-5-1"]
+    detected_fid = next((fid for fid in ("claude-fable-5-2", "claude-fable-5-1") if fid in catalog), None)
+    if detected_fid:
+        fable_info = catalog[detected_fid]
         caps = fable_info.get("capabilities") if isinstance(fable_info.get("capabilities"), dict) else {}
         ctx_len = (
             caps.get("max_input_tokens")
@@ -175,10 +177,10 @@ def run_doctor() -> int:
             or fable_info.get("max_input_tokens")
             or 1000000
         )
-        disp_name = fable_info.get("name") or "Claude Fable 5.1"
-        print(f"✅ 最上位モデル検出: {disp_name} (`claude-fable-5-1` / 最大入力 {int(ctx_len):,} トークン)")
+        disp_name = fable_info.get("name") or ("Claude Fable 5.2" if "5-2" in detected_fid else "Claude Fable 5.1")
+        print(f"✅ 最上位モデル検出: {disp_name} (`{detected_fid}` / 最大入力 {int(ctx_len):,} トークン)")
     else:
-        print("ℹ️ モデル構成: 日常=claude-opus-5-5 / 切り札=claude-fable-5-1（`--fable` または `strategy`/`audit`/`flagship` モード）")
+        print("ℹ️ モデル構成: 日常=claude-opus-5-5 / 切り札=claude-fable-5-2（`--fable` または `strategy`/`audit`/`flagship` モード）")
 
     try:
         auth = subprocess.run(
@@ -658,7 +660,7 @@ def main() -> int:
         default=None,
         help="Preset mode: code | article | consult | strategy | audit | flagship | architect",
     )
-    parser.add_argument("--fable", action="store_true", help="Run with Claude Fable 5.1 (`claude-fable-5-1`); promotes code->audit and article->flagship")
+    parser.add_argument("--fable", action="store_true", help="Run with Claude Fable 5.2 (`claude-fable-5-2`); promotes code->audit and article->flagship")
     parser.add_argument("--no-promote", action="store_true", help="Keep exact `--mode` even when `--fable` is set")
     parser.add_argument(
         "--allow-edit",

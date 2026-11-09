@@ -476,6 +476,354 @@
                 grid-template-columns: 1fr;
             }
         }
+        /* --- JIS公式POS実測アナリティクス --- */
+        .jis-pos-panel {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px dashed var(--border-subtle);
+        }
+        .jis-pos-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+        .jis-pos-title {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: var(--accent-text);
+            letter-spacing: 0.02em;
+        }
+        .jis-pos-icon {
+            flex-shrink: 0;
+            color: var(--accent-gold);
+        }
+        .jis-pos-badge {
+            font-size: 0.68rem;
+            font-weight: 600;
+            color: var(--text-sub);
+            padding: 2px 7px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border-subtle);
+        }
+        body.theme-light .jis-pos-badge {
+            background: rgba(0, 0, 0, 0.04);
+        }
+        .jis-alert-banner {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 9px 12px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            font-size: 0.76rem;
+            line-height: 1.5;
+        }
+        .jis-alert-banner.is-reverse-warning {
+            background: rgba(220, 38, 38, 0.12);
+            border: 1px solid rgba(220, 38, 38, 0.35);
+            color: #fca5a5;
+        }
+        body.theme-light .jis-alert-banner.is-reverse-warning {
+            background: #fef2f2;
+            border-color: #fca5a5;
+            color: #991b1b;
+        }
+        .jis-alert-banner.is-waiting-notice {
+            background: rgba(200, 164, 110, 0.10);
+            border: 1px solid var(--border-gold);
+            color: var(--accent-text);
+        }
+        body.theme-light .jis-alert-banner.is-waiting-notice {
+            background: #fefce8;
+            border-color: #fde047;
+            color: #854d0e;
+        }
+        .jis-alert-icon {
+            font-size: 0.95rem;
+            line-height: 1;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+        .jis-alert-content {
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+        .jis-alert-title {
+            font-weight: 700;
+            font-size: 0.8rem;
+            margin-bottom: 2px;
+        }
+        .jis-alert-desc {
+            font-size: 0.74rem;
+            opacity: 0.92;
+        }
+        .jis-pos-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+        .jis-pos-card {
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-subtle);
+        }
+        body.theme-light .jis-pos-card {
+            background: rgba(28, 27, 24, 0.025);
+            border-color: rgba(24, 24, 27, 0.10);
+        }
+        .jis-card-eyebrow {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 6px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: var(--text-sub);
+            margin-bottom: 4px;
+        }
+        .jis-card-chip {
+            font-size: 0.66rem;
+            padding: 1px 6px;
+            border-radius: 4px;
+            border: 1px solid var(--border-subtle);
+            color: var(--text-main);
+            background: rgba(255, 255, 255, 0.04);
+        }
+        body.theme-light .jis-card-chip {
+            background: rgba(0, 0, 0, 0.04);
+        }
+        .jis-card-chip.highlight {
+            border-color: var(--border-gold);
+            color: var(--accent-text);
+            background: var(--bg-gold);
+        }
+        .jis-card-main {
+            font-size: 0.92rem;
+            font-weight: 700;
+            color: var(--text-main);
+            line-height: 1.4;
+        }
+        body.theme-light .jis-card-main {
+            color: #18181b;
+        }
+        .jis-card-unit {
+            font-size: 0.74rem;
+            font-weight: 500;
+            color: var(--text-sub);
+            margin-left: 2px;
+        }
+        .jis-card-vs {
+            font-size: 0.72rem;
+            font-weight: 500;
+            color: var(--text-sub);
+            margin: 0 4px;
+        }
+        .jis-card-sub {
+            margin: 4px 0 0;
+            font-size: 0.73rem;
+            color: var(--text-sub);
+            line-height: 1.45;
+        }
+        @media (max-width: 620px) {
+            .jis-pos-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        /* --- 梅田茶屋町ビル 2フロア回遊シフト パネル --- */
+        .chayamachi-shift-panel {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px dashed var(--border-subtle);
+        }
+        .chayamachi-shift-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+        .chayamachi-shift-title {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: var(--accent-text);
+            letter-spacing: 0.02em;
+        }
+        .chayamachi-shift-icon {
+            flex-shrink: 0;
+            color: var(--accent-gold);
+        }
+        .chayamachi-shift-badge {
+            font-size: 0.68rem;
+            font-weight: 600;
+            color: var(--text-sub);
+            padding: 2px 7px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border-subtle);
+        }
+        body.theme-light .chayamachi-shift-badge {
+            background: rgba(0, 0, 0, 0.04);
+        }
+        .chayamachi-phase-banner {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            background: rgba(200, 164, 110, 0.08);
+            border: 1px solid rgba(200, 164, 110, 0.22);
+        }
+        body.theme-light .chayamachi-phase-banner {
+            background: rgba(200, 164, 110, 0.12);
+            border-color: rgba(200, 164, 110, 0.35);
+        }
+        .chayamachi-phase-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--accent-gold);
+            margin-top: 5px;
+            flex-shrink: 0;
+        }
+        .chayamachi-phase-content {
+            flex: 1;
+            min-width: 0;
+        }
+        .chayamachi-phase-title {
+            font-size: 0.76rem;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 2px;
+        }
+        .chayamachi-phase-desc {
+            font-size: 0.71rem;
+            color: var(--text-sub);
+            line-height: 1.45;
+        }
+        .chayamachi-floors-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+        .chayamachi-floor-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            padding: 10px 12px;
+        }
+        body.theme-light .chayamachi-floor-card {
+            background: rgba(28, 27, 24, 0.025);
+            border-color: rgba(24, 24, 27, 0.10);
+        }
+        .chayamachi-floor-card.is-active-phase {
+            border-color: rgba(200, 164, 110, 0.4);
+        }
+        .chayamachi-card-eyebrow {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.70rem;
+            font-weight: 600;
+            color: var(--text-sub);
+            margin-bottom: 4px;
+        }
+        .chayamachi-card-chip {
+            font-size: 0.65rem;
+            font-weight: 600;
+            padding: 1px 6px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-sub);
+        }
+        body.theme-light .chayamachi-card-chip {
+            background: rgba(0, 0, 0, 0.04);
+        }
+        .chayamachi-card-main {
+            font-size: 1.10rem;
+            font-weight: 800;
+            letter-spacing: -0.01em;
+            color: var(--text-main);
+            line-height: 1.25;
+            font-variant-numeric: tabular-nums;
+        }
+        body.theme-light .chayamachi-card-main {
+            color: #18181b;
+        }
+        .chayamachi-num {
+            font-variant-numeric: tabular-nums;
+        }
+        .chayamachi-card-unit {
+            font-size: 0.74rem;
+            font-weight: 500;
+            color: var(--text-sub);
+            margin-left: 2px;
+        }
+        .chayamachi-card-sub {
+            margin: 4px 0 0;
+            font-size: 0.73rem;
+            color: var(--text-sub);
+            line-height: 1.45;
+            font-variant-numeric: tabular-nums;
+        }
+        .chayamachi-ratio-bar-wrap {
+            margin-top: 10px;
+        }
+        .chayamachi-ratio-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.70rem;
+            font-weight: 600;
+            color: var(--text-sub);
+            margin-bottom: 4px;
+            font-variant-numeric: tabular-nums;
+        }
+        .chayamachi-ratio-track {
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.08);
+            overflow: hidden;
+            position: relative;
+        }
+        body.theme-light .chayamachi-ratio-track {
+            background: rgba(0, 0, 0, 0.08);
+        }
+        .chayamachi-ratio-fill {
+            height: 100%;
+            background: var(--accent-gold);
+            border-radius: 3px 0 0 3px;
+            transition: width 0.3s ease;
+        }
+        body.theme-light .chayamachi-shift-badge,
+        body.theme-light .chayamachi-phase-desc,
+        body.theme-light .chayamachi-card-eyebrow,
+        body.theme-light .chayamachi-card-chip,
+        body.theme-light .chayamachi-card-unit,
+        body.theme-light .chayamachi-card-sub,
+        body.theme-light .chayamachi-ratio-labels {
+            color: #52525b;
+        }
+        body.theme-light .chayamachi-phase-title {
+            color: #18181b;
+        }
+        @media (max-width: 620px) {
+            .chayamachi-floors-grid {
+                grid-template-columns: 1fr;
+            }
+        }
         @media (max-width: 560px) {
             .live-hero-card,
             .section-card {
@@ -633,7 +981,7 @@
                 <div class="moat-detail-head">
                     <span><span class="status-dot-live" aria-hidden="true"></span>60分後AI推移予測 ＆ リアル待ち時間解析</span>
                     {% if wb and wb.city %}
-                    <span class="moat-detail-weather" id="hero-moat-weather">{{ wb.city }} {{ wb.condition }}{% if wb.temp_c is not none %} {{ '%.1f'|format(wb.temp_c) }}℃{% endif %}</span>
+                    <span class="moat-detail-weather" id="hero-moat-weather">{{ wb.city }} {{ wb.condition }}{% if wb.temp_c is not none %} {{ '%.1f'|format(wb.temp_c) }}℃{% endif %}{% if wb.temp_diff_c is not none %}（前日比 {{ '%+.1f'|format(wb.temp_diff_c) }}℃{% if wb.is_cold_surge %}・急冷サージ警戒{% endif %}）{% endif %}</span>
                     {% else %}
                     <span class="moat-detail-weather" id="hero-moat-weather" style="display:none;"></span>
                     {% endif %}
@@ -658,6 +1006,38 @@
                         {% else %}
                         <p class="moat-detail-sub" style="margin-top:4px;"><a href="/stats#forecast-accuracy" style="color:var(--accent-text); text-decoration:underline;">全店舗の60分後予測・答え合わせ検証ログを見る ›</a></p>
                         {% endif %}
+
+                        {# --- 3秒ハシゴ診断 先行需要シグナル行 --- #}
+                        {% set heat = store.lead_demand_heat or (fc and fc.get('lead_intent_heat')) %}
+                        {% if heat and (heat.total_intents or 0) >= 5 and heat.lead_signal in ['female_surge', 'male_surge', 'active'] %}
+                        <div class="moat-intent-signal-row" style="margin-top:8px; padding-top:8px; border-top:1px dashed var(--border-subtle); display:flex; align-items:flex-start; gap:8px; font-size:0.75rem;">
+                            <span style="display:inline-flex; align-items:center; padding:1px 7px; border-radius:4px; font-size:0.68rem; font-weight:700; background:rgba(200, 164, 110, 0.15); color:var(--accent-text); border:1px solid rgba(200, 164, 110, 0.3); flex-shrink:0;">
+                                ⚡ 先行需要
+                            </span>
+                            <span style="color:var(--text-sub); line-height:1.45;">
+                                {% if heat.lead_signal == 'female_surge' %}
+                                3秒ハシゴ診断で当エリアの<strong>女性ペア参戦意欲が急増中</strong>（予測女性比に +{{ heat.lead_bias_pt }}pt 反映）
+                                {% elif heat.lead_signal == 'male_surge' %}
+                                3秒ハシゴ診断で当エリアの<strong>男性参戦意欲が先行</strong>（混雑・男余り警戒度UP）
+                                {% else %}
+                                3秒ハシゴ診断で当エリアの検索需要が活発（直近2時間 <strong>+{{ heat.total_intents }}件</strong>）
+                                {% endif %}
+                            </span>
+                        </div>
+                        {% endif %}
+
+                        {# --- 周辺大型イベント・終演サージ通知 (Feature 11) --- #}
+                        {% set asig = store.arena_signal %}
+                        {% if asig and (asig.is_surge_now or asig.phase in ['verified_surge', 'post_window']) %}
+                        <div class="moat-event-signal-row" style="margin-top:8px; padding-top:8px; border-top:1px dashed var(--border-subtle); display:flex; align-items:flex-start; gap:8px; font-size:0.75rem;">
+                            <span style="display:inline-flex; align-items:center; padding:1px 7px; border-radius:4px; font-size:0.68rem; font-weight:700; background:rgba(239, 68, 68, 0.12); color:#f87171; border:1px solid rgba(239, 68, 68, 0.28); flex-shrink:0;">
+                                イベントサージ
+                            </span>
+                            <span style="color:var(--text-sub); line-height:1.45;">
+                                周辺の大型会場（<strong>{{ asig.venue_name }}</strong>）で{{ asig.event_title or '大型イベント' }}が終演時間帯です。2次会流入による<strong>急激な混雑・男余りサージ</strong>に警戒してください。
+                            </span>
+                        </div>
+                        {% endif %}
                         {% else %}
                         <div class="moat-detail-main">現在少人数（6名以上で自動予測）</div>
                         <p class="moat-detail-sub">男女合計が6名以上になると表示します。 <a href="/stats#forecast-accuracy" style="color:var(--accent-text); text-decoration:underline;">答え合わせ検証ログ ›</a></p>
@@ -671,7 +1051,229 @@
                         <div class="moat-detail-main">{{ (we.wait_badge_men | clean_badge) if we else '稼働データ集計中' }}</div>
                         {% if we and we.pos_summary_short %}<p class="moat-detail-sub">{{ we.pos_summary_short }}</p>{% endif %}
                     </div>
+
+                    {# --- 席回転スピード解析カード (Feature 9 & 11) --- #}
+                    {% set tm = store.turnover_momentum %}
+                    <div class="moat-detail-card" id="card-turnover-momentum">
+                        <div class="moat-detail-eyebrow">
+                            <span>席回転スピード解析</span>
+                            <span class="moat-detail-chip">時系列ボラティリティ実測</span>
+                        </div>
+                        {% if tm and tm.score is not none %}
+                        <div class="moat-detail-main">回転指数 {{ tm.score }} / 100 <span style="font-size:0.76rem; font-weight:500; color:var(--text-sub);">（{{ tm.label }}）</span></div>
+                        <p class="moat-detail-sub">{{ tm.desc or tm.reason or '直近の客数増減ボラティリティと待ち消化速度から席の流動性をリアルタイム測定' }}</p>
+                        {% elif not store.is_open_now %}
+                        <div class="moat-detail-main">営業時間外</div>
+                        <p class="moat-detail-sub">営業開始後に時系列データを集計します。</p>
+                        {% else %}
+                        <div class="moat-detail-main">現在少人数（6名以上で自動算出）</div>
+                        <p class="moat-detail-sub">男女合計が6名以上になると表示します。</p>
+                        {% endif %}
+                    </div>
                 </div>
+
+                {# --- JIS公式POS実測アナリティクス サブパネル --- #}
+                {% set is_jis = (store.brand_label == 'JIS') or (store.name and store.name.startswith('JIS ')) %}
+                {% set pt = store.pos_telemetry if (is_jis and store.pos_telemetry and store.pos_telemetry.get('telemetry_type') == 'jis_pos') else none %}
+                {% if is_jis and pt %}
+                <div class="jis-pos-panel" id="jis-pos-panel">
+                    <div class="jis-pos-head">
+                        <span class="jis-pos-title">
+                            <svg class="jis-pos-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                            JIS公式POS実測アナリティクス
+                        </span>
+                        <span class="jis-pos-badge">毎分実測テレメトリ</span>
+                    </div>
+
+                    {# 女性待ち逆転アラート / 待機通知 #}
+                    {% if pt.get('is_reverse_waiting') %}
+                    <div class="jis-alert-banner is-reverse-warning" role="alert">
+                        <div class="jis-alert-icon" aria-hidden="true">⚡</div>
+                        <div class="jis-alert-content">
+                            <div class="jis-alert-title">女性待ち逆転発生中（男性即相席チャンス）</div>
+                            <div class="jis-alert-desc">現在、女性の待機組数（{{ pt.get('women_waiting_groups') or 0 }}組・{{ pt.get('women_waiting_guests') or 0 }}名）が男性待機を上回っています。男性は入店後すぐに相席案内される確率が極めて高い状態です。</div>
+                        </div>
+                    </div>
+                    {% elif pt.get('is_women_waiting') %}
+                    <div class="jis-alert-banner is-waiting-notice">
+                        <div class="jis-alert-icon" aria-hidden="true">ℹ</div>
+                        <div class="jis-alert-content">
+                            <div class="jis-alert-title">女性席待ち発生中（満席待機）</div>
+                            <div class="jis-alert-desc">女性 {{ pt.get('women_waiting_groups') or 0 }}組（{{ pt.get('women_waiting_guests') or 0 }}名）が空席待ちです（男性待機: {{ pt.get('men_waiting_groups') or 0 }}組）。</div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div class="jis-pos-grid">
+                        {# 1. ソロ vs ペア平均組人数 #}
+                        <div class="jis-pos-card">
+                            <div class="jis-card-eyebrow">
+                                <span>来店組人数スタイル</span>
+                                {% if pt.get('party_style') %}
+                                <span class="jis-card-chip">{{ pt.get('party_style') }}</span>
+                                {% endif %}
+                            </div>
+                            <div class="jis-card-main">
+                                {% if pt.get('avg_party_size_total') %}
+                                平均 {{ '%.2f'|format(pt.get('avg_party_size_total')) }}名<span class="jis-card-unit">/組</span>
+                                {% else %}
+                                集計中
+                                {% endif %}
+                            </div>
+                            <div class="jis-card-sub">
+                                {% if pt.get('avg_party_size_men') and pt.get('avg_party_size_women') %}
+                                男性: 平均{{ '%.2f'|format(pt.get('avg_party_size_men')) }}名（{{ pt.get('men_total_groups') or 0 }}組）<br>
+                                女性: 平均{{ '%.2f'|format(pt.get('avg_party_size_women')) }}名（{{ pt.get('women_total_groups') or 0 }}組）
+                                {% else %}
+                                在店客数・組数からリアルタイム算出
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        {# 2. VIP相席率 vs 一般相席率 ＆ 効率差 #}
+                        <div class="jis-pos-card">
+                            <div class="jis-card-eyebrow">
+                                <span>VIP相席率 vs 一般席</span>
+                                {% if pt.get('match_rate_diff') is not none %}
+                                <span class="jis-card-chip highlight">VIP効率 {% if pt.get('match_rate_diff') > 0 %}+{{ '%.1f'|format(pt.get('match_rate_diff')) }}pt{% else %}{{ '%.1f'|format(pt.get('match_rate_diff')) }}pt{% endif %}</span>
+                                {% endif %}
+                            </div>
+                            <div class="jis-card-main">
+                                {% if pt.get('vip_match_rate') is not none and pt.get('normal_match_rate') is not none %}
+                                VIP {{ '%.1f'|format(pt.get('vip_match_rate')) }}% <span class="jis-card-vs">vs</span> 一般 {{ '%.1f'|format(pt.get('normal_match_rate')) }}%
+                                {% elif pt.get('normal_match_rate') is not none %}
+                                一般相席率 {{ '%.1f'|format(pt.get('normal_match_rate')) }}%
+                                {% else %}
+                                相席率データ算出中
+                                {% endif %}
+                            </div>
+                            <div class="jis-card-sub">
+                                {% if pt.get('vip_mens_group_num') and pt.get('vip_mens_group_num') > 0 %}
+                                VIP組数 {{ pt.get('vip_mens_share_num') or 0 }}/{{ pt.get('vip_mens_group_num') }}組相席成立<br>
+                                一般組数 {{ pt.get('normal_mens_share_num') or 0 }}/{{ pt.get('normal_mens_group_num') }}組相席成立
+                                {% else %}
+                                ※VIP席は相席優先案内のため一般席に比べマッチング効率が向上します
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                {# --- 梅田茶屋町ビル 2フロア回遊シフト パネル (Feature 13) --- #}
+                {% set is_chayamachi = (store.slug in ['yatakoi-umeda', 'asobibar-chayamachi']) or ('茶屋町' in (store.name or '') and ('ASOBIBAR' in (store.name or '') or 'ヤタコイ' in (store.name or '') or 'YATAKOI' in (store.name or ''))) %}
+                {% set ch_shift = store.chayamachi_shift %}
+                {% set ch_pos = store.pos_telemetry if (store.pos_telemetry and store.pos_telemetry.get('telemetry_type') in ['yatakoi_pos', 'asobibar_pos']) else none %}
+                {% if is_chayamachi and (ch_shift or ch_pos or store.slug in ['yatakoi-umeda', 'asobibar-chayamachi']) %}
+                <div class="chayamachi-shift-panel" id="chayamachi-shift-panel">
+                    <div class="chayamachi-shift-head">
+                        <span class="chayamachi-shift-title">
+                            <svg class="chayamachi-shift-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
+                            梅田茶屋町ビル 2フロア回遊シフト
+                        </span>
+                        <span class="chayamachi-shift-badge">同ビル回遊テレメトリ</span>
+                    </div>
+
+                    {# 回遊フェーズバナー #}
+                    <div class="chayamachi-phase-banner">
+                        <div class="chayamachi-phase-dot" aria-hidden="true"></div>
+                        <div class="chayamachi-phase-content">
+                            <div class="chayamachi-phase-title">
+                                {% if ch_shift and ch_shift.phase_label_ja %}
+                                {{ ch_shift.phase_label_ja }}
+                                {% elif ch_shift and ch_shift.phase_label %}
+                                {{ ch_shift.phase_label }}
+                                {% elif ch_shift and 'yatakoi' in ch_shift.get('phase', '') %}
+                                ヤタコイ優位（1軒目・着席相席フェーズ）
+                                {% elif ch_shift and 'asobibar' in ch_shift.get('phase', '') %}
+                                深夜帯：ASOBIBAR（スタンディング）へ回遊シフト
+                                {% else %}
+                                同ビル2フロア回遊（3F 相席 ⇄ 2F バー）
+                                {% endif %}
+                            </div>
+                            <div class="chayamachi-phase-desc">
+                                {{ (ch_shift.recommendation if ch_shift and ch_shift.recommendation else (ch_shift.advice if ch_shift and ch_shift.advice else '前半（20〜23時）は3Fヤタコイで着席相席、深夜帯は2F ASOBIBARでのスタンディング交流へ人の流れが推移します。')) }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="chayamachi-floors-grid">
+                        {# 3F ヤタコイ（相席フロア） #}
+                        <div class="chayamachi-floor-card{% if ch_shift and 'yatakoi' in ch_shift.get('phase', '') %} is-active-phase{% endif %}">
+                            <div class="chayamachi-card-eyebrow">
+                                <span>3F ヤタコイ</span>
+                                <span class="chayamachi-card-chip">着席相席</span>
+                            </div>
+                            <div class="chayamachi-card-main">
+                                {% if ch_pos and ch_pos.get('yatakoi_men') is not none and ch_pos.get('yatakoi_women') is not none %}
+                                <span class="chayamachi-num">{{ (ch_pos.get('yatakoi_men', 0) + ch_pos.get('yatakoi_women', 0)) }}</span><span class="chayamachi-card-unit">名</span>
+                                {% elif ch_shift and ch_shift.get('yatakoi_cust') is not none %}
+                                <span class="chayamachi-num">{{ ch_shift.get('yatakoi_cust') }}</span><span class="chayamachi-card-unit">名</span>
+                                {% elif store.slug == 'yatakoi-umeda' %}
+                                <span class="chayamachi-num">{{ store.total }}</span><span class="chayamachi-card-unit">名</span>
+                                {% else %}
+                                <span class="chayamachi-num">--</span><span class="chayamachi-card-unit">名</span>
+                                {% endif %}
+                            </div>
+                            <div class="chayamachi-card-sub">
+                                {% if ch_pos and ch_pos.get('yatakoi_men') is not none and ch_pos.get('yatakoi_women') is not none %}
+                                女性 {{ ch_pos.get('yatakoi_women', 0) }}名 / 男性 {{ ch_pos.get('yatakoi_men', 0) }}名
+                                {% elif store.slug == 'yatakoi-umeda' %}
+                                女性 {{ store.women }}名 / 男性 {{ store.men }}名
+                                {% else %}
+                                着席相席フロア（定員約70席）
+                                {% endif %}
+                                {% if ch_shift and ch_shift.get('yatakoi_occ_pct') is not none %}
+                                <br>フロア占有率: <span class="chayamachi-num">{{ ch_shift.get('yatakoi_occ_pct') }}</span>%
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        {# 2F ASOBIBAR（スタンディングバーフロア） #}
+                        <div class="chayamachi-floor-card{% if ch_shift and ('asobibar' in ch_shift.get('phase', '') or 'transition' in ch_shift.get('phase', '')) %} is-active-phase{% endif %}">
+                            <div class="chayamachi-card-eyebrow">
+                                <span>2F ASOBIBAR</span>
+                                <span class="chayamachi-card-chip">スタンディング</span>
+                            </div>
+                            <div class="chayamachi-card-main">
+                                {% if ch_pos and ch_pos.get('asobibar_men') is not none and ch_pos.get('asobibar_women') is not none %}
+                                <span class="chayamachi-num">{{ (ch_pos.get('asobibar_men', 0) + ch_pos.get('asobibar_women', 0)) }}</span><span class="chayamachi-card-unit">名</span>
+                                {% elif ch_shift and ch_shift.get('asobibar_cust') is not none %}
+                                <span class="chayamachi-num">{{ ch_shift.get('asobibar_cust') }}</span><span class="chayamachi-card-unit">名</span>
+                                {% elif store.slug == 'asobibar-chayamachi' %}
+                                <span class="chayamachi-num">{{ store.total }}</span><span class="chayamachi-card-unit">名</span>
+                                {% else %}
+                                <span class="chayamachi-num">--</span><span class="chayamachi-card-unit">名</span>
+                                {% endif %}
+                            </div>
+                            <div class="chayamachi-card-sub">
+                                {% if ch_pos and ch_pos.get('asobibar_men') is not none and ch_pos.get('asobibar_women') is not none %}
+                                女性 {{ ch_pos.get('asobibar_women', 0) }}名 / 男性 {{ ch_pos.get('asobibar_men', 0) }}名
+                                {% elif store.slug == 'asobibar-chayamachi' %}
+                                女性 {{ store.women }}名 / 男性 {{ store.men }}名
+                                {% else %}
+                                自由回遊・スタンディングバー
+                                {% endif %}
+                                {% if ch_shift and ch_shift.get('asobibar_occ_pct') is not none %}
+                                <br>フロア占有率: <span class="chayamachi-num">{{ ch_shift.get('asobibar_occ_pct') }}</span>%
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    {% if ch_shift and ch_shift.get('yatakoi_ratio_pct') is not none and ch_shift.get('asobibar_ratio_pct') is not none %}
+                    <div class="chayamachi-ratio-bar-wrap">
+                        <div class="chayamachi-ratio-labels">
+                            <span>ヤタコイ {{ ch_shift.yatakoi_ratio_pct }}%</span>
+                            <span>ASOBIBAR {{ ch_shift.asobibar_ratio_pct }}%</span>
+                        </div>
+                        <div class="chayamachi-ratio-track" role="progressbar" aria-valuenow="{{ ch_shift.yatakoi_ratio_pct }}" aria-valuemin="0" aria-valuemax="100">
+                            <div class="chayamachi-ratio-fill" style="width: {{ ch_shift.yatakoi_ratio_pct }}%;"></div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
             </div>
 
             <div class="action-btns">
@@ -1801,7 +2403,12 @@
                                 if (wChip) {
                                     if (wb && wb.city) {
                                         wChip.style.display = '';
-                                        const tStr = (wb.temp_c !== null && wb.temp_c !== undefined) ? (' ' + Number(wb.temp_c).toFixed(1) + '℃') : '';
+                                        let tStr = (wb.temp_c !== null && wb.temp_c !== undefined) ? (' ' + Number(wb.temp_c).toFixed(1) + '℃') : '';
+                                        if (wb.temp_diff_c !== null && wb.temp_diff_c !== undefined) {
+                                            const dVal = Number(wb.temp_diff_c);
+                                            const sign = dVal > 0 ? '+' : '';
+                                            tStr += '（前日比 ' + sign + dVal.toFixed(1) + '℃' + (wb.is_cold_surge ? '・急冷サージ警戒' : '') + '）';
+                                        }
                                         wChip.textContent = wb.city + ' ' + (wb.condition || '') + tStr;
                                     } else {
                                         wChip.style.display = 'none';
@@ -1842,7 +2449,23 @@
                                         '<div class="moat-detail-main">' + esc(rawWeBadge || '稼働データ集計中') + '</div>' +
                                         (we && we.pos_summary_short ? '<p class="moat-detail-sub">' + esc(we.pos_summary_short) + '</p>' : '') +
                                         '</div>';
-                                    mGrid.innerHTML = fcHtml + weHtml;
+                                    let tmHtml = '';
+                                    const tm = live.turnover_momentum || (window.STORE_DETAILS && window.STORE_DETAILS.turnover_momentum) || null;
+                                    if (tm && tm.score !== null && tm.label && tm.label !== '判定対象外') {
+                                        const tmScore = Number(tm.score);
+                                        const tmLabel = esc(tm.label);
+                                        const tmDesc = esc(tm.desc || tm.reason || '直近の客数増減ボラティリティと待ち消化速度から席の流動性をリアルタイム測定');
+                                        tmHtml = '<div class="moat-detail-card" id="card-turnover-momentum">' +
+                                            '<div class="moat-detail-eyebrow"><span>席回転スピード解析</span><span class="moat-detail-chip">時系列ボラティリティ実測</span></div>' +
+                                            '<div class="moat-detail-main">回転指数 ' + tmScore + ' / 100 <span style="font-size:0.76rem; font-weight:500; color:var(--text-sub);">（' + tmLabel + '）</span></div>' +
+                                            '<p class="moat-detail-sub">' + tmDesc + '</p>' +
+                                            '</div>';
+                                    } else if (live.is_open_now === false) {
+                                        tmHtml = '<div class="moat-detail-card" id="card-turnover-momentum"><div class="moat-detail-eyebrow"><span>席回転スピード解析</span></div><div class="moat-detail-main">営業時間外</div><p class="moat-detail-sub">営業開始後に時系列データを集計します。</p></div>';
+                                    } else {
+                                        tmHtml = '<div class="moat-detail-card" id="card-turnover-momentum"><div class="moat-detail-eyebrow"><span>席回転スピード解析</span></div><div class="moat-detail-main">現在少人数（6名以上で自動算出）</div><p class="moat-detail-sub">男女合計が6名以上になると表示します。</p></div>';
+                                    }
+                                    mGrid.innerHTML = fcHtml + weHtml + tmHtml;
                                 }
                             } else {
                                 moatPanel.style.display = 'none';
@@ -2588,7 +3211,7 @@
 
             async function syncBackgroundPushSubscription(condToUse) {
                 if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false;
-                const reg = await navigator.serviceWorker.register('/sw.js?v=107', { updateViaCache: 'none' });
+                const reg = await navigator.serviceWorker.register('/sw.js?v=108', { updateViaCache: 'none' });
                 await navigator.serviceWorker.ready;
                 let sub = await reg.pushManager.getSubscription();
                 if (!sub) {

@@ -57,7 +57,7 @@ python3 /Users/kuwanoshinya/.gemini/相席業務改善/相席モニター/.agent
 
 ---
 
-## Step 4: 異常検出時の復旧 ＆ Claude Fable 5.1 最終監査連携
+## Step 4: 異常検出時の復旧 ＆ Claude Fable 5.2 最終監査連携
 
 1. Step 1〜3 で `error` または `warn` が検出された場合は、原因モジュール（`local_db.py`, `routes/portal_bp.py` 等）や Fly Postgres VM 状態（`/Users/kuwanoshinya/.fly/bin/flyctl status -a aiseki-navi-tokyo-db`）を確認して修正する。
 2. 重要なロジック修正を行った場合は `run_claude_review.py --mode audit --git-diff` で最終検閲を通し、再度 `--pre-deploy` → デプロイ → `--live` で `error: 0` を確認して `.agents/reports/` のレポートとともにユーザーへ報告する。

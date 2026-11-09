@@ -37,7 +37,7 @@ DISABLE_SHEETS=1 DISABLE_SCHEDULER=1 python3 /Users/kuwanoshinya/.gemini/相席�
 DISABLE_SHEETS=1 DISABLE_SCHEDULER=1 python3 /Users/kuwanoshinya/.gemini/相席業務改善/相席モニター/.agents/skills/growth-pdca/scripts/rank_opportunities.py
 ```
 
-さらに深い全体戦略レビューを行う場合は、生成されたレポートと `signals.json` を **Claude Fable 5.1（`--mode strategy --fast-no-tools`）** に渡してセカンドオピニオンを取る：
+さらに深い全体戦略レビューを行う場合は、生成されたレポートと `signals.json` を **Claude Fable 5.2（`--mode strategy --fast-no-tools`）** に渡してセカンドオピニオンを取る：
 
 ```bash
 python3 /Users/kuwanoshinya/.gemini/相席業務改善/相席モニター/.agents/skills/claude-review/scripts/run_claude_review.py \

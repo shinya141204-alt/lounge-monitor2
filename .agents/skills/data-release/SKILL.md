@@ -40,9 +40,9 @@ description: >-
 
 ---
 
-## Step 3: Claude Fable 5.1 による報道リリースクオリティ推敲
+## Step 3: Claude Fable 5.2 による報道リリースクオリティ推敲
 
-公開前に `release.md`（または作成したテンプレート）を Fable 5.1（`--mode flagship --fast-no-tools`）で推敲し、AI臭さや誇張を削ぎ落とした信頼性の高い調査レポート文体に仕上げる：
+公開前に `release.md`（または作成したテンプレート）を Fable 5.2（`--mode flagship --fast-no-tools`）で推敲し、AI臭さや誇張を削ぎ落とした信頼性の高い調査レポート文体に仕上げる：
 ```bash
 python3 /Users/kuwanoshinya/.gemini/相席業務改善/相席モニター/.agents/skills/claude-review/scripts/run_claude_review.py \
   --mode flagship --fast-no-tools \
