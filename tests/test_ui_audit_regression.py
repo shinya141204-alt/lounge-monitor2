@@ -105,13 +105,13 @@ class UiAuditRegressionTests(unittest.TestCase):
     # ------------------------------------------------------------------
     def test_cache_busting_sync_across_templates_and_service_worker(self):
         """全テンプレートと static/sw.js のアセットバージョンが完全同期し、immutable ヘッダが正しく付与されること"""
-        expected_calm = "/static/calm.css?v=41"
+        expected_calm = "/static/calm.css?v=42"
         expected_portal = "/static/portal.css?v=17"
-        expected_app_js = "/static/app.js?v=20261109_1"
+        expected_app_js = "/static/app.js?v=20261109_2"
         expected_aff_js = "/static/affiliate_config.js?v=18"
-        expected_style = "/static/style.css?v=20261109_1"
-        expected_sw_url = "/sw.js?v=106"
-        expected_cache_name = "aiseki-navi-v106"
+        expected_style = "/static/style.css?v=20261109_2"
+        expected_sw_url = "/sw.js?v=107"
+        expected_cache_name = "aiseki-navi-v107"
 
         templates_dir = os.path.join(PROJECT_ROOT, "templates")
         calm_seen = 0
@@ -2317,6 +2317,34 @@ class UiAuditRegressionTests(unittest.TestCase):
         self.assertNotIn("↗ +", home_html)
         for em in ("🟢", "🔮"):
             self.assertNotIn(em, home_html)
+
+    def test_pwa_install_banner_hidden_in_standalone_and_dismissable(self):
+        """PWA（ホーム画面追加アプリ）起動時および閉じた状態で #pwa-install-banner が確実に display:none となること"""
+        home_html = self.client.get("/").data.decode("utf-8")
+        self.assertIn(
+            '<aside id="pwa-install-banner" class="pwa-install-banner hidden" hidden',
+            home_html,
+        )
+        self.assertIn("is-pwa-standalone", home_html)
+        self.assertIn("aiseki_pwa_session", home_html)
+
+        with open(os.path.join(PROJECT_ROOT, "static", "style.css"), "r", encoding="utf-8") as fp:
+            style_txt = fp.read()
+        self.assertIn(".pwa-install-banner.hidden", style_txt)
+        self.assertIn(".pwa-install-banner[hidden]", style_txt)
+        self.assertIn("(display-mode: standalone)", style_txt)
+        self.assertNotIn("animation: fadeInBanner", style_txt)
+
+        with open(os.path.join(PROJECT_ROOT, "static", "calm.css"), "r", encoding="utf-8") as fp:
+            calm_txt = fp.read()
+        self.assertIn("html.is-pwa-standalone #pwa-install-banner", calm_txt)
+        self.assertIn("(display-mode: standalone)", calm_txt)
+
+        with open(os.path.join(PROJECT_ROOT, "static", "app.js"), "r", encoding="utf-8") as fp:
+            js_txt = fp.read()
+        self.assertIn("appinstalled", js_txt)
+        self.assertIn("pwa_installed", js_txt)
+        self.assertNotIn("setTimeout(checkPwaBannerVisibility, 2000)", js_txt)
 
 
 if __name__ == "__main__":

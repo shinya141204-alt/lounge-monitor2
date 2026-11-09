@@ -6058,40 +6058,111 @@
         // PWA Installation & Add to Home Banner Control
         // ==========================================
         let deferredPwaPrompt = null;
+        const PWA_DISMISS_COOLDOWN_MS = 30 * 24 * 60 * 60 * 1000;
 
-        window.addEventListener('beforeinstallprompt', (e) => {
-            // Prevent Chrome mini-infobar on mobile
-            e.preventDefault();
-            deferredPwaPrompt = e;
-            checkPwaBannerVisibility();
-        });
+        function hidePwaBannerElement() {
+            const banner = document.getElementById('pwa-install-banner');
+            if (banner) {
+                banner.classList.add('hidden');
+                banner.hidden = true;
+            }
+        }
 
         function isPwaStandalone() {
-            return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
-                   (window.navigator.standalone === true);
+            if (window.navigator.standalone === true) return true;
+            if (window.matchMedia && (
+                window.matchMedia('(display-mode: standalone)').matches ||
+                window.matchMedia('(display-mode: fullscreen)').matches ||
+                window.matchMedia('(display-mode: minimal-ui)').matches ||
+                window.matchMedia('(display-mode: window-controls-overlay)').matches
+            )) {
+                return true;
+            }
+            if (typeof document.referrer === 'string' && document.referrer.startsWith('android-app://')) {
+                return true;
+            }
+            try {
+                const qs = new URLSearchParams(window.location.search || '');
+                if (qs.get('v') === 'pwa') {
+                    sessionStorage.setItem('aiseki_pwa_session', '1');
+                    return true;
+                }
+                if (sessionStorage.getItem('aiseki_pwa_session') === '1') return true;
+                if (localStorage.getItem('pwa_installed') === '1') return true;
+            } catch (e) {}
+            return document.documentElement.classList.contains('is-pwa-standalone');
         }
 
         function isIosDevice() {
             const ua = window.navigator.userAgent.toLowerCase();
-            return /iphone|ipad|ipod/.test(ua);
+            return /iphone|ipad|ipod/.test(ua) ||
+                   (window.navigator.platform === 'MacIntel' && window.navigator.maxTouchPoints > 1);
+        }
+
+        function isMobileInstallTarget() {
+            if (isIosDevice()) return true;
+            const ua = window.navigator.userAgent.toLowerCase();
+            return /android/.test(ua);
+        }
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // Prevent Chrome mini-infobar on mobile and store prompt for the install button
+            e.preventDefault();
+            deferredPwaPrompt = e;
+            if (isPwaStandalone()) {
+                hidePwaBannerElement();
+            }
+        });
+
+        window.addEventListener('appinstalled', () => {
+            deferredPwaPrompt = null;
+            document.documentElement.classList.add('is-pwa-standalone');
+            try {
+                localStorage.setItem('pwa_installed', '1');
+                sessionStorage.setItem('aiseki_pwa_session', '1');
+            } catch (e) {}
+            dismissPwaBanner();
+        });
+
+        if (window.matchMedia) {
+            const standaloneMql = window.matchMedia('(display-mode: standalone)');
+            const onDisplayModeChange = (ev) => {
+                if (ev && ev.matches) {
+                    document.documentElement.classList.add('is-pwa-standalone');
+                    hidePwaBannerElement();
+                }
+            };
+            if (typeof standaloneMql.addEventListener === 'function') {
+                standaloneMql.addEventListener('change', onDisplayModeChange);
+            } else if (typeof standaloneMql.addListener === 'function') {
+                standaloneMql.addListener(onDisplayModeChange);
+            }
         }
 
         function checkPwaBannerVisibility() {
-            if (IS_STAFF) return; // Hide for staff mode
-            if (isPwaStandalone()) return; // Already installed as PWA
+            if (IS_STAFF || isPwaStandalone() || !isMobileInstallTarget()) {
+                if (isPwaStandalone()) {
+                    document.documentElement.classList.add('is-pwa-standalone');
+                }
+                hidePwaBannerElement();
+                return;
+            }
 
             const banner = document.getElementById('pwa-install-banner');
             if (!banner) return;
 
-            // Check if dismissed within the last 7 days
             try {
                 const dismissedAt = localStorage.getItem('pwa_dismissed_at');
                 if (dismissedAt) {
                     const elapsed = Date.now() - parseInt(dismissedAt, 10);
-                    if (elapsed < 7 * 24 * 60 * 60 * 1000) return;
+                    if (elapsed < PWA_DISMISS_COOLDOWN_MS) {
+                        hidePwaBannerElement();
+                        return;
+                    }
                 }
             } catch (e) {}
 
+            banner.hidden = false;
             banner.classList.remove('hidden');
         }
 
@@ -6100,6 +6171,7 @@
                 deferredPwaPrompt.prompt();
                 deferredPwaPrompt.userChoice.then((choiceResult) => {
                     if (choiceResult.outcome === 'accepted') {
+                        try { localStorage.setItem('pwa_installed', '1'); } catch (e) {}
                         dismissPwaBanner();
                     }
                     deferredPwaPrompt = null;
@@ -6112,8 +6184,7 @@
         }
 
         function dismissPwaBanner() {
-            const banner = document.getElementById('pwa-install-banner');
-            if (banner) banner.classList.add('hidden');
+            hidePwaBannerElement();
             try {
                 localStorage.setItem('pwa_dismissed_at', Date.now().toString());
             } catch (e) {}
@@ -6163,8 +6234,8 @@
             }
         });
 
-        // Initialize PWA banner check shortly after page load
-        setTimeout(checkPwaBannerVisibility, 2000);
+        // Synchronously reconcile PWA banner state without 2s post-load layout shift
+        checkPwaBannerVisibility();
 
         // Unified pageshow handler: bfcache restore cleanup (modals / nav spinners / scroll lock) + silent data refresh
         window.addEventListener('pageshow', (e) => {

@@ -82,7 +82,7 @@
     <link rel="stylesheet" href="/static/portal.css?v=17">
     <meta name="color-scheme" content="dark light">
     <script blocking="render">try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
-    <link rel="stylesheet" href="/static/style.css?v=20261109_1">
+    <link rel="stylesheet" href="/static/style.css?v=20261109_2">
     <style>
         :root {
             --bg-dark: #0f1014;
@@ -539,7 +539,7 @@
             body.theme-light .store-dossier-col { border-top-color: rgba(24, 24, 27, 0.10); }
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=41">
+    <link rel="stylesheet" href="/static/calm.css?v=42">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -2588,7 +2588,7 @@
 
             async function syncBackgroundPushSubscription(condToUse) {
                 if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false;
-                const reg = await navigator.serviceWorker.register('/sw.js?v=106', { updateViaCache: 'none' });
+                const reg = await navigator.serviceWorker.register('/sw.js?v=107', { updateViaCache: 'none' });
                 await navigator.serviceWorker.ready;
                 let sub = await reg.pushManager.getSubscription();
                 if (!sub) {

@@ -4289,7 +4289,25 @@ body.theme-light .distance-tag {
     background: linear-gradient(135deg, rgba(236, 72, 153, 0.14) 0%, rgba(59, 130, 246, 0.14) 100%);
     border: 1px solid rgba(236, 72, 153, 0.35);
     box-shadow: 0 4px 18px rgba(0, 0, 0, 0.25);
-    animation: fadeInBanner 0.3s ease-out;
+}
+
+/* PWAインストール済み（standalone / fullscreen / minimal-ui）および .hidden / [hidden] 時は確実に非表示 */
+.pwa-install-banner.hidden,
+.pwa-install-banner[hidden],
+.area-tag.hidden,
+.cm-human-line.hidden,
+.second-tips-list.hidden,
+.second-venue-timing-details.hidden,
+html.is-pwa-standalone #pwa-install-banner,
+html.is-pwa-standalone .pwa-install-banner {
+    display: none !important;
+}
+
+@media (display-mode: standalone), (display-mode: fullscreen), (display-mode: minimal-ui), (display-mode: window-controls-overlay) {
+    #pwa-install-banner,
+    .pwa-install-banner {
+        display: none !important;
+    }
 }
 
 @keyframes fadeInBanner {

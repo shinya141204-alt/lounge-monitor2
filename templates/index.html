@@ -146,9 +146,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="相席ナビ">
 
-    <link rel="stylesheet" href="/static/style.css?v=20261109_1" fetchpriority="high">
-    <link rel="stylesheet" href="/static/calm.css?v=41" fetchpriority="high">
-    <link rel="preload" href="/static/app.js?v=20261109_1" as="script">
+    <link rel="stylesheet" href="/static/style.css?v=20261109_2" fetchpriority="high">
+    <link rel="stylesheet" href="/static/calm.css?v=42" fetchpriority="high">
+    <link rel="preload" href="/static/app.js?v=20261109_2" as="script">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- Non-render-blocking web font (avoids waiting on Google Fonts at PWA cold launch) -->
@@ -314,6 +314,22 @@
             if (_t === 'list') document.body.classList.add('compact-mode', 'theme-list');
             else if (_t === 'light') document.body.classList.add('theme-light');
             document.documentElement.classList.toggle('theme-light', _t === 'light');
+            var _qsAll = new URLSearchParams(window.location.search || '');
+            var _isStandalonePwa = (window.navigator.standalone === true) ||
+                (window.matchMedia && (
+                    window.matchMedia('(display-mode: standalone)').matches ||
+                    window.matchMedia('(display-mode: fullscreen)').matches ||
+                    window.matchMedia('(display-mode: minimal-ui)').matches ||
+                    window.matchMedia('(display-mode: window-controls-overlay)').matches
+                )) ||
+                (typeof document.referrer === 'string' && document.referrer.indexOf('android-app://') === 0) ||
+                (_qsAll.get('v') === 'pwa') ||
+                (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('aiseki_pwa_session') === '1') ||
+                (typeof localStorage !== 'undefined' && localStorage.getItem('pwa_installed') === '1');
+            if (_isStandalonePwa) {
+                document.documentElement.classList.add('is-pwa-standalone');
+                try { sessionStorage.setItem('aiseki_pwa_session', '1'); } catch (e) {}
+            }
         } catch (e) {}
     </script>
     <!-- Refresh Toast Notification -->
@@ -322,7 +338,7 @@
     <div id="app-shell" class="container">
         {% if not is_staff %}
         <!-- PWA Smart Install Banner -->
-        <aside id="pwa-install-banner" class="pwa-install-banner hidden" role="region" aria-label="ホーム画面に追加のご案内">
+        <aside id="pwa-install-banner" class="pwa-install-banner hidden" hidden role="region" aria-label="ホーム画面に追加のご案内">
             <div class="pwa-banner-content">
                 <div class="pwa-banner-info">
                     <div class="pwa-banner-title">ホーム画面に追加でアプリ化</div>
@@ -334,6 +350,23 @@
                 <button class="pwa-banner-close-btn" onclick="dismissPwaBanner()" aria-label="閉じる" title="閉じる">✕</button>
             </div>
         </aside>
+        <script>
+            try {
+                if (!document.documentElement.classList.contains('is-pwa-standalone')) {
+                    var _ua = (window.navigator.userAgent || '').toLowerCase();
+                    var _isTouchMobile = /iphone|ipad|ipod|android/.test(_ua) || (window.navigator.platform === 'MacIntel' && window.navigator.maxTouchPoints > 1);
+                    var _dismissedAt = parseInt(localStorage.getItem('pwa_dismissed_at') || '0', 10);
+                    var _withinCooldown = _dismissedAt > 0 && (Date.now() - _dismissedAt) < (30 * 24 * 60 * 60 * 1000);
+                    if (_isTouchMobile && !_withinCooldown) {
+                        var _pwaBannerEl = document.getElementById('pwa-install-banner');
+                        if (_pwaBannerEl) {
+                            _pwaBannerEl.hidden = false;
+                            _pwaBannerEl.classList.remove('hidden');
+                        }
+                    }
+                }
+            } catch (e) {}
+        </script>
         {% endif %}
 
         <header>
@@ -2855,7 +2888,7 @@
         window.INITIAL_STATUS_DATA = {{ (initial_status_client or initial_status) | tojson }};
     </script>
     {% endif %}
-    <script src="/static/app.js?v=20261109_1" defer></script>
+    <script src="/static/app.js?v=20261109_2" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
@@ -2871,7 +2904,7 @@
                 }
                 if (window.__swRegistered) return;
                 window.__swRegistered = true;
-                navigator.serviceWorker.register('/sw.js?v=106', { updateViaCache: 'none' })
+                navigator.serviceWorker.register('/sw.js?v=107', { updateViaCache: 'none' })
                     .then(function(reg) {
                         // Throttle SW update checks to once per 10 minutes (shared via sessionStorage across tab navigations)
                         var maybeUpdate = function() {

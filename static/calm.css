@@ -9146,3 +9146,24 @@ body:not(.staff-mode) .seo-portal-section {
     content-visibility: auto;
     contain-intrinsic-size: auto 360px;
 }
+
+/* --- M7. PWA（ホーム画面追加アプリ）起動時および閉じた状態のインストール案内バナー完全非表示保証 --- */
+#pwa-install-banner.hidden,
+#pwa-install-banner[hidden],
+.pwa-install-banner.hidden,
+.pwa-install-banner[hidden],
+body:not(.theme-light) .pwa-install-banner.hidden,
+body.theme-light .pwa-install-banner.hidden,
+html.is-pwa-standalone #pwa-install-banner,
+html.is-pwa-standalone .pwa-install-banner {
+    display: none !important;
+}
+
+@media (display-mode: standalone), (display-mode: fullscreen), (display-mode: minimal-ui), (display-mode: window-controls-overlay) {
+    #pwa-install-banner,
+    .pwa-install-banner,
+    body:not(.theme-light) .pwa-install-banner,
+    body.theme-light .pwa-install-banner {
+        display: none !important;
+    }
+}
