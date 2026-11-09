@@ -4,9 +4,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ store.seo_name }}のリアルタイム人数・男女比・待ち時間・混雑傾向｜相席ナビ</title>
-    <meta name="description" content="{% if store.total > 0 %}{{ store.seo_name }}（{{ store.area_label }}）の現在のリアルタイム男女人数・男女比・待ち時間傾向を毎分自動更新。ただいま女性{{ store.women }}名・男性{{ store.men }}名（女性比率{{ store.wpct }}%）。入店前の混雑チェックや近隣店舗とのハシゴ比較に。{% elif store_analytics and store_analytics.max_7d_women > 0 %}{{ store.seo_name }}（{{ store.area_label }}）のリアルタイム男女人数・男女比・待ち時間傾向を毎分自動更新。直近7日間の最高女性数は{{ store_analytics.max_7d_women }}名{% if store_analytics.best_slot_name %}、狙い目は{{ store_analytics.best_slot_name }}{% if store_analytics.best_slot_pct is not none and store_analytics.best_slot_pct is number %}（平均女性比{{ store_analytics.best_slot_pct }}%）{% endif %}{% endif %}。入店前の混雑チェックや近隣店舗とのハシゴ比較に。{% else %}{{ store.seo_name }}（{{ store.area_label }}）のリアルタイム男女人数・男女比・待ち時間傾向を毎分自動更新。曜日・時間帯別の混雑傾向や近隣ラウンジとの比較が入店前に確認できます。{% endif %}">
-    <meta name="keywords" content="{{ store.seo_name }},{{ store.seo_name }} 人数,{{ store.seo_name }} 男女比,{{ store.seo_name }} 混雑,{{ store.seo_name }} 待ち時間,{{ store.brand_label }},相席ラウンジ,相席ナビ">
+    {% if 'ソウル' in store.name %}
+    <title>{{ store.seo_name }}の現在人数・営業時間・客層・男女比｜韓国ソウルの入店条件｜相席ナビ</title>
+    <meta name="description" content="{% if store.total > 0 %}{{ store.seo_name }}（{{ store.area_label }}）のリアルタイム男女人数・男女比を毎分更新（現在女性{{ store.women }}名・男性{{ store.men }}名／女性比{{ store.wpct }}%）。営業時間・定休日・客層（年齢層）・パスポート等の入店条件やソウル2拠点の比較も掲載。{% else %}{{ store.seo_name }}（{{ store.area_label }}）のリアルタイム男女人数・男女比を毎分更新。営業時間・定休日・客層（年齢層）・パスポート等の顔写真付き身分証ルールや、江南・弘大2店舗の使い分けも実測データで解説。{% endif %}">
+    {% else %}
+    <title>{{ store.seo_name }}の現在人数・料金・客層・男女比｜1人入店・待ち時間も検証｜相席ナビ</title>
+    <meta name="description" content="{% if store.total > 0 %}{{ store.seo_name }}（{{ store.area_label }}）の現在人数・男女比を毎分更新。ただいま女性{{ store.women }}名・男性{{ store.men }}名（女性比{{ store.wpct }}%）。時間帯別の料金・待機料・1人入店可否・客層・待ち時間や近隣店比較も掲載。{% elif store_analytics and store_analytics.max_7d_women > 0 %}{{ store.seo_name }}（{{ store.area_label }}）の現在人数・男女比を毎分更新。直近7日間の最高女性数は{{ store_analytics.max_7d_women }}名{% if store_analytics.best_slot_name %}（狙い目は{{ store_analytics.best_slot_name }}{% if store_analytics.best_slot_pct is not none and store_analytics.best_slot_pct is number %}・平均女性比{{ store_analytics.best_slot_pct }}%{% endif %}）{% endif %}。料金・待機料・1人入店可否・客層・待ち時間や近隣店比較も掲載。{% else %}{{ store.seo_name }}（{{ store.area_label }}）の現在人数・男女比を毎分更新。時間帯別の料金システム・単独待機料・男性1人入店の可否・客層（年齢層）・曜日別の待ち時間傾向や近隣ラウンジ比較をまとめて確認できます。{% endif %}">
+    {% endif %}
+    <meta name="keywords" content="{{ store.seo_name }},{{ store.seo_name }} 人数,{{ store.seo_name }} 料金,{{ store.seo_name }} 客層,{{ store.seo_name }} 評判,{{ store.seo_name }} 男女比,{{ store.seo_name }} 1人,{{ store.seo_name }} 待ち時間,{{ store.brand_label }},相席ラウンジ,相席ナビ">
     <link rel="canonical" href="https://aiseki-navi.com/store/{{ store.slug }}">
     {% include '_head_llmo.html' %}
     {% if has_sufficient_store_data %}

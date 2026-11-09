@@ -1067,9 +1067,10 @@ def price_comparison_page():
     import price_comparison
     core.restore_latest_data_if_empty()
     core.trigger_background_fetch_if_needed()
-    req_area = (request.args.get('area') or 'shinjuku').strip().lower()
+    raw_area_param = (request.args.get('area') or '').strip().lower()
     valid_ids = {c['id'] for c in price_comparison.COMPARISON_CLUSTERS}
-    selected_area = req_area if req_area in valid_ids else 'shinjuku'
+    has_explicit_valid_area = bool(raw_area_param and raw_area_param in valid_ids)
+    selected_area = raw_area_param if has_explicit_valid_area else 'shinjuku'
 
     def _render():
         import ops_governance
@@ -1101,7 +1102,7 @@ def price_comparison_page():
         )
     import affiliate_manager as _am_pc
     pc_cache_sig = (
-        f"price_comp_{selected_area}",
+        f"price_comp_{raw_area_param if has_explicit_valid_area else '_root'}",
         _am_pc.are_slots_sharing_url('dating_bachelor', 'dating_instant', allow_blocking=False),
         _am_pc.is_slot_monetized('women_beauty_clinic', allow_blocking=False),
         _am_pc.is_slot_monetized('women_dating_bachelor', allow_blocking=False),

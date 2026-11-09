@@ -12,6 +12,7 @@ description: >-
 （※オリエンタルラウンジ長崎店の社内ミーティング報告用スキル `/lounge-pdca` とは完全に独立しています。社内データをこちらに混ぜないでください。）
 
 - **リポジトリルート**: `/Users/kuwanoshinya/.gemini/相席業務改善/相席モニター`
+- **Search Console API 自動取得スクリプト**: [scripts/fetch_gsc_api.py](./scripts/fetch_gsc_api.py)
 - **需要・収益シグナル収集スクリプト**: [scripts/collect_demand_signals.py](./scripts/collect_demand_signals.py)
 - **優先機会ランキングスクリプト**: [scripts/rank_opportunities.py](./scripts/rank_opportunities.py)
 
@@ -19,10 +20,11 @@ description: >-
 
 ## Step 1: 需要シグナル ＆ 収益パフォーマンスの非汚染収集
 
-以下のスクリプトを実行し、本番ライブ稼働状況（`?staff_test=1` 非汚染取得）・ウォッチ条件分布・現地投票・既存コラム網羅状況・`pdca_engine.py` の診断データを `signals.json` に集約する（Google Search Console のCSVがある場合は `--gsc-csv <path>` で同時投入可能）：
+（任意・GSC API閲覧権限付与済みの場合）まず Search Console API から直近28日のクエリ・ページCSVを自動取得し、続けて本番ライブ稼働状況（`?staff_test=1` 非汚染取得）・ウォッチ条件分布・現地投票・既存コラム網羅状況・`pdca_engine.py` の診断データを `signals.json` に集約する：
 
 ```bash
-DISABLE_SHEETS=1 DISABLE_SCHEDULER=1 python3 /Users/kuwanoshinya/.gemini/相席業務改善/相席モニター/.agents/skills/growth-pdca/scripts/collect_demand_signals.py --days 14 --live
+python3 /Users/kuwanoshinya/.gemini/相席業務改善/相席モニター/.agents/skills/growth-pdca/scripts/fetch_gsc_api.py --days 28
+DISABLE_SHEETS=1 DISABLE_SCHEDULER=1 python3 /Users/kuwanoshinya/.gemini/相席業務改善/相席モニター/.agents/skills/growth-pdca/scripts/collect_demand_signals.py --days 14 --live --gsc-csv /Users/kuwanoshinya/.gemini/相席業務改善/相席モニター/.agents/reports/gsc_queries_latest.csv
 ```
 
 ---

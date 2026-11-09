@@ -395,6 +395,35 @@ class SeoLlmoDesignGoalAuditTests(unittest.TestCase):
         self.assertIn(".sr-only:where(:not(:focus-within, :active))", calm_css)
         self.assertIn("clip-path: inset(50%) !important;", calm_css)
 
+    def test_gsc_ctr_title_clarity_and_price_comparison_canonical_isolation(self):
+        """GSC実測改善: 記事<title>先頭28文字の主題明示・店舗<title>の料金/客層網羅・/price-comparison canonical固定とキャッシュ非干渉を検証"""
+        for path, ins in self.parsed_pages.items():
+            title = re.sub(r"\s+", " ", "".join(ins.title_parts)).strip()
+            if path == "/guide" or path.startswith("/guide/"):
+                head28 = title[:28]
+                self.assertTrue(
+                    any(kw in head28 for kw in ("相席", "オリエンタル", "JIS", "ag", "ASOBIBAR")),
+                    f"{path}: mobile SERP first 28 chars lack lounge keyword: {title!r}",
+                )
+            elif path.startswith("/store/"):
+                self.assertIn("現在人数", title, f"{path}: missing 現在人数 in title")
+                self.assertIn("客層", title, f"{path}: missing 客層 in title")
+                if "seoul" in path:
+                    self.assertIn("韓国ソウル", title, f"{path}: missing 韓国ソウル in Seoul store title")
+                else:
+                    self.assertIn("料金", title, f"{path}: missing 料金 in domestic store title")
+
+        # Warm ?area=shinjuku first, then verify /price-comparison root still serves national title & root canonical
+        app_module.clear_fast_http_caches()
+        r_shinjuku = self.client.get("/price-comparison?area=shinjuku").data.decode("utf-8")
+        r_fukuoka = self.client.get("/price-comparison?area=fukuoka").data.decode("utf-8")
+        r_root = self.client.get("/price-comparison").data.decode("utf-8")
+        for variant_html in (r_shinjuku, r_fukuoka, r_root):
+            self.assertIn('<link rel="canonical" href="https://aiseki-navi.com/price-comparison">', variant_html)
+        self.assertIn("<title>新宿・西新宿（4店）の相席ラウンジ料金", r_shinjuku)
+        self.assertIn("<title>相席ラウンジ料金・男性割引イベント比較｜", r_root)
+
+
 
 
 if __name__ == "__main__":
