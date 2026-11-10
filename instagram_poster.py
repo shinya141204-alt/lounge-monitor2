@@ -37,6 +37,8 @@ DEFAULT_IG_USER_ID = "17841410169754469"  # @aiseki_navi1 professional user_id
 SITE_URL = "https://aiseki-navi.com"
 REEL_AUTO_ENABLED_KEY = "reel_auto_schedule_enabled"
 LAST_IG_AUTO_POST_KEY = "last_ig_auto_post_ts"
+LAST_IG_GRID_POST_TS_KEY = "last_ig_grid_post_ts"
+LAST_IG_GRID_REEL_TYPE_KEY = "last_ig_grid_reel_type"
 _JST = datetime.timezone(datetime.timedelta(hours=9))
 _cached_ig_user_id = None
 _ig_post_lock = threading.Lock()
@@ -75,14 +77,22 @@ def _coerce_ig_jst_naive(dt: datetime.datetime = None) -> datetime.datetime:
     return dt
 
 
-def record_ig_auto_post_timestamp(now_jst: datetime.datetime = None, is_feed: bool = True) -> None:
+def record_ig_auto_post_timestamp(
+    now_jst: datetime.datetime = None,
+    is_feed: bool = True,
+    reel_type: str = "",
+) -> None:
     """Record timestamp of automated IG post and whether a Feed/Grid post ran on this business date."""
     try:
         ts_naive = _coerce_ig_jst_naive(now_jst)
-        job_state.set_value(LAST_IG_AUTO_POST_KEY, ts_naive.strftime("%Y-%m-%d %H:%M:%S"))
+        ts_str = ts_naive.strftime("%Y-%m-%d %H:%M:%S")
+        job_state.set_value(LAST_IG_AUTO_POST_KEY, ts_str)
         if is_feed:
             biz_date = (ts_naive - datetime.timedelta(hours=7)).strftime("%Y-%m-%d")
             job_state.mark_done(f"ig_feed_daily:{biz_date}")
+            job_state.set_value(LAST_IG_GRID_POST_TS_KEY, ts_str)
+            if reel_type:
+                job_state.set_value(LAST_IG_GRID_REEL_TYPE_KEY, str(reel_type).strip())
     except Exception as e:
         logging.debug(f"record_ig_auto_post_timestamp skipped: {e}")
 
@@ -95,6 +105,31 @@ def has_ig_feed_posted_today(now_jst: datetime.datetime = None) -> bool:
         return job_state.is_done(f"ig_feed_daily:{biz_date}")
     except Exception:
         return False
+
+
+def has_ig_grid_posted_recently(
+    now_jst: datetime.datetime = None,
+    min_hours: float = 36.0,
+) -> bool:
+    """
+    Return True when the main profile grid (`share_to_feed=True`) should be protected from clutter:
+      1. Any Feed/Carousel/Grid-Reel already ran on the same business date (`has_ig_feed_posted_today`), OR
+      2. A Grid post ran within `min_hours` (default 36h, preventing consecutive-day Reel cover spam).
+    When True, scheduled Reels still publish to Reels/Explore non-follower discovery with `share_to_feed=False`.
+    """
+    if has_ig_feed_posted_today(now_jst):
+        return True
+    try:
+        raw_ts = (job_state.get_value(LAST_IG_GRID_POST_TS_KEY, allow_blocking=False) or "").strip()
+        if raw_ts:
+            last_naive = datetime.datetime.strptime(raw_ts, "%Y-%m-%d %H:%M:%S")
+            cur_naive = _coerce_ig_jst_naive(now_jst)
+            diff_hours = (cur_naive - last_naive).total_seconds() / 3600.0
+            if 0 <= diff_hours < float(min_hours):
+                return True
+    except Exception:
+        pass
+    return False
 
 
 def check_ig_auto_post_cooldown(min_interval_minutes: int = 95, now_jst: datetime.datetime = None) -> tuple:
@@ -1120,11 +1155,24 @@ def publish_live_reel_to_instagram(
                     )
                     return {"status": "skipped", "ok": False, "reason": "Insufficient live headcount"}
 
-        # Smart profile-grid protection: if a Carousel or Feed post already ran today on a scheduled night,
-        # publish this Reel to Reels/Explore non-follower discovery (`share_to_feed=False`) so the grid stays clean.
+        # Smart profile-grid protection: if a Carousel/Feed post ran today, or a Grid post ran within 36h,
+        # publish this Reel to Reels/Explore non-follower discovery (`share_to_feed=False`) so the profile grid stays clean.
         effective_share_to_feed = bool(share_to_feed)
-        if not force and has_ig_feed_posted_today(now_jst):
+        if not force and has_ig_grid_posted_recently(now_jst, min_hours=36.0):
             effective_share_to_feed = False
+        elif effective_share_to_feed and not force and (reel_type or "").strip().lower() == "auto":
+            # Never allow two consecutive Grid Reels to share the same template cover
+            last_grid_rt = (job_state.get_value(LAST_IG_GRID_REEL_TYPE_KEY, allow_blocking=False) or "").strip()
+            if last_grid_rt and rt == last_grid_rt:
+                for alt_rt in ("area_battle", "live_top5", "tiktok_gap_shock", "ladies_zero_wait"):
+                    if alt_rt != last_grid_rt:
+                        if alt_rt == "ladies_zero_wait":
+                            dom_chk = threads_poster._filter_domestic_stores(stores)
+                            if sum(int(s.get("men") or 0) for s in dom_chk) < 12:
+                                continue
+                        rt = alt_rt
+                        dedup_key = f"ig_post:{biz_date}_reel_{rt}_{slot_label}"
+                        break
 
         refresh_ig_token_if_needed(force=False)
         cleaned_custom = reel_generator.enforce_brand_rule((custom_caption or "").strip())
@@ -1229,7 +1277,11 @@ def publish_live_reel_to_instagram(
             if not force:
                 job_state.mark_done(dedup_key)
                 job_state.mark_done(slot_dedup_key)
-                record_ig_auto_post_timestamp(now_jst, is_feed=effective_share_to_feed)
+                record_ig_auto_post_timestamp(
+                    now_jst,
+                    is_feed=effective_share_to_feed,
+                    reel_type=rt if effective_share_to_feed else "",
+                )
         return res
     finally:
         _ig_post_lock.release()

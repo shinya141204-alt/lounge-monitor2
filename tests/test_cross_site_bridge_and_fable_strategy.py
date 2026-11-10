@@ -109,6 +109,51 @@ class TestCrossSiteBridgeAndFableStrategy(unittest.TestCase):
         self.assertIn("/concierge", pc_body)
         self.assertIn("https://machinavi-data.com/?from=aiseki#diagnose", pc_body)
 
+    def test_reel_bgm_synthesis_hook_spotlight_and_grid_protection(self):
+        import array
+        import datetime
+        import tempfile
+        import wave
+        from unittest import mock
+        import instagram_poster
+        import job_state
+        import reel_generator
+
+        # 1. Non-silent stereo Lounge Chill + UI SFX WAV synthesis for all templates
+        for rt in reel_generator.REEL_TEMPLATES:
+            wav_bytes = reel_generator.synthesize_lounge_bgm_wav_bytes(rt)
+            self.assertTrue(wav_bytes.startswith(b"RIFF"))
+            with wave.open(reel_generator.io.BytesIO(wav_bytes), "rb") as wf:
+                self.assertEqual(wf.getnchannels(), 2)
+                self.assertEqual(wf.getsampwidth(), 2)
+                self.assertEqual(wf.getframerate(), 22050)
+                samples = array.array("h", wf.readframes(wf.getnframes()))
+                self.assertGreater(max(abs(x) for x in samples), 5000)
+
+        # 2. Scene 1 concrete spotlight & Save CTA rendering
+        stores = [
+            {"name": "OLG 新宿", "women": 46, "men": 22, "region": "Kanto", "area": "新宿"},
+            {"name": "JIS SHINJUKU", "women": 12, "men": 28, "region": "Kanto", "area": "新宿"},
+            {"name": "OLG 梅田", "women": 38, "men": 20, "region": "Kinki", "area": "梅田"},
+        ]
+        for rt in ("live_top5", "area_battle", "ladies_zero_wait", "tiktok_gap_shock"):
+            f1 = reel_generator.render_reel_preview_frame_jpeg(stores, reel_type=rt, sec=1.2)
+            self.assertGreater(len(f1), 5000)
+            cap = reel_generator.build_reel_caption(stores, reel_type=rt)
+            self.assertIn("保存", cap)
+
+        # 3. 36h Profile Grid Protection & consecutive-template rotation
+        jst = datetime.timezone(datetime.timedelta(hours=9))
+        d1 = datetime.datetime(2026, 11, 10, 20, 10, tzinfo=jst)
+        d2_next_day = datetime.datetime(2026, 11, 11, 20, 10, tzinfo=jst)  # +24h (<36h -> share_to_feed=False)
+        d3_two_days = datetime.datetime(2026, 11, 12, 20, 15, tzinfo=jst)  # +48h (>=36h -> share_to_feed=True)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with mock.patch.dict(os.environ, {"JOB_STATE_DIR": tmpdir}):
+                job_state.reset_cache_for_tests()
+                instagram_poster.record_ig_auto_post_timestamp(d1, is_feed=True, reel_type="live_top5")
+                self.assertTrue(instagram_poster.has_ig_grid_posted_recently(d2_next_day, min_hours=36.0))
+                self.assertFalse(instagram_poster.has_ig_grid_posted_recently(d3_two_days, min_hours=36.0))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1140,9 +1140,9 @@ def build_reel_caption(
             f"今夜の3大激戦区、人数ボリュームと入りやすさで綺麗に割れてます{mode_note}",
         )
         closers = (
-            "お店に向かう直前の現在人数と男女比は、プロフィールのリンク『相席ナビ』（aiseki-navi.com）から3秒で見れます。\n2軒目探しのメモ代わりに保存どうぞ📌",
-            "全国60店舗超のいま現在の人数と料金比較はプロフの『相席ナビ』（aiseki-navi.com）に置いてます🔍\n週末の作戦会議用に保存しておくとラクです。",
-            "改札を出る前に『相席ナビ』（aiseki-navi.com）で近くの別ブランドを見比べるだけで受付待ちを回避できます。",
+            "お店に向かう直前の現在人数と男女比は、プロフィールのリンク『相席ナビ』（aiseki-navi.com）から3秒で見れます。\n📌 いいね不要・誰にもバレない【保存】で2軒目探しのメモ代わりにどうぞ（フォローで毎晩20時の穴場速報を通知）。",
+            "全国60店舗超のいま現在の人数と料金比較はプロフの『相席ナビ』（aiseki-navi.com）に置いてます🔍\n📌 週末の作戦会議用に【保存】＆毎晩の穴場時間を逃さないようフォローもぜひ。",
+            "改札を出る前に『相席ナビ』（aiseki-navi.com）で近くの別ブランドを見比べるだけで受付待ちを回避できます。\n📌 入店3分前に見返せるよう【右下の保存】がおすすめです。",
         )
         caption = (
             f"{openers[seed_num % len(openers)]}\n\n"
@@ -1170,9 +1170,9 @@ def build_reel_caption(
             f"いま受付待ちほぼゼロでそのまま乾杯しやすそうな狙い目ラウンジ上位です✨{mode_note}",
         )
         closers = (
-            "いま女子待ちゼロ圏の店舗一覧と限定フード・特典は、プロフィールのリンク『相席ナビ』（aiseki-navi.com）から見れます🔍\n友達との2軒目用に保存どうぞ🥂",
-            "角が立たない席替えのコツや全国の現在人数はプロフの『相席ナビ』（aiseki-navi.com）にまとめてあります📌",
-            "お店に入る3分前にプロフィールの『相席ナビ』（aiseki-navi.com）を覗いてから動くのが一番ラクです✨",
+            "いま女子待ちゼロ圏の店舗一覧と限定フード・特典は、プロフィールのリンク『相席ナビ』（aiseki-navi.com）から見れます🔍\n📌 誰にもバレない【保存】で友達との2軒目メモにどうぞ（フォローで毎晩の女子得速報を通知）🥂",
+            "角が立たない席替えのコツや全国の現在人数はプロフの『相席ナビ』（aiseki-navi.com）にまとめてあります📌\n行く直前に見返せるよう【保存】＆フォローもぜひ。",
+            "お店に入る3分前にプロフィールの『相席ナビ』（aiseki-navi.com）を覗いてから動くのが一番ラクです✨\n📌 週末の女子会用に【右下の保存】をどうぞ。",
         )
         caption = (
             f"{openers[seed_num % len(openers)]}\n\n"
@@ -1283,9 +1283,9 @@ def build_reel_caption(
         f"1軒目終わりの移動前にサクッと見比べたい、全国の現在人数上位＆好バランス穴場メモ{mode_note}",
     )
     closers = (
-        "全国60店舗超のいま現在の男女人数・料金比較は、プロフィールのリンク『相席ナビ』（aiseki-navi.com）から登録不要で見れます🔍\nお店に入る3分前の確認用に保存どうぞ📌",
-        "男性は「女性10名以上×女性比55%以上」、女性ペアは「男性先行中」のお店を選ぶとスムーズです🥂\nリアルタイム検索はプロフの『相席ナビ』（aiseki-navi.com）から。",
-        "近くのお店の現在人数と2軒目候補はプロフィールの『相席ナビ』（aiseki-navi.com）にまとめてあります🔍",
+        "全国60店舗超のいま現在の男女人数・料金比較は、プロフィールのリンク『相席ナビ』（aiseki-navi.com）から登録不要で見れます🔍\n📌 いいね不要・誰にもバレない【保存】でお店に入る3分前の確認用にどうぞ（フォローで毎晩の穴場時間を通知）。",
+        "男性は「女性10名以上×女性比55%以上」、女性ペアは「男性先行中」のお店を選ぶとスムーズです🥂\n📌 行く直前に見返せるよう【保存】＆リアルタイム検索はプロフの『相席ナビ』（aiseki-navi.com）から。",
+        "近くのお店の現在人数と2軒目候補はプロフィールの『相席ナビ』（aiseki-navi.com）にまとめてあります🔍\n📌 週末のハシゴ用に【右下の保存】とフォローをぜひ。",
     )
     anaba_block = f"\n\n🎯 いま比率が良くて入りやすい穴場\n{a_lines}" if a_lines else ""
     caption = (
@@ -1861,7 +1861,7 @@ class _ReelSceneRenderer:
         draw.text((lx, sub_y1), s1_fit, font=f_s1, fill=(214, 222, 235, 245))
         draw.text((lx, sub_y1 + 32), s2_fit, font=f_s2, fill=(214, 222, 235, 245))
 
-        # Nationwide live counter glass card
+        # Concrete #1 Store / Hub / Gap Spotlight glass card (prevents generic nationwide-only cover fatigue)
         cy1 = 568 if self.is_tiktok else 634
         cy2 = 772 if self.is_tiktok else 846
         draw.rounded_rectangle(
@@ -1872,24 +1872,66 @@ class _ReelSceneRenderer:
             width=2,
         )
         hdr_lbl = f"現在集計中の国内ラウンジ合計（{self.ctx['active_store_count']}店舗）"
-        hl_fit, f_hl, _ = ogp_generator.fit_text_and_font(draw, hdr_lbl, sw - 48, 19, 14)
-        draw.text((lx + 24, cy1 + 22), hl_fit, font=f_hl, fill=acc2)
-
         stat_main = f"女性 {self.ctx['total_women']}名   /   男性 {self.ctx['total_men']}名"
-        sm_fit, sm_font, _ = ogp_generator.fit_text_and_font(draw, stat_main, sw - 48, 38 if self.is_tiktok else 40, 24)
-        draw.text((lx + 24, cy1 + 68), sm_fit, font=sm_font, fill=(255, 255, 255, 255))
-
         ratio_note = (
             f"国内全体 女性比率 {self.ctx['overall_wpct']}%  ｜  オリエンタルラウンジ・ag・JIS 全国60店舗超対応"
             if self.ctx.get("overall_wpct") is not None
             else "オリエンタルラウンジ・ag・JIS 全国60店舗超対応"
         )
-        rn_fit, rn_font, _ = ogp_generator.fit_text_and_font(draw, ratio_note, sw - 48, 18, 14)
+
+        if self.rt == "tiktok_gap_shock":
+            gp0 = (self.ctx.get("gap_pairs") or [None])[0]
+            if gp0 and gp0.get("heaven_store") and gp0.get("crowded_store"):
+                hi_s = gp0["heaven_store"]
+                lo_s = gp0["crowded_store"]
+                hdr_lbl = f"⚡ {gp0['hub_label']}の男女比ギャップ（差{gp0['gap_pt']}pt）"
+                stat_main = f"◎ {hi_s['ja_name']}（女{hi_s['women']}:男{hi_s['men']}）"
+                ratio_note = f"狙い目 女性比{hi_s['wpct']}%  vs  対照店 {lo_s['ja_name']} 女性比{lo_s['wpct']}%"
+        elif self.rt in ("ladies_zero_wait", "tiktok_ladies_real"):
+            l1 = (self.ctx.get("ladies_top5") or [None])[0]
+            if l1:
+                hdr_lbl = "💄 いま受付待ち0・男性先行1位の狙い目店"
+                stat_main = f"{l1['ja_name']}｜男{l1['men']}名 : 女{l1['women']}名"
+                lead_pt = f"+{l1['male_lead']}名先行・" if int(l1.get("male_lead") or 0) > 0 else ""
+                ratio_note = f"男性{lead_pt}男性比{l1['mpct']}%（{l1['area_label']}）｜女子ペア即案内圏"
+        elif self.rt == "area_battle":
+            zones = self.ctx.get("area_battles") or []
+            lead_z = next((z for z in zones if z.get("is_leader")), zones[0] if zones else None)
+            if lead_z and int(lead_z.get("total") or 0) > 0:
+                bs = lead_z.get("best_store")
+                hdr_lbl = f"⚡ いま最も盛り上がっている激戦区：{lead_z['label']}"
+                stat_main = f"{lead_z['label']}｜女{lead_z['women']}名 vs 男{lead_z['men']}名"
+                if bs:
+                    ratio_note = f"狙い目1位：{bs['ja_name']}（女{bs['women']}:男{bs['men']}・女性比{bs['wpct']}%）"
+                else:
+                    ratio_note = f"エリア女性比 {lead_z['wpct']}%  ｜  全国{self.ctx['active_store_count']}店舗リアルタイム比較"
+        elif self.rt == "tiktok_midnight_cliff":
+            m1 = (self.ctx.get("midnight_top4") or self.ctx.get("top5_volume") or [None])[0]
+            if m1:
+                hdr_lbl = "🌙 23時20分の終電崖に強い深夜1位ラウンジ"
+                stat_main = f"{m1['ja_name']}｜女{m1['women']}名 : 男{m1['men']}名"
+                mr = m1.get("midnight_retention_pct")
+                ret_txt = f"終電後維持 {mr}%" if mr is not None else f"現在 女性比 {m1['wpct']}%"
+                ratio_note = f"{ret_txt}（{m1['area_label']}）｜深夜2軒目の有力候補"
+        else:
+            top1 = (self.ctx.get("top5_volume") or [None])[0]
+            if top1:
+                hdr_lbl = f"🔥 いま全国1位の激アツ店舗（全{self.ctx['active_store_count']}店リアルタイム集計）"
+                stat_main = f"{top1['ja_name']}｜女{top1['women']}名 : 男{top1['men']}名"
+                ratio_note = f"1位店 女性比{top1['wpct']}%  ｜  全国合計：女性{self.ctx['total_women']}名 / 男性{self.ctx['total_men']}名"
+
+        hl_fit, f_hl, _ = ogp_generator.fit_text_and_font(draw, hdr_lbl, sw - 48, 19, 14)
+        draw.text((lx + 24, cy1 + 22), hl_fit, font=f_hl, fill=acc2)
+
+        sm_fit, sm_font, _ = ogp_generator.fit_text_and_font(draw, stat_main, sw - 48, 36 if self.is_tiktok else 38, 22)
+        draw.text((lx + 24, cy1 + 68), sm_fit, font=sm_font, fill=(255, 255, 255, 255))
+
+        rn_fit, rn_font, _ = ogp_generator.fit_text_and_font(draw, ratio_note, sw - 48, 18, 13)
         draw.text((lx + 24, cy1 + 142), rn_fit, font=rn_font, fill=(182, 194, 212, 240))
 
         # Bottom teaser pill (inside safe zone)
         ty_pill = 832 if self.is_tiktok else 906
-        next_txt = "すぐ下にリアル比較データ＆狙い目店を公開 >>>" if self.is_tiktok else "このあと上位ランキング＆男女比バーを公開  >>>"
+        next_txt = "📌【保存】推奨｜すぐ下にリアル比較＆狙い目店を公開 >>>" if self.is_tiktok else "📌 行く前に見返せる【保存】推奨｜上位TOP5をすぐ公開 >>>"
         nt_fit, f_nt, _ = ogp_generator.fit_text_and_font(draw, next_txt, sw - 36, 19, 14)
         nw = int(draw.textlength(nt_fit, font=f_nt)) + 36
         nx = lx + max(0, (sw - nw) // 2)
@@ -2320,13 +2362,13 @@ class _ReelSceneRenderer:
         f_url = _get_reel_font(25 if self.is_tiktok else 28)
         f_note = _get_reel_font(16 if self.is_tiktok else 18)
 
-        k_txt = "「保存」して入店3分前に見返すのが鉄則！" if self.is_tiktok else "お店に向かう3分前にスマホでチェック！"
+        k_txt = "📌 誰にもバレない【右下の保存】で入店3分前に見返す！"
         k_fit, f_k_fit, _ = ogp_generator.fit_text_and_font(draw, k_txt, sw - 40, 21, 15)
         kw = int(draw.textlength(k_fit, font=f_k_fit))
         draw.text((lx + max(0, (sw - kw) // 2), cta_y1 + (28 if self.is_tiktok else 40)), k_fit, font=f_k_fit, fill=acc)
 
-        cta_l1 = "『相席ナビ』で検索 or プロフから" if self.is_tiktok else "プロフのリンク『相席ナビ』で"
-        cta_l2 = "全国60店舗超の現在人数を3秒チェック" if self.is_tiktok else "全国60店舗超の現在人数を3秒検索"
+        cta_l1 = "『相席ナビ』で検索 or プロフから" if self.is_tiktok else "今の全店人数はプロフのリンク『相席ナビ』"
+        cta_l2 = "全国60店舗超の現在人数を3秒チェック" if self.is_tiktok else "登録・DL不要で待ち時間を0秒チェック"
         c1_fit, f_c1, _ = ogp_generator.fit_text_and_font(draw, cta_l1, sw - 48, 30 if self.is_tiktok else 34, 20)
         c2_fit, f_c2, _ = ogp_generator.fit_text_and_font(draw, cta_l2, sw - 48, 30 if self.is_tiktok else 34, 20)
         c1w = int(draw.textlength(c1_fit, font=f_c1))
@@ -2343,8 +2385,8 @@ class _ReelSceneRenderer:
         draw.rounded_rectangle((ux, uy, ux + uw, uy + uh), radius=16, fill=(12, 18, 34, 248), outline=acc2, width=2)
         draw.text((ux + 24, uy + (17 if self.is_tiktok else 20)), u_fit, font=f_u_fit, fill=acc2)
 
-        n1 = "オリエンタルラウンジ・ag・JIS ほか全国対応"
-        n2 = "会員登録・アプリDL不要 / 24時間リアルタイム無料"
+        n1 = "フォローで毎晩20時「待ち時間0の穴場法則」を通知"
+        n2 = "オリエンタルラウンジ・ag・JIS ほか全国60店舗超対応"
         n1_fit, f_n1, _ = ogp_generator.fit_text_and_font(draw, n1, sw - 36, 16 if self.is_tiktok else 18, 13)
         n2_fit, f_n2, _ = ogp_generator.fit_text_and_font(draw, n2, sw - 36, 16 if self.is_tiktok else 18, 13)
         n1w = int(draw.textlength(n1_fit, font=f_n1))
@@ -2608,9 +2650,165 @@ def _compute_reel_cache_key(stores: list, rt: str, bg_info: dict, now_jst: datet
         chk = now_jst if now_jst.tzinfo else now_jst.replace(tzinfo=JST)
         if abs((chk - real_now).total_seconds()) > 180:
             custom_ts = chk.strftime("%Y%m%d%H%M")
-    raw = f"v2|{rt}|{bg_sig}|{custom_ts}|{top_sig}"
+    raw = f"v3|{rt}|{bg_sig}|{custom_ts}|{top_sig}"
     digest = hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
     return f"{rt}_{digest}"
+
+
+_BGM_WAV_LOCK = threading.Lock()
+_BGM_WAV_MEM_CACHE = {}
+
+_BGM_CHORD_VOICINGS = {
+    "live_top5": ((220.0, 261.63, 329.63, 392.00, 493.88), (174.61, 220.0, 261.63, 329.63, 392.00)),
+    "area_battle": ((196.00, 233.08, 293.66, 349.23, 440.00), (155.56, 196.00, 233.08, 293.66, 392.00)),
+    "ladies_zero_wait": ((261.63, 329.63, 392.00, 493.88, 587.33), (220.00, 261.63, 329.63, 392.00, 493.88)),
+    "tiktok_gap_shock": ((207.65, 246.94, 311.13, 369.99, 466.16), (164.81, 207.65, 246.94, 311.13, 415.30)),
+    "tiktok_ladies_real": ((246.94, 293.66, 369.99, 440.00, 554.37), (196.00, 246.94, 293.66, 369.99, 493.88)),
+    "tiktok_midnight_cliff": ((185.00, 220.00, 277.18, 329.63, 415.30), (146.83, 185.00, 220.00, 277.18, 369.99)),
+}
+
+
+def synthesize_lounge_bgm_wav_bytes(reel_type: str = "live_top5", duration_sec: float = REEL_DURATION_SEC) -> bytes:
+    """
+    Synthesize a warm 22,050Hz stereo 16-bit WAV Lounge Deep House / Chill groove + synchronized UI transition chimes:
+      - Eliminates silent `anullsrc` tracks that cause 1-2s instant swipe-aways on Instagram Reels & TikTok.
+      - Uses a fast 2-bar (4.0s @ 120 BPM) precomputed stereo loop tiled across `duration_sec` plus
+        UI sparkle/chime overlays at `t=0.04s` (Hook), `t=2.02s` (Scene 2), `t=2.28..3.48s` (Card pops),
+        and `t=8.48s` (Scene 3 Save/Profile CTA).
+    """
+    import array
+    import wave
+
+    rt = normalize_reel_type(reel_type)
+    with _BGM_WAV_LOCK:
+        cached = _BGM_WAV_MEM_CACHE.get(rt)
+        if cached:
+            return cached
+
+    sr = 22050
+    total_frames = max(sr, int(round(float(duration_sec) * sr)))
+    loop_sec = 4.0  # 2 bars at 120 BPM (8 beats, 0.5s per beat)
+    loop_frames = int(loop_sec * sr)
+    chord_a, chord_b = _BGM_CHORD_VOICINGS.get(rt, _BGM_CHORD_VOICINGS["live_top5"])
+    two_pi = 2.0 * math.pi
+
+    loop_l = [0.0] * loop_frames
+    loop_r = [0.0] * loop_frames
+
+    for i in range(loop_frames):
+        t = i / float(sr)
+        chord = chord_a if t < 2.0 else chord_b
+        root = chord[0] * 0.5  # warm sub-bass root (90..130Hz + 2nd harmonic for phone speakers)
+        beat_pos = t % 0.5
+
+        # 1. Warm Deep House kick + sub-bass with sidechain ducking
+        kick_env = math.exp(-beat_pos * 18.0)
+        kick_freq = 54.0 + 78.0 * math.exp(-beat_pos * 34.0)
+        kick = 0.28 * kick_env * math.sin(two_pi * kick_freq * beat_pos)
+
+        sidechain = min(1.0, beat_pos / 0.16)
+        bass = (
+            0.16 * math.sin(two_pi * root * t)
+            + 0.09 * math.sin(two_pi * (root * 2.0) * t)
+        ) * sidechain
+
+        # 2. Lush stereo Rhodes electric piano chord pad
+        pad_l = 0.0
+        pad_r = 0.0
+        for idx, freq in enumerate(chord):
+            w = 0.055 if idx < 3 else 0.038
+            phase = idx * 0.6
+            s_val = math.sin(two_pi * freq * t + phase)
+            pan = 0.35 + 0.15 * idx
+            pad_l += w * s_val * (1.15 - pan * 0.4)
+            pad_r += w * s_val * (0.65 + pan * 0.4)
+        trem_l = 0.86 + 0.14 * math.sin(two_pi * 2.5 * t)
+        trem_r = 0.86 + 0.14 * math.cos(two_pi * 2.5 * t)
+        pad_l *= sidechain * trem_l
+        pad_r *= sidechain * trem_r
+
+        # 3. Soft off-beat lounge hi-hat / marimba pulse at beat + 0.25s
+        off_pos = (t + 0.25) % 0.5
+        hat_env = math.exp(-off_pos * 38.0)
+        hat = 0.045 * hat_env * math.sin(two_pi * 3520.0 * t) * math.sin(two_pi * 613.0 * t)
+
+        loop_l[i] = kick + bass + pad_l + hat
+        loop_r[i] = kick + bass + pad_r - hat * 0.7
+
+    pcm = array.array("h", [0] * (total_frames * 2))
+    for i in range(total_frames):
+        li = i % loop_frames
+        t = i / float(sr)
+        env = 1.0
+        if t < 0.14:
+            env = t / 0.14
+        elif t > (duration_sec - 0.48):
+            env = max(0.0, (duration_sec - t) / 0.48)
+        sl = max(-0.95, min(0.95, loop_l[li] * env))
+        sr_val = max(-0.95, min(0.95, loop_r[li] * env))
+        pcm[i * 2] = int(sl * 24000)
+        pcm[i * 2 + 1] = int(sr_val * 24000)
+
+    # 4. Overlay synchronized UI transition chimes (Hook 0.04s, Scene 2 2.02s, Card pops, Scene 3 Save CTA 8.48s)
+    chime_events = [
+        (0.04, 880.0, 1318.5, 0.28, 0.22),
+        (2.02, 587.33, 1174.66, 0.26, 0.20),
+        (2.28, 659.25, 987.77, 0.16, 0.13),
+        (2.58, 783.99, 1174.66, 0.16, 0.13),
+        (2.88, 880.00, 1318.51, 0.16, 0.13),
+        (3.18, 987.77, 1479.98, 0.16, 0.13),
+        (8.48, 659.25, 1318.51, 0.34, 0.24),
+        (8.62, 987.77, 1567.98, 0.36, 0.24),
+    ]
+    for start_t, f1, f2, dur_t, amp in chime_events:
+        s_idx = int(start_t * sr)
+        e_idx = min(total_frames, int((start_t + dur_t) * sr))
+        for i in range(s_idx, e_idx):
+            dt = (i - s_idx) / float(sr)
+            c_env = math.exp(-dt * 11.5)
+            tone = amp * c_env * (0.65 * math.sin(two_pi * f1 * dt) + 0.35 * math.sin(two_pi * f2 * dt))
+            delta = int(tone * 22000)
+            pcm[i * 2] = max(-32000, min(32000, pcm[i * 2] + delta))
+            pcm[i * 2 + 1] = max(-32000, min(32000, pcm[i * 2 + 1] + delta))
+
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as wf:
+        wf.setnchannels(2)
+        wf.setsampwidth(2)
+        wf.setframerate(sr)
+        wf.writeframes(pcm.tobytes())
+    wav_bytes = buf.getvalue()
+
+    with _BGM_WAV_LOCK:
+        _BGM_WAV_MEM_CACHE[rt] = wav_bytes
+    return wav_bytes
+
+
+def _ensure_reel_bgm_wav_path(reel_type: str = "live_top5") -> str:
+    """Return path to a custom BGM file in `static/reels_bg/` or cached procedural Lounge Chill WAV in `/tmp/aiseki_reels`."""
+    rt = normalize_reel_type(reel_type)
+    try:
+        if os.path.isdir(REELS_BG_DIR):
+            for cand in (f"{rt}.mp3", f"{rt}.wav", f"{rt}.m4a", "lounge_bgm.mp3", "lounge_bgm.wav", "lounge_bgm.m4a"):
+                cpath = os.path.join(REELS_BG_DIR, cand)
+                if os.path.isfile(cpath) and os.path.getsize(cpath) > 1024:
+                    return cpath
+    except Exception:
+        pass
+    try:
+        os.makedirs(REEL_TMP_CACHE_DIR, exist_ok=True)
+        wav_path = os.path.join(REEL_TMP_CACHE_DIR, f"bgm_v1_{rt}.wav")
+        if os.path.isfile(wav_path) and os.path.getsize(wav_path) > 10000:
+            return wav_path
+        wav_bytes = synthesize_lounge_bgm_wav_bytes(rt)
+        tmp_path = f"{wav_path}.{os.getpid()}.{threading.get_ident()}.tmp"
+        with open(tmp_path, "wb") as f_out:
+            f_out.write(wav_bytes)
+        os.replace(tmp_path, wav_path)
+        return wav_path
+    except Exception as e:
+        logger.debug(f"_ensure_reel_bgm_wav_path fallback: {e}")
+        return ""
 
 
 def _prune_tmp_reel_dir(now_ts: float):
@@ -2726,11 +2924,17 @@ def _encode_with_ffmpeg(
     out_mp4_path: str,
     use_video_bg: bool,
 ) -> None:
-    """Stream raw frames one-by-one into FFmpeg stdin (<4MB peak RAM) and mux silent AAC + faststart."""
+    """Stream raw frames one-by-one into FFmpeg stdin (<4MB peak RAM) and mux Lounge Chill BGM + UI SFX AAC + faststart."""
     W, H = REEL_WIDTH, REEL_HEIGHT
     bg_video_path, _, bg_image_path, bg_image_mtime = _resolve_bg_paths(bg_info)
     kb_mode = bg_info.get("ken_burns_mode", "zoom_in_up")
     bg_variant = bg_info.get("bg_variant", 0)
+    bgm_wav_path = _ensure_reel_bgm_wav_path(renderer.rt)
+    audio_input_args = (
+        ["-stream_loop", "-1", "-i", bgm_wav_path]
+        if (bgm_wav_path and os.path.isfile(bgm_wav_path))
+        else ["-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=44100"]
+    )
 
     if use_video_bg and bg_video_path and os.path.isfile(bg_video_path):
         filter_complex = (
@@ -2750,8 +2954,7 @@ def _encode_with_ffmpeg(
             "-s", f"{W}x{H}",
             "-r", str(REEL_FPS),
             "-i", "pipe:0",
-            "-f", "lavfi",
-            "-i", "anullsrc=channel_layout=stereo:sample_rate=44100",
+            *audio_input_args,
             "-filter_complex", filter_complex,
             "-map", "[vout]",
             "-map", "2:a",
@@ -2762,7 +2965,7 @@ def _encode_with_ffmpeg(
             "-level", "4.0",
             "-pix_fmt", "yuv420p",
             "-c:a", "aac",
-            "-b:a", "96k",
+            "-b:a", "128k",
             "-ac", "2",
             "-ar", "44100",
             "-t", f"{REEL_DURATION_SEC:.2f}",
@@ -2787,8 +2990,7 @@ def _encode_with_ffmpeg(
             "-s", f"{W}x{H}",
             "-r", str(REEL_FPS),
             "-i", "pipe:0",
-            "-f", "lavfi",
-            "-i", "anullsrc=channel_layout=stereo:sample_rate=44100",
+            *audio_input_args,
             "-c:v", "libx264",
             "-preset", "ultrafast",
             "-crf", "25",
@@ -2796,7 +2998,7 @@ def _encode_with_ffmpeg(
             "-level", "4.0",
             "-pix_fmt", "yuv420p",
             "-c:a", "aac",
-            "-b:a", "96k",
+            "-b:a", "128k",
             "-ac", "2",
             "-ar", "44100",
             "-t", f"{REEL_DURATION_SEC:.2f}",
