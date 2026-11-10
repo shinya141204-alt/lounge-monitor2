@@ -5,19 +5,24 @@
         --iso-card-bg: #16171d;
         --iso-sub-bg: #1c1e26;
         --iso-plane-b1: #181a24;
-        --iso-plane-1f: #151720;
-        --iso-plane-2f: #1e1c26;
-        --iso-box-bg: #232533;
-        --iso-store-bg: #281c23;
+        --iso-plane-b1-lip: #26221a;
+        --iso-plane-1f: #151822;
+        --iso-plane-1f-lip: #1b2432;
+        --iso-plane-2f: #1e1a24;
+        --iso-plane-2f-lip: #2c1f28;
+        --iso-box-bg: #222533;
+        --iso-store-bg: #291c24;
         --iso-cafe-bg: #1b2430;
-        --iso-text-main: #ebe8e3;
-        --iso-text-sub: #a39e95;
+        --iso-pill-bg: #14161e;
+        --iso-text-main: #f0ede8;
+        --iso-text-sub: #b3ada3;
         --iso-gold: #c8a46e;
-        --iso-gold-text: #dfc496;
-        --iso-rose: #d8a1aa;
-        --iso-blue: #93b1c9;
+        --iso-gold-text: #e2c799;
+        --iso-rose: #dfa5af;
+        --iso-blue: #99b8d1;
         --iso-dash-hi: #fff3d1;
-        --iso-border: rgba(255, 255, 255, 0.09);
+        --iso-grid-line: rgba(255, 255, 255, 0.05);
+        --iso-border: rgba(255, 255, 255, 0.10);
         --iso-gold-border: rgba(200, 164, 110, 0.42);
     }
     html.theme-light,
@@ -26,20 +31,25 @@
         --iso-well-bg: #f1efe9;
         --iso-card-bg: #faf9f6;
         --iso-sub-bg: #efece4;
-        --iso-plane-b1: #e7e2d6;
-        --iso-plane-1f: #e2e7ee;
-        --iso-plane-2f: #efe2e5;
+        --iso-plane-b1: #ebe5d8;
+        --iso-plane-b1-lip: #d5cab4;
+        --iso-plane-1f: #e4eaf1;
+        --iso-plane-1f-lip: #c7d4e2;
+        --iso-plane-2f: #f1e4e7;
+        --iso-plane-2f-lip: #dec5cb;
         --iso-box-bg: #ffffff;
-        --iso-store-bg: #f9eef0;
-        --iso-cafe-bg: #edf3f8;
-        --iso-text-main: #1f1e1b;
-        --iso-text-sub: #57524a;
+        --iso-store-bg: #fcf2f4;
+        --iso-cafe-bg: #f1f6fa;
+        --iso-pill-bg: #ffffff;
+        --iso-text-main: #1d1c19;
+        --iso-text-sub: #524d45;
         --iso-gold: #7a5820;
-        --iso-gold-text: #684916;
-        --iso-rose: #8f3647;
-        --iso-blue: #2e5575;
+        --iso-gold-text: #664714;
+        --iso-rose: #8c3344;
+        --iso-blue: #295070;
         --iso-dash-hi: #7a5820;
-        --iso-border: rgba(28, 27, 24, 0.12);
+        --iso-grid-line: rgba(28, 27, 24, 0.06);
+        --iso-border: rgba(28, 27, 24, 0.13);
         --iso-gold-border: rgba(122, 88, 32, 0.38);
     }
     .iso-3d-section {
@@ -66,7 +76,7 @@
     }
     .iso-3d-title {
         margin: 0;
-        font-size: 1.02rem;
+        font-size: 1.04rem;
         font-weight: 800;
         color: var(--iso-text-main);
         line-height: 1.4;
@@ -100,29 +110,28 @@
         color: #111216;
     }
     .iso-3d-body {
-        display: grid;
-        grid-template-columns: 1.35fr 1fr;
-        gap: 14px;
-        align-items: stretch;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
     }
     .iso-svg-well {
         background: var(--iso-well-bg);
         border: 1px solid var(--iso-border);
         border-radius: 12px;
-        overflow: hidden;
+        padding: 10px 14px;
         display: flex;
         align-items: center;
         justify-content: center;
-        min-height: 290px;
     }
     .iso-svg-canvas {
         width: 100%;
+        max-width: 760px;
         height: auto;
-        max-height: 320px;
         display: block;
     }
     .iso-layer-group {
-        transition: opacity 0.24s ease;
+        transition: opacity 0.22s ease, transform 0.22s ease;
+        cursor: pointer;
     }
     @keyframes isoDashFlow {
         to { stroke-dashoffset: -48; }
@@ -132,39 +141,54 @@
         animation: isoDashFlow 1.8s linear infinite;
     }
     .iso-cards-col {
-        display: flex;
-        flex-direction: column;
-        gap: 9px;
-        justify-content: space-between;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
     }
     .iso-step-card {
         background: var(--iso-sub-bg);
         border: 1px solid var(--iso-border);
         border-radius: 10px;
         padding: 11px 13px;
-        transition: opacity 0.22s ease, border-color 0.22s ease;
+        cursor: pointer;
+        transition: opacity 0.22s ease, border-color 0.22s ease, transform 0.16s ease;
+    }
+    .iso-step-card:hover {
+        border-color: var(--iso-gold-border);
+    }
+    .iso-step-card.is-highlighted {
+        border-color: var(--iso-gold);
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16);
     }
     .iso-step-card--b1 { border-left: 3px solid var(--iso-gold); }
     .iso-step-card--1f { border-left: 3px solid var(--iso-blue); }
     .iso-step-card--2f { border-left: 3px solid var(--iso-rose); }
     .iso-step-hdr {
-        font-size: 0.8rem;
+        font-size: 0.81rem;
         font-weight: 800;
-        margin: 0 0 4px;
+        margin: 0 0 5px;
         color: var(--iso-text-main);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 6px;
     }
     .iso-step-desc {
         font-size: 0.77rem;
         color: var(--iso-text-sub);
         margin: 0;
-        line-height: 1.55;
+        line-height: 1.56;
     }
     @media (max-width: 768px) {
-        .iso-3d-body {
-            grid-template-columns: 1fr;
-        }
         .iso-3d-section {
-            padding: 14px 12px;
+            padding: 14px 11px;
+        }
+        .iso-svg-well {
+            padding: 6px 4px;
+        }
+        .iso-cards-col {
+            grid-template-columns: 1fr;
+            gap: 8px;
         }
     }
 </style>
@@ -176,84 +200,157 @@
             <h3 class="iso-3d-title">{{ iso_map.hub_title }}</h3>
         </div>
         <div class="iso-3d-controls" role="group" aria-label="立体断面図の階層切替">
-            <button type="button" class="iso-layer-btn is-active" onclick="window.__setIsoMapLayer(this, 'all')">全3層表示</button>
-            <button type="button" class="iso-layer-btn" onclick="window.__setIsoMapLayer(this, 'b1')">B1F 地下直結（雨・雪回避）</button>
-            <button type="button" class="iso-layer-btn" onclick="window.__setIsoMapLayer(this, '1f')">1F 地上ハシゴ</button>
-            <button type="button" class="iso-layer-btn" onclick="window.__setIsoMapLayer(this, '2f')">2F-3F ラウンジ＆2軒目</button>
+            <button type="button" class="iso-layer-btn is-active" data-iso-btn="all" onclick="window.__setIsoMapLayer(this, 'all')">全3層表示</button>
+            <button type="button" class="iso-layer-btn" data-iso-btn="b1" onclick="window.__setIsoMapLayer(this, 'b1')">B1F 地下直結（雨・雪回避）</button>
+            <button type="button" class="iso-layer-btn" data-iso-btn="1f" onclick="window.__setIsoMapLayer(this, '1f')">1F 地上ハシゴ</button>
+            <button type="button" class="iso-layer-btn" data-iso-btn="2f" onclick="window.__setIsoMapLayer(this, '2f')">2F-3F ラウンジ＆2軒目</button>
         </div>
     </div>
 
     <div class="iso-3d-body">
         <div class="iso-svg-well">
-            <svg viewBox="0 0 560 320" class="iso-svg-canvas" role="img" aria-label="{{ iso_map.hub_title }}">
-                <title>{{ iso_map.hub_title }}（地下1F直結ルート・地上1F・2〜3Fラウンジ＆2軒目カフェ）</title>
-                <!-- Rain indicator lines above 1F street level -->
-                <g class="iso-layer-group" data-iso-layer="1f" stroke="var(--iso-blue)" stroke-opacity="0.32" stroke-width="1.2">
-                    <line x1="78" y1="12" x2="68" y2="46" />
-                    <line x1="152" y1="10" x2="142" y2="44" />
-                    <line x1="230" y1="14" x2="220" y2="48" />
-                    <line x1="315" y1="10" x2="305" y2="44" />
-                    <line x1="395" y1="12" x2="385" y2="46" />
-                    <line x1="470" y1="10" x2="460" y2="44" />
+            <svg viewBox="0 0 600 436" class="iso-svg-canvas" role="img" aria-label="{{ iso_map.hub_title }}（地下1F直結ルート・地上1F・2〜3Fラウンジ＆2軒目カフェ）">
+                <!-- VERTICAL ELEVATOR / EXIT RISER SHAFTS BETWEEN SLABS (Strictly in inter-slab gaps) -->
+                <g stroke="var(--iso-gold)" stroke-width="2.2" stroke-dasharray="4 3">
+                    <line x1="513" y1="156" x2="513" y2="132" />
+                    <line x1="513" y1="302" x2="513" y2="278" />
                 </g>
 
-                <!-- LAYER L=-1: B1F UNDERGROUND DIRECT PASSAGE -->
-                <g class="iso-layer-group" data-iso-layer="b1">
-                    <polygon points="56,248 280,182 504,248 280,312" fill="var(--iso-plane-b1)" stroke="var(--iso-gold)" stroke-opacity="0.65" stroke-width="1.6"/>
-                    <text x="74" y="255" fill="var(--iso-gold-text)" font-size="12" font-weight="700">{{ iso_map.b1_title }}</text>
-                    <!-- Station Gate Isometric Block -->
-                    <polygon points="92,242 146,225 196,242 142,259" fill="var(--iso-box-bg)" stroke="var(--iso-blue)" stroke-width="1.4"/>
-                    <text x="104" y="246" fill="var(--iso-text-main)" font-size="12" font-weight="700">{{ iso_map.station_label }}</text>
-                    <!-- Dry Underground Conduit -->
-                    <path d="M 172 242 L 292 212 L 368 236" fill="none" stroke="var(--iso-gold)" stroke-width="3.6" stroke-linecap="round"/>
-                    <path d="M 172 242 L 292 212 L 368 236" fill="none" stroke="var(--iso-dash-hi)" stroke-width="2" class="iso-anim-dash"/>
-                    <!-- Direct Elevator / Escalator Shaft up to Lounge -->
-                    <line x1="292" y1="212" x2="292" y2="84" stroke="var(--iso-gold)" stroke-width="2.2" stroke-dasharray="4 3"/>
-                    <circle cx="292" cy="212" r="5" fill="var(--iso-gold)"/>
-                    <text x="202" y="203" fill="var(--iso-gold-text)" font-size="12" font-weight="700">{{ iso_map.b1_exit }}</text>
+                <!-- =========================================================
+                     BAND 1 (TOP): L=+1 | 2F-3F LOUNGES & 2ND VENUE NIGHT CAFE
+                     y = 10 .. 132 (100% disjoint from Band 2)
+                     ========================================================= -->
+                <g class="iso-layer-group" data-iso-layer="2f" onclick="window.__setIsoMapLayer(this, '2f')">
+                    <!-- Dedicated Floor Header Row above the 3D slab -->
+                    <rect x="20" y="10" width="96" height="22" rx="6" fill="var(--iso-store-bg)" stroke="var(--iso-rose)" stroke-width="1.2"/>
+                    <text x="68" y="25" text-anchor="middle" fill="var(--iso-rose)" font-size="11" font-weight="800">L=+1｜2F-3F</text>
+                    <text x="124" y="26" fill="var(--iso-rose)" font-size="13" font-weight="800">{{ iso_map.f2_header or iso_map.f2_title }}</text>
+                    <rect x="442" y="10" width="142" height="22" rx="6" fill="var(--iso-sub-bg)" stroke="var(--iso-gold)" stroke-opacity="0.65" stroke-width="1.1"/>
+                    <text x="513" y="25" text-anchor="middle" fill="var(--iso-gold-text)" font-size="10.5" font-weight="800">▲ 直結EVで2F-3Fへ</text>
+
+                    <!-- 3D Isometric Slab with extruded front/right lips -->
+                    <polygon points="12,126 572,126 572,132 12,132" fill="var(--iso-plane-2f-lip)"/>
+                    <polygon points="588,36 588,42 572,132 572,126" fill="var(--iso-plane-2f-lip)"/>
+                    <polygon points="28,36 588,36 572,126 12,126" fill="var(--iso-plane-2f)" stroke="var(--iso-rose)" stroke-opacity="0.65" stroke-width="1.5"/>
+                    <!-- Subtle isometric floor grid lines -->
+                    <line x1="168" y1="36" x2="152" y2="126" stroke="var(--iso-grid-line)" stroke-width="1"/>
+                    <line x1="308" y1="36" x2="292" y2="126" stroke="var(--iso-grid-line)" stroke-width="1"/>
+                    <line x1="448" y1="36" x2="432" y2="126" stroke="var(--iso-grid-line)" stroke-width="1"/>
+
+                    <!-- Left Node Card: 1st Venue Lounge -->
+                    <rect x="28" y="45" width="224" height="72" rx="8" fill="var(--iso-store-bg)" stroke="var(--iso-rose)" stroke-width="1.6"/>
+                    <text x="140" y="62" text-anchor="middle" fill="var(--iso-rose)" font-size="10.5" font-weight="800">① 1軒目：相席ラウンジ本戦</text>
+                    <text x="140" y="83" text-anchor="middle" fill="var(--iso-text-main)" font-size="13.5" font-weight="800">{{ iso_map.node_lounge_title }}</text>
+                    <text x="140" y="104" text-anchor="middle" fill="var(--iso-text-sub)" font-size="11" font-weight="700">{{ iso_map.node_lounge_sub }}</text>
+
+                    <!-- Center Connector: 2nd Venue Hopping -->
+                    <line x1="252" y1="81" x2="348" y2="81" stroke="var(--iso-gold)" stroke-width="2.4" class="iso-anim-dash"/>
+                    <rect x="256" y="69" width="88" height="24" rx="12" fill="var(--iso-pill-bg)" stroke="var(--iso-gold)" stroke-width="1.4"/>
+                    <text x="300" y="85" text-anchor="middle" fill="var(--iso-gold-text)" font-size="11.5" font-weight="800">{{ iso_map.node_cafe_hop }}</text>
+
+                    <!-- Right Node Card: 2nd Venue Night Cafe & Bar -->
+                    <rect x="348" y="45" width="224" height="72" rx="8" fill="var(--iso-cafe-bg)" stroke="var(--iso-gold)" stroke-width="1.6"/>
+                    <text x="460" y="62" text-anchor="middle" fill="var(--iso-gold-text)" font-size="10.5" font-weight="800">② 2軒目：夜カフェ・バー誘導</text>
+                    <text x="460" y="83" text-anchor="middle" fill="var(--iso-text-main)" font-size="13.5" font-weight="800">{{ iso_map.node_cafe_title }}</text>
+                    <text x="460" y="104" text-anchor="middle" fill="var(--iso-gold-text)" font-size="11" font-weight="700">{{ iso_map.node_cafe_sub }}</text>
                 </g>
 
-                <!-- LAYER L=0: 1F STREET LEVEL HOPPING -->
-                <g class="iso-layer-group" data-iso-layer="1f">
-                    <polygon points="56,166 280,100 504,166 280,232" fill="var(--iso-plane-1f)" fill-opacity="0.86" stroke="var(--iso-blue)" stroke-opacity="0.52" stroke-width="1.3"/>
-                    <text x="74" y="172" fill="var(--iso-blue)" font-size="12" font-weight="700">{{ iso_map.f1_title }}</text>
-                    <path d="M 148 160 L 248 136 L 416 160" fill="none" stroke="var(--iso-blue)" stroke-width="2.4" stroke-dasharray="5 5"/>
-                    <text x="168" y="131" fill="var(--iso-text-main)" font-size="12" font-weight="600">{{ iso_map.f1_route }}</text>
+                <!-- =========================================================
+                     BAND 2 (MIDDLE): L=0 | 1F STREET LEVEL HOPPING
+                     y = 156 .. 278 (100% disjoint from Band 1 & Band 3)
+                     ========================================================= -->
+                <g class="iso-layer-group" data-iso-layer="1f" onclick="window.__setIsoMapLayer(this, '1f')">
+                    <!-- Dedicated Floor Header Row above the 3D slab -->
+                    <rect x="20" y="156" width="96" height="22" rx="6" fill="var(--iso-sub-bg)" stroke="var(--iso-blue)" stroke-width="1.2"/>
+                    <text x="68" y="171" text-anchor="middle" fill="var(--iso-blue)" font-size="11" font-weight="800">L=0｜地上1F</text>
+                    <text x="124" y="172" fill="var(--iso-blue)" font-size="13" font-weight="800">{{ iso_map.f1_header or iso_map.f1_title }}</text>
+                    <rect x="442" y="156" width="142" height="22" rx="6" fill="var(--iso-sub-bg)" stroke="var(--iso-gold)" stroke-opacity="0.65" stroke-width="1.1"/>
+                    <text x="513" y="171" text-anchor="middle" fill="var(--iso-gold-text)" font-size="10.5" font-weight="800">▲ 地下出口から1F浮上</text>
+
+                    <!-- 3D Isometric Slab with extruded front/right lips -->
+                    <polygon points="12,272 572,272 572,278 12,278" fill="var(--iso-plane-1f-lip)"/>
+                    <polygon points="588,182 588,188 572,278 572,272" fill="var(--iso-plane-1f-lip)"/>
+                    <polygon points="28,182 588,182 572,272 12,272" fill="var(--iso-plane-1f)" stroke="var(--iso-blue)" stroke-opacity="0.60" stroke-width="1.5"/>
+                    <line x1="168" y1="182" x2="152" y2="272" stroke="var(--iso-grid-line)" stroke-width="1"/>
+                    <line x1="308" y1="182" x2="292" y2="272" stroke="var(--iso-grid-line)" stroke-width="1"/>
+                    <line x1="448" y1="182" x2="432" y2="272" stroke="var(--iso-grid-line)" stroke-width="1"/>
+
+                    <!-- Left Node Card: Primary Ground Hub -->
+                    <rect x="28" y="191" width="224" height="72" rx="8" fill="var(--iso-box-bg)" stroke="var(--iso-blue)" stroke-width="1.5"/>
+                    <text x="140" y="208" text-anchor="middle" fill="var(--iso-blue)" font-size="10.5" font-weight="800">地上メイン拠点・ビル1F入口</text>
+                    <text x="140" y="229" text-anchor="middle" fill="var(--iso-text-main)" font-size="13.5" font-weight="800">{{ iso_map.node_f1_left }}</text>
+                    <text x="140" y="250" text-anchor="middle" fill="var(--iso-text-sub)" font-size="11" font-weight="700">{{ iso_map.node_f1_left_sub }}</text>
+
+                    <!-- Center Connector: Street Level Ratio Switch -->
+                    <line x1="252" y1="227" x2="348" y2="227" stroke="var(--iso-blue)" stroke-width="2.4" stroke-dasharray="5 4"/>
+                    <rect x="256" y="215" width="88" height="24" rx="12" fill="var(--iso-pill-bg)" stroke="var(--iso-blue)" stroke-width="1.4"/>
+                    <text x="300" y="231" text-anchor="middle" fill="var(--iso-blue)" font-size="11.5" font-weight="800">{{ iso_map.node_f1_hop }}</text>
+
+                    <!-- Right Node Card: Secondary / Fallback Hopping Store -->
+                    <rect x="348" y="191" width="224" height="72" rx="8" fill="var(--iso-box-bg)" stroke="var(--iso-blue)" stroke-width="1.5"/>
+                    <text x="460" y="208" text-anchor="middle" fill="var(--iso-blue)" font-size="10.5" font-weight="800">男女比スイッチ・ハシゴ退避先</text>
+                    <text x="460" y="229" text-anchor="middle" fill="var(--iso-text-main)" font-size="13.5" font-weight="800">{{ iso_map.node_f1_right }}</text>
+                    <text x="460" y="250" text-anchor="middle" fill="var(--iso-text-sub)" font-size="11" font-weight="700">{{ iso_map.node_f1_right_sub }}</text>
                 </g>
 
-                <!-- LAYER L=+1: 2F-3F LOUNGES & 2ND VENUE NIGHT CAFE -->
-                <g class="iso-layer-group" data-iso-layer="2f">
-                    <polygon points="56,84 280,18 504,84 280,150" fill="var(--iso-plane-2f)" fill-opacity="0.90" stroke="var(--iso-rose)" stroke-opacity="0.65" stroke-width="1.6"/>
-                    <text x="74" y="90" fill="var(--iso-rose)" font-size="12" font-weight="700">{{ iso_map.f2_title }}</text>
-                    <!-- 1st Venue Lounge Card -->
-                    <g transform="translate(178, 38)">
-                        <rect x="0" y="0" width="174" height="44" rx="7" fill="var(--iso-store-bg)" stroke="var(--iso-rose)" stroke-width="1.5"/>
-                        <text x="8" y="18" fill="var(--iso-text-main)" font-size="12" font-weight="700">{{ iso_map.store_a_name | truncate(20, True, '…') }}</text>
-                        <text x="8" y="35" fill="var(--iso-rose)" font-size="12" font-weight="700">{{ iso_map.store_a_sub | truncate(21, True, '…') }}</text>
-                    </g>
-                    <!-- 2nd Venue Night Cafe Card -->
-                    <g transform="translate(368, 52)">
-                        <rect x="0" y="0" width="156" height="44" rx="7" fill="var(--iso-cafe-bg)" stroke="var(--iso-gold)" stroke-width="1.5"/>
-                        <text x="8" y="18" fill="var(--iso-text-main)" font-size="12" font-weight="700">{{ iso_map.cafe_name | truncate(17, True, '…') }}</text>
-                        <text x="8" y="35" fill="var(--iso-gold-text)" font-size="12" font-weight="700">{{ iso_map.cafe_sub | truncate(18, True, '…') }}</text>
-                    </g>
-                    <!-- 2nd Venue Hopping Arrow -->
-                    <path d="M 352 62 Q 360 56 368 68" fill="none" stroke="var(--iso-gold)" stroke-width="2.2" class="iso-anim-dash"/>
+                <!-- =========================================================
+                     BAND 3 (BOTTOM): L=-1 | B1F UNDERGROUND DIRECT PASSAGE
+                     y = 302 .. 424 (100% disjoint from Band 2)
+                     ========================================================= -->
+                <g class="iso-layer-group" data-iso-layer="b1" onclick="window.__setIsoMapLayer(this, 'b1')">
+                    <!-- Dedicated Floor Header Row above the 3D slab -->
+                    <rect x="20" y="302" width="96" height="22" rx="6" fill="var(--iso-sub-bg)" stroke="var(--iso-gold)" stroke-width="1.2"/>
+                    <text x="68" y="317" text-anchor="middle" fill="var(--iso-gold-text)" font-size="11" font-weight="800">L=-1｜地下B1F</text>
+                    <text x="124" y="318" fill="var(--iso-gold-text)" font-size="13" font-weight="800">{{ iso_map.b1_header or iso_map.b1_title }}</text>
+                    <rect x="442" y="302" width="142" height="22" rx="6" fill="var(--iso-sub-bg)" stroke="var(--iso-gold)" stroke-width="1.2"/>
+                    <text x="513" y="317" text-anchor="middle" fill="var(--iso-gold-text)" font-size="10.5" font-weight="800">☔ 雨・雪0秒 地下直結</text>
+
+                    <!-- 3D Isometric Slab with extruded front/right lips -->
+                    <polygon points="12,418 572,418 572,424 12,424" fill="var(--iso-plane-b1-lip)"/>
+                    <polygon points="588,328 588,334 572,424 572,418" fill="var(--iso-plane-b1-lip)"/>
+                    <polygon points="28,328 588,328 572,418 12,418" fill="var(--iso-plane-b1)" stroke="var(--iso-gold)" stroke-opacity="0.72" stroke-width="1.6"/>
+                    <line x1="168" y1="328" x2="152" y2="418" stroke="var(--iso-grid-line)" stroke-width="1"/>
+                    <line x1="308" y1="328" x2="292" y2="418" stroke="var(--iso-grid-line)" stroke-width="1"/>
+                    <line x1="448" y1="328" x2="432" y2="418" stroke="var(--iso-grid-line)" stroke-width="1"/>
+
+                    <!-- Left Node Card: Station Underground Gate -->
+                    <rect x="28" y="337" width="224" height="72" rx="8" fill="var(--iso-box-bg)" stroke="var(--iso-gold)" stroke-width="1.5"/>
+                    <text x="140" y="354" text-anchor="middle" fill="var(--iso-gold-text)" font-size="10.5" font-weight="800">START｜最寄り駅・地下改札</text>
+                    <text x="140" y="375" text-anchor="middle" fill="var(--iso-text-main)" font-size="13.5" font-weight="800">{{ iso_map.station_label }}</text>
+                    <text x="140" y="396" text-anchor="middle" fill="var(--iso-text-sub)" font-size="11" font-weight="700">{{ iso_map.node_b1_corridor }}</text>
+
+                    <!-- Center Connector: Dry Underground Conduit -->
+                    <line x1="252" y1="373" x2="348" y2="373" stroke="var(--iso-gold)" stroke-width="3.4"/>
+                    <line x1="252" y1="373" x2="348" y2="373" stroke="var(--iso-dash-hi)" stroke-width="2" class="iso-anim-dash"/>
+                    <rect x="256" y="361" width="88" height="24" rx="12" fill="var(--iso-pill-bg)" stroke="var(--iso-gold)" stroke-width="1.5"/>
+                    <text x="300" y="377" text-anchor="middle" fill="var(--iso-gold-text)" font-size="11.5" font-weight="800">傘不要 ➔</text>
+
+                    <!-- Right Node Card: Target Direct Exit / Elevator -->
+                    <rect x="348" y="337" width="224" height="72" rx="8" fill="var(--iso-box-bg)" stroke="var(--iso-gold)" stroke-width="1.6"/>
+                    <text x="460" y="354" text-anchor="middle" fill="var(--iso-gold-text)" font-size="10.5" font-weight="800">UP｜目標地下出口・浮上地点</text>
+                    <text x="460" y="375" text-anchor="middle" fill="var(--iso-text-main)" font-size="13.5" font-weight="800">{{ iso_map.node_b1_exit }}</text>
+                    <text x="460" y="396" text-anchor="middle" fill="var(--iso-gold-text)" font-size="11" font-weight="700">{{ iso_map.node_b1_exit_sub }}</text>
                 </g>
             </svg>
         </div>
 
         <div class="iso-cards-col">
-            <div class="iso-step-card iso-step-card--b1" data-iso-card="b1">
-                <p class="iso-step-hdr" style="color: var(--iso-gold-text);">① B1F 地下直結・悪天候ルート</p>
+            <div class="iso-step-card iso-step-card--b1" data-iso-card="b1" onclick="window.__setIsoMapLayer(this, 'b1')">
+                <p class="iso-step-hdr" style="color: var(--iso-gold-text);">
+                    <span>① B1F 地下直結・悪天候ルート</span>
+                </p>
                 <p class="iso-step-desc">{{ iso_map.b1_desc }}</p>
             </div>
-            <div class="iso-step-card iso-step-card--1f" data-iso-card="1f">
-                <p class="iso-step-hdr" style="color: var(--iso-blue);">② 1F 地上ハシゴ・男女比スイッチ</p>
+            <div class="iso-step-card iso-step-card--1f" data-iso-card="1f" onclick="window.__setIsoMapLayer(this, '1f')">
+                <p class="iso-step-hdr" style="color: var(--iso-blue);">
+                    <span>② 1F 地上ハシゴ・男女比スイッチ</span>
+                </p>
                 <p class="iso-step-desc">{{ iso_map.f1_desc }}</p>
             </div>
-            <div class="iso-step-card iso-step-card--2f" data-iso-card="2f">
-                <p class="iso-step-hdr" style="color: var(--iso-rose);">③ 2F-3F ラウンジ＆2軒目夜カフェ誘導</p>
+            <div class="iso-step-card iso-step-card--2f" data-iso-card="2f" onclick="window.__setIsoMapLayer(this, '2f')">
+                <p class="iso-step-hdr" style="color: var(--iso-rose);">
+                    <span>③ 2F-3F ラウンジ＆2軒目夜カフェ誘導</span>
+                </p>
                 <p class="iso-step-desc">{{ iso_map.f2_desc }}</p>
             </div>
         </div>
@@ -262,22 +359,29 @@
 
 <script>
 if (!window.__setIsoMapLayer) {
-    window.__setIsoMapLayer = function(btn, mode) {
-        var sec = btn.closest('.iso-3d-section');
+    window.__setIsoMapLayer = function(el, mode) {
+        var sec = el.closest('.iso-3d-section');
         if (!sec) return;
+        var currentMode = sec.getAttribute('data-active-iso-mode') || 'all';
+        if (mode !== 'all' && !el.classList.contains('iso-layer-btn') && currentMode === mode) {
+            mode = 'all';
+        }
+        sec.setAttribute('data-active-iso-mode', mode);
         var btns = sec.querySelectorAll('.iso-layer-btn');
         for (var i = 0; i < btns.length; i++) {
-            btns[i].classList.toggle('is-active', btns[i] === btn);
+            var bm = btns[i].getAttribute('data-iso-btn');
+            btns[i].classList.toggle('is-active', bm === mode);
         }
         var groups = sec.querySelectorAll('.iso-layer-group');
         for (var j = 0; j < groups.length; j++) {
             var gl = groups[j].getAttribute('data-iso-layer');
-            groups[j].style.opacity = (mode === 'all' || mode === gl) ? '1' : '0.16';
+            groups[j].style.opacity = (mode === 'all' || mode === gl) ? '1' : '0.18';
         }
         var cards = sec.querySelectorAll('.iso-step-card');
         for (var k = 0; k < cards.length; k++) {
             var cl = cards[k].getAttribute('data-iso-card');
             cards[k].style.opacity = (mode === 'all' || mode === cl) ? '1' : '0.42';
+            cards[k].classList.toggle('is-highlighted', mode !== 'all' && mode === cl);
         }
     };
 }

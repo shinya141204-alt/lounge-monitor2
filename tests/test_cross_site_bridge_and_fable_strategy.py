@@ -269,6 +269,17 @@ class TestCrossSiteBridgeAndFableStrategy(unittest.TestCase):
         self.assertIn("tower_b", comp.scene1_iso_tower_spec)
 
         # (f) 3-Layer Isometric Underground Cross-Section Map rendered on Area Pages, Area Guides, and Store Pages
+        import portal_guides
+        for hub_slug, iso_cfg in portal_guides.AREA_3D_CROSS_SECTIONS.items():
+            for title_key in ("station_label", "node_b1_exit", "node_f1_left", "node_f1_right", "node_lounge_title", "node_cafe_title"):
+                val = iso_cfg.get(title_key, "")
+                self.assertTrue(val, f"Missing {title_key} in {hub_slug}")
+                self.assertLessEqual(len(val), 16, f"{hub_slug}.{title_key} too long ({len(val)} chars): {val}")
+            for sub_key in ("node_b1_corridor", "node_b1_exit_sub", "node_f1_left_sub", "node_f1_right_sub", "node_lounge_sub", "node_cafe_sub"):
+                val = iso_cfg.get(sub_key, "")
+                self.assertTrue(val, f"Missing {sub_key} in {hub_slug}")
+                self.assertLessEqual(len(val), 19, f"{hub_slug}.{sub_key} too long ({len(val)} chars): {val}")
+
         for path in ("/area/shinjuku", "/area/umeda", "/guide/shinjuku", "/guide/osaka-kita-vs-minami", "/store/oriental-lounge-shinjuku"):
             resp_iso = self.client.get(f"{path}?staff_test=1")
             self.assertEqual(resp_iso.status_code, 200, f"Failed on {path}")
